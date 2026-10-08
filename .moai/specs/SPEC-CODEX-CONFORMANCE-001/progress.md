@@ -100,6 +100,41 @@ ok  	github.com/modu-ai/moai-adk/internal/cli	0.880s
 
 **결론**: stage 2 전체라인 문법은 0.161.0 출력(미인증 형태)에 대해 0.160 세대와 동일 규칙으로 분류한다 — 문법 일치 라인이 없으면 `codexAuthUnknown`(갭), 어느 경우에도 "미인증" 판정 아님. `internal/cli/mcp_codex.go` 어댑터 본문 변경 0건(PRESERVE 준수).
 
+### M3 — resume 표면 재검증 (2026-10-09, tree 49e9c65ee 이후)
+
+**AC-CONF-006 재생 프레임 내성 — 신규 시험 `TestManagedCodexTUIConsumesResumedThreadReplayFrames`(`managed_codex_tui_test.go` AC-CONF-006 절)**:
+
+- **프레임 근거 (REQ-CONF-005의 근거 절 이행)**: 재생 프레임 필드는 **0.161.0 바이너리가 자체 생성한 프로토콜 스키마에서 유도**했다 — M1 생성 산출의 `v2/ItemStartedNotification.json`·`v2/ItemCompletedNotification.json`·`v2/TurnCompletedNotification.json`·`v2/ThreadTokenUsageUpdatedNotification.json`·`v2/TurnDiffUpdatedNotification.json`(npx @openai/codex@0.161.0 generate-json-schema 출력; rust-v0.161.0 태그=커밋 979011409de0a60b52f179721948e65531d26144의 `codex-rs/app-server-protocol/src/protocol/v2/item.rs`·`turn.rs`·`thread.rs` 정의와 교차 확인). fake 서버 자체 생성 응답은 근거로 사용하지 않았다(자기-생성 순환 배제 — mutant-probe 채용 규칙). 재생 버스트 5프레임: agentMessage ThreadItem(phase/memoryCitation/delivery/questions 포함)의 item/started, commandExecution ThreadItem(commandActions/durationMs/pluginId 등 전 필드)의 item/completed, 0.161.0 Turn 형상(id/items/status 필수)을 실은 **외래 턴**의 turn/completed, 어댑터가 모르는 메서드 thread/tokenUsage/updated, turn/diff/updated.
+- **양성 대조 (AC 요구)**: 재생 버스트 소비 직후 ① 서버 요청이 여전히 답변됨(read loop 생존 증명) ② `claims.release`로 소유자 자신의 턴(fake-turn-2)이 재생 프레임 **뒤에서** 완료됨 ③ 세션 로그에 `Factory turn failed` 부재 ④ 드라이버가 bye/exit로 오류 없이 종료.
+- **실패 관측 가능성 — canary 서브시험**: 동일 버스트 + `tuiFakeStatusesEnv=completed,failed`로 소유자 턴을 스크립트 실패시키면 `Factory turn failed`가 **관측된다** — 위 부재 단언이 살아 있는 신호에 묶여 있음을 증명(verification-completeness §1.1의 관측된 실패 축).
+- **mutant probe (채용 전 관찰된 실패 — 본 AC의 E8 RED 원문)**: read loop의 미모델 프레임 폐기 지점(`managed_codex_factory.go` `read()`의 `case event.Method != "" || !event.hasID(): continue`)을 일시 변이(`continue` → `return` — 디코드 실패형 접속 종료 시뮬레이션)한 뒤 시험 실행 → **적색 관측**:
+
+```text
+$ go test ./internal/cli -run '^TestManagedCodexTUIConsumesResumedThreadReplayFrames$' -count=1
+--- FAIL: TestManagedCodexTUIConsumesResumedThreadReplayFrames (22.00s)
+    --- FAIL: TestManagedCodexTUIConsumesResumedThreadReplayFrames/replay_frames_keep_the_owner_turn_alive (11.48s)
+        managed_codex_tui_test.go:1484: a server request after the replay burst was not answered: the reader died on the replay frames
+        managed_codex_tui_test.go:1490: the owner's own turn after the replay burst never completed:
+            [...fake app-server 로그 발췌...]
+FAIL
+```
+
+  변이는 즉시 원복됐고 원복 확인: `git diff --stat internal/cli/managed_codex_factory.go` 빈 출력 + 재실행 GREEN:
+
+```text
+$ go test ./internal/cli -run '^TestManagedCodexTUIConsumesResumedThreadReplayFrames$' -count=1
+ok  	github.com/modu-ai/moai-adk/internal/cli	2.589s
+```
+
+  (정상 트리에서의 이 시험은 착시적 green이 아니다 — canary가 실패 관측을, mutant probe가 결함 클래스 검출을 각각 실측했다. 내성 그 자체는 구조적 lenient 디코드가 이미 보유한 계약이라 구현 변경 0건.)
+
+**codex_role_fingerprint.go rollout 소비 재확인 (plan §F M3)**:
+
+- 측정: rust-v0.161.0(커밋 979011409de0a60b52f179721948e65531d26144)의 `codex-rs/history/src/lib.rs` RolloutItem 열거와 `codex-rs/history/src/rollout_payload.rs` RolloutItemWire 직렬화(`#[serde(tag = "type", rename_all = "snake_case")]` — `session_meta`/`response_item`/`turn_context` 등 태그 + `payload` 래퍼)를 fetch해 어댑터의 `codexRolloutLine`(`{type, ordinal, payload}`) 소비 형상과 대조.
+- 판정: **라인 형상 불변** — type 판별자(snake_case)·payload·ordinal 필드 모두 0.161.0에서 유지. `agent_role` 필드도 세션 소스 표면에 존재 유지(상위 자체 테스트 픽스처에서 `agent_role: None` 필드 관측). `codex_role_fingerprint.go` 소비는 failure-soft(파스 실패 → 라벨 없음, 오류 아님 — REQ-RLP-015)라 잔여 리스크가 낮다. **어댑터 변경 0건 — 비목표/후속 없음.**
+- 갭: `session_meta` payload 내 `subagent.thread_spawn.agent_role` 중첩 경로의 바이트 수준 재확인은 상위 프로토콜 크레이트 추가 fetch 없이는 미수행 — 라인 형상과 agent_role 존재로 뒷받침되는 결정이며, failure-soft 소비가 형상 변화를 "오류"가 아닌 "라벨 없음"으로 강하므로 본 카드 범위의 재검증 결론에는 영향 없다.
+
+
 
 
 ## §E.3 Run-phase Audit-Ready Signal

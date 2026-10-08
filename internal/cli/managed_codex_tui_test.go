@@ -1371,6 +1371,167 @@ func TestManagedCodexBusyLongTurnKeepsDeferring(t *testing.T) {
 	_, _ = tuiAwait(done, tuiRunWait)
 }
 
+// ---------------------------------------------------------------- AC-CONF-006
+
+// tuiReplayFrame0161 builds one id-less notification frame as the wire carries
+// it. The REPLAY payload sets below are derived from the codex-cli 0.161.0
+// binary's own generated protocol schemas — the same generator output the
+// vendored fixtures come from (v2/ItemStartedNotification.json,
+// v2/ItemCompletedNotification.json, v2/TurnCompletedNotification.json,
+// v2/ThreadTokenUsageUpdatedNotification.json, v2/TurnDiffUpdatedNotification.json;
+// rust-v0.161.0) — NOT from this fake server's own responses, which AC-CONF-006
+// refuses as provenance (a self-generated circle would pass invented fields).
+// The adapter models none of these payloads; REQ-CONF-005 requires a resumed
+// thread replaying them to be consumed without a decode failure and without a
+// marked turn failure.
+func tuiReplayFrame0161(method string, params map[string]any) string {
+	return tuiJSON(map[string]any{"jsonrpc": "2.0", "method": method, "params": params})
+}
+
+// tuiReplayBurst0161 is the resumed-thread replay: history items and turn
+// lifecycle frames of a thread resumed on another client, streamed to the
+// owner's connection while it is mid-session.
+func tuiReplayBurst0161() []string {
+	return []string{
+		// item/started of a replayed agentMessage item, carrying every extended
+		// field the 0.161.0 ThreadItem::agentMessage schema names (phase,
+		// memoryCitation, delivery, questions).
+		tuiReplayFrame0161("item/started", map[string]any{
+			"item": map[string]any{
+				"type":           "agentMessage",
+				"id":             "replay-item-1",
+				"text":           "replayed answer from the resumed thread",
+				"phase":          "final_answer",
+				"memoryCitation": map[string]any{"entries": []any{}, "threadIds": []any{}},
+				"delivery":       "async",
+				"questions":      []any{},
+			},
+			"threadId":    "replay-thread",
+			"turnId":      "replay-turn-1",
+			"startedAtMs": 1728441600000,
+		}),
+		// item/completed of a replayed commandExecution item: the 0.161.0 field
+		// set (commandActions, aggregatedOutput, durationMs, pluginId, ...).
+		tuiReplayFrame0161("item/completed", map[string]any{
+			"item": map[string]any{
+				"type":             "commandExecution",
+				"id":               "replay-item-2",
+				"command":          "ls",
+				"cwd":              "/tmp",
+				"source":           "agent",
+				"status":           "completed",
+				"commandActions":   []any{map[string]any{"type": "listFiles", "command": "ls", "path": "/tmp"}},
+				"aggregatedOutput": "",
+				"exitCode":         0,
+				"durationMs":       12,
+				"pluginId":         nil,
+				"scriptPath":       nil,
+				"processId":        nil,
+			},
+			"threadId":      "replay-thread",
+			"turnId":        "replay-turn-1",
+			"completedAtMs": 1728441601000,
+		}),
+		// The replayed foreign turn's own completion: the 0.161.0 Turn shape
+		// (id/items/status required; startedAt/completedAt/durationMs optional).
+		// The owner must neither forward it nor count it as its own.
+		tuiReplayFrame0161("turn/completed", map[string]any{
+			"threadId": "replay-thread",
+			"turn": map[string]any{
+				"id": "replay-turn-1", "status": "completed", "items": []any{},
+				"startedAt": nil, "completedAt": nil, "durationMs": nil,
+			},
+		}),
+		// A 0.161.0 notification method the adapter has never answered or
+		// tracked (ThreadTokenUsageUpdatedNotification).
+		tuiReplayFrame0161("thread/tokenUsage/updated", map[string]any{
+			"threadId": "replay-thread",
+			"turnId":   "replay-turn-1",
+			"tokenUsage": map[string]any{
+				"total": map[string]any{"inputTokens": 1, "cachedInputTokens": 0, "outputTokens": 2, "reasoningOutputTokens": 0, "totalTokens": 3},
+				"last":  map[string]any{"inputTokens": 1, "cachedInputTokens": 0, "outputTokens": 2, "reasoningOutputTokens": 0, "totalTokens": 3},
+			},
+		}),
+		tuiReplayFrame0161("turn/diff/updated", map[string]any{
+			"threadId": "replay-thread", "turnId": "replay-turn-1", "diff": "",
+		}),
+	}
+}
+
+// TestManagedCodexTUIConsumesResumedThreadReplayFrames pins REQ-CONF-005: a
+// resumed thread's replay history — frames carrying fields the adapter does
+// not model (#49599 class) — is consumed without a decode failure and without
+// a marked turn failure, and a normal owner turn issued AFTER the replay burst
+// still completes (the positive control that proves consumption actually
+// happened, not merely that the frames were dropped by a dead reader).
+func TestManagedCodexTUIConsumesResumedThreadReplayFrames(t *testing.T) {
+	t.Run("replay_frames_keep_the_owner_turn_alive", func(t *testing.T) {
+		f := newTUIFake(t, "tui-replay-consume")
+		sess := f.newSession()
+		claims := &tuiClaims{}
+		done := f.drive(sess, claims)
+		if !f.waitLog("tui-start", tuiAttachWait) {
+			t.Errorf("the TUI never started within %s", tuiAttachWait)
+		}
+		for _, frame := range tuiReplayBurst0161() {
+			f.control("frame " + frame)
+		}
+		f.controlSync("replay-burst-sent")
+		// The replay frames must leave the read loop live: a server request
+		// issued right after the burst is still answered.
+		f.control("frame " + tuiJSON(tuiRequest("replay-alive-1", "item/commandExecution/requestApproval", "fake-turn-1")))
+		if _, ok := f.waitReply("replay-alive-1", tuiWatchdog); !ok {
+			t.Errorf("a server request after the replay burst was not answered: the reader died on the replay frames")
+		}
+		// Positive control: the owner's own turn issued after the burst still
+		// completes.
+		claims.release.Store(true)
+		if !f.waitLog("turn-completed fake-turn-2", tuiWatchdog) {
+			t.Errorf("the owner's own turn after the replay burst never completed:\n%s", f.logText())
+		}
+		time.Sleep(tuiQuiet)
+		if _, text := f.sessionLog(); strings.Contains(text, "Factory turn failed") {
+			t.Errorf("replay frames marked a Factory turn failed:\n%s", text)
+		}
+		f.say("bye\n/exit\n")
+		if ok, err := tuiAwait(done, tuiRunWait); !ok {
+			t.Errorf("the driver hung after the replay burst")
+		} else if err != nil {
+			t.Errorf("the driver errored after the replay burst: %v", err)
+		}
+	})
+	t.Run("failed_own_turn_still_marks_Factory_turn_failed", func(t *testing.T) {
+		// Canary: the same replay burst with the owner's own turn scripted to
+		// fail. The tolerance sub-test asserts the ABSENCE of "Factory turn
+		// failed" — this sub-test observes its PRESENCE on a known failing
+		// input, so the absence assertion is wired to a live signal.
+		f := newTUIFake(t, "tui-replay-canary", tuiFakeStatusesEnv+"=completed,failed")
+		sess := f.newSession()
+		claims := &tuiClaims{}
+		done := f.drive(sess, claims)
+		if !f.waitLog("tui-start", tuiAttachWait) {
+			t.Errorf("the TUI never started within %s", tuiAttachWait)
+		}
+		for _, frame := range tuiReplayBurst0161() {
+			f.control("frame " + frame)
+		}
+		f.controlSync("replay-burst-sent")
+		claims.release.Store(true)
+		if !f.waitLog("turn-completed fake-turn-2", tuiWatchdog) {
+			t.Errorf("the scripted-failure turn never completed:\n%s", f.logText())
+		}
+		if !waitUntil(func() bool {
+			_, text := f.sessionLog()
+			return strings.Contains(text, "Factory turn failed")
+		}, tuiWatchdog) {
+			_, text := f.sessionLog()
+			t.Errorf("a failed own turn did not mark Factory turn failed — the tolerance assertion above would pass vacuously:\n%s", text)
+		}
+		f.say("bye\n/exit\n")
+		_, _ = tuiAwait(done, tuiRunWait)
+	})
+}
+
 // ---------------------------------------------------------------- AC-MT-007
 
 func TestManagedCodexServerRequestScopingWithTUI(t *testing.T) {
