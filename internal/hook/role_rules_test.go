@@ -236,6 +236,19 @@ func TestSessionStartRoleRulesFailVisible(t *testing.T) {
 		inj := roleRuleInjectionFor(root, "startup", "")
 		assertFailVisible(t, inj, "unclosed_region")
 	})
+	t.Run("end_before_start", func(t *testing.T) {
+		// Balanced counts alone still pass an END-before-START file: the
+		// extractor scans forward from the FIRST start marker, so this file
+		// yielded an empty core with err=nil and the caller read it as the
+		// legitimate empty-pair state — the required rule vanished without a
+		// warning. Marker order must fail visible.
+		t.Setenv(config.EnvMoaiFactoryWorkers, "1")
+		root := build(t)
+		writeRoleRuleFixture(t, root, dispatch,
+			"<!-- moai:role-core-end -->\n\ntext before any start marker\n\n<!-- moai:role-core-start -->\nrequired core body with no end marker after it\n")
+		inj := roleRuleInjectionFor(root, "startup", "")
+		assertFailVisible(t, inj, "end_before_start")
+	})
 }
 
 // assertFailVisible asserts the REQ-ALB-009 pair: operator warning AND agent

@@ -117,6 +117,17 @@ func buildRoleCore(root string, rule roleRuleFile) (string, error) {
 	if strings.Count(content, config.RoleCoreMarkerStart) != strings.Count(content, config.RoleCoreMarkerEnd) {
 		return "", fmt.Errorf("role rule file has an unclosed %s region (unbalanced marker counts): %s", config.RoleCoreMarkerStart, rule.Rel)
 	}
+	// Balanced counts alone still pass an END-before-START file: the
+	// extractor scans forward from the FIRST start marker, so a file whose
+	// first marker occurrence is the end marker yields an empty (or
+	// tail-only) core with err=nil, and the caller would treat that empty
+	// core as the legitimate empty-pair state — the required rules vanish
+	// silently. Marker order is therefore validated too: the first marker
+	// occurrence in the content must be a start marker. Balanced counts
+	// guarantee both indexes exist at this point.
+	if strings.Index(content, config.RoleCoreMarkerEnd) < strings.Index(content, config.RoleCoreMarkerStart) {
+		return "", fmt.Errorf("role rule file carries a %s marker before any %s marker (malformed marker order): %s", config.RoleCoreMarkerEnd, config.RoleCoreMarkerStart, rule.Rel)
+	}
 	return strings.Join(regions, "\n\n"), nil
 }
 
