@@ -26,9 +26,17 @@ the card beyond its 8-defect contract and adds a second production
 surface — productionLaneFilesProbe — the card text never names)
 Evidence note: RED on this tree at 81786284e, all 3 subtests (2026-10-08
 run, plan.md §B) — the deferral records ownership, not the defect's
-existence; t1596 inherits the test file and evidence from the overlay
-archive (local: `.moai/reports/t1595/overlay/`, origin
-`/tmp/t1498-review-overlay/`).
+existence. Inheritance made durable on the branch (plan-audit round-1
+repair, D5): the deferred test source and mapping are committed under the
+TRACKED path `.moai/specs/SPEC-DISPATCH-INTEGRITY-001/deferred/`
+(`lane-probe_test.go.txt`, `README.md` naming owner card t1596 and the
+intake path). The owner-side record in t1596's queue body could not be
+authored by this card — queue mutation is prohibited for factory lanes and
+their spawned agents — so the tracked deferral archive is the two-sided
+side this card lands; t1596's operator-side dispatch is where the owner
+body gains its pointer. The overlay archive
+(`.moai/reports/t1595/overlay/`, origin `/tmp/t1498-review-overlay/`)
+stays the local evidence supplement.
 Operator verdict: DEFAULT-APPLIED 2026-10-08T15:14Z manager-spec (lane t1595)
 
 ### Q2: Do the overlay tests owned by OTHER cards (t1596 ×2, t1561 ×1, t1562 ×1) get committed on the t1595 card branch?

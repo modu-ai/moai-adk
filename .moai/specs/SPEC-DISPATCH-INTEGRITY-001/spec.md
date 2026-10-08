@@ -1,7 +1,7 @@
 ---
 id: SPEC-DISPATCH-INTEGRITY-001
 title: "Factory dispatch and bundle integrity — eight P1 review findings"
-version: "0.1.0"
+version: "0.1.1"
 status: draft
 created: 2026-10-09
 updated: 2026-10-09
@@ -33,6 +33,17 @@ tier: M
   no overlay test and classify RED-first in M1–M3.
 - v0.1.0 (2026-10-09) — initial SPEC authored (card t1595, plan phase,
   Tier M).
+- v0.1.1 (2026-10-09) — plan-audit round-1 repairs (verdict FAIL 0.78 vs
+  Tier M 0.80; defect delta D1–D8 + codex gate r1 convergence): AC-DI-010
+  and its committed test re-authored for serialized semantics (fold B as a
+  separate process completing after A releases the lock); AC-DI-009's
+  guarantee scoped to the last observable byte comparison with the
+  irreducible TOCTOU tail stated as residual risk and the seam call site
+  pinned against relocation in both directions; AC-DI-003 extended to the
+  multi-hub case (two hubs, independent predecessors, blocked until both
+  merge); §2.1 four-element evidence ledger added for the baseline cells;
+  lane-probe deferral made two-sided via the tracked `deferred/` archive
+  (owner card t1596).
 
 ## Requirements
 
@@ -136,6 +147,8 @@ are classified regression-guard per C1.
   landed in PR #1795, observed PASS on this tree (81786284e).
 - `TestReviewFindingBackgroundReceiptRecycling` (audit_receipt) — card
   t1562, in flight as PR #1803; its RED stays off this card's branch.
+- pre_tool:1397 — card t1556, fix landed in PR #1783 (mapping-resolved in
+  the card handoff; nothing claims it in scope).
 
 ### Out of Scope — lane-probe finding (deferred to t1596)
 
@@ -145,6 +158,13 @@ are classified regression-guard per C1.
   evidence (all 3 subtests FAIL on this tree, 2026-10-08) and the test file
   remain archived for t1596's intake — the deferral records ownership, not
   the defect's existence.
+- Inheritance is durable on THIS branch: the deferred test source and its
+  mapping live in the tracked `deferred/` directory beside this spec
+  (`deferred/lane-probe_test.go.txt`, `deferred/README.md` — owner card
+  t1596, intake path documented there). The deferring card cannot edit
+  t1596's queue body (queue mutation is prohibited for factory lanes and
+  their agents), so this tracked record is the two-sided side this card can
+  land.
 
 ### Out of Scope — t1596-class issuance findings
 

@@ -8,13 +8,22 @@ not-reproducible at the baseline is classified **regression-guard** and is
 NOT recorded as a pass — the observation is the closure evidence.
 
 Measurement protocol (every AC): env-scrubbed compound invocation
-(`unset MOAI_KANBAN_ID MOAI_KANBAN_LEAD_ADDR MOAI_KANBAN_SETTINGS_INJECTED && go test …`),
-`-run` selector scoped to the named tests, `-count=1` unless the AC says
-otherwise, tree SHA recorded beside the outcome. A selector matching zero
-tests is a failed measurement, not a pass.
+(`unset MOAI_KANBAN_ID MOAI_KANBAN_LEAD_ADDR MOAI_KANBAN_SETTINGS_INJECTED && go test …`)
+as the protocol form, `-run` selector scoped to the named tests, `-count=1`
+unless the AC says otherwise, tree SHA recorded beside the outcome. A
+selector matching zero tests is a failed measurement, not a pass.
+
+Release-blocking and regression-guard baseline cells additionally carry the
+verification-completeness §2.1 four elements — a single-invocation command
+(the recorded command form; pipes, `&&`, `;`, and subshells live outside it),
+its raw verbatim stdout, the exit code as its own field, and the tree SHA —
+carried in the evidence ledger below and cited from the ACs. The ledger's
+capture history (including the worktree-guard refusal of the `env -u … go
+test` single-invocation substitute) is recorded at the ledger head.
 
 Plan-phase baseline (tree 81786284e, 2026-10-08): (4) PASS, (5) PASS,
-(8a) FAIL, (8b) FAIL, control PASS — verbatim in `plan.md` §B.
+(8a) FAIL, (8b) FAIL, control PASS — verbatim in `plan.md` §B; the
+four-element cells live in the evidence ledger below.
 
 ## AC-DI-001 — Baseline classification currency (gate for all fixes)
 
@@ -38,14 +47,18 @@ dedup exists at `runFactoryBundleLocked`); green path M1(b). If it measures
 GREEN at baseline, reclassify regression-guard with the observation
 recorded. Trace: REQ-DISPATCH-003.
 
-## AC-DI-003 — Defect (1): member not lease-eligible past unmerged hub sharer
+## AC-DI-003 — Defect (1): member not lease-eligible past unmerged hub sharers (multi-hub)
 
-**Given** recorded card `t1` (open, files crossing hub path X) and a
-recorded bundle member `mk` whose files cross X, chained behind earlier
-members,
-**When** `factory next` selects for `mk`'s lane while `t1` is unmerged,
-**Then** `mk` is not leased (skip or a refusal naming `t1`); after `t1`
-reaches merged-local or merged-pr, `mk` becomes lease-eligible.
+**Given** two open recorded cards `t1` (files crossing hub path X) and `t2`
+(files crossing hub path Y, disjoint from X), and a recorded bundle member
+`mk` whose files cross BOTH X and Y,
+**When** `factory next` selects for `mk`'s lane,
+**Then** `mk` is not leased in every partially-blocked state — both
+unmerged, `t1` merged with `t2` unmerged, AND `t2` merged with `t1`
+unmerged (each sharer independently blocks; a configuration that consults
+only one hub's predecessor fails this AC) — and `mk` becomes
+lease-eligible only once BOTH `t1` and `t2` reach a merged state
+(merged-local or merged-pr).
 Two-cell: RED-now observed in M1; green path M1(b). Trace:
 REQ-DISPATCH-001.
 
@@ -99,25 +112,55 @@ observes zero mutation — no push, no pull request, no auto-merge request.
 Two-cell: RED-now observed in M3; green path M3 (expected regression
 guard). Trace: REQ-DISPATCH-007.
 
-## AC-DI-009 — Defect (8a): concurrent write between verification and rename refused
+## AC-DI-009 — Defect (8a): concurrent write detected at the last observable byte comparison
 
-**Given** the fold seam injects a concurrent author write at the last
-verification boundary,
+**Given** the fold seam injects a NON-cooperating concurrent author write
+(plain `os.WriteFile` — it honors no lock) at the pinned seam point — the
+`orderProbe("bytes-done")` call site, which remains between the final byte
+comparison and the rename —
 **When** the fold write completes,
-**Then** it returns an error and the file carries the concurrent author's
-bytes — no silent overwrite. (`TestReviewFindingFoldConcurrentWrite`.)
-Baseline cell: FAIL at 81786284e (`err=<nil>`); green path: M4 flips it
-green. Trace: REQ-DISPATCH-008.
+**Then** the fold returns an error: the concurrent change is detected at
+the last observable byte comparison, and the file carries the concurrent
+author's bytes (no silent overwrite observable at that boundary).
+(`TestReviewFindingFoldConcurrentWrite`; evidence ledger EL-001.)
 
-## AC-DI-010 — Defect (8b): a completed fold's index line survives
+Guarantee scope — residual risk, stated explicitly rather than
+absolutized: the guarantee extends to the last byte comparison, not to the
+rename itself. An irreducible TOCTOU tail remains between that comparison
+and the rename against a writer that bypasses every protocol; eliminating
+it entirely would require the concurrent writer to honor the shared write
+protocol, which nothing can force on a raw `os.WriteFile` author. The
+cross-process lock (REQ-DISPATCH-008) closes the tail for cooperating
+writers; the last-comparison detection is the defense for the rest.
+Baseline cell: EL-001 (RED, exit 1, trees 81786284e/544462a8d); green
+path: M4 flips it green. Trace: REQ-DISPATCH-008.
 
-**Given** fold A paused at its archive-write boundary while fold B completes
-fully on the same store,
-**When** fold A resumes and terminates (complete or refuse),
-**Then** B's completed index line is present in `MEMORY.md` or the archive —
-never in neither. (`TestReviewFindingFoldInterleavedArchiveLoss`.)
-Baseline cell: FAIL at 81786284e (`MEMORY=false archive=false`); green path:
-M4 flips it green. Trace: REQ-DISPATCH-008.
+## AC-DI-010 — Defect (8b): a waiting fold completes without losing a completed fold's line
+
+**Given** fold A running against the store holds the cross-process store
+lock across its whole write transaction, and fold B — a SEPARATE process
+with its own lock acquisition — starts for a different card while A holds
+the lock (the committed test observes B's wait and completion from B's own
+process result; B never writes inside A's window),
+**When** A's transaction completes and releases the lock,
+**Then** B acquires the lock, completes normally against the post-A store,
+and after BOTH folds terminate every completed fold's index line is
+present in `MEMORY.md` or the archive exactly once — no line lost, no
+duplicate.
+
+Committed-test note: `TestReviewFindingFoldInterleavedArchiveLoss` is
+RE-AUTHORED to this serialized shape (plan M4 owns the re-authoring). The
+original body ran B synchronously inside A's seam window — under the
+mandated lock B can only wait or refuse there, so that criterion was
+impossible under the design it accompanies (verification-completeness §2,
+the impossible-red direction) and pinned the DEFECTIVE concurrency
+semantics. Do NOT weaken the lock span to make the old body pass.
+Two-cell: the original-body RED — the archive-preceding snapshot
+overwrite, B's completed line vanishing into neither index — is EL-002
+(RED, exit 1, trees 81786284e/544462a8d); the RE-AUTHORED body's RED-now
+(under today's unlocked code B does not wait and the loss still occurs)
+is captured in M0 as a four-element ledger entry, and M4 flips it green.
+Trace: REQ-DISPATCH-008.
 
 ## AC-DI-011 — Defect (8) concurrency discipline: race detector, repeated
 
@@ -127,7 +170,7 @@ family (selector recorded in `progress.md` §E.2 BEFORE the run; the family
 sweep covers `memory_fold_test.go`'s 14 tests plus
 `memory_fold_wiring_test.go`),
 **Then** all 5 iterations exit 0 with no data race reported. A single green
-run does not satisfy this AC.
+run does not satisfy this AC. Trace: REQ-DISPATCH-008.
 
 ## AC-DI-012 — Re-measurement scope: every touched function's full test family
 
@@ -147,6 +190,90 @@ with the family list recorded per milestone in §E.2.
 **Then** it passes (committed as the control; baseline PASS at 81786284e).
 A control regression means the verification methodology itself broke —
 stop and re-derive before trusting any other AC result.
+
+## Evidence ledger — baseline cells
+
+Carrier for the §2.1 four-element baseline cells (single-invocation
+command, raw verbatim stdout, exit code as its own field, tree SHA).
+Capture history: the `env -u MOAI_KANBAN_ID … go test` single-invocation
+scrub substitute was REFUSED by the worktree guard ("cannot be shown not
+to be git") in both the round-1 audit and this repair session, so the
+cells record the plain single-invocation form. Deviation, named not
+silent: the session env carried the three scrub-target variables
+(MOAI_KANBAN_ID, MOAI_KANBAN_LEAD_ADDR, MOAI_KANBAN_SETTINGS_INJECTED);
+the four tests pin isolated fixture roots/tempdirs, route through no home
+queue, and their outputs are byte-identical to the env-scrubbed records of
+2026-10-08 (plan §B). Entries for the M1–M3 characterization tests and the
+re-authored AC-DI-010 body are added at their first run (M0/M1–M3), each
+in this four-element form.
+
+### EL-001 — TestReviewFindingFoldConcurrentWrite (RED)
+
+- tree: 544462a8d (Go bytes identical to 81786284e — the plan commit
+  touched only `.moai/specs`, verified via `git show --stat`)
+- command: `go test ./internal/cli -run 'TestReviewFindingFoldConcurrentWrite' -count=1 -v`
+- exit code: 1
+- stdout (verbatim):
+
+```
+=== RUN   TestReviewFindingFoldConcurrentWrite
+    review_observation_test.go:31: err=<nil> final bytes="fold output\n"
+    review_observation_test.go:32: concurrent update between recheck and rename lost without refusal
+--- FAIL: TestReviewFindingFoldConcurrentWrite (0.00s)
+FAIL
+FAIL	github.com/modu-ai/moai-adk/internal/cli	1.295s
+FAIL
+```
+
+### EL-002 — TestReviewFindingFoldInterleavedArchiveLoss (RED — original body)
+
+- tree: 544462a8d (as EL-001)
+- command: `go test ./internal/cli -run 'TestReviewFindingFoldInterleavedArchiveLoss' -count=1 -v`
+- exit code: 1
+- stdout (verbatim):
+
+```
+=== RUN   TestReviewFindingFoldInterleavedArchiveLoss
+    review_observation_test.go:46: fold A err=memory fold: MEMORY.md changed since the plan was computed — aborting without writing; completed fold B line in MEMORY=false archive=false
+    review_observation_test.go:47: completed fold B's line disappeared from both indexes after fold A resumed
+--- FAIL: TestReviewFindingFoldInterleavedArchiveLoss (0.05s)
+FAIL
+FAIL	github.com/modu-ai/moai-adk/internal/cli	1.684s
+FAIL
+```
+
+Note: this cell pins the ORIGINAL test body (AC-DI-010's committed-test
+note). The re-authored body's RED-now entry is captured in M0.
+
+### EL-003 — TestReviewFindingMergedPRPredecessor (PASS — regression guard)
+
+- tree: 544462a8d (as EL-001)
+- command: `go test ./internal/cli -run 'TestReviewFindingMergedPRPredecessor' -count=1 -v`
+- exit code: 0
+- stdout (verbatim):
+
+```
+=== RUN   TestReviewFindingMergedPRPredecessor
+    review_observation_test.go:9: predecessor=merged-pr; factory next leased="t2"
+--- PASS: TestReviewFindingMergedPRPredecessor (3.74s)
+PASS
+ok  	github.com/modu-ai/moai-adk/internal/cli	4.887s
+```
+
+### EL-004 — TestReviewFindingNominatedOverwritesDependency (PASS — regression guard)
+
+- tree: 544462a8d (as EL-001)
+- command: `go test ./internal/cli -run 'TestReviewFindingNominatedOverwritesDependency' -count=1 -v`
+- exit code: 0
+- stdout (verbatim):
+
+```
+=== RUN   TestReviewFindingNominatedOverwritesDependency
+    review_observation_test.go:82: err=factory next: predecessor card not merged: t1 has not reached merged-local (git-flow) or merged-pr (github-flow) t3 state=picked after="t1"; original t1 state=picked
+--- PASS: TestReviewFindingNominatedOverwritesDependency (3.06s)
+PASS
+ok  	github.com/modu-ai/moai-adk/internal/cli	4.245s
+```
 
 ## Quality gates and closure
 

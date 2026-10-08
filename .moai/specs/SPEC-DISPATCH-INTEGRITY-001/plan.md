@@ -39,6 +39,12 @@ fix — absorbing develop invalidates pinned classifications.
 | (7) retry before lease check | factory_card_pr.go:254 | none — author in M3 | not measured; code read: holder+expiry checks precede remote mutations (t1533 r2c/r5) — hypothesis | UNDETERMINED → M3 |
 | (8) fold store race | memory_fold.go:647 | TestReviewFindingFoldConcurrentWrite + TestReviewFindingFoldInterleavedArchiveLoss | FAIL both — `concurrent update between recheck and rename lost without refusal`; `completed fold B's line disappeared from both indexes after fold A resumed` | RED-LIVE → fix in M4 |
 
+Four-element baseline cells for the (4)/(5)/(8a)/(8b) rows: acceptance.md
+evidence ledger EL-001..EL-004 (single-invocation command, raw stdout,
+exit code, tree SHA 544462a8d — Go bytes identical to 81786284e). The §B
+fragments above remain the at-a-glance view; the ledger is the adoption
+carrier.
+
 Auxiliary overlay observations (same run): `TestReviewFindingLaneProbe` FAIL
 (3/3 subtests) — deferred to t1596 (decision-index Q1);
 `TestReviewFindingExplicitCandidateFiles` FAIL, `TestReviewFindingDryRunFactoryMigration`
@@ -82,13 +88,18 @@ Spec C1–C6 apply. Additional:
 ## §E Self-Verification (plan-phase)
 
 Verified this phase: overlay baseline measured on this tree (§B, three
-package runs, verbatim); SPEC-ID regex check PASS (verbatim `PASS`); ID
-collision check (no SPEC-DISPATCH-INTEGRITY in catalog); frontmatter
-validated against the 12-field schema SSOT; overlay assets archived into the
-card tree; spec lint run post-write (result recorded in the plan-phase
-report). Not verified (gaps): live status of defects (1)(2)(3)(6)(7) —
-classification requires the M1–M3 characterization tests; hook-package
-helper surface assumed from the passing baseline run only.
+package runs, verbatim; four-element ledger cells EL-001..004 captured
+2026-10-09 in the round-1 repair session); SPEC-ID regex check PASS
+(verbatim `PASS`); ID collision check (no SPEC-DISPATCH-INTEGRITY in
+catalog); frontmatter validated against the 12-field schema SSOT; overlay
+assets archived into the card tree. Spec lint: run at initial authoring
+(exit 0, observed in the authoring session), re-run by the round-1 audit
+(exit 0), and re-run after the round-1 repairs (result stated in the
+repair session's report); the durable record is M0's ledger duty — the
+first §E.2 entry carries the lint command and its output. Not verified
+(gaps): live status of defects (1)(2)(3)(6)(7) — classification requires
+the M1–M3 characterization tests; hook-package helper surface assumed from
+the passing baseline run only.
 
 ## §F Milestones
 
@@ -106,7 +117,10 @@ M1 first.
   (the tree may have absorbed develop since 81786284e), record the
   classification into `progress.md` §E.2, then trim the drop-ins to the
   owned subset before any commit. Exit: classification table re-affirmed on
-  the current tree.
+  the current tree, and every baseline cell — including the re-authored
+  AC-DI-010 body's RED-now — captured into the acceptance.md evidence
+  ledger in the §2.1 four-element form (single-invocation command, raw
+  stdout, exit code, tree SHA).
 - **M1 — Bundle predecessor semantics, defects (1)(2)(3)** (P1). (a) Author
   characterization tests RED-first into the committed internal/cli test file
   from the existing helper surface (`fcFixture`, `fcQueue`, `fcClassify`,
@@ -136,8 +150,20 @@ M1 first.
   (both index writes inside one lock hold — §B mechanism note) while the
   byte-recheck remains the last step before each rename (it is the only
   defense against a non-cooperating writer — the FoldConcurrentWrite author
-  writes without any lock). Both fold tests flip green. Re-measure:
-  `go test -count=5 -race` over the memory-fold family
+  writes without any lock). Re-author the committed
+  `TestReviewFindingFoldInterleavedArchiveLoss` body to the serialized
+  shape AC-DI-010 now pins: fold B runs as a separate process with its own
+  lock acquisition, its wait and completion are observed from B's own
+  process result, B completes only after A releases the lock, and data
+  retention (every completed fold's line present exactly once) is verified
+  after both terminate — the original body ran B inside A's seam window,
+  which the lock makes impossible (plan-audit D1). Capture the re-authored
+  body's RED-now into the ledger in M0. Guarantee scope: the lock closes
+  the write window for cooperating writers; for non-cooperating writers the
+  detection at the last observable byte comparison is the defense, and the
+  irreducible TOCTOU tail between that comparison and the rename is stated
+  as residual risk in AC-DI-009 — never absolutized. Both fold tests flip
+  green. Re-measure: `go test -count=5 -race` over the memory-fold family
   (`memory_fold_test.go`, 14 tests, plus `memory_fold_wiring_test.go`);
   record the exact selector in §E.2 before running — a selector matching
   zero tests is a failed measurement, not a pass. MX (autonomous): the lock
@@ -147,9 +173,17 @@ M1 first.
 ## §G Anti-Patterns
 
 - Do NOT satisfy `TestReviewFindingFoldConcurrentWrite` by relocating the
-  seam probe to a window where no real interleaving can occur — the probe
-  must keep naming a window a real concurrent writer could occupy; the
-  refusal must be real detection, not probe placement.
+  `orderProbe("bytes-done")` call site — in EITHER direction: not UPSTREAM
+  of the final byte comparison (the existing recheck would then refuse the
+  test's write while the post-recheck→rename window — where the original
+  defect manifested — stays unguarded), and not DOWNSTREAM into a window a
+  real concurrent writer could not occupy. The call site stays pinned
+  between the final byte comparison and the rename (the memory_fold.go
+  seam). The refusal must be real detection at that boundary; the
+  guarantee is scoped to the last observable byte comparison, and the
+  irreducible TOCTOU tail between it and the rename is AC-DI-009's stated
+  residual risk — do not absolutize the guarantee and do not weaken the
+  lock span (AC-DI-010) to make an old test body pass.
 - Do NOT re-implement (4) or (5) — they measure PASS on this tree;
   re-implementing double-writes behavior already pinned.
 - Do NOT commit foreign cards' RED tests (t1596 ×2, t1562 ×1; t1561's green
@@ -162,8 +196,9 @@ M1 first.
 
 ## §H Cross-references
 
-`spec.md`, `acceptance.md`, `decision-index.md`, `progress.md` (same
-directory); `.moai/reports/t1595/{handoff-to-card-session,lane-wait-20261008}.md`
+`spec.md`, `acceptance.md`, `decision-index.md`, `progress.md`, and the
+tracked deferral archive `deferred/` (same directory);
+`.moai/reports/t1595/{handoff-to-card-session,lane-wait-20261008}.md`
 and `.moai/reports/t1595/overlay/` (local-only); cards t1498, t1533, t1561,
 t1562, t1596; `verification-claim-integrity.md`; `verification-completeness.md`;
 `gitflow-lane-protocol.md` §8.
