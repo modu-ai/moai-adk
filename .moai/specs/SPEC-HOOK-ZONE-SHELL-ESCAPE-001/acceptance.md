@@ -316,7 +316,8 @@ rows), and the GREEN flip records appended at M2/M3.
 
 ### M1-final baseline confirmation (appended at M1)
 
-- **Command**: `go test ./internal/hook -run '^(TestCheckProtectedZoneShell|TestZoneUnescapeAnsiC)$' -count=1 -v` — the instrument-only full selector (anchored per this SPEC's re-run convention), matching all ten instrument functions.
+- **Command**: `go test ./internal/hook -run '^(TestCheckProtectedZoneShellAnsiCNulTruncationBypass|TestCheckProtectedZoneShellAnsiCNulTruncationOutsideZoneControl|TestCheckProtectedZoneShellHexRawByteBypass|TestCheckProtectedZoneShellHexDirectSpellingControl|TestZoneUnescapeAnsiCNoDigitHexStaysLiteral|TestCheckProtectedZoneShellGuardCompletesOnNoDigitEscape|TestZoneUnescapeAnsiCCodePointRenderingPinned|TestZoneWordTextAnsiCPartTruncatesAtNul|TestCheckProtectedZoneShellOctalNulTruncationDenied|TestCheckProtectedZoneShellNonAsciiOutsideZoneStaysAllowed)$' -count=1 -v` — the EXACT enumerated ten-name selector (the gate-9 prefix-family anchoring put a trailing `$` on prefix alternatives and selected nothing — every real test name carries a suffix and the truncation row's name is outside that prefix family: the empty-sweep class, verification-completeness §1.1).
+- **Swept-count rule**: the run must select exactly these ten tests — a [no tests to run] output or a lower count is a failed verification, not a pass.
 - **Revision**: the M1 commit `c34021856` (instrument finalization; the
   M1-final baseline the gate-8 wording unified on).
 - **Expected**: exit 1, SIX rows failing — ①②③ (AC-HZS-001/003/005) + the
