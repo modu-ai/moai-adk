@@ -111,6 +111,22 @@ Residual-risk: none new beyond the M0 items; the import-boundary pair is now a s
 
 M1 addendum (2026-10-08, turn-gate review round): three defects in `TestBindingLedgerIntegrity` found by the session's turn-end codex review, repaired lane-direct in `b3a520d6b`, each closed with an observed-failure fixture — (h) the row-coverage check now enumerates the DECLARED scope (`Head.LedgerScope.Members`) so a file whose rows were all deleted stays swept (repro: 45-row delete → `errors=[]` before, uncovered-units failure naming the member after); (i) duplicate unit claims are rejected, not overwritten (repro: duplicated row passed → "duplicates a claim" failure); (j) the AC-ALB-021(2) skill sweep walks the deployment origin (template source `.claude/skills`) instead of the project path the deployer excludes (repro: planted fragment → 0 violations before, caught hits=1 after), with rules/skills swept counts reported separately. Verified this run: family 15 PASS / 0 FAIL, lint 0, guard RED intact (total=180901).
 
+### M2 — role markers, builder, registry, injection (2026-10-08)
+
+Code authored by the M2 manager-develop spawn and landed by the lane after the spawn was terminated by an API 429 (5-hour usage window) at its verification step (its last transcript state: "All hook tests green. Now the ledger seam re-point (deliverable 10)" — the seam was in fact complete; the lane validated it). Commits: `9e1313a78` (markers — 36 regions in `factory-dispatch.md`, empty marker pair in `cross-session-messaging.md` per acceptance §D.2's zero-role-core boundary case, satisfying AC-ALB-014's two-file expectation), `5fde40e0c` (role-marker registry — Q8 seed: `MOAI_FACTORY_WORKERS` / `MOAI_FACTORY_WORKER` + `MOAI_FACTORY_ROLE=lane`; launcher and hook read the same set), `40db25847` (builder + SessionStart injection per the AMENDED REQ-ALB-010: ≤10,000 direct; else role core INTACT + operator warning + agent overflow directive — never a truncated unit; REQ-ALB-009 fallback; `resume` never injects; fail-visible on absent/unreadable/unmarked), `2168ab80b` (two M1-legacy repairs from the turn-gate review: unclosed-frontmatter counts as always-loaded per §D.2 — fixtures `unclosed_frontmatter_paths_rule_counts_as_member` + `closed_frontmatter_paths_rule_still_excluded`; AC-ALB-021(2) skill sweep now walks BOTH deployment origins `.claude/skills` and `.agents/skills`, fixture `j2_fragment_in_agents_skill_origin_caught`).
+
+Verification (each: command run THIS run against tree `2168ab80b`):
+
+- `go build ./...` exit 0 · `GOOS=windows GOARCH=amd64 go build ./...` exit 0 · `go vet ./internal/template/... ./internal/hook/... ./internal/config/...` exit 0 · scoped `golangci-lint run internal/hook/... internal/config/... internal/template/...` exit 0 · `gofmt -l` clean.
+- Hook role family: `go test ./internal/hook/ -run 'Role' -count=1` — **47 PASS / 0 FAIL** (builder extraction, registry-derived marker iteration, injection × marker × source, amended size-cap cases, fail-visible fixtures, no-injection for unmarked/`resume`).
+- Ledger family with the seam ACTIVE (role-core `after_text` now resolved through the builder's output): `go test ./internal/template/ -run 'TestBindingLedgerIntegrity' -count=1` — **16 PASS / 0 FAIL** (was 15; +`j2`).
+- Budget guard: still RED by design — new `deployed-surface-total=183237` (180,901 + 2,336 marker bytes, marker lines sit outside every row's text); derivation **8 PASS / 0 FAIL** including both new frontmatter fixtures.
+- Marker accuracy: every one of the 36 `role-core:` rows' anchor text verified present in the builder output via the seam (the ledger test green is that proof).
+
+Gaps: (1) the >10,000-case's runtime-side overflow (save-and-reference) is documented behavior asserted at the hook-output level only — the AC-ALB-012 tests assert the hook emits intact + directives, not the runtime's file write (upstream of the hook, per the amended AC). (2) M2 did not touch the loading-scope notes (REQ-ALB-020 — M3). (3) §E.3 remains unwritten (run-end signal).
+
+Residual-risk: (1) if the runtime's oversized-output behavior changes upstream, the injection degrades to the REQ-ALB-009 fallback silently at runtime — the hook tests would stay green; a periodic manual probe of a real marked session is the stale-guard (recorded for M5's measurement notes). (2) The budget total grew to 183,237 pre-M3; the M3 split must clear it to ≤115,000 as planned (floor 111,280 assumed role-core leave — unchanged).
+
 ## §E.3 Run-phase Audit-Ready Signal
 
 _<pending run-phase>_
