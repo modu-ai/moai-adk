@@ -26,7 +26,12 @@ Anthropic SSE 流在上下文窗口天花板附近会间歇性停顿(`stream_idl
 | GLM-5.3 (1M) | 1,000,000 代币 | 50% | ~500,000 代币 |
 | Fable / Sonnet 5.5 (1M) | 1,000,000 代币 | 50% | ~500,000 代币 |
 | Sonnet 4.5 及更早 (200K) | 200,000 代币 | 90% | ~180,000 代币 |
+| Haiku 5.5 (1M) | 1,000,000 代币 | 50% | ~500,000 代币 |
 | Haiku (200K) | 200,000 代币 | 90% | ~180,000 代币 |
+
+Haiku 5.5 行（Claude Code v2.1.293+，Anthropic API）请与上面的规则一起阅读 —— 当会话同时命中 1M 行
+和 200K 会话行时，200K 行优先。在 AWS Bedrock、GCP Agent Platform、Microsoft Foundry 上，`haiku`
+别名仍解析为 Haiku 4.5（200K），因此 AWS 系 Haiku 会话仍遵循 200K / 90% 阈值。
 
 GLM-5.3(通过 `moai glm`)是 1M 上下文模型，以 50% 阈值运作。Claude Code 根据 Claude 插槽(Opus=1M, Sonnet/Haiku=200K)报告 `context_window_size`，因此 GLM 会话中原始 telemetry 可能显示 ~180K；MoAI 将其校正为 1M。请信任 statusline 的 CW% 表盘。
 

@@ -48,7 +48,8 @@ MoAI-ADK 在启动会话时要决定一件事："这个会话用哪个模型、�
 | **Claude Fable 5** | `claude-fable-5` | 1M | 新一代 Mythos 层通用旗舰。最深的推理与复杂编码 |
 | **Claude Opus 5.5 / 5 / 4.8** | — | 1M | 复杂架构与高难度推理 |
 | **Claude Sonnet 5** | — | 1M | 速度与智能的平衡，日常编码 |
-| **Claude Haiku 4.5** | `claude-haiku-4-5-20251001` | 200K | 最快最经济，简单·批量工作 |
+| **Claude Haiku 5.5** | `claude-haiku-5-5` | 1M | 最快最经济 (Anthropic API 默认 Haiku，CC v2.1.293+) |
+| **Claude Haiku 4.5** | `claude-haiku-4-5-20251001` | 200K | 最快最经济，简单·批量工作 (AWS 系别名解析目标) |
 
 {{< callout type="info" >}}
 **阵容与选择是两回事。** 上表只展示"可用的模型"。MoAI-ADK 的会话默认选择遵循

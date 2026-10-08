@@ -57,7 +57,15 @@ the lineup below runs the session, and at which reasoning depth.
 | Claude Fable 5 | `claude-fable-5` | 1M | New Mythos-tier general flagship. Deepest reasoning and complex coding |
 | Claude Opus 5.5 | `opus` | 1M | Complex architecture, high-difficulty reasoning |
 | Claude Sonnet 5.5 | `sonnet` | 1M | Balance of speed and intelligence, everyday coding |
-| Claude Haiku 4.5 | `claude-haiku-4-5-20251001` | 200K | Fastest and most economical, simple bulk work |
+| Claude Haiku 5.5 | `claude-haiku-5-5` | 1M | Fastest and most economical (Anthropic API default Haiku, CC v2.1.293+) |
+| Claude Haiku 4.5 | `claude-haiku-4-5-20251001` | 200K | Fastest and most economical, simple bulk work (AWS-lineage alias target) |
+
+> **Haiku 5.5 facts (Claude Code v2.1.293+)**: on the Anthropic API the `haiku` alias resolves
+> to Haiku 5.5 (`claude-haiku-5-5`, 1M context on all plans, no `[1m]` suffix needed). Auto-compact
+> defaults to ~967K. Rates are input $0.10 / output $0.50 per Mtok, rising to input $0.50 /
+> output $2.50 for prompts over 100K tokens. Adaptive thinking is always on and cannot be
+> disabled. On AWS Bedrock / GCP Agent Platform / Microsoft Foundry the alias still resolves to
+> Haiku 4.5 (200K) — alias resolution is provider-split.
 
 > The MoAI session lineup does not use Haiku by default. Slotting Haiku into
 > long-horizon agentic work raises the per-task cost — confirmed by the DeepSWE
