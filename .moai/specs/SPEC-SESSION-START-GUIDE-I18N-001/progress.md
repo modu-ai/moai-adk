@@ -102,7 +102,12 @@ Gaps:
 
 ## §E.4 Sync-phase Audit-Ready Signal
 
-_<pending sync-phase>_
+- sync_status: complete (3-phase close — 단일 sync 커밋에 `implemented → completed` 전이 탑재)
+- sync_commit_sha: "pending-backfill-sync" (커밋은 자신의 해시를 인용할 수 없음 — D3 관례, 다음 커밋에서 backfill)
+- sync scope: spec.md frontmatter 상태 전이 + §E.4 시그널 + CHANGELOG [Unreleased] 엔트리. plan/acceptance 본문 무변경(갱신할 `updated:` 필드 부재 실측).
+- CHANGELOG: `grep -c 'SPEC-SESSION-START-GUIDE-I18N-001' CHANGELOG.md` → 0 (사전 실측, 중복 없음) → `### Added` 신규 엔트리 1건 발행.
+- 구현 요약: factoryMessages 4신규 필드(laneSpawnAuthority·autoModeGuideLeader·autoModeGuideLane·docsPointer) 4-로케일, agent-facing additionalContext 채널 conversation_language 배선(Q1 — two-audience 규칙은 이 면에 한해 카드가 개정), 2모드 설명 블록 + 설계-노면 마커 리터럴 `designed surface — t1600, not yet shipped` + adk.mo.ai.kr 문서 안내, 템플릿 미러 2면 갱신, RED 3종 + 렌더/레이아웃/doc-parity 테스트.
+- lane-direct 기록: manager-docs 위임 2회 연속 429 사망(착지 0) → t1495 선례로 레인이 sync 소관 편집을 직접 수행. 편집 내용은 위 범위에 한정.
 
 ## 조사 기록 (본 워크트리, base 81786284e, 2026-10-08)
 
