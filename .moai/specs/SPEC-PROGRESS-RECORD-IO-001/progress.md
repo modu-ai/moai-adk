@@ -17,7 +17,21 @@ status: draft (plan-phase artifacts authored 2026-10-08, lane-5, card t1598, bas
 - Scope correction recorded: F15/F16 measured ALREADY LANDED on a2a184ad3 (verification-only);
   F14 is the open P1 work item.
 - Open decisions: `decision-index.md` Q1-Q3 unresolved (evidence/operator), Q4 default-applied.
-- Ready for plan-audit: true.
+- **Plan-audit round 1: FAIL 0.81** — verdict `.moai/reports/t1598/plan-audit-1.md` (audited
+  SHA c404a0af4, artifact hash d262d9ad…dce6; blocking D1-D3, P2 D4-D7, P3 D8-D10). Revision
+  round applied the full defect list without restructuring (MP-1~MP-9 clean results preserved):
+  D1 AC-PRI-009 real-seeder fd-anchoring guard via the `seedFileMetadataFn` seam (mid-seed name
+  swap, victim untouched; mutant-killer for path-based re-open regressions); D2 route-(ii)
+  branch-conditional disposition in acceptance §D + conditional DoD in §F; D3 decisive surface
+  re-pinned to `release-pr-multi-os.yml` (release/*→main PR or workflow_dispatch) with
+  `-json` SKIP-vs-PASS recording rule, card-PR premise dropped (measured: ci.yml ubuntu-only,
+  gate excludes internal/runtime); D4 close-hygiene probe `TestAppendProgressRecordSeedCloseHygiene`
+  wired into M3 + AC-PRI-005; D5/D8 structured probe headings pinned in M1 step 6 and gated on
+  the §E.2 content carrier; D6 AC-PRI-008 stale `victim-overwrite` text absence; D7 no-SKIP
+  decisive runs for AC-PRI-003/005; D9 build-tag clause on the probe bullet; D10 t1560 citation
+  location qualifier. REQ coverage now complete: REQ-PRI-004 → AC-PRI-009.
+- Ready for plan-audit: re-audit pending (scoped to the defect delta per the Retry Loop
+  Contract).
 
 ## §E.2 Run-phase Evidence
 

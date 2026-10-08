@@ -78,8 +78,13 @@ artifact exists).
    - (ii) not writable → STOP; escalate decision-index Q2 (default: keep the current seeder and
      re-document the residual; M2 re-scopes to documentation only). The cgo leg is excluded on
      policy — it is not a fork branch.
-6. **Artifact**: `.moai/state/verify/t1598/probe-darwin-fd-xattr.md` — commands, verbatim
-   outputs, tree SHA; the decisive lines are carried into `progress.md` §E.2.
+6. **Artifact**: `.moai/state/verify/t1598/probe-darwin-fd-xattr.md` — carrying FOUR fixed field
+   headings, exactly: `## xattr name`, `## blob layout`, `## fd-set result`, `## fork decision`
+   (these literal headings are AC-PRI-001's grep keys — an implementer following M1 literally
+   produces them); commands, verbatim outputs, and tree SHA under each heading. The decisive
+   lines are carried into `progress.md` §E.2, which must quote the selected branch token
+   (`route (i)` / `route (ii)`) AND the decisive raw output verbatim — that §E.2 carrier, not
+   the artifact's mere existence, is AC-PRI-001's gated observable.
 
 Gate: the fork branch is selected WITH recorded evidence, or Q2 is escalated. No implementation
 starts on an unmeasured route.
@@ -95,30 +100,59 @@ starts on an unmeasured route.
   Preserve the strip-inherited-ACL-first ordering (the Go analogue of `chmod -N`, or the
   blob-overwrite posture mirroring the linux seeder), the abort/fail-closed contract (no
   mode-only fallback), and the `swapped`-flag semantics untouched.
+- **fd-anchoring guard (AC-PRI-009 — mutant-killer, D1)**: `TestAppendProgressRecordRealSeedMidSwap`
+  — a `seedFileMetadataFn` wrapper performs a MID-SEED name swap (rename the temp away, plant a
+  symlink to a victim file at the temp's name) and then delegates to the REAL darwin seeder.
+  Assert: the replace fails closed AND the victim's content AND metadata are untouched. Unlike
+  `TestAppendProgressRecordTempSwapFailsClosed` (`audit_ceiling_replace_test.go:174-182`), which
+  stubs the seeder, this observes the REAL implementation: a Go-native seeder that re-opens the
+  swapped NAME for its writes (`unix.Setxattr` is path-based — the natural mutant shape) follows
+  the symlink and is caught here. Characterization posture — it passes on the current seeder
+  (the pre-check rejects the symlink) and MUST keep passing post-fix; wired into M2's GREEN gate
+  and M3's sweep.
 - **Refactor**: remove the exec path and the pre/post name-based re-checks it required (the
-  window they guarded is eliminated by construction); update the ruling (i) comment to the
-  post-fix harm class.
+  window they guarded is eliminated by construction); update the ruling (i) comment per M3
+  step 3's pinned note content.
 
 Gate: the promoted family passes with `-race -count=2`; `grep -c "exec.Command"
 internal/runtime/progress_metadata_darwin.go` returns 0.
 
 ### M3 — Regression sweep + disposition (cycle_type: tdd, Priority Medium)
 
-1. `go test -race -count=2 -run '^TestAppendProgressRecord' ./internal/runtime/` → ok (whole
-   append family: per-axis, umask, swap-keep, hardlink, symlink — the F15/F16 guarantees ride
-   here).
+1. `go test -race -count=2 -v -run '^TestAppendProgressRecord' ./internal/runtime/` → ok with
+   ZERO `SKIP` lines (whole append family: per-axis, umask, swap-keep, hardlink, symlink — the
+   F15 guarantees ride here; a SKIP is a non-decisive observation, never evidence — the decisive
+   run re-executes on a capable environment before close).
 2. `go test -timeout 30m ./internal/runtime/` → ok (affected package only).
-3. Ruling (i) re-documentation: post-fix harm class + kauth_filesec follow-up disposition line;
-   pre-fix exec-exception comment superseded (REQ-DOC-009).
-4. Probe artifact + decisive lines present in `progress.md` §E.2 (AC-PRI-001).
+3. Ruling (i) re-documentation with PINNED content (AC-PRI-008's predicates): the seeder comment
+   states (a) the residual window by its name `fd-verify→rename`, (b) the reduced harm class —
+   own append fails / the foreign temp entry is replaced (the stale `victim-overwrite` wording
+   must be GONE — the AC greps it to 0), and (c) the kauth_filesec follow-up disposition; the
+   pre-fix `LEADER-ACCEPTED darwin exception` marker is superseded.
+4. **Close-hygiene probe (D4/F16 guard)**: `TestAppendProgressRecordSeedCloseHygiene` — a
+   `seedFileMetadataFn` wrapper captures the held descriptor; after `appendProgressRecord`
+   returns, a second `Close` must report already-closed on the normal path (close-before-rename,
+   `audit_ceiling.go:716-720`, plus the deferred close `:676-684`) and on an abort path
+   (deferred close only) — a refactor dropping the close is locally observed.
+5. Probe artifact + decisive lines present in `progress.md` §E.2 (AC-PRI-001).
 
-### M4 — CI decisive-run accumulation (cycle_type: autofix, Priority Medium)
+### M4 — GOOS-tagged decisive-run accumulation (cycle_type: autofix, Priority Medium)
 
-- The linux/windows GOOS-tagged seeder families take their decisive verdict from the card PR's
-  CI runs (F9/F10/6b/6c/6d accumulation). Record run URLs + per-family verdicts in
-  `progress.md` §E.2. No local darwin run is cited as their evidence (REQ-CI-008).
-- No red of its own: this milestone watches the CI surface and records observed results; a red
-  CI family on the changed surfaces loops back into M2/M3 repair rounds.
+- The linux/windows GOOS-tagged seeder/append families take their decisive verdict from the
+  **`release-pr-multi-os.yml` 3-OS leg** (`go test -json -race -timeout 35m ./...`,
+  linux+macos+windows; F9/F10/6b/6c/6d accumulation). Trigger: a `release/*`→`main` PR, or
+  `workflow_dispatch` on the card branch (run-anytime — the dispatch is the path when the card
+  must record its verdict before a release PR exists). Measured exclusions: `ci.yml` is
+  ubuntu-only (ci.yml:94) and `pr-multi-os-gate.yml:112` tests only
+  `./internal/hook/... ./internal/cli/worktree/...` — neither is decisive for these families;
+  this repository's git-flow has NO card PR (cards merge to develop, leader batch-pushes), so
+  "card PR CI" does not exist as a surface.
+- **Recording rule**: read the `-json` stream per family — decisive-PASS requires an explicit
+  per-test pass Action for EVERY test in the family; a `skip` Action is recorded as SKIP and is
+  NOT a PASS. `progress.md` §E.2 records the run URL, per-family executed/skipped counts, and
+  verdicts (AC-CI-007). No local darwin run is cited as their evidence (REQ-CI-008).
+- No red of its own: this milestone watches the workflow surface and records observed results; a
+  red GOOS-tagged family on the changed surfaces loops back into M2/M3 repair rounds.
 
 ## §G Anti-Patterns
 

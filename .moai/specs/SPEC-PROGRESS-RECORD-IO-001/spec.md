@@ -97,8 +97,9 @@ tier: M
   `PATH=""`) shall be promoted into the package test suite as a darwin-tagged regression guard,
   observed RED before the fix, and shall pass with `-race -count=2` after it.
 - **REQ-CI-008 (CI decisive verdict)**: The linux/windows GOOS-tagged seeder test families shall
-  take their decisive verdict from the card PR's CI runs; a local darwin run shall not be cited
-  as their evidence.
+  take their decisive verdict from the `release-pr-multi-os.yml` 3-OS leg (a `release/*`→`main`
+  PR, or a `workflow_dispatch` run on the card branch); a local darwin run shall not be cited as
+  their evidence.
 - **REQ-DOC-009 (disposition re-documentation)**: When the F14 fix lands, the seeder's ruling (i)
   note shall be re-documented to the post-fix harm class — the residual fd-verify→rename
   microsecond window is structural (rename(2) is not fd-anchored) and the harm class drops from
@@ -145,7 +146,9 @@ inspection alone.
 ## §E References
 
 - Card t1598 (leader-issued 2026-10-08); t1560 sync-audit-8 + gate ledger
-  (`.moai/worktrees/t1560/.moai/reports/t1560/sync-audit-8.md`) — evidence sources.
+  (`.moai/worktrees/t1560/.moai/reports/t1560/sync-audit-8.md` — this path lives in the t1560
+  card worktree of the PRIMARY checkout and does not resolve inside this tree) — evidence
+  sources.
 - Held family: `.moai/state/verify/t1598-prework/held-audit_ceiling_axes_test.go`.
 - Linux ACL precedent: `internal/runtime/progress_metadata_acl.go`; fd-unified replace:
   `internal/runtime/audit_ceiling.go:640-726`.
