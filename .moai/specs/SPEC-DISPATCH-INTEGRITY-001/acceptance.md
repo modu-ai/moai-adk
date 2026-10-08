@@ -234,7 +234,9 @@ functions' callers at fix time, not only from this enumeration).
 **Then** it passes (committed as the control; baseline PASS at
 81786284e). A control regression means the verification methodology
 itself broke — stop and re-derive before trusting any other AC result.
-Measurement input (D18): tracked at
+Baseline cell: EL-005 — **PENDING M0 capture** (the 2026-10-08 PASS
+observation cannot be honestly completed to the §2.1 four elements; see
+the ledger entry). Measurement input (D18): tracked at
 `owned-tests/zone_control_test.go.txt` — added in the v0.1.5 closing
 commit, the revision that binds; drop-in procedure
 (`owned-tests/README.md`, target package `internal/hook`).
@@ -341,6 +343,24 @@ ok  	github.com/modu-ai/moai-adk/internal/cli	4.887s
 PASS
 ok  	github.com/modu-ai/moai-adk/internal/cli	4.245s
 ```
+
+### EL-005 — TestReviewFindingZoneExistingDotDot (baseline PASS — PENDING M0 capture)
+
+- status: **PENDING** — stated as pending; this is NOT a reconstructed
+  record. No four-element cell exists yet.
+- interim pointer: plan.md §B auxiliary observations — the 2026-10-08
+  env-scrubbed hook-package run observed the control PASS on tree
+  81786284e (`--- PASS: TestReviewFindingZoneExistingDotDot (0.08s)`),
+  but that observation was captured through a piped, tail-bounded
+  command (`… | tail -12`) WITHOUT the exit code as its own field, so it
+  cannot honestly satisfy §2.1's four elements and is not promoted to a
+  cell.
+- M0 capture: drop `zone_control_test.go.txt` per
+  `owned-tests/README.md` (target package `internal/hook`), run the
+  anchored single invocation
+  `go test ./internal/hook -run '^TestReviewFindingZoneExistingDotDot$' -count=1 -v`,
+  and replace this entry with the measured four elements (command, raw
+  stdout, exit code, tree SHA).
 
 ## Quality gates and closure
 

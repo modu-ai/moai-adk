@@ -30,9 +30,9 @@ to the tree SHA AND this input.
 ## Assertion strength vs the EL-measured originals (round-3, D12/D13)
 
 EL-001 and EL-004 recorded the ORIGINAL overlay bodies. The mirror now
-carries STRENGTHENED bodies — the canonical M0 intake forms — whose
-RED-now is captured at M0 (the strengthened assertions are strictly
-richer; under today's unfixed code both bodies are RED):
+carries STRENGTHENED bodies — the canonical M0 intake forms — with
+per-body classifications (the strengthened assertions are strictly
+richer):
 
 - `TestReviewFindingFoldConcurrentWrite` asserts `err != nil` AND that
   the final bytes equal the concurrent author's content AND that the

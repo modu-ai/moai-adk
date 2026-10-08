@@ -1,7 +1,7 @@
 ---
 id: SPEC-DISPATCH-INTEGRITY-001
 title: "Factory dispatch and bundle integrity — eight P1 review findings"
-version: "0.1.5"
+version: "0.1.6"
 status: draft
 created: 2026-10-09
 updated: 2026-10-09
@@ -87,6 +87,15 @@ tier: M
   aligned; D18 — the methodology control's source tracked at
   `owned-tests/zone_control_test.go.txt` (was gitignored-overlay-only)
   with AC-DI-013's baseline cell bound to that input.
+- v0.1.6 (2026-10-09) — final additive round (iter-6, leader
+  disposition): D19 — the control's baseline cell added to the evidence
+  ledger as EL-005, stated AS pending (the 2026-10-08 PASS observation
+  was captured through a piped, tail-bounded command without the exit
+  code as its own field and cannot honestly satisfy §2.1's four
+  elements; plan §B is the interim pointer; M0 replaces it with the
+  measured cell), AC-DI-013 aligned; D20 — the blanket
+  "both bodies are RED" sentence removed from the owned-tests README so
+  only the per-body observed classification stands.
 
 ## Requirements
 
