@@ -1,7 +1,7 @@
 ---
 id: SPEC-DISPATCH-INTEGRITY-001
 title: "Factory dispatch and bundle integrity — eight P1 review findings"
-version: "0.1.4"
+version: "0.1.5"
 status: draft
 created: 2026-10-09
 updated: 2026-10-09
@@ -72,9 +72,21 @@ tier: M
   fails unconditionally ("leased past an unmerged predecessor — dependency
   check did not run"); the positive control is the only place a lease
   outcome is asserted. D16 — every EL cell binds its measurement input to
-  the mirror as of 5ae7d6ebc (the original bodies the cells executed);
+  the mirror as of e725633e0 (the original bodies the cells executed);
   strengthened-body outcomes remain post-M0 evidence, not retrofitted
   into the ledger.
+- v0.1.5 (2026-10-09) — micro-followup closing round (iter-5, leader
+  disposition / operator decision A): D16-r — every input-binding pointer
+  corrected 5ae7d6ebc → e725633e0, the mirror's first tracked revision
+  (verified: `git show e725633e0:…owned_red_tests.go.txt` returns the
+  original measured bodies; 5ae7d6ebc does not contain the mirror — the
+  off-by-one originated in the iter-4 instruction wording, implemented
+  verbatim); D17 — the strengthened nomination body classified by its
+  OBSERVED outcome (codex execution at HEAD: PASS — a green-at-adoption
+  regression guard, not a RED-now body), AC-DI-005's two-cell text
+  aligned; D18 — the methodology control's source tracked at
+  `owned-tests/zone_control_test.go.txt` (was gitignored-overlay-only)
+  with AC-DI-013's baseline cell bound to that input.
 
 ## Requirements
 

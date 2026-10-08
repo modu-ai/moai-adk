@@ -16,6 +16,16 @@ to the tree SHA AND this input.
   positive control, D13 — no EL cell; baseline captured at M0 intake),
   `TestReviewFindingFoldConcurrentWrite`,
   `TestReviewFindingFoldInterleavedArchiveLoss`.
+- `zone_control_test.go.txt` — the methodology control
+  `TestReviewFindingZoneExistingDotDot` (closing micro-round D18), whose
+  declaration previously lived only in the gitignored overlay. Drop-in:
+  `internal/hook/review_observation_test.go` — target package
+  `internal/hook`; helpers `newZoneRoot`, `zoneShippedDoc`,
+  `zoneProbeManifest`, `zoneTestHandler`, `zoneWrite`, `zoneCall`,
+  `harnessLearnerIdentity`, and the `DecisionDeny` constant live in the
+  repo's existing internal/hook test files. The overlay file's other test
+  (`TestReviewFindingBackgroundReceiptRecycling`) belongs to card t1562
+  and is deliberately absent (decision-index Q2).
 
 ## Assertion strength vs the EL-measured originals (round-3, D12/D13)
 
@@ -33,16 +43,24 @@ richer; under today's unfixed code both bodies are RED):
   must stay picked with the stored hint (a nil-error or non-naming
   refusal — the `nomination unavailable` mutant class — fails); the
   sibling positive control proves the merged-predecessor path actually
-  leases (D13). In the negative fixture a nil error fails unconditionally
+  leases (D13). OBSERVED classification (closing micro-round D17): the
+  codex gate executed this strengthened body against HEAD and observed
+  PASS — it is a GREEN-at-adoption regression guard, not a RED-now body.
+  RED-now belongs to the strengthened fold bodies and the positive
+  control, whose M0 RED/GREEN status is genuinely undetermined until
+  first compile+run. In the negative fixture a nil error fails unconditionally
   (micro-followup D15: a lease there means the guard was removed) — the
   positive control is the only place a lease outcome is asserted.
 
-Revision binding (micro-followup D16): the measured EL-001..004 cells cite
-the mirror AS OF 5ae7d6ebc — the revision whose tracked mirror carried the
-original overlay bodies those runs executed. The strengthened bodies
-entered the mirror at 05f020362 (round 3), with the D15 nil-error
-tightening after it; their outcomes are post-M0 evidence and are NOT
-retrofitted into EL-001..004.
+Revision binding (micro-followup D16, corrected closing micro-round D16-r):
+the measured EL-001..004 cells cite the mirror AS OF e725633e0 — the
+revision whose tracked mirror carried the original overlay bodies those
+runs executed. Verified: `git show e725633e0:…owned_red_tests.go.txt`
+returns the original bodies; `5ae7d6ebc` (named in the iter-4 instruction
+this repair implemented verbatim) does not contain the mirror at all. The
+strengthened bodies entered the mirror at 05f020362 (round 3), with the
+D15 nil-error tightening after it; their outcomes are post-M0 evidence
+and are NOT retrofitted into EL-001..004.
 
 ## Drop-in procedure
 

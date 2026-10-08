@@ -90,9 +90,13 @@ places `t1` at merged-pr and requires the nomination to actually lease
 `t3` with `HintAfter="t1"`, proving the refusal comes from the dependency
 check and not a dead path.
 Baseline cell: EL-004 (observed PASS at 81786284e/544462a8d, original
-body); the strengthened bodies' baselines are captured at M0; green path:
-stays green through close (M2 commits them as regression guards). Trace:
-REQ-DISPATCH-004.
+body). The strengthened nomination body is a GREEN-at-adoption regression
+guard, NOT a RED-now body: the codex gate executed it against HEAD and
+observed PASS — that observation is recorded at its M0 ledger intake.
+The RED-now classification belongs to the strengthened fold bodies and
+the positive control, whose M0 RED/GREEN status is genuinely undetermined
+until first compile+run. Green path: stays green through close (M2
+commits them as regression guards). Trace: REQ-DISPATCH-004.
 
 ## AC-DI-006 — Defect (5): merged-pr predecessor releases successor (regression guard)
 
@@ -227,9 +231,13 @@ functions' callers at fix time, not only from this enumeration).
 
 **Given** any verification pass of this card,
 **When** `TestReviewFindingZoneExistingDotDot` runs,
-**Then** it passes (committed as the control; baseline PASS at 81786284e).
-A control regression means the verification methodology itself broke —
-stop and re-derive before trusting any other AC result.
+**Then** it passes (committed as the control; baseline PASS at
+81786284e). A control regression means the verification methodology
+itself broke — stop and re-derive before trusting any other AC result.
+Measurement input (D18): tracked at
+`owned-tests/zone_control_test.go.txt` — added in the v0.1.5 closing
+commit, the revision that binds; drop-in procedure
+(`owned-tests/README.md`, target package `internal/hook`).
 
 ## Evidence ledger — baseline cells
 
@@ -263,10 +271,10 @@ over-selection only, and each recorded output shows exactly one test ran).
 
 - tree: 544462a8d (Go bytes identical to 81786284e — the plan commit
   touched only `.moai/specs`, verified via `git show --stat`)
-- input: `owned-tests/owned_red_tests.go.txt` as of 5ae7d6ebc — the
-  original overlay bodies these cells executed; the strengthened bodies
-  now in the mirror are post-M0 intake forms (README § Assertion
-  strength)
+- input: `owned-tests/owned_red_tests.go.txt` as of e725633e0 — the
+  original overlay bodies these cells executed (the mirror's first
+  tracked revision); the strengthened bodies now in the mirror are
+  post-M0 intake forms (README § Assertion strength)
 - command: `go test ./internal/cli -run 'TestReviewFindingFoldConcurrentWrite' -count=1 -v`
 - exit code: 1
 - stdout (verbatim):
@@ -284,7 +292,7 @@ FAIL
 ### EL-002 — TestReviewFindingFoldInterleavedArchiveLoss (RED — original body)
 
 - tree: 544462a8d (as EL-001)
-- input: the mirror as of 5ae7d6ebc (as EL-001 — original bodies)
+- input: the mirror as of e725633e0 (as EL-001 — original bodies)
 - command: `go test ./internal/cli -run 'TestReviewFindingFoldInterleavedArchiveLoss' -count=1 -v`
 - exit code: 1
 - stdout (verbatim):
@@ -305,7 +313,7 @@ note). The re-authored body's RED-now entry is captured in M0.
 ### EL-003 — TestReviewFindingMergedPRPredecessor (PASS — regression guard)
 
 - tree: 544462a8d (as EL-001)
-- input: the mirror as of 5ae7d6ebc (as EL-001 — original bodies)
+- input: the mirror as of e725633e0 (as EL-001 — original bodies)
 - command: `go test ./internal/cli -run 'TestReviewFindingMergedPRPredecessor' -count=1 -v`
 - exit code: 0
 - stdout (verbatim):
@@ -321,7 +329,7 @@ ok  	github.com/modu-ai/moai-adk/internal/cli	4.887s
 ### EL-004 — TestReviewFindingNominatedOverwritesDependency (PASS — regression guard)
 
 - tree: 544462a8d (as EL-001)
-- input: the mirror as of 5ae7d6ebc (as EL-001 — original bodies)
+- input: the mirror as of e725633e0 (as EL-001 — original bodies)
 - command: `go test ./internal/cli -run 'TestReviewFindingNominatedOverwritesDependency' -count=1 -v`
 - exit code: 0
 - stdout (verbatim):
