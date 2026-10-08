@@ -312,7 +312,11 @@ rows), and the GREEN flip records appended at M2/M3.
   record `evidence-red-repro.md` shows them; controls green. At this
   revision only the three original instrument tests exist — the six-row
   expectation does NOT apply here (see the next entry).
-- **Observed**: *(populated at M1)*
+- **Observed at M1 — recorded in progress.md §E.2** (M1 pre-flight run): the
+  3-test selector reproduced the plan-time RED (three defect rows failing,
+  exit 1); at the same M1 commit the ten-name selector (next entry) showed
+  the M1-final baseline shape — exit 1, six rows failing (001/003/005 +
+  006/009/010) + four passing (002/004/011 + 007).
 
 ### M1-final baseline confirmation (appended at M1)
 
@@ -346,13 +350,17 @@ ok  	github.com/modu-ai/moai-adk/internal/hook	0.947s
 
 ### GREEN flips (appended at M2)
 
-- **Observed**: *(populated at M2 — exit 0 on the defect-row command,
-  `wantZoneDeny` lines, controls still green)*
+- **Observed post-M2.1 at `4ca68b1ad` — recorded in progress.md §E.2**: exit
+  0 on the instrument selector — the three defect rows + 006/009/010 flipped
+  green; controls 002/004/011 + pin 007 stayed green; the code-point-NUL
+  origin-scoping row DENIES (path=zone_dir/marker.md, the comparison-commit
+  Clean-collapse shape).
 
 ### Family re-run (appended at M3)
 
-- **Observed**: *(populated at M3 — package-wide `ok` line + windows build
-  exit 0)*
+- **Observed at M3 (`7a914891f`, re-confirmed post-M2.1) — recorded in
+  progress.md §E.2**: `go test -count=1 ./internal/hook/` exit 0 —
+  `ok … 359.150s`, 3640 RUNs, 0 FAIL; `GOOS=windows go build ./...` exit 0.
 
 ## Quality Gates
 
