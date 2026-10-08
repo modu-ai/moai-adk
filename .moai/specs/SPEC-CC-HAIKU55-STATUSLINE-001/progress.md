@@ -56,3 +56,10 @@ _<pending sync-phase>_
   editing.
 - No-Haiku DO-NOT-REVERT anchors pinned in plan.md §D (model-policy ~:26 policy claim,
   ~:179 HaikuResidualRule scope) per operator supplement.
+
+## Kickoff Gate — Autonomous Transition (record 2026-10-08T11:45Z)
+
+decision record: decided_by=lane-14(glm) evidence_refs=.moai/reports/t1605/plan-audit-r3-delta.md rcpt-272545b33ac3f8cb6156eab6 §E.1 plan_artifact_hash=3b1ba27b plan_commit=74b5bc647 ladder_path=§9.1 autonomous transition
+- gate conditions: verdict PASS (0.90 ≥ Tier M 0.80) + must_pass_failed 0 + blocking_count 0 + plan_artifact_hash unchanged since verdict (hash recorded in verdict file, §E.1 quotes it) + plan-phase artifacts committed (74b5bc647) + no blocker open (lease serial-slot contention is scheduling, not a blocker — t1606 sync-audit live lease until 11:52:19Z)
+- progression mode: semi-autonomous NOT armed — /moai goal not armed; milestones driven by lane task list and cron rechecks
+- mode selection: serial (manager-develop per-milestone sequential spawns; coding+docs work, no fanout benefit) — logged per orchestration-mode-selection §D; Phase 1 re-execution skip: NOT taken (hash-verified verdict consumption via §E.1, gate evidence = r3-delta verdict; no `/moai run` Phase-1 re-run occurs in lane mode — this record IS the gate)
