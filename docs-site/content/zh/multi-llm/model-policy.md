@@ -36,7 +36,14 @@ description: 讲解如何决定主会话使用的模型与推理深度的模型�
 | Claude Fable 5 | `claude-fable-5` | 1M | 新的 Mythos 级通用旗舰。最深的推理与复杂编码 |
 | Claude Opus 5.5 | `opus` | 1M | 复杂架构、高难度推理 |
 | Claude Sonnet 5.5 | `sonnet` | 1M | 速度与智能的平衡，日常编码 |
-| Claude Haiku 4.5 | `claude-haiku-4-5-20251001` | 200K | 最快最经济，简单·批量任务 |
+| Claude Haiku 5.5 | `claude-haiku-5-5` | 1M | 最快最经济 (Anthropic API 默认 Haiku，CC v2.1.293+) |
+| Claude Haiku 4.5 | `claude-haiku-4-5-20251001` | 200K | 最快最经济，简单·批量任务 (AWS 系别名解析目标) |
+
+> **Haiku 5.5 事实 (Claude Code v2.1.293+)**：在 Anthropic API 上，`haiku` 别名解析为 Haiku
+> 5.5（`claude-haiku-5-5`，所有方案均 1M 上下文，无需 `[1m]` 后缀）。auto-compact 默认 ~967K。
+> 费率为 input $0.10 / output $0.50 per Mtok，提示超过 over 100K（10 万 token 以上）时升为
+> input $0.50 / output $2.50。adaptive thinking 默认开启，但在 `high` effort 及以下（low/medium/high）可用 `thinking: {"type": "disabled"}` 关闭；权衡质量与成本时更推荐使用 effort 参数。而在 AWS Bedrock、GCP Agent
+> Platform、Microsoft Foundry 上，`haiku` 仍解析为 Haiku 4.5（200K）—— 别名解析按 provider 划分。
 
 > MoAI 的会话清单默认不使用 Haiku。把 Haiku 塞进长周期智能体任务反而抬高每任务成本 —— 这一点已由 DeepSWE 排行榜实测确认，即 **No-Haiku 策略**。依据见[三层智能体架构](/zh/advanced/no-haiku-3tier/)页面。
 
