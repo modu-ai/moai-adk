@@ -56,7 +56,7 @@ Anthropic's official prompt guidelines. The binding points:
   never by agent name — `high` minimum for intelligence-sensitive work, `xhigh` for hard coding and
   agentic work, `max` sparingly, `low` only for speed-critical or simple tasks.
 
-Rationale and the model-id table: `moai-constitution-detail.md` § Opus 5.5 Prompt Philosophy.
+> Moved to the detail companion: `moai-constitution-detail.md` ("Opus 5.5 Prompt Philosophy").
 
 ## Output Format
 
@@ -167,27 +167,17 @@ Capture and reuse learnings from user corrections and agent failures across sess
   `prediction:` and later `verified: true|false`; a rejected edit is kept with its reason.
   Full entry anatomy, review-before-work rule, and the file cap: `moai-memory.md`.
 
-Categories, the file cap and archive path, the repo-local inbox drain contract, auto-capture
-triggers, the domain-matching algorithm, and the workflow integration points:
-`moai-constitution-detail.md` § Lessons Protocol.
+> Moved to the detail companion: `moai-constitution-detail.md` ("Lessons Protocol").
 
 ## Agent Core Behaviors
 
-Six cross-cutting HARD behaviors that apply to all agents regardless of active skill or workflow phase. These supplement the per-skill rules defined in individual SKILL.md files.
+> Moved to the detail companion: `moai-constitution-detail.md` ("Agent Core Behaviors").
 
 ### 1. Surface Assumptions [ZONE:Evolvable] [HARD]
 
 Before implementing anything non-trivial, list assumptions explicitly and wait for user confirmation. Silent assumptions are the most dangerous form of misunderstanding.
 
-Format:
-```
-ASSUMPTIONS I'M MAKING:
-1. [assumption about requirements]
-2. [assumption about architecture]
-→ Correct me now or I'll proceed with these.
-```
-
-Anti-pattern: silently picking one interpretation of ambiguous requirements and running with it. Discovery triggers: AGENTS.md §13 (Context-First Discovery).
+> Moved to the detail companion: `moai-constitution-detail.md` ("1. Surface Assumptions [ZONE:Evolvable] [HARD]").
 
 ### 2. Manage Confusion Actively [ZONE:Evolvable] [HARD]
 
@@ -199,7 +189,7 @@ Steps:
 3. Present the tradeoff or clarifying question
 4. Wait for resolution
 
-Anti-pattern: "I see X in the spec but Y in the existing code" followed by silently choosing Y because it's easier.
+> Moved to the detail companion: `moai-constitution-detail.md` ("2. Manage Confusion Actively [ZONE:Evolvable] [HARD]").
 
 ### 3. Push Back When Warranted [ZONE:Evolvable] [HARD]
 
@@ -207,7 +197,7 @@ Point out issues directly when an approach has clear problems. Sycophancy is a f
 
 When: the approach has a concrete downside, contradicts an established convention without clear justification, or breaks a tested invariant. How: state the issue directly, quantify the downside ("adds ~200ms latency", not "might be slower"), propose an alternative, and accept a user override once they have full information.
 
-Anti-pattern: "Of course!" followed by implementing a known-bad idea.
+> Moved to the detail companion: `moai-constitution-detail.md` ("3. Push Back When Warranted [ZONE:Evolvable] [HARD]").
 
 ### 4. Enforce Simplicity [ZONE:Evolvable] [HARD]
 
@@ -223,7 +213,7 @@ Simplicity decision ladder (apply in order, before writing code — cheapest cap
 6. Can this be one line? Make it one line.
 7. Only then: write the minimum code that works.
 
-The ladder orders reuse before new code or a new dependency, and is language-neutral: "standard library" and "native platform feature" name whichever capability source the project's language provides.
+> Moved to the detail companion: `moai-constitution-detail.md` ("4. Enforce Simplicity [ZONE:Evolvable] [HARD]").
 
 Never simplify away (safety carve-out): the ladder is a code-economy aid, NOT a license to cut safety. It MUST NOT be used to drop input validation at trust boundaries, error handling that prevents data loss, security measures, accessibility, or one runnable check behind non-trivial logic. These boundaries are governed by existing rules — the TRUST 5 Secured principle (validation, OWASP compliance) and the Bash risk-amplifier doctrine in `.claude/rules/moai/development/coding-standards.md` § Bash Risk-Amplifier Doctrine (destructive-primitive confirmation) — and the ladder is subordinate to them.
 

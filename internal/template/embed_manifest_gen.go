@@ -118,6 +118,7 @@ import "embed"
 //go:embed templates/.claude/output-styles/moai/moai-learn.md
 //go:embed templates/.claude/output-styles/moai/moai.md
 //go:embed templates/.claude/rules/moai/NOTICE.md
+//go:embed templates/.claude/rules/moai/core/agent-common-protocol-detail.md
 //go:embed templates/.claude/rules/moai/core/agent-common-protocol-reference.md
 //go:embed templates/.claude/rules/moai/core/agent-common-protocol.md
 //go:embed templates/.claude/rules/moai/core/agent-hooks.md
