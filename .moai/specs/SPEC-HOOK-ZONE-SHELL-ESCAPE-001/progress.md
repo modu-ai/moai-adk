@@ -380,7 +380,7 @@ run_complete_at: 2026-10-09
 run_commit_sha:
   M1: c34021856   # instrument finalization + RED baseline re-confirmation (five new rows; verbatim §E.2)
   M2: f4a0227f3   # decoder repair — NUL part-terminator (part-level), raw-byte \x render, bounded no-digit arm
-  M3: pending-backfill-m3   # family re-run + regression confirmation (self-referential SHA; backfill per D3)
+  M3: 7a914891f   # family re-run + regression confirmation (backfilled per D3 — a commit cannot cite its own SHA in its own commit)
 ac_pass_count: 11/11   # AC-HZS-001..011 — 001/003/005 RED→GREEN flips; 006/009/010 RED earned at M1 then flipped; 007 pin green both sides; 002/004/011 controls green both sides; 008 family green + windows build
 ac_fail_count: 0
 preserve_list_post_run_count: 0   # measured: `git diff 9b6ae0da5..HEAD -- internal/hook/protected_zone_guard_test.go internal/hook/protected_zone_path.go internal/hook/pre_tool.go internal/hook/protected_zone_guard.go` EMPTY
