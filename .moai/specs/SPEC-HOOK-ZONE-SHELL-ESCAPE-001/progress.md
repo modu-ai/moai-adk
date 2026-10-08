@@ -497,7 +497,7 @@ gaps: >-
 ```yaml
 sync_status: complete
 sync_complete_at: 2026-10-09
-sync_commit_sha: "pending-backfill-sync"   # D3 placeholder — a commit cannot cite its own SHA; backfilled in the following commit
+sync_commit_sha: "152464221"   # backfilled per D3 — the sync commit cannot cite its own SHA (preceding commit 152464221)
 changelog_entry_position: CHANGELOG.md [Unreleased] › ### Fixed › first entry (SPEC-HOOK-ZONE-SHELL-ESCAPE-001)
 frontmatter_status_transitions:
   spec_md: "in-progress → implemented → completed"   # single sync commit, 3-phase close; updated: 2026-10-09 (already current)
