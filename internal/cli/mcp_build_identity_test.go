@@ -684,7 +684,13 @@ func TestAuditLagUsesBinlagSeam(t *testing.T) {
 		// above this comparison, moving it from :349. Same single ancestry
 		// comparison (the auto-done scan's merge-base --is-ancestor), same
 		// count — only the coordinate moved.
-		"todo_autodone.go:352": true,
+		// Re-measured at card t1538 (SPEC-FACTORY-COMPLETION-RECOVERY-001):
+		// the leader-approval receipt gate (REQ-FCR-003) added the scan-time
+		// receipt state — the outcome snapshot fields and planAutoDone's
+		// receipt assembly — above this comparison, moving it 352→381. Same
+		// single ancestry comparison, same count — only the coordinate moved
+		// (the t948 precedent).
+		"todo_autodone.go:381": true,
 		// SPEC-CODEX-GATE-SCOPE-001 (card t1383): the card-diff BASE
 		// measurement — gitflow-lane-protocol §8 requires the gate to recompute
 		// `git merge-base develop HEAD` per evaluation. It selects which
