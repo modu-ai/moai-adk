@@ -11,7 +11,6 @@ package hook
 import (
 	"os"
 	"path/filepath"
-	"runtime"
 	"syscall"
 	"testing"
 	"time"
@@ -50,9 +49,6 @@ func TestSessionStartRoleRulesFifoFailVisible(t *testing.T) {
 // exercises the seam directly (a swap-race fixture would be flaky; the
 // open-regular-file path is exercised by every other fixture in this file).
 func TestReadRuleFileBytesFifoNonblocking(t *testing.T) {
-	if runtime.GOOS == "windows" {
-		t.Skip("FIFO fixture is POSIX-only")
-	}
 	root := t.TempDir()
 	fifo := filepath.Join(root, "role_rules_fifo_probe")
 	if err := syscall.Mkfifo(fifo, 0o644); err != nil {

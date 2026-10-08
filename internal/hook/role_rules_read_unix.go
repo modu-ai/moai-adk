@@ -24,7 +24,7 @@ func readRuleFileBytes(path string) ([]byte, error) {
 	if err != nil {
 		return nil, err
 	}
-	defer f.Close()
+	defer func() { _ = f.Close() }()
 	fi, err := f.Stat()
 	if err != nil {
 		return nil, fmt.Errorf("opened-handle stat failed: %w", err)
