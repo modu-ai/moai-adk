@@ -89,6 +89,23 @@ All destinations fit with wide margins; no new `paths:` key on any behavior-trig
 
 **Residual-risk.** (1) Compression sensitivity: an M3 averaging worse than 0.782 busts the 115,000 budget (conservative bound 116,918); the M1 guard converts that into a visible red. (2) The factory role core (17,341) exceeds the Q4 cap — M2 must either design for the REQ-ALB-010 degraded mode or size the role core under 10,000; both are design decisions the lane should see before M2 dispatch. (3) `AGENTS.md` (23,684) sits in the measured surface but outside this SPEC's edit scope; if the budget later needs its ~7k of rule-duplicated prose (design §6 pointer conversion), that is a t1450-scope decision, not this card's. (4) AC-ALB-008's "deployed-surface-member= 줄에 … stub 2개가 있음" vs REQ-ALB-004's pure `paths:` derivation implies the budget test must count the two role stubs as members at their stub size — recorded here so M1 implements the member derivation with that carve-out rather than discovering it as a contradiction.
 
+### M1 — budget guard + ledger integrity (2026-10-08)
+
+Code authored by the M1 manager-develop spawn: `923d8a6a9` (guard `TestDeployedAlwaysLoadedCharBudget`), `591114e39` (derivation mutations), `cb7c59898` (import-boundary repair after the lane relayed a turn-gate review finding — the derivation excluded ALL `../` imports; now resolves against the importing file's directory and excludes only actual project-boundary exits), `e2158469c` (ledger integrity test `TestBindingLedgerIntegrity` + AC-ALB-020 mutation fixtures). The spawn was terminated by an API 429 (5-hour usage window) immediately before its final verification batch; **the lane completed the tail** — verification batch, staticcheck fixes `736f63863` (QF1001/QF1002 in the two new test files), and this record.
+
+Verification (each: command run THIS run against tree `736f63863`):
+
+- E2: `go build ./...` exit 0 · `GOOS=windows GOARCH=amd64 go build ./...` exit 0 · `go vet ./internal/template/... ./internal/hook/...` exit 0.
+- E8 (verbatim RED): `--- FAIL: TestDeployedAlwaysLoadedCharBudget (0.34s)` — `deployed always-loaded surface exceeds budget: total=180901 budget=115000 files=14; five largest: .claude/rules/moai/workflow/factory-dispatch.md=28769; AGENTS.md=23684; .claude/rules/moai/core/agent-common-protocol.md=19510; .claude/rules/moai/core/askuser-protocol.md=17926; .claude/rules/moai/workflow/session-handoff.md=15911` plus 14 `deployed-surface-member=` lines and the carve-out sweep line `36 role-core rows -> ... kept as surface members`. The total matches the M0 anchor measurement exactly (180,901). Guard RED is the expected state until M3.
+- Ledger: `go test ./internal/template/ -run 'TestBindingLedgerIntegrity' -count=1` exit 0 — includes the mutation fixtures a (continuation-line delete names the block), b/b2 (STOPPED_TEAMMATE delete / reclassify→anchor-kind), c/c2 (goal-directive delete / to-companion), d/d2 (entry_points missing/empty), e (role-core delivery:always), f (binding location on paths: file), g (companion on binding) — each observed `--- PASS` in the -v run.
+- Surface derivation: `TestDeployedAlwaysLoadedSurfaceDerivation` 7 PASS / 0 FAIL exit 0 — always-grows, paths-unchanged, import-grows, hardcoded-fails, and the import-boundary pair `nested_parent_import_resolves_inside_project` + `escaping_import_excluded` (the repair verified on both sides).
+- E5: `golangci-lint run internal/template/...` exit 0 after `736f63863` (2 staticcheck findings fixed).
+- Template neutrality: `git diff --stat a2a184ad3..HEAD -- internal/template/templates` empty through all M1 commits.
+
+Gaps: (1) E8's first capture predates the lint fix; the post-fix re-run re-observed the identical total (180901) and exit 1 — RED unchanged. (2) The guard's budget assertion fails fast while red, so AC-ALB-005 mutations live in the separate derivation test by design; its 7 subtests are the observed-failure completion for that criterion. (3) §E.3 remains unwritten (run-end signal, later milestone).
+
+Residual-risk: none new beyond the M0 items; the import-boundary pair is now a standing regression guard.
+
 ## §E.3 Run-phase Audit-Ready Signal
 
 _<pending run-phase>_
