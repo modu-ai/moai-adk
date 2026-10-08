@@ -998,6 +998,88 @@ the both-worlds duplicates.
   `golangci-lint run internal/hook/... --timeout=2m` → `0 issues.`; gofmt
   clean; family coverage `13.5%` (all-rows selector).
 
+### Gate rounds 23/25 — M2.9 full per-world state isolation (2026-10-09)
+
+The isolation completion criterion: the two bash worlds are FULLY ISOLATED
+interpretations — each world carries its OWN function registry, its own
+name→verb binding, and its own argument readings; mutable state NEVER flows
+between world iterations; generations NEVER cross within a judgment. The
+ONLY place the worlds meet is the deny decision (union). Four findings, all
+leaks of that isolation: (1) P1 candidate-state separation — the g
+candidates' inner declarations overwrote each other on shared state
+(`function g { f(){ :; }; }; g(){ f(){ rm zone_dir/marker.md; }; }; $'g';
+f` — measured GREEN-now on M2.8: the body-snapshot machinery already held
+for this shape, so the row pins it as a regression pin rather than a flip);
+(2) P2 the verb-name's world joined the OTHER world's argument readings
+(`$'rm\u0000/../printf' $'docs\u0000/../zone_dir/marker.md'` — modern rm ×
+the pre-4.2 protected path = false deny); (3) P1 the function registry was
+SHARED across versions (`f() { rm() { :; }; }; $'f\u0000/not_f'; rm
+zone_dir/marker.md` — the modern world's no-op rm override leaked into the
+pre-4.2 world, ALLOWING the real deletion: measured RED, the bypass
+in-suite); (4) P2 the same name↔argument binding, noop shape.
+
+**Four regression rows — measured under the M2.8 tip (`57c3d9428` + the
+rows, uncommitted at measurement):**
+
+- **Command**: `unset MOAI_KANBAN_ID MOAI_KANBAN_LEAD_ADDR MOAI_KANBAN_SETTINGS_INJECTED && go test ./internal/hook -run 'TestCheckProtectedZoneShellCandidateStateSeparated|TestCheckProtectedZoneShellVerbBindsOwnArgs|TestCheckProtectedZoneShellRegistryPerGeneration|TestCheckProtectedZoneShellVerbBindsOwnArgsNoop' -count=1 -v`
+- **Exit code**: `1`
+- **Observed (verbatim, decision lines)**:
+
+```
+--- PASS: TestCheckProtectedZoneShellCandidateStateSeparated (0.00s)
+    protected_zone_shell_repro_test.go:970: verb binds own args: decision="$'rm\\u0000/../printf' $'docs\\u0000/../zone_dir/marker.md'" reason="HARNESS_FROZEN_PROTECTED_ZONE_VIOLATION: harness-learner category=probe_zone route=human next=return-blocker-report path=docs/zone_dir/marker.md", want allowed — modern rm joins only the modern argument, and no world deletes
+--- FAIL: TestCheckProtectedZoneShellVerbBindsOwnArgs (0.00s)
+    protected_zone_shell_repro_test.go:986: registry per generation: decision="allow" reason="", want deny
+--- FAIL: TestCheckProtectedZoneShellRegistryPerGeneration (0.00s)
+    protected_zone_shell_repro_test.go:1000: verb binds own args noop: decision="$'rm\\u0000/../noop' $'docs\\u0000/../zone_dir/marker.md'" reason="HARNESS_FROZEN_PROTECTED_ZONE_VIOLATION: harness-learner category=probe_zone route=human next=return-blocker-report path=docs/zone_dir/marker.md", want allowed — modern rm joins only the modern argument, and no world deletes
+--- FAIL: TestCheckProtectedZoneShellVerbBindsOwnArgsNoop (0.00s)
+FAIL
+FAIL	github.com/modu-ai/moai-adk/internal/hook	0.684s
+```
+
+Row 1 measured GREEN-now (the body-snapshot + mergeZoneFuncs machinery
+already separated candidate state at the body level) — recorded as a
+regression pin, not a flip. Rows 2 and 4 are OVER-BLOCK inverse rows
+(false deny on the protected path via the cross-generation name×arg
+join). Row 3 is the BYPASS: the shared registry let the pre-4.2 world see
+the modern world's no-op rm override, allowing the real deletion — the
+in-suite reproduction of the reviewer's finding.
+
+**M2.9 remedy — full per-world state isolation (GREEN record).** Shape:
+the walker state went per generation — `funcs`/`calling`/`calls` are
+`[2]`-arrays (a function execution in one world registers only in that
+world's registry; the other world's externals stay external and are judged
+as the mutations they are), plus `w.world` (-1 neutral, 0/1 inside a
+generation-scoped function body). `zoneCall` runs the per-world loop:
+each world's name classifies against ITS OWN registry (shadowing walks
+`walkFunctionBodies` entirely inside the world's state — each candidate
+body from the entry snapshot, registries merged, `w.world` scoped so
+nested statements resolve their own generation), the verb world binds
+`pathCands[world]` (its own argument readings), git/sed/cd analyses fire
+per world (`zoneGitArgs(world, cmd)`, `zoneCdMove(world, cmd)`).
+`FuncDecl` registers per world (generation-identical in both, per-reading
+when the name word is dual). The state-level helpers
+(`cloneZoneFuncsState`/`mergeZoneFuncsState`/`zoneFuncsEqualState`) carry
+the control-flow unions. `zoneWordCandidates` (the pooled variant) is
+folded away — every consumer reads per-world now.
+
+- **Command** (all 36 instrument tests): `unset MOAI_KANBAN_ID
+  MOAI_KANBAN_LEAD_ADDR MOAI_KANBAN_SETTINGS_INJECTED && go test
+  ./internal/hook -run 'TestCheckProtectedZoneShell|TestZoneUnescapeAnsiC|TestZoneWordText' -count=1`
+- **Exit code**: `0`
+- **Observed (verbatim)**: `ok  	github.com/modu-ai/moai-adk/internal/hook	1.422s`
+  (36/36 PASS — the registry bypass row now DENIES; the two over-block rows
+  now ALLOW; the candidate-state pin holds; the 32 earlier rows hold).
+- **Full package regression (M2.9)**: `unset MOAI_KANBAN_ID
+  MOAI_KANBAN_LEAD_ADDR MOAI_KANBAN_SETTINGS_INJECTED && go test -count=1
+  -timeout=25m -v ./internal/hook/` — exit 0, verbatim tail `PASS` / `ok
+  github.com/modu-ai/moai-adk/internal/hook	266.232s` /
+  `PACKAGE_POST29_EXIT=0`; 3664 RUN lines, ZERO `--- FAIL` lines. Slot
+  lease `hook-suite` held for the run, released after.
+- Builds: `go build ./...` exit 0; `GOOS=windows go build ./...` exit 0;
+  `golangci-lint run internal/hook/... --timeout=2m` → `0 issues.`; gofmt
+  clean; family coverage `13.8%` (all-rows selector).
+
 
 **M2.7 remedy — full dispatch pre-classification + function shadowing
 (GREEN record).** Shape: `zoneExecNames` (the possible base names of the

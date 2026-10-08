@@ -936,3 +936,68 @@ func TestCheckProtectedZoneShellCdReadingGenerationRelation(t *testing.T) {
 	}
 	t.Logf("swept=%d", 1)
 }
+
+// The four gate-round-23/25 regression rows (card t1585): the two bash
+// worlds are FULLY ISOLATED interpretations — each world carries its own
+// function registry, its own name→verb binding, and its own argument
+// readings; the worlds meet only at the deny union.
+
+// TestCheckProtectedZoneShellCandidateStateSeparated — gate round 23 P1:
+// the g candidates' inner declarations must not overwrite each other on
+// shared state — each candidate runs from the entry snapshot and the final
+// registries MERGE, so the deleting f registration survives and the bare
+// `f` call is judged as the mutation it is.
+func TestCheckProtectedZoneShellCandidateStateSeparated(t *testing.T) {
+	root := hzsMarkerFileFixture(t)
+	h := zoneTestHandler(t, root)
+	const candCmd = "function g { f(){ :; }; }; g(){ f(){ rm zone_dir/marker.md; }; }; $'g'; f"
+	d, r := zoneCall(t, h, "Bash", harnessLearnerIdentity, map[string]any{"command": candCmd})
+	wantZoneDeny(t, "candidate state separated", d, r, harnessLearnerIdentity, "category", "probe_zone")
+	t.Logf("swept=%d", 1)
+}
+
+// TestCheckProtectedZoneShellVerbBindsOwnArgs — gate round 23 P2: the
+// verb-name's world binds its own argument readings. Modern world: rm
+// "docs" (harmless); pre-4.2 world: printf (harmless). Neither deletes —
+// joining the modern name with the pre-4.2 argument is a FALSE DENY. The
+// row asserts the ALLOW.
+func TestCheckProtectedZoneShellVerbBindsOwnArgs(t *testing.T) {
+	root := hzsMarkerFileFixture(t)
+	h := zoneTestHandler(t, root)
+	const bindCmd = "$'rm\\u0000/../printf' $'docs\\u0000/../zone_dir/marker.md'"
+	d, r := zoneCall(t, h, "Bash", harnessLearnerIdentity, map[string]any{"command": bindCmd})
+	if d == DecisionDeny || strings.Contains(r, SentinelHarnessFrozenProtectedZone) {
+		t.Errorf("verb binds own args: decision=%q reason=%q, want allowed — modern rm joins only the modern argument, and no world deletes", bindCmd, r)
+	}
+	t.Logf("swept=%d", 1)
+}
+
+// TestCheckProtectedZoneShellRegistryPerGeneration — gate round 25 P1:
+// the function registry is VERSION-SCOPED. The modern world's execution of
+// f registers the no-op rm override IN THE MODERN WORLD only; the pre-4.2
+// world never ran f (its name was the literal f\u0000/not_f path), so its
+// rm stays external and deletes the protected marker — the guard must
+// DENY. The row asserts the deny.
+func TestCheckProtectedZoneShellRegistryPerGeneration(t *testing.T) {
+	root := hzsMarkerFileFixture(t)
+	h := zoneTestHandler(t, root)
+	const regCmd = "f() { rm() { :; }; }; $'f\\u0000/not_f'; rm zone_dir/marker.md"
+	d, r := zoneCall(t, h, "Bash", harnessLearnerIdentity, map[string]any{"command": regCmd})
+	wantZoneDeny(t, "registry per generation", d, r, harnessLearnerIdentity, "category", "probe_zone")
+	t.Logf("swept=%d", 1)
+}
+
+// TestCheckProtectedZoneShellVerbBindsOwnArgsNoop — gate round 25 P2, the
+// name↔argument binding again: modern rm "docs" (harmless), pre-4.2 noop
+// (harmless) — the guard testing the pre-4.2 protected path against the
+// modern rm is a FALSE DENY. The row asserts the ALLOW.
+func TestCheckProtectedZoneShellVerbBindsOwnArgsNoop(t *testing.T) {
+	root := hzsMarkerFileFixture(t)
+	h := zoneTestHandler(t, root)
+	const noopCmd = "$'rm\\u0000/../noop' $'docs\\u0000/../zone_dir/marker.md'"
+	d, r := zoneCall(t, h, "Bash", harnessLearnerIdentity, map[string]any{"command": noopCmd})
+	if d == DecisionDeny || strings.Contains(r, SentinelHarnessFrozenProtectedZone) {
+		t.Errorf("verb binds own args noop: decision=%q reason=%q, want allowed — modern rm joins only the modern argument, and no world deletes", noopCmd, r)
+	}
+	t.Logf("swept=%d", 1)
+}

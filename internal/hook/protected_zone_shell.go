@@ -408,25 +408,6 @@ func zoneWordDual(w *syntax.Word) bool {
 	return false
 }
 
-// zoneWordCandidates returns the candidate texts one word contributes to
-// judgment: the modern-decoded text, plus the pre-4.2 reading when the word
-// carries \u/\U escapes (gate rounds 13-14) — deny when EITHER lands in the
-// zone. The bool is false when the word is dynamic.
-func zoneWordCandidates(w *syntax.Word) ([]string, bool) {
-	t, literal := zoneWordText(w)
-	if !literal {
-		return nil, false
-	}
-	if !zoneWordDual(w) {
-		return []string{t}, true
-	}
-	old, lit := zoneWordTextPre42(w)
-	if !lit || old == t {
-		return []string{t}, true
-	}
-	return []string{t, old}, true
-}
-
 // zoneWordWorldReadings returns the word's text PER BASH GENERATION:
 // [0] the modern reading, [1] the pre-4.2 reading — identical when the word
 // carries no \u/\U (a generation-identical word contributes its one reading
@@ -485,27 +466,32 @@ type zoneCwd struct {
 // zoneWalker carries one shell-policy walk. cwds is the set of POSSIBLE
 // working directories at this point — control flow multiplies them, and a
 // candidate is denied when any of them covers it (round 6 P1); each entry
-// carries the generation that reached it (gate round 22 P1). unbounded
-// records that a loop's directory states outgrew the fixed-point bound: the
-// walk is then an over-approximation that cannot be completed, and the
-// command is denied fail-closed rather than allowed on an incomplete walk
-// (round 9 P1).
+// carries the generation that reached it (gate round 22 P1). funcs is the
+// function registry PER BASH GENERATION (gate round 25 P1): a function
+// execution in one world registers only in that world's registry — the
+// other world's externals stay external. world is the generation currently
+// being walked: -1 neutral (generation-identical statement text), 0/1
+// inside a generation-scoped function body. unbounded records that a
+// loop's directory states outgrew the fixed-point bound: the walk is then
+// an over-approximation that cannot be completed, and the command is
+// denied fail-closed rather than allowed on an incomplete walk (round 9
+// P1).
 type zoneWalker struct {
 	h        *preToolHandler
 	cwds     []zoneCwd
 	mutating bool
-	// funcs maps a function name declared in THIS command to the bodies it
-	// may have: a straight-line redefinition replaces, a branch join unions
-	// — the skipped branch's definition must not win (round 14 P1). calling
-	// holds the names currently being walked; calls counts the bounded
-	// re-entries a recursion may unroll (round 17 P1). unbounded records
-	// that a walk outgrew one of its bounds — the command is then denied
-	// fail-closed rather than allowed on an incomplete analysis.
+	// funcs holds each generation's function registry; calling holds the
+	// names currently being walked per generation; calls counts the
+	// bounded re-entries a recursion may unroll per generation (round 17
+	// P1). unbounded records that a walk outgrew one of its bounds — the
+	// command is then denied fail-closed rather than allowed on an
+	// incomplete analysis.
 	unbounded bool
 	cands     []string
-	funcs     map[string][]*syntax.Stmt
-	calling   map[string]bool
-	calls     map[string]int
+	funcs     [2]map[string][]*syntax.Stmt
+	calling   [2]map[string]bool
+	calls     [2]map[string]int
+	world     int
 }
 
 // setCwds replaces the possible-directory set, dropping duplicates (by
@@ -781,200 +767,177 @@ func zoneShellCovered(forms []zoneForm, load config.ProtectedZoneLoad, root stri
 // mutating git subcommand, a declared function, a cd. The statement's
 // redirections are judged by the walker before this runs — the shell opens
 // them before the command executes, for every statement shape (round 8).
-// The executable word is classified across ALL bash generations first
-// (gate rounds 19-21), every name-driven analysis fires per its world, and
-// a cd world's directory move applies last.
+// The two bash worlds are FULLY ISOLATED interpretations: each world
+// carries its own function registry, its own name→verb binding, and its
+// own argument readings; mutable state never flows between world
+// iterations, and the worlds meet only at the deny union (gate rounds
+// 23/25). A cd world's directory move composes per world and applies to
+// subsequent statements only.
 func (w *zoneWalker) zoneCall(cmd *syntax.CallExpr) {
 	if _, literal := zoneFirstArgWord(cmd.Args); !literal {
 		return // a dynamic command word under-matches
 	}
-	// Per-world classification of the executable word: the shell
-	// path-resolves it, so each bash generation may produce a different
-	// name, and a name SHADOWED by a declared function executes the
-	// function in that world, dropping out of every other dispatch (gate
-	// round 21 P2). ALL name-driven dispatches classify across the worlds
-	// here, before any single-world branch runs — this command's arg
-	// analyses run BEFORE the cd move, whose directory change applies to
-	// subsequent statements, never to this command's other worlds (gate
-	// round 21 P1).
-	var verbName, cdName, sedName, gitName string
-	var funcNames []string
-	for _, n := range zoneExecNames(cmd.Args) {
-		if _, shadowed := w.funcs[n]; shadowed {
-			// that world executes the declared function, not this name
-			funcNames = append(funcNames, n)
+	names := zoneExecNames(cmd.Args)
+	pathCands := zonePathCandidates(cmd.Args[1:])
+	for world := 0; world < 2; world++ {
+		if w.world >= 0 && w.world != world {
+			continue // inside a generation-scoped body walk: only that world
+		}
+		n := names[world]
+		if n == "" {
+			continue
+		}
+		if _, shadowed := w.funcs[world][n]; shadowed {
+			// this world executes the declared function: its bodies run in
+			// this world's own state, each candidate body from the entry
+			// snapshot, final registries merged (gate round 23 P1)
+			w.walkFunctionBodies(world, n)
 			continue
 		}
 		switch {
 		case zoneMutationVerbs[n]:
-			verbName = n
+			// the verb's world binds its own argument readings (gate
+			// rounds 23/25)
+			w.mutating = true
+			w.zoneCandsWorld(world, pathCands[world])
 		case n == "cd":
-			cdName = n
+			w.zoneCdMove(world, cmd)
 		case n == "sed":
-			sedName = n
+			if zoneSedInPlace(cmd.Args) {
+				// in-place is decided by THIS command's options alone — an
+				// earlier mutating command must not turn a read-only sed
+				// into a denial (round 6 P2)
+				w.mutating = true
+				w.zoneCandsWorld(world, pathCands[world])
+			}
 		case n == "git":
-			gitName = n
+			w.zoneGitArgs(world, cmd)
 		}
-	}
-	fired := false
-	if verbName != "" {
-		w.mutating = true
-		w.zoneCands(zonePathCandidates(cmd.Args[1:]))
-		fired = true
-	}
-	if sedName != "" && zoneSedInPlace(cmd.Args) {
-		// in-place is decided by THIS command's options alone — an earlier
-		// mutating command must not turn a read-only sed into a denial
-		// (round 6 P2)
-		w.mutating = true
-		w.zoneCands(zonePathCandidates(cmd.Args[1:]))
-		fired = true
-	}
-	if gitName != "" && w.zoneGitArgs(cmd) {
-		fired = true
-	}
-	// declared functions: a shadowing world executes its bodies — per
-	// world, each body seeing the pre-command walker state. A call to a
-	// function declared in this command runs every body the name may have
-	// (round 10 P2): each body is a separate WORLD, not a sequence — one
-	// body's inner declarations must not replace another's (round 16 P1) —
-	// and the call's RESULT is the union of the bodies' own outcomes — a
-	// body that certainly redefines a name retires the pre-call definition
-	// instead of keeping it alive alongside (round 17 P2). The directory
-	// set needs no such isolation — a candidate is judged against the
-	// whole accumulated set anyway.
-	for _, n := range funcNames {
-		bodies := w.funcs[n]
-		if w.calling[n] {
-			// a recursive call re-enters bounded: each re-entry walks the
-			// body from the walker's CURRENT state (the recursion's
-			// directory moves are real), and past the bound the command is
-			// fail-closed like any other walk that cannot complete (round
-			// 17 P1)
-			if w.calls[n] >= zoneRecursionBound {
-				w.unbounded = true
-				return
-			}
-			w.calls[n]++
-		} else {
-			w.calling[n] = true
-			w.calls[n] = 1
-		}
-		entry := cloneZoneFuncs(w.funcs)
-		var result map[string][]*syntax.Stmt
-		for _, body := range bodies {
-			w.funcs = cloneZoneFuncs(entry)
-			w.zoneWalkStmt(body)
-			if result == nil {
-				result = w.funcs
-			} else {
-				result = mergeZoneFuncs(result, w.funcs)
-			}
-		}
-		w.funcs = result
-		delete(w.calling, n)
-	}
-	if cdName != "" {
-		// The cd's ONE argument may carry multiple readings (\u/\U words:
-		// gate round 15 P1) — each non-empty reading is a POSSIBLE
-		// destination for ITS OWN generation, and the generation relation
-		// rides the walk: a generation-tagged directory moves only under
-		// its own generation's reading, a neutral directory splits into
-		// per-generation entries (gate round 22 P1). Several arguments
-		// still fail the cd (bash rejects them) and a dynamic argument
-		// under-matches, exactly as before. The move applies LAST:
-		// subsequent statements see it, this command's other worlds never
-		// did (gate round 21 P1).
-		multi := len(cmd.Args) != 2
-		var pooled []string
-		var readings [2]string
-		dual := false
-		dynamic := multi
-		if !multi {
-			if r, lit := zoneWordWorldReadings(cmd.Args[1]); !lit {
-				dynamic = true
-			} else {
-				readings = r
-				dual = zoneWordDual(cmd.Args[1])
-			}
-		} else {
-			for _, a := range cmd.Args[1:] {
-				if t, lit := zoneWordText(a); lit {
-					pooled = append(pooled, t)
-				} else {
-					pooled = append(pooled, "?dynamic")
-				}
-			}
-		}
-		next := make([]zoneCwd, 0, len(w.cwds)*2)
-		for _, cwd := range w.cwds {
-			switch {
-			case dynamic:
-				next = append(next, zoneCwd{dir: zoneNextCwd(cwd.dir, pooled), gen: cwd.gen})
-			case !dual:
-				// a generation-identical reading keeps the directory's
-				// neutrality: both generations move together
-				next = append(next, zoneCwd{dir: zoneNextCwd(cwd.dir, readings[:1]), gen: cwd.gen})
-			default:
-				for world := 0; world < 2; world++ {
-					if readings[world] == "" || cwd.gen == 1-world {
-						// an empty reading moves nothing for this world,
-						// and a generation-tagged directory moves only
-						// under its own generation's reading (gate round
-						// 22 P1)
-						continue
-					}
-					gen := cwd.gen
-					if gen == -1 {
-						gen = world
-					}
-					next = append(next, zoneCwd{dir: zoneNextCwd(cwd.dir, readings[world:world+1]), gen: gen})
-				}
-			}
-		}
-		// the cd may fail (a missing directory leaves the caller where it
-		// was): the pre-cd set survives into the next statement either way
-		// (round 8 P1)
-		next = append(next, w.cwds...)
-		w.setCwds(next)
-		return
-	}
-	if !fired && len(funcNames) == 0 {
-		return
 	}
 }
 
-// zoneExecNames returns the possible BASE NAMES of the executable word —
-// one per bash generation, deduped, order-stable (the modern reading
-// first). The shell path-resolves the executable, so each generation may
-// produce a different name; every name-driven dispatch classifies across
-// this set (gate rounds 17-21).
-func zoneExecNames(args []*syntax.Word) []string {
-	if len(args) == 0 {
-		return nil
+// zoneCandsWorld expands one world's candidate readings against the
+// directories that world's generation can be in (gate round 22 P1).
+func (w *zoneWalker) zoneCandsWorld(world int, cands []string) {
+	for _, cand := range cands {
+		w.cands = append(w.cands, zoneRelativeToSet(w.cwds, cand, world)...)
 	}
-	worlds, literal := zoneWordCandidates(args[0])
-	if !literal {
-		return nil
-	}
-	var out []string
-	for _, t := range worlds {
-		if t == "" {
-			continue
+}
+
+// zoneCdMove composes one world's cd: a generation-tagged directory moves
+// only under its own generation's reading, a neutral directory splits into
+// per-generation entries, and the pre-move set survives (the cd may fail —
+// round 8 P1). The move applies LAST for this command: subsequent
+// statements see it, this command's other worlds never did (gate round 21
+// P1).
+func (w *zoneWalker) zoneCdMove(world int, cmd *syntax.CallExpr) {
+	multi := len(cmd.Args) != 2
+	var pooled []string
+	var reading string
+	dual := false
+	dynamic := multi
+	if !multi {
+		if r, lit := zoneWordWorldReadings(cmd.Args[1]); !lit {
+			dynamic = true
+		} else {
+			reading = r[world]
+			dual = zoneWordDual(cmd.Args[1])
 		}
+	} else {
+		for _, a := range cmd.Args[1:] {
+			if t, lit := zoneWordText(a); lit {
+				pooled = append(pooled, t)
+			} else {
+				pooled = append(pooled, "?dynamic")
+			}
+		}
+	}
+	next := make([]zoneCwd, 0, len(w.cwds)*2)
+	for _, cwd := range w.cwds {
+		if cwd.gen != -1 && cwd.gen != world {
+			continue // this world's cd never executes from another world's directory
+		}
+		gen := cwd.gen
+		if gen == -1 {
+			gen = world
+		}
+		switch {
+		case dynamic:
+			next = append(next, zoneCwd{dir: zoneNextCwd(cwd.dir, pooled), gen: gen})
+		case !dual:
+			// a generation-identical reading keeps the directory's
+			// neutrality: the single reading serves this world too
+			next = append(next, zoneCwd{dir: zoneNextCwd(cwd.dir, []string{reading}), gen: gen})
+		default:
+			if reading == "" {
+				continue // an empty reading moves nothing for this world
+			}
+			next = append(next, zoneCwd{dir: zoneNextCwd(cwd.dir, []string{reading}), gen: gen})
+		}
+	}
+	// the cd may fail (a missing directory leaves the caller where it
+	// was): the pre-cd set survives into the next statement either way
+	// (round 8 P1)
+	next = append(next, w.cwds...)
+	w.setCwds(next)
+}
+
+// walkFunctionBodies executes a shadowing world's declared function: each
+// candidate body runs from THIS world's entry-state snapshot and the final
+// registry merges — a later candidate never erases an earlier
+// registration (gate round 23 P1) — entirely inside the world's own state:
+// its registry, its bindings, and its argument readings (gate round 25
+// P1). A recursive call re-enters bounded (round 17 P1).
+func (w *zoneWalker) walkFunctionBodies(world int, name string) {
+	bodies := w.funcs[world][name]
+	savedWorld := w.world
+	w.world = world
+	defer func() { w.world = savedWorld }()
+	if w.calling[world][name] {
+		if w.calls[world][name] >= zoneRecursionBound {
+			w.unbounded = true
+			return
+		}
+		w.calls[world][name]++
+	} else {
+		w.calling[world][name] = true
+		w.calls[world][name] = 1
+	}
+	entry := cloneZoneFuncs(w.funcs[world])
+	var result map[string][]*syntax.Stmt
+	for _, body := range bodies {
+		w.funcs[world] = cloneZoneFuncs(entry)
+		w.zoneWalkStmt(body)
+		if result == nil {
+			result = w.funcs[world]
+		} else {
+			result = mergeZoneFuncs(result, w.funcs[world])
+		}
+	}
+	w.funcs[world] = result
+	delete(w.calling[world], name)
+}
+
+// zoneExecNames returns the executable word's possible BASE NAMES, one per
+// bash generation: [0] the modern reading, [1] the pre-4.2 reading —
+// identical when the word carries no \u/\U. The shell path-resolves the
+// executable, so each generation may produce a different name; every
+// name-driven dispatch classifies per world (gate rounds 17-21).
+func zoneExecNames(args []*syntax.Word) [2]string {
+	var out [2]string
+	if len(args) == 0 {
+		return out
+	}
+	readings, literal := zoneWordWorldReadings(args[0])
+	if !literal {
+		return out
+	}
+	for world := 0; world < 2; world++ {
+		t := readings[world]
 		if strings.Contains(t, "/") {
 			t = path.Base(t)
 		}
-		dup := false
-		for _, have := range out {
-			if have == t {
-				dup = true
-				break
-			}
-		}
-		if !dup {
-			out = append(out, t)
-		}
+		out[world] = t
 	}
 	return out
 }
@@ -1043,7 +1006,7 @@ func zoneSedInPlace(args []*syntax.Word) bool {
 // already-overwritten anchor is a false deny (gate round 17 P2). Only the
 // FIRST non-option word is the subcommand (round 7 P2); valued global
 // options consume their argument (rounds 4-5 P1).
-func (w *zoneWalker) zoneGitArgs(cmd *syntax.CallExpr) bool {
+func (w *zoneWalker) zoneGitArgs(world int, cmd *syntax.CallExpr) bool {
 	dirOpts := [2][]string{{""}, {""}}
 	wtOpts := [2][]string{{""}, {""}}
 	sub := ""
@@ -1234,7 +1197,7 @@ func zoneCwdsEqual(a, b []zoneCwd) bool {
 func (w *zoneWalker) walkBodyFixedPoint(cond []*syntax.Stmt, stmts []*syntax.Stmt) {
 	for i := 0; i < zoneLoopFixedPoint; i++ {
 		before := append([]zoneCwd(nil), w.cwds...)
-		beforeFuncs := cloneZoneFuncs(w.funcs)
+		beforeFuncs := cloneZoneFuncsState(w.funcs)
 		// the condition runs EVERY iteration, so it walks with the body —
 		// each pass is one loop round (round 11 P1)
 		for _, s := range cond {
@@ -1247,7 +1210,7 @@ func (w *zoneWalker) walkBodyFixedPoint(cond []*syntax.Stmt, stmts []*syntax.Stm
 		// function registry both stopped changing — a body that redefines a
 		// function every round makes iteration 2 call a different body than
 		// iteration 1 (round 16 P1)
-		if zoneCwdsEqual(before, w.cwds) && zoneFuncsEqual(beforeFuncs, w.funcs) {
+		if zoneCwdsEqual(before, w.cwds) && zoneFuncsEqualState(beforeFuncs, w.funcs) {
 			return
 		}
 	}
@@ -1256,6 +1219,34 @@ func (w *zoneWalker) walkBodyFixedPoint(cond []*syntax.Stmt, stmts []*syntax.Stm
 
 // zoneFuncsEqual compares two function registries as body-pointer sets per
 // name.
+// cloneZoneFuncsState deep-copies BOTH generations' registries.
+func cloneZoneFuncsState(s [2]map[string][]*syntax.Stmt) [2]map[string][]*syntax.Stmt {
+	var out [2]map[string][]*syntax.Stmt
+	for i := range s {
+		out[i] = cloneZoneFuncs(s[i])
+	}
+	return out
+}
+
+// mergeZoneFuncsState unions both generations' registries.
+func mergeZoneFuncsState(a, b [2]map[string][]*syntax.Stmt) [2]map[string][]*syntax.Stmt {
+	var out [2]map[string][]*syntax.Stmt
+	for i := range a {
+		out[i] = mergeZoneFuncs(a[i], b[i])
+	}
+	return out
+}
+
+// zoneFuncsEqualState compares both generations' registries.
+func zoneFuncsEqualState(a, b [2]map[string][]*syntax.Stmt) bool {
+	for i := range a {
+		if !zoneFuncsEqual(a[i], b[i]) {
+			return false
+		}
+	}
+	return true
+}
+
 func zoneFuncsEqual(a, b map[string][]*syntax.Stmt) bool {
 	if len(a) != len(b) {
 		return false
@@ -1336,9 +1327,9 @@ func (w *zoneWalker) zoneWalkStmt(stmt *syntax.Stmt) {
 		return
 	}
 	pre := append([]zoneCwd(nil), w.cwds...)
-	var preFuncs map[string][]*syntax.Stmt
+	var preFuncs [2]map[string][]*syntax.Stmt
 	if stmt.Background {
-		preFuncs = cloneZoneFuncs(w.funcs)
+		preFuncs = cloneZoneFuncsState(w.funcs)
 	}
 	defer func() {
 		if stmt.Background {
@@ -1364,22 +1355,22 @@ func (w *zoneWalker) zoneWalkStmt(stmt *syntax.Stmt) {
 			// same pre-pipe directory (round 3–4); redefinitions die with
 			// their element (round 11 P1)
 			side := append([]zoneCwd(nil), w.cwds...)
-			funcs := cloneZoneFuncs(w.funcs)
+			funcs := cloneZoneFuncsState(w.funcs)
 			w.zoneWalkStmt(cmd.X)
 			w.setCwds(side)
-			w.funcs = cloneZoneFuncs(funcs)
+			w.funcs = cloneZoneFuncsState(funcs)
 			w.zoneWalkStmt(cmd.Y)
 			w.funcs = funcs
 			w.setCwds(side)
 		case syntax.AndStmt, syntax.OrStmt: // && and ||
 			w.zoneWalkStmt(cmd.X)
 			afterX := append([]zoneCwd(nil), w.cwds...)
-			xFuncs := cloneZoneFuncs(w.funcs)
+			xFuncs := cloneZoneFuncsState(w.funcs)
 			w.zoneWalkStmt(cmd.Y)
 			// the right side may be skipped (the left failed under && or
 			// succeeded under ||): the post-left world survives — directories
 			// and function definitions alike (round 15 P1)
-			w.funcs = mergeZoneFuncs(xFuncs, w.funcs)
+			w.funcs = mergeZoneFuncsState(xFuncs, w.funcs)
 			w.cwds = append(w.cwds, afterX...)
 			w.setCwds(w.cwds)
 		default:
@@ -1388,7 +1379,7 @@ func (w *zoneWalker) zoneWalkStmt(stmt *syntax.Stmt) {
 		}
 	case *syntax.Subshell:
 		side := append([]zoneCwd(nil), w.cwds...)
-		funcs := cloneZoneFuncs(w.funcs) // a subshell's redefinitions die with it (round 11 P1)
+		funcs := cloneZoneFuncsState(w.funcs) // a subshell's redefinitions die with it (round 11 P1)
 		for _, s := range cmd.Stmts {
 			w.zoneWalkStmt(s)
 		}
@@ -1403,7 +1394,7 @@ func (w *zoneWalker) zoneWalkStmt(stmt *syntax.Stmt) {
 	case *syntax.ForClause:
 		// the zero-iteration world keeps the pre-loop function registry
 		// (round 14 P1)
-		preFuncs := cloneZoneFuncs(w.funcs)
+		preFuncs := cloneZoneFuncsState(w.funcs)
 		if n := zoneLoopCount(cmd.Loop); n >= 0 {
 			// the item list is fully literal: exactly n iterations run, each
 			// from the accumulated set (the next iteration starts where the
@@ -1417,7 +1408,7 @@ func (w *zoneWalker) zoneWalkStmt(stmt *syntax.Stmt) {
 		} else {
 			w.walkBodyFixedPoint(nil, cmd.Do)
 		}
-		w.funcs = mergeZoneFuncs(preFuncs, w.funcs)
+		w.funcs = mergeZoneFuncsState(preFuncs, w.funcs)
 	case *syntax.WhileClause:
 		// the iteration count is unknown: condition and body walk together
 		// to the fixed point — the condition runs every iteration (round 11
@@ -1426,39 +1417,52 @@ func (w *zoneWalker) zoneWalkStmt(stmt *syntax.Stmt) {
 		// already unions (round 8 P1; WhileClause.Until folds `until` into
 		// the same shape). The zero-iteration world keeps the pre-loop
 		// function registry too (round 14 P1).
-		preFuncs := cloneZoneFuncs(w.funcs)
+		preFuncs := cloneZoneFuncsState(w.funcs)
 		w.walkBodyFixedPoint(cmd.Cond, cmd.Do)
-		w.funcs = mergeZoneFuncs(preFuncs, w.funcs)
+		w.funcs = mergeZoneFuncsState(preFuncs, w.funcs)
 	case *syntax.CaseClause:
 		entry := append([]zoneCwd(nil), w.cwds...)
-		entryFuncs := cloneZoneFuncs(w.funcs)
+		entryFuncs := cloneZoneFuncsState(w.funcs)
 		worlds := append([]zoneCwd(nil), entry...) // no arm may match: entry survives
-		worldsFuncs := cloneZoneFuncs(entryFuncs)
+		worldsFuncs := cloneZoneFuncsState(entryFuncs)
 		for _, item := range cmd.Items {
 			// every arm starts from the case's entry set — and, sound over
 			// `;&` and `;;&` fall-through, from every earlier arm's exit
 			// state too (round 9 P1); the registries union the same way
 			// (round 14 P1)
 			w.setCwds(append(append([]zoneCwd(nil), entry...), worlds...))
-			w.funcs = mergeZoneFuncs(entryFuncs, worldsFuncs)
+			w.funcs = mergeZoneFuncsState(entryFuncs, worldsFuncs)
 			for _, s := range item.Stmts {
 				w.zoneWalkStmt(s)
 			}
 			worlds = append(worlds, w.cwds...)
-			worldsFuncs = mergeZoneFuncs(worldsFuncs, w.funcs)
+			worldsFuncs = mergeZoneFuncsState(worldsFuncs, w.funcs)
 		}
 		w.setCwds(worlds)
-		w.funcs = mergeZoneFuncs(entryFuncs, worldsFuncs)
+		w.funcs = mergeZoneFuncsState(entryFuncs, worldsFuncs)
 	case *syntax.TimeClause:
 		// `time cmd` runs cmd, timed (round 10 P2)
 		w.zoneWalkStmt(cmd.Stmt)
 	case *syntax.FuncDecl:
-		// a declaration alone runs nothing; the name registers so a later
-		// call in the same command walks the body (round 10 P2). A
-		// straight-line redefinition REPLACES — only a branch join unions
-		// (round 14 P1).
+		// a declaration alone runs nothing; the name registers PER WORLD —
+		// generation-identical in both, per-reading when the name word is
+		// dual (gate round 25 P1) — so a later call in the same command
+		// walks the body in its own generation's registry (round 10 P2). A
+		// straight-line redefinition REPLACES within its world — only a
+		// branch join unions (round 14 P1).
 		if cmd.Name != nil {
-			w.funcs[cmd.Name.Value] = []*syntax.Stmt{cmd.Body}
+			worlds := []int{0, 1}
+			if w.world >= 0 {
+				worlds = []int{w.world}
+			}
+			name := cmd.Name.Value
+			readings := [2]string{name, name}
+			for _, world := range worlds {
+				if readings[world] == "" {
+					continue
+				}
+				w.funcs[world][readings[world]] = []*syntax.Stmt{cmd.Body}
+			}
 		}
 	case *syntax.CallExpr:
 		w.zoneCall(cmd)
@@ -1483,7 +1487,7 @@ func (w *zoneWalker) walkIfChain(clause *syntax.IfClause) {
 		w.zoneWalkStmt(s) // a condition executes (round 6 P1)
 	}
 	afterCond := append([]zoneCwd(nil), w.cwds...)
-	branchFuncs := cloneZoneFuncs(w.funcs) // the post-condition registry every branch starts from
+	branchFuncs := cloneZoneFuncsState(w.funcs) // the post-condition registry every branch starts from
 	w.setCwds(afterCond)
 	for _, s := range clause.Then {
 		w.zoneWalkStmt(s)
@@ -1491,13 +1495,13 @@ func (w *zoneWalker) walkIfChain(clause *syntax.IfClause) {
 	afterThen := append([]zoneCwd(nil), w.cwds...)
 	thenFuncs := w.funcs
 	w.setCwds(afterCond)
-	w.funcs = cloneZoneFuncs(branchFuncs)
+	w.funcs = cloneZoneFuncsState(branchFuncs)
 	w.walkIfChain(clause.Else)
 	afterElse := append([]zoneCwd(nil), w.cwds...)
 	elseFuncs := w.funcs
 	// union: the then world, the else world, the condition-false world —
 	// directories and function definitions alike (round 14 P1)
-	w.funcs = mergeZoneFuncs(branchFuncs, thenFuncs, elseFuncs)
+	w.funcs = mergeZoneFuncsState(mergeZoneFuncsState(branchFuncs, thenFuncs), elseFuncs)
 	w.cwds = append(pre, afterThen...)
 	w.cwds = append(w.cwds, afterElse...)
 	w.setCwds(w.cwds)
@@ -1527,7 +1531,7 @@ func (h *preToolHandler) checkProtectedZoneShell(agentID string, toolInput json.
 	if !ok {
 		return ""
 	}
-	w := &zoneWalker{h: h, cwds: []zoneCwd{{dir: ".", gen: -1}}, funcs: map[string][]*syntax.Stmt{}, calling: map[string]bool{}, calls: map[string]int{}}
+	w := &zoneWalker{h: h, cwds: []zoneCwd{{dir: ".", gen: -1}}, funcs: [2]map[string][]*syntax.Stmt{{}, {}}, calling: [2]map[string]bool{{}, {}}, calls: [2]map[string]int{{}, {}}, world: -1}
 	for _, stmt := range file.Stmts {
 		w.zoneWalkStmt(stmt)
 	}
