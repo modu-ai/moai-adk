@@ -165,20 +165,14 @@ func ExecuteGTDOperation(ctx context.Context, store *BacklogStore, candidate GTD
 	// re-running the reconcile would regress the binding to the replayed
 	// operation's run, arming the old run's approval against the new run's
 	// work (review round-21 P1). Only an operation still in flight
-	// (prepared or invoking) reconciles the factory record's half — and
-	// even then only while its run is the card's LATEST assignment: a
-	// later assignment means the card moved on, and the stuck operation's
-	// repair must not drag the binding back to it (review round-22 P1).
+	// (prepared or invoking) reconciles the factory record's half; the
+	// superseded check itself runs INSIDE the repair's queue lock (review
+	// round-22 P1) — checking it outside leaves a window where a newer
+	// dispatch lands between the check and the repair.
 	if applied && stored.Action == GTDActionDispatch && stored.State != GTDOperationReconciled {
 		cardID, runID := gtdDispatchReconcileIdentifiers(ctx, owner, stored)
-		latest, lerr := gtdAssignmentIsLatest(ctx, store, cardID, runID)
-		if lerr != nil {
-			return stored, lerr
-		}
-		if latest {
-			if rerr := reconcileGTDDispatchBinding(ctx, store, cardID, runID); rerr != nil {
-				return stored, rerr
-			}
+		if rerr := reconcileGTDDispatchBinding(ctx, store, cardID, runID); rerr != nil {
+			return stored, rerr
 		}
 	}
 	if applied {
@@ -250,13 +244,21 @@ func gtdAssignmentIsLatest(ctx context.Context, store *BacklogStore, cardID, run
 	return latest == runID, nil
 }
 
+// errGTDReconcileSuperseded is returned by repairGTDDispatchRecord when the
+// card's latest runtime assignment no longer names the repairing run — the
+// card moved on while this operation was in flight, and the repair must
+// leave the binding to the newer engagement (review round-22 P1).
+var errGTDReconcileSuperseded = errors.New("gtd dispatch reconcile: superseded by a later assignment")
+
 // reconcileGTDDispatchBinding verifies — and repairs — the factory record's
 // half of a dispatch success (review round-20 P1): the owner's readback
 // proves the assignment, and the dispatch binding must name the operation's
 // run before the operation may reconcile. The repair runs
 // repairGTDDispatchRecord, because the missing writes are the factory
 // record's alone — the assignment they pair with already committed — and
-// re-running the owner's apply would repeat that committed save.
+// re-running the owner's apply would repeat that committed save. A repair
+// skipped as superseded reconciles without touching the binding: the
+// binding belongs to the newer engagement (review round-22 P1).
 func reconcileGTDDispatchBinding(ctx context.Context, store *BacklogStore, cardID, runID string) error {
 	current, err := gtdDispatchBindingCurrent(ctx, store, cardID, runID)
 	if err != nil {
@@ -269,7 +271,11 @@ func reconcileGTDDispatchBinding(ctx context.Context, store *BacklogStore, cardI
 	if path == "" {
 		return fmt.Errorf("gtd operation: dispatch target %s does not name run %s and no factory database is reachable for the binding repair", cardID, runID)
 	}
-	if err := repairGTDDispatchRecord(ctx, store, path, cardID, runID); err != nil {
+	err = repairGTDDispatchRecord(ctx, store, path, cardID, runID)
+	if errors.Is(err, errGTDReconcileSuperseded) {
+		return nil
+	}
+	if err != nil {
 		return err
 	}
 	current, err = gtdDispatchBindingCurrent(ctx, store, cardID, runID)
@@ -317,6 +323,19 @@ func repairGTDDispatchRecord(ctx context.Context, store *BacklogStore, factoryDB
 		}
 		if owner == "" {
 			return fmt.Errorf("queue item %s carries no runtime assignment for run %s — the authoritative owner is unknown", cardID, runID)
+		}
+		// The latest-engagement check runs INSIDE this lock (review
+		// round-22 P1): checking it outside leaves a window where a newer
+		// dispatch lands between the check and the repair, and the repair
+		// would drag the binding back to this operation's run. The check
+		// and the factory writes now serialize on the same lock the
+		// dispatch writers hold.
+		latest, lerr := gtdAssignmentIsLatest(ctx, store, cardID, runID)
+		if lerr != nil {
+			return lerr
+		}
+		if !latest {
+			return errGTDReconcileSuperseded
 		}
 		db, err := homestate.OpenFactoryPath(factoryDBPath)
 		if err != nil {

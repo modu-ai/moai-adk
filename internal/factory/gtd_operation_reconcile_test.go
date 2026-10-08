@@ -351,3 +351,35 @@ func TestGTDBindingCurrentRejectsPickedOwnerlessRow(t *testing.T) {
 		t.Fatalf("repaired row = %s/%q, want assigned/worker-9", row.State, row.OwnerLabel)
 	}
 }
+
+// A→B→A re-dispatch: the upsert the assignment write once used kept the
+// original row, so the last A looked older than B and the repair was
+// skipped. Delete-then-insert bumps the engagement order on every
+// re-dispatch — the repair against the re-dispatched run must run
+// (review round-22, card t1538).
+func TestGTDRedispatchBumpsEngagementOrder(t *testing.T) {
+	root, s, card := gtdReconcileFixture(t)
+	gtdPlaceRow(t, root, card, "run-a") // picked/ownerless row: the repair's target
+	for _, run := range []string{"run-a", "run-b", "run-a"} {
+		if err := RecordFactoryCardAssignment(root, run, card, "worker-1", ""); err != nil {
+			t.Fatal(err)
+		}
+	}
+	op := GTDOperation{OperationID: "gtd-dispatch:run-a:" + card, MissionID: "run-a", Action: GTDActionDispatch, Target: card, SnapshotHash: "snap", ReceiptJSON: []byte(`{}`)}
+	owner := gtdDispatchOwner{store: s, root: root, runID: "run-a", card: card, owner: "worker-1"}
+	if _, err := ExecuteGTDOperation(context.Background(), s, op, owner); err != nil {
+		t.Fatal(err)
+	}
+	db, err := homestate.OpenFactory(root)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer func() { _ = db.Close() }()
+	row, err := db.LoadCard(context.Background(), "run-a", card)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if row.State != homestate.CardAssigned || row.OwnerLabel != NormalizeOwnerLabel("worker-1") {
+		t.Fatalf("re-dispatched run repaired to %s/%q, want assigned/worker-1", row.State, row.OwnerLabel)
+	}
+}

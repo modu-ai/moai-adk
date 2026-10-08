@@ -271,7 +271,22 @@ func (s *BacklogStore) recordRuntimeHook(run TodoRuntimeRun, assignment *TodoRun
 		// new legacy row is ever written.
 		a := *assignment
 		a.OwnerLabel = canonicalOwnerLabel(a.OwnerLabel)
-		if _, err := tx.ExecContext(ctx, `INSERT INTO todo_runtime_assignments(run_id,card_id,owner_label,reported_state,event_kind,provenance_json) VALUES(?,?,?,?,?,?) ON CONFLICT(run_id,card_id) DO UPDATE SET owner_label=excluded.owner_label,reported_state=excluded.reported_state,event_kind=excluded.event_kind,provenance_json=excluded.provenance_json`, a.RunID, a.CardID, a.OwnerLabel, a.ReportedState, a.EventKind, a.ProvenanceJSON); err != nil {
+		// Delete-then-insert instead of an upsert (review round-22): the
+		// dispatch reconciliation reads insert order (rowid) as the
+		// engagement order, and an upsert keeps the conflicting row's
+		// original rowid — an A→B→A re-dispatch would leave the last A
+		// looking older than B. Re-inserting bumps the rowid on every
+		// dispatch, so latest assignment == latest engagement.
+		// Delete-then-insert instead of an upsert (review round-22): the
+		// dispatch reconciliation reads insert order (rowid) as the
+		// engagement order, and an upsert keeps the conflicting row's
+		// original rowid — an A→B→A re-dispatch would leave the last A
+		// looking older than B. Re-inserting bumps the rowid on every
+		// dispatch, so latest assignment == latest engagement.
+		if _, err := tx.ExecContext(ctx, `DELETE FROM todo_runtime_assignments WHERE run_id=? AND card_id=?`, a.RunID, a.CardID); err != nil {
+			return err
+		}
+		if _, err := tx.ExecContext(ctx, `INSERT INTO todo_runtime_assignments(run_id,card_id,owner_label,reported_state,event_kind,provenance_json) VALUES(?,?,?,?,?,?)`, a.RunID, a.CardID, a.OwnerLabel, a.ReportedState, a.EventKind, a.ProvenanceJSON); err != nil {
 			return err
 		}
 	}
