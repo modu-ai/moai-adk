@@ -18,6 +18,7 @@ package userassets
 import (
 	"crypto/sha256"
 	"encoding/hex"
+	"errors"
 	"fmt"
 	"io"
 	"io/fs"
@@ -117,10 +118,18 @@ func (in *Installer) Install(selection []string) (*Result, error) {
 	// (final-class item 5). A CORRUPT journal is preserved (renamed aside)
 	// and the run ABORTS: the journal carries the interrupted install's
 	// selection + ownership recovery data, and silently discarding it would
-	// turn the retry into a mis-attributed run (review fix RF4).
+	// turn the retry into a mis-attributed run (review fix RF4). An
+	// UNSUPPORTED-SCHEMA journal (M1, REQ-JRN-004) is refused WITHOUT the
+	// rename: it stays at its original path, because the sidecar name would
+	// hide it from the compatible binary that must recover it — every run
+	// of this binary keeps rejecting in place until then.
 	journal, journalErr := LoadJournal(JournalPath(in.Home))
 	journalClassified := map[string]bool{}
 	if journalErr != nil {
+		var schemaErr *JournalSchemaError
+		if errors.As(journalErr, &schemaErr) {
+			return nil, fmt.Errorf("pending-install journal at %s carries schema_version %d, this binary writes %d — the run refuses and the journal is preserved in place until a compatible binary recovers it", JournalPath(in.Home), schemaErr.Found, SchemaVersion)
+		}
 		sidecar := JournalPath(in.Home) + ".corrupt-" + time.Now().UTC().Format("20060102T150405")
 		if renameErr := os.Rename(JournalPath(in.Home), sidecar); renameErr != nil {
 			return nil, fmt.Errorf("journal corrupt and could not be preserved: %w", journalErr)
@@ -287,9 +296,11 @@ func (in *Installer) Install(selection []string) (*Result, error) {
 	// Journal-recovered entries flow through the same truth table (the
 	// sharpening): a recovered file whose bytes differ from shipped is
 	// refreshed like any manifest-match file. M1 (REQ-JRN-002): the refresh
-	// updates the CARRIED entry's recorded hash too — a stale hash would
-	// make the next recovery mis-classify the run's own refresh as a case-3
-	// mismatch (collision/divergence) instead of claiming it.
+	// updates the CARRIED entry's recorded hash AND its provenance together
+	// (gate round 14) — a stale hash would make the next recovery
+	// mis-classify the run's own refresh, and stale MoaiVersion/InstalledAt
+	// would record the new bytes under the old run's origin (REQ-006: the
+	// per-file version names the build that produced the bytes on disk).
 	stageChanged := false
 	for _, tgt := range reEvaluate {
 		recorded, err := in.applyTarget(tgt, manifest, roots, res)
@@ -298,9 +309,14 @@ func (in *Installer) Install(selection []string) (*Result, error) {
 			continue
 		}
 		if recorded != "" {
-			if i, ok := stageIndexOf[tgt.manifestKey]; ok && stage.Entries[i].ExpectedSHA256 != recorded {
-				stage.Entries[i].ExpectedSHA256 = recorded
-				stageChanged = true
+			if i, ok := stageIndexOf[tgt.manifestKey]; ok {
+				e := &stage.Entries[i]
+				if e.ExpectedSHA256 != recorded || e.MoaiVersion != in.MoaiVersion {
+					e.ExpectedSHA256 = recorded
+					e.MoaiVersion = in.MoaiVersion
+					e.InstalledAt = now.UTC().Format(time.RFC3339)
+					stageChanged = true
+				}
 			}
 		}
 	}

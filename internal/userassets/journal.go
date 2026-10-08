@@ -32,6 +32,7 @@ package userassets
 
 import (
 	"encoding/json"
+	"errors"
 	"fmt"
 	"os"
 )
@@ -82,6 +83,26 @@ func WriteJournal(path string, j *PendingJournal) error {
 	return atomicWrite(path, data, 0o644)
 }
 
+// JournalSchemaError reports a journal whose schema_version this binary
+// does not write (SPEC-USERASSET-DEPLOY-GUARD-001 M1, REQ-JRN-004). Unlike
+// a corrupt journal, it is preserved AT ITS ORIGINAL PATH: the callers
+// refuse and leave the file in place until a compatible binary recovers it
+// — routing it to the corrupt sidecar would hide it from the very binary
+// that can decode it.
+type JournalSchemaError struct {
+	Path  string
+	Found int
+}
+
+func (e *JournalSchemaError) Error() string {
+	return fmt.Sprintf("userassets: journal at %s carries schema_version %d, this binary writes %d — refusing to decode (the journal is preserved in place; a binary that writes schema %d must recover it)", e.Path, e.Found, SchemaVersion, e.Found)
+}
+
+// AsJournalSchemaError reports whether err is a *JournalSchemaError.
+func AsJournalSchemaError(err error, se **JournalSchemaError) bool {
+	return errors.As(err, se)
+}
+
 // LoadJournal reads the journal. Absent → (nil, nil). A journal whose
 // schema_version this binary does not write is refused with a diagnostic —
 // a silent decode would mis-read an unknown schema's recovery data as if it
@@ -99,7 +120,7 @@ func LoadJournal(path string) (*PendingJournal, error) {
 		return nil, fmt.Errorf("userassets: journal corrupt at %s: %w", path, err)
 	}
 	if j.SchemaVersion != SchemaVersion {
-		return nil, fmt.Errorf("userassets: journal at %s carries schema_version %d, this binary writes %d — refusing to decode (preserve the file; the interrupted install's selection + ownership recovery data must not be silently reinterpreted)", path, j.SchemaVersion, SchemaVersion)
+		return nil, &JournalSchemaError{Path: path, Found: j.SchemaVersion}
 	}
 	return &j, nil
 }
