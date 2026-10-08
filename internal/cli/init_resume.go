@@ -12,15 +12,29 @@ package cli
 
 import (
 	"encoding/json"
+	"errors"
 	"fmt"
 	"os"
+	"path/filepath"
 	"time"
 
 	"github.com/modu-ai/moai-adk/internal/core/project"
+	"github.com/modu-ai/moai-adk/internal/homestate"
 	"github.com/modu-ai/moai-adk/internal/template"
 	"github.com/modu-ai/moai-adk/internal/userassets"
 	"github.com/spf13/cobra"
 )
+
+// userHomeDirOrEmpty resolves the user home for the resume-checkpoint
+// probe; an unresolvable home reads as "no checkpoint" (the ordinary
+// re-run keeps the update redirect).
+func userHomeDirOrEmpty() string {
+	home, err := userHomeDirFn()
+	if err != nil {
+		return ""
+	}
+	return home
+}
 
 // resumeInitializedProject completes an init whose prior attempt failed at
 // the user-asset ensure: the ensure shortfall runs (the bundle selection
@@ -42,6 +56,25 @@ func resumeInitializedProject(cmd *cobra.Command, opts *project.InitOptions, wir
 	if err := ensureUserAssetsLocked(homeDir, parseBundleSelection(getStringFlag(cmd, "bundles")), cmd.OutOrStdout()); err != nil {
 		return fmt.Errorf("user-asset ensure: %w", err)
 	}
+	// The project layout the failed attempt never reached.
+	if err := homestate.EnsureProjectLayout(opts.ProjectRoot); err != nil {
+		return fmt.Errorf("project layout: %w", err)
+	}
+	// Gate round 35-6: the AUTONOMY TIER this run answered is applied too —
+	// the failed attempt never reached the bundle, and a resume that skips
+	// it leaves permissions.defaultMode empty (the gate repro).
+	projectSettingsPath := filepath.Join(opts.ProjectRoot, ".claude", "settings.json")
+	if wiring == agentWiringGPT {
+		projectSettingsPath = ""
+	}
+	if err := applyAutonomyTierBundleFn(
+		opts.ProjectRoot,
+		filepath.Join(homeDir, ".claude", "settings.json"),
+		projectSettingsPath,
+		opts.AutonomyTier,
+	); err != nil {
+		return fmt.Errorf("apply autonomy tier: %w", err)
+	}
 	// DEBT R4: the resume is judged by CONTENT downstream — the harness
 	// config, the MCP entry, and the Codex wiring the failed attempt never
 	// wrote are all written here, in the production order.
@@ -60,6 +93,20 @@ func resumeInitializedProject(cmd *cobra.Command, opts *project.InitOptions, wir
 	}
 	wireCodexUnlessClaude(cmd, wiring, opts.ProjectRoot)
 	return nil
+}
+
+// initResumeCheckpoint reports whether an explicit interruption
+// checkpoint justifies the init resume (gate round 35-3): a pending-
+// install journal (an attempt interrupted mid-install) or a CORRUPT user
+// manifest (an attempt that failed before/at the ensure). A healthy
+// project's ordinary re-run has neither — it keeps the update redirect.
+func initResumeCheckpoint(homeDir string) bool {
+	if j, err := userassets.LoadJournal(userassets.JournalPath(homeDir)); err == nil && j != nil {
+		return true
+	}
+	_, err := userassets.Load(userassets.ManifestPath(homeDir))
+	var ce *userassets.CorruptError
+	return errors.As(err, &ce)
 }
 
 // quarantineCorruptUserManifest renames a CORRUPT user manifest aside with

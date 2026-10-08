@@ -909,13 +909,23 @@ func runInit(cmd *cobra.Command, args []string) (err error) {
 		// reached (ApplyHarness, the MCP entry, the Codex wiring) run now.
 		// DEBT R4: the resume is judged by CONTENT — the harness config the
 		// resume writes is asserted, not merely the directory's existence.
+		// Gate round 35-3: the resume is GATED on an explicit interruption
+		// checkpoint — a pending-install journal (interrupted mid-install)
+		// or a corrupt user manifest (failed before/at the ensure). A
+		// healthy project's ordinary re-run keeps the update redirect.
 		if !getBoolFlag(cmd, "force") && strings.Contains(err.Error(), "already initialized") {
-			if resumeErr := resumeInitializedProject(cmd, &opts, agentWiringSelection); resumeErr != nil {
-				return fmt.Errorf("initialization resume failed: %w\n  Hint: this directory already contains a MoAI project — 'moai update' refreshes templates in place; --force reinitializes from scratch", resumeErr)
+			// M6: the resume fires only on an interruption checkpoint
+			// (gate round 35-3) — a healthy project's ordinary re-run
+			// keeps the original update redirect below.
+			if initResumeCheckpoint(userHomeDirOrEmpty()) {
+				if resumeErr := resumeInitializedProject(cmd, &opts, agentWiringSelection); resumeErr != nil {
+					return fmt.Errorf("initialization resume failed: %w\n  Hint: this directory already contains a MoAI project — 'moai update' refreshes templates in place; --force reinitializes from scratch", resumeErr)
+				}
+				p.Info("Initialized MoAI project (resumed: user-asset shortfall completed, setup steps finished).")
+				flushUpdateNotice(p)
+				return nil
 			}
-			p.Info("Initialized MoAI project (resumed: user-asset shortfall completed, setup steps finished).")
-			flushUpdateNotice(p)
-			return nil
+			return fmt.Errorf("initialization failed: %w\n  Hint: this directory already contains a MoAI project — did you mean 'moai update' (refresh templates in place)? Re-run with --force only to reinitialize from scratch", err)
 		}
 		// SPEC-INIT-DEPLOY-EXIT-001 (REQ-IDE-003): a deployment failure aborts
 		// the template walk partway, so files after the failing one were never

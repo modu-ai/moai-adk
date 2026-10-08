@@ -79,7 +79,9 @@ func userRootZoneForms(cand string) []zoneForm {
 	// Gate round 27-4: EACH INSTALL ROOT is resolved through the same walk
 	// as the target — a dotfile-manager symlink on ~/.claude relocates the
 	// root, and only root-resolved prefixes can match a target-resolved
-	// path.
+	// path. Gate round 34-2: the prefix comparison itself is CASE-FOLDED —
+	// on a case-insensitive filesystem .CLAUDE names the same directory as
+	// .claude, and a case-alias target must not bypass the match.
 	var out []zoneForm
 	for slug, dir := range userRootSlugDirs {
 		resolvedRoot, ok := zoneResolve(filepath.Join(home, filepath.FromSlash(dir)))
@@ -90,14 +92,22 @@ func userRootZoneForms(cand string) []zoneForm {
 		if !ok {
 			return nil // unresolvable target: no evidence, fail to allow
 		}
-		under := filepath.ToSlash(resolvedRoot) + "/"
-		rest, ok := strings.CutPrefix(filepath.ToSlash(resolvedTarget), under)
-		if !ok {
+		rootSlash := config.FoldZoneText(filepath.ToSlash(resolvedRoot))
+		targetSlash := config.FoldZoneText(filepath.ToSlash(resolvedTarget))
+		// Gate round 27-2 + 34-1: the ROOT ITSELF (rest == "") and every
+		// ANCESTOR of a root (the target contains the root — rm -rf
+		// ~/.claude deletes every tracked file inside it) are protected
+		// forms; the tracked containment decides whether anything under
+		// the form is actually tracked.
+		rest := ""
+		if strings.HasPrefix(targetSlash, rootSlash+"/") {
+			rest = targetSlash[len(rootSlash)+1:]
+		} else if targetSlash == rootSlash || strings.HasPrefix(rootSlash, targetSlash+"/") {
+			// the target IS the root, or contains it (an ancestor)
+			rest = ""
+		} else {
 			continue
 		}
-		// Gate round 27-2: the ROOT ITSELF (rest == "") is a protected form
-		// — removing it removes every tracked descendant. The bare form
-		// matches via the entry's dir semantics and the tracked containment.
 		display := userRootFormPrefix + slug
 		if rest != "" {
 			display += "/" + rest

@@ -72,6 +72,44 @@ func TestUserRootFormsEmitNamespacedForm(t *testing.T) {
 		t.Fatalf("the /../ spelling form = %v, want [%s]", parent, want)
 	}
 
+	// Gate round 34-1: the ROOT ITSELF and an ANCESTOR of the root emit the
+	// bare-root form (rm -rf ~/.claude/skills / rm -rf ~/.claude delete
+	// every tracked file inside them).
+	rootForms := userRootZoneForms(home + "/.claude/agents")
+	rootHit := false
+	for _, f := range rootForms {
+		if f.Display == "user-root:claude-agents" {
+			rootHit = true
+		}
+	}
+	if !rootHit {
+		t.Fatalf("the root-itself target emitted %v — the bare-root protected form is missing", rootForms)
+	}
+	ancestorForms := userRootZoneForms(home + "/.claude")
+	agentsHit := false
+	for _, f := range ancestorForms {
+		if f.Display == "user-root:claude-agents" {
+			agentsHit = true
+		}
+	}
+	if !agentsHit {
+		t.Fatalf("the ancestor target emitted %v — no bare-root form for the contained root", ancestorForms)
+	}
+
+	// Gate round 34-2: a CASE-ALIAS spelling of the root emits the same
+	// folded form (the containment must not be case-sensitive ahead of the
+	// folded manifest-key comparison).
+	caseAlias := userRootZoneForms(home + "/.CLAUDE/agents/moai/plan-auditor.md")
+	caseHit := false
+	for _, f := range caseAlias {
+		if f.Display == want {
+			caseHit = true
+		}
+	}
+	if !caseHit {
+		t.Fatalf("the case-alias spelling emitted %v — the case-alias bypass is open", caseAlias)
+	}
+
 	if got := userRootZoneForms(".claude/agents/moai/plan-auditor.md"); got != nil {
 		t.Fatalf("a relative (project-relative) target produced user forms: %v", got)
 	}

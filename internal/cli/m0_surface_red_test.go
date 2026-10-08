@@ -218,6 +218,43 @@ func TestInitResumeAfterUserAssetEnsureFailure(t *testing.T) {
 	}
 }
 
+// TestInitResumeGateKeepsHealthyRedirect — gate round 35-3: the resume
+// fires only on an interruption checkpoint (pending journal / corrupt
+// manifest). A HEALTHY project's ordinary re-run keeps the original
+// update redirect — the resume must not swallow it.
+func TestInitResumeGateKeepsHealthyRedirect(t *testing.T) {
+	home := t.TempDir()
+	t.Setenv("HOME", home)
+	t.Setenv("MOAI_SANDBOX_PROOF", "")
+	t.Setenv("MOAI_DISABLE_BYPASS_PERMISSIONS_MODE", "")
+
+	seamsForInit(t)
+	projectDir := filepath.Join(t.TempDir(), "healthy-proj")
+
+	cmd1 := newInitTestCmd()
+	var out1, err1 strings.Builder
+	cmd1.SetOut(&out1)
+	cmd1.SetErr(&err1)
+	if err := runInit(cmd1, []string{projectDir}); err != nil {
+		t.Fatalf("run 1: %v", err)
+	}
+
+	cmd2 := newInitTestCmd()
+	var out2, err2 strings.Builder
+	cmd2.SetOut(&out2)
+	cmd2.SetErr(&err2)
+	err := runInit(cmd2, []string{projectDir})
+	if err == nil {
+		t.Fatal("a healthy project's re-run succeeded — init is not idempotent without the resume checkpoint")
+	}
+	if !strings.Contains(err.Error(), "already initialized") {
+		t.Fatalf("the healthy re-run failed for the wrong reason: %v", err)
+	}
+	if !strings.Contains(err.Error(), "moai update") {
+		t.Errorf("the healthy re-run lost the update redirect hint: %v", err)
+	}
+}
+
 // seamsForInit swaps the wizard seams the same way the autonomy-wiring tests
 // do, so runInit runs non-interactively against the injected result.
 func seamsForInit(t *testing.T) {

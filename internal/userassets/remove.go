@@ -336,11 +336,31 @@ func (in *Installer) preservedEntries(selection []string) []template.Entry {
 	entries := make([]template.Entry, 0, len(in.Catalog.Catalog.Core.Skills)+len(in.Catalog.Catalog.Core.Agents))
 	entries = append(entries, in.Catalog.Catalog.Core.Skills...)
 	entries = append(entries, in.Catalog.Catalog.Core.Agents...)
-	for _, name := range selection {
-		if pack, ok := in.Catalog.Catalog.OptionalPacks[name]; ok {
-			entries = append(entries, pack.Skills...)
-			entries = append(entries, pack.Agents...)
+	// M6 (REQ-SRF-005, gate round 35-2): the retention set is expanded
+	// through the SAME DependsOn closure the install uses — a dependency
+	// bundle installed alongside its selected parent is not pruned as
+	// unselected the next time the recorded selection is judged (the
+	// extras→extras2 repro). Cycle-safe: the walked set doubles as the
+	// guard.
+	gathered := map[string]bool{}
+	var walk func(name string)
+	walk = func(name string) {
+		if gathered[name] {
+			return
 		}
+		gathered[name] = true
+		pack, ok := in.Catalog.Catalog.OptionalPacks[name]
+		if !ok {
+			return
+		}
+		entries = append(entries, pack.Skills...)
+		entries = append(entries, pack.Agents...)
+		for _, dep := range pack.DependsOn {
+			walk(dep)
+		}
+	}
+	for _, name := range selection {
+		walk(name)
 	}
 	return entries
 }

@@ -899,8 +899,23 @@ func (in *Installer) confinedWrite(root resolvedRoot, rel string, data []byte, m
 	}
 	defer func() { _ = pinned.Close() }()
 	leaf := filepath.Base(dest)
-	tmpName := fmt.Sprintf(".ua-write-%d-%d", os.Getpid(), time.Now().UnixNano())
-	tmp, err := pinned.Create(tmpName)
+	// Gate round 34-3: the temp file is created EXCLUSIVELY (O_CREATE|
+	// O_EXCL via the pinned handle) with a fresh random name retried on
+	// collision — os.Root.Create is O_TRUNC non-EXCL, so an attacker-placed
+	// symlink at a guessed temp name would be followed and its target
+	// truncated. Exclusive creation fails closed on any pre-existing entry
+	// instead, and a fresh name is drawn per attempt.
+	var tmp *os.File
+	var tmpName string
+	for attempt := 0; attempt < 8; attempt++ {
+		tmpName = fmt.Sprintf(".ua-write-%d-%d-%d", os.Getpid(), time.Now().UnixNano(), attempt)
+		f, createErr := pinned.OpenFile(tmpName, os.O_CREATE|os.O_EXCL|os.O_WRONLY, 0o600)
+		if err == nil || !errors.Is(createErr, os.ErrExist) {
+			tmp, err = f, createErr
+			break
+		}
+		err = createErr
+	}
 	if err != nil {
 		return err
 	}
