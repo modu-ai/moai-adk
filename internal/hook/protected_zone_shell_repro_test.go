@@ -47,6 +47,7 @@ package hook
 // the guard judged — so a red shows the actual landing, not an inference.
 
 import (
+	"encoding/json"
 	"fmt"
 	"os"
 	"os/exec"
@@ -54,6 +55,8 @@ import (
 	"runtime"
 	"strings"
 	"testing"
+
+	"mvdan.cc/sh/v3/syntax"
 )
 
 // hzsShellManifest declares the protected zone_dir directory under the probe
@@ -300,4 +303,158 @@ func hzsDecodeAnsiC(v string) (out string, panicked bool) {
 		}
 	}()
 	return zoneUnescapeAnsiC(v), false
+}
+
+// hzsGuardShell drives the guard's shell half with the panic contained (the
+// hzsDecodeAnsiC pattern extended to the guard call): the analysis walk
+// carries no recover of its own, so pre-fix a no-digit escape in the command
+// panics the walk; post-fix a decision comes back (an empty string is the
+// allow decision).
+func hzsGuardShell(h *preToolHandler, agent, command string) (decision string, panicked bool) {
+	defer func() {
+		if rec := recover(); rec != nil {
+			decision, panicked = "", true
+		}
+	}()
+	raw, err := json.Marshal(map[string]any{"command": command})
+	if err != nil {
+		return "", false
+	}
+	return h.checkProtectedZoneShell(agent, raw), false
+}
+
+// TestCheckProtectedZoneShellGuardCompletesOnNoDigitEscape — AC-HZS-006: a
+// real Bash call carrying a no-digit escape must produce a DECISION — the
+// analysis walk runs to completion and a decoder panic never escapes into
+// the guard. Pre-fix the walk panics (contained here by hzsGuardShell, so
+// the row reports the panic instead of crashing the binary); post-fix the
+// row observes the decision.
+func TestCheckProtectedZoneShellGuardCompletesOnNoDigitEscape(t *testing.T) {
+	root := newZoneRoot(t, zoneShippedDoc(hzsShellManifest), "")
+	if err := os.MkdirAll(filepath.Join(root, "zone_dir"), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	h := zoneTestHandler(t, root)
+	const panicCmd = `rm -r zone_dir$'\x'/sub`
+	d, panicked := hzsGuardShell(h, harnessLearnerIdentity, panicCmd)
+	if panicked {
+		t.Errorf("guard walk PANICKED on the no-digit escape in %q — the walk must complete and return a decision", panicCmd)
+		return
+	}
+	t.Logf("decision=%q (no panic — the walk completed)", d)
+	t.Logf("swept=%d", 1)
+}
+
+// TestZoneUnescapeAnsiCCodePointRenderingPinned — AC-HZS-007: the decoder
+// renders code points as UTF-8 (string(rune(val))), pinned POST-repair so a
+// mutant of the \\x split cannot quietly re-render \\u as a raw byte. The
+// rows feed the ESCAPE TEXTS — byte 0x5C followed by the ASCII characters —
+// not the rendered character: a literal glyph would ride the backslash-free
+// early path and pin nothing. A maxDigits 4→2 mutant on \\u returns a
+// different byte sequence and fails here. In Go source the six-byte escape
+// text is written "\\u2287" — the doubled backslash is source syntax for the
+// single 0x5C byte at runtime.
+func TestZoneUnescapeAnsiCCodePointRenderingPinned(t *testing.T) {
+	rows := []struct{ in, name string }{
+		{"\\u2287", `escape text 0x5C u2287`},
+		{"\\U00002287", `escape text 0x5C U00002287`},
+	}
+	want := string(rune(0x2287)) // the three UTF-8 bytes e2 8a 87
+	swept := 0
+	for _, row := range rows {
+		swept++
+		got, panicked := hzsDecodeAnsiC(row.in)
+		if panicked {
+			t.Errorf("%s: PANICKED — the code-point pin must decode without a panic", row.name)
+			continue
+		}
+		if got != want {
+			t.Errorf("%s: decoded % x, want % x (string(rune(0x2287)))", row.name, got, want)
+		}
+	}
+	if swept != len(rows) {
+		t.Fatalf("swept %d rows, want exactly %d", swept, len(rows))
+	}
+	t.Logf("swept=%d", swept)
+}
+
+// TestZoneWordTextAnsiCPartTruncatesAtNul — AC-HZS-009: the part-level NUL
+// terminator shape. Bash assembles $'a\x00b'X as "aX" — the ANSI-C part's
+// contribution ends at its first NUL byte and the LATER part still appends.
+// A word-level truncation reads the same "aX" on the command rows while
+// wrongly dropping the X here, which is exactly the mutant this row fails.
+// Pre-repair the decoder keeps the NUL and the text after it, so the
+// assembled word is "a" NUL "bX".
+func TestZoneWordTextAnsiCPartTruncatesAtNul(t *testing.T) {
+	file, ok := zoneParse(`rm $'a\x00b'X`)
+	if !ok {
+		t.Fatal("parse failed")
+	}
+	call, ok := file.Stmts[0].Cmd.(*syntax.CallExpr)
+	if !ok {
+		t.Fatalf("stmt[0] is %T, want *syntax.CallExpr", file.Stmts[0].Cmd)
+	}
+	got, literal := zoneWordText(call.Args[1])
+	if !literal {
+		t.Fatalf("word $'a\\x00b'X is not fully literal")
+	}
+	if got != "aX" {
+		t.Errorf("zoneWordText($'a\\x00b'X) = %q, want %q — the ANSI-C part ends at its first NUL byte and the later part still appends", got, "aX")
+	}
+	t.Logf("swept=%d", 1)
+}
+
+// TestCheckProtectedZoneShellOctalNulTruncationDenied — AC-HZS-010: the same
+// NUL spelled in OCTAL ($'\0') must reach the same truncation — the octal
+// escape renders byte(0) through zoneOctalEscape, so the semantics cannot
+// depend on the escape's origin (bash: $'a\0b' -> "a"). Pre-repair the
+// decoder keeps the NUL and the trailing text and the guard allows a command
+// whose real target is zone_dir itself.
+func TestCheckProtectedZoneShellOctalNulTruncationDenied(t *testing.T) {
+	root := newZoneRoot(t, zoneShippedDoc(hzsShellManifest), "")
+	if err := os.MkdirAll(filepath.Join(root, "zone_dir"), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	marker := filepath.Join(root, "zone_dir", "marker.md")
+	if err := os.WriteFile(marker, []byte("keep"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	h := zoneTestHandler(t, root)
+	d, r := zoneCall(t, h, "Bash", harnessLearnerIdentity, map[string]any{"command": `rm -r zone_dir$'\0/sub'`})
+	wantZoneDeny(t, "octal nul truncation", d, r, harnessLearnerIdentity, "category", "probe_zone")
+	if _, err := os.Stat(marker); err != nil {
+		t.Errorf("octal nul truncation: deny observed but the protected marker is gone: %v", err)
+	}
+	t.Logf("swept=%d", 1)
+}
+
+// TestCheckProtectedZoneShellNonAsciiOutsideZoneStaysAllowed — AC-HZS-011
+// (control): a non-ASCII-named file OUTSIDE the zone stays ALLOWED in both
+// the literal and the raw-byte spelling, pre- and post-repair — a fix (or
+// mutant) that blanket-denies non-ASCII or raw-byte-bearing commands fails
+// HERE. The raw-byte row derives its escapes from the declared name's bytes
+// by construction (hzsHexWord), the same derivation AC-HZS-003 uses, so the
+// decoded word and the created file are the same bytes.
+func TestCheckProtectedZoneShellNonAsciiOutsideZoneStaysAllowed(t *testing.T) {
+	root := newZoneRoot(t, zoneShippedDoc(hzsShellManifest), "")
+	if err := os.WriteFile(filepath.Join(root, "개요.md"), []byte("keep"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	h := zoneTestHandler(t, root)
+	rows := []struct{ name, cmd string }{
+		{"literal spelling", `rm 개요.md`},
+		{"raw-byte spelling", `rm $'` + hzsHexWord("개요.md") + `'`},
+	}
+	swept := 0
+	for _, row := range rows {
+		swept++
+		d, r := zoneCall(t, h, "Bash", harnessLearnerIdentity, map[string]any{"command": row.cmd})
+		if d == DecisionDeny || strings.Contains(r, SentinelHarnessFrozenProtectedZone) {
+			t.Errorf("%s: decision=%q reason=%q, want allowed — the target is outside the zone", row.name, d, r)
+		}
+	}
+	if swept != len(rows) {
+		t.Fatalf("swept %d rows, want exactly %d", swept, len(rows))
+	}
+	t.Logf("swept=%d", swept)
 }
