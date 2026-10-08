@@ -373,6 +373,38 @@ iterations green, **0 data races**, 0 test failures, swept set 265
 abandonment trio × 5). The full-suite verdict remains CI's job (C2) and is
 PENDING at report time.
 
+### Post-close repair row (turn-end gate round on the completed SPEC — abandonment family, fourth member)
+
+The SPEC reached `completed` (sync commit `d6caefb81`); this row records a
+post-close follow-up fix landed on the same branch (same pre-PR shape as
+the D3 backfill; §E.3/§E.4 untouched — manager-docs surfaces).
+
+- **Finding — an abandoned fold still published.** The bounded reads of
+  the final byte comparison can complete INSIDE a poll interval and return
+  normally after the caller's deadline has passed; control then flowed
+  straight to the rename and the abandoned fold's rename published
+  (gate repro: `abandoned=true err=<nil> final="fold output\n"`). Fix: the
+  abandonment flag is re-checked at the last observable moment before the
+  rename in `atomicWriteFoldFile`.
+  RED `TestReviewFindingAbandonedFoldDoesNotPublish` (unix FIFO; the flip
+  lands inside the poll gap and the plan-time bytes are delivered before
+  the next tick): verbatim RED "the abandoned fold published: err=<nil>
+  final=\"fold output\\n\"" (exit 1) → GREEN ×3 (0.20s each; the refusal
+  names the abandonment).
+
+Re-measure judgment (recorded per the standing instruction): the fix adds
+a boolean flag check inside the in-lock write path — no new goroutine, no
+lock-internal or acquisition change — so the proportionate sweep is the
+fold family at `-count=2 -race` (not the full `-count=5` gate); outcome
+below.
+
+**Post-close sweep outcome**: PASS — single-pass family green first
+(`ok … 120.998s`), then `-count=2 -race -v`: `ok
+github.com/modu-ai/moai-adk/internal/cli 244.765s`, exit 0, **0 data
+races**, 0 failures, 108 `=== RUN` lines (the fold family + the new
+publish-guard test × 2). Builds native + windows green; gofmt/vet/lint
+clean. The full-suite verdict remains CI's job (C2) and is PENDING.
+
 ## §E.3 Run-phase Audit-Ready Signal
 
 run_complete_at: 2026-10-09T22:30+09:00

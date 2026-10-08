@@ -732,6 +732,13 @@ func atomicWriteFoldFile(dir, name string, want, planTime []byte, guard *foldRen
 			return err
 		}
 	}
+	// An abandoned step must not publish: the bounded reads above can
+	// complete inside a poll interval and return normally after the
+	// caller's deadline has passed — re-check at the last observable moment
+	// before the rename (post-close gate finding).
+	if writesForbidden != nil && writesForbidden() {
+		return fmt.Errorf("memory fold: %s: the step was abandoned — not writing", name)
+	}
 	if err := os.Rename(tmpName, filepath.Join(dir, name)); err != nil {
 		return fmt.Errorf("memory fold: rename %s: %w", name, err)
 	}
