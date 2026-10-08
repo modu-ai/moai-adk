@@ -344,6 +344,14 @@ func (b *defaultBuilder) collectAll(ctx context.Context, input *StdinData) *Stat
 		data.PR = input.PR
 	}
 
+	// Extract subagentStatusLine tasks[] (SPEC-CC-HAIKU55-STATUSLINE-001,
+	// REQ-CC-HAIKU55-010). Nil-slice pattern: absent / null tasks[] stays nil
+	// (backward compat with CC payloads pre-2.1.293); rendering degrades
+	// silently per REQ-CC-HAIKU55-011.
+	if input != nil && len(input.SubagentTasks) > 0 {
+		data.SubagentTasks = input.SubagentTasks
+	}
+
 	// Extract workspace.repo (v2.1.145+, REQ-SSE-001) — feeds renderRepoSegment.
 	// data.Workspace is a value type (zero-safe). Repo is nil when stdin lacks
 	// it or detection failed; renderer handles nil gracefully.

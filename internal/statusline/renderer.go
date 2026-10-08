@@ -169,6 +169,12 @@ func (r *Renderer) renderDefaultV3(data *StatusData) string {
 		lines = append(lines, ls)
 	}
 
+	// Subagent tasks (Claude Code v2.1.293+ subagentStatusLine event,
+	// SPEC-CC-HAIKU55-STATUSLINE-001 REQ-CC-HAIKU55-010): one line per task
+	// row, the agentType badge only when the row carries it. Nil/empty
+	// tasks[] renders nothing, so an ordinary session keeps the old layout.
+	lines = append(lines, renderSubagentTasks(data)...)
+
 	if len(lines) == 0 {
 		return ""
 	}
@@ -240,6 +246,32 @@ func (r *Renderer) renderSessionLine(data *StatusData) string {
 	// pair (see renderForgePair).
 
 	return r.joinSegments(segs)
+}
+
+// renderSubagentTasks renders one line per subagentStatusLine tasks[] row
+// (SPEC-CC-HAIKU55-STATUSLINE-001, REQ-CC-HAIKU55-010/011). Row format:
+// "⚙ [agentType] name (status)"; a row whose agentType is nil, absent, or
+// empty renders without the badge — the row itself is never dropped, and no
+// decode or render error can surface from it. An empty/absent tasks[] slice
+// renders nothing.
+func renderSubagentTasks(data *StatusData) []string {
+	if len(data.SubagentTasks) == 0 {
+		return nil
+	}
+	lines := make([]string, 0, len(data.SubagentTasks))
+	for _, task := range data.SubagentTasks {
+		var b strings.Builder
+		b.WriteString("⚙ ")
+		if task.AgentType != nil && *task.AgentType != "" {
+			b.WriteString("[" + *task.AgentType + "] ")
+		}
+		b.WriteString(task.Name)
+		if task.Status != "" {
+			b.WriteString(" (" + task.Status + ")")
+		}
+		lines = append(lines, b.String())
+	}
+	return lines
 }
 
 func (r *Renderer) renderInfoLine(data *StatusData, withPrefix bool) string {

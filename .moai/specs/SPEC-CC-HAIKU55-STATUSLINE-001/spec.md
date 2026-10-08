@@ -2,7 +2,7 @@
 id: "SPEC-CC-HAIKU55-STATUSLINE-001"
 title: "Haiku 5.5 documentation sync (GD-1) + subagentStatusLine agentType badge"
 version: "0.1.0"
-status: draft
+status: in-progress
 created: 2026-10-08
 updated: 2026-10-08
 author: manager-spec

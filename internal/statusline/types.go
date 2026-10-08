@@ -73,6 +73,29 @@ type StdinData struct {
 	Agent          *AgentInfo         `json:"agent,omitempty"`     // Active agent identity when the session runs as one (claude --agent); nil otherwise
 	Worktree       *WorktreeInfo      `json:"worktree,omitempty"`  // Worktree session details; nil when the session is in the primary checkout
 	ExceedsLong    bool               `json:"exceeds_200k_tokens"` // long-context overflow boolean (false if absent)
+
+	// SubagentTasks carries the subagentStatusLine `tasks[]` payload rows
+	// (Claude Code v2.1.293+). Nil when the key is absent — ordinary statusline
+	// stdin payloads never carry it, so an ordinary session decodes to nil and
+	// renders nothing new (REQ-CC-HAIKU55-011).
+	SubagentTasks []SubagentTaskInfo `json:"tasks,omitempty"`
+}
+
+// SubagentTaskInfo carries one row of the subagentStatusLine `tasks[]`
+// payload (Claude Code v2.1.293+). AgentType is pointer-nil optional: the
+// key is absent in CC payloads older than v2.1.293 and decodes to nil from
+// an explicit JSON null — both render the row without the badge and must
+// never error, panic, or drop the row (REQ-CC-HAIKU55-011).
+//
+// @MX:NOTE: [AUTO] subagentStatusLine tasks[] row — AgentType is pointer-nil
+// optional so the absent-key and JSON-null shapes of CC pre-2.1.293 payloads
+// degrade silently to a badge-less row (REQ-CC-HAIKU55-011). Name and Type
+// are raw-passthrough — unknown values are not rejected.
+type SubagentTaskInfo struct {
+	AgentType *string `json:"agentType,omitempty"` // the custom subagent's type name; nil when absent/null (CC pre-2.1.293)
+	Name      string  `json:"name"`                // raw-passthrough task name
+	Type      string  `json:"type"`                // raw-passthrough task kind (distinct from agentType)
+	Status    string  `json:"status"`              // raw-passthrough task status
 }
 
 // WorktreeInfo describes a worktree session, from the statusline stdin
@@ -245,22 +268,23 @@ type StatusData struct {
 	Git               GitStatusData
 	Memory            MemoryData
 	Metrics           MetricsData
-	Version           VersionData    // MoAI-ADK version from config
-	ClaudeCodeVersion string         // Claude Code version from JSON input (e.g., "1.0.80")
-	SessionName       string         // Explicit session name (e.g., "Team-A-Lead"); empty when unnamed
-	AgentName         string         // Agent identity the session runs as (e.g., "manager-lead"); empty when none
-	Backlog           BacklogCounts  // Backlog in-flight/waiting counts (Available=false when unreadable)
-	Landed            LandedCounts   // Picked cards the integration branch already names (Known()==false when unmeasured)
-	GitHub            GitHubCounts   // Cached open issue/PR counts (Available=false when never fetched)
-	Directory         string         // Project directory name (e.g., "modu-saju")
-	OutputStyle       string         // Output style name (e.g., "Mr.Alfred", "R2-D2")
-	Task              TaskData       // Current active task (rendering enabled in Phase 4)
-	Usage             *UsageResult   // API usage (nil when unavailable)
-	RateLimits        *RateLimitInfo // Rate limit info from Claude Code (nil when unavailable)
-	Worktree          string         // Active git worktree path (empty string if none, REQ-CC297-003)
-	Effort            *EffortInfo    // Effort level from Claude Code v2.1.139+ (nil when unavailable, REQ-CC2122-001)
-	Thinking          *ThinkingInfo  // Thinking flag from Claude Code v2.1.139+ (nil when unavailable, REQ-CC2122-002)
-	PR                *PRInfo        // Active GitHub PR from Claude Code v2.1.145+ (nil when no PR detected, REQ-SLV-010)
+	Version           VersionData        // MoAI-ADK version from config
+	ClaudeCodeVersion string             // Claude Code version from JSON input (e.g., "1.0.80")
+	SessionName       string             // Explicit session name (e.g., "Team-A-Lead"); empty when unnamed
+	AgentName         string             // Agent identity the session runs as (e.g., "manager-lead"); empty when none
+	Backlog           BacklogCounts      // Backlog in-flight/waiting counts (Available=false when unreadable)
+	Landed            LandedCounts       // Picked cards the integration branch already names (Known()==false when unmeasured)
+	GitHub            GitHubCounts       // Cached open issue/PR counts (Available=false when never fetched)
+	Directory         string             // Project directory name (e.g., "modu-saju")
+	OutputStyle       string             // Output style name (e.g., "Mr.Alfred", "R2-D2")
+	Task              TaskData           // Current active task (rendering enabled in Phase 4)
+	Usage             *UsageResult       // API usage (nil when unavailable)
+	RateLimits        *RateLimitInfo     // Rate limit info from Claude Code (nil when unavailable)
+	Worktree          string             // Active git worktree path (empty string if none, REQ-CC297-003)
+	Effort            *EffortInfo        // Effort level from Claude Code v2.1.139+ (nil when unavailable, REQ-CC2122-001)
+	Thinking          *ThinkingInfo      // Thinking flag from Claude Code v2.1.139+ (nil when unavailable, REQ-CC2122-002)
+	PR                *PRInfo            // Active GitHub PR from Claude Code v2.1.145+ (nil when no PR detected, REQ-SLV-010)
+	SubagentTasks     []SubagentTaskInfo // subagentStatusLine tasks[] rows (CC 2.1.293+; nil when absent, REQ-CC-HAIKU55-010)
 
 	// CacheUsage mirrors context_window.current_usage (SPEC-TOKEN-EFFICIENCY-001
 	// P0-2). Nil when current_usage is absent — before the first API call, or
