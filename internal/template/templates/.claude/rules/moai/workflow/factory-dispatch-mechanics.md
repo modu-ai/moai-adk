@@ -218,7 +218,7 @@ This rule binds a session whose SessionStart context declares **Factory Mode**. 
 ### The lane's task list carries the card's stages
 
 
-The measured precedent this rule codifies: lane-1 card t1330 held a 7-task list through the card's whole run, one `TaskCreate` per stage at intake and one `TaskUpdate` per transition. The clause above is the rule; that card is its evidence, not an instance list to extend.
+The measured precedent this rule codifies: a lane session held one task list through its card's whole run — one task per execution stage, created at card intake and updated at every stage transition. The clause above is the rule; a run that kept the list current is its evidence, not an instance list to extend.
 
 
 ### The env-isolated verification form
