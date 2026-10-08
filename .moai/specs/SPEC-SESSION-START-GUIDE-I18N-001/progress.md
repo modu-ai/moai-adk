@@ -88,7 +88,17 @@ AC-009-verdict: zh grade A S1 0
 
 ## §E.3 Run-phase Audit-Ready Signal
 
-_<pending run-phase>_
+run_complete_at: 2026-10-08
+run_commit_sha: "9f94e9903" (M1-M4 커밋 — D10 고정에 따라 RED 테스트 파일 `internal/hook/session_start_guide_i18n_red_test.go` 를 포함하는 M2 전환 커밋을 겸한다. 선행 plan 커밋 `19cd7218c`)
+run_status: audit-ready
+
+- AC 판정: AC-001·AC-002·AC-005 (TestRed 3종) 전부 녹색 — plan-phase LEDGER-RED 원장의 적색이 전환됨. AC-003·AC-004·AC-006·AC-007·AC-008 판정 테스트 M4 착지·녹색 (아래 명령). AC-009 grade A S1 0 ×3 (ko·ja·zh — §E.2 판정 행).
+- 레인-로컬 검증(관측값): `go test ./internal/hook -run 'TestRed|Factory|LeaderNotice' -count=1` → `ok  github.com/modu-ai/moai-adk/internal/hook  122.599s` / `go test ./internal/cli -run 'TestRed|AutoRank' -count=1` → `ok  github.com/modu-ai/moai-adk/internal/cli  19.996s`. gofmt -l (internal/hook, internal/cli) → 빈 출력. `go build ./...` rc=0, `GOOS=windows GOARCH=amd64 go build ./...` rc=0. 레인의 포맷 수리 뒤 재측정: hook 계열 117.7s·cli 21.1s 녹색 (레인 관측, §Gaps).
+- t1480 계열 수리: TestLeaderNoticeBatchGatePointer/handler_level 의 영어-고정 기대(session_start.go :518 배선이 뒤집은 정책)를 로케일-적합성 단정으로 갱신 — 갱신된 M4 셀렉터 `TestRed|Factory|LeaderNotice` 로 가족 전체 녹색. plan.md §F-M4 셀에 셀렉터 갱신 기록.
+- 환경 신호: TestStaleRunNoticeFactoryLegacyLabel 가 전체 계열 부하 하에서 1회 적색("factory messaging degraded: context deadline exceeded") — 단독 실행 녹색(`--- PASS ... (0.69s)`), stale-run 게이트는 본 SPEC 변경 면 밖. 재현-의존 환경 신호로 기록.
+
+Gaps:
+- 최종 게이트 실행 도중 429로 이 세션이 중단되었다 — 중단 시점의 gofmt -l 이 render 테스트 파일 1건을 적려했고, 레인이 포맷 수리(commit 9f94e9903 포함)로 닫고 디스크에서 계열 전체 녹색·gofmt 클린·빌드 클린을 재확인했다. 포맷 수리 뒤의 재측정 수치(hook 117.7s / cli 21.1s)는 레인의 관측값이며 본 세션이 직접 관측하지 않았다.
 
 ## §E.4 Sync-phase Audit-Ready Signal
 

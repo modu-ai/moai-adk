@@ -2,7 +2,7 @@
 id: SPEC-SESSION-START-GUIDE-I18N-001
 title: "팩토리 리더/레인 SessionStart 안내 문구 다국어 렌더 — 2모드 --auto 설명·온라인 문서 안내·템플릿 미러 패리티"
 version: "0.1.0"
-status: draft
+status: in-progress
 created: 2026-10-08
 updated: 2026-10-08
 author: manager-spec (card t1603)
