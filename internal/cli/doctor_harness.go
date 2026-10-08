@@ -49,13 +49,20 @@ func runHarnessCheck(projectRoot string) DiagnosticCheck {
 	// and L4 (common-workflow tree) are selected INDEPENDENTLY — post-
 	// migration a project-specific skill or an empty project dir must not
 	// decouple the healthy USER workflow lookup from L4.
+	//
+	// M7 (REQ-DOC-003/004): the workflow root is selected by REQUIRED-FILE
+	// presence — an EMPTY (or import-less) project workflows dir no longer
+	// wins the selection over a healthy USER tree — and the fallback swaps
+	// workflowsDir ONLY: the project skillsDir stays the L1/L6 surface, so
+	// a broken project-side skill is still reported (the L6:FAIL·L1:PASS
+	// misdiagnosis shape is closed).
 	skillsDir := filepath.Join(projectRoot, ".claude", "skills")
 	workflowsDir := filepath.Join(skillsDir, "moai", "workflows")
 	if home, err := os.UserHomeDir(); err == nil {
 		userWorkflows := filepath.Join(home, ".claude", "skills", "moai", "workflows")
 		if _, userStat := os.Stat(userWorkflows); userStat == nil {
-			if _, projStat := os.Stat(filepath.Join(workflowsDir)); os.IsNotExist(projStat) {
-				skillsDir = filepath.Join(home, ".claude", "skills")
+			if _, projStat := os.Stat(filepath.Join(workflowsDir)); os.IsNotExist(projStat) ||
+				!workflowRootHasRequiredFiles(workflowsDir) {
 				workflowsDir = userWorkflows
 			}
 		}
@@ -142,6 +149,24 @@ func runHarnessCheck(projectRoot string) DiagnosticCheck {
 		check.Message = strings.Join(statuses, " ")
 	}
 	return check
+}
+
+// workflowRequiredFiles are the four workflow files a healthy workflow
+// root carries (the same set L4 judges).
+var workflowRequiredFiles = []string{"plan.md", "run.md", "sync.md", "design.md"}
+
+// workflowRootHasRequiredFiles reports whether a workflow root carries the
+// required files WITH the harness import — the M7 selection criterion
+// (REQ-DOC-003): a directory that exists but holds none of the required
+// files must not win the workflow-root selection.
+func workflowRootHasRequiredFiles(dir string) bool {
+	for _, f := range workflowRequiredFiles {
+		data, err := os.ReadFile(filepath.Join(dir, f))
+		if err != nil || !strings.Contains(string(data), "@.moai/harness/") {
+			return false
+		}
+	}
+	return true
 }
 
 // checkLayer1Triggers verifies that every harness-*/SKILL.md has the

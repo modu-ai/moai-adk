@@ -552,6 +552,45 @@ Codex 배선을 생산 순서대로 실행. runInit의 already-initialized 분�
 **게이트**: lint 0, gofmt 청결, windows build + 6패키지 test compile OK, web 에이전트
 패밀리 GREEN, userassets **RED 0건**.
 
+### M7 — doctor 진단 무결성 (원장 2/7b/9b, REQ-DOC-001/002/003/004, 2026-10-09)
+
+프로덕션 변경: `doctor_user_install.go` checkProjectVsLock(**선-판독 + 파손 실패 등급** —
+mgr.Load 도달 전 ReadFile+JSON probe로 파손을 판정해 quarantine rename을 유발하지 않음;
+파손 = CheckFail, 무설치 = CheckOK 유지, 판독 불가 = Warn) + **vacuous 정직 보고**(비교
+가능 면 0 = Warn "the lock comparison is vacuous") + `doctor_harness.go`(**필수 파일
+존재 기반 workflow root 선택** — 4개 필수 파일+import 미보유 프로젝트 dir는 선택 패배,
+**workflowsDir만 교체** — skillsDir는 프로젝트 스코프 유지) + `init_resume.go`(
+**quarantine 판독을 비차단 오픈+핸들 fstat으로** — 게이트 36, FIFO 매니페스트 hang 제거).
+
+**AC 전환 — RED→GREEN 5종 (구조적 적색 시대 종료)**
+
+| AC | 테스트 | M0 관측 | M7 관측 |
+|---|---|---|---|
+| AC-019a (2) | TestDoctorProjectManifestLoadFailureNotDisguised | RED — CheckOK 위장 | **GREEN** — 파손 = CheckFail (mgr.Load 미도달, quarantine 유발 없음) |
+| AC-019a 보존 | TestDoctorProjectManifestPreservedOnLoadFailure | RED — 원본 이탈+.corrupt 파괴 | **GREEN** — 원본 바이트·경로 유지 + 기존 .corrupt 미파괴 (선-판독으로 rename 자체가 미발생) |
+| AC-019b (2a) | TestDoctorUserInstallHonestFailureAndReadOnly | GREEN (회귀 가드) | **GREEN 유지** |
+| AC-020 (2b) | TestDoctorLockCheckVacuousNotReportedMatch | RED — 공허 OK 위장 | **GREEN** — 비교 가능 면 0 = Warn "vacuous" 보고 |
+| AC-021 (9b) | TestDoctorWorkflowRootSelectedByRequiredFile | RED — 빈 dir가 선택 | **GREEN** — 필수 파일+import 보유 루트가 선택 |
+| AC-022 (7b) | TestDoctorFallbackKeepsProjectScopeL1 | RED — 통째 교체 | **GREEN** — workflowsDir만 교체, L1:FAIL(프로젝트 결함 가시)+L4:PASS 동시 달성 |
+| 게이트 36 | init_resume quarantine 판독 | — | FIFO 매니페스트 → 비차단 판독으로 hang 제거 (플랫폼 분할 readManifestRecord) |
+
+**라운드 35 잔여 확인**: (i) 재개 게이트 — 35-3으로 착지(299bc6bd7 이후 f691c077e):
+initResumeCheckpoint(pending 저널 or 파손 매니페스트) + TestInitResumeGateKeepsHealthy
+Redirect(건전한 재실행 = 기존 redirect 유지 단정). (ii) autonomy tier — 35-6으로 착지:
+resumeInitializedProject가 applyAutonomyTierBundleFn 포함.
+
+**AC-023 커버리지 (unix, 전체 스위트 결합 — 최종 보고)**
+
+| 파일 | 문 커버리지 | 게이트 |
+|---|---|---|
+| userassets 패키지 | journal **93.8%** / lock_guard_unix **90.0%** / install.go **82.6%** / lock.go **82.2%** / **합계 82.5%** | critical 2파일 PASS; 나머지 미달분은 M6/M7 표면의 오류·경합 팔 + M4 이후 신설 가드문 분모 |
+| cli 패키지 (전체) | **41.9%** — checkProjectVsLock 58.3% (선-판독·vacuous·파손 분기 포함), checkPluginMigrationAdvisory 100% | cli 전체는 본 SPEC 이전부터의 대형 미커버 표면 다수 — 본 SPEC의 doctor 가족 분기는 전부 실행 |
+
+**게이트**: lint 0, gofmt 청결, windows build + 6패키지 test compile OK. cli 전체 스위트의
+잔여 FAIL 17건은 **문서화된 구조적 상태**(카드 워크트리 환경 계열 + binary-lag 계열) —
+M7 이전 커밋(152c3ef7c)에서 동일 실패 재현으로 기존 환경 실패 확인 (M6/M7 도입분 아님).
+영향 패밀리(doctor+resume)는 전부 GREEN — 구조적 적색 시대 종료.
+
 ## §E.3 Run-phase Audit-Ready Signal
 
 _(pending run-phase — manager-develop 소관.)_

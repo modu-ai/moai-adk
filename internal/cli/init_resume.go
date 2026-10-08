@@ -111,12 +111,14 @@ func initResumeCheckpoint(homeDir string) bool {
 
 // quarantineCorruptUserManifest renames a CORRUPT user manifest aside with
 // a timestamped suffix (never deletes). Absent, healthy, and unreadable-
-// for-other-reasons manifests are left untouched.
+// for-other-reasons manifests are left untouched. Gate round 36: the read
+// is NON-BLOCKING with the type check bound to the open handle — a FIFO at
+// the manifest path surfaces as "no record" instead of hanging the resume.
 func quarantineCorruptUserManifest(homeDir string) {
 	manifestPath := userassets.ManifestPath(homeDir)
-	data, err := os.ReadFile(manifestPath)
-	if err != nil {
-		return // absent or unreadable for other reasons — not ours to move
+	data, ok := readManifestRecord(manifestPath)
+	if !ok {
+		return // absent or not a readable regular file — not ours to move
 	}
 	var probe json.RawMessage
 	if json.Unmarshal(data, &probe) != nil {
