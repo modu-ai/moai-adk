@@ -164,6 +164,53 @@ func TestLiveGuardChainRefusesWithoutADeepWalk(t *testing.T) {
 	}
 }
 
+// TestDeadChainBlockedByLiveTailWalksLinearly pins the round-3
+// review-gate finding: a dead guard chain whose tail is a LIVE guard
+// must be refused with a bounded number of verdict reads. Before the fix,
+// every recursion level repeated the failed sub-walk for its second
+// attempt — 1,022 reads / 2.6s at 8 dead guards plus a live tail. A
+// failed disposal walk now returns at once; the walk visits each level
+// once.
+func TestDeadChainBlockedByLiveTailWalksLinearly(t *testing.T) {
+	dir := t.TempDir()
+	deadFixture := func(path string) { previousBootFixture(t, path) }
+	liveFixture := func(path string) {
+		t.Helper()
+		if err := os.WriteFile(path, []byte("{}"), 0o600); err != nil {
+			t.Fatalf("seed %s: %v", path, err)
+		}
+		if werr := writeOwnerLabel(path, 0o600); werr != nil {
+			t.Fatalf("label %s: %v", path, werr)
+		}
+	}
+	markerPath := filepath.Join(dir, "queue.lock.breaking")
+	deadFixture(markerPath)
+	chain := []string{markerPath}
+	p := markerPath
+	for range 8 {
+		p += reclaimSuffix
+		deadFixture(p)
+		chain = append(chain, p)
+	}
+	liveFixture(p + reclaimSuffix) // the live tail blocking the chain
+	chain = append(chain, p+reclaimSuffix)
+
+	reads := 0
+	prevRead := sectionRereadFn
+	t.Cleanup(func() { sectionRereadFn = prevRead })
+	sectionRereadFn = func(path string) ([]byte, error) {
+		reads++
+		return prevRead(path)
+	}
+
+	if BreakStaleLock(markerPath) {
+		t.Fatal("a dead chain blocked by a live tail read as breakable")
+	}
+	if reads > 40 {
+		t.Fatalf("refusing the dead-chain-with-live-tail cost %d verdict reads — the walk must not repeat a failed sub-walk", reads)
+	}
+}
+
 // TestClaimGuardRivalDisposalIsGuardedToo pins the review-gate finding on
 // card t1606 (P1): the guard claim's disposal of a DEAD rival guard must
 // run through the guarded path — a bare verify-and-delete lets two

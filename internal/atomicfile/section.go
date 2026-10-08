@@ -277,11 +277,15 @@ func claimGuard(ctx context.Context, guardPath string) (func() error, bool) {
 		// walk, and the guarded path's own verified-bytes gate aborts if
 		// the rival re-acquired between this pre-check and the disposal.
 		if !BreakStaleLockContext(ctx, guardPath) {
-			select {
-			case <-ctx.Done():
-				return nil, false
-			case <-time.After(2 * time.Millisecond):
-			}
+			// The disposal walk failed: a live owner sits at some depth, or
+			// a rival reclaimer is mid-walk. Neither changes within this
+			// function's backoff, and a retry here would re-walk the whole
+			// failed sub-chain — 2^depth reads on a dead chain blocked by a
+			// live tail (review-gate finding on card t1606, round 3:
+			// 1,022 reads / 2.6s at 8 dead guards + a live tail). Return at
+			// once; the caller's own retry budget re-enters later, against
+			// whatever the state has become.
+			return nil, false
 		}
 	}
 	return nil, false
