@@ -1,6 +1,7 @@
 # SPEC-PROGRESS-RECORD-IO-001 — progress record
 
-status: draft (plan-phase artifacts authored 2026-10-08, lane-5, card t1598, base a2a184ad3)
+status: in-progress (M1 probe complete 2026-10-08, route (ii) measured — Q2 fired, milestone
+stopped before M2; card t1598, base a2a184ad3)
 
 ## §E.1 Plan-phase Audit-Ready Signal
 
@@ -35,7 +36,52 @@ status: draft (plan-phase artifacts authored 2026-10-08, lane-5, card t1598, bas
 
 ## §E.2 Run-phase Evidence
 
-_<pending run-phase>_
+### M1 — darwin fd-xattr route probe (2026-10-08, tree f60b42fa8)
+
+- Probe artifact: `.moai/state/verify/t1598/probe-darwin-fd-xattr.md` (local, gitignored by
+  design; the §E.2 carrier below is the committed evidence). Probe program sha256
+  `b4da207ab35264db4408477aefca1dcd267ee34eb08ca24ab4b7ca64e2c37321`; platform Darwin 27.0.0
+  (APFS), uid 501 non-root. Grep keys present: `## xattr name` / `## blob layout` /
+  `## fd-set result` / `## fork decision` (4/4).
+- **Fork decision: `route (ii)`** — the pure-Go fd-xattr route is measured NOT writable as
+  non-root. Decisive raw output (verbatim, from the probe run against an ACL-carrying file —
+  positive control `chmod +a "group:_guest deny read"` seeded and visible first):
+
+```
+== raw listxattr sweep (path form) ==
+names(1): ["com.apple.provenance"]
+== raw listxattr sweep (fd form: Flistxattr) ==
+names(1): ["com.apple.provenance"]
+```
+
+  plus the candidate-name fd-set attempts (non-root, held fd):
+
+```
+  Fsetxattr kauth-filesec                              -> err=<nil>
+  Fsetxattr com.apple.system.kauth_filesec             -> err=operation not permitted
+```
+
+  A nil-error write to the inert `kauth-filesec` name leaves the file's enforced ACL unchanged
+  (`ls -le` still `0: group:_guest deny read`) — the kernel ignores these names on APFS; there
+  is no ACL-carrying xattr to copy and no writable one that would carry semantics. The
+  `com.apple.system.*` namespace is EPERM-gated for non-root on both get and set. cgo ACL APIs
+  excluded by policy (`tech.md` no-CGo clause); `clonefileat`/`SYS_COPYFILE`/`setattrlist`
+  measured-rejected in t1560 (plan §G anti-pattern — not re-opened, no new evidence).
+- **decision-index Q2 (FOUNDER) FIRES.** Per plan M1 step 5 the milestone STOPS here: no M2
+  implementation, no held-family promotion, no plan/acceptance artifact edit from run phase.
+  The re-scope amendment (and the route-(ii) AC-PRI-005 anchor one-liner, N3/debt-3 disposal)
+  belongs to manager-spec; the F14 closure posture (Q2 default: keep the exec seeder +
+  re-document the residual at the measured harm class; alternate: private-dir staging with a
+  justified held-family re-scope) is the plan-phase owner's decision.
+- RED material preservation (codex attempt-5 P2-d, recorded before any re-scope): held family
+  `.moai/state/verify/t1598-prework/held-audit_ceiling_axes_test.go` sha256
+  `7b97c796d0243774a3781c52db9e0bd2463787f7ae30026c5d35a887a64ff381`; it was never observed RED
+  in-package in this session (M2 entry did not happen — the fork stops the milestone first);
+  the plan-audit round-1 RED re-execution (overlay, exit 1, `exec: "chmod": executable file not
+  found in $PATH`) was taken on c404a0af4 and carries per `.moai/reports/t1598/plan-audit-2.md`
+  evidence item 1 (docs-only delta between c404a0af4 and f60b42fa8).
+- M2/M3/M4: **not executed** — blocked on the Q2 verdict. AC-PRI-002/003/004/009 evidence is
+  route-conditional and intentionally absent here.
 
 ## §E.3 Run-phase Audit-Ready Signal
 
