@@ -31,8 +31,18 @@ stopped before M2; card t1598, base a2a184ad3)
   the §E.2 content carrier; D6 AC-PRI-008 stale `victim-overwrite` text absence; D7 no-SKIP
   decisive runs for AC-PRI-003/005; D9 build-tag clause on the probe bullet; D10 t1560 citation
   location qualifier. REQ coverage now complete: REQ-PRI-004 → AC-PRI-009.
-- Ready for plan-audit: re-audit pending (scoped to the defect delta per the Retry Loop
-  Contract).
+- **Plan-audit round 2: PASS-WITH-DEBT 0.94** (D1-D10 resolved; debts N1/N2/N3) — verdict
+  `.moai/reports/t1598/plan-audit-2.md`.
+- **Route-(ii) re-scope amendment (this commit)** — decision-index Q2 ADOPTED (leader ruling
+  (a), overridable by an operator 상위 전결; §E.2 carrier; M1 probe ad9ba32b2):
+  AC-PRI-003/004/009 dispositioned NOT-EVIDENCE; AC-PRI-005 pinned to the `-skip` anchor on
+  route (ii) (N3); N1/N2 stale git-model prose corrected to the measured GitHub-Flow regime
+  (committed `AGENTS.local.md` §4.1, 2026-10-05 transition); the write-allowed/delete-denied
+  rename residual (`audit_ceiling.go:721`) absorbed as documentation (decision-index Q5,
+  default-applied). MP-1~MP-9 clean results preserved. AC-PRI-008 made branch-conditional (the
+  `victim-overwrite` → 0 predicate is route-(i)-only; route (ii) requires the honest harm class
+  named).
+- Ready for plan-audit: plan-audit-3 delta re-audit pending (before run re-entry).
 
 ## §E.2 Run-phase Evidence
 
@@ -82,6 +92,26 @@ names(1): ["com.apple.provenance"]
   evidence item 1 (docs-only delta between c404a0af4 and f60b42fa8).
 - M2/M3/M4: **not executed** — blocked on the Q2 verdict. AC-PRI-002/003/004/009 evidence is
   route-conditional and intentionally absent here.
+
+### Q2 verdict record — route (ii) ADOPTED (plan-phase amendment, 2026-10-08)
+
+Recorded by manager-spec on explicit coordinator re-delegation; this sub-section is the §E.2
+carrier for the dispositioned ACs. The M1 evidence above is manager-develop's, untouched.
+
+- **Ruling (a), ADOPTED**: keep the current exec-based darwin seeder; re-document the residual
+  at its measured harm class.
+- **Status: LEADER ruling (card t1598, 2026-10-08) — OVERRIDABLE by an operator 상위 전결.** An
+  operator ruling reverses to route (i) and re-opens the dispositioned ACs.
+- **M1 probe citation: ad9ba32b2** ("M1 darwin probe — route (ii) measured, Q2 fired").
+- Dispositioned under route (ii): AC-PRI-003 (family GREEN), AC-PRI-004 (no-exec grep), and
+  AC-PRI-009 (post-fix fd-anchoring guard) → NOT-EVIDENCE; this record is their replacement
+  carrier.
+- AC-PRI-002's RED evidence: the plan-audit round-1 overlay re-execution (exit 1,
+  `exec: "chmod": executable file not found in $PATH`, tree c404a0af4, plan-audit-1.md evidence
+  item 1) — the in-package landing is dispositioned with the family (a permanently-red test is
+  not committed).
+- AC-PRI-005 on route (ii) runs with `-skip '^TestAppendProgressRecordPreservesAllMetadataAxes$'`
+  (N3 disposal).
 
 ## §E.3 Run-phase Audit-Ready Signal
 

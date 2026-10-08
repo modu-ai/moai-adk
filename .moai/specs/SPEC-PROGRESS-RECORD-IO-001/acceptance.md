@@ -25,7 +25,7 @@ branches.
 | AC-PRI-005 | REQ-PRI-001, REQ-PRI-003 | local (darwin) | High | Append regression family + close-hygiene probe pass `-race -count=2` with zero SKIP |
 | AC-PRI-006 | REQ-PRI-003 | local (darwin) | Medium | Affected package passes `-timeout 30m` |
 | AC-CI-007 | REQ-CI-008 | **CI only** (`release-pr-multi-os.yml` 3-OS leg: `release/*`→main PR or `workflow_dispatch`) | Medium | GOOS-tagged families decisive-PASS from the `-json` stream (SKIP is not PASS); run URLs recorded |
-| AC-PRI-008 | REQ-DOC-009 | local | Medium | Stale exec-exception AND `victim-overwrite` text absent; post-fix harm-class note present |
+| AC-PRI-008 | REQ-DOC-009 | local | Medium | Superseded exec-exception framing absent; route-(ii) note content keys present (`victim-overwrite` → 0 is the route-(i)-only predicate) |
 | AC-PRI-009 | REQ-PRI-004 | local (darwin) | High (fd-anchoring) | REAL seeder fails closed under a mid-seed name swap; victim content AND metadata untouched |
 
 ## §C Given-When-Then scenarios
@@ -83,6 +83,10 @@ branches.
   observation, never evidence: a run with any SKIP does not satisfy this AC — the decisive run
   re-executes on a capable environment before close (the fallback is recorded in §E.2 as
   non-decisive, never as a pass).
+  **Route-(ii) anchor (N3)**: under route (ii) the `-run '^TestAppendProgressRecord'` anchor
+  must not select the promoted RED family — the invocation carries
+  `-skip '^TestAppendProgressRecordPreservesAllMetadataAxes$'` (the kept exec seeder cannot pass
+  the PATH-stripped family); the F15/F16 guards stay covered.
   The close-hygiene probe (F16 guard, plan M3): a `seedFileMetadataFn` wrapper captures the held
   descriptor; after `appendProgressRecord` returns, a second `Close` must report already-closed
   on the normal path (close-before-rename, `audit_ceiling.go:716-720`, plus the deferred close
@@ -100,28 +104,35 @@ branches.
   run, Then their decisive verdict comes from the **`release-pr-multi-os.yml` 3-OS leg**
   (`go test -json -race -timeout 35m ./...`, linux+macos+windows) — triggered by a `release/*`→`main`
   PR, or by `workflow_dispatch` on the card branch (run-anytime; the dispatch is the path when
-  the card must record its verdict before a release PR exists). `ci.yml` is ubuntu-only
-  (ci.yml:94) and `pr-multi-os-gate.yml:112` excludes `internal/runtime` — neither is a decisive
-  surface for these families; this repository's git-flow has NO card PR (cards merge to develop,
-  leader batch-pushes), so "card PR CI" does not exist as a surface.
+  the card must record its verdict before a release PR exists). The justifying exclusions are
+  the measured ones — `ci.yml` is ubuntu-only (ci.yml:94) and `pr-multi-os-gate.yml:112` excludes
+  `internal/runtime` — so no card-level CI surface (GitHub-Flow card PR included; the committed
+  `AGENTS.local.md` §4.1 records the 2026-10-05 GitHub Flow transition, card PRs base `main`)
+  runs the windows runtime families.
   Recording rule: the per-family verdict is read from the `-json` stream — decisive-PASS
   requires an explicit per-test pass Action for EVERY test in the family; a `skip` Action is
   recorded as SKIP and is NOT a PASS. §E.2 records the run URL, per-family executed/skipped
   counts, and verdicts. **No local command exists for this criterion** — a local darwin run is
   structurally unable to execute GOOS-tagged families and is never cited.
 
-- **AC-PRI-008 (ruling (i) disposition re-documented — stale text absent, content-gated)**
-  Given the fix landed, When the darwin seeder source is read, Then the STALE pre-fix text is
-  gone (both the exec-exception marker AND the stale victim-overwrite wording at
-  `progress_metadata_darwin.go:34-38`) and the post-fix note stands with its pinned content (plan
-  M3 step 3): the residual window named `fd-verify→rename`, the reduced harm class — own append
-  fails / the foreign temp entry is replaced — and the kauth_filesec follow-up disposition.
-  Commands: `grep -c "victim-overwrite" internal/runtime/progress_metadata_darwin.go` → `0`;
-  `grep -c "LEADER-ACCEPTED darwin exception" internal/runtime/progress_metadata_darwin.go` →
-  `0`; `grep -n "fd-verify" internal/runtime/progress_metadata_darwin.go` → ≥1;
-  `grep -n "kauth_filesec" internal/runtime/progress_metadata_darwin.go` → ≥1.
-  A marker-only edit (replacing the exception token while the stale harm-class text survives)
-  fails the `victim-overwrite` → 0 predicate.
+- **AC-PRI-008 (ruling (i) disposition re-documented — branch-conditional, content-gated)**
+  Given the seeder comment is re-documented per plan M3 step 3's pinned content, When the darwin
+  seeder source is read, Then the SUPERSEDED framing is gone and the operative note stands.
+  **Route (ii) (operative)** — required content keys: the residual window named `fd-verify→rename`,
+  the honest kept-exec harm class (victim-overwrite remains possible in the microsecond race —
+  naming it is REQUIRED here, not stale), the kauth_filesec follow-up disposition, the
+  rename-permission residual (`delete-denied`), and the Q2 ruling reference.
+  Commands: `grep -c "LEADER-ACCEPTED darwin exception"
+  internal/runtime/progress_metadata_darwin.go` → `0`; `grep -n "fd-verify"
+  internal/runtime/progress_metadata_darwin.go` → ≥1; `grep -n "kauth_filesec"
+  internal/runtime/progress_metadata_darwin.go` → ≥1; `grep -n "delete-denied"
+  internal/runtime/progress_metadata_darwin.go` → ≥1; `grep -n "route (ii)"
+  internal/runtime/progress_metadata_darwin.go` → ≥1.
+  **Route (i) (conditional branch)**: additionally `grep -c "victim-overwrite"
+  internal/runtime/progress_metadata_darwin.go` → `0` (the harm class drops post-fix) — that
+  predicate does NOT apply on route (ii), where naming victim-overwrite IS the honest residual.
+  A marker-only edit (replacing the exception token while none of the content keys land) fails
+  every ≥1 predicate.
 
 - **AC-PRI-009 (fd anchoring — the REAL seeder under a mid-seed name swap)**
   Given the REAL darwin seeder (not a stub) is reached through the `seedFileMetadataFn` seam
@@ -147,16 +158,19 @@ branches.
   before close.
 - **APFS exposes no ACL xattr**: M1's null result is decisive — route killed, decision-index Q2
   escalates; the fix then re-scopes only per the operator verdict (default: document-residual).
-- **Route-(ii) disposition (decision-index Q2 fires — branch-conditional completion)**: on route
-  (ii) (no writable pure-Go route), AC-PRI-003 (family GREEN), REQ-PRI-002's no-exec face, and
-  AC-PRI-009's post-fix guard are UNACHIEVABLE by construction — the current exec seeder cannot
-  pass `PATH=""` (measured: `exec: "chmod" not found`). The completion condition becomes:
-  AC-PRI-001 (probe + null-result record), AC-PRI-002 (RED observed), AC-PRI-005/006 (existing
-  behaviors unregressed), AC-PRI-008 (the re-documentation IS the route-(ii) deliverable), and
-  AC-CI-007 stand; AC-PRI-003, AC-PRI-004's no-exec face, and AC-PRI-009's post-fix leg are
-  dispositioned as NOT-EVIDENCE and replaced by the operator's Q2 verdict record quoted in
-  `progress.md` §E.2. The SPEC re-enters plan phase for the re-scope amendment before closing —
-  the DoD is never satisfied unconditionally across both branches.
+- **Route-(ii) disposition — OPERATIVE (decision-index Q2 ADOPTED)**: route (ii) is the adopted
+  branch — Q2 verdict: **leader ruling (a), 2026-10-08: keep the current exec-based darwin
+  seeder and re-document the residual at its measured harm class; OVERRIDABLE by an operator
+  상위 전결** (an operator ruling reverses to route (i) and re-opens the dispositioned ACs). The
+  verdict carrier is `progress.md` §E.2, which quotes the ruling, its overridable status, and
+  the M1 probe citation **ad9ba32b2** (the probe measured no writable pure-Go route and fired
+  Q2). Under route (ii): AC-PRI-003 (family GREEN), AC-PRI-004 (no-exec grep), and AC-PRI-009
+  (post-fix fd-anchoring guard) are **dispositioned NOT-EVIDENCE** — the Q2 record replaces
+  them. Standing: AC-PRI-001 (probe + null-result record), AC-PRI-002 (RED observed — the
+  recorded measurement, not an in-package landing: a permanently-red test cannot be committed),
+  AC-PRI-005 (with the `-skip` form pinned in its scenario), AC-PRI-006, AC-PRI-008 (the
+  re-documentation IS the route-(ii) deliverable), AC-CI-007. The DoD is never satisfied
+  unconditionally across both branches.
 - **`x/sys` fd-xattr wrappers absent on darwin at v0.48.0**: M1 measures the wrapper surface
   first; if absent, the raw syscall route via `unix.Syscall` is measured before the route is
   declared dead — the probe records which of the two was attempted; the probe, like all darwin
@@ -174,10 +188,13 @@ branches.
 
 ## §F Definition of Done
 
-Route (i): all nine ACs carry observed evidence in `progress.md` §E.2 (verbatim outputs, exit
-codes, tree SHAs); AC-CI-007 carries the `release-pr-multi-os.yml` run URL with per-family
-executed/skipped counts. Route (ii): the branch-conditional set per §D's route-(ii) disposition
-— the dispositioned ACs are replaced by the Q2-verdict record, never silently dropped. No
-[NEEDS CLARIFICATION] markers remain (decision-index Q1-Q4 resolved or operator-escalated per
-its verdicts). SPEC frontmatter transitions `draft → in-progress` at M1 commit start
-(manager-develop owns the transition).
+**Route (ii) is operative (Q2 adopted)**: the completion condition is the standing set per §D's
+route-(ii) disposition — AC-PRI-001, AC-PRI-002, AC-PRI-005 (`-skip` form), AC-PRI-006,
+AC-PRI-008, AC-CI-007 carry observed evidence in `progress.md` §E.2 (verbatim outputs, exit
+codes, tree SHAs; AC-CI-007 carries the `release-pr-multi-os.yml` run URL with per-family
+executed/skipped counts); AC-PRI-003/004/009 carry the Q2 verdict record as their disposition
+carrier. Route (i) remains the conditional branch (all nine ACs) should an operator 상위 전결
+reverse the ruling. No [NEEDS CLARIFICATION] markers remain. SPEC frontmatter transitioned
+`draft → in-progress` at M1 commit start (manager-develop owns the transition); this amendment
+leaves `status:` untouched (plan-phase body amendment per the coordinator's explicit
+re-delegation).

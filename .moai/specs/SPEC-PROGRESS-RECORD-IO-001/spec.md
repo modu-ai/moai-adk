@@ -30,6 +30,14 @@ tier: M
   seeder exec window, P1). The held three-axis family
   (`.moai/state/verify/t1598-prework/held-audit_ceiling_axes_test.go`) is the RED acceptance
   target.
+- **2026-10-08 (route-(ii) re-scope amendment)** — decision-index Q2 ADOPTED via leader ruling
+  (a), overridable by an operator 상위 전결: keep the exec-based darwin seeder, re-document the
+  residual at its measured harm class (carrier: `progress.md` §E.2; M1 probe ad9ba32b2 measured
+  the pure-Go fd-xattr route not writable as non-root). AC-PRI-003/004/009 dispositioned
+  NOT-EVIDENCE; AC-PRI-005 pinned to the `-skip` anchor on route (ii); the stale git-model
+  rationale (N1/N2) corrected to the measured GitHub-Flow regime (committed `AGENTS.local.md`
+  §4.1, 2026-10-05 transition); the write-allowed/delete-denied rename residual
+  (`audit_ceiling.go:721`) absorbed as documentation (decision-index Q5, default-applied).
 
 ---
 
@@ -54,6 +62,12 @@ tier: M
 - **Rejected-by-measurement kernel surfaces** (t1560 round-4 closure): `clonefileat` copies
   xattrs but not ACLs; the `SYS_COPYFILE` trap returns EINVAL; the ACL bit is excluded from
   `ATTR_CMN_SETMASK`. These measurements stand; this SPEC does not re-open them.
+- **Rename-permission residual (measured this amendment)**: a write-allowed/delete-denied ACL on
+  progress.md makes the atomic rename (`audit_ceiling.go:721`) fail with permission denied where
+  the pre-repair in-place `os.WriteFile` succeeded — no §G record lands (overlay-reproduced,
+  both faces). Under the adopted route (ii) this is a documented residual; the
+  unwritable-dir/hardlink in-place fallback (`:641-643`, `:664`) is the noted future fix shape
+  (decision-index Q5, default-applied).
 - **Linux precedent (Go-native ACL)**: `internal/runtime/progress_metadata_acl.go` constructs a
   minimal POSIX ACL blob and writes it as the `system.posix_acl_access` xattr. The darwin
   analogue (kauth_filesec-class route) is UNMEASURED: the exact xattr name the kernel stores ACLs
@@ -142,6 +156,9 @@ inspection alone.
   remains green.
 - No mode-only fallback (F8 posture stands). The swap-semantics contract (F15, `swapped` flag)
   and fd close hygiene (F16) are landed guarantees — preserved, not redesigned.
+- The write-allowed/delete-denied ACL rename residual (`audit_ceiling.go:721`) is documented,
+  not fixed (decision-index Q5, default-applied): the in-place fallback (`:641-643`) is the
+  future fix shape.
 
 ## §E References
 

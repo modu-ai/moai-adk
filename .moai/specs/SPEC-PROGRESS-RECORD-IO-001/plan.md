@@ -21,7 +21,8 @@
 | F15 mismatch-path removal omission | LANDED (`swapped` flag) | Verification-only (regression guard must survive) |
 | F16 fd close hygiene | LANDED (defer close + close-before-rename) | Verification-only |
 | Residual fd-verify→rename microsecond window | Structural (rename(2) is not fd-anchored) | Re-documented post-fix at the reduced harm class (REQ-DOC-009) |
-| F9/F10/6b/6c/6d GOOS-tagged CI accumulation | Not yet observed | M4: accumulate on the card PR's CI runs |
+| F9/F10/6b/6c/6d GOOS-tagged CI accumulation | Not yet observed | M4: accumulate on the release-pr-multi-os.yml 3-OS leg (per AC-CI-007) |
+| Rename-permission residual (`audit_ceiling.go:721` — write-allowed/delete-denied ACL: rename fails EPERM where pre-repair `os.WriteFile` succeeded; no §G record lands) | NEW this amendment (overlay-reproduced, both faces) | Documented residual under route (ii); the unwritable-dir/hardlink in-place fallback (`:641-643`, `:664`) is the future fix shape (decision-index Q5, default-applied) |
 | Ruling (i) follow-up note | Stale pre-fix comment | Re-documented (REQ-DOC-009) |
 
 ## §C Pre-flight
@@ -124,11 +125,15 @@ internal/runtime/progress_metadata_darwin.go` returns 0.
    F15 guarantees ride here; a SKIP is a non-decisive observation, never evidence — the decisive
    run re-executes on a capable environment before close).
 2. `go test -timeout 30m ./internal/runtime/` → ok (affected package only).
-3. Ruling (i) re-documentation with PINNED content (AC-PRI-008's predicates): the seeder comment
-   states (a) the residual window by its name `fd-verify→rename`, (b) the reduced harm class —
-   own append fails / the foreign temp entry is replaced (the stale `victim-overwrite` wording
-   must be GONE — the AC greps it to 0), and (c) the kauth_filesec follow-up disposition; the
-   pre-fix `LEADER-ACCEPTED darwin exception` marker is superseded.
+3. Ruling (i) re-documentation with PINNED content (AC-PRI-008's predicates) — under the adopted
+   route (ii) this is the deliverable: the seeder comment states (a) the residual window by its
+   name `fd-verify→rename`, (b) the harm class of the kept exec window — victim-overwrite
+   remains possible in the microsecond race (the stale `LEADER-ACCEPTED darwin exception`
+   framing is superseded, but the honest harm class stays), (c) the kauth_filesec follow-up
+   disposition, and (d) the NEW rename-permission residual: a write-allowed/delete-denied ACL on
+   progress.md makes the atomic rename (`audit_ceiling.go:721`) fail EPERM where the pre-repair
+   in-place `os.WriteFile` succeeded, so no §G record lands — the unwritable-dir/hardlink
+   in-place fallback (`:641-643`, `:664`) is the noted future fix shape (decision-index Q5).
 4. **Close-hygiene probe (D4/F16 guard)**: `TestAppendProgressRecordSeedCloseHygiene` — a
    `seedFileMetadataFn` wrapper captures the held descriptor; after `appendProgressRecord`
    returns, a second `Close` must report already-closed on the normal path (close-before-rename,
@@ -142,11 +147,11 @@ internal/runtime/progress_metadata_darwin.go` returns 0.
   **`release-pr-multi-os.yml` 3-OS leg** (`go test -json -race -timeout 35m ./...`,
   linux+macos+windows; F9/F10/6b/6c/6d accumulation). Trigger: a `release/*`→`main` PR, or
   `workflow_dispatch` on the card branch (run-anytime — the dispatch is the path when the card
-  must record its verdict before a release PR exists). Measured exclusions: `ci.yml` is
-  ubuntu-only (ci.yml:94) and `pr-multi-os-gate.yml:112` tests only
-  `./internal/hook/... ./internal/cli/worktree/...` — neither is decisive for these families;
-  this repository's git-flow has NO card PR (cards merge to develop, leader batch-pushes), so
-  "card PR CI" does not exist as a surface.
+  must record its verdict before a release PR exists). The justifying exclusions are the
+  measured ones — `ci.yml` is ubuntu-only (ci.yml:94) and `pr-multi-os-gate.yml:112` tests only
+  `./internal/hook/... ./internal/cli/worktree/...` — so no card-level CI surface (GitHub-Flow
+  card PR included; committed `AGENTS.local.md` §4.1, 2026-10-05 transition) runs the windows
+  runtime families.
 - **Recording rule**: read the `-json` stream per family — decisive-PASS requires an explicit
   per-test pass Action for EVERY test in the family; a `skip` Action is recorded as SKIP and is
   NOT a PASS. `progress.md` §E.2 records the run URL, per-family executed/skipped counts, and
