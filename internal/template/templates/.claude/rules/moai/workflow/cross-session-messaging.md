@@ -4,6 +4,9 @@ Doctrine for messaging between independent Claude Code sessions — those on thi
 
 > **Loading scope**: Intentionally always-loaded. A peer-session conflict surfaces mid-turn, from any context, and is not predictable from file paths.
 
+<!-- moai:role-core-start --><!-- moai:role-core-end -->
+<!-- role-core region: none — this rule binds every session, so its binding blocks stay in the always-loaded body above; the SessionStart injection carries the pointer to this file only -->
+
 ## What the channel is
 
 Claude Code binds a per-session inbox socket and exposes two tools: `ListAgents` to discover reachable agents, and `SendMessage` to deliver plain text to one by name. A message carries text and a reply address — never conversation history, never files. A send may additionally carry an opt-in `notify_when_idle` request: one notice when the addressed session next goes idle (§ An idle notice is a scheduling hint).
