@@ -279,5 +279,9 @@ func resolveZoneTarget(root, raw string) []zoneForm {
 			}
 		}
 	}
+	// M4 (REQ-GRD-001): the user-root arm — a target under one of the four
+	// USER-INSTALL roots emits its namespaced "user-root:<slug>/<rest>"
+	// form, which only ZoneUserRoot entries match (design §5).
+	forms = append(forms, userRootForms(raw)...)
 	return forms
 }

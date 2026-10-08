@@ -206,14 +206,21 @@ func (h *preToolHandler) checkProtectedZone(agentID, toolName, rawPath string) (
 	for _, form := range forms {
 		for i := range load.Zone.Entries {
 			entry := load.Zone.Entries[i]
-			if entry.Match(form.Folded) {
-				reason := zoneDenyReason(agentID, "category", entry.Category, form.Display)
-				h.recordZoneAudit(root, zoneAuditRow{
-					Identity: agentID, Tool: toolName, Path: form.Display,
-					Category: entry.Category, Decision: "deny", ManifestState: config.ZoneStateOK,
-				})
-				return SentinelHarnessFrozenProtectedZone, reason
+			if !entry.Match(form.Folded) {
+				continue
 			}
+			// M4 (REQ-GRD-002): a user-root match protects only
+			// MANIFEST-TRACKED files — a user-created file in a managed
+			// directory stays editable.
+			if entry.Kind == config.ZoneUserRoot && !userRootFormTracked("", form.Display) {
+				continue
+			}
+			reason := zoneDenyReason(agentID, "category", entry.Category, form.Display)
+			h.recordZoneAudit(root, zoneAuditRow{
+				Identity: agentID, Tool: toolName, Path: form.Display,
+				Category: entry.Category, Decision: "deny", ManifestState: config.ZoneStateOK,
+			})
+			return SentinelHarnessFrozenProtectedZone, reason
 		}
 	}
 	return "", ""

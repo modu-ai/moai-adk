@@ -409,6 +409,44 @@ UnixFlockLeftoverIsOK, (C) IsNotExist-only + Irregular 노출, (D) stale window 
 **게이트**: lint 0, gofmt 청결, windows build + userassets/cli test compile OK, 의도 RED
 세트 불변 (userassets 4건 = M5/M6, cli 8건 = M6/M7).
 
+### M4 — 동결 가드 사용자 루트 보호 (원장 9a, REQ-GRD-001/002, 2026-10-09)
+
+프로덕션 변경: `internal/config/protected_zone.go`(**ZoneUserRoot** 진입 종류 신설 —
+`user-root:<slug>/…` 파싱, Sub 접미 의미, Match의 namespaced 형태 판정; 절대 경로·..
+·대문자 슬러그는 프리픽스 유무와 무관하게 기각 — repository-relative 계약 존중) +
+`internal/hook/user_root_zone.go` 신설(슬러그→디렉터리 표, userRootForms namespaced
+형태 산출, userRootFormTracked 매니페스트 추적 한정) + `protected_zone_path.go`
+(resolveZoneTarget의 user-root 팔) + shell/guard 두 deny 경로의 **추적 한정 필터**
+(REQ-GRD-002 과잉 보호 방지 — 무추적 파일은 매니페스트 디렉터리 안에서도 편집 가능).
+import 방향: hook ← config만 (userassets는 테스트 전용 패리티 임포트).
+
+**AC-009 전환 — RED→GREEN (이중 형태 probe, 실제 Handle 진입)**
+
+| 팔 | M0/M4-전 관측 | M4 관측 |
+|---|---|---|
+| control (프로젝트측 covered 삭제) | DENY (게이트 18 배선) | **DENY 유지** — 가드·구성 생존 증명 |
+| (i) 절대 항목 기각 | config 계약 | **user-root:/etc/passwd·C:/·..·대문자 슬러그 전부 기각** (파서 테스트 GREEN) |
+| (ii) 사용자 파일 매치 → deny | **ALLOW (RED — 원장 9a)** | **DENY로 전환** — 절대 경로·~ alias 양형 모두, 매니페스트 추적 파일 한정 |
+| REQ-GRD-002 과잉 보호 방지 | — | 무추적 사용자 파일 = **ALLOW** (매니페스트 디렉터리 안에서도) — 보호는 관리 자산에 한정 |
+
+**REQ-GRD-001 정직성 갱신**: "집합 불포함" 주장이 relayed였던 것이 AC-009의 실제 적재
+RED-now(관측: ALLOW, HEAD 6627769b5 — 게이트 18-5 배선분)과 M4 전환 GREEN(299bc6bd7
+이후)으로 관측 완료 — 원장 항목 9a의 소관 판정 근거가 되었다.
+
+**라운드 22 #1 정정**: 해시 판별자(미완료 pending refresh → refresh 경로 위임)는
+`299bc6bd7`에 이미 착지 — TestJournalIncompletePendingRefreshCompletes(재시도 v2
+완료·3차 런 멱등)가 정확히 그 재현이며 현재 HEAD에서 GREEN. 리더 실측은 커밋 이전
+트리 기준이었음으로 재보고.
+
+**패리티 (REQ-GRD-002)**: hook의 슬러그→디렉터리 표 4종이 userassets.ResolveRoots와
+전부 일치 (테스트 전용 임포트 패리티 테스트 — production 의존 방향 불변). 드리프트 시
+적색.
+
+**테스트**: config 파서 3종(kinds·rejections·match) + hook 4종(parity·forms·tracked
+scoping·AC-009 이중 형태) GREEN. **게이트**: lint 0, gofmt 청결, windows build +
+4패키지 test compile OK, hook/config/userassets 전체 스위트 GREEN (userassets 의도
+RED 4건 = M5/M6 소관).
+
 ## §E.3 Run-phase Audit-Ready Signal
 
 _(pending run-phase — manager-develop 소관.)_

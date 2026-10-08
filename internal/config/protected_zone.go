@@ -56,7 +56,7 @@ var zoneCategoryNameRE = regexp.MustCompile(`^[a-z0-9_]+$`)
 // ZoneEntryKind is the matching form of one manifest entry.
 type ZoneEntryKind int
 
-// The four entry forms. There is no negation and no mid-path wildcard.
+// The entry forms. There is no negation and no mid-path wildcard.
 const (
 	// ZoneExact matches one path exactly.
 	ZoneExact ZoneEntryKind = iota
@@ -66,7 +66,20 @@ const (
 	ZonePrefix
 	// ZoneBaseGlob matches the final path segment (entry is "**/<pattern>").
 	ZoneBaseGlob
+	// ZoneUserRoot matches inside one of the USER-INSTALL roots (entry is
+	// "user-root:<slug>/…") — the M4 extension (SPEC-USERASSET-DEPLOY-
+	// GUARD-001, REQ-GRD-001/002). The slug names one of the four install
+	// roots and the pattern is matched against the root-relative rest of
+	// the target; Sub carries the rest's own suffix semantics. Protection
+	// is further limited to MANIFEST-TRACKED files at the match site.
+	ZoneUserRoot
 )
+
+// zoneUserRootPrefix introduces the user-root entry kind. The rest of the
+// entry must be "<slug>/…" and passes the same relative-path rules a
+// repository entry passes (the loader's repository-relative contract is
+// respected: an absolute path is rejected with or without the prefix).
+const zoneUserRootPrefix = "user-root:"
 
 // ZoneEntry is one validated manifest entry. Pattern is stored folded (NFC, ASCII
 // lower case) so a match is a plain comparison against a folded relative path.
@@ -77,6 +90,9 @@ type ZoneEntry struct {
 	Pattern  string
 	Runtime  bool
 	Source   string
+	// Sub carries the suffix semantics (dir/prefix/exact) of a ZoneUserRoot
+	// entry's "<slug>/rest" part; it is ZoneExact for every other kind.
+	Sub ZoneEntryKind
 }
 
 // ProtectedZone is the effective manifest zone: shipped entries first, overlay after.
@@ -114,7 +130,9 @@ func FoldZoneText(s string) string {
 }
 
 // Match reports whether a folded, project-relative, slash-separated path is
-// covered by the entry.
+// covered by the entry. A ZoneUserRoot entry is matched against the
+// namespaced form "user-root:<slug>/<rest>" the zone resolver emits for
+// targets under a user-install root.
 func (e ZoneEntry) Match(foldedRel string) bool {
 	switch e.Kind {
 	case ZoneExact:
@@ -124,6 +142,17 @@ func (e ZoneEntry) Match(foldedRel string) bool {
 	case ZoneBaseGlob:
 		ok, err := path.Match(e.Pattern, path.Base(foldedRel))
 		return err == nil && ok
+	case ZoneUserRoot:
+		rest, ok := strings.CutPrefix(foldedRel, zoneUserRootPrefix)
+		if !ok {
+			return false
+		}
+		switch e.Sub {
+		case ZoneDir, ZonePrefix:
+			return strings.HasPrefix(rest, e.Pattern)
+		default:
+			return rest == e.Pattern
+		}
 	}
 	return false
 }
@@ -242,7 +271,7 @@ func parseZoneCategory(name string, body *yaml.Node, source string) ([]ZoneEntry
 	return out, nil
 }
 
-// parseZoneEntry validates one entry against the four-form grammar and returns
+// parseZoneEntry validates one entry against the entry grammar and returns
 // it with its pattern folded.
 func parseZoneEntry(raw string) (ZoneEntry, error) {
 	bad := func(why string) (ZoneEntry, error) {
@@ -253,6 +282,51 @@ func parseZoneEntry(raw string) (ZoneEntry, error) {
 	}
 	if strings.Contains(raw, "\\") {
 		return bad("backslash separators are not allowed")
+	}
+	// M4 (REQ-GRD-001): the user-root kind — "user-root:<slug>/…". The slug
+	// names one of the four user-install roots and the rest passes the same
+	// relative-path rules a repository entry passes; an absolute path is
+	// rejected with or without the prefix (the repository-relative contract
+	// is respected), and the slug itself must be shape-valid (the slug→dir
+	// semantics are pinned by the consumer's parity test). The rest may be
+	// EMPTY when the entry covers the whole root ("user-root:claude-skills/"
+	// — the trailing slash is the dir marker).
+	if rest, ok := strings.CutPrefix(raw, zoneUserRootPrefix); ok {
+		if rest == "" {
+			return bad("a user-root entry needs a slug")
+		}
+		slug, tail := rest, ""
+		if i := strings.Index(rest, "/"); i >= 0 {
+			slug, tail = rest[:i], rest[i+1:]
+		}
+		if slug == "" {
+			return bad("a user-root entry needs a slug")
+		}
+		for _, c := range slug {
+			valid := c >= 'a' && c <= 'z' || c >= '0' && c <= '9' || c == '-'
+			if !valid {
+				return bad("the user-root slug must be [a-z0-9-]")
+			}
+		}
+		if strings.HasPrefix(tail, "/") || (len(tail) >= 2 && tail[1] == ':' && isASCIILetter(tail[0])) {
+			return bad("a user-root path must be root-relative")
+		}
+		for _, seg := range strings.Split(tail, "/") {
+			if seg == ".." {
+				return bad("contains a .. segment")
+			}
+		}
+		sub := ZoneExact
+		body := rest
+		if strings.HasSuffix(rest, "*") {
+			body, sub = rest[:len(rest)-1], ZonePrefix
+		} else if strings.HasSuffix(rest, "/") {
+			sub = ZoneDir
+		}
+		if strings.ContainsAny(strings.TrimSuffix(body, "/"), "*?[") {
+			return bad("a wildcard is legal only as the trailing * of a user-root entry")
+		}
+		return ZoneEntry{Raw: raw, Kind: ZoneUserRoot, Sub: sub, Pattern: FoldZoneText(body)}, nil
 	}
 	if strings.HasPrefix(raw, "/") || (len(raw) >= 2 && raw[1] == ':' && isASCIILetter(raw[0])) {
 		return bad("must be repository-relative")

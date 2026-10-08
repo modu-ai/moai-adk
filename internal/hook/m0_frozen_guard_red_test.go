@@ -26,8 +26,8 @@ func TestFrozenGuardDeniesUserPathDelete(t *testing.T) {
 	home := t.TempDir() // the user install root's base
 
 	// The loaded protection set: the project overlay declares the managed
-	// asset roots (the shipped manifest's shape, overlay syntax — no
-	// required categories).
+	// asset roots — BOTH faces (the shipped manifest's shape for the
+	// project side, and the M4 user-root kind for the user side).
 	overlayDir := filepath.Join(root, ".moai", "project")
 	if err := os.MkdirAll(overlayDir, 0o755); err != nil {
 		t.Fatal(err)
@@ -39,25 +39,37 @@ categories:
       - .claude/agents/moai/
       - .claude/skills/
       - .codex/agents/moai/
+      - user-root:claude-agents/moai/
+      - user-root:claude-skills/
+      - user-root:codex-agents/moai/
 `
 	if err := os.WriteFile(filepath.Join(overlayDir, "protected-zone.yaml"), []byte(overlay), 0o644); err != nil {
 		t.Fatal(err)
 	}
-	// The managed file exists on BOTH faces — the project twin (covered) and
-	// the user install twin (the AC's Given).
-	twin := filepath.Join(".claude", "agents", "moai", "plan-auditor.md")
+	// The managed files exist on BOTH faces — the project twins (covered)
+	// and the user install twins (the AC's Given).
 	for _, base := range []string{root, home} {
-		abs := filepath.Join(base, twin)
-		if err := os.MkdirAll(filepath.Dir(abs), 0o755); err != nil {
-			t.Fatal(err)
-		}
-		if err := os.WriteFile(abs, []byte("---\nname: plan-auditor\n---\n"), 0o644); err != nil {
-			t.Fatal(err)
+		for _, rel := range []string{
+			filepath.Join(".claude", "agents", "moai", "plan-auditor.md"),
+			filepath.Join(".claude", "skills", "moai-foundation-core", "SKILL.md"),
+		} {
+			abs := filepath.Join(base, rel)
+			if err := os.MkdirAll(filepath.Dir(abs), 0o755); err != nil {
+				t.Fatal(err)
+			}
+			if err := os.WriteFile(abs, []byte("---\nname: managed\n---\n"), 0o644); err != nil {
+				t.Fatal(err)
+			}
 		}
 	}
-	// Gate round 18: the user twin's MANAGED status is evidenced by the user
-	// manifest tracking it (REQ-GRD-002 limits the protection to moai-
-	// managed files — the record is what proves this target qualifies).
+	// An UNTRACKED user file in a managed directory: REQ-GRD-002 limits the
+	// protection to moai-managed assets — this one must stay editable.
+	untrackedAbs := filepath.Join(home, ".claude", "agents", "moai", "user-own-note.md")
+	if err := os.WriteFile(untrackedAbs, []byte("the user's own note\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	// The MANAGED status is evidenced by the user manifest tracking the
+	// targets (REQ-GRD-002 — the record is what proves a target qualifies).
 	if err := os.MkdirAll(filepath.Join(home, ".moai"), 0o755); err != nil {
 		t.Fatal(err)
 	}
@@ -65,12 +77,8 @@ categories:
   "schema_version": 1,
   "bundles": ["core"],
   "files": {
-    "claude-agents/moai/plan-auditor.md": {
-      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
-      "bundle": "core",
-      "installed_at": "2026-10-08T00:00:00Z",
-      "moai_version": "test"
-    }
+    "claude-agents/moai/plan-auditor.md": {"sha256": "ab", "bundle": "core"},
+    "claude-skills/moai-foundation-core/SKILL.md": {"sha256": "cd", "bundle": "core"}
   }
 }
 `
@@ -85,6 +93,9 @@ categories:
 	prevGetwd := zoneGetwd
 	zoneGetwd = func() (string, error) { return root, nil }
 	t.Cleanup(func() { zoneGetwd = prevGetwd })
+	prevHome := zoneHomeFn
+	zoneHomeFn = func() (string, error) { return home, nil }
+	t.Cleanup(func() { zoneHomeFn = prevHome })
 
 	decide := func(command string) string {
 		t.Helper()
@@ -107,22 +118,28 @@ categories:
 		return out.HookSpecificOutput.PermissionDecision
 	}
 
-	// CONTROL: the project-side covered twin is denied at HEAD — the guard
-	// and its config are live, so a user-path allow below is a SCOPE defect,
+	// CONTROL: the project-side covered twin is denied — the guard and its
+	// config are live, so a user-path allow below would be a SCOPE defect,
 	// not a dead guard.
 	if got := decide("rm -f .claude/agents/moai/plan-auditor.md"); got != DecisionDeny {
 		t.Fatalf("control arm broke: deleting the PROJECT-side covered twin was not denied (decision %q) — the guard/config setup is invalid, the defect arm below would be meaningless", got)
 	}
 
-	// DEFECT ARM: the user-side twin of the same managed file, named by its
-	// absolute path under the real user home (and its tilde alias — both
-	// spellings a real deletion uses).
+	// AC-009 flip (M4): deleting a TRACKED user-installed managed asset is
+	// denied — by absolute path and by the ~ alias both.
 	for _, command := range []string{
 		"rm -f \"" + filepath.Join(home, ".claude", "agents", "moai", "plan-auditor.md") + "\"",
-		"rm -rf \"" + filepath.Join(home, ".claude", "skills", "moai-foundation-core") + "\"",
+		"rm -f ~/.claude/skills/moai-foundation-core/SKILL.md",
 	} {
 		if got := decide(command); got != DecisionDeny {
-			t.Errorf("RED (intended): delete of a user-installed managed asset was allowed (decision %q, want %q) — command: %s; the user install roots are not in the loaded protection set", got, DecisionDeny, command)
+			t.Errorf("AC-009 regression: delete of a TRACKED user-installed managed asset was allowed (decision %q, want %q) — command: %s", got, DecisionDeny, command)
 		}
+	}
+
+	// REQ-GRD-002 over-protection guard: an UNTRACKED user file in a
+	// managed directory stays editable — the protection is scoped to
+	// moai-managed assets, never to the user's own files.
+	if got := decide("rm -f \"" + untrackedAbs + "\""); got == DecisionDeny {
+		t.Errorf("over-protection: an UNTRACKED user file was denied (%q) — the protection must stay scoped to manifest-tracked assets", untrackedAbs)
 	}
 }

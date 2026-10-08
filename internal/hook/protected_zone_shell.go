@@ -528,9 +528,17 @@ func zoneShellCovered(forms []zoneForm, load config.ProtectedZoneLoad, root stri
 		for _, form := range forms {
 			for _, folded := range []string{form.Folded, form.Folded + "/"} {
 				for i := range load.Zone.Entries {
-					if load.Zone.Entries[i].Match(folded) {
-						return load.Zone.Entries[i].Category, true
+					entry := &load.Zone.Entries[i]
+					if !entry.Match(folded) {
+						continue
 					}
+					// M4 (REQ-GRD-002): a user-root match protects only
+					// MANIFEST-TRACKED files — a user-created file in a
+					// managed directory stays editable.
+					if entry.Kind == config.ZoneUserRoot && !userRootFormTracked("", form.Display) {
+						continue
+					}
+					return entry.Category, true
 				}
 			}
 		}
