@@ -16,6 +16,23 @@ Card t1469 · branch `WT-always-loaded-budget` · plan base local `develop` `b58
 - Goal check re-measured 2026-10-04 (Task B, `research.md` §1.3): installed rules 154,652 UTF-16 = **+4,652 over** the issues #1746/#1717 goal of ≤150,000 (`CLAUDE.md` 15,541 separate; render-independent subtotal 170,193). The reduced scope still owns the ≤150k mechanism: REQ-ALB-001/002 (budget test + 115,000 total cap), REQ-ALB-006/007/025 (role-gating — largest single lever), REQ-ALB-012/015/017 (ledger + meaning-preserving compression), REQ-ALB-022 (M0 floor stop), plan M0/M3 milestones — none removed. The removed detail split never contributed to the always-loaded total (the file carries top-level `paths:`). Projection: post-role-gating rules-only ≈ 120,400 < 150,000. Conclusion: YES, the remaining scope covers the ≤150k goal; current gap +4,652.
 - 2026-10-04 re-read (iter6, delta after the Q10(a) reduction — the one authorized read): **PASS 0.91** (exact mean 0.9125 ≥ 0.85 Tier L; iter5 0.825 → 0.9125) — `.moai/reports/t1469/plan-audit-iter6.md`, audited_sha `8157844b6`, artifact hash `15783188d1f97b5dfb4b31447405ca8a549067ab7665eecb5cd123618e6a584b`, receipt `rcpt-6c37b56ebb3a5a8e39caf0df`. N5-1 (a) RESOLVED, (b)/(c)/(d) RESOLVED-MOOT with soundness verified; N5-2 (Q11) and N5-3 (all four refs) closed; reduction-coherence checks (i)–(iv) all pass — REQ-ALB-003's narrowed guard keeps its observed-failure path (AC-ALB-004's 40,001-unit fixture), the smuggling bypass stays blocked, the excluded companions are consistently out of every ledger surface, and research §1.3's goal check was independently reproduced by the auditor (154,652 / +4,652 / 0 always-surface breaches, exact match). All 10 RED-now groups reproduce verbatim; lint `--strict` 0/0; REQ·AC 25/25 intact. Cross-model: claude+codex returned fail on diff-only review; every finding adjudicated non-blocking — four optional residuals on record (D1 AC-ALB-004 green-fixture attribution wording, D2 research §1.2 stale clause, D3 unguarded companion-append capacity, D4 wording nits). Per the leader's dispatch, run-phase entry AWAITS the leader's reply.
 
+- 2026-10-08 run-phase entry (lane-4, card t1469): plan_status: audit-ready, plan_complete_at: 2026-10-04 (iter6). Kickoff gate met in its autonomous form — independent plan-audit verdict PASS 0.91 ≥ 0.85 (Tier L; receipt `rcpt-6c37b56ebb3a5a8e39caf0df`, audited_sha `8157844b6`), plan-artifact hash unchanged since the verdict (verified: `git diff 8157844b6..HEAD` on the SPEC dir touches only `progress.md`, not a hash subject), no open blocker (the 2026-10-04 HOLD awaited the leader; the operator's "지금 처리" dispatch of 2026-10-08 lifts it). Branch re-anchored to the post-cutover trunk: prior plan base `2771626b5` (develop-era) superseded — worktree cut from origin/main `a2a184ad3`; plan §C.2 re-anchor runs as M0's first act on the new anchor. Mode selection below (§F).
+
+## §F Phase 4 Mode Selection
+
+Input parameters: tier L · scope >15 files (13 always-loaded rules + template mirrors + hook Go + template tests + ledger fixture + agent/skill entry points) · domains 4 (template rules, SessionStart hook Go, template test suite, agent/skill workflow bodies) · language mix markdown+Go · concurrency benefit LOW (coding-heavy) · agent-team prereqs: not requested.
+
+| Mode | Selected | Rationale |
+|---|---|---|
+| direct | not selected | non-trivial multi-subsystem change |
+| serial | **selected** | coding-heavy (Go + rule restructuring) — Anthropic coding-task parallelism caveat; one manager-develop spawn per milestone M0→M5 |
+| fanout | not selected | coding-heavy, not research-heavy |
+| sweep | not selected | semantic multi-rule work, not a single uniform mechanical transform |
+
+Decision: **serial** — sequential manager-develop delegation per milestone, lane verifies evidence between milestones.
+
+Justification: the SPEC restructures binding instruction text (semantic, inter-file dependencies via the binding ledger), so neither mechanical sweep nor research fanout applies; serial keeps one writer per tree and lets each milestone's evidence gate the next.
+
 ## §E.2 Run-phase Evidence
 
 _<pending run-phase>_
