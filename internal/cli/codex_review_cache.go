@@ -32,58 +32,6 @@ const codexReviewCacheTTL = 24 * time.Hour
 // "skipped-turn count" REQ-GBN-001 records. Diagnostic; never gates.
 var codexReviewCacheSkips atomic.Int64
 
-// recordCodexReviewReceipt stores the gate's disposition of this tree state
-// so the next Stop over the same key reuses it. stateErr != nil (the key
-// itself could not be measured) records nothing — an unkeyed verdict cannot
-// be reused safely. A tree-scope fail whose findings are all runtime-config
-// drift stores as a pass: the receipt carries the GATE's disposition, and the
-// gate allows that shape in step 7-pre (mirrors produceCodexReviewReceipt,
-// including the fail exit code 1 — a stored pass-shaped exit on a fail verdict
-// would read as success evidence to the receipt's other consumers). On a fail
-// the summary and findings are preserved to the local detail file, so a cached
-// block can still say WHAT to fix (the receipt store carries no free text).
-// Every failure here is fail-open (stderr note, verdict unaffected).
-func recordCodexReviewReceipt(scope reviewScope, state verify.ReceiptState, stateErr error, out ReviewOutput) {
-	if stateErr != nil {
-		return
-	}
-	verdict, exit := codexReviewVerdictPass, 0
-	if isBlockVerdict(out.Verdict) {
-		if _, ok := runtimeConfigOnlyFindings(out.Findings, scope.Dir); ok && scope.Class == reviewScopeTree {
-			// The gate allows this shape in step 7-pre; the receipt carries
-			// that disposition (mirrors produceCodexReviewReceipt).
-			verdict = codexReviewVerdictPass
-		} else {
-			verdict, exit = codexReviewVerdictFail, 1
-		}
-	} else if !strings.HasPrefix(strings.ToLower(strings.TrimSpace(out.Verdict)), codexReviewVerdictPass) {
-		// Inconclusive must not read as success evidence either: HasLocalPass
-		// keys on ExitCode == 0, so an inconclusive receipt stored with the
-		// zero value invents a local pass for the escalation detector's
-		// contradiction limb. Exit 2 (the system-error class) keeps the
-		// gate's fail-open allow while the RECORD reads "no verdict".
-		verdict, exit = codexReviewVerdictInconclusive, 2
-	}
-	r := verify.Receipt{
-		CheckID:      codexReviewCheckID,
-		Head:         state.Head,
-		TreeDigest:   state.TreeDigest,
-		ConfigDigest: state.ConfigDigest,
-		Command:      state.Command,
-		ToolVersion:  state.ToolVersion,
-		ExitCode:     exit,
-		Verdict:      verdict,
-		RecordedAt:   time.Now(),
-	}
-	if err := verify.RecordReceipt(scope.Dir, r); err != nil {
-		_, _ = os.Stderr.WriteString("codex review gate: verdict receipt not recorded (" + err.Error() + ") — the next Stop re-reviews\n")
-		return
-	}
-	if verdict == codexReviewVerdictFail {
-		codexReviewPreserveFindings(scope.Dir, state, out)
-	}
-}
-
 // codexReviewFindingsPath is the deterministic local path a fail verdict's
 // summary and findings are preserved at, keyed by the same tree key the
 // receipt binds (HEAD + porcelain digest). Under .moai/state/ the file is
