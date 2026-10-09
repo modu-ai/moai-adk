@@ -55,3 +55,27 @@ _pending run-phase_
 ## §E.4 Sync-phase Audit-Ready Signal
 
 _pending sync-phase_
+
+## §F Phase 4 Mode Selection
+
+Plan→run Kickoff decision record (autonomous transition, auto-semantics §9.1):
+
+```text
+decision record: decided_by=lane-27 orchestrator (card t1578) evidence_refs=.moai/reports/t1578/plan-audit-iter3.md (verdict PASS, overall 0.94 >= Tier M 0.80, blocking 0, convergence pass, codex pass, audited_sha 817b5b86f) + plan-audit-iter2.md (rcpt-5bb5f28c03f4602d0879cd46) ladder_path=autonomous-kickoff §9.1 (verdict PASS + score >= threshold + artifact-hash unchanged on the Go ComputeHash subject set + no blocker open)
+```
+
+Mode selection inputs: tier=M; scope≈6 files (probe + guard tests + install.go handler); domain count=1 (Go CLI internal/cli + internal/userassets); file language mix=Go + SPEC artifacts; concurrency benefit=LOW (coding-heavy); Agent Teams prereqs=not requested.
+
+| Mode | Selected | Rationale |
+|------|----------|-----------|
+| direct | no | semantic multi-file change, not a typo fix |
+| serial | **yes** | coding-heavy Go implementation (Anthropic coding-task caveat) |
+| fanout | no | research-heavy work only; single domain, single writer |
+| sweep | no | not a mechanical-uniform ≥30-file transform |
+
+Decision: **serial** (one manager-develop spawn, milestones M1→M4 in sequence).
+
+Justification: the implementation is coding-heavy Go work in one subsystem family (update path + userassets installer); per Anthropic's coding-task parallelism caveat the sequential single-agent path is the safe default, and the write contract is one writer per tree (this worktree). sweep/fanout offer no concurrency benefit here; direct is below the semantic-change bar.
+
+Boundary cases: none — all four mode criteria resolved unambiguously.
+
