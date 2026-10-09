@@ -106,7 +106,7 @@ m1_to_mN_commit_strategy: per-milestone commits (M1 RED f7454e31d / M2 GREEN d7b
 ## §E.4 Sync-phase Audit-Ready Signal
 
 sync_complete_at: 2026-10-09
-sync_commit_sha: pending-backfill-sync
+sync_commit_sha: acc8d071a
 sync_status: complete
 changelog_entry_position: CHANGELOG.md [Unreleased] § Added (top entry)
 b12_self_test_a: pass — pre-emission `grep -c 'SPEC-GLM-JEV-KEY-001' CHANGELOG.md` = 0 (duplicate guard)
