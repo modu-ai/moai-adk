@@ -45,7 +45,7 @@ func TestCandidateObserveWalk(t *testing.T) {
 		candidateGhRunsFn = func(root, branch string) ([]factory.CandidateRunState, error) {
 			return []factory.CandidateRunState{
 				{RunID: "r-old", HeadSHA: "deadbeef", Ref: rec.CandidateBranch, Status: "completed", Conclusion: "success"},
-				{RunID: "r-mine", HeadSHA: rec.CandidateSHA, Ref: rec.CandidateBranch, Status: "completed", Conclusion: "success"},
+				{RunID: "7001", HeadSHA: rec.CandidateSHA, Ref: rec.CandidateBranch, Status: "completed", Conclusion: "success"},
 			}, nil
 		}
 		// The required-check read is stubbed too: the run's jobs all
@@ -59,8 +59,8 @@ func TestCandidateObserveWalk(t *testing.T) {
 		if err != nil || !wrote {
 			t.Fatalf("wrote=%v err=%v", wrote, err)
 		}
-		if updated.Verdict != factory.CandidateVerdictGreen || updated.RunID != "r-mine" {
-			t.Errorf("observed: verdict %q run %q, want green/r-mine", updated.Verdict, updated.RunID)
+		if updated.Verdict != factory.CandidateVerdictGreen || updated.RunID != "7001" {
+			t.Errorf("observed: verdict %q run %q, want green/7001", updated.Verdict, updated.RunID)
 		}
 	})
 
@@ -189,7 +189,7 @@ func TestCandidateObserveCommand(t *testing.T) {
 	prevRuns, prevList := candidateGhRunsFn, candidateGhRunsListFn
 	candidateGhRunsFn = func(root, branch string) ([]factory.CandidateRunState, error) {
 		return []factory.CandidateRunState{
-			{RunID: "r-1", HeadSHA: rec.CandidateSHA, Ref: rec.CandidateBranch, Status: "completed", Conclusion: "success"},
+			{RunID: "1", HeadSHA: rec.CandidateSHA, Ref: rec.CandidateBranch, Status: "completed", Conclusion: "success"},
 		}, nil
 	}
 	// The required-check read is stubbed too (the fixture root has no SSoT
@@ -229,6 +229,29 @@ func TestGhRunStatesFiltersCandidateWorkflow(t *testing.T) {
 	joined := strings.Join(gotArgs, " ")
 	if !strings.Contains(joined, "--workflow ci.yml") {
 		t.Errorf("gh args %q: want the run query filtered to the candidate push workflow (ci.yml)", joined)
+	}
+}
+
+// TestGhRunStatesMapsRunAttempt pins card t1478 Finding 2: the run list asks
+// for each run's attempt and maps it into the run state, so the observation
+// orders a re-run against the attempt it recorded (a re-run keeps its id).
+func TestGhRunStatesMapsRunAttempt(t *testing.T) {
+	var gotArgs []string
+	prev := candidateGhCommandFn
+	candidateGhCommandFn = func(dir string, args ...string) (string, error) {
+		gotArgs = args
+		return `[{"databaseId":200,"headSha":"c1","headBranch":"ci/t9001","status":"completed","conclusion":"success","attempt":2}]`, nil
+	}
+	t.Cleanup(func() { candidateGhCommandFn = prev })
+	runs, err := ghRunStates(t.TempDir(), "ci/t9001")
+	if err != nil {
+		t.Fatalf("ghRunStates: %v", err)
+	}
+	if joined := strings.Join(gotArgs, " "); !strings.Contains(joined, "attempt") {
+		t.Errorf("gh args %q: want the run query to ask for the attempt field", joined)
+	}
+	if len(runs) != 1 || runs[0].RunID != "200" || runs[0].Attempt != 2 {
+		t.Errorf("runs %+v: want run 200 at attempt 2", runs)
 	}
 }
 
@@ -483,7 +506,7 @@ func TestCandidateObserveWalkNeverGreenOnFailedRead(t *testing.T) {
 	prevRuns, prevList := candidateGhRunsFn, candidateGhRunsListFn
 	candidateGhRunsFn = func(root, branch string) ([]factory.CandidateRunState, error) {
 		return []factory.CandidateRunState{
-			{RunID: "r-1", HeadSHA: rec.CandidateSHA, Ref: rec.CandidateBranch, Status: "completed", Conclusion: "success"},
+			{RunID: "1", HeadSHA: rec.CandidateSHA, Ref: rec.CandidateBranch, Status: "completed", Conclusion: "success"},
 		}, nil
 	}
 	candidateGhRunsListFn = func(dir string, args ...string) (string, error) {

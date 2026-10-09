@@ -323,9 +323,9 @@ func runIntegrationCandidate(in integrationCandidateInput, seams integrationCand
 		// already recorded. Preserve verdict, run id, and observation time;
 		// refresh only PushedAt. A DIFFERENT candidate SHA is a genuine
 		// re-candidate: fresh pending (AC-CCI-003-1's supersede).
-		verdict, runID, observedAt := factory.CandidateVerdictPending, "", ""
+		verdict, runID, runAttempt, observedAt := factory.CandidateVerdictPending, "", 0, ""
 		if existing, readErr := factory.ReadCandidateRecord(in.Root, in.CardID, pinned); readErr == nil && existing.CandidateSHA == candidateSHA {
-			verdict, runID, observedAt = existing.Verdict, existing.RunID, existing.ObservedAt
+			verdict, runID, runAttempt, observedAt = existing.Verdict, existing.RunID, existing.RunAttempt, existing.ObservedAt
 		}
 		if _, err := git(in.CardWorktree, "push", "--force", "origin", candidateSHA+":refs/heads/"+candidateBranch); err != nil {
 			// REQ-CCI-017: a push failure reports the stage reached and
@@ -350,6 +350,7 @@ func runIntegrationCandidate(in integrationCandidateInput, seams integrationCand
 			CandidateBranch:   candidateBranch,
 			Verdict:           verdict,
 			RunID:             runID,
+			RunAttempt:        runAttempt,
 			PushedAt:          now,
 			ObservedAt:        observedAt,
 			Seq:               seq,
@@ -614,7 +615,7 @@ func ghRunStates(root, candidateBranch string) ([]factory.CandidateRunState, err
 		// workflow could satisfy the verdict (card t1478 M4 repair).
 		"--workflow", candidateCIWorkflowFile,
 		"--branch", candidateBranch, "--limit", "20",
-		"--json", "databaseId,headSha,headBranch,status,conclusion")
+		"--json", "databaseId,headSha,headBranch,status,conclusion,attempt")
 	if err != nil {
 		return nil, fmt.Errorf("gh run list for %s: %v", candidateBranch, err)
 	}
@@ -624,6 +625,7 @@ func ghRunStates(root, candidateBranch string) ([]factory.CandidateRunState, err
 		HeadBranch string `json:"headBranch"`
 		Status     string `json:"status"`
 		Conclusion string `json:"conclusion"`
+		Attempt    int    `json:"attempt"`
 	}
 	if err := json.Unmarshal([]byte(out), &rows); err != nil {
 		return nil, fmt.Errorf("parse gh run list output for %s: %v", candidateBranch, err)
@@ -636,6 +638,7 @@ func ghRunStates(root, candidateBranch string) ([]factory.CandidateRunState, err
 			Ref:        row.HeadBranch,
 			Status:     row.Status,
 			Conclusion: row.Conclusion,
+			Attempt:    row.Attempt,
 		})
 	}
 	return runs, nil

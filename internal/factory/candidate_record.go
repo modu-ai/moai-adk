@@ -23,6 +23,7 @@ import (
 	"io"
 	"os"
 	"path/filepath"
+	"strconv"
 	"strings"
 	"time"
 )
@@ -67,6 +68,11 @@ type CandidateRecord struct {
 	// RunID is the CI run identity, recorded by the verdict observation —
 	// empty until one runs (REQ-CCI-010).
 	RunID string `json:"run_id,omitempty"`
+	// RunAttempt is the attempt of RunID the observation recorded (card t1478
+	// Finding 2): a re-run keeps its run id and carries a higher attempt. An
+	// absent attempt — a record written before attempts were recorded — reads
+	// as attempt 1 of its recorded run.
+	RunAttempt int `json:"run_attempt,omitempty"`
 	// Verdict is pending until an explicit observation records green or red.
 	Verdict string `json:"verdict"`
 	// PushedAt is the push timestamp; ObservedAt the verdict observation's.
@@ -285,6 +291,8 @@ type CandidateRunState struct {
 	Ref        string
 	Status     string // queued | in_progress | completed
 	Conclusion string // success | failure | ... (meaningful only on completed)
+	// Attempt is the run attempt (card t1478 Finding 2); 0 reads as attempt 1.
+	Attempt int
 }
 
 // ObserveCandidateVerdict applies one observed run to the record keyed
@@ -299,6 +307,11 @@ type CandidateRunState struct {
 // record's verdict stands exactly as it was. A run still in progress is
 // not a verdict either. The mutation-lock the write shares with the push
 // path keeps an observation from interleaving with a re-candidate.
+//
+// EXECUTION ORDER (card t1478 Finding 2): under the lock, a verdict also
+// requires the run to be at least as new as the run the record carries — a
+// higher run id, or the same id at an equal or higher attempt. A stale
+// observation of an older run never overwrites a newer verdict.
 func ObserveCandidateVerdict(projectRoot, cardID, pinnedSHA string, run CandidateRunState, now time.Time) (CandidateRecord, bool, error) {
 	rec, err := ReadCandidateRecord(projectRoot, cardID, pinnedSHA)
 	if err != nil {
@@ -313,18 +326,18 @@ func ObserveCandidateVerdict(projectRoot, cardID, pinnedSHA string, run Candidat
 	if run.Status != "completed" {
 		return *rec, false, nil
 	}
+	var verdict string
 	switch run.Conclusion {
 	case "success":
-		rec.Verdict = CandidateVerdictGreen
+		verdict = CandidateVerdictGreen
 	case "failure":
-		rec.Verdict = CandidateVerdictRed
+		verdict = CandidateVerdictRed
 	default:
 		// cancelled / timed out / skipped: no verdict either way — the
 		// CI run did not judge the tree.
 		return *rec, false, nil
 	}
-	rec.RunID = run.RunID
-	rec.ObservedAt = now.UTC().Format(time.RFC3339)
+	observedAt := now.UTC().Format(time.RFC3339)
 	var written CandidateRecord
 	writeErr := WithCandidateMutation(projectRoot, cardID, func() error {
 		if integrationCandidateMutationHook != nil {
@@ -341,13 +354,25 @@ func ObserveCandidateVerdict(projectRoot, cardID, pinnedSHA string, run Candidat
 		if current.CandidateSHA != run.HeadSHA || current.CandidateBranch != run.Ref {
 			return nil
 		}
+		// Execution order (card t1478 Finding 2): the run is judged against
+		// the run the RE-READ record already carries — an older run, or an
+		// older attempt of the same run, is refused without a write.
+		admitted, orderErr := candidateRunAdmitted(current, run)
+		if orderErr != nil {
+			return orderErr
+		}
+		if !admitted {
+			return nil
+		}
 		// The verdict fields refresh onto the RE-READ record — a re-push
 		// of the same candidate SHA that landed in between keeps its push
-		// info (PushedAt, sequence); only verdict, run id, and observation
-		// time are the observation's to write (card t1478 M4 repair).
-		current.Verdict = rec.Verdict
-		current.RunID = rec.RunID
-		current.ObservedAt = rec.ObservedAt
+		// info (PushedAt, sequence); only verdict, run id and attempt, and
+		// observation time are the observation's to write (card t1478 M4
+		// repair).
+		current.Verdict = verdict
+		current.RunID = run.RunID
+		current.RunAttempt = candidateAttempt(run.Attempt)
+		current.ObservedAt = observedAt
 		if err := WriteCandidateRecord(projectRoot, *current); err != nil {
 			return err
 		}
@@ -361,4 +386,54 @@ func ObserveCandidateVerdict(projectRoot, cardID, pinnedSHA string, run Candidat
 		return *rec, false, nil
 	}
 	return written, true, nil
+}
+
+// candidateRunAdmitted decides, under the candidate lock, whether the observed
+// run is at least as new as the run the record already carries (card t1478
+// Finding 2). GitHub run ids increase with execution and a re-run keeps its id
+// with a higher attempt, so the order is the numeric id, then the attempt. A
+// record with no recorded run admits the first observation. An empty or
+// non-numeric run id has no order: it is refused with an error, so it can never
+// be recorded green (fail closed), and a recorded run that cannot be ordered
+// refuses the observation the same way.
+func candidateRunAdmitted(current *CandidateRecord, run CandidateRunState) (bool, error) {
+	observed, err := parseCandidateRunID(run.RunID)
+	if err != nil {
+		return false, fmt.Errorf("observe candidate verdict: refused — %w; an unorderable run never reads green", err)
+	}
+	if current.RunID == "" {
+		return true, nil
+	}
+	recorded, err := parseCandidateRunID(current.RunID)
+	if err != nil {
+		return false, fmt.Errorf("observe candidate verdict: refused — the recorded run cannot be ordered against this observation: %w", err)
+	}
+	switch {
+	case observed > recorded:
+		return true, nil
+	case observed < recorded:
+		return false, nil
+	default:
+		return candidateAttempt(run.Attempt) >= candidateAttempt(current.RunAttempt), nil
+	}
+}
+
+// parseCandidateRunID reads a run identity as its numeric execution order.
+// Empty, signed, padded, and alphabetic ids have no order.
+func parseCandidateRunID(runID string) (uint64, error) {
+	id, err := strconv.ParseUint(runID, 10, 64)
+	if err != nil {
+		return 0, fmt.Errorf("run id %q is not numeric", runID)
+	}
+	return id, nil
+}
+
+// candidateAttempt normalizes a run attempt: anything below 1 — an absent
+// field, or a record written before attempts were recorded — reads as attempt
+// 1 of its run.
+func candidateAttempt(attempt int) int {
+	if attempt < 1 {
+		return 1
+	}
+	return attempt
 }

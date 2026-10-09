@@ -219,7 +219,7 @@ func TestMergeDecisionSerializedWithCandidateLock(t *testing.T) {
 		// what the span guarantees is that nothing landed BETWEEN the check
 		// and the merge.
 		_, _, err := ObserveCandidateVerdict(f.root, stepCard, rec.PinnedSHA, CandidateRunState{
-			RunID: "r-red", HeadSHA: rec.CandidateSHA, Ref: rec.CandidateBranch,
+			RunID: "9", HeadSHA: rec.CandidateSHA, Ref: rec.CandidateBranch,
 			Status: "completed", Conclusion: "failure",
 		}, time.Now())
 		observeDone <- err
@@ -315,7 +315,7 @@ func TestCandidateVerdict(t *testing.T) {
 			t.Fatal(err)
 		}
 		updated, wrote, err := ObserveCandidateVerdict(root, "t1", "p1", CandidateRunState{
-			RunID: "r-9", HeadSHA: "c1", Ref: "ci/t1", Status: "completed", Conclusion: "success",
+			RunID: "9", HeadSHA: "c1", Ref: "ci/t1", Status: "completed", Conclusion: "success",
 		}, fixed)
 		if err != nil {
 			t.Fatal(err)
@@ -323,8 +323,8 @@ func TestCandidateVerdict(t *testing.T) {
 		if !wrote {
 			t.Fatal("want the observation written")
 		}
-		if updated.Verdict != CandidateVerdictGreen || updated.RunID != "r-9" {
-			t.Errorf("observed record: verdict %q run %q, want green/r-9", updated.Verdict, updated.RunID)
+		if updated.Verdict != CandidateVerdictGreen || updated.RunID != "9" {
+			t.Errorf("observed record: verdict %q run %q, want green/9", updated.Verdict, updated.RunID)
 		}
 		stored, err := ReadCandidateRecord(root, "t1", "p1")
 		if err != nil {
@@ -342,7 +342,7 @@ func TestCandidateVerdict(t *testing.T) {
 			t.Fatal(err)
 		}
 		updated, wrote, err := ObserveCandidateVerdict(root, "t1", "p1", CandidateRunState{
-			RunID: "r-9", HeadSHA: "c1", Ref: "ci/t1", Status: "completed", Conclusion: "failure",
+			RunID: "9", HeadSHA: "c1", Ref: "ci/t1", Status: "completed", Conclusion: "failure",
 		}, fixed)
 		if err != nil || !wrote {
 			t.Fatalf("wrote=%v err=%v", wrote, err)
@@ -429,7 +429,7 @@ func TestCandidateVerdict(t *testing.T) {
 		}
 		t.Cleanup(func() { integrationCandidateMutationHook = prev })
 		_, wrote, err := ObserveCandidateVerdict(root, "t1", "p1", CandidateRunState{
-			RunID: "r-9", HeadSHA: "c1", Ref: "ci/t1", Status: "completed", Conclusion: "success",
+			RunID: "9", HeadSHA: "c1", Ref: "ci/t1", Status: "completed", Conclusion: "success",
 		}, fixed)
 		if err != nil || wrote {
 			t.Fatalf("wrote=%v err=%v — the stale observation must not overwrite the replaced record", wrote, err)
@@ -463,7 +463,7 @@ func TestCandidateVerdict(t *testing.T) {
 		}
 		t.Cleanup(func() { integrationCandidateMutationHook = prev })
 		updated, wrote, err := ObserveCandidateVerdict(root, "t1", "p1", CandidateRunState{
-			RunID: "r-9", HeadSHA: "c1", Ref: "ci/t1", Status: "completed", Conclusion: "success",
+			RunID: "9", HeadSHA: "c1", Ref: "ci/t1", Status: "completed", Conclusion: "success",
 		}, fixed)
 		if err != nil || !wrote {
 			t.Fatalf("wrote=%v err=%v", wrote, err)
