@@ -1,7 +1,7 @@
 ---
 id: SPEC-ZONE-SHELL-CD-TRACKING-001
 title: "Protected-zone shell guard — track cd destinations (post-`--` operand including hyphen-leading, in-project absolute) with a cd-class regression matrix"
-version: "0.2.0"
+version: "0.2.1"
 status: draft
 created: 2026-10-09
 updated: 2026-10-09
@@ -23,6 +23,7 @@ tags: "protected-zone, shell-parsing, cd-tracking, pretooluse, guard, fail-close
 |---------|------|--------|--------|
 | 0.1.0 | 2026-10-09 | manager-spec | Initial plan-phase draft (card t1584, security P1, operator-approved expansion axis, Class C). Fresh fail-closed decision for the cd-tracking class separated from SPEC-ZONE-SHELL-PARSING-001 at v0.4.0 (drafted there as REQ-ZSP-009/AC-ZSP-007 with probe evidence EV-6; the retired number REQ-ZSP-009 is NOT reused — this SPEC carries the fresh prefix REQ-ZSCD/AC-ZSCD). Provenance: the class draft originates in SPEC-ZONE-SHELL-PARSING-001 v0.3.0 (HISTORY row: cd tracking soundness + two cd cells), was separated at v0.4.0 (leader scope decision, Out of Scope handoff naming card t1584), and its hyphen-leading allow control was invalidated by plan-audit finding D7 (`.moai/reports/t1584/plan-audit-iter2.md`): `cd -- -zone` moves real bash into `./-zone`, so the shape is a protected deletion, not an allow control. D8b residual sweep measured in plan §B (fix-here: 0). Probe evidence EV-6 inherited from `.moai/reports/t1574/` via the card copy `.moai/reports/t1584/red-reproduction.md`. |
 | 0.2.0 | 2026-10-09 | manager-spec | Plan-audit round 1 repair (FAIL 0.81, blocking D1–D3, audited SHA `206115e8869d42ed801dba6a00e31ab2ddd1656e`, verdict `.moai/reports/t1584/plan-audit.md`; delta scope = the verdict's fix_scope anchors only, REQ/AC id sets unchanged 5/6 — delta re-audit eligible). D1 (critical): EV-ZSCD-003's "no `cd_` cell" observation was FALSE on the pinned tree — the landed matrix carries five `cd_` cells (`bare_cd_tracking_control` :127, `wrapped_cd_env_not_tracked`/`wrapped_cd_nohup_not_tracked` :125/:126, `d6_cd_chain_budget`/`d6_cd_chain_then_covered_rm` :166/:167); rewritten to the reproducible `cd_track_` prefix discriminator for the NEW group (zero `cd_track_` cells pre-work), §G counting convention aligned, M1 entry pins the true baseline. D2 (major): the outside-root reset rationale "cannot reach a zone-covered path / semantically sound" was FALSE — a `..`-reaching relative spelling from an outside-root cwd resolves back into the zone while the guard answers allow (the reset resolves `..` against the root, not the true cwd; audit codex isolated repro + code path `zoneRelativeToSet` :366); rewritten at §A / REQ-ZSCD-003 / §C D3 / Out of Scope / plan §G as an HONEST accepted under-match naming the reaching-back shape — the RETENTION decision stands, the mislabel removed. D3 (major): K2/K3 identities unified on plan §B as the reference (step 3 = K3 hyphen, step 4 = K2 absolute; acceptance green paths corrected in the same pass). Optional O1–O3 folded (conditional classification form, EV-6 elision note, M2 preserve-cell double-count note). |
+| 0.2.1 | 2026-10-09 | manager-spec | Plan-audit round 2 delta repair (FAIL 0.91 — round 1 D1/D2/D3 all RESOLVED on the auditor's independent re-verification incl. the E3 verbatim reproduction; sole new defect D4, one row). D4: this §D summary table's AC-ZSCD-004 RED-now cell still cited EV-ZSCD-002 "empty cd coverage today" — a round-1 cross-layer sweep miss (the false claim was corrected in acceptance.md but not mirrored here); rewritten to the canonical EV-ZSCD-003 `cd_track_` discriminator, and all six summary rows swept against acceptance.md §D for reference/classification consistency (K-refs on the 002/003 green paths, EV-ZSCD-002 + demotion naming on 001, green-pin parenthetical on 005, M1-entry baseline on 006). Discriminator measured THIS session on the pre-work tree: matrix `-v` run exit 0, 62 RUN/PASS lines (non-empty sweep), zero `cd_track_` matches. REQ/AC id sets unchanged 5/6. |
 
 ## §A Problem
 
@@ -59,12 +60,12 @@ The canonical AC enumeration, evidence ledger, and Given-When-Then scenarios liv
 
 | AC | Claim | RED-now | Green path |
 |----|-------|---------|------------|
-| AC-ZSCD-001 | The three-shape cd reproduction set is captured verbatim against the pre-fix guard (all three observed in the reset state), then flips to deny | pending M1 step 1 (EV-6 §2.1 demotion — regression-guard-pending until captured) | M1 |
-| AC-ZSCD-002 | The `cd -- -zone && rm a.log` matrix cell asserts DENY | captured at M1 step 1 | M1–M2 |
-| AC-ZSCD-003 | The in-project absolute-destination cell asserts the destination is tracked (protected deletion denied) | captured at M1 step 1 | M1–M2 |
-| AC-ZSCD-004 | The cd matrix group exists in the landed sweep runner, non-empty, `-v` per-cell output, empty-list-fails intact | EV-ZSCD-002 (empty cd coverage today) | M2 |
-| AC-ZSCD-005 | The landed `TestProtectedZone` family and parsing matrix pass unchanged | green-now baseline (preserved-behavior) | M1–M3 |
-| AC-ZSCD-006 | Scoped verification batch green: hook package suite, `go vet`, `golangci-lint` on `internal/hook` | — | M3 |
+| AC-ZSCD-001 | The three-shape cd reproduction set is captured verbatim against the pre-fix guard (all three observed in the reset state), then flips to deny | EV-ZSCD-002 (to be captured at M1 step 1; EV-ZSCD-001 inheritance §2.1-demoted — regression-guard-pending until captured) | M1 |
+| AC-ZSCD-002 | The `cd -- -zone && rm a.log` matrix cell asserts DENY | captured at M1 step 1 | M1–M2 (K3 fix flips it; permanent M2 `cd_track_` cell) |
+| AC-ZSCD-003 | The in-project absolute-destination cell asserts the destination is tracked (protected deletion denied) | captured at M1 step 1 | M1–M2 (K2 fix flips it; permanent M2 `cd_track_` cell) |
+| AC-ZSCD-004 | The cd-TRACKING matrix group exists in `TestProtectedZoneShellParsingMatrix`, non-empty, `-v` per-cell output, empty-list-fails intact | EV-ZSCD-003 (the `cd_track_` discriminator: zero `cd_track_` cells pre-work — the five landed `cd_` cells acknowledged) | M2 |
+| AC-ZSCD-005 | The landed `TestProtectedZone` family and parsing matrix pass unchanged | green-now baseline (preserved-behavior; pre-work green pin recorded at M1 entry) | M1–M3 |
+| AC-ZSCD-006 | Scoped verification batch green: hook package suite, `go vet`, `golangci-lint` on `internal/hook` | baseline observed at M1 entry | M3 |
 
 ## Out of Scope
 
