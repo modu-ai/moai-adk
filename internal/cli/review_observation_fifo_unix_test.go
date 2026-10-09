@@ -36,6 +36,23 @@ func TestReviewFindingAbandonedFoldReleasesLockOnApplyReads(t *testing.T) {
 	copyFixtureStore(t, memDir)
 	prev := memoryFoldSeam
 	t.Cleanup(func() { memoryFoldSeam = prev })
+	// The fold worker is joined BEFORE the seam restore above runs: the
+	// worker's probe writes touch memoryFoldSeam, and the caller's timeout
+	// return creates no happens-before edge with the worker — without the
+	// join, the cleanup restore raced the worker's accesses under -race
+	// (gate-reproduced). foldOnDoneExit is closed by the worker's own
+	// deferred signal when it exits.
+	savedExit := foldOnDoneExit
+	exit := make(chan struct{})
+	foldOnDoneExit = exit
+	t.Cleanup(func() { foldOnDoneExit = savedExit })
+	var fifo *wireFIFO
+	t.Cleanup(func() {
+		if fifo != nil {
+			fifo.release() // unblock the worker so it can exit
+		}
+		<-exit // the worker is gone: its seam accesses happened-before the restore
+	})
 	fifoCh := make(chan *wireFIFO, 1)
 	memoryFoldSeam.orderProbe = func(stage string) {
 		if stage != "bytes-done" {
@@ -55,7 +72,7 @@ func TestReviewFindingAbandonedFoldReleasesLockOnApplyReads(t *testing.T) {
 	foldClosedCardMemory("t9001") // returns at the bound; the worker parks in the apply's read
 	select {
 	case fx := <-fifoCh:
-		t.Cleanup(fx.release) // unblock the worker after the probe; the abandoned step refuses its write
+		fifo = fx // released — and the worker joined — by the cleanup above
 	default:
 	}
 

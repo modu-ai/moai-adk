@@ -538,6 +538,35 @@ print-outside and on-done no-op tests × 2). Builds native + windows
 green; gofmt/vet/lint clean (0 issues). The full-suite verdict remains
 CI's job (C2) and is PENDING.
 
+### Post-close repair row 5 (committed-instrument race in the FIFO fixture — test-fixture concurrency, not production)
+
+- **Finding — the fixture's cleanup raced the fold worker on
+  `memoryFoldSeam`.**
+  `TestReviewFindingAbandonedFoldReleasesLockOnApplyReads`'s cleanup
+  restored the global seam without synchronizing the spawned fold
+  worker's exit (the caller's timeout return creates no happens-before
+  edge with the worker; the `fifoCh` default branch had no termination
+  sync) — the worker's probe write/read could race the restore under
+  `-race` (gate-reproduced on the target test; scheduling-dependent —
+  single short runs passed).
+- **RED account (honest)**: NOT reproduced locally — 70 race iterations
+  across three bound configurations of the unfixed test (300ms ×20,
+  1ms ×20 — where the worker abandons before the apply and never touches
+  the seam — and 200ms ×30) all came back clean on this machine; the
+  gate's reproduction stands as the defect evidence, and the window is
+  scheduling-dependent (the local machine's worker reliably reaches the
+  probe far before the cleanup). Recorded as a Gap, never as a pass.
+- **Fix (the coordinator's directed sync)**: the fixture now sets
+  `foldOnDoneExit` to its own channel and registers a cleanup that —
+  BEFORE the seam restore (registered first, runs last) — releases the
+  FIFO (if the probe fired) and waits `<-exit` for the worker's own
+  deferred exit signal: every worker seam access happens-before the
+  restore, in both the `fifoCh` receive and default branches.
+- **Post-fix verification**: the target test `-count=5 -race` → clean
+  (0 races, 0.48s/iter); then the fixture's family at `-count=5 -race`
+  (`-run '^TestReviewFinding'`, the full owned set) → PASS, `ok …
+  499.177s`, **0 data races**, 0 failures, 140 `=== RUN` lines.
+
 ## §E.3 Run-phase Audit-Ready Signal
 
 run_complete_at: 2026-10-09T22:30+09:00
