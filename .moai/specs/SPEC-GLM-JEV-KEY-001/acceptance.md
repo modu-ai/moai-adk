@@ -108,7 +108,7 @@ REQ-GJK-001→AC-GJK-004, AC-GJK-007, AC-GJK-012 · REQ-GJK-002→AC-GJK-004 · 
 
 ### §D.5 Closure gates
 
-- All §D.1 ACs green with the §C gate commands run in this run phase (verbatim output into progress.md §E.2).
+- All §D.1 ACs green, with the §C gate commands run on the final tree (the tree after M4 lands). The closure evidence for every §D.1 AC is taken on that tree and pinned to the commit SHA read with `git rev-parse --short HEAD` immediately before the run; the verbatim output goes to progress.md §E.2 (the run's write, not this plan's). Evidence taken before M4 lands does not count toward closure.
 - Card criteria (a)/(b)/(c) each explicitly signed off in the completion report.
 - No `moai glm` launch-path behavior change (existing family green = evidence).
 
@@ -119,4 +119,4 @@ REQ-GJK-001→AC-GJK-004, AC-GJK-007, AC-GJK-012 · REQ-GJK-002→AC-GJK-004 · 
 
 ### §D.7 Definition of Done
 
-Every §D.1 AC observed green in this run phase + §C gates clean + the three card criteria verified + sync-phase close (`docs(SPEC-GLM-JEV-KEY-001): sync-phase artifacts` carrying the `completed` transition).
+Every §D.1 AC observed green on the final tree (the tree after M4 lands), pinned to the commit SHA read with `git rev-parse --short HEAD` immediately before the run (§D.5; evidence taken before M4 lands does not count) + §C gates clean + the three card criteria verified + sync-phase close (`docs(SPEC-GLM-JEV-KEY-001): sync-phase artifacts` carrying the `completed` transition).
