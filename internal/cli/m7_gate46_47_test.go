@@ -179,7 +179,7 @@ func TestJournalClearedAfterResume(t *testing.T) {
 		t.Fatal(err)
 	}
 	// A stale pending journal from the failed attempt.
-	if err := userassets.WriteJournal(userassets.JournalPath(home), &userassets.PendingJournal{BundlesSelection: []string{"extras"}}); err != nil {
+	if err := userassets.WriteJournal(userassets.JournalPath(home), &userassets.PendingJournal{BundlesSelection: []string{"backend"}}); err != nil {
 		t.Fatal(err)
 	}
 
