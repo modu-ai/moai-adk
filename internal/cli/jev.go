@@ -32,6 +32,14 @@ Run 'moai jev' without --key to print this help.`,
 
 func init() {
 	jevCmd.Flags().String("key", "", "Store the TypeSafe API credential")
+	// pflag echoes the offending token verbatim in parse errors
+	// ("invalid argument \"<value>\" for \"--help\" flag"), so a spelling
+	// like `--help=<credential>` would surface the credential before runJev
+	// ever runs. jev replaces parse errors with a token-free form — unlike
+	// glm's manual scan there is no safe sub-token to name here.
+	jevCmd.SetFlagErrorFunc(func(_ *cobra.Command, _ error) error {
+		return fmt.Errorf("invalid flag for moai jev")
+	})
 	rootCmd.AddCommand(jevCmd)
 }
 

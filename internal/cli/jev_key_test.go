@@ -569,6 +569,36 @@ func TestGlmKeyDashLeadingDuplicateMasked(t *testing.T) {
 	nothingStoredAt(t, filepath.Join(home, ".moai", ".env.glm"))
 }
 
+// Sync-review repair P1 — REQ-GJK-010: pflag echoes the offending token
+// verbatim in parse errors, so `moai jev --key <credential> --help=<same
+// value>` surfaces the credential before runJev's validation ever runs
+// (observed leak: the value appeared in both the error and stderr).
+func TestJevFlagParseErrorDoesNotEchoKey(t *testing.T) {
+	home := redirectCredentialHomes(t)
+	const key = "tsk-secret-1234"
+	out, err := execRoot(t, "jev", "--key", key, "--help="+key)
+	if err == nil {
+		t.Fatal("an invalid flag spelling must be refused")
+	}
+	if strings.Contains(err.Error(), key) || strings.Contains(out, key) {
+		t.Errorf("flag-parse refusal must not echo the key value\nerr: %v\nout: %q", err, out)
+	}
+	nothingStoredAt(t, filepath.Join(home, ".moai", ".env.typesafe"))
+}
+
+// Sync-review repair P2 — jev never touches the deps global (runJev reads
+// only flags and the jevcred writer), so it belongs on the lazy-init fast
+// path like the launcher commands; otherwise even `moai jev --key x` would
+// run the full InitDependencies.
+func TestJevIsTrivialCommand(t *testing.T) {
+	if !isTrivialCommand([]string{"jev"}) {
+		t.Error("jev must be in the trivialCommands fast path (deps-free)")
+	}
+	if !isTrivialCommand([]string{"jev", "--key", "x"}) {
+		t.Error("jev with --key must also skip InitDependencies")
+	}
+}
+
 // AC-GJK-008 — routing precedence: the scan never intercepts a routed
 // subcommand (M2 characterization, REQ-GJK-006).
 func TestGlmSetupRoutingUnchanged(t *testing.T) {
