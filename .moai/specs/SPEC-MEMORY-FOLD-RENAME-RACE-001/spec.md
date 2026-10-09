@@ -2,7 +2,7 @@
 id: SPEC-MEMORY-FOLD-RENAME-RACE-001
 title: "Memory fold write path — cross-process store lock closing the last-check-to-rename lost-update window"
 version: "0.1.3"
-status: draft
+status: in-progress
 created: 2026-10-09
 updated: 2026-10-09
 author: GOOS행님

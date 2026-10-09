@@ -20,7 +20,7 @@ card: t1568 · phase: plan · tier: M · baseline tree: `2aab5f797` (base absorb
 
 ### Plan-phase lint (tool provenance: judging build vs measured tree)
 
-- judging build (current): `/tmp/moai-t1568-lint2`, built from THIS tree at HEAD `2aab5f797` (`go build -o /tmp/moai-t1568-lint2 ./cmd/moai`), invoked by path. Re-run after the revision 0.1.2 fix-round edits: `spec lint SPEC-MEMORY-FOLD-RENAME-RACE-001` → `✓ No findings — all SPEC documents are valid`, exit 0 — the run of record for 0.1.2.
+- judging build (current): `/tmp/moai-t1568-lint2`, built from THIS tree at HEAD `2aab5f797` (`go build -o /tmp/moai-t1568-lint2 ./cmd/moai`), invoked by path. Re-run after the revision 0.1.3 fix-round edits: `spec lint SPEC-MEMORY-FOLD-RENAME-RACE-001` → `✓ No findings — all SPEC documents are valid`, exit 0 — the run of record for 0.1.3.
 - Historical (old base `81786284e`, binary built from that tree): run 1 `0 error(s), 11 warning(s)` (unanchored `-run` patterns), run 2 after anchoring `✓ No findings` — both superseded by the run above; kept for the record only.
 - Anchoring note: the family selector is `-run '^(TestMemoryFold|TestReviewArchiveUpdate|TestReviewSequentialAbandonedTempOwnership).*$'` — end-anchored via `.*$`, selecting exactly the fold regression family: 27 `TestMemoryFold*` tests (including the 13 `TestMemoryFoldOnDone_*` wiring tests and the write-ordering regression `TestMemoryFold_ArchiveRecheckedBeforeMemoryRename`), `TestReviewArchiveUpdateDuringEffectiveScan`, and `TestReviewSequentialAbandonedTempOwnership` (added at iter-2 A4 — the codex-review round-2 per-worker temp-ownership regression the 28-test form missed). Selector history: iter-1 (D1) established the first selector `^Test(Fold|Review).*$` swept 53 Review-prefix tests and ZERO fold tests; the iter-2 28-test form superseded it; the final form's set is verified by the plan §C.1 `-list` gate before every use: `go test -list '^(TestMemoryFold|TestReviewArchiveUpdate|TestReviewSequentialAbandonedTempOwnership).*$' ./internal/cli` → 29 tests, exit 0 (verbatim list persisted at `.moai/reports/t1568/t1568-family-list3.txt`).
 
@@ -35,9 +35,35 @@ card: t1568 · phase: plan · tier: M · baseline tree: `2aab5f797` (base absorb
 
 - AC-MRR-001's RED cell is PENDING EXECUTION **by choice, not by impossibility** (audit iter-1 D4 corrected the premise): the existing `orderProbe("bytes-done")` seam (`memory_fold.go:643-645`) fires inside the window, so a plan-phase RED is executable today by setting it per plan.md B-3's set/restore discipline. The deferral to run-phase M1 is the clean-dedicated-seam choice: `orderProbe`'s contract is stage recording (owned by the ordering regression), not mutation; the dedicated `mutateBeforeRename` seam keeps the mutation contract separate and fires after the abandonment check — the true last observable moment. The observation itself is M1's first deliverable and its verbatim output + exit code + tree SHA land in progress.md §E.2; M2 may not start before it is on record. Every executable plan-phase check (ID regex PASS, uniqueness, chokepoint grep, lint, corrected-selector baseline) is on record in `.moai/reports/t1568/plan-evidence.md`.
 
+## §F Phase 4 Mode Selection
+
+- Inputs: tier M · scope 6 files · domains 1 (Go, internal/cli) · language mix Go-only · concurrency benefit LOW (coding-heavy, strict RED→GREEN ordering)
+- Evaluation: direct — not selected (multi-file, test-first loop with milestones) · fanout — not selected (coding-heavy per the Anthropic coding-task parallelism caveat) · sweep — not selected (not mechanical-uniform) · agent-team — not requested
+- Decision: **serial**
+- Justification: single-package defect fix whose milestones are strictly ordered (M1 RED must be observed before M2 GREEN; plan.md §F). One writer per tree; sequential per-milestone delegation is the safe default for coding work.
+- Baseline-attribution: decided by lane-22 at run entry, plan-audit iter-3 PASS (0.95, rcpt-d7cf366e7f8d3eb44edd6dae) at HEAD 2f436db17.
+
 ## §E.2 Run-phase Evidence
 
-_<pending run-phase — owned by manager-develop>_
+### M1 — RED: the loss reproduced (AC-MRR-001's RED cell, observed before any fix code)
+
+- **Observed at**: 2026-10-09, on the M1 work tree = HEAD `2f436db17` + the M1 test-only seam fields and test only (production `atomicWriteFoldFile`/`applyFold` checks unchanged; the seam call sites are additive). This exact tree is snapshotted by the M1 commit.
+- **Command**: `unset MOAI_KANBAN_ID MOAI_KANBAN_LEAD_ADDR MOAI_KANBAN_SETTINGS_INJECTED && go test -race -count=10 ./internal/cli -run '^TestFoldRenameWindowConcurrentWriter$'`
+- **Exit code**: 1
+- **Verbatim** (every iteration red — 10/10 top-level FAIL, 20/20 subtests FAIL; full raw log `.moai/reports/t1568/t1568-red-m1.txt`):
+
+```
+--- FAIL: TestFoldRenameWindowConcurrentWriter (0.09s)
+    --- FAIL: TestFoldRenameWindowConcurrentWriter/archive-append (0.01s)
+        memory_fold_test.go:1466: REQ-MRR-004 violated: the fold returned success while the writer's line published inside the archive-append rename window was destroyed from project_card_archive_2026_10.md
+    --- FAIL: TestFoldRenameWindowConcurrentWriter/memory-rewrite (0.00s)
+        memory_fold_test.go:1466: REQ-MRR-004 violated: the fold returned success while the writer's line published inside the memory-rewrite rename window was destroyed from MEMORY.md
+FAIL
+FAIL	github.com/modu-ai/moai-adk/internal/cli	1.220s
+```
+
+  (the `--- FAIL`/`REQ-MRR-004 violated` pair repeats identically for all 10 iterations; the block above is iteration 1 verbatim)
+- **Why red for the right reason**: the fold returned success (`runFoldOK` passed) while the writer's line published at the `mutateBeforeRename` point — after every pre-rename check — was destroyed by `os.Rename`, on BOTH write surfaces (archive append; MEMORY.md rewrite). The first attempt's red (`.moai/reports/t1568/t1568-red-m1-first-fixture.txt`) was a fixture defect — `no archive index to fold into` (the store lacked the archive file) — corrected by seeding `minimalArchive()`; it is kept on record as a wrong-reason red, never cited as the AC-MRR-001 RED.
 
 ## §E.3 Run-phase Audit-Ready Signal
 

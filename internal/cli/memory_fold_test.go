@@ -1398,3 +1398,74 @@ func TestMemoryFold_DuplicateStrongLineFiledOnce(t *testing.T) {
 	}
 	requireNoTempFiles(t, dir)
 }
+
+// foldRaceLine1568 is the t1568-shaped STRONG line the race tests fold: the
+// title names the card, the target is a store-local card topic file.
+var foldRaceLine1568 = "- [t1568 fold rename race — done, merged](project_card_t1568_race.md) — merged; detail lives in the topic file"
+
+// foldRaceFiles is the minimal store's files — the linked archive index
+// carrying the doctor's threshold of resolved links — plus the t1568 topic
+// file the race line links to.
+func foldRaceFiles() map[string]string {
+	files := minimalFiles()
+	files[fixtureArchive] = minimalArchive()
+	files["project_card_t1568_race.md"] = "---\n---\nbody\n"
+	return files
+}
+
+// foldRaceWriterLine is the concurrent writer's distinct publish, appended
+// inside the rename window by the seam hook.
+const foldRaceWriterLine = "- [t1568 concurrent writer](feedback_writer.md) — published inside the fold's rename window\n"
+
+// TestFoldRenameWindowConcurrentWriter is AC-MRR-001/002/004: a writer's
+// publish must survive a fold apply on the same store whatever the fold's
+// outcome (REQ-MRR-004). The seam hook publishes the writer's line at the
+// mutateBeforeRename point of one write surface at a time (both
+// atomicWriteFoldFile call sites carry the identical check→rename tail —
+// premise P3).
+//
+// M1 (pre-fix): the writer publishes directly inside the window — after
+// every pre-rename check has passed — and the rename destroys the line while
+// the fold returns success, so the contract assertion fails on every
+// iteration (RED). M2 (post-fix): the writer becomes the cooperating form —
+// it attempts a non-blocking acquire of the store lock the fold holds, is
+// refused, and re-publishes after the fold's release — and the line is
+// present in the final store on every iteration (GREEN).
+func TestFoldRenameWindowConcurrentWriter(t *testing.T) {
+	for _, tc := range []struct {
+		name   string // the write surface whose rename races the writer
+		target string // the store file that write replaces
+	}{
+		{name: "archive-append", target: fixtureArchive},
+		{name: "memory-rewrite", target: memoryIndexName},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			dir := seedFoldStore(t, minimalMemory(foldRaceLine1568), foldRaceFiles())
+			memoryFoldSeam = foldTestSeam{
+				mutateBeforeRename: func(storeDir, name string) {
+					if name != tc.target {
+						return
+					}
+					data, err := os.ReadFile(filepath.Join(storeDir, name))
+					if err != nil {
+						panic(err)
+					}
+					published := append([]byte(nil), data...)
+					published = append(published, foldRaceWriterLine...)
+					if err := os.WriteFile(filepath.Join(storeDir, name), published, 0o644); err != nil {
+						panic(err)
+					}
+				},
+			}
+			t.Cleanup(func() { memoryFoldSeam = foldTestSeam{} })
+
+			runFoldOK(t, "--card", "t1568", "--yes", "--dir", dir)
+
+			final := foldRead(t, dir, tc.target)
+			if !strings.Contains(final, foldRaceWriterLine) {
+				t.Errorf("REQ-MRR-004 violated: the fold returned success while the writer's line published inside the %s rename window was destroyed from %s", tc.name, tc.target)
+			}
+			requireNoTempFiles(t, dir)
+		})
+	}
+}
