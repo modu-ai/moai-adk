@@ -74,7 +74,7 @@ func resumeInitializedProject(cmd *cobra.Command, opts *project.InitOptions, wir
 	// .claude/ surface, so the layout cannot tell them apart.
 	if recorded, ok := resumeWiringFromRecord(cmd, wizardResult, opts.ProjectRoot); ok {
 		wiring = recorded
-	} else if wiring == agentWiringClaude && deployedWiringIsGPT(opts.ProjectRoot) {
+	} else if legacyLayoutSpeaks(cmd, opts.ProjectRoot, wiring) {
 		// Gate round 51-3 (legacy fallback, applies only without a record): the
 		// deployed LAYOUT is the interrupted record of the original --llm
 		// selection. A re-run without options resolves the claude default;
@@ -209,6 +209,24 @@ func deployedWiringIsGPT(projectRoot string) bool {
 	return err == nil
 }
 
+// legacyLayoutSpeaks reports whether the deployed layout decides the resume's
+// harness through the legacy fallback. It speaks only for the claude default, and
+// only when the resume has no record and no explicit --llm (card t1591, Item B).
+// An explicit --llm is the current invocation's answer. A record that exists is
+// the interrupted run's own selection, and a changed wizard answer must win over
+// the layout while it stands. The --llm check is the one resumeWiringFromRecord
+// applies.
+func legacyLayoutSpeaks(cmd *cobra.Command, projectRoot string, wiring agentWiring) bool {
+	if wiring != agentWiringClaude || !deployedWiringIsGPT(projectRoot) {
+		return false
+	}
+	if cmd.Flags().Changed("llm") && getStringFlag(cmd, "llm") != "" {
+		return false
+	}
+	_, recorded := readResumeWiring(projectRoot)
+	return !recorded
+}
+
 // resumeWiringPath is the project-scoped record of the harness selection the
 // failing init run made. It sits under .moai/state/ (gitignored) and is a file
 // separate from the resume-pending marker, so the marker's checkpoint
@@ -255,6 +273,25 @@ func resumeWiringFromRecord(cmd *cobra.Command, wizardResult *wizard.WizardResul
 		return "", false
 	}
 	return readResumeWiring(projectRoot)
+}
+
+// resumeAgentWiringDefault returns the harness the init wizard's agent_wiring
+// question pre-fills for a resume: the selection the interrupted run recorded.
+// The record is read only when the resume checkpoint applies (card t1591). A
+// record without a checkpoint is stale and pre-fills nothing, and so does an
+// unresolvable home, which would otherwise read CWD-relative .moai paths. "" keeps
+// the shipped claude default. The read runs before the wizard builds its form,
+// because the form takes its default at build time; the operator's answer
+// overrides it on submit.
+func resumeAgentWiringDefault(homeDir, projectRoot string) string {
+	if homeDir == "" || !initResumeCheckpoint(homeDir, projectRoot) {
+		return ""
+	}
+	wiring, ok := readResumeWiring(projectRoot)
+	if !ok {
+		return ""
+	}
+	return string(wiring)
 }
 
 // clearResumeWiring retires the selection record once the resume completed.
