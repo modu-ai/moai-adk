@@ -2,7 +2,7 @@
 
 SPEC ID: SPEC-UPDATE-MIGRATION-FIX-001
 Card: t1578
-Status: draft (plan phase)
+Status: in-progress (run phase)
 Tier: M
 
 ## §E.1 Plan-phase Audit-Ready Signal
@@ -47,6 +47,106 @@ audit_ready: true
 
 ## §E.2 Run-phase Evidence
 
+Attribution for every entry: the command, its verbatim output, and the
+baseline (this run, this tree, HEAD SHA at capture). The M1 capture HEAD is
+`008d2e2a7` (branch `WT-update-migration-fixes`, worktree
+`.moai/worktrees/t1578`).
+
+### Pre-flight (SPEC §C, run 2026-10-10, HEAD 008d2e2a7)
+
+- `git rev-parse --show-toplevel` → `/Users/goos/MoAI/moai-adk-go/.moai/worktrees/t1578` (matches the spawn value)
+- `git branch --show-current` → `WT-update-migration-fixes`
+- `git rev-parse --short HEAD` → `008d2e2a7`
+- `go build ./...` → exit 0, no output
+- `GOOS=windows GOARCH=amd64 go build ./...` → exit 0, no output
+- `golangci-lint run --timeout=2m 2>&1 | tail -5` → `0 issues.` (baseline: zero findings before any edit)
+- Working tree before this run: one modified file, `progress.md`. Its only
+  change was one appended §G line (ceiling-outcome record, 2026-10-09T16:19:39Z)
+  written before this run. It is kept byte-identical and is committed with M1.
+
+### M1 — measurement record (no implementation code)
+
+**M1-a — K1 reproduction attempt (SPEC §C C3 command, re-measured on 008d2e2a7).**
+
+```
+$ go test ./internal/cli/ -run 'TestRunUpdate_V3Path_NormalizesLegacyRootDenyEntries' -count=1
+ok  	github.com/modu-ai/moai-adk/internal/cli	1.337s
+```
+
+Exit 0. Classification: **K1 repaired** by card t1569 M2 (PR #1792, commit 87da06367). The guard is GREEN on this tree, so no migration code change is authorized.
+
+Pin-strength read (M2-a, read-only): the test-owned `legacyRootDenySpecifiers` list has 9 entries (`internal/cli/update_deny_migration_test.go:423-433`). The fixture `legacyRootDenyFixture` carries all 9 plus two user-custom rules. The test asserts that every legacy form is absent, every canonical form is present, the custom rules survive, and the `[settings] Normalized` line is printed. The pin is at least as strong as the plan describes. No code change is needed for M2-a.
+
+**M1-b — K2 reproduction attempt (fixture measurements, temporary probe, not committed).**
+
+The probe was a temporary `internal/cli/zz_m1b_measure_test.go`, deleted before this commit. Command: `go test ./internal/cli/ -run 'TestM1B_' -count=1 -v`.
+
+Project side. A full file-level template sync runs on a v3 fixture through the real `runUpdate` (`runUpdateInFixture`):
+
+```
+M1B-PROJECT update output lines=45
+M1B-PROJECT root-absent: .claude/skills (stat .../.claude/skills: no such file or directory)
+M1B-PROJECT root-absent: .claude/agents/moai (stat .../.claude/agents/moai: no such file or directory)
+M1B-PROJECT root-absent: .agents/skills (stat .../.agents/skills: no such file or directory)
+M1B-PROJECT root-absent: .codex/agents/moai (stat .../.codex/agents/moai: no such file or directory)
+(Elision: the temporary sandbox fixture path prefix is shown as `...` in the four stat lines above; every other character is verbatim.)
+M1B-PROJECT RESULT swept=0 zero_file=0
+--- PASS: TestM1B_ProjectSideSyncFixture (0.90s)
+```
+
+Installer side. The production installer (`newUserAssetInstaller(tmpHome)`, which is the same constructor `runUserAssetUpdatePhase` uses) installs L0 plus all 11 optional packs into a temp user home:
+
+```
+M1B-INSTALL packs=11 installed=686 refreshed=0 failures=0 collisions=0 divergences=0
+M1B-INSTALL RESULT catalog_skill_targets_checked=116 empty_targets=0 missing_targets=0
+M1B-INSTALL SWEEP user_root_dirs=208 zero_file=0
+--- PASS: TestM1B_InstallerSideCatalogSelection (0.71s)
+```
+
+Classification: **K2 mechanism retired on this tree.** The project payload carries no managed skill or agent root (`swept=0` is the by-design exclusion from `isCommonAssetRoot`). The installer produced no empty directory target under the widest selection. Branch decision: **"mechanism retired; guard to be pinned in M2."** Contingency R1 (escalate M2 to repair) is NOT triggered. The REQ-UMF-006 verify-and-report is still implemented unconditionally in M2, as the plan requires.
+
+**M1-c — K3 RED anchor (EV-4 command re-run on 008d2e2a7).**
+
+```
+$ sed -n '/if syncSkipped {/,/^\t}$/p' internal/cli/update.go
+	if syncSkipped {
+		// A version-matched update runs no sync and no merge, so the retired
+		// per-agent model/effort keys are stripped here, after its own backup.
+		// A user-cancelled merge returns the same skipped=true; the helper
+		// re-evaluates the version predicate and leaves that case untouched.
+		if err := stripRetiredModelConfigOnVersionMatch(cmd, out, "."); err != nil {
+			updateLedger.requiref(sevWarn, "retired model-key removal failed: %v", err)
+		}
+		// Card t1527 D5 + repair round: the deferred render carries the block
+		// on this early return too — no explicit call here.
+		// SPEC-FEEDBACK-PARTICIPATION-001 (REQ-ANON-004): a version-matched
+		// update is still a finished plain template-sync run, so the ask runs
+		// here too; its own gates (mode flags, terminal, CI, asked) decide
+		// whether anything prompts. A failure warns; it never fails the update.
+		if err := runParticipationStep(cmd, out); err != nil {
+			_, _ = fmt.Fprintln(out, tui.CheckLine("warn", "Participation ask", "failed", err.Error(), &th))
+		}
+		runParticipationFlushAtUpdate(cmd.ErrOrStderr())
+		return nil
+	}
+```
+
+Exit 0. The block holds no integrity probe call. **RED anchor for AC-UMF-001 and AC-UMF-002 confirmed on 008d2e2a7.**
+
+**B2 cross-SPEC conflict scan (run before any edit).**
+
+`grep -rn "Retired\|superseded" internal/cli internal/userassets` returns 228 lines across 84 files. The matches in the files this run touches (`update.go`, `update_deny_migration*.go`, `update_model_key_strip.go`, `update_template_sync.go`, `user_asset_phase.go`, `install.go`, `installer_test.go`) concern the retired v2 deny-rule strip, the retired model-key strip, and superseded SPEC references. None reverses this SPEC. **No reversal to record.**
+
+**C2 — production evidence preserved.** `cp /tmp/moaikr-force-update.log .moai/reports/t1578/moaikr-force-update.log`. Both files have sha256 `c1c17110f013d69a398270f0686083e58963464e7a7f1816f0cdd965759edc47`. The copy sits under the gitignored `.moai/reports/*` path (`.gitignore:235`), so it is a local, uncommitted copy.
+
+**M1 findings.** K1 is repaired and guarded. K2 is retired, with the guard pinned in M2 and no repair escalation. K3's RED anchor is confirmed. M2 proceeds as the regression-guard milestone.
+
+### M2–M4
+
+_pending_
+
+## §E.3 Run-phase Audit-Ready Signal
+
 _pending run-phase_
 
 ## §E.3 Run-phase Audit-Ready Signal
@@ -87,3 +187,4 @@ Boundary cases: none — all four mode criteria resolved unambiguously.
 - 2026-10-09T13:05:26Z SPEC-UPDATE-MIGRATION-FIX-001 ceiling-refusal outcome=hold reasons="plan-audit ceiling reached (round count 3 >= tier ceiling 2); the verdict matches no admitting arm and holds, entry blocked (REQ-ACE-006) — release path: the split/new-SPEC route of REQ-ACE-005 or an operator decision recorded in progress.md §G" evidence=/Users/goos/moai/moai-adk-go/.moai/worktrees/t1578/.moai/reports/t1578/plan-audit-iter1.md,/Users/goos/moai/moai-adk-go/.moai/worktrees/t1578/.moai/reports/t1578/plan-audit-iter2.md,/Users/goos/moai/moai-adk-go/.moai/worktrees/t1578/.moai/reports/t1578/plan-audit-iter3.md
 - 2026-10-09T13:11:28Z SPEC-UPDATE-MIGRATION-FIX-001 ceiling-outcome outcome=pass-through reasons="plan-audit ceiling reached (round count 3 >= tier ceiling 2 + 1 delta rounds); the verdict is admission-clean and admits without a question (REQ-ACE-013)" evidence=/Users/goos/moai/moai-adk-go/.moai/worktrees/t1578/.moai/reports/t1578/plan-audit-iter1.md,/Users/goos/moai/moai-adk-go/.moai/worktrees/t1578/.moai/reports/t1578/plan-audit-iter2.md,/Users/goos/moai/moai-adk-go/.moai/worktrees/t1578/.moai/reports/t1578/plan-audit-iter3.md
 - 2026-10-09T13:12:37Z SPEC-UPDATE-MIGRATION-FIX-001 ceiling-outcome outcome=pass-through reasons="plan-audit ceiling reached (round count 3 >= tier ceiling 2 + 1 delta rounds); the verdict is admission-clean and admits without a question (REQ-ACE-013)" evidence=/Users/goos/moai/moai-adk-go/.moai/worktrees/t1578/.moai/reports/t1578/plan-audit-iter1.md,/Users/goos/moai/moai-adk-go/.moai/worktrees/t1578/.moai/reports/t1578/plan-audit-iter2.md,/Users/goos/moai/moai-adk-go/.moai/worktrees/t1578/.moai/reports/t1578/plan-audit-iter3.md
+- 2026-10-09T16:19:39Z SPEC-UPDATE-MIGRATION-FIX-001 ceiling-outcome outcome=pass-through reasons="plan-audit ceiling reached (round count 3 >= tier ceiling 2 + 1 delta rounds); the verdict is admission-clean and admits without a question (REQ-ACE-013)" evidence=/Users/goos/MoAI/moai-adk-go/.moai/worktrees/t1578/.moai/reports/t1578/plan-audit-iter1.md,/Users/goos/MoAI/moai-adk-go/.moai/worktrees/t1578/.moai/reports/t1578/plan-audit-iter2.md,/Users/goos/MoAI/moai-adk-go/.moai/worktrees/t1578/.moai/reports/t1578/plan-audit-iter3.md

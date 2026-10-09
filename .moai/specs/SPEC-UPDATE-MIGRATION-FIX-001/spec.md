@@ -2,9 +2,9 @@
 id: SPEC-UPDATE-MIGRATION-FIX-001
 title: "Update migration follow-ups from the mo.ai.kr production run: verify the two reported defects against the current tree, pin regressions, and add the version-match integrity probe"
 version: "0.1.0"
-status: draft
+status: in-progress
 created: 2026-10-09
-updated: 2026-10-09
+updated: 2026-10-10
 author: manager-spec
 priority: P1
 phase: "v3.2.0 target"
