@@ -446,6 +446,8 @@ ok  	github.com/modu-ai/moai-adk/internal/userassets	0.846s
 - R-4: the installer empty-target result (M1-b: `empty_targets=0`) is a point-in-time measurement. The guard pins the contract, not the catalog content.
 - R-5: the sync-audit verdict has not run; this record is its input, not its verdict. `sync_commit_sha` stays `pending-backfill` until the backfill commit.
 
+- card_review: .moai/reports/t1578/card-review.md — codex_review scope=card (advisory), verdict fail. Finding P2 internal/factory/gtd_operation.go:583 is attributed outside the card diff (git diff --stat 2aab5f797 -- that path is empty; the tool base db0c514d3 differs from the card merge base 2aab5f797). Finding P2 internal/cli/update_integrity_probe.go:52 is confirmed by code reading (a codex-only deploy hides .claude/** at internal/template/harness_fs.go:112; the probe requires .claude/settings.json). Disposition pending the leader.
+
 ## §F Phase 4 Mode Selection
 
 Plan→run Kickoff decision record (autonomous transition, auto-semantics §9.1):
