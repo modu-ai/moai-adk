@@ -58,3 +58,5 @@ _<pending sync-phase>_
 decision record: decided_by=lane-5 (card-pick, run tmnboq) evidence_refs=card=t1582;class=C;mode=parallelizable@2026-10-09T16:33Z;prior_hold=t1568(lease expired 16:25:01Z);leader_ruling=bb3b2d04(supersedes 44610f49);pr=no-link;landed=none ladder_path=gate-row card pick (AUTONOMOUS, auto-semantics §9.3)
 
 wait record: id=w-t1582-20261009T1638Z waiting_on=leader reason=cross-card base decision — pinned base vs absorbing origin/main (4 conflicts + t1538 overlap); implementation spawn held recheck=one-shot 5 min (local 01:43 KST) plus standing cron 8a51a689 (:07/:27/:47)
+
+decision record: decided_by=lane-5-watchdog evidence_refs=board:d-20261009T163954Z-0030;resolves:w-t1582-20261009T1638Z;baseline=8673c2a95;red=d7f4fcf0c;run_record=f9e272a7c;waiver=pre-spawn-139/95-impl-spawn-only;mode=parallelizable@20261009T1643Z ladder_path=step2-board-ruling-option-B
