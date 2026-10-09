@@ -163,3 +163,30 @@ func TestCodexNativePinnedPassStaysPass(t *testing.T) {
 			out.Verdict, len(out.Findings), out.Contradiction)
 	}
 }
+
+// TestCodexReviewSessionParamsCarryReproductionNote — SPEC-GATE-BOTTLENECK-001
+// REQ-GBN-003: the review-request contract states the conditional-reproduction
+// policy on the review/start session, and only there. The directive rides the
+// SAME developerInstructions field the format pin rides (the live-consumed
+// channel — the codex-side support this contract is gated on), appended AFTER
+// the pin so the parser-pinned format text stays at the head unchanged.
+func TestCodexReviewSessionParamsCarryReproductionNote(t *testing.T) {
+	params := codexReviewSessionParams(codexMethodReviewStart, map[string]any{"target": codexTargetUncommitted})
+	instr, ok := params["developerInstructions"].(string)
+	if !ok {
+		t.Fatalf("review/start session params must carry developerInstructions, got %v", params)
+	}
+	if !strings.Contains(instr, "conditional reproduction") || !strings.Contains(instr, "do NOT run") {
+		t.Errorf("review/start session params must carry the reproduction directive, got %q", instr)
+	}
+	// The directive must not displace the output-format pin — the verdict
+	// parser depends on the pinned shapes leading the instruction.
+	if !strings.HasPrefix(instr, "Use exactly this output format") {
+		t.Errorf("the format pin must stay at the head of the instruction, got %q", instr)
+	}
+	// Non-review methods are untouched: no pin, no directive.
+	other := codexReviewSessionParams("some/other-method", map[string]any{})
+	if _, ok := other["developerInstructions"]; ok {
+		t.Errorf("non-review methods must not gain developerInstructions, got %v", other)
+	}
+}

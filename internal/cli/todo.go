@@ -218,8 +218,12 @@ func newTodoCmd() *cobra.Command {
 	defer newTodoCmdMu.Unlock()
 	cmd := &cobra.Command{
 		Use:   "todo",
-		Short: "Operate the backlog queue",
+		Short: "Operate the backlog queue (the canonical queue command)",
 		Long: `Operate the backlog queue at ~/.moai/db/<project-key>/todo/backlog.db.
+
+moai todo is the canonical queue command; moai gtd remains a fully supported
+compatibility alias — same database, same card identities, same ordering,
+archive, and restore path.
 
 The queue resolves against the PRIMARY checkout even when this command runs
 inside a linked worktree — one repository, one queue; a card worktree adds
@@ -506,9 +510,9 @@ func todoMistypedVerbGuard(cmd *cobra.Command, args []string) error {
 // the refusal above speaks in that surface's own voice.
 //
 // The verb tree is built once by newTodoCmd and mounted under two names:
-// `gtd`, the canonical surface, and `todo`, the thin compatibility spelling
-// (REQ-GTD-003). One guard therefore serves both, and a hard-coded "todo"
-// answered an operator on the canonical surface with the compatibility name —
+// `todo`, the canonical surface, and `gtd`, the fully supported compatibility
+// spelling (REQ-GTD-003). One guard therefore serves both, and a hard-coded
+// "todo" once answered an operator on the `gtd` surface with the `todo` name —
 // and pointed the recovery line at a command they had not called.
 //
 // No per-surface branch is needed, because the invoked command already carries

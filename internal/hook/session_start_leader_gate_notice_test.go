@@ -257,8 +257,11 @@ func TestLeaderNoticeBatchGatePointer(t *testing.T) {
 		}
 	})
 
-	// Handler level: the English agent copy (additionalContext) and the operator
-	// copy in a non-English locale (systemMessage) carry the sentence.
+	// Handler level: both copies carry the sentence, and BOTH follow the
+	// session's conversation_language (SPEC-SESSION-START-GUIDE-I18N-001:
+	// the additionalContext channel's English-only rule is amended for this
+	// surface — decision-index Q1). Under a ko configuration the agent copy
+	// renders the ko locale prose, not the English one.
 	t.Run("handler_level", func(t *testing.T) {
 		t.Setenv(config.EnvMoaiLaunchProvider, "")
 		clearFactoryEnv(t)
@@ -282,8 +285,15 @@ func TestLeaderNoticeBatchGatePointer(t *testing.T) {
 				t.Errorf("factory leader %s lacks the sentence:\n%s", channel, text)
 			}
 		}
-		if strings.Contains(ac, "운영자") {
-			t.Errorf("factory leader additionalContext leaked the operator locale")
+		// Locale-appropriateness, not English-only: under conversation_language
+		// ko the agent copy renders the ko leader header, and the English
+		// header is gone from it (the pointer path and the gate-name token
+		// stay verbatim as protocol tokens in both locales).
+		if !strings.Contains(ac, "팩토리 모드: run tjgate") {
+			t.Errorf("factory leader additionalContext must render the operator locale (ko leader header) under conversation_language ko:\n%s", ac)
+		}
+		if strings.Contains(ac, "Factory Mode: run tjgate") {
+			t.Errorf("factory leader additionalContext still renders the English header under conversation_language ko:\n%s", ac)
 		}
 	})
 }

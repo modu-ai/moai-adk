@@ -225,6 +225,10 @@ func OpenExistingWithDeadline(projectRoot, runID string, deadline time.Duration)
 	}
 	v := url.Values{}
 	v.Add("_pragma", fmt.Sprintf("busy_timeout(%d)", busyMillis))
+	// synchronous is a per-connection setting (journal_mode lives in the file
+	// header, this does not), so the hot path must re-assert it every turn —
+	// same reasoning as the init path above (card t1592).
+	v.Add("_pragma", "synchronous(NORMAL)")
 	v.Add("_txlock", "immediate")
 	db, err := sql.Open("sqlite", brokerDSN(path, v))
 	if err != nil {
@@ -301,6 +305,13 @@ func openWithContext(parent context.Context, projectRoot, runID string, deadline
 	}
 	v.Add("_pragma", fmt.Sprintf("busy_timeout(%d)", busyMillis))
 	v.Add("_pragma", "journal_mode(WAL)")
+	// synchronous(NORMAL) is WAL's documented pairing: it drops the per-commit
+	// fsync while staying crash-safe, which is what a fresh-DB schema DDL needs
+	// on cold Windows filesystems — card t1592 measured the 2s bind budget dying
+	// inside ExecContext(schema) at 3.08s on windows-latest (darwin baseline
+	// 256ms). The broker holds coordination state (expiring messages, per-turn
+	// hook retries), so a power-loss commit gap is an acceptable trade.
+	v.Add("_pragma", "synchronous(NORMAL)")
 	v.Add("_txlock", "immediate")
 	db, err := sql.Open("sqlite", brokerDSN(path, v))
 	if err != nil {

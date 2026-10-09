@@ -16,7 +16,7 @@ metadata:
 
 Implement SPEC requirements using the configured development methodology.
 
-For methodology details (DDD ANALYZE-PRESERVE-IMPROVE and TDD RED-GREEN-REFACTOR cycles, success criteria, brownfield enhancement), see: .claude/rules/moai/workflow/spec-workflow.md (Run Phase section)
+For methodology details (DDD ANALYZE-PRESERVE-IMPROVE and TDD RED-GREEN-REFACTOR cycles, success criteria, brownfield enhancement), see: .claude/rules/moai/workflow/spec-workflow-detail.md (Run-phase methodology section)
 
 ## Scope
 

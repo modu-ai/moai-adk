@@ -107,6 +107,11 @@ func heartbeatStale(ticket IntegrationTicket, now time.Time) bool {
 func (r *WindowReport) promoteFirst(lock *IntegrationLock, now time.Time, lease time.Duration) {
 	ticket := lock.Queue[0]
 	displaced := *lock
+	// t1576 review round 9: the snapshot keeps the LAST holder only —
+	// copying the previous Displaced pointer nested the whole handover
+	// history into a record the status path polls on every read.
+	displaced.Displaced = nil
+	displaced.Queue = nil
 	if lock.Held() {
 		lock.Displaced = &displaced
 		lock.DisplacedReason = fmt.Sprintf("displaced %s when %s was promoted at %s", displaced.SessionID, ticket.SessionID, now.Format(time.RFC3339))
@@ -153,6 +158,11 @@ func RefreshWindow(lock *IntegrationLock, policy IntegrationWindowPolicy, probe 
 		// REQ-MWQ-007: clear the stale holder with no successor, queue
 		// intact — the displacement recorded, never silent (P2-9).
 		clearHolder(lock, now, "stale holder cleared under hold")
+		// t1576 review round 4: the clear is a CHANGE the acquire mutation
+		// must persist — the report's displaced flag is what
+		// persist-on-refusal reads, and leaving it unset kept the stale
+		// holder on disk after the hold refusal named the refreshed state.
+		report.Displaced = true
 		return report
 	}
 	if len(lock.Queue) > 0 {
@@ -163,6 +173,7 @@ func RefreshWindow(lock *IntegrationLock, policy IntegrationWindowPolicy, probe 
 	// takeover would clear it (the caller's own acquire then takes the
 	// free window) — with the displacement recorded.
 	clearHolder(lock, now, "stale holder cleared")
+	report.Displaced = true
 	return report
 }
 
@@ -175,6 +186,11 @@ func RefreshWindow(lock *IntegrationLock, policy IntegrationWindowPolicy, probe 
 func clearHolder(lock *IntegrationLock, now time.Time, why string) {
 	if lock.Held() {
 		displaced := *lock
+		// t1576 review round 9: the snapshot keeps the LAST holder only —
+		// the previous Displaced pointer nested the whole handover history
+		// (depth 40, 46KB after 40 releases) into a polled record.
+		displaced.Displaced = nil
+		displaced.Queue = nil
 		lock.Displaced = &displaced
 		lock.DisplacedReason = fmt.Sprintf("%s at %s", why, now.Format(time.RFC3339))
 	}

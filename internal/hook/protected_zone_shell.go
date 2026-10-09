@@ -460,6 +460,19 @@ type zoneCwd struct {
 	gen int
 }
 
+// zoneFuncBodies is one function name's registry entry: the bodies the name
+// may have, and whether the declaration is CONDITIONAL — seen only inside a
+// branch world (an if/&&/|| arm, a loop body, a case arm). A straight-line
+// declaration replaces and is certain; a branch join marks a name absent
+// from the pre-branch entry as conditional, and a call to a conditional name
+// is judged under BOTH interpretations — the possibly-declared bodies AND
+// the built-in/external verb resolution the shell would use when the
+// declaration did not run (card t1574 K2, REQ-ZSP-002).
+type zoneFuncBodies struct {
+	bodies      []*syntax.Stmt
+	conditional bool
+}
+
 // zoneWalker carries one shell-policy walk. cwds is the set of POSSIBLE
 // working directories at this point — control flow multiplies them, and a
 // candidate is denied when any of them covers it (round 6 P1); each entry
@@ -477,18 +490,22 @@ type zoneWalker struct {
 	h        *preToolHandler
 	cwds     []zoneCwd
 	mutating bool
-	// funcs holds each generation's function registry; calling holds the
-	// names currently being walked per generation; calls counts the
-	// bounded re-entries a recursion may unroll per generation (round 17
-	// P1). unbounded records that a walk outgrew one of its bounds — the
-	// command is then denied fail-closed rather than allowed on an
-	// incomplete analysis.
+	// funcs holds each generation's function registry as zoneFuncBodies
+	// values; calling holds the names currently being walked per generation;
+	// calls counts the bounded re-entries a recursion may unroll per
+	// generation (round 17 P1). unbounded records that a walk outgrew one of
+	// its bounds — the command is then denied fail-closed rather than
+	// allowed on an incomplete analysis. entries counts walker entries
+	// across the whole command — the GLOBAL work bound of card t1574 K5
+	// (REQ-ZSP-006), one counter across both bash generations: it bounds
+	// total work, not per-generation work.
 	unbounded bool
 	cands     []string
-	funcs     [2]map[string][]*syntax.Stmt
+	funcs     [2]map[string]*zoneFuncBodies
 	calling   [2]map[string]bool
 	calls     [2]map[string]int
 	world     int
+	entries   int
 }
 
 // setCwds replaces the possible-directory set, dropping duplicates (by
@@ -803,41 +820,96 @@ func (w *zoneWalker) zoneCall(cmd *syntax.CallExpr) {
 	if _, literal := zoneFirstArgWord(cmd.Args); !literal {
 		return // a dynamic command word under-matches
 	}
-	names := zoneExecNames(cmd.Args)
-	pathCands := zonePathCandidates(cmd.Args[1:])
+	rawReadings, _ := zoneWordWorldReadings(cmd.Args[0])
+	// card t1574 K3: strip the static wrapper set — `command`/`builtin`
+	// bypass function lookup and `env`/`nohup` are external binaries that
+	// exec their argument, so once a wrapper is present the stripped head
+	// resolves as an EXECUTABLE ONLY and never re-enters the funcs table:
+	// `rm() { :; }; command rm zone_dir/x` must deny, never walk the no-op
+	// body (REQ-ZSP-003). `builtin` over-matches by design — bash rejects
+	// `builtin rm` and deletes nothing, so judging it as the verb is the
+	// safe direction (spec D3). The strip is STRUCTURAL — generation-
+	// agnostic AST surgery, the wrapper heads are plain literals — while
+	// the stripped head's NAME judges per world in the loop below.
+	args, stripped := zoneStripWrapperPrefix(cmd.Args)
+	var pathCands [2][]string
+	if len(args) > 0 {
+		// the strip may consume EVERY word (`env FOO=1` with no command
+		// head): an empty stripped head under-matches, and slicing it here
+		// would panic
+		pathCands = zonePathCandidates(args[1:])
+	}
 	for world := 0; world < 2; world++ {
 		if w.world >= 0 && w.world != world {
 			continue // inside a generation-scoped body walk: only that world
 		}
-		n := names[world]
-		if n == "" {
+		raw := rawReadings[world]
+		if raw == "" {
 			continue
 		}
-		if _, shadowed := w.funcs[world][n]; shadowed {
-			// this world executes the declared function: its bodies run in
-			// this world's own state, each candidate body from the entry
-			// snapshot, final registries merged (gate round 23 P1)
-			w.walkFunctionBodies(world, n)
-			continue
+		// card t1574 K4 per world: the funcs lookup runs on the ORIGINAL
+		// command-word reading — a shell dispatches functions by bare name
+		// only, so a reading carrying a path separator (/bin/rm, ./rm) can
+		// NEVER resolve to a function in its own world. The old order (path
+		// fold first, funcs lookup second) let `rm() { :; }; /bin/rm
+		// zone_dir/secret.md` walk the no-op body while real bash ran the
+		// external binary and deleted the file (REQ-ZSP-004).
+		def, declared := w.funcs[world][raw]
+		conditional := declared && def.conditional
+		if declared {
+			// this world walks the declared function. A CERTAIN declaration
+			// walks and this world's verb analysis is skipped; a CONDITIONAL
+			// one (card t1574 K2) walks the possibly-declared bodies as one
+			// interpretation and FALLS THROUGH to the built-in/external
+			// resolution the shell uses when the declaration did not run —
+			// the call is denied when either interpretation pairs a mutating
+			// form with a zone-covered target (REQ-ZSP-002).
+			w.walkFunctionBodies(world, raw)
+			if !conditional {
+				continue
+			}
+		}
+		if len(args) == 0 {
+			continue // an empty stripped head under-matches exactly as today
+		}
+		headReadings, hlite := zoneWordWorldReadings(args[0])
+		if !hlite {
+			continue // the stripped head is dynamic: under-match as today
+		}
+		name := headReadings[world]
+		if strings.Contains(name, "/") {
+			// a literal executable path (/bin/rm, ./rm) names the verb
+			// through its base (round 13 P1) — card t1574 K4: for the VERB
+			// judgment only, never the funcs table above; the stripped
+			// executable may itself be a path (`env /bin/rm x`), and a path
+			// to some OTHER binary folds to a base that matches no verb,
+			// exactly as before
+			name = path.Base(name)
 		}
 		switch {
-		case zoneMutationVerbs[n]:
+		case name == "cd" && !stripped:
+			// BARE cd only (card t1574): a wrapper-stripped cd resolves as
+			// an EXTERNAL execution — `env cd` is not a working cd at all
+			// and `nohup cd` runs in a child process — so its directory
+			// argument cannot move the parent shell and must not be
+			// tracked. Wrapped-cd shapes stay the documented under-matches
+			// they were before the strip existed.
+			w.zoneCdMove(world, cmd)
+		case zoneMutationVerbs[name]:
 			// the verb's world binds its own argument readings (gate
 			// rounds 23/25)
 			w.mutating = true
 			w.zoneCandsWorld(world, pathCands[world])
-		case n == "cd":
-			w.zoneCdMove(world, cmd)
-		case n == "sed":
-			if zoneSedInPlace(world, cmd.Args) {
+		case name == "sed":
+			if zoneSedInPlace(world, args) {
 				// in-place is decided by THIS command's options alone — an
 				// earlier mutating command must not turn a read-only sed
 				// into a denial (round 6 P2)
 				w.mutating = true
 				w.zoneCandsWorld(world, pathCands[world])
 			}
-		case n == "git":
-			w.zoneGitArgs(world, cmd)
+		case name == "git":
+			w.zoneGitArgs(world, args)
 		}
 	}
 }
@@ -855,8 +927,15 @@ func (w *zoneWalker) zoneCandsWorld(world int, cands []string) {
 // per-generation entries, and the pre-move set survives (the cd may fail —
 // round 8 P1). The move applies LAST for this command: subsequent
 // statements see it, this command's other worlds never did (gate round 21
-// P1).
+// P1). The K8 bound of card t1574 brackets the move (REQ-ZSP-006): a set
+// already past the bound stops growing — the verdict is already fail-
+// closed, and a loop's remaining passes must not square the set further —
+// and a move that pushes the set past the bound flags the walk incomplete.
 func (w *zoneWalker) zoneCdMove(world int, cmd *syntax.CallExpr) {
+	if len(w.cwds) > zoneCwdsBound {
+		w.unbounded = true
+		return
+	}
 	multi := len(cmd.Args) != 2
 	var pooled []string
 	var reading string
@@ -906,6 +985,13 @@ func (w *zoneWalker) zoneCdMove(world int, cmd *syntax.CallExpr) {
 	// (round 8 P1)
 	next = append(next, w.cwds...)
 	w.setCwds(next)
+	if len(w.cwds) > zoneCwdsBound {
+		// card t1574 K8: every cd unions the pre-cd set into the next set,
+		// so a chain of n cds squares the possible-directory set toward 2^n
+		// states. A set past the bound is a walk that cannot complete: deny
+		// fail-closed, never silent truncation (REQ-ZSP-006).
+		w.unbounded = true
+	}
 }
 
 // walkFunctionBodies executes a shadowing world's declared function: each
@@ -913,25 +999,42 @@ func (w *zoneWalker) zoneCdMove(world int, cmd *syntax.CallExpr) {
 // registry merges — a later candidate never erases an earlier
 // registration (gate round 23 P1) — entirely inside the world's own state:
 // its registry, its bindings, and its argument readings (gate round 25
-// P1). A recursive call re-enters bounded (round 17 P1).
+// P1). A recursive call re-enters bounded and RESTORES the outer frame's
+// accounting on frame exit (card t1574 K5, REQ-ZSP-005): the old frame
+// exit deleted the in-flight marker, so an inner call's exit erased the
+// OUTER frame's marker and the next sibling re-entry reset the bounded
+// count to 1 — the recursion bound never held and a command real bash
+// terminates instantly crashed the walker with a stack overflow. A
+// conditional declaration's call keeps the possibility of absence (card
+// t1574 K2): every registry entry the bodies INSTALLED stays conditional
+// in this world.
 func (w *zoneWalker) walkFunctionBodies(world int, name string) {
-	bodies := w.funcs[world][name]
+	def, ok := w.funcs[world][name]
+	if !ok {
+		return
+	}
 	savedWorld := w.world
 	w.world = world
 	defer func() { w.world = savedWorld }()
-	if w.calling[world][name] {
-		if w.calls[world][name] >= zoneRecursionBound {
+	prevCalling := w.calling[world][name]
+	prevCalls := w.calls[world][name]
+	if prevCalling {
+		// a recursive call re-enters bounded: each re-entry walks the body
+		// from the walker's CURRENT state (the recursion's directory moves
+		// are real), and past the bound the command is fail-closed like any
+		// other walk that cannot complete (round 17 P1)
+		if prevCalls >= zoneRecursionBound {
 			w.unbounded = true
 			return
 		}
-		w.calls[world][name]++
+		w.calls[world][name] = prevCalls + 1
 	} else {
 		w.calling[world][name] = true
 		w.calls[world][name] = 1
 	}
 	entry := cloneZoneFuncs(w.funcs[world])
-	var result map[string][]*syntax.Stmt
-	for _, body := range bodies {
+	var result map[string]*zoneFuncBodies
+	for _, body := range def.bodies {
 		w.funcs[world] = cloneZoneFuncs(entry)
 		w.zoneWalkStmt(body)
 		if result == nil {
@@ -941,31 +1044,97 @@ func (w *zoneWalker) walkFunctionBodies(world int, name string) {
 		}
 	}
 	w.funcs[world] = result
-	delete(w.calling[world], name)
+	if def.conditional {
+		// card-review P1 (t1574), the transitive instance of REQ-ZSP-002,
+		// judged in THIS world's registry: the call itself may not have
+		// executed — the declaring branch may not have run, and real bash
+		// answers command-not-found — so every declaration the bodies
+		// INSTALLED (absent from the pre-call entry) keeps the possibility
+		// of absence. A certain call's bodies keep the straight-line
+		// replacement semantics unchanged.
+		w.funcs[world] = mergeZoneWorlds(entry, result)
+	}
+	if prevCalling {
+		// restore the OUTER frame's accounting: the inner frame's exit must
+		// not erase it (card t1574 K5, REQ-ZSP-005)
+		w.calling[world][name] = true
+		w.calls[world][name] = prevCalls
+	} else {
+		delete(w.calling[world], name)
+		delete(w.calls[world], name)
+	}
 }
 
-// zoneExecNames returns the executable word's possible BASE NAMES, one per
-// bash generation: [0] the modern reading, [1] the pre-4.2 reading —
-// identical when the word carries no \u/\U. The shell path-resolves the
-// executable, so each generation may produce a different name; every
-// name-driven dispatch classifies per world (gate rounds 17-21).
-func zoneExecNames(args []*syntax.Word) [2]string {
-	var out [2]string
-	if len(args) == 0 {
-		return out
-	}
-	readings, literal := zoneWordWorldReadings(args[0])
-	if !literal {
-		return out
-	}
-	for world := 0; world < 2; world++ {
-		t := readings[world]
-		if strings.Contains(t, "/") {
-			t = path.Base(t)
+// zoneStripWrapperPrefix strips the static wrapper set from a command's
+// argument list — `command` (with its optional `-p`), `env` (with the
+// NAME=VALUE assignment words a real env consumes), `nohup`, and `builtin`
+// (card t1574 K3, REQ-ZSP-003). The enumerated set is what the Claude Code
+// permission layer strips (command/builtin) plus the card matrix (env,
+// nohup); wrapper forms outside it (exec, nice, timeout, xargs, sudo, ...)
+// stay the documented under-matches (spec D2). The loop is bounded by the
+// argument list itself and handles nested forms (`env command rm x`); an
+// empty stripped head under-matches exactly as today. The second result
+// reports whether ANY wrapper was stripped — a stripped head resolves as an
+// external execution, so the cd-tracking branch must not process it (gate
+// round: `env cd zone_dir` runs a child process whose cd cannot move the
+// parent shell).
+func zoneStripWrapperPrefix(args []*syntax.Word) ([]*syntax.Word, bool) {
+	stripped := false
+	for len(args) > 0 {
+		head, literal := zoneWordText(args[0])
+		if !literal {
+			return args, stripped
 		}
-		out[world] = t
+		switch head {
+		case "command":
+			stripped = true
+			if len(args) > 1 {
+				if t, lit := zoneWordText(args[1]); lit && t == "-p" {
+					args = args[2:]
+					continue
+				}
+			}
+			args = args[1:]
+		case "env":
+			stripped = true
+			args = args[1:]
+			for len(args) > 0 {
+				t, lit := zoneWordText(args[0])
+				if !lit || !zoneEnvAssignment(t) {
+					break
+				}
+				args = args[1:]
+			}
+		case "nohup", "builtin":
+			stripped = true
+			args = args[1:]
+		default:
+			return args, stripped
+		}
 	}
-	return out
+	return args, stripped
+}
+
+// zoneEnvAssignment reports whether t is a NAME=VALUE assignment word — the
+// environment-setting form env consumes before its command argument. The
+// name part follows the shell's variable-name shape: letters, digits (never
+// first), underscores.
+func zoneEnvAssignment(t string) bool {
+	idx := strings.IndexByte(t, '=')
+	if idx <= 0 {
+		return false
+	}
+	for i := 0; i < idx; i++ {
+		c := t[i]
+		switch {
+		case c == '_':
+		case c >= 'a' && c <= 'z', c >= 'A' && c <= 'Z':
+		case i > 0 && c >= '0' && c <= '9':
+		default:
+			return false
+		}
+	}
+	return true
 }
 
 // zonePathCandidates collects the candidates an argument list names: plain
@@ -976,9 +1145,15 @@ func zoneExecNames(args []*syntax.Word) [2]string {
 // stays an accepted under-match). Empty readings filter PER WORLD — the
 // modern reading may truncate to "" at a leading code-point NUL while the
 // pre-4.2 reading still names a real path — and the attached value is
-// extracted from EVERY world's spelling (gate round 15 P1).
+// extracted from EVERY world's spelling (gate round 15 P1). Card t1574 K1:
+// the bare `--` separator word ends the options — POSIX makes every
+// following word an operand — so after it every fully-literal word, hyphen-
+// leading included, is a candidate and the separator itself never becomes
+// one (REQ-ZSP-001); the separator tracks PER WORLD, and dynamic words keep
+// the existing under-match.
 func zonePathCandidates(args []*syntax.Word) [2][]string {
 	out := [2][]string{}
+	var seenDashDash [2]bool
 	for _, a := range args {
 		readings, literal := zoneWordWorldReadings(a)
 		if !literal {
@@ -993,14 +1168,20 @@ func zonePathCandidates(args []*syntax.Word) [2][]string {
 			if t == "" {
 				continue
 			}
-			if strings.HasPrefix(t, "--") {
-				if idx := strings.Index(t, "="); idx >= 0 && idx+1 < len(t) {
-					out[world] = append(out[world], t[idx+1:])
+			if !seenDashDash[world] {
+				if t == "--" {
+					seenDashDash[world] = true
+					continue
 				}
-				continue
-			}
-			if strings.HasPrefix(t, "-") {
-				continue
+				if strings.HasPrefix(t, "--") {
+					if idx := strings.Index(t, "="); idx >= 0 && idx+1 < len(t) {
+						out[world] = append(out[world], t[idx+1:])
+					}
+					continue
+				}
+				if strings.HasPrefix(t, "-") {
+					continue
+				}
 			}
 			out[world] = append(out[world], t)
 		}
@@ -1046,22 +1227,22 @@ func zoneSedInPlace(world int, args []*syntax.Word) bool {
 // generation executes). The subcommand word itself stays an exact-string
 // match on the modern reading (the justified single-world exception — git
 // dispatches subcommands internally, the shell never path-resolves them).
-func (w *zoneWalker) zoneGitArgs(world int, cmd *syntax.CallExpr) bool {
+func (w *zoneWalker) zoneGitArgs(world int, args []*syntax.Word) bool {
 	dirOpt := ""
 	var wtOpts []string
 	sub := ""
 	subIdx := -1
-	for j := 1; j < len(cmd.Args); j++ {
+	for j := 1; j < len(args); j++ {
 		// the global-option classification and argument consumption bind to
 		// the passed generation like everything else (gate round 34): a
 		// word whose pre-4.2 reading is NOT a recognized global option is
 		// not consumed in that world's sequence
-		readings, lit := zoneWordWorldReadings(cmd.Args[j])
+		readings, lit := zoneWordWorldReadings(args[j])
 		if !lit {
 			break // dynamic global argument: under-match
 		}
 		t := readings[world]
-		if strings.HasPrefix(t, "-") && zoneWordDual(cmd.Args[j]) {
+		if strings.HasPrefix(t, "-") && zoneWordDual(args[j]) {
 			// escape-origin word: split NAME vs VALUE. Only a NAME-origin
 			// escape (the option NAME itself is \u/\U escape text)
 			// terminates this world's sequence — the pre-4.2 world's git
@@ -1090,8 +1271,8 @@ func (w *zoneWalker) zoneGitArgs(world int, cmd *syntax.CallExpr) bool {
 		}
 		if strings.HasPrefix(t, "-") {
 			if t == "-C" || t == "-c" || t == "--git-dir" || t == "--work-tree" || t == "--namespace" || t == "--super-prefix" {
-				if t == "-C" && j+1 < len(cmd.Args) {
-					if dirReadings, lit2 := zoneWordWorldReadings(cmd.Args[j+1]); lit2 {
+				if t == "-C" && j+1 < len(args) {
+					if dirReadings, lit2 := zoneWordWorldReadings(args[j+1]); lit2 {
 						if dir := dirReadings[world]; dir != "" {
 							if dirOpt == "" || zoneIsAbs(dir) {
 								dirOpt = dir
@@ -1101,8 +1282,8 @@ func (w *zoneWalker) zoneGitArgs(world int, cmd *syntax.CallExpr) bool {
 						}
 					}
 				}
-				if t == "--work-tree" && j+1 < len(cmd.Args) {
-					if wtReadings, lit2 := zoneWordWorldReadings(cmd.Args[j+1]); lit2 {
+				if t == "--work-tree" && j+1 < len(args) {
+					if wtReadings, lit2 := zoneWordWorldReadings(args[j+1]); lit2 {
 						if wt := wtReadings[world]; wt != "" {
 							// overwrite-wins, as above
 							wtOpts = []string{wt}
@@ -1126,7 +1307,7 @@ func (w *zoneWalker) zoneGitArgs(world int, cmd *syntax.CallExpr) bool {
 	}
 	w.mutating = true
 	var fileArgs []string
-	for _, a := range cmd.Args[subIdx+1:] {
+	for _, a := range args[subIdx+1:] {
 		readings, flit := zoneWordWorldReadings(a)
 		if !flit {
 			continue
@@ -1220,6 +1401,23 @@ const zoneSymlinkDepthBound = 32
 // silently (round 17 P1).
 const zoneRecursionBound = 8
 
+// zoneWalkerEntryBudget bounds the walker's TOTAL work: one counter of
+// zoneWalkStmt entries across the whole command. Restore-on-exit accounting
+// bounds recursion DEPTH only — a width-W body over the recursion bound B
+// yields Θ(W^(B-1)) body walks (W=10, B=8 ≈ 10^7) — so the total work needs
+// its own cap. Past the budget the walk is incomplete: the unbounded flag is
+// set and every deeper entry aborts immediately, and the command is denied
+// fail-closed rather than allowed on an unfinished analysis (card t1574 K5,
+// REQ-ZSP-006).
+const zoneWalkerEntryBudget = 10000
+
+// zoneCwdsBound caps how large a chain of cd statements may grow the
+// possible-directory set. Every cd unions the pre-cd set into the next set,
+// so a chain of n cds squares the set toward 2^n states; past the bound the
+// walk cannot complete and is denied fail-closed — never truncated silently
+// (card t1574 K8, REQ-ZSP-006).
+const zoneCwdsBound = 16
+
 // zoneCwdsEqual compares two possible-directory sets member for member.
 func zoneCwdsEqual(a, b []zoneCwd) bool {
 	if len(a) != len(b) {
@@ -1262,11 +1460,9 @@ func (w *zoneWalker) walkBodyFixedPoint(cond []*syntax.Stmt, stmts []*syntax.Stm
 	w.unbounded = true
 }
 
-// zoneFuncsEqual compares two function registries as body-pointer sets per
-// name.
-// cloneZoneFuncsState deep-copies BOTH generations' registries.
-func cloneZoneFuncsState(s [2]map[string][]*syntax.Stmt) [2]map[string][]*syntax.Stmt {
-	var out [2]map[string][]*syntax.Stmt
+// cloneZoneFuncsState copies BOTH generations' registries.
+func cloneZoneFuncsState(s [2]map[string]*zoneFuncBodies) [2]map[string]*zoneFuncBodies {
+	var out [2]map[string]*zoneFuncBodies
 	for i := range s {
 		out[i] = cloneZoneFuncs(s[i])
 	}
@@ -1274,16 +1470,42 @@ func cloneZoneFuncsState(s [2]map[string][]*syntax.Stmt) [2]map[string][]*syntax
 }
 
 // mergeZoneFuncsState unions both generations' registries.
-func mergeZoneFuncsState(a, b [2]map[string][]*syntax.Stmt) [2]map[string][]*syntax.Stmt {
-	var out [2]map[string][]*syntax.Stmt
+func mergeZoneFuncsState(a, b [2]map[string]*zoneFuncBodies) [2]map[string]*zoneFuncBodies {
+	var out [2]map[string]*zoneFuncBodies
 	for i := range a {
 		out[i] = mergeZoneFuncs(a[i], b[i])
 	}
 	return out
 }
 
+// mergeZoneWorldsState joins a branch world's post registry into the
+// pre-branch entry PER GENERATION — each generation's registry keeps its
+// own possibility-of-absence marking (card t1574 K2).
+func mergeZoneWorldsState(entry, post [2]map[string]*zoneFuncBodies) [2]map[string]*zoneFuncBodies {
+	var out [2]map[string]*zoneFuncBodies
+	for i := range entry {
+		out[i] = mergeZoneWorlds(entry[i], post[i])
+	}
+	return out
+}
+
+// mergeBranchJoinState joins an if-chain's EXHAUSTIVE branch worlds over
+// the pre-branch entry PER GENERATION (gate round 4 of card t1574 on each
+// generation's own registry).
+func mergeBranchJoinState(entry [2]map[string]*zoneFuncBodies, worlds ...[2]map[string]*zoneFuncBodies) [2]map[string]*zoneFuncBodies {
+	var out [2]map[string]*zoneFuncBodies
+	for i := range entry {
+		worldsSingle := make([]map[string]*zoneFuncBodies, 0, len(worlds))
+		for _, world := range worlds {
+			worldsSingle = append(worldsSingle, world[i])
+		}
+		out[i] = mergeBranchJoin(entry[i], worldsSingle...)
+	}
+	return out
+}
+
 // zoneFuncsEqualState compares both generations' registries.
-func zoneFuncsEqualState(a, b [2]map[string][]*syntax.Stmt) bool {
+func zoneFuncsEqualState(a, b [2]map[string]*zoneFuncBodies) bool {
 	for i := range a {
 		if !zoneFuncsEqual(a[i], b[i]) {
 			return false
@@ -1292,20 +1514,24 @@ func zoneFuncsEqualState(a, b [2]map[string][]*syntax.Stmt) bool {
 	return true
 }
 
-func zoneFuncsEqual(a, b map[string][]*syntax.Stmt) bool {
+// zoneFuncsEqual compares two function registries as body-pointer sets per
+// name; the conditional dimension joins the comparison so the loop fixed
+// point converges on it too (card t1574 K2).
+func zoneFuncsEqual(a, b map[string]*zoneFuncBodies) bool {
+
 	if len(a) != len(b) {
 		return false
 	}
-	for name, bodies := range a {
+	for name, def := range a {
 		other, ok := b[name]
-		if !ok || len(other) != len(bodies) {
+		if !ok || other.conditional != def.conditional || len(other.bodies) != len(def.bodies) {
 			return false
 		}
-		seen := make(map[*syntax.Stmt]bool, len(other))
-		for _, s := range other {
+		seen := make(map[*syntax.Stmt]bool, len(other.bodies))
+		for _, s := range other.bodies {
 			seen[s] = true
 		}
-		for _, s := range bodies {
+		for _, s := range def.bodies {
 			if !seen[s] {
 				return false
 			}
@@ -1316,9 +1542,10 @@ func zoneFuncsEqual(a, b map[string][]*syntax.Stmt) bool {
 
 // cloneZoneFuncs copies the function registry — a subshell's redefinitions
 // die with the subshell, so every subshell-shaped walk runs on its own copy
-// (round 11 P1).
-func cloneZoneFuncs(m map[string][]*syntax.Stmt) map[string][]*syntax.Stmt {
-	out := make(map[string][]*syntax.Stmt, len(m))
+// (round 11 P1). Entries are shared by pointer: a definition is replaced
+// whole, never mutated in place.
+func cloneZoneFuncs(m map[string]*zoneFuncBodies) map[string]*zoneFuncBodies {
+	out := make(map[string]*zoneFuncBodies, len(m))
 	for k, v := range m {
 		out[k] = v
 	}
@@ -1327,24 +1554,90 @@ func cloneZoneFuncs(m map[string][]*syntax.Stmt) map[string][]*syntax.Stmt {
 
 // mergeZoneFuncs unions the possible bodies of every registry — a branch
 // join leaves the name holding every definition any world gave it (round 14
-// P1). Bodies are deduplicated by node identity.
-func mergeZoneFuncs(maps ...map[string][]*syntax.Stmt) map[string][]*syntax.Stmt {
-	out := make(map[string][]*syntax.Stmt)
+// P1). Bodies are deduplicated by node identity, and the conditional
+// dimension ORs: a name conditional in any contributing world stays
+// conditional in the union (card t1574 K2).
+func mergeZoneFuncs(maps ...map[string]*zoneFuncBodies) map[string]*zoneFuncBodies {
+	out := make(map[string]*zoneFuncBodies)
 	for _, m := range maps {
-		for name, bodies := range m {
-			for _, body := range bodies {
+		for name, def := range m {
+			have, ok := out[name]
+			if !ok {
+				copied := *def
+				copied.bodies = append([]*syntax.Stmt(nil), def.bodies...)
+				out[name] = &copied
+				continue
+			}
+			for _, body := range def.bodies {
 				dup := false
-				for _, have := range out[name] {
-					if have == body {
+				for _, candidate := range have.bodies {
+					if candidate == body {
 						dup = true
 						break
 					}
 				}
 				if !dup {
-					out[name] = append(out[name], body)
+					have.bodies = append(have.bodies, body)
 				}
 			}
+			if def.conditional {
+				have.conditional = true
+			}
 		}
+	}
+	return out
+}
+
+// mergeZoneWorlds joins a branch world's post registry into the pre-branch
+// entry: every name the post world holds but the entry lacks was declared
+// only inside the branch — the branch may not have run — so the name keeps
+// the POSSIBILITY OF ABSENCE and is marked conditional (card t1574 K2,
+// REQ-ZSP-002). A name present in both stays certain: the shell defines it
+// either way.
+func mergeZoneWorlds(entry, post map[string]*zoneFuncBodies) map[string]*zoneFuncBodies {
+	out := mergeZoneFuncs(entry, post)
+	for name, def := range post {
+		if _, was := entry[name]; !was {
+			marked := *def
+			marked.bodies = append([]*syntax.Stmt(nil), def.bodies...)
+			marked.conditional = true
+			out[name] = &marked
+		}
+	}
+	return out
+}
+
+// mergeBranchJoin joins an if-chain's EXHAUSTIVE branch worlds over the
+// pre-branch entry with the certain-intersection rule (gate round 4, card
+// t1574): real bash executes exactly one branch, so a name declared
+// certainly in EVERY contributing world is certain post-join — the
+// then/else chain is the only such join in this walker. The entry world
+// (the post-condition registry) holds the names defined before the branch:
+// present in every reachable world by definition. A name missing from any
+// reachable world, or conditional in any contributing world (an inner join
+// already found a world lacking it), keeps the possibility of absence
+// (REQ-ZSP-002, spec D1). The sibling joins must NOT use this: &&/||'s
+// entry is the always-ran left side (mergeZoneWorlds is already exact
+// there), and case plus the loops keep a may-skip world where the
+// possibility of absence stays sound.
+func mergeBranchJoin(entry map[string]*zoneFuncBodies, worlds ...map[string]*zoneFuncBodies) map[string]*zoneFuncBodies {
+	out := mergeZoneFuncs(append([]map[string]*zoneFuncBodies{entry}, worlds...)...)
+	for name, def := range out {
+		if _, was := entry[name]; was {
+			// defined before the branch: certain whatever the bodies did —
+			// they only redefine it
+			def.conditional = false
+			continue
+		}
+		allCertain := true
+		for _, world := range worlds {
+			wdef, ok := world[name]
+			if !ok || wdef.conditional {
+				allCertain = false
+				break
+			}
+		}
+		def.conditional = !allCertain
 	}
 	return out
 }
@@ -1371,8 +1664,29 @@ func (w *zoneWalker) zoneWalkStmt(stmt *syntax.Stmt) {
 	if stmt == nil {
 		return
 	}
+	// card t1574 K5: the GLOBAL work bound and the walk abort. Past the
+	// entry budget every deeper entry returns without descending, so an
+	// exhausted walk stops immediately instead of letting the remaining
+	// branches run (REQ-ZSP-006). The entry counter bounds TOTAL WORK across
+	// the whole command — restore-on-exit bounds recursion DEPTH only, and a
+	// width-W body over the recursion bound B yields Θ(W^(B-1)) body walks
+	// the depth bound alone cannot contain. The recursion and cwds bounds
+	// FLAG incompleteness without halting the walk: halting on them would
+	// leave a covered statement following a bound-tripping construct
+	// unjudged and flip the recorded category of commands the preserved
+	// family freezes (e.g. `while false; do cd docs; done; rm zone_dir/
+	// secret`), while their work is already bounded by this same counter.
+	// The counter is ONE per analysis, shared across both bash generations —
+	// it bounds total work, not per-generation work. Past the budget the
+	// walk is incomplete → the unbounded flag → the fail-closed denial.
+	w.entries++
+	if w.entries > zoneWalkerEntryBudget {
+		w.unbounded = true
+		return
+	}
 	pre := append([]zoneCwd(nil), w.cwds...)
-	var preFuncs [2]map[string][]*syntax.Stmt
+	var preFuncs [2]map[string]*zoneFuncBodies
+
 	if stmt.Background {
 		preFuncs = cloneZoneFuncsState(w.funcs)
 	}
@@ -1414,8 +1728,11 @@ func (w *zoneWalker) zoneWalkStmt(stmt *syntax.Stmt) {
 			w.zoneWalkStmt(cmd.Y)
 			// the right side may be skipped (the left failed under && or
 			// succeeded under ||): the post-left world survives — directories
-			// and function definitions alike (round 15 P1)
-			w.funcs = mergeZoneFuncsState(xFuncs, w.funcs)
+			// and function definitions alike (round 15 P1); a name the right
+			// world declares but the left lacked keeps the possibility of
+			// absence (card t1574 K2)
+			w.funcs = mergeZoneWorldsState(xFuncs, w.funcs)
+
 			w.cwds = append(w.cwds, afterX...)
 			w.setCwds(w.cwds)
 		default:
@@ -1453,7 +1770,10 @@ func (w *zoneWalker) zoneWalkStmt(stmt *syntax.Stmt) {
 		} else {
 			w.walkBodyFixedPoint(nil, cmd.Do)
 		}
-		w.funcs = mergeZoneFuncsState(preFuncs, w.funcs)
+		// the zero-iteration world may skip the body: a name declared only
+		// inside it keeps the possibility of absence (card t1574 K2)
+		w.funcs = mergeZoneWorldsState(preFuncs, w.funcs)
+
 	case *syntax.WhileClause:
 		// the iteration count is unknown: condition and body walk together
 		// to the fixed point — the condition runs every iteration (round 11
@@ -1463,8 +1783,41 @@ func (w *zoneWalker) zoneWalkStmt(stmt *syntax.Stmt) {
 		// the same shape). The zero-iteration world keeps the pre-loop
 		// function registry too (round 14 P1).
 		preFuncs := cloneZoneFuncsState(w.funcs)
+		// gate round 3 (card t1574): the condition list ALWAYS executes at
+		// least once — walk it once up front so the names it declares are
+		// snapshotted and stay CERTAIN post-loop. The fixed point below
+		// restarts from the pre-loop registry and re-walks condition and
+		// body together, which only unions more worlds. Only the BODY may
+		// run zero times: the join downgrades body-only declarations to
+		// conditional, and the pass below un-downgrades every name the
+		// condition snapshot holds.
+		for _, s := range cmd.Cond {
+			w.zoneWalkStmt(s)
+		}
+		condDeclared := cloneZoneFuncsState(w.funcs)
+		// a FRESH copy, never preFuncs itself: the fixed point's live map
+		// must stay a distinct object from the entry world the join below
+		// treats as immutable, or the fixed point's declarations would
+		// masquerade as pre-loop certainties and the absent-world marking
+		// would never fire
+		w.funcs = cloneZoneFuncsState(preFuncs)
 		w.walkBodyFixedPoint(cmd.Cond, cmd.Do)
-		w.funcs = mergeZoneFuncsState(preFuncs, w.funcs)
+		// the zero-iteration world may skip the body: a name declared only
+		// inside it keeps the possibility of absence (card t1574 K2)
+		w.funcs = mergeZoneWorldsState(preFuncs, w.funcs)
+		for i := range w.funcs {
+			for name, def := range w.funcs[i] {
+				if def.conditional {
+					if _, was := condDeclared[i][name]; was {
+						// declared by the condition list: every condition
+						// evaluation defines it — certain whatever the body
+						// did
+						def.conditional = false
+					}
+				}
+			}
+		}
+
 	case *syntax.CaseClause:
 		entry := append([]zoneCwd(nil), w.cwds...)
 		entryFuncs := cloneZoneFuncsState(w.funcs)
@@ -1484,7 +1837,10 @@ func (w *zoneWalker) zoneWalkStmt(stmt *syntax.Stmt) {
 			worldsFuncs = mergeZoneFuncsState(worldsFuncs, w.funcs)
 		}
 		w.setCwds(worlds)
-		w.funcs = mergeZoneFuncsState(entryFuncs, worldsFuncs)
+		// no arm may match, and every arm is its own world: a name declared
+		// only inside an arm keeps the possibility of absence (card t1574 K2)
+		w.funcs = mergeZoneWorldsState(entryFuncs, worldsFuncs)
+
 	case *syntax.TimeClause:
 		// `time cmd` runs cmd, timed (round 10 P2)
 		w.zoneWalkStmt(cmd.Stmt)
@@ -1493,8 +1849,9 @@ func (w *zoneWalker) zoneWalkStmt(stmt *syntax.Stmt) {
 		// generation-identical in both, per-reading when the name word is
 		// dual (gate round 25 P1) — so a later call in the same command
 		// walks the body in its own generation's registry (round 10 P2). A
-		// straight-line redefinition REPLACES within its world — only a
-		// branch join unions (round 14 P1).
+		// straight-line redefinition REPLACES within its world and is
+		// CERTAIN — only a branch join unions and marks the conditional
+		// possibility of absence (round 14 P1; card t1574 K2).
 		if cmd.Name != nil {
 			worlds := []int{0, 1}
 			if w.world >= 0 {
@@ -1506,9 +1863,10 @@ func (w *zoneWalker) zoneWalkStmt(stmt *syntax.Stmt) {
 				if readings[world] == "" {
 					continue
 				}
-				w.funcs[world][readings[world]] = []*syntax.Stmt{cmd.Body}
+				w.funcs[world][readings[world]] = &zoneFuncBodies{bodies: []*syntax.Stmt{cmd.Body}}
 			}
 		}
+
 	case *syntax.CallExpr:
 		w.zoneCall(cmd)
 	default:
@@ -1541,12 +1899,36 @@ func (w *zoneWalker) walkIfChain(clause *syntax.IfClause) {
 	thenFuncs := w.funcs
 	w.setCwds(afterCond)
 	w.funcs = cloneZoneFuncsState(branchFuncs)
-	w.walkIfChain(clause.Else)
-	afterElse := append([]zoneCwd(nil), w.cwds...)
-	elseFuncs := w.funcs
+	var elseFuncs [2]map[string]*zoneFuncBodies
+	var afterElse []zoneCwd
+	if clause.Else != nil && len(clause.Else.Cond) == 0 {
+		// the TERMINAL else list (gate round 4, card t1574): mvdan folds a
+		// plain `else` into an IfClause carrying no condition — its
+		// statements are EXHAUSTIVE, exactly one of then/else runs and
+		// there is no skip world at this level. Walk it as a plain world.
+		for _, s := range clause.Else.Then {
+			w.zoneWalkStmt(s)
+		}
+		elseFuncs = w.funcs
+		afterElse = append([]zoneCwd(nil), w.cwds...)
+	} else {
+		// an elif level (or no else at all): another conditional world whose
+		// condition may fail — the skip world is the pre-branch registry
+		// the recursion starts from (a nil Else returns immediately,
+		// leaving that clone in place)
+		w.walkIfChain(clause.Else)
+		elseFuncs = w.funcs
+		afterElse = append([]zoneCwd(nil), w.cwds...)
+	}
 	// union: the then world, the else world, the condition-false world —
-	// directories and function definitions alike (round 14 P1)
-	w.funcs = mergeZoneFuncsState(mergeZoneFuncsState(branchFuncs, thenFuncs), elseFuncs)
+	// directories and function definitions alike per bash generation (round
+	// 14 P1); a name declared only inside a branch keeps the possibility of
+	// absence (card t1574 K2), while a name declared certainly in EVERY
+	// branch world is certain — the then/else pair is exhaustive (gate
+	// round 4, card t1574). The recursive elif side folds its own chain
+	// first, so its certainty flags already encode the deeper intersection.
+	w.funcs = mergeBranchJoinState(branchFuncs, thenFuncs, elseFuncs)
+
 	w.cwds = append(pre, afterThen...)
 	w.cwds = append(w.cwds, afterElse...)
 	w.setCwds(w.cwds)
@@ -1576,18 +1958,29 @@ func (h *preToolHandler) checkProtectedZoneShell(agentID string, toolInput json.
 	if !ok {
 		return ""
 	}
-	w := &zoneWalker{h: h, cwds: []zoneCwd{{dir: ".", gen: -1}}, funcs: [2]map[string][]*syntax.Stmt{{}, {}}, calling: [2]map[string]bool{{}, {}}, calls: [2]map[string]int{{}, {}}, world: -1}
+	w := &zoneWalker{h: h, cwds: []zoneCwd{{dir: ".", gen: -1}}, funcs: [2]map[string]*zoneFuncBodies{{}, {}}, calling: [2]map[string]bool{{}, {}}, calls: [2]map[string]int{{}, {}}, world: -1}
+
 	for _, stmt := range file.Stmts {
 		w.zoneWalkStmt(stmt)
 	}
-	if !w.mutating {
+	if !w.mutating && !w.unbounded {
+		// the read-only fast path (gate round, card t1574): no mutating form
+		// and a COMPLETED walk never reaches the manifest (REQ-SIPZ-008) —
+		// the common case keeps its zero-file-access baseline. The unbounded
+		// denial below stays ahead of every allow answer.
 		return ""
 	}
 
 	load := h.loadZone(root)
 	if load.State == config.ZoneStateInvalid {
 		// Fail closed: a mutating command cannot be checked against a zone of
-		// unknown extent (REQ-SIPZ-009).
+		// unknown extent (REQ-SIPZ-009). The reason precedence is the parent
+		// SPEC's error contract (gate round 2, card t1574): the operator must
+		// learn WHICH manifest file to repair, so this branch precedes the
+		// per-candidate denies and the unbounded deny — every such walk still
+		// answers deny, and the surviving reason is the one that names the
+		// repair. The read-only fast path above already returned for commands
+		// with no mutating form and a completed walk.
 		reason := zoneDenyReason(agentID, "manifest", "invalid", load.InvalidFile)
 		h.recordZoneAudit(root, zoneAuditRow{
 			Identity: agentID, Tool: "Bash", Path: load.InvalidFile,
@@ -1635,14 +2028,27 @@ func (h *preToolHandler) checkProtectedZoneShell(agentID string, toolInput json.
 	}
 
 	if w.unbounded {
-		// a loop whose directory states outgrew the fixed-point bound cannot
-		// be verified against the zone: the mutating command is denied fail-
-		// closed rather than allowed on an incomplete walk (round 9 P1).
-		// REGARDLESS of manifest state — the same Absent carve-out hole as
-		// the over-cap deny: an unverifiable walk in a manifest-less
-		// project still skips the compiled baseline floor that protects
-		// AGENTS.md and the frozen instruction files (gate round 32, sibling
-		// audit)
+		// a loop whose directory states outgrew the fixed-point bound, a
+		// walk past the work budget, or a cd chain past the cwds bound
+		// cannot be verified against the zone: the mutating command is
+		// denied fail-closed rather than allowed on an incomplete walk
+		// (round 9 P1). card t1574 K7: the unbounded denial also covers the
+		// work-budget abort, which can fire BEFORE the mutating statement is
+		// ever reached, leaving `mutating` false — the fast path above would
+		// answer allow while real bash deletes (REQ-ZSP-006, audit D5). A
+		// walk that flagged a bound AFTER collecting a covered candidate
+		// answered at the loop above, whose more specific category stays the
+		// recorded verdict (the preserved family freezes those shapes). The
+		// denial applies REGARDLESS of manifest state — an unverifiable walk
+		// in a manifest-less project still skips the compiled baseline floor
+		// that protects AGENTS.md and the frozen instruction files (the same
+		// Absent carve-out hole as the over-cap deny, gate round 32, sibling
+		// audit), and an incomplete walk may not answer allow, so the
+		// ZoneStateAbsent degrade below keeps its COMPLETED-walk meaning
+		// only (card t1574, audit D9a). Past this branch a mutating command
+		// is guaranteed: the fast path returned early on `!mutating &&
+		// !unbounded`.
+
 		reason := zoneDenyReason(agentID, "category", "loop-unbounded", "loop")
 		h.recordZoneAudit(root, zoneAuditRow{
 			Identity: agentID, Tool: "Bash", Path: "loop",
@@ -1652,7 +2058,10 @@ func (h *preToolHandler) checkProtectedZoneShell(agentID string, toolInput json.
 	}
 
 	if load.State == config.ZoneStateAbsent {
-		// Degrade visibly, mirroring the file-tool path (REQ-SIPZ-010).
+		// Degrade visibly, mirroring the file-tool path (REQ-SIPZ-010). This
+		// is the COMPLETED-walk meaning only (card t1574, audit D9a): the
+		// walk above finished and collected its candidates — an ABORTED walk
+		// never reaches here, the unbounded denial having answered first.
 		target := ""
 		if len(w.cands) > 0 {
 			target = w.cands[0]

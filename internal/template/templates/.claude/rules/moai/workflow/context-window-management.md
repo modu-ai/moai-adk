@@ -13,10 +13,11 @@ Long-horizon session continuity guidance for both users and the MoAI orchestrato
 | GLM-5.3 via `moai glm`/`moai cg` (1M) | 1,000,000 tokens | **50%** | ~500,000 tokens |
 | Fable (1M) | 1,000,000 tokens | **50%** | ~500,000 tokens |
 | Sonnet 5.5 (1M) | 1,000,000 tokens | **50%** | ~500,000 tokens |
+| Haiku 5.5 (1M) | 1,000,000 tokens | **50%** | ~500,000 tokens |
 | 200K sessions — any native-1M model under `CLAUDE_CODE_DISABLE_1M_CONTEXT=1`; Sonnet 4.6 / Opus 4.6 without `[1m]`; models below the 1M-default line behind an LLM gateway (non-Anthropic `ANTHROPIC_BASE_URL`; CC 2.1.285 / 2.1.287 default 1M on gateways for Sonnet 5+ / Opus 4.7+ / Fable and on Bedrock / Vertex / Foundry for Opus 4.7+ and Fable); a 200K-capped gateway — run `/autocompact 200k`; Sonnet 4.5 / Opus 4.5 and earlier | 200,000 tokens | **90%** | ~180,000 tokens |
 | Haiku (200K) | 200,000 tokens | **90%** | ~180,000 tokens |
 
-A session that matches both a 1M row and the 200K-sessions row takes the 200K row: the window the session actually runs with sets the threshold, not the model name. The model-specific threshold is the operational ceiling — beyond it, plan for a `/clear` before the next non-trivial action. Both this rule and `session-handoff.md` Trigger #1 read from this same table.
+A session that matches both a 1M row and the 200K-sessions row takes the 200K row: the window the session actually runs with sets the threshold, not the model name. The Haiku 5.5 (1M) row composes with that rule — it never bypasses it: on the Anthropic API the `haiku` alias resolves to Haiku 5.5 (1M, requires Claude Code v2.1.293+), while on AWS Bedrock / GCP Agent Platform / Microsoft Foundry it still resolves to Haiku 4.5, so an AWS-lineage Haiku 4.5 session keeps the 200K / **90%** row. The model-specific threshold is the operational ceiling — beyond it, plan for a `/clear` before the next non-trivial action. Both this rule and `session-handoff.md` Trigger #1 read from this same table.
 
 ## User Responsibilities
 

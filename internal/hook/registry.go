@@ -8,6 +8,7 @@ import (
 	"sync"
 	"time"
 
+	"github.com/modu-ai/moai-adk/internal/bugreport"
 	"github.com/modu-ai/moai-adk/internal/config"
 	"github.com/modu-ai/moai-adk/internal/hook/trace"
 )
@@ -122,6 +123,11 @@ func (r *registry) Dispatch(ctx context.Context, event EventType, input *HookInp
 					"timeout", r.timeout.String(),
 				)
 				r.writeTrace(input, event, h, elapsed, nil, err)
+				// SPEC-FEEDBACK-PARTICIPATION-001 (REQ-ANON-006): the hook
+				// timeout is a registered emit site; the signal is ambiguous
+				// (a slow host looks like a bug) and stays local. Fail-open:
+				// Capture cannot fail the dispatch.
+				bugreport.Capture(bugreport.KindHookTimeout, err, "", bugreportDetail(event, h))
 				return nil, fmt.Errorf("%w: %v", ErrHookTimeout, err)
 			}
 			slog.Error("handler returned error",
@@ -130,6 +136,12 @@ func (r *registry) Dispatch(ctx context.Context, event EventType, input *HookInp
 				"error", err.Error(),
 			)
 			r.writeTrace(input, event, h, elapsed, nil, err)
+			// SPEC-FEEDBACK-PARTICIPATION-001 (REQ-ANON-006): the handler
+			// error branch is the registered emit site; attribution happens
+			// inside Capture while the chain is alive (marked errors are moai,
+			// environment/user rows drop, the unmarked fallback is ambiguous
+			// and stays local).
+			bugreport.Capture(bugreport.KindHookHandlerFailure, err, "", bugreportDetail(event, h))
 			return nil, fmt.Errorf("handler %d for event %s: %w", i, event, err)
 		}
 
