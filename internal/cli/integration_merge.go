@@ -107,7 +107,7 @@ func newIntegrationMergeCmd() *cobra.Command {
 			if err != nil {
 				return err
 			}
-			_, _ = fmt.Fprintf(cmd.OutOrStdout(), "integration merge: card %s merged as %s into %s (window released; the next queued ticket holds it)\n", cardFlag, mergeSHA[:12], integBranch)
+			_, _ = fmt.Fprintf(cmd.OutOrStdout(), "integration merge: card %s merged as %s into %s (window released; the next queued ticket holds it)\n", cardFlag, factory.ShortSHA(mergeSHA), integBranch)
 			return nil
 		},
 	}

@@ -1966,7 +1966,7 @@ func factoryCompleteCard(ctx context.Context, out io.Writer, root, lockRoot, car
 	}
 	if _, err := factory.ReadRemeasureRecord(lockRoot, candidateTree); err != nil {
 		releaseOwnAcquisition()
-		return &exitCodeError{code: factory.MergeExitBaseMoved, msg: fmt.Sprintf("factory complete: refused — no valid re-measure record for the candidate tree %s (%v); run moai integration remeasure, then re-acquire --wait — the re-measure-and-re-acquire code", candidateTree[:12], err)}
+		return &exitCodeError{code: factory.MergeExitBaseMoved, msg: fmt.Sprintf("factory complete: refused — no valid re-measure record for the candidate tree %s (%v); run moai integration remeasure, then re-acquire --wait — the re-measure-and-re-acquire code", factory.ShortSHA(candidateTree), err)}
 	}
 
 	// REQ-MWQ-019 step 4 — the merge runs ONLY by calling the REQ-MWQ-017
@@ -2061,12 +2061,12 @@ func completeTransitions(ctx context.Context, db *homestate.FactoryDB, out io.Wr
 // own, distinct from the thirteen.
 func completePostMergeConflict(out io.Writer, lockRoot, sessionID, cardID, mergeSHA string, transitionErr error) error {
 	if holdErr := factory.CompletePostMergeHold(lockRoot, cardID, mergeSHA); holdErr != nil {
-		_, _ = fmt.Fprintf(out, "  writing the hold also failed (%v) — the merge commit %s stays on the integration branch; moai integration policy hold by hand\n", holdErr, mergeSHA[:12])
+		_, _ = fmt.Fprintf(out, "  writing the hold also failed (%v) — the merge commit %s stays on the integration branch; moai integration policy hold by hand\n", holdErr, factory.ShortSHA(mergeSHA))
 	}
 	if _, err := factory.ReleaseIntegrationLock(lockRoot, sessionID, 0, false); err != nil {
 		_, _ = fmt.Fprintf(out, "  releasing the window failed (%v) — release it by hand after reading the hold\n", err)
 	}
-	return &exitCodeError{code: completePostMergeTransitionConflictExit, msg: fmt.Sprintf("factory complete: %v — the merge commit %s stays on the integration branch; the window policy holds with cause post-merge-transition-conflict", transitionErr, mergeSHA[:12])}
+	return &exitCodeError{code: completePostMergeTransitionConflictExit, msg: fmt.Sprintf("factory complete: %v — the merge commit %s stays on the integration branch; the window policy holds with cause post-merge-transition-conflict", transitionErr, factory.ShortSHA(mergeSHA))}
 }
 
 // completePostMergeTransitionConflictExit is complete's own exit code

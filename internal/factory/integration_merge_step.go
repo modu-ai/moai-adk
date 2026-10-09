@@ -277,34 +277,34 @@ func RunMergeStep(in MergeStepInput, seams MergeStepSeams) (string, error) {
 		return "", releaseWindow(in, seams, mergeStepErr(MergeExitRecordInvalid, "integration merge: %v", err))
 	}
 	if err := ValidateRemeasureRecord(record); err != nil {
-		return "", releaseWindow(in, seams, mergeStepErr(MergeExitRecordInvalid, "integration merge: the re-measure for tree %s is invalid: %v", pinnedTree[:12], err))
+		return "", releaseWindow(in, seams, mergeStepErr(MergeExitRecordInvalid, "integration merge: the re-measure for tree %s is invalid: %v", ShortSHA(pinnedTree), err))
 	}
 
 	// (2) the record's base must still be the integration tip — the
 	// re-measure-and-re-acquire code names both SHAs; the lane re-absorbs,
 	// re-measures, and re-acquires at the tail.
 	if record.Base != tip {
-		return "", releaseWindow(in, seams, mergeStepErr(MergeExitBaseMoved, "integration merge: the integration branch moved past the record's base %s to %s — re-measure against the new tip, then re-acquire --wait", record.Base[:12], tip[:12]))
+		return "", releaseWindow(in, seams, mergeStepErr(MergeExitBaseMoved, "integration merge: the integration branch moved past the record's base %s to %s — re-measure against the new tip, then re-acquire --wait", ShortSHA(record.Base), ShortSHA(tip)))
 	}
 
 	// (10) nothing to merge — the pinned SHA IS the base.
 	if pinned == record.Base {
-		return "", releaseWindow(in, seams, mergeStepErr(MergeExitNothingToMerge, "integration merge: %s equals the record's base — nothing to merge", pinned[:12]))
+		return "", releaseWindow(in, seams, mergeStepErr(MergeExitNothingToMerge, "integration merge: %s equals the record's base — nothing to merge", ShortSHA(pinned)))
 	}
 
 	// (3) ancestry, (4) tree identity.
 	if err := gitFail(git, "merge-base", "--is-ancestor", record.Base, pinned); err != nil {
-		return "", releaseWindow(in, seams, mergeStepErr(MergeExitNotDescendant, "integration merge: pinned %s does not descend from the record's base %s", pinned[:12], record.Base[:12]))
+		return "", releaseWindow(in, seams, mergeStepErr(MergeExitNotDescendant, "integration merge: pinned %s does not descend from the record's base %s", ShortSHA(pinned), ShortSHA(record.Base)))
 	}
 	if pinnedTree != record.Tree {
-		return "", releaseWindow(in, seams, mergeStepErr(MergeExitTreeMismatch, "integration merge: pinned tree %s differs from the record's tree %s", pinnedTree[:12], record.Tree[:12]))
+		return "", releaseWindow(in, seams, mergeStepErr(MergeExitTreeMismatch, "integration merge: pinned tree %s differs from the record's tree %s", ShortSHA(pinnedTree), ShortSHA(record.Tree)))
 	}
 
 	// (5) the shared landing check — absent no-op while candidate_ci is
 	// disabled (spec.md §F).
 	if seams.LandingCheck != nil {
 		if err := seams.LandingCheck(in.CardID, pinned); err != nil {
-			return "", releaseWindow(in, seams, mergeStepErr(MergeExitLandingRefused, "integration merge: the landing check refused %s: %v", pinned[:12], err))
+			return "", releaseWindow(in, seams, mergeStepErr(MergeExitLandingRefused, "integration merge: the landing check refused %s: %v", ShortSHA(pinned), err))
 		}
 	}
 
@@ -394,7 +394,7 @@ func RunMergeStep(in MergeStepInput, seams MergeStepSeams) (string, error) {
 			return nil
 		}
 		if tipNow = strings.TrimSpace(tipNow); tipNow != tip {
-			recheckErr = mergeStepErr(MergeExitBaseMoved, "integration merge: refused — the integration branch moved mid-step (tip %s as gated, %s now); re-measure against the new tip, then re-acquire", tip[:12], tipNow[:12])
+			recheckErr = mergeStepErr(MergeExitBaseMoved, "integration merge: refused — the integration branch moved mid-step (tip %s as gated, %s now); re-measure against the new tip, then re-acquire", ShortSHA(tip), ShortSHA(tipNow))
 			return nil
 		}
 		recheckNow := seams.now()
@@ -526,9 +526,9 @@ func RunMergeStep(in MergeStepInput, seams MergeStepSeams) (string, error) {
 	if err != nil || strings.TrimSpace(mergedTree) != record.Tree {
 		got := "unreadable"
 		if err == nil {
-			got = strings.TrimSpace(mergedTree)[:12]
+			got = ShortSHA(strings.TrimSpace(mergedTree))
 		}
-		return "", postMergeHold(in, seams, mergeStepErr(MergeExitPostMerge, "integration merge: the merge commit's tree %s differs from the record's tree %s", got, record.Tree[:12]), mergeSHA)
+		return "", postMergeHold(in, seams, mergeStepErr(MergeExitPostMerge, "integration merge: the merge commit's tree %s differs from the record's tree %s", got, ShortSHA(record.Tree)), mergeSHA)
 	}
 	if clean, _, err := gitIntegrationWorktreeClean(in.IntegrationWorktree); err != nil || !clean {
 		return "", postMergeHold(in, seams, mergeStepErr(MergeExitPostMerge, "integration merge: the worktree is not clean after the merge (autostash residue included)"), mergeSHA)
@@ -588,6 +588,15 @@ func minStrLen(s string, max int) int {
 		return len(s)
 	}
 	return max
+}
+
+// ShortSHA renders the first twelve bytes of a SHA, or the whole value when it
+// is shorter — the length-safe prefix every SHA render on the merge surface
+// goes through (REQ-MWQ2-002). A malformed value renders whole and never
+// panics on the slice; the refusal paths that render it must not be the
+// thing that dies before the window is released.
+func ShortSHA(sha string) string {
+	return sha[:minStrLen(sha, 12)]
 }
 
 // sameIntegrationTree compares two worktree paths as DIRECTORIES, not
@@ -726,7 +735,7 @@ func writeMergeHold(in MergeStepInput, seams MergeStepSeams, reason string) erro
 // extension the hold's reason does — one message, both surfaces.
 func postMergeHold(in MergeStepInput, seams MergeStepSeams, cause *MergeStepError, mergeSHA string) error {
 	if mergeSHA != "" {
-		cause.Msg = fmt.Sprintf("%s (merge commit %s left in place for the leader)", cause.Msg, mergeSHA[:12])
+		cause.Msg = fmt.Sprintf("%s (merge commit %s left in place for the leader)", cause.Msg, ShortSHA(mergeSHA))
 	}
 	if err := writeMergeHold(in, seams, cause.Msg); err != nil {
 		return fmt.Errorf("%w (writing the hold also failed: %v)", cause, err)

@@ -93,8 +93,19 @@ func mergeReadyFixture(t *testing.T, syncStatus string, lane, sessionID string) 
 		}
 		return string(out)
 	}())
+	// REQ-MWQ2-001: the absorbed base is a full SHA — the merge-base of the
+	// card branch and the integration branch it absorbed.
+	base := strings.TrimSpace(func() string {
+		cmd := exec.Command("git", "merge-base", "develop", "WT-card")
+		cmd.Dir = repo
+		out, err := cmd.Output()
+		if err != nil {
+			t.Fatalf("read absorbed base: %v", err)
+		}
+		return string(out)
+	}())
 	if err := factory.WriteRemeasureRecord(lockRoot, strings.TrimSpace(tree), factory.RemeasureRecord{
-		Base:          "seeded-by-mergeReadyFixture",
+		Base:          base,
 		Command:       "true",
 		ExitCode:      0,
 		BuildIdentity: "moai merge-ready fixture",

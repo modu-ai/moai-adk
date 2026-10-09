@@ -116,7 +116,9 @@ func readFileNoRename(path string) ([]byte, error) {
 //   - the structured count is zero or the tool reported an empty sweep
 //     (go test -json with zero tests — REQ-MWQ-015);
 //   - any identity field the gate needs is missing (tree key, base, build
-//     identity, command).
+//     identity, command);
+//   - the tree key or the absorbed base is not a full 40-character hex SHA
+//     (REQ-MWQ2-001).
 //
 // A merge stand-in (factoryWriteMergeRecord's text) never satisfies this
 // verifier (REQ-MWQ-020): it is a different file on a different path, and
@@ -137,6 +139,13 @@ func ValidateRemeasureRecord(rec *RemeasureRecord) error {
 		return errors.New("re-measure record carries no command")
 	case rec.BuildIdentity == "":
 		return errors.New("re-measure record carries no build identity")
+	// REQ-MWQ2-001: the tree key and the absorbed base must be full SHAs. The
+	// refusal is the record-invalid cause, raised before any render prefixes
+	// the value (a 3-byte base previously reached the [:12] renders downstream).
+	case !isFullSHA(rec.Tree):
+		return fmt.Errorf("re-measure record carries a malformed tree key %q — a full 40-character hex SHA is required", rec.Tree)
+	case !isFullSHA(rec.Base):
+		return fmt.Errorf("re-measure record carries a malformed absorbed base %q — a full 40-character hex SHA is required", rec.Base)
 	case rec.ExitCode != 0:
 		return fmt.Errorf("re-measure command exited %d (recorded as observed)", rec.ExitCode)
 	case rec.StructuredRequired && !rec.HasStructured:
@@ -145,6 +154,23 @@ func ValidateRemeasureRecord(rec *RemeasureRecord) error {
 		return fmt.Errorf("structured report carries %d tests — an empty sweep cannot stand for a re-measure", rec.TestCount)
 	}
 	return nil
+}
+
+// isFullSHA reports whether s is a full 40-character lowercase hexadecimal
+// git object name — the one form the record's tree key and absorbed base may
+// take (REQ-MWQ2-001). git prints lowercase, so any other form cannot be the
+// tree or commit the merge step compares against.
+func isFullSHA(s string) bool {
+	if len(s) != 40 {
+		return false
+	}
+	for i := 0; i < len(s); i++ {
+		c := s[i]
+		if (c < '0' || c > '9') && (c < 'a' || c > 'f') {
+			return false
+		}
+	}
+	return true
 }
 
 // ClassifyStructuredOutput judges one command's output for REQ-MWQ-015: it
