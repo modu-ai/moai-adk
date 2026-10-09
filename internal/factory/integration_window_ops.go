@@ -157,6 +157,10 @@ func RefreshWindow(lock *IntegrationLock, policy IntegrationWindowPolicy, probe 
 // queue and named in the report's Refused, and the tickets behind it are judged
 // in the same refresh, so a refused waiter never blocks the queue behind it. A
 // nil gate admits every ticket, exactly as RefreshWindow does.
+//
+// @MX:ANCHOR: [AUTO] gated window refresh: the entry that applies the per-card red hold.
+// @MX:REASON: the ungated refresh promotes a red card's queued ticket; this entry withdraws it and names it in the report's Refused list.
+// @MX:SPEC: SPEC-CANDIDATE-CI-001
 func RefreshWindowGated(lock *IntegrationLock, policy IntegrationWindowPolicy, probe WindowProcProbe, now time.Time, lease time.Duration, gate GrantGate) WindowReport {
 	return refreshWindow(lock, policy, probe, now, lease, gate)
 }
@@ -378,6 +382,10 @@ func IsCandidateHold(err error) bool { return errors.Is(err, ErrCandidateHold) }
 // it fails closed when the candidate store cannot be read in full: an unreadable
 // entry may be the card's newest verdict, so the hold cannot read past it. A
 // grant with no card has no candidate to judge and is admitted.
+//
+// @MX:ANCHOR: [AUTO] red-hold refusal: the verdict check that every window grant taking the candidate gate goes through.
+// @MX:REASON: the refusal wraps ErrCandidateHold and fails closed on an unreadable store; callers classify the hold with IsCandidateHold, so a changed error shape or a fail-open branch would admit a red card.
+// @MX:SPEC: SPEC-CANDIDATE-CI-001
 func CandidateHoldRefusal(projectRoot, cardID string) error {
 	if strings.TrimSpace(cardID) == "" {
 		return nil
@@ -445,6 +453,10 @@ func candidateStoreUnreadable(projectRoot, cardID string) (string, error) {
 // unless workflow.candidate_ci.enabled is true, so the path never enables
 // itself. Every refresh and grant that can promote or grant the window takes
 // this gate.
+//
+// @MX:ANCHOR: [AUTO] candidate grant gate: the per-card red-hold gate that the refresh and grant paths take.
+// @MX:REASON: returns nil unless workflow.candidate_ci.enabled is true, so the default path is unchanged; a change to the switch or to the nil contract alters every window grant.
+// @MX:SPEC: SPEC-CANDIDATE-CI-001
 func CandidateGrantGate(projectRoot string) GrantGate {
 	if !candidateCIRequired(projectRoot) {
 		return nil

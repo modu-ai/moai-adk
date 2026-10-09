@@ -17,6 +17,10 @@ import (
 // O_NONBLOCK makes even a FIFO open return immediately; O_NOFOLLOW refuses
 // a symlink swapped in the same window. The descriptor — not the path —
 // is what the verdict inspects, so what was verified is what is read.
+//
+// @MX:ANCHOR: [AUTO] unix record opener: O_NONBLOCK and O_NOFOLLOW before the opened descriptor is verified regular.
+// @MX:REASON: the verify-what-you-read guarantee rests on these flags and the descriptor check; a plain os.Open reopens the FIFO-parking and symlink-swap windows the candidate lock exists to close.
+// @MX:SPEC: SPEC-CANDIDATE-CI-001
 func openCandidateRecordFile(path string) (*os.File, error) {
 	fd, err := syscall.Open(path, syscall.O_RDONLY|syscall.O_NONBLOCK|syscall.O_NOFOLLOW, 0)
 	if err != nil {

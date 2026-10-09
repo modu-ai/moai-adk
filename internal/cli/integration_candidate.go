@@ -88,6 +88,9 @@ func candidateScrubbedGit(dir string, args ...string) (string, error) {
 	return stdout.String(), nil
 }
 
+// @MX:ANCHOR: [AUTO] clock seam for the candidate pipeline.
+// @MX:REASON: tests pin time through the Now field; a direct time.Now() call in the pipeline bypasses the pin.
+// @MX:SPEC: SPEC-CANDIDATE-CI-001
 func (s *integrationCandidateSeams) now() time.Time {
 	if s.Now != nil {
 		return s.Now()
@@ -690,6 +693,10 @@ func gitFirstLine(s string) string {
 }
 
 // shortSHA renders the 12-char form the verb family's messages use.
+//
+// @MX:ANCHOR: [AUTO] 12-character SHA form for the verb family's messages.
+// @MX:REASON: the verb family prints SHAs through this one truncation; a second length in one verb would make its messages disagree with the rest.
+// @MX:SPEC: SPEC-CANDIDATE-CI-001
 func shortSHA(sha string) string {
 	if len(sha) > 12 {
 		return sha[:12]

@@ -66,6 +66,10 @@ func candidateMutationLockPath(projectRoot, cardID string) (string, error) {
 // a slow remote; a contender that expires receives ErrCandidateMutationBusy
 // and leaves every byte untouched — the honest transient failure, never a
 // divergent record.
+//
+// @MX:ANCHOR: [AUTO] candidate mutation critical section for record writes.
+// @MX:REASON: the lock serializes record sequencing across processes; a write outside it races the sequence counter, and a contender that times out gets ErrCandidateMutationBusy with the bytes untouched.
+// @MX:SPEC: SPEC-CANDIDATE-CI-001
 func WithCandidateMutation(projectRoot, cardID string, fn func() error) error {
 	path, err := candidateMutationLockPath(projectRoot, cardID)
 	if err != nil {

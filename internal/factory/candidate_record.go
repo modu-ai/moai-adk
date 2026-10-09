@@ -81,6 +81,10 @@ type CandidateRecord struct {
 }
 
 // candidateDir resolves the store under the project's state directory.
+//
+// @MX:ANCHOR: [AUTO] candidate store root: the one directory every candidate record path resolves through.
+// @MX:REASON: candidateRecordPath joins each record file under this root; a second root would split one card's verdicts across two stores.
+// @MX:SPEC: SPEC-CANDIDATE-CI-001
 func candidateDir(projectRoot string) string {
 	return filepath.Join(projectRoot, ".moai", "state", "candidate")
 }
@@ -100,6 +104,10 @@ func candidateRecordPath(projectRoot, cardID, pinnedSHA string) (string, error) 
 
 // validCandidateKeyPart refuses anything that is not a single safe path
 // segment.
+//
+// @MX:ANCHOR: [AUTO] path-segment guard for every candidate key part (card id and pinned SHA).
+// @MX:REASON: candidateRecordPath builds each record path from these parts; loosening the check lets a crafted card id escape the candidate store.
+// @MX:SPEC: SPEC-CANDIDATE-CI-001
 func validCandidateKeyPart(part string) error {
 	if strings.TrimSpace(part) == "" {
 		return errors.New("empty")
@@ -174,6 +182,10 @@ func candidateStoreRealPath(projectRoot, cardID string) error {
 // non-blocking, no-follow flags and verifies the OPENED descriptor is a
 // regular file — the Lstat precheck alone left a TOCTOU window where a
 // regular file swapped for a FIFO after the check still parked the read.
+//
+// @MX:ANCHOR: [AUTO] candidate record reader: carries the non-regular-file refusal and the opened-descriptor check.
+// @MX:REASON: a read that bypasses this path skips the FIFO refusal and the TOCTOU check that stop a swapped record from parking the candidate mutation lock.
+// @MX:SPEC: SPEC-CANDIDATE-CI-001
 func ReadCandidateRecord(projectRoot, cardID, pinnedSHA string) (*CandidateRecord, error) {
 	path, err := candidateRecordPath(projectRoot, cardID, pinnedSHA)
 	if err != nil {

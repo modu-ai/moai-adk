@@ -13,6 +13,10 @@ import (
 // Windows the stat-after-open check is the achievable equivalent — a
 // non-regular file system object (a named pipe) is refused on the opened
 // handle, closing the same verify-what-you-read gap.
+//
+// @MX:ANCHOR: [AUTO] windows record opener: the stat-after-open check stands in for the unix open flags.
+// @MX:REASON: Windows has no O_NONBLOCK or O_NOFOLLOW equivalent on this path, so refusing a non-regular handle after open is what keeps a named pipe from parking the candidate lock.
+// @MX:SPEC: SPEC-CANDIDATE-CI-001
 func openCandidateRecordFile(path string) (*os.File, error) {
 	f, err := os.Open(path)
 	if err != nil {

@@ -1,6 +1,6 @@
 # progress.md — SPEC-CANDIDATE-CI-001
 
-status: in-progress
+status: completed
 card: t1478
 phase: plan
 
@@ -494,7 +494,157 @@ The help does not state what an unpinned `gh run view` returns, so the default a
 
 ## §E.4 Sync-phase Audit-Ready Signal
 
-_pending sync-phase_
+sync_status: audit-ready (3-phase close: spec.md and progress.md status in-progress -> completed; MX validation on the card's Go files; no CHANGELOG entry, see Gaps)
+sync_complete_at: 2026-10-10
+sync_commit_sha: pending-backfill
+sync_baseline_head: ee52fd342 (pre-commit HEAD; the sync commit does not cite its own SHA)
+sync_branch: WT-10-03-tier
+sync_origin_main: 2aab5f797 (moving ref; read by git fetch origin main on 2026-10-10; divergence 0 28 measured against 2aab5f797)
+sync_moai_build_lag: db0c514d3 is an ancestor of ee52fd342, 167 commits behind (git rev-list --count db0c514d3..HEAD = 167)
+sync_push: none (no push in this close)
+sync_spec_body_touched: none (spec.md changed in frontmatter status and updated only)
+sync_go_files: 7 files, comment lines only (13 @MX:ANCHOR tags added; 4 candidates left at the per-file cap; see Agent-run)
+sync_changelog: not emitted (B12 pre-emission grep count 1, a cross-reference only; see Gaps)
+
+### Agent-run
+
+Attribution. Agent-run is what the sync agent ran on HEAD ee52fd342 plus this commit's edits, quoted verbatim. The diff stat and the progress.md greps were captured before this block was appended, so the committed diff adds this block's lines on top of the recorded stat.
+
+Preflight, after the coordinator's amendment (check 2 accepts a clean tree):
+
+```text
+$ git rev-parse --show-toplevel && git rev-parse --short HEAD && git branch --show-current
+/Users/goos/MoAI/moai-adk-go/.moai/worktrees/t1478
+ee52fd342
+WT-10-03-tier
+$ git status --short --untracked-files=no
+(no output, exit 0)
+$ git hash-object -- .moai/config/sections/workflow.yaml
+bf70aae0e86f485de0db390ba512ede969ece368
+$ git rev-parse HEAD:.moai/config/sections/workflow.yaml
+bf70aae0e86f485de0db390ba512ede969ece368
+$ sed -n '300,304p' .moai/config/sections/workflow.yaml
+    codex:
+        review_gate:
+            enabled: true
+        task:
+            allow_write: true
+$ git fetch origin main
+From https://github.com/modu-ai/moai-adk
+ * branch                main       -> FETCH_HEAD
+$ git rev-parse --short origin/main
+2aab5f797
+$ git rev-list --count --left-right origin/main...HEAD
+0	28
+```
+
+Baseline attribution: origin/main is a moving ref. The divergence `0 28` (0 behind, 28 ahead) is measured against origin/main 2aab5f797, read on 2026-10-10 in this run.
+
+Checks after editing:
+
+```text
+$ git diff --stat
+ .moai/specs/SPEC-CANDIDATE-CI-001/progress.md | 14 ++++++++++++--
+ .moai/specs/SPEC-CANDIDATE-CI-001/spec.md     |  4 ++--
+ internal/cli/integration_candidate.go         |  7 +++++++
+ internal/factory/candidate_landing_check.go   |  4 ++++
+ internal/factory/candidate_mutation_lock.go   |  4 ++++
+ internal/factory/candidate_record.go          | 12 ++++++++++++
+ internal/factory/candidate_record_unix.go     |  4 ++++
+ internal/factory/candidate_record_windows.go  |  4 ++++
+ internal/factory/integration_window_ops.go    | 12 ++++++++++++
+ 9 files changed, 61 insertions(+), 4 deletions(-)
+$ grep -n '^status:\|^updated:' .moai/specs/SPEC-CANDIDATE-CI-001/spec.md .moai/specs/SPEC-CANDIDATE-CI-001/progress.md
+.moai/specs/SPEC-CANDIDATE-CI-001/spec.md:5:status: completed
+.moai/specs/SPEC-CANDIDATE-CI-001/spec.md:7:updated: 2026-10-10
+.moai/specs/SPEC-CANDIDATE-CI-001/progress.md:3:status: completed
+$ grep -n 'sync_commit_sha' .moai/specs/SPEC-CANDIDATE-CI-001/progress.md
+499:sync_commit_sha: pending-backfill
+$ grep -n '^## §E' .moai/specs/SPEC-CANDIDATE-CI-001/progress.md
+7:## §E.1 Plan-phase Audit-Ready Signal
+19:## §E.2 Run-phase Evidence
+70:## §E.3 Run-phase Audit-Ready Signal
+495:## §E.4 Sync-phase Audit-Ready Signal
+$ gofmt -l <the seven edited Go files>
+(no output, exit 0)
+$ git status --short
+ M .moai/specs/SPEC-CANDIDATE-CI-001/progress.md
+ M .moai/specs/SPEC-CANDIDATE-CI-001/spec.md
+ M internal/cli/integration_candidate.go
+ M internal/factory/candidate_landing_check.go
+ M internal/factory/candidate_mutation_lock.go
+ M internal/factory/candidate_record.go
+ M internal/factory/candidate_record_unix.go
+ M internal/factory/candidate_record_windows.go
+ M internal/factory/integration_window_ops.go
+$ git diff --name-only origin/main...HEAD -- '*.go' | xargs grep -c '@MX:ANCHOR' | grep -v ':0$'
+internal/cli/factory_card.go:3
+internal/cli/integration_candidate.go:2
+internal/config/defaults.go:3
+internal/config/types.go:7
+internal/factory/candidate_landing_check.go:2
+internal/factory/candidate_mutation_lock.go:1
+internal/factory/candidate_record.go:3
+internal/factory/candidate_record_unix.go:1
+internal/factory/candidate_record_windows.go:1
+internal/factory/integration_window_ops.go:3
+internal/factorylane/merge.go:1
+$ grep -c 'SPEC-CANDIDATE-CI-001' CHANGELOG.md
+1
+$ grep -n -o 'SPEC-CANDIDATE-CI-001.\{0,40\}' CHANGELOG.md | cut -c1-120
+14:SPEC-CANDIDATE-CI-001(t1478) 착지 전까지 no-op 심(`@MX:DEBT`). 이 sy
+$ mcp__moai__spec_audit (project_root=/Users/goos/MoAI/moai-adk-go/.moai/worktrees/t1478, filter_spec=SPEC-CANDIDATE-CI-001); moai server build db0c514d3
+{"_root":{"dir":"/Users/goos/MoAI/moai-adk-go/.moai/worktrees/t1478","source":"param"},"audited_at":"2026-10-09T18:25:38.046906Z","drift_findings":[{"details":{"heuristic_matched":"H-4 (§E.2 + §E.4 + sync_commit_sha)"},"era":"V3R6","finding_type":"EraAutoDetected","severity":"INFO","spec_id":"SPEC-CANDIDATE-CI-001"}],"grandfathered":0,"modern_era_clean":1,"total_specs":1}
+$ mcp__moai__spec_progress (same project_root); moai server build db0c514d3. The 1075-SPEC catalogue overflowed the tool result (786,151 characters), so only this SPEC's record was extracted from the saved output with jq:
+{"Frontmatter":{"ID":"SPEC-CANDIDATE-CI-001","Status":"completed","Updated":"2026-10-10","Tier":"L","Lifecycle":"spec-anchored"},"ParseError":null}
+```
+
+MX sub-step (comment-only edits). fan_in is a grep measurement: non-test call sites in internal, cmd, and pkg, counted by name, and receiver-specific where a name is shared.
+
+```text
+ANCHOR added, 13 (each with [AUTO] and @MX:REASON; 11 of 13 also carry @MX:SPEC; shortSHAFull and orUnset do not, and the field is optional):
+  candidate_record.go: candidateDir (4), validCandidateKeyPart (5), ReadCandidateRecord (5)
+  integration_window_ops.go: RefreshWindowGated (5), CandidateGrantGate (8), CandidateHoldRefusal (4)
+  candidate_landing_check.go: shortSHAFull (9), orUnset (4)
+  candidate_mutation_lock.go: WithCandidateMutation (3)
+  candidate_record_unix.go and candidate_record_windows.go: openCandidateRecordFile (3 each)
+  cli/integration_candidate.go: integrationCandidateSeams.now (5), shortSHA (4, package-local)
+ANCHOR left, fan_in >= 3, per-file cap reached (anchor_per_file: 3):
+  candidate_record.go: LatestCandidateRecord (3), candidateAttempt (3)
+  integration_window_ops.go: refreshWindow (4), PromotedAfterBoundGated (3)
+  The tie at 4 is broken by exportedness: CandidateHoldRefusal is kept. Orchestrator decision needed.
+Left, fan_in below 3: WriteCandidateRecord, promoteAdmitted, parseCandidateRunID, EnqueueTicketGated,
+  candidateRecordPath, CandidateLandingCheck, candidateCIRequired (2 each); integrationCandidateSeams.gitRunner
+  and LandingCheckInput.git (1 each); clearWedgedCandidateMutationLock (1, two build variants).
+Left, valid DEBT: two blocks added by the card in internal/factory/integration_merge_step.go (lines 490 and 530),
+  each with DEBT, CEILING, and UPGRADE. The DEBT at line 613 predates the card and is not changed.
+Pre-existing, not changed: internal/config/types.go carries 7 ANCHOR tags, above the cap of 3.
+Not measured: complexity >= 15 (WARN), global-state mutation (WARN), magic constants and long exported
+  functions (NOTE), untested public functions (TODO).
+Goroutine starts in non-test Go code: none (grep over the card diff; the positive control matched 10 lines in
+  the full diff, including test files).
+```
+
+### Residual risk
+
+- origin/main is a moving ref. The `0 28` divergence is anchored to 2aab5f797 as read on 2026-10-10 and can go stale.
+- This commit records the placeholder for its own SHA. The real SHA is owed to a later backfill commit that is not part of this sync.
+- fan_in is a name-based grep count; interface and function-value callers are not counted, so a tag decision could change if such callers exist.
+- ANCHOR candidates left at the per-file cap: LatestCandidateRecord 3 and candidateAttempt 3 in candidate_record.go; refreshWindow 4 and PromotedAfterBoundGated 3 in integration_window_ops.go. The constitution's MUST for fan_in of 3 or more conflicts with anchor_per_file 3; the orchestrator decides.
+- The 13 new ANCHOR reasons come from each function's godoc and body, not from a review of every caller.
+- The moai MCP server reports build db0c514d3, 167 commits behind HEAD. Its audit and catalogue results reflect that build.
+- A later session that re-applies the reverted review_gate line would reintroduce the failure the revert removed.
+
+### Gaps
+
+- Leader's workflow.yaml review_gate line: leader reverted, gate on. At preflight the worktree had no uncommitted workflow.yaml change (`git status --short` was empty). Reported by the coordinator, not observed in this record: the leader reverted the review_gate line on purpose at 18:08:45Z under standing decision d-20261009T180845Z-aac4 (replaces 13c2), because the uncommitted line failed the mandatory codex gate on the t1595 and t1613 audits. The review gate stays enabled: HEAD blob bf70aae0e reads `enabled: true` at line 302, and the working tree matches that blob. The parent HEAD ee52fd342 is unchanged.
+- CHANGELOG not added. The B12 pre-emission grep counts 1, from a cross-reference at CHANGELOG.md line 14 inside the SPEC-MERGE-WINDOW-QUEUE-001 entry, not an entry for this SPEC. B12 halts emission at a count of 1 or more. The comparable CI SPEC SPEC-GITHUB-FLOW-CI-RESIDUE-001 has an entry under Fixed at line 36. The orchestrator decides.
+- The Authored-By-Agent trailer is absent from this commit and was not hand-added.
+- MX: complexity, global-state, magic-constant, long-function, and untested-public checks were not measured.
+- Not run: go test, go build, golangci-lint, the full suite, the Windows build, Codex review, and CI. The brief excluded heavy commands. /verify was not invoked: this is a docs-scoped commit whose Go changes are comment lines, checked with gofmt -l.
+- spec_progress: the 1075-SPEC catalogue overflowed the tool result. Only this SPEC's record was extracted; the rest of the catalogue was not read.
+- moai build lag: db0c514d3 is an ancestor of ee52fd342 (`git merge-base --is-ancestor`, exit 0), and `git rev-list --count db0c514d3..HEAD` is 167.
+- progress.md line 5 carries `phase: plan`, a lifecycle-stage name. spec-frontmatter-schema.md prohibits that value for spec.md; progress.md sits outside that schema. Not changed.
 
 ## Lane Kickoff Decision Record (2026-10-09, lane-11)
 

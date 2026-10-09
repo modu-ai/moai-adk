@@ -111,6 +111,8 @@ func CandidateLandingCheck(in LandingCheckInput) error {
 	return nil
 }
 
+// @MX:ANCHOR: [AUTO] 12-character SHA shortener for candidate refusal messages.
+// @MX:REASON: a refusal that names a candidate and a pinned SHA must truncate both the same way; a second length would make one message cite two spellings of one SHA.
 func shortSHAFull(sha string) string {
 	if len(sha) > 12 {
 		return sha[:12]
@@ -118,6 +120,8 @@ func shortSHAFull(sha string) string {
 	return sha
 }
 
+// @MX:ANCHOR: [AUTO] empty-field placeholder for candidate refusal messages.
+// @MX:REASON: the "(unset)" token is what every refusal shows for an empty field; changing it changes all of them at once.
 func orUnset(s string) string {
 	if strings.TrimSpace(s) == "" {
 		return "(unset)"
