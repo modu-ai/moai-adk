@@ -18,6 +18,7 @@ package cli
 import (
 	"bytes"
 	"context"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"os"
@@ -95,14 +96,37 @@ func (s *integrationCandidateSeams) now() time.Time {
 
 func newIntegrationCandidateCmd() *cobra.Command {
 	var cardFlag, runFlag string
+	var observeFlag bool
 	cmd := &cobra.Command{
-		Use:   "candidate --card <id>",
-		Short: "Build and push this card's pre-landing candidate commit to ci/<card> (the landing gate consumes its verdict)",
+		Use:   "candidate --card <id> [--observe]",
+		Short: "Build and push this card's pre-landing candidate commit to ci/<card> (the landing gate consumes its verdict); --observe records the CI run's verdict instead",
 		RunE: func(cmd *cobra.Command, args []string) error {
 			if strings.TrimSpace(cardFlag) == "" {
 				return fmt.Errorf("integration candidate: --card <id> is required (a candidate is a per-card artifact)")
 			}
 			root := integrationLockRoot()
+			// The observation path (REQ-CCI-010, design.md D3): an explicit
+			// read of the CI runs from the lane/leader side — nothing writes
+			// back from CI, and the record stays pending until this runs. It
+			// mutates only the record store, so the caller-tree guard does
+			// not apply here (nothing is built from the caller's tree).
+			if observeFlag {
+				if !candidateCIEnabled(root) {
+					return fmt.Errorf("integration candidate: refused — workflow.candidate_ci.enabled is not true (set it in .moai/config/sections/workflow.yaml to enable the candidate path)")
+				}
+				rec, wrote, err := runCandidateObservation(root, cardFlag)
+				if err != nil {
+					return err
+				}
+				if wrote {
+					_, _ = fmt.Fprintf(cmd.OutOrStdout(), "integration candidate: card %s candidate %s observed run %s — verdict %s (observed %s)\n",
+						cardFlag, shortSHA(rec.CandidateSHA), rec.RunID, rec.Verdict, rec.ObservedAt)
+				} else {
+					_, _ = fmt.Fprintf(cmd.OutOrStdout(), "integration candidate: card %s candidate %s — no binding run found (head SHA + ref must both match); record unchanged, verdict %s\n",
+						cardFlag, shortSHA(rec.CandidateSHA), rec.Verdict)
+				}
+				return nil
+			}
 			// The card worktree is the CALLER's tree: the verb is the
 			// lane's act, run from the card worktree it stands in. The
 			// guard (card t1478 M2 repair) verifies the caller's tree IS
@@ -146,7 +170,45 @@ func newIntegrationCandidateCmd() *cobra.Command {
 	}
 	cmd.Flags().StringVar(&cardFlag, "card", "", "The card id the candidate is built for")
 	cmd.Flags().StringVar(&runFlag, "run", "", "Factory run id (default: MOAI_KANBAN_ID, then the single active run) — read for the card record the tree guard verifies against")
+	cmd.Flags().BoolVar(&observeFlag, "observe", false, "Observe the CI runs for this card's latest candidate and record the first binding run's verdict (REQ-CCI-010) instead of pushing a new candidate")
 	return cmd
+}
+
+// candidateGhRunsFn is the gh read seam: a package var so tests script the
+// run states without network (the autoLaneRunResolveFn precedent).
+var candidateGhRunsFn = ghRunStates
+
+// candidateGhCommandFn and candidateGhRunsListFn are the gh command seams
+// behind the required-check verdict (card t1478 M4 repair): the raw gh
+// invocations are swappable so tests script the protection read and the
+// job list without network.
+var (
+	candidateGhCommandFn  = candidateGhRunner
+	candidateGhRunsListFn = candidateGhRunner
+)
+
+// candidateCIWorkflowFile names the workflow the candidate push runs —
+// the run query is filtered to it so a same-SHA same-ref success from
+// ANOTHER workflow can never satisfy the candidate verdict.
+const candidateCIWorkflowFile = "ci.yml"
+
+// runCandidateObservation reads the card's latest candidate record, walks
+// its candidate-branch CI runs newest-first, and applies the first run
+// that binds (REQ-CCI-010). No binding run leaves the record untouched —
+// the caller reads wrote to say so.
+func runCandidateObservation(root, cardID string) (factory.CandidateRecord, bool, error) {
+	latest, err := factory.LatestCandidateRecord(root, cardID)
+	if errors.Is(err, factory.ErrCandidateRecordAbsent) {
+		return factory.CandidateRecord{}, false, fmt.Errorf("integration candidate: card %s has no candidate record — push a candidate first (moai integration candidate --card %s)", cardID, cardID)
+	}
+	if err != nil {
+		return factory.CandidateRecord{}, false, fmt.Errorf("integration candidate: read card %s's candidate record: %w", cardID, err)
+	}
+	runs, err := candidateGhRunsFn(root, latest.CandidateBranch)
+	if err != nil {
+		return factory.CandidateRecord{}, false, fmt.Errorf("integration candidate: card %s: %w", cardID, err)
+	}
+	return observeCandidateRuns(root, cardID, latest.PinnedSHA, runs, time.Now().UTC())
 }
 
 // runIntegrationCandidate builds, pushes, and records one candidate
@@ -248,6 +310,14 @@ func runIntegrationCandidate(in integrationCandidateInput, seams integrationCand
 			// the only mutation, and it is not reached.
 			return fmt.Errorf("push failed (stage: push to %s): %v — no candidate record was written and no existing verdict was touched", candidateBranch, err)
 		}
+		// The push sequence (card t1478 M4 repair): allocated inside this
+		// critical section, it orders same-second pushes where PushedAt's
+		// second granularity ties — the latest-candidate scan must never
+		// read filename order as recency.
+		seq, seqErr := factory.NextCandidateSequence(in.Root, in.CardID)
+		if seqErr != nil {
+			return fmt.Errorf("allocate the push sequence: %v", seqErr)
+		}
 		rec = factory.CandidateRecord{
 			CardID:            in.CardID,
 			PinnedSHA:         pinned,
@@ -259,6 +329,7 @@ func runIntegrationCandidate(in integrationCandidateInput, seams integrationCand
 			RunID:             runID,
 			PushedAt:          now,
 			ObservedAt:        observedAt,
+			Seq:               seq,
 		}
 		if err := factory.WriteCandidateRecord(in.Root, rec); err != nil {
 			return fmt.Errorf("record the candidate: %v", err)
@@ -297,6 +368,250 @@ func candidateCallerTreeGuard(root, cardID, callerTree, runID string) error {
 		return fmt.Errorf("integration candidate: refused — the caller's tree %s is not card %s's recorded worktree %s; a candidate built here would overwrite ci/%s with a foreign candidate (run the verb from the card's own worktree)", callerTree, cardID, card.WorktreePath, cardID)
 	}
 	return nil
+}
+
+// candidateAcquirePrecondition refuses the OWNING card's acquire while its
+// latest candidate reads red (REQ-CCI-012, design.md D11): the refusal
+// names card, verdict, and pinned SHA, and happens BEFORE any window-record
+// mutation — so the record and the policy bytes are untouched by
+// construction. Only RED holds: a card with no candidate, a pending one,
+// or a green one acquires exactly as before. The hold clears the moment a
+// re-candidate's record reads green — no separate state to reset.
+func candidateAcquirePrecondition(root, cardID string) error {
+	latest, err := factory.LatestCandidateRecord(root, cardID)
+	if errors.Is(err, factory.ErrCandidateRecordAbsent) {
+		return nil
+	}
+	if err != nil {
+		return fmt.Errorf("integration acquire: read card %s's candidate record: %w", cardID, err)
+	}
+	if latest.Verdict != factory.CandidateVerdictRed {
+		return nil
+	}
+	return fmt.Errorf("integration acquire: refused — card %s's candidate %s is red (run %s, observed %s, pinned %s); fix and re-candidate with moai integration candidate --card %s (the hold is this card's record — other cards are unaffected)", cardID, shortSHA(latest.CandidateSHA), orUnsetStr(latest.RunID), orUnsetStr(latest.ObservedAt), shortSHA(latest.PinnedSHA), cardID)
+}
+
+func orUnsetStr(s string) string {
+	if strings.TrimSpace(s) == "" {
+		return "(unset)"
+	}
+	return s
+}
+
+// observeCandidateRuns is the explicit verdict observation (REQ-CCI-010,
+// design.md D3): a gh read on the lane/leader side — nothing writes back
+// from CI. Runs arrive newest-first; the FIRST run that binds the record
+// (head SHA == candidate SHA, ref == candidate branch) is applied and the
+// walk stops. A run that binds nothing leaves the record untouched — the
+// caller reads what changed from the returned record.
+func observeCandidateRuns(root, cardID, pinnedSHA string, runs []factory.CandidateRunState, now time.Time) (factory.CandidateRecord, bool, error) {
+	for _, run := range runs {
+		// The job-level verdict (card t1478 M4 repair): the run-level
+		// conclusion conflates advisory jobs — a Race Test failure reds
+		// the candidate while every required check is green. The verdict
+		// reflects the REQUIRED checks, read from the base branch's
+		// protection; a protection-read failure falls back to the run
+		// conclusion (the fallback is not authoritative).
+		if run.Status == "completed" {
+			if adjusted := candidateRunVerdict(root, run.HeadSHA, run.RunID, run.Status, run.Conclusion); adjusted.authoritative {
+				run.Conclusion = adjusted.conclusion
+			}
+		}
+		rec, wrote, err := factory.ObserveCandidateVerdict(root, cardID, pinnedSHA, run, now)
+		if err != nil {
+			return factory.CandidateRecord{}, false, err
+		}
+		if wrote {
+			return rec, true, nil
+		}
+	}
+	rec, err := factory.ReadCandidateRecord(root, cardID, pinnedSHA)
+	if err != nil {
+		return factory.CandidateRecord{}, false, err
+	}
+	return *rec, false, nil
+}
+
+// candidateVerdictAdjustment is the required-check verdict for one run:
+// the conclusion to record, and whether it came from the required-check
+// read (authoritative) or is the run-level fallback.
+type candidateVerdictAdjustment struct {
+	conclusion    string
+	authoritative bool
+	why           string
+}
+
+// candidateRunVerdict judges one completed run against the FULL required
+// check set (card t1478 M4 repair): the set comes from the required-checks
+// SSoT (.github/required-checks.yml — the file branch protection itself is
+// rendered from), whose contexts span WORKFLOWS (CodeQL's Analyze lives
+// outside ci.yml), so the check surface queried is the candidate SHA's
+// check runs across every workflow — never one run's jobs. GREEN requires
+// every required context published AND successful; a context with any
+// failure (and no successful real execution) is a failure, and a context
+// that never published names itself in `why` (fail-closed — an unpublished
+// required check is exactly the "필수 누락" the run-jobs query could not
+// see).
+//
+// Skipped companions do not fail their name (the matrix-skip pair): the
+// `test`/`test-skip-marker` jobs publish the SAME context name and exactly
+// one of them runs — a skipped instance counts as failure only when no
+// successful execution of that name exists.
+//
+// The required-checks file absent → the fallback set is this run's own
+// job names (the "ci.yml jobs" fallback, named in `why`). Any gh read
+// failure → the run-level conclusion, honestly not-authoritative.
+func candidateRunVerdict(root, headSHA, runID, status, conclusion string) candidateVerdictAdjustment {
+	fallback := candidateVerdictAdjustment{conclusion: conclusion, authoritative: false}
+	// The required set: the SSoT first, the run's own jobs as the named
+	// fallback.
+	required := []string{}
+	source := "required-checks.yml"
+	if checks, err := config.LoadRequiredChecks(root); err == nil {
+		if base, ok := checks.Branches["main"]; ok {
+			required = base.Contexts
+		}
+	} else {
+		source = "run jobs (required-checks.yml absent)"
+		jobsRaw, err := candidateGhRunsListFn(root, "run", "view", runID, "--json", "jobs")
+		if err != nil {
+			return fallback
+		}
+		var jobsShape struct {
+			Jobs []struct {
+				Name string `json:"name"`
+			} `json:"jobs"`
+		}
+		if err := json.Unmarshal([]byte(jobsRaw), &jobsShape); err != nil {
+			return fallback
+		}
+		for _, job := range jobsShape.Jobs {
+			required = append(required, job.Name)
+		}
+	}
+	if len(required) == 0 {
+		return fallback
+	}
+	// The repository coordinates the api call needs.
+	slugRaw, err := candidateGhCommandFn(root, "repo", "view", "--json", "nameWithOwner")
+	if err != nil {
+		return fallback
+	}
+	var slugShape struct {
+		NameWithOwner string `json:"nameWithOwner"`
+	}
+	if err := json.Unmarshal([]byte(slugRaw), &slugShape); err != nil {
+		return fallback
+	}
+	// The candidate SHA's check runs across ALL workflows — the surface
+	// the full required set publishes on.
+	runsRaw, err := candidateGhCommandFn(root, "api",
+		"repos/"+strings.TrimSpace(slugShape.NameWithOwner)+"/commits/"+headSHA+"/check-runs",
+		"--jq", "[.check_runs[] | {name: .name, conclusion: .conclusion}]")
+	if err != nil {
+		return fallback
+	}
+	var checkRuns []struct {
+		Name       string  `json:"name"`
+		Conclusion *string `json:"conclusion"`
+	}
+	if err := json.Unmarshal([]byte(runsRaw), &checkRuns); err != nil {
+		return fallback
+	}
+	// Roll the runs up per context name: a name's real verdict is failure
+	// when any of its instances failed and NONE succeeded — a skipped
+	// companion never fails a name a successful execution answers.
+	contextState := map[string]string{} // name → "success" | "failure"
+	for _, run := range checkRuns {
+		current, seen := contextState[run.Name]
+		conclusion := ""
+		if run.Conclusion != nil {
+			conclusion = *run.Conclusion
+		}
+		switch {
+		case conclusion == "success":
+			contextState[run.Name] = "success"
+		case conclusion == "" && !seen:
+			// still in progress — not a verdict yet
+			contextState[run.Name] = ""
+		case conclusion != "" && conclusion != "success" && current != "success":
+			contextState[run.Name] = "failure"
+		}
+	}
+	missing := []string{}
+	failed := []string{}
+	for _, name := range required {
+		state, published := contextState[name]
+		switch {
+		case !published:
+			missing = append(missing, name)
+		case state == "":
+			// A required check still running: no verdict yet.
+			return candidateVerdictAdjustment{conclusion: "", authoritative: true, why: source}
+		case state == "failure":
+			failed = append(failed, name)
+		}
+	}
+	if len(failed) > 0 {
+		return candidateVerdictAdjustment{conclusion: "failure", authoritative: true, why: source + " (failed: " + strings.Join(failed, ", ") + ")"}
+	}
+	if len(missing) > 0 {
+		return candidateVerdictAdjustment{conclusion: "failure", authoritative: true, why: source + " (not published for this SHA: " + strings.Join(missing, ", ") + ")"}
+	}
+	return candidateVerdictAdjustment{conclusion: "success", authoritative: true, why: source}
+}
+
+// ghRunStates reads the card's candidate-branch CI runs from gh, newest
+// first. The child runs with the repo-scoping environment removed (gh
+// resolves the repository through git — an inherited GIT_DIR would point
+// the read at another repository) from the ROOT, whose origin names the
+// repository the candidate was pushed to.
+func ghRunStates(root, candidateBranch string) ([]factory.CandidateRunState, error) {
+	out, err := candidateGhCommandFn(root, "run", "list",
+		// The candidate verdict is the run of the CANDIDATE WORKFLOW —
+		// without this filter, a same-SHA same-ref success from any other
+		// workflow could satisfy the verdict (card t1478 M4 repair).
+		"--workflow", candidateCIWorkflowFile,
+		"--branch", candidateBranch, "--limit", "20",
+		"--json", "databaseId,headSha,headBranch,status,conclusion")
+	if err != nil {
+		return nil, fmt.Errorf("gh run list for %s: %v", candidateBranch, err)
+	}
+	var rows []struct {
+		DatabaseID int64  `json:"databaseId"`
+		HeadSha    string `json:"headSha"`
+		HeadBranch string `json:"headBranch"`
+		Status     string `json:"status"`
+		Conclusion string `json:"conclusion"`
+	}
+	if err := json.Unmarshal([]byte(out), &rows); err != nil {
+		return nil, fmt.Errorf("parse gh run list output for %s: %v", candidateBranch, err)
+	}
+	runs := make([]factory.CandidateRunState, 0, len(rows))
+	for _, row := range rows {
+		runs = append(runs, factory.CandidateRunState{
+			RunID:      fmt.Sprintf("%d", row.DatabaseID),
+			HeadSHA:    row.HeadSha,
+			Ref:        row.HeadBranch,
+			Status:     row.Status,
+			Conclusion: row.Conclusion,
+		})
+	}
+	return runs, nil
+}
+
+// candidateGhRunner runs gh with the repo-scoping environment removed (the same
+// scrub the verb's git children take).
+func candidateGhRunner(dir string, args ...string) (string, error) {
+	cmd := exec.Command("gh", args...)
+	cmd.Dir = dir
+	cmd.Env = gitenv.Env()
+	var stdout, stderr bytes.Buffer
+	cmd.Stdout, cmd.Stderr = &stdout, &stderr
+	if err := cmd.Run(); err != nil {
+		return stdout.String(), fmt.Errorf("%v: %s", err, strings.TrimSpace(stderr.String()))
+	}
+	return stdout.String(), nil
 }
 
 // candidateRunSelection resolves the factory run the card record is read

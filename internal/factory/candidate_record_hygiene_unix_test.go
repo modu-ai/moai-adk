@@ -128,3 +128,37 @@ func TestCandidateRecordReadSurvivesRegularFifoSwap(t *testing.T) {
 	// Leave the store in the regular state for the confinement assertions.
 	swap(false)
 }
+
+// TestLatestCandidateRecordSkipsFifo pins the scan-side FIFO defense
+// (card t1478 M4 observation-path repair): a `.json`-named FIFO in the
+// card's store directory must be skipped without opening it — the scan
+// feeds --observe and the acquire precondition, and a blocking read there
+// wedged both.
+func TestLatestCandidateRecordSkipsFifo(t *testing.T) {
+	root := t.TempDir()
+	recordDir := filepath.Join(root, ".moai", "state", "candidate", "t9001")
+	if err := os.MkdirAll(recordDir, 0o755); err != nil {
+		t.Fatalf("mkdir: %v", err)
+	}
+	fifo := filepath.Join(recordDir, "00000000000f.json")
+	if err := syscall.Mkfifo(fifo, 0o600); err != nil {
+		t.Skipf("mkfifo unavailable: %v", err)
+	}
+	ok := filepath.Join(recordDir, "111111111111.json")
+	if err := os.WriteFile(ok, []byte(`{"card_id":"t9001","pinned_sha":"111111111111","verdict":"pending","pushed_at":"2026-10-09T09:00:00Z"}`), 0o600); err != nil {
+		t.Fatalf("write record: %v", err)
+	}
+	done := make(chan error, 1)
+	go func() {
+		_, err := LatestCandidateRecord(root, "t9001")
+		done <- err
+	}()
+	select {
+	case err := <-done:
+		if err != nil {
+			t.Fatalf("latest scan with a FIFO sibling: %v", err)
+		}
+	case <-time.After(3 * time.Second):
+		t.Fatal("LatestCandidateRecord blocked 3s on a FIFO in the scan — the scan opens without the non-regular guard")
+	}
+}

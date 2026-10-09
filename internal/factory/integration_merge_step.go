@@ -301,7 +301,14 @@ func RunMergeStep(in MergeStepInput, seams MergeStepSeams) (string, error) {
 	}
 
 	// (5) the shared landing check — absent no-op while candidate_ci is
-	// disabled (spec.md §F).
+	// disabled (spec.md §F). Fail-closed (AC-CCI-011-1): with the key
+	// ENABLED, a call site that wired no LandingCheck refuses instead of
+	// merging unchecked — no caller, current or future, omits the gate.
+	// The disabled-with-nil-seam shape is the pre-candidate contract and
+	// stays exactly what it was.
+	if candidateCIRequired(in.Root) && seams.LandingCheck == nil {
+		return "", releaseWindow(in, seams, mergeStepErr(MergeExitLandingRefused, "integration merge: the candidate-CI gate is enabled but this call site wired no landing check — refusing to merge unchecked (fail-closed)"))
+	}
 	if seams.LandingCheck != nil {
 		if err := seams.LandingCheck(in.CardID, pinned); err != nil {
 			return "", releaseWindow(in, seams, mergeStepErr(MergeExitLandingRefused, "integration merge: the landing check refused %s: %v", pinned[:12], err))
@@ -446,6 +453,29 @@ func RunMergeStep(in MergeStepInput, seams MergeStepSeams) (string, error) {
 		if recheckCard.Version != card.Version {
 			recheckErr = mergeStepErr(MergeExitCardGate, "integration merge: refused — card %s's record changed mid-step (version %d as gated, %d as re-read); re-acquire", in.CardID, card.Version, recheckCard.Version)
 			return nil
+		}
+		// The landing RECHECK (card t1478 M4 repair, the batch TOCTOU): the
+		// gate-5 verdict was read OUTSIDE this section, and an observe (or a
+		// re-candidate replacing the record) landing between that check and
+		// the merge landed a RED candidate on the integration branch. The
+		// re-verification runs inside the candidate record's OWN mutation
+		// lock — the same exclusion an observe or a push takes — so no
+		// verdict flip can interleave with the decision to merge. Lock
+		// ordering is one-way (window section → candidate lock; candidate
+		// paths never take the window lock), so the nesting cannot deadlock.
+		if seams.LandingCheck != nil {
+			var landingRecheckErr error
+			if lockErr := WithCandidateMutation(in.Root, in.CardID, func() error {
+				landingRecheckErr = seams.LandingCheck(in.CardID, pinned)
+				return nil
+			}); lockErr != nil {
+				recheckErr = mergeStepErr(MergeExitOther, "integration merge: re-read the candidate record for the landing recheck: %v", lockErr)
+				return nil
+			}
+			if landingRecheckErr != nil {
+				recheckErr = mergeStepErr(MergeExitLandingRefused, "integration merge: the landing check refused %s at the merge point: %v", pinned[:12], landingRecheckErr)
+				return nil
+			}
 		}
 		// The merge, of the PINNED SHA never the branch name (REQ-MWQ-017),
 		// inside the section (F4).

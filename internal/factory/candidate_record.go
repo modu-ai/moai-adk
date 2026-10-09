@@ -24,6 +24,7 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
+	"time"
 )
 
 // Candidate verdict values (REQ-CCI-005/010). Pending is the push-time
@@ -58,6 +59,11 @@ type CandidateRecord struct {
 	IntegrationTip    string `json:"integration_tip"`
 	// CandidateBranch is the remote ref the run judged (ci/<card>).
 	CandidateBranch string `json:"candidate_branch"`
+	// Seq is the card's push sequence — allocated inside the per-card
+	// push critical section (NextCandidateSequence), it orders same-second
+	// pushes deterministically where PushedAt (second granularity) ties
+	// (card t1478 M4 observation-path repair).
+	Seq int64 `json:"seq,omitempty"`
 	// RunID is the CI run identity, recorded by the verdict observation —
 	// empty until one runs (REQ-CCI-010).
 	RunID string `json:"run_id,omitempty"`
@@ -187,4 +193,172 @@ func ReadCandidateRecord(projectRoot, cardID, pinnedSHA string) (*CandidateRecor
 	// landing check compares the record's own identity claims, and forcing
 	// them here would turn those comparisons into dead code.
 	return &rec, nil
+}
+
+// LatestCandidateRecord returns the card's newest record — by push
+// sequence first (allocated in the push critical section, so same-second
+// pushes order deterministically), PushedAt as the tiebreak for records
+// written before sequences existed. What an observation (REQ-CCI-010) and
+// the acquire precondition (REQ-CCI-012) read when no pinned SHA is at
+// hand. Absence reads as ErrCandidateRecordAbsent.
+//
+// Each entry opens through the non-blocking, regular-verified open — a
+// `.json`-named FIFO in the scan parked --observe and the acquire
+// precondition inside the mutation lock (card t1478 M4 repair).
+func LatestCandidateRecord(projectRoot, cardID string) (*CandidateRecord, error) {
+	if err := validCandidateKeyPart(cardID); err != nil {
+		return nil, fmt.Errorf("candidate store: card id: %w", err)
+	}
+	dir := filepath.Join(candidateDir(projectRoot), cardID)
+	entries, err := os.ReadDir(dir)
+	if errors.Is(err, os.ErrNotExist) {
+		return nil, fmt.Errorf("%w for card %s", ErrCandidateRecordAbsent, cardID)
+	}
+	if err != nil {
+		return nil, fmt.Errorf("read candidate store: %w", err)
+	}
+	var latest *CandidateRecord
+	for _, entry := range entries {
+		if entry.IsDir() || !strings.HasSuffix(entry.Name(), ".json") {
+			continue
+		}
+		path := filepath.Join(dir, entry.Name())
+		f, err := openCandidateRecordFile(path)
+		if err != nil {
+			continue
+		}
+		data, err := io.ReadAll(f)
+		_ = f.Close()
+		if err != nil {
+			continue
+		}
+		var rec CandidateRecord
+		if err := json.Unmarshal(data, &rec); err != nil {
+			continue
+		}
+		rec.PinnedSHA = strings.TrimSuffix(entry.Name(), ".json")
+		if latest == nil || candidateNewer(&rec, latest) {
+			latest = &rec
+		}
+	}
+	if latest == nil {
+		return nil, fmt.Errorf("%w for card %s", ErrCandidateRecordAbsent, cardID)
+	}
+	return latest, nil
+}
+
+// candidateNewer orders two records of one card: higher sequence wins;
+// without sequences (or on a tie) the later PushedAt wins.
+func candidateNewer(a, b *CandidateRecord) bool {
+	if a.Seq != b.Seq {
+		return a.Seq > b.Seq
+	}
+	return a.PushedAt > b.PushedAt
+}
+
+// NextCandidateSequence returns the card's next push sequence — max
+// existing + 1. It MUST be called inside the card's mutation critical
+// section (the push path already holds it), so two racing pushes cannot
+// allocate the same number.
+func NextCandidateSequence(projectRoot, cardID string) (int64, error) {
+	latest, err := LatestCandidateRecord(projectRoot, cardID)
+	if errors.Is(err, ErrCandidateRecordAbsent) {
+		return 1, nil
+	}
+	if err != nil {
+		return 0, err
+	}
+	return latest.Seq + 1, nil
+}
+
+// integrationCandidateMutationHook is the observation write's test seam —
+// called inside the per-card critical section before the write (the
+// integrationLockMutationTestHook precedent), so a test can present the
+// re-candidate-replaced record the re-read must catch.
+var integrationCandidateMutationHook func()
+
+// CandidateRunState is what one observed CI run reports — the scripted
+// double the tests feed and the gh read maps into.
+type CandidateRunState struct {
+	RunID      string
+	HeadSHA    string
+	Ref        string
+	Status     string // queued | in_progress | completed
+	Conclusion string // success | failure | ... (meaningful only on completed)
+}
+
+// ObserveCandidateVerdict applies one observed run to the record keyed
+// (cardID, pinnedSHA) and returns the (possibly) updated record and
+// whether anything was written (REQ-CCI-010).
+//
+// THE VERDICT-SHA BINDING: a run's verdict may be recorded for a candidate
+// only when the run's head SHA equals the record's candidate commit SHA
+// AND the run's ref equals the record's candidate branch. A completed run
+// matching neither — a late-arriving green for a superseded candidate on
+// the same ci/<card> ref — is DISCARDED: nothing is written and the
+// record's verdict stands exactly as it was. A run still in progress is
+// not a verdict either. The mutation-lock the write shares with the push
+// path keeps an observation from interleaving with a re-candidate.
+func ObserveCandidateVerdict(projectRoot, cardID, pinnedSHA string, run CandidateRunState, now time.Time) (CandidateRecord, bool, error) {
+	rec, err := ReadCandidateRecord(projectRoot, cardID, pinnedSHA)
+	if err != nil {
+		return CandidateRecord{}, false, err
+	}
+	if run.HeadSHA != rec.CandidateSHA || run.Ref != rec.CandidateBranch {
+		// The binding refuses silently-but-truly: discard is the CONTRACT
+		// (wrote=false), not an error — the caller asked about a run that
+		// is not this candidate's.
+		return *rec, false, nil
+	}
+	if run.Status != "completed" {
+		return *rec, false, nil
+	}
+	switch run.Conclusion {
+	case "success":
+		rec.Verdict = CandidateVerdictGreen
+	case "failure":
+		rec.Verdict = CandidateVerdictRed
+	default:
+		// cancelled / timed out / skipped: no verdict either way — the
+		// CI run did not judge the tree.
+		return *rec, false, nil
+	}
+	rec.RunID = run.RunID
+	rec.ObservedAt = now.UTC().Format(time.RFC3339)
+	var written CandidateRecord
+	writeErr := WithCandidateMutation(projectRoot, cardID, func() error {
+		if integrationCandidateMutationHook != nil {
+			integrationCandidateMutationHook()
+		}
+		// Re-read under the lock: the outer read and the gh runs list were
+		// taken OUTSIDE the section — a re-candidate replacing the record
+		// in between is caught here, and only a record whose candidate SHA
+		// STILL matches the run writes.
+		current, err := ReadCandidateRecord(projectRoot, cardID, pinnedSHA)
+		if err != nil {
+			return err
+		}
+		if current.CandidateSHA != run.HeadSHA || current.CandidateBranch != run.Ref {
+			return nil
+		}
+		// The verdict fields refresh onto the RE-READ record — a re-push
+		// of the same candidate SHA that landed in between keeps its push
+		// info (PushedAt, sequence); only verdict, run id, and observation
+		// time are the observation's to write (card t1478 M4 repair).
+		current.Verdict = rec.Verdict
+		current.RunID = rec.RunID
+		current.ObservedAt = rec.ObservedAt
+		if err := WriteCandidateRecord(projectRoot, *current); err != nil {
+			return err
+		}
+		written = *current
+		return nil
+	})
+	if writeErr != nil {
+		return CandidateRecord{}, false, fmt.Errorf("observe candidate verdict: %w", writeErr)
+	}
+	if written.Verdict == "" {
+		return *rec, false, nil
+	}
+	return written, true, nil
 }
