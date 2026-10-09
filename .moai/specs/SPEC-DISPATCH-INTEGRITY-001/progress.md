@@ -582,7 +582,7 @@ cross_platform_build.native: PASS (go build ./..., exit 0)
 cross_platform_build.windows: PASS (GOOS=windows GOARCH=amd64 go build ./..., exit 0)
 total_run_phase_files: 15 (5 production: memory_fold.go, factory_bundle.go, memory_fold_lock_unix.go, memory_fold_lock_windows.go, + the verb preview restructure in memory_fold.go counted once; 6 test: review_observation_test.go, review_observation_fifo_unix_test.go, memory_fold_test.go, memory_budget_test.go, internal/hook/review_observation_test.go; 3 SPEC artifacts: acceptance.md ledger EL-001..EL-027, progress.md §E.2/§E.3, spec.md frontmatter transition)
 m1_to_mN_commit_strategy: per-milestone commits (M0 345eb6483, M1 96f392d06, M2 271d71ab9, M3 c0a0d7cbd, M4 c97d50a1e) + the post-report repair pass 281d490bc + this audit-ready stamp
-notes: 13/13 ACs PASS (5 as committed regression guards with recorded not-reproduced observations per C1; 8 flipped or held green with measured cells EL-001..EL-027). Two in-gate repair rounds, one selector defect, one default-timeout gate kill, and the post-report gate round (2 findings + the abandonment trio's third member) are recorded in §E.2 as failed measurements and repair records, never as passes. The mid-flight gate's 2 findings and the post-report gate's 3 findings were all folded with RED-first tests. The full-suite verdict is CI's job (C2) and PENDING at report time.
+notes: 13/13 ACs PASS (6 as committed regression guards with recorded not-reproduced observations per C1 — defects (1)(2)(4)(5)(6)(7); 2 production repairs — defects (3) and (8) — plus the process ACs held green with measured cells EL-001..EL-027). Two in-gate repair rounds, one selector defect, one default-timeout gate kill, and the post-report gate round (2 findings + the abandonment trio's third member) are recorded in §E.2 as failed measurements and repair records, never as passes. The mid-flight gate's 2 findings and the post-report gate's 3 findings were all folded with RED-first tests. The full-suite verdict is CI's job (C2) and PENDING at report time.
 
 ## §E.4 Sync-phase Audit-Ready Signal
 
@@ -616,3 +616,27 @@ Input parameters: tier=M; scope≈4 production files + 5 owned test sources + SP
 Decision: serial
 
 Justification: the card is coding-heavy defect repair across four production files with a strict milestone order — M0's re-classification gates M1–M4 — on a single worktree under one-writer discipline. The serial envelope (one manager-develop delegation at a time, milestones in plan order) is the default fallback and no other mode's selection criteria are met.
+
+## §G Override and Refusal Record
+
+- 2026-10-09T00:47:01Z SPEC-DISPATCH-INTEGRITY-001 ceiling-refusal outcome=hold reasons="plan-audit ceiling reached (round count 7 >= tier ceiling 2); the verdict matches no admitting arm and holds, entry blocked (REQ-ACE-006) — release path: the split/new-SPEC route of REQ-ACE-005 or an operator decision recorded in progress.md §G" evidence=/Users/goos/MoAI/moai-adk-go/.moai/worktrees/t1595/.moai/reports/t1595/plan-audit-iter2.md,/Users/goos/MoAI/moai-adk-go/.moai/worktrees/t1595/.moai/reports/t1595/plan-audit-iter3.md,/Users/goos/MoAI/moai-adk-go/.moai/worktrees/t1595/.moai/reports/t1595/plan-audit-iter4.md,/Users/goos/MoAI/moai-adk-go/.moai/worktrees/t1595/.moai/reports/t1595/plan-audit-iter5.md,/Users/goos/MoAI/moai-adk-go/.moai/worktrees/t1595/.moai/reports/t1595/plan-audit-iter6.md,/Users/goos/MoAI/moai-adk-go/.moai/worktrees/t1595/.moai/reports/t1595/plan-audit-iter7.md,/Users/goos/MoAI/moai-adk-go/.moai/worktrees/t1595/.moai/reports/t1595/plan-audit.md
+
+### Post-close repair row 6 (the iter-8 auditor's routed P3 — repair-count phrase miscounted the card's own record)
+
+- **Finding**: the CHANGELOG's t1595 close entry said "five repaired on
+  this card, three measured not-reproduced" — miscounting the card's own
+  §E.2 record, which shows 2 production repairs (defects (3) and (8)) and
+  6 regression guards confirmed (defects (1)(2)(4)(5)(6)(7)). The iter-8
+  verdict is PASS 0.96 with the debt disposal directly observed; its
+  codex receipt recorded this P3 as overall fail, which the admission
+  predicate refuses unconditionally — the auditor routed the unlock.
+- **Fix (two lines)**: the CHANGELOG phrase corrected to the §E.2 framing
+  ("2 production repairs on this card (defects (3) and (8)), 6 measured
+  not-reproduced … confirmed with committed regression guards"), and the
+  §E.3 repair-count phrase aligned to the same corrected framing
+  (6 regression guards named by defect; 2 production repairs named by
+  defect). No other changes.
+- **Verification**: the corrected CHANGELOG phrase greps 1-of-1 against
+  the corrected counts; the §E.3 phrase names the same defect split as
+  §E.2's rows; `golangci-lint` exit 0. No production bytes, no test
+  changes.
