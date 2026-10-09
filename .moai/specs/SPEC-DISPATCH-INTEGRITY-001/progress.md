@@ -782,6 +782,34 @@ Read against the 85% floor (`quality.yaml` `test_coverage_target: 85`; the manag
 - Windows-tagged code (memory_fold_lock_windows.go and memory_fold_wiring_fifo_windows_test.go) was not measured on darwin.
 - The 90% hook target rests on the documented target at `.moai/docs/local-dev-guide.md:169`, whose own note says no per-package rule was found.
 
+### Coverage debt and pre-existing finding (leader ruling B)
+
+**Ruling.** Leader ruling B, as stated by the coordinator in a cross-session message received 2026-10-09T23:52Z: coverage is recorded as debt, and the full package suite is CI's job (AGENTS.md §4, "Scope verification to the change"). This subsection claims no coverage target beyond the ones stated below.
+
+**Coverage debt.**
+
+- `internal/hook`: 87.3% (`craft-cover-hook-dbadebc1c.txt`: `ok  	github.com/modu-ai/moai-adk/internal/hook	179.649s	coverage: 87.3% of statements`). Configured target 85 (`.moai/config/sections/quality.yaml` `test_coverage_target: 85`): met. Documented critical target 90 (`.moai/docs/local-dev-guide.md:169`): not met.
+- `internal/cli` full package: not measured to completion. The run hit the 40-minute bound (`craft-cover-cli-dbadebc1c.txt`: `coverage: 77.6% of statements`, `panic: test timed out after 40m0s`, `FAIL	github.com/modu-ai/moai-adk/internal/cli	2401.194s`). The 77.6% is a partial figure, not a package figure.
+- Touched-function coverage, partial profile (`craft-cover-cli-func-dbadebc1c.txt`): `foldOnDoneStep` 82.7%, `acquireFoldStoreLock` (unix) 69.2%, `checkFoldUnchanged` 83.3%, `runFactoryBundleLocked` 83.9%, `atomicWriteFoldFile` 86.8%. The other touched symbols are 88.9–100%.
+- Uncovered blocks in `acquireFoldStoreLock` (`internal/cli/memory_fold_lock_unix.go`; count-0 blocks in `cover-cli-dbadebc1c.out`):
+  - lines 41–42 (fstat error path);
+  - lines 44–45 (refusal of a non-regular lock file);
+  - lines 49–50 (flock error, blocking path);
+  - lines 60–61 (non-EWOULDBLOCK flock error, polling path).
+
+  Correction to the first statement of this item, which said all four blocks need an injected system-call failure to reach. That holds for lines 41–42, 49–50, and 60–61. It does not hold for lines 44–45 (verification note below).
+
+  **Verification note (code read at write time; not run).** The open at line 36 uses `O_CREATE|O_RDWR|O_NOFOLLOW`. The comment at lines 32–33 says a FIFO standing in for the lock is refused by the regular-file check at line 43. A FIFO at the lock path should therefore reach lines 44–45 without an injected failure. No test was run to confirm this route.
+
+**Pre-existing finding, codex family (standing rule d-20261009T171628Z-fc47).**
+
+- Scope: `internal/cli/codex_readiness_test.go` and `internal/cli/doctor_codex_test.go`, 59 test functions. Card diff: `git diff --stat 81786284e -- internal/cli/codex_readiness_test.go internal/cli/doctor_codex_test.go` printed nothing (empty output; checked at 2026-10-09T23:55Z).
+- Base reproduction (measured by the coordinator; not re-run in this subsection): export of `81786284e`, `go -C <export> test -count=1 -v -timeout 20m -run '<the 59 names>' ./internal/cli/`, exit 1 (as stated by the coordinator; the evidence file carries no exit code). Result: 59 RUN, 49 PASS, 10 FAIL top-level, 4 failing subtests. The same 10 top-level names as the card-tree run. The same first message: `codex_readiness_test.go:545: count = 6, want 0 (a glob error degrades to zero, never an error)`. Evidence: `.moai/reports/t1595/codex-attribution-81786284e.txt`, present at write time. Its top-level RUN, PASS, and FAIL counts, its 4 failing subtests, its first message, and its 10 top-level FAIL names agree with the figures above.
+- Classification: a pre-existing finding at the base commit, reproduced there. Cause not diagnosed. The rule's conditions (1)–(4), which the lane record at `lane-wait-20261010.md:87` says must all hold, are held on the decision board and are not restated in this file. The classification follows the coordinator's ruling.
+- The gate legs this finding prevented: the full-package run is CI's under ruling B. The affected family tests and the AC-DI-013 control were run at `dbadebc1c`; see the subsections above.
+
+**Process note.** The first full-suite run reported 14 `--- FAIL` lines (10 top-level, 4 subtests), all inside the tests of those two files.
+
 ## §E.3 Run-phase Audit-Ready Signal
 
 run_complete_at: 2026-10-09T22:30+09:00
