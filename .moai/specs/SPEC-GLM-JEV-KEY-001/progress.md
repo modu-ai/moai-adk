@@ -26,6 +26,8 @@ Run phase: manager-develop, TDD (RED-GREEN-REFACTOR), branch WT-10-09-class, bas
 | M2 (GREEN) | d7bdb3cce | feat(SPEC-GLM-JEV-KEY-001): M2 GREEN — glm --key scan, moai jev command |
 | M3 (edge test + lint fix) | 99e5d271a | feat(SPEC-GLM-JEV-KEY-001): M3 verification — --key= edge test, lint fix |
 | M3 (harness hardening) | 5306e4cb2 | fix(SPEC-GLM-JEV-KEY-001): M3 — execRoot resets command-tree outputs |
+| M2 gate repair | 5de28887e | fix(SPEC-GLM-JEV-KEY-001): M2 gate repair — redact refusal, sweep whole region, refuse flag-shaped values |
+| Evidence refresh | (this commit) | feat(SPEC-GLM-JEV-KEY-001): run-phase evidence refresh — gate repair rows |
 
 (spec.md `status:` draft → in-progress on M1; spec.md frontmatter is the only SPEC-body surface touched; updated: unchanged — same calendar day.)
 
@@ -34,6 +36,7 @@ Run phase: manager-develop, TDD (RED-GREEN-REFACTOR), branch WT-10-09-class, bas
 - `go test ./internal/cli/ -run '<new family>' -count=1 -v` → **10 FAIL** (save/refuse/empty/newline/jev-command cases, each failing for its stated reason — e.g. `unknown command "jev" for "moai"`, `GLM API key not found`, masked-confirmation missing) + 2 PASS (vacuous-green passthrough by design, M2 characterization setup-routing); the 3 help tests separately: `--- FAIL: TestRootHelpListsJevCommand / TestGlmHelpDocumentsKeyFlag / TestJevHelpDocumentsKeyFlag`.
 - AC-GJK-016 mutant-RED (plan §F): a temporary whole-args scan stub in runGLM (removed before GREEN) made `TestGlmKeyAfterDashDashPassthrough` FAIL with `jev_key_test.go:363: no save confirmation may appear for a post--- token, got: "GLM API key stored (test****7890)\n"` — exactly the mutant the RED cell requires.
 - `--key=<value>` edge (acceptance §B, added in M3): with the scan's `--key=` branch temporarily removed, `TestGlmKeyEqualsFormSaves` FAIL observed; branch restored → green. (Test-first derived, not test-after.)
+- M2 gate repair RED (turn-end gate defects, repaired in 5de28887e — verbatim RED observed before the fix): `TestGlmKeyConflictErrorMasksValue` — `refusal must not disclose the second key value, got: --key cannot be combined with other arguments (found "--key=sk-secret-9999")` (the P1 leak); `TestGlmKeyLeadingArgsRefused` — `a launch-flag mixed invocation must be refused` (P2-leading: `-p work --key K` stored); `TestGlmKeyExecFlagAsValueRefused` — `a flag-shaped token must not be stored as the key` (P2-execflag: `--key -f` stored).
 
 ### E1 — AC matrix (all observed this run phase; HEAD 5306e4cb2 unless noted)
 
@@ -47,18 +50,18 @@ Run phase: manager-develop, TDD (RED-GREEN-REFACTOR), branch WT-10-09-class, bas
 | AC-GJK-006 | PARTIAL — see Gaps | mixed glm-family subset `go test ./internal/cli/ -run 'Test(GLM|Glm)' -timeout 150s` | `ok github.com/modu-ai/moai-adk/internal/cli 18.390s` (pre-existing glm family + new tests together, after the output-reset fix). **Package-scope** run NOT observed green locally (structural, below); CI owns the repository-wide verdict — PENDING at report time |
 | AC-GJK-007 | PASS | `TestKeyFormsShareStorageLastWriterWins` + smoke (setup 1111 → `--key` 2222 → file has 2222) | `GLM API key stored (sk-f****2222)` / `GLM_API_KEY="sk-flag-wins-2222"` |
 | AC-GJK-008 | PASS | `TestGlmSetupRoutingUnchanged` + smoke `moai glm setup sk-legacy-1111` | `GLM API key stored (sk-l****1111)` / `GLM_API_KEY="sk-legacy-1111"` (setup path untouched) |
-| AC-GJK-009 | PASS | `TestGlmKeyFlagRefusesExtraArgs` + smoke `moai glm --key K status` | exit 1, `--Key cannot be combined with other arguments (found "status"); run 'moai glm --key <api-key>' by itself.` (fang capitalizes the render; the error string itself is lowercase); no file written |
+| AC-GJK-009 | PASS | `TestGlmKeyFlagRefusesExtraArgs` + `TestGlmKeyLeadingArgsRefused` (gate repair) + smoke `moai glm --key K status` | exit 1, `--Key cannot be combined with other arguments (found "status")...`; leading `-p work --key K` → exit 1, `found "-p"` (gate-repair binary smoke); no file written |
 | AC-GJK-010 | PASS | `TestJevBareInvocationPrintsHelpExitZero` + smoke bare `moai jev` | jev help printed, `exit=0`, `.env.typesafe` absent |
-| AC-GJK-011 | PASS | `TestGlmKeyFlagMissingValueErrors` + `TestGlmKeyEmptyValueErrors` + `TestJevKeyEmptyValueErrors` | `--- PASS` ×3 (missing-value usage error / `empty API key` / `empty Jev credential`; nothing stored) |
+| AC-GJK-011 | PASS | `TestGlmKeyFlagMissingValueErrors` + `TestGlmKeyEmptyValueErrors` + `TestJevKeyEmptyValueErrors` + `TestGlmKeyExecFlagAsValueRefused` (gate repair) | `--- PASS` ×4 (`--key requires a value` for a flag-shaped token; `empty API key` / `empty Jev credential`; nothing stored) |
 | AC-GJK-012 | PASS (package level) | `go test ./internal/glmcred/ ./internal/jevcred/` (Save's explicit Chmod tests) + smoke `ls -l` | `ok ... glmcred 0.317s` / `ok ... jevcred 0.376s`; smoke files `-rw-------@` |
-| AC-GJK-013 | PASS | premises: `git rev-parse --verify f7606c7bc` → resolves; `git diff --stat f7606c7bc..HEAD -- internal/cli/` → `3 files changed, 607 insertions(+)`; then `git diff f7606c7bc..HEAD -- internal/cli/ ':(exclude)**/*_test.go' \| grep '^+' \| grep "TYPESAFE_API_KEY\|GLM_API_KEY"` | `GREP_EXIT=1` — **0 rows** |
+| AC-GJK-013 | PASS | premises: `git rev-parse --verify f7606c7bc` → resolves; `git diff --stat f7606c7bc..HEAD -- internal/cli/` → non-empty (607 insertions at M3; re-verified after the gate-repair commit); then `git diff f7606c7bc..HEAD -- internal/cli/ ':(exclude)**/*_test.go' \| grep '^+' \| grep "TYPESAFE_API_KEY\|GLM_API_KEY"` | `GREP_EXIT=1` — **0 rows** (re-observed at HEAD 5de28887e) |
 | AC-GJK-014 | PASS | `TestJevKeyNewlineValueRefusesAndPreserves` | `--- PASS` (refused, file byte-for-byte identical) |
 | AC-GJK-015 | PASS | `TestGlmKeyFlagNewlineValueRefusesAndPreserves` | `--- PASS` (refused, file byte-for-byte identical) |
 | AC-GJK-016 | PASS (incl. mutant-RED) | `TestGlmKeyAfterDashDashPassthrough` + smoke `moai glm -- --key x` | `--- PASS`; smoke: no save confirmation, `.env.glm` unchanged (85 bytes, prior setup value), launch path's own error terminates (exit 1) |
 
 ### §C-gate results (this tree, HEAD 5306e4cb2)
 
-- Full new family: `go test ./internal/cli/ -run 'Test(…16 names…)$' -count=1` → `ok ... internal/cli 1.063s`; re-run `-count=2` → `ok` (stability, after the pflag flag-reset and output-reset fixes).
+- Full new family (incl. the three gate-repair tests, 19 names): `go test ./internal/cli/ -run 'Test(…)$' -count=1` → `ok ... internal/cli 0.769s`; earlier 16-name run `-count=2` → `ok` (stability, after the pflag flag-reset and output-reset fixes).
 - `go test ./internal/cli/ -run 'Test(GLM|Glm)' -count=1 -timeout 150s` → `ok ... 18.390s`.
 - `go test ./internal/glmcred/ ./internal/jevcred/ -count=1` → both `ok` (80.8% / 85.0% coverage — packages untouched this card).
 - `go vet ./internal/cli/` → clean (exit 0). `gofmt -l` on touched files → empty.
