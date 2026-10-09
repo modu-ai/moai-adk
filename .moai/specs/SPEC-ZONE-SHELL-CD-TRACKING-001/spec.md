@@ -1,0 +1,88 @@
+---
+id: SPEC-ZONE-SHELL-CD-TRACKING-001
+title: "Protected-zone shell guard — track cd destinations (post-`--` operand including hyphen-leading, in-project absolute) with a cd-class regression matrix"
+version: "0.1.0"
+status: draft
+created: 2026-10-09
+updated: 2026-10-09
+author: manager-spec
+priority: P1
+phase: "v3.2.0 target"
+module: "internal/hook"
+lifecycle: spec-anchored
+tier: M
+depends_on: [SPEC-SELF-IMPROVE-PROTECTED-ZONE-001, SPEC-ZONE-SHELL-PARSING-001]
+tags: "protected-zone, shell-parsing, cd-tracking, pretooluse, guard, fail-closed, t1584"
+---
+
+# SPEC-ZONE-SHELL-CD-TRACKING-001
+
+## HISTORY
+
+| Version | Date | Author | Change |
+|---------|------|--------|--------|
+| 0.1.0 | 2026-10-09 | manager-spec | Initial plan-phase draft (card t1584, security P1, operator-approved expansion axis, Class C). Fresh fail-closed decision for the cd-tracking class separated from SPEC-ZONE-SHELL-PARSING-001 at v0.4.0 (drafted there as REQ-ZSP-009/AC-ZSP-007 with probe evidence EV-6; the retired number REQ-ZSP-009 is NOT reused — this SPEC carries the fresh prefix REQ-ZSCD/AC-ZSCD). Provenance: the class draft originates in SPEC-ZONE-SHELL-PARSING-001 v0.3.0 (HISTORY row: cd tracking soundness + two cd cells), was separated at v0.4.0 (leader scope decision, Out of Scope handoff naming card t1584), and its hyphen-leading allow control was invalidated by plan-audit finding D7 (`.moai/reports/t1584/plan-audit-iter2.md`): `cd -- -zone` moves real bash into `./-zone`, so the shape is a protected deletion, not an allow control. D8b residual sweep measured in plan §B (fix-here: 0). Probe evidence EV-6 inherited from `.moai/reports/t1574/` via the card copy `.moai/reports/t1584/red-reproduction.md`. |
+
+## §A Problem
+
+The protected-zone shell guard (`internal/hook/protected_zone_shell.go`) decides whether a Bash call carrying a self-improvement identity (`harness-learner`) may run. Its possible-worlds walker carries a set of possible working directories (`w.cwds`); every statement is judged against each possible cwd, so a `cd` that the walker fails to track degenerates the set and a following relative deletion resolves against the wrong position. SPEC-ZONE-SHELL-PARSING-001 closed five shell-parsing classes and separated the sixth — cd tracking — to this card. Every observation below was made at tree `2aab5f797b75983e132af451da68f69e3426557b` (branch `WT-zone-cd-deny`, post-t1574, 1569-line source), 2026-10-09; the cd-shape probe output lives in `.moai/reports/t1584/red-reproduction.md`.
+
+1. **The `--` separator defeats cd operand tracking (:657-664, :447-449).** The cd branch collects every literal argument word, `--` included, so `cd -- zone_dir` yields two directory words; `zoneNextCwd` resets to the root whenever `len(dirs) != 1` (:447). In real bash `--` ends cd's option parsing and the word after it is the single directory operand — the shell moves into `zone_dir`, and `rm a.log` deletes `zone_dir/a.log`. Observed allow (EV-6 probe shape 1, tree `b9ef003808da2ac1dfe42e5374d5bde4302f46b3`; the probe file was deleted after observation and never re-executed — run phase re-establishes the RED observation, plan M1 step 1).
+2. **An in-project absolute destination degenerates the set (:451).** `zoneNextCwd` resets to the root for any absolute argument (`zoneIsAbs`), so `cd <project>/zone_dir && rm a.log` — the shell now standing inside the zone-covered directory — leaves the tracked set at the root and the deletion is allowed. Observed allow (EV-6 probe shape 2, same demotion).
+3. **A hyphen-leading post-`--` operand is misread as an option (:451).** `cd -- -zone && rm a.log`: real bash moves into `./-zone` (the operand after `--` is an ordinary directory name that happens to start with a hyphen) and the deletion removes `-zone/a.log` — a protected path under this card's threat model, the same reason SPEC-ZONE-SHELL-PARSING-001's landed matrix collects `rm -- -zone/secret.md` as a zone candidate (its REQ-ZSP-001). The v0.3.0 draft pinned this shape as an ALLOW control ("hyphen-leading directory name keeps the documented untracked reset"); plan-audit finding D7 invalidated the draft as a self-contradiction with that operand semantics and a bypass frozen behind a green gate. This SPEC takes the fresh fail-closed decision: a post-`--` hyphen-leading directory operand is tracked like any other operand (REQ-ZSCD-001), and the `cd -- -zone` matrix cell asserts DENY (REQ-ZSCD-005). No allow control for this shape exists anywhere in this SPEC's matrix.
+
+Not defects — the landed semantics this SPEC preserves (each measured at this tree): a wrapper-stripped `cd` resolves as an external execution and is not tracked (`env cd` cannot move the parent shell; :639-645); an outside-root destination cannot put a later relative name inside the zone, so its untracked reset is semantically sound (REQ-ZSCD-003 keeps it, outside the matrix); `cd -` moves to `$OLDPWD`, which the guard cannot know; dynamic (non-literal) operand words keep the parent SPEC §C.6 accepted under-match; the possible-directory-set growth stays bounded by the landed `zoneCwdsBound` budget (:653, :674).
+
+## §B Requirements (GEARS)
+
+- **REQ-ZSCD-001** (post-`--` operand, hyphen-leading included) — When a `cd` statement carries the bare `--` separator word, the guard shall treat the word after the separator as cd's single directory operand and shall judge it exactly as it judges any other `cd` directory operand: the separator word itself shall not become a directory candidate; a hyphen-leading operand shall be tracked like any fully-literal operand, because in real bash `--` ends cd's option parsing and the operand that follows is an ordinary directory name; more than one literal word after the separator shall keep today's untracked reset (bash rejects a two-operand `cd`, the cd fails, and the shell stays put); and dynamic (non-literal) operand words keep the documented under-match (parent SPEC §C.6). This requirement restates, for `cd`, the operand semantics REQ-ZSP-001 fixed for mutating verbs (SPEC-ZONE-SHELL-PARSING-001 §B): after the separator, every word is an operand and a hyphen-leading literal operand is collected like any other.
+- **REQ-ZSCD-002** (in-project absolute destination tracked) — When a `cd` argument is an absolute path that lies inside the project root, the guard shall track the destination under its root-relative form, so that a deletion following the cd resolves against the destination's real root-relative position; the conversion is lexical only — strip the root prefix, clean `.`/`..` segments — reusing the lexical-normalization semantics of SPEC-SELF-IMPROVE-PROTECTED-ZONE-001 REQ-SIPZ-006 (provenance-only citation: that parent SPEC is completed and is NOT amended by this SPEC); an absolute path whose cleaned form escapes the root, and an absolute path outside the root, keep the documented untracked reset of REQ-ZSCD-003; and the existing `..`-escape reset stays in force.
+- **REQ-ZSCD-003** (outside-root destinations keep the documented untracked reset) — Where a `cd` destination resolves outside the project root — an absolute path that is not under the root, or any form whose resolution leaves the shell outside the project — the guard shall keep today's documented untracked reset, because a relative name resolved from a working directory outside the root cannot reach a zone-covered path; this allow behavior is a deliberate documented disposition, NOT a regression-matrix control: no cell inside the cd regression matrix (REQ-ZSCD-005) shall assert an allow verdict for this shape, and the disposition is recorded in this SPEC's Out of Scope as the documented under-match record.
+- **REQ-ZSCD-004** (preserved behavior) — The guard shall keep the landed behavior of SPEC-ZONE-SHELL-PARSING-001 unchanged at tree `2aab5f797`: its eight implemented requirements (REQ-ZSP-001..008), the thirteen-mutation-form table, the `TestProtectedZone` family, and the landed parsing matrix pass unchanged; the cd interpretation of this SPEC is an additive fix that changes the verdict of no already-covered form — outside the two tracked classes of REQ-ZSCD-001..002 every command's verdict stays exactly what the landed guard answers; and the bare-cd-only rule (a wrapper-stripped `cd` resolves as an external execution and is not tracked, :639-645) stays in force.
+- **REQ-ZSCD-005** (cd-class regression matrix) — The guard's cd tracking shall carry a regression matrix covering at minimum: `cd` destination forms crossing the deleting verbs `rm`/`cp`/`mv` (the post-`--` operand form `cd -- <dir> && <verb> <relative-path>`), the hyphen-leading operand cell `cd -- -zone && rm a.log` asserting DENY against a `-zone/` zone fixture, and the in-project absolute-destination cell `cd <abs-in-project> && rm a.log` asserting the destination is tracked (the protected deletion denied) — every zone-covered cell asserting deny; the matrix runner shall make an empty cell list fail rather than pass (the landed sweep discipline of `TestProtectedZoneShellParsingMatrix`); and no matrix cell shall assert an allow verdict for a hyphen-leading directory operand — the allow control the SPEC-ZONE-SHELL-PARSING-001 v0.3.0 draft froze for `cd -- -zone` is withdrawn (audit D7): an allow disposition for cd shapes lives outside the matrix only, as REQ-ZSCD-003's documented record.
+
+## §C Constraints and Decisions
+
+- **Scope.** `internal/hook/protected_zone_shell.go` and the zone test surface (`internal/hook/protected_zone_shell_matrix_test.go`, plus an optional reproduction/probe test file if the RED observation needs a home before the matrix lands). Nothing else: no template, config, settings matcher, or Makefile change.
+- **Fail-closed direction.** Within the newly interpreted cd classes (REQ-ZSCD-001..002) resolution must keep a zone-covered deletion denied; when the new interpretation cannot decide, deny. The PRE-EXISTING accepted under-match classes — parse failure, dynamic words, wrapped `cd` external execution, outside-root destinations — remain unchanged; this SPEC does not widen or narrow them.
+- **D1 — hyphen-leading post-`--` operand is an ordinary operand (the D7 decision).** The auditor's required fix is taken: the hyphen-leading exception is removed from the class draft, a post-`--` hyphen-leading directory operand is tracked like any other, and the `cd -- -zone` matrix cell asserts DENY. The control-set rewrite happens in the same revision by construction: this SPEC is authored fresh and never carries the drafted allow control — the draft text is quoted in HISTORY as provenance, never as a cell.
+- **D2 — REQ-SIPZ-006 is provenance-only.** The parent SPEC SPEC-SELF-IMPROVE-PROTECTED-ZONE-001 is `status: completed`; its lexical-normalization requirement is cited for semantics, never amended. Zero parent edits.
+- **D3 — the outside-root reset is a semantic disposition, not a gap.** A relative name from an outside-root cwd cannot reach a zone-covered path, so the reset answers correctly; it stays out of the matrix (REQ-ZSCD-003) and out of the debt ledger.
+- **D4 — ID namespace.** The retired number REQ-ZSP-009 is never reused as a live id (SPEC-ZONE-SHELL-PARSING-001 HISTORY v0.3.0/v0.4.0 references it); this SPEC uses the fresh prefix REQ-ZSCD/AC-ZSCD with the provenance line in HISTORY.
+- **D5 — RED-first obligation and the EV-6 demotion.** The inherited probe (EV-6) was deleted after observation and never re-executed, so its output cannot be re-executed on the current tree; per the verification-completeness §2.1 undecidable disposition the inherited evidence is classified regression-guard-pending, never recorded as a pass, and the ONLY re-establishment path is the run-phase RED capture that plan M1 step 1 explicitly owns (the D8 lesson from the predecessor audit: an AC's RED observation must have a plan step that owns it).
+- **Methodology.** `constitution.development_mode: tdd` (quality.yaml:4) — the reproduction set is authored and observed RED at M1 step 1, then the interpretation fix flips the cells GREEN.
+
+## §D Acceptance Criteria
+
+The canonical AC enumeration, evidence ledger, and Given-When-Then scenarios live in `acceptance.md` (Tier M). Summary:
+
+| AC | Claim | RED-now | Green path |
+|----|-------|---------|------------|
+| AC-ZSCD-001 | The three-shape cd reproduction set is captured verbatim against the pre-fix guard (all three observed in the reset state), then flips to deny | pending M1 step 1 (EV-6 §2.1 demotion — regression-guard-pending until captured) | M1 |
+| AC-ZSCD-002 | The `cd -- -zone && rm a.log` matrix cell asserts DENY | captured at M1 step 1 | M1–M2 |
+| AC-ZSCD-003 | The in-project absolute-destination cell asserts the destination is tracked (protected deletion denied) | captured at M1 step 1 | M1–M2 |
+| AC-ZSCD-004 | The cd matrix group exists in the landed sweep runner, non-empty, `-v` per-cell output, empty-list-fails intact | EV-ZSCD-002 (empty cd coverage today) | M2 |
+| AC-ZSCD-005 | The landed `TestProtectedZone` family and parsing matrix pass unchanged | green-now baseline (preserved-behavior) | M1–M3 |
+| AC-ZSCD-006 | Scoped verification batch green: hook package suite, `go vet`, `golangci-lint` on `internal/hook` | — | M3 |
+
+## Out of Scope
+
+### Out of Scope — the landed REQ-ZSP-001..008 semantics
+
+- The eight implemented requirement classes of SPEC-ZONE-SHELL-PARSING-001 (dash-dash operands for mutating verbs, conditional declarations, wrapper prefixes, executable paths, recursion accounting, walk budgets, parsing matrix, preserved forms) are out of scope; this SPEC is additive cd interpretation only — no already-covered form changes verdict (REQ-ZSCD-004).
+
+### Out of Scope — the parent SPEC's requirements
+
+- SPEC-SELF-IMPROVE-PROTECTED-ZONE-001 is `status: completed` and read-only; REQ-SIPZ-006 (lexical normalization) is cited provenance-only (D2); zero parent edits anywhere in this SPEC.
+
+### Out of Scope — outside-root and untrackable cd forms
+
+- Outside-root destinations keep the documented untracked reset (REQ-ZSCD-003 — a semantic disposition, recorded here, never a matrix control); `cd -` (OLDPWD unknown) keeps its reset; dynamic operand words keep the parent §C.6 under-match; wrapped-cd shapes (`env cd`, `nohup cd` — the external-execution rule at :639-645) stay exactly as the landed guard answers them. Hardening any of these is a future decision, not this card.
+
+### Out of Scope — possible-directory-set growth mechanics
+
+- The cwds set budget (`zoneCwdsBound`, :653/:674) and the union-on-cd mechanics are landed t1574 repairs (its audit D6) and are out of scope; this SPEC changes WHICH destinations are tracked, not how the set is bounded.
+
+### Out of Scope — surfaces outside the two files
+
+- No template, `.moai/config`, settings.json matcher, or Makefile change; the PreToolUse matcher stays `Write|Edit|Bash` (parent SPEC §A.5).
