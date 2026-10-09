@@ -623,3 +623,45 @@ func writeCodexAuthFixture(t *testing.T, home, body string) {
 		t.Fatalf("write auth.json: %v", err)
 	}
 }
+
+// codexLoginStatusSample0161 is the vendored capture of the unauthenticated
+// `codex login status` output of codex-cli 0.161.0. Provenance (capture
+// command, binary version, date, stream split): the sibling directory's
+// testdata/codex-0.161.0-auth/README.md.
+const codexLoginStatusSample0161 = "testdata/codex-0.161.0-auth/login-status-not-logged-in.txt"
+
+// TestClassifyCodexAuth_Codex0161CapturedOutputIsAGap seals the REQ-CONF-007
+// observation with the captured bytes themselves: the unauthenticated
+// `codex login status` output of codex-cli 0.161.0 carries no line the
+// stage-2 whole-line grammar matches, so it must classify codexAuthUnknown —
+// a gap, never a definitive "not authenticated" provider verdict — by the
+// same rule as the 0.160-era samples (REQ-CONF-006's descent contract). The
+// sample is asserted byte-exact so a drifted fixture fails loudly instead of
+// silently testing a shape codex never emitted.
+func TestClassifyCodexAuth_Codex0161CapturedOutputIsAGap(t *testing.T) {
+	raw, err := os.ReadFile(codexLoginStatusSample0161)
+	if err != nil {
+		t.Fatalf("read vendored 0.161.0 login-status sample: %v", err)
+	}
+	if string(raw) != "Not logged in\n" {
+		t.Fatalf("vendored sample drifted from the captured bytes: %q", raw)
+	}
+	t.Run("pure_parser_on_combined_capture", func(t *testing.T) {
+		combined := combineCodexStreams(nil, raw)
+		if got := parseCodexAuthLine(combined, 1); got != codexAuthUnknown {
+			t.Errorf("parseCodexAuthLine(%q, 1) = %q, want %q", combined, got, codexAuthUnknown)
+		}
+	})
+	t.Run("full_ladder_on_captured_streams", func(t *testing.T) {
+		home := t.TempDir() // no auth.json: stage 1 rejects by absence, descends
+		t.Setenv("CODEX_HOME", home)
+		stub := &countingLoginStatusRunner{stderr: raw, exitCode: 1}
+		withCodexLoginStatusRunner(t, stub.run)
+		if got := classifyCodexAuth(context.Background(), "/fake/codex"); got != codexAuthUnknown {
+			t.Errorf("AuthProvider = %q, want %q (a non-matching probe stays a gap)", got, codexAuthUnknown)
+		}
+		if stub.calls != 1 {
+			t.Errorf("runner calls = %d, want 1", stub.calls)
+		}
+	})
+}
