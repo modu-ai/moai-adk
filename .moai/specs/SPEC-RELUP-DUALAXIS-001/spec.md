@@ -84,12 +84,12 @@ $ grep -rn "last-cc-version" internal/
 아래 mutant들이 이 SPEC의 AC를 통과하려면 AC가 너무 얕은 것이다(verification-completeness §2 mutant probe).
 
 - **M-1 "출처 필드 기만"**: `source_request`(역사 서술 필드)에만 codex를 언급하고 `domain` 문자열은 CC-only로 남기는 mutant. AC-RDX-001이 `domain` 키 행 스코프 패턴(`'"domain".*Codex CLI upstream change tracking'`)을 grep하므로 잡힌다 — source_request에 동일 문구를 넣어도 매치되지 않는다(plan-audit iter1 CX-3 재앵커).
-- **M-2 "주석 코덱스"**: JS 주석에만 `// TODO codex lens`를 추가하는 mutant. AC-RDX-003이 `selectCodexSweepTargets(args)` 출현 ≥2(정의+top-level 디스패치 병합 호출)와 plan §E3-P2 어댑터의 실측 target 생성을 요구하므로 잡힌다 — 주석·미연결 정의는 두 면 모두에서 좌초한다(plan-audit iter1 CX-2 재앵커).
+- **M-2 "주석 코덱스"**: JS 주석에만 `// TODO codex lens`를 추가하는 mutant. 검출 면은 run-phase 검증 동사 plan §E3-P2(export 경로의 실측 target 생성 — 미연결 정의·주석만 있으면 export 부재 또는 codex-count 단언에서 좌초)와 착지 신호 LED-003(`selectCodexSweepTargets(args)` 출현 ≥2)이다. AC-RDX-003은 판정 보류(CX-7)라 이 mutant는 릴리스 게이트가 보호하지 않는다 — run-phase 동사 관측으로만 잡힌다(plan-audit iter1 CX-2 재앵커; acceptance §A·§D.2).
 - **M-3 "seed 누락"**: `last-codex-version.json` 스키마는 문서화하되 시드값을 빼는 mutant. AC-RDX-006은 통과하고 AC-RDX-007(`rust-v0.161.0`)에서 잡힌다 — 둘이 쌍인 이유다.
 - **M-4 "BP 껍데기 섹션"**: `Best-Practices` 헤딩만 넣고 원문-패치 강제를 빼는 mutant. AC-RDX-008(섹션 존재)은 통과할 수 있다 — REQ-RDX-012(shall not)와 plan §D 앵커(`source-first` 리터럴)가 잡는다. §3에 한계를 명시한다: 이 mutant는 grep 단일 판정면 밖이며 plan-auditor 서술 검증이 보완 판정면이다. 동일 한계는 AC-RDX-014/015에도 적용된다 — 기계 면은 블록 스코프 읽기(acceptance §D.3-c의 블록 경계 — 키군·기본값·경고 / watch 규범)이고, 블록 안 문장의 판독이 여전히 제2 판정면이다(plan-audit iter1 D5; B-08 — 블록 스코프 게이트를 도입해도 의미 판정은 판독이다). **CX-13**: `source-first` 리터럴 면도 반전 가능(리터럴 유지·규칙 역전) — AC-RDX-016의 기계 면을 회귀 가드(판정 보류)로 강등하고 REQ-RDX-013 의미론 면은 plan §E7 검토면 + 형제 카드 판별기로 이관한다(리더 재개 재심).
 - **M-5 "Go 침입"**: 상태 파일 쓰기를 Go 런타임(`internal/`)으로 옮기는 mutant. AC-RDX-011(회귀 가드 — `internal/` grep 0힛 유지)에서 잡힌다. 상태 파일은 하네스 계층 소유가 측정으로 확인된 구조적 사실이다(§1.1 M4).
-- **M-6 "병합 제외"**: `selectCodexSweepTargets`를 정의·export·직접 호출하되 그 target을 `parallel(...)` 병합에서 제외하는 mutant. LED-003(≥2)은 통과할 수 있으나 LED-016(plan §E3-P3 모의-런타임 관측 — codex 라벨 agent 호출 0건)에서 좌초한다(plan-audit iter2 CX-5).
-- **M-7 "단일 사이트 기록"**: codex 상태 문서를 Phase 0에만 두고 Phase 7a 기록 단계를 CC-only로 남기는 mutant. LED-006 단독(≥1)은 통과하나 LED-006 ≥2 + LED-017(`7a-codex`)에서 좌초한다(plan-audit iter2 CX-6).
+- **M-6 "병합 제외"**: `selectCodexSweepTargets`를 정의·export·직접 호출하되 그 target을 `parallel(...)` 병합에서 제외하는 mutant. LED-003(≥2)은 통과할 수 있다. 검출 면은 run-phase 검증 동사 plan §E3-P3(모의-런타임 관측 — codex 라벨 agent 호출 0건이면 LED-016에서 좌초)과 §E3-P4(`run()` 공개 경로)다. AC-RDX-003은 판정 보류(CX-5·CX-7)라 게이트 보호는 없고, run-phase 동사 관측으로만 잡힌다(plan-audit iter2 CX-5).
+- **M-7 "단일 사이트 기록"**: codex 상태 문서를 Phase 0에만 두고 Phase 7a 기록 단계를 CC-only로 남기는 mutant. LED-006 단독(≥1)은 통과한다. 검출 면은 착지 신호 LED-006(≥2 — Phase 0 판독 사이트 + Phase 7a 기록 사이트)과 LED-017(`7a-codex` 기록 단계 리터럴)이며, AC-RDX-006은 판정 보류(CX-8)라 게이트 보호는 없다 — 비게이트 착지 신호 관측으로만 잡힌다(plan-audit iter2 CX-6; acceptance §D.2).
 - **M-8 "CC 널 조기 종료"**: codex/BP 절차를 추가하면서 Phase 2의 무조건 조기 종료("If no entries … stop.")를 그대로 남기는 mutant — CC 빈 주간(2026-10-07→08 패턴)에 codex/BP가 실행 전 종료된다. 현재 본문 상태가 이 클래스다. LED-018(`only the CC axis` 0힛)과 REQ-RDX-015가 잡는다(plan-audit iter3 CX-9). 리터럴만 주석으로 넣고 문장을 생존시키는 형태는 LED-019(구형 문장 전문 제거면)가 잡는다(fresh-run CX-10). **한계 (CX-12)**: 동의어 바꿔쓰기(paraphrase) 클래스는 리터럴 쌍을 우회한다 — 다른 무조건 종료 문구가 쌍 통과임이 codex 실증됐고, 유한 리터럴 집합은 의미론을 보증하지 못한다. AC-RDX-017은 회귀 가드(판정 보류)로 강등되고 의미론 판정은 plan §E7 검토면(run-exit E1 인간 검토) + 형제 카드 판별기로 이관된다.
 
 ## 4. 요구사항 (GEARS)
@@ -129,7 +129,7 @@ $ grep -rn "last-cc-version" internal/
 2. **상태 파일은 기계 로컬 gitignored다.** `last-codex-version.json`의 실제 생성은 CI/테스트가 판정할 수 없으므로, 본 SPEC의 AC는 스페셜리스트 본문의 쓰기 지점(스키마 문서화)을 측정면으로 삼는다. 2차 스윕이 이미 보여줬듯 스키마 홈 부재는 관측 비용을 내고 있다 — 본문 문서화가 스키마의 규범면이다.
 3. **Runner 불변식은 유지된다.** AskUserQuestion·gh pr 호출 금지(HARD, AC-DHC-007a), `Date.now()`/`Math.random()` 금지(결정성), top-level 실행 + CommonJS export 가드 패턴 유지. codex 렌즈는 이 불변식 위에 병렬 구조로 얹힌다.
 4. **에이전트·러너 본문은 영어다**(coding-standards.md Language Policy). 6테마 키와 절차 서술은 영어로 기록하고, 한국어 테마명(서브에이전트/기타)은 대응표로만 남긴다.
-5. **Tier M 예산** — REQ 15건 / AC 17건. AC가 천장 16을 +1 초과한다 — plan-audit iter3 CX-9 수리(감사 지향 신설 AC-RDX-017)에 의한 것이며, 초과분과 CX-7/8 계측 이관을 분할 제안(형제 카드)이 흡수한다(§7 마지막 항목, HISTORY 0.4.0).
+5. **Tier M 예산** — REQ 15건 / AC 16건. Tier M 천장은 요구사항·수용기준 각각 16이며, AC 16은 천장에 정확히 도달한다(AC-RDX-012는 AC-RDX-011로 합병됨 — D7).
 
 ## 6. 범위 밖 (Non-goals)
 

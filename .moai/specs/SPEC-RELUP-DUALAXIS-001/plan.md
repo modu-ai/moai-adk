@@ -48,32 +48,33 @@ tier: M
 
 ```bash
 git branch --show-current ; git rev-parse --short HEAD     # WT-high-10-07 이후 재확인
-# RED-now 앵커 15종 재측정 (acceptance.md §D.3 원장의 명령 그대로 — 전부 단일 호출; 검증 동사 2종은 §E3-P3·P4; 육면 셀 6종(67–72행)은 AC-RDX-009 쌍; 회귀 가드 3종은 74–76행):
+# RED-now 앵커 15종 재측정 (acceptance.md §D.3 원장의 명령 그대로 — 전부 단일 호출; 검증 동사 2종은 §E3-P3·P4; 육면 셀 6종(LED-022G..027G 행, Phase 3 블록 스코프)은 AC-RDX-009 쌍; PRESERVE 앵커 3종은 하단 3행(LED-011·LED-012·LED-013 앵커):
 grep -c '"domain".*Codex CLI upstream change tracking' .claude/commands/harness/release-update/manifest.json   # 기대 0 (M4 전) — domain 필드 스코프 (CX-3)
 grep -c '"domain".*best-practices axis' .claude/commands/harness/release-update/manifest.json                   # 기대 0 (M4 전) — domain 필드 스코프 (CX-3)
+grep -c '"domain".*Claude Code' .claude/commands/harness/release-update/manifest.json   # 기대 1 (M4 전후 유지 — CC 절 보존 면, D9; 누락 입력은 acceptance §D.3-d CTRL-F)
 grep -c "selectCodexSweepTargets(args)" .claude/workflows/hns-release-update-run.js                              # 기대 0 (M2 전) — 착지 후 ≥2: 정의+top-level 디스패치 호출 (CX-2)
 grep -c "CODEX_COMMITS_FALLBACK" .claude/workflows/hns-release-update-run.js                           # 기대 0 (M2 전)
 grep -c "CODEX_THEME_CHECKLIST" .claude/workflows/hns-release-update-run.js                            # 기대 0 (M2 전)
 grep -c "last-codex-version.json" .claude/agents/harness/hns-release-update-specialist.md              # 기대 0 (M1 전)
 grep -c "rust-v0.161.0" .claude/agents/harness/hns-release-update-specialist.md                        # 기대 0 (M1 전)
-grep -ci "best-practice" .claude/agents/harness/hns-release-update-specialist.md                       # 기대 0 (M3 전)
+grep -ci -E "^#+ .*best-practice" .claude/agents/harness/hns-release-update-specialist.md                       # 기대 0 (M3 전)
 grep -c "code.claude.com" .claude/agents/harness/hns-release-update-specialist.md                      # 기대 0 (M3 전)
-grep -c "HTML proposal report" .claude/agents/harness/hns-release-update-specialist.md                 # 기대 0 (M3 전)
+python3 -c 'import re;L=open(".claude/agents/harness/hns-release-update-specialist.md",encoding="utf-8").read().split("\n");h=[i for i,l in enumerate(L) if re.match(r"#+ .*best-practice",l,re.I)];v=(len(L[h[0]])-len(L[h[0]].lstrip("#"))) if h else 0;e=[j for j in range(h[0]+1,len(L)) if re.match(r"#{1,%d} " % v,L[j])] if h else [];b="\n".join(L[h[0]:(e[0] if e else len(L))]) if h else "";n=b.count("HTML proposal report");print(n);raise SystemExit(0 if n else 1)'                 # 기대 0 (M3 전)
 grep -c "source-first" .claude/agents/harness/hns-release-update-specialist.md                          # 기대 0 (M3 전)
 grep -c "7a-codex" .claude/agents/harness/hns-release-update-specialist.md                              # 기대 0 (M1 전) — Phase 7a 기록 단계 (CX-6)
 grep -c "only the CC axis" .claude/agents/harness/hns-release-update-specialist.md                      # 기대 0 (M1 전) — Phase 2 축별 종료 (CX-9)
 grep -c 'If no entries: emit "No new versions since vX.Y.Z" and stop' .claude/agents/harness/hns-release-update-specialist.md  # 기대 1 (M1 전) — 착지 후 0이 PASS (제거면, CX-10)
 grep -c "docs.anthropic.com" .claude/agents/harness/hns-release-update-specialist.md                    # 기대 ≥1 (M3 전) — 착지 후 0이 PASS (제거면, CX-14)
 git grep -c -h "docs.anthropic.com" 2aab5f797b75983e132af451da68f69e3426557b -- .claude/agents/harness/hns-release-update-specialist.md   # 핀 RED (B-01): 기대 6 / exit 0 — 2aab5f797 귀속
-grep -cE 'https://code\.claude\.com/docs/en/hooks([^A-Za-z0-9_./-]|$)' .claude/agents/harness/hns-release-update-specialist.md   # 육면 셀 (B-03·B-04): 핀 2aab5f797 기대 0 (RED) · 착지 기대 1 (GREEN)
-grep -cE 'https://code\.claude\.com/docs/en/sub-agents([^A-Za-z0-9_./-]|$)' .claude/agents/harness/hns-release-update-specialist.md   # 육면 셀 — 동일 패턴
-grep -cE 'https://code\.claude\.com/docs/en/skills([^A-Za-z0-9_./-]|$)' .claude/agents/harness/hns-release-update-specialist.md   # 육면 셀 — 동일 패턴
-grep -cE 'https://code\.claude\.com/docs/en/plugins([^A-Za-z0-9_./-]|$)' .claude/agents/harness/hns-release-update-specialist.md   # 육면 셀 — 동일 패턴
-grep -cE 'https://code\.claude\.com/docs/en/mcp([^A-Za-z0-9_./-]|$)' .claude/agents/harness/hns-release-update-specialist.md   # 육면 셀 — 동일 패턴
-grep -cE 'https://code\.claude\.com/docs/en/settings([^A-Za-z0-9_./-]|$)' .claude/agents/harness/hns-release-update-specialist.md   # 육면 셀 — 동일 패턴
+python3 -c 'import re;b=open(".claude/agents/harness/hns-release-update-specialist.md",encoding="utf-8").read();b=b[b.index("### Phase 3"):b.index("### Phase 4")];n=len(re.findall(r"(^|[^A-Za-z0-9_./:])https://code\.claude\.com/docs/en/hooks([^A-Za-z0-9_./-]|$)",b));print(n);raise SystemExit(0 if n else 1)'   # 육면 셀 (B-03·B-04·D1·D2): Phase 3 블록 스코프 — 착지 기대 1 (GREEN); 핀 RED는 acceptance §D.3-d LED-022R (plain git grep, 기대 출력 없음)
+python3 -c 'import re;b=open(".claude/agents/harness/hns-release-update-specialist.md",encoding="utf-8").read();b=b[b.index("### Phase 3"):b.index("### Phase 4")];n=len(re.findall(r"(^|[^A-Za-z0-9_./:])https://code\.claude\.com/docs/en/sub-agents([^A-Za-z0-9_./-]|$)",b));print(n);raise SystemExit(0 if n else 1)'   # 육면 셀 — 동일 형태 (Phase 3 블록 스코프)
+python3 -c 'import re;b=open(".claude/agents/harness/hns-release-update-specialist.md",encoding="utf-8").read();b=b[b.index("### Phase 3"):b.index("### Phase 4")];n=len(re.findall(r"(^|[^A-Za-z0-9_./:])https://code\.claude\.com/docs/en/skills([^A-Za-z0-9_./-]|$)",b));print(n);raise SystemExit(0 if n else 1)'   # 육면 셀 — 동일 형태 (Phase 3 블록 스코프)
+python3 -c 'import re;b=open(".claude/agents/harness/hns-release-update-specialist.md",encoding="utf-8").read();b=b[b.index("### Phase 3"):b.index("### Phase 4")];n=len(re.findall(r"(^|[^A-Za-z0-9_./:])https://code\.claude\.com/docs/en/plugins([^A-Za-z0-9_./-]|$)",b));print(n);raise SystemExit(0 if n else 1)'   # 육면 셀 — 동일 형태 (Phase 3 블록 스코프)
+python3 -c 'import re;b=open(".claude/agents/harness/hns-release-update-specialist.md",encoding="utf-8").read();b=b[b.index("### Phase 3"):b.index("### Phase 4")];n=len(re.findall(r"(^|[^A-Za-z0-9_./:])https://code\.claude\.com/docs/en/mcp([^A-Za-z0-9_./-]|$)",b));print(n);raise SystemExit(0 if n else 1)'   # 육면 셀 — 동일 형태 (Phase 3 블록 스코프)
+python3 -c 'import re;b=open(".claude/agents/harness/hns-release-update-specialist.md",encoding="utf-8").read();b=b[b.index("### Phase 3"):b.index("### Phase 4")];n=len(re.findall(r"(^|[^A-Za-z0-9_./:])https://code\.claude\.com/docs/en/settings([^A-Za-z0-9_./-]|$)",b));print(n);raise SystemExit(0 if n else 1)'   # 육면 셀 — 동일 형태 (Phase 3 블록 스코프)
 # PRESERVE 앵커 3종:
-grep -rn "last-codex-version" internal/   # 0힛 유지 (AC-RDX-011)
-grep -c "last-cc-version.json" .claude/agents/harness/hns-release-update-specialist.md                 # ≥3 유지 (AC-RDX-012)
+grep -rn "last-codex-version" internal/   # 0힛 유지 (AC-RDX-011 (a) — 합병 AC-RDX-012)
+grep -c "last-cc-version.json" .claude/agents/harness/hns-release-update-specialist.md                 # ≥3 유지 (AC-RDX-011 (b) — 합병 AC-RDX-012)
 grep -c "hns-release-update-run.js" .claude/commands/harness/release-update/manifest.json              # 1 유지 (AC-RDX-013)
 ```
 
@@ -85,20 +86,20 @@ grep -c "hns-release-update-run.js" .claude/commands/harness/release-update/mani
 
 | 표면 | 고정 앵커 (리터럴) | AC |
 |---|---|---|
-| manifest.json `domain` | 필드 스코프 패턴 `'"domain".*Codex CLI upstream change tracking'` — domain 키 행만 매치, source_request 동 문구 불매 (CX-3 재앵커) | AC-RDX-001 |
+| manifest.json `domain` | 필드 스코프 패턴 `'"domain".*Codex CLI upstream change tracking'` — domain 키 행만 매치, source_request 동 문구 불매 (CX-3 재앵커). **보존 절**(D9): `'"domain".*Claude Code'` — 동일 스코프; 누락 입력은 acceptance §D.3-d CTRL-F | AC-RDX-001 |
 | manifest.json `domain` | 필드 스코프 패턴 `'"domain".*best-practices axis'` — 동일 스코프 | AC-RDX-002 |
 | runner | `selectCodexSweepTargets(args)` 출현 **≥2** — 제1 출현=정의, 제2 출현=top-level 런타임 블록 병합 지점. 병합 형태 고정: `const allTargets = ccTargets.concat(codexTargets);` + `parallel(allTargets` 호출식. codex 렌즈 라벨 접두사 `codex-release-notes:`(CC의 `cc-release-notes:`와 병렬 — E3-P3 판정 토큰). 정적 면 LED-003 + 동적 면 LED-016(§E3-P3 모의-런타임 — codex 라벨 agent 호출 실측). `module.exports`에 `selectCodexSweepTargets` 추가 필요 | AC-RDX-003 |
 | runner | 상수 `CODEX_COMMITS_FALLBACK` — 본문 비어 있을 때의 커밋 API 복원 절차 문서 블록 앵커. 절차 내용: (1) 릴리즈 본문 1줄 제목만 관측되면 `gh api repos/openai/codex/commits`/`pulls` 주제 복원, (2) 복원 항목 전부 "commit-topic-derived" 라벨, (3) 잠재 티어1 후보는 PR 본문 확인으로 격상(#49713 정합 절차) | AC-RDX-004 |
 | runner | 상수 `CODEX_THEME_CHECKLIST` — 6테마 리터럴 `thread` / `rollout` / `subagent` / `compaction` / `MCP` / `other`. 행 형식: 테마 키 + 관측 PR 번호 목록 + MoAI 노출면 | AC-RDX-005 |
 | specialist | `last-codex-version.json` — Phase 0(판독·부재 기본값) + Phase 7a(쓰기)에 등장 | AC-RDX-006 |
 | specialist | `rust-v0.161.0` — 시드 기술 | AC-RDX-007 |
-| specialist | `Best-Practices` 상시 절차 섹션 (헤딩 문자열 대소문자 무관 `best-practice` 매치) | AC-RDX-008 |
-| specialist | Phase 3 URL **6종 캐노니컬 전문 열거** — `code.claude.com/docs/en/hooks`·`...en/sub-agents`·`...en/skills`·`...en/plugins`·`...en/mcp`·`...en/settings` 각각 ≥1(LED-022..027 육면 열거면, CX-18: URL 전부 삭제 mutant 봉쇄) **+ 제거면 LED-021**: 구형 `docs.anthropic.com` 참조는 0 / exit 1(주변 서술 잔존분 포함 전부 제거 — CX-14; M3 항목 5, 이 카드 소관 — B-02). 육면 검사는 이스케이프 점 + 종결 경계 패턴(B-03) | AC-RDX-009 |
-| specialist | `HTML proposal report` — BP 축 명명 산출물 | AC-RDX-010 |
-| specialist | `rust-v0.161.0` 부재 기본값 — Phase 0 codex 블록(acceptance §D.3-c, 71–94행)이 부재 기본값(`rust-v0.161.0` + 경고)과 키군 4종을 포함해야 한다 (블록 스코프 게이트 — B-07·B-08) | AC-RDX-014 |
+| specialist | `Best-Practices` 상시 절차 섹션 — 헤딩 행 스코프 `^#+ .*best-practice`(대소문자 무관; 주석·산문 매치 제외 — D8) | AC-RDX-008 |
+| specialist | Phase 3 URL **6종 캐노니컬 전문 열거** — `code.claude.com/docs/en/hooks`·`...en/sub-agents`·`...en/skills`·`...en/plugins`·`...en/mcp`·`...en/settings` 각각 ≥1 — **Phase 3 블록(`### Phase 3`~`### Phase 4`) 안**(LED-022..027 육면 열거면, CX-18: URL 전부 삭제 mutant 봉쇄; D2 블록 스코프) **+ 제거면 LED-021**: 구형 `docs.anthropic.com` 참조는 **파일 전체**에서 0 / exit 1(주변 서술 잔존분 포함 전부 제거 — CX-14; D2: 제거면은 블록 스코프가 아님; M3 항목 5, 이 카드 소관 — B-02). 육면 검사는 좌측 경계 + 이스케이프 점 + 종결 경계 패턴(B-03, D1) | AC-RDX-009 |
+| specialist | `HTML proposal report` — BP 섹션 블록(첫 `best-practice` 헤딩 ~ 다음 동급 헤딩 직전) 안의 deliverable 행에 존재해야 한다 (D8) | AC-RDX-010 |
+| specialist | `rust-v0.161.0` 부재 기본값 — Phase 0 codex 블록(acceptance §D.3-c, 71행 앵커 ~ 95행 — `### Phase 1` 헤딩 직전)이 부재 기본값(`rust-v0.161.0` + 경고)과 키군 4종을 포함해야 한다 (블록 스코프 게이트 — B-07·B-08) | AC-RDX-014 |
 | specialist | `7a-codex` — Phase 7a 기록 단계 제목 리터럴(CC의 Step 7a와 병렬; codex 상태 기록 절차의 사이트 앵커 — CX-6). `last-codex-version.json` 출현 **≥2**: 제1=Phase 0 판독·부재 기본값 블록, 제2=Phase 7a 기록 단계(단일 사이트 mutant는 둘 중 하나에서 좌초) | AC-RDX-006 |
 | specialist | `only the CC axis` — Phase 2 조기 종료 문장의 축별 재범위화 리터럴 (REQ-RDX-015, CX-9). **이중 면**: LED-018(신규 리터럴 ≥1) + LED-019 제거면 — 구형 무조건 문장 전문 `If no entries: emit "No new versions since vX.Y.Z" and stop`은 착지 후 **0**이어야 한다(주석 포함 어디에도 생존 금지 — 주석 mutant도 문장 생존 시 적색, fresh-run CX-10) | AC-RDX-017 |
-| runner | alpha watch 규범 — CODEX_THEME_CHECKLIST 블록(acceptance §D.3-c, 79–92행)이 "alpha 테마는 watch 관찰목록, 안정 탑재 시에만 채택 판정" 규범 문장(81–84행)을 포함해야 한다 (블록 스코프 게이트 — B-08) | AC-RDX-015 |
+| runner | alpha watch 규범 — CODEX_THEME_CHECKLIST 블록(acceptance §D.3-c, 79행 주석 ~ 92행 닫는 괄호 `];`)이 "alpha 테마는 watch 관찰목록, 안정 탑재 시에만 채택 판정" 규범 문장(81–84행)을 포함해야 한다 (블록 스코프 게이트 — B-08) | AC-RDX-015 |
 | specialist | `source-first` — 원문 패치 선행 강제 리터럴 (REQ-RDX-013, mutant M-4의 기계 판정면) | AC-RDX-016 |
 
 ### §D2 결정 전파 (재논의 금지 — spec.md §1.2)
@@ -116,8 +117,8 @@ grep -c "hns-release-update-run.js" .claude/commands/harness/release-update/mani
 
 ## §E Self-Verification (run-phase 납품)
 
-- **E1 AC 매트릭스** — acceptance.md §D 전 AC(17종: 블로킹 8 + 판정 보류 6 + 회귀 가드 3) PASS/FAIL/보류 + 검증 명령 + 실측 출력 (§E 삼중 귀속: 명령·출력·HEAD SHA).
-- **E2 RED→GREEN 전수 재측정** — §C의 RED-now 앵커 15종(grep) + 검증 동사 2종(E3-P3·P4)이 대응 마일스톤 착지 후 뒤집혔는지 exit code 포함 재실행하고, AC-RDX-009 육면 셀(§C 67–72행)은 착지 GREEN 1을 확인한다.
+- **E1 AC 매트릭스** — acceptance.md §D 전 AC(16종: 블로킹 8 + 판정 보류 6 + 회귀 가드 2) PASS/FAIL/보류 + 검증 명령 + 실측 출력 (§E 삼중 귀속: 명령·출력·HEAD SHA).
+- **E2 RED→GREEN 전수 재측정** — §C의 RED-now 앵커 15종(grep) + 검증 동사 2종(E3-P3·P4)이 대응 마일스톤 착지 후 뒤집혔는지 exit code 포함 재실행하고, AC-RDX-009 육면 셀(§C의 LED-022G..027G 행, Phase 3 블록 스코프)은 착지 GREEN 1을 확인한다 — §C의 LED-021 핀 행(`docs.anthropic.com`, 핀 2aab5f797)은 육면 셀이 아니며 착지 목표는 0 / exit 1이다.
 - **E3 러너 런타임-형태 어댑터 스모크 (plan-audit iter1 CX-4 재설계)** — 러너는 ESM `export const meta`(1행)와 top-level `return`(153행)/`await`(143행)를 결합한 **하이브리드 형태**라 네이티브 Node 모듈 로딩이 어느 목표로도 파스하지 못한다(아래 근거). 워크플로 런타임은 본문을 함수-래핑 평가하므로, 스모크는 그 평가 형태를 재현한다: 행선지 스코프로 `export` 문만 적출한 뒤 AsyncFunction 본문으로 컴파일·실행하고 export 경로로 셀렉터를 실측 호출한다. 이 어댑터가 곧 top-level-형태 보존의 기계 면이다 — `return`/`await`가 함수 래핑 형태에서 벗어나면 컴파일이 즉시 적색으로 뒤집힌다.
 
   **E3-P1 (CC 축 — 현재 러너에서 관측 완료)**:
@@ -148,7 +149,7 @@ grep -c "hns-release-update-run.js" .claude/commands/harness/release-update/mani
 - **E4 JSON 파스** — `python3 -c "import json;json.load(open('.claude/commands/harness/release-update/manifest.json'))"` exit 0 (domain 문자열 편집 후).
 - **E5 회귀 가드** — §C PRESERVE 앵커 3종 + sprint_contract 판독(LED-015 — dimensions·thresholds 출력이 기준선 `['Functionality', 'Consistency'] {'Functionality': 0.85, 'Consistency': 0.8}`와 일치; CX-3, internal/ 0힛 · last-cc-version.json ≥3 · runner_workflow 참조 1 포함).
 - **E6 spec-lint** — `go run ./cmd/moai spec lint SPEC-RELUP-DUALAXIS-001` (또는 프로젝트 규약 형태) exit 0 — MissingExclusions·FrontmatterInvalid 0건 확인.
-- **E7 의미론 검토면 (CX-12·CX-13 이관 — REQ-RDX-015·REQ-RDX-013의 유일한 구속 판정면)** — 기계 면이 paraphrase·반전 클래스에 우회됨이 실증됐으므로, run-exit E1 인간 검토가 의미론을 검증한다. **REQ-RDX-015 축별 종료**: (a) Phase 2 조기 종료가 CC 축 한정인지, (b) codex·BP 축의 계속 실행·기록이 같은 절차에 명시돼 있는지, (c) Phase 8 완료 게이트가 3축(CC/codex/BP) 실행 상태를 집계하는지. **REQ-RDX-013 source-first (리더 재개 CX-13 합류)**: (d) BP 인벤토리 항목이 제안 근거로 쓰일 때 원문 패치 선행이 절차상 실제 강제인지 — `source-first` 리터럴의 존재만으로 충분하지 않다(리터럴 유지·규칙 역전 mutant 실증). **run-phase 위임 프롬프트는 이 검토 항목들을 반드시 운반한다**(manager-develop-prompt-template §E 성격 — 누락 시 재위임 리스크).
+- **E7 의미론 검토면 (CX-12·CX-13 이관 — REQ-RDX-015·REQ-RDX-013의 유일한 구속 판정면)** — 기계 면이 paraphrase·반전 클래스에 우회됨이 실증됐으므로, run-exit E1 인간 검토가 의미론을 검증한다. **REQ-RDX-015 축별 종료**: (a) Phase 2 조기 종료가 CC 축 한정인지, (b) codex·BP 축의 계속 실행·기록이 같은 절차에 명시돼 있는지, (c) Phase 8 완료 게이트가 3축(CC/codex/BP) 실행 상태를 집계하는지. **REQ-RDX-013 source-first (리더 재개 CX-13 합류)**: (d) BP 인벤토리 항목이 제안 근거로 쓰일 때 원문 패치 선행이 절차상 실제 강제인지 — `source-first` 리터럴의 존재만으로 충분하지 않다(리터럴 유지·규칙 역전 mutant 실증). **run-phase 위임 프롬프트는 이 검토 항목들을 반드시 운반한다**(manager-develop-prompt-template §E 성격 — 누락 시 재위임 리스크). **종결 게이트 편입 (D4, option (a))**: 이 검토면은 REQ-RDX-013·REQ-RDX-015의 구속 판정면이며, 판정 기록은 `acceptance.md §D.5` 항목 6의 증거 항목 (d)로 편입된다. E7(a) 판정(REQ-RDX-015 — Phase 2 조기 종료의 CC 축 한정 여부)이 run-exit E1 기록에 없으면 종결 게이트는 충족되지 않는다.
 
 ## §F Milestones (결정 가역성 순 — 변동 가능성 높은 결정부터)
 
@@ -180,7 +181,7 @@ grep -c "hns-release-update-run.js" .claude/commands/harness/release-update/mani
 1. `Best-Practices` 상시 절차 섹션 신설: 스윕마다 공식 게시 면 스캔(Anthropic engineering/research·docs, OpenAI 블로그), 인벤토리 기록 (REQ-RDX-012).
 2. `source-first` 원문 패치 선행 강제 — 검색 요약·2차 자료는 보고 전용 리드로만 (REQ-RDX-013). 2차 BP-1 게시일 오정보 정정 사례를 절차 근거로 인용.
 3. `HTML proposal report` 명명 산출물 기록 (REQ-RDX-014 전반).
-4. Phase 3 URL 세트 6종을 `code.claude.com/docs/en/*` 캐노니컬 형태로 갱신 (REQ-RDX-014 후반, 결정 D6). **6종 전문 열거 핀 (CX-18)** — `hooks`·`sub-agents`·`skills`·`plugins`·`mcp`·`settings` 6종 각각의 전문 URL(`https://` + 이스케이프 점 + 종결 경계)이 본문에 존재해야 한다(AC-RDX-009 육면 열거면 — 핀 2aab5f797 = 0 RED, 착지 d36e97571 = 1 GREEN 각각, 보존면).
+4. Phase 3 URL 세트 6종을 `code.claude.com/docs/en/*` 캐노니컬 형태로 갱신 (REQ-RDX-014 후반, 결정 D6). **6종 전문 열거 핀 (CX-18)** — `hooks`·`sub-agents`·`skills`·`plugins`·`mcp`·`settings` 6종 각각의 전문 URL(`https://` + 이스케이프 점 + 종결 경계, 좌측 경계 포함)이 Phase 3 블록(`### Phase 3`~`### Phase 4`) 안에 존재해야 한다(AC-RDX-009 육면 열거면, D1·D2 — 핀 2aab5f797 = 0 RED, 착지 d36e97571 = 1 GREEN 각각, 보존면).
 5. **구형 `docs.anthropic.com` URL 제거 (B-02, 결정 기록 option (a))** — Phase 3 URL 블록과 산문(179행 포함)에서 구형 도메인 문자열을 전부 제거하고, 산문은 구형 도메인 없이 다시 쓴다. 게이트: 착지 커밋의 `grep -c "docs.anthropic.com"` = 0 / exit 1 (LED-021T, AC-RDX-009). 현재 d36e97571에서는 미착지(LED-021G = 1)이며 이 카드의 잔여 run-phase 작업이다.
 
 ### M4 — 매니페스트 domain 문자열 (기계적 — 최하위)
