@@ -65,11 +65,24 @@ func resetCommandFlags(c *cobra.Command) {
 	}
 }
 
+// resetCommandOutputs clears the output writers a command tree carries over
+// from earlier executions: the pre-existing glm tests call glmCmd.SetOut and
+// never reset it, which shadows execRoot's rootCmd.SetOut for every later run
+// (observed as empty captured output in the mixed glm-family subset run).
+func resetCommandOutputs(c *cobra.Command) {
+	c.SetOut(nil)
+	c.SetErr(nil)
+	for _, sub := range c.Commands() {
+		resetCommandOutputs(sub)
+	}
+}
+
 // execRoot runs the root command against args with stdout and stderr captured
 // into one buffer, resetting the root command state afterwards.
 func execRoot(t *testing.T, args ...string) (string, error) {
 	t.Helper()
 	resetCommandFlags(rootCmd)
+	resetCommandOutputs(rootCmd)
 	buf := new(bytes.Buffer)
 	rootCmd.SetOut(buf)
 	rootCmd.SetErr(buf)
