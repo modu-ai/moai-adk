@@ -78,7 +78,7 @@ Class: implementation-level
 Status: OPEN LEADER DECISION. The SPEC keeps 26 criteria in the text until the leader decides. Exceeding the ceiling is a split signal under spec-workflow.md § SPEC Complexity Tier, and the budget is not relaxed silently.
 Authority anchor: `.claude/rules/moai/workflow/spec-workflow.md` § SPEC Complexity Tier (REQ/AC budget table: Tier L ceiling 25).
 Options (factual; no recommendation):
-- **(a) Split.** Criteria that would move to a sibling SPEC: AC-RC30-25 (TUX golden and summary, U-26 to U-29) and AC-RC30-26 (integrity probe, U-31, t1578 scope). The parent keeps 24 criteria. Sibling scope: the moved items keep their IDs and disposition.
+- **(a) Split.** Criteria that would move to a sibling SPEC: AC-RC30-25 (TUX golden and summary, U-26 to U-29) and AC-RC30-26 (integrity probe, U-31, t1578 scope). The parent keeps 24 criteria, under the ceiling. Effect on coverage: REQ-RC30-014, -016, -018, -019, and -020 are mapped only to AC-RC30-25, and REQ-RC30-021 only to AC-RC30-26, so these six requirements have no criterion in the parent (REQ-RC30-017 keeps AC-RC30-09). For the six to stay covered, AC-RC30-25 and AC-RC30-26 must both stay in the parent. A split that keeps both and moves one other criterion reaches 25; moved alone, any of AC-RC30-01, -02, -03, -04, -06, -09, -10, -11, -13, -19, -22, -23, or -24 leaves every requirement covered. Sibling scope: the moved items keep their IDs and disposition.
 - **(b) Merge.** Merge AC-RC30-14 (skip decision, U-13) and AC-RC30-15 (stamp skew, U-14) into one criterion with two named sub-cases. Coverage kept: U-13 and U-14 both remain judged, by two sub-cases of one test. The parent keeps 25 criteria.
 Default: none.
 Operator verdict:

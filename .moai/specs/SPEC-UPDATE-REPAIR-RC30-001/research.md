@@ -8,8 +8,8 @@ Five sections, per `verification-claim-integrity.md` § 3: Claim, Evidence, Base
 |---|-------|--------|
 | C1 | The RED cells are measured on tree `8fa0dc24b`, whose code paths equal main tip `2aab5f797b75983e132af451da68f69e3426557b`. | Observed |
 | C2 | The installed binary (`4f8aba061`) descends from the tree, so no claim here relies on it. | Observed |
-| C3 | `WT-user-asset-bundle` (t1591, tip `01b519c21`) changes 78 files and `WT-update-migration-fixes` (t1578, tip `40ab940f4`) changes 13 files, relative to main (re-measured 2026-10-09 19:06Z; E-OVERLAP). | Observed |
-| C4 | Branch tips, re-measured 2026-10-09 19:06Z with `git rev-parse --short`: t1591 `01b519c21`, t1578 `40ab940f4`. The earlier tips `cae7e28fe` and `317ed31b6` are superseded. | Observed |
+| C3 | `WT-user-asset-bundle` (t1591, tip `df559b729`) changes 81 files and `WT-update-migration-fixes` (t1578, tip `40ab940f4`) changes 13 files, relative to main (re-measured 2026-10-09 19:15Z; E-OVERLAP). | Observed |
+| C4 | Branch tips, re-measured 2026-10-09 19:15Z with `git rev-parse --short`: t1591 `df559b729`, t1578 `40ab940f4`. The earlier tips `01b519c21` (19:06Z), `cae7e28fe`, and `317ed31b6` are superseded. | Observed |
 | C5 | SPEC-USER-ASSET-INSTALL-001 (completed, on main) declares P6 at spec.md:237-238 and REQ-002 at spec.md:255. The branch copy is identical. | Observed |
 | C6 | The branch carries SPEC-USERASSET-DEPLOY-GUARD-001, not SPEC-USER-ASSET-INSTALL-001. The lane brief's attribution is wrong. | Observed |
 | C7 | The migration function is `migrateProjectCommonAssets` in `internal/cli/migrate_project_assets.go`. The audit's `internal/cli/update/...` path is wrong. | Observed |
@@ -170,16 +170,16 @@ Result: the "16" of R1 is the 16 programming languages (neutrality). The "four" 
 
 **E-OVERLAP (pinned to tip SHAs; measured at 18:4x UTC on 2026-10-09; supersedes E-OVERLAP-OLD)**
 ```text
-$ git rev-parse --short WT-user-asset-bundle        -> 01b519c21
+$ git rev-parse --short WT-user-asset-bundle        -> df559b729
 $ git rev-parse --short WT-update-migration-fixes   -> 40ab940f4
 $ git rev-parse --short main                        -> 2aab5f797
-$ git diff --stat main...01b519c21 | tail -1        -> 78 files changed, 8653 insertions(+), 157 deletions(-)
+$ git diff --stat main...df559b729 | tail -1        -> 81 files changed, 9149 insertions(+), 157 deletions(-)
 $ git diff --stat main...40ab940f4 | tail -1        -> 13 files changed, 2068 insertions(+), 7 deletions(-)
-$ git diff --name-only main...01b519c21 -- internal/cli/update_tux.go internal/cli/update_archive.go internal/cli/update/report/outcome.go internal/cli/update_restore.go internal/cli/bundle.go internal/cli/update_template_sync.go internal/config/manager.go internal/config/types.go
-(empty: no IN-NOW file is changed at 01b519c21)
+$ git diff --name-only main...df559b729 -- internal/cli/update_tux.go internal/cli/update_archive.go internal/cli/update/report/outcome.go internal/cli/update_restore.go internal/cli/bundle.go internal/cli/update_template_sync.go internal/config/manager.go internal/config/types.go
+(empty: no IN-NOW file is changed at df559b729)
 $ git diff --name-only main...40ab940f4 -- (the same eight IN-NOW paths)
 (empty: no IN-NOW file is changed at 40ab940f4)
-$ git diff --name-only main...01b519c21 -- internal/cli/migrate_project_assets.go internal/cli/user_asset_phase.go internal/userassets/install.go internal/userassets/paths.go internal/cli/update.go internal/template/harness_fs.go
+$ git diff --name-only main...df559b729 -- internal/cli/migrate_project_assets.go internal/cli/user_asset_phase.go internal/userassets/install.go internal/userassets/paths.go internal/cli/update.go internal/template/harness_fs.go
 internal/cli/migrate_project_assets.go
 internal/cli/user_asset_phase.go
 internal/template/harness_fs.go
@@ -189,7 +189,7 @@ $ git diff --name-only main...40ab940f4 -- (the same six paths)
 internal/cli/update.go
 internal/userassets/install.go
 ```
-Re-derivation at M1 is required after absorption (spec.md § G.2). The audit's tip `2022e4633` for t1591 is superseded by `01b519c21`.
+Re-derivation at M1 is required after absorption (spec.md § G.2). The audit's tip `2022e4633` for t1591 is superseded by `df559b729` (`01b519c21` was the tip at 19:06Z).
 
 **E-07-COUNT (rule files naming `.claude/skills/moai/`)**
 ```text

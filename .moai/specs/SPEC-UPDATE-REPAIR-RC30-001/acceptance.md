@@ -4,7 +4,7 @@
 
 - Tier L ceiling: 25 acceptance criteria. This file carries **26**: AC-RC30-01 to AC-RC30-26. That is one over the ceiling. OPEN LEADER DECISION B1 (decision-index.md) chooses between a split and a merge. Until the leader decides, the text keeps 26.
 - U-22 (owned by card t1578) carries no criterion. U-30 is judged by the locale part of AC-RC30-25 (REQ-RC30-019).
-- **Tree for every RED cell:** `8fa0dc24b` (HEAD). The code paths of HEAD equal main `2aab5f797`. Each RED cell is one single-invocation command (no pipes, redirection, or chaining), its verbatim stdout, its exit status, and the tree SHA.
+- **Tree for every RED cell:** `8fa0dc24b`. Its code paths equal main `2aab5f797`, and the SPEC-only commits after it leave them unchanged. Each RED cell is one single-invocation command (no pipes, redirection, or chaining), its verbatim stdout, its exit status, and the tree SHA.
 - **Release gate versus regression-guard** (MP-8):
   - A criterion whose judging command exists on the tree is a release gate only when a RED cell is recorded for it.
   - A criterion that names a test not yet in the tree is judged at its **TDD RED milestone**: the run-stage milestone in which the named test is first run and fails on the absorbed tree. Its RED cell observes the criterion's effect on the current tree (the effect cell). Until its TDD RED milestone, it is a regression-guard, and that status is stated per row.
@@ -54,7 +54,7 @@ E-08  command: grep -n "claude/agents/moai" docs-site/content/ko/cli-reference/u
       exit:    1   (grep no-match; the file exists, so the audit line is not reproduced in this tree)
 
 E-09  command: grep -n "tui-snapshot" Makefile
-      stdout:  27:.PHONY: all build test ... tui-snapshot tui-snapshot-verify ...
+      stdout:  27:.PHONY: all build test lint fix clean install verify-local-install generate templ-generate help release-local constitution-check ci-local pr-merge ci-disable verify-required-checks tui-snapshot tui-snapshot-verify preflight lint-fast test-race-short agents-emit agents-emit-check commands-emit commands-emit-check embed-manifest embed-manifest-check embed-check fmt-check tool-policy-drift-check
                193:tui-snapshot: ## Regenerate all internal/tui golden snapshots (UPDATE_GOLDEN=1)
                197:tui-snapshot-verify: ## Verify all internal/tui golden snapshots match on-disk state (no update)
       exit:    0
@@ -145,7 +145,7 @@ Columns: AC | Items | REQ | Judging command | Expected result | RED cell | Statu
 | AC-RC30-06 | U-05 | REQ-RC30-007 | `go test ./internal/config/ -run TestConfigSaveRoundTripLLM -count=1 -v` | `--- PASS`. A fixture `llm.yaml` with `deployment_mode`, an unmodelled key, and comments is unchanged by Save except for the intended field. | E-14 (no `deployment_mode` in `manager.go`), E-15 (alias fields absent) | Release gate from its TDD RED milestone (M3). Regression-guard until then. |
 | AC-RC30-07 | U-06 | REQ-RC30-008 | `go test ./internal/cli/ -run TestRecordlessArchiveWarning -count=1 -v` | `--- PASS`. A record-less project with a migration archive prints a visible warning. | none: the silent re-stamp path is audit-cited (U-06) and not yet re-read | Regression-guard (reason: no effect cell yet; re-read in M3). |
 | AC-RC30-08 | U-07 | REQ-RC30-009, REQ-RC30-010 | `go test ./internal/cli/ -run TestRestoreSettingsAndRetention -count=1 -v` | `--- PASS`. Restore applies the backed-up `settings.json`. Restore output lists uncovered paths. Retention keeps N directories per run. | E-11 (restore code has no `settings.json` reference) | Release gate from its TDD RED milestone (M3). Regression-guard until then. |
-| AC-RC30-09 | U-08 | REQ-RC30-011, REQ-RC30-017 | `grep -rn "0 user customizations modified" internal/cli --include='*.go' --exclude='*_test.go'` (production code; the characterization test at line 201 is excluded from the scope and is updated in the same change, E-22) | After the fix: no output, exit 1. Both production lines in update_archive.go (282 and 367) are removed. The GREEN reachability check (E-23) is empty outside update_archive.go. | E-24: production matches at update_archive.go lines 282 and 367, exit 0; E-22: excluded test match at line 201; E-23: no other production match | Release gate (RED cell recorded). |
+| AC-RC30-09 | U-08 | REQ-RC30-011, REQ-RC30-017 | `grep -rn "0 user customizations modified" internal/cli --include='*.go' --exclude='*_test.go'` (production code; the characterization test at line 201 is excluded from the scope and is updated in the same change, E-22) | After the fix: no output, exit 1. Both production lines in update_archive.go (282 and 367) are removed, and the same change removes the literal from the test expectation at `tuxiu_characterization_test.go:201` (E-22 then prints no output). The GREEN reachability check (E-23) is empty outside update_archive.go. | E-24: production matches at update_archive.go lines 282 and 367, exit 0; E-22: excluded test match at line 201; E-23: no other production match | Release gate (RED cell recorded). |
 | AC-RC30-10 | U-09 | REQ-RC30-005 | `go test ./internal/cli/ -run TestNonCatalogSkillMessage -count=1 -v` | `--- PASS`. A managed skill with no catalog entry gets a distinct message, not "opt in via moai bundle add". | E-05 (the "opt in via" message at line 160) | Release gate from its TDD RED milestone (M1). Regression-guard until then. |
 | AC-RC30-11 | U-10 | REQ-RC30-004 | `go test ./internal/cli/ -run TestEmptiedSkillDirRemoved -count=1 -v` | `--- PASS`. A skill directory emptied by the migration is removed with its last file. | E-04 (`os.Remove(p)` removes one file per call; no pruning call) | Release gate from its TDD RED milestone (M1). Regression-guard until then. |
 | AC-RC30-12 | U-11 | REQ-RC30-012 | `go test ./internal/userassets/ -run TestUserRootDowngradeRefused -count=1 -v` | `--- PASS`. An older binary does not refresh a user root with a newer recorded version. | E-16 (`stateManifestMatch` has no version comparison in the visible lines) | Release gate from its TDD RED milestone (M1, after absorption). Regression-guard until then. |
@@ -173,6 +173,6 @@ Columns: AC | Items | REQ | Judging command | Expected result | RED cell | Statu
 ## Definition of Done (for the run phase)
 
 - Every criterion has its RED cell (or its stated regression-guard reason) recorded in progress.md § E.2 on the then-current tree.
-- Every test-named criterion has its effect cell recorded now (E-01 to E-20) and its TDD RED milestone named in the matrix.
+- Every test-named criterion has its effect cell recorded now (E-01 to E-24) and its TDD RED milestone named in the matrix.
 - Each criterion passes at its owning milestone, with the `-v` output recorded in progress.md.
 - The coverage target of 85% or more per touched package is measured by `go test -cover` on those packages (measurement Gap until M7).

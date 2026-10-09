@@ -4,8 +4,8 @@ Milestones are ordered by decision reversibility: the decisions most likely to c
 
 ## A. Context
 
-- Tree of the RED cells: `8fa0dc24b` (code paths equal main `2aab5f797`). Main = `2aab5f797`. HEAD at this revision = `d977bab0b` (SPEC files only).
-- Absorbed refs (recorded at M1, not before plan-audit): `WT-user-asset-bundle` (t1591) = `01b519c21`, 78 files changed relative to main (`git diff --stat main...01b519c21`); `WT-update-migration-fixes` (t1578) = `40ab940f4`, 13 files changed relative to main (`git diff --stat main...40ab940f4`).
+- Tree of the RED cells: `8fa0dc24b` (code paths equal main `2aab5f797`). Main = `2aab5f797`. The SPEC-only commits after `8fa0dc24b` leave the code paths unchanged (`git diff --name-only 8fa0dc24b 00ab5bbb1 -- internal cmd` is empty).
+- Absorbed refs (recorded at M1, not before plan-audit): `WT-user-asset-bundle` (t1591) = `df559b729`, 81 files changed relative to main (`git diff --stat main...df559b729`); `WT-update-migration-fixes` (t1578) = `40ab940f4`, 13 files changed relative to main (`git diff --stat main...40ab940f4`).
 - Installed `moai` binary (`4f8aba061`) is not evidence for this tree. Any build used for a measurement is built from this tree and invoked by path.
 - Existing SPECs whose decisions bind this plan: SPEC-USER-ASSET-INSTALL-001 (P6, REQ-002), SPEC-CLI-TUX-INIT-UPDATE-001 (REQ-TUXIU-004, -012 to -016, -020 to -022, -041, -054), SPEC-V3R6-UPDATE-NOISE-001 (`--verbose`, REQ-UN-005, REQ-UN-010), SPEC-V3R6-UPDATE-PROGRESS-001 (`tui.ProgressLine`), SPEC-UPDATE-MIGRATION-001 (REQ-UPM-030 to -032, § H out-of-scope notes for t1509 and t1527), SPEC-UPDATE-YAML-PRESERVE-001 (comment preservation).
 
@@ -31,7 +31,7 @@ Runs after plan-audit PASS.
    - U-17 (one banner) and U-21 (profile sync resolution, t1578).
    - U-31 (integrity probe, codex-only harness condition, t1578): the codex-only fixture test is written first (RED), then the harness-conditioned fix (GREEN).
 
-Exit condition: the absorbed refs are recorded; AC-RC30-02, -03, -04, -10, -11, -12, -13, -18, -21 pass or have a recorded blocker.
+Exit condition: the absorbed refs are recorded; AC-RC30-03, -04, -10, -11, -12, -13, -18, -21 pass or have a recorded blocker.
 
 ### B.3 Milestone M2 — Shared-root data model and profile reach (High; decision-dependent)
 
