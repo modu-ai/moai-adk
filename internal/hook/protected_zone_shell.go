@@ -1062,12 +1062,23 @@ func (w *zoneWalker) zoneGitArgs(world int, cmd *syntax.CallExpr) bool {
 		}
 		t := readings[world]
 		if strings.HasPrefix(t, "-") && zoneWordDual(cmd.Args[j]) {
-			// escape-origin option word: the PRE-4.2 world's git refuses
-			// the literal escape text as an unknown option (exit 129) —
-			// this world's sequence TERMINATES and contributes no
-			// mutation analysis (gate round 34 P2)
-			if world == 1 {
-				return false
+			// escape-origin word: split NAME vs VALUE. Only a NAME-origin
+			// escape (the option NAME itself is \u/\U escape text)
+			// terminates this world's sequence — the pre-4.2 world's git
+			// refuses the unknown option (exit 129) and nothing after
+			// executes in that world (gate round 34 P2). A \u/\U riding in
+			// an option VALUE is ordinary data: 3.2 passes the raw string
+			// as the value and the command RUNS (gate round 35 P1 — the
+			// earlier whole-word termination over-fired on value escapes
+			// and skipped a git that really deleted the marker).
+			namePart := t
+			if idx := strings.Index(t, "="); idx >= 0 {
+				namePart = t[:idx]
+			}
+			if strings.Contains(namePart, `\u`) || strings.Contains(namePart, `\U`) {
+				if world == 1 {
+					return false
+				}
 			}
 		}
 		if strings.HasPrefix(t, "--work-tree=") {

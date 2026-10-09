@@ -1232,6 +1232,23 @@ func TestCheckProtectedZoneShellGitValueRideAlongNotTerminating(t *testing.T) {
 	t.Logf("swept=%d", 1)
 }
 
+// TestCheckProtectedZoneShellGitNameShadowedValueRideDenyRestored — gate
+// round 35 P1, the reviewer's EXACT shape: the declared no-op git()
+// shadows the modern world's git (the function runs, mutates nothing)
+// while the pre-4.2 world's git — never shadowed, its f execution having
+// failed on the unplanted not_f path — really deletes the protected
+// marker through the value-ride-along namespace option. The row asserts
+// the DENY the union produces (gen1's real deletion). RED under the
+// pre-narrowing code (both worlds' analyses skipped → allow).
+func TestCheckProtectedZoneShellGitNameShadowedValueRideDenyRestored(t *testing.T) {
+	root := hzsMarkerFileFixture(t)
+	h := zoneTestHandler(t, root)
+	const shadowCmd = "f() { git() { :; }; }; $'f\\u0000/not_f'; git $'--namespace=x\\u0061' rm -f zone_dir/marker.md"
+	d, r := zoneCall(t, h, "Bash", harnessLearnerIdentity, map[string]any{"command": shadowCmd})
+	wantZoneDeny(t, "git name shadowed value ride deny restored", d, r, harnessLearnerIdentity, "category", "probe_zone")
+	t.Logf("swept=%d", 1)
+}
+
 // TestCheckProtectedZoneShellGitMassFileArgsBounded — gate round 29 P3 /
 // gate round 30 P3 / gate round 31 P1 (measurement pin): 80,000 file
 // arguments must run BOUNDED — hash-set dedup (linear) and the
