@@ -1,6 +1,6 @@
 {
   "name": "release-update",
-  "domain": "moai-adk-go dev-only maintainer tooling — Claude Code upstream change tracking",
+  "domain": "moai-adk-go dev-only maintainer tooling — Claude Code + Codex CLI upstream change tracking and the best-practices axis",
   "source_request": "분리: dev-only 메인테이너 devkit 단일 진입을 3개 독립 harness(release-update / github / release)로 분리한다. release-update만 비-상호작용 research fan-out(CC release-notes version-delta sweep)을 가지므로 Runner+manifest를 보유하고, github/release는 순수 human-gated specialist로 Runner/manifest가 없다(Runner 비대칭).",
   "patterns": [
     "Fan-out/Fan-in"
