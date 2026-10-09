@@ -525,6 +525,9 @@ func (l *IntegrationLock) releasableBy(sessionID string, callerOwnerPID int) boo
 //
 // force releases a foreign window, for the same wedged-holder reason acquire
 // carries it.
+//
+// @MX:ANCHOR: [AUTO] ReleaseIntegrationLock — the exported release of the integration window, under which the holder check and the force override apply
+// @MX:REASON: eight call sites across five files (internal/cli/factory_card.go, internal/cli/session_worktree_automerge.go, internal/cli/integration.go, internal/cli/factory_merge.go, internal/factory/integration_merge_step.go) release the window through it; a caller that cleared the record by another route would skip the holder check that protects a window another session holds
 func ReleaseIntegrationLock(projectRoot, sessionID string, callerOwnerPID int, force bool) (released *IntegrationLock, err error) {
 	if mutErr := withIntegrationLockMutation(projectRoot, func() error {
 		var relErr error

@@ -613,6 +613,10 @@ func minStrLen(s string, max int) int {
 // goes through (REQ-MWQ2-002). A malformed value renders whole and never
 // panics on the slice; the refusal paths that render it must not be the
 // thing that dies before the window is released.
+//
+// @MX:ANCHOR: [AUTO] ShortSHA — the length-safe SHA prefix every merge-surface render goes through
+// @MX:REASON: seven distinct callers across four files (internal/cli/factory_card.go, internal/cli/integration_merge.go, internal/cli/integration_remeasure.go, internal/factory/integration_merge_step.go); a prefix that slices without the length guard brings back the short-base panic that REQ-MWQ2-002 removed, and that panic killed the step before the integration window was released
+// @MX:SPEC: SPEC-MERGE-WINDOW-QUEUE-002
 func ShortSHA(sha string) string {
 	return sha[:minStrLen(sha, 12)]
 }
