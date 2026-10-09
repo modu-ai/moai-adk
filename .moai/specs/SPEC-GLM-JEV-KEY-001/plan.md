@@ -79,7 +79,7 @@ Ordered by decision-reversibility: user-facing flows first, storage and mechanic
 
 ### §D.5 Naming and constants
 
-- No new environment-variable name is introduced; `envkeys.go` gains nothing. The dotenv key names stay package-owned (`glmcred` / `jevcred`), and `internal/cli` must not spell them as literals (enforced by AC-GJK-013 grep).
+- No new environment-variable name is introduced; `envkeys.go` gains nothing. The dotenv key names stay package-owned (`glmcred` / `jevcred`), and new `internal/cli` code must not spell them as literals (enforced by the diff-scoped AC-GJK-013 grep — pre-existing rows in untouched files are out of scope).
 - If run phase discovers a genuinely needed new env-var name, its constant belongs in `internal/config/envkeys.go` (hardcoding-prevention rule) — none is expected.
 
 ### §D.6 Test seams and isolation
@@ -121,8 +121,8 @@ New or touched strings, all English literals (the CLI has no message catalog; ex
 
 ### M3 (Priority Medium) — verification and surface checks
 
-- Scoped families (lane-local discipline; CI owns the full suite): `go test ./internal/cli/ -run 'Test(Glm|Jev|Root)'`, `go test ./internal/glmcred/ ./internal/jevcred/`, `go vet ./internal/cli/`, gofmt on touched files.
-- Constant-ownership grep: `grep -rn "TYPESAFE_API_KEY\|GLM_API_KEY" internal/cli/ --include='*.go' | grep -v _test` → 0 rows.
+- Scoped families (lane-local discipline; CI owns the full suite): `go test ./internal/cli/ -run 'Test(GLM|Glm|Jev|Key|Root)'` — uppercase `TestGLM` covers the existing 116-case `TestGLM*` family, `TestKey` covers `TestKeyFormsShareStorageLastWriterWins`, and `TestGlm`/`TestJev`/`TestRoot` cover the new cases; `go test ./internal/glmcred/ ./internal/jevcred/`, `go vet ./internal/cli/`, gofmt on touched files. A `[no tests to run]` line is an empty sweep — treat it as failure, never as a pass (verification-completeness §1.1).
+- Constant-ownership grep, scoped to this card's ADDED lines — the tree already carries 3 pre-existing matching rows in untouched files (`glm_tools.go:6` comment, `mcp_audit.go:30,32`), so a whole-tree 0-row verdict is permanently red and proves nothing: `git diff "$(git merge-base develop HEAD)..HEAD" -- internal/cli/ | grep '^+' | grep "TYPESAFE_API_KEY\|GLM_API_KEY"` → 0 rows. Meaningful only once the implementation commits exist — a diff with no added lines sweeps nothing and asserts nothing. Merge-base form per gitflow-lane-protocol §8 (never a literal pinned base).
 - Guidance-line accuracy: re-read `mcp_jev.go:87` and `doctor_jev.go:82,88` — content still true (no edit expected).
 - MX: `internal/cli/jev.go` is unexported-symbol-only; one `@MX:NOTE` on the `jevcred` delegation (storage SSOT lives in `internal/jevcred`) is sufficient.
 - Evidence lands in progress.md §E.2 (manager-develop's write, not this plan's).

@@ -27,7 +27,7 @@ Card t1613 defines three completion criteria; every one maps to at least one AC 
 
 ## §C. Quality Gate Criteria
 
-- Scoped test families green: `go test ./internal/cli/ -run 'Test(Glm|Jev|Root)'`, `go test ./internal/glmcred/ ./internal/jevcred/` (CI owns the full suite).
+- Scoped test families green: `go test ./internal/cli/ -run 'Test(GLM|Glm|Jev|Key|Root)'` — uppercase `TestGLM` covers the existing 116-case `TestGLM*` family, `TestKey` covers `TestKeyFormsShareStorageLastWriterWins`, and `TestGlm`/`TestJev`/`TestRoot` cover the new cases; `go test ./internal/glmcred/ ./internal/jevcred/` (CI owns the full suite). A `[no tests to run]` line in the selector's output is an empty sweep — a failure, never a pass (verification-completeness §1.1).
 - `go vet ./internal/cli/` clean; gofmt clean on touched files.
 - No new env-var literal outside owning packages (AC-GJK-013).
 - TRUST 5: Secured = no full-key disclosure anywhere (AC-GJK-004/005 asserts output; REQ-GJK-010 binds all surfaces); Tested = every AC maps to a named RED-first test in plan.md §F.
@@ -74,8 +74,8 @@ When `moai jev --key ""` runs, or `moai glm --key` runs with no following value,
 **AC-GJK-012** (High) — mode tightening.
 Given a pre-existing credential file at mode 0644, When a save runs through either command, Then the file mode is 0600 afterwards. (Asserted at package level by the existing glmcred/jevcred Save tests; CLI-level assertion optional.)
 
-**AC-GJK-013** (Medium) — constant ownership.
-Given the landed tree, When `grep -rn "TYPESAFE_API_KEY\|GLM_API_KEY" internal/cli/ --include='*.go'` filters out `_test` files, Then 0 rows remain (the names stay owned by `internal/glmcred` / `internal/jevcred`).
+**AC-GJK-013** (Medium) — constant ownership, scoped to this card's ADDED lines.
+Given the implementation commits exist (a diff with no added lines sweeps nothing and asserts nothing), When `git diff "$(git merge-base develop HEAD)..HEAD" -- internal/cli/ | grep '^+' | grep "TYPESAFE_API_KEY\|GLM_API_KEY"` runs, Then it yields 0 rows — no added line spells the credential names as literals. The 3 pre-existing rows in files this card never touches (`glm_tools.go:6` comment, `mcp_audit.go:30,32`) sit outside the change range and are out of scope: a whole-tree 0-row verdict is permanently red and proves nothing about this card. The merge-base form (not a literal pinned SHA) is the repo's measured rule for "what did THIS card change" (gitflow-lane-protocol §8).
 
 ### §D.2 Severity summary
 
