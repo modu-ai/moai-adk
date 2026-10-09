@@ -436,20 +436,17 @@ func requestsGoTestJSON(command string) bool {
 	return false
 }
 
-// emptySweepMarkers are the runner-reported empty-sweep tokens REQ-MWQ-015
-// refuses: go test -json surfaces them inside output events when a package
-// has no tests at all.
-const emptySweepMarker = "[no test files]"
-
 // countGoTestJSONTests counts the per-test pass events in a go test -json
-// stream and refuses an empty sweep. A stream that parses but carries zero
-// per-test events is a count of zero — the caller records it and the
-// verifier refuses it as an empty sweep (the distinction between "no tests
-// to run" and "no structure" is carried by structured=true).
+// stream. The judgment is the stream's TOTAL per-test pass count (REQ-MWQ2-003,
+// which supersedes the marker refusal of REQ-MWQ-015): a package without tests
+// reports `[no test files]` inside an output event and closes with a
+// package-level skip. That is the package's own report, and it says nothing
+// against the passes the other packages measured, so a mixed sweep is judged
+// by those passes. A stream that parses but carries zero per-test passes is a
+// count of zero (REQ-MWQ2-009): it reads structured-with-zero here, and the
+// run and the verifier refuse it as an empty sweep. The distinction between
+// "no tests to run" and "no structure" is carried by structured=true.
 func countGoTestJSONTests(text string) (count int, structured bool, err error) {
-	if strings.Contains(text, emptySweepMarker) {
-		return 0, false, fmt.Errorf("runner reported %s — an empty sweep cannot stand for a re-measure", emptySweepMarker)
-	}
 	structured = true
 	decoder := json.NewDecoder(strings.NewReader(text))
 	// t1576 review round 4: a pipe into `head` truncates the stream — EOF
@@ -469,9 +466,11 @@ func countGoTestJSONTests(text string) (count int, structured bool, err error) {
 			if errors.Is(decErr, io.EOF) {
 				break
 			}
-			// A malformed stream (tool output interleaved with the JSON) is
-			// not a recognized report: refuse rather than count the prefix.
-			return 0, true, fmt.Errorf("go test -json stream is not a recognized report: %v", decErr)
+			// A malformed stream — tool output interleaved with the JSON, or a
+			// bare runner line such as a lone `[no test files]` — is not a
+			// recognized report: refuse it unstructured rather than count the
+			// prefix.
+			return 0, false, fmt.Errorf("go test -json stream is not a recognized report: %v", decErr)
 		}
 		// t1576 review round 1: `go test -json ./... | cat` reports the
 		// pipe's exit 0 while a test failed — the stream is the verdict the
@@ -599,6 +598,13 @@ func RunRemeasure(projectRoot, worktree, baseBranch, command string) (*Remeasure
 		}
 	}
 	count, structured, classifyErr := ClassifyStructuredOutput(command, bytes.NewReader(outBytes))
+	// REQ-MWQ2-009: a go test stream whose total per-test pass count is zero is
+	// an empty sweep. The classifier reports the zero (its contract, pinned by
+	// TestClassifyEmptySweepAndUnstructured); the run refuses it here, so the
+	// verb cannot return success for a sweep that measured nothing.
+	if classifyErr == nil && structured && count == 0 {
+		classifyErr = fmt.Errorf("go test reported no per-test pass — an empty sweep cannot stand for a re-measure")
+	}
 
 	// The finish checks (REQ-MWQ-016): the tree must be clean and HEAD
 	// unchanged across the run, or no record is written.

@@ -118,6 +118,29 @@ func TestClassifyNoTestFilesAndUnknownTool(t *testing.T) {
 	}
 }
 
+func TestClassifyAllNoTestSweepStaysEmpty(t *testing.T) {
+	// REQ-MWQ2-009 / AC-MWQ2-003 edge: removing the marker refusal does not make
+	// an all-no-test sweep valid. Every package reports `[no test files]` and a
+	// package-level skip, and the total per-test pass count is zero: the stream
+	// reads structured-with-zero, and the verifier refuses the zero count.
+	stream := "" +
+		`{"Action":"output","Package":"p","Output":"?   \tp\t[no test files]\n"}` + "\n" +
+		`{"Action":"skip","Package":"p"}` + "\n"
+	count, structured, err := ClassifyStructuredOutput("go test -json ./p/...", strings.NewReader(stream))
+	if err != nil || !structured || count != 0 {
+		t.Fatalf("an all-no-test sweep must read structured-with-zero: count=%d structured=%v err=%v", count, structured, err)
+	}
+	rec := &RemeasureRecord{
+		Tree: remeasureFixtureTree, Base: "b" + strings.Repeat("0", 39),
+		Command: "go test -json ./p/...", ExitCode: 0,
+		StructuredRequired: true, HasStructured: structured, TestCount: count,
+		BuildIdentity: "moai test",
+	}
+	if err := ValidateRemeasureRecord(rec); err == nil {
+		t.Fatal("an all-no-test sweep must not validate as a re-measure")
+	}
+}
+
 func TestClassifyEnvPrefixIsGoTest(t *testing.T) {
 	// t1576 review round 2: env assignments and a leading `env` word prefix
 	// the real tool — `GOMAXPROCS=2 go test -json ./... | cat` and `env
@@ -274,7 +297,7 @@ func TestClassifyQuotedWordsAndGOFLAGSCarryJSON(t *testing.T) {
 		"'go' 'test' '-json' ./p/...",
 		"GOFLAGS=-json go test ./p/...",
 	} {
-		count, structured, err := ClassifyStructuredOutput(command, strings.NewReader(`{"Action":"pass","Package":"p"}` + "\n"))
+		count, structured, err := ClassifyStructuredOutput(command, strings.NewReader(`{"Action":"pass","Package":"p"}`+"\n"))
 		if err != nil {
 			t.Fatalf("%q must classify: %v", command, err)
 		}
