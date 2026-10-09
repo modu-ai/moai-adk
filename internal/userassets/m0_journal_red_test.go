@@ -17,6 +17,7 @@ import (
 	"path/filepath"
 	"strconv"
 	"strings"
+	"sync"
 	"testing"
 	"testing/fstest"
 	"time"
@@ -32,14 +33,30 @@ type suspension struct {
 	parkAfter string        // the manifest key whose persist parks the run
 	parked    chan struct{} // closed when the park is reached
 	release   chan struct{} // closed by the test to resume the run
+
+	releaseOnce   sync.Once     // makes releaseRun idempotent
+	installerDone chan struct{} // closed when the installer goroutine returns
+	started       bool          // startInstall ran; endInstaller waits only then
+	tb            testing.TB
 }
 
-func newSuspension(parkAfter string) *suspension {
-	return &suspension{
-		parkAfter: parkAfter,
-		parked:    make(chan struct{}),
-		release:   make(chan struct{}),
+// newSuspension builds the seam and registers its cleanup with tb. The cleanup
+// releases a parked run and waits for the installer goroutine to return, so
+// every exit from the test — a pass, a failure, or a Fatal before the test
+// released the run — ends the goroutine before the test's temporary directory
+// is removed. Create the suspension after any t.TempDir the run writes into:
+// cleanups run last-in-first-out, so this one then runs before that removal.
+func newSuspension(tb testing.TB, parkAfter string) *suspension {
+	tb.Helper()
+	s := &suspension{
+		parkAfter:     parkAfter,
+		parked:        make(chan struct{}),
+		release:       make(chan struct{}),
+		installerDone: make(chan struct{}),
+		tb:            tb,
 	}
+	tb.Cleanup(s.endInstaller)
+	return s
 }
 
 // wire attaches the suspension to an installer.
@@ -50,6 +67,41 @@ func (s *suspension) wire(inst *Installer) {
 		}
 		close(s.parked)
 		<-s.release
+	}
+}
+
+// startInstall runs inst.Install(nil) on its own goroutine and returns the
+// channel its result arrives on. The goroutine closes installerDone when it
+// returns, whether or not the test released the run.
+func (s *suspension) startInstall(inst *Installer) <-chan error {
+	s.started = true
+	done := make(chan error, 1)
+	go func() {
+		defer close(s.installerDone)
+		_, err := inst.Install(nil)
+		done <- err
+	}()
+	return done
+}
+
+// releaseRun lets a parked run continue. Idempotent: the test and the cleanup
+// may both call it.
+func (s *suspension) releaseRun() {
+	s.releaseOnce.Do(func() { close(s.release) })
+}
+
+// endInstaller is the cleanup body. It releases a parked run and waits for the
+// installer goroutine to return, so no exit from the test leaves that goroutine
+// running after the temporary directory is removed.
+func (s *suspension) endInstaller() {
+	s.releaseRun()
+	if !s.started {
+		return
+	}
+	select {
+	case <-s.installerDone:
+	case <-time.After(15 * time.Second):
+		s.tb.Errorf("the installer goroutine did not return within 15s of release — it would outlive the temporary directory")
 	}
 }
 
@@ -107,12 +159,11 @@ func TestWriteCompletedPersistedPerFile(t *testing.T) {
 	// Suspend after the FIRST sorted target's (claude-agents/manager-x.md)
 	// completion-flag persist: the journal on disk must already carry its
 	// flag while the rest of the run is still unwritten.
-	susp := newSuspension("claude-agents/manager-x.md")
+	susp := newSuspension(t, "claude-agents/manager-x.md")
 	inst := f.installer(t)
 	susp.wire(inst)
 
-	done := make(chan error, 1)
-	go func() { _, err := inst.Install(nil); done <- err }()
+	done := susp.startInstall(inst)
 	waitChannel(t, susp.parked, "mid-loop park")
 
 	j, err := LoadJournal(JournalPath(f.home))
@@ -134,7 +185,7 @@ func TestWriteCompletedPersistedPerFile(t *testing.T) {
 	}
 	// Resume the suspended run and let it finish before the test returns —
 	// a still-running writer races the TempDir cleanup.
-	close(susp.release)
+	susp.releaseRun()
 	select {
 	case <-done:
 	case <-time.After(30 * time.Second):
@@ -167,12 +218,11 @@ func TestJournalStageCarriesRecoveredEntries(t *testing.T) {
 
 	// Suspend after the FIRST sorted target's persist — the journal on disk
 	// is then the first staging (the recovered entry must already be in it).
-	susp := newSuspension("agents-skills/moai-alpha/SKILL.md")
+	susp := newSuspension(t, "agents-skills/moai-alpha/SKILL.md")
 	inst := f.installer(t)
 	susp.wire(inst)
 
-	done := make(chan error, 1)
-	go func() { _, err := inst.Install(nil); done <- err }()
+	done := susp.startInstall(inst)
 	waitChannel(t, susp.parked, "mid-loop park")
 
 	j, err := LoadJournal(JournalPath(f.home))
@@ -190,7 +240,7 @@ func TestJournalStageCarriesRecoveredEntries(t *testing.T) {
 	}
 	// Resume the suspended run and let it finish — a still-running writer
 	// races the TempDir cleanup.
-	close(susp.release)
+	susp.releaseRun()
 	select {
 	case <-done:
 	case <-time.After(30 * time.Second):
