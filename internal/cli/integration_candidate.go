@@ -16,15 +16,20 @@
 package cli
 
 import (
+	"bytes"
 	"context"
 	"errors"
 	"fmt"
 	"os"
+	"os/exec"
 	"strings"
 	"time"
 
+	"github.com/modu-ai/moai-adk/internal/config"
 	"github.com/modu-ai/moai-adk/internal/factory"
 	"github.com/modu-ai/moai-adk/internal/factorylane"
+	"github.com/modu-ai/moai-adk/internal/factorymsg"
+	"github.com/modu-ai/moai-adk/internal/gitenv"
 	"github.com/modu-ai/moai-adk/internal/homestate"
 	"github.com/spf13/cobra"
 )
@@ -52,10 +57,33 @@ func (s *integrationCandidateSeams) gitRunner() func(dir string, args ...string)
 	if s.Git != nil {
 		return s.Git
 	}
-	return func(dir string, args ...string) (string, error) {
-		runner := factorylane.ExecGitRunner{Dir: dir}
-		return runner.Git(args...)
+	return candidateScrubbedGit
+}
+
+// candidateScrubbedGit runs one git command with the repo-scoping environment
+// variables removed (card t1478 M2 repair, P1 — a data-destruction path):
+// the git environment outranks cmd.Dir, so an inherited GIT_DIR /
+// GIT_WORK_TREE had the verb build the candidate from ANOTHER repository's
+// branch and force-push it to THAT repository's origin. Scope follows
+// gitenv.RepoScopingVars exactly — identity and behavior vars stay, only
+// repository LOCATION is removed. The failure semantics mirror
+// factorylane.ExecGitRunner: a non-zero exit is a *factorylane.GitExitError
+// carrying both streams (the conflict path reads exitErr.Stdout).
+func candidateScrubbedGit(dir string, args ...string) (string, error) {
+	cmd := exec.Command("git", args...)
+	cmd.Dir = dir
+	cmd.Env = gitenv.Env()
+	var stdout, stderr bytes.Buffer
+	cmd.Stdout, cmd.Stderr = &stdout, &stderr
+	if err := cmd.Run(); err != nil {
+		code := 1
+		var ee *exec.ExitError
+		if errors.As(err, &ee) {
+			code = ee.ExitCode()
+		}
+		return stdout.String(), &factorylane.GitExitError{ExitCode: code, Stdout: stdout.String(), Stderr: stderr.String()}
 	}
+	return stdout.String(), nil
 }
 
 func (s *integrationCandidateSeams) now() time.Time {
@@ -66,7 +94,7 @@ func (s *integrationCandidateSeams) now() time.Time {
 }
 
 func newIntegrationCandidateCmd() *cobra.Command {
-	var cardFlag string
+	var cardFlag, runFlag string
 	cmd := &cobra.Command{
 		Use:   "candidate --card <id>",
 		Short: "Build and push this card's pre-landing candidate commit to ci/<card> (the landing gate consumes its verdict)",
@@ -90,11 +118,15 @@ func newIntegrationCandidateCmd() *cobra.Command {
 				return fmt.Errorf("integration candidate: no integration branch is configured — resolve git_strategy's flow-scoped integration target first")
 			}
 			if gateOn := candidateCIEnabled(root); gateOn {
-				callerTree, treeErr := factorylane.ExecGitRunner{Dir: cwd}.Git("rev-parse", "--show-toplevel")
+				callerTree, treeErr := candidateScrubbedGit(cwd, "rev-parse", "--show-toplevel")
 				if treeErr != nil {
 					return fmt.Errorf("integration candidate: resolve the caller's tree: %v", treeErr)
 				}
-				if guardErr := candidateCallerTreeGuard(root, cardFlag, strings.TrimSpace(callerTree)); guardErr != nil {
+				runID, runSelErr := candidateRunSelection(root, runFlag)
+				if runSelErr != nil {
+					return runSelErr
+				}
+				if guardErr := candidateCallerTreeGuard(root, cardFlag, strings.TrimSpace(callerTree), runID); guardErr != nil {
 					return guardErr
 				}
 			}
@@ -113,6 +145,7 @@ func newIntegrationCandidateCmd() *cobra.Command {
 		},
 	}
 	cmd.Flags().StringVar(&cardFlag, "card", "", "The card id the candidate is built for")
+	cmd.Flags().StringVar(&runFlag, "run", "", "Factory run id (default: MOAI_KANBAN_ID, then the single active run) — read for the card record the tree guard verifies against")
 	return cmd
 }
 
@@ -249,12 +282,8 @@ func runIntegrationCandidate(in integrationCandidateInput, seams integrationCand
 // guard exists to stop. The comparison reads DIRECTORIES (factorySameTree),
 // never strings — macOS presents /var/... and /private/var/... for one
 // directory.
-func candidateCallerTreeGuard(root, cardID, callerTree string) error {
+func candidateCallerTreeGuard(root, cardID, callerTree, runID string) error {
 	ctx := context.Background()
-	runID, err := resolveFactoryCardRun(ctx, root, "")
-	if err != nil {
-		return fmt.Errorf("integration candidate: card %s: cannot verify the caller's tree — %w (the candidate is built from the caller's tree, so an unverifiable caller refuses)", cardID, err)
-	}
 	db, err := homestate.OpenFactory(root)
 	if err != nil {
 		return fmt.Errorf("integration candidate: card %s: cannot verify the caller's tree: %w", cardID, err)
@@ -262,12 +291,28 @@ func candidateCallerTreeGuard(root, cardID, callerTree string) error {
 	defer func() { _ = db.Close() }()
 	card, err := db.LoadCard(ctx, runID, cardID)
 	if err != nil {
-		return fmt.Errorf("integration candidate: card %s: no factory card record to verify the caller's tree against — run the card through the factory first, or run the candidate verb from the card's own worktree (%w)", cardID, err)
+		return fmt.Errorf("integration candidate: card %s: no factory card record in run %s to verify the caller's tree against — run the card through the factory first, or run the candidate verb from the card's own worktree (%w)", cardID, runID, err)
 	}
 	if !factorySameTree(callerTree, card.WorktreePath) {
 		return fmt.Errorf("integration candidate: refused — the caller's tree %s is not card %s's recorded worktree %s; a candidate built here would overwrite ci/%s with a foreign candidate (run the verb from the card's own worktree)", callerTree, cardID, card.WorktreePath, cardID)
 	}
 	return nil
+}
+
+// candidateRunSelection resolves the factory run the card record is read
+// from (card t1478 M2 repair): the explicit --run flag first, then the
+// launcher-selected run (MOAI_KANBAN_ID — the autoLaneRunResolveFn
+// precedent, whose ResolveActiveRun validates the selection against the
+// active-run table so a stale selection fails closed), then the
+// single-active-run discovery.
+func candidateRunSelection(root, explicit string) (string, error) {
+	if run := strings.TrimSpace(explicit); run != "" {
+		return resolveFactoryCardRun(context.Background(), root, run)
+	}
+	if run := strings.TrimSpace(os.Getenv(config.EnvFactoryRunID)); run != "" {
+		return factorymsg.ResolveActiveRun(context.Background(), root, run)
+	}
+	return resolveFactoryCardRun(context.Background(), root, "")
 }
 
 // firstLine returns the first line of a git output blob — merge-tree

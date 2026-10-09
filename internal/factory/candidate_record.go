@@ -100,9 +100,19 @@ func validCandidateKeyPart(part string) error {
 // WriteCandidateRecord stores the record keyed by its (card, pinned SHA).
 // The write is atomic (temp + rename), so a reader never sees a partial
 // record and two racing writers leave a whole file.
+//
+// The store is CONFINED (card t1478 M2 repair): every path component from
+// the state directory down to the card directory is Lstat-verified not a
+// symlink before anything is created — a `.moai/state/candidate/<card>`
+// swapped for a link to an external directory would otherwise be followed
+// by MkdirAll (which succeeds on an existing link) and overwrite an
+// external <pinnedSHA>.json.
 func WriteCandidateRecord(projectRoot string, rec CandidateRecord) error {
 	path, err := candidateRecordPath(projectRoot, rec.CardID, rec.PinnedSHA)
 	if err != nil {
+		return err
+	}
+	if err := candidateStoreRealPath(projectRoot, rec.CardID); err != nil {
 		return err
 	}
 	if err := os.MkdirAll(filepath.Dir(path), 0o755); err != nil {
@@ -114,15 +124,48 @@ func WriteCandidateRecord(projectRoot string, rec CandidateRecord) error {
 	return nil
 }
 
+// candidateStoreRealPath refuses a symlink anywhere along the store's
+// directory chain (.moai → state → candidate → <card>). Missing components
+// are fine — MkdirAll creates them as real directories; an existing
+// component that is a link would redirect every write beneath it. The
+// archiveThenRemove ensureNoSymlinkPath precedent walks the same way.
+func candidateStoreRealPath(projectRoot, cardID string) error {
+	parts := []string{".moai", "state", "candidate", cardID}
+	cur := projectRoot
+	for _, part := range parts {
+		cur = filepath.Join(cur, part)
+		info, err := os.Lstat(cur)
+		if err != nil {
+			if errors.Is(err, os.ErrNotExist) {
+				return nil
+			}
+			return fmt.Errorf("candidate store: %w", err)
+		}
+		if info.Mode()&os.ModeSymlink != 0 {
+			return fmt.Errorf("candidate store: %s traverses a symlink — the store is confined to %s", cur, candidateDir(projectRoot))
+		}
+	}
+	return nil
+}
+
 // ReadCandidateRecord returns the record keyed by (cardID, pinnedSHA).
 // Absence reads as ErrCandidateRecordAbsent; an unreadable record is a
 // plain error — the two states must not collapse, because "no candidate
 // was ever pushed" and "the record is corrupt" refuse with different
 // causes.
+//
+// Non-regular files refuse WITHOUT being opened (card t1478 M2 repair):
+// a FIFO swapped in at the record path parked the former plain
+// os.ReadFile inside the candidate mutation lock, wedging every later
+// candidate call of the card past every deadline. One Lstat gates the
+// open — regular files only, everything else is a plain error.
 func ReadCandidateRecord(projectRoot, cardID, pinnedSHA string) (*CandidateRecord, error) {
 	path, err := candidateRecordPath(projectRoot, cardID, pinnedSHA)
 	if err != nil {
 		return nil, err
+	}
+	if info, lstatErr := os.Lstat(path); lstatErr == nil && !info.Mode().IsRegular() {
+		return nil, fmt.Errorf("candidate record for card %s at pinned %s is not a regular file (%s at %s) — refusing to open it", cardID, pinnedSHA, info.Mode(), path)
 	}
 	data, err := os.ReadFile(path)
 	if errors.Is(err, os.ErrNotExist) {
