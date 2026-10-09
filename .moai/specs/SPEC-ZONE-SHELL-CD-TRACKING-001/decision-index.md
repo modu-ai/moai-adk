@@ -15,7 +15,7 @@ Operator verdict:
 Label: FOUNDER
 Class: product-level
 Authority anchor: none — the settlement exists only in untracked card evidence
-Why unresolved: The card dispatch directs the retention (a relative name resolved from a working directory outside the root cannot reach a zone-covered path — semantically sound, so the reset answers correctly), but that rationale lives only in the untracked dispatch; no committed register anchor decides it. REQ-ZSCD-003 and its Out of Scope record freeze the disposition pending the operator pin.
+Why unresolved: The card directs the retention of a landed allow behavior that is an HONEST accepted under-match (v0.2.0 rationale, per audit round 1 D2): a `..`-reaching relative spelling from an outside-root cwd reaches back into the zone while the guard answers allow — the tracked set was reset to the root, so the `..`-leading candidate is classified root-escaping while real bash resolves it inside the project (codex isolated repro at the audited tree: `cd <parent>/002/deep && rm ../../001/zone_dir/a.log` → allow, vs direct `rm zone_dir/a.log` → deny; code path `zoneNextCwd` :451 reset + `zoneRelativeToSet` :366 tracked-cwd-only join). The RETENTION itself stands — a card may keep a landed under-match, it may not mislabel it as sound; no committed register anchor decides the retention, so the operator pin formalizes keeping a known-reaching under-match outside the matrix (the alternative — hardening the class — grows scope beyond this card's two files). REQ-ZSCD-003 and its Out of Scope record now carry this true rationale.
 Operator verdict:
 
 ### Q3: Where do the cd-class regression cells live?
