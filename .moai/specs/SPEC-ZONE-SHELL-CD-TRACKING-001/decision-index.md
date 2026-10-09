@@ -4,25 +4,35 @@ Authored at plan phase (interview.decision_gate: on, `.moai/config/sections/inte
 
 ### Q1: Should a post-`--` hyphen-leading cd directory operand (`cd -- -zone`) be tracked like any other operand — denying a protected deletion — instead of keeping the documented untracked reset (allow)?
 
-Label: FOUNDER
+Label: DECIDED
 Class: product-level
-Authority anchor: none admissible. The only candidate, decision-board record `d-20261009T171254Z-f6ac`, is a card-scoped ruling (`scope=card:t1584`, `kind=ruling`). The register admits only standing board records and signed mission contracts, and a card ruling is evidence for its card, not authority (SPEC-FACTORY-DECISION-AUTO-001 design §2).
-Why unresolved: Both the plan-audit D7 required fix (deny — the shape deletes `-zone/a.log`, a protected path; the drafted allow control was ruled a self-contradiction with SPEC-ZONE-SHELL-PARSING-001 REQ-ZSP-001) and the card t1584 dispatch (operator-approved expansion axis) direct deny, but both records live under `.moai/reports/` (untracked); no completed SPEC's HISTORY/Amendments row or `.moai/config/sections/*.yaml` setting decides the identical question, and the authority register cannot cite untracked material. This SPEC's REQ-ZSCD-001/REQ-ZSCD-005 encode the deny direction pending the operator's own decision.
-Provenance note: via former leader record d-20261009T171254Z-f6ac (tmm974 handover, 2026-10-09T13:08Z); the current session operator has not restated these pins.
-Awaiting: a standing decision-board record, or the operator's first-hand statement.
-Operator verdict:
-Relayed text (not a verdict): "`--` 뒤 하이픈 선행 cd 디렉터리 피연산자는 추적·deny (`cd -- -zone && rm a.log` deny·REQ-ZSP-001 정렬) — 운영자 핀 2026-10-09, 리더 경로 전달"
+Authority anchor: board:d-20261009T175650Z-4ae6#a01b8d3d39050a3558c403e881d97a60bb47a0a4a8f6604c6484d0829623b8e5
+Why unresolved: resolved by the operator's first-hand standing record; the earlier relayed pin is superseded as authority.
+Provenance note: via former leader record d-20261009T171254Z-f6ac (tmm974 handover, 2026-10-09T13:08Z); the operator restated both answers first-hand on 2026-10-09 (standing record d-20261009T175650Z-4ae6); the relayed pin is superseded as authority.
+Operator verdict: Q1 - a post-'--' hyphen-leading cd directory operand ('cd -- -zone') is TRACKED like any other operand and a protected deletion under it is DENIED (operator's selected answer: "추적하고 삭제 거부").
+
+Pinned record (verbatim from `moai decision read --scope standing`; digest = SHA-256 of the two lines joined by one LF, with no trailing LF):
+
+```text
+decision record: decided_by=operator (first-hand answers via AskUserQuestion to leader session 069be28e, 2026-10-09T17:5xZ; recorded verbatim by leader) evidence_refs=AskUserQuestion round in leader transcript 069be28e; SPEC-ZONE-SHELL-CD-TRACKING-001 decision-index.md Q1/Q2 at c92d8d81b; lane-3 blocker 17df1928 ladder_path=operator first-hand statement (decision-index 'Awaiting' clause) id=d-20261009T175650Z-4ae6 scope=standing kind=standing-rule
+  body: Operator verdicts for SPEC-ZONE-SHELL-CD-TRACKING-001 (card t1584), given first-hand by the current-session operator. Q1 - a post-'--' hyphen-leading cd directory operand ('cd -- -zone') is TRACKED like any other operand and a protected deletion under it is DENIED (operator's selected answer: "추적하고 삭제 거부"). Q2 - an outside-root cd destination KEEPS the documented untracked reset (allow) and the reaching-back under-match is recorded as a known limitation outside the regression matrix; hardening is not in this card (operator's selected answer: "유지하고 한계로 기록"). AC classification - AC-ZSCD-005 and AC-ZSCD-006 are approved as regression-guard criteria, not release-blocking (operator's selected answer: "회귀 가드로 승인"). These supersede the relayed, non-authoritative card ruling d-20261009T171254Z-f6ac as the authority anchor for Q1 and Q2.
+```
 
 ### Q2: Does an outside-root cd destination keep the documented untracked reset (allow), recorded outside the regression matrix?
 
-Label: FOUNDER
+Label: DECIDED
 Class: product-level
-Authority anchor: none admissible (same record as Q1; a card-scoped ruling is evidence for its card, not authority, per SPEC-FACTORY-DECISION-AUTO-001 design §2).
-Why unresolved: The card directs the retention of a landed allow behavior that is an HONEST accepted under-match (v0.2.0 rationale, per audit round 1 D2): a `..`-reaching relative spelling from an outside-root cwd reaches back into the zone while the guard answers allow — the tracked set was reset to the root, so the `..`-leading candidate is classified root-escaping while real bash resolves it inside the project (codex isolated repro at the audited tree: `cd <parent>/002/deep && rm ../../001/zone_dir/a.log` → allow, vs direct `rm zone_dir/a.log` → deny; code path `zoneNextCwd` :451 reset + `zoneRelativeToSet` :366 tracked-cwd-only join). The RETENTION is the open decision: a card may keep a landed under-match only on an honest record, and it may not mislabel it as sound; no committed register anchor decides the retention, so the operator must formalize keeping a known-reaching under-match outside the matrix (the alternative — hardening the class — grows scope beyond this card's two files). REQ-ZSCD-003 and its Out of Scope record carry this rationale and keep the reset pending the operator's decision.
-Provenance note: via former leader record d-20261009T171254Z-f6ac (tmm974 handover, 2026-10-09T13:08Z); the current session operator has not restated these pins.
-Awaiting: a standing decision-board record, or the operator's first-hand statement.
-Operator verdict:
-Relayed text (not a verdict): "루트 밖 cd 목적지는 문서화된 미추적 리셋 유지 — 역방달 도달 가능 명시·'의미상 안전' 라벨 제거·경화는 향후 결정 — 운영자 핀 2026-10-09, 리더 경로 전달"
+Authority anchor: board:d-20261009T175650Z-4ae6#a01b8d3d39050a3558c403e881d97a60bb47a0a4a8f6604c6484d0829623b8e5
+Why unresolved: resolved by the operator's first-hand standing record; the earlier relayed pin is superseded as authority.
+Provenance note: via former leader record d-20261009T171254Z-f6ac (tmm974 handover, 2026-10-09T13:08Z); the operator restated both answers first-hand on 2026-10-09 (standing record d-20261009T175650Z-4ae6); the relayed pin is superseded as authority.
+Operator verdict: Q2 - an outside-root cd destination KEEPS the documented untracked reset (allow) and the reaching-back under-match is recorded as a known limitation outside the regression matrix; hardening is not in this card (operator's selected answer: "유지하고 한계로 기록").
+
+Pinned record (verbatim from `moai decision read --scope standing`; digest = SHA-256 of the two lines joined by one LF, with no trailing LF):
+
+```text
+decision record: decided_by=operator (first-hand answers via AskUserQuestion to leader session 069be28e, 2026-10-09T17:5xZ; recorded verbatim by leader) evidence_refs=AskUserQuestion round in leader transcript 069be28e; SPEC-ZONE-SHELL-CD-TRACKING-001 decision-index.md Q1/Q2 at c92d8d81b; lane-3 blocker 17df1928 ladder_path=operator first-hand statement (decision-index 'Awaiting' clause) id=d-20261009T175650Z-4ae6 scope=standing kind=standing-rule
+  body: Operator verdicts for SPEC-ZONE-SHELL-CD-TRACKING-001 (card t1584), given first-hand by the current-session operator. Q1 - a post-'--' hyphen-leading cd directory operand ('cd -- -zone') is TRACKED like any other operand and a protected deletion under it is DENIED (operator's selected answer: "추적하고 삭제 거부"). Q2 - an outside-root cd destination KEEPS the documented untracked reset (allow) and the reaching-back under-match is recorded as a known limitation outside the regression matrix; hardening is not in this card (operator's selected answer: "유지하고 한계로 기록"). AC classification - AC-ZSCD-005 and AC-ZSCD-006 are approved as regression-guard criteria, not release-blocking (operator's selected answer: "회귀 가드로 승인"). These supersede the relayed, non-authoritative card ruling d-20261009T171254Z-f6ac as the authority anchor for Q1 and Q2.
+```
 
 ### Q3: Where do the cd-class regression cells live?
 
@@ -31,4 +41,5 @@ Class: implementation-level
 Default: extend the landed `internal/hook/protected_zone_shell_matrix_test.go` cell catalogue with a cd group (rule: the option that preserves current behavior — no new test file)
 Alternate: a dedicated cd matrix test file
 Why unresolved: A file-placement judgment surfaced during assembly; no policy or prior SPEC row decides it, and it needs no operator data — the published Default rule ranks it.
+Label note: stays FOUNDER. POLICY-COVERED needs a register anchor (a committed operator setting or constitution clause that covers the question as written). The published Default rule is stated in the manager-spec agent definition (`.claude/agents/moai/manager-spec.md` § FOUNDER row classes), which the register does not admit. The row is implementation-level with a Default, so its DEFAULT-APPLIED verdict below does not hold the Kickoff.
 Operator verdict: DEFAULT-APPLIED 2026-10-09T03:15:40Z manager-spec (t1584-spec, plan-phase)

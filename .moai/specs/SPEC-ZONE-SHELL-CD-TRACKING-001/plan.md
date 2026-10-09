@@ -79,7 +79,7 @@ Extend `protected_zone_shell_matrix_test.go`'s cell catalogue with the cd group 
 
 ### M3 (Medium) — scoped verification batch
 
-Slot lease → env-scrubbed single invocation `unset <each MOAI_KANBAN_* name present at run start, listed by env | grep -o '^MOAI_KANBAN[A-Z_]*'> && go test ./internal/hook/ -timeout 30m` (plan-phase names: MOAI_KANBAN_ID, MOAI_KANBAN_BACKEND, MOAI_KANBAN_SETTINGS_INJECTED; the earlier list named MOAI_KANBAN_LEAD_ADDR, which was not set, and omitted MOAI_KANBAN_BACKEND) → `go vet ./internal/hook/` → `golangci-lint run ./internal/hook/...` → flip acceptance.md cells → progress.md §E.2/§E.3. Full-suite judgment stays CI's; the local batch is scoped to `internal/hook` per lane-local rules.
+Slot lease → env-scrubbed single invocation `unset MOAI_KANBAN_ID MOAI_KANBAN_BACKEND MOAI_KANBAN_SETTINGS_INJECTED && go test ./internal/hook/ -timeout 30m` (these three are the MOAI_KANBAN_* names verified at plan phase; the earlier list named MOAI_KANBAN_LEAD_ADDR, which was not set, and omitted MOAI_KANBAN_BACKEND) → `go vet ./internal/hook/` → `golangci-lint run ./internal/hook/...` → flip acceptance.md cells → progress.md §E.2/§E.3. Full-suite judgment stays CI's; the local batch is scoped to `internal/hook` per lane-local rules.
 
 ## §G Anti-Patterns
 
