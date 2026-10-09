@@ -44,8 +44,8 @@ Options (first merge):
 
 Options (diverged case of the re-sync, OQ-8):
 - (i) 도구는 거부하고 안내만 한다. 어떤 도구 경로도 갈라짐을 해소하지 않으며, 릴리스 배치는 Q2가 정해질 때까지 그 상태에서 멈춘다. 귀결: 갈라짐이 생기면 배치가 운영자의 결정을 기다린다.
-- (ii) 도구가 창 안에서 `origin/main`을 `--no-ff`로 병합한다(REQ-LMF-003의 가드 처리 적용). 귀결: 원격에 없는 병합 커밋이 다음 릴리스 PR 전까지 로컬 main에 남는다.
-- (iii) 별도 동기화 브랜치를 워크트리에서 `origin/main`에 fast-forward한 뒤, 도구가 그 브랜치를 로컬 main에 병합한다. 귀결: 브랜치와 워크트리가 하나 더 필요하다. 병합을 실행하는 주체는 여전히 도구다.
+- (ii) 도구가 창 안에서 `origin/main`을 `--no-ff`로 병합한다(REQ-LMF-003의 가드 처리 적용). 귀결: 원격에 없는 병합 커밋이 다음 릴리스 PR 전까지 로컬 main에 남는다. 이 옵션은 REQ-LMF-003과 REQ-LMF-014를 개정하는 후속 SPEC을 필요로 하며, 그 후속 SPEC은 자체 수용 기준을 가진다.
+- (iii) 별도 동기화 브랜치를 워크트리에서 `origin/main`에 fast-forward한 뒤, 도구가 그 브랜치를 로컬 main에 병합한다. 귀결: 브랜치와 워크트리가 하나 더 필요하다. 병합을 실행하는 주체는 여전히 도구다. 이 옵션도 REQ-LMF-003과 REQ-LMF-014를 개정하는 후속 SPEC을 필요로 하며, 그 후속 SPEC은 자체 수용 기준을 가진다.
 
 Default: not ranked. The status quo is not a default and selects no option: the tool path refuses on the primary checkout today, and no first merge has happened.
 
