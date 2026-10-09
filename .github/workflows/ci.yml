@@ -218,7 +218,16 @@ jobs:
           # on the next (37221992371, card t1519) with the last test still
           # starting. 25m clears the edge while staying inside this job's
           # timeout-minutes: 30 budget.
-          go test -json -coverprofile=coverage.out -covermode=atomic -timeout 25m ./... > test-stream.json || rc=$?
+          #
+          # The -skip set is the GUARD bundle's membership (SPEC-CANDIDATE-CI-001
+          # M5, card t1478): the source-scan and line-key guard families run in
+          # the dedicated guard-bundle job below, so a guard drift reds THAT
+          # named check instead of reddening the ordinary suite. The two scopes
+          # PARTITION: 7 guard tests / 5366 ordinary in ./internal/cli (the
+          # selector measured via `go test -list` at 2046c2779+this batch;
+          # `go test -list` honors -run but IGNORES -skip, so the ordinary
+          # set is never derived from it).
+          go test -json -coverprofile=coverage.out -covermode=atomic -timeout 25m -skip '^(TestGuard_.*|TestCodexCommand_NeutralityScan|TestCodexSpecFiles_NoBuildTagsOrSyscall|TestCodexSpecFiles_ExecPrimitivesCodexOnly|TestVocabularyGuardControls)$' ./... > test-stream.json || rc=$?
           bash scripts/ci-census/test-census.sh test-stream.json
           exit $rc
 
@@ -264,6 +273,45 @@ jobs:
   # duplicate ~9 min of an identical run (PR #1564 follow-up). push events to
   # main carry no head_ref, so !startsWith() is true there and they keep this
   # job as their only race run.
+  # ---------------------------------------------------------------------------
+  # Guard Bundle (SPEC-CANDIDATE-CI-001 M5, card t1478): the source-scan and
+  # line-key guard families + the census fixture check run as ONE named
+  # check, so a guard drift reds THIS check (attribution) without reddening
+  # the ordinary `test` job. The required test job skips the SAME set (the
+  # -skip selector above) — the two scopes PARTITION (7 guard / 5365
+  # ordinary in ./internal/cli, measured; `go test -list` honors -run but
+  # ignores -skip, so the ordinary set is the explicit set difference).
+  # Admission: workflow.candidate_ci.guard_bundle_required (default true)
+  # decides whether the candidate verdict reads this check as required —
+  # enforced by the verdict collector (candidateRunVerdict), not by branch
+  # protection (a required-check name is static).
+  # ---------------------------------------------------------------------------
+  guard-bundle:
+    name: Guard Bundle
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v7
+
+      - name: Setup Go
+        uses: actions/setup-go@v7
+        with:
+          go-version-file: go.mod
+          cache: true
+
+      - name: Run the guard families (source-scan + line-key guards)
+        shell: bash
+        run: |
+          rc=0
+          # The selector is the MEASURED guard-family membership: 7 tests
+          # (go test -list verified). Run with -run, never -skip.
+          go test -count=1 -timeout 8m -run '^(TestGuard_.*|TestCodexCommand_NeutralityScan|TestCodexSpecFiles_NoBuildTagsOrSyscall|TestCodexSpecFiles_ExecPrimitivesCodexOnly|TestVocabularyGuardControls)$' ./internal/cli/ || rc=$?
+          exit $rc
+
+      - name: Census fixture check
+        run: bash scripts/ci-census/census-check.sh
+
   # ---------------------------------------------------------------------------
   # Sharded two ways by the internal/cli test-name prefix (card t1495):
   # develop run 37185766779 measured the single job at 1964s vs the 2100s

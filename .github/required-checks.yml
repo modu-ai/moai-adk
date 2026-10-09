@@ -15,6 +15,22 @@ version: 1
 #     actually published by codeql.yml's matrix)
 #   - Release PR Multi-OS Gate added (published on every main-targeting PR)
 branches:
+  # The candidate-push set (card t1478, SPEC-CANDIDATE-CI-001 M4 repair):
+  # the contexts a ci/** push ACTUALLY publishes — ci.yml's Lint, the
+  # Test name (real job or skip-marker, both publish it), and the five
+  # Build matrix names. codeql.yml's Analyze and the release gate are
+  # main/PR-triggered and never publish on a candidate; judging a
+  # candidate by main's set held EVERY candidate red (the measured
+  # defect), so the candidate verdict reads THIS set for ci/** records.
+  "ci/**":
+    contexts:
+      - Lint
+      - "Test (ubuntu-latest)"
+      - "Build (linux/amd64)"
+      - "Build (linux/arm64)"
+      - "Build (darwin/amd64)"
+      - "Build (darwin/arm64)"
+      - "Build (windows/amd64)"
   main:
     contexts:
       - Lint
@@ -26,6 +42,12 @@ branches:
       - "Build (windows/amd64)"
       - "Analyze (Go) (go)"
       - "Release PR Multi-OS Gate"
+      # The guard families' named check (card t1478, SPEC-CANDIDATE-CI-001
+      # M5): the source-scan and line-key guards moved OUT of the required
+      # Test job into the guard-bundle job, so main's guard coverage IS
+      # this check — without it here, a guard failure merges green
+      # (main's CI is the integration verdict per AGENTS.local.md §4.1).
+      - "Guard Bundle"
   release/*:
     # Decision-index Q1 (micro-card t1543 resolution): this key lists ONLY
     # contexts that publish on release-TARGETING pull requests. All three

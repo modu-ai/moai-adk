@@ -23,6 +23,7 @@ import (
 	"fmt"
 	"os"
 	"os/exec"
+	"path/filepath"
 	"strings"
 	"time"
 
@@ -192,6 +193,23 @@ var (
 // ANOTHER workflow can never satisfy the candidate verdict.
 const candidateCIWorkflowFile = "ci.yml"
 
+// candidateGuardBundleCheckName is the check name the guard-bundle job
+// publishes (the `name:` in ci.yml) — what the candidate verdict reads
+// when guard_bundle_required is true.
+const candidateGuardBundleCheckName = "Guard Bundle"
+
+// candidateGuardBundleRequired reads workflow.candidate_ci.guard_bundle_required
+// (default true — D6 preserves today's gating where the guards ride the
+// ordinary suite). An absent key and an unreadable config both read true:
+// the bundle never silently loses its gate.
+func candidateGuardBundleRequired(root string) bool {
+	cfg, err := config.NewLoader().Load(filepath.Join(root, ".moai"))
+	if err != nil || cfg == nil {
+		return true
+	}
+	return cfg.Workflow.CandidateCI.GuardBundleRequired
+}
+
 // runCandidateObservation reads the card's latest candidate record, walks
 // its candidate-branch CI runs newest-first, and applies the first run
 // that binds (REQ-CCI-010). No binding run leaves the record untouched —
@@ -208,7 +226,12 @@ func runCandidateObservation(root, cardID string) (factory.CandidateRecord, bool
 	if err != nil {
 		return factory.CandidateRecord{}, false, fmt.Errorf("integration candidate: card %s: %w", cardID, err)
 	}
-	return observeCandidateRuns(root, cardID, latest.PinnedSHA, runs, time.Now().UTC())
+	// The verdict set key is the branch pattern the candidate ACTUALLY ran
+	// on — ci/**, where the observed run published its checks. The record's
+	// IntegrationBranch is the MERGE target and names a different set
+	// (main's contexts include checks a candidate push never publishes —
+	// judging a candidate by them held every candidate red).
+	return observeCandidateRuns(root, cardID, latest.PinnedSHA, "ci/**", runs, time.Now().UTC())
 }
 
 // runIntegrationCandidate builds, pushes, and records one candidate
@@ -404,16 +427,15 @@ func orUnsetStr(s string) string {
 // (head SHA == candidate SHA, ref == candidate branch) is applied and the
 // walk stops. A run that binds nothing leaves the record untouched — the
 // caller reads what changed from the returned record.
-func observeCandidateRuns(root, cardID, pinnedSHA string, runs []factory.CandidateRunState, now time.Time) (factory.CandidateRecord, bool, error) {
+func observeCandidateRuns(root, cardID, pinnedSHA, targetBranch string, runs []factory.CandidateRunState, now time.Time) (factory.CandidateRecord, bool, error) {
 	for _, run := range runs {
 		// The job-level verdict (card t1478 M4 repair): the run-level
 		// conclusion conflates advisory jobs — a Race Test failure reds
 		// the candidate while every required check is green. The verdict
-		// reflects the REQUIRED checks, read from the base branch's
-		// protection; a protection-read failure falls back to the run
-		// conclusion (the fallback is not authoritative).
+		// reflects the REQUIRED checks for the record's TARGET BRANCH; a
+		// read failure never mints green (the fallback keeps pending).
 		if run.Status == "completed" {
-			if adjusted := candidateRunVerdict(root, run.HeadSHA, run.RunID, run.Status, run.Conclusion); adjusted.authoritative {
+			if adjusted := candidateRunVerdict(root, run.RunID, run.Status, run.Conclusion, targetBranch); adjusted.authoritative || adjusted.conclusion == "" {
 				run.Conclusion = adjusted.conclusion
 			}
 		}
@@ -442,100 +464,115 @@ type candidateVerdictAdjustment struct {
 }
 
 // candidateRunVerdict judges one completed run against the FULL required
-// check set (card t1478 M4 repair): the set comes from the required-checks
-// SSoT (.github/required-checks.yml — the file branch protection itself is
-// rendered from), whose contexts span WORKFLOWS (CodeQL's Analyze lives
-// outside ci.yml), so the check surface queried is the candidate SHA's
-// check runs across every workflow — never one run's jobs. GREEN requires
-// every required context published AND successful; a context with any
-// failure (and no successful real execution) is a failure, and a context
-// that never published names itself in `why` (fail-closed — an unpublished
-// required check is exactly the "필수 누락" the run-jobs query could not
-// see).
+// check set for the candidate's TARGET BRANCH (card t1478 M4 repair): the
+// set comes from the required-checks SSoT (.github/required-checks.yml —
+// the file branch protection itself is rendered from) keyed by the
+// branch pattern the candidate push ran on (ci/**) — main's set names
+// checks a candidate push never publishes and held every candidate red.
+//
+// THE JUDGED SURFACE IS THE OBSERVED RUN'S OWN JOBS (card t1478 M4
+// repair): a SHA can carry check runs from MULTIPLE runs (re-runs, a
+// later candidate re-push of the same commit) — a cross-run rollup let a
+// failed required check hide behind another run's success. The ci/** set
+// is entirely ci.yml's own jobs, so the observed run's jobs are the exact
+// surface the set publishes on; nothing outside the run can satisfy it.
+// GREEN requires every required context present in THIS run's jobs AND
+// successful; a context absent from the run names itself in `why`
+// (fail-closed).
 //
 // Skipped companions do not fail their name (the matrix-skip pair): the
-// `test`/`test-skip-marker` jobs publish the SAME context name and exactly
-// one of them runs — a skipped instance counts as failure only when no
-// successful execution of that name exists.
+// `test`/`test-skip-marker` jobs live in the SAME run and publish the
+// SAME context name with exactly one of them executed — a skipped
+// instance counts as failure only when no successful execution of that
+// name exists in the run.
 //
-// The required-checks file absent → the fallback set is this run's own
-// job names (the "ci.yml jobs" fallback, named in `why`). Any gh read
-// failure → the run-level conclusion, honestly not-authoritative.
-func candidateRunVerdict(root, headSHA, runID, status, conclusion string) candidateVerdictAdjustment {
+// READ UNCERTAINTY IS NEVER GREEN: any gh read failure falls back to the
+// run-level conclusion, but a fallback conclusion of success records
+// NOTHING (empty conclusion — the observation leaves the record pending).
+// A failed read cannot mint the green that fails open; a failure may
+// still fall back to red (the safe direction).
+//
+// The SSoT absent or the branch unkeyed → the fallback set is this run's
+// own job names (named in `why`), minus the Guard Bundle check when the
+// key excludes it — the same admission policy as the SSoT set.
+func candidateRunVerdict(root, runID, status, conclusion, targetBranch string) candidateVerdictAdjustment {
+	// Never-green fallback: read uncertainty keeps the record pending
+	// rather than minting green; a failure falls back to red (safe).
 	fallback := candidateVerdictAdjustment{conclusion: conclusion, authoritative: false}
-	// The required set: the SSoT first, the run's own jobs as the named
-	// fallback.
+	if fallback.conclusion == "success" {
+		fallback.conclusion = ""
+	}
+	bundleRequired := candidateGuardBundleRequired(root)
+
+	// The required set: the SSoT keyed by the candidate-run branch pattern
+	// first, the run's own jobs as the named fallback.
 	required := []string{}
-	source := "required-checks.yml"
+	source := "required-checks.yml[" + targetBranch + "]"
+	setFound := false
 	if checks, err := config.LoadRequiredChecks(root); err == nil {
-		if base, ok := checks.Branches["main"]; ok {
-			required = base.Contexts
+		if branchSet, ok := checks.Branches[targetBranch]; ok {
+			required = branchSet.Contexts
+			setFound = true
 		}
-	} else {
-		source = "run jobs (required-checks.yml absent)"
-		jobsRaw, err := candidateGhRunsListFn(root, "run", "view", runID, "--json", "jobs")
-		if err != nil {
-			return fallback
-		}
-		var jobsShape struct {
-			Jobs []struct {
-				Name string `json:"name"`
-			} `json:"jobs"`
-		}
-		if err := json.Unmarshal([]byte(jobsRaw), &jobsShape); err != nil {
-			return fallback
-		}
+	}
+	if !setFound {
+		source = "run jobs (no required-checks.yml set for " + targetBranch + ")"
+	}
+	// The observed run's jobs — the judged surface.
+	jobsRaw, err := candidateGhRunsListFn(root, "run", "view", runID, "--json", "jobs")
+	if err != nil {
+		return fallback
+	}
+	var jobsShape struct {
+		Jobs []struct {
+			Name       string `json:"name"`
+			Conclusion string `json:"conclusion"`
+		} `json:"jobs"`
+	}
+	if err := json.Unmarshal([]byte(jobsRaw), &jobsShape); err != nil {
+		return fallback
+	}
+	if !setFound {
+		// The fallback set: this run's own job names, under the same
+		// Guard Bundle admission policy as the SSoT set.
+		seenJob := map[string]bool{}
 		for _, job := range jobsShape.Jobs {
-			required = append(required, job.Name)
+			if job.Name == candidateGuardBundleCheckName && !bundleRequired {
+				continue
+			}
+			if !seenJob[job.Name] {
+				required = append(required, job.Name)
+				seenJob[job.Name] = true
+			}
 		}
+	}
+	// The guard bundle's admission (SPEC-CANDIDATE-CI-001 M5,
+	// workflow.candidate_ci.guard_bundle_required, default true): the key
+	// decides whether the Guard Bundle check is required for the CANDIDATE
+	// verdict — enforced here at the verdict collector, never by branch
+	// protection (a required-check name is static there). Key false: a red
+	// bundle stays visible in the run's checks but does not red the
+	// candidate verdict.
+	if bundleRequired {
+		required = append(required, candidateGuardBundleCheckName)
 	}
 	if len(required) == 0 {
 		return fallback
 	}
-	// The repository coordinates the api call needs.
-	slugRaw, err := candidateGhCommandFn(root, "repo", "view", "--json", "nameWithOwner")
-	if err != nil {
-		return fallback
-	}
-	var slugShape struct {
-		NameWithOwner string `json:"nameWithOwner"`
-	}
-	if err := json.Unmarshal([]byte(slugRaw), &slugShape); err != nil {
-		return fallback
-	}
-	// The candidate SHA's check runs across ALL workflows — the surface
-	// the full required set publishes on.
-	runsRaw, err := candidateGhCommandFn(root, "api",
-		"repos/"+strings.TrimSpace(slugShape.NameWithOwner)+"/commits/"+headSHA+"/check-runs",
-		"--jq", "[.check_runs[] | {name: .name, conclusion: .conclusion}]")
-	if err != nil {
-		return fallback
-	}
-	var checkRuns []struct {
-		Name       string  `json:"name"`
-		Conclusion *string `json:"conclusion"`
-	}
-	if err := json.Unmarshal([]byte(runsRaw), &checkRuns); err != nil {
-		return fallback
-	}
-	// Roll the runs up per context name: a name's real verdict is failure
-	// when any of its instances failed and NONE succeeded — a skipped
-	// companion never fails a name a successful execution answers.
-	contextState := map[string]string{} // name → "success" | "failure"
-	for _, run := range checkRuns {
-		current, seen := contextState[run.Name]
-		conclusion := ""
-		if run.Conclusion != nil {
-			conclusion = *run.Conclusion
-		}
+	// Roll THIS run's jobs up per context name: a name's real verdict is
+	// failure when any of its instances failed and NONE succeeded — a
+	// skipped companion never fails a name a successful execution answers.
+	contextState := map[string]string{} // name → "success" | "failure" | ""
+	for _, job := range jobsShape.Jobs {
+		current, seen := contextState[job.Name]
 		switch {
-		case conclusion == "success":
-			contextState[run.Name] = "success"
-		case conclusion == "" && !seen:
-			// still in progress — not a verdict yet
-			contextState[run.Name] = ""
-		case conclusion != "" && conclusion != "success" && current != "success":
-			contextState[run.Name] = "failure"
+		case job.Conclusion == "success":
+			contextState[job.Name] = "success"
+		case job.Conclusion == "" && !seen:
+			// still running — not a verdict yet
+			contextState[job.Name] = ""
+		case job.Conclusion != "" && job.Conclusion != "success" && current != "success":
+			contextState[job.Name] = "failure"
 		}
 	}
 	missing := []string{}
@@ -556,7 +593,7 @@ func candidateRunVerdict(root, headSHA, runID, status, conclusion string) candid
 		return candidateVerdictAdjustment{conclusion: "failure", authoritative: true, why: source + " (failed: " + strings.Join(failed, ", ") + ")"}
 	}
 	if len(missing) > 0 {
-		return candidateVerdictAdjustment{conclusion: "failure", authoritative: true, why: source + " (not published for this SHA: " + strings.Join(missing, ", ") + ")"}
+		return candidateVerdictAdjustment{conclusion: "failure", authoritative: true, why: source + " (not in the observed run: " + strings.Join(missing, ", ") + ")"}
 	}
 	return candidateVerdictAdjustment{conclusion: "success", authoritative: true, why: source}
 }

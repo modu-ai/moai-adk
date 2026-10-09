@@ -454,63 +454,102 @@ func RunMergeStep(in MergeStepInput, seams MergeStepSeams) (string, error) {
 			recheckErr = mergeStepErr(MergeExitCardGate, "integration merge: refused — card %s's record changed mid-step (version %d as gated, %d as re-read); re-acquire", in.CardID, card.Version, recheckCard.Version)
 			return nil
 		}
-		// The landing RECHECK (card t1478 M4 repair, the batch TOCTOU): the
-		// gate-5 verdict was read OUTSIDE this section, and an observe (or a
-		// re-candidate replacing the record) landing between that check and
-		// the merge landed a RED candidate on the integration branch. The
-		// re-verification runs inside the candidate record's OWN mutation
-		// lock — the same exclusion an observe or a push takes — so no
-		// verdict flip can interleave with the decision to merge. Lock
-		// ordering is one-way (window section → candidate lock; candidate
-		// paths never take the window lock), so the nesting cannot deadlock.
+		// The landing RECHECK + the MERGE inside ONE candidate-record lock
+		// span (card t1478 M4 repair): the gate-5 verdict was read OUTSIDE
+		// this section, and an observe flipping the candidate red between
+		// the check and the merge landed a RED candidate on the integration
+		// branch — the former shape released the candidate lock after the
+		// recheck and ran the merge outside it, reopening exactly the gap
+		// the recheck closed. Now the re-verification and the merge share
+		// the same exclusion an observe or a push takes: no verdict flip
+		// can interleave between the final green and the merge decision.
+		// Lock ordering is one-way (window section → candidate lock;
+		// candidate paths never take the window lock), so the nesting
+		// cannot deadlock.
 		if seams.LandingCheck != nil {
 			var landingRecheckErr error
 			if lockErr := WithCandidateMutation(in.Root, in.CardID, func() error {
 				landingRecheckErr = seams.LandingCheck(in.CardID, pinned)
+				if landingRecheckErr != nil {
+					return nil
+				}
+				// The merge, of the PINNED SHA never the branch name
+				// (REQ-MWQ-017), inside the candidate lock span.
+				//
+				// t1576 review round 1 asked for --no-overwrite-ignore at the
+				// effect point. It is passed — and probed INEFFECTIVE on the
+				// path this step always takes: current git enforces it on the
+				// fast-forward update only, while --no-ff (REQ-MWQ-017's
+				// merge-commit contract) forces the three-way (ort) path,
+				// which overwrites an ignored byte at an added path whatever
+				// the flag says (probe: ff rc=1 refused; --no-ff and
+				// true-3way both rc=0, byte overwritten). The in-section
+				// re-probe above catches every byte present before the merge
+				// subprocess starts; the residual below is what remains.
+				//
+				// @MX:DEBT: an ignored byte at an added path created inside the re-probe→merge span is overwritten by the three-way merge — the flag does not reach the ort path on current git
+				// @MX:CEILING: the window is one git-subprocess spawn inside a flock-serialized section in a policy-protected integration worktree; the post-merge tree check cannot see it (a worktree-only loss, the commit's tree is unchanged)
+				// @MX:UPGRADE: a git whose ort path honors --no-overwrite-ignore (then this flag starts refusing), or an in-process merge that checks ignored paths atomically with the write
+				if _, err := git("merge", "--no-ff", "--no-overwrite-ignore", "-q", "-m", mergeMsg, pinned); err != nil {
+					mergeErr = err
+					// (6)/(7): abort, then decide by the worktree the abort
+					// left — inside both sections, so no acquisition can
+					// interleave between our failed merge and its cleanup.
+					_, _ = git("merge", "--abort")
+					clean, _, cleanErr := gitIntegrationWorktreeClean(in.IntegrationWorktree)
+					mergeDirtyAfterAbort = cleanErr != nil || !clean
+					return nil
+				}
+				sha, shaErr := git("rev-parse", "HEAD")
+				if shaErr != nil {
+					// The commit exists — only the in-section read failed.
+					// The cause-8 class (post-merge) names no SHA it cannot
+					// read.
+					headReadErr = shaErr
+					return nil
+				}
+				mergeSHA = sha
 				return nil
 			}); lockErr != nil {
-				recheckErr = mergeStepErr(MergeExitOther, "integration merge: re-read the candidate record for the landing recheck: %v", lockErr)
+				recheckErr = mergeStepErr(MergeExitOther, "integration merge: the candidate record lock failed: %v", lockErr)
 				return nil
 			}
 			if landingRecheckErr != nil {
 				recheckErr = mergeStepErr(MergeExitLandingRefused, "integration merge: the landing check refused %s at the merge point: %v", pinned[:12], landingRecheckErr)
 				return nil
 			}
+			if mergeErr != nil || headReadErr != nil {
+				// The merge attempt already ran (inside the lock span);
+				// nothing further in this section.
+				return nil
+			}
+		} else {
+			// The disabled-key path keeps the merge where it was — no
+			// candidate lock is owed when no landing check exists.
+			//
+			// @MX:DEBT: an ignored byte at an added path created inside the re-probe→merge span is overwritten by the three-way merge — the flag does not reach the ort path on current git
+			// @MX:CEILING: the window is one git-subprocess spawn inside a flock-serialized section in a policy-protected integration worktree; the post-merge tree check cannot see it (a worktree-only loss, the commit's tree is unchanged)
+			// @MX:UPGRADE: a git whose ort path honors --no-overwrite-ignore (then this flag starts refusing), or an in-process merge that checks ignored paths atomically with the write
+			if _, err := git("merge", "--no-ff", "--no-overwrite-ignore", "-q", "-m", mergeMsg, pinned); err != nil {
+				mergeErr = err
+				// (6)/(7): abort, then decide by the worktree the abort left —
+				// inside the section, so no acquisition can interleave between
+				// our failed merge and its cleanup.
+				_, _ = git("merge", "--abort")
+				clean, _, cleanErr := gitIntegrationWorktreeClean(in.IntegrationWorktree)
+				mergeDirtyAfterAbort = cleanErr != nil || !clean
+				return nil
+			}
+			sha, shaErr := git("rev-parse", "HEAD")
+			if shaErr != nil {
+				// The commit exists — only the in-section read failed. The
+				// cause-8 class (post-merge) names no SHA it cannot read.
+				headReadErr = shaErr
+				return nil
+			}
+			mergeSHA = sha
 		}
-		// The merge, of the PINNED SHA never the branch name (REQ-MWQ-017),
-		// inside the section (F4).
-		//
-		// t1576 review round 1 asked for --no-overwrite-ignore at the effect
-		// point. It is passed — and probed INEFFECTIVE on the path this step
-		// always takes: current git enforces it on the fast-forward update
-		// only, while --no-ff (REQ-MWQ-017's merge-commit contract) forces
-		// the three-way (ort) path, which overwrites an ignored byte at an
-		// added path whatever the flag says (probe: ff rc=1 refused;
-		// --no-ff and true-3way both rc=0, byte overwritten). The in-section
-		// re-probe above catches every byte present before the merge
-		// subprocess starts; the residual below is what remains.
-		//
-		// @MX:DEBT: an ignored byte at an added path created inside the re-probe→merge span is overwritten by the three-way merge — the flag does not reach the ort path on current git
-		// @MX:CEILING: the window is one git-subprocess spawn inside a flock-serialized section in a policy-protected integration worktree; the post-merge tree check cannot see it (a worktree-only loss, the commit's tree is unchanged)
-		// @MX:UPGRADE: a git whose ort path honors --no-overwrite-ignore (then this flag starts refusing), or an in-process merge that checks ignored paths atomically with the write
-		if _, err := git("merge", "--no-ff", "--no-overwrite-ignore", "-q", "-m", mergeMsg, pinned); err != nil {
-			mergeErr = err
-			// (6)/(7): abort, then decide by the worktree the abort left —
-			// inside the section, so no acquisition can interleave between
-			// our failed merge and its cleanup.
-			_, _ = git("merge", "--abort")
-			clean, _, cleanErr := gitIntegrationWorktreeClean(in.IntegrationWorktree)
-			mergeDirtyAfterAbort = cleanErr != nil || !clean
-			return nil
-		}
-		sha, shaErr := git("rev-parse", "HEAD")
-		if shaErr != nil {
-			// The commit exists — only the in-section read failed. The
-			// cause-8 class (post-merge) names no SHA it cannot read.
-			headReadErr = shaErr
-			return nil
-		}
-		mergeSHA = strings.TrimSpace(sha)
+		mergeSHA = strings.TrimSpace(mergeSHA)
 		return nil
 	})
 	if sectionErr != nil {

@@ -41,14 +41,20 @@ func TestCandidateObserveWalk(t *testing.T) {
 	}
 
 	t.Run("first binding run wins", func(t *testing.T) {
-		prev := candidateGhRunsFn
+		prevRuns, prevList := candidateGhRunsFn, candidateGhRunsListFn
 		candidateGhRunsFn = func(root, branch string) ([]factory.CandidateRunState, error) {
 			return []factory.CandidateRunState{
 				{RunID: "r-old", HeadSHA: "deadbeef", Ref: rec.CandidateBranch, Status: "completed", Conclusion: "success"},
 				{RunID: "r-mine", HeadSHA: rec.CandidateSHA, Ref: rec.CandidateBranch, Status: "completed", Conclusion: "success"},
 			}, nil
 		}
-		t.Cleanup(func() { candidateGhRunsFn = prev })
+		// The required-check read is stubbed too: the run's jobs all
+		// succeed, so the walk's verdict reflects the binding run (the
+		// fixture root has no SSoT set — the fallback set is these jobs).
+		candidateGhRunsListFn = func(dir string, args ...string) (string, error) {
+			return `{"jobs":[{"name":"own-check","conclusion":"success"},{"name":"Guard Bundle","conclusion":"success"}]}`, nil
+		}
+		t.Cleanup(func() { candidateGhRunsFn, candidateGhRunsListFn = prevRuns, prevList })
 		updated, wrote, err := runCandidateObservation(root, "t9001")
 		if err != nil || !wrote {
 			t.Fatalf("wrote=%v err=%v", wrote, err)
@@ -91,13 +97,18 @@ func TestCandidateObserveCommand(t *testing.T) {
 	if err != nil {
 		t.Fatalf("candidate: %v", err)
 	}
-	prev := candidateGhRunsFn
+	prevRuns, prevList := candidateGhRunsFn, candidateGhRunsListFn
 	candidateGhRunsFn = func(root, branch string) ([]factory.CandidateRunState, error) {
 		return []factory.CandidateRunState{
 			{RunID: "r-1", HeadSHA: rec.CandidateSHA, Ref: rec.CandidateBranch, Status: "completed", Conclusion: "success"},
 		}, nil
 	}
-	t.Cleanup(func() { candidateGhRunsFn = prev })
+	// The required-check read is stubbed too (the fixture root has no SSoT
+	// set — the fallback set is these jobs, all green).
+	candidateGhRunsListFn = func(dir string, args ...string) (string, error) {
+		return `{"jobs":[{"name":"own-check","conclusion":"success"},{"name":"Guard Bundle","conclusion":"success"}]}`, nil
+	}
+	t.Cleanup(func() { candidateGhRunsFn, candidateGhRunsListFn = prevRuns, prevList })
 
 	cmd := newIntegrationCandidateCmd()
 	var out bytes.Buffer
@@ -133,126 +144,278 @@ func TestGhRunStatesFiltersCandidateWorkflow(t *testing.T) {
 }
 
 // TestCandidateRequiredJobVerdict pins the required-check verdict (the
-// M4 observation-path repairs): the set comes from required-checks.yml,
-// the check surface is the candidate SHA's check runs across ALL
-// workflows, advisory race failures do not red a required-green SHA, the
-// matrix-skip pair (test + skip-marker sharing one name) reads success,
-// and an unpublished required context fails closed naming itself.
+// M4 landing-gate repairs): the set comes from required-checks.yml keyed
+// by the candidate-run branch pattern (ci/** — main's set names checks a
+// candidate push never publishes), the judged surface is the OBSERVED
+// run's own jobs (another run's checks can never satisfy this run's set),
+// advisory race failures do not red a required-green run, the matrix-skip
+// pair (test + skip-marker sharing one name) reads success, an absent
+// context fails closed naming itself, the Guard Bundle check admits by
+// workflow.candidate_ci.guard_bundle_required, and a read failure never
+// mints green.
 func TestCandidateRequiredJobVerdict(t *testing.T) {
 	root := t.TempDir()
 	checksDir := filepath.Join(root, ".github")
 	if err := os.MkdirAll(checksDir, 0o750); err != nil {
 		t.Fatal(err)
 	}
-	requiredYAML := "branches:\n  main:\n    contexts:\n      - Lint\n      - \"Test (ubuntu-latest)\"\n"
-	if err := os.WriteFile(filepath.Join(checksDir, "required-checks.yml"), []byte(requiredYAML), 0o600); err != nil {
-		t.Fatal(err)
+	writeSSoT := func(yaml string) {
+		t.Helper()
+		if err := os.MkdirAll(checksDir, 0o750); err != nil {
+			t.Fatal(err)
+		}
+		if err := os.WriteFile(filepath.Join(checksDir, "required-checks.yml"), []byte(yaml), 0o600); err != nil {
+			t.Fatal(err)
+		}
 	}
-	checkRunsJSON := func(runs map[string]string) string {
-		type cr struct {
-			Name       string  `json:"name"`
-			Conclusion *string `json:"conclusion"`
+	writeSSoT("branches:\n  \"ci/**\":\n    contexts:\n      - Lint\n      - \"Test (ubuntu-latest)\"\n")
+	jobsJSON := func(jobs map[string]string) string {
+		type job struct {
+			Name       string `json:"name"`
+			Conclusion string `json:"conclusion"`
 		}
-		var out []cr
-		for name, c := range runs {
-			entry := cr{Name: name}
-			if c != "" {
-				cc := c
-				entry.Conclusion = &cc
-			}
-			out = append(out, entry)
+		var out []job
+		for name, c := range jobs {
+			out = append(out, job{Name: name, Conclusion: c})
 		}
-		raw, _ := json.Marshal(out)
+		raw, _ := json.Marshal(map[string]any{"jobs": out})
 		return string(raw)
 	}
-	seedGh := func(checkRuns map[string]string) (cleanup func()) {
-		prevCmd, prevList := candidateGhCommandFn, candidateGhRunsListFn
-		candidateGhCommandFn = func(dir string, args ...string) (string, error) {
-			joined := strings.Join(args, " ")
-			if strings.Contains(joined, "nameWithOwner") {
-				return `{"nameWithOwner":"o/r"}`, nil
-			}
-			if strings.Contains(joined, "check-runs") {
-				return checkRunsJSON(checkRuns), nil
-			}
-			return "", errors.New("unexpected gh call: " + joined)
+	seedJobs := func(jobs map[string]string) (cleanup func()) {
+		prevList := candidateGhRunsListFn
+		candidateGhRunsListFn = func(dir string, args ...string) (string, error) {
+			return jobsJSON(jobs), nil
 		}
-		candidateGhRunsListFn = prevList
-		return func() { candidateGhCommandFn = prevCmd }
+		return func() { candidateGhRunsListFn = prevList }
 	}
 
 	t.Run("advisory race failure with required green reads success", func(t *testing.T) {
-		cleanup := seedGh(map[string]string{
-			"Lint":        "success",
+		cleanup := seedJobs(map[string]string{
+			"Lint":                 "success",
 			"Test (ubuntu-latest)": "success",
-			"Race Test 1": "failure",
+			"Guard Bundle":         "success",
+			"Race Test 1":          "failure",
 		})
 		defer cleanup()
-		verdict := candidateRunVerdict(root, "sha-1", "run-1", "completed", "failure")
+		verdict := candidateRunVerdict(root, "run-1", "completed", "failure", "ci/**")
 		if verdict.conclusion != "success" || !verdict.authoritative {
 			t.Errorf("verdict %+v: want success (required green; the race job is advisory), authoritative", verdict)
 		}
 	})
 
 	t.Run("required failure reads failure", func(t *testing.T) {
-		cleanup := seedGh(map[string]string{
-			"Lint":        "failure",
+		cleanup := seedJobs(map[string]string{
+			"Lint":                 "failure",
 			"Test (ubuntu-latest)": "success",
-			"Race Test 1": "success",
+			"Guard Bundle":         "success",
+			"Race Test 1":          "success",
 		})
 		defer cleanup()
-		verdict := candidateRunVerdict(root, "sha-1", "run-1", "completed", "success")
+		verdict := candidateRunVerdict(root, "run-1", "completed", "success", "ci/**")
 		if verdict.conclusion != "failure" || !verdict.authoritative {
 			t.Errorf("verdict %+v: want failure (Lint is required), authoritative", verdict)
 		}
 	})
 
-	t.Run("skipped companion does not fail a name a success answers", func(t *testing.T) {
-		// The matrix-skip pair: test and test-skip-marker publish the SAME
-		// name, exactly one runs — a skipped instance is not a failure
-		// when a successful execution of the name exists.
-		cleanup := seedGh(map[string]string{
-			"Lint":        "success",
+	t.Run("another run's success cannot satisfy this run's failure", func(t *testing.T) {
+		// The observed-run binding: the judged surface is THIS run's jobs
+		// alone — a re-run elsewhere on the same SHA that succeeded can
+		// never launder the observed run's required failure.
+		cleanup := seedJobs(map[string]string{
+			"Lint":                 "failure",
 			"Test (ubuntu-latest)": "success",
-			"Test (ubuntu-latest)x": "",
+			"Guard Bundle":         "success",
 		})
 		defer cleanup()
-		verdict := candidateRunVerdict(root, "sha-1", "run-1", "completed", "failure")
+		verdict := candidateRunVerdict(root, "run-1", "completed", "success", "ci/**")
+		if verdict.conclusion != "failure" {
+			t.Errorf("verdict %+v: want failure (the observed run's Lint failed)", verdict)
+		}
+	})
+
+	t.Run("ci/** set applies where main's set would hold every candidate red", func(t *testing.T) {
+		// The P1 repair: main's contexts name checks a ci/** push never
+		// publishes (codeql.yml's Analyze, the release gate). The ci/**
+		// key's set is what the candidate is judged by — a main-keyed
+		// judgment would red this green run.
+		ssot := "branches:\n  main:\n    contexts:\n      - Lint\n      - \"Analyze (Go) (go)\"\n      - \"Release PR Multi-OS Gate\"\n  \"ci/**\":\n    contexts:\n      - Lint\n      - \"Test (ubuntu-latest)\"\n"
+		writeSSoT(ssot)
+		cleanup := seedJobs(map[string]string{
+			"Lint":                 "success",
+			"Test (ubuntu-latest)": "success",
+			"Guard Bundle":         "success",
+		})
+		defer cleanup()
+		verdict := candidateRunVerdict(root, "run-1", "completed", "failure", "ci/**")
+		if verdict.conclusion != "success" || !verdict.authoritative {
+			t.Errorf("verdict %+v: want success under the ci/** set (Analyze/release never publish on a candidate)", verdict)
+		}
+	})
+
+	t.Run("red guard bundle reds the verdict while the key is true", func(t *testing.T) {
+		// AC-CCI-008-2's true branch: guard_bundle_required defaults true —
+		// a red bundle reds the candidate verdict (same gating as when the
+		// guards rode the ordinary suite).
+		cleanup := seedJobs(map[string]string{
+			"Lint":                 "success",
+			"Test (ubuntu-latest)": "success",
+			"Guard Bundle":         "failure",
+		})
+		defer cleanup()
+		verdict := candidateRunVerdict(root, "run-1", "completed", "success", "ci/**")
+		if verdict.conclusion != "failure" || !verdict.authoritative {
+			t.Errorf("verdict %+v: want failure (Guard Bundle red + key true)", verdict)
+		}
+		if !strings.Contains(verdict.why, "Guard Bundle") {
+			t.Errorf("why %q: want the failed bundle named", verdict.why)
+		}
+	})
+
+	t.Run("key false admits a red bundle without reding the verdict", func(t *testing.T) {
+		// AC-CCI-008-2's false branch: the bundle's red is visible and
+		// recorded but does not red the verdict.
+		dir := filepath.Join(root, ".moai", "config", "sections")
+		if err := os.MkdirAll(dir, 0o750); err != nil {
+			t.Fatal(err)
+		}
+		if err := os.WriteFile(filepath.Join(dir, "workflow.yaml"), []byte("workflow:\n  candidate_ci:\n    enabled: true\n    guard_bundle_required: false\n"), 0o600); err != nil {
+			t.Fatal(err)
+		}
+		cleanup := seedJobs(map[string]string{
+			"Lint":                 "success",
+			"Test (ubuntu-latest)": "success",
+			"Guard Bundle":         "failure",
+		})
+		defer cleanup()
+		verdict := candidateRunVerdict(root, "run-1", "completed", "success", "ci/**")
+		if verdict.conclusion != "success" {
+			t.Errorf("verdict %+v: want success (key false — the bundle does not gate)", verdict)
+		}
+	})
+
+	t.Run("fallback set applies the same bundle admission", func(t *testing.T) {
+		// The P2 repair: with no SSoT set for the branch, the fallback
+		// (the run's own jobs) drops the Guard Bundle check under the same
+		// key policy — a key-false bundle failure must not red through the
+		// fallback either.
+		if err := os.RemoveAll(filepath.Join(root, ".github")); err != nil {
+			t.Fatal(err)
+		}
+		dir := filepath.Join(root, ".moai", "config", "sections")
+		if err := os.MkdirAll(dir, 0o750); err != nil {
+			t.Fatal(err)
+		}
+		if err := os.WriteFile(filepath.Join(dir, "workflow.yaml"), []byte("workflow:\n  candidate_ci:\n    enabled: true\n    guard_bundle_required: false\n"), 0o600); err != nil {
+			t.Fatal(err)
+		}
+		cleanup := seedJobs(map[string]string{
+			"Lint":         "success",
+			"Guard Bundle": "failure",
+		})
+		defer cleanup()
+		verdict := candidateRunVerdict(root, "run-1", "completed", "success", "release/v9.9")
+		if verdict.conclusion != "success" {
+			t.Errorf("verdict %+v: want success (fallback honors key false)", verdict)
+		}
+	})
+
+	t.Run("skipped companion does not fail a name a success answers", func(t *testing.T) {
+		// The matrix-skip pair: test and test-skip-marker live in the SAME
+		// run and publish the SAME name, exactly one executed — a skipped
+		// instance is not a failure when a successful execution of the
+		// name exists in the run.
+		prevList := candidateGhRunsListFn
+		candidateGhRunsListFn = func(dir string, args ...string) (string, error) {
+			return `{"jobs":[{"name":"Lint","conclusion":"success"},{"name":"Test (ubuntu-latest)","conclusion":"success"},{"name":"Test (ubuntu-latest)","conclusion":"skipped"},{"name":"Guard Bundle","conclusion":"success"}]}`, nil
+		}
+		t.Cleanup(func() { candidateGhRunsListFn = prevList })
+		verdict := candidateRunVerdict(root, "run-1", "completed", "failure", "ci/**")
 		if verdict.conclusion != "success" {
 			t.Errorf("verdict %+v: want success (the skip pair's real execution succeeded)", verdict)
 		}
 	})
 
-	t.Run("unpublished required context fails closed naming itself", func(t *testing.T) {
-		// The P1 repair: a context outside ci.yml (CodeQL's Analyze, the
-		// release gate) that the run-jobs query never saw must not be
-		// skipped — the full set is judged from the SHA's check runs, and
-		// an unpublished context fails closed with its name.
-		cleanup := seedGh(map[string]string{
-			"Lint":        "success",
+	t.Run("absent required context fails closed naming itself", func(t *testing.T) {
+		// The P1 repair: a context the observed run never carried must not
+		// be skipped — an absent context fails closed with its name.
+		ssot := "branches:\n  \"ci/**\":\n    contexts:\n      - Lint\n      - \"Test (ubuntu-latest)\"\n      - \"Release PR Multi-OS Gate\"\n"
+		writeSSoT(ssot)
+		cleanup := seedJobs(map[string]string{
+			"Lint":                 "success",
 			"Test (ubuntu-latest)": "success",
+			"Guard Bundle":         "success",
 		})
 		defer cleanup()
-		verdict := candidateRunVerdict(root, "sha-1", "run-1", "completed", "success")
-		if verdict.conclusion != "success" || !verdict.authoritative {
-			t.Errorf("verdict %+v: want success — the SSoT's contexts (Lint, Test) are all published and green", verdict)
+		verdict := candidateRunVerdict(root, "run-1", "completed", "success", "ci/**")
+		if verdict.conclusion != "failure" || !verdict.authoritative {
+			t.Errorf("verdict %+v: want failure — Release PR Multi-OS Gate is absent from the observed run", verdict)
 		}
-		if verdict.why == "" || strings.Contains(verdict.why, "not published") {
-			t.Errorf("why %q: want the satisfied source named, not a missing-context verdict", verdict.why)
+		if !strings.Contains(verdict.why, "Release PR Multi-OS Gate") {
+			t.Errorf("why %q: want the absent context named", verdict.why)
 		}
 	})
 
-	t.Run("gh read failure falls back to the run conclusion", func(t *testing.T) {
-		prevCmd := candidateGhCommandFn
-		candidateGhCommandFn = func(dir string, args ...string) (string, error) {
+	t.Run("gh read failure never mints green", func(t *testing.T) {
+		// The P1 repair: a failed required-check read (403 injected) with a
+		// run-level SUCCESS records NOTHING — read uncertainty is never
+		// green. A failed read with a run-level failure still falls back to
+		// red (the safe direction).
+		prevList := candidateGhRunsListFn
+		candidateGhRunsListFn = func(dir string, args ...string) (string, error) {
 			return "", errors.New("gh api: HTTP 403 (test double)")
 		}
-		t.Cleanup(func() { candidateGhCommandFn = prevCmd })
-		verdict := candidateRunVerdict(root, "sha-1", "run-1", "completed", "failure")
-		if verdict.conclusion != "failure" || verdict.authoritative {
-			t.Errorf("verdict %+v: want the run-level fallback (failure), not authoritative", verdict)
+		t.Cleanup(func() { candidateGhRunsListFn = prevList })
+		verdict := candidateRunVerdict(root, "run-1", "completed", "success", "ci/**")
+		if verdict.conclusion != "" || verdict.authoritative {
+			t.Errorf("verdict %+v: want the empty conclusion (nothing recorded) — read uncertainty is never green", verdict)
+		}
+		verdictRed := candidateRunVerdict(root, "run-1", "completed", "failure", "ci/**")
+		if verdictRed.conclusion != "failure" || verdictRed.authoritative {
+			t.Errorf("verdict %+v: want the run-level fallback (failure), not authoritative", verdictRed)
 		}
 	})
+}
+
+// TestCandidateObserveWalkNeverGreenOnFailedRead pins the observe-level
+// consequence of the never-green rule: a gh required-check read failure
+// with a run-level success leaves the record pending — wrote=false.
+func TestCandidateObserveWalkNeverGreenOnFailedRead(t *testing.T) {
+	root, cardWT := candidateFixture(t)
+	writeCandidateCIConfig(t, root, "true", "true")
+	t.Setenv("GIT_AUTHOR_DATE", "2026-10-09T12:00:00Z")
+	t.Setenv("GIT_COMMITTER_DATE", "2026-10-09T12:00:00Z")
+	fixed := func() time.Time { return time.Date(2026, 10, 9, 12, 0, 0, 0, time.UTC) }
+	rec, err := runIntegrationCandidate(integrationCandidateInput{
+		Root: root, CardID: "t9001", CardWorktree: cardWT, IntegrationBranch: "develop",
+	}, integrationCandidateSeams{Now: fixed})
+	if err != nil {
+		t.Fatalf("candidate: %v", err)
+	}
+	prevRuns, prevList := candidateGhRunsFn, candidateGhRunsListFn
+	candidateGhRunsFn = func(root, branch string) ([]factory.CandidateRunState, error) {
+		return []factory.CandidateRunState{
+			{RunID: "r-1", HeadSHA: rec.CandidateSHA, Ref: rec.CandidateBranch, Status: "completed", Conclusion: "success"},
+		}, nil
+	}
+	candidateGhRunsListFn = func(dir string, args ...string) (string, error) {
+		return "", errors.New("gh run view: HTTP 403 (test double)")
+	}
+	t.Cleanup(func() { candidateGhRunsFn, candidateGhRunsListFn = prevRuns, prevList })
+
+	_, wrote, err := runCandidateObservation(root, "t9001")
+	if err != nil {
+		t.Fatalf("observe walk: %v", err)
+	}
+	if wrote {
+		t.Fatal("a failed required-check read recorded a verdict — read uncertainty is never green")
+	}
+	stored, err := factory.ReadCandidateRecord(root, "t9001", rec.PinnedSHA)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if stored.Verdict != factory.CandidateVerdictPending {
+		t.Errorf("verdict after the failed read: %q, want pending", stored.Verdict)
+	}
 }
 
 // TestCompleteRefusesRedCandidate drives factory complete through the

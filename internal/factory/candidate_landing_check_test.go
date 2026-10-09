@@ -173,6 +173,72 @@ func TestLandingCheckRecheckCatchesRedAfterGate(t *testing.T) {
 	requireWindowReleasedAndCPromoted(t, f)
 }
 
+func TestMergeDecisionSerializedWithCandidateLock(t *testing.T) {
+	// The lock-span repair (card t1478 M4 repair): the final landing check
+	// AND the merge share the candidate record's mutation lock, so an
+	// observe flipping the verdict red CANNOT complete between the check
+	// and the merge — the former shape released the candidate lock after
+	// the recheck and ran the merge outside it, reopening the gap.
+	f := newMergeFixture(t)
+	rec := landingSeedRecord(t, f, CandidateVerdictGreen)
+	card := f.withCardTree(readyCardPtr())
+	seams := f.seams(card)
+	seams.LandingCheck = func(cardID, sha string) error {
+		return CandidateLandingCheck(LandingCheckInput{
+			Root:                f.root,
+			CardID:              cardID,
+			PinnedSHA:           sha,
+			TargetBranch:        "develop",
+			IntegrationWorktree: f.integ,
+		})
+	}
+	mergeStarted := make(chan struct{})
+	releaseMerge := make(chan struct{})
+	seams.Git = func(args ...string) (string, error) {
+		if args[0] == "merge" {
+			close(mergeStarted)
+			<-releaseMerge // the merge holds the candidate lock while blocked
+		}
+		return execGitIn(f.integ, args...)
+	}
+	stepDone := make(chan error, 1)
+	go func() {
+		_, err := RunMergeStep(f.input(), seams)
+		stepDone <- err
+	}()
+	<-mergeStarted
+
+	// While the merge holds the candidate lock, an observe of a FAILED run
+	// attempts to flip the verdict red. It must BLOCK until the merge
+	// completes — never interleave.
+	observeDone := make(chan error, 1)
+	go func() {
+		// The observe BLOCKS on the candidate lock the merge span holds and
+		// lands only after the merge completed — the red it records then is
+		// the residual (the merge decision was already made under green);
+		// what the span guarantees is that nothing landed BETWEEN the check
+		// and the merge.
+		_, _, err := ObserveCandidateVerdict(f.root, stepCard, rec.PinnedSHA, CandidateRunState{
+			RunID: "r-red", HeadSHA: rec.CandidateSHA, Ref: rec.CandidateBranch,
+			Status: "completed", Conclusion: "failure",
+		}, time.Now())
+		observeDone <- err
+	}()
+	select {
+	case err := <-observeDone:
+		t.Fatalf("the observe completed while the merge was mid-flight inside the lock span: %v", err)
+	case <-time.After(300 * time.Millisecond):
+		// blocked, as the span requires
+	}
+	close(releaseMerge)
+	if err := <-stepDone; err != nil {
+		t.Fatalf("merge step: %v", err)
+	}
+	if err := <-observeDone; err != nil {
+		t.Fatalf("observe after release: %v", err)
+	}
+}
+
 func TestLandingCheckFailClosed(t *testing.T) {
 	t.Run("key enabled with no seam refuses cause 5", func(t *testing.T) {
 		f := newMergeFixture(t)
