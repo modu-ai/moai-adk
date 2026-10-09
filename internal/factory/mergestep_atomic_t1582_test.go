@@ -100,3 +100,83 @@ func TestRedT1582Cause7HoldAndReleaseAreOneMutation(t *testing.T) {
 		t.Fatalf("the waiting ticket must stay queued under the hold: %+v", lock.Queue)
 	}
 }
+
+// cause7MergeGit scripts the merge act to fail and leave an untracked residue,
+// so the step reaches the cause-7 outcome; every other git call runs for real.
+func cause7MergeGit(f *stepFixture) func(args ...string) (string, error) {
+	return func(args ...string) (string, error) {
+		switch {
+		case args[0] == "merge" && len(args) > 1 && args[1] == "--abort":
+			return "", nil
+		case args[0] == "merge":
+			if err := os.WriteFile(filepath.Join(f.integ, "residue-untracked.txt"), []byte("residue"), 0o644); err != nil {
+				return "", err
+			}
+			return "", fmt.Errorf("simulated merge failure (t1582 cause-7 failure branch)")
+		}
+		return execGitIn(f.integ, args...)
+	}
+}
+
+// TestMergeStepCause7HoldWriteFailureKeepsWindowHeld pins the failure branch of
+// the cause-7 pair (REQ-MWQ2-007): when the hold cannot be written, the step
+// reports the hold failure, releases nothing, and leaves the window held for
+// the leader, as the pre-repair code did. The policy path becomes a directory
+// after the pre-merge read, so the hold write itself is what fails.
+func TestMergeStepCause7HoldWriteFailureKeepsWindowHeld(t *testing.T) {
+	f := newMergeFixture(t)
+	card := f.withCardTree(readyCardPtr())
+	seams := f.seams(card)
+	seams.Git = cause7MergeGit(f)
+	seams.AfterPrecheck = func() {
+		if err := os.MkdirAll(integrationWindowPolicyPath(f.root), 0o755); err != nil {
+			t.Fatal(err)
+		}
+	}
+	_, stepErr := RunMergeStep(f.input(), seams)
+	requireCode(t, stepErr, MergeExitMergeDirty)
+	if msg := stepErr.Error(); !strings.Contains(msg, "writing the hold failed") {
+		t.Fatalf("a failed hold write must be reported as such: %v", stepErr)
+	}
+	lock, err := ReadIntegrationLock(f.root)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if lock.SessionID != "sess-b" {
+		t.Fatalf("a failed hold write must release nothing: holder is %q", lock.SessionID)
+	}
+}
+
+// TestMergeStepCause7ReleaseFailureIsReportedWrapped pins the release-failure
+// branch of the cause-7 pair (REQ-MWQ2-007): the hold is on record, the
+// release fails inside the section, and the step reports the release failure
+// wrapped beside the cause code, as the pre-repair report did. The window
+// record is replaced by a directory after the hold lands, so the release's own
+// read is what fails.
+func TestMergeStepCause7ReleaseFailureIsReportedWrapped(t *testing.T) {
+	f := newMergeFixture(t)
+	card := f.withCardTree(readyCardPtr())
+	seams := f.seams(card)
+	seams.Git = cause7MergeGit(f)
+	seams.AfterHold = func() {
+		lockPath := integrationLockPath(f.root)
+		if err := os.Remove(lockPath); err != nil {
+			t.Fatal(err)
+		}
+		if err := os.MkdirAll(lockPath, 0o755); err != nil {
+			t.Fatal(err)
+		}
+	}
+	_, stepErr := RunMergeStep(f.input(), seams)
+	requireCode(t, stepErr, MergeExitMergeDirty)
+	if msg := stepErr.Error(); !strings.Contains(msg, "releasing the window also failed") {
+		t.Fatalf("a failed release after the hold must be reported wrapped: %v", stepErr)
+	}
+	policy, err := ReadIntegrationWindowPolicy(f.root)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if policy.Policy != PolicyHold {
+		t.Fatalf("the hold must be on record even when the release fails: %q", policy.Policy)
+	}
+}
