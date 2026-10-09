@@ -15,7 +15,7 @@ tier: M
 - **RED의 올바른 이유**: 각 RED는 "이 SPEC이 바꿀 표면이 오늘 비어 있다"는 이유로 적색이다 — 구현이 그 표면을 채우면 뒤집힌다. 선존재 파일이 못 만지는 wrong-reason red는 없다.
 - **명령 형태**: 전부 단일 호출(파이프·리다이렉트·`&&`·`;`·서브셸 없음). grep 일치 0개는 exit 1이다 — "빈 출력 + exit 1"은 완전한 관측이다.
 - **비재현 관측 처분**: 재실행 불가능한 관측(예: internal/ 0힛 — 이미 녹색인 부재 클레임)은 회귀 가드로 분류하고 릴리스 블로킹에서 제외한다(undecidable disposition).
-- **판정 보류 강등 (plan-audit iter3 CX-7/CX-8)**: AC-RDX-003/004/005(계측이 구조 면만 전달 — 빈 상수·"Return ok." 프롬프트 mutant 통과)와 AC-RDX-006(전-file 계수 — 산개 언급 mutant 판별 불가)은 verification-completeness §2 채택 기준(계측이 너무 얕아 채택 불가 — mutant-probe adoption bar; §2.1 처분군 적용)에 따라 회귀 가드(판정 보류)로 강등됐다 — RED 셀은 측정된 사실로 보존되며 판정은 §7의 형제 카드 계측으로 이관된다. 게이트가 아니다.
+- **판정 보류 강등 (plan-audit iter3 CX-7/CX-8 + fresh-run iter2 CX-12)**: AC-RDX-003/004/005(계측이 구조 면만 전달 — 빈 상수·"Return ok." 프롬프트 mutant 통과)와 AC-RDX-006(전-file 계수 — 산개 언급 mutant 판별 불가)은 verification-completeness §2 채택 기준(계측이 너무 얕아 채택 불가 — mutant-probe adoption bar; §2.1 처분군 적용)에 따라 회귀 가드(판정 보류)로 강등됐다. AC-RDX-017도 동일 처분(CX-12) — 리터럴 쌍(LED-018/019)이 동의어 바꿔쓰기 클래스에 우회됨이 실증돼 의미론 판정은 plan §E7 검토면으로 이관됐다. RED 셀은 전부 측정된 사실로 보존되며 판정은 §7의 형제 카드 계측으로 이관된다. 게이트가 아니다.
 
 ## §D AC Matrix
 
@@ -34,14 +34,14 @@ tier: M
 | AC-RDX-014 | 블로킹 | specialist 스키마 블록이 codex 상태 파일 부재 시 기본값(`rust-v0.161.0` + 경고)을 문서화 | LED-006 공유 (0/1) | M1 → LED-006 ≥1 + 블록 내 기본값 기술 |
 | AC-RDX-015 | 블로킹 | runner 체크리스트 블록이 alpha watch 규범(watch 관찰목록 전용, 안정 탑재 시에만 채택)을 담는다 | LED-005 공유 (0/1) | M2 → LED-005 ≥1 + 블록 내 watch 규범 기술 |
 | AC-RDX-016 | 블로킹 | specialist BP 절차가 `source-first` 원문-패치 선행 강제를 명명 | LED-014 (0/1) | M3 → ≥1/0 |
-| AC-RDX-017 | 블로킹 | Phase 2 조기 종료가 축별로 재범위화된다 — CC 널 델타는 `only the CC axis`로 중단되고 codex·BP 축은 같은 run에서 실행·기록; 구형 무조건 문장은 주석 포함 어디에도 생존 금지 (CX-9 + CX-10, REQ-RDX-015) | LED-018 (0/1) + LED-019 (1/0 — 제거면) | M1 → LED-018 ≥1/0 AND LED-019 =0/1 |
+| AC-RDX-017 | 회귀 가드(판정 보류 — CX-12) | (구조 면) Phase 2 조기 종료의 축별 재범위화 — 리터럴 쌍(LED-018/019)은 동의어 바꿔쓰기(paraphrase) 클래스에 우회됨이 실증됨(CX-12) → 의미론 판정은 plan §E7 검토면으로 이관, 형제 카드가 판별기 흡수 | LED-018 (0/1) + LED-019 (1/0 — 구조 참고, 측정 사실 보존) | M1 착지 신호(비게이트): LED-018 ≥1/0 AND LED-019 =0/1 |
 | AC-RDX-011 | 회귀 가드 | `internal/`에 `last-codex-version` 참조 0힛 유지 (Go 라이터 부재 보존) | — (오늘 녹색 — 부재 클레임, 비재현) | 유지 조건: run-phase 전체 |
 | AC-RDX-012 | 회귀 가드 | specialist의 `last-cc-version.json` 문서화 ≥3힛 유지 (CC 축 절차 보존) | — (오늘 녹색 3힛) | 유지 조건: run-phase 전체 |
 | AC-RDX-013 | 회귀 가드 | manifest의 `hns-release-update-run.js` 참조 1힛 유지 + `sprint_contract` dimensions·thresholds 판독 기준선 일치 (LED-013 + LED-015 — CX-3 판독면) | — (오늘 녹색: 1힛 + LED-015 기준선 출력) | 유지 조건: run-phase 전체 |
 
-## §D.1 시나리오 (Given-When-Then — 블로킹 10종 + 가드(판정 보류) 4종)
+## §D.1 시나리오 (Given-When-Then — 블로킹 9종 + 가드(판정 보류) 5종)
 
-> AC-RDX-003/004/005/006의 시나리오는 구조 면 관측을 기술한다 — CX-7/CX-8 판정 보류로 게이트 밖이며 판정은 형제 카드 계측으로 이관된다(iter3).
+> AC-RDX-003/004/005/006의 시나리오는 구조 면 관측을 기술한다 — CX-7/CX-8 판정 보류로 게이트 밖이며 판정은 형제 카드 계측으로 이관된다(iter3). AC-RDX-017도 CX-12(paraphrase 우회)로 판정 보류 — 의미론 판정은 plan §E7 검토면으로 이관된다(fresh-run iter2).
 
 - **AC-RDX-001** — **Given** manifest.json이 CC 단일 domain 문자열을 담은 상태로, **When** LED-001 명령(`domain` 키 행 스코프)을 실행하면, **Then** 일치 개수가 1 이상이다 (domain 필드가 codex 축을 명명 — source_request의 동일 문구는 매치 제외, CX-3).
 - **AC-RDX-002** — **Given** 동일 상태로, **When** LED-002 명령(동일 스코프)을 실행하면, **Then** 일치 개수가 1 이상이다 (domain 필드가 best-practices 축을 명명).
@@ -74,7 +74,7 @@ tier: M
 | AC-RDX-014 | REQ-RDX-004 | M-3의 제3 쌍 (스키마 문서화 + 시드 + 부재 기본값 3중 분해) |
 | AC-RDX-015 | REQ-RDX-009 | alpha-채택 오표기 mutant 봉쇄 |
 | AC-RDX-016 | REQ-RDX-013 | M-4 (BP 껍데기 섹션 — 기계 판정면 확보) |
-| AC-RDX-017 | REQ-RDX-015 | M-8 (CC 널 조기 종료 — CX-9) |
+| AC-RDX-017 | REQ-RDX-015 | M-8 — 구조 참고; paraphrase 판별은 CX-12 이관(형제 카드 판별기 + plan §E7 검토면) |
 | AC-RDX-011 | REQ-RDX-005 | M-5 (Go 침입) |
 | AC-RDX-012 | REQ-RDX-003 (보존 축) | — |
 | AC-RDX-013 | REQ-RDX-011 (골격 보존) | threshold 편집은 LED-015 판독면에 걸린다 (CX-3) |
@@ -119,9 +119,9 @@ tier: M
 
 ## §D.5 종결 게이트 (Definition of Done)
 
-1. 블로킹 AC 10종 전부 GREEN (RED-now가 대응 마일스톤에서 뒤집힘 — exit code 포함 관측). 회귀 가드(판정 보류) 4종(AC-RDX-003/004/005/006 — CX-7/8 강등)은 구조 면 착지 신호로 기록되고 판정은 형제 카드 계측으로 이관된다 — 게이트 아님(verification-completeness §2 채택 기준 — 계측이 너무 얕아 채택 불가; §2.1 처분군 적용).
+1. 블로킹 AC 9종 전부 GREEN (RED-now가 대응 마일스톤에서 뒤집힘 — exit code 포함 관측). 회귀 가드(판정 보류) 5종(AC-RDX-003/004/005/006 — CX-7/8, AC-RDX-017 — CX-12)은 구조 면 착지 신호로 기록되고 판정은 형제 카드 계측·plan §E7 검토면으로 이관된다 — 게이트 아님(verification-completeness §2 채택 기준 — 계측이 너무 얕아 채택 불가; §2.1 처분군 적용).
 2. 회귀 가드 3종 기준선 유지 (LED-011/012/013 변화 없음).
-3. spec.md REQ-RDX-001..014 전부 구현 대응물 존재 — REQ↔AC 추적성 §D.2 공백 없음.
+3. spec.md REQ-RDX-001..015 전부 구현 대응물 존재 — REQ↔AC 추적성 §D.2 공백 없음.
 4. Go 트리 변경 0 (git diff --name-only가 3개 하네스 파일만 반환).
 5. `[NEEDS CLARIFICATION]` 마커 0개 — 열린 판단은 전부 spec.md §1.2 결정 기록으로 봉쇄.
 

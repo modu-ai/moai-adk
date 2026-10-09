@@ -108,7 +108,7 @@ grep -c "hns-release-update-run.js" .claude/commands/harness/release-update/mani
 
 ## §E Self-Verification (run-phase 납품)
 
-- **E1 AC 매트릭스** — acceptance.md §D 13종 PASS/FAIL + 검증 명령 + 실측 출력 (§E 삼중 귀속: 명령·출력·HEAD SHA).
+- **E1 AC 매트릭스** — acceptance.md §D 전 AC(17종: 블로킹 9 + 회귀 가드 8) PASS/FAIL/보류 + 검증 명령 + 실측 출력 (§E 삼중 귀속: 명령·출력·HEAD SHA).
 - **E2 RED→GREEN 전수 재측정** — §C의 11종 RED 앵커가 대응 마일스톤 착지 후 뒤집혔는지 exit code 포함 재실행.
 - **E3 러너 런타임-형태 어댑터 스모크 (plan-audit iter1 CX-4 재설계)** — 러너는 ESM `export const meta`(1행)와 top-level `return`(153행)/`await`(143행)를 결합한 **하이브리드 형태**라 네이티브 Node 모듈 로딩이 어느 목표로도 파스하지 못한다(아래 근거). 워크플로 런타임은 본문을 함수-래핑 평가하므로, 스모크는 그 평가 형태를 재현한다: 행선지 스코프로 `export` 문만 적출한 뒤 AsyncFunction 본문으로 컴파일·실행하고 export 경로로 셀렉터를 실측 호출한다. 이 어댑터가 곧 top-level-형태 보존의 기계 면이다 — `return`/`await`가 함수 래핑 형태에서 벗어나면 컴파일이 즉시 적색으로 뒤집힌다.
 
@@ -140,6 +140,7 @@ grep -c "hns-release-update-run.js" .claude/commands/harness/release-update/mani
 - **E4 JSON 파스** — `python3 -c "import json;json.load(open('.claude/commands/harness/release-update/manifest.json'))"` exit 0 (domain 문자열 편집 후).
 - **E5 회귀 가드** — §C PRESERVE 앵커 3종 + sprint_contract 판독(LED-015 — dimensions·thresholds 출력이 기준선 `['Functionality', 'Consistency'] {'Functionality': 0.85, 'Consistency': 0.8}`와 일치; CX-3, internal/ 0힛 · last-cc-version.json ≥3 · runner_workflow 참조 1 포함).
 - **E6 spec-lint** — `go run ./cmd/moai spec lint SPEC-RELUP-DUALAXIS-001` (또는 프로젝트 규약 형태) exit 0 — MissingExclusions·FrontmatterInvalid 0건 확인.
+- **E7 REQ-RDX-015 검토면 (CX-12 이관 — 이 요구의 유일한 구속 판정면)** — 기계 면(LED-018/019)이 paraphrase 클래스에 우회됨이 실증됐으므로, run-exit E1 인간 검토가 축별 종료 의미론을 검증한다: (a) Phase 2 조기 종료가 CC 축 한정인지, (b) codex·BP 축의 계속 실행·기록이 같은 절차에 명시돼 있는지, (c) Phase 8 완료 게이트가 3축(CC/codex/BP) 실행 상태를 집계하는지. **run-phase 위임 프롬프트는 이 검토 항목을 반드시 운반한다**(manager-develop-prompt-template §E 성격 — 누락 시 재위임 리스크).
 
 ## §F Milestones (결정 가역성 순 — 변동 가능성 높은 결정부터)
 
