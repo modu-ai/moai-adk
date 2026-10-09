@@ -3,6 +3,8 @@
 > CLAUDE.local.md §4.1 의 운영 절차 이하에서 이관했다(card t750, 2026-09-14). **로컬 전용 문서** — 템플릿에 미러하지 않는다(내부 카드 id·SPEC id·내부 날짜 포함). 이 문서의 정본은 develop 트리의 이 사본이다(CLAUDE.local.md §0.1 판별식 준용).
 > 체인 다이어그램·[HARD] 규율 5항·레인 의무의 교리는 CLAUDE.local.md §4.1 에 남아 있다 — 이 문서는 그 실행 절차와 실측 근거만 운반한다. 레인의 develop 갱신 판정식은 `.claude/rules/local/gitflow-lane-protocol.md` §11 이 소유한다.
 
+> **후보 경로 예외 — 운영자 승인 2026-10-03 (SPEC-CANDIDATE-CI-001, REQ-CCI-016).** `moai integration candidate --card <card-id>`는 후보 커밋을 `ci/<card-id>`로 push해 착지 전 CI 판정을 받는 경로다. 이 경로에 한해 `WT push · CI 요청 금지`를 대체하며, 통합 브랜치 push는 여전히 리더의 일괄 행위이고 후보 verb는 통합 창을 잡지 않는다. 정본은 `AGENTS.local.md` §4.1이다. 이 문서의 develop 서술은 그대로 남는다.
+
 ---
 **운영 절차**
 

@@ -2,7 +2,7 @@
 id: SPEC-CANDIDATE-CI-001
 title: "Pre-landing candidate CI — merge-tree candidate commits pushed to ci/<card> with a green-gated landing check"
 version: "0.1.0"
-status: completed
+status: in-progress
 created: 2026-10-09
 updated: 2026-10-10
 author: manager-spec

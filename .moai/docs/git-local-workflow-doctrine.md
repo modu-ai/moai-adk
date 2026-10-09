@@ -8,6 +8,8 @@
 > - **여전히 구속력 있음**: `enforce_admins: true` 로 인한 `main` 직접 push 전면 차단, `main`은 **릴리스 PR로만** 갱신된다는 규칙, self-merge 허용 조건(승인 0 + CI status check 통과), pre-push/pre-commit 훅 설정, PR merge 후 로컬 동기화 패턴(A4/A5/A6). 이들은 릴리스 PR 경로에 그대로 적용된다.
 >
 > 아래 본문은 그 구분 아래 읽는다.
+>
+> **후보 경로 예외 — 운영자 승인 2026-10-03 (SPEC-CANDIDATE-CI-001, REQ-CCI-016).** `moai integration candidate --card <card-id>`는 후보 커밋을 `ci/<card-id>`로 push해 착지 전 CI 판정을 받는 경로다. 이 경로에 한해 `WT push · CI 요청 금지`를 대체하며, 통합 브랜치 push는 여전히 리더의 일괄 행위이고 후보 verb는 통합 창을 잡지 않는다. 정본은 `AGENTS.local.md` §4.1이다. 이 문서의 develop 서술과 상단 고지는 그대로 남는다.
 
 ## 23. Local Git Workflows + Hook Setup (PR-mandatory 1-person OSS)
 

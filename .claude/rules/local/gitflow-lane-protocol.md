@@ -46,6 +46,8 @@ paths: ".moai/specs/**,.claude/skills/moai/workflows/run.md,.claude/skills/moai/
 
 [HARD] 자기 워크트리 안에서 `git -C .claude/worktrees/develop merge …` 로 **원격 조작하는 것은 worktree-session 가드가 거부한다**. 들어가는 것이 유일한 인가 경로다.
 
+[HARD] **후보 경로 예외 — 운영자 승인 2026-10-03 (REQ-CCI-016).** `moai integration candidate --card <card-id>`는 후보 커밋을 `ci/<card-id>`로 push하는 경로이며, 통합 창(`moai integration acquire`/`release`)을 잡지도 건드리지도 않는다. 병합과 통합 브랜치 push는 §4와 같이 리더의 일괄 행위로 남는다.
+
 ## 3. 직렬화 — 병합 창은 한 번에 한 레인
 
 [HARD] 기존 메커니즘을 그대로 쓴다. 새로 만들지 않는다.
@@ -77,6 +79,8 @@ git branch --show-current
 ## 4. Push — 리더 일괄, 레인은 하지 않는다
 
 **레인은 `develop`을 push하지 않는다(2026-09-02 운영자 지시).** 레인의 공개 소관은 로컬 병합에서 끝난다 — 병합 커밋 SHA(카드 id 포함)를 완료 보고로 리더에게 전달하는 것까지다. push는 리더가 **일괄**로 수행한다: 완료 보고에서 병합 SHA를 모아 배치를 닫고 한 번 push한다.
+
+**후보 경로 예외 — 운영자 승인 2026-10-03 (REQ-CCI-016).** 이 한 경로에 한해 `WT push · CI 요청 금지`를 대체한다. `moai integration candidate --card <card-id>`가 만든 후보 커밋을 레인이 `ci/<card-id>`로 push해 착지 전 CI 판정을 받을 수 있고, 착지 게이트는 그 후보의 녹색 판정을 요구한다. 통합 브랜치 push는 그대로 리더의 일괄 행위다. 이 절의 나머지 규칙(착지 검증·배치 트리거·초록 조건부)은 바뀌지 않으며, 이 절의 develop 서술은 AGENTS.local.md §4.1 전환 고지(drift) 아래에서 읽는다.
 
 **리더의 원격 착지 검증.** push 뒤에 리더는 `git fetch origin develop` + `git rev-parse origin/develop`으로 원격이 움직였는지 확인하고, 그 뒤에야 카드 done과 워크트리 폐기 승인을 낸다.
 

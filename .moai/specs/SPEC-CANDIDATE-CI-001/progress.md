@@ -1,6 +1,6 @@
 # progress.md — SPEC-CANDIDATE-CI-001
 
-status: completed
+status: in-progress
 card: t1478
 phase: plan
 
@@ -645,6 +645,14 @@ Goroutine starts in non-test Go code: none (grep over the card diff; the positiv
 - spec_progress: the 1075-SPEC catalogue overflowed the tool result. Only this SPEC's record was extracted; the rest of the catalogue was not read.
 - moai build lag: db0c514d3 is an ancestor of ee52fd342 (`git merge-base --is-ancestor`, exit 0), and `git rev-list --count db0c514d3..HEAD` is 167.
 - progress.md line 5 carries `phase: plan`, a lifecycle-stage name. spec-frontmatter-schema.md prohibits that value for spec.md; progress.md sits outside that schema. Not changed.
+
+### Sync repair after sync-audit FAIL
+
+- Audit: `.moai/reports/t1478/sync-audit.md`, verdict FAIL, audited SHA dbbaf5931ec8dc9fd2960f2e7cbf1280807b9592. The `sync_status` and close claims above describe the 2026-10-09 close and are superseded by this repair.
+- Repaired in this commit (sync scope): (a) spec.md and progress.md status returned from `completed` to `in-progress` (audit F6); (b) the M7 doctrine amendment (audit F5, AC-CCI-016-1). The candidate-path exception, recording the 2026-10-03 operator approval, lands in AGENTS.local.md §4.1, gitflow-lane-protocol.md §2 and §4, and the three `.moai/docs/` procedure docs, with their develop-era text and drift notices kept.
+- Lifecycle note: the reopen adds no `amendment_of:` field and no `## Amendments` section, so it is not the exempt in-place amendment in spec-frontmatter-schema.md. Whether `moai spec audit` reports it as SyncStatusDrift is not measured here; the leader decides the route.
+- Pending the leader's route decision (out of sync scope): M6 (race-test split with a rosterguard shard, flaky-registry retry wrapper, dominant-race timing repair), which fails AC-CCI-009-1, AC-CCI-009-2, AC-CCI-009-3 and AC-CCI-013-1 (audit F1-F4); and F7 (candidate verdict falls back to run-job names when the required-checks source is unreadable, `internal/cli/integration_candidate.go` candidateRunVerdict; blocking). Optional findings F8-F15 are not addressed here.
+- No acceptance criterion is claimed as passing by this commit. AC-CCI-016-1 is addressed by the amendment text and has not been re-audited. The sync-commit SHA placeholder above is unchanged.
 
 ## Lane Kickoff Decision Record (2026-10-09, lane-11)
 
