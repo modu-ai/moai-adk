@@ -117,7 +117,9 @@ milestone writes NO implementation code.
 ### M2 — Regression pins for the repaired mechanisms (Priority Medium)
 
 Deliverable: tests that keep K1/K2 from regressing silently. Implementation
-surface: test files only, unless M1-b escalated to repair.
+surface: test files, plus the REQ-UMF-006 verification-and-reporting
+implementation in internal/userassets/install.go (unconditionally in
+scope); repair escalation (spec R1) remains M1-b-conditional.
 
 - M2-a (K1): confirm the existing pin —
   `TestRunUpdate_V3Path_NormalizesLegacyRootDenyEntries` already carries
