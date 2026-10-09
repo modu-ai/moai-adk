@@ -43,6 +43,7 @@ Tier: M
   integrity probe (K3). Branch contingency: if run-phase M1-b measures a
   live empty-directory producer, M2 escalates to repair per spec.md R1.
 - Plan status: audit-ready.
+audit_ready: true
 
 ## §E.2 Run-phase Evidence
 
@@ -79,3 +80,10 @@ Justification: the implementation is coding-heavy Go work in one subsystem famil
 
 Boundary cases: none — all four mode criteria resolved unambiguously.
 
+
+## §G Override and Refusal Record
+
+- 2026-10-09T13:00:28Z SPEC-UPDATE-MIGRATION-FIX-001 ceiling-refusal outcome=hold reasons="plan-audit ceiling reached (round count 3 >= tier ceiling 2); the verdict matches no admitting arm and holds, entry blocked (REQ-ACE-006) — release path: the split/new-SPEC route of REQ-ACE-005 or an operator decision recorded in progress.md §G" evidence=/Users/goos/moai/moai-adk-go/.moai/worktrees/t1578/.moai/reports/t1578/plan-audit-iter1.md,/Users/goos/moai/moai-adk-go/.moai/worktrees/t1578/.moai/reports/t1578/plan-audit-iter2.md,/Users/goos/moai/moai-adk-go/.moai/worktrees/t1578/.moai/reports/t1578/plan-audit-iter3.md
+- 2026-10-09T13:05:26Z SPEC-UPDATE-MIGRATION-FIX-001 ceiling-refusal outcome=hold reasons="plan-audit ceiling reached (round count 3 >= tier ceiling 2); the verdict matches no admitting arm and holds, entry blocked (REQ-ACE-006) — release path: the split/new-SPEC route of REQ-ACE-005 or an operator decision recorded in progress.md §G" evidence=/Users/goos/moai/moai-adk-go/.moai/worktrees/t1578/.moai/reports/t1578/plan-audit-iter1.md,/Users/goos/moai/moai-adk-go/.moai/worktrees/t1578/.moai/reports/t1578/plan-audit-iter2.md,/Users/goos/moai/moai-adk-go/.moai/worktrees/t1578/.moai/reports/t1578/plan-audit-iter3.md
+- 2026-10-09T13:11:28Z SPEC-UPDATE-MIGRATION-FIX-001 ceiling-outcome outcome=pass-through reasons="plan-audit ceiling reached (round count 3 >= tier ceiling 2 + 1 delta rounds); the verdict is admission-clean and admits without a question (REQ-ACE-013)" evidence=/Users/goos/moai/moai-adk-go/.moai/worktrees/t1578/.moai/reports/t1578/plan-audit-iter1.md,/Users/goos/moai/moai-adk-go/.moai/worktrees/t1578/.moai/reports/t1578/plan-audit-iter2.md,/Users/goos/moai/moai-adk-go/.moai/worktrees/t1578/.moai/reports/t1578/plan-audit-iter3.md
+- 2026-10-09T13:12:37Z SPEC-UPDATE-MIGRATION-FIX-001 ceiling-outcome outcome=pass-through reasons="plan-audit ceiling reached (round count 3 >= tier ceiling 2 + 1 delta rounds); the verdict is admission-clean and admits without a question (REQ-ACE-013)" evidence=/Users/goos/moai/moai-adk-go/.moai/worktrees/t1578/.moai/reports/t1578/plan-audit-iter1.md,/Users/goos/moai/moai-adk-go/.moai/worktrees/t1578/.moai/reports/t1578/plan-audit-iter2.md,/Users/goos/moai/moai-adk-go/.moai/worktrees/t1578/.moai/reports/t1578/plan-audit-iter3.md
