@@ -1193,6 +1193,29 @@ func TestCheckProtectedZoneShellGitGlobalOptionOwnGeneration(t *testing.T) {
 	t.Logf("swept=%d", 1)
 }
 
+// TestCheckProtectedZoneShellGitUnsupportedOptionTerminatesWorld — gate
+// round 34 P2 (deny-miss): when a world's option scan hits an
+// ESCAPE-ORIGIN option word that world's git would refuse, that world's
+// subcommand search TERMINATES. The shape: the option word decodes to -C
+// only in the modern world (consuming rm as the directory, leaving the
+// read-only grep); the pre-4.2 reading keeps the escape text literal —
+// git refuses the unknown option (exit 129) and NOTHING executes in that
+// world. The pre-4.2 scan that skipped the unsupported option mis-read rm
+// as the subcommand and false-denied AGENTS.md. The row asserts the
+// ALLOW. Escape texts are written with the doubled backslash
+// (transport-safe source syntax for the single 0x5C byte at runtime).
+func TestCheckProtectedZoneShellGitUnsupportedOptionTerminatesWorld(t *testing.T) {
+	agentManifest := "  docs_zone:\n    paths: [\"AGENTS.md\"]\n"
+	root := newZoneRoot(t, zoneShippedDoc(agentManifest), "")
+	h := zoneTestHandler(t, root)
+	const termCmd = "git $'-\\u0043' rm grep --no-index AGENTS.md"
+	d, r := zoneCall(t, h, "Bash", harnessLearnerIdentity, map[string]any{"command": termCmd})
+	if d == DecisionDeny || strings.Contains(r, SentinelHarnessFrozenProtectedZone) {
+		t.Errorf("git unsupported option terminates world: decision=%q reason=%q, want allowed — the pre-4.2 world's git refuses the escape-origin option (exit 129) and nothing executes in that world; the modern world's -C consumes rm leaving the read-only grep", termCmd, r)
+	}
+	t.Logf("swept=%d", 1)
+}
+
 // TestCheckProtectedZoneShellGitMassFileArgsBounded — gate round 29 P3 /
 // gate round 30 P3 / gate round 31 P1 (measurement pin): 80,000 file
 // arguments must run BOUNDED — hash-set dedup (linear) and the

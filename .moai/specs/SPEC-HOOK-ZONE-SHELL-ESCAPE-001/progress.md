@@ -1186,6 +1186,39 @@ the deny sound and the row unadoptable; the committed executable IS the
 dual word itself. Fixture: narrowed marker manifest. Inputs
 transport-verified: whole-file NUL-byte scan zero, doubled backslash.
 
+### Gate round 34 (second) — M2.16 escape-origin option world termination (2026-10-09)
+
+One P2 (deny-miss): when a world's git option scan hits an ESCAPE-ORIGIN
+option word that world's git would refuse, that world's subcommand search
+must TERMINATE. Shape: `git $'-C' rm grep --no-index AGENTS.md` —
+the option word decodes to -C only in the modern world (consuming rm as
+the directory, leaving the read-only grep); the pre-4.2 reading keeps the
+escape text literal — git refuses the unknown option (exit 129) and
+NOTHING executes in that world. The pre-4.2 scan that skipped the
+unsupported option mis-read rm as the subcommand and false-denied
+AGENTS.md via the docs_zone category.
+
+**Regression row — RED under the M2.15 tip (`b4718c6d0` + the row,
+uncommitted at measurement):**
+
+- **Command**: `unset MOAI_KANBAN_ID MOAI_KANBAN_LEAD_ADDR MOAI_KANBAN_SETTINGS_INJECTED && go test ./internal/hook -run 'TestCheckProtectedZoneShellGitUnsupportedOptionTerminatesWorld' -count=1 -v`
+- **Exit code**: `1`
+- **Observed (verbatim, decision line)**:
+
+```
+    protected_zone_shell_repro_test.go:1214: git unsupported option terminates world: decision="git $'-\\u0043' rm grep --no-index AGENTS.md" reason="HARNESS_FROZEN_PROTECTED_ZONE_VIOLATION: harness-learner category=baseline route=human next=return-blocker-report path=AGENTS.md", want allowed — the pre-4.2 world's git refuses the escape-origin option (exit 129) and nothing executes in that world; the modern world's -C consumes rm leaving the read-only grep
+--- FAIL: TestCheckProtectedZoneShellGitUnsupportedOptionTerminatesWorld (0.01s)
+FAIL
+FAIL	github.com/modu-ai/moai-adk/internal/hook	0.738s
+```
+
+Fixture: a VALID manifest (the seven categories + a docs_zone category
+covering AGENTS.md — the first draft's duplicate safety_guards key was
+invalid and corrected). The deny `category=baseline path=AGENTS.md`
+confirms the cross-generation mis-read (the baseline floor judged under
+the mis-read subcommand). Inputs transport-verified: whole-file NUL-byte
+scan zero, doubled backslash.
+
 ### Gate round 32 — M2.13 over-cap fail-closed regardless of manifest state (2026-10-09)
 
 A REAL P1 on the M2.12 immediate cap (reviewer: base deny → current allow,
@@ -1571,3 +1604,7 @@ b12_self_test_c: pass   # entry file paths verified via ls internal/hook/: prote
 mx_tag_validation: "added=1 removed=0 updated=0"   # @MX:DEBT(+CEILING/UPGRADE) on zoneUnescapeAnsiC — the \u/\U host-variance residual (spec §B/§F follow-up-card material); existing @MX:SPEC on checkProtectedZoneShell untouched
 readme_docs_site: no-op   # internal guard repair — the protected-zone ANSI-C decoder has no README feature-list or docs-site surface
 ```
+
+## §G Override and Refusal Record
+
+- 2026-10-09T01:23:40Z SPEC-HOOK-ZONE-SHELL-ESCAPE-001 ceiling-refusal outcome=hold reasons="plan-audit ceiling reached (round count 3 >= tier ceiling 2); the verdict matches no admitting arm and holds, entry blocked (REQ-ACE-006) — release path: the split/new-SPEC route of REQ-ACE-005 or an operator decision recorded in progress.md §G" evidence=/Users/goos/MoAI/moai-adk-go/.moai/worktrees/t1585/.moai/reports/t1585/plan-audit-iter2.md,/Users/goos/MoAI/moai-adk-go/.moai/worktrees/t1585/.moai/reports/t1585/plan-audit-iter3.md,/Users/goos/MoAI/moai-adk-go/.moai/worktrees/t1585/.moai/reports/t1585/plan-audit.md
