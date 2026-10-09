@@ -2,10 +2,10 @@
 
 ## §E.1 Plan-phase Audit-Ready Signal
 
-_<pending plan-audit — audit 완료 시 manager-spec이 아래 필드를 채운다>_
+- plan_status: audit-ready
+- plan_complete_at: 2026-10-09T13:20:00Z
 
-- plan_status: (audit 후 기입)
-- plan_complete_at: (audit 후 기입)
+판정: **PASS-WITH-DEBT 0.9375**(Tier M 임계 0.80 초과, blocking 0, codex 필수 게이트 pass — 영수증 `rcpt-a3d3e23f38b98c82994e755f`, 판정 파일 `.moai/reports/t1579/plan-audit.md` 터미널 섹션, audited_sha `3fbb54b19`). 감사 궤적: 정규 3반복(점수 회귀 STOP)→천장 분할(HISTORY 0.4.0)→신규 실행 3반복→통과. 부채 2건: `rdx015-e7-carry`(run에서 변제 — run-phase 위임 프롬프트가 plan §E7 검토 항목 운반 필수)·`rdx-sibling-card`(sync에서 변제 — 형제 카드 실제 발행, 미발행 시 AC-RDX-003/004/005/006/017 5종이 영구 판정 보류).
 
 ## §E.2 Run-phase Evidence
 
