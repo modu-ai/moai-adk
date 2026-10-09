@@ -73,6 +73,13 @@ FAIL	github.com/modu-ai/moai-adk/internal/cli	1.220s
 - **Lock unit cells**: `go test -count=1 ./internal/cli -run '^TestFoldStoreLock'` → **exit 0**, verbatim `ok  github.com/modu-ai/moai-adk/internal/cli  2.868s` — acquire→contending-try refused→bounded refusal within deadline naming the store→release→re-acquire succeeds→release idempotent→lock file never removed (D-3); stale unlocked file acquires (§3 edge 1); two stores hold simultaneously (§3 edge 3).
 - **Windows compile gate (AC-MRR-008 local leg)**: `GOOS=windows go build ./internal/cli/...` → exit 0; `GOOS=windows go vet ./internal/cli/` → exit 0 (this run, this tree).
 
+### M3 — Surface cells (AC-MRR-003 / AC-MRR-005 / AC-MRR-006)
+
+- **AC-MRR-003 command**: `go test -count=1 ./internal/cli -run '^TestFoldStoreLockContentionRefusesCleanly$'` (env-scrubbed compound) → **exit 0**, verbatim `ok  github.com/modu-ai/moai-adk/internal/cli  2.864s` — the contended fold refuses via the bounded-wait path (2s), its error names the contended store, and both store files are byte-identical to the pre-invocation state (asserted inside the test by `storeHashes` + `requireSameStore`).
+- **AC-MRR-005 command**: same compound with `-run '^TestFoldLockFileInvisibleToTooling$'` → **exit 0**, verbatim `ok  github.com/modu-ai/moai-adk/internal/cli  0.819s` — `memory doctor --dir <store> --json` and the fold preview are byte-identical with and without `.moai-fold.lock` present (asserted by in-test comparison); the unlinked-archive listing carries no lock-file entry (implied by the byte identity).
+- **AC-MRR-006 command**: `go test -race -count=1 ./internal/cli -run '^TestFoldOnDoneContentionAbandonsWithoutWrite$'` (env-scrubbed compound) → **exit 0**, verbatim `ok  github.com/modu-ai/moai-adk/internal/cli  5.325s` — both cells green: (1) waiting under contention reports exactly one abandonment stderr line and begins no write; (2) the step HOLDING the lock with its apply in flight reports abandonment, the worker exits (observed via the wiring's `workerExit` synchronization), and a fresh non-blocking acquire on the same store succeeds — the worker's deferred release ran (§3 edge 4).
+- **Refused-tool note (§3.1)**: the first attempt to append the AC-MRR-006 test body via a compound shell heredoc was refused by the worktree-isolation guard (command-complexity refusal); the body was re-authored through the file-edit tool unchanged and the refusal carried no content loss.
+
 ## §E.3 Run-phase Audit-Ready Signal
 
 _<pending run-phase — owned by manager-develop>_

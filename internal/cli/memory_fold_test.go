@@ -1542,3 +1542,70 @@ func TestFoldStoreLockSpanHeldThroughApply(t *testing.T) {
 	}
 	requireNoTempFiles(t, dir)
 }
+
+// TestFoldStoreLockContentionRefusesCleanly is AC-MRR-003: with the store
+// lock held by another holder, the fold verb exits non-zero, its error
+// names the contended store, and it writes NOTHING — both store files stay
+// byte-identical to their pre-invocation state. (The refusal takes the
+// bounded-wait path: the fold waits out the 2s deadline and refuses.)
+func TestFoldStoreLockContentionRefusesCleanly(t *testing.T) {
+	dir := seedFoldStore(t, minimalMemory(foldRaceLine1568), foldRaceFiles())
+	held := newFoldStoreLock()
+	if err := held.acquire(dir); err != nil {
+		t.Fatalf("hold the store lock: %v", err)
+	}
+	t.Cleanup(func() { _ = held.release() })
+
+	before := storeHashes(t, dir)
+	r := runFoldRefused(t, "--card", "t1568", "--yes", "--dir", dir)
+	if msg := r.stderr + r.stdout; !strings.Contains(msg, dir) {
+		t.Errorf("the contention refusal does not name the contended store %s: %s", dir, msg)
+	}
+	requireSameStore(t, before, storeHashes(t, dir))
+}
+
+// TestFoldLockFileInvisibleToTooling is AC-MRR-005: a store directory
+// carrying .moai-fold.lock produces byte-identical `memory doctor` and fold
+// preview output to the same store without it — the lock file changes no
+// observable fold or doctor output (REQ-MRR-005).
+func TestFoldLockFileInvisibleToTooling(t *testing.T) {
+	dir := seedFoldStore(t, minimalMemory(foldRaceLine1568), foldRaceFiles())
+
+	runDoctor := func() string {
+		t.Helper()
+		var out bytes.Buffer
+		cmd := newMemoryDoctorCmd()
+		cmd.SetOut(&out)
+		cmd.SetErr(&out)
+		cmd.SetArgs([]string{"--dir", dir, "--json"})
+		if err := cmd.Execute(); err != nil {
+			t.Fatalf("memory doctor: %v", err)
+		}
+		return out.String()
+	}
+	runPreview := func() string {
+		t.Helper()
+		return runFoldOK(t, "--card", "t1568", "--dir", dir) // no --yes: preview writes nothing
+	}
+
+	doctorWithout, previewWithout := runDoctor(), runPreview()
+
+	// Leave the lock file behind exactly the shape a prior fold's acquire
+	// does: created on acquire, never removed on release (D-3).
+	l := newFoldStoreLock()
+	if err := l.acquire(dir); err != nil {
+		t.Fatalf("acquire to seed the lock file: %v", err)
+	}
+	if err := l.release(); err != nil {
+		t.Fatalf("release: %v", err)
+	}
+
+	doctorWith, previewWith := runDoctor(), runPreview()
+
+	if doctorWith != doctorWithout {
+		t.Errorf("doctor output changed with %s present:\nwithout:\n%s\nwith:\n%s", foldLockFileName, doctorWithout, doctorWith)
+	}
+	if previewWith != previewWithout {
+		t.Errorf("fold preview output changed with %s present:\nwithout:\n%s\nwith:\n%s", foldLockFileName, previewWithout, previewWith)
+	}
+}
