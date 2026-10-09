@@ -7,6 +7,8 @@ import (
 	"fmt"
 	"os"
 	"time"
+
+	"golang.org/x/sys/windows"
 )
 
 // On Windows, CreateFile-based byte-range locks need a handle dance the
@@ -28,29 +30,46 @@ import (
 
 func acquireGuard(path string, timeout time.Duration) (func(), error) {
 	marker := path + ".guard"
+	serializePath := marker + ".serialize"
 	deadline := time.Now().Add(timeout)
 	var fd *os.File
 	var err error
 	for {
+		// Gate round 38-1: the WHOLE verify→reclaim→create span is
+		// serialized under an OS mutex (LockFileEx on a dedicated sibling)
+		// — the byte-compare+restore identity check left a displacement
+		// window where a third caller acquired and the stale reclaim
+		// overlapped into TWO simultaneous lock holders (the deterministic
+		// cross-run repro). Inside the span the dead-marker removal is a
+		// plain remove: no other acquirer can interleave.
+		ser, serErr := os.OpenFile(serializePath, os.O_CREATE|os.O_RDWR, 0o644)
+		if serErr != nil {
+			return nil, serErr
+		}
+		lockErr := lockWindowsExclusive(ser, 200*time.Millisecond)
+		if lockErr != nil {
+			_ = ser.Close()
+			if time.Now().After(deadline) {
+				return nil, lockErr
+			}
+			time.Sleep(5 * time.Millisecond)
+			continue
+		}
+		if guardMarkerDead(marker) {
+			_ = os.Remove(marker)
+		}
 		fd, err = os.OpenFile(marker, os.O_CREATE|os.O_EXCL|os.O_WRONLY, 0o644)
 		if err == nil {
 			// REQ-LOCK-001: stamp the caller's PID — the .lock posture.
-			// The record is the death evidence a later acquirer needs, and
-			// the nanosecond stamp makes it byte-unique per create — the
-			// identity check in reclaimGuardMarker (gate round 18 P1)
-			// compares these bytes.
 			_, _ = fmt.Fprintf(fd, "pid=%d acquired=%s\n", os.Getpid(), time.Now().UTC().Format(time.RFC3339Nano))
+			_ = unlockWindows(ser)
+			_ = ser.Close()
 			break
 		}
+		_ = unlockWindows(ser)
+		_ = ser.Close()
 		if !errors.Is(err, os.ErrExist) {
 			return nil, err
-		}
-		// Held. Reclaim ONLY a death-proven marker — reclaimGuardMarker
-		// re-proves the owner itself and fails closed; rename(2) makes
-		// exactly one racing acquirer the winner and the losers re-run
-		// the create.
-		if reclaimGuardMarker(marker) {
-			continue
 		}
 		if time.Now().After(deadline) {
 			return nil, err
@@ -62,6 +81,30 @@ func acquireGuard(path string, timeout time.Duration) (func(), error) {
 		_ = os.Remove(marker)
 	}
 	return release, nil
+}
+
+// lockWindowsExclusive takes an exclusive LockFileEx on the file's handle,
+// retrying within the timeout (a held serialization lock releases when its
+// holder finishes the span).
+func lockWindowsExclusive(f *os.File, timeout time.Duration) error {
+	deadline := time.Now().Add(timeout)
+	for {
+		err := windows.LockFileEx(windows.Handle(f.Fd()),
+			windows.LOCKFILE_EXCLUSIVE_LOCK|windows.LOCKFILE_FAIL_IMMEDIATELY,
+			0, 1, 0, &windows.Overlapped{})
+		if err == nil {
+			return nil
+		}
+		if time.Now().After(deadline) {
+			return err
+		}
+		time.Sleep(5 * time.Millisecond)
+	}
+}
+
+// unlockWindows releases the exclusive LockFileEx.
+func unlockWindows(f *os.File) error {
+	return windows.UnlockFileEx(windows.Handle(f.Fd()), 0, 1, 0, &windows.Overlapped{})
 }
 
 // lockRecord statuses for readLockRecord (mirrored in lock.go).

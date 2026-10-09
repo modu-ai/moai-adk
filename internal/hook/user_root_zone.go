@@ -63,17 +63,16 @@ func userRootZoneForms(cand string) []zoneForm {
 	case strings.HasPrefix(cand, "${HOME}/"):
 		abs = home + cand[len("${HOME}"):]
 	}
-	// Gate round 29-2: the RAW candidate spelling is preserved for
-	// resolution — zoneSlash would convert a literal backslash to a
-	// separator on POSIX, where a backslash is an ordinary filename
-	// character (an `alias\dir` symlink would check a nonexistent path).
-	// zoneResolve walks the raw path exactly like the interpreting process.
-	if !zoneIsAbs(zoneSlash(abs)) {
+	// Gate round 40-1: the ABSOLUTENESS judgment runs on the RAW form —
+	// zoneSlash would make a leading `\alias` read as absolute on POSIX,
+	// where a backslash is an ordinary filename character (the cwd-join
+	// would be skipped and the resolution would go wrong).
+	if !filepath.IsAbs(abs) && !strings.HasPrefix(abs, "/") {
 		if cwd, cwdErr := zoneGetwd(); cwdErr == nil && cwd != "" {
 			abs = cwd + "/" + abs
 		}
 	}
-	if !zoneIsAbs(zoneSlash(abs)) {
+	if !filepath.IsAbs(abs) && !strings.HasPrefix(abs, "/") {
 		return nil
 	}
 	// Gate round 27-4: EACH INSTALL ROOT is resolved through the same walk
@@ -82,37 +81,53 @@ func userRootZoneForms(cand string) []zoneForm {
 	// path. Gate round 34-2: the prefix comparison itself is CASE-FOLDED —
 	// on a case-insensitive filesystem .CLAUDE names the same directory as
 	// .claude, and a case-alias target must not bypass the match.
+	// Gate round 39-NEW-1: the target's UNRESOLVED spelling is emitted as
+	// an ALIAS form beside the resolved one — a symlinked installed file
+	// (moai-demo -> real-demo) is manifest-tracked under its LINK path,
+	// while the resolved path reads unregistered; both forms are judged.
 	var out []zoneForm
+	addForm := func(display string) {
+		f := zoneForm{Display: display, Folded: config.FoldZoneText(display)}
+		for _, have := range out {
+			if have.Folded == f.Folded {
+				return
+			}
+		}
+		out = append(out, f)
+	}
+	unresolvedSlash := filepath.ToSlash(abs)
 	for slug, dir := range userRootSlugDirs {
 		resolvedRoot, ok := zoneResolve(filepath.Join(home, filepath.FromSlash(dir)))
 		if !ok {
 			continue // root absent — nothing of it is on disk to protect
 		}
+		rootSlash := config.FoldZoneText(filepath.ToSlash(resolvedRoot))
+		// the UNRESOLVED candidate spelling (the link-path form)
+		if rest, ok := strings.CutPrefix(config.FoldZoneText(unresolvedSlash), rootSlash+"/"); ok {
+			display := userRootFormPrefix + slug
+			if rest != "" {
+				display += "/" + rest
+			}
+			addForm(display)
+		}
+		// the RESOLVED target spelling (the real-path form)
 		resolvedTarget, ok := zoneResolve(abs)
 		if !ok {
-			return nil // unresolvable target: no evidence, fail to allow
-		}
-		rootSlash := config.FoldZoneText(filepath.ToSlash(resolvedRoot))
-		targetSlash := config.FoldZoneText(filepath.ToSlash(resolvedTarget))
-		// Gate round 27-2 + 34-1: the ROOT ITSELF (rest == "") and every
-		// ANCESTOR of a root (the target contains the root — rm -rf
-		// ~/.claude deletes every tracked file inside it) are protected
-		// forms; the tracked containment decides whether anything under
-		// the form is actually tracked.
-		rest := ""
-		if strings.HasPrefix(targetSlash, rootSlash+"/") {
-			rest = targetSlash[len(rootSlash)+1:]
-		} else if targetSlash == rootSlash || strings.HasPrefix(rootSlash, targetSlash+"/") {
-			// the target IS the root, or contains it (an ancestor)
-			rest = ""
-		} else {
 			continue
 		}
-		display := userRootFormPrefix + slug
-		if rest != "" {
-			display += "/" + rest
+		if rest, ok := strings.CutPrefix(config.FoldZoneText(filepath.ToSlash(resolvedTarget)), rootSlash+"/"); ok {
+			display := userRootFormPrefix + slug
+			if rest != "" {
+				display += "/" + rest
+			}
+			addForm(display)
 		}
-		out = append(out, zoneForm{Display: display, Folded: config.FoldZoneText(display)})
+		// Gate round 27-2 + 34-1: the ROOT ITSELF and every ANCESTOR of a
+		// root (rm -rf ~/.claude deletes every tracked file inside it) are
+		// protected forms; the tracked containment decides.
+		if targetSlash := config.FoldZoneText(filepath.ToSlash(resolvedTarget)); targetSlash == rootSlash || strings.HasPrefix(rootSlash, targetSlash+"/") {
+			addForm(userRootFormPrefix + slug)
+		}
 	}
 	return out
 }
@@ -169,11 +184,86 @@ func userRootTracksAny(home, display string) bool {
 	return false
 }
 
+// userManifestRel is the home-relative path of the user-assets manifest —
+// the ROOT of the whole protection model (gate rounds 37-1/38-2): deleting
+// or emptying it turns every previously-managed file unregistered, so the
+// frozen identity's destructive changes to the file are denied outright
+// (no tracked-ness filter — the manifest needs no tracking evidence).
+var userManifestRel = filepath.ToSlash(filepath.Join(".moai", "user-assets.json"))
+
+// userMoaiDirRel is the manifest's containing directory (home-relative).
+var userMoaiDirRel = ".moai"
+
+// userManifestProtectForms returns the protected forms for a candidate
+// that targets the user manifest itself or its containing directory —
+// judged independently of the four install roots (which never contain
+// ~/.moai, so the user-root forms alone cannot see it).
+func userManifestProtectForms(cand string) []zoneForm {
+	home, err := zoneHomeFn()
+	if err != nil || home == "" {
+		return nil
+	}
+	abs := cand
+	switch {
+	case strings.HasPrefix(cand, "~/"):
+		abs = home + cand[1:]
+	case strings.HasPrefix(cand, "$HOME/"):
+		abs = home + cand[len("$HOME"):]
+	case strings.HasPrefix(cand, "${HOME}/"):
+		abs = home + cand[len("${HOME}"):]
+	}
+	if !filepath.IsAbs(abs) && !strings.HasPrefix(abs, "/") {
+		if cwd, cwdErr := zoneGetwd(); cwdErr == nil && cwd != "" {
+			abs = cwd + "/" + abs
+		}
+	}
+	if !filepath.IsAbs(abs) && !strings.HasPrefix(abs, "/") {
+		return nil
+	}
+	resolved, ok := zoneResolve(abs)
+	if !ok {
+		return nil
+	}
+	// the home is resolved through the same walk (gate 27-4 — a symlinked
+	// home would otherwise never prefix-match a resolved target)
+	resolvedHome, ok := zoneResolve(home)
+	if !ok {
+		resolvedHome = home
+	}
+	slash := filepath.ToSlash(resolved)
+	homeSlash := filepath.ToSlash(resolvedHome) + "/"
+	rest, ok := strings.CutPrefix(slash, homeSlash)
+	if !ok {
+		return nil
+	}
+	if rest == userManifestRel || rest == ".moai" || strings.HasPrefix(rest, userMoaiDirRel+"/") {
+		return []zoneForm{{Display: rest, Folded: config.FoldZoneText(rest)}}
+	}
+	return nil
+}
+
 // zoneUserRootCovered judges the user-root arm for one shell candidate:
-// the resolved target's namespaced forms are matched against ZoneUserRoot
-// entries only, filtered by the manifest-tracked containment. Returns the
-// entry's category, the namespaced display form, and whether covered.
+// the manifest-protection forms FIRST (gate rounds 37-1/38-2 — no
+// tracked-ness filter: the manifest IS the evidence), then the resolved
+// target's namespaced forms matched against ZoneUserRoot entries filtered
+// by the manifest-tracked containment. Returns the entry's category, the
+// namespaced display form, and whether covered.
 func zoneUserRootCovered(cand string, load config.ProtectedZoneLoad) (string, string, bool) {
+	if load.State == config.ZoneStateOK {
+		if forms := userManifestProtectForms(cand); len(forms) > 0 {
+			for i := range load.Zone.Entries {
+				e := &load.Zone.Entries[i]
+				if e.Kind == config.ZoneUserRoot {
+					return e.Category, forms[0].Display, true
+				}
+			}
+			// No ZoneUserRoot entry declared: the manifest protection is
+			// compiled-in for the frozen identity regardless (gate 37-1 —
+			// the bypass chain does not depend on the overlay declaring
+			// the manifest).
+			return "user_manifest", forms[0].Display, true
+		}
+	}
 	for _, uf := range userRootZoneForms(cand) {
 		for i := range load.Zone.Entries {
 			e := &load.Zone.Entries[i]

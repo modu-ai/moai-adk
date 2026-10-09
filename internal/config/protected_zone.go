@@ -150,9 +150,13 @@ func (e ZoneEntry) Match(foldedRel string) bool {
 		// Gate round 27-5: a DIRECTORY candidate arrives without the
 		// trailing slash (rm -rf …/moai-alpha), while the dir-form entry
 		// carries it — judge both spellings, like the shell judgment does.
+		// Gate round 39 refinement: an ANCESTOR of the entry root is also
+		// covered — the entry user-root:claude-skills/moai-demo/ is deleted
+		// wholesale by rm -rf of the claude-skills root (rest is then an
+		// ancestor of the pattern).
 		switch e.Sub {
 		case ZoneDir, ZonePrefix:
-			return strings.HasPrefix(rest, e.Pattern) || strings.HasPrefix(rest+"/", e.Pattern)
+			return strings.HasPrefix(rest, e.Pattern) || strings.HasPrefix(rest+"/", e.Pattern) || strings.HasPrefix(e.Pattern, rest+"/")
 		default:
 			return rest == e.Pattern
 		}

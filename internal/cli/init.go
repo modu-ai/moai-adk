@@ -917,7 +917,7 @@ func runInit(cmd *cobra.Command, args []string) (err error) {
 			// M6: the resume fires only on an interruption checkpoint
 			// (gate round 35-3) — a healthy project's ordinary re-run
 			// keeps the original update redirect below.
-			if initResumeCheckpoint(userHomeDirOrEmpty()) {
+			if initResumeCheckpoint(userHomeDirOrEmpty(), opts.ProjectRoot) {
 				if resumeErr := resumeInitializedProject(cmd, &opts, agentWiringSelection); resumeErr != nil {
 					return fmt.Errorf("initialization resume failed: %w\n  Hint: this directory already contains a MoAI project — 'moai update' refreshes templates in place; --force reinitializes from scratch", resumeErr)
 				}

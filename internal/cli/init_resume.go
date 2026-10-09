@@ -12,7 +12,6 @@ package cli
 
 import (
 	"encoding/json"
-	"errors"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -37,25 +36,39 @@ func userHomeDirOrEmpty() string {
 }
 
 // resumeInitializedProject completes an init whose prior attempt failed at
-// the user-asset ensure: the ensure shortfall runs (the bundle selection
-// the re-run names applies), then the setup steps the failed attempt never
-// reached, in the production order (ApplyHarness → MCP entry → Codex
-// wiring).
+// the user-asset ensure: the ENTIRE re-check → quarantine → install span
+// runs INSIDE the user lock scope (gate rounds 37-2/38-3 — a quarantine
+// outside the lock could interleave with another run's healthy manifest
+// store and move the HEALTHY file), then the setup steps the failed
+// attempt never reached run in the production order (project layout →
+// autonomy tier → ApplyHarness → MCP entry → Codex wiring; gate round
+// 35-6 included).
 func resumeInitializedProject(cmd *cobra.Command, opts *project.InitOptions, wiring agentWiring) error {
 	homeDir, homeErr := userHomeDirFn()
 	if homeErr != nil {
 		return fmt.Errorf("resolve user home: %w", homeErr)
 	}
-	// A CORRUPT user manifest (a real ensure-failure shape: the write died
-	// mid-record) is quarantined aside — the doctor's sanctioned
-	// rebuild-from-fresh-init recovery for exactly this state — so the
-	// resume ensure can complete from scratch. Healthy and absent
-	// manifests are left alone.
-	quarantineCorruptUserManifest(homeDir)
+	lock, lockErr := userassets.AcquireUserLock(homeDir, userLockWaitWindow)
+	if lockErr != nil {
+		return fmt.Errorf("user-asset resume lock: %w", lockErr)
+	}
+	defer func() { _ = lock.Release() }()
 
-	if err := ensureUserAssetsLocked(homeDir, parseBundleSelection(getStringFlag(cmd, "bundles")), cmd.OutOrStdout()); err != nil {
+	// The ensure shortfall: a CORRUPT user manifest is quarantined inside
+	// the lock scope, then the installer runs from scratch (the doctor's
+	// sanctioned rebuild-from-fresh-init recovery for that state).
+	quarantineCorruptUserManifest(homeDir)
+	inst, err := newUserAssetInstaller(homeDir)
+	if err != nil {
+		return err
+	}
+	res, err := inst.InstallPreserveSelection(parseBundleSelection(getStringFlag(cmd, "bundles")))
+	if err != nil {
 		return fmt.Errorf("user-asset ensure: %w", err)
 	}
+	writeInstallSummary(cmd.OutOrStdout(), "user-asset resume", res)
+	_ = lock.Release()
+
 	// The project layout the failed attempt never reached.
 	if err := homestate.EnsureProjectLayout(opts.ProjectRoot); err != nil {
 		return fmt.Errorf("project layout: %w", err)
@@ -96,17 +109,43 @@ func resumeInitializedProject(cmd *cobra.Command, opts *project.InitOptions, wir
 }
 
 // initResumeCheckpoint reports whether an explicit interruption
-// checkpoint justifies the init resume (gate round 35-3): a pending-
-// install journal (an attempt interrupted mid-install) or a CORRUPT user
-// manifest (an attempt that failed before/at the ensure). A healthy
-// project's ordinary re-run has neither — it keeps the update redirect.
-func initResumeCheckpoint(homeDir string) bool {
-	if j, err := userassets.LoadJournal(userassets.JournalPath(homeDir)); err == nil && j != nil {
-		return true
+// checkpoint justifies the init resume (gate round 35-3):
+//   - a PENDING-INSTALL JOURNAL (an attempt interrupted mid-install), or
+//   - a CORRUPT user manifest (an attempt that failed before/at the
+//     ensure),
+//
+// AND this project's own deployment is incomplete (.mcp.json absent — the
+// failed attempt never reached MCP provisioning). Gate round 37-3: the
+// checkpoint is PROJECT-SCOPED through the deployment-completeness arm —
+// another project's interrupted journal (the journal is user-global) no
+// longer routes a healthy project into resume. Gate rounds 38-3/30: both
+// reads are NON-BLOCKING with the type check bound to the open handle.
+func initResumeCheckpoint(homeDir, projectRoot string) bool {
+	interrupted := false
+	if jData, ok := readManifestRecord(userassets.JournalPath(homeDir)); ok {
+		var j userassets.PendingJournal
+		if json.Unmarshal(jData, &j) == nil {
+			interrupted = true
+		}
 	}
-	_, err := userassets.Load(userassets.ManifestPath(homeDir))
-	var ce *userassets.CorruptError
-	return errors.As(err, &ce)
+	manifestCorrupt := false
+	if mData, ok := readManifestRecord(userassets.ManifestPath(homeDir)); ok {
+		var m userassets.Manifest
+		if json.Unmarshal(mData, &m) != nil {
+			manifestCorrupt = true
+		}
+	}
+	if !interrupted && !manifestCorrupt {
+		return false
+	}
+	// Deployment completeness: the executor's config sections must exist —
+	// a project the executor never deployed is NOT "initialized but
+	// incomplete"; it keeps the original redirect.
+	sections := filepath.Join(projectRoot, ".moai", "config", "sections")
+	if _, err := os.Stat(filepath.Join(sections, "llm.yaml")); err != nil {
+		return false
+	}
+	return true
 }
 
 // quarantineCorruptUserManifest renames a CORRUPT user manifest aside with
