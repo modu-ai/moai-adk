@@ -601,10 +601,13 @@ func zoneRedirectTargets(redirs []*syntax.Redirect) (bool, [2][]string) {
 		}
 		// an empty world filters PER WORLD: the modern reading may truncate
 		// to "" at a leading code-point NUL while the pre-4.2 reading still
-		// names the real write target (gate round 15 P1)
-		mutating = true
+		// names the real write target (gate round 15 P1). The mutating flag
+		// flips only when a NON-EMPTY target is added — bash cannot modify
+		// a nonexistent empty path, so an all-empty reading must not trip
+		// the fail-closed denial (gate round 33 P2)
 		for world := 0; world < 2; world++ {
 			if t := readings[world]; t != "" {
+				mutating = true
 				targets[world] = append(targets[world], t)
 			}
 		}

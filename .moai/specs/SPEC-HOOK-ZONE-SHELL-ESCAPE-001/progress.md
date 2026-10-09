@@ -1422,6 +1422,65 @@ nothing in either world. Measured ALLOW on the M2.12 tip (the
 numeric-descriptor skip plus the w.world filter already cover it) —
 recorded as a green-now regression pin, not a flip.
 
+
+
+### The :635 blocker RULING — DENY-as-designed (2026-10-09, leader option ii)
+
+The leader's ruling on the excluded redirect row: the lexical deny is
+SOUND. The redirect-target word's gen1 (pre-4.2) reading textually reaches
+zone_dir/marker.md through Clean — and gen1 is a REAL bash generation (3.2
+passes the literal text), so on a 3.2 host with docs\u0000 planted as a
+directory the deny is CORRECT (the exact bypass class gate-13 measured
+with real deletion). On hosts without the planting the deny is an
+over-block — the guard's documented static lexical design (sound
+over-approximation: deny when ANY possible reading covers the zone), the
+same behavior every other lexical row encodes. An existence-sensitive
+redirect-resolution upgrade is a design change beyond this run's scope —
+NOT attempted; noted as possible follow-up design material, not claimed
+as debt without an upgrade trigger.
+
+**Row landed pinned DENY-as-designed:**
+TestCheckProtectedZoneShellFileRedirectDenyAsDesigned — measured DENY
+(green-now pin, the lexical deny as designed; the M2.12-era shape measured
+the same deny as a false deny under the old want-allow framing).
+
+### Gate round 33 — M2.14 empty-target mutating filter (2026-10-09)
+
+One P2 (over-block): an EMPTY redirect target (printf read-only > '',
+invalid-manifest project) flipped the mutating flag in both worlds — bash
+cannot modify a nonexistent empty path. The per-world filter: the flag
+flips only when a NON-EMPTY target candidate is added; empty readings add
+nothing and flip nothing.
+
+**Regression row — RED under the M2.13 tip (50d686b9e + the row,
+uncommitted at measurement):**
+
+- **Command**: unset MOAI_KANBAN_ID MOAI_KANBAN_LEAD_ADDR
+  MOAI_KANBAN_SETTINGS_INJECTED && go test ./internal/hook -run
+  'TestCheckProtectedZoneShellEmptyTargetNotMutating' -count=1 -v
+- **Exit code**: 1
+- **Observed (verbatim, decision line)**:
+
+    protected_zone_shell_repro_test.go:1117: empty target not mutating: decision="printf read-only > ''" reason="HARNESS_FROZEN_PROTECTED_ZONE_VIOLATION: harness-learner manifest=invalid route=human next=return-blocker-report path=.moai/config/sections/protected-zone.yaml", want allowed — bash cannot modify a nonexistent empty path, so the fail-closed invalid-manifest denial must not fire
+--- FAIL: TestCheckProtectedZoneShellEmptyTargetNotMutating (0.01s)
+FAIL
+FAIL	github.com/modu-ai/moai-adk/internal/hook	0.942s
+
+**M2.14 remedy — GREEN record.** Shape: zoneRedirectTargets sets the
+mutating flag only when a NON-EMPTY target candidate is added — empty
+readings add nothing and flip nothing.
+
+- **Command** (all 40 instrument tests): the standard instrument selector
+  — exit 0, verbatim: ok github.com/modu-ai/moai-adk/internal/hook
+  4.171s (40/40 PASS — the empty-target row flipped to ALLOW;
+  the DENY-as-designed pin holds; the 38 earlier rows hold).
+- **Full package regression (M2.14)**: exit 0, verbatim tail PASS / ok
+  github.com/modu-ai/moai-adk/internal/hook 469.582s /
+  PACKAGE_POST33_EXIT=0; 3677 RUN lines, ZERO FAIL lines. Slot lease
+  hook-suite held for the run, released after.
+- Builds: go build ./... exit 0; GOOS=windows go build ./... exit 0;
+  golangci-lint run internal/hook/... --timeout=2m -> 0 issues.; gofmt
+  clean; family coverage 13.8% (all-rows selector).
 ## §E.3 Run-phase Audit-Ready Signal
 
 ```yaml

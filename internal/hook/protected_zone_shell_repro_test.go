@@ -1080,6 +1080,45 @@ func TestCheckProtectedZoneShellSedInPlaceOwnGeneration(t *testing.T) {
 	t.Logf("swept=%d", 1)
 }
 
+// TestCheckProtectedZoneShellFileRedirectDenyAsDesigned — the :635
+// blocker ruling (option ii): the lexical deny is SOUND. The function
+// executes only in the modern world, but the pre-4.2 world's redirect
+// reading textually reaches zone_dir/marker.md through Clean — and gen1
+// is a REAL bash generation (3.2 passes the literal text), so on a 3.2
+// host with docs\u0000 planted as a directory the deny is CORRECT (the
+// exact bypass class gate-13 measured with real deletion). On hosts
+// without the planting the deny is an over-block — the guard's
+// documented static lexical design (sound over-approximation: deny when
+// ANY possible reading covers the zone). The row pins the
+// DENY-as-designed; existence-sensitive redirect resolution is a
+// possible follow-up design material, not claimed as debt.
+func TestCheckProtectedZoneShellFileRedirectDenyAsDesigned(t *testing.T) {
+	root := hzsMarkerFileFixture(t)
+	h := zoneTestHandler(t, root)
+	const fnCmd = "f(){ :; }; $'f\\u0000/../printf' changed > $'docs\\u0000/../zone_dir/marker.md'"
+	d, r := zoneCall(t, h, "Bash", harnessLearnerIdentity, map[string]any{"command": fnCmd})
+	wantZoneDeny(t, "file redirect deny as designed", d, r, harnessLearnerIdentity, "category", "probe_zone")
+	t.Logf("swept=%d", 1)
+}
+
+// TestCheckProtectedZoneShellEmptyTargetNotMutating — gate round 33 P2
+// (over-block): an EMPTY redirect target flips the mutating flag in both
+// worlds, but bash cannot modify a nonexistent empty path — with an
+// INVALID manifest the flag trips the fail-closed denial on a command
+// that mutates nothing. The per-world filter sets mutating only when a
+// NON-EMPTY target candidate is added. The row asserts the ALLOW.
+func TestCheckProtectedZoneShellEmptyTargetNotMutating(t *testing.T) {
+	invalidManifest := "version: 1\ncategories:\n  probe_zone:\n    paths: []\n"
+	root := newZoneRoot(t, invalidManifest, "")
+	h := zoneTestHandler(t, root)
+	const emptyCmd = "printf read-only > ''"
+	d, r := zoneCall(t, h, "Bash", harnessLearnerIdentity, map[string]any{"command": emptyCmd})
+	if d == DecisionDeny || strings.Contains(r, SentinelHarnessFrozenProtectedZone) {
+		t.Errorf("empty target not mutating: decision=%q reason=%q, want allowed — bash cannot modify a nonexistent empty path, so the fail-closed invalid-manifest denial must not fire", emptyCmd, r)
+	}
+	t.Logf("swept=%d", 1)
+}
+
 // TestCheckProtectedZoneShellGitSubOwnGeneration — gate round 29 P1
 // (over-block): the git SUBCOMMAND word binds its own generation. Modern
 // reads `git rm -f docs` (docs is outside the zone — harmless); pre-4.2
