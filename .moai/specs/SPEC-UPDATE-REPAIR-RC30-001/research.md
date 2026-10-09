@@ -152,6 +152,47 @@ PASS
 ```
 This check ran after spec.md was written. The protocol orders the check before the write. The check passed, and the order is recorded as a deviation under Gaps.
 
+**E-LOCALE (R4; decision-index.md Q1)**
+```text
+$ grep -n "Neutrality\|16 \|user-facing\|locales" .claude/rules/moai/development/coding-standards.md
+23:### Programming-Language Neutrality Contract (16 languages)
+25:Template content treats the 16 supported programming languages equally:
+35:  the 16 programming languages above are a NEUTRALITY concern (templates must
+36:  treat them equally), while the 4 user-facing locales (ko, en, ja, zh) are a
+37:  TRANSLATION concern (user-facing prose is rendered per locale). The two
+$ grep -n "go, python, typescript" .claude/rules/moai/development/coding-standards.md
+26:go, python, typescript, javascript, rust, java, kotlin, csharp, ruby, php,
+(line 27 continues the list: elixir, cpp, scala, r, flutter, swift; the list was displayed by the Read of this file in this run)
+$ grep -n "Options" .moai/config/sections/language.yaml
+5:  # Options: ko (Korean), en (English), ja (Japanese), zh (Chinese), es (Spanish), fr (French), de (German)
+```
+Result: the "16" of R1 is the 16 programming languages (neutrality). The "four" of R2(g) is the four locales ko, en, ja, zh (translation). The sets are disjoint and differ. language.yaml lists seven conversation-language options.
+
+**E-PROBE (R3; U-31)**
+```text
+$ git show WT-update-migration-fixes:internal/cli/update_integrity_probe.go | head -80   (excerpt of the 80-line output)
+ 47://   - .claude/settings.json: the Claude Code settings merge target; must parse as JSON.
+ 52:	{rel: ".claude/settings.json", check: probeJSON},
+ 64:		return "missing"
+$ git cat-file -e main:internal/cli/update_integrity_probe.go; echo "main-exit=$?"
+fatal: path 'internal/cli/update_integrity_probe.go' does not exist in 'main'
+main-exit=128
+$ grep -n "hideClaude" internal/template/harness_fs.go   (excerpt)
+112:	if h.hideClaude && (name == ".claude" || strings.HasPrefix(name, ".claude/")) {
+```
+
+**E-R5 (item-register count, run after the revision)**
+```text
+$ grep -Ec "^\| U-[0-9]{2} \|" .moai/specs/SPEC-UPDATE-REPAIR-RC30-001/spec.md
+31
+$ grep -E "^\| U-[0-9]{2} \|" .moai/specs/SPEC-UPDATE-REPAIR-RC30-001/spec.md | grep -Eo "IN-NOW|BLOCKED-ON|GAP-INVESTIGATE|DECISION-PENDING" | wc -l
+31
+$ grep -E "^\| U-[0-9]{2} \|" .moai/specs/SPEC-UPDATE-REPAIR-RC30-001/spec.md | grep -Evc "IN-NOW|BLOCKED-ON|GAP-INVESTIGATE|DECISION-PENDING"
+0
+(counts by disposition cell: IN-NOW 13, BLOCKED-ON 10, GAP-INVESTIGATE 7, DECISION-PENDING 1)
+```
+A first count returned 32 tokens. The extra token was in the Source cell of U-14 ("Lane brief IN-NOW example"). That repeat was removed, and the count above is the one after the removal.
+
 **E-MIGRATE-PATH (C7)**
 ```text
 $ grep -rln "func migrateProjectCommonAssets" internal/cli
@@ -179,13 +220,15 @@ Not observed in this run. Each gap is listed with the next step.
 6. **Migration call site.** The grep for `migrateProjectCommonAssets(` call sites failed because of a shell glob error (`--include=*.go` was not quoted). Next step: re-run with quoted globs.
 7. **Make target and golden path.** `make tui-snapshot` was not confirmed in this run. Next step: `grep -n "tui-snapshot" Makefile`.
 8. **Locale mechanism (U-30).** Not read. Next step: find how update output strings are localized, if at all.
-9. **Queue card text.** t1527, t1594, and t1612 were not read. The dispositions in spec.md § F use the scopes the audit mapped. Next step: operator confirmation.
+9. **Queue card text.** t1527, t1594, and t1612 were not read. spec.md § F records their overlaps with the disposition undecided. Next step: read the three card texts before the overlap is decided.
 10. **docs-site path (U-20).** `docs-site/content/ko/cli-reference/update.md` was not checked. Next step: `ls` of the path.
 11. **Runnable profile-visibility command (AC-RC30-01).** Not measured. Next step: M0.
 12. **Coverage baseline.** Not measured. The target is 85% or more per package. Next step: `go test -cover` on each touched package, in M7.
 13. **Order deviation.** The SPEC-ID check ran after the write of spec.md, not before. The check now passes.
 14. **Base ambiguity.** The worktree is cut from main, while `.claude/rules/local/gitflow-lane-protocol.md` § 1 names develop. The lane must confirm the base before absorption.
 15. **Card t1616 status.** Landing waits for it. Its state was not checked.
+16. **Absorption order and terminal state (leader intake, confirmed by the leader).** The absorption order is t1591, then t1578, then t1619. Merge-ready is this card's terminal state until card t1616 lands. No merge is performed in this card.
+17. **Integrity probe harness source (U-31).** The probe exists only on WT-update-migration-fixes (E-PROBE). Its codex-only RED cell (AC-RC30-26) can be captured only after M1 absorption. How the probe learns that a project is codex-only (the harness condition source) is not yet read in this tree, so the condition's exact source is a Gap.
 
 ## 5. Residual-risk
 

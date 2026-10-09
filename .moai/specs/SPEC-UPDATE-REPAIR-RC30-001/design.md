@@ -44,4 +44,4 @@ Design decisions behind spec.md and plan.md. Every decision names its requiremen
 ## 8. Out of design scope
 
 - Factory slug and inbox defects (t1621, t1622): see spec.md § H.
-- Init-side presentation: deferred (spec.md § F).
+- Init-side presentation: not in this item register; queue overlap with t1527 is recorded with disposition undecided (spec.md § F).

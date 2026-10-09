@@ -2,7 +2,7 @@
 
 ## Budget and adoption status
 
-- Tier L ceiling: 25 acceptance criteria. This file carries **25**: AC-RC30-01 to AC-RC30-25.
+- Tier L ceiling: 25 acceptance criteria. This file carries **26**: AC-RC30-01 to AC-RC30-26. That is one over the ceiling. Exceedance is a split signal (`spec-workflow.md` § SPEC Complexity Tier). No split is made in this revision (Gap: leader decision).
 - U-22 (owned by card t1578) and U-30 (locale, blocked on decision Q1) carry **no** acceptance criterion in this SPEC. U-30 gets one after Q1 is decided.
 - Adoption: under `verification-completeness.md` § 2, a release-blocking criterion is adopted only with a RED-now cell (command, verbatim stdout, exit code, tree SHA). **No criterion is adopted yet.** RED cells are captured in the first run milestone (M0) on tree `2aab5f797b75983e132af451da68f69e3426557b`. Until then every criterion is "pending RED capture" and no criterion counts as a pass.
 - Each test named below is new. It is written at the milestone that owns the item (§ plan). A criterion is judged by the test's `-v` output: a `--- PASS` line for the named test with a count of at least 1. An empty swept set (`[no tests to run]`) is a failure, not a pass.
@@ -78,6 +78,7 @@ Columns: AC | Items | REQ | Runnable check (judge) | Expected observable result 
 | AC-RC30-23 | U-24 | — | `go test ./internal/cli/ -run TestLLMYamlRemarshalCallers -count=1 -v` (one case per `ConfigManager.Save` caller) | `--- PASS` for each caller. Each caller that drops a key is named. The `team_mode` reset at `launcher.go:397` is reported as a caller result. | GAP-INVESTIGATE |
 | AC-RC30-24 | U-25 | — | Investigation: `config-change-audit.log` at `2026-10-09T02:26Z` and operator shell history, recorded in research.md with exact commands and output | The untraced removal is either attributed to a command with evidence, or recorded as unresolved in research.md with the evidence still missing. | GAP-INVESTIGATE |
 | AC-RC30-25 | U-26, U-27, U-28, U-29 | REQ-014, REQ-016, REQ-017, REQ-018, REQ-020 | `make tui-snapshot` (target existence Gap, to be confirmed in M0), then `go test ./internal/cli/ -run 'TestUpdateOutputGolden|TestUpdatePlainFallback' -count=1 -v` and `NO_COLOR=1 go test ./internal/cli/ -run TestUpdatePlainFallback -count=1 -v` | `--- PASS` for each. TTY golden shows N of M, bar, one ✓/!/✗ line per step, a one-screen summary, and conflicts above the summary. Plain fallback carries the same counts. | Pending RED capture |
+| AC-RC30-26 | U-31 | REQ-021 | `go test ./internal/cli/ -run TestIntegrityProbeCodexOnlyNoClaudeSettings -count=1 -v` (codex-only fixture with `hideClaude=true` first, RED; then the harness-conditioned fix, GREEN; a Claude fixture with `.claude/settings.json` deleted must still report "missing") | RED before the fix: `--- FAIL` with a `.claude/settings.json` "missing" finding on the codex-only fixture. GREEN after the fix: `--- PASS`; the Claude sub-case still reports "missing". The probe is on branch WT-update-migration-fixes only, so the RED cell is captured after M1 absorption. | Pending RED capture (after M1 absorption) |
 
 ## Mutant probes (verification-completeness § 2)
 

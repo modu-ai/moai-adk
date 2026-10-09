@@ -25,10 +25,11 @@ Runs after plan-audit PASS.
 2. Measure every range from `CARD_BASE=$(git merge-base HEAD <absorbed-tip>)`, not from a literal SHA. Re-absorb if a branch moves.
 3. Resolve conflicts in `internal/userassets/install.go` (both branches) and `internal/cli/update.go` (t1578) by the rule that the branch's own tests keep passing.
 4. Implement the BLOCKED-ON items in this order:
-   - U-01 (profile reach and removal gate). Decision point Q2 (§ J of spec.md) must be answered first. Until it is, implement only the removal gate that REQ-RC30-003 requires, and hold the reach mechanism.
+   - U-01 is DECISION-PENDING (operator decision Q2; decision-index.md). It is not a BLOCKED-ON item. The removal gate that REQ-RC30-003 requires does not depend on Q2 and is implemented in M1. The reach mechanism waits for the Q2 verdict.
    - U-02 and U-10 (migration backup and emptied-directory removal), U-09 (non-catalog message), U-03 (bundle announce), U-12 (kept assets).
    - U-11 (user-root downgrade refusal, both branches).
    - U-17 (one banner) and U-21 (profile sync resolution, t1578).
+   - U-31 (integrity probe, codex-only harness condition, t1578): the codex-only fixture test is written first (RED), then the harness-conditioned fix (GREEN).
 
 Exit condition: the absorbed refs are recorded; AC-RC30-02, -03, -04, -10, -11, -12, -13, -18, -21 pass or have a recorded blocker.
 
@@ -106,7 +107,7 @@ Each GAP-INVESTIGATE item is closed by its named evidence, with its command and 
 | Risk | Effect | Mitigation |
 |------|--------|-----------|
 | The profile-visibility premise (project-side copies are seen by profile sessions) is unverified | A removal gate built on a false premise | AC-RC30-01 is measured before any removal; no copy is deleted until it passes |
-| REQ-002 of SPEC-USER-ASSET-INSTALL-001 forbids a profile install | U-01 cannot use the simplest reach mechanism | Q2 is raised; U-01 is BLOCKED-ON t1591 |
+| REQ-002 of SPEC-USER-ASSET-INSTALL-001 (spec.md line 255) may bar a profile install | U-01 cannot use a reach mechanism that writes into a profile directory | Q2 is raised; U-01 is DECISION-PENDING (Q2), not BLOCKED-ON any branch |
 | Both branches change `internal/userassets/install.go` | Merge conflict at M1 | Plain merge; conflicts resolved with the branch tests kept green |
 | Branch tips move after absorption | Measurements go stale | Re-absorb on movement; ranges are measured from the merge-base each time |
 | Golden churn in the TUX output | Review load | Golden updates only through `make tui-snapshot` on a reviewed diff |
@@ -119,4 +120,4 @@ Listed in spec.md § H. The plan adds no dependency beyond those.
 
 ## H. Out of Scope (plan view)
 
-Out of scope: the factory slug rule (t1621), the factory inbox error (t1622), init-side presentation (deferred per spec.md § F), and the mo.ai.kr operator recovery (audit § C).
+Out of scope: the factory slug rule (t1621), the factory inbox error (t1622), init-side presentation (not in this item register; queue overlap with t1527 recorded with disposition undecided in spec.md § F), and the mo.ai.kr operator recovery (audit § C).
