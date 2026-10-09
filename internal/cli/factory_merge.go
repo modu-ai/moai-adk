@@ -141,12 +141,26 @@ func newFactoryMergeReadyCommand() *cobra.Command {
 				// the run is recorded, and no acquire happens.
 				_, _ = fmt.Fprintf(human, "merge-readiness: REFUSED — failing condition: %s\nno window was taken\n", recorded.FailedCondition)
 				printMergeChecks(human, recorded.Checks)
-				return emitFactoryMergeVerdict(cmd, asJSON, factoryMergeVerdict{
+				refusal := factoryMergeVerdict{
 					Verdict: "refused", Lane: lane, Card: card,
 					FailedCondition: recorded.FailedCondition,
 					Detail:          "the condition triple failed — no window was taken",
 					Checks:          recorded.Checks,
-				})
+				}
+				if err := emitFactoryMergeVerdict(cmd, asJSON, refusal); err != nil {
+					return err
+				}
+				// REQ-MWQ2-006 (card t1582 item ③): a measurement failure — the
+				// re-measure record absent or invalid — must not read as a pass
+				// to a calling script. The verdict above is printed either way;
+				// the exit code carries the failure, under cause 1 (record
+				// invalid), the code the merge verb gives the same record state.
+				// The window-contest refusal (waiting) and the other refused
+				// conditions keep the zero-exit verdict (REQ-MWQ2-010).
+				if recorded.FailedCondition == factorylane.CheckRemeasureRecord {
+					return &exitCodeError{code: factory.MergeExitRecordInvalid, msg: "factory merge ready: the measurement failed — the re-measure record for the candidate tree is absent or invalid; run moai integration remeasure, then merge ready again"}
+				}
+				return nil
 			}
 
 			// github-flow delivers by pull request: the integration window is
