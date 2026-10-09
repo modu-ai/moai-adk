@@ -891,6 +891,25 @@ against the pre-fix source by temporarily restoring
 working tree; restored after the capture). Inputs transport-verified:
 whole-file NUL-byte scan zero, doubled backslash.
 
+### Gate rounds 34 (second follow-up) / 35 — M2.17 per-world git scan completion + green-now pins (2026-10-09)
+
+Gate-35's finding verified at the current tip: the M2.12 per-generation
+sub binding plus the M2.16 dual-only termination already cover the
+reviewer's literal shape (`f() { git() { :; }; }; $'f\u0000/not_f'; git
+$'--namespace=xa' rm -f zone_dir/marker.md` — DENY fires; the lead's
+RED-under-current assertion does not reproduce at this tip — the
+overlay's deny likely hinges on zone-reaching paths not in the
+abbreviated shape). Rows landed as GREEN-NOW regression pins:
+TestCheckProtectedZoneShellGitSubOwnGeneration (gate-29 #1 — the
+subcommand word binds its own generation), TestCheckProtectedZoneShell
+GitNameSubOwnGeneration (gate-30 #2 — the name word dual + the
+subcommand word dual), TestCheckProtectedZoneShellGitValueRideAlong
+NotTerminating (gate-35 P1 — a a ride-along VALUE does not
+terminate; the M2.16 value-based termination never fired on this
+non-dual word). zoneGitArgs' scan loop now reads readings[world]
+throughout — the last zoneWordText consumer inside zoneGitArgs is gone
+(gate-34 P2).
+
 ### Gate round 21 — M2.7 full dispatch pre-classification + function shadowing (2026-10-09)
 
 Two findings on the M2.6 tip (`fd3738f42`, overlay-verified, base-PASS →

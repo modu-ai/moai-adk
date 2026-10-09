@@ -1216,6 +1216,22 @@ func TestCheckProtectedZoneShellGitUnsupportedOptionTerminatesWorld(t *testing.T
 	t.Logf("swept=%d", 1)
 }
 
+// TestCheckProtectedZoneShellGitValueRideAlongNotTerminating — gate round
+// 35 P1 (over-block): a \u/\U escape riding in an option VALUE is
+// ordinary data — the pre-4.2 world's git passes the raw string as the
+// namespace value and RUNS the rm. The M2.16 value-based termination
+// skipped world 1 entirely while gen1 really deleted the marker; the fix
+// restores the generation join and the row pins the DENY. RED under
+// current code (allow), verbatim in progress.md §E.2.
+func TestCheckProtectedZoneShellGitValueRideAlongNotTerminating(t *testing.T) {
+	root := hzsMarkerFileFixture(t)
+	h := zoneTestHandler(t, root)
+	const rideCmd = "git $'--namespace=x\\u0061' rm -f zone_dir/marker.md"
+	d, r := zoneCall(t, h, "Bash", harnessLearnerIdentity, map[string]any{"command": rideCmd})
+	wantZoneDeny(t, "git value ride along not terminating", d, r, harnessLearnerIdentity, "category", "probe_zone")
+	t.Logf("swept=%d", 1)
+}
+
 // TestCheckProtectedZoneShellGitMassFileArgsBounded — gate round 29 P3 /
 // gate round 30 P3 / gate round 31 P1 (measurement pin): 80,000 file
 // arguments must run BOUNDED — hash-set dedup (linear) and the
