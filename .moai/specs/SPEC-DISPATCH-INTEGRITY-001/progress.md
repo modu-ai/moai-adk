@@ -587,7 +587,7 @@ notes: 13/13 ACs PASS (6 as committed regression guards with recorded not-reprod
 ## §E.4 Sync-phase Audit-Ready Signal
 
 sync_complete_at: 2026-10-09T17:16:03Z
-sync_commit_sha: pending-backfill-sync
+sync_commit_sha: c282c3920
 sync_status: complete
 sync_resync_note: this pass re-synced the CHANGELOG entry for the post-close repairs; the previous close sync commit was d6caefb81.
 changelog_entry_position: [Unreleased] §Fixed — single SPEC-DISPATCH-INTEGRITY-001 entry (newest-first), covering the four user-observable behaviors (duplicate-member bundle refusal, cross-process `.moai-store-lock` + abandonment-aware waits, read-only preview without write access, merging-retry lease validation)
