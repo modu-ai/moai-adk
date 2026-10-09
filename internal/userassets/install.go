@@ -910,14 +910,17 @@ func (in *Installer) confinedWrite(root resolvedRoot, rel string, data []byte, m
 	for attempt := 0; attempt < 8; attempt++ {
 		tmpName = fmt.Sprintf(".ua-write-%d-%d-%d", os.Getpid(), time.Now().UnixNano(), attempt)
 		f, createErr := pinned.OpenFile(tmpName, os.O_CREATE|os.O_EXCL|os.O_WRONLY, 0o600)
-		if err == nil || !errors.Is(createErr, os.ErrExist) {
-			tmp, err = f, createErr
+		if createErr == nil {
+			tmp = f
 			break
 		}
-		err = createErr
+		if !errors.Is(createErr, os.ErrExist) {
+			return createErr
+		}
+		// EEXIST: an entry occupies the drawn name — retry with a fresh one
 	}
-	if err != nil {
-		return err
+	if tmp == nil {
+		return fmt.Errorf("userassets: no exclusive temp name available in %s", parentResolvedFinal)
 	}
 	if _, err := tmp.Write(data); err != nil {
 		_ = tmp.Close()

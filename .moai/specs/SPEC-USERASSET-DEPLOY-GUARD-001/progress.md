@@ -591,6 +591,63 @@ resumeInitializedProject가 applyAutonomyTierBundleFn 포함.
 M7 이전 커밋(152c3ef7c)에서 동일 실패 재현으로 기존 환경 실패 확인 (M6/M7 도입분 아님).
 영향 패밀리(doctor+resume)는 전부 GREEN — 구조적 적색 시대 종료.
 
+### M7.1 — 게이트 42 마감 + 커버리지 보강 (2026-10-09)
+
+**게이트 42 [P3] — pinned temp O_EXCL 변수 결함 수리.** install.go confinedWrite의
+O_EXCL 재시도 루프가 스테일 외부 `err`(항상 nil)을 판정해 첫 EEXIST 충돌이
+재시도 없이 설치 실패로 귀결될 수 있었다. 수리: 성공은 `createErr == nil`,
+비재시도 오류는 `!errors.Is(createErr, os.ErrExist)`, EEXIST는 새 이름 재시도.
+계약 검증은 경합 형태: `TestConfinedWriteExclusiveCreationSurvivesContention`
+— 같은 부모에 24개 동시 confinedWrite, 전부 성공·전부 착지, `-count=2` GREEN.
+
+**커버리지 보강 (게이트 42 후속, 리더 M7.1 지시).**
+- `m7_coverage_topup_test.go` (플랫폼 무관): 잠금 가족 결정적 팔 5종(nil Release·
+  회수됨 Release 스킵·String unknown 폴백·ClassifyLockFile absent/ownerless/
+  irregular/owner-dead/owner-alive), 획득 오류 2종(잠금 홈 파일 점유 MkdirAll
+  실패·잠금 경로 디렉터 점유 비-EEXIST), confinedWrite 거절 8종(무효 rel·부모
+  부재·부모 심볼릭 링크 탈출·리프 심링크·디렉터 점유 목적지 rename 실패·파일
+  점유 세그먼트·세그먼트 심링크 탈출/합법), Install 진입 5종(nil catalog·미지
+  번들·root 해석 실패·schema-99 저널 현장 보존 거부·저널 선택 복원), now 폴백,
+  오염 소스 3종(codex TOML 부재·소스 바이트 부재·무효 엔트리명).
+- `m7_coverage_topup_unix_test.go` (unix 전용 — M0 상위 규칙대로 첫 작성부터
+  빌드 태그): read-only 부모의 비-EEXIST create 오류 서면화(루트 스킵 가드),
+  guard flock 경합 타임아웃, read-only .moai의 stage-journal fail-closed 거부.
+
+**AC-023 커버리지 — M7.1 보강 후 재측정 (M7 표의 install/lock 수치 대체)**
+
+| 파일 | 문 커버리지 | 게이트 |
+|---|---|---|
+| userassets 패키지 | **85.8%** (82.1% → 85.8%) | 상승 |
+| install.go | **84.6%** (272 문 중 42 미커버) | 90% 미달 — 잔여 분류 아래 |
+| lock.go | **90.7%** (75 문 중 7 미커버) | 90% 도달 |
+| 함수 이동 | classifyLockRecord 47.1→88.2% · confinedWrite 67.9→77.4% · confinedMkdir 78.3→91.3% · acquireUserLockStale 81.5→88.9% · Install 87.8→89.4% | |
+
+**잔여 미커버의 정직한 분류 (결정적 주입으로 도달 불가 — 전부):**
+(i) I/O 실패 주입 팔 — WriteJournal 영속 4곳 + confinedWrite의 Write/Chmod/
+Close 오류 (열린 fd 오류 주입은 권한 의존 또는 런타임 재현 불가);
+(ii) 경합 창 팔 — confinedWrite 부모 재검증 재평가·OpenRoot 실패·
+reclaimGuardMarker displaced-mismatch 복귀·journal sidecar rename 실패
+(단일 스레드에서 그 창에 들어갈 방법이 없음);
+(iii) 예측 불가 이름 — O_EXCL 8회 소진 팔 (임시명이 pid+UnixNano 파생,
+외부에서 충돌명 선점 불가; 경합 테스트가 계약을 대신 검증);
+(iv) 방어 팔 — withinRoot의 join 후 재검사(ValidateRelPath가 `..`를 차단해
+confinedWrite 자체 조인으로는 도달 불가)·confinedMkdir seg-continue·
+callerIsStored 멤버십 루프(유효 팩 2개 fixture 필요, 현 fixture는 1팩);
+(v) withinRoot의 cross-volume filepath.Rel 오류(windows 드라이브 문자 —
+unix 실행에서 도달 불가).
+(vi) lock.go 잔여 7문도 같은 (i)(ii)류 — 69(비-EEXIST open 오류의 플랫폼
+분기)·84(reclaim rename 경합)·107(회수 Release — 보강 테스트가 닫음,
+재측정 잔여는 107의 ReadFile 오류 갈래)·215(방어 폴백)·281/287(record 판독
+경합).
+
+**게이트**: `go test ./internal/userassets/ -count=1` ok 4.5s (env 스크럽) ·
+`go test ./internal/cli/ -run 'TestDoctorGolden|TestBinaryLag'` ok 3.5s ·
+golden 스냅샷 3종 재생성(UPDATE_GOLDEN=1, User Lock 행 포함) ·
+`golangci-lint run ./internal/userassets/...` 0 issues ·
+`GOOS=windows go build ./...` + `go vet` (userassets/cli/hook, 테스트 컴파일
+포함) OK · internal/hook 전체 스위트는 이 커밋 미변경 패키지 회귀 확인용으로
+백그라운드 진행(완료 시 구조 보고에 합산).
+
 ## §E.3 Run-phase Audit-Ready Signal
 
 _(pending run-phase — manager-develop 소관.)_
