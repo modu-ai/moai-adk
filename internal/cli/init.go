@@ -858,6 +858,35 @@ func runInit(cmd *cobra.Command, args []string) (err error) {
 
 	p.Info("Initializing MoAI project...")
 
+	// SPEC-USER-ASSET-INSTALL-001 (REQ-024): the first-install trigger. Init
+	// ensures every L0 and opted-in-bundle asset is present user-side before
+	// the run reports success — the judgment is PER-ASSET-STATE applying the
+	// REQ-023 truth table exactly as update does (a user-edited file's bytes
+	// are never clobbered; an untracked target is a REQ-010 collision; a
+	// partial install's manifest does not suppress the run). Systemic
+	// failures fail the init; per-file failures continue and surface in the
+	// summary (REQ-013).
+	//
+	// Card t1587: this phase runs BEFORE executor.Execute records the project
+	// as initialized. It reads only the embedded catalog and writes only under
+	// the user home — no project dependency (`moai bundle add` runs the same
+	// ensure standalone) — so sequencing it first is safe. Placed after the
+	// deploy it made the failure advice a dead end: a systemic ensure failure
+	// (~/.codex/agents as a regular file — observed twice on the t1561 lane)
+	// aborted a run whose project was ALREADY recorded initialized, so the
+	// error's own "re-run 'moai init'" advice hit the 'project already
+	// initialized' refusal. Failing before the marker keeps the promise
+	// honest: the re-run starts from an uninitialized project and completes
+	// cleanly.
+	if homeDir, homeErr := userHomeDirFn(); homeErr == nil {
+		selection := parseBundleSelection(getStringFlag(cmd, "bundles"))
+		if err := ensureUserAssetsLocked(homeDir, selection, cmd.OutOrStdout()); err != nil {
+			return fmt.Errorf("user-asset install failed: %w\n  Fix the cause and re-run 'moai init' — the ensure is idempotent and completes the shortfall", err)
+		}
+	} else {
+		p.Warn("Could not resolve the user home; the user-folder asset install was skipped: %v", homeErr)
+	}
+
 	// Deferred binary self-update check (REQ-TUX2-001/004): starts strictly
 	// after wizard completion and after the first phase output; never blocks
 	// phase execution; flushed as a stderr notice at exit. A wizard cancel
@@ -933,23 +962,6 @@ func runInit(cmd *cobra.Command, args []string) (err error) {
 		return fmt.Errorf("initialize private MoAI home layout: %w", err)
 	}
 
-	// SPEC-USER-ASSET-INSTALL-001 (REQ-024): the first-install trigger. Init
-	// ensures every L0 and opted-in-bundle asset is present user-side before
-	// the run reports success — the judgment is PER-ASSET-STATE applying the
-	// REQ-023 truth table exactly as update does (a user-edited file's bytes
-	// are never clobbered; an untracked target is a REQ-010 collision; a
-	// partial install's manifest does not suppress the run). Systemic
-	// failures fail the init; per-file failures continue and surface in the
-	// summary (REQ-013).
-	if homeDir, homeErr := userHomeDirFn(); homeErr == nil {
-		selection := parseBundleSelection(getStringFlag(cmd, "bundles"))
-		if err := ensureUserAssetsLocked(homeDir, selection, cmd.OutOrStdout()); err != nil {
-			return fmt.Errorf("user-asset install failed: %w\n  Fix the cause and re-run 'moai init' — the ensure is idempotent and completes the shortfall", err)
-		}
-	} else {
-		p.Warn("Could not resolve the user home; the user-folder asset install was skipped: %v", homeErr)
-	}
-
 	// Chain ① consumer link (SPEC-INIT-WIZARD-REPAIR-001 REQ-003): wire the
 	// persisted tier selection into the deployed settings immediately after
 	// the initializer returns. Paths are resolved here and passed in (no new
@@ -1010,6 +1022,16 @@ func runInit(cmd *cobra.Command, args []string) (err error) {
 	// opt-in is a project with the capability off.
 	if err := applyJevFromWizard(wizardRan, wizardResult, opts.ProjectRoot); err != nil {
 		p.Warn("Failed to persist the Jev opt-in: %v", err)
+	}
+
+	// SPEC-FEEDBACK-PARTICIPATION-001 (REQ-ANON-003): route the wizard's
+	// participation answer into the user-scoped consent file the update ask
+	// and the console also drive. The bridge gates on wizardRan and an empty
+	// CI environment; its own failure warns rather than failing the init, for
+	// the same reason the Jev bridge's does — the capability is off by
+	// default, and a consent that could not be recorded is no consent.
+	if err := applyParticipationFromWizard(wizardRan, wizardResult, opts.ProjectRoot); err != nil {
+		p.Warn("Failed to persist the participation opt-in: %v", err)
 	}
 
 	// SPEC-INIT-HARNESS-001 (REQ-IH-002): persist the RESOLVED harness value to

@@ -42,8 +42,8 @@ type destructiveSite struct {
 // key identifies a registry row independently of its count and assignment.
 func (s destructiveSite) key() string { return s.File + " " + s.Function }
 
-// destructiveTargetRegistry is the registry itself: 13 (file, function) rows
-// covering 23 call sites, matching the source scan the drift guard performs.
+// destructiveTargetRegistry is the registry itself: 15 (file, function) rows
+// covering 25 call sites, matching the source scan the drift guard performs.
 //
 // Rows carry either a Protection or an Exemption, never both and never neither.
 // The exempt rows rest on three materially different grounds — same-call rewind
@@ -156,5 +156,26 @@ var destructiveTargetRegistry = []destructiveSite{
 		Protection: "Cross-SPEC: SPEC-UPDATE-REINSTALL-LOOP-002 REQ-RIL2-019 backs up the residue " +
 			"sweep before deleting it, aborting on failure. Not a same-call rewind — the swept paths " +
 			"predate the run — but not re-specified here either (plan.md §G, REQ-UDS-010).",
+	},
+	{
+		File: "internal/cli/update/reconcile.go", Function: "archiveThenRemove", Sites: 1,
+		Protection: "SPEC-UPDATE-MIGRATION-001 (card t1547, REQ-UPM-014/016): the rename installs " +
+			"the recovery copy into this run's archive directory, which uniqueArchiveRunDir " +
+			"claimed with an exclusive os.Mkdir (numbered retry on EEXIST), so the destination " +
+			"never holds user data. The source is removed only afterwards, on a re-verified " +
+			"link-free chain and only while os.SameFile still identifies the entry at src as " +
+			"the file that was read (gate rounds 16-17); a failed archive copy aborts before " +
+			"the removal, so the archive copy IS the protection.",
+	},
+	{
+		File: "internal/cli/update/reconcile.go", Function: "safeWriteFile", Sites: 1,
+		Protection: "SPEC-UPDATE-MIGRATION-001 (card t1547): the rename atomically installs the " +
+			"reconciliation result — replacing, never following, the final component after the " +
+			"parent chain is verified link-free (gate round 10). Both callers write bytes that " +
+			"carry the operator's content: the merge arm writes a conflict-free 3-way merge " +
+			"whose result contains 'ours', and the conflict arm restores the operator's bytes " +
+			"verbatim while the template render goes to a separately claimed .moai-new sidecar. " +
+			"A conflicted file is never auto-rewritten (the conflictDisposition path), so the " +
+			"only replacements are ones the operator's content survives inside.",
 	},
 }

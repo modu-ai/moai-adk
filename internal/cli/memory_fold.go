@@ -15,6 +15,8 @@ import (
 	"bytes"
 	"encoding/json"
 	"fmt"
+
+	"github.com/modu-ai/moai-adk/internal/bugreport"
 	"io"
 	"os"
 	"path/filepath"
@@ -1009,6 +1011,7 @@ func foldClosedCardMemory(cardID string) {
 		summary, err := func() (summary string, err error) {
 			defer func() {
 				if r := recover(); r != nil {
+					bugreport.Capture(bugreport.KindPanic, nil, "", nil)
 					err = fmt.Errorf("the fold step panicked: %v", r)
 				}
 			}()

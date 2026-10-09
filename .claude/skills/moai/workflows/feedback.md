@@ -234,6 +234,18 @@ Resume support: Not applicable (atomic operation).
 
 ---
 
+## Relationship to Automatic Improvement Participation
+
+This workflow is the EXPLICIT proposal path: the user invokes it, the orchestrator asks, and the submission happens only after the confirmation gate. It is distinct from the automatic improvement participation pipeline, which is a separately opt-in feature:
+
+- participation state lives ONLY in the user-scoped config (`<moai home>/config/participation.yaml`); this workflow never reads it, never writes it, and never enables it;
+- when the user has opted in, tool-defect reports are captured, queued, and filed automatically by the participation pipeline (consent first, per-item and daily caps, occurrence comments instead of duplicate issues); this workflow's queued fallback (`.moai/state/feedback/queue.json`) belongs to the manual flow above and is unrelated to that pipeline;
+- a decline (or no stored decision) means zero automatic activity: no capture, no queueing, no gh call, no model call.
+
+If the user asks how to turn automatic participation on or off, route them to the participation question at `moai init` / `moai update`, the web console's feedback settings, or `moai feedback participation preview` — never enable it as a side effect of this workflow.
+
+---
+
 ## Agent Chain Summary
 
 - Phase 1: MoAI orchestrator (AskUserQuestion for feedback collection)

@@ -17,26 +17,27 @@ import (
 )
 
 // TestCodexOnlyRelocationRespectsCatalogFilter pins the P2 fix
-// (SPEC-USER-ASSET-INSTALL-001 leader mid-run finding): the relocation path
-// reads the catalog-FILTERED skill root, never the raw embed — a
-// newly-optional bundle skill (moai-workflow-loop rides the ops-tools bundle
-// under the D-Q5 re-bundling) must NOT deploy into .agents/skills without a
-// bundle selection, while the L0 catalog skills still re-home.
+// (SPEC-USER-ASSET-INSTALL-001 leader mid-run finding), re-baselined by the
+// t1547 repair round (gate r4 finding 1): the listing now applies the SAME
+// common-asset exclusion as the deploy walk (isCommonAssetRoot — REQ-005,
+// in any mode), so NO .agents/skills path appears in the listing — the
+// unselected-bundle leak assertion holds, and the former L0-presence
+// assertions retired with the listing-superset contract they pinned (a real
+// deployment writes no .agents/skills — REQ-005; pinned on disk by
+// TestCodexOnlyForceUpdateVariant). The catalog remap integrity itself stays
+// pinned at the harnessFS Open/ReadDir layer.
 func TestCodexOnlyRelocationRespectsCatalogFilter(t *testing.T) {
 	d := newCodexOnlyTestDeployer(t)
 
 	seen := make(map[string]bool)
 	for _, p := range d.ListTemplates() {
 		seen[p] = true
+		if strings.HasPrefix(p, ".agents/skills/") {
+			t.Errorf("common-asset path %q visible in the listing — the deploy walk never writes it (deploy parity)", p)
+		}
 	}
 	if seen[".agents/skills/moai-workflow-loop/SKILL.md"] {
 		t.Error("CATALOG_FILTER_LEAK: .agents/skills/moai-workflow-loop/SKILL.md visible in codex-only deployment — the relocation path bypassed the catalog filter (unselected-bundle skill deployed)")
-	}
-	if !seen[".agents/skills/moai-workflow-tdd/SKILL.md"] {
-		t.Error(".agents/skills/moai-workflow-tdd/SKILL.md missing — the L0 relocation broke while fixing the filter")
-	}
-	if !seen[".agents/skills/moai/SKILL.md"] {
-		t.Error(".agents/skills/moai/SKILL.md missing — the L0 dispatcher relocation broke")
 	}
 }
 
@@ -87,8 +88,6 @@ func TestCodexOnlyDeployerWalkIntegrity(t *testing.T) {
 		// `AGENTS.md.tmpl`, while this listing sees deploy targets.
 		"AGENTS.md",
 		".gitignore",
-		".agents/skills/moai-workflow-tdd/SKILL.md", // remapped catalog skill
-		".agents/skills/moai-plan/SKILL.md",         // published skill
 	} {
 		if !seen[want] {
 			t.Errorf("%q missing from codex-only template listing", want)

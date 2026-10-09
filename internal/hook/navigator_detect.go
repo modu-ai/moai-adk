@@ -31,6 +31,8 @@ import (
 	"encoding/json"
 	"fmt"
 	"log/slog"
+
+	"github.com/modu-ai/moai-adk/internal/bugreport"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -156,6 +158,7 @@ func runNavigatorDetectSafe(ctx context.Context, input *HookInput) (result *dete
 	// makes context.WithTimeout panic) is contained here.
 	defer func() {
 		if r := recover(); r != nil {
+			bugreport.Capture(bugreport.KindPanic, nil, "", nil)
 			slog.Debug("navigator-detect: recovered from panic (fail-open)",
 				"tool_name", toolName,
 				"recover", r,
@@ -178,6 +181,7 @@ func runNavigatorDetectSafe(ctx context.Context, input *HookInput) (result *dete
 		// keeps the channel contract honest.
 		defer func() {
 			if r := recover(); r != nil {
+				bugreport.Capture(bugreport.KindPanic, nil, "", nil)
 				slog.Debug("navigator-detect: worker goroutine recovered (fail-open)",
 					"recover", r)
 				ch <- outcome{nil}

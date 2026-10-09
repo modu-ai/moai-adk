@@ -2,6 +2,8 @@ package escalation
 
 import (
 	"fmt"
+
+	"github.com/modu-ai/moai-adk/internal/bugreport"
 	"log/slog"
 	"os"
 	"path/filepath"
@@ -135,6 +137,7 @@ func observeInto(s config.AutonomySettings, ev Event, now time.Time, checkpoint 
 	r := &run{s: s, ev: ev, now: now, root: root, card: card, files: files, lg: lg, checkpoint: checkpoint}
 	defer func() {
 		if p := recover(); p != nil {
+			bugreport.Capture(bugreport.KindPanic, nil, "", nil)
 			r.notChecked("detector", fmt.Sprintf("panic: %v", p))
 		}
 	}()

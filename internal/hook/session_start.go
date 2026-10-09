@@ -499,9 +499,11 @@ func (h *sessionStartHandler) Handle(ctx context.Context, input *HookInput) (*Ho
 	// stdout is overwritten when the TUI takes the screen. The notice rides
 	// BOTH channels because it has two audiences reading different surfaces:
 	// additionalContext reaches the orchestrator, systemMessage the operator,
-	// who opens the lane terminals by hand. Each copy is rendered in its
-	// audience's language (agent_prompt_language for the agent-facing copy,
-	// conversation_language for the operator-facing one); the commands, run
+	// who opens the lane terminals by hand. Both copies render in the
+	// session's conversation_language (SPEC-SESSION-START-GUIDE-I18N-001:
+	// card t1603 amends the bootstrap guide's two-audience English rule for
+	// this surface only — decision-index Q1; agent_prompt_language still
+	// governs the other agent-facing surfaces). The commands, run
 	// id, and socket path are identical in both. It is a BOOTSTRAP
 	// announcement, so it fires on a genuinely new session only — resume,
 	// clear, and compact keep the factory environment, and re-announcing
@@ -515,7 +517,7 @@ func (h *sessionStartHandler) Handle(ctx context.Context, input *HookInput) (*Ho
 	if factoryRoot == "" {
 		factoryRoot = input.CWD
 	}
-	if notice := factoryBootstrapNoticeForSource(input.Source, factoryRoot, input.SessionID, langEnglish); notice != "" {
+	if notice := factoryBootstrapNoticeForSource(input.Source, factoryRoot, input.SessionID, operatorLang(h.cfg)); notice != "" {
 		if out.HookSpecificOutput == nil {
 			out.HookSpecificOutput = &HookSpecificOutput{
 				HookEventName: string(EventSessionStart),

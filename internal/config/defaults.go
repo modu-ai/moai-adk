@@ -565,6 +565,108 @@ const (
 	// which keeps the pre-submit confirmation gate mandatory.
 	DefaultFeedbackAutoSubmit = false
 
+	// SPEC-FEEDBACK-PARTICIPATION-001 (design.md section 10) — the bugreport
+	// participation pipeline's compiled constants. Every cap the local
+	// pipeline and the sender enforce is defined here once; the pipeline
+	// reads them, never a local literal.
+
+	// DefaultBugreportFingerprintWindowDays is the per-fingerprint dedupe
+	// window: a fingerprint queued or sent inside it is never queued again.
+	DefaultBugreportFingerprintWindowDays = 7
+
+	// DefaultBugreportDailyCap bounds the reports queued per rolling 24
+	// hours across all fingerprints.
+	DefaultBugreportDailyCap = 3
+
+	// DefaultBugreportWeeklyCap bounds the reports queued per rolling 7 days.
+	DefaultBugreportWeeklyCap = 10
+
+	// DefaultBugreportQueueBound bounds the queue length; the oldest item is
+	// dropped beyond it.
+	DefaultBugreportQueueBound = 20
+
+	// DefaultBugreportAttemptLimit is the per-item send-attempt limit; the
+	// item is dropped with a log row when reached.
+	DefaultBugreportAttemptLimit = 5
+
+	// DefaultBugreportSpoolMaxLines and DefaultBugreportSpoolMaxBytes bound
+	// the capture spool; capture drops a signal beyond either.
+	DefaultBugreportSpoolMaxLines = 200
+	DefaultBugreportSpoolMaxBytes = 64 * 1024
+
+	// DefaultBugreportSpoolReadTimeBox bounds ONE spool-file read: the drain
+	// reads the spool through it, so a file that blocks (a swapped-in FIFO)
+	// must read as a refusal within a bound instead of stalling the drain
+	// past its own deadline.
+	DefaultBugreportSpoolReadTimeBox = 100 * time.Millisecond
+
+	// DefaultBugreportLedgerReadTimeBox bounds ONE ledger-file read — the
+	// same blocking-file defense the spool read carries.
+	DefaultBugreportLedgerReadTimeBox = 100 * time.Millisecond
+
+	// DefaultBugreportLedgerMaxBytes caps the ledger file's size; the store
+	// holds fingerprints and window stamps, and anything larger is out of
+	// contract (purge required).
+	DefaultBugreportLedgerMaxBytes = 256 * 1024
+
+	// DefaultFeedbackQueueReadTimeBox bounds ONE queue-file read — the same
+	// blocking-file defense the consent, spool, and ledger reads carry. The
+	// sender and `moai update` both read the queue, so a file that blocks
+	// must read as a refusal within a bound instead of stalling them past
+	// their own deadlines.
+	DefaultFeedbackQueueReadTimeBox = 100 * time.Millisecond
+
+	// DefaultFeedbackQueueMaxBytes caps the queue file's size; the queue is
+	// bounded at DefaultBugreportQueueBound items, and anything larger is
+	// out of contract.
+	DefaultFeedbackQueueMaxBytes = 1024 * 1024
+
+	// DefaultBugreportModelCallsReadTimeBox bounds ONE budget-file read —
+	// the judgment runs INSIDE the queue-lock mutation, so a blocking file
+	// here stalls every queue operation, not just the sender.
+	DefaultBugreportModelCallsReadTimeBox = 100 * time.Millisecond
+
+	// DefaultBugreportModelCallsMaxBytes caps the budget file's size; it
+	// holds a handful of attempt stamps, and anything larger is out of
+	// contract.
+	DefaultBugreportModelCallsMaxBytes = 4096
+
+	// DefaultBugreportCaptureTimeBox bounds one capture call on the hook
+	// path (time-boxed, fail-open, network-free by construction).
+	DefaultBugreportCaptureTimeBox = 50 * time.Millisecond
+
+	// DefaultBugreportFlushTimeBox bounds a whole flush run (drain + sender).
+	DefaultBugreportFlushTimeBox = 10 * time.Second
+
+	// DefaultBugreportFrameLimit caps the moai-internal frames kept per
+	// signal, innermost first.
+	DefaultBugreportFrameLimit = 12
+
+	// DefaultBugreportModelCallsPerDay is the rolling daily cap on summary
+	// model calls.
+	DefaultBugreportModelCallsPerDay = 6
+
+	// DefaultBugreportOccurrenceCommentsPerIssue is the per-issue occurrence
+	// comment cap; the sender adds no comment at or beyond it (advisory
+	// count, read from the remote).
+	DefaultBugreportOccurrenceCommentsPerIssue = 50
+
+	// DefaultBugreportModelInputMaxBytes and DefaultBugreportModelOutputMaxBytes
+	// bound the summary prompt and the accepted summary, bounding token spend.
+	DefaultBugreportModelInputMaxBytes  = 4096
+	DefaultBugreportModelOutputMaxBytes = 2048
+
+	// DefaultParticipationConsentReadTimeBox bounds ONE consent-file read in
+	// the user-scoped reader: the drain, the sender, and every other consumer
+	// read consent through it directly, so a file that blocks (a swapped-in
+	// FIFO) must read as no consent within a bound instead of stalling the
+	// caller past its own time box.
+	DefaultParticipationConsentReadTimeBox = 100 * time.Millisecond
+
+	// DefaultParticipationConsentMaxBytes caps the consent file's size; the
+	// file is a handful of lines, and anything larger is not a consent file.
+	DefaultParticipationConsentMaxBytes = 4096
+
 	// DefaultHandoffMode is the compiled default for HandoffConfig.Mode.
 	// SPEC-HANDOFF-AUTORESUME-001: auto-resume is opt-in — the default is
 	// "manual" (pure no-op), preserving the unchanged baseline UX.

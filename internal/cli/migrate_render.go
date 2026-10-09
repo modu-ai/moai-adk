@@ -30,12 +30,32 @@ type renderedCarriage struct {
 	ctx      *template.TemplateContext
 }
 
-// Carries implements update.TemplateRender.
+// Carries implements update.TemplateRender. The direct read runs first (the
+// harnessFS's own rule: a physical file at the deploy path wins over the
+// projection); a miss falls back to the harness-neutral shared surfaces
+// (.moai/policies ← .claude/rules/moai, .moai/workflows ← .claude/skills/
+// moai/workflows — card t1547 repair round, gate finding 1), so a deployed
+// policies or workflows file classifies against the source that actually
+// produced its bytes. Without the mapping every such file read as
+// not-carried and a healthy record routed it to stale — the removal path the
+// shared surfaces must never see.
 func (c renderedCarriage) Carries(relPath string) ([]byte, bool) {
-	if data, err := fs.ReadFile(c.fsys, relPath); err == nil {
+	if data, ok := c.readCarried(relPath); ok {
 		return data, true
 	}
-	tmplPath := relPath + ".tmpl"
+	if src, ok := template.SharedDeploySource(relPath); ok {
+		return c.readCarried(src)
+	}
+	return nil, false
+}
+
+// readCarried decides carriage for ONE fs path: a plain source at it, or a
+// .tmpl source whose rendered form is the carried content.
+func (c renderedCarriage) readCarried(path string) ([]byte, bool) {
+	if data, err := fs.ReadFile(c.fsys, path); err == nil {
+		return data, true
+	}
+	tmplPath := path + ".tmpl"
 	data, err := fs.ReadFile(c.fsys, tmplPath)
 	if err != nil {
 		return nil, false
