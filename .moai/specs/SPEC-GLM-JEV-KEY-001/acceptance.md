@@ -2,7 +2,7 @@
 id: SPEC-GLM-JEV-KEY-001
 title: "Acceptance criteria — glm --key flag and moai jev command"
 created: 2026-10-09
-updated: 2026-10-09
+updated: 2026-10-10
 ---
 
 # SPEC-GLM-JEV-KEY-001 — acceptance.md
@@ -24,7 +24,7 @@ Card-level gates: AC-GJK-001, AC-GJK-002, and AC-GJK-003 verify card criterion (
 
 - `--key` with a value containing spaces / dotenv-special characters (`"`, `\`, `$`) → stored escaped by the owning package's `EscapeValue`, read back identically by `Load` (round-trip, package-level).
 - `--key` with an embedded line break (Go literals `"first\nsecond"` LF, `"first\rsecond"` CR, `"first\r\nsecond"` CRLF) → refused before write on BOTH new paths; the existing credential file is preserved byte-for-byte (AC-GJK-014, AC-GJK-015). Legacy `setup` keeps today's first-line-only read-back behavior unchanged (known limitation, plan.md §B4).
-- `--key=<value>` single-token spelling → accepted by the glm scan, dash-leading value included (`--key=-f` is stored; plan.md §D.1); refused by jev in the same spelling (AC-GJK-011).
+- `--key=<value>` single-token spelling → accepted by the glm scan, dash-leading value included (`--key=-f` is stored; plan.md §D.1); jev refuses a dash-leading value in this spelling (`--key=-f`, REQ-GJK-013, AC-GJK-011); a normal jev `--key=<value>` is stored (AC-GJK-005).
 - A separated `--key` value whose trimmed form begins with `-` (`--key -f`, `--key --help`) → refused with a usage error and nothing stored (AC-GJK-011). `moai glm --key --help` is answered by the help precedence instead (REQ-GJK-003): it prints help and stores nothing.
 - Credential of ≤4 characters → jev confirmation discloses NO part of it (REQ-JEVC-020 floor), glm `maskAPIKey` returns `****`.
 - Pre-existing credential file at 0644 → tightened to 0600 on save (AC-GJK-012).
@@ -56,7 +56,7 @@ Given the built CLI, When `moai jev --help` runs, Then the output contains `--ke
 Given a redirected home, When the root command runs with args `["glm", "--key", "test-key-1234567890"]`, Then `<home>/.moai/.env.glm` exists at mode 0600 containing `GLM_API_KEY="test-key-1234567890"`, stdout contains `GLM API key stored (`, the full key string appears in neither stdout nor stderr, and the launch path is never reached (the test stubs the launch step and records zero invocations).
 
 **AC-GJK-005** (Critical, card-b, jev) — flag save lands on disk.
-Given a redirected home, When the root command runs with args `["jev", "--key", "tsk-cred-1234567890"]`, Then `<home>/.moai/.env.typesafe` exists at mode 0600 containing `TYPESAFE_API_KEY="tsk-cred-1234567890"`, the confirmation discloses at most the final four characters, and the full credential appears in neither stdout nor stderr.
+Given a redirected home, When the root command runs with args `["jev", "--key", "tsk-cred-1234567890"]`, Then `<home>/.moai/.env.typesafe` exists at mode 0600 containing `TYPESAFE_API_KEY="tsk-cred-1234567890"`, the confirmation discloses at most the final four characters, and the full credential appears in neither stdout nor stderr. The normal `--key=<value>` spelling stores the same way: when the root command runs with args `["jev", "--key=tsk-cred-1234567890"]`, Then `<home>/.moai/.env.typesafe` holds `TYPESAFE_API_KEY="tsk-cred-1234567890"` at mode 0600, and the full credential appears in neither stdout nor stderr.
 Short-credential scenario: Given a redirected home, When `moai jev --key Q` runs, `moai jev --key Qz9K` runs, and `moai jev --key Qz9Kx` runs, Then the 1- and 4-character confirmations disclose no part of their credential, the 5-character confirmation discloses only `z9Kx`, and in the 4- and 5-character runs the full credential appears in neither stdout nor stderr.
 
 **AC-GJK-006** (Critical, card-c) — legacy setup preserved.

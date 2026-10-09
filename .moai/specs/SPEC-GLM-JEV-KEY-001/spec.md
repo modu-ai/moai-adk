@@ -2,9 +2,9 @@
 id: SPEC-GLM-JEV-KEY-001
 title: "moai glm --key flag and new moai jev --key command (shared credential storage)"
 version: "0.1.0"
-status: completed
+status: in-progress
 created: 2026-10-09
-updated: 2026-10-09
+updated: 2026-10-10
 author: manager-spec
 priority: P1
 phase: "v3.2.0"
@@ -12,6 +12,7 @@ module: "internal/cli"
 lifecycle: spec-anchored
 tags: "cli, glm, jev, credential, key-storage, typesafe"
 tier: M
+amendment_of: SPEC-GLM-JEV-KEY-001
 ---
 
 # SPEC-GLM-JEV-KEY-001
@@ -21,6 +22,14 @@ tier: M
 | Date | Version | Change |
 |------|---------|--------|
 | 2026-10-09 | 0.1.0 | Initial draft — factory card t1613 (Class C), plan phase (manager-spec). |
+
+## Amendments
+
+- **In-place amendment, 2026-10-10 (plan-audit iteration 9 repairs).**
+  - Prior completed version: 0.1.0, status `completed`, closed by the 3-phase close commit `c231f6030` on this branch.
+  - prior_completed_sha: `acc8d071a` (the prior close's `sync_commit_sha`, progress.md line 111). This close is replayed on this branch as `c231f6030`. The backfill of progress.md `sync_commit_sha` to the rebased value is owed to the phase owner, manager-docs, at sync. This amendment does not edit progress.md.
+  - Rationale: plan-audit iteration 9 finding B-1. Status `completed` cannot hold while milestone M4 is open and AC-GJK-011 is not green: `internal/cli/glm.go:565` (tree `3e1d51acc`) still stores `--key -` and a padded `--key " -f"`.
+  - Scope: plan-phase repairs only, to spec.md (frontmatter and this record), plan.md §F (milestone order M1, M2, M4, M3), and acceptance.md line 27 with AC-GJK-005. The M4 code change is run-phase work after kickoff. Re-close only after M4 lands and the §D.5 closure gates pass on the final tree.
 
 ## Position in the chain
 
