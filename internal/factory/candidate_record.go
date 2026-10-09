@@ -20,6 +20,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"io"
 	"os"
 	"path/filepath"
 	"strings"
@@ -154,23 +155,27 @@ func candidateStoreRealPath(projectRoot, cardID string) error {
 // was ever pushed" and "the record is corrupt" refuse with different
 // causes.
 //
-// Non-regular files refuse WITHOUT being opened (card t1478 M2 repair):
-// a FIFO swapped in at the record path parked the former plain
-// os.ReadFile inside the candidate mutation lock, wedging every later
-// candidate call of the card past every deadline. One Lstat gates the
-// open — regular files only, everything else is a plain error.
+// Non-regular files refuse WITHOUT being read (card t1478 M2 repair): a
+// FIFO swapped in at the record path parked the former plain os.ReadFile
+// inside the candidate mutation lock, wedging every later candidate call
+// of the card past every deadline. openCandidateRecordFile opens with
+// non-blocking, no-follow flags and verifies the OPENED descriptor is a
+// regular file — the Lstat precheck alone left a TOCTOU window where a
+// regular file swapped for a FIFO after the check still parked the read.
 func ReadCandidateRecord(projectRoot, cardID, pinnedSHA string) (*CandidateRecord, error) {
 	path, err := candidateRecordPath(projectRoot, cardID, pinnedSHA)
 	if err != nil {
 		return nil, err
 	}
-	if info, lstatErr := os.Lstat(path); lstatErr == nil && !info.Mode().IsRegular() {
-		return nil, fmt.Errorf("candidate record for card %s at pinned %s is not a regular file (%s at %s) — refusing to open it", cardID, pinnedSHA, info.Mode(), path)
+	f, err := openCandidateRecordFile(path)
+	if err != nil {
+		if errors.Is(err, os.ErrNotExist) {
+			return nil, fmt.Errorf("%w for card %s at pinned %s", ErrCandidateRecordAbsent, cardID, pinnedSHA)
+		}
+		return nil, err
 	}
-	data, err := os.ReadFile(path)
-	if errors.Is(err, os.ErrNotExist) {
-		return nil, fmt.Errorf("%w for card %s at pinned %s", ErrCandidateRecordAbsent, cardID, pinnedSHA)
-	}
+	defer func() { _ = f.Close() }()
+	data, err := io.ReadAll(f)
 	if err != nil {
 		return nil, fmt.Errorf("read candidate record: %w", err)
 	}

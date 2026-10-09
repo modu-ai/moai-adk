@@ -82,3 +82,49 @@ func TestCandidateRecordReadRefusesFifoWithoutBlocking(t *testing.T) {
 		t.Fatal("ReadCandidateRecord blocked 3s on a FIFO at the record path — the read does not refuse non-regular files")
 	}
 }
+
+// TestCandidateRecordReadSurvivesRegularFifoSwap pins the TOCTOU tail
+// (card t1478 M2 repair): the Lstat precheck alone left a window where a
+// regular record swapped for a FIFO after the check still parked the read
+// inside the mutation lock. The invariant under active swapping: every
+// read returns promptly — refused, absent, or decoded — never blocked.
+// The opened-descriptor check (O_NONBLOCK|O_NOFOLLOW + fstat) is what
+// makes the invariant structural rather than lucky.
+func TestCandidateRecordReadSurvivesRegularFifoSwap(t *testing.T) {
+	root := t.TempDir()
+	recordDir := filepath.Join(root, ".moai", "state", "candidate", "t9001")
+	if err := os.MkdirAll(recordDir, 0o755); err != nil {
+		t.Fatalf("mkdir: %v", err)
+	}
+	recordPath := filepath.Join(recordDir, "abc123def456.json")
+	swap := func(asFifo bool) {
+		t.Helper()
+		_ = os.Remove(recordPath)
+		if asFifo {
+			if err := syscall.Mkfifo(recordPath, 0o600); err != nil {
+				t.Fatalf("mkfifo: %v", err)
+			}
+			return
+		}
+		rec := CandidateRecord{CardID: "t9001", PinnedSHA: "abc123def456", Verdict: CandidateVerdictGreen, PushedAt: "t"}
+		if err := WriteCandidateRecord(root, rec); err != nil {
+			t.Fatalf("rewrite record: %v", err)
+		}
+	}
+
+	for i := 0; i < 50; i++ {
+		swap(i%2 == 0)
+		done := make(chan error, 1)
+		go func() {
+			_, err := ReadCandidateRecord(root, "t9001", "abc123def456")
+			done <- err
+		}()
+		select {
+		case <-done:
+		case <-time.After(2 * time.Second):
+			t.Fatalf("iteration %d: read blocked under an active regular↔FIFO swap — the opened-descriptor check is absent", i)
+		}
+	}
+	// Leave the store in the regular state for the confinement assertions.
+	swap(false)
+}
