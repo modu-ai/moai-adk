@@ -29,7 +29,7 @@ amendment_of: SPEC-GLM-JEV-KEY-001
   - Prior completed version: 0.1.0, status `completed`, closed by the 3-phase close commit `c231f6030` on this branch.
   - prior_completed_sha: `acc8d071a` (the prior close's `sync_commit_sha`, progress.md line 111). This close is replayed on this branch as `c231f6030`. The backfill of progress.md `sync_commit_sha` to the rebased value is owed to the phase owner, manager-docs, at sync. This amendment does not edit progress.md.
   - Rationale: plan-audit iteration 9 finding B-1. Status `completed` cannot hold while milestone M4 is open and AC-GJK-011 is not green: `internal/cli/glm.go:565` (tree `3e1d51acc`) still stores `--key -` and a padded `--key " -f"`.
-  - Scope: plan-phase repairs only, to spec.md (frontmatter and this record), plan.md §F (milestone order M1, M2, M4, M3), and acceptance.md line 27 with AC-GJK-005. The M4 code change is run-phase work after kickoff. Re-close only after M4 lands and the §D.5 closure gates pass on the final tree.
+  - Scope: plan-phase repairs only, to spec.md (frontmatter and this record), plan.md §F (the run-order head line, which records `337080950` as pre-amendment M3 evidence that does not count toward closure; the M1 entry, `9abd90801`; the M2 entry, `1a2521740`; and the M4 cases (c) to (j)), and acceptance.md §D.5 and §D.7. The M4 code change is run-phase work after kickoff. Re-close only after M4 lands and the §D.5 closure gates pass on the final tree.
 
 ## Position in the chain
 
