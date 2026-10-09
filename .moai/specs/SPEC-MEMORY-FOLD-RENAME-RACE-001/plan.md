@@ -12,7 +12,7 @@ The fold apply path ends `atomicWriteFoldFile` with a check→rename tail (`inte
 
 | File | New/Edit | What |
 |---|---|---|
-| `internal/cli/memory_fold.go` | edit | M1: add the `mutateBeforeRename` test-seam field + its invocation immediately before `os.Rename` (test-only scaffolding). M2: acquire/release the store lock around the `applyFold` body. No existing check moves. |
+| `internal/cli/memory_fold.go` | edit | M1: add two test-only seam fields — `mutateBeforeRename` (invoked immediately before `os.Rename`) and `mutateBetweenWrites` (invoked in `applyFold` between the two `atomicWriteFoldFile` calls, at the re-read/effective-state position) — with their invocations (test-only scaffolding, B-3 set/restore discipline). M2: acquire/release the store lock around the `applyFold` body. No existing check moves. |
 | `internal/cli/memory_fold_test.go` | edit | M1: the RED test. M2: the test's writer becomes the lock-taking (cooperating) form. |
 | `internal/cli/fold_store_lock_unix.go` | new | Unexported `foldStoreLock` — `unix.Flock` `LOCK_EX\|LOCK_NB` with a bounded retry loop; pattern copied from `internal/sessionmsg/lock_unix.go` (including the `unacquiredFD = -1` sentinel lesson). |
 | `internal/cli/fold_store_lock_windows.go` | new | Windows parity — `LockFileEx` `LOCKFILE_EXCLUSIVE_LOCK\|LOCKFILE_FAIL_IMMEDIATELY`; pattern from `internal/sessionmsg/lock_windows.go`. |
@@ -33,7 +33,7 @@ The RED test (M1) injects a direct write at the new seam — on the pre-fix tree
 
 ## §C Pre-flight
 
-1. Baseline family measurement on `2aab5f797` with the CORRECTED selector `^(TestMemoryFold|TestReviewArchiveUpdate).*$` — green-before on record: `ok  github.com/modu-ai/moai-adk/internal/cli  38.008s`, exit 0 (progress.md §E.1). Selector history (audit iter-1 D1): the first selector `^Test(Fold|Review).*$` was wrong — it swept 53 Review-prefix tests and ZERO fold tests; its baseline (`ok … 414.385s`) is kept only as a recorded mis-measurement. The corrected selector's swept set is verified before every use: `go test -list '^(TestMemoryFold|TestReviewArchiveUpdate).*$' ./internal/cli` → 28 tests, including `TestMemoryFold_ArchiveRecheckedBeforeMemoryRename` and the 13 `TestMemoryFoldOnDone_*` (verified at plan phase, exit 0). The very first attempt ran on the pre-absorb base `81786284e` and hit its own 240s timeout — a tool artifact, not a red. If red before any change, STOP and report: a red baseline is a gap, not a starting point.
+1. Baseline family measurement on `2aab5f797` with the FINAL selector `^(TestMemoryFold|TestReviewArchiveUpdate|TestReviewSequentialAbandonedTempOwnership).*$` — green-before on record: `ok  github.com/modu-ai/moai-adk/internal/cli  42.974s`, exit 0 (attempt 4, progress.md §E.1). Selector history: the first selector `^Test(Fold|Review).*$` was wrong (53 Review-prefix tests, ZERO fold tests; its 414.385s baseline is a recorded mis-measurement — audit iter-1 D1); the second selector `^(TestMemoryFold|TestReviewArchiveUpdate).*$` (38.008s) missed `TestReviewSequentialAbandonedTempOwnership` (audit iter-2 A4) and is superseded by the final 29-test form. The selector's swept set is verified before every use: `go test -list '^(TestMemoryFold|TestReviewArchiveUpdate|TestReviewSequentialAbandonedTempOwnership).*$' ./internal/cli` → 29 tests, including `TestMemoryFold_ArchiveRecheckedBeforeMemoryRename`, the 13 `TestMemoryFoldOnDone_*`, and `TestReviewSequentialAbandonedTempOwnership` (verified at plan phase, exit 0). The very first attempt ran on the pre-absorb base `81786284e` and hit its own 240s timeout — a tool artifact, not a red. If red before any change, STOP and report: a red baseline is a gap, not a starting point.
 2. Confirm the window lines still match spec.md P1 (`grep -n "os.Rename" internal/cli/memory_fold.go` → `:649`) before M1 edits; the plan's line citations are pinned to `2aab5f797`.
 3. `git rev-parse --short HEAD` immediately before the M1 commit — never a value read earlier in the turn.
 
@@ -55,7 +55,7 @@ Order: decision-reversibility first — the RED proof (most likely to reshape th
 
 ### M1 — RED: the loss reproduced (Priority High)
 
-1. Add `mutateBeforeRename func(dir, name string)` to `foldTestSeam`; invoke it between the `bytes-done` order probe (`:643-645`) and the rename (`:649`) — after every check, before `os.Rename`.
+1. Add two test-only seam fields to `foldTestSeam` and invoke them (both B-3 set/restore discipline): `mutateBeforeRename func(dir, name string)` between the `bytes-done` order probe (`:643-645`) and the rename (`:649`) — after every check, before `os.Rename`; and `mutateBetweenWrites func(dir string)` in `applyFold`, after the first rename (the archive append) completes and before the second `atomicWriteFoldFile` (the re-read/effective-state position) — the observation point that separates a whole-apply lock from a per-write one (AC-MRR-009).
 2. Add `TestFoldRenameWindowConcurrentWriter` to `internal/cli/memory_fold_test.go`: t.TempDir store with MEMORY.md carrying a t1568-shaped STRONG line and a linked archive index; apply the fold (`--yes` path, seam set/restored per B-3); the seam hook appends a distinct writer line to MEMORY.md (direct write — the pre-fix world has no lock).
 3. Observe RED: the fold returns success; MEMORY.md no longer carries the writer's line; the assertion "the writer's line is present" fails.
    - RED-now command: `go test -race -count=10 ./internal/cli -run '^TestFoldRenameWindowConcurrentWriter$'`
@@ -67,18 +67,18 @@ Order: decision-reversibility first — the RED proof (most likely to reshape th
 2. `applyFold`: acquire at entry (D-1 position), `defer release()`; on bounded-wait expiry return the REQ-MRR-003 refusal.
 3. Flip the window test's writer to the cooperating form (§A.3) and observe GREEN: `go test -race -count=10 ./internal/cli -run '^TestFoldRenameWindowConcurrentWriter$'` → PASS, every iteration.
 4. Parameterize the same test over both write surfaces (archive append call site and MEMORY.md rewrite call site — premise P3): the contract holds on both (AC-MRR-004).
-5. Add the span-observation test `TestFoldStoreLockSpanHeldThroughApply` (AC-MRR-009): a second independent lock object samples a non-blocking acquire at `mutateDisk` (success — the lock is not yet held), `mutateDuringWrite` (refused), and `mutateBeforeRename` (refused). The (success, refusal, refusal) tuple pins the whole-apply span of REQ-MRR-001 and fails on a per-rename-lock mutant (which yields (success, refusal, success)).
+5. Add the span-observation test `TestFoldStoreLockSpanHeldThroughApply` (AC-MRR-009): a second independent lock object samples a non-blocking acquire at FOUR points — `mutateDisk` (success — the lock is not yet held), `mutateDuringWrite` (refused), `mutateBetweenWrites` (refused), and `mutateBeforeRename` (refused). The (success, refusal, refusal, refusal) tuple pins the whole-apply span of REQ-MRR-001 and fails on BOTH mutant classes: a per-rename lock yields (success, refusal, success, …) at the third sample; a per-write lock (acquire/release per `atomicWriteFoldFile` call — the codex-demonstrated iter-2 mutant) yields (success, refusal, success, refusal) at the between-writes sample.
 
 ### M3 — Surface cells (Priority Medium)
 
 1. Contention refusal (AC-MRR-003): hold the lock in-test, run the fold verb on that store → non-zero exit, the error names the store, both store files byte-identical to pre-state (asserted inside the test).
 2. Close-path abandonment under contention (AC-MRR-006): held lock + the wiring's bounded step → the step reports its one stderr line and begins no write (existing wiring-test conventions).
 3. Lock-file invisibility (AC-MRR-005): `moai memory doctor --dir <fixture>` and a fold preview on a store carrying `.moai-fold.lock` produce byte-identical output to the same store without it.
-4. Windows parity (AC-MRR-008): `fold_store_lock_windows_test.go` executes the lock semantics on the real `LockFileEx` path (acquire → contending acquire refused → release → acquire succeeds) — the Windows CI job runs it and its green is the judge (no local surface executes the Windows path); `GOOS=windows go build ./...` exits 0 as the local compile gate.
+4. Windows parity (AC-MRR-008): `fold_store_lock_windows_test.go` executes the lock semantics on the real `LockFileEx` path (acquire → contending acquire refused → release → acquire succeeds). The judge is the Windows leg of `release-pr-multi-os.yml` (`windows-latest`, `go test -json -race -timeout 35m ./...` — full suite, every leg blocking): the only Windows surface that executes `internal/cli` root packages (the PR gate `pr-multi-os-gate.yml` never fires on `internal/cli` root changes and tests other packages — measured, audit iter-2 D6). Its green is observed at the release window, after card close (acceptance.md §4 records the timing); `GOOS=windows go build ./...` exits 0 as the local compile gate.
 
 ### M4 — Close-out (Priority Medium)
 
-1. Full affected family: `go test -race -count=1 -timeout 900s ./internal/cli -run '^(TestMemoryFold|TestReviewArchiveUpdate).*$'` → PASS (B-1 scope; CI judges the rest; the selector's swept set re-verified by the §C.1 `-list` gate).
+1. Full affected family: `go test -race -count=1 -timeout 900s ./internal/cli -run '^(TestMemoryFold|TestReviewArchiveUpdate|TestReviewSequentialAbandonedTempOwnership).*$'` → PASS (B-1 scope; CI judges the rest; the selector's swept set re-verified by the §C.1 `-list` gate).
 2. `go build ./...` exit 0.
 3. Update progress.md §E.2/§E.3 evidence; verify every AC command's output is on record.
 
