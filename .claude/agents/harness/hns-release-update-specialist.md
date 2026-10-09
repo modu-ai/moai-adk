@@ -68,6 +68,31 @@ State file schema:
 }
 ```
 
+**Codex axis state — separate file (REQ-RDX-001)**: read `.moai/state/last-codex-version.json`
+for the codex `since_codex` baseline (Phase 0 read site). The codex file mirrors the CC key
+family (`last_analyzed_version` / `last_analyzed_date` / `last_master_research` /
+`analysis_history[]`) — it is a distinct file, never merged into the CC file.
+- If file missing: default `since_codex = "rust-v0.161.0"`, emit warning (REQ-RDX-004).
+- Otherwise: use `last_analyzed_version` from the codex state file.
+
+Codex state file schema (the seed names the release TAG form, not plain semver — tag form is
+the sweep-comparison basis):
+```json
+{
+  "last_analyzed_version": "rust-v0.161.0",
+  "last_analyzed_date": "2026-10-08",
+  "last_master_research": ".moai/research/upstream-update-20261008.md",
+  "analysis_history": [
+    { "version_range": "rust-v0.160.1..rust-v0.161.0", "date": "2026-10-08", "spec_id": null, "items_found": 14 }
+  ]
+}
+```
+
+Seed semantics (last-analyzed): `rust-v0.161.0` is the stable promotion the 2026-10-08 sweep
+already analyzed and curated. A NEWER stable promotion observed but not yet analyzed does NOT
+move the seed — that delta is recorded as the next sweep's analysis target. Raise the seed only
+to a version whose delta this run actually analyzed and curated (Phase 7a write site).
+
 ### Phase 1 — Collect Release Notes
 
 Obtain the raw CC changelog text (priority order):
@@ -87,6 +112,14 @@ WebSearch — the built-ins are PROHIBITED there):
 - Secondary: `https://platform.claude.com/docs/en/release-notes/claude-code`.
 - Last resort: web search for `"Claude Code release notes" 2026 anthropics/claude-code`.
 
+**Codex axis — collection lane** (parallel to the CC options): `gh api
+repos/openai/codex/releases?per_page=30` for release tags + bodies — a release with
+`prerelease: false` is a stable promotion, and the baseline comparison uses the tag-form name
+(e.g. `rust-v0.161.0`); cross-check the npm channel with `npm view @openai/codex version`.
+When a release body is a 1-line title (alpha-dense windows), reconstruct content from the
+commits API per the Runner's `CODEX_COMMITS_FALLBACK` procedure and label every reconstructed
+item commit-topic-derived — never release-note text (REQ-RDX-007).
+
 [HARD] Subagent boundary: this specialist MUST NOT prompt the user directly
 (return a blocker report; the orchestrator owns the user-interaction channel). Return a
 blocker report to the orchestrator per
@@ -94,8 +127,17 @@ blocker report to the orchestrator per
 
 ### Phase 2 — Diff & Categorize
 
-Filter and classify entries newer than `since_version` (strict semver greater-than).
-If no entries: emit "No new versions since vX.Y.Z" and stop.
+Filter and classify CC entries newer than `since_version` (strict semver greater-than).
+If no CC entries: emit "No new CC versions since vX.Y.Z", terminate **only the CC axis**, and
+keep executing the codex and best-practices axes in this run — a CC-null delta must never end
+the run while another axis remains unexecuted (REQ-RDX-015).
+
+**Codex axis classification** (same run): consume the Runner codex-lens theme rows (the
+`CODEX_THEME_CHECKLIST` themes: thread / rollout / subagent / compaction / MCP / other),
+curate each observed item into Tier 1/2/3, and judge stability promotion against `since_codex`.
+Alpha-window themes remain watch-list observations: adoption judgment happens only when the
+theme lands in a stable release — never report an alpha-window theme as adopted drift
+(REQ-RDX-009).
 
 | Tier | Impact | Keywords / Signals |
 |------|--------|-------------------|
@@ -115,8 +157,9 @@ Output a structured Markdown table (Version | Category | Tier | Summary | Impact
 
 > **Runner integration**: when the orchestrator wants the per-version impact
 > tables produced in parallel (read-only), it launches the Runner's research
-> sweep with `args.versionDeltas`. The Runner returns the aggregated impact
-> tables; this specialist consumes them for Phases 3-7. The Runner is read-only
+> sweep with `args.versionDeltas` (CC lens) and `args.codexDeltas` (codex lens).
+> The Runner returns the aggregated CC impact tables plus the codex theme rows;
+> this specialist consumes them for Phases 3-7. The Runner is read-only
 > and never prompts the user.
 
 ### Phase 3 — Cross-Reference Official Docs
@@ -178,6 +221,12 @@ If Option C: also create child SPEC stub directories (orchestrator-direct).
 
 Step 7a — Update `.moai/state/last-cc-version.json` (read-first pattern).
 
+Step 7a-codex — Update `.moai/state/last-codex-version.json` (read-first pattern) in the SAME
+run (REQ-RDX-003 — a CC-only write leaving the codex baseline stale is prohibited). Advance
+`last_analyzed_version` only to the highest codex stable version this run fully analyzed and
+curated (last-analyzed semantics — an observed-but-unanalyzed promotion stays a pending delta);
+append the curated range to `analysis_history`.
+
 Step 7b — Delegate to manager-git (`run_in_background: false`):
 - Branch: `chore/cc-update-YYYYMMDD` (small) or `feat/cc-update-YYYYMMDD` (umbrella), squash merge.
 - Commit (Conventional): `chore(release-update): track CC vX.Y.Z..vA.B.C upstream changes`.
@@ -237,6 +286,10 @@ State completion. Print summary (analysis range, plan file path, PR url, next
 step `/moai plan SPEC-V3R4-CC2X-ADOPT-NNN`). For multi-session (plan > 20 items),
 return a blocker report with a paste-ready resume message per
 `.claude/rules/moai/workflow/session-handoff.md`.
+
+Axis gate (REQ-RDX-015): the completion summary aggregates the execution status of all three
+axes — CC, codex, best-practices — and MUST NOT be emitted while any axis remains unexecuted.
+Record per-axis status (executed / skipped + reason) in the summary.
 
 ## Delegation Map
 
