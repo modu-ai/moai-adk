@@ -46,3 +46,15 @@ _<pending run-phase>_
 ## §E.4 Sync-phase Audit-Ready Signal
 
 _<pending sync-phase>_
+
+## §J Lane run-entry record (card t1582, run tmnboq, lane-5)
+
+- Lease: `factory next --card t1582` was refused once with `serial-slot` (holder t1568 live until 2026-10-09T16:15:03Z, observed 16:08:21Z). Leader ruling bb3b2d04 (all run tmnboq cards parallel; withdraws the serial order 44610f49) was verified on disk at 16:33Z: `moai factory status` shows `mode=parallelizable` for the run. The lease was then granted; the card is `picked` and the tree was entered at 16:33Z.
+- Watchdog first observation (16:33:03Z, no prior snapshot, fail-open): HEAD `8673c2a95`, integration window `free`, evidence mtime max 1791549653.
+- RED baseline on the pinned tree `8673c2a95` (`unset MOAI_KANBAN_ID MOAI_KANBAN_LEAD_ADDR MOAI_KANBAN_SETTINGS_INJECTED && go test -count=1 -v -run '^TestRedT1582' ./internal/factory/ ./internal/cli/`; raw log kept in the lane scratchpad): FAIL ×4 with the stated reasons — `TestRedT1582MixedSweepWithNoTestPackageCounts`, `TestRedT1582VerifierAdmitsAShortBaseSHA`, `TestRedT1582ShortBaseSHAPanicsBeforeWindowRelease`, `TestRedT1582MergeReadyMeasurementFailureStillExitsZero`; PASS ×5 (control and sealed items). Committed before any implementation as `d7f4fcf0c`.
+- Pre-spawn sync (orchestrator rule, lane-local): `git rev-list --count --left-right origin/main...HEAD` = `139 95` (diverged). The implementation spawn is HELD.
+- Absorb probe (`git merge-tree --write-tree HEAD origin/main`, tree unchanged): exit 1. Conflicts in `.claude/rules/moai/workflow/context-window-management.md`, its template mirror, `internal/bugreport/spool.go`, and `internal/bugreport/spool_bump_serialize_test.go`. origin/main has 36 commits touching `internal/factory` or `internal/cli` that this branch lacks (the t1538 factory-recovery series): a cross-card overlap with this card's target packages.
+
+decision record: decided_by=lane-5 (card-pick, run tmnboq) evidence_refs=card=t1582;class=C;mode=parallelizable@2026-10-09T16:33Z;prior_hold=t1568(lease expired 16:25:01Z);leader_ruling=bb3b2d04(supersedes 44610f49);pr=no-link;landed=none ladder_path=gate-row card pick (AUTONOMOUS, auto-semantics §9.3)
+
+wait record: id=w-t1582-20261009T1638Z waiting_on=leader reason=cross-card base decision — pinned base vs absorbing origin/main (4 conflicts + t1538 overlap); implementation spawn held recheck=one-shot 5 min (local 01:43 KST) plus standing cron 8a51a689 (:07/:27/:47)
