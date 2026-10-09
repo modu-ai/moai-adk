@@ -94,7 +94,7 @@ FAIL	github.com/modu-ai/moai-adk/internal/cli	1.220s
 
 ```yaml
 run_complete_at: 2026-10-09
-run_commit_sha: pending-backfill-m4   # the M4 commit lands with this file; backfilled immediately after (schema D3 exemption)
+run_commit_sha: fc4eedd33   # the M4 close-out commit; backfilled per the schema D3 exemption (a commit cannot cite its own SHA)
 run_status: complete
 ac_pass_count: 8   # AC-MRR-001..007 + AC-MRR-009 (each with its command + observed output in §E.2)
 ac_fail_count: 0
