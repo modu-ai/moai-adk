@@ -128,7 +128,7 @@ m1_to_mN_commit_strategy: one conventional commit per milestone (M1 RED / M2 GRE
 ```yaml
 sync_status: audit-ready
 sync_complete_at: 2026-10-09
-sync_commit_sha: pending-backfill-sync   # the single sync commit's placeholder (D3 backfill window — a commit cannot cite its own SHA); the real SHA is backfilled in the following commit
+sync_commit_sha: 496eab330   # the sync commit above (backfilled from the pending-backfill-sync placeholder per the D3 backfill window — a commit cannot cite its own SHA)
 files_changed:
   - CHANGELOG.md   # Unreleased § Fixed — sync-phase close entry prepended at the top of the first Fixed list (newest-first, t1566 precedent); B12 pre-checks: `grep -c SPEC-MEMORY-FOLD-RENAME-RACE-001 CHANGELOG.md` = 0 pre-emission, claimed paths verified by `ls internal/cli/`
   - .moai/specs/SPEC-MEMORY-FOLD-RENAME-RACE-001/spec.md   # frontmatter status: in-progress → implemented → completed, merged into this single sync commit (3-phase close — completed rides the sync commit); updated: 2026-10-09 (already the current date — no byte change)
