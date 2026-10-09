@@ -586,9 +586,10 @@ notes: 13/13 ACs PASS (6 as committed regression guards with recorded not-reprod
 
 ## §E.4 Sync-phase Audit-Ready Signal
 
-sync_complete_at: 2026-10-09T06:42+09:00
-sync_commit_sha: d6caefb81
+sync_complete_at: 2026-10-09T17:16:03Z
+sync_commit_sha: pending-backfill-sync
 sync_status: complete
+sync_resync_note: this pass re-synced the CHANGELOG entry for the post-close repairs; the previous close sync commit was d6caefb81.
 changelog_entry_position: [Unreleased] §Fixed — single SPEC-DISPATCH-INTEGRITY-001 entry (newest-first), covering the four user-observable behaviors (duplicate-member bundle refusal, cross-process `.moai-store-lock` + abandonment-aware waits, read-only preview without write access, merging-retry lease validation)
 b12_self_test_a: PASS — pre-emission `grep -c 'SPEC-DISPATCH-INTEGRITY-001' CHANGELOG.md` = 0 (exit 1) before the append; one entry emitted, no duplicate
 b12_self_test_b: PASS — reserved-token-aware AC counter on acceptance.md returned live=13 excluded=0 ambiguous=0; the entry cites 13 acceptance criteria AC-DI-001..013 (matches §E.3 ac_pass_count 13; acceptance.md is the SSOT)
