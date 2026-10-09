@@ -1,0 +1,2 @@
+ok  	github.com/modu-ai/moai-adk/internal/runtime	20.320s
+ok  	github.com/modu-ai/moai-adk/internal/runtime/gobin	1.535s

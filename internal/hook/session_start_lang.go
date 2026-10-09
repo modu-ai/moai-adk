@@ -5,10 +5,13 @@ package hook
 // They moved here from the retired chain-session i18n file (SPEC-LAUNCHER-ENTRY-FLAGS-001
 // M5b first step) so that file could be deleted without taking them along.
 
-// langEnglish is the fallback locale and the language of every agent-facing
-// copy. A locale absent from a locale table (factoryLocales, staleRunLocales)
+// langEnglish is the fallback locale (and the language of agent-facing copies
+// the two-audience rule keeps in English). A locale absent from a locale table
+// (factoryLocales, staleRunLocales)
 // resolves here rather than yielding an empty notice — an English instruction
-// the operator can still act on beats no instruction at all.
+// the operator can still act on beats no instruction at all. The SessionStart
+// bootstrap guide follows conversation_language on both channels instead
+// (SPEC-SESSION-START-GUIDE-I18N-001, card t1603's surface-scoped amendment).
 const langEnglish = "en"
 
 // operatorLang reports the locale the operator reads, or langEnglish when the

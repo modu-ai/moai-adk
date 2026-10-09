@@ -78,8 +78,8 @@ const (
 	// tuiQuiet is the "exactly once / nothing happens" window.
 	tuiQuiet = 500 * time.Millisecond
 	// tuiResumeHelpFixture is the vendored `codex resume --help` text of
-	// codex-cli 0.160.0.
-	tuiResumeHelpFixture = "testdata/codex-0.160.0/resume-help.txt"
+	// codex-cli 0.161.0.
+	tuiResumeHelpFixture = "testdata/codex-0.161.0/resume-help.txt"
 )
 
 // ---------------------------------------------------------------- fake codex
@@ -1062,7 +1062,7 @@ func TestManagedCodexRemoteSupportProbe(t *testing.T) {
 			t.Fatal(err)
 		}
 		if !managedCodexRemoteSupport(string(b)) {
-			t.Errorf("the vendored codex-cli 0.160.0 resume help must be read as supporting --remote and --remote-auth-token-env")
+			t.Errorf("the vendored codex-cli 0.161.0 resume help must be read as supporting --remote and --remote-auth-token-env")
 		}
 	})
 	t.Run("no_options_unsupported", func(t *testing.T) {
@@ -1374,6 +1374,238 @@ func TestManagedCodexBusyLongTurnKeepsDeferring(t *testing.T) {
 	}
 	f.say("bye\n/exit\n")
 	_, _ = tuiAwait(done, tuiRunWait)
+}
+
+// ---------------------------------------------------------------- AC-CONF-006
+
+// tuiReplayFrame0161 builds one id-less notification frame as the wire carries
+// it. The REPLAY payload sets below are derived from the codex-cli 0.161.0
+// binary's own generated protocol schemas — the same generator output the
+// vendored fixtures come from (v2/ItemStartedNotification.json,
+// v2/ItemCompletedNotification.json, v2/TurnCompletedNotification.json,
+// v2/ThreadTokenUsageUpdatedNotification.json, v2/TurnDiffUpdatedNotification.json;
+// rust-v0.161.0) — NOT from this fake server's own responses, which AC-CONF-006
+// refuses as provenance (a self-generated circle would pass invented fields).
+// The adapter models none of these payloads; REQ-CONF-005 requires a resumed
+// thread replaying them to be consumed without a decode failure and without a
+// marked turn failure.
+func tuiReplayFrame0161(method string, params map[string]any) string {
+	return tuiJSON(map[string]any{"jsonrpc": "2.0", "method": method, "params": params})
+}
+
+// tuiReplayBurst0161 is the resumed-thread replay: history items and turn
+// lifecycle frames of a thread resumed on another client, streamed to the
+// owner's connection while it is mid-session. The FIRST frame is the replayed
+// foreign turn's start (the 0.161.0 TurnStartedNotification shape: threadId +
+// Turn), so the owner-side consumption probe has a lifecycle frame to fold.
+func tuiReplayBurst0161() []string {
+	return []string{
+		// The replayed foreign turn's start: only the owner's read goroutine
+		// folding this frame into its turn table can flip the owner's Busy
+		// state — the sender side cannot.
+		tuiReplayFrame0161("turn/started", map[string]any{
+			"threadId": "replay-thread",
+			"turn": map[string]any{
+				"id": "replay-turn-1", "status": "inProgress", "items": []any{},
+				"startedAt": nil, "completedAt": nil, "durationMs": nil,
+			},
+		}),
+		// item/started of a replayed agentMessage item, carrying every extended
+		// field the 0.161.0 ThreadItem::agentMessage schema names (phase,
+		// memoryCitation, delivery, questions).
+		tuiReplayFrame0161("item/started", map[string]any{
+			"item": map[string]any{
+				"type":           "agentMessage",
+				"id":             "replay-item-1",
+				"text":           "replayed answer from the resumed thread",
+				"phase":          "final_answer",
+				"memoryCitation": map[string]any{"entries": []any{}, "threadIds": []any{}},
+				"delivery":       "async",
+				"questions":      []any{},
+			},
+			"threadId":    "replay-thread",
+			"turnId":      "replay-turn-1",
+			"startedAtMs": 1728441600000,
+		}),
+		// item/completed of a replayed commandExecution item: the 0.161.0 field
+		// set (commandActions, aggregatedOutput, durationMs, pluginId, ...).
+		tuiReplayFrame0161("item/completed", map[string]any{
+			"item": map[string]any{
+				"type":             "commandExecution",
+				"id":               "replay-item-2",
+				"command":          "ls",
+				"cwd":              "/tmp",
+				"source":           "agent",
+				"status":           "completed",
+				"commandActions":   []any{map[string]any{"type": "listFiles", "command": "ls", "path": "/tmp"}},
+				"aggregatedOutput": "",
+				"exitCode":         0,
+				"durationMs":       12,
+				"pluginId":         nil,
+				"scriptPath":       nil,
+				"processId":        nil,
+			},
+			"threadId":      "replay-thread",
+			"turnId":        "replay-turn-1",
+			"completedAtMs": 1728441601000,
+		}),
+		// The replayed foreign turn's own completion: the 0.161.0 Turn shape
+		// (id/items/status required; startedAt/completedAt/durationMs optional).
+		// The owner must neither forward it nor count it as its own.
+		tuiReplayFrame0161("turn/completed", map[string]any{
+			"threadId": "replay-thread",
+			"turn": map[string]any{
+				"id": "replay-turn-1", "status": "completed", "items": []any{},
+				"startedAt": nil, "completedAt": nil, "durationMs": nil,
+			},
+		}),
+		// A 0.161.0 notification method the adapter has never answered or
+		// tracked (ThreadTokenUsageUpdatedNotification).
+		tuiReplayFrame0161("thread/tokenUsage/updated", map[string]any{
+			"threadId": "replay-thread",
+			"turnId":   "replay-turn-1",
+			"tokenUsage": map[string]any{
+				"total": map[string]any{"inputTokens": 1, "cachedInputTokens": 0, "outputTokens": 2, "reasoningOutputTokens": 0, "totalTokens": 3},
+				"last":  map[string]any{"inputTokens": 1, "cachedInputTokens": 0, "outputTokens": 2, "reasoningOutputTokens": 0, "totalTokens": 3},
+			},
+		}),
+		tuiReplayFrame0161("turn/diff/updated", map[string]any{
+			"threadId": "replay-thread", "turnId": "replay-turn-1", "diff": "",
+		}),
+	}
+}
+
+// TestManagedCodexTUIConsumesResumedThreadReplayFrames pins REQ-CONF-005: a
+// resumed thread's replay history — frames carrying fields the adapter does
+// not model (#49599 class) — is CONSUMED by the managed owner, without a
+// decode failure and without a marked turn failure. The positive control is
+// OWNER-SIDE and closes both known escape hatches (AC-CONF-006: it must prove
+// consumption actually happened, not that frames were sent): (1) the owner's
+// turn table folds the replayed foreign turn/started — the owner's Busy state
+// flips true, which only its read goroutine can do; (2) the replayed foreign
+// turn/completed is folded back out — Busy returns false; (3) the owner's own
+// DeliverTurn return is observed DIRECTLY, blocking on its success (err ==
+// nil) BEFORE the TUI is shut down — a driver-exit nil is NOT evidence, because
+// a TUI exit releases a pending turn through the connection-loss path and the
+// driver would return the TUI's own exit status (REQ-MT-010). The fake's own
+// log lines are never sufficient evidence: they are written at send time.
+func TestManagedCodexTUIConsumesResumedThreadReplayFrames(t *testing.T) {
+	t.Run("replay_frames_keep_the_owner_turn_alive", func(t *testing.T) {
+		f := newTUIFake(t, "tui-replay-consume")
+		sess := f.newSession()
+		// Drive the session DIRECTLY (no delivery driver): the positive control
+		// must hold the DeliverTurn return value itself, which the driver does
+		// not expose — and a driver-exit nil would survive a TUI-exit release
+		// of a pending turn (REQ-MT-010), proving nothing about the turn.
+		done, attached := sess.AttachOperator()
+		if !attached {
+			t.Fatalf("the session did not attach the TUI")
+		}
+		if !f.waitLog("tui-start", tuiAttachWait) {
+			t.Errorf("the TUI never started within %s", tuiAttachWait)
+		}
+		// The priming turn's DeliverTurn return is the first directly-observed
+		// success: it also proves the completion-consumption machinery works
+		// before the replay burst arrives.
+		turnDone := make(chan error, 1)
+		go func() { turnDone <- sess.DeliverTurn(managedPrimingPrompt) }()
+		select {
+		case err := <-turnDone:
+			if err != nil {
+				t.Fatalf("the priming turn's DeliverTurn failed before the replay burst: %v", err)
+			}
+		case <-time.After(tuiRunWait):
+			t.Fatalf("the priming turn's DeliverTurn never returned: the owner does not consume turn completions, so the positive control could not run")
+		}
+		// Quiesce before the burst so the Busy flip below is attributable to the
+		// replayed frame alone.
+		if !waitUntil(func() bool { return !sess.Busy() }, tuiWatchdog) {
+			t.Fatalf("the priming turn never quiesced; the consumption probe would be ambiguous")
+		}
+		burst := tuiReplayBurst0161()
+		// Owner-side consumption proof 1: the replayed foreign turn/started is
+		// folded into the owner's turn table.
+		f.control("frame " + burst[0])
+		f.controlSync("replay-started-sent")
+		if !waitUntil(sess.Busy, tuiWatchdog) {
+			t.Errorf("the owner never consumed the replayed foreign turn/started (Busy never flipped): the replay burst is not proven consumed")
+		}
+		// The rest of the burst, ending in the replayed foreign turn/completed.
+		for _, frame := range burst[1:] {
+			f.control("frame " + frame)
+		}
+		f.controlSync("replay-burst-sent")
+		// Owner-side consumption proof 2: the replayed completion is folded back
+		// out of the owner's turn table.
+		if !waitUntil(func() bool { return !sess.Busy() }, tuiWatchdog) {
+			t.Errorf("the owner never consumed the replayed foreign turn/completed: the replayed turn stayed active")
+		}
+		// The replay frames must leave the read loop live: a server request
+		// issued right after the burst is still answered.
+		f.control("frame " + tuiJSON(tuiRequest("replay-alive-1", "item/commandExecution/requestApproval", "fake-turn-1")))
+		if _, ok := f.waitReply("replay-alive-1", tuiWatchdog); !ok {
+			t.Errorf("a server request after the replay burst was not answered: the reader died on the replay frames")
+		}
+		// Positive control (THE direct assertion): the owner's own DeliverTurn
+		// issued after the burst returns nil — observed while the TUI is still
+		// running, before any shutdown. A hung or failed return cannot be
+		// masked here: there is no TUI exit yet to release it.
+		turnDone = make(chan error, 1)
+		go func() { turnDone <- sess.DeliverTurn("second owner turn after the replay burst") }()
+		var turnErr error
+		select {
+		case turnErr = <-turnDone:
+		case <-time.After(tuiRunWait):
+			t.Fatalf("the owner's DeliverTurn after the replay burst never returned while the TUI was still running: the completion frame was not consumed")
+		}
+		if turnErr != nil {
+			t.Errorf("the owner's own turn after the replay burst failed: %v", turnErr)
+		}
+		if !f.waitLog("turn-completed fake-turn-2", tuiWatchdog) {
+			t.Errorf("the fake never sent the owner's own turn completion after the replay burst:\n%s", f.logText())
+		}
+		time.Sleep(tuiQuiet)
+		if _, text := f.sessionLog(); strings.Contains(text, "Factory turn failed") {
+			t.Errorf("replay frames marked a Factory turn failed:\n%s", text)
+		}
+		// Only now, with every assertion banked, is the TUI shut down.
+		f.say("bye\n/exit\n")
+		if ok, err := tuiAwait(done, tuiRunWait); !ok {
+			t.Errorf("the TUI did not exit after bye/exit")
+		} else if err != nil {
+			t.Errorf("the TUI exited with an error: %v", err)
+		}
+	})
+	t.Run("failed_own_turn_still_marks_Factory_turn_failed", func(t *testing.T) {
+		// Canary: the same replay burst with the owner's own turn scripted to
+		// fail. The tolerance sub-test asserts the ABSENCE of "Factory turn
+		// failed" — this sub-test observes its PRESENCE on a known failing
+		// input, so the absence assertion is wired to a live signal.
+		f := newTUIFake(t, "tui-replay-canary", tuiFakeStatusesEnv+"=completed,failed")
+		sess := f.newSession()
+		claims := &tuiClaims{}
+		done := f.drive(sess, claims)
+		if !f.waitLog("tui-start", tuiAttachWait) {
+			t.Errorf("the TUI never started within %s", tuiAttachWait)
+		}
+		for _, frame := range tuiReplayBurst0161() {
+			f.control("frame " + frame)
+		}
+		f.controlSync("replay-burst-sent")
+		claims.release.Store(true)
+		if !f.waitLog("turn-completed fake-turn-2", tuiWatchdog) {
+			t.Errorf("the scripted-failure turn never completed:\n%s", f.logText())
+		}
+		if !waitUntil(func() bool {
+			_, text := f.sessionLog()
+			return strings.Contains(text, "Factory turn failed")
+		}, tuiWatchdog) {
+			_, text := f.sessionLog()
+			t.Errorf("a failed own turn did not mark Factory turn failed — the tolerance assertion above would pass vacuously:\n%s", text)
+		}
+		f.say("bye\n/exit\n")
+		_, _ = tuiAwait(done, tuiRunWait)
+	})
 }
 
 // ---------------------------------------------------------------- AC-MT-007

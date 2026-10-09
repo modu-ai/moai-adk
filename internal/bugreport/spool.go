@@ -338,6 +338,12 @@ func SpoolGeneration() (uint64, error) {
 // BumpSpoolGeneration invalidates every batch an in-flight drain read
 // before this bump. The purge calls it before removing the stores; a lost
 // race between two concurrent bumps only skips a number.
+//
+// spoolGenerationFn is the marker-read seam (card t1606): tests inject a
+// read failure to pin that a failed read propagates instead of silently
+// rewinding the counter.
+var spoolGenerationFn = SpoolGeneration
+
 func BumpSpoolGeneration() error {
 	return BumpSpoolGenerationContext(context.Background())
 }
@@ -390,9 +396,28 @@ func BumpSpoolGenerationContext(ctx context.Context) error {
 		}
 	}
 	defer func() { _ = release() }()
-	gen, err := SpoolGeneration()
+	gen, err := spoolGenerationFn()
 	if err != nil {
-		gen = 0 // an unreadable marker still bumps past itself
+		// One retry with a yielding pause: the bounded read's time box
+		// trips on transient scheduler starvation under a loaded machine,
+		// not on a persistent condition — the pause surrenders the core
+		// the starved read goroutine needs, so the fresh read starts on a
+		// calmer scheduler. A persistent failure (a corrupt marker) fails
+		// both attempts and propagates.
+		time.Sleep(5 * time.Millisecond)
+		gen, err = spoolGenerationFn()
+	}
+	if err != nil {
+		// An unreadable marker must NOT silently rewind the counter to 1
+		// (card t1606, the residual lost-update path): under a loaded
+		// machine the bounded read can miss its time box, and a reset here
+		// makes every generation a prior withdrawal had retired
+		// publishable again — the exact hazard this bump exists to close,
+		// and strictly worse than a failed bump, which the purge retries.
+		// The marker ABSENT reads as (0, nil) and still bumps past itself;
+		// every other read failure propagates, the same policy the lock
+		// claim above follows.
+		return err
 	}
 	// Atomic replacement (tmp + rename): a concurrent reader never sees a
 	// half-written number — a partial read already degrades safely (the
