@@ -51,6 +51,15 @@ func runJev(cmd *cobra.Command, _ []string) error {
 	if trimmed == "" {
 		return fmt.Errorf("empty Jev credential")
 	}
+	// pflag consumes an option token as the string value, so
+	// `moai jev --key --help` reaches here with the literal "--help" — a
+	// value starting with '-' is refused before the writer. glm keeps
+	// accepting the explicit `--key=-f` spelling because its manual scan can
+	// tell the two spellings apart; pflag cannot, so both are refused here
+	// (credentials do not start with '-').
+	if strings.HasPrefix(trimmed, "-") {
+		return fmt.Errorf("jev credential must not look like an option (starts with '-')")
+	}
 	// REQ-GJK-012: reject-before-write, mirroring the web validator's
 	// trim-then-ContainsAny ordering (internal/web/jevkey.go). jevcred cannot
 	// round-trip a newline (EscapeValue deliberately does not escape it; Load

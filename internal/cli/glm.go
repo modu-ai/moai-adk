@@ -576,14 +576,18 @@ func scanGLMKeyValue(args []string) (value string, rest []string, flagIdx int, p
 }
 
 // redactArg renders a conflicting token for a usage error without
-// disclosing any key value the token may carry: the `--key=<value>`
-// spelling keeps only its prefix plus a marker (REQ-GJK-010 — a second key
-// must never surface in the refusal text).
+// disclosing any key value the token may carry (REQ-GJK-010): the
+// `--key=<value>` spelling keeps only its prefix plus a marker, a flag token
+// keeps its name (a flag name is not a secret), and any positional token is
+// masked outright — a key value can flow in as a positional duplicate.
 func redactArg(arg string) string {
 	if i := strings.IndexByte(arg, '='); i >= 0 {
 		return arg[:i+1] + "****"
 	}
-	return arg
+	if strings.HasPrefix(arg, "-") {
+		return arg
+	}
+	return "****"
 }
 
 // runGLMSetup saves a GLM API key.

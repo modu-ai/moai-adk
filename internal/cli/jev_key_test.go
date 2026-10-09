@@ -487,6 +487,55 @@ func TestGlmKeyExecFlagAsValueRefused(t *testing.T) {
 	nothingStoredAt(t, filepath.Join(home, ".moai", ".env.glm"))
 }
 
+// Card-review repair P1 — REQ-GJK-010: a positional duplicate of the key
+// value flows into the conflict error too (observed leak: redactArg passed
+// '='-less tokens through verbatim, and a key value IS a positional token
+// here).
+func TestGlmKeyPositionalDuplicateMasked(t *testing.T) {
+	home := redirectCredentialHomes(t)
+	_, err := execRoot(t, "glm", "--key", "sk-secret-9999", "sk-secret-9999")
+	if err == nil {
+		t.Fatal("a positional duplicate beside --key must be refused")
+	}
+	if strings.Contains(err.Error(), "sk-secret-9999") {
+		t.Errorf("refusal must not disclose the key value, got: %v", err)
+	}
+	if !strings.Contains(err.Error(), "****") {
+		t.Errorf("refusal should show the masked form, got: %v", err)
+	}
+	nothingStoredAt(t, filepath.Join(home, ".moai", ".env.glm"))
+}
+
+// Card-review repair P2 — pflag consumes an option token as the string value,
+// so `moai jev --key --help` reaches runJev with the literal "--help" and
+// would overwrite the stored credential with it. A '-'-prefixed value is
+// refused before the writer. glm keeps accepting the explicit `--key=-f`
+// spelling because its manual scan can tell the two spellings apart; pflag
+// cannot, so both are refused on the jev side (credentials do not start
+// with '-').
+func TestJevKeyOptionTokenValueRefused(t *testing.T) {
+	home := redirectCredentialHomes(t)
+	if err := jevcred.Save("stored-cred-1234"); err != nil {
+		t.Fatalf("seed save failed: %v", err)
+	}
+	envPath := filepath.Join(home, ".moai", ".env.typesafe")
+	before, err := os.ReadFile(envPath)
+	if err != nil {
+		t.Fatal(err)
+	}
+	_, execErr := execRoot(t, "jev", "--key", "--help")
+	if execErr == nil {
+		t.Fatal("an option-shaped value must be refused, not stored")
+	}
+	after, err := os.ReadFile(envPath)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !bytes.Equal(before, after) {
+		t.Errorf("credential file must stay byte-for-byte identical\nbefore: %q\nafter:  %q", before, after)
+	}
+}
+
 // AC-GJK-008 — routing precedence: the scan never intercepts a routed
 // subcommand (M2 characterization, REQ-GJK-006).
 func TestGlmSetupRoutingUnchanged(t *testing.T) {
