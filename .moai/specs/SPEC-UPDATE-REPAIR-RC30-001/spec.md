@@ -144,7 +144,7 @@ Options (factual; the operator decides; no recommendation; full text in decision
 
 Follow-on if option (b) is chosen: manager-spec performs the REQ-002 amendment in place in this card, after WT-user-asset-bundle (t1591) is absorbed at run start (M1). The leader coordinates that with the other lane.
 
-Gate, under every option: REQ-RC30-003 applies. No project-side copy is deleted, and no removal code path is merged, until AC-RC30-01 is adopted (regression-guard status in acceptance.md).
+Gate, under every option: REQ-RC30-003 applies. No project-side copy is deleted, and no removal code path is merged, until AC-RC30-01 is adopted at M2 (plan.md § B.3, step 3; regression-guard status in acceptance.md).
 
 ### D.3 Init path check: which roots `moai init` writes (disposition: IN-NOW, not a U-row)
 
