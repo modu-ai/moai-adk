@@ -136,6 +136,19 @@ categories:
 		}
 	}
 
+	// Gate rounds 37-1/38-2: the user MANIFEST ITSELF is protected — the
+	// protection-model root. Deleting the manifest (or the containing
+	// ~/.moai directory) would turn every previously-managed file
+	// unregistered and reopen their deletions (the measured bypass chain).
+	for _, command := range []string{
+		"rm -f \"" + filepath.Join(home, ".moai", "user-assets.json") + "\"",
+		"rm -rf \"" + filepath.Join(home, ".moai") + "\"",
+	} {
+		if got := decide(command); got != DecisionDeny {
+			t.Errorf("gate 37-1 regression: destructive change to the user manifest was allowed (decision %q, want %q) — command: %s; the protection-model root is exposed", got, DecisionDeny, command)
+		}
+	}
+
 	// REQ-GRD-002 over-protection guard: an UNTRACKED user file in a
 	// managed directory stays editable — the protection is scoped to
 	// moai-managed assets, never to the user's own files.
