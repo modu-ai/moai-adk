@@ -29,7 +29,7 @@ tier: M
 | AC-RDX-006 | 회귀 가드(판정 보류 — CX-8) | (구조 면) specialist가 codex 상태 파일을 두 사이트에 걸쳐 문서화 — 전-file 계수라 산개 언급 mutant 판별 불가 → 형제 카드 | LED-006 (0/1) + LED-017 (0/1) | M1 착지 신호(비게이트): LED-006 ≥2/0 AND LED-017 ≥1/0 |
 | AC-RDX-007 | 블로킹 | specialist가 시드 `rust-v0.161.0`을 기술 | LED-007 (0/1) | M1 → ≥1/0 |
 | AC-RDX-008 | 블로킹 | specialist에 BP 상시 절차 섹션 존재 | LED-008 (0/1) | M3 → ≥1/0 |
-| AC-RDX-009 | 블로킹 | specialist Phase 3 URL 세트가 `code.claude.com` 캐노니컬로 교체되고 구형 `docs.anthropic.com` URL은 제거된다 (신설면 + 제거면 — CX-14) | LED-009 (0/1) + LED-021 (1/0 — 제거면) | M3 → LED-009 ≥1/0 AND LED-021 =0/1 |
+| AC-RDX-009 | 블로킹 | specialist Phase 3 URL 세트가 6종 캐노니컬 전문(`code.claude.com/docs/en/{hooks, sub-agents, skills, plugins, mcp, settings}`)을 각각 보유하고 구형 `docs.anthropic.com` URL은 제거된다 (CX-14 제거면 + CX-18 육면 열거면) | LED-021 (1/0 — 게이트) + LED-022..027 (육면 — 각 1힛 보존) | M3(커미션 제거 델타) → LED-021 =0/1; 육면은 착지 시점부터 각 ≥1 유지 |
 | AC-RDX-010 | 블로킹 | specialist가 `HTML proposal report` 산출물을 명명 | LED-010 (0/1) | M3 → ≥1/0 |
 | AC-RDX-014 | 블로킹 | specialist 스키마 블록이 codex 상태 파일 부재 시 기본값(`rust-v0.161.0` + 경고)을 문서화 | LED-006 공유 (0/1) | M1 → LED-006 ≥1 + 블록 내 기본값 기술 |
 | AC-RDX-015 | 블로킹 | runner 체크리스트 블록이 alpha watch 규범(watch 관찰목록 전용, 안정 탑재 시에만 채택)을 담는다 | LED-005 공유 (0/1) | M2 → LED-005 ≥1 + 블록 내 watch 규범 기술 |
@@ -51,7 +51,7 @@ tier: M
 - **AC-RDX-006** — **Given** specialist 본문에 codex 상태 절차가 없는 상태로, **When** LED-006 명령과 LED-017 명령을 실행하면, **Then** `last-codex-version.json`이 2 이상(Phase 0 판독·기본값 사이트 + Phase 7a 기록 사이트)이고 `7a-codex` 기록 단계 리터럴이 1 이상이다 (Phase 0 단독·Phase 7a 단독 mutant 모두 좌초 — CX-6).
 - **AC-RDX-007** — **Given** AC-RDX-006이 충족된 상태에서도 시드가 빠질 수 있으므로(mutant M-3), **When** LED-007 명령을 실행하면, **Then** `rust-v0.161.0`이 1 이상 관측된다.
 - **AC-RDX-008** — **Given** specialist에 BP 축이 없는 상태로, **When** LED-008 명령을 실행하면, **Then** best-practice 섹션이 1 이상 관측된다.
-- **AC-RDX-009** — **Given** Phase 3 URL 세트가 docs.anthropic.com 구형 나열인 상태로, **When** LED-009 명령과 LED-021 명령(제거면)을 실행하면, **Then** `code.claude.com`이 1 이상이고 `docs.anthropic.com`은 0이다 — 주변 서술의 code.claude.com 언급만으로 통과하는 mutant를 제거면이 봉쇄한다 (CX-14).
+- **AC-RDX-009** — **Given** Phase 3 URL 세트가 docs.anthropic.com 구형 나열인 상태로, **When** LED-021(제거면)과 LED-022..027(6종 전문 각각)을 실행하면, **Then** 6종 캐노니컬 URL이 각 1 이상이고 `docs.anthropic.com`은 0이다 — URL 전부 삭제 mutant(양면 통과)는 육면 열거면이, 부분 교체 mutant는 LED-021이 봉쇄한다 (CX-14 + CX-18).
 - **AC-RDX-010** — **Given** BP 산출물이 명명되지 않은 상태로, **When** LED-010 명령을 실행하면, **Then** `HTML proposal report`가 1 이상 관측된다.
 - **AC-RDX-014** — **Given** codex 상태 파일이 존재하지 않는 다음 스윕 실행을 상정하는 상태로, **When** specialist의 스키마 블록(LED-006이 잡는 블록)을 읽으면, **Then** 부재 시 기본값 `rust-v0.161.0` + 경고 절차가 기술돼 있다 (REQ-RDX-004 — 스키마 문서화만으로 통과하는 mutant를 잡는 AC-RDX-006/007의 제3 쌍).
 - **AC-RDX-015** — **Given** alpha 테마가 안정에 미탑재 상태로, **When** runner의 체크리스트 블록(LED-005이 잡는 블록)을 읽으면, **Then** watch 관찰목록 규범("alpha 테마는 채택 아님 — 안정 탑재 시에만 채택 판정")이 기술돼 있다 (REQ-RDX-009 — 1차 스윕 watch 판정의 절차화).
@@ -69,7 +69,7 @@ tier: M
 | AC-RDX-006 | REQ-RDX-001/002/003 | M-7 — 이중 사이트 앵커 + `7a-codex` 기록 단계 (CX-6); 산개 언급 판별은 CX-8 이관(형제 카드) |
 | AC-RDX-007 | REQ-RDX-002 | M-3 (seed 누락) |
 | AC-RDX-008 | REQ-RDX-012 | — (섹션 존재면) |
-| AC-RDX-009 | REQ-RDX-014 | — |
+| AC-RDX-009 | REQ-RDX-014 | 부분 교체는 LED-021, URL 전부 삭제는 육면 열거면이 봉쇄 (CX-14/CX-18) |
 | AC-RDX-010 | REQ-RDX-014 | — |
 | AC-RDX-014 | REQ-RDX-004 | M-3의 제3 쌍 (스키마 문서화 + 시드 + 부재 기본값 3중 분해) |
 | AC-RDX-015 | REQ-RDX-009 | alpha-채택 오표기 mutant 봉쇄 |
@@ -102,12 +102,18 @@ tier: M
 | LED-018 | `grep -c "only the CC axis" .claude/agents/harness/hns-release-update-specialist.md` | `0` | `1` | RED (AC-017) — Phase 2 무조건 조기 종료 생존, codex/BP가 CC 널 주간에 실행 전 종료 (CX-9) |
 | LED-019 | `grep -c 'If no entries: emit "No new versions since vX.Y.Z" and stop' .claude/agents/harness/hns-release-update-specialist.md` | `1` | `0` | RED-제거면 (AC-017) — 구형 무조건 문장 생존; 착지 후 0/exit 1이 PASS — 주석 포함 생존 전부 적색 (CX-10) |
 | LED-020 | plan §E3-P4 verb 축자 (`node -e '...'` — `run()` 공개 경로, codex 전용 입력) | stderr `REJECTED: no-codex-in-run:0` | `1` | RED (AC-003 run() 진입점) — codex 전용 입력에서 run()이 agent 호출 0건 (CX-11, M2에서 `run-ok codex=1 total=1`/exit 0으로 뒤집음) |
-| LED-021 | `grep -c "docs.anthropic.com" .claude/agents/harness/hns-release-update-specialist.md` | `1` | `0` | RED-제거면 (AC-009) — 구형 docs.anthropic.com URL이 Phase 3에 생존; 착지 후 0/exit 1이 PASS (CX-14) |
+| LED-021 | `grep -c "docs.anthropic.com" .claude/agents/harness/hns-release-update-specialist.md` | `1` | `0` | RED-제거면 (AC-009 게이트) — 구형 docs.anthropic.com URL이 Phase 3에 생존; 커미션 제거 델타 후 0/exit 1이 PASS (CX-14) |
+| LED-022 | `grep -c "code.claude.com/docs/en/hooks" .claude/agents/harness/hns-release-update-specialist.md` | `1` | `0` | 육면 열거면 (AC-009) — 각 ≥1 보존 (CX-18) |
+| LED-023 | `grep -c "code.claude.com/docs/en/sub-agents" .claude/agents/harness/hns-release-update-specialist.md` | `1` | `0` | 육면 열거면 (AC-009) — 동일 |
+| LED-024 | `grep -c "code.claude.com/docs/en/skills" .claude/agents/harness/hns-release-update-specialist.md` | `1` | `0` | 육면 열거면 (AC-009) — 동일 |
+| LED-025 | `grep -c "code.claude.com/docs/en/plugins" .claude/agents/harness/hns-release-update-specialist.md` | `1` | `0` | 육면 열거면 (AC-009) — 동일 |
+| LED-026 | `grep -c "code.claude.com/docs/en/mcp" .claude/agents/harness/hns-release-update-specialist.md` | `1` | `0` | 육면 열거면 (AC-009) — 동일 |
+| LED-027 | `grep -c "code.claude.com/docs/en/settings" .claude/agents/harness/hns-release-update-specialist.md` | `1` | `0` | 육면 열거면 (AC-009) — 동일 |
 | LED-011 | `grep -rn "last-codex-version" internal/` | (출력 없음) | `1` | 회귀 가드 기준선 — 0힛 유지가 PASS (AC-011) |
 | LED-012 | `grep -c "last-cc-version.json" .claude/agents/harness/hns-release-update-specialist.md` | `3` | `0` | 회귀 가드 기준선 — ≥3 유지가 PASS (AC-012) |
 | LED-013 | `grep -c "hns-release-update-run.js" .claude/commands/harness/release-update/manifest.json` | `1` | `0` | 회귀 가드 기준선 — 1 유지가 PASS (AC-013) |
 
-**LED-001/002/003 재앵커 근거**: plan-audit iter1(CX-2/CX-3)으로 위 세 행의 명령을 교체했다 — 재측정은 본 트리에서 수행했으며, 하네스 표면은 `2aab5f797` 핀 이후 `.moai/` 전용 변경으로 바이트 동일해 재관측이 충실하다. **LED-016/017 신설 근거**: plan-audit iter2(CX-5/CX-6) — 같은 하네스 표면에서 본 실행 측정. **LED-018 신설 근거**: plan-audit iter3(CX-9) — 동일 측정 조건. **LED-019/020 신설 근거**: fresh post-split run(CX-10/CX-11) — 동일 측정 조건. **LED-021 신설 근거**: 리더 재개 재심(rcpt-0e776d398b9dd8d642d5f3ac, CX-14) — 동일 측정 조건. 나머지 LED 행은 원본 그대로다. LED-015의 세미콜론은 인용된 python 프로그램 내부의 것 — 셸 구분자가 아니므로 단일 호출 규약을 유지한다. LED-016/020의 오류 메시지는 어댑터 자체의 핸들러가 내는 결정적 한 줄이다(전체 스택 대신).
+**LED-001/002/003 재앵커 근거**: plan-audit iter1(CX-2/CX-3)으로 위 세 행의 명령을 교체했다 — 재측정은 본 트리에서 수행했으며, 하네스 표면은 `2aab5f797` 핀 이후 `.moai/` 전용 변경으로 바이트 동일해 재관측이 충실하다. **LED-016/017 신설 근거**: plan-audit iter2(CX-5/CX-6) — 같은 하네스 표면에서 본 실행 측정. **LED-018 신설 근거**: plan-audit iter3(CX-9) — 동일 측정 조건. **LED-019/020 신설 근거**: fresh post-split run(CX-10/CX-11) — 동일 측정 조건. **LED-021 신설 근거**: 리더 재개 재심(rcpt-0e776d398b9dd8d642d5f3ac, CX-14) — 동일 측정 조건. **LED-022..027 신설 근거**: 클로저 run(rcpt-ce61f029a011f5fa5ff6bead, CX-18) — 런-phase가 선착지돼 육면 전부 1힛으로 태어난 보존면이다(RED-now는 게이트인 LED-021이 담당). 나머지 LED 행은 원본 그대로다. LED-015의 세미콜론은 인용된 python 프로그램 내부의 것 — 셸 구분자가 아니므로 단일 호출 규약을 유지한다. LED-016/020의 오류 메시지는 어댑터 자체의 핸들러가 내는 결정적 한 줄이다(전체 스택 대신).
 
 **보조 관측 (동일 트리)**: `grep -c "Codex" manifest.json` → `0`/exit 1 · `grep -ci "codex" runner` → `0`/exit 1 · `grep -c "HTML" specialist.md` → `0`/exit 1 · `grep -rn "last-cc-version" internal/` → 출력 없음/exit 1 (Go 라이터 부재 — 상태 파일이 하네스 계층 소유임의 근거, spec.md §1.1 M4). `git rev-parse --short HEAD` → `2aab5f797`.
 
@@ -123,7 +129,7 @@ tier: M
 1. 블로킹 AC 8종 전부 GREEN (RED-now가 대응 마일스톤에서 뒤집힘 — exit code 포함 관측). 회귀 가드(판정 보류) 6종(AC-RDX-003/004/005/006 — CX-7/8, AC-RDX-017 — CX-12, AC-RDX-016 — CX-13)은 구조 면 착지 신호로 기록되고 판정은 형제 카드 계측·plan §E7 검토면으로 이관된다 — 게이트 아님(verification-completeness §2 채택 기준 — 계측이 너무 얕아 채택 불가; §2.1 처분군 적용).
 2. 회귀 가드 3종 기준선 유지 (LED-011/012/013 변화 없음).
 3. spec.md REQ-RDX-001..015 전부 구현 대응물 존재 — REQ↔AC 추적성 §D.2 공백 없음.
-4. 변경 스코프 단언 (CX-15 재정식) — 병합 베이스 고정: `CARD_BASE=$(git merge-base origin/main HEAD)`(plan 시점 관측 `2aab5f797b75983e132af451da68f69e3426557b`; 감사가 핀한 base가 우선). (a) 커밋분 `git diff --name-only "$CARD_BASE"..HEAD`가 허용 경로(하네스 3표면 `.claude/agents/harness/hns-release-update-specialist.md`·`.claude/workflows/hns-release-update-run.js`·`.claude/commands/harness/release-update/manifest.json` + `.moai/specs/SPEC-RELUP-DUALAXIS-001/`)만 반환, (b) 스테이지 분 `git diff --cached --name-only` 동일, (c) 비추적 분 `git status --porcelain`의 `??` 행이 SPEC·reports 외 무관 경로 미포함 — 세 채널을 개별 관측한다. bare `git diff --name-only`의 공집합은 측정이 아니라 부재다.
+4. 변경 스코프 단언 (CX-15 재정식 + 클로저 CX-16/17 보강) — 병합 베이스 고정: `CARD_BASE=$(git merge-base origin/main HEAD)`(plan 시점 관측 `2aab5f797b75983e132af451da68f69e3426557b`; 감사가 핀한 base가 우선). **네 채널을 개별 관측**한다: (a) 커밋분 `git diff --name-only "$CARD_BASE"..HEAD`, (b) 스테이지 분 `git diff --cached --name-only`, (c) 비추적 분 `git status --porcelain`의 `??` 행, (d) **비스테이지 추적 편집 `git diff --name-only`(인자 없음 — CX-16의 제4 채널: unstaged tracked 편집은 (a)~(c) 어디에도 안 보인다)**. 네 채널 전부가 허용 경로만 반환: 하네스 3표면(`.claude/agents/harness/hns-release-update-specialist.md`·`.claude/workflows/hns-release-update-run.js`·`.claude/commands/harness/release-update/manifest.json`) + `.moai/specs/SPEC-RELUP-DUALAXIS-001/` + **카드 입력 연구 2건(`.moai/research/upstream-update-20261007.md`·`upstream-update-20261008.md` — CX-17)**. bare `git diff --name-only`의 공집합은 측정이 아니라 부재다.
 5. `[NEEDS CLARIFICATION]` 마커 0개 — 열린 판단은 전부 spec.md §1.2 결정 기록으로 봉쇄.
 
 ## §D.6 선향 체크 (착지 후 다음 스윕이 검증할 것)

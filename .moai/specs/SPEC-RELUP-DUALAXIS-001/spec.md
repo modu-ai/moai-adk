@@ -1,7 +1,7 @@
 ---
 id: SPEC-RELUP-DUALAXIS-001
 title: "release-update 하네스 CC+Codex 이중 축 정착 — codex 체인지로그 축·상태 파일 codex 키·BP 상시 절차"
-version: "0.7.0"
+version: "0.8.0"
 status: in-progress
 created: 2026-10-09
 updated: 2026-10-09

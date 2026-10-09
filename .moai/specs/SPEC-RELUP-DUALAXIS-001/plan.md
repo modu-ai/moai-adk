@@ -48,7 +48,7 @@ tier: M
 
 ```bash
 git branch --show-current ; git rev-parse --short HEAD     # WT-high-10-07 이후 재확인
-# RED-now 앵커 15종 재측정 (acceptance.md §D.3 원장의 명령 그대로 — 전부 단일 호출):
+# RED-now 앵커 21종 재측정 (acceptance.md §D.3 원장의 명령 그대로 — 전부 단일 호출):
 grep -c '"domain".*Codex CLI upstream change tracking' .claude/commands/harness/release-update/manifest.json   # 기대 0 (M4 전) — domain 필드 스코프 (CX-3)
 grep -c '"domain".*best-practices axis' .claude/commands/harness/release-update/manifest.json                   # 기대 0 (M4 전) — domain 필드 스코프 (CX-3)
 grep -c "selectCodexSweepTargets(args)" .claude/workflows/hns-release-update-run.js                              # 기대 0 (M2 전) — 착지 후 ≥2: 정의+top-level 디스패치 호출 (CX-2)
@@ -64,6 +64,12 @@ grep -c "7a-codex" .claude/agents/harness/hns-release-update-specialist.md      
 grep -c "only the CC axis" .claude/agents/harness/hns-release-update-specialist.md                      # 기대 0 (M1 전) — Phase 2 축별 종료 (CX-9)
 grep -c 'If no entries: emit "No new versions since vX.Y.Z" and stop' .claude/agents/harness/hns-release-update-specialist.md  # 기대 1 (M1 전) — 착지 후 0이 PASS (제거면, CX-10)
 grep -c "docs.anthropic.com" .claude/agents/harness/hns-release-update-specialist.md                    # 기대 ≥1 (M3 전) — 착지 후 0이 PASS (제거면, CX-14)
+grep -c "code.claude.com/docs/en/hooks" .claude/agents/harness/hns-release-update-specialist.md          # 기대 1 유지 — 육면 열거면 (CX-18)
+grep -c "code.claude.com/docs/en/sub-agents" .claude/agents/harness/hns-release-update-specialist.md     # 기대 1 유지 — 동일
+grep -c "code.claude.com/docs/en/skills" .claude/agents/harness/hns-release-update-specialist.md         # 기대 1 유지 — 동일
+grep -c "code.claude.com/docs/en/plugins" .claude/agents/harness/hns-release-update-specialist.md        # 기대 1 유지 — 동일
+grep -c "code.claude.com/docs/en/mcp" .claude/agents/harness/hns-release-update-specialist.md            # 기대 1 유지 — 동일
+grep -c "code.claude.com/docs/en/settings" .claude/agents/harness/hns-release-update-specialist.md       # 기대 1 유지 — 동일
 # PRESERVE 앵커 3종:
 grep -rn "last-codex-version" internal/   # 0힛 유지 (AC-RDX-011)
 grep -c "last-cc-version.json" .claude/agents/harness/hns-release-update-specialist.md                 # ≥3 유지 (AC-RDX-012)
@@ -86,7 +92,7 @@ grep -c "hns-release-update-run.js" .claude/commands/harness/release-update/mani
 | specialist | `last-codex-version.json` — Phase 0(판독·부재 기본값) + Phase 7a(쓰기)에 등장 | AC-RDX-006 |
 | specialist | `rust-v0.161.0` — 시드 기술 | AC-RDX-007 |
 | specialist | `Best-Practices` 상시 절차 섹션 (헤딩 문자열 대소문자 무관 `best-practice` 매치) | AC-RDX-008 |
-| specialist | `code.claude.com/docs/en/` — Phase 3 URL 세트 갱신 (신설면 LED-009) **+ 제거면 LED-021**: 구형 `docs.anthropic.com` 참조는 착지 후 0(주변 서술 잔존분 포함 전부 제거 — 주변 언급만으로 통과하는 mutant를 제거면이 봉쇄, CX-14) | AC-RDX-009 |
+| specialist | Phase 3 URL **6종 캐노니컬 전문 열거** — `code.claude.com/docs/en/hooks`·`...en/sub-agents`·`...en/skills`·`...en/plugins`·`...en/mcp`·`...en/settings` 각각 ≥1(LED-022..027 육면 열거면, CX-18: URL 전부 삭제 mutant 봉쇄) **+ 제거면 LED-021**: 구형 `docs.anthropic.com` 참조는 0(주변 서술 잔존분 포함 전부 제거 — CX-14) | AC-RDX-009 |
 | specialist | `HTML proposal report` — BP 축 명명 산출물 | AC-RDX-010 |
 | specialist | `rust-v0.161.0` 부재 기본값 — AC-RDX-006의 스키마 블록이 Phase 0 부재-기본값(`rust-v0.161.0` + 경고)을 포함해야 한다 (앵커 LED-006 공유) | AC-RDX-014 |
 | specialist | `7a-codex` — Phase 7a 기록 단계 제목 리터럴(CC의 Step 7a와 병렬; codex 상태 기록 절차의 사이트 앵커 — CX-6). `last-codex-version.json` 출현 **≥2**: 제1=Phase 0 판독·부재 기본값 블록, 제2=Phase 7a 기록 단계(단일 사이트 mutant는 둘 중 하나에서 좌초) | AC-RDX-006 |
@@ -173,7 +179,7 @@ grep -c "hns-release-update-run.js" .claude/commands/harness/release-update/mani
 1. `Best-Practices` 상시 절차 섹션 신설: 스윕마다 공식 게시 면 스캔(Anthropic engineering/research·docs, OpenAI 블로그), 인벤토리 기록 (REQ-RDX-012).
 2. `source-first` 원문 패치 선행 강제 — 검색 요약·2차 자료는 보고 전용 리드로만 (REQ-RDX-013). 2차 BP-1 게시일 오정보 정정 사례를 절차 근거로 인용.
 3. `HTML proposal report` 명명 산출물 기록 (REQ-RDX-014 전반).
-4. Phase 3 URL 세트 6종을 `code.claude.com/docs/en/*` 캐노니컬 형태로 갱신 (REQ-RDX-014 후반, 결정 D6).
+4. Phase 3 URL 세트 6종을 `code.claude.com/docs/en/*` 캐노니컬 형태로 갱신 (REQ-RDX-014 후반, 결정 D6). **6종 전문 열거 핀 (CX-18)** — `hooks`·`sub-agents`·`skills`·`plugins`·`mcp`·`settings` 6종 각각의 전문 URL이 본문에 존재해야 한다(AC-RDX-009 육면 열거면 — 런-phase 착지로 6면 전부 1힛 관측됨, 보존면). 구형 docs.anthropic.com 참조의 제거는 커미션된 후속 델타 소관이다(LED-021 게이트).
 
 ### M4 — 매니페스트 domain 문자열 (기계적 — 최하위)
 
