@@ -54,7 +54,7 @@ func userHomeDirOrEmpty() string {
 // store and move the HEALTHY file), then the setup steps the failed
 // attempt never reached run in the production order (project layout →
 // autonomy tier → profile sync → Jev record → ApplyHarness → deploy mode → git hooks →
-// MCP entry → Codex wiring; gate round 35-6 included). Gate round 47-4:
+// MCP entry → Codex wiring → section retrack; gate round 35-6 included). Gate round 47-4:
 // the wizard's Jev answer rides in — a resume that skipped it left
 // jev.enabled false against an explicit wizard selection.
 func resumeInitializedProject(cmd *cobra.Command, opts *project.InitOptions, wiring agentWiring, wizardRan bool, wizardResult *wizard.WizardResult, prefs profile.ProfilePreferences) error {
@@ -200,13 +200,29 @@ func resumeInitializedProject(cmd *cobra.Command, opts *project.InitOptions, wir
 	// run no settings merge, so the staged render is the base.
 	backup.SettleSettingsSnapshot(opts.ProjectRoot, false, cmd.ErrOrStderr())
 	backup.SettleMCPSnapshot(opts.ProjectRoot, false, cmd.ErrOrStderr())
+	// Item E (card t1591): the resume rewrote the section family above (llm.yaml
+	// through ApplyHarness and ApplyDeployMode, user.yaml and language.yaml through the
+	// profile sync), and it re-records their on-disk hashes as a healthy init does
+	// (init.go, card t1277). Without the retrack the manifest keeps the pre-write hashes,
+	// and the next init --force or update reads the rewritten sections as user edits.
+	// It runs after the last section writer; template_managed-only filtering keeps
+	// user-owned entries untouched. A failure is non-fatal: it is reported as a warning,
+	// the resume does not fail, and the marker stays in place (below).
+	retrackErr := retrackSectionFiles(opts.ProjectRoot, cmd.ErrOrStderr())
+	if retrackErr != nil {
+		_, _ = fmt.Fprintf(cmd.ErrOrStderr(), "Warning: manifest retrack (config sections) failed: %v\n", retrackErr)
+	}
 	// Gate round 51-2: every post-step completed — the checkpoint marker
 	// retires (the early-return paths above leave it in place, keeping the
 	// next run's resume route alive). Finding 1: the selection record retires
 	// with the marker, and only once the marker is gone — a marker that
 	// survives still needs its selection.
-	if err := os.Remove(markerPath); err == nil || os.IsNotExist(err) {
-		clearResumeWiring(opts.ProjectRoot)
+	// Item E: a retrack failure is not a completed post-step, so the marker stays and
+	// the next run resumes the bookkeeping. The resume itself still returns nil.
+	if retrackErr == nil {
+		if err := os.Remove(markerPath); err == nil || os.IsNotExist(err) {
+			clearResumeWiring(opts.ProjectRoot)
+		}
 	}
 	return nil
 }
