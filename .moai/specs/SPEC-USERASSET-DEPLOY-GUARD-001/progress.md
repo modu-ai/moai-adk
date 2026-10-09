@@ -943,9 +943,10 @@ and belongs to its own card.
 - plan.md §D 한 줄: "…at each of the two call sites (§A)" → "…at each of the two existing call sites, and to the one new call in the resume path, exactly as §A permits".
 
 **미관측 · 남은 항목 (Gaps)**
-- `TestPreCommitWarningWriterWiring` 는 아직 실행하지 않았다. 빨간 원인은 `internal/cli/hook_install_precommit_disclosure_test.go` 의 `no_other_call_sites` 허용 목록(`init.go`, `update_template_sync.go`)에 `init_resume.go` 가 없는 것이다. 소스 읽기로 확인했고 실행 관측은 아직이다. 다음 단계: 실행으로 RED 를 관측하고, 허용 목록을 고친 뒤 GREEN 을 관측한다.
-- `go build` 와 `moai spec lint` 는 아직 실행하지 않았다. 개정 검증은 `internal/spec/audit.go` 의 `isValidInPlaceAmendment` 네 조건(status, amendment_of, Amendments 절, prior sha 인용)을 소스 읽기로 확인한 것이다.
-- 위 run 증거 배치(HEAD f9a58fa4e 시점)는 `internal/cli` 패키지 테스트를 포함하지 않았다. 그래서 그 audit-ready 표시는 `init_resume.go` 가 들어온 현재 HEAD 를 덮지 않는다. 해당 패키지 검증은 위 다음 단계에서 새로 측정한다.
+- 허용 목록 테스트 수정(커밋 `06db18562`). RED 는 manager-develop 이 scratch 에 남긴 출력(`red-run.txt`, `red-run-verbose.txt`)을 레인이 직접 읽어 확인했다. `no_other_call_sites` 가 `init_resume.go` 를 허용 목록 밖의 호출 지점으로 보고했다. GREEN 은 레인이 직접 관측했다: `unset MOAI_KANBAN_ID MOAI_KANBAN_LEAD_ADDR MOAI_KANBAN_SETTINGS_INJECTED && go test ./internal/cli/ -run TestPreCommitWarningWriterWiring -count=1 -v` 가 네 서브테스트 PASS 로 exit 0 이고, `-run PreCommit` 계열도 ok(exit 0)다.
+- 새 서브테스트 `resume_binds_writers_to_command_stderr` 는 두 writer 인자가 `cmd.ErrOrStderr()` 인지만 본다. `opts.ProjectRoot`, `--no-hooks` 게이트, 배치 순서, 비치명 오류 처리는 검증하지 않는다. 이 부분이 바뀌어도 이 테스트는 빨개지지 않으므로 잔여 위험으로 남긴다.
+- `go build` 와 `moai spec lint` 는 별도로 실행하지 않았다. 패키지 컴파일은 위 `go test` 에서 이루어졌다. 개정 검증은 `internal/spec/audit.go` 의 `isValidInPlaceAmendment` 네 조건(status, amendment_of, Amendments 절, prior sha 인용)을 소스 읽기로 확인한 것이다.
+- `internal/cli` 전체 스위트는 레인-로컬 원칙에 따라 돌리지 않았고, 전체 판정은 CI 몫이다. 이전 §E.3 run 증거 배치(HEAD f9a58fa4e 시점)에는 `internal/cli` 테스트가 없어서, 그 audit-ready 표시는 `init_resume.go` 가 들어온 현재 HEAD 를 덮지 않는다. golangci-lint 와 카드 diff 범위 판정은 아직 없다.
 - 개정 범위 밖 잔여 문구(리더 판단 필요): spec.md §B REQ-PCP-004 의 "both callers", acceptance.md AC-PCP-004 (ii) 의 "both call sites", plan.md §F M2 bullet 의 "(stderr at both call sites, §A)". 옛 두 호출자 서술로 남아 있다.
 
 ## §E.3 Run-phase Audit-Ready Signal
