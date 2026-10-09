@@ -49,13 +49,20 @@ func runHarnessCheck(projectRoot string) DiagnosticCheck {
 	// and L4 (common-workflow tree) are selected INDEPENDENTLY — post-
 	// migration a project-specific skill or an empty project dir must not
 	// decouple the healthy USER workflow lookup from L4.
+	//
+	// M7 (REQ-DOC-003/004): the workflow root is selected by REQUIRED-FILE
+	// presence — an EMPTY (or import-less) project workflows dir no longer
+	// wins the selection over a healthy USER tree — and the fallback swaps
+	// workflowsDir ONLY: the project skillsDir stays the L1/L6 surface, so
+	// a broken project-side skill is still reported (the L6:FAIL·L1:PASS
+	// misdiagnosis shape is closed).
 	skillsDir := filepath.Join(projectRoot, ".claude", "skills")
 	workflowsDir := filepath.Join(skillsDir, "moai", "workflows")
 	if home, err := os.UserHomeDir(); err == nil {
 		userWorkflows := filepath.Join(home, ".claude", "skills", "moai", "workflows")
 		if _, userStat := os.Stat(userWorkflows); userStat == nil {
-			if _, projStat := os.Stat(filepath.Join(workflowsDir)); os.IsNotExist(projStat) {
-				skillsDir = filepath.Join(home, ".claude", "skills")
+			if _, projStat := os.Stat(filepath.Join(workflowsDir)); os.IsNotExist(projStat) ||
+				!workflowRootHasRequiredFiles(workflowsDir) {
 				workflowsDir = userWorkflows
 			}
 		}
@@ -107,10 +114,16 @@ func runHarnessCheck(projectRoot string) DiagnosticCheck {
 	// frontmatter self-activation checks (REQ-HAW-012/013/013b). Iterates
 	// .claude/agents/harness/*.md and FAILs on an empty description, a missing
 	// skills: key, or a dangling harness-* skills: reference. No-op when no
-	// generated agents exist. Reuses skillsDir (resolved above) for reference
-	// resolution. Preserves L1-L5 semantics (AC-HAW-014) — additive layer only.
+	// generated agents exist. Gate round 47-3: references resolve against
+	// BOTH scopes — the project skillsDir AND the user-home skills dir — a
+	// project agent referencing a user-home hns-* skill is not dangling.
+	// L1 keeps its project scope.
 	agentsDir := filepath.Join(projectRoot, ".claude", "agents", "harness")
-	l6, l6Detail := checkLayer6AgentActivation(agentsDir, skillsDir)
+	userSkillsDir := ""
+	if home, homeErr := os.UserHomeDir(); homeErr == nil {
+		userSkillsDir = filepath.Join(home, ".claude", "skills")
+	}
+	l6, l6Detail := checkLayer6AgentActivation(agentsDir, skillsDir, userSkillsDir)
 	statuses = append(statuses, "L6:"+l6)
 	if l6 == "FAIL" {
 		failures = append(failures, "L6 "+l6Detail)
@@ -142,6 +155,24 @@ func runHarnessCheck(projectRoot string) DiagnosticCheck {
 		check.Message = strings.Join(statuses, " ")
 	}
 	return check
+}
+
+// workflowRequiredFiles are the four workflow files a healthy workflow
+// root carries (the same set L4 judges).
+var workflowRequiredFiles = []string{"plan.md", "run.md", "sync.md", "design.md"}
+
+// workflowRootHasRequiredFiles reports whether a workflow root carries the
+// required files WITH the harness import — the M7 selection criterion
+// (REQ-DOC-003): a directory that exists but holds none of the required
+// files must not win the workflow-root selection.
+func workflowRootHasRequiredFiles(dir string) bool {
+	for _, f := range workflowRequiredFiles {
+		data, err := os.ReadFile(filepath.Join(dir, f))
+		if err != nil || !strings.Contains(string(data), "@.moai/harness/") {
+			return false
+		}
+	}
+	return true
 }
 
 // checkLayer1Triggers verifies that every harness-*/SKILL.md has the
@@ -316,7 +347,10 @@ func checkLayer5Files(harnessDir string) (string, string) {
 //
 // No-op (PASS) when the .claude/agents/harness/ directory is absent or contains
 // no *.md agents — the contract applies only to generated agents.
-func checkLayer6AgentActivation(agentsDir, skillsDir string) (string, string) {
+// Gate round 47-3: userSkillsDir is the second resolution scope (""
+// disables it — the reference must then resolve in the project scope
+// alone).
+func checkLayer6AgentActivation(agentsDir, skillsDir, userSkillsDir string) (string, string) {
 	entries, err := os.ReadDir(agentsDir)
 	if err != nil {
 		if os.IsNotExist(err) {
@@ -358,7 +392,9 @@ func checkLayer6AgentActivation(agentsDir, skillsDir string) (string, string) {
 			if !strings.HasPrefix(ref, "hns-") && !strings.HasPrefix(ref, "harness-") && !strings.HasPrefix(ref, "my-harness-") {
 				continue
 			}
-			if _, err := os.Stat(filepath.Join(skillsDir, ref)); err != nil {
+			_, projErr := os.Stat(filepath.Join(skillsDir, ref))
+			_, userErr := os.Stat(filepath.Join(userSkillsDir, ref))
+			if projErr != nil && userErr != nil {
 				problems = append(problems, agentName+": dangling skills: reference "+ref+" (skill dir absent)")
 			}
 		}

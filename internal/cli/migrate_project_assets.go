@@ -119,6 +119,12 @@ func migrateProjectCommonAssets(projectRoot, homeDir string, userAssetsInstalled
 			if !hasEntry || entry == nil {
 				untouched++
 				migrationPreservedProjectFiles[p] = true
+				// M6 (REQ-SRF-001): an unregistered mirror copy is
+				// CLASSIFIED + REPORTED per file — a hash match with the
+				// template is not creation provenance, so the copy stays
+				// and the removal question is named for the user (the
+				// audited round-8 contract: preservation is the default).
+				report("  migration: unregistered mirror copy (kept — removal needs creation provenance or your approval): %s", relSlash)
 				return nil
 			}
 			if provenance == string(manifest.UserCreated) {
@@ -279,6 +285,17 @@ func userCounterpartConfirmed(userManifest *userassets.Manifest, cat *template.C
 	current, err := fs.ReadFile(embedded, sourceRel)
 	if err != nil {
 		return false
+	}
+	// Gate round 49 NEW-2: the CODEX faces carry the deploy-path CONVERTED
+	// bytes — targetBytes applies NormalizeCodexRoleForDeploy before
+	// writing and hashing (REQ-CNV-001) — so the confirmation compares
+	// CONVERTED against CONVERTED. Raw-vs-installed never matched a
+	// correctly installed .toml counterpart, confirming false every time
+	// and pinning the stale project copy forever (the provenance
+	// discipline's direct corollary: compare like provenance with like).
+	switch userassets.RootSlug(slug) {
+	case userassets.RootCodexAgents, userassets.RootAgentsSkills:
+		current = template.NormalizeCodexRoleForDeploy(current)
 	}
 	return bytes.Equal(data, current)
 }

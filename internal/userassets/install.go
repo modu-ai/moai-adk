@@ -18,6 +18,7 @@ package userassets
 import (
 	"crypto/sha256"
 	"encoding/hex"
+	"errors"
 	"fmt"
 	"io"
 	"io/fs"
@@ -51,6 +52,13 @@ type Installer struct {
 	MoaiVersion string
 	// Now stamps installed_at; nil means time.Now.
 	Now func() time.Time
+	// afterTargetPersist is the interruption-repro seam (M0/M1 journal
+	// tests): invoked after each written target's completion flag is
+	// persisted, in sorted-target order. Production leaves it nil — the
+	// single-read design (REQ-CNV-001) removed the source-read interleave
+	// the former parking fixture counted, and this hook restores a
+	// deterministic mid-loop suspension point without re-reading.
+	afterTargetPersist func(tgt installTarget)
 }
 
 // Result is the run's per-file outcome summary (REQ-011 counts + REQ-013
@@ -66,6 +74,7 @@ type Result struct {
 	Divergences         []string
 	SharedSurvivors     []string // E3: entries kept because a remaining selection or L0 shares them
 	DeferredDeps        []string // R-f-②: deletions deferred — the entry is a declared dependency of a preserved asset
+	Unconverted         []string // M3 REQ-CNV-002: Codex-face files whose CONVERTED bytes still carry a harness-specific reference with no conversion mapping — named per file, never silently shipped
 }
 
 // FileOutcome is one file-level failure (REQ-013: path + reason).
@@ -117,10 +126,18 @@ func (in *Installer) Install(selection []string) (*Result, error) {
 	// (final-class item 5). A CORRUPT journal is preserved (renamed aside)
 	// and the run ABORTS: the journal carries the interrupted install's
 	// selection + ownership recovery data, and silently discarding it would
-	// turn the retry into a mis-attributed run (review fix RF4).
+	// turn the retry into a mis-attributed run (review fix RF4). An
+	// UNSUPPORTED-SCHEMA journal (M1, REQ-JRN-004) is refused WITHOUT the
+	// rename: it stays at its original path, because the sidecar name would
+	// hide it from the compatible binary that must recover it — every run
+	// of this binary keeps rejecting in place until then.
 	journal, journalErr := LoadJournal(JournalPath(in.Home))
 	journalClassified := map[string]bool{}
 	if journalErr != nil {
+		var schemaErr *JournalSchemaError
+		if errors.As(journalErr, &schemaErr) {
+			return nil, fmt.Errorf("pending-install journal at %s carries schema_version %d, this binary writes %d — the run refuses and the journal is preserved in place until a compatible binary recovers it: %w", JournalPath(in.Home), schemaErr.Found, SchemaVersion, journalErr)
+		}
 		sidecar := JournalPath(in.Home) + ".corrupt-" + time.Now().UTC().Format("20060102T150405")
 		if renameErr := os.Rename(JournalPath(in.Home), sidecar); renameErr != nil {
 			return nil, fmt.Errorf("journal corrupt and could not be preserved: %w", journalErr)
@@ -184,6 +201,17 @@ func (in *Installer) Install(selection []string) (*Result, error) {
 	if err != nil {
 		return nil, err
 	}
+	// M3 (REQ-CNV-002): name every Codex-face target whose CONVERTED bytes
+	// still carry a harness-specific reference — the converter maps the
+	// reproduced coordinates (.claude/rules/moai/, .claude/skills/,
+	// CLAUDE.md) and nothing else; a surviving .claude/ reference has no
+	// mapping and must be reported per file, never silently shipped. The
+	// scan reads the target's own single-read bytes (no second source read).
+	for _, tgt := range targets {
+		if tgt.codexFace && strings.Contains(string(tgt.data), ".claude/") {
+			res.Unconverted = append(res.Unconverted, tgt.manifestKey)
+		}
+	}
 
 	// RF5 (review fix): run the collision determination FIRST — a target
 	// holding an untracked content-identical user file is a REQ-010
@@ -208,6 +236,15 @@ func (in *Installer) Install(selection []string) (*Result, error) {
 			// target).
 			continue
 		}
+		// M5 (REQ-COL-001): the target's TYPE is judged BEFORE any read —
+		// a non-regular entry (FIFO, device, socket) is classified as a
+		// collision-skip without reading, because os.ReadFile here would
+		// block forever on a FIFO with no writer (the M0 RED repro).
+		if info, statErr := os.Lstat(abs); statErr == nil && !info.Mode().IsRegular() {
+			res.CollisionSkipped++
+			res.Collisions = append(res.Collisions, tgt.manifestKey)
+			continue
+		}
 		if current, readErr := os.ReadFile(abs); readErr == nil {
 			_, tracked := manifest.Files[tgt.manifestKey]
 			if !tracked {
@@ -223,7 +260,11 @@ func (in *Installer) Install(selection []string) (*Result, error) {
 	}
 
 	// Stage the pending-install journal BEFORE the asset writes (the
-	// intent-and-content proof, E4) — over ONLY the installable delta.
+	// intent-and-content proof, E4) — over ONLY the installable delta,
+	// MERGED with the recovered journal's entries (M1, REQ-JRN-001): the
+	// carry used to land only in a post-loop re-persist, so the FIRST
+	// staging's file lacked the recovered entries and an interruption
+	// between the staging and that re-persist dropped them.
 	stage := &PendingJournal{
 		SchemaVersion:    SchemaVersion,
 		BundlesSelection: manifest.Bundles,
@@ -236,70 +277,88 @@ func (in *Installer) Install(selection []string) (*Result, error) {
 			InstalledAt: now.UTC().Format(time.RFC3339),
 		})
 	}
+	stageIndexOf := make(map[string]int, len(stage.Entries))
+	for i := range stage.Entries {
+		stageIndexOf[stage.Entries[i].Path] = i
+	}
+	if journal != nil {
+		// B3 (review-fix round 2 addendum) + Item 3 (fix round 3 addendum):
+		// carry EVERY old-journal entry into the stage unconditionally — the
+		// stage replaces the old journal at staging time, and dropping any
+		// entry loses the ownership evidence if the manifest save fails
+		// AGAIN (the double-interruption repro: recovered files flip to
+		// permanent collisions). The entries keep their WriteCompleted
+		// state; cleared only with a successful save.
+		for _, e := range journal.Entries {
+			if _, staged := stageIndexOf[e.Path]; staged {
+				continue
+			}
+			stageIndexOf[e.Path] = len(stage.Entries)
+			stage.Entries = append(stage.Entries, e)
+		}
+	}
 	if err := WriteJournal(JournalPath(in.Home), stage); err != nil {
 		return nil, fmt.Errorf("stage journal: %w", err)
 	}
 
 	// The per-asset judgment, one file at a time (REQ-013 fail-open per file).
 	// F8 (review-fix round 2): each successful write flips the staged
-	// journal entry's WriteCompleted flag and the journal is re-persisted
-	// BEFORE the manifest save — an interruption after the manifest-save
-	// failure then classifies the run's OWN installs by the flag (divergence
-	// with shipped backup) instead of misreading them as collisions.
-	completed := map[string]bool{}
+	// journal entry's WriteCompleted flag. M1 (REQ-JRN-003): the flip is
+	// PERSISTED immediately, before the next file — an interruption mid-loop
+	// then finds the completed files' flags on disk instead of batched at
+	// the end of the run. Gate round 15 (design §2 write-amplification
+	// constraint): the persist fires ONLY when the run actually wrote the
+	// file — an up-to-date target changed nothing on disk, so re-serializing
+	// the whole journal for it is quadratic amplification with no
+	// recovery-data value (a retry re-evaluates it to up-to-date again).
 	for _, tgt := range installable {
-		if err := in.applyTarget(tgt, manifest, roots, res); err != nil {
+		_, wrote, err := in.applyTarget(tgt, manifest, roots, res)
+		if err != nil {
 			res.Failures = append(res.Failures, FileOutcome{Path: tgt.manifestKey, Reason: err.Error()})
 			continue
 		}
-		completed[tgt.manifestKey] = true
+		if wrote {
+			if i, ok := stageIndexOf[tgt.manifestKey]; ok && !stage.Entries[i].WriteCompleted {
+				stage.Entries[i].WriteCompleted = true
+				if err := WriteJournal(JournalPath(in.Home), stage); err != nil {
+					res.Failures = append(res.Failures, FileOutcome{Path: JournalPath(in.Home), Reason: "persist completion flag: " + err.Error()})
+				}
+			}
+		}
+		if in.afterTargetPersist != nil {
+			in.afterTargetPersist(tgt)
+		}
 	}
 	// Journal-recovered entries flow through the same truth table (the
 	// sharpening): a recovered file whose bytes differ from shipped is
-	// refreshed like any manifest-match file.
-	for _, tgt := range reEvaluate {
-		if err := in.applyTarget(tgt, manifest, roots, res); err != nil {
-			res.Failures = append(res.Failures, FileOutcome{Path: tgt.manifestKey, Reason: err.Error()})
-		}
-	}
-	// B3 (review-fix round 2 addendum) + Item 3 (fix round 3 addendum): the
-	// completion flags go on the CURRENT run's stage journal, and the
-	// journal-carried entries (recovered claims + classified divergences)
-	// are CARRIED INTO the stage — the stage replaces the old journal at
-	// staging time, and dropping the carried entries would lose the
-	// ownership evidence if the manifest save failed AGAIN (the double-
-	// interruption repro: recovered files flip to permanent collisions).
+	// refreshed like any manifest-match file. M1 (REQ-JRN-002): the refresh
+	// updates the CARRIED entry's recorded hash AND its provenance together
+	// (gate round 14) — a stale hash would make the next recovery
+	// mis-classify the run's own refresh, and stale MoaiVersion/InstalledAt
+	// would record the new bytes under the old run's origin (REQ-006: the
+	// per-file version names the build that produced the bytes on disk).
 	stageChanged := false
-	for i := range stage.Entries {
-		if completed[stage.Entries[i].Path] && !stage.Entries[i].WriteCompleted {
-			stage.Entries[i].WriteCompleted = true
-			stageChanged = true
-		}
-	}
-	stagePaths := map[string]bool{}
-	for _, e := range stage.Entries {
-		stagePaths[e.Path] = true
-	}
-	journalCarried := []JournalEntry{}
-	if journal != nil {
-		journalCarried = journal.Entries
-	}
-	for _, e := range journalCarried {
-		if stagePaths[e.Path] {
+	for _, tgt := range reEvaluate {
+		recorded, _, err := in.applyTarget(tgt, manifest, roots, res)
+		if err != nil {
+			res.Failures = append(res.Failures, FileOutcome{Path: tgt.manifestKey, Reason: err.Error()})
 			continue
 		}
-		// Item 3 (fix round 3 addendum): carry EVERY old-journal entry into
-		// the stage unconditionally — the old journal is about to be
-		// replaced, and dropping any entry loses the ownership evidence if
-		// the manifest save fails AGAIN (the double-interruption repro:
-		// recovered files flip to permanent collisions). The entries carry
-		// their WriteCompleted state; cleared only with a successful save.
-		stage.Entries = append(stage.Entries, e)
-		stageChanged = true
+		if recorded != "" {
+			if i, ok := stageIndexOf[tgt.manifestKey]; ok {
+				e := &stage.Entries[i]
+				if e.ExpectedSHA256 != recorded || e.MoaiVersion != in.MoaiVersion {
+					e.ExpectedSHA256 = recorded
+					e.MoaiVersion = in.MoaiVersion
+					e.InstalledAt = now.UTC().Format(time.RFC3339)
+					stageChanged = true
+				}
+			}
+		}
 	}
 	if stageChanged {
 		if err := WriteJournal(JournalPath(in.Home), stage); err != nil {
-			res.Failures = append(res.Failures, FileOutcome{Path: JournalPath(in.Home), Reason: "persist completion flags: " + err.Error()})
+			res.Failures = append(res.Failures, FileOutcome{Path: JournalPath(in.Home), Reason: "persist refreshed hashes: " + err.Error()})
 		}
 	}
 
@@ -354,6 +413,13 @@ type installTarget struct {
 	sourcePath  string // source-tree slash path
 	bundle      string // "core" for L0
 	sha         string
+	// data is the EXACT bytes the run writes for this target — for the
+	// Codex faces these are the deploy-path-converted bytes (M3,
+	// REQ-CNV-001): the written bytes and the recorded hashes come from
+	// this one read, so a converted record beside verbatim content is
+	// structurally impossible.
+	data      []byte
+	codexFace bool // the target lands on a Codex-deployment face
 }
 
 // installTargets enumerates the destination files for L0 ∪ selection:
@@ -425,18 +491,42 @@ func (in *Installer) fileTarget(slug RootSlug, rel, sourcePath string, e templat
 	if err != nil {
 		return installTarget{}, fmt.Errorf("target %s: %w", rel, err)
 	}
-	data, err := fs.ReadFile(in.Source, sourcePath)
-	if err != nil {
-		return installTarget{}, fmt.Errorf("read source %s: %w", sourcePath, err)
-	}
-	return installTarget{
+	tgt := installTarget{
 		manifestKey: string(slug) + "/" + clean,
 		root:        slug,
 		rel:         clean,
 		sourcePath:  sourcePath,
 		bundle:      bundleLabel(e),
-		sha:         sha256Hex(data),
-	}, nil
+		// M3 (REQ-CNV-001): the Codex faces — the Codex agent TOML and the
+		// .agents/skills skill root — carry the deploy-path CONVERTED bytes;
+		// the Claude faces stay verbatim (their references are correct
+		// there). Only the reproduced reference mappings apply (design §4:
+		// no over-generalization — anything without a mapping is reported,
+		// not guessed at).
+		codexFace: slug == RootCodexAgents || slug == RootAgentsSkills,
+	}
+	data, err := in.targetBytes(tgt)
+	if err != nil {
+		return installTarget{}, fmt.Errorf("read source %s: %w", sourcePath, err)
+	}
+	tgt.data = data
+	tgt.sha = sha256Hex(data)
+	return tgt, nil
+}
+
+// targetBytes reads one target's source bytes and applies the Codex-face
+// normalization — the SAME conversion the deploy path writes
+// (template.NormalizeCodexRoleForDeploy). The returned bytes are exactly
+// what applyTarget writes and what the recorded sha256 hashes.
+func (in *Installer) targetBytes(tgt installTarget) ([]byte, error) {
+	data, err := fs.ReadFile(in.Source, tgt.sourcePath)
+	if err != nil {
+		return nil, err
+	}
+	if tgt.codexFace {
+		data = template.NormalizeCodexRoleForDeploy(data)
+	}
+	return data, nil
 }
 
 func bundleLabel(e template.Entry) string {
@@ -450,19 +540,37 @@ func bundleLabel(e template.Entry) string {
 }
 
 // collectEntries gathers the L0 core entries plus every named selection's
-// entries. Unknown bundle names are an error (C4: the report must be
+// entries, expanded through each pack's DependsOn closure (M6, REQ-SRF-005):
+// a selected bundle's dependencies install with it, cycle-safe (a pack that
+// is already gathered, or currently being walked, is not re-walked).
+// Unknown bundle names are an error (C4: the report must be
 // actionable — a typo'd bundle name must not silently install nothing).
 func (in *Installer) collectEntries(selection []string) []template.Entry {
 	var entries []template.Entry
 	entries = append(entries, in.Catalog.Catalog.Core.Skills...)
 	entries = append(entries, in.Catalog.Catalog.Core.Agents...)
-	for _, name := range selection {
+	// REQ-SRF-005: the gathered set doubles as the cycle guard — a pack
+	// already gathered (directly or as a dependency) is not re-walked, so
+	// a depends_on cycle among packs terminates instead of recursing.
+	gathered := map[string]bool{}
+	var walk func(name string)
+	walk = func(name string) {
+		if gathered[name] {
+			return
+		}
+		gathered[name] = true
 		pack, ok := in.Catalog.Catalog.OptionalPacks[name]
 		if !ok {
-			continue // reported by the caller-level command surface (C4)
+			return // reported by the caller-level command surface (C4)
 		}
 		entries = append(entries, pack.Skills...)
 		entries = append(entries, pack.Agents...)
+		for _, dep := range pack.DependsOn {
+			walk(dep)
+		}
+	}
+	for _, name := range selection {
+		walk(name)
 	}
 	return entries
 }
@@ -499,6 +607,15 @@ func (in *Installer) reconcileJournal(j *PendingJournal, manifest *Manifest, roo
 			continue
 		}
 		abs := filepath.Join(root.dir, filepath.FromSlash(rel))
+		// M5 (REQ-COL-001): a non-regular journal target is never read
+		// (the FIFO-hang hazard) and never claimed — classified as a
+		// collision so the RF5 pre-pass does not re-count it.
+		if info, statErr := os.Lstat(abs); statErr == nil && !info.Mode().IsRegular() {
+			classified[e.Path] = true
+			res.CollisionSkipped++
+			res.Collisions = append(res.Collisions, e.Path)
+			continue
+		}
 		data, err := os.ReadFile(abs)
 		if err != nil {
 			continue // case 1: absent — the install pass installs it
@@ -520,8 +637,28 @@ func (in *Installer) reconcileJournal(j *PendingJournal, manifest *Manifest, roo
 		}
 		// Case 3: never reinstall on a mismatch. The classification is
 		// recorded so the RF5 collision pre-pass does not re-count it.
+		currentSHA := sha256Hex(data)
+		record, tracked := manifest.Files[e.Path]
+		// Gate rounds 21(b)/22 — the HASH discriminator: a flag-less entry
+		// is "not written THIS run", which alone says nothing about
+		// ownership. Compare the EXISTING manifest hash against the current
+		// on-disk bytes:
+		//   bytes == manifest hash → the file is exactly what the last
+		//   successful run left — the journal entry is an INCOMPLETE
+		//   PENDING REFRESH (a new version recorded, never written). Hand
+		//   the target to the normal refresh path (un-classified: the
+		//   per-asset pass refreshes it to shipped) and leave the manifest
+		//   record alone — rewriting it here would pin v2 onto a v1 file
+		//   and wedge the update forever.
+		//   bytes != manifest hash → the user edited it after the last
+		//   successful run → REQ-023 divergence (backup + preserve), and
+		//   the EXISTING record is kept verbatim — the journal's hash has
+		//   no authority over a file this run never wrote.
+		if !e.WriteCompleted && tracked && record.SHA256 != "" && currentSHA == record.SHA256 {
+			continue
+		}
 		classified[e.Path] = true
-		if e.WriteCompleted {
+		if e.WriteCompleted || tracked {
 			// REQ-023 divergence: preserve + backup + report — the backup
 			// arm fires HERE (not in applyTarget) because the classified
 			// set excludes the path from the per-asset pass.
@@ -535,17 +672,21 @@ func (in *Installer) reconcileJournal(j *PendingJournal, manifest *Manifest, roo
 					res.Failures = append(res.Failures, FileOutcome{Path: e.Path, Reason: backupErr.Error()})
 				}
 			}
-			// Item 7 (fix round 3): KEEP the manifest record carrying the
-			// journal's original hash + install source — the user's edit is
-			// preserved on disk AND the file stays tracked, so future runs
-			// classify it as REQ-023 divergence (with backup) instead of
-			// flipping to a collision after the journal cleanup. B6 merge:
-			// unknown fields survive.
+			// Item 7 (fix round 3): keep the manifest record so the file
+			// stays tracked and future runs classify the preserved edit as
+			// REQ-023 divergence. Gate round 22: WHICH record survives is
+			// ownership-scoped — the journal's hash has authority only over
+			// the run's OWN install (the flag-complete interrupted-install
+			// case); a tracked file the run never wrote keeps its EXISTING
+			// record verbatim, so a pending v2 is never pinned onto v1
+			// bytes.
 			fe := manifest.Files[e.Path]
-			fe.SHA256 = e.ExpectedSHA256
-			fe.Bundle = e.Bundle
-			fe.InstalledAt = e.InstalledAt
-			fe.MoaiVersion = e.MoaiVersion
+			if e.WriteCompleted || !tracked {
+				fe.SHA256 = e.ExpectedSHA256
+				fe.Bundle = e.Bundle
+				fe.InstalledAt = e.InstalledAt
+				fe.MoaiVersion = e.MoaiVersion
+			}
 			manifest.Files[e.Path] = fe
 			res.DivergencePreserved++
 			res.Divergences = append(res.Divergences, e.Path)
@@ -576,14 +717,29 @@ const (
 	stateCollision     // present AND untracked → REQ-010 skip
 )
 
-// applyTarget applies the truth table to one destination file.
-func (in *Installer) applyTarget(tgt installTarget, manifest *Manifest, roots map[RootSlug]resolvedRoot, res *Result) error {
+// applyTarget applies the truth table to one destination file. It returns
+// the SHA256 the run recorded for the file when the record's hash was
+// updated to shipped bytes (install / refresh / manifest-repair arms), or
+// "" when the record's hash did not move — the caller syncs journal-carried
+// entries against it (M1, REQ-JRN-002). wrote reports whether the run's
+// OWN WRITE landed (the confinedWrite arms) — the caller persists the
+// completion flag only for those (gate round 15: an up-to-date or
+// record-only-repaired target is not the run's write and must not pay a
+// journal re-serialization).
+func (in *Installer) applyTarget(tgt installTarget, manifest *Manifest, roots map[RootSlug]resolvedRoot, res *Result) (string, bool, error) {
 	root := roots[tgt.root]
 	abs := filepath.Join(root.dir, filepath.FromSlash(tgt.rel))
 
-	shipped, err := fs.ReadFile(in.Source, tgt.sourcePath)
-	if err != nil {
-		return fmt.Errorf("read shipped bytes: %w", err)
+	// M3 (REQ-CNV-001): the shipped bytes come from the target's OWN
+	// single read — the converted bytes the sha was computed over — so the
+	// written content and every recorded hash describe the same bytes.
+	shipped := tgt.data
+	if shipped == nil {
+		data, err := in.targetBytes(tgt)
+		if err != nil {
+			return "", false, fmt.Errorf("read shipped bytes: %w", err)
+		}
+		shipped = data
 	}
 	current, err := os.ReadFile(abs)
 	st := classifyTarget(manifest.Files[tgt.manifestKey], current, err, shipped, tgt.sha)
@@ -598,10 +754,11 @@ func (in *Installer) applyTarget(tgt installTarget, manifest *Manifest, roots ma
 		fe.InstalledAt = in.now().UTC().Format(time.RFC3339)
 		fe.MoaiVersion = in.MoaiVersion
 		if err := in.confinedWrite(root, tgt.rel, shipped, true); err != nil {
-			return err
+			return "", false, err
 		}
 		manifest.Files[tgt.manifestKey] = fe
 		res.Installed++
+		return tgt.sha, true, nil
 	case stateUpToDate:
 		// Refresh the provenance only if the record drifted (bundle rename).
 		fe := manifest.Files[tgt.manifestKey]
@@ -619,10 +776,11 @@ func (in *Installer) applyTarget(tgt installTarget, manifest *Manifest, roots ma
 		fe.InstalledAt = in.now().UTC().Format(time.RFC3339)
 		fe.MoaiVersion = in.MoaiVersion
 		if err := in.confinedWrite(root, tgt.rel, shipped, true); err != nil {
-			return err
+			return "", false, err
 		}
 		manifest.Files[tgt.manifestKey] = fe
 		res.Refreshed++
+		return tgt.sha, true, nil
 	case stateManifestStale:
 		// REQ-023 truth table: repair the manifest record, no rewrite,
 		// counted refreshed (REQ-011) — known fields only (RF6).
@@ -631,10 +789,11 @@ func (in *Installer) applyTarget(tgt installTarget, manifest *Manifest, roots ma
 		fe.Bundle = tgt.bundle
 		manifest.Files[tgt.manifestKey] = fe
 		res.Refreshed++
+		return tgt.sha, false, nil
 	case stateDivergent:
 		// REQ-023 preserve + backup + report.
 		if err := in.backupShipped(root, tgt.rel, shipped); err != nil {
-			return fmt.Errorf("backup shipped bytes: %w", err)
+			return "", false, fmt.Errorf("backup shipped bytes: %w", err)
 		}
 		res.DivergencePreserved++
 		res.Divergences = append(res.Divergences, tgt.manifestKey)
@@ -642,7 +801,7 @@ func (in *Installer) applyTarget(tgt installTarget, manifest *Manifest, roots ma
 		res.CollisionSkipped++
 		res.Collisions = append(res.Collisions, tgt.manifestKey)
 	}
-	return nil
+	return "", false, nil
 }
 
 func classifyTarget(record FileEntry, current []byte, readErr error, shipped []byte, shippedSHA string) targetState {
@@ -726,32 +885,79 @@ func (in *Installer) confinedWrite(root resolvedRoot, rel string, data []byte, m
 	if err != nil || !withinRoot(root.dir, parentResolvedFinal) {
 		return fmt.Errorf("userassets: parent re-validation failed before rename — refused (C2 posture)")
 	}
-	tmp, err := os.CreateTemp(parentResolvedFinal, ".ua-write-*")
+	// M5 (REQ-COL-002, design §6): PIN THE PARENT — the validated parent is
+	// opened as an os.Root handle and the temp-create, write, chmod, and
+	// rename all go THROUGH the handle. The handle pins the verified inode:
+	// a parent swapped to a symlink after validation cannot reroute the
+	// write or the rename (the declared C2 race limitation — the path-based
+	// rename following a swapped parent — is closed). The earlier C2 checks
+	// above are unchanged; the pin REPLACES the pre-rename path
+	// re-interpretation, it does not weaken it.
+	pinned, err := os.OpenRoot(parentResolvedFinal)
 	if err != nil {
-		return err
+		return fmt.Errorf("userassets: pin destination parent: %w", err)
 	}
-	tmpName := tmp.Name()
+	defer func() { _ = pinned.Close() }()
+	leaf := filepath.Base(dest)
+	// Gate round 34-3: the temp file is created EXCLUSIVELY (O_CREATE|
+	// O_EXCL via the pinned handle) with a fresh random name retried on
+	// collision — os.Root.Create is O_TRUNC non-EXCL, so an attacker-placed
+	// symlink at a guessed temp name would be followed and its target
+	// truncated. Exclusive creation fails closed on any pre-existing entry
+	// instead, and a fresh name is drawn per attempt.
+	var tmp *os.File
+	var tmpName string
+	for attempt := 0; attempt < 8; attempt++ {
+		tmpName = fmt.Sprintf(".ua-write-%d-%d-%d", os.Getpid(), time.Now().UnixNano(), attempt)
+		f, createErr := pinned.OpenFile(tmpName, os.O_CREATE|os.O_EXCL|os.O_WRONLY, 0o600)
+		if createErr == nil {
+			tmp = f
+			break
+		}
+		if !errors.Is(createErr, os.ErrExist) {
+			return createErr
+		}
+		// EEXIST: an entry occupies the drawn name — retry with a fresh one
+	}
+	if tmp == nil {
+		return fmt.Errorf("userassets: no exclusive temp name available in %s", parentResolvedFinal)
+	}
 	if _, err := tmp.Write(data); err != nil {
 		_ = tmp.Close()
-		_ = os.Remove(tmpName)
+		_ = pinned.Remove(tmpName)
+		return err
+	}
+	// M5 (REQ-COL-003): script assets keep their exec bit — the former
+	// 0o644 hardcode stripped it from every installed file.
+	if err := tmp.Chmod(in.installMode(rel)); err != nil {
+		_ = tmp.Close()
+		_ = pinned.Remove(tmpName)
 		return err
 	}
 	if err := tmp.Close(); err != nil {
-		_ = os.Remove(tmpName)
+		_ = pinned.Remove(tmpName)
 		return err
 	}
-	if err := os.Chmod(tmpName, 0o644); err != nil {
-		_ = os.Remove(tmpName)
-		return err
-	}
-	// rename(2) does not follow a symlink on the destination's final
-	// component — a leaf swapped in after validation is replaced, not
-	// followed (C2 edge 3 posture).
-	if err := os.Rename(tmpName, dest); err != nil {
-		_ = os.Remove(tmpName)
+	// The rename resolves WITHIN the pinned parent — a leaf swapped in
+	// after validation is replaced, not followed (C2 edge 3 posture), and
+	// a parent swapped after validation is irrelevant: the handle, not the
+	// path, names the directory the rename lands in.
+	if err := pinned.Rename(tmpName, leaf); err != nil {
+		_ = pinned.Remove(tmpName)
 		return err
 	}
 	return nil
+}
+
+// installMode decides the file mode an installed asset carries (M5,
+// REQ-COL-003): script assets keep their exec bit (0755 — the
+// navigator-audit.sh repro class); everything else keeps the previous
+// minimal permission (0644).
+func (in *Installer) installMode(rel string) os.FileMode {
+	if strings.HasSuffix(rel, ".sh") {
+		return 0o755
+	}
+	return 0o644
 }
 
 // confinedMkdir creates relDir under the resolved root one segment at a

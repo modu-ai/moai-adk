@@ -279,5 +279,11 @@ func resolveZoneTarget(root, raw string) []zoneForm {
 			}
 		}
 	}
+	// Gate round 26 #3: the user-root forms live in their OWN stream — the
+	// project/baseline matching above must never see them (a basename entry
+	// like **/AGENTS.md would otherwise deny an untracked user file on name
+	// alone). resolveZoneTarget stays project-only; the deny sites call
+	// userRootZoneForms separately and route the results exclusively to
+	// ZoneUserRoot entries.
 	return forms
 }

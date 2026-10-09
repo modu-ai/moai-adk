@@ -204,6 +204,22 @@ func (a *app) listAllAgentFMs(projectRoot string, llm config.LLMConfig) ([]agent
 		}
 		all = append(all, agents...)
 	}
+	// M6 (REQ-SRF-004): the same agent name scanning from MULTIPLE
+	// directories (a user-scope twin of a project row) is ONE setting — the
+	// rows consolidate to the FIRST scan hit (home scope outranks project
+	// scope in the dir order) instead of rendering duplicate rows whose
+	// submissions silently overwrite one another. The form keys are
+	// name-based, so two rows under one key were a two-headed setting.
+	seen := map[string]bool{}
+	consolidated := all[:0]
+	for _, info := range all {
+		if seen[info.Name] {
+			continue
+		}
+		seen[info.Name] = true
+		consolidated = append(consolidated, info)
+	}
+	all = consolidated
 	sort.Slice(all, func(i, j int) bool {
 		ai, aj := all[i], all[j]
 		gi, gj := agentGroupRank(ai.Name), agentGroupRank(aj.Name)

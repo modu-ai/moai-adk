@@ -32,6 +32,7 @@ package userassets
 
 import (
 	"encoding/json"
+	"errors"
 	"fmt"
 	"os"
 )
@@ -82,7 +83,39 @@ func WriteJournal(path string, j *PendingJournal) error {
 	return atomicWrite(path, data, 0o644)
 }
 
-// LoadJournal reads the journal. Absent → (nil, nil).
+// JournalSchemaError reports a journal whose schema_version this binary
+// does not write (SPEC-USERASSET-DEPLOY-GUARD-001 M1, REQ-JRN-004). Unlike
+// a corrupt journal, it is preserved AT ITS ORIGINAL PATH: the callers
+// refuse and leave the file in place until a compatible binary recovers it
+// — routing it to the corrupt sidecar would hide it from the very binary
+// that can decode it.
+type JournalSchemaError struct {
+	Path  string
+	Found int
+}
+
+func (e *JournalSchemaError) Error() string {
+	return fmt.Sprintf("userassets: journal at %s carries schema_version %d, this binary writes %d — refusing to decode (the journal is preserved in place; a binary that writes schema %d must recover it)", e.Path, e.Found, SchemaVersion, e.Found)
+}
+
+// AsJournalSchemaError reports whether err is a *JournalSchemaError.
+func AsJournalSchemaError(err error, se **JournalSchemaError) bool {
+	return errors.As(err, se)
+}
+
+// LoadJournal reads the journal. Absent → (nil, nil). A journal whose
+// schema_version this binary does not write is refused with a diagnostic —
+// a silent decode would mis-read an unknown schema's recovery data as if it
+// were this binary's (SPEC-USERASSET-DEPLOY-GUARD-001 M1, REQ-JRN-004).
+//
+// Gate round 17: the version HEADER is validated BEFORE the full body
+// decode. A future schema may change body field TYPES; decoding the body
+// first would fail on the type change and route the journal to the corrupt
+// sidecar, hiding it from the compatible binary that could recover it. The
+// peek decodes only the header (unknown fields are skipped type-free), so
+// an unsupported-schema journal is preserved at its original path
+// regardless of body decodability. A body whose header itself is
+// unparseable has no recoverable version — that is corrupt, not unknown.
 func LoadJournal(path string) (*PendingJournal, error) {
 	data, err := os.ReadFile(path)
 	if err != nil {
@@ -91,9 +124,18 @@ func LoadJournal(path string) (*PendingJournal, error) {
 		}
 		return nil, fmt.Errorf("userassets: read journal: %w", err)
 	}
+	var header struct {
+		SchemaVersion int `json:"schema_version"`
+	}
+	if hdrErr := json.Unmarshal(data, &header); hdrErr == nil && header.SchemaVersion != SchemaVersion {
+		return nil, &JournalSchemaError{Path: path, Found: header.SchemaVersion}
+	}
 	var j PendingJournal
 	if err := json.Unmarshal(data, &j); err != nil {
 		return nil, fmt.Errorf("userassets: journal corrupt at %s: %w", path, err)
+	}
+	if j.SchemaVersion != SchemaVersion {
+		return nil, &JournalSchemaError{Path: path, Found: j.SchemaVersion}
 	}
 	return &j, nil
 }

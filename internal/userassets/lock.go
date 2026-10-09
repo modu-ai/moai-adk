@@ -110,13 +110,30 @@ func (l *UserLock) Release() error {
 	return nil
 }
 
+// lockRecord is one ownership-record read: the bytes plus the read status
+// (recordAbsent / recordIrregular / recordOK — the statuses and the reader
+// are platform-split: readLockRecord in lock_guard_{unix,windows}.go).
+type lockRecord struct {
+	data   []byte
+	status int
+}
+
 // lockOwnerGone fails closed for unreadable or malformed ownership records.
 // PID reuse can delay recovery, but cannot authorize a second live writer.
+// Gate round 19: the record's file TYPE is judged before any read — a FIFO
+// at a marker path would hang os.ReadFile forever waiting for a writer
+// (the install.go:211 hazard class), so a non-regular file fails closed.
+// Gate round 23: the type check binds to the OPEN HANDLE (open non-
+// blocking, fstat the handle, read the handle) — a path Lstat alone leaves
+// a swap window where the path is replaced with a FIFO between the check
+// and the read, and the read still hangs.
 func lockOwnerGone(path string) bool {
-	raw, err := os.ReadFile(path)
-	if err != nil {
-		return false
-	}
+	rec := readLockRecord(path)
+	return rec.status == recordOK && ownerRecordGone(rec.data)
+}
+
+// ownerRecordGone parses one pid-record's death evidence from raw bytes.
+func ownerRecordGone(raw []byte) bool {
 	for _, field := range strings.Fields(string(raw)) {
 		if strings.HasPrefix(field, "pid=") {
 			pid, err := strconv.Atoi(strings.TrimPrefix(field, "pid="))
@@ -124,4 +141,160 @@ func lockOwnerGone(path string) bool {
 		}
 	}
 	return false
+}
+
+// guardMarkerDead reports whether the guard marker at path records an owner
+// PROVEN dead — the reclaim license of REQ-LOCK-001 (SPEC-USERASSET-
+// DEPLOY-GUARD-001 M2). It is the lockOwnerGone posture applied to the
+// marker: a marker carrying no pid record (a legacy or foreign marker) is
+// never proven dead, and unreadable or malformed records fail closed. The
+// platform-neutral home is deliberate: both platform guards decide their
+// reclaim through this one predicate, so the marker-state × owner-liveness
+// table judges the shared policy on every platform.
+func guardMarkerDead(markerPath string) bool {
+	return lockOwnerGone(markerPath)
+}
+
+// reclaimGuardMarker moves a death-proven marker aside. It re-proves the
+// owner itself (fail closed): an unproven marker is never moved, whatever
+// the caller assumed.
+//
+// Gate round 18 P1 — the reclaim IDENTITY race: two callers may verify the
+// same dead owner; the loser's rename would then act on the WINNER'S newly
+// created live marker and its delete would remove a live owner's marker
+// (gate-reproduced). The rename is therefore IDENTITY-CHECKED: the bytes
+// read before the rename must be byte-identical to the renamed file's —
+// the marker record carries a nanosecond stamp, so a new owner's marker
+// never matches. On a mismatch the displaced file is restored to its
+// original path and the caller re-runs its loop.
+func reclaimGuardMarker(markerPath string) bool {
+	provenRec := readLockRecord(markerPath)
+	if provenRec.status != recordOK || !ownerRecordGone(provenRec.data) {
+		return false // never move a marker whose owner is not PROVEN dead
+	}
+	proven := provenRec.data
+	reclaim := markerPath + ".reclaim-" + fmt.Sprintf("%d-%d", os.Getpid(), time.Now().UnixNano())
+	if renameErr := os.Rename(markerPath, reclaim); renameErr != nil {
+		return false
+	}
+	displaced := readLockRecord(reclaim)
+	if displaced.status != recordOK || string(displaced.data) != string(proven) {
+		// Not the marker whose death we proved — a racing winner's live
+		// marker took the path. Put it back exactly where it was.
+		_ = os.Rename(reclaim, markerPath)
+		return false
+	}
+	_ = os.Remove(reclaim)
+	return true
+}
+
+// GuardMarkerState is the doctor-visible classification of a lock marker
+// (REQ-LOCK-001's visible-recovery path — the doctor reports; only a
+// death-PROVEN marker is auto-reclaimed, by the next acquisition).
+type GuardMarkerState int
+
+const (
+	GuardMarkerAbsent     GuardMarkerState = iota // no marker on disk (or a clean leftover with no recovery meaning)
+	GuardMarkerOwnerDead                          // pid record + owner proven dead — reclaimable
+	GuardMarkerOwnerAlive                         // pid record + owner still running (or a flock-held unix guard)
+	GuardMarkerOwnerless                          // no pid record on a platform where the record is the truth — NEVER auto-reclaimed (design §3)
+	GuardMarkerIrregular                          // present but not a readable regular file — surfaced, never read
+)
+
+// String renders the state for reports.
+func (s GuardMarkerState) String() string {
+	switch s {
+	case GuardMarkerAbsent:
+		return "absent"
+	case GuardMarkerOwnerDead:
+		return "owner-dead"
+	case GuardMarkerOwnerAlive:
+		return "owner-alive"
+	case GuardMarkerOwnerless:
+		return "ownerless"
+	case GuardMarkerIrregular:
+		return "irregular"
+	}
+	return "unknown"
+}
+
+// ClassifyGuardMarker classifies the GUARD marker at path for the doctor's
+// visible-recovery row. Gate rounds 18/19: only os.IsNotExist reads as
+// absent; the file TYPE is judged before any read (a FIFO must never be
+// read — it hangs); and the pid-less residual is PLATFORM-DECIDED — on
+// unix the guard file survives a clean release by design (flock is the
+// truth), so a free file is a clean leftover while a held file is alive;
+// on windows the marker's existence is the held evidence and a pid-less
+// marker is ownerless. For the .LOCK file use ClassifyLockFile — the lock
+// file takes no flock itself, so the flock-based absence judgment does not
+// apply to it (gate round 20). Gate round 23: the read is handle-bound
+// (readLockRecord) — no path-Lstat to read swap window.
+func ClassifyGuardMarker(markerPath string) (GuardMarkerState, int) {
+	rec := readLockRecord(markerPath)
+	switch rec.status {
+	case recordAbsent:
+		return GuardMarkerAbsent, 0
+	case recordIrregular:
+		return GuardMarkerIrregular, 0
+	}
+	pid := 0
+	hasPID := false
+	for _, field := range strings.Fields(string(rec.data)) {
+		if strings.HasPrefix(field, "pid=") {
+			if parsed, convErr := strconv.Atoi(strings.TrimPrefix(field, "pid=")); convErr == nil && parsed > 0 && int64(parsed) <= 2147483647 {
+				pid = parsed
+				hasPID = true
+			}
+		}
+	}
+	if !hasPID {
+		return classifyPidlessMarker(markerPath)
+	}
+	if lockProcessGone(pid) {
+		return GuardMarkerOwnerDead, pid
+	}
+	return GuardMarkerOwnerAlive, pid
+}
+
+// ClassifyLockFile classifies the .lock FILE for the doctor's row (gate
+// round 20): the lock file is O_EXCL-guarded and carries no flock, so the
+// guard file's flock-based absence judgment must not be applied to it — a
+// pid-less leftover .lock is a genuine manual-recovery state (acquisition
+// refuses with ErrLocked) on EVERY platform.
+func ClassifyLockFile(lockPath string) (GuardMarkerState, int) {
+	state, pid, has := classifyLockRecord(lockPath)
+	if !has {
+		return GuardMarkerOwnerless, 0
+	}
+	return state, pid
+}
+
+// classifyLockRecord reads and pid-classifies one lock-family record. The
+// boolean reports whether a usable classification was reached (false = the
+// pid-less residual, which the caller decides per file kind).
+//
+// Gate round 49 [12th raise]: the read goes THROUGH readLockRecord — the
+// handle-bound platform reader (non-blocking open, type check bound to the
+// open handle, read bound to the same handle). The former Lstat → ReadFile
+// pair re-interpreted the PATH between the two steps: a concurrent swap of
+// the lock file could classify a record the reader never saw whole.
+func classifyLockRecord(path string) (state GuardMarkerState, pid int, has bool) {
+	rec := readLockRecord(path)
+	switch rec.status {
+	case recordAbsent:
+		return GuardMarkerAbsent, 0, true
+	case recordIrregular:
+		return GuardMarkerIrregular, 0, true
+	}
+	for _, field := range strings.Fields(string(rec.data)) {
+		if strings.HasPrefix(field, "pid=") {
+			if parsed, convErr := strconv.Atoi(strings.TrimPrefix(field, "pid=")); convErr == nil && parsed > 0 && int64(parsed) <= 2147483647 {
+				if lockProcessGone(parsed) {
+					return GuardMarkerOwnerDead, parsed, true
+				}
+				return GuardMarkerOwnerAlive, parsed, true
+			}
+		}
+	}
+	return GuardMarkerOwnerless, 0, false
 }
