@@ -1175,6 +1175,24 @@ func TestCheckProtectedZoneShellSedInPlacePlainFileShape(t *testing.T) {
 	t.Logf("swept=%d", 1)
 }
 
+// TestCheckProtectedZoneShellGitGlobalOptionOwnGeneration — gate round 34
+// P2: the git GLOBAL option classification and argument consumption bind
+// to the passed generation — a word whose pre-4.2 reading is not a
+// recognized global option is not consumed in that world's sequence, so
+// the modern `-c` classification never joins the pre-4.2 world's file
+// readings. The row pins the classification in the reviewer's literal
+// call shape.
+func TestCheckProtectedZoneShellGitGlobalOptionOwnGeneration(t *testing.T) {
+	root := hzsMarkerFileFixture(t)
+	h := zoneTestHandler(t, root)
+	const optCmd = "git $'-c' color.ui=false rm -f $'a/marker.md'"
+	d, r := zoneCall(t, h, "Bash", harnessLearnerIdentity, map[string]any{"command": optCmd})
+	if d == DecisionDeny || strings.Contains(r, SentinelHarnessFrozenProtectedZone) {
+		t.Errorf("git global option own generation: decision=%q reason=%q, want allowed — modern git -c joins only the modern file reading (a/marker.md, outside the zone)", optCmd, r)
+	}
+	t.Logf("swept=%d", 1)
+}
+
 // TestCheckProtectedZoneShellGitMassFileArgsBounded — gate round 29 P3 /
 // gate round 30 P3 / gate round 31 P1 (measurement pin): 80,000 file
 // arguments must run BOUNDED — hash-set dedup (linear) and the

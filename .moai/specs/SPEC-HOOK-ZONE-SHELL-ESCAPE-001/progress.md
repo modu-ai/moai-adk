@@ -1481,6 +1481,43 @@ readings add nothing and flip nothing.
 - Builds: go build ./... exit 0; GOOS=windows go build ./... exit 0;
   golangci-lint run internal/hook/... --timeout=2m -> 0 issues.; gofmt
   clean; family coverage 13.8% (all-rows selector).
+
+### Gate round 34 — M2.15 git global-option generation binding (2026-10-09)
+
+One P2: the git GLOBAL option classification and argument consumption
+read zoneWordText (modern) while the file args use the passed generation —
+the last zoneWordText consumer inside zoneGitArgs. Reviewer shape:
+git -c color.ui=false rm -f <protected path> — modern: -c global option
+consumed, rm on the modern file reading; 3.2: the literal escape text is
+an unknown option (git refuses, nothing happens) — the cross-join
+false-denied.
+
+**Row landed as a GREEN-NOW pin:**
+TestCheckProtectedZoneShellGitGlobalOptionOwnGeneration (the reviewer's
+literal call shape, a/marker.md outside the zone) — measured ALLOW on the
+M2.15 tip. Honest classification: green-now — the pre-fix classification
+also allowed this literal shape (both generations read the un-escaped
+-c identically); the overlay deny hinges on the zone-reaching paths not
+carried in the abbreviated shape. The structural fix removes the class:
+the scan loop reads readings[world] for the global-option classification,
+the --work-tree= attached prefix, and the -C/--work-tree argument
+consumption.
+
+**M2.15 remedy — GREEN record.** Shape: the zoneGitArgs scan loop reads
+readings[world] for the classification and consumption — the -C/
+--work-tree value consumption, the --work-tree= attached prefix, and the
+valued-option list all bind per world; the option-structure sequence
+stays single-pass (bounded residual: a dual word whose generations
+disagree on option-vs-argument classification forks the parse —
+disclosed).
+
+- **Command** (all 46 instrument tests): the standard instrument selector
+  — exit 0, verbatim: ok github.com/modu-ai/moai-adk/internal/hook
+  2.893s (46/46 PASS).
+- Builds: go build ./... exit 0; GOOS=windows go build ./... exit 0;
+  golangci-lint run internal/hook/... --timeout=2m -> 0 issues.; gofmt
+  clean; family coverage 13.8% (all-rows selector).
+
 ## §E.3 Run-phase Audit-Ready Signal
 
 ```yaml

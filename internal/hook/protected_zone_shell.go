@@ -1052,26 +1052,27 @@ func (w *zoneWalker) zoneGitArgs(world int, cmd *syntax.CallExpr) bool {
 	sub := ""
 	subIdx := -1
 	for j := 1; j < len(cmd.Args); j++ {
-		t, lit := zoneWordText(cmd.Args[j])
+		// the global-option classification and argument consumption bind to
+		// the passed generation like everything else (gate round 34): a
+		// word whose pre-4.2 reading is NOT a recognized global option is
+		// not consumed in that world's sequence
+		readings, lit := zoneWordWorldReadings(cmd.Args[j])
 		if !lit {
 			break // dynamic global argument: under-match
 		}
+		t := readings[world]
 		if strings.HasPrefix(t, "--work-tree=") {
-			if readings, wl := zoneWordWorldReadings(cmd.Args[j]); wl {
-				if wt := readings[world]; len(wt) > len("--work-tree=") && strings.HasPrefix(wt, "--work-tree=") {
-					// git's LAST --work-tree wins: the option REPLACES the
-					// anchor — judging an already-overwritten anchor is a
-					// false deny (gate round 17 P2, preserved per world)
-					wtOpts = []string{strings.TrimPrefix(wt, "--work-tree=")}
-				}
-			}
+			// git's LAST --work-tree wins: the option REPLACES the
+			// anchor — judging an already-overwritten anchor is a
+			// false deny (gate round 17 P2, preserved per world)
+			wtOpts = []string{strings.TrimPrefix(t, "--work-tree=")}
 			continue
 		}
 		if strings.HasPrefix(t, "-") {
 			if t == "-C" || t == "-c" || t == "--git-dir" || t == "--work-tree" || t == "--namespace" || t == "--super-prefix" {
 				if t == "-C" && j+1 < len(cmd.Args) {
-					if readings, lit2 := zoneWordWorldReadings(cmd.Args[j+1]); lit2 {
-						if dir := readings[world]; dir != "" {
+					if dirReadings, lit2 := zoneWordWorldReadings(cmd.Args[j+1]); lit2 {
+						if dir := dirReadings[world]; dir != "" {
 							if dirOpt == "" || zoneIsAbs(dir) {
 								dirOpt = dir
 							} else {
@@ -1081,8 +1082,8 @@ func (w *zoneWalker) zoneGitArgs(world int, cmd *syntax.CallExpr) bool {
 					}
 				}
 				if t == "--work-tree" && j+1 < len(cmd.Args) {
-					if readings, lit2 := zoneWordWorldReadings(cmd.Args[j+1]); lit2 {
-						if wt := readings[world]; wt != "" {
+					if wtReadings, lit2 := zoneWordWorldReadings(cmd.Args[j+1]); lit2 {
+						if wt := wtReadings[world]; wt != "" {
 							// overwrite-wins, as above
 							wtOpts = []string{wt}
 						}
@@ -1096,11 +1097,7 @@ func (w *zoneWalker) zoneGitArgs(world int, cmd *syntax.CallExpr) bool {
 		// analysis only for the world whose reading it is (gate round 29
 		// P1) — superseding the earlier exact-string exception, whose
 		// cross-generation join false-denied no-generation executions
-		if readings, wl := zoneWordWorldReadings(cmd.Args[j]); wl {
-			sub = readings[world]
-		} else {
-			sub = t
-		}
+		sub = t
 		subIdx = j
 		break
 	}
