@@ -675,6 +675,112 @@ The M2 and M3 confirmation sweeps (above) ran factory_card, factory_nominate, an
 - The 24 gate-closed files (factory_nominate_test.go, factory_quota_lanes_test.go, and 22 todo test files, with the todo group listed above) would enter the fold body if `MOAI_MEMORY_FOLD_ON_DONE` were set in the ambient environment. Their exclusion holds only while the gate stays closed. A later change to the todo close paths or to `foldClosedCardMemory` needs a fresh derivation.
 - `-list` proves selection, not execution. The re-run must count `=== RUN` lines per family (run with `-v`): a skipped or under-selected family otherwise reads as green. The M4 selector-defect record above shows that failure mode.
 
+### Sync-stage — AC-DI-012 re-run results and Craft measurement (card t1595, tree dbadebc1c)
+
+**Attribution.** The figures below were measured by the coordinator with the tree clean at each measurement, at HEAD `dbadebc1c`, except the lint run in item 4, which was measured at HEAD `08b9b31c0`. This subsection re-executed no command. It re-read each evidence file under `.moai/reports/t1595/` at 2026-10-09T19:24Z and checked the counts and test names stated here against that file. Exit codes, which the evidence files do not carry, are the coordinator's statements and are marked as such. Code identity: `git diff --name-only 08b9b31c0..HEAD` (checked at 2026-10-09T19:22Z) lists `.moai/specs/SPEC-DISPATCH-INTEGRITY-001/progress.md` only.
+
+**1. AC-DI-011 (the 29-name selector recorded above, `-count=5 -race`).**
+
+- Command: `unset MOAI_PROJECT_DIR MOAI_KANBAN_ID MOAI_KANBAN_LEAD_ADDR MOAI_KANBAN_SETTINGS_INJECTED && go test -count=5 -race -v -timeout 30m -run '<AC-DI-011 selector>' ./internal/cli/`, exit 0 (coordinator's statement).
+- Evidence: `.moai/reports/t1595/ac-di-011-dbadebc1c.txt`. Read back: top-level `=== RUN` 145; top-level `--- PASS` 145; `--- FAIL` 0; `DATA RACE` 0; distinct top-level test names 29, identical to the selector's names.
+- Final lines (verbatim):
+
+```
+PASS
+ok  	github.com/modu-ai/moai-adk/internal/cli	105.491s
+```
+
+- Verdict: PASS.
+
+**2. AC-DI-012 families.** Command per family: `go test -count=1 -v -timeout 30m -run '<Fn>' ./internal/cli/`, where `<Fn>` is the family's selector recorded above. Evidence: `.moai/reports/t1595/ac-di-012-F<n>-dbadebc1c.txt`. For each run, the distinct top-level test names equal the family's name list.
+
+| Family | Top-level RUN | Top-level PASS | SKIP | Subtests RUN / PASS | `ok` time (package `github.com/modu-ai/moai-adk/internal/cli`) |
+|---|---|---|---|---|---|
+| F1 memory_fold_test.go | 14 | 14 | 0 | 0 / 0 | 2.556s (exit 0, coordinator's statement) |
+| F2 memory_fold_wiring_test.go | 15 | 15 | 0 | 0 / 0 | 13.719s |
+| F3 review_observation_test.go | 19 | 18 | 1 | 6 / 6 | 88.212s |
+| F4 review_observation_fifo_unix_test.go | 2 | 2 | 0 | 0 / 0 | 2.417s |
+| F5 review_observation_publish_fifo_unix_test.go | 2 | 2 | 0 | 0 / 0 | 1.092s |
+| F6 factory_bundle_test.go | 13 | 13 | 0 | 0 / 0 | 26.822s |
+| F7 factory_t1533_test.go | 21 | 21 | 0 | 8 / 8 | 44.794s |
+| F8 memory_budget_test.go | 6 | 6 | 0 | 0 / 0 | 0.681s |
+| Sum | 92 | 91 | 1 | 14 / 14 | |
+
+- The RUN figures are top-level test counts. The raw `=== RUN` line count is 25 for F3 and 29 for F7, because subtests print `=== RUN` lines too. All 14 subtests (6 in F3, 8 in F7) PASS. No other family has subtests.
+- The SKIP is `--- SKIP: TestFoldSubprocessHelper (0.00s)`, line 24 of `ac-di-012-F3-dbadebc1c.txt`. Its source, `internal/cli/review_observation_test.go:354–364`, skips when the environment variable `foldSubprocessDirEnv` is empty (lines 355–358), with the reason "fold subprocess entry — only reached via TestReviewFindingFoldInterleavedArchiveLoss". That parent PASSes in the same file (line 15, `(60.02s)`).
+- Verdict: every executed test PASS; the one SKIP is by design and must be reported as is.
+
+**3. AC-DI-013 (control).** Command: `go test -count=1 -v -run '^TestReviewFindingZoneExistingDotDot$' ./internal/hook/`, exit 0 (coordinator's statement). Evidence: `.moai/reports/t1595/ac-di-013-dbadebc1c.txt`. Read back: top-level `=== RUN` 1; `--- PASS` 1. Final lines (verbatim):
+
+```
+PASS
+ok  	github.com/modu-ai/moai-adk/internal/hook	0.566s
+```
+
+- Verdict: PASS.
+
+**4. Craft E5 (lint).** Command: `golangci-lint run ./internal/cli/... ./internal/hook/...` with the project config, at HEAD `08b9b31c0`, exit 0 (coordinator's statement). Evidence: `.moai/reports/t1595/craft-lint-08b9b31c0.txt`, which reads exactly `0 issues.` Code identity to `dbadebc1c` holds (see Attribution).
+
+- Verdict: PASS.
+
+**5. Craft E3 (coverage).** Verdict for the coverage measurement: NOT MET.
+
+**5a. `internal/hook`.** Command: `go test -count=1 -timeout 15m -coverprofile=<profile> ./internal/hook/` (profile `.moai/reports/t1595/cover-hook-dbadebc1c.out`), exit 0 (coordinator's statement). Evidence `craft-cover-hook-dbadebc1c.txt` reads:
+
+```
+ok  	github.com/modu-ai/moai-adk/internal/hook	179.649s	coverage: 87.3% of statements
+```
+
+`go tool cover -func` (`craft-cover-hook-func-dbadebc1c.txt`, line 833) reads `total: (statements) 87.3%`.
+
+- Verdict: the critical target for hook is 90%: NOT MET.
+- Source of the 90% target: `.moai/docs/local-dev-guide.md:169` lists "Critical packages (cli, template, hook): 90%+ coverage". The same line says its mechanical basis is only the strict evaluator profile's global "Coverage >= 90%" gate, and that no per-package rule was found. `.moai/config/sections/quality.yaml` sets `test_coverage_target: 85`; the verdict above is against the 90% critical target.
+
+**5b. `internal/cli` (run did not complete).** Command: `go test -count=1 -timeout 40m -coverprofile=<profile> ./internal/cli/` (profile `.moai/reports/t1595/cover-cli-dbadebc1c.out`), exit 1 (coordinator's statement). Evidence `craft-cover-cli-dbadebc1c.txt`:
+
+- line 1761: `coverage: 77.6% of statements`
+- line 1762: `panic: test timed out after 40m0s`
+- line 4824: `FAIL	github.com/modu-ai/moai-adk/internal/cli	2401.194s`
+
+- Running at the alarm (lines 1763–1765): `TestTodoReadSurface_SilentWithoutJSON (2s)` and `TestTodoReadSurface_SilentWithoutJSON/list (1s)`. The coordinator reads both as progressing, not stuck. The file gives only these elapsed times at the alarm and no other progress trace.
+- `--- FAIL` lines: 14, all before the alarm: 10 top-level and 4 subtests. Top-level (file line): TestCountCodexAgentTOMLs_BadPatternRoot (111), TestCountCodexAgentTOMLs (113), TestCheckCodexWiring_MirrorAbsentAdvisesRedeploy (743), TestCheckCodexWiring_DanglingMirrorEntriesCounted (745), TestCheckCodexWiring_CopyModeDetailOnly (747), TestCheckCodexWiring_UnmirroredSkillsDetailOnly (749), TestCheckCodexWiring_MirrorUnreadableIndeterminate (751), TestCheckCodexWiring_MirrorSummaryWidth (753), TestCheckCodexWiring_MirrorFindingParticipatesInTailDrop (758), TestCheckCodexWiring_MirrorUsesExistingRowTwoRegisters (763). Subtests: TestCheckCodexWiring_MirrorSummaryWidth/absent (754) and /dangling (756); TestCheckCodexWiring_MirrorFindingParticipatesInTailDrop/tail_drop_keeps_the_lead_and_detail_keeps_everything (759) and /lead_summary_exception_stays_unreachable_for_mirror_summaries (761).
+- First message, line 112: `codex_readiness_test.go:545: count = 6, want 0 (a glob error degrades to zero, never an error)`.
+- The ten top-level codex tests are defined in `internal/cli/codex_readiness_test.go` and `internal/cli/doctor_codex_test.go`. Neither file is an AC-DI-012 family file, and neither is among the Go files changed since `81786284e`.
+
+Partial figures from the incomplete profile (not a completed-package measurement): `go tool cover -func` total 77.8% (`craft-cover-cli-func-dbadebc1c.txt`, line 2689). The go-test line says 77.6%. Not reconciled; both are recorded.
+
+Touched-function coverage, same partial profile (`craft-cover-cli-func-dbadebc1c.txt`):
+
+| Symbol | Location | Coverage |
+|---|---|---|
+| newMemoryFoldCmd | memory_fold.go:100 | 90.0% |
+| applyFold | memory_fold.go:466 | 88.9% |
+| verifyArchiveEffectiveState | memory_fold.go:563 | 94.7% |
+| readFileBounded | memory_fold.go:598 | 93.3% |
+| checkFoldUnchanged | memory_fold.go:629 | 83.3% |
+| atomicWriteFoldFile | memory_fold.go:665 | 86.8% |
+| foldLockPath | memory_fold.go:787 | 100.0% |
+| withFoldStoreLock | memory_fold.go:812 | 100.0% |
+| foldOnDoneStep | memory_fold.go:1290 | 82.7% |
+| snapshotStoreBounded | memory_fold.go:1388 | 100.0% |
+| acquireFoldStoreLock (unix) | memory_fold_lock_unix.go:34 | 69.2% |
+| releaseFoldStoreLockFunc (unix) | memory_fold_lock_unix.go:71 | 100.0% |
+| runFactoryBundleLocked | factory_bundle.go:75 | 83.9% |
+
+Read against the 85% floor (`quality.yaml` `test_coverage_target: 85`; the manager-develop postcondition "Coverage >= 85% on modified files"), four touched symbols are below 85% in this partial profile: checkFoldUnchanged (83.3%), foldOnDoneStep (82.7%), acquireFoldStoreLock (unix) (69.2%), and runFactoryBundleLocked (83.9%).
+
+- Verdict: internal/cli coverage NOT MET (the run did not complete, so no completed-package figure exists).
+- Craft E3 verdict: NOT MET.
+
+**Gaps.**
+
+- No command was re-executed in this subsection. Exit codes are the coordinator's statements, and the evidence files do not carry them.
+- The internal/cli run did not complete. Its per-function figures come from an incomplete profile.
+- The ten top-level codex failures (14 `--- FAIL` lines with subtests) are not attributed to the base commit. Their tests are outside the eight AC-DI-012 families and outside the Go files changed since `81786284e`.
+- "Progressing, not stuck" for TestTodoReadSurface_SilentWithoutJSON is the coordinator's characterization. The file gives only the elapsed times at the alarm.
+- Windows-tagged code (memory_fold_lock_windows.go and memory_fold_wiring_fifo_windows_test.go) was not measured on darwin.
+- The 90% hook target rests on the documented target at `.moai/docs/local-dev-guide.md:169`, whose own note says no per-package rule was found.
+
 ## §E.3 Run-phase Audit-Ready Signal
 
 run_complete_at: 2026-10-09T22:30+09:00
