@@ -43,7 +43,7 @@ The GLM API key has one sanctioned save surface, the `moai glm setup <key>` subc
 
 **REQ-GJK-002** (Event-driven) **When** `moai glm --key <value>` is run with no subcommand, the command shall store the value through that writer, print the existing masked confirmation `GLM API key stored (<masked>)`, and exit without launching a GLM session.
 
-**REQ-GJK-003** (Event-driven) **When** the `--key` flag is detected together with any other argument token (a launch-entry flag such as `-p`, `-f`, `-l`, `-w`, `-b`, `--permission-mode`, `--spawn`, `--branch`, or any subcommand token), the command shall refuse with a usage error naming the conflict and store nothing.
+**REQ-GJK-003** (Event-driven) **When** the `--key` flag is detected together with any other argument token that reaches the scan region (a launch-entry flag such as `-p`, `-f`, `-l`, `-w`, `-b`, `--permission-mode`, `--spawn`, `--branch`), the command shall refuse with a usage error naming the conflict and store nothing. The scan region begins AFTER the pre-existing `--help`/debug scans and the manual subcommand routing — the refusal never overrides them (REQ-GJK-006 precedence): `moai glm --key K --help` prints help and stores nothing, and `moai glm setup --key K` routes to setup unchanged (the preserved legacy trap, plan.md §B.1). Tokens after a bare `--` are child passthrough, outside the scan region (AC-GJK-016).
 
 **REQ-GJK-004** (Event-driven) **When** the `--key` flag carries no value (`moai glm --key` at end of arguments), the command shall fail with a usage error and store nothing.
 

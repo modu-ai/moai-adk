@@ -15,7 +15,7 @@ Card t1613 defines three completion criteria; every one maps to at least one AC 
 | (a) both key commands' help output verified | AC-GJK-001, AC-GJK-002, AC-GJK-003 |
 | (b) save result verified on disk | AC-GJK-004, AC-GJK-005 |
 | (c) legacy `moai glm setup <key>` preserved (existing glm tests stay green) | AC-GJK-006, AC-GJK-007, AC-GJK-008 |
-| Invariants (mode-0600 storage, masking, constant ownership, refusal shapes, input validation) | AC-GJK-009 … AC-GJK-015 |
+| Invariants (mode-0600 storage, masking, constant ownership, refusal shapes, input validation) | AC-GJK-009 … AC-GJK-016 |
 
 ## §B. Edge Cases
 
@@ -28,7 +28,7 @@ Card t1613 defines three completion criteria; every one maps to at least one AC 
 
 ## §C. Quality Gate Criteria
 
-- Scoped test families green: `go test ./internal/cli/ -run 'Test(GLM|Glm|Jev|Key|Root)'` — uppercase `TestGLM` covers the existing 116-case `TestGLM*` family, `TestKey` covers `TestKeyFormsShareStorageLastWriterWins`, and `TestGlm`/`TestJev`/`TestRoot` cover the new cases; `go test ./internal/glmcred/ ./internal/jevcred/` (CI owns the full suite). A `[no tests to run]` line in the selector's output is an empty sweep — a failure, never a pass (verification-completeness §1.1).
+- Preservation verdict (criterion c, front line — the card modifies `glm.go`, so the PACKAGE scope is the preservation evidence): `go test ./internal/cli/` green, including the pre-existing glm-family tests the focused selector does not sweep (measured misses by name shape: glm_test 11, glm_new_test 35, glm_compat 4, glm_team 6, glm_persist_gate 5, mcp_glm_parse 2 — 63 tests). Focused new-family run (secondary, honestly scoped): `go test ./internal/cli/ -run 'Test(GLM|Glm|Jev|Key|Root)'` sweeps 145 name-matching functions, NOT the whole glm family; `go test ./internal/glmcred/ ./internal/jevcred/` (CI owns the full suite). A `[no tests to run]` line in the selector's output is an empty sweep — a failure, never a pass (verification-completeness §1.1).
 - `go vet ./internal/cli/` clean; gofmt clean on touched files.
 - No new env-var literal outside owning packages (AC-GJK-013).
 - TRUST 5: Secured = no full-key disclosure anywhere (AC-GJK-004/005 asserts output; REQ-GJK-010 binds all surfaces); Tested = every AC maps to a named RED-first test in plan.md §F.
@@ -55,7 +55,7 @@ Given a redirected home, When the root command runs with args `["glm", "--key", 
 Given a redirected home, When the root command runs with args `["jev", "--key", "tsk-cred-1234567890"]`, Then `<home>/.moai/.env.typesafe` exists at mode 0600 containing `TYPESAFE_API_KEY="tsk-cred-1234567890"`, the confirmation discloses at most the final four characters, and the full credential appears in neither stdout nor stderr.
 
 **AC-GJK-006** (Critical, card-c) — legacy setup preserved.
-Given the existing internal/cli glm test family unmodified, When that family runs, Then every test is green (no change to `runGLMSetup` or to the manual routing order).
+Given the existing internal/cli glm test family unmodified, When the package-scope run `go test ./internal/cli/` executes (the front-line evidence: the card modifies `glm.go`, and this sweep includes the pre-existing glm-family tests whose names the focused selector does not match), Then it is green with no change to `runGLMSetup` or to the manual routing order.
 
 **AC-GJK-007** (High) — both forms write the same storage, last writer wins.
 Given a redirected home, When `glm --key A` then `glm setup B` run, Then the file contains `B`; and When `glm setup A` then `glm --key B` run, Then the file contains `B`.
@@ -76,7 +76,7 @@ When `moai jev --key ""` runs, Then the command fails with jev's empty-credentia
 Given a pre-existing credential file at mode 0644, When a save runs through either command, Then the file mode is 0600 afterwards. (Asserted at package level by the existing glmcred/jevcred Save tests; CLI-level assertion optional.)
 
 **AC-GJK-013** (Medium) — constant ownership, scoped to this card's ADDED lines.
-Given the implementation commits exist (a diff with no added lines sweeps nothing and asserts nothing), When `git diff "$(git merge-base develop HEAD)..HEAD" -- internal/cli/ ':(exclude)**/*_test.go' | grep '^+' | grep "TYPESAFE_API_KEY\|GLM_API_KEY"` runs, Then it yields 0 rows — no added NON-TEST line spells the credential names as literals. Test files are excluded: `_test.go` is a sanctioned literal area (AGENTS.local.md hardcoding allowance) and the new AC-004/005 tests legitimately assert dotenv content strings. The 3 pre-existing rows in files this card never touches (`glm_tools.go:6` comment, `mcp_audit.go:30,32`) sit outside the change range and are out of scope: a whole-tree 0-row verdict is permanently red and proves nothing about this card. The merge-base form (not a literal pinned SHA) is the repo's measured rule for "what did THIS card change" (gitflow-lane-protocol §8).
+Given the implementation commits exist — established by separate commands, never assumed: `git rev-parse --verify "$(git merge-base develop HEAD)"` succeeds AND `git diff --stat "$(git merge-base develop HEAD)..HEAD" -- internal/cli/` is non-empty (a bare pipeline cannot distinguish a zero-match exit from a git-failure exit, so the premise is itself executable), When `git diff "$(git merge-base develop HEAD)..HEAD" -- internal/cli/ ':(exclude)**/*_test.go' | grep '^+' | grep "TYPESAFE_API_KEY\|GLM_API_KEY"` runs, Then it yields 0 rows — no added NON-TEST line spells the credential names as literals. Test files are excluded: `_test.go` is a sanctioned literal area (AGENTS.local.md hardcoding allowance) and the new AC-004/005 tests legitimately assert dotenv content strings. The 3 pre-existing rows in files this card never touches (`glm_tools.go:6` comment, `mcp_audit.go:30,32`) sit outside the change range and are out of scope: a whole-tree 0-row verdict is permanently red and proves nothing about this card. The merge-base form (not a literal pinned SHA) is the repo's measured rule for "what did THIS card change" (gitflow-lane-protocol §8).
 
 **AC-GJK-014** (High) — jev newline value refused, stored credential preserved.
 Given a redirected home holding a stored credential, When the root command runs with args `["jev", "--key", "first\nsecond"]` (embedded LF), Then the command exits non-zero with a validation error and `.env.typesafe` remains byte-for-byte identical to before the attempt.
@@ -84,13 +84,16 @@ Given a redirected home holding a stored credential, When the root command runs 
 **AC-GJK-015** (High) — glm `--key` newline value refused, stored key preserved.
 Given a redirected home holding a stored key, When the root command runs with args `["glm", "--key", "first\nsecond"]`, Then the command exits non-zero with a validation error and `.env.glm` remains byte-for-byte identical to before the attempt.
 
+**AC-GJK-016** (High) — post-`--` tokens are child passthrough, never scanned.
+Given a redirected home, When the root command runs with args `["glm", "--", "--key", "test-key-1234567890"]`, Then no credential file is created and the post-`--` tokens reach the launch path unmodified (observed as the launch path's own refusal/error carrying those tokens, never a save confirmation). A whole-args scan would store the key here — this AC fails that mutant.
+
 ### §D.2 Severity summary
 
-Critical: AC-GJK-004, AC-GJK-005, AC-GJK-006 (the card's own completion criteria). High: AC-GJK-001/002/003, AC-GJK-007..009, AC-GJK-011, AC-GJK-012, AC-GJK-014, AC-GJK-015. Medium: AC-GJK-010, AC-GJK-013.
+Critical: AC-GJK-004, AC-GJK-005, AC-GJK-006 (the card's own completion criteria). High: AC-GJK-001/002/003, AC-GJK-007..009, AC-GJK-011, AC-GJK-012, AC-GJK-014, AC-GJK-015, AC-GJK-016. Medium: AC-GJK-010, AC-GJK-013.
 
 ### §D.3 Traceability
 
-REQ-GJK-001→AC-004/007/012 · REQ-GJK-002→AC-004 · REQ-GJK-003→AC-009 · REQ-GJK-004/005→AC-011 · REQ-GJK-006→AC-008/006 · REQ-GJK-007→AC-005/012 · REQ-GJK-008→AC-005 · REQ-GJK-009→AC-010 · REQ-GJK-010→AC-004/005 · REQ-GJK-011→AC-012 · REQ-GJK-012→AC-014/015 · card criteria (a)→AC-001..003, (b)→AC-004/005, (c)→AC-006..008.
+REQ-GJK-001→AC-004/007/012 · REQ-GJK-002→AC-004 · REQ-GJK-003→AC-009/016 · REQ-GJK-004/005→AC-011 · REQ-GJK-006→AC-008/006 · REQ-GJK-007→AC-005/012 · REQ-GJK-008→AC-005 · REQ-GJK-009→AC-010 · REQ-GJK-010→AC-004/005 · REQ-GJK-011→AC-012 · REQ-GJK-012→AC-014/015 · card criteria (a)→AC-001..003, (b)→AC-004/005, (c)→AC-006..008.
 
 ### §D.4 Indirect verification
 
