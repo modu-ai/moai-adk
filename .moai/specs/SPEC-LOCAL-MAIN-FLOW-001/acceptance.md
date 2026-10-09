@@ -4,7 +4,7 @@ Gate status. **Independent**: the criterion does not depend on any decision or o
 
 Claim labels. A claim about the local repository (HEAD, local main, the primary checkout) is marked `[local]`. A claim about a remote-tracking ref, or about what a remote holds, is marked `[origin]`. BASELINE_SHA, the origin/main value recorded at pre-flight, is used only for `[origin]` claims.
 
-Tree attribution. Revision 0.4 covers cells E-01 to E-60 at HEAD `e32f69c46`. E-58 to E-60 were measured in revision 0.4; E-01 to E-57 were re-measured in revision 0.3. E-32 is retired because its command is identical to E-21. Revision 0.5 adds the lint and audit cells E-61 to E-65, measured at the same HEAD, each with its judging build in the note. Revision 0.6 re-runs E-22, E-27, and E-61 to E-65 at HEAD `366b45155`, with the revision 0.6 edits to the SPEC directory uncommitted, and adds E-66 to E-77. E-66 shows that the only files changed between `e32f69c46` and `366b45155` are the five SPEC files, so the code named by the other cells' tree pins is unchanged. E-22 and E-27 are historical: their starting states (the absent SPEC directory and the absent decision index) no longer exist, so they cannot be re-executed to the same result and carry no release-blocking weight. Both test existence only; neither tests the gap specification that AC-LMF-015 names. E-23, E-34, and E-45 read the moving ref `main`. They are subject claims about what local main carries when the criterion is evaluated, and they are re-run at that time; they are not pins.
+Tree attribution. Revision 0.4 covers cells E-01 to E-60 at HEAD `e32f69c46`. E-58 to E-60 were measured in revision 0.4; E-01 to E-57 were re-measured in revision 0.3. E-32 is retired because its command is identical to E-21. Revision 0.5 adds the lint and audit cells E-61 to E-65, measured at the same HEAD, each with its judging build in the note. Revision 0.6 re-runs E-22, E-27, and E-61 to E-65 at HEAD `366b45155`, with the revision 0.6 edits to the SPEC directory uncommitted, and adds E-66 to E-77. After the revision 0.6 commit `b1ae4d4a6`, E-22, E-27, and E-67 to E-70 are re-run and pinned there. E-66 shows that the only files changed between `e32f69c46` and `366b45155` are the five SPEC files, so the code named by the other cells' tree pins is unchanged. E-22 and E-27 are historical: their starting states (the absent SPEC directory and the absent decision index) no longer exist, so they cannot be re-executed to the same result and carry no release-blocking weight. Both test existence only; neither tests the gap specification that AC-LMF-015 names. E-23, E-34, and E-45 read the moving ref `main`. They are subject claims about what local main carries when the criterion is evaluated, and they are re-run at that time; they are not pins.
 
 ## D. AC Matrix
 
@@ -136,7 +136,7 @@ Requirement coverage. Each of REQ-LMF-001 to REQ-LMF-015 maps to at least one cr
 **When** plan.md §G.2 and §G.3 are written.
 **Then** `grep -c '^### G\.[23] Gap' plan.md` returns 2. `grep -c 'Run-phase procedure' plan.md` returns 2. `grep -c '^Open:' plan.md` returns at least 2, each naming an open question or a missing input.
 **Note.** Because the RED cell cannot be re-executed on the current tree, the criterion loses release-blocking eligibility and is a regression guard (verification-completeness §2.1, undecidable disposition).
-- (a) Where the probed artifacts now exist: E-22 probed `.moai/specs/SPEC-LOCAL-MAIN-FLOW-001`, and E-27 probed `.moai/specs/SPEC-LOCAL-MAIN-FLOW-001/decision-index.md`. Both are carried by commit `0cca5364f` and exist at HEAD `366b45155`, where revision 0.6 re-runs them (E-22, E-27). Neither cell tests the gap specification, so this criterion has no RED cell that tests its own claim. After the revision 0.6 commit lands, E-22 and E-27 are re-run and re-pinned to that commit.
+- (a) Where the probed artifacts now exist: E-22 probed `.moai/specs/SPEC-LOCAL-MAIN-FLOW-001`, and E-27 probed `.moai/specs/SPEC-LOCAL-MAIN-FLOW-001/decision-index.md`. Both are carried by commit `0cca5364f` and exist at HEAD `b1ae4d4a6`, the revision 0.6 commit, where E-22 and E-27 are re-run and pinned. Neither cell tests the gap specification, so this criterion has no RED cell that tests its own claim.
 - (b) The RED cell is kept as a regression guard, not a release gate: E-22 is a regression-guard record, and this criterion's pass is not a release criterion.
 - (c) Severity: Must = release-blocking (the RED cell is re-executable on the current tree and the criterion gates release). Should = regression guard, not release-blocking. Split: 14 Must, 2 Should (AC-LMF-013 and AC-LMF-015).
 
@@ -349,8 +349,8 @@ tree: e32f69c46
 E-22 (historical)
 command: test -e .moai/specs/SPEC-LOCAL-MAIN-FLOW-001
 stdout: (none)
-exit: 0 at 366b45155 (re-run in revision 0.6; the directory exists; exit 0 also at e32f69c46)
-tree: 366b45155 (re-pinned in revision 0.6 from e32f69c46; the revision 0.6 SPEC edits are uncommitted, so this pin is re-run after the revision commit lands)
+exit: 0 at b1ae4d4a6 (re-run after the revision 0.6 commit; the directory exists; exit 0 also at 366b45155 and e32f69c46)
+tree: b1ae4d4a6 (the revision 0.6 commit; re-pinned from 366b45155)
 note: at the card base 2aab5f797 the directory was absent and the same command exited 1. Not re-executable to that result; regression guard only. The probe tests existence, not the gap specification named by AC-LMF-015.
 ```
 
@@ -394,8 +394,8 @@ tree: e32f69c46
 E-27 (historical)
 command: test -e .moai/specs/SPEC-LOCAL-MAIN-FLOW-001/decision-index.md
 stdout: (none)
-exit: 0 at 366b45155 (re-run in revision 0.6; the file exists; exit 0 also at e32f69c46)
-tree: 366b45155 (re-pinned in revision 0.6 from e32f69c46; the revision 0.6 SPEC edits are uncommitted, so this pin is re-run after the revision commit lands)
+exit: 0 at b1ae4d4a6 (re-run after the revision 0.6 commit; the file exists; exit 0 also at 366b45155 and e32f69c46)
+tree: b1ae4d4a6 (the revision 0.6 commit; re-pinned from 366b45155)
 note: at the card base the file was absent and the same command exited 1. Not re-executable to that result; regression guard only. The probe tests existence, not the content of the decision record.
 ```
 
@@ -772,52 +772,315 @@ note: all five changed paths are SPEC files; none is Go code, template, or confi
 
 ```text
 E-67
-command: go test ./internal/config/ -list <the V2 selector of plan §F, block V2>
-stdout: TestStructYAMLSymmetry_Constitution
-stdout: TestStructYAMLSymmetry_Context
-stdout: TestStructYAMLSymmetry_Interview
-stdout: TestStructYAMLSymmetry_Design
-stdout: TestStructYAMLSymmetry_Statusline
-stdout: TestStructYAMLSymmetry_GitConvention
-stdout: TestStructYAMLSymmetry_Gate
-stdout: TestStructYAMLSymmetry
-stdout: TestEmptyTargetGuidance
-stdout: TestEmptyTargetGuidanceResolvedTargetIsSilent
-stdout: TestTargetProvenance
-stdout: ok  	github.com/modu-ai/moai-adk/internal/config	0.342s
+command: go test ./internal/config/ -list '^(TestLocalMainIntegrationDefaultsFalse|TestLocalMainIntegrationReadsEnabled|TestStructYAMLSymmetry|TestStructYAMLSymmetry_Constitution|TestStructYAMLSymmetry_Context|TestStructYAMLSymmetry_Interview|TestStructYAMLSymmetry_Design|TestStructYAMLSymmetry_Statusline|TestStructYAMLSymmetry_GitConvention|TestStructYAMLSymmetry_Gate|TestEmptyTargetGuidance|TestEmptyTargetGuidanceResolvedTargetIsSilent|TestTargetProvenance)$' | grep -c '^Test' && go test ./internal/config/ -run '^(TestLocalMainIntegrationDefaultsFalse|TestLocalMainIntegrationReadsEnabled|TestStructYAMLSymmetry|TestStructYAMLSymmetry_Constitution|TestStructYAMLSymmetry_Context|TestStructYAMLSymmetry_Interview|TestStructYAMLSymmetry_Design|TestStructYAMLSymmetry_Statusline|TestStructYAMLSymmetry_GitConvention|TestStructYAMLSymmetry_Gate|TestEmptyTargetGuidance|TestEmptyTargetGuidanceResolvedTargetIsSilent|TestTargetProvenance)$' -v -count=1
+stdout: 11
+stdout: === RUN   TestStructYAMLSymmetry_Constitution
+stdout: === PAUSE TestStructYAMLSymmetry_Constitution
+stdout: === RUN   TestStructYAMLSymmetry_Context
+stdout: === PAUSE TestStructYAMLSymmetry_Context
+stdout: === RUN   TestStructYAMLSymmetry_Interview
+stdout: === PAUSE TestStructYAMLSymmetry_Interview
+stdout: === RUN   TestStructYAMLSymmetry_Design
+stdout: === PAUSE TestStructYAMLSymmetry_Design
+stdout: === RUN   TestStructYAMLSymmetry_Statusline
+stdout: === PAUSE TestStructYAMLSymmetry_Statusline
+stdout: === RUN   TestStructYAMLSymmetry_GitConvention
+stdout: === PAUSE TestStructYAMLSymmetry_GitConvention
+stdout: === RUN   TestStructYAMLSymmetry_Gate
+stdout: === PAUSE TestStructYAMLSymmetry_Gate
+stdout: === RUN   TestStructYAMLSymmetry
+stdout: === PAUSE TestStructYAMLSymmetry
+stdout: === RUN   TestEmptyTargetGuidance
+stdout: === RUN   TestEmptyTargetGuidance/git-flow_develop_branch_empty
+stdout: === RUN   TestEmptyTargetGuidance/git-flow_develop_branch_key_absent
+stdout: === RUN   TestEmptyTargetGuidance/file_absent
+stdout: === RUN   TestEmptyTargetGuidance/file_unparseable
+stdout: === RUN   TestEmptyTargetGuidance/git-flow_outside_manual_mode
+stdout: === RUN   TestEmptyTargetGuidance/unknown_workflow
+stdout: === RUN   TestEmptyTargetGuidance/empty_workflow_value
+stdout: === RUN   TestEmptyTargetGuidance/unknown_mode
+stdout: === RUN   TestEmptyTargetGuidance/gitlab-flow_environment_empty
+stdout: === RUN   TestEmptyTargetGuidance/release-flow_prefix_empty
+stdout: --- PASS: TestEmptyTargetGuidance (0.01s)
+stdout:     --- PASS: TestEmptyTargetGuidance/git-flow_develop_branch_empty (0.00s)
+stdout:     --- PASS: TestEmptyTargetGuidance/git-flow_develop_branch_key_absent (0.00s)
+stdout:     --- PASS: TestEmptyTargetGuidance/file_absent (0.00s)
+stdout:     --- PASS: TestEmptyTargetGuidance/file_unparseable (0.00s)
+stdout:     --- PASS: TestEmptyTargetGuidance/git-flow_outside_manual_mode (0.00s)
+stdout:     --- PASS: TestEmptyTargetGuidance/unknown_workflow (0.00s)
+stdout:     --- PASS: TestEmptyTargetGuidance/empty_workflow_value (0.00s)
+stdout:     --- PASS: TestEmptyTargetGuidance/unknown_mode (0.00s)
+stdout:     --- PASS: TestEmptyTargetGuidance/gitlab-flow_environment_empty (0.00s)
+stdout:     --- PASS: TestEmptyTargetGuidance/release-flow_prefix_empty (0.00s)
+stdout: === RUN   TestEmptyTargetGuidanceResolvedTargetIsSilent
+stdout: === RUN   TestEmptyTargetGuidanceResolvedTargetIsSilent/github-flow
+stdout: === RUN   TestEmptyTargetGuidanceResolvedTargetIsSilent/git-flow
+stdout: --- PASS: TestEmptyTargetGuidanceResolvedTargetIsSilent (0.00s)
+stdout:     --- PASS: TestEmptyTargetGuidanceResolvedTargetIsSilent/github-flow (0.00s)
+stdout:     --- PASS: TestEmptyTargetGuidanceResolvedTargetIsSilent/git-flow (0.00s)
+stdout: === RUN   TestTargetProvenance
+stdout: --- PASS: TestTargetProvenance (0.00s)
+stdout: === CONT  TestStructYAMLSymmetry_Constitution
+stdout: === CONT  TestStructYAMLSymmetry_Statusline
+stdout: === CONT  TestStructYAMLSymmetry_Interview
+stdout: === CONT  TestStructYAMLSymmetry_Design
+stdout: === CONT  TestStructYAMLSymmetry_Gate
+stdout: --- PASS: TestStructYAMLSymmetry_Constitution (0.00s)
+stdout: === CONT  TestStructYAMLSymmetry
+stdout: --- PASS: TestStructYAMLSymmetry_Statusline (0.00s)
+stdout: === RUN   TestStructYAMLSymmetry/plan_audit_tier_ceilings
+stdout: --- PASS: TestStructYAMLSymmetry_Interview (0.00s)
+stdout: === CONT  TestStructYAMLSymmetry_GitConvention
+stdout: === CONT  TestStructYAMLSymmetry_Context
+stdout: --- PASS: TestStructYAMLSymmetry_Design (0.00s)
+stdout: --- PASS: TestStructYAMLSymmetry_GitConvention (0.00s)
+stdout: --- PASS: TestStructYAMLSymmetry_Context (0.00s)
+stdout: --- PASS: TestStructYAMLSymmetry_Gate (0.00s)
+stdout: === RUN   TestStructYAMLSymmetry/plan_audit_ceiling_policy
+stdout: --- PASS: TestStructYAMLSymmetry (0.00s)
+stdout:     --- PASS: TestStructYAMLSymmetry/plan_audit_tier_ceilings (0.00s)
+stdout:     --- PASS: TestStructYAMLSymmetry/plan_audit_ceiling_policy (0.00s)
+stdout: PASS
+stdout: ok  	github.com/modu-ai/moai-adk/internal/config	0.137s
 exit: 0
-tree: 366b45155
-note: RED-now selection is 11 of the 13 names in block V2. TestLocalMainIntegrationDefaultsFalse and TestLocalMainIntegrationReadsEnabled are absent until M1 adds them.
+tree: b1ae4d4a6
+note: compound command, verbatim from plan §F block V2 (outside the single-invocation form, so not release-blocking). The first stdout line is the selected count: 11 of the 13 names in block V2. TestLocalMainIntegrationDefaultsFalse and TestLocalMainIntegrationReadsEnabled are added by M1. All 11 selected tests pass at b1ae4d4a6. Timings differ between runs.
 ```
 
 ```text
 E-68
-command: go test ./internal/template/ -list <the V3 selector of plan §F, block V3>
-stdout: TestAgentsDisclosureCompleteness
-stdout: TestWorkflowWorktreeKeyHonesty
-stdout: TestAutoMergeRequiredChecks
-stdout: ok  	github.com/modu-ai/moai-adk/internal/template	0.365s
+command: go test ./internal/template/ -list '^(TestWorkflowWorktreeKeyHonesty|TestAgentsDisclosureCompleteness|TestAutoMergeRequiredChecks)$' | grep -c '^Test' && go test ./internal/template/ -run '^(TestWorkflowWorktreeKeyHonesty|TestAgentsDisclosureCompleteness|TestAutoMergeRequiredChecks)$' -v -count=1
+stdout: 3
+stdout: === RUN   TestAgentsDisclosureCompleteness
+stdout: --- PASS: TestAgentsDisclosureCompleteness (0.00s)
+stdout: === RUN   TestWorkflowWorktreeKeyHonesty
+stdout:     workflow_worktree_key_honesty_test.go:108: reader index ([./...]): 174 packages, 1572 files scanned, 0 load errors
+stdout: --- PASS: TestWorkflowWorktreeKeyHonesty (1.63s)
+stdout: === RUN   TestAutoMergeRequiredChecks
+stdout: === PAUSE TestAutoMergeRequiredChecks
+stdout: === CONT  TestAutoMergeRequiredChecks
+stdout: === RUN   TestAutoMergeRequiredChecks/empty_array
+stdout: === PAUSE TestAutoMergeRequiredChecks/empty_array
+stdout: === RUN   TestAutoMergeRequiredChecks/wrong_shape
+stdout: === PAUSE TestAutoMergeRequiredChecks/wrong_shape
+stdout: === RUN   TestAutoMergeRequiredChecks/malformed
+stdout: === PAUSE TestAutoMergeRequiredChecks/malformed
+stdout: === RUN   TestAutoMergeRequiredChecks/missing_bucket
+stdout: === PAUSE TestAutoMergeRequiredChecks/missing_bucket
+stdout: === RUN   TestAutoMergeRequiredChecks/failure
+stdout: === PAUSE TestAutoMergeRequiredChecks/failure
+stdout: === RUN   TestAutoMergeRequiredChecks/unknown_bucket
+stdout: === PAUSE TestAutoMergeRequiredChecks/unknown_bucket
+stdout: === RUN   TestAutoMergeRequiredChecks/missing_name
+stdout: === PAUSE TestAutoMergeRequiredChecks/missing_name
+stdout: === RUN   TestAutoMergeRequiredChecks/pending_status_without_pending_checks
+stdout: === PAUSE TestAutoMergeRequiredChecks/pending_status_without_pending_checks
+stdout: === RUN   TestAutoMergeRequiredChecks/missing_state
+stdout: === PAUSE TestAutoMergeRequiredChecks/missing_state
+stdout: === RUN   TestAutoMergeRequiredChecks/failed_status
+stdout: === PAUSE TestAutoMergeRequiredChecks/failed_status
+stdout: === RUN   TestAutoMergeRequiredChecks/failed_state_cannot_pass
+stdout: === PAUSE TestAutoMergeRequiredChecks/failed_state_cannot_pass
+stdout: === RUN   TestAutoMergeRequiredChecks/pending_state_cannot_pass
+stdout: === PAUSE TestAutoMergeRequiredChecks/pending_state_cannot_pass
+stdout: === RUN   TestAutoMergeRequiredChecks/unknown_state_cannot_pass
+stdout: === PAUSE TestAutoMergeRequiredChecks/unknown_state_cannot_pass
+stdout: === RUN   TestAutoMergeRequiredChecks/neutral_skips
+stdout: === PAUSE TestAutoMergeRequiredChecks/neutral_skips
+stdout: === RUN   TestAutoMergeRequiredChecks/skipped_skips
+stdout: === PAUSE TestAutoMergeRequiredChecks/skipped_skips
+stdout: === RUN   TestAutoMergeRequiredChecks/passed
+stdout: === PAUSE TestAutoMergeRequiredChecks/passed
+stdout: === CONT  TestAutoMergeRequiredChecks/empty_array
+stdout: === CONT  TestAutoMergeRequiredChecks/missing_state
+stdout: === CONT  TestAutoMergeRequiredChecks/unknown_state_cannot_pass
+stdout: === CONT  TestAutoMergeRequiredChecks/missing_name
+stdout: === CONT  TestAutoMergeRequiredChecks/skipped_skips
+stdout: === CONT  TestAutoMergeRequiredChecks/passed
+stdout: === CONT  TestAutoMergeRequiredChecks/failed_status
+stdout: === CONT  TestAutoMergeRequiredChecks/neutral_skips
+stdout: === CONT  TestAutoMergeRequiredChecks/unknown_bucket
+stdout: === CONT  TestAutoMergeRequiredChecks/malformed
+stdout: === CONT  TestAutoMergeRequiredChecks/missing_bucket
+stdout: === CONT  TestAutoMergeRequiredChecks/wrong_shape
+stdout: === CONT  TestAutoMergeRequiredChecks/failed_state_cannot_pass
+stdout: === CONT  TestAutoMergeRequiredChecks/pending_state_cannot_pass
+stdout: === CONT  TestAutoMergeRequiredChecks/failure
+stdout: === CONT  TestAutoMergeRequiredChecks/pending_status_without_pending_checks
+stdout: --- PASS: TestAutoMergeRequiredChecks (0.00s)
+stdout:     --- PASS: TestAutoMergeRequiredChecks/failed_status (0.24s)
+stdout:     --- PASS: TestAutoMergeRequiredChecks/missing_bucket (0.24s)
+stdout:     --- PASS: TestAutoMergeRequiredChecks/missing_state (0.24s)
+stdout:     --- PASS: TestAutoMergeRequiredChecks/malformed (0.24s)
+stdout:     --- PASS: TestAutoMergeRequiredChecks/failed_state_cannot_pass (0.24s)
+stdout:     --- PASS: TestAutoMergeRequiredChecks/unknown_state_cannot_pass (0.24s)
+stdout:     --- PASS: TestAutoMergeRequiredChecks/unknown_bucket (0.56s)
+stdout:     --- PASS: TestAutoMergeRequiredChecks/wrong_shape (0.57s)
+stdout:     --- PASS: TestAutoMergeRequiredChecks/pending_state_cannot_pass (0.57s)
+stdout:     --- PASS: TestAutoMergeRequiredChecks/missing_name (0.57s)
+stdout:     --- PASS: TestAutoMergeRequiredChecks/empty_array (0.57s)
+stdout:     --- PASS: TestAutoMergeRequiredChecks/passed (0.58s)
+stdout:     --- PASS: TestAutoMergeRequiredChecks/neutral_skips (0.59s)
+stdout:     --- PASS: TestAutoMergeRequiredChecks/failure (0.59s)
+stdout:     --- PASS: TestAutoMergeRequiredChecks/skipped_skips (0.59s)
+stdout:     --- PASS: TestAutoMergeRequiredChecks/pending_status_without_pending_checks (0.59s)
+stdout: PASS
+stdout: ok  	github.com/modu-ai/moai-adk/internal/template	2.409s
 exit: 0
-tree: 366b45155
-note: 3 of the 3 names in block V3 are selected now.
+tree: b1ae4d4a6
+note: compound command, verbatim from plan §F block V3 (not release-blocking). The first stdout line is the selected count: 3 of the 3 names in block V3. All 3 pass at b1ae4d4a6. Timings differ between runs.
 ```
 
 ```text
 E-69
-command: go test ./internal/cli/ -list <the V4 selector of plan §F, block V4> | grep -c '^Test'
+command: go test ./internal/cli/ -list '^(TestIntegrationSurfaceSelectsPrimaryWhenEnabled|TestIntegrationSurfaceRefusesPrimaryWhenDisabled|TestIntegrationSurfaceRefusesPrimaryOffBranch|TestIntegrationSurfaceRefusesNoHolder|TestIntegrationSurfaceSeparateWorktreeUnchanged|TestLocalMainMergeMergesIntoPrimary|TestLocalMainMergeRefusesDirtyPrimary|TestLocalMainMergeRefusesMovedHead|TestLocalMainMergeStatusSetUnchanged|TestLocalMainResyncFastForwards|TestLocalMainResyncRefusesDiverged|TestLocalMainResyncAheadIsNoop|TestLocalMainResyncPreservesIgnoredFile|TestIntegrationMergeWorktreeRefusesPrimaryHoldingBranch|TestIntegrationMergeWorktreeAcceptsPrimaryWhenEnabled|TestIntegrationMergeWorktreeRefusesUnheldBranch|TestFactoryCompletePrimaryTreeGateEnabled|TestFactoryCompletePrimaryTreeGateDisabled|TestFactoryCompleteNoIntegrationTreeRefused|TestMWQ19_Scenario5_AdoptionRefusedAfterNewCommit|TestSD_AC013_ClaudeCompleteViaIntegrationWorktree|TestSD_AC024_CodexMergeRefusedComplete|TestSD_AC024_CodexMergeRefusedStage|TestSD_AC024_CodexMergeRefusedMCP|TestSD_AC025_IntegrationWindowSerializes|TestAutoMergeOffBaseline|TestAutoMergeHappyPath|TestAutoMergeNonCleanExit|TestAutoMergeUnconfiguredTarget|TestAutoMergeBusyWindow|TestAutoMergeZeroPush|TestAutoMergeConflict|TestAutoMergeSourceDirty|TestAutoMergeTargetGuards|TestAutoMergeNoOpSilent|TestAutoMergeNoticePrefixDistinct|TestAutoMergeToggleIndependence|TestAutoMergeFailurePaths|TestAutoMergeRealImplErrorPaths)$' | grep -c '^Test' && go test ./internal/cli/ -run '^(TestIntegrationSurfaceSelectsPrimaryWhenEnabled|TestIntegrationSurfaceRefusesPrimaryWhenDisabled|TestIntegrationSurfaceRefusesPrimaryOffBranch|TestIntegrationSurfaceRefusesNoHolder|TestIntegrationSurfaceSeparateWorktreeUnchanged|TestLocalMainMergeMergesIntoPrimary|TestLocalMainMergeRefusesDirtyPrimary|TestLocalMainMergeRefusesMovedHead|TestLocalMainMergeStatusSetUnchanged|TestLocalMainResyncFastForwards|TestLocalMainResyncRefusesDiverged|TestLocalMainResyncAheadIsNoop|TestLocalMainResyncPreservesIgnoredFile|TestIntegrationMergeWorktreeRefusesPrimaryHoldingBranch|TestIntegrationMergeWorktreeAcceptsPrimaryWhenEnabled|TestIntegrationMergeWorktreeRefusesUnheldBranch|TestFactoryCompletePrimaryTreeGateEnabled|TestFactoryCompletePrimaryTreeGateDisabled|TestFactoryCompleteNoIntegrationTreeRefused|TestMWQ19_Scenario5_AdoptionRefusedAfterNewCommit|TestSD_AC013_ClaudeCompleteViaIntegrationWorktree|TestSD_AC024_CodexMergeRefusedComplete|TestSD_AC024_CodexMergeRefusedStage|TestSD_AC024_CodexMergeRefusedMCP|TestSD_AC025_IntegrationWindowSerializes|TestAutoMergeOffBaseline|TestAutoMergeHappyPath|TestAutoMergeNonCleanExit|TestAutoMergeUnconfiguredTarget|TestAutoMergeBusyWindow|TestAutoMergeZeroPush|TestAutoMergeConflict|TestAutoMergeSourceDirty|TestAutoMergeTargetGuards|TestAutoMergeNoOpSilent|TestAutoMergeNoticePrefixDistinct|TestAutoMergeToggleIndependence|TestAutoMergeFailurePaths|TestAutoMergeRealImplErrorPaths)$' -v -count=1
 stdout: 22
+stdout: === RUN   TestMWQ19_Scenario5_AdoptionRefusedAfterNewCommit
+stdout: --- PASS: TestMWQ19_Scenario5_AdoptionRefusedAfterNewCommit (1.66s)
+stdout: === RUN   TestSD_AC013_ClaudeCompleteViaIntegrationWorktree
+stdout: === RUN   TestSD_AC013_ClaudeCompleteViaIntegrationWorktree/pre-merged_card_reaches_merged-local;_the_window_stays_held
+stdout: === RUN   TestSD_AC013_ClaudeCompleteViaIntegrationWorktree/complete_performs_the_merge_itself_and_records_the_re-measure_evidence
+stdout: === RUN   TestSD_AC013_ClaudeCompleteViaIntegrationWorktree/integration_branch_held_only_by_the_parent_checkout:_not_provisioned
+stdout: === RUN   TestSD_AC013_ClaudeCompleteViaIntegrationWorktree/integration_branch_held_by_no_tree:_not_provisioned
+stdout: === RUN   TestSD_AC013_ClaudeCompleteViaIntegrationWorktree/caller-source_window:_refused_naming_--branch
+stdout: === RUN   TestSD_AC013_ClaudeCompleteViaIntegrationWorktree/window_naming_the_card's_own_branch:_refused
+stdout: --- PASS: TestSD_AC013_ClaudeCompleteViaIntegrationWorktree (6.36s)
+stdout:     --- PASS: TestSD_AC013_ClaudeCompleteViaIntegrationWorktree/pre-merged_card_reaches_merged-local;_the_window_stays_held (1.00s)
+stdout:     --- PASS: TestSD_AC013_ClaudeCompleteViaIntegrationWorktree/complete_performs_the_merge_itself_and_records_the_re-measure_evidence (1.49s)
+stdout:     --- PASS: TestSD_AC013_ClaudeCompleteViaIntegrationWorktree/integration_branch_held_only_by_the_parent_checkout:_not_provisioned (0.87s)
+stdout:     --- PASS: TestSD_AC013_ClaudeCompleteViaIntegrationWorktree/integration_branch_held_by_no_tree:_not_provisioned (0.98s)
+stdout:     --- PASS: TestSD_AC013_ClaudeCompleteViaIntegrationWorktree/caller-source_window:_refused_naming_--branch (1.12s)
+stdout:     --- PASS: TestSD_AC013_ClaudeCompleteViaIntegrationWorktree/window_naming_the_card's_own_branch:_refused (0.91s)
+stdout: === RUN   TestSD_AC024_CodexMergeRefusedComplete
+stdout: --- PASS: TestSD_AC024_CodexMergeRefusedComplete (0.65s)
+stdout: === RUN   TestSD_AC024_CodexMergeRefusedStage
+stdout: --- PASS: TestSD_AC024_CodexMergeRefusedStage (0.83s)
+stdout: === RUN   TestSD_AC025_IntegrationWindowSerializes
+stdout: --- PASS: TestSD_AC025_IntegrationWindowSerializes (3.45s)
+stdout: === RUN   TestSD_AC024_CodexMergeRefusedMCP
+stdout: --- PASS: TestSD_AC024_CodexMergeRefusedMCP (0.69s)
+stdout: === RUN   TestIntegrationMergeWorktreeRefusesPrimaryHoldingBranch
+stdout: --- PASS: TestIntegrationMergeWorktreeRefusesPrimaryHoldingBranch (0.48s)
+stdout: === RUN   TestIntegrationMergeWorktreeRefusesUnheldBranch
+stdout: --- PASS: TestIntegrationMergeWorktreeRefusesUnheldBranch (0.39s)
+stdout: === RUN   TestAutoMergeOffBaseline
+stdout: --- PASS: TestAutoMergeOffBaseline (0.00s)
+stdout: === RUN   TestAutoMergeHappyPath
+stdout: --- PASS: TestAutoMergeHappyPath (1.10s)
+stdout: === RUN   TestAutoMergeNonCleanExit
+stdout: --- PASS: TestAutoMergeNonCleanExit (0.00s)
+stdout: === RUN   TestAutoMergeUnconfiguredTarget
+stdout: === RUN   TestAutoMergeUnconfiguredTarget/develop_branch_empty
+stdout: === RUN   TestAutoMergeUnconfiguredTarget/github_flow_mode
+stdout: === RUN   TestAutoMergeUnconfiguredTarget/config_unreadable
+stdout: --- PASS: TestAutoMergeUnconfiguredTarget (0.00s)
+stdout:     --- PASS: TestAutoMergeUnconfiguredTarget/develop_branch_empty (0.00s)
+stdout:     --- PASS: TestAutoMergeUnconfiguredTarget/github_flow_mode (0.00s)
+stdout:     --- PASS: TestAutoMergeUnconfiguredTarget/config_unreadable (0.00s)
+stdout: === RUN   TestAutoMergeBusyWindow
+stdout: === RUN   TestAutoMergeBusyWindow/live_holder
+stdout: === RUN   TestAutoMergeBusyWindow/stale_record
+stdout: === RUN   TestAutoMergeBusyWindow/own_session_hold_proceeds
+stdout: --- PASS: TestAutoMergeBusyWindow (0.00s)
+stdout:     --- PASS: TestAutoMergeBusyWindow/live_holder (0.00s)
+stdout:     --- PASS: TestAutoMergeBusyWindow/stale_record (0.00s)
+stdout:     --- PASS: TestAutoMergeBusyWindow/own_session_hold_proceeds (0.00s)
+stdout: === RUN   TestAutoMergeZeroPush
+stdout: --- PASS: TestAutoMergeZeroPush (0.00s)
+stdout: === RUN   TestAutoMergeConflict
+stdout: === RUN   TestAutoMergeConflict/seam_abort_path
+stdout: === RUN   TestAutoMergeConflict/real_git_conflict_leaves_no_merge_head
+stdout: --- PASS: TestAutoMergeConflict (1.25s)
+stdout:     --- PASS: TestAutoMergeConflict/seam_abort_path (0.00s)
+stdout:     --- PASS: TestAutoMergeConflict/real_git_conflict_leaves_no_merge_head (1.25s)
+stdout: === RUN   TestAutoMergeSourceDirty
+stdout: --- PASS: TestAutoMergeSourceDirty (0.00s)
+stdout: === RUN   TestAutoMergeTargetGuards
+stdout: === RUN   TestAutoMergeTargetGuards/no_worktree_holds_develop
+stdout: === RUN   TestAutoMergeTargetGuards/target_worktree_dirty
+stdout: --- PASS: TestAutoMergeTargetGuards (0.00s)
+stdout:     --- PASS: TestAutoMergeTargetGuards/no_worktree_holds_develop (0.00s)
+stdout:     --- PASS: TestAutoMergeTargetGuards/target_worktree_dirty (0.00s)
+stdout: === RUN   TestAutoMergeNoOpSilent
+stdout: --- PASS: TestAutoMergeNoOpSilent (0.00s)
+stdout: === RUN   TestAutoMergeNoticePrefixDistinct
+stdout: --- PASS: TestAutoMergeNoticePrefixDistinct (0.00s)
+stdout: === RUN   TestAutoMergeToggleIndependence
+stdout: === RUN   TestAutoMergeToggleIndependence/merge=off/cleanup=off
+stdout: === RUN   TestAutoMergeToggleIndependence/merge=on/cleanup=off
+stdout: === RUN   TestAutoMergeToggleIndependence/merge=off/cleanup=on
+stdout: === RUN   TestAutoMergeToggleIndependence/merge=on/cleanup=on
+stdout: --- PASS: TestAutoMergeToggleIndependence (0.12s)
+stdout:     --- PASS: TestAutoMergeToggleIndependence/merge=off/cleanup=off (0.00s)
+stdout:     --- PASS: TestAutoMergeToggleIndependence/merge=on/cleanup=off (0.00s)
+stdout:     --- PASS: TestAutoMergeToggleIndependence/merge=off/cleanup=on (0.06s)
+stdout:     --- PASS: TestAutoMergeToggleIndependence/merge=on/cleanup=on (0.06s)
+stdout: === RUN   TestAutoMergeFailurePaths
+stdout: === RUN   TestAutoMergeFailurePaths/branch_probe_fails
+stdout: === RUN   TestAutoMergeFailurePaths/ahead_check_fails
+stdout: === RUN   TestAutoMergeFailurePaths/session_id_unresolvable
+stdout: === RUN   TestAutoMergeFailurePaths/window_record_unreadable
+stdout: === RUN   TestAutoMergeFailurePaths/acquire_refused
+stdout: === RUN   TestAutoMergeFailurePaths/release_fails
+stdout: === RUN   TestAutoMergeFailurePaths/merge_error_without_conflict
+stdout: === RUN   TestAutoMergeFailurePaths/abort_also_fails
+stdout: === RUN   TestAutoMergeFailurePaths/source_dirty_check_fails
+stdout: === RUN   TestAutoMergeFailurePaths/target_dirty_check_fails
+stdout: --- PASS: TestAutoMergeFailurePaths (0.00s)
+stdout:     --- PASS: TestAutoMergeFailurePaths/branch_probe_fails (0.00s)
+stdout:     --- PASS: TestAutoMergeFailurePaths/ahead_check_fails (0.00s)
+stdout:     --- PASS: TestAutoMergeFailurePaths/session_id_unresolvable (0.00s)
+stdout:     --- PASS: TestAutoMergeFailurePaths/window_record_unreadable (0.00s)
+stdout:     --- PASS: TestAutoMergeFailurePaths/acquire_refused (0.00s)
+stdout:     --- PASS: TestAutoMergeFailurePaths/release_fails (0.00s)
+stdout:     --- PASS: TestAutoMergeFailurePaths/merge_error_without_conflict (0.00s)
+stdout:     --- PASS: TestAutoMergeFailurePaths/abort_also_fails (0.00s)
+stdout:     --- PASS: TestAutoMergeFailurePaths/source_dirty_check_fails (0.00s)
+stdout:     --- PASS: TestAutoMergeFailurePaths/target_dirty_check_fails (0.00s)
+stdout: === RUN   TestAutoMergeRealImplErrorPaths
+stdout: --- PASS: TestAutoMergeRealImplErrorPaths (0.08s)
+stdout: PASS
+stdout: ok  	github.com/modu-ai/moai-adk/internal/cli	17.723s
 exit: 0
-tree: 366b45155
-note: pipeline, outside the single-invocation form; not release-blocking (as E-35). 22 of the 39 names in block V4 are selected before M1; the other 17 are absent until M1 adds them.
+tree: b1ae4d4a6
+note: compound command, verbatim from plan §F block V4 (a pipeline, as E-35; not release-blocking). The first stdout line is the selected count: 22 of the 39 names in block V4. All 22 selected tests pass at b1ae4d4a6, run under the internal-cli-suite slot lease (acquired and released in this run); the other 17 names are added by M1. Timings differ between runs.
 ```
 
 ```text
 E-70
-command: go test ./internal/factory/ -list <the V5 selector of plan §F, block V5> | grep -c '^Test'
+command: go test ./internal/factory/ -list '^(TestMergeStepPreMergeCausesReleaseWithDistinctCodes|TestMergeStepHappyPathCreatesNoFFMergeAndReleases|TestMergeStepMergeFailureCleanAbortsCause6|TestMergeStepDirtyDisjointPathsProceeds|TestMergeStepDirtyPathOverlapRefuses|TestMergeStepDirtyDirectoryPrefixOverlapRefuses|TestMergeStepDirtyIgnoredTargetRefuses|TestMergeStepStatusSetChangedAfterMergeHolds|TestMergeStepStatusSetChangedAfterAbortHolds)$' | grep -c '^Test' && go test ./internal/factory/ -run '^(TestMergeStepPreMergeCausesReleaseWithDistinctCodes|TestMergeStepHappyPathCreatesNoFFMergeAndReleases|TestMergeStepMergeFailureCleanAbortsCause6|TestMergeStepDirtyDisjointPathsProceeds|TestMergeStepDirtyPathOverlapRefuses|TestMergeStepDirtyDirectoryPrefixOverlapRefuses|TestMergeStepDirtyIgnoredTargetRefuses|TestMergeStepStatusSetChangedAfterMergeHolds|TestMergeStepStatusSetChangedAfterAbortHolds)$' -v -count=1
 stdout: 3
+stdout: === RUN   TestMergeStepHappyPathCreatesNoFFMergeAndReleases
+stdout: --- PASS: TestMergeStepHappyPathCreatesNoFFMergeAndReleases (1.58s)
+stdout: === RUN   TestMergeStepPreMergeCausesReleaseWithDistinctCodes
+stdout: === RUN   TestMergeStepPreMergeCausesReleaseWithDistinctCodes/1_record_invalid
+stdout: === RUN   TestMergeStepPreMergeCausesReleaseWithDistinctCodes/2_base_moved
+stdout: === RUN   TestMergeStepPreMergeCausesReleaseWithDistinctCodes/3_not_a_descendant
+stdout: === RUN   TestMergeStepPreMergeCausesReleaseWithDistinctCodes/4_tree_mismatch
+stdout: === RUN   TestMergeStepPreMergeCausesReleaseWithDistinctCodes/5_landing_refused
+stdout: === RUN   TestMergeStepPreMergeCausesReleaseWithDistinctCodes/9_other_error
+stdout: === RUN   TestMergeStepPreMergeCausesReleaseWithDistinctCodes/11b_not_merge-ready
+stdout: === RUN   TestMergeStepPreMergeCausesReleaseWithDistinctCodes/11a_foreign_card_lease
+stdout: === RUN   TestMergeStepPreMergeCausesReleaseWithDistinctCodes/11c_card_mismatch
+stdout: === RUN   TestMergeStepPreMergeCausesReleaseWithDistinctCodes/12_dirty_before_merge
+stdout: --- PASS: TestMergeStepPreMergeCausesReleaseWithDistinctCodes (9.58s)
+stdout:     --- PASS: TestMergeStepPreMergeCausesReleaseWithDistinctCodes/1_record_invalid (0.97s)
+stdout:     --- PASS: TestMergeStepPreMergeCausesReleaseWithDistinctCodes/2_base_moved (1.18s)
+stdout:     --- PASS: TestMergeStepPreMergeCausesReleaseWithDistinctCodes/3_not_a_descendant (1.33s)
+stdout:     --- PASS: TestMergeStepPreMergeCausesReleaseWithDistinctCodes/4_tree_mismatch (1.08s)
+stdout:     --- PASS: TestMergeStepPreMergeCausesReleaseWithDistinctCodes/5_landing_refused (0.99s)
+stdout:     --- PASS: TestMergeStepPreMergeCausesReleaseWithDistinctCodes/9_other_error (0.84s)
+stdout:     --- PASS: TestMergeStepPreMergeCausesReleaseWithDistinctCodes/11b_not_merge-ready (0.76s)
+stdout:     --- PASS: TestMergeStepPreMergeCausesReleaseWithDistinctCodes/11a_foreign_card_lease (0.76s)
+stdout:     --- PASS: TestMergeStepPreMergeCausesReleaseWithDistinctCodes/11c_card_mismatch (0.78s)
+stdout:     --- PASS: TestMergeStepPreMergeCausesReleaseWithDistinctCodes/12_dirty_before_merge (0.89s)
+stdout: === RUN   TestMergeStepMergeFailureCleanAbortsCause6
+stdout: --- PASS: TestMergeStepMergeFailureCleanAbortsCause6 (1.35s)
+stdout: PASS
+stdout: ok  	github.com/modu-ai/moai-adk/internal/factory	12.665s
 exit: 0
-tree: 366b45155
-note: pipeline, not release-blocking. 3 of the 9 names in block V5 are selected before M2; the other six are absent until M2 adds them.
+tree: b1ae4d4a6
+note: compound command, verbatim from plan §F block V5 (not release-blocking). The first stdout line is the selected count: 3 of the 9 names in block V5. All 3 pass at b1ae4d4a6, run under the internal-factory-mergestep slot lease (acquired and released in this run); the other six are added by M2. Timings differ between runs.
 ```
 
 ```text
