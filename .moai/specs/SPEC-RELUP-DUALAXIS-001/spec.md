@@ -1,7 +1,7 @@
 ---
 id: SPEC-RELUP-DUALAXIS-001
 title: "release-update 하네스 CC+Codex 이중 축 정착 — codex 체인지로그 축·상태 파일 codex 키·BP 상시 절차"
-version: "0.3.0"
+version: "0.4.0"
 status: draft
 created: 2026-10-09
 updated: 2026-10-09
@@ -26,6 +26,7 @@ related_specs: [SPEC-UPDATE-ADD-CODEX-001, SPEC-CC2219-UPSTREAM-ALIGN-001]
 | 0.1.1 | 2026-10-09 | manager-spec | 자체 spec-lint 피드백 수리 — `CoverageIncomplete` 3건(REQ-RDX-004/009/013 미커버)에 AC-RDX-014/015/016 신설(블로킹 10→13, 총 AC 13→16 — Tier M 천장 16에 정확히 도달). AC-RDX-016의 `source-first` 앵커로 mutant M-4의 기계 판정면 확보(LED-014, 0/exit 1 실측). lint 재실행: 0 error / 0 warning |
 | 0.2.0 | 2026-10-09 | manager-spec | plan-audit iter1 수리(FAIL 0.8125 — codex required 게이트, `.moai/reports/t1579/plan-audit.md`, rcpt-3e881c87c91a47a2117220b0). **CX-4(블로커)**: plan §E3을 런타임-형태 어댑터로 교체 — require·직접 실행 모두 `SyntaxError: Illegal return statement`(run.js:153, Node v22.14.0 본 재관측 exit 1), 러너는 ESM `export const meta`+top-level return/await 하이브리드라 export 적출+AsyncFunction 래핑 어댑터가 유일한 충실 평가형 — E3-P1 본 트리 **exit 0 관측**(`adapter-ok run=fn cc=1 shape-ok`), E3-P2(M2 종료형)는 codex 단언 포함. **CX-1**: plan §C 시드 재판정을 last-analyzed 의미론으로 재작성(D1·§7 전파 — 미분석 승격은 시드 미인상). **CX-3**: LED-001/002를 `domain` 필드 스코프로 재앵커 + AC-RDX-013에 sprint_contract 판독면 신설(LED-015 기준선 출력 기록, exit 0 — AC 수 16 불변). **CX-2**: AC-RDX-003을 `selectCodexSweepTargets(args)` ≥2(정의+top-level 디스패치 호출)로 재앵커 + §E3-P2 실질 생성 면(M2에 export 목록 확장 요건 추가). **D5**: §3 한계를 AC-RDX-014/015로 확장(iter2 블록 재판독이 제2 판정면). **D6**: frontmatter version 0.2.0 — 최신 HISTORY 행 정합 유지(0.1.1 지적의 재발 방지). **D7 처분**: progress §F 선기입은 라인 지시에 의한 것 — 오케스트레이터가 Phase 4에서 확정/수정(내용 수정 불요). **D8 처분**: 운영자 ①구절의 리포 참조 버전 비교 반쪽은 CARD-4 소관 기록 유지 — run-phase 위임 프롬프트가 M1/M2에 참조-버전 문맥을 운반할 것. 미 touched AC의 RED 셀은 바이트 불변 유지 |
 | 0.3.0 | 2026-10-09 | manager-spec | plan-audit iter2 수리(FAIL 0.875 — Testability 0.75, iter1 4건 수리는 전수 재검증 통과). **CX-5**: AC-RDX-003에 병합 관측면 신설 — plan §E3-P3 모의-런타임 실행 동사(mock agent/parallel로 러너 top-level 블록 실행, 시드 codexDeltas 주입)가 병합·agent 호출까지 실측; LED-016 RED 본 트리 관측(stderr `REJECTED: no-codex-dispatch:1`, exit 1 — 현재 러너는 CC 호출 1건에 codex 라벨 0건), M2 GREEN 기대 `dispatch-ok codex=1 total=2`/exit 0. §D1에 병합 변수 `allTargets`+`parallel(allTargets` 호출식+codex 라벨 접두사 `codex-release-notes:` 핀, §3 M-6 신설. **CX-6**: AC-RDX-006을 이중 사이트 기준으로 확장 — LED-006 GREEN 문턱 ≥1→≥2(Phase 0 판독·기본값 + Phase 7a 기록) + LED-017 기록 단계 리터럴 `7a-codex` 신설(RED 0/exit 1 본 트리 관측), §3 M-7 신설 — REQ-RDX-003의 기계 면 확보, AC 수 16 불변. **CN-4 처분**: 본 SPEC 산출물은 awk 계열 정렬-검증 동사를 인용하지 않는다 — 전부 단일 grep·node -e·python3 -c(가드 통과형). 미 touched AC의 RED 셀 바이트 불변 |
+| 0.4.0 | 2026-10-09 | manager-spec | plan-audit iter3 수리 + ceiling STOP 처분(FAIL — 점수 0.875→0.8125 회귀, max_iterations 3 도달. `harness.plan_audit_ceiling_policy` STOP 경로: 점수 회귀 시 무조건 반복 금지 → 범위 축소 + 분할 제안. 접수 대장 rcpt-3e881c87c91a47a2117220b0(iter1) · rcpt-88fb1bd8fa1246aab81b1a0d(iter2) · rcpt-28b141979bf08b6a367fe557(iter3)). **CX-9(설계 — 당면 수리)**: 스페셜리스트 Phase 2의 CC-null 조기 종료("If no entries … stop.")가 이중 축 설계에 생존 — CC 빈 주간에 codex/BP 축이 실행 전 종료. REQ-RDX-015 신설(축별 종료 — CC 널 델타는 CC 축만 중단, codex·BP 축은 같은 run에서 실행·기록, 미실행 축이 남으면 완료 요약 금지) + plan M1/M2에 축별 종료 인코딩 핀 + AC-RDX-017 신설(LED-018 `only the CC axis` → 0/exit 1 본 트리 관측 — 단일 호출 관측 가능해 릴리스 블로킹 유지), §3 M-8 신설. **CX-7/CX-8(계측 경화 — 이관)**: AC-RDX-003/004/005(구조 면만 측정 — 빈 상수·"Return ok." 프롬프트 통과)와 AC-RDX-006(산개 언급 mutant 통과)을 verification-completeness §2.1 undecidable disposition에 따라 회귀 가드(판정 보류)로 강등 — 더 깊은 계측기 제작 추격 금지(감사 지시 treadmill 중단), 내용·사이트 계측은 §7의 형제 카드 제안으로 이관. 미 touched AC의 RED 셀 바이트 불변. frontmatter version 0.4.0 동기화 |
 
 ## 1. 문제 — 측정된 형태
 
@@ -85,6 +86,7 @@ $ grep -rn "last-cc-version" internal/
 - **M-5 "Go 침입"**: 상태 파일 쓰기를 Go 런타임(`internal/`)으로 옮기는 mutant. AC-RDX-011(회귀 가드 — `internal/` grep 0힛 유지)에서 잡힌다. 상태 파일은 하네스 계층 소유가 측정으로 확인된 구조적 사실이다(§1.1 M4).
 - **M-6 "병합 제외"**: `selectCodexSweepTargets`를 정의·export·직접 호출하되 그 target을 `parallel(...)` 병합에서 제외하는 mutant. LED-003(≥2)은 통과할 수 있으나 LED-016(plan §E3-P3 모의-런타임 관측 — codex 라벨 agent 호출 0건)에서 좌초한다(plan-audit iter2 CX-5).
 - **M-7 "단일 사이트 기록"**: codex 상태 문서를 Phase 0에만 두고 Phase 7a 기록 단계를 CC-only로 남기는 mutant. LED-006 단독(≥1)은 통과하나 LED-006 ≥2 + LED-017(`7a-codex`)에서 좌초한다(plan-audit iter2 CX-6).
+- **M-8 "CC 널 조기 종료"**: codex/BP 절차를 추가하면서 Phase 2의 무조건 조기 종료("If no entries … stop.")를 그대로 남기는 mutant — CC 빈 주간(2026-10-07→08 패턴)에 codex/BP가 실행 전 종료된다. 현재 본문 상태가 이 클래스다. LED-018(`only the CC axis` 0힛)과 REQ-RDX-015가 잡는다(plan-audit iter3 CX-9).
 
 ## 4. 요구사항 (GEARS)
 
@@ -113,6 +115,7 @@ $ grep -rn "last-cc-version" internal/
 - **REQ-RDX-012** (Ubiquitous) — The specialist body shall carry a standing best-practices procedure section: per-sweep scan of official Anthropic/OpenAI publishing surfaces, with the BP item inventory recorded per sweep (결정 D5).
 - **REQ-RDX-013** (Unwanted) — A BP item shall not back a proposal (card issuance, docs-sync recommendation) unless its source article has been fetched verbatim (`source-first` 원문 패치 선행) — search-result summaries and secondary sources are report-only leads (결정 D5, mutant M-4 봉쇄).
 - **REQ-RDX-014** (Ubiquitous) — The BP axis shall name the HTML proposal report as a deliverable, and the specialist Phase 3 doc-fetch URL set shall list the `code.claude.com/docs/en/*` canonical URLs (결정 D5 + D6).
+- **REQ-RDX-015** (Event-driven) — **When** the CC axis observes a null delta (no new CC versions since its baseline), the specialist shall terminate only the CC axis and shall still execute and record the codex axis (release-window delta + commits fallback) and the best-practices axis (official-source scan + inventory) in the same run — a run shall not emit its completion summary while any axis remains unexecuted (plan-audit iter3 CX-9; M1은 Phase 2 조기 종료 문장을 `only the CC axis`로 재범위화하고 Phase 8 완료 게이트가 3축 실행 상태를 집계한다).
 
 ## 5. 알려진 구속 조건
 
@@ -120,7 +123,7 @@ $ grep -rn "last-cc-version" internal/
 2. **상태 파일은 기계 로컬 gitignored다.** `last-codex-version.json`의 실제 생성은 CI/테스트가 판정할 수 없으므로, 본 SPEC의 AC는 스페셜리스트 본문의 쓰기 지점(스키마 문서화)을 측정면으로 삼는다. 2차 스윕이 이미 보여줬듯 스키마 홈 부재는 관측 비용을 내고 있다 — 본문 문서화가 스키마의 규범면이다.
 3. **Runner 불변식은 유지된다.** AskUserQuestion·gh pr 호출 금지(HARD, AC-DHC-007a), `Date.now()`/`Math.random()` 금지(결정성), top-level 실행 + CommonJS export 가드 패턴 유지. codex 렌즈는 이 불변식 위에 병렬 구조로 얹힌다.
 4. **에이전트·러너 본문은 영어다**(coding-standards.md Language Policy). 6테마 키와 절차 서술은 영어로 기록하고, 한국어 테마명(서브에이전트/기타)은 대응표로만 남긴다.
-5. **Tier M 예산** — REQ 14건 / AC 16건 (천장 16/16 — AC가 천장에 정확히 도달한다. 추가 AC는 티어 상향 또는 SPEC 분할 신호다).
+5. **Tier M 예산** — REQ 15건 / AC 17건. AC가 천장 16을 +1 초과한다 — plan-audit iter3 CX-9 수리(감사 지향 신설 AC-RDX-017)에 의한 것이며, 초과분과 CX-7/8 계측 이관을 분할 제안(형제 카드)이 흡수한다(§7 마지막 항목, HISTORY 0.4.0).
 
 ## 6. 범위 밖 (Non-goals)
 
@@ -154,3 +157,4 @@ $ grep -rn "last-cc-version" internal/
 - **6테마 관찰목록의 후속 변동** — 0.162 승격 시 테마 추가/삭제가 예상된다. 본 SPEC은 6테마를 시드로 고정하고(plan §D), 확장/축소는 스윕 재량으로 기록된다.
 - **BP 공식 자료 URL 목록의 완결성** — BP-3(context engineering 문서)의 정확 경로는 2회 스윕에서도 미확정(검색 색인만 확인). BP 절차는 "원문 패치 시점에 경로 확정"을 요구하고 본 SPEC은 URL 인벤토리를 완결하지 않는다.
 - **러너 codex 렌즈의 실제 fan-out 동작** — 본 SPEC 착지는 절차 편집이지 실행이 아니다. 첫 codex 렌즈 실행은 다음 스윕에서 관측되며, 그때까지 렌즈 프롬프트의 커밋 복원 실효성은 미검증 상태로 남는다(§6 스윕 실행 제외와 동일 뿌리).
+- **CX-7/CX-8 계측 경화 부채 (형제 카드 제안 — plan-audit iter3 ceiling STOP 분할 결정)** — codex 렌즈 AC(AC-RDX-003/004/005)의 계측은 구조 면(식별자·상수 존재, 형태 키, 라벨 접두사)만 전달하고 내용 면(폴백 절차 실문·6테마 행 실문)을 측정하지 못한다 — 빈 상수·"Return ok." 프롬프트 mutant가 모든 기계 면을 통과한다(CX-7). AC-RDX-006의 이중 사이트 기준도 전-file 계수라 산개 언급 mutant(Phase 0에 파일명 2회·주석 속 `7a-codex`·Step 7a CC-only)를 걸러내지 못한다(CX-8). 두 AC군은 verification-completeness §2.1 undecidable disposition에 따라 회귀 가드(판정 보류)로 강등됐고, 해결 계측(내용 계측기 — 상수 블록 내 절차 마커·테마 리터럴 계수 / 사이트 판별기 — 구획 스코프 추출의 가드 통과형)은 **형제 카드로 리더/큐에 제안된다**. 본 SPEC의 M1/M2는 plan §D1이 핀한 내용을 서술 규율로 작성하며 E1 인간 검토가 제2 판정면이다.

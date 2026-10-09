@@ -48,7 +48,7 @@ tier: M
 
 ```bash
 git branch --show-current ; git rev-parse --short HEAD     # WT-high-10-07 이후 재확인
-# RED-now 앵커 12종 재측정 (acceptance.md §D.3 원장의 명령 그대로 — 전부 단일 호출):
+# RED-now 앵커 13종 재측정 (acceptance.md §D.3 원장의 명령 그대로 — 전부 단일 호출):
 grep -c '"domain".*Codex CLI upstream change tracking' .claude/commands/harness/release-update/manifest.json   # 기대 0 (M4 전) — domain 필드 스코프 (CX-3)
 grep -c '"domain".*best-practices axis' .claude/commands/harness/release-update/manifest.json                   # 기대 0 (M4 전) — domain 필드 스코프 (CX-3)
 grep -c "selectCodexSweepTargets(args)" .claude/workflows/hns-release-update-run.js                              # 기대 0 (M2 전) — 착지 후 ≥2: 정의+top-level 디스패치 호출 (CX-2)
@@ -61,6 +61,7 @@ grep -c "code.claude.com" .claude/agents/harness/hns-release-update-specialist.m
 grep -c "HTML proposal report" .claude/agents/harness/hns-release-update-specialist.md                 # 기대 0 (M3 전)
 grep -c "source-first" .claude/agents/harness/hns-release-update-specialist.md                          # 기대 0 (M3 전)
 grep -c "7a-codex" .claude/agents/harness/hns-release-update-specialist.md                              # 기대 0 (M1 전) — Phase 7a 기록 단계 (CX-6)
+grep -c "only the CC axis" .claude/agents/harness/hns-release-update-specialist.md                      # 기대 0 (M1 전) — Phase 2 축별 종료 (CX-9)
 # PRESERVE 앵커 3종:
 grep -rn "last-codex-version" internal/   # 0힛 유지 (AC-RDX-011)
 grep -c "last-cc-version.json" .claude/agents/harness/hns-release-update-specialist.md                 # ≥3 유지 (AC-RDX-012)
@@ -87,6 +88,7 @@ grep -c "hns-release-update-run.js" .claude/commands/harness/release-update/mani
 | specialist | `HTML proposal report` — BP 축 명명 산출물 | AC-RDX-010 |
 | specialist | `rust-v0.161.0` 부재 기본값 — AC-RDX-006의 스키마 블록이 Phase 0 부재-기본값(`rust-v0.161.0` + 경고)을 포함해야 한다 (앵커 LED-006 공유) | AC-RDX-014 |
 | specialist | `7a-codex` — Phase 7a 기록 단계 제목 리터럴(CC의 Step 7a와 병렬; codex 상태 기록 절차의 사이트 앵커 — CX-6). `last-codex-version.json` 출현 **≥2**: 제1=Phase 0 판독·부재 기본값 블록, 제2=Phase 7a 기록 단계(단일 사이트 mutant는 둘 중 하나에서 좌초) | AC-RDX-006 |
+| specialist | `only the CC axis` — Phase 2 조기 종료 문장의 축별 재범위화 리터럴 (REQ-RDX-015, CX-9). 현재의 무조건 종료 문장("If no entries … and stop.")이 오늘 잡히는 표면 — 착지 후 문장은 CC 축 한정으로 바뀌고 codex·BP 축 계속 실행을 명시 | AC-RDX-017 |
 | runner | alpha watch 규범 — AC-RDX-005의 체크리스트 블록이 "alpha 테마는 watch 관찰목록, 안정 탑재 시에만 채택 판정"을 포함해야 한다 (앵커 LED-005 공유) | AC-RDX-015 |
 | specialist | `source-first` — 원문 패치 선행 강제 리터럴 (REQ-RDX-013, mutant M-4의 기계 판정면) | AC-RDX-016 |
 
@@ -138,7 +140,7 @@ grep -c "hns-release-update-run.js" .claude/commands/harness/release-update/mani
 
 1. Phase 0: codex 상태 파일 판독 절차 + 부재 시 기본값 `rust-v0.161.0` + 경고 (REQ-RDX-004). 스키마 블록 문서화 — CC 파일 키 계열 미러 + `rust-v0.161.0` 시드 명기 (REQ-RDX-001/002).
 2. Phase 1: codex 수집로 신설 — `gh api repos/openai/codex/releases` (비프리릴리즈 판정) + `npm view @openai/codex version` + 본문 비었을 때 커밋 API 폴백 지시 (러너 §D1 앵커와 정합).
-3. Phase 2: codex 티어 분류 — 러너 산출(테마별 관찰목록)을 받아 T1/T2/T3 큐레이션. alpha 테마 watch 규범 (REQ-RDX-009).
+3. Phase 2: codex 티어 분류 — 러너 산출(테마별 관찰목록)을 받아 T1/T2/T3 큐레이션. alpha 테마 watch 규범 (REQ-RDX-009). **축별 종료 재범위화 (CX-9, REQ-RDX-015)** — Phase 2 조기 종료 문장("If no entries: emit \"No new versions since vX.Y.Z\" and stop.")을 `only the CC axis` 형태로 재작성: CC 널 델타는 CC 축만 중단하고 codex·BP 축은 같은 run에서 실행·기록. Phase 8 완료 요약은 3축(CC/codex/BP) 실행 상태를 집계 — 미실행 축이 남으면 완료 요약을 내지 않는다(단계 앵커 `only the CC axis` — AC-RDX-017).
 4. Phase 7a: Step **7a-codex** 신설 — 단계 제목에 리터럴 `7a-codex`(CC의 Step 7a와 병렬, §D1 앵커)를 넣고 `last-codex-version.json` 병행 기록 (REQ-RDX-003). CC 단독 기록 금지. 본문 내 `last-codex-version.json` 출현은 Phase 0(판독·기본값) + Phase 7a(기록) 2곳이어야 한다(AC-RDX-006 ≥2 — CX-6).
 5. **§C 시드값 재판정 실행 지점** — M1 착지 직전 npm/gh 재측정.
 
@@ -149,7 +151,7 @@ grep -c "hns-release-update-run.js" .claude/commands/harness/release-update/mani
 1. `selectCodexSweepTargets(args)` 신설 — CC 셀렉터와 병렬 형태 (REQ-RDX-006). codex 스윕 버전 창은 `args.codexDeltas` 주입 + 스크립트 본문 시드 상수(CC 셀렉터의 `CURRENT_SWEEP_VERSIONS` 패턴 계승 — args 불신뢰 교훈).
 2. `CODEX_COMMITS_FALLBACK` 절차 블록 — §D1 (1)-(3) 내용 (REQ-RDX-007).
 3. `CODEX_THEME_CHECKLIST` — 6테마 리터럴 + 행 형식 (REQ-RDX-008). 프롬프트 문자열에 체크리스트 주입.
-4. top-level 실행부에 codex 렌즈 병렬 fan-out 편입 + 반환 형태에 codex 영향 표 추가. 불변식(§A.5) 유지 확인. 병합 형태 고정: `const ccTargets = selectResearchSweepTargets(args); const codexTargets = selectCodexSweepTargets(args);` 두 배열을 **단일 `parallel(...)` 디스패치로 합류**(`allTargets`) — codex 렌즈가 CC와 같은 agent() 호출 지점을 흐른다(AC-RDX-003 제2 출현의 위치 요건). codex target 라벨 접두사 `codex-release-notes:<window>`(CC의 `cc-release-notes:`와 병렬) — §E3-P3 관측면의 판정 토큰.
+4. top-level 실행부에 codex 렌즈 병렬 fan-out 편입 + 반환 형태에 codex 영향 표 추가. 불변식(§A.5) 유지 확인. 병합 형태 고정: `const ccTargets = selectResearchSweepTargets(args); const codexTargets = selectCodexSweepTargets(args);` 두 배열을 **단일 `parallel(...)` 디스패치로 합류**(`allTargets`) — codex 렌즈가 CC와 같은 agent() 호출 지점을 흐른다(AC-RDX-003 제2 출현의 위치 요건). codex target 라벨 접두사 `codex-release-notes:<window>`(CC의 `cc-release-notes:`와 병렬) — §E3-P3 관측면의 판정 토큰. **축별 독립성 (CX-9)** — codex 렌즈는 CC `versionDeltas` 공백과 무관하게 `codexDeltas`로 기동한다: 병합이 concat 형태라 CC 목록이 비어도 codex target은 디스패치된다. 구형 "empty versionDeltas makes this Runner a silent no-op" 주석의 적용 범위를 CC 축으로 한정하는 주석 갱신을 M2에 포함(REQ-RDX-015).
 5. `module.exports` 확장 — `{ run, selectResearchSweepTargets, MANIFEST_PATH }`에 `selectCodexSweepTargets` 추가(plan §E3-P2 어댑터의 export 경로).
 
 ### M3 — 스페셜리스트 BP 상시 섹션 + Phase 3 URL 세트 (절차 영구화)
