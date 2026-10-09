@@ -71,7 +71,7 @@ Disposition vocabulary (lane brief): **IN-NOW** = no file-level overlap with eit
 The overlap facts are measured at pinned tips, measured again with `git rev-parse` at the time of this revision (18:4x UTC, 2026-10-09):
 - WT-user-asset-bundle (t1591) = `01b519c21`, 78 files changed relative to main (`git diff --stat main...01b519c21`). The audit recorded `2022e4633` earlier; the tip has moved since.
 - WT-update-migration-fixes (t1578) = `40ab940f4`, 13 files changed relative to main (`git diff --stat main...40ab940f4`).
-- Main = `2aab5f797`. HEAD = `8fa0dc24b`, whose code paths equal main's.
+- Main = `2aab5f797`. Tree of the RED cells = `8fa0dc24b`, whose code paths equal main's. HEAD at this revision = `d977bab0b`, which changes only SPEC files.
 
 No IN-NOW file is changed at either tip (research.md § 2 E-OVERLAP, verbatim). The BLOCKED-ON facts are re-derived at each tip there. M1 re-derives them after absorption.
 

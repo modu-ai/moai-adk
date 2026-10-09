@@ -4,8 +4,8 @@ Milestones are ordered by decision reversibility: the decisions most likely to c
 
 ## A. Context
 
-- Tree at measurement: `2aab5f797b75983e132af451da68f69e3426557b` (`WT-moai-update-repair`).
-- Absorbed refs (recorded at M1, not before plan-audit): `WT-user-asset-bundle` (t1591, `cae7e28fe` at measurement), `WT-update-migration-fixes` (t1578, `317ed31b6` at measurement).
+- Tree of the RED cells: `8fa0dc24b` (code paths equal main `2aab5f797`). Main = `2aab5f797`. HEAD at this revision = `d977bab0b` (SPEC files only).
+- Absorbed refs (recorded at M1, not before plan-audit): `WT-user-asset-bundle` (t1591) = `01b519c21`, 78 files changed relative to main (`git diff --stat main...01b519c21`); `WT-update-migration-fixes` (t1578) = `40ab940f4`, 13 files changed relative to main (`git diff --stat main...40ab940f4`).
 - Installed `moai` binary (`4f8aba061`) is not evidence for this tree. Any build used for a measurement is built from this tree and invoked by path.
 - Existing SPECs whose decisions bind this plan: SPEC-USER-ASSET-INSTALL-001 (P6, REQ-002), SPEC-CLI-TUX-INIT-UPDATE-001 (REQ-TUXIU-004, -012 to -016, -020 to -022, -041, -054), SPEC-V3R6-UPDATE-NOISE-001 (`--verbose`, REQ-UN-005, REQ-UN-010), SPEC-V3R6-UPDATE-PROGRESS-001 (`tui.ProgressLine`), SPEC-UPDATE-MIGRATION-001 (REQ-UPM-030 to -032, § H out-of-scope notes for t1509 and t1527), SPEC-UPDATE-YAML-PRESERVE-001 (comment preservation).
 
@@ -13,7 +13,7 @@ Milestones are ordered by decision reversibility: the decisions most likely to c
 
 ### B.1 Milestone M0 — RED capture (High)
 
-Before any change: capture the RED-now cell of every criterion in `acceptance.md` on tree `2aab5f797`, as single-invocation commands with verbatim stdout, exit code, and tree SHA. Measure the runnable profile-visibility command form (AC-RC30-01) and confirm the `make tui-snapshot` target. Record each result in `progress.md` § E.2 (run-phase evidence).
+Before any change: capture the RED-now cell of every criterion in `acceptance.md` on tree `8fa0dc24b` (code paths equal main `2aab5f797`), as single-invocation commands with verbatim stdout, exit code, and tree SHA. Measure the runnable profile-visibility command form (AC-RC30-01) and confirm the `make tui-snapshot` target. Record each result in `progress.md` § E.2 (run-phase evidence).
 
 Exit condition: every criterion has a RED cell or a recorded reason it cannot be captured (Gap).
 
@@ -59,7 +59,7 @@ Exit condition: AC-RC30-06, -07, -08 pass; -22 and -23 are RED with the cause na
 3. Conflicts and warnings above the summary; the measured outcome replaces the pre-merge risk class (U-28).
 4. Narrow-terminal and fallback behavior (U-29). The threshold is a named constant in `internal/tui` defaults.
 5. File lists collapse to counts; the full list goes behind `--verbose` or to a log path (U-16). `--verbose` keeps the NOISE-001 meaning.
-6. Locale key parity (U-30; REQ-RC30-019): the locale tables ko, en, ja, and zh define the same keys, judged by the locale part of AC-RC30-25 (`TestUpdateLocaleKeyParity`).
+6. Locale mechanism read, then key parity (U-30; REQ-RC30-019): first read how the update output reaches locale strings (E-21 shows the renderer files read no locale setting; the read is recorded in research.md), then make the ko, en, ja, and zh tables define the same keys. The parity check is judged by the locale part of AC-RC30-25 (`TestUpdateLocaleKeyParity`) and runs in this step, after the read.
 7. Golden snapshots are regenerated only through `make tui-snapshot`, on a reviewed diff.
 
 Exit condition: AC-RC30-09, -17, -25 pass; `make tui-snapshot` output is reviewed.
@@ -72,7 +72,7 @@ Exit condition: AC-RC30-14, -15, -19 pass.
 
 ### B.7 Milestone M6 — Investigations (Medium)
 
-Each GAP-INVESTIGATE item is closed by its named evidence, with its command and output in research.md: U-15 (AC-RC30-16), U-19 and U-20 (AC-RC30-20), U-25 (AC-RC30-24). U-30 waits for the locale-mechanism read (Q1 is resolved from disk; decision-index.md Q1).
+Each GAP-INVESTIGATE item is closed by its named evidence, with its command and output in research.md: U-15 (AC-RC30-16), U-19 and U-20 (AC-RC30-20), U-25 (AC-RC30-24). U-30 has no M6 work: its locale mechanism is read in M4 step 6, before the parity check (§ B.5; Q1 is resolved from disk, decision-index.md Q1).
 
 ### B.8 Milestone M7 — Verification and merge-ready (High)
 
@@ -112,7 +112,7 @@ Each GAP-INVESTIGATE item is closed by its named evidence, with its command and 
 | Both branches change `internal/userassets/install.go` | Merge conflict at M1 | Plain merge; conflicts resolved with the branch tests kept green |
 | Branch tips move after absorption | Measurements go stale | Re-absorb on movement; ranges are measured from the merge-base each time |
 | Golden churn in the TUX output | Review load | Golden updates only through `make tui-snapshot` on a reviewed diff |
-| "16 locales" versus "four locale strings" | Wrong scope for U-30 | Q1 is resolved from disk (decision-index.md Q1); U-30 has no criterion until its locale mechanism is read |
+| "16 locales" versus "four locale strings" | Wrong scope for U-30 | Q1 is resolved from disk (decision-index.md Q1); U-30 is judged by the locale part of AC-RC30-25, after its mechanism is read in M4 step 6 |
 | Track overlap with t1621 and t1622 | Scope creep into factory code | Named under Dependencies in spec.md § H; not items |
 
 ## G. Dependencies

@@ -1,15 +1,15 @@
 # SPEC-UPDATE-REPAIR-RC30-001 — Research and verification appendix
 
-Five sections, per `verification-claim-integrity.md` § 3: Claim, Evidence, Baseline-attribution, Gaps, Residual-risk. Tree for every measurement in this appendix: `2aab5f797b75983e132af451da68f69e3426557b`, unless a row names another ref.
+Five sections, per `verification-claim-integrity.md` § 3: Claim, Evidence, Baseline-attribution, Gaps, Residual-risk. Tree for every RED cell in this appendix: `8fa0dc24b` (code paths equal main `2aab5f797b75983e132af451da68f69e3426557b`), unless a row names another ref.
 
 ## 1. Claim
 
 | # | Claim | Status |
 |---|-------|--------|
-| C1 | The measured tree is main tip `2aab5f797b75983e132af451da68f69e3426557b`. | Observed |
+| C1 | The RED cells are measured on tree `8fa0dc24b`, whose code paths equal main tip `2aab5f797b75983e132af451da68f69e3426557b`. | Observed |
 | C2 | The installed binary (`4f8aba061`) descends from the tree, so no claim here relies on it. | Observed |
-| C3 | `WT-user-asset-bundle` (t1591) changes 75 files and `WT-update-migration-fixes` (t1578) changes 13 files, relative to main. | Observed |
-| C4 | Branch tips at measurement: t1591 `cae7e28fe`, t1578 `317ed31b6`. | Observed |
+| C3 | `WT-user-asset-bundle` (t1591, tip `01b519c21`) changes 78 files and `WT-update-migration-fixes` (t1578, tip `40ab940f4`) changes 13 files, relative to main (re-measured 2026-10-09 19:06Z; E-OVERLAP). | Observed |
+| C4 | Branch tips, re-measured 2026-10-09 19:06Z with `git rev-parse --short`: t1591 `01b519c21`, t1578 `40ab940f4`. The earlier tips `cae7e28fe` and `317ed31b6` are superseded. | Observed |
 | C5 | SPEC-USER-ASSET-INSTALL-001 (completed, on main) declares P6 at spec.md:237-238 and REQ-002 at spec.md:255. The branch copy is identical. | Observed |
 | C6 | The branch carries SPEC-USERASSET-DEPLOY-GUARD-001, not SPEC-USER-ASSET-INSTALL-001. The lane brief's attribution is wrong. | Observed |
 | C7 | The migration function is `migrateProjectCommonAssets` in `internal/cli/migrate_project_assets.go`. The audit's `internal/cli/update/...` path is wrong. | Observed |
@@ -38,7 +38,7 @@ $ git merge-base --is-ancestor 2aab5f797 4f8aba061; echo "exit=$?"
 exit=0
 ```
 
-**E-BRANCH (C3, C4)**
+**E-BRANCH (C3, C4; historical, measured before the 19:06Z re-measurement; superseded by E-OVERLAP)**
 ```text
 $ git diff --stat main...WT-user-asset-bundle | tail -3
  internal/web/agentfm.go                            |  16 +
@@ -232,7 +232,7 @@ $ ls internal/cli/update/ | grep -c migrate_project_assets
 
 ## 3. Baseline-attribution
 
-- Each Evidence block names the command, the tree (`2aab5f797`), and the output in this run. No figure is carried from the audit or from another tree.
+- Each Evidence block names the command, the tree (`8fa0dc24b`, code paths equal main `2aab5f797`), and the output in this run. No figure is carried from the audit or from another tree.
 - Audit figures (for example "423 files", "266 files", "369 preserved lines", "83 references", "17 commands", "12 gate.yaml comment lines", "29 of 54 `.agents/skills` dirs differ") are audit claims. They are cited only as audit claims, labelled as such in spec.md § C.
 - The ranges used for overlap are file-level (`git diff --name-only main...<branch>`). Hunk-level ranges are measured from `git merge-base HEAD <absorbed-tip>` at M1 (plan § B.2), not from a literal SHA.
 - The installed `moai` binary is not used. Measurements in later milestones use a build of this tree, invoked by path.
