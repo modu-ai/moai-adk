@@ -18,6 +18,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/modu-ai/moai-adk/internal/cli/update/backup"
 	"github.com/modu-ai/moai-adk/internal/cli/wizard"
 	"github.com/modu-ai/moai-adk/internal/core/project"
 	"github.com/modu-ai/moai-adk/internal/homestate"
@@ -66,14 +67,20 @@ func resumeInitializedProject(cmd *cobra.Command, opts *project.InitOptions, wir
 	}
 	defer func() { _ = lock.Release() }()
 
-	// Gate round 51-3: the deployed LAYOUT is the interrupted record of the
-	// original --llm selection. A re-run without options resolves the claude
-	// default; applying it over a deployed GPT layout records harness:claude
-	// while the Codex wiring is skipped — config and on-disk layout stay
-	// permanently mismatched. The codex-only deployer HIDES the claude-only
-	// surfaces (CLAUDE.md among them) and projects AGENTS.md, so
-	// AGENTS.md-present-without-CLAUDE.md IS the gpt record.
-	if wiring == agentWiringClaude && deployedWiringIsGPT(opts.ProjectRoot) {
+	// Finding 1 (card t1591): the harness the FAILING run selected is the
+	// record of the interrupted --llm, and a resume with no explicit selection
+	// of its own reads it back. The file layout does not decide it: neither
+	// claude nor both writes CLAUDE.md any more, and both deploy the same
+	// .claude/ surface, so the layout cannot tell them apart.
+	if recorded, ok := resumeWiringFromRecord(cmd, wizardResult, opts.ProjectRoot); ok {
+		wiring = recorded
+	} else if wiring == agentWiringClaude && deployedWiringIsGPT(opts.ProjectRoot) {
+		// Gate round 51-3 (legacy fallback, applies only without a record): the
+		// deployed LAYOUT is the interrupted record of the original --llm
+		// selection. A re-run without options resolves the claude default;
+		// applying it over a deployed GPT layout records harness:claude while
+		// the Codex wiring is skipped — config and on-disk layout stay
+		// permanently mismatched.
 		wiring = agentWiringGPT
 	}
 
@@ -169,23 +176,90 @@ func resumeInitializedProject(cmd *cobra.Command, opts *project.InitOptions, wir
 		return fmt.Errorf("provision MCP entry: %w", err)
 	}
 	wireCodexUnlessClaude(cmd, wiring, opts.ProjectRoot)
+	// Finding 2 (card t1591): the resume is this flow's end, so it settles the
+	// snapshot lifecycle the way a healthy init does (init.go): the settings.json
+	// and .mcp.json staging copies are promoted to the canonical base the next
+	// update merges against. Settled here, after every post-step succeeded — a
+	// half-finished resume never promotes. Preserved is false: init and resume
+	// run no settings merge, so the staged render is the base.
+	backup.SettleSettingsSnapshot(opts.ProjectRoot, false, cmd.ErrOrStderr())
+	backup.SettleMCPSnapshot(opts.ProjectRoot, false, cmd.ErrOrStderr())
 	// Gate round 51-2: every post-step completed — the checkpoint marker
 	// retires (the early-return paths above leave it in place, keeping the
-	// next run's resume route alive).
-	_ = os.Remove(markerPath)
+	// next run's resume route alive). Finding 1: the selection record retires
+	// with the marker, and only once the marker is gone — a marker that
+	// survives still needs its selection.
+	if err := os.Remove(markerPath); err == nil || os.IsNotExist(err) {
+		clearResumeWiring(opts.ProjectRoot)
+	}
 	return nil
 }
 
 // deployedWiringIsGPT reads the deployed layout as the interrupted --llm
-// record (gate round 51-3): the codex-only deployer hides CLAUDE.md and
-// projects AGENTS.md, so their presence pattern names the deployer that
-// ran.
+// record when no selection record exists (gate round 51-3, legacy fallback).
+// The codex-only deployer writes no .claude/ surface and projects AGENTS.md,
+// so .claude/ absent with AGENTS.md present names the gpt layout. The probe is
+// .claude/, not CLAUDE.md: no harness writes CLAUDE.md any more, so a
+// CLAUDE.md probe read every claude and both project as gpt.
 func deployedWiringIsGPT(projectRoot string) bool {
-	if _, err := os.Stat(filepath.Join(projectRoot, "CLAUDE.md")); err == nil {
-		return false // the claude deployer ran
+	if _, err := os.Stat(filepath.Join(projectRoot, ".claude")); err == nil {
+		return false // the claude-side deployer ran (claude and both alike)
 	}
 	_, err := os.Stat(filepath.Join(projectRoot, "AGENTS.md"))
 	return err == nil
+}
+
+// resumeWiringPath is the project-scoped record of the harness selection the
+// failing init run made. It sits under .moai/state/ (gitignored) and is a file
+// separate from the resume-pending marker, so the marker's checkpoint
+// semantics (initResumeCheckpoint) do not change.
+func resumeWiringPath(projectRoot string) string {
+	return filepath.Join(projectRoot, ".moai", "state", "resume-wiring")
+}
+
+// persistResumeWiring records the harness selection a failing init run made,
+// so the resume can read it back.
+func persistResumeWiring(projectRoot string, wiring agentWiring) error {
+	path := resumeWiringPath(projectRoot)
+	if err := os.MkdirAll(filepath.Dir(path), 0o755); err != nil {
+		return err
+	}
+	return os.WriteFile(path, []byte(string(wiring)+"\n"), 0o644)
+}
+
+// readResumeWiring returns the recorded selection. Only a member of the closed
+// set counts; anything else reads as no record. The read is the non-blocking
+// regular-file read every resume record uses, so a FIFO at the path reads as
+// no record instead of hanging the resume.
+func readResumeWiring(projectRoot string) (agentWiring, bool) {
+	data, ok := readManifestRecord(resumeWiringPath(projectRoot))
+	if !ok {
+		return "", false
+	}
+	switch wiring := agentWiring(strings.TrimSpace(string(data))); wiring {
+	case agentWiringClaude, agentWiringGPT, agentWiringBoth:
+		return wiring, true
+	}
+	return "", false
+}
+
+// resumeWiringFromRecord returns the recorded selection when the resume was
+// given no explicit selection of its own. An explicit --llm, or a wizard
+// agent_wiring answer, is the current invocation's answer and wins over the
+// record — the same precedence resolveAgentWiringWithWizard applies.
+func resumeWiringFromRecord(cmd *cobra.Command, wizardResult *wizard.WizardResult, projectRoot string) (agentWiring, bool) {
+	if cmd.Flags().Changed("llm") && getStringFlag(cmd, "llm") != "" {
+		return "", false
+	}
+	if wizardResult != nil && wizardResult.AgentWiring != "" {
+		return "", false
+	}
+	return readResumeWiring(projectRoot)
+}
+
+// clearResumeWiring retires the selection record once the resume completed.
+func clearResumeWiring(projectRoot string) {
+	_ = os.Remove(resumeWiringPath(projectRoot))
 }
 
 // initResumeCheckpoint reports whether an explicit interruption

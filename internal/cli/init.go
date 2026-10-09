@@ -966,6 +966,13 @@ func runInit(cmd *cobra.Command, args []string) (err error) {
 	if homeDir, homeErr := userHomeDirFn(); homeErr == nil {
 		selection := parseBundleSelection(getStringFlag(cmd, "bundles"))
 		if err := ensureUserAssetsLocked(homeDir, selection, cmd.OutOrStdout()); err != nil {
+			// Finding 1 (card t1591): this run is the interrupted one the
+			// resume completes. Record the harness it selected so the resume
+			// restores that selection, not the claude default. Best-effort:
+			// a record that cannot be written is named, never dropped silently.
+			if recErr := persistResumeWiring(opts.ProjectRoot, agentWiringSelection); recErr != nil {
+				emitSeverityLine(cmd.ErrOrStderr(), sevWarn, resolveTheme(), "Could not record the harness selection for the resume: %v", recErr)
+			}
 			return fmt.Errorf("user-asset install failed: %w\n  Fix the cause and re-run 'moai init' — the ensure is idempotent and completes the shortfall", err)
 		}
 	} else {
