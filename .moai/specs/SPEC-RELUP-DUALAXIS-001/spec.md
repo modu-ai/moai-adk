@@ -1,7 +1,7 @@
 ---
 id: SPEC-RELUP-DUALAXIS-001
 title: "release-update 하네스 CC+Codex 이중 축 정착 — codex 체인지로그 축·상태 파일 codex 키·BP 상시 절차"
-version: "0.1.0"
+version: "0.2.0"
 status: draft
 created: 2026-10-09
 updated: 2026-10-09
@@ -24,6 +24,7 @@ related_specs: [SPEC-UPDATE-ADD-CODEX-001, SPEC-CC2219-UPSTREAM-ALIGN-001]
 |---------|------|--------|-------------|
 | 0.1.0 | 2026-10-09 | manager-spec | 최초 작성 — 카드 t1579 (High·운영자 확장 지시 2026-10-07·builder-harness/SPEC 소관). 워크트리 t1579 @ `2aab5f797` 실측 13종(앵커 grep + exit code 전수 관측)을 근거로 REQ 14건·AC 13건(릴리스 블로킹 10 + 회귀 가드 3) 확정. 근거 연구: `.moai/research/upstream-update-20261007.md` (확장 스윕 1차) + `upstream-update-20261008.md` (2차). SPEC ID 사전 검증: `SPEC-RELUP-DUALAXIS-001` 정규식 `^SPEC(-[A-Z][A-Z0-9]*)+-[0-9]{3}$` 매치 **PASS** (Bash 실행 관측) |
 | 0.1.1 | 2026-10-09 | manager-spec | 자체 spec-lint 피드백 수리 — `CoverageIncomplete` 3건(REQ-RDX-004/009/013 미커버)에 AC-RDX-014/015/016 신설(블로킹 10→13, 총 AC 13→16 — Tier M 천장 16에 정확히 도달). AC-RDX-016의 `source-first` 앵커로 mutant M-4의 기계 판정면 확보(LED-014, 0/exit 1 실측). lint 재실행: 0 error / 0 warning |
+| 0.2.0 | 2026-10-09 | manager-spec | plan-audit iter1 수리(FAIL 0.8125 — codex required 게이트, `.moai/reports/t1579/plan-audit.md`, rcpt-3e881c87c91a47a2117220b0). **CX-4(블로커)**: plan §E3을 런타임-형태 어댑터로 교체 — require·직접 실행 모두 `SyntaxError: Illegal return statement`(run.js:153, Node v22.14.0 본 재관측 exit 1), 러너는 ESM `export const meta`+top-level return/await 하이브리드라 export 적출+AsyncFunction 래핑 어댑터가 유일한 충실 평가형 — E3-P1 본 트리 **exit 0 관측**(`adapter-ok run=fn cc=1 shape-ok`), E3-P2(M2 종료형)는 codex 단언 포함. **CX-1**: plan §C 시드 재판정을 last-analyzed 의미론으로 재작성(D1·§7 전파 — 미분석 승격은 시드 미인상). **CX-3**: LED-001/002를 `domain` 필드 스코프로 재앵커 + AC-RDX-013에 sprint_contract 판독면 신설(LED-015 기준선 출력 기록, exit 0 — AC 수 16 불변). **CX-2**: AC-RDX-003을 `selectCodexSweepTargets(args)` ≥2(정의+top-level 디스패치 호출)로 재앵커 + §E3-P2 실질 생성 면(M2에 export 목록 확장 요건 추가). **D5**: §3 한계를 AC-RDX-014/015로 확장(iter2 블록 재판독이 제2 판정면). **D6**: frontmatter version 0.2.0 — 최신 HISTORY 행 정합 유지(0.1.1 지적의 재발 방지). **D7 처분**: progress §F 선기입은 라인 지시에 의한 것 — 오케스트레이터가 Phase 4에서 확정/수정(내용 수정 불요). **D8 처분**: 운영자 ①구절의 리포 참조 버전 비교 반쪽은 CARD-4 소관 기록 유지 — run-phase 위임 프롬프트가 M1/M2에 참조-버전 문맥을 운반할 것. 미 touched AC의 RED 셀은 바이트 불변 유지 |
 
 ## 1. 문제 — 측정된 형태
 
@@ -60,7 +61,7 @@ $ grep -rn "last-cc-version" internal/
 
 | # | 결정 | 근거 |
 |---|---|---|
-| D1 | codex 축 상태 파일은 **별도** `.moai/state/last-codex-version.json`으로 신설하고 CC 파일과 동일 키 계열(`last_analyzed_version` / `last_analyzed_date` / `last_master_research` / `analysis_history[]`)을 미러링한다. 시드 `last_analyzed_version` = **`rust-v0.161.0`** — 원본 릴리즈 태그 형태 그대로 기록한다(CC 파일의 plain semver "2.1.294"와 표기 형식이 달라도 태그 형태가 스윕 비교 기준이므로). 카드 후보안의 0.160.1 시드는 **폐기** | 카드 지시 "별도" 그대로. 2차 스윕이 0.160.1→0.161.0 안정 델타를 이미 분석·큐레이팅했으므로(§1.1 M6) 기준선은 0.161.0이다 — 0.160.1 시드는 1차 스윕 시점(2026-10-07) 기준이며 2차 실측(2026-10-08)이 우선한다. 실제 파일 생성은 다음 스윕 실행 시점의 하네스 절차가 수행한다(기계 로컬 — 본 SPEC은 본문의 스키마 문서화만 소유) |
+| D1 | codex 축 상태 파일은 **별도** `.moai/state/last-codex-version.json`으로 신설하고 CC 파일과 동일 키 계열(`last_analyzed_version` / `last_analyzed_date` / `last_master_research` / `analysis_history[]`)을 미러링한다. 시드 `last_analyzed_version` = **`rust-v0.161.0`** — 원본 릴리즈 태그 형태 그대로 기록한다(CC 파일의 plain semver "2.1.294"와 표기 형식이 달라도 태그 형태가 스윕 비교 기준이므로). 카드 후보안의 0.160.1 시드는 **폐기** | 카드 지시 "별도" 그대로. 2차 스윕이 0.160.1→0.161.0 안정 델타를 이미 분석·큐레이팅했으므로(§1.1 M6) 기준선은 0.161.0이다 — 0.160.1 시드는 1차 스윕 시점(2026-10-07) 기준이며 2차 실측(2026-10-08)이 우선한다. 실제 파일 생성은 다음 스윕 실행 시점의 하네스 절차가 수행한다(기계 로컬 — 본 SPEC은 본문의 스키마 문서화만 소유). **시드 의미론은 last-analyzed다** — 분석되지 않은 신규 안정 승격(예: 0.162 선행 승격)이 관측돼도 시드는 고정되고 그 델타는 다음 스윕의 분석 대상으로 기록된다(plan §C 재판정 규칙 — plan-audit iter1 CX-1) |
 | D2 | Runner는 CC 렌즈와 병렬로 **codex 렌즈**(fan-out)를 얻는다. codex 렌즈는 릴리즈 본문이 비어 있을 때(밀도 높은 alpha 기간) 커밋 API 복원 폴백을 **요구 절차**로 문서화하고, 복원 항목은 전부 커밋-주제-유래로 라벨링한다. 관찰 목록 형식: 테마 행 = 테마 키 + 관측 PR 번호 목록 + MoAI 노출면 | 1차 연구 Phase 7.5 finding (b, confidence 0.8): *"Phase 1 needs a documented commits-API reconstruction fallback or the codex axis yields no content"*. 2차 #49713이 보인 정합 절차 — 커밋 제목만으로 판정하지 않고 PR 본문 확인으로 격상 — 를 렌즈 절차에 흡수 |
 | D3 | 6테마 어댑터-노출 관찰목록은 **Runner의 codex 렌즈 프롬프트**에 상주한다(영어 키: `thread` / `rollout` / `subagent` / `compaction` / `MCP` / `other`). 스페셜리스트는 러너 산출을 받아 큐레이션·티어 분류·안정 승격 판정을 수행한다 — alpha 테마는 watch 관찰목록으로만 기록되고, 안정 릴리즈 탑재 시에만 채택 판정한다 | 기존 CC 축의 러너(비대화형 스윕)/스페셜리스트(인간 게이트) 분업 계승(§1.1 M2, specialist "Runner integration" 절). 영어 키는 coding-standards.md 에이전트 정의 영어 규정. 1차 스윕의 watch 판정("채택 아님, 준비 카드만 제안")이 절차 규범이 된다 |
 | D4 | 매니페스트 `sprint_contract.dimensions`는 **Functionality/Consistency 2개 유지, thresholds(0.85/0.80) 불변**. `domain` 문자열만 이중 축 + BP 축을 명명한다 | 차원 추가는 이 하네스 향후 모든 run의 sync 채점 의미론을 바꾸는 정책 변경이다 — 운영자 지시(도메인 확장)는 그것을 요구하지 않는다. Enforce Simplicity 사다리 1단(YAGNI) |
@@ -76,10 +77,10 @@ $ grep -rn "last-cc-version" internal/
 
 아래 mutant들이 이 SPEC의 AC를 통과하려면 AC가 너무 얕은 것이다(verification-completeness §2 mutant probe).
 
-- **M-1 "출처 필드 기만"**: `source_request`(역사 서술 필드)에만 codex를 언급하고 `domain` 문자열은 CC-only로 남기는 mutant. AC-RDX-001이 `domain` 고유 앵커(`Codex CLI upstream change tracking`)를 grep하므로 잡힌다 — 전체 파일 grep이면 source_request 언급만으로 통과하는 허점을 막는다.
-- **M-2 "주석 코덱스"**: JS 주석에만 `// TODO codex lens`를 추가하는 mutant. AC-RDX-003이 함수 식별자 `selectCodexSweepTargets`(실제 fan-out 셀렉터)를 grep하므로 잡힌다 — `grep -ci codex`만으로는 주석이 뒤집는다.
+- **M-1 "출처 필드 기만"**: `source_request`(역사 서술 필드)에만 codex를 언급하고 `domain` 문자열은 CC-only로 남기는 mutant. AC-RDX-001이 `domain` 키 행 스코프 패턴(`'"domain".*Codex CLI upstream change tracking'`)을 grep하므로 잡힌다 — source_request에 동일 문구를 넣어도 매치되지 않는다(plan-audit iter1 CX-3 재앵커).
+- **M-2 "주석 코덱스"**: JS 주석에만 `// TODO codex lens`를 추가하는 mutant. AC-RDX-003이 `selectCodexSweepTargets(args)` 출현 ≥2(정의+top-level 디스패치 병합 호출)와 plan §E3-P2 어댑터의 실측 target 생성을 요구하므로 잡힌다 — 주석·미연결 정의는 두 면 모두에서 좌초한다(plan-audit iter1 CX-2 재앵커).
 - **M-3 "seed 누락"**: `last-codex-version.json` 스키마는 문서화하되 시드값을 빼는 mutant. AC-RDX-006은 통과하고 AC-RDX-007(`rust-v0.161.0`)에서 잡힌다 — 둘이 쌍인 이유다.
-- **M-4 "BP 껍데기 섹션"**: `Best-Practices` 헤딩만 넣고 원문-패치 강제를 빼는 mutant. AC-RDX-008(섹션 존재)은 통과할 수 있다 — REQ-RDX-012(shall not)와 plan §D 앵커(`source-first` 리터럴)가 잡는다. §3에 한계를 명시한다: 이 mutant는 grep 단일 판정면 밖이며 plan-auditor 서술 검증이 보완 판정면이다.
+- **M-4 "BP 껍데기 섹션"**: `Best-Practices` 헤딩만 넣고 원문-패치 강제를 빼는 mutant. AC-RDX-008(섹션 존재)은 통과할 수 있다 — REQ-RDX-012(shall not)와 plan §D 앵커(`source-first` 리터럴)가 잡는다. §3에 한계를 명시한다: 이 mutant는 grep 단일 판정면 밖이며 plan-auditor 서술 검증이 보완 판정면이다. 동일 한계는 AC-RDX-014/015에도 적용된다 — 기계 면은 LED-006/005 공유 grep이고, 서술 면(부재-기본값 경고·watch 규범의 실제 기재)은 plan-audit iter2의 해당 블록 재판독이 제2 판정면이다(plan-audit iter1 D5).
 - **M-5 "Go 침입"**: 상태 파일 쓰기를 Go 런타임(`internal/`)으로 옮기는 mutant. AC-RDX-011(회귀 가드 — `internal/` grep 0힛 유지)에서 잡힌다. 상태 파일은 하네스 계층 소유가 측정으로 확인된 구조적 사실이다(§1.1 M4).
 
 ## 4. 요구사항 (GEARS)
@@ -146,7 +147,7 @@ $ grep -rn "last-cc-version" internal/
 
 ## 7. 미검증 항목 (Gaps)
 
-- **시드값의 유효기간** — `rust-v0.161.0`은 2026-10-08 기준 안정 최신이다. run-phase 착지 전에 0.162 승격이 관측되면 시드는 재판정된다(plan §C 재측정 항목 — 판정은 npm view + gh api releases 재실행).
+- **시드값의 유효기간** — `rust-v0.161.0`은 2026-10-08 기준 안정 최신이며 시드 의미론은 **last-analyzed**다. run-phase 착지 전에 0.162 승격이 관측돼도 시드는 올리지 않는다 — 미분석 델타는 다음 스윕의 분석 대상으로 기록된다(plan §C 재판정 규칙 — plan-audit iter1 CX-1).
 - **6테마 관찰목록의 후속 변동** — 0.162 승격 시 테마 추가/삭제가 예상된다. 본 SPEC은 6테마를 시드로 고정하고(plan §D), 확장/축소는 스윕 재량으로 기록된다.
 - **BP 공식 자료 URL 목록의 완결성** — BP-3(context engineering 문서)의 정확 경로는 2회 스윕에서도 미확정(검색 색인만 확인). BP 절차는 "원문 패치 시점에 경로 확정"을 요구하고 본 SPEC은 URL 인벤토리를 완결하지 않는다.
 - **러너 codex 렌즈의 실제 fan-out 동작** — 본 SPEC 착지는 절차 편집이지 실행이 아니다. 첫 codex 렌즈 실행은 다음 스윕에서 관측되며, 그때까지 렌즈 프롬프트의 커밋 복원 실효성은 미검증 상태로 남는다(§6 스윕 실행 제외와 동일 뿌리).

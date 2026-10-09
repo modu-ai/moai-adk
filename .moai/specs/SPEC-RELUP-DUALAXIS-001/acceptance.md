@@ -20,9 +20,9 @@ tier: M
 
 | AC | 분류 | 주장 (Then) | RED-now (LED) | Green path |
 |----|------|-------------|---------------|------------|
-| AC-RDX-001 | 블로킹 | manifest `domain`이 `Codex CLI upstream change tracking`을 명명 | LED-001 (0/1) | M4 → ≥1/0 |
-| AC-RDX-002 | 블로킹 | manifest `domain`이 best-practices 축을 명명 | LED-002 (0/1) | M4 → ≥1/0 |
-| AC-RDX-003 | 블로킹 | runner에 codex 렌즈 셀렉터 `selectCodexSweepTargets` 존재 | LED-003 (0/1) | M2 → ≥1/0 |
+| AC-RDX-001 | 블로킹 | manifest `domain` 필드가 `Codex CLI upstream change tracking`을 명명 (domain 키 행 스코프 — CX-3) | LED-001 (0/1) | M4 → ≥1/0 |
+| AC-RDX-002 | 블로킹 | manifest `domain` 필드가 best-practices 축을 명명 (동일 스코프) | LED-002 (0/1) | M4 → ≥1/0 |
+| AC-RDX-003 | 블로킹 | runner에 codex 렌즈 셀렉터가 정의되고 top-level 디스패치 블록에서 호출된다 (`selectCodexSweepTargets(args)` ≥2 — CX-2; 실질 생성 면 plan §E3-P2) | LED-003 (0/1) | M2 → ≥2/0 |
 | AC-RDX-004 | 블로킹 | runner에 커밋 복원 폴백 앵커 `CODEX_COMMITS_FALLBACK` 존재 | LED-004 (0/1) | M2 → ≥1/0 |
 | AC-RDX-005 | 블로킹 | runner에 6테마 체크리스트 앵커 `CODEX_THEME_CHECKLIST` 존재 | LED-005 (0/1) | M2 → ≥1/0 |
 | AC-RDX-006 | 블로킹 | specialist가 `last-codex-version.json` 스키마를 문서화 | LED-006 (0/1) | M1 → ≥1/0 |
@@ -35,13 +35,13 @@ tier: M
 | AC-RDX-016 | 블로킹 | specialist BP 절차가 `source-first` 원문-패치 선행 강제를 명명 | LED-014 (0/1) | M3 → ≥1/0 |
 | AC-RDX-011 | 회귀 가드 | `internal/`에 `last-codex-version` 참조 0힛 유지 (Go 라이터 부재 보존) | — (오늘 녹색 — 부재 클레임, 비재현) | 유지 조건: run-phase 전체 |
 | AC-RDX-012 | 회귀 가드 | specialist의 `last-cc-version.json` 문서화 ≥3힛 유지 (CC 축 절차 보존) | — (오늘 녹색 3힛) | 유지 조건: run-phase 전체 |
-| AC-RDX-013 | 회귀 가드 | manifest의 `hns-release-update-run.js` 참조 1힛 유지 (러너 결합 보존) | — (오늘 녹색 1힛) | 유지 조건: run-phase 전체 |
+| AC-RDX-013 | 회귀 가드 | manifest의 `hns-release-update-run.js` 참조 1힛 유지 + `sprint_contract` dimensions·thresholds 판독 기준선 일치 (LED-013 + LED-015 — CX-3 판독면) | — (오늘 녹색: 1힛 + LED-015 기준선 출력) | 유지 조건: run-phase 전체 |
 
-## §D.1 시나리오 (Given-When-Then — 블로킹 10종)
+## §D.1 시나리오 (Given-When-Then — 블로킹 13종)
 
-- **AC-RDX-001** — **Given** manifest.json이 CC 단일 domain 문자열을 담은 상태로, **When** LED-001 명령을 실행하면, **Then** 일치 개수가 1 이상이다 (domain이 codex 축을 명명).
-- **AC-RDX-002** — **Given** 동일 상태로, **When** LED-002 명령을 실행하면, **Then** 일치 개수가 1 이상이다 (domain이 best-practices 축을 명명).
-- **AC-RDX-003** — **Given** runner가 CC 렌즈만 fan-out하는 상태로, **When** LED-003 명령을 실행하면, **Then** `selectCodexSweepTargets` 식별자가 1 이상 관측된다 (codex 렌즈가 실제 함수로 존재 — 주석 아님, mutant M-2 봉쇄).
+- **AC-RDX-001** — **Given** manifest.json이 CC 단일 domain 문자열을 담은 상태로, **When** LED-001 명령(`domain` 키 행 스코프)을 실행하면, **Then** 일치 개수가 1 이상이다 (domain 필드가 codex 축을 명명 — source_request의 동일 문구는 매치 제외, CX-3).
+- **AC-RDX-002** — **Given** 동일 상태로, **When** LED-002 명령(동일 스코프)을 실행하면, **Then** 일치 개수가 1 이상이다 (domain 필드가 best-practices 축을 명명).
+- **AC-RDX-003** — **Given** runner가 CC 렌즈만 fan-out하는 상태로, **When** LED-003 명령을 실행하면, **Then** `selectCodexSweepTargets(args)` 출현이 2 이상이고 제2 출현은 top-level 디스패치 블록의 병합 호출이다 (정의 단독·주석 mutant는 1로 좌초 — CX-2). 실질 target 생성은 plan §E3-P2 어댑터가 시드 `codexDeltas`에 대해 실측한다 (mutant M-2 봉쇄).
 - **AC-RDX-004** — **Given** runner에 커밋 복원 절차가 없는 상태로, **When** LED-004 명령을 실행하면, **Then** `CODEX_COMMITS_FALLBACK` 앵커가 1 이상 관측된다.
 - **AC-RDX-005** — **Given** runner에 테마 관찰목록이 없는 상태로, **When** LED-005 명령을 실행하면, **Then** `CODEX_THEME_CHECKLIST` 앵커가 1 이상 관측된다.
 - **AC-RDX-006** — **Given** specialist 본문에 codex 상태 스키마가 없는 상태로, **When** LED-006 명령을 실행하면, **Then** `last-codex-version.json`이 1 이상 관측된다.
@@ -57,8 +57,8 @@ tier: M
 
 | AC | REQ | mutant 봉쇄 |
 |----|-----|-------------|
-| AC-RDX-001/002 | REQ-RDX-010 | M-1 (source_request 기만) |
-| AC-RDX-003 | REQ-RDX-006 | M-2 (주석 코덱스) |
+| AC-RDX-001/002 | REQ-RDX-010 | M-1 (source_request 기만) — 필드 스코프로 봉쇄 강화 (CX-3) |
+| AC-RDX-003 | REQ-RDX-006 | M-2 (주석·미연결 정의) — ≥2 앵커 + §E3-P2 실측 생성 면 (CX-2) |
 | AC-RDX-004 | REQ-RDX-007 | — (M-2 공유 봉쇄면) |
 | AC-RDX-005 | REQ-RDX-008 | — |
 | AC-RDX-006 | REQ-RDX-001/002 | — |
@@ -71,7 +71,7 @@ tier: M
 | AC-RDX-016 | REQ-RDX-013 | M-4 (BP 껍데기 섹션 — 기계 판정면 확보) |
 | AC-RDX-011 | REQ-RDX-005 | M-5 (Go 침입) |
 | AC-RDX-012 | REQ-RDX-003 (보존 축) | — |
-| AC-RDX-013 | REQ-RDX-011 (골격 보존) | — |
+| AC-RDX-013 | REQ-RDX-011 (골격 보존) | threshold 편집은 LED-015 판독면에 걸린다 (CX-3) |
 
 ## §D.3 증거 원장 (Evidence Ledger — 트리 `2aab5f797`, 2026-10-09 관측)
 
@@ -79,9 +79,9 @@ tier: M
 
 | LED | 명령 (단일 호출) | stdout (축자) | exit | 판정 |
 |-----|------------------|---------------|------|------|
-| LED-001 | `grep -c "Codex CLI upstream change tracking" .claude/commands/harness/release-update/manifest.json` | `0` | `1` | RED (AC-001) |
-| LED-002 | `grep -ci "best-practice" .claude/commands/harness/release-update/manifest.json` | `0` | `1` | RED (AC-002) |
-| LED-003 | `grep -c "selectCodexSweepTargets" .claude/workflows/hns-release-update-run.js` | `0` | `1` | RED (AC-003) |
+| LED-001 | `grep -c '"domain".*Codex CLI upstream change tracking' .claude/commands/harness/release-update/manifest.json` | `0` | `1` | RED (AC-001) — domain 필드 스코프 (CX-3 재앵커) |
+| LED-002 | `grep -c '"domain".*best-practices axis' .claude/commands/harness/release-update/manifest.json` | `0` | `1` | RED (AC-002) — 동일 재앵커 (CX-3) |
+| LED-003 | `grep -c "selectCodexSweepTargets(args)" .claude/workflows/hns-release-update-run.js` | `0` | `1` | RED (AC-003) — 디스패치 호출 앵커, 착지 후 ≥2 (CX-2 재앵커) |
 | LED-004 | `grep -c "CODEX_COMMITS_FALLBACK" .claude/workflows/hns-release-update-run.js` | `0` | `1` | RED (AC-004) |
 | LED-005 | `grep -c "CODEX_THEME_CHECKLIST" .claude/workflows/hns-release-update-run.js` | `0` | `1` | RED (AC-005) |
 | LED-006 | `grep -c "last-codex-version.json" .claude/agents/harness/hns-release-update-specialist.md` | `0` | `1` | RED (AC-006) |
@@ -90,9 +90,12 @@ tier: M
 | LED-009 | `grep -c "code.claude.com" .claude/agents/harness/hns-release-update-specialist.md` | `0` | `1` | RED (AC-009) |
 | LED-010 | `grep -c "HTML proposal report" .claude/agents/harness/hns-release-update-specialist.md` | `0` | `1` | RED (AC-010) |
 | LED-014 | `grep -c "source-first" .claude/agents/harness/hns-release-update-specialist.md` | `0` | `1` | RED (AC-016) |
+| LED-015 | `python3 -c "import json;d=json.load(open('.claude/commands/harness/release-update/manifest.json'));sc=d['sprint_contract'];print(sc['dimensions'],sc['thresholds'])"` | `['Functionality', 'Consistency'] {'Functionality': 0.85, 'Consistency': 0.8}` | `0` | 회귀 가드 기준선 — 출력 불변 유지가 PASS (AC-013, CX-3 판독면) |
 | LED-011 | `grep -rn "last-codex-version" internal/` | (출력 없음) | `1` | 회귀 가드 기준선 — 0힛 유지가 PASS (AC-011) |
 | LED-012 | `grep -c "last-cc-version.json" .claude/agents/harness/hns-release-update-specialist.md` | `3` | `0` | 회귀 가드 기준선 — ≥3 유지가 PASS (AC-012) |
 | LED-013 | `grep -c "hns-release-update-run.js" .claude/commands/harness/release-update/manifest.json` | `1` | `0` | 회귀 가드 기준선 — 1 유지가 PASS (AC-013) |
+
+**LED-001/002/003 재앵커 근거**: plan-audit iter1(CX-2/CX-3)으로 위 세 행의 명령을 교체했다 — 재측정은 본 트리에서 수행했으며, 하네스 표면은 `2aab5f797` 핀 이후 `.moai/` 전용 변경으로 바이트 동일해 재관측이 충실하다. 나머지 LED 행은 원본 그대로다. LED-015의 세미콜론은 인용된 python 프로그램 내부의 것 — 셸 구분자가 아니므로 단일 호출 규약을 유지한다.
 
 **보조 관측 (동일 트리)**: `grep -c "Codex" manifest.json` → `0`/exit 1 · `grep -ci "codex" runner` → `0`/exit 1 · `grep -c "HTML" specialist.md` → `0`/exit 1 · `grep -rn "last-cc-version" internal/` → 출력 없음/exit 1 (Go 라이터 부재 — 상태 파일이 하네스 계층 소유임의 근거, spec.md §1.1 M4). `git rev-parse --short HEAD` → `2aab5f797`.
 

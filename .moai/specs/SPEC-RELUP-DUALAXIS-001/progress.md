@@ -42,3 +42,5 @@ _<pending sync-phase>_
 **Decision**: `serial`
 
 **Justification**: 이 SPEC의 run-phase는 3개 사용자 소유 하네스 파일에 절차 본문을 쓰는 단일 도메인 저작이다. 파일 간 의존(스페셜리스트가 러너 앵커를 참조 — plan §D1)이 있어 병렬 스폰이 상호 정합을 깨고, 규모가 fanout/sweep 진입 조건에 못 미친다. serial 한 스폰(M1→M4 순차)이 최소 비용 경로다.
+
+> plan-audit iter1 D7 advisory 처분: 본 섹션은 라인 지시로 plan-phase에 선기입됐다(섹션 지도상 §F 소유자는 오케스트레이터). 내용은 §D.1 필수 항목을 충족하며, 오케스트레이터가 Phase 4에서 확정하거나 수정한다.
