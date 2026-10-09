@@ -57,7 +57,7 @@ func runJev(cmd *cobra.Command, _ []string) error {
 	// reads line-by-line), so a line-bearing value must never reach the
 	// writer — the existing credential file stays byte-for-byte unchanged.
 	if strings.ContainsAny(trimmed, "\r\n") {
-		return fmt.Errorf("Jev credential must not contain line breaks")
+		return fmt.Errorf("jev credential must not contain line breaks")
 	}
 	if err := jevcred.Save(trimmed); err != nil {
 		return fmt.Errorf("save Jev credential: %w", err)

@@ -392,6 +392,27 @@ func TestGlmKeyAfterDashDashPassthrough(t *testing.T) {
 	}
 }
 
+// AC-GJK-011 family edge — the `--key=<value>` single-token spelling is
+// accepted by the scan and stores identically (acceptance.md §B edge case).
+func TestGlmKeyEqualsFormSaves(t *testing.T) {
+	home := redirectCredentialHomes(t)
+	const key = "test-key-eq-12345678"
+	out, err := execRoot(t, "glm", "--key="+key)
+	if err != nil {
+		t.Fatalf("glm --key=<value> should store, got: %v", err)
+	}
+	data, err := os.ReadFile(filepath.Join(home, ".moai", ".env.glm"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !strings.Contains(string(data), `GLM_API_KEY="`+key+`"`) {
+		t.Errorf("expected stored dotenv form, got:\n%s", data)
+	}
+	if !strings.Contains(out, "GLM API key stored (") {
+		t.Errorf("masked confirmation missing, got: %q", out)
+	}
+}
+
 // AC-GJK-008 — routing precedence: the scan never intercepts a routed
 // subcommand (M2 characterization, REQ-GJK-006).
 func TestGlmSetupRoutingUnchanged(t *testing.T) {
