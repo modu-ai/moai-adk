@@ -424,6 +424,67 @@ func TestGlmKeyEqualsFormSaves(t *testing.T) {
 	if !strings.Contains(out, "GLM API key stored (") {
 		t.Errorf("masked confirmation missing, got: %q", out)
 	}
+
+	// The '=' spelling is unambiguous, so a flag-shaped value stays a value.
+	if _, err := execRoot(t, "glm", "--key=-f"); err != nil {
+		t.Fatalf("glm --key=-f should store the value, got: %v", err)
+	}
+	data, err = os.ReadFile(filepath.Join(home, ".moai", ".env.glm"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !strings.Contains(string(data), `GLM_API_KEY="-f"`) {
+		t.Errorf("expected the flag-shaped value stored verbatim, got:\n%s", data)
+	}
+}
+
+// Gate repair P1 — REQ-GJK-010: a conflicting second --key spelling must
+// never surface its value in the refusal (observed leak: the whole second
+// key appeared verbatim in the usage error).
+func TestGlmKeyConflictErrorMasksValue(t *testing.T) {
+	home := redirectCredentialHomes(t)
+	_, err := execRoot(t, "glm", "--key", "K1", "--key=sk-secret-9999")
+	if err == nil {
+		t.Fatal("a mixed double-key invocation must be refused")
+	}
+	if strings.Contains(err.Error(), "sk-secret-9999") {
+		t.Errorf("refusal must not disclose the second key value, got: %v", err)
+	}
+	if !strings.Contains(err.Error(), "****") {
+		t.Errorf("refusal should show the masked form, got: %v", err)
+	}
+	nothingStoredAt(t, filepath.Join(home, ".moai", ".env.glm"))
+}
+
+// Gate repair P2 — REQ-GJK-003: launch flags before --key are also tokens in
+// the scanned region; the mixed invocation must refuse and store nothing
+// (observed defect: `-p work --key K` stored K).
+func TestGlmKeyLeadingArgsRefused(t *testing.T) {
+	home := redirectCredentialHomes(t)
+	overrideLaunch(t)
+	_, err := execRoot(t, "glm", "-p", "work", "--key", "K")
+	if err == nil {
+		t.Fatal("a launch-flag mixed invocation must be refused")
+	}
+	if !strings.Contains(err.Error(), "--key") {
+		t.Errorf("usage error should name the conflict, got: %v", err)
+	}
+	nothingStoredAt(t, filepath.Join(home, ".moai", ".env.glm"))
+}
+
+// Gate repair P2 — REQ-GJK-004: a flag-shaped token after bare --key is a
+// missing value, never the value itself (observed defect: `-f` was stored).
+func TestGlmKeyExecFlagAsValueRefused(t *testing.T) {
+	home := redirectCredentialHomes(t)
+	overrideLaunch(t)
+	_, err := execRoot(t, "glm", "--key", "-f")
+	if err == nil {
+		t.Fatal("a flag-shaped token must not be stored as the key")
+	}
+	if !strings.Contains(err.Error(), "--key requires a value") {
+		t.Errorf("missing-value usage error expected, got: %v", err)
+	}
+	nothingStoredAt(t, filepath.Join(home, ".moai", ".env.glm"))
 }
 
 // AC-GJK-008 — routing precedence: the scan never intercepts a routed

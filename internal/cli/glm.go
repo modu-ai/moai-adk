@@ -510,15 +510,22 @@ func glmReasoningEnvVarsForModel(model, effort string) map[string]string {
 // store nothing (REQ-GJK-003/004/005/012). handled=false means no --key in the
 // scanned region and the launch path must proceed.
 func handleGLMKeyFlag(cmd *cobra.Command, args []string) (bool, error) {
-	value, rest, present, hasValue := scanGLMKeyValue(args)
+	value, rest, flagIdx, present, hasValue := scanGLMKeyValue(args)
 	if !present {
 		return false, nil
 	}
 	if !hasValue {
 		return true, fmt.Errorf("--key requires a value; usage: moai glm --key <api-key>")
 	}
-	if len(rest) > 0 {
-		return true, fmt.Errorf("--key cannot be combined with other arguments (found %q); run 'moai glm --key <api-key>' by itself", rest[0])
+	// REQ-GJK-003: any other token in the scanned region — before the flag
+	// as well as after the value — refuses the mixed invocation. The token
+	// named in the error is redacted: REQ-GJK-010 forbids a second
+	// --key=<value> spelling from leaking its value into the refusal text.
+	extra := make([]string, 0, flagIdx+len(rest))
+	extra = append(extra, args[:flagIdx]...)
+	extra = append(extra, rest...)
+	if len(extra) > 0 {
+		return true, fmt.Errorf("--key cannot be combined with other arguments (found %q); run 'moai glm --key <api-key>' by itself", redactArg(extra[0]))
 	}
 	trimmed := strings.TrimSpace(value)
 	if trimmed == "" {
@@ -540,24 +547,43 @@ func handleGLMKeyFlag(cmd *cobra.Command, args []string) (bool, error) {
 
 // scanGLMKeyValue walks the argument region for --key, mirroring the --help
 // scan's stop-at-the-first-bare-"--" precedent. It reports whether the flag
-// was present, whether a value token followed it, the value itself (from
-// either the `--key <value>` or `--key=<value>` spelling), and the tokens
-// following the value — the conflict evidence REQ-GJK-003 refuses on.
-func scanGLMKeyValue(args []string) (value string, rest []string, present bool, hasValue bool) {
+// was present (and at which index, so the caller can sweep the whole region
+// for conflicting tokens), whether a value token followed it, the value
+// itself (from either the `--key <value>` or `--key=<value>` spelling), and
+// the tokens following the value.
+func scanGLMKeyValue(args []string) (value string, rest []string, flagIdx int, present bool, hasValue bool) {
 	for i := 0; i < len(args); i++ {
 		switch arg := args[i]; {
 		case arg == "--":
-			return "", nil, false, false
+			return "", nil, -1, false, false
 		case arg == "--key":
 			if i+1 < len(args) {
-				return args[i+1], args[i+2:], true, true
+				next := args[i+1]
+				// A flag-shaped token cannot be the value (REQ-GJK-004):
+				// `moai glm --key -f` would otherwise store the flag
+				// itself. The '=' spelling stays accepted — unambiguous.
+				if strings.HasPrefix(next, "-") && next != "-" {
+					return "", nil, i, true, false
+				}
+				return next, args[i+2:], i, true, true
 			}
-			return "", nil, true, false
+			return "", nil, i, true, false
 		case strings.HasPrefix(arg, "--key="):
-			return strings.TrimPrefix(arg, "--key="), args[i+1:], true, true
+			return strings.TrimPrefix(arg, "--key="), args[i+1:], i, true, true
 		}
 	}
-	return "", nil, false, false
+	return "", nil, -1, false, false
+}
+
+// redactArg renders a conflicting token for a usage error without
+// disclosing any key value the token may carry: the `--key=<value>`
+// spelling keeps only its prefix plus a marker (REQ-GJK-010 — a second key
+// must never surface in the refusal text).
+func redactArg(arg string) string {
+	if i := strings.IndexByte(arg, '='); i >= 0 {
+		return arg[:i+1] + "****"
+	}
+	return arg
 }
 
 // runGLMSetup saves a GLM API key.
