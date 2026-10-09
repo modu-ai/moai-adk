@@ -48,6 +48,7 @@ Ordered by decision-reversibility: user-facing flows first, storage and mechanic
 `glmCmd` keeps `DisableFlagParsing: true`. Inside `runGLM`, after the existing manual subcommand switch (`setup`/`status`/`tools`) and before `guardCGLaunchMode` / spawn-strip / profile parsing, insert a `--key` scan over `args`:
 
 - Accepts `--key <value>` and `--key=<value>`.
+- The scan stops at the first bare `--`, mirroring the `--help` scan's precedent (glm.go:166-174): tokens after `--` are child passthrough (`-- claude-args...`) and are never scanned for `--key` — `moai glm -- --key x` passes the tokens to the child and stores nothing.
 - Scan placement AFTER the subcommand switch satisfies REQ-GJK-006: `moai glm setup <key>` is routed before the scan can ever see it (same ordering rationale as the `--spawn` strip and its comment at `glm.go:209`).
 - Scan placement BEFORE launch parsing satisfies REQ-GJK-002: a `--key` invocation stores and returns — it never reaches `guardCGLaunchMode`, entry parsing, or `exec`.
 - Any additional token beside `--key <value>` → usage error naming the conflict, store nothing (REQ-GJK-003). Missing value → usage error (REQ-GJK-004). Empty-after-trim value → the setup path's `empty API key` error (REQ-GJK-005).
@@ -112,7 +113,7 @@ New or touched strings, all English literals (the CLI has no message catalog; ex
 
 ### M1 (Priority High) — RED-first key-save surfaces
 
-- RED (new test file `internal/cli/jev_key_test.go`, plus glm `--key` cases alongside or in the same file): `TestRootHelpListsJevCommand`, `TestJevHelpDocumentsKeyFlag`, `TestJevKeyFlagSavesCredential`, `TestJevBareInvocationPrintsHelpExitZero`, `TestJevKeyEmptyValueErrors`, `TestGlmKeyFlagSavesKeySameStorage`, `TestGlmKeyFlagRefusesExtraArgs`, `TestGlmKeyFlagMissingValueErrors`, `TestGlmHelpDocumentsKeyFlag`, `TestGlmKeyFlagNewlineValueRefusesAndPreserves`, `TestJevKeyNewlineValueRefusesAndPreserves`. RED reasons: `jev` command does not exist (compile/behavior RED); `moai glm --key x` currently falls through to launch parsing, never a save.
+- RED (new test file `internal/cli/jev_key_test.go`, plus glm `--key` cases alongside or in the same file): `TestRootHelpListsJevCommand`, `TestJevHelpDocumentsKeyFlag`, `TestJevKeyFlagSavesCredential`, `TestJevBareInvocationPrintsHelpExitZero`, `TestJevKeyEmptyValueErrors`, `TestGlmKeyFlagSavesKeySameStorage`, `TestGlmKeyFlagRefusesExtraArgs`, `TestGlmKeyFlagMissingValueErrors`, `TestGlmKeyEmptyValueErrors`, `TestGlmHelpDocumentsKeyFlag`, `TestGlmKeyFlagNewlineValueRefusesAndPreserves`, `TestJevKeyNewlineValueRefusesAndPreserves`. RED reasons: `jev` command does not exist (compile/behavior RED); `moai glm --key x` currently falls through to launch parsing, never a save.
 - GREEN: implement `internal/cli/jev.go` (§D.2) and the `runGLM` scan (§D.1).
 - Files: `internal/cli/jev.go` (new), `internal/cli/glm.go` (scan + help flag entry + Long lines), `internal/cli/jev_key_test.go` (new).
 

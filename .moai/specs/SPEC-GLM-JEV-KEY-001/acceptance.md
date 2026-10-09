@@ -70,7 +70,7 @@ When `moai glm --key K -f` runs (or `--key K` followed by any other token, e.g. 
 When `moai jev` runs without `--key`, Then help text prints, the process exits 0, and no credential file is created.
 
 **AC-GJK-011** (High) — empty / missing value.
-When `moai jev --key ""` runs, or `moai glm --key` runs with no following value, Then the command errors and nothing is stored.
+When `moai jev --key ""` runs, Then the command fails with jev's empty-credential error and nothing is stored; When `moai glm --key ""` runs (empty after trim), Then the command fails with the setup path's `empty API key` error (REQ-GJK-005) and nothing is stored; When `moai glm --key` runs with no following value, Then the command fails with the missing-value usage error (REQ-GJK-004) and nothing is stored.
 
 **AC-GJK-012** (High) — mode tightening.
 Given a pre-existing credential file at mode 0644, When a save runs through either command, Then the file mode is 0600 afterwards. (Asserted at package level by the existing glmcred/jevcred Save tests; CLI-level assertion optional.)
