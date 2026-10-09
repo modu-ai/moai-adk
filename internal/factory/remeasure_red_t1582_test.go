@@ -49,8 +49,8 @@ func TestRedT1582MixedSweepWithNoTestPackageCounts(t *testing.T) {
 // malformed Base is refused as record-invalid before any message render.
 func TestRedT1582VerifierAdmitsAShortBaseSHA(t *testing.T) {
 	rec := &RemeasureRecord{
-		Tree: "0123456789abcdef0123456789abcdef01234567",
-		Base: "bad",
+		Tree:    "0123456789abcdef0123456789abcdef01234567",
+		Base:    "bad",
 		Command: "true", ExitCode: 0, StructuredRequired: false,
 		BuildIdentity: "moai test",
 	}
@@ -173,8 +173,8 @@ func TestRedT1582ProbeNonTestCommandFailureSemanticsRideExitZero(t *testing.T) {
 		t.Fatalf("a non-test command must not read as structured: structured=%t count=%d", structured, count)
 	}
 	rec := &RemeasureRecord{
-		Tree: "0123456789abcdef0123456789abcdef01234567",
-		Base: "0123456789abcdef0123456789abcdef01234567",
+		Tree:    "0123456789abcdef0123456789abcdef01234567",
+		Base:    "0123456789abcdef0123456789abcdef01234567",
 		Command: "printf 'FAIL: something happened\\n'", ExitCode: 0,
 		StructuredRequired: false, BuildIdentity: "moai test",
 		RecordedAt: time.Date(2026, 10, 9, 0, 0, 0, 0, time.UTC).Format(time.RFC3339),
