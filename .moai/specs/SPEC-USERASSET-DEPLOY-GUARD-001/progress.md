@@ -851,6 +851,103 @@ TestRemoveBundlePrunesDependencyClosure(파일·기록·L0 보존 3중 단언).
 백그라운드 · hook 전체(단독 부하)·cli 가족 백그라운드 — 완료 결과는 구조
 보고에 합산.
 
+### 경계 개정 기록 — SPEC-PRECOMMIT-PRESERVE-001 §C.4 (결정 d-20261009T180845Z-ae0e)
+
+- **판정**: 운영자 결정 "다른 SPEC 규칙을 개정"(보드 기록 `d-20261009T180845Z-ae0e`, kind `wait-resolution`, `resolves: w-t1591-20261009T1625Z`). 이 카드의 구현은 옛 조항에 맞춰 굽히지 않는다. 개정 문안은 manager-spec 이 썼고, 전/후 문안은 레인이 이 기록에 남긴다.
+- **개정 커밋**: `6888e54c5` — `feat(SPEC-PRECOMMIT-PRESERVE-001): in-place amendment of section C.4 for card t1591`. 변경 파일은 `spec.md`, `plan.md` 두 개(63 insertions, 14 deletions). `Authored-By-Agent: manager-spec` 트레일러는 소비자 술어로 확인했다.
+- **상태 전환**: `completed → in-progress (amendment)`, version 0.5.0 → 0.6.0, `amendment_of: SPEC-PRECOMMIT-PRESERVE-001`. prior_completed_sha 는 `cd90ec40b`(0.5.0 close 의 sync commit, 객체 존재 확인)이다. 이 클론에서는 `origin/WT-precommit-preserve` 로만 도달 가능하고 main·develop 의 조상이 아니다. 그 사실은 Amendments 절에 적었다. SPEC 은 sync 단계에서 다시 `completed` 로 닫힌다.
+- **범위**: 추가 호출은 `resumeInitializedProject` 한 곳이고 형식은 고정이다. `runInit` 의 재개 분기(`init.go`, 기저 `db0c514d3` 대비 `22 0`, 순수 추가)는 설치 호출·게이트·writer·순서를 바꾸지 않는다. 그래서 호출자 변경 제한 밖이라는 문장을 두 파일에 같은 말로 넣었다.
+
+**§C.4 — 전 문안 (verbatim, 개정 전 `cae7e28fe`)**
+
+```text
+REQ-PCP-004 requires a warning writer distinct from the progress writer, which the current
+single-writer signature cannot express. This SPEC therefore permits **exactly one** change at each
+call site: passing the already-available stderr writer as the new parameter —
+`errOut` at `internal/cli/update_template_sync.go:72 @7b2f42be0`, and `cmd.ErrOrStderr()` at
+`internal/cli/init.go:898 @7b2f42be0`. Nothing else in either caller changes: not the `--no-hooks`
+gate, not the ordering relative to `installPrePushHookOptional`, not the existing progress writer.
+`plan.md §A` carries the same permission in the same words; a wider caller change is out of scope
+and belongs to its own card.
+```
+
+**§C.4 — 후 문안 (verbatim, 개정 후 `6888e54c5`)**
+
+```text
+REQ-PCP-004 requires a warning writer distinct from the progress writer, which the current
+single-writer signature cannot express. This SPEC therefore permits **exactly one** change at each
+call site: passing the already-available stderr writer as the new parameter —
+`errOut` at `internal/cli/update_template_sync.go:72 @7b2f42be0`, and `cmd.ErrOrStderr()` at
+`internal/cli/init.go:898 @7b2f42be0`. Nothing else in either existing caller changes: not the
+`--no-hooks` gate, not the ordering relative to `installPrePushHookOptional`, not the existing
+progress writer.
+
+**Third call site (added at v0.6.0).** The resume path that completes an interrupted `moai init` —
+`resumeInitializedProject` in `internal/cli/init_resume.go`, whose `installPreCommitHookOptional`
+call is at line 158 `@cae7e28fe` — is permitted exactly **one new call**, not a changed line. The
+call must take the form
+`installPreCommitHookOptional(opts.ProjectRoot, getBoolFlag(cmd, "no-hooks"), cmd.ErrOrStderr(), cmd.ErrOrStderr())`,
+the form `init.go` uses, so the progress writer and the warning writer are both the command's
+stderr. It sits directly after the `installPrePushHookOptional` call, in the order `init.go` uses,
+and a returned error is reported to the operator and not returned, so it does not fail the resume.
+This permission covers that one call and nothing else in `init_resume.go`; the rest of the resume
+path belongs to card SPEC-USERASSET-DEPLOY-GUARD-001 and is not brought into scope here. The resume
+dispatch branch that `runInit` in `internal/cli/init.go` takes to hand an interrupted init to
+`resumeInitializedProject` is not a change to the existing installer call at `init.go`; it changes
+neither that call, its `--no-hooks` gate, its writers, nor its ordering, and it is outside this
+caller-change restriction.
+`plan.md §A` carries the same permission in the same words; a wider caller change is out of scope
+and belongs to its own card.
+```
+
+**plan.md §A 허용 문단 — 전 문안 (verbatim, 개정 전 `cae7e28fe`)**
+
+```text
+The permitted change is: add a warning-writer parameter to `installPreCommitHookOptional`, and pass
+the stderr writer each caller already holds — `errOut` (`update_template_sync.go:72 @7b2f42be0`) and
+`cmd.ErrOrStderr()` (`init.go:898 @7b2f42be0`). Nothing else in either caller moves: not the
+`--no-hooks` gate, not the ordering against `installPrePushHookOptional`, not the existing progress
+writer. spec.md §C.4 carries the same permission; anything wider is out of scope.
+```
+
+**plan.md §A 허용 문단 — 후 문안 (verbatim, 개정 후 `6888e54c5`)**
+
+```text
+The permitted change is: add a warning-writer parameter to `installPreCommitHookOptional`, and pass
+the stderr writer each existing caller already holds — `errOut` (`update_template_sync.go:72 @7b2f42be0`) and
+`cmd.ErrOrStderr()` (`init.go:898 @7b2f42be0`). Nothing else in either existing caller moves: not the
+`--no-hooks` gate, not the ordering against `installPrePushHookOptional`, not the existing progress
+writer.
+
+**Third call site (added at v0.6.0).** The resume path that completes an interrupted `moai init` —
+`resumeInitializedProject` in `internal/cli/init_resume.go`, whose `installPreCommitHookOptional`
+call is at line 158 `@cae7e28fe` — is permitted exactly **one new call**, not a changed line. The
+call must take the form
+`installPreCommitHookOptional(opts.ProjectRoot, getBoolFlag(cmd, "no-hooks"), cmd.ErrOrStderr(), cmd.ErrOrStderr())`,
+the form `init.go` uses, so the progress writer and the warning writer are both the command's
+stderr. It sits directly after the `installPrePushHookOptional` call, in the order `init.go` uses,
+and a returned error is reported to the operator and not returned, so it does not fail the resume.
+This permission covers that one call and nothing else in `init_resume.go`; the rest of the resume
+path belongs to card SPEC-USERASSET-DEPLOY-GUARD-001 and is not brought into scope here. The resume
+dispatch branch that `runInit` in `internal/cli/init.go` takes to hand an interrupted init to
+`resumeInitializedProject` is not a change to the existing installer call at `init.go`; it changes
+neither that call, its `--no-hooks` gate, its writers, nor its ordering, and it is outside this
+caller-change restriction.
+`spec.md §C.4` carries the same permission in the same words; a wider caller change is out of scope
+and belongs to its own card.
+```
+
+**기타 개정 지점**
+- spec.md frontmatter: `version` 0.6.0, `status` in-progress, `updated` 2026-10-10, `amendment_of` 추가.
+- spec.md HISTORY 0.6.0 행과 `## Amendments` 절(prior version 0.5.0, prior_completed_sha, rationale, scope).
+- plan.md §D 한 줄: "…at each of the two call sites (§A)" → "…at each of the two existing call sites, and to the one new call in the resume path, exactly as §A permits".
+
+**미관측 · 남은 항목 (Gaps)**
+- `TestPreCommitWarningWriterWiring` 는 아직 실행하지 않았다. 빨간 원인은 `internal/cli/hook_install_precommit_disclosure_test.go` 의 `no_other_call_sites` 허용 목록(`init.go`, `update_template_sync.go`)에 `init_resume.go` 가 없는 것이다. 소스 읽기로 확인했고 실행 관측은 아직이다. 다음 단계: 실행으로 RED 를 관측하고, 허용 목록을 고친 뒤 GREEN 을 관측한다.
+- `go build` 와 `moai spec lint` 는 아직 실행하지 않았다. 개정 검증은 `internal/spec/audit.go` 의 `isValidInPlaceAmendment` 네 조건(status, amendment_of, Amendments 절, prior sha 인용)을 소스 읽기로 확인한 것이다.
+- 위 run 증거 배치(HEAD f9a58fa4e 시점)는 `internal/cli` 패키지 테스트를 포함하지 않았다. 그래서 그 audit-ready 표시는 `init_resume.go` 가 들어온 현재 HEAD 를 덮지 않는다. 해당 패키지 검증은 위 다음 단계에서 새로 측정한다.
+- 개정 범위 밖 잔여 문구(리더 판단 필요): spec.md §B REQ-PCP-004 의 "both callers", acceptance.md AC-PCP-004 (ii) 의 "both call sites", plan.md §F M2 bullet 의 "(stderr at both call sites, §A)". 옛 두 호출자 서술로 남아 있다.
+
 ## §E.3 Run-phase Audit-Ready Signal
 
 run_status: audit-ready
