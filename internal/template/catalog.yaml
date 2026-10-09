@@ -6,7 +6,7 @@ catalog:
             - name: moai
               tier: core
               path: templates/.claude/skills/moai/
-              hash: 9c4d6c0d03112992d15f7c44d37e869e11b603d9e912dc92206b703f87256104
+              hash: cbc14e2bc6ae8b05c2b49ee6ac4357b80c762652dc152e29ddc466ecfff40401
               version: 1.0.0
               depends_skills:
                 - moai-workflow-spec
@@ -39,7 +39,7 @@ catalog:
             - name: moai-factory-foreman
               tier: core
               path: templates/.claude/skills/moai-factory-foreman/
-              hash: 19c95f47ac2d5108e4a146cee75399c8c4bade58ab2948c9cff5516fc3e2cea7
+              hash: 5e08d61f1b4172d600fb4936b3db1e2337f71d95aa7ae023ccedef48be7c0995
               version: 1.0.0
               depends_skills:
                 - moai-lane-watchdog
@@ -183,7 +183,7 @@ catalog:
             - name: plan-auditor
               tier: core
               path: templates/.claude/agents/moai/plan-auditor.md
-              hash: a27f35b938e0d0029a727146addb7468efd99885be142aa04595e9e604590107
+              hash: 38a6f17a362990019f819d227174c748d94e81163ad7d3812f06d58a5669f83a
               version: 1.0.0
             - name: sync-auditor
               tier: core

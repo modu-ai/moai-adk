@@ -22,7 +22,7 @@ Source: the plan audit gate contract.
 
 Compute a combined SHA-256 hash of all plan artifacts present in `.moai/specs/<SPEC-ID>/`.
 The hash subject set and tier-conditional inclusion are owned by the canonical
-contract in `.claude/rules/moai/workflow/spec-workflow.md` § Report Persistence
+contract in .claude/rules/moai/workflow/spec-workflow-detail.md § Report Persistence
 ("Plan-artifact hash subject list (Go verbatim)"); consult that contract for the
 authoritative subject list rather than restating it here. The Go implementation
 is `internal/runtime/audit_cache.go` `ComputeHash`, which hashes the

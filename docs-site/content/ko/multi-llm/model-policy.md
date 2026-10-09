@@ -53,7 +53,17 @@ description: 메인 세션이 쓰는 모델과 추론 깊이를 정하는 모델
 | Claude Fable 5 | `claude-fable-5` | 1M | 신규 Mythos-tier 범용 최상위. 가장 깊은 추론과 복잡한 코딩 |
 | Claude Opus 5.5 | `opus` | 1M | 복잡한 아키텍처, 고난도 추론 |
 | Claude Sonnet 5.5 | `sonnet` | 1M | 속도와 지능의 균형, 일상 코딩 |
-| Claude Haiku 4.5 | `claude-haiku-4-5-20251001` | 200K | 가장 빠르고 경제적, 단순·대량 작업 |
+| Claude Haiku 5.5 | `claude-haiku-5-5` | 1M | 가장 빠르고 경제적 (Anthropic API 기본 Haiku, CC v2.1.293+) |
+| Claude Haiku 4.5 | `claude-haiku-4-5-20251001` | 200K | 가장 빠르고 경제적, 단순·대량 작업 (AWS 계열 별칭 대상) |
+
+> **Haiku 5.5 팩트 (Claude Code v2.1.293+)**: Anthropic API에서 `haiku` 별칭은 Haiku
+> 5.5(`claude-haiku-5-5`, 1M 컨텍스트 전 플랜, `[1m]` 접미사 불요)로 해석됩니다. auto-compact
+> 기본 ~967K. 요금은 input $0.10 / output $0.50 per Mtok이고, 프롬프트가 over 100K(10만 토큰
+> 초과)이면 input $0.50 / output $2.50으로 증액됩니다. adaptive thinking은 기본적으로 켜져 있고,
+> `high` effort 이하(low/medium/high)에서는 `thinking: {"type": "disabled"}`로 끌 수 있습니다.
+> 품질과 비용의 균형은 effort 파라미터로 조정하는 것이 좋습니다. 한편 AWS
+> Bedrock·GCP Agent Platform·Microsoft Foundry에서는 `haiku`가 Haiku
+> 4.5(200K)로 해석됩니다 — 별칭 해석은 provider별입니다.
 
 > MoAI의 세션 라인업은 기본적으로 Haiku를 쓰지 않습니다. 긴 호흡의 에이전틱
 > 작업에서 Haiku를 끼워 넣으면 과제당 비용이 오히려 커진다는 것이 DeepSWE

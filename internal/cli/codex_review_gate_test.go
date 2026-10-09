@@ -99,49 +99,23 @@ func TestReviewGate_NoEditTurnAllows(t *testing.T) {
 	}
 }
 
-// TestReviewGate_CodexPassAllows proves an edit turn that codex approves ALLOWs
-// (the gate reviews the uncommitted change, codex's review pins `Verdict: pass`
-// ⇒ synthesized pass ⇒ ALLOW). Post-#1718 parsing (Opus re-audit F1 sibling,
-// repaired with card t1099): prose approval without a pinned verdict line
-// synthesizes inconclusive — which the gate also allows — so the premise
-// assertion below keeps this test on the pass property rather than passing
-// vacuously on an inconclusive verdict.
-func TestReviewGate_CodexPassAllows(t *testing.T) {
-	withChangeDetector(t, true)
-	withCodexSession(t, codexSessionScript(realCleanReview))
-	if v := synthesizeReviewOutput(realCleanReview, codexMethodReviewStart).Verdict; v != codexReviewVerdictPass {
-		t.Fatalf("premise: fixture must synthesize a %q verdict, got %q", codexReviewVerdictPass, v)
-	}
-
-	out, _ := HandleCodexReviewGate(gateInput(false), true, "/proj")
-	if out == nil || out.Decision == hook.DecisionBlock {
-		t.Errorf("codex pass must ALLOW, got %+v", out)
-	}
-}
-
-// TestReviewGate_CodexFailBlocks proves the BLOCK contract: an edit turn whose
-// codex review carries severity-tagged finding bullets synthesizes to fail and
-// BLOCKS the session end ({decision: block, reason: ...}).
-func TestReviewGate_CodexFailBlocks(t *testing.T) {
-	withChangeDetector(t, true)
-	withCodexSession(t, codexSessionScript("- [P1] found issues\n- [P2] more issues"))
-
-	out, _ := HandleCodexReviewGate(gateInput(false), true, "/proj")
-	if out == nil {
-		t.Fatalf("nil output")
-	}
-	if out.Decision != hook.DecisionBlock {
-		t.Errorf("codex fail must BLOCK (decision=%q), got %+v", hook.DecisionBlock, out)
-	}
-	if out.Reason == "" {
-		t.Errorf("BLOCK must carry a reason")
-	}
-}
+// SPEC-GATE-BOTTLENECK-001 (REQ-GBN-002): the in-hook LIVE review tests
+// (CodexPassAllows / CodexFailBlocks / FailOpenOnCodexError /
+// InconclusiveAllows / FailedTurnSurfacesErrorNotPass /
+// ErrorNotificationWithRetryingTurnStillReviews) moved with the review
+// itself: the verdict-producing contracts now live at the receipt PRODUCER
+// (codex_review_cache_test.go), the kick contracts at the delayed-block tests
+// (codex_review_delay_test.go), and the enforcement contracts at the entry
+// handler. The tests below pin what still belongs to the Stop gate: the
+// self-gates, the fail-open on a missing reviewer, and the cached-verdict
+// reuse.
 
 // --- fail-open (REQ-MCP-012 preview) ---
 
 // TestReviewGate_FailOpenOnMissingCodex proves a missing codex cannot trap the
-// session: the gate ALLOWs rather than blocking on an unavailable reviewer.
+// session: the gate ALLOWs rather than blocking on an unavailable reviewer
+// (and kicks nothing — the kick contract is pinned at
+// TestReviewGate_MissingCodexDoesNotKick).
 func TestReviewGate_FailOpenOnMissingCodex(t *testing.T) {
 	withChangeDetector(t, true)
 	withCodexLookPath(t, func(string) (string, error) { return "", errFakeLookPath })
@@ -151,90 +125,6 @@ func TestReviewGate_FailOpenOnMissingCodex(t *testing.T) {
 	out, _ := HandleCodexReviewGate(gateInput(false), true, "/proj")
 	if out == nil || out.Decision == hook.DecisionBlock {
 		t.Errorf("missing codex must ALLOW (fail-open), got %+v", out)
-	}
-}
-
-// TestReviewGate_FailOpenOnCodexError proves a codex session-start failure
-// degrades to ALLOW (the gate never hard-blocks on an inconclusive reviewer).
-func TestReviewGate_FailOpenOnCodexError(t *testing.T) {
-	withChangeDetector(t, true)
-	prevRunner, prevLook, prevSess := codexRunner, codexLookPath, codexSession
-	codexRunner = stubCodexRunner{}
-	codexLookPath = func(string) (string, error) { return "/fake/codex", nil }
-	codexSession = &fakeCodexSession{startErr: errFakeCodexCrash}
-	t.Cleanup(func() { codexRunner, codexLookPath, codexSession = prevRunner, prevLook, prevSess })
-
-	out, _ := HandleCodexReviewGate(gateInput(false), true, "/proj")
-	if out == nil || out.Decision == hook.DecisionBlock {
-		t.Errorf("codex error must ALLOW (fail-open), got %+v", out)
-	}
-}
-
-// TestReviewGate_InconclusiveAllows proves a codex session that completes the
-// review turn but yields no verdict prose (no exitedReviewMode / agentMessage)
-// synthesizes to inconclusive and does NOT block (fail-open).
-func TestReviewGate_InconclusiveAllows(t *testing.T) {
-	withChangeDetector(t, true)
-	// Session reaches turn/completed but carries no review item ⇒ no review text.
-	withCodexSession(t, []string{
-		`{"id":1,"result":{"userAgent":"fake/1","codexHome":"/x","platformFamily":"unix","platformOs":"macos"}}`,
-		`{"id":2,"result":{"thread":{"id":"tid-fake"}}}`,
-		`{"id":3,"result":{"turn":{"id":"trn","status":"inProgress"}}}`,
-		`{"method":"turn/completed","params":{"threadId":"tid-fake","turn":{"id":"trn","status":"completed"}}}`,
-	})
-
-	out, _ := HandleCodexReviewGate(gateInput(false), true, "/proj")
-	if out == nil || out.Decision == hook.DecisionBlock {
-		t.Errorf("inconclusive codex must ALLOW (fail-open), got %+v", out)
-	}
-}
-
-// TestReviewGate_FailedTurnSurfacesErrorNotPass pins the card-t52 contract: a
-// codex review turn that ends in a NON-completed terminal state (failed /
-// interrupted) must surface an error, never a synthesized pass. The real-world
-// shape this captures was observed live on codex-cli 0.147.0: a usage-limited
-// account fails the review turn BEFORE the diff is ever evaluated, and codex
-// emits a PLACEHOLDER exitedReviewMode review ("Reviewer failed to output a
-// response.") — which the gate used to launder into verdict "pass" because the
-// placeholder carries no finding bullets. A gate that cannot reach a verdict
-// must say so (fail-open ALLOW + error), not report a clean review.
-func TestReviewGate_FailedTurnSurfacesErrorNotPass(t *testing.T) {
-	for _, tc := range []struct {
-		name       string
-		turnStatus string
-		turnErrMsg string // turn.error.message; empty ⇒ omit the error object
-	}{
-		{"failed with usage-limit error", "failed", "You've hit your usage limit. Try again later."},
-		{"interrupted without error object", "interrupted", ""},
-	} {
-		t.Run(tc.name, func(t *testing.T) {
-			withChangeDetector(t, true)
-			turn := `{"id":"trn","status":` + jsonString(tc.turnStatus)
-			if tc.turnErrMsg != "" {
-				turn += `,"error":{"message":` + jsonString(tc.turnErrMsg) + `}`
-			}
-			turn += `}`
-			withCodexSession(t, []string{
-				`{"id":1,"result":{"userAgent":"fake/1","codexHome":"/x","platformFamily":"unix","platformOs":"macos"}}`,
-				`{"id":2,"result":{"thread":{"id":"tid-fake"}}}`,
-				`{"id":3,"result":{"turn":{"id":"trn","status":"inProgress"}}}`,
-				// The placeholder codex emits when the reviewer itself died —
-				// indistinguishable from a real review by bullet-shape alone.
-				`{"method":"item/completed","params":{"threadId":"tid-fake","turnId":"trn","item":{"type":"exitedReviewMode","id":"e1","review":"Reviewer failed to output a response."}}}`,
-				`{"method":"turn/completed","params":{"threadId":"tid-fake","turn":` + turn + `}}`,
-			})
-
-			out, err := HandleCodexReviewGate(gateInput(false), true, "/proj")
-			if err == nil {
-				t.Fatalf("a %s turn MUST surface an error; got err=<nil> (the gate fabricated a pass)", tc.turnStatus)
-			}
-			if tc.turnErrMsg != "" && !strings.Contains(err.Error(), tc.turnErrMsg) {
-				t.Errorf("the surfaced error must carry codex's own message; got %q", err.Error())
-			}
-			if out == nil || out.Decision == hook.DecisionBlock {
-				t.Errorf("a %s turn must still ALLOW (fail-open), got %+v", tc.turnStatus, out)
-			}
-		})
 	}
 }
 
@@ -259,30 +149,6 @@ func TestRunCodexReviewRPC_FailedTurnIsInconclusiveNotPass(t *testing.T) {
 	}
 	if out.Verdict != VerdictInconclusive {
 		t.Errorf("failed turn must synthesize %q, got %q", VerdictInconclusive, out.Verdict)
-	}
-}
-
-// TestReviewGate_ErrorNotificationWithRetryingTurnStillReviews guards the
-// complementary direction: an `error` notification alone (willRetry semantics,
-// codex retries internally) whose turn LATER completes must NOT be treated as a
-// failed review — only the turn/completed terminal state is authoritative.
-func TestReviewGate_ErrorNotificationWithRetryingTurnStillReviews(t *testing.T) {
-	withChangeDetector(t, true)
-	withCodexSession(t, []string{
-		`{"id":1,"result":{"userAgent":"fake/1","codexHome":"/x","platformFamily":"unix","platformOs":"macos"}}`,
-		`{"id":2,"result":{"thread":{"id":"tid-fake"}}}`,
-		`{"id":3,"result":{"turn":{"id":"trn","status":"inProgress"}}}`,
-		`{"method":"error","params":{"error":{"message":"transient stream error"},"willRetry":true,"threadId":"tid-fake","turnId":"trn"}}`,
-		`{"method":"item/completed","params":{"threadId":"tid-fake","turnId":"trn","item":{"type":"exitedReviewMode","id":"e1","review":"- [P1] injection sink found"}}}`,
-		`{"method":"turn/completed","params":{"threadId":"tid-fake","turn":{"id":"trn","status":"completed"}}}`,
-	})
-
-	out, err := HandleCodexReviewGate(gateInput(false), true, "/proj")
-	if err != nil {
-		t.Fatalf("a retried-then-completed turn is a real review; got err=%v", err)
-	}
-	if out == nil || out.Decision != hook.DecisionBlock {
-		t.Errorf("bullet-carrying review after a retried error must BLOCK, got %+v", out)
 	}
 }
 
@@ -340,16 +206,17 @@ func TestCodexReviewGate_SubcommandRegistered(t *testing.T) {
 // TestCodexReviewGateNonGitDirNoPrimarySkip pins REQ-CGSC-006: a session tree
 // whose primary-versus-linked status cannot be established (a non-git
 // directory) does not take the primary-checkout skip — the gate keeps the
-// pre-SPEC behavior of that state (the self-gate runs, the review is consulted)
-// and no policy skip row is logged, the reason riding the scope basis.
+// pre-SPEC behavior of that state (the self-gate runs, the reviewer path is
+// consulted) and no policy skip row is logged. M2 (REQ-GBN-002): the consult
+// is the background kick now — the gate still fails open to ALLOW.
 func TestCodexReviewGateNonGitDirNoPrimarySkip(t *testing.T) {
 	withChangeDetector(t, true)
 	p := newOwnershipProbe(t)
 	skips := captureTreeScopeSkips(t)
 
 	out := gatePath(t, "/proj", "/proj")
-	if out == nil || out.Decision != hook.DecisionBlock {
-		t.Fatalf("an undecidable tree must keep the pre-SPEC review behavior (the probe review fails), got %+v", out)
+	if out == nil || out.Decision == hook.DecisionBlock {
+		t.Fatalf("an undecidable tree must keep the pre-SPEC consult behavior (fail-open ALLOW; the kick replaces the in-hook review), got %+v", out)
 	}
 	if p.detects != 1 {
 		t.Errorf("the primary skip must not fire for an undecidable tree: the self-gate must run exactly once, got %d detector calls", p.detects)

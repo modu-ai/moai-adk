@@ -26,6 +26,7 @@ package cli
 // (acceptance.md §D.1).
 
 import (
+	"context"
 	"io"
 	"os"
 	"strings"
@@ -215,17 +216,23 @@ func TestCodexReviewGateRuntimeDriftFindingsReclassified(t *testing.T) {
 			prem.Verdict, prem.Findings)
 	}
 
-	withChangeDetector(t, true)
+	// M2 (SPEC-GATE-BOTTLENECK-001 REQ-GBN-002): the reclassification decision
+	// moved with the review itself — the receipt PRODUCER takes it now (both
+	// automatic paths take the one decision, REQ-CGSC-008), recording the
+	// gate's disposition (pass) and the row on the diagnostic channel.
+	root := cacheTestRoot(t)
+	withCodexLookPath(t, func(string) (string, error) { return "/fake/codex", nil })
+	withCodexRunner(t, &fakeCodexRunner{stdoutByCmd: map[string]string{"--version": "9.9.9\n"}})
 	withCodexSession(t, codexSessionScript(runtimeDriftReviewText))
 
 	read := captureGateDiagnostics(t)
-	out, err := HandleCodexReviewGate(gateInput(false), true, "/proj")
+	r, err := produceCodexReviewReceipt(context.Background(), root)
 	if err != nil {
-		t.Fatalf("gate error: %v", err)
+		t.Fatalf("receipt producer error: %v", err)
 	}
 	diagnostics := read()
-	if out == nil || out.Decision == hook.DecisionBlock {
-		t.Errorf("findings targeting only runtime-managed config surfaces must not block the turn (reclassify + record), got %+v", out)
+	if r.Verdict != codexReviewVerdictPass {
+		t.Errorf("findings targeting only runtime-managed config surfaces must reclassify to the gate's pass disposition, got %q", r.Verdict)
 	}
 	// The row (REQ-CGSC-011): a silent allow is the mutant this kills — the
 	// diagnostic channel must carry the reclassification reason in the SPEC's

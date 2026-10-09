@@ -34,6 +34,7 @@ func TestSinkRegistryContent(t *testing.T) {
 		"permission.log",
 		"slot-lease-audit.jsonl",
 		"task-metrics.jsonl",
+		"codex-review-bg.log",
 	}
 	got := SinkRegistry()
 	if len(got) != len(want) {

@@ -1,0 +1,88 @@
+#!/bin/bash
+
+# MoAI Hook Wrapper - handle-codex-review-entry.sh
+# Forwards stdin JSON to `moai hook codex-review-entry` — the delayed review
+# block's next-turn-entry enforcement handler. The Stop gate
+# (handle-codex-review-gate.sh) allows the turn and kicks a background review;
+# this wrapper is the entry-side half: it reads the receipt that review
+# recorded and BLOCKs the prompt on a fresh FAIL. Composes with
+# handle-user-prompt-submit.sh — it is a SEPARATE entry reading the same stdin
+# JSON independently. It never runs a review itself.
+#
+# The handler is opt-in (workflow.codex.review_gate.enabled — the SAME flag
+# the Stop gate reads) and fail-open on every read path: a missing, unreadable,
+# stale, or passing receipt all allow.
+#
+# Capture stdin once (hooks may have multiple composited readers).
+INPUT=$(cat)
+
+# --- shell-layer self-gate (the handle-codex-review-gate.sh precondition
+# pattern) --- The gate ships OFF, so being registered in the UserPromptSubmit
+# array must NOT add a moai cold start to every prompt for every user: a hook
+# that ships OFF should cost nothing per turn. Read the opt-in here, in pure
+# shell, and exit 0 before any binary resolution unless it is explicitly true.
+#
+# The parse is deliberately conservative: awk walks the nested
+# workflow: -> codex: -> review_gate: -> enabled: indentation and accepts only
+# a literal true (the values the Go yaml decoder accepts for a bool). Anything
+# it cannot read — an unusual layout, a flow mapping, an absent awk — counts
+# as OFF. The failure direction is the point: being fooled into OFF costs one
+# maintainer an opt-in to debug, while being fooled into ON costs every user a
+# cold start and a possible prompt block. Same fail-CLOSED direction as the
+# Go reader. No jq/yq dependency (per hook independence: a precondition MUST
+# NOT introduce a new shared failure mode).
+CODEX_GATE_PROJECT_ROOT="${CLAUDE_PROJECT_DIR:-$PWD}"
+CODEX_GATE_WORKFLOW_YAML="$CODEX_GATE_PROJECT_ROOT/.moai/config/sections/workflow.yaml"
+
+[ -f "$CODEX_GATE_WORKFLOW_YAML" ] || exit 0
+command -v awk >/dev/null 2>&1 || exit 0
+
+CODEX_GATE_ENABLED=$(awk -v gate="codex" '
+{
+    line = $0
+    sub(/#.*/, "", line)
+    if (line ~ /^[[:space:]]*$/) next
+    match(line, /^ */); ind = RLENGTH
+    key = substr(line, ind + 1)
+    sub(/[[:space:]]+$/, "", key)
+
+    # Leaving a block: a line at or left of its indent closes it.
+    if (in_r && ind <= r_ind) in_r = 0
+    if (in_g && ind <= g_ind) { in_g = 0; in_r = 0 }
+    if (in_w && ind <= w_ind) { in_w = 0; in_g = 0; in_r = 0 }
+
+    if (!in_w) { if (ind == 0 && key == "workflow:") { in_w = 1; w_ind = ind } next }
+    if (!in_g) { if (key == gate ":") { in_g = 1; g_ind = ind } next }
+    if (!in_r) { if (key == "review_gate:") { in_r = 1; r_ind = ind } next }
+    if (key ~ /^enabled:[[:space:]]*(true|True|TRUE)$/) { print "true"; exit }
+}
+' "$CODEX_GATE_WORKFLOW_YAML" 2>/dev/null)
+
+# Gate off (or unreadable) ⇒ ALLOW with zero moai cold-start.
+[ "$CODEX_GATE_ENABLED" = "true" ] || exit 0
+
+# Resolve the moai binary (3-tier: $CLAUDE_PROJECT_DIR-relative, PATH, $HOME).
+MOAI_BIN=""
+if [ -n "$CLAUDE_PROJECT_DIR" ] && [ -f "$CLAUDE_PROJECT_DIR/bin/moai" ] && [ -x "$CLAUDE_PROJECT_DIR/bin/moai" ]; then
+	# CLAUDE_PROJECT_DIR is the project root, not the hook script directory.
+	MOAI_BIN="$CLAUDE_PROJECT_DIR/bin/moai"
+fi
+if [ -z "$MOAI_BIN" ]; then
+	MOAI_PATH_BIN="$(command -v moai 2>/dev/null)"
+	if [ -f "$MOAI_PATH_BIN" ] && [ -x "$MOAI_PATH_BIN" ]; then
+		MOAI_BIN="$MOAI_PATH_BIN"
+	elif [ -f "$HOME/go/bin/moai" ] && [ -x "$HOME/go/bin/moai" ]; then
+		MOAI_BIN="$HOME/go/bin/moai"
+	fi
+fi
+
+# Fail-open: if the moai binary is unavailable, ALLOW (never break the prompt
+# pipeline). The handler itself is fail-open, so an absent binary is a no-op.
+if [ -z "$MOAI_BIN" ]; then
+	exit 0
+fi
+
+printf '%s' "$INPUT" | "$MOAI_BIN" hook codex-review-entry
+# Always exit 0: the BLOCK decision rides the JSON Decision field on stdout
+# (exit 2 would discard stdout JSON per Claude Code semantics).
+exit 0

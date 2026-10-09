@@ -154,7 +154,7 @@ semi-auto では、作業開始の承認や質問への回答中に 5 分以上�
 | Claude Opus 4.7 | 1M | 2,048 |
 | Claude Haiku 4.5 | 200K | 4,096 |
 
-> 2026 年ラインナップの Opus 4.8 (1M コンテキスト) のように、新モデルはファミリーごとに最小キャッシュトークンが異なるため、表にないモデルの値は[公式プロンプトキャッシング文書](https://platform.claude.com/docs/en/build-with-claude/prompt-caching)で確認してください。
+> 2026 年ラインナップの Opus 4.8 (1M コンテキスト) のように、新モデルはファミリーごとに最小キャッシュトークンが異なるため、表にないモデルの値は[公式プロンプトキャッシング文書](https://platform.claude.com/docs/en/build-with-claude/prompt-caching)で確認してください。Haiku 5.5(`claude-haiku-5-5`、1M、CC v2.1.293+)もまだ表にありません — 公式文書で確認してください。
 
 ## コストを節約する習慣
 

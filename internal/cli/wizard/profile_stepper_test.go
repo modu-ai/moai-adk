@@ -98,11 +98,14 @@ func TestProfileWizardStepper_SameFormatAsInit(t *testing.T) {
 	}
 
 	// Init control (the same rule with init's own visible N): InitQuestions —
-	// what `moai init` runs — renders two pages after the Q5 regroup, Basic
-	// (conversation_language + user_name, first at 1) and Agents & Autonomy
-	// (agent_wiring + autonomy_tier, first at 3) and Judgment Capability
-	// (jev_enabled, first at 5); N = 5 since SPEC-JEV-OPTIN-MEASURE-001
-	// REQ-JEVO-005 added the Jev opt-in on its own page.
+	// what `moai init` runs — renders Basic (conversation_language + user_name,
+	// first at 1), Agents & Autonomy (agent_wiring + autonomy_tier, first at 3),
+	// and Judgment Capability (jev_enabled, first at 5); N = 6 since
+	// SPEC-FEEDBACK-PARTICIPATION-001 REQ-ANON-003 added the participation
+	// opt-in. Its own page (page 4) is a full-viewport disclosure that huh
+	// renders WITHOUT the step indicator — the same measured trade the Jev
+	// slot's comment describes — so the init control's stepper assertions stop
+	// at page 3 and the driver enters the disclosure page to complete the form.
 	result := &WizardResult{}
 	initForm := buildUnifiedForm(InitQuestions("/tmp/stepper-control"), result, "")
 	id := ptycaptest.NewFormDriver(t, initForm)
@@ -115,11 +118,12 @@ func TestProfileWizardStepper_SameFormatAsInit(t *testing.T) {
 		{questions: 1, first: 5},
 	}
 	for _, g := range initGroups {
-		assertStepperLine(t, firstStepperLine(t, ptycaptest.StripANSI(id.View())), g.first, 5)
+		assertStepperLine(t, firstStepperLine(t, ptycaptest.StripANSI(id.View())), g.first, 6)
 		for range g.questions {
 			id.Enter()
 		}
 	}
+	id.Enter() // the participation disclosure page
 	if initForm.State != huh.StateCompleted {
 		t.Fatalf("init form must complete after the last group, state=%v", initForm.State)
 	}

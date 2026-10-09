@@ -59,7 +59,8 @@ cost curve without changing the model class.
 | **Claude Fable 5** | `claude-fable-5` | 1M | The new Mythos-tier general-purpose flagship. The deepest reasoning and complex coding |
 | **Claude Opus 5.5 / 5 / 4.8** | — | 1M | Complex architecture and high-difficulty reasoning |
 | **Claude Sonnet 5** | — | 1M | Balance of speed and intelligence, everyday coding |
-| **Claude Haiku 4.5** | `claude-haiku-4-5-20251001` | 200K | Fastest and most economical, simple and bulk work |
+| **Claude Haiku 5.5** | `claude-haiku-5-5` | 1M | Fastest and most economical (Anthropic API default Haiku, CC v2.1.293+) |
+| **Claude Haiku 4.5** | `claude-haiku-4-5-20251001` | 200K | Fastest and most economical, simple and bulk work (AWS-lineage alias target) |
 
 {{< callout type="info" >}}
 **The lineup and the choice are different things.** The table above only shows

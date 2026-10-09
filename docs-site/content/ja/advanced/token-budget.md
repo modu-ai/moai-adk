@@ -26,7 +26,13 @@ Anthropic SSEストリームはコンテキストウィンドウの天井に近�
 | GLM-5.3 (1M) | 1,000,000 トークン | 50% | ~500,000 トークン |
 | Fable / Sonnet 5.5 (1M) | 1,000,000 トークン | 50% | ~500,000 トークン |
 | Sonnet 4.5 以前 (200K) | 200,000 トークン | 90% | ~180,000 トークン |
+| Haiku 5.5 (1M) | 1,000,000 トークン | 50% | ~500,000 トークン |
 | Haiku (200K) | 200,000 トークン | 90% | ~180,000 トークン |
+
+Haiku 5.5 行(Claude Code v2.1.293+、Anthropic API)は上のルールと一緒に読みます — 1M 行と 200K
+セッション行の両方に該当する場合は 200K 行が優先されます。AWS Bedrock・GCP Agent Platform・Microsoft
+Foundry では `haiku` エイリアスは Haiku 4.5(200K)に解決されるため、AWS 系の Haiku セッションは引き続き
+200K / 90% のしきい値に従います。
 
 GLM-5.3(`moai glm`)は1Mコンテキストモデルなので50%しきい値で運用します。Claude Codeが報告する`context_window_size`はClaudeスロット基準(Opus=1M, Sonnet/Haiku=200K)なので、GLMセッションで生のtelemetryが~180Kを示してもMoAIが1Mに補正します。statuslineのCW%ゲージを信頼してください。
 

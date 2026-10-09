@@ -42,6 +42,18 @@ var factoryAmbientEnvKeys = []string{
 	config.EnvFactoryCard,
 	config.EnvFactoryLeadName,
 	config.EnvClaudeCodeMaxConcurrentSubagents,
+	// SPEC-TEST-ENV-HERMETIC-001 M2: the eight family axes production code
+	// references that the lane-gate sweep measured flipping tests when a lane
+	// session's ambient value reached the binary (c1 lane arms, progress.md
+	// §E.2). TestMain now strips them with the rest of the family.
+	config.EnvFactoryRole,
+	config.EnvAutonomyTier,
+	config.EnvFactoryClearPolicy,
+	config.EnvFactoryAutoDispatch,
+	config.EnvMoaiFactoryManaged,
+	config.EnvMoaiFactorySlowLaunchMS,
+	config.EnvMoaiFactoryManagedTUI,
+	config.EnvMoaiFactoryAppServerToken,
 }
 
 // factoryEnvPinnedEnv exempts a re-executed helper child from the TestMain

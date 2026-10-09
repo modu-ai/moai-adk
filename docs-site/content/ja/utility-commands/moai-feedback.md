@@ -7,7 +7,7 @@ draft: false
 MoAI-ADK にフィードバックやバグレポートを提出するコマンドです。
 
 {{< callout type="info" >}}
-**一言まとめ**: `/moai feedback` は MoAI-ADK 自体への改善提案やバグレポートを **GitHub Issue として自動作成** してくれるコマンドです。
+**一言まとめ**: `/moai feedback` は MoAI-ADK 自体への改善提案やバグレポートをまとめ、**確認した後にのみ GitHub Issue** を作成するコマンドです。
 {{< /callout >}}
 
 {{< callout type="info" >}}
@@ -200,7 +200,7 @@ flowchart TD
 > /moai feedback
 ```
 
-MoAI オーケストレーターがフィードバックの種別、タイトル、説明を順に尋ねます。回答を入力すると自動で GitHub Issue が作成され、Issue URL が返されます。
+MoAI オーケストレーターがフィードバックの種別、タイトル、説明を順に尋ねます。作成内容を確認した後にのみ GitHub Issue が作成され、Issue URL が返されます。
 
 ```
 GitHub Issue が作成されました:
