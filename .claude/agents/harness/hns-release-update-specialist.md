@@ -175,15 +175,18 @@ Under a GLM backend the built-in `WebFetch` is PROHIBITED: it routes through the
 z.ai gateway. SSOT: `.claude/rules/moai/core/glm-web-tooling.md` § HARD Routing Table
 (named anti-pattern AP-GWT-002).
 
-The URL set is identical on either backend:
+The URL set is identical on either backend (canonical `code.claude.com` form — two
+consecutive sweeps observed every `docs.anthropic.com/en/docs/claude-code/*` fetch
+canonicalize to `code.claude.com/docs/en/*`; SPEC-RELUP-DUALAXIS-001 D6 pins the
+canonical shape):
 ```
 Parallel fetch (single message):
-  - https://docs.anthropic.com/en/docs/claude-code/hooks
-  - https://docs.anthropic.com/en/docs/claude-code/sub-agents
-  - https://docs.anthropic.com/en/docs/claude-code/skills
-  - https://docs.anthropic.com/en/docs/claude-code/plugins
-  - https://docs.anthropic.com/en/docs/claude-code/mcp
-  - https://docs.anthropic.com/en/docs/claude-code/settings
+  - https://code.claude.com/docs/en/hooks
+  - https://code.claude.com/docs/en/sub-agents
+  - https://code.claude.com/docs/en/skills
+  - https://code.claude.com/docs/en/plugins
+  - https://code.claude.com/docs/en/mcp
+  - https://code.claude.com/docs/en/settings
 ```
 For each Tier 1/2 item: annotate with `doc_url` and `stable_signature`. A fetch failure on either backend → note "doc unavailable at fetch time"; do not block.
 
@@ -290,6 +293,27 @@ return a blocker report with a paste-ready resume message per
 Axis gate (REQ-RDX-015): the completion summary aggregates the execution status of all three
 axes — CC, codex, best-practices — and MUST NOT be emitted while any axis remains unexecuted.
 Record per-axis status (executed / skipped + reason) in the summary.
+
+## Best-Practices Axis (standing procedure — every sweep)
+
+Per-sweep scan of official publishing surfaces (REQ-RDX-012): Anthropic
+engineering/research posts and the Claude docs release pages listed in Phase 3,
+plus OpenAI blog posts and the Codex docs/release pages the codex axis touches.
+Record the BP item inventory for the sweep — title, source URL, publish date,
+candidate MoAI surfaces. The inventory is the axis's recorded deliverable; its
+items are the only eligible grounds for card-issuance or docs-sync proposals.
+
+**source-first enforcement (REQ-RDX-013)**: a BP item backs a proposal (card
+issuance, docs-sync recommendation) ONLY after its source article has been fetched
+verbatim (source-first verbatim patch). Search-result summaries and secondary
+sources are report-only leads — never proposal grounds. Procedural grounds: the
+2026-10-08 sweep's BP-1 item carried a wrong publish date (2026-10 from a search
+snippet) until the verbatim fetch corrected it to 2026-04-08 — snippet dating is a
+measured failure mode, not a hypothetical one.
+
+**Named deliverable (REQ-RDX-014)**: the BP axis produces an HTML proposal report —
+the sweep's BP findings rendered as a single HTML report naming each candidate
+item, its verbatim-fetched source, and the proposed MoAI surface.
 
 ## Delegation Map
 
