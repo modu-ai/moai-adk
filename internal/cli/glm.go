@@ -53,6 +53,8 @@ Use 'moai glm setup <key>' to save your API key first.
 
 Flags:
   -p, --profile <name>          Use a named Claude profile (~/.moai/claude-profiles/<name>/)
+  --key <api-key>               Store the GLM API key and exit (same storage
+                                as 'moai glm setup <key>')
   --permission-mode <mode>      Set permission mode (default, acceptEdits, plan, bypassPermissions, dontAsk)
   -b, --bypass                  Shorthand for --permission-mode bypassPermissions
   -w, --worktree [name]         Launch in an isolated git worktree (.claude/worktrees/<name>/);
@@ -105,6 +107,7 @@ of stacking concurrent lanes.
 
 Examples:
   moai glm setup sk-xxx    # Save API key (one-time)
+  moai glm --key sk-xxx    # Save API key via flag (one-time, same storage)
   moai glm                 # Launch with GLM backend
   moai glm -p work         # Use 'work' profile with GLM
   moai glm -f             # Factory leader on GLM: one lane (lane-1)
@@ -144,6 +147,18 @@ func init() {
 	// We register setup and status as subcommands for discoverability (help output).
 	glmCmd.AddCommand(glmSetupCmd, glmStatusCmd)
 	rootCmd.AddCommand(glmCmd)
+
+	// SPEC-GLM-JEV-KEY-001: --key is registered only so it renders in help
+	// output — DisableFlagParsing makes the manual scan in runGLM the only
+	// mechanism that actually reads it.
+	glmCmd.Flags().String("key", "", "Store the GLM API key and exit (same storage as 'moai glm setup <key>')")
+	// cobra's stripFlags treats a following token as the flag's value and
+	// routes `glm --key K status` straight to the status subcommand before
+	// runGLM's scan can see it; NoOptDefVal makes stripFlags leave the token
+	// in place. Parsing itself stays manual (DisableFlagParsing).
+	if keyFlag := glmCmd.Flags().Lookup("key"); keyFlag != nil {
+		keyFlag.NoOptDefVal = " "
+	}
 }
 
 // SettingsLocal represents .claude/settings.local.json structure.
@@ -197,6 +212,15 @@ func runGLM(cmd *cobra.Command, args []string) error {
 			glmToolsCmd.SetArgs(args[1:])
 			return glmToolsCmd.Execute()
 		}
+	}
+
+	// SPEC-GLM-JEV-KEY-001: the `--key` save form. Placed AFTER the
+	// subcommand switch so a routed subcommand is never intercepted
+	// (REQ-GJK-006, same ordering rationale as the --spawn strip below) and
+	// BEFORE launch parsing so a --key invocation stores and exits without
+	// reaching the launch path (REQ-GJK-002).
+	if handled, err := handleGLMKeyFlag(cmd, args); handled {
+		return err
 	}
 
 	endEntry := debugTiming.beginDebug(launchStepEntryParse, "")
@@ -474,6 +498,66 @@ func glmReasoningEnvVarsForModel(model, effort string) map[string]string {
 		out[config.EnvAnthropicReasoningEffort] = state.ReasoningEffort
 	}
 	return out
+}
+
+// handleGLMKeyFlag implements the `moai glm --key <api-key>` save form
+// (SPEC-GLM-JEV-KEY-001 REQ-GJK-001..006, 012). It scans args for --key,
+// stopping at the first bare "--" (post--- tokens are child passthrough,
+// AC-GJK-016). When the flag is found it validates the value and stores it
+// through saveGLMKey — the same writer `moai glm setup <key>` uses
+// (REQ-GJK-001) — and prints the setup path's masked confirmation. It reports
+// handled=true with a non-nil error for the usage/validation refusals, which
+// store nothing (REQ-GJK-003/004/005/012). handled=false means no --key in the
+// scanned region and the launch path must proceed.
+func handleGLMKeyFlag(cmd *cobra.Command, args []string) (bool, error) {
+	value, rest, present, hasValue := scanGLMKeyValue(args)
+	if !present {
+		return false, nil
+	}
+	if !hasValue {
+		return true, fmt.Errorf("--key requires a value; usage: moai glm --key <api-key>")
+	}
+	if len(rest) > 0 {
+		return true, fmt.Errorf("--key cannot be combined with other arguments (found %q); run 'moai glm --key <api-key>' by itself", rest[0])
+	}
+	trimmed := strings.TrimSpace(value)
+	if trimmed == "" {
+		return true, fmt.Errorf("empty API key")
+	}
+	// REQ-GJK-012: reject-before-write. glmcred cannot round-trip a newline
+	// (EscapeValue deliberately does not escape it; Load reads line-by-line),
+	// so a line-bearing value must never reach the writer — the existing
+	// credential file stays byte-for-byte unchanged.
+	if strings.ContainsAny(trimmed, "\r\n") {
+		return true, fmt.Errorf("GLM API key must not contain line breaks")
+	}
+	if err := saveGLMKey(trimmed); err != nil {
+		return true, fmt.Errorf("save GLM API key: %w", err)
+	}
+	_, _ = fmt.Fprintf(cmd.OutOrStdout(), "GLM API key stored (%s)\n", maskAPIKey(trimmed))
+	return true, nil
+}
+
+// scanGLMKeyValue walks the argument region for --key, mirroring the --help
+// scan's stop-at-the-first-bare-"--" precedent. It reports whether the flag
+// was present, whether a value token followed it, the value itself (from
+// either the `--key <value>` or `--key=<value>` spelling), and the tokens
+// following the value — the conflict evidence REQ-GJK-003 refuses on.
+func scanGLMKeyValue(args []string) (value string, rest []string, present bool, hasValue bool) {
+	for i := 0; i < len(args); i++ {
+		switch arg := args[i]; {
+		case arg == "--":
+			return "", nil, false, false
+		case arg == "--key":
+			if i+1 < len(args) {
+				return args[i+1], args[i+2:], true, true
+			}
+			return "", nil, true, false
+		case strings.HasPrefix(arg, "--key="):
+			return strings.TrimPrefix(arg, "--key="), args[i+1:], true, true
+		}
+	}
+	return "", nil, false, false
 }
 
 // runGLMSetup saves a GLM API key.

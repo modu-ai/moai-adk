@@ -22,6 +22,8 @@ import (
 
 	"github.com/modu-ai/moai-adk/internal/config"
 	"github.com/modu-ai/moai-adk/internal/jevcred"
+	"github.com/spf13/cobra"
+	"github.com/spf13/pflag"
 )
 
 // redirectCredentialHomes points every credential-location seam at a fresh
@@ -46,10 +48,28 @@ func redirectCredentialHomes(t *testing.T) string {
 	return tmpHome
 }
 
+// resetCommandFlags clears the values and Changed marks a command tree's
+// flags carry over from earlier executions: pflag keeps both across parses,
+// so a prior `--help` would flip every later run of the same command into
+// cobra's help path before RunE (observed: TestJevHelpDocumentsKeyFlag left
+// jev's help flag set and TestJevKeyFlagSavesCredential then stored nothing).
+func resetCommandFlags(c *cobra.Command) {
+	c.Flags().VisitAll(func(f *pflag.Flag) {
+		f.Changed = false
+		if f.Value.String() != f.DefValue {
+			_ = f.Value.Set(f.DefValue)
+		}
+	})
+	for _, sub := range c.Commands() {
+		resetCommandFlags(sub)
+	}
+}
+
 // execRoot runs the root command against args with stdout and stderr captured
 // into one buffer, resetting the root command state afterwards.
 func execRoot(t *testing.T, args ...string) (string, error) {
 	t.Helper()
+	resetCommandFlags(rootCmd)
 	buf := new(bytes.Buffer)
 	rootCmd.SetOut(buf)
 	rootCmd.SetErr(buf)
