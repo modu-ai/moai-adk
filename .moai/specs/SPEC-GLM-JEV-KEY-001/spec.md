@@ -61,6 +61,8 @@ The GLM API key has one sanctioned save surface, the `moai glm setup <key>` subc
 
 **REQ-GJK-011** (Where) **Where** a credential file already exists at a file mode wider than 0600, a save through either command shall tighten the file to mode 0600 (behavior inherited from the owning packages' `Save`).
 
+**REQ-GJK-012** (Event-driven) **When** a `--key` value on either new save path contains a carriage-return or line-feed character, the command shall refuse with a validation error BEFORE invoking the credential writer, leaving the existing credential file byte-for-byte unchanged (reject-before-write, mirroring the `internal/web/jevkey.go` validator; the legacy `setup` surface is excluded by §D's unchanged-setup exclusion).
+
 ## §D. Exclusions
 
 ### Out of Scope — Terminal-output redesign (card t1612)

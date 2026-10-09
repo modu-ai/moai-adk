@@ -15,11 +15,12 @@ Card t1613 defines three completion criteria; every one maps to at least one AC 
 | (a) both key commands' help output verified | AC-GJK-001, AC-GJK-002, AC-GJK-003 |
 | (b) save result verified on disk | AC-GJK-004, AC-GJK-005 |
 | (c) legacy `moai glm setup <key>` preserved (existing glm tests stay green) | AC-GJK-006, AC-GJK-007, AC-GJK-008 |
-| Invariants (mode-0600 storage, masking, constant ownership, refusal shapes) | AC-GJK-009 … AC-GJK-013 |
+| Invariants (mode-0600 storage, masking, constant ownership, refusal shapes, input validation) | AC-GJK-009 … AC-GJK-015 |
 
 ## §B. Edge Cases
 
 - `--key` with a value containing spaces / dotenv-special characters (`"`, `\`, `$`) → stored escaped by the owning package's `EscapeValue`, read back identically by `Load` (round-trip, package-level).
+- `--key` with an embedded CR/LF (Go literal `"first\nsecond"`) → refused before write on BOTH new paths; the existing credential file is preserved byte-for-byte (AC-GJK-014/015). Legacy `setup` keeps today's first-line-only read-back behavior unchanged (known limitation, plan.md §B4).
 - `--key=<value>` single-token spelling → accepted by the glm scan (§D.1 of plan.md).
 - Credential of ≤4 characters → jev confirmation discloses NO part of it (REQ-JEVC-020 floor), glm `maskAPIKey` returns `****`.
 - Pre-existing credential file at 0644 → tightened to 0600 on save (AC-GJK-012).
@@ -75,15 +76,21 @@ When `moai jev --key ""` runs, or `moai glm --key` runs with no following value,
 Given a pre-existing credential file at mode 0644, When a save runs through either command, Then the file mode is 0600 afterwards. (Asserted at package level by the existing glmcred/jevcred Save tests; CLI-level assertion optional.)
 
 **AC-GJK-013** (Medium) — constant ownership, scoped to this card's ADDED lines.
-Given the implementation commits exist (a diff with no added lines sweeps nothing and asserts nothing), When `git diff "$(git merge-base develop HEAD)..HEAD" -- internal/cli/ | grep '^+' | grep "TYPESAFE_API_KEY\|GLM_API_KEY"` runs, Then it yields 0 rows — no added line spells the credential names as literals. The 3 pre-existing rows in files this card never touches (`glm_tools.go:6` comment, `mcp_audit.go:30,32`) sit outside the change range and are out of scope: a whole-tree 0-row verdict is permanently red and proves nothing about this card. The merge-base form (not a literal pinned SHA) is the repo's measured rule for "what did THIS card change" (gitflow-lane-protocol §8).
+Given the implementation commits exist (a diff with no added lines sweeps nothing and asserts nothing), When `git diff "$(git merge-base develop HEAD)..HEAD" -- internal/cli/ ':(exclude)**/*_test.go' | grep '^+' | grep "TYPESAFE_API_KEY\|GLM_API_KEY"` runs, Then it yields 0 rows — no added NON-TEST line spells the credential names as literals. Test files are excluded: `_test.go` is a sanctioned literal area (AGENTS.local.md hardcoding allowance) and the new AC-004/005 tests legitimately assert dotenv content strings. The 3 pre-existing rows in files this card never touches (`glm_tools.go:6` comment, `mcp_audit.go:30,32`) sit outside the change range and are out of scope: a whole-tree 0-row verdict is permanently red and proves nothing about this card. The merge-base form (not a literal pinned SHA) is the repo's measured rule for "what did THIS card change" (gitflow-lane-protocol §8).
+
+**AC-GJK-014** (High) — jev newline value refused, stored credential preserved.
+Given a redirected home holding a stored credential, When the root command runs with args `["jev", "--key", "first\nsecond"]` (embedded LF), Then the command exits non-zero with a validation error and `.env.typesafe` remains byte-for-byte identical to before the attempt.
+
+**AC-GJK-015** (High) — glm `--key` newline value refused, stored key preserved.
+Given a redirected home holding a stored key, When the root command runs with args `["glm", "--key", "first\nsecond"]`, Then the command exits non-zero with a validation error and `.env.glm` remains byte-for-byte identical to before the attempt.
 
 ### §D.2 Severity summary
 
-Critical: AC-GJK-004, AC-GJK-005, AC-GJK-006 (the card's own completion criteria). High: AC-GJK-001/002/003, AC-GJK-007..009, AC-GJK-011, AC-GJK-012. Medium: AC-GJK-010, AC-GJK-013.
+Critical: AC-GJK-004, AC-GJK-005, AC-GJK-006 (the card's own completion criteria). High: AC-GJK-001/002/003, AC-GJK-007..009, AC-GJK-011, AC-GJK-012, AC-GJK-014, AC-GJK-015. Medium: AC-GJK-010, AC-GJK-013.
 
 ### §D.3 Traceability
 
-REQ-GJK-001→AC-004/007/012 · REQ-GJK-002→AC-004 · REQ-GJK-003→AC-009 · REQ-GJK-004/005→AC-011 · REQ-GJK-006→AC-008/006 · REQ-GJK-007→AC-005/012 · REQ-GJK-008→AC-005 · REQ-GJK-009→AC-010 · REQ-GJK-010→AC-004/005 · REQ-GJK-011→AC-012 · card criteria (a)→AC-001..003, (b)→AC-004/005, (c)→AC-006..008.
+REQ-GJK-001→AC-004/007/012 · REQ-GJK-002→AC-004 · REQ-GJK-003→AC-009 · REQ-GJK-004/005→AC-011 · REQ-GJK-006→AC-008/006 · REQ-GJK-007→AC-005/012 · REQ-GJK-008→AC-005 · REQ-GJK-009→AC-010 · REQ-GJK-010→AC-004/005 · REQ-GJK-011→AC-012 · REQ-GJK-012→AC-014/015 · card criteria (a)→AC-001..003, (b)→AC-004/005, (c)→AC-006..008.
 
 ### §D.4 Indirect verification
 
