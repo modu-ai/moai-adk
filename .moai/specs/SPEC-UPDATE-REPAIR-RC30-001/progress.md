@@ -7,7 +7,7 @@ Plan-phase skeleton. Run-phase and sync-phase sections are placeholders only.
 plan_status: pending-audit
 plan_complete_at: 2026-10-09T18:19:27Z
 
-Plan artifacts written: spec.md, plan.md, acceptance.md, design.md, research.md, decision-index.md. The plan-audit has not run. Q1 is resolved from disk (POLICY-COVERED, decision-index.md Q1). Q2 (profile reach, operator decision) and Q6 (visibility, evidence needed) are open. Q3 (queue overlaps) is recorded with disposition undecided. Q7 carries a DEFAULT-APPLIED verdict from plan close. The revision is not committed; the lane commits.
+Plan artifacts written: spec.md, plan.md, acceptance.md, design.md, research.md, decision-index.md. The plan-audit has not run. Q1 is resolved from disk (POLICY-COVERED, decision-index.md Q1). Q2 (profile reach, operator decision) and Q6 (visibility, evidence needed) are open. Q3 (queue overlaps) is recorded with disposition undecided. Q7 is pending a leader or operator decision with no applied default. B1 (acceptance budget, 26 of 25) is an open leader decision. The revision is not committed; the lane commits.
 
 ## §E.2 Run-phase Evidence
 

@@ -54,24 +54,24 @@ Exit condition: AC-RC30-06, -07, -08 pass; -22 and -23 are RED with the cause na
 
 ### B.5 Milestone M4 — Output TUX and report wording (High; user-visible; not gated on M1)
 
-1. Step progress: N of M, a bar, one ✓ ! ✗ line per step, in place on a TTY, plain lines otherwise (U-26; reuse `tui.ProgressLine` and `tui.Progress`).
+0. Measured values first (U-08, AC-RC30-09): remove the literal at `update_archive.go` lines 282 and 367 (E-01), and print the no-op outcome from measured counts. U-27 consumes these values, so this step precedes it. 1. Step progress: N of M, a bar, one ✓ ! ✗ line per step, in place on a TTY, plain lines otherwise (U-26; reuse `tui.ProgressLine` and `tui.Progress`).
 2. One-screen closing summary with the five counts, one action line only when needed, the backup location, and one restore command (U-27).
 3. Conflicts and warnings above the summary; the measured outcome replaces the pre-merge risk class (U-28).
 4. Narrow-terminal and fallback behavior (U-29). The threshold is a named constant in `internal/tui` defaults.
 5. File lists collapse to counts; the full list goes behind `--verbose` or to a log path (U-16). `--verbose` keeps the NOISE-001 meaning.
 6. Golden snapshots are regenerated only through `make tui-snapshot`, on a reviewed diff.
 
-Exit condition: AC-RC30-17, -25 pass; `make tui-snapshot` output is reviewed.
+Exit condition: AC-RC30-09, -17, -25 pass; `make tui-snapshot` output is reviewed.
 
 ### B.6 Milestone M5 — Measured messages and counts (Medium; mechanical)
 
-Remove the literal `0` from the archive pill (U-08, AC-RC30-09); make "Updated N files" on a no-op a measured value; make the preview deployer equal the run deployer (U-18, AC-RC30-19); skip decision on the template tree hash (U-13, AC-RC30-14); stamp skew warning (U-14, AC-RC30-15).
+U-08 (literal removal and the measured no-op outcome) moved to M4, step 0 of § B.5; make the preview deployer equal the run deployer (U-18, AC-RC30-19); skip decision on the template tree hash (U-13, AC-RC30-14); stamp skew warning (U-14, AC-RC30-15).
 
-Exit condition: AC-RC30-09, -14, -15, -19 pass.
+Exit condition: AC-RC30-14, -15, -19 pass.
 
 ### B.7 Milestone M6 — Investigations (Medium)
 
-Each GAP-INVESTIGATE item is closed by its named evidence, with its command and output in research.md: U-15 (AC-RC30-16), U-19 and U-20 (AC-RC30-20), U-25 (AC-RC30-24). U-30 waits for Q1.
+Each GAP-INVESTIGATE item is closed by its named evidence, with its command and output in research.md: U-15 (AC-RC30-16), U-19 and U-20 (AC-RC30-20), U-25 (AC-RC30-24). U-30 waits for the locale-mechanism read (Q1 is resolved from disk; decision-index.md Q1).
 
 ### B.8 Milestone M7 — Verification and merge-ready (High)
 
@@ -111,7 +111,7 @@ Each GAP-INVESTIGATE item is closed by its named evidence, with its command and 
 | Both branches change `internal/userassets/install.go` | Merge conflict at M1 | Plain merge; conflicts resolved with the branch tests kept green |
 | Branch tips move after absorption | Measurements go stale | Re-absorb on movement; ranges are measured from the merge-base each time |
 | Golden churn in the TUX output | Review load | Golden updates only through `make tui-snapshot` on a reviewed diff |
-| "16 locales" versus "four locale strings" | Wrong scope for U-30 | Q1 is raised; U-30 has no criterion until it is settled |
+| "16 locales" versus "four locale strings" | Wrong scope for U-30 | Q1 is resolved from disk (decision-index.md Q1); U-30 has no criterion until its locale mechanism is read |
 | Track overlap with t1621 and t1622 | Scope creep into factory code | Named under Dependencies in spec.md § H; not items |
 
 ## G. Dependencies

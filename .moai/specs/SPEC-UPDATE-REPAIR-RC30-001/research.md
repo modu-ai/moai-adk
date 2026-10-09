@@ -62,7 +62,7 @@ $ git merge-base main WT-update-migration-fixes
 2aab5f797b75983e132af451da68f69e3426557b
 ```
 
-**E-OVERLAP (file-level overlap used by § C of spec.md)**
+**E-OVERLAP-OLD (superseded; branch-name form, not pinned to a SHA; kept for history)**
 ```text
 $ git diff --name-only main...WT-user-asset-bundle   (excerpt of relevant paths)
 internal/cli/migrate_project_assets.go
@@ -168,6 +168,35 @@ $ grep -n "Options" .moai/config/sections/language.yaml
 ```
 Result: the "16" of R1 is the 16 programming languages (neutrality). The "four" of R2(g) is the four locales ko, en, ja, zh (translation). The sets are disjoint and differ. language.yaml lists seven conversation-language options.
 
+**E-OVERLAP (pinned to tip SHAs; measured at 18:4x UTC on 2026-10-09; supersedes E-OVERLAP-OLD)**
+```text
+$ git rev-parse --short WT-user-asset-bundle        -> 01b519c21
+$ git rev-parse --short WT-update-migration-fixes   -> 40ab940f4
+$ git rev-parse --short main                        -> 2aab5f797
+$ git diff --stat main...01b519c21 | tail -1        -> 78 files changed, 8653 insertions(+), 157 deletions(-)
+$ git diff --stat main...40ab940f4 | tail -1        -> 13 files changed, 2068 insertions(+), 7 deletions(-)
+$ git diff --name-only main...01b519c21 -- internal/cli/update_tux.go internal/cli/update_archive.go internal/cli/update/report/outcome.go internal/cli/update_restore.go internal/cli/bundle.go internal/cli/update_template_sync.go internal/config/manager.go internal/config/types.go
+(empty: no IN-NOW file is changed at 01b519c21)
+$ git diff --name-only main...40ab940f4 -- (the same eight IN-NOW paths)
+(empty: no IN-NOW file is changed at 40ab940f4)
+$ git diff --name-only main...01b519c21 -- internal/cli/migrate_project_assets.go internal/cli/user_asset_phase.go internal/userassets/install.go internal/userassets/paths.go internal/cli/update.go internal/template/harness_fs.go
+internal/cli/migrate_project_assets.go
+internal/cli/user_asset_phase.go
+internal/template/harness_fs.go
+internal/userassets/install.go
+internal/userassets/paths.go
+$ git diff --name-only main...40ab940f4 -- (the same six paths)
+internal/cli/update.go
+internal/userassets/install.go
+```
+Re-derivation at M1 is required after absorption (spec.md § G.2). The audit's tip `2022e4633` for t1591 is superseded by `01b519c21`.
+
+**E-07-COUNT (rule files naming `.claude/skills/moai/`)**
+```text
+$ grep -rl "\.claude/skills/moai/" internal/template/templates/.claude/rules | wc -l
+45
+```
+
 **E-PROBE (R3; U-31)**
 ```text
 $ git show WT-update-migration-fixes:internal/cli/update_integrity_probe.go | head -80   (excerpt of the 80-line output)
@@ -236,5 +265,5 @@ Not observed in this run. Each gap is listed with the next step.
 - **Overlap risk.** Both branches change `internal/userassets/install.go`. A plain merge at M1 may conflict in ways the file list does not show.
 - **Drift risk.** Branch tips move. Ranges stay correct only if they are re-measured after each absorption.
 - **Audit-carry risk.** Most root causes are audit claims (§ 4 item 4). A cause that is wrong in this tree will still appear in the plan until M0 corrects it.
-- **Budget risk.** Tier L allows 25 requirements (20 used) and 25 criteria (25 used). A split may be required once Q1 and Q2 are settled.
-- **Decision risk.** Q1 and Q2 change scope (§ J of spec.md). Until the operator answers them, U-30 and U-01 stay open.
+- **Budget risk.** Tier L allows 25 requirements (25 used, REQ-RC30-001 to REQ-RC30-025) and 25 criteria (26 used, AC-RC30-01 to AC-RC30-26; OPEN LEADER DECISION B1). The leader decides between a split and a merge; no relaxation is recorded.
+- **Decision risk.** Q2 is pending (operator decision). Q1 is resolved from disk. U-30 waits for the locale-mechanism read, and U-01 is DECISION-PENDING (Q2). Q7 is pending with no applied default.

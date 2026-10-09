@@ -34,7 +34,7 @@ Design decisions behind spec.md and plan.md. Every decision names its requiremen
 - Layout order: banner once (REQ-RC30-013), step progress (REQ-RC30-014), conflicts and warnings (REQ-RC30-017), one-screen summary with one restore command (REQ-RC30-016), file lists collapsed (REQ-RC30-015).
 - Glyphs: ✓, !, ✗ from the existing whitelist (REQ-TUXIU-004). Colour and motion follow REQ-TUXIU-041 and REQ-TUXIU-042.
 - Fallback: `NO_COLOR`, non-TTY, `CI`, and narrow terminals use plain lines with the same counts (REQ-RC30-018).
-- Thresholds are named constants in the `internal/tui` defaults file (hardcoding rule). The width threshold is decision Q7.
+- Thresholds are named constants in the `internal/tui` defaults file (hardcoding rule). The width threshold is decision Q7, pending a leader or operator decision with no applied default.
 
 ## 7. Version and skip
 
