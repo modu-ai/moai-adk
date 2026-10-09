@@ -165,18 +165,16 @@ func TestDeployedWiringIsGPTReadsTheClaudeSurface(t *testing.T) {
 	}
 }
 
-// TestInitResumeExplicitLLMOverridesRecordedSelection — an explicit --llm on the
-// resume is the current invocation's answer and wins over the recorded
-// selection.
-func TestInitResumeExplicitLLMOverridesRecordedSelection(t *testing.T) {
+// TestInitResumeExplicitLLMOverRecordedSelectionIsRefused — finding 1, restated by
+// Item C. An explicit --llm on the resume is the current invocation's answer, but it
+// cannot switch the harness the failing run deployed: over the recorded both, --llm
+// claude is refused rather than applied over the both files.
+func TestInitResumeExplicitLLMOverRecordedSelectionIsRefused(t *testing.T) {
 	resumeHome(t)
 	projectDir := filepath.Join(t.TempDir(), "explicit-resume-proj")
 	resumeSeedRun(t, projectDir, "both")
+	llmBefore := readResumeLLMYAML(t, projectDir)
 
-	if err := resumeRun(t, projectDir, "claude"); err != nil {
-		t.Fatalf("run 2 (the explicit-llm resume) failed: %v", err)
-	}
-	if llm := readResumeLLMYAML(t, projectDir); !hasHarness(llm, "claude") {
-		t.Fatalf("an explicit --llm claude on the resume did not win over the recorded both — llm.yaml:\n%s", llm)
-	}
+	err := resumeRun(t, projectDir, "claude")
+	requireResumeRefused(t, err, projectDir, llmBefore, "both", "both", "claude")
 }

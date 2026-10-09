@@ -22,6 +22,7 @@ import (
 	"github.com/modu-ai/moai-adk/internal/cli/wizard"
 	"github.com/modu-ai/moai-adk/internal/core/project"
 	"github.com/modu-ai/moai-adk/internal/homestate"
+	"github.com/modu-ai/moai-adk/internal/profile"
 	"github.com/modu-ai/moai-adk/internal/template"
 	"github.com/modu-ai/moai-adk/internal/userassets"
 	"github.com/spf13/cobra"
@@ -52,20 +53,15 @@ func userHomeDirOrEmpty() string {
 // outside the lock could interleave with another run's healthy manifest
 // store and move the HEALTHY file), then the setup steps the failed
 // attempt never reached run in the production order (project layout →
-// autonomy tier → Jev record → ApplyHarness → deploy mode → git hooks →
+// autonomy tier → profile sync → Jev record → ApplyHarness → deploy mode → git hooks →
 // MCP entry → Codex wiring; gate round 35-6 included). Gate round 47-4:
 // the wizard's Jev answer rides in — a resume that skipped it left
 // jev.enabled false against an explicit wizard selection.
-func resumeInitializedProject(cmd *cobra.Command, opts *project.InitOptions, wiring agentWiring, wizardRan bool, wizardResult *wizard.WizardResult) error {
+func resumeInitializedProject(cmd *cobra.Command, opts *project.InitOptions, wiring agentWiring, wizardRan bool, wizardResult *wizard.WizardResult, prefs profile.ProfilePreferences) error {
 	homeDir, homeErr := userHomeDirFn()
 	if homeErr != nil {
 		return fmt.Errorf("resolve user home: %w", homeErr)
 	}
-	lock, lockErr := userassets.AcquireUserLock(homeDir, userLockWaitWindow)
-	if lockErr != nil {
-		return fmt.Errorf("user-asset resume lock: %w", lockErr)
-	}
-	defer func() { _ = lock.Release() }()
 
 	// Finding 1 (card t1591): the harness the FAILING run selected is the
 	// record of the interrupted --llm, and a resume with no explicit selection
@@ -83,6 +79,18 @@ func resumeInitializedProject(cmd *cobra.Command, opts *project.InitOptions, wir
 		// permanently mismatched.
 		wiring = agentWiringGPT
 	}
+
+	// Item C (card t1591): a harness change is refused, not half-applied. The check
+	// runs after the wiring decision and before any side effect; the user lock below
+	// creates a guard file under the user home, so the refusal precedes it as well.
+	if err := refuseResumeHarnessChange(opts.ProjectRoot, wiring); err != nil {
+		return err
+	}
+	lock, lockErr := userassets.AcquireUserLock(homeDir, userLockWaitWindow)
+	if lockErr != nil {
+		return fmt.Errorf("user-asset resume lock: %w", lockErr)
+	}
+	defer func() { _ = lock.Release() }()
 
 	// Gate round 51-2: the checkpoint OUTLIVES the asset install — a
 	// transient failure in a LATER post-step (autonomy tier, harness, MCP)
@@ -128,6 +136,14 @@ func resumeInitializedProject(cmd *cobra.Command, opts *project.InitOptions, wir
 		opts.AutonomyTier,
 	); err != nil {
 		return fmt.Errorf("apply autonomy tier: %w", err)
+	}
+	// Item D (card t1591): the profile synchronization a healthy init runs after its
+	// template deploy (init.go, the healthy tail). The same helper and inputs, so a
+	// resumed run carries the current profile preferences and the wizard's user name
+	// and conversation language into the project config. A failure is a post-step
+	// failure: the marker stays in place and the next run resumes.
+	if err := syncInitProfile(opts.ProjectRoot, prefs, wizardResult); err != nil {
+		return fmt.Errorf("profile sync: %w", err)
 	}
 	// Gate round 47-4: the wizard's Jev answer is part of the same post-path
 	// (healthy init applies it before the harness record — init.go's
@@ -227,6 +243,48 @@ func legacyLayoutSpeaks(cmd *cobra.Command, projectRoot string, wiring agentWiri
 	return !recorded
 }
 
+// refuseResumeHarnessChange refuses a resume whose effective wiring contradicts the
+// deployed harness (card t1591, Item C). The resume restores the content the failed
+// run never wrote and deploys no template files, so a harness switch would rewrite
+// llm.yaml over the old harness's files and still report success, without the new
+// harness's files. The deployed harness is read in order: the selection record the
+// failing run left (an exact match); with no record, the GPT layout, .claude/ absent
+// (an exact match with gpt); with no record, the claude-side layout, .claude/ present
+// (claude and both deploy the same surface and the layout cannot tell them apart, so
+// only a gpt request contradicts it). With none of this evidence, nothing is refused.
+func refuseResumeHarnessChange(projectRoot string, wiring agentWiring) error {
+	if recorded, ok := readResumeWiring(projectRoot); ok {
+		if wiring == recorded {
+			return nil
+		}
+		return resumeHarnessRefusal(recorded, "the selection the failing run recorded", wiring,
+			"--llm "+string(recorded)+" (or accept the recorded default in the wizard)")
+	}
+	if deployedWiringIsGPT(projectRoot) {
+		if wiring == agentWiringGPT {
+			return nil
+		}
+		return resumeHarnessRefusal(agentWiringGPT, "the GPT layout; no selection record", wiring, "--llm gpt")
+	}
+	if _, err := os.Stat(filepath.Join(projectRoot, ".claude")); err == nil && wiring == agentWiringGPT {
+		return resumeHarnessRefusal(agentWiringClaude,
+			"the claude-side layout; no selection record, and claude and both cannot be told apart on disk", wiring,
+			"--llm claude (or --llm both, if that was the deployment)")
+	}
+	return nil
+}
+
+// resumeHarnessRefusal is the error a refused harness change returns. It names the
+// deployed and the requested harness and the way out, and it states why the resume
+// cannot switch the harness, so the operator does not retry the same request.
+func resumeHarnessRefusal(deployed agentWiring, basis string, requested agentWiring, resumeWith string) error {
+	return fmt.Errorf("resume refused: harness %q is deployed (%s), and this run requests harness %q. "+
+		"The resume restores the content the failed run never wrote and deploys no template files, "+
+		"so it cannot switch the harness: the requested harness's files would never be deployed. "+
+		"Resume with %s, or re-run with --force to reinitialize from scratch",
+		deployed, basis, requested, resumeWith)
+}
+
 // resumeWiringPath is the project-scoped record of the harness selection the
 // failing init run made. It sits under .moai/state/ (gitignored) and is a file
 // separate from the resume-pending marker, so the marker's checkpoint
@@ -264,7 +322,9 @@ func readResumeWiring(projectRoot string) (agentWiring, bool) {
 // resumeWiringFromRecord returns the recorded selection when the resume was
 // given no explicit selection of its own. An explicit --llm, or a wizard
 // agent_wiring answer, is the current invocation's answer and wins over the
-// record — the same precedence resolveAgentWiringWithWizard applies.
+// record — the same precedence resolveAgentWiringWithWizard applies. That answer is
+// then checked against the deployed harness: a mismatch is refused, never applied
+// over the deployed files (refuseResumeHarnessChange).
 func resumeWiringFromRecord(cmd *cobra.Command, wizardResult *wizard.WizardResult, projectRoot string) (agentWiring, bool) {
 	if cmd.Flags().Changed("llm") && getStringFlag(cmd, "llm") != "" {
 		return "", false

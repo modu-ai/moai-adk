@@ -139,41 +139,37 @@ func resumeForgetRecord(t *testing.T, projectDir string) {
 	clearResumeWiring(projectDir)
 }
 
-// TestInitResumeExplicitLLMClaudeBeatsLegacyGPTLayout — Item B. An explicit
-// --llm claude on the resume is the current invocation's answer. Over a deployed
-// GPT layout with no record, the legacy layout fallback must not force gpt.
-func TestInitResumeExplicitLLMClaudeBeatsLegacyGPTLayout(t *testing.T) {
+// TestInitResumeExplicitLLMClaudeRefusedOverGPTLayout — Item B, restated by Item C.
+// An explicit --llm claude on the resume is the current invocation's answer, so the
+// legacy layout fallback does not force gpt over it. The answer is then checked
+// against the deployed GPT layout: with no record the layout is the deployed harness,
+// and a claude request over it is refused (card t1591 Item C).
+func TestInitResumeExplicitLLMClaudeRefusedOverGPTLayout(t *testing.T) {
 	resumeHome(t)
 	projectDir := filepath.Join(t.TempDir(), "explicit-claude-proj")
 	resumeSeedRun(t, projectDir, "gpt")
 	requireGPTLayout(t, projectDir)
 	resumeForgetRecord(t, projectDir)
+	llmBefore := readResumeLLMYAML(t, projectDir)
 
-	if err := resumeRun(t, projectDir, "claude"); err != nil {
-		t.Fatalf("run 2 (the explicit --llm claude resume) failed: %v", err)
-	}
-	if llm := readResumeLLMYAML(t, projectDir); !hasHarness(llm, "claude") {
-		t.Fatalf("an explicit --llm claude over a deployed GPT layout was forced to gpt by the legacy fallback — llm.yaml:\n%s", llm)
-	}
+	err := resumeRun(t, projectDir, "claude")
+	requireResumeRefused(t, err, projectDir, llmBefore, "", "gpt", "claude")
 }
 
-// TestInitResumeChangedWizardAnswerBeatsRecordOverGPTLayout — Item A, "a changed
-// answer wins", over a GPT layout. The record says gpt and the operator changes
-// the wizard answer to claude. While a record exists, the legacy layout fallback
-// must not override the answer with the layout.
-func TestInitResumeChangedWizardAnswerBeatsRecordOverGPTLayout(t *testing.T) {
+// TestInitResumeChangedWizardAnswerOverRecordedGPTIsRefused — Item A, restated by
+// Item C. While a record exists, the legacy layout fallback does not override a
+// changed wizard answer. The answer is still a harness change on the resume: over the
+// recorded gpt, claude is refused rather than applied over the gpt files.
+func TestInitResumeChangedWizardAnswerOverRecordedGPTIsRefused(t *testing.T) {
 	resumeHome(t)
 	projectDir := filepath.Join(t.TempDir(), "changed-answer-proj")
 	resumeSeedRun(t, projectDir, "gpt")
 	requireGPTLayout(t, projectDir)
+	llmBefore := readResumeLLMYAML(t, projectDir)
 
 	resumeWizardAnswer(t, func(string) string { return "claude" })
-	if err := resumeRun(t, projectDir, ""); err != nil {
-		t.Fatalf("run 2 (the resume) failed: %v", err)
-	}
-	if llm := readResumeLLMYAML(t, projectDir); !hasHarness(llm, "claude") {
-		t.Fatalf("a changed wizard answer (claude) over the recorded gpt was overridden by the legacy layout fallback — llm.yaml:\n%s", llm)
-	}
+	err := resumeRun(t, projectDir, "")
+	requireResumeRefused(t, err, projectDir, llmBefore, "gpt", "gpt", "claude")
 }
 
 // TestInitResumeLegacyFallbackAppliesWithoutRecordOrFlag — a guard on the legacy

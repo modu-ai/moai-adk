@@ -18,6 +18,7 @@ import (
 	"github.com/modu-ai/moai-adk/internal/cli/update/backup"
 	"github.com/modu-ai/moai-adk/internal/config"
 	"github.com/modu-ai/moai-adk/internal/core/project"
+	"github.com/modu-ai/moai-adk/internal/profile"
 )
 
 // stagedSnapshots maps each staging copy that exists now to its canonical base.
@@ -66,7 +67,7 @@ func TestInitResumeSettlesTemplateSnapshots(t *testing.T) {
 	var out, errOut strings.Builder
 	cmd.SetOut(&out)
 	cmd.SetErr(&errOut)
-	if err := resumeInitializedProject(cmd, &opts, agentWiringClaude, false, nil); err != nil {
+	if err := resumeInitializedProject(cmd, &opts, agentWiringClaude, false, nil, profile.ProfilePreferences{}); err != nil {
 		t.Fatalf("the resume failed: %v", err)
 	}
 

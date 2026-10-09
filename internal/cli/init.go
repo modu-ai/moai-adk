@@ -650,17 +650,16 @@ func runInit(cmd *cobra.Command, args []string) (err error) {
 		wizardRan = true
 
 		// Conversation language + user name: the wizard answer wins over the
-		// profile value. Update both opts (drives template deployment of
-		// language.yaml/user.yaml) AND prefs (SyncToProjectConfig runs after
-		// deployment and would otherwise re-apply the stale profile value over
-		// the wizard choice). Empty answers leave the profile fallback intact.
+		// profile value. Update opts (drives template deployment of
+		// language.yaml/user.yaml). The profile sync after deployment takes the same
+		// answers from wizardResult (syncInitProfile), so the healthy tail and the
+		// resume dispatch cannot disagree about them. Empty answers leave the profile
+		// fallback intact.
 		if result.ConversationLang != "" {
 			opts.ConvLang = result.ConversationLang
-			prefs.ConversationLang = result.ConversationLang
 		}
 		if result.UserName != "" {
 			opts.UserName = result.UserName
-			prefs.UserName = result.UserName
 		}
 
 		// Apply wizard results to opts (wizard values override empty flags).
@@ -918,7 +917,7 @@ func runInit(cmd *cobra.Command, args []string) (err error) {
 			// (gate round 35-3) — a healthy project's ordinary re-run
 			// keeps the original update redirect below.
 			if initResumeCheckpoint(userHomeDirOrEmpty(), opts.ProjectRoot) {
-				if resumeErr := resumeInitializedProject(cmd, &opts, agentWiringSelection, wizardRan, wizardResult); resumeErr != nil {
+				if resumeErr := resumeInitializedProject(cmd, &opts, agentWiringSelection, wizardRan, wizardResult, prefs); resumeErr != nil {
 					return fmt.Errorf("initialization resume failed: %w\n  Hint: this directory already contains a MoAI project — 'moai update' refreshes templates in place; --force reinitializes from scratch", resumeErr)
 				}
 				p.Info("Initialized MoAI project (resumed: user-asset shortfall completed, setup steps finished).")
@@ -1024,8 +1023,9 @@ func runInit(cmd *cobra.Command, args []string) (err error) {
 	for _, w := range result.Warnings {
 		p.Collect(w)
 	}
-	// Sync profile preferences to project config (after template deployment)
-	if err := profile.SyncToProjectConfig(opts.ProjectRoot, prefs); err != nil {
+	// Sync profile preferences to project config (after template deployment). The
+	// helper is shared with the resume dispatch, so the two paths cannot drift (t1591 Item D).
+	if err := syncInitProfile(opts.ProjectRoot, prefs, wizardResult); err != nil {
 		p.Warn("Failed to sync profile to project config: %v", err)
 	}
 
