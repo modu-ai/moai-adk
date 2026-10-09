@@ -25,6 +25,7 @@ import (
 
 	"github.com/modu-ai/moai-adk/internal/config"
 	"github.com/modu-ai/moai-adk/internal/factory"
+	"github.com/modu-ai/moai-adk/internal/gitenv"
 	"github.com/modu-ai/moai-adk/internal/homestate"
 	"github.com/modu-ai/moai-adk/internal/session"
 	"github.com/spf13/cobra"
@@ -49,7 +50,16 @@ func integrationLockRoot() string {
 	if dir := strings.TrimSpace(os.Getenv("CLAUDE_PROJECT_DIR")); dir != "" {
 		return canonicalTreeSpelling(dir)
 	}
-	out, err := exec.Command("git", "rev-parse", "--git-common-dir").Output()
+	out, err := func() (string, error) {
+		// The root-resolution child runs with the repo-scoping environment
+		// removed (card t1478 M2 repair): GIT_DIR pointing at another
+		// repository outranked cwd and named THAT repository's root — the
+		// verb then read another project's config and refused there.
+		cmd := exec.Command("git", "rev-parse", "--git-common-dir")
+		cmd.Env = gitenv.Env()
+		raw, outErr := cmd.Output()
+		return string(raw), outErr
+	}()
 	if err == nil {
 		p := strings.TrimSpace(string(out))
 		if p != "" {
@@ -433,6 +443,19 @@ func newIntegrationAcquireCmd() *cobra.Command {
 			drift, driftErr := acquireSettingsDriftPrecondition(cmd, root, cardFlag, allowSettingsDrift)
 			if driftErr != nil {
 				return driftErr
+			}
+
+			// The per-card red hold (SPEC-CANDIDATE-CI-001 REQ-CCI-012,
+			// design.md D11): the OWNING card's red candidate refuses this
+			// acquire BEFORE any window-record mutation — the settings-drift
+			// precondition's position and shape. The hold is the candidate
+			// RECORD, per card by construction; the shared window policy is
+			// never written by a candidate verdict, and a card with no
+			// candidate (or a pending/green one) is untouched.
+			if candidateCIEnabled(root) && strings.TrimSpace(cardFlag) != "" {
+				if holdErr := candidateAcquirePrecondition(root, cardFlag); holdErr != nil {
+					return holdErr
+				}
 			}
 
 			// One read of the git strategy answers both questions: the develop

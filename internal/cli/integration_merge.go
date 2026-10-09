@@ -90,13 +90,20 @@ func newIntegrationMergeCmd() *cobra.Command {
 				},
 			}
 			// The landing check rides the candidate-CI key (spec.md §F):
-			// absent/false is the absent no-op seam. While t1478 is
-			// unlanded the key cannot read true — but if a future
-			// configuration flips it early, the step refuses LOUDLY rather
-			// than silently skipping a gate the project asked for.
+			// absent/false is the absent no-op seam. Enabled, BOTH call
+			// sites wire the SAME shared check (REQ-CCI-011, design.md
+			// D2/D10) — and the step itself fail-closes on an unwired
+			// seam, so omitting this wiring refuses rather than merges
+			// unchecked.
 			if candidateCIEnabled(root) {
-				seams.LandingCheck = func(string, string) error {
-					return fmt.Errorf("the shared landing check is not wired until SPEC-CANDIDATE-CI-001 lands")
+				seams.LandingCheck = func(cardID, sha string) error {
+					return factory.CandidateLandingCheck(factory.LandingCheckInput{
+						Root:                root,
+						CardID:              cardID,
+						PinnedSHA:           sha,
+						TargetBranch:        integBranch,
+						IntegrationWorktree: integ,
+					})
 				}
 			}
 			mergeSHA, err := factory.RunMergeStep(factory.MergeStepInput{

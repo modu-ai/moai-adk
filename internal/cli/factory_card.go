@@ -1974,6 +1974,29 @@ func factoryCompleteCard(ctx context.Context, out io.Writer, root, lockRoot, car
 	// complete's state transitions are done. The step's pre-merge causes
 	// release inside it; a step failure leaves the card state unchanged
 	// (REQ-MWQ-019: the card state shall not change).
+	mergeSeams := factory.MergeStepSeams{
+		ReadCard: func(id string) (factory.MergeCardState, error) {
+			return integrationReadMergeCardForRun(ctx, root, runID, id, lane)
+		},
+	}
+	// AC-CCI-011-1's both-call-sites clause: the self-issued merge path
+	// wires the SAME shared landing check the merge verb does — its seams
+	// formerly carried only ReadCard, and the step gates on
+	// seams.LandingCheck != nil, so an unwired complete merged with no
+	// landing gate at all. The step's own fail-closed guard refuses an
+	// unwired seam when the key is enabled, so this wiring is mandatory
+	// exactly while the gate is on.
+	if candidateCIEnabled(lockRoot) {
+		mergeSeams.LandingCheck = func(id, sha string) error {
+			return factory.CandidateLandingCheck(factory.LandingCheckInput{
+				Root:                lockRoot,
+				CardID:              id,
+				PinnedSHA:           sha,
+				TargetBranch:        branch,
+				IntegrationWorktree: integTree,
+			})
+		}
+	}
 	mergeSHA, err := factory.RunMergeStep(factory.MergeStepInput{
 		Root:                lockRoot,
 		IntegrationWorktree: integTree,
@@ -1981,11 +2004,7 @@ func factoryCompleteCard(ctx context.Context, out io.Writer, root, lockRoot, car
 		CardID:              cardID,
 		CallerSessionID:     sessionID,
 		DeferRelease:        true,
-	}, factory.MergeStepSeams{
-		ReadCard: func(id string) (factory.MergeCardState, error) {
-			return integrationReadMergeCardForRun(ctx, root, runID, id, lane)
-		},
-	})
+	}, mergeSeams)
 	if err != nil {
 		if code, ok := factory.MergeExitCode(err); ok {
 			return &exitCodeError{code: code, msg: fmt.Sprintf("factory complete: the merge step refused: %v", err)}
