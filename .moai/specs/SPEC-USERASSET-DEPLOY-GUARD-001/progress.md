@@ -648,6 +648,209 @@ golden 스냅샷 3종 재생성(UPDATE_GOLDEN=1, User Lock 행 포함) ·
 포함) OK · internal/hook 전체 스위트는 이 커밋 미변경 패키지 회귀 확인용으로
 백그라운드 진행(완료 시 구조 보고에 합산).
 
+### 게이트 43/44 — 매니페스트 보호 정밀화 + 이중 형식 짝 규칙 + 플랫폼 분리 (2026-10-09)
+
+**43-1 [P1] 매니페스트 보호의 Write/Edit 확장.** 동결 가드의 매니페스트 보호가
+Bash 경로만 판정해 `Write` 도구로 user-assets.json을 `{"files":{}}`로
+덮어쓰면 허용됐다(리더 Handle 재현). 수리: checkProtectedZone의
+ZoneStateOK 분기에 userManifestProtectForms 판정을 선행 배치 — 셸 arm과
+동일한 무-추적성 거부(선언된 ZoneUserRoot 항목의 카테고리, 미선언 시
+컴파일형 user_manifest). 재현: TestWriteToolCannotReplaceUserManifest
+(~/$HOME 스펠링 거부 + 무추적 형제 허용 통제 + 추적 자산 거부 통제).
+
+**43-2 [P2] 과잉 보호 축소.** 최종 접두 조건이 ~/.moai/** 전부를
+거부했다(무추적 user-note.txt 삭제 거부 실측). 축소: 매니페스트 자체 +
+포함 디렉터(rest == ".moai")만 보호, 나머지 하위 파일은 정상 판정으로.
+뒤따른 슬래시 스펠링("~/.moai/")은 trim 후 같은 판정. 재현:
+TestUserManifestProtectFormsArePrecise (보호 6스펠링 × 과잉 5스펠링 표).
+
+**44-1 [P1] 이중 형식 짝 규칙.** user_root_zone_forms가 미해결 후보를
+해결된 루트와 비교해 루트 자체가 심볼릭 링크일 때(~/.claude → real-claude)
+링크 경로 형식을 상실 — 링크 경로로 기록된 매니페스트 키(demo/SKILL.md)가
+미등록 real-demo/SKILL.md로 판독될 수 있었다. 수리: 미해결 후보 ↔ 미해결
+루트, 해결 후보 ↔ 해결 루트의 동일 기저 짝 비교. 점 세그먼트 rest는 매니페스트
+키가 가질 수 없어(hasDotSegment 필터) 별칭 오염 없음. 재현:
+TestDualFormsPairedByBasis (이중 심볼릭 링크 + 링크 경로 키).
+
+**44-2 [P1] exec-bit 단언의 플랫폼 분리.** TestConfinedWritePreservesExecBit의
+0755 단언은 windows 실행 시 항상 실패(Chmod가 exec 분리를 못 표현 — 정규
+파일 문서화 Perm() 0666). 플랫폼 기대값 분리: windows는 문서화 0666 단언,
+unix는 0755 단언 (런타임 동작 클래스 — M0 상위 규칙의 형제).
+
+**44-3 [P1] 잠금 마커 형상의 플랫폼 분리.** TestLockGuardPathShape의
+.guard 접미 단언은 windows에서 실패 — windows 가드는 acquire 반환 전
+.guard를 제거해 .guard.serialize만 남음(리더 고립 windows 경로 실측).
+마커 판별에 windows .guard.serialize 사례 추가, 가족 접두·별개 파일 단언은
+양 플랫폼 공통 유지.
+
+**44-4 [P2] resume의 ApplyDeployMode + git 훅.** resumeInitializedProject가
+deployment_mode를 기록하지 않아 빈 값으로 남고 다음 update가 마이그레이션
+경로로 오라우팅됐다(정상 init은 "local" 기록). 수리: ApplyHarness 직후
+template.ApplyDeployMode(opts.DeployMode) 삽입 + 미도달 git 훅 설치
+(pre-push REQ-CIAUT-002·pre-commit REQ-PC-001, 정상 init과 같은 비치명적
+처리) — 대기 중이던 git-hooks 항목과 병합.
+
+**재제기 검증 (현 HEAD에서 재관측)**: project-scoped resume checkpoint
+[8th] — initResumeCheckpoint의 프로젝트 범위 arm(gate 37-3) + 비차단 판독
+(gate 38-3/30) 착지, TestInitResumeGateKeepsHealthyRedirect(타 프로젝트
+저널 무시)로 관측 · readLockRecord [10th] — 플랫폼 분리 파일
+(lock_guard_{unix,windows}.go + init_resume_read_{unix,windows}.go, gate
+36) 착지, ClassifyGuardMarker/guardMarkerDead 가족 테스트로 간접 관측.
+
+**게이트**: hook zone 계열
+(TestFrozenGuard|TestUserRoot|TestWriteToolCannot|TestUserManifestProtect|
+TestDualForms|TestProtectedZone|TestShellMatrix|TestShellZone) ok 2.2s ·
+`go test ./internal/userassets/ -count=1` ok 4.3s ·
+`go test ./internal/cli/ -run 'TestInit'` ok 70.8s ·
+golangci-lint (hook/cli/userassets) exit 0 ·
+GOOS=windows build + vet (테스트 컴파일 포함) OK ·
+internal/hook 전체 스위트 백그라운드 완료 시 구조 보고에 합산.
+
+### 게이트 46/47/48/49 — 보호 기준 경로·실경로 의미론·마이그레이션 정합 (2026-10-09)
+
+**46-1/47-1 [P1] 보호 기준 경로의 케이스 폴드 + 46-2 [P1] 심링크된 ~/.moai 양
+스코프 + 48-1 [P1] 심링크+점 결합.** userManifestProtectForms가 rest 비교를
+케이스 폴드(~/.MOAI/user-assets.json 동일 아이노드 — resolver가 호출자
+스펠링을 반환하므로 폴드가 유일한 정규화)하고, 후보를 미해결(링크 경로)·
+해결(실경로) 양 스코프로 판정(~/.moai가 홈 밖으로 링크되면 해결 경로가 홈
+접두를 잃음), 점 세그먼트는 텍스트 탈락(~/.moai/./user-assets.json 결합 우회
+차단), 그리고 실경로 직접 대등(후보가 매니페스트의 실제 파일/디렉터로
+resolve되면 보호 — 심링크+`..` 조합이 홈 상대 rest로 명명 불가인 케이스의
+파일시스템 답).
+
+**47-2 [P1] + 48-3 [P2] 이중 형식 별칭 — 점 텍스트 탈락, `..` 실경로 의미론
+보존.** userRootZoneForms의 미해결 별칭: `.` 세그먼트는 실경로 효과가 없어
+텍스트 탈락(skills/./moai-alpha/SKILL.md가 링크 경로 키로 판정됨), `..`
+세그먼트는 절대 문자열 축소 금지 — 심링크 뒤 `..`은 실제로 untracked 파일을
+가리키므로(moai-alpha/../moi-alpha/SKILL.md → nested/...) 축소하면 건전한
+편집이 거부됨. `..` 포함 스펠링은 해결 형식(파일시스템 워크)이 판정. 재현:
+TestDotSegmentAliasInterpretsTrackedKey·TestUserRootPhysicalDotDot (원시
+연결 스펠링 — Join 정리 함정 회피)·TestReviewManifestResolvedAliases.
+
+**43-1 후속 — Write/Edit 매니페스트 보호**는 46-48 기준 경로 수리를 그대로
+상속(같은 userManifestProtectForms).
+
+**46-3 [P1, 9-11차 재제기] 프로젝트 스코프 체크포인트 — 배포 완성 마커.**
+"완성된 MCP/harness config" 프로젝트가 user-global 스테일 저널에 탈취되어
+resume이 타 프로젝트의 pending intent를 소비하는 재현 확정. 핵심 발견:
+.mcp.json과 llm.yaml의 harness/moai 내용은 템플릿이 이미 품고 있어 존재
+판정은 아무것도 구분 못함 — **deployment_mode가 유일한 post-path 전용
+마커**(템플릿 미보유, ApplyDeployMode만 기록). 체크포인트 완성 arm을
+deployment_mode 존재로 판정: 있으면 완료→redirect(탈취 차단), 없으면 M6
+창(배포됨, 설정 미완)→resume. 잔여: MCP-거절 프로젝트는 .mcp.json을 안
+쓰지만 deployment_mode로 판정되므로 무관. 재현:
+TestInitResumeCheckpointReadsBothDeploymentFaces·TestJournalClearedAfterResume.
+
+**47-4 [P2] resume의 applyJevFromWizard.** wizard의 Jev 답이 resume에서
+유실됨(설정이 false로 남음). 수리: wizardRan+wizardResult를
+resumeInitializedProject로 전달, ApplyHarness 전 applyJevFromWizard 실행
+(정상 init 순서와 동일). 재현: TestInitResumeAppliesJevSelection.
+
+**47-3 [P2] doctor L6 양 스코프.** L4→user-workflow 폴백이 프로젝트
+skillsDir만 L6에 넘겨 user-home hns-* 참조가 dangling으로 판정됨. 수리:
+checkLayer6AgentActivation에 userSkillsDir 제2 스코프 — 양쪽 모두 부재일
+때만 dangling(L1은 프로젝트 스코프 유지). 재현: TestLayer6ResolvesUserScope.
+
+**49 NEW-1 [P2] 워크플로 홈 앵커.** 변환기의 무조건 재작성이
+~/.claude/skills/moai/workflows/ → ~/.moai/workflows/로 보냄 — 양쪽 어디에도
+없는 대상(실제 변환 복사본은 ~/.agents/skills/moai/workflows/). 수리:
+홈 앵커(~ 접두)는 .agents 설치 루트로, 프로젝트 상대형은 .moai/workflows로
+구분 재작성.
+
+**49 NEW-2 [P2] 마이그레이션 확인의 converted-vs-converted.**
+userCounterpartConfirmed가 RAW 소스와 설치 바이트(CONVERTED)를 비교해
+정상 설치된 .toml이 항상 false — 스테일 프로젝트 사본이 영구 고정. 수리:
+codex-agents/agents-skills 페이스는 NormalizeCodexRoleForDeploy 적용 후
+비교. 재현: TestCodexInstallMigrationAndWorkflowRefs.
+
+**49 [12차 재제기] readLockRecord — 잠금 레코드 판독의 핸들 바인딩.**
+classifyLockRecord의 Lstat→ReadFile 쌍이 두 단계 사이 경로를 재해석(동시
+스왑 시 판독자가 못 본 레코드를 분류). 수리: readLockRecord 경유로 전환
+(비차단 open + 핸들 fstat + 동일 핸들 판독). 재현:
+TestLockSwapSubprocess(자식 프로세스가 원자 rename으로 스왑하는 동안 부모
+800+ 판정 — 온전한 레코드만, 최소 1회 온전 레코드 관측 보장, ×5 GREEN).
+
+**게이트**: `go test ./internal/userassets/ -count=1` ok 8.1s (스왑 테스트
+포함) · hook zone 계열 ok 1.2s · cli 가족(TestInitResume|TestInit|Migrate|
+TestCodexInstall|TestDoctor|TestBinaryLag) 백그라운드 · template 전체
+백그라운드(변환기 변경) · hook 전체 스위트 백그라운드 · golangci-lint 4
+패키지 백그라운드 · GOOS=windows build+vet 백그라운드 — 완료 결과는 구조
+보고에 합산. 재현 이름은 게이트가 지정한 4종(TestReviewManifestResolved
+Aliases|UserRootPhysicalDotDot|CodexInstallMigrationAndWorkflowRefs|
+LockSwapSubprocess)에 바인딩.
+
+### 게이트 50 — 역방향 이중 형식·실경로 조상·참여동의 가족 완성 (2026-10-09)
+
+**50-1 [P1] 이중 형식 역방향 매핑.** 매니페스트가 LINK 경로를 추적할 때
+REAL 경로로의 접근이 미등록으로 판돡되어 허용됐다(링크 거부·실경로 허용
+실측). 수리: userRootTracksAny가 폴드 키 미적중 시 후보 실경로와 각 추적 키
+실경로를 resolve해 비교 — 후보↔추적 양방향 링크 매핑. 재현:
+TestDualFormsPairedByBasis 역방향 팔.
+
+**50-2 [P1] 매니페스트 실경로 조상 전체 포함.** ~/.moai → outside 링크에서
+rm -rf outside가 허용됐다(파일+직접 부모만 비교). 수리: resolved 매니페스트
+경로의 전체 조상 사슬 포함 검사 — 매니페스트는 보호 모델의 루트이므로 임의
+조상 수준의 삭제가 모두 보호. 무관 디렉터 통제 팔 포함. 재현:
+TestReviewManifestResolvedAliases 조상 팔.
+
+**50-3 [P1] resume의 applyParticipationFromWizard.** 참여동의 wizard 답이
+resume에서 유실 — 거절 선택이 기록되지 않아 consent가 enabled로 판돡.
+수리: wizardRan+wizardResult 전달 경로에 applyParticipationFromWizard 추가
+(Jev ✓·deploy mode ✓·참여동의 ← 이번 — init의 wizard 적용 3단계 가족
+완성). 재현: TestInitResumeAppliesJevSelection decline 단언(Asked:true,
+Enabled:false).
+
+**48-3↔50-1 조정 기록.** 48-3의 "건전한 편집 거부" 전제는 50-1 역방향
+매핑 하에서 소멸: 링크+`..` 스펠링이 착지하는 실파일은 추적 키의 실경로
+그 자체(EvalSymlinks 실측 — 링크가 `..` 적용 전 해석됨)라 수정은 관리
+자산에 대한 것이고 거부가 옳다. TestUserRootPhysicalDotDot은 실경로
+의미론 계약으로 재보정 — 착지 대상이 추적 자산 실파일이면 거부(거부 사유가
+해결된 실경로 형식을 명명하는지 검증 — 텍스트 축소 판정 금지), 미추적
+파일이면 허용.
+
+**게이트**: hook 팔 4종 ok(재조정 후) · cli TestInitResumeAppliesJevSelection
+ok 42.7s · golangci-lint 4패키지·GOOS=windows build+vet·hook 전체 스위트
+백그라운드 — 완료 결과는 구조 보고에 합산.
+
+### 게이트 51 — 실경로 포함·체크포인트 수명·하니스 보존·재개방·클로저 prune (2026-10-09)
+
+**51-1 [P1] 실경로 포함 검사.** rm -rf real-demo(추적 파일의 링크가 담긴
+실경로 디렉터)가 허용됐다 — 역방향 매핑이 등일만 비교. 수리:
+userRootTracksAny의 실경로 비교에 디렉터 포함(tracked 실경로가 후보
+실경로의 하위면 추적) 추가. 재현: TestDualFormsPairedByBasis 디렉터 팔.
+
+**51-2 [P2] 체크포인트 수명.** 자산 설치 성공 시 원 증거(저널/파손
+매니페스트)가 소비되어, 이후 단계(autonomy 등)의 일시 실패가 다음 실행을
+"already initialized"로 막음. 수리: resume-pending 마커(.moai/resume-
+pending) — resume 진입 시 기록, 모든 post-step 완료 시에만 제거,
+initResumeCheckpoint가 마커를 체크포인트로 판정. 재현:
+TestInitResumeCheckpointRetiresOnCompletion(완료 시 소멸 단언 포함).
+
+**51-3 [P2] 하니스 선택 보존.** --llm gpt init이 자산 설치에서 실패 뒤
+옵션 없는 재실행이 harness:claude 기본값을 기록하고 Codex 와이어링을
+생략 — 배포된 GPT 레이아웃과 설정이 영구 불일치. 수리: 배포 레이아웃이
+중단 기록(codex-only 배포자는 CLAUDE.md를 숨기고 AGENTS.md를 투영 —
+AGENTS.md 존재+CLAUDE.md 부재 = gpt 기록), resume이 wiring 복원. 재현:
+TestInitResumeRestoresGPTSelection.
+
+**51-4 [P2] 두 번째 open의 재개방 창.** classifyPidlessMarker의 flock
+프로브 open이 플레인 os.Open — 판독 뒤 FIFO 스왑이 재open에서 블로킹
+(실측). 수리: readLockRecord와 동일 규율(O_NONBLOCK + 이 핸들 바운드 타입
+검사, 비정규 fail-closed held). 재현: TestUnixPidlessMarkerFIFOOpenNon
+Blocking(구현은 hang, 수리는 즉시 반환 — 채널 타임아웃 가드).
+
+**51-5 [P2] RemoveBundle의 클로저 prune.** 라벨 전용 열거가 부모 전용
+번들(deployment → extras, 자체 자산 없음)의 의존 자산을 남김 — 의존
+자산은 의존 번들 라벨로 기록되기 때문. 수리: 제거 자격 = 전/후 의존
+클로저 차등(collectEntries(manifest.Bundles) − collectEntries(remaining)),
+소유 엔트리 이름 기준 매니페스트 열거, 공유/보존 게이트 유지. 재현:
+TestRemoveBundlePrunesDependencyClosure(파일·기록·L0 보존 3중 단언).
+
+**게이트**: 게이트 51 신규 테스트 5종 전부 GREEN · lint 0 issues(errcheck
+2건 수리 후) · GOOS=windows build+vet OK · userassets/template 전체
+백그라운드 · hook 전체(단독 부하)·cli 가족 백그라운드 — 완료 결과는 구조
+보고에 합산.
+
 ## §E.3 Run-phase Audit-Ready Signal
 
 _(pending run-phase — manager-develop 소관.)_

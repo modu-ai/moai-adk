@@ -50,11 +50,19 @@ func acquireGuard(path string, timeout time.Duration) (func(), error) {
 // doctor), while a flock-held file belongs to a live process. A probe
 // error fails closed to held.
 func classifyPidlessMarker(markerPath string) (GuardMarkerState, int) {
-	fd, err := os.Open(markerPath)
+	// Gate round 51-4: the SECOND open carries the same discipline as
+	// readLockRecord's first — O_NONBLOCK (a FIFO swap before this open
+	// must not park on the writer wait) and the type check BOUND TO THIS
+	// HANDLE. A non-regular handle fails closed to held.
+	fd, err := os.OpenFile(markerPath, os.O_RDONLY|syscall.O_NONBLOCK, 0)
 	if err != nil {
 		return GuardMarkerOwnerAlive, 0
 	}
 	defer func() { _ = fd.Close() }()
+	var st syscall.Stat_t
+	if fstatErr := syscall.Fstat(int(fd.Fd()), &st); fstatErr != nil || st.Mode&syscall.S_IFMT != syscall.S_IFREG {
+		return GuardMarkerOwnerAlive, 0 // not a regular file — fail closed
+	}
 	err = syscall.Flock(int(fd.Fd()), syscall.LOCK_EX|syscall.LOCK_NB)
 	if err != nil {
 		return GuardMarkerOwnerAlive, 0 // held by a live process

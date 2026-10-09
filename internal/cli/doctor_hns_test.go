@@ -89,7 +89,7 @@ func TestCheckLayer6AgentActivation_HNSDanglingRef(t *testing.T) {
 		t.Fatalf("write agent: %v", err)
 	}
 
-	status, detail := checkLayer6AgentActivation(agentsDir, skillsDir)
+	status, detail := checkLayer6AgentActivation(agentsDir, skillsDir, "")
 	if status != "FAIL" {
 		t.Fatalf("checkLayer6AgentActivation = %q (%s), want FAIL for dangling hns- skills: ref", status, detail)
 	}
@@ -118,8 +118,45 @@ func TestCheckLayer6AgentActivation_HNSResolvedRef(t *testing.T) {
 		t.Fatalf("write agent: %v", err)
 	}
 
-	status, detail := checkLayer6AgentActivation(agentsDir, skillsDir)
+	status, detail := checkLayer6AgentActivation(agentsDir, skillsDir, "")
 	if status != "PASS" {
 		t.Errorf("checkLayer6AgentActivation = %q (%s), want PASS for resolved hns- ref", status, detail)
+	}
+}
+
+// TestLayer6ResolvesUserScope — gate round 47-3: a project agent's hns-*
+// reference that exists ONLY in the user-home skills dir resolves — L6
+// queries both scopes (L1 keeps its project scope).
+func TestLayer6ResolvesUserScope(t *testing.T) {
+	projectRoot := t.TempDir()
+	userHome := t.TempDir()
+	agentsDir := filepath.Join(projectRoot, ".claude", "agents", "harness")
+	skillsDir := filepath.Join(projectRoot, ".claude", "skills")
+	userSkillsDir := filepath.Join(userHome, ".claude", "skills")
+	for _, d := range []string{agentsDir, userSkillsDir} {
+		if err := os.MkdirAll(d, 0o755); err != nil {
+			t.Fatalf("mkdir %s: %v", d, err)
+		}
+	}
+
+	agent := "---\nname: proj-agent\ndescription: project agent\nskills:\n  - hns-user\n---\nbody\n"
+	if err := os.WriteFile(filepath.Join(agentsDir, "proj-agent.md"), []byte(agent), 0o644); err != nil {
+		t.Fatalf("write agent: %v", err)
+	}
+	// The reference resolves ONLY in the user scope — the project skillsDir
+	// never carries it.
+	if err := os.MkdirAll(filepath.Join(userSkillsDir, "hns-user"), 0o755); err != nil {
+		t.Fatalf("mkdir user skill: %v", err)
+	}
+
+	status, detail := checkLayer6AgentActivation(agentsDir, skillsDir, userSkillsDir)
+	if status != "PASS" {
+		t.Errorf("checkLayer6AgentActivation = %q (%s), want PASS for a user-scope-resolved hns- ref (gate 47-3)", status, detail)
+	}
+	// The project-only judgment still reports it dangling when the user
+	// scope is unavailable.
+	status, detail = checkLayer6AgentActivation(agentsDir, skillsDir, "")
+	if status != "FAIL" || !strings.Contains(detail, "hns-user") {
+		t.Errorf("project-only scope = %q (%s), want FAIL naming hns-user", status, detail)
 	}
 }

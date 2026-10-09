@@ -918,7 +918,7 @@ func runInit(cmd *cobra.Command, args []string) (err error) {
 			// (gate round 35-3) — a healthy project's ordinary re-run
 			// keeps the original update redirect below.
 			if initResumeCheckpoint(userHomeDirOrEmpty(), opts.ProjectRoot) {
-				if resumeErr := resumeInitializedProject(cmd, &opts, agentWiringSelection); resumeErr != nil {
+				if resumeErr := resumeInitializedProject(cmd, &opts, agentWiringSelection, wizardRan, wizardResult); resumeErr != nil {
 					return fmt.Errorf("initialization resume failed: %w\n  Hint: this directory already contains a MoAI project — 'moai update' refreshes templates in place; --force reinitializes from scratch", resumeErr)
 				}
 				p.Info("Initialized MoAI project (resumed: user-asset shortfall completed, setup steps finished).")

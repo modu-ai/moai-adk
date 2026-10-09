@@ -272,22 +272,21 @@ func ClassifyLockFile(lockPath string) (GuardMarkerState, int) {
 // classifyLockRecord reads and pid-classifies one lock-family record. The
 // boolean reports whether a usable classification was reached (false = the
 // pid-less residual, which the caller decides per file kind).
+//
+// Gate round 49 [12th raise]: the read goes THROUGH readLockRecord — the
+// handle-bound platform reader (non-blocking open, type check bound to the
+// open handle, read bound to the same handle). The former Lstat → ReadFile
+// pair re-interpreted the PATH between the two steps: a concurrent swap of
+// the lock file could classify a record the reader never saw whole.
 func classifyLockRecord(path string) (state GuardMarkerState, pid int, has bool) {
-	info, err := os.Lstat(path)
-	if err != nil {
-		if os.IsNotExist(err) {
-			return GuardMarkerAbsent, 0, true
-		}
-		return GuardMarkerIrregular, 0, true // access error — surfaced, not absence
-	}
-	if !info.Mode().IsRegular() {
+	rec := readLockRecord(path)
+	switch rec.status {
+	case recordAbsent:
+		return GuardMarkerAbsent, 0, true
+	case recordIrregular:
 		return GuardMarkerIrregular, 0, true
 	}
-	raw, readErr := os.ReadFile(path)
-	if readErr != nil {
-		return GuardMarkerIrregular, 0, true
-	}
-	for _, field := range strings.Fields(string(raw)) {
+	for _, field := range strings.Fields(string(rec.data)) {
 		if strings.HasPrefix(field, "pid=") {
 			if parsed, convErr := strconv.Atoi(strings.TrimPrefix(field, "pid=")); convErr == nil && parsed > 0 && int64(parsed) <= 2147483647 {
 				if lockProcessGone(parsed) {

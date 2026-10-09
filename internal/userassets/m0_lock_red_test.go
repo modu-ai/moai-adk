@@ -200,13 +200,19 @@ func TestLockGuardPathShape(t *testing.T) {
 			lockFile = name
 		case strings.HasSuffix(name, ".guard"):
 			guardMarker = name
+		// Gate round 44-3: the windows guard removes the .guard marker
+		// BEFORE acquire returns — the surviving serialized shape is
+		// .guard.serialize beside the .lock, so the marker-shape judgment
+		// is split per platform.
+		case runtime.GOOS == "windows" && strings.HasSuffix(name, ".guard.serialize"):
+			guardMarker = name
 		}
 	}
 	if lockFile == "" {
 		t.Fatalf("acquisition created no lock file: %v", created)
 	}
 	if guardMarker == "" {
-		t.Fatalf("acquisition created no .guard-suffixed marker: %v", created)
+		t.Fatalf("acquisition created no guard marker (.guard on unix, .guard.serialize on windows): %v", created)
 	}
 	// The marker belongs to the lock's own name family and is a SEPARATE
 	// file from the lock — the observed shape both platform guards must

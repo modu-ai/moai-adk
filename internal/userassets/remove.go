@@ -264,22 +264,35 @@ func (in *Installer) RemoveBundle(manifest *Manifest, name string, remaining []s
 	if _, ok := in.Catalog.Catalog.OptionalPacks[name]; !ok {
 		return nil, fmt.Errorf("unknown bundle %q", name)
 	}
-	// RF3 (review fix): enumerate the removal targets from the MANIFEST —
-	// every tracked key whose recorded bundle names the removed bundle.
-	// Files installed by an OLDER deployment are tracked but absent from
-	// the current source tree; walking the tree misses them and both the
-	// file and its record survive the removal.
-	bundleKeys := map[string]bool{}
-	for k, fe := range manifest.Files {
-		if fe.Bundle == name {
-			bundleKeys[k] = true
+	// Gate round 51-5: the removal eligibility is the BEFORE/AFTER
+	// DEPENDENCY-CLOSURE DIFFERENCE, not the bare bundle label. A
+	// parent-only bundle (deployment → backend, no own assets) records its
+	// dependency assets under the DEPENDENCY's label, so a label-only
+	// enumeration left the whole dependency subtree behind. before = the
+	// closure of the manifest's recorded bundles; after = the closure of
+	// the remaining selection (∪ L0, which collectEntries always
+	// includes); the difference is what the removal may prune. The
+	// shared/deferred classifications below still gate each entry.
+	before := in.collectEntries(manifest.Bundles)
+	after := in.collectEntries(remaining)
+	afterNames := map[string]bool{}
+	for _, e := range after {
+		afterNames[e.Name] = true
+	}
+	prunedNames := map[string]bool{}
+	for _, e := range before {
+		if !afterNames[e.Name] {
+			prunedNames[e.Name] = true
 		}
 	}
 
-	// Group the keys by owning entry name so the E3/R-f-② classification
-	// (shared / deferred) runs per entry as before.
+	// RF3 (review fix): enumerate the removal targets from the MANIFEST —
+	// every tracked key whose OWNING ENTRY is in the prune set (files
+	// installed by an OLDER deployment are tracked but absent from the
+	// current source tree; walking the tree misses them and both the file
+	// and its record survive the removal).
 	nameKeys := map[string][]string{}
-	for k := range bundleKeys {
+	for k := range manifest.Files {
 		_, rel, ok := splitManifestKey(k)
 		if !ok {
 			continue
@@ -288,7 +301,9 @@ func (in *Installer) RemoveBundle(manifest *Manifest, name string, remaining []s
 		if !ok {
 			continue
 		}
-		nameKeys[n] = append(nameKeys[n], k)
+		if prunedNames[n] {
+			nameKeys[n] = append(nameKeys[n], k)
+		}
 	}
 	names := make([]string, 0, len(nameKeys))
 	for n := range nameKeys {

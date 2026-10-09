@@ -102,13 +102,28 @@ func userRootZoneForms(cand string) []zoneForm {
 			continue // root absent — nothing of it is on disk to protect
 		}
 		rootSlash := config.FoldZoneText(filepath.ToSlash(resolvedRoot))
-		// the UNRESOLVED candidate spelling (the link-path form)
-		if rest, ok := strings.CutPrefix(config.FoldZoneText(unresolvedSlash), rootSlash+"/"); ok {
-			display := userRootFormPrefix + slug
-			if rest != "" {
-				display += "/" + rest
+		// Gate round 44-1: the dual forms are PAIRED BY BASIS — the
+		// unresolved candidate is compared against the UNRESOLVED root
+		// (home + dir, the link-path form) and the resolved candidate
+		// against the resolved root. Mixing (unresolved candidate vs
+		// resolved root) loses the tracked key when the root ITSELF is a
+		// symlink: the link-spelled candidate never prefix-matches the
+		// resolved root, the link-path alias form is never emitted, and a
+		// manifest key recorded under the link path (demo/SKILL.md) reads
+		// as unregistered real-demo/SKILL.md.
+		unresolvedRoot := filepath.ToSlash(filepath.Join(home, filepath.FromSlash(dir)))
+		// the UNRESOLVED candidate spelling (the link-path form). A `.`
+		// segment has no real-path effect and is dropped TEXTUALLY so the
+		// alias still interprets the link-path key (gate round 47-2). A
+		// `..` segment is NEVER collapsed textually (gate round 48-3): its
+		// meaning depends on which components are symlinks — collapsing it
+		// would deny healthy edits through a link+`..` spelling that
+		// actually lands on an untracked file — so the RESOLVED form (the
+		// filesystem walk) carries that judgment.
+		if rest, ok := strings.CutPrefix(config.FoldZoneText(unresolvedSlash), config.FoldZoneText(unresolvedRoot)+"/"); ok && !hasDotDotSegment(rest) {
+			if alias := dropDotSegments(rest); alias != "" {
+				addForm(userRootFormPrefix + slug + "/" + alias)
 			}
-			addForm(display)
 		}
 		// the RESOLVED target spelling (the real-path form)
 		resolvedTarget, ok := zoneResolve(abs)
@@ -130,6 +145,33 @@ func userRootZoneForms(cand string) []zoneForm {
 		}
 	}
 	return out
+}
+
+// hasDotDotSegment reports whether a slash-separated rest carries a ".."
+// segment — such a spelling keeps real-path semantics and is judged by the
+// resolved form only (gate round 48-3).
+func hasDotDotSegment(rest string) bool {
+	for _, seg := range strings.Split(rest, "/") {
+		if seg == ".." {
+			return true
+		}
+	}
+	return false
+}
+
+// dropDotSegments removes "." (and empty) components textually — a dot has
+// no real-path effect, so the alias keeps the link-path identity (gate
+// round 47-2).
+func dropDotSegments(rest string) string {
+	segs := strings.Split(rest, "/")
+	out := make([]string, 0, len(segs))
+	for _, seg := range segs {
+		if seg == "." || seg == "" {
+			continue
+		}
+		out = append(out, seg)
+	}
+	return strings.Join(out, "/")
 }
 
 // userRootKey parses a namespaced form into the manifest key
@@ -178,6 +220,45 @@ func userRootTracksAny(home, display string) bool {
 	for k := range m.Files {
 		folded := config.FoldZoneText(strings.TrimSuffix(k, "/"))
 		if folded == foldedKey || strings.HasPrefix(folded, foldedKey+"/") {
+			return true
+		}
+	}
+	// Gate round 50-1: the dual-form mapping runs BOTH directions. The
+	// manifest may track the LINK path while the candidate arrives spelled
+	// as the REAL path (or the reverse) — the folded-key comparison alone
+	// then reads a tracked file unregistered and lets the write through.
+	// Resolve the candidate's real location and compare it against every
+	// tracked key's real location (the filesystem's own mapping).
+	slug, rest, cutOK := strings.Cut(strings.TrimSuffix(key, "/"), "/")
+	dir, dirOK := userRootSlugDirs[slug]
+	if !cutOK || !dirOK {
+		return false
+	}
+	candReal, resOK := zoneResolve(filepath.Join(home, filepath.FromSlash(dir), filepath.FromSlash(rest)))
+	if !resOK {
+		return false
+	}
+	candRealFolded := config.FoldZoneText(filepath.ToSlash(candReal))
+	for k := range m.Files {
+		kslug, krest, ok := strings.Cut(strings.TrimSuffix(k, "/"), "/")
+		kdir, kdirOK := userRootSlugDirs[kslug]
+		if !ok || !kdirOK {
+			continue
+		}
+		kReal, kresOK := zoneResolve(filepath.Join(home, filepath.FromSlash(kdir), filepath.FromSlash(krest)))
+		if !kresOK {
+			continue
+		}
+		if candRealFolded == config.FoldZoneText(filepath.ToSlash(kReal)) {
+			return true
+		}
+		// Gate round 51-1: the containment check applies on the real path
+		// too — a candidate DIRECTORY whose real location contains a
+		// tracked key's real file (rm -rf real-demo, where the tracked
+		// key's link lives under real-demo) is as destructive as a direct
+		// file delete, and equality alone let it through.
+		kRealFolded := config.FoldZoneText(filepath.ToSlash(kReal))
+		if strings.HasPrefix(kRealFolded+"/", candRealFolded+"/") {
 			return true
 		}
 	}
@@ -230,14 +311,62 @@ func userManifestProtectForms(cand string) []zoneForm {
 	if !ok {
 		resolvedHome = home
 	}
-	slash := filepath.ToSlash(resolved)
-	homeSlash := filepath.ToSlash(resolvedHome) + "/"
-	rest, ok := strings.CutPrefix(slash, homeSlash)
-	if !ok {
+	// Gate round 43-2: the protection is the manifest ITSELF and its
+	// containing directory (whose deletion takes the manifest with it) —
+	// nothing wider. The former ~/.moai/** prefix arm over-protected (an
+	// untracked user note under ~/.moai was denied a deletion that the
+	// normal tracked-ness judgment should decide).
+	//
+	// Gate rounds 46-1/46-2/47-1: the protection basis matches the
+	// candidate standard BOTH ways. The rests are CASE-FOLDED before
+	// comparison — a .MOAI/USER-ASSETS.JSON alias names the same inode on
+	// a case-insensitive filesystem, and the resolver returns the caller's
+	// spelling, so the fold is the only normalization that holds. And the
+	// candidate is judged in BOTH scopes: the resolved real path AND the
+	// unresolved (link-path) spelling — a symlinked ~/.moai relocates the
+	// resolved manifest outside the home prefix, and only the link-path
+	// scope still sees it.
+	formsFor := func(rest string) []zoneForm {
+		rest = strings.TrimSuffix(rest, "/")
+		// Gate round 48-1: the symlink+dot combination (~/.moai/./user-
+		// assets.json) drops the dot TEXTUALLY so the link-path rest still
+		// matches. A `..` keeps real-path semantics (gate round 48-3) and
+		// is left to the resolved branch / the direct real-path equality
+		// below.
+		if hasDotDotSegment(rest) {
+			return nil
+		}
+		rest = dropDotSegments(rest)
+		folded := config.FoldZoneText(rest)
+		if folded == config.FoldZoneText(userManifestRel) || folded == config.FoldZoneText(userMoaiDirRel) {
+			return []zoneForm{{Display: folded, Folded: folded}}
+		}
 		return nil
 	}
-	if rest == userManifestRel || rest == ".moai" || strings.HasPrefix(rest, userMoaiDirRel+"/") {
-		return []zoneForm{{Display: rest, Folded: config.FoldZoneText(rest)}}
+	if rest, ok := strings.CutPrefix(filepath.ToSlash(abs), filepath.ToSlash(home)+"/"); ok {
+		if f := formsFor(rest); len(f) > 0 {
+			return f
+		}
+	}
+	if rest, ok := strings.CutPrefix(filepath.ToSlash(resolved), filepath.ToSlash(resolvedHome)+"/"); ok {
+		if f := formsFor(rest); len(f) > 0 {
+			return f
+		}
+	}
+	// Gate round 48-1 + 50-2: direct real-path judgment — the filesystem's
+	// own answer for the symlink+`..` combinations the home-relative rests
+	// cannot name. The containment walk covers the resolved manifest's
+	// FULL ancestor chain: the manifest is the protection model's root, so
+	// anything that deletes it at ANY ancestor level (rm -rf outside,
+	// where ~/.moai links into outside/) is protected — not just the file
+	// and its direct parent.
+	resolvedFolded := config.FoldZoneText(filepath.ToSlash(resolved))
+	if resolvedManifest, ok := zoneResolve(filepath.Join(home, ".moai", "user-assets.json")); ok {
+		manFolded := config.FoldZoneText(filepath.ToSlash(resolvedManifest))
+		if resolvedFolded == manFolded || strings.HasPrefix(manFolded, resolvedFolded+"/") {
+			f := config.FoldZoneText(userManifestRel)
+			return []zoneForm{{Display: f, Folded: f}}
+		}
 	}
 	return nil
 }

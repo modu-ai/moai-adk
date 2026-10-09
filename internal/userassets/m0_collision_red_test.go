@@ -258,7 +258,17 @@ func TestConfinedWritePreservesExecBit(t *testing.T) {
 	if err != nil {
 		t.Fatalf("installed script missing: %v", err)
 	}
+	// Gate round 44-2: the exec-bit assertion is unix RUNTIME behavior —
+	// Windows Chmod cannot represent the exec split (a regular file's
+	// documented Perm() is 0666), so the mode judgment is unix-only; the
+	// landing judgment holds on every platform.
+	if runtime.GOOS == "windows" {
+		if info.Mode().Perm() != 0o666 {
+			t.Fatalf("installed .sh mode = %o, want the documented windows 666", info.Mode().Perm())
+		}
+		return
+	}
 	if got := info.Mode().Perm(); got != 0o755 {
-		t.Fatalf("RED (intended): installed .sh mode = %o, want 755 — confinedWrite hardcodes 0o644 (install.go:743) and drops the exec bit", got)
+		t.Fatalf("installed .sh mode = %o, want 755 — the installer dropped the exec bit (REQ-COL-003)", got)
 	}
 }

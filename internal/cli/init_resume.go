@@ -15,8 +15,10 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"strings"
 	"time"
 
+	"github.com/modu-ai/moai-adk/internal/cli/wizard"
 	"github.com/modu-ai/moai-adk/internal/core/project"
 	"github.com/modu-ai/moai-adk/internal/homestate"
 	"github.com/modu-ai/moai-adk/internal/template"
@@ -43,7 +45,17 @@ func userHomeDirOrEmpty() string {
 // attempt never reached run in the production order (project layout →
 // autonomy tier → ApplyHarness → MCP entry → Codex wiring; gate round
 // 35-6 included).
-func resumeInitializedProject(cmd *cobra.Command, opts *project.InitOptions, wiring agentWiring) error {
+// resumeInitializedProject completes an init whose prior attempt failed at
+// the user-asset ensure: the ENTIRE re-check → quarantine → install span
+// runs INSIDE the user lock scope (gate rounds 37-2/38-3 — a quarantine
+// outside the lock could interleave with another run's healthy manifest
+// store and move the HEALTHY file), then the setup steps the failed
+// attempt never reached run in the production order (project layout →
+// autonomy tier → Jev record → ApplyHarness → deploy mode → git hooks →
+// MCP entry → Codex wiring; gate round 35-6 included). Gate round 47-4:
+// the wizard's Jev answer rides in — a resume that skipped it left
+// jev.enabled false against an explicit wizard selection.
+func resumeInitializedProject(cmd *cobra.Command, opts *project.InitOptions, wiring agentWiring, wizardRan bool, wizardResult *wizard.WizardResult) error {
 	homeDir, homeErr := userHomeDirFn()
 	if homeErr != nil {
 		return fmt.Errorf("resolve user home: %w", homeErr)
@@ -53,6 +65,28 @@ func resumeInitializedProject(cmd *cobra.Command, opts *project.InitOptions, wir
 		return fmt.Errorf("user-asset resume lock: %w", lockErr)
 	}
 	defer func() { _ = lock.Release() }()
+
+	// Gate round 51-3: the deployed LAYOUT is the interrupted record of the
+	// original --llm selection. A re-run without options resolves the claude
+	// default; applying it over a deployed GPT layout records harness:claude
+	// while the Codex wiring is skipped — config and on-disk layout stay
+	// permanently mismatched. The codex-only deployer HIDES the claude-only
+	// surfaces (CLAUDE.md among them) and projects AGENTS.md, so
+	// AGENTS.md-present-without-CLAUDE.md IS the gpt record.
+	if wiring == agentWiringClaude && deployedWiringIsGPT(opts.ProjectRoot) {
+		wiring = agentWiringGPT
+	}
+
+	// Gate round 51-2: the checkpoint OUTLIVES the asset install — a
+	// transient failure in a LATER post-step (autonomy tier, harness, MCP)
+	// must leave the next run a resume route instead of the "already
+	// initialized" refusal. The marker is written at entry and removed only
+	// when EVERY post-step completed; initResumeCheckpoint reads it as a
+	// checkpoint.
+	markerPath := filepath.Join(opts.ProjectRoot, ".moai", "resume-pending")
+	if err := os.WriteFile(markerPath, []byte("resume in progress\n"), 0o644); err != nil {
+		return fmt.Errorf("write resume marker: %w", err)
+	}
 
 	// The ensure shortfall: a CORRUPT user manifest is quarantined inside
 	// the lock scope, then the installer runs from scratch (the doctor's
@@ -88,11 +122,41 @@ func resumeInitializedProject(cmd *cobra.Command, opts *project.InitOptions, wir
 	); err != nil {
 		return fmt.Errorf("apply autonomy tier: %w", err)
 	}
+	// Gate round 47-4: the wizard's Jev answer is part of the same post-path
+	// (healthy init applies it before the harness record — init.go's
+	// applyJevFromWizard) — a resume without it silently flipped an explicit
+	// wizard selection back to false.
+	if err := applyJevFromWizard(wizardRan, wizardResult, opts.ProjectRoot); err != nil {
+		return fmt.Errorf("apply jev selection: %w", err)
+	}
+	// Gate round 50-3: the participation consent completes the same family —
+	// a resume that skipped it never wrote the Asked record, so an explicit
+	// wizard DECLINE stayed invisible and the consent read as enabled.
+	if err := applyParticipationFromWizard(wizardRan, wizardResult, opts.ProjectRoot); err != nil {
+		return fmt.Errorf("apply participation selection: %w", err)
+	}
 	// DEBT R4: the resume is judged by CONTENT downstream — the harness
 	// config, the MCP entry, and the Codex wiring the failed attempt never
 	// wrote are all written here, in the production order.
 	if err := template.ApplyHarness(opts.ProjectRoot, string(wiring)); err != nil {
 		return fmt.Errorf("apply harness: %w", err)
+	}
+	// Gate round 44-4: the deploy-mode record is part of the same post-path —
+	// a resume without it leaves deployment_mode empty, and the next update
+	// misroutes to the migration path (healthy init records "local" here,
+	// SPEC-INIT-SHRINK-001 REQ-009).
+	if err := template.ApplyDeployMode(opts.ProjectRoot, opts.DeployMode); err != nil {
+		return fmt.Errorf("apply deploy mode: %w", err)
+	}
+	// The git hooks the failed attempt never reached (queued with gate
+	// round 44-4): pre-push (REQ-CIAUT-002) and pre-commit (REQ-PC-001),
+	// non-fatal exactly as in healthy init — an install failure must not
+	// abort a resume that already repaired the manifest store.
+	if pushErr := installPrePushHookOptional(opts.ProjectRoot, getBoolFlag(cmd, "no-hooks"), cmd.ErrOrStderr(), cmd.ErrOrStderr()); pushErr != nil {
+		_, _ = fmt.Fprintf(cmd.ErrOrStderr(), "Pre-push hook installation failed: %v\n", pushErr)
+	}
+	if commitErr := installPreCommitHookOptional(opts.ProjectRoot, getBoolFlag(cmd, "no-hooks"), cmd.ErrOrStderr(), cmd.ErrOrStderr()); commitErr != nil {
+		_, _ = fmt.Fprintf(cmd.ErrOrStderr(), "Pre-commit hook installation failed: %v\n", commitErr)
 	}
 	mcpDeclined := !opts.MCPProvision
 	switch wiring {
@@ -105,7 +169,23 @@ func resumeInitializedProject(cmd *cobra.Command, opts *project.InitOptions, wir
 		return fmt.Errorf("provision MCP entry: %w", err)
 	}
 	wireCodexUnlessClaude(cmd, wiring, opts.ProjectRoot)
+	// Gate round 51-2: every post-step completed — the checkpoint marker
+	// retires (the early-return paths above leave it in place, keeping the
+	// next run's resume route alive).
+	_ = os.Remove(markerPath)
 	return nil
+}
+
+// deployedWiringIsGPT reads the deployed layout as the interrupted --llm
+// record (gate round 51-3): the codex-only deployer hides CLAUDE.md and
+// projects AGENTS.md, so their presence pattern names the deployer that
+// ran.
+func deployedWiringIsGPT(projectRoot string) bool {
+	if _, err := os.Stat(filepath.Join(projectRoot, "CLAUDE.md")); err == nil {
+		return false // the claude deployer ran
+	}
+	_, err := os.Stat(filepath.Join(projectRoot, "AGENTS.md"))
+	return err == nil
 }
 
 // initResumeCheckpoint reports whether an explicit interruption
@@ -121,6 +201,13 @@ func resumeInitializedProject(cmd *cobra.Command, opts *project.InitOptions, wir
 // longer routes a healthy project into resume. Gate rounds 38-3/30: both
 // reads are NON-BLOCKING with the type check bound to the open handle.
 func initResumeCheckpoint(homeDir, projectRoot string) bool {
+	// Gate round 51-2: the resume's own pending marker IS a checkpoint —
+	// the original interruption evidence (journal/corrupt manifest) is
+	// consumed by the first resume, and a LATER-step failure must not wedge
+	// the half-done resume behind "already initialized".
+	if _, err := os.Stat(filepath.Join(projectRoot, ".moai", "resume-pending")); err == nil {
+		return true
+	}
 	interrupted := false
 	if jData, ok := readManifestRecord(userassets.JournalPath(homeDir)); ok {
 		var j userassets.PendingJournal
@@ -141,11 +228,22 @@ func initResumeCheckpoint(homeDir, projectRoot string) bool {
 	// Deployment completeness: the executor's config sections must exist —
 	// a project the executor never deployed is NOT "initialized but
 	// incomplete"; it keeps the original redirect.
+	//
+	// Gate round 46-3: deployment_mode is written ONLY by the post-deploy
+	// ApplyDeployMode step — the shipped template carries no such key (the
+	// template's llm.yaml and .mcp.json both already carry harness/moai
+	// content, so mere presence distinguishes nothing). Its presence says
+	// the post-deploy path RAN: the project is COMPLETE, and a stale
+	// user-global journal (the journal carries no project identity) must
+	// not hijack it into a resume consuming another project's pending
+	// intent. Its absence is the M6 window — deployed, setup unfinished —
+	// and stays resumable.
 	sections := filepath.Join(projectRoot, ".moai", "config", "sections")
-	if _, err := os.Stat(filepath.Join(sections, "llm.yaml")); err != nil {
+	llmData, err := os.ReadFile(filepath.Join(sections, "llm.yaml"))
+	if err != nil {
 		return false
 	}
-	return true
+	return !strings.Contains(string(llmData), "deployment_mode:")
 }
 
 // quarantineCorruptUserManifest renames a CORRUPT user manifest aside with

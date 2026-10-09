@@ -286,6 +286,17 @@ func userCounterpartConfirmed(userManifest *userassets.Manifest, cat *template.C
 	if err != nil {
 		return false
 	}
+	// Gate round 49 NEW-2: the CODEX faces carry the deploy-path CONVERTED
+	// bytes — targetBytes applies NormalizeCodexRoleForDeploy before
+	// writing and hashing (REQ-CNV-001) — so the confirmation compares
+	// CONVERTED against CONVERTED. Raw-vs-installed never matched a
+	// correctly installed .toml counterpart, confirming false every time
+	// and pinning the stale project copy forever (the provenance
+	// discipline's direct corollary: compare like provenance with like).
+	switch userassets.RootSlug(slug) {
+	case userassets.RootCodexAgents, userassets.RootAgentsSkills:
+		current = template.NormalizeCodexRoleForDeploy(current)
+	}
 	return bytes.Equal(data, current)
 }
 

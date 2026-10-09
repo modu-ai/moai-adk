@@ -114,10 +114,16 @@ func runHarnessCheck(projectRoot string) DiagnosticCheck {
 	// frontmatter self-activation checks (REQ-HAW-012/013/013b). Iterates
 	// .claude/agents/harness/*.md and FAILs on an empty description, a missing
 	// skills: key, or a dangling harness-* skills: reference. No-op when no
-	// generated agents exist. Reuses skillsDir (resolved above) for reference
-	// resolution. Preserves L1-L5 semantics (AC-HAW-014) — additive layer only.
+	// generated agents exist. Gate round 47-3: references resolve against
+	// BOTH scopes — the project skillsDir AND the user-home skills dir — a
+	// project agent referencing a user-home hns-* skill is not dangling.
+	// L1 keeps its project scope.
 	agentsDir := filepath.Join(projectRoot, ".claude", "agents", "harness")
-	l6, l6Detail := checkLayer6AgentActivation(agentsDir, skillsDir)
+	userSkillsDir := ""
+	if home, homeErr := os.UserHomeDir(); homeErr == nil {
+		userSkillsDir = filepath.Join(home, ".claude", "skills")
+	}
+	l6, l6Detail := checkLayer6AgentActivation(agentsDir, skillsDir, userSkillsDir)
 	statuses = append(statuses, "L6:"+l6)
 	if l6 == "FAIL" {
 		failures = append(failures, "L6 "+l6Detail)
@@ -341,7 +347,10 @@ func checkLayer5Files(harnessDir string) (string, string) {
 //
 // No-op (PASS) when the .claude/agents/harness/ directory is absent or contains
 // no *.md agents — the contract applies only to generated agents.
-func checkLayer6AgentActivation(agentsDir, skillsDir string) (string, string) {
+// Gate round 47-3: userSkillsDir is the second resolution scope (""
+// disables it — the reference must then resolve in the project scope
+// alone).
+func checkLayer6AgentActivation(agentsDir, skillsDir, userSkillsDir string) (string, string) {
 	entries, err := os.ReadDir(agentsDir)
 	if err != nil {
 		if os.IsNotExist(err) {
@@ -383,7 +392,9 @@ func checkLayer6AgentActivation(agentsDir, skillsDir string) (string, string) {
 			if !strings.HasPrefix(ref, "hns-") && !strings.HasPrefix(ref, "harness-") && !strings.HasPrefix(ref, "my-harness-") {
 				continue
 			}
-			if _, err := os.Stat(filepath.Join(skillsDir, ref)); err != nil {
+			_, projErr := os.Stat(filepath.Join(skillsDir, ref))
+			_, userErr := os.Stat(filepath.Join(userSkillsDir, ref))
+			if projErr != nil && userErr != nil {
 				problems = append(problems, agentName+": dangling skills: reference "+ref+" (skill dir absent)")
 			}
 		}
