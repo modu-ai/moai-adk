@@ -71,6 +71,18 @@ Options (factual; no recommendation):
 Default: none. The published rule is not applied here because this row is not closed by it (see Q7 status).
 Operator verdict:
 
+### Q8: How do the removal items U-02 and U-10 proceed, given that AC-RC30-01 needs a profile session?
+
+Label: FOUNDER
+Class: product-level
+Status: PENDING. AC-RC30-01 cannot be run in this card. The removal switch stays off in this card, and U-02 and U-10 stay DECISION-PENDING.
+Authority anchor: acceptance.md, AC-RC30-01 (judging command requires `CLAUDE_CONFIG_DIR` and a profile session); spec.md § D.2 gate sentence.
+Options (factual; no recommendation):
+- **(i)** An operator-side run of AC-RC30-01 on a profile session, recorded in progress.md, which adopts the criterion. The switch is then turned on and U-02 and U-10 proceed (plan.md § B.3, step 4).
+- **(ii)** The operator decides that U-02 and U-10 leave this SPEC or are re-scoped. The switch stays off.
+Default: none.
+Operator verdict:
+
 ### B1: OPEN LEADER DECISION — Tier L acceptance-criteria budget (26 of 25)
 
 Label: FOUNDER

@@ -78,7 +78,7 @@ No IN-NOW file is changed at either tip (research.md § 2 E-OVERLAP, verbatim). 
 | U-ID | Source | Priority | Disposition | Root cause (file:line) | Acceptance |
 |------|--------|----------|-------------|------------------------|------------|
 | U-01 | Must-fix 1; D1; REQ-RC30-001, REQ-RC30-002, REQ-RC30-003 | High | DECISION-PENDING (operator decision Q2) | `internal/userassets/paths.go:36-43` (re-read): `ResolveRoots` returns `$HOME` roots only. Profile resolution `launcher.go:159` and `profile.go:240` (audit). `paths.go` is changed at tip `df559b729` (research.md E-OVERLAP). | AC-RC30-01, AC-RC30-02 |
-| U-02 | Must-fix 2; D2; REQ-RC30-004 | High | BLOCKED-ON WT-user-asset-bundle (t1591) | Removal `os.Remove(p)` at `internal/cli/migrate_project_assets.go:168` (re-read, E-04). Migration call `internal/cli/update_template_sync.go:1185` (re-read, E-20). `migrate_project_assets.go` is changed at `df559b729`. The audit's `update/` path and its `:1183` line are wrong (research.md § 4 item 5). | AC-RC30-03 |
+| U-02 | Must-fix 2; D2; REQ-RC30-004 | High | DECISION-PENDING (blocked: AC-RC30-01 needs a profile session; decision-index.md Q8) | Removal `os.Remove(p)` at `internal/cli/migrate_project_assets.go:168` (re-read, E-04). Migration call `internal/cli/update_template_sync.go:1185` (re-read, E-20). `migrate_project_assets.go` is changed at `df559b729`. The audit's `update/` path and its `:1183` line are wrong (research.md § 4 item 5). | AC-RC30-03 |
 | U-03 | Must-fix 3 (D3); REQ-RC30-005 | High | BLOCKED-ON WT-user-asset-bundle (t1591) | `internal/cli/user_asset_phase.go:105-125` (audit): core-only selection. The file is changed at `df559b729`. | AC-RC30-04 |
 | U-04 | Must-fix 3 (D15); REQ-RC30-006 | Medium | IN-NOW | `internal/cli/bundle.go` (re-read, E-12): subcommands `bundle`, `add <bundle-name>`, `remove <bundle-name>`; no `list`. Not changed at either tip. | AC-RC30-05 |
 | U-05 | Must-fix 4 (D7); REQ-RC30-007 | High | IN-NOW | `internal/config/manager.go:225` (re-read): `Save()`. `internal/config/types.go:389` (re-read, E-15): alias fields are absent, only a comment remains. `manager.go` has no `deployment_mode` reference (re-read, E-14). `deploy_mode.go:23` (re-read). Not changed at either tip. | AC-RC30-06 |
@@ -86,7 +86,7 @@ No IN-NOW file is changed at either tip (research.md § 2 E-OVERLAP, verbatim). 
 | U-07 | Must-fix 5 (D9); REQ-RC30-009, REQ-RC30-010 | High | IN-NOW | `internal/cli/update_restore.go` has no `settings.json` reference (re-read, E-11). Retention `CleanupOldBackups(…, 5)` at `update_template_sync.go:859` (audit). `update.go:269` (audit) is the entry point and is not edited by this item. Not changed at either tip. | AC-RC30-08 |
 | U-08 | Must-fix 6 (D12); REQ-RC30-011, REQ-RC30-017 | High | IN-NOW | `internal/cli/update_archive.go:282` (comment) and `:367` (code) hold the literal `0 user customizations modified` (re-read, E-01). `update_tux.go:119-120` (re-read): `! %d conflict` classification pill. `update_tux.go:237` (re-read): outcome conflict line. Measured-value fix for the no-op `Updated N files` line: `update_tux.go:217-262` (audit). The characterization test `internal/cli/tuxiu_characterization_test.go:201` pins the literal `3 skills archived, 0 user customizations modified` and the expectation `Updated 26 files` (E-22); its expectation is updated in the same M4 change, as part of U-08. | AC-RC30-09 |
 | U-09 | Must-fix 7 (D4); REQ-RC30-005 | Medium | BLOCKED-ON WT-user-asset-bundle (t1591) | `internal/cli/migrate_project_assets.go:160` (re-read, E-05): message "opt in via 'moai bundle add <name>'" for a skill with no catalog entry. `update_reconcile.go:64-70` (audit). The file is changed at `df559b729`. | AC-RC30-10 |
-| U-10 | Must-fix 7 (D5); REQ-RC30-004 | Medium | BLOCKED-ON WT-user-asset-bundle (t1591) | `internal/cli/migrate_project_assets.go:168` (re-read, E-04): `os.Remove(p)` removes one file per call; no directory-pruning step (E-04). The file is changed at `df559b729`. | AC-RC30-11 |
+| U-10 | Must-fix 7 (D5); REQ-RC30-004 | Medium | DECISION-PENDING (blocked: AC-RC30-01 needs a profile session; decision-index.md Q8) | `internal/cli/migrate_project_assets.go:168` (re-read, E-04): `os.Remove(p)` removes one file per call; no directory-pruning step (E-04). The file is changed at `df559b729`. | AC-RC30-11 |
 | U-11 | Must-fix 8 (D10); REQ-RC30-012 | High | BLOCKED-ON WT-update-migration-fixes (t1578) and WT-user-asset-bundle (t1591) | `internal/userassets/install.go:612` (re-read, E-16): `case stateManifestMatch:`, with no version comparison. The file is changed at both tips. | AC-RC30-12 |
 | U-12 | Can-follow (D6); REQ-RC30-001 | Medium | BLOCKED-ON WT-user-asset-bundle (t1591) | `migrate_project_assets.go:154-161` (audit): kept optional agents and `.agents/skills` copies are never refreshed. The file is changed at `df559b729`. | AC-RC30-13 |
 | U-13 | Can-follow (D10, skip decision); REQ-RC30-022 | Medium | IN-NOW | `internal/cli/update_template_sync.go:247` and `:1143` (audit): skip compares version strings only. Not changed at either tip. | AC-RC30-14 |
@@ -109,7 +109,7 @@ No IN-NOW file is changed at either tip (research.md § 2 E-OVERLAP, verbatim). 
 | U-30 | R2g; REQ-RC30-019 | Medium | GAP-INVESTIGATE | Whether update output uses a locale table is not yet read in this tree. The four-locale set is resolved from disk (decision-index.md Q1; research.md § 2 E-LOCALE). | AC-RC30-25 (locale part) |
 | U-31 | Leader intake 10-10, t1578 card-review M3; REQ-RC30-021 | Medium | BLOCKED-ON WT-update-migration-fixes (t1578) | Branch `40ab940f4`, `internal/cli/update_integrity_probe.go:52` (re-read, E-19): entry `{rel: ".claude/settings.json", check: probeJSON}`; `damageReason` returns `"missing"` at line 64 when the file is absent. Absent on main (`git cat-file -e main:internal/cli/update_integrity_probe.go` exits 128). On the tree, `internal/template/harness_fs.go:112` (re-read) hides `.claude` paths when `hideClaude` is set. | AC-RC30-26 |
 
-Item counts (research.md § 2 E-R5 is the check): 31 items (U-01 to U-31). IN-NOW 13 (U-04, U-05, U-06, U-07, U-08, U-13, U-14, U-16, U-18, U-26, U-27, U-28, U-29). DECISION-PENDING 1 (U-01). BLOCKED-ON 10 (U-02, U-03, U-09, U-10, U-11, U-12, U-17, U-21, U-22, U-31). GAP-INVESTIGATE 7 (U-15, U-19, U-20, U-23, U-24, U-25, U-30).
+Item counts (research.md § 2 E-R5 is the check): 31 items (U-01 to U-31). IN-NOW 13 (U-04, U-05, U-06, U-07, U-08, U-13, U-14, U-16, U-18, U-26, U-27, U-28, U-29). DECISION-PENDING 3 (U-01, U-02, U-10). BLOCKED-ON 8 (U-03, U-09, U-11, U-12, U-17, U-21, U-22, U-31). GAP-INVESTIGATE 7 (U-15, U-19, U-20, U-23, U-24, U-25, U-30).
 
 Note on U-22: owned by card t1578 and tracked here for traceability only. Note on U-31: not one of the eight must-fix items; it comes from leader intake (§ E).
 
@@ -144,7 +144,7 @@ Options (factual; the operator decides; no recommendation; full text in decision
 
 Follow-on if option (b) is chosen: manager-spec performs the REQ-002 amendment in place in this card, after WT-user-asset-bundle (t1591) is absorbed at run start (M1). The leader coordinates that with the other lane.
 
-Gate, under every option: REQ-RC30-003 applies. No project-side copy is deleted, and no removal code path is merged, until AC-RC30-01 is adopted at M2 (plan.md § B.3, step 3; regression-guard status in acceptance.md).
+Gate, under every option: REQ-RC30-003 applies. No project-side copy is deleted, and no removal code path is merged, until AC-RC30-01 is adopted, which this card cannot run (plan.md § B.3, step 3). The absorbed removal call at `migrate_project_assets.go:174` (df559b729) is inert by default: switch `removalEnabled` defaults to false (plan.md § B.2, step 1; AC-RC30-02).
 
 ### D.3 Init path check: which roots `moai init` writes (disposition: IN-NOW, not a U-row)
 
@@ -228,6 +228,7 @@ Recorded in `decision-index.md`. Summary:
 - **Q2 (pending operator decision; FOUNDER, product-level).** Profile reach: options (a), (b), and (c) are stated factually in decision-index.md. No option is selected. Blocks U-01 and AC-RC30-01.
 - **Q3 (queue overlaps; disposition undecided).** t1527, t1594, and t1612 are recorded as overlaps in § F. Blocks no item of this SPEC.
 - **Q7 (pending leader or operator decision; no applied default).** The narrow-terminal width threshold. Options are stated factually in decision-index.md. REQ-RC30-018 carries the value as pending.
+- **Q8 (blocked; decision-index.md Q8).** AC-RC30-01 cannot be run in this card, so U-02 and U-10 are DECISION-PENDING.
 - **B1 (OPEN LEADER DECISION).** The Tier L criterion budget is 26 of 25. Options (a) split and (b) merge are stated in decision-index.md. The text keeps 26 until the leader decides.
 
 ## K. Requirement and AC budget

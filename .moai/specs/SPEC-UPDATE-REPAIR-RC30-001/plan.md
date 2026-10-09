@@ -21,27 +21,27 @@ Exit condition: every criterion has a RED cell or a recorded reason it cannot be
 
 Runs after plan-audit PASS.
 
-1. Absorb `WT-user-asset-bundle` (t1591) and `WT-update-migration-fixes` (t1578) into this tree with plain `git merge`. Do not rebase. Record both tip SHAs in `progress.md` § G Absorption Record.
+1. Absorb `WT-user-asset-bundle` (t1591) and `WT-update-migration-fixes` (t1578) into this tree with plain `git merge`. Do not rebase. Route (a) is chosen for the removal call: the absorbed content is merged unchanged, and the removal call at `internal/cli/migrate_project_assets.go:174` (df559b729) is made inert in step 1b, before any run or commit. Route (a) keeps the plain merge and the branch's content whole; route (b) would select hunks from one file that carries both the predicate fix (hunk `@@ -282,0 +289,11 @@`) and the removal call, which breaks the plain-merge rule. 1b. TDD RED then GREEN for AC-RC30-02: write `TestMigrationRemovalGate`, asserting that the removal call runs only when `removalEnabled` is true and that its default is false; its first run fails on the merged code (TDD RED at M1). Then add `removalEnabled` (default false) around the call at line 174 (GREEN). Record both tip SHAs in `progress.md` § G Absorption Record.
 2. Measure every range from `CARD_BASE=$(git merge-base HEAD <absorbed-tip>)`, not from a literal SHA. Re-absorb if a branch moves.
 3. Resolve conflicts in `internal/userassets/install.go` (both branches) and `internal/cli/update.go` (t1578) by the rule that the branch's own tests keep passing.
 4. Implement the BLOCKED-ON items in this order:
-   - U-01 is DECISION-PENDING (operator decision Q2; decision-index.md). It is not a BLOCKED-ON item. The removal gate that REQ-RC30-003 requires does not depend on Q2 and is implemented in M2, after AC-RC30-01 is adopted (§ B.3). The reach mechanism waits for the Q2 verdict.
-   - U-09 (non-catalog message), U-03 (bundle announce), U-12 (kept assets). U-02 and U-10 are removal-path items and move to M2 (§ B.3).
+   - U-01 is DECISION-PENDING (operator decision Q2; decision-index.md). It is not a BLOCKED-ON item. The removal switch of step 1b is inert by default; turning it on waits for AC-RC30-01 adoption, which this card cannot run (§ B.3). The reach mechanism waits for the Q2 verdict.
+   - U-09 (non-catalog message), U-03 (bundle announce), U-12 (kept assets). U-02 and U-10 are DECISION-PENDING: they wait for AC-RC30-01 adoption, which needs a profile session this card cannot run (§ B.3).
    - U-11 (user-root downgrade refusal, both branches).
    - U-17 (one banner) and U-21 (profile sync resolution, t1578).
    - U-31 (integrity probe, codex-only harness condition, t1578): the codex-only fixture test is written first (RED), then the harness-conditioned fix (GREEN).
 
-Exit condition: the absorbed refs are recorded; AC-RC30-04, -10, -12, -13, -18, -21 pass or have a recorded blocker.
+Exit condition: the absorbed refs are recorded; AC-RC30-02 passes (the removal call is inert by default); AC-RC30-04, -10, -12, -13, -18, -21 pass or have a recorded blocker.
 
 ### B.3 Milestone M2 — Shared-root data model and profile reach (High; decision-dependent)
 
 1. Record the § D.1 status table with runnable evidence for the four roots and `~/.moai`. Each Gap cell is replaced with the command and output that closes it.
 2. Run the D.3 init path check: build this tree, invoke the built binary by path with `HOME` set to a scratch directory, and list which roots `init` writes.
-3. Adopt AC-RC30-01 before any removal path is written: record its RED cell and a passing run (the command is in acceptance.md; it needs a profile session). Until it passes, no project-side copy is deleted and no removal code path is merged (REQ-RC30-003).
-4. Removal path, in this order: write `TestMigrationRemovalGate` (AC-RC30-02) and observe its first run fail (its TDD RED milestone is M2); implement the removal gate with default deny; then implement U-02 (backup before removal, AC-RC30-03) and U-10 (emptied-directory removal, AC-RC30-11).
+3. Adoption of AC-RC30-01 is not reachable in this card: its command needs a profile session on the operator side (acceptance.md, AC-RC30-01). No adoption is claimed. Until it is adopted, the removal switch stays off, no project-side copy is deleted, and no removal code path is turned on (REQ-RC30-003).
+4. DECISION-PENDING (blocked on step 3): turning the switch on, U-02 (backup before removal, AC-RC30-03), and U-10 (emptied-directory removal, AC-RC30-11) wait for AC-RC30-01 adoption. Nothing in this card enables them.
 5. Implement the profile-reach mechanism only after Q2 is answered (U-01).
 
-Exit condition: AC-RC30-01 is adopted (RED cell and passing run recorded); AC-RC30-02, -03, and -11 pass; the D.1 table has no Gap cell that the milestone could close.
+Exit condition: AC-RC30-01 is not adopted in this card (blocker recorded); U-02 and U-10 stay DECISION-PENDING; the D.1 table has no Gap cell that the milestone could close.
 
 ### B.4 Milestone M3 — Config data model and restore (High; not gated on M1)
 
