@@ -171,6 +171,14 @@ func resumeInitializedProject(cmd *cobra.Command, opts *project.InitOptions, wir
 	if err := template.ApplyDeployMode(opts.ProjectRoot, opts.DeployMode); err != nil {
 		return fmt.Errorf("apply deploy mode: %w", err)
 	}
+	// The global settings cleanup the healthy init runs right after the deploy-mode
+	// record (init.go): it removes the legacy global MoAI hooks directory, which the
+	// failed attempt never reached. Non-fatal exactly as in healthy init, and it does
+	// not gate the marker: a malformed global settings file must not keep the resume
+	// route alive on every run.
+	if globalErr := ensureGlobalSettingsEnv(); globalErr != nil {
+		_, _ = fmt.Fprintf(cmd.ErrOrStderr(), "Warning: global settings env update failed: %v\n", globalErr)
+	}
 	// The git hooks the failed attempt never reached (queued with gate
 	// round 44-4): pre-push (REQ-CIAUT-002) and pre-commit (REQ-PC-001),
 	// non-fatal exactly as in healthy init — an install failure must not
