@@ -2,6 +2,7 @@
 id: SPEC-GLM-JEV-KEY-001
 title: "Acceptance criteria — glm --key flag and moai jev command"
 created: 2026-10-09
+updated: 2026-10-09
 ---
 
 # SPEC-GLM-JEV-KEY-001 — acceptance.md

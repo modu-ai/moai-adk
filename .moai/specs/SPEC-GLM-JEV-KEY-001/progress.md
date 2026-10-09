@@ -1,7 +1,7 @@
 # SPEC-GLM-JEV-KEY-001 — progress
 
 - SPEC: SPEC-GLM-JEV-KEY-001 (card t1613)
-- status: in-progress
+- status: completed
 - phase: plan (manager-spec, 2026-10-09)
 
 ## §E.1 Plan-phase Audit-Ready Signal
@@ -105,4 +105,17 @@ m1_to_mN_commit_strategy: per-milestone commits (M1 RED f7454e31d / M2 GREEN d7b
 
 ## §E.4 Sync-phase Audit-Ready Signal
 
-_pending sync-phase (manager-docs)._
+sync_complete_at: 2026-10-09
+sync_commit_sha: pending-backfill-sync
+sync_status: complete
+changelog_entry_position: CHANGELOG.md [Unreleased] § Added (top entry)
+b12_self_test_a: pass — pre-emission `grep -c 'SPEC-GLM-JEV-KEY-001' CHANGELOG.md` = 0 (duplicate guard)
+b12_self_test_b: pass — AC counter on acceptance.md: live=26 identifier strings = 16 canonical criteria (AC-GJK-001..016, §D.1) + 10 abbreviated §D.3 cross-reference spellings; excluded=0, ambiguous=0; CHANGELOG cites 16
+b12_self_test_c: pass — entry-claimed paths ls-verified (internal/cli/jev.go, internal/cli/glm.go, internal/glmcred/, internal/jevcred/)
+frontmatter_status_transitions:
+  spec_md: in-progress → implemented → completed (single sync commit, merged close)
+  plan_acceptance: `updated:` refreshed (frontmatter only; bodies untouched)
+canary_compliance_check: n/a (this SPEC defines no forward-looking policy tested by its own sync tests)
+docs_site: updated — docs-site/content/{ko,en,ja,zh}/cli-reference/launchers.md (ko canonical → derived; glm `--key` form + `moai jev --key` mention; no new headings, section-count parity unchanged)
+mx_tag_validation: pass — existing @MX:NOTE [AUTO] tags on jev.go (jevCmd) and glm.go (glmCmd) well-formed; no new tags required (new functions tested, package-private)
+

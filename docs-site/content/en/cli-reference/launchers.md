@@ -49,6 +49,7 @@ The permission mode is one of `default`, `acceptEdits` (the `moai init` default)
 
 ```bash
 moai glm setup <api-key>   # Save API key (first time only)
+moai glm --key <api-key>   # Save API key via flag (same storage as setup)
 moai glm                   # Run with the GLM backend
 moai glm -p work           # Run with the 'work' profile
 moai glm status            # Check credential status
@@ -59,7 +60,10 @@ Reads GLM credentials from `~/.moai/.env.glm`, injects environment variables suc
 | Subcommand | Description |
 |-------------|------|
 | `moai glm setup [api-key]` | Save the GLM API key |
+| `moai glm --key <api-key>` | Save the GLM API key via flag (both forms write the same file; the last save wins) |
 | `moai glm status` | Show the current GLM credential status |
+
+The Jev (TypeSafe) credential is stored with `moai jev --key <credential>` — written to `~/.moai/.env.typesafe` (mode 0600), the same file `moai doctor` and the web console read. Running `moai jev` without `--key` prints help only.
 
 {{< callout type="warning" >}}
 GLM does not support the `auto` permission mode. Use an eligible Claude session for that mode. CG is retired and provides no concurrency alternative.
