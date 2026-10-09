@@ -2,7 +2,7 @@
 
 SPEC ID: SPEC-UPDATE-MIGRATION-FIX-001
 Card: t1578
-Status: in-progress (run phase)
+Status: completed (sync phase)
 Tier: M
 
 ## §E.1 Plan-phase Audit-Ready Signal
@@ -367,7 +367,84 @@ M3 is implemented and verified in the working tree but not committed. M4 evidenc
 
 ## §E.4 Sync-phase Audit-Ready Signal
 
-_pending sync-phase_
+Recorded by manager-docs in the single sync commit (3-phase close, plan→run→sync). The commit cannot cite its own hash, so `sync_commit_sha` holds the placeholder and the real SHA is backfilled in a following commit. This section records what was observed at commit time; the sync-audit verdict belongs to the auditor.
+
+sync_complete_at: 2026-10-09T18:01:38Z (2026-10-10 KST)
+sync_commit_sha: pending-backfill
+sync_status: complete
+audit_ready: true
+b12_self_test_a: pre-emission `grep -c 'SPEC-UPDATE-MIGRATION-FIX-001' CHANGELOG.md` = 0 before the append, so emission proceeded with no duplicate entry
+b12_self_test_b: AC counter over `.moai/specs/SPEC-UPDATE-MIGRATION-FIX-001/acceptance.md` (tier M, ac_source=acceptance.md) = `live=5 excluded=0 ambiguous=0`, stdout `5`, exit 0; reserved tokens in acceptance.md = 0; the CHANGELOG entry states the same count (5 acceptance criteria, AC-UMF-001..005)
+b12_self_test_c: every file path the CHANGELOG entry cites was checked with `ls` before commit (spec.md, progress.md, .claude/settings.json, .moai/manifest.json, .moai/config/sections/system.yaml, internal/userassets)
+changelog_entry_position: CHANGELOG.md `## [Unreleased]` > `### Changed`, one entry, placed after the SPEC-UPDATE-MIGRATION-001 entry
+frontmatter_status_transitions.spec_md: `status: in-progress -> completed`; `updated: 2026-10-10` (already the sync date, unchanged)
+frontmatter_status_transitions.progress_md: header status line `in-progress -> completed` (sync phase)
+frontmatter_status_transitions.plan_md: no frontmatter and no status field; not edited
+frontmatter_status_transitions.acceptance_md: no frontmatter and no status field; not edited
+canary_compliance_check: not applicable (this SPEC defines no forward-looking policy that its own sync tests)
+
+### AC matrix (acceptance.md is the SSOT; 5 criteria)
+
+| AC | Classification | REQ | Witness tests | Verdict |
+|----|----------------|-----|---------------|---------|
+| AC-UMF-001 | release-blocking | REQ-UMF-001, REQ-UMF-003 | TestRunUpdate_VersionMatch_RunsIntegrityProbe; TestRunUpdate_UserCancelled_SkipsIntegrityProbe | PASS |
+| AC-UMF-002 | release-blocking | REQ-UMF-001, REQ-UMF-002 | TestRunUpdate_VersionMatch_RunsIntegrityProbe; TestIntegrityProbe_FailOpen; TestIntegrityProbeEntry_DamageReasons | PASS |
+| AC-UMF-003 | regression-guard | REQ-UMF-004 | TestRunUpdate_V3Path_NormalizesLegacyRootDenyEntries | PASS |
+| AC-UMF-004 | regression-guard | REQ-UMF-005, REQ-UMF-006 | TestTemplateSync_LeavesNoEmptyManagedSkillDirs; TestTemplateSync_ManagedSweepFlagsPlantedEmptyDir (internal/cli); TestInstaller_RejectsEmptyDirectoryTargets (internal/userassets) | PASS |
+| AC-UMF-005 | plan-gate | spec.md §C.1 | no test; `grep -c "OUT OF SCOPE" .moai/specs/SPEC-UPDATE-MIGRATION-FIX-001/spec.md` = 1 (re-measured in this sync) | PASS (plan gate) |
+
+### Verbatim PASS lines (cond4 logs)
+
+`cond4-cli-scoped-test.log` (scoped `go test ./internal/cli/` run; 15 `--- PASS` lines, 0 `FAIL` lines):
+
+```
+--- PASS: TestRunUpdate_V3Path_NormalizesLegacyRootDenyEntries (1.16s)
+--- PASS: TestRunUpdate_VersionMatch_RunsIntegrityProbe (1.48s)
+--- PASS: TestRunUpdate_UserCancelled_SkipsIntegrityProbe (0.28s)
+--- PASS: TestIntegrityProbe_FailOpen (1.29s)
+--- PASS: TestIntegrityProbeEntry_DamageReasons (0.03s)
+    --- PASS: TestIntegrityProbeEntry_DamageReasons/missing (0.00s)
+    --- PASS: TestIntegrityProbeEntry_DamageReasons/directory_in_place_of_file (0.00s)
+    --- PASS: TestIntegrityProbeEntry_DamageReasons/intact_json (0.00s)
+    --- PASS: TestIntegrityProbeEntry_DamageReasons/unparseable_json (0.00s)
+    --- PASS: TestIntegrityProbeEntry_DamageReasons/empty_system_yaml (0.00s)
+    --- PASS: TestIntegrityProbeEntry_DamageReasons/intact_system_yaml (0.00s)
+    --- PASS: TestIntegrityProbeEntry_DamageReasons/stat_fails_under_a_file (0.00s)
+    --- PASS: TestIntegrityProbeEntry_DamageReasons/read_denied (0.00s)
+--- PASS: TestTemplateSync_LeavesNoEmptyManagedSkillDirs (0.85s)
+    update_managed_dir_guard_test.go:81: managed skill/agent directories swept=0 zero_file=0 (healthy exclusion contract: swept=0)
+--- PASS: TestTemplateSync_ManagedSweepFlagsPlantedEmptyDir (0.00s)
+ok  	github.com/modu-ai/moai-adk/internal/cli	6.634s
+```
+
+`cond4-userassets-test.log` (`go test ./internal/userassets/ -count=1 -v`; the log holds 61 `--- PASS` lines and 0 `--- FAIL` lines):
+
+```
+--- PASS: TestInstaller_RejectsEmptyDirectoryTargets (0.05s)
+ok  	github.com/modu-ai/moai-adk/internal/userassets	0.846s
+```
+
+`cond4-vet.log`, `cond4-build.log`, `cond4-build-windows.log`: 0 bytes each (see Gaps G-5).
+
+### Gaps (not observed in this sync)
+
+- G-1: the full `internal/cli` package suite was not run in this sync (scoped families only, per the lane load rule). The run-phase full-package attempt did not complete (§E.2 M2-c).
+- G-2: the full `moai gate` run was not repeated in this sync. §E.3 records the run-phase gate verdict FAIL on a pre-existing fixture finding; the gate's `go test` step was not reached.
+- G-3: golangci-lint and coverage were not re-measured in this sync. Last recorded: §E.2 E5 (0 issues on touched packages) and §E.2 M3 (coverage of the new probe and installer functions).
+- G-4: AC-UMF-005 is a plan-phase disposition with no test; it was verified by grep only.
+- G-5: `cond4-vet.log`, `cond4-build.log`, and `cond4-build-windows.log` are 0 bytes and record no exit code. The exit-0 statements come from §E.3 and were not re-observed in this sync.
+- G-6: the cond4 logs sit in the gitignored `.moai/reports/t1578/` tree and are machine-local. The `--- PASS` lines above are carried into this committed record so the claim does not depend on the local files.
+- G-7: MX tag validation (a sync sub-step) was not performed as a tool run, because Go sources are outside the sync edit scope. A read-only grep finds no `@MX:` tag in `internal/cli/update_integrity_probe.go` or `internal/userassets/install.go`; `internal/cli/update.go` carries pre-existing tags. No tag was added.
+- G-8: the CHANGELOG entry's behavior claims were checked against the probe source, the `install.go` diff, and the test bodies read in this sync. The tests were not re-executed.
+- G-9: commit-time hooks did not run: `core.hooksPath` is `/dev/null` in this repository.
+
+### Residual risk (could still be wrong despite the observations above)
+
+- R-1: the pre-existing ast-grep fixture finding (`internal/astgrep/testdata/fixtures/go/suppressed.go:15`) remains on the base until card t1618 repairs it. This card's own `moai gate` still fails on it, so a gate read on this branch is not clean. Leader ruling d-20261009T174939Z-a927 classifies it as a base defect outside this card.
+- R-2: the probe is a canary, not a damage-class detector. The mo.ai.kr empty skill directory and the legacy colon-star deny specifiers are outside its set. A damage-class-targeted set is an operator decision (decision-index Q2).
+- R-3: the full `internal/cli` suite is unobserved on this tree; a regression outside the scoped families would not show here.
+- R-4: the installer empty-target result (M1-b: `empty_targets=0`) is a point-in-time measurement. The guard pins the contract, not the catalog content.
+- R-5: the sync-audit verdict has not run; this record is its input, not its verdict. `sync_commit_sha` stays `pending-backfill` until the backfill commit.
 
 ## §F Phase 4 Mode Selection
 
