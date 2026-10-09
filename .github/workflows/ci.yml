@@ -215,7 +215,7 @@ jobs:
           # M5, card t1478): the source-scan and line-key guard families run in
           # the dedicated guard-bundle job below, so a guard drift reds THAT
           # named check instead of reddening the ordinary suite. The two scopes
-          # PARTITION: 10 guard tests / 5421 ordinary in ./internal/cli (the
+          # PARTITION: 10 guard tests / 5423 ordinary in ./internal/cli (the
           # selector measured via `go test -list` on 47034f5e9 plus this change;
           # `go test -list` honors -run but IGNORES -skip, so the ordinary
           # set is never derived from it).
@@ -273,7 +273,7 @@ jobs:
   # line-key guard families + the census fixture check run as ONE named
   # check, so a guard drift reds THIS check (attribution) without reddening
   # the ordinary `test` job. The required test job skips the SAME set (the
-  # -skip selector above) — the two scopes PARTITION (10 guard / 5421
+  # -skip selector above) — the two scopes PARTITION (10 guard / 5423
   # ordinary in ./internal/cli, measured; `go test -list` honors -run but
   # ignores -skip, so the ordinary set is the explicit set difference).
   # Admission: workflow.candidate_ci.guard_bundle_required (default true)
