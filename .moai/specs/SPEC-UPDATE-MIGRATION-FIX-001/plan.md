@@ -72,7 +72,10 @@ the implementation milestone; the mechanical guard pins close the plan.
 - E1 (per milestone): the milestone's own test commands, verbatim output
   into §E.2 evidence.
 - E2 (run exit): scoped families green —
-  `go test ./internal/cli/ -run 'TestRunUpdate_V3Path|TestStripRetiredV2Deny|TestUpdate.*Integrity' -count=1`,
+  `go test ./internal/cli/ -run 'TestRunUpdate_V3Path|TestStripRetiredV2Deny|TestRunUpdate_VersionMatch_RunsIntegrityProbe|TestRunUpdate_UserCancelled_SkipsIntegrityProbe|TestIntegrityProbe' -count=1`
+  (plan-audit D4: the prior selector swept none of M3's three new tests;
+  the §E.2 evidence must record the SWEPT TEST NAMES — a `[no tests to
+  run]` on this selector is a failing gate, never a green),
   `go test ./internal/userassets/ -count=1`, `gofmt -l` on touched files,
   `golangci-lint run` on touched packages.
 - E3: the skip-path structural evidence RE-MEASURED after M3 (same
@@ -124,14 +127,24 @@ surface: test files only, unless M1-b escalated to repair.
   not touch the migration map).
 - M2-b (K2): add the two guards as tests:
   - `TestTemplateSync_LeavesNoEmptyManagedSkillDirs` (internal/cli): the
-    M1-b fixture, assertion promoted to a permanent test. The assertion
-    must count what it swept and fail on a zero-count sweep (no empty
-    catalog roots in a fixture = fixture problem, not a pass).
+    M1-b fixture, assertion promoted to a permanent test. EXPECTED GREEN
+    ON THIS TREE IS A SWEPT COUNT OF ZERO (plan-audit D2): the project
+    payload carries no common-asset files in any mode
+    (`isCommonAssetRoot`), so a sync legitimately creates no managed
+    skill/agent directories at all — the test pins the exclusion
+    contract by asserting swept == 0 and PRINTING the count, so a future
+    architecture change that starts producing project-side skill dirs is
+    visible rather than silent. Failure arms: swept > 0 with any
+    zero-file directory among the swept set, or a sweep shape the
+    fixture cannot explain.
   - `TestInstaller_RejectsEmptyDirectoryTargets` or equivalent
-    (internal/userassets): the M1-b installer probe as a permanent test,
-    plus — only if M1-b measured a real producer — the REQ-UMF-006
-    reporting behavior (installer result counts an empty dir target as
-    failed-with-reason, not installed).
+    (internal/userassets): the installer probe as a permanent test on
+    the USER-root fixture side, where the catalog content actually
+    lands. REQ-UMF-006's verify-and-report contract is UNCONDITIONAL
+    (plan-audit D3): the installer result counts an empty directory
+    target as failed-with-reason, never installed, whatever M1-b
+    measures. Only the repair ESCALATION (fixing a measured live
+    producer, spec.md R1) stays conditional on M1-b's outcome.
 - M2-c: `go test ./internal/cli/ ./internal/userassets/ -count=1` scoped
   green; record verbatim output.
 

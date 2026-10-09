@@ -15,7 +15,7 @@ re-verification batch that re-pins every anchor on the new baseline.
 
 | AC ID | Classification | Requirement | Milestone that flips it |
 |-------|----------------|-------------|-------------------------|
-| AC-UMF-001 | release-blocking | REQ-UMF-001 | M3 |
+| AC-UMF-001 | release-blocking | REQ-UMF-001, REQ-UMF-003 | M3 |
 | AC-UMF-002 | release-blocking | REQ-UMF-001, REQ-UMF-002 | M3 |
 | AC-UMF-003 | regression-guard | REQ-UMF-004 | M2 (confirmation; guard already exists) |
 | AC-UMF-004 | regression-guard | REQ-UMF-005, REQ-UMF-006 | M2 |
@@ -38,10 +38,17 @@ re-verification batch that re-pins every anchor on the new baseline.
 **Green path cell**: M3 adds the probe invocation inside this block (and
 threads the version-match-vs-cancellation distinction per REQ-UMF-003).
 After M3, the same command prints the probe call between the block's
-opening line and `return nil`, and
-`go test ./internal/cli/ -run TestRunUpdate_VersionMatch_RunsIntegrityProbe -count=1`
-prints `ok`. Both outputs recorded in progress.md §E.2 as the flip
-witness.
+opening line and `return nil`. The flip witnesses are BOTH tests in ONE
+invocation —
+`go test ./internal/cli/ -run 'TestRunUpdate_VersionMatch_RunsIntegrityProbe|TestRunUpdate_UserCancelled_SkipsIntegrityProbe' -count=1`
+printing `ok` — with the mapping made explicit (plan-audit D1):
+TestRunUpdate_VersionMatch_RunsIntegrityProbe witnesses REQ-UMF-001 (the
+probe runs on the version-match entry), and
+TestRunUpdate_UserCancelled_SkipsIntegrityProbe witnesses REQ-UMF-003
+(the cancelled-merge entry does not report a completed-sync integrity
+result) — a version-match-only witness cannot distinguish an
+implementation that also fires on cancellation. Outputs recorded in
+progress.md §E.2.
 
 ## AC-UMF-002 — The probe reports a damaged representative path by name and never fails the update
 
@@ -51,9 +58,12 @@ witness.
   update run can name a damaged managed path today — the damage class the
   mo.ai.kr run exposed (an empty skill dir) rides through every subsequent
   "Up to date · Skipping sync" update invisibly.
-- Command (supporting): `grep -rn "Integrity" internal/cli/update*.go | grep -v _test`
-  — expected at RED: no non-test hits carrying the probe's report marker.
-- Exit code: 0/1 as grep reports; recorded verbatim in the ledger at M1-c.
+- Supporting witness (auxiliary, NOT blocking — plan-audit O2: the prior
+  piped form was outside §2.1's single-invocation rule and its output was
+  deferred): EV-5 carries the symbol-absence observation in conforming
+  single-invocation form (no output, exit 1, measured on f569be5d8).
+- Exit code: the primary RED command (EV-4) exits 0; EV-5's supporting
+  grep exits 1 (recorded verbatim in the ledger).
 
 **Green path cell**: M3. A fixture whose `.claude/settings.json` is deleted
 runs a version-matched update; the run prints one warning naming the
@@ -96,9 +106,15 @@ is measured, M2 escalates to repair (spec.md R1) and this criterion gains
 a live RED; otherwise M2 lands the guards.
 
 **Green path**: M2's `TestTemplateSync_LeavesNoEmptyManagedSkillDirs`
-(internal/cli, counts its swept set and fails on a zero-count sweep) and
-the installer empty-target test (internal/userassets) green; verbatim
-output in progress.md §E.2.
+(internal/cli — plan-audit D2: on this tree the healthy project-side
+swept count is ZERO by design, because the project payload excludes the
+managed skill/agent roots entirely; the test records the swept count and
+its green is swept == 0 with the exclusion contract pinned, while the
+failure arms are a non-zero sweep containing any zero-file directory or
+a sweep shape the fixture cannot explain) and the installer
+empty-target test on the USER-root fixture side (internal/userassets,
+where the catalog content actually lands) green; verbatim output in
+progress.md §E.2.
 
 ## AC-UMF-005 — The settings-purity review item is dispositioned with rationale (plan-gate)
 

@@ -37,9 +37,15 @@ Class: implementation-level
 Default: minimal project-surface set — `.claude/settings.json` (exists and
 parses as JSON), `.moai/config/sections/system.yaml` (exists, non-empty),
 `.moai/manifest.json` (exists and parses) (rule: smaller user-visible
-surface — the fewest new warning lines that still detect the mo.ai.kr
-damage class; revisit trigger: any future managed-path loss that this set
-misses)
+surface — the fewest new warning lines for a structural canary.
+CORRECTION, plan-audit D5: this set does NOT detect the mo.ai.kr damage
+classes — the empty skill directory lies outside the set, and K1's legacy
+specifiers are valid JSON; it indicates gross structural loss of the
+managed project core only. A damage-class-targeted set is an OPERATOR
+DECISION — follow-up card candidate: "update integrity probe: extend the
+representative set toward the observed damage classes (template-catalog
+spot-file / deny-list sanity)" — revisit trigger: any future
+managed-path loss this set misses)
 Alternate: extend the set to spot-check user-folder install roots (one
 representative installed file per root)
 Operator verdict: DEFAULT-APPLIED 2026-10-09T03:49:48Z manager-spec (plan close, card t1578 lane)

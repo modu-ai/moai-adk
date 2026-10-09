@@ -170,10 +170,19 @@ settings.local.json". Disposition:
 ### C.2 Item (4) integrity check — IN SCOPE
 
 Brought in as REQ-UMF-001..003 / M3. Rationale: small bounded surface (one
-probe on one early-return path), directly closes the invisibility gap that
-let the empty skill dir survive every subsequent "Up to date" update, and
-is explicitly the operator's review direction. The probe is warn-and-
-continue, matching every existing advisory step on the update path.
+probe on one early-return path) and explicitly the operator's review
+direction. The probe is warn-and-continue, matching every existing
+advisory step on the update path.
+
+Wording-honesty scope note (plan-audit D5): the minimal 3-file probe set
+detects NEITHER observed production damage class — the mo.ai.kr empty
+skill directory lies outside the probed set, and the legacy-specifier
+survival behind K1 is valid JSON that parses cleanly. What the probe
+actually indicates is gross structural loss of the managed project core
+(a missing or unparseable settings.json / system.yaml / manifest.json) —
+a canary, not a damage-class detector. A damage-class-targeted probe set
+is an OPERATOR DECISION, recorded as a follow-up card candidate (see
+decision-index.md Q2); this SPEC does not re-decide the set.
 
 ## D. Acceptance Criteria
 
@@ -197,8 +206,9 @@ plan phase.
 - AC-UMF-004 (regression-guard): a full sync cycle leaves no zero-file
   directory under a managed skill/agent root that the catalog ships with
   content; the user-folder installer reports empty directory targets.
-- AC-UMF-005 (release-blocking): this SPEC records the item-(3)
-  out-of-scope disposition with rationale (satisfied by Section C.1).
+- AC-UMF-005 (plan-gate): this SPEC records the item-(3)
+  out-of-scope disposition with rationale (satisfied by Section C.1;
+  classification per acceptance.md — no RED-now cell applies).
 
 ## E. Constraints
 
