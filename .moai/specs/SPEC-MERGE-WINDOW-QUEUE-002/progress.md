@@ -167,7 +167,7 @@ m1_to_mN_commit_strategy: one commit per milestone (M1 a560b3b6f, M2 eac7fab39, 
 ```yaml
 sync_status: complete-with-gaps
 sync_complete_at: 2026-10-09T18:27:39Z
-sync_commit_sha: pending-backfill
+sync_commit_sha: 5d6c9b8c33d5901fe531f8d8373df80754edbe17
 sync_tier: M
 ac_source: .moai/specs/SPEC-MERGE-WINDOW-QUEUE-002/acceptance.md
 ac_live_count_for_record: 8
@@ -213,6 +213,7 @@ Method: `grep -n '@MX'` over the seven changed production files; `git diff -U0 8
 6. The installed moai build is not a valid evidence source for this card: it is an ancestor of HEAD. No moai CLI output is cited in this block or in the sync evidence.
 7. MX: `ShortSHA` lacks a mandatory `@MX:ANCHOR` (introduced by this card). `ReleaseIntegrationLock` lacks one (pre-existing). Report-only; see E.4.2.
 8. Carried by reference, unchanged: run-phase §E.3.2 items 3 (E4 literal grep matches in comments of unrelated cli files), 4 (repository-wide verdict pending on CI), 8 (`workflow.yaml` review-gate flip, provenance not established), and 9 (plan-audit known gap, AC-MWQ2-008 literal).
+9. Sync-commit trailer: `git log -1 --format='%(trailers:key=Authored-By-Agent,valueonly)'` on commit 5d6c9b8c3 printed nothing. Observed cause: git's trailer parser does not recognize the final paragraph, because the closing 🗿 MoAI line is a non-trailer line in the same paragraph. Control: the same trailer alone parses under `git interpret-trailers --parse`. The ownership audit's WHO reader (`internal/spec/lint_ownership.go`, a line regex over the commit body) matches that line; this is a code reading, not a run of the audit. Not amended, per the sync instruction.
 
 ## §J Lane run-entry record (card t1582, run tmnboq, lane-5)
 
