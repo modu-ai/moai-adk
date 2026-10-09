@@ -56,15 +56,21 @@ func TestStaleLockReclaimDoesNotDeleteTheNewLock(t *testing.T) {
 	const reclaimers = 16
 	start := make(chan struct{})
 	var wg sync.WaitGroup
-	for i := 0; i < reclaimers; i++ {
-		wg.Add(1)
-		go func() {
-			defer wg.Done()
+	for range reclaimers {
+		wg.Go(func() {
 			<-start
-			// Each reclaimer runs against a FRESH previous-boot fixture, so
-			// every round re-opens the reclaim window the finding names.
-			for round := 0; round < 50; round++ {
-				previousBootFixture(t, store.LockPath())
+			// The fixture is seeded ONCE, before the goroutines: the first
+			// contender breaks it — the finding's reclaim window — and the
+			// remaining rounds exercise pure contention. Re-seeding DURING
+			// the run is unsound by construction: a fixture write racing a
+			// claimer's Claim+label overwrites a LIVE lock's owner record
+			// with dead bytes, and the machinery trusts the bytes at the
+			// path — the double-entry that fired was the test's own
+			// manufactured state, not a machinery defect (card t1606: the
+			// reclaim walk's timing shift only exposed it). The
+			// deterministic forms of the window are pinned at the
+			// machinery level (atomicfile section_test.go, findings #6).
+			for range 50 {
 				_ = store.Mutate(func(rec *QueueRecord) error {
 					n := inside.Add(1)
 					if n > 1 {
@@ -76,7 +82,7 @@ func TestStaleLockReclaimDoesNotDeleteTheNewLock(t *testing.T) {
 					return nil
 				})
 			}
-		}()
+		})
 	}
 	close(start)
 	wg.Wait()

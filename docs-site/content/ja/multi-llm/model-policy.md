@@ -36,7 +36,15 @@ description: メインセッションが使うモデルと推論深度を決め�
 | Claude Fable 5 | `claude-fable-5` | 1M | 新しい Mythos-tier 汎用フラッグシップ。最も深い推論と複雑なコーディング |
 | Claude Opus 5.5 | `opus` | 1M | 複雑なアーキテクチャ、高難度の推論 |
 | Claude Sonnet 5.5 | `sonnet` | 1M | 速度と知性のバランス、日常のコーディング |
-| Claude Haiku 4.5 | `claude-haiku-4-5-20251001` | 200K | 最も速く経済的。単純・大量処理向け |
+| Claude Haiku 5.5 | `claude-haiku-5-5` | 1M | 最も速く経済的 (Anthropic API 既定の Haiku、CC v2.1.293+) |
+| Claude Haiku 4.5 | `claude-haiku-4-5-20251001` | 200K | 最も速く経済的。単純・大量処理向け (AWS 系の別名解決先) |
+
+> **Haiku 5.5 ファクト (Claude Code v2.1.293+)**: Anthropic API では `haiku` エイリアスは Haiku
+> 5.5(`claude-haiku-5-5`、全プランで 1M コンテキスト、`[1m]` 接尾辞不要)に解決されます。auto-compact
+> の既定は ~967K。料金は input $0.10 / output $0.50 per Mtok で、プロンプトが over 100K(10万トークン
+> 超過)だと input $0.50 / output $2.50 に上がります。adaptive thinking は既定で有効ですが、`high` effort 以下(low/medium/high)では `thinking: {"type": "disabled"}` で無効化できます。品質とコストの調整は effort パラメータが望ましい手段です。
+> 一方、AWS Bedrock・GCP Agent Platform・Microsoft Foundry では `haiku` は Haiku 4.5(200K)に解決されます
+> — エイリアス解決はプロバイダー別です。
 
 > MoAI のセッションラインナップは既定で Haiku を使いません。長丁場のエージェンティック作業に Haiku を組み込むとタスクあたりコストがかえって膨らむことが DeepSWE リーダーボードの実測で確認された**No-Haiku ポリシー**です。根拠は[3 層エージェントアーキテクチャ](/ja/advanced/no-haiku-3tier/)ページにあります。
 

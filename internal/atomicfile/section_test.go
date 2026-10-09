@@ -28,6 +28,19 @@ func previousBootFixture(t *testing.T, path string) {
 	}
 }
 
+// liveOwnerFixture seeds path with THIS process's owner record — a
+// verifiably LIVE owner (same pid, same boot). The guard-walk tests use it
+// for rivals whose disposal must be refused, never broken.
+func liveOwnerFixture(t *testing.T, path string) {
+	t.Helper()
+	if err := os.WriteFile(path, []byte("{}"), 0o600); err != nil {
+		t.Fatalf("seed %s: %v", path, err)
+	}
+	if werr := writeOwnerLabel(path, 0o600); werr != nil {
+		t.Fatalf("label %s: %v", path, werr)
+	}
+}
+
 // TestBreakAbortsWhenTheFileChangedUnderneath is the DETERMINISTIC form of
 // review-gate finding #6: a reclaimer that verified a stale snapshot must
 // not remove whatever sits at the lock path NOW. The repro drives

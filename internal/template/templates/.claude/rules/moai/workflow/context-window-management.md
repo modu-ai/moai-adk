@@ -8,10 +8,10 @@ Operational threshold is **model-specific**. Match the row for the window the se
 
 | Model class | Window | Handoff threshold | Absolute ceiling |
 |---|---|---|---|
-| Opus 5.5 / Opus 4.8 / GLM-5.3 via `moai glm`/`moai cg` / Fable / Sonnet 5.5, native 1M | 1,000,000 tokens | **50%** | ~500,000 tokens |
-| Any native-1M model under `CLAUDE_CODE_DISABLE_1M_CONTEXT=1`; Sonnet 4.6 / Opus 4.6 without `[1m]`; models below the 1M-default line on an LLM gateway (non-Anthropic `ANTHROPIC_BASE_URL`; CC 2.1.285+ defaults 1M there for Sonnet 5+ / Opus 4.7+ / Fable, and on Bedrock / Vertex / Foundry for Opus 4.7+ and Fable); a 200K-capped gateway — run `/autocompact 200k`; Sonnet 4.5 / Opus 4.5 and earlier; Haiku | 200,000 tokens | **90%** | ~180,000 tokens |
+| Opus 5.5 / Opus 4.8 / GLM-5.3 via `moai glm`/`moai cg` / Fable / Sonnet 5.5 / Haiku 5.5, native 1M | 1,000,000 tokens | **50%** | ~500,000 tokens |
+| Any native-1M model under `CLAUDE_CODE_DISABLE_1M_CONTEXT=1`; Sonnet 4.6 / Opus 4.6 without `[1m]`; models below the 1M-default line on an LLM gateway (non-Anthropic `ANTHROPIC_BASE_URL`; CC 2.1.285+ defaults 1M there for Sonnet 5+ / Opus 4.7+ / Fable, and on Bedrock / Vertex / Foundry for Opus 4.7+ and Fable); a 200K-capped gateway — run `/autocompact 200k`; Sonnet 4.5 / Opus 4.5 / Haiku 4.5 and earlier | 200,000 tokens | **90%** | ~180,000 tokens |
 
-A session that matches both a 1M row and the 200K row takes the 200K row: the window the session actually runs with sets the threshold, not the model name. The threshold is the operational ceiling. Beyond it, plan a `/clear` before the next non-trivial action. `session-handoff.md` Trigger #1 reads this same table.
+A session that matches both a 1M row and the 200K row takes the 200K row: the window the session actually runs with sets the threshold, not the model name. Haiku 5.5 composes with that rule: on the Anthropic API the `haiku` alias resolves to Haiku 5.5 (1M, requires Claude Code v2.1.293+), while on AWS Bedrock / GCP Agent Platform / Microsoft Foundry it still resolves to Haiku 4.5, which keeps the 200K / **90%** row. The threshold is the operational ceiling. Beyond it, plan a `/clear` before the next non-trivial action. `session-handoff.md` Trigger #1 reads this same table.
 
 ## User Responsibilities
 
