@@ -402,24 +402,13 @@ func candidateCallerTreeGuard(root, cardID, callerTree, runID string) error {
 // or a green one acquires exactly as before. The hold clears the moment a
 // re-candidate's record reads green — no separate state to reset.
 func candidateAcquirePrecondition(root, cardID string) error {
-	latest, err := factory.LatestCandidateRecord(root, cardID)
-	if errors.Is(err, factory.ErrCandidateRecordAbsent) {
-		return nil
+	// The judgment is the factory's per-card red hold (card t1478 Finding 4) —
+	// the same one every window grant takes; this entry check gives the acquire
+	// its early, named refusal before any record is touched.
+	if err := factory.CandidateHoldRefusal(root, cardID); err != nil {
+		return fmt.Errorf("integration acquire: refused — %w", err)
 	}
-	if err != nil {
-		return fmt.Errorf("integration acquire: read card %s's candidate record: %w", cardID, err)
-	}
-	if latest.Verdict != factory.CandidateVerdictRed {
-		return nil
-	}
-	return fmt.Errorf("integration acquire: refused — card %s's candidate %s is red (run %s, observed %s, pinned %s); fix and re-candidate with moai integration candidate --card %s (the hold is this card's record — other cards are unaffected)", cardID, shortSHA(latest.CandidateSHA), orUnsetStr(latest.RunID), orUnsetStr(latest.ObservedAt), shortSHA(latest.PinnedSHA), cardID)
-}
-
-func orUnsetStr(s string) string {
-	if strings.TrimSpace(s) == "" {
-		return "(unset)"
-	}
-	return s
+	return nil
 }
 
 // observeCandidateRuns is the explicit verdict observation (REQ-CCI-010,

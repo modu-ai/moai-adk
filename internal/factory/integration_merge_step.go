@@ -231,7 +231,7 @@ func RunMergeStep(in MergeStepInput, seams MergeStepSeams) (string, error) {
 		if policyErr != nil {
 			return policyErr
 		}
-		RefreshWindow(w, policy, seams.probe(), now, lease)
+		RefreshWindowGated(w, policy, seams.probe(), now, lease, CandidateGrantGate(in.Root))
 		return nil
 	}); err != nil {
 		return "", mergeStepErr(MergeExitOther, "integration merge: refresh the window: %v", err)

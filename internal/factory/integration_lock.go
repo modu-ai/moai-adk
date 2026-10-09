@@ -360,6 +360,7 @@ func AcquireIntegrationWindow(projectRoot string, want IntegrationLock, force bo
 	if opts != nil {
 		viaWait = opts.ViaWait
 	}
+	gate := CandidateGrantGate(projectRoot)
 	path := integrationLockPath(projectRoot)
 	if err := os.MkdirAll(filepath.Dir(path), 0o755); err != nil {
 		return nil, fmt.Errorf("integration lock: %w", err)
@@ -385,7 +386,7 @@ func AcquireIntegrationWindow(projectRoot string, want IntegrationLock, force bo
 		// REQ-MWQ-006/007 promotion) — the same serialized mutation the
 		// decision below runs in, which is the ordering REQ-MWQ-002 asks
 		// the enqueue to decide inside.
-		report := RefreshWindow(current, policy, probe, WindowClock(), lease)
+		report := RefreshWindowGated(current, policy, probe, WindowClock(), lease, gate)
 		// P2-9: a stale holder the refresh cleared is recorded ON the
 		// record now — surface it as this acquire's takeover so the
 		// "never silent" promise of the pre-queue takeover holds.
@@ -474,6 +475,18 @@ func AcquireIntegrationWindow(projectRoot string, want IntegrationLock, force bo
 			// REQ-MWQ-008: every acquire stamps the holder's lease.
 			StampLease(&want, WindowClock(), lease)
 		}
+		// The per-card red hold on the direct grant (card t1478 Finding 4,
+		// REQ-CCI-012): the caller's card is granted the window only when its
+		// candidate admits it. The refusal persists what the refresh changed
+		// and writes nothing else, so a refused red card never holds the window.
+		if gate != nil {
+			if holdErr := gate(want.Card); holdErr != nil {
+				if err := persistRefreshed(); err != nil {
+					return err
+				}
+				return holdErr
+			}
+		}
 		if integrationLockMutationTestHook != nil {
 			integrationLockMutationTestHook()
 		}
@@ -526,6 +539,7 @@ func (l *IntegrationLock) releasableBy(sessionID string, callerOwnerPID int) boo
 // force releases a foreign window, for the same wedged-holder reason acquire
 // carries it.
 func ReleaseIntegrationLock(projectRoot, sessionID string, callerOwnerPID int, force bool) (released *IntegrationLock, err error) {
+	gate := CandidateGrantGate(projectRoot)
 	if mutErr := withIntegrationLockMutation(projectRoot, func() error {
 		current, readErr := ReadIntegrationLock(projectRoot)
 		if readErr != nil && !force {
@@ -553,7 +567,7 @@ func ReleaseIntegrationLock(projectRoot, sessionID string, callerOwnerPID int, f
 				return policyErr
 			}
 			clearHolder(current, WindowClock(), "released by holder")
-			RefreshWindow(current, policy, DefaultWindowProcProbe(), WindowClock(), WindowLeaseDuration)
+			RefreshWindowGated(current, policy, DefaultWindowProcProbe(), WindowClock(), WindowLeaseDuration, gate)
 			if err := writeIntegrationLock(integrationLockPath(projectRoot), current); err != nil {
 				return err
 			}

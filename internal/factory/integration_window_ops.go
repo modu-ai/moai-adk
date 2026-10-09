@@ -11,7 +11,13 @@
 package factory
 
 import (
+	"encoding/json"
+	"errors"
 	"fmt"
+	"io"
+	"os"
+	"path/filepath"
+	"strings"
 	"time"
 
 	"github.com/modu-ai/moai-adk/internal/homestate"
@@ -27,6 +33,9 @@ type WindowReport struct {
 	Promoted *IntegrationTicket
 	// Displaced names the holder the promotion displaced, when it did.
 	Displaced bool
+	// Refused names each queued ticket the per-card red hold withdrew from the
+	// queue at the refresh that met it (card t1478 Finding 4).
+	Refused []string
 }
 
 // holderOwnerGone reports whether the record's owning-session process is
@@ -140,10 +149,24 @@ func (r *WindowReport) promoteFirst(lock *IntegrationLock, now time.Time, lease 
 // without a holder and the queue intact, and a stale holder is cleared
 // with no successor (REQ-MWQ-007).
 func RefreshWindow(lock *IntegrationLock, policy IntegrationWindowPolicy, probe WindowProcProbe, now time.Time, lease time.Duration) WindowReport {
+	return refreshWindow(lock, policy, probe, now, lease, nil)
+}
+
+// RefreshWindowGated is RefreshWindow with the per-card red hold (card t1478
+// Finding 4): a queued ticket whose card the gate refuses is withdrawn from the
+// queue and named in the report's Refused, and the tickets behind it are judged
+// in the same refresh, so a refused waiter never blocks the queue behind it. A
+// nil gate admits every ticket, exactly as RefreshWindow does.
+func RefreshWindowGated(lock *IntegrationLock, policy IntegrationWindowPolicy, probe WindowProcProbe, now time.Time, lease time.Duration, gate GrantGate) WindowReport {
+	return refreshWindow(lock, policy, probe, now, lease, gate)
+}
+
+// refreshWindow is the one refresh body both entry points share.
+func refreshWindow(lock *IntegrationLock, policy IntegrationWindowPolicy, probe WindowProcProbe, now time.Time, lease time.Duration, gate GrantGate) WindowReport {
 	report := WindowReport{Dropped: refreshQueue(lock, probe, now)}
 	if !lock.Held() {
-		if policy.Policy == PolicyOpen && len(lock.Queue) > 0 {
-			report.promoteFirst(lock, now, lease)
+		if policy.Policy == PolicyOpen {
+			report.promoteAdmitted(lock, now, lease, gate)
 		}
 		return report
 	}
@@ -165,8 +188,7 @@ func RefreshWindow(lock *IntegrationLock, policy IntegrationWindowPolicy, probe 
 		report.Displaced = true
 		return report
 	}
-	if len(lock.Queue) > 0 {
-		report.promoteFirst(lock, now, lease)
+	if report.promoteAdmitted(lock, now, lease, gate) {
 		return report
 	}
 	// No ticket to promote: the stale holder is cleared exactly as a
@@ -217,7 +239,14 @@ func clearHolder(lock *IntegrationLock, now time.Time, why string) {
 // EnqueuedAt and the first Heartbeat — is stamped HERE from the mutation's
 // clock, never left to the caller to remember (card-review r1 P2-5).
 func EnqueueTicket(lock *IntegrationLock, ticket IntegrationTicket, probe WindowProcProbe, now time.Time, policy IntegrationWindowPolicy) error {
-	RefreshWindow(lock, policy, probe, now, WindowLeaseDuration)
+	return EnqueueTicketGated(lock, ticket, probe, now, policy, nil)
+}
+
+// EnqueueTicketGated is EnqueueTicket with the per-card red hold on the refresh
+// that precedes the enqueue (card t1478 Finding 4); a nil gate admits every
+// ticket, exactly as EnqueueTicket does.
+func EnqueueTicketGated(lock *IntegrationLock, ticket IntegrationTicket, probe WindowProcProbe, now time.Time, policy IntegrationWindowPolicy, gate GrantGate) error {
+	refreshWindow(lock, policy, probe, now, WindowLeaseDuration, gate)
 	ticket.EnqueuedAt = now.Format(time.RFC3339)
 	ticket.Heartbeat = ticket.EnqueuedAt
 	// Class G (card-review r2): the ticket records the waiter's process
@@ -280,7 +309,7 @@ func RefreshIntegrationWindowAt(projectRoot string) (WindowReport, error) {
 		if policyErr != nil {
 			return policyErr
 		}
-		report = RefreshWindow(w, policy, DefaultWindowProcProbe(), WindowClock(), WindowLeaseDuration)
+		report = RefreshWindowGated(w, policy, DefaultWindowProcProbe(), WindowClock(), WindowLeaseDuration, CandidateGrantGate(projectRoot))
 		return nil
 	}); err != nil {
 		return WindowReport{}, err
@@ -306,12 +335,19 @@ type LatePromotion struct {
 // The same-mutation decision is the point: neither the promotion nor the
 // bound outcome may depend on a later read.
 func PromotedAfterBound(lock *IntegrationLock, sessionID string, boundAt time.Time, probe WindowProcProbe, now time.Time, lease time.Duration, policy IntegrationWindowPolicy) (LatePromotion, error) {
+	return PromotedAfterBoundGated(lock, sessionID, boundAt, probe, now, lease, policy, nil)
+}
+
+// PromotedAfterBoundGated is PromotedAfterBound with the per-card red hold on
+// the release-onward refresh (card t1478 Finding 4); a nil gate admits every
+// ticket, exactly as PromotedAfterBound does.
+func PromotedAfterBoundGated(lock *IntegrationLock, sessionID string, boundAt time.Time, probe WindowProcProbe, now time.Time, lease time.Duration, policy IntegrationWindowPolicy, gate GrantGate) (LatePromotion, error) {
 	if lock.Held() && lock.SessionID == sessionID {
 		if now.After(boundAt) {
 			// Promoted past the bound: release onward at once — under the
 			// real policy, so a hold suspends the onward promotion too.
 			clearHolder(lock, now, "bound elapsed, released onward")
-			report := RefreshWindow(lock, policy, probe, now, lease)
+			report := refreshWindow(lock, policy, probe, now, lease, gate)
 			_ = report
 			return LatePromotion{Released: true, BoundElapsed: true}, nil
 		}
@@ -323,4 +359,116 @@ func PromotedAfterBound(lock *IntegrationLock, sessionID string, boundAt time.Ti
 		return LatePromotion{}, fmt.Errorf("integration window: ticket for %s is not in the queue", sessionID)
 	}
 	return LatePromotion{}, nil
+}
+
+// GrantGate decides whether the window may be granted to a card (card t1478 Finding 4): a non-nil error refuses the grant.
+type GrantGate func(card string) error
+
+// ErrCandidateHold marks a grant refused by the per-card red hold (REQ-CCI-012, design.md D11).
+var ErrCandidateHold = errors.New("candidate hold")
+
+// IsCandidateHold reports whether err is the per-card red hold refusal.
+func IsCandidateHold(err error) bool { return errors.Is(err, ErrCandidateHold) }
+
+// CandidateHoldRefusal is the per-card red hold for one card, independent of
+// the config switch (CandidateGrantGate applies that). It is nil when the card
+// has no candidate, or its latest candidate does not read red: pending, green,
+// and absent cards are granted exactly as before, because only RED holds. It is
+// a refusal wrapping ErrCandidateHold when the latest candidate reads red, and
+// it fails closed when the candidate store cannot be read in full: an unreadable
+// entry may be the card's newest verdict, so the hold cannot read past it. A
+// grant with no card has no candidate to judge and is admitted.
+func CandidateHoldRefusal(projectRoot, cardID string) error {
+	if strings.TrimSpace(cardID) == "" {
+		return nil
+	}
+	if err := validCandidateKeyPart(cardID); err != nil {
+		return fmt.Errorf("%w: card id %q cannot be judged: %v", ErrCandidateHold, cardID, err)
+	}
+	unreadable, scanErr := candidateStoreUnreadable(projectRoot, cardID)
+	if scanErr != nil {
+		return fmt.Errorf("%w: card %s's candidate store cannot be read (%v); the window is not granted without it", ErrCandidateHold, cardID, scanErr)
+	}
+	if unreadable != "" {
+		return fmt.Errorf("%w: card %s's candidate record %s cannot be read; the window is not granted over an unreadable verdict — repair or remove the record", ErrCandidateHold, cardID, unreadable)
+	}
+	latest, err := LatestCandidateRecord(projectRoot, cardID)
+	if errors.Is(err, ErrCandidateRecordAbsent) {
+		return nil
+	}
+	if err != nil {
+		return fmt.Errorf("%w: card %s's candidate record cannot be read (%v); the window is not granted without it", ErrCandidateHold, cardID, err)
+	}
+	if latest.Verdict != CandidateVerdictRed {
+		return nil
+	}
+	return fmt.Errorf("%w: card %s's candidate %s is red (run %s, observed %s, pinned %s); fix and re-candidate with moai integration candidate --card %s — the hold is this card's record, other cards are unaffected",
+		ErrCandidateHold, cardID, shortSHAFull(latest.CandidateSHA), orUnset(latest.RunID), orUnset(latest.ObservedAt), shortSHAFull(latest.PinnedSHA), cardID)
+}
+
+// candidateStoreUnreadable names the first record file of the card's candidate
+// store that is not a readable candidate record, or "" when every record reads
+// (card t1478 Finding 4). An absent store reads as no unreadable record; only
+// JSON record files are judged, and subdirectories are not records.
+func candidateStoreUnreadable(projectRoot, cardID string) (string, error) {
+	dir := filepath.Join(candidateDir(projectRoot), cardID)
+	entries, err := os.ReadDir(dir)
+	if errors.Is(err, os.ErrNotExist) {
+		return "", nil
+	}
+	if err != nil {
+		return "", err
+	}
+	for _, entry := range entries {
+		if entry.IsDir() || !strings.HasSuffix(entry.Name(), ".json") {
+			continue
+		}
+		f, openErr := openCandidateRecordFile(filepath.Join(dir, entry.Name()))
+		if openErr != nil {
+			return entry.Name(), nil
+		}
+		data, readErr := io.ReadAll(f)
+		_ = f.Close()
+		if readErr != nil {
+			return entry.Name(), nil
+		}
+		var rec CandidateRecord
+		if json.Unmarshal(data, &rec) != nil {
+			return entry.Name(), nil
+		}
+	}
+	return "", nil
+}
+
+// CandidateGrantGate is the per-card red hold as a grant gate (card t1478
+// Finding 4). It is nil — no gate, and every grant behaves exactly as before —
+// unless workflow.candidate_ci.enabled is true, so the path never enables
+// itself. Every refresh and grant that can promote or grant the window takes
+// this gate.
+func CandidateGrantGate(projectRoot string) GrantGate {
+	if !candidateCIRequired(projectRoot) {
+		return nil
+	}
+	return func(card string) error { return CandidateHoldRefusal(projectRoot, card) }
+}
+
+// promoteAdmitted promotes the first queued ticket the gate admits and reports
+// whether it promoted (REQ-MWQ-006/007 under the per-card red hold). A ticket
+// the gate refuses leaves the queue here, named in Refused, and the tickets
+// behind it are judged in the same refresh. A nil gate admits the head ticket,
+// which is promoteFirst's original behavior.
+func (r *WindowReport) promoteAdmitted(lock *IntegrationLock, now time.Time, lease time.Duration, gate GrantGate) bool {
+	for len(lock.Queue) > 0 {
+		ticket := lock.Queue[0]
+		if gate != nil {
+			if err := gate(ticket.Card); err != nil {
+				lock.Queue = lock.Queue[1:]
+				r.Refused = append(r.Refused, fmt.Sprintf("%s: %v", ticketLabel(ticket), err))
+				continue
+			}
+		}
+		r.promoteFirst(lock, now, lease)
+		return true
+	}
+	return false
 }

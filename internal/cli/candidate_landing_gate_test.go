@@ -573,6 +573,146 @@ func TestCompleteRefusesRedCandidate(t *testing.T) {
 	})
 }
 
+// seedWaitCandidate writes one card's candidate record with the given verdict;
+// the wait and complete tests judge the per-card hold against it (card t1478
+// Finding 4).
+func seedWaitCandidate(t *testing.T, root, card, verdict string) {
+	t.Helper()
+	if err := factory.WriteCandidateRecord(root, factory.CandidateRecord{
+		CardID: card, PinnedSHA: "pin-" + card, CandidateSHA: "cand-" + card,
+		IntegrationBranch: "develop", IntegrationTip: "tip-" + card,
+		CandidateBranch: "ci/" + card, Verdict: verdict, PushedAt: "2026-10-10T08:00:00Z",
+	}); err != nil {
+		t.Fatal(err)
+	}
+}
+
+// waitForQueueLen polls the window record until n tickets are queued.
+func waitForQueueLen(t *testing.T, root string, n int) {
+	t.Helper()
+	deadline := time.Now().Add(5 * time.Second)
+	for {
+		if lock, err := factory.ReadIntegrationLock(root); err == nil && lock != nil && len(lock.Queue) >= n {
+			return
+		}
+		if time.Now().After(deadline) {
+			t.Fatalf("the queue never reached %d ticket(s)", n)
+		}
+		time.Sleep(10 * time.Millisecond)
+	}
+}
+
+// TestWaitPromotionRefusesCardTurnedRedWhileQueued pins card t1478 Finding 4
+// (a): a card that queued via --wait while its candidate was pending, and whose
+// candidate turns red before the window is promoted, is refused at promotion.
+// The window never ends up held by that card, and the refused waiter leaves the
+// queue, so the ticket behind it is promoted in the same refresh.
+func TestWaitPromotionRefusesCardTurnedRedWhileQueued(t *testing.T) {
+	root := waitTestRoot(t)
+	writeCandidateCIConfig(t, root, "true", "true")
+	oldInterval := integrationWaitPollInterval
+	integrationWaitPollInterval = 10 * time.Millisecond
+	t.Cleanup(func() { integrationWaitPollInterval = oldInterval })
+	oldClock := factory.WindowClock
+	clockAt := time.Date(2026, 10, 10, 9, 0, 0, 0, time.UTC)
+	factory.WindowClock = func() time.Time { return clockAt }
+	t.Cleanup(func() { factory.WindowClock = oldClock })
+	waitHolder(t, root, "sess-a")
+
+	// tA's candidate is PENDING when it queues.
+	seedWaitCandidate(t, root, "tA", factory.CandidateVerdictPending)
+	doneA := make(chan error, 1)
+	go func() {
+		doneA <- integrationWaitInQueue(root, "sess-ta", factory.IntegrationTicket{
+			SessionID: "sess-ta", SessionName: "lane-ta", Card: "tA",
+			OwnerPID: os.Getpid(), WaiterPID: os.Getpid(),
+		}, 60*time.Minute, nil)
+	}()
+	waitForQueueLen(t, root, 1)
+
+	// tB queues behind tA; it has no candidate at all.
+	doneB := make(chan error, 1)
+	go func() {
+		doneB <- integrationWaitInQueue(root, "sess-tb", factory.IntegrationTicket{
+			SessionID: "sess-tb", SessionName: "lane-tb", Card: "tB",
+			OwnerPID: os.Getpid(), WaiterPID: os.Getpid(),
+		}, 60*time.Minute, nil)
+	}()
+	waitForQueueLen(t, root, 2)
+
+	// tA's candidate turns RED before the window is promoted.
+	seedWaitCandidate(t, root, "tA", factory.CandidateVerdictRed)
+
+	// The holder releases: the promotion runs.
+	if _, err := factory.ReleaseIntegrationLock(root, "sess-a", os.Getpid(), false); err != nil {
+		t.Fatal(err)
+	}
+
+	// The refused waiter does not block the queue behind it: tB is promoted.
+	select {
+	case err := <-doneB:
+		if err != nil {
+			t.Fatalf("tB must be promoted past the refused tA: %v", err)
+		}
+	case <-time.After(5 * time.Second):
+		t.Fatal("tB did not return: the refused waiter blocked the queue behind it")
+	}
+	lock, err := factory.ReadIntegrationLock(root)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if lock.SessionID != "sess-tb" {
+		t.Fatalf("the window is held by %q on card %q after the promotion, want sess-tb: a red card must never take the window", lock.SessionID, lock.Card)
+	}
+
+	// The refused waiter exits non-zero naming the hold.
+	select {
+	case err := <-doneA:
+		if err == nil {
+			t.Fatal("the refused waiter tA returned success: its card was granted the window while red")
+		}
+		if !strings.Contains(err.Error(), "red") || !strings.Contains(err.Error(), "tA") {
+			t.Errorf("refusal %q: want the candidate hold naming card tA and its red verdict", err)
+		}
+	case <-time.After(5 * time.Second):
+		t.Fatal("the refused waiter did not exit")
+	}
+}
+
+// TestCompleteAcquisitionRefusesRedCandidate pins card t1478 Finding 4 (b):
+// factory complete's own window acquisition for a red card is refused with the
+// landing refusal's exit code, and the acquisition is never attempted.
+func TestCompleteAcquisitionRefusesRedCandidate(t *testing.T) {
+	root, _, cardWT := mwq19Fixture(t)
+	writeCandidateCIConfig(t, root, "true", "true")
+	pinned := candidateGit(t, cardWT.wt, "rev-parse", cardWT.branch)
+	tip := candidateGit(t, cardWT.wt, "rev-parse", "refs/heads/develop")
+	if err := factory.WriteCandidateRecord(root, factory.CandidateRecord{
+		CardID: "t1", PinnedSHA: pinned, CandidateSHA: pinned,
+		IntegrationBranch: "develop", IntegrationTip: tip,
+		CandidateBranch: "ci/t1", Verdict: factory.CandidateVerdictRed, PushedAt: "2026-10-09T08:00:00Z",
+	}); err != nil {
+		t.Fatalf("seed red record: %v", err)
+	}
+	attempts := 0
+	factoryCompleteAcquireHook = func() { attempts++ }
+	t.Cleanup(func() { factoryCompleteAcquireHook = nil })
+
+	_, _, err := runFactory(t, "complete", "t1", "--run", fcRun)
+	if err == nil {
+		t.Fatal("complete was not refused for a red card")
+	}
+	if code := exitCodeOf(t, err); code != factory.MergeExitLandingRefused {
+		t.Errorf("exit code: %d — want %d (MergeExitLandingRefused)", code, factory.MergeExitLandingRefused)
+	}
+	if attempts != 0 {
+		t.Errorf("complete attempted the window acquisition %d time(s) for a red card — the refusal must precede every grant", attempts)
+	}
+	if lock, readErr := factory.ReadIntegrationLock(root); readErr == nil && lock != nil && lock.Held() {
+		t.Errorf("the window is held by %q after a refused complete — want no grant", lock.SessionID)
+	}
+}
+
 // TestCandidateAcquirePrecondition pins the per-card red hold (D11): the
 // record IS the hold — card A red refuses A's acquire naming card, verdict,
 // and pinned SHA with the window record and the window policy unchanged;
