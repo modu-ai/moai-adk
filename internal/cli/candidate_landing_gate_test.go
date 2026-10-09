@@ -79,6 +79,95 @@ func TestCandidateObserveWalk(t *testing.T) {
 	})
 }
 
+// TestObserveCandidateRunsFirstBindingRunDecides pins card t1478 Finding 1
+// (REQ-CCI-010): the FIRST run that binds the record decides, whether or not
+// it yields a verdict. A newest binding run with an empty conclusion or still
+// in progress must not let an older binding run's success turn the pending
+// record green. A run that binds nothing is skipped without stopping the walk.
+func TestObserveCandidateRunsFirstBindingRunDecides(t *testing.T) {
+	const cardID, pinned, candidate = "t9002", "pin-2", "cand-2"
+	now := time.Date(2026, 10, 10, 9, 0, 0, 0, time.UTC)
+	newRoot := func(t *testing.T) string {
+		t.Helper()
+		root := t.TempDir()
+		if err := factory.WriteCandidateRecord(root, factory.CandidateRecord{
+			CardID: cardID, PinnedSHA: pinned, CandidateSHA: candidate, CandidateBranch: "ci/" + cardID,
+			IntegrationBranch: "develop", IntegrationTip: "tip-2",
+			Verdict: factory.CandidateVerdictPending, PushedAt: "2026-10-10T08:00:00Z",
+		}); err != nil {
+			t.Fatal(err)
+		}
+		return root
+	}
+	// Run 100 succeeds on every required job; every other run's job read
+	// fails, so its run-level conclusion is the only verdict input.
+	stubJobReads := func(t *testing.T) {
+		t.Helper()
+		prev := candidateGhRunsListFn
+		candidateGhRunsListFn = func(dir string, args ...string) (string, error) {
+			if len(args) > 2 && args[2] == "100" {
+				return `{"jobs":[{"name":"own-check","conclusion":"success"},{"name":"Guard Bundle","conclusion":"success"}]}`, nil
+			}
+			return "", errors.New("gh run view: unavailable (test double)")
+		}
+		t.Cleanup(func() { candidateGhRunsListFn = prev })
+	}
+	binding := func(id, status, conclusion string) factory.CandidateRunState {
+		return factory.CandidateRunState{RunID: id, HeadSHA: candidate, Ref: "ci/" + cardID, Status: status, Conclusion: conclusion}
+	}
+
+	t.Run("newest binding run with an empty conclusion decides: an older success writes nothing", func(t *testing.T) {
+		root := newRoot(t)
+		stubJobReads(t)
+		runs := []factory.CandidateRunState{binding("200", "completed", ""), binding("100", "completed", "success")}
+		_, wrote, err := observeCandidateRuns(root, cardID, pinned, "ci/**", runs, now)
+		if err != nil {
+			t.Fatalf("observe: %v", err)
+		}
+		stored, err := factory.ReadCandidateRecord(root, cardID, pinned)
+		if err != nil {
+			t.Fatal(err)
+		}
+		if wrote || stored.Verdict != factory.CandidateVerdictPending {
+			t.Errorf("wrote=%v, stored verdict %q: the older run 100 must not decide over the newer binding run 200 — want wrote=false, pending", wrote, stored.Verdict)
+		}
+	})
+
+	t.Run("newest binding run still in progress decides: an older success writes nothing", func(t *testing.T) {
+		root := newRoot(t)
+		stubJobReads(t)
+		runs := []factory.CandidateRunState{binding("200", "in_progress", ""), binding("100", "completed", "success")}
+		_, wrote, err := observeCandidateRuns(root, cardID, pinned, "ci/**", runs, now)
+		if err != nil {
+			t.Fatalf("observe: %v", err)
+		}
+		stored, err := factory.ReadCandidateRecord(root, cardID, pinned)
+		if err != nil {
+			t.Fatal(err)
+		}
+		if wrote || stored.Verdict != factory.CandidateVerdictPending {
+			t.Errorf("wrote=%v, stored verdict %q: the in-progress binding run 200 decides — want wrote=false, pending", wrote, stored.Verdict)
+		}
+	})
+
+	t.Run("newest binding run failed decides red; a non-binding run is skipped without stopping the walk", func(t *testing.T) {
+		root := newRoot(t)
+		stubJobReads(t)
+		runs := []factory.CandidateRunState{
+			{RunID: "300", HeadSHA: "other-sha", Ref: "ci/" + cardID, Status: "completed", Conclusion: "success"},
+			binding("200", "completed", "failure"),
+			binding("100", "completed", "success"),
+		}
+		rec, wrote, err := observeCandidateRuns(root, cardID, pinned, "ci/**", runs, now)
+		if err != nil || !wrote {
+			t.Fatalf("wrote=%v err=%v: the failed binding run 200 must record red", wrote, err)
+		}
+		if rec.Verdict != factory.CandidateVerdictRed || rec.RunID != "200" {
+			t.Errorf("observed: verdict %q run %q, want red from run 200", rec.Verdict, rec.RunID)
+		}
+	})
+}
+
 // TestCandidateObserveCommand drives the --observe flag end to end with
 // the gh seam scripted: the verb records the binding run's verdict and
 // says so on stdout.

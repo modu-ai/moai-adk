@@ -423,12 +423,22 @@ func orUnsetStr(s string) string {
 
 // observeCandidateRuns is the explicit verdict observation (REQ-CCI-010,
 // design.md D3): a gh read on the lane/leader side — nothing writes back
-// from CI. Runs arrive newest-first; the FIRST run that binds the record
-// (head SHA == candidate SHA, ref == candidate branch) is applied and the
-// walk stops. A run that binds nothing leaves the record untouched — the
-// caller reads what changed from the returned record.
+// from CI. Runs arrive newest-first. A run BINDS the record when its head
+// SHA equals the candidate SHA and its ref equals the candidate branch; a
+// run that binds nothing is skipped without stopping the walk. The FIRST
+// binding run decides, whether or not it yields a verdict (card t1478
+// Finding 1): an empty, cancelled, or still-running newest binding run
+// leaves the record as it is — it is never passed over for an older binding
+// run's success. The caller reads what changed from the returned record.
 func observeCandidateRuns(root, cardID, pinnedSHA, targetBranch string, runs []factory.CandidateRunState, now time.Time) (factory.CandidateRecord, bool, error) {
+	current, err := factory.ReadCandidateRecord(root, cardID, pinnedSHA)
+	if err != nil {
+		return factory.CandidateRecord{}, false, err
+	}
 	for _, run := range runs {
+		if run.HeadSHA != current.CandidateSHA || run.Ref != current.CandidateBranch {
+			continue
+		}
 		// The job-level verdict (card t1478 M4 repair): the run-level
 		// conclusion conflates advisory jobs — a Race Test failure reds
 		// the candidate while every required check is green. The verdict
@@ -443,15 +453,9 @@ func observeCandidateRuns(root, cardID, pinnedSHA, targetBranch string, runs []f
 		if err != nil {
 			return factory.CandidateRecord{}, false, err
 		}
-		if wrote {
-			return rec, true, nil
-		}
+		return rec, wrote, nil
 	}
-	rec, err := factory.ReadCandidateRecord(root, cardID, pinnedSHA)
-	if err != nil {
-		return factory.CandidateRecord{}, false, err
-	}
-	return *rec, false, nil
+	return *current, false, nil
 }
 
 // candidateVerdictAdjustment is the required-check verdict for one run:
