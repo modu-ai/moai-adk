@@ -1,10 +1,6 @@
 # Session Handoff Protocol
 
-Long-running session continuity: clean transitions across context boundaries via paste-ready resume messages.
-
-> **Loading scope**: Intentionally always-loaded (no `paths:` restriction) because Trigger #3 (user explicit session-end) can fire from any session context, including those without SPEC files. The always-loaded cost is justified by cross-cutting applicability.
-
-> **Format companion**: `session-handoff-format.md` owns the marker spec, locale tables, and activation mechanics relocated from this file — § Why This Matters · § Cut-line Marker Specification · § Localization Table · § Paste-Time Activation Matrix · § Auto-Injected Resume Flow (mode=auto) · § Pre-emit self-check (emission surface) — 3 items · § Anti-Patterns · § Cross-references (the relocated four). Sibling companion: `session-handoff-examples.md` (examples, appendices, the anti-pattern catalogue). Load a companion when rendering a handoff block, translating a label, or authoring output-style §8.
+> Moved to the detail companion: `session-handoff-format.md` ("Session Handoff Protocol").
 
 ## When To Generate (5 Triggers)
 
@@ -22,11 +18,11 @@ When NONE apply (single-turn, trivial, read-only), emit a brief completion confi
 
 ### Emission-Time Save Obligation (auto-resume wiring)
 
-[ZONE:Evolvable] [HARD] When the orchestrator emits a paste-ready resume message (any of the 5 triggers above), it MUST also persist the cut-line-bounded main block verbatim as the pending handoff record: write the block to a file with the Write tool, then redirect that file into `moai handoff save --stdin --spec <ID> --phase <phase> [--goal "<condition>"] [--ultracode] [--lang <conversation_language>] [--session <uuid>] < <file>` (body via stdin). Never pass the block as an inline heredoc: a heredoc body that names a git command is read as a git invocation — the branch guard denies it in the primary checkout and the Claude Code worktree guard refuses it in a worktree session — so the save is silently skipped under the fail-open rule below. `--goal` is recorded ONLY when the next SPEC is run-phase AND declares a machine-verifiable end-state (the same condition under which Block 5 carries a `/moai goal` directive); `--lang` snapshots the current `conversation_language`; `--session` carries Block 2's `source_session_id` when available.
+[ZONE:Evolvable] [HARD] On emitting a paste-ready resume message (any trigger above), the orchestrator MUST also persist the cut-line-bounded main block verbatim as the pending handoff record: write the block to a file with the Write tool, then redirect that file into `moai handoff save --stdin --spec <ID> --phase <phase> [--goal "<condition>"] [--ultracode] [--lang <conversation_language>] [--session <uuid>] < <file>` (body via stdin). Never pass the block as an inline heredoc: a heredoc body naming a git command reads as a git invocation — the branch guard denies it in the primary checkout, the worktree guard refuses it in a worktree session — so the save is silently skipped under the fail-open rule below. `--goal` is recorded ONLY when the next SPEC is run-phase AND declares a machine-verifiable end-state (the condition under which Block 5 carries a `/moai goal` directive); `--lang` snapshots the current `conversation_language`; `--session` carries Block 2's `source_session_id` when available.
 
-[ZONE:Evolvable] [HARD] **Fail-open invariant**: when the `moai` CLI is absent from PATH or `moai handoff save` exits non-zero, the orchestrator emits the paste-ready surface UNCHANGED — a save failure never blocks, delays, or alters handoff emission, and no retry loop is entered. The manual paste path is fully functional without the save; the save is an additive persistence step, never a gate.
+[ZONE:Evolvable] [HARD] **Fail-open invariant**: when the `moai` CLI is absent from PATH or `moai handoff save` exits non-zero, the orchestrator emits the paste-ready surface UNCHANGED — a save failure never blocks, delays, or alters emission, and no retry loop runs. The manual paste path is fully functional without the save; the save is additive, never a gate.
 
-The saved record (`.moai/state/handoff/pending.json`) feeds the auto-injected flow under `handoff.mode: auto` (§ Auto-Injected Resume Flow). Under the distributed default `manual` it is inert — the injector never touches it, even when stale — and this save obligation still applies, so flipping the mode later needs no doctrine change.
+The saved record (`.moai/state/handoff/pending.json`) feeds the auto-injected flow under `handoff.mode: auto` (§ Auto-Injected Resume Flow). Under the default `manual` it is inert — the injector never touches it, even stale — and the save obligation still applies, so flipping the mode later needs no doctrine change.
 
 ## Canonical Format (Verbatim Spec)
 
@@ -57,21 +53,21 @@ The `✂` symbol (U+2702 BLACK SCISSORS) is **preserved verbatim across all loca
 
 Per-block detail — the `mode:` enum couplings, the fan-out steering phrase, the two `ultracode` forms, the `source_session_id` fallback, the Block 5 arm-only consequence — is in `session-handoff-examples.md` § Field-by-Field Specification; the binding clauses are summarized here.
 
-- **Block 1** — the opening line carries the SPEC anchor; the format emits no effort keyword — the resumed session starts at default effort (a user wanting xhigh types `ultrathink` in their own message). `<phase>` ∈ `plan | run | sync | mx`. [HARD] Fixed line order: first line (plus any appended keyword or steering phrase) → `mode:` → `applied lessons:` → `source_session_id:`, each conditional line omitted when its condition does not hold. A purpose-conditional `mode:` line seeds the next session's orchestration mode from the 4-token enum `serial | fanout | agent-team | sweep`; it is **omitted** for `serial` (the default). [HARD] Every mode coupling is a **SEED, not a permission grant** — the plan→run Kickoff gate's evidence standard holds (autonomous by default, `.claude/rules/moai/workflow/auto-semantics.md` §9.1; the operator form for keep-set cases), and a steered fan-out stays within the fanout bounds (`orchestration-mode-selection.md` §C.2) and is read-only-scoped. The per-mode couplings (`fanout`/`agent-team`/`sweep` append forms), protocol-token verbatim rule, and legacy-token mapping: `session-handoff-format.md` § Block 1 couplings.
+- **Block 1** — the opening line carries the SPEC anchor; the format emits no effort keyword — the resumed session starts at default effort (a user wanting xhigh types `ultrathink` in their own message). `<phase>` ∈ `plan | run | sync | mx`. [HARD] Fixed line order: first line (plus any appended keyword or steering phrase) → `mode:` → `applied lessons:` → `source_session_id:`, each conditional line omitted when its condition does not hold. A purpose-conditional `mode:` line seeds the orchestration mode from the 4-token enum `serial | fanout | agent-team | sweep`; it is **omitted** for `serial` (the default). [HARD] Every mode coupling is a **SEED, not a permission grant** — the plan→run Kickoff gate's evidence standard holds (autonomous by default, `.claude/rules/moai/workflow/auto-semantics.md` §9.1; the operator form for keep-set cases), and a steered fan-out stays within the fanout bounds (`orchestration-mode-selection.md` §C.2), read-only-scoped. Per-mode couplings, protocol-token verbatim rule, legacy-token mapping: `session-handoff-format.md` § Block 1 couplings.
 - **Block 2** — `applied lessons:` naming the relevant memory files, plus `source_session_id: <UUID from moai session current>`. Where the CLI or registry is unavailable, emit the prescribed fallback line verbatim (the sidecar carries it) — graceful degradation, not an anti-pattern.
 - **Block 3** — separator + `Preconditions:` header (locale rendering per § Localization Table).
 - **Block 4** — numbered `<N>) <action> → <expected outcome>`, each verifiable by a command or a file check. Maximum 4.
-- **Block 5** — separator + `Run:` carrying a **single primary action**, which is always the work-starting command. [HARD] `/moai goal` is arm-only and starts no work, so it never occupies this line alone — a goal armed with nothing running spins idle turns to the ceiling. Where the next SPEC declares a machine-verifiable end-state, the goal is armed *alongside* the primary action, after the plan→run Kickoff gate is met (its default autonomous form per `.claude/rules/moai/workflow/auto-semantics.md` §9.1, or the operator form keep-set cases keep).
+- **Block 5** — separator + `Run:` carrying a **single primary action**, always the work-starting command. [HARD] `/moai goal` is arm-only — it never occupies this line alone: a goal armed with nothing running spins idle turns to the ceiling. Where the next SPEC declares a machine-verifiable end-state, arm the goal *alongside* the primary action, after the plan→run Kickoff gate is met (default autonomous form per `.claude/rules/moai/workflow/auto-semantics.md` §9.1, or the operator form keep-set cases keep).
 - **Block 6** — separator + a workflow-context header carrying exactly one next action: `After merge:` for a PR-based flow, `Follow-up:` for trunk-based no-PR. Omit the block entirely on a single-SPEC close with nothing queued.
 
 ## Auto-Injected Resume Flow (mode=auto)
 
-[ZONE:Evolvable] Under `handoff.mode: auto` the saved pending record is consumed at the next `/clear` session start, collapsing the resume to **ONE** user message. Flow, the `/clear`-only injection boundary, and resumed-turn precondition verification: `session-handoff-format.md` § Auto-Injected Resume Flow (mode=auto) · `session-handoff-examples.md` § Auto-Injected Resume Flow (mode=auto).
+> Moved to the detail companion: `session-handoff-format.md` ("Auto-Injected Resume Flow (mode=auto)").
 
 ### Invariants (both modes)
 
-- **Kickoff gate unchanged in evidence**: neither auto-injection nor a set goal pre-authorizes run-phase entry. Run-phase entry requires the plan→run Kickoff gate to be met — autonomous by default (audit-cross evidence + decision record, `.claude/rules/moai/workflow/auto-semantics.md` §9.1; the operator form survives for keep-set cases) — in both modes.
-- **Manual reversion is baseline-identical**: restoring `handoff.mode: manual` reverts runtime behavior to the pre-auto baseline — the injector's manual branch is a pure no-op that never touches the pending record, even a stale one — and the manual path documented in this file (the 6-block paste) is complete and self-sufficient without this section.
+- **Kickoff gate unchanged in evidence**: neither auto-injection nor a set goal pre-authorizes run-phase entry. Run-phase entry requires the plan→run Kickoff gate — autonomous by default (audit-cross evidence + decision record, `.claude/rules/moai/workflow/auto-semantics.md` §9.1; the operator form survives for keep-set cases).
+- **Manual reversion is baseline-identical**: restoring `handoff.mode: manual` reverts runtime behavior to the pre-auto baseline — the manual branch never touches the pending record, even a stale one — and the manual path (the 6-block paste) is complete and self-sufficient without this section.
 - **Fail-open everywhere**: save failures never block emission (§ Emission-Time Save Obligation); injection failures never block session start; a missing, stale, or already-claimed record degrades silently to the manual paste path.
 
 ## Auto-Memory Integration (Mandatory)
@@ -83,21 +79,21 @@ Per-block detail — the `mode:` enum couplings, the fan-out steering phrase, th
 3. Update the `MEMORY.md` index with a one-line entry pointing to it.
 4. Mark superseded entries with a `[SUPERSEDED by <new-file>]` prefix per `.claude/rules/moai/core/moai-constitution.md` §Lessons Protocol.
 5. Annotate the index entry with `(session: <UUID-8-char-prefix>)` when the SPEC spanned multiple sessions (correlating to Block 2's `source_session_id`).
-6. **Close-time pruning (auto-resume era)**: at SPEC close the consumed verbatim block in the memory topic file SHOULD shrink to a one-line summary — verbatim preservation then belongs to the `.moai/state/handoff/consumed/` audit trail. The generation-time obligation (items 1-2) is UNCHANGED; this binds only later, forward-looking, and stops double-storage growth in the always-loaded index.
+6. **Close-time pruning**: at SPEC close the consumed block in the memory topic file SHOULD shrink to a one-line summary — verbatim preservation then belongs to the `.moai/state/handoff/consumed/` audit trail. The generation-time obligation (items 1-2) is UNCHANGED; this binds later and forward-looking, and stops double-storage growth in the always-loaded index.
 
-The message then survives `/clear` and is discoverable at the next session's start.
+> Moved to the detail companion: `session-handoff-format.md` ("Auto-Memory Integration (Mandatory)").
 
 ## Output Surface (User-Facing)
 
 [ZONE:Evolvable] [HARD] Emitting a resume message means **rendering it in the response body of the turn that generates it** — not storing it. At session end the orchestrator displays all three of: (1) the main message in a fenced ```text``` block **bounded by cut-line markers** (per § Cut-line Marker Specification — marker text translated per `conversation_language`, `✂`/`─` symbols preserved verbatim) for verbatim paste, (2) the memory file path, (3) a one-sentence summary of what next session continues.
 
-**reference-instead-of-render (named anti-pattern).** Writing the resume into the memory topic file (§ Auto-Memory Integration) and merely *citing* that path in the completion report is NOT emission. The memory write and the `moai handoff save` record are persistence steps; neither reaches the user, so a report saying the resume "is saved in memory" while rendering no block leaves nothing to paste. The hazard is structural: persistence is discharged by visible tool calls and feels complete once they succeed, while the render is ordinary response text with no tool call to confirm it. Persistence without rendering is an unobserved completion claim under `verification-claim-integrity.md` §1.1 surface 1.
+**reference-instead-of-render (named anti-pattern).** Writing the resume into the memory topic file (§ Auto-Memory Integration) and merely *citing* that path is NOT emission. The memory write and the `moai handoff save` record are persistence steps; neither reaches the user — a report saying the resume "is saved in memory" while rendering no block leaves nothing to paste. Persistence is discharged by visible tool calls and feels complete once they succeed; the render is ordinary response text with no tool call to confirm it. Persistence without rendering is an unobserved completion claim under `verification-claim-integrity.md` §1.1 surface 1.
 
-**Render-surface dependency.** The per-persona banner template lives in the active output style, and not every persona defines one. Where the active style carries no handoff banner this obligation still binds — render the cut-line-bounded block from the § Canonical Format skeleton, styled to that persona's banners. A missing template is never a reason to skip the render.
+**Render-surface dependency.** The per-persona banner template lives in the active output style; not every persona defines one. Where the active style carries no handoff banner this obligation still binds — render the cut-line-bounded block from the § Canonical Format skeleton, styled to that persona's banners. A missing template never skips the render.
 
 ## Worktree-Anchored Resume Pattern
 
-> [ZONE:Evolvable] [HARD] When the work happened inside a worktree, the resume message MUST prepend **Block 0 (cwd anchoring)** before the standard 6-block structure, and Block 4 gains precondition `0) git rev-parse --show-toplevel → <worktree-path>`. Block 0 uses the **canonical EnterWorktree-first forms** — `moai cc -w <name>` for a worktree under `.claude/worktrees/`, `moai cc -w <abs-path>` for one under `~/.moai/worktrees/`, or `EnterWorktree(<path>)` for current-session re-entry — NOT a bare `cd <worktree>` shell instruction. Work in the main checkout (the default) needs only the standard 6-block. Full: `session-handoff-examples.md` § Worktree-Anchored Resume Pattern.
+> [ZONE:Evolvable] [HARD] Work inside a worktree: the resume message MUST prepend **Block 0 (cwd anchoring)** before the standard 6 blocks, and Block 4 gains precondition `0) git rev-parse --show-toplevel → <worktree-path>`. Block 0 uses the **canonical EnterWorktree-first forms** — `moai cc -w <name>` for a worktree under `.claude/worktrees/`, `moai cc -w <abs-path>` for one under `~/.moai/worktrees/`, `EnterWorktree(<path>)` for current-session re-entry — NOT a bare `cd <worktree>` shell instruction. Main-checkout work (the default) needs only the standard 6-block. Full: `session-handoff-examples.md` § Worktree-Anchored Resume Pattern.
 
 ## Diet Constraints
 
@@ -120,4 +116,4 @@ The message then survives `/clear` and is discoverable at the next session's sta
 
 ---
 
-Status: HARD operational rule, applies to all multi-phase MoAI workflows
+> Moved to the detail companion: `session-handoff-format.md` ("Cross-references").

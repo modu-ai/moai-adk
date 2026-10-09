@@ -72,7 +72,11 @@ func TestMCPToolCatalogueFiguresMatchRegistry(t *testing.T) {
 	reTotal := regexp.MustCompile(`(\d+) tools exposed by the self-hosted`)
 	reFamily := regexp.MustCompile(`Tool families \((\d+) of the (\d+) tools`)
 
-	for _, pair := range jevCatalogueDocPairs[:1] {
+	// The total sentence lives in the catalogue companion (SPEC-ALWAYS-LOADED-BUDGET-001
+	// M3 moved it with the rest of the catalogue): the stub keeps the
+	// MCP-over-CLI rule and a pointer only. Re-pointed here, never dropped
+	// from the check.
+	for _, pair := range jevCatalogueDocPairs[1:] {
 		body, err := os.ReadFile(pair[0])
 		if err != nil {
 			t.Fatalf("read %s: %v", pair[0], err)
@@ -88,10 +92,9 @@ func TestMCPToolCatalogueFiguresMatchRegistry(t *testing.T) {
 		}
 	}
 
-	// The family table (and its coverage header) lives in the catalogue
-	// companion: the always-loaded stub keeps only the total sentence and a
-	// pointer. The header is read where it actually is — a header that moved
-	// is re-pointed here, never dropped from the check.
+	// The family table (and its coverage header) shares the companion: read
+	// where it actually is — a header that moved is re-pointed here, never
+	// dropped from the check.
 	for _, pair := range jevCatalogueDocPairs[1:] {
 		body, err := os.ReadFile(pair[0])
 		if err != nil {

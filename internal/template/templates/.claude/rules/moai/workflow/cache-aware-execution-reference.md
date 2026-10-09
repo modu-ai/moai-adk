@@ -49,3 +49,27 @@ Caches are model-scoped, and an effort or thinking-budget change (`MAX_THINKING_
 
 Version: 1.0.0
 Classification: Reference companion — paths-scoped, never part of the always-loaded surface.
+
+## Migrated from the core body
+
+
+### Cache-Aware Execution
+
+
+Prompt-caching-aware ordering rules for orchestrator execution. Caching is a **prefix match** over the rendered request: reads are far cheaper than writes, the TTL is **idle-based**, and a blocking wait longer than the window makes the next turn re-write the whole accumulated prefix. The directives below assume the 5-minute default — MoAI sets no TTL override, because cache spend is a user decision. Cited numbers, the TTL-setting caveat, and per-directive rationale: `cache-aware-execution-reference.md`. These rules govern WHEN and IN WHAT ORDER the orchestrator acts; they change no gate semantics and never bypass any approval gate.
+
+
+> **Loading scope**: Intentionally always-loaded — the directives bind ordering decisions the orchestrator makes on any non-trivial turn (gate placement, agent spawns, rule edits, `/clear` timing).
+
+
+### Cross-references
+
+
+- `.claude/rules/moai/workflow/orchestration-mode-selection.md` — fanout parallel fan-out (stagger-spawn composes with its concurrency ceiling)
+- `.claude/rules/moai/workflow/context-window-management.md` — model-specific `/clear` thresholds (directive 4 is an additional, earlier trigger)
+- `cache-aware-execution-reference.md` — the lazy companion. Load it for § Cited cache numbers · § Directive rationale (directives 6-10).
+
+
+Version: 1.2.0 (directive 5 — the opt-in `llm.agent_overrides_consume` key named as the single sanctioned override surface)
+Classification: Evolvable operational rule — execution ordering only; gate semantics unchanged.
+

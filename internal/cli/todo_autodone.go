@@ -38,6 +38,7 @@
 package cli
 
 import (
+	"context"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -51,6 +52,7 @@ import (
 	"github.com/spf13/cobra"
 
 	"github.com/modu-ai/moai-adk/internal/factory"
+	"github.com/modu-ai/moai-adk/internal/homestate"
 )
 
 // autoDoneLogFileName is the scan's append-only execution log, sibling to
@@ -85,7 +87,9 @@ type autoDoneLogRow struct {
 	Source      string `json:"source,omitempty"`
 }
 
-// autoDoneOutcome is one card's resolved scan result, in queue order.
+// autoDoneOutcome is one card's resolved scan result, in queue order. The
+// snap* fields are the snapshot the lock re-verification (REQ-FCR-004)
+// compares the current row against, captured at scan time.
 type autoDoneOutcome struct {
 	id          string
 	specID      string
@@ -95,6 +99,11 @@ type autoDoneOutcome struct {
 	subject     string
 	commitSHA   string
 	recordedSHA string
+	snapUUID    string
+	snapText    string
+	snapState   factory.BacklogState
+	snapSpec    string
+	snapLanding *factory.LandingEvidence
 }
 
 // newTodoAutoDoneCmd — `moai todo auto-done`.
@@ -150,13 +159,19 @@ whose SPEC frontmatter status is anything other than completed (an
 unreadable status included) skips: a run commit landing does not license
 the close while sync is unfinished. A commit subject carrying an explicit
 non-landing declaration ("not merged" / "not landed") attributes nothing.
+A FACTORY-LINKED card — one with a factory card row — additionally closes
+only on a verified leader approval receipt; a card with no factory record
+completes exactly as before (SPEC-FACTORY-COMPLETION-RECOVERY-001
+REQ-FCR-002/003).
 
-The skip-reason vocabulary is CLOSED at exactly four tokens:
+The skip-reason vocabulary is CLOSED at exactly five tokens:
 
   ambiguous-id        — guard M1: reissued id, subject evidence alone
   spec-not-completed  — guard M2: SPEC status is not completed (unknown included)
   not-landed          — no landing evidence, including a negated subject
   query-inconclusive  — the question could not be asked; never a close
+  leader-unapproved   — guard M4: factory-linked card, no verified leader
+                        approval receipt
 
 Exit codes: 0 for every skip outcome (an inconclusive CARD is a skip, not a
 command failure); 1 only when the scan itself cannot run (the queue store
@@ -217,14 +232,14 @@ func runTodoAutoDone(cmd *cobra.Command, fetch, dryRun, jsonOut bool) error {
 		attributions = factory.LandedAttributions(commits, factory.LandedBranchFromRef(ref))
 	}
 
-	outcomes := planAutoDone(snapshot, root, ref, subjectKnown, attributions)
+	outcomes := planAutoDone(cmd.Context(), snapshot, root, ref, subjectKnown, attributions)
 
 	// Apply the closes in one locked write. Guards ran BEFORE the mutation
 	// (on the snapshot) and the callback re-checks each card, so every
 	// refusal inherits Mutate's byte-identity contract (C3).
 	var applied []autoDoneOutcome
 	if !dryRun {
-		applied, err = applyAutoDoneCloses(store, outcomes)
+		applied, err = applyAutoDoneCloses(cmd.Context(), root, store, outcomes)
 		if err != nil {
 			_, _ = fmt.Fprintf(cmd.ErrOrStderr(), "Error: todo auto-done: %v\n", err)
 			return err
@@ -279,7 +294,13 @@ func splitLandedRefForFetch(ref string) (remote, branch string, ok bool) {
 // BacklogStateQueued or BacklogStatePicked (REQ-AD-001) — dropped cards are
 // never evaluated, already-archived ids are not re-evaluated (NFR-4's
 // idempotence), and the record's shape makes both true by construction.
-func planAutoDone(snapshot *factory.BacklogRecord, root, ref string, subjectKnown bool, attributions map[string]factory.LandedCommit) []autoDoneOutcome {
+//
+// Factory-linked candidates additionally carry their leader-approval
+// receipt state (REQ-FCR-003): a candidate whose receipt does not verify
+// against its current factory row never closes, while a non-factory
+// candidate assembles no receipt state at all.
+func planAutoDone(ctx context.Context, snapshot *factory.BacklogRecord, root, ref string, subjectKnown bool, attributions map[string]factory.LandedCommit) []autoDoneOutcome {
+	receiptStates := scanApprovalStates(ctx, root, snapshot)
 	outcomes := make([]autoDoneOutcome, 0, len(snapshot.Items))
 	for i := range snapshot.Items {
 		it := snapshot.Items[i]
@@ -299,6 +320,13 @@ func planAutoDone(snapshot *factory.BacklogRecord, root, ref string, subjectKnow
 		if it.SpecID != nil {
 			o.specID = *it.SpecID
 		}
+		// The REQ-FCR-004 snapshot: what the lock re-verification compares
+		// the row against at archive time.
+		o.snapUUID = todoCardUUID(&it)
+		o.snapText = it.Text
+		o.snapState = it.State
+		o.snapSpec = o.specID
+		o.snapLanding = it.Landing
 
 		// Guard M2's input: the SPEC frontmatter status read at scan time.
 		// No spec id means the gate does not apply (the Class A/B shape);
@@ -315,6 +343,7 @@ func planAutoDone(snapshot *factory.BacklogRecord, root, ref string, subjectKnow
 			SubjectKnown:  subjectKnown,
 			DistinctTexts: factory.AutoDoneDistinctTexts(snapshot, it.ID),
 			SpecSyncGate:  gate,
+			ReceiptGate:   receiptStates[it.ID],
 		}
 		if it.Landing != nil {
 			o.recordedSHA = strings.TrimSpace(it.Landing.SHA)
@@ -363,12 +392,24 @@ func todoAutoDoneSHAReachable(sha, ref string) factory.AutoDoneTri {
 	return factory.AutoDoneUnknown
 }
 
-// applyAutoDoneCloses archives the planned closes in one locked Mutate. A
+// applyAutoDoneCloses archives the planned closes in one locked write. A
 // planned close whose card moved or vanished between snapshot and lock is
 // downgraded to a skip (query-inconclusive) rather than refusing the whole
-// scan; a store-level failure (lock, unreadable engine) refuses everything
-// and is the scan-cannot-run case.
-func applyAutoDoneCloses(store *factory.BacklogStore, outcomes []autoDoneOutcome) ([]autoDoneOutcome, error) {
+// scan; a store-level failure (lock, unreadable engine, unreadable factory
+// state) refuses everything and is the scan-cannot-run case.
+//
+// Two re-verification layers run inside the lock (SPEC-FACTORY-COMPLETION-RECOVERY-001
+// REQ-FCR-004): the snapshot comparison (UUID, body, state, SPEC, landing)
+// and — for factory-linked cards, only when all five match — the receipt's
+// four bindings re-verified against the archive-moment factory row. The
+// gate's factory write transaction is held across verification AND the queue
+// write's persistence (LockedBacklog.Mutate saves before it returns; the
+// gate releases after), so a concurrent factory transition cannot interleave
+// between the recheck and the record landing. There is no per-card commit:
+// the transaction never writes, so a close can never persist while being
+// reported as skipped — a close either persists under the gate and is
+// reported closed, or the whole mutation is discarded.
+func applyAutoDoneCloses(ctx context.Context, root string, store *factory.BacklogStore, outcomes []autoDoneOutcome) ([]autoDoneOutcome, error) {
 	hasCloses := false
 	for _, o := range outcomes {
 		if o.closed {
@@ -379,35 +420,121 @@ func applyAutoDoneCloses(store *factory.BacklogStore, outcomes []autoDoneOutcome
 	if !hasCloses {
 		return outcomes, nil
 	}
-	err := store.Mutate(func(rec *factory.BacklogRecord) error {
-		for k := range outcomes {
-			if !outcomes[k].closed {
-				continue
-			}
-			at := -1
-			for i := range rec.Items {
-				if rec.Items[i].ID == outcomes[k].id {
-					at = i
-					break
+	err := store.WithLock(func(l *factory.LockedBacklog) error {
+		gate, gateErr := holdDoneApprovalGate(context.Background(), root)
+		if gateErr != nil {
+			// The factory state cannot be verified against: fail the scan
+			// rather than closing factory-linked cards unchecked.
+			return gateErr
+		}
+		mutErr := l.Mutate(func(rec *factory.BacklogRecord) error {
+			for k := range outcomes {
+				if !outcomes[k].closed {
+					continue
+				}
+				at := -1
+				for i := range rec.Items {
+					if rec.Items[i].ID == outcomes[k].id {
+						at = i
+						break
+					}
+				}
+				if at < 0 {
+					// The queue changed between snapshot and lock; this scan's
+					// facts for the card are stale.
+					outcomes[k].downgrade(factory.AutoDoneSkipQueryInconclusive)
+					continue
+				}
+				cur := rec.Items[at]
+				// A UUID-less legacy record gains its identity from the
+				// in-lock migration itself (review round-12 P2): the freshly
+				// issued uuid is OUR side effect, not an external change —
+				// adopt it into the snapshot instead of mistaking it for a
+				// stale row.
+				if outcomes[k].snapUUID == "" && todoCardUUID(&cur) != "" {
+					outcomes[k].snapUUID = todoCardUUID(&cur)
+				}
+				if !autoDoneSnapshotMatches(&outcomes[k], &cur) {
+					// REQ-FCR-004: the row was held, edited, re-identified,
+					// re-stated, or re-landed between snapshot and lock — the
+					// downgrade carries the existing inconclusive reason.
+					outcomes[k].downgrade(factory.AutoDoneSkipQueryInconclusive)
+					continue
+				}
+				// A first dispatch racing in under this queue lock re-opens
+				// the nil gate at archive moment (review round-5 P2).
+				refreshed, rerr := refreshDoneApprovalGate(context.Background(), root, gate)
+				if rerr != nil {
+					return rerr
+				}
+				gate = refreshed
+				if verr := gate.verifyForClose(context.Background(), outcomes[k].id, outcomes[k].snapUUID); verr != nil {
+					outcomes[k].downgrade(autoDoneReceiptDowngradeReason(verr))
+					continue
+				}
+				if err := rec.ArchiveCard(outcomes[k].id); err != nil {
+					outcomes[k].downgrade(factory.AutoDoneSkipQueryInconclusive)
+					continue
 				}
 			}
-			if at < 0 {
-				// The queue changed between snapshot and lock; this scan's
-				// facts for the card are stale.
-				outcomes[k].downgrade(factory.AutoDoneSkipQueryInconclusive)
-				continue
-			}
-			if err := rec.ArchiveCard(outcomes[k].id); err != nil {
-				outcomes[k].downgrade(factory.AutoDoneSkipQueryInconclusive)
-				continue
-			}
-		}
-		return nil
+			return nil
+		})
+		gate.release()
+		return mutErr
 	})
 	if err != nil {
 		return nil, fmt.Errorf("todo auto-done: %w", err)
 	}
 	return outcomes, nil
+}
+
+// autoDoneSnapshotMatches compares the scan-time snapshot against the
+// current row: UUID, body, state, SPEC, landing — all five or no close. An
+// empty snapshot uuid with a non-empty current uuid is the in-lock
+// identity migration's own issue, not an external change: it is adopted
+// (the caller does the same) and the uuid axis matches.
+func autoDoneSnapshotMatches(o *autoDoneOutcome, cur *factory.BacklogItem) bool {
+	curUUID := todoCardUUID(cur)
+	if o.snapUUID == "" && curUUID != "" {
+		o.snapUUID = curUUID
+	}
+	return o.snapUUID == curUUID &&
+		cur.Text == o.snapText &&
+		cur.State == o.snapState &&
+		backlogSpecText(cur) == o.snapSpec &&
+		landingEvidenceEqual(cur.Landing, o.snapLanding)
+}
+
+func backlogSpecText(it *factory.BacklogItem) string {
+	if it.SpecID == nil {
+		return ""
+	}
+	return *it.SpecID
+}
+
+// landingEvidenceEqual compares two landing snapshots. LandingEvidence is a
+// plain string struct, so equality is field equality; a nil and a non-nil
+// never match.
+func landingEvidenceEqual(a, b *factory.LandingEvidence) bool {
+	if a == nil || b == nil {
+		return a == b
+	}
+	return *a == *b
+}
+
+// autoDoneReceiptDowngradeReason classifies an archive-moment receipt
+// refusal: the approval sentinels are the leader-unapproved axis; anything
+// else is an unanswerable question.
+func autoDoneReceiptDowngradeReason(err error) string {
+	if errors.Is(err, homestate.ErrApprovalMissing) ||
+		errors.Is(err, homestate.ErrApprovalIssuer) ||
+		errors.Is(err, homestate.ErrApprovalCardMismatch) ||
+		errors.Is(err, homestate.ErrApprovalRunMismatch) ||
+		errors.Is(err, homestate.ErrApprovalStale) ||
+		errors.Is(err, homestate.ErrApprovalHashMismatch) {
+		return factory.AutoDoneSkipLeaderUnapproved
+	}
+	return factory.AutoDoneSkipQueryInconclusive
 }
 
 // effectiveOutcomes is the dry-run pass-through: the planned outcomes ARE

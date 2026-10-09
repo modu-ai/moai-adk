@@ -30,6 +30,9 @@ progressive_disclosure:
 
 # Factory Foreman Loop Iteration
 
+<!-- moai:role-rules-required -->
+[HARD] Before the first action of a session running this skill, read BOTH role-gated rule files in full: `.claude/rules/moai/workflow/factory-dispatch.md` and `.claude/rules/moai/workflow/cross-session-messaging.md`. A Codex-only project deploys the same files under `.moai/policies/` (for example `.moai/policies/workflow/factory-dispatch.md`) — read whichever layout this project carries. The always-loaded surface carries only their stubs; the dispatch protocol, the card classes, and the queue boundaries this loop consumes live in those two files.
+
 One unattended pass of the factory foreman: watch the backlog queue, dispatch
 the next operator-picked card to an isolated worker, collect completion
 evidence, report. The queue surface is `moai todo` (the `moai gtd` spelling serves the same queue); the dispatch protocol and

@@ -1,8 +1,6 @@
 # Main-Checkout Branch Guard
 
-Branch-state isolation rules for the primary project checkout. The checkout is **shared**: several Claude Code sessions, teammates, hooks, and background tools can operate on the same working tree at once. Branch state there is global — a `git switch` in one session changes what every other session sees, mid-operation, with no signal to either side.
-
-> **Loading scope**: Intentionally always-loaded — the guard binds any turn that performs git work, which is not predictable from file paths.
+> Moved to the detail companion: `main-checkout-branch-guard-detail.md` ("Main-Checkout Branch Guard").
 
 ## Rules
 
@@ -74,16 +72,10 @@ to the primary checkout and would lock out legitimate worktree flows.
   spawned before the guarded command runs, so exporting it inside that command is a no-op. Reading a
   `BRANCH_GUARD_VIOLATION` as "the exemption is broken" remains a misdiagnosis — use a worktree.
 
-Flag classification, the pattern set, the primary-vs-worktree discriminant, and quoted-span scan
-scope: `main-checkout-branch-guard-detail.md` § Mechanical enforcement.
+> Moved to the detail companion: `main-checkout-branch-guard-detail.md` ("Mechanical Enforcement").
 
 ## Cross-references
 
-- `.claude/rules/moai/workflow/worktree-integration.md` — worktree systems, lifecycle, and the disposal contract
-- `.claude/rules/moai/core/agent-common-protocol.md` § Pre-Spawn Sync Check — divergence check before spawning a write-capable agent
-- `main-checkout-branch-guard-detail.md` — the lazy companion. Load it for § Why the race is quiet (relocated § Why This Matters) · § Mechanical enforcement · § Procedure — Isolate With a Worktree · § Verification
+> Moved to the detail companion: `main-checkout-branch-guard-detail.md` ("Cross-references").
 
 ---
-
-Version: 1.4.0
-Classification: Evolvable operational rule — branch-state isolation; changes no gate semantics.

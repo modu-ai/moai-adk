@@ -17,10 +17,12 @@ package cli
 import (
 	"errors"
 	"fmt"
+	"os"
 	"strings"
 
 	"github.com/spf13/cobra"
 
+	"github.com/modu-ai/moai-adk/internal/config"
 	"github.com/modu-ai/moai-adk/internal/factory"
 )
 
@@ -189,16 +191,75 @@ func runTodoClaimRoot(root string, cmd *cobra.Command, lane, renew string) error
 		return nil
 	}
 
-	result, err := store.Claim(holder)
+	// Claim + dispatch binding under ONE held queue lock (review round-16
+	// P1-1): the binding write lands before the lock releases, so a
+	// concurrent completion can never slip between the selection and the
+	// binding. Success prints ONCE, after both operations land (review
+	// round-16 P2).
+	var result *factory.BacklogClaim
+	err := store.WithLock(func(l *factory.LockedBacklog) error {
+		res, cerr := l.Claim(holder)
+		if cerr != nil {
+			return cerr
+		}
+		result = res
+		if envRunID := os.Getenv(config.EnvFactoryRunID); envRunID != "" && os.Getenv(config.EnvMoaiFactoryWorkers) != "" {
+			// The queue's current-dispatch record is written FIRST under the
+			// same held lock (no owner is claimed; turn-end gate, card t1538):
+			// a record that cannot be written stops the claim before the
+			// binding moves.
+			berr := l.RefreshDispatchCurrent(result.Item.ID, envRunID, "")
+			if berr == nil {
+				berr = recordDispatchBindingAtRoot(result.Item.ID, envRunID, root)
+			}
+			if berr != nil {
+				// Roll the claim back under the same held lock: no
+				// selection stands unbound (review round-15 P1-3).
+				if rerr := l.Mutate(revertClaimMutation(result.Item.ID, holder)); rerr != nil {
+					return fmt.Errorf("binding update failed (%v) AND the claim revert failed (%v) — card %s may be stuck picked", berr, rerr, result.Item.ID)
+				}
+				return berr
+			}
+		}
+		return nil
+	})
 	if err != nil {
 		_, _ = fmt.Fprint(cmd.OutOrStdout(), out.String())
 		return todoClaimRefusal(cmd, err)
 	}
+	// The runtime report rides after the lock releases — report data, never
+	// completion authority.
+	recordFactoryCardState(result.Item.ID, "", "picked", "card.assigned")
 	todoClaimReclaimLines(out, result.Reclaimed)
 	fmt.Fprintf(out, "claimed %s %s lease_expires_at=%s picked_by=%s\n",
 		result.Item.ID, todoTextPrefix(result.Item.Text),
 		claimStrOr(result.Item.LeaseExpiresAt, "unknown"), claimStrOr(result.Item.PickedBy, "unknown"))
 	_, _ = fmt.Fprint(cmd.OutOrStdout(), out.String())
-	recordFactoryCardState(result.Item.ID, "", "picked", "card.assigned")
 	return nil
+}
+
+// revertClaimMutation undoes a successful claim whose dispatch binding
+// could not be recorded: back to queued with no lease, only when the card
+// still holds THIS holder's claim (review round-15 P1-3). The guard is
+// written in the positive form (REQ-THS-012): exactly the revertable shape
+// is enumerated, every other state falls through to the refusal.
+func revertClaimMutation(id, holder string) func(*factory.BacklogRecord) error {
+	return func(rec *factory.BacklogRecord) error {
+		for i := range rec.Items {
+			if rec.Items[i].ID != id {
+				continue
+			}
+			if rec.Items[i].State == factory.BacklogStatePicked &&
+				rec.Items[i].PickedBy != nil &&
+				*rec.Items[i].PickedBy == holder {
+				rec.Items[i].State = factory.BacklogStateQueued
+				rec.Items[i].PickedBy = nil
+				rec.Items[i].LeaseExpiresAt = nil
+				rec.Items[i].PickedAt = nil
+				return nil
+			}
+			return fmt.Errorf("claim for %s changed hands before the binding update", id)
+		}
+		return fmt.Errorf("no backlog item %s", id)
+	}
 }

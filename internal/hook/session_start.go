@@ -36,6 +36,13 @@ import (
 type sessionStartHandler struct {
 	cfg ConfigProvider
 
+	// pendingRoleRule carries the role core whose REQ-ALB-010 size gate is
+	// deferred to FinalizeSessionStartOutput (dispatch-finalize — the gate
+	// must measure the composite AFTER every SessionStart handler's
+	// contribution merges). Nil when nothing is pending or the failure path
+	// already delivered its own recovery composite.
+	pendingRoleRule *pendingRoleRuleInjection
+
 	// syncDeferredScans records that this handler's constructor was given
 	// WithSynchronousDeferredScans. Per-handler rather than a package-level
 	// setter: a process-global toggle would be mutable shared state and would
@@ -43,6 +50,43 @@ type sessionStartHandler struct {
 	// TestMain seam exists to prevent (SPEC-TEMPDIR-CLEANUP-RACE-001
 	// REQ-TCR-001).
 	syncDeferredScans bool
+}
+
+// pendingRoleRuleInjection is the deferred size-gate state.
+type pendingRoleRuleInjection struct {
+	core string
+	root string
+	role string
+	lang string
+}
+
+// FinalizeSessionStartOutput applies the deferred REQ-ALB-010 size gate to
+// the FINAL merged additionalContext — after every SessionStart handler's
+// contribution has merged (REQ-ALB-010 measures the final string, and the
+// handoff/compact handlers merge after the role-rules producer). Over the
+// cap, the overflow read directive opens the composite (save-failure safe)
+// and the operator warning rides systemMessage; without overflow delivery
+// the core is removed (REQ-ALB-009 retreat). Consumed once.
+func (h *sessionStartHandler) FinalizeSessionStartOutput(merged *HookOutput) {
+	if merged == nil || h.pendingRoleRule == nil {
+		return
+	}
+	p := h.pendingRoleRule
+	h.pendingRoleRule = nil
+	composite, operator := roleRuleSizeGate(merged.HookSpecificOutput.AdditionalContext, p.core, p.root, p.role, p.lang)
+	if merged.HookSpecificOutput == nil {
+		merged.HookSpecificOutput = &HookSpecificOutput{
+			HookEventName: string(EventSessionStart),
+		}
+	}
+	merged.HookSpecificOutput.AdditionalContext = composite
+	if operator != "" {
+		if merged.SystemMessage == "" {
+			merged.SystemMessage = operator
+		} else {
+			merged.SystemMessage += "\n\n" + operator
+		}
+	}
 }
 
 // Option configures a SessionStart handler at construction time.
@@ -629,7 +673,84 @@ func (h *sessionStartHandler) Handle(ctx context.Context, input *HookInput) (*Ho
 	appendAdditionalContext(out, memoryBudgetAdvisory(ctx, memoryBudgetRoot, h.asyncDeferredScans()))
 	clock.lap("memory_budget_advisory")
 
+	// Role-gated rule injection (SPEC-ALWAYS-LOADED-BUDGET-001
+	// REQ-ALB-007..011). A factory leader or lane session (the config
+	// role-marker registry decides, never a hand-written list) receives the
+	// role core of the two role-gated rules on startup, clear, and compact —
+	// the sources that start a session or discard the previous injection;
+	// resume restores the transcript and receives nothing (REQ-ALB-008).
+	// The core is built solely from the DEPLOYED rule files (REQ-ALB-023);
+	// a failure is fail-visible — operator warning plus agent read
+	// directive, never a silent start (REQ-ALB-009). The 10,000-character
+	// delivery cap applies to the FINAL additionalContext string, so this
+	// block runs LAST and measures everything the producers above already
+	// assembled; over the cap the core goes out INTACT with the
+	// overflow-file directive (REQ-ALB-010).
+	//
+	// The root is resolved from the SESSION CWD — walked outward from the
+	// cwd until the deployed rule files appear, so a cwd sitting deep inside
+	// the tree resolves the same root as one at the tree top — with
+	// ProjectDir as the fallback when the cwd is empty: deployed rule files
+	// live per working tree, and a worktree session's CWD is its own tree
+	// while CLAUDE_PROJECT_DIR keeps pointing at the primary checkout — the
+	// ProjectDir-first resolution the factory notice uses would deliver the
+	// primary tree's role rules (or miss the worktree's markers entirely).
+	// The factory notice block above keeps its ProjectDir-first resolution
+	// deliberately: the queue it reads is one repository-wide channel
+	// resolved against the primary checkout from every linked worktree.
+	roleRulesRoot := roleRulesRootFromCWD(input.CWD)
+	if roleRulesRoot == "" {
+		roleRulesRoot = input.ProjectDir
+	}
+	inj := roleRuleInjectionFor(roleRulesRoot, input.Source, operatorLang(h.cfg))
+	if inj.RecoveryHead != "" {
+		// The recovery directive opens the FINAL composite — ahead of every
+		// earlier producer's text — so a runtime side-channel cut (save
+		// failure → first 10,000 characters) still delivers it regardless of
+		// how much context the producers above accumulated. Nil guard: when
+		// no earlier producer wrote additionalContext the output struct is
+		// still nil — create it before the composite assignment. The failure
+		// path is size-independent, so it assembles here; the SIZE gate is
+		// deferred to FinalizeSessionStartOutput (dispatch-finalize).
+		if out.HookSpecificOutput == nil {
+			out.HookSpecificOutput = &HookSpecificOutput{
+				HookEventName: string(EventSessionStart),
+			}
+		}
+		out.HookSpecificOutput.AdditionalContext = assembleInjectionComposite(accumulatedAdditionalContext(out), inj)
+	} else if inj.Context != "" {
+		// The core appends now so a direct-Handle caller sees it; the SIZE
+		// gate runs at dispatch-finalize against the merged composite (REQ-
+		// ALB-010 measures the FINAL string — other SessionStart handlers
+		// merge their contributions after this producer).
+		appendAdditionalContext(out, inj.Context)
+		role, _ := detectRegisteredRole(os.Getenv)
+		h.pendingRoleRule = &pendingRoleRuleInjection{
+			core: inj.Context,
+			root: roleRulesRoot,
+			role: role.Name,
+			lang: operatorLang(h.cfg),
+		}
+	}
+	if inj.OperatorNotice != "" {
+		if out.SystemMessage == "" {
+			out.SystemMessage = inj.OperatorNotice
+		} else {
+			out.SystemMessage += "\n\n" + inj.OperatorNotice
+		}
+	}
+	clock.lap("role_rules_injection")
+
 	return out, nil
+}
+
+// accumulatedAdditionalContext reads the additionalContext accumulated so
+// far on the SessionStart output ("" when no producer has written one yet).
+func accumulatedAdditionalContext(out *HookOutput) string {
+	if out == nil || out.HookSpecificOutput == nil {
+		return ""
+	}
+	return out.HookSpecificOutput.AdditionalContext
 }
 
 func registerProfileLease(ctx context.Context, input *HookInput) {

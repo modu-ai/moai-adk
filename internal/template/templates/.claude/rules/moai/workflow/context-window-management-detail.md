@@ -168,3 +168,37 @@ The dated baseline, the command, and the full distribution live with the measure
 own evidence file rather than here — the norm belongs in the rule, the dated figures belong with
 the measurement.
 
+
+## Migrated from the core body
+
+
+### Context Window Management
+
+
+Long-horizon session continuity guidance for both users and the MoAI orchestrator.
+
+
+### Detection Heuristics
+
+
+The statusline's two-stage `/clear` marker is a signal, not a guarantee: the hard stage is
+frequently pre-empted by the runtime's auto-compact and rarely fires. Snapshot field list and the
+guide-gated advisory: `context-window-management-detail.md` § Detection Heuristics.
+
+
+### Applies To
+
+
+All MoAI workflows: `/moai plan|run|sync`, multi-SPEC Epics, iterative loops (`/moai loop`, GAN loop).
+
+
+### Cross-references
+
+
+- `.claude/rules/moai/workflow/cache-aware-execution.md` — prompt-cache-aware `/clear` timing (its directive 4 permits an earlier `/clear` before a large multi-spawn batch, below the thresholds above) + gate placement and stagger-spawn ordering.
+- `.claude/rules/moai/workflow/session-handoff.md` — paste-ready resume format + auto-memory integration. Trigger #1 consumes the model-specific threshold table from this file (1M = 50%, 200K = 90%); `/clear` recommendation and paste-ready emission both fire at the same boundary.
+- `context-window-management-detail.md` — the lazy companion. Load it for § Why This Matters · § Claude Code's Graduated-Compaction Layers · § Reduction Ladder — cheaper moves before `/clear` (the four cheaper rungs and the checkpoint mechanics) · § GLM-5.3 context window · § Multi-session work — resume rather than re-establish · § Detection Heuristics · § Snapshot confidence
+
+
+Status: HARD operational rule, applies to all sessions
+

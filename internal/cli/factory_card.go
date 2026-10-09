@@ -995,10 +995,25 @@ func factoryNextClaim(ctx context.Context, db *homestate.FactoryDB, root, runID 
 			return homestate.Card{}, false, false, err
 		}
 	}
+	// T2 and T3 each re-point the factory binding onto this run in their own
+	// transaction, so the queue's current-dispatch record is written inside
+	// each, right before its commit (turn-end gate relay #4, after review
+	// round-24 V2; the in-transaction form after the turn-end gate that
+	// followed): the claim runs inside the lease section, which holds the queue
+	// lock on this same store. A record that cannot be written rolls that
+	// transition back — no lease, no binding move — and a refused transition
+	// never moves the record. Recording after the transition would leave a
+	// committed lease and binding ahead of a stale record, where a retried
+	// older dispatch reads the record as current and drags the binding back.
+	// The owner is the row the transition writes — the lane once T2 names it.
+	followRecord := func(next homestate.Card) error {
+		return todoStoreAt(root).RefreshDispatchCurrentLockHeld(next.CardID, runID, next.OwnerLabel)
+	}
 	if c.State == homestate.CardPicked {
 		next, err := db.Transition(ctx, homestate.TransitionRequest{
 			RunID: runID, CardID: c.CardID, To: homestate.CardAssigned,
 			ExpectedVersion: c.Version, Actor: "factory-next", Owner: lane, Now: factoryCardNow(),
+			BeforeCommit: followRecord,
 		})
 		if err != nil {
 			return factoryNextClaimRefused(factoryClaimFailure(ctx, err))
@@ -1008,6 +1023,7 @@ func factoryNextClaim(ctx context.Context, db *homestate.FactoryDB, root, runID 
 	leased, err := db.Transition(ctx, homestate.TransitionRequest{
 		RunID: runID, CardID: c.CardID, To: homestate.CardLeased,
 		ExpectedVersion: c.Version, Actor: lane, Now: factoryCardNow(),
+		BeforeCommit: followRecord,
 	})
 	if err != nil {
 		return factoryNextClaimRefused(factoryClaimFailure(ctx, err))
@@ -2437,6 +2453,11 @@ func newFactoryAssignCommand() *cobra.Command {
 				return fmt.Errorf("factory assign: %w", err)
 			}
 			defer func() { _ = db.Close() }()
+			// The record write runs under the queue lock, so a first
+			// dispatch can never interleave with a completion that already
+			// decided the factory DB was absent (review round-7 P1-REPEAT);
+			// the two paths serialize on the same lock.
+			queueStore := newTodoStore()
 			// Hub-chain hint (REQ-TCI-020): filled ONLY on record creation,
 			// and ONLY when the operator gave no --after of their own — an
 			// explicit input outranks the computed one, and a card that
@@ -2464,15 +2485,70 @@ func newFactoryAssignCommand() *cobra.Command {
 				}
 			}
 			now := factoryCardNow()
-			card, err := db.RecordPicked(ctx, runID, cardID, fields, "assign", now)
+			var card homestate.Card
+			err = queueStore.WithLock(func(l *factory.LockedBacklog) error {
+				recordCard, err := db.RecordPicked(ctx, runID, cardID, fields, "assign", now)
+				if err != nil {
+					return err
+				}
+				card = recordCard
+				toTrim := strings.TrimSpace(to)
+				if card.State != homestate.CardPicked {
+					// State-preserving re-bind (review rounds 6-7): ANY
+					// non-picked, non-legacy row recovers or refreshes its
+					// dispatch binding without a state change, at every
+					// post-assigned state (assigned, merge-ready,
+					// merged-local, pushed, ci-green, done). The lane, when
+					// given, must match the recorded owner; the row's
+					// state, version, and owner are untouched.
+					if !card.Legacy() && (toTrim == "" || toTrim == card.OwnerLabel) {
+						// Binding recovery is leader/operator territory
+						// (REQ-FCR-014): a lane session can never rotate the
+						// dispatch binding — least of all onto a past row whose
+						// old approval would then revive (review round-13 P1).
+						if factoryLaneRefusal() {
+							return fmt.Errorf("factory assign: refused — %s: dispatch-binding recovery is the leader path's act (%s=%s marks a lane)",
+								factoryLaneBoundarySentinel, config.EnvFactoryRole, config.FactoryRoleLane)
+						}
+						// The queue's record is written FIRST (turn-end gate, card
+						// t1538): this branch's factory write has no guard that can
+						// refuse after it, so a record that cannot be written stops
+						// the re-bind before the binding moves.
+						if err := l.RefreshDispatchCurrent(cardID, runID, card.OwnerLabel); err != nil {
+							return err
+						}
+						return db.RecordDispatchBinding(ctx, cardID, runID, now)
+					}
+					return fmt.Errorf("factory assign: card %s is %s (owner %q); only a picked card can move to assigned%s", cardID, card.State, dash(card.OwnerLabel), func() string {
+						if !card.Legacy() && toTrim != "" && toTrim != card.OwnerLabel {
+							return " a different lane"
+						}
+						return ""
+					}())
+				}
+				if toTrim != "" {
+					// T2 re-points the binding in its own transaction, so the
+					// queue's current-dispatch identity (review round-24 P1-3)
+					// is written inside it, right before its commit (turn-end
+					// gate, card t1538): a record that cannot be written rolls
+					// the assignment back — the binding stays where it was — and
+					// a refused T2 never moves the record.
+					card, err = db.Transition(ctx, homestate.TransitionRequest{
+						RunID: runID, CardID: cardID, To: homestate.CardAssigned, ExpectedVersion: card.Version, Actor: "assign", Owner: to, Now: now,
+						BeforeCommit: func(homestate.Card) error { return l.RefreshDispatchCurrent(cardID, runID, toTrim) },
+					})
+					return err
+				}
+				// A --to-less successful assign records THIS run as the
+				// current dispatch at any version (review round-7 P1-1); the
+				// queue's record is written first, as in the re-bind above.
+				if err := l.RefreshDispatchCurrent(cardID, runID, card.OwnerLabel); err != nil {
+					return err
+				}
+				return db.RecordDispatchBinding(ctx, cardID, runID, now)
+			})
 			if err != nil {
 				return fmt.Errorf("factory assign: %w", err)
-			}
-			if strings.TrimSpace(to) != "" {
-				card, err = db.Transition(ctx, homestate.TransitionRequest{RunID: runID, CardID: cardID, To: homestate.CardAssigned, ExpectedVersion: card.Version, Actor: "assign", Owner: to, Now: now})
-				if err != nil {
-					return fmt.Errorf("factory assign: %w", err)
-				}
 			}
 			_, _ = fmt.Fprintf(cmd.OutOrStdout(), "%s %s v%d owner=%s\n", card.CardID, card.State, card.Version, dash(card.OwnerLabel))
 			return nil
@@ -2680,7 +2756,7 @@ func factoryDecideCards(ctx context.Context, root string, out io.Writer, cards [
 	integration := config.LoadGitFlowIntegrationConfig(root).IntegrationTarget
 	refused := 0
 	for _, cardID := range cards {
-		card, err := decideOne(ctx, db, runID, cardID, gate, choice, integration)
+		card, err := decideOne(ctx, db, root, runID, cardID, gate, choice, integration)
 		if err != nil {
 			refused++
 			_, _ = fmt.Fprintf(out, "%s: refused: %v\n", cardID, err)
@@ -2739,8 +2815,11 @@ func newFactoryDecideCommand() *cobra.Command {
 }
 
 // decideOne applies one card's decision as its own version-checked
-// transition; a refusal for one card does not affect the others.
-func decideOne(ctx context.Context, db *homestate.FactoryDB, runID, cardID, gate, choice, integration string) (homestate.Card, error) {
+// transition; a refusal for one card does not affect the others. projectRoot
+// is the same root the factory DB was opened at: the queue record the
+// approval uuid is read from MUST come from this root, not the server's cwd
+// (review round-6 P2).
+func decideOne(ctx context.Context, db *homestate.FactoryDB, projectRoot, runID, cardID, gate, choice, integration string) (homestate.Card, error) {
 	cur, err := db.LoadCard(ctx, runID, cardID)
 	if err != nil {
 		return homestate.Card{}, err
@@ -2793,8 +2872,44 @@ func decideOne(ctx context.Context, db *homestate.FactoryDB, runID, cardID, gate
 	case choice == "abandon":
 		to = homestate.CardAbandoned
 	}
+	// Receipt-relevant edges bind the backlog identity: the done edges for
+	// the close check (review round-6 P1-2) and T17 for the push chain's
+	// re-stamp (review round-8 P2-2). Other decisions — abandon, block,
+	// unblock, resume, kickoff — are factory-only recovery paths and never
+	// touch the queue record, so a corrupt or unreadable queue cannot block
+	// them (review round-10 P2-2). The uuid is identity knowledge read from
+	// the queue record at the SAME project root the factory DB was opened
+	// at (review round-6 P2): a server-cwd queue is never substituted for
+	// the target project.
+	needsUUID := to == homestate.CardDone || to == homestate.CardPushed
+	approvalUUID := ""
+	if needsUUID {
+		queueStore := factory.NewBacklogStore(todoBacklogPath(projectRoot))
+		rec, err := queueStore.LoadPure()
+		if err != nil {
+			return cur, fmt.Errorf("factory decide: the queue could not be read for the approval check: %w", err)
+		}
+		for i := range rec.Items {
+			if rec.Items[i].ID == cardID {
+				approvalUUID = todoCardUUID(&rec.Items[i])
+				break
+			}
+		}
+		if approvalUUID == "" {
+			for i := range rec.Archived {
+				if rec.Archived[i].Item.ID == cardID {
+					approvalUUID = todoCardUUID(&rec.Archived[i].Item)
+					break
+				}
+			}
+		}
+		if to == homestate.CardDone && approvalUUID == "" {
+			return cur, fmt.Errorf("factory decide: card %s has no backlog identity for the approval check", cardID)
+		}
+	}
 	return db.Transition(ctx, homestate.TransitionRequest{
 		RunID: runID, CardID: cardID, To: to, ExpectedVersion: cur.Version,
 		Actor: "operator", Decider: homestate.DeciderHuman, IntegrationBranch: integration, Now: factoryCardNow(),
+		ApprovalUUID: approvalUUID,
 	})
 }

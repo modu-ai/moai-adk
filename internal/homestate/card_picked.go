@@ -216,7 +216,12 @@ type BundleMemberSpec struct {
 // whose record has already moved past `picked` aborts the load with no
 // residue, where the per-member calls left the earlier members committed
 // and stranded.
-func (f *FactoryDB) RecordBundleChain(ctx context.Context, runID string, members []BundleMemberSpec, lane, actor string, now time.Time) (Card, error) {
+//
+// beforeCommit (nil = none) is TransitionRequest.BeforeCommit for the head's
+// assignment: the head's T2 re-points its dispatch binding onto runID inside
+// this transaction, so a caller that keeps the queue's current-dispatch record
+// in step writes it here, right before the commit (card t1538, turn-end gate).
+func (f *FactoryDB) RecordBundleChain(ctx context.Context, runID string, members []BundleMemberSpec, lane, actor string, now time.Time, beforeCommit func(head Card) error) (Card, error) {
 	if len(members) == 0 {
 		return Card{}, fmt.Errorf("%w: a bundle chain needs at least one member", ErrInvalidCardInput)
 	}
@@ -247,7 +252,15 @@ func (f *FactoryDB) RecordBundleChain(ctx context.Context, runID string, members
 			RunID: runID, CardID: members[0].CardID, To: CardAssigned,
 			ExpectedVersion: head.Version, Actor: actor, Owner: lane, Now: now,
 		}, now)
-		return nil, err
+		if err != nil {
+			return nil, err
+		}
+		if beforeCommit != nil {
+			if err := beforeCommit(head); err != nil {
+				return nil, err
+			}
+		}
+		return nil, nil
 	})
 	if err != nil {
 		return Card{}, err

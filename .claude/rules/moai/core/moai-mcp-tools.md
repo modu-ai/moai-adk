@@ -1,12 +1,6 @@
 # moai-mcp Tool Catalogue
 
-> Single source of truth for the 47 tools exposed by the self-hosted `moai` MCP
-> server (`.mcp.json` → `{command: "moai", args: ["mcp-server"]}`). Each tool is
-> prefixed `mcp__moai__` at the call site. This rule tells agents and the
-> orchestrator WHEN to prefer an MCP tool over its CLI/slash equivalent.
->
-> Wiring parity (local ↔ template) and per-agent `tools:` lists are owned by the
-> agent definitions; this file owns the capability map + the MCP-over-CLI rule.
+> Moved to the detail companion: `moai-mcp-tools-catalogue.md` ("moai-mcp Tool Catalogue").
 
 ## MCP-over-CLI rule
 
@@ -19,17 +13,7 @@ the CLI form reads more naturally inline.
 
 ## The `project_root` input — name your own tree
 
-Twenty-two tools accept an optional `project_root` string: `spec_progress`,
-`spec_audit`, `spec_drift`, `verify_snapshot`, `verify_trend`, `codex_audit`,
-`codex_review`, `codex_task`, `glm_audit`, `glm_review`, `claude_audit`,
-`audit_multi`, `graph_file_api`, `graph_find_code`, `graph_shortest_path`,
-`graph_trace_calls`, `factory_decide`, `todo_add`, `todo_list`, `factory_next`,
-`factory_stage`, and `factory_complete`. It names the tree the call should act
-on. Four of the twenty-two
-REQUIRE it rather than accept it: the lane verbs `factory_next`, `factory_stage`,
-and `factory_complete` reject a call without it naming the argument, and
-`codex_task` is required rather than optional — pass your own toplevel or the
-call is refused (`project_root is required ...`); it is never defaulted.
+> Moved to the detail companion: `moai-mcp-tools-catalogue.md` ("The `project_root` input — name your own tree").
 
 [HARD] **An agent working inside a worktree MUST pass it**, and the value is its
 own `git rev-parse --show-toplevel`. This is not a convenience. The server cannot
@@ -41,36 +25,9 @@ checkout instead, which means a SPEC that exists only on the card's branch is no
 in the catalogue the auditor reads. It is not reported missing; it is simply
 absent.
 
-The caller is the only party that holds the answer, which is why it is an input.
-
-| Situation | What to pass | What happens |
-|---|---|---|
-| Session in a worktree | `project_root: <git rev-parse --show-toplevel>` | the call acts on that tree |
-| Session in the primary checkout | nothing | resolves exactly as it always has |
-| Path that is not a MoAI project root | — | the call is REJECTED with an error naming the path |
-
-The rejection is deliberate, not a rough edge: a silent fallback would send a
-caller who mistyped its own worktree path back to the primary checkout — the
-exact failure the parameter exists to prevent — while reporting success.
-
-An accepted path is **canonicalized** before use, so the call acts on the real
-directory rather than on whichever spelling reached it and a containment check
-cannot be walked through by pointing a link outside the boundary. A path that
-cannot be canonicalized is rejected on the same terms.
-
-A registered linked worktree of a repository that keeps `.moai` untracked is also
-accepted; rules and caveats: `moai-mcp-tools-catalogue.md` § Linked worktrees.
-
-For `audit_multi` the root reaches every backend in the fan-out: Claude and GLM
-use it to collect the diff sent to their isolated reviewer, while codex receives
-it as the working directory it reviews in. Passing it keeps all independent
-opinions about the same tree.
-
 ## Cross-reference
 
-`moai-mcp-tools-catalogue.md` — the lazy companion. Load it for § Tool catalogue
-(47 tools) · § Tool families (the family-to-consumer map) · § Session messaging
-broker (Claude ↔ Codex) · § Unwired-by-design (why `goal_arm` reaches no agent).
+> Moved to the detail companion: `moai-mcp-tools-catalogue.md` ("Cross-reference").
 
 ---
 
