@@ -94,6 +94,13 @@ type foldTestSeam struct {
 
 var memoryFoldSeam foldTestSeam
 
+// foldLockFileName is the per-store advisory lock file the fold apply path
+// holds for the whole applyFold span (REQ-MRR-001/002,
+// SPEC-MEMORY-FOLD-RENAME-RACE-001). It is created on first acquire and
+// never removed on release (plan.md D-3 — the removal would race a
+// concurrent opener; the lock's kernel lifetime makes removal unnecessary).
+const foldLockFileName = ".moai-fold.lock"
+
 // normalizeFoldCardID validates --card per REQ-MFB-001: t<digits> or bare
 // digits normalized to t<digits>. Every other value is refused before the
 // store is read.
@@ -422,6 +429,21 @@ func buildFoldPlan(before taxonomy.StoreSnapshot, cardID string) (foldComputed, 
 // preceded by a comparison of the on-disk bytes against the content the plan
 // was computed from.
 func applyFold(dir string, before taxonomy.StoreSnapshot, comp foldComputed, writesForbidden func() bool, run *foldOnDoneRun) error {
+	// The store lock spans the WHOLE apply (REQ-MRR-001): acquired before
+	// the first pre-write check and released after the last rename, so two
+	// fold processes on one store never overlap their check→rename windows
+	// and a cooperating writer's publish lands before a check or after the
+	// renames — never inside one, destroyed (SPEC-MEMORY-FOLD-RENAME-RACE-001).
+	// Strictly additive to the REQ-MFB-004 ordering below: nothing between
+	// the existing checks moves (plan.md D-1). Contention returns
+	// REQ-MRR-003's clean refusal naming the store; the release is the
+	// deferred one even when a write fails mid-apply.
+	lock := newFoldStoreLock()
+	if err := lock.acquire(dir); err != nil {
+		return err
+	}
+	defer func() { _ = lock.release() }()
+
 	archive := comp.archive
 
 	// An abandoned close-path step (the card-close bound expired) must not

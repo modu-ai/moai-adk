@@ -47,7 +47,7 @@ card: t1568 · phase: plan · tier: M · baseline tree: `2aab5f797` (base absorb
 
 ### M1 — RED: the loss reproduced (AC-MRR-001's RED cell, observed before any fix code)
 
-- **Observed at**: 2026-10-09, on the M1 work tree = HEAD `2f436db17` + the M1 test-only seam fields and test only (production `atomicWriteFoldFile`/`applyFold` checks unchanged; the seam call sites are additive). This exact tree is snapshotted by the M1 commit.
+- **Observed at**: 2026-10-09, on the M1 work tree = HEAD `2f436db17` + the M1 test-only seam fields and test only (production `atomicWriteFoldFile`/`applyFold` checks unchanged; the seam call sites are additive). This exact tree is snapshotted by the M1 commit `84bdf072c`.
 - **Command**: `unset MOAI_KANBAN_ID MOAI_KANBAN_LEAD_ADDR MOAI_KANBAN_SETTINGS_INJECTED && go test -race -count=10 ./internal/cli -run '^TestFoldRenameWindowConcurrentWriter$'`
 - **Exit code**: 1
 - **Verbatim** (every iteration red — 10/10 top-level FAIL, 20/20 subtests FAIL; full raw log `.moai/reports/t1568/t1568-red-m1.txt`):
@@ -64,6 +64,14 @@ FAIL	github.com/modu-ai/moai-adk/internal/cli	1.220s
 
   (the `--- FAIL`/`REQ-MRR-004 violated` pair repeats identically for all 10 iterations; the block above is iteration 1 verbatim)
 - **Why red for the right reason**: the fold returned success (`runFoldOK` passed) while the writer's line published at the `mutateBeforeRename` point — after every pre-rename check — was destroyed by `os.Rename`, on BOTH write surfaces (archive append; MEMORY.md rewrite). The first attempt's red (`.moai/reports/t1568/t1568-red-m1-first-fixture.txt`) was a fixture defect — `no archive index to fold into` (the store lacked the archive file) — corrected by seeding `minimalArchive()`; it is kept on record as a wrong-reason red, never cited as the AC-MRR-001 RED.
+
+### M2 — GREEN: the store lock (AC-MRR-002 / AC-MRR-004 / AC-MRR-009)
+
+- **Implementation**: `foldStoreLock` in `fold_store_lock_unix.go` (unix.Flock LOCK_EX|LOCK_NB, `unacquiredFD = -1` sentinel, bounded retry `foldStoreLockRetryDeadline = 2s` + `foldStoreLockRetryInterval = 10ms`, lock file `<store-dir>/.moai-fold.lock` mode 0644 `O_CREAT|O_RDWR|O_CLOEXEC`, never removed) and its Windows parity `fold_store_lock_windows.go` (LockFileEx LOCKFILE_EXCLUSIVE_LOCK|LOCKFILE_FAIL_IMMEDIATELY); `applyFold` acquires at entry and `defer`s the release — nothing between the existing checks moved (D-1). The window test's writer is now the cooperating form (plan §A.3); one test-helper narrowing rode along: `requireNoTempFiles`'s leftover prefix tightened from `.moai-fold` to `.moai-fold-` because the lock file is an INTENDED permanent resident (D-3) the old prefix falsely counted as a leftover.
+- **AC-MRR-002/004 command**: `unset MOAI_KANBAN_ID MOAI_KANBAN_LEAD_ADDR MOAI_KANBAN_SETTINGS_INJECTED && go test -race -count=10 ./internal/cli -run '^TestFoldRenameWindowConcurrentWriter$'` → **exit 0**, verbatim `ok  github.com/modu-ai/moai-adk/internal/cli  2.281s` — 10/10 iterations, both surface subtests (archive-append; memory-rewrite) green under the race detector (this run, this tree).
+- **AC-MRR-009 command**: same compound with `-run '^TestFoldStoreLockSpanHeldThroughApply$'` → **exit 0**, verbatim `ok  github.com/modu-ai/moai-adk/internal/cli  2.304s` — 10/10 iterations; the sampled tuple is exactly (mutateDisk=acquired, mutateDuringWrite=refused, mutateBetweenWrites=refused, mutateBeforeRename=refused).
+- **Lock unit cells**: `go test -count=1 ./internal/cli -run '^TestFoldStoreLock'` → **exit 0**, verbatim `ok  github.com/modu-ai/moai-adk/internal/cli  2.868s` — acquire→contending-try refused→bounded refusal within deadline naming the store→release→re-acquire succeeds→release idempotent→lock file never removed (D-3); stale unlocked file acquires (§3 edge 1); two stores hold simultaneously (§3 edge 3).
+- **Windows compile gate (AC-MRR-008 local leg)**: `GOOS=windows go build ./internal/cli/...` → exit 0; `GOOS=windows go vet ./internal/cli/` → exit 0 (this run, this tree).
 
 ## §E.3 Run-phase Audit-Ready Signal
 
