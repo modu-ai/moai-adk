@@ -64,8 +64,8 @@ The canonical AC enumeration, evidence ledger, and Given-When-Then scenarios liv
 | AC-ZSCD-002 | The `cd -- -zone && rm a.log` matrix cell asserts DENY | captured at M1 step 1 | M1–M2 (K3 fix flips it; permanent M2 `cd_track_` cell) |
 | AC-ZSCD-003 | The in-project absolute-destination cell asserts the destination is tracked (protected deletion denied) | captured at M1 step 1 | M1–M2 (K2 fix flips it; permanent M2 `cd_track_` cell) |
 | AC-ZSCD-004 | The cd-TRACKING matrix group exists in `TestProtectedZoneShellParsingMatrix`, non-empty, `-v` per-cell output, empty-list-fails intact | EV-ZSCD-003 (the `cd_track_` discriminator: zero `cd_track_` cells pre-work — the five landed `cd_` cells acknowledged) | M2 |
-| AC-ZSCD-005 | The landed `TestProtectedZone` family and parsing matrix pass unchanged | green-now baseline (preserved-behavior; pre-work green pin recorded at M1 entry) | M1–M3 |
-| AC-ZSCD-006 | Scoped verification batch green: hook package suite, `go vet`, `golangci-lint` on `internal/hook` | baseline observed at M1 entry | M3 |
+| AC-ZSCD-005 | The landed `TestProtectedZone` family and parsing matrix pass unchanged | regression-guard: no RED state exists (preserved behavior; the Given presupposes the landed fixes); plan-phase green baselines in acceptance.md EV-ZSCD-004 and EV-ZSCD-003 | M1–M3 |
+| AC-ZSCD-006 | Scoped verification batch green: hook package suite, `go vet`, `golangci-lint` on `internal/hook` | regression-guard: no RED state exists (quality gate; the Given presupposes completed M1–M2); plan-phase component baselines in acceptance.md EV-ZSCD-006, hook-suite component a Gap until M1 entry | M3 |
 
 ## Out of Scope
 

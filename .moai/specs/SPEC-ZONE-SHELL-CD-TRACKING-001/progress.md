@@ -5,11 +5,10 @@ Parent: SPEC-SELF-IMPROVE-PROTECTED-ZONE-001 (completed, cross-reference only) �
 
 ## §E.1 Plan-phase Audit-Ready Signal
 
-plan_status: audit-ready
+plan_status: authored-pending-plan-audit
 plan_complete_at: 2026-10-09
-basis: plan-audit round 3 verdict PASS-WITH-DEBT 0.94 @ artifact hash 4403b5d8b (rounds 1–2 FAIL 0.81 / 0.91 repaired in v0.2.0 / v0.2.1; operator pins on decision-index Q1/Q2 relayed via leader 2026-10-09)
 artifacts: spec.md + plan.md + acceptance.md + progress.md + decision-index.md (Tier M set + decision gate artifact)
-note: §E.2–§E.4 below are phase-owned placeholders (manager-develop / manager-docs) and MUST NOT be populated at plan phase.
+note: the audit-ready flip of this line is owned by the lane after the independent plan-audit verdict lands (`.moai/reports/t1584/`); §E.2–§E.4 below are phase-owned placeholders (manager-develop / manager-docs) and MUST NOT be populated at plan phase.
 
 ## §E.2 Run-phase Evidence
 
