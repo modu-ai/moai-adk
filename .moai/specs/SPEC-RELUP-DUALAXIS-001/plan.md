@@ -48,7 +48,7 @@ tier: M
 
 ```bash
 git branch --show-current ; git rev-parse --short HEAD     # WT-high-10-07 이후 재확인
-# RED-now 앵커 14종 재측정 (acceptance.md §D.3 원장의 명령 그대로 — 전부 단일 호출):
+# RED-now 앵커 15종 재측정 (acceptance.md §D.3 원장의 명령 그대로 — 전부 단일 호출):
 grep -c '"domain".*Codex CLI upstream change tracking' .claude/commands/harness/release-update/manifest.json   # 기대 0 (M4 전) — domain 필드 스코프 (CX-3)
 grep -c '"domain".*best-practices axis' .claude/commands/harness/release-update/manifest.json                   # 기대 0 (M4 전) — domain 필드 스코프 (CX-3)
 grep -c "selectCodexSweepTargets(args)" .claude/workflows/hns-release-update-run.js                              # 기대 0 (M2 전) — 착지 후 ≥2: 정의+top-level 디스패치 호출 (CX-2)
@@ -63,6 +63,7 @@ grep -c "source-first" .claude/agents/harness/hns-release-update-specialist.md  
 grep -c "7a-codex" .claude/agents/harness/hns-release-update-specialist.md                              # 기대 0 (M1 전) — Phase 7a 기록 단계 (CX-6)
 grep -c "only the CC axis" .claude/agents/harness/hns-release-update-specialist.md                      # 기대 0 (M1 전) — Phase 2 축별 종료 (CX-9)
 grep -c 'If no entries: emit "No new versions since vX.Y.Z" and stop' .claude/agents/harness/hns-release-update-specialist.md  # 기대 1 (M1 전) — 착지 후 0이 PASS (제거면, CX-10)
+grep -c "docs.anthropic.com" .claude/agents/harness/hns-release-update-specialist.md                    # 기대 ≥1 (M3 전) — 착지 후 0이 PASS (제거면, CX-14)
 # PRESERVE 앵커 3종:
 grep -rn "last-codex-version" internal/   # 0힛 유지 (AC-RDX-011)
 grep -c "last-cc-version.json" .claude/agents/harness/hns-release-update-specialist.md                 # ≥3 유지 (AC-RDX-012)
@@ -85,7 +86,7 @@ grep -c "hns-release-update-run.js" .claude/commands/harness/release-update/mani
 | specialist | `last-codex-version.json` — Phase 0(판독·부재 기본값) + Phase 7a(쓰기)에 등장 | AC-RDX-006 |
 | specialist | `rust-v0.161.0` — 시드 기술 | AC-RDX-007 |
 | specialist | `Best-Practices` 상시 절차 섹션 (헤딩 문자열 대소문자 무관 `best-practice` 매치) | AC-RDX-008 |
-| specialist | `code.claude.com/docs/en/` — Phase 3 URL 세트 갱신 (기존 `docs.anthropic.com/en/docs/claude-code/*` 6종을 캐노니컬 형태로) | AC-RDX-009 |
+| specialist | `code.claude.com/docs/en/` — Phase 3 URL 세트 갱신 (신설면 LED-009) **+ 제거면 LED-021**: 구형 `docs.anthropic.com` 참조는 착지 후 0(주변 서술 잔존분 포함 전부 제거 — 주변 언급만으로 통과하는 mutant를 제거면이 봉쇄, CX-14) | AC-RDX-009 |
 | specialist | `HTML proposal report` — BP 축 명명 산출물 | AC-RDX-010 |
 | specialist | `rust-v0.161.0` 부재 기본값 — AC-RDX-006의 스키마 블록이 Phase 0 부재-기본값(`rust-v0.161.0` + 경고)을 포함해야 한다 (앵커 LED-006 공유) | AC-RDX-014 |
 | specialist | `7a-codex` — Phase 7a 기록 단계 제목 리터럴(CC의 Step 7a와 병렬; codex 상태 기록 절차의 사이트 앵커 — CX-6). `last-codex-version.json` 출현 **≥2**: 제1=Phase 0 판독·부재 기본값 블록, 제2=Phase 7a 기록 단계(단일 사이트 mutant는 둘 중 하나에서 좌초) | AC-RDX-006 |
@@ -140,7 +141,7 @@ grep -c "hns-release-update-run.js" .claude/commands/harness/release-update/mani
 - **E4 JSON 파스** — `python3 -c "import json;json.load(open('.claude/commands/harness/release-update/manifest.json'))"` exit 0 (domain 문자열 편집 후).
 - **E5 회귀 가드** — §C PRESERVE 앵커 3종 + sprint_contract 판독(LED-015 — dimensions·thresholds 출력이 기준선 `['Functionality', 'Consistency'] {'Functionality': 0.85, 'Consistency': 0.8}`와 일치; CX-3, internal/ 0힛 · last-cc-version.json ≥3 · runner_workflow 참조 1 포함).
 - **E6 spec-lint** — `go run ./cmd/moai spec lint SPEC-RELUP-DUALAXIS-001` (또는 프로젝트 규약 형태) exit 0 — MissingExclusions·FrontmatterInvalid 0건 확인.
-- **E7 REQ-RDX-015 검토면 (CX-12 이관 — 이 요구의 유일한 구속 판정면)** — 기계 면(LED-018/019)이 paraphrase 클래스에 우회됨이 실증됐으므로, run-exit E1 인간 검토가 축별 종료 의미론을 검증한다: (a) Phase 2 조기 종료가 CC 축 한정인지, (b) codex·BP 축의 계속 실행·기록이 같은 절차에 명시돼 있는지, (c) Phase 8 완료 게이트가 3축(CC/codex/BP) 실행 상태를 집계하는지. **run-phase 위임 프롬프트는 이 검토 항목을 반드시 운반한다**(manager-develop-prompt-template §E 성격 — 누락 시 재위임 리스크).
+- **E7 의미론 검토면 (CX-12·CX-13 이관 — REQ-RDX-015·REQ-RDX-013의 유일한 구속 판정면)** — 기계 면이 paraphrase·반전 클래스에 우회됨이 실증됐으므로, run-exit E1 인간 검토가 의미론을 검증한다. **REQ-RDX-015 축별 종료**: (a) Phase 2 조기 종료가 CC 축 한정인지, (b) codex·BP 축의 계속 실행·기록이 같은 절차에 명시돼 있는지, (c) Phase 8 완료 게이트가 3축(CC/codex/BP) 실행 상태를 집계하는지. **REQ-RDX-013 source-first (리더 재개 CX-13 합류)**: (d) BP 인벤토리 항목이 제안 근거로 쓰일 때 원문 패치 선행이 절차상 실제 강제인지 — `source-first` 리터럴의 존재만으로 충분하지 않다(리터럴 유지·규칙 역전 mutant 실증). **run-phase 위임 프롬프트는 이 검토 항목들을 반드시 운반한다**(manager-develop-prompt-template §E 성격 — 누락 시 재위임 리스크).
 
 ## §F Milestones (결정 가역성 순 — 변동 가능성 높은 결정부터)
 
