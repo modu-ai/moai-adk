@@ -1214,10 +1214,24 @@ FAIL	github.com/modu-ai/moai-adk/internal/hook	0.738s
 
 Fixture: a VALID manifest (the seven categories + a docs_zone category
 covering AGENTS.md — the first draft's duplicate safety_guards key was
-invalid and corrected). The deny `category=baseline path=AGENTS.md`
+invalid and corrected). The deny category=baseline path=AGENTS.md
 confirms the cross-generation mis-read (the baseline floor judged under
 the mis-read subcommand). Inputs transport-verified: whole-file NUL-byte
 scan zero, doubled backslash.
+
+**M2.16 remedy — GREEN record.** Shape: the zoneGitArgs scan terminates a
+world's subcommand search when that world's reading hits an ESCAPE-ORIGIN
+option word (dual + the world's reading is the literal escape text): the
+pre-4.2 world's git refuses it (exit 129) and NOTHING after executes in
+that world — the world contributes no mutation analysis. The modern
+world's decoded option proceeds through the existing classification.
+
+- **Command** (all 39 instrument tests): the standard instrument selector
+  — exit 0, verbatim: ok github.com/modu-ai/moai-adk/internal/hook
+  12.746s (39/39 PASS — the termination row flipped to ALLOW).
+- Builds: go build ./... exit 0; GOOS=windows go build ./... exit 0;
+  golangci-lint run internal/hook/... --timeout=2m -> 0 issues.; gofmt
+  clean; family coverage 13.8% (all-rows selector).
 
 ### Gate round 32 — M2.13 over-cap fail-closed regardless of manifest state (2026-10-09)
 

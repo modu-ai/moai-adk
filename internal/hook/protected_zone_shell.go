@@ -1061,6 +1061,15 @@ func (w *zoneWalker) zoneGitArgs(world int, cmd *syntax.CallExpr) bool {
 			break // dynamic global argument: under-match
 		}
 		t := readings[world]
+		if strings.HasPrefix(t, "-") && zoneWordDual(cmd.Args[j]) {
+			// escape-origin option word: the PRE-4.2 world's git refuses
+			// the literal escape text as an unknown option (exit 129) —
+			// this world's sequence TERMINATES and contributes no
+			// mutation analysis (gate round 34 P2)
+			if world == 1 {
+				return false
+			}
+		}
 		if strings.HasPrefix(t, "--work-tree=") {
 			// git's LAST --work-tree wins: the option REPLACES the
 			// anchor — judging an already-overwritten anchor is a
