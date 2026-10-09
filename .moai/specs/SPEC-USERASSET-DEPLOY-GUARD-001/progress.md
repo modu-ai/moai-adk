@@ -853,7 +853,14 @@ TestRemoveBundlePrunesDependencyClosure(파일·기록·L0 보존 3중 단언).
 
 ## §E.3 Run-phase Audit-Ready Signal
 
-_(pending run-phase — manager-develop 소관.)_
+run_status: audit-ready
+run_complete_at: 2026-10-09
+- **원장 22건 전부 전환**: M0의 22 의도 RED → M1-M7을 거쳐 **0건** (M1:4 · M2:1+가드2 · M3:4 · M4:1 dual-shape · M5:3 · M6:5+확인2 · M7:5).
+- **커밋 계통 20건** (push 없음 — 레인 통합 소관): 58540639d(M0) → 5e6974b39(M1) → ad2ee5a62 → f80590426(M0.1) → c41e67817 → 411ddc6c6 → 8ffa65021(M2) → 6627769b5 → d90df83f0(M3) → 299bc6bd7 → 9671d9922(M4) → 8c1befdb3 → 152c3ef7c(M5) → 00c1b4b3f(M6) → f691c077e → efa062b5d(M7) → 07143ecf7 → 63ad7dc33 → bf9154368 → 470f9ca6e(M7.1-38/42) → f9a58fa4e(M7.1-43/51).
+- **턴종료 게이트 51라운드 흡수**: 원장 좌표 외 게이트 발견 ~80건 전부 수리·재검증 — 대표 축:windows reclaim LockFileEx 직렬화(이중 잠금 차단)·user-root 경계 행렬 완성(조상 포함·케이스 fold·심링크 양면·POSIX 원형)·manifest 보호(Write/Edit 확장·freeze·narrowing)·resume post-path 완성(3 wizard 단계+체크포인트 수명)·O_EXCL 배타 생성·golden 스냅샷.
+- **AC-023 정직 선언**: journal 93.8%·lock_guard_unix 90.0%·lock.go 92.9% PASS / install.go **84.6%(90% 미달 — formal FAIL 유지)**: 잔여 42문은 §E.2 M7.1행의 5유형(I/O 주입·경합 창·예측 불가 임시명·방어 팔·cross-volume Rel) 주입 불가 팔 — sync-auditor 재판정 대상으로 Gaps 표 이관.
+- **레인 최종 검증 배치(독립 관측, HEAD f9a58fa4e)**: go build + GOOS=windows build exit 0 / userassets 9.7s ok · hook 전체 383.5s ok · config 54.3s ok · web 125.8s ok (suites-exit=0) / lint 4패키지 0 issues(구현자 관측+레인 스팟 일치).
+- **작성 경위**: manager-develop이 M7.1 통합 보고 후 5시간 사용량 한도 진입(리셋 14:01) — 잔여 §E.3 기입만 남았으므로 레인이 구현자의 §E.2 측정 기록 + 상기 독립 배치를 인용해 대필 (작성자: orchestrator on behalf of manager-develop, 카드 t1591 레인-20).
 
 ## §E.4 Sync-phase Audit-Ready Signal
 
