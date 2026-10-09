@@ -38,18 +38,20 @@ on:
 permissions:
   contents: read
 
-# Cancel in-progress runs for the same ref — EXCEPT the integration branch
-# (SPEC-CANDIDATE-CI-001 AC-CCI-014-1): an integration-branch push is the
-# serialized end of the acquire/merge window, and cancelling it mid-window
-# would kill the run that judges the merge. Candidate refs (ci/**) keep
-# cancellation: a re-candidate supersedes the prior run, which is dead
-# weight the moment the new push lands. The branch name mirrors the
-# flow-scoped integration target in .moai/config/sections/git-strategy.yaml
-# (develop today); a workflow expression cannot read that file, so whoever
-# moves the target updates this mirror.
+# Cancel in-progress runs for the same ref — EXCEPT the integration verdict
+# surfaces (SPEC-CANDIDATE-CI-001 AC-CCI-014-1; AGENTS.local.md §4.1 canon):
+# main is the remote default branch whose head's CI IS the integration
+# verdict, and the leader batch-pushes it — a later push cancelling that
+# run would destroy the verdict the batch exists to produce. develop is
+# excluded with it (the post-cutover integration target per
+# git-strategy.yaml; the push trigger above does not even carry it — legacy,
+# but the exception costs nothing and survives a re-trigger). Candidate refs
+# (ci/**) keep cancellation: a re-candidate supersedes the prior run, which
+# is dead weight the moment the new push lands. A workflow expression cannot
+# read the repo's config, so whoever moves the target updates this mirror.
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
-  cancel-in-progress: ${{ github.ref != 'refs/heads/develop' }}
+  cancel-in-progress: ${{ github.ref != 'refs/heads/main' && github.ref != 'refs/heads/develop' }}
 
 jobs:
   # ---------------------------------------------------------------------------
