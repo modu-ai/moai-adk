@@ -1,6 +1,6 @@
 # progress.md — SPEC-USERASSET-DEPLOY-GUARD-001
 
-status: draft
+status: completed
 card: t1591 (lane-20)
 tree: .moai/worktrees/t1591 @ WT-user-asset-bundle
 
@@ -864,7 +864,28 @@ run_complete_at: 2026-10-09
 
 ## §E.4 Sync-phase Audit-Ready Signal
 
-_(pending sync-phase — manager-docs 소관. sync_commit_sha: )_
+```yaml
+sync_status: complete
+sync_complete_at: 2026-10-09
+sync_commit_sha: pending-backfill-sync   # 커밋은 자신의 해시를 인용할 수 없음 — 다음 커밋에서 backfill
+b12_self_test_a: >-
+  pre-emission dedup grep: grep -c 'SPEC-USERASSET-DEPLOY-GUARD-001' CHANGELOG.md → 0 (exit 1) —
+  중복 없음 확인 후 등록 진행 (관측 시점 HEAD 0feeb453f)
+b12_self_test_b: >-
+  AC 카운터(acceptance.md): live=27 excluded=0 ambiguous=0 — CHANGELOG 메타데이터의
+  "27 acceptance criteria AC-001..026" 참조와 일치
+b12_self_test_c: >-
+  파일 경로 검증: CHANGELOG 엔트리가 인용하는 .moai/specs/SPEC-USERASSET-DEPLOY-GUARD-001/spec.md
+  존재(ls) · 실행 커밋 3종(58540639d, f9a58fa4e, 0feeb453f) git cat-file -t=commit 관측
+changelog_entry_position: "[Unreleased] 첫 배치 ### Fixed 선두 (SPEC-RECEIPT-REUSE-001 엔트리 위)"
+frontmatter_status_transitions:
+  spec_md: "draft → completed (3-phase close — 단일 sync 커밋 탑재, updated: 2026-10-09 유지)"
+  plan_acceptance_design_research: "frontmatter 블록 부재 — status/updated 갱신 대상 없음, 본문 무변경"
+canary_compliance_check: "N/A — 본 SPEC은 자기 sync 테스트를 정의하는 선제 정책을 갖지 않음"
+docs_claim_check: >-
+  docs-site/content 4-locale + docs/: protected-zone 설정 섹션 자체가 미문서화(grep 0적중),
+  doctor/init 페이지의 기존 주장과 본 카드 변경 충돌 없음 — 위조된 주장 0건, 4-locale 후속 불필요
+```
 
 ## §F Phase 4 Mode Selection
 

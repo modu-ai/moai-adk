@@ -2,7 +2,7 @@
 id: SPEC-USERASSET-DEPLOY-GUARD-001
 title: "User-asset install/deploy defect-repair bundle: lock-guard recovery, journal durability, Codex reference normalization, collision safety, frozen-guard user-path protection, deploy-surface and doctor accuracy (card t1591)"
 version: "0.1.0"
-status: draft
+status: completed
 created: 2026-10-09
 updated: 2026-10-09
 author: manager-spec
