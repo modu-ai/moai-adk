@@ -117,6 +117,11 @@ type MergeStepSeams struct {
 	Probe WindowProcProbe
 	// LeaseDuration overrides the lease stamp; 0 is the default.
 	LeaseDuration time.Duration
+	// AfterHold runs on the cause-7 outcome between the hold write and the
+	// window release (REQ-MWQ2-007). It is the interleaving seam the overlay
+	// test uses to present a foreign mutation in the gap the outcome must close;
+	// nil is the production behavior.
+	AfterHold func()
 }
 
 func (s *MergeStepSeams) gitRunner(worktree string) func(args ...string) (string, error) {
@@ -344,6 +349,8 @@ func RunMergeStep(in MergeStepInput, seams MergeStepSeams) (string, error) {
 	var mergeErr error
 	var headReadErr error
 	var mergeDirtyAfterAbort bool
+	// The cause-7 pair's outcome, written inside the section (REQ-MWQ2-007).
+	var causeSevenHoldErr, causeSevenReleaseErr error
 	var mergeSHA string
 	sectionErr := withIntegrationLockMutation(in.Root, func() error {
 		w, readErr := ReadIntegrationLock(in.Root)
@@ -471,6 +478,12 @@ func RunMergeStep(in MergeStepInput, seams MergeStepSeams) (string, error) {
 			_, _ = git("merge", "--abort")
 			clean, _, cleanErr := gitIntegrationWorktreeClean(in.IntegrationWorktree)
 			mergeDirtyAfterAbort = cleanErr != nil || !clean
+			if mergeDirtyAfterAbort {
+				// (7), REQ-MWQ2-007: the hold and the window release run here,
+				// inside this section, as one serialized mutation — no status
+				// refresh or waiter promotion can land between them.
+				causeSevenHoldErr, causeSevenReleaseErr = holdThenReleaseCauseSeven(in, seams, fmt.Sprintf("merge failed and the worktree is still dirty after abort (card %s)", in.CardID))
+			}
 			return nil
 		}
 		sha, shaErr := git("rev-parse", "HEAD")
@@ -508,13 +521,18 @@ func RunMergeStep(in MergeStepInput, seams MergeStepSeams) (string, error) {
 	}
 	if mergeErr != nil {
 		if mergeDirtyAfterAbort {
-			// (7): still dirty after the abort — hold FIRST, then release
-			// (REQ-MWQ-018: no later holder is promoted onto this state).
-			holdErr := writeMergeHold(in, seams, fmt.Sprintf("merge failed and the worktree is still dirty after abort (card %s)", in.CardID))
-			if holdErr != nil {
-				return "", mergeStepErr(MergeExitMergeDirty, "integration merge: merge failed, the abort left the worktree dirty, and writing the hold failed: %v (merge error: %v)", holdErr, mergeErr)
+			// (7): still dirty after the abort. The hold was written FIRST and the
+			// window released after it, inside the pre-merge section (REQ-MWQ2-007,
+			// REQ-MWQ-018: no later holder is promoted onto this state). Report what
+			// those two writes did.
+			if causeSevenHoldErr != nil {
+				return "", mergeStepErr(MergeExitMergeDirty, "integration merge: merge failed, the abort left the worktree dirty, and writing the hold failed: %v (merge error: %v)", causeSevenHoldErr, mergeErr)
 			}
-			return "", releaseWindow(in, seams, mergeStepErr(MergeExitMergeDirty, "integration merge: merge failed and the worktree is still dirty after abort; the window policy is held for the leader: %v", mergeErr))
+			cause := mergeStepErr(MergeExitMergeDirty, "integration merge: merge failed and the worktree is still dirty after abort; the window policy is held for the leader: %v", mergeErr)
+			if causeSevenReleaseErr != nil {
+				return "", fmt.Errorf("%w (releasing the window also failed: %v — moai integration status reads it)", cause, causeSevenReleaseErr)
+			}
+			return "", cause
 		}
 		return "", releaseWindow(in, seams, mergeStepErr(MergeExitMergeFailed, "integration merge: merge failed: %v", mergeErr))
 	}
@@ -727,6 +745,30 @@ func writeMergeHold(in MergeStepInput, seams MergeStepSeams, reason string) erro
 		SetBy:  fmt.Sprintf("integration-merge-step (card %s)", in.CardID),
 		SetAt:  seams.now().Format(time.RFC3339),
 	})
+}
+
+// holdThenReleaseCauseSeven is the cause-7 pair (REQ-MWQ2-007). It runs inside
+// the pre-merge mutation section, so the hold write and the window release are
+// one serialized mutation, and the caller's own release cannot fail on a holder
+// that took the window in the gap. It calls the unlocked bodies: the section
+// already holds the mutation lock, and the locked wrappers would contend with
+// it. A failed hold write returns before any release, so the window stays held
+// for the leader, as it always has.
+func holdThenReleaseCauseSeven(in MergeStepInput, seams MergeStepSeams, reason string) (holdErr, releaseErr error) {
+	holdErr = atomicWriteFile(integrationWindowPolicyPath(in.Root), IntegrationWindowPolicy{
+		Policy: PolicyHold,
+		Reason: reason,
+		SetBy:  fmt.Sprintf("integration-merge-step (card %s)", in.CardID),
+		SetAt:  seams.now().Format(time.RFC3339),
+	})
+	if holdErr != nil {
+		return holdErr, nil
+	}
+	if seams.AfterHold != nil {
+		seams.AfterHold()
+	}
+	_, releaseErr = releaseIntegrationLockLocked(in.Root, in.CallerSessionID, 0, false)
+	return nil, releaseErr
 }
 
 // postMergeHold is the cause-8 outcome: the merge commit exists, so it
