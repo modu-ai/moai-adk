@@ -28,6 +28,7 @@ Run phase: manager-develop, TDD (RED-GREEN-REFACTOR), branch WT-10-09-class, bas
 | M3 (harness hardening) | 5306e4cb2 | fix(SPEC-GLM-JEV-KEY-001): M3 — execRoot resets command-tree outputs |
 | M2 gate repair | 5de28887e | fix(SPEC-GLM-JEV-KEY-001): M2 gate repair — redact refusal, sweep whole region, refuse flag-shaped values |
 | Card-review repair | 0cd03b4a0 | fix(SPEC-GLM-JEV-KEY-001): card-review repair — mask positional tokens, refuse flag-shaped jev values |
+| Card-review r2 repair | 7c43c4034 | fix(SPEC-GLM-JEV-KEY-001): card-review r2 — allowlist-based redaction |
 | Evidence refresh | (this commit) | feat(SPEC-GLM-JEV-KEY-001): run-phase evidence refresh — gate repair rows |
 
 (spec.md `status:` draft → in-progress on M1; spec.md frontmatter is the only SPEC-body surface touched; updated: unchanged — same calendar day.)
@@ -39,6 +40,7 @@ Run phase: manager-develop, TDD (RED-GREEN-REFACTOR), branch WT-10-09-class, bas
 - `--key=<value>` edge (acceptance §B, added in M3): with the scan's `--key=` branch temporarily removed, `TestGlmKeyEqualsFormSaves` FAIL observed; branch restored → green. (Test-first derived, not test-after.)
 - M2 gate repair RED (turn-end gate defects, repaired in 5de28887e — verbatim RED observed before the fix): `TestGlmKeyConflictErrorMasksValue` — `refusal must not disclose the second key value, got: --key cannot be combined with other arguments (found "--key=sk-secret-9999")` (the P1 leak); `TestGlmKeyLeadingArgsRefused` — `a launch-flag mixed invocation must be refused` (P2-leading: `-p work --key K` stored); `TestGlmKeyExecFlagAsValueRefused` — `a flag-shaped token must not be stored as the key` (P2-execflag: `--key -f` stored).
 - Card-review repair RED (round-1 findings, repaired in 0cd03b4a0 — verbatim RED observed before the fix): `TestGlmKeyPositionalDuplicateMasked` — `refusal must not disclose the key value, got: ... (found "sk-secret-9999")` (positional duplicate passed redactArg verbatim); `TestJevKeyOptionTokenValueRefused` — `an option-shaped value must be refused, not stored` (pflag consumed `--help` as the credential string).
+- Card-review r2 repair RED (round-2 finding, repaired in 7c43c4034 — verbatim RED observed before the fix): `TestGlmKeyEqualsInsideValueMasked` — `... (found "sk-secret=****")` (the '=' heuristic preserved most of the key value); `TestGlmKeyDashLeadingDuplicateMasked` — `... (found "-foo")` (the dash heuristic passed a key value as a flag name). redactArg is now an allowlist — only confirmed glm flag names pass; every other token is `****`.
 
 ### E1 — AC matrix (all observed this run phase; HEAD 5306e4cb2 unless noted)
 
