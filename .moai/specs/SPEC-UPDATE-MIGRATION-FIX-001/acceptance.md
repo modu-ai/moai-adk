@@ -207,12 +207,35 @@ of the 81786284e..2aab5f797 delta — so the measurement tree is
 
 ### EV-5 — no probe symbol exists in the update package (supporting)
 
+AUTHORING-DISCIPLINE CORRECTION: this ledger row was initially authored
+BEFORE its command was executed — the recorded output was reasoning-derived,
+not measured, which violates the claim-integrity rule this ledger exists to
+serve. Corrected by running the command for record on HEAD f569be5d8:
+
 ```
 $ grep -rn "runManagedSurfaceIntegrityProbe" internal/cli/
 (no output)
 ```
-exit code: 1 (grep no-match). The symbol named in plan.md M3 does not exist
-anywhere in the package on the current tree.
+exit code: 1 (grep no-match), measured on f569be5d8. The symbol is
+introduced by plan.md M3, so absence is structural; this grep is its
+mechanical witness, now actually executed.
+
+### EV-7 — second tree movement: f569be5d8 is the plan-artifact commit itself
+
+```
+$ git rev-parse --short HEAD
+f569be5d8
+$ git log --oneline -1
+f569be5d8 feat(SPEC-UPDATE-MIGRATION-FIX-001): plan-phase artifacts (M, 6 artifacts)
+$ git diff --stat 2aab5f797..HEAD -- internal/cli/update_deny_migration.go internal/cli/update_deny_migration_test.go internal/cli/update.go internal/template/deployer_mode.go internal/userassets/install.go internal/cli/update_clean_install.go
+(empty)
+```
+exit codes: 0, 0, 0. HEAD advanced from 2aab5f797 to f569be5d8 by the
+lane's commit of the six plan artifacts — no new main absorption; the
+anchor-path delta is empty, so every EV-1..EV-6 measurement on 2aab5f797
+remains valid on f569be5d8. Supporting spot check on f569be5d8:
+`grep -c "runIntegrityProbe\|IntegrityProbe\|integrity probe"
+internal/cli/update.go` = 0.
 
 ### EV-6 — re-verification batch on the re-cut baseline 2aab5f797
 
