@@ -125,4 +125,38 @@ m1_to_mN_commit_strategy: one conventional commit per milestone (M1 RED / M2 GRE
 
 ## §E.4 Sync-phase Audit-Ready Signal
 
-_<pending sync-phase — owned by manager-docs; sync_commit_sha populated by the single sync commit>_
+```yaml
+sync_status: audit-ready
+sync_complete_at: 2026-10-09
+sync_commit_sha: pending-backfill-sync   # the single sync commit's placeholder (D3 backfill window — a commit cannot cite its own SHA); the real SHA is backfilled in the following commit
+files_changed:
+  - CHANGELOG.md   # Unreleased § Fixed — sync-phase close entry prepended at the top of the first Fixed list (newest-first, t1566 precedent); B12 pre-checks: `grep -c SPEC-MEMORY-FOLD-RENAME-RACE-001 CHANGELOG.md` = 0 pre-emission, claimed paths verified by `ls internal/cli/`
+  - .moai/specs/SPEC-MEMORY-FOLD-RENAME-RACE-001/spec.md   # frontmatter status: in-progress → implemented → completed, merged into this single sync commit (3-phase close — completed rides the sync commit); updated: 2026-10-09 (already the current date — no byte change)
+  - .moai/specs/SPEC-MEMORY-FOLD-RENAME-RACE-001/progress.md   # this §E.4 block
+b12_self_test_a: pass   # duplicate-entry guard: grep -c 'SPEC-MEMORY-FOLD-RENAME-RACE-001' CHANGELOG.md → 0 pre-emission
+b12_self_test_b: pass   # AC count match: live-identifier counter on acceptance.md (tier M → acceptance.md is the AC source) → live=9 excluded=0 ambiguous=0, exit 0; the CHANGELOG entry cites 9 (AC-MRR-001..009 = §E.3's 8 pass + 1 pass-with-debt)
+b12_self_test_c: pass   # file-path verification: all 7 claimed paths (memory_fold.go, fold_store_lock_unix.go, fold_store_lock_windows.go, + 3 test files, memory_fold_wiring_test.go) confirmed by `ls internal/cli/`
+changelog_entry_position: Unreleased > Fixed > first item (newest-first)
+frontmatter_status_transitions:
+  - artifact: spec.md
+    transition: in-progress → implemented → completed
+    carrier: the single sync commit (3-phase close; no separate Mx chore commit)
+mx_tags:
+  added: 0
+  removed: 0
+  rationale: >-
+    sync sub-step scan of the new/edited files (memory_fold.go diff,
+    fold_store_lock_unix.go, fold_store_lock_windows.go + the three test files)
+    against mx.yaml thresholds: no ANCHOR (foldStoreLock acquire/release has 1 call
+    site; applyFold itself fan_in = 2 < fan_in_anchor 3), no WARN (no goroutine,
+    cyclomatic complexity < 15, branch depth < 8), no NOTE/TODO trigger (all new
+    symbols are unexported with godoc; every new function is tested). No existing
+    tag touched. code_comments: en respected.
+notes: >-
+  plan.md and acceptance.md carry NO frontmatter block (headings-only, permitted
+  by Artifact Statelessness) — no `updated:` refresh surface exists in either;
+  bodies untouched (frontmatter status axis only, per the Status Transition
+  Ownership Matrix). spec.md body content untouched. No README/docs-site change:
+  the fold verb gains concurrency safety only — no flag, output, or CLI surface
+  change. No push — the lane owns landing.
+```
