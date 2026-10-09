@@ -80,9 +80,48 @@ FAIL	github.com/modu-ai/moai-adk/internal/cli	1.220s
 - **AC-MRR-006 command**: `go test -race -count=1 ./internal/cli -run '^TestFoldOnDoneContentionAbandonsWithoutWrite$'` (env-scrubbed compound) → **exit 0**, verbatim `ok  github.com/modu-ai/moai-adk/internal/cli  5.325s` — both cells green: (1) waiting under contention reports exactly one abandonment stderr line and begins no write; (2) the step HOLDING the lock with its apply in flight reports abandonment, the worker exits (observed via the wiring's `workerExit` synchronization), and a fresh non-blocking acquire on the same store succeeds — the worker's deferred release ran (§3 edge 4).
 - **Refused-tool note (§3.1)**: the first attempt to append the AC-MRR-006 test body via a compound shell heredoc was refused by the worktree-isolation guard (command-complexity refusal); the body was re-authored through the file-edit tool unchanged and the refusal carried no content loss.
 
+### M4 — Close-out (AC-MRR-007 / AC-MRR-008 local leg)
+
+- **Selector swept-set gate (plan §C.1)**: `go test -list '^(TestMemoryFold|TestReviewArchiveUpdate|TestReviewSequentialAbandonedTempOwnership).*$' ./internal/cli` → **exit 0, 29 tests**, including `TestMemoryFold_ArchiveRecheckedBeforeMemoryRename`, `TestReviewArchiveUpdateDuringEffectiveScan`, `TestReviewSequentialAbandonedTempOwnership` (non-empty, family-complete — the empty-sweep guard).
+- **Family regression (AC-MRR-007)**: `unset MOAI_KANBAN_ID MOAI_KANBAN_LEAD_ADDR MOAI_KANBAN_SETTINGS_INJECTED && go test -race -count=1 -timeout 900s ./internal/cli -run '^(TestMemoryFold|TestReviewArchiveUpdate|TestReviewSequentialAbandonedTempOwnership).*$'` → **exit 0**, verbatim `ok  github.com/modu-ai/moai-adk/internal/cli  26.263s`, 0 `--- FAIL` lines — equal in HEALTH to the recorded green-before (attempt 4, `ok … 42.974s`, exit 0): same selector, same race detector, zero reds. Wall-time is not the comparison axis (a loaded machine measures the machine).
+- **First M4 family run was RED, for a now-repaired reason (kept honest)**: attempt 1 → **exit 1**, verbatim `memory_fold_test.go:1069: store file list changed: 14 files before, 15 after` (log `.moai/reports/t1568/t1568-family-m4-first-red.txt`) — `requireSameStore` counted the newly-created `.moai-fold.lock` as a store-content change. Repair: `requireSameStore` (memory_fold_test.go, an in-scope §A.2 file) now normalizes `foldLockFileName` out of both snapshots — the lock file is the lock mechanism's own resident, not store content (D-3), the same narrowing `requireNoTempFiles` applies. `storeHashes` itself was NOT touched (it lives in `memory_budget_test.go`, outside §A.2 — D-5). Re-run → green above.
+- **Build**: `go build ./...` → **exit 0** (this run, this tree).
+- **Coverage (E3)**: `go test -race -count=1 -timeout 900s -cover ./internal/cli -run '^(TestMemoryFold|TestReviewArchiveUpdate|TestReviewSequentialAbandonedTempOwnership).*$'` → exit 0, verbatim `ok  github.com/modu-ai/moai-adk/internal/cli  29.038s  coverage: 7.2% of statements` — package-wide statements against the family selector's swept subset; no threshold claim beyond that number.
+- **Lint (E5)**: `golangci-lint run --timeout=2m internal/cli/...` → **exit 0, `0 issues.`** (no NEW issues — the baseline is clean and stays clean); `gofmt -l internal/cli/` → empty (exit 0); `go vet ./internal/cli/` → exit 0.
+- **Scope placement note (the 7th file)**: the AC-MRR-006 cell lives in `memory_fold_wiring_test.go` — a file plan §A.2's 6-file table did not enumerate. The placement follows acceptance.md AC-MRR-006's own direction ("the wiring test's existing recorder/seam conventions": `wireFixture`, `runWireClose`, `waitWorkerExit`, `wireErrLines` all live there). This is an implementation-placement detail, not a scope-doc change; every other §A.2 file is exactly as planned (memory_fold.go, memory_fold_test.go, fold_store_lock_unix.go, fold_store_lock_windows.go, fold_store_lock_test.go, fold_store_lock_windows_test.go). Recorded here for the auditors; no blocker raised (no SPEC body text needed changing).
+
 ## §E.3 Run-phase Audit-Ready Signal
 
-_<pending run-phase — owned by manager-develop>_
+```yaml
+run_complete_at: 2026-10-09
+run_commit_sha: pending-backfill-m4   # the M4 commit lands with this file; backfilled immediately after (schema D3 exemption)
+run_status: complete
+ac_pass_count: 8   # AC-MRR-001..007 + AC-MRR-009 (each with its command + observed output in §E.2)
+ac_fail_count: 0
+ac_pass_with_debt: [AC-MRR-008]   # timing exception, recorded where the chain is read: its judge is release-pr-multi-os.yml's Windows leg, observed at the release window after card close (acceptance.md §4); local GOOS=windows build+vet exit 0 on record
+preserve_list_post_run_count: 0   # no preserve-list item outstanding: the 29-test family is green, the orderProbe sequence (effective-start → bytes-done) observed unchanged by TestReviewArchiveUpdateDuringEffectiveScan
+l44_pre_commit_fetch: n/a (run-phase agent commits locally on the card worktree branch; no push — the lane owns the landing and its fetch/push evidence)
+l44_post_push_fetch: n/a (no push performed by this agent)
+new_warnings_or_lints_introduced: 0   # golangci-lint 0 issues; go vet clean; gofmt clean — measured in this run against a clean baseline
+cross_platform_build:
+  darwin_amd64: exit 0   # go build ./...
+  windows: exit 0        # GOOS=windows go build ./internal/cli/... (+ GOOS=windows go vet ./internal/cli/ exit 0)
+  linux: judged by CI    # not run locally; origin/develop CI is the full-suite and per-OS judge
+total_run_phase_files: 7   # the 6 files of plan §A.2 + memory_fold_wiring_test.go (the AC-MRR-006 cell; see the M4 scope-placement note)
+m1_to_mN_commit_strategy: one conventional commit per milestone (M1 RED / M2 GREEN / M3 cells / M4 close-out), each carrying card id t1568 and Authored-By-Agent: manager-develop
+```
+
+### Run-phase evidence index
+
+| Evidence | Where |
+|---|---|
+| RED verbatim (10/10, exit 1) | §E.2 M1 block above; raw log `.moai/reports/t1568/t1568-red-m1.txt` (gitignored machine-local) |
+| Wrong-reason first red (fixture) | `.moai/reports/t1568/t1568-red-m1-first-fixture.txt` — never cited as the AC-MRR-001 RED |
+| GREEN window/span/unit verbatim | §E.2 M2 block above |
+| Surface cells verbatim | §E.2 M3 block above |
+| Family green-before (baseline of record) | §E.1 attempt 4 (`ok … 42.974s`, exit 0, base `2aab5f797`) |
+| Family post-fix green | §E.2 M4 block above (`ok … 26.263s`, exit 0, HEAD per the M4 commit) |
+| First M4 family red + repair | §E.2 M4 block above; raw log `.moai/reports/t1568/t1568-family-m4-first-red.txt` |
 
 ## §E.4 Sync-phase Audit-Ready Signal
 

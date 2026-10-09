@@ -195,6 +195,13 @@ func foldRead(t *testing.T, dir, name string) string {
 // requireSameStore asserts two hash maps describe the identical store.
 func requireSameStore(t *testing.T, before, after map[string]string) {
 	t.Helper()
+	// The per-store lock file is the lock mechanism's own resident, not
+	// store content (foldLockFileName, SPEC-MEMORY-FOLD-RENAME-RACE-001
+	// D-3): an apply that created it between the two snapshots is not a
+	// store change, so it is normalized out of both sides here — the same
+	// narrowing requireNoTempFiles applies to its temp-file prefix.
+	delete(before, foldLockFileName)
+	delete(after, foldLockFileName)
 	if len(before) != len(after) {
 		t.Fatalf("store file list changed: %d files before, %d after", len(before), len(after))
 	}
