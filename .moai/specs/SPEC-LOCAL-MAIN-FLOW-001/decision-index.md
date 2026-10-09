@@ -14,12 +14,14 @@ Why unresolved:
 - 이 목록은 `workflow.branch_guard.enabled`(`workflow.yaml:174`, 현재 `true`)에 묶여 있다. 가드가 꺼지면 목록은 효과가 없다.
 - 착지 동사의 병합은 이 목록을 읽지 않는다(`plan.md` §B3). 그래서 아래 어느 옵션에서도 착지 동사의 경로는 같다. REQ-LMF-009는 Q1이 미결인 동안 현재 값 `[main]`을 유지한다.
 
+Q1이 정하는 것은 목록 값뿐이다. 분기 상태 차단(`git merge` 등)과 착지 동사의 경로는 어느 옵션에서도 바뀌지 않는다(spec.md REQ-LMF-003).
+
 Options:
 - (a) `[main]`을 유지한다. 귀결: 에이전트 세션은 기본 체크아웃의 main에 Bash로 커밋·되돌리기·체리픽을 낼 수 없다. 운영자 터미널은 제한되지 않는다. 근거: `workflow.yaml:178`, `branch_guard.go:434·480`.
-- (b) `[]`로 바꾼다. 귀결: 이 저장소의 에이전트 세션이 main에 Bash 커밋을 낼 수 있다. `git merge`, `git switch`, `git checkout`, `git reset` 같은 분기 상태 변경 차단은 목록과 별개이므로 그대로 남는다(`branch_guard.go:155`, `:369`). `AGENTS.local.md:199`(규율 5)은 supersede 표식을 받아야 한다(`plan.md` §B10). 템플릿 기본값(`defaults.go:1491`)은 바뀌지 않는다.
+- (b) `[]`로 바꾼다. 귀결: 이 저장소의 에이전트 세션이 main에 Bash 커밋을 낼 수 있다. `git merge`, `git switch`, `git checkout`, `git reset` 같은 분기 상태 변경 차단은 목록과 별개이므로 그대로 남는다(`branch_guard.go:155`, `:369`). `AGENTS.local.md:199`(규율 5)은 supersede 표식을 받아야 한다(`plan.md` §B10). 템플릿 기본값(`defaults.go:1491`)은 바뀌지 않는다. REQ-LMF-003의 커밋 거부 조항은 목록에 `main`이 있는 동안에만 유효하므로, 이 옵션에서는 그 조항이 적용되지 않는다(spec.md REQ-LMF-003).
 - (c) 사용자별 설정으로 둔다. 템플릿 기본값은 `[]`로 그대로 두고, 저장소별 설정이 목록을 정한다. 귀결: 이 저장소도 값 하나를 골라야 하므로 실제로는 (a) 또는 (b)가 된다. 배포 사용자의 기본 동작은 바뀌지 않는다. AGENTS.md 보편 문구(`internal/template/templates/AGENTS.md.tmpl` 92–95행)는 설정 키를 명명할 뿐이므로 바꿀 필요가 없다.
 
-Default: not ranked. If no decision is recorded, REQ-LMF-009 keeps the current value `[main]`.
+Default: not ranked. The status quo is not a default: while Q1 is undecided, REQ-LMF-009 keeps the current value `[main]`.
 
 Operator verdict:
 
@@ -45,6 +47,6 @@ Options (diverged case of the re-sync, OQ-8):
 - (ii) 도구가 창 안에서 `origin/main`을 `--no-ff`로 병합한다(REQ-LMF-003의 가드 처리 적용). 귀결: 원격에 없는 병합 커밋이 다음 릴리스 PR 전까지 로컬 main에 남는다.
 - (iii) 별도 동기화 브랜치를 워크트리에서 `origin/main`에 fast-forward한 뒤, 도구가 그 브랜치를 로컬 main에 병합한다. 귀결: 브랜치와 워크트리가 하나 더 필요하다. 병합을 실행하는 주체는 여전히 도구다.
 
-Default: not ranked. The published rule's first criterion (preserves current behavior) selects no option here, because the tool path refuses on the primary checkout today and no first merge has happened.
+Default: not ranked. The status quo is not a default and selects no option: the tool path refuses on the primary checkout today, and no first merge has happened.
 
 Operator verdict:

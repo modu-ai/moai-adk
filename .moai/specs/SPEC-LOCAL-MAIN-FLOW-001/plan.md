@@ -1,6 +1,6 @@
-# SPEC-LOCAL-MAIN-FLOW-001 — Implementation Plan (v0.5)
+# SPEC-LOCAL-MAIN-FLOW-001 — Implementation Plan (v0.6)
 
-Measurements in this revision were taken at HEAD `e32f69c46`. Each anchor in §A carries one provenance label: `[cell E-nn]` means the anchor is backed by that cell in acceptance.md §E; `[read]` means it was read at `e32f69c46` without a ledger cell; `[carried]` means it comes from the card base `2aab5f797` and was not re-measured in this revision. The §A gaps are stated after the table. The lane decisions of 2026-10-10 (MI-5, OQ-3, OQ-6, OQ-8) are applied in this revision and recorded in §H. Claims that depend on a ref are labeled `[local]` (the local repository: HEAD, local main, the primary checkout) or `[origin]` (a remote-tracking ref, or what a remote holds). BASELINE_SHA, the origin/main value recorded at pre-flight, is used only for `[origin]` claims. Priority order follows decision reversibility: §B lists the choices most likely to change, §C the milestones that depend on them.
+Measurements in this revision were taken at HEAD `366b45155` (the revision 0.5 commit), with the revision 0.6 edits to the SPEC directory uncommitted. Cells pinned to `e32f69c46` measure code that is unchanged at `366b45155` (cell E-66). Each anchor in §A carries one provenance label: `[cell E-nn]` means the anchor is backed by that cell in acceptance.md §E; `[read]` means it was read at `e32f69c46` without a ledger cell; `[carried]` means it comes from the card base `2aab5f797` and was not re-measured in this revision. The §A gaps are stated after the table. The lane decisions of 2026-10-10 (MI-5, OQ-3, OQ-6, OQ-8) are applied in this revision and recorded in §H. Claims that depend on a ref are labeled `[local]` (the local repository: HEAD, local main, the primary checkout) or `[origin]` (a remote-tracking ref, or what a remote holds). BASELINE_SHA, the origin/main value recorded at pre-flight, is used only for `[origin]` claims. Priority order follows decision reversibility: §B lists the choices most likely to change, §C the milestones that depend on them.
 
 ## A. Context and anchors
 
@@ -35,7 +35,7 @@ Measurements in this revision were taken at HEAD `e32f69c46`. Each anchor in §A
 | `internal/homestate/card_evidence_readers.go:290-338` | `verifyMerge`: two-parent check; tree identity against the second parent's tree at 313–315; reachability; the record verifier at 323; a lane-supplied remeasure file read at 335 | [cell E-52] [cell E-57] |
 | `internal/hook/branch_guard.go:155` | branch-state pattern `\bgit\s+merge\s` | [read] |
 | `internal/hook/branch_guard.go:369` | `matchBranchStateCommand` | [read] |
-| `internal/hook/branch_guard.go:434` | `protectedCommitPattern` `(?i)\bgit\s+(commit\|revert\|cherry-pick)\b` | [read] |
+| `internal/hook/branch_guard.go:434` | `protectedCommitPattern` (regex in the fenced block below this table) | [read] |
 | `internal/hook/branch_guard.go:451, 480` | `matchProtectedCommitCommand` (451); `checkProtectedCommit` (480) | [read] (480); [carried] (451) |
 | `internal/hook/branch_guard.go:978, 1001, 1036, 1111-1118` | `isExemptAgent` (978), `isPrimaryCheckout` (1001), `checkBranchState` (1036), `extractBranchStateCommand` (1111–1118; reads the Bash tool's `command` field) | [read] (1111–1118); [carried] (others) |
 | `internal/config/defaults.go:1446` | `AutoMerge` distributed default `false` | [carried] |
@@ -71,7 +71,12 @@ Measurements in this revision were taken at HEAD `e32f69c46`. Each anchor in §A
 | `[local]` tree identity | `e32f69c46^{tree}` and `09a42899c^{tree}` are both `ddc07c9a3800ce62be9a87d54c06ed145283eec7` | [cell E-46] [cell E-47] |
 | `[local]` hook configuration | `git config --get core.hooksPath` is `/dev/null` | [cell E-48] |
 
-**Gaps in §A (not re-measured in revisions 0.3, 0.4, or 0.5).** The rows marked `[carried]` were not re-measured. Their paths are byte-identical between `2aab5f797` and `e32f69c46` by the earlier `git diff --name-only` check, and the V-commands in §F re-check the paths at run start. The session-exit auto-merge code (`internal/cli/session_worktree_automerge.go:156-304`) and the pre-push hook body (`.git_hooks/pre-push`) were read at grep depth in revision 0.2 and are not re-read here (residual risks R-2 and R-3). The line numbers at `internal/cli/integration_merge_worktree_test.go` beyond the test name were not measured.
+```text
+protectedCommitPattern, internal/hook/branch_guard.go:434 (read at e32f69c46; a Go raw-string regexp):
+(?i)\bgit\s+(commit|revert|cherry-pick)\b
+```
+
+**Gaps in §A (not re-measured in revisions 0.3 through 0.6).** The rows marked `[carried]` were not re-measured. Their paths are byte-identical between `2aab5f797` and `e32f69c46` by the earlier `git diff --name-only` check, and the V-commands in §F re-check the paths at run start. The session-exit auto-merge code (`internal/cli/session_worktree_automerge.go:156-304`) and the pre-push hook body (`.git_hooks/pre-push`) were read at grep depth in revision 0.2 and are not re-read here (residual risks R-2 and R-3). The line numbers at `internal/cli/integration_merge_worktree_test.go` beyond the test name were not measured.
 
 ## B. Decisions most likely to change
 
@@ -87,7 +92,7 @@ Leader guidance item (a). The surface is resolved from two configured facts and 
 |------|---------------|------|--------------------|
 | 1 | `B` is empty | any | refuse (today's text, `factory_card.go:2834`) |
 | 2 | a separate integration worktree | any | that worktree; today's flow; REQ-LMF-005 and REQ-LMF-006 apply |
-| 3 | the primary checkout, HEAD names `B` | false | refuse, as today (`integration_merge.go:137-139`) |
+| 3 | the primary checkout, HEAD names `B` | false | refuse with guidance and no merge, as today (`integration_merge.go:137-139`); REQ-LMF-002 states this outcome |
 | 4 | the primary checkout, HEAD names `B` | true | the primary checkout; the designed path of B3, B3a, and B4 |
 | 5 | nobody (including the primary checkout on another branch) | any | refuse with guidance (below) |
 
@@ -105,7 +110,7 @@ Sequence for case 4:
 3. `[local]` Require a fully clean primary (B4).
 4. Pin the card tip (the existing step). The status set before the merge is empty, by step 3.
 5. Run `git -c merge.autoStash=false merge --no-ff --no-overwrite-ignore -q -m <msg> <pinned>` with the primary as the working directory.
-6. `[local]` Read HEAD again. Require that its first parent equals the pre-merge HEAD, which proves the branch did not change. Require that the status set equals the pre-merge set (REQ-LMF-006).
+6. `[local]` Read HEAD again. Require that its first parent equals the pre-merge HEAD. Re-read the symbolic HEAD and require that it still names `B`: SHA equality alone does not prove that the branch did not change, because HEAD could move to another branch at the same SHA between steps 2 and 5. Require that the status set equals the pre-merge set (REQ-LMF-006).
 7. `[local]` Record the merge SHA and tree. The closure follows B7.
 
 Guard treatment (an explicit design, not a bypass):
@@ -129,19 +134,19 @@ The lane decision of 2026-10-10 redirects OQ-8. The re-sync is tool-owned. It is
   2. `[local]` Read the primary's HEAD symbolically and require that it names `B`; refuse otherwise with the case-5 guidance.
   3. `[local]` Require a fully clean primary (B4).
   4. `[origin]` Run `git fetch origin <B>` and observe its exit status before step 5. Record the fetched origin value of `<B>` as BASELINE_SHA. Every later origin-facing comparison in this section uses BASELINE_SHA; no step re-reads the remote.
-  5. `[local]` Classify HEAD against BASELINE_SHA with read-only ancestry tests, then act. (a) If HEAD is an ancestor of BASELINE_SHA, run `git merge --ff-only` with BASELINE_SHA as the target and the primary as the working directory. (b) If BASELINE_SHA is an ancestor of HEAD (local main already contains origin, or equals it), report that no fast-forward is needed and leave HEAD unchanged. (c) If neither is an ancestor of the other (diverged), refuse as described under Refusal below.
-  6. `[local]` After case (a), read HEAD again and require it to equal BASELINE_SHA.
+  5. `[local]` Classify HEAD against BASELINE_SHA with read-only ancestry tests, then act. (a) If HEAD is an ancestor of BASELINE_SHA, first check for ignored files that the fast-forward would overwrite: intersect the paths of `git diff --name-only -z HEAD BASELINE_SHA` with `git ls-files --others --ignored --exclude-standard -z`. A non-empty intersection refuses with guidance that lists the paths; HEAD does not move, and the window is released. Otherwise run `git merge --ff-only --no-overwrite-ignore` with BASELINE_SHA as the target and the primary as the working directory. (b) If BASELINE_SHA is an ancestor of HEAD (local main already contains origin, or equals it), report that no fast-forward is needed and leave HEAD unchanged. (c) If neither is an ancestor of the other (diverged), refuse as described under Refusal below.
+  6. `[local]` After case (a), read HEAD again and require it to equal BASELINE_SHA. Re-read the symbolic HEAD and require that it still names `B`, as in B3 step 6.
   7. Report the old and new SHAs, or the no-op of case (b).
   8. Release the window.
 - **Refusal (diverged).** Case (c) refuses with guidance: `[local]` local main holds commits that BASELINE_SHA `[origin]` lacks, and the tool does not reconcile them. HEAD does not move, and the window is released. The method for this case is decision Q2 (the diverged-case options in decision-index.md), not an operator-terminal step.
 - **Why `--ff-only`.** A fast-forward creates no commit, so the verb cannot write a commit that Q1 governs. It is the only merge form the verb runs apart from the no-fast-forward merge of B3.
 - **Guard treatment (the B3 treatment applies unchanged).** The merge is a child process of the `moai` binary, not command text the agent issues. The verb runs no checkout, switch, reset, rebase, or stash. HEAD must name the surface branch (step 2). The `MOAI_BRANCH_GUARD_EXEMPT` sentinel and the `manager-git` identity are neither used nor changed.
-- **Verification.** `TestLocalMainResyncFastForwards`, `TestLocalMainResyncRefusesDiverged`, and `TestLocalMainResyncAheadIsNoop` (M1 step 1) run under V4. `[origin]` They set `refs/remotes/origin/main` with `git update-ref` in a scratch repository, and no test contacts a remote.
+- **Verification.** `TestLocalMainResyncFastForwards`, `TestLocalMainResyncRefusesDiverged`, `TestLocalMainResyncAheadIsNoop`, and `TestLocalMainResyncPreservesIgnoredFile` (M1 step 1) run under V4. The last one places an ignored file at a path the fast-forward would write, and asserts that the verb refuses, HEAD does not move, and the file keeps its content. `[origin]` They set `refs/remotes/origin/main` with `git update-ref` in a scratch repository, and no test contacts a remote.
 - **Gap.** The production path includes a remote fetch. This SPEC's run phase executes no remote command (spec §E), so the fetch is specified here and not run here.
 
 ### B4. Fully clean primary: refusal and guidance (REQ-LMF-004)
 
-Leader guidance item (c). Choice: on the primary surface, the tool requires `git status --porcelain=v1 -z --untracked-files=all` to be empty. This is stricter than the overlap rule of B5, and that is deliberate. The primary checkout is shared by concurrent sessions (`main-checkout-branch-guard.md`, "Why the race is quiet"). A process-registry lookup is not a reliable ownership signal (`main-checkout-branch-guard.md`, "Detecting Concurrent Sessions"). The lane therefore cannot tell whose uncommitted path it would leave beside the merge, and an overlap test cannot judge a path whose owner it cannot identify. A dedicated integration worktree has no foreign owners, so the overlap rule applies there (REQ-LMF-005).
+Leader guidance item (c). Choice: on the primary surface, the tool requires `git status --porcelain=v1 -z --untracked-files=all` to be empty. This is stricter than the overlap rule of B5, and that is deliberate. The primary checkout is shared by concurrent sessions (`main-checkout-branch-guard.md`, "Why the race is quiet"). A process-registry lookup is not a reliable ownership signal (`main-checkout-branch-guard.md`, "Detecting Concurrent Sessions"). The lane therefore cannot tell whose uncommitted path it would leave beside the merge, and an overlap test cannot judge a path whose owner it cannot identify. A dedicated integration worktree has no foreign owners, so the overlap rule applies there (REQ-LMF-005). The clean check does not list ignored files. The merge on the primary surface is protected against overwriting them by `--no-overwrite-ignore` (step 5 of B3), and the re-sync carries the same flag and checks the ignored files itself (B3a, step 5).
 
 Placement: the check runs inside the window, before the merge. On refusal the window is released, following the release-on-refusal pattern at `integration_merge_step.go:245` and `:248`.
 
@@ -206,7 +211,7 @@ The comment at `workflow.yaml:153` reads "auto_merge 유지 (사용자 수동 wo
 - With `develop_branch: main`, the only tree holding main is the primary checkout. The auto path has no primary-checkout refusal. The refusal in REQ-LMF-002 lives in the merge verb, not in this path. An enabled auto-merge would therefore run `git merge` in the primary checkout, which AGENTS.md section 2 forbids.
 - The comment's premise (automatic merge on manual worktree creation into the integration branch) does not hold under the local-main flow.
 
-Closed by the lane decision of 2026-10-10 (former OQ-3): the value stays `false` (REQ-LMF-008), the template default stays `false` (`defaults.go:1446`), and this card makes no code change to `internal/cli/session_worktree_automerge.go`. The path's missing primary-checkout refusal is residual risk R-2 (§K). This card adds no acceptance criterion for it. Re-enabling the switch is outside this card and needs a later SPEC; that SPEC would decide whether the feature should exist for a local-main target at all.
+Closed by the lane decision of 2026-10-10 (former OQ-3): the value is `true` in this repository today (`workflow.yaml:164`). REQ-LMF-008 sets it to `false` in M3, the template default is `false` (`defaults.go:1446`), and this card makes no code change to `internal/cli/session_worktree_automerge.go`. Until M3 lands, the path stays enabled. The path's missing primary-checkout refusal is residual risk R-2 (§K). This card adds no acceptance criterion for it. Re-enabling the switch is outside this card and needs a later SPEC; that SPEC would decide whether the feature should exist for a local-main target at all.
 
 The replacement comment for line 153 reads, in English:
 
@@ -254,7 +259,7 @@ Commit `e32f69c46` merges `09a42899c` into WT-10-10-class with `--no-ff`; its pa
    - Configuration: `TestLocalMainIntegrationDefaultsFalse` (including the absent-key case), `TestLocalMainIntegrationReadsEnabled`.
    - Surface: `TestIntegrationSurfaceSelectsPrimaryWhenEnabled`, `TestIntegrationSurfaceRefusesPrimaryWhenDisabled`, `TestIntegrationSurfaceRefusesPrimaryOffBranch`, `TestIntegrationSurfaceRefusesNoHolder`, `TestIntegrationSurfaceSeparateWorktreeUnchanged`.
    - Primary merge: `TestLocalMainMergeMergesIntoPrimary`, `TestLocalMainMergeRefusesDirtyPrimary`, `TestLocalMainMergeRefusesMovedHead`, `TestLocalMainMergeStatusSetUnchanged`.
-   - Re-sync (B3a): `TestLocalMainResyncFastForwards`, `TestLocalMainResyncRefusesDiverged`, `TestLocalMainResyncAheadIsNoop`.
+   - Re-sync (B3a): `TestLocalMainResyncFastForwards`, `TestLocalMainResyncRefusesDiverged`, `TestLocalMainResyncAheadIsNoop`, `TestLocalMainResyncPreservesIgnoredFile`.
    - Verb and complete: `TestIntegrationMergeWorktreeAcceptsPrimaryWhenEnabled`, `TestFactoryCompletePrimaryTreeGateEnabled`, `TestFactoryCompletePrimaryTreeGateDisabled`, `TestFactoryCompleteNoIntegrationTreeRefused`.
 2. Template key, placed beside the `branch_guard` block in `internal/template/templates/.moai/config/sections/workflow.yaml`:
 
@@ -280,16 +285,17 @@ Commit `e32f69c46` merges `09a42899c` into WT-10-10-class with `--no-ff`; its pa
 
 ### M3 (Medium, ordered after ABS-0) — REQ-LMF-008 and REQ-LMF-009 (repository configuration)
 
-- `.moai/config/sections/git-strategy.yaml:16`: `develop_branch: develop` becomes `develop_branch: main`. The parent key `manual:` (line 8) is unchanged.
-- `.moai/config/sections/workflow.yaml:153`: the single comment line is replaced by the B8 comment block. Line 164: `auto_merge: true` becomes `auto_merge: false`. No other code changes for the auto-merge path (B8).
-- `.moai/config/sections/workflow.yaml`, beside `branch_guard`: the M1 block with `enabled: true`.
-- `workflow.yaml:178`: `deny_commits_on: [main]` is not edited (Q1).
-- Each commit satisfies `git merge-base --is-ancestor 09a42899c HEAD` (V8) before it is made.
+Two commits, in this order (B4 of revision 0.6):
+
+1. Commit M3a, `auto_merge` first. `.moai/config/sections/workflow.yaml:164`: `auto_merge: true` becomes `auto_merge: false`, and the single comment line at 153 is replaced by the B8 comment block. Reason for this order: `sessionExitAutoMerge` reads the switch at `internal/cli/session_worktree_automerge.go:162` and takes its target from `develop_branch` at lines 176–183. Once `develop_branch` is `main`, a path whose switch is still `true` would run `git merge` in the primary checkout. Setting the switch false first closes that window.
+2. Commit M3b. `.moai/config/sections/git-strategy.yaml:16`: `develop_branch: develop` becomes `develop_branch: main` (the parent key `manual:` at line 8 is unchanged). The M1 block with `enabled: true` is added beside `branch_guard` in `workflow.yaml`.
+
+`workflow.yaml:178` (`deny_commits_on: [main]`) is not edited (Q1). Each commit satisfies `git merge-base --is-ancestor 09a42899c HEAD` (V8) before it is made.
 
 ### M4 (Medium, ordered after ABS-0) — REQ-LMF-010 to REQ-LMF-014 (documents and release procedure)
 
 1. `AGENTS.md`: replace lines 90–96 with template lines 92–95, and lines 161–167 with template lines 160–163 (B9). Do not touch the template.
-2. `AGENTS.local.md`: insert `### §4.0 Default development flow (local-main integration)` before the heading at line 175. The section is written in Korean to match its neighbors. It states the landing flow (B2, B3), the re-sync (B3a), the fully-clean rule (B4), the branch point and the override (B9), the closure rule and boundary (B7), the batch release procedure (REQ-LMF-014), and the batch-close rule restated against main (spec.md §G).
+2. `AGENTS.local.md`: insert `### §4.0 Default development flow (local-main integration)` before the heading at line 175. The section is written in Korean to match its neighbors. It states the landing flow (B2, B3), the re-sync (B3a), the fully-clean rule (B4), the branch point and the override (B9), the closure rule and boundary (B7), the batch release procedure (REQ-LMF-011), and the batch-close rule restated against main (spec.md §G).
 3. `AGENTS.local.md`: place the seven markers of B10 in place. Markers are added; no line is deleted. Lines 212 and 214 carry no marker.
 4. `.claude/rules/local/gitflow-lane-protocol.md`: correct §1, §2, §4, §6, §7, §9, §10, and §11 to the local-main flow, and replace each `CLAUDE.local.md` pointer with `AGENTS.local.md` §4.1.
 5. `.claude/rules/local/repo-local-pr-policy.md`: restate lines 2, 11, and 12 for the local-main flow. Line 13 (no card PRs; lanes do not open PRs against main) stays.
@@ -342,16 +348,42 @@ No command in this plan runs the full test suite. Each proving command names tou
 | ID | Command | Lease | Proves |
 |----|---------|-------|--------|
 | V1 | `gofmt -l internal/cli internal/factory internal/config internal/template` | none | formatting; empty output |
-| V2 | `go test ./internal/config/ -run '^(TestLocalMainIntegrationDefaultsFalse\|TestLocalMainIntegrationReadsEnabled\|TestStructYAMLSymmetry\|TestStructYAMLSymmetry_Constitution\|TestStructYAMLSymmetry_Context\|TestStructYAMLSymmetry_Interview\|TestStructYAMLSymmetry_Design\|TestStructYAMLSymmetry_Statusline\|TestStructYAMLSymmetry_GitConvention\|TestStructYAMLSymmetry_Gate\|TestEmptyTargetGuidance\|TestEmptyTargetGuidanceResolvedTargetIsSilent\|TestTargetProvenance)$' -v -count=1` | none | REQ-LMF-001 defaults and reads, struct and YAML symmetry, integration-target guidance |
-| V3 | `go test ./internal/template/ -run '^(TestWorkflowWorktreeKeyHonesty\|TestAgentsDisclosureCompleteness\|TestAutoMergeRequiredChecks)$' -v -count=1` | none | the template key honesty guard (the template comment must not claim the key is unread), disclosure, auto-merge checks |
-| V4 | `go test ./internal/cli/ -run '^(TestIntegrationSurfaceSelectsPrimaryWhenEnabled\|TestIntegrationSurfaceRefusesPrimaryWhenDisabled\|TestIntegrationSurfaceRefusesPrimaryOffBranch\|TestIntegrationSurfaceRefusesNoHolder\|TestIntegrationSurfaceSeparateWorktreeUnchanged\|TestLocalMainMergeMergesIntoPrimary\|TestLocalMainMergeRefusesDirtyPrimary\|TestLocalMainMergeRefusesMovedHead\|TestLocalMainMergeStatusSetUnchanged\|TestLocalMainResyncFastForwards\|TestLocalMainResyncRefusesDiverged\|TestLocalMainResyncAheadIsNoop\|TestIntegrationMergeWorktreeRefusesPrimaryHoldingBranch\|TestIntegrationMergeWorktreeAcceptsPrimaryWhenEnabled\|TestIntegrationMergeWorktreeRefusesUnheldBranch\|TestFactoryCompletePrimaryTreeGateEnabled\|TestFactoryCompletePrimaryTreeGateDisabled\|TestFactoryCompleteNoIntegrationTreeRefused\|TestMWQ19_Scenario5_AdoptionRefusedAfterNewCommit\|TestSD_AC013_ClaudeCompleteViaIntegrationWorktree\|TestSD_AC024_CodexMergeRefusedComplete\|TestSD_AC024_CodexMergeRefusedStage\|TestSD_AC024_CodexMergeRefusedMCP\|TestSD_AC025_IntegrationWindowSerializes\|TestAutoMergeOffBaseline\|TestAutoMergeHappyPath\|TestAutoMergeNonCleanExit\|TestAutoMergeUnconfiguredTarget\|TestAutoMergeBusyWindow\|TestAutoMergeZeroPush\|TestAutoMergeConflict\|TestAutoMergeSourceDirty\|TestAutoMergeTargetGuards\|TestAutoMergeNoOpSilent\|TestAutoMergeNoticePrefixDistinct\|TestAutoMergeToggleIndependence\|TestAutoMergeFailurePaths\|TestAutoMergeRealImplErrorPaths)$' -v -count=1` | none | REQ-LMF-002, 003, 004, 006 on the primary surface; REQ-LMF-014 re-sync (B3a, three cases); REQ-LMF-008 auto-merge toggle and its fourteen tests (B8, no code change) |
-| V5 | `go test ./internal/factory/ -run '^(TestMergeStepPreMergeCausesReleaseWithDistinctCodes\|TestMergeStepHappyPathCreatesNoFFMergeAndReleases\|TestMergeStepMergeFailureCleanAbortsCause6\|TestMergeStepDirtyDisjointPathsProceeds\|TestMergeStepDirtyPathOverlapRefuses\|TestMergeStepDirtyDirectoryPrefixOverlapRefuses\|TestMergeStepDirtyIgnoredTargetRefuses\|TestMergeStepStatusSetChangedAfterMergeHolds\|TestMergeStepStatusSetChangedAfterAbortHolds)$' -v -count=1` | `moai slot acquire --resource internal-factory-mergestep` before; `moai slot release --resource internal-factory-mergestep` after | REQ-LMF-005 and REQ-LMF-006 on the separate surface (the step family creates git fixtures in bulk, and lane protocol §8 names factory suites as heavy) |
+| V2 | block V2 below | none | REQ-LMF-001 defaults and reads, struct and YAML symmetry, integration-target guidance |
+| V3 | block V3 below | none | the template key honesty guard (the template comment must not claim the key is unread), disclosure, auto-merge checks |
+| V4 | block V4 below | none | REQ-LMF-002, 003, 004, 006 on the primary surface; REQ-LMF-014 re-sync (B3a, three cases); REQ-LMF-008 auto-merge toggle and its fourteen tests (B8, no code change) |
+| V5 | block V5 below | `moai slot acquire --resource internal-factory-mergestep` before; `moai slot release --resource internal-factory-mergestep` after | REQ-LMF-005 and REQ-LMF-006 on the separate surface (the step family creates git fixtures in bulk, and lane protocol §8 names factory suites as heavy) |
 | V6 | `make build` | none (a build, not a suite) | REQ-LMF-001 template regeneration |
 | V7 | the file checks of `acceptance.md` §F, and the SPEC lint and audit (cells E-61 to E-65 in `acceptance.md` §E, each with its judging build) | none | REQ-LMF-008 to REQ-LMF-015 |
 | V8 | `git merge-base --is-ancestor 09a42899c HEAD` | none | the absorb gate (REQ-LMF-008); required before each M3 and M4 commit |
 | V9 | `git status --short` immediately before each staging step | none | explicit pathspec staging only (no sweep staging in the primary checkout) |
 | V10 | run phase, scratch primary: feed the PreToolUse event of `moai hook` a Bash payload whose command is `moai integration merge --card t1616`, with the working directory set to a scratch primary whose workflow enables the gate | none | the guard treatment in B3: expected decision allow, with no `BRANCH_GUARD_VIOLATION:` line. The entry point is confirmed with the CLI help before use and recorded in the run progress record |
 | V11 | `git diff --quiet e32f69c46 HEAD -- internal/template/templates/AGENTS.md.tmpl` | none | the distributed AGENTS template is unchanged by this card (exit 0) |
+
+Proving blocks. Each block is a fenced shell sequence whose selector is plain `|` alternation inside single quotes, so the bytes in the block are the bytes the shell receives (verification-completeness §2.1). The first command counts the named tests that exist, with `-list`; `grep -c` exits non-zero on an empty list, so the `&&` stops the block before any run. The second command runs the names verbosely, and each named test must show `--- PASS`. The required count of each block is the number of names in it: V2 13, V3 3, V4 39, V5 9. Before M1 and M2, the count is the RED-now count, recorded in acceptance.md §E (cells E-67 to E-70); the names that M1 and M2 add are not yet in the tree.
+
+V2 (required count 13):
+
+```bash
+go test ./internal/config/ -list '^(TestLocalMainIntegrationDefaultsFalse|TestLocalMainIntegrationReadsEnabled|TestStructYAMLSymmetry|TestStructYAMLSymmetry_Constitution|TestStructYAMLSymmetry_Context|TestStructYAMLSymmetry_Interview|TestStructYAMLSymmetry_Design|TestStructYAMLSymmetry_Statusline|TestStructYAMLSymmetry_GitConvention|TestStructYAMLSymmetry_Gate|TestEmptyTargetGuidance|TestEmptyTargetGuidanceResolvedTargetIsSilent|TestTargetProvenance)$' | grep -c '^Test' && go test ./internal/config/ -run '^(TestLocalMainIntegrationDefaultsFalse|TestLocalMainIntegrationReadsEnabled|TestStructYAMLSymmetry|TestStructYAMLSymmetry_Constitution|TestStructYAMLSymmetry_Context|TestStructYAMLSymmetry_Interview|TestStructYAMLSymmetry_Design|TestStructYAMLSymmetry_Statusline|TestStructYAMLSymmetry_GitConvention|TestStructYAMLSymmetry_Gate|TestEmptyTargetGuidance|TestEmptyTargetGuidanceResolvedTargetIsSilent|TestTargetProvenance)$' -v -count=1
+```
+
+V3 (required count 3):
+
+```bash
+go test ./internal/template/ -list '^(TestWorkflowWorktreeKeyHonesty|TestAgentsDisclosureCompleteness|TestAutoMergeRequiredChecks)$' | grep -c '^Test' && go test ./internal/template/ -run '^(TestWorkflowWorktreeKeyHonesty|TestAgentsDisclosureCompleteness|TestAutoMergeRequiredChecks)$' -v -count=1
+```
+
+V4 (required count 39):
+
+```bash
+go test ./internal/cli/ -list '^(TestIntegrationSurfaceSelectsPrimaryWhenEnabled|TestIntegrationSurfaceRefusesPrimaryWhenDisabled|TestIntegrationSurfaceRefusesPrimaryOffBranch|TestIntegrationSurfaceRefusesNoHolder|TestIntegrationSurfaceSeparateWorktreeUnchanged|TestLocalMainMergeMergesIntoPrimary|TestLocalMainMergeRefusesDirtyPrimary|TestLocalMainMergeRefusesMovedHead|TestLocalMainMergeStatusSetUnchanged|TestLocalMainResyncFastForwards|TestLocalMainResyncRefusesDiverged|TestLocalMainResyncAheadIsNoop|TestLocalMainResyncPreservesIgnoredFile|TestIntegrationMergeWorktreeRefusesPrimaryHoldingBranch|TestIntegrationMergeWorktreeAcceptsPrimaryWhenEnabled|TestIntegrationMergeWorktreeRefusesUnheldBranch|TestFactoryCompletePrimaryTreeGateEnabled|TestFactoryCompletePrimaryTreeGateDisabled|TestFactoryCompleteNoIntegrationTreeRefused|TestMWQ19_Scenario5_AdoptionRefusedAfterNewCommit|TestSD_AC013_ClaudeCompleteViaIntegrationWorktree|TestSD_AC024_CodexMergeRefusedComplete|TestSD_AC024_CodexMergeRefusedStage|TestSD_AC024_CodexMergeRefusedMCP|TestSD_AC025_IntegrationWindowSerializes|TestAutoMergeOffBaseline|TestAutoMergeHappyPath|TestAutoMergeNonCleanExit|TestAutoMergeUnconfiguredTarget|TestAutoMergeBusyWindow|TestAutoMergeZeroPush|TestAutoMergeConflict|TestAutoMergeSourceDirty|TestAutoMergeTargetGuards|TestAutoMergeNoOpSilent|TestAutoMergeNoticePrefixDistinct|TestAutoMergeToggleIndependence|TestAutoMergeFailurePaths|TestAutoMergeRealImplErrorPaths)$' | grep -c '^Test' && go test ./internal/cli/ -run '^(TestIntegrationSurfaceSelectsPrimaryWhenEnabled|TestIntegrationSurfaceRefusesPrimaryWhenDisabled|TestIntegrationSurfaceRefusesPrimaryOffBranch|TestIntegrationSurfaceRefusesNoHolder|TestIntegrationSurfaceSeparateWorktreeUnchanged|TestLocalMainMergeMergesIntoPrimary|TestLocalMainMergeRefusesDirtyPrimary|TestLocalMainMergeRefusesMovedHead|TestLocalMainMergeStatusSetUnchanged|TestLocalMainResyncFastForwards|TestLocalMainResyncRefusesDiverged|TestLocalMainResyncAheadIsNoop|TestLocalMainResyncPreservesIgnoredFile|TestIntegrationMergeWorktreeRefusesPrimaryHoldingBranch|TestIntegrationMergeWorktreeAcceptsPrimaryWhenEnabled|TestIntegrationMergeWorktreeRefusesUnheldBranch|TestFactoryCompletePrimaryTreeGateEnabled|TestFactoryCompletePrimaryTreeGateDisabled|TestFactoryCompleteNoIntegrationTreeRefused|TestMWQ19_Scenario5_AdoptionRefusedAfterNewCommit|TestSD_AC013_ClaudeCompleteViaIntegrationWorktree|TestSD_AC024_CodexMergeRefusedComplete|TestSD_AC024_CodexMergeRefusedStage|TestSD_AC024_CodexMergeRefusedMCP|TestSD_AC025_IntegrationWindowSerializes|TestAutoMergeOffBaseline|TestAutoMergeHappyPath|TestAutoMergeNonCleanExit|TestAutoMergeUnconfiguredTarget|TestAutoMergeBusyWindow|TestAutoMergeZeroPush|TestAutoMergeConflict|TestAutoMergeSourceDirty|TestAutoMergeTargetGuards|TestAutoMergeNoOpSilent|TestAutoMergeNoticePrefixDistinct|TestAutoMergeToggleIndependence|TestAutoMergeFailurePaths|TestAutoMergeRealImplErrorPaths)$' -v -count=1
+```
+
+V5 (required count 9):
+
+```bash
+go test ./internal/factory/ -list '^(TestMergeStepPreMergeCausesReleaseWithDistinctCodes|TestMergeStepHappyPathCreatesNoFFMergeAndReleases|TestMergeStepMergeFailureCleanAbortsCause6|TestMergeStepDirtyDisjointPathsProceeds|TestMergeStepDirtyPathOverlapRefuses|TestMergeStepDirtyDirectoryPrefixOverlapRefuses|TestMergeStepDirtyIgnoredTargetRefuses|TestMergeStepStatusSetChangedAfterMergeHolds|TestMergeStepStatusSetChangedAfterAbortHolds)$' | grep -c '^Test' && go test ./internal/factory/ -run '^(TestMergeStepPreMergeCausesReleaseWithDistinctCodes|TestMergeStepHappyPathCreatesNoFFMergeAndReleases|TestMergeStepMergeFailureCleanAbortsCause6|TestMergeStepDirtyDisjointPathsProceeds|TestMergeStepDirtyPathOverlapRefuses|TestMergeStepDirtyDirectoryPrefixOverlapRefuses|TestMergeStepDirtyIgnoredTargetRefuses|TestMergeStepStatusSetChangedAfterMergeHolds|TestMergeStepStatusSetChangedAfterAbortHolds)$' -v -count=1
+```
 
 Full package runs (`go test ./internal/cli/`, `./internal/factory/`, `./internal/hook/` without `-run`) are not proof here. A run phase that needs one takes the matching slot lease (for example `moai slot acquire --resource internal-cli-suite`) as lane protocol §8 requires.
 
@@ -371,9 +403,9 @@ This checkout sets `core.hooksPath` to `/dev/null` (cell E-48), so the installed
 
 Run-phase procedure, with no remote contact: in a scratch repository with a stub `Makefile` whose `ci-local` target succeeds, run the hook body with the crafted stdin line `refs/heads/main <local sha> refs/heads/release/main-batch-20261010 0000000000000000000000000000000000000000`. Record whether `ci-local` ran, the subject set printed, and the exit code. Repeat with the gate on in a scratch configuration to observe the severity.
 
-Open item (leader-owned, residual risk R-6): OQ-10. Whether release pushes run the full `ci-local` under a slot lease, and whether a subject violation in a batch should warn or block.
+Open: OQ-10 (leader-owned, residual risk R-6). Whether release pushes run the full `ci-local` under a slot lease, and whether a subject violation in a batch should warn or block.
 
-### G.3 Gap (c): the leader guard exemption
+### G.3 Gap (c): the leader guard exemption (MI-2, open)
 
 No guard in `internal/hook` names a leader exemption. Two exemptions exist.
 - `internal/hook/contract_sign_guard.go`, the role gate. `moai contract decide`, and `sign --signer llm` or `llm+jev`, are allowed when the session is not lane-refused: no `MOAI_FACTORY_ROLE` marker equal to the role constant, no lane-label variable, and `MOAI_KANBAN_BACKEND` not naming Codex. The file describes this allow direction as the leader's own decide path. The deny sentinel is `CONTRACT_SIGN_AGENT_VIOLATION:`.
@@ -388,7 +420,7 @@ Open: MI-2. The operator must name which exemption the "leader guard" refers to.
 ### Lane decisions and confirmations (2026-10-10)
 
 - **MI-5 — resolved: seven supersede markers.** Line 219 joins the set. Its text says the card PR to base main is the only public path, which contradicts the release-PR-only model (REQ-LMF-014). The set is 179, 195, 196, 199, 216, 218, and 219 (cells E-41, E-42, E-43, E-44, E-38, E-39, and E-40; AC-LMF-011 expects seven). Lines 212 and 214 stay out of the set, for these reasons. Line 214 is the self-dispatch exception, and it already lands on main through the tool, so it is consistent with the new model (cell E-37). Line 212 is the lane duty for lanes that stop at merge-ready (Codex, REQ-SD-025), which the new model does not change (cell E-36).
-- **OQ-3 — closed; moved to residual risk R-2.** `workflow.worktree.auto_merge` stays false. This card makes no code change to `internal/cli/session_worktree_automerge.go`, and it adds no acceptance criterion.
+- **OQ-3 — closed; moved to residual risk R-2.** `workflow.worktree.auto_merge` is `true` today (`workflow.yaml:164`). REQ-LMF-008 sets it to `false` in M3, and until M3 lands the session-exit path stays enabled. This card makes no code change to `internal/cli/session_worktree_automerge.go`, and it adds no acceptance criterion.
 - **OQ-6 — closed.** `workflow` stays `git-flow`. No change.
 - **OQ-8 — redirected.** The local-main re-sync is not an operator-terminal requirement. It is a tool-owned `--ff-only` fast-forward from `origin/main`, run by the verb inside the integration window under the B3 guard treatment (B3a). The diverged case, which a fast-forward cannot cover, is inside the Q2 option scope.
 - **MI-4 — confirmed by the lead.** Template lines 92–95 go in §2. Template lines 160–163 go in §3, including "remote default branch". The local-main override in AGENTS.local.md §4.0 names local main as the card branch point and overrides that sentence explicitly.
@@ -410,7 +442,7 @@ Open: MI-2. The operator must name which exemption the "leader guard" refers to.
 
 - **Landing surface.** Local main of the primary checkout, decided by the operator (B1).
 - **Absorb gate.** `[local]` `git merge-base --is-ancestor 09a42899c HEAD` (ABS-0, spec §E).
-- **First-merge checks.** The checks in AC-LMF-016 and §J test local main only: local main contains the card tip after the merge. No first-merge check names origin/main as its target. BASELINE_SHA is used only for `[origin]` claims, such as the diverged re-sync (B3a).
+- **First-merge checks.** The checks in AC-LMF-016 and §J test local main only: local main contains the card tip after the merge. No first-merge check names origin/main; BASELINE_SHA applies only to the re-sync (plan §B3a).
 - **Closure.** Tool-owned on both merge paths (B7, REQ-LMF-007).
 - **Re-sync.** Tool-owned fast-forward with three cases, comparing against BASELINE_SHA (B3a, REQ-LMF-014).
 - **Q1 and Q2.** Recorded open in decision-index.md with empty verdicts.
@@ -442,7 +474,7 @@ Status: OPEN (Q2). Q1 changes only the agent Bash commit verbs (B3). This plan d
 Each risk states what the observations do not rule out, so a reader can judge it without re-deriving the measurement. The owner is the party who can reduce the risk. R-2, R-4, R-5, R-6, and R-9 are the open items carried as residual risk, owned by the leader; none of them has an acceptance criterion.
 
 - **R-1 — The re-measure command is declared by the lane.** `RunRemeasure` runs the lane's command through `sh -c` (`internal/factory/integration_remeasure.go:563`), and the record is trusted by its tree key and build identity, not by a signature (the trust model stated at `integration_remeasure.go:17-20`). `ValidateRemeasureRecord` refuses a non-zero exit and an empty sweep, but a lane can still declare a command that does not test what the card changed. Owner: the lane protocol and the card review. Reduction: the card-review evidence names the command, and the leader reads it.
-- **R-2 — Session-exit auto-merge has no primary-checkout refusal (former OQ-3, closed by the lane decision).** The switch `workflow.worktree.auto_merge` stays false (REQ-LMF-008), and this card makes no code change to `internal/cli/session_worktree_automerge.go`. The path (`sessionExitAutoMerge`, from line 156) runs `git merge` in the target tree without a primary-checkout refusal. That code was read at grep depth in revision 0.2 and is not re-read here. The residual is that re-enabling the switch without a later SPEC would let the path merge in the primary checkout. Owner: the leader.
+- **R-2 — Session-exit auto-merge has no primary-checkout refusal (former OQ-3, closed by the lane decision).** The switch `workflow.worktree.auto_merge` is `true` today (`workflow.yaml:164`). REQ-LMF-008 sets it to `false` in M3, and until then the path is enabled. This card makes no code change to `internal/cli/session_worktree_automerge.go`. The path (`sessionExitAutoMerge`, from line 156) runs `git merge` in the target tree without a primary-checkout refusal. That code was read at grep depth in revision 0.2 and is not re-read here. The residual is that re-enabling the switch without a later SPEC would let the path merge in the primary checkout. Owner: the leader.
 - **R-3 — `core.hooksPath` is `/dev/null` in this checkout.** The installed pre-push hook does not run here (cell E-48), so gap (b) can be observed only by running the hook body directly (G.2). A push from another checkout still runs the hook, and this card does not observe that checkout. Owner: the leader, who can confirm where the setting came from.
 - **R-4 — The release harness still describes develop cuts (OQ-7, open).** `hns-release-specialist` cuts release branches from develop and back-merges main into develop. A release run that follows it would cut from develop until M4 item 7 is complete, and that item is bounded by OQ-7. Owner: the leader.
 - **R-5 — The sweep base is stale (OQ-9, open, cross-SPEC).** SPEC-WORKTREE-SWEEP-001 REQ-WS-004 defaults its remote-landing base to `origin/develop`. Under this flow a sweep can judge a card landed against the wrong base. This SPEC does not edit that SPEC. Owner: the leader.

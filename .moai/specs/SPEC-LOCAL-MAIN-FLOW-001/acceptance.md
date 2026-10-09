@@ -1,10 +1,10 @@
-# SPEC-LOCAL-MAIN-FLOW-001 — Acceptance Criteria (v0.5)
+# SPEC-LOCAL-MAIN-FLOW-001 — Acceptance Criteria (v0.6)
 
 Gate status. **Independent**: the criterion does not depend on any decision or on the order of the run. **Ordered after ABS-0**: the criterion's edit commits satisfy `git merge-base --is-ancestor 09a42899c HEAD` (V8), checked per commit. **GATED-ON-DECISION**: the criterion is not evaluated until the named operator decision in `decision-index.md` is recorded.
 
 Claim labels. A claim about the local repository (HEAD, local main, the primary checkout) is marked `[local]`. A claim about a remote-tracking ref, or about what a remote holds, is marked `[origin]`. BASELINE_SHA, the origin/main value recorded at pre-flight, is used only for `[origin]` claims.
 
-Tree attribution. Revision 0.4 covers cells E-01 to E-60 at HEAD `e32f69c46`. E-58 to E-60 were measured in revision 0.4; E-01 to E-57 were re-measured in revision 0.3. E-32 is retired because its command is identical to E-21. Revision 0.5 adds the lint and audit cells E-61 to E-65, measured at the same HEAD, each with its judging build in the note. E-22 and E-27 are historical: their starting states (the absent SPEC directory and the absent decision index) no longer exist, so they cannot be re-executed to the same result and carry no release-blocking weight. E-23, E-34, and E-45 read the moving ref `main`. They are subject claims about what local main carries when the criterion is evaluated, and they are re-run at that time; they are not pins.
+Tree attribution. Revision 0.4 covers cells E-01 to E-60 at HEAD `e32f69c46`. E-58 to E-60 were measured in revision 0.4; E-01 to E-57 were re-measured in revision 0.3. E-32 is retired because its command is identical to E-21. Revision 0.5 adds the lint and audit cells E-61 to E-65, measured at the same HEAD, each with its judging build in the note. Revision 0.6 re-runs E-22, E-27, and E-61 to E-65 at HEAD `366b45155`, with the revision 0.6 edits to the SPEC directory uncommitted, and adds E-66 to E-77. E-66 shows that the only files changed between `e32f69c46` and `366b45155` are the five SPEC files, so the code named by the other cells' tree pins is unchanged. E-22 and E-27 are historical: their starting states (the absent SPEC directory and the absent decision index) no longer exist, so they cannot be re-executed to the same result and carry no release-blocking weight. Both test existence only; neither tests the gap specification that AC-LMF-015 names. E-23, E-34, and E-45 read the moving ref `main`. They are subject claims about what local main carries when the criterion is evaluated, and they are re-run at that time; they are not pins.
 
 ## D. AC Matrix
 
@@ -18,16 +18,16 @@ Tree attribution. Revision 0.4 covers cells E-01 to E-60 at HEAD `e32f69c46`. E-
 | AC-LMF-006 | REQ-LMF-006 | Independent | Must | V4 (TestLocalMainMergeStatusSetUnchanged) and V5 (TestMergeStepStatusSetChanged family) | E-06 |
 | AC-LMF-007 | REQ-LMF-007 | Independent (design record) | Must | F-07 | E-25, E-26, E-52, E-54, E-55, E-56, E-57, E-58, E-59, E-60 |
 | AC-LMF-008 | REQ-LMF-008 | Ordered after ABS-0 | Must | V8, F-08, V2, V4 | E-08, E-09, E-30 |
-| AC-LMF-009 | REQ-LMF-009 | GATED-ON-DECISION (Q1) | Must | F-09 | E-10 |
+| AC-LMF-009 | REQ-LMF-009 | Independent (enabled check); GATED-ON-DECISION (Q1, value check) | Must | F-09 | E-10 (value), E-77 (enabled) |
 | AC-LMF-010 | REQ-LMF-010 | Ordered after ABS-0 | Must | F-10, V11 | E-11, E-12, E-13 |
 | AC-LMF-011 | REQ-LMF-011 | Ordered after ABS-0 | Must | F-11 | E-14, E-15, E-36 to E-44 |
 | AC-LMF-012 | REQ-LMF-012 | Ordered after ABS-0 | Must | F-12 | E-17, E-18, E-19 |
 | AC-LMF-013 | REQ-LMF-013 | Ordered after ABS-0 | Should (regression guard) | F-13 | E-20, E-20c, E-21, E-21c |
-| AC-LMF-014 | REQ-LMF-014 | Ordered after ABS-0 | Must | F-14 | E-16 |
+| AC-LMF-014 | REQ-LMF-011 (release procedure text) and REQ-LMF-014 (re-sync sentence) | Ordered after ABS-0 | Must | F-14 | E-16 |
 | AC-LMF-015 | REQ-LMF-015 | Independent | Should (regression guard; see the note in D.1) | F-15 | E-22 (historical) |
 | AC-LMF-016 | REQ-LMF-003 and REQ-LMF-014 (the first merge) | GATED-ON-DECISION (Q1 and Q2) | Must, once gated open | F-16 and plan §J | E-34, E-45 |
 
-Counts: 16 criteria. Independent: 8 (AC-LMF-001 to 007, and 015). Ordered after ABS-0: 6 (AC-LMF-008, 010 to 014). GATED-ON-DECISION: 2 (AC-LMF-009 on Q1; AC-LMF-016 on Q1 and Q2). Severity: 14 Must, 2 Should (AC-LMF-013 and AC-LMF-015). Definition: Must = release-blocking (the RED cell is re-executable on the current tree and the criterion gates release). Should = regression guard, not release-blocking. Tier M ceiling: 16.
+Counts: 16 criteria. Independent: 8 (AC-LMF-001 to 007, and 015); AC-LMF-009 also carries an independent check of the enabled key. Ordered after ABS-0: 6 (AC-LMF-008, 010 to 014). GATED-ON-DECISION: 2 (AC-LMF-009 for its value check on Q1; AC-LMF-016 on Q1 and Q2). Severity: 14 Must, 2 Should (AC-LMF-013 and AC-LMF-015). Definition: Must = release-blocking (the RED cell is re-executable on the current tree and the criterion gates release). Should = regression guard, not release-blocking. Tier M ceiling: 16.
 
 Requirement coverage. Each of REQ-LMF-001 to REQ-LMF-015 maps to at least one criterion (see the Requirement column). REQ-LMF-003 and REQ-LMF-014 also appear in AC-LMF-016, because the first merge exercises both.
 
@@ -57,6 +57,7 @@ Requirement coverage. Each of REQ-LMF-001 to REQ-LMF-015 maps to at least one cr
 **And** `TestLocalMainResyncFastForwards` passes when local main is behind the origin value recorded as BASELINE_SHA by fast-forward (`[origin]` the target; `[local]` HEAD moves): the verb moves local main to BASELINE_SHA and reports the old and new SHAs. The test sets `refs/remotes/origin/main` with `git update-ref` in a scratch repository and contacts no remote.
 **And** `TestLocalMainResyncRefusesDiverged` passes when local main holds a commit that BASELINE_SHA (`[origin]`) lacks: the verb refuses with guidance, and HEAD is unchanged (`[local]`).
 **And** `TestLocalMainResyncAheadIsNoop` passes when local main already contains BASELINE_SHA (`[origin]`): the verb reports that no fast-forward is needed, and HEAD is unchanged (`[local]`).
+**And** `TestLocalMainResyncPreservesIgnoredFile` passes: an ignored file sits at a path that the fast-forward would write. The verb refuses with guidance, HEAD is unchanged, and the file keeps its content. Without `--no-overwrite-ignore`, git replaces such a file, as measured in cell E-72.
 **And** in the run phase, V10 observes in a scratch primary that a PreToolUse payload whose command is `moai integration merge --card t1616` is allowed, with no `BRANCH_GUARD_VIOLATION:` line. The observation is recorded in the run progress record.
 
 ### AC-LMF-004 — A dirty primary is refused with guidance (Independent)
@@ -92,11 +93,11 @@ Requirement coverage. Each of REQ-LMF-001 to REQ-LMF-015 maps to at least one cr
 **When** the values change to `main` and `false`, with the comment of plan §B8, in a commit for which `git merge-base --is-ancestor 09a42899c HEAD` exits 0 (V8; `[local]`).
 **Then** `grep -n 'develop_branch' .moai/config/sections/git-strategy.yaml` shows `main`, and the `manual:` key stays at line 8. The only `auto_merge:` line is `auto_merge: false`, and the phrase `auto_merge 유지` is absent. `TestEmptyTargetGuidance`, `TestEmptyTargetGuidanceResolvedTargetIsSilent`, `TestTargetProvenance`, and the fourteen `TestAutoMerge*` tests pass (V2, V4).
 
-### AC-LMF-009 — deny_commits_on keeps its value, and the key is enabled (GATED-ON-DECISION Q1)
+### AC-LMF-009 — deny_commits_on keeps its value, and the key is enabled (Independent for the enabled check; GATED-ON-DECISION Q1 for the value check)
 
-**Given** `deny_commits_on: [main]` at line 178 (E-10), and operator decision Q1 open in `decision-index.md`.
+**Given** `deny_commits_on: [main]` at line 178 (E-10), the repository copy without the key (E-77), and operator decision Q1 open in `decision-index.md`.
 **When** the repository copy gains the `local_main_integration` block with `enabled: true`.
-**Then** the `deny_commits_on` line still reads `[main]`, and the line after `local_main_integration:` reads `enabled: true`. If Q1 is decided before this criterion is evaluated, the criterion is replaced by a check of the decided value, and the replacement is recorded in the decision record.
+**Then** (independent of Q1) the line after `local_main_integration:` reads `enabled: true`, and this check is evaluated now. (Q1-gated) the `deny_commits_on` line still reads `[main]`. If Q1 is decided before the value check is evaluated, that check is replaced by a check of the decided value, and the replacement is recorded in the decision record.
 
 ### AC-LMF-010 — AGENTS.md carries the template's generic wording (Ordered after ABS-0)
 
@@ -108,7 +109,7 @@ Requirement coverage. Each of REQ-LMF-001 to REQ-LMF-015 maps to at least one cr
 
 **Given** no section 4.0 and no markers (E-14, E-15), and the seven target lines and the two excluded lines as they stand (E-36 to E-44).
 **When** section 4.0 is inserted before the heading at AGENTS.local.md line 175, and the seven markers of plan §B10 are added in place.
-**Then** `grep -c '^### §4.0' AGENTS.local.md` returns 1. `grep -c 'SUPERSEDED by §4.0' AGENTS.local.md` returns 7, and `grep -n 'SUPERSEDED by §4.0' AGENTS.local.md` names lines 179, 195, 196, 199, 216, 218, and 219 with neither 212 nor 214. The original text of rule 1 is still present, so no clause was deleted. The seven marked lines are the ledger cells E-38 to E-44 (lines 216, 218, 219, 179, 195, 196, and 199); the two unmarked lines, 212 and 214, are cells E-36 and E-37.
+**Then** `grep -c '^### §4.0' AGENTS.local.md` returns 1. `grep -c 'SUPERSEDED by §4.0' AGENTS.local.md` returns 7. The check is by clause text, not by line number, because section 4.0 shifts every line below it: each marked line carries the clause it marks, namely the §4.1 chain heading (`표준 체인`), rule 1 (`카드 브랜치는`), rule 2 (`원격 기본 브랜치다`), rule 5 (`commit-dead다`), the integration-status duty (`승인이 아니다`), the lane's integration-window duty (`창을 받으면:`), and the card-PR-only public path (`유일한 공개 경로다`). The two unmarked clauses, the Factory leader request (`Factory(리더`) and the self-dispatch exception (`self-dispatch lane 예외 — 병합 창`), carry no marker. The original text of rule 1 is still present, so no clause was deleted. The seven marked clauses are the ledger cells E-38 to E-44, and the two unmarked clauses are cells E-36 and E-37; those cells record the card base's line numbers, which are pre-state values.
 
 ### AC-LMF-012 — The four documents no longer state develop as live (Ordered after ABS-0)
 
@@ -135,7 +136,7 @@ Requirement coverage. Each of REQ-LMF-001 to REQ-LMF-015 maps to at least one cr
 **When** plan.md §G.2 and §G.3 are written.
 **Then** `grep -c '^### G\.[23] Gap' plan.md` returns 2. `grep -c 'Run-phase procedure' plan.md` returns 2. `grep -c '^Open:' plan.md` returns at least 2, each naming an open question or a missing input.
 **Note.** Because the RED cell cannot be re-executed on the current tree, the criterion loses release-blocking eligibility and is a regression guard (verification-completeness §2.1, undecidable disposition).
-- (a) Where the probed artifacts now exist: E-22 probed `.moai/specs/SPEC-LOCAL-MAIN-FLOW-001`, and E-27 probed `.moai/specs/SPEC-LOCAL-MAIN-FLOW-001/decision-index.md`. Both exist in the working tree on top of HEAD `e32f69c46`. No commit contains them yet, because the directory is untracked; once the first commit that carries them lands, E-22 and E-27 are re-pinned to that commit.
+- (a) Where the probed artifacts now exist: E-22 probed `.moai/specs/SPEC-LOCAL-MAIN-FLOW-001`, and E-27 probed `.moai/specs/SPEC-LOCAL-MAIN-FLOW-001/decision-index.md`. Both are carried by commit `0cca5364f` and exist at HEAD `366b45155`, where revision 0.6 re-runs them (E-22, E-27). Neither cell tests the gap specification, so this criterion has no RED cell that tests its own claim. After the revision 0.6 commit lands, E-22 and E-27 are re-run and re-pinned to that commit.
 - (b) The RED cell is kept as a regression guard, not a release gate: E-22 is a regression-guard record, and this criterion's pass is not a release criterion.
 - (c) Severity: Must = release-blocking (the RED cell is re-executable on the current tree and the criterion gates release). Should = regression guard, not release-blocking. Split: 14 Must, 2 Should (AC-LMF-013 and AC-LMF-015).
 
@@ -143,12 +144,17 @@ Requirement coverage. Each of REQ-LMF-001 to REQ-LMF-015 maps to at least one cr
 
 **Given** `[local]` the card tip is not an ancestor of local main (E-34), `[local]` local main is at `2aab5f797` (E-45), and both decisions are open in `decision-index.md`.
 **When** the operator records Q2 and the chosen method is executed (plan §J).
-**Then** the merge is verified by the rows of plan §J for the chosen option. `[local]` Local main contains the card tip after the merge, tested as an ancestry check against local main at evaluation time. For option (b), `[local]` the first parent equals the pre-merge HEAD, `[local]` the status set is equal before and after (REQ-LMF-006), and `[local]` a valid remeasure record exists for the merge tree. No first-merge check names origin/main; BASELINE_SHA applies only to the re-sync (plan §B3a). If Q1 has been recorded, its decided value is applied to `deny_commits_on`, and AC-LMF-009 is re-evaluated against that value.
+**Then** the merge is verified by the rows of plan §J for the chosen option; no row of another option applies.
+- Option (a), the operator's one-off merge: `[local]` the card tip is an ancestor of local main at evaluation time (`git merge-base --is-ancestor <card tip> main` exits 0), and `[local]` a valid remeasure record exists for the merge tree.
+- Option (b), the designed landing verb: `[local]` the merge SHA is recorded; `[local]` its first parent equals the pre-merge HEAD; `[local]` the status set is equal before and after (REQ-LMF-006); `[local]` a valid remeasure record exists for the merge tree; and the closure follows plan §B7. `[local]` Local main contains the card tip after the merge.
+- Option (c), the separate integration branch: `[local]` `git rev-parse main` is unchanged, and the card tip is on the integration branch. Local main does not contain the card tip by design, so no check requires it.
+
+No first-merge check names origin/main; BASELINE_SHA applies only to the re-sync (plan §B3a). If Q1 has been recorded, its decided value is applied to `deny_commits_on`, and AC-LMF-009 is re-evaluated against that value.
 **Until** both decisions are recorded, this criterion is not evaluated, and no step of this card merges into main.
 
 ## E. Evidence ledger
 
-Each entry records one command, its verbatim standard output, and its exit code, and names the tree it was measured on. Entries are fenced because a table cell mangles shell metacharacters (verification-completeness §2.1). Every cell was re-run in revision 0.3 at tree `e32f69c46`. E-22 and E-27 are historical (see the header above). E-35 is a pipeline and is not release-blocking: it is a byte measurement of a clause that plan §B9 replaces. E-32 is retired because it repeats E-21. Revision 0.4 adds E-58 to E-60 at the same tree. HEAD moved from `e32f69c46` to `0cca5364f` when the five SPEC files were committed; `git diff --stat e32f69c46 HEAD` lists only those five files, so the code tree named in each cell's tree field is unchanged. The supersede set of AC-LMF-011 is cells E-38 to E-44 (lines 216, 218, 219, 179, 195, 196, and 199); the two unmarked lines are E-36 (line 212) and E-37 (line 214).
+Each entry records one command, its verbatim standard output, and its exit code, and names the tree it was measured on. Entries are fenced because a table cell mangles shell metacharacters (verification-completeness §2.1). Every cell was re-run in revision 0.3 at tree `e32f69c46`. E-22 and E-27 are historical (see the header above). E-35 is a pipeline and is not release-blocking: it is a byte measurement of a clause that plan §B9 replaces. E-32 is retired because it repeats E-21. Revision 0.4 adds E-58 to E-60 at the same tree. HEAD moved from `e32f69c46` to `0cca5364f` when the five SPEC files were committed, and to `366b45155` in the revision 0.5 commit. Revision 0.6 re-runs E-22, E-27, and E-61 to E-65 at `366b45155`, corrects the E-63 note, and adds E-66 to E-77. E-66 shows that the only files changed between `e32f69c46` and `366b45155` are the five SPEC files, so the code named in the other cells' tree fields is unchanged. The supersede set of AC-LMF-011 is cells E-38 to E-44 (lines 216, 218, 219, 179, 195, 196, and 199); the two unmarked lines are E-36 (line 212) and E-37 (line 214).
 
 ```text
 E-01
@@ -343,9 +349,9 @@ tree: e32f69c46
 E-22 (historical)
 command: test -e .moai/specs/SPEC-LOCAL-MAIN-FLOW-001
 stdout: (none)
-exit: 0 at e32f69c46 (the directory now exists)
-tree: e32f69c46
-note: at the card base 2aab5f797 the directory was absent and the same command exited 1. Not re-executable to that result; regression guard only.
+exit: 0 at 366b45155 (re-run in revision 0.6; the directory exists; exit 0 also at e32f69c46)
+tree: 366b45155 (re-pinned in revision 0.6 from e32f69c46; the revision 0.6 SPEC edits are uncommitted, so this pin is re-run after the revision commit lands)
+note: at the card base 2aab5f797 the directory was absent and the same command exited 1. Not re-executable to that result; regression guard only. The probe tests existence, not the gap specification named by AC-LMF-015.
 ```
 
 ```text
@@ -388,9 +394,9 @@ tree: e32f69c46
 E-27 (historical)
 command: test -e .moai/specs/SPEC-LOCAL-MAIN-FLOW-001/decision-index.md
 stdout: (none)
-exit: 0 at e32f69c46 (the file now exists)
-tree: e32f69c46
-note: at the card base the file was absent and the same command exited 1. Not re-executable to that result; regression guard only.
+exit: 0 at 366b45155 (re-run in revision 0.6; the file exists; exit 0 also at e32f69c46)
+tree: 366b45155 (re-pinned in revision 0.6 from e32f69c46; the revision 0.6 SPEC edits are uncommitted, so this pin is re-run after the revision commit lands)
+note: at the card base the file was absent and the same command exited 1. Not re-executable to that result; regression guard only. The probe tests existence, not the content of the decision record.
 ```
 
 ```text
@@ -679,15 +685,15 @@ E-61
 command: moai spec lint SPEC-LOCAL-MAIN-FLOW-001
 stdout: ✓ No findings — all SPEC documents are valid
 exit: 0
-tree: e32f69c46
-note: judging build = installed `moai version` v3.2.0-rc.29, commit 4f8aba061. Ancestry check: `git merge-base --is-ancestor 4f8aba061 HEAD` exits 1 (E-65), so the installed build is not an ancestor of the tree HEAD e32f69c46. This row is a lag-check result; the tree rows E-63 and E-64 judge the tree.
+tree: 366b45155 (revision 0.6 SPEC edits uncommitted)
+note: judging build = installed `moai version` v3.2.0-rc.29, commit 4f8aba061. Ancestry check: `git merge-base --is-ancestor 4f8aba061 HEAD` exits 1 (E-65), so the installed build is not an ancestor of the tree HEAD 366b45155. This row is a lag-check result; the tree rows E-63 and E-64 judge the tree. Re-run in revision 0.6 after REQ-LMF-013 was rewritten in the GEARS shall-not form: an earlier run in the same revision reported LegacyEARSKeyword for an If/then clause, and that clause was removed.
 ```
 
 ```text
 E-62
 command: moai spec audit --filter-spec SPEC-LOCAL-MAIN-FLOW-001 --json
 stdout: {
-stdout:   "audited_at": "2026-10-09T19:16:54.927247Z",
+stdout:   "audited_at": "2026-10-09T19:58:07.258307Z",
 stdout:   "total_specs": 1,
 stdout:   "grandfathered": 0,
 stdout:   "modern_era_clean": 1,
@@ -704,8 +710,8 @@ stdout:     }
 stdout:   ]
 stdout: }
 exit: 0
-tree: e32f69c46
-note: judging build = installed `moai version` v3.2.0-rc.29, commit 4f8aba061. Ancestry check: E-65 (exit 1; not an ancestor of e32f69c46). The MCP tool `mcp__moai__spec_audit` on the same installed build reported V3R6 with no drift at this revision. It is not a shell command, so it has no cell of its own.
+tree: 366b45155 (revision 0.6 SPEC edits uncommitted)
+note: judging build = installed `moai version` v3.2.0-rc.29, commit 4f8aba061. Ancestry check: E-65 (exit 1; not an ancestor of 366b45155). Re-run in revision 0.6. The MCP tool `mcp__moai__spec_audit` on the same installed build reported V3R6 with no drift at revision 0.5; it was not re-run in revision 0.6, and it is not a shell command, so it has no cell of its own.
 ```
 
 ```text
@@ -713,15 +719,15 @@ E-63
 command: moai-tree-novcs spec lint SPEC-LOCAL-MAIN-FLOW-001
 stdout: ✓ No findings — all SPEC documents are valid
 exit: 0
-tree: e32f69c46
-note: judging build = a build of this tree: `go build -buildvcs=false ./cmd/moai` run in this worktree (module directory confirmed; tracked tree clean at e32f69c46; only the untracked SPEC directory is present). Its version identity is the source default (v3.1.3, commit none), not the release build. Its Go VCS stamp reads 2aab5f797, the main worktree's HEAD, so the stamp is not used. The binary is outside the repository, at the session scratchpad `/private/tmp/claude-501/-Users-goos-MoAI-moai-adk-go/2890cd8c-1262-4d8d-9c24-5b650c5ab263/scratchpad/moai-tree-novcs`, so the command is not reproducible from the repository alone.
+tree: 366b45155 (revision 0.6 SPEC edits uncommitted; no Go file differs from e32f69c46, E-66)
+note: judging build = a build of this tree: `go build -buildvcs=false -o <scratchpad>/moai-tree-novcs ./cmd/moai`, run from the worktree root. sha256 c3dab13107c42c7267219db763a06e8a5e94d165148c8c8284be9713aeebd9be; a second build with the same flags, writing to another path, reproduced that hash in revision 0.6. Its version identity is the source default (v3.1.3, commit none), not the release build. The binary carries no VCS stamp: it has no vcs.revision, vcs.time, or vcs.modified key and no buildvcs build setting (E-73). The binary is outside the repository, at the session scratchpad `/private/tmp/claude-501/-Users-goos-MoAI-moai-adk-go/2890cd8c-1262-4d8d-9c24-5b650c5ab263/scratchpad/moai-tree-novcs`; the build command above reproduces it.
 ```
 
 ```text
 E-64
 command: moai-tree-novcs spec audit --filter-spec SPEC-LOCAL-MAIN-FLOW-001 --json
 stdout: {
-stdout:   "audited_at": "2026-10-09T19:16:55.985988Z",
+stdout:   "audited_at": "2026-10-09T19:58:08.330304Z",
 stdout:   "total_specs": 1,
 stdout:   "grandfathered": 0,
 stdout:   "modern_era_clean": 1,
@@ -738,8 +744,8 @@ stdout:     }
 stdout:   ]
 stdout: }
 exit: 0
-tree: e32f69c46
-note: judging build = the tree build described in E-63 (no VCS stamp; version identity the source default v3.1.3). Same findings as the installed build (E-62): V3R6, no MUST-FIX.
+tree: 366b45155 (revision 0.6 SPEC edits uncommitted)
+note: judging build = the tree build described in E-63 (sha256 c3dab13107c42c7267219db763a06e8a5e94d165148c8c8284be9713aeebd9be; no VCS stamp, E-73; version identity the source default v3.1.3). Same findings as the installed build (E-62): V3R6, no MUST-FIX. Re-run in revision 0.6.
 ```
 
 ```text
@@ -747,8 +753,167 @@ E-65
 command: git merge-base --is-ancestor 4f8aba061 HEAD
 stdout: (none)
 exit: 1
-tree: 0cca5364f (code tree identical to e32f69c46)
-note: re-run at HEAD 0cca5364f and at e32f69c46: exit 1 both times. The installed build's commit 4f8aba061 is not an ancestor of the tree. Exit 1 (not 128) means both commits resolve and the first is not an ancestor of the second.
+tree: 366b45155 (revision 0.6 SPEC edits uncommitted)
+note: re-run in revision 0.6 at HEAD 366b45155: exit 1. Earlier runs at 0cca5364f and at e32f69c46 also exited 1 (the code tree is identical, E-66). The installed build's commit 4f8aba061 is not an ancestor of the tree. Exit 1 (not 128) means both commits resolve and the first is not an ancestor of the second.
+```
+
+```text
+E-66
+command: git diff --name-only e32f69c46 366b45155
+stdout: .moai/specs/SPEC-LOCAL-MAIN-FLOW-001/acceptance.md
+stdout: .moai/specs/SPEC-LOCAL-MAIN-FLOW-001/decision-index.md
+stdout: .moai/specs/SPEC-LOCAL-MAIN-FLOW-001/plan.md
+stdout: .moai/specs/SPEC-LOCAL-MAIN-FLOW-001/progress.md
+stdout: .moai/specs/SPEC-LOCAL-MAIN-FLOW-001/spec.md
+exit: 0
+tree: 366b45155
+note: all five changed paths are SPEC files; none is Go code, template, or configuration. The code named by the cells pinned to e32f69c46 is therefore unchanged at 366b45155.
+```
+
+```text
+E-67
+command: go test ./internal/config/ -list <the V2 selector of plan §F, block V2>
+stdout: TestStructYAMLSymmetry_Constitution
+stdout: TestStructYAMLSymmetry_Context
+stdout: TestStructYAMLSymmetry_Interview
+stdout: TestStructYAMLSymmetry_Design
+stdout: TestStructYAMLSymmetry_Statusline
+stdout: TestStructYAMLSymmetry_GitConvention
+stdout: TestStructYAMLSymmetry_Gate
+stdout: TestStructYAMLSymmetry
+stdout: TestEmptyTargetGuidance
+stdout: TestEmptyTargetGuidanceResolvedTargetIsSilent
+stdout: TestTargetProvenance
+stdout: ok  	github.com/modu-ai/moai-adk/internal/config	0.342s
+exit: 0
+tree: 366b45155
+note: RED-now selection is 11 of the 13 names in block V2. TestLocalMainIntegrationDefaultsFalse and TestLocalMainIntegrationReadsEnabled are absent until M1 adds them.
+```
+
+```text
+E-68
+command: go test ./internal/template/ -list <the V3 selector of plan §F, block V3>
+stdout: TestAgentsDisclosureCompleteness
+stdout: TestWorkflowWorktreeKeyHonesty
+stdout: TestAutoMergeRequiredChecks
+stdout: ok  	github.com/modu-ai/moai-adk/internal/template	0.365s
+exit: 0
+tree: 366b45155
+note: 3 of the 3 names in block V3 are selected now.
+```
+
+```text
+E-69
+command: go test ./internal/cli/ -list <the V4 selector of plan §F, block V4> | grep -c '^Test'
+stdout: 22
+exit: 0
+tree: 366b45155
+note: pipeline, outside the single-invocation form; not release-blocking (as E-35). 22 of the 39 names in block V4 are selected before M1; the other 17 are absent until M1 adds them.
+```
+
+```text
+E-70
+command: go test ./internal/factory/ -list <the V5 selector of plan §F, block V5> | grep -c '^Test'
+stdout: 3
+exit: 0
+tree: 366b45155
+note: pipeline, not release-blocking. 3 of the 9 names in block V5 are selected before M2; the other six are absent until M2 adds them.
+```
+
+```text
+E-71
+command: sed -n '162p;176,183p' internal/cli/session_worktree_automerge.go
+stdout: 	if cfg == nil || !cfg.Workflow.Worktree.AutoMerge {
+stdout: 	if !gitFlow.IsGitFlow() || gitFlow.DevelopBranch == "" {
+stdout: 		// REQ-WKW-003: the integration target is inert when the project is
+stdout: 		// not manual git-flow, develop_branch is empty, or the file is
+stdout: 		// unreadable (the loader yields the zero value on every failure).
+stdout: 		autoMergeNoticef(out, "skipped (no integration target): the project is not manual git-flow or git_strategy develop_branch is unset; set git_strategy.<mode>.develop_branch to enable session-exit auto-merge")
+stdout: 		return
+stdout: 	}
+stdout: 	develop := gitFlow.DevelopBranch
+exit: 0
+tree: 366b45155
+note: line 162 reads the auto_merge switch; lines 176–183 take the integration target from develop_branch (gitFlow.DevelopBranch). Cited by plan §B8 and M3.
+```
+
+```text
+E-72
+command: sh <scratchpad>/ff-ignore-probe.sh <empty scratch directory>  (scratch script outside the SPEC; its two merge invocations are `git merge --ff-only --no-overwrite-ignore <target>` and `git merge --ff-only <target>` in a clone)
+stdout: git: git version 2.54.0 (Apple Git-157)
+stdout: before: HEAD=32719f8 ignored=[b.txt] b.txt=[local ignored content]
+stdout: --- run A: git merge --ff-only --no-overwrite-ignore TARGET
+stdout: error: The following untracked working tree files would be overwritten by merge:
+stdout: 	b.txt
+stdout: Please move or remove them before you merge.
+stdout: Aborting
+stdout: Updating 32719f8..90aa951
+stdout: exit=1
+stdout: after A: HEAD=32719f8 b.txt=[local ignored content]
+stdout: --- run B: git merge --ff-only TARGET (default overwrite-ignore)
+stdout: Updating 32719f8..90aa951
+stdout: Fast-forward
+stdout:  b.txt | 1 +
+stdout:  1 file changed, 1 insertion(+)
+stdout:  create mode 100644 b.txt
+stdout: exit=0
+stdout: after B: HEAD=90aa951 b.txt=[committed]
+exit: 0 (the probe script's exit status)
+tree: 366b45155 (the probe runs in a scratch repository and does not read the tree)
+note: observed in revision 0.6. Run A refuses with exit 1 and leaves HEAD and the ignored file unchanged; run B overwrites the ignored file. Commit SHAs differ between probe runs (commit timestamps), so the outcome lines are the observation. This is the basis of plan §B3a step 5 and AC-LMF-003.
+```
+
+```text
+E-73
+command: go version -m <scratchpad>/moai-tree-novcs | grep -c -e vcs.revision -e vcs.time -e vcs.modified -e buildvcs
+stdout: 0
+exit: 1
+tree: 366b45155
+note: pipeline, not release-blocking. Zero matches: the tree build has no VCS stamp and no buildvcs build setting (its build settings are lines 79 to 88 of the go version -m output; toolchain go1.26.8). E-63 cites this cell.
+```
+
+```text
+E-74
+command: grep -n -o -e '표준 체인' -e '카드 브랜치는' -e '원격 기본 브랜치다' -e 'commit-dead다' -e '승인이 아니다' -e '창을 받으면:' -e '유일한 공개 경로다' -e 'Factory(리더' -e 'self-dispatch lane 예외 — 병합 창' AGENTS.local.md
+stdout: 179:표준 체인
+stdout: 195:카드 브랜치는
+stdout: 196:원격 기본 브랜치다
+stdout: 199:commit-dead다
+stdout: 212:Factory(리더
+stdout: 214:self-dispatch lane 예외 — 병합 창
+stdout: 216:승인이 아니다
+stdout: 218:창을 받으면:
+stdout: 219:유일한 공개 경로다
+exit: 0
+tree: 366b45155 (AGENTS.local.md is unchanged since e32f69c46, E-66)
+note: one match per fragment, on the clause lines named in AC-LMF-011. Each fragment occurs on one line only, so each clause check is unambiguous.
+```
+
+```text
+E-75
+command: grep -c '^Open:' .moai/specs/SPEC-LOCAL-MAIN-FLOW-001/plan.md
+stdout: 2
+exit: 0
+tree: 366b45155 (revision 0.6 plan edits uncommitted)
+note: the F-15 count after revision 0.6. The two open-item lines (the OQ-10 line in §G.2 and the MI-2 line in §G.3) both begin with "Open:". Before the revision the count was 1 (revision 0.5 audit B5).
+```
+
+```text
+E-76
+command: grep -c '^Operator verdict:$' .moai/specs/SPEC-LOCAL-MAIN-FLOW-001/decision-index.md
+stdout: 2
+exit: 0
+tree: 366b45155 (revision 0.6 decision-index edits uncommitted)
+note: both verdict lines are empty; Q1 and Q2 stay open (F-16).
+```
+
+```text
+E-77
+command: grep -c 'local_main_integration' .moai/config/sections/workflow.yaml
+stdout: 0
+exit: 1
+tree: 366b45155
+note: RED-now for the enabled check of AC-LMF-009: the repository copy has no local_main_integration key until M3 adds it. The template copy is E-01.
 ```
 
 ## F. File checks and proving commands for documents and configuration
@@ -760,7 +925,7 @@ Each F-entry is numbered by the criterion it serves. Each is a single shell comm
 - **F-08 (AC-LMF-008).** `grep -n 'develop_branch' .moai/config/sections/git-strategy.yaml` shows `main`. `grep -n 'manual:' .moai/config/sections/git-strategy.yaml` shows line 8. `grep -n 'auto_merge:' .moai/config/sections/workflow.yaml` shows `auto_merge: false`. `grep -c 'auto_merge 유지' .moai/config/sections/workflow.yaml` returns 0. `git merge-base --is-ancestor 09a42899c HEAD` exits 0 (V8).
 - **F-09 (AC-LMF-009).** `grep -n 'deny_commits_on' .moai/config/sections/workflow.yaml` shows `[main]` while Q1 is open. `grep -A1 'local_main_integration:' .moai/config/sections/workflow.yaml` shows `enabled: true`.
 - **F-10 (AC-LMF-010).** `grep -n -e 'commit-dead' -e 'card PRs go to base' -e 'card PR goes to base' AGENTS.md` prints nothing. `grep -c 'remote default branch' AGENTS.md` returns 1. `grep -c 'from local `main`' AGENTS.md` returns 0. `git diff --quiet e32f69c46 HEAD -- internal/template/templates/AGENTS.md.tmpl` exits 0.
-- **F-11 (AC-LMF-011).** `grep -c '^### §4.0' AGENTS.local.md` returns 1. `grep -n 'SUPERSEDED by §4.0' AGENTS.local.md` lists exactly seven lines, at 179, 195, 196, 199, 216, 218, and 219. `grep -c '카드 브랜치는 `main`에서 판다' AGENTS.local.md` returns 1.
+- **F-11 (AC-LMF-011).** `grep -c '^### §4.0' AGENTS.local.md` returns 1. `grep -c 'SUPERSEDED by §4.0' AGENTS.local.md` returns 7, and the seven marked lines carry the clauses named in AC-LMF-011, checked by clause text (no line number is part of the check). `grep -c '카드 브랜치는 `main`에서 판다' AGENTS.local.md` returns 1.
 - **F-12 (AC-LMF-012).** `grep -c 'Card worktrees branch FROM' .claude/rules/local/repo-local-pr-policy.md` returns 0. Inspection of `grep -n 'CLAUDE.local.md' .moai/docs/gitflow-integration-chain.md` and `grep -n 'CLAUDE.local.md' .claude/rules/local/gitflow-lane-protocol.md`: each line carries "retired" or "former".
 - **F-13 (AC-LMF-013).** `wc -c AGENTS.md` returns fewer bytes than 24228. `wc -m AGENTS.md` returns fewer than 40000. For each run-phase commit that grows an always-loaded file by more than 1,000 bytes, `git log -1 --format=%B <commit>` contains the measured byte counts and the cost statement.
 - **F-14 (AC-LMF-014).** `grep -c 'release/main-batch-YYYYMMDD' AGENTS.local.md` returns at least 1. `grep -c 'git push origin main:refs/heads/release/main-batch-' AGENTS.local.md` returns 1. `grep -c -e 'fast-forward' -e 'sync branch' AGENTS.local.md` returns at least 1.
@@ -780,6 +945,7 @@ Edge cases covered by the scenarios above:
 - A dirty path that is a directory prefix of a target path, or the reverse, counts as an overlap (AC-LMF-005).
 - The status set is compared byte for byte, including untracked-file rows, on both surfaces (AC-LMF-006).
 - `[origin]` BASELINE_SHA and `[local]` local main diverged: the re-sync refuses and leaves HEAD unchanged (AC-LMF-003).
+- An ignored file at a path that the re-sync would change is kept, and the re-sync refuses (AC-LMF-003; plan §B3a step 5).
 
 Quality gates for the run phase:
 
@@ -792,7 +958,7 @@ Quality gates for the run phase:
 
 Definition of Done:
 
-- All sixteen criteria have green-path evidence in the run progress record: the verbatim output, the command, and the tree SHA. Criteria gated on decisions are reported as not evaluated until the decisions are recorded.
+- Each criterion has green-path evidence in the run progress record (the verbatim output, the command, and the tree SHA), except the parts that depend on an open decision: the value check of AC-LMF-009 (Q1), and all of AC-LMF-016 (Q1 and Q2). Those parts are reported as not evaluated until the decisions are recorded.
 - Every ordered criterion was evaluated after V8 passed on its own commit.
 - Every byte statement required by AC-LMF-013 is present in its commit body.
 - Open decisions Q1 and Q2 remain in `decision-index.md` with an empty `Operator verdict:` until the operator decides.
