@@ -1,7 +1,7 @@
 ---
 id: SPEC-RELUP-DUALAXIS-001
 title: "release-update 하네스 CC+Codex 이중 축 정착 — codex 체인지로그 축·상태 파일 codex 키·BP 상시 절차"
-version: "0.2.0"
+version: "0.3.0"
 status: draft
 created: 2026-10-09
 updated: 2026-10-09
@@ -25,6 +25,7 @@ related_specs: [SPEC-UPDATE-ADD-CODEX-001, SPEC-CC2219-UPSTREAM-ALIGN-001]
 | 0.1.0 | 2026-10-09 | manager-spec | 최초 작성 — 카드 t1579 (High·운영자 확장 지시 2026-10-07·builder-harness/SPEC 소관). 워크트리 t1579 @ `2aab5f797` 실측 13종(앵커 grep + exit code 전수 관측)을 근거로 REQ 14건·AC 13건(릴리스 블로킹 10 + 회귀 가드 3) 확정. 근거 연구: `.moai/research/upstream-update-20261007.md` (확장 스윕 1차) + `upstream-update-20261008.md` (2차). SPEC ID 사전 검증: `SPEC-RELUP-DUALAXIS-001` 정규식 `^SPEC(-[A-Z][A-Z0-9]*)+-[0-9]{3}$` 매치 **PASS** (Bash 실행 관측) |
 | 0.1.1 | 2026-10-09 | manager-spec | 자체 spec-lint 피드백 수리 — `CoverageIncomplete` 3건(REQ-RDX-004/009/013 미커버)에 AC-RDX-014/015/016 신설(블로킹 10→13, 총 AC 13→16 — Tier M 천장 16에 정확히 도달). AC-RDX-016의 `source-first` 앵커로 mutant M-4의 기계 판정면 확보(LED-014, 0/exit 1 실측). lint 재실행: 0 error / 0 warning |
 | 0.2.0 | 2026-10-09 | manager-spec | plan-audit iter1 수리(FAIL 0.8125 — codex required 게이트, `.moai/reports/t1579/plan-audit.md`, rcpt-3e881c87c91a47a2117220b0). **CX-4(블로커)**: plan §E3을 런타임-형태 어댑터로 교체 — require·직접 실행 모두 `SyntaxError: Illegal return statement`(run.js:153, Node v22.14.0 본 재관측 exit 1), 러너는 ESM `export const meta`+top-level return/await 하이브리드라 export 적출+AsyncFunction 래핑 어댑터가 유일한 충실 평가형 — E3-P1 본 트리 **exit 0 관측**(`adapter-ok run=fn cc=1 shape-ok`), E3-P2(M2 종료형)는 codex 단언 포함. **CX-1**: plan §C 시드 재판정을 last-analyzed 의미론으로 재작성(D1·§7 전파 — 미분석 승격은 시드 미인상). **CX-3**: LED-001/002를 `domain` 필드 스코프로 재앵커 + AC-RDX-013에 sprint_contract 판독면 신설(LED-015 기준선 출력 기록, exit 0 — AC 수 16 불변). **CX-2**: AC-RDX-003을 `selectCodexSweepTargets(args)` ≥2(정의+top-level 디스패치 호출)로 재앵커 + §E3-P2 실질 생성 면(M2에 export 목록 확장 요건 추가). **D5**: §3 한계를 AC-RDX-014/015로 확장(iter2 블록 재판독이 제2 판정면). **D6**: frontmatter version 0.2.0 — 최신 HISTORY 행 정합 유지(0.1.1 지적의 재발 방지). **D7 처분**: progress §F 선기입은 라인 지시에 의한 것 — 오케스트레이터가 Phase 4에서 확정/수정(내용 수정 불요). **D8 처분**: 운영자 ①구절의 리포 참조 버전 비교 반쪽은 CARD-4 소관 기록 유지 — run-phase 위임 프롬프트가 M1/M2에 참조-버전 문맥을 운반할 것. 미 touched AC의 RED 셀은 바이트 불변 유지 |
+| 0.3.0 | 2026-10-09 | manager-spec | plan-audit iter2 수리(FAIL 0.875 — Testability 0.75, iter1 4건 수리는 전수 재검증 통과). **CX-5**: AC-RDX-003에 병합 관측면 신설 — plan §E3-P3 모의-런타임 실행 동사(mock agent/parallel로 러너 top-level 블록 실행, 시드 codexDeltas 주입)가 병합·agent 호출까지 실측; LED-016 RED 본 트리 관측(stderr `REJECTED: no-codex-dispatch:1`, exit 1 — 현재 러너는 CC 호출 1건에 codex 라벨 0건), M2 GREEN 기대 `dispatch-ok codex=1 total=2`/exit 0. §D1에 병합 변수 `allTargets`+`parallel(allTargets` 호출식+codex 라벨 접두사 `codex-release-notes:` 핀, §3 M-6 신설. **CX-6**: AC-RDX-006을 이중 사이트 기준으로 확장 — LED-006 GREEN 문턱 ≥1→≥2(Phase 0 판독·기본값 + Phase 7a 기록) + LED-017 기록 단계 리터럴 `7a-codex` 신설(RED 0/exit 1 본 트리 관측), §3 M-7 신설 — REQ-RDX-003의 기계 면 확보, AC 수 16 불변. **CN-4 처분**: 본 SPEC 산출물은 awk 계열 정렬-검증 동사를 인용하지 않는다 — 전부 단일 grep·node -e·python3 -c(가드 통과형). 미 touched AC의 RED 셀 바이트 불변 |
 
 ## 1. 문제 — 측정된 형태
 
@@ -82,6 +83,8 @@ $ grep -rn "last-cc-version" internal/
 - **M-3 "seed 누락"**: `last-codex-version.json` 스키마는 문서화하되 시드값을 빼는 mutant. AC-RDX-006은 통과하고 AC-RDX-007(`rust-v0.161.0`)에서 잡힌다 — 둘이 쌍인 이유다.
 - **M-4 "BP 껍데기 섹션"**: `Best-Practices` 헤딩만 넣고 원문-패치 강제를 빼는 mutant. AC-RDX-008(섹션 존재)은 통과할 수 있다 — REQ-RDX-012(shall not)와 plan §D 앵커(`source-first` 리터럴)가 잡는다. §3에 한계를 명시한다: 이 mutant는 grep 단일 판정면 밖이며 plan-auditor 서술 검증이 보완 판정면이다. 동일 한계는 AC-RDX-014/015에도 적용된다 — 기계 면은 LED-006/005 공유 grep이고, 서술 면(부재-기본값 경고·watch 규범의 실제 기재)은 plan-audit iter2의 해당 블록 재판독이 제2 판정면이다(plan-audit iter1 D5).
 - **M-5 "Go 침입"**: 상태 파일 쓰기를 Go 런타임(`internal/`)으로 옮기는 mutant. AC-RDX-011(회귀 가드 — `internal/` grep 0힛 유지)에서 잡힌다. 상태 파일은 하네스 계층 소유가 측정으로 확인된 구조적 사실이다(§1.1 M4).
+- **M-6 "병합 제외"**: `selectCodexSweepTargets`를 정의·export·직접 호출하되 그 target을 `parallel(...)` 병합에서 제외하는 mutant. LED-003(≥2)은 통과할 수 있으나 LED-016(plan §E3-P3 모의-런타임 관측 — codex 라벨 agent 호출 0건)에서 좌초한다(plan-audit iter2 CX-5).
+- **M-7 "단일 사이트 기록"**: codex 상태 문서를 Phase 0에만 두고 Phase 7a 기록 단계를 CC-only로 남기는 mutant. LED-006 단독(≥1)은 통과하나 LED-006 ≥2 + LED-017(`7a-codex`)에서 좌초한다(plan-audit iter2 CX-6).
 
 ## 4. 요구사항 (GEARS)
 

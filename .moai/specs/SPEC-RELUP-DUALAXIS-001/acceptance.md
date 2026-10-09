@@ -22,10 +22,10 @@ tier: M
 |----|------|-------------|---------------|------------|
 | AC-RDX-001 | 블로킹 | manifest `domain` 필드가 `Codex CLI upstream change tracking`을 명명 (domain 키 행 스코프 — CX-3) | LED-001 (0/1) | M4 → ≥1/0 |
 | AC-RDX-002 | 블로킹 | manifest `domain` 필드가 best-practices 축을 명명 (동일 스코프) | LED-002 (0/1) | M4 → ≥1/0 |
-| AC-RDX-003 | 블로킹 | runner에 codex 렌즈 셀렉터가 정의되고 top-level 디스패치 블록에서 호출된다 (`selectCodexSweepTargets(args)` ≥2 — CX-2; 실질 생성 면 plan §E3-P2) | LED-003 (0/1) | M2 → ≥2/0 |
+| AC-RDX-003 | 블로킹 | runner에 codex 렌즈 셀렉터가 정의·호출되고, 그 target이 `parallel(...)` 병합과 agent 호출까지 실측 흐른다 (`selectCodexSweepTargets(args)` ≥2 — CX-2 + E3-P3 병합 관측 — CX-5) | LED-003 (0/1) + LED-016 (exit 1, no-codex-dispatch) | M2 → grep ≥2/0 AND P3 `dispatch-ok codex=1 total=2`/0 |
 | AC-RDX-004 | 블로킹 | runner에 커밋 복원 폴백 앵커 `CODEX_COMMITS_FALLBACK` 존재 | LED-004 (0/1) | M2 → ≥1/0 |
 | AC-RDX-005 | 블로킹 | runner에 6테마 체크리스트 앵커 `CODEX_THEME_CHECKLIST` 존재 | LED-005 (0/1) | M2 → ≥1/0 |
-| AC-RDX-006 | 블로킹 | specialist가 `last-codex-version.json` 스키마를 문서화 | LED-006 (0/1) | M1 → ≥1/0 |
+| AC-RDX-006 | 블로킹 | specialist가 codex 상태 파일을 두 사이트에 걸쳐 문서화한다 — Phase 0(판독·부재 기본값)와 Phase 7a(기록 단계, `7a-codex` 리터럴) 각각 앵커 — 단일 사이트 mutant 봉쇄 (CX-6) | LED-006 (0/1) + LED-017 (0/1) | M1 → LED-006 ≥2/0 AND LED-017 ≥1/0 |
 | AC-RDX-007 | 블로킹 | specialist가 시드 `rust-v0.161.0`을 기술 | LED-007 (0/1) | M1 → ≥1/0 |
 | AC-RDX-008 | 블로킹 | specialist에 BP 상시 절차 섹션 존재 | LED-008 (0/1) | M3 → ≥1/0 |
 | AC-RDX-009 | 블로킹 | specialist Phase 3 URL 세트가 `code.claude.com` 캐노니컬을 명명 | LED-009 (0/1) | M3 → ≥1/0 |
@@ -41,10 +41,10 @@ tier: M
 
 - **AC-RDX-001** — **Given** manifest.json이 CC 단일 domain 문자열을 담은 상태로, **When** LED-001 명령(`domain` 키 행 스코프)을 실행하면, **Then** 일치 개수가 1 이상이다 (domain 필드가 codex 축을 명명 — source_request의 동일 문구는 매치 제외, CX-3).
 - **AC-RDX-002** — **Given** 동일 상태로, **When** LED-002 명령(동일 스코프)을 실행하면, **Then** 일치 개수가 1 이상이다 (domain 필드가 best-practices 축을 명명).
-- **AC-RDX-003** — **Given** runner가 CC 렌즈만 fan-out하는 상태로, **When** LED-003 명령을 실행하면, **Then** `selectCodexSweepTargets(args)` 출현이 2 이상이고 제2 출현은 top-level 디스패치 블록의 병합 호출이다 (정의 단독·주석 mutant는 1로 좌초 — CX-2). 실질 target 생성은 plan §E3-P2 어댑터가 시드 `codexDeltas`에 대해 실측한다 (mutant M-2 봉쇄).
+- **AC-RDX-003** — **Given** runner가 CC 렌즈만 fan-out하는 상태로, **When** LED-003 명령과 LED-016 명령(plan §E3-P3 모의-런타임 실행)을 실행하면, **Then** `selectCodexSweepTargets(args)` 출현이 2 이상(정의+top-level 병합 지점)이고, 모의 런타임이 관측한 agent 호출 중 `codex-release-notes:` 라벨이 1 이상이다 (셀렉터를 정의·호출해도 병합에서 제외하면 LED-016에서 좌초 — CX-5; 주석·미연결 정의는 LED-003에서 좌초 — CX-2).
 - **AC-RDX-004** — **Given** runner에 커밋 복원 절차가 없는 상태로, **When** LED-004 명령을 실행하면, **Then** `CODEX_COMMITS_FALLBACK` 앵커가 1 이상 관측된다.
 - **AC-RDX-005** — **Given** runner에 테마 관찰목록이 없는 상태로, **When** LED-005 명령을 실행하면, **Then** `CODEX_THEME_CHECKLIST` 앵커가 1 이상 관측된다.
-- **AC-RDX-006** — **Given** specialist 본문에 codex 상태 스키마가 없는 상태로, **When** LED-006 명령을 실행하면, **Then** `last-codex-version.json`이 1 이상 관측된다.
+- **AC-RDX-006** — **Given** specialist 본문에 codex 상태 절차가 없는 상태로, **When** LED-006 명령과 LED-017 명령을 실행하면, **Then** `last-codex-version.json`이 2 이상(Phase 0 판독·기본값 사이트 + Phase 7a 기록 사이트)이고 `7a-codex` 기록 단계 리터럴이 1 이상이다 (Phase 0 단독·Phase 7a 단독 mutant 모두 좌초 — CX-6).
 - **AC-RDX-007** — **Given** AC-RDX-006이 충족된 상태에서도 시드가 빠질 수 있으므로(mutant M-3), **When** LED-007 명령을 실행하면, **Then** `rust-v0.161.0`이 1 이상 관측된다.
 - **AC-RDX-008** — **Given** specialist에 BP 축이 없는 상태로, **When** LED-008 명령을 실행하면, **Then** best-practice 섹션이 1 이상 관측된다.
 - **AC-RDX-009** — **Given** Phase 3 URL 세트가 docs.anthropic.com 구형 나열인 상태로, **When** LED-009 명령을 실행하면, **Then** `code.claude.com`이 1 이상 관측된다.
@@ -58,10 +58,10 @@ tier: M
 | AC | REQ | mutant 봉쇄 |
 |----|-----|-------------|
 | AC-RDX-001/002 | REQ-RDX-010 | M-1 (source_request 기만) — 필드 스코프로 봉쇄 강화 (CX-3) |
-| AC-RDX-003 | REQ-RDX-006 | M-2 (주석·미연결 정의) — ≥2 앵커 + §E3-P2 실측 생성 면 (CX-2) |
+| AC-RDX-003 | REQ-RDX-006 | M-2 (주석·미연결 정의) + M-6 (병합 제외) — ≥2 앵커 + §E3-P3 디스패치 관측 면 (CX-2/CX-5) |
 | AC-RDX-004 | REQ-RDX-007 | — (M-2 공유 봉쇄면) |
 | AC-RDX-005 | REQ-RDX-008 | — |
-| AC-RDX-006 | REQ-RDX-001/002 | — |
+| AC-RDX-006 | REQ-RDX-001/002/003 | M-7 (단일 사이트 기록) — 이중 사이트 앵커 + `7a-codex` 기록 단계 (CX-6) |
 | AC-RDX-007 | REQ-RDX-002 | M-3 (seed 누락) |
 | AC-RDX-008 | REQ-RDX-012 | — (섹션 존재면) |
 | AC-RDX-009 | REQ-RDX-014 | — |
@@ -91,11 +91,13 @@ tier: M
 | LED-010 | `grep -c "HTML proposal report" .claude/agents/harness/hns-release-update-specialist.md` | `0` | `1` | RED (AC-010) |
 | LED-014 | `grep -c "source-first" .claude/agents/harness/hns-release-update-specialist.md` | `0` | `1` | RED (AC-016) |
 | LED-015 | `python3 -c "import json;d=json.load(open('.claude/commands/harness/release-update/manifest.json'));sc=d['sprint_contract'];print(sc['dimensions'],sc['thresholds'])"` | `['Functionality', 'Consistency'] {'Functionality': 0.85, 'Consistency': 0.8}` | `0` | 회귀 가드 기준선 — 출력 불변 유지가 PASS (AC-013, CX-3 판독면) |
+| LED-016 | plan §E3-P3 verb 축자 (모의-런타임 실행 — `node -e '...'`, plan §E3-P3 블록 참조) | stderr `REJECTED: no-codex-dispatch:1` | `1` | RED (AC-003 병합 관측면) — 현재 러너 디스패치는 CC 호출 1건, codex 라벨 0건 (CX-5, M2에서 `dispatch-ok codex=1 total=2`/exit 0으로 뒤집음) |
+| LED-017 | `grep -c "7a-codex" .claude/agents/harness/hns-release-update-specialist.md` | `0` | `1` | RED (AC-006 기록 사이트) — Phase 7a 기록 단계 부재 (CX-6) |
 | LED-011 | `grep -rn "last-codex-version" internal/` | (출력 없음) | `1` | 회귀 가드 기준선 — 0힛 유지가 PASS (AC-011) |
 | LED-012 | `grep -c "last-cc-version.json" .claude/agents/harness/hns-release-update-specialist.md` | `3` | `0` | 회귀 가드 기준선 — ≥3 유지가 PASS (AC-012) |
 | LED-013 | `grep -c "hns-release-update-run.js" .claude/commands/harness/release-update/manifest.json` | `1` | `0` | 회귀 가드 기준선 — 1 유지가 PASS (AC-013) |
 
-**LED-001/002/003 재앵커 근거**: plan-audit iter1(CX-2/CX-3)으로 위 세 행의 명령을 교체했다 — 재측정은 본 트리에서 수행했으며, 하네스 표면은 `2aab5f797` 핀 이후 `.moai/` 전용 변경으로 바이트 동일해 재관측이 충실하다. 나머지 LED 행은 원본 그대로다. LED-015의 세미콜론은 인용된 python 프로그램 내부의 것 — 셸 구분자가 아니므로 단일 호출 규약을 유지한다.
+**LED-001/002/003 재앵커 근거**: plan-audit iter1(CX-2/CX-3)으로 위 세 행의 명령을 교체했다 — 재측정은 본 트리에서 수행했으며, 하네스 표면은 `2aab5f797` 핀 이후 `.moai/` 전용 변경으로 바이트 동일해 재관측이 충실하다. **LED-016/017 신설 근거**: plan-audit iter2(CX-5/CX-6) — 같은 하네스 표면에서 본 실행 측정. 나머지 LED 행은 원본 그대로다. LED-015의 세미콜론은 인용된 python 프로그램 내부의 것 — 셸 구분자가 아니므로 단일 호출 규약을 유지한다. LED-016의 오류 메시지는 어댑터 자체의 `unhandledRejection` 핸들러가 내는 결정적 한 줄이다(전체 스택 대신).
 
 **보조 관측 (동일 트리)**: `grep -c "Codex" manifest.json` → `0`/exit 1 · `grep -ci "codex" runner` → `0`/exit 1 · `grep -c "HTML" specialist.md` → `0`/exit 1 · `grep -rn "last-cc-version" internal/` → 출력 없음/exit 1 (Go 라이터 부재 — 상태 파일이 하네스 계층 소유임의 근거, spec.md §1.1 M4). `git rev-parse --short HEAD` → `2aab5f797`.
 

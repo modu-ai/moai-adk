@@ -48,7 +48,7 @@ tier: M
 
 ```bash
 git branch --show-current ; git rev-parse --short HEAD     # WT-high-10-07 이후 재확인
-# RED-now 앵커 11종 재측정 (acceptance.md §D.3 원장의 명령 그대로 — 전부 단일 호출):
+# RED-now 앵커 12종 재측정 (acceptance.md §D.3 원장의 명령 그대로 — 전부 단일 호출):
 grep -c '"domain".*Codex CLI upstream change tracking' .claude/commands/harness/release-update/manifest.json   # 기대 0 (M4 전) — domain 필드 스코프 (CX-3)
 grep -c '"domain".*best-practices axis' .claude/commands/harness/release-update/manifest.json                   # 기대 0 (M4 전) — domain 필드 스코프 (CX-3)
 grep -c "selectCodexSweepTargets(args)" .claude/workflows/hns-release-update-run.js                              # 기대 0 (M2 전) — 착지 후 ≥2: 정의+top-level 디스패치 호출 (CX-2)
@@ -60,6 +60,7 @@ grep -ci "best-practice" .claude/agents/harness/hns-release-update-specialist.md
 grep -c "code.claude.com" .claude/agents/harness/hns-release-update-specialist.md                      # 기대 0 (M3 전)
 grep -c "HTML proposal report" .claude/agents/harness/hns-release-update-specialist.md                 # 기대 0 (M3 전)
 grep -c "source-first" .claude/agents/harness/hns-release-update-specialist.md                          # 기대 0 (M3 전)
+grep -c "7a-codex" .claude/agents/harness/hns-release-update-specialist.md                              # 기대 0 (M1 전) — Phase 7a 기록 단계 (CX-6)
 # PRESERVE 앵커 3종:
 grep -rn "last-codex-version" internal/   # 0힛 유지 (AC-RDX-011)
 grep -c "last-cc-version.json" .claude/agents/harness/hns-release-update-specialist.md                 # ≥3 유지 (AC-RDX-012)
@@ -76,7 +77,7 @@ grep -c "hns-release-update-run.js" .claude/commands/harness/release-update/mani
 |---|---|---|
 | manifest.json `domain` | 필드 스코프 패턴 `'"domain".*Codex CLI upstream change tracking'` — domain 키 행만 매치, source_request 동 문구 불매 (CX-3 재앵커) | AC-RDX-001 |
 | manifest.json `domain` | 필드 스코프 패턴 `'"domain".*best-practices axis'` — 동일 스코프 | AC-RDX-002 |
-| runner | `selectCodexSweepTargets(args)` 출현 **≥2** — 제1 출현=정의(`function selectCodexSweepTargets(args)`), 제2 출현=top-level 런타임 블록 안 디스패치 병합 호출(CC targets와 단일 `parallel(...)`로 합류). 주석·미연결 정의는 출현 1로 좌초. 실질 생성 면은 §E3-P2 어댑터(시드 codexDeltas → target 1개 + 형태 키 5종 실측). `module.exports`에 `selectCodexSweepTargets` 추가 필요(어댑터 export 경로) | AC-RDX-003 |
+| runner | `selectCodexSweepTargets(args)` 출현 **≥2** — 제1 출현=정의, 제2 출현=top-level 런타임 블록 병합 지점. 병합 형태 고정: `const allTargets = ccTargets.concat(codexTargets);` + `parallel(allTargets` 호출식. codex 렌즈 라벨 접두사 `codex-release-notes:`(CC의 `cc-release-notes:`와 병렬 — E3-P3 판정 토큰). 정적 면 LED-003 + 동적 면 LED-016(§E3-P3 모의-런타임 — codex 라벨 agent 호출 실측). `module.exports`에 `selectCodexSweepTargets` 추가 필요 | AC-RDX-003 |
 | runner | 상수 `CODEX_COMMITS_FALLBACK` — 본문 비어 있을 때의 커밋 API 복원 절차 문서 블록 앵커. 절차 내용: (1) 릴리즈 본문 1줄 제목만 관측되면 `gh api repos/openai/codex/commits`/`pulls` 주제 복원, (2) 복원 항목 전부 "commit-topic-derived" 라벨, (3) 잠재 티어1 후보는 PR 본문 확인으로 격상(#49713 정합 절차) | AC-RDX-004 |
 | runner | 상수 `CODEX_THEME_CHECKLIST` — 6테마 리터럴 `thread` / `rollout` / `subagent` / `compaction` / `MCP` / `other`. 행 형식: 테마 키 + 관측 PR 번호 목록 + MoAI 노출면 | AC-RDX-005 |
 | specialist | `last-codex-version.json` — Phase 0(판독·부재 기본값) + Phase 7a(쓰기)에 등장 | AC-RDX-006 |
@@ -85,6 +86,7 @@ grep -c "hns-release-update-run.js" .claude/commands/harness/release-update/mani
 | specialist | `code.claude.com/docs/en/` — Phase 3 URL 세트 갱신 (기존 `docs.anthropic.com/en/docs/claude-code/*` 6종을 캐노니컬 형태로) | AC-RDX-009 |
 | specialist | `HTML proposal report` — BP 축 명명 산출물 | AC-RDX-010 |
 | specialist | `rust-v0.161.0` 부재 기본값 — AC-RDX-006의 스키마 블록이 Phase 0 부재-기본값(`rust-v0.161.0` + 경고)을 포함해야 한다 (앵커 LED-006 공유) | AC-RDX-014 |
+| specialist | `7a-codex` — Phase 7a 기록 단계 제목 리터럴(CC의 Step 7a와 병렬; codex 상태 기록 절차의 사이트 앵커 — CX-6). `last-codex-version.json` 출현 **≥2**: 제1=Phase 0 판독·부재 기본값 블록, 제2=Phase 7a 기록 단계(단일 사이트 mutant는 둘 중 하나에서 좌초) | AC-RDX-006 |
 | runner | alpha watch 규범 — AC-RDX-005의 체크리스트 블록이 "alpha 테마는 watch 관찰목록, 안정 탑재 시에만 채택 판정"을 포함해야 한다 (앵커 LED-005 공유) | AC-RDX-015 |
 | specialist | `source-first` — 원문 패치 선행 강제 리터럴 (REQ-RDX-013, mutant M-4의 기계 판정면) | AC-RDX-016 |
 
@@ -116,6 +118,14 @@ grep -c "hns-release-update-run.js" .claude/commands/harness/release-update/mani
   **관측 (본 트리, Node v22.14.0, 2026-10-09)**: stdout `adapter-ok run=fn cc=1 shape-ok`, **exit 0** — M2 이전 현재 러너에서 관측. 거부된 형태의 근거(전부 본 실행 관측): (1) `node -e "require('./.claude/workflows/hns-release-update-run.js')"` → `SyntaxError: Illegal return statement` (run.js:153, exit 1) — Node v22 모듈 구문 탐지가 top-level await를 보고 ESM 목표로 파스, ESM에서 top-level return은 불법; (2) `node .claude/workflows/hns-release-update-run.js` 직접 실행 → 동일 SyntaxError, exit 1; (3) export 적출 없는 순수 AsyncFunction 래핑 → `export const meta`에서 `SyntaxError: Unexpected token 'export'`, exit 1 — 적출 단계가 어댑터의 필수 전제다.
 
   **E3-P2 (codex 축 — M2 종료 형태, M2 시점 관측)**: E3-P1 어댑터에 codex 단언을 추가한다 — 실행 직후 `const cx=mod.exports.selectCodexSweepTargets({codexDeltas:["rust-v0.161.0..rust-v0.162.0"]});if(cx.length!==1)throw new Error("codex-count="+cx.length);`와 동일 5키 형태 검사를 넣고 출력을 `adapter-ok run=fn cc=1 codex=1 shape-ok`로 확장한다. 기대: exit 0. 이 형태는 M2가 `selectCodexSweepTargets`를 정의하고 top-level 블록에 연결하며 **export 목록에 추가했을 때에만** 통과한다 — 미연결 정의·주석 mutant는 export 부재 또는 codex-count 단언에서 좌초한다(CX-2의 실질 생성 면, AC-RDX-003의 ≥2 앵커와 짝). M2 종료 시 이 verb의 exit 0 관측을 §E에 귀속한다.
+
+  **E3-P3 (dispatch 병합 관측 — M2 종료 형태, plan-audit iter2 CX-5)**: E3-P1/P2가 export 경로의 셀렉터만 검증한다면, P3는 **러너 자신의 top-level 블록을 모의 런타임으로 실행**해 병합까지 관측한다 — `agent`/`parallel` 목업을 주입해 `agent`가 정의된 상태(런타임 평가 재현)로 블록을 돌리고, 시드 `codexDeltas`가 만든 codex target이 `parallel(...)` 병합을 흘러 `codex-release-notes:` 라벨의 agent 호출로 착지하는지 관측한다:
+
+  ```bash
+  node -e 'const fs=require("fs");const AsyncFunction=Object.getPrototypeOf(async function(){}).constructor;const src=fs.readFileSync(".claude/workflows/hns-release-update-run.js","utf8");const body=src.replace(/^export\s+/gm,"");const calls=[];const mockAgent=(p,o)=>{calls.push(o&&o.label?o.label:String(p).slice(0,30));return Promise.resolve("ok")};const mod={exports:{}};new AsyncFunction("agent","parallel","phase","log","args","module","exports","require",body)(mockAgent,(ts)=>Promise.all(ts.map(t=>t())),()=>{},()=>{},({versionDeltas:["9.9.9"],codexDeltas:["rust-v0.161.0..rust-v0.162.0"]}),mod,mod.exports,require).then(()=>{const cx=calls.filter(l=>String(l).startsWith("codex-release-notes:"));if(cx.length<1)throw new Error("no-codex-dispatch:"+calls.length);console.log("dispatch-ok codex="+cx.length+" total="+calls.length)});process.on("unhandledRejection",(e)=>{console.error("REJECTED:",e.message);process.exit(1)});'
+  ```
+
+  **관측 (본 트리, 2026-10-09 — M2 이전)**: stderr `REJECTED: no-codex-dispatch:1`, **exit 1** — 현재 러너의 디스패치는 CC 호출 1건뿐이고 codex 라벨 0건(올바른 RED — M2가 연결할 표면이 이 병합이다). **M2 GREEN 기대**: stdout `dispatch-ok codex=1 total=2`, exit 0 — 셀렉터를 정의·export·직접 호출하면서 병합에서 제외하는 mutant는 codex 호출 0건으로 이 verb에서 좌초한다(CX-5의 기계 면; AC-RDX-003의 LED-016).
 - **E4 JSON 파스** — `python3 -c "import json;json.load(open('.claude/commands/harness/release-update/manifest.json'))"` exit 0 (domain 문자열 편집 후).
 - **E5 회귀 가드** — §C PRESERVE 앵커 3종 + sprint_contract 판독(LED-015 — dimensions·thresholds 출력이 기준선 `['Functionality', 'Consistency'] {'Functionality': 0.85, 'Consistency': 0.8}`와 일치; CX-3, internal/ 0힛 · last-cc-version.json ≥3 · runner_workflow 참조 1 포함).
 - **E6 spec-lint** — `go run ./cmd/moai spec lint SPEC-RELUP-DUALAXIS-001` (또는 프로젝트 규약 형태) exit 0 — MissingExclusions·FrontmatterInvalid 0건 확인.
@@ -129,7 +139,7 @@ grep -c "hns-release-update-run.js" .claude/commands/harness/release-update/mani
 1. Phase 0: codex 상태 파일 판독 절차 + 부재 시 기본값 `rust-v0.161.0` + 경고 (REQ-RDX-004). 스키마 블록 문서화 — CC 파일 키 계열 미러 + `rust-v0.161.0` 시드 명기 (REQ-RDX-001/002).
 2. Phase 1: codex 수집로 신설 — `gh api repos/openai/codex/releases` (비프리릴리즈 판정) + `npm view @openai/codex version` + 본문 비었을 때 커밋 API 폴백 지시 (러너 §D1 앵커와 정합).
 3. Phase 2: codex 티어 분류 — 러너 산출(테마별 관찰목록)을 받아 T1/T2/T3 큐레이션. alpha 테마 watch 규범 (REQ-RDX-009).
-4. Phase 7a: Step 7a-codex 신설 — `last-codex-version.json` 병행 기록 (REQ-RDX-003). CC 단독 기록 금지.
+4. Phase 7a: Step **7a-codex** 신설 — 단계 제목에 리터럴 `7a-codex`(CC의 Step 7a와 병렬, §D1 앵커)를 넣고 `last-codex-version.json` 병행 기록 (REQ-RDX-003). CC 단독 기록 금지. 본문 내 `last-codex-version.json` 출현은 Phase 0(판독·기본값) + Phase 7a(기록) 2곳이어야 한다(AC-RDX-006 ≥2 — CX-6).
 5. **§C 시드값 재판정 실행 지점** — M1 착지 직전 npm/gh 재측정.
 
 ### M2 — Runner codex 렌즈 (신규 분석 면)
@@ -139,7 +149,7 @@ grep -c "hns-release-update-run.js" .claude/commands/harness/release-update/mani
 1. `selectCodexSweepTargets(args)` 신설 — CC 셀렉터와 병렬 형태 (REQ-RDX-006). codex 스윕 버전 창은 `args.codexDeltas` 주입 + 스크립트 본문 시드 상수(CC 셀렉터의 `CURRENT_SWEEP_VERSIONS` 패턴 계승 — args 불신뢰 교훈).
 2. `CODEX_COMMITS_FALLBACK` 절차 블록 — §D1 (1)-(3) 내용 (REQ-RDX-007).
 3. `CODEX_THEME_CHECKLIST` — 6테마 리터럴 + 행 형식 (REQ-RDX-008). 프롬프트 문자열에 체크리스트 주입.
-4. top-level 실행부에 codex 렌즈 병렬 fan-out 편입 + 반환 형태에 codex 영향 표 추가. 불변식(§A.5) 유지 확인. 병합 형태 고정: `const ccTargets = selectResearchSweepTargets(args); const codexTargets = selectCodexSweepTargets(args);` 두 배열을 **단일 `parallel(...)` 디스패치로 합류**(`allTargets`) — codex 렌즈가 CC와 같은 agent() 호출 지점을 흐른다(AC-RDX-003 제2 출현의 위치 요건).
+4. top-level 실행부에 codex 렌즈 병렬 fan-out 편입 + 반환 형태에 codex 영향 표 추가. 불변식(§A.5) 유지 확인. 병합 형태 고정: `const ccTargets = selectResearchSweepTargets(args); const codexTargets = selectCodexSweepTargets(args);` 두 배열을 **단일 `parallel(...)` 디스패치로 합류**(`allTargets`) — codex 렌즈가 CC와 같은 agent() 호출 지점을 흐른다(AC-RDX-003 제2 출현의 위치 요건). codex target 라벨 접두사 `codex-release-notes:<window>`(CC의 `cc-release-notes:`와 병렬) — §E3-P3 관측면의 판정 토큰.
 5. `module.exports` 확장 — `{ run, selectResearchSweepTargets, MANIFEST_PATH }`에 `selectCodexSweepTargets` 추가(plan §E3-P2 어댑터의 export 경로).
 
 ### M3 — 스페셜리스트 BP 상시 섹션 + Phase 3 URL 세트 (절차 영구화)
