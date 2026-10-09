@@ -54,12 +54,13 @@ Exit condition: AC-RC30-06, -07, -08 pass; -22 and -23 are RED with the cause na
 
 ### B.5 Milestone M4 — Output TUX and report wording (High; user-visible; not gated on M1)
 
-0. Measured values first (U-08, AC-RC30-09): remove the literal at `update_archive.go` lines 282 and 367 (E-01), and print the no-op outcome from measured counts. U-27 consumes these values, so this step precedes it. 1. Step progress: N of M, a bar, one ✓ ! ✗ line per step, in place on a TTY, plain lines otherwise (U-26; reuse `tui.ProgressLine` and `tui.Progress`).
+0. Measured values first (U-08, AC-RC30-09): remove the literal at `update_archive.go` lines 282 and 367 (E-01), and print the no-op outcome from measured counts. U-27 consumes these values, so this step precedes it. The same change updates the characterization expectation at `internal/cli/tuxiu_characterization_test.go:201`, which pins the literal and `Updated 26 files` (E-22). 1. Step progress: N of M, a bar, one ✓ ! ✗ line per step, in place on a TTY, plain lines otherwise (U-26; reuse `tui.ProgressLine` and `tui.Progress`).
 2. One-screen closing summary with the five counts, one action line only when needed, the backup location, and one restore command (U-27).
 3. Conflicts and warnings above the summary; the measured outcome replaces the pre-merge risk class (U-28).
 4. Narrow-terminal and fallback behavior (U-29). The threshold is a named constant in `internal/tui` defaults.
 5. File lists collapse to counts; the full list goes behind `--verbose` or to a log path (U-16). `--verbose` keeps the NOISE-001 meaning.
-6. Golden snapshots are regenerated only through `make tui-snapshot`, on a reviewed diff.
+6. Locale key parity (U-30; REQ-RC30-019): the locale tables ko, en, ja, and zh define the same keys, judged by the locale part of AC-RC30-25 (`TestUpdateLocaleKeyParity`).
+7. Golden snapshots are regenerated only through `make tui-snapshot`, on a reviewed diff.
 
 Exit condition: AC-RC30-09, -17, -25 pass; `make tui-snapshot` output is reviewed.
 
