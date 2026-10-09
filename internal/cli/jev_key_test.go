@@ -536,6 +536,39 @@ func TestJevKeyOptionTokenValueRefused(t *testing.T) {
 	}
 }
 
+// Card-review r2 repair — REQ-GJK-010: redactArg's shape heuristics leak
+// adversarial key values — a '='-bearing value kept its prefix, a
+// dash-leading value passed as a flag name. Only confirmed flag names may
+// pass into the usage error; every other token is '****'.
+func TestGlmKeyEqualsInsideValueMasked(t *testing.T) {
+	home := redirectCredentialHomes(t)
+	_, err := execRoot(t, "glm", "--key", "sk-secret=", "sk-secret=")
+	if err == nil {
+		t.Fatal("a positional duplicate beside --key must be refused")
+	}
+	if strings.Contains(err.Error(), "sk-secret=") {
+		t.Errorf("refusal must not disclose the key value, got: %v", err)
+	}
+	if !strings.Contains(err.Error(), "****") {
+		t.Errorf("refusal should show the masked form, got: %v", err)
+	}
+	nothingStoredAt(t, filepath.Join(home, ".moai", ".env.glm"))
+}
+
+// Card-review r2 repair — REQ-GJK-010: a dash-leading key value must not pass
+// the redaction as if it were a flag name.
+func TestGlmKeyDashLeadingDuplicateMasked(t *testing.T) {
+	home := redirectCredentialHomes(t)
+	_, err := execRoot(t, "glm", "--key=-foo", "-foo")
+	if err == nil {
+		t.Fatal("a dash-leading positional duplicate must be refused")
+	}
+	if strings.Contains(err.Error(), "-foo") {
+		t.Errorf("refusal must not disclose the key value, got: %v", err)
+	}
+	nothingStoredAt(t, filepath.Join(home, ".moai", ".env.glm"))
+}
+
 // AC-GJK-008 — routing precedence: the scan never intercepts a routed
 // subcommand (M2 characterization, REQ-GJK-006).
 func TestGlmSetupRoutingUnchanged(t *testing.T) {

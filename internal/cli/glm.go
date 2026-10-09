@@ -575,16 +575,43 @@ func scanGLMKeyValue(args []string) (value string, rest []string, flagIdx int, p
 	return "", nil, -1, false, false
 }
 
+// glmFlagNames is the closed list of flag spellings the glm launch path
+// actually parses (profile, permission, worktree, factory-entry and help
+// flags — enumerated from launcher.go / factory.go / spawn.go /
+// worktree_branch_flag.go plus the help flag cobra registers). It is the
+// redaction allowlist: a conflicting token may pass into the usage error
+// verbatim only when it IS one of these names — a key value can look like
+// anything ('='-bearing, dash-leading, flag-shaped), so shape heuristics
+// leak it (card-review r2) and only the name whitelist is the safe pass.
+var glmFlagNames = map[string]bool{
+	"-p": true, "--profile": true,
+	"-b": true, "--bypass": true,
+	"--permission-mode": true,
+	"-w":                true, "--worktree": true,
+	"--branch": true,
+	"--spawn":  true,
+	"-f":       true, "--factory": true,
+	"-l": true, "--lane": true,
+	"--leader":      true,
+	"--factory-run": true,
+	"--key":         true,
+	"--help":        true, "-h": true,
+}
+
 // redactArg renders a conflicting token for a usage error without
 // disclosing any key value the token may carry (REQ-GJK-010): the
-// `--key=<value>` spelling keeps only its prefix plus a marker, a flag token
-// keeps its name (a flag name is not a secret), and any positional token is
-// masked outright — a key value can flow in as a positional duplicate.
+// `--key=<value>` spelling keeps only the flag name plus a marker, a token
+// that is exactly one of glm's parsed flag names keeps its name, and
+// everything else is masked outright — a key value is a positional token
+// here, and it can look like anything.
 func redactArg(arg string) string {
-	if i := strings.IndexByte(arg, '='); i >= 0 {
-		return arg[:i+1] + "****"
+	if arg == "--key" {
+		return arg
 	}
-	if strings.HasPrefix(arg, "-") {
+	if strings.HasPrefix(arg, "--key=") {
+		return "--key=****"
+	}
+	if glmFlagNames[arg] {
 		return arg
 	}
 	return "****"
