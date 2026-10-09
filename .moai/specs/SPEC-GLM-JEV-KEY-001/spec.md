@@ -2,7 +2,7 @@
 id: SPEC-GLM-JEV-KEY-001
 title: "moai glm --key flag and new moai jev --key command (shared credential storage)"
 version: "0.1.0"
-status: draft
+status: in-progress
 created: 2026-10-09
 updated: 2026-10-09
 author: manager-spec

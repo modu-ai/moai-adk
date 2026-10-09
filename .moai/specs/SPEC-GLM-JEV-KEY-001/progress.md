@@ -1,7 +1,7 @@
 # SPEC-GLM-JEV-KEY-001 — progress
 
 - SPEC: SPEC-GLM-JEV-KEY-001 (card t1613)
-- status: draft
+- status: in-progress
 - phase: plan (manager-spec, 2026-10-09)
 
 ## §E.1 Plan-phase Audit-Ready Signal
