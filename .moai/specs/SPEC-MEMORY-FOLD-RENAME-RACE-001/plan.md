@@ -8,16 +8,17 @@ Implementation plan for card t1568. Tier M. Baseline tree: `2aab5f797` (worktree
 
 The fold apply path ends `atomicWriteFoldFile` with a check→rename tail (`internal/cli/memory_fold.go:635-649`) that nothing serializes: a concurrent writer publishing between the last byte comparison and `os.Rename` is destroyed while the fold reports success. The approach is a per-store advisory lock (flock on POSIX, LockFileEx on Windows) held for the whole `applyFold` span — acquired before the first pre-write check, released after the last rename — so two fold processes on one store never overlap their windows. Requirements: spec.md §2 (REQ-MRR-001..007). Mechanism rationale and rejected alternatives: design.md. Decisions OD-1..OD-5 map one-to-one onto decision-index.md Q1..Q5; every row is implementation-level with the published default applied.
 
-### A.2 Files the run phase will touch (certain set — 6)
+### A.2 Files the run phase will touch (certain set — 7)
 
 | File | New/Edit | What |
 |---|---|---|
 | `internal/cli/memory_fold.go` | edit | M1: add two test-only seam fields — `mutateBeforeRename` (invoked immediately before `os.Rename`) and `mutateBetweenWrites` (invoked in `applyFold` between the two `atomicWriteFoldFile` calls, at the re-read/effective-state position) — with their invocations (test-only scaffolding, B-3 set/restore discipline). M2: acquire/release the store lock around the `applyFold` body. No existing check moves. |
-| `internal/cli/memory_fold_test.go` | edit | M1: the RED test. M2: the test's writer becomes the lock-taking (cooperating) form. |
+| `internal/cli/memory_fold_test.go` | edit | M1: the RED test. M2: the test's writer becomes the lock-taking (cooperating) form. M5: the card-close subtest of `TestFoldStoreLockSpanHeldThroughApply` (AC-MRR-009). |
 | `internal/cli/fold_store_lock_unix.go` | new | Unexported `foldStoreLock` — `unix.Flock` `LOCK_EX\|LOCK_NB` with a bounded retry loop; pattern copied from `internal/sessionmsg/lock_unix.go` (including the `unacquiredFD = -1` sentinel lesson). |
 | `internal/cli/fold_store_lock_windows.go` | new | Windows parity — `LockFileEx` `LOCKFILE_EXCLUSIVE_LOCK\|LOCKFILE_FAIL_IMMEDIATELY`; pattern from `internal/sessionmsg/lock_windows.go`. |
-| `internal/cli/fold_store_lock_test.go` | new | Lock unit tests: acquire/refuse/release, retry-bound, cross-process via a helper process or two-lock-object contention. |
-| `internal/cli/fold_store_lock_windows_test.go` | new | Windows-tagged (`//go:build windows`) lock-semantics test — acquire → contending acquire refused → release → acquire succeeds on the real `LockFileEx` path; executed by the Windows CI job (AC-MRR-008's judge). |
+| `internal/cli/fold_store_lock_test.go` | new | Lock unit tests: acquire/refuse/release, retry-bound. Cross-process: the fold-level child-process criterion AC-MRR-010 (M5), built on the helper-process pattern of `internal/execerr/execerr_test.go`. Two-lock-object contention is an in-process check, so it is not an alternative for the cross-process property. |
+| `internal/cli/fold_store_lock_windows_test.go` | new | Windows-tagged (`//go:build windows`) lock-semantics test — acquire → contending acquire refused → release → acquire succeeds on the real `LockFileEx` path; executed by the Windows CI job (AC-MRR-008's post-close judge); its card-close leg is `GOOS=windows go vet ./internal/cli/`. |
+| `internal/cli/memory_fold_wiring_test.go` | edit | The AC-MRR-006 cell (`TestFoldOnDoneContentionAbandonsWithoutWrite`), written in M3 on the wiring test's existing conventions (`wireFixture`, `runWireClose`, `waitWorkerExit`). M5: the cell-2 HOLDING precondition. Added at the iteration-4 repair (D5): the M3 run edited this file, and the earlier table omitted it. |
 
 Named contingencies (each +1 file, none expected): (i) if the auditor requires the lock to live outside `internal/cli` for t1595 adoption, it promotes to `internal/filelock/` with the same body; (ii) if `go vet` on windows flags a build-tag detail, a `fold_store_lock_stub.go` may be needed — it would be a defect, not a design change.
 
@@ -43,11 +44,13 @@ The RED test (M1) injects a direct write at the new seam — on the pre-fix tree
 - D-2 — Bounded wait: the retry loop's deadline is a named constant in the new lock file (value: 2 seconds — same magnitude as the close-path bound's production ceiling; exact value settled in review). On deadline expiry: the clean refusal error of REQ-MRR-003, naming the store path.
 - D-3 — The lock file is `<store-dir>/.moai-fold.lock`, mode 0644, created `O_CREAT|O_RDWR|O_CLOEXEC` (POSIX) / `O_CREAT` (Windows). It is never removed on release (removal races a concurrent opener; flock's kernel lifetime makes removal unnecessary).
 - D-4 — The card-close path's `writesForbidden` checks and the `run.temp` recovery keep their exact positions; the lock changes nothing about abandonment (REQ-MRR-006).
-- D-5 — No `go.mod` change (REQ-MRR-007); no edit outside the five files of §A.2.
+- D-5 — No `go.mod` change (REQ-MRR-007; AC-MRR-007 checks `go.mod` and `go.sum` against the pinned base); no edit outside the seven files of §A.2.
 
 ## §E Self-Verification
 
-Each milestone carries its own verifying commands (§F); the milestone is done when those commands' outputs are observed and recorded in progress.md §E.2 (run phase). No milestone is closed on an unrun command.
+Each milestone carries its own verifying commands (§F); the milestone is done when those commands' outputs are observed and recorded in progress.md §E.2 (run phase). No milestone is closed on an unrun command, except as the exception below states.
+
+**AC-MRR-008 post-close exception.** AC-MRR-008's observation is the Windows leg of `release-pr-multi-os.yml`, which the release process runs at the release window (`release/*` pull requests), after card close; card close is judged on the local gates, and AC-MRR-008's result is carried to the release window and is not recorded as a card-close pass.
 
 ## §F Milestones
 
@@ -74,13 +77,24 @@ Order: decision-reversibility first — the RED proof (most likely to reshape th
 1. Contention refusal (AC-MRR-003): hold the lock in-test, run the fold verb on that store → non-zero exit, the error names the store, both store files byte-identical to pre-state (asserted inside the test).
 2. Close-path abandonment under contention (AC-MRR-006): held lock + the wiring's bounded step → the step reports its one stderr line and begins no write (existing wiring-test conventions).
 3. Lock-file invisibility (AC-MRR-005): `moai memory doctor --dir <fixture>` and a fold preview on a store carrying `.moai-fold.lock` produce byte-identical output to the same store without it.
-4. Windows parity (AC-MRR-008): `fold_store_lock_windows_test.go` executes the lock semantics on the real `LockFileEx` path (acquire → contending acquire refused → release → acquire succeeds). The judge is the Windows leg of `release-pr-multi-os.yml` (`windows-latest`, `go test -json -race -timeout 35m ./...` — full suite, every leg blocking): the only Windows surface that executes `internal/cli` root packages (the PR gate `pr-multi-os-gate.yml` never fires on `internal/cli` root changes and tests other packages — measured, audit iter-2 D6). Its green is observed at the release window, after card close (acceptance.md §4 records the timing); `GOOS=windows go build ./...` exits 0 as the local compile gate.
+4. Windows parity (AC-MRR-008, regression guard): `fold_store_lock_windows_test.go` executes the lock semantics on the real `LockFileEx` path (acquire → contending acquire refused → release → acquire succeeds). Its post-close judge is the Windows leg of `release-pr-multi-os.yml` (`windows-latest`, `go test -json -race -timeout 35m ./...`; the matrix job carries no `continue-on-error`): the only Windows surface that executes `internal/cli` root packages, because the PR gate `pr-multi-os-gate.yml` filters on `internal/hook/**` and `internal/cli/worktree/**`, not on the `internal/cli` root (measured at plan-audit iter-2 D6; re-read at iter-4). Its card-close legs are `GOOS=windows go build ./internal/cli/...` and `GOOS=windows go vet ./internal/cli/` (the vet leg type-checks the windows-tagged test file, which the build does not), both exit 0. **AC-MRR-008 post-close exception.** AC-MRR-008's observation is the Windows leg of `release-pr-multi-os.yml`, which the release process runs at the release window (`release/*` pull requests), after card close; card close is judged on the local gates, and AC-MRR-008's result is carried to the release window and is not recorded as a card-close pass.
 
 ### M4 — Close-out (Priority Medium)
 
 1. Full affected family: `go test -race -count=1 -timeout 900s ./internal/cli -run '^(TestMemoryFold|TestReviewArchiveUpdate|TestReviewSequentialAbandonedTempOwnership).*$'` → PASS (B-1 scope; CI judges the rest; the selector's swept set re-verified by the §C.1 `-list` gate).
 2. `go build ./...` exit 0.
-3. Update progress.md §E.2/§E.3 evidence; verify every AC command's output is on record.
+3. Update progress.md §E.2/§E.3 evidence; verify every card-close AC command's output is on record. AC-MRR-008 is excluded from this obligation by the exception in §E, in the same words: **AC-MRR-008 post-close exception.** AC-MRR-008's observation is the Windows leg of `release-pr-multi-os.yml`, which the release process runs at the release window (`release/*` pull requests), after card close; card close is judged on the local gates, and AC-MRR-008's result is carried to the release window and is not recorded as a card-close pass.
+
+### M5 — Post-close cells: cross-process, card-close span, cell-2 HOLDING (Priority High for item 1; CONDITIONAL on an operator scope decision)
+
+Status at plan-audit iteration 4: M1–M4 are recorded complete, and spec.md reads `status: completed`. Three repaired criteria need test code that HEAD does not contain. Checked at iteration 4: no process-spawning construct in the lock tests; the span test samples only the verb path; the cell-2 park point samples nothing. M5 runs only if the operator chooses it. The two options: **(a)** run M5 and reopen the SPEC through the amendment procedure (`completed → in-progress`, with a HISTORY `## Amendments` row recording `prior_completed_sha` equal to the prior close's `sync_commit_sha`, per `.claude/rules/moai/development/spec-frontmatter-schema.md` § Status Transition Ownership Matrix); or **(b)** accept the three cells as an explicit post-close exception, which leaves REQ-MRR-001's cross-process clause and the card-close span unverified and recorded as residual risk.
+
+1. **AC-MRR-010 (cross-process, fold level), in `fold_store_lock_test.go`.** Step 1 is the RED-now: on the pinned pre-fix tree `84bdf072c` (POSIX), the parent holds `<store>/.moai-fold.lock` through a raw `flock` (no M2 API exists there), and the child fold applies while the parent holds it — the defect. Record the verbatim output, exit code, and tree SHA in progress.md §E.2 before any GREEN work. The GREEN is the criterion on HEAD.
+2. **AC-MRR-009 (card-close subtest), in `memory_fold_test.go`.** Add a second subtest to `TestFoldStoreLockSpanHeldThroughApply` that drives `foldOnDoneStep` through the wiring fixture (`wireFixture`, `seedWireCard`, `runWireClose` in `memory_fold_wiring_test.go`) with a bound that cannot expire during the sample. Samples 2–4 are applyFold-internal seams and fire on both entry points (premise P2). Sample 1 (`mutateDisk`) fires only inside `newMemoryFoldCmd` (`memory_fold.go:183–187`), so this subtest takes sample 1 from the test immediately before it invokes the step; the expected outcome (acquired) is unchanged.
+3. **AC-MRR-006 cell 2 (HOLDING precondition), in `memory_fold_wiring_test.go`.** Inside the parked `mutateBetweenWrites` callback, before the `lockHeld` signal, a non-blocking acquire by a second lock object must be refused. An acquisition there fails the cell.
+4. Re-run the commands of AC-MRR-006, AC-MRR-009, and AC-MRR-010, and record their verbatim output in progress.md §E.2 (an M5 block). AC-MRR-010 is adopted once its RED-now (step 1) and its GREEN are both on record.
+
+M5 changes test files only and no production code; every file it touches is listed in §A.2.
 
 ## §G Anti-Patterns
 
@@ -92,7 +106,7 @@ Order: decision-reversibility first — the RED proof (most likely to reshape th
 
 ## §H Cross-References
 
-- spec.md §2 (REQ-MRR-001..007), acceptance.md (AC-MRR-001..008), design.md (mechanism + rejected alternatives), decision-index.md (Q1..Q5, defaults applied).
+- spec.md §2 (REQ-MRR-001..007), acceptance.md (AC-MRR-001..010), design.md (mechanism + rejected alternatives), decision-index.md (Q1..Q5, defaults applied).
 - `SPEC-MEMORY-FOLD-BUDGET-001` (the write path's origin; REQ-MFB-004 ordering frozen by D-1), `SPEC-MEMORY-INDEX-FOLD-001` (no-code overlap).
 - Card t1595 item 8 (same-store two-fold; Out of Scope here; the lock is adoptable there).
 - `internal/sessionmsg/lock_unix.go` / `lock_windows.go` (the copied pattern), `internal/cli/memory_fold.go:635-649` (the window).
