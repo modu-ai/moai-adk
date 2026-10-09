@@ -18,7 +18,22 @@
 - plan-audit iteration 1: FAIL 0.69 / Tier M 0.80 (`.moai/reports/t1582/plan-audit.md`) — D1-D6 아티팩트 수리 완료(v0.2.0, plan.md·acceptance.md·spec.md).
 - plan-audit iteration 2: FAIL 0.85 (동일 파일 Iteration 2 섹션) — 라운드 2 수리 완료(v0.3.0): D19(M1 렌더 12곳 실측 열거+총괄 규칙+cli 스코프 — 감사 prose "14"는 자기 목록 10+2의 오산술, 리더 독립 grep과 본인 측정 일치)·D13(§4 목록 교체)·D14(cause-7 시딩 설비 `internal/factory/mergestep_red_t1582_test.go` + merge-ready RED `internal/cli/factory_merge_ready_red_t1582_test.go` plan 단계 작성·실측, AC-005/006 셀 verbatim 기록, AC-006 실행 계수 가드 `--- PASS` ≥ 2)·D15(스크럽 변수 3종 전체 목록 명기+축약형 전면 제거)·D17(DoD tracked+untracked 수집 대조)·D20(GNU grep `-r`+exit 구분)·D18(version 0.3.0 정합). RED 총 4건 실측: R7-2·R7-3 단위/e2e·merge-ready ③.
 - 429 재개 기록: 라운드 2 중 429(요청 한도) 2회 — 트랜스크립트 재개로 잔여 목록(디스크 상태 대조) 수행, 부분 상태는 위 행들이 증언.
-- plan_status: audit-ready (pending plan-auditor verdict)
+- plan_status: audit-ready + ceiling-exception approved (§G 참조)
+
+## §G Plan-audit Ceiling Exception Record
+
+- 판정 궤적: iteration 1 FAIL 0.69 → 2 FAIL 0.85 → 3(천장) FAIL **0.91** — 단조 상승, STOP 신호 없음. 영수증 3건: `rcpt-a221eb42d027db89e2c7fac2`·`rcpt-33b7845356c311a4cddf2a1c`·`rcpt-7b69c79f30c6981fbbcc0aa1` (codex required 게이트 3/3 응답, 매 라운드 축소하는 형식 지적).
+- 최종 잔여: acceptance.md 형식 hunk 2건(D21 DoD 허용 목록 내부 모순·D22 RED stdout 장부) — 코드 결함 0, 코드 변경 0줄.
+- **운영자 결정: 천장 예외 승인·run 진입** — 근거 "0.91 단조·STOP 없음·잔여 형식 2건 수리 완료·코드 0줄". 리더 경유 전달(2026-10-09 21시경, msg), lane-26 기록.
+- 판정 후 조치: D21·D22 hunk를 감사자의 required-fix 명세대로 수리(acceptance.md 20:30, §D.3 증거 장부 E-LEDGER-001~004 신설 포함) — 천장으로 재감사 없음, 본 행이 그 상태의 기록.
+- decision record: decided_by=operator+leader evidence_refs=.moai/reports/t1582/plan-audit.md iter-3 ladder_path=리더-경유 운영자 결정(keep-set 인접 게이트의 정식 처분) — Kickoff 재개.
+
+## §F Phase 4 Mode Selection
+
+- Input parameters: tier=M, scope=4 소스 파일+4 RED 오버레이+테스트 재작성 1(internal/factory 2·internal/cli 2), domain count=1(Go CLI/factory 표면), file language mix=Go 100%, concurrency benefit=LOW(coding-heavy — 마일스킨 의존: M1 검증기→M2 판정→M3 exit→M4 원자화 순차), agent-team prereqs=미요청.
+- Mode evaluation: direct 미선정(다중 파일·다중 마일스톤), fanout 미선정(coding-heavy — Anthropic 병렬화 주의), sweep 미선정(기계 균일 변환 아님), agent-team 미선정(명시 요청 없음).
+- Decision: `serial`
+- Justification: 단일 표면의 순차 의존 수리 패킷 — 마일스톤 M1→M4가 서로의 산출 위에 서고 같은 파일군을 건드리므로 단일 manager-develop 위임이 재위임 위험과 쓰기 경합을 최소화한다(Tier M 전체 Section A-E 템플릿 적용).
 
 ## §E.2 Run-phase Evidence
 
