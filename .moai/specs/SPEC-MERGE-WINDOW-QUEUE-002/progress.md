@@ -164,7 +164,55 @@ m1_to_mN_commit_strategy: one commit per milestone (M1 a560b3b6f, M2 eac7fab39, 
 
 ## §E.4 Sync-phase Audit-Ready Signal
 
-_<pending sync-phase>_
+```yaml
+sync_status: complete-with-gaps
+sync_complete_at: 2026-10-09T18:27:39Z
+sync_commit_sha: pending-backfill
+sync_tier: M
+ac_source: .moai/specs/SPEC-MERGE-WINDOW-QUEUE-002/acceptance.md
+ac_live_count_for_record: 8
+b12_self_test_a: pass
+b12_self_test_b: not-applicable-no-count-stated
+b12_self_test_c: pass
+changelog_entry_position: "CHANGELOG.md [Unreleased] - Fixed group, first bullet"
+frontmatter_status_transitions:
+  spec_md_status: in-progress -> completed
+  spec_md_updated: 2026-10-10
+  plan_md_status_field: absent
+  acceptance_md_status_field: absent
+  progress_md_status_field: absent
+```
+
+### E.4.1 Sync evidence (this run)
+
+- Pre-emission check: `grep -c 'SPEC-MERGE-WINDOW-QUEUE-002' CHANGELOG.md` returned 0 before the entry was appended.
+- AC counter on the Tier M acceptance file named by `ac_source`: live=8, excluded=0, ambiguous=0. The CHANGELOG entry states no AC count (sync instruction); the count is recorded for attribution only.
+- Every path cited in the CHANGELOG entry was checked with `ls`.
+- `spec.md`: `status: in-progress` changed to `status: completed`. The `updated:` line already read 2026-10-10, so it was not edited. `plan.md` and `acceptance.md` carry no status field and no updated field. `progress.md` has no status line.
+- The `spec.md` body, HISTORY, and other frontmatter fields are untouched. §E.2, §E.3, and §J are untouched.
+- Clock note: `sync_complete_at` is the UTC instant. The frontmatter `updated:` date is the local KST date (2026-10-10). Both are correct for their own clock.
+
+### E.4.2 MX-tag validation (report-only; no code edited)
+
+Method: `grep -n '@MX'` over the seven changed production files; `git diff -U0 8673c2a95..HEAD` for changed and added functions; non-test call sites counted by grep; a `go func` scan over the same files. The dedicated `moai mx` scan was not run, because the installed moai build is not valid evidence for this card.
+
+- The card removed 0 `@MX` lines. The seven files contain no goroutine launch.
+- Missing mandatory ANCHOR (fan_in >= 3), introduced by this card: `ShortSHA` (internal/factory/integration_merge_step.go; exported; new). Seven distinct callers across four files: `factoryCompleteCard`, `completePostMergeConflict`, `newIntegrationMergeCmd`, `newIntegrationRemeasureCmd`, `remeasureVerdictError`, `RunMergeStep`, and `postMergeHold`. No `@MX` tag sits above the declaration. Not added (report-only).
+- Missing mandatory ANCHOR (fan_in >= 3), pre-existing: `ReleaseIntegrationLock` (internal/factory/integration_lock.go). The file carries zero `@MX` lines at the base and at HEAD. At least five distinct callers across five files. Not introduced by this card. Not added.
+- Present and consistent: `ValidateRemeasureRecord` carries `@MX:ANCHOR` (internal/factory/integration_remeasure.go; 5 call sites across 4 files, matching its REASON text). `RunMergeStep` carries `@MX:WARN` for complexity; kept.
+- Below the fan_in threshold, no mandatory tag: `isFullSHA` (1 caller), `holdThenReleaseCauseSeven` (1), `releaseIntegrationLockLocked` (2), `RunRemeasure` (1), `countGoTestJSONTests` (1), `requestsGoTestJSON` (1), `writeMergeHold` (1), `postMergeHold` (1), `remeasureVerdictError` (1).
+- Not measured: cyclomatic complexity of the changed functions (no dedicated tool run). The `RunMergeStep` WARN is carried from its tag text and was not re-measured.
+
+### E.4.3 Gap list (carried; not fixed in the sync phase)
+
+1. AC-MWQ2-008 literal gofmt: `gofmt -l` still lists `internal/factory/remeasure_red_t1582_test.go`, the pinned RED overlay. This sync did not edit it. Leader decision: format the overlay in a sanctioned change, or rewrite AC-MWQ2-008 to exclude RED overlays. (Run-phase §E.3.2 item 2.)
+2. Coverage: `internal/factory` is at 83.9% of statements, below the 85% package threshold (`ok ... 298.623s coverage: 83.9% of statements` at the final state of the run; the §J re-measure is 83.9% as well). The baseline at 8673c2a95 was not measured.
+3. `decision-index.md` Q1 operator verdict is blank. The file is operator-owned and was not touched. M3 implements the recorded default (measurement-failure class only).
+4. Cause-8 residual: `postMergeHold` writes its hold and releases in two mutations. This is the defect class of REQ-MWQ2-007, but outside its named cause-7 outcome. Recorded, not fixed. It needs a follow-up SPEC or a REQ amendment.
+5. AC-MWQ2-005 built-binary observation was not performed (§E.3.2 item 1). The in-process substitutes recorded there stand. No built-binary result is claimed.
+6. The installed moai build is not a valid evidence source for this card: it is an ancestor of HEAD. No moai CLI output is cited in this block or in the sync evidence.
+7. MX: `ShortSHA` lacks a mandatory `@MX:ANCHOR` (introduced by this card). `ReleaseIntegrationLock` lacks one (pre-existing). Report-only; see E.4.2.
+8. Carried by reference, unchanged: run-phase §E.3.2 items 3 (E4 literal grep matches in comments of unrelated cli files), 4 (repository-wide verdict pending on CI), 8 (`workflow.yaml` review-gate flip, provenance not established), and 9 (plan-audit known gap, AC-MWQ2-008 literal).
 
 ## §J Lane run-entry record (card t1582, run tmnboq, lane-5)
 
