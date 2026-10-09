@@ -27,6 +27,7 @@ Run phase: manager-develop, TDD (RED-GREEN-REFACTOR), branch WT-10-09-class, bas
 | M3 (edge test + lint fix) | 99e5d271a | feat(SPEC-GLM-JEV-KEY-001): M3 verification — --key= edge test, lint fix |
 | M3 (harness hardening) | 5306e4cb2 | fix(SPEC-GLM-JEV-KEY-001): M3 — execRoot resets command-tree outputs |
 | M2 gate repair | 5de28887e | fix(SPEC-GLM-JEV-KEY-001): M2 gate repair — redact refusal, sweep whole region, refuse flag-shaped values |
+| Card-review repair | 0cd03b4a0 | fix(SPEC-GLM-JEV-KEY-001): card-review repair — mask positional tokens, refuse flag-shaped jev values |
 | Evidence refresh | (this commit) | feat(SPEC-GLM-JEV-KEY-001): run-phase evidence refresh — gate repair rows |
 
 (spec.md `status:` draft → in-progress on M1; spec.md frontmatter is the only SPEC-body surface touched; updated: unchanged — same calendar day.)
@@ -37,6 +38,7 @@ Run phase: manager-develop, TDD (RED-GREEN-REFACTOR), branch WT-10-09-class, bas
 - AC-GJK-016 mutant-RED (plan §F): a temporary whole-args scan stub in runGLM (removed before GREEN) made `TestGlmKeyAfterDashDashPassthrough` FAIL with `jev_key_test.go:363: no save confirmation may appear for a post--- token, got: "GLM API key stored (test****7890)\n"` — exactly the mutant the RED cell requires.
 - `--key=<value>` edge (acceptance §B, added in M3): with the scan's `--key=` branch temporarily removed, `TestGlmKeyEqualsFormSaves` FAIL observed; branch restored → green. (Test-first derived, not test-after.)
 - M2 gate repair RED (turn-end gate defects, repaired in 5de28887e — verbatim RED observed before the fix): `TestGlmKeyConflictErrorMasksValue` — `refusal must not disclose the second key value, got: --key cannot be combined with other arguments (found "--key=sk-secret-9999")` (the P1 leak); `TestGlmKeyLeadingArgsRefused` — `a launch-flag mixed invocation must be refused` (P2-leading: `-p work --key K` stored); `TestGlmKeyExecFlagAsValueRefused` — `a flag-shaped token must not be stored as the key` (P2-execflag: `--key -f` stored).
+- Card-review repair RED (round-1 findings, repaired in 0cd03b4a0 — verbatim RED observed before the fix): `TestGlmKeyPositionalDuplicateMasked` — `refusal must not disclose the key value, got: ... (found "sk-secret-9999")` (positional duplicate passed redactArg verbatim); `TestJevKeyOptionTokenValueRefused` — `an option-shaped value must be refused, not stored` (pflag consumed `--help` as the credential string).
 
 ### E1 — AC matrix (all observed this run phase; HEAD 5306e4cb2 unless noted)
 
@@ -50,9 +52,9 @@ Run phase: manager-develop, TDD (RED-GREEN-REFACTOR), branch WT-10-09-class, bas
 | AC-GJK-006 | PARTIAL — see Gaps | mixed glm-family subset `go test ./internal/cli/ -run 'Test(GLM|Glm)' -timeout 150s` | `ok github.com/modu-ai/moai-adk/internal/cli 18.390s` (pre-existing glm family + new tests together, after the output-reset fix). **Package-scope** run NOT observed green locally (structural, below); CI owns the repository-wide verdict — PENDING at report time |
 | AC-GJK-007 | PASS | `TestKeyFormsShareStorageLastWriterWins` + smoke (setup 1111 → `--key` 2222 → file has 2222) | `GLM API key stored (sk-f****2222)` / `GLM_API_KEY="sk-flag-wins-2222"` |
 | AC-GJK-008 | PASS | `TestGlmSetupRoutingUnchanged` + smoke `moai glm setup sk-legacy-1111` | `GLM API key stored (sk-l****1111)` / `GLM_API_KEY="sk-legacy-1111"` (setup path untouched) |
-| AC-GJK-009 | PASS | `TestGlmKeyFlagRefusesExtraArgs` + `TestGlmKeyLeadingArgsRefused` (gate repair) + smoke `moai glm --key K status` | exit 1, `--Key cannot be combined with other arguments (found "status")...`; leading `-p work --key K` → exit 1, `found "-p"` (gate-repair binary smoke); no file written |
+| AC-GJK-009 | PASS | `TestGlmKeyFlagRefusesExtraArgs` + `TestGlmKeyLeadingArgsRefused` + `TestGlmKeyPositionalDuplicateMasked` (card-review repair) + smoke `moai glm --key K status` | exit 1, `--Key cannot be combined with other arguments (found "status")...`; leading `-p work --key K` → `found "-p"`; positional duplicate → `found "****"` (masked, card-review binary smoke); no file written |
 | AC-GJK-010 | PASS | `TestJevBareInvocationPrintsHelpExitZero` + smoke bare `moai jev` | jev help printed, `exit=0`, `.env.typesafe` absent |
-| AC-GJK-011 | PASS | `TestGlmKeyFlagMissingValueErrors` + `TestGlmKeyEmptyValueErrors` + `TestJevKeyEmptyValueErrors` + `TestGlmKeyExecFlagAsValueRefused` (gate repair) | `--- PASS` ×4 (`--key requires a value` for a flag-shaped token; `empty API key` / `empty Jev credential`; nothing stored) |
+| AC-GJK-011 | PASS | `TestGlmKeyFlagMissingValueErrors` + `TestGlmKeyEmptyValueErrors` + `TestJevKeyEmptyValueErrors` + `TestGlmKeyExecFlagAsValueRefused` + `TestJevKeyOptionTokenValueRefused` (card-review repair) | `--- PASS` ×5 (`--key requires a value` for a flag-shaped token; `empty API key` / `empty Jev credential`; jev option-shaped value refused, stored file byte-for-byte unchanged) |
 | AC-GJK-012 | PASS (package level) | `go test ./internal/glmcred/ ./internal/jevcred/` (Save's explicit Chmod tests) + smoke `ls -l` | `ok ... glmcred 0.317s` / `ok ... jevcred 0.376s`; smoke files `-rw-------@` |
 | AC-GJK-013 | PASS | premises: `git rev-parse --verify f7606c7bc` → resolves; `git diff --stat f7606c7bc..HEAD -- internal/cli/` → non-empty (607 insertions at M3; re-verified after the gate-repair commit); then `git diff f7606c7bc..HEAD -- internal/cli/ ':(exclude)**/*_test.go' \| grep '^+' \| grep "TYPESAFE_API_KEY\|GLM_API_KEY"` | `GREP_EXIT=1` — **0 rows** (re-observed at HEAD 5de28887e) |
 | AC-GJK-014 | PASS | `TestJevKeyNewlineValueRefusesAndPreserves` | `--- PASS` (refused, file byte-for-byte identical) |
@@ -61,7 +63,7 @@ Run phase: manager-develop, TDD (RED-GREEN-REFACTOR), branch WT-10-09-class, bas
 
 ### §C-gate results (this tree, HEAD 5306e4cb2)
 
-- Full new family (incl. the three gate-repair tests, 19 names): `go test ./internal/cli/ -run 'Test(…)$' -count=1` → `ok ... internal/cli 0.769s`; earlier 16-name run `-count=2` → `ok` (stability, after the pflag flag-reset and output-reset fixes).
+- Full new family (incl. the three gate-repair tests, 19 names): `go test ./internal/cli/ -run 'Test(…)$' -count=1` → `ok ... internal/cli 0.769s`; earlier 16-name run `-count=2` → `ok` (stability, after the pflag flag-reset and output-reset fixes). After the card-review repairs (0cd03b4a0): focused selector `go test ./internal/cli/ -run 'Test(GLM|Glm|Jev|Key|Root)'` → `ok ... 25.374s`; binary smoke of all four repair cases observed (positional duplicate masked to `found "****"`, jev option token refused with an empty credential directory, both earlier gate repairs unchanged).
 - `go test ./internal/cli/ -run 'Test(GLM|Glm)' -count=1 -timeout 150s` → `ok ... 18.390s`.
 - `go test ./internal/glmcred/ ./internal/jevcred/ -count=1` → both `ok` (80.8% / 85.0% coverage — packages untouched this card).
 - `go vet ./internal/cli/` → clean (exit 0). `gofmt -l` on touched files → empty.
