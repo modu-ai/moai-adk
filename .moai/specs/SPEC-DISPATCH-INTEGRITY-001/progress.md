@@ -733,7 +733,8 @@ ok  	github.com/modu-ai/moai-adk/internal/hook	179.649s	coverage: 87.3% of state
 
 `go tool cover -func` (`craft-cover-hook-func-dbadebc1c.txt`, line 833) reads `total: (statements) 87.3%`.
 
-- Verdict: the critical target for hook is 90%: NOT MET.
+- Against the configured package target (`.moai/config/sections/quality.yaml` `test_coverage_target: 85`): MET (87.3% ≥ 85%).
+- Against the documented critical target (`.moai/docs/local-dev-guide.md:169`, 90%): NOT MET. That line says its mechanical basis is only the strict evaluator profile's global "Coverage >= 90%" gate, and that no per-package rule was found.
 - Source of the 90% target: `.moai/docs/local-dev-guide.md:169` lists "Critical packages (cli, template, hook): 90%+ coverage". The same line says its mechanical basis is only the strict evaluator profile's global "Coverage >= 90%" gate, and that no per-package rule was found. `.moai/config/sections/quality.yaml` sets `test_coverage_target: 85`; the verdict above is against the 90% critical target.
 
 **5b. `internal/cli` (run did not complete).** Command: `go test -count=1 -timeout 40m -coverprofile=<profile> ./internal/cli/` (profile `.moai/reports/t1595/cover-cli-dbadebc1c.out`), exit 1 (coordinator's statement). Evidence `craft-cover-cli-dbadebc1c.txt`:
