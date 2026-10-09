@@ -15,12 +15,14 @@
 // The same two-audience split applies. The orchestrator reads
 // hookSpecificOutput.additionalContext, the operator reads systemMessage, and
 // the operator needs the lane-start sentence because a session cannot launch
-// another session — those terminals are opened by hand. Each copy is rendered
-// in its own language (agent-facing English, operator-facing
-// conversation_language); the commands, run id, and socket path are protocol
-// tokens and are emitted verbatim in every locale so the operator's paste
-// keeps working. The notice states no lane count, no per-lane line, and no
-// free-slot list (SPEC-LAUNCHER-ENTRY-FLAGS-001 REQ-009).
+// another session — those terminals are opened by hand. Both copies render in
+// the session's conversation_language (SPEC-SESSION-START-GUIDE-I18N-001:
+// card t1603 amends the bootstrap guide's two-audience English rule for this
+// surface only — decision-index Q1; agent_prompt_language still governs the
+// other agent-facing surfaces); the commands, run id, and socket path are
+// protocol tokens and are emitted verbatim in every locale so the operator's
+// paste keeps working. The notice states no lane count, no per-lane line, and
+// no free-slot list (SPEC-LAUNCHER-ENTRY-FLAGS-001 REQ-009).
 package hook
 
 import (
@@ -46,19 +48,31 @@ import (
 // the session start, and an unknown lang degrades to English, never to an
 // empty notice.
 func factoryBootstrapNotice(root, sessionID, lang string) string {
+	return factoryBootstrapNoticeLang(root, sessionID, lang, lang)
+}
+
+// factoryBootstrapNoticeLang is factoryBootstrapNotice with the stale-run
+// recovery notice's locale pinned separately from the guidance locale. The
+// operator-facing copy passes lang twice (stale-run recovery localizes like
+// the rest of the operator notice); the agent-facing channel pins the
+// stale-run recovery notice to English — that surface names relaunch
+// commands and recovery state, and sits outside the bootstrap-guide surface
+// the conversation-language rule localizes
+// (SPEC-SESSION-START-GUIDE-I18N-001 § Out of Scope).
+func factoryBootstrapNoticeLang(root, sessionID, lang, staleRunLang string) string {
 	if label := os.Getenv(config.EnvMoaiFactoryWorker); label != "" {
 		if factory.IsLegacyFactoryRoleValue(label) {
 			// Run-state gated: an active run prescribes once, a dead run
 			// unbinds once, an unmeasurable one degrades — never an
 			// unconditional prescription (SPEC-STALE-RUN-LABEL-001).
-			return staleRunPrescriptionGate(context.Background(), root, sessionID, label, os.Getenv(config.EnvFactoryRunID), lang)
+			return staleRunPrescriptionGate(context.Background(), root, sessionID, label, os.Getenv(config.EnvFactoryRunID), staleRunLang)
 		}
 		return factoryLaneNotice(label, factoryLanesEnv(), lang)
 	}
 	if os.Getenv(config.EnvMoaiFactoryWorkers) == "" {
 		return ""
 	}
-	if notice := staleRunNoticeFor(root, sessionID, lang); notice != "" {
+	if notice := staleRunNoticeFor(root, sessionID, staleRunLang); notice != "" {
 		return notice
 	}
 	return factoryLeaderNotice(os.Getenv(config.EnvFactoryRunID), factoryLanesEnv(), lang)
@@ -77,7 +91,13 @@ func factoryBootstrapNoticeForSource(source, root, sessionID, lang string) strin
 	if source != "" && source != "startup" {
 		return ""
 	}
-	return factoryBootstrapNotice(root, sessionID, lang)
+	// The agent-facing channel (additionalContext) localizes the bootstrap
+	// GUIDE per conversation_language (card t1603, decision-index Q1) and
+	// keeps the stale-run recovery notice English — that recovery surface is
+	// outside the guide surface the card localizes. The operator-facing copy
+	// (factoryBootstrapNotice, called separately by the handler) localizes
+	// both as before.
+	return factoryBootstrapNoticeLang(root, sessionID, lang, langEnglish)
 }
 
 // factoryLaneRuleForSource returns the lane SessionStart rule
@@ -209,6 +229,11 @@ func factoryLeaderNotice(runID string, lanes int, lang string) string {
 	}
 	blocks = append(blocks, strings.Join(context, "\n"))
 
+	// (f) the two-mode auto guidance (leader variant, carrying the
+	// design-surface marker REQ-005 pins) and the online docs pointer
+	// (card t1603).
+	blocks = append(blocks, strings.Join([]string{m.autoModeGuideLeader, m.docsPointer}, "\n"))
+
 	return strings.Join(blocks, "\n\n") + "\n"
 }
 
@@ -239,6 +264,14 @@ func factoryLaneNotice(label string, lanes int, lang string) string {
 	// Card t224: the standing spawn authority rides the join notice — it is
 	// the one message the lane is guaranteed to read at startup, and the
 	// tk8hce incident showed a lane without it refusing to spawn the
-	// phase-required specialist. English-only; see lane_spawn_authority.go.
-	return join + "\n\n" + laneSpawnAuthority
+	// phase-required specialist. Card t1603 moved it into the message table
+	// (the laneSpawnAuthority field), so it renders in the session's
+	// conversation language; en carries the canonical sentence. The lane
+	// variant of the two-mode auto guidance and the docs pointer ride the
+	// same notice (SPEC-SESSION-START-GUIDE-I18N-001).
+	return strings.Join([]string{
+		join,
+		m.laneSpawnAuthority,
+		strings.Join([]string{m.autoModeGuideLane, m.docsPointer}, "\n"),
+	}, "\n\n")
 }
