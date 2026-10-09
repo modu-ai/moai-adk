@@ -567,6 +567,114 @@ CI's job (C2) and is PENDING.
   (`-run '^TestReviewFinding'`, the full owned set) → PASS, `ok …
   499.177s`, **0 data races**, 0 failures, 140 `=== RUN` lines.
 
+### Sync-stage — AC-DI-012 test-family list, recorded before the re-run (card t1595)
+
+The sync audit found this family list absent from §E.2 before the re-run, and not derived from the touched functions' callers. This record derives it now, at the tree the re-run measures: HEAD `08b9b31c0`, base `81786284e` (`git merge-base HEAD main`). It corrects the M1 record above, which named `factory_bundle_test.go` as the only entered family. The caller trace adds `factory_t1533_test.go` (21 tests), `memory_budget_test.go` (6 tests, through a touched constant), and the review-observation families.
+
+**Pre-flight (re-verified for this record).**
+
+- `git rev-parse --show-toplevel` → `/Users/goos/MoAI/moai-adk-go/.moai/worktrees/t1595`; `git branch --show-current` → `WT-dispatch-integrity`; `git rev-parse --short HEAD` → `08b9b31c0`; `git status --short` → empty.
+- `git diff --name-only 05a812410..HEAD` → `.moai/specs/SPEC-DISPATCH-INTEGRITY-001/progress.md` (the only file).
+- `git diff --name-only 81786284e..HEAD -- '*.go'` → production: `internal/cli/factory_bundle.go`, `internal/cli/memory_fold.go`, `internal/cli/memory_fold_lock_unix.go`, `internal/cli/memory_fold_lock_windows.go`; tests: `internal/cli/memory_budget_test.go`, `internal/cli/memory_fold_test.go`, `internal/cli/memory_fold_wiring_test.go`, `internal/cli/review_observation_test.go`, `internal/cli/review_observation_fifo_unix_test.go`, `internal/cli/review_observation_publish_fifo_unix_test.go`, `internal/hook/review_observation_test.go`.
+- The hunk headers of `git diff -U0 81786284e..HEAD` on the four production files name the touched symbols below. A symbol counts as touched when a hunk lands inside its body; every symbol of a new file counts as touched.
+
+**Touched production symbols and their callers** (line numbers at HEAD; "changed" is the set of changed lines inside the symbol):
+
+| Symbol | Location | Changed lines | Direct callers (file:line) |
+|---|---|---|---|
+| `newMemoryFoldCmd` | memory_fold.go:100 | 129–234, inside the RunE closure opened at :112 (the constructor at 100–111 is unchanged) | memory.go:231 (in `newMemoryCmd`, memory.go:210; registered by `init` at memory.go:559–560); tests memory_fold_test.go:51, review_observation_test.go:420 |
+| `applyFold` | memory_fold.go:466 | 477, 489, 505–508, 530, 549 | memory_fold.go:216 (inside the `withFoldStoreLock` closure opened at :201); memory_fold.go:1365 (inside the closure opened at :1350) |
+| `verifyArchiveEffectiveState` | memory_fold.go:563 | 563–570 | memory_fold.go:530, :549 (applyFold) |
+| `readFileBounded` (new) | memory_fold.go:598 | 593–625 (with its doc comment) | memory_fold.go:508 (applyFold), :630 (checkFoldUnchanged) |
+| `checkFoldUnchanged` | memory_fold.go:629 | 629–630 (gains the `forbidden` parameter) | memory_fold.go:477, :489 (applyFold); :729, :733, :751, :755 (atomicWriteFoldFile) |
+| `atomicWriteFoldFile` | memory_fold.go:665 | 729, 733, 743–765 | memory_fold.go:497, :545 (applyFold); tests review_observation_test.go:123, review_observation_publish_fifo_unix_test.go:65 |
+| `foldLockName` (const, new) | memory_fold.go:784 | 784 | memory_fold.go:788 (foldLockPath); tests memory_fold_test.go:218, review_observation_publish_fifo_unix_test.go:88, memory_budget_test.go:204 |
+| `foldLockPath` (new) | memory_fold.go:787 | 787–789 | memory_fold_lock_unix.go:35; memory_fold_lock_windows.go:29 |
+| `withFoldStoreLock` | memory_fold.go:812 | 812–819 | memory_fold.go:201 (newMemoryFoldCmd RunE); memory_fold.go:1350 (foldOnDoneStep) |
+| `foldOnDoneStep` | memory_fold.go:1290 | 1323–1329, 1343–1372, 1375–1387 | through the seam below; tests memory_fold_wiring_test.go:680, review_observation_test.go:480, :564 |
+| `foldAbandonedReadPoll` (const, new) | memory_fold.go:1380 | 1375–1387 | memory_fold.go:611, :621, :1398, :1408; memory_fold_lock_unix.go:67; memory_fold_lock_windows.go:62 |
+| `snapshotStoreBounded` (new) | memory_fold.go:1388 | 1375–1410 | memory_fold.go:567 (verifyArchiveEffectiveState); memory_fold.go:1329, :1351 (foldOnDoneStep) |
+| `acquireFoldStoreLock` (new, unix and windows) | memory_fold_lock_unix.go:34; memory_fold_lock_windows.go:28 | whole files | memory_fold.go:813 (withFoldStoreLock); tests review_observation_fifo_unix_test.go:81, :128; review_observation_test.go:439, :553, :587, :597; review_observation_publish_fifo_unix_test.go:92, :109 |
+| `releaseFoldStoreLockFunc` (new, unix and windows) | memory_fold_lock_unix.go:71; memory_fold_lock_windows.go:66 | whole files | memory_fold_lock_unix.go:52, :57; memory_fold_lock_windows.go:47, :52 |
+| `runFactoryBundleLocked` | factory_bundle.go:75 | 76–89 (the duplicate-member refusal) | factory_bundle.go:63 (closure passed to `factoryLeaseSection` by `runFactoryBundle`, factory_bundle.go:55); reached by tests through `runFactory(t, "bundle", …)` (family F3, F6, F7) |
+
+**Seam chain (traced through function values, not only direct calls).** `foldOnDoneStep` is reached in production only through the seam `foldOnDoneStepFn` (memory_fold.go:1096), called at memory_fold.go:1180 inside the worker of `foldClosedCardMemory` (memory_fold.go:1154). That call runs only when `foldOnDoneGateOpen()` (memory_fold.go:1140–1146, reading `MOAI_MEMORY_FOLD_ON_DONE`) is true; the gate is checked first, at memory_fold.go:1155–1157. `foldClosedCardMemory` is itself reached through the seam `foldClosedCardMemoryFn` (memory_fold.go:1089), whose production callers are `todo.go:1382` (the RunE of newTodoDoneCmd, todo.go:1270), `todo_auto.go:368` (runAutoCycle, todo_auto.go:252), and `todo_autodone.go:260` (runTodoAutoDone, todo_autodone.go:187). The package-init registrations (memory.go:559–560; factory_handoff_recover.go:113) construct commands but run no RunE, so they are not an entry for the changed lines. The function-value seams `memoryFoldSeam` and `factoryBundleRecord` are data or callee seams, not callers, and do not extend the chain.
+
+**Families entered by the change (re-run these).** A family is one test file, as in AC-DI-012. A family is entered when one of its tests executes a changed line, directly or through a caller chain whose steps all run at test time. Grep counts are `^func Test`; `go test -list` counts were taken at HEAD `08b9b31c0`, env-scrubbed, all exit 0.
+
+| # | Family (file) | Tests | Entry chain (file:line) | Grep count | `go test -list` count |
+|---|---|---|---|---|---|
+| F1 | memory_fold_test.go | 14 | `runMemoryFold` (:48) calls `newMemoryFoldCmd` (:51) → RunE → applyFold (memory_fold.go:216) → checkFoldUnchanged, readFileBounded, verifyArchiveEffectiveState, atomicWriteFoldFile → acquireFoldStoreLock (memory_fold.go:813) | 14 | 14 |
+| F2 | memory_fold_wiring_test.go | 15 | direct seam set at :661 and direct call at :680 (foldOnDoneStep); gate open at :505–902; close path runWireAutoCycle (:313) → runAutoCycle (:323) → todo_auto.go:368 → foldClosedCardMemory → memory_fold.go:1180 → foldOnDoneStep | 15 | 15 |
+| F3 | review_observation_test.go | 19 | :123 atomicWriteFoldFile; :420 newMemoryFoldCmd + Execute; :439, :553, :587, :597 acquireFoldStoreLock; :480, :564 foldOnDoneStep; :632, :670, :721 `runFactory(t, "bundle", …)` → runFactoryBundleLocked | 19 | 19 |
+| F4 | review_observation_fifo_unix_test.go | 2 | :81, :128 acquireFoldStoreLock; gate open at :31, :109; :72, :122 foldClosedCardMemory → foldOnDoneStep | 2 | 2 |
+| F5 | review_observation_publish_fifo_unix_test.go | 2 | :65 atomicWriteFoldFile; :92, :109 acquireFoldStoreLock | 2 | 2 |
+| F6 | factory_bundle_test.go | 13 | fbBundle (:43–49, :46 `"bundle"`) → runFactory (factory_card_test.go:66–75) → newFactoryCommand (factory_handoff_recover.go:19; registers newFactoryBundleCommand at :56) → factory_bundle.go:26 RunE (:35) → runFactoryBundle (:55) → closure (:62–63) → runFactoryBundleLocked (:75) | 13 | 13 |
+| F7 | factory_t1533_test.go | 21 | fbBundle at :48, :131, :596; `runFactory(t, "bundle", …)` at :62; same chain as F6. Not in the M1 record. | 21 | 21 |
+| F8 | memory_budget_test.go | 6 | the listing test compares names with the touched constant `foldLockName` (memory_fold.go:784) at :204. The file itself changed in this diff. A constant reference rather than a function caller, so included conservatively. | 6 | 6 |
+| E3 | AC-DI-011 memory-fold selector (F1 + F2) | 29 | the family named by AC-DI-011: memory_fold_test.go 14 + memory_fold_wiring_test.go 15 | 29 (14 + 15) | 29 |
+
+**Selectors** (exact names from the grep output; each is an anchored alternation over the family's own tests):
+
+```
+F1 memory_fold_test.go (14):
+^(TestMemoryFold_DryRunWritesNothing|TestMemoryFold_Classification|TestMemoryFold_ReachabilityPreserved|TestMemoryFold_VerbatimFiling|TestMemoryFold_ArchiveSelection|TestMemoryFold_Idempotent|TestMemoryFold_EdgeInputs|TestMemoryFold_ApplyOrderAndAbort|TestMemoryFold_ArchiveEntryLinkKept|TestMemoryFold_MoveBeforeDeletionKeepsLine|TestMemoryFold_NeverExistedTargetRefusedCleanly|TestMemoryFold_MoveDuringMemoryPrepKeepsLine|TestReviewArchiveUpdateDuringEffectiveScan|TestMemoryFold_DuplicateStrongLineFiledOnce)$
+
+F2 memory_fold_wiring_test.go (15):
+^(TestMemoryFoldOnDone_ExistingClosePathsContained|TestMemoryFold_ArchiveRecheckedBeforeMemoryRename|TestMemoryFoldOnDone_DisabledDifferential|TestMemoryFoldOnDone_EnabledFolds|TestMemoryFoldOnDone_FailOpen|TestMemoryFoldOnDone_SeededPanic|TestMemoryFoldOnDone_BlockedRead|TestMemoryFoldOnDone_RunsAfterQueueWrite|TestMemoryFoldOnDone_ThreeClosePaths|TestMemoryFoldOnDone_DisabledNeverOpensStore|TestMemoryFoldOnDone_ProductionBoundEffective|TestMemoryFoldOnDone_AbandonedStepWritesNothing|TestMemoryFoldOnDone_TimeoutRecoversTempFile|TestReviewSequentialAbandonedTempOwnership|TestMemoryFoldOnDone_BoundConstantCeiling)$
+
+F3 review_observation_test.go (19):
+^(TestReviewFindingMergedPRPredecessor|TestReviewFindingNominatedOverwritesDependency|TestReviewFindingNominatedLeasesAfterPredecessorMerges|TestReviewFindingFoldConcurrentWrite|TestReviewFindingFoldInterleavedArchiveLoss|TestReviewFindingFoldArchiveConcurrentWrite|TestReviewFindingFoldGuardArchiveChange|TestFoldSubprocessHelper|TestReviewFindingResultPrintedOutsideLockHold|TestReviewFindingOnDoneNoOpSucceedsOnReadOnlyStore|TestReviewFindingNoOpFoldSucceedsOnReadOnlyStore|TestReviewFindingPreviewNeedsNoWriteAccess|TestReviewFindingAbandonedFoldExitsLockWait|TestReviewFindingStoreLockIndependentOfTempDir|TestReviewFindingBundleDuplicateMemberRefused|TestReviewFindingBundleHeadHubConstraint|TestReviewFindingBundleMultiHubMemberWaits|TestReviewFindingNoRecordArmSkipsBlockedCandidate|TestReviewFindingMergingRetryValidatesLeaseBeforeRemote)$
+
+F4 review_observation_fifo_unix_test.go (2):
+^(TestReviewFindingAbandonedFoldReleasesLockOnApplyReads|TestReviewFindingAbandonedFoldReleasesStoreLock)$
+
+F5 review_observation_publish_fifo_unix_test.go (2):
+^(TestReviewFindingAbandonedFoldDoesNotPublish|TestReviewFindingLockFileRefusesSymlink)$
+
+F6 factory_bundle_test.go (13):
+^(TestFactoryNextBundleSerialLane|TestFactoryBundleKeepsSerialSlot|TestFactoryAssignBundleOrderGuard|TestFactoryAssignBundleHubChain|TestFactorySerialBundleHeadLeasesDespitePickedMembers|TestFactoryBundleLoadAtomicWhenAMemberIsLeased|TestFactoryNextSkipsHubCandidateWhosePredecessorIsUnmerged|TestFactoryNextAfterGuardCountsOtherRunsMerges|TestFactoryHubChainRequiresSharedHubPath|TestFactoryHubChainChainsToTheLastPredecessor|TestFactoryNominateRefusesForeignBundleMember|TestFactoryBundleRecordsUnderTheQueueLock|TestFactoryKeepSetReadsNoFileOverlap)$
+
+F7 factory_t1533_test.go (21):
+^(TestFactoryBundleRefusesAnotherLanesMember|TestFactoryNextHubChainPickedRowReleasesSerialSlot|TestReviewNominatedBundlePreservesHint|TestFactoryBundleHeadCarriesHubCondition|TestFactoryNextMergedPRPredecessorReleasesFollower|TestReviewPickedHubSkip|TestFactoryCompleteMergingRetryRefusesForeignLane|TestFactoryCompleteMergingRetryRefusesExpiredLease|TestReviewNominatedWaitsOnAllHubPredecessors|TestReviewNominatedLeaseDoesNotFillAnEmptyHint|TestReviewUnrecordedPickedHubWait|TestFactoryCompletePRMergePinnedToCardTip|TestFactoryBundleHeadIgnoresOwnMembers|TestReviewReversedBundleLeasesInBundleOrder|TestFactoryCompletePRMergePinnedToCheckTimeTip|TestFactoryCompleteRechecksLeaseBeforeRemoteMutations|TestReviewHubWaitNeverClosesACycle|TestReviewGenerationNeverReversesAnAfterChain|TestReviewNominatedCreationFollowsTheAfterRelation|TestReviewHubWaitCoversLaterSharers|TestReviewWaitFollowsTheAfterRelation)$
+
+F8 memory_budget_test.go (6):
+^(TestMemoryDoctor_Measures|TestMemoryDoctor_TopicCapUnchanged|TestMemoryDoctor_BudgetBoundaries|TestMemoryDoctor_BytesProxyWarns|TestMemoryDoctor_LinkClasses|TestMemoryDoctor_IndexSelfLinkNotDangling)$
+
+E3 AC-DI-011 (F1 then F2, 29 names, one alternation):
+^(TestMemoryFold_DryRunWritesNothing|TestMemoryFold_Classification|TestMemoryFold_ReachabilityPreserved|TestMemoryFold_VerbatimFiling|TestMemoryFold_ArchiveSelection|TestMemoryFold_Idempotent|TestMemoryFold_EdgeInputs|TestMemoryFold_ApplyOrderAndAbort|TestMemoryFold_ArchiveEntryLinkKept|TestMemoryFold_MoveBeforeDeletionKeepsLine|TestMemoryFold_NeverExistedTargetRefusedCleanly|TestMemoryFold_MoveDuringMemoryPrepKeepsLine|TestReviewArchiveUpdateDuringEffectiveScan|TestMemoryFold_DuplicateStrongLineFiledOnce|TestMemoryFoldOnDone_ExistingClosePathsContained|TestMemoryFold_ArchiveRecheckedBeforeMemoryRename|TestMemoryFoldOnDone_DisabledDifferential|TestMemoryFoldOnDone_EnabledFolds|TestMemoryFoldOnDone_FailOpen|TestMemoryFoldOnDone_SeededPanic|TestMemoryFoldOnDone_BlockedRead|TestMemoryFoldOnDone_RunsAfterQueueWrite|TestMemoryFoldOnDone_ThreeClosePaths|TestMemoryFoldOnDone_DisabledNeverOpensStore|TestMemoryFoldOnDone_ProductionBoundEffective|TestMemoryFoldOnDone_AbandonedStepWritesNothing|TestMemoryFoldOnDone_TimeoutRecoversTempFile|TestReviewSequentialAbandonedTempOwnership|TestMemoryFoldOnDone_BoundConstantCeiling)$
+```
+
+The M4 AC-DI-011 selector (prefix alternation) is superseded for this re-run by the exact-name E3 selector. Its prefixes also reached review_observation_test.go's `TestReviewFindingFold*` instruments, which belong to F3 and not to the AC-DI-011 family.
+
+**Families not entered (grep evidence for each exclusion).**
+
+- factory_card_test.go (10): its only todo call is `runTodo(t, "add", …)` (:50). `bundle`, `fold`, `--auto`, `runAutoCycle`, and `"done"` each match 0 times in the file. Not entered.
+- factory_card_pr_test.go (15): `runTodo(t, "add", …)` at :807 and :814. Its three `--auto` matches (:321, :322, :460) are `gh pr merge … --auto` argument literals, not the todo auto cycle. `bundle` and `fold` each match 0 times. Not entered.
+- factory_card_pr_guard_test.go (1): `runTodo`, `fold`, `bundle`, `--auto`, `"done"`, and memory-command references all match 0 times. Not entered.
+- factory_nominate_test.go (26): reaches the fold seam through `runTodo(t, "--auto", "--auto-wait", "1ms")` (:1317, :1368, :1388) → todo.go:290 → runAutoCycle → todo_auto.go:368 → foldClosedCardMemory, which returns at memory_fold.go:1155 because the file never sets the gate. `newFactoryCommand().Find` at :395 is a lookup only. Reached with the gate closed: not entered.
+- The other 23 test files that reach the seam through `done`, `auto-done`, `--auto`, `runAutoCycle`, or `newTodoDoneCmd`: factory_quota_lanes_test.go, todo_analysis_test.go, todo_audit_regression_test.go, todo_auto_lane_test.go, todo_auto_doc_test.go, todo_auto_rank_test.go, todo_auto_test.go, todo_autodone_test.go, todo_done_ref_test.go, todo_done_verdict_test.go, todo_history_test.go, todo_history_stamps_test.go, todo_hold_predicate_test.go, todo_issuance_test.go, todo_landed_archived_test.go, todo_landing_test.go, todo_landing_roundtrip_test.go, todo_lazy_landedref_test.go, todo_relation_filter_test.go, todo_test.go, todo_transition_stamps_test.go, todo_undone_test.go, todo_verdict_readjudication_test.go. Each reaches foldClosedCardMemory and returns at the gate. The gate evidence covers all of them: `grep -rn 'EnvMemoryFoldOnDone|MOAI_MEMORY_FOLD_ON_DONE' internal cmd` lists only the config declaration (envkeys.go:340–347), the default comment (defaults.go:530), the gate reader (memory_fold.go:1136–1141), and the two test files that set it: memory_fold_wiring_test.go (:45, :204, :471, :505, :533, :580, :625, :682, :696, :782, :819, :902) and review_observation_fifo_unix_test.go (:31, :109). No other test file sets the gate. Not entered.
+- memory_drain_test.go: `newMemoryCmd()` (:43, :56) constructs newMemoryFoldCmd, but only the constructor runs, since the changed lines sit inside the RunE. The file runs `drain` (:47) and `--help` (:60), and its `fold` count is 0. Not entered.
+- memory_test.go, memory_worktree_key_test.go, update_test.go, update_preserve_reach_test.go, migrate_profiles_test.go: `fold` (case-insensitive) matches 0 times; none calls a touched symbol. Not entered.
+- factory_two_hub_cycle_test.go, factory_lease_operator_test.go: use only the helpers `fbSeedFiles` and `fbLeasedCard`; `fbBundle` and `"bundle"` each match 0 times. Not entered.
+- memory_fold_wiring_fifo_unix_test.go and memory_fold_wiring_fifo_windows_test.go: contain 0 `^func Test` (helpers `wireFIFO`, `blockOnRead`, `blockOnReadRaw`). A helper file is not a family.
+- internal/hook/review_observation_test.go (1 test, TestReviewFindingZoneExistingDotDot): a different package. Its only match against the cli package path in internal/hook is a string literal (internal/hook/mx/validator_fanin_source_test.go:182, inside `strings.HasPrefix`), so there is no import edge. Not entered. This file is the AC-DI-013 control and runs in every verification pass as a separate check.
+
+The M2 and M3 confirmation sweeps (above) ran factory_card, factory_nominate, and factory_card_pr families as confirmation runs. This record does not enter those families, so those passes stand as confirmation only, not as entered-family evidence.
+
+**Gaps (not observed in this record).**
+
+- Only `go test -list` was run. The names and counts are observed; no test in any family was executed here, and no pass is claimed for any family.
+- The caller trace is lexical: grep over `internal/` and `cmd/` for each touched identifier and each function-value seam, with the seam assignments and call sites read directly. No type-checked call graph was built, because only `go test -list` is permitted in this record.
+- The windows-only symbols (`acquireFoldStoreLock` and `releaseFoldStoreLockFunc` in memory_fold_lock_windows.go) and the windows-tagged test file were not compiled on this darwin host. No GOOS=windows measurement was taken.
+- The gate-closed exclusions assume `MOAI_MEMORY_FOLD_ON_DONE` is unset in the re-run environment. It was unset in the worktree shell when this record was taken. The env-scrub form in this section does not unset it.
+- The AC-DI-013 control (`TestReviewFindingZoneExistingDotDot`, internal/hook) was not run here.
+
+**Residual-risk.**
+
+- The 24 gate-closed files (factory_nominate_test.go, factory_quota_lanes_test.go, and 22 todo test files, with the todo group listed above) would enter the fold body if `MOAI_MEMORY_FOLD_ON_DONE` were set in the ambient environment. Their exclusion holds only while the gate stays closed. A later change to the todo close paths or to `foldClosedCardMemory` needs a fresh derivation.
+- `-list` proves selection, not execution. The re-run must count `=== RUN` lines per family (run with `-v`): a skipped or under-selected family otherwise reads as green. The M4 selector-defect record above shows that failure mode.
+
 ## §E.3 Run-phase Audit-Ready Signal
 
 run_complete_at: 2026-10-09T22:30+09:00
