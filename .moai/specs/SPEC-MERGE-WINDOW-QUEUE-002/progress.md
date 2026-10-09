@@ -37,11 +37,130 @@
 
 ## §E.2 Run-phase Evidence
 
-_<pending run-phase>_
+Run by manager-develop (serial, tier M). Baseline HEAD `bb245d325`; RED baseline commit `d7f4fcf0c`. Every command below ran in this worktree against the stated tree. Test runs use the env-scrub compound `unset MOAI_KANBAN_ID MOAI_KANBAN_LEAD_ADDR MOAI_KANBAN_SETTINGS_INJECTED && go test -count=1 …`. Full logs are machine-local scratch under `.moai/state/verify/ea52787a-4b79-40a9-8cf3-a5951fe197b2/` (gitignored); the lines quoted here are the deciding evidence.
+
+### E.2.1 Commits per milestone
+
+| Milestone | Commit | Subject | RED → GREEN (verbatim) |
+|---|---|---|---|
+| M1 — R7-3 SHA format + length-safe prefix (AC-001/002) | `a560b3b6f` | `fix(...): M1 …` | `TestRedT1582VerifierAdmitsAShortBaseSHA` FAIL → `--- PASS: TestRedT1582VerifierAdmitsAShortBaseSHA (0.00s)`; `TestRedT1582ShortBaseSHAPanicsBeforeWindowRelease` FAIL → `--- PASS: … (1.70s)` |
+| M2 — R7-2 total per-test pass judgement (AC-003) | `eac7fab39` | `fix(...): M2 …` | `TestRedT1582MixedSweepWithNoTestPackageCounts` FAIL → `--- PASS: … (0.00s)` |
+| M3 — ③ measurement-failure exit (AC-005) | `64aba35c1` | `fix(...): M3 …` | `TestRedT1582MergeReadyMeasurementFailureStillExitsZero` FAIL → `--- PASS: … (1.18s)` |
+| M4 — R7-1 cause-7 hold+release in one section (AC-006) | `b50d61bb5` | `fix(...): M4 …` | `TestRedT1582Cause7HoldAndReleaseAreOneMutation` (new) FAIL → `--- PASS: … (2.93s)` |
+| M5 — ② seal + same-class sweep (AC-004) | none (no code change) | — | seal tests GREEN throughout; scans in E.2.3 |
+| M6 — quality chain (edge branches) | `a8f49f6ad` | `test(...): M6 …` | four new branch tests PASS (see E.2.4) |
+
+Items ② (`TestRedT1582ClassifiersReadBackTheJoinedBoundaries`, `TestRedT1582JoinPreservesArgBoundariesInQuoting`, `TestRedT1582SingleArgScrubCompoundStaysVerbatim`) and ① (`TestRedT1582ProbeNonTestCommandFailureSemanticsRideExitZero`) stayed PASS and unchanged, as the sealed/observed items require.
+
+### E.2.2 RED baseline (E8) — verbatim, pinned tree `bb245d325`, before any change
+
+Log: `preflight-red-baseline.log`. Command: `unset … && go test -count=1 -v -run '^TestRedT1582' ./internal/factory/ ./internal/cli/` (exit 1).
+
+```
+--- FAIL: TestRedT1582MixedSweepWithNoTestPackageCounts (0.00s)
+    remeasure_red_t1582_test.go:35: RED t1582-R7-2: the [no test files] marker anywhere in the stream refuses a mixed sweep that measured 1 passing test: runner reported [no test files] — an empty sweep cannot stand for a re-measure
+--- FAIL: TestRedT1582VerifierAdmitsAShortBaseSHA (0.00s)
+    remeasure_red_t1582_test.go:58: RED t1582-R7-3: the verifier admits a record whose Base is 3 bytes — it reaches the [:12] message renders downstream
+--- FAIL: TestRedT1582ShortBaseSHAPanicsBeforeWindowRelease (1.88s)
+    remeasure_red_t1582_test.go:89: RED t1582-R7-3: the merge step panicked on the short base "bad" (runtime error: slice bounds out of range [:12] with length 3) and died before releasing the window — the window stays held
+--- FAIL: TestRedT1582MergeReadyMeasurementFailureStillExitsZero (2.17s)
+    factory_merge_ready_red_t1582_test.go:41: RED t1582-AC005: the measurement-failure REFUSED verdict still exits 0 (err nil) — out: merge-readiness: REFUSED — failing condition: re-measure-record …
+--- PASS: TestRedT1582Cause7SeedingWritesHoldThenReleases (2.85s)
+--- PASS: TestRedT1582ClassifiersReadBackTheJoinedBoundaries (0.00s)
+--- PASS: TestRedT1582ProbeNonTestCommandFailureSemanticsRideExitZero (0.00s)
+--- PASS: TestRedT1582JoinPreservesArgBoundariesInQuoting (0.00s)
+--- PASS: TestRedT1582SingleArgScrubCompoundStaysVerbatim (0.00s)
+```
+
+M4 RED, observed on the pre-repair code (HEAD `64aba35c1`) with the `AfterHold` probe added (log: `m4-red-cause7.log`):
+
+```
+--- FAIL: TestRedT1582Cause7HoldAndReleaseAreOneMutation (1.71s)
+    mergestep_atomic_t1582_test.go:75: RED t1582-R7-1: a status refresh landed between the cause-7 hold write and the window release, and the caller's release then failed (step error: … (releasing the window also failed: no release integration window is held — moai integration status reads it))
+```
+
+### E.2.3 Same-class sweep (M5) — scans with exit codes
+
+Exit codes: 0 = matches found, 1 = no match, 2 = search error. No scan returned 2.
+
+- **A** `grep -rn '\[:12\]' internal/factory internal/cli --include='*.go'` → exit 0. Non-test hits: `integration_remeasure.go:144` (comment only); `internal/cli/contract_revoke.go:76` `shortSeal` (already guarded by `if len(s) > 12`); `internal/cli/doctor_disk.go:345` `digest[:12]` (content digest, not a git SHA, outside the merge surface). No unguarded SHA prefix render remains on the merge or remeasure surfaces.
+- **B** `grep -rn 'Contains.*no test\|noTestFiles\|emptySweepMarker' internal/factory internal/cli --include='*.go'` → exit 0, matches only in `*_test.go`. No marker refusal remains in non-test code.
+- **C** `grep -n 'strings.Fields' internal/factory/integration_remeasure.go` → exit 0, one hit at `:428` in `requestsGoTestJSON`, splitting a GOFLAGS value (already one shell word) into flags. Intended; it is not the command-line split.
+- **D** hold-then-release pairs: `writeMergeHold` survives only in `postMergeHold` (cause 8). Residual, see E.3 gaps.
+- **E** `AfterHold`: exactly one production call site, in `holdThenReleaseCauseSeven`.
+
+### E.2.4 Quality chain (final state, verbatim outcomes)
+
+- `go build ./...` → exit 0. `GOOS=windows GOARCH=amd64 go build ./...` → exit 0 (run at the final state; constraint B1 asks for each milestone, and the milestone diff adds no platform-specific API: scan of added lines finds only `os/exec`).
+- `gofmt -l internal/factory internal/cli` → `internal/factory/remeasure_red_t1582_test.go` only. That file is the RED overlay: unformatted at HEAD `d7f4fcf0c`, and this run must not edit it. No file changed by this card is listed (`integration_remeasure_test.go` was formatted in M2, one pre-existing whitespace line).
+- `go vet ./internal/factory/ ./internal/cli/` → exit 0.
+- `golangci-lint run ./internal/factory/... ./internal/cli/...` → `0 issues.`
+- AC-MWQ2-007 family command over both packages: `ok github.com/modu-ai/moai-adk/internal/factory 64.338s`, `ok github.com/modu-ai/moai-adk/internal/cli 26.387s` (run before the M6 test additions; the factory package then ran in full, below).
+- Race, scoped families, scrub form: factory `ok … 79.808s` at the M4 state with the clean config; cli `ok … 28.163s` at the M3 state. No `WARNING: DATA RACE`.
+- E3 coverage, full package at the final state: `go test -count=1 -coverprofile … ./internal/factory/` → `ok … 298.623s coverage: 83.9% of statements`.
+- E3 coverage, `internal/cli`, family-scoped (not a package measure): `ok … coverage: 6.7% of statements`.
+- Per modified file (final profile): `integration_remeasure.go` 90.7%; `integration_merge_step.go` 83.7%; `integration_lock.go` 81.8%.
+- Per modified function (final profile): `ValidateRemeasureRecord` 100.0%, `isFullSHA` 100.0%, `countGoTestJSONTests` 100.0%, `ShortSHA` 100.0%, `holdThenReleaseCauseSeven` 100.0%, `ReleaseIntegrationLock` 100.0%, `releaseIntegrationLockLocked` 85.0%, `RunMergeStep` 83.2%, `RunRemeasure` 73.8%.
+- E4 boundary grep `grep -rn 'AskUserQuestion' internal/factory internal/cli --include='*.go' | grep -v _test.go`: matches exist, all in pre-existing comments of unrelated cli files (`plan.go`, `harness.go`, `hook.go`, …). None in `internal/factory`, none in a file this card changed, and no invocation anywhere. Literal "print nothing" is not met; see gaps.
+- Test additions in M6 (`a8f49f6ad`): `TestRemeasureRecordRefusesMalformedTreeAndBase` (4 cases), `TestRemeasureRecordRefusesMissingIdentity`, `TestMergeStepCause7HoldWriteFailureKeepsWindowHeld`, `TestMergeStepCause7ReleaseFailureIsReportedWrapped`. All PASS.
+- Scratch probe results: `moai verify check --key-current` → `Stale: no snapshot recorded for the current working-tree key` on every gate run, so no snapshot result was cited as evidence.
+
+### E.2.5 Commands used (representative; all in the card worktree)
+
+- `git rev-parse --show-toplevel && git branch --show-current && git rev-parse --short HEAD` (location guard, exit 0; toplevel `/Users/goos/MoAI/moai-adk-go/.moai/worktrees/t1582`).
+- `moai slot acquire|release --resource go-test-heavy` around each race or full-package run.
+- `git add -- <explicit pathspecs>` and `git commit -F <message file>` for every commit; `git status --short` clean after each.
 
 ## §E.3 Run-phase Audit-Ready Signal
 
-_<pending run-phase>_
+```yaml
+run_complete_at: 2026-10-10T02:58:51+09:00
+run_commit_sha: a8f49f6ad
+run_status: complete-with-gaps
+ac_pass_count: 6
+ac_pass_with_debt_count: 1          # AC-MWQ2-005 (built-binary observation not performed)
+ac_fail_count: 1                    # AC-MWQ2-008 literal gofmt — blocker, see gaps
+preserve_list_post_run_count: 0     # no PRESERVE target modified; all 14 changed files inside allowed scope
+l44_pre_commit_fetch: not-applicable  # nothing pushed (B9); no fetch performed in this run
+l44_post_push_fetch: not-applicable
+new_warnings_or_lints_introduced: 0   # golangci-lint 0 issues; go vet exit 0
+cross_platform_build:
+  native_go_build: exit-0
+  windows_amd64_go_build: exit-0
+total_run_phase_files: 14
+m1_to_mN_commit_strategy: one commit per milestone (M1 a560b3b6f, M2 eac7fab39, M3 64aba35c1, M4 b50d61bb5, M6 a8f49f6ad as a test-only quality commit); M5 has no code change and is recorded in E.2.3
+```
+
+### E.3.1 AC matrix (command → observed result)
+
+| AC | Status | Observed result (verbatim where short) |
+|---|---|---|
+| AC-MWQ2-001 — malformed Base/Tree refused as record-invalid | PASS | `--- PASS: TestRedT1582VerifierAdmitsAShortBaseSHA (0.00s)`; edge `TestRemeasureRecordRefusesMalformedTreeAndBase` PASS (short base, short tree, uppercase tree, 39-char base) |
+| AC-MWQ2-002 — short base renders length-safe, window released, C promoted | PASS | `--- PASS: TestRedT1582ShortBaseSHAPanicsBeforeWindowRelease (1.70s)`; `ok … 1.908s` |
+| AC-MWQ2-003 — mixed sweep valid; fail events and total-zero stay refused | PASS | `--- PASS: TestRedT1582MixedSweepWithNoTestPackageCounts (0.00s)`; family `TestClassify*` PASS; negative `TestClassifyAllNoTestSweepStaysEmpty`, `TestRemeasureGoTestJSONRecordsCount` PASS |
+| AC-MWQ2-004 — join/classify boundary seal (no repair) | PASS | the three `TestRedT1582…` seal tests PASS unchanged in every family run |
+| AC-MWQ2-005 — measurement-failure REFUSED exits non-zero; waiting keeps 0 | PASS-WITH-DEBT | `--- PASS: TestRedT1582MergeReadyMeasurementFailureStillExitsZero (1.18s)`; `--- PASS: TestFactoryMergeReadyMeasurementFailureResolvesNonZeroExit`; `TestFactoryMergeReady_HeldWindowRefusedWithHolderNamed` (waiting, exit 0) PASS. Debt: built-binary observation not performed (gap 1) |
+| AC-MWQ2-006 — hold+release atomic; execution-count guard ≥2 | PASS | `--- PASS: TestRedT1582Cause7HoldAndReleaseAreOneMutation (2.93s)`, `--- PASS: TestRedT1582Cause7SeedingWritesHoldThenReleases (2.20s)` (count 2) |
+| AC-MWQ2-007 — affected families green | PASS | exact command, both packages: `ok … internal/factory 64.338s`, `ok … internal/cli 26.387s`; full factory package `ok … 298.623s` at the final state |
+| AC-MWQ2-008 — gofmt empty, vet exit 0 | FAIL (literal) | vet: exit 0. gofmt: lists `internal/factory/remeasure_red_t1582_test.go` (pre-existing RED overlay; gap 2) |
+
+### E.3.2 Gap list (not observed, or not met)
+
+1. **AC-MWQ2-005 built-binary observation** (`make build` then `./bin/moai factory merge ready …` on the measurement path) was not performed. The measurement path needs a lane fixture (lane-label environment, a sync-complete SPEC, a merge-able card branch). This card's own SPEC has no `§E.4` yet, so an in-tree run would refuse at sync-audit, which is a different class. Substitutes: the in-process cobra run and the `ResolveExitCode` mapping guard.
+2. **AC-MWQ2-008 literal gofmt — BLOCKER for the leader.** `remeasure_red_t1582_test.go` is unformatted at HEAD `d7f4fcf0c` and is the RED overlay this run must not edit. Decide: format the overlay in a sanctioned change, or rewrite AC-008 to exclude RED overlays.
+3. **E4 literal boundary grep** prints matches, all in pre-existing comments of unrelated cli files. No code in `internal/factory` and no file changed by this card matches; there is no invocation.
+4. **Repository-wide test verdict not run** (lane rule: no `go test ./...`). The CI run on the integration branch owns that verdict; **PENDING at report time**. The full `internal/cli` suite is structurally red inside card worktrees, so its verdict is a gap; the affected families are green.
+5. **Coverage below 85%:** `integration_merge_step.go` 83.7%, `integration_lock.go` 81.8%, `RunMergeStep` 83.2%, `RunRemeasure` 73.8%. Their uncovered lines are error branches in untouched code paths (git-error returns, lock edge cases) and are not chased in this run.
+6. **Cause 8 residual:** `postMergeHold` writes its hold and releases in two mutations, the same defect class as R7-1 but outside REQ-MWQ2-007's named cause-7 outcome. Recorded, not expanded here (scope rule). Needs a decision: a follow-up SPEC or a REQ amendment.
+7. **Decision-index Q1 unresolved on the record:** the operator-verdict field in `decision-index.md` is blank. M3 implements the recorded Default (measurement-failure class only, waiting unchanged), as the spawn instructed. Operator confirmation is needed.
+8. **Unexplained config change in this worktree:** `.moai/config/sections/workflow.yaml` flipped `workflow.codex.review_gate.enabled` from `true` to `false` at 02:32:09 local, during the M4 race leg. Provenance is not established: `slot status|acquire|release` and the factory cause-7 run did not reproduce it. Restored to HEAD and not committed. The writer should be identified.
+9. **Plan-audit known gap** (acceptance.md D21/D22 repaired after the FAIL verdict without re-audit): the acceptance criteria were checked for consistency against the implementation. The only inconsistency found is AC-008's literal gofmt criterion (gap 2). Nothing was silently fixed.
+
+### E.3.3 Residual risk (could still be wrong despite the observations)
+
+- AC-006's GREEN side is deterministic (a mutation blocked on the section cannot finish during the probe). Its RED side depends on the 750 ms probe window staying below the 1.65 s mutation budget. If the budget changes, the probe must be re-derived; the test's comment says so.
+- The lowercase-only SHA decision (REQ-MWQ2-001) refuses uppercase hex. Git prints lowercase, but a hand-written record in uppercase is refused, not normalized.
+- The commit-tier hook ran on M1–M4 without blocking. Whether it re-runs repository-wide tests at commit time was not observed.
 
 ## §E.4 Sync-phase Audit-Ready Signal
 
