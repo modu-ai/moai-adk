@@ -285,6 +285,28 @@ func (in *Installer) RemoveBundle(manifest *Manifest, name string, remaining []s
 			prunedNames[e.Name] = true
 		}
 	}
+	// Codex review P2 (card t1591): a recorded bundle the current catalog no
+	// longer ships has no entries in collectEntries, so the closure difference
+	// above cannot see its files. Attribute the tracked files through the
+	// manifest's own Bundle field instead: a file whose bundle the remaining
+	// selection does not keep is a removal target, unless the remaining closure
+	// still needs its owning entry (afterNames). Core is always kept.
+	keptBundles := map[string]bool{}
+	for _, b := range remaining {
+		keptBundles[b] = true
+	}
+	for k, fe := range manifest.Files {
+		if fe.Bundle == "" || fe.Bundle == "core" || keptBundles[fe.Bundle] {
+			continue
+		}
+		_, rel, ok := splitManifestKey(k)
+		if !ok {
+			continue
+		}
+		if n, ok := owningEntryName(rel); ok && !afterNames[n] {
+			prunedNames[n] = true
+		}
+	}
 
 	// RF3 (review fix): enumerate the removal targets from the MANIFEST —
 	// every tracked key whose OWNING ENTRY is in the prune set (files
