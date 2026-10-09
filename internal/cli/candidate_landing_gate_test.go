@@ -255,6 +255,68 @@ func TestGhRunStatesMapsRunAttempt(t *testing.T) {
 	}
 }
 
+// TestCandidateRunVerdictPinsTheObservedAttempt pins the jobs-view fix from the
+// card t1478 run-stage codex review: the run's jobs are read at the attempt the
+// run list observed. `gh run view <id>` answers with the NEWEST attempt, so a
+// rerun that starts between the list and the view would have its jobs judged
+// and recorded under the older attempt. The gh double models that: without
+// --attempt the view answers with attempt 2 (the rerun, green); pinned to the
+// observed attempt 1 it answers with attempt 1 (failed).
+func TestCandidateRunVerdictPinsTheObservedAttempt(t *testing.T) {
+	const cardID, pinned, candidate = "t9003", "pin-3", "cand-3"
+	now := time.Date(2026, 10, 10, 9, 0, 0, 0, time.UTC)
+	root := t.TempDir()
+	if err := factory.WriteCandidateRecord(root, factory.CandidateRecord{
+		CardID: cardID, PinnedSHA: pinned, CandidateSHA: candidate, CandidateBranch: "ci/" + cardID,
+		IntegrationBranch: "develop", IntegrationTip: "tip-3",
+		Verdict: factory.CandidateVerdictPending, PushedAt: "2026-10-10T08:00:00Z",
+	}); err != nil {
+		t.Fatal(err)
+	}
+	jobsByAttempt := map[string]string{
+		"1": `{"jobs":[{"name":"own-check","conclusion":"failure"},{"name":"Guard Bundle","conclusion":"success"}]}`,
+		"2": `{"jobs":[{"name":"own-check","conclusion":"success"},{"name":"Guard Bundle","conclusion":"success"}]}`,
+	}
+	var viewArgs [][]string
+	prev := candidateGhRunsListFn
+	candidateGhRunsListFn = func(dir string, args ...string) (string, error) {
+		viewArgs = append(viewArgs, append([]string(nil), args...))
+		attempt := "2" // no --attempt: gh answers with the latest attempt, the rerun
+		for i := 0; i+1 < len(args); i++ {
+			if args[i] == "--attempt" {
+				attempt = args[i+1]
+			}
+		}
+		return jobsByAttempt[attempt], nil
+	}
+	t.Cleanup(func() { candidateGhRunsListFn = prev })
+
+	// The run list observed attempt 1 as failed; the rerun then started.
+	runs := []factory.CandidateRunState{{
+		RunID: "200", Attempt: 1, HeadSHA: candidate, Ref: "ci/" + cardID,
+		Status: "completed", Conclusion: "failure",
+	}}
+	rec, wrote, err := observeCandidateRuns(root, cardID, pinned, "ci/**", runs, now)
+	if err != nil {
+		t.Fatalf("observe: %v", err)
+	}
+	if len(viewArgs) != 1 {
+		t.Fatalf("jobs view calls: %d, want exactly one", len(viewArgs))
+	}
+	pinnedTo := ""
+	for i := 0; i+1 < len(viewArgs[0]); i++ {
+		if viewArgs[0][i] == "--attempt" {
+			pinnedTo = viewArgs[0][i+1]
+		}
+	}
+	if pinnedTo != "1" {
+		t.Errorf("jobs view argv %q: want --attempt 1, the observed attempt, so the view cannot answer with the rerun", strings.Join(viewArgs[0], " "))
+	}
+	if !wrote || rec.Verdict != factory.CandidateVerdictRed || rec.RunAttempt != 1 {
+		t.Errorf("observed: wrote=%v verdict %q attempt %d, want red recorded under the observed attempt 1 — the rerun's green must be neither judged nor recorded under attempt 1", wrote, rec.Verdict, rec.RunAttempt)
+	}
+}
+
 // TestCandidateRequiredJobVerdict pins the required-check verdict (the
 // M4 landing-gate repairs): the set comes from required-checks.yml keyed
 // by the candidate-run branch pattern (ci/** — main's set names checks a
@@ -309,7 +371,7 @@ func TestCandidateRequiredJobVerdict(t *testing.T) {
 			"Race Test 1":          "failure",
 		})
 		defer cleanup()
-		verdict := candidateRunVerdict(root, "run-1", "completed", "failure", "ci/**")
+		verdict := candidateRunVerdict(root, "run-1", 1, "completed", "failure", "ci/**")
 		if verdict.conclusion != "success" || !verdict.authoritative {
 			t.Errorf("verdict %+v: want success (required green; the race job is advisory), authoritative", verdict)
 		}
@@ -323,7 +385,7 @@ func TestCandidateRequiredJobVerdict(t *testing.T) {
 			"Race Test 1":          "success",
 		})
 		defer cleanup()
-		verdict := candidateRunVerdict(root, "run-1", "completed", "success", "ci/**")
+		verdict := candidateRunVerdict(root, "run-1", 1, "completed", "success", "ci/**")
 		if verdict.conclusion != "failure" || !verdict.authoritative {
 			t.Errorf("verdict %+v: want failure (Lint is required), authoritative", verdict)
 		}
@@ -339,7 +401,7 @@ func TestCandidateRequiredJobVerdict(t *testing.T) {
 			"Guard Bundle":         "success",
 		})
 		defer cleanup()
-		verdict := candidateRunVerdict(root, "run-1", "completed", "success", "ci/**")
+		verdict := candidateRunVerdict(root, "run-1", 1, "completed", "success", "ci/**")
 		if verdict.conclusion != "failure" {
 			t.Errorf("verdict %+v: want failure (the observed run's Lint failed)", verdict)
 		}
@@ -358,7 +420,7 @@ func TestCandidateRequiredJobVerdict(t *testing.T) {
 			"Guard Bundle":         "success",
 		})
 		defer cleanup()
-		verdict := candidateRunVerdict(root, "run-1", "completed", "failure", "ci/**")
+		verdict := candidateRunVerdict(root, "run-1", 1, "completed", "failure", "ci/**")
 		if verdict.conclusion != "success" || !verdict.authoritative {
 			t.Errorf("verdict %+v: want success under the ci/** set (Analyze/release never publish on a candidate)", verdict)
 		}
@@ -374,7 +436,7 @@ func TestCandidateRequiredJobVerdict(t *testing.T) {
 			"Guard Bundle":         "failure",
 		})
 		defer cleanup()
-		verdict := candidateRunVerdict(root, "run-1", "completed", "success", "ci/**")
+		verdict := candidateRunVerdict(root, "run-1", 1, "completed", "success", "ci/**")
 		if verdict.conclusion != "failure" || !verdict.authoritative {
 			t.Errorf("verdict %+v: want failure (Guard Bundle red + key true)", verdict)
 		}
@@ -399,7 +461,7 @@ func TestCandidateRequiredJobVerdict(t *testing.T) {
 			"Guard Bundle":         "failure",
 		})
 		defer cleanup()
-		verdict := candidateRunVerdict(root, "run-1", "completed", "success", "ci/**")
+		verdict := candidateRunVerdict(root, "run-1", 1, "completed", "success", "ci/**")
 		if verdict.conclusion != "success" {
 			t.Errorf("verdict %+v: want success (key false — the bundle does not gate)", verdict)
 		}
@@ -425,7 +487,7 @@ func TestCandidateRequiredJobVerdict(t *testing.T) {
 			"Guard Bundle": "failure",
 		})
 		defer cleanup()
-		verdict := candidateRunVerdict(root, "run-1", "completed", "success", "release/v9.9")
+		verdict := candidateRunVerdict(root, "run-1", 1, "completed", "success", "release/v9.9")
 		if verdict.conclusion != "success" {
 			t.Errorf("verdict %+v: want success (fallback honors key false)", verdict)
 		}
@@ -441,7 +503,7 @@ func TestCandidateRequiredJobVerdict(t *testing.T) {
 			return `{"jobs":[{"name":"Lint","conclusion":"success"},{"name":"Test (ubuntu-latest)","conclusion":"success"},{"name":"Test (ubuntu-latest)","conclusion":"skipped"},{"name":"Guard Bundle","conclusion":"success"}]}`, nil
 		}
 		t.Cleanup(func() { candidateGhRunsListFn = prevList })
-		verdict := candidateRunVerdict(root, "run-1", "completed", "failure", "ci/**")
+		verdict := candidateRunVerdict(root, "run-1", 1, "completed", "failure", "ci/**")
 		if verdict.conclusion != "success" {
 			t.Errorf("verdict %+v: want success (the skip pair's real execution succeeded)", verdict)
 		}
@@ -458,7 +520,7 @@ func TestCandidateRequiredJobVerdict(t *testing.T) {
 			"Guard Bundle":         "success",
 		})
 		defer cleanup()
-		verdict := candidateRunVerdict(root, "run-1", "completed", "success", "ci/**")
+		verdict := candidateRunVerdict(root, "run-1", 1, "completed", "success", "ci/**")
 		if verdict.conclusion != "failure" || !verdict.authoritative {
 			t.Errorf("verdict %+v: want failure — Release PR Multi-OS Gate is absent from the observed run", verdict)
 		}
@@ -477,11 +539,11 @@ func TestCandidateRequiredJobVerdict(t *testing.T) {
 			return "", errors.New("gh api: HTTP 403 (test double)")
 		}
 		t.Cleanup(func() { candidateGhRunsListFn = prevList })
-		verdict := candidateRunVerdict(root, "run-1", "completed", "success", "ci/**")
+		verdict := candidateRunVerdict(root, "run-1", 1, "completed", "success", "ci/**")
 		if verdict.conclusion != "" || verdict.authoritative {
 			t.Errorf("verdict %+v: want the empty conclusion (nothing recorded) — read uncertainty is never green", verdict)
 		}
-		verdictRed := candidateRunVerdict(root, "run-1", "completed", "failure", "ci/**")
+		verdictRed := candidateRunVerdict(root, "run-1", 1, "completed", "failure", "ci/**")
 		if verdictRed.conclusion != "failure" || verdictRed.authoritative {
 			t.Errorf("verdict %+v: want the run-level fallback (failure), not authoritative", verdictRed)
 		}

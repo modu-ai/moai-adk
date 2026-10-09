@@ -435,7 +435,7 @@ func observeCandidateRuns(root, cardID, pinnedSHA, targetBranch string, runs []f
 		// reflects the REQUIRED checks for the record's TARGET BRANCH; a
 		// read failure never mints green (the fallback keeps pending).
 		if run.Status == "completed" {
-			if adjusted := candidateRunVerdict(root, run.RunID, run.Status, run.Conclusion, targetBranch); adjusted.authoritative || adjusted.conclusion == "" {
+			if adjusted := candidateRunVerdict(root, run.RunID, candidateObservedAttempt(run.Attempt), run.Status, run.Conclusion, targetBranch); adjusted.authoritative || adjusted.conclusion == "" {
 				run.Conclusion = adjusted.conclusion
 			}
 		}
@@ -446,6 +446,17 @@ func observeCandidateRuns(root, cardID, pinnedSHA, targetBranch string, runs []f
 		return rec, wrote, nil
 	}
 	return *current, false, nil
+}
+
+// candidateObservedAttempt is the attempt a verdict is judged and recorded
+// against (card t1478). The run list supplies it. An absent attempt reads as
+// attempt 1, the same value factory.ObserveCandidateVerdict records for the run,
+// so the jobs read and the record name one attempt.
+func candidateObservedAttempt(attempt int) int {
+	if attempt < 1 {
+		return 1
+	}
+	return attempt
 }
 
 // candidateVerdictAdjustment is the required-check verdict for one run:
@@ -463,6 +474,12 @@ type candidateVerdictAdjustment struct {
 // the file branch protection itself is rendered from) keyed by the
 // branch pattern the candidate push ran on (ci/**) — main's set names
 // checks a candidate push never publishes and held every candidate red.
+//
+// THE PINNED ATTEMPT (card t1478, codex card review): the jobs are read at
+// the attempt the run list observed, `gh run view <id> --attempt <n>`. An
+// unpinned view answers with the NEWEST attempt, so a rerun that starts between
+// the list and this read would be judged here and recorded under the older
+// attempt. An absent attempt reads as attempt 1 (see candidateObservedAttempt).
 //
 // THE JUDGED SURFACE IS THE OBSERVED RUN'S OWN JOBS (card t1478 M4
 // repair): a SHA can carry check runs from MULTIPLE runs (re-runs, a
@@ -489,7 +506,7 @@ type candidateVerdictAdjustment struct {
 // The SSoT absent or the branch unkeyed → the fallback set is this run's
 // own job names (named in `why`), minus the Guard Bundle check when the
 // key excludes it — the same admission policy as the SSoT set.
-func candidateRunVerdict(root, runID, status, conclusion, targetBranch string) candidateVerdictAdjustment {
+func candidateRunVerdict(root, runID string, attempt int, status, conclusion, targetBranch string) candidateVerdictAdjustment {
 	// Never-green fallback: read uncertainty keeps the record pending
 	// rather than minting green; a failure falls back to red (safe).
 	fallback := candidateVerdictAdjustment{conclusion: conclusion, authoritative: false}
@@ -513,7 +530,7 @@ func candidateRunVerdict(root, runID, status, conclusion, targetBranch string) c
 		source = "run jobs (no required-checks.yml set for " + targetBranch + ")"
 	}
 	// The observed run's jobs — the judged surface.
-	jobsRaw, err := candidateGhRunsListFn(root, "run", "view", runID, "--json", "jobs")
+	jobsRaw, err := candidateGhRunsListFn(root, "run", "view", runID, "--attempt", fmt.Sprintf("%d", attempt), "--json", "jobs")
 	if err != nil {
 		return fallback
 	}
