@@ -339,7 +339,7 @@ Spelling of sync_status (decision for the leader). The merge-readiness sync-audi
   ```
 - **Baseline-attribution.** This run and this tree. The audit's "19 paths through b6b17e5ea" is a different measurement point and is not restated here.
 - **Gaps.** The dated correction is now written beside the §E.3 sentence, by manager-develop, in commit `7b14de8a1` (two inserted lines at progress.md line 226). §E.3 is manager-develop-owned run-phase evidence, so manager-docs did not make that edit (`spec-frontmatter-schema.md` § progress.md Section Map).
-- **Residual-risk.** A reader of §E.3 alone sees the superseded sentence, with the dated annotation directly below it (commit `7b14de8a1`). Item (c) below points readers here.
+- **Residual-risk.** A reader of §E.3 alone sees the superseded sentence, with the dated annotation below the YAML block that carries it (commit `7b14de8a1`). Item (c) below points readers here.
 
 #### D2(a) — F3 record: five paths with REQ traces
 
@@ -377,7 +377,7 @@ Spelling of sync_status (decision for the leader). The merge-readiness sync-audi
 - **Claim.** §E.3 keeps the run-phase AC matrix as written at that time. AC-MWQ2-008 read FAIL there (§E.3.1 row; `ac_fail_count: 1`). Readers must read this §E.4 for the later resolution (item 1 of E.4.3).
 - **Evidence.** `gofmt -l internal/factory internal/cli` returns no output at this sync. The commit that made it so is `8f01ecd2f`.
 - **Baseline-attribution.** This sync, HEAD af55e8924.
-- **Gaps.** The §E.3.1 row and §E.3.2 item 2 are not re-marked in §E.3 by design. §E.3 records the run-phase state, and the later resolution of AC-MWQ2-008 is recorded in this §E.4 (item 1 of E.4.3), as sync-audit F14 asks.
+- **Gaps.** The §E.3.1 row and §E.3.2 item 2 are not re-marked in §E.3 by design. §E.3 records the run-phase state, and the later resolution of AC-MWQ2-008 is recorded in this §E.4 (item 1 of E.4.3), as sync-audit F14 notes.
 - **Residual-risk.** A reader of §E.3 alone sees AC-MWQ2-008 as FAIL.
 
 #### D2(d) — F4 pointer: AC-MWQ2-005 built-binary observation
