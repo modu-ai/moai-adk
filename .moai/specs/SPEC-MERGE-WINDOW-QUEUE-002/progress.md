@@ -257,15 +257,15 @@ m1_to_mN_commit_strategy: one commit per milestone (M1 a560b3b6f, M2 eac7fab39, 
 ## §E.4 Sync-phase Audit-Ready Signal
 
 ```yaml
-sync_status: complete-with-gaps
-sync_complete_at: 2026-10-09T18:27:39Z
-sync_commit_sha: 5d6c9b8c33d5901fe531f8d8373df80754edbe17
+sync_status: complete (named gaps F5 F6 F7 F9 F11 F12c F13 - see E.4.5)
+sync_complete_at: 2026-10-10T00:57:52Z
+sync_commit_sha: pending-backfill
 sync_tier: M
 ac_source: .moai/specs/SPEC-MERGE-WINDOW-QUEUE-002/acceptance.md
 ac_live_count_for_record: 8
-b12_self_test_a: pass
+b12_self_test_a: pass (SPEC-ID count is 1 after the in-place revision)
 b12_self_test_b: not-applicable-no-count-stated
-b12_self_test_c: pass
+b12_self_test_c: pass (the only path cited in the entry, the spec.md link, verified with ls)
 changelog_entry_position: "CHANGELOG.md [Unreleased] - Fixed group, first bullet"
 frontmatter_status_transitions:
   spec_md_status: in-progress -> completed
@@ -310,6 +310,156 @@ Method: `grep -n '@MX'` over the seven changed production files; `git diff -U0 8
 ### E.4.4 Scope note for the sync auditor (not a gap)
 
 - The test reversal `TestRemeasureMixedTestAndEmptyPackageRemainsInvalid` → `TestRemeasureMixedTestAndEmptyPackageIsValid` (commit `eac7fab39`, M2) must be checked against AC-MWQ2-003. The lane judges it intended. Current name, checked in this sync with `grep -rn 'TestRemeasureMixedTestAndEmptyPackage' internal/factory --include='*_test.go'` → `internal/factory/integration_remeasure_run_test.go:189:func TestRemeasureMixedTestAndEmptyPackageIsValid(t *testing.T) {`
+
+### E.4.5 Sync re-close after sync-audit-1 (card t1582, lane-5 spawn)
+
+Scope. This block records the sync phase that follows the FAIL verdict `.moai/reports/t1582/sync-audit-1.md` (audited_sha `20c107a26`), the in-place amendment (`07c4d4fe6`), and the repair commits in §E.2.6. It supersedes the frontmatter and sync-status facts of E.4.1 for this re-close only. E.4.1 to E.4.4 record the first close and stay as written. The YAML block at the top of this section is the current sync record. First-close values, kept for the audit trail: sync_complete_at 2026-10-09T18:27:39Z; sync_commit_sha 5d6c9b8c33d5901fe531f8d8373df80754edbe17 (the value spec.md Amendments cites as prior_completed_sha); sync_status complete-with-gaps.
+
+Spelling of sync_status (decision for the leader). The merge-readiness sync-audit condition (`internal/factorylane/merge.go`, `checkSyncAudit`) reads only the first whitespace token of that line and requires `complete`. The first close's `complete-with-gaps` token fails that condition on every `moai factory merge ready` run, whatever the re-measure record holds. The code documents the annotated `complete (…)` spelling as passing, and this re-close uses it. The gap list is unchanged (item f). Confirm the encoding at landing.
+
+#### Frontmatter and artifact state
+
+- **Claim.** spec.md `status` moves `in-progress -> completed` in the sync commit. `updated` already reads 2026-10-10. `amendment_of` and the `## Amendments` section are not touched.
+- **Evidence.** The first line of plan.md, acceptance.md, and decision-index.md is a title, not a frontmatter fence, so no `updated` refresh applies to them. B10 freezes all three, and none is touched.
+- **Baseline-attribution.** `date -u` at the write: 2026-10-10T00:57:52Z. The local date is 2026-10-10.
+- **Gaps.** None.
+- **Residual-risk.** The trailer convention is open (F11, item f).
+
+#### D1 — §E.3 correction (sync-audit F3): not performed in §E.3
+
+- **Claim.** The run-phase sentence "all 14 changed files inside allowed scope" (§E.3 YAML `preserve_list_post_run_count` line, and `total_run_phase_files: 14`) is not reproducible. The card diff against the pinned base is 23 paths.
+- **Evidence.** Measured in this sync against base 8673c2a95, HEAD af55e8924:
+  ```
+  $ git diff --name-only 8673c2a95 HEAD | wc -l
+  23
+  $ git diff --stat 8673c2a95 HEAD | tail -n 1
+   23 files changed, 1383 insertions(+), 100 deletions(-)
+  ```
+- **Baseline-attribution.** This run and this tree. The audit's "19 paths through b6b17e5ea" is a different measurement point and is not restated here.
+- **Gaps.** The dated correction was not written beside the §E.3 sentence. §E.3 is manager-develop-owned run-phase evidence, and manager-docs may not modify it (`spec-frontmatter-schema.md` § Forbidden ownership crossings). The sync instruction for D1 requests that edit, so the request conflicts with the ownership matrix. The annotation is pending for manager-develop, or for an explicit lane ruling that authorizes it. Proposed text for that edit: `2026-10-10 correction: the card diff against base 8673c2a95 is 23 paths (sync measurement, see E.4.5 D1); the figure of 14 is not reproducible.`
+- **Residual-risk.** A reader of §E.3 alone still sees the superseded sentence until the annotation lands. Item (c) below points readers here.
+
+#### D2(a) — F3 record: five paths with REQ traces
+
+- **Claim.** Five changed paths sit outside the acceptance.md DoD allowed list. Each traces to a REQ. acceptance.md is unchanged.
+- **Evidence.**
+  ```
+  $ git diff --stat 8673c2a95 HEAD -- internal/cli/factory_card.go internal/cli/integration_merge.go internal/factory/integration_lock.go internal/cli/factory_merge_measurement_exit_test.go internal/factory/mergestep_atomic_t1582_test.go
+   internal/cli/factory_card.go                       |   6 +-
+   .../cli/factory_merge_measurement_exit_test.go     |  45 +++++
+   internal/cli/integration_merge.go                  |   2 +-
+   internal/factory/integration_lock.go               |  88 +++++-----
+   internal/factory/mergestep_atomic_t1582_test.go    | 182 +++++++++++++++++++++
+   5 files changed, 281 insertions(+), 42 deletions(-)
+  ```
+  Paths and traces (line numbers at HEAD):
+  - `internal/cli/factory_card.go`: three ShortSHA render swaps (lines 1969, 2064, 2069). REQ-MWQ2-002.
+  - `internal/cli/integration_merge.go`: one ShortSHA render swap (line 110). REQ-MWQ2-002.
+  - `internal/factory/integration_lock.go`: M4 extraction of `releaseIntegrationLockLocked`, and comment-only `@MX:ANCHOR` on `ReleaseIntegrationLock` (lines 529-530). REQ-MWQ2-007.
+  - `internal/cli/factory_merge_measurement_exit_test.go`: M3 test. REQ-MWQ2-006.
+  - `internal/factory/mergestep_atomic_t1582_test.go`: M4 and M6 test. REQ-MWQ2-007.
+- **Baseline-attribution.** This run, pinned base 8673c2a95.
+- **Gaps.** The other 18 card paths were not checked against the DoD list in this sync.
+- **Residual-risk.** The DoD list is an allowed-scope list in a manager-spec-owned artifact. Extending it is a plan-artifact change, so it is not made here.
+
+#### D2(b) — F8 pointer
+
+- **Claim.** The malformed-stream contract change (`countGoTestJSONTests` returns `structured=false` for a malformed `go test -json` stream) is recorded in §E.2, sub-section E.2.6, F8 paragraph.
+- **Evidence.** `grep -n 'F8 — contract change recorded' progress.md` returns line 191 at this sync.
+- **Baseline-attribution.** A pointer to committed text; no new claim.
+- **Gaps.** The runtime path (a malformed capture through `RunRemeasure`) was not executed (§E.2.6, gap 4).
+- **Residual-risk.** The persisted `HasStructured` flag for malformed captures changed. Both refusal paths still hold (§E.2.6).
+
+#### D2(c) — F14 pointer
+
+- **Claim.** §E.3 keeps the run-phase AC matrix as written at that time. AC-MWQ2-008 read FAIL there (§E.3.1 row; `ac_fail_count: 1`). Readers must read this §E.4 for the later resolution (item 1 of E.4.3).
+- **Evidence.** `gofmt -l internal/factory internal/cli` returns no output at this sync. The commit that made it so is `8f01ecd2f`.
+- **Baseline-attribution.** This sync, HEAD af55e8924.
+- **Gaps.** The §E.3.1 row and §E.3.2 item 2 are not re-marked in §E.3 (D1 is blocked).
+- **Residual-risk.** A reader of §E.3 alone sees AC-MWQ2-008 as FAIL.
+
+#### D2(d) — F4 pointer: AC-MWQ2-005 built-binary observation
+
+- **Claim.** The built-binary observation is recorded in §J (F4 block), committed at af55e8924. The build is `make build` at HEAD 26022a3f9, and the binary is invoked by path. The four scenarios:
+  - A: single measurement failure, re-measure record absent. Exit 1.
+  - B: composite, sync-audit fails first and the measurement second. Exit 1.
+  - C: control, non-measurement refusal only. Exit 0.
+  - D: waiting, window held by another lane. Exit 0.
+- **Evidence.** §J F4 block. Exit codes and verdict lines are verbatim there.
+- **Baseline-attribution.** Build at 26022a3f9, BuildID `moai_cp/20261007_195927-135-g26022a3f9` (recorded in §J). The installed build is not used.
+- **Gaps.** Scenario B on the pre-repair binary was not observed. The F1 instance rests on the code path, the red test, and the repaired-binary result. Holder liveness was not probed separately. No composite-with-holder case exists in the binary. The fixture has no `.moai/config`. Sync status and the re-measure record are hand-seeded in C and D.
+- **Residual-risk.** The observation runs on a fixture, not on a lane's live merge-ready run.
+
+#### D2(e) — F15 process residual (plan-audit ceiling exception)
+
+- **Claim.** The run entered on an operator-approved ceiling exception after plan-audit iteration 3 (FAIL 0.91; §G). acceptance.md then changed (D21 and D22, 20:30 on 2026-10-09) without a re-audit. The plan-artifact digest the Kickoff relied on has moved since that verdict.
+- **Evidence.** §G records the score trajectory (0.69, 0.85, 0.91) and the decision record. No digest was recomputed in this sync.
+- **Baseline-attribution.** §G (operator and leader record). Not re-measured here.
+- **Gaps.** The digest was not re-measured. §G was not edited, per instruction.
+- **Residual-risk.** The plan verdict no longer covers the acceptance text the run was measured against. Whether a re-audit is needed is the leader's decision. This is a process residual, not an implementation defect (sync-audit F15).
+
+#### D2(f) — named gaps (finding ids; leader-owned or optional; none changed here)
+
+- **Claim.** The items below remain open. This sync does not close them.
+- **Evidence.** Finding text in `sync-audit-1.md` (read only; not staged or committed).
+- **Baseline-attribution.** The audit's own evidence, as recorded there.
+- **Gaps.** The items themselves:
+  - **F5, coverage.** `internal/factory` is at 83.9% of statements, below the 85% package threshold. 기존 미달, 이 카드가 낮추지 않음. The base at 8673c2a95 measured 83.3% (approximate: one base test failed for an environment reason). Not re-measured in this sync (E3).
+  - **F6, decision-index Q1.** The operator verdict is recorded in decision-index.md from record d-20261009T235134Z-0afd (commit f27361328). The audit observed the cell blank at 20c107a26. The leader confirms the cell.
+  - **F7, postMergeHold.** Writes the hold, then releases the window, in two mutations (writeMergeHold, then releaseHeldWindow). Same class as REQ-MWQ2-007, outside its cause-7 outcome. Out of this card (leader ruling d).
+  - **F9, moving-ref pins in §J.** The remote-mainline divergence counts in §J are anchors without a pin. Leader remedy: pin or exempt.
+  - **F11, trailer convention.** The sync commits end with the MoAI attribution line and carry no `Authored-By-Agent` trailer, which git's trailer parser does not read in that shape. The leader settles the convention.
+  - **F12(c), branch name.** The branch `WT-p1-p2-t1576` embeds card t1576. Commit messages, this file, and the verdict path carry t1582. Renaming is the leader's decision. F12(a) and (b) were not exercised in this sync (no audit_cache or convergence call).
+  - **F13, optional renames.** Not done. Example: `TestRedT1582MergeReadyMeasurementFailureStillExitsZero` asserts a non-zero exit.
+  - **F10, lint (not in the lane list).** Five VacuousTestAssertion warnings on plan.md and acceptance.md. The audit recommends no change. Those artifacts are frozen and were not touched.
+- **Residual-risk.** Landing with these items open is the leader's decision.
+
+#### D3 — CHANGELOG entry reconciled (sync-audit F1, F2)
+
+- **Claim.** The existing entry for this SPEC (Fixed group, first bullet) states the F1 exit behavior precisely and carries clause (e) for the F2 truncation fix. Both claims match the code.
+- **Evidence.** `internal/cli/factory_merge.go` line 165: `if remeasureRecordFailed(recorded.Checks) {`. The helper (line 350) tests every recorded check for `CheckRemeasureRecord`. `internal/factory/integration_remeasure.go` lines 504-517: the unreported set is the started packages minus those with a terminal event, and any member refuses the capture. Tests (see D7): `TestFactoryMergeReadyCompositeFailureResolvesNonZeroExit` PASS; `TestClassifyStartlessTerminalCannotCancelTruncation` PASS.
+- **Baseline-attribution.** This sync, HEAD af55e8924.
+- **Gaps.** The pre-repair binary was not observed for F1 or F2. §J scenario B is the only built-binary observation of the multi-condition case, and it is on the repaired tree.
+- **Residual-risk.** Clause (a) also says a refusal on a non-measurement condition alone still exits zero. That rests on §J scenario C and the verdict design, not on a test of every refusal condition.
+
+#### D4 — MX sub-step: thresholds met, anchors already present, no Go change in this sync
+
+- **Claim.** `ShortSHA` and `ReleaseIntegrationLock` each have at least three non-test call sites, so each needs `@MX:ANCHOR`. Both carry it from commit `20c107a26`. This sync adds no Go line.
+- **Evidence.**
+  ```
+  $ grep -rn 'ShortSHA(' internal --include='*.go' | grep -v _test.go | wc -l
+  17
+  $ grep -rn 'ReleaseIntegrationLock(' internal --include='*.go' | grep -v _test.go | wc -l
+  9
+  ```
+  Excluding the definition lines (`integration_merge_step.go:620`, `integration_lock.go:531`): 16 and 8 call sites. Tags at HEAD: `internal/factory/integration_merge_step.go` lines 617-619 (`@MX:ANCHOR`, `@MX:REASON`, `@MX:SPEC`) and `internal/factory/integration_lock.go` lines 529-530 (`@MX:ANCHOR`, `@MX:REASON`). `git show 20c107a26 -- internal/factory/integration_lock.go internal/factory/integration_merge_step.go` adds comment lines only; a grep for non-comment changed lines returns nothing.
+- **Baseline-attribution.** Counts at HEAD af55e8924 in this sync; the comment-only check on commit 20c107a26.
+- **Gaps.** Cyclomatic complexity of the changed functions was not measured. The `RunMergeStep` WARN carries forward from its tag text.
+- **Residual-risk.** The ShortSHA REASON says "seven distinct callers". That counts enclosing functions. The call-site count is 16, so the wording holds only in the enclosing-function sense.
+
+#### D6 — sync_commit_sha placeholder and backfill
+
+- **Claim.** The sync commit writes the placeholder `pending-backfill` in the YAML block above. A following commit replaces it with the short SHA of the sync commit and touches progress.md only.
+- **Evidence.** The YAML block (current content). The backfill commit's SHA is reported in the final report.
+- **Baseline-attribution.** A commit cannot cite its own hash.
+- **Gaps.** None.
+- **Residual-risk.** Until the backfill lands, the record carries the placeholder. The slot-format rule treats it as a sanctioned intermediate state.
+
+#### D7 — verification (Go side run before the artifact edits; the sync commit is docs-only)
+
+- **Claim.** HEAD af55e8924's Go code builds, vets, formats, and passes the RED family and the F1 and F2 repair tests. This sync changes no Go file.
+- **Evidence.** Exit codes and counts observed in this sync:
+  - `go build ./...` → exit 0
+  - `GOOS=windows GOARCH=amd64 go build ./...` → exit 0
+  - `go vet ./internal/factory/ ./internal/cli/` → exit 0
+  - `gofmt -l internal/factory internal/cli` → no output
+  - `unset MOAI_KANBAN_ID MOAI_KANBAN_LEAD_ADDR MOAI_KANBAN_SETTINGS_INJECTED && go test -count=1 -v -run '^TestRedT1582' ./internal/factory/ ./internal/cli/` → exit 0; top-level `--- PASS` 10; `--- FAIL` 0; `no tests to run` 0
+  - `TestFactoryMergeReadyCompositeFailureResolvesNonZeroExit` (internal/cli) and `TestClassifyStartlessTerminalCannotCancelTruncation` (internal/factory) → `--- PASS` and `ok` each
+  - `golangci-lint run ./internal/factory/... ./internal/cli/...` → exit 0, `0 issues.`
+  - `make build` → exit 0; `bin/moai version` → Commit af55e8924, BuildID `moai_cp/20261007_195927-136-gaf55e8924`
+- **Baseline-attribution.** This sync, HEAD af55e8924, this tree. The verification binary was built from this tree and invoked by path.
+- **Gaps.** The full `internal/factory` and `internal/cli` suites and the repository-wide `go test ./...` were not run here (lane-local verification; CI owns the full suites). The full `internal/cli` suite is structurally red inside card worktrees (§E.3.2 item 4). Coverage was not re-measured (E3).
+- **Residual-risk.** The green family does not exercise the full suites. The CI verdict on the integration branch remains the repository-wide check.
 
 ## §J Lane run-entry record (card t1582, run tmnboq, lane-5)
 

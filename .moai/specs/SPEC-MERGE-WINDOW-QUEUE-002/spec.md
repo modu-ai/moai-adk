@@ -2,7 +2,7 @@
 id: SPEC-MERGE-WINDOW-QUEUE-002
 title: "Merge-window queue integrity packet 2 — short-base record panic before window release, no-test marker wrongful refusal, cause-7 hold/release atomicity, measurement-failure exit code"
 version: "0.3.0"
-status: in-progress
+status: completed
 created: 2026-10-09
 updated: 2026-10-10
 author: manager-spec
