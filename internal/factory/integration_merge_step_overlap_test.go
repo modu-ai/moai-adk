@@ -438,3 +438,42 @@ func TestMergeStepPreexistingMergeHeadRefusesWithoutAbort(t *testing.T) {
 	requireCode(t, runErr, MergeExitWorktreeDirty)
 	requireWindowReleasedAndCPromoted(t, f)
 }
+
+func TestMergeStepRaceMergeHeadAfterProbeIsNotAborted(t *testing.T) {
+	// F1 follow-up (sync audit, card t1616): the in-section probe runs before the merge
+	// call, so a merge another actor begins after it is not caught there. Here the
+	// foreign MERGE_HEAD appears inside the merge call, which is where the race lands:
+	// git refuses to start the merge over it, and the step's abort would then discard
+	// it. The step must not abort a merge it did not start. It refuses with
+	// MergeExitWorktreeDirty, leaves MERGE_HEAD naming the foreign commit, and releases
+	// the window.
+	f := newMergeFixture(t)
+	card := f.withCardTree(readyCardPtr())
+	tree := strings.TrimSpace(stepMustGit(t, f.integ, "rev-parse", "HEAD^{tree}"))
+	foreign := strings.TrimSpace(stepMustGit(t, f.integ, "commit-tree", tree, "-m", "foreign merge head"))
+	seams := f.seams(card)
+	seams.Git = func(args ...string) (string, error) {
+		if len(args) >= 1 && args[0] == "merge" && !containsArg(args, "--abort") {
+			// The other actor's merge begins here: MERGE_HEAD names its commit, and
+			// the real merge call that follows is refused by git over that merge.
+			if err := os.WriteFile(filepath.Join(f.integ, ".git", "MERGE_HEAD"), []byte(foreign+"\n"), 0o644); err != nil {
+				return "", err
+			}
+		}
+		runner := exec.Command("git", args...)
+		runner.Dir = f.integ
+		out, err := runner.CombinedOutput()
+		return string(out), err
+	}
+	_, runErr := RunMergeStep(f.input(), seams)
+	body, readErr := os.ReadFile(filepath.Join(f.integ, ".git", "MERGE_HEAD"))
+	if readErr != nil {
+		t.Fatalf("the step aborted a merge another actor began after the probe: MERGE_HEAD is gone (%v)", readErr)
+	}
+	if got := strings.TrimSpace(string(body)); got != foreign {
+		t.Fatalf("MERGE_HEAD must still name the foreign commit %s, got %q", foreign, got)
+	}
+	requireCode(t, runErr, MergeExitWorktreeDirty)
+	requireNoMerge(t, f)
+	requireWindowReleasedAndCPromoted(t, f)
+}
