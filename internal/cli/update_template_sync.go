@@ -223,12 +223,8 @@ func runTemplateSyncWithReporter(cmd *cobra.Command, reporter project.ProgressRe
 	// Use current directory as project root
 	projectRoot := "."
 
-	currentVersion := version.GetVersion()
-	// Identity header band (REQ-TUXIU-015): "◆ MoAI-ADK <version> <go-runtime>
-	// · claude" with the version as a solid brand pill. Card t1527 D1: the band
-	// is THE single version surface of a sync — the former duplicate
-	// "Current version" KV beside it is gone.
-	_, _ = fmt.Fprintln(out, renderIdentityBand(currentVersion, th))
+	// The identity band is printed by runUpdate, the run's single version banner
+	// (REQ-RC30-013), so the sync header starts at its progress line.
 	_, _ = fmt.Fprintln(out, tui.CheckLine("run", "Syncing templates", "from embedded filesystem", "", &th))
 
 	// Card t1527 D2: the three pre-deploy phases render on the SAME stdout

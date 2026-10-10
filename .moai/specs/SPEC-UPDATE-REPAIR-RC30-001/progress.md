@@ -668,6 +668,62 @@ ok  	github.com/modu-ai/moai-adk/internal/userassets	0.316s
 
 **Files changed.** `internal/userassets/install.go`, `internal/userassets/downgrade_refusal_test.go` (new), `go.mod`, `.moai/specs/SPEC-UPDATE-REPAIR-RC30-001/progress.md`.
 
+### M1 step 4, bundle D — U-17 (AC-RC30-18) (manager-develop, card t1619)
+
+Bundle D is two items, U-17 then U-21 (plan § B.2 step 4). This entry is U-17; U-21 has its own entry. Tree before the item: HEAD `26b3fc31f` on `WT-moai-update-repair`, clean (pre-flight: branch, HEAD, `git status --short` empty, `go build ./internal/cli/` no output). The item is one local commit; nothing is pushed.
+
+**Reading of E-03 (re-read on this tree).** `internal/cli/update.go` prints the "Current version" KV on every non-re-exec pass, ahead of every mode branch. The identity band (`renderIdentityBand`, REQ-TUXIU-015) prints only in `runTemplateSyncWithReporter` (`internal/cli/update_template_sync.go`, the sync header). A default run therefore printed two version lines. The band renders only on the sync path: `--check`, `--shell-env`, `--binary`, `--restore`, `--dry-run`, the non-project refusal, the lock error and the v2 clean-reinstall print no band.
+
+**Design.** The band moves to the top of `runUpdate`, where the KV was, and the sync header no longer repeats it. Removing only the KV would strip the sole version line from every path listed above. The re-executed pass keeps skipping the band through the existing `reexecPassActive` marker.
+
+**RED (TDD order).** New judging test `TestUpdateSingleBanner` in `internal/cli/update_single_banner_test.go`. It runs the default `updateCmd.RunE` in a moai project (`.moai/config/sections/system.yaml`), with `version.Version` pinned to `v9.9.9-banner`, `yes` set, and a mock update checker that reports no update. It counts the output lines carrying the version and asserts the band marker. The test compiles against the tree as it stood; no stub was needed.
+
+Command: `go test ./internal/cli/ -run TestUpdateSingleBanner -count=1 -v`, exit 1. Verbatim (second run). The first run printed the whole run output in the failure message, so the message was narrowed and the RED re-run; the same assertion fired both times.
+
+```text
+=== RUN   TestUpdateSingleBanner
+moai-cli-test: userHomeDirFn redirected real home to sandbox /var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/moai-cli-home-3832687276
+2026/10/10 20:58:05 INFO SUNSET_CONFIG_DORMANT_NOTICE spec="SPEC-V3R2-MIG-003 REQ-018" yaml_path=.moai/config/sections/sunset.yaml advice="SunsetConfig has no runtime hot path; activation requires a new SPEC"
+    update_single_banner_test.go:60: a run must print exactly one version line, got 2: ["Current version   moai-adk v9.9.9-banner" "◆ MoAI-ADK  v9.9.9-banner  go1.26.8 · claude"]
+--- FAIL: TestUpdateSingleBanner (1.12s)
+FAIL
+FAIL	github.com/modu-ai/moai-adk/internal/cli	2.599s
+FAIL
+```
+
+**Implementation.** `internal/cli/update.go` (the `currentVersion` block in `runUpdate`): `tui.KV("Current version", …)` becomes `renderIdentityBand(currentVersion, th)`, under the same `reexecPassActive` guard. `internal/cli/update_template_sync.go`: the band print and the now-unused `currentVersion` local are removed from `runTemplateSyncWithReporter`; the "Syncing templates" line stays.
+
+**Test assertions changed.** REQ-RC30-013 requires one banner, so the literal "Current version" no longer appears in any run. Three existing assertions that required it now require the band marker `◆ MoAI-ADK` (on `stripSGR` output): `internal/cli/update_test.go` `TestUpdateCmd_CheckOnly_NoDeps`, `internal/cli/coverage_test.go` `TestRunUpdate_DefaultIsTemplateSync`, `internal/cli/integration_test.go` `TestUpdateCmd_DefaultIsTemplateSync`. In `internal/cli/update_reexec_banner_test.go` two comments that described the removed KV and the sync-header band were corrected; no assertion there changed.
+
+**GREEN.** Same command, exit 0, verbatim:
+
+```text
+=== RUN   TestUpdateSingleBanner
+moai-cli-test: userHomeDirFn redirected real home to sandbox /var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/moai-cli-home-2695936028
+2026/10/10 21:02:27 INFO SUNSET_CONFIG_DORMANT_NOTICE spec="SPEC-V3R2-MIG-003 REQ-018" yaml_path=.moai/config/sections/sunset.yaml advice="SunsetConfig has no runtime hot path; activation requires a new SPEC"
+--- PASS: TestUpdateSingleBanner (0.74s)
+PASS
+ok  	github.com/modu-ai/moai-adk/internal/cli	1.569s
+```
+
+**Regression run (one plain command, exit 0).** `go test ./internal/cli/ -run 'TestUpdateSingleBanner|TestUpdateCmd_CheckOnly_NoDeps|TestUpdateCmd_DefaultIsTemplateSync|TestRunUpdate_DefaultIsTemplateSync|TestUpdateBanner_IdentityBandIsTheSingleSyncSurface|TestReexecPassActive_FlagGated|TestReexecChildArgv_InsertsMarker|TestReexecMarkerFlag_IsHiddenAndPersistent|TestRunTemplateSync_Timeout' -count=1 -v`: all nine `--- PASS`, last line `ok  	github.com/modu-ai/moai-adk/internal/cli	2.905s`. This run preceded one comment-only reflow of `update.go`; the judging test was re-run after it (GREEN above is the post-reflow run).
+
+**Gates (each its own command).**
+- `gofmt -l` on the seven touched Go files: no output. Re-run on `update.go` after the reflow: no output.
+- `go vet ./internal/cli/`: no output.
+- `golangci-lint run ./internal/cli/`: `0 issues.` Re-run after the reflow: `0 issues.`
+- `GOOS=windows GOARCH=amd64 go build ./...` (B1): no output.
+
+**Gaps (not observed in this item).**
+- The full `internal/cli` suite was not run locally (`.claude/rules/local/gitflow-lane-protocol.md` § 8). The CI run on `origin/develop` owns the full-suite verdict, PENDING at the time of this record.
+- The `testdata/tuxiu/**` goldens are static fixtures. `TestInitUpdateTUXCharacterization` and its siblings read them from disk and never run `runUpdate`, so they are not regenerated here. They already differed from HEAD's live output before this item (the pre-logo golden shows two "Current version" lines and a sync header with no band). Not observed: any other test that asserts band or KV text through a live run. A package-wide grep found only the files named above.
+- On an update that installs a new binary, the band shows the version the pre-exec pass started with, and the re-executed pass prints no band. The `New version` and `Updated A → B` lines carry the change. Before this item the post-update band showed the new version. This is a behavior change for review.
+- The binary-update path was not run end to end. The judging test covers the no-update default run.
+
+**Pre-commit gate (`moai gate` workflow, scoped to the seven touched Go files).** Phase 1B: `moai verify check --key-current` exited 1 (`no snapshot recorded for the current working-tree key`, key `26b3fc31fb1f21667e566e59d64c9bfeab8fafef:abf8028cdf0bb689`), so nothing was reused and every check ran. Lint PASS (`golangci-lint run ./internal/cli/`: `0 issues.`). Format PASS (`gofmt -l` on the seven files: no output). Type PASS (`go vet ./internal/cli/`: no output). Test PASS (`go test -race ./internal/cli/ -run` over the nine affected tests above, `-count=1 -v`: all nine `--- PASS`; `ok  	github.com/modu-ai/moai-adk/internal/cli	7.202s`). Scope: the full `internal/cli` package and `./...` were not run locally (`.claude/rules/local/gitflow-lane-protocol.md` § 8); the full-suite verdict belongs to CI on `origin/develop` (PENDING). A scoped run is not recorded as a snapshot (gate.md § Snapshot Recording). The routing-ledger record of the gate's Step 2.2 was not written: it writes under `.moai/state/`, which B8 keeps out of this lane.
+
+**Files changed.** `internal/cli/update.go`, `internal/cli/update_template_sync.go`, `internal/cli/update_single_banner_test.go` (new), `internal/cli/update_test.go`, `internal/cli/coverage_test.go`, `internal/cli/integration_test.go`, `internal/cli/update_reexec_banner_test.go`, `.moai/specs/SPEC-UPDATE-REPAIR-RC30-001/progress.md`.
+
 ## §E.3 Run-phase Audit-Ready Signal
 
 _pending run-phase (manager-develop)_

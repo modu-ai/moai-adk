@@ -190,14 +190,15 @@ func runUpdate(cmd *cobra.Command, _ []string) error {
 	}
 
 	currentVersion := version.GetVersion()
-	// Card t1527 D1: on the re-executed pass the version identity is carried by
-	// the template-sync band (renderIdentityBand) alone — repeating the KV here
-	// printed the same version twice per install (three times counting the
-	// pre-exec pass). The marker rides ARGV (hidden flag inserted by
-	// reexecNewBinary), not the environment — an inherited env var cannot
-	// fake the pass (card review round 2).
+	// REQ-RC30-013 / REQ-TUXIU-015: the identity band is the run's single
+	// version banner. It prints here, ahead of every mode branch below, so each
+	// run shows it exactly once (AC-RC30-18). The re-executed pass skips it,
+	// because the pre-exec pass already printed the band before the binary was
+	// replaced. The marker rides ARGV (hidden flag inserted by reexecNewBinary),
+	// not the environment — an inherited env var cannot fake the pass (card
+	// review round 2).
 	if !reexecPassActive(cmd) {
-		_, _ = fmt.Fprintln(out, tui.KV("Current version", "moai-adk "+currentVersion, tui.KVOpts{Theme: &th, KeyWidth: 16}))
+		_, _ = fmt.Fprintln(out, renderIdentityBand(currentVersion, th))
 	}
 
 	// Handle shell-env mode
