@@ -17,7 +17,9 @@ import (
 // SPEC-FACTORY-SELF-DISPATCH-001 M3 (REQ-SD-014) contributes the six
 // factory card + queue tools. The two on-demand self-review tools
 // (codex_review, glm_review) are read-only and bring the surface to 47.
-const wantCatalogSize = 47
+// SPEC-FACTORY-LEASE-RENEW-001 M2 (REQ-FLR-002) adds factory_renew, the lane's
+// write-capable card lease renewal, which brings the surface to 48.
+const wantCatalogSize = 48
 
 // TestMoaiMCPTools_CatalogSize asserts the catalog declares exactly
 // wantCatalogSize tools, matching the registration count in
@@ -29,7 +31,7 @@ func TestMoaiMCPTools_CatalogSize(t *testing.T) {
 	}
 }
 
-// TestMoaiMCPTools_WriteCapableSet asserts exactly the twenty write-capable
+// TestMoaiMCPTools_WriteCapableSet asserts exactly the twenty-one write-capable
 // tools carry WriteCapable=true (REQ-C-3 / AC-C-003), and the other 27 are
 // read-only (the two self-review tools among them). session_msg_list is read-only: it enumerates registered peers
 // without touching the store, unlike register/send/poll which write an agent
@@ -45,7 +47,8 @@ func TestMoaiMCPTools_CatalogSize(t *testing.T) {
 // SPEC-FACTORY-SELF-DISPATCH-001 M3 adds todo_add (queue insert),
 // factory_next (lease + queue promotion + card worktree), factory_stage (F1
 // edge + lease renewal), factory_complete (merge record), and
-// factory_decide (operator decision).
+// factory_decide (operator decision). SPEC-FACTORY-LEASE-RENEW-001 M2 adds
+// factory_renew (the lane's card lease renewal, REQ-FLR-002).
 func TestMoaiMCPTools_WriteCapableSet(t *testing.T) {
 	want := map[string]bool{
 		"goal_arm":             true,
@@ -68,6 +71,7 @@ func TestMoaiMCPTools_WriteCapableSet(t *testing.T) {
 		"factory_stage":        true,
 		"factory_complete":     true,
 		"factory_decide":       true,
+		"factory_renew":        true,
 	}
 	var got []string
 	for _, tool := range MoaiMCPTools() {

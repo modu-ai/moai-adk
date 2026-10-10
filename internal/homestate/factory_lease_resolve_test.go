@@ -1,8 +1,11 @@
 package homestate
 
 import (
+	"bytes"
 	"errors"
+	"log/slog"
 	"os"
+	"path/filepath"
 	"strings"
 	"testing"
 	"time"
@@ -109,12 +112,29 @@ func TestOpenFactoryRefusalLeavesNoDatabase(t *testing.T) {
 	}
 }
 
-func TestOpenFactoryRefusesAWorkflowFileThatCannotBeRead(t *testing.T) {
+// Ruling d-20261010T111725Z-3ef9 (part a): an undecodable workflow.yaml does not refuse
+// the open. The lease keys take their defaults, and the open warns, naming the file.
+func TestOpenFactoryFallsBackOnAWorkflowFileThatCannotBeRead(t *testing.T) {
 	root := factorySandbox(t)
 	writeFactoryWorkflowConfig(t, root, "workflow:\n  factory_lease: [unclosed\n")
-	_, err := OpenFactory(root)
-	if !errors.Is(err, errFactoryLeaseRefused) || !strings.Contains(err.Error(), "could not be read") {
-		t.Fatalf("OpenFactory err = %v, want a refusal that says the workflow configuration could not be read", err)
+	var logs bytes.Buffer
+	prev := slog.Default()
+	slog.SetDefault(slog.New(slog.NewTextHandler(&logs, nil)))
+	t.Cleanup(func() { slog.SetDefault(prev) })
+	db, err := OpenFactory(root)
+	if err != nil {
+		t.Fatalf("OpenFactory on an undecodable workflow file: err = %v, want the open to fall back to the defaults", err)
+	}
+	t.Cleanup(func() { _ = db.Close() })
+	if got := db.CardLeaseDuration(); got != 15*time.Minute {
+		t.Errorf("card lease duration = %s, want the 15m default", got)
+	}
+	if got := db.RenewInterval(); got != 5*time.Minute {
+		t.Errorf("renew interval = %s, want the 5m default", got)
+	}
+	needle := filepath.Join(".moai", "config", "sections", "workflow.yaml")
+	if !strings.Contains(logs.String(), needle) {
+		t.Fatalf("warning does not name the file %s:\n%s", needle, logs.String())
 	}
 }
 

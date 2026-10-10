@@ -1,8 +1,11 @@
 package config
 
 import (
+	"bytes"
+	"log/slog"
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 	"time"
 )
@@ -88,12 +91,27 @@ func TestLoadFactoryLeaseDefaultsForOmittedKeys(t *testing.T) {
 	}
 }
 
-func TestLoadFactoryLeaseMalformedFileIsAnError(t *testing.T) {
+// Ruling d-20261010T111725Z-3ef9 (part a): a workflow.yaml that cannot be decoded is not
+// a refusal. The keys take their defaults, and a slog warning names the file and the
+// error, which is the config fallback path the other loaders use.
+func TestLoadFactoryLeaseMalformedFileFallsBackWithWarning(t *testing.T) {
 	t.Setenv(EnvConfigDir, "")
 	root := t.TempDir()
 	writeFactoryLeaseWorkflow(t, root, "workflow:\n  factory_lease: [unclosed\n")
-	if got, err := LoadFactoryLease(root); err == nil {
-		t.Fatalf("LoadFactoryLease on a malformed file = %+v, nil error; want an error so the caller refuses to open", got)
+	var logs bytes.Buffer
+	prev := slog.Default()
+	slog.SetDefault(slog.New(slog.NewTextHandler(&logs, nil)))
+	t.Cleanup(func() { slog.SetDefault(prev) })
+	got, err := LoadFactoryLease(root)
+	if err != nil {
+		t.Fatalf("LoadFactoryLease on a malformed file: err = %v, want the defaults and a warning", err)
+	}
+	if want := NewDefaultWorkflowConfig().FactoryLease; got != want {
+		t.Fatalf("LoadFactoryLease on a malformed file = %+v, want the defaults %+v", got, want)
+	}
+	needle := filepath.Join(".moai", "config", "sections", "workflow.yaml")
+	if !strings.Contains(logs.String(), needle) || !strings.Contains(logs.String(), ErrInvalidYAML.Error()) {
+		t.Fatalf("warning does not name the file %s and the error %q:\n%s", needle, ErrInvalidYAML, logs.String())
 	}
 }
 
