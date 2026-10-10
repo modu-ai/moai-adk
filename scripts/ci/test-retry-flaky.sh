@@ -15,6 +15,11 @@
 #   3. A registry test that also fails on the retry fails the run.
 #   4. A failure outside the registry never retries, even beside a registry test.
 #   5. A registry entry without an evidence citation refuses the run before any command runs.
+#   6. A go test -json stream is read the same way: a failing registry test is re-run
+#      exactly once, and the retry is recorded on stderr.
+#   7. Stdout carries the final attempt's stream only, as valid JSON lines; notices go to stderr.
+#   8. A retried first attempt is kept beside the retry log.
+#   9. A failure that names no test (a package-level failure) never retries, even beside a registry test.
 #
 # Usage: bash scripts/ci/test-retry-flaky.sh
 # Exit:  0 when every case passes; 1 when any case fails.
@@ -102,6 +107,62 @@ case "$scenario" in
 		echo "PASS"
 		exit 0
 		;;
+	json-flaky-once)
+		if [ "$n" -eq 1 ]; then
+			echo '{"Time":"2026-10-10T00:00:00Z","Action":"run","Package":"example/fixture","Test":"TestFlakyRegistered"}'
+			echo '{"Time":"2026-10-10T00:00:00Z","Action":"output","Package":"example/fixture","Test":"TestFlakyRegistered","Output":"ATTEMPT-ONE\n"}'
+			echo '{"Time":"2026-10-10T00:00:00Z","Action":"fail","Package":"example/fixture","Test":"TestFlakyRegistered","Elapsed":0}'
+			echo '{"Time":"2026-10-10T00:00:00Z","Action":"fail","Package":"example/fixture","Elapsed":0}'
+			exit 1
+		fi
+		echo '{"Time":"2026-10-10T00:00:00Z","Action":"run","Package":"example/fixture","Test":"TestFlakyRegistered"}'
+		echo '{"Time":"2026-10-10T00:00:00Z","Action":"output","Package":"example/fixture","Test":"TestFlakyRegistered","Output":"ATTEMPT-TWO\n"}'
+		echo '{"Time":"2026-10-10T00:00:00Z","Action":"pass","Package":"example/fixture","Test":"TestFlakyRegistered","Elapsed":0}'
+		echo '{"Time":"2026-10-10T00:00:00Z","Action":"pass","Package":"example/fixture","Elapsed":0}'
+		exit 0
+		;;
+	json-flaky-always)
+		mark=ATTEMPT-ONE
+		if [ "$n" -gt 1 ]; then
+			mark=ATTEMPT-TWO
+		fi
+		echo '{"Time":"2026-10-10T00:00:00Z","Action":"run","Package":"example/fixture","Test":"TestFlakyRegistered"}'
+		echo '{"Time":"2026-10-10T00:00:00Z","Action":"output","Package":"example/fixture","Test":"TestFlakyRegistered","Output":"'"$mark"'\n"}'
+		echo '{"Time":"2026-10-10T00:00:00Z","Action":"fail","Package":"example/fixture","Test":"TestFlakyRegistered","Elapsed":0}'
+		echo '{"Time":"2026-10-10T00:00:00Z","Action":"fail","Package":"example/fixture","Elapsed":0}'
+		exit 1
+		;;
+	json-solid)
+		echo '{"Time":"2026-10-10T00:00:00Z","Action":"run","Package":"example/fixture","Test":"TestSolid"}'
+		echo '{"Time":"2026-10-10T00:00:00Z","Action":"output","Package":"example/fixture","Test":"TestSolid","Output":"SOLID-MARK\n"}'
+		echo '{"Time":"2026-10-10T00:00:00Z","Action":"fail","Package":"example/fixture","Test":"TestSolid","Elapsed":0}'
+		echo '{"Time":"2026-10-10T00:00:00Z","Action":"fail","Package":"example/fixture","Elapsed":0}'
+		exit 1
+		;;
+	json-mixed)
+		echo '{"Time":"2026-10-10T00:00:00Z","Action":"run","Package":"example/fixture","Test":"TestFlakyRegistered"}'
+		echo '{"Time":"2026-10-10T00:00:00Z","Action":"run","Package":"example/fixture","Test":"TestSolid"}'
+		echo '{"Time":"2026-10-10T00:00:00Z","Action":"output","Package":"example/fixture","Test":"TestSolid","Output":"MIXED-MARK\n"}'
+		echo '{"Time":"2026-10-10T00:00:00Z","Action":"fail","Package":"example/fixture","Test":"TestFlakyRegistered","Elapsed":0}'
+		echo '{"Time":"2026-10-10T00:00:00Z","Action":"fail","Package":"example/fixture","Test":"TestSolid","Elapsed":0}'
+		echo '{"Time":"2026-10-10T00:00:00Z","Action":"fail","Package":"example/fixture","Elapsed":0}'
+		exit 1
+		;;
+	json-pass)
+		echo '{"Time":"2026-10-10T00:00:00Z","Action":"run","Package":"example/fixture","Test":"TestSolid"}'
+		echo '{"Time":"2026-10-10T00:00:00Z","Action":"output","Package":"example/fixture","Test":"TestSolid","Output":"PASS-MARK\n"}'
+		echo '{"Time":"2026-10-10T00:00:00Z","Action":"pass","Package":"example/fixture","Test":"TestSolid","Elapsed":0}'
+		echo '{"Time":"2026-10-10T00:00:00Z","Action":"pass","Package":"example/fixture","Elapsed":0}'
+		exit 0
+		;;
+	json-unnamed-pkg)
+		echo '{"Time":"2026-10-10T00:00:00Z","Action":"run","Package":"example/fixture-a","Test":"TestFlakyRegistered"}'
+		echo '{"Time":"2026-10-10T00:00:00Z","Action":"fail","Package":"example/fixture-a","Test":"TestFlakyRegistered","Elapsed":0}'
+		echo '{"Time":"2026-10-10T00:00:00Z","Action":"fail","Package":"example/fixture-a","Elapsed":0}'
+		echo '{"Time":"2026-10-10T00:00:00Z","Action":"output","Package":"example/fixture-b","Output":"UNNAMED-MARK\n"}'
+		echo '{"Time":"2026-10-10T00:00:00Z","Action":"fail","Package":"example/fixture-b","Elapsed":0}'
+		exit 1
+		;;
 esac
 FAKE
 chmod +x "$tmp/fake-test.sh"
@@ -126,6 +187,32 @@ run_case() {
 	rc=$?
 	count="$(cat "$counter" 2>/dev/null || echo 0)"
 	log="$(cat "$FLAKY_RETRY_LOG" 2>/dev/null || true)"
+}
+
+# make_registry <label> — one temporary registry per JSON case; sets reg_path.
+make_registry() {
+	reg_path="$tmp/registry-$1.txt"
+	cat > "$reg_path" <<'REG'
+# fixture registry: one entry per line, the name first, then the evidence citation.
+TestFlakyRegistered  fixture-evidence: SPEC-CI-FLAKY-STABILIZE-001 precedent
+REG
+}
+
+# run_split <label> <scenario> <registry> — as run_case, but stdout and stderr stay
+# apart: sout is the stdout stream, serr the stderr text, jq_rc the status of reading
+# stdout as JSON lines (0 when every line parses).
+run_split() {
+	counter="$tmp/count-$1"
+	FLAKY_RETRY_LOG="$tmp/retry-$1.log"
+	export FLAKY_RETRY_LOG
+	bash "$wrapper" --registry "$3" -- "$tmp/fake-test.sh" "$2" "$counter" > "$tmp/stdout-$1.json" 2> "$tmp/stderr-$1.txt"
+	rc=$?
+	count="$(cat "$counter" 2>/dev/null || echo 0)"
+	log="$(cat "$FLAKY_RETRY_LOG" 2>/dev/null || true)"
+	sout="$(cat "$tmp/stdout-$1.json")"
+	serr="$(cat "$tmp/stderr-$1.txt")"
+	jq -c . "$tmp/stdout-$1.json" > /dev/null 2>&1
+	jq_rc=$?
 }
 
 echo "=== retry-flaky fixture cases ==="
@@ -167,6 +254,76 @@ expect_lacks "pass: no retry recorded" "retried:" "$out"
 run_case uncited flaky-once "$uncited"
 expect_eq "uncited: refused with usage status 2" "2" "$rc"
 expect_eq "uncited: command never ran" "0" "$count"
+
+echo "=== retry-flaky JSON-stream cases ==="
+
+# JSON case 1: a go test -json registry test fails once and passes on the retry.
+make_registry json-flaky-once
+run_split json-flaky-once json-flaky-once "$reg_path"
+expect_eq    "json flaky-once: exit status is the retry's (0)" "0" "$rc"
+expect_eq    "json flaky-once: command ran exactly twice" "2" "$count"
+expect_has   "json flaky-once: retry recorded on stderr" "retried: TestFlakyRegistered, attempt 2, outcome pass" "$serr"
+expect_lacks "json flaky-once: no wrapper notice on stdout" "retry-flaky:" "$sout"
+expect_eq    "json flaky-once: stdout is valid JSON lines" "0" "$jq_rc"
+expect_has   "json flaky-once: stdout carries the final attempt" "ATTEMPT-TWO" "$sout"
+expect_lacks "json flaky-once: stdout omits the first attempt" "ATTEMPT-ONE" "$sout"
+expect_has   "json flaky-once: first attempt kept beside the retry log" "ATTEMPT-ONE" "$(cat "$tmp/retry-json-flaky-once.attempt1.json" 2>/dev/null || true)"
+expect_lacks "json flaky-once: kept file holds only the first attempt" "ATTEMPT-TWO" "$(cat "$tmp/retry-json-flaky-once.attempt1.json" 2>/dev/null || true)"
+expect_has   "json flaky-once: retry recorded in the log" "retried: TestFlakyRegistered, attempt 2, outcome pass" "$log"
+
+# JSON case 2: a go test -json registry test fails on both attempts; one retry, and the run fails.
+make_registry json-flaky-always
+run_split json-flaky-always json-flaky-always "$reg_path"
+expect_eq    "json flaky-always: run fails (non-zero)" "1" "$rc"
+expect_eq    "json flaky-always: exactly one retry (two runs in total)" "2" "$count"
+expect_has   "json flaky-always: failed retry recorded on stderr" "retried: TestFlakyRegistered, attempt 2, outcome fail" "$serr"
+expect_eq    "json flaky-always: stdout is valid JSON lines" "0" "$jq_rc"
+expect_has   "json flaky-always: stdout carries the second attempt" "ATTEMPT-TWO" "$sout"
+expect_lacks "json flaky-always: stdout omits the first attempt" "ATTEMPT-ONE" "$sout"
+
+# JSON case 3: a non-registry failure never retries.
+make_registry json-solid
+run_split json-solid json-solid "$reg_path"
+expect_eq    "json solid: run fails (non-zero)" "1" "$rc"
+expect_eq    "json solid: zero retries (one run in total)" "1" "$count"
+expect_has   "json solid: refusal named on stderr" "TestSolid is not in the registry; no retry" "$serr"
+expect_lacks "json solid: no retry recorded" "retried:" "$serr"
+expect_eq    "json solid: stdout is valid JSON lines" "0" "$jq_rc"
+expect_has   "json solid: stdout is the single attempt's stream" "SOLID-MARK" "$sout"
+
+# JSON case 4: a registry failure beside a non-registry failure does not retry.
+make_registry json-mixed
+run_split json-mixed json-mixed "$reg_path"
+expect_eq    "json mixed: run fails (non-zero)" "1" "$rc"
+expect_eq    "json mixed: zero retries (one run in total)" "1" "$count"
+expect_has   "json mixed: refusal names the unregistered test on stderr" "TestSolid is not in the registry; no retry" "$serr"
+expect_lacks "json mixed: no retry recorded" "retried:" "$serr"
+expect_eq    "json mixed: stdout is valid JSON lines" "0" "$jq_rc"
+
+# JSON case 5: a passing run is not re-run.
+make_registry json-pass
+run_split json-pass json-pass "$reg_path"
+expect_eq    "json pass: exit status 0" "0" "$rc"
+expect_eq    "json pass: one run in total" "1" "$count"
+expect_lacks "json pass: no retry recorded" "retried:" "$serr"
+expect_eq    "json pass: stdout is valid JSON lines" "0" "$jq_rc"
+expect_has   "json pass: stdout carries the stream" "\"Action\":\"pass\"" "$sout"
+
+# JSON case 6: a registry test beside a package-level failure that names no test does not
+# retry. The unnamed package is fixture-b; fixture-a's registry test alone would retry.
+make_registry json-unnamed-pkg
+run_split json-unnamed-pkg json-unnamed-pkg "$reg_path"
+expect_eq    "json unnamed-pkg: run fails (non-zero)" "1" "$rc"
+expect_eq    "json unnamed-pkg: zero retries (a failure that names no test blocks the retry)" "1" "$count"
+expect_has   "json unnamed-pkg: refusal names the package on stderr" "example/fixture-b" "$serr"
+expect_lacks "json unnamed-pkg: no retry recorded" "retried:" "$serr"
+
+# JSON case 7: an uncited registry entry refuses the run before the command runs.
+printf 'TestFlakyRegistered\n' > "$tmp/registry-json-uncited.txt"
+run_split json-uncited json-flaky-once "$tmp/registry-json-uncited.txt"
+expect_eq    "json uncited: refused with usage status 2" "2" "$rc"
+expect_eq    "json uncited: command never ran" "0" "$count"
+expect_has   "json uncited: refusal named on stderr" "without an evidence citation" "$serr"
 
 echo "=== retry-flaky fixture: failures=$failures ==="
 if [ "$failures" -eq 0 ]; then
