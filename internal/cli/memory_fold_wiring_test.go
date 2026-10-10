@@ -1060,8 +1060,26 @@ func TestFoldOnDoneContentionAbandonsWithoutWrite(t *testing.T) {
 	// its deferred lock release.
 	lockHeld := make(chan struct{}, 1)
 	releasePark := make(chan struct{})
+	// releaseOnce makes the park's release idempotent so the success-path
+	// close below and the cleanup cannot double-close: a Fatalf between the
+	// lock-held receive and that close would otherwise leak the parked
+	// worker holding the store lock. The cleanup releases and then re-arms
+	// the waitWorkerExit-before-restore edge (gate P2) — but only when the
+	// seam was actually entered, so an earlier command failure that launched
+	// no worker does not wait on a channel nothing closes.
+	var releaseOnce sync.Once
+	release := func() { releaseOnce.Do(func() { close(releasePark) }) }
+	var parkEntered atomic.Bool
+	t.Cleanup(func() {
+		if !parkEntered.Load() {
+			return
+		}
+		release()
+		waitWorkerExit(t, env2)
+	})
 	memoryFoldSeam = foldTestSeam{
 		mutateBetweenWrites: func(string) {
+			parkEntered.Store(true)
 			lockHeld <- struct{}{}
 			<-releasePark
 		},
@@ -1069,15 +1087,26 @@ func TestFoldOnDoneContentionAbandonsWithoutWrite(t *testing.T) {
 	if _, _, err := runWireClose(t, env2, "done"); err != nil {
 		t.Fatalf("done: %v", err)
 	}
-	// The bound expired while the step held the lock in flight.
-	<-lockHeld
+	// The bound expired while the step held the lock in flight. The receive
+	// arms on the worker's exit and a deadline too: on a slow CI the worker
+	// can pass the bound before reaching the seam and exit via the
+	// abandonment path without ever signalling lockHeld — the select turns
+	// that into an immediate, diagnosable failure instead of a package-wide
+	// hang. The 200ms bound itself is untouched.
+	select {
+	case <-lockHeld:
+	case <-env2.workerExit:
+		t.Fatalf("the worker exited without signalling the lock — it abandoned before reaching the apply seam (slow CI passed the bound first)")
+	case <-time.After(5 * time.Second):
+		t.Fatalf("neither lock held nor worker exit within 5s — the worker neither reached the apply seam nor exited")
+	}
 	lines2 := wireErrLines(t, env2)
 	if len(lines2) != 1 || !strings.Contains(lines2[0], "abandoned") {
 		t.Fatalf("want exactly one abandonment stderr line, got %v", lines2)
 	}
 	// Let the apply observe the abandonment and return the worker to its
 	// deferred release.
-	close(releasePark)
+	release()
 	waitWorkerExit(t, env2)
 
 	// The worker's deferred release ran: a fresh non-blocking acquire on
