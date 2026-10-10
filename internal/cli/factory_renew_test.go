@@ -390,13 +390,16 @@ func TestFactoryRenewMatchesMCPLinkedWorktree(t *testing.T) {
 func TestFactoryRenewResolvesLaneRunWithoutRunArg(t *testing.T) {
 	// fixture seeds two owner-live runs. Card t1 exists in both, held by holderInA in run-a and
 	// by holderInB in run-b. The lane under test is lane-1.
-	fixture := func(t *testing.T, holderInA, holderInB string) string {
+	fixture := func(t *testing.T, holderInA, holderInB, bindTo string) string {
 		t.Helper()
 		root, _ := sdMoaiFixture(t)
 		seedLiveRun(t, root, "run-a")
 		seedLiveRun(t, root, "run-b")
 		sdRegisterLane(t, root, "lane-1")
 		sdRegisterLane(t, root, "lane-2")
+		if bindTo != "" {
+			factoryRenewBindLane(t, root, "lane-1", bindTo)
+		}
 		live := fcNow.Add(5 * time.Minute).Format(time.RFC3339Nano)
 		fcPlace(t, root,
 			homestate.Card{RunID: "run-a", CardID: "t1", State: homestate.CardRun, Stage: homestate.CardRun,
@@ -410,7 +413,7 @@ func TestFactoryRenewResolvesLaneRunWithoutRunArg(t *testing.T) {
 	want := fcNow.Add(15 * time.Minute).Format(time.RFC3339Nano)
 
 	t.Run("verb", func(t *testing.T) {
-		root := fixture(t, "lane-2", "lane-1")
+		root := fixture(t, "lane-2", "lane-1", "run-b")
 		before := factoryRenewCardIn(t, root, "run-a", "t1")
 		out, _, err := runFactory(t, "renew", "t1", "--json")
 		if err != nil {
@@ -433,7 +436,7 @@ func TestFactoryRenewResolvesLaneRunWithoutRunArg(t *testing.T) {
 	})
 
 	t.Run("MCP tool", func(t *testing.T) {
-		root := fixture(t, "lane-2", "lane-1")
+		root := fixture(t, "lane-2", "lane-1", "run-b")
 		text, err := sdCallTool(t, factoryRenewMCPHandler(t, "factory_renew"),
 			map[string]any{projectRootArg: root, "card": "t1"})
 		if err != nil {
@@ -448,21 +451,131 @@ func TestFactoryRenewResolvesLaneRunWithoutRunArg(t *testing.T) {
 		}
 	})
 
-	// Guard arms. The renewal stays refused, and the refusal names --run, when the lane holds
-	// the card in both active runs (ambiguous) or in neither (not found). Both arms pass on the
-	// pre-fix code too, since the ambiguous refusal already named --run; they pin that the
-	// narrowing never turns a refusal into a renewal.
-	for _, tc := range []struct{ name, holderInA, holderInB string }{
-		{"held in both runs refuses and names --run", "lane-1", "lane-1"},
-		{"held in neither run refuses and names --run", "lane-2", "lane-2"},
+	// Guard arms. The renewal stays refused, and the refusal names --run, in two states that the
+	// roster cannot resolve to a renewal: the lane holds the card in both active runs and has no
+	// roster binding (nothing says which run is the lane's), or the roster binds the lane to run-b
+	// and run-b does not hold the card for the lane. The pre-fix code refused both states too, so
+	// these pin that the narrowing never turns a refusal into a renewal without a binding.
+	for _, tc := range []struct{ name, holderInA, holderInB, bindTo string }{
+		{"held in both runs with no roster binding refuses and names --run", "lane-1", "lane-1", ""},
+		{"held in neither run, bound to run-b, refuses and names --run", "lane-2", "lane-2", "run-b"},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
-			fixture(t, tc.holderInA, tc.holderInB)
+			fixture(t, tc.holderInA, tc.holderInB, tc.bindTo)
 			_, _, err := runFactory(t, "renew", "t1", "--json")
 			if err == nil || !strings.Contains(err.Error(), "--run") {
-				t.Errorf("renew with no --run (holders %s, %s): err = %v, want a refusal naming --run",
-					tc.holderInA, tc.holderInB, err)
+				t.Errorf("renew with no --run (holders %s, %s; bound to %q): err = %v, want a refusal naming --run",
+					tc.holderInA, tc.holderInB, tc.bindTo, err)
 			}
 		})
+	}
+}
+
+// factoryRenewBindLane binds a registered lane label to a factory run in the roster: it sets the
+// run_id of the label's workers row, the column the claim path writes at join
+// (internal/factory/factory_slots.go:355; the column is internal/homestate/factory.go:29).
+func factoryRenewBindLane(t *testing.T, root, label, runID string) {
+	t.Helper()
+	db := fcOpen(t, root)
+	if _, err := db.DB.Exec(`UPDATE workers SET run_id=? WHERE label=?`, runID, label); err != nil {
+		t.Fatalf("bind %s to %s in the roster: %v", label, runID, err)
+	}
+}
+
+// factoryRenewNoRun renews card t1 with no --run through the surface named by surface ("verb" or
+// "MCP tool") and decodes the JSON outcome. The error is the verb's exit error or the tool error.
+func factoryRenewNoRun(t *testing.T, root, surface string) (factoryRenewWire, error) {
+	t.Helper()
+	var wire factoryRenewWire
+	if surface == "verb" {
+		out, _, err := runFactory(t, "renew", "t1", "--json")
+		if jerr := json.Unmarshal([]byte(strings.TrimSpace(out)), &wire); jerr != nil {
+			t.Fatalf("renew --json printed no JSON outcome (stdout %q, error %v): %v", out, err, jerr)
+		}
+		return wire, err
+	}
+	text, err := sdCallTool(t, factoryRenewMCPHandler(t, "factory_renew"), map[string]any{projectRootArg: root, "card": "t1"})
+	if err != nil {
+		return wire, err
+	}
+	if jerr := json.Unmarshal([]byte(strings.TrimSpace(text)), &wire); jerr != nil {
+		t.Fatalf("factory_renew text %q is not the JSON outcome: %v", text, jerr)
+	}
+	return wire, nil
+}
+
+// TestFactoryRenewRefusesLabelReuseAcrossRuns is sync-audit F7 (card t1663; codex P1). A lane label can
+// be reused across factory runs. The roster (workers.run_id, one row per label) binds the label to the run
+// the lane joined, while a card lease in another active run still names the label as holder. A renewal
+// with no --run must act only in the run the roster binds the lane to.
+//
+// The first arm is the defect shape: the roster binds lane-1 to run-b, and the card is held by lane-1 in
+// run-a. The renewal must refuse, name --run, and leave run-a's lease unchanged. The second arm is the
+// positive control: the roster binds lane-1 to run-a, where the card is held, and the renewal renews run-a.
+// The third arm holds the card by lane-1 in both runs with the roster binding run-b: the bound run is
+// renewed, and the stale lease in run-a is left alone.
+func TestFactoryRenewRefusesLabelReuseAcrossRuns(t *testing.T) {
+	// fixture: run-a and run-b are both live, and lane-1 and lane-2 are registered. The roster binds
+	// lane-1 to bound. Card t1 is held by lane-1 in run-a and by holderInB in run-b.
+	fixture := func(t *testing.T, bound, holderInB string) string {
+		t.Helper()
+		root, _ := sdMoaiFixture(t)
+		seedLiveRun(t, root, "run-a")
+		seedLiveRun(t, root, "run-b")
+		sdRegisterLane(t, root, "lane-1")
+		sdRegisterLane(t, root, "lane-2")
+		factoryRenewBindLane(t, root, "lane-1", bound)
+		live := fcNow.Add(5 * time.Minute).Format(time.RFC3339Nano)
+		fcPlace(t, root,
+			homestate.Card{RunID: "run-a", CardID: "t1", State: homestate.CardRun, Stage: homestate.CardRun,
+				OwnerLabel: "lane-1", LeaseHolder: "lane-1", LeaseExpiresAt: live, WorktreePath: root},
+			homestate.Card{RunID: "run-b", CardID: "t1", State: homestate.CardRun, Stage: homestate.CardRun,
+				OwnerLabel: holderInB, LeaseHolder: holderInB, LeaseExpiresAt: live, WorktreePath: root},
+		)
+		sdLaneEnv(t, "lane-1", "")
+		return root
+	}
+	want := fcNow.Add(15 * time.Minute).Format(time.RFC3339Nano)
+	arms := []struct{ name, bound, holderInB, renews string }{
+		{"reused label refuses and names --run", "run-b", "lane-2", ""},
+		{"positive control renews the bound run", "run-a", "lane-2", "run-a"},
+		{"held in both runs renews the bound run", "run-b", "lane-1", "run-b"},
+	}
+	for _, arm := range arms {
+		for _, surface := range []string{"verb", "MCP tool"} {
+			t.Run(arm.name+"/"+surface, func(t *testing.T) {
+				root := fixture(t, arm.bound, arm.holderInB)
+				beforeA := factoryRenewCardIn(t, root, "run-a", "t1")
+				beforeB := factoryRenewCardIn(t, root, "run-b", "t1")
+				wire, callErr := factoryRenewNoRun(t, root, surface)
+				afterA := factoryRenewCardIn(t, root, "run-a", "t1")
+				afterB := factoryRenewCardIn(t, root, "run-b", "t1")
+				if arm.renews == "" {
+					if wire.Result == "renewed" {
+						t.Errorf("renew with no --run renewed (expires %s) although the roster binds lane-1 to %s",
+							wire.ExpiresAt, arm.bound)
+					}
+					if wire.Result != "error" || !strings.Contains(wire.Detail, "--run") {
+						t.Errorf("refusal does not name --run: result=%s detail=%q err=%v", wire.Result, wire.Detail, callErr)
+					}
+				} else if callErr != nil || wire.Result != "renewed" || wire.ExpiresAt != want {
+					t.Errorf("renew with no --run: err=%v result=%s expires=%s, want renewed to %s in %s",
+						callErr, wire.Result, wire.ExpiresAt, want, arm.renews)
+				}
+				for _, run := range []string{"run-a", "run-b"} {
+					before, after := beforeA, afterA
+					if run == "run-b" {
+						before, after = beforeB, afterB
+					}
+					wantExpiry := before.LeaseExpiresAt
+					if run == arm.renews {
+						wantExpiry = want
+					}
+					if after.LeaseExpiresAt != wantExpiry {
+						t.Errorf("%s lease expiry = %s, want %s", run, after.LeaseExpiresAt, wantExpiry)
+					}
+				}
+			})
+		}
 	}
 }
