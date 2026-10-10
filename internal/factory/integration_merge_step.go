@@ -20,6 +20,7 @@
 package factory
 
 import (
+	"encoding/hex"
 	"errors"
 	"fmt"
 	"os"
@@ -381,6 +382,9 @@ func RunMergeStep(in MergeStepInput, seams MergeStepSeams) (string, error) {
 	var mergeErr error
 	var headReadErr error
 	var mergeDirtyAfterAbort bool
+	// mergeForeignErr is set when the failed merge left another actor's MERGE_HEAD in
+	// place: the step refuses and does not abort (F1 follow-up).
+	var mergeForeignErr *MergeStepError
 	var mergeSHA string
 	// REQ-LMF-006 (plan §B5): S-before, set inside the section, and whether the
 	// status set changed across the merge. The primary surface's baseline stays nil,
@@ -503,9 +507,9 @@ func RunMergeStep(in MergeStepInput, seams MergeStepSeams) (string, error) {
 
 		// F1 (sync audit, card t1616): the unfinished-merge probe is the last read
 		// before the merge subprocess, inside the same section. A merge already in
-		// progress belongs to another actor: git refuses to start one over it, and
-		// the abort after a failed merge (below) would discard it. The residual is
-		// the span between this probe and git's own start-of-merge check.
+		// progress belongs to another actor: git refuses to start one over it. A merge
+		// that begins after this probe is caught from MERGE_HEAD after the failed merge,
+		// before any abort (the failure branch below).
 		pendingMerge, pendingErr := unfinishedMergeReason(git, in.IntegrationWorktree)
 		if pendingErr != nil {
 			recheckErr = mergeStepErr(MergeExitOther, "integration merge: the unfinished-merge probe errored: %v", pendingErr)
@@ -537,12 +541,25 @@ func RunMergeStep(in MergeStepInput, seams MergeStepSeams) (string, error) {
 		// unstaged, which changes the status set by itself.
 		if _, err := git("merge", "--no-ff", "--no-autostash", "--no-overwrite-ignore", "-q", "-m", mergeMsg, pinned); err != nil {
 			mergeErr = err
+			// F1 follow-up (sync audit, card t1616): abort only a merge this call
+			// started. The in-section probe ran before the merge call, so a merge another
+			// actor began after it shows up here, in MERGE_HEAD, naming a commit other than
+			// the pin. Its abort would discard that merge, so the step refuses and changes
+			// nothing instead.
+			foreignName, foreign, ownerErr := foreignMergeHead(git, in.IntegrationWorktree, pinned)
+			if ownerErr != nil {
+				mergeForeignErr = mergeStepErr(MergeExitOther, "integration merge: read MERGE_HEAD after the failed merge: %v", ownerErr)
+				return nil
+			}
+			if foreign {
+				mergeForeignErr = unfinishedMergeRefusal(fmt.Sprintf("MERGE_HEAD names another commit %s", foreignName[:12]))
+				return nil
+			}
 			// (6)/(7): abort, then decide by the status set the abort left against S-before —
 			// inside the section, so no acquisition can interleave between
-			// our failed merge and its cleanup.
-			// F1: the unfinished-merge probe ran immediately before this merge call and
-			// found nothing, so a MERGE_HEAD the failed merge left is this call's own.
-			// With no MERGE_HEAD, git's abort refuses and changes nothing.
+			// our failed merge and its cleanup. The abort reaches this point only when
+			// MERGE_HEAD is absent (git's abort then refuses and changes nothing), names
+			// the pinned SHA (this call's merge), or names no commit at all.
 			_, _ = git("merge", "--abort")
 			after, statusErr := integrationStatusSet(git)
 			mergeDirtyAfterAbort = statusErr != nil || !integrationStatusEqual(after, statusBefore)
@@ -585,6 +602,11 @@ func RunMergeStep(in MergeStepInput, seams MergeStepSeams) (string, error) {
 		return "", postMergeHold(in, seams, mergeStepErr(MergeExitPostMerge, "integration merge: read the merge HEAD: %v", headReadErr), "")
 	}
 	if mergeErr != nil {
+		if mergeForeignErr != nil {
+			// F1 follow-up: another actor's merge stays in place and was not aborted;
+			// the refusal releases the window through the normal pre-merge path.
+			return "", releaseWindow(in, seams, mergeForeignErr)
+		}
 		if mergeDirtyAfterAbort {
 			// (7): still dirty after the abort — hold FIRST, then release
 			// (REQ-MWQ-018: no later holder is promoted onto this state).
@@ -895,16 +917,9 @@ func integrationStatusEqual(a, b []statusRecord) bool {
 // the main checkout alike. git answers relative to the directory the runner
 // executes in, so a relative answer is joined onto worktree.
 func unfinishedMergeReason(git func(args ...string) (string, error), worktree string) (string, error) {
-	out, err := git("rev-parse", "--git-path", "MERGE_HEAD")
+	mergeHead, err := mergeHeadPath(git, worktree)
 	if err != nil {
-		return "", fmt.Errorf("locate MERGE_HEAD: %w", err)
-	}
-	mergeHead := strings.TrimSpace(out)
-	if mergeHead == "" {
-		return "", errors.New("git named no MERGE_HEAD path")
-	}
-	if !filepath.IsAbs(mergeHead) {
-		mergeHead = filepath.Join(worktree, mergeHead)
+		return "", err
 	}
 	_, statErr := os.Stat(mergeHead)
 	if statErr == nil {
@@ -921,6 +936,59 @@ func unfinishedMergeReason(git func(args ...string) (string, error), worktree st
 		return "unmerged index entries exist", nil
 	}
 	return "", nil
+}
+
+// mergeHeadPath locates the integration worktree's MERGE_HEAD. `git rev-parse
+// --git-path` names it in the worktree's own git directory, which is right for a
+// linked worktree and for the main checkout alike. git answers relative to the
+// directory the runner executes in, so a relative answer is joined onto worktree.
+func mergeHeadPath(git func(args ...string) (string, error), worktree string) (string, error) {
+	out, err := git("rev-parse", "--git-path", "MERGE_HEAD")
+	if err != nil {
+		return "", fmt.Errorf("locate MERGE_HEAD: %w", err)
+	}
+	path := strings.TrimSpace(out)
+	if path == "" {
+		return "", errors.New("git named no MERGE_HEAD path")
+	}
+	if !filepath.IsAbs(path) {
+		path = filepath.Join(worktree, path)
+	}
+	return path, nil
+}
+
+// foreignMergeHead reports a full object name in the integration worktree's
+// MERGE_HEAD other than sha: a merge another actor began. An absent MERGE_HEAD
+// names nothing, and one that names only sha is this call's own merge. A value
+// that is not a full object name is not a merge any session began (git writes
+// full names), so it is not foreign and the abort proceeds as before.
+func foreignMergeHead(git func(args ...string) (string, error), worktree, sha string) (string, bool, error) {
+	path, err := mergeHeadPath(git, worktree)
+	if err != nil {
+		return "", false, err
+	}
+	data, err := os.ReadFile(path)
+	if os.IsNotExist(err) {
+		return "", false, nil
+	}
+	if err != nil {
+		return "", false, fmt.Errorf("read MERGE_HEAD: %w", err)
+	}
+	for _, name := range strings.Fields(string(data)) {
+		if name != sha && isFullObjectName(name) {
+			return name, true, nil
+		}
+	}
+	return "", false, nil
+}
+
+// isFullObjectName reports whether s is a full SHA-1 or SHA-256 object name.
+func isFullObjectName(s string) bool {
+	if len(s) != 40 && len(s) != 64 {
+		return false
+	}
+	_, err := hex.DecodeString(s)
+	return err == nil
 }
 
 // unfinishedMergeRefusal is the cause-12 refusal for an integration worktree
