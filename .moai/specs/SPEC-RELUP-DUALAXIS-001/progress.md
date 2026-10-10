@@ -88,7 +88,7 @@
 - leader_field_repairs: decision 6930 (plan-audit → kickoff, v38) and decision 8c78 (kickoff → run, v39). run-to-sync transition at v40 (lane-6, evidence 80837ff8f180ab9902d5bdad914415bd8ec2e43c); sync-stage lease extended at v41 (decision 1442, leader-stated).
 - debt_carried_by: card t1627 carries residual findings B1 to B5 (`.moai/reports/t1579/debt-for-t1627.md`). None of B1 to B5 is fixed in this run. The leader stated in a cross-session message (07:50Z) that card t1627 is queued and B1 to B5 are appended to its body; the lane did not read the queue.
 - status_transition: spec.md `status` in-progress → completed on this sync commit (3-phase close)
-- history_debt_row: pending (manager-spec body edit, not made in this step)
+- history_debt_row: done (HISTORY row 0.11.1 present in spec.md; ratified by manager-spec in repair round R1, commit ba709b9b0)
 
 ## §F Phase 4 Mode Selection
 
