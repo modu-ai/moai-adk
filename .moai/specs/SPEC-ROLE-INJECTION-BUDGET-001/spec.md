@@ -1,7 +1,7 @@
 ---
 id: SPEC-ROLE-INJECTION-BUDGET-001
 title: "역할 규칙 주입 예산 — 조립 합본 9,000자 회계, 역할 core 재작성, *-core 스텁 게이트, 버전 불일치 안내"
-version: "0.2.0"
+version: "0.3.0"
 status: draft
 created: 2026-10-10
 updated: 2026-10-10
@@ -21,6 +21,7 @@ related_specs: [SPEC-ALWAYS-LOADED-BUDGET-001, SPEC-ALWAYS-LOADED-DIET-001, SPEC
 
 | 날짜 | 버전 | 변경 | 작성자 |
 |---|---|---|---|
+| 2026-10-10 | 0.3.0 | 범위 결정 d-20261010T072910Z-f1c3(위임 판단, option (a); (b) 미채택) 반영 — 완료 기준을 §A.5 경계 소스 봉투로 재범위: 「startup / clear(핸드오프 대기 없음) / compact(goal 없음)에서 넘침 파일 0」 + 봉투 밖 재주입 세션(핸드오프 본문·goal)은 폴백 유지·게이트 가시 발화가 단언 대상. R1: F5 변이 처리를 생산자 셈이 아니라 봉투 산술로 재편 — 제외 사유를 코드로 고정(`claimAndInject` 단일 셀 handoff_inject.go:8-9·97-102, compact-goal 재주입 session_start_compact.go:58·84-93, 병합 순서 registry.go:178–190), 「최소 부분집합」 주장 철회, REQ-RIB-012 신설(봉투 밖 게이트 동작 단언). 핸드오프 본문 크기 상한은 핸드오프 재개 카드 소관임을 명기. 본 리포 handoff.mode=manual(리더 확인) — 봉투 조건이 기본 참. AC 13(12+1, AC-RIB-013 regression-guard). | manager-spec |
 | 2026-10-10 | 0.2.0 | plan-audit 1회차 FAIL 수리(F1–F7, `.moai/reports/t1617/plan-audit.md`). F1: 합본 교차 검산 가산 오류(23,066→22,745)와 역할 블록 이중 계산(로컬 꼬리 +321이 18,114 안에 이미 있음) 정정 — 조립 산식을 코드 인용으로 고정(§B), 게이트 함의 생산자 상한 4,797 신설, core 예산 4,367→**3,946** 재파생, 설계 목표 4,000→3,800, REQ-RIB-004 정지 밸브를 구속 후퇴선으로 명명. F5: 주입 소스별 생산자 변이 처리 신설(startup 최중 소스 코드 인용 + 게이트 가시 후퇴선 + 라이브 확인에 clear 재진입 추가, REQ-RIB-002). F4: Codex 전용 설치가 `.moai/policies/` 투영으로 같은 예산 안에 들어간다는 문장 정정(§D). F6: 스텁 여유 19%→14.2%/19.3% 정정(REQ-RIB-005). F7: REQ-RIB-008 3분해·REQ-RIB-011 단위(코드 단위+바이트)·`stub-delta:` 라벨·hooks-system 미러 명시. RED E1/E2 임계 3,946 재관측(값·exit 동일), E8 신설. REQ·AC 11/12 유지. | manager-spec |
 | 2026-10-10 | 0.1.0 | 최초 작성. 카드 t1617 (3.2-1-5, P0, Class C — 리더 처분 dd1e, 운영자 지시 「이 문제 부터 해결하자」, no-new-dispatch 규칙 fde3의 예외). 기준 트리 카드 워크트리 HEAD `2aab5f797` (브랜치 WT-3-2-1). 상위 SPEC `SPEC-ALWAYS-LOADED-BUDGET-001` 의 후속 수리다. plan 단계 전수 재측정 기록은 `.moai/reports/t1617/measurements.md`. | manager-spec |
 
@@ -34,7 +35,7 @@ related_specs: [SPEC-ALWAYS-LOADED-BUDGET-001, SPEC-ALWAYS-LOADED-DIET-001, SPEC
 
 > 역할 규칙 주입 초과(factory-lane 세션): 조립된 맥락(23166자)이 세션 시작 전달 한도 10000자를 넘습니다
 
-`internal/hook/role_rules.go` 는 역할 세션(팩토리 리더·레인)의 SessionStart(startup/clear/compact)에 두 역할 한정 규칙(`factory-dispatch.md`, `cross-session-messaging.md`)의 역할 core 를 주입한다(상위 SPEC 의 REQ-ALB-007). 전달 한도는 10,000 UTF-16 코드 단위(`roleRulesContextLimit`, role_rules.go:42, decision-index Q4 — 올릴 수 없음)이고, 크기 게이트(`roleRuleSizeGate`, role_rules.go:414)는 최종 조립 합본을 dispatch-finalize 시점(`FinalizeSessionStartOutput`, session_start.go:70)에 잰다. 한도 초과 시 REQ-ALB-010 의 오버플로 파일 전달 사다리가 작동한다 — 메커니즘은 올바르고, 이 SPEC 의 목표는 그것이 **발화하지 않게** 하는 것이다.
+`internal/hook/role_rules.go` 는 역할 세션(팩토리 리더·레인)의 SessionStart(startup/clear/compact)에 두 역할 한정 규칙(`factory-dispatch.md`, `cross-session-messaging.md`)의 역할 core 를 주입한다(상위 SPEC 의 REQ-ALB-007). 전달 한도는 10,000 UTF-16 코드 단위(`roleRulesContextLimit`, role_rules.go:42, decision-index Q4 — 올릴 수 없음)이고, 크기 게이트(`roleRuleSizeGate`, role_rules.go:414)는 최종 조립 합본을 dispatch-finalize 시점(`FinalizeSessionStartOutput`, session_start.go:70)에 잰다. 한도 초과 시 REQ-ALB-010 의 오버플로 파일 전달 사다리가 작동한다 — 메커니즘은 올바르고, 이 SPEC 의 목표는 §A.5 의 경계 소스 봉투 안에서 그것이 **발화하지 않게** 하는 것이다(봉투 밖 재주입 세션에서는 게이트의 가시 발화가 단언 대상이다).
 
 현재 역할 core 는 예산을 4배 이상 넘는다. 이 트리에서 잰 값(§C.2 재측정 명령, `.moai/reports/t1617/measurements.md`):
 
@@ -62,7 +63,17 @@ related_specs: [SPEC-ALWAYS-LOADED-BUDGET-001, SPEC-ALWAYS-LOADED-DIET-001, SPEC
 
 ### §A.4 해석 결정 — 「역할별 조립 ≤9,000자」의 두 판독
 
-카드 본문의 "역할 카드 ≤9,000자 재작성"은 두 가지로 읽힌다. **축자 판독**(역할 카드 자체 ≤9,000)은 자기 모순이다: 9,000 역할 카드 + 4,376 생산자 = 13,376 > 10,000 한도 → 오버플로가 살아남아 완료 기준 1(오버플로 파일 0)을 위반한다. **조립 판독**(역할별 조립 합본 ≤9,000)만 자기 일관적이고 완료 기준 두 개가 함축하는 바와 같다. 이 SPEC 은 조립 판독으로 확정한다(REQ-RIB-001).
+카드 본문의 "역할 카드 ≤9,000자 재작성"은 두 가지로 읽힌다. **축자 판독**(역할 카드 자체 ≤9,000)은 자기 모순이다: 9,000 역할 카드 + 4,376 생산자 = 13,376 > 10,000 한도 → 오버플로가 살아남아 §A.5 경계 소스 봉투의 「넘침 파일 0」을 위반한다. **조립 판독**(역할별 조립 합본 ≤9,000)만 자기 일관적이고 완료 기준 두 개가 함축하는 바와 같다. 이 SPEC 은 조립 판독으로 확정한다(REQ-RIB-001).
+
+### §A.5 완료 기준 — 경계 소스 봉투 (결정 d-20261010T072910Z-f1c3, option (a); (b) 미채택)
+
+완료 기준은 무경계 "overflow 파일 0"이 아니라 다음 세 줄로 확정된다(범위 결정 d-20261010T072910Z-f1c3, 위임 판단 option (a)):
+
+1. 리더·레인 역할 코어 조립 각 ≤9,000자 (테스트)
+2. startup / clear(핸드오프 대기 없음) / compact(goal 없음)에서 넘침 파일 0
+3. 핸드오프 본문·goal 재주입 세션은 기존 넘침 파일 폴백 유지, 단 게이트가 넘침을 systemMessage로 보이게 발화
+
+봉투에서 두 생산자가 제외되는 이유는 코드로 고정돼 있다: 핸드오프 본문 재주입은 `claimAndInject` 의 유일한 INJECT+CONSUME 셀(`source == "clear" ∧ mode == "auto" ∧ live pending` — handoff_inject.go:8-9·97-102)이고, goal 재주입은 armed goal 이 있을 때 compact 에만 실린다(session_start_compact.go:58·84-93, "[moai goal re-inject after auto-compact]"). 두 재주입 본문은 세션 상태가 담을 만큼 커질 수 있는 무경계 텍스트라 역할 core 예산과 함께 재지 않는다 — 게이트(REQ-ALB-010)가 그 세션에서 유일하게 단언하는 것은 넘침의 가시 발화다. 병합 순서(registry.go:178–190 — 핸드오프·컴팩트 핸들러가 역할 블록 뒤에 합치고 finalizer가 마지막에 잰다)가 이 판정을 성립시킨다. 핸드오프 본문 주입의 크기 상한은 핸드오프 재개 카드(승인 대기, `.moai/reports/moai-handoff-resume-plan-20261010.md`)가 담당. 본 리포의 `handoff.mode` 는 `manual`(handoff.yaml:9, 리더 확인)이라 자동 클레임 셀은 현 상태에서 발화하지 않는다 — 봉투의 「핸드오프 대기 없음」 조건이 이 리포에서는 기본값으로 참이다.
 
 ## §B. 용어
 
@@ -85,8 +96,9 @@ related_specs: [SPEC-ALWAYS-LOADED-BUDGET-001, SPEC-ALWAYS-LOADED-DIET-001, SPEC
 
 ### C.1 조립 예산
 
-- **REQ-RIB-001** (Ubiquitous) — The per-role assembled SessionStart composite — the producers plus the joiner plus the role block, assembled per the code-cited formula (§B) — shall stay at or under 9,000 UTF-16 code units for every role in the role-marker registry, with the 10,000-unit delivery cap unchanged (decision-index Q4, unraisable); the budget derives from the gate-implied producer ceiling 4,797 (§B), giving the role-core ceiling **3,946** UTF-16 (leader-binding) and the design target 3,800. REQ-RIB-004's stop valve is the binding backstop: the ceiling is never met by dropping obligations. The SPEC's reading resolution is binding: 「역할별 조립 ≤9,000자」 is the assembled-composite reading (§A.4); the literal role-card-only reading is named unsatisfiable and rejected.
-- **REQ-RIB-002** (Event-driven) — When the template tree's role-gated rule files change, a Go budget test shall build each registry role's role block from the deployed-tree files (template SSOT and this repository's own deployed copy both measured), assemble it with the producer-baseline-ceiling constant 4,797 (the conservative bound — §B), and fail when any role's assembled composite exceeds 9,000 UTF-16 — the failure message naming the breakdown (producers, joiner, header, core, pointer, total) so the arithmetic is auditable; it shall additionally assert the core ceiling (3,946) as a diagnostic sub-assertion. Producer variance by inject source is bounded as follows and recorded with the test: the startup source is the structurally heaviest (it alone carries the Factory Mode join line — `factoryBootstrapNoticeForSource` is startup-only, session_start.go:541-580); clear swaps it for the lane rule (`factoryLaneRuleForSource` fires on startup+clear, session_start.go:582-604 — a fixed rendered sentence, smaller than the variable join line inside the measured 4,376); compact carries the subset neither adds to (both source gates skip it). The gate itself (REQ-ALB-010) remains the visible backstop for any residual — an over-cap emission fires the operator warning, never silent overflow — and the live re-entry check (AC-RIB-012) covers a fresh startup AND a clear re-entry.
+- **REQ-RIB-001** (Ubiquitous) — The per-role assembled SessionStart composite — the producers plus the joiner plus the role block, assembled per the code-cited formula (§B) — shall stay at or under 9,000 UTF-16 code units for every role in the role-marker registry, within the bounded-source envelope of §A.5, with the 10,000-unit delivery cap unchanged (decision-index Q4, unraisable); the budget derives from the gate-implied producer ceiling 4,797 (§B), giving the role-core ceiling **3,946** UTF-16 (leader-binding) and the design target 3,800. REQ-RIB-004's stop valve is the binding backstop: the ceiling is never met by dropping obligations. The SPEC's reading resolution is binding: 「역할별 조립 ≤9,000자」 is the assembled-composite reading (§A.4); the literal role-card-only reading is named unsatisfiable and rejected.
+- **REQ-RIB-002** (Event-driven) — When the template tree's role-gated rule files change, a Go budget test shall build each registry role's role block from the deployed-tree files (template SSOT and this repository's own deployed copy both measured), assemble it with the producer-baseline-ceiling constant 4,797 (the conservative bound — §B), and fail when any role's assembled composite exceeds 9,000 UTF-16 — the failure message naming the breakdown (producers, joiner, header, core, pointer, total) so the arithmetic is auditable; it shall additionally assert the core ceiling (3,946) as a diagnostic sub-assertion. The test's assertion scope is the bounded-source envelope of §A.5 (startup · clear without a pending handoff record · compact without an armed goal). Producer variance within that envelope is bounded as follows and recorded with the test: startup is the structurally heaviest bounded source (it alone carries the Factory Mode join line — `factoryBootstrapNoticeForSource` is startup-only, session_start.go:541-580); clear swaps it for the lane rule (`factoryLaneRuleForSource` fires on startup+clear, session_start.go:582-604); compact omits both. The two variable-size re-inject producers sit OUTSIDE the envelope by the scoping decision, not by a producer census: the handoff body rides only `claimAndInject`'s single INJECT+CONSUME cell (source==clear ∧ mode==auto ∧ live pending — handoff_inject.go:8-9·97-102) and the goal re-injection rides only compact-with-armed-goal (session_start_compact.go:58·84-93); §A.5 excludes those sessions from 「넘침 파일 0」 and REQ-RIB-012 asserts their gate behavior instead. The gate itself (REQ-ALB-010) remains the visible backstop for any residual — an over-cap emission fires the operator warning, never silent overflow — and the live re-entry check (AC-RIB-012) covers a fresh startup AND a clear re-entry without a pending handoff record.
+- **REQ-RIB-012** (Event-driven) — When a role session's SessionStart composite includes a handoff-body re-injection (the `claimAndInject` cell: source==clear ∧ handoff.mode==auto ∧ a live pending record) or a goal re-injection (source==compact ∧ an armed goal), the asserted behavior is the REQ-ALB-010 ladder itself: the overflow-file fallback stays intact — the assembled core is emitted through the session-directory file path with its 2,000-character preview — and the gate's firing reaches the operator through systemMessage visibly; the 「넘침 파일 0」 budget makes no assertion about these sessions (§A.5), and the handoff body's own size cap is owned by the pending handoff-resume card (§A.5).
 - **REQ-RIB-003** (Ubiquitous) — The role-core rewrite shall pass a relocation audit recorded in `relocation-ledger.md` (SPEC dir): every chunk removed from the core names its destination — a companion section that already carries the text (verified: the destination heading holds the binding sentence) or a companion the chunk was moved into first — and every binding clause stays reachable through the injection path or the always-loaded stub as a meaning-preserving compressed rewrite whose after-text updates the parent binding-ledger rows (the standing maintenance contract; REQ-ALB-015's ledger test is the mechanical witness). No deletion without a named destination. `buildRoleCore`'s marker validation is untouched.
 - **REQ-RIB-004** (Event-driven) — When the measured compression floor of the rewrite — the lowest core size reachable without dropping or weakening a binding obligation — exceeds **3,946** UTF-16, the run phase shall stop before the rule edit and report the measured floor to the leader (the parent SPEC's REQ-ALB-022 pattern); the budget shall not be met by dropping obligations. This stop valve is the binding backstop of REQ-RIB-001's ceiling.
 
@@ -112,7 +124,7 @@ related_specs: [SPEC-ALWAYS-LOADED-BUDGET-001, SPEC-ALWAYS-LOADED-DIET-001, SPEC
 ## §D. 제약
 
 - **한도 인상 금지** — 10,000은 decision-index Q4 로 올릴 수 없다. 이 SPEC 이 만지는 것은 조립 합본의 크기뿐이다.
-- **오버플로 경로 보존** — REQ-ALB-010 의 사다리(오버플로 파일 전달 → REQ-ALB-009 후퇴)는 메커니즘으로서 그대로다. 완료 기준 1의 "오버플로 파일 0"은 발화가 없다는 뜻이지 경로 삭제가 아니다.
+- **오버플로 경로 보존** — REQ-ALB-010 의 사다리(오버플로 파일 전달 → REQ-ALB-009 후퇴)는 메커니즘으로서 그대로다. §A.5 완료 기준의 「넘침 파일 0」은 경계 소스 봉투(startup · clear-핸드오프 대기 없음 · compact-goal 없음)에서의 발화 부재를 뜻하지 경로 삭제가 아니고, 봉투 밖 재주입 세션(핸드오프 본문 · goal)에서는 사다리의 발화 자체가 단언 대상이다(REQ-RIB-012).
 - **역할 분할 기각** — leader/lane 전용 core 분할(buildRoleCore 역할 필터 추가)은 기각한다. 산술 이유: 완전한 역할 분할이어도 각 역할은 core의 절반 ~9,057을 보게 되고, 그것도 예산 3,946을 2배 이상 넘는다 — 역할 분할은 예산에 필요한 약 4.6배 압축(18,114→3,946)을 대신하지 못한다. 하나의 공유 core 를 예산 안으로 재작성하는 (i)이 정답이고, `buildRoleCore` 의 표지 검증(균형·순서·열림 검사)은 전부 보존된다.
 - **구속 절의 이동 반경** — 구속 절은 core(압축 재작성) 또는 상시 스텁에만 남는다. rationale·절차 중복(이미 companion 이 본문을 가진 것)만 core에서 떨어진다. 스텁으로의 대규모 재분류(상시 표면 성장)는 금지 — 상위 다이어트의 성과를 되돌리는 것이다.
 - **로컬 갈림 처분** — 배포본 마지막 영역의 +321 꼬리 문장은 로컬 전용 내용이다. 재작성은 이를 재배치 감사 행으로 다룬다(본문이 `worktree-integration.md` § Hoist 에 이미 있음을 확인하고 core에서 압축·정리). 템플릿 미러는 로컬 꼬리를 갖지 않는 현 상태를 유지한다.
@@ -121,7 +133,7 @@ related_specs: [SPEC-ALWAYS-LOADED-BUDGET-001, SPEC-ALWAYS-LOADED-DIET-001, SPEC
 
 ## §E. 수용 기준
 
-인수 조건 전체는 `acceptance.md` 에 있다(AC-RIB-001 ~ AC-RIB-012, 두 칸 채택 — RED-now + green 경로).
+인수 조건 전체는 `acceptance.md` 에 있다(AC-RIB-001 ~ AC-RIB-013, 두 칸 채택 — RED-now + green 경로).
 
 ## §F. 범위 밖
 

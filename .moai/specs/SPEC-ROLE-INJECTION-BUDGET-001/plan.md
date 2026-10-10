@@ -2,6 +2,7 @@
 
 > 카드 t1617 (3.2-1-5 · P0 · Class C) · 기준 트리 HEAD `2aab5f797` (WT-3-2-1) · 상위 SPEC `SPEC-ALWAYS-LOADED-BUDGET-001` 후속 수리
 > 해석 결정: 「역할별 조립 ≤9,000자」 = 조립 합본 판독 (spec.md §A.4). 생산자 상한 4,797 (게이트 함의, §B — 직접 분해 4,376은 startup 참조점). core 예산 **3,946** / 설계 목표 3,800 / REQ-RIB-004 정지 밸브가 구속 후퇴선.
+> 완료 기준: 경계 소스 봉투 (결정 d-20261010T072910Z-f1c3, option (a)) — spec.md §A.5 세 줄. 생산자 상한 4,797은 봉투 안 최중 소스(startup)에서 파생.
 
 ## §A. 범위
 
@@ -9,7 +10,7 @@
 
 | 축 | 파일 | 성격 |
 |---|---|---|
-| 규칙 | `.claude/rules/moai/workflow/factory-dispatch.md` + 템플릿 미러 | 역할 core 36영역 18,114/17,793 → ≤4,000 압축 재작성 (재배치 감사 동반) |
+| 규칙 | `.claude/rules/moai/workflow/factory-dispatch.md` + 템플릿 미러 | 역할 core 36영역 18,114/17,793 → 예산 3,946 안으로, 설계 목표 3,800 압축 재작성 (재배치 감사 동반) |
 | 규칙 | `.claude/rules/moai/workflow/cross-session-messaging.md` + 템플릿 미러 | 빈 영역 유지 확인 (예산에 최유리) — 내용 변경 없음이 기본, 미러 정합만 |
 | 규칙 | `internal/template/templates/.claude/rules/moai/core/hooks-system.md` (미러 원본, 34,482바이트 — 선행 편집) → `.claude/rules/moai/core/hooks-system.md` (paths:-scoped) | :131 두 한도 구분 기재 (REQ-RIB-009) — Template-First 순서로 미러 원본 먼저 |
 | 로컬 | `.claude/rules/local/gitflow-lane-protocol.md` | REQ-RIB-010 정합 확인 — 원칙 무편집, 갈림 시에만 지목 문장 수정 (로컬 전용, 미러 없음) |
@@ -76,7 +77,7 @@ plan 단계 전수 재측정 완료 (커밋 `2aab5f797`, 원문 `.moai/reports/t
 1. `role_rules.go`: doc 주석 사다리 1회화(:393–413), NOTE 지시문 천단위·중복 정리(:538–544), 로캘 경고 중복 서술 정리(:263–312), 버전 불일치 감지(배포 `system.yaml` `template_version` vs 바이너리 버전 — 판독 불가 시 조용히 생략, fail-open) + 상세와 4개 로캘에 `moai update` 안내. M1 테스트 GREEN 플립.
 2. `hooks-system.md`: :131 두 한도 구분 기재 (50K 총 stdout→디스크 저장 / 10,000자 문자열당 전달 한도, 각 실측 출처 — Q4·lane-15 공지). **템플릿 미러 편집 선행**: `internal/template/templates/.claude/rules/moai/core/hooks-system.md` (존재 확인됨, 34,482바이트)를 먼저 고치고 배포본에 미러 — REQ-RIB-011의 Template-First 순서.
 3. 전체 영향계열 검증: `go test ./internal/hook/... ./internal/template/...` (카드 트리 레인-로컬, env 스크럽, 컴파운드 1호출 — 스텁 게이트 포함 전 Green) + `golangci-lint run --timeout=2m ./internal/hook/... ./internal/template/...`.
-4. **라이브 재진입 확인(완료 기준 1의 실측 반쪽)**: 팩토리 레인 세션 재진입 2회 — (a) 새 startup, (b) clear 재진입(`factoryLaneRuleForSource` 가 clear 에서 발화하는 소스 — REQ-RIB-002 변이 처리의 실측 반쪽; compact 는 소스 집합이 clear 의 부분집합임이 코드로 확정돼 생략하고 그 근거를 기록) — 각 시작 공지에 "역할 규칙 주입 초과" 부재 + `additionalContext` 조립 합본 ≤10,000 관측을 progress.md §E.2 에 기록.
+4. **라이브 재진입 확인(§A.5 완료 기준의 실측 반쪽 — 경계 소스 봉투)**: 팩토리 레인 세션 재진입 2회 — (a) 새 startup, (b) clear 재진입(핸드오프 대기 없음 — 본 리포 handoff.mode=manual이 기본 참; `factoryLaneRuleForSource` 가 clear 에서 발화하는 소스) — 각 시작 공지에 "역할 규칙 주입 초과" 부재 + `additionalContext` 조립 합본 ≤10,000 관측을 progress.md §E.2 에 기록. 봉투 밖 재주입 세션(핸드오프 본문 클레임 clear · armed-goal compact)의 게이트 가시 발화는 AC-RIB-013(REQ-RIB-012)의 테스트 단언이 담당한다.
 5. 크로스플랫폼 빌드 `GOOS=windows GOARCH=amd64 go build ./...` (role_rules_read_windows.go 계열 보존 확인).
 6. 스텁 델타 기록 완성(REQ-RIB-011): progress.md §E.2 에 REQ-RIB-011이 고정한 라벨 행으로 상시 파일(스텁) 전후 크기를 UTF-16 코드 단위와 UTF-8 바이트 둘 다 기록 — 바이트 증가가 1,000바이트를 넘으면 rule-authoring 비산 문 첨부. (이 라벨 행이 작성되기 전까지 progress.md 는 라벨을 갖지 않는다 — AC-RIB-009 의 RED E8 이 그 부재를 관측한다.)
 
@@ -95,7 +96,8 @@ plan 단계 전수 재측정 완료 (커밋 `2aab5f797`, 원문 `.moai/reports/t
 | AC-RIB-009 | 미러 정합 + `stub-delta:` 기록 / release-blocking (E8) | M2 미러 → M3 기록 |
 | AC-RIB-010 | 오버플로 경로 보존 / regression-guard | M3 전체 스위트 |
 | AC-RIB-011 | 상위 원장 36행 정합 / regression-guard (§2 미결정 처분 — 편집 후 재관측이 채택 증거) | M2 |
-| AC-RIB-012 | 라이브 재진입(startup+clear) / regression-guard | M3 |
+| AC-RIB-012 | 라이브 재진입(경계 봉투: startup + clear-핸드오프대기없음) / regression-guard | M3 |
+| AC-RIB-013 | 봉투 밖 재주입 세션의 게이트 가시 발화 + 폴백 보존(REQ-RIB-012) / regression-guard | M1 작성(기존 사다리 서브테스트) → M3 봉투 밖 서브테스트 |
 
 ## §D. 검증 계획
 

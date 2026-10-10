@@ -18,12 +18,13 @@
 | AC-RIB-009 | 템플릿 미러 정합 + `stub-delta:` 라벨의 상시 파일 델타 기록 (REQ-RIB-011) | release-blocking | E8 — progress.md 에 `stub-delta` 0히트, exit 1 (이유: 델타 기록이 아직 작성되지 않음; 라벨은 REQ-RIB-011 이 고정) | M2 미러 정합 유지(기존 rule-template 미러 테스트) + M3 가 progress.md §E.2 에 `stub-delta:` 라벨 행(스텁 전후 UTF-16 코드 단위·바이트, 1,000바이트 초과 성장 시 비산 문) 작성 → 같은 grep ≥1 |
 | AC-RIB-010 | 오버플로 경로가 보존된다 — 기존 사다리 테스트가 재작성 후에도 Green (§D 제약) | regression-guard | 오늘 Green(`TestSessionStartRoleRulesSizeGate`) — 보존 성질이라 RED-now 불가 | M3: 전체 영향계열 스위트에서 동일 테스트 Green 유지 — 플립 없음이 곧 통과 형태 |
 | AC-RIB-011 | 상위 원장 36행 after-text 가 재작성된 배포 트리와 정합한다 (REQ-ALB-015 상시 계약) | regression-guard | 편집 전 원장-정합은 현재 트리에서 이미 Green — 실행 가능한 RED-now 가 구성 불가(§2 undecidable 처분, release-blocking 제외). 채택 증거는 M2 편집 후 재관측이다 | M2: 규칙 편집 뒤 `go test ./internal/template/` 원장 테스트 — 36행 after-text 갱신 전 RED 관측 → 갱신 뒤 `ok`. 편집-후 관측이 채택 증거 |
-| AC-RIB-012 | 라이브 레인 재진입(startup + clear)에서 오버플로 공지 부재 + 합본 ≤10,000 관측 (완료 기준 1 실측 반쪽) | regression-guard | 역사적 RED — lane-15 공지(§A.1 인용, 2026-10-09/10 관측)는 재실행 불가 → §2 undecidable 처분, release-blocking 제외 | M3: startup 재진입 + clear 재진입 관측 — "역할 규칙 주입 초과" 부재 + systemMessage 이상 무, progress.md §E.2 에 세션·관측 기록 |
+| AC-RIB-012 | 라이브 레인 재진입(경계 소스 봉투 — startup + clear(핸드오프 대기 없음))에서 오버플로 공지 부재 + 합본 ≤10,000 관측 (§A.5 완료 기준 실측 반쪽) | regression-guard | 역사적 RED — lane-15 공지(§A.1 인용, 2026-10-09/10 관측)는 재실행 불가 → §2 undecidable 처분, release-blocking 제외 | M3: startup 재진입 + clear(핸드오프 대기 없음) 재진입 관측 — "역할 규칙 주입 초과" 부재 + systemMessage 이상 무, progress.md §E.2 에 세션·관측 기록 |
+| AC-RIB-013 | 봉투 밖 재주입 세션(핸드오프 본문 클레임 clear · armed-goal compact)에서 REQ-ALB-010 사다리가 단언 대로 작동한다 — 넘침 파일 폴백 유지 + 게이트 발화가 systemMessage 로 가시 (REQ-RIB-012) | regression-guard | 사다리의 과잉 분기 동작은 오늘 Green(`TestSessionStartRoleRulesSizeGate` 서브테스트 b/c — 보존 성질이라 RED-now 불가, §2 처분) | M3: 기존 사다리 서브테스트 Green 유지 + 봉투 밖 소스(클레임된 핸드오프 본문 · armed goal 재주입)를 합성한 과잉 픽스처에서 폴백 유지·systemMessage 가시를 단정하는 서브테스트 Green |
 
 ## §B. 분류 요지
 
-- **release-blocking 7개** — AC-RIB-001·002·004·005·006·007·009 — 각각 §2.1 네 요소(명령·축자 stdout·exit·트리 SHA)를 §C 원장 행으로 충족한다. 원장 항목은 8개(E1–E8): E1·E2 가 함께 AC-RIB-001 의 양 트리 관측이다. AC-RIB-009 의 RED 는 REQ-RIB-011 이 고정한 `stub-delta:` 라벨의 부재 관측이다(E8).
-- **regression-guard 5개** — AC-RIB-003·008·010·011·012 — §2 undecidable/보존-성질 처분을 따른다: release-blocking 상등을 받지 않으며, green 경로가 생존·보존·편집-후 재관측을 운반한다. AC-RIB-011 은 F3 수리로 release-blocking 에서 강등됐다(편집-전 정합이라 RED-now 구성 불가).
+- **release-blocking 7개** — AC-RIB-001·002·004·005·006·007·009 — 각각 §2.1 네 요소(명령·축자 stdout·exit·트리 SHA)를 §C 원장 행으로 충족한다. 원장 항목은 8개(E1–E8): E1·E2 가 함께 AC-RIB-001 의 양 트리 관측이다. AC-RIB-001 의 단정 범위는 §A.5 경계 소스 봉투(startup · clear-핸드오프 대기 없음 · compact-goal 없음)로 재범위됐다(결정 d-20261010T072910Z-f1c3). AC-RIB-009 의 RED 는 REQ-RIB-011 이 고정한 `stub-delta:` 라벨의 부재 관측이다(E8).
+- **regression-guard 6개** — AC-RIB-003·008·010·011·012·013 — §2 undecidable/보존-성질 처분을 따른다: release-blocking 상등을 받지 않으며, green 경로가 생존·보존·편집-후 재관측을 운반한다. AC-RIB-011 은 F3 수리로, AC-RIB-013 은 결정 d-20261010T072910Z-f1c3 의 봉투 밖 단언으로 regression-guard 다.
 - **변이 탐침**(§2): AC-RIB-001은 core 를 3,947자로 늘리는 변이로 실패함을 테스트 자체가 보인다(단정이 경계값 3,946에서 작동). AC-RIB-003은 모터 서브테스트가 변이 관측을 내장한다.
 
 ## §C. 증거 원장 (RED-now — 트리 2aab5f797, 2026-10-10 관측; E1/E2는 F1 수리 임계 3,946으로 재관측 — 값·exit 동일)
