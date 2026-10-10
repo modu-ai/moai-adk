@@ -987,7 +987,7 @@ func runCodexFactoryLane(cmd *cobra.Command, entry factoryFlagParse, debug bool)
 	// ②): named or empty, the shared gate resolves it.
 	restoreRun, err := enterCodexRelaunchJoin(root, entry, launchTiming)
 	if err != nil {
-		return err
+		return codexLaneJoinError(err)
 	}
 	defer restoreRun()
 	runID := strings.TrimSpace(os.Getenv(config.EnvFactoryRunID))

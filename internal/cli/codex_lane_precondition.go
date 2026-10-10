@@ -1,6 +1,7 @@
 package cli
 
 import (
+	"errors"
 	"fmt"
 	"os"
 	"os/exec"
@@ -41,4 +42,14 @@ func codexLaneParentCheckout(dir string) error {
 		return fmt.Errorf("moai codex -l: refused — this verb runs from the parent checkout %s, not from %s", primary, dir)
 	}
 	return nil
+}
+
+// codexLaneJoinError reads a failed factory join as a sentence. The discovery
+// sentinel NO_ACTIVE_FACTORY reaches the error renderer, which shows it as
+// "No_active_factory.", so the operator sees a code and no remedy (t1628).
+func codexLaneJoinError(err error) error {
+	if err == nil || !strings.Contains(err.Error(), "NO_ACTIVE_FACTORY") {
+		return err
+	}
+	return errors.New("no live factory leader to join: start the factory leader first (moai cc -f or moai glm -f), then run moai codex -l again")
 }
