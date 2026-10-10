@@ -25,7 +25,7 @@ Design decisions behind spec.md and plan.md. Every decision names its requiremen
 
 ## 5. Restore and retention
 
-- Restore applies the backed-up `settings.json` and lists the paths the backup does not cover (REQ-RC30-009, U-07).
+- The user-facing restore does not write the live `.claude/settings.json`; the restore output lists it as a not-restored path with a manual copy instruction, and lists the paths the backup does not cover (REQ-RC30-009, U-07).
 - Retention counts per run, not by directory-name shape (REQ-RC30-010). The run identifier is taken from the run's own backup record.
 
 ## 6. Output

@@ -49,7 +49,7 @@ Config save and restore are data-model changes. They do not overlap either branc
 
 1. `ConfigManager.Save` round-trip: unknown keys, `deployment_mode`, and comments survive (U-05, AC-RC30-06).
 2. Record-less projects with a migration archive get a visible warning (U-06, AC-RC30-07).
-3. `--restore` applies the backed-up `settings.json`, lists uncovered paths, and counts retention per run (U-07, AC-RC30-08).
+3. The user-facing restore does not write the live `.claude/settings.json` and lists it as a not-restored path with a manual copy instruction; it lists uncovered paths and counts retention per run (U-07, AC-RC30-08).
 4. `gate.yaml` comment loss and the `llm.yaml` re-marshal trigger are investigated with their tests first (U-23, U-24, AC-RC30-22, -23). Fixes follow the named cause.
 
 Exit condition: AC-RC30-06, -07, -08 pass; AC-RC30-22 and -23 are recorded as blocked with the cause named, per the Definition of Done.

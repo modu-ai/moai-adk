@@ -160,7 +160,7 @@ The eight must-fix items are the entries of `update-audit.md` § Fix list for rc
 | 2 | D2: back up every migration-removed file; move migration after backup | U-02 | moved to SPEC B (split, d-20261009T235135Z-5e35) |
 | 3 | D3 and D15: seed or announce optional bundles; add `moai bundle list` | U-03 (D3), U-04 (D15) | U-03 BLOCKED-ON WT-user-asset-bundle (t1591); U-04 IN-NOW |
 | 4 | D7 and D8: stop `ConfigManager.Save` dropping `deployment_mode` and unknown keys | U-05 (D7), U-06 (D8) | IN-NOW, IN-NOW |
-| 5 | D9: `--restore` applies backed-up `settings.json`; per-run retention; plain no-backup statement | U-07 | IN-NOW |
+| 5 | D9: the user-facing restore does not write the live `.claude/settings.json` (verdict d-20261010T053033Z-7012); per-run retention; plain no-backup statement | U-07 | IN-NOW |
 | 6 | D12: remove hardcoded "0 user customizations modified", pre-merge "! conflict", "Updated N files" on no-op | U-08 | IN-NOW |
 | 7 | D4 and D5: correct non-catalog skill message; remove emptied dirs | U-09 (D4), U-10 (D5) | U-09 BLOCKED-ON WT-user-asset-bundle (t1591); U-10 moved to SPEC B |
 | 8 | D10: refuse a user-root downgrade | U-11 | BLOCKED-ON WT-update-migration-fixes (t1578) and WT-user-asset-bundle (t1591) |
