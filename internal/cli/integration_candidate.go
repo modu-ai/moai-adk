@@ -509,6 +509,10 @@ type candidateVerdictAdjustment struct {
 // The SSoT absent or the branch unkeyed → the fallback set is this run's
 // own job names (named in `why`), minus the Guard Bundle check when the
 // key excludes it — the same admission policy as the SSoT set.
+//
+// An SSoT that EXISTS but cannot be read or parsed is read uncertainty too
+// (F7, card t1478): it takes the never-green fallback above, not the run-job
+// set. Only an absent file reads as the absent set.
 func candidateRunVerdict(root, runID string, attempt int, status, conclusion, targetBranch string) candidateVerdictAdjustment {
 	// Never-green fallback: read uncertainty keeps the record pending
 	// rather than minting green; a failure falls back to red (safe).
@@ -523,11 +527,18 @@ func candidateRunVerdict(root, runID string, attempt int, status, conclusion, ta
 	required := []string{}
 	source := "required-checks.yml[" + targetBranch + "]"
 	setFound := false
-	if checks, err := config.LoadRequiredChecks(root); err == nil {
+	checks, loadErr := config.LoadRequiredChecks(root)
+	switch {
+	case loadErr == nil:
 		if branchSet, ok := checks.Branches[targetBranch]; ok {
 			required = branchSet.Contexts
 			setFound = true
 		}
+	case !errors.Is(loadErr, os.ErrNotExist):
+		// F7 (card t1478): an SSoT that exists but cannot be read or parsed is
+		// read uncertainty, never an absent set; the run's own jobs must not
+		// stand in for it.
+		return fallback
 	}
 	if !setFound {
 		source = "run jobs (no required-checks.yml set for " + targetBranch + ")"
