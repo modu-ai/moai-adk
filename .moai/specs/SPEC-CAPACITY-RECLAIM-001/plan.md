@@ -6,23 +6,17 @@ Card t1631 (plan phase) at worktree `WT-capacity-reclaim`. The code measurements
 
 ## §B Milestones (priority-ordered)
 
-### M1 — Priority High: usage-log rotation mechanism (decision-gated: Q4; Q1 for the default flip)
+### M1 — Priority High: decision-gated items (Q4 default; Q1 split)
 
-Applies only when decision Q4 carries an operator verdict (REQ-CAP-004; AC-CAP-007). Otherwise the registry, the owner exception, and the prune stay as they are.
+Q4 (operator verdict 8a62: the default stands). The rotation alternate is not approved, so none of the usage-log rotation steps of earlier revisions is built under this SPEC: no declared sink directory, no displacement, no pass-lock order, and no change to `internal/hygiene/sinks.go` (the owner exception at `:91` stays, and no registry entry is added). The ordering guarantee of REQ-CAP-004 is held by the existing prune, which archives stale events before it rewrites the log (`internal/harness/retention.go:415–423`). M1 changes neither the prune nor its lock, and does not retire the prune.
 
-- Declare the directory of a sink. Every registered name resolves under `LogDir` today (`internal/hygiene/rotate.go:26–27`, `:101–102`, `:160–161`, `:186`), and `LogDir` is `<projectRoot>/.moai/logs`. Add a declared directory for `usage-log.jsonl`, namely `.moai/harness`, validated to lie inside the project root. Existing entries keep resolving under `LogDir`. The pass lock stays at `LogDir/.hygiene-rotation.lock` (`internal/hygiene/rotate_lock_unix.go:25`; `rotate_lock_windows.go:26`).
-- Set the project root at both construction sites of the rotator: `internal/hygiene/engine.go:97` (SessionStart auto path) and `internal/cli/clean.go:169` (`moai clean --audit-logs`).
-- Remove the `usage-log.jsonl` entry from `ownerExceptions` (`internal/hygiene/sinks.go:91`) in the same change. The completeness guard skips owned names (`sinks.go:150–152`), so a name that stays in both places would be silently exempt. The guard `ScanSourceSinks` (`sinks.go:117–165`) must accept the declared entry.
-- Serialize the displacement with the 30-day prune. The prune locks `<log>.prune-state` (`internal/harness/retention.go:136`, `:175`). The displacement takes that same exclusive lock, for `.moai/harness/usage-log.jsonl.prune-state`. It inspects the state entry with the rules of `openStateFile` (`retention.go:222–271`), which handles symbolic links and foreign ownership. A state entry that is not a regular owned file skips the sink with outcome `skipped-locked` and a reason. Reuse the existing inspection; do not write a second one.
-- Lock order: the pass lock first, then the prune-state lock. The prune takes only the prune-state lock and the heal lock (`retention.go:282–298`), so no cycle exists.
-- Do not retire the prune (assumption A17). It keeps its monthly archive role (`retention.go:503–526`).
-- State the displaced-chunk consequence in the Q4 row before the verdict is applied: `rotate.go:241–245` removes the existing `.1` chunk without archiving it.
+Q1 (operator verdict 8a62: split default). Applies only when decision Q1 carries an approved verdict (REQ-CAP-006; AC-CAP-009). The approved split is implemented as follows:
 
-Applies only when decision Q1 carries an operator verdict (REQ-CAP-006; AC-CAP-009):
+- Change the shipped default of `workflow.hygiene.mode` from `report` to `apply` in `internal/template/templates/.moai/config/sections/workflow.yaml` (line 318). The mode governs both units of the auto path, the audit-log rotator and the GC unit (`internal/hygiene/engine.go:96–108`). None of the eight registered GC target classes (`internal/hygiene/targets.go:29–36`) is named worktrees, databases, or run records, so the destructive categories stay outside the SessionStart path by construction. Pre-flight confirms that the GC residue classes are the category the verdict calls cache.
+- The verdict's usage-log rotation is the retention prune under the Q4 default. The prune runs from the harness observer spawn gate (`internal/cli/hook.go:169–174`, `:1323–1332`), not from the SessionStart auto path (`internal/hook/session_start_record.go:115–131` prunes session records only). M1 adds no SessionStart trigger for it.
+- The CLI `--apply` switch is unchanged (REQ-CAP-006).
 
-- Change `workflow.hygiene.mode` from `report` to `apply` in `internal/template/templates/.moai/config/sections/workflow.yaml` (line 318). The CLI `--apply` switch is unchanged.
-
-Neither item changes `internal/hook/inbox_lifecycle.go` (REQ-CAP-005) or the default of the CLI `--apply` switch.
+Lessons inbox (operator verdict 8a62). `.moai/lessons-inbox.jsonl` is outside this SPEC's rotation scope, and REQ-CAP-005 stays as written. Its rotation moves to card t1653 together with the drain-offset design. M1 does not rotate, register, or untrack the inbox, and neither item changes `internal/hook/inbox_lifecycle.go` or the default of the CLI `--apply` switch.
 
 ### M0 — Priority High: baseline commit before the tracking change (precedes the M2 commit)
 
@@ -61,12 +55,13 @@ Sweep (`internal/cli/worktree/sweep.go`):
 - The `--yes` run writes one evidence row for each disposal before the removal calls at `sweep.go:676` (L1) and `sweep.go:684` (L2), inside the tier switch (`sweep.go:673–693`). The evidence path is fixed in pre-flight and lies under `.moai/state/`, not `.moai/logs/`, so the sink-registry guard does not classify it as an unregistered logs writer.
 - Record each removed path, its verdict fields, and the evidence row's position before the removal in `progress.md` §E.2.
 
-### M5 — Priority Medium: backups floor and profile-cap key (unconditional code; the apply run is operator-invoked with `--force`)
+### M5 — Priority Medium: backups floor, profile warning, and shipped default (unconditional code; the apply run is operator-invoked with `--force`)
 
-- Backups (REQ-CAP-008; assumption A13): in category 4 of `scanHomeCleanable` (`internal/cli/clean_home.go:310–331`), sort the `backups/removed-*` directories by modification time, protect the three newest, and select the others only when they are also older than the backup retention window.
-- Releases (REQ-CAP-008; assumption A10): no change to the rule. `scanReleaseCandidates` already keeps the current release and the `releaseKeep` newest non-current release binaries (`clean_home.go:291–293`, `:408–445`; `internal/config/defaults.go:451`). The requirement's wording states that rule.
-- Profile cap (REQ-CAP-009; assumption A11): add a loader for `state.profile_max_bytes` in the home-tier `state.yaml`, modeled on `loadHomeRetentionDays` (`clean_home.go:101–121`) but without that loader's compiled fallback. Replace the comparison at `clean_home.go:243` with the loaded value. An absent or non-positive value skips the profile-cap category with a notice that names the key. Delete `DefaultProfileMaxBytes` (`internal/config/defaults.go:455`) once the pre-flight grep shows no reader other than `clean_home.go:243`.
-- Confirmation surface: the apply run is `moai clean --home --force` (`internal/cli/clean.go:106`; assumption A18).
+- Backups (REQ-CAP-008; assumption A13): in category 4 of `scanHomeCleanable` (`internal/cli/clean_home.go:310–331`), sort the `backups/removed-*` directories by modification time, protect the three newest, and select the others only when they are also older than the backup retention window. At SessionStart this category is report-only (operator verdict 8a62).
+- Releases (REQ-CAP-008; assumption A10): no change to the rule. `scanReleaseCandidates` already keeps the current release and the `releaseKeep` newest non-current release binaries (`clean_home.go:291–293`, `:408–445`; `internal/config/defaults.go:451`). The requirement's wording states that rule. At SessionStart this category is report-only.
+- Profile cap (REQ-CAP-009; assumption A11; warning only, operator verdict 8a62): remove the comparison at `clean_home.go:243` as a candidate source, so the cap selects no `projects/` entry for deletion. Add a loader for `state.profile_max_bytes` modeled on `loadHomeRetentionDays` (`clean_home.go:101–121`) without its compiled fallback; an absent key yields no warning. The loaded value feeds a warning in `moai doctor` and in the SessionStart hook, time-boxed as an advisory check (`.claude/rules/moai/development/coding-standards.md` § Advisory-Check Discipline). The warning names the profile and the key, and nothing is deleted. Delete `DefaultProfileMaxBytes` (`internal/config/defaults.go:455`) when the pre-flight grep (plan §C) shows no reader in `internal`.
+- Shipped default: add `profile_max_bytes: 8589934592` under `state:` in the template `internal/template/templates/.moai/config/sections/state.yaml` (today `state: {}`), then build and sync per Template-First. Pre-flight confirms that the home-tier file read by `clean_home.go` is seeded from this template (A11).
+- Confirmation surface: the apply run for backups and releases is `moai clean --home --force` (`internal/cli/clean.go:106`; assumption A18).
 
 ### M6 — Priority Low: evidence recording and sync
 

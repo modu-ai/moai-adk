@@ -4,17 +4,87 @@ This file is the verification layer. Each criterion is Given-When-Then with a bi
 
 **Tree pin.** The document-level pin is the audited tree `40cc1031c2b18781377f1bdf2c590cd39f08244e` (short `40cc1031c`) on branch `WT-capacity-reclaim`, observed in the plan session. Every code observation in §D.0 was taken on this pin. The plan commit that carries this file changes only SPEC artifacts. A criterion that needs a fixture run, or a commit that does not exist yet, carries no RED cell and is unadopted until pre-flight observes it.
 
-## §0 Classes, adoption, and command form
+## §0 Classes, adoption, command form, and evidence carriers
 
 Each criterion belongs to one class, which states what its result means for the release gate:
 
-- **RB — release-blocking.** The criterion gates completion. Its RED-now cell is a single-invocation read-only command (no pipe, redirection, `&&`, `;`, or subshell; `verification-completeness.md` §2.1), recorded with its verbatim stdout, its exit code (captured by the runner, not by the command), and the tree SHA. Its green-path cell names the milestone that flips it and the passing output.
+- **RB — release-blocking.** The criterion gates completion. Its RED-now cell carries four elements together: the command (one read-only invocation: no pipe, redirection, `&&`, `;`, or subshell; `verification-completeness.md` §2.1), its verbatim stdout, its exit code captured by the runner (not by the command), and the tree SHA. Its green-path cell names the milestone that flips it and the passing output.
 - **RG — regression guard.** Green on the pinned tree by design. It must hold at completion. It is reported as "held", never as a RED-to-GREEN transition.
-- **MS — measurement.** The command needs a pipeline or a fixture, so it is outside the single-invocation form. It gates completion through its recorded verbatim output: a missing output, or a failing one, blocks the sync-phase close.
+- **MS — measurement.** The observation is the verbatim output, recorded in `progress.md` §E.2. A missing output, or a failing one, blocks the sync-phase close. MS covers a command that needs a pipeline or a fixture, and a plain git read whose exit status the runner cannot capture (G-EXIT).
 
-**Adoption** (`verification-completeness.md` §2). A criterion is adopted only when its RED cell is observed. A criterion whose RED cannot be observed by pre-flight is not adopted, is not claimed as passing, and blocks the close until a new plan audit re-scopes it. The plan session did not capture exit codes for commands that print nothing, so no RB criterion is adopted at this revision. Pre-flight records the four-element cells (`plan.md` §C).
+**Exit capture (G-EXIT).** The worktree guard refuses shell text that names git inside a wrapper, so a plain git command surfaces only its stdout. For grep cells the runner captures the exit status with `bash -c '<command>; echo EXIT=$?'`, which the guard accepts when the text names no git; the cell's command remains the single grep. A plain git cell has no runner-captured exit status and is therefore classed MS.
 
-**Conditional classes.** AC-CAP-007 and AC-CAP-015 are RB only when decisions Q4 and Q2 carry approved verdicts; otherwise their default branches apply (§D.6). AC-CAP-009 is RG for its unapproved branch and is conditional on Q1 for its approved branch.
+**Evidence carriers.** The RED cells are the fenced entries EV-* below: command, verbatim stdout, exit status, and tree SHA. The §D.0 table cites them by id. Every entry is pinned to `5d36bf91b15c9869118298613df77209f8a3893b`, the HEAD at measurement. The commits after `40cc1031c` change only `.moai/` paths (`git diff --stat 40cc1031c 5d36bf91b`), so the code paths that the §D.0 observations rest on are unchanged; the document pin at line 5 is superseded for these entries.
+
+```text
+EV-004 (AC-CAP-004, RB, premise cell)
+  command: grep -n -E 'usage-log|lessons|corrupt' internal/template/templates/.gitignore
+  stdout:  (empty)
+  exit:    1 (runner-captured)
+  tree:    5d36bf91b15c9869118298613df77209f8a3893b
+
+EV-005 (AC-CAP-005, MS)
+  command: git ls-files -- .moai/harness/usage-log.jsonl .moai/lessons-inbox.jsonl '*.corrupt*'
+  stdout:  .moai/harness/learning-history/archive/2026-07.jsonl.gz.corrupt
+           .moai/harness/learning-history/archive/2026-08.jsonl.gz.corrupt
+           .moai/harness/learning-history/archive/2026-09.jsonl.gz.corrupt
+           .moai/harness/usage-log.jsonl
+           .moai/lessons-inbox.jsonl
+  exit:    not runner-captured (G-EXIT); no stderr printed
+  tree:    5d36bf91b15c9869118298613df77209f8a3893b
+
+EV-011 (AC-CAP-011, RB)
+  command: grep -n -E 'DefaultProfileMaxBytes' internal/cli/clean_home.go
+  stdout:  243:				if profileBytes <= config.DefaultProfileMaxBytes {
+  exit:    0 (runner-captured)
+  tree:    5d36bf91b15c9869118298613df77209f8a3893b
+
+EV-012 (AC-CAP-012, RB)
+  command: grep -n -i -E 'owner|unpushed' internal/cli/worktree/sweep.go
+  stdout:  (empty)
+  exit:    1 (runner-captured)
+  tree:    5d36bf91b15c9869118298613df77209f8a3893b
+
+EV-013 (AC-CAP-013, RB)
+  command: grep -n -i owner internal/cli/worktree/sweep.go
+  stdout:  (empty)
+  exit:    1 (runner-captured)
+  tree:    5d36bf91b15c9869118298613df77209f8a3893b
+
+EV-014 (AC-CAP-014, RB)
+  command: grep -rn 'Use:.*"list"' internal/cli/worktree --include='*.go'
+  stdout:  (empty)
+  exit:    1 (runner-captured)
+  tree:    5d36bf91b15c9869118298613df77209f8a3893b
+
+EV-016a (AC-CAP-016, MS, reversed pair: not in ancestor order)
+  command: git merge-base 5d36bf91b15c9869118298613df77209f8a3893b 2aab5f797b75983e132af451da68f69e3426557b
+  stdout:  2aab5f797b75983e132af451da68f69e3426557b
+  exit:    not runner-captured (G-EXIT); the stdout is the observation
+  tree:    5d36bf91b15c9869118298613df77209f8a3893b
+
+EV-016b (AC-CAP-016, MS, control pair in ancestor order)
+  command: git merge-base 2aab5f797b75983e132af451da68f69e3426557b 5d36bf91b15c9869118298613df77209f8a3893b
+  stdout:  2aab5f797b75983e132af451da68f69e3426557b
+  exit:    not runner-captured (G-EXIT); the stdout is the observation
+  tree:    5d36bf91b15c9869118298613df77209f8a3893b
+
+EV-016c (AC-CAP-016, MS, content of a non-progress-only commit)
+  command: git show --name-only --format= 40cc1031c2b18781377f1bdf2c590cd39f08244e
+  stdout:  .moai/specs/SPEC-CAPACITY-RECLAIM-001/acceptance.md
+           .moai/specs/SPEC-CAPACITY-RECLAIM-001/decision-index.md
+           .moai/specs/SPEC-CAPACITY-RECLAIM-001/plan.md
+           .moai/specs/SPEC-CAPACITY-RECLAIM-001/progress.md
+           .moai/specs/SPEC-CAPACITY-RECLAIM-001/spec.md
+  exit:    not runner-captured (G-EXIT)
+  tree:    5d36bf91b15c9869118298613df77209f8a3893b
+```
+
+**Adoption at this revision.** RB with four-element cells: AC-CAP-004 (premise cell EV-004), AC-CAP-011 (EV-011), AC-CAP-012 (EV-012), AC-CAP-013 (EV-013), and AC-CAP-014 (EV-014). MS with verbatim output: AC-CAP-005 (EV-005) and AC-CAP-016 (EV-016a to EV-016c). A test that a criterion names but that does not exist yet is never a RED cell: `go test -run` with no match prints `[no tests to run]` and exits 0 (`verification-completeness.md` §1.1). For such a criterion the cell observes the premise the test checks, and the test's own failing run is recorded at pre-flight, before its milestone commit. The extended cases of AC-CAP-004 are written in M2, so their failing run is that pre-flight record.
+
+**Conditional classes under verdict 8a62.** AC-CAP-002 and AC-CAP-015 are N/A: decision Q2 is rejected and no bulk run executes under this SPEC. AC-CAP-013 applies in full. AC-CAP-009 is conditional on Q1, and its approved branch (`apply`, the split default) is the one to verify. AC-CAP-007 is held on its default branch (decision Q4 default; `sinks.go` unchanged). The green paths of AC-CAP-001 and AC-CAP-005 include the lessons-inbox untracking, which is held under decision Q3, so they hold only after a Q3 verdict and the M2 commit. AC-CAP-011 applies to the profile-cap warning as set in A11.
+
+**Decision outcome branches (this revision).** Q1: approved split (REQ-CAP-006). Q2: rejected (REQ-CAP-012 and REQ-CAP-014 are not exercised; no bulk run). Q3: no verdict (B1 stays a local commit). Q4: default (REQ-CAP-004; the AC-CAP-007 default branch). A11: warning only (REQ-CAP-009).
 
 ## §D.0 Adoption status
 
@@ -72,16 +142,16 @@ Each criterion belongs to one class, which states what its result means for the 
 - **When** `go test ./internal/template/ -run '^TestTemplateGitignoreIgnoresLocalArtifacts$' -count=1` is run,
 - **Then** the test passes. The test writes the embedded template into a `t.TempDir()` repository and asks `git check-ignore -q --no-index`, so the repository's own `.gitignore` (which already matches usage-log at line 352 and `.moai/reports/*` at line 235 in this worktree) does not answer for the template.
 - **Mutant:** a template whose only addition is a comment line that names the file fails the positive cases.
-- **RED-now:** the extended cases fail on the current template, which has no matching rule (observed). The failing run is recorded before the template edit.
-- **Green path:** M2 adds the three rules, and the same command passes.
+- **RED-now (EV-004, premise cell):** no template rule matches the three state-file patterns, so the extended cases cannot pass. `grep -n -E 'usage-log|lessons|corrupt' internal/template/templates/.gitignore` prints nothing and exits 1 (EV-004). The isolated `git check-ignore --no-index` probe itself was not run: a plain git command against a scratch repository outside the worktree is refused by the worktree guard (Gap G-PROBE; `verification-claim-integrity.md` §3.1). The extended test's own failing run is recorded at pre-flight, before the template edit.
+- **Green path:** M2 adds the three rules. The same grep then prints the three rule lines, and the same test command passes.
 
-### AC-CAP-005 — Repository stops tracking the state files (RB; maps REQ-CAP-002, REQ-CAP-003)
+### AC-CAP-005 — Repository stops tracking the state files (MS; maps REQ-CAP-002, REQ-CAP-003)
 
 - **Given** the tree after B1,
 - **When** `git ls-files -- .moai/harness/usage-log.jsonl .moai/lessons-inbox.jsonl '*.corrupt*'` is run,
 - **Then** stdout is empty.
-- **RED-now (observed at 40cc1031c):** five paths are listed: `.moai/harness/learning-history/archive/2026-07.jsonl.gz.corrupt`, `.moai/harness/learning-history/archive/2026-08.jsonl.gz.corrupt`, `.moai/harness/learning-history/archive/2026-09.jsonl.gz.corrupt`, `.moai/harness/usage-log.jsonl`, and `.moai/lessons-inbox.jsonl`.
-- **Green path:** M2 `git rm --cached` of the five files (B1) → empty stdout.
+- **RED-now (EV-005, observed at 5d36bf91b):** the five paths of EV-005 are listed, with no stderr. The class is MS because a plain git exit status is not runner-captured (G-EXIT).
+- **Green path:** M2 `git rm --cached` of the five files (B1) → empty stdout. The lessons-inbox part of this path is held under decision Q3; it holds only after a Q3 verdict.
 
 ### AC-CAP-006 — Local copies survive untracking; archive payloads unchanged (RG; maps REQ-CAP-002, REQ-CAP-003)
 
@@ -94,9 +164,14 @@ Each criterion belongs to one class, which states what its result means for the 
 ### AC-CAP-016 — The baseline commit precedes the untracking commit (MS; maps REQ-CAP-002, REQ-CAP-003; `verification-claim-integrity.md` §2.3)
 
 - **Given** baseline commit B0 (touching only `progress.md`) and untracking commit B1, with their SHAs recorded in `progress.md` §E.2,
-- **When** `git merge-base --is-ancestor <B0> <B1>` is run, and then `git show --name-only --format= <B0>`,
-- **Then** the first exits 0, and the second lists only `.moai/specs/SPEC-CAPACITY-RECLAIM-001/progress.md`.
-- **RED-now:** not observable at 40cc1031c, because no baseline commit exists. The commit graph is the only witness of this order; the commit message and the session record are not.
+- **When** `git merge-base <B0> <B1>` is run, and then `git show --name-only --format= <B0>`,
+- **Then** the printed merge base equals the full SHA of B0, so B0 is an ancestor of B1 (equivalent to `git merge-base --is-ancestor <B0> <B1>` exiting 0; printed here because a plain git exit status is not runner-captured, G-EXIT), and the second command lists only `.moai/specs/SPEC-CAPACITY-RECLAIM-001/progress.md`.
+- **RED-now, observed on known-bad inputs (no B0 or B1 exists yet):**
+  - EV-016a, reversed pair: `git merge-base 5d36bf91b15c9869118298613df77209f8a3893b 2aab5f797b75983e132af451da68f69e3426557b` prints `2aab5f797b75983e132af451da68f69e3426557b`, which is not its first argument, so the first commit is not an ancestor of the second.
+  - EV-016b, control pair in the required order: `git merge-base 2aab5f797b75983e132af451da68f69e3426557b 5d36bf91b15c9869118298613df77209f8a3893b` prints its first argument, so the predicate holds.
+  - EV-016c, content: `git show --name-only --format= 40cc1031c2b18781377f1bdf2c590cd39f08244e` lists five SPEC files, so the content clause is false for a commit that is not progress-only.
+  The predicate can therefore fail (EV-016a, EV-016c) and can pass (EV-016b). The commit graph is the only witness of this order; the commit message and the session record are not.
+- **Green path:** after B0 and B1 exist, the commands on B0 and B1 print B0 and list only `progress.md`; the observed output is recorded at the M2 commit.
 
 ## §D.3 Sink rotation and hygiene apply (AC-CAP-007 to AC-CAP-009)
 
@@ -138,38 +213,42 @@ Each criterion belongs to one class, which states what its result means for the 
 - **Baseline:** RED by source. Backups are selected by age only (`clean_home.go:310–331`), so fixture (i) yields five backup candidates. The release part already matches (`clean_home.go:441–445`).
 - **Green path:** M5 backups floor (`spec.md` A13). Releases are unchanged (A10).
 
-### AC-CAP-011 — Profile data held to the configured cap (RB; maps REQ-CAP-009)
+### AC-CAP-011 — Profile cap warns and deletes nothing; no compiled cap (RB; maps REQ-CAP-009)
 
 - **Given** a fixture home whose profile root has `projects/` entries totalling 6 MiB, and a fixture `state.yaml` in the home config sections with `state.profile_max_bytes: 1048576`; a second fixture with the key absent. The fixtures set `HOME` with `t.Setenv`,
-- **When** `go test ./internal/cli/ -run '^TestHomeCleanProfileCapReadsConfig$' -count=1` is run,
-- **Then** in fixture 1 the oldest `projects/` entries become candidates until the profile is at or below 1 MiB; in fixture 2 no `projects/` candidate is produced, and a notice names `state.profile_max_bytes`.
-- **RED-now (observed at 40cc1031c):** `grep -n -E 'DefaultProfileMaxBytes' internal/cli/clean_home.go` prints line 243. Fixture 1 is RED, because a 6 MiB profile is below the compiled 5 GiB and yields no candidate.
-- **Mutant:** a loader with a compiled fallback fails fixture 2.
-- **Green path:** M5. The grep then prints nothing for `clean_home.go`.
+- **When** `go test ./internal/cli/ -run '^TestProfileCapWarnsWithoutDeleting$' -count=1` is run,
+- **Then** in fixture 1 the profile-cap warning names the profile and `state.profile_max_bytes`, and the home cleanup produces no `projects/` candidate on account of the cap; in fixture 2 no profile-cap warning is emitted and no `projects/` candidate is produced. Neither fixture uses a compiled value.
+- **RED-now (EV-011):** `grep -n -E 'DefaultProfileMaxBytes' internal/cli/clean_home.go` prints line 243 and exits 0 (EV-011): a compiled cap still selects a deletion candidate. The warning path does not exist yet, so its test-level failing run is recorded at pre-flight.
+- **Mutant:** a loader with a compiled fallback fails fixture 2; a cap that selects a candidate fails fixture 1.
+- **Green path:** M5. Then `grep -rn -E 'DefaultProfileMaxBytes' internal --include='*.go'` prints nothing, and the test passes.
 
 ## §D.5 Worktree report, list, and disposal (AC-CAP-012 to AC-CAP-015)
 
-### AC-CAP-012 — The report carries owner, unpushed, and predicate fields; nothing is removed (RB; maps REQ-CAP-010)
+### AC-CAP-012 — The report carries owner, unpushed, and last-activity fields with checked values; nothing is removed (RB; maps REQ-CAP-010)
 
 - **Given** the tree build with the M3 change, built with `make build` and invoked by path,
-- **When** `git worktree list --porcelain | grep -c '^worktree '` is run before and after `./bin/moai worktree sweep --json`, and the records are read,
-- **Then** the sweep's exit status is 0, the two counts are equal, and every non-protected record carries the keys `owner`, `owner_state`, `unpushed`, `landed`, `dirty`, `ignored`, `anchored`, `cwd_occupied`, `on_base`, and `verdict`.
-- **RED-now (observed at 40cc1031c):** `grep -n -i -E 'owner|unpushed' internal/cli/worktree/sweep.go` prints nothing. The verdict record has neither field (`sweep.go:72–96`).
+- **When** `git worktree list --porcelain | grep -c '^worktree '` is run before and after `./bin/moai worktree sweep --json` and the records are read,
+- **Then** the sweep exits 0, the two counts are equal, and every non-protected record carries the keys `path`, `branch`, `owner`, `owner_state`, `unpushed`, `last_activity`, `landed`, `dirty`, `ignored`, `anchored`, `cwd_occupied`, `on_base`, and `verdict`. The values are checked, not only the keys: `owner` is the bound card's label or JSON `null` (an empty string fails); `owner_state` is the bound card's state, `unbound`, or `undetermined` (any other value fails); `unpushed` is a non-negative integer equal to `git rev-list --count <tip> --not --remotes` for the record's branch, or `null` (a string fails); `last_activity` is an ISO-8601 timestamp equal to `git log -1 --format=%cI <tip>`. On the fixture set of AC-CAP-013, the values equal the known fixture values: C has `owner_state` `done`, W has `owner` `null` and `owner_state` `unbound`, and U has `unpushed` 1. A card in state `run` bound to a further fixture tree gives `owner_state` `run`, because the state is read from the card record and not inferred.
+- **RED-now (EV-012):** `grep -n -i -E 'owner|unpushed' internal/cli/worktree/sweep.go` prints nothing and exits 1 (EV-012). The verdict record has neither field: its JSON keys are `path`, `branch`, `tier`, `verdict`, `reason`, `landed`, `dirty`, `ignored`, `anchored`, `cwd_occupied`, and `on_base` (`sweep.go:72–96`).
+- **Green path:** M3 (report fields; the verdict and the `--yes` set are unchanged).
 
-### AC-CAP-013 — Unpushed, unowned, and live-session trees are preserved in report and `--yes` (RB; maps REQ-CAP-011)
+### AC-CAP-013 — The report marks unpushed and unowned candidates; `--yes` removes exactly the pre-change DISPOSE set (RB; maps REQ-CAP-011)
 
-- **Given** fixtures driven through the existing seams (`sweepFetchBase`, `sweepAncestor`, `sweepProcessCWDs`, `sweepDoneCleanup`; `sweep.go:102–195`) and the new owner seam: (U) a tree whose branch has one local commit on no remote-tracking ref; (W) an otherwise disposable tree (landed, clean, unanchored, no process cwd inside) with no card binding; (L) an otherwise disposable tree anchored by a git worktree lock whose reason names a live pid (the test process's own pid); (C) the control, an otherwise disposable tree bound to a card in state `done`,
-- **When** `go test ./internal/cli/worktree/ -run '^TestSweepPreservesUnpushedUnownedLive$' -count=1` runs. The test calls the report evaluation, then the `--yes` apply,
-- **Then** U, W, and L are `PRESERVE` in the report, and each directory still exists after the `--yes` apply. C is `DISPOSE` in the report and is removed by `--yes` (non-vacuity).
-- **Mutant:** removing the owner check from the evaluation makes W `DISPOSE`, and the test fails.
-- **RED-now (observed at 40cc1031c; the unowned half):** `grep -n -i owner internal/cli/worktree/sweep.go` prints nothing: no owner predicate exists. The unpushed half is preserved today by the landing layers (`internal/cli/worktree/landing_predicate.go:395`, `:423–431`) and is not separately red.
+- **Given** fixtures driven through the existing seams (`sweepFetchBase`, `sweepAncestor`, `sweepProcessCWDs`, `sweepDoneCleanup`; `sweep.go:102–195`) and the advisory owner seam: (U) a tree whose branch has one local commit on no remote-tracking ref; (W) an otherwise disposable tree (landed, clean, unanchored, no process cwd inside) with no card binding; (L) an otherwise disposable tree anchored by a git worktree lock whose reason names a live pid (the test process's own pid); (C) the control, an otherwise disposable tree bound to a card in state `done`; and a golden set of the verdicts that the pre-change evaluation returns for U, W, L, and C,
+- **When** `go test ./internal/cli/worktree/ -run '^TestSweepReportAdvisoryNoDisposalChange$' -count=1` runs. The test reads the report evaluation, then runs the `--yes` apply once,
+- **Then** (1) the report marks U with advisory cause `unpushed-commits` (count 1) and W with advisory cause `owner-unconfirmed` (`owner_state` `unbound`); L keeps its existing cause `anchored`; C shows `owner_state` `done`; (2) every verdict equals the golden set (U `PRESERVE`, W `DISPOSE`, L `PRESERVE`, C `DISPOSE`); (3) after `--yes`, the removed directories are exactly the golden DISPOSE set (W and C), and U and L still exist. No fixture's disposal differs from the pre-change evaluation.
+- **Mutant:** adding the owner predicate to the verdict evaluation makes W `PRESERVE`; steps (2) and (3) fail.
+- **RED-now (EV-013):** `grep -n -i owner internal/cli/worktree/sweep.go` prints nothing and exits 1 (EV-013): the report has no owner field and no advisory cause. The existing predicates for U (the landing layers, `internal/cli/worktree/landing_predicate.go:395`, `:423–431`) and for L (`anchored`) are not separately red.
+- **Green path:** M3 (fields and advisory causes in the report; the verdict and the `--yes` set unchanged).
 
-### AC-CAP-014 — `moai worktree list` matches git (RB; maps REQ-CAP-013)
+### AC-CAP-014 — `moai worktree list` matches git per path (RB; maps REQ-CAP-013)
 
-- **Given** the tree build, invoked by path,
-- **When** `./bin/moai worktree list --json` is run and compared with `git worktree list --porcelain`,
-- **Then** the array length equals the count of `worktree` lines; the set of `path` values equals the set of `worktree` paths; the set of `branch` values equals the set of `branch` lines (a detached record has an empty `branch`); each object has a numeric `size_kib`; and the table form prints one row per worktree below its header.
-- **RED-now (observed at 40cc1031c):** `grep -rn 'Use:.*"list"' internal/cli/worktree --include='*.go'` prints nothing: no list verb is registered.
+- **Given** the tree build, invoked by path, and a fixture worktree of known size (a file of N KiB written by the fixture),
+- **When** `./bin/moai worktree list --json` is run and compared with `git worktree list --porcelain`, and `du -sk` is run on the fixture worktree in the same test,
+- **Then** the array length equals the count of `worktree` lines; for each record the `path` equals a `worktree` path, and the record's `branch` equals that worktree's `branch` line with the `refs/heads/` prefix removed (a detached record has `""` in both; the check is per path, so a swapped pair fails); each `size_kib` is a JSON integer ≥ 0 (a string or a fraction fails), and the fixture record's `size_kib` equals its `du -sk` value; and the table form prints one row per worktree below its header.
+- **Mutant:** swapping the branches of two records, or setting every `size_kib` to -1, fails the per-path branch check or the integer check.
+- **RED-now (EV-014):** `grep -rn 'Use:.*"list"' internal/cli/worktree --include='*.go'` prints nothing and exits 1 (EV-014): no list verb is registered.
+- **Green path:** M3 (`list` subcommand); the test passes.
 
 ### AC-CAP-015 — Bulk run disposes only owner-confirmed candidates, with an evidence row first (RB when Q2 is approved; maps REQ-CAP-012)
 
