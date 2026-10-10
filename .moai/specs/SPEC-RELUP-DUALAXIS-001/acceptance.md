@@ -12,11 +12,11 @@ tier: M
 
 - 모든 릴리스 블로킹 AC는 verification-completeness.md §2 two-cell 규율을 따른다: **RED-now 셀**(구현 전 트리에서 적색 관측 — 단일 읽기전용 명령 + 그 명령의 축자 stdout + exit code 독립 필드 + 트리 SHA 핀)과 **green-path 셀**(어느 마일스톤이 뒤집는지 + 녹색 출력 형태)이 쌍으로 존재한다.
 - **트리 핀**: 전체 RED-now 관측은 `2aab5f797` (worktree `.moai/worktrees/t1579`, branch `WT-high-10-07`)에서 수행했다. 문서 수준 핀이 이 문서이며, 개별 AC 핀이 없는 한 이 핀이 구속한다.
-- **귀속 분리 (B-01·B-04)**: RED 셀의 귀속 SHA는 `2aab5f797b75983e132af451da68f69e3426557b`다 (형식: `git grep -c -h "<패턴>" <sha> -- <경로>`). 착지 GREEN 셀은 측정 시점 HEAD(`d36e97571a4d39b3186a71781be9bf01f9434d7f`)에 귀속한다. 하네스 3표면은 2aab5f797 이후 변경됐으므로(§D.3-d `DIFF-01`) 작업 트리 값은 RED 근거가 되지 않는다. 0힛은 빈 stdout이다. **블록 스코프 GREEN 셀(D1·D2·D3·D8)은 예외다**: 워크트리 가드가 git 호출을 이름 붙인 python 명령을 거부하므로(§D.3-d Gaps), 이 셀들은 작업 트리 파일을 git 호출 없는 python 한 호출로 읽는다 — 귀속은 측정 시점 HEAD `0cccc0d31`이며, `.claude/` 트리가 `d36e97571`과 동일함은 `git diff --quiet d36e97571 0cccc0d31 -- .claude/`(exit 0)로 관측했다. 이 라운드에서 실행한 명령의 exit는 `; echo "exit=$?"`로 관측했다(§D.3-d).
+- **귀속 분리 (B-01·B-04)**: RED 셀의 귀속 SHA는 `2aab5f797b75983e132af451da68f69e3426557b`다 (형식: `git grep -c -h "<패턴>" <sha> -- <경로>`). 착지 GREEN 셀은 측정 시점 HEAD(`2ed9d2681f6825acb46d298362aa8f9f6fb9d6d6`)에 귀속한다. 하네스 3표면은 2aab5f797 이후 변경됐으므로(§D.3-d `DIFF-01`) 작업 트리 값은 RED 근거가 되지 않는다. 0힛은 빈 stdout이다. **블록 스코프 GREEN 셀(D1·D2·D3·D8)은 예외다**: 워크트리 가드가 git 호출을 이름 붙인 python 명령을 거부하므로(§D.3-d Gaps), 이 셀들은 작업 트리 파일을 git 호출 없는 python 한 호출로 읽는다 — 귀속은 측정 시점 HEAD `0cccc0d31`이며, `.claude/` 트리가 `d36e97571`과 동일함은 `git diff --quiet d36e97571 0cccc0d31 -- .claude/`(exit 0)로 관측했다. 이 라운드에서 실행한 명령의 exit는 `; echo "exit=$?"`로 관측했다(§D.3-d).
 - **RED의 올바른 이유**: 각 RED는 "이 SPEC이 바꿀 표면이 오늘 비어 있다"는 이유로 적색이다 — 구현이 그 표면을 채우면 뒤집힌다. 선존재 파일이 못 만지는 wrong-reason red는 없다.
 - **명령 형태**: 전부 단일 호출(파이프·리다이렉트·`&&`·`;`·서브셸 없음). grep 일치 0개는 exit 1이다 — "빈 출력 + exit 1"은 완전한 관측이다.
 - **비재현 관측 처분**: 재실행 불가능한 관측(예: internal/ 0힛 — 이미 녹색인 부재 클레임)은 회귀 가드로 분류하고 릴리스 블로킹에서 제외한다(undecidable disposition).
-- **판정 보류 강등 (plan-audit iter3 CX-7/CX-8 + fresh-run iter2 CX-12 + 리더 재개 CX-13)**: AC-RDX-003/004/005(계측이 구조 면만 전달 — 빈 상수·"Return ok." 프롬프트 mutant 통과)와 AC-RDX-006(전-file 계수 — 산개 언급 mutant 판별 불가)은 verification-completeness §2 채택 기준(계측이 너무 얕아 채택 불가 — mutant-probe adoption bar; §2.1 처분군 적용)에 따라 회귀 가드(판정 보류)로 강등됐다. AC-RDX-017도 동일 처분(CX-12) — 리터럴 쌍(LED-018/019)이 동의어 바꿔쓰기 클래스에 우회됨이 실증돼 의미론 판정은 plan §E7 검토면으로 이관됐다. **AC-RDX-016도 동일 처분(CX-13)** — `source-first` 리터럴 면은 반전 가능(리터럴 유지·규칙 역전)이며 REQ-RDX-013의 의미론 면은 plan §E7 검토면 + 형제 카드 판별기로 이관된다. RED 셀은 전부 측정된 사실로 보존되며 판정은 §7의 형제 카드 계측으로 이관된다. 가드 자체는 게이트가 아니다 — 단 plan §E7 검토면은 REQ-RDX-013·015의 구속 판정면으로 §D.5 항목 6의 종결 게이트다(D4). **분할 강등 (운영자 결정 `d-20261010T000832Z-efde`)**: AC-RDX-001의 LED-001C 보존 면(F8), AC-RDX-008·010의 BP 면(F7: BP-008G·BP-010G), AC-RDX-009의 육면 면(F1·F2: LED-022..027), AC-RDX-014의 블록 면(F3: BLK-014G), AC-RDX-015의 블록 면(F4: BLK-015G)은 판정 보류 관측으로 내려간다. 블록 면을 잃은 AC-RDX-008·010·014·015는 블로킹에서 판정 보류로 옮긴다. 블로킹은 AC-RDX-001(LED-001)·002·007·009(제거면 LED-021)다. 구조 검사 설계는 후속 카드 소관이다 (`.moai/reports/t1579/followup-card-draft.md`).
+- **판정 보류 강등 (plan-audit iter3 CX-7/CX-8 + fresh-run iter2 CX-12 + 리더 재개 CX-13)**: AC-RDX-003/004/005(계측이 구조 면만 전달 — 빈 상수·"Return ok." 프롬프트 mutant 통과)와 AC-RDX-006(전-file 계수 — 산개 언급 mutant 판별 불가)은 verification-completeness §2 채택 기준(계측이 너무 얕아 채택 불가 — mutant-probe adoption bar; §2.1 처분군 적용)에 따라 회귀 가드(판정 보류)로 강등됐다. AC-RDX-017도 동일 처분(CX-12) — 리터럴 쌍(LED-018/019)이 동의어 바꿔쓰기 클래스에 우회됨이 실증돼 의미론 판정은 plan §E7 검토면으로 이관됐다. **AC-RDX-016도 동일 처분(CX-13)** — `source-first` 리터럴 면은 반전 가능(리터럴 유지·규칙 역전)이며 REQ-RDX-013의 의미론 면은 plan §E7 검토면 + 형제 카드 판별기로 이관된다. RED 셀은 전부 측정된 사실로 보존되며 판정은 §7의 형제 카드 계측으로 이관된다. 가드 자체는 게이트가 아니다 — 단 plan §E7 검토면은 REQ-RDX-013·015의 구속 판정면으로 §D.5 항목 6의 종결 게이트다(D4). **분할 강등 (운영자 결정 `d-20261010T000832Z-efde`)**: AC-RDX-001의 LED-001C 보존 면(F8), AC-RDX-008·010의 BP 면(F7: BP-008G·BP-010G), AC-RDX-009의 육면 면(F1·F2: LED-022..027), AC-RDX-014의 블록 면(F3: BLK-014G), AC-RDX-015의 블록 면(F4: BLK-015G)은 판정 보류 관측으로 내려간다. 블록 면을 잃은 AC-RDX-008·010·014·015는 블로킹에서 판정 보류로 옮긴다. 블로킹은 AC-RDX-001(LED-001)·002·007·009(제거면 LED-021 + 계수 LED-028)다. 구조 검사 설계는 후속 카드 소관이다 (`.moai/reports/t1579/followup-card-draft.md`).
 
 ## §D AC Matrix
 
@@ -30,7 +30,7 @@ tier: M
 | AC-RDX-006 | 회귀 가드(판정 보류 — CX-8) | (구조 면) specialist가 codex 상태 파일을 두 사이트에 걸쳐 문서화 — 전-file 계수라 산개 언급 mutant 판별 불가 → 형제 카드 | LED-006 (0/1) + LED-017 (0/1) | M1 착지 신호(비게이트): LED-006 ≥2/0 AND LED-017 ≥1/0 |
 | AC-RDX-007 | 블로킹 | specialist가 시드 `rust-v0.161.0`을 기술 | LED-007 (0/1) | M1 → ≥1/0 |
 | AC-RDX-008 | 판정 보류 (분할 efde — F7) | specialist에 BP 상시 절차 **섹션 헤딩**이 존재 — 헤딩 행 스코프 `^#+ .*best-practice`(대소문자 무관 — 주석 안 가짜 헤딩은 세므로 판정 보류, F7) | LED-008 (0/1 — 헤딩 행 스코프; 핀 RED `BP-008R`) | M3 → ≥1/0 |
-| AC-RDX-009 | 블로킹 (제거면 LED-021) · 육면 판정 보류 (F1·F2, 분할 efde) | specialist **Phase 3 블록**(`### Phase 3` ~ `### Phase 4`)이 6종 캐노니컬 전문(`code.claude.com/docs/en/{hooks, sub-agents, skills, plugins, mcp, settings}`)을 각각 보유하고, 파일 전체에서 구형 `docs.anthropic.com` URL은 제거된다 (CX-14 제거면 + CX-18 육면 열거면; D2 — 육면만 블록 스코프, 제거면은 파일 전체) | LED-021 (핀 2aab5f797: `6` / exit `0` — 게이트, §D.3-d `LED-021R`) + LED-022..027 (핀 RED 출력 없음 · exit 1 → 착지 GREEN `1` · exit 0, §D.3-d) | M3 → LED-021 = 0 / exit 1 (착지 SHA 귀속 — 미착지 시 RED); 육면은 판정 보류 관측 (F1·F2) |
+| AC-RDX-009 | 블로킹 (제거면 LED-021 + 계수 LED-028, b80b (a)) · 육면 판정 보류 (F1·F2, 분할 efde) | specialist **Phase 3 블록**(`### Phase 3` ~ `### Phase 4`)이 6종 캐노니컬 전문(`code.claude.com/docs/en/{hooks, sub-agents, skills, plugins, mcp, settings}`)을 각각 보유하고, 파일 전체에서 구형 `docs.anthropic.com` URL은 제거된다 (CX-14 제거면 + CX-18 육면 열거면; D2 — 육면만 블록 스코프, 제거면은 파일 전체) | LED-021 (핀 2aab5f797: `6` / exit `0` — 게이트, §D.3-d `LED-021R`) + LED-028 (핀 2aab5f797: 출력 없음 · exit 1 — 블로킹, §D.3-d `LED-028R`) + LED-022..027 (핀 RED 출력 없음 · exit 1 → 착지 GREEN `1` · exit 0, §D.3-d) | M3 → LED-021 = 0 / exit 1 (착지 SHA 귀속 — 미착지 시 RED); LED-028 = 6 / exit 0 (착지 후 lane 측정 — 6종 각 1 이상, 파일 전체); 육면은 판정 보류 관측 (F1·F2) |
 | AC-RDX-010 | 판정 보류 (분할 efde — F7) | BP 섹션 **블록 안**(첫 `best-practice` 헤딩 ~ 다음 동급 헤딩 직전)의 deliverable 행이 `HTML proposal report`를 명명 (D8) | LED-010 (0/1 — 블록 스코프; 핀 RED `BP-010R`) | M3 → ≥1/0 |
 | AC-RDX-014 | 판정 보류 (분할 efde — F3) | specialist Phase 0 codex 블록이 codex 상태 파일 부재 시 기본값(`rust-v0.161.0` + 경고)과 키군 4종(REQ-RDX-001)을 문서화 | LED-006 공유 (핀 0 / exit 1) + 블록 앵커 핀 `git grep -c -h -F "**Codex axis state"` 출력 없음 (§D.3-c — 고정 window 아님, D3) | M1 → 판정 보류 관측(비게이트) 블록 스코프 토큰: `### Phase 0`~`### Phase 1` 사이 codex 단락(71행 앵커 ~ 95행)에 기본값 + 경고 + 키군 4종 (B-07·B-08·D3) |
 | AC-RDX-015 | 판정 보류 (분할 efde — F4) | runner CODEX_THEME_CHECKLIST 블록이 alpha watch 규범(watch 관찰목록 전용, 안정 탑재 시에만 채택)을 담는다 | LED-005 공유 (핀 0 / exit 1) + 블록 앵커 핀 `git grep -c -h -F "// Standing 6-theme"` 출력 없음 (§D.3-c, D3) | M2 → 판정 보류 관측(비게이트) 블록 스코프 토큰: `// Standing 6-theme` 주석(79행) ~ 닫는 괄호 `];`(92행) 블록 안에 `WATCH-LIST`와 `stable release` 토큰 (watch 규범 82–83행; B-08·D3) |
@@ -40,7 +40,7 @@ tier: M
 | AC-RDX-012 | merged into AC-RDX-011 (D7 — 번호 유지, 판정 대상 아님) | — | — | — |
 | AC-RDX-013 | 회귀 가드 | manifest의 `hns-release-update-run.js` 참조 1힛 유지 + `sprint_contract` dimensions·thresholds 판독 기준선 일치 (LED-013 + LED-015 — CX-3 판독면) | — (오늘 녹색: 1힛 + LED-015 기준선 출력) | 유지 조건: run-phase 전체 |
 
-**집계 (B-06, 원장 재계수; D7 합병 반영)**: AC 16 = 블로킹 4 (001·002·007·009[제거면 LED-021]) + 판정 보류 10 (003·004·005·006·008·010·014·015·016·017) + 회귀 가드 2 (011[구 012 합병]·013) — 분할 결정 d-20261010T000832Z-efde 반영. RED-now 앵커 = grep 15 (LED-001·002·003·004·005·006·007·008·009·010·014·017·018·019·021) + 검증 동사 2 (LED-016·020, plan §E3-P3·P4). AC-RDX-009 육면 셀(LED-022..027)은 블로킹 AC의 쌍 구성원이므로 위 RED-now 집계에 넣지 않고 §D.3-d에 따로 적는다.
+**집계 (B-06, 원장 재계수; D7 합병 반영)**: AC 16 = 블로킹 4 (001·002·007·009[제거면 LED-021 + 계수 LED-028]) + 판정 보류 10 (003·004·005·006·008·010·014·015·016·017) + 회귀 가드 2 (011[구 012 합병]·013) — 분할 결정 d-20261010T000832Z-efde 반영. RED-now 앵커 = grep 16 (LED-001·002·003·004·005·006·007·008·009·010·014·017·018·019·021·028) + 검증 동사 2 (LED-016·020, plan §E3-P3·P4). AC-RDX-009 육면 셀(LED-022..027)은 블로킹 AC의 쌍 구성원이므로 위 RED-now 집계에 넣지 않고 §D.3-d에 따로 적는다.
 
 ## §D.1 시나리오 (Given-When-Then — 블로킹 4종 + 판정 보류 10종 + 회귀 가드 2종 = 16)
 
@@ -54,7 +54,7 @@ tier: M
 - **AC-RDX-006** — **Given** specialist 본문에 codex 상태 절차가 없는 상태로, **When** LED-006 명령과 LED-017 명령을 실행하면, **Then** `last-codex-version.json`이 2 이상(Phase 0 판독·기본값 사이트 + Phase 7a 기록 사이트)이고 `7a-codex` 기록 단계 리터럴이 1 이상이다 (Phase 0 단독·Phase 7a 단독 mutant 모두 좌초 — CX-6).
 - **AC-RDX-007** — **Given** AC-RDX-006이 충족된 상태에서도 시드가 빠질 수 있으므로(mutant M-3), **When** LED-007 명령을 실행하면, **Then** `rust-v0.161.0`이 1 이상 관측된다.
 - **AC-RDX-008** — **Given** specialist에 BP 축이 없는 상태로, **When** LED-008 명령(헤딩 행 스코프 `^#+ .*best-practice`, 대소문자 무관)을 실행하면, **Then** best-practice 섹션 헤딩이 1 이상 관측된다 (주석·산문에만 있는 단어는 헤딩이 아니므로 세지 않는다 — D8). 단 HTML 주석 안의 가짜 헤딩은 세므로 이 면은 판정 보류다(F7, 분할 efde).
-- **AC-RDX-009** — **Given** Phase 3 URL 세트가 docs.anthropic.com 구형 나열인 상태로, **When** LED-021(제거면)과 LED-022..027(6종 전문 각각, 좌측 경계 + 이스케이프 점 + 종결 경계 패턴 — B-03·D1, Phase 3 블록 스코프 — D2)을 실행하면, **Then** 파일 전체의 `docs.anthropic.com` 계수는 0 / exit 1이다 (블로킹 면 LED-021). 육면 검사(Phase 3 블록 안 6종 각 1 이상)는 판정 보류 관측이다(F1·F2, 분할 efde) — URL 전부 삭제·부분 교체 mutant는 블로킹 면 LED-021이 잡지 못한다. LED-021은 파일 전체의 `docs.anthropic.com` 잔존만 세므로 레거시 잔존만 봉쇄한다. 전부 삭제는 판정 보류 육면 면(LED-022..027)만 잡는다 (D-b 공백, 후속 카드 전까지 열림). 육면 열거면과 블록 스코프의 봉쇄는 판정 보류로 강등되었다(F1·F2, 분할 efde — 구조 검사는 후속 카드) (CX-14 + CX-18 + D2). 착지 전 d36e97571에서는 LED-021 = 1이므로 이 시나리오는 아직 RED다.
+- **AC-RDX-009** — **Given** Phase 3 URL 세트가 docs.anthropic.com 구형 나열인 상태로, **When** LED-021(제거면)·LED-028(6종 캐노니컬 URL 블로킹 계수 — b80b (a))과 LED-022..027(6종 전문 각각, 좌측 경계 + 이스케이프 점 + 종결 경계 패턴 — B-03·D1, Phase 3 블록 스코프 — D2)을 실행하면, **Then** 파일 전체의 `docs.anthropic.com` 계수는 0 / exit 1이고(블로킹 면 LED-021), 6종 캐노니컬 URL 각각의 파일 전체 계수는 1 이상이다(블로킹 면 LED-028 — 6종 전부 삭제 또는 부분 교체 mutant를 잡는다). 육면 블록 스코프 검사(Phase 3 블록 안 6종 각 1 이상, LED-022..027)는 판정 보류 관측이다(F1·F2, 분할 efde). LED-021은 파일 전체의 `docs.anthropic.com` 잔존만 세므로 레거시 잔존만 봉쇄하고, LED-028은 6종의 존재 계수만 세므로(블록 경계는 보지 않고, 좌측 경계는 행두·공백·따옴표·괄호·꺾쇠·대괄호 뒤만 인정하며 백틱 뒤는 인정하지 않는다) 블록 스코프 판정은 판정 보류 면에 남는다. **잔여 위험 선언 (LED-028 전체 파일 계수의 한계):** LED-028 counts the six canonical URLs over the whole file. A mutant that removes them from the Phase 3 block and re-adds them in prose passes LED-028. The check that catches it is the verdict-pending Phase 3 block face (LED-022..027). A block-scoped blocking gate belongs to the structural-check follow-up card. 육면 열거면과 블록 스코프의 봉쇄는 판정 보류로 강등되었다(F1·F2, 분할 efde — 구조 검사는 후속 카드) (CX-14 + CX-18 + D2). 착지 전 HEAD 2ed9d2681에서도 LED-021 = 1이므로 이 시나리오는 아직 RED다.
 - **AC-RDX-010** — **Given** BP 산출물이 명명되지 않은 상태로, **When** LED-010 명령(BP 섹션 블록 스코프 — §D.3-c)을 실행하면, **Then** BP 섹션 블록 안의 deliverable 행에 `HTML proposal report`가 1 이상 관측된다 (블록 밖 산문 언급은 세지 않는다 — D8). 주석 안의 deliverable은 세므로 이 면은 판정 보류다(F7, 분할 efde).
 - **AC-RDX-014** — **Given** codex 상태 파일이 존재하지 않는 다음 스윕 실행을 상정하는 상태로, **When** specialist의 Phase 0 codex 블록(§D.3-c, 71행 앵커 ~ 95행 — `### Phase 1` 직전, D3)을 읽으면, **Then** 같은 블록에 (a) 부재 시 기본값 `rust-v0.161.0` + 경고 절차와 (b) 키군 4종(`last_analyzed_version` · `last_analyzed_date` · `last_master_research` · `analysis_history[]`)이 기술돼 있다 (REQ-RDX-004 + REQ-RDX-001 키군 절 — B-07·B-08). 스키마 문서화 단독 통과 mutant는 AC-RDX-006/007과 쌍으로 잡는다. (블록 스코프 면은 판정 보류 — F3, 분할 efde.)
 - **AC-RDX-015** — **Given** alpha 테마가 안정에 미탑재 상태로, **When** runner의 CODEX_THEME_CHECKLIST 블록(§D.3-c, 79행 주석 ~ 92행 `];`, D3)을 읽으면, **Then** 같은 블록(79–92행)에 watch 관찰목록 규범("alpha 테마는 채택 아님 — 안정 탑재 시에만 채택 판정")이 기술돼 있다 (REQ-RDX-009 — 1차 스윕 watch 판정의 절차화; B-08). 블록 스코프 면은 판정 보류다(F4, 분할 efde): 토큰 존재는 문장 전체를 증명하지 않는다.
@@ -75,7 +75,7 @@ tier: M
 | AC-RDX-006 | REQ-RDX-001/002/003 | M-7 — 이중 사이트 앵커 + `7a-codex` 기록 단계 (CX-6); 산개 언급 판별은 CX-8 이관(형제 카드) |
 | AC-RDX-007 | REQ-RDX-002 | M-3 (seed 누락) |
 | AC-RDX-008 | REQ-RDX-012 | 주석 안 가짜 헤딩은 봉쇄되지 않는다 — 판정 보류 (F7, 분할 efde). 헤딩만 있는 껍데기(M-4)는 이 AC로 잡지 못한다 (AC-RDX-016 판정 보류 + E7(d)) |
-| AC-RDX-009 | REQ-RDX-014 | LED-021 제거면은 레거시 잔존만 봉쇄 (CX-14); URL 전부 삭제·부분 교체는 블로킹 게이트가 잡지 못하고 판정 보류 육면 면만 잡는다 (D-b 공백); 육면 열거면·블록 스코프·좌측 경계 면은 판정 보류 (F1·F2, 분할 efde) |
+| AC-RDX-009 | REQ-RDX-014 | LED-021 제거면은 레거시 잔존만 봉쇄 (CX-14); LED-028 계수 면이 6종 캐노니컬 URL 전부 삭제·부분 교체를 블로킹으로 봉쇄한다 (b80b (a)); 육면 열거면·블록 스코프·좌측 경계 면은 판정 보류 (F1·F2, 분할 efde) |
 | AC-RDX-010 | REQ-RDX-014 | 블록 밖 산문은 세지 않는다 (D8); 주석 안 deliverable은 판정 보류 (F7, 분할 efde) |
 | AC-RDX-014 | REQ-RDX-001 (키군, B-07) · REQ-RDX-004 | M-3의 제3 쌍 — 블록 스코프 면은 판정 보류 (F3, 분할 efde; 구조 검사 후속 카드) |
 | AC-RDX-015 | REQ-RDX-009 | alpha-채택 오표기 mutant — 블록 스코프 토큰 면은 판정 보류 (F4, 분할 efde) |
@@ -104,22 +104,22 @@ tier: M
 | REQ-RDX-013 | 블로킹 AC 없음 — AC-RDX-016 판정 보류 (CX-13); 구속 판정은 plan §E7(d) → §D.5 항목 6 (증거 항목 (d)) | E7 종결 게이트 편입 (D4) | unassigned, leader to issue |
 | REQ-RDX-015 | 블로킹 AC 없음 — AC-RDX-017 판정 보류 (CX-12); 구속 판정은 plan §E7(a)–(c) → §D.5 항목 6 (증거 항목 (d): E7(a)) | E7 종결 게이트 편입 (D4) | unassigned, leader to issue |
 
-블로킹 AC를 가진 REQ는 3종이다: 002 → AC-007, 010 → AC-001·002, 014 → AC-009(제거면 LED-021). 004 → AC-014, 009 → AC-015, 012 → AC-008은 판정 보류라 블로킹 AC가 없다(분할 결정 efde).
+블로킹 AC를 가진 REQ는 3종이다: 002 → AC-007, 010 → AC-001·002, 014 → AC-009(제거면 LED-021 + 계수 LED-028). 004 → AC-014, 009 → AC-015, 012 → AC-008은 판정 보류라 블로킹 AC가 없다(분할 결정 efde).
 
 ## §D.3 증거 원장 (Evidence Ledger — RED 귀속 `2aab5f797` · GREEN 귀속 측정 SHA; 2026-10-10 수리 셀은 §D.3-c · §D.3-d)
 
-각 행: 명령은 축자 그대로 단일 실행됐고, stdout은 같은 실행에서 관측했고, exit code는 출력 유무와 문서화된 상태로 귀속했다(§A '귀속 분리'). 경로는 워크트리 루트 기준. 분할 결정(efde) 이후 LED-001C·LED-022..027·BLK-014G·BLK-015G·BP-008G·BP-010G 면은 판정 보류 관측이다. 블로킹 면은 LED-001·002·007·LED-021R/T다.
+각 행: 명령은 축자 그대로 단일 실행됐고, stdout은 같은 실행에서 관측했고, exit code는 출력 유무와 문서화된 상태로 귀속했다(§A '귀속 분리'). 경로는 워크트리 루트 기준. 분할 결정(efde) 이후 LED-001C·LED-022..027·BLK-014G·BLK-015G·BP-008G·BP-010G 면은 판정 보류 관측이다. 블로킹 면은 LED-001·002·007·LED-021R/T·LED-028다.
 
 | LED | 명령 (단일 호출) | stdout (축자) | exit | 판정 |
 |-----|------------------|---------------|------|------|
-| LED-001 | `grep -c '"domain".*Codex CLI upstream change tracking' .claude/commands/harness/release-update/manifest.json` | `0` | `1` | RED (AC-001) — domain 필드 스코프 (CX-3 재앵커) |
+| LED-001 | `git grep -c -h -E '"domain".*Codex CLI upstream change tracking' 2aab5f797b75983e132af451da68f69e3426557b -- .claude/commands/harness/release-update/manifest.json` | (출력 없음) | `1` | RED (AC-001) — 핀 2aab5f797 git grep 귀속 (MP-8 재고정); HEAD GREEN은 §D.3-d LED-001 G — domain 필드 스코프 (CX-3 재앵커) |
 | LED-001C | `grep -c '"domain".*Claude Code' .claude/commands/harness/release-update/manifest.json` | `1` | `0` | 보존 절 (AC-001, D9; 판정 보류 F8) — 핀 2aab5f797 = 1 (녹색: CC 절은 M4 이전부터 존재 — 보존 면); 누락 입력은 §D.3-d CTRL-F = 0 (exit 1) |
-| LED-002 | `grep -c '"domain".*best-practices axis' .claude/commands/harness/release-update/manifest.json` | `0` | `1` | RED (AC-002) — 동일 재앵커 (CX-3) |
+| LED-002 | `git grep -c -h -E '"domain".*best-practices axis' 2aab5f797b75983e132af451da68f69e3426557b -- .claude/commands/harness/release-update/manifest.json` | (출력 없음) | `1` | RED (AC-002) — 핀 2aab5f797 git grep 귀속 (MP-8 재고정); HEAD GREEN은 §D.3-d LED-002 G — 동일 재앵커 (CX-3) |
 | LED-003 | `grep -c "selectCodexSweepTargets(args)" .claude/workflows/hns-release-update-run.js` | `0` | `1` | RED (AC-003) — 디스패치 호출 앵커, 착지 후 ≥2 (CX-2 재앵커) |
 | LED-004 | `grep -c "CODEX_COMMITS_FALLBACK" .claude/workflows/hns-release-update-run.js` | `0` | `1` | RED (AC-004) |
 | LED-005 | `grep -c "CODEX_THEME_CHECKLIST" .claude/workflows/hns-release-update-run.js` | `0` | `1` | RED (AC-005) |
 | LED-006 | `grep -c "last-codex-version.json" .claude/agents/harness/hns-release-update-specialist.md` | `0` | `1` | RED (AC-006) |
-| LED-007 | `grep -c "rust-v0.161.0" .claude/agents/harness/hns-release-update-specialist.md` | `0` | `1` | RED (AC-007) |
+| LED-007 | `git grep -c -h -F rust-v0.161.0 2aab5f797b75983e132af451da68f69e3426557b -- .claude/agents/harness/hns-release-update-specialist.md` | (출력 없음) | `1` | RED (AC-007) — 핀 2aab5f797 git grep 귀속 (MP-8 재고정); HEAD GREEN은 §D.3-d LED-007 G |
 | LED-008 | `grep -ci -E "^#+ .*best-practice" .claude/agents/harness/hns-release-update-specialist.md` | `0` | `1` | RED (AC-008) — 헤딩 행 스코프 (D8); 핀 2aab5f797 = 출력 없음 (§D.3-d `BP-008R`) |
 | LED-009 | `grep -c "code.claude.com" .claude/agents/harness/hns-release-update-specialist.md` | `0` | `1` | RED — 게이트 아님 (전체 파일 계수, 산문 포함 — CX-14). 핀 2aab5f797 재실행 = 출력 없음 (§D.3-d RED-summary) |
 | LED-010 | 블록 스코프 — BP 섹션 블록 안 `HTML proposal report` 계수 (§D.3-d `BP-010R` / `BP-010G`; 작업 트리 전체 계수 아님) | `0` | `1` | RED (AC-010) — 블록 밖 산문 mutant 봉쇄 (D8) |
@@ -130,8 +130,9 @@ tier: M
 | LED-018 | `grep -c "only the CC axis" .claude/agents/harness/hns-release-update-specialist.md` | `0` | `1` | RED (AC-017) — Phase 2 무조건 조기 종료 생존, codex/BP가 CC 널 주간에 실행 전 종료 (CX-9) |
 | LED-019 | `grep -c 'If no entries: emit "No new versions since vX.Y.Z" and stop' .claude/agents/harness/hns-release-update-specialist.md` | `1` | `0` | RED-제거면 (AC-017) — 구형 무조건 문장 생존; 착지 후 0/exit 1이 PASS — 주석 포함 생존 전부 적색 (CX-10) |
 | LED-020 | plan §E3-P4 verb 축자 (`node -e '...'` — `run()` 공개 경로, codex 전용 입력) | stderr `REJECTED: no-codex-in-run:0` | `1` | RED (AC-003 run() 진입점) — codex 전용 입력에서 run()이 agent 호출 0건 (CX-11, M2에서 `run-ok codex=1 total=1`/exit 0으로 뒤집음) |
-| LED-021 | 핀 RED — §D.3-d `LED-021R`: `git grep -c -h "docs.anthropic.com" 2aab5f797b75983e132af451da68f69e3426557b -- .claude/agents/harness/hns-release-update-specialist.md` | `6` | `0` | RED-제거면 (AC-009 게이트, B-01) — 핀 2aab5f797 귀속. HEAD 관측(`d36e97571`) = `1` / exit `0` (산문 179행, 미착지) |
+| LED-021 | 핀 RED — §D.3-d `LED-021R`: `git grep -c -h "docs.anthropic.com" 2aab5f797b75983e132af451da68f69e3426557b -- .claude/agents/harness/hns-release-update-specialist.md` | `6` | `0` | RED-제거면 (AC-009 게이트, B-01) — 핀 2aab5f797 귀속. HEAD 관측(`2ed9d2681`) = `1` / exit `0` (산문 179행, 미착지) |
 | LED-021T | 착지 목표 — §D.3-d `LED-021T`: `grep -c "docs.anthropic.com" .claude/agents/harness/hns-release-update-specialist.md` | 목표 `0` | 목표 `1` | 착지 목표 셀 (AC-009 게이트, plan §F M3 항목 5) — 라벨 SHA: M3 항목 5 착지 커밋 (미정, 착지 시 기입). 미측정 |
+| LED-028 | 펜스 §D.3-d `LED-028R` → `LED-028G` (6종 캐노니컬 URL 각 1 이상 · 파일 전체 · 단일 호출 — 블로킹, b80b (a)) | 핀 RED `(출력 없음)` → 착지 GREEN: lane 착지 후 측정 | 핀 1 / 착지 0 | 블로킹 — 6종 캐노니컬 URL 존재 계수 (AC-RDX-009; 결정 b80b (a)). 핀 2aab5f797 = 출력 없음 · exit 1 (RED). 착지 GREEN 미측정 (pre-repair HEAD 2ed9d2681 = 6 · exit 0, §D.3-d LED-028G) |
 | LED-022 | 펜스 §D.3-d `LED-022R` → `LED-022G` (좌측 경계 + 이스케이프 점 + 종결 경계; GREEN은 Phase 3 블록 스코프 python — D1·D2) | 핀 RED `(출력 없음)` → 착지 GREEN `1` | 핀 1 / 착지 0 | 육면 열거면 (AC-009) — 핀 RED exit 1 · 착지 GREEN exit 0 (B-03 패턴, B-04 분리) |
 | LED-023 | 펜스 §D.3-d `LED-023R` → `LED-023G` (좌측 경계 + 이스케이프 점 + 종결 경계; GREEN은 Phase 3 블록 스코프 python — D1·D2) | 핀 RED `(출력 없음)` → 착지 GREEN `1` | 핀 1 / 착지 0 | 육면 열거면 (AC-009) — 핀 RED exit 1 · 착지 GREEN exit 0 (B-03 패턴, B-04 분리) |
 | LED-024 | 펜스 §D.3-d `LED-024R` → `LED-024G` (좌측 경계 + 이스케이프 점 + 종결 경계; GREEN은 Phase 3 블록 스코프 python — D1·D2) | 핀 RED `(출력 없음)` → 착지 GREEN `1` | 핀 1 / 착지 0 | 육면 열거면 (AC-009) — 핀 RED exit 1 · 착지 GREEN exit 0 (B-03 패턴, B-04 분리) |
@@ -159,6 +160,8 @@ tier: M
 
 ### §D.3-d 펜스 원장 — 수리 셀 (B-01 · B-02 · B-03 · B-04 · B-08 · 라운드 3: D1 · D2 · D3 · D8 · D9)
 
+G 블록 귀속(0cccc0d31·d36e97571·2ed9d2681)은 `.claude/` 트리 동일성으로 묶인다(git diff --quiet d36e97571 2ed9d2681 -- .claude/ exit 0). 수리 커밋은 hns-release-update-specialist.md 179행만 바꾼다. 감사 대상 커밋에서의 재측정은 운영자 브리프에 기록하며 이 파일에는 쓰지 않는다.
+
 명령은 축자다. `(출력 없음)`은 git grep의 0힛이며, exit 1은 문서화된 git grep 상태다(Gaps 참조). 모든 행은 귀속 SHA를 명시한다. 표 셀의 명령은 식별용 축약이며, 실행 가능한 축자 명령은 이 펜스에 있다(verification-completeness §2.1 — 표 셀은 셸 메타문자를 훼손할 수 있다).
 
 ```text
@@ -166,6 +169,7 @@ RED-summary  git grep -c -h "<anchor>" 2aab5f797b75983e132af451da68f69e3426557b 
   no output (0 hits, exit 1): LED-001 LED-002 LED-003 LED-004 LED-005 LED-006 LED-007 LED-008(-i) LED-009 LED-010 LED-014 LED-017 LED-018 BLK-014R BLK-015R BP-008R BP-010R
   LED-019 (legacy unconditional stop sentence): 1 (exit 0)
   LED-021 (legacy domain): 6 (exit 0)
+  LED-028 (six canonical URLs, blocking count, whole-file pinned absence): no output (exit 1)
   LED-022..027 (six canonical URLs, boundary-anchored, whole-file pinned absence): no output x6 (exit 1)
   LED-001C (domain Claude Code clause, preservation): 1 (exit 0 — green pinned by construction; the failing input is CTRL-F)
 
@@ -174,15 +178,26 @@ LED-021R   tree 2aab5f797b75983e132af451da68f69e3426557b   RED (pinned, B-01)
   stdout:  6
   exit:    0
 
-LED-021G   tree d36e97571a4d39b3186a71781be9bf01f9434d7f   observed at HEAD (not a pass)
-  cmd:     git grep -c -h "docs.anthropic.com" HEAD -- .claude/agents/harness/hns-release-update-specialist.md   (HEAD = d36e97571a4d39b3186a71781be9bf01f9434d7f)
+LED-021G   tree 2ed9d2681f6825acb46d298362aa8f9f6fb9d6d6 (HEAD, pre-repair)   observed at HEAD (not a pass)
+  cmd:     git grep -c -h "docs.anthropic.com" 2ed9d2681f6825acb46d298362aa8f9f6fb9d6d6 -- .claude/agents/harness/hns-release-update-specialist.md   (HEAD = 2ed9d2681f6825acb46d298362aa8f9f6fb9d6d6)
   stdout:  1   (line 179, prose)
   exit:    0
 
 LED-021T   label SHA: M3 item-5 landing commit (TBD — not measured)
   cmd:     grep -c "docs.anthropic.com" .claude/agents/harness/hns-release-update-specialist.md
   target:  stdout 0, exit 1
-  status:  NOT MET at d36e97571 (LED-021G = 1)
+  status:  NOT MET at 2ed9d2681 (HEAD) (LED-021G = 1)
+
+LED-028R   tree 2aab5f797b75983e132af451da68f69e3426557b   RED (pinned, b80b (a) — six canonical URLs, whole-file blocking count)
+  cmd:     git grep -c -h -F 'https://code.claude.com/docs/en/' 2aab5f797b75983e132af451da68f69e3426557b -- .claude/agents/harness/hns-release-update-specialist.md
+  stdout:  (출력 없음)
+  exit:    1
+  note:    고정 문자열 형태는 기준보다 느슨하다(정식 문서 URL 아무 것이나 계수하며 여섯 종에 한정되지 않는다); 핀 시점의 0은 여섯 종의 0을 함의하므로 이 RED는 유효하다.
+LED-028G   tree 2ed9d2681f6825acb46d298362aa8f9f6fb9d6d6 (HEAD, pre-repair)   GREEN (블로킹 면, b80b (a))
+  cmd:     python3 -c 'import re,sys;t=open(".claude/agents/harness/hns-release-update-specialist.md",encoding="utf-8").read();u=["hooks","sub-agents","skills","plugins","mcp","settings"];m=[k for k in u if re.search(r"(?:^|[\s\x27\"(<\[])https://code\.claude\.com/docs/en/"+re.escape(k)+r"(?![A-Za-z0-9_./-])",t,re.M)];print(len(m));sys.exit(0 if len(m)==6 else 1)'
+  stdout:  6
+  exit:    0
+  note:    인용된 python 프로그램 내부의 `;`는 셸 구분자가 아니다 (LED-015 규약 — 단일 호출 형태 유지). 6종 존재 계수이며 좌측 경계(행두·공백·따옴표·괄호·꺾쇠·대괄호 뒤만 인정, 백틱 뒤 제외)와 우측 경계를 본다. 블록 경계는 보지 않는다 (블록 스코프 면 LED-022..027은 판정 보류로 분리).
 
 LED-022R   tree 2aab5f797b75983e132af451da68f69e3426557b   RED (pinned, B-04)
   cmd:     git grep -c -h -E "(^|[^A-Za-z0-9_./:])https://code\.claude\.com/docs/en/hooks([^A-Za-z0-9_./-]|$)" 2aab5f797b75983e132af451da68f69e3426557b -- .claude/agents/harness/hns-release-update-specialist.md
@@ -292,6 +307,27 @@ LED-001C G   tree 0cccc0d31 (working tree; .claude/ = d36e97571a4d39b3186a71781b
   cmd:     grep -c '"domain".*Claude Code' .claude/commands/harness/release-update/manifest.json
   stdout:  1   exit: 0
 
+LED-001 R   tree 2aab5f797b75983e132af451da68f69e3426557b   RED (pinned — MP-8 재고정; acceptance §D.3 LED-001 행)
+  cmd:     git grep -c -h -E '"domain".*Codex CLI upstream change tracking' 2aab5f797b75983e132af451da68f69e3426557b -- .claude/commands/harness/release-update/manifest.json
+  stdout:  (no output)   exit: 1
+LED-001 G   tree 2ed9d2681f6825acb46d298362aa8f9f6fb9d6d6 (pre-repair measurement at HEAD 2ed9d2681; re-measured at the audited commit (operator brief))   GREEN (M4 착지)
+  cmd:     grep -c '"domain".*Codex CLI upstream change tracking' .claude/commands/harness/release-update/manifest.json
+  stdout:  1   exit: 0
+
+LED-002 R   tree 2aab5f797b75983e132af451da68f69e3426557b   RED (pinned — MP-8 재고정)
+  cmd:     git grep -c -h -E '"domain".*best-practices axis' 2aab5f797b75983e132af451da68f69e3426557b -- .claude/commands/harness/release-update/manifest.json
+  stdout:  (no output)   exit: 1
+LED-002 G   tree 2ed9d2681f6825acb46d298362aa8f9f6fb9d6d6 (pre-repair measurement at HEAD 2ed9d2681; re-measured at the audited commit (operator brief))   GREEN (M4 착지)
+  cmd:     grep -c '"domain".*best-practices axis' .claude/commands/harness/release-update/manifest.json
+  stdout:  1   exit: 0
+
+LED-007 R   tree 2aab5f797b75983e132af451da68f69e3426557b   RED (pinned — MP-8 재고정)
+  cmd:     git grep -c -h -F rust-v0.161.0 2aab5f797b75983e132af451da68f69e3426557b -- .claude/agents/harness/hns-release-update-specialist.md
+  stdout:  (no output)   exit: 1
+LED-007 G   tree 2ed9d2681f6825acb46d298362aa8f9f6fb9d6d6 (pre-repair measurement at HEAD 2ed9d2681; re-measured at the audited commit (operator brief))   GREEN (M1 착지)
+  cmd:     grep -c rust-v0.161.0 .claude/agents/harness/hns-release-update-specialist.md
+  stdout:  5   exit: 0
+
 DIFF-01   git diff --name-only 2aab5f797b75983e132af451da68f69e3426557b d36e97571a4d39b3186a71781be9bf01f9434d7f
   stdout (9 paths, verbatim):
     .claude/agents/harness/hns-release-update-specialist.md
@@ -310,6 +346,7 @@ Gaps (이 라운드가 관측하지 않은 것):
 - **워크트리 가드 거부 (verification-claim-integrity §3.1 — 대체 측정은 조용히 바꾸지 않고 여기 기록)**: 블록 스코프 셀을 `python3 -c` 안에서 `subprocess`로 `git show <SHA>:<path>`를 호출하는 형태로 실행하자 워크트리 가드가 `this command names git in a form too complex to verify that it stays inside the worktree`로 거부했다(2026-10-10 측정). 그래서 (a) 핀 RED는 평문 `git grep -c -h`(앵커 부재 — 출력 없음 · exit 1), (b) GREEN 블록 셀은 git 호출 없이 작업 트리 파일을 읽는 python 한 호출로 나눴다. 핀 SHA에서 블록 경계를 직접 계산한 GREEN은 이 워크트리에서 얻을 수 없다. 대신 `.claude/` 트리가 `d36e97571`과 동일함을 `git diff --quiet d36e97571 0cccc0d31 -- .claude/`(exit 0)로 관측했다.
 - **검증 동사 E3-P3·P4(LED-016·020)**: 핀 2aab5f797에서 node 실행으로 재확인하지 않았다. 전제는 LED-003(`selectCodexSweepTargets(args)` 출현 = 출력 없음, 핀)으로만 간접 확인했다.
 - **LED-021T**: 미측정 — M3 항목 5 착지 커밋이 아직 없다.
+- **LED-028 잔여 위험 선언**: LED-028 counts the six canonical URLs over the whole file. A mutant that removes them from the Phase 3 block and re-adds them in prose passes LED-028. The check that catches it is the verdict-pending Phase 3 block face (LED-022..027). A block-scoped blocking gate belongs to the structural-check follow-up card.
 
 ## §D.4 간접 검증 항목
 

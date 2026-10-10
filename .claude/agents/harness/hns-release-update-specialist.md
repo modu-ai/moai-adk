@@ -176,7 +176,7 @@ z.ai gateway. SSOT: `.claude/rules/moai/core/glm-web-tooling.md` § HARD Routing
 (named anti-pattern AP-GWT-002).
 
 The URL set is identical on either backend (canonical `code.claude.com` form — two
-consecutive sweeps observed every `docs.anthropic.com/en/docs/claude-code/*` fetch
+consecutive sweeps observed every fetch of the legacy-host `/en/docs/claude-code/*` path
 canonicalize to `code.claude.com/docs/en/*`; SPEC-RELUP-DUALAXIS-001 D6 pins the
 canonical shape):
 ```
