@@ -1,6 +1,6 @@
 # Decision index: SPEC-FACTORY-LEASE-RENEW-001
 
-Revision 0.1.0, authored at plan phase for card t1663 (Tier M). The decision gate is on (`.moai/config/sections/interview.yaml`, `interview.decision_gate: on`), so this index is owed alongside the Tier artifacts. It carries no status field: the lifecycle lives in `spec.md` alone.
+Revision 0.1.1, authored at plan phase for card t1663 (Tier M), and revised after plan audit iteration 1 (`.moai/reports/t1663/plan-audit.md`). The decision gate is on (`.moai/config/sections/interview.yaml`, `interview.decision_gate: on`), so this index is owed alongside the Tier artifacts. It carries no status field: the lifecycle lives in `spec.md` alone.
 
 ## How to read a row
 
@@ -17,32 +17,34 @@ An open FOUNDER row blocks the autonomous Kickoff until its `Operator verdict:` 
 
 | Row | Subject | Label | Class | Operator verdict: line |
 |---|---|---|---|---|
-| Q1 | Values and names of the card lease duration and the watchdog renewal period | FOUNDER | product-level | empty |
+| Q1 | Values, names, and armed form of the card lease duration and the watchdog renewal period | FOUNDER | product-level | empty |
 | Q2 | Refusal or clamping when a lease key violates its bound | FOUNDER | product-level | empty |
 | Q3 | Renewal of an expired own lease: refuse with no write, or reap then refuse | FOUNDER | product-level | empty |
 | Q4 | Repository-local overrides survive a template sync | POLICY-COVERED | implementation-level | not required (POLICY-COVERED) |
-| Q5 | Overlap with the draft SPEC-FACTORY-RECORD-REPAIR-001 | FOUNDER | implementation-level | DEFAULT-APPLIED 2026-10-10T09:15:17Z lane-17 / manager-spec |
+| Q5 | Overlap with the draft SPEC-FACTORY-RECORD-REPAIR-001 | FOUNDER | implementation-level | DEFAULT-APPLIED 2026-10-10T09:40:46Z lane-17 / manager-spec |
+| Q6 | Stall window reference: the previous snapshot, or the last observed channel change | FOUNDER | product-level | empty |
 
 ## Routing
 
-1. **Open FOUNDER rows with an empty `Operator verdict:` line:** Q1, Q2, and Q3. The autonomous Kickoff stays blocked until the operator writes these lines.
+1. **Open FOUNDER rows with an empty `Operator verdict:` line:** Q1, Q2, Q3, and Q6. The autonomous Kickoff stays blocked until the operator writes these lines.
 2. **DEFAULT-APPLIED at plan close:** Q5. It is implementation-level and carries a ranked Default.
 3. **POLICY-COVERED, no verdict needed:** Q4.
 4. **DECIDED:** none. No committed authority decides these questions.
 
 ## Rows
 
-### Q1: What values and names do the two lease keys carry: the card lease duration, and the watchdog renewal period?
+### Q1: What values, names, and armed form do the two lease keys carry: the card lease duration, the watchdog renewal period, and the start minute of the armed wake?
 
 Label: FOUNDER
-Class: product-level (the two keys are added to the template's `workflow.yaml`, which is a template default; the renewal period sets how often a lane's standing wake fires)
+Class: product-level (the two keys are added to the template's `workflow.yaml`, which is a template default; the renewal period sets how often a lane's standing wake fires; the armed form sets the minutes at which it fires)
 Authority anchor: none. At plan time the completed SPEC-FACTORY-ATOMIC-LEASE-001 was searched for renew and expired terms, and none of its matches decides a renewal period or a cadence. SPEC-FACTORY-RECORD-REPAIR-001 Q18 records a verdict on the duration key name, cited to a board record without a digest, so it is context and not an anchor. Decision d-20261010T064450Z-68b2 removes the 20-minute cadence; it is a board record without a digest and is context only.
-Why unresolved: REQ-FLR-007 fixes the bound at one half of the card lease duration, and REQ-FLR-012 fixes the standing wake to follow the renewal period. The value inside the bound is a product choice, and the names are also open for confirmation. Values (the default duration is 15 minutes, so the whole-minute maximum is 7 minutes):
+Why unresolved: REQ-FLR-007 fixes the bound at one half of the card lease duration. REQ-FLR-012 fixes the standing wake to a minute step from minute 0. The value inside the bound is a product choice, and the names are also open for confirmation. Values (the default duration is 15 minutes, so the whole-minute maximum is 7 minutes):
 - (a) 5 minutes, the value that spec.md REQ-FLR-009 carries.
 - (b) 7 minutes, the whole-minute maximum at the default duration.
 - (c) another whole-minute value from 1 to 7 minutes at the default duration.
 The consequences are stated without a ranking. A shorter period means more standing-wake turns for each awake lane, and a wake that falls after the prompt-cache window re-writes the session prefix (`.claude/rules/moai/workflow/cache-aware-execution.md` directive 9). The late-pass margin is the duration minus the period: 10 minutes at 5 minutes, and 8 minutes at 7 minutes. Names: spec.md carries `workflow.factory_lease.duration` (the draft's name) and `workflow.factory_lease.renew_interval` (new). The operator confirms both names or names other keys.
-Default: none (the published Default rule ranks neither the values nor the names: no option preserves current behaviour, because no renewal period exists today).
+Armed form (sub-question d): the wake fires at minute 0 with `*/N` (as REQ-FLR-012 is written). That form has the gap property for every N with no per-value check, and it fires together with other top-of-hour schedules. An off-minute start, such as the draft's `7,27,47` literal, is possible only with a gap check for the value in force (plan B6). The operator confirms `*/N` or names an off-minute start.
+Default: none. The published Default rule ranks no option for (a) to (c), because no renewal period exists today. For (d), the rule's first criterion would select the off-minute start that the current literal uses, but that start fails the gap property for some values in force, so no ranking is recorded here; the operator verdict decides.
 Operator verdict:
 
 ### Q2: When a lease key violates its bound, does the factory refuse to open, or clamp the value to the bound and warn?
@@ -62,7 +64,7 @@ Operator verdict:
 Label: FOUNDER
 Class: product-level (the renew verb's response to an expired lease is user-visible, and the current behaviour writes)
 Authority anchor: none. SPEC-FACTORY-RECORD-REPAIR-001 Q9 cites an operator direction in a board record without a digest, so it is context. The completed SPEC-FACTORY-ATOMIC-LEASE-001 matches its renew and expired terms only for the lock that the lease transactions take, and those matches do not decide this question.
-Why unresolved: The current `RenewLease` reaps an expired lease, which bumps the card version and appends a lease event, and then refuses with the expired-lease class (`internal/homestate/card_transition.go:441-456`). spec.md REQ-FLR-004 states refusal with no write. If the second option is selected, REQ-FLR-004 and AC-FLR-004 are reworded in the same revision.
+Why unresolved: The current `RenewLease` reaps an expired lease, which bumps the card version and appends a lease event, and then refuses with the expired-lease class (`internal/homestate/card_transition.go:441-456`). spec.md REQ-FLR-004 states refusal with no write. If the second option is selected, REQ-FLR-004 and AC-FLR-004 are reworded in the same revision, and the M2 rewrite of the reaped-state assertion in `TestRenewLeaseRefusalsAndExpiry` is not made (plan M2 item 5).
 Options:
 - (a) refuse with no write (spec.md REQ-FLR-004 as written).
 - (b) reap the lease, then refuse (the current behaviour).
@@ -84,10 +86,23 @@ Operator verdict: not required (POLICY-COVERED)
 Label: FOUNDER
 Class: implementation-level (the draft is SPEC bookkeeping; no shipped command changes with either option)
 Authority anchor: none.
-Why unresolved: The draft carries REQ-FRR-001 to REQ-FRR-005, REQ-FRR-009, and REQ-FRR-010, which cover the same renew verb, duration key, watchdog renewal, and queue-claim independence as this SPEC. Two drafts that describe one behaviour can both be implemented, which duplicates the run-phase work and its verdicts.
+Why unresolved: The draft carries REQ-FRR-001 to REQ-FRR-005, REQ-FRR-009, and REQ-FRR-010, which cover the same renew verb, duration key, watchdog renewal, and queue-claim independence as this SPEC. Two drafts that describe one behaviour can both be implemented, which duplicates the run-phase work and its verdicts. The draft's REQ-FRR-005 also keeps the 20-minute cadence literal (`7,27,47 * * * *`) that REQ-FLR-012 replaces, so the two drafts contradict each other on the cadence (audit FLR-O2). A ruling that retires or narrows the draft's overlapping requirements would also retire that contradiction.
 Options:
 - (a) leave the draft unchanged. Both drafts stand, and each card decides its own retirement.
 - (b) retire or narrow the overlapping requirements of the draft under its own card, before this SPEC's run phase.
 Default: (a) (rule: the option that preserves current behaviour; the draft is unchanged)
 Alternate: (b)
-Operator verdict: DEFAULT-APPLIED 2026-10-10T09:15:17Z lane-17 / manager-spec
+Operator verdict: DEFAULT-APPLIED 2026-10-10T09:40:46Z lane-17 / manager-spec
+
+### Q6: Is the stall window measured from the previous snapshot, or from the last observed channel change?
+
+Label: FOUNDER
+Class: product-level (the stall verdict is the signal the leader reads from the watchdog, and its timing changes in the shipped watchdog procedure and in the snapshot format)
+Authority anchor: none decides it. `.claude/rules/moai/workflow/auto-semantics.md` §3 states the rule as "no change across the N-minute window", and §4 implements it as a comparison with the previous snapshot. The two statements agree only while the wake period is N or more.
+Why unresolved: At the renewal period of REQ-FLR-009 (5 minutes), and at any period below N = 15 minutes, a comparison with the previous snapshot never gives a stall verdict, because the previous observation is always younger than N. The options:
+- (a) keep the comparison with the previous snapshot (the text as it stands). At a period below N the stall verdict cannot be given at all.
+- (b) measure the N-minute window from the last observed channel change, with one additive snapshot field, `last_change_at` (spec.md REQ-FLR-013). At a period of N or more the verdict on every pass equals option (a)'s (a derivation from the rule text; AC-FLR-015 checks one instance, at 20 minutes). Below N, a stall is reported no later than N plus one period after the last change.
+Default: (a) (rule: the option that preserves current behaviour)
+Alternate: (b)
+Note: The Default line records the published ranking. A product-level row takes no automatic application, so the `Operator verdict:` line decides. The SPEC body states option (b). Option (a) is the rule-ranked option, but at the adopted period it leaves the verdict unreachable, which is why the body does not follow the ranking.
+Operator verdict:
