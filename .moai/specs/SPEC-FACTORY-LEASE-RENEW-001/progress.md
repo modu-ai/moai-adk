@@ -2459,7 +2459,7 @@ The card's cli change set does not touch any of the thirteen failing tests' file
 
 - sync_status: audit-ready
 - sync_complete_at: 2026-10-10T15:06:13Z
-- sync_commit_sha: pending-backfill
+- sync_commit_sha: 9a3049042c5677ed9a431563fecf010c40ef83d5
 - sync_commit: the single sync-phase commit of card t1663 (`docs(SPEC-FACTORY-LEASE-RENEW-001): sync-phase artifacts and 3-phase close (card t1663)`). It carries the `in-progress → implemented → completed` transition and this block. Its gate result is in its commit body: 게이트 미실행(core.hooksPath=/dev/null, 공유 설정).
 - sync_artifacts_changed: `spec.md` (frontmatter `status:` and `updated:` only), `progress.md` (§E.4 only), `CHANGELOG.md` (one line under `[Unreleased]`, `### Added`).
 - status_transition: `spec.md` `status: in-progress` → `completed`; `updated: 2026-10-10` → `2026-10-11`. `plan.md`, `acceptance.md`, and `decision-index.md` are not changed by this commit.
@@ -2487,7 +2487,70 @@ Debt disposition (the four §E.1 debts):
   - (a) `factory_renew` i18n label is missing. `internal/web/assets/i18n.js` has `factory_next` keys at lines 827-828 (en), 1109-1110 (ko), 1947-1948 (ja), and 2785-2786 (zh), and no `factory_renew` key in any locale.
   - (b) Stale tool count: `docs-site/content/en/guides/mcp-server.md:101` reads "Twenty-two tools accept an optional `project_root` string". The ja, ko, and zh pages carry the numeral 22 at line 101.
   - (c) Old catalogue copy: `.moai/policies/core/moai-mcp-tools-catalogue.md` is git-tracked and has no `factory_renew` row (`factory_next` at lines 152 and 234). The live companion `.claude/rules/moai/core/moai-mcp-tools-catalogue.md` has 4 `factory_renew` matches.
-  - (d) No exit-code statement in the SPEC artifacts. spec.md and acceptance.md have no "exit" match, and decision-index.md has none. plan.md lines 139, 153, 169, 183, and 191 are milestone "Exit:" criteria. progress.md lines 997, 1001, 1005, 1009, and 1013 quote test-failure messages "want a non-zero exit" for refused renewals; these are not a stated exit code.
+  - (d) No exit-code statement in the SPEC artifacts. spec.md and acceptance.md have no "exit" match, and decision-index.md has none. plan.md lines 139, 153, 169, 183, and 191 are milestone "Exit:" criteria. progress.md line 425 records that the SPEC does not state the non-zero exit of `moai factory renew` on a non-renewed outcome. progress.md lines 997, 1001, 1005, 1009, 1013, and 1017 quote test-failure messages "want a non-zero exit" for refused renewals; these are not a stated exit code.
+
+### Sync audit verdict: FAIL (basis recorded here; the verdict file is local-only)
+
+- verdict: FAIL
+- audited_sha: 9a3049042c5677ed9a431563fecf010c40ef83d5
+- auditor-model: claude-haiku-5-5 (the verdict file's header line; the file names no agent)
+- codex receipt: rcpt-47d307716028c480c37486a9
+
+Overall verdict, as the verdict file states it:
+
+Overall Verdict: FAIL. The must-pass firewall fires on Functionality (55/100, FAIL). AC-FLR-002 is contradicted in states its named test does not cover (F1, F2), and blocking requirement defects F3 and F4 are open in the shipped watchdog procedure. The required cross-model backend codex also returned fail (receipt rcpt-47d307716028c480c37486a9), so no PASS or PASS-WITH-DEBT can be yielded on this audit.
+
+Acceptance criteria AC-FLR-001 to AC-FLR-015: status, named test, and verbatim result line, as the verdict file states them.
+
+| AC | Status | Named test (package) | Verbatim result line |
+|---|---|---|---|
+| AC-FLR-001 | PASS | TestFactoryRenewExtendsLiveLease (internal/cli) | `--- PASS: TestFactoryRenewExtendsLiveLease (0.83s)` |
+| AC-FLR-002 | FAIL | TestFactoryRenewMatchesMCP (internal/cli) | `--- PASS: TestFactoryRenewMatchesMCP (2.42s)`. The named test passes on a single-root, non-legacy fixture (factory_renew_test.go:133-138); the AC is contradicted by F1 and F2. |
+| AC-FLR-003 | PASS | TestNonHolderRenewRefusedCLIAndMCP (internal/cli) | `--- PASS: TestNonHolderRenewRefusedCLIAndMCP (1.81s)` |
+| AC-FLR-004 | PASS | TestRenewRefusesExpiredWithoutWrite (internal/homestate) | `--- PASS: TestRenewRefusesExpiredWithoutWrite (1.33s)` |
+| AC-FLR-005 | PASS | TestCardLeaseUsesConfiguredDuration (internal/homestate) | `--- PASS: TestCardLeaseUsesConfiguredDuration (6.10s)`; six arms (acquisition, transition, renewal; default, configured) |
+| AC-FLR-006 | PASS | TestFactoryOpenRefusesNonPositiveLeaseDuration (internal/homestate) | `--- PASS: TestFactoryOpenRefusesNonPositiveLeaseDuration (0.01s)` |
+| AC-FLR-007 | PASS | TestFactoryOpenRefusesRenewIntervalOutsideBound; TestFactoryOpenAcceptsRenewIntervalAtBound (internal/homestate) | `--- PASS: TestFactoryOpenRefusesRenewIntervalOutsideBound (0.02s)`; `--- PASS: TestFactoryOpenAcceptsRenewIntervalAtBound (0.88s)` |
+| AC-FLR-008 | PASS (guard depth: F5, D7) | TestBacklogClaim_QueueLeaseIgnoresCardLeaseDuration; TestBacklogClaim_ReclaimsExpired; TestBacklogClaim_RenewAfterExpiry (internal/factory) | `--- PASS: TestBacklogClaim_QueueLeaseIgnoresCardLeaseDuration (0.02s)`; `--- PASS: TestBacklogClaim_ReclaimsExpired (0.03s)`; `--- PASS: TestBacklogClaim_RenewAfterExpiry (0.03s)` |
+| AC-FLR-009 | PASS | TestFactoryStatusReportsLeaseKeys (internal/cli) | `--- PASS: TestFactoryStatusReportsLeaseKeys (0.90s)` |
+| AC-FLR-010 | PASS (text check as defined; operational defect F3) | TestLaneWatchdogRenewsFirst (internal/template) | `--- PASS: TestLaneWatchdogRenewsFirst (0.00s)` |
+| AC-FLR-011 | PASS (verb half and procedure half, as defined) | TestFactoryRenewRefusalIsMachineReadable (internal/cli); TestLaneWatchdogRecordsRefusalAndMeasures (internal/template) | `--- PASS: TestFactoryRenewRefusalIsMachineReadable (1.75s)`; `--- PASS: TestLaneWatchdogRecordsRefusalAndMeasures (0.00s)` |
+| AC-FLR-012 | PASS | TestRenewCadenceKeepsLeaseLive (internal/cli; defaults, boundary, non-default) | `--- PASS: TestRenewCadenceKeepsLeaseLive (26.57s)` |
+| AC-FLR-013 | PASS | TestAutoSemanticsArmFollowsRenewInterval (internal/template) | `--- PASS: TestAutoSemanticsArmFollowsRenewInterval (0.00s)` |
+| AC-FLR-014 | PASS | TestLaneRuleCarriesConfiguredRenewInterval (internal/hook; 16 subtests) | `--- PASS: TestLaneRuleCarriesConfiguredRenewInterval (0.50s)` |
+| AC-FLR-015 | PASS | TestStallVerdictReachesAtRenewCadence (internal/template; period-5m, period-7m, old-cadence-equal, rule-text) | `--- PASS: TestStallVerdictReachesAtRenewCadence (0.00s)` |
+
+Blocking findings F1 to F4, each with its file:line and fix direction, as the verdict file states them (fix in the run-phase repair, then a delta re-audit):
+
+- F1 [P2] [blocking] internal/cli/mcp_factory_card.go:281-284. handleFactoryRenew reads MOAI_FACTORY_WORKER directly and never calls factoryLaneLabelFromEnv("renew"). The verb does (internal/cli/factory_card.go:1779), and that helper refuses legacy labels (factory_card.go:128-140). A legacy holder label such as worker-1 is refused by the verb but renewed over MCP (codex-observed: renewed, expiry changed). Confidence: high. The code path was read by the auditor; the MCP result is codex-observed. Required fix: call factoryLaneLabelFromEnv("renew") in handleFactoryRenew and return its error as a tool error; add a legacy-label case to the MCP-versus-verb parity test asserting the same refusal class and an unchanged lease.
+
+- F2 [P2] [blocking] internal/cli/mcp_factory_card.go:277 and :292, versus internal/cli/factory_card.go:1787 and :72. The verb opens the factory at factoryCardRoot(), which resolves to resolveTodoQueueRoot(). That root converges worktrees onto the primary (test TestResolveTodoQueueRoot_WorktreeConvergesOnPrimary, listed at internal/cli/migrate_home_state.go:95). The MCP handler opens the factory at the caller's project_root. factoryRenewCard passes its root to homestate.OpenFactory (factory_card.go:1820), and the M1 record states that the lease keys are read from the project root given to OpenFactory. The same card therefore renews under a different duration depending on the caller's tree. Codex-observed: with the primary at duration 20m, the verb applies 20m and MCP applies the 15m default; with the primary at duration 0s, the verb refuses and MCP renews. Confidence: high. Required fix: resolve the factory root for factoryRenewCard by one rule shared by both surfaces (the verb's queue-root resolution). Add a parity test that calls the MCP handler with a linked-worktree project_root against primary configurations of 20m and 0s, asserting equality with the verb.
+
+- F3 [P2] [blocking] internal/template/templates/.claude/skills/moai-lane-watchdog/SKILL.md:56 (local mirror .claude/skills/moai-lane-watchdog/SKILL.md:56). The renewal command is `moai factory renew <card-id> --json` and passes no --run. resolveFactoryCardRun (internal/cli/factory_card.go:2412-2421) then calls factorymsg.ResolveActiveRun(ctx, root, ""), which fails when several factory runs are active. The failure is codex-observed, including with MOAI_KANBAN_ID set; the auditor did not read ResolveActiveRun. Confidence: high on the code path, codex-observed on the runtime result. Required fix: make the renewal independent of the number of active runs, either by passing the lane's own run id in the procedure's command or by resolving the lane's run from its bootstrap identity in resolveFactoryCardRun. Apply the same text to the template and the local mirror (QG-4 byte equality), and assert the run argument in TestLaneWatchdogRenewsFirst.
+
+- F4 [P2] [blocking] internal/template/templates/.claude/skills/moai-lane-watchdog/SKILL.md:83-86 (local mirror lines 83-86). The verdict paragraph says a pass that moved a channel sets last_change_at. The snapshot write list ("the four measurement fields (observed_at, head_sha, evidence_mtime_max, window_state) and renew_result") omits it. A lane that follows the write list persists no last_change_at, so every later pass takes the first-observation branch of auto-semantics §4, and no stall verdict is ever reported (REQ-FLR-013). Confidence: high; the text was read by the auditor. Required fix: add last_change_at to the write list in the template and the local mirror, and extend TestLaneWatchdogRecordsRefusalAndMeasures to require it in the write sentence.
+
+Optional findings F5 and F6, as the verdict file states them:
+
+- F5 [P3] [optional] internal/factory/backlog_claim_lease_test.go:14-26. The card-config file is written to root (lines 18-26), which claimFixture's store (line 16) never reads, and store.Claim takes no root (line 30). A claim that read the card key would still pass this test. The M2 block's ruling d-20261010T111725Z-3ef9 accepted the surrogate mutant the M1 block recorded. Confidence: high; the fixture was read by the auditor. Required fix (later): thread a project root into the claim, or attach the fixture config to the store, so the test fails on a key-reading claim. Tracked as D7.
+
+- F6 [P3] [optional] progress.md §E.4 follow-up (d). It lists "want a non-zero exit" at lines 997, 1001, 1005, 1009, and 1013. grep -n finds six lines: 997, 1001, 1005, 1009, 1013, and 1017. Confidence: high. Required fix: add line 1017 in the sync_commit_sha backfill commit (dispose_in=sync).
+
+Debts D1 to D9, each with its dispose_in value, as the verdict file states them:
+
+- D1: QG-3 coverage below the 85% target (record Gap 6; not re-measured here). Homestate 82.7%, config 84.9%, template 82.7%, factory 83.1%. dispose_in=later. No card is recorded; one is required.
+- D2: internal/cli full-package FAIL (record Gap 1: exit 1, 901.031 s; 13 top-level tests in groups A to D; groups A to C reproduce at base copy 2aab5f797 per the record; group D is the 900-second bound). This is the lead's stated CI boundary and was not re-audited. dispose_in=later (groups A to C: card t1675; group D: CI at push).
+- D3: commit-time gate off. core.hooksPath=/dev/null is set in the shared .git/config. Commits 1 to 3 and the sync commit carry 게이트 미실행. Manual `moai gate` runs after commit 1 and after commit 2 exited 1 at the ast-grep step on internal/astgrep/testdata/fixtures/go/suppressed.go:15. That finding is on main since 59f201e85 (verified as an ancestor of main), and the two card commits touch no file under internal/astgrep (git show --stat). dispose_in=later (hook re-activation card t1673; the base finding needs its own card).
+- D4: no factory_renew i18n label in the web console. dispose_in=later.
+- D5: docs-site project_root list is stale. en line 101 and ja, ko, zh line 101 say twenty-two. factory_renew requires project_root (mcp_factory_card.go:277), so the count is twenty-three and factory_renew is missing. dispose_in=later (four-locale update in the same PR).
+- D6: .moai/policies/core/moai-mcp-tools-catalogue.md (git-tracked) has no factory_renew row; factory_next is at lines 152 and 234. dispose_in=later.
+- D7: AC-FLR-008 guard depth (F5). dispose_in=later.
+- D8: the non-zero exit of `moai factory renew` on refusal is not stated in any SPEC artifact (follow-up candidate d). dispose_in=later.
+- D9: sync_commit_sha is the pending-backfill placeholder, a sanctioned intermediate state (spec-frontmatter-schema.md, SHA placeholder backfill exemption). The backfill belongs to the commit after this verdict. dispose_in=sync.
+
+Scope boundary, as the verdict file states it:
+
+- Scope boundaries stated by the lead, not re-audited: the full internal/cli package verdict (CI's), the commit-time gate (off; 게이트 미실행), and /verify (not run).
 
 ## §G Override and Refusal Record
 
