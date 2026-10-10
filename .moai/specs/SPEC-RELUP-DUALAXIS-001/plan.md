@@ -10,7 +10,7 @@ tier: M
 
 ## §A Context
 
-- **측정 트리**: `.moai/worktrees/t1579` (branch `WT-high-10-07`) @ `2aab5f797`. RED-now grep 앵커는 이 SHA에서 본 수리로 재실행해 확인했다(acceptance.md §D.3-d RED-summary). 검증 동사 2종의 RED는 M2 이전 관측이며 귀속 한계는 §D.3-d Gaps에 적었다. GREEN 관측은 측정 시점 HEAD(2ed9d2681)에 귀속한다.
+- **측정 트리**: `.moai/worktrees/t1579` (branch `WT-high-10-07`) @ `2aab5f797`. RED-now grep 앵커는 이 SHA에서 본 수리로 재실행해 확인했다(acceptance.md §D.3-d RED-summary). 검증 동사 2종의 RED는 M2 이전 관측이며 귀속 한계는 §D.3-d Gaps에 적었다. GREEN 관측은 셀마다 귀속한다 — 착지 셀은 그 셀을 만든 착지 커밋(M1 `4fe4ffe7b` · M4 `18ea52c0a`, 각각 `git cat-file -t` = commit, 착지 값은 `git grep -c -h`로 재관측)이고, 나머지 값은 §C 헤더의 고정 커밋 `cb54103ea` 기준이다. `2ed9d2681` 귀속은 SUPERSEDED(이력 보존)다.
 - **카드**: t1579 (High·운영자 확장 지시 2026-10-07·builder-harness/SPEC 소관).
 - **SPEC artifacts**: `.moai/specs/SPEC-RELUP-DUALAXIS-001/{spec,plan,acceptance,progress}.md` — Tier M 3-artifact 세트 + progress.md.
 - **변경 표면 (3개 — 전부 사용자 소유 dev-only 네임스페이스)**:
@@ -44,7 +44,7 @@ tier: M
 - **상태 파일 특이사항**: `last-codex-version.json`은 gitignored 기계 로컬이라 CI가 판정할 수 없다 — AC는 본문 쓰기 지점을 측정면으로 삼는다(§5.2).
 - **node --check 한계**: 러너 JS 파스 검증에 `node --check`는 무음 통과 한계가 있다(운영 교훈) — §E에서 CommonJS require() 스모크로 보강한다.
 
-## §C Pre-flight (착지 상태 재서술 — HEAD 2ed9d2681 실측; 핀 RED 귀속은 acceptance §D.3·§D.3-d)
+## §C Pre-flight (착지 상태 재서술 — 고정 커밋 cb54103ea 실측: `git rev-parse --short HEAD` = `cb54103ea`, `git status --short` = 공집합; 2ed9d2681 실측은 SUPERSEDED(이력 보존); 값 출처는 감사 iter6 E-2(gitignored 기록)이며 이 라운드 재관측은 L67·L69와 착지 셀이다; 핀 RED 귀속은 acceptance §D.3·§D.3-d)
 
 ```bash
 git branch --show-current ; git rev-parse --short HEAD     # WT-high-10-07 이후 재확인
@@ -64,9 +64,9 @@ grep -c "source-first" .claude/agents/harness/hns-release-update-specialist.md  
 grep -c "7a-codex" .claude/agents/harness/hns-release-update-specialist.md                              # HEAD 실측 1 (M1 착지 — Phase 7a 기록 단계, CX-6) · 핀 RED 2aab5f797 = 출력 없음 exit 1 (§D.3-d RED-summary)
 grep -c "only the CC axis" .claude/agents/harness/hns-release-update-specialist.md                      # HEAD 실측 1 (M1 착지 — Phase 2 축별 종료, CX-9) · 핀 RED 2aab5f797 = 출력 없음 exit 1 (§D.3-d RED-summary)
 grep -c 'If no entries: emit "No new versions since vX.Y.Z" and stop' .claude/agents/harness/hns-release-update-specialist.md  # HEAD 실측 0 (exit 1) — 제거면 PASS (CX-10) · 핀 RED 2aab5f797 = 1 exit 0 (§D.3-d RED-summary)
-grep -c "docs.anthropic.com" .claude/agents/harness/hns-release-update-specialist.md                    # HEAD 실측 1 — 제거면 미착지: specialist.md:179 잔존 (B-02 a9dd 제거 대상, M3 항목 5). 착지 후 0 / exit 1이 PASS (CX-14) · 핀 RED 2aab5f797 = 6 exit 0 (§D.3-d LED-021R)
+grep -c "docs.anthropic.com" .claude/agents/harness/hns-release-update-specialist.md                    # 고정 커밋 cb54103ea 실측 0 (exit 1) — 제거 착지 완료. M3 항목 5 = cb54103ea (`git show cb54103ea -- .claude/agents/harness/hns-release-update-specialist.md`: 179행 `docs.anthropic.com` → legacy-host 문구). 고정 명령 `git grep -c -h "docs.anthropic.com" cb54103ea -- .claude/agents/harness/hns-release-update-specialist.md; echo "exit=$?"` 출력 `exit=1` (0힛, 이 라운드 관측). 2ed9d2681 실측 1 / exit 0은 SUPERSEDED(이력 보존). 착지 후 0 / exit 1이 PASS (CX-14) · 핀 RED 2aab5f797 = 6 exit 0 (§D.3-d LED-021R)
 git grep -c -h "docs.anthropic.com" 2aab5f797b75983e132af451da68f69e3426557b -- .claude/agents/harness/hns-release-update-specialist.md   # 핀 RED (B-01): 기대 6 / exit 0 — 2aab5f797 귀속
-python3 -c 'import re,sys;t=open(".claude/agents/harness/hns-release-update-specialist.md",encoding="utf-8").read();u=["hooks","sub-agents","skills","plugins","mcp","settings"];m=[k for k in u if re.search(r"(?:^|[\s\x27\"(<\[])https://code\.claude\.com/docs/en/"+re.escape(k)+r"(?![A-Za-z0-9_./-])",t,re.M)];print(len(m));sys.exit(0 if len(m)==6 else 1)'   # 블로킹 LED-028 (b80b (a)): 6종 캐노니컬 URL 각 1 이상·파일 전체 — HEAD 2ed9d2681 실측 6 / exit 0 (명령 교체 후 재측정); 핀 RED 2aab5f797 = 출력 없음 exit 1 (§D.3-d LED-028R); 착지 GREEN은 lane 측정 (§D.3-d LED-028G)
+python3 -c 'import re,sys;t=open(".claude/agents/harness/hns-release-update-specialist.md",encoding="utf-8").read();u=["hooks","sub-agents","skills","plugins","mcp","settings"];m=[k for k in u if re.search(r"(?:^|[\s\x27\"(<\[])https://code\.claude\.com/docs/en/"+re.escape(k)+r"(?![A-Za-z0-9_./-])",t,re.M)];print(len(m));sys.exit(0 if len(m)==6 else 1)'   # 블로킹 LED-028 (b80b (a)): 6종 캐노니컬 URL 각 1 이상·파일 전체 — 고정 커밋 cb54103ea 실측 6 / exit 0 (이 라운드 재측정; 2ed9d2681 실측은 SUPERSEDED); 핀 RED 2aab5f797 = 출력 없음 exit 1 (§D.3-d LED-028R); 착지 GREEN은 §D.3-d LED-028G-현행 (cb54103ea 측정, 이 라운드)
 python3 -c 'import re;b=open(".claude/agents/harness/hns-release-update-specialist.md",encoding="utf-8").read();b=b[b.index("### Phase 3"):b.index("### Phase 4")];n=len(re.findall(r"(^|[^A-Za-z0-9_./:])https://code\.claude\.com/docs/en/hooks([^A-Za-z0-9_./-]|$)",b));print(n);raise SystemExit(0 if n else 1)'   # 육면 셀 (B-03·B-04·D1·D2): Phase 3 블록 스코프 — 착지 기대 1 (GREEN); 핀 RED는 acceptance §D.3-d LED-022R (plain git grep, 기대 출력 없음)
 python3 -c 'import re;b=open(".claude/agents/harness/hns-release-update-specialist.md",encoding="utf-8").read();b=b[b.index("### Phase 3"):b.index("### Phase 4")];n=len(re.findall(r"(^|[^A-Za-z0-9_./:])https://code\.claude\.com/docs/en/sub-agents([^A-Za-z0-9_./-]|$)",b));print(n);raise SystemExit(0 if n else 1)'   # 육면 셀 — 동일 형태 (Phase 3 블록 스코프)
 python3 -c 'import re;b=open(".claude/agents/harness/hns-release-update-specialist.md",encoding="utf-8").read();b=b[b.index("### Phase 3"):b.index("### Phase 4")];n=len(re.findall(r"(^|[^A-Za-z0-9_./:])https://code\.claude\.com/docs/en/skills([^A-Za-z0-9_./-]|$)",b));print(n);raise SystemExit(0 if n else 1)'   # 육면 셀 — 동일 형태 (Phase 3 블록 스코프)
@@ -147,6 +147,31 @@ grep -c "hns-release-update-run.js" .claude/commands/harness/release-update/mani
   ```
 
   **관측 (본 트리, 2026-10-09 — M2 이전)**: stderr `REJECTED: no-codex-in-run:0`, **exit 1** — run()이 codex 전용 입력(`versionDeltas: []` + `codexDeltas` 1건)에서 agent 호출 0건. 구현은 존재하고 codex 연결이 없다는 실측 형태다. **M2 GREEN 기대**: stdout `run-ok codex=1 total=1`, exit 0 — run()이 병합 경로를 공유할 때만 통과한다(AC-RDX-003의 LED-020).
+
+  **E3-P5 (codex-prompt-pr-body-step — 이 라운드 추가, C-3)**: 러너 `run()` 공개 경로를 모의 spawn 한 번으로 실행해, codex 렌즈 프롬프트 본문에 PR 본문 확인 단계 (1)–(3)이 실제로 들어 있는지 본다. 라벨 존재만으로는 통과하지 않는다. 검증 동사 원문은 아래 블록이며, 세션 scratchpad의 `e3-p5.sh`를 그대로 복사했다.
+
+  ```sh
+  node -e 'const fs=require("fs");const AsyncFunction=Object.getPrototypeOf(async function(){}).constructor;const src=fs.readFileSync(".claude/workflows/hns-release-update-run.js","utf8");const body=src.replace(/^export\s+/gm,"");const mod={exports:{}};new AsyncFunction("module","exports","require",body)(mod,mod.exports,require);const prompts=[];const mockSpawn=async(p,o)=>{prompts.push({label:o&&o.label?o.label:"",prompt:String(p)});return "ok"};mod.exports.run(mockSpawn,{versionDeltas:[],codexDeltas:["rust-v0.161.0..rust-v0.162.0"]}).then(()=>{const cx=prompts.filter(x=>x.label.startsWith("codex-release-notes:"));if(cx.length!==1)throw new Error("codex-prompt-count="+cx.length);const need=["(1) When a release body is only a 1-line title","(2) Label every reconstructed item","(3) Elevate potential Tier 1 candidates by checking the PR body"];for(const n of need){if(!cx[0].prompt.includes(n))throw new Error("codex-prompt-missing:"+n)}console.log("codex-prompt-pr-body-step-ok steps=3 prompts="+prompts.length)}).catch(e=>{console.error("REJECTED:",e.message);process.exit(1)});'
+  ```
+
+  **GREEN (워크트리 루트, 이 라운드 재관측)**: stdout `codex-prompt-pr-body-step-ok steps=3 prompts=1`, **exit 0**.
+
+  **RED (미수리 러너 스냅샷 cb54103ea, 이 라운드 재관측 — `git archive`로 추출, blob `f3b4042f40bfb3ac791e8cc146ba09819ef82520` 일치 확인)**: stderr `REJECTED: codex-prompt-missing:(1) When a release body is only a 1-line title`, **exit 1**.
+
+  **Gaps**: acceptance §D.3-d Gaps (이 라운드) — 모의 실행만 측정하며 라이브 GitHub 호출은 없었다.
+
+  **E3-P6 (codex-prompt-paging-stop — 이 라운드 추가, C-2)**: 같은 경로에서 codex 렌즈 프롬프트가 페이징 명령(`page=1`·`page=2`)과 기준선 중단 조건(baseline tag 출현 또는 목록 끝)을 함께 담는지 본다. 검증 동사 원문은 아래 블록이며, 세션 scratchpad의 `e3-p6.sh`를 그대로 복사했다.
+
+  ```sh
+  node -e 'const fs=require("fs");const AsyncFunction=Object.getPrototypeOf(async function(){}).constructor;const src=fs.readFileSync(".claude/workflows/hns-release-update-run.js","utf8");const body=src.replace(/^export\s+/gm,"");const mod={exports:{}};new AsyncFunction("module","exports","require",body)(mod,mod.exports,require);const prompts=[];const mockSpawn=async(p,o)=>{prompts.push({label:o&&o.label?o.label:"",prompt:String(p)});return "ok"};mod.exports.run(mockSpawn,{versionDeltas:[],codexDeltas:["rust-v0.161.0..rust-v0.162.0"]}).then(()=>{const cx=prompts.filter(x=>x.label.startsWith("codex-release-notes:"));if(cx.length!==1)throw new Error("codex-prompt-count="+cx.length);const p=cx[0].prompt;const need=["repos/openai/codex/releases?per_page=30&page=1","then the same command with page=2","stop when the baseline tag rust-v0.161.0 appears","or when the list ends"];for(const n of need){if(!p.includes(n))throw new Error("codex-paging-missing:"+n)}console.log("codex-prompt-paging-stop-ok needles="+need.length)}).catch(e=>{console.error("REJECTED:",e.message);process.exit(1)});'
+  ```
+
+  **GREEN (워크트리 루트, 이 라운드 재관측)**: stdout `codex-prompt-paging-stop-ok needles=4`, **exit 0**.
+
+  **RED (미수리 러너 스냅샷 cb54103ea, 이 라운드 재관측)**: stderr `REJECTED: codex-paging-missing:repos/openai/codex/releases?per_page=30&page=1`, **exit 1**.
+
+  **Gaps**: acceptance §D.3-d Gaps (이 라운드) — 페이징 중단 조건은 릴리즈 목록이 최신순(newest first)이라는 가정에 의존하며, 이 가정은 라이브로 관측되지 않았다.
+
 - **E4 JSON 파스** — `python3 -c "import json;json.load(open('.claude/commands/harness/release-update/manifest.json'))"` exit 0 (domain 문자열 편집 후).
 - **E5 회귀 가드** — §C PRESERVE 앵커 3종 + sprint_contract 판독(LED-015 — dimensions·thresholds 출력이 기준선 `['Functionality', 'Consistency'] {'Functionality': 0.85, 'Consistency': 0.8}`와 일치; CX-3, internal/ 0힛 · last-cc-version.json ≥3 · runner_workflow 참조 1 포함).
 - **E6 spec-lint** — `go run ./cmd/moai spec lint SPEC-RELUP-DUALAXIS-001` (또는 프로젝트 규약 형태) exit 0 — MissingExclusions·FrontmatterInvalid 0건 확인.
@@ -183,7 +208,7 @@ grep -c "hns-release-update-run.js" .claude/commands/harness/release-update/mani
 2. `source-first` 원문 패치 선행 강제 — 검색 요약·2차 자료는 보고 전용 리드로만 (REQ-RDX-013). 2차 BP-1 게시일 오정보 정정 사례를 절차 근거로 인용.
 3. `HTML proposal report` 명명 산출물 기록 (REQ-RDX-014 전반).
 4. Phase 3 URL 세트 6종을 `code.claude.com/docs/en/*` 캐노니컬 형태로 갱신 (REQ-RDX-014 후반, 결정 D6). **6종 전문 열거 핀 (CX-18)** — `hooks`·`sub-agents`·`skills`·`plugins`·`mcp`·`settings` 6종 각각의 전문 URL(`https://` + 이스케이프 점 + 종결 경계, 좌측 경계 포함)이 Phase 3 블록(`### Phase 3`~`### Phase 4`) 안에 존재해야 한다(AC-RDX-009 육면 열거면, D1·D2 — 핀 2aab5f797 = 0 RED, 착지 d36e97571 = 1 GREEN 각각, 보존면).
-5. **구형 `docs.anthropic.com` URL 제거 (B-02, 결정 기록 option (a))** — Phase 3 URL 블록과 산문(179행 포함)에서 구형 도메인 문자열을 전부 제거하고, 산문은 구형 도메인 없이 다시 쓴다. 게이트: 착지 커밋의 `grep -c "docs.anthropic.com"` = 0 / exit 1 (LED-021T) 및 6종 캐노니컬 URL 각각 1 이상·파일 전체 (LED-028 — 착지 후 검증; b80b (a)), AC-RDX-009 블로킹 게이트. 2ed9d2681(HEAD)에서는 미착지(LED-021G = 1)이며 이 카드의 잔여 run-phase 작업이다.
+5. **구형 `docs.anthropic.com` URL 제거 (B-02, 결정 기록 option (a))** — Phase 3 URL 블록과 산문(179행 포함)에서 구형 도메인 문자열을 전부 제거하고, 산문은 구형 도메인 없이 다시 쓴다. 게이트: 착지 커밋의 `grep -c "docs.anthropic.com"` = 0 / exit 1 (LED-021T) 및 6종 캐노니컬 URL 각각 1 이상·파일 전체 (LED-028 — 착지 후 검증; b80b (a)), AC-RDX-009 블로킹 게이트. 2ed9d2681(HEAD)에서는 미착지(LED-021G = 1)였다 — **SUPERSEDED**: 이 작업은 cb54103ea에서 착지했다(`git show cb54103ea` 179행 실측; 고정 커밋 LED-021 = 0 / exit 1, acceptance LED-021T).
 
 ### M4 — 매니페스트 domain 문자열 (기계적 — 최하위)
 
@@ -209,7 +234,7 @@ M1(상태 스키마·시드 — 데이터 모델, 0.162 승격 시 변동 가능
 
 ## §H Cross-References
 
-- spec.md §1.2 설계 결정 기록 (D1-D7) / §4 REQ-RDX-001..015
+- spec.md §1.2 설계 결정 기록 (D1-D8) / §4 REQ-RDX-001..015
 - acceptance.md §D AC-RDX-001..017 + §D.2 게이팅 처분 + §D.3·§D.3-c·§D.3-d 증거 원장 (RED 2aab5f797 · GREEN d36e97571)
 - `.moai/research/upstream-update-20261007.md` (1차: C1-C5·6테마 표·Phase 7.5 findings) / `upstream-update-20261008.md` (2차: codex 0.161.0 큐레이팅·URL 세트 finding)
 - SPEC-UPDATE-ADD-CODEX-001 (codex 배선 선례) · SPEC-CC2219-UPSTREAM-ALIGN-001 (upstream 정렬 선례)

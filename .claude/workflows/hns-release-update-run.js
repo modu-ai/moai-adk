@@ -66,15 +66,15 @@ const CURRENT_CODEX_SWEEP_WINDOWS = [
 
 // Commits-API reconstruction fallback (REQ-RDX-007): codex release bodies are
 // 1-line titles in alpha-dense windows, so the lens restores content from the
-// commits API:
-//   (1) When a release body is only a 1-line title, reconstruct the window's
-//       content from `gh api repos/openai/codex/commits` / `.../pulls` commit
-//       topics.
-//   (2) Label every reconstructed item "commit-topic-derived" — never as
-//       release-note text.
-//   (3) Elevate potential Tier 1 candidates by checking the PR body, not the
-//       commit title alone (the #49713-consistent procedure).
+// commits API. The procedure is the three step strings below; the lens prompt
+// interpolates them verbatim. The label names the procedure for the specialist
+// and for reference.
 const CODEX_COMMITS_FALLBACK = "commits-api-reconstruction";
+const CODEX_COMMITS_FALLBACK_STEPS = [
+  "(1) When a release body is only a 1-line title, reconstruct the window's content from `gh api repos/openai/codex/commits` / `.../pulls` commit topics.",
+  "(2) Label every reconstructed item \"commit-topic-derived\" — never as release-note text.",
+  "(3) Elevate potential Tier 1 candidates by checking the PR body, not the commit title alone (the #49713-consistent procedure).",
+];
 
 // Standing 6-theme adapter-exposure checklist (REQ-RDX-008): every codex
 // observation is classified against these themes; each theme row carries the
@@ -104,12 +104,14 @@ function selectCodexSweepTargets(args) {
     label: `codex-release-notes:${windowDelta}`,
     prompt:
       `Read-only analysis of Codex CLI release notes for version delta ` +
-      `${windowDelta}. List the releases in the window with ` +
-      `\`gh api repos/openai/codex/releases\` (a release with prerelease:false is a ` +
-      `stable promotion; the baseline compares tag-form names). When a release body ` +
-      `is only a 1-line title, reconstruct the content from the commits API per ` +
-      `${CODEX_COMMITS_FALLBACK} (label every reconstructed item ` +
-      `commit-topic-derived — never release-note text). Classify each observation ` +
+      `${windowDelta}. List the releases in the window one page at a time: ` +
+      `\`gh api 'repos/openai/codex/releases?per_page=30&page=1'\`, then the same command with ` +
+      `page=2, page=3 and so on (one request per page). The list is newest first: stop when ` +
+      `the baseline tag ${String(windowDelta).split("..")[0]} appears in a page, or when the ` +
+      `list ends (a page comes back empty), whichever comes first. A release with ` +
+      `prerelease:false is a stable promotion; the baseline compares tag-form names. Apply the ` +
+      `${CODEX_COMMITS_FALLBACK} fallback procedure, steps (1)-(3): ` +
+      `${CODEX_COMMITS_FALLBACK_STEPS.join(" ")} Classify each observation ` +
       `against the ${CODEX_THEME_CHECKLIST.join(" / ")} theme checklist — one row ` +
       `per theme carrying observed PR numbers and the moai-adk-go exposure surface. ` +
       `Alpha-window themes are watch-list observations only — adoption is judged ` +

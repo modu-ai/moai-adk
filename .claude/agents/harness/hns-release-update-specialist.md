@@ -112,13 +112,15 @@ WebSearch — the built-ins are PROHIBITED there):
 - Secondary: `https://platform.claude.com/docs/en/release-notes/claude-code`.
 - Last resort: web search for `"Claude Code release notes" 2026 anthropics/claude-code`.
 
-**Codex axis — collection lane** (parallel to the CC options): `gh api
-repos/openai/codex/releases?per_page=30` for release tags + bodies — a release with
-`prerelease: false` is a stable promotion, and the baseline comparison uses the tag-form name
-(e.g. `rust-v0.161.0`); cross-check the npm channel with `npm view @openai/codex version`.
-When a release body is a 1-line title (alpha-dense windows), reconstruct content from the
-commits API per the Runner's `CODEX_COMMITS_FALLBACK` procedure and label every reconstructed
-item commit-topic-derived — never release-note text (REQ-RDX-007).
+**Codex axis — collection lane** (parallel to the CC options): `gh api 'repos/openai/codex/releases?per_page=30&page=1'`, then the same command with `page=2`, `page=3` and so on (one request per page)
+until the baseline tag (`since_codex`) appears in a page or the list ends (a page comes back empty) — the list is newest first, so one page alone drops any stable release past the first 30 items (REQ-RDX-006).
+A release with `prerelease: false` is a stable promotion, and the baseline comparison uses the tag-form name (e.g. `rust-v0.161.0`);
+cross-check the npm channel with `npm view @openai/codex version`.
+When a release body is a 1-line title (alpha-dense windows), reconstruct content from the commits API per the commits-API reconstruction procedure (`commits-api-reconstruction`)
+and label every reconstructed item commit-topic-derived — never release-note text (REQ-RDX-007); the procedure's three steps are:
+(1) When a release body is only a 1-line title, reconstruct the window's content from `gh api repos/openai/codex/commits` / `.../pulls` commit topics.
+(2) Label every reconstructed item "commit-topic-derived" — never as release-note text.
+(3) Elevate potential Tier 1 candidates by checking the PR body, not the commit title alone (the #49713-consistent procedure).
 
 [HARD] Subagent boundary: this specialist MUST NOT prompt the user directly
 (return a blocker report; the orchestrator owns the user-interaction channel). Return a
