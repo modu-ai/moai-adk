@@ -94,6 +94,9 @@ type Manifest struct {
 	Version    string               `json:"version"`
 	DeployedAt string               `json:"deployed_at"`
 	Files      map[string]FileEntry `json:"files"`
+	// TemplateTreeHash is the hash of the embedded template tree the last deploy
+	// wrote (REQ-RC30-022). Empty until a deploy records one.
+	TemplateTreeHash string `json:"template_tree_hash,omitempty"`
 }
 
 // FileEntry represents a single tracked file in the manifest.

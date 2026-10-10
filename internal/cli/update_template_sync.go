@@ -240,7 +240,7 @@ func runTemplateSyncWithReporter(cmd *cobra.Command, reporter project.ProgressRe
 	// If versions match, skip sync for performance (70-80% faster)
 	packageVersion := version.GetVersion()
 	projectVersion, err := plan.GetProjectConfigVersion(projectRoot)
-	if err == nil && packageVersion == projectVersion && !forceBackup {
+	if err == nil && packageVersion == projectVersion && !forceBackup && versionMatchSkipsSync(projectRoot) {
 		plVersion.Done("Already up-to-date")
 		_, _ = fmt.Fprintln(out)
 		_, _ = fmt.Fprintln(out, tui.Pill(tui.PillOpts{Kind: tui.PillOk, Solid: false, Label: report.RenderOutcome(report.OutcomeAlreadyUpToDate, 0, ""), Theme: &th}))
@@ -329,7 +329,7 @@ func runTemplateSyncWithReporter(cmd *cobra.Command, reporter project.ProgressRe
 		_, _ = fmt.Fprintln(out, tui.CheckLine("info", "Auto-confirm", "CI/CD mode", "", &th))
 	} else {
 		var err error
-		proceed, err = confirmViaPreview(analysis, projectRoot)
+		proceed, err = confirmViaPreviewFn(analysis, projectRoot)
 		if err != nil {
 			if reporter != nil {
 				reporter.StepError(err)
@@ -649,6 +649,7 @@ func runTemplateSyncWithReporter(cmd *cobra.Command, reporter project.ProgressRe
 				// reclassified every content-changed file user_modified. Persist
 				// the deploy's tracking here, before the merge/restore steps
 				// rewrite their files (those retrack separately below).
+				recordTemplateTree(mgr, errOut)
 				if saveErr := mgr.Save(); saveErr != nil {
 					_, _ = fmt.Fprintf(errOut, "  manifest save after deploy: %v\n", saveErr)
 				}
@@ -1099,6 +1100,10 @@ func runTemplateSyncWithReporter(cmd *cobra.Command, reporter project.ProgressRe
 		stampMigrationDeployMode(projectRoot, migration.outcome, errOut)
 	}
 
+	// REQ-RC30-023: the stamp written by this run must match what the deploy left
+	// on disk; a disagreement is reported, never silently accepted.
+	warnStampSkew(out, projectRoot, version.GetVersion())
+
 	return nil
 }
 
@@ -1141,7 +1146,7 @@ func runTemplateSyncWithProgress(cmd *cobra.Command, userAssetsInstalled bool) (
 	// Check for version match before proceeding
 	packageVersion := version.GetVersion()
 	projectVersion, verr := plan.GetProjectConfigVersion(projectRoot)
-	if verr == nil && packageVersion == projectVersion && !forceUpdate {
+	if verr == nil && packageVersion == projectVersion && !forceUpdate && versionMatchSkipsSync(projectRoot) {
 		_, _ = fmt.Fprintln(out)
 		_, _ = fmt.Fprintln(out, tui.Pill(tui.PillOpts{Kind: tui.PillOk, Solid: false, Label: report.RenderOutcome(report.OutcomeAlreadyUpToDate, 0, ""), Theme: &th}))
 		return true, nil
@@ -1154,7 +1159,13 @@ func runTemplateSyncWithProgress(cmd *cobra.Command, userAssetsInstalled bool) (
 			return false, fmt.Errorf("load embedded templates: %w", eerr)
 		}
 
-		deployer := template.NewDeployerWithForceUpdate(embedded, true)
+		// The preview builds the run's deployer (REQ-RC30-011, U-18), so both
+		// count the same files for the same fixture.
+		updateNoPlugin := getBoolFlag(cmd, "no-plugin") || updatePluginOptedOut()
+		deployer, derr := newTemplateSyncDeployer(embedded, resolveUpdateDeployMode(projectRoot, updateNoPlugin))
+		if derr != nil {
+			return false, fmt.Errorf("construct harness deployer: %w", derr)
+		}
 		analysis := updatemerge.AnalyzeMergeChanges(deployer, projectRoot)
 
 		_, _ = fmt.Fprintln(out)
