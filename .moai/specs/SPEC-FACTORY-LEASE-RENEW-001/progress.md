@@ -2943,7 +2943,7 @@ FAIL	github.com/modu-ai/moai-adk/internal/cli	23.059s
 FAIL
 ```
 
-GREEN for the F7 test and the renewal regressions, at `a94b7ced0`. The code at R2 is the same as at `e20e23667`, and this run covers it. Command: `go test -count=1 -v -run '^(TestFactoryRenewRefusesLabelReuseAcrossRuns|TestFactoryRenewResolvesLaneRunWithoutRunArg|TestFactoryRenewExtendsLiveLease|TestFactoryRenewMatchesMCP|TestNonHolderRenewRefusedCLIAndMCP|TestFactoryRenewRefusalIsMachineReadable|TestFactoryRenewRefusesLegacyLaneLabelOnBothSurfaces|TestFactoryRenewMatchesMCPLinkedWorktree|TestRenewCadenceKeepsLeaseLive)$' ./internal/cli/`. Exit 0.
+GREEN for the F7 test and the renewal regressions, at `a94b7ced0`. `e20e23667` changes only `handleFactoryNext`, `handleFactoryStage` and `handleFactoryComplete` in `mcp_factory_card.go` and does not change `handleFactoryRenew`, so the renewal path this run covers is the same at `e20e23667` and at R2. Command: `go test -count=1 -v -run '^(TestFactoryRenewRefusesLabelReuseAcrossRuns|TestFactoryRenewResolvesLaneRunWithoutRunArg|TestFactoryRenewExtendsLiveLease|TestFactoryRenewMatchesMCP|TestNonHolderRenewRefusedCLIAndMCP|TestFactoryRenewRefusalIsMachineReadable|TestFactoryRenewRefusesLegacyLaneLabelOnBothSurfaces|TestFactoryRenewMatchesMCPLinkedWorktree|TestRenewCadenceKeepsLeaseLive)$' ./internal/cli/`. Exit 0.
 
 ```text
 === RUN   TestRenewCadenceKeepsLeaseLive
@@ -3185,6 +3185,217 @@ lint exit=0
 - F7: a lane bound to an active run that holds the card renews in that run, even when another active run also names the label as holder. This is intended. The stale lease in the other run is left unchanged, and the test checks that.
 - N2: the `next` rows are equal because both surfaces refuse a linked worktree before the record is read. The table shows no divergence for `next`, because none is reachable from a linked worktree.
 - The flagged items above remain open for the lead's decision.
+
+#### Repair 3 (card t1663; sync audit FAIL #3; decision d-20261010T223148Z-13c7)
+
+The third sync audit (`.moai/reports/t1663/sync-audit-3.md`, local-only and not committed; audited commit `b499a8a753adf5055cb19f8bf0669c820cc4748e`, auditor-model `claude-opus-5-5`) returned FAIL. Its blocking item is F11: the required cross-model backend codex (receipt `rcpt-9040ad7d7517ea63bd388652`) found that a renewal with no `--run` renews the lease in the sole active run when the roster binds the lane to another run. Two optional items came with it: F12 (refusal arms without a test) and F13 (one sentence that attributes code to a run that did not contain it). Decision d-20261010T223148Z-13c7 (operator delegation; it replaces hold 4cce) chose option (a): fix F11 inside the card, add the F12 tests, correct F13, and record the round.
+
+This is the last repair round of card t1663. No repair round follows this one. This block records no verdict; the lane's T11 transition and the next audit decide.
+
+##### Commits (this round, oldest first)
+
+- `bbc52dfa1` test(SPEC-FACTORY-LEASE-RENEW-001): RED for the sole-run roster mismatch and the refusal arms (card t1663). Adds `internal/cli/factory_renew_sole_run_test.go`, and `factoryRenewNoRun` in `internal/cli/factory_renew_test.go` now delegates to `factoryRenewCardNoRun`, which takes the card id. No production code.
+- `c097b73b3` fix(SPEC-FACTORY-LEASE-RENEW-001): sole-run renewal refuses an explicit roster mismatch (card t1663). Changes `internal/cli/factory_card.go` only.
+- this commit (R3): docs(SPEC-FACTORY-LEASE-RENEW-001): repair 3 evidence after sync audit FAIL #3 (card t1663). This record only.
+
+Each commit carries `Authored-By-Agent: manager-develop` and the gate-off line (`Gate status: 게이트 미실행(core.hooksPath=/dev/null, 공유 설정).`). The commit gate did not run. No `--no-verify`, no `SKIP_MOAI_PRECOMMIT`, no `git -c core.hooksPath`, and no hook, config, or permission change. Nothing under `.moai/reports/` or `.moai/state/` was staged or committed.
+
+##### F11: the sole-run branch reads the roster
+
+The defect (`sync-audit-3.md`, F11): with one active run, `resolveFactoryRenewRun` returned that run before it read the roster. The audit reproduced it as `bound=run-b sole-active=run-a result=renewed err=<nil> expiry=2026-09-26T09:05:00Z -> 2026-09-26T09:15:00Z`. The RED tests below reproduce the same shape in the repository.
+
+The fix: the sole-run branch reads the lane's binding through `factoryRenewBoundRun` (`internal/cli/factory_card.go:2494-2500`) and refuses, naming `--run`, when the binding names another run, active or not (`internal/cli/factory_card.go:2455-2456`). A lane with an empty binding (`run_id = ''`) or with no roster row keeps the sole-run answer (`factory_card.go:2458`). The ambiguous-set rule (`factory_card.go:2461-2489`) and the explicit `--run` path (`factory_card.go:2444-2446`) are unchanged. The doc comment of `resolveFactoryRenewRun` states the sole-run rule.
+
+Roster evidence (file:line at `c097b73b3`, read in this round with `grep -n`):
+
+- `internal/homestate/factory.go:24`: `CREATE TABLE IF NOT EXISTS workers (`. `:25`: `label TEXT PRIMARY KEY`. `:29`: `run_id TEXT NOT NULL DEFAULT ''`. An unbound lane has `run_id = ''`, never NULL.
+- `internal/homestate/factory.go:678-686`: `(*FactoryDB).WorkerRunBinding`. Line `:680` runs `SELECT run_id FROM workers WHERE label=?` and returns `""` when the label has no row or an empty run.
+- `internal/factory/factory_slots.go:355`: the join path writes `run_id` with the lane's row (`INSERT INTO workers(label,pid,backend,registered_at,heartbeat_at,run_id)`). `:243` reads `(label, pid, run_id)` during the claim.
+- Fixtures: `internal/cli/factory_self_dispatch_test.go:28` (`sdRegisterLane`) inserts a row without `run_id`, so the lane is unbound. `internal/cli/factory_renew_test.go:477` (`factoryRenewBindLane`) binds a lane with `UPDATE workers SET run_id=? WHERE label=?`.
+
+##### F12: every refusal arm is pinned, except two
+
+`TestResolveFactoryRenewRunRefusalArms` (`internal/cli/factory_renew_sole_run_test.go:102`) calls `resolveFactoryRenewRun` directly and compares each return with its exact message. The ambiguous-set refusals are compared by their head and by the arm's suffix (`: <detail>; pass --run`), because the ambiguous outcome carries process-specific owner details (leader pid, start time). The sole-run and no-active refusals are compared in full.
+
+| Arm of `resolveFactoryRenewRun` (`factory_card.go`) | Line | Subtest or test | State |
+|---|---|---|---|
+| explicit `--run` returns | 2444-2446 | not a refusal; covered by the existing renew tests | unchanged |
+| sole run, roster binds another run (F11) | 2455-2456 | `TestFactoryRenewSoleRunExplicitMismatchRefuses` (verb and MCP); `sole active run bound to another run refuses with the exact message` | RED at `bbc52dfa1`, GREEN at `c097b73b3` |
+| sole run, empty binding or no roster row | 2458 | `TestFactoryRenewSoleRunExplicitMismatchRefuses` (positive controls); `sole active run with an empty roster binding returns the sole run`; `sole active run with no roster row returns the sole run`; `sole active run bound to that run returns it` | pinned |
+| no active run (non-ambiguous error) | 2461-2462 | `no active run refuses with the exact message` | pinned |
+| no roster binding | 2477 | `no roster binding refuses and names --run`; `worker row missing where a binding is required refuses and names --run` (no row) | pinned |
+| bound run is not active | 2479-2480 | `bound run that is not active refuses and names --run` | pinned |
+| card missing from the bound run | 2482-2484 | `card missing from the bound run refuses and names --run` | pinned |
+| card not held by the lane in its bound run | 2486-2487 | `card not held by the lane in its bound run refuses and names --run` | pinned |
+| bound run holds the lane's card | 2489 | `card held by the lane in its bound run returns that run` | pinned |
+| OpenFactory refusal (ambiguous set) | 2467-2469 | none | not pinned, see below |
+| WorkerRunBinding read refusal (ambiguous set) | 2472-2474 | none | not pinned, see below |
+
+Not pinned, with the reason:
+
+- 2467-2469 (`refuse(derr)` after `homestate.OpenFactory(root)`): `ResolveActiveRun` opens the same record first (`internal/factorymsg/store.go:344`) and returns that error before any ambiguous outcome exists. This second open can fail only on a fault between the two calls, and no fixture produces that fault.
+- 2472-2474 (`refuse(berr)` after `WorkerRunBinding`): a failed `SELECT` after a successful ambiguous resolution needs fault injection, and the function has no seam for it.
+- The same two reasons leave the error returns of the new helper unpinned: `factoryRenewBoundRun` (`internal/cli/factory_card.go:2495` and `:2500`) returns an error when the record cannot be opened or read, and the renewal then refuses without writing.
+
+##### F13: one sentence corrected
+
+Before (`progress.md` at `b499a8a75`, line 2946; the first sentence of that paragraph is unchanged): "The code at R2 is the same as at `e20e23667`, and this run covers it."
+
+After: "`e20e23667` changes only `handleFactoryNext`, `handleFactoryStage` and `handleFactoryComplete` in `mcp_factory_card.go` and does not change `handleFactoryRenew`, so the renewal path this run covers is the same at `e20e23667` and at R2."
+
+Evidence for the new wording: `git show --stat e20e23667` lists one file, `internal/cli/mcp_factory_card.go`, with hunks in `handleFactoryNext`, `handleFactoryStage` and `handleFactoryComplete`. `git diff a94b7ced0 e20e23667 | grep -c handleFactoryRenew` returns `0`.
+
+##### Tests, RED and GREEN (verbatim)
+
+RED, at `bbc52dfa1` (the tree of the RED commit, before the fix). Command, with the ambient `MOAI_*` lane variables unset in the same invocation:
+
+```text
+go -C /Users/goos/MoAI/moai-adk-go/.moai/worktrees/t1663 test ./internal/cli/ -run '^(TestFactoryRenewSoleRunExplicitMismatchRefuses|TestResolveFactoryRenewRunRefusalArms)$' -v -count=1
+```
+
+Exit 1. Output, every failure message and every `--- FAIL` and `--- PASS` line of the two tests (the PASS lines are the positive controls and the refusal arms that already existed, which pass on the RED tree):
+
+```text
+    factory_renew_sole_run_test.go:73: verb refusal exited zero, want a non-zero exit
+    factory_renew_sole_run_test.go:76: renew with no --run: result=renewed detail="", want error with detail "no --run given: lane lane-1 is bound to run run-b, not to the single active run run-a; pass --run"
+    factory_renew_sole_run_test.go:79: refused renewal moved the run-a lease 2026-09-26T09:05:00Z → 2026-09-26T09:15:00Z
+    factory_renew_sole_run_test.go:76: renew with no --run: result=renewed detail="", want error with detail "no --run given: lane lane-1 is bound to run run-b, not to the single active run run-a; pass --run"
+    factory_renew_sole_run_test.go:79: refused renewal moved the run-a lease 2026-09-26T09:05:00Z → 2026-09-26T09:15:00Z
+    factory_renew_sole_run_test.go:73: verb refusal exited zero, want a non-zero exit
+    factory_renew_sole_run_test.go:76: renew with no --run: result=renewed detail="", want error with detail "no --run given: lane lane-1 is bound to run run-ghost, not to the single active run run-a; pass --run"
+    factory_renew_sole_run_test.go:79: refused renewal moved the run-a lease 2026-09-26T09:05:00Z → 2026-09-26T09:15:00Z
+    factory_renew_sole_run_test.go:76: renew with no --run: result=renewed detail="", want error with detail "no --run given: lane lane-1 is bound to run run-ghost, not to the single active run run-a; pass --run"
+    factory_renew_sole_run_test.go:79: refused renewal moved the run-a lease 2026-09-26T09:05:00Z → 2026-09-26T09:15:00Z
+--- FAIL: TestFactoryRenewSoleRunExplicitMismatchRefuses (15.01s)
+    --- FAIL: TestFactoryRenewSoleRunExplicitMismatchRefuses/bound_to_a_retired_run_refuses_and_names_--run/verb (1.45s)
+    --- FAIL: TestFactoryRenewSoleRunExplicitMismatchRefuses/bound_to_a_retired_run_refuses_and_names_--run/MCP_tool (1.42s)
+    --- FAIL: TestFactoryRenewSoleRunExplicitMismatchRefuses/bound_to_a_run_the_record_does_not_hold_refuses_and_names_--run/verb (1.36s)
+    --- FAIL: TestFactoryRenewSoleRunExplicitMismatchRefuses/bound_to_a_run_the_record_does_not_hold_refuses_and_names_--run/MCP_tool (1.70s)
+    --- PASS: TestFactoryRenewSoleRunExplicitMismatchRefuses/unbound_lane_keeps_the_sole-run_renewal/verb (1.55s)
+    --- PASS: TestFactoryRenewSoleRunExplicitMismatchRefuses/unbound_lane_keeps_the_sole-run_renewal/MCP_tool (1.34s)
+    --- PASS: TestFactoryRenewSoleRunExplicitMismatchRefuses/lane_with_no_roster_row_keeps_the_sole-run_renewal/verb (1.64s)
+    --- PASS: TestFactoryRenewSoleRunExplicitMismatchRefuses/lane_with_no_roster_row_keeps_the_sole-run_renewal/MCP_tool (1.65s)
+    --- PASS: TestFactoryRenewSoleRunExplicitMismatchRefuses/lane_bound_to_the_sole_run_keeps_the_sole-run_renewal/verb (1.49s)
+    --- PASS: TestFactoryRenewSoleRunExplicitMismatchRefuses/lane_bound_to_the_sole_run_keeps_the_sole-run_renewal/MCP_tool (1.40s)
+    factory_renew_sole_run_test.go:174: resolveFactoryRenewRun = ("run-a", <nil>), want the refusal "no --run given: lane lane-1 is bound to run run-b, not to the single active run run-a; pass --run"
+--- FAIL: TestResolveFactoryRenewRunRefusalArms (8.55s)
+    --- PASS: TestResolveFactoryRenewRunRefusalArms/no_roster_binding_refuses_and_names_--run (0.78s)
+    --- PASS: TestResolveFactoryRenewRunRefusalArms/worker_row_missing_where_a_binding_is_required_refuses_and_names_--run (0.78s)
+    --- PASS: TestResolveFactoryRenewRunRefusalArms/bound_run_that_is_not_active_refuses_and_names_--run (1.05s)
+    --- PASS: TestResolveFactoryRenewRunRefusalArms/card_missing_from_the_bound_run_refuses_and_names_--run (1.00s)
+    --- PASS: TestResolveFactoryRenewRunRefusalArms/card_not_held_by_the_lane_in_its_bound_run_refuses_and_names_--run (1.17s)
+    --- PASS: TestResolveFactoryRenewRunRefusalArms/card_held_by_the_lane_in_its_bound_run_returns_that_run (1.17s)
+    --- FAIL: TestResolveFactoryRenewRunRefusalArms/sole_active_run_bound_to_another_run_refuses_with_the_exact_message (0.84s)
+    --- PASS: TestResolveFactoryRenewRunRefusalArms/sole_active_run_with_an_empty_roster_binding_returns_the_sole_run (0.46s)
+    --- PASS: TestResolveFactoryRenewRunRefusalArms/sole_active_run_with_no_roster_row_returns_the_sole_run (0.48s)
+    --- PASS: TestResolveFactoryRenewRunRefusalArms/sole_active_run_bound_to_that_run_returns_it (0.54s)
+    --- PASS: TestResolveFactoryRenewRunRefusalArms/no_active_run_refuses_with_the_exact_message (0.27s)
+FAIL
+FAIL	github.com/modu-ai/moai-adk/internal/cli	24.454s
+FAIL
+```
+
+GREEN, at `c097b73b3` (the fix commit; the run was repeated at HEAD after the commit). Command:
+
+```text
+go -C /Users/goos/MoAI/moai-adk-go/.moai/worktrees/t1663 test ./internal/cli/ -run '^(TestFactoryRenew[A-Za-z]*|TestNonHolderRenewRefusedCLIAndMCP|TestRenewCadenceKeepsLeaseLive|TestResolveFactoryRenewRunRefusalArms|TestLaneVerbsMatchMCPLeaseDuration)$' -v -count=1
+```
+
+Exit 0. Output, every `--- PASS` line of the named tests and the package result:
+
+```text
+--- PASS: TestLaneVerbsMatchMCPLeaseDuration (6.35s)
+    --- PASS: TestLaneVerbsMatchMCPLeaseDuration/next/primary-20m (1.05s)
+    --- PASS: TestLaneVerbsMatchMCPLeaseDuration/next/primary-0s (1.01s)
+    --- PASS: TestLaneVerbsMatchMCPLeaseDuration/stage/primary-20m (1.20s)
+    --- PASS: TestLaneVerbsMatchMCPLeaseDuration/stage/primary-0s (0.86s)
+    --- PASS: TestLaneVerbsMatchMCPLeaseDuration/complete/primary-20m (1.39s)
+    --- PASS: TestLaneVerbsMatchMCPLeaseDuration/complete/primary-0s (0.85s)
+--- PASS: TestRenewCadenceKeepsLeaseLive (13.72s)
+    --- PASS: TestRenewCadenceKeepsLeaseLive/defaults (4.41s)
+        --- PASS: TestRenewCadenceKeepsLeaseLive/defaults/on-schedule_renewals_at_0,_I,_2I,_through_3D_succeed (2.24s)
+        --- PASS: TestRenewCadenceKeepsLeaseLive/defaults/a_renewal_due_at_I_and_delayed_to_D_minus_one_second_succeeds (1.00s)
+        --- PASS: TestRenewCadenceKeepsLeaseLive/defaults/renewals_at_D_and_at_D_plus_one_second_are_refused_as_expired (1.17s)
+    --- PASS: TestRenewCadenceKeepsLeaseLive/boundary (4.01s)
+        --- PASS: TestRenewCadenceKeepsLeaseLive/boundary/on-schedule_renewals_at_0,_I,_2I,_through_3D_succeed (1.96s)
+        --- PASS: TestRenewCadenceKeepsLeaseLive/boundary/a_renewal_due_at_I_and_delayed_to_D_minus_one_second_succeeds (0.89s)
+        --- PASS: TestRenewCadenceKeepsLeaseLive/boundary/renewals_at_D_and_at_D_plus_one_second_are_refused_as_expired (1.16s)
+    --- PASS: TestRenewCadenceKeepsLeaseLive/non-default (5.30s)
+        --- PASS: TestRenewCadenceKeepsLeaseLive/non-default/on-schedule_renewals_at_0,_I,_2I,_through_3D_succeed (3.19s)
+        --- PASS: TestRenewCadenceKeepsLeaseLive/non-default/a_renewal_due_at_I_and_delayed_to_D_minus_one_second_succeeds (0.90s)
+        --- PASS: TestRenewCadenceKeepsLeaseLive/non-default/renewals_at_D_and_at_D_plus_one_second_are_refused_as_expired (1.22s)
+--- PASS: TestFactoryRenewSoleRunExplicitMismatchRefuses (15.80s)
+    --- PASS: TestFactoryRenewSoleRunExplicitMismatchRefuses/bound_to_a_retired_run_refuses_and_names_--run/verb (1.62s)
+    --- PASS: TestFactoryRenewSoleRunExplicitMismatchRefuses/bound_to_a_retired_run_refuses_and_names_--run/MCP_tool (1.64s)
+    --- PASS: TestFactoryRenewSoleRunExplicitMismatchRefuses/bound_to_a_run_the_record_does_not_hold_refuses_and_names_--run/verb (1.54s)
+    --- PASS: TestFactoryRenewSoleRunExplicitMismatchRefuses/bound_to_a_run_the_record_does_not_hold_refuses_and_names_--run/MCP_tool (1.48s)
+    --- PASS: TestFactoryRenewSoleRunExplicitMismatchRefuses/unbound_lane_keeps_the_sole-run_renewal/verb (1.60s)
+    --- PASS: TestFactoryRenewSoleRunExplicitMismatchRefuses/unbound_lane_keeps_the_sole-run_renewal/MCP_tool (1.57s)
+    --- PASS: TestFactoryRenewSoleRunExplicitMismatchRefuses/lane_with_no_roster_row_keeps_the_sole-run_renewal/verb (1.64s)
+    --- PASS: TestFactoryRenewSoleRunExplicitMismatchRefuses/lane_with_no_roster_row_keeps_the_sole-run_renewal/MCP_tool (1.55s)
+    --- PASS: TestFactoryRenewSoleRunExplicitMismatchRefuses/lane_bound_to_the_sole_run_keeps_the_sole-run_renewal/verb (1.55s)
+    --- PASS: TestFactoryRenewSoleRunExplicitMismatchRefuses/lane_bound_to_the_sole_run_keeps_the_sole-run_renewal/MCP_tool (1.61s)
+--- PASS: TestResolveFactoryRenewRunRefusalArms (8.79s)
+    --- PASS: TestResolveFactoryRenewRunRefusalArms/no_roster_binding_refuses_and_names_--run (0.71s)
+    --- PASS: TestResolveFactoryRenewRunRefusalArms/worker_row_missing_where_a_binding_is_required_refuses_and_names_--run (0.70s)
+    --- PASS: TestResolveFactoryRenewRunRefusalArms/bound_run_that_is_not_active_refuses_and_names_--run (1.10s)
+    --- PASS: TestResolveFactoryRenewRunRefusalArms/card_missing_from_the_bound_run_refuses_and_names_--run (1.01s)
+    --- PASS: TestResolveFactoryRenewRunRefusalArms/card_not_held_by_the_lane_in_its_bound_run_refuses_and_names_--run (0.94s)
+    --- PASS: TestResolveFactoryRenewRunRefusalArms/card_held_by_the_lane_in_its_bound_run_returns_that_run (1.15s)
+    --- PASS: TestResolveFactoryRenewRunRefusalArms/sole_active_run_bound_to_another_run_refuses_with_the_exact_message (0.85s)
+    --- PASS: TestResolveFactoryRenewRunRefusalArms/sole_active_run_with_an_empty_roster_binding_returns_the_sole_run (0.65s)
+    --- PASS: TestResolveFactoryRenewRunRefusalArms/sole_active_run_with_no_roster_row_returns_the_sole_run (0.63s)
+    --- PASS: TestResolveFactoryRenewRunRefusalArms/sole_active_run_bound_to_that_run_returns_it (0.69s)
+    --- PASS: TestResolveFactoryRenewRunRefusalArms/no_active_run_refuses_with_the_exact_message (0.37s)
+--- PASS: TestFactoryRenewExtendsLiveLease (0.82s)
+--- PASS: TestFactoryRenewMatchesMCP (1.34s)
+    --- PASS: TestFactoryRenewMatchesMCP/live_lease:_the_same_expiry_fields (0.67s)
+    --- PASS: TestFactoryRenewMatchesMCP/expired_lease:_the_same_refusal_class (0.66s)
+--- PASS: TestNonHolderRenewRefusedCLIAndMCP (1.07s)
+    --- PASS: TestNonHolderRenewRefusedCLIAndMCP/verb (0.16s)
+    --- PASS: TestNonHolderRenewRefusedCLIAndMCP/MCP_tool (0.17s)
+--- PASS: TestFactoryRenewRefusalIsMachineReadable (0.83s)
+--- PASS: TestFactoryRenewRefusesLegacyLaneLabelOnBothSurfaces (1.23s)
+    --- PASS: TestFactoryRenewRefusesLegacyLaneLabelOnBothSurfaces/MCP_tool (0.65s)
+    --- PASS: TestFactoryRenewRefusesLegacyLaneLabelOnBothSurfaces/verb (0.58s)
+--- PASS: TestFactoryRenewMatchesMCPLinkedWorktree (1.35s)
+    --- PASS: TestFactoryRenewMatchesMCPLinkedWorktree/primary_duration_20m (0.67s)
+    --- PASS: TestFactoryRenewMatchesMCPLinkedWorktree/primary_duration_0s (0.67s)
+--- PASS: TestFactoryRenewResolvesLaneRunWithoutRunArg (5.06s)
+    --- PASS: TestFactoryRenewResolvesLaneRunWithoutRunArg/verb (1.71s)
+    --- PASS: TestFactoryRenewResolvesLaneRunWithoutRunArg/MCP_tool (1.23s)
+    --- PASS: TestFactoryRenewResolvesLaneRunWithoutRunArg/held_in_both_runs_with_no_roster_binding_refuses_and_names_--run (1.02s)
+    --- PASS: TestFactoryRenewResolvesLaneRunWithoutRunArg/held_in_neither_run,_bound_to_run-b,_refuses_and_names_--run (1.10s)
+--- PASS: TestFactoryRenewRefusesLabelReuseAcrossRuns (10.53s)
+    --- PASS: TestFactoryRenewRefusesLabelReuseAcrossRuns/reused_label_refuses_and_names_--run/verb (1.70s)
+    --- PASS: TestFactoryRenewRefusesLabelReuseAcrossRuns/reused_label_refuses_and_names_--run/MCP_tool (1.67s)
+    --- PASS: TestFactoryRenewRefusesLabelReuseAcrossRuns/positive_control_renews_the_bound_run/verb (1.89s)
+    --- PASS: TestFactoryRenewRefusesLabelReuseAcrossRuns/positive_control_renews_the_bound_run/MCP_tool (1.78s)
+    --- PASS: TestFactoryRenewRefusesLabelReuseAcrossRuns/held_in_both_runs_renews_the_bound_run/verb (1.75s)
+    --- PASS: TestFactoryRenewRefusesLabelReuseAcrossRuns/held_in_both_runs_renews_the_bound_run/MCP_tool (1.74s)
+PASS
+ok  	github.com/modu-ai/moai-adk/internal/cli	67.621s
+```
+
+Lint and format, at `c097b73b3`:
+
+- `golangci-lint run --timeout=10m ./internal/cli/... ./internal/homestate/...`: final output line `0 issues.`, exit 0.
+- `gofmt -l` on `internal/cli/factory_card.go`, `internal/cli/factory_renew_test.go` and `internal/cli/factory_renew_sole_run_test.go`: no output, exit 0.
+
+Each `go test` and the lint run ran under the go-heavy slot: `moai slot acquire --resource go-heavy --name lane-17 --command <what> --max-duration 15m`, released with `moai slot release --resource go-heavy` after the run.
+
+##### Gaps
+
+- The package `internal/cli` was not run in full; the round used named tests only. QG-3 coverage was not measured for the changed functions.
+- The two unpinned arms (2467-2469, 2472-2474) and the error returns of `factoryRenewBoundRun` are not exercised, for the reasons given under F12.
+- The MCP tool was called in-process through its registered handler. No live stdio server was used.
+- `stage` and `complete` resolve the run through `resolveFactoryCardRun` (`internal/cli/factory_card.go:2422-2431`), which answers a sole active run without reading the roster. That path was not changed or tested in this round (see Residual risk).
+
+##### Residual risk
+
+- The F11 class remains on `stage`: `factoryStageCard` renews the lease through `resolveFactoryCardRun`, which has the sole-run answer without a roster check. A lane bound to a retired run can still renew in the sole active run through `stage`. This round narrowed the renew verb and the `factory_renew` tool, as the decision asked. This record does not close the `stage` path.
+- The lane binding is the only input the sole-run rule reads. A wrong binding written at join or import is trusted by this rule, as the ambiguous path already trusts it.
+- Carried from Repair 2 and unchanged here: the `factory decide` root (`internal/cli/mcp_factory_card.go:255` and `:276` against `internal/cli/factory_card.go:2969`), the complete integration-window root (`integrationLockRoot`), and N1, N3, and F8 in follow-up card t1680.
 
 ## §E.3 Run-phase Audit-Ready Signal
 
