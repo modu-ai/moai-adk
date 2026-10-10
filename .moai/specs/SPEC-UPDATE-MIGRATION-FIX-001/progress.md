@@ -370,7 +370,7 @@ M3 is implemented and verified in the working tree but not committed. M4 evidenc
 Recorded by manager-docs in the single sync commit (3-phase close, plan→run→sync). The commit cannot cite its own hash, so `sync_commit_sha` holds the placeholder and the real SHA is backfilled in a following commit. This section records what was observed at commit time; the sync-audit verdict belongs to the auditor.
 
 sync_complete_at: 2026-10-09T18:01:38Z (2026-10-10 KST)
-sync_commit_sha: pending-backfill
+sync_commit_sha: 38d0e07cc53c43ce62e7cb0e0a977641aca18393
 sync_status: complete
 audit_ready: true
 b12_self_test_a: pre-emission `grep -c 'SPEC-UPDATE-MIGRATION-FIX-001' CHANGELOG.md` = 0 before the append, so emission proceeded with no duplicate entry
