@@ -2806,8 +2806,8 @@ The first sync audit's verdict records `auditor-model: claude-haiku-5-5`. The sp
 #### Debts left open (each with dispose_in)
 
 - F5 / D7 (`internal/factory/backlog_claim_lease_test.go:14-26`): not repaired. The fixture writes the card config to a root that `claimFixture`'s store never reads, and `store.Claim` takes no root. A real fix changes the claim API, which is not cheap. dispose_in=later.
-- F6 (the `progress.md` §E.4 follow-up (d) list lacks line 1017): outside this block's write scope, since §E.4 belongs to manager-docs. dispose_in=sync.
-- D9 (`sync_commit_sha` placeholder backfill): the sync close. dispose_in=sync.
+- F6 (the `progress.md` §E.4 follow-up (d) list lacks line 1017): disposed by commit `4818919af`, which added line 1017 to that list (progress.md §E.4 follow-up (d)). No open item.
+- D9 (`sync_commit_sha` placeholder backfill): disposed by commit `4818919af`, which replaced `pending-backfill` with `9a3049042c5677ed9a431563fecf010c40ef83d5` (progress.md §E.4, field `sync_commit_sha`). No open item.
 - N1 (the F1 class, outside the four findings): `handleFactoryNext` (`internal/cli/mcp_factory_card.go:132`), `handleFactoryStage` (`:209`), and `handleFactoryComplete` (`:225`) read `MOAI_FACTORY_WORKER` with no legacy-label check. Each is a one-line change of the F1 shape. dispose_in=later, in one follow-up card with N2.
 - N2 (the F2 class): `factory_next`, `factory_stage`, and `factory_complete` open the factory at the raw `project_root`. `handleFactoryNext` also asserts the parent checkout on that root (`factoryAssertParentCheckout`), so `factoryRootOf` cannot be dropped into it unchanged. dispose_in=later.
 - N3 (the F3 class): the lane verbs that resolve a run through `resolveFactoryCardRun` (`factoryStageCard`, `factoryCompleteCard`, `factoryDecideCards`, and `handleFactoryNext`) still refuse when several runs are active and no `--run` is given. Only the renewal path was narrowed. dispose_in=later.
@@ -2828,6 +2828,363 @@ The first sync audit's verdict records `auditor-model: claude-haiku-5-5`. The sp
 - F3 narrows only the ambiguous outcome. A card held by this lane in two live runs is still refused, by design, which fails closed. A lane that holds the card in exactly one live run now renews without `--run`.
 - F1 covers the renew tool only. N1 leaves the same gap open on the next, stage, and complete tools.
 - F4 is a text repair. Whether a live watchdog writes `last_change_at` is not observed here.
+
+#### Repair 2 (card t1663; sync audit FAIL #2; decisions d-20261010T164151Z-c591 and d-20261010T154117Z-a6cd)
+
+The second sync audit (`.moai/reports/t1663/sync-audit-2.md`, local-only and not committed; audited commit `8add8db496f44c43b0d5e914cd82fe4b6a5fb04b`, auditor-model `claude-opus-5-5`) returned FAIL. Its blocking items are F7 (the no-`--run` renewal could extend a lease in a run the lane is not bound to) and the codex P1 findings F7 and N2. Decision d-20261010T164151Z-c591 brings N2 into this round. N2 is therefore no longer pending: this round implements it. F8 (P2, pre-existing), N1, and N3 stay in follow-up card t1680 and are not touched here. F9 (the stale F6 and D9 lines) and F10 (the `OpenFactory` detail, optional) are included. This block records no verdict. The delta re-audit decides.
+
+##### Commits (this round, oldest first)
+
+- `c9ac5122d` test(SPEC-FACTORY-LEASE-RENEW-001): RED for the label-reuse renewal and the lane-verb lease parity (card t1663). The RED tests only, plus the test-side fixture change to `TestFactoryRenewResolvesLaneRunWithoutRunArg` (it now binds the lane in the roster). No production code.
+- `a94b7ced0` fix(SPEC-FACTORY-LEASE-RENEW-001): renew narrows by the roster binding, not the label alone (card t1663). Adds `FactoryDB.WorkerRunBinding` and the roster-first narrowing in `resolveFactoryRenewRun`. F10 is in the same function.
+- `e20e23667` fix(SPEC-FACTORY-LEASE-RENEW-001): MCP lane verbs open the factory at the factory root (card t1663). The MCP handlers for next, stage, and complete apply `factoryRootOf`.
+- this commit (R2): docs(SPEC-FACTORY-LEASE-RENEW-001): repair 2 evidence after sync audit FAIL #2 (card t1663). This record only.
+
+Each commit carries `Authored-By-Agent: manager-develop` and the gate-off line (`Gate status: 게이트 미실행(core.hooksPath=/dev/null, 공유 설정).`). The commit gate did not run. No `--no-verify`, no `SKIP_MOAI_PRECOMMIT`, no `git -c core.hooksPath`, and no hook, config, or permission change. Nothing under `.moai/reports/` was staged or committed.
+
+##### Roster verification (F7, step 1)
+
+The roster is the `workers` table of the factory store. Each fact below was read in this round:
+
+- Schema: `internal/homestate/factory.go:24-32` declares `workers` with `label TEXT PRIMARY KEY` (line 25) and `run_id TEXT NOT NULL DEFAULT ''` (line 29). `run_id` is never NULL, so an unbound lane has `run_id = ''`.
+- Writer on the join path: `internal/factory/factory_slots.go:355` inserts `(label, pid, backend, registered_at, heartbeat_at, run_id)` in one statement, inside `claimFactoryLane` (`:202`, entered from `ClaimFactoryLane` at `:160`).
+- Rows that bind nothing: `internal/homestate/factory.go:726` (`ImportLegacyWorkers`) inserts `(label, pid, registered_at, heartbeat_at)` and leaves `run_id` empty.
+- Readers that existed before this round: `internal/factory/factory_slots.go:243` reads `(label, pid, run_id)` for every row during the claim. `internal/homestate/card_transition.go:524` and `:594` run `SELECT count(*) FROM workers WHERE label=?` for the lease-acquire guard, which checks registration and not the run.
+- No store function returned a worker's run binding by label. The reader added here is `internal/homestate/factory.go:678`, `(*FactoryDB).WorkerRunBinding(ctx, label) (string, error)`. It returns the label's `run_id`, and `""` when the label has no row or an empty run.
+
+##### Decision: MOAI_KANBAN_ID is not used
+
+`resolveFactoryRenewRun` does not read `MOAI_KANBAN_ID` (`config.EnvFactoryRunID`, `internal/config/envkeys.go:189`), and the new tests do not set it. Reasons:
+
+1. The launcher copies the variable into the process environment at start (`internal/cli/factory.go:502-503`; `internal/cli/codex_launcher.go:1030`). A long-lived MCP server keeps the value it was spawned with. A lane that rejoins another run changes its roster row, but not that process's environment.
+2. The roster row is the record of the binding. It is written in the same statement as the lane's claim (`factory_slots.go:355`), and the lease keeps its holder in the same store.
+3. A second discriminator would need a rule for the case where the two disagree. The decision asked for the roster, so no such rule exists.
+
+The codex reproduction sets `MOAI_KANBAN_ID` to the same run the roster names. It cannot separate the two sources, so this decision rests on the three reasons above and not on that reproduction.
+
+##### The narrowing (F7, step 3)
+
+`resolveFactoryRenewRun` (`internal/cli/factory_card.go:2442`) changes only on the ambiguous path. An explicit `--run` returns as before. A single active run returns as before (`ResolveActiveRun`). Only the ambiguous outcome is narrowed:
+
+1. `WorkerRunBinding(ctx, lane)` (`:2462`) returns the bound run. An empty value refuses.
+2. The bound run must be one of the reconciled active owners (`factoryRunListed`, `:2483`). Otherwise the renewal refuses.
+3. `LoadCard(bound, card)` must succeed, and `LeaseHolder` must equal the lane. Otherwise the renewal refuses.
+
+Each refusal carries the detail that prevented the narrowing (F10): an `OpenFactory` error, a read error, a missing binding, an inactive binding, or the card's state. Each refusal names `--run`.
+
+##### The `next` parent-checkout assertion (N2, step 4)
+
+`factoryAssertParentCheckout` (`internal/cli/factory_card.go:198`) refuses a tree that is not the parent checkout. It stays on the caller's raw `project_root` (`internal/cli/mcp_factory_card.go:141`). The factory root is `factoryRootOf(project_root)` (`:144`). The assertion was not moved onto the converted root. A worktree converts to its parent, so an assertion run on the converted root would pass every linked worktree and admit a caller the verb refuses. After the assertion the root is the parent, so the conversion is an identity for every caller the assertion admits. On a linked worktree the outcome is unchanged: both surfaces refuse, as the equality rows `next/primary-20m` and `next/primary-0s` show below.
+
+##### Tests, RED and GREEN (verbatim)
+
+RED, committed in `c9ac5122d` before any fix. Command: `go test -count=1 -v -run '^(TestFactoryRenewRefusesLabelReuseAcrossRuns|TestLaneVerbsMatchMCPLeaseDuration|TestFactoryRenewResolvesLaneRunWithoutRunArg)$' ./internal/cli/`. Exit 1. The two RED tests fail for the defects. The third name is the existing F3 test, which stays GREEN at RED after its fixture binds the roster, because the pre-fix code ignores the binding.
+
+```text
+=== RUN   TestLaneVerbsMatchMCPLeaseDuration
+=== RUN   TestLaneVerbsMatchMCPLeaseDuration/next/primary-20m
+    factory_lane_root_parity_test.go:119: | next     | primary 20m | verb: refused "factory next: refused — this verb runs from the parent checkout <primary>, not from <worktree>" state=leased version=1 lease=2026-09-26T09:05:00Z | MCP: refused "factory next: refused — this verb runs from the parent checkout <primary>, not from <worktree>" state=leased version=1 lease=2026-09-26T09:05:00Z | equal: true |
+=== RUN   TestLaneVerbsMatchMCPLeaseDuration/next/primary-0s
+    factory_lane_root_parity_test.go:119: | next     | primary 0s  | verb: refused "factory next: refused — this verb runs from the parent checkout <primary>, not from <worktree>" state=leased version=1 lease=2026-09-26T09:05:00Z | MCP: refused "factory next: refused — this verb runs from the parent checkout <primary>, not from <worktree>" state=leased version=1 lease=2026-09-26T09:05:00Z | equal: true |
+=== RUN   TestLaneVerbsMatchMCPLeaseDuration/stage/primary-20m
+    factory_lane_root_parity_test.go:119: | stage    | primary 20m | verb: ok state=run version=2 lease=2026-09-26T09:20:00Z | MCP: ok state=run version=2 lease=2026-09-26T09:15:00Z | equal: false |
+    factory_lane_root_parity_test.go:122: stage with primary duration 20m: the verb and the MCP tool disagree
+=== RUN   TestLaneVerbsMatchMCPLeaseDuration/stage/primary-0s
+    factory_lane_root_parity_test.go:119: | stage    | primary 0s  | verb: refused "factory stage: factory lease configuration refused: workflow.factory_lease.duration must be a positive duration (greater than zero); got \"0s\" (config: <primary>/.moai/config/sections/workflow.yaml)" state=leased version=1 lease=2026-09-26T09:05:00Z | MCP: ok state=run version=2 lease=2026-09-26T09:15:00Z | equal: false |
+    factory_lane_root_parity_test.go:122: stage with primary duration 0s: the verb and the MCP tool disagree
+=== RUN   TestLaneVerbsMatchMCPLeaseDuration/complete/primary-20m
+    factory_lane_root_parity_test.go:119: | complete | primary 20m | verb: refused "factory complete: refused — card t1 is \"run\", not merge-ready; the integration branch and the card state are unchanged (REQ-MWQ-019 step 1)" state=leased version=1 lease=2026-09-26T09:05:00Z | MCP: refused "factory complete: refused — card t1 is \"run\", not merge-ready; the integration branch and the card state are unchanged (REQ-MWQ-019 step 1)" state=leased version=1 lease=2026-09-26T09:05:00Z | equal: true |
+=== RUN   TestLaneVerbsMatchMCPLeaseDuration/complete/primary-0s
+    factory_lane_root_parity_test.go:119: | complete | primary 0s  | verb: refused "factory complete: factory lease configuration refused: workflow.factory_lease.duration must be a positive duration (greater than zero); got \"0s\" (config: <primary>/.moai/config/sections/workflow.yaml)" state=leased version=1 lease=2026-09-26T09:05:00Z | MCP: refused "factory complete: refused — card t1 is \"run\", not merge-ready; the integration branch and the card state are unchanged (REQ-MWQ-019 step 1)" state=leased version=1 lease=2026-09-26T09:05:00Z | equal: false |
+    factory_lane_root_parity_test.go:122: complete with primary duration 0s: the verb and the MCP tool disagree
+--- FAIL: TestLaneVerbsMatchMCPLeaseDuration (6.10s)
+    --- PASS: TestLaneVerbsMatchMCPLeaseDuration/next/primary-20m (0.79s)
+    --- PASS: TestLaneVerbsMatchMCPLeaseDuration/next/primary-0s (0.87s)
+    --- FAIL: TestLaneVerbsMatchMCPLeaseDuration/stage/primary-20m (1.21s)
+    --- FAIL: TestLaneVerbsMatchMCPLeaseDuration/stage/primary-0s (0.93s)
+    --- PASS: TestLaneVerbsMatchMCPLeaseDuration/complete/primary-20m (1.20s)
+    --- FAIL: TestLaneVerbsMatchMCPLeaseDuration/complete/primary-0s (1.08s)
+=== RUN   TestFactoryRenewResolvesLaneRunWithoutRunArg
+=== RUN   TestFactoryRenewResolvesLaneRunWithoutRunArg/verb
+=== RUN   TestFactoryRenewResolvesLaneRunWithoutRunArg/MCP_tool
+=== RUN   TestFactoryRenewResolvesLaneRunWithoutRunArg/held_in_both_runs_with_no_roster_binding_refuses_and_names_--run
+=== RUN   TestFactoryRenewResolvesLaneRunWithoutRunArg/held_in_neither_run,_bound_to_run-b,_refuses_and_names_--run
+--- PASS: TestFactoryRenewResolvesLaneRunWithoutRunArg (5.20s)
+    --- PASS: TestFactoryRenewResolvesLaneRunWithoutRunArg/verb (1.65s)
+    --- PASS: TestFactoryRenewResolvesLaneRunWithoutRunArg/MCP_tool (1.25s)
+    --- PASS: TestFactoryRenewResolvesLaneRunWithoutRunArg/held_in_both_runs_with_no_roster_binding_refuses_and_names_--run (1.08s)
+    --- PASS: TestFactoryRenewResolvesLaneRunWithoutRunArg/held_in_neither_run,_bound_to_run-b,_refuses_and_names_--run (1.22s)
+=== RUN   TestFactoryRenewRefusesLabelReuseAcrossRuns
+=== RUN   TestFactoryRenewRefusesLabelReuseAcrossRuns/reused_label_refuses_and_names_--run/verb
+    factory_renew_test.go:555: renew with no --run renewed (expires 2026-09-26T09:15:00Z) although the roster binds lane-1 to run-b
+    factory_renew_test.go:559: refusal does not name --run: result=renewed detail="" err=<nil>
+    factory_renew_test.go:575: run-a lease expiry = 2026-09-26T09:15:00Z, want 2026-09-26T09:05:00Z
+=== RUN   TestFactoryRenewRefusesLabelReuseAcrossRuns/reused_label_refuses_and_names_--run/MCP_tool
+    factory_renew_test.go:555: renew with no --run renewed (expires 2026-09-26T09:15:00Z) although the roster binds lane-1 to run-b
+    factory_renew_test.go:559: refusal does not name --run: result=renewed detail="" err=<nil>
+    factory_renew_test.go:575: run-a lease expiry = 2026-09-26T09:15:00Z, want 2026-09-26T09:05:00Z
+=== RUN   TestFactoryRenewRefusesLabelReuseAcrossRuns/positive_control_renews_the_bound_run/verb
+=== RUN   TestFactoryRenewRefusesLabelReuseAcrossRuns/positive_control_renews_the_bound_run/MCP_tool
+=== RUN   TestFactoryRenewRefusesLabelReuseAcrossRuns/held_in_both_runs_renews_the_bound_run/verb
+    factory_renew_test.go:562: renew with no --run: err=factory renew: no --run given and no single active factory run (AMBIGUOUS_FACTORY: run-a (owner live, leader pid 56934, started 2026-10-10T16:52:19.742781Z), run-b (owner live, leader pid 56934, started 2026-10-10T16:52:19.891744Z)) result=error expires=, want renewed to 2026-09-26T09:15:00Z in run-b
+    factory_renew_test.go:575: run-b lease expiry = 2026-09-26T09:05:00Z, want 2026-09-26T09:15:00Z
+=== RUN   TestFactoryRenewRefusesLabelReuseAcrossRuns/held_in_both_runs_renews_the_bound_run/MCP_tool
+    factory_renew_test.go:562: renew with no --run: err=<nil> result=error expires=, want renewed to 2026-09-26T09:15:00Z in run-b
+    factory_renew_test.go:575: run-b lease expiry = 2026-09-26T09:05:00Z, want 2026-09-26T09:15:00Z
+--- FAIL: TestFactoryRenewRefusesLabelReuseAcrossRuns (10.75s)
+    --- FAIL: TestFactoryRenewRefusesLabelReuseAcrossRuns/reused_label_refuses_and_names_--run/verb (1.83s)
+    --- FAIL: TestFactoryRenewRefusesLabelReuseAcrossRuns/reused_label_refuses_and_names_--run/MCP_tool (1.86s)
+    --- PASS: TestFactoryRenewRefusesLabelReuseAcrossRuns/positive_control_renews_the_bound_run/verb (2.01s)
+    --- PASS: TestFactoryRenewRefusesLabelReuseAcrossRuns/positive_control_renews_the_bound_run/MCP_tool (1.72s)
+    --- FAIL: TestFactoryRenewRefusesLabelReuseAcrossRuns/held_in_both_runs_renews_the_bound_run/verb (1.68s)
+    --- FAIL: TestFactoryRenewRefusesLabelReuseAcrossRuns/held_in_both_runs_renews_the_bound_run/MCP_tool (1.65s)
+FAIL
+FAIL	github.com/modu-ai/moai-adk/internal/cli	23.059s
+FAIL
+```
+
+GREEN for the F7 test and the renewal regressions, at `a94b7ced0`. The code at R2 is the same as at `e20e23667`, and this run covers it. Command: `go test -count=1 -v -run '^(TestFactoryRenewRefusesLabelReuseAcrossRuns|TestFactoryRenewResolvesLaneRunWithoutRunArg|TestFactoryRenewExtendsLiveLease|TestFactoryRenewMatchesMCP|TestNonHolderRenewRefusedCLIAndMCP|TestFactoryRenewRefusalIsMachineReadable|TestFactoryRenewRefusesLegacyLaneLabelOnBothSurfaces|TestFactoryRenewMatchesMCPLinkedWorktree|TestRenewCadenceKeepsLeaseLive)$' ./internal/cli/`. Exit 0.
+
+```text
+=== RUN   TestRenewCadenceKeepsLeaseLive
+=== RUN   TestRenewCadenceKeepsLeaseLive/defaults
+=== RUN   TestRenewCadenceKeepsLeaseLive/defaults/on-schedule_renewals_at_0,_I,_2I,_through_3D_succeed
+=== RUN   TestRenewCadenceKeepsLeaseLive/defaults/a_renewal_due_at_I_and_delayed_to_D_minus_one_second_succeeds
+=== RUN   TestRenewCadenceKeepsLeaseLive/defaults/renewals_at_D_and_at_D_plus_one_second_are_refused_as_expired
+=== RUN   TestRenewCadenceKeepsLeaseLive/boundary
+=== RUN   TestRenewCadenceKeepsLeaseLive/boundary/on-schedule_renewals_at_0,_I,_2I,_through_3D_succeed
+=== RUN   TestRenewCadenceKeepsLeaseLive/boundary/a_renewal_due_at_I_and_delayed_to_D_minus_one_second_succeeds
+=== RUN   TestRenewCadenceKeepsLeaseLive/boundary/renewals_at_D_and_at_D_plus_one_second_are_refused_as_expired
+=== RUN   TestRenewCadenceKeepsLeaseLive/non-default
+=== RUN   TestRenewCadenceKeepsLeaseLive/non-default/on-schedule_renewals_at_0,_I,_2I,_through_3D_succeed
+=== RUN   TestRenewCadenceKeepsLeaseLive/non-default/a_renewal_due_at_I_and_delayed_to_D_minus_one_second_succeeds
+=== RUN   TestRenewCadenceKeepsLeaseLive/non-default/renewals_at_D_and_at_D_plus_one_second_are_refused_as_expired
+--- PASS: TestRenewCadenceKeepsLeaseLive (16.82s)
+    --- PASS: TestRenewCadenceKeepsLeaseLive/defaults (5.33s)
+        --- PASS: TestRenewCadenceKeepsLeaseLive/defaults/on-schedule_renewals_at_0,_I,_2I,_through_3D_succeed (3.33s)
+        --- PASS: TestRenewCadenceKeepsLeaseLive/defaults/a_renewal_due_at_I_and_delayed_to_D_minus_one_second_succeeds (0.90s)
+        --- PASS: TestRenewCadenceKeepsLeaseLive/defaults/renewals_at_D_and_at_D_plus_one_second_are_refused_as_expired (1.10s)
+    --- PASS: TestRenewCadenceKeepsLeaseLive/boundary (4.21s)
+        --- PASS: TestRenewCadenceKeepsLeaseLive/boundary/on-schedule_renewals_at_0,_I,_2I,_through_3D_succeed (1.70s)
+        --- PASS: TestRenewCadenceKeepsLeaseLive/boundary/a_renewal_due_at_I_and_delayed_to_D_minus_one_second_succeeds (0.99s)
+        --- PASS: TestRenewCadenceKeepsLeaseLive/boundary/renewals_at_D_and_at_D_plus_one_second_are_refused_as_expired (1.52s)
+    --- PASS: TestRenewCadenceKeepsLeaseLive/non-default (7.28s)
+        --- PASS: TestRenewCadenceKeepsLeaseLive/non-default/on-schedule_renewals_at_0,_I,_2I,_through_3D_succeed (4.81s)
+        --- PASS: TestRenewCadenceKeepsLeaseLive/non-default/a_renewal_due_at_I_and_delayed_to_D_minus_one_second_succeeds (1.10s)
+        --- PASS: TestRenewCadenceKeepsLeaseLive/non-default/renewals_at_D_and_at_D_plus_one_second_are_refused_as_expired (1.38s)
+=== RUN   TestFactoryRenewExtendsLiveLease
+--- PASS: TestFactoryRenewExtendsLiveLease (0.98s)
+=== RUN   TestFactoryRenewMatchesMCP
+=== RUN   TestFactoryRenewMatchesMCP/live_lease:_the_same_expiry_fields
+=== RUN   TestFactoryRenewMatchesMCP/expired_lease:_the_same_refusal_class
+--- PASS: TestFactoryRenewMatchesMCP (1.74s)
+    --- PASS: TestFactoryRenewMatchesMCP/live_lease:_the_same_expiry_fields (0.84s)
+    --- PASS: TestFactoryRenewMatchesMCP/expired_lease:_the_same_refusal_class (0.89s)
+=== RUN   TestNonHolderRenewRefusedCLIAndMCP
+=== RUN   TestNonHolderRenewRefusedCLIAndMCP/verb
+=== RUN   TestNonHolderRenewRefusedCLIAndMCP/MCP_tool
+--- PASS: TestNonHolderRenewRefusedCLIAndMCP (1.81s)
+    --- PASS: TestNonHolderRenewRefusedCLIAndMCP/verb (0.29s)
+    --- PASS: TestNonHolderRenewRefusedCLIAndMCP/MCP_tool (0.29s)
+=== RUN   TestFactoryRenewRefusalIsMachineReadable
+--- PASS: TestFactoryRenewRefusalIsMachineReadable (1.71s)
+=== RUN   TestFactoryRenewRefusesLegacyLaneLabelOnBothSurfaces
+=== RUN   TestFactoryRenewRefusesLegacyLaneLabelOnBothSurfaces/MCP_tool
+=== RUN   TestFactoryRenewRefusesLegacyLaneLabelOnBothSurfaces/verb
+--- PASS: TestFactoryRenewRefusesLegacyLaneLabelOnBothSurfaces (1.96s)
+    --- PASS: TestFactoryRenewRefusesLegacyLaneLabelOnBothSurfaces/MCP_tool (1.12s)
+    --- PASS: TestFactoryRenewRefusesLegacyLaneLabelOnBothSurfaces/verb (0.84s)
+=== RUN   TestFactoryRenewMatchesMCPLinkedWorktree
+=== RUN   TestFactoryRenewMatchesMCPLinkedWorktree/primary_duration_20m
+=== RUN   TestFactoryRenewMatchesMCPLinkedWorktree/primary_duration_0s
+--- PASS: TestFactoryRenewMatchesMCPLinkedWorktree (1.29s)
+    --- PASS: TestFactoryRenewMatchesMCPLinkedWorktree/primary_duration_20m (0.83s)
+    --- PASS: TestFactoryRenewMatchesMCPLinkedWorktree/primary_duration_0s (0.46s)
+=== RUN   TestFactoryRenewResolvesLaneRunWithoutRunArg
+=== RUN   TestFactoryRenewResolvesLaneRunWithoutRunArg/verb
+=== RUN   TestFactoryRenewResolvesLaneRunWithoutRunArg/MCP_tool
+=== RUN   TestFactoryRenewResolvesLaneRunWithoutRunArg/held_in_both_runs_with_no_roster_binding_refuses_and_names_--run
+=== RUN   TestFactoryRenewResolvesLaneRunWithoutRunArg/held_in_neither_run,_bound_to_run-b,_refuses_and_names_--run
+--- PASS: TestFactoryRenewResolvesLaneRunWithoutRunArg (7.15s)
+    --- PASS: TestFactoryRenewResolvesLaneRunWithoutRunArg/verb (2.78s)
+    --- PASS: TestFactoryRenewResolvesLaneRunWithoutRunArg/MCP_tool (1.87s)
+    --- PASS: TestFactoryRenewResolvesLaneRunWithoutRunArg/held_in_both_runs_with_no_roster_binding_refuses_and_names_--run (1.32s)
+    --- PASS: TestFactoryRenewResolvesLaneRunWithoutRunArg/held_in_neither_run,_bound_to_run-b,_refuses_and_names_--run (1.18s)
+=== RUN   TestFactoryRenewRefusesLabelReuseAcrossRuns
+=== RUN   TestFactoryRenewRefusesLabelReuseAcrossRuns/reused_label_refuses_and_names_--run/verb
+=== RUN   TestFactoryRenewRefusesLabelReuseAcrossRuns/reused_label_refuses_and_names_--run/MCP_tool
+=== RUN   TestFactoryRenewRefusesLabelReuseAcrossRuns/positive_control_renews_the_bound_run/verb
+=== RUN   TestFactoryRenewRefusesLabelReuseAcrossRuns/positive_control_renews_the_bound_run/MCP_tool
+=== RUN   TestFactoryRenewRefusesLabelReuseAcrossRuns/held_in_both_runs_renews_the_bound_run/verb
+=== RUN   TestFactoryRenewRefusesLabelReuseAcrossRuns/held_in_both_runs_renews_the_bound_run/MCP_tool
+--- PASS: TestFactoryRenewRefusesLabelReuseAcrossRuns (12.85s)
+    --- PASS: TestFactoryRenewRefusesLabelReuseAcrossRuns/reused_label_refuses_and_names_--run/verb (1.79s)
+    --- PASS: TestFactoryRenewRefusesLabelReuseAcrossRuns/reused_label_refuses_and_names_--run/MCP_tool (1.87s)
+    --- PASS: TestFactoryRenewRefusesLabelReuseAcrossRuns/positive_control_renews_the_bound_run/verb (2.27s)
+    --- PASS: TestFactoryRenewRefusesLabelReuseAcrossRuns/positive_control_renews_the_bound_run/MCP_tool (2.60s)
+    --- PASS: TestFactoryRenewRefusesLabelReuseAcrossRuns/held_in_both_runs_renews_the_bound_run/verb (2.04s)
+    --- PASS: TestFactoryRenewRefusesLabelReuseAcrossRuns/held_in_both_runs_renews_the_bound_run/MCP_tool (2.28s)
+PASS
+ok  	github.com/modu-ai/moai-adk/internal/cli	47.637s
+```
+
+GREEN for the N2 equality table and the MCP lane-verb regressions, at `e20e23667`, the code at R2. Command: `go test -count=1 -v -run '^(TestLaneVerbsMatchMCPLeaseDuration|TestSD_AC014_MCPMatchesCLIWithProjectRoot|TestSD_AC014_ProjectRootRequired|TestSD_AC010_MCPNextParentCheck|TestSD_AC015_MCPTodoAddRefused|TestSD_AC024_CodexMergeRefusedMCP|TestSD_AC012_StageAppliesEdgeAndRenews|TestQAS_AC008b_MCPFactoryNextHeld|TestQAS_AC011b_StageAndCompleteIgnoreQuotaHold|TestQWR_AC008_SurfacesSeeWorktreeReading|TestFactoryNextNominateMCPParity|TestFactoryNextNominateBlankCardIsAnError)$' ./internal/cli/`. Exit 0. The equality table is the `factory_lane_root_parity_test.go:119` lines of this output.
+
+```text
+=== RUN   TestLaneVerbsMatchMCPLeaseDuration
+=== RUN   TestLaneVerbsMatchMCPLeaseDuration/next/primary-20m
+    factory_lane_root_parity_test.go:119: | next     | primary 20m | verb: refused "factory next: refused — this verb runs from the parent checkout <primary>, not from <worktree>" state=leased version=1 lease=2026-09-26T09:05:00Z | MCP: refused "factory next: refused — this verb runs from the parent checkout <primary>, not from <worktree>" state=leased version=1 lease=2026-09-26T09:05:00Z | equal: true |
+=== RUN   TestLaneVerbsMatchMCPLeaseDuration/next/primary-0s
+    factory_lane_root_parity_test.go:119: | next     | primary 0s  | verb: refused "factory next: refused — this verb runs from the parent checkout <primary>, not from <worktree>" state=leased version=1 lease=2026-09-26T09:05:00Z | MCP: refused "factory next: refused — this verb runs from the parent checkout <primary>, not from <worktree>" state=leased version=1 lease=2026-09-26T09:05:00Z | equal: true |
+=== RUN   TestLaneVerbsMatchMCPLeaseDuration/stage/primary-20m
+    factory_lane_root_parity_test.go:119: | stage    | primary 20m | verb: ok state=run version=2 lease=2026-09-26T09:20:00Z | MCP: ok state=run version=2 lease=2026-09-26T09:20:00Z | equal: true |
+=== RUN   TestLaneVerbsMatchMCPLeaseDuration/stage/primary-0s
+    factory_lane_root_parity_test.go:119: | stage    | primary 0s  | verb: refused "factory stage: factory lease configuration refused: workflow.factory_lease.duration must be a positive duration (greater than zero); got \"0s\" (config: <primary>/.moai/config/sections/workflow.yaml)" state=leased version=1 lease=2026-09-26T09:05:00Z | MCP: refused "factory stage: factory lease configuration refused: workflow.factory_lease.duration must be a positive duration (greater than zero); got \"0s\" (config: <primary>/.moai/config/sections/workflow.yaml)" state=leased version=1 lease=2026-09-26T09:05:00Z | equal: true |
+=== RUN   TestLaneVerbsMatchMCPLeaseDuration/complete/primary-20m
+    factory_lane_root_parity_test.go:119: | complete | primary 20m | verb: refused "factory complete: refused — card t1 is \"run\", not merge-ready; the integration branch and the card state are unchanged (REQ-MWQ-019 step 1)" state=leased version=1 lease=2026-09-26T09:05:00Z | MCP: refused "factory complete: refused — card t1 is \"run\", not merge-ready; the integration branch and the card state are unchanged (REQ-MWQ-019 step 1)" state=leased version=1 lease=2026-09-26T09:05:00Z | equal: true |
+=== RUN   TestLaneVerbsMatchMCPLeaseDuration/complete/primary-0s
+    factory_lane_root_parity_test.go:119: | complete | primary 0s  | verb: refused "factory complete: factory lease configuration refused: workflow.factory_lease.duration must be a positive duration (greater than zero); got \"0s\" (config: <primary>/.moai/config/sections/workflow.yaml)" state=leased version=1 lease=2026-09-26T09:05:00Z | MCP: refused "factory complete: factory lease configuration refused: workflow.factory_lease.duration must be a positive duration (greater than zero); got \"0s\" (config: <primary>/.moai/config/sections/workflow.yaml)" state=leased version=1 lease=2026-09-26T09:05:00Z | equal: true |
+--- PASS: TestLaneVerbsMatchMCPLeaseDuration (7.66s)
+    --- PASS: TestLaneVerbsMatchMCPLeaseDuration/next/primary-20m (1.04s)
+    --- PASS: TestLaneVerbsMatchMCPLeaseDuration/next/primary-0s (1.12s)
+    --- PASS: TestLaneVerbsMatchMCPLeaseDuration/stage/primary-20m (1.54s)
+    --- PASS: TestLaneVerbsMatchMCPLeaseDuration/stage/primary-0s (1.08s)
+    --- PASS: TestLaneVerbsMatchMCPLeaseDuration/complete/primary-20m (1.97s)
+    --- PASS: TestLaneVerbsMatchMCPLeaseDuration/complete/primary-0s (0.91s)
+=== RUN   TestSD_AC012_StageAppliesEdgeAndRenews
+=== RUN   TestSD_AC012_StageAppliesEdgeAndRenews/holder_applies_plan_→_plan-audit,_actor_recorded,_lease_renewed
+=== RUN   TestSD_AC012_StageAppliesEdgeAndRenews/another_lane_is_refused_by_F1_verbatim
+--- PASS: TestSD_AC012_StageAppliesEdgeAndRenews (2.58s)
+    --- PASS: TestSD_AC012_StageAppliesEdgeAndRenews/holder_applies_plan_→_plan-audit,_actor_recorded,_lease_renewed (1.27s)
+    --- PASS: TestSD_AC012_StageAppliesEdgeAndRenews/another_lane_is_refused_by_F1_verbatim (1.30s)
+=== RUN   TestSD_AC014_MCPMatchesCLIWithProjectRoot
+=== RUN   TestSD_AC014_MCPMatchesCLIWithProjectRoot/todo_add_appends_identically;_lane_refusal_text_identical
+=== RUN   TestSD_AC014_MCPMatchesCLIWithProjectRoot/todo_list_renders_identically;_an_unusable_root_is_refused_identically
+=== RUN   TestSD_AC014_MCPMatchesCLIWithProjectRoot/factory_next_leases_identically;_not-a-lane_refusal_identical
+=== RUN   TestSD_AC014_MCPMatchesCLIWithProjectRoot/factory_stage_applies_identically;_holder_refusal_identical
+=== RUN   TestSD_AC014_MCPMatchesCLIWithProjectRoot/factory_complete_merges_identically;_not-provisioned_refusal_identical
+=== RUN   TestSD_AC014_MCPMatchesCLIWithProjectRoot/factory_decide_decides_identically;_lane_refusal_identical
+--- PASS: TestSD_AC014_MCPMatchesCLIWithProjectRoot (23.50s)
+    --- PASS: TestSD_AC014_MCPMatchesCLIWithProjectRoot/todo_add_appends_identically;_lane_refusal_text_identical (0.62s)
+    --- PASS: TestSD_AC014_MCPMatchesCLIWithProjectRoot/todo_list_renders_identically;_an_unusable_root_is_refused_identically (0.64s)
+    --- PASS: TestSD_AC014_MCPMatchesCLIWithProjectRoot/factory_next_leases_identically;_not-a-lane_refusal_identical (2.90s)
+    --- PASS: TestSD_AC014_MCPMatchesCLIWithProjectRoot/factory_stage_applies_identically;_holder_refusal_identical (4.12s)
+    --- PASS: TestSD_AC014_MCPMatchesCLIWithProjectRoot/factory_complete_merges_identically;_not-provisioned_refusal_identical (11.93s)
+    --- PASS: TestSD_AC014_MCPMatchesCLIWithProjectRoot/factory_decide_decides_identically;_lane_refusal_identical (3.29s)
+=== RUN   TestSD_AC014_ProjectRootRequired
+--- PASS: TestSD_AC014_ProjectRootRequired (0.33s)
+=== RUN   TestSD_AC010_MCPNextParentCheck
+--- PASS: TestSD_AC010_MCPNextParentCheck (2.89s)
+=== RUN   TestSD_AC015_MCPTodoAddRefused
+--- PASS: TestSD_AC015_MCPTodoAddRefused (0.57s)
+=== RUN   TestSD_AC024_CodexMergeRefusedMCP
+--- PASS: TestSD_AC024_CodexMergeRefusedMCP (1.33s)
+=== RUN   TestFactoryNextNominateMCPParity
+=== RUN   TestFactoryNextNominateMCPParity/inputs
+=== RUN   TestFactoryNextNominateMCPParity/leases_the_nominee_and_refuses_an_unknown_card
+=== RUN   TestFactoryNextNominateMCPParity/refuses_quota-hold
+=== RUN   TestFactoryNextNominateMCPParity/refuses_backend-skip
+--- PASS: TestFactoryNextNominateMCPParity (10.47s)
+    --- PASS: TestFactoryNextNominateMCPParity/inputs (0.00s)
+    --- PASS: TestFactoryNextNominateMCPParity/leases_the_nominee_and_refuses_an_unknown_card (4.09s)
+    --- PASS: TestFactoryNextNominateMCPParity/refuses_quota-hold (2.38s)
+    --- PASS: TestFactoryNextNominateMCPParity/refuses_backend-skip (3.99s)
+=== RUN   TestFactoryNextNominateBlankCardIsAnError
+=== RUN   TestFactoryNextNominateBlankCardIsAnError/cli_""
+=== RUN   TestFactoryNextNominateBlankCardIsAnError/mcp_""
+=== RUN   TestFactoryNextNominateBlankCardIsAnError/cli_"___"
+=== RUN   TestFactoryNextNominateBlankCardIsAnError/mcp_"___"
+--- PASS: TestFactoryNextNominateBlankCardIsAnError (11.27s)
+    --- PASS: TestFactoryNextNominateBlankCardIsAnError/cli_"" (3.04s)
+    --- PASS: TestFactoryNextNominateBlankCardIsAnError/mcp_"" (2.49s)
+    --- PASS: TestFactoryNextNominateBlankCardIsAnError/cli_"___" (3.04s)
+    --- PASS: TestFactoryNextNominateBlankCardIsAnError/mcp_"___" (2.70s)
+=== RUN   TestQAS_AC008b_MCPFactoryNextHeld
+=== RUN   TestQAS_AC008b_MCPFactoryNextHeld/hold_text_is_the_hold_line
+=== RUN   TestQAS_AC008b_MCPFactoryNextHeld/not_an_error_result
+=== RUN   TestQAS_AC008b_MCPFactoryNextHeld/no_no_card_text
+=== RUN   TestQAS_AC008b_MCPFactoryNextHeld/assigned_card_unchanged
+--- PASS: TestQAS_AC008b_MCPFactoryNextHeld (10.38s)
+    --- PASS: TestQAS_AC008b_MCPFactoryNextHeld/hold_text_is_the_hold_line (1.71s)
+    --- PASS: TestQAS_AC008b_MCPFactoryNextHeld/not_an_error_result (1.85s)
+    --- PASS: TestQAS_AC008b_MCPFactoryNextHeld/no_no_card_text (1.92s)
+    --- PASS: TestQAS_AC008b_MCPFactoryNextHeld/assigned_card_unchanged (4.90s)
+=== RUN   TestQAS_AC011b_StageAndCompleteIgnoreQuotaHold
+--- PASS: TestQAS_AC011b_StageAndCompleteIgnoreQuotaHold (2.84s)
+=== RUN   TestQWR_AC008_SurfacesSeeWorktreeReading
+=== RUN   TestQWR_AC008_SurfacesSeeWorktreeReading/next_holds_on_worktree_only_92
+=== RUN   TestQWR_AC008_SurfacesSeeWorktreeReading/mcp_next_holds_on_worktree_only_92
+=== RUN   TestQWR_AC008_SurfacesSeeWorktreeReading/assigned_card_still_leased
+=== RUN   TestQWR_AC008_SurfacesSeeWorktreeReading/leases_when_no_record_anywhere
+=== RUN   TestQWR_AC008_SurfacesSeeWorktreeReading/status_block_pressure
+=== RUN   TestQWR_AC008_SurfacesSeeWorktreeReading/acquire_warning_for_claude_caller
+=== RUN   TestQWR_AC008_SurfacesSeeWorktreeReading/wait_recheck_sees_worktree_update
+--- PASS: TestQWR_AC008_SurfacesSeeWorktreeReading (11.02s)
+    --- PASS: TestQWR_AC008_SurfacesSeeWorktreeReading/next_holds_on_worktree_only_92 (2.24s)
+    --- PASS: TestQWR_AC008_SurfacesSeeWorktreeReading/mcp_next_holds_on_worktree_only_92 (1.63s)
+    --- PASS: TestQWR_AC008_SurfacesSeeWorktreeReading/assigned_card_still_leased (2.37s)
+    --- PASS: TestQWR_AC008_SurfacesSeeWorktreeReading/leases_when_no_record_anywhere (1.64s)
+    --- PASS: TestQWR_AC008_SurfacesSeeWorktreeReading/status_block_pressure (1.51s)
+    --- PASS: TestQWR_AC008_SurfacesSeeWorktreeReading/acquire_warning_for_claude_caller (0.47s)
+    --- PASS: TestQWR_AC008_SurfacesSeeWorktreeReading/wait_recheck_sees_worktree_update (1.17s)
+PASS
+ok  	github.com/modu-ai/moai-adk/internal/cli	86.123s
+```
+
+Pre-fix observation. The RED run above is the pre-fix observation for this round. On the pre-fix code the reused-label arm and the held-in-both arm fail, and the positive control passes. No mutation check was repeated in this round. The guard arms of the existing F3 test (no binding; held in neither run) were checked on the pre-fix resolver in the first repair round.
+
+##### Codex P1 findings: which test closes which finding at R2
+
+- F7 (codex P1; sync audit FAIL #2, blocking): closed by `TestFactoryRenewRefusesLabelReuseAcrossRuns` (`internal/cli/factory_renew_test.go`). All six subtests pass at R2. The reused-label arm refuses through the verb and through the MCP tool and leaves run-a's lease unchanged. The positive control renews the bound run. The held-in-both arm renews the bound run.
+- N2 (codex P1; decision d-20261010T164151Z-c591): closed by `TestLaneVerbsMatchMCPLeaseDuration` (`internal/cli/factory_lane_root_parity_test.go`). All six rows pass at R2 with `equal: true`.
+- F8 (codex P2, pre-existing): not in this round. It stays in follow-up card t1680.
+
+##### F9 correction
+
+The two stale lines in the "Debts left open" list of Repair 1 are corrected to the disposed state. Nothing else in that block changed.
+
+- F6: disposed by commit `4818919af`, which added line 1017 to the §E.4 follow-up (d) list. No open item.
+- D9: disposed by commit `4818919af`, which replaced `pending-backfill` with `9a3049042c5677ed9a431563fecf010c40ef83d5` in the §E.4 `sync_commit_sha` field. No open item.
+
+##### Verification gates
+
+- `golangci-lint run --timeout=10m ./internal/cli/...`, final line of its output (the block quotes the whole output, whose last line is the `0 issues.` line, followed by the exit status recorded by the run command):
+
+```text
+0 issues.
+lint exit=0
+```
+
+- `golangci-lint run --timeout=10m ./internal/homestate/...`, for the package that holds the roster reader (the lead's command does not cover it):
+
+```text
+0 issues.
+lint exit=0
+```
+
+- `gofmt -l` on each changed Go file (`internal/cli/factory_card.go`, `internal/cli/mcp_factory_card.go`, `internal/cli/factory_renew_test.go`, `internal/cli/factory_lane_root_parity_test.go`, `internal/homestate/factory.go`): no output, exit 0.
+- Every `go test` in this round was a named test, run under the go-heavy slot. Each run was acquired with `moai slot acquire --resource go-heavy --name lane-17 --command <what> --max-duration 15m` and released with `moai slot release --resource go-heavy`. The two lint runs are package-wide lint runs, not `go test`, and they also ran under the slot.
+
+##### Flagged, not changed in this round (for the lead's decision)
+
+- `factory decide` has the same class as N2. The MCP handler opens the factory at the raw root: it resolves `resolveToolProjectRoot` at `internal/cli/mcp_factory_card.go:255` and calls `factoryDecideCards` with that root at `:276`. The verb uses `factoryCardRoot()` (`internal/cli/factory_card.go:2969`). The decision names only next, stage, and complete, so decide is not changed here.
+- The integration window root differs between the verb and the MCP complete handler. The verb uses `integrationLockRoot()` (`internal/cli/factory_card.go:1882`), which reads `CLAUDE_PROJECT_DIR` (`internal/cli/integration.go:48-50`). The MCP handler passes the caller's tree (`internal/cli/mcp_factory_card.go:245`). The two agree when `CLAUDE_PROJECT_DIR` names the caller's own tree and disagree otherwise. This round does not change the window root, because the window is a separate root rule.
+- Residual of F7 on the single-active-run path. With exactly one active run, the renewal does not consult the roster and renews the run when the label holds the card there. A label reused from a retired run into the only active run is therefore not refused in this round. The decision scoped the roster rule to the ambiguous set. Extending it would change the single-run path that unbound and legacy lanes rely on.
+- N1, N3, and F8 stay in follow-up card t1680, untouched.
+
+##### Gaps
+
+- The codex reproduction file (`/tmp/t1663-adversarial-review_test.go`) was read to choose the fixtures. It was not run. The tests above are in-repo tests written for this round.
+- The MCP tool was exercised in-process through its registered handler. It was not exercised through a live stdio server in a linked worktree.
+- The equality table compares refusal text and the card record after the call. It does not compare the verb's stdout with the MCP text, because the two formats differ by design.
+- Coverage (QG-3) was not measured, and the full `internal/cli` package was not run.
+- The commit gate did not run.
+
+##### Residual risk
+
+- F7: a lane bound to an active run that holds the card renews in that run, even when another active run also names the label as holder. This is intended. The stale lease in the other run is left unchanged, and the test checks that.
+- N2: the `next` rows are equal because both surfaces refuse a linked worktree before the record is read. The table shows no divergence for `next`, because none is reachable from a linked worktree.
+- The flagged items above remain open for the lead's decision.
 
 ## §E.3 Run-phase Audit-Ready Signal
 
