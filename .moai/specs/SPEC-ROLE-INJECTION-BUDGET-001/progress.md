@@ -140,3 +140,5 @@ $ GOOS=darwin GOARCH=arm64 go build ./...            → exit 0
 $ golangci-lint run --timeout=2m ./internal/hook/... ./internal/template/... → 0 issues
 $ go test -cover ./internal/hook/                    → coverage: 87.5% of statements (>=85%)
 ```
+
+- **card-review (turn-end, lane)**: `codex_review` scope=card → `.moai/reports/t1617/card-review.md` (machine-local, gitignored — verdict продублирован здесь). Backend codex; base `db0c514d3` (merge base на момент обзора); head `190f7db5d`; verdict **pass**, findings **0**, dispositions n/a. Advisory — квитанция не заменяет чтение доказательств лидером и независимый аудит.
