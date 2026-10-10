@@ -425,6 +425,161 @@ Residual risk (what could still be wrong despite the observations)
 - The non-zero exit of `moai factory renew` on any non-renewed outcome is a design choice the SPEC does not state. The watchdog (M3) treats a refusal as a result, not a stop, so it does not depend on the exit status, but a script that stops on non-zero exits will stop on a refusal.
 - `factory_renew` has no i18n label in the console (Gap above).
 
+### M3 block (card t1663; RED recorded, GREEN pending)
+
+Scope and constraint
+- Governing decisions: decision-index Q1 (the renewal period and the `*/N` armed form, d-20261010T095818Z-c501) and Q6 (the stall window counted from the last observed channel change, d-20261010T095731Z-5ddc). Scope is plan §F M3, items 1 to 7. Not done here: M4 and M5 items, and any edit to spec.md, plan.md, acceptance.md, or decision-index.md. No agent is spawned, and no factory stage transition is run.
+- Pre-flight (plan §C.1), HEAD `11b0e9ee9`: `git rev-parse --short HEAD` printed `11b0e9ee9`; `git branch --show-current` printed `WT-factory-lease-renew`.
+- Mirror state at HEAD `11b0e9ee9`: the watchdog `SKILL.md`, `auto-semantics.md`, and `factory-dispatch-mechanics.md` are byte-identical between the local and template copies (`cmp` printed nothing). `factory-dispatch.md` differs at one line, 259 (the git-flow override of the local copy). Line 138 is identical in both copies, so the cadence sentence has one text to change in each.
+- Literal `7,27,47` occurrences before the edit (`grep -rn`, outside SPEC artifacts and CHANGELOG): `internal/template/templates/.claude/rules/moai/workflow/auto-semantics.md:108` and `:112` and its local copy `.claude/rules/moai/workflow/auto-semantics.md:108` and `:112`; `internal/template/templates/.claude/rules/moai/workflow/factory-dispatch.md:138` and the local copy at line 138; `internal/hook/session_start_factory_i18n.go:132`, `:188`, `:242`, `:295`; `internal/hook/lane_recheck_rule_test.go:22`; `internal/template/lane_recheck_doctrine_test.go:61`; and `internal/template/testdata/binding_ledger.json:5522-5523`, the before and after text of binding row ALB-0276, which quotes the factory-dispatch.md cadence sentence. The ledger is a fixture whose before-text is checked against the live template, so the row follows the source change in the same commit (see the GREEN block).
+
+Commits (local, not pushed; each subject names card t1663)
+- `f95603c45` test(SPEC-FACTORY-LEASE-RENEW-001): M3 RED tests (card t1663). Three new test files and no shipped text: `internal/template/lane_watchdog_renew_test.go`, `internal/template/auto_semantics_renew_test.go`, `internal/hook/lane_renew_interval_test.go`. Each test reads shipped text or executes `factoryLaneRuleForSource`. No test names a Go symbol that does not yet exist, so no failure is a TOOL_FAILURE: every RED below is an assertion failure.
+
+RED, template package (HEAD `f95603c45`, unchanged shipped text; `go test ./internal/template/ -run '^(TestLaneWatchdogRenewsFirst|TestLaneWatchdogRecordsRefusalAndMeasures|TestAutoSemanticsArmFollowsRenewInterval|TestStallVerdictReachesAtRenewCadence)$' -v -count=1`, exit 1, slot go-heavy held)
+
+```
+=== RUN   TestAutoSemanticsArmFollowsRenewInterval
+=== RUN   TestAutoSemanticsArmFollowsRenewInterval/text
+    auto_semantics_renew_test.go:82: the Arm bullet lacks "*/N * * * *"
+    auto_semantics_renew_test.go:82: the Arm bullet lacks "renew_interval"
+    auto_semantics_renew_test.go:82: the Arm bullet lacks "no two consecutive scheduled wakes are further apart than one renewal period"
+    auto_semantics_renew_test.go:86: the Arm bullet still carries the fixed literal "7,27,47 * * * *"
+=== RUN   TestAutoSemanticsArmFollowsRenewInterval/gap-every-N
+=== RUN   TestAutoSemanticsArmFollowsRenewInterval/mutant-2-59-refused
+    auto_semantics_renew_test.go:103: 2/59 refused: largest gap 60 minutes exceeds the period 59
+=== RUN   TestAutoSemanticsArmFollowsRenewInterval/mutant-6-7-refused
+    auto_semantics_renew_test.go:110: 6/7 refused: largest gap 11 minutes exceeds the period 7
+--- FAIL: TestAutoSemanticsArmFollowsRenewInterval (0.00s)
+    --- FAIL: TestAutoSemanticsArmFollowsRenewInterval/text (0.00s)
+    --- PASS: TestAutoSemanticsArmFollowsRenewInterval/gap-every-N (0.00s)
+    --- PASS: TestAutoSemanticsArmFollowsRenewInterval/mutant-2-59-refused (0.00s)
+    --- PASS: TestAutoSemanticsArmFollowsRenewInterval/mutant-6-7-refused (0.00s)
+=== RUN   TestStallVerdictReachesAtRenewCadence
+=== RUN   TestStallVerdictReachesAtRenewCadence/period-5m
+=== RUN   TestStallVerdictReachesAtRenewCadence/period-7m
+=== RUN   TestStallVerdictReachesAtRenewCadence/old-cadence-equal
+=== RUN   TestStallVerdictReachesAtRenewCadence/rule-text
+    auto_semantics_renew_test.go:216: §4 does not name "last_change_at"
+    auto_semantics_renew_test.go:216: §4 does not name "renew_result"
+    auto_semantics_renew_test.go:220: §4 still states the previous-observation clause as the stall condition
+--- FAIL: TestStallVerdictReachesAtRenewCadence (0.00s)
+    --- PASS: TestStallVerdictReachesAtRenewCadence/period-5m (0.00s)
+    --- PASS: TestStallVerdictReachesAtRenewCadence/period-7m (0.00s)
+    --- PASS: TestStallVerdictReachesAtRenewCadence/old-cadence-equal (0.00s)
+    --- FAIL: TestStallVerdictReachesAtRenewCadence/rule-text (0.00s)
+=== RUN   TestLaneWatchdogRenewsFirst
+    lane_watchdog_renew_test.go:85: allowed-tools does not list Bash(moai factory renew:*)
+    lane_watchdog_renew_test.go:93: the first procedural step is "## 1. Measure progress"; it must renew the card lease before any measurement
+    lane_watchdog_renew_test.go:100: the first procedural step does not invoke the factory renew verb
+    lane_watchdog_renew_test.go:108: the renewal step (heading index -1) does not precede the measurement step (heading index 1)
+--- FAIL: TestLaneWatchdogRenewsFirst (0.00s)
+=== RUN   TestLaneWatchdogRecordsRefusalAndMeasures
+    lane_watchdog_renew_test.go:129: the renewal step lacks "--json" (refusal record, REQ-FLR-011)
+    lane_watchdog_renew_test.go:129: the renewal step lacks "result" (refusal record, REQ-FLR-011)
+    lane_watchdog_renew_test.go:129: the renewal step lacks "renew_result" (refusal record, REQ-FLR-011)
+    lane_watchdog_renew_test.go:129: the renewal step lacks "renewed" (refusal record, REQ-FLR-011)
+    lane_watchdog_renew_test.go:129: the renewal step lacks "refused-expired" (refusal record, REQ-FLR-011)
+    lane_watchdog_renew_test.go:129: the renewal step lacks "refused-not-holder" (refusal record, REQ-FLR-011)
+    lane_watchdog_renew_test.go:129: the renewal step lacks "error" (refusal record, REQ-FLR-011)
+    lane_watchdog_renew_test.go:129: the renewal step lacks "does not end the pass" (refusal record, REQ-FLR-011)
+    lane_watchdog_renew_test.go:145: the measurement step lacks "renew_result" (snapshot record, REQ-FLR-011)
+--- FAIL: TestLaneWatchdogRecordsRefusalAndMeasures (0.00s)
+FAIL
+FAIL	github.com/modu-ai/moai-adk/internal/template	0.448s
+FAIL
+```
+
+RED, hook package (HEAD `f95603c45`, `go test ./internal/hook/ -run '^TestLaneRuleCarriesConfiguredRenewInterval$' -v -count=1`, exit 1). Every one of the 16 subtests fails. The full output is 58 KB because each failure prints the rendered rule, so the record keeps the verdict lines and the assertion lines verbatim, and omits the rule bodies. The verdict lines:
+
+```
+--- FAIL: TestLaneRuleCarriesConfiguredRenewInterval (0.01s)
+    --- FAIL: TestLaneRuleCarriesConfiguredRenewInterval/configured-7m/startup/en (0.00s)
+    --- FAIL: TestLaneRuleCarriesConfiguredRenewInterval/configured-7m/startup/ko (0.00s)
+    --- FAIL: TestLaneRuleCarriesConfiguredRenewInterval/configured-7m/startup/ja (0.00s)
+    --- FAIL: TestLaneRuleCarriesConfiguredRenewInterval/configured-7m/startup/zh (0.00s)
+    --- FAIL: TestLaneRuleCarriesConfiguredRenewInterval/configured-7m/clear/en (0.00s)
+    --- FAIL: TestLaneRuleCarriesConfiguredRenewInterval/configured-7m/clear/ko (0.00s)
+    --- FAIL: TestLaneRuleCarriesConfiguredRenewInterval/configured-7m/clear/ja (0.00s)
+    --- FAIL: TestLaneRuleCarriesConfiguredRenewInterval/configured-7m/clear/zh (0.00s)
+    --- FAIL: TestLaneRuleCarriesConfiguredRenewInterval/default-5m/startup/en (0.00s)
+    --- FAIL: TestLaneRuleCarriesConfiguredRenewInterval/default-5m/startup/ko (0.00s)
+    --- FAIL: TestLaneRuleCarriesConfiguredRenewInterval/default-5m/startup/ja (0.00s)
+    --- FAIL: TestLaneRuleCarriesConfiguredRenewInterval/default-5m/startup/zh (0.00s)
+    --- FAIL: TestLaneRuleCarriesConfiguredRenewInterval/default-5m/clear/en (0.00s)
+    --- FAIL: TestLaneRuleCarriesConfiguredRenewInterval/default-5m/clear/ko (0.00s)
+    --- FAIL: TestLaneRuleCarriesConfiguredRenewInterval/default-5m/clear/ja (0.00s)
+    --- FAIL: TestLaneRuleCarriesConfiguredRenewInterval/default-5m/clear/zh (0.00s)
+FAIL
+FAIL	github.com/modu-ai/moai-adk/internal/hook	0.429s
+```
+
+The assertion lines, one per failing subtest, are `lane_renew_interval_test.go:57: rendered rule lacks the arm expression "*/7 * * * *":` (configured-7m) and `... "*/5 * * * *":` (default-5m), each followed by `lane_renew_interval_test.go:63: rendered rule still carries the retired fixed literal 7,27,47:`. The literal is the locale string at `session_start_factory_i18n.go:132` (en), `:188` (ko), `:242` (ja), and `:295` (zh), which is what each rendered rule carries.
+
+Mutant rule, as applied in this lane. The M3 criteria split into three kinds.
+- Red on the unchanged text (observed above): AC-FLR-010; the procedure half of AC-FLR-011; AC-FLR-013 text half; AC-FLR-014 in all sixteen subtests; the rule-text subtest of AC-FLR-015.
+- Green on arrival, so the RED is a mutant or the recorded refusal: AC-FLR-013 `gap-every-N` (the computation on `*/N` for N from 1 to 59 holds, so it passes) and its two mutant forms, which the computation refuses (`2/59` largest gap 60; `6/7` largest gap 11, at N = 7); AC-FLR-015 `period-5m`, `period-7m`, and `old-cadence-equal`, whose mutants are executed below.
+- The verb half of AC-FLR-011 is GREEN from M2 (its RED was observed at M2), so it has no M3 mutant.
+
+Mutant A (AC-FLR-015, the previous-snapshot rule as the model for `period-5m` and `period-7m`). Two lines of `auto_semantics_renew_test.go` changed from `stallVerdictByChange` to `stallVerdictByPrevious`. Command: `go test ./internal/template/ -run '^TestStallVerdictReachesAtRenewCadence$' -v -count=1`, exit 1:
+
+```
+=== RUN   TestStallVerdictReachesAtRenewCadence
+=== RUN   TestStallVerdictReachesAtRenewCadence/period-5m
+    auto_semantics_renew_test.go:193: first stall at minute -1, want minute 15
+=== RUN   TestStallVerdictReachesAtRenewCadence/period-7m
+    auto_semantics_renew_test.go:197: first stall at minute -1, want minute 21
+=== RUN   TestStallVerdictReachesAtRenewCadence/old-cadence-equal
+=== RUN   TestStallVerdictReachesAtRenewCadence/rule-text
+    auto_semantics_renew_test.go:216: §4 does not name "last_change_at"
+    auto_semantics_renew_test.go:216: §4 does not name "renew_result"
+    auto_semantics_renew_test.go:220: §4 still states the previous-observation clause as the stall condition
+--- FAIL: TestStallVerdictReachesAtRenewCadence (0.00s)
+    --- FAIL: TestStallVerdictReachesAtRenewCadence/period-5m (0.00s)
+    --- FAIL: TestStallVerdictReachesAtRenewCadence/period-7m (0.00s)
+    --- PASS: TestStallVerdictReachesAtRenewCadence/old-cadence-equal (0.00s)
+    --- FAIL: TestStallVerdictReachesAtRenewCadence/rule-text (0.00s)
+FAIL
+FAIL	github.com/modu-ai/moai-adk/internal/template	0.438s
+FAIL
+```
+
+Mutant B (AC-FLR-015, the window doubled to 2N in `old-cadence-equal`). One line changed from `stallVerdictByChange(obs, window)` to `stallVerdictByChange(obs, 2*window)`. Command: `go test ./internal/template/ -run '^TestStallVerdictReachesAtRenewCadence$/^old-cadence-equal$' -v -count=1`, exit 1:
+
+```
+=== RUN   TestStallVerdictReachesAtRenewCadence
+=== RUN   TestStallVerdictReachesAtRenewCadence/old-cadence-equal
+    auto_semantics_renew_test.go:205: pass at minute 20: REQ-FLR-013 verdict false, previous-snapshot verdict true
+    auto_semantics_renew_test.go:205: pass at minute 60: REQ-FLR-013 verdict false, previous-snapshot verdict true
+--- FAIL: TestStallVerdictReachesAtRenewCadence (0.00s)
+    --- FAIL: TestStallVerdictReachesAtRenewCadence/old-cadence-equal (0.00s)
+FAIL
+FAIL	github.com/modu-ai/moai-adk/internal/template	0.436s
+FAIL
+```
+
+Restoration. Both mutants were reverted by the same edits in the reverse direction. `git show HEAD:internal/template/auto_semantics_renew_test.go | cmp - internal/template/auto_semantics_renew_test.go` printed nothing (byte-identical to `f95603c45`), and `git status --short` printed nothing before the slot was released.
+
+Mutant forms (AC-FLR-013). `2/59` and `6/7` were fed to the largest-gap computation in the same run: `auto_semantics_renew_test.go:103: 2/59 refused: largest gap 60 minutes exceeds the period 59` and `auto_semantics_renew_test.go:110: 6/7 refused: largest gap 11 minutes exceeds the period 7`. Both are refused, as the criterion requires.
+
+AC matrix, M3 RED stage (baseline attribution HEAD `f95603c45`)
+
+| AC | Status | Evidence |
+|---|---|---|
+| AC-FLR-010 | RED observed | `TestLaneWatchdogRenewsFirst` FAIL: allowed-tools lacks the verb; the first step is `## 1. Measure progress` |
+| AC-FLR-011 procedure half | RED observed | `TestLaneWatchdogRecordsRefusalAndMeasures` FAIL: no `renew_result`, no refusal classes |
+| AC-FLR-011 verb half | GREEN from M2 | RED at M2 (block above); not re-run as RED here |
+| AC-FLR-013 text half | RED observed | the Arm bullet carries the literal |
+| AC-FLR-013 gap half | green on arrival; mutant forms refused | the two refusals above |
+| AC-FLR-014 | RED observed | 16 of 16 subtests FAIL |
+| AC-FLR-015 rule-text | RED observed | §4 names no `last_change_at` and no `renew_result`; it states the previous-observation clause |
+| AC-FLR-015 period-5m, period-7m | green on arrival; RED = mutant A | the output above |
+| AC-FLR-015 old-cadence-equal | green on arrival; RED = mutant B | the output above |
+
+Slot (go-heavy, identity 3e1318d7): acquired until 12:24:28Z for the template RED run and the hook RED run, then released; acquired until 12:25:41Z for mutants A and B, then released. One guard refusal occurred before the first slot run: a compound command that chained `go test` with `moai slot release` and a `PIPESTATUS` expansion was refused by the worktree-isolation guard as too complex to verify. The command was split into plain steps; nothing ran in the refused form.
+
+E4, pre-existing. `grep -rn 'AskUserQuestion' internal/hook | grep -v _test.go | grep -v '// '` returns `internal/hook/pre_tool.go:856` (a tool-name comparison). It predates M3 and is reported as pre-existing.
+
 ## §E.3 Run-phase Audit-Ready Signal
 
 _<pending run-phase>_
