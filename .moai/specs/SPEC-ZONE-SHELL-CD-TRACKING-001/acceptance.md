@@ -33,11 +33,11 @@ _The inline quote elides the runner's temp path with `...`; the full verbatim ou
 
 **EV-ZSCD-003 (RED-now — the `cd_track_` discriminator; four-element cell captured at plan phase; the carrier and the four elements added per plan-audit round 4 D1; the `cd_` inventory corrected in v0.2.0 per audit round 1 D1).** The landed sweep already carries five `cd_` cells — `bare_cd_tracking_control` (:127, deny), `wrapped_cd_env_not_tracked` (:125, allow), `wrapped_cd_nohup_not_tracked` (:126, allow), `d6_cd_chain_budget` (:166, deny-unbounded), `d6_cd_chain_then_covered_rm` (:167, deny) — the landed external-execution rule and t1574 set-budget cells, NOT cd-tracking coverage; a bare `cd_` selector counts them (two ALLOW included), so it is the wrong instrument. The NEW cd-tracking group carries the distinct `cd_track_` cell-name prefix.
 
-- **Verbatim stdout** (raw, unmodified; 18,794 bytes, 170 lines; stderr 0 bytes):
+- **Verbatim stdout** (raw, unmodified; 18,794 bytes, 170 lines; stderr 0 bytes). The four header lines inside the fence (lines 39-42) are run metadata; the verbatim comparison begins at line 43:
 
 ```text
 # command: go test ./internal/hook/ -run '^TestProtectedZoneShellParsingMatrix$' -count=1 -v -timeout 5m
-# tree-sha: c92d8d81b40c94ac4e0a96b77539e8c043a579d4 (code tree; the Go tree is unchanged since this commit)
+# tree-sha: 7d34e50924c93e0d2c099ef353f8bd9754233cc5 (observation HEAD; internal/, cmd/, go.mod and go.sum are identical to a604f89a3, see the attribution note after the fence)
 # toolchain: go version go1.26.8 darwin/arm64
 # exit: 0
 === RUN   TestProtectedZoneShellParsingMatrix
@@ -211,6 +211,8 @@ _The inline quote elides the runner's temp path with `...`; the full verbatim ou
 PASS
 ok  	github.com/modu-ai/moai-adk/internal/hook	1.337s
 ```
+
+**Attribution note (round-7 repair of plan-audit round 6 D1).** The run was observed at 7d34e5092, the commit whose tree it read. The next commit, c92d8d81b (parent 7d34e5092), is the round-4 repair and changes SPEC documents only (`git diff --stat 7d34e5092 c92d8d81b`: five files under `.moai/specs/`, no code). The Go code the run exercised is identical at the observation HEAD and at the audited tree: `git diff --stat 7d34e5092 a604f89a3 -- internal cmd go.mod go.sum` prints nothing. Toolchain at the repair: `go version` = go1.26.8 darwin/arm64, as on line 41. Gap: the worktree status before the run is not re-observable now, so this note makes no clean-status claim.
 
 - **Counts over the block above** (measured on the captured file): `=== RUN` lines 61 (the parent plus 60 cells; the parent's `t.Logf` line reads `parsing-matrix sweep: 60 cells`); `--- PASS` lines 61; `--- FAIL` lines 0; lines containing `cd_track_` **0**; lines containing `cd_` 10 (the RUN and PASS lines of the five landed cells).
 - **Environment:** this session has `MOAI_KANBAN_ID`, `MOAI_KANBAN_BACKEND` and `MOAI_KANBAN_SETTINGS_INJECTED` set, and the run above used them. Cross-check (not the cell command): `unset MOAI_KANBAN_ID MOAI_KANBAN_BACKEND MOAI_KANBAN_SETTINGS_INJECTED && go test ./internal/hook/ -run '^TestProtectedZoneShellParsingMatrix$' -count=1 -v -timeout 5m` exits 0, and its stdout equals the block above after masking timestamps and durations.
@@ -513,7 +515,7 @@ TRUST 5: Tested (AC-ZSCD-001..004, hook suite green); Readable/Unified (English 
 | AC-ZSCD-003 | REQ-ZSCD-002, REQ-ZSCD-005 | EV-ZSCD-002 shape 2 + the M2 cell |
 | AC-ZSCD-004 | REQ-ZSCD-005 | EV-ZSCD-003 + the M2 runner run |
 | AC-ZSCD-005 | REQ-ZSCD-004 | EV-ZSCD-004 (plan-phase green baseline) + EV-ZSCD-003 (matrix) + the M3 re-run |
-| AC-ZSCD-006 | all | EV-ZSCD-006 (plan-phase component baselines) + the M3 batch |
+| AC-ZSCD-006 | REQ-ZSCD-001, REQ-ZSCD-002, REQ-ZSCD-003, REQ-ZSCD-004, REQ-ZSCD-005 | EV-ZSCD-006 (plan-phase component baselines) + the M3 batch |
 
 ## §F Indirect Verification
 
