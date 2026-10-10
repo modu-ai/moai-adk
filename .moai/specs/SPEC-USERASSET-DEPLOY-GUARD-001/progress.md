@@ -965,7 +965,7 @@ run_complete_at: 2026-10-09
 ```yaml
 sync_status: complete
 sync_complete_at: 2026-10-10
-sync_commit_sha: 6bb7bc071   # 커밋은 자신의 해시를 인용할 수 없음 — 다음 커밋에서 backfill
+sync_commit_sha: pending-backfill-sync   # 커밋은 자신의 해시를 인용할 수 없음 — 다음 커밋에서 backfill
 b12_self_test_a: >-
   pre-emission dedup grep: grep -c 'SPEC-USERASSET-DEPLOY-GUARD-001' CHANGELOG.md → 편집 전 1, 편집 후 1 (관측 시점 HEAD 0f962daac).
   기존 엔트리 1건을 제자리에서 개정했고 새 엔트리는 추가하지 않았다 — 중복 등록 없음.
@@ -985,8 +985,11 @@ docs_claim_check: >-
   doctor/init 페이지의 기존 주장과 본 카드 변경 충돌 없음 — 위조된 주장 0건, 4-locale 후속 불필요
 sync_gaps: >-
   코드맵 stale(154/40), edges stale 2/0, mx-index 부재(새 워크트리), 이 트리 빌드 0f962daac-dirty 로 측정(측정 시점 트리 HEAD 14e6d690d; 빌드는 HEAD의 조상으로 3커밋 뒤처짐, 이 3커밋의 Go 주석·삽입 줄은 반영되지 않았음, 재측정 안 함), 로컬 착지는 CI graph-freshness 대상 아님. 재생성은 후속 후보(리더 수령). sync-auditor 판정에 맡김.
+  Run-phase repair-round gaps: (a) the repair round has RED and GREEN commits in this order: ffd332cac, 0d0b47a9a, d9c969f23, f3d099234, aeb2f1f11, e4ec6c24e (test commits are RED, fix commits GREEN); (b) golangci-lint v2.1.6 on ./internal/cli/ at e4ec6c24e: 0 issues (a lane measurement, full package run; not re-run in this sync pass); (c) the /verify full gate was not run locally, by the leader's ruling (AGENTS.md section 4); the full internal/cli suite was not observed locally, and CI owns it; (d) the init marker window opens at the ensure, so a failure in homestate.EnsureProjectLayout before it still ends in "already initialized" (a candidate follow-up); (e) codemaps and the mx-index were not regenerated in this round, and the existing codemap gap stays.
 out_of_scope_comment: >-
   SPEC 계획이 명명하지 않은 함수의 주석 1건(같은 파일 update.go 의 11a 좌표 565–574 와 다른 함수, 카드 커밋 9ac2d2e4e에서 변경): internal/cli/update.go 의 ensureGlobalSettingsEnv 에 @MX:ANCHOR 주석 2줄 추가(commit 9ac2d2e4e). 사유: 이 카드의 59d702fca 가 재개 경로에서 세 번째 호출자를 만들어, fan-in 3 이상 앵커 규칙이 적용됨. 주석만 변경, 코드 불변. 리더 유지 결정.
+mx_tags_note: >-
+  a new `@MX:ANCHOR` on `initPendingPath` in `internal/cli/init_resume.go` (fan-in 3: persistInitPending, clearInitPending, initResumeCheckpoint) is a tag change for a human to note.
 ```
 
 ## §F Phase 4 Mode Selection
