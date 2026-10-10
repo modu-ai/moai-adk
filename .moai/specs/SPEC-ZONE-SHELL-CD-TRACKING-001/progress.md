@@ -132,31 +132,31 @@ Tree: HEAD `ec1eec308` (branch `WT-zone-cd-deny`), unchanged through the run; no
 
 **M1 reproduction file removed (ruling 06cc(b)).** internal/hook/protected_zone_shell_cd_repro_test.go is removed in this commit. Its three shapes are already covered by the M2 cells cd_track_dashdash_rm, cd_track_absolute_in_project_rm, and cd_track_dashdash_hyphen_rm (same command and fixture), so no matrix cell was added. Its RED stays witnessed at 9262172f8. Checks after the removal: go vet ./internal/hook/ exit 0; scoped matrix (go test -run '^TestProtectedZoneShellParsingMatrix$' -count=1 -v) RUN 67, PASS 67, FAIL 0, six cd_track_ cells PASS (green-m4-matrix-raw.txt; ok github.com/modu-ai/moai-adk/internal/hook 1.896s); golangci-lint run ./internal/hook/... exit 0, output "0 issues." (green-m4-lint.txt). The full package suite was not re-run after the removal; the full-suite verdict is CI's.
 
-**Section placement (ruling 06cc(d)).** The M3 run record moved here from §E.3, so the verbatim M3 outputs that the SPEC cites now sit in this section. §E.3 keeps only its audit-ready signal, unchanged in this commit (run_status partial, audit_ready false); the run-complete flip is left to the leader.
+**Section placement (ruling 06cc(d)).** The M3 run record moved here from §E.3, so the verbatim M3 outputs that the SPEC cites now sit in this section. §E.3 was set to run_status complete and audit_ready true by manager-develop, the section owner, on the leader's order (run_commit_sha 8089304e6), in the commit that also records the in-progress status.
 
 ## §E.3 Run-phase Audit-Ready Signal
 
 ```yaml
-run_status: partial
-audit_ready: false
-run_scope: M1 steps 1-5 only; M2 and M3 not run in this invocation
-run_complete_at: pending
+run_status: complete
+audit_ready: true
+run_scope: "M1-M3 complete: RED 9262172f8, fix 6f4a56af8, cd_track_ group ec1eec308; M3 scoped batch recorded in section E.2; cell backfill, repro removal, and record move in 8089304e6"
+run_complete_at: 2026-10-10
 m1_complete_at: 2026-10-10
 m1_red_commit: 9262172f8
 m1_fix_commit: 6f4a56af8
-run_commit_sha: pending
-ac_pass_count: 4
-ac_pass_list: AC-ZSCD-001, AC-ZSCD-002 (permanent cell pending M2), AC-ZSCD-003 (permanent cell pending M2), AC-ZSCD-005
-ac_pending: AC-ZSCD-004 (M2), AC-ZSCD-006 (M3)
+run_commit_sha: 8089304e6
+ac_pass_count: 6
+ac_pass_list: AC-ZSCD-001, AC-ZSCD-002, AC-ZSCD-003, AC-ZSCD-004, AC-ZSCD-005, AC-ZSCD-006
+ac_pending: none
 ac_fail_count: 0
 preserve_list_post_run_count: 0
 l44_pre_commit_fetch: not run (isolated card worktree; the pre-edit sync check is exempt there)
 l44_post_push_fetch: not applicable (no push in this invocation)
-new_warnings_or_lints_introduced: none from go vet or gofmt; golangci-lint not run (M3)
+new_warnings_or_lints_introduced: none from go vet or gofmt; golangci-lint 0 issues (M3 at HEAD; scoped run after the repro removal)
 cross_platform_build:
   windows_amd64_hook_build: pass (exit 0 at 6f4a56af8)
 total_run_phase_files: 2
-m1_to_mN_commit_strategy: commit 1 RED test only, then commit 2 fix (K1, K3, K2); M2 cd_track_ group and M3 scoped batch to follow
+m1_to_mN_commit_strategy: commit 1 RED test only (9262172f8), commit 2 fix K1/K3/K2 (6f4a56af8), commit 3 M2 cd_track_ group (ec1eec308), commit 4 cell backfill, repro removal, and record move (8089304e6); M3 ran without a commit
 ```
 
 ## §E.4 Sync-phase Audit-Ready Signal
