@@ -4,7 +4,7 @@ title: "User-asset install/deploy defect-repair bundle: lock-guard recovery, jou
 version: "0.1.0"
 status: completed
 created: 2026-10-09
-updated: 2026-10-09
+updated: 2026-10-10
 author: manager-spec
 priority: P1
 phase: "v3.2.0 target"
