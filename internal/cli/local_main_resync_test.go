@@ -16,6 +16,7 @@ import (
 
 	"github.com/modu-ai/moai-adk/internal/config"
 	"github.com/modu-ai/moai-adk/internal/factory"
+	"github.com/modu-ai/moai-adk/internal/session"
 )
 
 // lmfResyncFixture builds a primary checkout on main (lmfRepo), stamps the lane
@@ -169,4 +170,75 @@ func TestLocalMainResyncPreservesIgnoredFile(t *testing.T) {
 	if lock := sdWindow(t, root); lock.Held() {
 		t.Fatalf("the refusal must release the window: %+v", lock)
 	}
+}
+
+// lmfResyncHold records the integration window for lmfSession as the re-sync's
+// own acquisition does: the owner pid resolved from the session, the configured
+// branch, and the primary checkout as the worktree. The session is the holder,
+// so the re-sync that follows is the holder calling again.
+func lmfResyncHold(t *testing.T, root string) *factory.IntegrationLock {
+	t.Helper()
+	t.Setenv(config.EnvClaudeCodeSessionID, lmfSession)
+	ownerPID, _ := session.ResolveOwnerPID()
+	if _, err := factory.AcquireIntegrationWindow(root, factory.IntegrationLock{
+		SessionID:    lmfSession,
+		PID:          ownerPID,
+		PIDSource:    factory.PIDSourceSessionOwner,
+		Branch:       localMainResyncBranch,
+		BranchSource: factory.BranchSourceConfig,
+		Worktree:     root,
+	}, false, &factory.AcquireWindowOptions{LeaseDuration: integrationLeaseDuration(root)}); err != nil {
+		t.Fatalf("hold the window for %s: %v", lmfSession, err)
+	}
+	held := sdWindow(t, root)
+	if !held.Held() || held.SessionID != lmfSession {
+		t.Fatalf("fixture: the window must be held by %s before the re-sync, got %+v", lmfSession, held)
+	}
+	t.Logf("held before the re-sync: session %s, pid %d (%s)", held.SessionID, held.PID, held.PIDSource)
+	return held
+}
+
+// lmfAssertWindowKeptBy asserts that the window is still held by the session that
+// held it before the re-sync, under the same holder identity: the session id and
+// the owner pid with its source.
+func lmfAssertWindowKeptBy(t *testing.T, root string, held *factory.IntegrationLock) {
+	t.Helper()
+	lock := sdWindow(t, root)
+	if !lock.Held() || lock.SessionID != held.SessionID {
+		t.Fatalf("the holder's re-sync must keep the window held by %s, got %+v", held.SessionID, lock)
+	}
+	if lock.PID != held.PID || lock.PIDSource != held.PIDSource {
+		t.Fatalf("the holder identity must not change across the re-sync: pid %d (%s) became pid %d (%s)", held.PID, held.PIDSource, lock.PID, lock.PIDSource)
+	}
+}
+
+// TestLocalMainResyncHolderCallKeepsWindow pins the holder-calls-resync rule
+// (card t1616, leader ruling d-20261010T044429Z-b3cd). The re-sync re-acquires
+// the window for the session that already holds it (plan §B3a step 1), and at
+// step 8 it must release only a window this call took itself. A holder that
+// calls the re-sync must still hold the window when the call returns. Both
+// paths are pinned as subtests: the no-op path, where local main already
+// contains origin/main, and the fast-forward path, where origin/main is ahead.
+func TestLocalMainResyncHolderCallKeepsWindow(t *testing.T) {
+	t.Run("no-op path", func(t *testing.T) {
+		root := lmfResyncFixture(t, "")
+		base := lmfHead(t, root)
+		lmfLocalCommit(t, root, "local.txt", "local\n")
+		fcGit(t, root, "update-ref", "refs/remotes/origin/main", base)
+		held := lmfResyncHold(t, root)
+		if _, err := runLocalMainResync(root); err != nil {
+			t.Fatalf("the holder's no-op re-sync must not error: %v", err)
+		}
+		lmfAssertWindowKeptBy(t, root, held)
+	})
+	t.Run("fast-forward path", func(t *testing.T) {
+		root := lmfResyncFixture(t, "")
+		base := lmfHead(t, root)
+		lmfOriginCommit(t, root, base, "origin-ahead", map[string]string{"ahead.txt": "ahead\n"}, false)
+		held := lmfResyncHold(t, root)
+		if _, err := runLocalMainResync(root); err != nil {
+			t.Fatalf("the holder's fast-forward re-sync must not error: %v", err)
+		}
+		lmfAssertWindowKeptBy(t, root, held)
+	})
 }
