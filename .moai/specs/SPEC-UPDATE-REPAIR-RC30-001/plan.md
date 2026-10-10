@@ -137,7 +137,7 @@ Out of scope: the factory slug rule (t1621), the factory inbox error (t1622), in
 | D6 | Kept optional agents and .agents/skills copies never refreshed | REQ-RC30-001; AC-RC30-13 | U-12; BLOCKED-ON WT-user-asset-bundle (t1591) |
 | D7 | Typed save of llm.yaml drops deployment_mode, alias keys and comments | REQ-RC30-007; AC-RC30-06 | U-05; IN-NOW |
 | D8 | Record-less project silently re-stamped as local | REQ-RC30-008; AC-RC30-07 | U-06; IN-NOW; follows from D7 |
-| D9 | No rollback: two roots, partial coverage, keep-5 eviction, unbounded namespace backups | REQ-RC30-009, REQ-RC30-010; AC-RC30-08 | U-07; IN-NOW; the run-scoped backup manifest is not stated by any REQ or AC here |
+| D9 | No rollback: two roots, partial coverage, keep-5 eviction, unbounded namespace backups | REQ-RC30-009, REQ-RC30-010; AC-RC30-08 | U-07; IN-NOW; the run identity is the .moai-run marker (design.md section 5) |
 | D10 | Shared-root downgrade, string-equal skip, unreliable stamp | REQ-RC30-012, REQ-RC30-022, REQ-RC30-023; AC-RC30-12, AC-RC30-14, AC-RC30-15 | U-11 (BLOCKED-ON t1578 and t1591); U-13 (IN-NOW); U-14 (IN-NOW) |
 | D11 | permissions.ask emptied when the template retires the key | REQ-RC30-024; AC-RC30-16 | U-15; GAP-INVESTIGATE; audit status Candidate; cause inferred, not reproduced in this tree |
 | D12 | Hardcoded no-op literals in the update output | REQ-RC30-011, REQ-RC30-017; AC-RC30-09 | U-08; IN-NOW |

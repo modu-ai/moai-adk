@@ -26,7 +26,7 @@ Design decisions behind spec.md and plan.md. Every decision names its requiremen
 ## 5. Restore and retention
 
 - The user-facing restore does not write the live `.claude/settings.json`; the restore output lists it as a not-restored path with a manual copy instruction, and lists the paths the backup does not cover (REQ-RC30-009, U-07).
-- Retention counts per run, not by directory-name shape (REQ-RC30-010). The run identifier is taken from the run's own backup record.
+- Retention counts per run, not by directory-name shape (REQ-RC30-010). A run's identity is the single line of a marker file `.moai-run` that the update writes into every backup directory of that run, the config backup and the namespace backup alike. The line is the run's start time in UTC, in the form `2006-01-02T15:04:05.000000000Z`. A directory without a marker, or with an unreadable one, is a run of its own, placed by its modification time. Backups written before this change carry no marker and are counted that way. Retention keeps the five newest runs and removes every directory of an older run in both backup roots.
 
 ## 6. Output
 
