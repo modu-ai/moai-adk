@@ -166,6 +166,13 @@ func migrateProjectCommonAssets(projectRoot, homeDir string, userAssetsInstalled
 				// — and gated out of the cleanup list (F2).
 				stayed++
 				migrationPreservedProjectFiles[p] = true
+				// U-09 (REQ-RC30-005): a skill the catalog does not carry has no
+				// installer source, so no bundle opts it in and the opt-in
+				// command would name nothing that can help.
+				if skillNotInCatalog(cat, relSlash) {
+					report("  migration: kept project-side (no catalog entry for this managed skill — no bundle carries it, so there is no opt-in): %s", relSlash)
+					return nil
+				}
 				report("  migration: kept project-side (user counterpart not confirmed — opt in via 'moai bundle add <name>' or re-run update): %s", relSlash)
 				return nil
 			}
@@ -335,6 +342,18 @@ func skillSourceRel(cat *template.Catalog, projectRel string) string {
 		return ""
 	}
 	return strings.TrimSuffix(strings.TrimPrefix(entry.Path, "templates/"), "/") + "/" + file
+}
+
+// skillNotInCatalog reports whether a project skill path names a skill the
+// catalog does not carry (U-09), so the installer has no source for it. Agent
+// paths are not skills and always report false.
+func skillNotInCatalog(cat *template.Catalog, projectRel string) bool {
+	for _, root := range projectCommonAssetRels[:2] { // the two skill roots
+		if strings.HasPrefix(projectRel, root) {
+			return skillSourceRel(cat, projectRel) == ""
+		}
+	}
+	return false
 }
 
 // withinRootBoundary reports whether path is inside (or equal to) the

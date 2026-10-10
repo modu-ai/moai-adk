@@ -377,6 +377,47 @@ ok  	github.com/modu-ai/moai-adk/internal/cli	1.783s
 - R-M1-1: with the switch off, `moai update` no longer removes a template-managed project copy whose user counterpart is confirmed. Such copies stay project-side with the report line `removal is not enabled yet` until card t1668 adopts AC-RC30-02.
 - R-M1-2 [RESOLVED by commit e4979fd34: the dry-run follows the removal switch]: `internal/cli/update_dryrun_preview.go:81-83` still prints `removed by the asset migration once your user-side copy is confirmed` for those copies. With the inert switch that statement is false. M1 does not change the preview (scope); the fix belongs to card t1668 or to U-18 (plan § B.6, M5). Lead decision needed.
 
+### M1 step 4, bundle B — U-09 (AC-RC30-10) (manager-develop, card t1619)
+
+Bundle B runs the plan § B.2 step 4 items in order: U-09, U-03, U-12. Tree before bundle B: HEAD `19accc920` on `WT-moai-update-repair`, clean (pre-flight). Each item is its own local commit; nothing is pushed.
+
+**RED (TDD order).** The judging test is new: `TestNonCatalogSkillMessage` in `internal/cli/migrate_noncatalog_message_test.go`. It compiles against the tree as it stands; no stub was needed. The fixture is a template-managed `.claude/skills/moai-retired-skill/SKILL.md` with no catalog entry and no user counterpart.
+
+Command: `go test ./internal/cli/ -run TestNonCatalogSkillMessage -count=1 -v`, exit 1. Verbatim output:
+
+```text
+=== RUN   TestNonCatalogSkillMessage
+    migrate_noncatalog_message_test.go:52: non-catalog skill gets the opt-in message:   migration: kept project-side (user counterpart not confirmed — opt in via 'moai bundle add <name>' or re-run update): .claude/skills/moai-retired-skill/SKILL.md
+    migrate_noncatalog_message_test.go:55: non-catalog skill gets no distinct no-catalog message:   migration: kept project-side (user counterpart not confirmed — opt in via 'moai bundle add <name>' or re-run update): .claude/skills/moai-retired-skill/SKILL.md
+--- FAIL: TestNonCatalogSkillMessage (0.55s)
+FAIL
+FAIL	github.com/modu-ai/moai-adk/internal/cli	1.446s
+FAIL
+```
+
+The failure is behavioral: the test runs, and both assertions fail on the opt-in line that the current code prints for this copy.
+
+**Implementation.** `internal/cli/migrate_project_assets.go`, in the not-confirmed arm: a skill path with no catalog entry gets a distinct line (`no catalog entry for this managed skill — no bundle carries it, so there is no opt-in`). New helper `skillNotInCatalog`, placed beside `skillSourceRel`. Every other not-confirmed copy keeps the opt-in line. `removalEnabled` and the removal path are untouched.
+
+**GREEN.** Same command, exit 0:
+
+```text
+=== RUN   TestNonCatalogSkillMessage
+--- PASS: TestNonCatalogSkillMessage (0.40s)
+PASS
+ok  	github.com/modu-ai/moai-adk/internal/cli	1.233s
+```
+
+**Gates (each its own command).**
+- `gofmt -l internal/cli/migrate_project_assets.go internal/cli/migrate_noncatalog_message_test.go`: no output.
+- `go vet ./internal/cli/`: no output.
+- `golangci-lint run ./internal/cli/`: `0 issues.`
+- `GOOS=windows GOARCH=amd64 go build ./...` (B1): no output.
+
+**Gaps (not observed in this item).** The full `internal/cli` suite was not run for this item; the change-scoped migration subset runs once after bundle B (see the bundle B close). `go test -cover` was not measured (M7 owns coverage).
+
+**Residual risk.** The change alters one output line for a catalog-less managed skill. Removal behavior is unchanged; the removal of such a copy stays with card t1668.
+
 ## §E.3 Run-phase Audit-Ready Signal
 
 _pending run-phase (manager-develop)_
