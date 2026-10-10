@@ -460,7 +460,7 @@ func (f *FactoryDB) RenewLease(ctx context.Context, runID, cardID, label string,
 		}
 		next := cur
 		next.HeartbeatAt = now.Format(time.RFC3339Nano)
-		next.LeaseExpiresAt = now.Add(FactoryLeaseDuration).Format(time.RFC3339Nano)
+		next.LeaseExpiresAt = now.Add(f.CardLeaseDuration()).Format(time.RFC3339Nano)
 		next.UpdatedAt = next.HeartbeatAt
 		res, err := tx.ExecContext(ctx, `UPDATE cards SET heartbeat_at=?,lease_expires_at=?,updated_at=? WHERE run_id=? AND card_id=? AND version=?`,
 			next.HeartbeatAt, next.LeaseExpiresAt, next.UpdatedAt, cur.RunID, cur.CardID, cur.Version)
@@ -539,7 +539,7 @@ func (f *FactoryDB) planTransition(ctx context.Context, tx *sql.Tx, cur Card, ed
 		}
 		plan.next.LeaseHolder = label
 		plan.next.HeartbeatAt = nowText
-		plan.next.LeaseExpiresAt = now.Add(FactoryLeaseDuration).Format(time.RFC3339Nano)
+		plan.next.LeaseExpiresAt = now.Add(f.CardLeaseDuration()).Format(time.RFC3339Nano)
 		if _, err := tx.ExecContext(ctx, `UPDATE workers SET heartbeat_at=? WHERE label=?`, nowText, label); err != nil {
 			return plan, err
 		}
@@ -598,7 +598,7 @@ func (f *FactoryDB) planTransition(ctx context.Context, tx *sql.Tx, cur Card, ed
 		}
 		plan.next.LeaseHolder = label
 		plan.next.HeartbeatAt = nowText
-		plan.next.LeaseExpiresAt = now.Add(FactoryLeaseDuration).Format(time.RFC3339Nano)
+		plan.next.LeaseExpiresAt = now.Add(f.CardLeaseDuration()).Format(time.RFC3339Nano)
 		if _, err := tx.ExecContext(ctx, `UPDATE workers SET heartbeat_at=? WHERE label=?`, nowText, label); err != nil {
 			return plan, err
 		}

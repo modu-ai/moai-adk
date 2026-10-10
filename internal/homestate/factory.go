@@ -162,9 +162,19 @@ CREATE TABLE IF NOT EXISTS card_dispatch (
 type FactoryDB struct {
 	DB   *sql.DB
 	Path string
+	// lease holds the effective workflow.factory_lease values of a handle opened
+	// through a project root. Zero values fall back to the compiled defaults through
+	// CardLeaseDuration and RenewInterval.
+	lease factoryLeaseKeys
 }
 
 func OpenFactory(projectRoot string) (*FactoryDB, error) {
+	// The lease keys are checked before the database is opened, so a refused open
+	// leaves no database behind (SPEC-FACTORY-LEASE-RENEW-001, REQ-FLR-006, REQ-FLR-007).
+	lease, err := loadFactoryLease(projectRoot)
+	if err != nil {
+		return nil, err
+	}
 	if err := EnsureProjectLayout(projectRoot); err != nil {
 		return nil, err
 	}
@@ -172,7 +182,12 @@ func OpenFactory(projectRoot string) (*FactoryDB, error) {
 	if err != nil {
 		return nil, err
 	}
-	return OpenFactoryPath(path)
+	db, err := OpenFactoryPath(path)
+	if err != nil {
+		return nil, err
+	}
+	db.lease = lease
+	return db, nil
 }
 
 // factoryBusyTimeoutDefault is the busy timeout every connection opened
@@ -186,6 +201,10 @@ const factoryBusyTimeoutDefault = 5 * time.Second
 // record connection through it so that a claim stalled behind another writer
 // overshoots its deadline by at most the busy timeout.
 func OpenFactoryBounded(projectRoot string, busy time.Duration) (*FactoryDB, error) {
+	lease, err := loadFactoryLease(projectRoot)
+	if err != nil {
+		return nil, err
+	}
 	if err := EnsureProjectLayout(projectRoot); err != nil {
 		return nil, err
 	}
@@ -193,7 +212,12 @@ func OpenFactoryBounded(projectRoot string, busy time.Duration) (*FactoryDB, err
 	if err != nil {
 		return nil, err
 	}
-	return openFactoryPathBusy(path, busy)
+	db, err := openFactoryPathBusy(path, busy)
+	if err != nil {
+		return nil, err
+	}
+	db.lease = lease
+	return db, nil
 }
 
 // OpenFactoryPath opens a factory database at an already-resolved path. It is
