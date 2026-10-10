@@ -46,3 +46,42 @@ plan-audit 1회차 FAIL(F1–F7, `.moai/reports/t1617/plan-audit.md`, codex P2 3
 - **F7 (단위·단계)**: REQ-RIB-008을 3분해로, REQ-RIB-011을 코드 단위+바이트 이중 기록과 스텁 델타 레코드 라벨(REQ-RIB-011이 리터럴로 고정 — 이 파일에는 M3가 그 라벨 행을 쓰기 전까지 등장하지 않는다)로 정정; hooks-system.md 템플릿 미러 편집(미러 원본 선행)을 plan.md M3에 명시 단계로 추가했다.
 
 Gap(선언): plan-audit 재실행 전까지 이 신호는 수리 완결 상태의 진술이다 — 재감사는 리더 처분 2b7b 절차대로 lane이 audit_multi로 실행한다.
+
+## §G Override and Refusal Record
+
+- 2026-10-10T08:19:02Z SPEC-ROLE-INJECTION-BUDGET-001 required-backend-refusal outcome=refused reasons="verdict carries no must_pass_failed field"
+- 2026-10-10T08:22:50Z SPEC-ROLE-INJECTION-BUDGET-001 required-backend-refusal outcome=refused reasons="required backend codex configured and the verdict carries no convergence receipt"
+
+## §E.2 Run-phase Evidence
+
+### M1 — RED: 테스트·고정물 (규칙·코드 무편집)
+
+- 근거 명령(env는 같은 컴파운드 호출 안에서 스크럽; 트리 SHA는 각 커밋 시점에 재귀속):
+
+```text
+[RED-1] go test -run 'TestRoleInjectionAssemblyBudget' ./internal/hook/   → exit 1 (EXPECTED RED)
+  template/factory-lane   breakdown: producers=4797 joiner=4 header=123 core=17793 pointer=128 total=22845
+  template/factory-leader breakdown: producers=4797 joiner=4 header=125 core=17793 pointer=128 total=22847
+  deployed/factory-lane   breakdown: producers=4797 joiner=4 header=123 core=18114 pointer=128 total=23166
+  deployed/factory-leader breakdown: producers=4797 joiner=4 header=125 core=18114 pointer=128 total=23168
+  (core 17,793/18,114 > 3,946 한도 — 이 SPEC 이 고치는 상태 그 자체. deployed/factory-lane 합계 23,166은
+    SPEC §A.1 이 인용한 게이트 실측과 정확히 일치 — 4,797 생산자 상한 도출의 독립 교차 검증)
+[RED-2] go test -run 'TestRoleRulesVersionSkew' ./internal/hook/          → exit 1 (EXPECTED RED)
+  4개 로캘 행 전부 0히트: ko/ja/zh/en 의 InjectionFailed 에 "moai update" 부재;
+  TestRoleRulesVersionSkewFailureDetailNamesRemedy 도 동일하게 실패(detail 에 update 지시 없음).
+[RED-3] go test -run 'TestRoleRulesVersionSkewPredicate' (role_rules_skew_predicate_test.go 포함) → exit 1
+  internal/hook/role_rules_skew_predicate_test.go:16/25/37: undefined: detectRoleRuleVersionSkew
+  → [build failed]. plan M1 3번이 허용한 「컴파일 실패」 RED 형태(부호 부재 = 행동 부재).
+  이 테스트 파일은 기계 로컬 보관(M1 커밋 미포함 — 패키지가 마일스톤 사이 컴파일 가능 상태를 유지),
+  M3 에서 구현과 같은 커밋으로 착지.
+[MOTOR] go test -run 'TestRoleCoreStubGate' ./internal/template/          → ok (AC-RIB-003 채택 증거)
+  deployed/template 양 트리 glob 각 2개 *-core.md 스윕; 표지 0; 크기 모두 ≤10,000 UTF-16;
+  motor 서브테스트 관측: 표지 심은 픽스처 FAIL / 10,001 단위 픽스처 FAIL / 10,000 경계 PASS — 두 게이트 조건 모두 생존.
+[회귀 기준선] go test -run 'TestSessionStartRoleRules' ./internal/hook/      → 0 FAIL (기존 21 서브테스트 전부 GREEN)
+```
+
+- 산출물: `internal/hook/role_injection_budget_test.go` (AC-RIB-001, E1+E2 관측점),
+  `internal/template/role_core_stub_gate_test.go` (AC-RIB-003 게이트 + motor),
+  `internal/hook/role_rules_version_skew_test.go` (AC-RIB-004/005 안내면 RED).
+- Gap(선언): RED-3 의 판정 산출물은 단언 실패가 아니라 컴파일 실패다 — plan 허용 형태로 기록하며,
+  M3 착지 뒤 단언 GREEN 으로 수렴 확인한다.
