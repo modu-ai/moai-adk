@@ -959,6 +959,185 @@ Judging build (§ 2.2): the build ID `moai_cp/20261007_195927-298-g3e7a64808` na
 
 **Files changed.** `.moai/specs/SPEC-UPDATE-REPAIR-RC30-001/progress.md` (this record). No other tracked file changed: `git status --short` was empty after the build and after the source reads. `bin/moai` is build output and is not tracked.
 
+### M3 — config data model, restore, bundle listing, AC-RC30-22/23 investigations (manager-develop, card t1619)
+
+Milestone M3 (plan § B.4 steps 1 to 5). Pre-flight, each its own command: `git rev-parse --short HEAD` gave `dd94d9570`; `git branch --show-current` gave `WT-moai-update-repair`; `git status --short` gave no output. Each item ran RED then GREEN, one commit per state. Commit SHAs are listed per item. Nothing was pushed.
+
+**Status.** AC-RC30-05, -06, -07 and -08 pass with their judging commands on the final tree. AC-RC30-22 and AC-RC30-23 are **blocked**, with the cause named below. The judging commands for both select zero tests on this tree.
+
+**Environment.** Test runs touching a home or profile path ran as `unset CLAUDE_CONFIG_DIR MOAI_PROJECT_DIR && go test ...`. Every `internal/cli` run printed `moai-cli-test: userHomeDirFn redirected real home to sandbox`, so the cli HOME sandbox was active.
+
+#### Step 5 — AC-RC30-05, bundle listing (U-04)
+
+- Judging test: `TestBundleList` in `internal/cli/bundle_list_test.go`.
+- RED. Command `go test ./internal/cli/ -run TestBundleList -count=1 -v`. Tree `dd94d9570` plus the new untracked test file. Exit status `1`. Verbatim assertion lines (the eleven list lines share one form, and the first and last are shown in full):
+
+```text
+    bundle_list_test.go:24: bundle backend: list line fields = [], want [backend 3 skills 0 agents]
+    bundle_list_test.go:24: bundle testing: list line fields = [], want [testing 0 skills 0 agents]
+    bundle_list_test.go:37: add --help names [], want the catalog bundles [backend commands consult creative delivery deployment design devops frontend ops-tools testing]
+--- FAIL: TestBundleList (0.00s)
+    --- FAIL: TestBundleList/list_names_each_bundle_with_counts (0.00s)
+    --- FAIL: TestBundleList/add_help_names_valid_bundles (0.00s)
+FAIL	github.com/modu-ai/moai-adk/internal/cli	0.867s
+```
+
+  The cobra help body that the unknown `list` subcommand printed (17 lines) is elided. Commit `9249644b6`. No stub: the test drives `rootCmd`, so it compiles against the existing tree.
+- GREEN. `runBundleList` and `sortedPackNames` in `internal/cli/bundle.go` print `%-10s %3d skills %3d agents` per optional pack, and `bundle add --help` names the packs through a help func (`renderBundleAddHelp`), so no catalog parse runs at process start. Verbatim: `--- PASS: TestBundleList (0.01s)` with both subtests PASS, `PASS`, `ok  	github.com/modu-ai/moai-adk/internal/cli	1.172s`. Exit `0`. Commit `8730ee5ba`.
+- Related: `go test ./internal/cli/ -run TestBundle -count=1 -v` passed every `TestBundle*` test (`TestBundleAnnounceForPluginMode`, `TestBundleAddInstallsBundleEntries`, `TestBundleRemoveTakesComplementOnly`, `TestBundleRemoveHonorsDivergence`, `TestBundleUnknownNameRefused`, `TestBundleRemoveDefersDependency`).
+
+#### Step 1 — AC-RC30-06, config round-trip (U-05), Gap G-06
+
+- **G-06 resolved.** The field the round-trip sets is `llm.team_mode` (`LLMConfig.TeamMode`). Evidence from code and test: U-24 names `team_mode` as the field the audit saw reset from `glm` to `""` in a re-marshal; `launcher.go` reads it on the `moai cc` path (`resetTeamModeForCC`); `types.go:281-283` names it the explicit session intent. Rejected: `deployment_mode`, which is not a typed field and is written by `template.ApplyDeployMode`; and `harness`, which init rewrites on every run.
+- Judging test: `TestConfigSaveRoundTripLLM` in `internal/config/llm_save_roundtrip_test.go`.
+- RED. Command `unset CLAUDE_CONFIG_DIR MOAI_PROJECT_DIR && go test ./internal/config/ -run TestConfigSaveRoundTripLLM -count=1 -v`. Tree `8730ee5ba` plus the test file. Exit `1`. Verbatim excerpt (the got block is the typed re-marshal with the compiled defaults, and it is cut after its first lines):
+
+```text
+    llm_save_roundtrip_test.go:54: llm.yaml after a team_mode-only Save changed more than the field:
+        got:
+        llm:
+            mode: ""
+            team_mode: glm
+            harness: claude
+            glm_env_var: GLM_API_KEY
+            ...
+--- FAIL: TestConfigSaveRoundTripLLM (0.01s)
+```
+
+  The got block has no `deployment_mode`, no `future_flag`, and no comment lines. Commit `adc9cdb8b`.
+- Branch RED. `internal/config/llm_save_patch_test.go` holds `TestLLMSavePatchBranches` with six subtests. I observed it with the patch path switched off in the working tree, so `saveLLM` took the pre-change typed rewrite. That path is what `adc9cdb8b` runs. Command `go test ./internal/config/ -run TestLLMSavePatchBranches -count=1 -v`, exit `1`. `--- FAIL` on `unchanged_section_leaves_bytes_alone` (the bytes changed), `nested_scalar_patched_in_place` (the change was not a one-line patch), `upserted_key_keeps_comments_and_unmodelled_keys` (`# llm header comment` lost), and `upserted_map_entry_keeps_comments_and_unmodelled_keys`. `--- PASS` on `quoted_value_falls_back_and_round_trips` and `removed_key_falls_back_and_round_trips`. Those two are regression guards for the fallback, which is unchanged. Commit `70fd61445`.
+- GREEN. `saveLLM` in the new `internal/config/llm_save.go` patches a dirty llm section over an existing `llm.yaml` through `yamlpatch.PatchFile`. Each scalar that differs from a baseline captured at Load or Save becomes one edit, and new keys are upserted. It falls back to the typed rewrite for an absent file, a removed key, a sequence, or a value that must be quoted. The baseline is captured in `resetSectionDirtyLocked`. Verbatim: `--- PASS: TestConfigSaveRoundTripLLM (0.01s)`, `PASS`, `ok  	github.com/modu-ai/moai-adk/internal/config	0.192s`; the six branch subtests PASS, with `ok  	github.com/modu-ai/moai-adk/internal/config	0.323s`. Exit `0`. Commit `27af97cbf`.
+- Gates: `gofmt -l` no output; `go vet ./internal/config/` no output; `golangci-lint run ./internal/config/...` reported `0 issues.`.
+- Regression: `go test ./internal/config/ -run 'Save|LLM|Llm|ConfigManager|DeployMode|AgentOverride|Reload|SetSection|LoadRaw' -count=1` gave `ok  	github.com/modu-ai/moai-adk/internal/config	0.376s`.
+
+#### Step 2 — AC-RC30-07, record-less archive warning (U-06)
+
+- Reading of REQ-RC30-008. The migration still writes the local record, and it now announces the write when a migration archive exists. Rejected: skipping the write. That would change the SPEC-INIT-SHRINK-001 REQ-015 record contract, which is outside this item.
+- Judging test: `TestRecordlessArchiveWarning` in `internal/cli/recordless_archive_test.go`.
+- RED. Command `go test ./internal/cli/ -run TestRecordlessArchiveWarning -count=1 -v`. Tree `27af97cbf` plus the test and a stub. Exit `1`. Verbatim:
+
+```text
+    recordless_archive_test.go:50: record-less stamp over a migration archive printed no visible warning:
+        ""
+    recordless_archive_test.go:53: record after the stamp = "", want local
+    recordless_archive_test.go:67: record after the stamp = "", want local
+--- FAIL: TestRecordlessArchiveWarning (0.00s)
+```
+
+  Stub: `stampMigrationDeployMode` in `internal/cli/update_migrate.go` with an empty body, so the test compiles. Commit `86d188ec6`.
+- GREEN. `stampMigrationDeployMode` owns the stamp. The template-sync call site now calls it, and `migrationArchiveExists` checks both archive roots (`.moai/archive/skills/init-shrink-migration` and `.moai/archive/files/init-shrink-migration`). Verbatim: `--- PASS: TestRecordlessArchiveWarning (0.01s)`, `ok  	github.com/modu-ai/moai-adk/internal/cli	1.078s`. Exit `0`. Commit `d7d71ae23`.
+- Related: `go test ./internal/cli/ -run 'Migrat|DeployMode|Recordless' -count=1` gave `ok  	github.com/modu-ai/moai-adk/internal/cli	61.480s`.
+- Gates: gofmt clean; `go vet ./internal/cli/` no output; `golangci-lint run ./internal/cli/` reported `0 issues.`.
+
+#### Step 3 — AC-RC30-08, restore and retention (U-07)
+
+- Judging test: `TestRestoreSettingsAndRetention` in `internal/cli/restore_retention_test.go`, subtests a to d. Subtest a (the live `settings.json` stays unchanged) was a regression guard that passed on the RED tree.
+- RED 1. Command `go test ./internal/cli/ -run TestRestoreSettingsAndRetention -count=1 -v`. Tree `d7d71ae23` plus the test. Exit `1`. Verbatim assertion lines:
+
+```text
+    restore_retention_test.go:106: restore output does not name .claude/settings.json as not restored:
+    restore_retention_test.go:111: manual copy instruction lacks the backup path ...
+    restore_retention_test.go:114: manual copy instruction lacks the target path ...
+    restore_retention_test.go:124: restore output does not list the uncovered backed-up path .gitignore ...
+    restore_retention_test.go:155: run 0: namespace directory ... kept; every directory of an older run must be removed
+    restore_retention_test.go:155: run 1: namespace directory ... kept; every directory of an older run must be removed
+--- FAIL: TestRestoreSettingsAndRetention (0.05s)
+```
+
+  The paths are elided with `...`. Commit `034e49501`.
+- RED 2, the legacy restore skips the marker. `TestRestoreLegacySkipsRunMarker` in `internal/cli/update/backup/restore_run_marker_test.go`. Command `go test ./internal/cli/update/backup/ -run TestRestoreLegacySkipsRunMarker -count=1 -v`. Tree `034e49501` plus the test, with the skip absent. Exit `1`. Verbatim: `restore_run_marker_test.go:35: the run marker was copied into the config tree (stat err: <nil>)` and `--- FAIL: TestRestoreLegacySkipsRunMarker (0.00s)`. Commit `177eb6426`.
+- RED 3, the update writes the marker. `TestUpdateBackupCarriesRunMarker` in `internal/cli/update_run_marker_test.go`. I observed it with the config marker write disabled in the working tree (`error(nil)` in place of the write), which is the committed state of `177eb6426`. Command `unset CLAUDE_CONFIG_DIR MOAI_PROJECT_DIR && go test ./internal/cli/ -run TestUpdateBackupCarriesRunMarker -count=1 -v`. Exit `1`. Verbatim: `update_run_marker_test.go:34: the update's config backup under .../.moai-backups carries no .moai-run marker; retention would count it as its own run` and `--- FAIL: TestUpdateBackupCarriesRunMarker (0.30s)`. The write was restored before the commit. Commit `d8b3ca59c`.
+- GREEN. Run identity is in `internal/cli/update/backup/run_marker.go` (`RunMarkerName`, `NewRunID`, `WriteRunMarker`, `readRunMarker`). Run grouping and the name shapes are in `run_retention.go`. `CleanupOldBackups` prunes by run across both backup roots, and a negative keep count removes nothing. The restore output is `reportUncoveredRestorePaths` in `internal/cli/update_restore.go`, with keys `update.restore.*` in `en.yaml` and `ko.yaml`. Marker writes sit in the template-sync Backup step, in the clean reinstall's Step 3 snapshot, and in its Step 4.5 config backup, with one run id per run. The legacy restore skips the marker. The destructive-site registry text matches the rule. Verbatim: `--- PASS: TestRestoreSettingsAndRetention (0.03s)` with subtests a, b, c and d PASS, `ok  	github.com/modu-ai/moai-adk/internal/cli	0.920s`; `TestRestoreLegacySkipsRunMarker` PASS, `ok  	github.com/modu-ai/moai-adk/internal/cli/update/backup	0.393s`; `TestUpdateBackupCarriesRunMarker` PASS, `ok  	github.com/modu-ai/moai-adk/internal/cli	1.328s`. Exit `0`. Commit `6bede8ca3`.
+- Existing tests kept green: `TestCleanReinstall_PrunesOldConfigBackups` needs its clean-reinstall directories to share one run id, and that is the reason for the Step 3 and Step 4.5 marker writes. Also green: `TestCleanupOldBackups*` in `update_test.go`, `TestCleanupOldBackups*` in the backup package, and `TestRestoreMoaiConfig_MergeBehavior`.
+- Sibling branch. `worktree-agent-a015199acfa2a92e1` holds commits `245c9fbb1`, `fef19384d`, `ac34bbec1` and `447a0a7e2` (card t1619, D9, merge base `2aab5f797`). They implement the same rule that `design.md` § 5 names. Those commits are not absorbed here, and `spec.md` § G.2 records no absorption of them. I used the branch as a design reference and wrote the code on this branch. Its RED test file was not imported. The absorption decision belongs to the leader.
+- Related: `go test ./internal/cli/update/backup/ -count=1` gave `ok  	github.com/modu-ai/moai-adk/internal/cli/update/backup	0.675s`. `go test ./internal/tui/ -count=1` gave `ok  	github.com/modu-ai/moai-adk/internal/tui	0.275s`, which covers the catalog checks.
+- Gates: gofmt clean; `go vet` on `internal/cli/update/backup/` and `internal/cli/` no output; `golangci-lint` `0 issues.` on both.
+
+#### Step 4 — AC-RC30-22 and AC-RC30-23, investigation (U-23, U-24): BLOCKED
+
+Both judging commands select zero tests on this tree. Verbatim, exit `0` for both:
+
+```text
+testing: warning: no tests to run
+PASS
+ok  	github.com/modu-ai/moai-adk/internal/config	0.358s [no tests to run]     (AC-RC30-22, the command as written)
+testing: warning: no tests to run
+PASS
+ok  	github.com/modu-ai/moai-adk/internal/cli	1.070s [no tests to run]     (AC-RC30-23, the command as written)
+```
+
+Under the AC ruling (d-20261010T040402Z-94b9, item 5) a run with no tests to run is a failure, not a pass.
+
+**AC-RC30-22, `TestGateYAMLCommentsSurviveRestore` (U-23): blocked, cause named.**
+
+- Reproduction. Probes ran as scratch tests in `internal/cli`, because the cycle lives there. They were not committed, and the file was deleted after the run.
+- The update cycle, `runTemplateSyncAt` on a fixture with a gate.yaml that carries 12 user comment lines. Verbatim: `PROBE gate.yaml comment lines before update: 12`, then `PROBE gate.yaml after update: user gate note lines=0, comment lines=66`, then `PROBE backup 20261010_221853 sections/gate.yaml user gate note lines: 12`. The backup keeps all 12. The live file keeps none.
+- The restore step alone. The backup holds the user's file, the live tree holds a template-like file, and only `backup.RestoreMoaiConfigRetained` runs. Verbatim: `PROBE backup gate.yaml comment lines=12`, then `PROBE restore-alone: user gate note lines after restore=0`. The user's value `mode: strict` comes back, and the comments do not.
+- Cause named. The section restore merge in `internal/cli/update/backup/restore.go` (`RestoreMoaiConfigRetained`, the `sections/*.yaml` walk) rebuilds the file from the template's structure and the user's values. It does not carry comment lines that are not attached to a template key. The restore alone reproduces the loss. The deploy step also writes the template's gate.yaml over the user's file. I did not separate that deploy overwrite from the restore on the full cycle, so the attribution to the restore rests on the isolated probe.
+- Why it is blocked. The fix would change the three-way merge policy (`node_merge.go`), which is outside this item and outside `internal/config`. The judging command cannot reach it: a test in package `config` cannot import the backup package without a cycle through `config`. The leader decides the merge policy and the judging package.
+
+**AC-RC30-23, `TestLLMYamlRemarshalCallers` (U-24): blocked, premise does not hold.**
+
+- Premise check. The AC and U-24 name "each `ConfigManager.Save` caller". Production has none. The seven production `.Save()` calls are all on `manifest.Manager`: `internal/core/project/validator.go:355` and `:441`, `internal/core/project/initializer.go:610`, `internal/cli/update_manifest_retrack.go:65`, `internal/cli/update_template_sync.go:652`, `internal/cli/migrate_project_assets.go:246`, `internal/cli/update_reconcile.go:159`, and `internal/codexwiring/write.go:348`. No production code calls `ConfigManager.SetSection`, so `llmDirty` is set only in tests.
+- The writer that drops keys. `saveLLMSection` (`internal/cli/glm.go:708`) runs a typed `yaml.Marshal` of the whole llm section. It is reached from `persistTeamMode` (`glm.go:654`), from `disableTeamMode` (`glm.go:694`) through `resetTeamModeForCC` (`internal/cli/launcher.go:409`, the `moai cc` launch), and from `persistTeamMode(root, "glm")` (`launcher.go:304`, the `moai glm` launch). Its change-detection gate skips only unchanged writes.
+- Reproduction, as a scratch probe (deleted after the run). The llm.yaml carried `deployment_mode: plugin`, `future_flag: keep-me`, a header comment and `team_mode: glm  # team note`. Verbatim:
+
+```text
+PROBE deployment_mode before persistTeamMode: "plugin"
+PROBE deployment_mode after persistTeamMode(root, ""): ""
+PROBE comment lines before=1 after=0
+PROBE future_flag kept=false header kept=false
+```
+
+  So the `moai cc` team-mode reset clears the deployment record. The next update then reads the project as record-less (SPEC-INIT-SHRINK-001 REQ-015). This writer is outside `ConfigManager.Save`, so the AC-RC30-06 fix does not cover it.
+- Why it is blocked. The AC as written judges an empty set, so no outcome of this run can pass it. The fix belongs to a decision. The natural form is to redirect AC-23 to the `saveLLMSection` callers (`persistTeamMode` with `glm` and with `""`), and then route `saveLLMSection` through the same yamlpatch seam that AC-06 uses. That is a change to the judging surface, so it is the leader's call.
+
+#### Gates and regression (final tree)
+
+- E2 `GOOS=windows GOARCH=amd64 go build ./...`: no output, exit `0`.
+- E3 `gofmt -l` over the M3 Go files: no output, exit `0`. `go vet ./internal/config/ ./internal/cli/ ./internal/cli/update/backup/`: no output, exit `0`. `golangci-lint run ./internal/config/... ./internal/cli/ ./internal/cli/update/backup/`: `0 issues.`
+- E5 regression, each a plain command: `go test ./internal/config/ -run 'Save|LLM|Llm|ConfigManager|DeployMode|AgentOverride|Reload|SetSection|LoadRaw' -count=1` gave `ok  	github.com/modu-ai/moai-adk/internal/config	0.376s`. `go test ./internal/cli/ -run 'Bundle|Recordless|RestoreSettings|UpdateBackupCarries|Cleanup|CleanReinstall|Restore|Migrat|DeployMode|Destructive|Backup' -count=1` gave `ok  	github.com/modu-ai/moai-adk/internal/cli	247.911s`. `go test ./internal/cli/update/backup/ ./internal/tui/ -count=1` gave `ok  	github.com/modu-ai/moai-adk/internal/cli/update/backup	0.675s` and `ok  	github.com/modu-ai/moai-adk/internal/tui	0.275s`. No test failed.
+- Judging commands on the final tree (exit `0` each): AC-RC30-05 `--- PASS: TestBundleList`, AC-RC30-06 `--- PASS: TestConfigSaveRoundTripLLM`, AC-RC30-07 `--- PASS: TestRecordlessArchiveWarning`, AC-RC30-08 `--- PASS: TestRestoreSettingsAndRetention`. Each run was followed by `PASS` and an `ok` line.
+- Coverage (M7) and `make tui-snapshot` (M4) were not run in M3.
+
+#### Residual risk
+
+- **The `moai cc` team-mode reset still drops `deployment_mode`.** `saveLLMSection` re-marshals the llm section on any team_mode change, and that drops the deployment record, unmodelled keys, and comments (probe above). This is the most consequential item here. The AC-RC30-06 fix does not reach it.
+- U-05's fix covers `ConfigManager.Save` only. D7 describes the defect as a typed save of llm.yaml in general, which includes `saveLLMSection`.
+- AC-08 marker coverage is thin. `TestUpdateBackupCarriesRunMarker` checks only the config backup of the template-sync path. The namespace snapshot of that path is marked in code but not asserted. The deploy pre-clean, symlink and legacy-memory backups, and the `ensureRunBackupDir` fallback, carry no marker, so each counts as its own run. The reference branch records the same residual.
+- The `update.restore.*` keys exist in `en` and `ko` only. `ja` and `zh` are placeholder catalogs, so those languages show English.
+- The gate.yaml comment loss (AC-RC30-22) is reproduced and unfixed. A user who edits gate.yaml loses its comment lines on every update.
+
+#### Gaps (not observed in M3)
+
+- The AC-22 and AC-23 judging commands select zero tests. The probes behind their evidence are scratch files, deleted, and not committed. Their verbatim output is quoted above.
+- Two shell commands were refused by the worktree-isolation guard during the investigation. One was a `git` form with a `$(...)` path (`git merge-base` inside a compound), and one was a compound scratch-file append. Neither was a verification basis: the first was rerun as separate plain commands, and the second was replaced by a file write. Recorded here per verification-claim-integrity § 3.1. The guard refusals are in the failure log as `tool_failure:Bash` rows.
+- The AC-22 probe did not separate the deploy step from the restore on the full cycle. The restore-alone probe isolates the restore.
+
+#### Files changed (M3)
+
+Go, production: `internal/cli/bundle.go`; `internal/config/manager.go`; `internal/config/llm_save.go` (new); `internal/cli/update_migrate.go`; `internal/cli/update_template_sync.go`; `internal/cli/update_restore.go`; `internal/cli/update_clean_install.go`; `internal/cli/update_destructive_registry.go`; `internal/cli/update/backup/backup.go`; `internal/cli/update/backup/restore.go`; `internal/cli/update/backup/run_marker.go` (new); `internal/cli/update/backup/run_retention.go` (new).
+
+Go, tests: `internal/cli/bundle_list_test.go`; `internal/config/llm_save_roundtrip_test.go`; `internal/config/llm_save_patch_test.go`; `internal/cli/recordless_archive_test.go`; `internal/cli/restore_retention_test.go`; `internal/cli/update_run_marker_test.go`; `internal/cli/update/backup/restore_run_marker_test.go`.
+
+Locale: `internal/tui/messages/en.yaml`, `internal/tui/messages/ko.yaml`.
+
+This progress record: `.moai/specs/SPEC-UPDATE-REPAIR-RC30-001/progress.md` § E.2 (this entry).
+
+#### Commits (M3, in order)
+
+`9249644b6` RED AC-05 · `8730ee5ba` GREEN AC-05 · `adc9cdb8b` RED AC-06 · `70fd61445` RED AC-06 branches · `27af97cbf` GREEN AC-06 · `86d188ec6` RED AC-07 (test and stub) · `d7d71ae23` GREEN AC-07 · `034e49501` RED AC-08 · `177eb6426` RED AC-08 restore marker · `d8b3ca59c` RED AC-08 update marker · `6bede8ca3` GREEN AC-08.
+
+#### Decisions (named)
+
+1. AC-RC30-07 reading of REQ-RC30-008: the migration still writes the local record, and the write is announced.
+2. Gap G-06 resolved as `llm.team_mode`, with the evidence above.
+3. AC-RC30-06 design: patch per changed scalar against a baseline, and fall back to the typed rewrite for anything a scalar patch cannot express. The fallback still loses comments, and that is named under residual risk.
+4. AC-RC30-05: the help is filled by a help func, so the catalog is not parsed at process start.
+5. AC-RC30-08: re-implemented from `design.md` § 5 and not absorbed from the sibling branch. Retention counts runs across both roots, and the clean reinstall's two directories share one run id.
+6. Locale keys in `en` and `ko` only. `ja` and `zh` fall back to English.
+7. AC-RC30-22 and AC-RC30-23 are blocked, with causes named. Nothing was fixed for them.
+
 ## §E.3 Run-phase Audit-Ready Signal
 
 _pending run-phase (manager-develop)_
