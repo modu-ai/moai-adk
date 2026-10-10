@@ -2,11 +2,11 @@
 
 status: draft
 plan_status: audit-ready
-plan_complete_at: 2026-10-10T07:08:27Z
+plan_complete_at: 2026-10-10T07:52:12Z
 
 ## §E.1 Plan-phase Audit-Ready Signal
 
-Plan artifacts (spec.md, plan.md, acceptance.md, decision-index.md) are finalized and ready for the plan audit. Finalized 2026-10-10 at SPEC v0.1.1 on card worktree HEAD `2aab5f797`. The plan audit has not run yet.
+Plan artifacts (spec.md, plan.md, acceptance.md, decision-index.md) are revised to SPEC v0.1.2 on card worktree HEAD `40cc1031c` (the audited tree). The revision answers plan-audit iteration 1 (FAIL, `.moai/reports/t1631/plan-audit.md`): defects D1 to D14 and optional items O1 to O5. Decisions Q1 to Q4 remain OPEN. The plan audit iteration 2 has not run.
 
 ## §E.2 Run-phase Evidence
 
