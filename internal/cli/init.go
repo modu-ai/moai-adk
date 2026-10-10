@@ -439,6 +439,13 @@ func resolveInitDeployMode(cmd *cobra.Command) template.DeployMode {
 	return template.DeployModeLocal
 }
 
+// ensureUserAssetsLockedFn is ensureUserAssetsLocked behind a package-level
+// variable so a test can interrupt the user-asset ensure (a panic stands in for
+// a process death inside it) and observe the selection record the run wrote
+// before the ensure. It follows the applyAutonomyTierBundleFn pattern
+// (update_settings_snapshot.go). Tests that replace it must not call t.Parallel().
+var ensureUserAssetsLockedFn = ensureUserAssetsLocked
+
 // @MX:ANCHOR: [AUTO] runInit is the main entry point for project initialization
 // @MX:REASON: [AUTO] fan_in=3, called from init.go init(), coverage_test.go, init_coverage_test.go
 // runInit executes the project initialization workflow.
@@ -964,7 +971,7 @@ func runInit(cmd *cobra.Command, args []string) (err error) {
 	// summary (REQ-013).
 	if homeDir, homeErr := userHomeDirFn(); homeErr == nil {
 		selection := parseBundleSelection(getStringFlag(cmd, "bundles"))
-		if err := ensureUserAssetsLocked(homeDir, selection, cmd.OutOrStdout()); err != nil {
+		if err := ensureUserAssetsLockedFn(homeDir, selection, cmd.OutOrStdout()); err != nil {
 			// Finding 1 (card t1591): this run is the interrupted one the
 			// resume completes. Record the harness it selected so the resume
 			// restores that selection, not the claude default. Best-effort:
