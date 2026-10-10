@@ -138,7 +138,7 @@ text) is created by this SPEC document itself.
 - Every new test asserts on a non-empty swept set (no `[no tests to run]`
   passes).
 - Cross-platform build: `GOOS=windows GOARCH=amd64 go build ./...` exit 0
-  (the probe touches no syscall surface; measured at M4 anyway).
+  (the probe opens each member with O_NONBLOCK and adds no other syscall surface; measured at M4 anyway).
 
 ## Evidence Ledger (plan-phase measurements; canonical baseline 2aab5f797 — per-entry attributions corrected for the mid-research re-cut, see EV-6)
 
