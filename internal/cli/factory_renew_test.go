@@ -486,15 +486,23 @@ func factoryRenewBindLane(t *testing.T, root, label, runID string) {
 // "MCP tool") and decodes the JSON outcome. The error is the verb's exit error or the tool error.
 func factoryRenewNoRun(t *testing.T, root, surface string) (factoryRenewWire, error) {
 	t.Helper()
+	return factoryRenewCardNoRun(t, root, surface, "t1")
+}
+
+// factoryRenewCardNoRun renews card with no --run through the surface named by surface ("verb" or
+// "MCP tool") and decodes the JSON outcome. The error is the verb's exit error or the tool error; a
+// refused MCP renewal is a result of "error", not a tool error.
+func factoryRenewCardNoRun(t *testing.T, root, surface, card string) (factoryRenewWire, error) {
+	t.Helper()
 	var wire factoryRenewWire
 	if surface == "verb" {
-		out, _, err := runFactory(t, "renew", "t1", "--json")
+		out, _, err := runFactory(t, "renew", card, "--json")
 		if jerr := json.Unmarshal([]byte(strings.TrimSpace(out)), &wire); jerr != nil {
-			t.Fatalf("renew --json printed no JSON outcome (stdout %q, error %v): %v", out, err, jerr)
+			t.Fatalf("renew %s --json printed no JSON outcome (stdout %q, error %v): %v", card, out, err, jerr)
 		}
 		return wire, err
 	}
-	text, err := sdCallTool(t, factoryRenewMCPHandler(t, "factory_renew"), map[string]any{projectRootArg: root, "card": "t1"})
+	text, err := sdCallTool(t, factoryRenewMCPHandler(t, "factory_renew"), map[string]any{projectRootArg: root, "card": card})
 	if err != nil {
 		return wire, err
 	}
