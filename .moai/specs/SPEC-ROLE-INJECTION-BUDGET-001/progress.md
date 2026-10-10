@@ -141,4 +141,35 @@ $ golangci-lint run --timeout=2m ./internal/hook/... ./internal/template/... →
 $ go test -cover ./internal/hook/                    → coverage: 87.5% of statements (>=85%)
 ```
 
-- **card-review (turn-end, lane)**: `codex_review` scope=card → `.moai/reports/t1617/card-review.md` (machine-local, gitignored — verdict продублирован здесь). Backend codex; base `db0c514d3` (merge base на момент обзора); head `190f7db5d`; verdict **pass**, findings **0**, dispositions n/a. Advisory — квитанция не заменяет чтение доказательств лидером и независимый аудит.
+- **card-review (턴 종료, lane)**: `codex_review` scope=card → `.moai/reports/t1617/card-review.md` (기계 로컬·gitignored — 판정을 여기에 이중 기재). Backend codex; base `db0c514d3` (리뷰 시점 머지 베이스); head `190f7db5d`; verdict **pass**, findings **0**, dispositions n/a. Advisory — 영수증은 리더의 증거 읽기와 독립 감사를 대체하지 않습니다.
+
+## §E.3 Run-phase Audit-Ready Signal
+
+run_status: audit-ready
+run_complete_at: 2026-10-10
+run_author: manager-develop
+run_commits: 2b1fe8e8b (M1 RED) · 070025bfc (M2 rules) · 190f7db5d (M3 code/docs) · fcb726a0e (card-review 기록)
+card_review: codex pass, 0 findings (.moai/reports/t1617/card-review.md; base db0c514d3 → head 190f7db5d)
+
+패스 완결 성명 (§E.3 — verification-claim-integrity §3 형식):
+
+| AC | 상태 | 결정 증거 / 명령 |
+|---|---|---|
+| AC-RIB-001 (E1+E2) | PASS | TestRoleInjectionAssemblyBudget ok — core 3,786 ≤ 3,946 (양 트리) |
+| AC-RIB-002 (E3) | PASS | relocation-ledger.md — 36+3행, 목적지 미명명 삭제 0건 |
+| AC-RIB-003 | PASS | TestRoleCoreStubGate ok — motor (표지/초과 픽스처 FAIL) |
+| AC-RIB-004 (E4) | PASS | 4개 로캘 + detail 에 moai update (grep=5) |
+| AC-RIB-005 (E5) | PASS | 술어 3케이스, 픽스처만 — 라이브 자기단정 없음 (grep 확인) |
+| AC-RIB-006 (E6) | PASS | awk n=1, exit 0 — 무천단위 '10000 characters' 0히트 |
+| AC-RIB-007 (E7) | PASS | hooks-system '10,000' — 미러+배포, 쌍 바이트 동일 |
+| AC-RIB-008 | PASS | Isolation 절 생존 + 이동 금지 [HARD] 문장이 절에 존재 |
+| AC-RIB-009 (E8) | PASS | stub-delta 기록 + rule-authoring 비산 문 (§E.2) |
+| AC-RIB-010 | PASS | 기존 21 사다리 서브테스트 + Handle 통합 — padding 후 전부 GREEN |
+| AC-RIB-011 | PASS | 원장: 갱신 전 RED 관측 → 갱신 뒤 ok |
+| AC-RIB-012 | **리더 인계** | 라이브 재진입 — 레인 권한 밖 (아래 참조) |
+| AC-RIB-013 | PASS | 봉투 밖 사다리 서브테스트 + codex_review_ownership 도크트린 GREEN |
+
+- **AC-RIB-012 (라이브 재진입 확인) — 리더/운영자 인계**: 레인은 스스로 세션을 재기동할 수 없습니다 (단말 런처 경계 — `moai cc -w` 는 터미널 전용, 운영자 정정 10-09). 라이브 관측 (startup + clear 재진입에서 넘침 공지 부재 + 합본 ≤10,000) 은 리더/운영자 협력 소관으로 인계합니다. 대체 증거: 조립 예산 테스트가 생산자 상한 4,797 + 오버헤드 257 + core 3,786 = **8,843 ≤ 9,000 ≤ 10,000** 을 양 트리에서 단언 — 경계 소스 봉투의 산술 전체가 관측됨. 남는 Gap 은 「실제 세션 착화 1회 관측」뿐입니다.
+- **검증**: go test ./internal/hook/ ./internal/template/ → ok/ok (FINAL, exit 0 — 슬롯 internal-hook-template-suite 임대 하); GOOS=windows GOARCH=amd64 및 darwin/arm64 빌드 → exit 0; golangci-lint (hook+template) → 0 issues; coverage internal/hook **87.5%** (≥85% 문턱).
+- **card-review**: codex scope=card → **pass**, findings 0 (`.moai/reports/t1617/card-review.md`; base db0c514d3 → head 190f7db5d) — advisory이며 리더의 증거 읽기와 독립 감사를 대체하지 않습니다.
+- **관측 (경계 생존 실측)**: 스텁 추가문의 초판이 스텁 게이트에 걸렸고 (10,630 > 10,000 — 3회 절단으로 9,915 수렴); TestTemplateNoInternalContentLeak 이 hooks 첫 편집의 SPEC-id 인용을 잡았습니다 — 두 경계 모두 생존하고 실제로 판정했습니다.
