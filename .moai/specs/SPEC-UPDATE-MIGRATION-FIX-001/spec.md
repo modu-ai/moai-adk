@@ -2,7 +2,7 @@
 id: SPEC-UPDATE-MIGRATION-FIX-001
 title: "Update migration follow-ups from the mo.ai.kr production run: verify the two reported defects against the current tree, pin regressions, and add the version-match integrity probe"
 version: "0.1.0"
-status: completed
+status: in-progress
 created: 2026-10-09
 updated: 2026-10-10
 author: manager-spec
@@ -13,6 +13,7 @@ lifecycle: spec-anchored
 tags: "update, migration, deny-specifiers, user-assets, integrity-probe, settings-purity, card-t1578"
 tier: M
 related_specs: [SPEC-USER-ASSET-INSTALL-001]
+amendment_of: SPEC-UPDATE-MIGRATION-FIX-001
 ---
 
 # SPEC-UPDATE-MIGRATION-FIX-001 — Update Migration Follow-ups (card t1578)
@@ -28,6 +29,17 @@ related_specs: [SPEC-USER-ASSET-INSTALL-001]
   integrity probe). Research record: research.md. Scope decisions for the
   operator's two review items (settings purity, sync-skip integrity check)
   are settled in Section 3 and decision-index.md.
+
+## Amendments
+
+- 2026-10-10: in-place amendment by manager-spec (card t1578), `completed → in-progress`. Sync-audit iteration 1 returned FAIL, score 65/100 (source: `.moai/reports/t1578/sync-audit.md`).
+  - prior completed version: 0.1.0 (unchanged by this amendment)
+  - prior_completed_sha: 38d0e07cc53c43ce62e7cb0e0a977641aca18393 (the prior close commit; equals the `sync_commit_sha` recorded in progress.md §E.4)
+  - rationale: three blocking findings from the sync audit.
+    - F1: a FIFO at a representative path hangs the version-matched update; AC-UMF-002 fails.
+    - F2: codex-only projects get a false `.claude/settings.json` missing warning.
+    - F3: the `system.yaml` probe entry cannot be observed on the version-matched path, and the CHANGELOG claim does not match the code.
+  - scope: `internal/cli/update_integrity_probe.go`, its test file(s), and the CHANGELOG.md claim about the probe (sync phase). No acceptance criterion or requirement is changed.
 
 ## A. Background and Evidence Baseline
 
