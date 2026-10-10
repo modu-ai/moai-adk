@@ -281,9 +281,11 @@ func handleFactoryRenew(ctx context.Context, req mcp.CallToolRequest) (*mcp.Call
 	if !factoryLaneAdmission() {
 		return toolErr("factory_renew", factoryNotALaneError("renew")), nil
 	}
-	lane := strings.TrimSpace(os.Getenv(config.EnvMoaiFactoryWorker))
-	if lane == "" {
-		return toolErr("factory_renew", fmt.Errorf("factory renew: %s is empty — a lane session carries its lane label there", config.EnvMoaiFactoryWorker)), nil
+	// The same lane-label check the verb runs (factoryLaneLabelFromEnv): a legacy spelling
+	// such as worker-1 is refused before any work, on both surfaces (sync-audit F1).
+	lane, err := factoryLaneLabelFromEnv("renew")
+	if err != nil {
+		return toolErr("factory_renew", err), nil
 	}
 	cardID := strings.TrimSpace(req.GetString("card", ""))
 	if cardID == "" {
