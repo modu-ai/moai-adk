@@ -92,12 +92,12 @@ tier: M
 | REQ | 게이트 상태 | 처분 | 소유자 |
 |---|---|---|---|
 | REQ-RDX-001 | 없음 — AC-RDX-014 판정 보류 (F3, 분할 efde) | 강등: 판정 보류 가드 | unassigned, leader to issue |
-| REQ-RDX-003 | 없음 — AC-RDX-006 판정 보류 (CX-8); 보존 면은 AC-RDX-011(합병) 회귀 가드 | 강등: 판정 보류 가드 | unassigned, leader to issue |
+| REQ-RDX-003 | 없음 — AC-RDX-006 판정 보류 (CX-8); 보존 면은 AC-RDX-011(합병) 회귀 가드 | 강등: 판정 보류 가드 | t1627 (queued) |
 | REQ-RDX-004 | 없음 — AC-RDX-014 판정 보류 (F3, 분할 efde) | 강등: 판정 보류 가드 | unassigned, leader to issue |
 | REQ-RDX-005 | 없음 — AC-RDX-011 회귀 가드 (합병 — (a) 부재 클레임, 오늘 녹색, RED-now 셀 없음) | 강등: 회귀 가드 (undecidable disposition) | unassigned, leader to issue |
-| REQ-RDX-006 | 없음 — AC-RDX-003 판정 보류 (CX-7); 동작 면 E3-P3·P4는 착지 신호 | 강등: 판정 보류 가드 | unassigned, leader to issue |
-| REQ-RDX-007 | 없음 — AC-RDX-004 판정 보류 (CX-7) | 강등: 판정 보류 가드 | unassigned, leader to issue |
-| REQ-RDX-008 | 없음 — AC-RDX-005 판정 보류 (CX-7) | 강등: 판정 보류 가드 | unassigned, leader to issue |
+| REQ-RDX-006 | 없음 — AC-RDX-003 판정 보류 (CX-7); 동작 면 E3-P3·P4는 착지 신호 | 강등: 판정 보류 가드 | t1627 (queued) |
+| REQ-RDX-007 | 없음 — AC-RDX-004 판정 보류 (CX-7) | 강등: 판정 보류 가드 | t1627 (queued) |
+| REQ-RDX-008 | 없음 — AC-RDX-005 판정 보류 (CX-7) | 강등: 판정 보류 가드 | t1627 (queued) |
 | REQ-RDX-009 | 없음 — AC-RDX-015 판정 보류 (F4, 분할 efde) | 강등: 판정 보류 가드 | unassigned, leader to issue |
 | REQ-RDX-011 | 없음 — AC-RDX-013 회귀 가드 (기준선 녹색, RED-now 셀 없음) | 강등: 회귀 가드 | unassigned, leader to issue |
 | REQ-RDX-012 | 없음 — AC-RDX-008 판정 보류 (F7, 분할 efde) | 강등: 판정 보류 가드 | unassigned, leader to issue |

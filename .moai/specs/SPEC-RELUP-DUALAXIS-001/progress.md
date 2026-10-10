@@ -4,8 +4,11 @@
 
 - plan_status: audit-ready
 - plan_complete_at: 2026-10-09T13:20:00Z
+- rdx-sibling-card → t1627 (queued; 리더 진술 기준 — 레인은 큐를 조회하지 않았다)
 
-판정: **PASS-WITH-DEBT 0.9375**(Tier M 임계 0.80 초과, blocking 0, codex 필수 게이트 pass — 영수증 `rcpt-a3d3e23f38b98c82994e755f`, 판정 파일 `.moai/reports/t1579/plan-audit.md` 터미널 섹션, audited_sha `3fbb54b19`). 감사 궤적: 정규 3반복(점수 회귀 STOP)→천장 분할(HISTORY 0.4.0)→신규 실행 3반복→통과. 부채 2건: `rdx015-e7-carry`(run에서 변제 — run-phase 위임 프롬프트가 plan §E7 검토 항목 운반 필수)·`rdx-sibling-card`(sync에서 변제 — 형제 카드 실제 발행, 미발행 시 AC-RDX-003/004/005/006/017 5종이 영구 판정 보류).
+판정 (현행): **iteration 7 FAIL**, overall 0.69 (Tier M 임계 0.80 미달), blocking 5, audited_sha `80837ff8f180ab9902d5bdad914415bd8ec2e43c`, 판정 파일 `.moai/reports/t1579/plan-audit-iter7.md`. 종결 경로는 debt-admit이다 — 리더 결정 `d-20261010T064334Z-8df9`(재-FAIL 분기, 추가 감사 없음)과 `d-20261010T074921Z-bb5d`(debt-admit, plan-audit 그대로 둠). 잔여 차단 발견 B1–B5는 카드 t1627이 이월한다(`.moai/reports/t1579/debt-for-t1627.md`).
+
+> **SUPERSEDED — 역사 기록, 현행 판정 아님** (현행은 위 iteration 7 FAIL): 판정: **PASS-WITH-DEBT 0.9375**(Tier M 임계 0.80 초과, blocking 0, codex 필수 게이트 pass — 영수증 `rcpt-a3d3e23f38b98c82994e755f`, 판정 파일 `.moai/reports/t1579/plan-audit.md` 터미널 섹션, audited_sha `3fbb54b19`). 감사 궤적: 정규 3반복(점수 회귀 STOP)→천장 분할(HISTORY 0.4.0)→신규 실행 3반복→통과. 부채 2건: `rdx015-e7-carry`(run에서 변제 — run-phase 위임 프롬프트가 plan §E7 검토 항목 운반 필수)·`rdx-sibling-card`(sync에서 변제 — 형제 카드 실제 발행, 미발행 시 AC-RDX-003/004/005/006/017 5종이 영구 판정 보류).
 
 ## §E.2 Run-phase Evidence
 
