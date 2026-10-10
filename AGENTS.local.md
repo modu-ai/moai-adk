@@ -172,6 +172,62 @@ Language policy는 `.claude/rules/moai/development/coding-standards.md`에 정�
 
 Conventional Commits — `<type>(<scope>): <description>` + 선택 본문/푸터. Types: feat, fix, docs, style, refactor, perf, test, chore, revert. 예시와 서식 전문: `.moai/docs/local-dev-guide.md` § 4a.
 
+### §4.0 Default development flow (local-main integration)
+
+카드 작업은 primary 체크아웃의 로컬 `main`으로 착지하고, 원격 `origin/main`은 릴리스 PR로만 전진한다. §4.1에서 표식이 붙은 조항은 이 절이 대체하며, 표식이 없는 조항은 그대로 유효하다.
+
+**[HARD] 1. 분기 기준**
+
+카드 워크트리는 로컬 `main`에서 분기한다. origin/main은 로컬 `main`보다 뒤처질 수 있으므로 분기 기준으로 쓰지 않는다. 이 저장소는 템플릿의 "Create the fresh tree from the remote default branch." 문장을 이 절로 대체한다. 배포 템플릿은 바뀌지 않는다.
+
+**[HARD] 2. 병합 착지**
+
+- 착지 면은 `workflow.local_main_integration.enabled`가 `true`이고, primary 체크아웃의 HEAD가 `main`을 가리키며, 별도 통합 워크트리가 `main`을 잡고 있지 않을 때다. 조건이 맞지 않으면 도구는 병합하지 않고 이유를 안내한다.
+- 병합은 `moai integration merge --card <id>`만 수행한다. `moai factory complete`가 레인 세션에서 이 명령을 호출한다. 에이전트가 Bash에 `git merge`를 직접 쓰는 것은 여전히 거부된다. 이 경로는 설계된 예외다.
+- 도구는 (1) 통합 창을 잡고, (2) HEAD를 심볼릭으로 읽어 `main`을 가리키는지 확인하며, (3) primary가 깨끗한지 확인하고(3항), (4) 카드 브랜치의 끝 커밋(tip)을 고정한 뒤 병합이 쓸 경로와 그 상위·하위 경로에 무시 파일이나 미추적 파일이 있으면 거부한다. 도구는 파일을 지우거나 stash하지 않는다. 이어서 (5) autostash를 끈 no-fast-forward 병합을 수행하고, (6) 첫 부모, HEAD, 상태 집합을 병합 전과 비교하며, (7) 병합 SHA와 트리를 기록하고 통합 창을 놓는다(`moai integration release`).
+
+**[HARD] 3. 깨끗한 primary 규칙**
+
+primary 체크아웃에서 착지하려면 `git status --porcelain=v1 -z --untracked-files=all`의 결과가 비어 있어야 한다. primary는 여러 세션이 함께 쓰므로 미커밋 변경의 소유자를 가릴 수 없다. 변경이 있으면 병합을 거부하고, 변경을 카드 워크트리로 옮기거나 소유 세션에 맡긴다. stash는 저장소 전체에 걸리므로 쓰지 않는다. 별도 통합 워크트리에는 겹침 규칙(REQ-LMF-005)이 적용된다.
+
+**[HARD] 4. 재동기화**
+
+릴리스 배치가 `origin/main`에 착지하면 로컬 `main`을 따라간다. 도구가 통합 창 안에서 fast-forward 전용으로 수행하며, 운영자 터미널에서는 하지 않는다.
+
+- (1) 창을 잡고 HEAD가 `main`을 가리키는지, primary가 깨끗한지 확인한다.
+- (2) `git fetch origin main`을 실행하고 exit 상태를 확인한다. 얻은 `origin/main` 값을 기준선으로 고정하고, 이후의 원격 비교는 모두 이 값으로 한다.
+- (3) HEAD와 기준선의 조상 관계를 읽는다. HEAD가 기준선보다 뒤처져 있으면 무시 파일 덮어쓰기를 검사한 뒤 fast-forward한다. 기준선이 HEAD의 조상이거나 두 값이 같으면 갱신이 필요 없다고 보고하고 HEAD는 둔다. 둘 중 어느 쪽도 조상이 아니면 갈라진 것이므로 거부하고 HEAD는 움직이지 않는다.
+- (4) 이동 뒤 HEAD가 기준선과 같고 여전히 `main`을 가리키는지 다시 읽은 뒤, 옛 SHA와 새 SHA를 보고하고 창을 놓는다.
+
+갈라진 경우의 처리 방법은 운영자 결정 Q2가 정한다(`.moai/specs/SPEC-LOCAL-MAIN-FLOW-001/decision-index.md`).
+
+**[HARD] 5. 마감과 워크트리 폐기**
+
+- 로컬 `main` 면에서 병합된 카드를 마감하는 일은 push하지 않으며, 릴리스 배치를 기다리지 않는다.
+- 카드 워크트리를 폐기하는 일은 그 병합을 실은 배치가 origin에 착지할 때까지 기다린다. 그전까지 카드 브랜치에는 원격 사본이 없으므로 워크트리가 작업의 유일한 사본이다.
+- 마감 조건은 다음과 같다. 병합 커밋이 두 부모를 가지고 그 트리가 두 번째 부모의 트리와 같으며 통합 브랜치에서 도달 가능해야 한다. 그 트리를 키로 한 재측정 기록이 검증을 통과해야 한다. 결정자는 사람이고 리더 승인 영수증이 검증되어야 한다. 레인이 낸 증거 파일은 재측정 기록을 대신하지 못한다.
+- 이 규칙의 구현은 후속 카드 t1621이 맡는다. t1621이 done 전이를 열기 전에는 병합된 카드가 done에 닿지 못한다.
+
+**[HARD] 6. 배치 릴리스 절차**
+
+`origin/main`은 릴리스 PR로만 전진하며, 직접 push하지 않는다.
+
+- (1) 로컬 `main`을 origin의 `release/main-batch-YYYYMMDD` 브랜치로 push한다. `YYYYMMDD`는 배치의 날짜다.
+- (2) 그 브랜치에서 `main`으로 가는 pull request를 연다.
+- (3) 병합 커밋으로 병합한다. squash 병합은 하지 않는다.
+- (4) 병합이 끝나면 4항의 재동기화로 로컬 `main`을 `origin/main`에 fast-forward한다.
+
+`main:release/*` 푸시에 대한 pre-push 훅의 판정은 아직 측정되지 않았다(OQ-10).
+
+**[HARD] 7. 배치 닫기 규칙**
+
+- 배치를 닫는 시점은 계수 트리거가 정한다. `git rev-list --count origin/main..main`이 `git_strategy.manual.lead_push_threshold`에 닿으면 리더가 배치를 닫고 6항의 절차를 시작한다. 임계값의 원천은 `.moai/config/sections/git-strategy.yaml`이다.
+- 트리거는 통합 창이 닫힌 뒤에만 평가한다.
+- 초록 조건부가 계수 트리거보다 우선한다. 카드 병합마다 통합 창의 병합 트리 재측정을 통과해야 하며, 마지막으로 착지한 배치의 `origin/main` CI가 red인 동안 다음 배치는 보류한다. 그 CI 판정이 아직 없으면 보류 사유가 아니다.
+- 임계값이 0이거나 키가 없으면 트리거는 꺼진 것이며, 배치를 닫는 시점은 리더가 판단한다. 이것은 오류 조건이 아니다.
+
+근거: SPEC-LOCAL-MAIN-FLOW-001 (spec REQ-LMF-010·REQ-LMF-011·§G; plan §B2·§B3·§B3a·§B4·§B7·§B9·§G.1).
+
 ### §4.1 통합 체인 (main)
 
 카드별로 각각 검증해 머지했는데 **합쳐진 상태는 아무도 보지 않는** 구멍을 막는다. 2026-08-15에 PR 12개가 각각 초록불로 main에 들어갔고, 합류 후에야 `moai update`가 로컬 전용 파일을 지운다는 사실이 드러났다. 2026-10-05 GitHub Flow 전환(M2)으로 통합 기저는 `main`이다 — 아래 체인은 전환 후 기준이고, develop 체인은 아래 [SUPERSEDED] 표식과 함께 역사로 남는다.
