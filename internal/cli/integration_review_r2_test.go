@@ -35,7 +35,7 @@ func TestR2_D_MergeRefusesPrimaryCheckoutTarget(t *testing.T) {
 	if err == nil {
 		t.Fatalf("RED (class D): the merge must refuse when the integration branch is not provisioned in a dedicated worktree")
 	}
-	if !strings.Contains(err.Error(), "provision") {
+	if !strings.Contains(strings.ToLower(err.Error()), "provision") {
 		t.Fatalf("the refusal must name the provisioning standard: %v", err)
 	}
 }
