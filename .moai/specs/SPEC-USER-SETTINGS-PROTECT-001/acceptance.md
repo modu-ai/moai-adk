@@ -23,7 +23,7 @@ Test-environment rule: the session does not redirect the shell HOME (the worktre
 
 - Given: a USER-scope settings file with `permissions.defaultMode` "plan", `allow`, `ask`, `deny`, `additionalDirectories`, and a sibling `env` key.
 - When: the USER-scope writer runs on the default path (`toolpolicy.WriteUserDefaultMode`, which the empty-tier init path calls per plan-phase E-6).
-- Then: `allow`, `ask`, `deny`, `additionalDirectories`, and `env` are unchanged. Only `permissions.defaultMode` may change, and only when it is absent (decided Q1; AC-003 part B).
+- Then: `allow`, `ask`, `deny`, `additionalDirectories`, and `env` are unchanged. Only `permissions.defaultMode` may change (decided Q1; the present-value case is AC-003 part B).
 - Contract anchor: SPEC-INIT-WIZARD-REPAIR-001 §4 (decision-index.md Q8, DECIDED). The M1 preservation test that §4 requires is absent from the tree (plan.md E-23); the run adds it under this criterion.
 - Verifying command: `go -C /Users/goos/MoAI/moai-adk-go/.moai/worktrees/t1630 test -overlay /Users/goos/MoAI/moai-adk-go/.moai/worktrees/t1630/.moai/reports/t1630/evidence/overlay-ac001-003.json -count=1 -v -run '^TestAC001PreservesListsAndUnmodelledKeys$' ./internal/config/toolpolicy/` (run-phase: the same assertion authored in the repository; its name is recorded in progress.md).
 - Class: release-blocking. Minimum executed: N=1.
@@ -152,7 +152,7 @@ Part B (release-blocking; decided Q1): an existing USER-scope `permissions.defau
   - (c) exit code: 1
   - (d) tree: 3975fe3cc25eb1cbc3be79aa16ff3bcd99f8ff21
   - Executed: 3.
-- Green path: after M2 the writer writes `defaultMode` only when it is absent; both subtests pass.
+- Green path: after M2 the writer keeps a present, differing `defaultMode` on both paths; both subtests pass. The absent-key write is not exercised by this criterion.
 
 ## AC-004 — The settings template carries one permissions.defaultMode key with the value "default" (decision Q2, DECIDED; the restated clause is in the spec.md §2 note on REQ-004)
 
