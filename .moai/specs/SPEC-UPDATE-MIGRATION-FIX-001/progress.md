@@ -344,6 +344,82 @@ if updateSkippedOnVersionMatch(cmd, ".") {
 
 M3 is implemented and verified in the working tree but not committed. M4 evidence is recorded above. Both wait on the gate decision.
 
+### Amendment run — sync-audit F1–F3 repair (card t1578)
+
+Trigger: `.moai/reports/t1578/sync-audit.md` (iteration 1, commit 40ab940f4), verdict FAIL on the blocking findings F1, F2, and F3 (sections 4 and 9). Scope held to `internal/cli/update_integrity_probe.go`, `internal/cli/update_integrity_probe_test.go`, and the one allowed new file `internal/cli/update_integrity_probe_codex_test.go`. CHANGELOG.md, spec.md, plan.md, acceptance.md, and the design and research files were not edited. Commits on `WT-update-migration-fixes`: RED witnesses `eace97057` (test-only, intentionally red against the probe at `3d31a548d`), then the GREEN repair `ac141b2cb` (probe and test). Nothing was pushed.
+
+**RED (E8).** Command: `go test ./internal/cli/ -run 'TestIntegrityProbe|TestRunUpdate_CodexOnlyVersionMatch_PrintsNoIntegrityRow|TestRunUpdate_VersionMatch_RunsIntegrityProbe|TestRunUpdate_UserCancelled_SkipsIntegrityProbe' -count=1 -v`, run with `unset MOAI_KANBAN_ID MOAI_KANBAN_LEAD_ADDR MOAI_KANBAN_SETTINGS_INJECTED &&`. Tree: probe at `3d31a548d`, tests as committed in `eace97057`. Verbatim failing lines:
+
+```
+=== filtered: the failure and summary lines of the run, in log order; the `=== RUN` lines and the e2e output body are removed ===
+    update_integrity_probe_codex_test.go:35: F2: an intact codex-only project printed integrity rows ["!  Integrity  .claude/settings.json (missing)"]
+--- FAIL: TestRunUpdate_CodexOnlyVersionMatch_PrintsNoIntegrityRow (1.02s)
+    update_integrity_probe_codex_test.go:65: settings row printed = true, want false (harness "gpt")
+        !  Integrity  .claude/settings.json (missing)
+        !  Integrity  .moai/config/sections/system.yaml (missing)
+    --- PASS: TestIntegrityProbe_ClaudeOnlyMemberFollowsHarness/no_llm_yaml_defaults_to_claude (0.00s)
+    --- PASS: TestIntegrityProbe_ClaudeOnlyMemberFollowsHarness/claude (0.00s)
+    --- PASS: TestIntegrityProbe_ClaudeOnlyMemberFollowsHarness/both (0.00s)
+    --- FAIL: TestIntegrityProbe_ClaudeOnlyMemberFollowsHarness/gpt_codex_only (0.00s)
+--- FAIL: TestIntegrityProbe_ClaudeOnlyMemberFollowsHarness (0.01s)
+--- PASS: TestRunUpdate_VersionMatch_RunsIntegrityProbe (0.75s)
+--- PASS: TestRunUpdate_UserCancelled_SkipsIntegrityProbe (0.06s)
+--- PASS: TestIntegrityProbe_FailOpen (0.45s)
+    update_integrity_probe_test.go:317: damageReason(.moai/manifest.json) did not return within 5s: the probe is blocked on a read it must never make
+    update_integrity_probe_test.go:321: damageReason(.moai/manifest.json) = "", want "unreadable"
+    --- FAIL: TestIntegrityProbeEntry_DamageReasons/fifo_in_place_of_json (5.00s)
+    --- FAIL: TestIntegrityProbeEntry_DamageReasons/oversized_json (0.03s)
+--- FAIL: TestIntegrityProbeEntry_DamageReasons (5.04s)
+    update_integrity_probe_test.go:344: F3: removing .moai/config/sections/system.yaml flips the version-match predicate, so the probe never runs on this project and cannot name the member
+    --- PASS: TestIntegrityProbeSet_EveryMemberObservableOnVersionMatchedPath/.claude/settings.json (0.00s)
+    --- FAIL: TestIntegrityProbeSet_EveryMemberObservableOnVersionMatchedPath/.moai/config/sections/system.yaml (0.00s)
+    --- PASS: TestIntegrityProbeSet_EveryMemberObservableOnVersionMatchedPath/.moai/manifest.json (0.00s)
+--- FAIL: TestIntegrityProbeSet_EveryMemberObservableOnVersionMatchedPath (0.01s)
+FAIL	github.com/modu-ai/moai-adk/internal/cli	8.489s
+```
+
+**GREEN (this run, HEAD `ac141b2cb`, scrubbed environment).**
+
+E1, AC matrix (each witness was run in this run):
+- AC-UMF-001: `TestRunUpdate_VersionMatch_RunsIntegrityProbe` PASS and `TestRunUpdate_UserCancelled_SkipsIntegrityProbe` PASS, in the seven-test run below.
+- AC-UMF-002: `TestRunUpdate_VersionMatch_RunsIntegrityProbe` PASS, `TestIntegrityProbe_FailOpen` PASS, and the bounded named-pipe witness `TestIntegrityProbeEntry_DamageReasons/fifo_in_place_of_json` PASS (0.00s).
+- AC-UMF-003: `TestRunUpdate_V3Path_NormalizesLegacyRootDenyEntries` PASS (0.43s).
+- AC-UMF-004: `TestTemplateSync_LeavesNoEmptyManagedSkillDirs` PASS (0.34s), `TestTemplateSync_ManagedSweepFlagsPlantedEmptyDir` PASS (0.00s), and `go test ./internal/userassets/ -count=1 -cover` reports `coverage: 80.1% of statements`.
+- AC-UMF-005: `grep -c "OUT OF SCOPE" .moai/specs/SPEC-UPDATE-MIGRATION-FIX-001/spec.md` returns `1`.
+
+Seven named scoped tests (`go test ./internal/cli/ -run 'TestRunUpdate_VersionMatch_RunsIntegrityProbe|TestRunUpdate_UserCancelled_SkipsIntegrityProbe|TestIntegrityProbe_FailOpen|TestIntegrityProbeEntry_DamageReasons|TestTemplateSync_LeavesNoEmptyManagedSkillDirs|TestTemplateSync_ManagedSweepFlagsPlantedEmptyDir|TestRunUpdate_V3Path_NormalizesLegacyRootDenyEntries' -count=1 -v`), verbatim:
+
+```
+--- PASS: TestRunUpdate_V3Path_NormalizesLegacyRootDenyEntries (0.43s)
+--- PASS: TestRunUpdate_VersionMatch_RunsIntegrityProbe (0.66s)
+--- PASS: TestRunUpdate_UserCancelled_SkipsIntegrityProbe (0.06s)
+--- PASS: TestIntegrityProbe_FailOpen (0.38s)
+--- PASS: TestIntegrityProbeEntry_DamageReasons (0.01s)
+--- PASS: TestTemplateSync_LeavesNoEmptyManagedSkillDirs (0.34s)
+--- PASS: TestTemplateSync_ManagedSweepFlagsPlantedEmptyDir (0.00s)
+PASS
+ok  	github.com/modu-ai/moai-adk/internal/cli	3.119s
+```
+
+New witnesses and adjacent codex-only tests (`TestRunUpdate_CodexOnlyVersionMatch_PrintsNoIntegrityRow`, `TestIntegrityProbe_ClaudeOnlyMemberFollowsHarness`, `TestReadProbeFile_HandleRecheckRefusesNonRegular`, `TestIntegrityProbeSet_EveryMemberObservableOnVersionMatchedPath`, `TestUpdateCodexOnlyNoClaudeResurrection`, `TestUpdatePreservesHarnessKey`): all PASS, `ok  	github.com/modu-ai/moai-adk/internal/cli	3.814s`. Falsifiability: with the handle re-check disabled (`if false && !info.Mode().IsRegular()`), `TestReadProbeFile_HandleRecheckRefusesNonRegular` fails with `readProbeFile(named pipe) = "", want "not a file"`; the probe was restored from the GREEN copy and the witness passed again.
+
+E2, cross-platform: `GOOS=windows GOARCH=amd64 go build ./internal/cli/ ./internal/userassets/` exits 0 with no output; `GOOS=windows GOARCH=amd64 go test -c -o <scratch> ./internal/cli/` exits 0.
+
+E3, coverage (`go test ... -coverprofile`, then `go tool cover -func`): `appliesTo` 100.0%, `damageReason` 100.0%, `readProbeFile` 83.3%, `runManagedSurfaceIntegrityProbe` 88.9%, `updateSkippedOnVersionMatch` 100.0%. The uncovered `readProbeFile` blocks are the not-exist race after the pre-stat, the handle Stat error, the read error, and read growth past the bound. The 88.9% is the deferred recover arm (F4, optional, unchanged). `internal/userassets`: 80.1% of statements, unchanged from before this run.
+
+E4: `grep -rn 'AskUserQuestion' internal/cli/update_integrity_probe*.go` prints nothing (exit 1).
+
+E5: `gofmt -l` on the three touched files prints nothing; `go vet ./internal/cli/ ./internal/userassets/` exits 0; `golangci-lint run --timeout=10m ./internal/cli/ ./internal/userassets/` prints `0 issues.` and exits 0.
+
+E6: `eace97057` (test, RED: the two test files) and `ac141b2cb` (fix, GREEN: the probe and the test file, 103 insertions and 29 deletions). Nothing was pushed.
+
+E7, blockers and gaps:
+- Blocker in another file (not editable in this run): `CHANGELOG.md:26` still names `system.yaml` and "three representative core project files". sync-audit F3 requires that line rewritten; the owner is the sync phase.
+- Doc drift (not editable in this run): `acceptance.md` line 141 says the probe "touches no syscall surface". The probe now calls `syscall.O_NONBLOCK`, which the Windows syscall package defines (`types_windows.go:50`), and the Windows build is green. The SPEC owner should reword the line.
+- The `/verify` gate was not run. Its standalone run executes the project-wide test step (`gate.yaml` `skip_tests: false`) and has no per-run switch; this run forbids `go test ./...`, and the lane protocol (`.claude/rules/local/gitflow-lane-protocol.md` §8) does too. The scoped substitutes are E5 and the scoped tests above.
+- Consequence of F3: the `empty` reason has no producer any more, because its only producer, `probeNonEmpty`, left the set and was removed.
+- Gap: the full `internal/cli` package suite was not run (a CI item).
+
 ## §E.3 Run-phase Audit-Ready Signal
 
 - run_status: complete (gate FAIL dispositioned by the leader ruling d-20261009T174939Z-a927: pre-existing base defect; the run stage is not blocked)
@@ -364,6 +440,8 @@ M3 is implemented and verified in the working tree but not committed. M4 evidenc
 - preserve_list_post_run_count: the PRESERVE list is intact. The only edit to a PRESERVE file is the single insertion in internal/cli/update.go; the 9-form pin is unchanged; install.go changed only for REQ-UMF-006
 - audit_ready: true
 - reason: E6 is incomplete (no commit SHAs for M2–M4), E7 records an open blocker, and the gate verdict is FAIL. The signal is released after the operator's gate decision and the M2, M3, and M4 commits.
+
+- amendment_run (sync-audit F1–F3 repair, card t1578): RED `eace97057`, GREEN `ac141b2cb`; the seven named scoped tests PASS; the new witnesses PASS; golangci-lint 0 issues; gofmt clean; go vet exit 0; the GOOS=windows build and test-binary compile exit 0; the /verify gate was not run (see the §E.2 amendment, E7). The sync-audit delta re-audit is pending.
 
 ## §E.4 Sync-phase Audit-Ready Signal
 
