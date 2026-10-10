@@ -154,8 +154,12 @@ func checkProjectVsLock(projectRoot string, verbose bool) DiagnosticCheck {
 		check.Message = "no project manifest (nothing to compare)"
 		return check
 	}
-	var probe json.RawMessage
-	if json.Unmarshal(manifestData, &probe) != nil {
+	// Finding A (card t1591): decode into the type manifest.Load decodes into, but
+	// read-only. Valid JSON of the wrong shape (for example {"files":123}) is as
+	// corrupt as text that is not JSON, and it must never reach Load, which moves
+	// a manifest it cannot decode aside.
+	var mf manifest.Manifest
+	if json.Unmarshal(manifestData, &mf) != nil {
 		check.Status = uikit.CheckFail
 		check.Message = fmt.Sprintf("project manifest at %s is corrupt — run 'moai doctor --json' for recovery guidance; the file is preserved untouched", manifestPath)
 		if verbose {
@@ -164,17 +168,8 @@ func checkProjectVsLock(projectRoot string, verbose bool) DiagnosticCheck {
 		return check
 	}
 
-	mgr := manifest.NewManager()
-	if _, err := mgr.Load(projectRoot); err != nil {
-		// a parse-valid manifest the manager still refuses: reported at a
-		// failure grade, never the CheckOK disguise
-		check.Status = uikit.CheckFail
-		check.Message = fmt.Sprintf("project manifest load failed: %v", err)
-		return check
-	}
-
 	notInLock, notOnDisk := 0, 0
-	for p := range mgr.Manifest().Files {
+	for p := range mf.Files {
 		abs := filepath.Join(projectRoot, filepath.FromSlash(p))
 		if _, err := os.Stat(abs); os.IsNotExist(err) {
 			notOnDisk++
@@ -197,7 +192,7 @@ func checkProjectVsLock(projectRoot string, verbose bool) DiagnosticCheck {
 			strings.HasPrefix(relSlash, "node_modules/") {
 			return nil
 		}
-		if _, tracked := mgr.Manifest().Files[relSlash]; !tracked {
+		if _, tracked := mf.Files[relSlash]; !tracked {
 			// Only template-recorded ROOTS are lock-comparable surface.
 			for _, root := range projectCommonAssetRels {
 				if strings.HasPrefix(relSlash, root) {
