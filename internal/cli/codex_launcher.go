@@ -959,7 +959,7 @@ const codexLaneAutoPrompt = "Run `moai todo --auto` to consume the backlog queue
 func runCodexFactoryLane(cmd *cobra.Command, entry factoryFlagParse, debug bool) error {
 	// The lane session leases through `moai todo --auto` from the parent
 	// checkout — the lease machinery's own precondition (REQ-SD-010).
-	if err := factoryAssertParentCheckout(resolveProjectDir()); err != nil {
+	if err := codexLaneParentCheckout(resolveProjectDir()); err != nil {
 		return err
 	}
 	// Debug mode (SPEC-CODEX-DEBUG-MODE-001): the lane launch traces its own
