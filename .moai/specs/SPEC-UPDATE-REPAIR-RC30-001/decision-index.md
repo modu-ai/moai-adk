@@ -98,3 +98,15 @@ Options (factual; no recommendation):
 - **(b) Merge.** Merge AC-RC30-14 (skip decision, U-13) and AC-RC30-15 (stamp skew, U-14) into one criterion with two named sub-cases. Coverage kept: U-13 and U-14 both remain judged, by two sub-cases of one test. The parent keeps 25 criteria.
 Default: none.
 Operator verdict:
+
+### F1: Follow-up placement of moved items (tracked record)
+
+Status: tracked record of the placement of items moved out of SPEC A. Moved items keep their IDs. Each row names the ruling or decision that moved it. The git-ignored draft of this list (.moai/reports/t1619/followup-cards-draft.md, excluded by .gitignore line 235) is not a citation target; this section is.
+
+- Follow-up placement (ruling d-20261010T040402Z-94b9): AC-RC30-25 with REQ-RC30-014, REQ-RC30-016, REQ-RC30-018, REQ-RC30-019, REQ-RC30-020 and U-26 through U-30. Dispositions before the move (spec.md § C): U-26 to U-29 IN-NOW; U-30 GAP-INVESTIGATE.
+- SPEC B (ruling d-20261009T235135Z-5e35): AC-RC30-01, AC-RC30-02, AC-RC30-03, AC-RC30-11 with REQ-RC30-003, REQ-RC30-004 and U-02, U-10.
+- SPEC B (ruling d-20261010T033220Z-3c5f, decision d-20261010T084752Z-d4be): AC-RC30-26 with REQ-RC30-021 and U-31.
+- Gaps (not closed by any placement above):
+  - the AC-RC30-09 count clause of REQ-RC30-017 (AC-RC30-09 judges the literal string only; no count-level judge exists yet);
+  - the AC-RC30-24 cross-reference to REQ-RC30-003 (REQ-RC30-003 is owned by SPEC B under d-20261009T235135Z-5e35; AC-RC30-24 stays in SPEC A as a cross-reference, criterion text unchanged);
+  - the leader alternative of moving AC-RC30-24 with REQ-RC30-003, which would give 20 criteria and is not applied.

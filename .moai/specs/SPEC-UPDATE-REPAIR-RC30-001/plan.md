@@ -4,7 +4,7 @@ Milestones are ordered by decision reversibility: the decisions most likely to c
 
 ## A. Context
 
-- Tree of the RED cells: `8fa0dc24b` (code paths equal main `2aab5f797`). Main = `2aab5f797`. The SPEC-only commits after `8fa0dc24b` leave the code paths unchanged (`git diff --name-only 8fa0dc24b 00ab5bbb1 -- internal cmd` is empty).
+- Tree of the RED cells: `8fa0dc24b` (code paths equal main `2aab5f797`). Main = `2aab5f797`. Commits after `00ab5bbb1` changed `internal/cli/migrate_project_assets.go` (`f9a58fa4e`, `00c1b4b3f`); the code paths are unchanged only through `00ab5bbb1` (`git diff --name-only 8fa0dc24b 00ab5bbb1 -- internal cmd` is empty).
 - Absorbed refs (recorded at M1, not before plan-audit): `WT-user-asset-bundle` (t1591) and `WT-update-migration-fixes` (t1578), absorbed at run start; the absorption-time tip is recorded in progress.md section G (Absorption Record).
 - Installed `moai` binary (`4f8aba061`) is not evidence for this tree. Any build used for a measurement is built from this tree and invoked by path.
 - Existing SPECs whose decisions bind this plan: SPEC-USER-ASSET-INSTALL-001 (P6, REQ-002), SPEC-CLI-TUX-INIT-UPDATE-001 (REQ-TUXIU-004, -012 to -016, -020 to -022, -041, -054), SPEC-V3R6-UPDATE-NOISE-001 (`--verbose`, REQ-UN-005, REQ-UN-010), SPEC-V3R6-UPDATE-PROGRESS-001 (`tui.ProgressLine`), SPEC-UPDATE-MIGRATION-001 (REQ-UPM-030 to -032, § H out-of-scope notes for t1509 and t1527), SPEC-UPDATE-YAML-PRESERVE-001 (comment preservation).
@@ -13,7 +13,7 @@ Milestones are ordered by decision reversibility: the decisions most likely to c
 
 ### B.1 Milestone M0 — RED capture (High)
 
-Before any change: capture the RED-now cell of every criterion in `acceptance.md` on tree `8fa0dc24b` (code paths equal main `2aab5f797`), as single-invocation commands with verbatim stdout, exit code, and tree SHA. Measure the runnable profile-visibility command form (AC-RC30-01, moved to SPEC B) and confirm the `make tui-snapshot` target. Record each result in `progress.md` § E.2 (run-phase evidence).
+Before any change: capture the RED-now cell of every criterion in `acceptance.md` on tree `8fa0dc24b` (code paths equal main `2aab5f797`), as single-invocation commands with verbatim stdout, exit code, and tree SHA. Measure the runnable profile-visibility command form (AC-RC30-01, moved to SPEC B) and confirm the `make tui-snapshot` target. Record each result in `progress.md` § E.2 (run-phase evidence). Re-observe every RED cell on HEAD at M1, before absorption; the result replaces the `8fa0dc24b` cells (recorded as a Gap in `progress.md` section E.2).
 
 Exit condition: every criterion has a RED cell or a recorded reason it cannot be captured (Gap).
 
@@ -56,15 +56,15 @@ Exit condition: AC-RC30-06, -07, -08 pass; AC-RC30-22 and -23 are recorded as bl
 
 ### B.5 Milestone M4 — Output TUX and report wording (High; user-visible; not gated on M1)
 
-0. Measured values first (U-08, AC-RC30-09): remove the literal at `update_archive.go` lines 282 and 367 (E-01), and print the no-op outcome from measured counts. U-27 consumes these values, so this step precedes it. The same change updates the characterization expectation at `internal/cli/tuxiu_characterization_test.go:201`, which pins the literal and `Updated 26 files` (E-22). 1. Step progress: N of M, a bar, one ✓ ! ✗ line per step, in place on a TTY, plain lines otherwise (U-26; reuse `tui.ProgressLine` and `tui.Progress`).
-2. One-screen closing summary with the five counts, one action line only when needed, the backup location, and one restore command (U-27).
-3. Conflicts and warnings above the summary; the measured outcome replaces the pre-merge risk class (U-28).
-4. Narrow-terminal and fallback behavior (U-29). The threshold is a named constant in `internal/tui` defaults.
+0. Measured values first (U-08, AC-RC30-09): remove the literal at `update_archive.go` lines 282 and 367 (E-01), and print the no-op outcome from measured counts. U-27 [MOVED to the follow-up placement F1] consumes these values, so this step precedes it. The same change updates the characterization expectation at `internal/cli/tuxiu_characterization_test.go:201`, which pins the literal and `Updated 26 files` (E-22). 1. Step progress [MOVED to the follow-up placement F1]: N of M, a bar, one ✓ ! ✗ line per step, in place on a TTY, plain lines otherwise (U-26; reuse `tui.ProgressLine` and `tui.Progress`).
+2. One-screen closing summary with the five counts, one action line only when needed, the backup location, and one restore command (U-27). [MOVED to the follow-up placement F1]
+3. Conflicts and warnings above the summary; the measured outcome replaces the pre-merge risk class (U-28). [MOVED to the follow-up placement F1]
+4. Narrow-terminal and fallback behavior (U-29) [MOVED to the follow-up placement F1]. The threshold is a named constant in `internal/tui` defaults.
 5. File lists collapse to counts; the full list goes behind `--verbose` or to a log path (U-16). `--verbose` keeps the NOISE-001 meaning.
-6. Locale mechanism read, then key parity (U-30; REQ-RC30-019): first read how the update output reaches locale strings (E-21 shows the renderer files read no locale setting; the read is recorded in research.md), then make the ko, en, ja, and zh tables define the same keys. The parity check is judged by the locale part of AC-RC30-25 (`TestUpdateLocaleKeyParity`) and runs in this step, after the read.
-7. Golden snapshots are regenerated only through `make tui-snapshot`, on a reviewed diff.
+6. Locale mechanism read, then key parity (U-30; REQ-RC30-019) [MOVED to the follow-up placement F1]: first read how the update output reaches locale strings (E-21 shows the renderer files read no locale setting; the read is recorded in research.md), then make the ko, en, ja, and zh tables define the same keys. The parity check is judged by the locale part of AC-RC30-25 (`TestUpdateLocaleKeyParity`) and runs in this step, after the read.
+7. Golden snapshots are regenerated only through `make tui-snapshot`, on a reviewed diff. [MOVED to the follow-up placement F1]
 
-Exit condition: AC-RC30-09, -17, -25 pass; `make tui-snapshot` output is reviewed.
+Exit condition: AC-RC30-09 and AC-RC30-17 pass. AC-RC30-25 [MOVED to the follow-up placement F1] is not a condition of this SPEC.
 
 ### B.6 Milestone M5 — Measured messages and counts (Medium; mechanical)
 
@@ -74,7 +74,7 @@ Exit condition: AC-RC30-14, -15, -19 pass.
 
 ### B.7 Milestone M6 — Investigations (Medium)
 
-Each GAP-INVESTIGATE item is closed by its named evidence, with its command and output in research.md: U-15 (AC-RC30-16), U-19 and U-20 (AC-RC30-20), U-25 (AC-RC30-24). U-30 has no M6 work: its locale mechanism is read in M4 step 6, before the parity check (§ B.5; Q1 is resolved from disk, decision-index.md Q1).
+Each GAP-INVESTIGATE item is closed by its named evidence, with its command and output in research.md: U-15 (AC-RC30-16), U-19 and U-20 (AC-RC30-20), U-25 (AC-RC30-24). U-30 [MOVED to the follow-up placement F1] has no M6 work: its locale mechanism is read in M4 step 6, before the parity check (§ B.5; Q1 is resolved from disk, decision-index.md Q1).
 
 ### B.8 Milestone M7 — Verification and merge-ready (High)
 
@@ -114,7 +114,7 @@ Each GAP-INVESTIGATE item is closed by its named evidence, with its command and 
 | Both branches change `internal/userassets/install.go` | Merge conflict at M1 | Plain merge; conflicts resolved with the branch tests kept green |
 | Branch tips move after absorption | Measurements go stale | Re-absorb on movement; ranges are measured from the merge-base each time |
 | Golden churn in the TUX output | Review load | Golden updates only through `make tui-snapshot` on a reviewed diff |
-| "16 locales" versus "four locale strings" | Wrong scope for U-30 | Q1 is resolved from disk (decision-index.md Q1); U-30 is judged by the locale part of AC-RC30-25, after its mechanism is read in M4 step 6 |
+| "16 locales" versus "four locale strings" | Wrong scope for U-30 | Q1 is resolved from disk (decision-index.md Q1); U-30 [MOVED to the follow-up placement F1] is judged by the locale part of AC-RC30-25, after its mechanism is read in M4 step 6 |
 | Track overlap with t1621 and t1622 | Scope creep into factory code | Named under Dependencies in spec.md § H; not items |
 
 ## G. Dependencies
@@ -129,7 +129,7 @@ Out of scope: the factory slug rule (t1621), the factory inbox error (t1622), in
 
 | D-number | item (short name) | corresponding REQ/AC IDs in this SPEC | note |
 |---|---|---|---|
-| D1 | Shared-root assets vs. profile config directory | REQ-RC30-001, REQ-RC30-002, REQ-RC30-003; AC-RC30-01, AC-RC30-02 (both moved to SPEC B) | U-01; Q2 decided as option (c); BLOCKED-ON t1591; no criterion active in this SPEC |
+| D1 | Shared-root assets vs. profile config directory | REQ-RC30-001, REQ-RC30-002, REQ-RC30-003 (owned by SPEC B; cross-reference); AC-RC30-27 (new, decision d-20261010T084752Z-d4be); AC-RC30-01, AC-RC30-02 (moved to SPEC B) | U-01; Q2 decided as option (c); BLOCKED-ON t1591; judged by AC-RC30-27 |
 | D2 | Migration deletes files before the backup step | REQ-RC30-004; AC-RC30-03 (moved to SPEC B) | U-02; moved to SPEC B |
 | D3 | Plugin-mode projects receive core assets only | REQ-RC30-005; AC-RC30-04 | U-03; BLOCKED-ON WT-user-asset-bundle (t1591) |
 | D4 | Renamed skill unremovable and labelled as opt-in | REQ-RC30-005; AC-RC30-10 | U-09; BLOCKED-ON WT-user-asset-bundle (t1591); AC-RC30-10 covers the non-catalog message only; no REQ or AC here covers the rename/retired map |
