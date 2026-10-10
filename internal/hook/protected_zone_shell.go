@@ -55,7 +55,7 @@ import (
 
 // zoneMutationVerbs are the single-word mutating forms of REQ-SIPZ-007.
 var zoneMutationVerbs = map[string]bool{
-	"rm": true, "unlink": true, "mv": true, "cp": true, "tee": true, "truncate": true,
+	"rm": true, "unlink": true, "mv": true, "rename": true, "cp": true, "tee": true, "truncate": true,
 }
 
 // zoneGitMutating are the git subcommands of REQ-SIPZ-007.

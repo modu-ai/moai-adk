@@ -115,6 +115,7 @@ categories:
 		shellRow("R2", "rm -rf "+realDemo, true),
 		shellRow("R6", "rm -rf "+outer, true),
 		shellRow("R1r", "rm -rf "+skillsDir, true),
+		shellRow("R11", "rm -rf /", true),
 		// the tracked file, through its real path and through the link
 		shellRow("R3", "rm -f "+realSkill, true),
 		shellRow("R3l", "rm -f "+linkSkill, true),
