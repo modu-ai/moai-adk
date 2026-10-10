@@ -679,6 +679,92 @@ func TestMergeStepLateIgnoredFileCollisionRefusesMerge(t *testing.T) {
 	}
 }
 
+func TestMergeStepIgnoredFileAfterProbeRefusesMerge(t *testing.T) {
+	// P1 (card t1478 sync audit round 3): the collision probe ran BEFORE the
+	// candidate lock was taken, so an ignored byte at an added path that
+	// appeared after that probe — while the step waited for the candidate
+	// lock, or inside the lock span before the merge — was never seen, and
+	// the three-way `git merge --no-ff` overwrote it. The probe must run
+	// again inside the candidate lock, after the landing check and
+	// immediately before the merge: the colliding path refuses with cause
+	// 13, the byte is untouched, and no merge commit lands.
+	lateByte := func(t *testing.T, f *stepFixture) {
+		t.Helper()
+		if err := os.WriteFile(filepath.Join(f.integ, "card.txt"), []byte("late ignored byte"), 0o644); err != nil {
+			t.Fatal(err)
+		}
+	}
+	assertRefused := func(t *testing.T, f *stepFixture, err error) {
+		t.Helper()
+		got, readErr := os.ReadFile(filepath.Join(f.integ, "card.txt"))
+		if readErr != nil {
+			t.Fatal(readErr)
+		}
+		if string(got) != "late ignored byte" {
+			t.Errorf("the merge overwrote the late ignored byte: got %q", got)
+		}
+		if head := stepMustGit(t, f.integ, "rev-parse", "HEAD"); head != f.record.Base {
+			t.Errorf("a merge commit landed: HEAD %s, want the base %s", head, f.record.Base)
+		}
+		requireCode(t, err, MergeExitCollision)
+		requireWindowReleasedAndCPromoted(t, f)
+	}
+
+	t.Run("byte appears inside the candidate lock span after the landing check", func(t *testing.T) {
+		f := newMergeFixture(t)
+		landingSeedRecord(t, f, CandidateVerdictGreen)
+		seams := f.seams(f.withCardTree(readyCardPtr()))
+		checks := 0
+		seams.LandingCheck = func(cardID, sha string) error {
+			checks++
+			if checks == 1 {
+				// The gate-5 check, outside the candidate lock, judges the green record.
+				return CandidateLandingCheck(LandingCheckInput{
+					Root: f.root, CardID: cardID, PinnedSHA: sha,
+					TargetBranch: "develop", IntegrationWorktree: f.integ,
+				})
+			}
+			// The in-lock recheck: the byte appears after the early probes,
+			// inside the lock span, immediately before the merge.
+			lateByte(t, f)
+			return nil
+		}
+		_, err := RunMergeStep(f.input(), seams)
+		if checks < 2 {
+			t.Fatalf("the in-lock landing recheck did not run (%d calls): the placement moved", checks)
+		}
+		assertRefused(t, f, err)
+	})
+
+	t.Run("byte appears after the window probe and before the candidate lock is taken", func(t *testing.T) {
+		f := newMergeFixture(t)
+		landingSeedRecord(t, f, CandidateVerdictGreen)
+		card := f.withCardTree(readyCardPtr())
+		seams := f.seams(card)
+		reads := 0
+		seams.ReadCard = func(string) (MergeCardState, error) {
+			reads++
+			if reads == 2 {
+				// The in-section card re-read runs after the window-section
+				// collision probe and before the step takes the candidate lock.
+				lateByte(t, f)
+			}
+			return *card, nil
+		}
+		seams.LandingCheck = func(cardID, sha string) error {
+			return CandidateLandingCheck(LandingCheckInput{
+				Root: f.root, CardID: cardID, PinnedSHA: sha,
+				TargetBranch: "develop", IntegrationWorktree: f.integ,
+			})
+		}
+		_, err := RunMergeStep(f.input(), seams)
+		if reads < 2 {
+			t.Fatalf("the in-section card re-read did not run (%d reads): the placement moved", reads)
+		}
+		assertRefused(t, f, err)
+	})
+}
+
 func TestMergeStepLeaseRenewalPreservesTheConfiguredDisabledLease(t *testing.T) {
 	// F7 (card-review r3): the renewal and the recheck stamp read ONLY
 	// seams.LeaseDuration, whose zero fell back to IntegrationLeaseDefault —

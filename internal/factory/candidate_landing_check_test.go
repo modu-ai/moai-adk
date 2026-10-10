@@ -538,6 +538,80 @@ func TestLatestCandidateRecord(t *testing.T) {
 	})
 }
 
+func TestCandidateLandingCheckRefusesForeignIdentity(t *testing.T) {
+	// P2 (card t1478 sync audit round 3): the check read the record stored at
+	// this card's lookup path and judged its verdict, tip, and ancestry without
+	// comparing the record's own card id and pinned SHA with the merge's. A
+	// valid green record of another card, or of another pinned SHA, stored at
+	// this path admitted. The record's identity is judged first: a record that
+	// does not name this card and this pinned SHA never admits, whatever its
+	// verdict.
+	check := func(f *stepFixture) error {
+		return CandidateLandingCheck(LandingCheckInput{
+			Root: f.root, CardID: stepCard, PinnedSHA: f.cardSHA,
+			TargetBranch: "develop", IntegrationWorktree: f.integ,
+		})
+	}
+	// place stores rec at the lookup path for (stepCard, f.cardSHA) whatever
+	// identity the record carries — the misplaced-record shape.
+	place := func(t *testing.T, f *stepFixture, rec CandidateRecord) {
+		t.Helper()
+		path, err := candidateRecordPath(f.root, stepCard, f.cardSHA)
+		if err != nil {
+			t.Fatal(err)
+		}
+		if err := atomicWriteFile(path, rec); err != nil {
+			t.Fatal(err)
+		}
+	}
+
+	t.Run("another card's green record at this lookup path refuses", func(t *testing.T) {
+		f := newMergeFixture(t)
+		rec := landingSeedRecord(t, f, CandidateVerdictGreen)
+		if err := check(f); err != nil {
+			t.Fatalf("control: the record bound to this card and pinned SHA must admit: %v", err)
+		}
+		rec.CardID = "t0009"
+		place(t, f, rec)
+		err := check(f)
+		if err == nil {
+			t.Fatal("a green record naming another card was admitted at this card's lookup path")
+		}
+		if !strings.Contains(err.Error(), "identity mismatch") {
+			t.Errorf("refusal %q: want the identity mismatch named", err)
+		}
+	})
+
+	t.Run("another pinned SHA's green record at this lookup path refuses", func(t *testing.T) {
+		f := newMergeFixture(t)
+		rec := landingSeedRecord(t, f, CandidateVerdictGreen)
+		if err := check(f); err != nil {
+			t.Fatalf("control: the record bound to this card and pinned SHA must admit: %v", err)
+		}
+		rec.PinnedSHA = f.record.Base
+		place(t, f, rec)
+		err := check(f)
+		if err == nil {
+			t.Fatal("a green record naming another pinned SHA was admitted at this card's lookup path")
+		}
+		if !strings.Contains(err.Error(), "identity mismatch") {
+			t.Errorf("refusal %q: want the identity mismatch named", err)
+		}
+	})
+
+	t.Run("identity is judged before the branch identity", func(t *testing.T) {
+		f := newMergeFixture(t)
+		rec := landingSeedRecord(t, f, CandidateVerdictGreen)
+		rec.CardID = "t0009"
+		rec.IntegrationBranch = "release/v9.9.9"
+		place(t, f, rec)
+		err := check(f)
+		if err == nil || !strings.Contains(err.Error(), "identity mismatch") {
+			t.Fatalf("refusal %v: want the identity mismatch to come before the target mismatch", err)
+		}
+	})
+}
+
 func TestCandidateLandingCheckGuards(t *testing.T) {
 	t.Run("no worktree refuses the tip read", func(t *testing.T) {
 		f := newMergeFixture(t)
