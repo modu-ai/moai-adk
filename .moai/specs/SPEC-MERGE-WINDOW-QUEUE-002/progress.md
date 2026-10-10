@@ -259,7 +259,7 @@ m1_to_mN_commit_strategy: one commit per milestone (M1 a560b3b6f, M2 eac7fab39, 
 ```yaml
 sync_status: complete (named gaps F5 F6 F7 F9 F11 F12c F13 - see E.4.5)
 sync_complete_at: 2026-10-10T00:57:52Z
-sync_commit_sha: pending-backfill
+sync_commit_sha: f7253a392
 sync_tier: M
 ac_source: .moai/specs/SPEC-MERGE-WINDOW-QUEUE-002/acceptance.md
 ac_live_count_for_record: 8
