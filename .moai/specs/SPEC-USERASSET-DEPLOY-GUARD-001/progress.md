@@ -965,7 +965,7 @@ run_complete_at: 2026-10-09
 ```yaml
 sync_status: complete
 sync_complete_at: 2026-10-10
-sync_commit_sha: pending-backfill-sync   # 커밋은 자신의 해시를 인용할 수 없음 — 다음 커밋에서 backfill
+sync_commit_sha: 2eaaf1489   # 커밋은 자신의 해시를 인용할 수 없음 — 다음 커밋에서 backfill
 b12_self_test_a: >-
   pre-emission dedup grep: grep -c 'SPEC-USERASSET-DEPLOY-GUARD-001' CHANGELOG.md → 편집 전 1, 편집 후 1 (관측 시점 HEAD 273bf72a0).
   기존 엔트리 1건을 제자리에서 개정했고 새 엔트리는 추가하지 않았다 — 중복 등록 없음.
