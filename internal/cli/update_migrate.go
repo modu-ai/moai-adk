@@ -141,6 +141,9 @@ func runUpdateMigrationTrigger(projectRoot string, noPlugin bool, out, errOut io
 	return plan, nil
 }
 
+// stampMigrationDeployMode is a RED stub for AC-RC30-07; the stamp and its warning land in the GREEN commit.
+func stampMigrationDeployMode(projectRoot string, outcome migrationOutcome, errOut io.Writer) {}
+
 // classifiedCleanTarget builds one classified removal target.
 
 // archiveMigrationFile archives ONE classified file (never a directory)
