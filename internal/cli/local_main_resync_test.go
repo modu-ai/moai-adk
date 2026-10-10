@@ -9,6 +9,7 @@ package cli
 // assertion below fails at its own check.
 
 import (
+	"errors"
 	"os"
 	"path/filepath"
 	"strings"
@@ -22,16 +23,31 @@ import (
 )
 
 // lmfResyncFixture builds a primary checkout on main (lmfRepo), stamps the lane
-// session and label, and replaces the origin fetch with a no-op for the test.
+// session and label, and replaces the origin fetch with a no-op for the test. The
+// no-op records FETCH_HEAD the way the fetch would (lmfWriteFetchHead), so the
+// re-sync takes its baseline from the fetched object, as it does after a real fetch.
 func lmfResyncFixture(t *testing.T, gitignore string) string {
 	t.Helper()
 	root, _ := lmfRepo(t, true, gitignore)
 	t.Setenv(config.EnvClaudeCodeSessionID, lmfSession)
 	sdLaneEnv(t, "lane-1", "")
 	prev := localMainResyncFetch
-	localMainResyncFetch = func(string) error { return nil }
+	localMainResyncFetch = func(repoRoot string) error {
+		lmfWriteFetchHead(t, repoRoot)
+		return nil
+	}
 	t.Cleanup(func() { localMainResyncFetch = prev })
 	return root
+}
+
+// lmfWriteFetchHead records FETCH_HEAD the way `git fetch origin main` leaves it: the
+// commit that refs/remotes/origin/main names in the fixture. It runs a real fetch
+// from the fixture's own repository, because git refuses to update the FETCH_HEAD
+// pseudo-ref with update-ref. The fetch names no destination, so no ref moves. The
+// no-op fetch seams call it after the fixture has set origin/main (card t1616, F6).
+func lmfWriteFetchHead(t *testing.T, root string) {
+	t.Helper()
+	fcGit(t, root, "fetch", "-q", ".", "refs/remotes/origin/"+lmfBranch)
 }
 
 // lmfLocalCommit commits path with content on the primary's local main and
@@ -346,6 +362,7 @@ func TestLocalMainResyncTakeoverDuringFetchRefuses(t *testing.T) {
 		}, true); err != nil {
 			t.Fatalf("fixture: the rival takeover while the fetch runs: %v", err)
 		}
+		lmfWriteFetchHead(t, repoRoot)
 		return nil
 	}
 	_, err := runLocalMainResync(root)
@@ -373,6 +390,7 @@ func TestLocalMainResyncPostMergeWritesHold(t *testing.T) {
 	target := lmfOriginCommit(t, root, base, "origin-ahead", map[string]string{"ahead.txt": "ahead\n"}, false)
 	localMainResyncFetch = func(repoRoot string) error {
 		lmfQueueWaiter(t, repoRoot)
+		lmfWriteFetchHead(t, repoRoot)
 		return nil
 	}
 	lmfAfterFastForward(t, func(repoRoot string) {
@@ -425,7 +443,11 @@ func TestLocalMainResyncLateDirtyPrimaryRefuses(t *testing.T) {
 	base := lmfHead(t, root)
 	lmfOriginCommit(t, root, base, "origin-ahead", map[string]string{"ahead.txt": "ahead\n"}, false)
 	localMainResyncFetch = func(repoRoot string) error {
-		return os.WriteFile(filepath.Join(repoRoot, "late-untracked.txt"), []byte("late\n"), 0o644)
+		if err := os.WriteFile(filepath.Join(repoRoot, "late-untracked.txt"), []byte("late\n"), 0o644); err != nil {
+			return err
+		}
+		lmfWriteFetchHead(t, repoRoot)
+		return nil
 	}
 	_, err := runLocalMainResync(root)
 	if err == nil {
@@ -482,5 +504,52 @@ func TestLocalMainResyncFetchPinsFetchedCommit(t *testing.T) {
 	}
 	if lock := sdWindow(t, root); lock.Held() {
 		t.Fatalf("the re-sync must release the window it took: %+v", lock)
+	}
+}
+
+// TestLocalMainResyncHoldWriteFailureKeepsWindow pins the retained-refusal path (card
+// t1616, F3). After a post-merge anomaly the policy hold is written before the window
+// is released. When that write fails, the re-sync returns both the anomaly and the
+// hold failure, and it keeps the window held, so no queued lane is promoted onto the
+// anomalous state. The write fails deterministically: a directory sits at the policy
+// record's path, so the write's rename onto that path fails. The directory is placed
+// inside the post-fast-forward seam, because the acquire reads the policy record
+// first. A probe confirms the cause before the assertions rely on it.
+func TestLocalMainResyncHoldWriteFailureKeepsWindow(t *testing.T) {
+	root := lmfResyncFixture(t, "")
+	base := lmfHead(t, root)
+	lmfOriginCommit(t, root, base, "origin-ahead", map[string]string{"ahead.txt": "ahead\n"}, false)
+	policyPath := filepath.Join(root, ".moai", "state", factory.IntegrationWindowPolicyFileName)
+	lmfAfterFastForward(t, func(repoRoot string) {
+		if err := os.MkdirAll(policyPath, 0o755); err != nil {
+			t.Fatalf("fixture: place a directory at the policy record's path: %v", err)
+		}
+		t.Cleanup(func() { _ = os.RemoveAll(policyPath) })
+		probe := factory.WriteIntegrationWindowPolicy(repoRoot, factory.IntegrationWindowPolicy{Policy: factory.PolicyHold, Reason: "probe", SetBy: "test", SetAt: "probe"})
+		var linkErr *os.LinkError
+		if !errors.As(probe, &linkErr) || linkErr.Op != "rename" || linkErr.New != policyPath {
+			t.Fatalf("fixture: the hold write must fail renaming onto %s, got %v", policyPath, probe)
+		}
+		// Move HEAD back, so step 6 finds HEAD off BASELINE_SHA.
+		fcGit(t, repoRoot, "update-ref", "refs/heads/"+lmfBranch, base)
+	})
+	_, err := runLocalMainResync(root)
+	if err == nil {
+		t.Fatalf("an anomaly whose hold cannot be written must still refuse the re-sync")
+	}
+	if code, ok := factory.MergeExitCode(err); !ok || code != factory.MergeExitPostMerge {
+		t.Fatalf("the anomaly must refuse with MergeExitPostMerge (%d), got code %d (ok=%v): %v", factory.MergeExitPostMerge, code, ok, err)
+	}
+	if !strings.Contains(err.Error(), "after the fast-forward HEAD is not origin/"+lmfBranch) {
+		t.Fatalf("the refusal must name the anomaly: %v", err)
+	}
+	if !strings.Contains(err.Error(), "writing the hold also failed") {
+		t.Fatalf("the refusal must name the hold failure: %v", err)
+	}
+	if head := lmfHead(t, root); head != base {
+		t.Fatalf("the anomaly must leave HEAD at its position %s, got %s", base, head)
+	}
+	if lock := sdWindow(t, root); !lock.Held() || lock.SessionID != lmfSession {
+		t.Fatalf("a hold that cannot be written must keep the window held by %s, got %+v", lmfSession, lock)
 	}
 }

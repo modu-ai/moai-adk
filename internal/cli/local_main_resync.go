@@ -15,6 +15,7 @@ import (
 	"errors"
 	"fmt"
 	"strings"
+	"time"
 
 	"github.com/modu-ai/moai-adk/internal/config"
 	"github.com/modu-ai/moai-adk/internal/factory"
@@ -90,16 +91,21 @@ func runLocalMainResync(repoRoot string) (string, error) {
 	// end skips it. The read is outside the acquire's mutation, so a takeover in
 	// between shows up as replaced.
 	initWindowLeaseOverride(repoRoot)
-	heldBefore := localMainResyncHeldBy(repoRoot, sessionID)
+	prior := localMainResyncPriorHold(repoRoot, sessionID)
+	heldBefore := prior != nil
 	ownerPID, _ := session.ResolveOwnerPID()
-	replaced, err := factory.AcquireIntegrationWindow(repoRoot, factory.IntegrationLock{
+	want := factory.IntegrationLock{
 		SessionID:    sessionID,
 		PID:          ownerPID,
 		PIDSource:    factory.PIDSourceSessionOwner,
 		Branch:       localMainResyncBranch,
 		BranchSource: factory.BranchSourceConfig,
 		Worktree:     repoRoot,
-	}, false, &factory.AcquireWindowOptions{LeaseDuration: integrationLeaseDuration(repoRoot)})
+	}
+	if prior != nil {
+		localMainResyncCarryHolder(&want, prior)
+	}
+	replaced, err := factory.AcquireIntegrationWindow(repoRoot, want, false, &factory.AcquireWindowOptions{LeaseDuration: integrationLeaseDuration(repoRoot)})
 	if err != nil {
 		return "", err
 	}
@@ -107,9 +113,12 @@ func runLocalMainResync(repoRoot string) (string, error) {
 	// held it before the call and the acquire displaced nobody.
 	keep := heldBefore && replaced == nil
 
-	report, err := localMainResyncInWindow(repoRoot)
+	report, err := localMainResyncInWindow(repoRoot, sessionID)
 	if err != nil {
-		if keep {
+		// A retained refusal (F3) keeps the window held: its policy hold could not be
+		// written, and a release would promote the next queued lane onto the anomaly.
+		var retained *localMainResyncRetained
+		if keep || errors.As(err, &retained) {
 			return "", err
 		}
 		return "", localMainResyncRelease(repoRoot, sessionID, err)
@@ -127,7 +136,9 @@ func runLocalMainResync(repoRoot string) (string, error) {
 
 // localMainResyncInWindow runs plan §B3a steps 2 through 7 with the window held.
 // Each refusal carries the exit class the merge step uses for the same cause.
-func localMainResyncInWindow(repoRoot string) (string, error) {
+// Between the fetch and the move, the re-validation (card t1616, F2 and F5)
+// reads the holder, HEAD, and the clean state again.
+func localMainResyncInWindow(repoRoot, sessionID string) (string, error) {
 	git := factorylane.ExecGitRunner{Dir: repoRoot}.Git
 	ref := "refs/heads/" + localMainResyncBranch
 
@@ -147,22 +158,27 @@ func localMainResyncInWindow(repoRoot string) (string, error) {
 		return "", localMainResyncRefusal(factory.MergeExitWorktreeDirty, "integration resync: refused — the primary checkout has %d uncommitted or untracked change(s). The local-main re-sync needs a fully clean primary, because changes owned by other sessions cannot be told apart from yours. Move your changes into a card worktree and commit them there, or ask the session that owns them to commit or discard them. Do not stash: the stash is repository-wide. Then re-run.", strings.Count(status, "\x00"))
 	}
 
-	// Step 4: fetch, observe the exit status, then take BASELINE_SHA from the
-	// fetched origin ref. Every later origin-facing comparison uses it.
-	if err := localMainResyncFetch(repoRoot); err != nil {
-		return "", localMainResyncRefusal(factory.MergeExitOther, "integration resync: git fetch origin %s failed, so BASELINE_SHA was not taken: %v", localMainResyncBranch, err)
-	}
-	baselineOut, err := git("rev-parse", "--verify", "--quiet", "refs/remotes/origin/"+localMainResyncBranch+"^{commit}")
-	if err != nil {
-		return "", localMainResyncRefusal(factory.MergeExitOther, "integration resync: origin/%s does not resolve after the fetch: %v", localMainResyncBranch, err)
-	}
-	baseline := strings.TrimSpace(baselineOut)
-
+	// HEAD is read before the fetch, so the re-validation before the move can see
+	// whether HEAD moved while the fetch ran (card t1616, F2).
 	headOut, err := git("rev-parse", "HEAD")
 	if err != nil {
 		return "", localMainResyncRefusal(factory.MergeExitOther, "integration resync: read HEAD: %v", err)
 	}
 	head := strings.TrimSpace(headOut)
+
+	// Step 4: fetch, observe the exit status, then take BASELINE_SHA from the
+	// fetched object, FETCH_HEAD. The fetch writes FETCH_HEAD for the branch it
+	// fetched. refs/remotes/origin/main is not read: a fetch under a refspec that
+	// does not map refs/heads/main leaves that ref stale (card t1616, F6). Every
+	// later origin-facing comparison uses BASELINE_SHA.
+	if err := localMainResyncFetch(repoRoot); err != nil {
+		return "", localMainResyncRefusal(factory.MergeExitOther, "integration resync: git fetch origin %s failed, so BASELINE_SHA was not taken: %v", localMainResyncBranch, err)
+	}
+	baselineOut, err := git("rev-parse", "--verify", "--quiet", "FETCH_HEAD^{commit}")
+	if err != nil {
+		return "", localMainResyncRefusal(factory.MergeExitOther, "integration resync: FETCH_HEAD does not name a commit after the fetch of origin/%s, so BASELINE_SHA was not taken: %v", localMainResyncBranch, err)
+	}
+	baseline := strings.TrimSpace(baselineOut)
 
 	// Step 5, case (b): BASELINE_SHA is an ancestor of HEAD, equality included.
 	containsBaseline, err := localMainResyncAncestor(git, baseline, head)
@@ -196,10 +212,15 @@ func localMainResyncInWindow(repoRoot string) (string, error) {
 	if overlap := localMainResyncOverlap(changedOut, ignoredOut); len(overlap) > 0 {
 		return "", localMainResyncRefusal(factory.MergeExitCollision, "integration resync: refused — the primary checkout holds ignored bytes at paths this fast-forward would write: %s. The fast-forward would overwrite them. Move or rename them from your own terminal, then re-run. The tool does not remove or stash files.", strings.Join(overlap, ", "))
 	}
+	// The re-validation (card t1616, F2 and F5), immediately before the move. The
+	// holder check and the clean check ran earlier, and the fetch ran in between.
+	if err := localMainResyncRevalidate(git, repoRoot, sessionID, ref, head); err != nil {
+		return "", err
+	}
 	// The --no-overwrite-ignore flag is the second guard (plan §B4). Autostash is
 	// disabled so the verb never stashes another session's changes (plan §B5).
 	if _, err := git("-c", "merge.autoStash=false", "merge", "--ff-only", "--no-overwrite-ignore", "-q", baseline); err != nil {
-		return "", localMainResyncFailed(git, head, err)
+		return "", localMainResyncFailed(git, repoRoot, head, baseline, err)
 	}
 	// F3 test seam (card t1616): see localMainResyncAfterFastForward.
 	localMainResyncAfterFastForward(repoRoot)
@@ -208,14 +229,55 @@ func localMainResyncInWindow(repoRoot string) (string, error) {
 	// branch. SHA equality alone does not prove that the branch did not change.
 	afterOut, err := git("rev-parse", "HEAD")
 	if err != nil || strings.TrimSpace(afterOut) != baseline {
-		return "", localMainResyncRefusal(factory.MergeExitPostMerge, "integration resync: after the fast-forward HEAD is not origin/%s %s. Inspect the primary from your own terminal before any further merge.", localMainResyncBranch, localMainResyncShort(baseline))
+		return "", localMainResyncAnomaly(repoRoot, baseline, factory.MergeExitPostMerge, "integration resync: after the fast-forward HEAD is not origin/%s %s. Inspect the primary from your own terminal before any further merge.", localMainResyncBranch, localMainResyncShort(baseline))
 	}
 	if symAfter, err := git("symbolic-ref", "-q", "HEAD"); err != nil || strings.TrimSpace(symAfter) != ref {
-		return "", localMainResyncRefusal(factory.MergeExitPostMerge, "integration resync: after the fast-forward HEAD no longer names %s. Inspect the primary from your own terminal before any further merge.", localMainResyncBranch)
+		return "", localMainResyncAnomaly(repoRoot, baseline, factory.MergeExitPostMerge, "integration resync: after the fast-forward HEAD no longer names %s. Inspect the primary from your own terminal before any further merge.", localMainResyncBranch)
 	}
 
 	// Step 7: report the old and new SHAs.
 	return fmt.Sprintf("local main fast-forwarded %s -> %s to origin/%s", localMainResyncShort(head), localMainResyncShort(baseline), localMainResyncBranch), nil
+}
+
+// localMainResyncRevalidate re-checks, immediately before the fast-forward, what
+// the move relies on (card t1616, F2 and F5). This session must still hold the
+// window with an unexpired lease (i), the symbolic HEAD must still name the
+// integration branch (ii), HEAD must be where it was before the fetch (iii), and
+// the primary must still be fully clean (iv). A refusal carries the exit class the
+// merge step uses for the same cause, and it moves nothing.
+func localMainResyncRevalidate(git func(args ...string) (string, error), repoRoot, sessionID, ref, headBeforeFetch string) error {
+	lock, err := factory.ReadIntegrationLock(repoRoot)
+	if err != nil {
+		return localMainResyncRefusal(factory.MergeExitOther, "integration resync: read the window record before the move: %v", err)
+	}
+	if !lock.Held() || lock.SessionID != sessionID {
+		holder := "nobody"
+		if lock.Held() {
+			holder = lock.SessionID
+		}
+		return localMainResyncRefusal(factory.MergeExitNotHolder, "integration resync: refused — %s holds the window, not %s. The window was taken while the fetch ran. The primary is unchanged; re-run the re-sync to take the window again (moai integration status reads it).", holder, sessionID)
+	}
+	if lock.LeaseExpired(factory.WindowClock()) {
+		return localMainResyncRefusal(factory.MergeExitExpiredLease, "integration resync: refused — your lease expired at %s while the fetch ran. The primary is unchanged; re-run the re-sync.", lock.LeaseExpiresAt)
+	}
+	if headRef, err := git("symbolic-ref", "-q", "HEAD"); err != nil || strings.TrimSpace(headRef) != ref {
+		return localMainResyncRefusal(factory.MergeExitOther, "integration resync: refused — HEAD no longer names %s after the fetch. The primary is unchanged. Inspect it from your own terminal before re-running.", localMainResyncBranch)
+	}
+	headNow, err := git("rev-parse", "HEAD")
+	if err != nil {
+		return localMainResyncRefusal(factory.MergeExitOther, "integration resync: read HEAD before the move: %v", err)
+	}
+	if now := strings.TrimSpace(headNow); now != headBeforeFetch {
+		return localMainResyncRefusal(factory.MergeExitBaseMoved, "integration resync: refused — HEAD moved from %s to %s while the fetch ran. The primary is unchanged; re-run the re-sync against the new HEAD.", localMainResyncShort(headBeforeFetch), localMainResyncShort(now))
+	}
+	status, err := git("status", "--porcelain=v1", "-z", "--untracked-files=all")
+	if err != nil {
+		return localMainResyncRefusal(factory.MergeExitOther, "integration resync: status the primary checkout before the move: %v", err)
+	}
+	if status != "" {
+		return localMainResyncRefusal(factory.MergeExitWorktreeDirty, "integration resync: refused — the primary checkout became dirty while the fetch ran (%d uncommitted or untracked change(s)). The primary is unchanged. Move or commit those changes from your own terminal, then re-run. Do not stash: the stash is repository-wide.", strings.Count(status, "\x00"))
+	}
+	return nil
 }
 
 // localMainResyncNoHolder refuses when the primary checkout does not hold the
@@ -231,13 +293,14 @@ func localMainResyncNoHolder(repoRoot string) error {
 // localMainResyncFailed classifies a refused fast-forward. An ff-only merge
 // applies whole or not at all, so a clean tree with HEAD where it was is the
 // merge-failed class. A dirty or unreadable tree is class 7, and a moved HEAD
-// is class 8.
-func localMainResyncFailed(git func(args ...string) (string, error), head string, cause error) error {
+// is class 8. Classes 7 and 8 leave the primary in a state no later holder may
+// be promoted onto, so they write the policy hold first (card t1616, F3).
+func localMainResyncFailed(git func(args ...string) (string, error), repoRoot, head, baseline string, cause error) error {
 	if now, err := git("rev-parse", "HEAD"); err == nil && strings.TrimSpace(now) != head {
-		return localMainResyncRefusal(factory.MergeExitPostMerge, "integration resync: the fast-forward failed (%v) and HEAD moved from %s. Inspect the primary from your own terminal before any further merge.", cause, localMainResyncShort(head))
+		return localMainResyncAnomaly(repoRoot, baseline, factory.MergeExitPostMerge, "integration resync: the fast-forward failed (%v) and HEAD moved from %s. Inspect the primary from your own terminal before any further merge.", cause, localMainResyncShort(head))
 	}
 	if status, err := git("status", "--porcelain=v1", "-z", "--untracked-files=all"); err != nil || status != "" {
-		return localMainResyncRefusal(factory.MergeExitMergeDirty, "integration resync: the fast-forward failed (%v), and the primary is not clean or could not be read. Hold first.", cause)
+		return localMainResyncAnomaly(repoRoot, baseline, factory.MergeExitMergeDirty, "integration resync: the fast-forward failed (%v), and the primary is not clean or could not be read. The window policy is held for the leader.", cause)
 	}
 	return localMainResyncRefusal(factory.MergeExitMergeFailed, "integration resync: the fast-forward was refused (%v). The primary is clean and HEAD is unchanged.", cause)
 }
@@ -250,21 +313,76 @@ func localMainResyncRefusal(code int, format string, args ...any) error {
 
 // localMainResyncRelease releases the window the re-sync took and returns the
 // cause. A failed release is appended, so the operator sees both. This is the
-// release-on-refusal pattern of the merge step.
+// release-on-refusal pattern of the merge step. A holder refusal (cause 14) names
+// a window another session took, so its release is refused by design and nothing
+// is appended; the merge step's NotHolder branch makes the same exception.
 func localMainResyncRelease(repoRoot, sessionID string, cause error) error {
 	if _, err := factory.ReleaseIntegrationLock(repoRoot, sessionID, 0, false); err != nil {
+		if code, ok := factory.MergeExitCode(cause); ok && code == factory.MergeExitNotHolder && (factory.IsIntegrationLockForeign(err) || factory.IsIntegrationLockNotHeld(err)) {
+			return cause
+		}
 		return fmt.Errorf("%w (releasing the window also failed: %v — moai integration status reads it)", cause, err)
 	}
 	return cause
 }
 
-// localMainResyncHeldBy reports whether the recorded window already belongs to
-// sessionID. An unreadable record reads as not held. The acquire that follows
-// refuses an unreadable record, so no release is reached on that path.
-func localMainResyncHeldBy(repoRoot, sessionID string) bool {
+// localMainResyncPriorHold returns the recorded window when it already belongs to
+// sessionID, and nil otherwise. An unreadable record reads as not held. The acquire
+// that follows refuses an unreadable record, so no release is reached on that path.
+func localMainResyncPriorHold(repoRoot, sessionID string) *factory.IntegrationLock {
 	prior, err := factory.ReadIntegrationLock(repoRoot)
-	return err == nil && prior.Held() && prior.SessionID == sessionID
+	if err != nil || !prior.Held() || prior.SessionID != sessionID {
+		return nil
+	}
+	return prior
 }
+
+// localMainResyncCarryHolder copies the holder metadata of a window this session
+// already holds into the record a holder re-entry writes (card t1616, F4). The
+// acquire refreshes the record and does not re-identify the holder, so the card,
+// the session name, the first-acquired instant, the settings-drift record, and the
+// displacement history carry over. PID and PIDSource are not carried: the acquire
+// re-resolves them from this session, as the acquire verb does, which re-anchors a
+// record written before the anchor existed.
+func localMainResyncCarryHolder(want *factory.IntegrationLock, prior *factory.IntegrationLock) {
+	want.SessionName = prior.SessionName
+	want.Card = prior.Card
+	want.AcquiredAt = prior.AcquiredAt
+	want.SettingsDriftBypass = prior.SettingsDriftBypass
+	want.SettingsDriftPreserved = prior.SettingsDriftPreserved
+	want.Displaced = prior.Displaced
+	want.DisplacedReason = prior.DisplacedReason
+}
+
+// localMainResyncAnomaly is the post-merge outcome of the re-sync (card t1616,
+// F3). The fast-forward left the primary where no later holder may be promoted
+// onto it, so the policy hold is written before the window is released. It mirrors
+// the merge step's postMergeHold: the hold names the cause, the first 12 characters
+// of BASELINE_SHA, and the fast-forward, and the refusal carries the same message.
+// When the hold cannot be written, the refusal says so and is returned as a
+// localMainResyncRetained, so the caller keeps the window held.
+func localMainResyncAnomaly(repoRoot, baseline string, code int, format string, args ...any) error {
+	reason := fmt.Sprintf(format, args...) + fmt.Sprintf(" (fast-forward target origin/%s %s left in place for the leader)", localMainResyncBranch, localMainResyncShort(baseline))
+	holdErr := factory.WriteIntegrationWindowPolicy(repoRoot, factory.IntegrationWindowPolicy{
+		Policy: factory.PolicyHold,
+		Reason: reason,
+		SetBy:  "integration-resync (local main)",
+		SetAt:  factory.WindowClock().Format(time.RFC3339),
+	})
+	if holdErr != nil {
+		return &localMainResyncRetained{err: localMainResyncRefusal(code, "%s; writing the hold also failed: %v; the window stays held, because a release would promote the next queued lane onto this state", reason, holdErr)}
+	}
+	return localMainResyncRefusal(code, "%s", reason)
+}
+
+// localMainResyncRetained marks a refusal whose policy hold could not be written.
+// The window stays held: releasing it would promote the next queued lane onto the
+// state the hold was meant to keep it off. Unwrap keeps the exit class visible.
+type localMainResyncRetained struct{ err error }
+
+func (r *localMainResyncRetained) Error() string { return r.err.Error() }
+
+func (r *localMainResyncRetained) Unwrap() error { return r.err }
 
 // localMainResyncAncestor reports whether a is an ancestor of b, equality
 // included. `git merge-base --is-ancestor` exits 1 for "not an ancestor". Any
