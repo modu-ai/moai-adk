@@ -810,6 +810,21 @@ Read against the 85% floor (`quality.yaml` `test_coverage_target: 85`; the manag
 
 **Process note.** The first full-suite run reported 14 `--- FAIL` lines (10 top-level, 4 subtests), all inside the tests of those two files.
 
+**Supersession.** The Gaps item at line 780 of the preceding subsection ("The ten top-level codex failures ... are not attributed to the base commit") is superseded by this subsection: the attribution is now measured, see the codex finding above.
+
+**Rule conditions, restated with evidence (rule d-20261009T171628Z-fc47).** The conditions are restated here because they are held on the decision board.
+
+- (1) The card did not touch the flagged path: `git diff --stat 81786284e -- internal/cli/codex_readiness_test.go internal/cli/doctor_codex_test.go` printed nothing (2026-10-09T23:55Z).
+- (2) The same finding reproduces on the base commit: the export run recorded above (`codex-attribution-81786284e.txt`).
+- (3) Both are recorded in the progress record: this subsection and `lane-progress.md`.
+- (4) The gate legs the finding prevented: the affected family tests (AC-DI-011, AC-DI-012) and the AC-DI-013 control were run at `dbadebc1c`; vet and build were run at `dbadebc1c` as below; the full-package `go test` stays with CI under ruling B.
+
+**Gate legs, run at `dbadebc1c`.** Background run `bx197cc3e` in the go-test-heavy slot. `lane-progress.md` (entry of 2026-10-09T23:58:37Z) records the three commands below as exit 0 with 0-byte output: build native, build windows, and vet. The output files are empty, which is the normal result for a clean `go build` or `go vet`.
+
+- `go build ./...` → `.moai/reports/t1595/build-native-dbadebc1c.txt`
+- `GOOS=windows GOARCH=amd64 go build ./...` → `.moai/reports/t1595/build-windows-dbadebc1c.txt`
+- `go vet ./internal/cli/ ./internal/hook/` → `.moai/reports/t1595/vet-dbadebc1c.txt`
+
 ## §E.3 Run-phase Audit-Ready Signal
 
 run_complete_at: 2026-10-09T22:30+09:00
