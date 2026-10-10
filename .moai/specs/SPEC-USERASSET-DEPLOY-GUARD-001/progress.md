@@ -965,16 +965,16 @@ run_complete_at: 2026-10-09
 ```yaml
 sync_status: complete
 sync_complete_at: 2026-10-10
-sync_commit_sha: 868cc0285   # 커밋은 자신의 해시를 인용할 수 없음 — 다음 커밋에서 backfill
+sync_commit_sha: pending-backfill-sync   # 커밋은 자신의 해시를 인용할 수 없음 — 다음 커밋에서 backfill
 b12_self_test_a: >-
-  pre-emission dedup grep: grep -c 'SPEC-USERASSET-DEPLOY-GUARD-001' CHANGELOG.md → 편집 전 1, 편집 후 1 (관측 시점 HEAD 62e203150).
+  pre-emission dedup grep: grep -c 'SPEC-USERASSET-DEPLOY-GUARD-001' CHANGELOG.md → 편집 전 1, 편집 후 1 (관측 시점 HEAD ce69b1d02).
   기존 엔트리 1건을 제자리에서 개정했고 새 엔트리는 추가하지 않았다 — 중복 등록 없음.
 b12_self_test_b: >-
-  AC 카운터: tier=L, ac_source=.moai/specs/SPEC-USERASSET-DEPLOY-GUARD-001/acceptance.md → live=27 excluded=0 ambiguous=0 (관측 시점 HEAD 62e203150; acceptance.md의 마지막 변경 커밋은 feb6ec390이며 라운드 2에서도 무변경 확인, 선언된 접두사 없음; AC-008 부재 재확인).
+  AC 카운터: tier=L, ac_source=.moai/specs/SPEC-USERASSET-DEPLOY-GUARD-001/acceptance.md → live=27 excluded=0 ambiguous=0 (관측 시점 HEAD ce69b1d02; acceptance.md의 마지막 변경 커밋은 feb6ec390으로 라운드 2와 동일; 선언된 접두사 없음; AC-008 부재 재확인).
   CHANGELOG 엔트리의 "27 acceptance criteria" 참조와 일치한다. AC-008은 acceptance.md 어디에도 없어 범위 표기 AC-001..026 안에 번호 공백이 있으나, 개수는 식별자 기준이므로 판정에 영향이 없다.
 b12_self_test_c: >-
-  파일 경로 검증(ls·find, 관측 시점 HEAD 62e203150): 개정 엔트리가 명명하는 internal/cli/init_resume.go · internal/cli/init_profile_sync.go · internal/userassets/lock.go · SPEC 디렉터리의 spec.md·progress.md 전부 존재. 엔트리의 베어 파일명 install.go(internal/userassets/install.go)와 llm.yaml(.moai/config/sections/llm.yaml)도 존재를 확인했다.
-  엔트리가 명명하는 커밋 SHA 20종(라운드 1 16종 + 라운드 2 신규 4종 9812e0dfb, c2bae3a5d, 75a6a9ff6, 62e203150)은 전부 HEAD의 조상임을 관측했다(git rev-list HEAD 대조, 20/20). 라운드 2 신규 문장이 명명하는 테스트 4건을 같은 HEAD에서 worktree 환경 격리(unset MOAI_KANBAN_*) 후 직접 재실행했다: TestUserRootRealPathOfSymlinkedManagedAssetIsProtected와 TestUserRootRealPathOfSymlinkedManagedAssetDeleteIsProtected(internal/hook, PASS 2/2, exit 0), TestInitResumeRestoresBundleSelectionAfterLockFailure와 TestInitResumeKeepsSettingsSnapshotForInterruptedInit(internal/cli, PASS 2/2 + 하위 테스트 4/4, exit 0).
+  파일 경로 검증(관측 시점 HEAD ce69b1d02): 엔트리가 명명하는 internal/cli/init_resume.go · internal/cli/init_profile_sync.go · internal/userassets/lock.go · SPEC 디렉터리의 spec.md·progress.md 전부 존재. 베어 파일명 install.go(internal/userassets/install.go)와 llm.yaml(.moai/config/sections/llm.yaml)도 존재를 확인했다. 라운드 3 신규 경로 internal/hook/user_root_symlink_siblings_test.go · internal/hook/user_root_zone.go · internal/hook/protected_zone_shell.go도 존재를 확인했다.
+  엔트리가 명명하는 커밋 SHA 22종(라운드 2까지 20종 + ce69b1d02 · 1efd0caad)은 전부 HEAD의 조상임을 관측했다(git rev-list HEAD 대조, 22/22). 이번 라운드는 테스트를 재실행하지 않았다. 라운드 3 측정값은 레인 관측이며 sync_gaps의 해당 항목에 적었다.
 changelog_entry_position: "[Unreleased] 첫 배치 ### Fixed 선두 (SPEC-RECEIPT-REUSE-001 엔트리 위)"
 frontmatter_status_transitions:
   spec_md: "draft → completed (3-phase close — 단일 sync 커밋 탑재, updated: 2026-10-10 갱신)"
@@ -1000,6 +1000,11 @@ sync_gaps: |-
   - 전체 `internal/cli` 스위트와 `internal/hook` 패키지 전체는 실행하지 않았다. 62e203150 기준 계열 값은 위임자가 관측한 값이다(delegate-observed): cli `^TestInit` 132.8 s, `^TestInitResume` 126.4 s, `^TestRunInit` 66.8 s, hook `UserRoot|Zone|Protected|Frozen` 4.7 s, 모두 exit 0. golangci-lint v2.1.6은 레인이 62e203150에서 `internal/cli`, `internal/hook`, `internal/config`에 대해 실행해 0 issues를 관측했다(위임자 관측값).
   - progress §E.2와 §E.3은 라운드 2 수리에 대해 갱신하지 않았다. 실행 증거는 커밋 메시지와 카드 대기 로그에 있다.
   - docs_claim_check 항목은 273bf72a0 기준 결과이며, 라운드 2 변경(62e203150)에 대해서는 docs-site·docs 주장 점검을 재실행하지 않았다.
+  - 라운드 3 (1): 목적지 디렉터리가 관리 자산 실경로의 조상이면 `cp`와 `mv`가 거부된다. 설치 루트 조상에 대해 이미 있던 규칙(`internal/hook/user_root_zone.go:140-145`)을 확장한 것이다. 레인이 scratch 사본(ce69b1d02)에서 측정했다: 조상으로 가는 `mv`와 `cp`는 거부되고 무관한 목적지는 허용된다. 이 규칙은 원본(source)과 목적지(destination)를 구분하지 않는다. 조상을 목적지로 하는 행은 `TestUserRootSymlinkSiblings` 표에 없으므로, 이 경우는 커밋된 테스트로 고정되지 않았고 측정으로만 확인됐다.
+  - 라운드 3 (2): 이 카드의 diff 밖에 있던 셸 우회 세 가지가 레인 측정에서 허용으로 확인됐다. `find -delete`로 추적 파일 삭제, `dd of=`로 추적 파일 덮어쓰기, `ln -sf`로 추적 파일 위에 링크 덮어쓰기. ce69b1d02는 이 동사들을 바꾸지 않았다(추가된 것은 `zoneMutationVerbs`의 `rename` 하나). 후속 후보이며 이번 라운드에서 고치지 않았다. 목록 전체는 `.moai/reports/t1591/adjacent-holes.md`(디스크 전용)에 있다.
+  - 라운드 3 (3): 1efd0caad의 sibling 표는 20행이며 R11(`rm -rf /`)이 없다. `git show 1efd0caad:internal/hook/user_root_symlink_siblings_test.go`에서 R11 0건을, HEAD에서 21행을 확인했다. ce69b1d02 커밋 메시지에 따르면 R11은 1efd0caad 이후에 추가되었고 pre-fix 트리에서 RED로 관측됐으며, 수정과 같은 커밋에 들어갔다.
+  - 라운드 3 (4): 1efd0caad와 ce69b1d02의 커밋 메시지에는 `Authored-By-Agent` 문단이 없다(`git show -s`로 확인, 두 커밋 합계 0건). 이 카드 브랜치는 team-lead 보고대로 미push 상태이고 CHANGELOG가 두 SHA를 인용하므로, 메시지는 다시 쓰지 않았다.
+  - 라운드 3 (5): 아래 측정값은 레인이 scratch 사본의 ce69b1d02에서 관측한 값이며 위임자가 재실행하지 않았다. `TestUserRootSymlinkSiblings` 21/21 PASS(exit 0), `UserRoot` 31 PASS, `Zone` 100, `Protected` 120, `Frozen` 11, `UserRootSymlink` 22, 모두 exit 0이고 FAIL 0. gofmt 깨끗함, `go vet ./internal/hook/` exit 0, golangci-lint v2.1.6은 `internal/hook`에만 적용해 0 issues. `internal/hook` 패키지 전체, `internal/cli`, `/verify` 게이트는 실행하지 않았다.
 out_of_scope_comment: >-
   SPEC 계획이 명명하지 않은 함수의 주석 1건(같은 파일 update.go 의 11a 좌표 565–574 와 다른 함수, 카드 커밋 9ac2d2e4e에서 변경): internal/cli/update.go 의 ensureGlobalSettingsEnv 에 @MX:ANCHOR 주석 2줄 추가(commit 9ac2d2e4e). 사유: 이 카드의 59d702fca 가 재개 경로에서 세 번째 호출자를 만들어, fan-in 3 이상 앵커 규칙이 적용됨. 주석만 변경, 코드 불변. 리더 유지 결정.
 mx_tags_note: >-
