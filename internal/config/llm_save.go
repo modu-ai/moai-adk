@@ -12,6 +12,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"strings"
 
 	"gopkg.in/yaml.v3"
 
@@ -37,6 +38,29 @@ func (m *ConfigManager) saveLLM(sectionsDir string) error {
 	return m.saveGated(sectionsDir, "llm.yaml", m.llmDirty, llmFileWrapper{LLM: m.config.LLM})
 }
 
+// LLMSectionEdits returns the yamlpatch edits that turn the llm section held in
+// persisted into desired, with paths rooted at the document. A nil persisted
+// section is a file that does not exist yet, so every scalar of desired becomes
+// an edit. A change no edit can express is an error naming the field; a caller
+// returns it rather than falling back to a typed rewrite.
+func LLMSectionEdits(persisted *LLMConfig, desired LLMConfig) ([]yamlpatch.KeyEdit, error) {
+	now, err := llmMappingOf(llmBaselineOf(desired))
+	if err != nil {
+		return nil, fmt.Errorf("llm section: %w", err)
+	}
+	base := &yaml.Node{Kind: yaml.MappingNode}
+	if persisted != nil {
+		if base, err = llmMappingOf(llmBaselineOf(*persisted)); err != nil {
+			return nil, fmt.Errorf("llm baseline: %w", err)
+		}
+	}
+	var edits []yamlpatch.KeyEdit
+	if err := diffLLMNodes([]string{"llm"}, base, now, &edits); err != nil {
+		return nil, err
+	}
+	return edits, nil
+}
+
 // llmBaselineOf renders the llm section as the loaded or last saved state.
 // The bytes are a snapshot, so a map the caller still holds and mutates in
 // place cannot alias into the baseline. A nil result means the section could
@@ -52,7 +76,8 @@ func llmBaselineOf(cfg LLMConfig) []byte {
 // llmScalarEdits returns the scalar replacements that turn the baseline llm
 // section into cur, with paths rooted at the document, as yamlpatch takes
 // them. patchable is false when the change is not a set of scalar
-// replacements.
+// replacements. A removed key and a quoted value are not scalar replacements
+// here, so ConfigManager.saveLLM keeps its typed rewrite for them.
 func llmScalarEdits(baseline []byte, cur LLMConfig) ([]yamlpatch.KeyEdit, bool, error) {
 	base, err := llmMappingOf(baseline)
 	if err != nil {
@@ -63,8 +88,13 @@ func llmScalarEdits(baseline []byte, cur LLMConfig) ([]yamlpatch.KeyEdit, bool, 
 		return nil, false, fmt.Errorf("llm section: %w", err)
 	}
 	var edits []yamlpatch.KeyEdit
-	if !diffScalarNodes([]string{"llm"}, base, now, &edits) {
+	if diffLLMNodes([]string{"llm"}, base, now, &edits) != nil {
 		return nil, false, nil
+	}
+	for _, e := range edits {
+		if e.Remove || e.Quoted {
+			return nil, false, nil
+		}
 	}
 	return edits, true, nil
 }
@@ -86,68 +116,94 @@ func llmMappingOf(data []byte) (*yaml.Node, error) {
 	return section, nil
 }
 
-// diffScalarNodes appends the scalar replacements that turn base into now at
-// path. It reports false for a change no scalar replacement can express: a
-// removed key, a container that changed kind, a sequence that changed, or a
-// scalar that must be quoted (the patch carries no style for a new value).
-func diffScalarNodes(path []string, base, now *yaml.Node, edits *[]yamlpatch.KeyEdit) bool {
+// diffLLMNodes appends the yamlpatch edits that turn base into now at path. A
+// key base has and now lacks is removed. A scalar that changed is replaced,
+// double-quoted when now is quoted. A key only now has is upserted scalar by
+// scalar. A change no edit can express (a container that changed kind, a
+// sequence that changed, or a literal or folded block scalar) is an error that
+// names the path.
+func diffLLMNodes(path []string, base, now *yaml.Node, edits *[]yamlpatch.KeyEdit) error {
 	if base.Kind != now.Kind {
-		return false
+		return unexpressedLLMChange(path)
 	}
 	switch now.Kind {
 	case yaml.MappingNode:
 		for i := 0; i+1 < len(base.Content); i += 2 {
 			if mappingValue(now, base.Content[i].Value) == nil {
-				return false
+				*edits = append(*edits, yamlpatch.KeyEdit{Path: appendPath(path, base.Content[i].Value), Remove: true})
 			}
 		}
 		for i := 0; i+1 < len(now.Content); i += 2 {
 			key := now.Content[i].Value
 			child := appendPath(path, key)
 			if old := mappingValue(base, key); old != nil {
-				if !diffScalarNodes(child, old, now.Content[i+1], edits) {
-					return false
+				if err := diffLLMNodes(child, old, now.Content[i+1], edits); err != nil {
+					return err
 				}
-			} else if !appendScalarLeaves(child, now.Content[i+1], edits) {
-				return false
+			} else if err := appendLLMLeaves(child, now.Content[i+1], edits); err != nil {
+				return err
 			}
 		}
-		return true
+		return nil
 	case yaml.ScalarNode:
 		if base.Value == now.Value {
-			return true
+			return nil
 		}
-		if now.Style != 0 {
-			return false
+		quoted, err := llmQuoting(path, now)
+		if err != nil {
+			return err
 		}
-		*edits = append(*edits, yamlpatch.KeyEdit{Path: path, Value: now.Value})
-		return true
+		*edits = append(*edits, yamlpatch.KeyEdit{Path: path, Value: now.Value, Quoted: quoted})
+		return nil
 	default:
-		return nodeEqual(base, now)
+		if nodeEqual(base, now) {
+			return nil
+		}
+		return unexpressedLLMChange(path)
 	}
 }
 
-// appendScalarLeaves appends an upsert for every scalar under n. It is the
-// form a key absent from the baseline takes, and it reports false when n holds
-// a node a scalar replacement cannot express.
-func appendScalarLeaves(path []string, n *yaml.Node, edits *[]yamlpatch.KeyEdit) bool {
+// appendLLMLeaves appends an upsert for every scalar under n. It is the form a
+// key absent from the baseline takes, and it reports an error for a node a
+// scalar upsert cannot express.
+func appendLLMLeaves(path []string, n *yaml.Node, edits *[]yamlpatch.KeyEdit) error {
 	switch n.Kind {
 	case yaml.MappingNode:
 		for i := 0; i+1 < len(n.Content); i += 2 {
-			if !appendScalarLeaves(appendPath(path, n.Content[i].Value), n.Content[i+1], edits) {
-				return false
+			if err := appendLLMLeaves(appendPath(path, n.Content[i].Value), n.Content[i+1], edits); err != nil {
+				return err
 			}
 		}
-		return true
+		return nil
 	case yaml.ScalarNode:
-		if n.Style != 0 {
-			return false
+		quoted, err := llmQuoting(path, n)
+		if err != nil {
+			return err
 		}
-		*edits = append(*edits, yamlpatch.KeyEdit{Path: path, Value: n.Value})
-		return true
+		*edits = append(*edits, yamlpatch.KeyEdit{Path: path, Value: n.Value, Quoted: quoted})
+		return nil
 	default:
-		return false
+		return unexpressedLLMChange(path)
 	}
+}
+
+// llmQuoting reports whether a scalar must be written double-quoted. yaml.Marshal
+// quotes exactly the values that plain style would read back as another type,
+// so the node's style is the answer. A block scalar has no yamlpatch form.
+func llmQuoting(path []string, n *yaml.Node) (bool, error) {
+	switch n.Style {
+	case 0:
+		return false, nil
+	case yaml.DoubleQuotedStyle, yaml.SingleQuotedStyle:
+		return true, nil
+	default:
+		return false, unexpressedLLMChange(path)
+	}
+}
+
+// unexpressedLLMChange names a change the yamlpatch seam cannot write.
+func unexpressedLLMChange(path []string) error {
+	return fmt.Errorf("%s: change cannot be written through the yamlpatch seam", strings.Join(path, "."))
 }
 
 // mappingValue returns the value node stored under key in a mapping node, or

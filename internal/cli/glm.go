@@ -19,6 +19,7 @@ import (
 	"github.com/modu-ai/moai-adk/internal/defs"
 	"github.com/modu-ai/moai-adk/internal/factory"
 	"github.com/modu-ai/moai-adk/internal/glmcred"
+	"github.com/modu-ai/moai-adk/internal/settings/yamlpatch"
 	"github.com/modu-ai/moai-adk/internal/statusline"
 	"github.com/modu-ai/moai-adk/internal/template"
 	"github.com/modu-ai/moai-adk/internal/tmux"
@@ -695,8 +696,27 @@ func disableTeamMode(projectRoot string) error {
 	return persistTeamMode(projectRoot, "")
 }
 
-// saveLLMSection saves only the LLM section to llm.yaml.
-// Empty GLM model values are populated with defaults to avoid confusion.
+// legacyLLMAliasKeys are the GLM model alias keys that DR-2 of
+// SPEC-MODEL-MATRIX-UPDATE-001 deleted from the typed model (the GLMModels fields
+// Opus, Sonnet, and Haiku). A real write removes them from llm.glm.models and
+// nowhere else. This is the named exception to REQ-RC30-007
+// (SPEC-UPDATE-REPAIR-RC30-001). Nothing writes to the slice.
+var legacyLLMAliasKeys = []string{"opus", "sonnet", "haiku"}
+
+// legacyLLMAliasEdits returns the removals a real write applies: one per legacy
+// alias key, each at llm.glm.models.<key>.
+func legacyLLMAliasEdits() []yamlpatch.KeyEdit {
+	edits := make([]yamlpatch.KeyEdit, 0, len(legacyLLMAliasKeys))
+	for _, alias := range legacyLLMAliasKeys {
+		edits = append(edits, yamlpatch.KeyEdit{Path: []string{"llm", "glm", "models", alias}, Remove: true})
+	}
+	return edits
+}
+
+// saveLLMSection saves only the LLM section to llm.yaml. A real write patches the
+// file through the yamlpatch seam, so every key and comment the section does not
+// own survives (REQ-RC30-007). Empty GLM model values are populated with defaults
+// to avoid confusion.
 //
 // @MX:NOTE: [AUTO] RC1 change-detection gate (glm-settings-persist): the write
 // is SKIPPED when the persisted llm.yaml already equals the desired section
@@ -735,20 +755,32 @@ func saveLLMSection(sectionsDir string, llm config.LLMConfig) error {
 	}{LLM: llm}
 
 	// RC1 change-detection gate: skip the write when the persisted file already
-	// carries this exact section state. A read error leaves the gate undecided
-	// and falls through to the write (the write itself then surfaces the error).
-	if persisted, ok, err := readPersistedLLMSection(sectionsDir); err == nil && ok &&
-		llmSectionSemanticallyEqual(persisted, wrapper.LLM) {
+	// carries this exact section state. The diff below needs the persisted
+	// section, so an unreadable or unparseable file is an error, not an overwrite.
+	persisted, ok, err := readPersistedLLMSection(sectionsDir)
+	if err != nil {
+		return err
+	}
+	if ok && llmSectionSemanticallyEqual(persisted, wrapper.LLM) {
 		return nil
 	}
 
-	data, err := yaml.Marshal(wrapper)
-	if err != nil {
-		return fmt.Errorf("marshal llm config: %w", err)
+	// An absent file has no persisted section, so every scalar is written.
+	var base *config.LLMConfig
+	if ok {
+		base = &persisted
 	}
+	edits, err := config.LLMSectionEdits(base, wrapper.LLM)
+	if err != nil {
+		return fmt.Errorf("llm.yaml: %w", err)
+	}
+	// A real write removes the legacy alias keys (see legacyLLMAliasKeys).
+	edits = append(edits, legacyLLMAliasEdits()...)
 
-	path := filepath.Join(sectionsDir, "llm.yaml")
-	return writeFileAtomic(path, data, 0o600)
+	if err := os.MkdirAll(sectionsDir, 0o755); err != nil {
+		return fmt.Errorf("create config directory: %w", err)
+	}
+	return yamlpatch.PatchFileWithMode(filepath.Join(sectionsDir, "llm.yaml"), edits, 0o600)
 }
 
 // readPersistedLLMSection reads the current llm.yaml into a config.LLMConfig.
