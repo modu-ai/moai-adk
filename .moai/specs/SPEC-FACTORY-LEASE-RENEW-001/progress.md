@@ -1357,7 +1357,7 @@ Summary of the quality gates:
 | QG-1 format (gofmt, 32 changed Go files) | pass | Step 2 |
 | QG-1 lint (7 packages, golangci-lint v2.1.6) | pass, 0 issues in each | Step 3 |
 | QG-2 race (factory full; homestate and cli subsets) | pass, 0 race reports | Step 5 |
-| QG-3 coverage | changed functions all at or above 85%; four touched packages are below 85% at package level: recorded as Gap | Step 6 |
+| QG-3 coverage | non-cli changed functions all at or above 85% (lowest 85.3%); four touched non-cli packages below 85% at package level: recorded as Gap; internal/cli changed functions (factory renew verb, MCP handlers) not measured in this lane, CI measures them per d-20261010T085601Z-991b | Step 6 |
 | QG-4 mirrors | key comparison pass; byte comparison pass for four of five files; `factory-dispatch.md` whole-file mismatch is pre-existing: recorded as Gap; cadence line pass | Step 1 |
 | QG-5 traceability | pass, 18 of 18 commits name card t1663 | Step 8 |
 | Full cli package (step 4) | FAIL, exit 1, 901.031 s: recorded as Gap with classification | Step 4 |
@@ -1705,9 +1705,9 @@ ok  	github.com/modu-ai/moai-adk/internal/cli	24.110s
 
 Commands: `go test -race -count=1 -timeout 25m ./internal/factory/` (deviation: `-timeout 25m` added, because Go's default per-binary timeout is 10 minutes and the same package's non-race run took 309.653 s); `go test -race -count=1 -run 'TestFactoryOpen|TestCardLeaseUsesConfiguredDuration|TestEffectiveFactoryLease|TestRenew|TestLease' ./internal/homestate/`; `go test -race -count=1 -run 'TestRenewCadenceKeepsLeaseLive|TestFactoryRenew|TestNonHolderRenewRefusedCLIAndMCP|TestFactoryStatusReportsLeaseKeys' ./internal/cli/`.
 
-#### Step 6: coverage of the changed functions (decision d-20261010T085601Z-991b)
+#### Step 6: coverage of the changed non-cli functions (decision d-20261010T085601Z-991b)
 
-Measured with `go tool cover -func` on the profiles written by the step-4 runs, filtered to the changed functions. The profiles are in the session scratchpad, not in the tree.
+Measured with `go tool cover -func` on the profiles written by the step-4 runs, filtered to the changed non-cli functions. The profiles are in the session scratchpad, not in the tree. The changed functions in internal/cli are not in these profiles (see the next paragraph and Gap 12).
 
 homestate (package total 82.7%):
 
@@ -1741,9 +1741,9 @@ github.com/modu-ai/moai-adk/internal/hook/session_start_factory.go:150:		laneArm
 total:										(statements)					87.5%
 ````
 
-Reading: every changed function is at or above 85%. The lowest is `planTransition` at 85.3%. No test was added, and no commit cites d-20261010T085601Z-991b, because the rule requires one only for a changed function below 85%.
+Reading: every non-cli changed function is at or above 85%. The lowest is `planTransition` at 85.3%. The changed functions in internal/cli (the factory renew verb and the MCP handlers) were not measured in this lane: per decision d-20261010T085601Z-991b (board row 211), CI measures them. No test was added, and no commit cites d-20261010T085601Z-991b, because the rule requires one only for a changed non-cli function below 85%.
 
-Package totals (QG-3, touched packages): homestate 82.7%, config 84.9%, mcp 100.0%, template 82.7%, factory 83.1%, hook 87.5%. Four packages are below the 85% target at package level. Those are recorded as Gaps, not passes. The base-commit package totals were not measured in this lane, so the change in those totals is not known.
+Package totals (QG-3, touched non-cli packages): homestate 82.7%, config 84.9%, mcp 100.0%, template 82.7%, factory 83.1%, hook 87.5%. Four of these packages are below the 85% target at package level. Those are recorded as Gaps, not passes. internal/cli is not measured in this lane; CI measures it per d-20261010T085601Z-991b. The base-commit package totals were not measured in this lane, so the change in those totals is not known.
 
 #### Step 7: Windows build
 
@@ -2407,6 +2407,7 @@ The card's cli change set does not touch any of the thirteen failing tests' file
 9. Per-test durations for the full cli run were not recorded (no `-v`), so the package duration is not measured. Group D's attribution is inferred from the bound and the goroutine dump.
 10. Deviations from the brief: (a) step 4 runs carried `-coverprofile` (one run serves steps 4, 6, and QG-3); (b) the factory race run carried `-timeout 25m`; (c) the base copy is an archive without `.git`, built with a cold cache; (d) one lease description contains the typo "base-2204" (description only).
 11. golangci-lint refused the first config run (exit 3) because another session's golangci-lint was running. It was retried after that process finished (row 10). No process was stopped.
+12. QG-3 scope: the changed functions in internal/cli (the factory renew verb and the MCP handlers) were not measured in this lane. Per decision d-20261010T085601Z-991b (board row 211), CI measures them. This is not a pass; the QG-3 figures above cover the non-cli changed functions and the non-cli packages only.
 
 #### Residual risk
 
