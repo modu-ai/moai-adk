@@ -353,6 +353,43 @@ func TestGlmKeyFlagNewlineValueRefusesAndPreserves(t *testing.T) {
 	}
 }
 
+// REQ-GJK-004 — a separated value that is flag-shaped after trimming is never
+// consumed as the key. A bare "-" was exempt from the shape check and a padded
+// " -f" was checked before the trim, so both were stored (card t1626). Each
+// refusal must leave the credential file byte-for-byte unchanged and print no
+// confirmation (AC-GJK-011). The "-f" row is the control: that spelling was
+// already refused.
+func TestGlmKeyRefusedDashValueRows(t *testing.T) {
+	home := redirectCredentialHomes(t)
+	overrideLaunch(t)
+	envPath := filepath.Join(home, ".moai", ".env.glm")
+	for _, value := range []string{"-", " -f", "-f"} {
+		t.Run("value="+value, func(t *testing.T) {
+			if err := saveGLMKey("stored-key-1234"); err != nil {
+				t.Fatalf("seed save failed: %v", err)
+			}
+			before, err := os.ReadFile(envPath)
+			if err != nil {
+				t.Fatal(err)
+			}
+			out, execErr := execRoot(t, "glm", "--key", value)
+			if execErr == nil {
+				t.Errorf("glm --key %q must be refused, got success (output %q)", value, out)
+			}
+			if strings.Contains(out, "GLM API key stored") {
+				t.Errorf("no confirmation may print for a refused value, got: %q", out)
+			}
+			after, err := os.ReadFile(envPath)
+			if err != nil {
+				t.Fatal(err)
+			}
+			if !bytes.Equal(before, after) {
+				t.Errorf("credential file must stay byte-for-byte identical\nbefore: %q\nafter:  %q", before, after)
+			}
+		})
+	}
+}
+
 // AC-GJK-014 — jev newline value refused before the writer; the stored
 // credential preserved byte-for-byte (REQ-GJK-012).
 func TestJevKeyNewlineValueRefusesAndPreserves(t *testing.T) {
