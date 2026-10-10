@@ -23,7 +23,7 @@ Options:
 
 Default: not ranked. The status quo is not a default: while Q1 is undecided, REQ-LMF-009 keeps the current value `[main]`.
 
-Operator verdict:
+Operator verdict: (a) `[main]`을 유지한다. Recorded on the board as d-20261010T045752Z-3fbd (card:t1616).
 
 ### Q2: 로컬 main에 대한 첫 병합(이 카드의 착지)의 실행 방법과, 로컬 main이 origin/main과 갈라졌을 때(diverged)의 재동기화 방법을 무엇으로 할 것인가?
 
@@ -49,4 +49,4 @@ Options (diverged case of the re-sync, OQ-8):
 
 Default: not ranked. The status quo is not a default and selects no option: the tool path refuses on the primary checkout today, and no first merge has happened.
 
-Operator verdict:
+Operator verdict: 첫 병합 (b) 설계된 착지 동사가 창 안에서 병합한다. 갈라진 경우의 재동기화 (i) 도구는 거부하고 안내만 한다. Recorded on the board as d-20261010T045752Z-3fbd (card:t1616).
