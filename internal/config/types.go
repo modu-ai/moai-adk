@@ -543,6 +543,12 @@ type WorkflowConfig struct {
 	// work regardless of Enabled. Deliberately separate from IntegrationLock.
 	SlotLease SlotLeaseConfig `yaml:"slot_lease"`
 
+	// LocalMainIntegration carries the local-main integration flag
+	// (SPEC-LOCAL-MAIN-FLOW-001 REQ-LMF-001). Default OFF: an absent key reads as
+	// disabled. No code reads Enabled yet; the surface gate that does lands in a
+	// later milestone of the same SPEC.
+	LocalMainIntegration LocalMainIntegrationConfig `yaml:"local_main_integration"`
+
 	// QuotaGate carries the quota-aware lane gate settings
 	// (SPEC-QUOTA-AWARE-SCHEDULING-001 REQ-QAS-008): whether the gate runs, the
 	// per-window hold percentages, the release margin, and the freshest-reading
@@ -838,6 +844,13 @@ type QuotaGateConfig struct {
 type SlotLeaseResourceConfig struct {
 	Commands []string `yaml:"commands"`
 	Invalid  string   `yaml:"-"`
+}
+
+// LocalMainIntegrationConfig mirrors workflow.local_main_integration.*
+// (SPEC-LOCAL-MAIN-FLOW-001 REQ-LMF-001). Enabled is the opt-in flag, shipped
+// OFF.
+type LocalMainIntegrationConfig struct {
+	Enabled bool `yaml:"enabled"`
 }
 
 // ServedModelGateConfig mirrors workflow.served_model_gate.* — the opt-in
