@@ -580,6 +580,126 @@ Slot (go-heavy, identity 3e1318d7): acquired until 12:24:28Z for the template RE
 
 E4, pre-existing. `grep -rn 'AskUserQuestion' internal/hook | grep -v _test.go | grep -v '// '` returns `internal/hook/pre_tool.go:856` (a tool-name comparison). It predates M3 and is reported as pre-existing.
 
+### M3 GREEN block, part 1 (card t1663; AC-FLR-010, AC-FLR-011 procedure half, AC-FLR-013, AC-FLR-015 GREEN; AC-FLR-014 NOT STARTED; stopped at a blocker outside M3 scope)
+
+Commits (local, not pushed; every subject names card t1663)
+- `3fdfedfdc` feat(SPEC-FACTORY-LEASE-RENEW-001): M3 watchdog renews the card lease first and records the refusal. Its GREEN outputs below were taken at HEAD `041b13584` with the change in the working tree (`make build` stamped `Commit=041b13584`); the commit followed.
+- `d3a6a1bde` fix(SPEC-FACTORY-LEASE-RENEW-001): M3 stall verdict counts from the last channel change. GREEN taken at HEAD `3fdfedfdc` with the change in the working tree (`make build` stamped `Commit=3fdfedfdc`).
+- `1ded464af` feat(SPEC-FACTORY-LEASE-RENEW-001): M3 standing wake armed at the renewal period. GREEN taken at HEAD `d3a6a1bde` with the change in the working tree (`make build` stamped `Commit=d3a6a1bde`); the ledger fixture ALB-0276 was corrected in the same commit (after_text new, before_text kept at the anchor wording).
+
+GREEN, watchdog procedure (C1, HEAD `041b13584` + the C1 change, `go test ./internal/template/ -run '^(TestLaneWatchdogRenewsFirst|TestLaneWatchdogRecordsRefusalAndMeasures)$' -v -count=1`, exit 0):
+
+```
+=== RUN   TestLaneWatchdogRenewsFirst
+--- PASS: TestLaneWatchdogRenewsFirst (0.00s)
+=== RUN   TestLaneWatchdogRecordsRefusalAndMeasures
+--- PASS: TestLaneWatchdogRecordsRefusalAndMeasures (0.00s)
+PASS
+ok  	github.com/modu-ai/moai-adk/internal/template	0.452s
+```
+
+Regression, same tree (`TestLaneRecheckDoctrine`, the existing pins of the watchdog skill and the standing wake):
+
+```
+=== RUN   TestLaneRecheckDoctrine
+--- PASS: TestLaneRecheckDoctrine (0.00s)
+PASS
+ok  	github.com/modu-ai/moai-adk/internal/template	0.315s
+```
+
+GREEN, stall window (C2, HEAD `3fdfedfdc` + the C2 change, `go test ./internal/template/ -run '^TestStallVerdictReachesAtRenewCadence$' -v -count=1`, exit 0):
+
+```
+=== RUN   TestStallVerdictReachesAtRenewCadence
+=== RUN   TestStallVerdictReachesAtRenewCadence/period-5m
+=== RUN   TestStallVerdictReachesAtRenewCadence/period-7m
+=== RUN   TestStallVerdictReachesAtRenewCadence/old-cadence-equal
+=== RUN   TestStallVerdictReachesAtRenewCadence/rule-text
+--- PASS: TestStallVerdictReachesAtRenewCadence (0.00s)
+    --- PASS: TestStallVerdictReachesAtRenewCadence/period-5m (0.00s)
+    --- PASS: TestStallVerdictReachesAtRenewCadence/period-7m (0.00s)
+    --- PASS: TestStallVerdictReachesAtRenewCadence/old-cadence-equal (0.00s)
+    --- PASS: TestStallVerdictReachesAtRenewCadence/rule-text (0.00s)
+PASS
+ok  	github.com/modu-ai/moai-adk/internal/template	0.478s
+```
+
+GREEN, standing wake and its neighbours (C3, HEAD `d3a6a1bde` + the C3 change, `go test ./internal/template/ -run '^(TestAutoSemanticsArmFollowsRenewInterval|TestLaneRecheckDoctrine|TestBindingLedgerIntegrity|TestDeployedAlwaysLoadedCharBudget|TestDeployedAlwaysLoadedSurfaceDerivation)$' -v -count=1`). The verdict lines, verbatim, with the two refusal lines that the mutant forms print:
+
+```
+    auto_semantics_renew_test.go:103: 2/59 refused: largest gap 60 minutes exceeds the period 59
+    auto_semantics_renew_test.go:110: 6/7 refused: largest gap 11 minutes exceeds the period 7
+--- PASS: TestAutoSemanticsArmFollowsRenewInterval (0.00s)
+    --- PASS: TestAutoSemanticsArmFollowsRenewInterval/text (0.00s)
+    --- PASS: TestAutoSemanticsArmFollowsRenewInterval/gap-every-N (0.00s)
+    --- PASS: TestAutoSemanticsArmFollowsRenewInterval/mutant-2-59-refused (0.00s)
+    --- PASS: TestAutoSemanticsArmFollowsRenewInterval/mutant-6-7-refused (0.00s)
+--- PASS: TestDeployedAlwaysLoadedCharBudget (0.17s)
+--- PASS: TestDeployedAlwaysLoadedSurfaceDerivation (1.29s)
+    --- PASS: TestDeployedAlwaysLoadedSurfaceDerivation/always_loaded_rule_fixture_grows_total (0.15s)
+    --- PASS: TestDeployedAlwaysLoadedSurfaceDerivation/paths_scoped_rule_fixture_leaves_total_unchanged (0.16s)
+    --- PASS: TestDeployedAlwaysLoadedSurfaceDerivation/unclosed_frontmatter_paths_rule_counts_as_member (0.32s)
+    --- PASS: TestDeployedAlwaysLoadedSurfaceDerivation/closed_frontmatter_paths_rule_still_excluded (0.15s)
+    --- PASS: TestDeployedAlwaysLoadedSurfaceDerivation/import_closure_fixture_grows_total (0.13s)
+    --- PASS: TestDeployedAlwaysLoadedSurfaceDerivation/hardcoded_member_list_fails_growth_property (0.12s)
+    --- PASS: TestDeployedAlwaysLoadedSurfaceDerivation/nested_parent_import_resolves_inside_project (0.11s)
+    --- PASS: TestDeployedAlwaysLoadedSurfaceDerivation/escaping_import_excluded (0.15s)
+--- PASS: TestLaneRecheckDoctrine (0.00s)
+```
+
+`TestBindingLedgerIntegrity` is not GREEN at this HEAD. It is the blocker below, and the output is in the blocker section.
+
+Mirror drift (same tree, `go test ./internal/template/ -run '^(TestRuleTemplateMirrorDrift|TestDeclaredRuleMirrorForks)$' -v -count=1`, exit 0): `--- PASS: TestDeclaredRuleMirrorForks (0.00s)`, `--- PASS: TestRuleTemplateMirrorDrift (0.00s)`, `ok  	github.com/modu-ai/moai-adk/internal/template	0.208s`. Every listed subtest, including `factory-dispatch-mechanics.md`, reads PASS.
+
+Byte checks at HEAD `1ded464af`: the local watchdog `SKILL.md` and the local `auto-semantics.md` are byte-identical to their template copies (`cmp` printed nothing). The local `factory-dispatch.md` differs from its template in two diff lines, the line-259 git-flow override that M3 does not touch (`diff ... | grep -c '^[<>]'` printed `2`). Line 138 is identical in both copies.
+
+Regenerated tracked file: `internal/template/catalog.yaml` (the SKILL.md hash), in C1 only. `make build` in C2 and C3 regenerated nothing tracked.
+
+Lint, HEAD `1ded464af` (slot go-heavy held): `golangci-lint run --timeout=5m ./internal/template/...` printed `0 issues.`, exit 0; `golangci-lint run --timeout=5m ./internal/hook/...` printed `0 issues.`, exit 0.
+
+Cross-platform build, HEAD `1ded464af`: `GOOS=windows GOARCH=amd64 go build ./...` exit 0, no output.
+
+Formatting: `gofmt -l internal/template/lane_watchdog_renew_test.go internal/template/auto_semantics_renew_test.go internal/hook/lane_renew_interval_test.go internal/template/lane_recheck_doctrine_test.go` printed nothing (exit 0).
+
+Subagent-boundary grep (E4), HEAD `1ded464af`: `grep -rn 'AskUserQuestion' internal/hook --include='*.go' | grep -v _test.go | grep -v '// '` printed `internal/hook/pre_tool.go:856:	if input.ToolName == "AskUserQuestion" {`. It predates M3 (the same line was observed at M1 and M2) and is reported as pre-existing.
+
+Coverage per changed function (decision d-20261010T085601Z-991b): not measured in this part. M3 has changed no Go production function so far (the changes are markdown, template mirrors, the JSON fixture, and test files). `factoryLaneRuleForSource` and the new arm helper belong to AC-FLR-014, which is not started.
+
+BLOCKER (E7), outside M3 scope. `TestBindingLedgerIntegrity` fails at HEAD `1ded464af`. The verbatim failing lines (`go test ./internal/template/ -run '^TestBindingLedgerIntegrity$' -v -count=1`, exit 1):
+
+```
+    binding_ledger_test.go:835: [after-text presence] swept 363 rows (always=230 companion=97 role-core=36): direct=360 pending-M0-baseline=0 failures=3
+    binding_ledger_test.go:1077: ledger integrity: after-text absent for row ALB-0139: after_text not at companion:.claude/rules/moai/core/moai-mcp-tools-catalogue.md and before_text no longer in source .claude/rules/moai/core/moai-mcp-tools.md (obligation lost)
+    binding_ledger_test.go:1077: ledger integrity: after-text absent for row ALB-0141: after_text not at companion:.claude/rules/moai/core/moai-mcp-tools-catalogue.md and before_text no longer in source .claude/rules/moai/core/moai-mcp-tools.md (obligation lost)
+    binding_ledger_test.go:1077: ledger integrity: after-text absent for row ALB-0148: after_text not at companion:.claude/rules/moai/core/moai-mcp-tools-catalogue.md and before_text no longer in source .claude/rules/moai/core/moai-mcp-tools.md (obligation lost)
+--- FAIL: TestBindingLedgerIntegrity (26.28s)
+FAIL
+FAIL	github.com/modu-ai/moai-adk/internal/template	26.551s
+```
+
+Root cause (observed). The three rows quote the catalogue companion as it stood before M2. The companion's only commit since the SPEC base is `1f15ee972` (M2, "M2 catalogue rule and template mirror gain factory_renew"). The diff against the base (`2aab5f797`) changes the tool counts `47 -> 48` and `43 of the 47 -> 44 of the 48`, and it changes `Twenty-two tools accept an optional project_root -> Twenty-three tools`. It also adds the `factory_renew` row. ALB-0139 and ALB-0148 quote `47 tools`; ALB-0141 quotes `Twenty-two tools accept an optional project_root string`. Presence check, run without git (after_text in the companion): at `2aab5f797` True for all three rows; at HEAD now False for all three.
+
+Reproduction on the pre-M3 tree bytes: `git archive 11b0e9ee9` into scratch and running the same test there reproduces the same three after-text failures (`failures=3`, the same three lines). The archive has no git metadata, so its row-coverage sub-check reports an unavailable anchor. That sub-check is an artifact of the copy, so only the after-text result is cited here.
+
+M3 did not touch the companion or the source (`git diff 11b0e9ee9 -- <both files>` is empty). The M3 change to ALB-0276 is the only ledger edit in M3 and is consistent (ALB-0276 passes).
+
+Decision owed (not taken in this lane): the three rows need an owner decision. Either the ledger follows M2's count change (a fixture update of the after_text of ALB-0139, ALB-0141, and ALB-0148 to the 48-tool and 23-tool wording, as ALB-0276 was updated here), or M2's count change is reverted. The lane did not edit the M2 fixture or the M2 catalogue, because the brief stops M3 on out-of-scope breakage and forbids weakening a test.
+
+Remaining M3 work, not started (and not run): AC-FLR-014 (`TestLaneRuleCarriesConfiguredRenewInterval` is RED on `f95603c45`; the hook change, the `session_start_factory_i18n.go` locale strings, the `lane_recheck_rule_test.go` token drop, and the coverage check of `factoryLaneRuleForSource` and its new helper); item 4 (the `factory-dispatch-mechanics.md` renew sentence, both copies); and the M3 GREEN record for AC-FLR-014. The M3 exit is not met until AC-FLR-014 is GREEN.
+
+Gaps (not observed, or not done in M3)
+- AC-FLR-014 is RED. Its GREEN is not run.
+- The `factory-dispatch-mechanics.md` sentence (item 4) is not written.
+- `/verify` was not invoked. The verify skill delegates to `moai gate`, and a standalone `moai gate` runs the project-wide test step (`.moai/config/sections/gate.yaml`, `test` enabled). The lane brief forbids `go test ./...` locally, so the pre-commit gate was replaced by the scoped checks recorded above.
+- AC-FLR-011 verb half is GREEN from M2 (`TestFactoryRenewRefusalIsMachineReadable`); it was not re-run in M3. The M2 block records its GREEN at `e46a0b836`.
+- The procedure half of AC-FLR-011 and AC-FLR-010 are text checks. No live watchdog turn was observed, and no snapshot file is written by code (spec.md Residual risk).
+- Trailer layout: the M3 commits end with the `🗿 MoAI` line, as the brief requires, so the `Authored-By-Agent` trailer sits in its own paragraph above the marker. The consumer predicate matches on each commit (`git log -1 --format=%b | grep -niE '^[[:space:]]*Authored-By-Agent:...'`). Git's own trailer parser does not read these commits, which the project memory note on this layout records as a known limitation. The M2 commits used the other layout.
+- No code in `internal/cli` changed in M3, so no `internal/cli` coverage is attributable to M3.
+
+Residual risk
+- `go test ./internal/template/` as a package is red at HEAD `1ded464af` because of the blocker. The M3 criteria that live in that package are GREEN.
+- The hook change, when it lands, depends on the root that the factory opens. The factory opens `factoryCardRoot()`, which resolves through `factory.ResolveTodoQueueRoot`, with the base `CLAUDE_PROJECT_DIR` or the working directory (`internal/cli/session.go`). A hook that reads a different root would render a period the factory does not enforce. The design for the next step is to resolve the same root in the hook and to fall back to the default period on a refused configuration, and this fallback is not yet tested.
+
 ## §E.3 Run-phase Audit-Ready Signal
 
 _<pending run-phase>_
