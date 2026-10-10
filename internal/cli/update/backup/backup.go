@@ -206,68 +206,122 @@ type BackupMetadata struct {
 	TemplateDefaultsDir string   `json:"template_defaults_dir,omitempty"`
 }
 
+// CleanupOldBackups prunes old backup runs and returns the number of backup
+// directories it removed.
+//
+// Retention counts runs, not directories. The backup roots are the config root
+// (.moai-backups/) and the namespace root (.moai/backups/). A run is the set of
+// directories, across both roots, that carry the same run marker (RunMarkerName);
+// a directory with no readable marker is a run of its own. Runs are ordered
+// newest first: a marked run by its run id, an unmarked run by its directory's
+// modification time, and ties by path ascending. The newest keepCount runs are
+// kept, and every directory of every older run is removed. A missing root
+// contributes no runs and is not an error.
 func CleanupOldBackups(projectRoot string, keepCount int) int {
-	backupDir := filepath.Join(projectRoot, defs.BackupsDir)
-
-	// Check if backup directory exists
-	info, err := os.Stat(backupDir)
-	if err != nil {
-		if os.IsNotExist(err) {
-			return 0 // No backups to clean up
-		}
-		// Return 0 on stat errors (ignore for cleanup)
-		return 0
+	// A negative keepCount keeps no runs.
+	if keepCount < 0 {
+		keepCount = 0
 	}
-	if !info.IsDir() {
+	runs := collectBackupRuns(projectRoot)
+	if len(runs) <= keepCount {
 		return 0
 	}
 
-	// Get all subdirectories in backup directory
-	entries, err := os.ReadDir(backupDir)
-	if err != nil {
-		return 0
-	}
-
-	// Filter for directories matching YYYYMMDD_HHMMSS pattern
-	// Pattern: 8 digits + underscore + 6 digits = 15 characters
-	var backups []string
-	for _, entry := range entries {
-		if entry.IsDir() && len(entry.Name()) == 15 {
-			// Check if it matches the timestamp pattern (digits + underscore + digits)
-			parts := strings.SplitN(entry.Name(), "_", 2)
-			if len(parts) == 2 {
-				if len(parts[0]) == 8 && len(parts[1]) == 6 {
-					backups = append(backups, entry.Name())
-				}
+	deletedCount := 0
+	for _, run := range runs[keepCount:] {
+		for _, dir := range run.dirs {
+			if err := os.RemoveAll(dir); err != nil {
+				// Log error but continue with other backups
+				fmt.Fprintf(os.Stderr, "Warning: failed to delete backup %s: %v\n", dir, err)
+			} else {
+				deletedCount++
 			}
 		}
 	}
 
-	// If we have fewer backups than keepCount, no cleanup needed
-	if len(backups) <= keepCount {
-		return 0
+	return deletedCount
+}
+
+// backupRun is one retention unit: the backup directories that share one run
+// id, or a single unmarked directory. at orders the run: the run id for a marked
+// run, the modification time for an unmarked one. dirs is sorted ascending, so
+// dirs[0] is the path a tie is broken on.
+type backupRun struct {
+	at   time.Time
+	dirs []string
+}
+
+// collectBackupRuns groups the directories under both backup roots into runs and
+// returns them newest first.
+func collectBackupRuns(projectRoot string) []*backupRun {
+	roots := []string{
+		filepath.Join(projectRoot, defs.BackupsDir),
+		filepath.Join(projectRoot, defs.MoAIDir, defs.NamespaceBackupsSubdir),
 	}
 
-	// Sort backups by name (timestamp) ascending (oldest first)
-	sort.Strings(backups)
-
-	// Delete the OLDEST excess backups so the NEWEST keepCount survive.
-	// The timestamps sort ascending, so the retention window is the tail
-	// backups[len-keepCount:]; everything before it is the oldest excess.
-	// (A prior revision deleted backups[keepCount:] — the newest — which
-	// destroyed the most recent restore points on every rotation.)
-	deletedCount := 0
-	for _, backupName := range backups[:len(backups)-keepCount] {
-		backupPath := filepath.Join(backupDir, backupName)
-		if err := os.RemoveAll(backupPath); err != nil {
-			// Log error but continue with other backups
-			fmt.Fprintf(os.Stderr, "Warning: failed to delete backup %s: %v\n", backupName, err)
-		} else {
-			deletedCount++
+	var runs []*backupRun
+	byID := make(map[string]*backupRun)
+	for _, root := range roots {
+		for _, dir := range listBackupDirs(root) {
+			id, ok := readRunID(dir.path)
+			if !ok {
+				runs = append(runs, &backupRun{at: dir.modTime, dirs: []string{dir.path}})
+				continue
+			}
+			key := id.Format(runIDLayout)
+			run, seen := byID[key]
+			if !seen {
+				run = &backupRun{at: id}
+				byID[key] = run
+				runs = append(runs, run)
+			}
+			run.dirs = append(run.dirs, dir.path)
 		}
 	}
 
-	return deletedCount
+	for _, run := range runs {
+		sort.Strings(run.dirs)
+	}
+	sort.Slice(runs, func(i, j int) bool {
+		if !runs[i].at.Equal(runs[j].at) {
+			return runs[i].at.After(runs[j].at)
+		}
+		return runs[i].dirs[0] < runs[j].dirs[0]
+	})
+	return runs
+}
+
+// backupDirEntry is one directory directly under a backup root.
+type backupDirEntry struct {
+	path    string
+	modTime time.Time
+}
+
+// listBackupDirs returns the directories directly under root. Symbolic links are
+// not followed. A missing root, a root that is not a directory, and a root that
+// cannot be read all yield no directories.
+func listBackupDirs(root string) []backupDirEntry {
+	info, err := os.Stat(root)
+	if err != nil || !info.IsDir() {
+		return nil
+	}
+	entries, err := os.ReadDir(root)
+	if err != nil {
+		return nil
+	}
+
+	var dirs []backupDirEntry
+	for _, entry := range entries {
+		if !entry.IsDir() {
+			continue
+		}
+		fi, err := entry.Info()
+		if err != nil {
+			continue
+		}
+		dirs = append(dirs, backupDirEntry{path: filepath.Join(root, entry.Name()), modTime: fi.ModTime()})
+	}
+	return dirs
 }
 
 // IsSymlinkEntry reports whether path is a symbolic link (via os.Lstat, which

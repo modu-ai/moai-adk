@@ -116,7 +116,9 @@ func reportUncoveredRestorePaths(out io.Writer, projectRoot, absBackup string) {
 
 	var items []string
 	for _, rel := range inMemoryOnlyBackupTargets() {
-		if rel == restoreSettingsRel {
+		// The run marker is backup bookkeeping, not a backed-up user file: it is
+		// never listed as uncovered.
+		if rel == restoreSettingsRel || rel == backup.RunMarkerName {
 			continue
 		}
 		copyPath := filepath.Join(copyRoot, filepath.FromSlash(rel))
