@@ -111,11 +111,103 @@ Exit codes: 0 = matches found, 1 = no match, 2 = search error. No scan returned 
 - `moai slot acquire|release --resource go-test-heavy` around each race or full-package run.
 - `git add -- <explicit pathspecs>` and `git commit -F <message file>` for every commit; `git status --short` clean after each.
 
+### E.2.6 Repair round — sync-audit F1 and F2 (card t1582)
+
+Trigger: the sync-audit verdict `.moai/reports/t1582/sync-audit-1.md` (FAIL at audited_sha `20c107a26`) names two blocking Functionality defects. Each is repaired RED first. Both RED tests are committed before any production change, so the commit graph shows the RED state ahead of the fixes.
+
+Commits, in order (branch `WT-p1-p2-t1576`):
+
+| Step | Commit | Subject | Paths |
+|---|---|---|---|
+| RED for F1 and F2 | `84c31cd59` | `test(SPEC-MERGE-WINDOW-QUEUE-002): RED for sync-audit F1 and F2 (card t1582)` | `internal/cli/factory_merge_composite_exit_test.go`, `internal/factory/integration_remeasure_startless_test.go` (new; both failing before the fixes) |
+| F1 fix | `79e1b56ec` | `fix(SPEC-MERGE-WINDOW-QUEUE-002): F1 measurement-failure exit when another condition fails first (card t1582)` | `internal/cli/factory_merge.go` |
+| F2 fix | `49ce704b0` | `fix(SPEC-MERGE-WINDOW-QUEUE-002): F2 start-less terminal event cannot cancel a truncated package (card t1582)` | `internal/factory/integration_remeasure.go` |
+| Run repair evidence | the commit that carries this section | `docs(SPEC-MERGE-WINDOW-QUEUE-002): run repair evidence for F1 and F2 (card t1582)` | `.moai/specs/SPEC-MERGE-WINDOW-QUEUE-002/progress.md` |
+
+**F1 — the exit decision reads every recorded check.** `FailedCondition` names only the first failing check, so a re-measure-record failure behind an earlier sync-audit, conflict-free, or tree-identity failure exited 0 (REQ-MWQ2-006). The verdict line, the checks output, and the JSON `failed_condition` are unchanged. Waiting and the other refused conditions keep the zero exit (REQ-MWQ2-010).
+
+RED before fix 1 — command `unset MOAI_KANBAN_ID MOAI_KANBAN_LEAD_ADDR MOAI_KANBAN_SETTINGS_INJECTED && go test -count=1 -v -run '^TestFactoryMergeReadyCompositeFailureResolvesNonZeroExit$' ./internal/cli/` (exit 1, verbatim):
+
+```
+=== RUN   TestFactoryMergeReadyCompositeFailureResolvesNonZeroExit
+    factory_merge_composite_exit_test.go:44: a measurement failure that co-occurs with sync-audit must reach the process exit as MergeExitRecordInvalid (1): code=0 resolved=false err=<nil> out=merge-readiness: REFUSED — failing condition: sync-audit
+        no window was taken
+          sync-audit     FAIL  §E.4 sync_status is "audit-ready", want complete — the sync phase record does not read closed
+          conflict-free  PASS  merge-tree develop + WT-card clean; result tree cca1377e26e2ce841ee10fd78f5f61e6dda22f10
+          tree-identity  PASS  merge result tree cca1377e26e2ce841ee10fd78f5f61e6dda22f10 == card branch tree cca1377e26e2ce841ee10fd78f5f61e6dda22f10 (HEAD^{{tree}} == HEAD^2^{{tree}} holds)
+          re-measure-record FAIL  no valid re-measure record for the candidate tree (no re-measure record for tree cca1377e26e2ce841ee10fd78f5f61e6dda22f10)
+        {"verdict":"refused","lane":"lane-9","card":"t9001","failed_condition":"sync-audit","detail":"the condition triple failed — no window was taken","checks":[{"name":"sync-audit","passed":false,"detail":"§E.4 sync_status is \"audit-ready\", want complete — the sync phase record does not read closed"},{"name":"conflict-free","passed":true,"detail":"merge-tree develop + WT-card clean; result tree cca1377e26e2ce841ee10fd78f5f61e6dda22f10"},{"name":"tree-identity","passed":true,"detail":"merge result tree cca1377e26e2ce841ee10fd78f5f61e6dda22f10 == card branch tree cca1377e26e2ce841ee10fd78f5f61e6dda22f10 (HEAD^{{tree}} == HEAD^2^{{tree}} holds)"},{"name":"re-measure-record","passed":false,"detail":"no valid re-measure record for the candidate tree (no re-measure record for tree cca1377e26e2ce841ee10fd78f5f61e6dda22f10)"}]}
+--- FAIL: TestFactoryMergeReadyCompositeFailureResolvesNonZeroExit (1.73s)
+FAIL
+FAIL	github.com/modu-ai/moai-adk/internal/cli	2.753s
+FAIL
+```
+
+PASS after fix 1 — same command form (exit 0, verbatim):
+
+```
+=== RUN   TestFactoryMergeReadyCompositeFailureResolvesNonZeroExit
+--- PASS: TestFactoryMergeReadyCompositeFailureResolvesNonZeroExit (1.93s)
+PASS
+ok  	github.com/modu-ai/moai-adk/internal/cli	3.151s
+```
+
+**F2 — the truncation check reads a set difference.** The check compared counts (`started` minus `finished`). A start-less terminal event, whose start line was cut from the head of the stream, filled a finished slot and cancelled one unfinished started package, so a truncated capture was accepted (REQ-MWQ2-003). The check now refuses when the set of started packages with no terminal event is non-empty. The truncated-capture wording is kept and states the count of unreported packages. The re-arm at the `start` case is unchanged.
+
+RED before fix 2 — command `unset MOAI_KANBAN_ID MOAI_KANBAN_LEAD_ADDR MOAI_KANBAN_SETTINGS_INJECTED && go test -count=1 -v -run '^TestClassifyStartlessTerminalCannotCancelTruncation$' ./internal/factory/` (exit 1, verbatim):
+
+```
+=== RUN   TestClassifyStartlessTerminalCannotCancelTruncation
+    integration_remeasure_startless_test.go:22: a started package that never reported must refuse the stream, even with a start-less terminal event present
+--- FAIL: TestClassifyStartlessTerminalCannotCancelTruncation (0.00s)
+FAIL
+FAIL	github.com/modu-ai/moai-adk/internal/factory	0.346s
+FAIL
+```
+
+PASS after fix 2 — same command form (exit 0, verbatim):
+
+```
+=== RUN   TestClassifyStartlessTerminalCannotCancelTruncation
+--- PASS: TestClassifyStartlessTerminalCannotCancelTruncation (0.00s)
+PASS
+ok  	github.com/modu-ai/moai-adk/internal/factory	0.412s
+```
+
+Family runs after both fixes (`unset … && go test -count=1 -v -run '<prefix>' ./internal/factory/ ./internal/cli/`, one prefix per command, each exit 0). Counts are top-level `--- PASS` lines per package; `no tests to run` means zero selected tests, which is not a pass.
+
+| Prefix | `internal/factory` | `internal/cli` |
+|---|---|---|
+| `TestClassify` | 20 PASS, 0 FAIL (`ok 0.227s`) | 20 PASS, 0 FAIL (`ok 1.275s`) |
+| `TestRemeasure` | 10 PASS, 0 FAIL (`ok 13.703s`) | 2 PASS, 0 FAIL (`ok 1.141s`) |
+| `TestFactoryMergeReady` | 0 selected (`ok 0.187s [no tests to run]`) | 7 PASS, 0 FAIL (`ok 16.115s`) |
+| `TestRedT1582` | 7 PASS, 0 FAIL (`ok 7.466s`) | 3 PASS, 0 FAIL (`ok 3.218s`) |
+| `TestMergeStep` | 24 PASS, 0 FAIL (`ok 61.832s`) | 0 selected (`ok 0.737s [no tests to run]`) |
+| `TestIntegrationMerge` | 0 selected (`ok 0.193s [no tests to run]`) | 5 PASS, 0 FAIL (`ok 4.074s`) |
+| `TestIntegrationRem` | 0 selected (`ok 0.173s [no tests to run]`) | 1 PASS with 4 subtests PASS, 0 FAIL (`ok 2.317s`) |
+
+Build, format, vet, lint (after both fixes; each exit 0 unless noted): `go build ./...` (no output); `GOOS=windows GOARCH=amd64 go build ./...` (no output); `gofmt -l internal/factory internal/cli` (no output); `go vet ./internal/factory/ ./internal/cli/` (no output); `golangci-lint run ./internal/factory/... ./internal/cli/...` → `0 issues.`
+
+**F8 — contract change recorded (no code change in this round).** `countGoTestJSONTests` returns `structured=false` for a malformed `go test -json` stream (the decode-error return in `integration_remeasure.go`). The base returned `structured=true` there.
+
+- Intended, not accidental. Commit `eac7fab39` (M2) states the change in its message. The path's own comment reads "refuse it unstructured" (`integration_remeasure.go`, lines 468-472). The `StructuredCount` field doc (lines 40-41) defines `true` as "a recognized structured test report", which a stream that does not parse is not.
+- Both refusal paths still hold. `ValidateRemeasureRecord` refuses `StructuredRequired && !HasStructured` (line 151) and `StructuredRequired && TestCount <= 0` (line 153). The subtests `TestRemeasureRecordRefusesMissingIdentity/structured_required,_none_recognized` and `TestRemeasureRecordRefusesMissingIdentity/structured_with_zero_tests` are PASS in the `TestRemeasure` run above.
+- Persisted effect. `RunRemeasure` writes the record whether or not the classify call errors (lines 652-659). A malformed capture's record now carries `structured_count: false` where it carried `true`. The refusal message changes from "structured report carries 0 tests" to "supports structured test output but none was requested or recognized".
+- Not reverted: the audit's revert branch does not apply, because the change is intended.
+
+**Repair-round gaps (not observed, or not run in this round).**
+
+1. The `/verify` gate was not invoked before the two fix commits. Its Go test check runs the repository-wide suite, and this round's instruction excludes the full `internal/factory` and `internal/cli` suites. The scoped equivalents above were run instead. The gate has not run on `49ce704b0`.
+2. The full `internal/factory` and `internal/cli` suites were not run. The repository-wide verdict stays with the CI run on the integration branch and is PENDING at report time.
+3. The AC-MWQ2-005 built-binary observation (sync-audit F4) was not performed and stays debt.
+4. The F8 runtime path, a malformed capture through `RunRemeasure`, was not executed (no fixture). The refusal is shown by the verifier subtests and by reading lines 610-659.
+5. Sync-audit findings outside this round's scope stay open: F3 (the §E.3 "all 14 changed files" claim and the §E.4 scope record), F4-F7, F9-F15, and the CHANGELOG entry (a) reconciliation (manager-docs and the leader).
+
 ## §E.3 Run-phase Audit-Ready Signal
 
 ```yaml
-run_complete_at: 2026-10-10T02:58:51+09:00
-run_commit_sha: a8f49f6ad
+run_complete_at: 2026-10-10T00:37:19Z
+run_commit_sha: 49ce704b0
 run_status: complete-with-gaps
 ac_pass_count: 6
 ac_pass_with_debt_count: 1          # AC-MWQ2-005 (built-binary observation not performed)
@@ -128,7 +220,7 @@ cross_platform_build:
   native_go_build: exit-0
   windows_amd64_go_build: exit-0
 total_run_phase_files: 14
-m1_to_mN_commit_strategy: one commit per milestone (M1 a560b3b6f, M2 eac7fab39, M3 64aba35c1, M4 b50d61bb5, M6 a8f49f6ad as a test-only quality commit); M5 has no code change and is recorded in E.2.3
+m1_to_mN_commit_strategy: one commit per milestone (M1 a560b3b6f, M2 eac7fab39, M3 64aba35c1, M4 b50d61bb5, M6 a8f49f6ad as a test-only quality commit); M5 has no code change and is recorded in E.2.3; repair round for sync-audit F1 and F2 (§E.2.6) commits RED 84c31cd59, F1 79e1b56ec, F2 49ce704b0
 ```
 
 ### E.3.1 AC matrix (command → observed result)
@@ -137,9 +229,9 @@ m1_to_mN_commit_strategy: one commit per milestone (M1 a560b3b6f, M2 eac7fab39, 
 |---|---|---|
 | AC-MWQ2-001 — malformed Base/Tree refused as record-invalid | PASS | `--- PASS: TestRedT1582VerifierAdmitsAShortBaseSHA (0.00s)`; edge `TestRemeasureRecordRefusesMalformedTreeAndBase` PASS (short base, short tree, uppercase tree, 39-char base) |
 | AC-MWQ2-002 — short base renders length-safe, window released, C promoted | PASS | `--- PASS: TestRedT1582ShortBaseSHAPanicsBeforeWindowRelease (1.70s)`; `ok … 1.908s` |
-| AC-MWQ2-003 — mixed sweep valid; fail events and total-zero stay refused | PASS | `--- PASS: TestRedT1582MixedSweepWithNoTestPackageCounts (0.00s)`; family `TestClassify*` PASS; negative `TestClassifyAllNoTestSweepStaysEmpty`, `TestRemeasureGoTestJSONRecordsCount` PASS |
+| AC-MWQ2-003 — mixed sweep valid; fail events, total-zero, and truncated captures stay refused | PASS (repaired: F2, §E.2.6) | `--- PASS: TestRedT1582MixedSweepWithNoTestPackageCounts (0.00s)`; F2 RED `TestClassifyStartlessTerminalCannotCancelTruncation` FAIL before `49ce704b0`, PASS after; truncation negatives `TestClassifyTruncatedStreamIsRefused`, `TestClassifyTruncatedRerunIsRefused`, `TestClassifySkippedPackageReportsCompletion` PASS; `TestClassify` family 20 PASS / 0 FAIL per package; negative `TestClassifyAllNoTestSweepStaysEmpty`, `TestRemeasureGoTestJSONRecordsCount` PASS |
 | AC-MWQ2-004 — join/classify boundary seal (no repair) | PASS | the three `TestRedT1582…` seal tests PASS unchanged in every family run |
-| AC-MWQ2-005 — measurement-failure REFUSED exits non-zero; waiting keeps 0 | PASS-WITH-DEBT | `--- PASS: TestRedT1582MergeReadyMeasurementFailureStillExitsZero (1.18s)`; `--- PASS: TestFactoryMergeReadyMeasurementFailureResolvesNonZeroExit`; `TestFactoryMergeReady_HeldWindowRefusedWithHolderNamed` (waiting, exit 0) PASS. Debt: built-binary observation not performed (gap 1) |
+| AC-MWQ2-005 — measurement-failure REFUSED exits non-zero, also when another condition fails first; waiting keeps 0 | PASS-WITH-DEBT (repaired: F1, §E.2.6) | `--- PASS: TestRedT1582MergeReadyMeasurementFailureStillExitsZero (2.00s)`; F1 RED `TestFactoryMergeReadyCompositeFailureResolvesNonZeroExit` FAIL before `79e1b56ec` (`code=0 resolved=false err=<nil>`), PASS after (`--- PASS: TestFactoryMergeReadyCompositeFailureResolvesNonZeroExit (1.93s)`); `TestFactoryMergeReady_HeldWindowRefusedWithHolderNamed` (waiting, exit 0) PASS. Debt: built-binary observation not performed (gap 1) |
 | AC-MWQ2-006 — hold+release atomic; execution-count guard ≥2 | PASS | `--- PASS: TestRedT1582Cause7HoldAndReleaseAreOneMutation (2.93s)`, `--- PASS: TestRedT1582Cause7SeedingWritesHoldThenReleases (2.20s)` (count 2) |
 | AC-MWQ2-007 — affected families green | PASS | exact command, both packages: `ok … internal/factory 64.338s`, `ok … internal/cli 26.387s`; full factory package `ok … 298.623s` at the final state |
 | AC-MWQ2-008 — gofmt empty, vet exit 0 | FAIL (literal) | vet: exit 0. gofmt: lists `internal/factory/remeasure_red_t1582_test.go` (pre-existing RED overlay; gap 2) |
