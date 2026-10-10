@@ -199,7 +199,13 @@ func resumeInitializedProject(cmd *cobra.Command, opts *project.InitOptions, wir
 	if err := provisionMCPEntryUnlessDeclined(cmd.OutOrStdout(), opts.ProjectRoot, mcpDeclined); err != nil {
 		return fmt.Errorf("provision MCP entry: %w", err)
 	}
-	wireCodexUnlessClaude(cmd, wiring, opts.ProjectRoot)
+	// Codex wiring (card t1591, repair round): on the resume path a wiring failure
+	// is a failed post-step, not a warning. Returning here skips the snapshot
+	// settle, the section retrack, and the marker and record retirement below, so
+	// the next run resumes from the marker and the selection record.
+	if err := wireCodex(cmd, wiring, opts.ProjectRoot); err != nil {
+		return fmt.Errorf("codex wiring: %w", err)
+	}
 	// Finding 2 (card t1591): the resume is this flow's end, so it settles the
 	// snapshot lifecycle the way a healthy init does (init.go): the settings.json
 	// and .mcp.json staging copies are promoted to the canonical base the next
@@ -319,8 +325,8 @@ func resumeWiringPath(projectRoot string) string {
 	return filepath.Join(projectRoot, ".moai", "state", "resume-wiring")
 }
 
-// persistResumeWiring records the harness selection a failing init run made,
-// so the resume can read it back.
+// persistResumeWiring records the harness selection an init run made before its
+// user-asset ensure, so an interrupted run's resume can read it back.
 func persistResumeWiring(projectRoot string, wiring agentWiring) error {
 	path := resumeWiringPath(projectRoot)
 	if err := os.MkdirAll(filepath.Dir(path), 0o755); err != nil {

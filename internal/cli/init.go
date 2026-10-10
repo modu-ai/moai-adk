@@ -201,14 +201,23 @@ func resolveAgentWiring(cmd *cobra.Command) agentWiring {
 // put a second resolution behind the resolution point, which is exactly how a
 // wizard answer reaches one consumer and not the other.
 func wireCodexUnlessClaude(cmd *cobra.Command, wiring agentWiring, projectRoot string) {
-	if wiring == agentWiringClaude {
-		return
-	}
-	if _, err := codexwiring.Wire(projectRoot, cmd.OutOrStdout(), cmd.ErrOrStderr()); err != nil {
+	if err := wireCodex(cmd, wiring, projectRoot); err != nil {
 		// Card t1527 D4 (repair round): ! severity line replaces the raw
 		// "warning:" prefix.
 		emitSeverityLine(cmd.ErrOrStderr(), sevWarn, resolveTheme(), "Codex wiring failed: %v", err)
 	}
+}
+
+// wireCodex is the Codex wiring step that wireCodexUnlessClaude and the resume
+// share. It returns the failure instead of printing it: the healthy init tail
+// warns on it, and the resume returns it as an error (card t1591, repair round).
+// A claude selection is a no-op.
+func wireCodex(cmd *cobra.Command, wiring agentWiring, projectRoot string) error {
+	if wiring == agentWiringClaude {
+		return nil
+	}
+	_, err := codexwiring.Wire(projectRoot, cmd.OutOrStdout(), cmd.ErrOrStderr())
+	return err
 }
 
 // addCodexReinitGuidance is the redirect note printed when init runs
@@ -971,14 +980,15 @@ func runInit(cmd *cobra.Command, args []string) (err error) {
 	// summary (REQ-013).
 	if homeDir, homeErr := userHomeDirFn(); homeErr == nil {
 		selection := parseBundleSelection(getStringFlag(cmd, "bundles"))
+		// Finding 1 (card t1591): record the harness this run selected BEFORE the
+		// ensure, so a run that dies inside it (a crash or a kill, which no error
+		// branch observes) still leaves the selection the resume restores.
+		// Best-effort: a record that cannot be written is named, never dropped silently.
+		if recErr := persistResumeWiring(opts.ProjectRoot, agentWiringSelection); recErr != nil {
+			emitSeverityLine(cmd.ErrOrStderr(), sevWarn, resolveTheme(), "Could not record the harness selection for the resume: %v", recErr)
+		}
 		if err := ensureUserAssetsLockedFn(homeDir, selection, cmd.OutOrStdout()); err != nil {
-			// Finding 1 (card t1591): this run is the interrupted one the
-			// resume completes. Record the harness it selected so the resume
-			// restores that selection, not the claude default. Best-effort:
-			// a record that cannot be written is named, never dropped silently.
-			if recErr := persistResumeWiring(opts.ProjectRoot, agentWiringSelection); recErr != nil {
-				emitSeverityLine(cmd.ErrOrStderr(), sevWarn, resolveTheme(), "Could not record the harness selection for the resume: %v", recErr)
-			}
+			// The record stays: this run is the interrupted one the resume completes.
 			return fmt.Errorf("user-asset install failed: %w\n  Fix the cause and re-run 'moai init' — the ensure is idempotent and completes the shortfall", err)
 		}
 	} else {
@@ -1224,6 +1234,13 @@ func runInit(cmd *cobra.Command, args []string) (err error) {
 	// The template snapshot is written by opts.AfterTemplateDeploy (set before
 	// executor.Execute), not here: by this point the section files carry the
 	// wizard answers, and a snapshot of them is not a template render (t1139).
+
+	// Finding 1 (card t1591): the selection record retires on normal completion,
+	// with the checkpoint marker and only once the marker is gone. A marker that
+	// still stands needs its selection for the resume it names.
+	if _, statErr := os.Stat(filepath.Join(opts.ProjectRoot, ".moai", "resume-pending")); os.IsNotExist(statErr) {
+		clearResumeWiring(opts.ProjectRoot)
+	}
 
 	return nil
 }
