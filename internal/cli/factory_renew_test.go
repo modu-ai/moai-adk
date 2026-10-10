@@ -177,17 +177,21 @@ func TestNonHolderRenewRefusedCLIAndMCP(t *testing.T) {
 	before, eventsBefore := factoryRenewRecord(t, root)
 	sdLaneEnv(t, "lane-2", "")
 
-	viaMCP := factoryRenewViaMCP(t, root)
-	viaVerb, verbErr := factoryRenewViaVerb(t)
-	if verbErr == nil {
-		t.Errorf("renew --json by a non-holder: err = nil, want a non-zero exit")
-	}
-	if viaMCP.Result != "refused-not-holder" {
-		t.Errorf("factory_renew by a non-holder: result = %q, want refused-not-holder", viaMCP.Result)
-	}
-	if viaVerb.Result != "refused-not-holder" {
-		t.Errorf("renew --json by a non-holder: result = %q, want refused-not-holder", viaVerb.Result)
-	}
+	// Each surface is its own subtest, so a red on one does not hide the other.
+	t.Run("verb", func(t *testing.T) {
+		wire, verbErr := factoryRenewViaVerb(t)
+		if verbErr == nil {
+			t.Errorf("renew --json by a non-holder: err = nil, want a non-zero exit")
+		}
+		if wire.Result != "refused-not-holder" {
+			t.Errorf("renew --json by a non-holder: result = %q, want refused-not-holder", wire.Result)
+		}
+	})
+	t.Run("MCP tool", func(t *testing.T) {
+		if wire := factoryRenewViaMCP(t, root); wire.Result != "refused-not-holder" {
+			t.Errorf("factory_renew by a non-holder: result = %q, want refused-not-holder", wire.Result)
+		}
+	})
 
 	after, eventsAfter := factoryRenewRecord(t, root)
 	if after.Version != before.Version || after.State != before.State ||
