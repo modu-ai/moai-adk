@@ -22,11 +22,13 @@ tier: M
 
 ## 0. Tier basis (provisional)
 
-Tier M. The affected-file estimate is 15 files (plan.md §A.4 Basis), inside the Tier M band of 5 to 15 files; the requirement count is 13 (ceiling 16) and the acceptance-criterion count is 13 (ceiling 16). The Tier judgment is normally a Socratic question in spec-assembly; this SPEC runs without a user channel, so the classification is provisional until the orchestrator confirms it. Tier-up trigger: if the run-phase reach measurement (plan.md §A.4 G-9) names more than 15 affected files, this SPEC tiers up to Tier L and gains design.md and research.md before run.
+Tier M is kept by the orchestrator's decision (lane-18, ladder ⑤). Ruling d-20261010T081810Z-49e5 (board, kind=ruling) confirms option (b): Tier M kept at 16 files, with the Q2 template file in this SPEC and the basis recorded in this section. The file band of 5 to 15 files is a guide, not a gate. The affected-file count is 15 without the Q2 template file and 16 with it (plan.md §A.4 Basis); the 16th file is a one-line template edit. That decision overrides the tier-up trigger, which would otherwise require Tier L or a split before run. The run-phase reach measurement (plan.md §A.4 G-9) stays a recorded input and is reported in progress.md. The requirement count is 13 (ceiling 16) and the acceptance-criterion count is 13 (ceiling 16). The Tier judgment is normally a Socratic question in spec-assembly; this SPEC runs without a user channel, so the lane records the judgment in progress.md §G.
+
+Q5 adds no file: the PROJECT-scope change lives in `internal/config/toolpolicy/tier_render.go`, which is already counted as item 1.
 
 ## 1. Background and Premise
 
-Card 3.2-0-1 asks for three properties. First, `moai init` leaves the user's existing settings permissions intact. Second, tests never touch the operator's home directory. Third, `moai clean --home` covers the run and db categories. Two absorbed cards are in scope: t1567 (permissions.defaultMode in the template) and t1594 (user assets and deployment residue).
+Card 3.2-0-1 asks for three properties. First, `moai init` leaves the user's existing settings permissions intact. Second, tests never touch the operator's home directory. Third, `moai clean --home` covers the run and db categories. Absorbed card t1567 (permissions.defaultMode in the template) is in scope, and its template item follows decided Q2 (the template carries the default, pinned to `"default"` by the lane in progress.md §G). Absorbed card t1594 (user assets and deployment residue) is blocked on its card text (M8) and has no requirement in this revision.
 
 The measured state at tree 2aab5f797 (commands and verbatim output in plan.md §A.2):
 
@@ -44,22 +46,22 @@ The measured state at tree 2aab5f797 (commands and verbatim output in plan.md §
 
 - REQ-001: The `moai init` USER-scope settings writer shall preserve every existing `permissions.allow`, `permissions.ask`, and `permissions.deny` entry and every other key of the existing `permissions` object, changing only `permissions.defaultMode`. This restores the condition pinned by SPEC-INIT-WIZARD-REPAIR-001 §4 (decision-index.md Q8, DECIDED).
 - REQ-002: When `moai init` writes the USER-scope settings file and the resolved defaultMode already matches the value in the file, the writer shall not rewrite the `permissions` region, so that its bytes are identical before and after the init run.
-- REQ-003: While decision Q1 in decision-index.md carries no operator verdict, the run phase shall not start. Once Q1 carries a verdict, an existing `permissions.defaultMode` that differs from the resolved tier default shall be handled as that verdict records.
-- REQ-004: The settings template `.claude/settings.json.tmpl` shall carry no `permissions.defaultMode` value unless decision Q2 records a verdict to ship one.
-- REQ-005: Where a tool-policy document is present and the policy bundle is applied, the PROJECT-scope writer shall preserve user-added `permissions.allow` entries, unless decision Q5 records a verdict to regenerate that list from the policy document.
+- REQ-003: The `moai init` default path and automatic path shall keep an existing USER-scope `permissions.defaultMode` value and write that key only when it is absent (decision Q1, DECIDED).
+- REQ-004: The settings template `.claude/settings.json.tmpl` shall carry a `permissions.defaultMode` value of `"default"`; a fresh `moai init` shall write that key only where it is absent, and `moai update` shall not modify it (decision Q2, DECIDED; the value is pinned in progress.md §G).
+- REQ-005: Where a tool-policy document is present and the policy bundle is applied, the PROJECT-scope writer shall keep user-added `permissions.allow` entries by set union with the regenerated managed block. The writer keeps the last generated managed allow list in `.moai/state/tool-policy/managed-allow.json` as `last_generated`. User-added entries are the existing allow entries absent from `last_generated`, and the result is the regenerated list union the user-added entries. With no such record, every existing entry is kept, so nothing is removed. Only the user removes a user-added entry (decision Q5, DECIDED; detection pinned in progress.md §G).
 
 ### Test isolation (S-2, S-3, S-4)
 
 - REQ-006: Every Go test package whose test binary reaches a home-resolving function shall install a MOAI_HOME sandbox, a directory owned by that test binary, in its `TestMain` before `m.Run()` is called.
-- REQ-007: While a Go test binary runs, the process HOME environment variable shall point at a test-owned directory, so that no path under the operator's real home (`.moai`, `.claude`, `.codex`, `.agents`) is written.
-- REQ-008: Under a sandboxed test binary, `homestate.RunProjectDir` and the receipt and escalation `StoreDir` resolvers shall return paths under the test-owned MOAI_HOME root.
+- REQ-007: While a Go test binary of a package that reaches a home-resolving function runs, the process HOME environment variable shall point at a test-owned directory, so that no path under the operator's real home (`.moai`, `.claude`, `.codex`, `.agents`) is written by that binary. Excluded: packages whose test files reference no home-resolving function, because their binaries resolve no home path (plan.md E-9, a name-based measure; G-9).
+- REQ-008: While a Go test binary runs under its MOAI_HOME sandbox, `homestate.RunProjectDir` and the receipt and escalation `StoreDir` resolvers shall return paths under the MOAI_HOME sandbox root.
 - REQ-009: Every live Codex test shall set CODEX_HOME to a test-owned directory before it starts any `codex` child process, including `TestHandleCodexReviewGate_LiveCodexBlocksInjectionAndKey`.
-- REQ-010: If a test package's `TestMain` omits the sandbox that REQ-006 requires, the repository test run shall fail with a named finding, and a mutant that removes a sandbox installation shall turn that guard red.
+- REQ-010: When a test package's `TestMain` omits the sandbox that REQ-006 requires, the repository test run shall fail with a named finding. The mutant procedure that proves this is in acceptance.md AC-010.
 
 ### clean --home (S-5)
 
-- REQ-011: `moai clean --home` shall include the `run` and `db` categories in its candidate scan. The candidate rule for each of the two categories is set by decision Q3.
-- REQ-012: `moai clean --home` shall keep dry-run as its default, shall delete only allowlisted categories under `--force`, and shall keep the carve-out predicate unchanged.
+- REQ-011: `moai clean --home` shall include the `run` and `db` categories in its candidate scan. A `run` item is a delete candidate only when no live record (active run, lease, unclosed card) references it. A `db` item is listed, and is deleted only with the explicit confirmation flag `--force`, which is the record's `--yes` (decision Q3, DECIDED; the flag is resolved by ruling d-20261010T081810Z-49e5).
+- REQ-012: `moai clean --home` shall keep dry-run as its default, shall delete only allowlisted categories under `--force`, and shall keep the carve-out predicate unchanged. The allowlist includes the `run` and `db` categories, so that `--force` deletes run and db candidates. Run items are candidates only under the REQ-011 rule, and `--force` deletes only candidates. Without `--force`, run and db items are listed only (decision Q3; progress.md §G, G-23).
 
 ### Ordering (cross-cutting)
 
@@ -69,7 +71,7 @@ The measured state at tree 2aab5f797 (commands and verbatim output in plan.md §
 
 The authoritative matrix lives in acceptance.md (AC-001 to AC-013, 13 criteria, each naming its verifying command). Coverage map: REQ-001 → AC-001; REQ-002 → AC-002; REQ-003 → AC-003; REQ-004 → AC-004; REQ-005 → AC-005; REQ-006 → AC-006; REQ-007 → AC-007; REQ-008 → AC-008; REQ-009 → AC-009; REQ-010 → AC-010; REQ-011 → AC-011; REQ-012 → AC-012; REQ-013 → AC-013.
 
-The two completion judgements from the card are carried as criteria: the permissions-section diff across `moai init` is 0 (AC-002), and the entry count under `~/.moai/run` increases by 0 after one test run (AC-007).
+The completion judgements from the card are carried as criteria. The permissions-section diff across `moai init` is 0 when the existing defaultMode already matches the resolved tier default (AC-002). The differing case is decided by Q1 (the existing value is kept) and covered by AC-003 part B; the lists survive in both cases (AC-003 part A). The entry count under `~/.moai/run` increases by 0 after one test run (AC-007).
 
 ## 4. Constraints
 
@@ -82,14 +84,14 @@ The two completion judgements from the card are carried as criteria: the permiss
 
 ## 5. Open Decisions
 
-decision-index.md carries the rows. Q8 (preservation of the user's lists on the distributed-default write) is DECIDED by a committed HISTORY row and is not open. Q1 (existing defaultMode on init), Q2 (template defaultMode, t1567), Q3 (candidate rule for run and db), and Q5 (policy-path project allow list) are FOUNDER rows. Q4 (profile-scoped USER write) and Q6 (init --force on project settings) are EVIDENCE-NEEDED rows. Q7 (sandbox mechanism) is an implementation-level row whose published default is applied at plan close.
+decision-index.md carries the rows. Q1 (existing defaultMode kept), Q2 (template defaultMode, written only when absent), Q3 (candidate rule for run and db), and Q5 (user-added allow entries kept) are DECIDED by the pinned board record `board:d-20261010T073547Z-07ae#9c93e47809f9`. Q8 (preservation of the user's lists on the distributed-default write) is DECIDED by a committed HISTORY row and is not open. Q4 (profile-scoped USER write) and Q6 (init --force on project settings) are EVIDENCE-NEEDED and close at M2 without blocking run. Q7 (sandbox mechanism) is FOUNDER, implementation-level, and open: no default is applied, so the autonomous Kickoff waits for an operator verdict. The earlier wording that applied a default to Q7 at plan close is withdrawn. Literals the record leaves open are settled by the lane in progress.md §G: the template value is `"default"` (G-17) and the managed-block detection is diff-based (G-20). The record's `--yes` is the existing `--force` flag (ruling d-20261010T081810Z-49e5; G-19).
 
 ## 6. Non-goals and Out of Scope
 
 ### Out of Scope — install design reconstruction
 
 - The phrase "설치 설계 §9" does not appear in any committed document of this tree (plan.md G-4). This SPEC does not reconstruct or cite its contents.
-- The t1594 residue inventory is out of scope for this revision and is blocked until its card text is supplied (plan.md G-2, §B B4).
+- The t1594 residue inventory is blocked on its card text (M8; plan.md G-2, §B B4). It has no requirement in this revision. This is a blocked disposition, not an out-of-scope one.
 
 ### Out of Scope — writer attribution and drift detection
 

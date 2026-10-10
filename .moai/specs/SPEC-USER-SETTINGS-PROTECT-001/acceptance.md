@@ -1,164 +1,373 @@
 # SPEC-USER-SETTINGS-PROTECT-001 — Acceptance Criteria
 
-This file is the verification layer. Each criterion is written as Given-When-Then, names the command that verifies it, and carries two cells where the criterion is release-blocking: a RED-now cell (the criterion observed on the pre-implementation tree, with the command and its verbatim output) and a green-path cell (what flips it and what the passing output becomes). A criterion whose RED-now cell is pending is marked as pending and listed in plan.md G-14. The requirement layer (GEARS) lives in spec.md §2 and is not restated here.
+This file is the verification layer. Each criterion is written as Given-When-Then and names its verifying command. A release-blocking criterion carries a RED cell with four elements: (a) the command, as one shell invocation; (b) its stdout, verbatim; (c) its exit code, as a separate field; (d) the tree SHA. The requirement layer (GEARS) lives in spec.md §2 and is not restated here.
 
-Pre-implementation tree for every RED-now cell: `2aab5f797` on `WT-3-2-0`. Evidence identifiers (E-n, G-n, Q-n) refer to plan.md §A.2, plan.md §A.4, and decision-index.md.
+Pre-implementation tree for every RED-now cell: `3975fe3cc25eb1cbc3be79aa16ff3bcd99f8ff21` (3975fe3cc) on `WT-3-2-0`. P-3 (plan.md §C) and M2 (plan.md §F) re-observe the same cells on the post-landing run base, and both observations are recorded in progress.md; neither replaces the other.
 
-Class key: release-blocking (the run cannot close without it), regression-guard (green today; must stay green), gate (a precondition the run checks before it changes anything).
+Evidence sources: `.moai/reports/t1630/evidence/` (local and git-ignored, not tracked; the tracked binding is `.moai/specs/SPEC-USER-SETTINGS-PROTECT-001/evidence-manifest.json`) holds every probe source, overlay definition, and script cited below. Probes run through `go -C <worktree> test -overlay <overlay>` and write nothing into the repository. Scripts: `.moai/reports/t1630/evidence/home-manifest.sh`, `.moai/reports/t1630/evidence/check-codex-env.sh`, `.moai/reports/t1630/evidence/run-ac009.sh`, `.moai/reports/t1630/evidence/grep-cell.sh`, and `.moai/reports/t1630/evidence/fakebin/codex`. Probe-written files exist only under `.moai/reports/t1630/evidence/throwaway-home/`. Repair-round probes: `.moai/reports/t1630/evidence/probe-ac003b_test.go.txt` (overlay `.moai/reports/t1630/evidence/overlay-ac003b.json`, AC-003 part B) and the `TestAC011DBEntryListed` test in `.moai/reports/t1630/evidence/probe-ac011_test.go.txt` (AC-011 clause ii), and `.moai/reports/t1630/evidence/probe-ac005b_test.go.txt` (overlay `.moai/reports/t1630/evidence/overlay-ac005b.json`, AC-005 case ii).
 
-### AC-001 — The default init path keeps the user's allow, ask, deny, and unmodelled keys (REQ-001)
+Class key: release-blocking (the run cannot close without it), regression-guard (green today and must stay green; or undecidable at plan time, per verification-completeness §2.1: not release-blocking, and not recorded as a pass until its RED is observed in the run phase), gate (a precondition the run checks before it changes anything).
 
-- Given: a USER-scope settings file holding `permissions.defaultMode` "plan", `allow`, `ask`, `deny`, `additionalDirectories`, and a sibling `env` key.
-- When: `moai init` runs with the default (empty) autonomy tier, which resolves to semi-auto (E-6).
-- Then: `allow`, `ask`, `deny`, `additionalDirectories`, and `env` are unchanged. Only `defaultMode` may change, and its disposition follows the Q1 verdict (AC-003).
-- Contract anchor: SPEC-INIT-WIZARD-REPAIR-001 §4 (decision-index.md Q8, DECIDED). The M1 preservation test that §4 requires is absent from the tree (plan.md E-23), so the run adds it under this criterion.
-- Verifying command: `go -C <worktree> test -count=1 ./internal/core/project/ ./internal/config/toolpolicy/` (assertions authored in the run; selectors recorded in progress.md at M2).
-- Class: release-blocking.
-- RED-now (observed): probe 2 on this tree (plan.md E-4). The AFTER body is `{"permissions": {"defaultMode": "acceptEdits"}, "env": {"A": "1"}}`. The `allow` and `deny` lists are gone. The probe's own exit is 0 because it only logs. The red is the missing lists, which the assertion above would detect.
-- Green path: after M2 the writer splices only `defaultMode` and keeps the lists and unmodelled keys. Probe 2 AFTER keeps `allow` and `deny`.
+Executed-count gate: a selector counts as executed only when `-v` prints `=== RUN` lines. Each criterion states its minimum N. Zero executed, or a `no tests to run` line, is a failure.
 
-### AC-002 — The permissions region is byte-identical when the defaultMode already matches (REQ-002; card judgement 1)
+Precondition cell (run before every RED cell in this file):
+- (a) `git diff --quiet 3975fe3cc -- internal cmd`
+- (b) stdout: empty
+- (c) exit code: 0
+- (d) tree: 3975fe3cc25eb1cbc3be79aa16ff3bcd99f8ff21 (the Go sources are identical to the pinned commit)
 
-- Given: a USER-scope settings file whose `defaultMode` already equals the resolved tier default, with the lists written in a non-canonical layout.
-- When: `moai init` runs.
-- Then: the bytes of the `permissions` region are identical before and after the run. Any diff of the region is empty.
-- Verifying command: `go -C <worktree> test -count=1 ./internal/core/project/` (byte-equality assertion authored in the run). Operator replay on fixture files: `diff <(sed -n '/"permissions"/,/^  }/p' before.json) <(sed -n '/"permissions"/,/^  }/p' after.json)` prints nothing.
-- Class: release-blocking.
-- RED-now: pending (plan.md G-14). Code reading predicts red: `renderPermissionsObject` re-serializes the region in canonical layout (plan.md E-7), so a non-canonical layout changes bytes even when no value changes. Not observed in plan phase.
-- Green path: after M2 the writer returns without rewriting the region when the resolved values match the file.
+Test-environment rule: the session does not redirect the shell HOME (the worktree guard refuses such commands), so no probe changes the shell HOME. The AC-003 part B probe sets HOME and MOAI_HOME inside its own test process to t.TempDir paths, so no read or write reaches the operator's home. Each probe is chosen so that it resolves no home path, or runs in a package that has no TestMain (`internal/config/toolpolicy`, `internal/core/project`, `internal/contract/receipt`). The cli probes run in the cli package, whose TestMain redirects MOAI_HOME.
 
-### AC-003 — An existing defaultMode that differs from the tier default follows the Q1 verdict (REQ-003) — BLOCKED
+## AC-001 — The default init path keeps the user's allow, ask, deny, and unmodelled keys (REQ-001)
 
-- Given: a USER-scope settings file with `defaultMode` "plan" while the resolved tier default is "acceptEdits".
-- When: `moai init` runs.
-- Then: the defaultMode is handled as decision Q1 records: either overwritten with the tier default or kept.
-- Verifying command: `go -C <worktree> test -count=1 ./internal/core/project/` (the Q1 case, authored after the verdict).
-- Class: release-blocking after the verdict. Status: blocked until Q1 carries an operator verdict (REQ-003 says the run does not start before then).
-- RED-now (observed on this tree): plan.md E-3 and E-4 show the current disposition is overwrite (`plan` becomes `acceptEdits`). If Q1 resolves to keep, this criterion flips.
-- Green path: the disposition the Q1 verdict records, with the test naming that verdict.
+- Given: a USER-scope settings file with `permissions.defaultMode` "plan", `allow`, `ask`, `deny`, `additionalDirectories`, and a sibling `env` key.
+- When: the USER-scope writer runs on the default path (`toolpolicy.WriteUserDefaultMode`, which the empty-tier init path calls per plan-phase E-6).
+- Then: `allow`, `ask`, `deny`, `additionalDirectories`, and `env` are unchanged. Only `permissions.defaultMode` may change, and only when it is absent (decided Q1; AC-003 part B).
+- Contract anchor: SPEC-INIT-WIZARD-REPAIR-001 §4 (decision-index.md Q8, DECIDED). The M1 preservation test that §4 requires is absent from the tree (plan.md E-23); the run adds it under this criterion.
+- Verifying command: `go -C /Users/goos/MoAI/moai-adk-go/.moai/worktrees/t1630 test -overlay /Users/goos/MoAI/moai-adk-go/.moai/worktrees/t1630/.moai/reports/t1630/evidence/overlay-ac001-003.json -count=1 -v -run '^TestAC001PreservesListsAndUnmodelledKeys$' ./internal/config/toolpolicy/` (run-phase: the same assertion authored in the repository; its name is recorded in progress.md).
+- Class: release-blocking. Minimum executed: N=1.
+- RED cell (observed on 3975fe3cc):
+  - (a) command: the verifying command above.
+  - (b) stdout:
+    ```
+    === RUN   TestAC001PreservesListsAndUnmodelledKeys
+        zz_ac001_003_test.go:54: permissions.allow was removed; after={"permissions": {
+                "defaultMode": "acceptEdits",
+                "additionalDirectories": ["/tmp/x"]
+              },"env":{"FOO":"1"}}
+        zz_ac001_003_test.go:54: permissions.ask was removed; after={"permissions": {
+                "defaultMode": "acceptEdits",
+                "additionalDirectories": ["/tmp/x"]
+              },"env":{"FOO":"1"}}
+        zz_ac001_003_test.go:54: permissions.deny was removed; after={"permissions": {
+                "defaultMode": "acceptEdits",
+                "additionalDirectories": ["/tmp/x"]
+              },"env":{"FOO":"1"}}
+    --- FAIL: TestAC001PreservesListsAndUnmodelledKeys (0.00s)
+    FAIL
+    FAIL	github.com/modu-ai/moai-adk/internal/config/toolpolicy	0.257s
+    FAIL
+    ```
+  - (c) exit code: 1
+  - (d) tree: 3975fe3cc25eb1cbc3be79aa16ff3bcd99f8ff21
+  - Executed: 1 (one `=== RUN`, one `--- FAIL`).
+- Green path: after M2 the writer splices only `defaultMode`, and the three lists and `additionalDirectories` survive.
 
-### AC-004 — The settings template ships no permissions.defaultMode unless Q2 says so (REQ-004)
+## AC-002 — The permissions region is byte-identical when the defaultMode already matches (REQ-002; card judgement 1)
 
-- Given: the settings template at `internal/template/templates/.claude/settings.json.tmpl`.
-- When: the number of `"defaultMode"` keys in the template is counted.
-- Then: the count is 0 while decision Q2 is open.
-- Verifying command: `grep -c '"defaultMode"' internal/template/templates/.claude/settings.json.tmpl` prints `0`.
-- Class: regression-guard.
-- RED-now (observed, green today): the command printed `0` with exit status 1 (plan.md E-12). The template carries `permissions` at lines 436 and 557 and no defaultMode.
-- Green path: unchanged unless Q2 resolves to ship a defaultMode. If it does, this criterion is replaced by the Q2 verdict's test.
+- Given: a USER-scope settings file whose `permissions.defaultMode` already equals the resolved tier default, with the lists written in a non-canonical layout.
+- When: the USER-scope writer runs (`toolpolicy.WriteUserDefaultMode`).
+- Then: the file bytes are identical before and after the run, so the permissions section shows a diff of 0.
+- Verifying command: `go -C /Users/goos/MoAI/moai-adk-go/.moai/worktrees/t1630 test -overlay /Users/goos/MoAI/moai-adk-go/.moai/worktrees/t1630/.moai/reports/t1630/evidence/overlay-ac001-003.json -count=1 -v -run '^TestAC002RegionBytesUnchangedWhenDefaultModeMatches$' ./internal/config/toolpolicy/`.
+- Class: release-blocking. Minimum executed: N=1.
+- RED cell (observed on 3975fe3cc):
+  - (a) command: the verifying command above.
+  - (b) stdout:
+    ```
+    === RUN   TestAC002RegionBytesUnchangedWhenDefaultModeMatches
+        zz_ac001_003_test.go:72: file bytes changed
+            before="{\n  \"permissions\": {\n      \"allow\": [\"Bash(make:*)\"],\n      \"defaultMode\":   \"acceptEdits\"\n  },\n  \"env\": {\"FOO\": \"1\"}\n}\n"
+            after="{\n  \"permissions\": {\n    \"defaultMode\": \"acceptEdits\"\n  },\n  \"env\": {\"FOO\": \"1\"}\n}\n"
+    --- FAIL: TestAC002RegionBytesUnchangedWhenDefaultModeMatches (0.00s)
+    FAIL
+    FAIL	github.com/modu-ai/moai-adk/internal/config/toolpolicy	0.089s
+    FAIL
+    ```
+  - (c) exit code: 1
+  - (d) tree: 3975fe3cc25eb1cbc3be79aa16ff3bcd99f8ff21
+  - Executed: 1.
+- Green path: after M2 the writer skips the rewrite when the resolved values already match, so the bytes are unchanged.
 
-### AC-005 — The PROJECT-scope policy path keeps user-added project allow entries unless Q5 says otherwise (REQ-005) — BLOCKED
+## AC-003 — The lists survive under either defaultMode state, and an existing defaultMode is kept on the default and automatic paths (REQ-003; Q1 DECIDED)
 
-- Given: a tool-policy document is present and the project settings file holds a user-added `permissions.allow` entry that the document does not list.
-- When: `project.ApplyAutonomyTierBundle` runs the full-bundle path with the document.
-- Then: the user-added entry is kept (merge disposition), or regenerated away when Q5 records the regenerate disposition.
-- Verifying command: `go -C <worktree> test -count=1 ./internal/core/project/` (the policy-path case, authored after Q5).
-- Class: release-blocking after the verdict. Status: blocked on Q5.
-- RED-now: pending (plan.md G-12). Code reading predicts red under the current code: `internal/config/toolpolicy/tier_render.go:76-81` sets the PROJECT block's `Allow` from the document. Not observed in plan phase.
-- Green path: the disposition Q5 records, with the test naming that verdict.
+Part A (release-blocking): the lists and unmodelled keys survive whether the existing defaultMode differs from or matches the resolved tier default.
+- Verifying command (part A): `go -C /Users/goos/MoAI/moai-adk-go/.moai/worktrees/t1630 test -overlay /Users/goos/MoAI/moai-adk-go/.moai/worktrees/t1630/.moai/reports/t1630/evidence/overlay-ac001-003.json -count=1 -v -run '^TestAC003ListsPreservedUnderEitherDisposition$' ./internal/config/toolpolicy/`.
+- Minimum executed: N=3 (the parent test and its two subtests `differing` and `matching`).
+- RED cell (observed on 3975fe3cc):
+  - (a) command: the verifying command for part A.
+  - (b) stdout (excerpt; the three identical `permissions.ask` and `permissions.deny` lines are elided as `[…]`, and the matching subtest's three lines are shown):
+    ```
+    === RUN   TestAC003ListsPreservedUnderEitherDisposition
+    === RUN   TestAC003ListsPreservedUnderEitherDisposition/differing
+        zz_ac001_003_test.go:79: permissions.allow was removed; after={"permissions": {
+                "defaultMode": "acceptEdits",
+                "additionalDirectories": ["/tmp/x"]
+              },"env":{"FOO":"1"}}
+    [… permissions.ask and permissions.deny lines for differing …]
+    === RUN   TestAC003ListsPreservedUnderEitherDisposition/matching
+        zz_ac001_003_test.go:83: permissions.allow was removed; after={"permissions": {
+                "defaultMode": "acceptEdits",
+                "additionalDirectories": ["/tmp/x"]
+              },"env":{"FOO":"1"}}
+    [… permissions.ask and permissions.deny lines for matching …]
+    --- FAIL: TestAC003ListsPreservedUnderEitherDisposition (0.01s)
+        --- FAIL: TestAC003ListsPreservedUnderEitherDisposition/differing (0.00s)
+        --- FAIL: TestAC003ListsPreservedUnderEitherDisposition/matching (0.00s)
+    FAIL
+    FAIL	github.com/modu-ai/moai-adk/internal/config/toolpolicy	0.090s
+    FAIL
+    ```
+  - (c) exit code: 1
+  - (d) tree: 3975fe3cc25eb1cbc3be79aa16ff3bcd99f8ff21
+  - Executed: 3.
 
-### AC-006 — Every package that reaches a home-resolving function sandboxes MOAI_HOME in its TestMain (REQ-006)
+Part B (release-blocking; decided Q1): an existing USER-scope `permissions.defaultMode` that differs from the resolved tier default is kept on the default init path (`project.ApplyAutonomyTierBundle` with an empty persisted tier, which resolves to semi-auto) and on the automatic path (persisted tier `automatic`). Both calls take the user settings path, and the probe compares the value in place.
+- Verifying command (part B): `go -C /Users/goos/MoAI/moai-adk-go/.moai/worktrees/t1630 test -overlay /Users/goos/MoAI/moai-adk-go/.moai/worktrees/t1630/.moai/reports/t1630/evidence/overlay-ac003b.json -count=1 -v -run '^TestAC003DefaultModeKeptOnBothPaths$' ./internal/core/project/`.
+- Class: release-blocking. Minimum executed: N=3 (the parent test and its subtests `default-init` and `automatic`).
+- RED cell (observed on 3975fe3cc):
+  - (a) command: the verifying command for part B.
+  - (b) stdout:
+    ```
+    === RUN   TestAC003DefaultModeKeptOnBothPaths
+    === RUN   TestAC003DefaultModeKeptOnBothPaths/default-init
+        zz_ac003b_test.go:56: existing defaultMode "plan" was overwritten with "acceptEdits"; after={"permissions": {
+                "defaultMode": "acceptEdits"
+              }}
+    === RUN   TestAC003DefaultModeKeptOnBothPaths/automatic
+        zz_ac003b_test.go:56: existing defaultMode "plan" was overwritten with "auto"; after={"permissions": {
+                "defaultMode": "auto"
+              }}
+    --- FAIL: TestAC003DefaultModeKeptOnBothPaths (0.00s)
+        --- FAIL: TestAC003DefaultModeKeptOnBothPaths/default-init (0.00s)
+        --- FAIL: TestAC003DefaultModeKeptOnBothPaths/automatic (0.00s)
+    FAIL
+    FAIL	github.com/modu-ai/moai-adk/internal/core/project	0.379s
+    FAIL
+    ```
+  - (c) exit code: 1
+  - (d) tree: 3975fe3cc25eb1cbc3be79aa16ff3bcd99f8ff21
+  - Executed: 3.
+- Green path: after M2 the writer writes `defaultMode` only when it is absent; both subtests pass.
 
-- Given: the six packages of plan.md §A.4 Basis items 8 to 13: homestate, escalation, factory, factorymsg, web, and contract/receipt.
-- When: each package's TestMain is checked for the sandbox install.
-- Then: each `main_test.go` contains an `EnvHome` or `MOAI_HOME` sandbox install, and `internal/contract/receipt/main_test.go` exists with a TestMain.
-- Verifying command: `grep -L -E 'EnvHome|MOAI_HOME' internal/homestate/main_test.go internal/escalation/main_test.go internal/factory/main_test.go internal/factorymsg/main_test.go internal/web/main_test.go` must print nothing after M6. Plus `ls internal/contract/receipt/main_test.go` must succeed.
-- Class: release-blocking.
-- RED-now (observed on this tree): the command printed five names, exit status 0: `internal/escalation/main_test.go`, `internal/factory/main_test.go`, `internal/homestate/main_test.go`, `internal/factorymsg/main_test.go`, `internal/web/main_test.go`. `ls internal/contract/receipt/main_test.go` printed `No such file or directory` (plan.md E-9, and the run of this session).
-- Green path: after M6 the grep prints nothing and the receipt TestMain file exists.
+## AC-004 — The settings template carries one permissions.defaultMode key with the value "default" (REQ-004; Q2 DECIDED)
 
-### AC-007 — No test run writes under the operator's real home; the ~/.moai/run entry count does not increase (REQ-007; card judgement 2)
+- Given: the settings template `internal/template/templates/.claude/settings.json.tmpl`.
+- When: the template's `permissions.defaultMode` key is matched with the value `"default"`.
+- Then: the template carries exactly one `"defaultMode"` key, and its value is `"default"` (decided Q2; the value is pinned by the lane in progress.md §G, G-17). The rules that a fresh init writes the key only where it is absent and that update never modifies it are run-phase assertions, named in progress.md.
+- Verifying command: `grep -c '"defaultMode": *"default"' /Users/goos/MoAI/moai-adk-go/.moai/worktrees/t1630/internal/template/templates/.claude/settings.json.tmpl`; the count must print 1.
+- Class: release-blocking (decided Q2). Minimum executed: N=1 (the count).
+- RED cell (observed on 3975fe3cc, this session, value pattern):
+  - (a) command: the verifying command above.
+  - (b) stdout: `0`
+  - (c) exit code: 1 (`grep -c` exits 1 on zero matches; the same command followed by `echo "template-defaultMode-value-count-exit=$?"` printed `template-defaultMode-value-count-exit=1`).
+  - (d) tree: 3975fe3cc25eb1cbc3be79aa16ff3bcd99f8ff21
+  - The count 0 against an expected 1 is red for the stated reason: the template carries no key (`internal/cli/launcher.go:738` and `:1121` state that the template stopped shipping a default).
+- Green path: after M3 the template carries one key with the pinned value, and the count is 1.
 
-- Given: a listing of the operator's home taken by the operator before one test run (P-4), and a marker file created before the run.
-- When: `go test -count=1 ./...` runs on the post-fix tree, under a throwaway account or a copy of the home (AP-2).
-- Then: no path under `~/.moai`, `~/.claude`, `~/.codex`, or `~/.agents` is created or modified after the marker, and the entry count under `~/.moai/run` is unchanged.
-- Verifying command: `find "$HOME/.moai" "$HOME/.claude" "$HOME/.codex" "$HOME/.agents" -newer <marker> 2>/dev/null | wc -l` must print `0`. And `find "$HOME/.moai/run" -mindepth 1 -maxdepth 1 | wc -l` before and after must print the same number.
-- Class: release-blocking.
-- RED-now: pending (plan.md G-8 and G-10). Not observable in plan phase, because the baseline is outside the worktree and an unsandboxed run would write the operator's home.
-- Green path: after M6, the `-newer` count is `0` and the run-directory count is unchanged.
+## AC-005 — The PROJECT-scope policy path keeps user-added permissions.allow entries by set union, with and without a sidecar record (REQ-005; Q5 DECIDED)
 
-### AC-008 — Under the sandbox, RunProjectDir and the store resolvers resolve under the temporary MOAI_HOME root (REQ-008)
+- Given: a tool-policy document is present (`.moai/config/sections/tool-policy.yaml`), and the project settings file holds a user-added `permissions.allow` entry that the document does not list. Case (i): no sidecar record exists at `.moai/state/tool-policy/managed-allow.json`. Case (ii): the record exists with `last_generated`, and the project allow list also holds an entry in `last_generated` that the document no longer generates.
+- When: `project.ApplyAutonomyTierBundle` runs the full-bundle path with the `automatic` tier.
+- Then: case (i): every existing allow entry is kept, so the user-added entry is present and nothing is removed. Case (ii): user_added = existing allow entries minus `last_generated`; the result is the regenerated list union user_added, so the user-added entry is present and the `last_generated` entry the document no longer generates is absent. Only the user removes a user-added entry (decided Q5; diff-based detection pinned in progress.md §G, G-20).
+- Verifying command: `go -C /Users/goos/MoAI/moai-adk-go/.moai/worktrees/t1630 test -overlay /Users/goos/MoAI/moai-adk-go/.moai/worktrees/t1630/.moai/reports/t1630/evidence/overlay-ac005.json -count=1 -v -run '^TestAC005PolicyPathKeepsUserAllowEntry$' ./internal/core/project/` (case i). Case (ii): `go -C /Users/goos/MoAI/moai-adk-go/.moai/worktrees/t1630 test -overlay /Users/goos/MoAI/moai-adk-go/.moai/worktrees/t1630/.moai/reports/t1630/evidence/overlay-ac005b.json -count=1 -v -run '^TestAC005WithRecordKeepsUserAddedEntry$' ./internal/core/project/`.
+- Class: release-blocking (decided Q5). Minimum executed: N=1 per case.
+- RED cell, case (i) (observed on 3975fe3cc; the assertion is the decided retention):
+  - (a) command: the verifying command above.
+  - (b) stdout:
+    ```
+    === RUN   TestAC005PolicyPathKeepsUserAllowEntry
+        zz_ac005_test.go:59: user-added permissions.allow entry dropped; before={"permissions":{"allow":["Bash(user-added:*)"]}} after={"permissions": {
+                "ask": [
+                  "Bash(git push:*)"
+                ],
+                "deny": [
+                  "Bash(git push --force:*)"
+                ]
+              }}
+    --- FAIL: TestAC005PolicyPathKeepsUserAllowEntry (0.00s)
+    FAIL
+    FAIL	github.com/modu-ai/moai-adk/internal/core/project	0.365s
+    FAIL
+    ```
+  - (c) exit code: 1
+  - (d) tree: 3975fe3cc25eb1cbc3be79aa16ff3bcd99f8ff21
+  - Executed: 1.
+- RED cell, case (ii) (observed on 3975fe3cc):
+  - (a) command: the case (ii) verifying command above.
+  - (b) stdout:
+    ```
+    === RUN   TestAC005WithRecordKeepsUserAddedEntry
+        zz_ac005b_test.go:79: user-added permissions.allow entry dropped with a sidecar record present; before={"permissions":{"allow":["Bash(old-managed:*)","Bash(user-added:*)"]}} after={"permissions": {
+                "ask": [
+                  "Bash(git push:*)"
+                ],
+                "deny": [
+                  "Bash(git push --force:*)"
+                ]
+              }}
+    --- FAIL: TestAC005WithRecordKeepsUserAddedEntry (0.01s)
+    FAIL
+    FAIL	github.com/modu-ai/moai-adk/internal/core/project	0.427s
+    FAIL
+    ```
+  - (c) exit code: 1
+  - (d) tree: 3975fe3cc25eb1cbc3be79aa16ff3bcd99f8ff21
+  - Executed: 1.
+- Green path: after M3 implements the diff-based set union, both cases pass unchanged.
 
-- Given: a test binary whose TestMain installs the MOAI_HOME sandbox.
-- When: the existing store-resolver tests run, and a RunProjectDir assertion runs in homestate.
-- Then: every returned path begins with the sandbox root, and none begins with the operator's real `~/.moai`.
-- Verifying command: `go -C <worktree> test -count=1 -run '^(TestStoreDirUsesQueueProjectKey|TestStoreDirMatchesEscalation)$' ./internal/escalation/ ./internal/contract/receipt/`, plus the RunProjectDir assertion authored in homestate (name recorded in progress.md at M6).
-- Class: release-blocking.
-- RED-now: the two named tests exist (plan.md E-21). The homestate half is pending: 47 of 57 `internal/homestate/*_test.go` files contain neither `EnvHome` nor `MOAI_HOME` (plan.md E-9, `grep -L -E 'EnvHome|MOAI_HOME' internal/homestate/*_test.go | wc -l` printed `47`). Whether a homestate test resolves outside the sandbox is observed by the RunProjectDir assertion, which is pending.
-- Green path: after M6 the RunProjectDir assertion passes and the two named tests keep passing.
+## AC-006 — Every package that reaches a home resolver sandboxes MOAI_HOME in its TestMain; the verifier observes it at run time (REQ-006)
 
-### AC-009 — The review-gate live Codex test sets CODEX_HOME to a temporary root (REQ-009; card item b)
+Each cell below is one command with its own stdout and exit code. The text checks are plan-phase observations only. The run-time check is the verdict.
 
-- Given: the live review-gate test run with `codex` on PATH and `MOAI_SKIP_LIVE_CODEX` unset, under a sandboxed home.
-- When: `TestHandleCodexReviewGate_LiveCodexBlocksInjectionAndKey` runs (plan.md E-10, line 35).
-- Then: CODEX_HOME points at a temporary root, and no file under the operator's `~/.codex` changes (AC-007 manifest).
-- Verifying command: `grep -n 'CODEX_HOME' internal/cli/codex_review_gate_live_test.go` must print at least one `t.Setenv` line after M5.
-- Class: release-blocking.
-- RED-now (observed on this tree): `grep -n 'CODEX_HOME' internal/cli/codex_review_gate_live_test.go` printed nothing and the echo printed `codex-home-matches-exit=1` (plan.md E-10). The file has no CODEX_HOME reference.
-- Green path: after M5 the grep prints a `t.Setenv` line for CODEX_HOME, and the audit-fixture pattern (plan.md E-10, lines 72 and 78) is followed.
+- Verifying command (run-time, the verdict): `go -C /Users/goos/MoAI/moai-adk-go/.moai/worktrees/t1630 test -overlay /Users/goos/MoAI/moai-adk-go/.moai/worktrees/t1630/.moai/reports/t1630/evidence/overlay-ac006.json -count=1 -v -run '^TestAC006SandboxObserved$' ./internal/contract/receipt/`. The probe asserts, inside the test process, that MOAI_HOME and HOME are absolute roots. The run-phase repetition covers every reaching package listed in §A.4 Basis of plan.md (homestate, escalation, factory, factorymsg, web, contract/receipt), once TestMain installs the sandbox.
+- Class: release-blocking. Minimum executed: N=1 for the observed cell.
+- RED cells (observed on 3975fe3cc):
+  - Cell 1 (text check, five TestMain packages). (a) `sh /Users/goos/MoAI/moai-adk-go/.moai/worktrees/t1630/.moai/reports/t1630/evidence/grep-cell.sh -L -E 'EnvHome|MOAI_HOME' /Users/goos/MoAI/moai-adk-go/.moai/worktrees/t1630/internal/homestate/main_test.go /Users/goos/MoAI/moai-adk-go/.moai/worktrees/t1630/internal/escalation/main_test.go /Users/goos/MoAI/moai-adk-go/.moai/worktrees/t1630/internal/factory/main_test.go /Users/goos/MoAI/moai-adk-go/.moai/worktrees/t1630/internal/factorymsg/main_test.go /Users/goos/MoAI/moai-adk-go/.moai/worktrees/t1630/internal/web/main_test.go`. (b) stdout: the five paths in order `internal/homestate/main_test.go`, `internal/escalation/main_test.go`, `internal/factory/main_test.go`, `internal/factorymsg/main_test.go`, `internal/web/main_test.go`, then `grep exit=1` (printed by the wrapper; the wrapper's grep resolves to a different implementation under `sh` than in the interactive shell, so the verdict is read from stdout). (c) exit code: 1 (printed by the wrapper). (d) tree: 3975fe3cc.
+  - Cell 2 (existence check). (a) `ls /Users/goos/MoAI/moai-adk-go/.moai/worktrees/t1630/internal/contract/receipt/main_test.go`. (b) stdout: empty; the message `ls: …/internal/contract/receipt/main_test.go: No such file or directory` is returned on stderr. (c) exit code: 1. (d) tree: 3975fe3cc.
+  - Cell 3 (run-time, the verdict). (a) the verifying command above. (b) stdout: `=== RUN   TestAC006SandboxObserved` / `    zz_ac006_probe_test.go:13: MOAI_HOME="" is not an absolute test-owned root` / `--- FAIL: TestAC006SandboxObserved (0.00s)` / `FAIL` / `FAIL	github.com/modu-ai/moai-adk/internal/contract/receipt	0.607s` / `FAIL`. (c) exit code: 1. (d) tree: 3975fe3cc. Executed: 1.
+- Comment-only mutant (must fail the run-time check): `.moai/reports/t1630/evidence/probe-ac006-mutant_test.go.txt` adds a comment that names the sandbox and installs nothing; overlay `.moai/reports/t1630/evidence/overlay-ac006-mutant.json` adds it to the receipt package beside the probe.
+  - Mutant text check: (a) `sh /Users/goos/MoAI/moai-adk-go/.moai/worktrees/t1630/.moai/reports/t1630/evidence/grep-cell.sh -L -E 'EnvHome|MOAI_HOME' /Users/goos/MoAI/moai-adk-go/.moai/worktrees/t1630/.moai/reports/t1630/evidence/probe-ac006-mutant_test.go.txt`. (b) stdout: empty; then `grep exit=0`. (c) exit code 0 (printed by the wrapper). The text check passes the mutant, which is the defect that D19 describes.
+  - Mutant run-time check: (a) `go -C /Users/goos/MoAI/moai-adk-go/.moai/worktrees/t1630 test -overlay /Users/goos/MoAI/moai-adk-go/.moai/worktrees/t1630/.moai/reports/t1630/evidence/overlay-ac006-mutant.json -count=1 -v -run '^TestAC006SandboxObserved$' ./internal/contract/receipt/`. (b) stdout: identical to Cell 3. (c) exit code: 1. (d) tree: 3975fe3cc. The run-time check fails the mutant.
+- Green path: after M6, Cell 2 returns a TestMain file for the receipt package, and the run-time check passes in all six packages.
 
-### AC-010 — A missing sandbox fails the run with a named guard finding (REQ-010)
+## AC-007 — No test run writes under the operator's real home; the ~/.moai/run entry count does not increase (REQ-007; card judgement 2)
 
-- Given: a test package whose TestMain omits the MOAI_HOME sandbox install (a mutant built with `go test -overlay`, as in the probes, so the repository is not edited).
-- When: the guard test runs.
-- Then: the run fails with a named finding that names the package, and the same guard turns green when the mutant is removed.
-- Verifying command: `go -C <worktree> test -count=1 ./internal/testhome/` on the tree, and the same command with `-overlay` applied to a mutant package that omits the sandbox install (test name recorded in progress.md at M6).
-- Class: release-blocking.
-- RED-now: pending (plan.md G-14). The only TestMain-level guard name observed on this tree is `TestMainSandboxesProfileLeaseEnv` (plan.md E-21), which covers the cli package only. A repository-wide guard was not observed.
-- Green path: the mutant run fails with the named finding, and the tree run passes.
+- Given: a before-manifest over the four home roots (`.moai`, `.claude`, `.codex`, `.agents`), taken on the operator's home by the operator (or on a throwaway account), before one scoped run.
+- When: the scoped run of the reaching packages (REQ-007 set) runs under a throwaway HOME. The full-suite verdict is not part of this criterion; it is delegated to the CI workflow on the pushed branch.
+- Then: the after-manifest equals the before-manifest. No path under the four roots is created, modified, or removed. The entry count under `~/.moai/run` is unchanged.
+- Verifying command (verdict): `sh /Users/goos/MoAI/moai-adk-go/.moai/worktrees/t1630/.moai/reports/t1630/evidence/home-manifest.sh verify <home> <before> <after>`. The script follows symlinks (`find -L`). Any find failure exits 2, never an empty manifest. The script exits 1 when the manifests differ.
+- Class: release-blocking. Minimum executed: N=1 for the leak probe (the RED is a verifier cell).
+- RED cell (verifier, observed on 3975fe3cc, on the throwaway HOME `.moai/reports/t1630/evidence/throwaway-home`):
+  - Step 1 — snapshot. (a) `sh /Users/goos/MoAI/moai-adk-go/.moai/worktrees/t1630/.moai/reports/t1630/evidence/home-manifest.sh snapshot /Users/goos/MoAI/moai-adk-go/.moai/worktrees/t1630/.moai/reports/t1630/evidence/throwaway-home /Users/goos/MoAI/moai-adk-go/.moai/worktrees/t1630/.moai/reports/t1630/evidence/manifest-ac007-before.txt`. (b) stdout: empty. (c) exit 0. (d) tree 3975fe3cc.
+  - Step 2 — simulated write. (a) `go -C /Users/goos/MoAI/moai-adk-go/.moai/worktrees/t1630 test -overlay /Users/goos/MoAI/moai-adk-go/.moai/worktrees/t1630/.moai/reports/t1630/evidence/overlay-ac007.json -count=1 -v -run '^TestAC007LeakProbe$' ./internal/config/toolpolicy/`. (b) stdout: `=== RUN   TestAC007LeakProbe` / `--- PASS: TestAC007LeakProbe (0.00s)` / `PASS` / `ok  	github.com/modu-ai/moai-adk/internal/config/toolpolicy	0.249s`. (c) exit 0. (d) tree 3975fe3cc. The probe writes `.moai/reports/t1630/evidence/throwaway-home/.moai/run/ac007-leak/leak.txt`.
+  - Step 3 — verify. (a) `sh /Users/goos/MoAI/moai-adk-go/.moai/worktrees/t1630/.moai/reports/t1630/evidence/home-manifest.sh verify /Users/goos/MoAI/moai-adk-go/.moai/worktrees/t1630/.moai/reports/t1630/evidence/throwaway-home /Users/goos/MoAI/moai-adk-go/.moai/worktrees/t1630/.moai/reports/t1630/evidence/manifest-ac007-before.txt /Users/goos/MoAI/moai-adk-go/.moai/worktrees/t1630/.moai/reports/t1630/evidence/manifest-ac007-after.txt`. (b) stdout (the diff, returned on the tool's error channel):
+    ```
+    0a1,4
+    > 1791618368 30 -rw------- …/evidence/throwaway-home/.moai/run/ac007-leak/leak.txt
+    > 1791618368 96 drwx------ …/evidence/throwaway-home/.moai
+    > 1791618368 96 drwx------ …/evidence/throwaway-home/.moai/run
+    > 1791618368 96 drwx------ …/evidence/throwaway-home/.moai/run/ac007-leak
+    4d7
+    < absent …/evidence/throwaway-home/.moai
+    ```
+    (The paths are abbreviated after `t1630/.moai/specs/SPEC-USER-SETTINGS-PROTECT-001/` in this display; the script prints full paths.) (c) exit 1. (d) tree 3975fe3cc.
+- The RED shows that the verifier detects a write under a home root. Q1 does not enter this criterion.
+- Scope of the verifier (REQ-007): the four roots of the operator's real home. The reaching packages (REQ-007 set, plan.md §A.4 Basis) run on the sandboxed home in run phase (M6).
+- Green path: after M6, step 2 writes nothing under the home root, and step 3 prints `manifest unchanged` with exit 0.
 
-### AC-011 — clean --home scans the run and db categories under the Q3 rule (REQ-011; card item e)
+## AC-008 — Under the MOAI_HOME sandbox, RunProjectDir and the store resolvers resolve under the sandbox root (REQ-008)
 
-- Given: a sandboxed home that holds run/ and db/ entries older than the retention window, with one entry referenced by a live record and one carved-out entry.
-- When: `moai clean --home --force` runs.
-- Then: entries that the Q3 rule makes deletable are deleted; the live-referenced entry and the carved-out entry are kept.
-- Verifying command: `go -C <worktree> test -count=1 -run '^TestCleanHome' ./internal/cli/`, with run and db cases added at M4 (existing names listed in plan.md E-21).
-- Class: release-blocking.
-- RED-now (observed on this tree): the category scan has projects (lines 236 and 249), debug (286), releases (293 and 458), logs (306), and backups (329). Neither `run` nor `db` appears (plan.md E-11). The run and db assertion is pending until its case is authored.
-- Green path: after M4 the run and db categories appear in the scan under the Q3 rule, and the case passes.
+- Given: a test process that inherits MOAI_HOME from its parent command and calls no helper that sets it.
+- When: the child-process probe calls `homestate.RunProjectDir`, and the receipt `StoreDir` test runs.
+- Then: the probe finds MOAI_HOME set, and RunProjectDir returns a path under it. The receipt StoreDir test passes.
+- Verifying command: `go -C /Users/goos/MoAI/moai-adk-go/.moai/worktrees/t1630 test -overlay /Users/goos/MoAI/moai-adk-go/.moai/worktrees/t1630/.moai/reports/t1630/evidence/overlay-ac008.json -count=1 -v -run '^(TestAC008RunProjectDirUnderSandbox|TestStoreDirMatchesEscalation)$' ./internal/contract/receipt/`. Selector gate: N=2 executed (one probe, one named StoreDir test). The escalation package's `TestStoreDirUsesQueueProjectKey` is not part of this run; its package has a TestMain that runs unsandboxed setup, so it is run in run phase after M6.
+- Class: release-blocking. Named tests cited: `TestStoreDirMatchesEscalation` (internal/contract/receipt/dir_test.go:14).
+- RED cell (observed on 3975fe3cc):
+  - (a) command: the verifying command above.
+  - (b) stdout:
+    ```
+    === RUN   TestStoreDirMatchesEscalation
+    --- PASS: TestStoreDirMatchesEscalation (0.15s)
+    === RUN   TestAC008RunProjectDirUnderSandbox
+        zz_ac008_test.go:19: MOAI_HOME is unset in the test process: the test binary is not sandboxed
+    --- FAIL: TestAC008RunProjectDirUnderSandbox (0.00s)
+    FAIL
+    FAIL	github.com/modu-ai/moai-adk/internal/contract/receipt	0.662s
+    FAIL
+    ```
+  - (c) exit code: 1
+  - (d) tree: 3975fe3cc25eb1cbc3be79aa16ff3bcd99f8ff21
+  - Executed: 2.
+- Green path: after M6 the sandbox install in the receipt package sets MOAI_HOME, the probe passes, and the StoreDir test keeps passing.
 
-### AC-012 — Dry-run stays the default and --force deletes only allowlisted categories (REQ-012)
+## AC-009 — The review-gate live Codex test sets CODEX_HOME to a temporary root (REQ-009; card item b)
 
-- Given: a sandboxed home with deletable entries in the allowlisted categories and carved-out segments.
-- When: `moai clean --home` runs without `--force`, then with it.
-- Then: the dry run mutates nothing. The forced run deletes only allowlisted categories and keeps the carved-out segments.
-- Verifying command: `go -C <worktree> test -count=1 -run '^(TestCleanHome_DryRunMutatesNothing|TestCleanHome_ForceDeletesOnlyAllowlistedCategories|TestCleanHomeCarveOut_ForcePreservesCarvedSegments)$' ./internal/cli/`.
-- Class: regression-guard.
-- RED-now: pending (plan.md G-14). The three test names exist (plan.md E-21). The run records their current result on the pre-implementation tree before any change.
-- Green path: all three pass after the change, unmodified.
+- Given: the live review-gate test runs with a codex binary first on PATH and MOAI_SKIP_LIVE_CODEX unset. The binary is the evidence fake (`.moai/reports/t1630/evidence/fakebin/codex`): it answers `--version`, writes a names-only record to `.moai/reports/t1630/evidence/codex-env-ac009.names.txt` for any other call (the variable names and a presence check; no values), and never reaches a model.
+- When: `TestHandleCodexReviewGate_LiveCodexBlocksInjectionAndKey` runs (`internal/cli/codex_review_gate_live_test.go:35`).
+- Then: the codex child environment carries CODEX_HOME (presence check on the names-only record). The record holds no values, so it cannot show where the value lies; the run-phase test asserts that under TMPDIR itself, because its CODEX_HOME comes from `t.TempDir()`. The verdict is the check script, because the test skips after the fake codex's review call fails (`codex review turn did not complete`), so the test's own assertion never runs.
+- Verifying command (run-time, the verdict): `sh /Users/goos/MoAI/moai-adk-go/.moai/worktrees/t1630/.moai/reports/t1630/evidence/check-codex-env.sh /Users/goos/MoAI/moai-adk-go/.moai/worktrees/t1630/.moai/reports/t1630/evidence/codex-env-ac009.names.txt`, run after `sh …/evidence/run-ac009.sh` (the run cell; the script exists because the worktree guard refuses an inline PATH prefix).
+- Class: release-blocking. Minimum executed: N=1 in the run cell.
+- Plan-phase text check (kept as an observed RED): (a) `sh …/.moai/reports/t1630/evidence/grep-cell.sh -n 'CODEX_HOME' /Users/goos/MoAI/moai-adk-go/.moai/worktrees/t1630/internal/cli/codex_review_gate_live_test.go`. (b) stdout: `grep exit=1` (no match). (c) exit code 1. (d) tree 3975fe3cc.
+- Comment-only mutant (must fail the run-time check): `.moai/reports/t1630/evidence/mutant-ac009-comment-only.txt` holds only `// t.Setenv("CODEX_HOME", t.TempDir())`. Its text check matches (exit 0), so the text verifier passes it. The run-time check reads the names that the run cell recorded, which a comment cannot change, so the mutant fails the check exactly as the current tree does.
+- RED cells (observed on 3975fe3cc; the run cell and the check cell are restated in this round from the names-only record. The earlier check observation on the value-bearing log had the same exit 1 and the same absent-name result; that log is no longer in the repository and is not cited further):
+  - Run cell. (a) `sh /Users/goos/MoAI/moai-adk-go/.moai/worktrees/t1630/.moai/reports/t1630/evidence/run-ac009.sh` (sandboxed HOME, names-only fake). (b) stdout: `=== RUN   TestHandleCodexReviewGate_LiveCodexBlocksInjectionAndKey` / `codex review: inconclusive (review call failed: codex stdout closed before response to id=1)` / `    codex_review_gate_live_test.go:138: codex review turn did not complete — the producer recorded inconclusive with the error surfaced (correct behavior)` / `--- SKIP: TestHandleCodexReviewGate_LiveCodexBlocksInjectionAndKey (1.74s)` / `PASS` / `ok  	github.com/modu-ai/moai-adk/internal/cli	3.025s`. (c) exit code 0. (d) tree 3975fe3cc. Executed: 1 (skipped after the review call).
+  - Check cell. (a) `sh /Users/goos/MoAI/moai-adk-go/.moai/worktrees/t1630/.moai/reports/t1630/evidence/check-codex-env.sh /Users/goos/MoAI/moai-adk-go/.moai/worktrees/t1630/.moai/reports/t1630/evidence/codex-env-ac009.names.txt`. (b) stdout: `FAIL: CODEX_HOME absent from the codex child environment (names-only record: /Users/goos/MoAI/moai-adk-go/.moai/worktrees/t1630/.moai/reports/t1630/evidence/codex-env-ac009.names.txt)`. (c) exit code 1. (d) tree 3975fe3cc.
+- Green path: after M5 the test sets CODEX_HOME to a temporary root under `t.TempDir()`, the names-only record lists CODEX_HOME, and the check prints `PASS: CODEX_HOME present in the codex child environment (names-only record: …)` with exit 0.
 
-### AC-013 — The ordering landings are ancestors of the run base before run starts (REQ-013; gate)
+## AC-010 — A package that omits the sandbox fails the guard with a named finding (REQ-010)
+
+- Guard name (named now): `TestSandboxGuard_ReachingPackagesInstallSandbox`, in `internal/testhome/guard_test.go` (package `testhome`, created in M6).
+- Guard design: the guard parses each reaching package's TestMain with `go/parser` and `go/ast`. It passes only when the TestMain body contains a call to the shared sandbox helper. A comment or a string that names the helper does not pass. The finding text is `SANDBOX-MISSING: <package dir> reaches a home resolver but its TestMain does not call the sandbox helper`.
+- Verifying command: `go -C /Users/goos/MoAI/moai-adk-go/.moai/worktrees/t1630 test -count=1 -v -run '^TestSandboxGuard_ReachingPackagesInstallSandbox$' ./internal/testhome/`.
+- Mutant procedure (run in M6): an overlay replaces one reaching package's TestMain with a comment-only body. The same command with `-overlay` must fail with the `SANDBOX-MISSING` finding for that package. The tree run must pass.
+- Class: release-blocking. Minimum executed: N=1.
+- RED cell (observed on 3975fe3cc):
+  - (a) command: the verifying command above.
+  - (b) stdout: empty. The go tool's messages came through the tool's error channel, which is stderr: `# ./internal/testhome` / `stat /Users/goos/MoAI/moai-adk-go/.moai/worktrees/t1630/internal/testhome: directory not found` / `FAIL	./internal/testhome [setup failed]` / `FAIL`.
+  - (c) exit code: 1
+  - (d) tree: 3975fe3cc25eb1cbc3be79aa16ff3bcd99f8ff21
+  - Executed: 0. The red reason is the absent package.
+- Green path: after M6 the guard runs and passes on the tree, and fails on the mutant.
+
+## AC-011 — clean --home scans run and db items; a run item is a candidate only when unreferenced (REQ-011; card item e; Q3 DECIDED)
+
+- Given: a moai home root holding one aged run/ entry that no live record references, and one aged db/ entry.
+- When: the clean-home candidate scan runs (`scanHomeCleanable`, retention 30 days).
+- Then: (i) at least one candidate lies under run/; (ii) the aged db/ entry is listed among the candidates. Clause (iii) of the decided rule (a run/ entry referenced by a live record is not a candidate; a db/ entry is listed without `--force` and deleted only with `--force`, the record's `--yes`) is a regression-guard, not release-blocking (plan.md G-21).
+- Verifying command: `go -C /Users/goos/MoAI/moai-adk-go/.moai/worktrees/t1630 test -overlay /Users/goos/MoAI/moai-adk-go/.moai/worktrees/t1630/.moai/reports/t1630/evidence/overlay-ac011.json -count=1 -v -run '^TestAC011CleanHomeCandidatesIncludeRun$' ./internal/cli/`. Clause (ii) verifying command: `go -C /Users/goos/MoAI/moai-adk-go/.moai/worktrees/t1630 test -overlay /Users/goos/MoAI/moai-adk-go/.moai/worktrees/t1630/.moai/reports/t1630/evidence/overlay-ac011.json -count=1 -v -run '^TestAC011DBEntryListed$' ./internal/cli/`. Run-phase: the same assertions authored in the repository.
+- Class: release-blocking for clauses (i) and (ii). Clause (iii): regression-guard, not release-blocking; the run phase authors its RED before its GREEN; reason: plan.md G-21. Minimum executed: N=1 per clause.
+- RED cell, clause (i) (observed on 3975fe3cc):
+  - (a) command: the verifying command above.
+  - (b) stdout: `=== RUN   TestAC011CleanHomeCandidatesIncludeRun` / `    zz_ac011_test.go:34: no run/ candidate among 0 candidates` / `--- FAIL: TestAC011CleanHomeCandidatesIncludeRun (0.00s)` / `FAIL` / `FAIL	github.com/modu-ai/moai-adk/internal/cli	1.223s` / `FAIL`.
+  - (c) exit code: 1
+  - (d) tree: 3975fe3cc25eb1cbc3be79aa16ff3bcd99f8ff21
+  - Executed: 1.
+- RED cell, clause (ii) (observed on 3975fe3cc):
+  - (a) command: the clause (ii) verifying command above.
+  - (b) stdout: `=== RUN   TestAC011DBEntryListed` / `    zz_ac011_test.go:58: no db/ entry listed among 0 candidates` / `--- FAIL: TestAC011DBEntryListed (0.00s)` / `FAIL` / `FAIL	github.com/modu-ai/moai-adk/internal/cli	0.931s` / `FAIL`.
+  - (c) exit code: 1
+  - (d) tree: 3975fe3cc25eb1cbc3be79aa16ff3bcd99f8ff21
+  - Executed: 1.
+- Plan-phase category scan (context only, not the verdict): `internal/cli/clean_home.go` builds candidates with categories projects (lines 236, 249), debug (286), releases (293, 458), logs (306), and backups (329). No run or db category appears among them.
+- Green path: after M4 the scan returns a run/ candidate for the aged, unreferenced entry and lists the aged db/ entry. Clause (iii) is authored and observed in run phase before its GREEN.
+
+## AC-012 — Dry-run stays the default and --force deletes only allowlisted categories (REQ-012)
+
+- Given: a sandboxed home with deletable entries in allowlisted categories and carved-out segments.
+- When: the existing clean-home regression tests run.
+- Then: all three pass.
+- Verifying command: `go -C /Users/goos/MoAI/moai-adk-go/.moai/worktrees/t1630 test -count=1 -v -run '^(TestCleanHome_DryRunMutatesNothing|TestCleanHome_ForceDeletesOnlyAllowlistedCategories|TestCleanHomeCarveOut_ForcePreservesCarvedSegments)$' ./internal/cli/`.
+- Selector gate: N=3 executed. Zero executed is a failure.
+- Class: regression-guard. It covers the existing categories only; the run and db rules of decided Q3 are checked by AC-011.
+- Observed baseline (3975fe3cc, plan phase): stdout `=== RUN   TestCleanHomeCarveOut_ForcePreservesCarvedSegments` / `--- PASS: TestCleanHomeCarveOut_ForcePreservesCarvedSegments (0.02s)` / `=== RUN   TestCleanHome_DryRunMutatesNothing` / `--- PASS: TestCleanHome_DryRunMutatesNothing (0.01s)` / `=== RUN   TestCleanHome_ForceDeletesOnlyAllowlistedCategories` / `--- PASS: TestCleanHome_ForceDeletesOnlyAllowlistedCategories (0.01s)` / `PASS` / `ok  	github.com/modu-ai/moai-adk/internal/cli	0.836s`; exit code 0; tree 3975fe3cc; executed 3.
+
+## AC-013 — The ordering landings are ancestors of the run base before run starts (REQ-013; gate)
 
 - Given: the run base tip and the three landing SHAs the leader names for t1619, t1578, and t1591.
 - When: each SHA is tested for ancestry against the run base.
 - Then: each test exits 0 before any run-phase change begins.
-- Verifying command: `git merge-base --is-ancestor <landing-sha> <run-base-tip>; echo "exit=$?"` for each of the three SHAs.
-- Class: gate.
-- RED-now (observed on this tree, with representative commits from plan.md E-14): `git merge-base --is-ancestor 8108eb256 HEAD` printed `t1619 ancestor-of-HEAD exit=1`. The same test for `e73a7cbf5` (t1578) and `a372a984c` (t1591) printed exit=1. The gate is red today.
-- Green path: after the leader names the landing SHAs and they land, each test exits 0.
+- Verifying command: `git merge-base --is-ancestor <landing-sha> <run-base-tip>` for each of the three SHAs.
+- Class: gate. Not release-blocking.
+- Observed (plan phase, HEAD 3975fe3cc, representative commits named in plan.md E-14):
+  - `git merge-base --is-ancestor 8108eb256 HEAD` → `t1619 ancestor-of-HEAD exit=1`
+  - `git merge-base --is-ancestor e73a7cbf5 HEAD` → `t1578 ancestor-of-HEAD exit=1`
+  - `git merge-base --is-ancestor a372a984c HEAD` → `t1591 ancestor-of-HEAD exit=1`
+- The gate is red at plan time. The leader names the landing SHAs (plan.md G-13).
 
 ## Edge cases
 
-- EC-1 — A settings file that does not exist yet: init creates it with the tier defaultMode and no lists (current behaviour). The run keeps this path and asserts it in the AC-001 test.
-- EC-2 — A settings file with `permissions` absent or empty: no lists are invented.
-- EC-3 — A settings file that is not valid JSON: the writer fails without rewriting the file (the current error path is kept).
-- EC-4 — A list containing a duplicate entry: preserved as written; no deduplication is introduced.
-- EC-5 — A HOME path that contains spaces or is a symbolic link: the sandbox root is resolved the same way the real home would be.
-- EC-6 — A test package that never reaches a home-resolving function: no sandbox is required beyond the guard's own rule (REQ-010 applies to reaching packages only).
+- EC-1 — A settings file that does not exist yet. Observed (evidence probe `TestECObservations` in `.moai/reports/t1630/evidence/probe-ac001-003_test.go.txt`, tree 3975fe3cc): the writer returns no error and creates `{"permissions": {"defaultMode": "acceptEdits"}}`, with no lists. Bound to AC-001 (the run adds the expectation as an assertion).
+- EC-2 — A settings file with no `permissions` key. Observed: the writer returns `render … permissions block not found: no "permissions": key in body` and leaves the file unchanged (`{"env":{"FOO":"1"}}`). Bound to AC-001 (run-phase assertion of the error path). The earlier wording "no lists invented" is replaced by this observation.
+- EC-3 — A settings file that is not valid JSON. Observed: the writer returns `permissions block not found` and leaves the file unchanged (`{not json`). The error path is the observed behaviour, not a claim about the design. Bound to AC-001 (run-phase assertion).
+- EC-4 — A list with duplicate entries. Observed: the writer returns no error, and it removes the whole `allow` list (`{"permissions": {"defaultMode": "acceptEdits"}}`), which is the S-1 defect. The expectation that duplicates are preserved as written is unverified until the fix lands. Bound to AC-001 (run-phase assertion).
+- EC-5 — A HOME path that contains spaces or is a symbolic link. Not observed in plan phase. Unverified. Bound to AC-007 as a run-phase fixture on a throwaway account.
+- EC-6 — A test package whose test files reference no home resolver. Not observed; the set is a name-based measure (plan.md E-9, G-9). Unverified. Bound to the REQ-007 exclusion rule and to AC-006's package set, and checked by the run-phase reach measure.
 
 ## Quality gate criteria
 
-- QG-1: every release-blocking criterion has a RED-now cell that is observed or explicitly pending with its gap id.
+- QG-1: every release-blocking criterion has an observed four-element RED cell on the pinned tree. No pending allowance exists for a release-blocking criterion. AC-007 is release-blocking, and its verifier was executed (RED cell, step 3). AC-011 clause (iii) is a regression-guard, not release-blocking; the run phase authors its RED before its GREEN; reason: plan.md G-21.
 - QG-2: every criterion names its verifying command.
-- QG-3: no criterion depends on the operator's home directory except AC-007, which runs on a throwaway account.
-- QG-4: no criterion names a test that does not exist, except the run-phase names recorded in progress.md when they are authored.
-- QG-5: the count of criteria is 13, within the Tier M ceiling of 16.
+- QG-3: no criterion depends on the operator's home directory except AC-007, which runs on a throwaway account or a copy.
+- QG-4: every named test exists, or is authored in run phase with its name recorded in progress.md.
+- QG-5: the criterion count is 13, within the Tier M ceiling of 16.
 
 ## Definition of Done
 
-- All release-blocking criteria (AC-001, AC-002, AC-003 after Q1, AC-005 after Q5, AC-006 to AC-011) are green on the post-fix tree, with verbatim output recorded.
-- Regression guards (AC-004, AC-012) are green on the post-fix tree.
-- The gate (AC-013) is green before run begins and again before sync.
-- The operator-home measurement (AC-007) is recorded on a throwaway account.
-- Q1, Q2, Q3, and Q5 carry operator verdicts in decision-index.md. Q4 and Q6 carry run-phase evidence.
-- The t1594 scope (S-7) is either closed with its card text or recorded as deferred by the leader.
+- The release-blocking criteria (AC-001, AC-002, AC-003 parts A and B, AC-004 with count 1, AC-005, AC-006 to AC-010, and AC-011 clauses (i) and (ii)) are green on the post-fix tree, with verbatim output recorded.
+- The regression guards (AC-012 and AC-011 clause (iii)) are green on the post-fix tree.
+- The gate (AC-013) is green before run starts and again before sync.
+- The RED cells are re-observed on the post-landing run base at P-3 and M2, and both observations are recorded in progress.md.
+- AC-007's before-and-after manifest is recorded on a throwaway account.
+- Q1, Q2, Q3, and Q5 are DECIDED by the pinned board citation in decision-index.md. Q4 and Q6 are closed by the evidence produced at M2. Q7 stays open until an operator verdict is recorded. AC-011 clause (iii) is a regression-guard (plan.md G-21), not release-blocking; its RED is authored in the run phase before its GREEN. G-17, G-20, and G-23 (the run and db allowlist, progress.md §G) are closed by the lane in progress.md §G; G-19 by ruling d-20261010T081810Z-49e5; G-18 stays a disclosed gap.
+- Run-phase obligation, before the run phase's GREEN: the run phase adds a release-blocking criterion that observes deletion under `--force` for run candidates and db items (REQ-011, REQ-012). Its RED is observed first, as a four-element cell on the pre-implementation tree, before any GREEN change. Basis: no delete path exists at plan time (plan.md G-21; progress.md §G, G-23). The criterion takes the next free AC number, within the Tier M ceiling of 16.
+- S-7 (t1594) remains blocked on card text (M8). No requirement covers it in this revision.

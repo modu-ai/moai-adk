@@ -39,7 +39,7 @@ $ ls -d .moai/specs/SPEC-USER-SETTINGS-PROTECT-001 2>&1
 ls: .moai/specs/SPEC-USER-SETTINGS-PROTECT-001: No such file or directory
 ```
 
-E-3 — probe 1, the USER-scope writer `toolpolicy.WriteUserDefaultMode`. Run as `go -C <worktree> test -overlay <overlay-1> -count=1 -v -run '^TestProbeUserScopeWriteUserDefaultModeKeepsAllow$' ./internal/config/toolpolicy/`. The probe file is injected through `-overlay`; the repository was not written (Appendix A-1).
+E-3 — probe 1, the USER-scope writer `toolpolicy.WriteUserDefaultMode`. Re-run at tree 3975fe3cc as `go -C <worktree> test -overlay .moai/reports/t1630/evidence/overlay-e3.json -count=1 -v -run '^TestProbeUserScopeWriteUserDefaultModeKeepsAllow$' ./internal/config/toolpolicy/`. Inputs: `.moai/reports/t1630/evidence/overlay-e3.json` maps the package path `zz_e3_probe_test.go` to `.moai/reports/t1630/evidence/probe-e3_test.go.txt`. Exit 0; the logs match the original observation. The probe asserts nothing; the RED is the AFTER body (acceptance.md AC-001). The probe file is injected through `-overlay`; the repository was not written (Appendix A-1).
 
 ```
 === RUN   TestProbeUserScopeWriteUserDefaultModeKeepsAllow
@@ -69,7 +69,7 @@ ok  	github.com/modu-ai/moai-adk/internal/config/toolpolicy	0.283s
 
 The probe passes because it only logs. The red is the AFTER body, which has no `allow`, `ask`, or `deny`. A criterion asserting that those lists survive fails on this tree.
 
-E-4 — probe 2, the function `init` calls on the default tier path: `project.ApplyAutonomyTierBundle` with an empty persisted tier. Run as `go -C <worktree> test -overlay <overlay-2> -count=1 -v -run '^TestProbeInitDefaultTierKeepsUserAllowList$' ./internal/core/project/` (Appendix A-2).
+E-4 — probe 2, the function `init` calls on the default tier path: `project.ApplyAutonomyTierBundle` with an empty persisted tier. Re-run at tree 3975fe3cc as `go -C <worktree> test -overlay .moai/reports/t1630/evidence/overlay-e4.json -count=1 -v -run '^TestProbeInitDefaultTierKeepsUserAllowList$' ./internal/core/project/`. Inputs: `.moai/reports/t1630/evidence/overlay-e4.json` maps `zz_e4_probe_test.go` to `.moai/reports/t1630/evidence/probe-e4_test.go.txt`. Exit 0; the logs match the original observation (Appendix A-2).
 
 ```
 === RUN   TestProbeInitDefaultTierKeepsUserAllowList
@@ -332,7 +332,7 @@ $ grep -n 'stopped shipping a defaultMode default' internal/cli/launcher.go
 1121:// the template settings.json stopped shipping a defaultMode default
 ```
 
-These comments state the decision without citing a SPEC. Q2 records that the disposition is open.
+These comments state the decision without citing a SPEC. Decided Q2 (decision-index.md) settles the disposition.
 
 E-14 — ordering commits named by the dispatch.
 
@@ -524,22 +524,28 @@ Reading E-23: the pinned condition (line 96) names the USER-scope write and the 
 
 ### §A.4 Gaps (not observed; not claimed)
 
-- G-1 — The t1567 card text is not in the tree. Its scope is taken from the dispatch text ("permissions.defaultMode template"). Q2 records the open disposition.
+- G-1 — The t1567 card text is not in the tree. Its scope is taken from the dispatch text ("permissions.defaultMode template"). Decided Q2 records the disposition; the card text itself remains absent from the tree.
 - G-2 — The t1594 card text is not in the tree, so its residue inventory is unknown. Scope item S-7 is blocked (§B B4).
 - G-3 — The "3.2 disposition table" named in the dispatch is not in the worktree. The absorbed-card scope rests on the dispatch.
 - G-4 — The install-design reference "설치 설계 §9" is not in any committed document of the tree (E-16). Nothing from it is cited.
 - G-5 — Operator decision records 1e9b, 3db2, d37b, and 2b7b are not on disk (E-15). Where the dispatch attributes a statement to them, that statement is carried as dispatch text. No decision row relies on them.
-- G-6 — The landing-order decision ca0c is recorded only in the operator's session memory, outside the worktree. It is not cited as authority. REQ-013 rests on the dispatch text and the commits in E-14.
+- G-6 — The landing-order decision ca0c is not located in the worktree; location not observed. It is not cited as authority. REQ-013 rests on the dispatch text and the commits in E-14.
 - G-7 — Whether the init writer produces the dirty `.claude/settings.json` shape recorded in SPEC-SETTINGS-ORIGIN-001 §1 was not measured. The two are not linked by this plan.
 - G-8 — The entry count under the operator's `~/.moai/run` was not measured. Reading the operator's home is outside the worktree boundary. It is a run-phase measurement (AC-007).
 - G-9 — The reach measure (E-9) is name-based: it finds direct references to home-resolving names in test files. Transitive reach through production helpers was not measured, so the file estimate in §A.4 Basis may be low.
 - G-10 — The live review-gate test was not executed. Running it would start `codex` against the operator's real home, which this plan must not do. Its effect on `~/.codex` is unobserved.
 - G-11 — `moai init --force` on an existing project's `.claude/settings.json` was not measured (Q6). Reading the deployer shows a force-update mode that overwrites existing files without a manifest check (`internal/template/deployer.go:80` and `:254`), but that is the update path, not a measured init run.
-- G-12 — The PROJECT-scope regeneration under a tool-policy document (`internal/config/toolpolicy/tier_render.go:76-81`, which sets `Allow: full.Allow`) was read in code but not probed. Q5 records it.
+- G-12 — The PROJECT-scope regeneration under a tool-policy document (`internal/config/toolpolicy/tier_render.go:76-81`, which sets `Allow: full.Allow`) was read in code but not probed. Decided Q5 records it.
 - G-13 — The landing SHAs for t1619, t1578, and t1591 on the run base are not known. E-14 names representative commits. The leader names the landing SHAs at dispatch.
-- G-14 — RED-now cells for AC-002, AC-003, AC-005, AC-006 (full), AC-007, AC-008 (full), AC-010, and AC-012 are not observable in plan phase. Either the tests they name do not exist yet, or observing them would touch the operator's home. They are pending the run-phase first step.
+- G-14 — Resolved in the repair round: the RED-now cells are observed on 3975fe3cc (acceptance.md), with the probes in `.moai/reports/t1630/evidence/`. The run-phase re-observation at P-3 and M2 remains owed, and AC-011 clause (iii) is a regression-guard with no RED cell at plan time (G-21).
 - G-15 — Whether a `CLAUDE_CONFIG_DIR` profile session reads a different settings file from `<home>/.claude/settings.json` was not measured (Q4).
 - G-16 — The dispatch lists the decision IDs and the landing order as leader instructions. They are carried as dispatch text, not as committed authority.
+- G-17 — Pinned by the lane (progress.md §G): the template value is `"default"`. The board record decides that the template carries the default (Q2 (b)) but does not name the literal. Basis: `.claude/skills/moai-foundation-cc/reference/claude-code-settings-official.md:89` uses `"defaultMode": "default"`; `internal/cli/launcher.go:737-741` states that the template no longer ships a default, so under CC 2.1.283+ the CC built-in default wins (auto; Manual under a GLM backend). `acceptEdits` is not chosen: it would auto-approve edits, a behaviour change beyond ruling d-20261010T073547Z-07ae. Ruling d-20261010T081810Z-49e5 (item 2) places this choice in the lane's ladder. (REQ-004, AC-004, M3.)
+- G-18 — The approved digest-prefix (`9c93e47809f9`) covers only the header copy `.moai/reports/t1630/ruling-d-20261010T073547Z-07ae.txt`. The decisions sit in the body line, which each DECIDED row copies verbatim and which was matched to the board listing as a whole line (`moai decision read --all`, grep -x -F, one match). The 12-hex digest does not cover the body line. Extending the digest to the body changes the approved value and needs a new approval.
+- G-19 — Resolved by ruling d-20261010T081810Z-49e5 (item 2): the record's `--yes` is the existing CLI confirmation flag, `--force` (`internal/cli/clean.go:106`). No new flag is added. REQ-011 and AC-011 clause (iii) use `--force`.
+- G-20 — Pinned by the lane (progress.md §G): the managed-block detection is diff-based against the sidecar record `.moai/state/tool-policy/managed-allow.json` (`last_generated`). user_added = existing allow entries minus `last_generated`; result = regenerated ∪ user_added; with no record, every existing entry is kept. The record's allowance is "marker- or diff-based" (board:d-20261010T073547Z-07ae). Probes: `.moai/reports/t1630/evidence/probe-ac005_test.go.txt` (case i) and `.moai/reports/t1630/evidence/probe-ac005b_test.go.txt` (case ii). (REQ-005, AC-005, M3.)
+- G-21 — AC-011 clause (iii) (a run item referenced by a live record is not a candidate; a db item is deleted only with `--force`, the record's `--yes`) is a regression-guard, not release-blocking. No RED cell can be observed at plan time: the scan has no run or db deletion path yet, so an exclusion assertion would pass vacuously. The run phase authors its RED, with a mutant probe, before its GREEN.
+- G-22 — The record states that `tier_render.go:106` "writes only when the value is absent". AC-003 part B observes the overwrite on this tree (3975fe3cc: `plan` replaced by `acceptEdits` on the default path and by `auto` on the automatic path). The statement describes the decided rule, not the current code, and it is not used as evidence that the current code is correct.
 
 #### §A.4 Basis — affected-file estimate for the tier
 
@@ -561,7 +567,7 @@ Production and test files expected to change under the default design (§D, §F)
 14. `internal/testhome/testhome.go` (new shared sandbox helper)
 15. `internal/testhome/guard_test.go` (new guard, REQ-010)
 
-The count is 15, inside the Tier M band. It excludes the conditional template change (Q2) and any transitive reach found under G-9. Any count above 15 triggers the tier-up rule in spec.md §0.
+The count is 15 without the template change. The decided Q2 verdict adds the template file, making 16; the 16th file is a one-line template edit. The orchestrator's Tier M decision (lane-18, ladder ⑤) overrides the tier-up trigger in spec.md §0, and ruling d-20261010T081810Z-49e5 confirms option (b). Any transitive reach found under G-9 above 15 is reported in progress.md.
 
 ### §A.5 Residual-risk (could still be wrong despite the evidence)
 
@@ -569,12 +575,12 @@ The count is 15, inside the Tier M band. It excludes the conditional template ch
 - R-2 — Redirecting HOME in test binaries may expose tests that silently depended on the real home. Some green tests may fail or change meaning. The run must run each reaching package under the sandbox before and after the change.
 - R-3 — The reach measure (G-9) can undercount. A package left out of §A.4 Basis may still write to the real home. AC-007 is the backstop: a before-and-after manifest of the operator home across the full suite.
 - R-4 — Redirecting the process HOME does not stop code that resolves the home through a path other than `os.UserHomeDir` or `paths.Home`. The run must search for such resolvers.
-- R-5 — Adding `db` as a clean-home candidate could delete evidence a later run needs. Q3 governs the rule. Until it is resolved, the run stops.
-- R-6 — The defaultMode decision (Q1) changes the observable default of `moai init`. Whatever the verdict, the change is user-visible, which is why it is a FOUNDER row and blocks the run.
+- R-5 — Adding `db` as a clean-home candidate could delete evidence a later run needs. Decided Q3 lists db items and deletes them only with the confirmation flag `--force`, which is the record's `--yes` (G-19, resolved by ruling d-20261010T081810Z-49e5).
+- R-6 — The decided Q1 disposition changes what `moai init` does with an existing differing defaultMode: it keeps the value, where the current writer overwrites it. The change is user-visible and is recorded in progress.md when the run lands it.
 
 ## §B Known Issues
 
-- B1 — The default init overwrites a user-set USER-scope defaultMode. E-3 shows `plan` replaced by `acceptEdits`. The card's zero-diff judgement and the explicit `--autonomy-tier` behaviour conflict on this point. Q1.
+- B1 — The default init overwrites a user-set USER-scope defaultMode. E-3 shows `plan` replaced by `acceptEdits`, and AC-003 part B shows the same overwrite on the automatic path (`auto`). Decided Q1 (keep the existing value) settles the disposition on both paths; the run implements it.
 - B2 — The writer loses the user's `allow`, `ask`, and `deny` on every default init (E-4). This is the card's item (a) and is the first fix. It contradicts the condition pinned by SPEC-INIT-WIZARD-REPAIR-001 §4 (E-23, decision-index Q8). The M1 preservation test that the condition requires is absent, so M2 adds it.
 - B3 — The doc comment on `WriteUserDefaultMode` (tier_render.go:93-94) describes preservation that the code does not perform. The comment is corrected with the fix.
 - B4 — Scope item S-7 (t1594) is blocked. Its residue inventory and card text are not in the tree (G-2). The run cannot start the t1594 item until the card text is supplied to the leader.
@@ -586,7 +592,7 @@ The count is 15, inside the Tier M band. It excludes the conditional template ch
 
 - P-1 — Record the tree identity and `git status --short` (must be empty).
 - P-2 — Confirm the ordering landings (REQ-013): `git merge-base --is-ancestor <landing-sha> HEAD` for each of the three SHAs the leader names, expecting exit 0.
-- P-3 — Observe the RED-now cells listed as pending in G-14, each on a sandboxed HOME and a throwaway MOAI_HOME, never on the operator's home.
+- P-3 — Re-observe every RED cell of acceptance.md on the post-landing run base, with the same four-element commands. Record that observation beside the pinned-tree observation (3975fe3cc). P-3 and M2 both record their observations in progress.md. Probes write only under `.moai/reports/t1630/evidence/`.
 - P-4 — The operator-home manifest is taken as a read-only listing by the operator, not by an agent (AC-007 baseline, G-8).
 
 ## §D Constraints
@@ -605,13 +611,13 @@ See spec.md §4 (C1 to C6). In addition: the run must not run any unsandboxed te
 
 Priority labels only, no time estimates.
 
-- M1 (Priority High, blocks run) — Decision verdicts: Q1, Q2, Q3, and Q5 by the operator; Q4 and Q6 by run-phase evidence; Q7 default applied at plan close (decision-index.md).
-- M2 (Priority High) — Init USER-scope writer (REQ-001, REQ-002, REQ-003): RED probes on the current tree, a GREEN writer that preserves the three lists and every unmodelled key, a no-op path when nothing changes, and the Q1 disposition. Covers AC-001 to AC-003.
-- M3 (Priority High) — Policy-path and template dispositions (REQ-004, REQ-005): template change only if Q2 says so; PROJECT-scope preservation only if Q5 says so. Covers AC-004, AC-005.
-- M4 (Priority Medium) — `clean --home` run and db candidates (REQ-011, REQ-012) under the Q3 rule; dry-run and allowlist regressions kept. Covers AC-011, AC-012.
-- M5 (Priority Medium) — Codex live isolation (REQ-009): a CODEX_HOME temporary root in the review-gate live test, measured before and after on a sandboxed home. Covers AC-009.
-- M6 (Priority Low, mechanical) — MOAI_HOME and HOME sandboxing for the six packages in §A.4 Basis, the shared helper, and the guard (REQ-006, REQ-007, REQ-008, REQ-010). Covers AC-006, AC-007, AC-008, AC-010.
+- M1 (Priority High, blocks run) — Decision verdicts: Q1, Q2, Q3, and Q5 are DECIDED by the pinned board record `board:d-20261010T073547Z-07ae#9c93e47809f9` (decided_by 영실이 판단, operator-delegated). Q4 and Q6 are closed by the evidence produced at M2 and do not block run. Q7 stays open with no applied default (decision-index.md); it blocks the autonomous Kickoff until an operator verdict is recorded.
 - M7 (gate, cross-cutting) — Ordering (REQ-013) checked before M2 starts and again before the final sync. Covers AC-013.
+- M2 (Priority High) — Init USER-scope writer (REQ-001, REQ-002, REQ-003): RED probes on the current tree, a GREEN writer that preserves the three lists and every unmodelled key, a no-op path when nothing changes, and the decided Q1 disposition (an existing defaultMode is kept, written only when absent). Covers AC-001 to AC-003.
+- M3 (Priority High) — Policy-path and template dispositions (REQ-004, REQ-005): the template carries `permissions.defaultMode` = `"default"`, written by a fresh init only where absent and never by update (decided Q2; value pinned in progress.md §G, G-17); PROJECT-scope user-added allow entries are kept by set union with the regenerated managed block, using diff-based detection against `.moai/state/tool-policy/managed-allow.json` (decided Q5; pinned in progress.md §G, G-20); with no record, every existing entry is kept. Covers AC-004, AC-005.
+- M4 (Priority Medium) — `clean --home` run and db candidates (REQ-011, REQ-012) under the decided Q3 rule (a run item is a candidate only when no live record references it; a db item is listed without `--force` and deleted only with `--force`, the record's `--yes`; G-19 is resolved by ruling d-20261010T081810Z-49e5); the run and db categories join the `--force` allowlist (progress.md §G, G-23); dry-run and allowlist regressions kept. Covers AC-011 clauses (i) and (ii) (release-blocking), AC-011 clause (iii) (regression-guard, G-21), and AC-012; the run-phase deletion criterion named in acceptance.md's Definition of Done is authored here.
+- M5 (Priority Medium) — Codex live isolation (REQ-009): a CODEX_HOME temporary root in the review-gate live test, measured before and after on a sandboxed home. Covers AC-009.
+- M6 (Priority Low, mechanical) — Sandboxing for the reach set (REQ-006, REQ-007, REQ-008, REQ-010): a MOAI_HOME sandbox in TestMain for the six packages that lack one (homestate, escalation, factory, factorymsg, web, and contract/receipt, which has no TestMain); the process HOME redirected to a test-owned directory for every reaching package, including `internal/cli` (its TestMain sets MOAI_HOME but not HOME); `internal/hook` already sets both; the shared helper and the guard in `internal/testhome`. Covers AC-006, AC-007, AC-008, AC-010.
 - M8 (blocked) — The t1594 residue (S-7) waits for card text. No requirement is authored for it in this revision.
 
 ## §G Anti-patterns
@@ -632,8 +638,16 @@ Priority labels only, no time estimates.
 
 ## Appendix A — Probe sources (reproduction)
 
-A-1 (`internal/config/toolpolicy`, probe 1). Package `toolpolicy`. The probe writes a temporary settings file with `defaultMode` "plan" and the three lists, calls `WriteUserDefaultMode(path, "acceptEdits")`, and logs the file before and after. It uses `t.TempDir()` only.
+A-1 (`internal/config/toolpolicy`, probe 1; source `.moai/reports/t1630/evidence/probe-e3_test.go.txt`; overlay `.moai/reports/t1630/evidence/overlay-e3.json`; measured at 3975fe3cc). Package `toolpolicy`. The probe writes a temporary settings file with `defaultMode` "plan" and the three lists, calls `WriteUserDefaultMode(path, "acceptEdits")`, and logs the file before and after. It uses `t.TempDir()` only.
 
-A-2 (`internal/core/project`, probe 2). Package `project`. The probe writes a temporary USER-scope settings file with `allow` and `deny` and no `defaultMode`, calls `ApplyAutonomyTierBundle(dir, userPath, "", "")`, and logs the file before and after. It uses `t.TempDir()` only.
+A-2 (`internal/core/project`, probe 2; source `.moai/reports/t1630/evidence/probe-e4_test.go.txt`; overlay `.moai/reports/t1630/evidence/overlay-e4.json`; measured at 3975fe3cc). Package `project`. The probe writes a temporary USER-scope settings file with `allow` and `deny` and no `defaultMode`, calls `ApplyAutonomyTierBundle(dir, userPath, "", "")`, and logs the file before and after. It uses `t.TempDir()` only.
 
-Both probes were injected through a JSON overlay that maps a repository path (the new `zz_probe*_test.go` inside the package directory) to a scratch file. The overlay never touches the repository, and the probes disappear with the overlay.
+A-3 (`internal/core/project`, AC-003 part B; source `.moai/reports/t1630/evidence/probe-ac003b_test.go.txt`; overlay `.moai/reports/t1630/evidence/overlay-ac003b.json`; measured at 3975fe3cc). Package `project`. The probe writes a USER-scope settings file with `defaultMode` "plan" and calls `ApplyAutonomyTierBundle` with an empty persisted tier and with the `automatic` tier. It sets HOME and MOAI_HOME inside its test process to t.TempDir paths.
+
+A-4 (`internal/cli`, AC-011 clause (ii); source `.moai/reports/t1630/evidence/probe-ac011_test.go.txt`, function `TestAC011DBEntryListed`; overlay `.moai/reports/t1630/evidence/overlay-ac011.json`; measured at 3975fe3cc). It places one aged `db/` entry under a temporary root and calls `scanHomeCleanable`.
+
+A-5 (`internal/core/project`, AC-005 case ii; source `.moai/reports/t1630/evidence/probe-ac005b_test.go.txt`, function `TestAC005WithRecordKeepsUserAddedEntry`; overlay `.moai/reports/t1630/evidence/overlay-ac005b.json`; measured at 3975fe3cc). It writes the sidecar record `{"last_generated":["Bash(old-managed:*)"]}` and a project allow list holding that entry and `Bash(user-added:*)`, then calls `ApplyAutonomyTierBundle` with the automatic tier. It sets HOME and MOAI_HOME inside its test process to t.TempDir paths.
+
+All probes are injected through a JSON overlay in `.moai/reports/t1630/evidence/` (`overlay-e3.json`, `overlay-e4.json`, and the overlays named in acceptance.md). Each overlay maps a repository path inside the package directory to the evidence source. The overlay never touches the repository. The plan-phase scratch copies are superseded by these evidence files.
+
+Evidence binding (D23; option c, ruling d-20261010T084134Z-612e). The D23 wording is: "결속은 매니페스트 해시로, 원본은 로컬 .moai/reports/t1630/" (binding is by manifest hash; the originals stay local under `.moai/reports/t1630/`). The originals are the probe sources, overlays, scripts, fixtures, recorded listings, and the names-only record in `.moai/reports/t1630/evidence/`. `.gitignore:235` excludes that directory from git, so none of it is tracked (operator directive 2026-09-14 keeps evidence on disk and off the remote). The one tracked artifact is `.moai/specs/SPEC-USER-SETTINGS-PROTECT-001/evidence-manifest.json`. For each of its 37 files it records the worktree-relative `path`, the `sha256`, the `size` in bytes, and the `created_at` birth time in UTC, with a top-level `generated_at`. It holds hashes, paths, sizes, and times only: no values and no file bodies. Verify it from the worktree root with `jq -r '.files[] | "\(.sha256)  \(.path)"' .moai/specs/SPEC-USER-SETTINGS-PROTECT-001/evidence-manifest.json | shasum -a 256 -c -`; all 37 lines must read OK. The originals moved from `.moai/specs/SPEC-USER-SETTINGS-PROTECT-001/evidence/` to `.moai/reports/t1630/evidence/` after the pre-move manifest re-verified 37 of 37 OK in the same run. Fourteen files then differed from their pre-move bytes by the directory prefix alone: eleven overlays, the AC-007 leak probe fixture, and the two recorded AC-007 listings, whose absolute paths named the old directory. For each of the fourteen, reversing that one substitution reproduces its pre-move bytes exactly; the other twenty-three are byte-identical. The fourteen rewritten files carry their rewrite time as `created_at`. The recorded RED outputs in acceptance.md are not edited. Residual risk, disclosed: a fresh clone cannot re-run the RED cells without the local evidence directory.

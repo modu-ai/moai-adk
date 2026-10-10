@@ -1,0 +1,232 @@
+{
+  "spec": "SPEC-USER-SETTINGS-PROTECT-001",
+  "card": "t1630",
+  "generated_at": "2026-10-10T08:50:29Z",
+  "algorithm": "sha256",
+  "originals_dir": ".moai/reports/t1630/evidence/",
+  "originals_tracked": false,
+  "files": [
+    {
+      "path": ".moai/reports/t1630/evidence/check-codex-env.sh",
+      "sha256": "31763ea24063657e8f412646e07b6a130e243cb3725d092d9b8b73afbe572b3f",
+      "size": 811,
+      "created_at": "2026-10-10T08:38:03Z"
+    },
+    {
+      "path": ".moai/reports/t1630/evidence/codex-env-ac009.names.txt",
+      "sha256": "7cf119c7604873b94f6d54f34026682a7aba4eae5f485d0f1aca20fdab564397",
+      "size": 1743,
+      "created_at": "2026-10-10T08:38:22Z"
+    },
+    {
+      "path": ".moai/reports/t1630/evidence/fakebin/codex",
+      "sha256": "132f73f7399e5207f4921da3ead4794b7f31e516e44b6e5e09e0d5a7dcdc540d",
+      "size": 1021,
+      "created_at": "2026-10-10T08:38:00Z"
+    },
+    {
+      "path": ".moai/reports/t1630/evidence/grep-cell.sh",
+      "sha256": "acf419420bb06334ea877d8c51b796fcab6ac09e53a6b71e66d087ff3c6ea42f",
+      "size": 307,
+      "created_at": "2026-10-10T07:45:52Z"
+    },
+    {
+      "path": ".moai/reports/t1630/evidence/home-manifest.sh",
+      "sha256": "06c220e7a7734db7d66d399f19a4ccbfaf30038f07aa4f9fb5b8e6e52ebaa297",
+      "size": 1154,
+      "created_at": "2026-10-10T07:42:37Z"
+    },
+    {
+      "path": ".moai/reports/t1630/evidence/manifest-ac007-after.txt",
+      "sha256": "3749394c3f533ce4b48d55c5a0ddd008a55e6f6a1825f417e7badc3f90ac82a5",
+      "size": 876,
+      "created_at": "2026-10-10T08:49:32Z"
+    },
+    {
+      "path": ".moai/reports/t1630/evidence/manifest-ac007-before.txt",
+      "sha256": "193bc344b82369e498b8678ddeb1b9b662945a4fcbb18680de374e01373b5e2e",
+      "size": 437,
+      "created_at": "2026-10-10T08:49:32Z"
+    },
+    {
+      "path": ".moai/reports/t1630/evidence/mutant-ac009-comment-only.txt",
+      "sha256": "b7ced5241a1fc98265596af0e91a51d70ca54d16417f85ba30e7888cae40b885",
+      "size": 39,
+      "created_at": "2026-10-10T07:50:41Z"
+    },
+    {
+      "path": ".moai/reports/t1630/evidence/overlay-ac001-003.json",
+      "sha256": "5e0c0987fde81138ad587393df71c456c76728bea2ab720188103c43085da729",
+      "size": 239,
+      "created_at": "2026-10-10T08:49:32Z"
+    },
+    {
+      "path": ".moai/reports/t1630/evidence/overlay-ac003b.json",
+      "sha256": "e87e7ff3e2cf11ee0754065a5773eaba5ebe004d5c89da98586f30d61372669b",
+      "size": 228,
+      "created_at": "2026-10-10T08:49:32Z"
+    },
+    {
+      "path": ".moai/reports/t1630/evidence/overlay-ac005.json",
+      "sha256": "afe06ddddf7a906dcb7ce85edd5c716e7a9de2c03797687b1687e06193d46bb4",
+      "size": 226,
+      "created_at": "2026-10-10T08:49:32Z"
+    },
+    {
+      "path": ".moai/reports/t1630/evidence/overlay-ac005b.json",
+      "sha256": "a71448979587a6194b46b23f16a1746b57d6db337cb6d4d2d1d969677605c8a3",
+      "size": 228,
+      "created_at": "2026-10-10T08:49:32Z"
+    },
+    {
+      "path": ".moai/reports/t1630/evidence/overlay-ac006-mutant.json",
+      "sha256": "f92d61328dabd868ed1db976a99bbf0f794737bcd12b0aa1aad859dab1d59cdf",
+      "size": 466,
+      "created_at": "2026-10-10T08:49:32Z"
+    },
+    {
+      "path": ".moai/reports/t1630/evidence/overlay-ac006.json",
+      "sha256": "3c0468bce864e02ca22102c2e7b3426596c57f4888a71916c6afa72e3a31969e",
+      "size": 244,
+      "created_at": "2026-10-10T08:49:32Z"
+    },
+    {
+      "path": ".moai/reports/t1630/evidence/overlay-ac007.json",
+      "sha256": "cf569c47f7af015211a3b11826aee2d326d74225a4ae1c6d889e2ba649cb9a32",
+      "size": 241,
+      "created_at": "2026-10-10T08:49:32Z"
+    },
+    {
+      "path": ".moai/reports/t1630/evidence/overlay-ac008.json",
+      "sha256": "ba987021937b9b1fe708d0d7cff127425f0bd912cefb124cf4fef893c19d10f6",
+      "size": 230,
+      "created_at": "2026-10-10T08:49:32Z"
+    },
+    {
+      "path": ".moai/reports/t1630/evidence/overlay-ac011.json",
+      "sha256": "b21410bda7edf9b023b8b555bd88ca5158f1a304c80db5283ebea688d96940cf",
+      "size": 217,
+      "created_at": "2026-10-10T08:49:32Z"
+    },
+    {
+      "path": ".moai/reports/t1630/evidence/overlay-e3.json",
+      "sha256": "f90ceee5d3a1f4e817850c6c83ac828871ea84a4553339d7f82ca42375f962be",
+      "size": 231,
+      "created_at": "2026-10-10T08:49:32Z"
+    },
+    {
+      "path": ".moai/reports/t1630/evidence/overlay-e4.json",
+      "sha256": "2f5a7598f8844bdba912d88812f9232ecd4324f9ff737f1b93bead8fa6c529ed",
+      "size": 226,
+      "created_at": "2026-10-10T08:49:32Z"
+    },
+    {
+      "path": ".moai/reports/t1630/evidence/probe-ac001-003_test.go.txt",
+      "sha256": "6982a04095ee46860982078905e185cd27c21b33d694cca794de7a5c13cfe605",
+      "size": 4366,
+      "created_at": "2026-10-10T07:42:27Z"
+    },
+    {
+      "path": ".moai/reports/t1630/evidence/probe-ac003b_test.go.txt",
+      "sha256": "c90a180cf85582850e6aa9392fb2eae95f65cfa4531007bb6c974d76b543fcd9",
+      "size": 2033,
+      "created_at": "2026-10-10T08:09:23Z"
+    },
+    {
+      "path": ".moai/reports/t1630/evidence/probe-ac005_test.go.txt",
+      "sha256": "cb50369749343ba3a04482c42894785159069bfb562b40f4d753a168f09aeab5",
+      "size": 2177,
+      "created_at": "2026-10-10T07:42:31Z"
+    },
+    {
+      "path": ".moai/reports/t1630/evidence/probe-ac005b_test.go.txt",
+      "sha256": "a06ae4ad9d94fc76ae8e579d59c2f739709b2306cbe586f984c4c2d05da65b75",
+      "size": 3454,
+      "created_at": "2026-10-10T08:22:51Z"
+    },
+    {
+      "path": ".moai/reports/t1630/evidence/probe-ac006-escalation_test.go.txt",
+      "sha256": "0b599665d5d715ef91ce3affea04fcf757aebfadcc0cd5167d9b63ebc3b686e6",
+      "size": 392,
+      "created_at": "2026-10-10T07:42:53Z"
+    },
+    {
+      "path": ".moai/reports/t1630/evidence/probe-ac006-factory_test.go.txt",
+      "sha256": "49adde77e9498856d275145def06a865c105dd5f87d01e5e43b0590c78a6b9fb",
+      "size": 384,
+      "created_at": "2026-10-10T07:42:54Z"
+    },
+    {
+      "path": ".moai/reports/t1630/evidence/probe-ac006-factorymsg_test.go.txt",
+      "sha256": "94a8d9c47d016129c1ef8a09c339e872f67c2c9ed4fd3cd0fdb3fbfa212f16ad",
+      "size": 387,
+      "created_at": "2026-10-10T07:42:55Z"
+    },
+    {
+      "path": ".moai/reports/t1630/evidence/probe-ac006-homestate_test.go.txt",
+      "sha256": "9032249592d5c8bc6a4e76a8cb125cbb3bd2e45a2bd91c75ab0aca43349fa3a6",
+      "size": 531,
+      "created_at": "2026-10-10T07:42:52Z"
+    },
+    {
+      "path": ".moai/reports/t1630/evidence/probe-ac006-mutant_test.go.txt",
+      "sha256": "a84657b9b8afcdfb66aac8e0dd42fa9bad5a8ede4214b9885b583137c4d28581",
+      "size": 172,
+      "created_at": "2026-10-10T07:45:14Z"
+    },
+    {
+      "path": ".moai/reports/t1630/evidence/probe-ac006-receipt_test.go.txt",
+      "sha256": "508ff16b9523999cd543f4eae2655564cc36401fd53aae2442b10924a80c0dde",
+      "size": 389,
+      "created_at": "2026-10-10T07:42:57Z"
+    },
+    {
+      "path": ".moai/reports/t1630/evidence/probe-ac006-web_test.go.txt",
+      "sha256": "5ab657241809b5b756157aba7fd2072152a9b3a90190426b19c9d9a9af2cb09c",
+      "size": 380,
+      "created_at": "2026-10-10T07:42:56Z"
+    },
+    {
+      "path": ".moai/reports/t1630/evidence/probe-ac007-leak_test.go.txt",
+      "sha256": "1e65f5e8f01c9a2b5155153b9c0bb6738f312e33529d7177969807d450a5da1a",
+      "size": 839,
+      "created_at": "2026-10-10T08:49:32Z"
+    },
+    {
+      "path": ".moai/reports/t1630/evidence/probe-ac008_test.go.txt",
+      "sha256": "699dca982b256fa0ca546fa1c2de064b77a0738916e1f5a172f19da8705e2d16",
+      "size": 925,
+      "created_at": "2026-10-10T07:45:12Z"
+    },
+    {
+      "path": ".moai/reports/t1630/evidence/probe-ac011_test.go.txt",
+      "sha256": "92b69c163b655e6e2ad5bd15a6b0f7156c2111d648642005b4252d08301886a0",
+      "size": 1754,
+      "created_at": "2026-10-10T08:09:26Z"
+    },
+    {
+      "path": ".moai/reports/t1630/evidence/probe-e3_test.go.txt",
+      "sha256": "70ef80568440934537aa613a26014d697bf404d5e13ece0bccd5b968d9591769",
+      "size": 954,
+      "created_at": "2026-10-10T07:43:18Z"
+    },
+    {
+      "path": ".moai/reports/t1630/evidence/probe-e4_test.go.txt",
+      "sha256": "eb4a9d1b219f945f1a6409c1215edee8dcc8dfdd0a172fe8f938348bdecc136f",
+      "size": 1148,
+      "created_at": "2026-10-10T07:43:19Z"
+    },
+    {
+      "path": ".moai/reports/t1630/evidence/run-ac009.sh",
+      "sha256": "427a7d645fea9751a17eda2e5cbe9ff6a674bdfa2a4592b7ff666c1f33aaf6b1",
+      "size": 1291,
+      "created_at": "2026-10-10T08:38:02Z"
+    },
+    {
+      "path": ".moai/reports/t1630/evidence/throwaway-home/.moai/run/ac007-leak/leak.txt",
+      "sha256": "11cb7b9c0bc70eb46723f3906d04425a42e4c777a1787e86eff29413d5f29a87",
+      "size": 30,
+      "created_at": "2026-10-10T07:46:08Z"
+    }
+  ]
+}
