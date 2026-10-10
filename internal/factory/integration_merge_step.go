@@ -555,11 +555,30 @@ func RunMergeStep(in MergeStepInput, seams MergeStepSeams) (string, error) {
 				mergeForeignErr = unfinishedMergeRefusal(fmt.Sprintf("MERGE_HEAD names another commit %s", foreignName[:12]))
 				return nil
 			}
+			// F1 same-SHA (sync audit, card t1616): foreignMergeHead above passes a MERGE_HEAD
+			// that names the pin, so a same-SHA merge another actor began after the probe
+			// would reach the abort below. git exits 1 only when this call began the merge and
+			// stopped with it in progress (a conflict, or a pre-merge-commit hook). Any other
+			// exit gives this call no claim on a MERGE_HEAD it finds (git refuses to start
+			// before it writes one, observed on git 2.54.0; a call killed by a signal is not
+			// credited either), so the step refuses and does not abort it.
+			if code, didNotStop := mergeCallDidNotStop(err); didNotStop {
+				present, presentErr := mergeHeadPresent(git, in.IntegrationWorktree)
+				if presentErr != nil {
+					mergeForeignErr = mergeStepErr(MergeExitOther, "integration merge: read MERGE_HEAD after the failed merge: %v", presentErr)
+					return nil
+				}
+				if present {
+					mergeForeignErr = unfinishedMergeRefusal(fmt.Sprintf("MERGE_HEAD exists, and this merge call exited %d rather than stopping with exit 1", code))
+					return nil
+				}
+			}
 			// (6)/(7): abort, then decide by the status set the abort left against S-before —
 			// inside the section, so no acquisition can interleave between
 			// our failed merge and its cleanup. The abort reaches this point only when
 			// MERGE_HEAD is absent (git's abort then refuses and changes nothing), names
-			// the pinned SHA (this call's merge), or names no commit at all.
+			// the pinned SHA only when this call began that merge (exit 1, checked above),
+			// or names no commit at all.
 			_, _ = git("merge", "--abort")
 			after, statusErr := integrationStatusSet(git)
 			mergeDirtyAfterAbort = statusErr != nil || !integrationStatusEqual(after, statusBefore)
@@ -997,6 +1016,37 @@ func isFullObjectName(s string) bool {
 // began it.
 func unfinishedMergeRefusal(reason string) *MergeStepError {
 	return mergeStepErr(MergeExitWorktreeDirty, "integration merge: refused — the integration worktree holds an unfinished merge (%s) that this step did not start. Finish or resolve it where it was begun, re-measure, then re-acquire. The step does not abort it.", reason)
+}
+
+// mergeCallDidNotStop reports the exit status of a failed `git merge` call when that
+// call did not stop with the merge in progress. git exits 1 only after the merge has
+// begun and stopped (a conflict, or a pre-merge-commit hook that left it unfinished);
+// any other status leaves a MERGE_HEAD found afterwards unattributable to this call.
+// Only the production runner's *factorylane.GitExitError carries a status, so an error
+// of any other shape is not classified here and the caller keeps its abort path.
+func mergeCallDidNotStop(err error) (int, bool) {
+	var exit *factorylane.GitExitError
+	if !errors.As(err, &exit) || exit.ExitCode == 1 {
+		return 0, false
+	}
+	return exit.ExitCode, true
+}
+
+// mergeHeadPresent reports whether the integration worktree's MERGE_HEAD exists,
+// whichever commit it names.
+func mergeHeadPresent(git func(args ...string) (string, error), worktree string) (bool, error) {
+	path, err := mergeHeadPath(git, worktree)
+	if err != nil {
+		return false, err
+	}
+	_, statErr := os.Stat(path)
+	if statErr == nil {
+		return true, nil
+	}
+	if os.IsNotExist(statErr) {
+		return false, nil
+	}
+	return false, fmt.Errorf("stat MERGE_HEAD: %w", statErr)
 }
 
 // integrationOverlapRefusal decides the separate-worktree dirty precondition

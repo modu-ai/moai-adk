@@ -545,3 +545,31 @@ func TestMergeStepRaceSameShaMergeHeadAfterProbeIsNotAborted(t *testing.T) {
 	requireNoMerge(t, f)
 	requireWindowReleasedAndCPromoted(t, f)
 }
+
+func TestMergeStepHookStoppedOwnMergeIsAbortedCause6(t *testing.T) {
+	// Characterization (card t1616, F1 same-SHA): the step's own merge can begin and
+	// stop without a conflict. A pre-merge-commit hook that refuses the merge commit
+	// leaves MERGE_HEAD naming the pin, and git exits 1 after the merge began. That
+	// merge is this call's own, so the step aborts it and the worktree reads clean
+	// (cause 6). The same-SHA refusal must not reach it, because exit 1 marks a merge
+	// that began here.
+	f := newMergeFixture(t)
+	card := f.withCardTree(readyCardPtr())
+	hook := filepath.Join(f.integ, ".git", "hooks", "pre-merge-commit")
+	if err := os.MkdirAll(filepath.Dir(hook), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(hook, []byte("#!/bin/sh\necho 'stopped by the fixture hook' >&2\nexit 1\n"), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	_, err := RunMergeStep(f.input(), f.seams(card))
+	requireCode(t, err, MergeExitMergeFailed)
+	if _, statErr := os.Stat(filepath.Join(f.integ, ".git", "MERGE_HEAD")); !os.IsNotExist(statErr) {
+		t.Fatalf("the abort must clear the merge this call began: %v", statErr)
+	}
+	if status := stepStatus(t, f); status != "" {
+		t.Fatalf("the worktree must read clean after the abort: %q", status)
+	}
+	requireNoMerge(t, f)
+	requireWindowReleasedAndCPromoted(t, f)
+}
