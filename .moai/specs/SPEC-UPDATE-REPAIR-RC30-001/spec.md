@@ -1,10 +1,10 @@
 ---
 id: SPEC-UPDATE-REPAIR-RC30-001
 title: "moai update rc.30 repair: data-safety must-fix items, shared-root profile reach, and update output redesign"
-version: "0.1.4"
+version: "0.1.5"
 status: in-progress
 created: 2026-10-10
-updated: 2026-10-10
+updated: 2026-10-11
 author: "GOOS (via manager-spec, card t1619)"
 priority: P0
 phase: "v3.2.0-rc.30 target"
@@ -25,7 +25,7 @@ tier: L
 | 0.1.2 | 2026-10-10 | GOOS (manager-spec) | Response to plan-audit verdict FAIL (`.moai/reports/t1619/plan-audit.md`): one REQ form (REQ-RC30-001 to -025) throughout; GEARS rewrite of REQ-RC30-014 to -017; REQ-RC30-002 response pending Q2; Q7 carries no applied default; overlap facts pinned to tip SHAs; AC budget 26 of 25 held as an open leader decision (decision-index.md B1); AC RED cells recorded per MP-8. |
 | 0.1.3 | 2026-10-10 | manager-spec (card t1619 lane) | Operator decision d-20261010T060848Z-dc3b (Q2) records option (c) with two conditions and does not adopt option (b): condition 1 is a provenance mark on the kept project copy (the shipped hash or an equivalent marker) so the 3.2-2-5 doctor can identify and reclaim it, and condition 2 is a card-record statement that the structural fix moves to 3.2-2-5 (t1642) and 3.2-2-6 (t1643); residual Gap: the mo.ai.kr profile was not measured (the measurement was on the moai-adk profile lane session). |
 | 0.1.4 | 2026-10-10 | manager-spec (card t1619 run lane) | Plan-audit iteration 9 (`.moai/reports/t1619/plan-audit-iter9.md`, verdict FAIL, defects D1 to D15) and planning-session judgments (board ruling d-20261010T101935Z-4bc4; operator instructions f56a and 1353). REQ-RC30-009 in shall form; REQ-RC30-010 defers the unmarked-directory rule to design section 5, stated once; receiving cards named: card t1668 (removal family) and card t1669 (follow-up batch); AC-RC30-28 added as the single reach judge of REQ-RC30-002 (`moai doctor` after `moai update`); RED ledger re-pinned to `6f95917a1` with the drift from `8fa0dc24b` recorded; absorption recorded as done (merges `ff2bc876d` and `6f95917a1`); AC-RC30-27 first observation recorded as build-red and owned by M2; Q7 carries one applied default (60 columns); plan audit recorded as BYPASSED by operator instruction, not as PASS. |
-| 0.1.5 | 2026-10-11 | manager-spec (card t1619 run lane) | REQ-RC30-007 names the legacy alias keys `opus:`, `sonnet:`, and `haiku:` as the named exception to the key-preservation requirement, citing DR-2 of SPEC-MODEL-MATRIX-UPDATE-001 (commit `f36a60d5a`). This revision adds the location note (the keys inside `glm.models`, the `llm.glm.models` mapping; same-named keys outside it are preserved) and scopes AC-RC30-22 to exclude comments on sequence items, which REQ-UYP-014 of SPEC-UPDATE-YAML-PRESERVE-001 excludes by replacing sequences wholesale (operator ruling d-20261010T143542Z-5d19, option a). |
+| 0.1.5 | 2026-10-11 | manager-spec (card t1619 run lane) | REQ-RC30-007 names the legacy alias keys `opus:`, `sonnet:`, and `haiku:` as the named exception to the key-preservation requirement, citing DR-2 of SPEC-MODEL-MATRIX-UPDATE-001 (commit `f36a60d5a`). This revision adds the location note (the keys inside `glm.models`, the `llm.glm.models` mapping; same-named keys outside it are preserved) and scopes AC-RC30-22 to exclude comments on sequence items, which REQ-UYP-014 of SPEC-UPDATE-YAML-PRESERVE-001 excludes by replacing sequences wholesale (ruling d-20261010T143542Z-5d19, a delegated judgment under the operator's delegation, option (가)). |
 
 Tree measured: `8fa0dc24b`. Its code paths are identical to main tip `2aab5f797b75983e132af451da68f69e3426557b` (`git diff --name-only 2aab5f797 8fa0dc24b -- internal cmd` printed nothing), so RED cells cite `8fa0dc24b`. Commits after `00ab5bbb1` changed `internal/cli/migrate_project_assets.go` (`f9a58fa4e` and `00c1b4b3f`, SPEC-USERASSET-DEPLOY-GUARD-001), so the claim that later commits leave the code paths unchanged holds only through `00ab5bbb1` (`git diff --name-only 8fa0dc24b 00ab5bbb1 -- internal cmd` is empty). Revision 0.1.4 re-pins the RED cells to `6f95917a1`, the tree on which both branches are absorbed (§ G.2); the drift from `8fa0dc24b` is recorded in acceptance.md. No claim in this SPEC relies on the installed binary.
 
