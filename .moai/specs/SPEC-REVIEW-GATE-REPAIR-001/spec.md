@@ -1,7 +1,7 @@
 ---
 id: SPEC-REVIEW-GATE-REPAIR-001
 title: "Codex 리뷰 게이트 수리 — 프롬프트 진입 교착을 풀고 리뷰 기준을 하나로 모은다"
-version: "0.2.7"
+version: "0.2.8"
 status: draft
 created: 2026-10-10
 updated: 2026-10-10
@@ -33,14 +33,15 @@ tags: "codex, review-gate, turn-end, prompt-entry, receipt, merge-base, card-t16
 - 2026-10-10 · v0.2.5 · manager-spec · plan-audit iter8 FAIL(`.moai/reports/t1620/plan-audit-iter8.md`, 0.75, 차단 D1·D2)의 수리 라운드다. 운영자 결정 d-20261010T130929Z-a280 에 따라 D1 은 (나)안으로 고쳤다(RED 선행 순서를 커밋 그래프 검사로 재작성, 이 SPEC 은 승격을 하지 않는다). D2 는 plan §C 승인 파일 목록에 M3·M5·M6 의 테스트 파일과 원천 파일을 보강했고, 파일 목록은 §C 가 정한다고 적었다. 이 행은 감사 결과를 주장하지 않는다. [ID mapping v0.2.5: 적용 없음. 번호는 v0.2.2 와 같다.]
 - 2026-10-10 · v0.2.6 · manager-spec · plan-audit iter9 FAIL(`.moai/reports/t1620/plan-audit-iter9.md`, 0.75, 차단 D1·D2·D3)의 수리 라운드다. 운영자 결정 d-20261010T135342Z-51a4 (가)에 따라 감사자가 제시한 문장을 그대로 적용했다. D1: 덮어쓰기 단위를 plan.md:61, spec.md §D.2, acceptance.md §E 세 곳에 같은 말로 정했다. D2: 완료 정의에 구현 뒤 GREEN 요구를 되살렸다. D3: M2·M5·M6 의 테스트 파일을 plan §C 에 묶고 기대값 변경 목록에 더했다. M6 셸 래퍼의 메시지 방식은 바이너리 호출로 정했다(REQ-RG-008, design.md §5). 이 행은 감사 결과를 주장하지 않는다. [ID mapping v0.2.6: 적용 없음. 번호는 v0.2.2 와 같다.]
 - 2026-10-10 · v0.2.7 · manager-spec · plan-audit iter10 FAIL(`.moai/reports/t1620/plan-audit-iter10.md`, 0.75, 차단 B1·B2)의 뒤 분할 개정이다. 운영자 결정 51a4 의 (나) 조건과 리더 결정 d-20261010T143913Z-d5a3 에 따라 M5·M6 (요구 REQ-RG-005–008, AC-RG-010–013, 파일 묶음)을 후속 카드 t1674 로 옮겼다(depends t1620). B2 컴파일 전제 한 문장을 M2·M3 의 덮어쓰기 검사에 더했다. 이 행은 감사 결과를 주장하지 않는다. [ID mapping v0.2.7: 살아 있는 번호는 그대로다. 이관된 ID 는 이 행과 과거 기록 행에만 남는다.]
+- 2026-10-10 · v0.2.8 · manager-spec · plan-audit split-iter1 FAIL(`.moai/reports/t1620/plan-audit-split-iter1.md`, 0.75, MP-1 실패, 차단 D1–D5)의 수리 라운드다. 운영자 위임 판정 d-20261010T151958Z-1adf 에 따라 REQ-RG-011 을 t1674 로 옮기고 살아 있는 REQ 를 001–007 로 다시 매겼다(구→신: 009→005, 010→006, 012→007). D3 의 inconclusive 메시지 AC(AC-RG-025)를 더했다. D4·D5 는 감사자 문장대로 고쳤다. 이 행은 감사 결과를 주장하지 않는다.
 
 ---
 
 ## §0 지배 원칙 [HARD]
 
-> **턴 종료 게이트만 차단하고, 프롬프트 진입은 차단하지 않는다. 검토가 이뤄지지 않은 상태는 "통과"로 재사용되지 않으며, 검토 없이 턴 종료가 허용될 때마다 화면에 드러난다.**
+> **턴 종료 게이트만 차단하고, 프롬프트 진입은 차단하지 않는다. 검토 없이 턴 종료가 허용될 때마다 화면에 드러난다.** (검토가 이뤄지지 않은 상태의 재사용 금지는 t1674 몫이다.)
 
-교착의 구조는 이렇다. 진입 단계에서 막힌 프롬프트는 모델에게 턴을 주지 않으므로, 리뷰 키가 움직일 방법이 없다(research.md §4, 설계 분석). 모델이 조치할 수 있는 지점은 턴 종료뿐이다. 그래서 검토 결과는 진입 시 추가 맥락으로 한 번 전달되고, 차단은 턴 종료에서만 일어나며, 그 차단은 키당 총 C 회로 상한을 가진다(C = 1). 검토되지 않은 채 허용되는 턴 종료는 systemMessage 로 드러난다(REQ-RG-012). 이 교착의 관측 범위와 관측하지 못한 전제는 §A.1 에 적었다.
+교착의 구조는 이렇다. 진입 단계에서 막힌 프롬프트는 모델에게 턴을 주지 않으므로, 리뷰 키가 움직일 방법이 없다(research.md §4, 설계 분석). 모델이 조치할 수 있는 지점은 턴 종료뿐이다. 그래서 검토 결과는 진입 시 추가 맥락으로 한 번 전달되고, 차단은 턴 종료에서만 일어나며, 그 차단은 키당 총 C 회로 상한을 가진다(C = 1). 검토되지 않은 채 허용되는 턴 종료는 systemMessage 로 드러난다(REQ-RG-007). 이 교착의 관측 범위와 관측하지 못한 전제는 §A.1 에 적었다.
 
 ---
 
@@ -117,33 +118,27 @@ When a turn ends with a fresh fail receipt for a review key whose block count ha
 
 차단 횟수는 리뷰 키 단위의 총량이다(보드 판정 D3 = 키당 총 C회로 제한 (허용이 카운터를 되돌리지 않음)). 허용은 차단 횟수를 되돌리지 않는다. 그 키에 fresh pass 영수증이 기록되면 그 키의 차단 횟수를 제거한다. 키가 바뀌면 새 키는 0 에서 시작한다. C = 1(운영자 판정 Q2)이므로, 같은 fail 키는 처음 한 번만 차단되고 그 뒤의 턴 종료는 모두 허용되며 메시지가 표시된다. 이 규칙은 턴 단위로 카운터를 되돌리는 방식이 만드는 차단·허용의 반복(sawtooth)을 막는다. 허용 뒤의 다음 턴 종료는 AC-RG-017 이 확인한다.
 
-### REQ-RG-009 — 현재 pass 영수증은 재검토 없이 허용한다 (State-driven, 회귀)
+### REQ-RG-005 — 현재 pass 영수증은 재검토 없이 허용한다 (State-driven, 회귀)
 
 While a fresh pass receipt exists for the current review key, the entry hook and the turn-end gate shall allow without starting a new review.
 
-### REQ-RG-010 — 검토 건너뜀의 결정은 바뀌지 않는다 (Ubiquitous, 회귀)
+### REQ-RG-006 — 검토 건너뜀의 결정은 바뀌지 않는다 (Ubiquitous, 회귀)
 
 The codex review gate shall keep its current allow decision for disabled gates, active stop-hook releases, trees without reviewable changes, and absent reviewer binaries.
 
-결정(허용)은 그대로다. 이 경우 턴 종료에 붙는 메시지는 REQ-RG-012 이 더한다. 메시지는 결정을 바꾸지 않는다.
+결정(허용)은 그대로다. 이 경우 턴 종료에 붙는 메시지는 REQ-RG-007 이 더한다. 메시지는 결정을 바꾸지 않는다.
 
-### REQ-RG-011 — 턴 종료에 fresh 영수증이 없으면 재검토를 시작하고 허용한다 (event-driven, M3)
-
-When a turn ends with no fresh receipt for the current review key (absent, stale, or key-mismatched), the turn-end gate shall start a review in the background unless an in-flight marker for that key whose owner process is still alive exists, and shall allow the stop.
-
-가장 흔한 턴 종료 상태다. 이 동작은 SPEC-GATE-BOTTLENECK-001 REQ-GBN-002 의 턴 종료 절(absent 또는 stale 이면 허용하고 백그라운드 검토를 시작한다)과 같다. 이 SPEC 은 그 요구를 이 SPEC 의 요구로 명시하며, 그 SPEC 은 편집하지 않는다(Q6 = (b)). 중복 방지는 소유자 프로세스가 살아 있는 표식만 맡는다(design.md §3). 허용에 붙는 메시지는 REQ-RG-012 이 정한다.
-
-### REQ-RG-012 — 검토 없이 허용되는 턴 종료는 상태를 명명한 메시지를 낸다 (event-driven, M3, 보드 판정 D4)
+### REQ-RG-007 — 검토 없이 허용되는 턴 종료는 상태를 명명한 메시지를 낸다 (event-driven, M3, 보드 판정 D4)
 
 When the turn-end gate allows a stop and no fresh passing receipt backs that allow, the turn-end gate shall emit a visible system message that names the state.
 
-보드 판정 D4 = 항상 메시지 표시. 이 문장은 "allows a stop without a fresh passing review" 를 문언대로 옮긴 것이다. 따라서 absent, stale, key-mismatch, inconclusive, 차단 횟수 소진, 스위치 꺼짐, 검토할 변경 없음, stop-hook 해제, reviewer 없음이 모두 포함된다. 키가 없는 상태(스위치 꺼짐, 검토할 변경 없음)도 포함하는 것은 §0 의 "검토가 되지 않은 상태는 드러나야 한다"에 따른다. 메시지는 Stop 훅의 `systemMessage` 로 낸다(`.claude/rules/moai/core/hooks-system.md:103`). 허용 결정 자체는 바뀌지 않는다(REQ-RG-010). 상태 어휘는 design.md §7 이 정한다. 배포 경로에서는 턴 종료 게이트 래퍼가 Go 처리기를 부르기 전에 조용히 종료하므로(`.claude/hooks/moai/handle-codex-review-gate.sh` 59–60행), 스위치 꺼짐의 메시지가 전달되지 않는다. 이 수정은 후속 카드 t1674(M6)의 몫이다.
+보드 판정 D4 = 항상 메시지 표시. 이 문장은 "allows a stop without a fresh passing review" 를 문언대로 옮긴 것이다. 따라서 absent, stale, key-mismatch, inconclusive, 차단 횟수 소진, 스위치 꺼짐, 검토할 변경 없음, stop-hook 해제, reviewer 없음이 모두 포함된다. 키가 없는 상태(스위치 꺼짐, 검토할 변경 없음)도 포함하는 것은 §0 의 "검토가 되지 않은 상태는 드러나야 한다"에 따른다. 메시지는 Stop 훅의 `systemMessage` 로 낸다(`.claude/rules/moai/core/hooks-system.md:103`). 허용 결정 자체는 바뀌지 않는다(REQ-RG-006). 상태 어휘는 design.md §7 이 정한다. 배포 경로에서는 턴 종료 게이트 래퍼가 Go 처리기를 부르기 전에 조용히 종료하므로(`.claude/hooks/moai/handle-codex-review-gate.sh` 60행), 스위치 꺼짐의 메시지가 전달되지 않는다. 이 수정은 후속 카드 t1674 의 몫이다.
 
 ---
 
 ## §C AC 와 검증 구속
 
-- 모든 인수 기준은 acceptance.md 에 있다(AC-RG-001–005, AC-RG-014–015, AC-RG-017–019, 요구와 1:1 이상 연결, 고아 기준 없음. 제거된 ID 는 HISTORY v0.2.0 행과 v0.2.3 행의 두 줄, 그리고 v0.2.7 행에 있다). 이 SPEC 은 plan 시점에 릴리스 게이트를 하나도 갖지 않는다. 이유: 행위 요구를 단언하는 테스트가 현재 트리에 없고(research.md §6, 테스트 이름 확인), 기존 행위 테스트는 결함을 고정할 뿐이다(acceptance.md §A). 릴리스 게이트로 승격하려면 run 단계가 구현 전 트리에서 RED 를 원문으로 기록해야 한다.
+- 모든 인수 기준은 acceptance.md 에 있다(AC-RG-001–005, AC-RG-014–015, AC-RG-017–019, AC-RG-025, 요구와 1:1 이상 연결, 고아 기준 없음. 제거된 ID 는 HISTORY v0.2.0 행과 v0.2.3 행의 두 줄, 그리고 v0.2.7·v0.2.8 행에 있다). 이 SPEC 은 plan 시점에 릴리스 게이트를 하나도 갖지 않는다. 이유: 행위 요구를 단언하는 테스트가 현재 트리에 없고(research.md §6, 테스트 이름 확인), 기존 행위 테스트는 결함을 고정할 뿐이다(acceptance.md §A). 릴리스 게이트로 승격하려면 run 단계가 구현 전 트리에서 RED 를 원문으로 기록해야 한다.
 - 검증 명령은 항상 작업 트리 루트에서, 단일 호출로 실행한다. 실행된 테스트 수를 함께 기록하며, 0개는 측정 불가로 보고한다.
 
 ## §D 실행 순서 구속
@@ -156,15 +151,26 @@ When the turn-end gate allows a stop and no fresh passing receipt backs that all
 
 ## §E 범위 밖 (Out of Scope)
 
-이 SPEC은 (1)·(3)·(5)와, 아래 (6) 중 REQ-RG-012 부분만 다룬다. (2)·(4)는 t1662로 이관한다. (6)~(10)은 t1637(3.2-1-4)이 후속으로 맡는다. (6) 중 REQ-RG-012의 상태 메시지(D4)는 이 SPEC에 남고, 나머지 가시성 확장은 t1637이 맡는다.
+이 SPEC은 (1)·(3)·(5)와, 아래 (6) 중 REQ-RG-007 부분만 다룬다. (2)·(4)는 t1662로 이관한다. (6)~(10)은 t1637(3.2-1-4)이 후속으로 맡는다. (6) 중 REQ-RG-007의 상태 메시지(D4)는 이 SPEC에 남고, 나머지 가시성 확장은 t1637이 맡는다.
 
-- (6) 미리뷰 systemMessage 가시화 → REQ-RG-012 의 상태 메시지(D4)는 이 SPEC 에 남고, 나머지 가시성 확장은 t1637
+- (6) 미리뷰 systemMessage 가시화 → REQ-RG-007 의 상태 메시지(D4)는 이 SPEC 에 남고, 나머지 가시성 확장은 t1637
 - (7) 차단 사유 중복·경로·길이 상한 → t1637
 - (8) 킥 중복 제거·동시 리뷰 상한·마커 누수 → t1637
 - (9) 빈 diff 무킥 → t1637
 - (10) 진입 훅 timeout 정합 → t1637
 - (4) 영수증을 병합 기준·내용 다이제스트에 결속 → t1662
-- M5·M6 (요구 REQ-RG-005–008, 인수 기준 AC-RG-010–013, 파일 묶음) → 후속 카드 t1674 (depends t1620). 차단 항목 B1 의 수리는 t1674 의 계획에 속한다.
+
+구 REQ-RG-005~008·011은 t1674가 이어받음.
+
+| 구 ID | 신 ID |
+|---|---|
+| REQ-RG-001 | REQ-RG-001 |
+| REQ-RG-002 | REQ-RG-002 |
+| REQ-RG-003 | REQ-RG-003 |
+| REQ-RG-004 | REQ-RG-004 |
+| REQ-RG-009 | REQ-RG-005 |
+| REQ-RG-010 | REQ-RG-006 |
+| REQ-RG-012 | REQ-RG-007 |
 
 ### Out of Scope — 영수증 결합 기준의 변경 (F1)
 
@@ -174,7 +180,7 @@ When the turn-end gate allows a stop and no fresh passing receipt backs that all
 
 ### Out of Scope — 가시성, 중복 제거, kick 정리 (F2)
 
-- 차단 사유의 중복 제거와 길이 상한, 미검토 상태의 systemMessage 표시 확장(REQ-RG-012 의 범위를 넘는 부분), kick 의 pid·liveness 기반 중복 제거와 레인 전체 동시성 상한, 마커 누수 정리, 추적 diff 가 비면 kick 하지 않는 규칙, 진입 훅 timeout 의 5초 정렬은 이 SPEC 밖이다. Follow-up F2 (t1637) 로 추적한다.
+- 차단 사유의 중복 제거와 길이 상한, 미검토 상태의 systemMessage 표시 확장(REQ-RG-007 의 범위를 넘는 부분), kick 의 pid·liveness 기반 중복 제거와 레인 전체 동시성 상한, 마커 누수 정리, 추적 diff 가 비면 kick 하지 않는 규칙, 진입 훅 timeout 의 5초 정렬은 이 SPEC 밖이다. Follow-up F2 (t1637) 로 추적한다.
 
 ### Out of Scope — factory 저장소 경로 (F3)
 
@@ -202,7 +208,7 @@ When the turn-end gate allows a stop and no fresh passing receipt backs that all
 
 ### Out of Scope — 워크플로 설정 파일
 
-- `.moai/config/sections/workflow.yaml` 은 편집하지 않는다. 스위치 판독의 변경은 후속 카드 t1674 에 속한다.
+- `.moai/config/sections/workflow.yaml` 은 편집하지 않는다.
 
 ### Out of Scope — 문서 불일치의 t1635 이관 (F6)
 
@@ -217,7 +223,7 @@ When the turn-end gate allows a stop and no fresh passing receipt backs that all
 ## Follow-up
 
 - **F1 — 영수증 결합 기준 변경.** 영수증을 HEAD 대신 (merge base, 내용 digest) 에 묶는다(카드 항목 4). t1662 로 추적한다(카드 항목 4, 영수증을 병합 기준·내용 다이제스트에 결속). 요구사항을 붙이지 않는다.
-- **F2 — 가시성과 운영 정리.** 카드 항목 6–10 은 t1637(3.2-1-4)이 맡는다. 다만 항목 6 중 REQ-RG-012 의 상태 메시지(D4)는 이 SPEC 에 남는다. 카드 항목 6–10: 미검토 상태를 systemMessage 로 드러내기(REQ-RG-012 밖의 범위), 차단 사유의 중복 제거와 길이 상한, kick 을 pid·liveness 로 중복 제거하고 레인 전체 상한을 두며 마커 약 64개 정리, 추적 diff 가 비면 kick 하지 않기, 진입 훅 timeout 을 5초에서 15초 예산과 맞추기. 요구사항을 붙이지 않는다.
+- **F2 — 가시성과 운영 정리.** 카드 항목 6–10 은 t1637(3.2-1-4)이 맡는다. 다만 항목 6 중 REQ-RG-007 의 상태 메시지(D4)는 이 SPEC 에 남는다. 카드 항목 6–10: 미검토 상태를 systemMessage 로 드러내기(REQ-RG-007 밖의 범위), 차단 사유의 중복 제거와 길이 상한, kick 을 pid·liveness 로 중복 제거하고 레인 전체 상한을 두며 마커 약 64개 정리, 추적 diff 가 비면 kick 하지 않기, 진입 훅 timeout 을 5초에서 15초 예산과 맞추기. 요구사항을 붙이지 않는다.
 - **F3 — factory 후보 두 건(카드 t1620 밖).** (a) `internal/factory/todo_dispatch_current.go:53` 의 백로그 SQLite 열기가 JSON 큐 이관 전에 빈 SQLite 를 만들 수 있다. (b) `internal/factory/todo_runtime.go:364` 의 할당 트랜잭션에서 외부 저장소 변경 뒤 내부 커밋(약 368행)이 실패하면 복구되지 않는다. 두 주장의 검증 결과는 research.md §7 에 있다. 요구사항을 붙이지 않는다.
 - **F4 — 두 계층 동시 활성 doctor 점검 (운영자 판정 Q5 = (b)).** doctor 검사는 이 SPEC 에서 추가하지 않고 후속 항목으로 등록한다. 규칙 문장 `.claude/rules/moai/workflow/factory-dispatch-detail.md:157`(두 계층이 같은 카드 diff 를 두 번 검토한다는 문장)은 Q5 (b) 의 구성 요소로 run 단계(M7)에서 정정한다. 정정은 그 규칙 파일과 템플릿 미러를 같은 커밋에서 맞춘다. 이 plan 단계에서는 그 규칙 파일을 편집하지 않는다.
 - **F5 — Q6 기록 처분 (운영자 판정 Q6 = (b)).** 이 SPEC 은 SPEC-GATE-BOTTLENECK-001 의 REQ-GBN-002(`spec.md:43–47`, 진입 차단 절), REQ-GBN-004(`spec.md:51–54`)와 AC-GBN-004(`spec.md:67–68`, inconclusive 절)를 편집하지 않는다. 처분은 이 SPEC 의 HISTORY 와 이 항목에만 기록한다. 잔여 위험: 대상 SPEC 은 in-progress 이며, 코드의 진입 차단 동작과 REQ-GBN-002 가 주석 없이 어긋난 상태로 남는다.

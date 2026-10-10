@@ -43,21 +43,21 @@
 - **Then** 차단 결정과 상세 사유가 나오고, 이 키의 차단 횟수가 1 이 된다.
 - **분류** RG-GUARD(차단 부분: `TestReviewGate_CacheHitReusesFailVerdict`, 셀 B-1 PASS). 횟수 1 증가의 단언은 M3 에서 추가한다.
 
-### AC-RG-005 — 차단 횟수가 C 에 이른 뒤의 턴 종료는 허용하고 미검토를 드러낸다 (REQ-RG-004, REQ-RG-012)
+### AC-RG-005 — 차단 횟수가 C 에 이른 뒤의 턴 종료는 허용하고 미검토를 드러낸다 (REQ-RG-004, REQ-RG-007)
 
 - **Given** 같은 fail 키의 차단 횟수가 C(= 1)이다.
 - **When** 같은 키에서 다음 턴 종료가 온다(stop_hook_active 거짓).
 - **Then** 차단하지 않고 허용하며, systemMessage 에 차단 횟수 소진이라는 미검토 상태가 나온다.
 - **분류** RG-PENDING. 운영자 판정 Q2(C = 1)와 D3(키당 총량)가 기대값을 정한다.
 
-### AC-RG-014 — 현재 pass 영수증은 재검토 없이 허용한다 (REQ-RG-009)
+### AC-RG-014 — 현재 pass 영수증은 재검토 없이 허용한다 (REQ-RG-005)
 
 - **Given** 현재 키에 대한 fresh pass 영수증이 있다.
 - **When** 진입 훅 또는 턴 종료가 실행된다.
 - **Then** 새 검토를 시작하지 않고 허용한다.
 - **분류** RG-GUARD. 가드: `TestReviewEntry_FreshPassAllows`(셀 B-1, PASS).
 
-### AC-RG-015 — 검토 건너뜀의 허용 결정은 바뀌지 않는다 (REQ-RG-010)
+### AC-RG-015 — 검토 건너뜀의 허용 결정은 바뀌지 않는다 (REQ-RG-006)
 
 - **Given** 게이트가 꺼져 있거나, stop-hook-active 해제이거나, 검토할 변경이 없거나, reviewer 바이너리가 없다.
 - **When** 훅이 실행된다.
@@ -71,19 +71,26 @@
 - **Then** 다시 차단하지 않고 허용하며 메시지를 표시한다. 차단 횟수는 여전히 C 다.
 - **분류** RG-PENDING. 현재 테스트에 이 단언이 없다(신규 가드).
 
-### AC-RG-018 — 턴 종료에 fresh 영수증이 없으면 재검토를 시작하고 허용한다 (REQ-RG-011, REQ-RG-012)
+### AC-RG-018 — 턴 종료에 fresh 영수증이 없으면 상태 이름을 명명한 메시지와 함께 허용한다 (REQ-RG-007)
 
-- **Given** 현재 키의 영수증이 없거나(absent), 유효기간이 지났거나(stale), 결합 필드가 다르다(key-mismatch). 진행 중 표식이 없다.
+- **Given** 현재 키의 영수증이 없거나(absent), 유효기간이 지났거나(stale), 결합 필드가 다르다(key-mismatch).
 - **When** 턴이 끝난다.
-- **Then** 백그라운드 재검토가 시작되고, 턴 종료는 차단 없이 허용되며, systemMessage 에 해당 상태 이름이 나온다.
-- **분류** RG-PENDING. 기존 킥 가드 `TestReviewGate_StaleKeyKicksBackgroundReview` 와 `TestReviewGate_CacheMissKicksBackgroundReview` 는 존재가 확인되었으나(research.md §6) 셀로 실행하지 않았다. 메시지 단언은 없다.
+- **Then** 턴 종료는 차단 없이 허용되며, systemMessage 에 해당 상태 이름이 나온다.
+- **분류** RG-PENDING. 현재 테스트에 상태 이름 메시지 단언이 없다.
+- **범위** 재검토 시작은 t1674 몫이다.
 
-### AC-RG-019 — 검토 없이 허용되는 턴 종료는 상태를 명명한 메시지를 낸다 (REQ-RG-012, REQ-RG-010)
+### AC-RG-019 — 검토 없이 허용되는 턴 종료는 상태를 명명한 메시지를 낸다 (REQ-RG-007, REQ-RG-006)
 
 - **Given** 네 상황: (a) 스위치 꺼짐, (b) 검토할 변경 없음, (c) stop-hook 해제, (d) reviewer 없음(reviewer 바이너리 부재).
 - **When** 각 상황에서 턴이 끝난다.
 - **Then** 네 경우 모두 허용 결정이 현재와 같고, 각 경우의 systemMessage 는 그 경우의 상태 이름을 담는다: 스위치 꺼짐, 검토할 변경 없음, stop-hook 해제, reviewer 없음.
-- **분류** RG-PENDING. 가드 기준선: `TestReviewGate_DisabledAllows` 등은 결정만 단언한다(셀 B-1). 스위치 판정은 후속 카드 t1674 에서 정한다. 이 SPEC 은 그때까지 현행 판독기를 유지한다.
+- **분류** RG-PENDING. 가드 기준선: `TestReviewGate_DisabledAllows` 등은 결정만 단언한다(셀 B-1). 스위치 판정은 후속 카드 t1674 에서 정한다. 이 SPEC 은 그때까지 현행 판독기를 유지한다. (a) 는 Go 처리기 수준에서 검증한다. 배포 경로 전달은 t1674 몫이다(래퍼 :60).
+
+### AC-RG-025 — 현재 키의 fresh inconclusive 턴 종료는 허용하고 상태 메시지를 낸다 (REQ-RG-007)
+
+- Given 현재 키의 fresh inconclusive 영수증, When 턴 종료, Then 허용 결정은 현재와 같고 systemMessage 에 `inconclusive` 가 나온다.
+- **범위** 재검토 시작은 t1674 몫이다.
+- **분류** RG-PENDING. 현재 테스트에 systemMessage 의 inconclusive 단언이 없다(신규 가드).
 
 ## §C 기준선 셀 (실행 기록)
 
@@ -164,9 +171,9 @@ PASS
 ok  	github.com/modu-ai/moai-adk/internal/cli	2.766s
 ```
 
-- **해석:** 두 테스트가 PASS 한다는 것은 두 결함이 현재 트리에 존재하며 테스트가 그것을 기대값으로 고정하고 있다는 뜻이다. inconclusive 영수증이 "reusing the cached" 로 허용되고, fail 영수증이 진입 단계에서 차단된다. 이 두 기대값 가운데 `TestReviewEntry_FreshFailBlocks` 의 것은 M2 에서 의도적으로 바뀐다. `TestReviewGate_InconclusiveReceiptIsNotPassEvidence` 의 것은 아래 t1674 노트로 옮겼다.
+- **해석:** 두 테스트가 PASS 한다는 것은 두 결함이 현재 트리에 존재하며 테스트가 그것을 기대값으로 고정하고 있다는 뜻이다. inconclusive 영수증이 "reusing the cached" 로 허용되고, fail 영수증이 진입 단계에서 차단된다. 이 두 기대값 가운데 `TestReviewEntry_FreshFailBlocks` 의 것은 M2 에서 의도적으로 바뀐다. `TestReviewGate_InconclusiveReceiptIsNotPassEvidence` 의 것은 t1674 몫이다.
 - **결함 고정 목록 확장(v0.2.6):** 위 두 테스트 외에 기대값이 바뀌는 M2 테스트는 plan.md §D 의 M2 기대값 변경 항목에 적혀 있다: `codex_review_cache_test.go:216–227`, `codex_review_delay_test.go:195–197`·`:267–269`, `codex_review_gate_live_test.go:129–133`. 이 확장 목록의 원문 기준선은 이 판에서 실행하지 않았다(Gap). run 단계가 착수 전에 같은 형식으로 측정해 progress.md §E.2 에 남긴다.
-- **t1674 노트(v0.2.7):** M5·M6 의 기대값 변경 테스트는 후속 카드 t1674 로 옮겼다(depends t1620). M5: `TestReviewGate_InconclusiveReceiptIsNotPassEvidence`, `codex_review_delay_test.go:272–292`. M6: `internal/hook/review_gate_selfgate_test.go:92–113`, `internal/cli/mcp_codex_test.go:522–552`, `internal/cli/mcp_codex_consoletest_test.go:46–47`·`:76–77`.
+- **t1674 노트(v0.2.7):** M5·M6 의 기대값 변경 테스트는 후속 카드 t1674 로 옮겼다(depends t1620). M5: `TestReviewGate_InconclusiveReceiptIsNotPassEvidence`, `internal/cli/codex_review_cache_test.go:236–270`. M6: `internal/hook/review_gate_selfgate_test.go:92–113`, `internal/cli/mcp_codex_test.go:522–552`, `internal/cli/mcp_codex_consoletest_test.go:46–47`·`:76–77`.
 
 ### 트리 점검
 
@@ -182,9 +189,9 @@ ok  	github.com/modu-ai/moai-adk/internal/cli	2.766s
 ## §E 완료 정의 (DoD)
 
 - Q2–Q6 의 운영자 판정과 보드 판정 D3·D4·D11 이 decision-index.md 에 기록되어 있다. Q1 은 t1662 로 이관되었다(d-20261010T070728Z-6cdf). 2회차 기록(d-20261010T063222Z-43e0)도 같은 색인에 있다.
-- AC-RG-001–005, AC-RG-014–015, AC-RG-017–019 각 항목이 "가드 GREEN" 이거나 "마일스톤 커밋의 새 테스트는 첫 부모에서 EXPECTED_RED 로 실패하고 마일스톤 커밋과 최종 트리에서 GREEN 이다(검사 기록은 progress.md §E.2)" 상태다. 덮어쓰기 단위는 마일스톤 커밋이 추가하거나 바꾼 _test.go 파일의 그 커밋 시점 내용이다. 덮어쓰기 단위의 테스트는 첫 부모의 비테스트 코드만으로 컴파일되어야 한다. 컴파일 실패는 tdd-result-contract.md 의 TOOL_FAILURE 이며 RED 로 세지 않는다.
+- AC-RG-001–005, AC-RG-014–015, AC-RG-017–019, AC-RG-025 각 항목이 "가드 GREEN" 이거나 "마일스톤 커밋의 새 테스트는 첫 부모에서 EXPECTED_RED 로 실패하고 마일스톤 커밋과 최종 트리에서 GREEN 이다(검사 기록은 progress.md §E.2)" 상태다. 덮어쓰기 단위는 마일스톤 커밋이 추가하거나 바꾼 _test.go 파일의 그 커밋 시점 내용이다. 덮어쓰기 단위의 테스트는 첫 부모의 비테스트 코드만으로 컴파일되어야 한다. 컴파일 실패는 tdd-result-contract.md 의 TOOL_FAILURE 이며 RED 로 세지 않는다.
 - 결함을 고정한 테스트 한 개(M2, TestReviewEntry_FreshFailBlocks)의 기대값 변경이 근거(REQ 번호 또는 보드 판정)와 함께 progress.md 에 기록되어 있다.
-- 템플릿 미러 갱신은 후속 카드 t1674 에 속하고, F1–F5 가 후속 카드로 등록되고 F6 이 t1635 로 이관되어 있다.
+- 훅 래퍼의 템플릿 미러 갱신은 후속 카드 t1674 에 속한다. M7 의 규칙 파일과 그 템플릿 미러는 같은 커밋에서 맞아 있다. F1–F5 가 후속 카드로 등록되고 F6 이 t1635 로 이관되어 있다.
 - 릴리스 게이트 승격 사례는 이 SPEC 에서 인용하지 않는다.
 
 ## §F 잔여 위험
@@ -195,3 +202,4 @@ ok  	github.com/modu-ai/moai-adk/internal/cli	2.766s
 - AC-RG-004 가드(`TestReviewGate_CacheHitReusesFailVerdict`)와 셀 B-2 의 `TestReviewGate_InconclusiveReceiptIsNotPassEvidence` 는 단언의 끝부분을 이 문서 작성 중 다시 읽지 않았다(research.md §8 Gap 7). run 단계가 읽는다.
 - 셀 B-2 의 두 번째 테스트는 stderr 로 inconclusive 를 허용한다는 사실을 보여 주지만, 그 판단이 옳은지는 판정하지 않는다.
 - AC-RG-019 와 AC-RG-005 의 메시지 범위(키가 없는 상태 포함)는 운영자 확인 대상이다(plan.md §F 6).
+- 배포 경로 공백: 스위치 꺼짐의 메시지는 턴 종료 게이트 래퍼(`.claude/hooks/moai/handle-codex-review-gate.sh` 60행)가 Go 처리기를 부르기 전에 끝나므로 배포 경로에서 전달되지 않는다. 이 SPEC 의 상태 메시지 요구(REQ-RG-007)는 Go 처리기 수준에서만 충족된다. 전달 수정은 t1674 몫이다.
