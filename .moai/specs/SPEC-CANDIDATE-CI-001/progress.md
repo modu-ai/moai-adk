@@ -1,6 +1,6 @@
 # progress.md — SPEC-CANDIDATE-CI-001
 
-status: in-progress
+status: implemented
 card: t1478
 phase: plan
 
@@ -653,6 +653,126 @@ Goroutine starts in non-test Go code: none (grep over the card diff; the positiv
 - Lifecycle note: the reopen adds no `amendment_of:` field and no `## Amendments` section, so it is not the exempt in-place amendment in spec-frontmatter-schema.md. Whether `moai spec audit` reports it as SyncStatusDrift is not measured here; the leader decides the route.
 - Pending the leader's route decision (out of sync scope): M6 (race-test split with a rosterguard shard, flaky-registry retry wrapper, dominant-race timing repair), which fails AC-CCI-009-1, AC-CCI-009-2, AC-CCI-009-3 and AC-CCI-013-1 (audit F1-F4); and F7 (candidate verdict falls back to run-job names when the required-checks source is unreadable, `internal/cli/integration_candidate.go` candidateRunVerdict; blocking). Optional findings F8-F15 are not addressed here.
 - No acceptance criterion is claimed as passing by this commit. AC-CCI-016-1 is addressed by the amendment text and has not been re-audited. The sync-commit SHA placeholder above is unchanged.
+
+### Sync close after run completion (round 2)
+
+Scope: the run-phase commits since the 2026-10-09 sync-audit FAIL, the status move to `implemented`, and this record. The `sync_status` line of the header block above describes the round-1 close and is superseded here.
+
+- Status: the spec.md frontmatter `status: in-progress` becomes `implemented`, and so does the progress.md header `status:`. `completed` is not set; the sync audit decides completion.
+- spec.md `updated:` already reads 2026-10-10, the `date +%Y-%m-%d` value of this run, so it is unchanged. The spec.md body is not changed.
+
+sync_commit_sha: pending-backfill
+
+The placeholder is the sanctioned one. A commit cannot cite its own hash, so the real SHA is backfilled in a following commit.
+
+Run commits covered by this round (subjects verbatim from `git log`):
+
+```text
+967d8f9f8 test(SPEC-CANDIDATE-CI-001): F7 candidate verdict must not be green when required-checks is unreadable (card t1478)
+0530d7e9a fix(SPEC-CANDIDATE-CI-001): F7 candidate verdict fails closed on unreadable required-checks (card t1478)
+af529c799 test(SPEC-CANDIDATE-CI-001): B2 payload for the install tests is a small archive, not the test binary (card t1478)
+341a843c4 test(SPEC-CANDIDATE-CI-001): flaky retry wrapper must retry a registered test exactly once (card t1478)
+798e8f003 feat(SPEC-CANDIDATE-CI-001): flaky registry and single-retry wrapper for registry tests (card t1478)
+7258d7c17 test(SPEC-CANDIDATE-CI-001): retry wrapper must retry a registered test in a go test -json stream (card t1478)
+f2b41d675 feat(SPEC-CANDIDATE-CI-001): flaky retry wrapper reads go test -json and keeps notices off stdout (card t1478)
+773edb5b8 ci(SPEC-CANDIDATE-CI-001): race split into four internal/cli shards, a rosterguard shard, and a remainder leg (card t1478)
+a73559090 ci(SPEC-CANDIDATE-CI-001): register scripts/ci under go_code filters (card t1478)
+c8841e9d4 ci(SPEC-CANDIDATE-CI-001): race legs and the test job run through the flaky retry wrapper (card t1478)
+```
+
+Earlier, before this round: `6b1db9e3e docs(SPEC-CANDIDATE-CI-001): sync repair after sync-audit FAIL (card t1478)`.
+
+All eleven commits are ancestors of HEAD `c8841e9d4`. Three were checked with `git merge-base --is-ancestor` (exit 0, below); eight appear in `git log -8` from HEAD.
+
+Evidence. The checks below were run in this sync session against HEAD `c8841e9d4`, after `git status --short --untracked-files=no` came back empty. Outputs are verbatim. `$S` is the session scratch directory (machine-local, not a citation target).
+
+```text
+$ git rev-parse --show-toplevel && git rev-parse HEAD && git branch --show-current && git status --short --untracked-files=no
+/Users/goos/MoAI/moai-adk-go/.moai/worktrees/t1478
+c8841e9d4b2af9cf6c0882b29daef8652fe2873d
+WT-10-03-tier
+(no output: tracked tree clean)
+$ date +%Y-%m-%d
+2026-10-10
+$ bash scripts/ci/test-retry-flaky.sh > $S/fixture.out 2>&1; echo "exit=$?"
+exit=0
+$ wc -l < $S/fixture.out
+61
+$ grep -c 'PASS' $S/fixture.out
+58
+$ grep -c 'FAIL' $S/fixture.out
+0
+$ tail -n 3 $S/fixture.out
+PASS  json uncited: command never ran
+PASS  json uncited: refusal named on stderr
+=== retry-flaky fixture: failures=0 ===
+$ bash scripts/ci/retry-flaky.sh --registry scripts/ci/flaky-registry.txt -- cat scripts/ci-census/testdata/fixture.jsonl > $S/replay.jsonl 2> $S/replay.err; echo "wrapper_exit=$?"
+wrapper_exit=0
+$ cmp $S/replay.jsonl scripts/ci-census/testdata/fixture.jsonl; echo "cmp_rc=$?"
+cmp_rc=0
+$ wc -c < $S/replay.jsonl
+10006
+$ wc -c < scripts/ci-census/testdata/fixture.jsonl
+10006
+$ wc -l < $S/replay.err
+0
+$ grep -v '^#' scripts/ci/flaky-registry.txt | grep -c .
+0
+$ grep -c 'scripts/ci/retry-flaky.sh' .github/workflows/ci.yml
+7
+$ python3 -c "import yaml; d=yaml.safe_load(open('.github/workflows/ci.yml')); print('yaml ok', type(d).__name__)"
+yaml ok dict
+$ go vet ./internal/cli/; echo "vet_exit=$?"
+vet_exit=0
+$ go test -count=1 -v -run 'TestCandidate|TestInstallVersionTag_' ./internal/cli/ > $S/gotest.out 2>&1; echo "test_exit=$?"
+test_exit=0
+$ grep -c '^--- PASS' $S/gotest.out
+16
+$ grep -c '^--- FAIL' $S/gotest.out
+0
+$ grep -c 'no tests to run' $S/gotest.out
+0
+$ tail -n 3 $S/gotest.out
+    --- PASS: TestCandidateCIEnabled/explicit_true_reads_true (0.00s)
+PASS
+ok  	github.com/modu-ai/moai-adk/internal/cli	24.233s
+$ golangci-lint run --new-from-rev=2aab5f797 ./internal/cli/... ./internal/config/... ./internal/factory/... ./internal/factorylane/... > $S/lint.out 2>&1; echo "lint_exit=$?"
+lint_exit=0
+$ tail -n 3 $S/lint.out
+0 issues.
+$ git merge-base --is-ancestor 967d8f9f8 HEAD; echo "967d8f9f8 ancestor_rc=$?"
+967d8f9f8 ancestor_rc=0
+$ git merge-base --is-ancestor 0530d7e9a HEAD; echo "0530d7e9a ancestor_rc=$?"
+0530d7e9a ancestor_rc=0
+$ git merge-base --is-ancestor 6b1db9e3e HEAD; echo "6b1db9e3e ancestor_rc=$?"
+6b1db9e3e ancestor_rc=0
+$ grep -c 'SPEC-CANDIDATE-CI-001' CHANGELOG.md
+1
+$ grep -n '^updated:\|^status:' .moai/specs/SPEC-CANDIDATE-CI-001/plan.md .moai/specs/SPEC-CANDIDATE-CI-001/acceptance.md .moai/specs/SPEC-CANDIDATE-CI-001/design.md .moai/specs/SPEC-CANDIDATE-CI-001/research.md
+.moai/specs/SPEC-CANDIDATE-CI-001/plan.md:6:updated: 2026-10-09
+```
+
+Baseline attribution. Each figure above is from this run, against HEAD `c8841e9d4` and a clean tracked tree. The lint base `2aab5f797` was not re-fetched in this round: it is the origin/main SHA the round-1 record read, pinned here. `git cat-file -t 2aab5f797` returned `commit` in this run.
+
+Gaps
+
+- Not observed: the full `internal/cli` suite and the full repository suite. The `/verify` gate was replaced by the targeted checks above, per the leader's decision for this round.
+- Not run: `GOOS=windows GOARCH=amd64 go build ./...`, so the Windows split of the candidate record and mutation lock is unobserved; gofmt on the run-phase Go files; the Codex review; CI. CI has not run this tree.
+- Refused, not substituted silently: the worktree-isolation guard refused `/bin/bash --version` twice, first inside a compound command and then alone. The `/bin/bash` version is therefore unconfirmed, and the fixture above ran under `bash` from PATH only.
+- Not pushed: the observance push of the candidate to `ci/t1478` is pending operator approval and has not happened.
+- The flaky registry has zero entries (above), so the retry path has not fired on a real failure; the fixture is its only exercise.
+- Acceptance criteria not re-measured: AC-CCI-009-1, AC-CCI-009-2, AC-CCI-009-3, and AC-CCI-013-1 (audit F1 to F4), and AC-CCI-016-1 (the doctrine amendment). The targeted `go test` covers the `TestCandidate*` and `TestInstallVersionTag_` names only.
+- The `Authored-By-Agent` trailer is absent from this commit and was not hand-added.
+
+Residual risk
+
+- The wrapper now sits on seven CI legs (`ci.yml` lines 222, 370, 422, 473, 525, 578, 635), so a wrapper bug reddens all seven at once.
+- A retried leg's uploaded artifact shows only the final attempt, so a first-attempt failure is not visible from the artifact alone.
+- MX validation for the run-phase Go changes was not re-run this round. The four ANCHOR candidates from round 1 stay at the per-file cap (LatestCandidateRecord 3, candidateAttempt 3, refreshWindow 4, PromotedAfterBoundGated 3). Open decision for the orchestrator.
+- CHANGELOG has no entry. The B12 count is 1 (the `grep -c` above; round 1 located it at CHANGELOG.md line 14, inside another SPEC's entry), so B12 halts emission. Open decision; no acceptance criterion requires an entry.
+- plan.md frontmatter `updated: 2026-10-09` was not refreshed. plan.md is outside this round's edit list, while the schema's `updated:` rule would refresh it. Open decision for the orchestrator.
+- progress.md header `phase: plan` (line 5) still names a lifecycle stage. It is outside this round's list and was not changed.
+- The placeholder line `sync_commit_sha: pending-backfill` now appears twice, in the round-1 header block and in this section. The backfill must set both.
 
 ## Lane Kickoff Decision Record (2026-10-09, lane-11)
 
