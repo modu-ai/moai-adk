@@ -245,7 +245,7 @@ func RunMergeStep(in MergeStepInput, seams MergeStepSeams) (string, error) {
 		return "", releaseWindow(in, seams, mergeStepErr(MergeExitOther, "integration merge: status the integration worktree: %v", err))
 	}
 	if !clean {
-		return "", releaseWindow(in, seams, mergeStepErr(MergeExitWorktreeDirty, "integration merge: the integration worktree is not clean (%d status lines); clean it and re-measure, then re-acquire", strings.Count(status, "\n")+1))
+		return "", releaseWindow(in, seams, mergeStepErr(MergeExitWorktreeDirty, "integration merge: the integration worktree is not clean (%d status lines); clean it and re-measure, then re-acquire. Move the uncommitted or untracked changes into a card worktree and commit them there, or ask the session that owns them to commit or discard them. Do not stash: the stash is repository-wide.", strings.Count(status, "\n")+1))
 	}
 
 	// Resolve the card's WT- branch at the card's tree and pin ONE SHA
@@ -529,6 +529,13 @@ func RunMergeStep(in MergeStepInput, seams MergeStepSeams) (string, error) {
 			got = strings.TrimSpace(mergedTree)[:12]
 		}
 		return "", postMergeHold(in, seams, mergeStepErr(MergeExitPostMerge, "integration merge: the merge commit's tree %s differs from the record's tree %s", got, record.Tree[:12]), mergeSHA)
+	}
+	// B3 step 6 (SPEC-LOCAL-MAIN-FLOW-001): SHA equality alone does not prove
+	// the branch did not change, because a post-merge hook can move HEAD to
+	// another branch at the merge commit. The hold names that merge; the tool
+	// never switches HEAD back.
+	if head, headErr := git("symbolic-ref", "HEAD"); headErr != nil || strings.TrimSpace(head) != "refs/heads/"+in.IntegrationBranch {
+		return "", postMergeHold(in, seams, mergeStepErr(MergeExitPostMerge, "integration merge: HEAD no longer names %s after the merge (it moved off the branch during the merge)", in.IntegrationBranch), mergeSHA)
 	}
 	if clean, _, err := gitIntegrationWorktreeClean(in.IntegrationWorktree); err != nil || !clean {
 		return "", postMergeHold(in, seams, mergeStepErr(MergeExitPostMerge, "integration merge: the worktree is not clean after the merge (autostash residue included)"), mergeSHA)
