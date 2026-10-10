@@ -50,40 +50,6 @@
 - **Then** 차단하지 않고 허용하며, systemMessage 에 차단 횟수 소진이라는 미검토 상태가 나온다.
 - **분류** RG-PENDING. 운영자 판정 Q2(C = 1)와 D3(키당 총량)가 기대값을 정한다.
 
-### AC-RG-010 — inconclusive 영수증은 재사용되지 않고 재검토가 시작되며 턴 종료는 메시지와 함께 허용된다 (REQ-RG-005, REQ-RG-006, REQ-RG-012)
-
-- **Given** 현재 키의 inconclusive 영수증이 있고, 진행 중 표식이 없다.
-- **When** 턴이 끝난다.
-- **Then** 백그라운드 재검토가 시작되고, 턴 종료는 차단 없이 허용되며, systemMessage 에 inconclusive 상태가 나온다. stderr 에 "reusing the cached inconclusive verdict" 가 나오지 않는다.
-- **분류** RG-PENDING. 결함 고정 기준선: `TestReviewGate_InconclusiveReceiptIsNotPassEvidence` 가 PASS 하며 stderr 에 "reusing the cached inconclusive verdict for the unchanged tree (skip #1)" 가 나온다(셀 B-2).
-
-### AC-RG-011 — inconclusive 뒤에는 다음 턴 종료에서 간격 없이 재검토가 다시 시작되고, 살아 있는 진행 중 표식이 있으면 중복되지 않는다 (REQ-RG-006)
-
-- **Given** (i) 현재 키의 inconclusive 영수증이 있다. 직전 턴 종료에서 시작된 검토가 inconclusive 로 완료되었고, 완료와 함께 진행 중 표식이 풀렸다(수동 표식 삭제 없음).
-- **When** 다음 턴이 끝난다.
-- **Then** 쿨다운 없이 이 턴 종료에서 새 검토가 시작되고, 턴 종료는 허용되며 systemMessage 에 inconclusive 상태가 나온다(운영자 판정 Q4 = (a)).
-- **Given** (ii) 현재 키의 inconclusive 영수증이 있고, 검토가 실행 중이다. 진행 중 표식이 남아 있고, 그 표식의 소유자 프로세스가 살아 있다.
-- **When** 그 검토가 끝나기 전에 턴이 다시 끝난다.
-- **Then** 두 번째 검토는 시작되지 않는다. 턴 종료는 허용되며 systemMessage 에 inconclusive 상태가 나온다. 표식은 동시 실행만 막는다.
-- **Given** (iii) 현재 키의 inconclusive 영수증이 있고, 진행 중 표식이 남아 있으나 그 소유자 프로세스가 죽었거나 소유자 pid 를 읽을 수 없다(이전 형식의 표식 포함).
-- **When** 다음 턴이 끝난다.
-- **Then** 표식은 고아로 회수되고, 이 턴 종료에서 새 검토가 시작되며, 턴 종료는 허용되고 systemMessage 에 inconclusive 상태가 나온다.
-- **분류** RG-PENDING.
-
-### AC-RG-012 — 실행 스위치: 재정의 파일이 적용되면 그 값이, 아니면 커밋된 값이 두 훅을 지배한다 (REQ-RG-007)
-
-- **Given** 같은 run 의 두 레인이 있고, 커밋된 `codex.review_gate.enabled` 는 HEAD 에서 `true` 다. 작업 트리의 workflow.yaml 값은 HEAD 와 다를 수 있다(미커밋 변경 허용). 재정의 파일의 형식과 실행 식별자 해석은 design.md §5(재정의 파일 스키마와 단일 활성 run 규칙)를 따른다. 시나리오는 다섯이다. (a) 주 체크아웃의 재정의 파일이 이 run 식별자로 `off` 를 싣는다. (b) 재정의 파일이 없다. (c) 재정의 파일이 `on` 을 싣지만 식별자가 다른 run 의 것이다. (d) 재정의 파일이 이 run 식별자로 `on` 을 싣고, 작업 트리의 값은 `false` 다. (e) 이 run 의 카드 워크트리가 아닌 세션(주 체크아웃이나 다른 트리에서 시작한 세션)이 이 run 식별자를 싣고 값이 `off` 인 재정의 파일을 읽는다.
-- **When** 두 레인과 (e) 의 세션에서 진입 훅과 턴 종료가 실행된다.
-- **Then** (a) 두 훅 모두 검토를 시작하지 않고 허용한다. 턴 종료 게이트의 systemMessage 에 스위치 꺼짐과 재정의 파일 출처가 나온다. 진입 훅은 이 상태에 systemMessage 를 내지 않는다(spec.md REQ-RG-012, design.md §2 의 스위치 꺼짐 행). (b) 커밋된 `true` 를 따라 검토가 실행되며, 작업 트리의 `false` 는 무시된다. (c) 파일은 무시되고 커밋된 `true` 를 따른다. (d) 재정의 값 `on` 이 우선하며 검토가 실행된다. (e) 그 세션은 재정의 파일을 무시하고 커밋된 `true` 를 따라 검토가 실행된다(파일의 `off` 는 적용되지 않는다).
-- **분류** RG-PENDING. 현재 코드는 작업 트리의 파일을 읽으므로 (b)와 (d)의 작업 트리 값에 따라 달라진다(research.md §3 #50, #52). (e) 는 현재 해석기에 membership 검사가 없어 RG-PENDING 이다(design.md §5, `internal/cli/factory_card.go:2313–2322`).
-
-### AC-RG-013 — 셸 층과 Go 층이 같은 스위치 결과를 낸다 (REQ-RG-008)
-
-- **Given** 같은 run 에 대해 재정의 값이 `on`, `off`, 또는 부재인 세 상태 각각. 재정의 파일은 design.md §5 의 스키마(`run_id`, `codex_review_gate`)를 따르고, 실행 식별자는 design.md §5 의 단일 활성 run 규칙으로 얻는다.
-- **When** 셸 래퍼와 Go 읽기 경로가 스위치 값을 해석한다.
-- **Then** 세 상태 각각에서 두 층의 결과가 같다.
-- **분류** RG-PENDING. 부분 가드: `TestReviewGateReaders_AgreeWithConfigLoader`(셀 B-1)는 Go 층과 설정 로더의 일치만 본다. 셸 층을 검사하는 가드는 없다.
-
 ### AC-RG-014 — 현재 pass 영수증은 재검토 없이 허용한다 (REQ-RG-009)
 
 - **Given** 현재 키에 대한 fresh pass 영수증이 있다.
@@ -117,7 +83,7 @@
 - **Given** 네 상황: (a) 스위치 꺼짐, (b) 검토할 변경 없음, (c) stop-hook 해제, (d) reviewer 없음(reviewer 바이너리 부재).
 - **When** 각 상황에서 턴이 끝난다.
 - **Then** 네 경우 모두 허용 결정이 현재와 같고, 각 경우의 systemMessage 는 그 경우의 상태 이름을 담는다: 스위치 꺼짐, 검토할 변경 없음, stop-hook 해제, reviewer 없음.
-- **분류** RG-PENDING. 가드 기준선: `TestReviewGate_DisabledAllows` 등은 결정만 단언한다(셀 B-1).
+- **분류** RG-PENDING. 가드 기준선: `TestReviewGate_DisabledAllows` 등은 결정만 단언한다(셀 B-1). 스위치 판정은 후속 카드 t1674 에서 정한다. 이 SPEC 은 그때까지 현행 판독기를 유지한다.
 
 ## §C 기준선 셀 (실행 기록)
 
@@ -198,8 +164,9 @@ PASS
 ok  	github.com/modu-ai/moai-adk/internal/cli	2.766s
 ```
 
-- **해석:** 두 테스트가 PASS 한다는 것은 두 결함이 현재 트리에 존재하며 테스트가 그것을 기대값으로 고정하고 있다는 뜻이다. inconclusive 영수증이 "reusing the cached" 로 허용되고, fail 영수증이 진입 단계에서 차단된다. 이 두 기대값은 M2 와 M5 에서 의도적으로 바뀐다.
-- **결함 고정 목록 확장(v0.2.6):** 위 두 테스트 외에 기대값이 바뀌는 테스트는 plan.md §D 의 M2·M5·M6 기대값 변경 항목에 적혀 있다: `codex_review_cache_test.go:216–227`, `codex_review_delay_test.go:195–197`·`:267–269`·`:272–292`, `codex_review_gate_live_test.go:129–133`, `internal/hook/review_gate_selfgate_test.go:92–113`, `internal/cli/mcp_codex_test.go:522–552`, `internal/cli/mcp_codex_consoletest_test.go:46–47`·`:76–77`. 이 확장 목록의 원문 기준선은 이 판에서 실행하지 않았다(Gap). run 단계가 착수 전에 같은 형식으로 측정해 progress.md §E.2 에 남긴다.
+- **해석:** 두 테스트가 PASS 한다는 것은 두 결함이 현재 트리에 존재하며 테스트가 그것을 기대값으로 고정하고 있다는 뜻이다. inconclusive 영수증이 "reusing the cached" 로 허용되고, fail 영수증이 진입 단계에서 차단된다. 이 두 기대값 가운데 `TestReviewEntry_FreshFailBlocks` 의 것은 M2 에서 의도적으로 바뀐다. `TestReviewGate_InconclusiveReceiptIsNotPassEvidence` 의 것은 아래 t1674 노트로 옮겼다.
+- **결함 고정 목록 확장(v0.2.6):** 위 두 테스트 외에 기대값이 바뀌는 M2 테스트는 plan.md §D 의 M2 기대값 변경 항목에 적혀 있다: `codex_review_cache_test.go:216–227`, `codex_review_delay_test.go:195–197`·`:267–269`, `codex_review_gate_live_test.go:129–133`. 이 확장 목록의 원문 기준선은 이 판에서 실행하지 않았다(Gap). run 단계가 착수 전에 같은 형식으로 측정해 progress.md §E.2 에 남긴다.
+- **t1674 노트(v0.2.7):** M5·M6 의 기대값 변경 테스트는 후속 카드 t1674 로 옮겼다(depends t1620). M5: `TestReviewGate_InconclusiveReceiptIsNotPassEvidence`, `codex_review_delay_test.go:272–292`. M6: `internal/hook/review_gate_selfgate_test.go:92–113`, `internal/cli/mcp_codex_test.go:522–552`, `internal/cli/mcp_codex_consoletest_test.go:46–47`·`:76–77`.
 
 ### 트리 점검
 
@@ -215,9 +182,9 @@ ok  	github.com/modu-ai/moai-adk/internal/cli	2.766s
 ## §E 완료 정의 (DoD)
 
 - Q2–Q6 의 운영자 판정과 보드 판정 D3·D4·D11 이 decision-index.md 에 기록되어 있다. Q1 은 t1662 로 이관되었다(d-20261010T070728Z-6cdf). 2회차 기록(d-20261010T063222Z-43e0)도 같은 색인에 있다.
-- AC-RG-001–005, AC-RG-010–015, AC-RG-017–019 각 항목이 "가드 GREEN" 이거나 "마일스톤 커밋의 새 테스트는 첫 부모에서 EXPECTED_RED 로 실패하고 마일스톤 커밋과 최종 트리에서 GREEN 이다(검사 기록은 progress.md §E.2)" 상태다. 덮어쓰기 단위는 마일스톤 커밋이 추가하거나 바꾼 _test.go 파일의 그 커밋 시점 내용이다.
-- 결함을 고정한 두 테스트의 기대값 변경이 근거(REQ 번호 또는 보드 판정)와 함께 progress.md 에 기록되어 있다.
-- 템플릿 미러가 맞고(M6 의 한 커밋), F1–F5 가 후속 카드로 등록되고 F6 이 t1635 로 이관되어 있다.
+- AC-RG-001–005, AC-RG-014–015, AC-RG-017–019 각 항목이 "가드 GREEN" 이거나 "마일스톤 커밋의 새 테스트는 첫 부모에서 EXPECTED_RED 로 실패하고 마일스톤 커밋과 최종 트리에서 GREEN 이다(검사 기록은 progress.md §E.2)" 상태다. 덮어쓰기 단위는 마일스톤 커밋이 추가하거나 바꾼 _test.go 파일의 그 커밋 시점 내용이다. 덮어쓰기 단위의 테스트는 첫 부모의 비테스트 코드만으로 컴파일되어야 한다. 컴파일 실패는 tdd-result-contract.md 의 TOOL_FAILURE 이며 RED 로 세지 않는다.
+- 결함을 고정한 테스트 한 개(M2, TestReviewEntry_FreshFailBlocks)의 기대값 변경이 근거(REQ 번호 또는 보드 판정)와 함께 progress.md 에 기록되어 있다.
+- 템플릿 미러 갱신은 후속 카드 t1674 에 속하고, F1–F5 가 후속 카드로 등록되고 F6 이 t1635 로 이관되어 있다.
 - 릴리스 게이트 승격 사례는 이 SPEC 에서 인용하지 않는다.
 
 ## §F 잔여 위험
