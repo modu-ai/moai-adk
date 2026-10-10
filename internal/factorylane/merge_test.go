@@ -510,6 +510,37 @@ func TestExecGitRunnerWrapsExitError(t *testing.T) {
 	}
 }
 
+// A process that cannot start has no exit status, so ExecGitRunner must not
+// invent one (SPEC-LOCAL-MAIN-FLOW-001 F1, card t1616). It reported every
+// non-ExitError failure as exit 1, and the merge step reads exit 1 as "git began
+// a merge and stopped", so it aborted a merge another actor had begun.
+func TestExecGitRunnerStartFailureIsNotAnExitStatus(t *testing.T) {
+	intact := os.Getenv("PATH")
+
+	// Start failure: an empty PATH, so git cannot be found.
+	t.Setenv("PATH", t.TempDir())
+	_, err := ExecGitRunner{Dir: t.TempDir()}.Git("status")
+	if err == nil {
+		t.Fatal("git status on an empty PATH must fail")
+	}
+	var exitErr *GitExitError
+	if errors.As(err, &exitErr) {
+		t.Fatalf("a start failure is reported as an exit status: GitExitError{ExitCode: %d}, want the error as is: %v", exitErr.ExitCode, err)
+	}
+
+	// Positive control (passes before and after the fix): PATH restored, git runs
+	// and exits non-zero, and that real status is still reported as one.
+	t.Setenv("PATH", intact)
+	dir, _ := gitInTempRepo(t)
+	_, err = ExecGitRunner{Dir: dir}.Git("rev-parse", "--verify", "no-such-ref")
+	if !errors.As(err, &exitErr) {
+		t.Fatalf("control: a real non-zero exit must stay a *GitExitError, got %T: %v", err, err)
+	}
+	if exitErr.ExitCode != 128 {
+		t.Errorf("control: exit code = %d, want git's 128", exitErr.ExitCode)
+	}
+}
+
 // Two runs recorded inside one clock tick both persist: the filename stamp
 // bumps so the second never overwrites the first.
 func TestRecordMergeCheckRunSameTickCollision(t *testing.T) {

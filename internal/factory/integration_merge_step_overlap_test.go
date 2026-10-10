@@ -546,6 +546,71 @@ func TestMergeStepRaceSameShaMergeHeadAfterProbeIsNotAborted(t *testing.T) {
 	requireWindowReleasedAndCPromoted(t, f)
 }
 
+func TestMergeStepStartFailureSameShaMergeIsNotAborted(t *testing.T) {
+	// F1 start-failure (sync audit, card t1616): our merge call fails to START while
+	// another actor's merge of the SAME pinned SHA is in progress. The production runner
+	// reports a start failure as exit 1: ExecGitRunner.Git defaults the code to 1 for any
+	// error that is not an *exec.ExitError. mergeCallDidNotStop reads exit 1 as "this call
+	// began a merge and stopped", so the step falls through to `git merge --abort` and
+	// discards the other actor's merge. A call that never started began nothing, so the
+	// step must refuse with MergeExitWorktreeDirty and leave MERGE_HEAD naming the pin.
+	// The merge call runs through the real runner, and PATH is emptied around that call
+	// only, so the abort that follows starts normally (the transient case).
+	f := newMergeFixture(t)
+	card := f.withCardTree(readyCardPtr())
+	seams := f.seams(card)
+	runner := factorylane.ExecGitRunner{Dir: f.integ}
+	merged := false
+	var foreignStatus string
+	seams.Git = func(args ...string) (string, error) {
+		if len(args) < 1 || args[0] != "merge" || containsArg(args, "--abort") {
+			return runner.Git(args...)
+		}
+		// The other actor's merge of the pin begins here, with the step's own message: it
+		// stages the card's change and leaves MERGE_HEAD naming the pin.
+		msg := ""
+		for i := 0; i+1 < len(args); i++ {
+			if args[i] == "-m" {
+				msg = args[i+1]
+			}
+		}
+		other := exec.Command("git", "merge", "--no-commit", "--no-ff", "-m", msg, f.cardSHA)
+		other.Dir = f.integ
+		if out, err := other.CombinedOutput(); err != nil {
+			t.Fatalf("fixture: the other actor's merge must begin: %v: %s", err, out)
+		}
+		merged = true
+		foreignStatus = stepStatus(t, f)
+		// Our merge call fails to START: PATH names an empty directory, so git cannot be
+		// found. PATH is restored before any other call.
+		prev := os.Getenv("PATH")
+		t.Setenv("PATH", t.TempDir())
+		if _, lookErr := exec.LookPath("git"); lookErr == nil {
+			t.Fatal("fixture: git must not resolve on the emptied PATH")
+		}
+		out, err := runner.Git(args...)
+		t.Setenv("PATH", prev)
+		return out, err
+	}
+	_, runErr := RunMergeStep(f.input(), seams)
+	if !merged {
+		t.Fatal("fixture: the step never reached its merge call")
+	}
+	body, readErr := os.ReadFile(filepath.Join(f.integ, ".git", "MERGE_HEAD"))
+	if readErr != nil {
+		t.Fatalf("the step aborted a same-SHA merge another actor began after the probe, when our merge call failed to start: MERGE_HEAD is gone (%v)", readErr)
+	}
+	if got := strings.TrimSpace(string(body)); got != f.cardSHA {
+		t.Fatalf("MERGE_HEAD must still name the other actor's commit %s, got %q", f.cardSHA, got)
+	}
+	if after := stepStatus(t, f); after != foreignStatus {
+		t.Fatalf("the other actor's staged result must survive the refusal: before %q, after %q", foreignStatus, after)
+	}
+	requireCode(t, runErr, MergeExitWorktreeDirty)
+	requireNoMerge(t, f)
+	requireWindowReleasedAndCPromoted(t, f)
+}
+
 func TestMergeStepHookStoppedOwnMergeIsAbortedCause6(t *testing.T) {
 	// Characterization (card t1616, F1 same-SHA): the step's own merge can begin and
 	// stop without a conflict. A pre-merge-commit hook that refuses the merge commit
