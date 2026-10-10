@@ -29,7 +29,6 @@ import (
 // They are written as literals on purpose: the tests assert on the rendered rows.
 var integrityProbeRelPaths = []string{
 	".claude/settings.json",
-	".moai/config/sections/system.yaml",
 	".moai/manifest.json",
 }
 
@@ -242,12 +241,11 @@ func unblockPipe(abs string) {
 }
 
 // TestIntegrityProbeEntry_DamageReasons pins every classification one
-// representative entry can return. The end-to-end tests reach only some of them:
-// a version match needs a non-empty system.yaml that carries the stamp, so the
-// empty case is observable only through the entry check itself.
+// representative entry can return. The end-to-end tests reach only some of them
+// (the damage a version-matched run can observe); the rest are pinned here,
+// through the entry check itself.
 func TestIntegrityProbeEntry_DamageReasons(t *testing.T) {
 	settings := integrityProbeEntry{rel: ".claude/settings.json", check: probeJSON}
-	system := integrityProbeEntry{rel: ".moai/config/sections/system.yaml", check: probeNonEmpty}
 	manifest := integrityProbeEntry{rel: ".moai/manifest.json", check: probeJSON}
 
 	cases := []struct {
@@ -268,12 +266,6 @@ func TestIntegrityProbeEntry_DamageReasons(t *testing.T) {
 		{"unparseable_json", settings, func(t *testing.T, root string) {
 			writeProbeFile(t, root, ".claude/settings.json", "{not json")
 		}, "unparseable"},
-		{"empty_system_yaml", system, func(t *testing.T, root string) {
-			writeProbeFile(t, root, ".moai/config/sections/system.yaml", "")
-		}, "empty"},
-		{"intact_system_yaml", system, func(t *testing.T, root string) {
-			writeProbeFile(t, root, ".moai/config/sections/system.yaml", "moai:\n  template_version: v1\n")
-		}, ""},
 		{"stat_fails_under_a_file", settings, func(t *testing.T, root string) {
 			if runtime.GOOS == "windows" {
 				t.Skip("a path through a file reports not-exist on windows, not an unreadable stat")
@@ -321,6 +313,34 @@ func TestIntegrityProbeEntry_DamageReasons(t *testing.T) {
 				t.Fatalf("damageReason(%s) = %q, want %q", tc.entry.rel, got, tc.want)
 			}
 		})
+	}
+}
+
+// TestReadProbeFile_HandleRecheckRefusesNonRegular pins the checked-handle read
+// (F1): the handle opened for a member is re-checked with Stat, so a named pipe is
+// refused as "not a file" even when it is reached past the pre-open stat, and the
+// refusal returns without a blocking read.
+func TestReadProbeFile_HandleRecheckRefusesNonRegular(t *testing.T) {
+	pipe := filepath.Join(t.TempDir(), "member.fifo")
+	if err := makeCodexFIFOFixture(pipe); err != nil {
+		if errors.Is(err, errCodexFixtureUnsupported) {
+			t.Skip("named pipes cannot be created on this platform")
+		}
+		t.Fatalf("create a named pipe: %v", err)
+	}
+	done := make(chan string, 1)
+	go func() {
+		_, reason := readProbeFile(pipe)
+		done <- reason
+	}()
+	select {
+	case reason := <-done:
+		if reason != "not a file" {
+			t.Fatalf("readProbeFile(named pipe) = %q, want %q", reason, "not a file")
+		}
+	case <-time.After(probeReturnBound):
+		unblockPipe(pipe)
+		t.Fatalf("readProbeFile did not return within %s on a named pipe", probeReturnBound)
 	}
 }
 
