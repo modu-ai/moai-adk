@@ -124,3 +124,27 @@ Listed in spec.md § H. The plan adds no dependency beyond those.
 ## H. Out of Scope (plan view)
 
 Out of scope: the factory slug rule (t1621), the factory inbox error (t1622), init-side presentation (not in this item register; queue overlap with t1527 recorded with disposition undecided in spec.md § F), and the mo.ai.kr operator recovery (audit § C).
+
+## 범위 부록
+
+| D-number | item (short name) | corresponding REQ/AC IDs in this SPEC | note |
+|---|---|---|---|
+| D1 | Shared-root assets vs. profile config directory | REQ-RC30-001, REQ-RC30-002, REQ-RC30-003; AC-RC30-01, AC-RC30-02 (both moved to SPEC B) | U-01; DECISION-PENDING (Q2); no criterion active in this SPEC |
+| D2 | Migration deletes files before the backup step | REQ-RC30-004; AC-RC30-03 (moved to SPEC B) | U-02; moved to SPEC B |
+| D3 | Plugin-mode projects receive core assets only | REQ-RC30-005; AC-RC30-04 | U-03; BLOCKED-ON WT-user-asset-bundle (t1591) |
+| D4 | Renamed skill unremovable and labelled as opt-in | REQ-RC30-005; AC-RC30-10 | U-09; BLOCKED-ON WT-user-asset-bundle (t1591); AC-RC30-10 covers the non-catalog message only; no REQ or AC here covers the rename/retired map |
+| D5 | Emptied skill directories left behind | REQ-RC30-004; AC-RC30-11 (moved to SPEC B) | U-10; moved to SPEC B; no active criterion in this SPEC |
+| D6 | Kept optional agents and .agents/skills copies never refreshed | REQ-RC30-001; AC-RC30-13 | U-12; BLOCKED-ON WT-user-asset-bundle (t1591) |
+| D7 | Typed save of llm.yaml drops deployment_mode, alias keys and comments | REQ-RC30-007; AC-RC30-06 | U-05; IN-NOW |
+| D8 | Record-less project silently re-stamped as local | REQ-RC30-008; AC-RC30-07 | U-06; IN-NOW; follows from D7 |
+| D9 | No rollback: two roots, partial coverage, keep-5 eviction, unbounded namespace backups | REQ-RC30-009, REQ-RC30-010; AC-RC30-08 | U-07; IN-NOW; the run-scoped backup manifest is not stated by any REQ or AC here |
+| D10 | Shared-root downgrade, string-equal skip, unreliable stamp | REQ-RC30-012, REQ-RC30-022, REQ-RC30-023; AC-RC30-12, AC-RC30-14, AC-RC30-15 | U-11 (BLOCKED-ON t1578 and t1591); U-13 (IN-NOW); U-14 (IN-NOW) |
+| D11 | permissions.ask emptied when the template retires the key | REQ-RC30-024; AC-RC30-16 | U-15; GAP-INVESTIGATE; audit status Candidate; cause inferred, not reproduced in this tree |
+| D12 | Hardcoded no-op literals in the update output | REQ-RC30-011, REQ-RC30-017; AC-RC30-09 | U-08; IN-NOW |
+| D13 | 369 preserved lines printed with no paging | REQ-RC30-015; AC-RC30-17 | U-16; IN-NOW |
+| D14 | Double version banner; preview 266 versus run 423 files | REQ-RC30-013, REQ-RC30-011; AC-RC30-18, AC-RC30-19 | U-17 (banner; BLOCKED-ON t1578); U-18 (file count; IN-NOW) |
+| D15 | No bundle listing or discovery | REQ-RC30-006; AC-RC30-05 | U-04; IN-NOW |
+| D16 | 83 rule references and 17 commands name a non-deployed moai skill path | REQ-RC30-025; AC-RC30-20 | U-19; GAP-INVESTIGATE; AC-RC30-20 is an investigation with a recorded result |
+| D17 | docs-site update page lists the agents path as an update target | REQ-RC30-025; AC-RC30-20 | U-20; GAP-INVESTIGATE; the audit line is not reproduced on this tree |
+| D18 | Profile sync resolves the profile from the environment variable | REQ-RC30-002; AC-RC30-21 | U-21; BLOCKED-ON WT-update-migration-fixes (t1578) |
+| D19 | Legacy root deny specifiers not normalized (`normalizeLegacyRootDenySpecifiers`) | run 목록 추가, 감사 보고서 최소 수리 | U-22; tracked for traceability only, owned by t1578; no REQ or AC in this SPEC |
