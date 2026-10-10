@@ -676,3 +676,70 @@ func TestMergeStepHookStoppedOwnMergeIsAbortedCause6(t *testing.T) {
 	requireNoMerge(t, f)
 	requireWindowReleasedAndCPromoted(t, f)
 }
+
+// stepRelocateToPrimary turns the separate-surface fixture into the primary surface.
+// The primary is the integration worktree and the root the window record and the
+// re-measure store live under at once (integration_merge.go resolves the primary as
+// the integration worktree), so the record store moves under the integration
+// worktree's .moai/state, and git excludes .moai/ the way a real primary's ignore
+// rules do. The card worktree stays a sibling outside the primary, so its checkout is
+// not an untracked entry there. f.root then names the primary, and f.input() carries
+// the primary's operands.
+func stepRelocateToPrimary(t *testing.T, f *stepFixture) {
+	t.Helper()
+	if err := os.Rename(filepath.Join(f.root, ".moai"), filepath.Join(f.integ, ".moai")); err != nil {
+		t.Fatal(err)
+	}
+	exclude := filepath.Join(f.integ, ".git", "info", "exclude")
+	file, err := os.OpenFile(exclude, os.O_APPEND|os.O_WRONLY, 0o644)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err := file.WriteString(".moai/\n"); err != nil {
+		t.Fatal(err)
+	}
+	if err := file.Close(); err != nil {
+		t.Fatal(err)
+	}
+	f.root = f.integ
+}
+
+func TestMergeStepPrimaryDirtyBeforeMergeRefusesWithoutMerge(t *testing.T) {
+	// SPEC-LOCAL-MAIN-FLOW-001 (card t1616): on the primary surface the dirty precondition is
+	// read once, before the mutation section. Another session that does not take the mutation
+	// lock can create an untracked file in the primary after that read, and the merge then
+	// runs over the dirty primary; only the post-merge checks would see it, after main has
+	// advanced. The gap is modelled at the first git call through the seam after the clean
+	// check: the unfinished-merge probe's `rev-parse --git-path MERGE_HEAD`. The clean check
+	// runs through exec, not the seam, so the file lands after it and before any merge call,
+	// and it does not sit inside the merge call itself, which would skip the gap the
+	// re-read has to close. The step must re-read the primary inside the section,
+	// immediately before the merge, and refuse with MergeExitWorktreeDirty without merging.
+	f := newMergeFixture(t)
+	card := f.withCardTree(readyCardPtr())
+	stepRelocateToPrimary(t, f)
+	seams := f.seams(card)
+	runner := factorylane.ExecGitRunner{Dir: f.integ}
+	dirtied := false
+	seams.Git = func(args ...string) (string, error) {
+		if !dirtied {
+			dirtied = true
+			stepWriteFile(t, f.integ, "other-session.txt", "another session's bytes\n")
+		}
+		return runner.Git(args...)
+	}
+	_, err := RunMergeStep(f.input(), seams)
+	if !dirtied {
+		t.Fatal("fixture: the step never reached a git call after its clean check")
+	}
+	if code, ok := MergeExitCode(err); !ok || code != MergeExitWorktreeDirty {
+		t.Errorf("a primary dirtied after its clean check must refuse with MergeExitWorktreeDirty (%d), got code %d (ok %v, err %v)", MergeExitWorktreeDirty, code, ok, err)
+	}
+	if head := strings.TrimSpace(stepMustGit(t, f.integ, "rev-parse", "HEAD")); head != f.record.Base {
+		t.Errorf("the refusal must perform no merge: HEAD %s, want the base %s", head, f.record.Base)
+	}
+	if body, readErr := os.ReadFile(filepath.Join(f.integ, "other-session.txt")); readErr != nil || string(body) != "another session's bytes\n" {
+		t.Errorf("the other session's untracked file must stay in place: body %q (err %v)", body, readErr)
+	}
+	requireWindowReleasedAndCPromoted(t, f)
+}
