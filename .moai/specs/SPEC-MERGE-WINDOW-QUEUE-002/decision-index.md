@@ -10,7 +10,7 @@
 - Why unresolved: 카드 t1582는 "INVALID 판정 + nil 반환의 남은 인스턴스 수리"를 지시하지만, REFUSED 판정 전체를 비제오로 뒤집을지 아니면 측정 실패 클래스(재측정 레코드 부재/무효)만 뒤집을지는 미확정 — 전자는 FACTORY-LANE-AUTONOMY-001의 문서화된 verdict 계약과 충돌한다.
 - Default: 측정 실패 클래스만 비제오, 창 경합 verdict(waiting·holder)는 exit 0 유지 (rule: preserves current behavior — 창 경합 verdict의 현재 동작을 보존하는 유일한 옵션이며 undo는 본 SPEC 커밋의 단일 revert)
 - Alternate: REFUSED 판정 전체 비제오 (FACTORY-LANE-AUTONOMY-001 verdict 계약의 명시적 개정을 수반 — 별도 계약 갱신 필요)
-- Operator verdict:
+- Operator verdict: Operator verdict for SPEC-MERGE-WINDOW-QUEUE-002 Q1 (card t1582): only the measurement-failure class of REFUSED verdicts of moai factory merge ready exits non-zero; window-contention verdicts (waiting, holder) keep exit 0 (operator's selected answer: "측정 실패만 비제로"). Recorded in decision board record d-20261009T235134Z-0afd (standing). This is the row's recorded Default; the alternate (all REFUSED non-zero) was offered and not chosen.
 
 ### Q2: R7-1 원자화의 잠금 기계를 무엇으로 쓰는가?
 
