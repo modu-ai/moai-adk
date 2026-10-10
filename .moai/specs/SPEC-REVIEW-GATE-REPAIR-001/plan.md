@@ -61,7 +61,7 @@
 - 기대값 변경: `TestReviewEntry_FreshFailBlocks` 는 결함을 고정하고 있으므로(acceptance.md §C, 셀 B-2) 같은 변경에서 기대값을 바꾼다. 바꾼 내용은 progress.md 에 "이전 기대값 → 새 기대값 → 근거 결정" 형식으로 남긴다. 근거는 REQ-RG-001 이다. 같은 이유로 `codex_review_cache_test.go:216–227`, `codex_review_delay_test.go:195–197`·`:267–269`, `codex_review_gate_live_test.go:129–133` 의 진입 차단 단언도 바꾼다.
 - 범위 밖: 진입 훅의 timeout 과 시간 상한은 F2 의 범위다. 이 마일스톤은 건드리지 않는다.
 
-### M3 — 턴 종료 상태표: 차단 횟수, 재검토 시작, 메시지 (우선순위 High, 상태 카운터)
+### M3 — 턴 종료 상태표: 차단 횟수, 메시지 (우선순위 High, 상태 카운터)
 
 - 요구: REQ-RG-003, REQ-RG-004, REQ-RG-007. 인수 기준: AC-RG-004, AC-RG-005, AC-RG-017, AC-RG-018, AC-RG-019, AC-RG-025.
 - RED: 차단 횟수가 C(= 1)에 이른 뒤 턴 종료가 허용되고 미검토 상태가 systemMessage 로 드러난다(AC-RG-005). 허용 뒤의 다음 턴 종료도 차단하지 않는다(AC-RG-017). absent·stale·key-mismatch 턴 종료는 허용하고 상태 이름을 메시지로 낸다(AC-RG-018). 현재 키의 fresh inconclusive 턴 종료는 허용하고 systemMessage 에 `inconclusive` 를 낸다(AC-RG-025). 재검토 시작은 t1674 몫이다. 검토 없이 허용되는 턴 종료(스위치 꺼짐, 검토할 변경 없음, stop-hook 해제, reviewer 없음)는 상태를 명명한 메시지를 낸다(AC-RG-019).
@@ -76,7 +76,7 @@
 - F4 의 규칙 문장(`.claude/rules/moai/workflow/factory-dispatch-detail.md:157`)을 정정한다. 그 파일과 템플릿 미러를 같은 커밋에서 맞춘다.
 - F1–F5 를 후속 카드로 등록하고, F6 은 카드 t1635(3.2-1-2)로 이관한다. 이 SPEC 의 Follow-up 항목을 그대로 옮긴다.
 
-M4 는 t1662 가 맡는다(REQ-ACE-005, 리뷰 기준의 단일 해석 함수). 이 SPEC 의 마일스톤은 M1–M3 과 M7 이며, 번호 간격은 의도한 것이다.
+M4 는 t1662 가 맡는다(REQ-ACE-005, 리뷰 기준의 단일 해석 함수). M5 와 M6 은 후속 카드 t1674 로 옮겼다(depends t1620). 이 SPEC 의 마일스톤은 M1–M3 과 M7 이며, 번호 간격은 의도한 것이다.
 
 ## §E 자기 검증 — run 단계 명령 형식
 
@@ -105,7 +105,7 @@ M4 는 t1662 가 맡는다(REQ-ACE-005, 리뷰 기준의 단일 해석 함수). 
 
 ## §G 안티패턴
 
-- 차단 횟수 C = 1 이나 간격 없음(Q2, Q4 는 t1674 범위)을 run 단계에서 임의로 바꾸는 것.
+- 차단 횟수 C = 1 이나 간격 없음(Q2; Q4 는 t1674 범위)을 run 단계에서 임의로 바꾸는 것.
 - 차단 횟수를 허용마다 되돌리는 것(D3 위반), 또는 키와 무관한 전역 카운터로 바꾸는 것.
 - 검토 없이 허용되는 턴 종료 중 일부 상태만 메시지를 내고 나머지를 생략하는 것(D4 위반).
 - 작업 트리의 미커밋 workflow.yaml 값을 스위치 기본값으로 읽는 것(D11 위반, t1674 범위).

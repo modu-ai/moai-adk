@@ -181,5 +181,5 @@ progress.md 를 M1–M7 공통 승인 파일로 plan.md §C 에 등록하고, �
 보드 판정 세 건은 Q 행이 아니므로 여기에 원문으로 기록한다. 같은 보드 기록(d-20261010T054047Z-3fc2)에 Q5·Q6 과 함께 있다.
 
 - D3 — Operator verdict: 키당 총 C회로 제한 (허용이 카운터를 되돌리지 않음) — 보드 기록 d-20261010T054047Z-3fc2. 반영: REQ-RG-004, AC-RG-005, AC-RG-017.
-- D4 — Operator verdict: 항상 메시지 표시 — 보드 기록 d-20261010T054047Z-3fc2. 반영: REQ-RG-012, AC-RG-005, AC-RG-010, AC-RG-018, AC-RG-019.
-- D11 — Operator verdict: 커밋된 설정값을 따름 — 보드 기록 d-20261010T054047Z-3fc2. 반영: REQ-RG-007, REQ-RG-008, AC-RG-012, AC-RG-013.
+- D4 — Operator verdict: 항상 메시지 표시 — 보드 기록 d-20261010T054047Z-3fc2. 반영: REQ-RG-012, AC-RG-005, AC-RG-010, AC-RG-018, AC-RG-019. [v0.2.8 번호 대응: 이 행의 REQ-RG-012 와 AC-RG-010 은 이 SPEC 에 없다. 구 REQ-RG-012 는 현재 REQ-RG-007 이고, 구 AC-RG-010 은 v0.2.7 에서 t1674 로 이관됐다.]
+- D11 — Operator verdict: 커밋된 설정값을 따름 — 보드 기록 d-20261010T054047Z-3fc2. 반영: REQ-RG-007, REQ-RG-008, AC-RG-012, AC-RG-013. [v0.2.8 번호 대응: 이 행의 REQ-RG-007 은 구 번호다. 구 REQ-RG-007(스위치 요구)은 t1674 로 이관됐고, 현재 REQ-RG-007 은 구 REQ-RG-012(메시지 요구)다.]
