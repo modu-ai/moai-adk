@@ -306,6 +306,7 @@ type zoneFuncBodies struct {
 // (round 9 P1).
 type zoneWalker struct {
 	h        *preToolHandler
+	root     string // project root; an in-project absolute cd is tracked under it (K2)
 	cwds     []string
 	mutating bool
 	// funcs maps a function name declared in THIS command to the bodies it
@@ -437,18 +438,34 @@ func (w *zoneWalker) zoneRedirects(redirs []*syntax.Redirect) {
 
 // zoneNextCwd returns the working directory after a cd from cur. Only a plain
 // literal relative argument is tracked — a bare cd, several arguments (bash
-// rejects them and the cd fails), substitution, a glob, an option, or an
-// absolute path leaves it untracked (reset to the root), the documented
-// under-match (merge-gate round 1 P1-3). The dots are cleaned here because
+// rejects them and the cd fails), substitution, a glob, an option before the
+// separator, or an absolute path outside the root leaves it untracked (reset to
+// the root), the documented under-match (merge-gate round 1 P1-3). An absolute
+// path inside the root is tracked under its root-relative form (REQ-ZSCD-002,
+// SPEC-ZONE-SHELL-CD-TRACKING-001 K2): the shell stands there whatever cur was,
+// so the result never concatenates onto cur. The dots are cleaned here because
 // the shell's cd already resolved the directory: this is the logical cwd the
 // next segment's relative names concatenate onto, never a pre-clean of a
 // target path.
-func zoneNextCwd(cur string, dirs []string) string {
+func zoneNextCwd(root, cur string, dirs []string) string {
 	if len(dirs) != 1 {
 		return "."
 	}
 	arg := dirs[0]
-	if arg == "-" || strings.HasPrefix(arg, "-") || strings.ContainsAny(arg, "$*?") || zoneIsAbs(arg) {
+	if arg == "-" || strings.ContainsAny(arg, "$*?") {
+		return "."
+	}
+	if zoneIsAbs(arg) {
+		// the lexical form only (REQ-SIPZ-006 semantics, zoneLexicalRel): an
+		// absolute path outside the root, or one whose cleaned form escapes it,
+		// keeps the reset (REQ-ZSCD-003)
+		rel, inside := zoneLexicalRel(root, arg)
+		if !inside {
+			return "."
+		}
+		return rel
+	}
+	if strings.HasPrefix(arg, "-") {
 		return "."
 	}
 	next := arg
@@ -654,17 +671,36 @@ func (w *zoneWalker) zoneCall(cmd *syntax.CallExpr) {
 			w.unbounded = true
 			return
 		}
+		// SPEC-ZONE-SHELL-CD-TRACKING-001 K1 (REQ-ZSCD-001): the first bare `--`
+		// ends cd's option parsing and is the separator, never a directory word.
+		// It is dropped here, so `cd -- zone_dir` yields the one operand the
+		// shell moves into. A second `--` is a literal operand, and two operands
+		// keep the reset (bash rejects a two-operand cd and the shell stays put).
 		var dirs []string
+		sepSeen := false
 		for _, a := range args[1:] {
-			if t, lit := zoneWordText(a); lit {
-				dirs = append(dirs, t)
-			} else {
+			t, lit := zoneWordText(a)
+			if !lit {
 				dirs = append(dirs, "?dynamic")
+				continue
 			}
+			if !sepSeen && t == "--" {
+				sepSeen = true
+				continue
+			}
+			if sepSeen && t != "-" && strings.HasPrefix(t, "-") {
+				// SPEC-ZONE-SHELL-CD-TRACKING-001 K3 (REQ-ZSCD-001): after the
+				// separator a hyphen-leading word is an ordinary operand — the shell
+				// moves `cd -- -zone` into ./-zone. The ./ spelling states that to the
+				// lexical judgment. The bare `-` (OLDPWD, unknown to the guard) and the
+				// words before the separator keep their option reset.
+				t = "./" + t
+			}
+			dirs = append(dirs, t)
 		}
 		next := make([]string, 0, len(w.cwds)*2)
 		for _, cwd := range w.cwds {
-			next = append(next, zoneNextCwd(cwd, dirs))
+			next = append(next, zoneNextCwd(w.root, cwd, dirs))
 		}
 		// the cd may fail (a missing directory leaves the caller where it
 		// was): the pre-cd set survives into the next statement either way
@@ -1481,7 +1517,7 @@ func (h *preToolHandler) checkProtectedZoneShell(agentID string, toolInput json.
 	if !ok {
 		return ""
 	}
-	w := &zoneWalker{h: h, cwds: []string{"."}, funcs: map[string]*zoneFuncBodies{}, calling: map[string]bool{}, calls: map[string]int{}}
+	w := &zoneWalker{h: h, root: root, cwds: []string{"."}, funcs: map[string]*zoneFuncBodies{}, calling: map[string]bool{}, calls: map[string]int{}}
 	for _, stmt := range file.Stmts {
 		w.zoneWalkStmt(stmt)
 	}
