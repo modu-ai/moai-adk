@@ -1,6 +1,6 @@
 # progress.md — SPEC-CANDIDATE-CI-001
 
-status: in-progress
+status: implemented
 card: t1478
 phase: plan
 
@@ -773,6 +773,26 @@ Residual risk
 - plan.md frontmatter `updated: 2026-10-09` was not refreshed. plan.md is outside this round's edit list, while the schema's `updated:` rule would refresh it. Open decision for the orchestrator.
 - progress.md header `phase: plan` (line 5) still names a lifecycle stage. It is outside this round's list and was not changed.
 - The placeholder line `sync_commit_sha: pending-backfill` now appears twice, in the round-1 header block and in this section. The backfill must set both.
+
+### §E.4 round 3 — repair re-entry (operator decision a61f)
+
+- Operator decision d-20261010T042422Z-a61f: "repair + one re-audit". Leader records: d-20261010T042456Z-ec15 (run re-entry) and d-20261010T042742Z-564e (wait resolution).
+- Repair commits on WT-10-03-tier: RED `d370b66a7` and GREEN `778ca20f0` (HEAD before this sync commit).
+- P2-1: `scripts/ci/retry-flaky.sh`, first-attempt partial stream on TERM/INT.
+- F10: `internal/factory/integration_merge_step.go`, the card id in the missing-directory refusal (refusal subtests in `integration_merge_step_test.go`).
+- Observed on the repaired tree at HEAD `778ca20f0`, this run:
+  - `bash scripts/ci/test-retry-flaky.sh` -> `=== retry-flaky fixture: failures=0 ===` (exit 0; 62 PASS lines, 0 FAIL lines)
+  - `go test ./internal/factory/ -run 'TestResolveCardBranchRefusalsNameTheCard|TestMergeStepHappyPathCreatesNoFFMergeAndReleases|TestMergeStepPreMergeCausesReleaseWithDistinctCodes' -count=1 -v` -> `ok github.com/modu-ai/moai-adk/internal/factory 22.858s` (exit 0; 3 top-level tests PASS, 0 FAIL)
+  - `gofmt -l internal/factory/integration_merge_step.go internal/factory/integration_merge_step_test.go` -> no output (exit 0)
+  - `go vet ./internal/factory/` -> no output (exit 0)
+  - `golangci-lint run --new-from-rev=2aab5f797 ./internal/factory/...` -> `0 issues.` (exit 0)
+- Gaps (not run): /verify (the scoped checks above replace it); the full repository suite; `internal/cli`; CI (not observed); the observance push (not done; operator approval pending).
+- No pre-commit hook ran (`core.hooksPath` is `/dev/null`).
+- Sync-audit round 3: pending. One re-audit on the repair commit; a further FAIL stops the card.
+
+sync_commit_sha: pending-backfill
+
+The placeholder is the sanctioned one: this commit cannot cite its own SHA, so a later commit backfills it. Round 3 adds a third placeholder line; the backfill must set all three.
 
 ## Lane Kickoff Decision Record (2026-10-09, lane-11)
 
