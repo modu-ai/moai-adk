@@ -493,6 +493,24 @@ func TestGlmKeyConflictErrorMasksValue(t *testing.T) {
 	nothingStoredAt(t, filepath.Join(home, ".moai", ".env.glm"))
 }
 
+// REQ-GJK-010 — a key value that spells an allowlisted flag name is still the
+// key. `moai glm --key=-f -f` makes "-f" the key and a conflicting "-f" token;
+// the allowlist must not pass the token through, or the key reaches the usage
+// error (codex sync-audit P2, card t1626).
+func TestGlmKeyFlagNameValueNotEchoedInConflict(t *testing.T) {
+	home := redirectCredentialHomes(t)
+	for _, key := range []string{"-f", "-p", "-b"} {
+		_, err := execRoot(t, "glm", "--key="+key, key)
+		if err == nil {
+			t.Fatalf("a mixed invocation with key %q must be refused", key)
+		}
+		if strings.Contains(err.Error(), key) {
+			t.Errorf("refusal must not disclose the key value %q, got: %v", key, err)
+		}
+		nothingStoredAt(t, filepath.Join(home, ".moai", ".env.glm"))
+	}
+}
+
 // Gate repair P2 — REQ-GJK-003: launch flags before --key are also tokens in
 // the scanned region; the mixed invocation must refuse and store nothing
 // (observed defect: `-p work --key K` stored K).
