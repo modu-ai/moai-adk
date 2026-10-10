@@ -29,11 +29,19 @@ import (
 // this name, because the fetch and BASELINE_SHA are origin/main.
 const localMainResyncBranch = "main"
 
+// localMainResyncBaselineRef is the remote-tracking ref BASELINE_SHA is read from
+// (plan §B3a step 4). The fetch names it as its destination, so the ref moves to
+// the fetched commit whatever the remote's configured fetch refspecs map.
+const localMainResyncBaselineRef = "refs/remotes/origin/" + localMainResyncBranch
+
 // localMainResyncFetch is the fetch seam (plan §B3a step 4). Its production
-// default runs `git fetch origin main` in the primary checkout and returns its
-// error. The tests replace it with a no-op, so no test contacts a remote.
+// default runs `git fetch origin main:refs/remotes/origin/main` in the primary
+// checkout and returns its error; the explicit destination is the ref the baseline
+// is read from (leader ruling (A), 2026-10-10). The tests replace it with a no-op,
+// except TestLocalMainResyncFetchPinsFetchedCommit, which runs this default against
+// a local bare repository, so no test contacts a remote.
 var localMainResyncFetch = func(repoRoot string) error {
-	_, err := factorylane.ExecGitRunner{Dir: repoRoot}.Git("fetch", "origin", localMainResyncBranch)
+	_, err := factorylane.ExecGitRunner{Dir: repoRoot}.Git("fetch", "origin", localMainResyncBranch+":"+localMainResyncBaselineRef)
 	return err
 }
 
@@ -166,17 +174,20 @@ func localMainResyncInWindow(repoRoot, sessionID string) (string, error) {
 	}
 	head := strings.TrimSpace(headOut)
 
-	// Step 4: fetch, observe the exit status, then take BASELINE_SHA from the
-	// fetched object, FETCH_HEAD. The fetch writes FETCH_HEAD for the branch it
-	// fetched. refs/remotes/origin/main is not read: a fetch under a refspec that
-	// does not map refs/heads/main leaves that ref stale (card t1616, F6). Every
-	// later origin-facing comparison uses BASELINE_SHA.
+	// Step 4: fetch origin/main under an explicit destination, observe the exit
+	// status, then take BASELINE_SHA from refs/remotes/origin/main. The destination
+	// is named on the command line, so the fetch writes that ref whatever the
+	// remote's configured fetch refspecs map. Only a fetch of origin/main moves that
+	// ref, so a fetch of another ref cannot move the baseline (leader ruling (A),
+	// 2026-10-10). The refspec has no leading `+`: a non-fast-forward move of
+	// origin/main fails the fetch, and the re-sync refuses rather than forcing the
+	// ref. Every later origin-facing comparison uses BASELINE_SHA.
 	if err := localMainResyncFetch(repoRoot); err != nil {
-		return "", localMainResyncRefusal(factory.MergeExitOther, "integration resync: git fetch origin %s failed, so BASELINE_SHA was not taken: %v", localMainResyncBranch, err)
+		return "", localMainResyncRefusal(factory.MergeExitOther, "integration resync: git fetch origin %s:%s failed, so BASELINE_SHA was not taken: %v", localMainResyncBranch, localMainResyncBaselineRef, err)
 	}
-	baselineOut, err := git("rev-parse", "--verify", "--quiet", "FETCH_HEAD^{commit}")
+	baselineOut, err := git("rev-parse", "--verify", "--quiet", localMainResyncBaselineRef+"^{commit}")
 	if err != nil {
-		return "", localMainResyncRefusal(factory.MergeExitOther, "integration resync: FETCH_HEAD does not name a commit after the fetch of origin/%s, so BASELINE_SHA was not taken: %v", localMainResyncBranch, err)
+		return "", localMainResyncRefusal(factory.MergeExitOther, "integration resync: %s does not name a commit after the fetch of origin/%s, so BASELINE_SHA was not taken: %v", localMainResyncBaselineRef, localMainResyncBranch, err)
 	}
 	baseline := strings.TrimSpace(baselineOut)
 

@@ -24,30 +24,18 @@ import (
 
 // lmfResyncFixture builds a primary checkout on main (lmfRepo), stamps the lane
 // session and label, and replaces the origin fetch with a no-op for the test. The
-// no-op records FETCH_HEAD the way the fetch would (lmfWriteFetchHead), so the
-// re-sync takes its baseline from the fetched object, as it does after a real fetch.
+// production fetch sets refs/remotes/origin/main, the ref the baseline is read from.
+// The fixture sets that ref itself (lmfOriginCommit or update-ref), so the no-op
+// leaves it as the test arranged it, and the re-sync takes BASELINE_SHA from it.
 func lmfResyncFixture(t *testing.T, gitignore string) string {
 	t.Helper()
 	root, _ := lmfRepo(t, true, gitignore)
 	t.Setenv(config.EnvClaudeCodeSessionID, lmfSession)
 	sdLaneEnv(t, "lane-1", "")
 	prev := localMainResyncFetch
-	localMainResyncFetch = func(repoRoot string) error {
-		lmfWriteFetchHead(t, repoRoot)
-		return nil
-	}
+	localMainResyncFetch = func(string) error { return nil }
 	t.Cleanup(func() { localMainResyncFetch = prev })
 	return root
-}
-
-// lmfWriteFetchHead records FETCH_HEAD the way `git fetch origin main` leaves it: the
-// commit that refs/remotes/origin/main names in the fixture. It runs a real fetch
-// from the fixture's own repository, because git refuses to update the FETCH_HEAD
-// pseudo-ref with update-ref. The fetch names no destination, so no ref moves. The
-// no-op fetch seams call it after the fixture has set origin/main (card t1616, F6).
-func lmfWriteFetchHead(t *testing.T, root string) {
-	t.Helper()
-	fcGit(t, root, "fetch", "-q", ".", "refs/remotes/origin/"+lmfBranch)
 }
 
 // lmfLocalCommit commits path with content on the primary's local main and
@@ -362,7 +350,6 @@ func TestLocalMainResyncTakeoverDuringFetchRefuses(t *testing.T) {
 		}, true); err != nil {
 			t.Fatalf("fixture: the rival takeover while the fetch runs: %v", err)
 		}
-		lmfWriteFetchHead(t, repoRoot)
 		return nil
 	}
 	_, err := runLocalMainResync(root)
@@ -390,7 +377,6 @@ func TestLocalMainResyncPostMergeWritesHold(t *testing.T) {
 	target := lmfOriginCommit(t, root, base, "origin-ahead", map[string]string{"ahead.txt": "ahead\n"}, false)
 	localMainResyncFetch = func(repoRoot string) error {
 		lmfQueueWaiter(t, repoRoot)
-		lmfWriteFetchHead(t, repoRoot)
 		return nil
 	}
 	lmfAfterFastForward(t, func(repoRoot string) {
@@ -446,7 +432,6 @@ func TestLocalMainResyncLateDirtyPrimaryRefuses(t *testing.T) {
 		if err := os.WriteFile(filepath.Join(repoRoot, "late-untracked.txt"), []byte("late\n"), 0o644); err != nil {
 			return err
 		}
-		lmfWriteFetchHead(t, repoRoot)
 		return nil
 	}
 	_, err := runLocalMainResync(root)
@@ -467,10 +452,12 @@ func TestLocalMainResyncLateDirtyPrimaryRefuses(t *testing.T) {
 
 func TestLocalMainResyncFetchPinsFetchedCommit(t *testing.T) {
 	// F6 (sync audit, card t1616): BASELINE_SHA is read from refs/remotes/origin/main.
-	// Under a fetch refspec that does not map refs/heads/main, `git fetch origin main`
-	// updates FETCH_HEAD and leaves that ref at the commit the primary last fetched,
-	// so the re-sync compares against a stale baseline. origin is a local bare
-	// repository in the test's temporary directory, and the production fetch seam runs.
+	// Under a fetch refspec that does not map refs/heads/main, a fetch that names no
+	// destination leaves that ref at the commit the primary last fetched, so the
+	// re-sync compares against a stale baseline. The production fetch names its
+	// destination (leader ruling (A), 2026-10-10), so the ref moves to the fetched
+	// commit even under that refspec. origin is a local bare repository in the test's
+	// temporary directory, and the production fetch seam runs.
 	root := lmfResyncFixtureLiveFetch(t)
 	base := lmfHead(t, root)
 	bare := filepath.Join(t.TempDir(), "origin.git")
