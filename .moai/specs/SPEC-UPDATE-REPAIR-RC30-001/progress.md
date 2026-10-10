@@ -375,7 +375,7 @@ ok  	github.com/modu-ai/moai-adk/internal/cli	1.783s
 
 **Residual risk.**
 - R-M1-1: with the switch off, `moai update` no longer removes a template-managed project copy whose user counterpart is confirmed. Such copies stay project-side with the report line `removal is not enabled yet` until card t1668 adopts AC-RC30-02.
-- R-M1-2: `internal/cli/update_dryrun_preview.go:81-83` still prints `removed by the asset migration once your user-side copy is confirmed` for those copies. With the inert switch that statement is false. M1 does not change the preview (scope); the fix belongs to card t1668 or to U-18 (plan § B.6, M5). Lead decision needed.
+- R-M1-2 [RESOLVED by commit e4979fd34: the dry-run follows the removal switch]: `internal/cli/update_dryrun_preview.go:81-83` still prints `removed by the asset migration once your user-side copy is confirmed` for those copies. With the inert switch that statement is false. M1 does not change the preview (scope); the fix belongs to card t1668 or to U-18 (plan § B.6, M5). Lead decision needed.
 
 ## §E.3 Run-phase Audit-Ready Signal
 

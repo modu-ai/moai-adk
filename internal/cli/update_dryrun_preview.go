@@ -71,13 +71,13 @@ func previewReconciliation(projectRoot string, deployMode template.DeployMode, o
 			"3-way merged with the new render; a conflict preserves your file and writes <path>.moai-new", "", &th))
 	}
 	for _, f := range plan.UserOwned {
-		// Gate round 12 (card t1547): under the common-asset roots,
-		// "preserved" splits in two. A file still carrying the migration's
-		// removal shape (template_managed record, bytes matching the recorded
-		// template) will be REMOVED by the real update's asset migration once
-		// the user counterpart confirms — folding it into "user-owned — left
-		// untouched" promised a preservation the run then breaks. The preview
-		// states the conditional removal as its own disposition.
+		// Gate round 12 (card t1547): under the common-asset roots, a file
+		// still carrying the migration's removal shape (template_managed
+		// record, bytes matching the recorded template) is a removal
+		// candidate. The candidate branch runs only while removalEnabled is true.
+		// It is false by default (AC-RC30-02 belongs to card t1668). While it is
+		// false, the migration keeps a confirmed template-managed common asset
+		// project-side, so the preview does not announce a removal for it.
 		if removalEnabled && isCommonAssetCleanTarget(f.RelPath) && migrationRemovalCandidate(projectRoot, mf, f.RelPath) {
 			_, _ = fmt.Fprintln(out, tui.CheckLine("warn", "[dry-run] migration candidate: "+f.RelPath,
 				"template-managed common asset — removed by the asset migration once your user-side copy is confirmed", "", &th))
