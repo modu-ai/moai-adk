@@ -99,7 +99,7 @@ Status transition: draft → in-progress at this run-close commit (Gap; ruling d
 
 ```yaml
 audit_ready: true
-sync_commit_sha: pending-backfill
+sync_commit_sha: 4d039f2dc
 ```
 
 Status transition: the implemented → completed transition is made by this sync commit, and the sync_commit_sha backfill follows in the next commit.
