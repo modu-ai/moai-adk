@@ -1,6 +1,7 @@
 package config
 
 import (
+	"log/slog"
 	"path/filepath"
 )
 
@@ -13,20 +14,25 @@ import (
 // LoadQuotaGate and LoadSlotLeaseDefaultMaxDuration do. That entry point does not
 // consult the MOAI_CONFIG_DIR override, so these keys do not follow it either.
 //
-// Unlike those siblings, a file that cannot be read or decoded is returned as an
-// error rather than replaced by the defaults, so that the caller can refuse to open
-// the factory instead of silently running on values the operator did not choose.
-// Bounds are checked by the caller (SPEC-FACTORY-LEASE-RENEW-001, REQ-FLR-005 to
+// A file that cannot be read or decoded yields the defaults for both keys, and a
+// slog.Warn names the file and the error. That is the config fallback path the
+// workflow section uses, and the factory does not refuse to open on account of
+// such a file (SPEC-FACTORY-LEASE-RENEW-001, ruling d-20261010T111725Z-3ef9). The
+// values the file does parse are returned as written. Their bounds are checked by
+// the caller, and a value the bounds reject refuses the open (REQ-FLR-005 to
 // REQ-FLR-009).
-func LoadFactoryLease(projectRoot string) (FactoryLeaseConfig, error) {
+func LoadFactoryLease(projectRoot string) FactoryLeaseConfig {
 	dir := filepath.Join(projectRoot, ".moai", "config", "sections")
+	defaults := NewDefaultWorkflowConfig().FactoryLease
 	wrapper := &workflowFileWrapper{Workflow: NewDefaultWorkflowConfig()}
 	loaded, err := loadYAMLFile(dir, "workflow.yaml", wrapper)
 	if err != nil {
-		return FactoryLeaseConfig{}, err
+		slog.Warn("failed to load factory lease config, using defaults",
+			"path", filepath.Join(dir, "workflow.yaml"), "error", err)
+		return defaults
 	}
 	if !loaded {
-		return NewDefaultWorkflowConfig().FactoryLease, nil
+		return defaults
 	}
-	return wrapper.Workflow.FactoryLease, nil
+	return wrapper.Workflow.FactoryLease
 }

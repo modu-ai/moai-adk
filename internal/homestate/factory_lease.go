@@ -3,16 +3,19 @@ package homestate
 import (
 	"errors"
 	"fmt"
+	"path/filepath"
 	"strings"
 	"time"
 
 	"github.com/modu-ai/moai-adk/internal/config"
 )
 
-// SPEC-FACTORY-LEASE-RENEW-001 (card t1663), milestone M1: the workflow.factory_lease
-// keys are parsed and bounds-checked when the factory opens. A value outside its
-// bound refuses to open the factory, and the refusal names the key path and the
-// allowed range. Nothing is clamped.
+// SPEC-FACTORY-LEASE-RENEW-001 (card t1663), milestones M1 and M2: the workflow.factory_lease
+// keys are parsed and bounds-checked when the factory opens. A value outside its bound
+// refuses to open the factory, and the refusal names the key path, the allowed range, and
+// the config file (ruling d-20261010T111725Z-3ef9). Nothing is clamped. A workflow file that
+// cannot be read or decoded does not refuse the open: the keys fall back to the defaults
+// with a warning.
 
 const (
 	factoryLeaseDurationKey      = "workflow.factory_lease.duration"
@@ -30,14 +33,16 @@ type factoryLeaseKeys struct {
 }
 
 // loadFactoryLease reads the two keys of projectRoot and checks them against their
-// bounds. A file that cannot be read is a refusal too, because a configured lease
-// must not fall back to defaults without a trace.
+// bounds. A workflow file that cannot be read or decoded is not a refusal here:
+// config.LoadFactoryLease falls back to the defaults and warns. A value the bounds
+// reject refuses the open, and the refusal names the config file that holds it.
 func loadFactoryLease(projectRoot string) (factoryLeaseKeys, error) {
-	raw, err := config.LoadFactoryLease(projectRoot)
+	keys, err := resolveFactoryLease(config.LoadFactoryLease(projectRoot))
 	if err != nil {
-		return factoryLeaseKeys{}, refuseFactoryLease("the workflow configuration could not be read: %v", err)
+		return factoryLeaseKeys{}, fmt.Errorf("%w (config: %s)", err,
+			filepath.Join(projectRoot, ".moai", "config", "sections", "workflow.yaml"))
 	}
-	return resolveFactoryLease(raw)
+	return keys, nil
 }
 
 // resolveFactoryLease parses the two keys and checks them against their bounds. The

@@ -54,10 +54,7 @@ func TestLoadFactoryLeaseReadsBothKeys(t *testing.T) {
 	t.Setenv(EnvConfigDir, "")
 	root := t.TempDir()
 	writeFactoryLeaseWorkflow(t, root, "workflow:\n  factory_lease:\n    duration: 20m\n    renew_interval: 4m\n")
-	got, err := LoadFactoryLease(root)
-	if err != nil {
-		t.Fatalf("LoadFactoryLease: %v", err)
-	}
+	got := LoadFactoryLease(root)
 	want := FactoryLeaseConfig{Duration: "20m", RenewInterval: "4m"}
 	if got != want {
 		t.Fatalf("LoadFactoryLease = %+v, want %+v", got, want)
@@ -80,10 +77,7 @@ func TestLoadFactoryLeaseDefaultsForOmittedKeys(t *testing.T) {
 		t.Run(c.name, func(t *testing.T) {
 			root := t.TempDir()
 			writeFactoryLeaseWorkflow(t, root, c.body)
-			got, err := LoadFactoryLease(root)
-			if err != nil {
-				t.Fatalf("LoadFactoryLease: %v", err)
-			}
+			got := LoadFactoryLease(root)
 			if got != c.want {
 				t.Fatalf("LoadFactoryLease = %+v, want %+v", got, c.want)
 			}
@@ -102,10 +96,7 @@ func TestLoadFactoryLeaseMalformedFileFallsBackWithWarning(t *testing.T) {
 	prev := slog.Default()
 	slog.SetDefault(slog.New(slog.NewTextHandler(&logs, nil)))
 	t.Cleanup(func() { slog.SetDefault(prev) })
-	got, err := LoadFactoryLease(root)
-	if err != nil {
-		t.Fatalf("LoadFactoryLease on a malformed file: err = %v, want the defaults and a warning", err)
-	}
+	got := LoadFactoryLease(root)
 	if want := NewDefaultWorkflowConfig().FactoryLease; got != want {
 		t.Fatalf("LoadFactoryLease on a malformed file = %+v, want the defaults %+v", got, want)
 	}
@@ -123,10 +114,7 @@ func TestLoadFactoryLeaseIgnoresEnvConfigDir(t *testing.T) {
 	writeFactoryLeaseWorkflow(t, root, "workflow:\n  factory_lease:\n    duration: 20m\n")
 	writeFactoryLeaseWorkflow(t, filepath.Join(other, ".moai"), "workflow:\n  factory_lease:\n    duration: 7m\n")
 	t.Setenv(EnvConfigDir, filepath.Join(other, ".moai"))
-	got, err := LoadFactoryLease(root)
-	if err != nil {
-		t.Fatalf("LoadFactoryLease: %v", err)
-	}
+	got := LoadFactoryLease(root)
 	if got.Duration != "20m" {
 		t.Fatalf("LoadFactoryLease honoured MOAI_CONFIG_DIR: duration = %q, want the project's %q", got.Duration, "20m")
 	}
