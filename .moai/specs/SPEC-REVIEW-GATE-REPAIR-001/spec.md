@@ -1,7 +1,7 @@
 ---
 id: SPEC-REVIEW-GATE-REPAIR-001
 title: "Codex 리뷰 게이트 수리 — 프롬프트 진입 교착을 풀고 리뷰 기준을 하나로 모은다"
-version: "0.2.2"
+version: "0.2.3"
 status: draft
 created: 2026-10-10
 updated: 2026-10-10
@@ -26,6 +26,9 @@ tags: "codex, review-gate, turn-end, prompt-entry, receipt, merge-base, card-t16
 - 2026-10-10 · v0.2.0 · manager-spec · 분할 판정 d-20261010T070728Z-6cdf(영실이 판단, 운영자 위임)에 따라 범위를 카드 항목 (1)·(3)·(5) 로 좁혔다 (판정 121e 옵션 (a): (6)~(10) 은 t1637, (2)·(4) 는 t1662, (6) 중 REQ-RG-016 은 이 SPEC). 계획 감사 3회차 FAIL(codex, 영수증 rcpt-3e341c03b359a26ff7d01963)의 발견 F-3(활성 모드를 무시하고 `manual.workflow` 를 읽는 P2 결함)은 부채가 아니라 결함이므로 이 SPEC 에서 갚지 않고, 기준 브랜치 선택 부분을 후속 카드 t1662 로 떼어 냈다(REQ-ACE-005). 제거된 요구사항: REQ-RG-005, REQ-RG-006, REQ-RG-007, REQ-RG-008. 제거된 인수 기준: AC-RG-006, AC-RG-007, AC-RG-008, AC-RG-009, AC-RG-016, AC-RG-020, AC-RG-021, AC-RG-022, AC-RG-023, AC-RG-024. 모두 t1662 로 이관되었다. REQ-RG-005 와 AC-RG-006 은 같은 공용 해석 함수의 설계와 소비자 일치를 다루므로 조정 요청에 따라 함께 이관했다. 남은 요구사항은 12개(REQ-RG-001–004, REQ-RG-009–016), 인수 기준은 14개(AC-RG-001–005, AC-RG-010–015, AC-RG-017–019)다. 범위 축소 판정 d-20261010T072237Z-121e(영실이 판단, 운영자 위임)에서 option (a) 를 선택했다. 이어 리더 판정 d-20261010T072546Z-6d67(option (b))로 REQ-RG-016 과 묶인 AC 는 이 SPEC 에 둔다. 이 SPEC 은 카드 항목 (1)·(3)·(5)와 (6) 중 REQ-RG-016 부분만 다루며, (2)·(4)는 t1662, (6)~(10)은 t1637(3.2-1-4)로 이관하되 (6) 중 REQ-RG-016 부분은 이 SPEC 에 남는다. ID 는 재번호 매기지 않았으며 번호 간격은 제거된 ID 다. 이전 기록 행은 편집하지 않았다. [ID mapping v0.2.2: REQ-RG-009→REQ-RG-005, REQ-RG-010→REQ-RG-006, REQ-RG-011→REQ-RG-007, REQ-RG-012→REQ-RG-008, REQ-RG-013→REQ-RG-009, REQ-RG-014→REQ-RG-010, REQ-RG-015→REQ-RG-011, REQ-RG-016→REQ-RG-012. 이 행의 REQ-RG-005–008 은 폐기된 식별자다.]
 - 2026-10-10 · v0.2.1 · manager-spec · 계획 감사 1회차 (v0.2.0) FAIL, 발견 F-4 (plan.md:104)에 따라 §C 승인 목록에 명시된 테스트 파일은 다음 네 개다. M5 기존 테스트 파일 `internal/cli/codex_review_cache_test.go`, M2 기존 테스트 파일 `internal/cli/codex_review_delay_test.go`, M2 신규 RED 테스트 파일 `internal/cli/codex_review_entry_delivery_test.go`, M5 신규 RED 테스트 파일 `internal/cli/codex_review_inconclusive_test.go`. 리더 판정 d-20261010T073725Z-791c 와 승인에 따름.
 - 2026-10-10 · v0.2.2 · manager-spec · plan-audit 5회차 FAIL(`.moai/reports/t1620/plan-audit-iter5.md`, MP-1 실패, 필수 결함 D1·D2·D3)의 수리 라운드다. 운영자 위임 판정 d-20261010T080954Z-4294(kind=ceiling-exception, 영실이 판단)에 따라 D1·D2·D3 만 고쳤고, 판정 d-20261010T081517Z-9c46 에 따라 완결성 항목 두 건(design.md §4 본문, plan.md 의 M4 자리표시 제목 제거)을 같은 라운드에 더했다. 선택 항목 O1–O9 과 R2 는 건드리지 않았으며, 이 행은 감사 결과를 주장하지 않는다. **D1(연속 번호)**: 요구사항을 REQ-RG-009→REQ-RG-005, REQ-RG-010→REQ-RG-006, REQ-RG-011→REQ-RG-007, REQ-RG-012→REQ-RG-008, REQ-RG-013→REQ-RG-009, REQ-RG-014→REQ-RG-010, REQ-RG-015→REQ-RG-011, REQ-RG-016→REQ-RG-012 로 재배열했다. REQ-RG-001–004 와 모든 AC-RG 번호는 그대로다. 번호 빈자리를 없애려고 REQ-RG-005–008 은 살아 있는 번호로 다시 쓰였다. 폐기된 식별자 표는 §B 에 두었고, 과거 행과 날짜가 붙은 기록의 원문은 고치지 않고 대응 주석만 달았다. **D2(추적성)**: plan.md §F 위험 1·12·13 의 폐기된 AC-RG 참조와 'M4 의 RED' 문구를 t1662 이관 항목으로 바꿨다(REQ-ACE-005, 이 SPEC 에서 구현하지 않음). design.md §7 의 메시지 상태 어휘에서 '기준 판정 inconclusive(두 이름 포함)'를 뺐다. **D3(설계)**: 재정의 파일의 형식(JSON 객체, 필드 `run_id`·`codex_review_gate`), 무시 조건, 단일 활성 run 해석 규칙을 design.md §5 에 고정했다(코드 근거: `internal/factorymsg/store.go:343–395`, `internal/cli/factory_card.go:2313–2322`). 연기 문장 네 곳은 design.md §5 참조로 바꿨다(spec.md REQ-RG-007 본문, design.md §5 재정의 파일 항목, decision-index.md Q3, plan.md 위험 7). AC-RG-012·013 의 Given 은 design.md §5 를 인용하도록 했고 Then 은 바꾸지 않았다. version 0.2.1→0.2.2.
+- 2026-10-10 · v0.2.3 · manager-spec · 최종 문서 수리 라운드. 운영자 위임 판정 d-20261010T090503Z-8963(영실이 판단, 리더 전달)을 적용했다. 리더 정정에 따라 살아 있는 번호는 v0.2.2 그대로 REQ-RG-001–012 로 둔다(판정 (1)의 번호 복원은 적용하지 않았다). (1) 폐기된 식별자 표는 요구사항 본문에서 빼고 이 행으로 옮겼다. v0.2.2 번호 주석의 내용도 이 행에 남긴다. REQ-RG-005–008 은 v0.2.2 에서 살아 있는 요구사항의 번호로 다시 쓰였고, 폐기된 식별자는 아래 두 줄과 과거 기록 행에만 남는다. (2) 진행 중 표식은 검토가 어떤 판정(pass, fail, inconclusive)으로 끝나든 완료 시점에 풀리고, 소유자 pid 가 살아 있지 않은 고아 표식은 새 판정 전에 회수된다. 같은 커밋의 재검토는 결과 캐시(pass·fail)가 막으며, 표식은 동시 실행만 막는다(REQ-RG-006, REQ-RG-011, design.md §2·§3, AC-RG-011). (3) 재정의 파일은 그 run 의 member lane(카드 워크트리)에만 적용되며, 저장소 전체 스위치는 없다(REQ-RG-007, design.md §5, AC-RG-012 시나리오 (e)). (4)·(5) codex 필수 게이트의 대상과 plan-aware 영수증은 t1662 로 이관한다(Out of Scope, F1). (6) 레인 판단으로 보정했다(리더 확인 대상). plan.md 의 M5 RED·GREEN 에 '살아 있는' 한정, 완료 시 해제, 고아 회수를, M6 GREEN 에 member lane 검사를 적었고, plan.md:5 의 폐기 식별자에 판 번호 v0.1.2를 붙였다. design.md §3 (다)에 pid 를 읽을 수 없는 표식의 처리(고아로 회수, fail-open)를, §5 에 경로 정규화 실패의 처리(member 아님)를 더했다. acceptance.md AC-RG-011 에 (iii) 시나리오를 더했고, decision-index.md 에 4회차 이후 판정 기록 절을 더했다. 이 행은 감사 결과를 주장하지 않는다. [ID mapping v0.2.3: 적용 없음. 번호는 v0.2.2 와 같다.]
+  - v0.1.2의 REQ-RG-005~008(퇴역 → t1662, v0.2.0에서 제거)
+  - v0.1.2의 AC-RG-006~009·016·020~024(퇴역 → t1662, v0.2.0에서 제거)
 
 ---
 
@@ -118,21 +121,22 @@ inconclusive 영수증은 pass 증거로 세지 않으며, 그 키에 대해 재
 
 ### REQ-RG-006 — inconclusive 뒤의 턴 종료는 재검토를 시작하고 허용한다 (event-driven, M5, 간격 없음 Q4)
 
-When a turn ends and the stored verdict for the current review key is inconclusive, the turn-end gate shall start a review in the background unless an in-flight marker for that key exists, and shall allow the stop.
+When a turn ends and the stored verdict for the current review key is inconclusive, the turn-end gate shall start a review in the background unless an in-flight marker for that key whose owner process is still alive exists, and shall allow the stop.
 
-운영자 판정 Q4 = (a) 간격 없음. 다음 턴 종료에서 다시 시작하며, 중복 방지는 진행 중 표식만 맡는다. 쿨다운은 없다. 허용은 SPEC-GATE-BOTTLENECK-001 REQ-GBN-004 의 fail-open 과 일치한다. 허용에 붙는 메시지는 REQ-RG-012 이 정한다.
+운영자 판정 Q4 = (a) 간격 없음. 다음 턴 종료에서 다시 시작하며, 중복 방지는 소유자 프로세스가 살아 있는 진행 중 표식만 맡는다. 표식은 검토가 어떤 판정(pass, fail, inconclusive)으로 끝나든 완료 시점에 풀린다(design.md §3). 쿨다운은 없다. 허용은 SPEC-GATE-BOTTLENECK-001 REQ-GBN-004 의 fail-open 과 일치한다. 허용에 붙는 메시지는 REQ-RG-012 이 정한다.
 
 ### REQ-RG-007 — 실행 단위의 스위치는 주 체크아웃의 재정의 파일이고, 없으면 커밋된 값을 따른다 (Ubiquitous, M6, 운영자 판정 Q3·D11)
 
-The codex review gate shall take its enablement for each run from one override file in the primary checkout that applies to every lane of that run. While that file is absent, or names a run other than the single active run, or no single active run resolves, the codex review gate shall take the committed workflow.yaml review_gate.enabled value. If that committed value cannot be read, the codex review gate shall not start a review, shall allow the stop, and shall name the state 커밋 값 읽기 실패 in the message required by REQ-RG-012.
+The codex review gate shall take its enablement for each run from one override file in the primary checkout that applies only to the member lanes of that run (the card worktrees of the active run). While that file is absent, or names a run other than the single active run, or no single active run resolves, the codex review gate shall take the committed workflow.yaml review_gate.enabled value. While the session is not a member lane of that run, the codex review gate shall ignore the override file and take the committed workflow.yaml review_gate.enabled value. If that committed value cannot be read, the codex review gate shall not start a review, shall allow the stop, and shall name the state 커밋 값 읽기 실패 in the message required by REQ-RG-012.
 
-운영자 판정 Q3 = (b) 주 체크아웃의 미추적 재정의 파일. 보드 판정 D11 = 커밋된 설정값을 따름: 재정의 파일이 없으면 게이트는 커밋된 `.moai/config/sections/workflow.yaml` 의 `codex.review_gate.enabled` 값을 따르고, 재정의 파일은 run 단위로만 그 값을 덮어쓴다.
+운영자 판정 Q3 = (b) 주 체크아웃의 미추적 재정의 파일. 보드 판정 D11 = 커밋된 설정값을 따름: 재정의 파일이 없으면 게이트는 커밋된 `.moai/config/sections/workflow.yaml` 의 `codex.review_gate.enabled` 값을 따르고, 재정의 파일은 그 run 의 member lane(카드 워크트리)에만 그 값을 덮어쓴다. 저장소 전체를 끄거나 켜는 스위치는 없다(운영자 판정 d-20261010T090503Z-8963 (3)).
 
 - **재정의 파일의 위치**: 주 체크아웃의 `.moai/state/codex-review-gate/run-switch.json`. `.moai/state/` 는 `.gitignore` 401행으로 무시되므로 미추적이다. 파일 형식과 필드는 design.md §5 가 정한다. 파일은 실행 식별자와 활성화 값(on/off)을 싣는다.
 - **"run" 의 정의**: factory run 하나. `--run` 플래그가 가리키는 factory run id 로 지칭되며, 활성 run 은 동시에 하나다(`internal/cli/factory_card.go` 의 `--run` 도움말 "default: the single active run"). 리더가 `moai cc -f` 로 연 배치 하나가 한 run 이다.
 - **커밋된 값**: 판독 트리의 HEAD 커밋에 있는 `.moai/config/sections/workflow.yaml` 의 `codex.review_gate.enabled`. 작업 트리의 미커밋 값은 쓰지 않는다. 판독은 `git show HEAD:` 같은 읽기 전용 조회다.
 - **기본값의 이유**: 현재 Go 층은 빈 루트나 읽기 실패를 비활성으로 읽는다(`internal/cli/mcp_codex.go:2503–2510`). 그래서 기본값을 명시하지 않으면 루트를 풀지 못하는 경우 검토가 조용히 꺼진다. 기본값을 커밋된 값으로 정하면 이 공백이 사라진다.
 - **적용 조건**: 재정의 파일은 자기가 가리키는 run 이 단일 활성 run 과 같을 때만 적용된다. 오래된 재정의 파일이 다음 run 에 조용히 남지 않게 하기 위한 조건이다.
+- **member lane (run 의 레인)**: 세션의 작업 트리 루트가 그 run 의 카드 워크트리(그 run 의 `cards` 행이 기록한 `worktree_path`)와 같을 때에만 재정의 파일이 적용된다. 주 체크아웃이나 다른 run 의 트리에서 도는 세션은 파일을 무시하고 커밋된 값을 따른다(판정 규칙은 design.md §5).
 - 추적 키 `codex.review_gate.enabled` 의 역할은 기본값의 원천으로만 남는다. 실행을 전역으로 끄거나 켜는 권한은 없다.
 
 ### REQ-RG-008 — 셸 층과 Go 층은 같은 스위치 값을 읽는다 (Ubiquitous, M6)
@@ -153,9 +157,9 @@ The codex review gate shall keep its current allow decision for disabled gates, 
 
 ### REQ-RG-011 — 턴 종료에 fresh 영수증이 없으면 재검토를 시작하고 허용한다 (event-driven, M3)
 
-When a turn ends with no fresh receipt for the current review key (absent, stale, or key-mismatched), the turn-end gate shall start a review in the background unless an in-flight marker for that key exists, and shall allow the stop.
+When a turn ends with no fresh receipt for the current review key (absent, stale, or key-mismatched), the turn-end gate shall start a review in the background unless an in-flight marker for that key whose owner process is still alive exists, and shall allow the stop.
 
-가장 흔한 턴 종료 상태다. 이 동작은 SPEC-GATE-BOTTLENECK-001 REQ-GBN-002 의 턴 종료 절(absent 또는 stale 이면 허용하고 백그라운드 검토를 시작한다)과 같다. 이 SPEC 은 그 요구를 이 SPEC 의 요구로 명시하며, 그 SPEC 은 편집하지 않는다(Q6 = (b)). 허용에 붙는 메시지는 REQ-RG-012 이 정한다.
+가장 흔한 턴 종료 상태다. 이 동작은 SPEC-GATE-BOTTLENECK-001 REQ-GBN-002 의 턴 종료 절(absent 또는 stale 이면 허용하고 백그라운드 검토를 시작한다)과 같다. 이 SPEC 은 그 요구를 이 SPEC 의 요구로 명시하며, 그 SPEC 은 편집하지 않는다(Q6 = (b)). 중복 방지는 소유자 프로세스가 살아 있는 표식만 맡는다(design.md §3). 허용에 붙는 메시지는 REQ-RG-012 이 정한다.
 
 ### REQ-RG-012 — 검토 없이 허용되는 턴 종료는 상태를 명명한 메시지를 낸다 (event-driven, M3, 보드 판정 D4)
 
@@ -163,36 +167,11 @@ When the turn-end gate allows a stop and no fresh passing receipt backs that all
 
 보드 판정 D4 = 항상 메시지 표시. 이 문장은 "allows a stop without a fresh passing review" 를 문언대로 옮긴 것이다. 따라서 absent, stale, key-mismatch, inconclusive, 차단 횟수 소진, 스위치 꺼짐, 검토할 변경 없음, stop-hook 해제, reviewer 없음이 모두 포함된다. 키가 없는 상태(스위치 꺼짐, 검토할 변경 없음)도 포함하는 것은 §0 의 "검토가 되지 않은 상태는 드러나야 한다"에 따른다. 메시지는 Stop 훅의 `systemMessage` 로 낸다(`.claude/rules/moai/core/hooks-system.md:103`). 허용 결정 자체는 바뀌지 않는다(REQ-RG-010). 상태 어휘는 design.md §7 이 정한다.
 
-### 폐기된 식별자 — v0.2.0 에서 제거되어 t1662 로 이관됨
-
-이 표는 살아 있는 요구사항이 아니다. 제거된 식별자와 이관 대상만 적는다.
-
-| 식별자 | 구분 | 이관 대상 (HISTORY v0.2.0 행 기록) |
-|---|---|---|
-| REQ-RG-005 | 요구사항, 제거 | t1662 로 이관되었다 (REQ-ACE-005, 기준 브랜치 선택) |
-| REQ-RG-006 | 요구사항, 제거 | t1662 로 이관되었다 (REQ-ACE-005, 기준 브랜치 선택) |
-| REQ-RG-007 | 요구사항, 제거 | t1662 로 이관되었다 (REQ-ACE-005, 기준 브랜치 선택) |
-| REQ-RG-008 | 요구사항, 제거 | t1662 로 이관되었다 (REQ-ACE-005, 기준 브랜치 선택) |
-| AC-RG-006 | 인수 기준, 제거 | t1662 로 이관되었다 |
-| AC-RG-007 | 인수 기준, 제거 | t1662 로 이관되었다 |
-| AC-RG-008 | 인수 기준, 제거 | t1662 로 이관되었다 |
-| AC-RG-009 | 인수 기준, 제거 | t1662 로 이관되었다 |
-| AC-RG-016 | 인수 기준, 제거 | t1662 로 이관되었다 |
-| AC-RG-020 | 인수 기준, 제거 | t1662 로 이관되었다 |
-| AC-RG-021 | 인수 기준, 제거 | t1662 로 이관되었다 |
-| AC-RG-022 | 인수 기준, 제거 | t1662 로 이관되었다 |
-| AC-RG-023 | 인수 기준, 제거 | t1662 로 이관되었다 |
-| AC-RG-024 | 인수 기준, 제거 | t1662 로 이관되었다 |
-
-출처: HISTORY v0.2.0 행의 기록("모두 t1662 로 이관되었다"; 기준 브랜치 선택 부분은 REQ-ACE-005, 리더 판정 d-20261010T070728Z-6cdf).
-
-번호 주석 (v0.2.2): 번호 빈자리를 없애려고(D1) REQ-RG-005–008 은 v0.2.2 에서 살아 있는 요구사항(이전 REQ-RG-009–012)의 번호로 다시 쓰였다. 위 표의 내용은 폐기된 것이며, 옛 본문은 HISTORY 행에만 남는다.
-
 ---
 
 ## §C AC 와 검증 구속
 
-- 모든 인수 기준은 acceptance.md 에 있다(AC-RG-001–005, AC-RG-010–015, AC-RG-017–019, 요구와 1:1 이상 연결, 고아 기준 없음. 제거된 ID 는 위 폐기된 식별자 표와 HISTORY v0.2.0 에 있다). 이 SPEC 은 plan 시점에 릴리스 게이트를 하나도 갖지 않는다. 이유: 행위 요구를 단언하는 테스트가 현재 트리에 없고(research.md §6, 테스트 이름 확인), 기존 행위 테스트는 결함을 고정할 뿐이다(acceptance.md §A). 릴리스 게이트로 승격하려면 run 단계가 구현 전 트리에서 RED 를 원문으로 기록해야 한다.
+- 모든 인수 기준은 acceptance.md 에 있다(AC-RG-001–005, AC-RG-010–015, AC-RG-017–019, 요구와 1:1 이상 연결, 고아 기준 없음. 제거된 ID 는 HISTORY v0.2.0 행과 v0.2.3 행의 두 줄에 있다). 이 SPEC 은 plan 시점에 릴리스 게이트를 하나도 갖지 않는다. 이유: 행위 요구를 단언하는 테스트가 현재 트리에 없고(research.md §6, 테스트 이름 확인), 기존 행위 테스트는 결함을 고정할 뿐이다(acceptance.md §A). 릴리스 게이트로 승격하려면 run 단계가 구현 전 트리에서 RED 를 원문으로 기록해야 한다.
 - 검증 명령은 항상 작업 트리 루트에서, 단일 호출로 실행한다. 실행된 테스트 수를 함께 기록하며, 0개는 측정 불가로 보고한다.
 
 ## §D 실행 순서 구속
@@ -218,6 +197,7 @@ When the turn-end gate allows a stop and no fresh passing receipt backs that all
 
 - 영수증을 HEAD 대신 (merge base, 내용 digest) 에 묶는 변경은 이 SPEC 에서 하지 않는다. t1662 로 추적한다(카드 항목 4, 영수증을 병합 기준·내용 다이제스트에 결속).
 - 현재 결합 필드 다섯 개의 구성 변경도 하지 않는다.
+- codex 필수 게이트의 대상 (main...HEAD 범위에는 SPEC 문서만 들어 있다)과 plan-aware 영수증은 t1662 범위다 (운영자 판정 d-20261010T090503Z-8963 (4)(5)). 이 SPEC 의 감사는 두 항목을 차단으로 세지 않는다.
 
 ### Out of Scope — 가시성, 중복 제거, kick 정리 (F2)
 

@@ -57,19 +57,25 @@
 - **Then** 백그라운드 재검토가 시작되고, 턴 종료는 차단 없이 허용되며, systemMessage 에 inconclusive 상태가 나온다. stderr 에 "reusing the cached inconclusive verdict" 가 나오지 않는다.
 - **분류** RG-PENDING. 결함 고정 기준선: `TestReviewGate_InconclusiveReceiptIsNotPassEvidence` 가 PASS 하며 stderr 에 "reusing the cached inconclusive verdict for the unchanged tree (skip #1)" 가 나온다(셀 B-2).
 
-### AC-RG-011 — inconclusive 뒤에는 다음 턴 종료에서 간격 없이 재검토가 다시 시작되고, 진행 중 표식이 있으면 중복되지 않는다 (REQ-RG-006)
+### AC-RG-011 — inconclusive 뒤에는 다음 턴 종료에서 간격 없이 재검토가 다시 시작되고, 살아 있는 진행 중 표식이 있으면 중복되지 않는다 (REQ-RG-006)
 
-- **Given** 현재 키의 inconclusive 영수증이 있고, 직전 턴 종료에서 재검토가 시작되어 끝났다(진행 중 표식 없음).
+- **Given** (i) 현재 키의 inconclusive 영수증이 있다. 직전 턴 종료에서 시작된 검토가 inconclusive 로 완료되었고, 완료와 함께 진행 중 표식이 풀렸다(수동 표식 삭제 없음).
 - **When** 다음 턴이 끝난다.
-- **Then** 쿨다운 없이 이 턴 종료에서 재검토가 시작된다(운영자 판정 Q4 = (a)). 진행 중 표식이 남아 있는 턴 종료에서는 두 번째 검토가 시작되지 않는다.
+- **Then** 쿨다운 없이 이 턴 종료에서 새 검토가 시작되고, 턴 종료는 허용되며 systemMessage 에 inconclusive 상태가 나온다(운영자 판정 Q4 = (a)).
+- **Given** (ii) 현재 키의 inconclusive 영수증이 있고, 검토가 실행 중이다. 진행 중 표식이 남아 있고, 그 표식의 소유자 프로세스가 살아 있다.
+- **When** 그 검토가 끝나기 전에 턴이 다시 끝난다.
+- **Then** 두 번째 검토는 시작되지 않는다. 턴 종료는 허용되며 systemMessage 에 inconclusive 상태가 나온다. 표식은 동시 실행만 막는다.
+- **Given** (iii) 현재 키의 inconclusive 영수증이 있고, 진행 중 표식이 남아 있으나 그 소유자 프로세스가 죽었거나 소유자 pid 를 읽을 수 없다(이전 형식의 표식 포함).
+- **When** 다음 턴이 끝난다.
+- **Then** 표식은 고아로 회수되고, 이 턴 종료에서 새 검토가 시작되며, 턴 종료는 허용되고 systemMessage 에 inconclusive 상태가 나온다.
 - **분류** RG-PENDING.
 
 ### AC-RG-012 — 실행 스위치: 재정의 파일이 적용되면 그 값이, 아니면 커밋된 값이 두 훅을 지배한다 (REQ-RG-007)
 
-- **Given** 같은 run 의 두 레인이 있고, 커밋된 `codex.review_gate.enabled` 는 HEAD 에서 `true` 다. 작업 트리의 workflow.yaml 값은 HEAD 와 다를 수 있다(미커밋 변경 허용). 재정의 파일의 형식과 실행 식별자 해석은 design.md §5(재정의 파일 스키마와 단일 활성 run 규칙)를 따른다. 시나리오는 넷이다. (a) 주 체크아웃의 재정의 파일이 이 run 식별자로 `off` 를 싣는다. (b) 재정의 파일이 없다. (c) 재정의 파일이 `on` 을 싣지만 식별자가 다른 run 의 것이다. (d) 재정의 파일이 이 run 식별자로 `on` 을 싣고, 작업 트리의 값은 `false` 다.
-- **When** 두 레인에서 진입 훅과 턴 종료가 실행된다.
-- **Then** (a) 두 훅 모두 검토를 시작하지 않고 허용하며, systemMessage 에 스위치 꺼짐과 재정의 파일 출처가 나온다. (b) 커밋된 `true` 를 따라 검토가 실행되며, 작업 트리의 `false` 는 무시된다. (c) 파일은 무시되고 커밋된 `true` 를 따른다. (d) 재정의 값 `on` 이 우선하며 검토가 실행된다.
-- **분류** RG-PENDING. 현재 코드는 작업 트리의 파일을 읽으므로 (b)와 (d)의 작업 트리 값에 따라 달라진다(research.md §3 #50, #52).
+- **Given** 같은 run 의 두 레인이 있고, 커밋된 `codex.review_gate.enabled` 는 HEAD 에서 `true` 다. 작업 트리의 workflow.yaml 값은 HEAD 와 다를 수 있다(미커밋 변경 허용). 재정의 파일의 형식과 실행 식별자 해석은 design.md §5(재정의 파일 스키마와 단일 활성 run 규칙)를 따른다. 시나리오는 다섯이다. (a) 주 체크아웃의 재정의 파일이 이 run 식별자로 `off` 를 싣는다. (b) 재정의 파일이 없다. (c) 재정의 파일이 `on` 을 싣지만 식별자가 다른 run 의 것이다. (d) 재정의 파일이 이 run 식별자로 `on` 을 싣고, 작업 트리의 값은 `false` 다. (e) 이 run 의 카드 워크트리가 아닌 세션(주 체크아웃이나 다른 트리에서 시작한 세션)이 이 run 식별자를 싣고 값이 `off` 인 재정의 파일을 읽는다.
+- **When** 두 레인과 (e) 의 세션에서 진입 훅과 턴 종료가 실행된다.
+- **Then** (a) 두 훅 모두 검토를 시작하지 않고 허용하며, systemMessage 에 스위치 꺼짐과 재정의 파일 출처가 나온다. (b) 커밋된 `true` 를 따라 검토가 실행되며, 작업 트리의 `false` 는 무시된다. (c) 파일은 무시되고 커밋된 `true` 를 따른다. (d) 재정의 값 `on` 이 우선하며 검토가 실행된다. (e) 그 세션은 재정의 파일을 무시하고 커밋된 `true` 를 따라 검토가 실행된다(파일의 `off` 는 적용되지 않는다).
+- **분류** RG-PENDING. 현재 코드는 작업 트리의 파일을 읽으므로 (b)와 (d)의 작업 트리 값에 따라 달라진다(research.md §3 #50, #52). (e) 는 현재 해석기에 membership 검사가 없어 RG-PENDING 이다(design.md §5, `internal/cli/factory_card.go:2313–2322`).
 
 ### AC-RG-013 — 셸 층과 Go 층이 같은 스위치 결과를 낸다 (REQ-RG-008)
 
