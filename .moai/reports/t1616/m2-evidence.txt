@@ -1,0 +1,148 @@
+SPEC-LOCAL-MAIN-FLOW-001 — card t1616 — M2 evidence file
+REQ-LMF-005 (separate-worktree overlap decision) and REQ-LMF-006 (status-set comparison); plan §B5.
+
+Start state: branch WT-10-10-class, HEAD 9ca36a428, working tree clean.
+Each section below is the verbatim output of one command, in the order it was run.
+Sections marked RED were captured before the step-2 change (integration_merge_step.go).
+Sections marked GREEN were captured after it.
+
+== RED run 1: the six new names (go test ./internal/factory/ -run '^(TestMergeStepDirtyDisjointPathsProceeds|TestMergeStepDirtyPathOverlapRefuses|TestMergeStepDirtyDirectoryPrefixOverlapRefuses|TestMergeStepDirtyIgnoredTargetRefuses|TestMergeStepStatusSetChangedAfterMergeHolds|TestMergeStepStatusSetChangedAfterAbortHolds)$' -v -count=1) ==
+=== RUN   TestMergeStepDirtyDisjointPathsProceeds
+=== RUN   TestMergeStepDirtyDisjointPathsProceeds/untracked_file_outside_the_card's_paths
+    integration_merge_step_overlap_test.go:173: a dirty path outside the card's target paths must not refuse the merge: integration merge: the integration worktree is not clean (1 status lines); clean it and re-measure, then re-acquire. Move the uncommitted or untracked changes into a card worktree and commit them there, or ask the session that owns them to commit or discard them. Do not stash: the stash is repository-wide.
+=== RUN   TestMergeStepDirtyDisjointPathsProceeds/unstaged_change_to_a_tracked_file_outside_the_card's_paths
+    integration_merge_step_overlap_test.go:173: a dirty path outside the card's target paths must not refuse the merge: integration merge: the integration worktree is not clean (1 status lines); clean it and re-measure, then re-acquire. Move the uncommitted or untracked changes into a card worktree and commit them there, or ask the session that owns them to commit or discard them. Do not stash: the stash is repository-wide.
+=== RUN   TestMergeStepDirtyDisjointPathsProceeds/path_sharing_only_a_textual_prefix_with_a_card_path
+    integration_merge_step_overlap_test.go:173: a dirty path outside the card's target paths must not refuse the merge: integration merge: the integration worktree is not clean (1 status lines); clean it and re-measure, then re-acquire. Move the uncommitted or untracked changes into a card worktree and commit them there, or ask the session that owns them to commit or discard them. Do not stash: the stash is repository-wide.
+=== RUN   TestMergeStepDirtyDisjointPathsProceeds/ignored_file_outside_the_card's_paths
+--- FAIL: TestMergeStepDirtyDisjointPathsProceeds (4.55s)
+    --- FAIL: TestMergeStepDirtyDisjointPathsProceeds/untracked_file_outside_the_card's_paths (0.93s)
+    --- FAIL: TestMergeStepDirtyDisjointPathsProceeds/unstaged_change_to_a_tracked_file_outside_the_card's_paths (0.92s)
+    --- FAIL: TestMergeStepDirtyDisjointPathsProceeds/path_sharing_only_a_textual_prefix_with_a_card_path (0.95s)
+    --- PASS: TestMergeStepDirtyDisjointPathsProceeds/ignored_file_outside_the_card's_paths (1.74s)
+=== RUN   TestMergeStepDirtyPathOverlapRefuses
+=== RUN   TestMergeStepDirtyPathOverlapRefuses/unstaged_change_to_a_card_target_path
+=== RUN   TestMergeStepDirtyPathOverlapRefuses/staged_change_to_a_card_target_path
+=== RUN   TestMergeStepDirtyPathOverlapRefuses/staged_rename_whose_source_is_a_card_target_path
+--- PASS: TestMergeStepDirtyPathOverlapRefuses (3.46s)
+    --- PASS: TestMergeStepDirtyPathOverlapRefuses/unstaged_change_to_a_card_target_path (1.21s)
+    --- PASS: TestMergeStepDirtyPathOverlapRefuses/staged_change_to_a_card_target_path (1.13s)
+    --- PASS: TestMergeStepDirtyPathOverlapRefuses/staged_rename_whose_source_is_a_card_target_path (1.12s)
+=== RUN   TestMergeStepDirtyDirectoryPrefixOverlapRefuses
+=== RUN   TestMergeStepDirtyDirectoryPrefixOverlapRefuses/untracked_file_where_the_card_adds_files_under_a_directory
+=== RUN   TestMergeStepDirtyDirectoryPrefixOverlapRefuses/untracked_file_under_a_directory_the_card_replaces_with_a_file
+--- PASS: TestMergeStepDirtyDirectoryPrefixOverlapRefuses (2.26s)
+    --- PASS: TestMergeStepDirtyDirectoryPrefixOverlapRefuses/untracked_file_where_the_card_adds_files_under_a_directory (1.10s)
+    --- PASS: TestMergeStepDirtyDirectoryPrefixOverlapRefuses/untracked_file_under_a_directory_the_card_replaces_with_a_file (1.16s)
+=== RUN   TestMergeStepDirtyIgnoredTargetRefuses
+    integration_merge_step_overlap_test.go:253: expected exit code 12, got 13 (err=integration merge: refused — the candidate would overwrite ignored/untracked bytes at card.txt; remove or commit them, then re-measure)
+--- FAIL: TestMergeStepDirtyIgnoredTargetRefuses (1.19s)
+=== RUN   TestMergeStepStatusSetChangedAfterMergeHolds
+=== RUN   TestMergeStepStatusSetChangedAfterMergeHolds/clean_before,_a_new_untracked_file_after_the_merge
+=== RUN   TestMergeStepStatusSetChangedAfterMergeHolds/untracked_file_before,_the_same_file_staged_after_the_merge
+    integration_merge_step_overlap_test.go:300: expected exit code 8, got 12 (err=integration merge: the integration worktree is not clean (1 status lines); clean it and re-measure, then re-acquire. Move the uncommitted or untracked changes into a card worktree and commit them there, or ask the session that owns them to commit or discard them. Do not stash: the stash is repository-wide.)
+=== RUN   TestMergeStepStatusSetChangedAfterMergeHolds/untracked_file_before,_a_new_untracked_file_after_the_merge
+    integration_merge_step_overlap_test.go:300: expected exit code 8, got 12 (err=integration merge: the integration worktree is not clean (1 status lines); clean it and re-measure, then re-acquire. Move the uncommitted or untracked changes into a card worktree and commit them there, or ask the session that owns them to commit or discard them. Do not stash: the stash is repository-wide.)
+--- FAIL: TestMergeStepStatusSetChangedAfterMergeHolds (3.50s)
+    --- PASS: TestMergeStepStatusSetChangedAfterMergeHolds/clean_before,_a_new_untracked_file_after_the_merge (1.72s)
+    --- FAIL: TestMergeStepStatusSetChangedAfterMergeHolds/untracked_file_before,_the_same_file_staged_after_the_merge (0.91s)
+    --- FAIL: TestMergeStepStatusSetChangedAfterMergeHolds/untracked_file_before,_a_new_untracked_file_after_the_merge (0.87s)
+=== RUN   TestMergeStepStatusSetChangedAfterAbortHolds
+=== RUN   TestMergeStepStatusSetChangedAfterAbortHolds/clean_before,_a_new_untracked_file_after_the_abort
+=== RUN   TestMergeStepStatusSetChangedAfterAbortHolds/untracked_file_before,_the_same_file_staged_after_the_abort
+    integration_merge_step_overlap_test.go:345: expected exit code 7, got 12 (err=integration merge: the integration worktree is not clean (1 status lines); clean it and re-measure, then re-acquire. Move the uncommitted or untracked changes into a card worktree and commit them there, or ask the session that owns them to commit or discard them. Do not stash: the stash is repository-wide.)
+=== RUN   TestMergeStepStatusSetChangedAfterAbortHolds/untracked_file_before,_a_new_untracked_file_after_the_abort
+    integration_merge_step_overlap_test.go:345: expected exit code 7, got 12 (err=integration merge: the integration worktree is not clean (1 status lines); clean it and re-measure, then re-acquire. Move the uncommitted or untracked changes into a card worktree and commit them there, or ask the session that owns them to commit or discard them. Do not stash: the stash is repository-wide.)
+--- FAIL: TestMergeStepStatusSetChangedAfterAbortHolds (3.34s)
+    --- PASS: TestMergeStepStatusSetChangedAfterAbortHolds/clean_before,_a_new_untracked_file_after_the_abort (1.58s)
+    --- FAIL: TestMergeStepStatusSetChangedAfterAbortHolds/untracked_file_before,_the_same_file_staged_after_the_abort (0.92s)
+    --- FAIL: TestMergeStepStatusSetChangedAfterAbortHolds/untracked_file_before,_a_new_untracked_file_after_the_abort (0.84s)
+FAIL
+FAIL	github.com/modu-ai/moai-adk/internal/factory	18.509s
+FAIL
+
+== RED run 2: the existing 12-dirty subtest after the fixture path change (go test ./internal/factory/ -run '^TestMergeStepPreMergeCausesReleaseWithDistinctCodes$/^12_dirty_before_merge$' -v -count=1) ==
+=== RUN   TestMergeStepPreMergeCausesReleaseWithDistinctCodes
+=== RUN   TestMergeStepPreMergeCausesReleaseWithDistinctCodes/12_dirty_before_merge
+    integration_merge_step_test.go:429: expected exit code 12, got 13 (err=integration merge: refused — the candidate would overwrite ignored/untracked bytes at card.txt; remove or commit them, then re-measure)
+--- FAIL: TestMergeStepPreMergeCausesReleaseWithDistinctCodes (1.25s)
+    --- FAIL: TestMergeStepPreMergeCausesReleaseWithDistinctCodes/12_dirty_before_merge (1.25s)
+FAIL
+FAIL	github.com/modu-ai/moai-adk/internal/factory	1.409s
+FAIL
+
+== RED run 3: existing merge-step regression list at RED, 25 names (go test ./internal/factory/ -run <list> -v -count=1) ==
+=== RUN   TestMergeStepHappyPathCreatesNoFFMergeAndReleases
+--- PASS: TestMergeStepHappyPathCreatesNoFFMergeAndReleases (1.78s)
+=== RUN   TestMergeStepRunsNoTestCommands
+--- PASS: TestMergeStepRunsNoTestCommands (1.77s)
+=== RUN   TestMergeStepHolderRefusalsLeaveRecordUntouched
+--- PASS: TestMergeStepHolderRefusalsLeaveRecordUntouched (0.91s)
+=== RUN   TestMergeStepPreMergeCausesReleaseWithDistinctCodes
+=== RUN   TestMergeStepPreMergeCausesReleaseWithDistinctCodes/1_record_invalid
+=== RUN   TestMergeStepPreMergeCausesReleaseWithDistinctCodes/2_base_moved
+=== RUN   TestMergeStepPreMergeCausesReleaseWithDistinctCodes/3_not_a_descendant
+=== RUN   TestMergeStepPreMergeCausesReleaseWithDistinctCodes/4_tree_mismatch
+=== RUN   TestMergeStepPreMergeCausesReleaseWithDistinctCodes/5_landing_refused
+=== RUN   TestMergeStepPreMergeCausesReleaseWithDistinctCodes/9_other_error
+=== RUN   TestMergeStepPreMergeCausesReleaseWithDistinctCodes/11b_not_merge-ready
+=== RUN   TestMergeStepPreMergeCausesReleaseWithDistinctCodes/11a_foreign_card_lease
+=== RUN   TestMergeStepPreMergeCausesReleaseWithDistinctCodes/11c_card_mismatch
+=== RUN   TestMergeStepPreMergeCausesReleaseWithDistinctCodes/12_dirty_before_merge
+    integration_merge_step_test.go:429: expected exit code 12, got 13 (err=integration merge: refused — the candidate would overwrite ignored/untracked bytes at card.txt; remove or commit them, then re-measure)
+--- FAIL: TestMergeStepPreMergeCausesReleaseWithDistinctCodes (10.46s)
+    --- PASS: TestMergeStepPreMergeCausesReleaseWithDistinctCodes/1_record_invalid (1.06s)
+    --- PASS: TestMergeStepPreMergeCausesReleaseWithDistinctCodes/2_base_moved (1.19s)
+    --- PASS: TestMergeStepPreMergeCausesReleaseWithDistinctCodes/3_not_a_descendant (1.41s)
+    --- PASS: TestMergeStepPreMergeCausesReleaseWithDistinctCodes/4_tree_mismatch (1.09s)
+    --- PASS: TestMergeStepPreMergeCausesReleaseWithDistinctCodes/5_landing_refused (1.05s)
+    --- PASS: TestMergeStepPreMergeCausesReleaseWithDistinctCodes/9_other_error (0.87s)
+    --- PASS: TestMergeStepPreMergeCausesReleaseWithDistinctCodes/11b_not_merge-ready (0.84s)
+    --- PASS: TestMergeStepPreMergeCausesReleaseWithDistinctCodes/11a_foreign_card_lease (0.79s)
+    --- PASS: TestMergeStepPreMergeCausesReleaseWithDistinctCodes/11c_card_mismatch (0.88s)
+    --- FAIL: TestMergeStepPreMergeCausesReleaseWithDistinctCodes/12_dirty_before_merge (1.30s)
+=== RUN   TestMergeStepNothingToMerge
+--- PASS: TestMergeStepNothingToMerge (1.06s)
+=== RUN   TestMergeStepMergeFailureCleanAbortsCause6
+--- PASS: TestMergeStepMergeFailureCleanAbortsCause6 (1.35s)
+=== RUN   TestMergeStepCause8LeavesCommitAndHoldsNamingSHA
+--- PASS: TestMergeStepCause8LeavesCommitAndHoldsNamingSHA (1.49s)
+=== RUN   TestMergeStepCause8bO3SeamInjectsResidue
+--- PASS: TestMergeStepCause8bO3SeamInjectsResidue (1.59s)
+=== RUN   TestMergeStepPinnedSHAOverBranchName
+--- PASS: TestMergeStepPinnedSHAOverBranchName (1.79s)
+=== RUN   TestMergeStepTakeoverAtMergeCannotMergeOnStolenOwnership
+--- PASS: TestMergeStepTakeoverAtMergeCannotMergeOnStolenOwnership (4.92s)
+=== RUN   TestMergeStepLateIgnoredFileCollisionRefusesMerge
+--- PASS: TestMergeStepLateIgnoredFileCollisionRefusesMerge (1.34s)
+=== RUN   TestMergeStepLeaseRenewalPreservesTheConfiguredDisabledLease
+--- PASS: TestMergeStepLeaseRenewalPreservesTheConfiguredDisabledLease (1.68s)
+=== RUN   TestMergeStepRecheckReadsTheClockInsideTheSection
+--- PASS: TestMergeStepRecheckReadsTheClockInsideTheSection (1.30s)
+=== RUN   TestMergeStepCardLeaseInvalidatedMidstepRefusesMerge
+--- PASS: TestMergeStepCardLeaseInvalidatedMidstepRefusesMerge (1.33s)
+=== RUN   TestMergeStepCardRecordMutatedMidstepRefusesMerge
+--- PASS: TestMergeStepCardRecordMutatedMidstepRefusesMerge (1.44s)
+=== RUN   TestMergeStepFirstCardReadFailureReleasesWindow
+--- PASS: TestMergeStepFirstCardReadFailureReleasesWindow (0.87s)
+=== RUN   TestMergeStepMidstepWindowRetargetRefusesMerge
+--- PASS: TestMergeStepMidstepWindowRetargetRefusesMerge (1.11s)
+=== RUN   TestMergeStepMidstepCheckoutSwitchRefusesMerge
+--- PASS: TestMergeStepMidstepCheckoutSwitchRefusesMerge (1.28s)
+=== RUN   TestMergeStepMidstepBranchTipMoveRefusesMerge
+--- PASS: TestMergeStepMidstepBranchTipMoveRefusesMerge (1.32s)
+=== RUN   TestSameIntegrationTreeReadsAliasedPaths
+--- PASS: TestSameIntegrationTreeReadsAliasedPaths (0.02s)
+=== RUN   TestMergeStepRefusesACardWhoseStateMovedOn
+--- PASS: TestMergeStepRefusesACardWhoseStateMovedOn (0.81s)
+=== RUN   TestMergeStepCheckoutCheckReadsTheFullRef
+--- PASS: TestMergeStepCheckoutCheckReadsTheFullRef (1.67s)
+=== RUN   TestSameIntegrationTreeReadsSubdirectoryAsWorktreeRoot
+--- PASS: TestSameIntegrationTreeReadsSubdirectoryAsWorktreeRoot (0.88s)
+=== RUN   TestMergeStepCardDriftAfterMergeHoldsNamingSHA
+--- PASS: TestMergeStepCardDriftAfterMergeHoldsNamingSHA (1.68s)
+=== RUN   TestR2_C_MergeRefusesWhenWindowTakenMidStep
+--- PASS: TestR2_C_MergeRefusesWhenWindowTakenMidStep (1.26s)
+FAIL
+FAIL	github.com/modu-ai/moai-adk/internal/factory	45.311s
+FAIL

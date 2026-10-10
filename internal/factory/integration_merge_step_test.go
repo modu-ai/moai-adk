@@ -408,7 +408,10 @@ func TestMergeStepPreMergeCausesReleaseWithDistinctCodes(t *testing.T) {
 			}
 		}},
 		{"12 dirty before merge", MergeExitWorktreeDirty, func(f *stepFixture, seams *MergeStepSeams, card *MergeCardState) {
-			if err := os.WriteFile(filepath.Join(f.integ, "untracked.txt"), []byte("x"), 0o644); err != nil {
+			// M2 (card t1616, plan §B5): the byte sits at a path the card changes.
+			// card.txt is that path and the base .gitignore ignores it, so the
+			// refusal is the ignored overlap I, not a status-set record.
+			if err := os.WriteFile(filepath.Join(f.integ, "card.txt"), []byte("x"), 0o644); err != nil {
 				t.Fatal(err)
 			}
 		}},
