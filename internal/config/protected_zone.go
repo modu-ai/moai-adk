@@ -158,7 +158,8 @@ func (e ZoneEntry) Match(foldedRel string) bool {
 		case ZoneDir, ZonePrefix:
 			return strings.HasPrefix(rest, e.Pattern) || strings.HasPrefix(rest+"/", e.Pattern) || strings.HasPrefix(e.Pattern, rest+"/")
 		default:
-			return rest == e.Pattern
+			// an exact entry also covers its ancestor directories: removing the directory removes the file
+			return rest == e.Pattern || strings.HasPrefix(e.Pattern, strings.TrimSuffix(rest, "/")+"/")
 		}
 	}
 	return false
