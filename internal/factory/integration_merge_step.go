@@ -24,6 +24,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"sort"
 	"strings"
 	"time"
 
@@ -237,15 +238,24 @@ func RunMergeStep(in MergeStepInput, seams MergeStepSeams) (string, error) {
 		return "", mergeStepErr(MergeExitOther, "integration merge: refresh the window: %v", err)
 	}
 
-	// (12) the integration worktree must be clean before the merge —
-	// --untracked-files=all so a hidden untracked byte cannot hide behind
-	// the config (O2).
-	clean, status, err := gitIntegrationWorktreeClean(in.IntegrationWorktree)
-	if err != nil {
-		return "", releaseWindow(in, seams, mergeStepErr(MergeExitOther, "integration merge: status the integration worktree: %v", err))
-	}
-	if !clean {
-		return "", releaseWindow(in, seams, mergeStepErr(MergeExitWorktreeDirty, "integration merge: the integration worktree is not clean (%d status lines); clean it and re-measure, then re-acquire. Move the uncommitted or untracked changes into a card worktree and commit them there, or ask the session that owns them to commit or discard them. Do not stash: the stash is repository-wide.", strings.Count(status, "\n")+1))
+	// (12) the dirty precondition depends on the surface (plan §B4, §B5). The
+	// primary checkout keeps the fully-clean rule: its uncommitted changes may
+	// belong to other sessions, and an overlap test cannot judge a path whose
+	// owner it cannot identify. A separate integration worktree has no foreign
+	// owners, so the overlap decision applies there; it needs the pinned SHA and
+	// runs after the pin below (REQ-LMF-005). The surface is the integration
+	// worktree being the primary checkout that Root names.
+	primary := sameIntegrationTree(in.IntegrationWorktree, in.Root)
+	if primary {
+		// --untracked-files=all so a hidden untracked byte cannot hide behind
+		// the config (O2).
+		clean, status, err := gitIntegrationWorktreeClean(in.IntegrationWorktree)
+		if err != nil {
+			return "", releaseWindow(in, seams, mergeStepErr(MergeExitOther, "integration merge: status the integration worktree: %v", err))
+		}
+		if !clean {
+			return "", releaseWindow(in, seams, mergeStepErr(MergeExitWorktreeDirty, "integration merge: the integration worktree is not clean (%d status lines); clean it and re-measure, then re-acquire. Move the uncommitted or untracked changes into a card worktree and commit them there, or ask the session that owns them to commit or discard them. Do not stash: the stash is repository-wide.", strings.Count(status, "\n")+1))
+		}
 	}
 
 	// Resolve the card's WT- branch at the card's tree and pin ONE SHA
@@ -269,6 +279,20 @@ func RunMergeStep(in MergeStepInput, seams MergeStepSeams) (string, error) {
 		return "", releaseWindow(in, seams, mergeStepErr(MergeExitOther, "integration merge: read the integration tip: %v", err))
 	}
 	tip = strings.TrimSpace(tip)
+
+	// (12, separate worktree) the overlap decision of plan §B5 (REQ-LMF-005):
+	// refuse when a dirty path equals or nests with a target path, or when an
+	// ignored file sits at a target path. The pinned SHA is needed for the
+	// target set, so this runs after the pin.
+	if !primary {
+		reason, err := integrationOverlapRefusal(git, pinned)
+		if err != nil {
+			return "", releaseWindow(in, seams, mergeStepErr(MergeExitOther, "integration merge: the overlap decision errored: %v", err))
+		}
+		if reason != "" {
+			return "", releaseWindow(in, seams, mergeStepErr(MergeExitWorktreeDirty, "integration merge: refused — %s. Move or commit those changes, re-measure, then re-acquire. Do not stash: the stash is repository-wide.", reason))
+		}
+	}
 
 	// (1) the re-measure record must be valid for THIS tree (REQ-MWQ-014/015
 	// — one verifier, the local form while candidate_ci is absent).
@@ -345,6 +369,11 @@ func RunMergeStep(in MergeStepInput, seams MergeStepSeams) (string, error) {
 	var headReadErr error
 	var mergeDirtyAfterAbort bool
 	var mergeSHA string
+	// REQ-LMF-006 (plan §B5): S-before, set inside the section, and whether the
+	// status set changed across the merge. The primary surface's baseline stays nil,
+	// the empty set its fully-clean precondition established.
+	var statusBefore []statusRecord
+	var statusChanged bool
 	sectionErr := withIntegrationLockMutation(in.Root, func() error {
 		w, readErr := ReadIntegrationLock(in.Root)
 		if readErr != nil {
@@ -447,6 +476,18 @@ func RunMergeStep(in MergeStepInput, seams MergeStepSeams) (string, error) {
 			recheckErr = mergeStepErr(MergeExitCardGate, "integration merge: refused — card %s's record changed mid-step (version %d as gated, %d as re-read); re-acquire", in.CardID, card.Version, recheckCard.Version)
 			return nil
 		}
+		// S-before (REQ-LMF-006, plan §B5): the separate surface takes it here, in
+		// the section, immediately before the merge. The primary surface keeps the
+		// nil baseline set above.
+		if !primary {
+			before, statusErr := integrationStatusSet(git)
+			if statusErr != nil {
+				recheckErr = mergeStepErr(MergeExitOther, "integration merge: read the status set before the merge: %v", statusErr)
+				return nil
+			}
+			statusBefore = before
+		}
+
 		// The merge, of the PINNED SHA never the branch name (REQ-MWQ-017),
 		// inside the section (F4).
 		//
@@ -463,14 +504,17 @@ func RunMergeStep(in MergeStepInput, seams MergeStepSeams) (string, error) {
 		// @MX:DEBT: an ignored byte at an added path created inside the re-probe→merge span is overwritten by the three-way merge — the flag does not reach the ort path on current git
 		// @MX:CEILING: the window is one git-subprocess spawn inside a flock-serialized section in a policy-protected integration worktree; the post-merge tree check cannot see it (a worktree-only loss, the commit's tree is unchanged)
 		// @MX:UPGRADE: a git whose ort path honors --no-overwrite-ignore (then this flag starts refusing), or an in-process merge that checks ignored paths atomically with the write
-		if _, err := git("merge", "--no-ff", "--no-overwrite-ignore", "-q", "-m", mergeMsg, pinned); err != nil {
+		// --no-autostash is git's switch for merge.autoStash=false on this call
+		// (plan §B5): with autostash on, a staged change is stashed and re-applied
+		// unstaged, which changes the status set by itself.
+		if _, err := git("merge", "--no-ff", "--no-autostash", "--no-overwrite-ignore", "-q", "-m", mergeMsg, pinned); err != nil {
 			mergeErr = err
-			// (6)/(7): abort, then decide by the worktree the abort left —
+			// (6)/(7): abort, then decide by the status set the abort left against S-before —
 			// inside the section, so no acquisition can interleave between
 			// our failed merge and its cleanup.
 			_, _ = git("merge", "--abort")
-			clean, _, cleanErr := gitIntegrationWorktreeClean(in.IntegrationWorktree)
-			mergeDirtyAfterAbort = cleanErr != nil || !clean
+			after, statusErr := integrationStatusSet(git)
+			mergeDirtyAfterAbort = statusErr != nil || !integrationStatusEqual(after, statusBefore)
 			return nil
 		}
 		sha, shaErr := git("rev-parse", "HEAD")
@@ -481,6 +525,9 @@ func RunMergeStep(in MergeStepInput, seams MergeStepSeams) (string, error) {
 			return nil
 		}
 		mergeSHA = strings.TrimSpace(sha)
+		// S-after (REQ-LMF-006, plan §B5): taken after the merge commit, in the section.
+		after, statusErr := integrationStatusSet(git)
+		statusChanged = statusErr != nil || !integrationStatusEqual(after, statusBefore)
 		return nil
 	})
 	if sectionErr != nil {
@@ -537,8 +584,12 @@ func RunMergeStep(in MergeStepInput, seams MergeStepSeams) (string, error) {
 	if head, headErr := git("symbolic-ref", "HEAD"); headErr != nil || strings.TrimSpace(head) != "refs/heads/"+in.IntegrationBranch {
 		return "", postMergeHold(in, seams, mergeStepErr(MergeExitPostMerge, "integration merge: HEAD no longer names %s after the merge (it moved off the branch during the merge)", in.IntegrationBranch), mergeSHA)
 	}
-	if clean, _, err := gitIntegrationWorktreeClean(in.IntegrationWorktree); err != nil || !clean {
-		return "", postMergeHold(in, seams, mergeStepErr(MergeExitPostMerge, "integration merge: the worktree is not clean after the merge (autostash residue included)"), mergeSHA)
+	if statusChanged {
+		msg := "integration merge: the worktree is not clean after the merge (autostash residue included)"
+		if !primary {
+			msg = "integration merge: the status set changed across the merge (autostash residue included)"
+		}
+		return "", postMergeHold(in, seams, mergeStepErr(MergeExitPostMerge, "%s", msg), mergeSHA)
 	}
 
 	// t1576 review round 1 (F1): the section's card re-gate reads BEFORE the
@@ -749,6 +800,141 @@ func postMergeHold(in MergeStepInput, seams MergeStepSeams, cause *MergeStepErro
 func execGitIn(dir string, args ...string) (string, error) {
 	runner := factorylane.ExecGitRunner{Dir: dir}
 	return runner.Git(args...)
+}
+
+// statusRecord is one record of the status set S (plan §B5): its exact bytes
+// and every path it names. A rename or copy names its source as well.
+type statusRecord struct {
+	raw   string
+	paths []string
+}
+
+// integrationStatusSet reads the status set S of plan §B5: the records of
+// `git status --porcelain=v1 -z --untracked-files=all`, sorted bytewise by path.
+func integrationStatusSet(git func(args ...string) (string, error)) ([]statusRecord, error) {
+	out, err := git("status", "--porcelain=v1", "-z", "--untracked-files=all")
+	if err != nil {
+		return nil, err
+	}
+	fields := strings.Split(out, "\x00")
+	var records []statusRecord
+	for i := 0; i < len(fields); i++ {
+		field := fields[i]
+		if field == "" {
+			continue
+		}
+		if len(field) < 4 || field[2] != ' ' {
+			return nil, fmt.Errorf("unrecognized status record %q", field)
+		}
+		rec := statusRecord{raw: field, paths: []string{field[3:]}}
+		if x, y := field[0], field[1]; x == 'R' || x == 'C' || y == 'R' || y == 'C' {
+			// A rename or copy carries its source in the next NUL-terminated field.
+			if i+1 >= len(fields) {
+				return nil, fmt.Errorf("status record %q carries no source path", field)
+			}
+			i++
+			rec.raw = field + "\x00" + fields[i]
+			rec.paths = append(rec.paths, fields[i])
+		}
+		records = append(records, rec)
+	}
+	sort.SliceStable(records, func(a, b int) bool { return records[a].paths[0] < records[b].paths[0] })
+	return records, nil
+}
+
+// integrationStatusEqual reports whether two status sets hold the same records,
+// as exact record bytes in the same order (plan §B5).
+func integrationStatusEqual(a, b []statusRecord) bool {
+	if len(a) != len(b) {
+		return false
+	}
+	for i := range a {
+		if a[i].raw != b[i].raw {
+			return false
+		}
+	}
+	return true
+}
+
+// integrationOverlapRefusal decides the separate-worktree dirty precondition
+// (plan §B5) against the pinned SHA. It returns the refusal reason when
+// Overlap(D, T) holds or the ignored overlap I is non-empty, and "" when the
+// merge may proceed.
+func integrationOverlapRefusal(git func(args ...string) (string, error), pinned string) (string, error) {
+	base, err := git("merge-base", "HEAD", pinned)
+	if err != nil {
+		var exit *factorylane.GitExitError
+		if errors.As(err, &exit) && exit.ExitCode == 1 {
+			// No common ancestor: the ancestry gate refuses this pin before any
+			// merge call, so no overlap decision is owed here.
+			return "", nil
+		}
+		return "", fmt.Errorf("merge-base of HEAD and %s: %w", pinned, err)
+	}
+	status, err := integrationStatusSet(git)
+	if err != nil {
+		return "", fmt.Errorf("read the dirty set: %w", err)
+	}
+	diff, err := git("diff", "--name-only", "-z", "--no-renames", strings.TrimSpace(base), pinned)
+	if err != nil {
+		return "", fmt.Errorf("read the target set: %w", err)
+	}
+	targets := nonEmptyNULFields(diff)
+	ignoredOut, err := git("ls-files", "--others", "--ignored", "--exclude-standard", "-z")
+	if err != nil {
+		return "", fmt.Errorf("read the ignored files: %w", err)
+	}
+	ignored := make(map[string]bool)
+	for _, path := range nonEmptyNULFields(ignoredOut) {
+		ignored[path] = true
+	}
+	var ignoredTargets []string
+	for _, target := range targets {
+		if ignored[target] {
+			ignoredTargets = append(ignoredTargets, target)
+		}
+	}
+	var overlapping []string
+	seen := make(map[string]bool)
+	for _, rec := range status {
+		for _, dirty := range rec.paths {
+			if seen[dirty] {
+				continue
+			}
+			for _, target := range targets {
+				if pathsOverlap(dirty, target) {
+					seen[dirty] = true
+					overlapping = append(overlapping, dirty)
+					break
+				}
+			}
+		}
+	}
+	var reasons []string
+	if len(overlapping) > 0 {
+		reasons = append(reasons, "the integration worktree holds uncommitted or untracked changes at paths this card changes: "+strings.Join(overlapping, ", "))
+	}
+	if len(ignoredTargets) > 0 {
+		reasons = append(reasons, "the integration worktree holds ignored files at paths this card changes: "+strings.Join(ignoredTargets, ", "))
+	}
+	return strings.Join(reasons, "; "), nil
+}
+
+// pathsOverlap reports whether two repository paths are equal, or one names a
+// directory that contains the other (plan §B5, Overlap).
+func pathsOverlap(a, b string) bool {
+	return a == b || strings.HasPrefix(b, a+"/") || strings.HasPrefix(a, b+"/")
+}
+
+// nonEmptyNULFields splits a NUL-terminated git listing into its paths.
+func nonEmptyNULFields(out string) []string {
+	var paths []string
+	for _, path := range strings.Split(out, "\x00") {
+		if path != "" {
+			paths = append(paths, path)
+		}
+	}
+	return paths
 }
 
 // gitFail reports an error only when the git call FAILS — the ancestry

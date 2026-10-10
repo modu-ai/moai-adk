@@ -146,3 +146,460 @@ FAIL
 FAIL
 FAIL	github.com/modu-ai/moai-adk/internal/factory	45.311s
 FAIL
+
+== GREEN run 1: the six new names after the step-2 change (go test ./internal/factory/ -run '^(TestMergeStepDirtyDisjointPathsProceeds|TestMergeStepDirtyPathOverlapRefuses|TestMergeStepDirtyDirectoryPrefixOverlapRefuses|TestMergeStepDirtyIgnoredTargetRefuses|TestMergeStepStatusSetChangedAfterMergeHolds|TestMergeStepStatusSetChangedAfterAbortHolds)$' -v -count=1) ==
+=== RUN   TestMergeStepDirtyDisjointPathsProceeds
+=== RUN   TestMergeStepDirtyDisjointPathsProceeds/untracked_file_outside_the_card's_paths
+=== RUN   TestMergeStepDirtyDisjointPathsProceeds/unstaged_change_to_a_tracked_file_outside_the_card's_paths
+=== RUN   TestMergeStepDirtyDisjointPathsProceeds/path_sharing_only_a_textual_prefix_with_a_card_path
+=== RUN   TestMergeStepDirtyDisjointPathsProceeds/ignored_file_outside_the_card's_paths
+--- PASS: TestMergeStepDirtyDisjointPathsProceeds (10.51s)
+    --- PASS: TestMergeStepDirtyDisjointPathsProceeds/untracked_file_outside_the_card's_paths (3.18s)
+    --- PASS: TestMergeStepDirtyDisjointPathsProceeds/unstaged_change_to_a_tracked_file_outside_the_card's_paths (2.59s)
+    --- PASS: TestMergeStepDirtyDisjointPathsProceeds/path_sharing_only_a_textual_prefix_with_a_card_path (2.05s)
+    --- PASS: TestMergeStepDirtyDisjointPathsProceeds/ignored_file_outside_the_card's_paths (2.69s)
+=== RUN   TestMergeStepDirtyPathOverlapRefuses
+=== RUN   TestMergeStepDirtyPathOverlapRefuses/unstaged_change_to_a_card_target_path
+=== RUN   TestMergeStepDirtyPathOverlapRefuses/staged_change_to_a_card_target_path
+=== RUN   TestMergeStepDirtyPathOverlapRefuses/staged_rename_whose_source_is_a_card_target_path
+--- PASS: TestMergeStepDirtyPathOverlapRefuses (5.87s)
+    --- PASS: TestMergeStepDirtyPathOverlapRefuses/unstaged_change_to_a_card_target_path (2.46s)
+    --- PASS: TestMergeStepDirtyPathOverlapRefuses/staged_change_to_a_card_target_path (1.53s)
+    --- PASS: TestMergeStepDirtyPathOverlapRefuses/staged_rename_whose_source_is_a_card_target_path (1.88s)
+=== RUN   TestMergeStepDirtyDirectoryPrefixOverlapRefuses
+=== RUN   TestMergeStepDirtyDirectoryPrefixOverlapRefuses/untracked_file_where_the_card_adds_files_under_a_directory
+=== RUN   TestMergeStepDirtyDirectoryPrefixOverlapRefuses/untracked_file_under_a_directory_the_card_replaces_with_a_file
+--- PASS: TestMergeStepDirtyDirectoryPrefixOverlapRefuses (5.90s)
+    --- PASS: TestMergeStepDirtyDirectoryPrefixOverlapRefuses/untracked_file_where_the_card_adds_files_under_a_directory (2.45s)
+    --- PASS: TestMergeStepDirtyDirectoryPrefixOverlapRefuses/untracked_file_under_a_directory_the_card_replaces_with_a_file (3.44s)
+=== RUN   TestMergeStepDirtyIgnoredTargetRefuses
+--- PASS: TestMergeStepDirtyIgnoredTargetRefuses (2.01s)
+=== RUN   TestMergeStepStatusSetChangedAfterMergeHolds
+=== RUN   TestMergeStepStatusSetChangedAfterMergeHolds/clean_before,_a_new_untracked_file_after_the_merge
+=== RUN   TestMergeStepStatusSetChangedAfterMergeHolds/untracked_file_before,_the_same_file_staged_after_the_merge
+=== RUN   TestMergeStepStatusSetChangedAfterMergeHolds/untracked_file_before,_a_new_untracked_file_after_the_merge
+--- PASS: TestMergeStepStatusSetChangedAfterMergeHolds (9.67s)
+    --- PASS: TestMergeStepStatusSetChangedAfterMergeHolds/clean_before,_a_new_untracked_file_after_the_merge (2.36s)
+    --- PASS: TestMergeStepStatusSetChangedAfterMergeHolds/untracked_file_before,_the_same_file_staged_after_the_merge (3.20s)
+    --- PASS: TestMergeStepStatusSetChangedAfterMergeHolds/untracked_file_before,_a_new_untracked_file_after_the_merge (4.11s)
+=== RUN   TestMergeStepStatusSetChangedAfterAbortHolds
+=== RUN   TestMergeStepStatusSetChangedAfterAbortHolds/clean_before,_a_new_untracked_file_after_the_abort
+=== RUN   TestMergeStepStatusSetChangedAfterAbortHolds/untracked_file_before,_the_same_file_staged_after_the_abort
+=== RUN   TestMergeStepStatusSetChangedAfterAbortHolds/untracked_file_before,_a_new_untracked_file_after_the_abort
+--- PASS: TestMergeStepStatusSetChangedAfterAbortHolds (5.66s)
+    --- PASS: TestMergeStepStatusSetChangedAfterAbortHolds/clean_before,_a_new_untracked_file_after_the_abort (1.73s)
+    --- PASS: TestMergeStepStatusSetChangedAfterAbortHolds/untracked_file_before,_the_same_file_staged_after_the_abort (1.94s)
+    --- PASS: TestMergeStepStatusSetChangedAfterAbortHolds/untracked_file_before,_a_new_untracked_file_after_the_abort (1.99s)
+PASS
+ok  	github.com/modu-ai/moai-adk/internal/factory	40.085s
+
+== GREEN run 2: the 12-dirty subtest after the step-2 change (go test ./internal/factory/ -run '^TestMergeStepPreMergeCausesReleaseWithDistinctCodes$/^12_dirty_before_merge$' -v -count=1) ==
+=== RUN   TestMergeStepPreMergeCausesReleaseWithDistinctCodes
+=== RUN   TestMergeStepPreMergeCausesReleaseWithDistinctCodes/12_dirty_before_merge
+--- PASS: TestMergeStepPreMergeCausesReleaseWithDistinctCodes (2.08s)
+    --- PASS: TestMergeStepPreMergeCausesReleaseWithDistinctCodes/12_dirty_before_merge (2.08s)
+PASS
+ok  	github.com/modu-ai/moai-adk/internal/factory	2.319s
+
+== GREEN run 3: existing merge-step regression list after the step-2 change, 25 names (go test ./internal/factory/ -run <list> -v -count=1) ==
+=== RUN   TestMergeStepHappyPathCreatesNoFFMergeAndReleases
+--- PASS: TestMergeStepHappyPathCreatesNoFFMergeAndReleases (1.88s)
+=== RUN   TestMergeStepRunsNoTestCommands
+--- PASS: TestMergeStepRunsNoTestCommands (1.83s)
+=== RUN   TestMergeStepHolderRefusalsLeaveRecordUntouched
+--- PASS: TestMergeStepHolderRefusalsLeaveRecordUntouched (0.84s)
+=== RUN   TestMergeStepPreMergeCausesReleaseWithDistinctCodes
+=== RUN   TestMergeStepPreMergeCausesReleaseWithDistinctCodes/1_record_invalid
+=== RUN   TestMergeStepPreMergeCausesReleaseWithDistinctCodes/2_base_moved
+=== RUN   TestMergeStepPreMergeCausesReleaseWithDistinctCodes/3_not_a_descendant
+=== RUN   TestMergeStepPreMergeCausesReleaseWithDistinctCodes/4_tree_mismatch
+=== RUN   TestMergeStepPreMergeCausesReleaseWithDistinctCodes/5_landing_refused
+=== RUN   TestMergeStepPreMergeCausesReleaseWithDistinctCodes/9_other_error
+=== RUN   TestMergeStepPreMergeCausesReleaseWithDistinctCodes/11b_not_merge-ready
+=== RUN   TestMergeStepPreMergeCausesReleaseWithDistinctCodes/11a_foreign_card_lease
+=== RUN   TestMergeStepPreMergeCausesReleaseWithDistinctCodes/11c_card_mismatch
+=== RUN   TestMergeStepPreMergeCausesReleaseWithDistinctCodes/12_dirty_before_merge
+--- PASS: TestMergeStepPreMergeCausesReleaseWithDistinctCodes (15.98s)
+    --- PASS: TestMergeStepPreMergeCausesReleaseWithDistinctCodes/1_record_invalid (1.25s)
+    --- PASS: TestMergeStepPreMergeCausesReleaseWithDistinctCodes/2_base_moved (1.78s)
+    --- PASS: TestMergeStepPreMergeCausesReleaseWithDistinctCodes/3_not_a_descendant (1.55s)
+    --- PASS: TestMergeStepPreMergeCausesReleaseWithDistinctCodes/4_tree_mismatch (1.52s)
+    --- PASS: TestMergeStepPreMergeCausesReleaseWithDistinctCodes/5_landing_refused (1.75s)
+    --- PASS: TestMergeStepPreMergeCausesReleaseWithDistinctCodes/9_other_error (1.88s)
+    --- PASS: TestMergeStepPreMergeCausesReleaseWithDistinctCodes/11b_not_merge-ready (1.82s)
+    --- PASS: TestMergeStepPreMergeCausesReleaseWithDistinctCodes/11a_foreign_card_lease (1.47s)
+    --- PASS: TestMergeStepPreMergeCausesReleaseWithDistinctCodes/11c_card_mismatch (1.42s)
+    --- PASS: TestMergeStepPreMergeCausesReleaseWithDistinctCodes/12_dirty_before_merge (1.53s)
+=== RUN   TestMergeStepNothingToMerge
+--- PASS: TestMergeStepNothingToMerge (1.75s)
+=== RUN   TestMergeStepMergeFailureCleanAbortsCause6
+--- PASS: TestMergeStepMergeFailureCleanAbortsCause6 (2.45s)
+=== RUN   TestMergeStepCause8LeavesCommitAndHoldsNamingSHA
+--- PASS: TestMergeStepCause8LeavesCommitAndHoldsNamingSHA (2.76s)
+=== RUN   TestMergeStepCause8bO3SeamInjectsResidue
+    integration_merge_step_test.go:566: expected merge-step error with code 8, got success
+--- FAIL: TestMergeStepCause8bO3SeamInjectsResidue (2.09s)
+=== RUN   TestMergeStepPinnedSHAOverBranchName
+--- PASS: TestMergeStepPinnedSHAOverBranchName (1.97s)
+=== RUN   TestMergeStepTakeoverAtMergeCannotMergeOnStolenOwnership
+--- PASS: TestMergeStepTakeoverAtMergeCannotMergeOnStolenOwnership (5.35s)
+=== RUN   TestMergeStepLateIgnoredFileCollisionRefusesMerge
+--- PASS: TestMergeStepLateIgnoredFileCollisionRefusesMerge (2.34s)
+=== RUN   TestMergeStepLeaseRenewalPreservesTheConfiguredDisabledLease
+--- PASS: TestMergeStepLeaseRenewalPreservesTheConfiguredDisabledLease (2.31s)
+=== RUN   TestMergeStepRecheckReadsTheClockInsideTheSection
+--- PASS: TestMergeStepRecheckReadsTheClockInsideTheSection (1.47s)
+=== RUN   TestMergeStepCardLeaseInvalidatedMidstepRefusesMerge
+--- PASS: TestMergeStepCardLeaseInvalidatedMidstepRefusesMerge (2.10s)
+=== RUN   TestMergeStepCardRecordMutatedMidstepRefusesMerge
+--- PASS: TestMergeStepCardRecordMutatedMidstepRefusesMerge (1.98s)
+=== RUN   TestMergeStepFirstCardReadFailureReleasesWindow
+--- PASS: TestMergeStepFirstCardReadFailureReleasesWindow (0.86s)
+=== RUN   TestMergeStepMidstepWindowRetargetRefusesMerge
+--- PASS: TestMergeStepMidstepWindowRetargetRefusesMerge (1.31s)
+=== RUN   TestMergeStepMidstepCheckoutSwitchRefusesMerge
+--- PASS: TestMergeStepMidstepCheckoutSwitchRefusesMerge (1.48s)
+=== RUN   TestMergeStepMidstepBranchTipMoveRefusesMerge
+--- PASS: TestMergeStepMidstepBranchTipMoveRefusesMerge (1.58s)
+=== RUN   TestSameIntegrationTreeReadsAliasedPaths
+--- PASS: TestSameIntegrationTreeReadsAliasedPaths (0.02s)
+=== RUN   TestMergeStepRefusesACardWhoseStateMovedOn
+--- PASS: TestMergeStepRefusesACardWhoseStateMovedOn (1.05s)
+=== RUN   TestMergeStepCheckoutCheckReadsTheFullRef
+--- PASS: TestMergeStepCheckoutCheckReadsTheFullRef (2.91s)
+=== RUN   TestSameIntegrationTreeReadsSubdirectoryAsWorktreeRoot
+--- PASS: TestSameIntegrationTreeReadsSubdirectoryAsWorktreeRoot (1.38s)
+=== RUN   TestMergeStepCardDriftAfterMergeHoldsNamingSHA
+--- PASS: TestMergeStepCardDriftAfterMergeHoldsNamingSHA (2.07s)
+=== RUN   TestR2_C_MergeRefusesWhenWindowTakenMidStep
+--- PASS: TestR2_C_MergeRefusesWhenWindowTakenMidStep (1.42s)
+FAIL
+FAIL	github.com/modu-ai/moai-adk/internal/factory	61.332s
+FAIL
+
+== GREEN run 4: primary-surface regression, eight TestLocalMainMerge* plus the verb test, 9 names (go test ./internal/cli/ -run <list> -v -count=1) ==
+=== RUN   TestLocalMainMergeMergesIntoPrimary
+--- PASS: TestLocalMainMergeMergesIntoPrimary (1.59s)
+=== RUN   TestLocalMainMergeRefusesDirtyPrimary
+--- PASS: TestLocalMainMergeRefusesDirtyPrimary (1.47s)
+=== RUN   TestLocalMainMergeRefusesMovedHead
+--- PASS: TestLocalMainMergeRefusesMovedHead (1.49s)
+=== RUN   TestLocalMainMergeStatusSetUnchanged
+--- PASS: TestLocalMainMergeStatusSetUnchanged (1.15s)
+=== RUN   TestLocalMainMergePreservesIgnoredFile
+--- PASS: TestLocalMainMergePreservesIgnoredFile (1.37s)
+=== RUN   TestLocalMainMergeRefusesIgnoredAncestor
+--- PASS: TestLocalMainMergeRefusesIgnoredAncestor (1.27s)
+=== RUN   TestLocalMainMergeRefusesFileOverIgnoredDirectory
+--- PASS: TestLocalMainMergeRefusesFileOverIgnoredDirectory (1.72s)
+=== RUN   TestLocalMainMergeCaseAliasOutcome
+--- PASS: TestLocalMainMergeCaseAliasOutcome (1.42s)
+=== RUN   TestIntegrationMergeWorktreeAcceptsPrimaryWhenEnabled
+--- PASS: TestIntegrationMergeWorktreeAcceptsPrimaryWhenEnabled (0.78s)
+PASS
+ok  	github.com/modu-ai/moai-adk/internal/cli	13.353s
+
+== GREEN run 5 (extra, beyond the enumerated list): factory-complete and resync cli tests, 20 names (go test ./internal/cli/ -run <list> -v -count=1) ==
+=== RUN   TestMWQ19_Scenario2_OneMergePath
+--- PASS: TestMWQ19_Scenario2_OneMergePath (1.89s)
+=== RUN   TestMWQ19_Scenario3_MovedBaseRefusesWithReacquireCode
+--- PASS: TestMWQ19_Scenario3_MovedBaseRefusesWithReacquireCode (1.94s)
+=== RUN   TestMWQ19_Scenario8_PostMergeTransitionConflict
+--- PASS: TestMWQ19_Scenario8_PostMergeTransitionConflict (1.91s)
+=== RUN   TestMWQ19_O1_ForeignHolderRecordUntouched
+--- PASS: TestMWQ19_O1_ForeignHolderRecordUntouched (0.80s)
+=== RUN   TestMWQ19_Scenario5_AdoptionRefusedAfterNewCommit
+--- PASS: TestMWQ19_Scenario5_AdoptionRefusedAfterNewCommit (1.92s)
+=== RUN   TestMWQ19_Step3RefusalReleasesCompleteOwnAcquisition
+--- PASS: TestMWQ19_Step3RefusalReleasesCompleteOwnAcquisition (0.90s)
+=== RUN   TestSD_AC013_ClaudeCompleteViaIntegrationWorktree
+=== RUN   TestSD_AC013_ClaudeCompleteViaIntegrationWorktree/pre-merged_card_reaches_merged-local;_the_window_stays_held
+=== RUN   TestSD_AC013_ClaudeCompleteViaIntegrationWorktree/complete_performs_the_merge_itself_and_records_the_re-measure_evidence
+=== RUN   TestSD_AC013_ClaudeCompleteViaIntegrationWorktree/integration_branch_held_only_by_the_parent_checkout:_not_provisioned
+=== RUN   TestSD_AC013_ClaudeCompleteViaIntegrationWorktree/integration_branch_held_by_no_tree:_not_provisioned
+=== RUN   TestSD_AC013_ClaudeCompleteViaIntegrationWorktree/caller-source_window:_refused_naming_--branch
+=== RUN   TestSD_AC013_ClaudeCompleteViaIntegrationWorktree/window_naming_the_card's_own_branch:_refused
+--- PASS: TestSD_AC013_ClaudeCompleteViaIntegrationWorktree (9.55s)
+    --- PASS: TestSD_AC013_ClaudeCompleteViaIntegrationWorktree/pre-merged_card_reaches_merged-local;_the_window_stays_held (1.20s)
+    --- PASS: TestSD_AC013_ClaudeCompleteViaIntegrationWorktree/complete_performs_the_merge_itself_and_records_the_re-measure_evidence (1.96s)
+    --- PASS: TestSD_AC013_ClaudeCompleteViaIntegrationWorktree/integration_branch_held_only_by_the_parent_checkout:_not_provisioned (1.78s)
+    --- PASS: TestSD_AC013_ClaudeCompleteViaIntegrationWorktree/integration_branch_held_by_no_tree:_not_provisioned (1.98s)
+    --- PASS: TestSD_AC013_ClaudeCompleteViaIntegrationWorktree/caller-source_window:_refused_naming_--branch (1.57s)
+    --- PASS: TestSD_AC013_ClaudeCompleteViaIntegrationWorktree/window_naming_the_card's_own_branch:_refused (1.05s)
+=== RUN   TestSD_AC024_CodexMergeRefusedComplete
+--- PASS: TestSD_AC024_CodexMergeRefusedComplete (0.76s)
+=== RUN   TestSD_AC024_CodexMergeRefusedStage
+--- PASS: TestSD_AC024_CodexMergeRefusedStage (1.65s)
+=== RUN   TestSD_AC025_IntegrationWindowSerializes
+--- PASS: TestSD_AC025_IntegrationWindowSerializes (5.13s)
+=== RUN   TestR2_D_MergeRefusesPrimaryCheckoutTarget
+2026/10/10 14:38:32 WARN config sections directory not found, using defaults path=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestR2_D_MergeRefusesPrimaryCheckoutTarget3542791404/001/.moai/config/sections
+Error: integration merge: no worktree holds the integration branch develop. Provision its worktree (the leader does this at batch start), or check develop out in the primary checkout from your own terminal. The tool does not switch branches
+Usage:
+  merge --card <id> [--session <id>] [flags]
+
+Flags:
+      --card string      The card id whose merge the step runs
+  -h, --help             help for merge
+      --run string       Factory run id (default: the single active run) — read for the card record
+      --session string   This session's id when the environment cannot carry it (the holder decision needs an address)
+
+--- PASS: TestR2_D_MergeRefusesPrimaryCheckoutTarget (0.04s)
+=== RUN   TestIntegrationSurfaceSeparateWorktreeUnchanged
+=== RUN   TestIntegrationSurfaceSeparateWorktreeUnchanged/gate-off
+=== RUN   TestIntegrationSurfaceSeparateWorktreeUnchanged/gate-on
+--- PASS: TestIntegrationSurfaceSeparateWorktreeUnchanged (0.76s)
+    --- PASS: TestIntegrationSurfaceSeparateWorktreeUnchanged/gate-off (0.39s)
+    --- PASS: TestIntegrationSurfaceSeparateWorktreeUnchanged/gate-on (0.37s)
+=== RUN   TestLocalMainResyncFastForwards
+--- PASS: TestLocalMainResyncFastForwards (0.51s)
+=== RUN   TestLocalMainResyncRefusesDiverged
+--- PASS: TestLocalMainResyncRefusesDiverged (0.54s)
+=== RUN   TestLocalMainResyncAheadIsNoop
+--- PASS: TestLocalMainResyncAheadIsNoop (0.44s)
+=== RUN   TestLocalMainResyncPreservesIgnoredFile
+--- PASS: TestLocalMainResyncPreservesIgnoredFile (0.54s)
+=== RUN   TestLocalMainResyncHolderCallKeepsWindow
+=== RUN   TestLocalMainResyncHolderCallKeepsWindow/no-op_path
+    local_main_resync_test.go:228: held before the re-sync: session sess-lane-1, pid 47231 (session-owner)
+=== RUN   TestLocalMainResyncHolderCallKeepsWindow/fast-forward_path
+    local_main_resync_test.go:238: held before the re-sync: session sess-lane-1, pid 47231 (session-owner)
+--- PASS: TestLocalMainResyncHolderCallKeepsWindow (1.19s)
+    --- PASS: TestLocalMainResyncHolderCallKeepsWindow/no-op_path (0.48s)
+    --- PASS: TestLocalMainResyncHolderCallKeepsWindow/fast-forward_path (0.71s)
+=== RUN   TestFactoryCompletePrimaryTreeGateEnabled
+--- PASS: TestFactoryCompletePrimaryTreeGateEnabled (3.28s)
+=== RUN   TestFactoryCompletePrimaryTreeGateDisabled
+--- PASS: TestFactoryCompletePrimaryTreeGateDisabled (1.58s)
+=== RUN   TestFactoryCompleteNoIntegrationTreeRefused
+=== RUN   TestFactoryCompleteNoIntegrationTreeRefused/gate-off
+=== RUN   TestFactoryCompleteNoIntegrationTreeRefused/gate-on
+--- PASS: TestFactoryCompleteNoIntegrationTreeRefused (2.93s)
+    --- PASS: TestFactoryCompleteNoIntegrationTreeRefused/gate-off (1.31s)
+    --- PASS: TestFactoryCompleteNoIntegrationTreeRefused/gate-on (1.62s)
+PASS
+ok  	github.com/modu-ai/moai-adk/internal/cli	38.950s
+
+== GREEN run 6 (extra): integration-surface and merge-worktree cli tests, 11 names (go test ./internal/cli/ -run <list> -v -count=1) ==
+=== RUN   TestMergeReadinessBeforePRSpecLess
+=== RUN   TestMergeReadinessBeforePRSpecLess/valid_pass_bound_to_head
+=== RUN   TestMergeReadinessBeforePRSpecLess/no_verdict_file
+=== RUN   TestMergeReadinessBeforePRSpecLess/verdict_fail
+=== RUN   TestMergeReadinessBeforePRSpecLess/stale_audited_sha
+--- PASS: TestMergeReadinessBeforePRSpecLess (6.08s)
+    --- PASS: TestMergeReadinessBeforePRSpecLess/valid_pass_bound_to_head (1.45s)
+    --- PASS: TestMergeReadinessBeforePRSpecLess/no_verdict_file (1.28s)
+    --- PASS: TestMergeReadinessBeforePRSpecLess/verdict_fail (1.46s)
+    --- PASS: TestMergeReadinessBeforePRSpecLess/stale_audited_sha (1.89s)
+=== RUN   TestFactoryMergeReadySpecLessGitFlowUnchanged
+--- PASS: TestFactoryMergeReadySpecLessGitFlowUnchanged (2.11s)
+=== RUN   TestIntegrationMergeWorktreeRefusesPrimaryHoldingBranch
+2026/10/10 14:39:02 WARN config sections directory not found, using defaults path=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestIntegrationMergeWorktreeRefusesPrimaryHoldingBranch4115151394/001/.moai/config/sections
+--- PASS: TestIntegrationMergeWorktreeRefusesPrimaryHoldingBranch (0.70s)
+=== RUN   TestIntegrationMergeWorktreeResolvesLinkedWorktree
+--- PASS: TestIntegrationMergeWorktreeResolvesLinkedWorktree (0.75s)
+=== RUN   TestIntegrationMergeWorktreeRefusesUnheldBranch
+--- PASS: TestIntegrationMergeWorktreeRefusesUnheldBranch (0.51s)
+=== RUN   TestIntegrationMergeWorktreeResolutionRoutesThroughGuard
+--- PASS: TestIntegrationMergeWorktreeResolutionRoutesThroughGuard (0.00s)
+=== RUN   TestIntegrationSurfaceSelectsPrimaryWhenEnabled
+--- PASS: TestIntegrationSurfaceSelectsPrimaryWhenEnabled (0.36s)
+=== RUN   TestIntegrationSurfaceRefusesPrimaryWhenDisabled
+--- PASS: TestIntegrationSurfaceRefusesPrimaryWhenDisabled (0.34s)
+=== RUN   TestIntegrationSurfaceRefusesPrimaryOffBranch
+--- PASS: TestIntegrationSurfaceRefusesPrimaryOffBranch (0.33s)
+=== RUN   TestIntegrationSurfaceRefusesNoHolder
+--- PASS: TestIntegrationSurfaceRefusesNoHolder (0.32s)
+=== RUN   TestIntegrationMergeWorktreeAcceptsPrimaryWhenEnabled
+--- PASS: TestIntegrationMergeWorktreeAcceptsPrimaryWhenEnabled (0.61s)
+PASS
+ok  	github.com/modu-ai/moai-adk/internal/cli	12.898s
+
+== GREEN probe (temporary test file, deleted after the run): staged change at a disjoint path (go test ./internal/factory/ -run '^TestM2ProbeStagedDisjointChange$' -v -count=1) ==
+=== RUN   TestM2ProbeStagedDisjointChange
+    zz_m2_staged_probe_test.go:15: PROBE status before="M  base.txt\n"
+    zz_m2_staged_probe_test.go:16: PROBE err=integration merge: merge failed: git exited 2: error: Your local changes to the following files would be overwritten by merge:
+          base.txt
+        Merge with strategy ort failed. code=6 ok=true
+    zz_m2_staged_probe_test.go:17: PROBE status after="M  base.txt\n"
+    zz_m2_staged_probe_test.go:18: PROBE head=78d3c82230daa1a5ee205ed31e213c2ff317f324
+         base=78d3c82230daa1a5ee205ed31e213c2ff317f324
+--- PASS: TestM2ProbeStagedDisjointChange (2.25s)
+PASS
+ok  	github.com/modu-ai/moai-adk/internal/factory	2.392s
+
+== GREEN verification: go vet and gofmt on the touched Go files (no output = clean, exit 0) ==
+
+== GREEN probe 2 (temporary test file, deleted after the run): cause-8b residue written inside the merge window (go test ./internal/factory/ -run '^TestM2Probe8bResidueAfterMerge$' -v -count=1) ==
+=== RUN   TestM2Probe8bResidueAfterMerge
+    zz_m2_8c_probe_test.go:23: PROBE8C err=integration merge: the status set changed across the merge (autostash residue included) (merge commit d05fc91f919c left in place for the leader) code=8 ok=true
+    zz_m2_8c_probe_test.go:25: PROBE8C policy=hold
+    zz_m2_8c_probe_test.go:27: PROBE8C c-promoted=false
+--- PASS: TestM2Probe8bResidueAfterMerge (2.05s)
+PASS
+ok  	github.com/modu-ai/moai-adk/internal/factory	2.477s
+
+== FOLLOW-UP PROBE (temporary test file, deleted after the run): B0 and T for the staged-disjoint fixture, plan §B5 (go test ./internal/factory/ -run '^TestM2FollowupProbeB0AndT$' -v -count=1) ==
+=== RUN   TestM2FollowupProbeB0AndT
+    zz_m2_followup_b0_probe_test.go:14: PROBE status="M  base.txt\n"
+    zz_m2_followup_b0_probe_test.go:18: PROBE HEAD=31c1e8d4a0f5b46023c7dde6a724457159f1f4e6
+    zz_m2_followup_b0_probe_test.go:19: PROBE P=7731dd5979d781838edcc86ef78a1d27d8dd7c83
+    zz_m2_followup_b0_probe_test.go:20: PROBE B0=31c1e8d4a0f5b46023c7dde6a724457159f1f4e6
+    zz_m2_followup_b0_probe_test.go:22: PROBE T(raw -z)="card.txt\x00"
+    zz_m2_followup_b0_probe_test.go:29: PROBE staged base.txt in T: false
+--- PASS: TestM2FollowupProbeB0AndT (1.57s)
+PASS
+ok  	github.com/modu-ai/moai-adk/internal/factory	1.759s
+
+== GREEN section (follow-up after leader ruling d-20261010T054746Z-543b, option A) ==
+Tree: HEAD 1236348ac plus the working-tree changes to integration_merge_step.go, integration_merge_step_test.go (8b test), and integration_merge_step_overlap_test.go (staged-disjoint test). The 8b result of GREEN run 3 above is superseded by the runs below. The RED sections are unchanged.
+
+== GREEN run A: 32 names, go test ./internal/factory/ -run ^(TestMergeStepHappyPathCreatesNoFFMergeAndReleases|TestMergeStepRunsNoTestCommands|TestMergeStepHolderRefusalsLeaveRecordUntouched|TestMergeStepPreMergeCausesReleaseWithDistinctCodes|TestMergeStepNothingToMerge|TestMergeStepMergeFailureCleanAbortsCause6|TestMergeStepCause8LeavesCommitAndHoldsNamingSHA|TestMergeStepCause8bO3SeamInjectsResidue|TestMergeStepPinnedSHAOverBranchName|TestMergeStepTakeoverAtMergeCannotMergeOnStolenOwnership|TestMergeStepLateIgnoredFileCollisionRefusesMerge|TestMergeStepLeaseRenewalPreservesTheConfiguredDisabledLease|TestMergeStepRecheckReadsTheClockInsideTheSection|TestMergeStepCardLeaseInvalidatedMidstepRefusesMerge|TestMergeStepCardRecordMutatedMidstepRefusesMerge|TestMergeStepFirstCardReadFailureReleasesWindow|TestMergeStepMidstepWindowRetargetRefusesMerge|TestMergeStepMidstepCheckoutSwitchRefusesMerge|TestMergeStepMidstepBranchTipMoveRefusesMerge|TestMergeStepRefusesACardWhoseStateMovedOn|TestMergeStepCheckoutCheckReadsTheFullRef|TestMergeStepCardDriftAfterMergeHoldsNamingSHA|TestR2_C_MergeRefusesWhenWindowTakenMidStep|TestSameIntegrationTreeReadsAliasedPaths|TestSameIntegrationTreeReadsSubdirectoryAsWorktreeRoot|TestMergeStepDirtyDisjointPathsProceeds|TestMergeStepDirtyPathOverlapRefuses|TestMergeStepDirtyDirectoryPrefixOverlapRefuses|TestMergeStepDirtyIgnoredTargetRefuses|TestMergeStepStatusSetChangedAfterMergeHolds|TestMergeStepStatusSetChangedAfterAbortHolds|TestMergeStepStagedDisjointChangeRefusesFailClosed)$ -v -count=1 ==
+=== RUN   TestMergeStepDirtyDisjointPathsProceeds
+=== RUN   TestMergeStepDirtyDisjointPathsProceeds/untracked_file_outside_the_card's_paths
+=== RUN   TestMergeStepDirtyDisjointPathsProceeds/unstaged_change_to_a_tracked_file_outside_the_card's_paths
+=== RUN   TestMergeStepDirtyDisjointPathsProceeds/path_sharing_only_a_textual_prefix_with_a_card_path
+=== RUN   TestMergeStepDirtyDisjointPathsProceeds/ignored_file_outside_the_card's_paths
+--- PASS: TestMergeStepDirtyDisjointPathsProceeds (25.82s)
+    --- PASS: TestMergeStepDirtyDisjointPathsProceeds/untracked_file_outside_the_card's_paths (5.17s)
+    --- PASS: TestMergeStepDirtyDisjointPathsProceeds/unstaged_change_to_a_tracked_file_outside_the_card's_paths (6.15s)
+    --- PASS: TestMergeStepDirtyDisjointPathsProceeds/path_sharing_only_a_textual_prefix_with_a_card_path (9.06s)
+    --- PASS: TestMergeStepDirtyDisjointPathsProceeds/ignored_file_outside_the_card's_paths (5.43s)
+=== RUN   TestMergeStepDirtyPathOverlapRefuses
+=== RUN   TestMergeStepDirtyPathOverlapRefuses/unstaged_change_to_a_card_target_path
+=== RUN   TestMergeStepDirtyPathOverlapRefuses/staged_change_to_a_card_target_path
+=== RUN   TestMergeStepDirtyPathOverlapRefuses/staged_rename_whose_source_is_a_card_target_path
+--- PASS: TestMergeStepDirtyPathOverlapRefuses (12.68s)
+    --- PASS: TestMergeStepDirtyPathOverlapRefuses/unstaged_change_to_a_card_target_path (2.82s)
+    --- PASS: TestMergeStepDirtyPathOverlapRefuses/staged_change_to_a_card_target_path (5.72s)
+    --- PASS: TestMergeStepDirtyPathOverlapRefuses/staged_rename_whose_source_is_a_card_target_path (4.15s)
+=== RUN   TestMergeStepDirtyDirectoryPrefixOverlapRefuses
+=== RUN   TestMergeStepDirtyDirectoryPrefixOverlapRefuses/untracked_file_where_the_card_adds_files_under_a_directory
+=== RUN   TestMergeStepDirtyDirectoryPrefixOverlapRefuses/untracked_file_under_a_directory_the_card_replaces_with_a_file
+--- PASS: TestMergeStepDirtyDirectoryPrefixOverlapRefuses (6.91s)
+    --- PASS: TestMergeStepDirtyDirectoryPrefixOverlapRefuses/untracked_file_where_the_card_adds_files_under_a_directory (3.31s)
+    --- PASS: TestMergeStepDirtyDirectoryPrefixOverlapRefuses/untracked_file_under_a_directory_the_card_replaces_with_a_file (3.60s)
+=== RUN   TestMergeStepDirtyIgnoredTargetRefuses
+--- PASS: TestMergeStepDirtyIgnoredTargetRefuses (3.01s)
+=== RUN   TestMergeStepStatusSetChangedAfterMergeHolds
+=== RUN   TestMergeStepStatusSetChangedAfterMergeHolds/clean_before,_a_new_untracked_file_after_the_merge
+=== RUN   TestMergeStepStatusSetChangedAfterMergeHolds/untracked_file_before,_the_same_file_staged_after_the_merge
+=== RUN   TestMergeStepStatusSetChangedAfterMergeHolds/untracked_file_before,_a_new_untracked_file_after_the_merge
+--- PASS: TestMergeStepStatusSetChangedAfterMergeHolds (12.39s)
+    --- PASS: TestMergeStepStatusSetChangedAfterMergeHolds/clean_before,_a_new_untracked_file_after_the_merge (4.68s)
+    --- PASS: TestMergeStepStatusSetChangedAfterMergeHolds/untracked_file_before,_the_same_file_staged_after_the_merge (4.52s)
+    --- PASS: TestMergeStepStatusSetChangedAfterMergeHolds/untracked_file_before,_a_new_untracked_file_after_the_merge (3.18s)
+=== RUN   TestMergeStepStatusSetChangedAfterAbortHolds
+=== RUN   TestMergeStepStatusSetChangedAfterAbortHolds/clean_before,_a_new_untracked_file_after_the_abort
+=== RUN   TestMergeStepStatusSetChangedAfterAbortHolds/untracked_file_before,_the_same_file_staged_after_the_abort
+=== RUN   TestMergeStepStatusSetChangedAfterAbortHolds/untracked_file_before,_a_new_untracked_file_after_the_abort
+--- PASS: TestMergeStepStatusSetChangedAfterAbortHolds (9.53s)
+    --- PASS: TestMergeStepStatusSetChangedAfterAbortHolds/clean_before,_a_new_untracked_file_after_the_abort (3.52s)
+    --- PASS: TestMergeStepStatusSetChangedAfterAbortHolds/untracked_file_before,_the_same_file_staged_after_the_abort (3.45s)
+    --- PASS: TestMergeStepStatusSetChangedAfterAbortHolds/untracked_file_before,_a_new_untracked_file_after_the_abort (2.55s)
+=== RUN   TestMergeStepStagedDisjointChangeRefusesFailClosed
+--- PASS: TestMergeStepStagedDisjointChangeRefusesFailClosed (3.99s)
+=== RUN   TestMergeStepHappyPathCreatesNoFFMergeAndReleases
+--- PASS: TestMergeStepHappyPathCreatesNoFFMergeAndReleases (3.79s)
+=== RUN   TestMergeStepRunsNoTestCommands
+--- PASS: TestMergeStepRunsNoTestCommands (3.64s)
+=== RUN   TestMergeStepHolderRefusalsLeaveRecordUntouched
+--- PASS: TestMergeStepHolderRefusalsLeaveRecordUntouched (1.48s)
+=== RUN   TestMergeStepPreMergeCausesReleaseWithDistinctCodes
+=== RUN   TestMergeStepPreMergeCausesReleaseWithDistinctCodes/1_record_invalid
+=== RUN   TestMergeStepPreMergeCausesReleaseWithDistinctCodes/2_base_moved
+=== RUN   TestMergeStepPreMergeCausesReleaseWithDistinctCodes/3_not_a_descendant
+=== RUN   TestMergeStepPreMergeCausesReleaseWithDistinctCodes/4_tree_mismatch
+=== RUN   TestMergeStepPreMergeCausesReleaseWithDistinctCodes/5_landing_refused
+=== RUN   TestMergeStepPreMergeCausesReleaseWithDistinctCodes/9_other_error
+=== RUN   TestMergeStepPreMergeCausesReleaseWithDistinctCodes/11b_not_merge-ready
+=== RUN   TestMergeStepPreMergeCausesReleaseWithDistinctCodes/11a_foreign_card_lease
+=== RUN   TestMergeStepPreMergeCausesReleaseWithDistinctCodes/11c_card_mismatch
+=== RUN   TestMergeStepPreMergeCausesReleaseWithDistinctCodes/12_dirty_before_merge
+--- PASS: TestMergeStepPreMergeCausesReleaseWithDistinctCodes (15.69s)
+    --- PASS: TestMergeStepPreMergeCausesReleaseWithDistinctCodes/1_record_invalid (2.02s)
+    --- PASS: TestMergeStepPreMergeCausesReleaseWithDistinctCodes/2_base_moved (2.13s)
+    --- PASS: TestMergeStepPreMergeCausesReleaseWithDistinctCodes/3_not_a_descendant (1.87s)
+    --- PASS: TestMergeStepPreMergeCausesReleaseWithDistinctCodes/4_tree_mismatch (1.78s)
+    --- PASS: TestMergeStepPreMergeCausesReleaseWithDistinctCodes/5_landing_refused (2.06s)
+    --- PASS: TestMergeStepPreMergeCausesReleaseWithDistinctCodes/9_other_error (1.27s)
+    --- PASS: TestMergeStepPreMergeCausesReleaseWithDistinctCodes/11b_not_merge-ready (1.16s)
+    --- PASS: TestMergeStepPreMergeCausesReleaseWithDistinctCodes/11a_foreign_card_lease (1.07s)
+    --- PASS: TestMergeStepPreMergeCausesReleaseWithDistinctCodes/11c_card_mismatch (1.00s)
+    --- PASS: TestMergeStepPreMergeCausesReleaseWithDistinctCodes/12_dirty_before_merge (1.33s)
+=== RUN   TestMergeStepNothingToMerge
+--- PASS: TestMergeStepNothingToMerge (1.43s)
+=== RUN   TestMergeStepMergeFailureCleanAbortsCause6
+--- PASS: TestMergeStepMergeFailureCleanAbortsCause6 (2.09s)
+=== RUN   TestMergeStepCause8LeavesCommitAndHoldsNamingSHA
+--- PASS: TestMergeStepCause8LeavesCommitAndHoldsNamingSHA (3.69s)
+=== RUN   TestMergeStepCause8bO3SeamInjectsResidue
+--- PASS: TestMergeStepCause8bO3SeamInjectsResidue (3.13s)
+=== RUN   TestMergeStepPinnedSHAOverBranchName
+--- PASS: TestMergeStepPinnedSHAOverBranchName (3.60s)
+=== RUN   TestMergeStepTakeoverAtMergeCannotMergeOnStolenOwnership
+--- PASS: TestMergeStepTakeoverAtMergeCannotMergeOnStolenOwnership (6.80s)
+=== RUN   TestMergeStepLateIgnoredFileCollisionRefusesMerge
+--- PASS: TestMergeStepLateIgnoredFileCollisionRefusesMerge (1.96s)
+=== RUN   TestMergeStepLeaseRenewalPreservesTheConfiguredDisabledLease
+--- PASS: TestMergeStepLeaseRenewalPreservesTheConfiguredDisabledLease (3.85s)
+=== RUN   TestMergeStepRecheckReadsTheClockInsideTheSection
+--- PASS: TestMergeStepRecheckReadsTheClockInsideTheSection (3.26s)
+=== RUN   TestMergeStepCardLeaseInvalidatedMidstepRefusesMerge
+--- PASS: TestMergeStepCardLeaseInvalidatedMidstepRefusesMerge (9.46s)
+=== RUN   TestMergeStepCardRecordMutatedMidstepRefusesMerge
+--- PASS: TestMergeStepCardRecordMutatedMidstepRefusesMerge (3.71s)
+=== RUN   TestMergeStepFirstCardReadFailureReleasesWindow
+--- PASS: TestMergeStepFirstCardReadFailureReleasesWindow (2.06s)
+=== RUN   TestMergeStepMidstepWindowRetargetRefusesMerge
+--- PASS: TestMergeStepMidstepWindowRetargetRefusesMerge (3.02s)
+=== RUN   TestMergeStepMidstepCheckoutSwitchRefusesMerge
+--- PASS: TestMergeStepMidstepCheckoutSwitchRefusesMerge (2.10s)
+=== RUN   TestMergeStepMidstepBranchTipMoveRefusesMerge
+--- PASS: TestMergeStepMidstepBranchTipMoveRefusesMerge (2.36s)
+=== RUN   TestSameIntegrationTreeReadsAliasedPaths
+--- PASS: TestSameIntegrationTreeReadsAliasedPaths (0.03s)
+=== RUN   TestMergeStepRefusesACardWhoseStateMovedOn
+--- PASS: TestMergeStepRefusesACardWhoseStateMovedOn (1.37s)
+=== RUN   TestMergeStepCheckoutCheckReadsTheFullRef
+--- PASS: TestMergeStepCheckoutCheckReadsTheFullRef (3.30s)
+=== RUN   TestSameIntegrationTreeReadsSubdirectoryAsWorktreeRoot
+--- PASS: TestSameIntegrationTreeReadsSubdirectoryAsWorktreeRoot (1.02s)
+=== RUN   TestMergeStepCardDriftAfterMergeHoldsNamingSHA
+--- PASS: TestMergeStepCardDriftAfterMergeHoldsNamingSHA (2.19s)
+=== RUN   TestR2_C_MergeRefusesWhenWindowTakenMidStep
+--- PASS: TestR2_C_MergeRefusesWhenWindowTakenMidStep (4.87s)
+PASS
+ok  	github.com/modu-ai/moai-adk/internal/factory	164.724s
+
+== GREEN run B: internal/cli, 10 names (8 TestLocalMainMerge*, the verb test, TestLocalMainResyncHolderCallKeepsWindow), go test ./internal/cli/ -run ^(TestLocalMainMergeMergesIntoPrimary|TestLocalMainMergeRefusesDirtyPrimary|TestLocalMainMergeRefusesMovedHead|TestLocalMainMergeStatusSetUnchanged|TestLocalMainMergePreservesIgnoredFile|TestLocalMainMergeRefusesIgnoredAncestor|TestLocalMainMergeRefusesFileOverIgnoredDirectory|TestLocalMainMergeCaseAliasOutcome|TestIntegrationMergeWorktreeAcceptsPrimaryWhenEnabled|TestLocalMainResyncHolderCallKeepsWindow)$ -v -count=1 ==
+=== RUN   TestLocalMainMergeMergesIntoPrimary
+--- PASS: TestLocalMainMergeMergesIntoPrimary (1.92s)
+=== RUN   TestLocalMainMergeRefusesDirtyPrimary
+--- PASS: TestLocalMainMergeRefusesDirtyPrimary (1.41s)
+=== RUN   TestLocalMainMergeRefusesMovedHead
+--- PASS: TestLocalMainMergeRefusesMovedHead (1.59s)
+=== RUN   TestLocalMainMergeStatusSetUnchanged
+--- PASS: TestLocalMainMergeStatusSetUnchanged (1.80s)
+=== RUN   TestLocalMainMergePreservesIgnoredFile
+--- PASS: TestLocalMainMergePreservesIgnoredFile (1.64s)
+=== RUN   TestLocalMainMergeRefusesIgnoredAncestor
+--- PASS: TestLocalMainMergeRefusesIgnoredAncestor (1.28s)
+=== RUN   TestLocalMainMergeRefusesFileOverIgnoredDirectory
+--- PASS: TestLocalMainMergeRefusesFileOverIgnoredDirectory (1.40s)
+=== RUN   TestLocalMainMergeCaseAliasOutcome
+--- PASS: TestLocalMainMergeCaseAliasOutcome (1.53s)
+=== RUN   TestLocalMainResyncHolderCallKeepsWindow
+=== RUN   TestLocalMainResyncHolderCallKeepsWindow/no-op_path
+    local_main_resync_test.go:228: held before the re-sync: session sess-lane-1, pid 47231 (session-owner)
+=== RUN   TestLocalMainResyncHolderCallKeepsWindow/fast-forward_path
+    local_main_resync_test.go:238: held before the re-sync: session sess-lane-1, pid 47231 (session-owner)
+--- PASS: TestLocalMainResyncHolderCallKeepsWindow (1.34s)
+    --- PASS: TestLocalMainResyncHolderCallKeepsWindow/no-op_path (0.61s)
+    --- PASS: TestLocalMainResyncHolderCallKeepsWindow/fast-forward_path (0.73s)
+=== RUN   TestIntegrationMergeWorktreeAcceptsPrimaryWhenEnabled
+--- PASS: TestIntegrationMergeWorktreeAcceptsPrimaryWhenEnabled (0.88s)
+PASS
+ok  	github.com/modu-ai/moai-adk/internal/cli	15.928s
+
+== GREEN check C: gofmt -l on each touched Go file, then go vet ./internal/factory/ ./internal/cli/ (no output = clean) ==

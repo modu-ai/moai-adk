@@ -348,3 +348,33 @@ func TestMergeStepStatusSetChangedAfterAbortHolds(t *testing.T) {
 		})
 	}
 }
+
+func TestMergeStepStagedDisjointChangeRefusesFailClosed(t *testing.T) {
+	// Characterization test (card t1616, plan §B5). The staged path base.txt is
+	// outside T, and no ignored file sits at a target path, so the overlap decision
+	// proceeds. git's merge then refuses the staged index ("Your local changes to
+	// the following files would be overwritten by merge: base.txt"), and the step
+	// fails closed with MergeExitMergeFailed: the abort restores the status
+	// records, HEAD does not move, no merge commit exists, and the window is
+	// released. This pins the observed behaviour. §B5 says a disjoint change
+	// proceeds, so the refusal is a Gap (progress.md §59).
+	f := newMergeFixture(t)
+	card := f.withCardTree(readyCardPtr())
+	stepWriteFile(t, f.integ, "base.txt", "staged edit\n")
+	stepMustGit(t, f.integ, "add", "base.txt")
+	statusBefore := stepStatus(t, f)
+	headBefore := strings.TrimSpace(stepMustGit(t, f.integ, "rev-parse", "HEAD"))
+	_, err := RunMergeStep(f.input(), f.seams(card))
+	requireCode(t, err, MergeExitMergeFailed)
+	if statusAfter := stepStatus(t, f); statusAfter != statusBefore {
+		t.Fatalf("the status records must be identical before and after the refused merge: before %q, after %q", statusBefore, statusAfter)
+	}
+	if headAfter := strings.TrimSpace(stepMustGit(t, f.integ, "rev-parse", "HEAD")); headAfter != headBefore {
+		t.Fatalf("HEAD must not move on a refused merge: %s -> %s", headBefore, headAfter)
+	}
+	requireNoMerge(t, f)
+	if _, statErr := os.Stat(filepath.Join(f.integ, ".git", "MERGE_HEAD")); !os.IsNotExist(statErr) {
+		t.Fatalf("the abort must leave no merge in progress: %v", statErr)
+	}
+	requireWindowReleasedAndCPromoted(t, f)
+}
