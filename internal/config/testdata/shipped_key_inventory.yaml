@@ -2449,8 +2449,8 @@
   class: W
   evidence: reader
 - path: "workflow.local_main_integration.enabled"
-  class: R
-  evidence: none
+  class: W
+  evidence: "reader: internal/cli localMainIntegrationEnabled, called by integrationMergeWorktree (SPEC-LOCAL-MAIN-FLOW-001 M1 step 4)"
 - path: "workflow.loop_prevention.failure_pattern_detection"
   class: W
   evidence: reader

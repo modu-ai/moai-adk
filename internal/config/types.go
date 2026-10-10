@@ -545,8 +545,9 @@ type WorkflowConfig struct {
 
 	// LocalMainIntegration carries the local-main integration flag
 	// (SPEC-LOCAL-MAIN-FLOW-001 REQ-LMF-001). Default OFF: an absent key reads as
-	// disabled. No code reads Enabled yet; the surface gate that does lands in a
-	// later milestone of the same SPEC.
+	// disabled. Enabled is read by the merge-target resolver integrationMergeWorktree
+	// (internal/cli), which admits the primary checkout as the merge target only
+	// while the gate is on.
 	LocalMainIntegration LocalMainIntegrationConfig `yaml:"local_main_integration"`
 
 	// QuotaGate carries the quota-aware lane gate settings

@@ -10,9 +10,11 @@ package cli
 import (
 	"context"
 	"fmt"
+	"path/filepath"
 	"strings"
 	"time"
 
+	"github.com/modu-ai/moai-adk/internal/config"
 	"github.com/modu-ai/moai-adk/internal/factory"
 	"github.com/modu-ai/moai-adk/internal/homestate"
 	"github.com/spf13/cobra"
@@ -117,27 +119,47 @@ func newIntegrationMergeCmd() *cobra.Command {
 	return cmd
 }
 
-// integrationMergeWorktree resolves the worktree the merge step merges INTO,
-// and refuses the PRIMARY checkout (card t1479 r3 F3): the resolver below
-// returns ANY tree holding the branch — the primary included, with no
-// primary exclusion on the path — and a merge whose target is the shared
-// primary checkout is exactly what the branch-guard doctrine forbids (the
-// primary never changes branch for anyone). complete's own resolution
-// refuses the same shape; the verb owns the identical test, by the same
-// identity helper factorySameTree.
+// integrationMergeWorktree resolves the worktree the merge step merges INTO
+// (SPEC-LOCAL-MAIN-FLOW-001 plan §B2). It has four answers:
+//
+//   - a separate worktree holds the integration branch: that worktree,
+//     whatever the local-main gate says (case 2);
+//   - the primary checkout holds it and workflow.local_main_integration.enabled
+//     is on: the primary checkout, the designed local-main path (case 4);
+//   - the primary checkout holds it and the gate is off: refused, as before
+//     (case 3; card t1479 r3 F3). The primary never changes branch for anyone;
+//   - no tree holds it, because the primary checkout is on another branch or
+//     detached: refused with the operator guidance, which states that this
+//     tool never switches a branch (case 5).
+//
+// The merge verb resolves the surface here. factory complete keeps its own
+// copy of the primary refusal until the same SPEC routes it through this
+// resolver.
 func integrationMergeWorktree(root, integBranch string) (string, error) {
 	integ := factoryWorktreeForBranchIn(root, integBranch)
 	if integ == "" {
-		return "", fmt.Errorf("integration merge: no worktree holds the integration branch %q — the leader provisions the integration worktree", integBranch)
+		return "", fmt.Errorf("integration merge: no worktree holds the integration branch %s. Provision its worktree (the leader does this at batch start), or check %s out in the primary checkout from your own terminal. The tool does not switch branches", integBranch, integBranch)
 	}
 	primary, _, err := identifyPrimaryCheckout(root)
 	if err != nil {
 		return "", fmt.Errorf("integration merge: cannot identify the primary checkout of %s: %w", root, err)
 	}
-	if factorySameTree(integ, primary) {
+	if factorySameTree(integ, primary) && !localMainIntegrationEnabled(root) {
 		return "", fmt.Errorf("integration merge: refused — the only tree holding %q is the primary checkout %s (the primary never changes branch; the leader provisions the integration worktree)", integBranch, primary)
 	}
 	return integ, nil
+}
+
+// localMainIntegrationEnabled reads workflow.local_main_integration.enabled
+// (SPEC-LOCAL-MAIN-FLOW-001 REQ-LMF-001). Every read failure, an absent config
+// included, answers false: the shipped default, so an unreadable config never
+// admits the primary checkout as a merge target.
+func localMainIntegrationEnabled(root string) bool {
+	cfg, err := config.NewLoader().Load(filepath.Join(root, ".moai"))
+	if err != nil || cfg == nil {
+		return false
+	}
+	return cfg.Workflow.LocalMainIntegration.Enabled
 }
 
 // integrationReadMergeCardForRun is the card-gate read O4 pins: one
