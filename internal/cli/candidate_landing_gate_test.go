@@ -550,6 +550,34 @@ func TestCandidateRequiredJobVerdict(t *testing.T) {
 	})
 }
 
+// TestCandidateRunVerdict_UnreadableSSoTIsNeverGreen pins F7 (card t1478, the
+// sync-audit fail-open landing verdict): an SSoT that exists but cannot be
+// read as a required-checks set must not fall back to the run's own job
+// names, or a run whose only job is Guard Bundle, succeeding, reads green.
+// Read uncertainty is never green: the verdict stays pending and
+// non-authoritative.
+func TestCandidateRunVerdict_UnreadableSSoTIsNeverGreen(t *testing.T) {
+	root := t.TempDir()
+	checksDir := filepath.Join(root, ".github")
+	if err := os.MkdirAll(checksDir, 0o750); err != nil {
+		t.Fatal(err)
+	}
+	// The SSoT is present but unparseable (an unclosed flow sequence).
+	if err := os.WriteFile(filepath.Join(checksDir, "required-checks.yml"), []byte("branches: [unclosed\n"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	prevList := candidateGhRunsListFn
+	candidateGhRunsListFn = func(dir string, args ...string) (string, error) {
+		return `{"jobs":[{"name":"Guard Bundle","conclusion":"success"}]}`, nil
+	}
+	t.Cleanup(func() { candidateGhRunsListFn = prevList })
+
+	verdict := candidateRunVerdict(root, "run-1", 1, "completed", "success", "ci/**")
+	if verdict.conclusion == "success" || verdict.authoritative {
+		t.Errorf("verdict %+v: want not success and not authoritative; an unreadable required-checks SSoT is read uncertainty, never green", verdict)
+	}
+}
+
 // TestCandidateObserveWalkNeverGreenOnFailedRead pins the observe-level
 // consequence of the never-green rule: a gh required-check read failure
 // with a run-level success leaves the record pending — wrote=false.
