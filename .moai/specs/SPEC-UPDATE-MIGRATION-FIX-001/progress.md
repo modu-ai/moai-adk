@@ -2,7 +2,7 @@
 
 SPEC ID: SPEC-UPDATE-MIGRATION-FIX-001
 Card: t1578
-Status: completed (sync phase)
+Status: completed (sync phase; amendment close, sync-audit verdict pending)
 Tier: M
 
 ## §E.1 Plan-phase Audit-Ready Signal
@@ -447,16 +447,16 @@ E7, blockers and gaps:
 
 Recorded by manager-docs in the single sync commit (3-phase close, plan→run→sync). The commit cannot cite its own hash, so `sync_commit_sha` holds the placeholder and the real SHA is backfilled in a following commit. This section records what was observed at commit time; the sync-audit verdict belongs to the auditor.
 
-sync_complete_at: 2026-10-09T18:01:38Z (2026-10-10 KST)
-sync_commit_sha: 38d0e07cc53c43ce62e7cb0e0a977641aca18393
+sync_complete_at: 2026-10-10T00:46:59Z (2026-10-10 KST)
+sync_commit_sha: pending-backfill
 sync_status: complete
 audit_ready: true
-b12_self_test_a: pre-emission `grep -c 'SPEC-UPDATE-MIGRATION-FIX-001' CHANGELOG.md` = 0 before the append, so emission proceeded with no duplicate entry
-b12_self_test_b: AC counter over `.moai/specs/SPEC-UPDATE-MIGRATION-FIX-001/acceptance.md` (tier M, ac_source=acceptance.md) = `live=5 excluded=0 ambiguous=0`, stdout `5`, exit 0; reserved tokens in acceptance.md = 0; the CHANGELOG entry states the same count (5 acceptance criteria, AC-UMF-001..005)
-b12_self_test_c: every file path the CHANGELOG entry cites was checked with `ls` before commit (spec.md, progress.md, .claude/settings.json, .moai/manifest.json, .moai/config/sections/system.yaml, internal/userassets)
+b12_self_test_a: this pass appends no entry (line 26 is edited in place), so the emission gate does not apply; `grep -c 'SPEC-UPDATE-MIGRATION-FIX-001' CHANGELOG.md` = 1, which is that existing entry. The emission-time count was 0 before the original append, so that emission proceeded with no duplicate entry
+b12_self_test_b: AC counter re-run in this pass over `.moai/specs/SPEC-UPDATE-MIGRATION-FIX-001/acceptance.md` (tier M, ac_source=acceptance.md) = `live=5 excluded=0 ambiguous=0`, stdout `5`, exit 0; the CHANGELOG entry states the same count (5 acceptance criteria, AC-UMF-001..005)
+b12_self_test_c: every file path the edited CHANGELOG entry cites was checked with `ls -l` in this pass (spec.md, progress.md, .claude/settings.json, .moai/manifest.json, .moai/config/sections/system.yaml, internal/userassets)
 changelog_entry_position: CHANGELOG.md `## [Unreleased]` > `### Changed`, one entry, placed after the SPEC-UPDATE-MIGRATION-001 entry
 frontmatter_status_transitions.spec_md: `status: in-progress -> completed`; `updated: 2026-10-10` (already the sync date, unchanged)
-frontmatter_status_transitions.progress_md: header status line `in-progress -> completed` (sync phase)
+frontmatter_status_transitions.progress_md: header status line `Status: completed (sync phase; amendment close, sync-audit verdict pending)`
 frontmatter_status_transitions.plan_md: no frontmatter and no status field; not edited
 frontmatter_status_transitions.acceptance_md: no frontmatter and no status field; not edited
 canary_compliance_check: not applicable (this SPEC defines no forward-looking policy that its own sync tests)
@@ -515,6 +515,13 @@ ok  	github.com/modu-ai/moai-adk/internal/userassets	0.846s
 - G-7: MX tag validation (a sync sub-step) was not performed as a tool run, because Go sources are outside the sync edit scope. A read-only grep finds no `@MX:` tag in `internal/cli/update_integrity_probe.go` or `internal/userassets/install.go`; `internal/cli/update.go` carries pre-existing tags. No tag was added.
 - G-8: the CHANGELOG entry's behavior claims were checked against the probe source, the `install.go` diff, and the test bodies read in this sync. The tests were not re-executed.
 - G-9: commit-time hooks did not run: `core.hooksPath` is `/dev/null` in this repository.
+- G-10: the full `go test ./...` and the full `internal/cli` package suite were not observed locally; a push is forbidden in this run, so CI is the place for the full suite. Approved local verification: golangci-lint on `./internal/cli/` and `./internal/userassets/`, `go vet`, the eleven named tests with `-count=1`, and the package test bundle. The scoped run recorded in §E.3 covers seven named tests (`cond4-cli-scoped-test.log`). Ruling: d-20261010T003406Z-3eb2.
+- G-11: the standalone `/verify` gate was not run, because its standalone run executes the project-wide `go test` step and this run forbids `go test ./...`; §E.2 (amendment run) records the same reason. Ruling: d-20261010T003406Z-3eb2.
+- G-12: `readProbeFile` statement coverage is 83.3% (§E.2 amendment run, E3: `go test ... -coverprofile`, then `go tool cover -func`). The probe source has not changed since the GREEN commit `ac141b2cb` (`git diff --stat ac141b2cb HEAD -- internal` is empty in this sync). It is a new function below 85%; the uncovered arms are the race and read-error branches (the not-exist race after the pre-stat, the handle Stat error, the read error, and read growth past the bound), which need fault injection. Accepted as a gap for the sync audit. Ruling: d-20261010T003406Z-3eb2.
+- G-13: `internal/userassets` statement coverage is 80.1% (§E.2 M3 run output `coverage: 80.1% of statements`; §E.2 amendment-run E3: "unchanged from before this run"). It is a pre-existing shortfall that this card does not lower. The base figure of 79.9% is not recorded in this file and was not re-measured in this sync, so the comparison rests on the leader message of 2026-10-10 00:00Z. Ruling: leader message of 2026-10-10 00:00Z.
+- G-14: a jev advisory was asked about the G-12 choice. Its answer was "accept 83.3% and record it under Gaps", with reported probability 0.62 and a distribution that gives accept 0.81; the two numbers disagree, so the answer is recorded as advisory only. The lane decided to accept and record it. Basis: operator standing decision d-20261010T001149Z-7d0c (advisory input, not a verdict).
+- G-15: `acceptance.md` line 141 was narrowed by manager-spec in two commits, `daa4f784d` and `32035f28b` (each `Authored-By-Agent: manager-spec`). The claimed read surface is now "the probe opens each applicable member with O_NONBLOCK and adds no other syscall surface". Reason: the F1 repair uses `syscall.O_NONBLOCK` (`readProbeFile`), so the earlier claim of no syscall surface was false. Ruling: d-20261010T003406Z-3eb2.
+- G-16: the `Authored-By-Agent` trailers on this card's commits are not parsed by git's trailer parser. `git log --format='%h %(trailers:only,unfold)' 2aab5f797..HEAD` prints no trailer for any of the 21 card commits; all 21 carry the `Authored-By-Agent:` text in their body; the two commits whose bodies were read (`daa4f784d`, `32035f28b`) end with the `🗿 MoAI` paragraph. A control shows the marker is the cause: `git interpret-trailers --parse` returns the trailer when it is the last paragraph and returns nothing when `🗿 MoAI` follows it. Recorded for the operator; no commit was amended.
 
 ### Residual risk (could still be wrong despite the observations above)
 
@@ -522,7 +529,7 @@ ok  	github.com/modu-ai/moai-adk/internal/userassets	0.846s
 - R-2: the probe is a canary, not a damage-class detector. The mo.ai.kr empty skill directory and the legacy colon-star deny specifiers are outside its set. A damage-class-targeted set is an operator decision (decision-index Q2).
 - R-3: the full `internal/cli` suite is unobserved on this tree; a regression outside the scoped families would not show here.
 - R-4: the installer empty-target result (M1-b: `empty_targets=0`) is a point-in-time measurement. The guard pins the contract, not the catalog content.
-- R-5: the sync-audit verdict has not run; this record is its input, not its verdict. `sync_commit_sha` stays `pending-backfill` until the backfill commit.
+- R-5: the sync-audit verdict has not run; this record is its input, not its verdict. `sync_commit_sha` carries `pending-backfill` in this close; the prior close's placeholder was backfilled to `38d0e07cc` in `5dc172cf2`, and this close's real SHA follows in a later backfill commit.
 
 - card_review: .moai/reports/t1578/card-review.md — codex_review scope=card (advisory), verdict fail. Finding P2 internal/factory/gtd_operation.go:583 is attributed outside the card diff (git diff --stat 2aab5f797 -- that path is empty; the tool base db0c514d3 differs from the card merge base 2aab5f797). Finding P2 internal/cli/update_integrity_probe.go:52 is confirmed by code reading (a codex-only deploy hides .claude/** at internal/template/harness_fs.go:112; the probe requires .claude/settings.json). Disposition pending the leader.
 
