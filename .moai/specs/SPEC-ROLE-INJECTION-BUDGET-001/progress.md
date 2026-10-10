@@ -85,3 +85,19 @@ Gap(선언): plan-audit 재실행 전까지 이 신호는 수리 완결 상태�
   `internal/hook/role_rules_version_skew_test.go` (AC-RIB-004/005 안내면 RED).
 - Gap(선언): RED-3 의 판정 산출물은 단언 실패가 아니라 컴파일 실패다 — plan 허용 형태로 기록하며,
   M3 착지 뒤 단언 GREEN 으로 수렴 확인한다.
+
+### M2 — GREEN(규칙 축): 역할 core 재작성 + 재배치 감사 (2026-10-10)
+
+- **재배치 감사 원장**: `relocation-ledger.md` 신설(36행 전수 감사 + 특수 행 3건) — AC-RIB-002.
+- **역할 core**: 31영역 3,786 UTF-16(설계 목표 3,800 · 예산 3,946 이내) — 17,793/18,114 → −78%. 배포·템플릿 양 트리 바이트 동일(로컬 +321 꼬리는 재배치 감사 행으로 정리 — 본문은 worktree-integration § Hoist 와 mechanics § landing 6단계가 소유, 확인 후 삭제).
+- **스텁 귀속(5/36, 비대량)**: ALB-0272·0276·0284·0294·0303 은 2~4 의무 복합절로 REQ-RIB-003/§D 가 허용하는 상시 스텁 처지 선택 — 압축 시 의무 뉘앙스 상실(REQ-RIB-004 위반 우려)을 피함. 목적지·이유는 relocation-ledger §A.
+- **도크트린 문장 보존**: `### Lane waits are explicit…` 본문(CronCreate·recurring·disk evidence — lane_recheck_doctrine 경계)과 리더 조건부 문장(tree_scope: skip — codex_review_ownership_m4 경계)은 **비표지 전체 본문**에 원형 생존(스텁·core 예산 무비용). 압축 절과 병존.
+- **기존 사다리 테스트 수리(AC-RIB-010 유지)**: 핵심 축소로 overflow 픽스처가 한도 미만으로 떨어진 4개 사다리 서브테스트(b/c/d·Handle·OperatorLocales)에 크기 무관 패딩 헬퍼(overCapFiller/forceOverCapFixture) 도입 — 사다리 행위 단정은 무변경.
+
+stub-delta: `workflow/factory-dispatch-core.md` (배포·템플릿 쌍, 동일) — UTF-16 **8,583 → 9,915**(+1,332), UTF-8 **8,652 → 9,998**(+1,346 bytes). 10,000 UTF-16 예산 이내(잔여 85). 바이트 델타 1,346 > 1,000 → rule-authoring 비산 문: **(a)** 신규 파일 아님 — 기존 상시 파일 성장. **(b)** 성장 실측치 상기와 같음. **(c)** 비호출 세션 비용: 모든 세션이 매 턴(과 /clear 마다) 5개 복합절 1줄 요약을 추가 부담 — 팩토리 비세션에게는 무효 토큰 1,332 단위. 정당화: REQ-RIB-003/§D 가 구속 절의 스텁 처지를 명시 허용하고, 3,946 core 예산 안의 압축으로는 5개 복합절의 의무 뉘앙스(전송 결과 판독·크론 상한·병합 창 접점)가 REQ-RIB-004 금지의 의무 포기로 떨어진다 — 스텁 전문 보전이 유일한 의무 보존 경로였다. `cross-session-messaging-core.md` 무변동(UTF-16 8,072 · 8,110 bytes).
+
+```text
+[GREEN-1] go test -run 'TestRoleInjectionAssemblyBudget' ./internal/hook/ → ok (AC-RIB-001 플립; core 3,786 ≤ 3,946)
+[RED→GREEN] go test -run 'TestBindingLedger' ./internal/template/  → 편집 뒤·원장 갱신 전 FAIL(after-text absent 36행, AC-RIB-011 채택 증거) → 36행 after-text 재작성(31 core + 5 스텁 location 전환) 후 ok
+[GREEN-2] go test ./internal/hook/ ./internal/template/ → 전체 스위트(기존 사다리 21 서브테스트 + 원장 + 스텁 게이트 + 도크트린 경계 포함)
+```

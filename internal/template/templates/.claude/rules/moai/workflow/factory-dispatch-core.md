@@ -21,6 +21,12 @@ The one reconciliation is named, not excepted: `/moai:todo --auto` is the operat
 
 A card the operator chose to start when it was issued is not a silent promotion: that answer IS the promotion, given explicitly before anything moved, and the same whole-card routing follows.
 
+## The dispatch cycle
+
+[HARD] A dispatch is a fixed-field block (`card:` `spec:` `cmd:` `wt:` `evidence:`; `lens:` optional) — never prose, ≤10 lines. [HARD] Read the send result: `routing` = lost (re-send `name [ref]`); a delivery notice = held or refused.
+
+[HARD] A stuck lane records a disk wait and ends its turn — never idles on a reply; on awaken: stall watchdog first (`moai-lane-watchdog`), then the `auto-semantics.md` §6 ladder; a 20-min recheck cron (`CronCreate`) stays armed to the completion report.
+
 ## Card classes — not every card needs every stage
 
 The leader classifies each card as it leaves `backlog` and names the entry stage in the dispatch: **A — direct close** (one file, one line, no design judgement, CI catches the regression; `plan` skipped), **B — defect, cause unknown** (`run → sync`; no SPEC exists), **C — design change** (a decision, or spans subsystems; all three stages). Full table and rationale: `factory-dispatch-cards.md` § Card classes.
@@ -39,6 +45,8 @@ For a lane card the declared evidence list also carries `.moai/reports/<card-id>
 
 ## CodeRabbit is not read from `gh pr checks`
 
+[HARD] A CodeRabbit `gh pr checks` row is not evidence — counts only with combined-endpoint `success`+`Review completed` and a matching `Merge Risk:` line.
+
 Anything else is a gap, not a pass. `Review rate limited` means the review never started, and a card carrying it does not leave `sync`. (Endpoint choice: `factory-dispatch-gates.md` § CodeRabbit endpoint measurement.)
 
 ## The `/clear` handoff between cards
@@ -46,6 +54,12 @@ Anything else is a gap, not a pass. `Review rate limited` means the review never
 Where the next card reuses a just-cleared lane, the leader re-sends the full pointer instruction rather than assuming the session remembers.
 
 The leader's own session is cleared the same way, between cards: once a card reaches `done`, the operator is asked to `/clear` the leader session, and the next turn presents the queue again.
+
+## Isolation and integration
+
+[HARD] A card session stays in its worktree (`moai cc -w`); moving it into another card worktree is prohibited — exit-and-relaunch satisfies the new-card rule; the integration-tree merge entry keeps its own re-entry rule; an unavoidable move takes `/clear` once, after.
+
+[HARD] A verified lane merges its own branch into the batch release branch (`release/vX.Y.Z`) — git-flow variant; github-flow default: `moai factory complete`'s PR edge (mechanics § standard landing). Where it applies: `moai integration acquire` first, `EnterWorktree` in, `--no-ff`, `HEAD` re-read before commit/push, never force; batch PR with the leader.
 
 ## Factory Mode — the card travels whole
 
