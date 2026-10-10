@@ -1348,7 +1348,7 @@ Decision id: d-20261010T131225Z-073c.
 
 Scope: plan §F M5 and QG-1 to QG-5 (acceptance.md). Measurements were taken at HEAD `bbc5c0b81`, the tree at M4's close, unless a line names another SHA. Work tree: `git status --short` was empty after `make build`. After the last heavy run, the only write to the tree was this block, made by a script that writes `progress.md` alone; `git status --short` then listed `progress.md` and nothing else. The only commits after the measurements touch `progress.md` alone: this block's record commit, and a wording correction to it.
 
-Gate status of this block and of its commit: 게이트 미실행(core.hooksPath=/dev/null, 공유 설정). The commit-time hook did not run. No `SKIP_MOAI_PRECOMMIT`, no `--no-verify`, no `git -c core.hooksPath`, and the shared config was not changed. `/verify` was not run: it runs `moai gate`, which runs `go test ./...`. Operator decision for card t1673 is pending.
+Gate status of this block and of its commit: 게이트 미실행(core.hooksPath=/dev/null, 공유 설정). The commit-time hook did not run. No `SKIP_MOAI_PRECOMMIT`, no `--no-verify`, no `git -c core.hooksPath`, and the shared config was not changed. `/verify` was not run: it runs `moai gate`, which runs `go test ./...`. Operator decision for card t1673 (훅 재활성화 카드) is pending.
 
 Summary of the quality gates:
 
@@ -2396,11 +2396,11 @@ The card's cli change set does not touch any of the thirteen failing tests' file
 
 #### Gaps (each is a shortfall, not a pass)
 
-1. internal/cli full-package verdict (step 4): FAIL, exit 1, 901.031 s. Thirteen top-level tests fail in groups A to D above. Groups A, B, and C reproduce at the base copy `2aab5f797` on this machine (A and B in the supplementary run, C in the requested run). Group D is the package-level duration bound. The full run is judged by CI at push, as the lead directed.
+1. internal/cli full-package verdict (step 4): FAIL, exit 1, 901.031 s. Thirteen top-level tests fail in groups A to D above. Groups A, B, and C (HOME not isolated, /var link normalization) are handled in follow-up card t1675. The same results reproduce at the base copy `2aab5f797` on this machine (A and B in the supplementary run, C in the requested run). Group D (the 900-second bound timeout) has no follow-up card assigned; the leader decides it. The full run is judged by CI at push, as the lead directed.
 2. The full repository test suite is judged by CI at push, not locally.
 3. `/verify` was not run, because it runs `moai gate`, which runs `go test ./...`.
-4. The commit-time gate is off (`core.hooksPath=/dev/null` in the shared config): this block's commit has the gate result 게이트 미실행. The operator's decision for card t1673 is pending.
-5. QG-4, whole-file comparison of `factory-dispatch.md`: differs at line 259 (pre-existing, Step 1d). The cadence line 138 passes.
+4. The commit-time gate is off (`core.hooksPath=/dev/null` in the shared config): this block's commit has the gate result 게이트 미실행. The operator's decision for card t1673 (훅 재활성화 카드) is pending.
+5. QG-4, whole-file comparison of `factory-dispatch.md`: differs at line 259 (pre-existing, Step 1d). The cadence line 138 passes. This template drift is handled in follow-up card t1676, and it is identical at the base commit.
 6. QG-3, package totals below 85%: homestate 82.7%, config 84.9%, template 82.7%, factory 83.1%. The base totals were not measured in this lane.
 7. The causal check for group A (a run with `HOME` set to an empty directory) was refused by the worktree guard before any go command ran. The guard's message, verbatim: "This session is isolated in the worktree /Users/goos/MoAI/moai-adk-go/.moai/worktrees/t1663, but this command sets HOME, injecting git configuration whose effect on where git writes can't be verified. Refusing to run it — a worktree-isolated session's git operations must target its own worktree. Run the equivalent from /Users/goos/MoAI/moai-adk-go/.moai/worktrees/t1663 without the redirect." The refused command named `HOME`, but nothing ran with it set: no go command in this lane ran with `HOME` changed. Group A's mechanism therefore rests on the code, the directory listing, and the base-copy reproduction.
 8. The causal check for group C (removing `~/.agents/skills/moai/SKILL.md`) was not run: that file belongs to the operator's installation and was not touched. Group C's mechanism rests on the code, the file's presence, and the base-copy reproduction.
