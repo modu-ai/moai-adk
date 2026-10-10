@@ -274,7 +274,7 @@ func handleFactoryDecide(ctx context.Context, req mcp.CallToolRequest) (*mcp.Cal
 // reads and not a tool error. The outcome carries the same detail the verb's error
 // carries. Only the lane gates and the card argument are tool errors.
 func handleFactoryRenew(ctx context.Context, req mcp.CallToolRequest) (*mcp.CallToolResult, error) {
-	root, err := mcpRequiredProjectRoot(req, "factory_renew")
+	launch, err := mcpRequiredProjectRoot(req, "factory_renew")
 	if err != nil {
 		return toolErr("factory_renew", err), nil
 	}
@@ -291,6 +291,10 @@ func handleFactoryRenew(ctx context.Context, req mcp.CallToolRequest) (*mcp.Call
 	if cardID == "" {
 		return toolErr("factory_renew", errors.New("factory renew: card is required")), nil
 	}
+	// The factory root of the caller's launch tree, by the rule the verb applies to its own
+	// launch directory (factoryRootOf). A linked-worktree caller then reads the same lease keys
+	// as the verb (sync-audit F2).
+	root := factoryRootOf(launch)
 	outcome, _ := factoryRenewCard(ctx, root, cardID, req.GetString("run", ""), lane)
 	body, err := json.Marshal(outcome)
 	if err != nil {

@@ -68,8 +68,17 @@ const (
 // worktree-step lock; a test shortens it and restores it at cleanup.
 var factoryWorktreeStepWait = factoryWorktreeStepWaitDefault
 
-// factoryCardRoot is the project root the factory record and the queue share.
-func factoryCardRoot() string { return resolveTodoQueueRoot() }
+// factoryCardRoot is the project root the factory record and the queue share: the factory
+// root of the process's launch directory.
+func factoryCardRoot() string { return factoryRootOf(resolveProjectDir()) }
+
+// factoryRootOf is the one factory-root rule (SPEC-FACTORY-LEASE-RENEW-001, sync-audit F2,
+// card t1663): the queue root of a launch tree, which for a linked worktree is the primary
+// checkout. The factory record is kept at that root, and the lease keys are read from the root
+// the factory is opened at, so every surface that opens the factory for a launch tree applies
+// this rule. The verb applies it to its launch directory (factoryCardRoot); the factory_renew
+// tool applies it to the caller's project_root.
+func factoryRootOf(launch string) string { return factory.ResolveTodoQueueRoot(launch) }
 
 // Lane predicates (SPEC-FACTORY-SELF-DISPATCH-001 REQ-SD-015), deliberately
 // asymmetric. Admission — the right to run `moai factory next`, `stage`, and
