@@ -313,6 +313,8 @@ func resumeHarnessRefusal(deployed agentWiring, basis string, requested agentWir
 // failing init run made. It sits under .moai/state/ (gitignored) and is a file
 // separate from the resume-pending marker, so the marker's checkpoint
 // semantics (initResumeCheckpoint) do not change.
+// @MX:ANCHOR: [AUTO] resumeWiringPath fixes the location of the resume-wiring record for its writer and both readers
+// @MX:REASON: [AUTO] fan_in=3 non-test call sites: persistResumeWiring, readResumeWiring, clearResumeWiring
 func resumeWiringPath(projectRoot string) string {
 	return filepath.Join(projectRoot, ".moai", "state", "resume-wiring")
 }
@@ -327,6 +329,8 @@ func persistResumeWiring(projectRoot string, wiring agentWiring) error {
 	return os.WriteFile(path, []byte(string(wiring)+"\n"), 0o644)
 }
 
+// @MX:ANCHOR: [AUTO] readResumeWiring is the only reader of the resume-wiring record; a change to its read contract changes every resume decision
+// @MX:REASON: [AUTO] fan_in=4 non-test call sites: legacyLayoutSpeaks, refuseResumeHarnessChange, resumeWiringFromRecord, resumeAgentWiringDefault
 // readResumeWiring returns the recorded selection. Only a member of the closed
 // set counts; anything else reads as no record. The read is the non-blocking
 // regular-file read every resume record uses, so a FIFO at the path reads as

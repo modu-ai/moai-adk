@@ -1041,6 +1041,8 @@ func globalMoaiHooksDir(homeDir string) string {
 	return filepath.Join(homeDir, defs.ClaudeDir, "hooks", "moai")
 }
 
+// @MX:ANCHOR: [AUTO] ensureGlobalSettingsEnv is the global settings and hooks cleanup shared by the init, update, and init-resume paths; it removes ~/.claude/hooks/moai
+// @MX:REASON: [AUTO] fan_in=3 non-test call sites: runInit (init.go), runTemplateSyncWithReporter (update_template_sync.go), resumeInitializedProject (init_resume.go)
 // ensureGlobalSettingsEnv cleans up moai-managed settings from ~/.claude/settings.json.
 // All settings (env, permissions, teammateMode, hooks) are managed at the project level.
 // The global hooks directory (~/.claude/hooks/moai/) is also removed since hooks

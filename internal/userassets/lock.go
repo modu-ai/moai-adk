@@ -37,6 +37,8 @@ type UserLock struct {
 	released atomic.Bool // set by the first Release; every later call is a no-op
 }
 
+// @MX:ANCHOR: [AUTO] AcquireUserLock is the single entry point to the user-level lock; callers depend on its ErrLocked contract and its stale-reclaim behavior
+// @MX:REASON: [AUTO] fan_in=5 non-test call sites, one in each of ensureUserAssetsLocked, runUserAssetUpdatePhase, runBundleAdd, runBundleRemove, resumeInitializedProject
 // AcquireUserLock takes the user-level lock under the given moai home,
 // retrying until timeout. It returns ErrLocked when the window elapses
 // while a live holder keeps the lock.
@@ -100,6 +102,8 @@ func acquireUserLockStale(path string, timeout, staleAfter time.Duration) (*User
 // owner's lock exactly where an unguarded removal would delete it.
 var releaseWindowHook = func(string) {}
 
+// @MX:ANCHOR: [AUTO] Release is the release contract of every user-lock holder: at most once per handle, and removal only after the token check
+// @MX:REASON: [AUTO] fan_in=5 non-test callers: ensureUserAssetsLocked and runUserAssetUpdatePhase (user_asset_phase.go), runBundleAdd and runBundleRemove (bundle.go), resumeInitializedProject (init_resume.go)
 // Release removes the lock file — only when it still carries THIS holder's
 // identity token. A lock reclaimed by another owner (the stale-reclaim path)
 // is left alone: the original holder's late release neither deletes the new
