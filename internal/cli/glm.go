@@ -561,8 +561,10 @@ func scanGLMKeyValue(args []string) (value string, rest []string, flagIdx int, p
 				next := args[i+1]
 				// A flag-shaped token cannot be the value (REQ-GJK-004):
 				// `moai glm --key -f` would otherwise store the flag
-				// itself. The '=' spelling stays accepted — unambiguous.
-				if strings.HasPrefix(next, "-") && next != "-" {
+				// itself. The shape is judged on the trimmed token, the value that
+				// handleGLMKeyFlag stores, so a padded " -f" and a bare "-" are both
+				// refused. The '=' spelling stays accepted — unambiguous.
+				if strings.HasPrefix(strings.TrimSpace(next), "-") {
 					return "", nil, i, true, false
 				}
 				return next, args[i+2:], i, true, true
