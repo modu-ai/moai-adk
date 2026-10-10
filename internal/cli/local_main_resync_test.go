@@ -507,6 +507,35 @@ func TestLocalMainResyncFetchPinsFetchedCommit(t *testing.T) {
 	}
 }
 
+// TestLocalMainResyncForeignFetchDoesNotMoveBaseline pins the baseline source (card
+// t1616, leader ruling (A), 2026-10-10). A fetch of another ref in this repository
+// overwrites FETCH_HEAD between our fetch and our read, so a BASELINE_SHA taken from
+// FETCH_HEAD can name a foreign commit. The seam runs that order: the origin/main
+// fetch leaves refs/remotes/origin/main at X, then another session's fetch leaves
+// FETCH_HEAD at F, a commit that also descends from the primary's HEAD. The re-sync
+// must fast-forward to X, not to F.
+func TestLocalMainResyncForeignFetchDoesNotMoveBaseline(t *testing.T) {
+	root := lmfResyncFixture(t, "")
+	base := lmfHead(t, root)
+	foreign := lmfOriginCommit(t, root, base, "origin-f", map[string]string{"foreign.txt": "foreign\n"}, false)
+	target := lmfOriginCommit(t, root, base, "origin-x", map[string]string{"ahead.txt": "ahead\n"}, false)
+	prev := localMainResyncFetch
+	localMainResyncFetch = func(repoRoot string) error {
+		// The origin/main fetch leaves refs/remotes/origin/main at X.
+		fcGit(t, repoRoot, "update-ref", "refs/remotes/origin/"+lmfBranch, target)
+		// Another session's fetch of refs/heads/origin-f overwrites FETCH_HEAD with F.
+		fcGit(t, repoRoot, "fetch", "-q", ".", "refs/heads/origin-f")
+		return nil
+	}
+	t.Cleanup(func() { localMainResyncFetch = prev })
+	if _, err := runLocalMainResync(root); err != nil {
+		t.Fatalf("local main behind origin/main must fast-forward: %v", err)
+	}
+	if head := lmfHead(t, root); head != target {
+		t.Fatalf("BASELINE_SHA must come from origin/main %s, not from FETCH_HEAD, which names the foreign commit %s: HEAD is %s", target, foreign, head)
+	}
+}
+
 // TestLocalMainResyncHoldWriteFailureKeepsWindow pins the retained-refusal path (card
 // t1616, F3). After a post-merge anomaly the policy hold is written before the window
 // is released. When that write fails, the re-sync returns both the anomaly and the
