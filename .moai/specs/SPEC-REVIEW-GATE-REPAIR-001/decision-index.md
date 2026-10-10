@@ -77,7 +77,7 @@ Why unresolved: 카드는 "환경 값 또는 주 체크아웃의 미추적 재�
 
 판정 기록 뒤 명시한 사항(보드 기록 d-20261010T054047Z-3fc2, D11 = 커밋된 설정값을 따름):
 - 재정의 파일이 없을 때의 기본값은 커밋된 `.moai/config/sections/workflow.yaml` 의 `codex.review_gate.enabled` 값이다. HEAD 에서 그 값은 `true` 이므로(302행) 파일이 없으면 검토가 켜진다. 현재 Go 층은 빈 루트를 비활성으로 읽는다(`internal/cli/mcp_codex.go:2503-2505`). 그래서 기본값을 명시해야 조용한 비활성을 막는다.
-- 재정의 파일은 주 체크아웃의 `.moai/state/codex-review-gate/run-switch.json` 에 둔다. 이 경로는 `.gitignore` 401행으로 무시된다. 이름과 형식은 run 단계의 설계 세부다.
+- 재정의 파일은 주 체크아웃의 `.moai/state/codex-review-gate/run-switch.json` 에 둔다. 이 경로는 `.gitignore` 401행으로 무시된다. 이름과 형식은 design.md §5 가 정한다.
 - "run" 은 factory run 하나다. `--run` 플래그가 가리키는 factory run id 로 지칭되며, 활성 run 은 하나다(`internal/cli/factory_card.go:1622` 의 도움말 "default: the single active run").
 Options:
 - (a) 환경 값(이름과 읽기 순서는 run 단계가 정한다)
@@ -135,6 +135,8 @@ Default: (b) (rule: 순위 1 — 규칙의 문언은 "현행 동작 보존"이�
 Alternate: (a) 또는 (c).
 Operator verdict: (b) — 보드 기록 d-20261010T054047Z-3fc2
 
+[ID mapping v0.2.2: REQ-RG-010→REQ-RG-006.]
+
 ---
 
 ## 2회차 판정 기록 (Q 행 밖)
@@ -155,6 +157,8 @@ progress.md 를 M1–M7 공통 승인 파일로 plan.md §C 에 등록하고, �
 
 리더 판정 d-20261010T072546Z-6d67, option (b): (6) 중 REQ-RG-016의 상태 메시지(D4)는 이 SPEC에 남고, 나머지 가시성 확장은 t1637이 맡는다. REQ-RG-016 과 묶인 AC(AC-RG-005, AC-RG-010, AC-RG-018, AC-RG-019)는 이 SPEC 에 둔다.
 
+[ID mapping v0.2.2: REQ-RG-016→REQ-RG-012. 이 기록의 REQ-RG-006·007·008 은 v0.2.0 에서 폐기된 식별자이며 이 기록에는 대응이 적용되지 않는다.]
+
 ---
 
 ## 보드 판정 기록 (Q 행 밖)
@@ -162,5 +166,5 @@ progress.md 를 M1–M7 공통 승인 파일로 plan.md §C 에 등록하고, �
 보드 판정 세 건은 Q 행이 아니므로 여기에 원문으로 기록한다. 같은 보드 기록(d-20261010T054047Z-3fc2)에 Q5·Q6 과 함께 있다.
 
 - D3 — Operator verdict: 키당 총 C회로 제한 (허용이 카운터를 되돌리지 않음) — 보드 기록 d-20261010T054047Z-3fc2. 반영: REQ-RG-004, AC-RG-005, AC-RG-017.
-- D4 — Operator verdict: 항상 메시지 표시 — 보드 기록 d-20261010T054047Z-3fc2. 반영: REQ-RG-016, AC-RG-005, AC-RG-010, AC-RG-018, AC-RG-019.
-- D11 — Operator verdict: 커밋된 설정값을 따름 — 보드 기록 d-20261010T054047Z-3fc2. 반영: REQ-RG-011, REQ-RG-012, AC-RG-012, AC-RG-013.
+- D4 — Operator verdict: 항상 메시지 표시 — 보드 기록 d-20261010T054047Z-3fc2. 반영: REQ-RG-012, AC-RG-005, AC-RG-010, AC-RG-018, AC-RG-019.
+- D11 — Operator verdict: 커밋된 설정값을 따름 — 보드 기록 d-20261010T054047Z-3fc2. 반영: REQ-RG-007, REQ-RG-008, AC-RG-012, AC-RG-013.

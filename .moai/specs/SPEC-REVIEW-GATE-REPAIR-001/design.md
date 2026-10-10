@@ -23,17 +23,17 @@
 
 | 상태 | 진입(프롬프트) 현재 | 진입 목표 | 턴 종료 현재 | 턴 종료 목표 |
 |---|---|---|---|---|
-| absent | 허용 | 허용 | 검토 시작 후 허용 | 검토 시작 후 허용, 메시지 (REQ-RG-015, 016) |
-| stale | 허용 | 허용 | 검토 시작 후 허용 | 검토 시작 후 허용, 메시지 (REQ-RG-015, 016) |
-| key-mismatch | 허용 | 허용 | 검토 시작 후 허용 | 검토 시작 후 허용, 메시지 (REQ-RG-015, 016) |
-| fresh-fail, 전달 기록 없음 | 차단 | 허용, 상세를 추가 맥락으로 한 번 전달, 전달 기록 (REQ-RG-002) | 차단 (stop_hook_active 가 거짓일 때) | 차단 횟수가 C 미만이면 차단(횟수 +1), 아니면 허용 + 메시지 (REQ-RG-003, 004, 016) |
-| fresh-fail, 전달 기록 있음 | 차단 | 허용, 반복 없음 (REQ-RG-002) | 차단 (stop_hook_active 가 거짓일 때) | 차단 횟수가 C 미만이면 차단, 아니면 허용 + 메시지 (REQ-RG-003, 004, 016) |
-| fresh-pass | 허용 | 허용 | 허용 | 허용, 메시지 없음 (REQ-RG-013) |
-| fresh-inconclusive | 허용 | 허용 | 허용(재사용) | 재검토 시작(표식 없을 때), 허용 + 메시지 (REQ-RG-009, 010, 016) |
-| 스위치 꺼짐 | 검토 없음 | 검토 없음 | 검토 없음 | 허용 + 메시지 (REQ-RG-011, 014, 016) |
-| 검토할 변경 없음 | 검토 없음 | 검토 없음 | 검토 없음 | 허용 + 메시지 (REQ-RG-014, 016) |
-| stop-hook 해제 | — | — | 허용 | 허용 + 메시지 (REQ-RG-014, 016) |
-| reviewer 없음 | 허용 | 허용 | 허용 | 허용 + 메시지 (REQ-RG-014, 016) |
+| absent | 허용 | 허용 | 검토 시작 후 허용 | 검토 시작 후 허용, 메시지 (REQ-RG-011, 012) |
+| stale | 허용 | 허용 | 검토 시작 후 허용 | 검토 시작 후 허용, 메시지 (REQ-RG-011, 012) |
+| key-mismatch | 허용 | 허용 | 검토 시작 후 허용 | 검토 시작 후 허용, 메시지 (REQ-RG-011, 012) |
+| fresh-fail, 전달 기록 없음 | 차단 | 허용, 상세를 추가 맥락으로 한 번 전달, 전달 기록 (REQ-RG-002) | 차단 (stop_hook_active 가 거짓일 때) | 차단 횟수가 C 미만이면 차단(횟수 +1), 아니면 허용 + 메시지 (REQ-RG-003, 004, 012) |
+| fresh-fail, 전달 기록 있음 | 차단 | 허용, 반복 없음 (REQ-RG-002) | 차단 (stop_hook_active 가 거짓일 때) | 차단 횟수가 C 미만이면 차단, 아니면 허용 + 메시지 (REQ-RG-003, 004, 012) |
+| fresh-pass | 허용 | 허용 | 허용 | 허용, 메시지 없음 (REQ-RG-009) |
+| fresh-inconclusive | 허용 | 허용 | 허용(재사용) | 재검토 시작(표식 없을 때), 허용 + 메시지 (REQ-RG-005, 006, 012) |
+| 스위치 꺼짐 | 검토 없음 | 검토 없음 | 검토 없음 | 허용 + 메시지 (REQ-RG-007, 010, 012) |
+| 검토할 변경 없음 | 검토 없음 | 검토 없음 | 검토 없음 | 허용 + 메시지 (REQ-RG-010, 012) |
+| stop-hook 해제 | — | — | 허용 | 허용 + 메시지 (REQ-RG-010, 012) |
+| reviewer 없음 | 허용 | 허용 | 허용 | 허용 + 메시지 (REQ-RG-010, 012) |
 
 ## 3. 데이터 모델: 전달 기록과 차단 횟수
 
@@ -43,18 +43,27 @@
 
 ## 4. 기준 해석 함수 — t1662 로 이관되었다(REQ-ACE-005, 리더 판정 d-20261010T070728Z-6cdf).
 
+턴 종료 게이트와 감사 도구가 리뷰 기준 ref 를 고르는 방식을 하나의 해석 함수로 모으는 일은 후속 카드 t1662 가 맡는다(REQ-ACE-005). 이 SPEC 은 그 함수를 구현하지 않으며, 두 해석기의 기준을 맞추는 변경도 하지 않는다. 이 절은 그 이관을 기록하기 위해 남긴 자리이며, 함수의 설계와 후보 집합은 이 문서에 없다.
+
 ## 5. 실행 단위 스위치 (M6)
 
 스위치는 run 단위에서 값이 하나다. 운영자 판정 Q3 = (b) 주 체크아웃의 미추적 재정의 파일, 보드 판정 D11 = 커밋된 설정값을 따름.
 
-- **재정의 파일**: 주 체크아웃의 `.moai/state/codex-review-gate/run-switch.json`. `.moai/state/` 는 `.gitignore` 401행으로 무시되는 트리다(미추적). 파일 이름과 형식은 run 단계의 설계 세부다. 파일은 실행 식별자와 활성화 값(on/off)을 싣는다.
+- **재정의 파일**: 주 체크아웃의 `.moai/state/codex-review-gate/run-switch.json`. `.moai/state/` 는 `.gitignore` 401행으로 무시되는 트리다(미추적). 파일 형식과 필드는 아래 '재정의 파일 스키마' 항목이 정한다. 파일은 실행 식별자와 활성화 값(on/off)을 싣는다.
+- **재정의 파일 스키마**: JSON 객체 하나다. 필드는 다음 둘이며, 그 밖의 필드는 무시한다.
+  - `run_id` — JSON 문자열. 단일 활성 run 의 `run_id` 와 바이트 단위로 같아야 한다(대소문자 구분, 앞뒤 공백 없음).
+  - `codex_review_gate` — JSON 문자열. `"on"` 또는 `"off"` 만 허용한다.
+  - 예: `{"run_id": "<활성 run 의 run_id>", "codex_review_gate": "off"}`
 - **run 의 정의**: factory run 하나. `--run` 플래그가 가리키는 factory run id 로 지칭되며, 활성 run 은 하나다(`internal/cli/factory_card.go` 의 `--run` 도움말).
-- **주 체크아웃 해석**: `IdentifyPrimaryCheckout`(`internal/auditreceipt/storeroot.go:142`, 주 체크아웃을 돌려준다) 또는 같은 결과를 내는 해석기를 쓴다. 목표: 연결된 워크트리에서 읽는 모든 레인이 같은 경로에 도달한다(AC-RG-012, AC-RG-013 이 확인한다). 주 체크아웃을 식별할 수 없으면(연결되지 않은 복제본) 재정의 파일을 찾지 않는다. `StoreRoot` 는 트리에 workflow.yaml 이 있으면 그 트리를 돌려주므로 이 용도로 쓰지 않는다.
+- **주 체크아웃 해석**: `IdentifyPrimaryCheckout`(`internal/auditreceipt/storeroot.go:142`, 주 체크아웃을 돌려준다)을 쓴다. 목표: 연결된 워크트리에서 읽는 모든 레인이 같은 경로에 도달한다(AC-RG-012, AC-RG-013 이 확인한다). 주 체크아웃을 식별할 수 없으면(연결되지 않은 복제본) 재정의 파일을 찾지 않는다. `StoreRoot` 는 트리에 workflow.yaml 이 있으면 그 트리를 돌려주므로 이 용도로 쓰지 않는다.
 - **적용 조건**: 재정의 파일이 싣는 실행 식별자가 단일 활성 run 과 같을 때만 적용한다. 다른 식별자이거나 단일 활성 run 을 해석할 수 없으면 파일을 무시하고 커밋된 값을 따른다.
-- **커밋된 값**: 판독 트리의 HEAD 커밋에 있는 `.moai/config/sections/workflow.yaml` 의 `codex.review_gate.enabled`. 작업 트리의 미커밋 값은 쓰지 않는다. 판독은 `git show HEAD:` 같은 읽기 전용 조회다.
+- **단일 활성 run 규칙 (코드가 적용하는 규칙)**: 기본값을 적용하는 함수는 `resolveFactoryCardRun`(`internal/cli/factory_card.go:2313–2322`)이며, 그 본체는 `factorymsg.ResolveActiveRun(ctx, root, "")`(`internal/factorymsg/store.go:343–395`)다. 명시 run 인자 없이 부르므로 규칙은 다음과 같다. (1) `runs` 테이블에서 `status='active'` 인 `run_id` 를 `run_id` 순으로 모은다(`store.go:359`). (2) 0개이면 해석하지 못한다(`NO_ACTIVE_FACTORY`, `store.go:373–374`). (3) 1개이면 그 run 이 단일 활성 run 이다(`store.go:375–376`). (4) 2개 이상이면 `ReconcileActiveRuns` 가 소유자가 죽은 것으로 입증된 run 만 활성 집합에서 뺀 뒤 다시 센다(`store.go:383`, `internal/homestate/factory_run_retire.go:332–356`). 정확히 1개가 남으면 그 run 이 단일 활성 run 이고, 0개나 2개 이상이면 해석하지 못한다(`store.go:387–394`, `AMBIGUOUS_FACTORY`). (5) 재조정은 생존자 가운데서 고르지 않는다(`store.go:378–381`). 따라서 해석하지 못하는 결과는 항상 닫힌 쪽이다. 연결된 워크트리의 루트는 주 체크아웃으로 정규화되므로(`internal/homestate/paths.go:128–143`) 어느 트리에서 불러도 같은 저장소의 run 집합을 읽는다.
+- **재정의 파일의 판정 순서**: 순서는 결과를 바꾸지 않고 부작용만 줄인다. (가) 파일을 읽는다. 파일이 없거나, 읽기에 실패하거나, 스키마에 맞지 않으면(JSON 객체가 아님, 필드 누락, 타입 불일치, `codex_review_gate` 가 `on`·`off` 가 아님) 파일이 없는 것과 같다. (나) 파일이 맞을 때만 단일 활성 run 을 해석한다. 해석하지 못하면 파일이 없는 것과 같다. (다) `run_id` 가 해석한 run 과 같을 때만 `codex_review_gate` 값이 적용된다. 같지 않으면 파일이 없는 것과 같다. 세 경우 모두 커밋된 값을 따른다(REQ-RG-007).
+- **관측된 부작용**: 단일 활성 run 해석은 읽기 전용이 아니다. `homestate.OpenFactory` 는 디렉터리를 만들고 권한을 0700 으로 맞추며, DDL 을 실행하고 WAL 을 켠다(`internal/homestate/factory.go:167–176`, `:268–293`). 2개 이상일 때의 재조정은 소유자가 죽은 run 을 `retired` 로 바꾼다(`internal/homestate/factory_run_retire.go:342–345`). 판정 순서 (나) 는 이 부작용을 유효한 파일이 있을 때로 줄인다. 이 해석은 현행 동작이며 이 SPEC 은 바꾸지 않는다. 읽기 전용으로 세기만 하면 죽은 run 이 남아 활성 run 집계가 달라지므로, 읽기 전용 해석으로의 전환은 별도의 후속 판정으로 남긴다.
+- **커밋된 값**: 판독 트리의 HEAD 커밋에 있는 `.moai/config/sections/workflow.yaml` 의 `codex.review_gate.enabled`. 작업 트리의 미커밋 값은 쓰지 않는다. 판독은 `git show HEAD:` 같은 읽기 전용 조회다. 판독에 실패하면(파일이 없거나 읽을 수 없거나, 키가 없거나 값이 불리언이 아니면) 검토를 시작하지 않고 허용하며, 메시지 상태 `커밋 값 읽기 실패`를 낸다(REQ-RG-012, fail-open).
 - **우선순위**: 적용되는 재정의 값 > 커밋된 값.
 - **추적 키의 역할**: 기본값의 원천으로만 남는다. 실행을 전역으로 끄거나 켜는 권한은 없다.
-- **두 층**: 셸 래퍼와 Go 처리기가 같은 해석 절차를 쓴다(REQ-RG-012).
+- **두 층**: 셸 래퍼와 Go 처리기가 같은 해석 절차를 쓴다(REQ-RG-008).
 
 ## 6. 판정 표
 
@@ -62,15 +71,16 @@
 |---|---|---|
 | 키 일치, 기준 해석 성공, fresh pass | 허용, 재검토 없음 | 기준 ref 이름, merge-base SHA |
 | fresh fail, 차단 횟수 < C | 차단, 차단 횟수 +1 | 차단 횟수 |
-| fresh fail, 차단 횟수 = C | 허용 + 메시지 (REQ-RG-004, 016) | 차단 횟수 값 |
+| fresh fail, 차단 횟수 = C | 허용 + 메시지 (REQ-RG-004, 012) | 차단 횟수 값 |
 | inconclusive | 재검토 시작(표식 없을 때, 간격 없음), 허용 + 메시지 | 시작 시각 |
-| absent, stale, key-mismatch | 재검토 시작(표식 없을 때), 허용 + 메시지 (REQ-RG-015) | 상태 이름 |
-| 스위치 꺼짐 | 검토 없음, 허용 + 메시지 (REQ-RG-011, 016) | 스위치 출처 (재정의 파일 또는 커밋 값) |
-| 검토할 변경 없음 | 허용 + 메시지 (REQ-RG-014, 016) | 사유 |
-| stop-hook 해제 | 허용 + 메시지 (REQ-RG-014, 016) | 사유 |
+| absent, stale, key-mismatch | 재검토 시작(표식 없을 때), 허용 + 메시지 (REQ-RG-011) | 상태 이름 |
+| 스위치 꺼짐 | 검토 없음, 허용 + 메시지 (REQ-RG-007, 012) | 스위치 출처 (재정의 파일 또는 커밋 값) |
+| 검토할 변경 없음 | 허용 + 메시지 (REQ-RG-010, 012) | 사유 |
+| stop-hook 해제 | 허용 + 메시지 (REQ-RG-010, 012) | 사유 |
+| 커밋 값 읽기 실패 | 검토 없음, 허용 + 메시지 (REQ-RG-007, 012) | 상태 이름 |
 
 ## 7. 관측 가능성
 
-- 메시지 상태 어휘: `absent`, `stale`, `key-mismatch`, `inconclusive`, `차단 횟수 소진`, `스위치 꺼짐`(출처 포함), `검토할 변경 없음`, `stop-hook 해제`, `reviewer 없음`, `기준 판정 inconclusive`(두 이름 포함).
+- 메시지 상태 어휘: `absent`, `stale`, `key-mismatch`, `inconclusive`, `차단 횟수 소진`, `스위치 꺼짐`(출처 포함), `커밋 값 읽기 실패`(committed value read failed), `검토할 변경 없음`, `stop-hook 해제`, `reviewer 없음`.
 - 메시지는 Stop 훅의 `systemMessage` 로 낸다(`.claude/rules/moai/core/hooks-system.md:103`). 차단 사유 전반의 가시성 확장은 F2 가 맡는다.
 - 스위치 출처(재정의 파일인지 커밋된 값인지)를 검토가 꺼진 이유로 함께 기록한다.

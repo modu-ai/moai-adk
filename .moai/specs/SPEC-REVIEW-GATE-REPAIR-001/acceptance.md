@@ -43,49 +43,49 @@
 - **Then** 차단 결정과 상세 사유가 나오고, 이 키의 차단 횟수가 1 이 된다.
 - **분류** RG-GUARD(차단 부분: `TestReviewGate_CacheHitReusesFailVerdict`, 셀 B-1 PASS). 횟수 1 증가의 단언은 M3 에서 추가한다.
 
-### AC-RG-005 — 차단 횟수가 C 에 이른 뒤의 턴 종료는 허용하고 미검토를 드러낸다 (REQ-RG-004, REQ-RG-016)
+### AC-RG-005 — 차단 횟수가 C 에 이른 뒤의 턴 종료는 허용하고 미검토를 드러낸다 (REQ-RG-004, REQ-RG-012)
 
 - **Given** 같은 fail 키의 차단 횟수가 C(= 1)이다.
 - **When** 같은 키에서 다음 턴 종료가 온다(stop_hook_active 거짓).
 - **Then** 차단하지 않고 허용하며, systemMessage 에 차단 횟수 소진이라는 미검토 상태가 나온다.
 - **분류** RG-PENDING. 운영자 판정 Q2(C = 1)와 D3(키당 총량)가 기대값을 정한다.
 
-### AC-RG-010 — inconclusive 영수증은 재사용되지 않고 재검토가 시작되며 턴 종료는 메시지와 함께 허용된다 (REQ-RG-009, REQ-RG-010, REQ-RG-016)
+### AC-RG-010 — inconclusive 영수증은 재사용되지 않고 재검토가 시작되며 턴 종료는 메시지와 함께 허용된다 (REQ-RG-005, REQ-RG-006, REQ-RG-012)
 
 - **Given** 현재 키의 inconclusive 영수증이 있고, 진행 중 표식이 없다.
 - **When** 턴이 끝난다.
 - **Then** 백그라운드 재검토가 시작되고, 턴 종료는 차단 없이 허용되며, systemMessage 에 inconclusive 상태가 나온다. stderr 에 "reusing the cached inconclusive verdict" 가 나오지 않는다.
 - **분류** RG-PENDING. 결함 고정 기준선: `TestReviewGate_InconclusiveReceiptIsNotPassEvidence` 가 PASS 하며 stderr 에 "reusing the cached inconclusive verdict for the unchanged tree (skip #1)" 가 나온다(셀 B-2).
 
-### AC-RG-011 — inconclusive 뒤에는 다음 턴 종료에서 간격 없이 재검토가 다시 시작되고, 진행 중 표식이 있으면 중복되지 않는다 (REQ-RG-010)
+### AC-RG-011 — inconclusive 뒤에는 다음 턴 종료에서 간격 없이 재검토가 다시 시작되고, 진행 중 표식이 있으면 중복되지 않는다 (REQ-RG-006)
 
 - **Given** 현재 키의 inconclusive 영수증이 있고, 직전 턴 종료에서 재검토가 시작되어 끝났다(진행 중 표식 없음).
 - **When** 다음 턴이 끝난다.
 - **Then** 쿨다운 없이 이 턴 종료에서 재검토가 시작된다(운영자 판정 Q4 = (a)). 진행 중 표식이 남아 있는 턴 종료에서는 두 번째 검토가 시작되지 않는다.
 - **분류** RG-PENDING.
 
-### AC-RG-012 — 실행 스위치: 재정의 파일이 적용되면 그 값이, 아니면 커밋된 값이 두 훅을 지배한다 (REQ-RG-011)
+### AC-RG-012 — 실행 스위치: 재정의 파일이 적용되면 그 값이, 아니면 커밋된 값이 두 훅을 지배한다 (REQ-RG-007)
 
-- **Given** 같은 run 의 두 레인이 있고, 커밋된 `codex.review_gate.enabled` 는 HEAD 에서 `true` 다. 작업 트리의 workflow.yaml 값은 HEAD 와 다를 수 있다(미커밋 변경 허용). 시나리오는 넷이다. (a) 주 체크아웃의 재정의 파일이 이 run 식별자로 `off` 를 싣는다. (b) 재정의 파일이 없다. (c) 재정의 파일이 `on` 을 싣지만 식별자가 다른 run 의 것이다. (d) 재정의 파일이 이 run 식별자로 `on` 을 싣고, 작업 트리의 값은 `false` 다.
+- **Given** 같은 run 의 두 레인이 있고, 커밋된 `codex.review_gate.enabled` 는 HEAD 에서 `true` 다. 작업 트리의 workflow.yaml 값은 HEAD 와 다를 수 있다(미커밋 변경 허용). 재정의 파일의 형식과 실행 식별자 해석은 design.md §5(재정의 파일 스키마와 단일 활성 run 규칙)를 따른다. 시나리오는 넷이다. (a) 주 체크아웃의 재정의 파일이 이 run 식별자로 `off` 를 싣는다. (b) 재정의 파일이 없다. (c) 재정의 파일이 `on` 을 싣지만 식별자가 다른 run 의 것이다. (d) 재정의 파일이 이 run 식별자로 `on` 을 싣고, 작업 트리의 값은 `false` 다.
 - **When** 두 레인에서 진입 훅과 턴 종료가 실행된다.
 - **Then** (a) 두 훅 모두 검토를 시작하지 않고 허용하며, systemMessage 에 스위치 꺼짐과 재정의 파일 출처가 나온다. (b) 커밋된 `true` 를 따라 검토가 실행되며, 작업 트리의 `false` 는 무시된다. (c) 파일은 무시되고 커밋된 `true` 를 따른다. (d) 재정의 값 `on` 이 우선하며 검토가 실행된다.
 - **분류** RG-PENDING. 현재 코드는 작업 트리의 파일을 읽으므로 (b)와 (d)의 작업 트리 값에 따라 달라진다(research.md §3 #50, #52).
 
-### AC-RG-013 — 셸 층과 Go 층이 같은 스위치 결과를 낸다 (REQ-RG-012)
+### AC-RG-013 — 셸 층과 Go 층이 같은 스위치 결과를 낸다 (REQ-RG-008)
 
-- **Given** 같은 run 에 대해 재정의 값이 `on`, `off`, 또는 부재인 세 상태 각각.
+- **Given** 같은 run 에 대해 재정의 값이 `on`, `off`, 또는 부재인 세 상태 각각. 재정의 파일은 design.md §5 의 스키마(`run_id`, `codex_review_gate`)를 따르고, 실행 식별자는 design.md §5 의 단일 활성 run 규칙으로 얻는다.
 - **When** 셸 래퍼와 Go 읽기 경로가 스위치 값을 해석한다.
 - **Then** 세 상태 각각에서 두 층의 결과가 같다.
 - **분류** RG-PENDING. 부분 가드: `TestReviewGateReaders_AgreeWithConfigLoader`(셀 B-1)는 Go 층과 설정 로더의 일치만 본다. 셸 층을 검사하는 가드는 없다.
 
-### AC-RG-014 — 현재 pass 영수증은 재검토 없이 허용한다 (REQ-RG-013)
+### AC-RG-014 — 현재 pass 영수증은 재검토 없이 허용한다 (REQ-RG-009)
 
 - **Given** 현재 키에 대한 fresh pass 영수증이 있다.
 - **When** 진입 훅 또는 턴 종료가 실행된다.
 - **Then** 새 검토를 시작하지 않고 허용한다.
 - **분류** RG-GUARD. 가드: `TestReviewEntry_FreshPassAllows`(셀 B-1, PASS).
 
-### AC-RG-015 — 검토 건너뜀의 허용 결정은 바뀌지 않는다 (REQ-RG-014)
+### AC-RG-015 — 검토 건너뜀의 허용 결정은 바뀌지 않는다 (REQ-RG-010)
 
 - **Given** 게이트가 꺼져 있거나, stop-hook-active 해제이거나, 검토할 변경이 없거나, reviewer 바이너리가 없다.
 - **When** 훅이 실행된다.
@@ -99,14 +99,14 @@
 - **Then** 다시 차단하지 않고 허용하며 메시지를 표시한다. 차단 횟수는 여전히 C 다.
 - **분류** RG-PENDING. 현재 테스트에 이 단언이 없다(신규 가드).
 
-### AC-RG-018 — 턴 종료에 fresh 영수증이 없으면 재검토를 시작하고 허용한다 (REQ-RG-015, REQ-RG-016)
+### AC-RG-018 — 턴 종료에 fresh 영수증이 없으면 재검토를 시작하고 허용한다 (REQ-RG-011, REQ-RG-012)
 
 - **Given** 현재 키의 영수증이 없거나(absent), 유효기간이 지났거나(stale), 결합 필드가 다르다(key-mismatch). 진행 중 표식이 없다.
 - **When** 턴이 끝난다.
 - **Then** 백그라운드 재검토가 시작되고, 턴 종료는 차단 없이 허용되며, systemMessage 에 해당 상태 이름이 나온다.
 - **분류** RG-PENDING. 기존 킥 가드 `TestReviewGate_StaleKeyKicksBackgroundReview` 와 `TestReviewGate_CacheMissKicksBackgroundReview` 는 존재가 확인되었으나(research.md §6) 셀로 실행하지 않았다. 메시지 단언은 없다.
 
-### AC-RG-019 — 검토 없이 허용되는 턴 종료는 상태를 명명한 메시지를 낸다 (REQ-RG-016, REQ-RG-014)
+### AC-RG-019 — 검토 없이 허용되는 턴 종료는 상태를 명명한 메시지를 낸다 (REQ-RG-012, REQ-RG-010)
 
 - **Given** 세 상황: (a) 게이트 꺼짐, (b) 검토할 변경 없음, (c) stop-hook-active 해제.
 - **When** 각 상황에서 턴이 끝난다.
