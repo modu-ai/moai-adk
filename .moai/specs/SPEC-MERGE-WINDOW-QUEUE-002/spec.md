@@ -2,7 +2,7 @@
 id: SPEC-MERGE-WINDOW-QUEUE-002
 title: "Merge-window queue integrity packet 2 — short-base record panic before window release, no-test marker wrongful refusal, cause-7 hold/release atomicity, measurement-failure exit code"
 version: "0.3.0"
-status: completed
+status: in-progress
 created: 2026-10-09
 updated: 2026-10-10
 author: manager-spec
@@ -14,6 +14,7 @@ tags: "integration-window, remeasure, merge-step, sha-validation, no-test-files,
 tier: M
 card: t1582
 related_specs: [SPEC-MERGE-WINDOW-QUEUE-001, SPEC-FACTORY-LANE-AUTONOMY-001]
+amendment_of: SPEC-MERGE-WINDOW-QUEUE-002
 ---
 
 # SPEC-MERGE-WINDOW-QUEUE-002 — 병합 창 큐 무결성 수리 패킷 2
@@ -25,6 +26,21 @@ related_specs: [SPEC-MERGE-WINDOW-QUEUE-001, SPEC-FACTORY-LANE-AUTONOMY-001]
 | 0.1.0 | 2026-10-09 | manager-spec | 최초 초안 (카드 t1582, SPEC-MERGE-WINDOW-QUEUE-001의 착지 후 게이트 인계 4건 수리). RED 재현: R7-2·R7-3은 plan 단계에서 오버레이 테스트로 실측 관측 완료, item ①·②·③·R7-1 관측/재현 설계는 plan.md §Research에 기록. 7 REQ / 8 AC. |
 | 0.2.0 | 2026-10-09 | manager-spec | plan-audit iteration 1 (FAIL 0.69 / Tier M 0.80, `.moai/reports/t1582/plan-audit.md`, D1-D6 차단) 수리. D5(MP-2): REQ-MWQ2-002/003/006의 두 trigger→behavior 쌍 묶음을 분할 — REQ-MWQ2-002(접두 렌더)+REQ-MWQ2-008(panic 대신 오류 경로), REQ-MWQ2-003(스윕 판정)+REQ-MWQ2-009(빈 스윕 무효), REQ-MWQ2-006(측정 실패 비제오)+REQ-MWQ2-010(경합 verdict 유지); 범위 문장은 Out of Scope로 귀속. 10 REQ / 8 AC. D1-D4·D6은 plan.md·acceptance.md 수리. |
 | 0.3.0 | 2026-10-09 | manager-spec | plan-audit iteration 2 (FAIL 0.85, D13-D15·D17·D19 차단 + D18·D20 optional) 수리. D19: M1(ii) 렌더 열거를 실측 12곳으로 확장(factory 10 + cli 2 — 감사 표기 "14"에 대한 실측 좌표는 plan.md M1) + 총괄 규칙 + cli integration_remeasure.go M1 스코프 편입. D13: §4 잔존 구 E6 목록을 AC-MWQ2-007 SSOT 참조로 교체. D14: cause-7 시딩 설비 + merge-ready 측정 실패 RED 오버레이 테스트를 plan 단계에서 작성·실측(`internal/factory/mergestep_red_t1582_test.go`, `internal/cli/factory_merge_ready_red_t1582_test.go` — 관측은 acceptance.md AC-005/006) + AC-006 실행 계수 가드. D15/D17/D20·D18도 acceptance.md·plan.md 수리. RED 총 4건 관측. |
+
+## Amendments
+
+- **이전 완료 버전 (prior completed version)**: 0.3.0
+- **prior_completed_sha**: 5d6c9b8c33d5901fe531f8d8373df80754edbe17. 직전 close(sync-phase 커밋 `5d6c9b8c3`)의 `progress.md` §E.4 `sync_commit_sha` 값과 같다. 운영자 지정 표기 `5d6c9b8c3`은 이 전체 SHA의 접두다.
+- **전이 (transition)**: `completed → in-progress (amendment)`, 인플레이스(in-place). frontmatter에 자기 참조 amendment 선언(값은 이 SPEC ID)을 둔다. 버전 0.3.0은 유지하고 본문(요구사항·수락 기준)은 바꾸지 않는다. 재종결(`in-progress → completed`)은 수리 라운드의 sync 커밋이 수행한다.
+- **사유 (rationale)**: sync-audit 1차 판정 FAIL (감사 대상 커밋 `20c107a26`). 차단 결함 2건과 기록 공백 1건이 확인되었다.
+  - **F1 (High, 차단)**: `internal/cli/factory_merge.go`의 REFUSED 종료 분기가 최초 실패 조건(`FailedCondition`) 하나만 검사한다. 재측정 레코드의 측정 실패와 다른 조건(sync-audit, conflict-free, tree-identity)이 함께 실패하면 종료 코드가 0이 된다. REQ-MWQ2-006 위반이며, Q1 기본값("측정 실패 클래스만 비제로")의 다중 조건 공백이다.
+  - **F2 (High, 차단)**: `internal/factory/integration_remeasure.go`의 잘림(truncation) 검사가 `started`와 `finished`의 개수 차이로 계산된다. 시작 이벤트 없이 도착한 종료 이벤트 하나가 미완료 패키지 하나를 상쇄하므로 잘린 캡처가 통과한다. 패키지별 집합 차이(시작 집합에서 종료 집합을 뺀 것)로 고쳐야 한다.
+  - **F3 (Medium, 기록)**: 변경 경로 5건(`internal/cli/factory_card.go`, `internal/cli/integration_merge.go`, `internal/factory/integration_lock.go`, `internal/cli/factory_merge_measurement_exit_test.go`, `internal/factory/mergestep_atomic_t1582_test.go`)이 acceptance.md의 DoD 허용 목록 밖에 있다. progress.md §E.3의 "허용 범위 내 14개 파일" 주장은 이 목록과 대조하면 재현되지 않는다.
+- **범위 (scope, 수리 라운드)**:
+  - F1·F2는 RED 우선으로 수리한다. 각 새 테스트는 수리 전에 빨간 상태임을 관측하고, 수리 후 초록으로 바뀐 출력을 증거로 남긴다. 기존 잘림 테스트(`TestClassifyTruncatedStreamIsRefused`, `TestClassifyTruncatedRerunIsRefused`)와 `TestClassifySkippedPackageReportsCompletion`은 계속 초록이어야 한다.
+  - CHANGELOG 항목 (a)는 F1이 고쳐지기 전까지 실제 수정 범위보다 넓게 적혀 있으므로, 실제 수정 범위와 맞도록 정정한다.
+  - F3의 다섯 경로 확장은 progress.md §E.4에 REQ 추적(REQ-MWQ2-002, -006, -007)과 함께 기록한다. acceptance.md는 변경하지 않는다.
+  - 재감사는 델타만 본다: REFUSED 분기와 그 테스트, 분류 루프와 그 테스트, progress.md 정정 부분.
 
 ## 1. 배경과 문제 정의
 
