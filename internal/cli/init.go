@@ -201,14 +201,23 @@ func resolveAgentWiring(cmd *cobra.Command) agentWiring {
 // put a second resolution behind the resolution point, which is exactly how a
 // wizard answer reaches one consumer and not the other.
 func wireCodexUnlessClaude(cmd *cobra.Command, wiring agentWiring, projectRoot string) {
-	if wiring == agentWiringClaude {
-		return
-	}
-	if _, err := codexwiring.Wire(projectRoot, cmd.OutOrStdout(), cmd.ErrOrStderr()); err != nil {
+	if err := wireCodex(cmd, wiring, projectRoot); err != nil {
 		// Card t1527 D4 (repair round): ! severity line replaces the raw
 		// "warning:" prefix.
 		emitSeverityLine(cmd.ErrOrStderr(), sevWarn, resolveTheme(), "Codex wiring failed: %v", err)
 	}
+}
+
+// wireCodex is the Codex wiring step that wireCodexUnlessClaude and the resume
+// share. It returns the failure instead of printing it: the healthy init tail
+// warns on it, and the resume returns it as an error (card t1591, repair round).
+// A claude selection is a no-op.
+func wireCodex(cmd *cobra.Command, wiring agentWiring, projectRoot string) error {
+	if wiring == agentWiringClaude {
+		return nil
+	}
+	_, err := codexwiring.Wire(projectRoot, cmd.OutOrStdout(), cmd.ErrOrStderr())
+	return err
 }
 
 // addCodexReinitGuidance is the redirect note printed when init runs
@@ -438,6 +447,13 @@ func shouldDistributeAll(cmd *cobra.Command) bool {
 func resolveInitDeployMode(cmd *cobra.Command) template.DeployMode {
 	return template.DeployModeLocal
 }
+
+// ensureUserAssetsLockedFn is ensureUserAssetsLocked behind a package-level
+// variable so a test can interrupt the user-asset ensure (a panic stands in for
+// a process death inside it) and observe the selection record the run wrote
+// before the ensure. It follows the applyAutonomyTierBundleFn pattern
+// (update_settings_snapshot.go). Tests that replace it must not call t.Parallel().
+var ensureUserAssetsLockedFn = ensureUserAssetsLocked
 
 // @MX:ANCHOR: [AUTO] runInit is the main entry point for project initialization
 // @MX:REASON: [AUTO] fan_in=3, called from init.go init(), coverage_test.go, init_coverage_test.go
@@ -964,14 +980,21 @@ func runInit(cmd *cobra.Command, args []string) (err error) {
 	// summary (REQ-013).
 	if homeDir, homeErr := userHomeDirFn(); homeErr == nil {
 		selection := parseBundleSelection(getStringFlag(cmd, "bundles"))
-		if err := ensureUserAssetsLocked(homeDir, selection, cmd.OutOrStdout()); err != nil {
-			// Finding 1 (card t1591): this run is the interrupted one the
-			// resume completes. Record the harness it selected so the resume
-			// restores that selection, not the claude default. Best-effort:
-			// a record that cannot be written is named, never dropped silently.
-			if recErr := persistResumeWiring(opts.ProjectRoot, agentWiringSelection); recErr != nil {
-				emitSeverityLine(cmd.ErrOrStderr(), sevWarn, resolveTheme(), "Could not record the harness selection for the resume: %v", recErr)
-			}
+		// Finding 1 (card t1591): record the harness this run selected BEFORE the
+		// ensure, so a run that dies inside it (a crash or a kill, which no error
+		// branch observes) still leaves the selection the resume restores.
+		// Best-effort: a record that cannot be written is named, never dropped silently.
+		if recErr := persistResumeWiring(opts.ProjectRoot, agentWiringSelection); recErr != nil {
+			emitSeverityLine(cmd.ErrOrStderr(), sevWarn, resolveTheme(), "Could not record the harness selection for the resume: %v", recErr)
+		}
+		// Finding B (card t1591): open the ensure window with its marker. An ensure that
+		// fails before any journal exists (a lock refusal) leaves this marker, and the
+		// rerun reads it as the interruption checkpoint. Best-effort, like the record.
+		if pendErr := persistInitPending(opts.ProjectRoot); pendErr != nil {
+			emitSeverityLine(cmd.ErrOrStderr(), sevWarn, resolveTheme(), "Could not record the init resume marker: %v", pendErr)
+		}
+		if err := ensureUserAssetsLockedFn(homeDir, selection, cmd.OutOrStdout()); err != nil {
+			// The record and the init marker stay: this run is the interrupted one the resume completes.
 			return fmt.Errorf("user-asset install failed: %w\n  Fix the cause and re-run 'moai init' — the ensure is idempotent and completes the shortfall", err)
 		}
 	} else {
@@ -1217,6 +1240,17 @@ func runInit(cmd *cobra.Command, args []string) (err error) {
 	// The template snapshot is written by opts.AfterTemplateDeploy (set before
 	// executor.Execute), not here: by this point the section files carry the
 	// wizard answers, and a snapshot of them is not a template render (t1139).
+
+	// Finding B (card t1591): every post-ensure step above is warn-only, so reaching
+	// this point means the ensure window closed with its steps complete. The init
+	// marker retires here.
+	clearInitPending(opts.ProjectRoot)
+	// Finding 1 (card t1591): the selection record retires on normal completion,
+	// with the checkpoint marker and only once the marker is gone. A marker that
+	// still stands needs its selection for the resume it names.
+	if _, statErr := os.Stat(filepath.Join(opts.ProjectRoot, ".moai", "resume-pending")); os.IsNotExist(statErr) {
+		clearResumeWiring(opts.ProjectRoot)
+	}
 
 	return nil
 }
