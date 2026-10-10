@@ -17,16 +17,16 @@ An open FOUNDER row blocks the autonomous Kickoff until its `Operator verdict:` 
 
 | Row | Subject | Label | Class | Operator verdict: line |
 |---|---|---|---|---|
-| Q1 | Values, names, and armed form of the card lease duration and the watchdog renewal period | FOUNDER | product-level | empty |
-| Q2 | Refusal or clamping when a lease key violates its bound | FOUNDER | product-level | empty |
-| Q3 | Renewal of an expired own lease: refuse with no write, or reap then refuse | FOUNDER | product-level | empty |
+| Q1 | Values, names, and armed form of the card lease duration and the watchdog renewal period | FOUNDER | product-level | 영실이 판단(운영자 위임) 10-10 — 본문 확정; decision d-20261010T095818Z-c501; armed form (sub-question d) covered by decision d-20261010T095818Z-c501 |
+| Q2 | Refusal or clamping when a lease key violates its bound | FOUNDER | product-level | 영실이 판단(운영자 위임) 10-10 — 본문 확정; decision d-20261010T095818Z-c501 |
+| Q3 | Renewal of an expired own lease: refuse with no write, or reap then refuse | FOUNDER | product-level | 영실이 판단(운영자 위임) 10-10 — 본문 확정; decision d-20261010T095731Z-5ddc |
 | Q4 | Repository-local overrides survive a template sync | POLICY-COVERED | implementation-level | not required (POLICY-COVERED) |
 | Q5 | Overlap with the draft SPEC-FACTORY-RECORD-REPAIR-001 | FOUNDER | implementation-level | DEFAULT-APPLIED 2026-10-10T09:40:46Z lane-17 / manager-spec |
-| Q6 | Stall window reference: the previous snapshot, or the last observed channel change | FOUNDER | product-level | empty |
+| Q6 | Stall window reference: the previous snapshot, or the last observed channel change | FOUNDER | product-level | 영실이 판단(운영자 위임) 10-10 — 본문 확정; decision d-20261010T095731Z-5ddc |
 
 ## Routing
 
-1. **Open FOUNDER rows with an empty `Operator verdict:` line:** Q1, Q2, Q3, and Q6. The autonomous Kickoff stays blocked until the operator writes these lines.
+1. **FOUNDER rows with recorded operator verdicts:** Q1, Q2, Q3, and Q6 carry recorded operator verdicts (decision ids in the Rows section), so no FOUNDER row has an empty `Operator verdict:` line.
 2. **DEFAULT-APPLIED at plan close:** Q5. It is implementation-level and carries a ranked Default.
 3. **POLICY-COVERED, no verdict needed:** Q4.
 4. **DECIDED:** none. No committed authority decides these questions.
@@ -45,7 +45,7 @@ Why unresolved: REQ-FLR-007 fixes the bound at one half of the card lease durati
 The consequences are stated without a ranking. A shorter period means more standing-wake turns for each awake lane, and a wake that falls after the prompt-cache window re-writes the session prefix (`.claude/rules/moai/workflow/cache-aware-execution.md` directive 9). The late-pass margin is the duration minus the period: 10 minutes at 5 minutes, and 8 minutes at 7 minutes. Names: spec.md carries `workflow.factory_lease.duration` (the draft's name) and `workflow.factory_lease.renew_interval` (new). The operator confirms both names or names other keys.
 Armed form (sub-question d): the wake fires at minute 0 with `*/N` (as REQ-FLR-012 is written). That form has the gap property for every N with no per-value check, and it fires together with other top-of-hour schedules. An off-minute start, such as the draft's `7,27,47` literal, is possible only with a gap check for the value in force (plan B6). The operator confirms `*/N` or names an off-minute start.
 Default: none. The published Default rule ranks no option for (a) to (c), because no renewal period exists today. For (d), the rule's first criterion would select the off-minute start that the current literal uses, but that start fails the gap property for some values in force, so no ranking is recorded here; the operator verdict decides.
-Operator verdict:
+Operator verdict: 영실이 판단(운영자 위임) 10-10 — 본문 확정; decision d-20261010T095818Z-c501; armed form (sub-question d) covered by decision d-20261010T095818Z-c501
 
 ### Q2: When a lease key violates its bound, does the factory refuse to open, or clamp the value to the bound and warn?
 
@@ -57,7 +57,7 @@ Options:
 - (a) refuse to open, naming the key and the bound (spec.md REQ-FLR-006 and REQ-FLR-007).
 - (b) clamp the effective value to the bound, and record a warning at open.
 Default: none (see Why unresolved).
-Operator verdict:
+Operator verdict: 영실이 판단(운영자 위임) 10-10 — 본문 확정; decision d-20261010T095818Z-c501
 
 ### Q3: When the holder renews a lease that has already expired, does the renewal refuse with no write, or reap the lease and then refuse?
 
@@ -71,7 +71,7 @@ Options:
 Default: (b) (rule: the option that preserves current behaviour)
 Alternate: (a)
 Note: The Default line records the published ranking. A product-level row takes no automatic application, so the `Operator verdict:` line decides. This row does not change the wording of spec.md.
-Operator verdict:
+Operator verdict: 영실이 판단(운영자 위임) 10-10 — 본문 확정; decision d-20261010T095731Z-5ddc
 
 ### Q4: Do repository-local overrides survive a template sync?
 
@@ -105,4 +105,4 @@ Why unresolved: At the renewal period of REQ-FLR-009 (5 minutes), and at any per
 Default: (a) (rule: the option that preserves current behaviour)
 Alternate: (b)
 Note: The Default line records the published ranking. A product-level row takes no automatic application, so the `Operator verdict:` line decides. The SPEC body states option (b). Option (a) is the rule-ranked option, but at the adopted period it leaves the verdict unreachable, which is why the body does not follow the ranking.
-Operator verdict:
+Operator verdict: 영실이 판단(운영자 위임) 10-10 — 본문 확정; decision d-20261010T095731Z-5ddc

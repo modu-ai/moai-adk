@@ -29,7 +29,7 @@ Current code:
 Each assumption carries a one-line rationale. An assumption that an operator could reasonably decide differently is also a row in decision-index.md, named in brackets.
 
 - A1. Tier M: spec.md, plan.md, and acceptance.md, plus decision-index.md (the decision gate is on) and progress.md. The change touches more than five files, and 13 requirements and 15 criteria fit the 16 / 16 ceilings. No design or research artifact is needed.
-- A2. The card lease duration key keeps the draft's name, `workflow.factory_lease.duration`, so one setting has one name across the two SPECs. [Q1 asks confirmation.]
+- A2. The card lease duration key keeps the draft's name, `workflow.factory_lease.duration`, so one setting has one name across the two SPECs. [Q1 ruled: d-20261010T095818Z-c501.]
 - A3. The renewal period key is `workflow.factory_lease.renew_interval`, named in the same family as A2. [Q1.]
 - A4. The renewal period default is 5 minutes. It lies inside the bound at the 15-minute default (7 minutes 30 seconds) and leaves a 10-minute late-pass margin. [Q1.]
 - A5. A key outside its bound refuses to open the factory, because a silent clamp would hide a misconfiguration. [Q2 states the alternative.]
@@ -41,7 +41,7 @@ Each assumption carries a one-line rationale. An assumption that an operator cou
 - A11. Priority P0 is inherited from the draft batch, whose brief marks lens-4 defects 1 and 27 as P0.
 - A12. The module field stays `internal/homestate`, the value the draft settled for its module.
 - A13. The MCP tool is named `factory_renew`, following the existing `factory_next` and `factory_stage` names. This is a naming convention and carries no decision row.
-- A14. The stall window is counted from the last observed channel change (REQ-FLR-013), because auto-semantics §3 states the window that way and the previous-snapshot comparison cannot fire below N. [Q6 asks confirmation.]
+- A14. The stall window is counted from the last observed channel change (REQ-FLR-013), because auto-semantics §3 states the window that way and the previous-snapshot comparison cannot fire below N. [Q6 ruled: d-20261010T095731Z-5ddc.]
 - A15. The armed wake starts at minute 0 (`*/N`), because that form has the gap property for every N from 1 to 59 with no per-value computation; an off-minute start is possible only with a per-value gap check. [Q1 sub-question d.]
 - A16. The snapshot gains exactly two additive fields, `renew_result` and `last_change_at`, the fewest that REQ-FLR-011 and REQ-FLR-013 need; the audit allows one additive field as a stated exception, and the stall window needs the second.
 - A17. The renew verb gains a JSON output whose `result` field carries the refusal class that REQ-FLR-002 already requires the MCP tool to return, so the watchdog copies one machine-readable value and does not parse prose.
@@ -53,7 +53,7 @@ Each assumption carries a one-line rationale. An assumption that an operator cou
 
 - B1. `RenewLease` reaps before it checks the holder. The expired branch must stop writing (REQ-FLR-004). `applyLeaseExpiry` stays for the transferred stage path. The stage path calls `RenewLease` only after a transition has extended the lease, so the expired branch is not reached there.
 - B2. `FactoryLeaseDuration` is a package variable. The configured value must reach the lease writes through the factory handle that `OpenFactory` returns, and the process must not reassign the variable at start. The lease writes at `card_transition.go:463`, `:542`, and `:601` read the variable today.
-- B3. A configuration key needs four registrations: the template `workflow.yaml` and the rendered copy (compared by key, QG-4); the struct field and YAML tag in `internal/config/types.go`; the default in `internal/config/defaults.go`; and an entry with a class in `internal/config/testdata/shipped_key_inventory.yaml`. The symmetry test's case list in `audit_struct_yaml_symmetry_test.go` gains the struct when one is added.
+- B3. The typed field, its default, and the template copy belong to this card, and so does the anti-rot triage entry for each new key in internal/config/testdata/shipped_key_inventory.yaml (class W, evidence reader). The config-registry entry belongs to t1636 (decision d-20261010T100853Z-98a1). The symmetry test's case list in `audit_struct_yaml_symmetry_test.go` gains the struct when one is added.
 - B4. The MCP catalogue is pinned by `internal/mcp/catalog_test.go` (the catalogue size, the write-capable tool set, the count, and the tool-name list). `factory_renew` writes a lease row, so it joins the write-capable set. The MCP catalogue rule (`.claude/rules/moai/core/moai-mcp-tools-catalogue.md`) and its template mirror are updated in the same change.
 - B5. The standing-wake paragraph at `auto-semantics.md` §5.1 belongs to a rule that is path-scoped to the watchdog skill, and it has a template mirror. Its arm sentence and its cost sentence both justify the 20-minute cadence against the stall window, and both are rewritten. The stall rule of §3 keeps its three channels and N = 15 minutes; §4 changes only its reference point (REQ-FLR-013) and gains the two snapshot fields. `factory-dispatch.md:138` ("every 20 minutes") is rewritten in the same change, in both copies; M3 names it.
 - B6. The minute step must have the gap property: no two consecutive scheduled wakes further apart than the period. The form `*/N` (start 0) has it for every N from 1 to 59, because the last fire of an hour is at least 60 minus N. An off-minute start `o/N` has it only while the gap across the hour boundary stays within N: for N = 59 with o = 2 the gap is 60 minutes, and for N = 7 with o = 6 it is 11. AC-FLR-013 checks the form and computes the largest gap for every legal N.
@@ -63,13 +63,13 @@ Each assumption carries a one-line rationale. An assumption that an operator cou
 
 ### Audit mapping (plan audit iteration 1 of SPEC-FACTORY-LEASE-RENEW-001, `.moai/reports/t1663/plan-audit.md`)
 
-- **FLR-B1 (stall verdict at the new cadence).** REQ-FLR-013 counts the window from the last channel change; the snapshot gains `last_change_at`; auto-semantics §3 and §4 and the watchdog skill §1 state it (M3); AC-FLR-015 runs the model over 120 unchanged minutes at 5 and 7 minutes and checks equality with the previous-snapshot rule at 20 minutes. The choice is open at decision-index Q6.
+- **FLR-B1 (stall verdict at the new cadence).** REQ-FLR-013 counts the window from the last channel change; the snapshot gains `last_change_at`; auto-semantics §3 and §4 and the watchdog skill §1 state it (M3); AC-FLR-015 runs the model over 120 unchanged minutes at 5 and 7 minutes and checks equality with the previous-snapshot rule at 20 minutes. The choice is ruled at decision-index Q6 (d-20261010T095731Z-5ddc).
 - **FLR-B2 (the 20-minute literal in the hook).** The four locale strings, `lane_recheck_rule_test.go:22`, `lane_recheck_doctrine_test.go:61`, and `factory-dispatch.md:138` are in M3. AC-FLR-014 checks the rendered rule for `*/7` and `*/5` and for the absence of the literal in four locales.
 - **FLR-B3 (start minute and bound).** REQ-FLR-012 fixes the form at minute 0 with the gap property. AC-FLR-013 checks the form and computes the largest gap for every N from 1 to 59. The gap depends on N alone, so the legal N values cover every legal (duration, interval) pair; the duration only decides which N the open accepts.
 - **FLR-B4 (REQ-FLR-005 clauses).** AC-FLR-005 has three subtests, acquisition, transition extension, and renewal, each with a 20-minute value.
 - **FLR-B5 (M4 predicted RED).** The M4 RED is the output of three named mutants executed against the M2 code (§F, M4). The predicted "verb not registered" RED is withdrawn, because that cause belongs to M2.
 - **FLR-B6 (snapshot field).** `renew_result` is named (REQ-FLR-011), and the format change is declared (spec.md, the snapshot paragraph after REQ-FLR-013; A16). AC-FLR-011 checks the verb's JSON class in Go and the procedure's copy step as text. The written snapshot is not observed, because no code writes it (B8). This is the one partial answer, recorded as such in the report of this revision.
-- **FLR-B7 (`TestRenewLeaseRefusalsAndExpiry`).** M2 rewrites the reaped-state assertion (`f7_record_failure_test.go:36-42`) under REQ-FLR-004; the other assertions stay GREEN. The rewrite is conditional on Q3 option (a).
+- **FLR-B7 (`TestRenewLeaseRefusalsAndExpiry`).** M2 rewrites the reaped-state assertion (`f7_record_failure_test.go:36-42`) under REQ-FLR-004; the other assertions stay GREEN. The rewrite is made under Q3 option (a), ruled at decision-index Q3 (d-20261010T095731Z-5ddc).
 - **FLR-B8 (both keys set).** AC-FLR-009 has a `configured` subtest with `20m` and `4m`.
 - **Point (d).** AC-FLR-010 stays as a regression guard with its declared limit. AC-FLR-011 is strengthened (the verb's JSON class; the procedure's copy step and same-pass measurement). AC-FLR-013 is strengthened (the armed form and the computed gap).
 - **FLR-O1, FLR-O2, FLR-O3.** AC-FLR-006 gains a negative-duration subtest; Q5 names the cadence contradiction; M4 names the third pair (20 minutes, 4 minutes).
@@ -77,7 +77,7 @@ Each assumption carries a one-line rationale. An assumption that an operator cou
 ### Audit mapping (plan audit iteration 4 of SPEC-FACTORY-RECORD-REPAIR-001)
 
 - **D1 (renewal-period bound).** The bound is stated in REQ-FLR-007 and enforced when the factory opens. Behavioural checks are AC-FLR-007 (refusal and boundary) and AC-FLR-012 (late-pass margin and expired refusal). The cadence that would have to meet the bound is changed in this SPEC (REQ-FLR-012, AC-FLR-013, AC-FLR-014), not left open. spec.md Residual risk, decision-index Q1, and progress.md §E.1 state the same period: a working value of 5 minutes, a bound of 7 minutes 30 seconds at the default duration, and a whole-minute maximum of 7 minutes.
-- **D3 (operator verdict wording).** One sentence is used in decision-index.md (the "How to read" section) and in acceptance.md (the Definition of Done): "The `Operator verdict:` line is left empty at authoring; the operator writes it." No Operator verdict value is copied from another SPEC or from a board record. The decision index carries no Status lines, so no status value is written outside the enum. Only Q5 takes a DEFAULT-APPLIED line, and it is the one implementation-level row with a ranked Default.
+- **D3 (operator verdict wording).** One sentence is used in decision-index.md (the "How to read" section) and in acceptance.md (the Definition of Done): "The `Operator verdict:` line is left empty at authoring; the operator writes it." A delegated verdict copied from a board record is recorded with the board decision id it rests on. The decision index carries no Status lines, so no status value is written outside the enum. Only Q5 takes a DEFAULT-APPLIED line, and it is the one implementation-level row with a ranked Default.
 - **D4 (acceptance wording against the Definition of Done).** acceptance.md uses one vocabulary: at plan time there is a predicted RED or a mutant RED (not observed); in the run phase there is an observed RED before the GREEN output; and a criterion is recorded as PASS only from its GREEN output. The plan-time sentence "no criterion is recorded as a pass" and the Definition of Done's "no criterion is recorded as PASS before its GREEN output" agree.
 
 ## §C Pre-flight (for the implementing lane, before any edit)
@@ -129,7 +129,7 @@ Files (run phase):
 
 1. `internal/template/templates/.moai/config/sections/workflow.yaml` gains `factory_lease.duration` (15m) and `factory_lease.renew_interval` (5m), with a comment that names both bounds. The rendered `.moai/config/sections/workflow.yaml` gains the same keys, and its repository-local overrides stay intact (decision-index Q4).
 2. `internal/config/types.go` (struct fields and YAML tags), `internal/config/defaults.go` (the defaults and an updated comment on `DefaultFactoryLeaseDuration`), and the loader wiring. `audit_struct_yaml_symmetry_test.go` gains the case.
-3. `internal/config/testdata/shipped_key_inventory.yaml` gains an entry for each key, with its class.
+3. internal/config/testdata/shipped_key_inventory.yaml gains an entry for each new key with class W and evidence reader. This is the existing anti-rot triage table of SPEC-CONFIG-KEY-HONESTY-001, and the entries land in the same commit as items 1 and 2. The config-registry entry belongs to t1636.
 4. `internal/homestate`: `OpenFactory` reads both keys, refuses an invalid value with the named key (REQ-FLR-006, REQ-FLR-007), and sets the card lease duration on the handle. The lease writes read the handle's value (B2).
 5. `internal/cli` factory status (`factory_card.go:2617`) reports the effective `lease_duration` and `renew_interval` in its JSON output (REQ-FLR-009).
 6. The queue claim (`backlog_store.go:1244`, `:1322`) keeps its compiled constant (REQ-FLR-008). The mutant of AC-FLR-008 is executed in this milestone.
@@ -143,10 +143,10 @@ Exit: AC-FLR-005, AC-FLR-006, AC-FLR-007, AC-FLR-008, and AC-FLR-009 are GREEN, 
 Files (run phase):
 
 1. `internal/cli/factory_card.go`: a `renew <card>` verb in the factory command group, lane-only, beside `stage` (`:1661`). It prints the new expiry (REQ-FLR-001). With `--json` it prints `result` (one of `renewed`, `refused-expired`, `refused-not-holder`, `error`) and `expires_at` (A17, REQ-FLR-011).
-2. `internal/homestate/card_transition.go`, `RenewLease` (`:441-456`): the expired branch returns `ErrLeaseExpired` without calling `applyLeaseExpiry` and without writing. The non-holder branch is unchanged (REQ-FLR-003). This change is subject to decision-index Q3.
+2. `internal/homestate/card_transition.go`, `RenewLease` (`:441-456`): the expired branch returns `ErrLeaseExpired` without calling `applyLeaseExpiry` and without writing. The non-holder branch is unchanged (REQ-FLR-003). This change is ruled at decision-index Q3 (d-20261010T095731Z-5ddc) as refusal with no write, as REQ-FLR-004 is written.
 3. `internal/mcp/catalog.go` declares `factory_renew` as write-capable. `internal/cli/mcp_factory_card.go` handles it through the same function as the verb (REQ-FLR-002). The pins in `internal/mcp/catalog_test.go` are updated (B4).
 4. `.claude/rules/moai/core/moai-mcp-tools-catalogue.md` and its template mirror gain the tool in the same change.
-5. `TestRenewLeaseRefusalsAndExpiry` (`internal/homestate/f7_record_failure_test.go`), the reaped-state assertion at lines 36-42 (the state and the cleared holder). Under REQ-FLR-004 the card keeps its state and holder, and its version is unchanged. This assertion is rewritten in this milestone, and the test is GREEN with the rewritten assertion. Its other assertions are unchanged: the missing-card and unleased-card refusals (lines 19-27), the expired class (lines 33-35), and the zero-clock renewal (lines 44-61). Under decision-index Q3 option (b), this rewrite is not made, and REQ-FLR-004 and AC-FLR-004 are reworded instead.
+5. `TestRenewLeaseRefusalsAndExpiry` (`internal/homestate/f7_record_failure_test.go`), the reaped-state assertion at lines 36-42 (the state and the cleared holder). Under REQ-FLR-004 the card keeps its state and holder, and its version is unchanged. This assertion is rewritten in this milestone, and the test is GREEN with the rewritten assertion. Its other assertions are unchanged: the missing-card and unleased-card refusals (lines 19-27), the expired class (lines 33-35), and the zero-clock renewal (lines 44-61). Decision-index Q3 is ruled as refusal with no write (d-20261010T095731Z-5ddc), so this rewrite is made, and REQ-FLR-004 and AC-FLR-004 stand as written.
 
 RED first: the rewritten reaped-state assertion is an observed RED on the pre-M2 `RenewLease`, which returns the card as `assigned` with no holder. Record that output before the M2 edit. Predicted for AC-FLR-001 to AC-FLR-003 and the verb half of AC-FLR-011: the verb and the tool are absent, so each test fails on its assertion. AC-FLR-004: the test runs against the reaping branch and fails on the unchanged-state assertion.
 
@@ -192,10 +192,10 @@ Exit: QG-1 to QG-5 pass, or each shortfall is recorded as a Gap.
 
 ## §G Anti-patterns to avoid
 
-- Clamping an out-of-bound value silently, or writing a default into a shipped configuration without its decision row (Q2 is open).
+- Clamping an out-of-bound value silently, or writing a default into a shipped configuration without its decision row (Q2 is ruled by d-20261010T095818Z-c501).
 - Restating the 20-minute literal as a current cadence anywhere: auto-semantics §5.1, `factory-dispatch.md`, the watchdog skill, the hook, or a test.
 - Measuring the stall window from the previous snapshot at a period below N, which can never give a verdict.
-- Filling an `Operator verdict:` line with a value copied from the draft SPEC or from a board record. This plan writes only the DEFAULT-APPLIED line of Q5.
+- Filling an `Operator verdict:` line with a value copied from the draft SPEC. A delegated verdict copied from a board record is recorded with its decision id. This plan writes the DEFAULT-APPLIED line of Q5 and the delegated verdicts of Q1, Q2, Q3, and Q6.
 - Changing the queue claim to read the card key, or changing the audit-verdict parser.
 - Naming in a test a Go symbol that does not exist yet. That is TOOL_FAILURE, not a predicted RED.
 - Recording a mutant's output as the observed RED of the real code, or recording a green-before-change case as a pass.
@@ -215,4 +215,4 @@ Exit: QG-1 to QG-5 pass, or each shortfall is recorded as a Gap.
 
 ## Decisions owed
 
-These map to decision-index.md. Q1 (the values, names, and armed form of the two keys), Q2 (refusal or clamping), Q3 (the expired-renewal form), and Q6 (the stall window reference) are open FOUNDER rows, and the autonomous Kickoff stays blocked until their `Operator verdict:` lines are written. Q4 is POLICY-COVERED. Q5 is DEFAULT-APPLIED at plan close.
+These map to decision-index.md. Q1 (the values, names, and armed form of the two keys) and Q2 (refusal or clamping) carry delegated operator verdicts with decision id d-20261010T095818Z-c501. Q3 (the expired-renewal form) and Q6 (the stall window reference) carry delegated operator verdicts with decision id d-20261010T095731Z-5ddc. Q4 is POLICY-COVERED. Q5 is DEFAULT-APPLIED at plan close.

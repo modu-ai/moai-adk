@@ -64,7 +64,7 @@ Then the request is refused with the expired-lease class, and the card's state, 
 - Classification: behavioural check. Not a release gate.
 - Verification: `go test ./internal/homestate/ -run '^TestRenewRefusesExpiredWithoutWrite$' -v -count=1`.
 - Predicted RED (not observed): `RenewLease` reaps the expired lease before it checks the holder (`internal/homestate/card_transition.go:441-456`), which bumps the version and appends a lease event, so the unchanged-version assertion fails.
-- Decision link: if decision-index Q3 selects reap-then-refuse, this criterion and REQ-FLR-004 are reworded in the same revision. Under that option the criterion is not GREEN as written.
+- Decision link: decision-index Q3 is ruled as refusal with no write (d-20261010T095731Z-5ddc), so this criterion and REQ-FLR-004 stand as written.
 - Green path: M2.
 
 ### AC-FLR-005: The card lease duration is read from the key on every write path, with a 15-minute default (REQ-FLR-005)
