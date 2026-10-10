@@ -1144,7 +1144,20 @@ _pending run-phase (manager-develop)_
 
 ## §E.4 Sync-phase Audit-Ready Signal
 
-_pending sync-phase (manager-docs)_
+```yaml
+sync_complete_at: 2026-10-11T01:11:28+09:00
+sync_commit_sha: pending-backfill   # a commit cannot name its own SHA; backfilled in a following commit (spec-frontmatter-schema.md § SHA placeholder backfill exemption)
+sync_status: audit-ready   # sync-audit (sync-auditor) and card-review not yet run; spec.md stays in-progress
+b12_self_test_a: pass   # grep -c 'SPEC-UPDATE-REPAIR-RC30-001' CHANGELOG.md → 0 before the entry was appended
+b12_self_test_b: pass   # acceptance.md counter: stdout 22, stderr live=22 excluded=6 ambiguous=0; the entry carries no AC count (acceptance.md line 5 declares 22)
+b12_self_test_c: pass   # ls .moai/specs/SPEC-UPDATE-REPAIR-RC30-001/spec.md (the only path the entry names)
+changelog_entry_position: "CHANGELOG.md:28 — [Unreleased] → Changed, after the SPEC-UPDATE-MIGRATION-FIX-001 entry"
+frontmatter_status_transitions:
+  spec_md: "in-progress (unchanged; the completed transition is deferred to the lane; updated: not refreshed)"
+  plan_md: unchanged (no status field, spec-frontmatter-schema.md § Artifact Statelessness)
+  acceptance_md: unchanged (no status field)
+  progress_md: "§E.4 placeholder replaced; no other section changed"
+```
 
 ## §G Absorption Record
 
