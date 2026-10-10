@@ -245,7 +245,10 @@ func RunMergeStep(in MergeStepInput, seams MergeStepSeams) (string, error) {
 	// owner it cannot identify. A separate integration worktree has no foreign
 	// owners, so the overlap decision applies there; it needs the pinned SHA and
 	// runs after the pin below (REQ-LMF-005). The surface is the integration
-	// worktree being the primary checkout that Root names.
+	// worktree being the primary checkout that Root names. The primary is also
+	// re-read inside the mutation section, immediately before the merge: this
+	// check runs before the lock is taken, so a file created in the gap would
+	// otherwise reach the merge (card t1616).
 	primary := sameIntegrationTree(in.IntegrationWorktree, in.Root)
 	if primary {
 		// --untracked-files=all so a hidden untracked byte cannot hide behind
@@ -255,7 +258,7 @@ func RunMergeStep(in MergeStepInput, seams MergeStepSeams) (string, error) {
 			return "", releaseWindow(in, seams, mergeStepErr(MergeExitOther, "integration merge: status the integration worktree: %v", err))
 		}
 		if !clean {
-			return "", releaseWindow(in, seams, mergeStepErr(MergeExitWorktreeDirty, "integration merge: the integration worktree is not clean (%d status lines); clean it and re-measure, then re-acquire. Move the uncommitted or untracked changes into a card worktree and commit them there, or ask the session that owns them to commit or discard them. Do not stash: the stash is repository-wide.", strings.Count(status, "\n")+1))
+			return "", releaseWindow(in, seams, integrationWorktreeDirtyRefusal(status))
 		}
 	}
 
@@ -505,11 +508,11 @@ func RunMergeStep(in MergeStepInput, seams MergeStepSeams) (string, error) {
 			statusBefore = before
 		}
 
-		// F1 (sync audit, card t1616): the unfinished-merge probe is the last read
-		// before the merge subprocess, inside the same section. A merge already in
-		// progress belongs to another actor: git refuses to start one over it. A merge
-		// that begins after this probe is caught from MERGE_HEAD after the failed merge,
-		// before any abort (the failure branch below).
+		// F1 (sync audit, card t1616): the unfinished-merge probe runs inside the same
+		// section, ahead of the merge subprocess and of the primary's status re-read
+		// below. A merge already in progress belongs to another actor: git refuses to
+		// start one over it. A merge that begins after this probe is caught from
+		// MERGE_HEAD after the failed merge, before any abort (the failure branch below).
 		pendingMerge, pendingErr := unfinishedMergeReason(git, in.IntegrationWorktree)
 		if pendingErr != nil {
 			recheckErr = mergeStepErr(MergeExitOther, "integration merge: the unfinished-merge probe errored: %v", pendingErr)
@@ -518,6 +521,24 @@ func RunMergeStep(in MergeStepInput, seams MergeStepSeams) (string, error) {
 		if pendingMerge != "" {
 			recheckErr = unfinishedMergeRefusal(pendingMerge)
 			return nil
+		}
+
+		// (12, primary surface) the primary's dirty precondition is re-read inside the
+		// section, immediately before the merge subprocess. The clean check above ran
+		// before the mutation lock was taken, so another session that does not take the
+		// lock can create an untracked file in the primary after it (SPEC-LOCAL-MAIN-FLOW-001,
+		// card t1616). The merge would then run over the dirty primary, and only the
+		// post-merge checks would see it, after main had advanced.
+		if primary {
+			clean, status, statusErr := gitIntegrationWorktreeClean(in.IntegrationWorktree)
+			if statusErr != nil {
+				recheckErr = mergeStepErr(MergeExitOther, "integration merge: re-read the integration worktree status before the merge: %v", statusErr)
+				return nil
+			}
+			if !clean {
+				recheckErr = integrationWorktreeDirtyRefusal(status)
+				return nil
+			}
 		}
 
 		// The merge, of the PINNED SHA never the branch name (REQ-MWQ-017),
@@ -1021,6 +1042,14 @@ func isFullObjectName(s string) bool {
 // began it.
 func unfinishedMergeRefusal(reason string) *MergeStepError {
 	return mergeStepErr(MergeExitWorktreeDirty, "integration merge: refused — the integration worktree holds an unfinished merge (%s) that this step did not start. Finish or resolve it where it was begun, re-measure, then re-acquire. The step does not abort it.", reason)
+}
+
+// integrationWorktreeDirtyRefusal is the cause-12 refusal for an integration worktree
+// that is not clean. Both reads of the clean precondition share it, the check before
+// the lock is taken and the re-read inside the section, so the wording cannot drift
+// between them.
+func integrationWorktreeDirtyRefusal(status string) *MergeStepError {
+	return mergeStepErr(MergeExitWorktreeDirty, "integration merge: the integration worktree is not clean (%d status lines); clean it and re-measure, then re-acquire. Move the uncommitted or untracked changes into a card worktree and commit them there, or ask the session that owns them to commit or discard them. Do not stash: the stash is repository-wide.", strings.Count(status, "\n")+1)
 }
 
 // mergeCallDidNotStop reports whether a failed `git merge` call did NOT stop with the
