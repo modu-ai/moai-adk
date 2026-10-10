@@ -4,7 +4,7 @@ Card t1630 (backlog 3.2-0-1, priority P0, change class C). Lane lane-18, run tmn
 
 ## §E.1 Plan-phase Audit-Ready Signal
 
-- plan_status: pending-reaudit
+- plan_status: audit-ready
 - plan_complete_at: 2026-10-10T07:02:43Z (first authoring)
 - plan_tree: revision 2 is written on top of HEAD 5dc6c4530 (short SHA measured in the repair round). The RED observations stay pinned at 3975fe3cc. The lane commits revision 2, and the re-audit runs on that commit.
 - revision: revision 2 is the repair round after the iteration-2 FAIL (aggregate 0.69; audited_sha 5dc6c45307d21e4b0d34c876631e2fa553fde57b). It applies the operator-delegated split under ruling d-20261010T091713Z-10fe (decision board, card t1630). Policy decisions Q1, Q2, and Q5 stay in scope with the text and evidence defects B1, B4, B6 (wording), B8, B9, B11, and B12. Moved to t1666: the test-isolation items, the clean --home run and db items, decision Q3, decision Q7, the ~/.moai/run growth-0 criterion, and the post-t1619 baseline. Audit defects B2 (the AC-009 run path), B3 (AC-007), B5 (the AC-006 cell 1 order), B7 (the REQ-011 and REQ-012 deletion clauses), and B10 (the AC-006 run-time verdict) move with their criteria.
@@ -64,3 +64,9 @@ Out of Scope - moved to t1666 (decision Q3). The text is retained unchanged.
 Decision: the `run` and `db` categories join the `--force` allowlist of `moai clean --home`, so `--force` can delete run and db candidates. Run items are candidates only under the REQ-011 rule, and `--force` deletes only candidates. Without `--force`, run and db items are listed only. The ruling 07ae reads db as list-only, with deletion only by explicit `--yes`, which ruling 49e5 maps to `--force`. No live-record exclusion is added for db, because the ruling does not state one. plan.md's G-22 (the tier_render.go:106 statement) is a separate gap.
 
 decision record: decided_by=lane-18 evidence_refs=board:d-20261010T073547Z-07ae; .moai/specs/SPEC-USER-SETTINGS-PROTECT-001/spec.md REQ-011 and REQ-012 ladder_path=ladder ⑤ (lane judgment; the ruling's explicit-deletion wording)
+
+## §G Override and Refusal Record
+
+- 2026-10-10T11:22:33Z SPEC-USER-SETTINGS-PROTECT-001 ceiling-outcome outcome=pass-through reasons="plan-audit ceiling reached (round count 3 >= tier ceiling 2 + 1 delta rounds); the verdict is admission-clean and admits without a question (REQ-ACE-013)" evidence=/Users/goos/MoAI/moai-adk-go/.moai/worktrees/t1630/.moai/reports/t1630/plan-audit-iter1.md,/Users/goos/MoAI/moai-adk-go/.moai/worktrees/t1630/.moai/reports/t1630/plan-audit-iter2.md,/Users/goos/MoAI/moai-adk-go/.moai/worktrees/t1630/.moai/reports/t1630/plan-audit-iter3.md
+
+decision record: decided_by=lane-18 evidence_refs=.moai/reports/t1630/plan-audit-iter3.md (verdict PASS, audited_sha fb672d1723c485ac52d4b21f8e4f3bbceafc78c9, overall 0.81, blocking 0), the ceiling-outcome record above (pass-through at 11:22:33Z), factory record t1630 version 28 ladder_path=plan to run Kickoff gate row, autonomous form per auto-semantics 9.1: audit-cross PASS plus evidence and a decision record condition=PASS holds only if the operator accepts the non-normative scope of REQ-003 and REQ-004 (verdict section 5), otherwise FAIL
