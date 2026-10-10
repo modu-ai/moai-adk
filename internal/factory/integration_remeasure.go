@@ -501,8 +501,18 @@ func countGoTestJSONTests(text string) (count int, structured bool, err error) {
 			finished[event.Package] = true
 		}
 	}
-	if missing := len(started) - len(finished); missing > 0 {
-		return 0, true, fmt.Errorf("go test -json stream ended with %d started package(s) unreported — a truncated capture (a pipe into head/tail, a killed runner) cannot stand for a re-measure", missing)
+	// The unreported set, not a count: a start-less terminal event reports a
+	// package the stream never started, and a count difference let it cancel
+	// one unfinished started package (card t1582 sync-audit F2). The set
+	// difference refuses on every started package without its terminal event.
+	var missing []string
+	for pkg := range started {
+		if !finished[pkg] {
+			missing = append(missing, pkg)
+		}
+	}
+	if len(missing) > 0 {
+		return 0, true, fmt.Errorf("go test -json stream ended with %d started package(s) unreported — a truncated capture (a pipe into head/tail, a killed runner) cannot stand for a re-measure", len(missing))
 	}
 	return count, structured, nil
 }
