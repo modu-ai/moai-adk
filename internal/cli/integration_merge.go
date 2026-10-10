@@ -132,9 +132,9 @@ func newIntegrationMergeCmd() *cobra.Command {
 //     detached: refused with the operator guidance, which states that this
 //     tool never switches a branch (case 5).
 //
-// The merge verb resolves the surface here. factory complete keeps its own
-// copy of the primary refusal until the same SPEC routes it through this
-// resolver.
+// The merge verb and factory complete both resolve the surface here. Complete
+// asks this resolver for the primary checkout's verdict and keeps its own
+// refusal wording (factory_card.go, step 3).
 func integrationMergeWorktree(root, integBranch string) (string, error) {
 	integ := factoryWorktreeForBranchIn(root, integBranch)
 	if integ == "" {
