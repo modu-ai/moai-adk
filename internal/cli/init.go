@@ -887,7 +887,15 @@ func runInit(cmd *cobra.Command, args []string) (err error) {
 	// @MX:WARN: [AUTO] leftover judgement placement — keep above executor.Execute
 	// @MX:REASON: after the deploy the live file is the new render, so an abort with no revert
 	// would be discarded instead of promoted (plan.md B8)
-	backup.JudgeLeftoverSettingsSnapshot(opts.ProjectRoot, cmd.ErrOrStderr())
+	// Finding 3 (card t1591): a resumed init keeps the staging copy its interrupted first
+	// run took. The judgement discards a copy whose live file has changed since, and the
+	// interrupted run's own autonomy answer changes it, so a resume skips the judgement
+	// and the copy is promoted by the resume's settle once every post-step completed.
+	// --force reinitializes from scratch and is judged as before.
+	resuming := !getBoolFlag(cmd, "force") && initResumeCheckpoint(userHomeDirOrEmpty(), opts.ProjectRoot)
+	if !resuming {
+		backup.JudgeLeftoverSettingsSnapshot(opts.ProjectRoot, cmd.ErrOrStderr())
+	}
 	// Card t1029: same judgement for the .mcp.json staging copy.
 	backup.JudgeLeftoverMCPSnapshot(opts.ProjectRoot, cmd.ErrOrStderr())
 
