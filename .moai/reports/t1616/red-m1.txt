@@ -73,3 +73,55 @@ card content now at 'Foo.txt': card
 FAIL
 FAIL	github.com/modu-ai/moai-adk/internal/cli	22.625s
 FAIL
+
+## Cell C (configuration, 2 tests): go test ./internal/config/ -run '^(TestLocalMainIntegrationDefaultsFalse|TestLocalMainIntegrationReadsEnabled)$' -v -count=1
+=== RUN   TestLocalMainIntegrationDefaultsFalse
+=== RUN   TestLocalMainIntegrationDefaultsFalse/template_ships_the_key_disabled
+    local_main_integration_test.go:70: the template workflow.yaml carries no local_main_integration block (REQ-LMF-001; plan §C M1 step 2)
+=== RUN   TestLocalMainIntegrationDefaultsFalse/absent_key_reads_as_disabled
+    local_main_integration_test.go:82: the loaded workflow configuration carries no local_main_integration.enabled leaf (REQ-LMF-001; plan §C M1 step 3)
+--- FAIL: TestLocalMainIntegrationDefaultsFalse (0.01s)
+    --- FAIL: TestLocalMainIntegrationDefaultsFalse/template_ships_the_key_disabled (0.00s)
+    --- FAIL: TestLocalMainIntegrationDefaultsFalse/absent_key_reads_as_disabled (0.00s)
+=== RUN   TestLocalMainIntegrationReadsEnabled
+    local_main_integration_test.go:95: the loaded workflow configuration carries no local_main_integration.enabled leaf (REQ-LMF-001; plan §C M1 step 3)
+--- FAIL: TestLocalMainIntegrationReadsEnabled (0.00s)
+FAIL
+FAIL	github.com/modu-ai/moai-adk/internal/config	0.212s
+FAIL
+
+## Cell S (CLI surface, verb, and complete, 9 tests): go test ./internal/cli/ -run '^(TestIntegrationSurfaceSelectsPrimaryWhenEnabled|TestIntegrationSurfaceRefusesPrimaryWhenDisabled|TestIntegrationSurfaceRefusesPrimaryOffBranch|TestIntegrationSurfaceRefusesNoHolder|TestIntegrationSurfaceSeparateWorktreeUnchanged|TestIntegrationMergeWorktreeAcceptsPrimaryWhenEnabled|TestFactoryCompletePrimaryTreeGateEnabled|TestFactoryCompletePrimaryTreeGateDisabled|TestFactoryCompleteNoIntegrationTreeRefused)$' -v -count=1
+=== RUN   TestIntegrationSurfaceSelectsPrimaryWhenEnabled
+    integration_surface_test.go:23: with the gate on and the primary holding main, the surface is the primary's local main: integration merge: refused — the only tree holding "main" is the primary checkout /private/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestIntegrationSurfaceSelectsPrimaryWhenEnabled1279659331/002 (the primary never changes branch; the leader provisions the integration worktree)
+--- FAIL: TestIntegrationSurfaceSelectsPrimaryWhenEnabled (0.73s)
+=== RUN   TestIntegrationSurfaceRefusesPrimaryWhenDisabled
+--- PASS: TestIntegrationSurfaceRefusesPrimaryWhenDisabled (0.96s)
+=== RUN   TestIntegrationSurfaceRefusesPrimaryOffBranch
+    integration_surface_test.go:51: the refusal must carry the case-5 guidance (plan §B2): integration merge: no worktree holds the integration branch "main" — the leader provisions the integration worktree
+--- FAIL: TestIntegrationSurfaceRefusesPrimaryOffBranch (0.82s)
+=== RUN   TestIntegrationSurfaceRefusesNoHolder
+    integration_surface_test.go:67: the refusal must carry the case-5 guidance (plan §B2): integration merge: no worktree holds the integration branch "main" — the leader provisions the integration worktree
+--- FAIL: TestIntegrationSurfaceRefusesNoHolder (0.66s)
+=== RUN   TestIntegrationSurfaceSeparateWorktreeUnchanged
+=== RUN   TestIntegrationSurfaceSeparateWorktreeUnchanged/gate-off
+=== RUN   TestIntegrationSurfaceSeparateWorktreeUnchanged/gate-on
+--- PASS: TestIntegrationSurfaceSeparateWorktreeUnchanged (1.96s)
+    --- PASS: TestIntegrationSurfaceSeparateWorktreeUnchanged/gate-off (0.86s)
+    --- PASS: TestIntegrationSurfaceSeparateWorktreeUnchanged/gate-on (1.10s)
+=== RUN   TestIntegrationMergeWorktreeAcceptsPrimaryWhenEnabled
+    local_main_verb_test.go:27: with the gate on, the verb must reach the holder decision (MergeExitNotHolder 14), got code 0 (ok=false): integration merge: refused — the only tree holding "main" is the primary checkout /private/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestIntegrationMergeWorktreeAcceptsPrimaryWhenEnabled3452688896/002 (the primary never changes branch; the leader provisions the integration worktree)
+--- FAIL: TestIntegrationMergeWorktreeAcceptsPrimaryWhenEnabled (1.29s)
+=== RUN   TestFactoryCompletePrimaryTreeGateEnabled
+    local_main_verb_test.go:39: with the gate on, complete must land the card through the primary's local main: factory complete: refused — the integration worktree for "main" is not provisioned: no tree holds it, or only the parent checkout /private/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestFactoryCompletePrimaryTreeGateEnabled3536979578/002 does (the parent never changes branch; the leader provisions the integration worktree)
+--- FAIL: TestFactoryCompletePrimaryTreeGateEnabled (1.76s)
+=== RUN   TestFactoryCompletePrimaryTreeGateDisabled
+--- PASS: TestFactoryCompletePrimaryTreeGateDisabled (4.19s)
+=== RUN   TestFactoryCompleteNoIntegrationTreeRefused
+=== RUN   TestFactoryCompleteNoIntegrationTreeRefused/gate-off
+=== RUN   TestFactoryCompleteNoIntegrationTreeRefused/gate-on
+--- PASS: TestFactoryCompleteNoIntegrationTreeRefused (6.27s)
+    --- PASS: TestFactoryCompleteNoIntegrationTreeRefused/gate-off (3.37s)
+    --- PASS: TestFactoryCompleteNoIntegrationTreeRefused/gate-on (2.90s)
+FAIL
+FAIL	github.com/modu-ai/moai-adk/internal/cli	20.016s
+FAIL
