@@ -2,7 +2,7 @@
 id: SPEC-ZONE-SHELL-CD-TRACKING-001
 title: "Protected-zone shell guard — track cd destinations (post-`--` operand including hyphen-leading, in-project absolute) with a cd-class regression matrix"
 version: "0.2.1"
-status: in-progress
+status: completed
 created: 2026-10-09
 updated: 2026-10-10
 author: manager-spec

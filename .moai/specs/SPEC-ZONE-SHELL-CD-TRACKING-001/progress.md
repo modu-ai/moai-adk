@@ -161,4 +161,18 @@ m1_to_mN_commit_strategy: commit 1 RED test only (9262172f8), commit 2 fix K1/K3
 
 ## §E.4 Sync-phase Audit-Ready Signal
 
-_(pending sync-phase)_
+```yaml
+sync_status: complete
+audit_ready: true
+sync_commit_sha: pending-backfill
+sync_scope: spec.md status completed in the sync commit (in-progress to implemented to completed, one commit); section E.4 sync signal; no CHANGELOG or docs-site change
+sync_audit_backend: codex_audit (target baseBranch, project_root = card tree)
+```
+
+**Lifecycle.** The status chain in-progress to implemented to completed is recorded in the sync commit, per the Status Transition Ownership Matrix.
+
+**Gaps (carried to the completion report).**
+- 삭제 후 패키지 전체 스위트 미재실행, 전체 판정은 CI
+- cd -P 옵션형 under-match
+
+**Deviation (carried to the completion report).** The draft-to-in-progress transition was not recorded at the first run-phase commit (M1). It is recorded late by its owner, manager-develop, in commit 5e464c950, on the leader's order.
