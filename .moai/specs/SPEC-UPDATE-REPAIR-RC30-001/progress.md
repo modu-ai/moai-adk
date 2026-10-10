@@ -495,6 +495,101 @@ ok  	github.com/modu-ai/moai-adk/internal/cli	2.474s
 
 **Residual risk.** A plugin-mode project sees one line per unselected pack on every update, for as long as the pack stays unselected; the phase keeps no once-only record. A project whose `deployment_mode` record is absent or out of set is not announced, which follows `ReadDeployMode`'s record-less reading.
 
+### M1 step 4, bundle B — U-12 (AC-RC30-13) (manager-develop, card t1619)
+
+**GREEN at arrival (no RED observed).** AC-RC30-13 is a regression guard (its effect cell is the notice only). No RED was observed for this item and none is claimed. The judging test is new: `TestKeptOptionalAssetRefresh` in `internal/cli/migrate_kept_optional_test.go`. Fixture: two outdated copies, each template-managed with the hash of its own bytes and with no user counterpart installed (the home holds L0 only): `.claude/agents/moai/e2e-tester.md` (consult-pack agent) and `.agents/skills/moai-clean/SKILL.md` (commands-pack skill). The test requires each copy to be refreshed in place (its bytes changed) or named by a line of the migration output.
+
+Command: `go test ./internal/cli/ -run TestKeptOptionalAssetRefresh -count=1 -v`, exit 0. Verbatim output:
+
+```text
+=== RUN   TestKeptOptionalAssetRefresh
+--- PASS: TestKeptOptionalAssetRefresh (0.37s)
+PASS
+ok  	github.com/modu-ai/moai-adk/internal/cli	1.264s
+```
+
+**Why it holds, and the arm it holds on.** `migrateProjectCommonAssets` has no refresh arm: it never rewrites a kept copy. The criterion holds on the notice arm alone. Both copies reach the not-confirmed branch and each gets the line `migration: kept project-side (user counterpart not confirmed — opt in via 'moai bundle add <name>' or re-run update): <path>`. The migration tally also counts both (`3 kept project-side`, in the probe below).
+
+**Mutation probe (test sensitivity; not a RED of this item).** To show that the GREEN is not vacuous, the opt-in report line in `internal/cli/migrate_project_assets.go` was turned into a discarded `fmt.Sprintf` (the message is still computed, nothing is reported). One edit, then the test re-run:
+
+Command: `go test ./internal/cli/ -run TestKeptOptionalAssetRefresh -count=1 -v`, exit 1. Verbatim output:
+
+```text
+=== RUN   TestKeptOptionalAssetRefresh
+    migrate_kept_optional_test.go:71: kept copy .claude/agents/moai/e2e-tester.md is neither refreshed nor named in the output; lines: ["  migration: unregistered mirror copy (kept — removal needs creation provenance or your approval): .claude/skills/moai-custom/SKILL.md" "  migration: kept project-side (removal is not enabled yet): .claude/skills/moai-foundation-core/SKILL.md" "  migration: preserved (bytes differ from the template — treated as user-modified): .claude/skills/moai-workflow-tdd/SKILL.md" "migration: 0 removed, 1 preserved (user-modified), 3 kept project-side, 1 user-created untouched"]
+    migrate_kept_optional_test.go:71: kept copy .agents/skills/moai-clean/SKILL.md is neither refreshed nor named in the output; lines: ["  migration: unregistered mirror copy (kept — removal needs creation provenance or your approval): .claude/skills/moai-custom/SKILL.md" "  migration: kept project-side (removal is not enabled yet): .claude/skills/moai-foundation-core/SKILL.md" "  migration: preserved (bytes differ from the template — treated as user-modified): .claude/skills/moai-workflow-tdd/SKILL.md" "migration: 0 removed, 1 preserved (user-modified), 3 kept project-side, 1 user-created untouched"]
+--- FAIL: TestKeptOptionalAssetRefresh (0.81s)
+FAIL
+FAIL	github.com/modu-ai/moai-adk/internal/cli	1.972s
+FAIL
+```
+
+The probe edit was reverted by the inverse edit. `git status --short` then showed `internal/cli/migrate_project_assets.go` with no difference from HEAD. The GREEN above was re-run on the restored tree (exit 0, same `--- PASS` line).
+
+**Gates (each its own command).**
+- `gofmt -l internal/cli/migrate_kept_optional_test.go`: no output.
+- `go vet ./internal/cli/`: no output.
+- `golangci-lint run ./internal/cli/`: `0 issues.`
+- `GOOS=windows GOARCH=amd64 go build ./...` (B1): no output.
+
+**Gaps (not observed in this item).** The judging test calls `migrateProjectCommonAssets` directly, not the whole update command, so the wiring that prints the reporter to the user's output (`update_template_sync.go:1185`) was not re-observed in a real run. No refresh arm exists to observe.
+
+**Residual risk.** A kept copy is named, not refreshed: the user must opt in or update the copy by hand. The notice is the opt-in line; it does not say the copy is outdated. That is accurate for the not-confirmed arm, and the criterion does not require more, but a reader may take the line for a current copy.
+
+### M1 step 4, bundle B — close (manager-develop, card t1619)
+
+**Change-scoped regression subset (this tree, after U-12).** One plain command, exit 0: 45 top-level tests. The set is the 35-test migration set of the bundle A record (§ Step 3), the 2 user-asset phase tests (`TestUpdatePhaseRefreshesManifestMatch`, `TestUpdatePhaseHonorsRecordedSelectionAndPrunes`), the 5 bundle command tests (`TestBundleAddInstallsBundleEntries`, `TestBundleRemoveTakesComplementOnly`, `TestBundleRemoveHonorsDivergence`, `TestBundleUnknownNameRefused`, `TestBundleRemoveDefersDependency`), and the 3 judging tests of this bundle. Command: `go test ./internal/cli/ -run '^(TestRunTemplateSyncWithProgress_VersionMatch|TestRunTemplateSyncWithProgress_VersionMismatch|TestFR3A1_MigrationDeletionAnchoredToProjectRoot|TestFR3_1_MigrationPreservesOnUnverifiable|TestMigrationClassifiesUnregisteredMirrorCopy|TestUpdateCancelKeepsProjectAssetsIntact|TestRF2F3_MigrationPreservesPostInstallEdits|TestRF2F3b_MigrationPreservesUntracked|TestRunTemplateSyncWithProgress_VersionMatchSkips|TestRunTemplateSyncWithProgress_ForceFlagBypassesVersionCheck|TestUpdate_Characterize_SkippingSync_NoHooksGuidance|TestUpdateMigratesLegacyProject|TestUpdateOptedOutMigrationPreservesManagedRootLocals|TestMigrationIdempotent|TestUpdateForceKeepsPlantedCommonAssets|TestUpdateLocalModeKeepsFullScope|TestUpdateNeverFlipsModeRecord|TestForceUpdatePreservesUserCommonAssets|TestNotDemonstratedPreservationHoldsAtNextLocalUpdate|TestPreservedSectionSurvivesRestoreUntouched|TestUnknownSkillPreservedAcrossLocalUpdates|TestMigrationPreservesExistingMirrorEntries|TestUpdatePreservesUserModifiedPolicies|TestMigrationRefusesRemovalWhenUserInstallMissing|TestCancelledUpdateKeepsProjectManagedAssets|TestRecordlessBranchTallyCountsReconcileRemovals|TestReconcileDropsStaleManifestRecord|TestPostRemovalUserFileSurvivesNextUpdate|TestTallyCountsMigrationRemovals|TestUserCancelledMerge_LeavesConfigByteIdentical|TestSkipSyncNoArchive|TestMigrationArchivesModifiedBeforeRemoval|TestMigrationArchiveRefusesSymlinkedArchiveDestination|TestUpdateRepair_SyncArchivesLegacySkillsBeforeCleanup|TestMigrationDefaultKeepsConfirmedProjectCopy|TestUpdatePhaseRefreshesManifestMatch|TestUpdatePhaseHonorsRecordedSelectionAndPrunes|TestBundleAddInstallsBundleEntries|TestBundleRemoveTakesComplementOnly|TestBundleRemoveHonorsDivergence|TestBundleUnknownNameRefused|TestBundleRemoveDefersDependency|TestNonCatalogSkillMessage|TestBundleAnnounceForPluginMode|TestKeptOptionalAssetRefresh)$' -count=1 -v`. Result: 45 `--- PASS`, 0 `--- FAIL`, final lines `PASS` and `ok  	github.com/modu-ai/moai-adk/internal/cli	15.529s`. The output was too large to inline (41 KB); the top-level result lines, verbatim (`grep "^--- PASS"` on that output), are:
+
+```text
+--- PASS: TestBundleAnnounceForPluginMode (0.72s)
+--- PASS: TestBundleAddInstallsBundleEntries (0.63s)
+--- PASS: TestBundleRemoveTakesComplementOnly (0.65s)
+--- PASS: TestBundleRemoveHonorsDivergence (1.08s)
+--- PASS: TestBundleUnknownNameRefused (0.00s)
+--- PASS: TestBundleRemoveDefersDependency (0.63s)
+--- PASS: TestRunTemplateSyncWithProgress_VersionMatch (0.00s)
+--- PASS: TestRunTemplateSyncWithProgress_VersionMismatch (0.22s)
+--- PASS: TestFR3A1_MigrationDeletionAnchoredToProjectRoot (0.00s)
+--- PASS: TestFR3_1_MigrationPreservesOnUnverifiable (0.00s)
+--- PASS: TestMigrationClassifiesUnregisteredMirrorCopy (0.71s)
+--- PASS: TestUpdateCancelKeepsProjectAssetsIntact (0.48s)
+--- PASS: TestKeptOptionalAssetRefresh (0.60s)
+--- PASS: TestNonCatalogSkillMessage (0.43s)
+--- PASS: TestMigrationDefaultKeepsConfirmedProjectCopy (0.43s)
+--- PASS: TestRF2F3_MigrationPreservesPostInstallEdits (0.00s)
+--- PASS: TestRF2F3b_MigrationPreservesUntracked (0.00s)
+--- PASS: TestRunTemplateSyncWithProgress_VersionMatchSkips (0.00s)
+--- PASS: TestRunTemplateSyncWithProgress_ForceFlagBypassesVersionCheck (0.00s)
+--- PASS: TestUpdate_Characterize_SkippingSync_NoHooksGuidance (0.00s)
+--- PASS: TestUpdateMigratesLegacyProject (0.48s)
+--- PASS: TestUpdateOptedOutMigrationPreservesManagedRootLocals (0.16s)
+--- PASS: TestMigrationArchivesModifiedBeforeRemoval (0.00s)
+--- PASS: TestMigrationIdempotent (0.33s)
+--- PASS: TestUpdateForceKeepsPlantedCommonAssets (0.38s)
+--- PASS: TestUpdateLocalModeKeepsFullScope (0.21s)
+--- PASS: TestUpdateNeverFlipsModeRecord (0.35s)
+--- PASS: TestForceUpdatePreservesUserCommonAssets (0.49s)
+--- PASS: TestNotDemonstratedPreservationHoldsAtNextLocalUpdate (0.39s)
+--- PASS: TestPreservedSectionSurvivesRestoreUntouched (0.17s)
+--- PASS: TestMigrationArchiveRefusesSymlinkedArchiveDestination (0.04s)
+--- PASS: TestUnknownSkillPreservedAcrossLocalUpdates (0.41s)
+--- PASS: TestMigrationPreservesExistingMirrorEntries (0.54s)
+--- PASS: TestUpdatePreservesUserModifiedPolicies (0.16s)
+--- PASS: TestMigrationRefusesRemovalWhenUserInstallMissing (0.39s)
+--- PASS: TestCancelledUpdateKeepsProjectManagedAssets (0.47s)
+--- PASS: TestRecordlessBranchTallyCountsReconcileRemovals (0.18s)
+--- PASS: TestReconcileDropsStaleManifestRecord (0.18s)
+--- PASS: TestPostRemovalUserFileSurvivesNextUpdate (0.49s)
+--- PASS: TestTallyCountsMigrationRemovals (0.69s)
+--- PASS: TestUserCancelledMerge_LeavesConfigByteIdentical (0.00s)
+--- PASS: TestUpdateRepair_SyncArchivesLegacySkillsBeforeCleanup (0.20s)
+--- PASS: TestSkipSyncNoArchive (0.01s)
+--- PASS: TestUpdatePhaseRefreshesManifestMatch (0.54s)
+--- PASS: TestUpdatePhaseHonorsRecordedSelectionAndPrunes (1.00s)
+```
+
+**Scope.** The full `internal/cli` suite and `go test ./...` were not run locally (scope rule, as in bundle A). The repository-wide verdict belongs to the CI run on `origin/develop`, PENDING at the time of this record. `go test -cover` was not measured (M7). The status transition was recorded on the bundle A commit; bundle B changes no status field.
+
 ## §E.3 Run-phase Audit-Ready Signal
 
 _pending run-phase (manager-develop)_
