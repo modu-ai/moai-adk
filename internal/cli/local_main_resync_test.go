@@ -13,9 +13,11 @@ import (
 	"path/filepath"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/modu-ai/moai-adk/internal/config"
 	"github.com/modu-ai/moai-adk/internal/factory"
+	"github.com/modu-ai/moai-adk/internal/homestate"
 	"github.com/modu-ai/moai-adk/internal/session"
 )
 
@@ -241,4 +243,244 @@ func TestLocalMainResyncHolderCallKeepsWindow(t *testing.T) {
 		}
 		lmfAssertWindowKeptBy(t, root, held)
 	})
+}
+
+// --- Sync-audit defects F2-F6 (card t1616): RED regression tests ---
+
+const (
+	// lmfRival is the session that takes the window while the re-sync's fetch runs (F2).
+	lmfRival = "sess-rival"
+	// lmfWaiterSession is the lane queued behind the holder (F3).
+	lmfWaiterSession = "sess-lane-2"
+)
+
+// lmfResyncFixtureLiveFetch is lmfResyncFixture without the fetch swap: the
+// production default `git fetch origin main` runs against the origin the test
+// configures.
+func lmfResyncFixtureLiveFetch(t *testing.T) string {
+	t.Helper()
+	root, _ := lmfRepo(t, true, "")
+	t.Setenv(config.EnvClaudeCodeSessionID, lmfSession)
+	sdLaneEnv(t, "lane-1", "")
+	return root
+}
+
+// lmfAfterFastForward installs fn as the post-fast-forward seam for one test and
+// restores the production no-op on cleanup.
+func lmfAfterFastForward(t *testing.T, fn func(repoRoot string)) {
+	t.Helper()
+	prev := localMainResyncAfterFastForward
+	localMainResyncAfterFastForward = fn
+	t.Cleanup(func() { localMainResyncAfterFastForward = prev })
+}
+
+// lmfResyncHoldCarded records the window for lmfSession with a session name and a
+// card, as the lane's own acquire does. The re-sync that follows is the holder
+// calling again.
+func lmfResyncHoldCarded(t *testing.T, root string) {
+	t.Helper()
+	ownerPID, _ := session.ResolveOwnerPID()
+	if _, err := factory.AcquireIntegrationWindow(root, factory.IntegrationLock{
+		SessionID:    lmfSession,
+		SessionName:  "lane-1",
+		Card:         lmfCard,
+		PID:          ownerPID,
+		PIDSource:    factory.PIDSourceSessionOwner,
+		Branch:       localMainResyncBranch,
+		BranchSource: factory.BranchSourceConfig,
+		Worktree:     root,
+	}, false, &factory.AcquireWindowOptions{LeaseDuration: integrationLeaseDuration(root)}); err != nil {
+		t.Fatalf("hold the window for %s: %v", lmfSession, err)
+	}
+	held := sdWindow(t, root)
+	if !held.Held() || held.SessionID != lmfSession || held.SessionName != "lane-1" || held.Card != lmfCard {
+		t.Fatalf("fixture: the window must be held by %s as lane-1 on card %s before the re-sync, got %+v", lmfSession, lmfCard, held)
+	}
+}
+
+// lmfQueueWaiter queues a live lane behind the held window. The ticket names this
+// test process as both its owner and its waiter, so the production liveness probe
+// keeps it: a release that promotes the queue promotes this lane.
+func lmfQueueWaiter(t *testing.T, root string) {
+	t.Helper()
+	now := time.Now().UTC().Format(time.RFC3339)
+	if err := factory.UpdateIntegrationWindow(root, func(w *factory.IntegrationLock) error {
+		w.Queue = append(w.Queue, factory.IntegrationTicket{
+			SessionID:    lmfWaiterSession,
+			SessionName:  "lane-2",
+			Card:         "t2",
+			OwnerPID:     os.Getpid(),
+			PIDSource:    factory.PIDSourceSessionOwner,
+			Branch:       localMainResyncBranch,
+			BranchSource: factory.BranchSourceConfig,
+			Worktree:     root,
+			WaiterPID:    os.Getpid(),
+			WaiterStart:  homestate.CurrentProcessFingerprint(),
+			Heartbeat:    now,
+			EnqueuedAt:   now,
+		})
+		return nil
+	}); err != nil {
+		t.Fatalf("queue a waiter behind the window: %v", err)
+	}
+}
+
+func TestLocalMainResyncTakeoverDuringFetchRefuses(t *testing.T) {
+	// F2 (sync audit, card t1616): the holder check runs when the window is taken,
+	// and nothing re-validates it before the fast-forward. A rival session that
+	// takes the window while the fetch runs must stop the re-sync: it refuses, HEAD
+	// does not move, and the rival keeps the window. The rival takes the window
+	// through the real --force acquire.
+	root := lmfResyncFixture(t, "")
+	base := lmfHead(t, root)
+	target := lmfOriginCommit(t, root, base, "origin-ahead", map[string]string{"ahead.txt": "ahead\n"}, false)
+	localMainResyncFetch = func(repoRoot string) error {
+		if _, err := factory.AcquireIntegrationLock(repoRoot, factory.IntegrationLock{
+			SessionID:    lmfRival,
+			SessionName:  "lane-rival",
+			PID:          os.Getpid(),
+			PIDSource:    factory.PIDSourceSessionOwner,
+			Branch:       localMainResyncBranch,
+			BranchSource: factory.BranchSourceConfig,
+			Worktree:     repoRoot,
+		}, true); err != nil {
+			t.Fatalf("fixture: the rival takeover while the fetch runs: %v", err)
+		}
+		return nil
+	}
+	_, err := runLocalMainResync(root)
+	if err == nil {
+		t.Fatalf("a takeover while the fetch runs must refuse the re-sync")
+	}
+	if head := lmfHead(t, root); head != base {
+		t.Fatalf("a takeover during the fetch must not fast-forward: HEAD moved %s -> %s (origin/main is %s)", base, head, target)
+	}
+	if lock := sdWindow(t, root); lock.SessionID != lmfRival {
+		t.Fatalf("the rival's window must stay in place after the refused re-sync: holder %q", lock.SessionID)
+	}
+}
+
+func TestLocalMainResyncPostMergeWritesHold(t *testing.T) {
+	// F3 (sync audit, card t1616): when step 6 finds HEAD off BASELINE_SHA after
+	// the fast-forward, the refusal is MergeExitPostMerge. The merge step writes a
+	// post-merge hold before it releases the window (integration_merge_step.go:554-623).
+	// The re-sync releases with no hold, so a lane queued behind the window is
+	// promoted onto the anomalous state. The anomaly comes from the post-fast-forward
+	// seam, which moves the branch back to its pre-fast-forward commit. The waiter is
+	// queued during the fetch, while the re-sync holds the window.
+	root := lmfResyncFixture(t, "")
+	base := lmfHead(t, root)
+	target := lmfOriginCommit(t, root, base, "origin-ahead", map[string]string{"ahead.txt": "ahead\n"}, false)
+	localMainResyncFetch = func(repoRoot string) error {
+		lmfQueueWaiter(t, repoRoot)
+		return nil
+	}
+	lmfAfterFastForward(t, func(repoRoot string) {
+		fcGit(t, repoRoot, "update-ref", "refs/heads/"+lmfBranch, base)
+	})
+	_, err := runLocalMainResync(root)
+	if code, ok := factory.MergeExitCode(err); !ok || code != factory.MergeExitPostMerge {
+		t.Fatalf("HEAD off BASELINE_SHA after the fast-forward must refuse with MergeExitPostMerge (%d), got code %d (ok=%v): %v", factory.MergeExitPostMerge, code, ok, err)
+	}
+	policy, policyErr := factory.ReadIntegrationWindowPolicy(root)
+	if policyErr != nil || policy.Policy != factory.PolicyHold {
+		t.Fatalf("the post-merge refusal must write a hold before it releases the window: policy %+v (err %v)", policy, policyErr)
+	}
+	if !strings.Contains(strings.ToLower(policy.Reason), "fast-forward") || !strings.Contains(policy.Reason, target[:12]) {
+		t.Fatalf("the hold must name the cause and the SHA %s: %q", target[:12], policy.Reason)
+	}
+	if lock := sdWindow(t, root); lock.Held() {
+		t.Fatalf("the window must be released after the hold, with no promotion onto the anomalous state: holder %q", lock.SessionID)
+	}
+}
+
+func TestLocalMainResyncKeepsCardMetadata(t *testing.T) {
+	// F4 (sync audit, card t1616): the re-sync's acquisition writes the window record
+	// from a literal that names neither the card nor the session name, and the holder
+	// re-entry keeps that literal. The holder's no-op re-sync must leave the card and
+	// the session name the window was taken for.
+	root := lmfResyncFixture(t, "")
+	base := lmfHead(t, root)
+	lmfLocalCommit(t, root, "local.txt", "local\n")
+	fcGit(t, root, "update-ref", "refs/remotes/origin/"+localMainResyncBranch, base)
+	lmfResyncHoldCarded(t, root)
+	if _, err := runLocalMainResync(root); err != nil {
+		t.Fatalf("the holder's no-op re-sync must not error: %v", err)
+	}
+	lock := sdWindow(t, root)
+	if lock.Card != lmfCard {
+		t.Fatalf("the holder's re-sync must keep the card %s the window was taken for, got %q", lmfCard, lock.Card)
+	}
+	if lock.SessionName != "lane-1" {
+		t.Fatalf("the holder's re-sync must keep the session name lane-1, got %q", lock.SessionName)
+	}
+}
+
+func TestLocalMainResyncLateDirtyPrimaryRefuses(t *testing.T) {
+	// F5 (sync audit, card t1616): the primary's clean check runs before the fetch.
+	// A file that appears in the primary while the fetch runs goes unseen, and
+	// `git merge --ff-only` refuses only collisions, so the fast-forward lands on a
+	// dirty primary. The re-sync must re-check the clean state before it moves HEAD.
+	root := lmfResyncFixture(t, "")
+	base := lmfHead(t, root)
+	lmfOriginCommit(t, root, base, "origin-ahead", map[string]string{"ahead.txt": "ahead\n"}, false)
+	localMainResyncFetch = func(repoRoot string) error {
+		return os.WriteFile(filepath.Join(repoRoot, "late-untracked.txt"), []byte("late\n"), 0o644)
+	}
+	_, err := runLocalMainResync(root)
+	if err == nil {
+		t.Fatalf("a primary that turns dirty during the fetch must refuse the fast-forward")
+	}
+	if head := lmfHead(t, root); head != base {
+		t.Fatalf("a dirty-primary refusal must not move HEAD: %s -> %s", base, head)
+	}
+	got, readErr := os.ReadFile(filepath.Join(root, "late-untracked.txt"))
+	if readErr != nil || string(got) != "late\n" {
+		t.Fatalf("the refusal must leave the late file untouched: %q (err %v)", got, readErr)
+	}
+	if lock := sdWindow(t, root); lock.Held() {
+		t.Fatalf("the refusal must release the window: %+v", lock)
+	}
+}
+
+func TestLocalMainResyncFetchPinsFetchedCommit(t *testing.T) {
+	// F6 (sync audit, card t1616): BASELINE_SHA is read from refs/remotes/origin/main.
+	// Under a fetch refspec that does not map refs/heads/main, `git fetch origin main`
+	// updates FETCH_HEAD and leaves that ref at the commit the primary last fetched,
+	// so the re-sync compares against a stale baseline. origin is a local bare
+	// repository in the test's temporary directory, and the production fetch seam runs.
+	root := lmfResyncFixtureLiveFetch(t)
+	base := lmfHead(t, root)
+	bare := filepath.Join(t.TempDir(), "origin.git")
+	fcGit(t, t.TempDir(), "init", "-q", "--bare", bare)
+	fcGit(t, bare, "symbolic-ref", "HEAD", "refs/heads/"+lmfBranch)
+	fcGit(t, root, "remote", "add", "origin", bare)
+	fcGit(t, root, "push", "-q", "origin", "refs/heads/"+lmfBranch+":refs/heads/"+lmfBranch)
+	fcGit(t, root, "update-ref", "refs/remotes/origin/"+lmfBranch, base)
+	fcGit(t, root, "config", "remote.origin.fetch", "+refs/heads/feature:refs/remotes/origin/feature")
+	clone := filepath.Join(t.TempDir(), "clone")
+	fcGit(t, t.TempDir(), "clone", "-q", bare, clone)
+	if err := os.WriteFile(filepath.Join(clone, "remote.txt"), []byte("remote\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	fcGit(t, clone, "add", "remote.txt")
+	fcGit(t, clone, "commit", "-q", "-m", "origin main advances")
+	fcGit(t, clone, "push", "-q", "origin", "HEAD:refs/heads/"+lmfBranch)
+	fetched := fcGit(t, clone, "rev-parse", "HEAD")
+	if stale := fcGit(t, root, "rev-parse", "refs/remotes/origin/"+lmfBranch); stale != base {
+		t.Fatalf("fixture: refs/remotes/origin/main must stay at the last fetched %s, got %s", base, stale)
+	}
+	report, err := runLocalMainResync(root)
+	if err != nil {
+		t.Fatalf("local main must fast-forward to the fetched origin/main: %v", err)
+	}
+	if head := lmfHead(t, root); head != fetched {
+		t.Fatalf("the re-sync must fast-forward to the fetched commit %s, not the stale remote-tracking ref %s: HEAD is %s", fetched, base, head)
+	}
+	if !strings.Contains(report, fetched[:12]) {
+		t.Fatalf("the report must name the fetched commit %s: %q", fetched[:12], report)
+	}
+	if lock := sdWindow(t, root); lock.Held() {
+		t.Fatalf("the re-sync must release the window it took: %+v", lock)
+	}
 }

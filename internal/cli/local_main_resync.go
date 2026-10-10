@@ -36,6 +36,12 @@ var localMainResyncFetch = func(repoRoot string) error {
 	return err
 }
 
+// localMainResyncAfterFastForward is the post-fast-forward test seam (card t1616,
+// F3). It runs once the fast-forward has returned and before step 6 reads HEAD
+// back, so a test can produce the post-merge anomaly that step 6 classifies. The
+// production default does nothing.
+var localMainResyncAfterFastForward = func(repoRoot string) {}
+
 // newIntegrationResyncCmd registers `moai integration resync`. It takes no
 // flags: the session is the one the window verbs resolve from the environment.
 func newIntegrationResyncCmd() *cobra.Command {
@@ -195,6 +201,8 @@ func localMainResyncInWindow(repoRoot string) (string, error) {
 	if _, err := git("-c", "merge.autoStash=false", "merge", "--ff-only", "--no-overwrite-ignore", "-q", baseline); err != nil {
 		return "", localMainResyncFailed(git, head, err)
 	}
+	// F3 test seam (card t1616): see localMainResyncAfterFastForward.
+	localMainResyncAfterFastForward(repoRoot)
 
 	// Step 6: HEAD equals BASELINE_SHA, and the symbolic HEAD still names the
 	// branch. SHA equality alone does not prove that the branch did not change.

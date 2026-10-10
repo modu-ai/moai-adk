@@ -378,3 +378,63 @@ func TestMergeStepStagedDisjointChangeRefusesFailClosed(t *testing.T) {
 	}
 	requireWindowReleasedAndCPromoted(t, f)
 }
+
+// stepPreexistingMerge leaves the integration worktree in a merge that another
+// session began and has not finished: MERGE_HEAD names an unrelated commit, and
+// base.txt is an add/add conflict between develop and that commit. develop stays
+// at the record's base, so every gate before the merge call passes, and base.txt
+// is outside the card's target path card.txt, so the overlap decision does not
+// refuse on the conflict.
+func stepPreexistingMerge(t *testing.T, f *stepFixture) {
+	t.Helper()
+	scratch := filepath.Join(t.TempDir(), "unrelated")
+	stepMustGit(t, f.integ, "worktree", "add", "-q", "--detach", scratch)
+	stepMustGit(t, scratch, "checkout", "-q", "--orphan", "unrelated")
+	stepWriteFile(t, scratch, "base.txt", "unrelated side\n")
+	stepMustGit(t, scratch, "add", "base.txt")
+	stepMustGit(t, scratch, "commit", "-q", "-m", "unrelated side")
+	unrelated := strings.TrimSpace(stepMustGit(t, scratch, "rev-parse", "HEAD"))
+	stepMustGit(t, f.integ, "worktree", "remove", "--force", scratch)
+	// git merge exits 1 on the conflict, which is the state this fixture needs.
+	conflict := exec.Command("git", "merge", "--no-commit", "--no-ff", "--allow-unrelated-histories", unrelated)
+	conflict.Dir = f.integ
+	_, _ = conflict.CombinedOutput()
+	if _, err := os.Stat(filepath.Join(f.integ, ".git", "MERGE_HEAD")); err != nil {
+		t.Fatalf("fixture: the conflicted merge must leave MERGE_HEAD: %v", err)
+	}
+	if unmerged := stepMustGit(t, f.integ, "ls-files", "-u"); !strings.Contains(unmerged, "base.txt") {
+		t.Fatalf("fixture: base.txt must be the conflicted path, got unmerged entries %q", unmerged)
+	}
+}
+
+func TestMergeStepPreexistingMergeHeadRefusesWithoutAbort(t *testing.T) {
+	// F1 (sync audit, card t1616): a separate integration worktree that is already in
+	// an unfinished merge must refuse the landing with MergeExitWorktreeDirty, and the
+	// refusal must leave that merge as it was. integration_merge_step.go runs
+	// `git merge --abort` after its own merge fails. git refuses to start a merge
+	// while MERGE_HEAD exists, so that abort discards the merge another session began.
+	f := newMergeFixture(t)
+	card := f.withCardTree(readyCardPtr())
+	stepPreexistingMerge(t, f)
+	statusBefore := stepStatus(t, f)
+	unmergedBefore := stepMustGit(t, f.integ, "ls-files", "-u")
+	bodyBefore, err := os.ReadFile(filepath.Join(f.integ, "base.txt"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	_, runErr := RunMergeStep(f.input(), f.seams(card))
+	if _, statErr := os.Stat(filepath.Join(f.integ, ".git", "MERGE_HEAD")); statErr != nil {
+		t.Fatalf("the step discarded the merge already in progress: MERGE_HEAD is gone (%v)", statErr)
+	}
+	if after := stepStatus(t, f); after != statusBefore {
+		t.Fatalf("the conflicted status must be unchanged by the refusal: before %q, after %q", statusBefore, after)
+	}
+	if after := stepMustGit(t, f.integ, "ls-files", "-u"); after != unmergedBefore {
+		t.Fatalf("the unmerged entries must be unchanged by the refusal: before %q, after %q", unmergedBefore, after)
+	}
+	if body, readErr := os.ReadFile(filepath.Join(f.integ, "base.txt")); readErr != nil || string(body) != string(bodyBefore) {
+		t.Fatalf("the conflicted file must keep its bytes across the refusal: before %q, after %q (err %v)", bodyBefore, body, readErr)
+	}
+	requireCode(t, runErr, MergeExitWorktreeDirty)
+	requireWindowReleasedAndCPromoted(t, f)
+}
