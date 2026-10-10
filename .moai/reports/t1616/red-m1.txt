@@ -1,0 +1,75 @@
+# red-m1.txt -- SPEC-LOCAL-MAIN-FLOW-001 run-phase RED step (M1 step 1, card t1616)
+# HEAD at start: 7642093a0 (branch WT-10-10-class), worktree clean.
+
+## E-79 RED observation: sh .moai/specs/SPEC-LOCAL-MAIN-FLOW-001/probe-shapes.sh (run before any production change)
+== shape A (ignore 'runtime'; local 'runtime' = 'local-A'; card writes 'runtime/x')
+core.ignorecase=true
+card branch has: .gitignore runtime/x 
+T (paths the merge adds): runtime/x 
+IGN (ignored paths present): runtime 
+I (exact intersection, B5): (empty)
+status before: []
+local content before: [./runtime ]
+merge exit: 0
+merge output: 
+status after: []
+local content after: []
+tree after (excluding .git): . ./.gitignore ./runtime ./runtime/x 
+card content now at 'runtime/x': card
+== shape B (ignore 'runtime/'; local 'runtime/secret' = 'local-B'; card writes 'runtime')
+core.ignorecase=true
+card branch has: .gitignore runtime 
+T (paths the merge adds): runtime 
+IGN (ignored paths present): runtime/secret 
+I (exact intersection, B5): (empty)
+status before: []
+local content before: [./runtime/secret ]
+merge exit: 0
+merge output: 
+status after: []
+local content after: []
+tree after (excluding .git): . ./.gitignore ./runtime 
+card content now at 'runtime': card
+== shape C (ignore 'foo.txt'; local 'foo.txt' = 'local-C'; card writes 'Foo.txt')
+core.ignorecase=true
+card branch has: .gitignore Foo.txt 
+T (paths the merge adds): Foo.txt 
+IGN (ignored paths present): foo.txt 
+I (exact intersection, B5): (empty)
+status before: []
+local content before: [./foo.txt ]
+merge exit: 0
+merge output: 
+status after: []
+local content after: []
+tree after (excluding .git): . ./.gitignore ./Foo.txt 
+card content now at 'Foo.txt': card
+
+## Cell P (primary-merge group, 8 tests): go test ./internal/cli/ -run '^(TestLocalMainMergeMergesIntoPrimary|TestLocalMainMergeRefusesDirtyPrimary|TestLocalMainMergeRefusesMovedHead|TestLocalMainMergeStatusSetUnchanged|TestLocalMainMergePreservesIgnoredFile|TestLocalMainMergeRefusesIgnoredAncestor|TestLocalMainMergeRefusesFileOverIgnoredDirectory|TestLocalMainMergeCaseAliasOutcome)$' -v -count=1
+=== RUN   TestLocalMainMergeMergesIntoPrimary
+    local_main_merge_test.go:249: with the gate on, the verb must merge the card into the primary's local main: integration merge: refused — the only tree holding "main" is the primary checkout /private/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestLocalMainMergeMergesIntoPrimary4006067327/002 (the primary never changes branch; the leader provisions the integration worktree)
+--- FAIL: TestLocalMainMergeMergesIntoPrimary (1.91s)
+=== RUN   TestLocalMainMergeRefusesDirtyPrimary
+    local_main_merge_test.go:278: the refusal must carry MergeExitWorktreeDirty (12), got code 0 (ok=false): integration merge: refused — the only tree holding "main" is the primary checkout /private/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestLocalMainMergeRefusesDirtyPrimary1232551257/002 (the primary never changes branch; the leader provisions the integration worktree)
+--- FAIL: TestLocalMainMergeRefusesDirtyPrimary (1.83s)
+=== RUN   TestLocalMainMergeRefusesMovedHead
+    local_main_merge_test.go:303: the hold must carry MergeExitPostMerge (8), got code 0 (ok=false): integration merge: refused — the only tree holding "main" is the primary checkout /private/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestLocalMainMergeRefusesMovedHead228229373/002 (the primary never changes branch; the leader provisions the integration worktree)
+--- FAIL: TestLocalMainMergeRefusesMovedHead (2.11s)
+=== RUN   TestLocalMainMergeStatusSetUnchanged
+    local_main_merge_test.go:319: with the gate on, the landing must complete: integration merge: refused — the only tree holding "main" is the primary checkout /private/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestLocalMainMergeStatusSetUnchanged3054730378/002 (the primary never changes branch; the leader provisions the integration worktree)
+--- FAIL: TestLocalMainMergeStatusSetUnchanged (2.86s)
+=== RUN   TestLocalMainMergePreservesIgnoredFile
+    local_main_merge_test.go:335: an ignored file off the merge path must not block the landing: integration merge: refused — the only tree holding "main" is the primary checkout /private/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestLocalMainMergePreservesIgnoredFile3458047618/002 (the primary never changes branch; the leader provisions the integration worktree)
+--- FAIL: TestLocalMainMergePreservesIgnoredFile (2.91s)
+=== RUN   TestLocalMainMergeRefusesIgnoredAncestor
+    local_main_merge_test.go:350: the refusal must carry MergeExitCollision (13), got code 0 (ok=false): integration merge: refused — the only tree holding "main" is the primary checkout /private/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestLocalMainMergeRefusesIgnoredAncestor146980384/002 (the primary never changes branch; the leader provisions the integration worktree)
+--- FAIL: TestLocalMainMergeRefusesIgnoredAncestor (3.25s)
+=== RUN   TestLocalMainMergeRefusesFileOverIgnoredDirectory
+    local_main_merge_test.go:362: the refusal must carry MergeExitCollision (13), got code 0 (ok=false): integration merge: refused — the only tree holding "main" is the primary checkout /private/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestLocalMainMergeRefusesFileOverIgnoredDirectory1925038300/002 (the primary never changes branch; the leader provisions the integration worktree)
+--- FAIL: TestLocalMainMergeRefusesFileOverIgnoredDirectory (3.63s)
+=== RUN   TestLocalMainMergeCaseAliasOutcome
+    local_main_merge_test.go:378: the refusal must carry MergeExitCollision (13), got code 0 (ok=false): integration merge: refused — the only tree holding "main" is the primary checkout /private/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestLocalMainMergeCaseAliasOutcome2086850357/003 (the primary never changes branch; the leader provisions the integration worktree)
+--- FAIL: TestLocalMainMergeCaseAliasOutcome (2.34s)
+FAIL
+FAIL	github.com/modu-ai/moai-adk/internal/cli	22.625s
+FAIL
