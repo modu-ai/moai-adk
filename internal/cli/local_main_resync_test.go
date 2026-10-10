@@ -569,3 +569,50 @@ func TestLocalMainResyncHoldWriteFailureKeepsWindow(t *testing.T) {
 		t.Fatalf("a hold that cannot be written must keep the window held by %s, got %+v", lmfSession, lock)
 	}
 }
+
+func TestLocalMainResyncPostFastForwardLateTxtRefuses(t *testing.T) {
+	// F5 (sync audit iteration 2, card t1616): after the fast-forward the re-sync checks
+	// only HEAD and the symbolic ref (step 6), then returns success (step 7) without
+	// reading the primary's status. A file that appears in the primary after the move
+	// goes unseen, so the re-sync reports success on a dirty primary. The re-sync must
+	// read the status after the fast-forward. A non-empty status writes the policy hold,
+	// which names the porcelain line and the fast-forward target SHA, and refuses with
+	// the merge-dirty class before the window is released.
+	root := lmfResyncFixture(t, "")
+	base := lmfHead(t, root)
+	target := lmfOriginCommit(t, root, base, "origin-ahead", map[string]string{"ahead.txt": "ahead\n"}, false)
+	lmfAfterFastForward(t, func(repoRoot string) {
+		if err := os.WriteFile(filepath.Join(repoRoot, "late.txt"), []byte("late\n"), 0o644); err != nil {
+			t.Fatalf("fixture: write the late file after the fast-forward: %v", err)
+		}
+	})
+	_, err := runLocalMainResync(root)
+	if err == nil {
+		t.Fatalf("a primary that turns dirty after the fast-forward must refuse the re-sync, not return success")
+	}
+	if code, ok := factory.MergeExitCode(err); !ok || code != factory.MergeExitMergeDirty {
+		t.Fatalf("the post-fast-forward dirty refusal must carry MergeExitMergeDirty (%d), got code %d (ok=%v): %v", factory.MergeExitMergeDirty, code, ok, err)
+	}
+	policy, policyErr := factory.ReadIntegrationWindowPolicy(root)
+	if policyErr != nil || policy.Policy != factory.PolicyHold {
+		t.Fatalf("the dirty refusal must write a hold before it releases the window: policy %+v (err %v)", policy, policyErr)
+	}
+	if !strings.Contains(policy.Reason, "?? late.txt") {
+		t.Fatalf("the hold must name the porcelain line ?? late.txt: %q", policy.Reason)
+	}
+	if !strings.Contains(policy.Reason, target[:12]) {
+		t.Fatalf("the hold must name the fast-forward target SHA %s: %q", target[:12], policy.Reason)
+	}
+	// The anomaly path leaves the fast-forward in place for the leader, so HEAD stays at
+	// the target, and the refusal never removes the late file.
+	if head := lmfHead(t, root); head != target {
+		t.Fatalf("the dirty refusal must leave the fast-forward in place at %s, got HEAD %s", target, head)
+	}
+	got, readErr := os.ReadFile(filepath.Join(root, "late.txt"))
+	if readErr != nil || string(got) != "late\n" {
+		t.Fatalf("the refusal must leave the late file untouched: %q (err %v)", got, readErr)
+	}
+	if lock := sdWindow(t, root); lock.Held() {
+		t.Fatalf("the dirty refusal must release the window after the hold: %+v", lock)
+	}
+}
