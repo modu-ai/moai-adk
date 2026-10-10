@@ -36,6 +36,11 @@
 #                                    without it here, a PR that edits the
 #                                    census alone gets the skip-marker
 #                                    stub and the edit is never exercised
+#   scripts/ci/**                   the flaky registry + retry wrapper the race and
+#                                    test jobs call (ci.yml wiring lands in a later M6
+#                                    slice); without it here, a PR that edits the
+#                                    registry or the wrapper alone gets the skip-marker
+#                                    stub and the retry logic is never exercised
 # The three CI workflow files and this file itself are inputs too: editing
 # the verification harness must re-run the verification — when classification
 # is uncertain, the matrix runs.
@@ -61,3 +66,4 @@ go_code:
   - '.claude/settings.json'
   - 'CLAUDE.md'
   - 'scripts/ci-census/**'
+  - 'scripts/ci/**'
