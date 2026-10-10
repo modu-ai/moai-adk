@@ -14,6 +14,8 @@ import (
 	"path/filepath"
 	"strings"
 	"testing"
+
+	"github.com/modu-ai/moai-adk/internal/factorylane"
 )
 
 // stepDirtyCase is one dirty-state shape. dirty arranges the integration
@@ -472,6 +474,72 @@ func TestMergeStepRaceMergeHeadAfterProbeIsNotAborted(t *testing.T) {
 	}
 	if got := strings.TrimSpace(string(body)); got != foreign {
 		t.Fatalf("MERGE_HEAD must still name the foreign commit %s, got %q", foreign, got)
+	}
+	requireCode(t, runErr, MergeExitWorktreeDirty)
+	requireNoMerge(t, f)
+	requireWindowReleasedAndCPromoted(t, f)
+}
+
+func TestMergeStepRaceSameShaMergeHeadAfterProbeIsNotAborted(t *testing.T) {
+	// F1 same-SHA (sync audit, card t1616): another actor begins a merge of the SAME
+	// pinned SHA after the in-section probe. Its MERGE_HEAD names the pin, so the
+	// different-SHA check does not see it, and the message is the step's own, so the
+	// message does not separate the two merges either. Git refuses our merge call
+	// while that merge is unfinished (exit 128) and writes nothing, so the step must
+	// not abort a merge it did not start. It refuses with MergeExitWorktreeDirty,
+	// leaves MERGE_HEAD naming the pin, and keeps the other actor's staged result.
+	f := newMergeFixture(t)
+	card := f.withCardTree(readyCardPtr())
+	seams := f.seams(card)
+	merged := false
+	var foreignStatus string
+	seams.Git = func(args ...string) (string, error) {
+		if len(args) >= 1 && args[0] == "merge" && !containsArg(args, "--abort") {
+			// The other actor's merge begins here, with the step's own message: it
+			// stages the card's change and leaves MERGE_HEAD naming the pin. Our merge
+			// call below then runs over it.
+			msg := ""
+			for i := 0; i+1 < len(args); i++ {
+				if args[i] == "-m" {
+					msg = args[i+1]
+				}
+			}
+			other := exec.Command("git", "merge", "--no-commit", "--no-ff", "-m", msg, f.cardSHA)
+			other.Dir = f.integ
+			if out, err := other.CombinedOutput(); err != nil {
+				t.Fatalf("fixture: the other actor's merge must begin: %v: %s", err, out)
+			}
+			merged = true
+			foreignStatus = stepStatus(t, f)
+		}
+		runner := exec.Command("git", args...)
+		runner.Dir = f.integ
+		out, err := runner.CombinedOutput()
+		if err != nil {
+			// The production runner reports a non-zero exit as *GitExitError; the seam
+			// reports the same shape, so the step classifies it as production does.
+			code := 1
+			var exitErr *exec.ExitError
+			if errors.As(err, &exitErr) {
+				code = exitErr.ExitCode()
+			}
+			return string(out), &factorylane.GitExitError{ExitCode: code, Stderr: string(out)}
+		}
+		return string(out), nil
+	}
+	_, runErr := RunMergeStep(f.input(), seams)
+	if !merged {
+		t.Fatal("fixture: the step never reached its merge call")
+	}
+	body, readErr := os.ReadFile(filepath.Join(f.integ, ".git", "MERGE_HEAD"))
+	if readErr != nil {
+		t.Fatalf("the step aborted a merge another actor began after the probe: MERGE_HEAD is gone (%v)", readErr)
+	}
+	if got := strings.TrimSpace(string(body)); got != f.cardSHA {
+		t.Fatalf("MERGE_HEAD must still name the other actor's commit %s, got %q", f.cardSHA, got)
+	}
+	if after := stepStatus(t, f); after != foreignStatus {
+		t.Fatalf("the other actor's staged result must survive the refusal: before %q, after %q", foreignStatus, after)
 	}
 	requireCode(t, runErr, MergeExitWorktreeDirty)
 	requireNoMerge(t, f)
