@@ -658,8 +658,11 @@ func runUpdate(cmd *cobra.Command, _ []string) error {
 		updateLedger.requiref(sevWarn, "evolution directory scaffold failed: %v", err)
 	}
 
-	// Sync profile preferences to project config (after template deployment)
-	profileName := profile.GetCurrentName()
+	// Sync profile preferences to project config (after template deployment).
+	// The profile is the project's mapping in the launch ledger (AC-RC30-21), not
+	// the environment alone: GetCurrentName() never reads the ledger.
+	profileRoot, _ := filepath.Abs(".")
+	profileName := profile.GetCurrentNameForProject(profileRoot)
 	prefs, err := profile.ReadPreferences(profileName)
 	if err != nil {
 		updateLedger.requiref(sevWarn, "profile preferences read failed: %v", err)

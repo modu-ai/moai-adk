@@ -724,6 +724,82 @@ ok  	github.com/modu-ai/moai-adk/internal/cli	1.569s
 
 **Files changed.** `internal/cli/update.go`, `internal/cli/update_template_sync.go`, `internal/cli/update_single_banner_test.go` (new), `internal/cli/update_test.go`, `internal/cli/coverage_test.go`, `internal/cli/integration_test.go`, `internal/cli/update_reexec_banner_test.go`, `.moai/specs/SPEC-UPDATE-REPAIR-RC30-001/progress.md`.
 
+### M1 step 4, bundle D — U-21 (AC-RC30-21) (manager-develop, card t1619)
+
+Second item of bundle D (plan § B.2 step 4). Tree before the item: HEAD `e3f004896` on `WT-moai-update-repair` (the U-17 commit), clean (pre-flight: branch, HEAD, `git status --short` empty). The item is one local commit; nothing is pushed.
+
+**G-21 — the ledger location, determined from the tree.** The SPEC text does not name the ledger (G-21), and the audit citation was not re-read. The tree defines it:
+- `internal/profile/profile.go:14` `profilesDir = ".moai/claude-profiles"`; `:23` `launchLedgerFile = "launch.yaml"`.
+- `internal/profile/profile.go:55-65` `GetBaseDir()`: `BaseDirOverride` when set, otherwise `$HOME/.moai/claude-profiles`.
+- Readers and writers join `GetBaseDir()` with `launchLedgerFile` (`profile.go:420`, `:571`, `:695`). The project mapping is `projects[normalizeProjectKey(root)]`, a profile-name string, accepted only when `<baseDir>/<name>` is a directory (`ResolveLaunchProfileForProject`, `profile.go:461`; `launchCandidateIsUsable`, `profile.go:435`).
+
+So the ledger is `<GetBaseDir()>/launch.yaml`, which is `~/.moai/claude-profiles/launch.yaml` by default. This agrees with the audit citation, and it is now read from code rather than carried over. The tree is unambiguous, so the item proceeds and no blocker is recorded.
+
+**Reading of E-17 (re-read on this tree).** `internal/cli/update.go` calls `profileName := profile.GetCurrentName()` (line 661 at `6f95917a1`; line 662 at `e3f004896`). `GetCurrentName()` is `GetCurrentNameForProject("")`, and an empty root skips the project-scoped ledger lookup (`profile.go:94-111`). With `CLAUDE_CONFIG_DIR` unset, the sync therefore read the `default` profile's preferences whatever the ledger says for the project. The `projects` entry was never consulted.
+
+**RED (TDD order).** New judging test `TestProfileSyncResolution` in `internal/cli/update_profile_sync_test.go`. The fixture uses the existing sandbox helpers (`lpSandbox`, `lpMkProfile`, `lpWriteLedger`, `lpProjectKey`): a moai project with `system.yaml`, a `work` profile whose preferences set `conversation_lang: ja`, and `launch.yaml` mapping the project root to `work`, with `CLAUDE_CONFIG_DIR` unset. A fixture check asserts `profile.GetCurrentNameForProject(root) == "work"` before the run, so a failure cannot come from a broken ledger. The judged step is the default `updateCmd.RunE` (`yes` set, a mock checker that reports no update), followed by the assertion that the project config's `conversation_language` is `ja`. The test compiles against the tree as it stood; no stub was needed.
+
+A first RED run failed at the assertion without the fixture check; the fixture check was then added and the RED re-run. The recorded RED is the second run.
+
+Command: `go test ./internal/cli/ -run TestProfileSyncResolution -count=1 -v`, exit 1. Verbatim:
+
+```text
+=== RUN   TestProfileSyncResolution
+moai-cli-test: userHomeDirFn redirected real home to sandbox /var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/moai-cli-home-634819596
+2026/10/10 21:08:02 INFO SUNSET_CONFIG_DORMANT_NOTICE spec="SPEC-V3R2-MIG-003 REQ-018" yaml_path=.moai/config/sections/sunset.yaml advice="SunsetConfig has no runtime hot path; activation requires a new SPEC"
+    update_profile_sync_test.go:67: profile sync did not resolve the project's ledger profile: conversation_language = "en", want "ja" (work profile)
+--- FAIL: TestProfileSyncResolution (0.52s)
+FAIL
+FAIL	github.com/modu-ai/moai-adk/internal/cli	1.456s
+```
+
+**Implementation.** `internal/cli/update.go`, the profile sync (lines 661-664):
+
+```go
+	// Sync profile preferences to project config (after template deployment).
+	// The profile is the project's mapping in the launch ledger (AC-RC30-21), not
+	// the environment alone: GetCurrentName() never reads the ledger.
+	profileRoot, _ := filepath.Abs(".")
+	profileName := profile.GetCurrentNameForProject(profileRoot)
+```
+
+The precedence in `GetCurrentNameForProject` is unchanged: `CLAUDE_CONFIG_DIR` still wins when it is set, and the project's ledger entry decides when it is unset. `filepath.Abs(".")` supplies the absolute root that `normalizeProjectKey` resolves for the lookup. Passing `.` directly would have left the key relative, and `normalizeProjectKey` does not make it absolute.
+
+**GREEN.** Same command, exit 0, verbatim:
+
+```text
+=== RUN   TestProfileSyncResolution
+moai-cli-test: userHomeDirFn redirected real home to sandbox /var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/moai-cli-home-1438482385
+2026/10/10 21:08:29 INFO SUNSET_CONFIG_DORMANT_NOTICE spec="SPEC-V3R2-MIG-003 REQ-018" yaml_path=.moai/config/sections/sunset.yaml advice="SunsetConfig has no runtime hot path; activation requires a new SPEC"
+--- PASS: TestProfileSyncResolution (0.62s)
+PASS
+ok  	github.com/modu-ai/moai-adk/internal/cli	1.468s
+```
+
+**Regression runs (one plain command each).**
+- `go test ./internal/cli/ -run 'TestProfileSyncResolution|TestUpdateForce_UserOwnedKeysSurvive|TestCleanReinstall_UserOwnedKeysSurvive|TestUpdateForce_UserOwnedKeys_UnrenderableValueFallsBack|TestUpdateVersionDowngradeConfirm_Localized|TestUpdateParticipationStep|TestUpdateSingleBanner|TestRunUpdate_DefaultIsTemplateSync' -count=1 -v`: all `--- PASS` (the participation subtests included); last line `ok  	github.com/modu-ai/moai-adk/internal/cli	4.990s`.
+- The same eight names with `go test -race ./internal/cli/ -count=1` (inside the gate below): `ok  	github.com/modu-ai/moai-adk/internal/cli	32.368s`.
+
+**Gates (each its own command).**
+- `gofmt -l internal/cli/update.go internal/cli/update_profile_sync_test.go`: no output.
+- `go vet ./internal/cli/`: no output.
+- `golangci-lint run ./internal/cli/`: `0 issues.`
+- `GOOS=windows GOARCH=amd64 go build ./...` (B1): no output.
+
+**Pre-commit gate (`moai gate` workflow, scoped to the two touched Go files).** Phase 1B: `moai verify check --key-current` exited 1 (`no snapshot recorded for the current working-tree key`, key `e3f00489618fd0bd7cb5e953f45b133a3d5399a5:e1fb7eeb0482d0f4`), so every check ran. Lint PASS (`0 issues.`). Format PASS (no output). Type PASS (no output). Test PASS (`go test -race` over the eight affected tests above: `ok  	github.com/modu-ai/moai-adk/internal/cli	32.368s`). Scope and recording as in the U-17 entry: the full package and `./...` were not run locally (`.claude/rules/local/gitflow-lane-protocol.md` § 8); a scoped run is not recorded as a snapshot; the routing-ledger record was not written (B8).
+
+**Gaps (not observed in this item).**
+- The full `internal/cli` suite and `./...` were not run locally; the full-suite verdict belongs to CI on `origin/develop` (PENDING).
+- Not observed: a run with `CLAUDE_CONFIG_DIR` set. The env-wins branch of `GetCurrentNameForProject` is unchanged by construction and is not exercised by the judging test.
+- Other environment-only readers remain in the update flow: `internal/cli/update_participation.go:49` and `internal/cli/downgrade_locale.go:22`, both `profile.ReadPreferences(profile.GetCurrentName())`. AC-RC30-21 names the profile sync only, so they are unchanged. The same defect class applies to them; this needs a leader decision.
+- The up-to-date path returns before the profile sync (`internal/cli/update.go`, the `syncSkipped` return near line 632). A run that skips the sync does not apply the ledger profile. This is pre-existing and unchanged.
+
+**Residual risk.**
+- Behavior change for review: on a project whose ledger entry names a profile, with `CLAUDE_CONFIG_DIR` unset, `moai update` now applies that profile's preferences (language, user name) to the project config. Before this change it read the `default` profile's preferences, not the mapped profile's.
+- The judging test writes only under the sandboxed profile base (`lpSandbox` redirects `BaseDirOverride`); nothing is written under the real `~/.moai`.
+
+**Files changed.** `internal/cli/update.go`, `internal/cli/update_profile_sync_test.go` (new), `.moai/specs/SPEC-UPDATE-REPAIR-RC30-001/progress.md`.
+
 ## §E.3 Run-phase Audit-Ready Signal
 
 _pending run-phase (manager-develop)_
