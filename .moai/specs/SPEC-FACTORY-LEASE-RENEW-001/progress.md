@@ -2445,6 +2445,390 @@ The card's cli change set does not touch any of the thirteen failing tests' file
 - The factory race run took 471.905 s inside a 30-minute lease; a longer run would need a renewal.
 - No mirror, test, or production file was changed in this block. The commit contains this record only.
 
+### Repair after sync audit FAIL #1 (card t1663; decision d-20261010T154117Z-a6cd)
+
+The first sync audit (`.moai/reports/t1663/sync-audit.md`, local-only and not committed; audited commit `9a3049042`) returned FAIL on four blocking findings. The lead ruled on decision d-20261010T154117Z-a6cd that they are repaired inside this card, in the sync stage. The run stage was not re-entered. This session performed no factory transition: the lane performs them. Each claim below is either a command run in this session, with its output quoted verbatim, or an observation named as such. This block records no verdict. The delta re-audit decides.
+
+#### Claim
+
+- Each of F1, F2, F3, and F4 has one fix commit. Each has a test that was RED on the defect before its fix and GREEN after it.
+- `make build` exited 0 after the SKILL edit. The two SKILL copies are byte-identical (`cmp` exit 0).
+- F5 (D7) is not repaired. The debts section names it with its dispose_in value.
+
+#### Findings and the fix chosen
+
+Line numbers are at HEAD `6b3d239bb`.
+
+| Finding | Defect, as verified in this session | Fix chosen | Commit |
+|---|---|---|---|
+| F1 (P2, blocking) | `handleFactoryRenew` read `MOAI_FACTORY_WORKER` with no legacy-label check. A `worker-1` holder was refused by the verb and renewed over MCP (RED, below). | The handler calls `factoryLaneLabelFromEnv("renew")`, the verb's own check (`internal/cli/factory_card.go:137`), and returns its error as a tool error (`internal/cli/mcp_factory_card.go:286`). | `55fd1b6c1` |
+| F2 (P2, blocking) | The verb opened the factory at `factoryCardRoot()`, the queue root, where a linked worktree converges onto the primary. The tool opened it at the caller's raw `project_root`. The record is kept at the canonical root (`internal/homestate/paths.go:225`), but `loadFactoryLease` reads `workflow.yaml` from the root it is handed (`internal/homestate/factory_lease.go:39`). So one card renewed at two durations (RED, below: the tool renewed to 09:15, the compiled 15m default of the worktree's own config, where the verb applied the primary's 20m; and for the primary's 0s the verb refused while the tool renewed). | One rule, `factoryRootOf(launch) = factory.ResolveTodoQueueRoot(launch)` (`internal/cli/factory_card.go:81`). The verb's `factoryCardRoot()` applies it to its launch directory (`:73`). `handleFactoryRenew` applies it to `project_root` (`internal/cli/mcp_factory_card.go:297`). | `bac7fc651` |
+| F3 (P2, blocking) | With two or more live active runs, `factorymsg.ResolveActiveRun` fails with `AMBIGUOUS_FACTORY`. `moai factory renew <card> --json` with no `--run` (the form the watchdog runs) refused. | Option (a), resolved in the verb: `resolveFactoryRenewRun` (`internal/cli/factory_card.go:2440`), called from `factoryRenewCard` (`:1826`). It narrows only the ambiguous outcome, to the one reconciled active run in which this lane holds the card (`LeaseHolder == lane`). Zero holding runs, or several, keep the refusal, which names `--run`. `resolveFactoryCardRun` and its other callers are unchanged. The SKILL procedure text for F3 is unchanged. | `74e6b5af2` |
+| F4 (P2, blocking) | The SKILL snapshot write sentence (`internal/template/templates/.claude/skills/moai-lane-watchdog/SKILL.md:84-87`; the local mirror is byte-identical) listed the four measurement fields and `renew_result` but not `last_change_at`. | The sentence names `last_change_at`. The template was edited first, then the mirror was copied from it, then `make build` regenerated the `moai-lane-watchdog` hash in `internal/template/catalog.yaml`. | `6b3d239bb` |
+
+Citation correction. The audit cited `internal/cli/migrate_home_state.go:95` for the queue-root rule. That line is an entry in the live-test group table, not the rule's test. The rule's tests are `TestResolveTodoQueueRoot_WorktreeConvergesOnPrimary` at `internal/cli/todo_queue_root_test.go:75` and at `internal/factory/todo_root_test.go:88`. The internal/cli one was run and passed (below).
+
+#### New and strengthened tests (AC mapping)
+
+- `TestFactoryRenewRefusesLegacyLaneLabelOnBothSurfaces` (`internal/cli/factory_renew_test.go:292`): AC-FLR-002, F1. A behavior test. Both the tool and the verb refuse `worker-1` with the legacy-label message. The lease is unchanged in holder, expiry, version, state, and event count.
+- `TestFactoryRenewMatchesMCPLinkedWorktree` (`internal/cli/factory_renew_test.go:336`): AC-FLR-002, F2. A behavior test. The caller is a linked worktree. The primary's `workflow.factory_lease.duration` is set to 20m, then to 0s. The tool's outcome must equal the verb's, and the verb's outcome is anchored to the primary's configured value.
+- `TestFactoryRenewResolvesLaneRunWithoutRunArg` (`internal/cli/factory_renew_test.go:390`): AC-FLR-010 and AC-FLR-011, F3. A behavior test. Two live runs. The card is held by this lane in one of them. Renewal with no run argument succeeds in that run, through the verb and through the tool. Two guard arms (held in both runs; held in neither) must refuse and name `--run`.
+- `TestLaneWatchdogRecordsRefusalAndMeasures` (extended; `internal/template/lane_watchdog_renew_test.go:153-163`): AC-FLR-011, procedure half, F4. A TEXT check. It reads the embedded procedure and checks the write sentence. It does not observe a written snapshot.
+- `TestLaneWatchdogRenewsFirst` (unchanged; AC-FLR-010): a TEXT check, not changed by this repair. The F3 behavior is covered by the Go test above, not by this text check.
+
+#### RED: the new tests before the fix (verbatim)
+
+First RED run. Its F2 0s arm failed in its fixture: `sdRegisterLane` opened the primary's factory after the 0s duration had been written. The fixture was re-ordered, and the rerun below is the RED that was committed in `21f93d6b6`. This first run is quoted because it is the run that exposed the fixture error.
+
+```text
+=== RUN   TestFactoryRenewRefusesLegacyLaneLabelOnBothSurfaces
+=== RUN   TestFactoryRenewRefusesLegacyLaneLabelOnBothSurfaces/MCP_tool
+    factory_renew_test.go:310: factory_renew under the legacy label "worker-1" was not refused; it returned "{\"result\":\"renewed\",\"expires_at\":\"2026-09-26T09:15:00Z\"}"
+    factory_renew_test.go:314: refused renewal changed the card: v1 run holder="worker-1" expiry=2026-09-26T09:05:00Z → v1 run holder="worker-1" expiry=2026-09-26T09:15:00Z
+=== RUN   TestFactoryRenewRefusesLegacyLaneLabelOnBothSurfaces/verb
+--- FAIL: TestFactoryRenewRefusesLegacyLaneLabelOnBothSurfaces (1.28s)
+    --- FAIL: TestFactoryRenewRefusesLegacyLaneLabelOnBothSurfaces/MCP_tool (0.76s)
+    --- PASS: TestFactoryRenewRefusesLegacyLaneLabelOnBothSurfaces/verb (0.52s)
+=== RUN   TestFactoryRenewMatchesMCPLinkedWorktree
+=== RUN   TestFactoryRenewMatchesMCPLinkedWorktree/primary_duration_20m
+    factory_renew_test.go:364: linked worktree: factory_renew = {Result:renewed ExpiresAt:2026-09-26T09:15:00Z Detail:}, renew verb = {Result:renewed ExpiresAt:2026-09-26T09:20:00Z Detail:} (verb error <nil>); want equal
+=== RUN   TestFactoryRenewMatchesMCPLinkedWorktree/primary_duration_0s
+    factory_renew_test.go:348: open factory: factory lease configuration refused: workflow.factory_lease.duration must be a positive duration (greater than zero); got "0s" (config: /var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestFactoryRenewMatchesMCPLinkedWorktreeprimary_duration_0s2123869254/002/.moai/config/sections/workflow.yaml)
+--- FAIL: TestFactoryRenewMatchesMCPLinkedWorktree (0.67s)
+    --- FAIL: TestFactoryRenewMatchesMCPLinkedWorktree/primary_duration_20m (0.57s)
+    --- FAIL: TestFactoryRenewMatchesMCPLinkedWorktree/primary_duration_0s (0.10s)
+=== RUN   TestFactoryRenewResolvesLaneRunWithoutRunArg
+=== RUN   TestFactoryRenewResolvesLaneRunWithoutRunArg/verb
+    factory_renew_test.go:415: renew t1 --json with no --run and two active runs: factory renew: no --run given and no single active factory run (AMBIGUOUS_FACTORY: run-a (owner live, leader pid 20567, started 2026-10-10T15:53:48.34103Z), run-b (owner live, leader pid 20567, started 2026-10-10T15:53:48.441665Z)) (stdout "{\"result\":\"error\",\"expires_at\":\"\",\"detail\":\"no --run given and no single active factory run (AMBIGUOUS_FACTORY: run-a (owner live, leader pid 20567, started 2026-10-10T15:53:48.34103Z), run-b (owner live, leader pid 20567, started 2026-10-10T15:53:48.441665Z))\"}\n")
+=== RUN   TestFactoryRenewResolvesLaneRunWithoutRunArg/MCP_tool
+    factory_renew_test.go:445: factory_renew outcome = {Result:error ExpiresAt: Detail:no --run given and no single active factory run (AMBIGUOUS_FACTORY: run-a (owner live, leader pid 20567, started 2026-10-10T15:53:49.241964Z), run-b (owner live, leader pid 20567, started 2026-10-10T15:53:49.354136Z))}, want renewed to 2026-09-26T09:15:00Z
+=== RUN   TestFactoryRenewResolvesLaneRunWithoutRunArg/held_in_both_runs_refuses_and_names_--run
+--- FAIL: TestFactoryRenewResolvesLaneRunWithoutRunArg (2.32s)
+    --- FAIL: TestFactoryRenewResolvesLaneRunWithoutRunArg/verb (0.88s)
+    --- FAIL: TestFactoryRenewResolvesLaneRunWithoutRunArg/MCP_tool (0.73s)
+    --- PASS: TestFactoryRenewResolvesLaneRunWithoutRunArg/held_in_both_runs_refuses_and_names_--run (0.71s)
+FAIL
+FAIL	github.com/modu-ai/moai-adk/internal/cli	5.271s
+FAIL
+```
+
+RED committed with the tests (`21f93d6b6`). Command: `go test -count=1 -v -run '^(TestFactoryRenewRefusesLegacyLaneLabelOnBothSurfaces|TestFactoryRenewMatchesMCPLinkedWorktree|TestFactoryRenewResolvesLaneRunWithoutRunArg)$' ./internal/cli/`. Exit 1.
+
+```text
+=== RUN   TestFactoryRenewRefusesLegacyLaneLabelOnBothSurfaces
+=== RUN   TestFactoryRenewRefusesLegacyLaneLabelOnBothSurfaces/MCP_tool
+    factory_renew_test.go:310: factory_renew under the legacy label "worker-1" was not refused; it returned "{\"result\":\"renewed\",\"expires_at\":\"2026-09-26T09:15:00Z\"}"
+    factory_renew_test.go:314: refused renewal changed the card: v1 run holder="worker-1" expiry=2026-09-26T09:05:00Z → v1 run holder="worker-1" expiry=2026-09-26T09:15:00Z
+=== RUN   TestFactoryRenewRefusesLegacyLaneLabelOnBothSurfaces/verb
+--- FAIL: TestFactoryRenewRefusesLegacyLaneLabelOnBothSurfaces (1.10s)
+    --- FAIL: TestFactoryRenewRefusesLegacyLaneLabelOnBothSurfaces/MCP_tool (0.58s)
+    --- PASS: TestFactoryRenewRefusesLegacyLaneLabelOnBothSurfaces/verb (0.51s)
+=== RUN   TestFactoryRenewMatchesMCPLinkedWorktree
+=== RUN   TestFactoryRenewMatchesMCPLinkedWorktree/primary_duration_20m
+    factory_renew_test.go:366: linked worktree: factory_renew = {Result:renewed ExpiresAt:2026-09-26T09:15:00Z Detail:}, renew verb = {Result:renewed ExpiresAt:2026-09-26T09:20:00Z Detail:} (verb error <nil>); want equal
+=== RUN   TestFactoryRenewMatchesMCPLinkedWorktree/primary_duration_0s
+    factory_renew_test.go:366: linked worktree: factory_renew = {Result:renewed ExpiresAt:2026-09-26T09:15:00Z Detail:}, renew verb = {Result:error ExpiresAt: Detail:factory lease configuration refused: workflow.factory_lease.duration must be a positive duration (greater than zero); got "0s" (config: /private/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestFactoryRenewMatchesMCPLinkedWorktreeprimary_duration_0s3901229955/002/.moai/config/sections/workflow.yaml)} (verb error factory renew: factory lease configuration refused: workflow.factory_lease.duration must be a positive duration (greater than zero); got "0s" (config: /private/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestFactoryRenewMatchesMCPLinkedWorktreeprimary_duration_0s3901229955/002/.moai/config/sections/workflow.yaml)); want equal
+--- FAIL: TestFactoryRenewMatchesMCPLinkedWorktree (0.95s)
+    --- FAIL: TestFactoryRenewMatchesMCPLinkedWorktree/primary_duration_20m (0.56s)
+    --- FAIL: TestFactoryRenewMatchesMCPLinkedWorktree/primary_duration_0s (0.39s)
+=== RUN   TestFactoryRenewResolvesLaneRunWithoutRunArg
+=== RUN   TestFactoryRenewResolvesLaneRunWithoutRunArg/verb
+    factory_renew_test.go:417: renew t1 --json with no --run and two active runs: factory renew: no --run given and no single active factory run (AMBIGUOUS_FACTORY: run-a (owner live, leader pid 24397, started 2026-10-10T15:54:20.349374Z), run-b (owner live, leader pid 24397, started 2026-10-10T15:54:20.47338Z)) (stdout "{\"result\":\"error\",\"expires_at\":\"\",\"detail\":\"no --run given and no single active factory run (AMBIGUOUS_FACTORY: run-a (owner live, leader pid 24397, started 2026-10-10T15:54:20.349374Z), run-b (owner live, leader pid 24397, started 2026-10-10T15:54:20.47338Z))\"}\n")
+=== RUN   TestFactoryRenewResolvesLaneRunWithoutRunArg/MCP_tool
+    factory_renew_test.go:447: factory_renew outcome = {Result:error ExpiresAt: Detail:no --run given and no single active factory run (AMBIGUOUS_FACTORY: run-a (owner live, leader pid 24397, started 2026-10-10T15:54:21.428846Z), run-b (owner live, leader pid 24397, started 2026-10-10T15:54:21.567899Z))}, want renewed to 2026-09-26T09:15:00Z
+=== RUN   TestFactoryRenewResolvesLaneRunWithoutRunArg/held_in_both_runs_refuses_and_names_--run
+--- FAIL: TestFactoryRenewResolvesLaneRunWithoutRunArg (2.67s)
+    --- FAIL: TestFactoryRenewResolvesLaneRunWithoutRunArg/verb (1.00s)
+    --- FAIL: TestFactoryRenewResolvesLaneRunWithoutRunArg/MCP_tool (0.79s)
+    --- PASS: TestFactoryRenewResolvesLaneRunWithoutRunArg/held_in_both_runs_refuses_and_names_--run (0.88s)
+FAIL
+FAIL	github.com/modu-ai/moai-adk/internal/cli	5.703s
+FAIL
+```
+
+RED, F4. Command: `go test -count=1 -v -run '^TestLaneWatchdogRecordsRefusalAndMeasures$' ./internal/template/`. Exit 1.
+
+```text
+=== RUN   TestLaneWatchdogRecordsRefusalAndMeasures
+    lane_watchdog_renew_test.go:163: the snapshot write sentence lacks "last_change_at" (snapshot record, REQ-FLR-011 and REQ-FLR-013)
+--- FAIL: TestLaneWatchdogRecordsRefusalAndMeasures (0.00s)
+FAIL
+FAIL	github.com/modu-ai/moai-adk/internal/template	0.416s
+FAIL
+```
+
+Each RED line shows the defect and not a compile error. F1: the tool renews under `worker-1` (`result: renewed`). F2: the 20m arm renews to 09:15, the verb to 09:20; the 0s arm renews where the verb refuses. F3: both behavior arms refuse with `AMBIGUOUS_FACTORY`. F4: the write sentence lacks `last_change_at`. The F3 guard arms pass in the RED run, as a guard should; the mutation check below shows they also pass on the pre-fix resolver.
+
+#### Mutation check for the F3 guard arms (pre-fix resolver)
+
+For this check only, the renewal call in `factoryRenewCard` was pointed back at `resolveFactoryCardRun`, the F3 test was run, and the line was restored. The restored diff was reviewed before the F3 commit. Command: `go test -count=1 -v -run '^TestFactoryRenewResolvesLaneRunWithoutRunArg$' ./internal/cli/`.
+
+```text
+=== RUN   TestFactoryRenewResolvesLaneRunWithoutRunArg
+=== RUN   TestFactoryRenewResolvesLaneRunWithoutRunArg/verb
+    factory_renew_test.go:417: renew t1 --json with no --run and two active runs: factory renew: no --run given and no single active factory run (AMBIGUOUS_FACTORY: run-a (owner live, leader pid 54920, started 2026-10-10T15:58:27.388328Z), run-b (owner live, leader pid 54920, started 2026-10-10T15:58:27.496543Z)) (stdout "{\"result\":\"error\",\"expires_at\":\"\",\"detail\":\"no --run given and no single active factory run (AMBIGUOUS_FACTORY: run-a (owner live, leader pid 54920, started 2026-10-10T15:58:27.388328Z), run-b (owner live, leader pid 54920, started 2026-10-10T15:58:27.496543Z))\"}\n")
+=== RUN   TestFactoryRenewResolvesLaneRunWithoutRunArg/MCP_tool
+    factory_renew_test.go:447: factory_renew outcome = {Result:error ExpiresAt: Detail:no --run given and no single active factory run (AMBIGUOUS_FACTORY: run-a (owner live, leader pid 54920, started 2026-10-10T15:58:28.268043Z), run-b (owner live, leader pid 54920, started 2026-10-10T15:58:28.373984Z))}, want renewed to 2026-09-26T09:15:00Z
+=== RUN   TestFactoryRenewResolvesLaneRunWithoutRunArg/held_in_both_runs_refuses_and_names_--run
+=== RUN   TestFactoryRenewResolvesLaneRunWithoutRunArg/held_in_neither_run_refuses_and_names_--run
+--- FAIL: TestFactoryRenewResolvesLaneRunWithoutRunArg (3.15s)
+    --- FAIL: TestFactoryRenewResolvesLaneRunWithoutRunArg/verb (0.88s)
+    --- FAIL: TestFactoryRenewResolvesLaneRunWithoutRunArg/MCP_tool (0.74s)
+    --- PASS: TestFactoryRenewResolvesLaneRunWithoutRunArg/held_in_both_runs_refuses_and_names_--run (0.80s)
+    --- PASS: TestFactoryRenewResolvesLaneRunWithoutRunArg/held_in_neither_run_refuses_and_names_--run (0.73s)
+FAIL
+FAIL	github.com/modu-ai/moai-adk/internal/cli	4.176s
+FAIL
+```
+
+The two behavior arms fail on the pre-fix resolver. The two guard arms pass on it. The held-in-neither arm was added after the RED commit, in the F3 commit, so this run is its pre-fix observation. The F3 test's fixture also changed in that commit: it takes a holder per run.
+
+#### GREEN: after each fix (verbatim)
+
+F1 at `55fd1b6c1`. Command: `go test -count=1 -v -run '^TestFactoryRenewRefusesLegacyLaneLabelOnBothSurfaces$' ./internal/cli/`. Exit 0.
+
+```text
+=== RUN   TestFactoryRenewRefusesLegacyLaneLabelOnBothSurfaces
+=== RUN   TestFactoryRenewRefusesLegacyLaneLabelOnBothSurfaces/MCP_tool
+=== RUN   TestFactoryRenewRefusesLegacyLaneLabelOnBothSurfaces/verb
+--- PASS: TestFactoryRenewRefusesLegacyLaneLabelOnBothSurfaces (1.08s)
+    --- PASS: TestFactoryRenewRefusesLegacyLaneLabelOnBothSurfaces/MCP_tool (0.60s)
+    --- PASS: TestFactoryRenewRefusesLegacyLaneLabelOnBothSurfaces/verb (0.48s)
+PASS
+ok  	github.com/modu-ai/moai-adk/internal/cli	1.940s
+```
+
+F2 at `bac7fc651`, with the existing renew tests. The F3 test was still RED here, as expected. Command: `go test -count=1 -v -run '^(TestFactoryRenewMatchesMCPLinkedWorktree|TestFactoryRenewRefusesLegacyLaneLabelOnBothSurfaces|TestFactoryRenewExtendsLiveLease|TestFactoryRenewMatchesMCP|TestNonHolderRenewRefusedCLIAndMCP|TestFactoryRenewRefusalIsMachineReadable)$' ./internal/cli/`. Exit 0.
+
+```text
+=== RUN   TestFactoryRenewExtendsLiveLease
+--- PASS: TestFactoryRenewExtendsLiveLease (0.62s)
+=== RUN   TestFactoryRenewMatchesMCP
+=== RUN   TestFactoryRenewMatchesMCP/live_lease:_the_same_expiry_fields
+=== RUN   TestFactoryRenewMatchesMCP/expired_lease:_the_same_refusal_class
+--- PASS: TestFactoryRenewMatchesMCP (1.21s)
+    --- PASS: TestFactoryRenewMatchesMCP/live_lease:_the_same_expiry_fields (0.67s)
+    --- PASS: TestFactoryRenewMatchesMCP/expired_lease:_the_same_refusal_class (0.53s)
+=== RUN   TestNonHolderRenewRefusedCLIAndMCP
+=== RUN   TestNonHolderRenewRefusedCLIAndMCP/verb
+=== RUN   TestNonHolderRenewRefusedCLIAndMCP/MCP_tool
+--- PASS: TestNonHolderRenewRefusedCLIAndMCP (0.97s)
+    --- PASS: TestNonHolderRenewRefusedCLIAndMCP/verb (0.15s)
+    --- PASS: TestNonHolderRenewRefusedCLIAndMCP/MCP_tool (0.13s)
+=== RUN   TestFactoryRenewRefusalIsMachineReadable
+--- PASS: TestFactoryRenewRefusalIsMachineReadable (0.60s)
+=== RUN   TestFactoryRenewRefusesLegacyLaneLabelOnBothSurfaces
+=== RUN   TestFactoryRenewRefusesLegacyLaneLabelOnBothSurfaces/MCP_tool
+=== RUN   TestFactoryRenewRefusesLegacyLaneLabelOnBothSurfaces/verb
+--- PASS: TestFactoryRenewRefusesLegacyLaneLabelOnBothSurfaces (1.22s)
+    --- PASS: TestFactoryRenewRefusesLegacyLaneLabelOnBothSurfaces/MCP_tool (0.54s)
+    --- PASS: TestFactoryRenewRefusesLegacyLaneLabelOnBothSurfaces/verb (0.68s)
+=== RUN   TestFactoryRenewMatchesMCPLinkedWorktree
+=== RUN   TestFactoryRenewMatchesMCPLinkedWorktree/primary_duration_20m
+=== RUN   TestFactoryRenewMatchesMCPLinkedWorktree/primary_duration_0s
+--- PASS: TestFactoryRenewMatchesMCPLinkedWorktree (1.06s)
+    --- PASS: TestFactoryRenewMatchesMCPLinkedWorktree/primary_duration_20m (0.63s)
+    --- PASS: TestFactoryRenewMatchesMCPLinkedWorktree/primary_duration_0s (0.43s)
+PASS
+ok  	github.com/modu-ai/moai-adk/internal/cli	6.560s
+```
+
+Final code state at `74e6b5af2` (the F3 fix and the held-in-neither arm), with the existing renew tests and the F3 test. Command: `go test -count=1 -v -run '^(TestFactoryRenewResolvesLaneRunWithoutRunArg|TestFactoryRenewMatchesMCPLinkedWorktree|TestFactoryRenewRefusesLegacyLaneLabelOnBothSurfaces|TestFactoryRenewExtendsLiveLease|TestFactoryRenewMatchesMCP|TestNonHolderRenewRefusedCLIAndMCP|TestFactoryRenewRefusalIsMachineReadable)$' ./internal/cli/`. Exit 0.
+
+```text
+=== RUN   TestFactoryRenewExtendsLiveLease
+--- PASS: TestFactoryRenewExtendsLiveLease (0.74s)
+=== RUN   TestFactoryRenewMatchesMCP
+=== RUN   TestFactoryRenewMatchesMCP/live_lease:_the_same_expiry_fields
+=== RUN   TestFactoryRenewMatchesMCP/expired_lease:_the_same_refusal_class
+--- PASS: TestFactoryRenewMatchesMCP (1.23s)
+    --- PASS: TestFactoryRenewMatchesMCP/live_lease:_the_same_expiry_fields (0.58s)
+    --- PASS: TestFactoryRenewMatchesMCP/expired_lease:_the_same_refusal_class (0.64s)
+=== RUN   TestNonHolderRenewRefusedCLIAndMCP
+=== RUN   TestNonHolderRenewRefusedCLIAndMCP/verb
+=== RUN   TestNonHolderRenewRefusedCLIAndMCP/MCP_tool
+--- PASS: TestNonHolderRenewRefusedCLIAndMCP (0.89s)
+    --- PASS: TestNonHolderRenewRefusedCLIAndMCP/verb (0.15s)
+    --- PASS: TestNonHolderRenewRefusedCLIAndMCP/MCP_tool (0.13s)
+=== RUN   TestFactoryRenewRefusalIsMachineReadable
+--- PASS: TestFactoryRenewRefusalIsMachineReadable (0.84s)
+=== RUN   TestFactoryRenewRefusesLegacyLaneLabelOnBothSurfaces
+=== RUN   TestFactoryRenewRefusesLegacyLaneLabelOnBothSurfaces/MCP_tool
+=== RUN   TestFactoryRenewRefusesLegacyLaneLabelOnBothSurfaces/verb
+--- PASS: TestFactoryRenewRefusesLegacyLaneLabelOnBothSurfaces (1.19s)
+    --- PASS: TestFactoryRenewRefusesLegacyLaneLabelOnBothSurfaces/MCP_tool (0.53s)
+    --- PASS: TestFactoryRenewRefusesLegacyLaneLabelOnBothSurfaces/verb (0.65s)
+=== RUN   TestFactoryRenewMatchesMCPLinkedWorktree
+=== RUN   TestFactoryRenewMatchesMCPLinkedWorktree/primary_duration_20m
+=== RUN   TestFactoryRenewMatchesMCPLinkedWorktree/primary_duration_0s
+--- PASS: TestFactoryRenewMatchesMCPLinkedWorktree (1.15s)
+    --- PASS: TestFactoryRenewMatchesMCPLinkedWorktree/primary_duration_20m (0.69s)
+    --- PASS: TestFactoryRenewMatchesMCPLinkedWorktree/primary_duration_0s (0.46s)
+=== RUN   TestFactoryRenewResolvesLaneRunWithoutRunArg
+=== RUN   TestFactoryRenewResolvesLaneRunWithoutRunArg/verb
+=== RUN   TestFactoryRenewResolvesLaneRunWithoutRunArg/MCP_tool
+=== RUN   TestFactoryRenewResolvesLaneRunWithoutRunArg/held_in_both_runs_refuses_and_names_--run
+=== RUN   TestFactoryRenewResolvesLaneRunWithoutRunArg/held_in_neither_run_refuses_and_names_--run
+--- PASS: TestFactoryRenewResolvesLaneRunWithoutRunArg (4.32s)
+    --- PASS: TestFactoryRenewResolvesLaneRunWithoutRunArg/verb (1.52s)
+    --- PASS: TestFactoryRenewResolvesLaneRunWithoutRunArg/MCP_tool (0.96s)
+    --- PASS: TestFactoryRenewResolvesLaneRunWithoutRunArg/held_in_both_runs_refuses_and_names_--run (0.95s)
+    --- PASS: TestFactoryRenewResolvesLaneRunWithoutRunArg/held_in_neither_run_refuses_and_names_--run (0.89s)
+PASS
+ok  	github.com/modu-ai/moai-adk/internal/cli	11.340s
+```
+
+F4 at `6b3d239bb`. Command: `go test -count=1 -v -run '^(TestLaneWatchdogRecordsRefusalAndMeasures|TestLaneWatchdogRenewsFirst|TestLaneRecheckDoctrine|TestCatalogHashCoversSkillSubfiles|TestClaudeAuditTemplateSurfacesAndCatalogHash)$' ./internal/template/`. Exit 0.
+
+```text
+=== RUN   TestCatalogHashCoversSkillSubfiles
+=== PAUSE TestCatalogHashCoversSkillSubfiles
+=== RUN   TestClaudeAuditTemplateSurfacesAndCatalogHash
+--- PASS: TestClaudeAuditTemplateSurfacesAndCatalogHash (0.00s)
+=== RUN   TestLaneRecheckDoctrine
+--- PASS: TestLaneRecheckDoctrine (0.00s)
+=== RUN   TestLaneWatchdogRenewsFirst
+--- PASS: TestLaneWatchdogRenewsFirst (0.00s)
+=== RUN   TestLaneWatchdogRecordsRefusalAndMeasures
+--- PASS: TestLaneWatchdogRecordsRefusalAndMeasures (0.00s)
+=== CONT  TestCatalogHashCoversSkillSubfiles
+    catalog_tier_audit_test.go:541: audited 58 directory entries for whole-tree hash coverage
+--- PASS: TestCatalogHashCoversSkillSubfiles (0.01s)
+PASS
+ok  	github.com/modu-ai/moai-adk/internal/template	0.551s
+```
+
+Rule check: the cited convergence test. Command: `go test -count=1 -v -run '^TestResolveTodoQueueRoot_WorktreeConvergesOnPrimary$' ./internal/cli/`. Exit 0.
+
+```text
+=== RUN   TestResolveTodoQueueRoot_WorktreeConvergesOnPrimary
+--- PASS: TestResolveTodoQueueRoot_WorktreeConvergesOnPrimary (0.20s)
+PASS
+ok  	github.com/modu-ai/moai-adk/internal/cli	0.948s
+```
+
+Regression checks on the renewal path and the stall verdict. Each exited 0. The cadence run's output is shown in full.
+
+```text
+=== RUN   TestRenewCadenceKeepsLeaseLive
+=== RUN   TestRenewCadenceKeepsLeaseLive/defaults
+=== RUN   TestRenewCadenceKeepsLeaseLive/defaults/on-schedule_renewals_at_0,_I,_2I,_through_3D_succeed
+=== RUN   TestRenewCadenceKeepsLeaseLive/defaults/a_renewal_due_at_I_and_delayed_to_D_minus_one_second_succeeds
+=== RUN   TestRenewCadenceKeepsLeaseLive/defaults/renewals_at_D_and_at_D_plus_one_second_are_refused_as_expired
+=== RUN   TestRenewCadenceKeepsLeaseLive/boundary
+=== RUN   TestRenewCadenceKeepsLeaseLive/boundary/on-schedule_renewals_at_0,_I,_2I,_through_3D_succeed
+=== RUN   TestRenewCadenceKeepsLeaseLive/boundary/a_renewal_due_at_I_and_delayed_to_D_minus_one_second_succeeds
+=== RUN   TestRenewCadenceKeepsLeaseLive/boundary/renewals_at_D_and_at_D_plus_one_second_are_refused_as_expired
+=== RUN   TestRenewCadenceKeepsLeaseLive/non-default
+=== RUN   TestRenewCadenceKeepsLeaseLive/non-default/on-schedule_renewals_at_0,_I,_2I,_through_3D_succeed
+=== RUN   TestRenewCadenceKeepsLeaseLive/non-default/a_renewal_due_at_I_and_delayed_to_D_minus_one_second_succeeds
+=== RUN   TestRenewCadenceKeepsLeaseLive/non-default/renewals_at_D_and_at_D_plus_one_second_are_refused_as_expired
+--- PASS: TestRenewCadenceKeepsLeaseLive (16.15s)
+    --- PASS: TestRenewCadenceKeepsLeaseLive/defaults (5.60s)
+        --- PASS: TestRenewCadenceKeepsLeaseLive/defaults/on-schedule_renewals_at_0,_I,_2I,_through_3D_succeed (3.57s)
+        --- PASS: TestRenewCadenceKeepsLeaseLive/defaults/a_renewal_due_at_I_and_delayed_to_D_minus_one_second_succeeds (0.89s)
+        --- PASS: TestRenewCadenceKeepsLeaseLive/defaults/renewals_at_D_and_at_D_plus_one_second_are_refused_as_expired (1.14s)
+    --- PASS: TestRenewCadenceKeepsLeaseLive/boundary (4.07s)
+        --- PASS: TestRenewCadenceKeepsLeaseLive/boundary/on-schedule_renewals_at_0,_I,_2I,_through_3D_succeed (1.73s)
+        --- PASS: TestRenewCadenceKeepsLeaseLive/boundary/a_renewal_due_at_I_and_delayed_to_D_minus_one_second_succeeds (1.06s)
+        --- PASS: TestRenewCadenceKeepsLeaseLive/boundary/renewals_at_D_and_at_D_plus_one_second_are_refused_as_expired (1.28s)
+    --- PASS: TestRenewCadenceKeepsLeaseLive/non-default (6.48s)
+        --- PASS: TestRenewCadenceKeepsLeaseLive/non-default/on-schedule_renewals_at_0,_I,_2I,_through_3D_succeed (4.51s)
+        --- PASS: TestRenewCadenceKeepsLeaseLive/non-default/a_renewal_due_at_I_and_delayed_to_D_minus_one_second_succeeds (0.85s)
+        --- PASS: TestRenewCadenceKeepsLeaseLive/non-default/renewals_at_D_and_at_D_plus_one_second_are_refused_as_expired (1.12s)
+PASS
+ok  	github.com/modu-ai/moai-adk/internal/cli	17.338s
+```
+
+```text
+=== RUN   TestAutoSemanticsArmFollowsRenewInterval
+=== RUN   TestAutoSemanticsArmFollowsRenewInterval/text
+=== RUN   TestAutoSemanticsArmFollowsRenewInterval/gap-every-N
+=== RUN   TestAutoSemanticsArmFollowsRenewInterval/mutant-2-59-refused
+    auto_semantics_renew_test.go:103: 2/59 refused: largest gap 60 minutes exceeds the period 59
+=== RUN   TestAutoSemanticsArmFollowsRenewInterval/mutant-6-7-refused
+    auto_semantics_renew_test.go:110: 6/7 refused: largest gap 11 minutes exceeds the period 7
+--- PASS: TestAutoSemanticsArmFollowsRenewInterval (0.00s)
+    --- PASS: TestAutoSemanticsArmFollowsRenewInterval/text (0.00s)
+    --- PASS: TestAutoSemanticsArmFollowsRenewInterval/gap-every-N (0.00s)
+    --- PASS: TestAutoSemanticsArmFollowsRenewInterval/mutant-2-59-refused (0.00s)
+    --- PASS: TestAutoSemanticsArmFollowsRenewInterval/mutant-6-7-refused (0.00s)
+=== RUN   TestStallVerdictReachesAtRenewCadence
+=== RUN   TestStallVerdictReachesAtRenewCadence/period-5m
+=== RUN   TestStallVerdictReachesAtRenewCadence/period-7m
+=== RUN   TestStallVerdictReachesAtRenewCadence/old-cadence-equal
+=== RUN   TestStallVerdictReachesAtRenewCadence/rule-text
+--- PASS: TestStallVerdictReachesAtRenewCadence (0.00s)
+    --- PASS: TestStallVerdictReachesAtRenewCadence/period-5m (0.00s)
+    --- PASS: TestStallVerdictReachesAtRenewCadence/period-7m (0.00s)
+    --- PASS: TestStallVerdictReachesAtRenewCadence/old-cadence-equal (0.00s)
+    --- PASS: TestStallVerdictReachesAtRenewCadence/rule-text (0.00s)
+PASS
+ok  	github.com/modu-ai/moai-adk/internal/template	0.251s
+```
+
+#### Build and mirror
+
+`make build` ran after the template edit and before the mirror copy. Its checks are the agent, command, tool-policy, and embed-manifest checks, the templ generation, the catalog-hash step, and `go build`. The last two lines of its output:
+
+```text
+catalog.yaml updated successfully (24330 bytes)
+go build -ldflags "-s -w -X github.com/modu-ai/moai-adk/pkg/version.Version=moai_cp/20261007_195927 -X github.com/modu-ai/moai-adk/pkg/version.Commit=74e6b5af2 -X github.com/modu-ai/moai-adk/pkg/version.Date=2026-10-10T15:59:24Z -X github.com/modu-ai/moai-adk/pkg/version.BuildID=moai_cp/20261007_195927-219-g74e6b5af2-dirty" -o bin/moai ./cmd/moai
+```
+
+Exit status: 0. After the run, `git status --short` listed `internal/template/catalog.yaml` (the regenerated hash; the diff is one line, the `moai-lane-watchdog` entry) and the template SKILL. The local mirror was then copied from the template. The two copies were compared:
+
+- `cmp internal/template/templates/.claude/skills/moai-lane-watchdog/SKILL.md .claude/skills/moai-lane-watchdog/SKILL.md; echo "cmp exit=$?"` gave `cmp exit=0`, before the F4 commit and again after it.
+
+The build line reports `-dirty` in its BuildID, because the SKILL edit and the catalog hash were uncommitted at build time. Tool provenance: `make build` builds `bin/moai` from this tree. The lease verbs (`moai slot`) ran on the installed build, and their output is not cited as evidence of code behavior.
+
+#### Commits (this block; each carries `Authored-By-Agent: manager-develop`)
+
+- `21f93d6b6` test(SPEC-FACTORY-LEASE-RENEW-001): RED for the sync-audit repairs F1 to F4 (card t1663)
+- `55fd1b6c1` fix(SPEC-FACTORY-LEASE-RENEW-001): refuse a legacy lane label on the factory_renew tool (card t1663)
+- `bac7fc651` fix(SPEC-FACTORY-LEASE-RENEW-001): one factory-root rule for the verb and the factory_renew tool (card t1663)
+- `74e6b5af2` fix(SPEC-FACTORY-LEASE-RENEW-001): renew without --run resolves the lane's own run (card t1663)
+- `6b3d239bb` fix(SPEC-FACTORY-LEASE-RENEW-001): the snapshot write sentence names last_change_at (card t1663)
+- this commit: docs(SPEC-FACTORY-LEASE-RENEW-001): repair evidence after sync audit FAIL #1 (card t1663)
+
+The commit gate did not run for any commit in this block. The shared config sets `core.hooksPath=/dev/null`, and each commit body carries the trailer `게이트 미실행(core.hooksPath=/dev/null, 공유 설정)`. No `--no-verify`, no `SKIP_MOAI_PRECOMMIT`, no `git -c core.hooksPath`, and no change to hooks, config, or permissions. Nothing under `.moai/reports/` was staged or committed.
+
+#### Design choices
+
+F2. We applied the one rule on the tool's side, as `factoryRootOf(project_root)`, rather than canonicalizing the root inside `homestate.loadFactoryLease`. The record already lives at the canonical root, because `FactoryDir` canonicalizes, so the lease keys are the only input still read per raw root. Canonicalizing inside the loader would change all 37 non-test `OpenFactory` call sites and every homestate lease test. The tool-side change touches one handler and reuses the rule the verb already runs. The verb's `factoryCardRoot` and the tool now both call `factoryRootOf`, so the rule has one definition.
+
+F3. We chose option (a), where the verb resolves the lane's own run, over option (b), where the SKILL passes a run id. Option (b) needs the watchdog to know its factory run id. The SKILL does not carry that id, so option (b) would add a lookup to every pass. Option (a) uses the lane label the verb already reads and the card id the procedure already names, so the procedure text is unchanged and no new input reaches the lane. The narrowing reuses `factorymsg.ResolveActiveRun` unchanged and applies only to its ambiguous error. The no-run single-run path and the explicit `--run` path behave exactly as before, and `resolveFactoryCardRun`'s other callers are not touched.
+
+#### Model note
+
+The first sync audit's verdict records `auditor-model: claude-haiku-5-5`. The spawn did not pin `model: opus`. That was a process error. Its FAIL is accepted as recorded. The next audit must pin `model: opus`. This repair session also runs on claude-haiku-5-5, so nothing in this block is a model-tier verdict.
+
+#### Debts left open (each with dispose_in)
+
+- F5 / D7 (`internal/factory/backlog_claim_lease_test.go:14-26`): not repaired. The fixture writes the card config to a root that `claimFixture`'s store never reads, and `store.Claim` takes no root. A real fix changes the claim API, which is not cheap. dispose_in=later.
+- F6 (the `progress.md` §E.4 follow-up (d) list lacks line 1017): outside this block's write scope, since §E.4 belongs to manager-docs. dispose_in=sync.
+- D9 (`sync_commit_sha` placeholder backfill): the sync close. dispose_in=sync.
+- N1 (the F1 class, outside the four findings): `handleFactoryNext` (`internal/cli/mcp_factory_card.go:132`), `handleFactoryStage` (`:209`), and `handleFactoryComplete` (`:225`) read `MOAI_FACTORY_WORKER` with no legacy-label check. Each is a one-line change of the F1 shape. dispose_in=later, in one follow-up card with N2.
+- N2 (the F2 class): `factory_next`, `factory_stage`, and `factory_complete` open the factory at the raw `project_root`. `handleFactoryNext` also asserts the parent checkout on that root (`factoryAssertParentCheckout`), so `factoryRootOf` cannot be dropped into it unchanged. dispose_in=later.
+- N3 (the F3 class): the lane verbs that resolve a run through `resolveFactoryCardRun` (`factoryStageCard`, `factoryCompleteCard`, `factoryDecideCards`, and `handleFactoryNext`) still refuse when several runs are active and no `--run` is given. Only the renewal path was narrowed. dispose_in=later.
+- The delta re-audit and its cross-model receipt on the repaired tree: the orchestrator's step, not this block. dispose_in=sync.
+
+#### Gaps (not observed in this block)
+
+- `/verify` was not run; it is out of scope for this lane. The full `internal/cli` package was not run; it is out of scope. Only the exact-name tests named above ran, plus `make build`. Other `internal/cli` tests that call the stage, complete, decide, and next verbs were not run. `factoryCardRoot`'s body changed in the F2 commit, but its value is identical by construction: `factoryRootOf(resolveProjectDir())` and `ResolveTodoQueueRootAdopting(resolveProjectDir())` both reduce to `factory.ResolveTodoQueueRoot`.
+- Lint (QG-1), race (QG-2), and coverage (QG-3) were not run on the repaired packages. No coverage figure is claimed here.
+- The commit gate did not run. No codex or other cross-model audit was run on the repaired tree.
+- The MCP tool was exercised in-process, through the registered handler. It was not exercised through a live stdio MCP server against a live linked worktree.
+- No live watchdog turn was observed. AC-FLR-010 and the procedure half of AC-FLR-011 are text checks, and this block does not present them as behavior.
+- Refused or failed tool calls, named under §3.1. One Bash call was refused by the worktree-isolation guard. It was a shell construction that computed a `sed` line range from an arithmetic expansion over a `grep -n` result. It did not run. It was re-issued as separate plain commands, and no cited value rests on it. One zsh "no matches found" error came from an unquoted `--include=*.go` glob. It was re-run with the pattern quoted, and no cited value rests on the failed form.
+
+#### Residual risk
+
+- F2 is a behavior change for MCP callers in a linked worktree. The duration now comes from the primary's `workflow.yaml`, as it already did for the verb. A worktree's own `workflow.yaml` no longer sets the MCP renewal duration.
+- F3 narrows only the ambiguous outcome. A card held by this lane in two live runs is still refused, by design, which fails closed. A lane that holds the card in exactly one live run now renews without `--run`.
+- F1 covers the renew tool only. N1 leaves the same gap open on the next, stage, and complete tools.
+- F4 is a text repair. Whether a live watchdog writes `last_change_at` is not observed here.
+
 ## §E.3 Run-phase Audit-Ready Signal
 
 - run_status: audit-ready
