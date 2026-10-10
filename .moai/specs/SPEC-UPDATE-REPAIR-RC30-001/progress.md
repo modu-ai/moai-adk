@@ -590,6 +590,84 @@ The probe edit was reverted by the inverse edit. `git status --short` then showe
 
 **Scope.** The full `internal/cli` suite and `go test ./...` were not run locally (scope rule, as in bundle A). The repository-wide verdict belongs to the CI run on `origin/develop`, PENDING at the time of this record. `go test -cover` was not measured (M7). The status transition was recorded on the bundle A commit; bundle B changes no status field.
 
+### M1 step 4, bundle C — U-11 (AC-RC30-12) (manager-develop, card t1619)
+
+Bundle C is the single item U-11 (plan § B.2 step 4, user-root downgrade refusal). Tree before the item: HEAD `d511692d7` on `WT-moai-update-repair`, clean (pre-flight: branch, HEAD, clean status, and `go build ./internal/userassets/` with no output). The item is one local commit; nothing is pushed.
+
+**Reading of E-16.** Confirmed on this tree: the `stateManifestMatch` refresh arm of `applyTarget` (`internal/userassets/install.go`) has no version comparison. The version record is per file (`FileEntry.MoaiVersion`, REQ-006); the manifest has no root-level version. The SPEC text does not define how a refusal is reported (see Gaps).
+
+**RED (TDD order).** The judging test is new: `TestUserRootDowngradeRefused` in `internal/userassets/downgrade_refusal_test.go`. It compiles against the tree as it stands; no stub was needed. Fixture: a first `Install` under `v3.2.0-rc.30` records `claude-skills/moai-alpha/SKILL.md`; the shipped copy then changes, so the file on disk still matches its record and `classifyTarget` returns `stateManifestMatch`. The older binary (`v3.2.0-rc.29`) runs a second `Install` on that home. A control subtest runs a newer binary (`v3.2.0-rc.31`) on the same fixture.
+
+Command: `go test ./internal/userassets/ -run TestUserRootDowngradeRefused -count=1 -v`, exit 1. Verbatim output:
+
+```text
+=== RUN   TestUserRootDowngradeRefused
+=== PAUSE TestUserRootDowngradeRefused
+=== CONT  TestUserRootDowngradeRefused
+=== RUN   TestUserRootDowngradeRefused/older_binary_refuses_the_refresh
+    downgrade_refusal_test.go:46: older binary refreshed the file: bytes "alpha skill body v2\n", want the recorded "alpha skill body v1\n"
+    downgrade_refusal_test.go:53: older binary rewrote the record: {SHA256:6e9b25a96b83b3e9b38eed60f9eea0b9ff152dde7a3b6b99208b1b22b1219006 Bundle:core InstalledAt:2026-10-06T00:00:00Z MoaiVersion:v3.2.0-rc.29 installedByJournal:false unknown:map[]}, want the v3.2.0-rc.30 record of the recorded bytes
+    downgrade_refusal_test.go:56: Refreshed = 2, want 0: a refused refresh is not counted
+    downgrade_refusal_test.go:65: refusal is not observable: no failure for claude-skills/moai-alpha/SKILL.md in []
+=== RUN   TestUserRootDowngradeRefused/newer_binary_still_refreshes_the_same_fixture
+--- FAIL: TestUserRootDowngradeRefused (0.09s)
+    --- FAIL: TestUserRootDowngradeRefused/older_binary_refuses_the_refresh (0.05s)
+    --- PASS: TestUserRootDowngradeRefused/newer_binary_still_refreshes_the_same_fixture (0.04s)
+FAIL
+FAIL	github.com/modu-ai/moai-adk/internal/userassets	0.393s
+FAIL
+```
+
+The failure is behavioral. The older binary refreshed the file, rewrote the record to `v3.2.0-rc.29`, and reported no refusal. The control passes, so the fixture reaches the refresh arm and the refusal is the version comparison, not a blanket stop.
+
+An earlier RED run, before the control's count assertion was corrected, also printed `Refreshed = 2, want 1` for the control. That expectation was wrong, not the code: `dirTargets` walks the same source directory (`.claude/skills/moai-alpha`) for both the claude and the agents skill roots, so one changed source file refreshes two records. The control now asserts the bytes and the record only. The RED above is the run on the final test text.
+
+**Implementation.** `internal/userassets/install.go` and `go.mod`:
+- `applyTarget`, `stateManifestMatch` arm: before the refresh, the file's own recorded `MoaiVersion` is compared with `in.MoaiVersion`. A newer record returns an error. Both callers already record such an error as a per-file `FileOutcome` in `Result.Failures`. Nothing is written, the record is untouched, and `Refreshed` does not count the file.
+- `versionNewer`: normalizes both sides to a leading `v` (the Makefile's `VERSION` default is `git describe --tags`, which is `v`-prefixed; `.goreleaser.yml:22` passes `{{.Version}}`, which omits it), then compares with `golang.org/x/mod/semver`. That module is already in the build list and `go.sum`. A value that is not valid semver is never judged newer, so the refresh proceeds as before.
+- `go.mod`: `golang.org/x/mod v0.41.0` loses its `// indirect` comment. This is the only change `go mod tidy -diff` reports for the new direct import.
+
+**GREEN.** Same command, exit 0:
+
+```text
+=== RUN   TestUserRootDowngradeRefused
+=== PAUSE TestUserRootDowngradeRefused
+=== CONT  TestUserRootDowngradeRefused
+=== RUN   TestUserRootDowngradeRefused/older_binary_refuses_the_refresh
+=== RUN   TestUserRootDowngradeRefused/newer_binary_still_refreshes_the_same_fixture
+--- PASS: TestUserRootDowngradeRefused (0.02s)
+    --- PASS: TestUserRootDowngradeRefused/older_binary_refuses_the_refresh (0.01s)
+    --- PASS: TestUserRootDowngradeRefused/newer_binary_still_refreshes_the_same_fixture (0.01s)
+PASS
+ok  	github.com/modu-ai/moai-adk/internal/userassets	0.316s
+```
+
+**Regression checks (this tree, after the change).**
+- `go test ./internal/userassets/ -count=1`: `ok  	github.com/modu-ai/moai-adk/internal/userassets	3.261s`.
+- Other importers of `internal/userassets`: `go test ./internal/cli/ -count=1 -run '^(…)$'` over the 59 test functions of the 13 cli test files that import the package: `ok  	github.com/modu-ai/moai-adk/internal/cli	77.075s`. `go test ./internal/hook/ -count=1 -run '^(TestUserRootSlugDirsMatchUserassetsRoots|TestUserRootFormsEmitNamespacedForm|TestUserRootFormTrackedScoping)$'`: `ok  	github.com/modu-ai/moai-adk/internal/hook	0.787s`.
+
+**Gates (each its own command).**
+- `gofmt -l internal/userassets/install.go internal/userassets/downgrade_refusal_test.go`: no output.
+- `go vet ./internal/userassets/`: no output.
+- `golangci-lint run ./internal/userassets/`: `0 issues.`
+- `go mod tidy -diff`, after the go.mod change: no output.
+- `GOOS=windows GOARCH=amd64 go build ./...` (B1): no output.
+
+**Pre-commit gate (`moai gate` workflow, scoped run).** Phase 1B: `moai verify check --key-current` exited 1 with "no snapshot recorded for the current working-tree key" (key `d511692d7ce7458b912bc8b63a4618190c361b8a:b6f388707a828e36`), so no result was reused. Scope: the changed package and the two changed Go files. Lint PASS (`golangci-lint run ./internal/userassets/`: `0 issues.`). Format PASS (`gofmt -l` on the two files: no output). Type PASS (`go vet ./internal/userassets/`: no output). Test PASS (`go test -race -count=1 ./internal/userassets/`: `ok  	github.com/modu-ai/moai-adk/internal/userassets	212.430s`). The test run is above the gate's 60 s per-check budget; that budget was not enforced in this run, and under the gate's timeout rule it would have been a WARNING. A scoped run is not recorded as a snapshot.
+
+**Gaps (not observed in this item).**
+- How a refusal is reported is not defined by the SPEC text; AC-RC30-12 names only the outcome. Chosen: a per-file `FileOutcome` in `Result.Failures`, reason `refresh refused: recorded moai version … is newer than this binary (…) — REQ-RC30-012`. `writeInstallSummary` prints it as a `failure:` line. No counter or exit code was added. `runUserAssetUpdatePhase` returns nil on per-file failures, so the update's exit status is unchanged.
+- The comparison is per file, because the manifest records no root-level version (REQ-006). A root whose files carry mixed versions is judged file by file.
+- The `stateAbsent` install arm (a file missing from a root, reinstalled by an older binary) is not refused. AC-RC30-12 names the refresh only.
+- The full `internal/cli` suite and `go test ./...` were not run; `.claude/rules/local/gitflow-lane-protocol.md` § 8 forbids a local full-suite run in a lane. The 59 test functions above are the ones in the test files that import `internal/userassets`. The full-suite verdict belongs to CI on `origin/develop` (PENDING at the time of this record).
+- `go test -cover` was not measured (M7 owns coverage).
+
+**Residual risk.**
+- A version that is neither `vX.Y.Z[-pre]` nor `X.Y.Z[-pre]` (a `dev` build, for example) is never judged newer, so such a binary still refreshes. That is the pre-change behavior, and it is an open fail-open path.
+- The refused file's journal entry stays staged with `WriteCompleted` false until the manifest save clears the journal. The existing per-file failure arms leave the same state. The test does not inspect the journal.
+
+**Files changed.** `internal/userassets/install.go`, `internal/userassets/downgrade_refusal_test.go` (new), `go.mod`, `.moai/specs/SPEC-UPDATE-REPAIR-RC30-001/progress.md`.
+
 ## §E.3 Run-phase Audit-Ready Signal
 
 _pending run-phase (manager-develop)_

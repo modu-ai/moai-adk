@@ -29,6 +29,7 @@ import (
 	"time"
 
 	"github.com/modu-ai/moai-adk/internal/template"
+	"golang.org/x/mod/semver"
 )
 
 // srcPath converts a catalog entry path to the embedded-FS form
@@ -787,6 +788,14 @@ func (in *Installer) applyTarget(tgt installTarget, manifest *Manifest, roots ma
 			manifest.Files[tgt.manifestKey] = fe
 		}
 	case stateManifestMatch:
+		// U-11 (REQ-RC30-012): an older binary never refreshes a file its
+		// manifest records under a newer moai version — the refresh would
+		// rewrite the bytes and stamp the older version over the newer
+		// record. The refusal is a per-file failure, so the bytes and the
+		// record stay as they were.
+		if recorded := manifest.Files[tgt.manifestKey].MoaiVersion; versionNewer(recorded, in.MoaiVersion) {
+			return "", false, fmt.Errorf("refresh refused: recorded moai version %s is newer than this binary (%s) — REQ-RC30-012", recorded, in.MoaiVersion)
+		}
 		// REQ-008 refresh: rewrite to shipped + re-record — updating only
 		// the KNOWN fields of the existing record so unknown per-file
 		// fields captured at decode survive (REQ-021; review fix RF6).
@@ -848,6 +857,17 @@ func classifyTarget(record FileEntry, current []byte, readErr error, shipped []b
 	default:
 		return stateDivergent
 	}
+}
+
+// versionNewer reports whether the recorded moai version is strictly newer than
+// the running binary's (U-11, REQ-RC30-012). The stamped version carries a
+// leading "v" when it comes from the Makefile's VERSION and none when
+// GoReleaser's {{.Version}} supplies it, so both sides are normalized before
+// the semver comparison. A value that is not valid semver is never judged
+// newer, so the refresh proceeds exactly as it did before this comparison.
+func versionNewer(recorded, binary string) bool {
+	r, b := "v"+strings.TrimPrefix(recorded, "v"), "v"+strings.TrimPrefix(binary, "v")
+	return semver.IsValid(r) && semver.IsValid(b) && semver.Compare(r, b) > 0
 }
 
 // backupShipped writes the shipped replacement to the backup home
