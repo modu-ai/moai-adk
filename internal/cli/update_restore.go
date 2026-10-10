@@ -43,6 +43,10 @@ func checkProjectMarker(dir string) error {
 // The backup directory is validated before anything is written: a directory
 // without the backup marker file is refused rather than copied into the project
 // (REQ-UDS-024). Applying the same backup twice is safe (REQ-UDS-023).
+//
+// The live .claude/settings.json is never written by this path (SPEC-UPDATE-REPAIR-RC30-001
+// D9). The restore names it as not restored and prints the manual copy
+// instruction (reportUncoveredRestorePaths).
 func runUpdateRestore(projectRoot, backupDir string, out io.Writer) error {
 	if out == nil {
 		out = io.Discard
@@ -82,17 +86,19 @@ func runUpdateRestore(projectRoot, backupDir string, out io.Writer) error {
 	return nil
 }
 
-// restoreSettingsRel is the live settings file this restore never writes. The
-// restore names it as not restored and leaves the copy to the user (operator
-// verdict d-20261010T053033Z-7012).
+// restoreSettingsRel is the live settings file this restore never writes.
+// SPEC-UPDATE-REPAIR-RC30-001 D9 (operator verdict d-20261010T053033Z-7012): the
+// restore names it as not restored and leaves the copy to the user.
 const restoreSettingsRel = ".claude/settings.json"
 
 // reportUncoveredRestorePaths prints what this restore leaves alone, so the user
-// can finish the recovery by hand. It writes no file. The live
-// .claude/settings.json is always named as not restored; when the run backup
-// holds a copy, the line carries the manual copy instruction with the backup
-// path and the target path. The other run-backup copies that the restore does
-// not apply are listed as backed up but not restored.
+// can finish the recovery by hand. It writes no file.
+//
+// The live .claude/settings.json is always named as not restored. When the run
+// backup holds a copy, the line also carries the manual copy instruction with
+// the backup path and the target path. The other run-backup copies outside the
+// config tree are listed as backed up but not restored; inMemoryOnlyBackupTargets
+// is their single source of truth.
 func reportUncoveredRestorePaths(out io.Writer, projectRoot, absBackup string) {
 	// Read after the restore, so a restored language.yaml sets the language.
 	lang := config.LoadUpdateRenderValues(projectRoot).ConversationLanguage
@@ -110,7 +116,9 @@ func reportUncoveredRestorePaths(out io.Writer, projectRoot, absBackup string) {
 
 	var items []string
 	for _, rel := range inMemoryOnlyBackupTargets() {
-		if rel == restoreSettingsRel {
+		// The run marker is backup bookkeeping, not a backed-up user file: it is
+		// never listed as uncovered.
+		if rel == restoreSettingsRel || rel == backup.RunMarkerName {
 			continue
 		}
 		copyPath := filepath.Join(copyRoot, filepath.FromSlash(rel))

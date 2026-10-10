@@ -73,8 +73,11 @@ common.cancel: "Cancel"
 common.loading: "Loading"
 common.unknown: "Unknown"
 
-# update restore surface
-update.restore.settings_not_restored: "%s is not restored: the live file is left as it is."
-update.restore.copy_by_hand: "To restore it by hand, copy %s to %s."
+# update restore surface (SPEC-UPDATE-REPAIR-RC30-001 D9)
+update.restore.settings_not_restored: "Not restored: %s. The live file was left unchanged."
+update.restore.copy_by_hand: "To restore it by hand, copy the backup file. Source: %s. Target: %s"
 update.restore.not_covered_heading: "Backed up but not restored by this command:"
 update.restore.not_covered_item: "  %s (backup copy: %s)"
+
+# update backup surface (SPEC-UPDATE-REPAIR-RC30-001 D9)
+update.backup.run_marker_failed: "Backup run marker write failed: %v"

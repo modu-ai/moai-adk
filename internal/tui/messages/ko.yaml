@@ -73,8 +73,11 @@ common.cancel: "취소"
 common.loading: "로드 중"
 common.unknown: "알 수 없음"
 
-# update restore surface
-update.restore.settings_not_restored: "%s은(는) 복원되지 않습니다. 현재 파일은 그대로 둡니다."
-update.restore.copy_by_hand: "직접 복원하려면 %s 파일을 %s 위치로 복사하세요."
-update.restore.not_covered_heading: "백업에는 있지만 이 명령으로 복원되지 않는 항목:"
+# update restore surface (SPEC-UPDATE-REPAIR-RC30-001 D9)
+update.restore.settings_not_restored: "복원하지 않음: %s. 현재 파일은 변경하지 않았습니다."
+update.restore.copy_by_hand: "직접 복원하려면 백업 파일을 복사하세요. 원본: %s, 대상: %s"
+update.restore.not_covered_heading: "백업에는 있지만 이 명령으로는 복원하지 않는 항목:"
 update.restore.not_covered_item: "  %s (백업 사본: %s)"
+
+# update backup surface (SPEC-UPDATE-REPAIR-RC30-001 D9)
+update.backup.run_marker_failed: "백업 실행 마커 기록 실패: %v"
