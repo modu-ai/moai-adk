@@ -63,7 +63,8 @@ func newIntegrationResyncCmd() *cobra.Command {
 // runLocalMainResync fast-forwards local main to origin/main inside the
 // integration window and returns the report line. A refusal before the window
 // is taken changes no record. Every refusal or success after the acquisition
-// releases the window (plan §B3a step 8).
+// releases the window it took (plan §B3a step 8); a window the caller already
+// held stays held.
 func runLocalMainResync(repoRoot string) (string, error) {
 	sessionID := integrationSessionID("")
 	if sessionID == "" {
@@ -78,7 +79,12 @@ func runLocalMainResync(repoRoot string) (string, error) {
 	}
 
 	// Step 1: the existing acquisition, with the record the acquire verb writes.
+	// heldBefore is read first. A window this session already holds is re-acquired
+	// (the acquire refreshes the holder's record and lease), and the release at the
+	// end skips it. The read is outside the acquire's mutation, so a takeover in
+	// between shows up as replaced.
 	initWindowLeaseOverride(repoRoot)
+	heldBefore := localMainResyncHeldBy(repoRoot, sessionID)
 	ownerPID, _ := session.ResolveOwnerPID()
 	replaced, err := factory.AcquireIntegrationWindow(repoRoot, factory.IntegrationLock{
 		SessionID:    sessionID,
@@ -91,13 +97,21 @@ func runLocalMainResync(repoRoot string) (string, error) {
 	if err != nil {
 		return "", err
 	}
+	// Release only a window this call took. The window is kept when the session
+	// held it before the call and the acquire displaced nobody.
+	keep := heldBefore && replaced == nil
 
 	report, err := localMainResyncInWindow(repoRoot)
 	if err != nil {
+		if keep {
+			return "", err
+		}
 		return "", localMainResyncRelease(repoRoot, sessionID, err)
 	}
-	if _, err := factory.ReleaseIntegrationLock(repoRoot, sessionID, 0, false); err != nil {
-		return "", fmt.Errorf("integration resync: %s, but releasing the window failed: %v (moai integration status reads it)", report, err)
+	if !keep {
+		if _, err := factory.ReleaseIntegrationLock(repoRoot, sessionID, 0, false); err != nil {
+			return "", fmt.Errorf("integration resync: %s, but releasing the window failed: %v (moai integration status reads it)", report, err)
+		}
 	}
 	if replaced != nil {
 		report += fmt.Sprintf(" (displaced %s, pid %d, held since %s)", replaced.SessionID, replaced.PID, replaced.AcquiredAt)
@@ -234,6 +248,14 @@ func localMainResyncRelease(repoRoot, sessionID string, cause error) error {
 		return fmt.Errorf("%w (releasing the window also failed: %v — moai integration status reads it)", cause, err)
 	}
 	return cause
+}
+
+// localMainResyncHeldBy reports whether the recorded window already belongs to
+// sessionID. An unreadable record reads as not held. The acquire that follows
+// refuses an unreadable record, so no release is reached on that path.
+func localMainResyncHeldBy(repoRoot, sessionID string) bool {
+	prior, err := factory.ReadIntegrationLock(repoRoot)
+	return err == nil && prior.Held() && prior.SessionID == sessionID
 }
 
 // localMainResyncAncestor reports whether a is an ancestor of b, equality
