@@ -177,7 +177,7 @@ card_review: codex pass, 0 findings (.moai/reports/t1617/card-review.md; base db
 ## §E.4 Sync-phase Audit-Ready Signal
 
 sync_complete_at: 2026-10-10T19:07:08+09:00
-sync_commit_sha: pending-backfill-sync
+sync_commit_sha: 11480a26e989182a77ff8eacf7e4b391abda3d37
 sync_status: complete
 sync_agent: manager-docs
 sync_scope: CHANGELOG 엔트리 + 3-phase close (spec.md frontmatter status 전이; plan.md/acceptance.md는 frontmatter 블록 부재로 `updated:` 리프레시 대상 없음 — 본문 무편집)
@@ -192,6 +192,6 @@ ac_rib_012_disposition: 「운영자 확인 대기, 대체 증거 = 봉투 산�
 readme_docs_site_judgment: no-sync — 이 변경은 내부 주입 동작(예산 게이트 · 스텁 구조 · 오류 안내 문구)과 룰 파일 내용의 재배치로, README 4-locale · docs-site가 서술하는 사용자 대면 동작은 불변 (문서화된 CLI 표면 변화 없음)
 sync_evidence: 최종 런 스위트(ok/ok) · 커버리지 87.5% · lint 0 · 양 크로스컴파일 빌드는 §E.3 실측을 그대로 인용 — sync diff는 문서 전용으로 코드·룰 트리 무변경
 commit_plan: sync 커밋 1건(전이 · 엔트리 · §E.4 플레이스홀더 동승, `Authored-By-Agent: manager-docs` + `🗿 MoAI` 트레일러) + backfill 커밋 1건(실측 SHA로 이 칸 갱신)
-backfill: (대기 — sync 커밋 SHA 확정 후 갱신)
+backfill: done (sync 커밋 11480a26e989182a77ff8eacf7e4b391abda3d37 로 이 칸을 갱신 — 본 backfill 커밋이 뒤따른다)
 
 Sync 요약: sync 페이즈는 코드·룰 트리에 0 변경을 두고 세 문서 표면만 만졌다 — (1) CHANGELOG [Unreleased] › Fixed 첫 항목 발행, (2) spec.md frontmatter `in-progress → completed` 전이(implemented 중간점 병합), (3) 이 §E.4 시그널. 런 페이즈의 검증 증거(§E.3 표 12/13 PASS + AC-RIB-012 리더·운영자 인계)는 sync diff가 docs-only라 그대로 유효하다. 판정: audit-ready — 리더가 본 트리에서 sync 감사(codex_audit, target=baseBranch)를 이어간다.
