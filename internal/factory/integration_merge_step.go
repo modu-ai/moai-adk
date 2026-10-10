@@ -258,6 +258,19 @@ func RunMergeStep(in MergeStepInput, seams MergeStepSeams) (string, error) {
 		}
 	}
 
+	// F1 (sync audit, card t1616): an unfinished merge in the integration worktree
+	// belongs to another actor, so refuse it here on both surfaces, before the
+	// overlap decision and before any merge call. The clean check above already
+	// refuses unmerged entries; a MERGE_HEAD with a clean tree passes it, and the
+	// abort after a failed merge would discard that merge.
+	inFlight, probeErr := unfinishedMergeReason(git, in.IntegrationWorktree)
+	if probeErr != nil {
+		return "", releaseWindow(in, seams, mergeStepErr(MergeExitOther, "integration merge: the unfinished-merge check errored: %v", probeErr))
+	}
+	if inFlight != "" {
+		return "", releaseWindow(in, seams, unfinishedMergeRefusal(inFlight))
+	}
+
 	// Resolve the card's WT- branch at the card's tree and pin ONE SHA
 	// (REQ-MWQ-017; the resolver behind is REQ-CCI-004's contract).
 	cardBranch, err := resolveCardBranch(card.WorktreePath, in.CardID)
@@ -488,6 +501,21 @@ func RunMergeStep(in MergeStepInput, seams MergeStepSeams) (string, error) {
 			statusBefore = before
 		}
 
+		// F1 (sync audit, card t1616): the unfinished-merge probe is the last read
+		// before the merge subprocess, inside the same section. A merge already in
+		// progress belongs to another actor: git refuses to start one over it, and
+		// the abort after a failed merge (below) would discard it. The residual is
+		// the span between this probe and git's own start-of-merge check.
+		pendingMerge, pendingErr := unfinishedMergeReason(git, in.IntegrationWorktree)
+		if pendingErr != nil {
+			recheckErr = mergeStepErr(MergeExitOther, "integration merge: the unfinished-merge probe errored: %v", pendingErr)
+			return nil
+		}
+		if pendingMerge != "" {
+			recheckErr = unfinishedMergeRefusal(pendingMerge)
+			return nil
+		}
+
 		// The merge, of the PINNED SHA never the branch name (REQ-MWQ-017),
 		// inside the section (F4).
 		//
@@ -512,6 +540,9 @@ func RunMergeStep(in MergeStepInput, seams MergeStepSeams) (string, error) {
 			// (6)/(7): abort, then decide by the status set the abort left against S-before —
 			// inside the section, so no acquisition can interleave between
 			// our failed merge and its cleanup.
+			// F1: the unfinished-merge probe ran immediately before this merge call and
+			// found nothing, so a MERGE_HEAD the failed merge left is this call's own.
+			// With no MERGE_HEAD, git's abort refuses and changes nothing.
 			_, _ = git("merge", "--abort")
 			after, statusErr := integrationStatusSet(git)
 			mergeDirtyAfterAbort = statusErr != nil || !integrationStatusEqual(after, statusBefore)
@@ -854,6 +885,50 @@ func integrationStatusEqual(a, b []statusRecord) bool {
 		}
 	}
 	return true
+}
+
+// unfinishedMergeReason reports why the integration worktree holds a merge
+// another actor began: MERGE_HEAD exists, or the index holds unmerged entries
+// (a merge stopped at a conflict, or a stash pop that conflicted). It returns
+// "" when neither holds. `git rev-parse --git-path` names MERGE_HEAD in the
+// worktree's own git directory, which is right for a linked worktree and for
+// the main checkout alike. git answers relative to the directory the runner
+// executes in, so a relative answer is joined onto worktree.
+func unfinishedMergeReason(git func(args ...string) (string, error), worktree string) (string, error) {
+	out, err := git("rev-parse", "--git-path", "MERGE_HEAD")
+	if err != nil {
+		return "", fmt.Errorf("locate MERGE_HEAD: %w", err)
+	}
+	mergeHead := strings.TrimSpace(out)
+	if mergeHead == "" {
+		return "", errors.New("git named no MERGE_HEAD path")
+	}
+	if !filepath.IsAbs(mergeHead) {
+		mergeHead = filepath.Join(worktree, mergeHead)
+	}
+	_, statErr := os.Stat(mergeHead)
+	if statErr == nil {
+		return "MERGE_HEAD exists", nil
+	}
+	if !os.IsNotExist(statErr) {
+		return "", fmt.Errorf("stat MERGE_HEAD: %w", statErr)
+	}
+	unmerged, err := git("ls-files", "-u")
+	if err != nil {
+		return "", fmt.Errorf("list unmerged entries: %w", err)
+	}
+	if strings.TrimSpace(unmerged) != "" {
+		return "unmerged index entries exist", nil
+	}
+	return "", nil
+}
+
+// unfinishedMergeRefusal is the cause-12 refusal for an integration worktree
+// that holds an unfinished merge this step did not start. The step never
+// aborts such a merge: finishing or aborting it belongs to the session that
+// began it.
+func unfinishedMergeRefusal(reason string) *MergeStepError {
+	return mergeStepErr(MergeExitWorktreeDirty, "integration merge: refused — the integration worktree holds an unfinished merge (%s) that this step did not start. Finish or resolve it where it was begun, re-measure, then re-acquire. The step does not abort it.", reason)
 }
 
 // integrationOverlapRefusal decides the separate-worktree dirty precondition
