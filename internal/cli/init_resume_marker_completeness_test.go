@@ -36,7 +36,7 @@ func TestInitResumeCheckpointInitMarkerOverridesCompleteness(t *testing.T) {
 	t.Run("interrupted_init_resumes_despite_deployment_mode", func(t *testing.T) {
 		homeDir := t.TempDir()
 		projectRoot := t.TempDir()
-		if err := persistInitPending(projectRoot); err != nil {
+		if err := persistInitPending(projectRoot, nil); err != nil {
 			t.Fatal(err)
 		}
 		// ApplyDeployMode ran (deployment_mode present); the marker still stands.
@@ -59,7 +59,7 @@ func TestInitResumeCheckpointInitMarkerOverridesCompleteness(t *testing.T) {
 	t.Run("control_marker_without_llm_yaml_keeps_redirect", func(t *testing.T) {
 		homeDir := t.TempDir()
 		projectRoot := t.TempDir()
-		if err := persistInitPending(projectRoot); err != nil {
+		if err := persistInitPending(projectRoot, nil); err != nil {
 			t.Fatal(err)
 		}
 		if initResumeCheckpoint(homeDir, projectRoot) {

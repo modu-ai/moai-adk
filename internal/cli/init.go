@@ -990,7 +990,7 @@ func runInit(cmd *cobra.Command, args []string) (err error) {
 		// Finding B (card t1591): open the ensure window with its marker. An ensure that
 		// fails before any journal exists (a lock refusal) leaves this marker, and the
 		// rerun reads it as the interruption checkpoint. Best-effort, like the record.
-		if pendErr := persistInitPending(opts.ProjectRoot); pendErr != nil {
+		if pendErr := persistInitPending(opts.ProjectRoot, selection); pendErr != nil {
 			emitSeverityLine(cmd.ErrOrStderr(), sevWarn, resolveTheme(), "Could not record the init resume marker: %v", pendErr)
 		}
 		if err := ensureUserAssetsLockedFn(homeDir, selection, cmd.OutOrStdout()); err != nil {

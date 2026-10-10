@@ -103,6 +103,14 @@ func resumeInitializedProject(cmd *cobra.Command, opts *project.InitOptions, wir
 		return fmt.Errorf("write resume marker: %w", err)
 	}
 
+	// Finding 1 (card t1591): the ensure installs the effective selection — the explicit
+	// --bundles, or the one the failing run recorded before its ensure. The init marker
+	// keeps the selection the ensure runs with, so a later resume restores the most
+	// recent one.
+	selection := resumeBundleSelection(cmd, opts.ProjectRoot)
+	if err := persistInitPending(opts.ProjectRoot, selection); err != nil {
+		return fmt.Errorf("record bundle selection: %w", err)
+	}
 	// The ensure shortfall: a CORRUPT user manifest is quarantined inside
 	// the lock scope, then the installer runs from scratch (the doctor's
 	// sanctioned rebuild-from-fresh-init recovery for that state).
@@ -111,7 +119,7 @@ func resumeInitializedProject(cmd *cobra.Command, opts *project.InitOptions, wir
 	if err != nil {
 		return err
 	}
-	res, err := inst.InstallPreserveSelection(parseBundleSelection(getStringFlag(cmd, "bundles")))
+	res, err := inst.InstallPreserveSelection(selection)
 	if err != nil {
 		return fmt.Errorf("user-asset ensure: %w", err)
 	}
@@ -399,20 +407,51 @@ func clearResumeWiring(projectRoot string) {
 // user-asset ensure window (card t1591, finding B). It sits beside the selection
 // record under .moai/state/, which is gitignored, and it is a file of its own, so
 // the resume-pending marker's checkpoint semantics do not change.
-// @MX:ANCHOR: [AUTO] initPendingPath fixes the location of the init marker for its writer, its retirements, and the checkpoint reader
-// @MX:REASON: [AUTO] fan_in=3 non-test call sites: persistInitPending, clearInitPending, initResumeCheckpoint
+// @MX:ANCHOR: [AUTO] initPendingPath fixes the location of the init marker for its writer, its retirements, and the checkpoint readers
+// @MX:REASON: [AUTO] fan_in=4 non-test call sites: persistInitPending, clearInitPending, initResumeCheckpoint, initPendingBundles
 func initPendingPath(projectRoot string) string {
 	return filepath.Join(projectRoot, ".moai", "state", "init-pending")
 }
 
 // persistInitPending opens the ensure window: it writes the init marker before the
-// user-asset ensure runs, so an ensure that fails leaves the rerun a resume route.
-func persistInitPending(projectRoot string) error {
+// user-asset ensure runs, so an ensure that fails leaves the rerun a resume route. The
+// marker also carries the requested bundle selection, one name per line under its
+// header, so a resume with no --bundles of its own restores it (card t1591, finding 1).
+func persistInitPending(projectRoot string, selection []string) error {
 	path := initPendingPath(projectRoot)
 	if err := os.MkdirAll(filepath.Dir(path), 0o755); err != nil {
 		return err
 	}
-	return os.WriteFile(path, []byte("init in progress\n"), 0o644)
+	lines := append([]string{"init in progress"}, selection...)
+	return os.WriteFile(path, []byte(strings.Join(lines, "\n")+"\n"), 0o644)
+}
+
+// initPendingBundles returns the bundle selection the init marker recorded: every line
+// after the header that names a bundle. A marker with no names, and a marker written
+// before the selection was recorded, read as no selection.
+func initPendingBundles(projectRoot string) []string {
+	data, ok := readManifestRecord(initPendingPath(projectRoot))
+	if !ok {
+		return nil
+	}
+	var names []string
+	for _, line := range strings.Split(string(data), "\n")[1:] {
+		if name := strings.TrimSpace(line); name != "" {
+			names = append(names, name)
+		}
+	}
+	return names
+}
+
+// resumeBundleSelection returns the bundle selection the resumed ensure installs. An
+// explicit --bundles is the current invocation's answer and wins; with none, the
+// selection the failing run recorded is restored. The precedence mirrors
+// resumeWiringFromRecord.
+func resumeBundleSelection(cmd *cobra.Command, projectRoot string) []string {
+	if raw := getStringFlag(cmd, "bundles"); strings.TrimSpace(raw) != "" {
+		return parseBundleSelection(raw)
+	}
+	return initPendingBundles(projectRoot)
 }
 
 // clearInitPending closes the ensure window once the init's post-steps completed.
