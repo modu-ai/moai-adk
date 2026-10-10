@@ -83,7 +83,8 @@ deliverable read in §3.5 decides, not this rule. A pass that moved a channel
 sets `last_change_at` to its `observed_at`; a pass that moved none carries
 the previous value forward. Write the new snapshot after the verdict, in the
 same pass as the renewal of §0a: the four measurement fields (`observed_at`,
-`head_sha`, `evidence_mtime_max`, `window_state`) and `renew_result`.
+`head_sha`, `evidence_mtime_max`, `window_state`), `last_change_at` (the value
+this pass settled, per the rule above), and `renew_result`.
 
 ## 2. Classify the cause
 
