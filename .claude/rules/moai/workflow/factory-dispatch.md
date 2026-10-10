@@ -163,6 +163,7 @@ The leader's own session is cleared the same way, between cards: once a card rea
 
 ## Isolation is provisioned by MoAI, then entered through a launcher
 
+[HARD] **A card session starts inside its worktree and stays there — moving a running card session into another card worktree is prohibited**; end the session and launch inside the new tree instead (the full clause lives on the always-loaded stub; measured detail: `factory-dispatch-mechanics.md` § Isolation).
 <!-- moai:role-core-start -->
 [HARD] Card work happens in a launcher-entered worktree — never a bare `git worktree add` (mechanics § Isolation).
 <!-- moai:role-core-end -->

@@ -101,3 +101,42 @@ stub-delta: `workflow/factory-dispatch-core.md` (배포·템플릿 쌍, 동일) 
 [RED→GREEN] go test -run 'TestBindingLedger' ./internal/template/  → 편집 뒤·원장 갱신 전 FAIL(after-text absent 36행, AC-RIB-011 채택 증거) → 36행 after-text 재작성(31 core + 5 스텁 location 전환) 후 ok
 [GREEN-2] go test ./internal/hook/ ./internal/template/ → 전체 스위트(기존 사다리 21 서브테스트 + 원장 + 스텁 게이트 + 도크트린 경계 포함)
 ```
+
+### M3 — GREEN(코드·문서 축) + 최종 검증 (2026-10-10)
+
+- **role_rules.go**:
+  - 사다리 doc 주석 1회화 — 글머리 목록만 생존, 반복 문단 삭제(E6 awk n=2→**1**, exit 0).
+  - NOTE 지시문: 천단위 `10,000` 렌더 + 중복 서술 정리(cap·파일 저장·읽기 경로를 한 번만 이름 대고, 경고의 intact-emission 내용은 경고에 남김). `10000 characters` 무천단위 렌더 0히트.
+  - 버전 불일치 감지(REQ-RIB-006): `detectRoleRuleVersionSkew`(순수 술어 — `template_version:` 스탬프 파싱·trim, equal/다름/판독불가) + `roleRuleSkewDetail(root)`(배포 system.yaml 판독, 실패 시 조용히 생략 — fail-open). 미스마커 실패 경로에서 detail 이 양 버전을 이름 대고 `moai update` 를 지시. 4개 로캘 InjectionFailed 에 갱신 안내 문장 추가. REQ-RIB-007 준수 — 술어는 픽스처 단위 시험만(role_rules_skew_predicate_test.go, 3케이스), 라이브-리포 자기 단정 없음(부재를 grep 으로 확인).
+- **hooks-system.md**: 50K 총 stdout→디스크 저장과 10,000자 per-additionalContext 전달 한도를 두 행으로 구분 기재, 각 실측 출처(Q4 · 레인 세션 시작 넘침 공지 23,166자 실측) 인용 — 템플릿 미러 원본 선행 편집 후 배포본 미러, 쌍 바이트 동일(E7 grep ≥1). 템플릿 중립 경계 준수를 위해 관측 인용에서 SPEC id·카드 id 를 제거한 중립 서술 사용(TestTemplateNoInternalContentLeak GREEN — 1차 편집에서 적색 관측 후 수리).
+- **이행 중 관측·수리**: 신규 stub 텍스트의 첫 판을 10,000 예산 초과(10,630)로 잰 뒤 3회 절단으로 9,915 에 수렴 — 스텁 게이트가 실제로 판정함을 관측(모터). TestTemplateNoInternalContentLeak 은 첫 hooks 편집의 SPEC-id 인용을 잡아 수리 — 경계가 생존함을 관측.
+- **최종 검증**: 양 패키지 전체 스위트 FINAL (슬롯 임대 하) — 하기 증거 참조. `GOOS=windows GOARCH=amd64 go build ./...` exit 0, darwin/arm64 exit 0. golangci-lint(./internal/hook/... ./internal/template/...) 0 issues. 커버리지 internal/hook **87.5%**(≥85% 문턱).
+- **AC-RIB-008**: 배포본 `## Isolation…` 절 생존 + 이동 금지 [HARD] 문장이 절 안 비표지 본문으로 생존(ALB-0294 전문은 스텁 § Isolation and integration 이 운반 — 항상 로딩 표면). 로컬 규칙 지목(`gitflow-lane-protocol.md` §1 → factory-dispatch.md 의 Isolation 절)이 살아 있는 절로 해석됨 — 로컬 파일 무편집.
+
+### 라이브 재진입 확인(AC-RIB-012) — 리더 인계 Gap
+
+레인은 스스로 세션을 재기동할 수 없음(단말 런처 경계 — `moai cc -w` 는 터미널 전용, 운영자 10-09 실측). AC-RIB-012 의 라이브 관측(startup + clear 재진입에서 넘침 공지 부재 + 합본 ≤10,000)은 **리더/운영자 협력 항목으로 인계**한다. 측정 대체 증거: 조립 예산 테스트가 생산자 상한 4,797 + 오버헤드 257 + core 3,786 = **8,843 ≤ 9,000 ≤ 10,000** 을 양 트리에서 단언(경계 소스 봉투의 산술 전체) — 라이브 관측이 남긴 Gap 은「실제 세션 착화 1회」뿐이다.
+
+```text
+[M3 verbatim, tree 070025bfc + M3 edits]
+$ awk '/REQ-ALB-009 retreat/{n++} END{print n; exit !(n==1)}' internal/hook/role_rules.go
+1
+exit code: 0                                        [E6 flip]
+$ grep -c '10000 characters' internal/hook/role_rules.go
+0
+exit code: 1                                        [no unseparated rendering]
+$ grep -c '10,000 characters' internal/hook/role_rules.go
+1
+exit code: 0
+$ grep -c 'moai update' internal/hook/role_rules.go
+5                                                   [E4 flip: 4 locales + skew-detail]
+exit code: 0
+$ grep -c '10,000' .claude/rules/moai/core/hooks-system.md
+1                                                   [E7 flip]
+exit code: 0
+$ go test ./internal/hook/ ./internal/template/      → ok / ok (FINAL, exit 0, slot internal-hook-template-suite)
+$ GOOS=windows GOARCH=amd64 go build ./...           → exit 0
+$ GOOS=darwin GOARCH=arm64 go build ./...            → exit 0
+$ golangci-lint run --timeout=2m ./internal/hook/... ./internal/template/... → 0 issues
+$ go test -cover ./internal/hook/                    → coverage: 87.5% of statements (>=85%)
+```

@@ -56,7 +56,10 @@ func TestRoleRulesVersionSkewUpdateGuidance(t *testing.T) {
 // rules tree under a fixture root must surface a detail that names the skew
 // and the update command.
 func TestRoleRulesVersionSkewFailureDetailNamesRemedy(t *testing.T) {
-	root := skewFixtureRoot(t, "template_version: v3.1.3\n")
+	// The fixture stamp deliberately differs from the build-default version
+	// (pkg/version defaults to v3.1.3) so the skew is detectable and both
+	// versions are nameable in the detail (REQ-RIB-006).
+	root := skewFixtureRoot(t, "template_version: v0.0.0-fixture-stamp\n")
 	t.Setenv("MOAI_FACTORY_WORKER", "lane-1")
 
 	inj := roleRuleInjectionFor(root, "startup", "en")
@@ -65,5 +68,8 @@ func TestRoleRulesVersionSkewFailureDetailNamesRemedy(t *testing.T) {
 	}
 	if !strings.Contains(inj.OperatorNotice, "moai update") {
 		t.Errorf("failure detail carries no moai update guidance: %s", inj.OperatorNotice)
+	}
+	if !strings.Contains(inj.OperatorNotice, "v0.0.0-fixture-stamp") {
+		t.Errorf("failure detail does not name the rule-side stamp: %s", inj.OperatorNotice)
 	}
 }
