@@ -1005,3 +1005,32 @@ docs_claim_check: >-
 - **C.4 개정 전후 문안.** 이 파일의 「경계 개정 기록 — SPEC-PRECOMMIT-PRESERVE-001 §C.4」 절에 있다(개정 전 `cae7e28fe`, 개정 후 `6888e54c5`). 운영자 결정 `d-20261009T180845Z-ae0e`의 기록 요구를 충족한다.
 - **리뷰 처분.** `card-review.md` 8절에 있다. P2-1(`internal/hook/user_root_zone.go:133`)은 카드 내 지적, 재현 전, 후속 이관(리더)이다.
 - **착지.** 로컬 `main`이 착지 대상이다(운영자 결정). t1616 착지 전에는 병합하지 않는다. 이 카드는 merge-ready까지만 간다.
+
+### 릴레이 대조표 — 카드 범위 질문 판정 (레인-7, 2026-10-10)
+
+- **범위 주소.** 큐의 카드 본문 릴레이 (1)–(13). 각 항목을 원장 22행(위 「Re-Anchor Table」의 좌표)과 한 줄씩 대조했다.
+- **측정 기준.** HEAD `943bf7c3f`. 작업 트리는 `.moai/config/sections/workflow.yaml:302` 미커밋 한 줄(리더 일시 해제, 보드 `d-20261009T235746Z-f676`) 외에 변경이 없다. 아래 테스트는 이 트리에서 `go test -run '^…$' -count=1 -v`로 직접 재실행했다.
+- **마일스톤 커밋.** §E.4 체인의 커밋이며, 모두 HEAD의 조상임을 `git merge-base --is-ancestor`로 확인했다(M0 `58540639d`, M1 `5e6974b39`, M2 `8ffa65021`, M3 `d90df83f0`, M4 `9671d9922`, M5 `152c3ef7c`, M6 `00c1b4b3f`, M7 `efa062b5d`, sync `c04bcdb0a`).
+
+| 릴레이 항목 | 원장 행 | 덮은 AC · 테스트 | 마일스톤 · 커밋 | 현재 트리 재실행 |
+|---|---|---|---|---|
+| (1) lock_guard_windows.go:23 잔존 `.guard` | 1 (+10-P1) | AC-001 `TestGuardMarkerReclaimAfterOwnerDeath` (unix PASS; windows 하위 2건 SKIP) · `TestDoctorUserLockMarkersReportsOwnerless` (windows 전용, SKIP) | M2 `8ffa65021`, 게이트 18/19 | PASS(unix) · SKIP(windows 런타임, darwin 미실행) · `GOOS=windows go build ./internal/userassets/` exit 0 |
+| (2) doctor_user_install.go:134/165 `.corrupt` 이동·검사 누락 | 2 · 2a · 2b | AC-019a `TestDoctorProjectManifestLoadFailureNotDisguised`, `TestDoctorProjectManifestPreservedOnLoadFailure` · AC-019b `TestDoctorUserInstallHonestFailureAndReadOnly` · AC-020 `TestDoctorLockCheckVacuousNotReportedMatch` | M7 `efa062b5d` | PASS |
+| (3) install.go:239 저널 회수 항목 | 3 | AC-002 `TestJournalStageCarriesRecoveredEntries` | M1 `5e6974b39` | PASS |
+| (4) migrate_project_assets.go:89 미등록 사본 보존 | 4 | AC-012 `TestMigrationClassifiesUnregisteredMirrorCopy` | M6 `00c1b4b3f` | PASS |
+| (5) deployer.go:192/:347, bundle.go:145 | 5 · 5-잔여 | 수리(ListTemplates 제외) · bundle.go 부재 → 퇴역 · 회귀 가드 AC-013 `TestDoctorAgentEmissionUncomparedNotOK` | M6 `00c1b4b3f` | PASS (AC-013) |
+| (6) install.go:297 해시, install.go:743 실행권 | 6a · 6b | AC-003 `TestJournalRefreshUpdatesCarriedHash` · AC-025 `TestConfinedWritePreservesExecBit` | M1 `5e6974b39` · M5 `152c3ef7c` | PASS |
+| (7) install.go:392 TOML 원문 복사, doctor_harness.go:58 폴백 | 7a · 7b | AC-006 `TestCodexAgentTOMLReferencesConverted` · AC-022 `TestDoctorFallbackKeepsProjectScopeL1` | M3 `d90df83f0` · M7 `efa062b5d` | PASS |
+| (8) agentfm 중복 행, install.go:459 클로저, install.go:211 FIFO, deployer_mode.go:37 미러 | 8a · 8b · 8c · 8d | AC-015 `TestAgentFormSameNameConsolidatedEndToEnd` · AC-016 `TestBundleDependsOnClosureInstall` · AC-010 `TestCollisionPrecheckSkipsFifoWithoutBlock` · AC-014 `TestSkillsDisableResolvesUserInstalledSkill` | M6 `00c1b4b3f` · M5 `152c3ef7c` (8c) | PASS |
+| (9) paths.go:38 사용자 경로 보호, doctor_harness.go:57 | 9a · 9b | AC-009 `TestFrozenGuardDeniesUserPathDelete` · AC-021 `TestDoctorWorkflowRootSelectedByRequiredFile` | M4 `9671d9922` · M7 `efa062b5d` | PASS |
+| (10) install.go:255 플래그 일괄, install.go:260 버전 판정, deployer.go:192 신증상 | 10 · 10a (신증상은 8d와 같은 근원) | AC-004 `TestWriteCompletedPersistedPerFile` · AC-005 `TestJournalUnknownSchemaRefused` (재정식화, 주석 2) · AC-014 (신증상) | M1 `5e6974b39` · M6 `00c1b4b3f` | PASS |
+| (11) update.go:565 확인창 선행, init.go:947 재실행 거절 | 11a · 11b | AC-017 `TestUpdateCancelKeepsProjectAssetsIntact` (회귀 가드) · AC-018 `TestInitResumeAfterUserAssetEnsureFailure` | M6 `00c1b4b3f` | PASS |
+| (12) install.go:750 부모 경로 rename 재검증 결여 | 12 | AC-011 `TestConfinedWritePinnedToValidatedParent` | M5 `152c3ef7c` | PASS |
+| (13) install.go:373 Codex 무변환 복사, install.go:584 TOML 무변환 | 13a · 13b · 13 | AC-007 `TestCodexUserSkillInstallNoClaudeOnlyRefs` · AC-007 `TestCodexRoleTOMLNotVerbatim` (AC-006 흡수) · AC-026 `TestCodexUnconvertibleReferenceReported` | M3 `d90df83f0` | PASS |
+
+- **덮이지 않은 릴레이 항목: 없음.** 13/13 항목이 GREEN 테스트가 있는 원장 행에 대응한다. 재실행 결과: userassets 16 PASS · 0 FAIL · 2 SKIP(windows), cli 11 PASS · 0 FAIL · 1 SKIP(windows), web 1 PASS, hook 1 PASS, 빈 스윕 토큰·DATA RACE·panic 없음.
+- **주석(숨기지 않음).**
+  1. (1) 윈도우 런타임 팔은 darwin에서 실행되지 않았다(SKIP 3건). 윈도우 런타임 검증은 PR 헤드 `43b8a036` 기준 CI `Multi-OS Test (windows-latest)` pass로만 확인되며, 현재 HEAD 기준이 아니다. 이 트리의 근거는 컴파일(`GOOS=windows`)뿐이다.
+  2. (10) 원장 10a의 「v1이 v2 충돌로 오판」 주장은 좌표 판정 불가(indeterminate)다. 덮은 것은 재정식화된 요구(미지 스키마 거절, AC-005)다. 이 재정식화를 승인하는 리더 기록은 보드에 없다(보드 42행 기준 확인).
+  3. (5) 「ListTemplates 수리」는 계획 단계 관측 기록이다. 이 대조에서 코드를 다시 읽지 않았고, 회귀 가드 AC-013만 재실행했다.
+- **측정 출처.** 이 대조는 `go test`와 `git` 조회만을 근거로 한다. 설치 moai 바이너리(`4f8aba061`)는 HEAD의 조상이 아니어서(`merge-base --is-ancestor` 종료 코드 1) 그 출력은 쓰지 않았다.
