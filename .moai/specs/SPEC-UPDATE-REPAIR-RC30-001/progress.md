@@ -800,6 +800,98 @@ ok  	github.com/modu-ai/moai-adk/internal/cli	1.468s
 
 **Files changed.** `internal/cli/update.go`, `internal/cli/update_profile_sync_test.go` (new), `.moai/specs/SPEC-UPDATE-REPAIR-RC30-001/progress.md`.
 
+### M2 bundle E — profile-reach keep, AC-RC30-27, option (c) (manager-develop, card t1619)
+
+Bundle E of M2 (plan § B.3 steps 5 and 6). Tree before the bundle: HEAD `f085909fb` on `WT-moai-update-repair` (M1 complete), clean. Pre-flight: branch, HEAD, `git status --short` (empty), `go build ./internal/cli/` (no output), `git cat-file -t 30c838d72` (`commit`). The bundle is two code commits and this record; nothing is pushed.
+
+**Test file — kept and dropped.** `internal/cli/migrate_profile_reach_test.go` was restored from `30c838d72` with `git checkout 30c838d72 -- internal/cli/migrate_profile_reach_test.go` (plain git, no branch change).
+
+Kept:
+- `TestMigrationKeepsSharedCopyUnderProfileReach` — the judging test (AC-RC30-27).
+- `TestMigrationReachLeavesUserModifiedCopy` — the user-modified guard for the same keep behavior. It passes after GREEN.
+- `TestFileEntryKeptBy` — the `kept_by` JSON contract of the new field.
+
+Dropped:
+- `TestMigrationRemovesSharedCopyWithoutProfileReach` — the removal half, owned by card t1668 (ruling d-20261009T235135Z-5e35).
+- `TestDryRunPreviewReachKeepsSharedCopy` — it needs the dry-run preview to print a kept line for a profile-mapped copy. That is a change to `internal/cli/update_dryrun_preview.go`, outside the migration keep. The preview still prints `preserved` for such a copy (see Gaps). Routed to the leader.
+
+The imports `bytes`, `io/fs`, and `template` went with the dropped functions, and the file header was edited to match. The judging test and the kept functions are unchanged from `30c838d72`.
+
+**RED (TDD order).** Stub first, with no behavior: `internal/manifest/types.go` gains `FileEntry.KeptBy string` (`json:"kept_by,omitempty"`) and `const KeptByProfileReach = "profile-reach"`. The judging test compiles against the stub and fails on its assertions, so the failure is behavioral, not a build failure.
+
+Command: `go test ./internal/cli/ -run '^TestMigrationKeepsSharedCopyUnderProfileReach$' -count=1 -v`, exit 1. Verbatim:
+
+```text
+=== RUN   TestMigrationKeepsSharedCopyUnderProfileReach
+    migrate_profile_reach_test.go:84: no kept line for .claude/skills/moai-foundation-core/SKILL.md in the migration output: ["  migration: unregistered mirror copy (kept — removal needs creation provenance or your approval): .claude/skills/moai-custom/SKILL.md" "  migration: kept project-side (removal is not enabled yet): .claude/skills/moai-foundation-core/SKILL.md" "  migration: preserved (bytes differ from the template — treated as user-modified): .claude/skills/moai-workflow-tdd/SKILL.md" "migration: 0 removed, 1 preserved (user-modified), 1 kept project-side, 1 user-created untouched"]
+    migrate_profile_reach_test.go:96: KeptBy after reload = "", want "profile-reach"
+--- FAIL: TestMigrationKeepsSharedCopyUnderProfileReach (0.66s)
+FAIL
+FAIL	github.com/modu-ai/moai-adk/internal/cli	1.951s
+```
+
+Tree SHA of the RED state: `745999cd36d72a977d4c59a3771f900961b9faef` (RED commit `ca631aab7`). The RED was observed on the uncommitted tree. `git status --short` before staging listed exactly `AM internal/cli/migrate_profile_reach_test.go` and ` M internal/manifest/types.go`, and the commit recorded exactly those two paths.
+
+**Implementation.** Commit `22dc423ff` (tree `65c459257b9a11fc30940154282eb7aa2e4860ec`):
+- `internal/manifest/manifest.go`: `Manager.SetKeptBy(path, by string) error` sets `KeptBy` on one existing entry and leaves its provenance and hashes unchanged. `Track` replaces the whole entry and `GetEntry` returns a copy, so neither can write the mark. An unknown path returns `ErrEntryNotFound`.
+- `internal/cli/migrate_project_assets.go`:
+  - `profileMapped` is computed once per run as `profile.ResolveLaunchProfileForProject(rootAbs, "") != ""`, where `rootAbs` is `filepath.Abs(projectRoot)`. The predicate is the launch-ledger mapping only, as AC-RC30-27 states.
+  - The keep branch runs after the template-bytes and user-modified checks and before the counterpart check, and only for `provenance == template_managed`. It calls `SetKeptBy`, increments `stayed`, records the path in `migrationPreservedProjectFiles`, and prints `kept (profile-mapped project — …): <path>`. Nothing is removed or refreshed.
+  - Unmapped projects take the unchanged path, and `removalEnabled` stays `false`.
+
+**Why the root is absolute.** The production caller passes `"."` (`internal/cli/update_template_sync.go`, `runTemplateSyncWithProgress`). A relative root misses an ancestor's mapping, because the subtree lookup walks up from an absolute path. Temporary probes, deleted before the commit, observed: with the mapping on an ancestor and the process in the project, `ResolveLaunchProfileForProject(".")` returned `""` and `ResolveLaunchProfileForProject(root)` returned `work`. The migration called with `"."` then kept the copy and set `KeptBy`. A first draft of the code comment also claimed that a relative root fails for a direct mapping; the probe showed it does not, so the comment states the subtree reason only.
+
+**Deprecated copies are not kept.** A probe with `provenance=deprecated` and bytes equal to the template, in a profile-mapped project, printed `kept project-side (removal is not enabled yet)` and left `KeptBy` empty. This matches spec § D.2 (retired copies are not in the kept set).
+
+**GREEN.** Same command, exit 0, verbatim:
+
+```text
+=== RUN   TestMigrationKeepsSharedCopyUnderProfileReach
+--- PASS: TestMigrationKeepsSharedCopyUnderProfileReach (0.57s)
+PASS
+ok  	github.com/modu-ai/moai-adk/internal/cli	1.445s
+```
+
+The two other kept functions, `go test ./internal/cli/ -run '^(TestMigrationReachLeavesUserModifiedCopy|TestFileEntryKeptBy)$' -count=1 -v`: both `--- PASS`, `ok  	github.com/modu-ai/moai-adk/internal/cli	1.112s`.
+
+**Gates (each its own command).**
+- `gofmt -l` on the four changed Go files: no output.
+- `go vet ./internal/cli/ ./internal/manifest/`: no output.
+- `golangci-lint run ./internal/cli/ ./internal/manifest/`: `0 issues.`
+- `GOOS=windows GOARCH=amd64 go build ./...`: no output.
+
+**Pre-commit gate (`moai gate` workflow, scoped).** Phase 1B: `moai verify check --key-current` exited 1 (`fresh: false`, key `ca631aab7ed8aa99b76089a7aaf29f5349587b45:47970260e27af8dd`, reason `no snapshot recorded for the current working-tree key`), so every check ran. The checks ran scoped to the two changed packages, with the budgets of `.moai/config/sections/gate.yaml` (vet 30 s, lint 60 s, test 120 s):
+- Format: `gofmt -l` on the two changed files, no output. PASS.
+- Type: `go vet ./internal/cli/ ./internal/manifest/`, no output, 1.030 s. PASS.
+- Lint: `golangci-lint run ./internal/cli/ ./internal/manifest/`, `0 issues.`, 1.728 s. PASS.
+- Test: `go test -race ./internal/manifest/` gave `ok  	github.com/modu-ai/moai-adk/internal/manifest	1.848s`. `go test -race ./internal/cli/` with the `-run` pattern of the three profile-reach tests gave three `--- PASS` and `ok  	github.com/modu-ai/moai-adk/internal/cli	8.229s` (36.224 s wall, including the race-instrumented build). PASS (scoped).
+
+Scope: the whole-project gate (standalone `moai gate`) and `go test ./...` were not run locally (lane protocol § 8). Load average was 11.51 / 12.90 / 13.81 (`uptime`). A scoped run is not recorded as a snapshot (`gate.md` § Snapshot Recording).
+
+**Regression (one plain command each).**
+- `go test ./internal/cli/ ./internal/manifest/ -run 'Migrat|migrat|Reconcil|reconcil|Preview|preview|KeptBy' -count=1 -v`: internal/cli `ok  	github.com/modu-ai/moai-adk/internal/cli	64.590s`. The manifest half selected no tests (`testing: warning: no tests to run`).
+- The cli set has 123 top-level tests: 116 PASS, 7 SKIP, 0 FAIL, counted by hand from the `-v` output of the final-state run. The 7 SKIPs are the `migration_test.go` placeholders (`waiting for migration CLI implementation`), which this bundle does not touch.
+- The manifest package was run in full, since the filter selected nothing there: `go test ./internal/manifest/ -count=1 -v` gave 23 top-level tests, all `--- PASS`, and `ok  	github.com/modu-ai/moai-adk/internal/manifest	0.113s`.
+
+**Gaps (not observed in this bundle).**
+- The full `internal/cli` suite, `go test ./...`, and the standalone whole-project `moai gate` were not run locally. The repository-wide verdict belongs to CI on `origin/develop` (PENDING at this record).
+- The race run covered the three profile-reach tests and the manifest package, not the whole migration set.
+- Not observed: a run with `CLAUDE_CONFIG_DIR` set to a profile directory in a project the ledger does not map. The predicate is the launch-ledger mapping only, as AC-RC30-27 states. REQ-RC30-002's trigger text names `CLAUDE_CONFIG_DIR` (see Residual risk).
+- `SetKeptBy`'s error branches (nil manifest, unknown path) have no direct unit test. The judging test drives the success branch. The migration checks `hasEntry` before it calls `SetKeptBy`, so the unknown-path branch is not reachable from the migration.
+- The dry-run preview (`internal/cli/update_dryrun_preview.go`, `previewReconciliation`) still prints `[dry-run] preserved: <path>` for a profile-mapped shipped copy, with no kept line. `TestDryRunPreviewReachKeepsSharedCopy` was dropped for this reason.
+- Not recorded: the routing-ledger entry (`moai harness ledger record`, Step 2.2). It is opt-in and fail-open, and this run was not given the tier, level, or session values.
+- Coverage (`go test -cover`) was not measured (M7 owns it).
+- Not touched, recorded as Gaps per the lane brief: `internal/cli/update_participation.go` and `internal/cli/downgrade_locale.go` both read the environment-only profile (the U-21 defect class).
+
+**Residual risk.**
+- Predicate scope: a session launched with `CLAUDE_CONFIG_DIR` into a profile, in a project the ledger does not map, is not a keep trigger. With `removalEnabled` still `false`, nothing is removed in this build, so the gap matters only once card t1668 turns removal on. This needs a leader decision before then.
+- Stale mark: `KeptBy` is not cleared when the ledger later stops mapping the project. A kept copy keeps `kept_by: profile-reach` until its file is removed, because the migration drops entries whose files are gone. Card t1668 must define how a stale mark is read.
+- Opt-out: `MOAI_NO_PROFILE_FALLBACK=1` makes the ledger resolution return `""`, so the predicate reads the project as unmapped under that opt-out.
+- Message change for a mapped project: a shipped copy now reports `kept (profile-mapped project …)` instead of `kept project-side (user counterpart not confirmed …)` or `kept project-side (removal is not enabled yet)`. The summary's `kept project-side` count includes these copies.
+- Working directory: the predicate uses `filepath.Abs(projectRoot)`, which needs the process working directory. An `Abs` failure aborts the migration with `resolve project root`, the same conservative direction as the existing `rootErr` path.
+
+**Files changed.** `internal/manifest/types.go` (stub) and `internal/cli/migrate_profile_reach_test.go` (restored and trimmed), in the RED commit `ca631aab7`. `internal/manifest/manifest.go` and `internal/cli/migrate_project_assets.go`, in the GREEN commit `22dc423ff`. `.moai/specs/SPEC-UPDATE-REPAIR-RC30-001/progress.md`, in this record's commit.
+
 ## §E.3 Run-phase Audit-Ready Signal
 
 _pending run-phase (manager-develop)_
