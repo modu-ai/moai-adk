@@ -234,6 +234,8 @@ func resumeInitializedProject(cmd *cobra.Command, opts *project.InitOptions, wir
 	// Item E: a retrack failure is not a completed post-step, so the marker stays and
 	// the next run resumes the bookkeeping. The resume itself still returns nil.
 	if retrackErr == nil {
+		// Finding B (card t1591): the resumed init's ensure window closes with its post-steps.
+		clearInitPending(opts.ProjectRoot)
 		if err := os.Remove(markerPath); err == nil || os.IsNotExist(err) {
 			clearResumeWiring(opts.ProjectRoot)
 		}
@@ -393,11 +395,38 @@ func clearResumeWiring(projectRoot string) {
 	_ = os.Remove(resumeWiringPath(projectRoot))
 }
 
+// initPendingPath is the project-scoped marker a fresh init leaves across its
+// user-asset ensure window (card t1591, finding B). It sits beside the selection
+// record under .moai/state/, which is gitignored, and it is a file of its own, so
+// the resume-pending marker's checkpoint semantics do not change.
+// @MX:ANCHOR: [AUTO] initPendingPath fixes the location of the init marker for its writer, its retirements, and the checkpoint reader
+// @MX:REASON: [AUTO] fan_in=3 non-test call sites: persistInitPending, clearInitPending, initResumeCheckpoint
+func initPendingPath(projectRoot string) string {
+	return filepath.Join(projectRoot, ".moai", "state", "init-pending")
+}
+
+// persistInitPending opens the ensure window: it writes the init marker before the
+// user-asset ensure runs, so an ensure that fails leaves the rerun a resume route.
+func persistInitPending(projectRoot string) error {
+	path := initPendingPath(projectRoot)
+	if err := os.MkdirAll(filepath.Dir(path), 0o755); err != nil {
+		return err
+	}
+	return os.WriteFile(path, []byte("init in progress\n"), 0o644)
+}
+
+// clearInitPending closes the ensure window once the init's post-steps completed.
+func clearInitPending(projectRoot string) {
+	_ = os.Remove(initPendingPath(projectRoot))
+}
+
 // initResumeCheckpoint reports whether an explicit interruption
 // checkpoint justifies the init resume (gate round 35-3):
 //   - a PENDING-INSTALL JOURNAL (an attempt interrupted mid-install), or
 //   - a CORRUPT user manifest (an attempt that failed before/at the
-//     ensure),
+//     ensure), or
+//   - the INIT MARKER (a fresh attempt that died in or after its user-asset
+//     ensure; card t1591, finding B),
 //
 // AND this project's own deployment is incomplete (.mcp.json absent — the
 // failed attempt never reached MCP provisioning). Gate round 37-3: the
@@ -414,6 +443,12 @@ func initResumeCheckpoint(homeDir, projectRoot string) bool {
 		return true
 	}
 	interrupted := false
+	// Finding B (card t1591): a fresh init that died in or after its user-asset ensure
+	// leaves the init marker. The ensure can fail before any journal exists (a lock
+	// refusal), so the marker is the only interruption evidence a rerun can read.
+	if _, err := os.Stat(initPendingPath(projectRoot)); err == nil {
+		interrupted = true
+	}
 	if jData, ok := readManifestRecord(userassets.JournalPath(homeDir)); ok {
 		var j userassets.PendingJournal
 		if json.Unmarshal(jData, &j) == nil {

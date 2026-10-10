@@ -987,8 +987,14 @@ func runInit(cmd *cobra.Command, args []string) (err error) {
 		if recErr := persistResumeWiring(opts.ProjectRoot, agentWiringSelection); recErr != nil {
 			emitSeverityLine(cmd.ErrOrStderr(), sevWarn, resolveTheme(), "Could not record the harness selection for the resume: %v", recErr)
 		}
+		// Finding B (card t1591): open the ensure window with its marker. An ensure that
+		// fails before any journal exists (a lock refusal) leaves this marker, and the
+		// rerun reads it as the interruption checkpoint. Best-effort, like the record.
+		if pendErr := persistInitPending(opts.ProjectRoot); pendErr != nil {
+			emitSeverityLine(cmd.ErrOrStderr(), sevWarn, resolveTheme(), "Could not record the init resume marker: %v", pendErr)
+		}
 		if err := ensureUserAssetsLockedFn(homeDir, selection, cmd.OutOrStdout()); err != nil {
-			// The record stays: this run is the interrupted one the resume completes.
+			// The record and the init marker stay: this run is the interrupted one the resume completes.
 			return fmt.Errorf("user-asset install failed: %w\n  Fix the cause and re-run 'moai init' — the ensure is idempotent and completes the shortfall", err)
 		}
 	} else {
@@ -1235,6 +1241,10 @@ func runInit(cmd *cobra.Command, args []string) (err error) {
 	// executor.Execute), not here: by this point the section files carry the
 	// wizard answers, and a snapshot of them is not a template render (t1139).
 
+	// Finding B (card t1591): every post-ensure step above is warn-only, so reaching
+	// this point means the ensure window closed with its steps complete. The init
+	// marker retires here.
+	clearInitPending(opts.ProjectRoot)
 	// Finding 1 (card t1591): the selection record retires on normal completion,
 	// with the checkpoint marker and only once the marker is gone. A marker that
 	// still stands needs its selection for the resume it names.
