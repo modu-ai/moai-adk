@@ -81,4 +81,9 @@ Status transition: draft → in-progress at this run-close commit (Gap; ruling d
 
 ## §E.4 Sync-phase Audit-Ready Signal
 
-_<pending sync-phase>_
+```yaml
+audit_ready: true
+sync_commit_sha: pending-backfill
+```
+
+Status transition: in-progress → implemented at this sync commit. The implemented → completed transition and the sync_commit_sha backfill are pending (Gap; ruling ca0c, item 3), to be settled at the landing-resume ruling.
