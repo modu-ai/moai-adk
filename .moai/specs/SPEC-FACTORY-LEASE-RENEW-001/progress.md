@@ -144,6 +144,136 @@ Slot (go-heavy). Each named internal/cli and internal/factory run and the factor
 
 E4, pre-existing. `grep -rn 'AskUserQuestion' internal/hook | grep -v _test.go | grep -v '// '` returns `internal/hook/pre_tool.go:856: if input.ToolName == "AskUserQuestion" {` on `0662f6238` and on this tree; M1 does not touch internal/hook.
 
+### M2 block (card t1663; RED recorded, GREEN pending)
+
+Governing decisions: decision-index Q3 (REQ-FLR-004, refusal with no write), ruling d-20261010T095731Z-5ddc. Leader ruling d-20261010T111725Z-3ef9 changes the fail-open behaviour of the M1 keys: (a) an undecodable `workflow.yaml` falls back to the defaults (15 minutes, 5 minutes) with a warning that names the file and the error, and no longer refuses the open; (b) a value of a `factory_lease` key that the bounds reject refuses the open, and the refusal names the key path, the allowed range, and the config file. The ruling also sets the coverage rule (per changed function, decision d-20261010T085601Z-991b) and accepts the AC-FLR-008 proxy mutant of the M1 block as evidence.
+
+Commits (local, not pushed; the HEAD at which each output was taken is named beside it)
+- `c8fda81b1` test(SPEC-FACTORY-LEASE-RENEW-001): M2 RED tests (card t1663). Test files only.
+- `49cdb0af1` test(SPEC-FACTORY-LEASE-RENEW-001): M2 RED, non-holder legs as subtests (card t1663). Test file only.
+
+Pre-M2 baseline and the old behaviour (HEAD `55f5887ec`, before any edit, this run)
+
+`go test ./internal/homestate/ -run '^TestRenewLeaseRefusalsAndExpiry$' -v -count=1`, exit 0 (baseline, §C.3):
+
+```
+=== RUN   TestRenewLeaseRefusalsAndExpiry
+--- PASS: TestRenewLeaseRefusalsAndExpiry (1.71s)
+PASS
+ok  	github.com/modu-ai/moai-adk/internal/homestate	2.051s
+```
+
+`go test ./internal/config/ -run '^TestLoadFactoryLeaseMalformedFileIsAnError$' -v -count=1`, exit 0. This is the M1 record of the old behaviour that ruling part (a) replaces: a malformed `workflow.yaml` refused the open.
+
+```
+=== RUN   TestLoadFactoryLeaseMalformedFileIsAnError
+--- PASS: TestLoadFactoryLeaseMalformedFileIsAnError (0.00s)
+PASS
+ok  	github.com/modu-ai/moai-adk/internal/config	0.350s
+```
+
+The M1 test is replaced in `c8fda81b1` by `TestLoadFactoryLeaseMalformedFileFallsBackWithWarning`; the homestate refusal test `TestOpenFactoryRefusesAWorkflowFileThatCannotBeRead` is replaced by `TestOpenFactoryFallsBackOnAWorkflowFileThatCannotBeRead`. The old names are retired, and the old outputs above are the record of them.
+
+RED (observed at HEAD `c8fda81b1`, after the RED commit; every RED is an assertion failure, and no TOOL_FAILURE occurred)
+
+Rewritten reaped-state assertion, on the pre-M2 `RenewLease` (`go test ./internal/homestate/ -run '^TestRenewLeaseRefusalsAndExpiry$' -v -count=1`, exit 1). The RED is observed before any edit to `card_transition.go`.
+
+```
+=== RUN   TestRenewLeaseRefusalsAndExpiry
+    f7_record_failure_test.go:41: card after expired renewal = assigned holder="" v2, want run, still held by worker-1, version v1 unchanged (REQ-FLR-004: refused with no write)
+--- FAIL: TestRenewLeaseRefusalsAndExpiry (0.87s)
+FAIL
+FAIL	github.com/modu-ai/moai-adk/internal/homestate	1.219s
+```
+
+AC-FLR-004 and the fail-open homestate tests (`go test ./internal/homestate/ -run '^(TestRenewRefusesExpiredWithoutWrite|TestOpenFactoryFallsBackOnAWorkflowFileThatCannotBeRead|TestFactoryLeaseRefusalNamesTheConfigFile)$' -v -count=1`, exit 1)
+
+```
+=== RUN   TestFactoryLeaseRefusalNamesTheConfigFile
+    factory_lease_refusal_path_test.go:24: refusal does not name the config file: factory lease configuration refused: workflow.factory_lease.duration must be a positive duration (greater than zero); got "0s"
+--- FAIL: TestFactoryLeaseRefusalNamesTheConfigFile (0.00s)
+=== RUN   TestOpenFactoryFallsBackOnAWorkflowFileThatCannotBeRead
+    factory_lease_resolve_test.go:126: OpenFactory on an undecodable workflow file: err = factory lease configuration refused: the workflow configuration could not be read: parse workflow.yaml: config: invalid YAML syntax, want the open to fall back to the defaults
+--- FAIL: TestOpenFactoryFallsBackOnAWorkflowFileThatCannotBeRead (0.00s)
+=== RUN   TestRenewRefusesExpiredWithoutWrite
+    factory_renew_expiry_test.go:37: refused renewal changed the card: v1 run holder="worker-1" expiry=2026-09-26T08:58:00Z → v2 assigned holder="" expiry=
+--- FAIL: TestRenewRefusesExpiredWithoutWrite (0.80s)
+FAIL
+FAIL	github.com/modu-ai/moai-adk/internal/homestate	1.004s
+```
+
+The AC-FLR-004 RED is the reaping branch: the version is bumped to v2 and the lease is cleared, which is the write that Q3 forbids. Its RED input is the pre-M2 branch, not a mutant, because the criterion is red on the unchanged tree.
+
+Fail-open config (`go test ./internal/config/ -run '^TestLoadFactoryLeaseMalformedFileFallsBackWithWarning$' -v -count=1`, exit 1)
+
+```
+=== RUN   TestLoadFactoryLeaseMalformedFileFallsBackWithWarning
+    loader_factory_lease_test.go:107: LoadFactoryLease on a malformed file: err = parse workflow.yaml: config: invalid YAML syntax, want the defaults and a warning
+--- FAIL: TestLoadFactoryLeaseMalformedFileFallsBackWithWarning (0.00s)
+FAIL
+FAIL	github.com/modu-ai/moai-adk/internal/config	0.338s
+```
+
+Catalog pins (`go test ./internal/mcp/ -run '^TestMoaiMCPTools_(CatalogSize|WriteCapableSet)$' -v -count=1`, exit 1)
+
+```
+=== RUN   TestMoaiMCPTools_CatalogSize
+    catalog_test.go:30: catalog declares 47 tools, want 48
+--- FAIL: TestMoaiMCPTools_CatalogSize (0.00s)
+=== RUN   TestMoaiMCPTools_WriteCapableSet
+    catalog_test.go:84: write-capable tool count = 20 ([audit_multi codex_audit codex_job_cancel codex_role_audit codex_task factory_complete factory_decide factory_msg_list factory_msg_receipt factory_msg_send factory_next factory_stage glm_job_cancel glm_task goal_arm session_msg_poll session_msg_register session_msg_send todo_add verify_snapshot]), want 21
+--- FAIL: TestMoaiMCPTools_WriteCapableSet (0.00s)
+FAIL
+FAIL	github.com/modu-ai/moai-adk/internal/mcp	0.248s
+```
+
+CLI acceptance tests (`go test ./internal/cli/ -run '^(TestFactoryRenewExtendsLiveLease|TestFactoryRenewMatchesMCP|TestNonHolderRenewRefusedCLIAndMCP|TestFactoryRenewRefusalIsMachineReadable)$' -v -count=1`, exit 1, slot `go-heavy` held by this session; the first run at `c8fda81b1`)
+
+```
+=== RUN   TestFactoryRenewExtendsLiveLease
+    factory_renew_test.go:115: renew: unknown command "renew" for "factory"
+--- FAIL: TestFactoryRenewExtendsLiveLease (1.03s)
+=== RUN   TestFactoryRenewMatchesMCP
+=== RUN   TestFactoryRenewMatchesMCP/live_lease:_the_same_expiry_fields
+    factory_renew_test.go:137: MCP tool factory_renew is not bound by registerFactoryCardMCPTools
+=== RUN   TestFactoryRenewMatchesMCP/expired_lease:_the_same_refusal_class
+    factory_renew_test.go:155: MCP tool factory_renew is not bound by registerFactoryCardMCPTools
+--- FAIL: TestFactoryRenewMatchesMCP (1.19s)
+    --- FAIL: TestFactoryRenewMatchesMCP/live_lease:_the_same_expiry_fields (0.65s)
+    --- FAIL: TestFactoryRenewMatchesMCP/expired_lease:_the_same_refusal_class (0.54s)
+=== RUN   TestNonHolderRenewRefusedCLIAndMCP
+    factory_renew_test.go:180: MCP tool factory_renew is not bound by registerFactoryCardMCPTools
+--- FAIL: TestNonHolderRenewRefusedCLIAndMCP (0.75s)
+=== RUN   TestFactoryRenewRefusalIsMachineReadable
+    factory_renew_test.go:215: renew --json printed no JSON outcome (stdout "", error unknown command "renew" for "factory"): unexpected end of JSON input
+--- FAIL: TestFactoryRenewRefusalIsMachineReadable (0.53s)
+FAIL
+FAIL	github.com/modu-ai/moai-adk/internal/cli	4.589s
+```
+
+The first run reached only the MCP leg of `TestNonHolderRenewRefusedCLIAndMCP`, because that test stopped at its first failure. Commit `49cdb0af1` splits the legs into subtests, and the re-run at HEAD `49cdb0af1` observes both:
+
+```
+=== RUN   TestNonHolderRenewRefusedCLIAndMCP
+=== RUN   TestNonHolderRenewRefusedCLIAndMCP/verb
+    factory_renew_test.go:182: renew --json printed no JSON outcome (stdout "", error unknown command "renew" for "factory"): unexpected end of JSON input
+=== RUN   TestNonHolderRenewRefusedCLIAndMCP/MCP_tool
+    factory_renew_test.go:191: MCP tool factory_renew is not bound by registerFactoryCardMCPTools
+--- FAIL: TestNonHolderRenewRefusedCLIAndMCP (1.09s)
+    --- FAIL: TestNonHolderRenewRefusedCLIAndMCP/verb (0.00s)
+    --- FAIL: TestNonHolderRenewRefusedCLIAndMCP/MCP_tool (0.00s)
+FAIL
+FAIL	github.com/modu-ai/moai-adk/internal/cli	2.162s
+```
+
+Mutant rule. No M2 criterion is green on the unchanged tree: AC-FLR-001, AC-FLR-002, AC-FLR-003, AC-FLR-004, and the verb half of AC-FLR-011 each fail before any edit, so no M2 mutant is required. The rewritten reaped-state assertion is the one M2 case whose unchanged neighbours (the missing-card, unleased-card, and zero-clock assertions) stay green; they are not new criteria and are not re-recorded as RED.
+
+Boundary of ruling (a), recorded for the leader's confirmation. The warning and fallback apply to every failure of `loadYAMLFile`, which is either a read failure or a decode failure of the whole file. A decode failure therefore includes a YAML type mismatch inside a `factory_lease` key (for example a sequence where a duration string is expected), because such a value stops the file from decoding. A scalar that the duration parser rejects (for example `banana`) is a value the file parsed, so it is case (b): a refusal.
+
+Warning mechanism (ruling part a, chosen for the GREEN step): the repo's config fallback path, `slog.Warn(msg, "path", <file>, "error", err)`, the same call the workflow section uses at `internal/config/loader.go:240`. The default slog handler writes it to stderr. No new logging surface is added.
+
+Slot (go-heavy): acquired by this session for the `go vet ./internal/cli/` compile check (until 11:46:13Z) and released; re-acquired for the CLI RED runs (until 11:47:24Z) and released after the split run.
+
 ## §E.3 Run-phase Audit-Ready Signal
 
 _<pending run-phase>_
