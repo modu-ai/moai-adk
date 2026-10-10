@@ -670,6 +670,23 @@ func isFactoryBusy(err error) bool {
 
 func (f *FactoryDB) Close() error { return f.DB.Close() }
 
+// WorkerRunBinding returns the factory run the roster binds a lane label to: the run_id of the workers row
+// for label (internal/homestate/factory.go:24-32 declares the column; internal/factory/factory_slots.go:355
+// writes it when the lane joins a run). A label with no row, and a row with an empty run_id (a legacy import
+// binds nothing: ImportLegacyWorkers leaves run_id empty), returns "". Callers refuse on "" rather than infer a
+// run from the label, because a label can be reused across runs.
+func (f *FactoryDB) WorkerRunBinding(ctx context.Context, label string) (string, error) {
+	var runID string
+	err := f.DB.QueryRowContext(ctx, `SELECT run_id FROM workers WHERE label=?`, label).Scan(&runID)
+	if errors.Is(err, sql.ErrNoRows) {
+		return "", nil
+	}
+	if err != nil {
+		return "", fmt.Errorf("read the roster binding of %s: %w", label, err)
+	}
+	return runID, nil
+}
+
 // ImportLegacyWorkers imports workers.json only when the SQLite roster is
 // empty. The legacy file remains as read-only downgrade evidence.
 func (f *FactoryDB) ImportLegacyWorkers(path string) error {
