@@ -1,7 +1,7 @@
 ---
 id: SPEC-ROLE-INJECTION-BUDGET-001
 title: "역할 규칙 주입 예산 — 조립 합본 9,000자 회계, 역할 core 재작성, *-core 스텁 게이트, 버전 불일치 안내"
-version: "0.1.0"
+version: "0.2.0"
 status: draft
 created: 2026-10-10
 updated: 2026-10-10
@@ -21,6 +21,7 @@ related_specs: [SPEC-ALWAYS-LOADED-BUDGET-001, SPEC-ALWAYS-LOADED-DIET-001, SPEC
 
 | 날짜 | 버전 | 변경 | 작성자 |
 |---|---|---|---|
+| 2026-10-10 | 0.2.0 | plan-audit 1회차 FAIL 수리(F1–F7, `.moai/reports/t1617/plan-audit.md`). F1: 합본 교차 검산 가산 오류(23,066→22,745)와 역할 블록 이중 계산(로컬 꼬리 +321이 18,114 안에 이미 있음) 정정 — 조립 산식을 코드 인용으로 고정(§B), 게이트 함의 생산자 상한 4,797 신설, core 예산 4,367→**3,946** 재파생, 설계 목표 4,000→3,800, REQ-RIB-004 정지 밸브를 구속 후퇴선으로 명명. F5: 주입 소스별 생산자 변이 처리 신설(startup 최중 소스 코드 인용 + 게이트 가시 후퇴선 + 라이브 확인에 clear 재진입 추가, REQ-RIB-002). F4: Codex 전용 설치가 `.moai/policies/` 투영으로 같은 예산 안에 들어간다는 문장 정정(§D). F6: 스텁 여유 19%→14.2%/19.3% 정정(REQ-RIB-005). F7: REQ-RIB-008 3분해·REQ-RIB-011 단위(코드 단위+바이트)·`stub-delta:` 라벨·hooks-system 미러 명시. RED E1/E2 임계 3,946 재관측(값·exit 동일), E8 신설. REQ·AC 11/12 유지. | manager-spec |
 | 2026-10-10 | 0.1.0 | 최초 작성. 카드 t1617 (3.2-1-5, P0, Class C — 리더 처분 dd1e, 운영자 지시 「이 문제 부터 해결하자」, no-new-dispatch 규칙 fde3의 예외). 기준 트리 카드 워크트리 HEAD `2aab5f797` (브랜치 WT-3-2-1). 상위 SPEC `SPEC-ALWAYS-LOADED-BUDGET-001` 의 후속 수리다. plan 단계 전수 재측정 기록은 `.moai/reports/t1617/measurements.md`. | manager-spec |
 
 ---
@@ -41,10 +42,11 @@ related_specs: [SPEC-ALWAYS-LOADED-BUDGET-001, SPEC-ALWAYS-LOADED-DIET-001, SPEC
 |---|---|
 | `roleRulesContextLimit` (올릴 수 없는 상한) | 10,000 |
 | lane-15 세션 조립 합본 (게이트 자체 측정, 카드 발행 근거) | 23,166 |
-| lane-15 세션 역할 블록 이전 생산자 (dispatch 분해 — §A.3 참조) | 4,376 |
-| 배포본 `factory-dispatch.md` 역할 core (36개 영역 join) | 18,114 |
-| 템플릿본 `factory-dispatch.md` 역할 core (같은 36개 영역) | 17,793 |
-| 역할 블록 헤더 (lane 123 / leader 125) + 포인터 128 + 결합자 | 253–255 |
+| lane-15 세션 역할 블록 이전 생산자 (dispatch 직접 분해 — startup 소스) | 4,376 |
+| 게이트가 함의하는 생산자 상한 (합본 23,166 − 본 트리 역할 블록 18,369 — §B 산식) | **4,797** |
+| 배포본 `factory-dispatch.md` 역할 core (36개 영역 join, 로컬 꼬리 +321 포함) | 18,114 |
+| 템플릿본 `factory-dispatch.md` 역할 core (같은 36개 영역, 꼬리 없음) | 17,793 |
+| 역할 블록 오버헤드 — 결합자 2 + 헤더 (lane 123 / leader 125) + 결합자 2 + 포인터 128 | 255–257 |
 | `cross-session-messaging.md` 역할 core | 0 (빈 영역 1개 — 포인터만 전달) |
 
 ### §A.2 증상 B — 버전 불일치 설치의 실패 경로 (mo.ai.kr)
@@ -69,9 +71,11 @@ related_specs: [SPEC-ALWAYS-LOADED-BUDGET-001, SPEC-ALWAYS-LOADED-DIET-001, SPEC
 | 계수 단위 | UTF-16 코드 단위(상위 SPEC §B 와 같다). 한글·영문 1, 보충 평면 2 |
 | 조립 합본 | `FinalizeSessionStartOutput` 이 크기 게이트에 넘기는 최종 `additionalContext` — 이전 생산자 전체 + 결합자(`\n\n`) + 역할 블록. 게이트가 재는 대상 |
 | 역할 블록 | 역할 core 주입이 만드는 부분 — 헤더 1줄 + 역할 core + (역할 core 가 빈 규칙의) 포인터 |
-| 생산자 기준선 | 역할 블록 이전 생산자들의 UTF-16 합계. **4,376으로 고정** — lane-15 세션(카드 발행 세션, 2026-10-09T17:0xZ)에서 리더가 직접 분해해 잰 직접 측정치(세션 귀속, 종속 내용: 세션 귀속 행·팩토리 메시징 바인드·GLM 백엔드 라우팅 공지·Factory Mode 합류 줄·상립 스폰 권한). plan 단계 재측정은 불가(라이브 세션 자산) — 합본 교차 검산: 4,376 + 본 트리 역할 블록 18,690 = 23,066 vs 게이트 실측 23,166, 차 100(±100 노이즈, §D 설계 목표 4,000이 흡수) |
-| core 예산 | 조립 판독에서 역할할 수 있는 역할 core 상한 = 9,000 − 4,376 − 2 − 125(leader 헤더) − 2 − 128(포인터) = **4,367** (leader 가 더 큰 헤더로 구속 역할). lane 은 4,369 |
-| 설계 목표 | 4,000 (core 예산 − 367 여유: 생산자 기준선 ±100 노이즈와 재측정 오차 흡수) |
+| 조립 산식 (코드 인용) | 합본 = 생산자 + `"\n\n"` + 헤더(뒤 `\n\n` 포함) + core + `"\n\n"` + 포인터 — `assembleInjectionComposite`(role_rules.go:102–123, RecoveryHead 없는 가지 `existing + "\n\n" + inj.Context`) + `roleRuleInjectionFor`(role_rules.go:373–380, 헤더가 포맷 문자열 안에 뒤 `\n\n`을 갖고 core가 그 뒤에 직접 붙는다). 오버헤드 합 = 결합자 2 + 헤더 125(leader 최악) + 결합자 2 + 포인터 128 = 257 |
+| 생산자 기준선 — 고정값 | **4,376** — lane-15 세션(카드 발행 세션, 2026-10-09T17:0xZ, startup 소스)에서 리더가 직접 분해해 잰 값(세션 귀속, 종속 내용: 세션 귀속 행·팩토리 메시징 바인드·GLM 백엔드 라우팅 공지·Factory Mode 합류 줄·상립 스폰 권한). plan 단계 재측정 불가(라이브 세션 자산) |
+| 생산자 기준선 — 게이트 함의 상한 | **4,797** = 합본 실측 23,166 − 본 트리 역할 블록 18,369(= 2 + 123 + 18,114 + 2 + 128; 18,114에는 로컬 꼬리 +321이 이미 포함돼 있다). 직접 분해 4,376과의 차 421은 lane-15 트리와 본 트리의 미세 차이로, 어느 쪽(생산자 또는 역할 블록)에 실렸는지 이 트리에서 판별 불가 — 예산은 큰 쪽에서 파생한다 |
+| core 예산 | 조립 판독에서 역할할 수 있는 역할 core 상한 = 9,000 − 4,797(생산자 상한) − 2 − 125(leader 헤더) − 2 − 128(포인터) = **3,946** (leader 가 더 큰 헤더로 구속 역할). lane 은 3,948 |
+| 설계 목표 | 3,800 (core 예산 −146 여유). **REQ-RIB-004 정지 밸브가 구속 후퇴선이다**: 압축 바닥이 3,946을 넘으면 규칙 편집 전에 정지하고 바닥을 리더에게 보고한다 — 예산을 의무 포기로 맞추지 않는다 |
 | 재배치 감사 | 역할 core 에서 잘려나가는 모든 조각에 대해 (a) 목적지(이미 그 본문을 가진 companion 절, 또는 먼저 이관한 곳)를 이름 대고 (b) 구속 절은 의미 보존 압축 재작성으로 core/스텁에 남기는 감사. `relocation-ledger.md` 로 기록 |
 | 스텁 | `*-core.md` — 상시 표면에 남는 역할별 짧은 파일. 현재 2개(`factory-dispatch-core.md`, `cross-session-messaging-core.md`, 배포·템플릿 쌍) |
 | 버전 불일치 | 배포 트리의 규칙 파일 세대와 실행 바이너리 세대의 어긋남. `system.yaml` `template_version` vs 바이너리 버전으로 판독 |
@@ -81,14 +85,14 @@ related_specs: [SPEC-ALWAYS-LOADED-BUDGET-001, SPEC-ALWAYS-LOADED-DIET-001, SPEC
 
 ### C.1 조립 예산
 
-- **REQ-RIB-001** (Ubiquitous) — The per-role assembled SessionStart composite — the pinned producer baseline (4,376 UTF-16, the lane-15 direct decomposition) plus the joiner plus the role block — shall stay at or under 9,000 UTF-16 code units for every role in the role-marker registry, with the 10,000-unit delivery cap unchanged (decision-index Q4, unraisable); the derived role-core ceiling is 4,367 UTF-16 (leader-binding) and the design target is 4,000. The SPEC's reading resolution is binding: 「역할별 조립 ≤9,000자」 is the assembled-composite reading (§A.4); the literal role-card-only reading is named unsatisfiable and rejected.
-- **REQ-RIB-002** (Event-driven) — When the template tree's role-gated rule files change, a Go budget test shall build each registry role's role block from the deployed-tree files (template SSOT and this repository's own deployed copy both measured), assemble it with the pinned producer baseline constant, and fail when any role's assembled composite exceeds 9,000 UTF-16 — the failure message naming the breakdown (producers, joiner, header, core, pointer, total) so the arithmetic is auditable; it shall additionally assert the core ceiling (4,367) as a diagnostic sub-assertion.
+- **REQ-RIB-001** (Ubiquitous) — The per-role assembled SessionStart composite — the producers plus the joiner plus the role block, assembled per the code-cited formula (§B) — shall stay at or under 9,000 UTF-16 code units for every role in the role-marker registry, with the 10,000-unit delivery cap unchanged (decision-index Q4, unraisable); the budget derives from the gate-implied producer ceiling 4,797 (§B), giving the role-core ceiling **3,946** UTF-16 (leader-binding) and the design target 3,800. REQ-RIB-004's stop valve is the binding backstop: the ceiling is never met by dropping obligations. The SPEC's reading resolution is binding: 「역할별 조립 ≤9,000자」 is the assembled-composite reading (§A.4); the literal role-card-only reading is named unsatisfiable and rejected.
+- **REQ-RIB-002** (Event-driven) — When the template tree's role-gated rule files change, a Go budget test shall build each registry role's role block from the deployed-tree files (template SSOT and this repository's own deployed copy both measured), assemble it with the producer-baseline-ceiling constant 4,797 (the conservative bound — §B), and fail when any role's assembled composite exceeds 9,000 UTF-16 — the failure message naming the breakdown (producers, joiner, header, core, pointer, total) so the arithmetic is auditable; it shall additionally assert the core ceiling (3,946) as a diagnostic sub-assertion. Producer variance by inject source is bounded as follows and recorded with the test: the startup source is the structurally heaviest (it alone carries the Factory Mode join line — `factoryBootstrapNoticeForSource` is startup-only, session_start.go:541-580); clear swaps it for the lane rule (`factoryLaneRuleForSource` fires on startup+clear, session_start.go:582-604 — a fixed rendered sentence, smaller than the variable join line inside the measured 4,376); compact carries the subset neither adds to (both source gates skip it). The gate itself (REQ-ALB-010) remains the visible backstop for any residual — an over-cap emission fires the operator warning, never silent overflow — and the live re-entry check (AC-RIB-012) covers a fresh startup AND a clear re-entry.
 - **REQ-RIB-003** (Ubiquitous) — The role-core rewrite shall pass a relocation audit recorded in `relocation-ledger.md` (SPEC dir): every chunk removed from the core names its destination — a companion section that already carries the text (verified: the destination heading holds the binding sentence) or a companion the chunk was moved into first — and every binding clause stays reachable through the injection path or the always-loaded stub as a meaning-preserving compressed rewrite whose after-text updates the parent binding-ledger rows (the standing maintenance contract; REQ-ALB-015's ledger test is the mechanical witness). No deletion without a named destination. `buildRoleCore`'s marker validation is untouched.
-- **REQ-RIB-004** (Event-driven) — When the measured compression floor of the rewrite — the lowest core size reachable without dropping or weakening a binding obligation — exceeds 4,367 UTF-16, the run phase shall stop before the rule edit and report the measured floor to the leader (the parent SPEC's REQ-ALB-022 pattern); the budget shall not be met by dropping obligations.
+- **REQ-RIB-004** (Event-driven) — When the measured compression floor of the rewrite — the lowest core size reachable without dropping or weakening a binding obligation — exceeds **3,946** UTF-16, the run phase shall stop before the rule edit and report the measured floor to the leader (the parent SPEC's REQ-ALB-022 pattern); the budget shall not be met by dropping obligations. This stop valve is the binding backstop of REQ-RIB-001's ceiling.
 
 ### C.2 스텁 게이트
 
-- **REQ-RIB-005** (Ubiquitous) — A template test shall enumerate every `*-core.md` file under the deployed and template rule trees mechanically (`*-core.md` glob, not a hand-written list — a new stub is covered on arrival) and shall fail when any enumerated stub (a) carries any `moai:role-core` region marker, or (b) exceeds 10,000 UTF-16 code units (current: `factory-dispatch-core.md` 8,583, `cross-session-messaging-core.md` 8,072; budgets leave ≥19% headroom).
+- **REQ-RIB-005** (Ubiquitous) — A template test shall enumerate every `*-core.md` file under the deployed and template rule trees mechanically (`*-core.md` glob, not a hand-written list — a new stub is covered on arrival) and shall fail when any enumerated stub (a) carries any `moai:role-core` region marker, or (b) exceeds 10,000 UTF-16 code units (current: `factory-dispatch-core.md` 8,583 — 14.2% headroom, `cross-session-messaging-core.md` 8,072 — 19.3% headroom; the binding figure is the 10,000 budget, not the headroom percentage).
 
 ### C.3 증상 B — 버전 불일치
 
@@ -97,23 +101,23 @@ related_specs: [SPEC-ALWAYS-LOADED-BUDGET-001, SPEC-ALWAYS-LOADED-DIET-001, SPEC
 
 ### C.4 잔여 정비
 
-- **REQ-RIB-008** (Event-driven) — When `role_rules.go` is edited, the size-gate doc comment shall state the REQ-ALB-010 ladder exactly once (the :393–413 duplication removed), and the overflow NOTE directive / operator-locale wording shall be unified (thousands separators consistent with the locale warnings; the NOTE and the warning stop repeating each other's content).
+- **REQ-RIB-008** (Event-driven) — The `role_rules.go` wording repair is three discrete deliverables, each independently checkable: (a) the size-gate doc comment states the REQ-ALB-010 ladder exactly once — the :393–401 bullet list or the :403–413 paragraph survives, not both (observed today: the phrase `REQ-ALB-009 retreat` twice, E6); (b) the overflow NOTE directive (:538–544) renders its cap with a thousands separator (`10,000`, matching the locale warnings) and stops repeating the warning's content — it names the cap, the file-save behavior, and the read paths, once; (c) the four operator-locale warnings (:263–312) keep their meaning (intact emission, file path + 2,000-character preview) while dropping any sentence the NOTE already carries.
 - **REQ-RIB-009** (Ubiquitous) — `.claude/rules/moai/core/hooks-system.md` shall document both measured hook-output behaviors distinctly: total stdout over 50K characters saved to disk (existing line) and the 10,000-character per-`additionalContext`-string delivery cap (decision-index Q4, observed by the lane-15 notice), each with its measurement citation.
 - **REQ-RIB-010** (Ubiquitous) — After the rewrite, the local rule's citation (`gitflow-lane-protocol.md` §1 → "factory-dispatch.md의 Isolation 절") shall resolve to a live section still carrying the mid-session-move prohibition, and the git-flow variant sentence (the deployed copy's :263 region) shall stay consistent with the local rule's disposition; the deployed copy's local sweep-tail sentence (the +321 divergence) is a relocation-audit row like any other chunk.
 
 ### C.5 Template-First 와 비용 기록
 
-- **REQ-RIB-011** (Ubiquitous) — Every content change shall originate under `internal/template/templates/`, be embedded through `make build`, and be mirrored to this repository's `.claude/rules/` copy within the same run, with changed rule pairs registered in the rule-template mirror test; the run shall record the before/after UTF-16 byte deltas of every always-loaded file it touches (the two stubs chiefly) and state the rule-authoring cost justification for any growth over 1,000 bytes.
+- **REQ-RIB-011** (Ubiquitous) — Every content change shall originate under `internal/template/templates/`, be embedded through `make build`, and be mirrored to this repository's `.claude/rules/` copy within the same run, with changed rule pairs registered in the rule-template mirror test — `hooks-system.md` included (its template mirror `internal/template/templates/.claude/rules/moai/core/hooks-system.md` exists and carries the same :131 line). The run shall record, under the literal label `stub-delta:` in progress.md §E.2, the before/after sizes of every always-loaded file it touches — both UTF-16 code units and UTF-8 bytes (they diverge on Korean text: 3 bytes per unit) — for the two stubs chiefly; a growth whose BYTE delta exceeds 1,000 bytes carries the rule-authoring cost justification (the duty's threshold is bytes).
 
 ## §D. 제약
 
 - **한도 인상 금지** — 10,000은 decision-index Q4 로 올릴 수 없다. 이 SPEC 이 만지는 것은 조립 합본의 크기뿐이다.
 - **오버플로 경로 보존** — REQ-ALB-010 의 사다리(오버플로 파일 전달 → REQ-ALB-009 후퇴)는 메커니즘으로서 그대로다. 완료 기준 1의 "오버플로 파일 0"은 발화가 없다는 뜻이지 경로 삭제가 아니다.
-- **역할 분할 기각** — leader/lane 전용 core 분할(buildRoleCore 역할 필터 추가)은 기각한다. 산술 이유: 완전한 역할 분할이어도 각 역할은 core의 절반 ~9,057을 보게 되고, 그것도 예산 4,367을 2배 이상 넘는다 — 역할 분할은 예산에 필요한 4.15배 압축을 대신하지 못한다. 하나의 공유 core 를 예산 안으로 재작성하는 (i)이 정답이고, `buildRoleCore` 의 표지 검증(균형·순서·열림 검사)은 전부 보존된다.
+- **역할 분할 기각** — leader/lane 전용 core 분할(buildRoleCore 역할 필터 추가)은 기각한다. 산술 이유: 완전한 역할 분할이어도 각 역할은 core의 절반 ~9,057을 보게 되고, 그것도 예산 3,946을 2배 이상 넘는다 — 역할 분할은 예산에 필요한 약 4.6배 압축(18,114→3,946)을 대신하지 못한다. 하나의 공유 core 를 예산 안으로 재작성하는 (i)이 정답이고, `buildRoleCore` 의 표지 검증(균형·순서·열림 검사)은 전부 보존된다.
 - **구속 절의 이동 반경** — 구속 절은 core(압축 재작성) 또는 상시 스텁에만 남는다. rationale·절차 중복(이미 companion 이 본문을 가진 것)만 core에서 떨어진다. 스텁으로의 대규모 재분류(상시 표면 성장)는 금지 — 상위 다이어트의 성과를 되돌리는 것이다.
 - **로컬 갈림 처분** — 배포본 마지막 영역의 +321 꼬리 문장은 로컬 전용 내용이다. 재작성은 이를 재배치 감사 행으로 다룬다(본문이 `worktree-integration.md` § Hoist 에 이미 있음을 확인하고 core에서 압축·정리). 템플릿 미러는 로컬 꼬리를 갖지 않는 현 상태를 유지한다.
-- **재측정 규율** — §B 의 고정 수치를 인용하는 AC 는 `verification-claim-integrity.md` §2/§4 에 따라 이 SPEC dir 의 `relocation-ledger.md` 와 `.moai/reports/t1617/measurements.md` 에 커밋 SHA와 함께 귀속된다. 생산자 기준선 4,376은 lane-15 직접 분해치로 귀속되며(라이브 세션 자산, 재측정 불가), 합본 교차 검산과 설계 목표 4,000이 ±100 노이즈를 흡수한다.
-- Codex 하네스는 `.claude/rules/` 를 읽지 않으므로 이 SPEC 의 영향 밖이다.
+- **재측정 규율** — §B 의 고정 수치를 인용하는 AC 는 `verification-claim-integrity.md` §2/§4 에 따라 이 SPEC dir 의 `relocation-ledger.md` 와 `.moai/reports/t1617/measurements.md` 에 커밋 SHA와 함께 귀속된다. 생산자 직접 분해 4,376은 lane-15 startup 참조점으로 귀속되고(라이브 세션 자산, 재측정 불가), 예산은 게이트 함의 상한 4,797에서 파생한다 — 검산 차 421과 소스 변이를 상한이 흡수한다(spec.md §B, REQ-RIB-002).
+- **Codex 전용 설치도 같은 예산 안에 있다.** Codex-only 설치는 같은 규칙 파일을 `.moai/policies/` 에 배포하고(`roleRulePoliciesRel`, role_rules.go:129–134), `roleRuleDeployRel`(:140–152)이 Claude 레이아웃 경로가 없으면 그 자리에서 읽는다 — 주입 경로·10,000 한도·크기 게이트·오버플로 사다리가 동일하게 적용된다(내용이 같은 투영이므로 크기도 같다). 재작성은 두 배포 면 모두에서 예산 안을 유지한다. (Claude 하네스가 `.claude/rules/` 를 읽는 방식의 차이는 이 SPEC 의 대상이 아니다.)
 
 ## §E. 수용 기준
 
