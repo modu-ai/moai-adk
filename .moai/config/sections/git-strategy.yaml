@@ -13,7 +13,7 @@ git_strategy:
         auto_checkpoint: disabled
         branch_prefix: ""
         main_branch: ""
-        develop_branch: develop
+        develop_branch: main
         release_branch_prefix: release/
         rc_version_format: vX.Y.Z-rc.N
         draft_pr: false

@@ -180,6 +180,11 @@ workflow:
         # commit/revert/cherry-pick in the primary checkout while HEAD is on a
         # listed branch are denied. Doctrine: .moai/docs/gitflow-integration-chain.md
         deny_commits_on: [main]
+    # local_main_integration: lets the integration verbs use the primary checkout
+    # as the tree that holds the integration branch (local-main flow). Shipped
+    # default false, which keeps the primary-refusal behavior unchanged.
+    local_main_integration:
+        enabled: true
     # commit_identity_guard: refuse a shell command that would create a commit
     # under a known test-fixture identity (SPEC-COMMIT-IDENTITY-GUARD-001
     # root cause: a fixture identity written into the shared .git/config
