@@ -857,6 +857,16 @@ Residual risk
 - Any future change to the catalogue companion, or to a rule that the ledger quotes, can break `TestBindingLedgerIntegrity` again. Decision 5 covers the lane's own runs; other lanes' runs are not covered by that rule.
 - The fallback renders `*/5 * * * *` for a refused value. If an operator expects the refused value to win, the lane's standing wake runs at the default period until the configuration is fixed.
 
+### M3 slot usage, part 2 (card t1663)
+
+Slot (go-heavy, identity 3e1318d7, labelled lane-17), acquired with `moai slot acquire --resource go-heavy --name lane-17 --command "<run>" --max-duration 20m` and released with `moai slot release --resource go-heavy`. Windows, by the acquire line's `until` time, with the HEAD each run was taken at:
+- until 12:44:11Z: the ledger run, HEAD `4a4058d9e` (the commit holds the working-tree bytes).
+- until 12:45:32Z: the fallback RED run, HEAD `4a4058d9e`, the test file untracked, then released before the RED commit `1c7dc50ec`.
+- until 12:46:35Z: the hook GREEN runs, HEAD `1c7dc50ec` with the hook change in the working tree (committed as `e352e054a`), then `golangci-lint` on `./internal/hook/...`.
+- until 12:48:48Z: `make build` and the mirror and budget tests for the mechanics sentence, HEAD `e352e054a` with the sentence in the working tree (committed as `bacca95c2`), then the AC-FLR-011 verb-half run in `internal/cli`.
+- until 12:49:36Z: the final exit check, HEAD `bacca95c2`: the template criteria, the hook criteria and coverage, the cli verb run, `golangci-lint` on `./internal/hook/...` and `./internal/template/...`, and the ledger run.
+Each window was released after its runs. The Windows build and gofmt ran outside the slot, because they are builds and format checks, not test runs.
+
 ## §E.3 Run-phase Audit-Ready Signal
 
 _<pending run-phase>_
