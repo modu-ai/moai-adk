@@ -87,6 +87,21 @@ Default: none.
 Moved with the removal family to card t1668 (d-20261009T235135Z-5e35); no longer gates SPEC A. Status stays PENDING.
 Operator verdict:
 
+### Q9: Which scope does AC-RC30-22 take against REQ-UYP-014 for comments on sequence items? — DECIDED by delegated judgment d-20261010T143542Z-5d19
+
+Label: FOUNDER
+Class: implementation-level
+Status: DECIDED by delegated judgment d-20261010T143542Z-5d19, option (가): keep REQ-UYP-014, with the AC-RC30-22 scope wording that excludes comments on sequence items.
+Record: scope card:t1619; kind ruling; decided_by: a delegated judgment under the operator's delegation (board record: "영실이 판단(운영자 위임)"); board read 2026-10-10T14:38:52Z.
+Residual Gap: the lane's copy of the board record is git-ignored (`.moai/reports/t1619/progress.md` lines 4104-4110; `.gitignore` line 235). It is cited by path only, is not an authority anchor, and is not in committed history. The authority anchors below are committed artifacts.
+Authority anchor: `.moai/specs/SPEC-UPDATE-YAML-PRESERVE-001/spec.md` line 158 (REQ-UYP-014: a merged sequence node is replaced wholesale); `.moai/specs/SPEC-UPDATE-YAML-PRESERVE-001/plan.md` lines 121-131 (Decision D4; the chosen policy is at line 125); `.moai/specs/SPEC-UPDATE-REPAIR-RC30-001/acceptance.md` line 235 (AC-RC30-22 expected cell); `.moai/specs/SPEC-UPDATE-REPAIR-RC30-001/spec.md` line 48 (REQ-RC30-007 exception).
+Derivation: REQ-UYP-014 replaces sequences wholesale and does not name comments, so the comment exclusion is derived from that replacement. The exclusion is not a literal clause of REQ-UYP-014.
+Why unresolved: AC-RC30-22 as written (all comment lines survive) and REQ-UYP-014 (sequences replaced wholesale) disagree for comments on sequence items. The question is which of the two gives way.
+Options: the board record names the chosen option only: (가) keep REQ-UYP-014, with the AC-RC30-22 scope wording that excludes comments on sequence items. The other options are not recorded in the lane's copy, so none is listed here.
+Default: none (decided; no default applied).
+Applied to: the AC-RC30-22 expected cell (acceptance.md line 235) and the REQ-RC30-007 location note (spec.md line 48), both in this SPEC.
+Operator verdict: "(가): keep REQ-UYP-014" (verbatim board selection; a delegated judgment under the operator's delegation), board record d-20261010T143542Z-5d19.
+
 ### B1: CLOSED by the leader's split (d-20261009T235135Z-5e35, option 1) — Tier L acceptance-criteria budget (22 of 25)
 
 Label: FOUNDER
