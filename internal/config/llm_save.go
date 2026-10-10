@@ -4,8 +4,8 @@ package config
 // SPEC-UPDATE-REPAIR-RC30-001). A Save of a dirty llm section re-marshaled the
 // typed LLMConfig over llm.yaml, which dropped deployment_mode, the unmodelled
 // keys, and the comments. A dirty section over an existing file is now
-// patched scalar by scalar through yamlpatch, so only the values the caller
-// changed are rewritten.
+// patched through yamlpatch: only the keys the caller changed are rewritten,
+// and the keys and comments the section does not own survive.
 
 import (
 	"bytes"
@@ -20,20 +20,25 @@ import (
 )
 
 // saveLLM writes the llm section. A dirty section over an existing llm.yaml is
-// patched in place: only the scalars that differ from the baseline are
-// rewritten. An absent file, or a change a scalar patch cannot express (a
-// removed key, a sequence, or a value that must be quoted), takes the typed
-// rewrite of saveGated, as it did before this path existed.
+// patched through yamlpatch: each changed scalar is replaced, a value that must
+// be quoted is written quoted, and a removed key is deleted, so the keys and
+// comments the section does not own survive (REQ-RC30-007). An absent file takes
+// the typed write of saveGated, which has no content to keep, and a section that
+// is not dirty keeps saveGated's no-op.
 func (m *ConfigManager) saveLLM(sectionsDir string) error {
 	path := filepath.Join(sectionsDir, "llm.yaml")
-	if _, statErr := os.Stat(path); m.llmDirty && statErr == nil {
-		edits, patchable, err := llmScalarEdits(m.llmBaseline, m.config.LLM)
+	if info, statErr := os.Stat(path); m.llmDirty && statErr == nil {
+		base, err := llmMappingOf(m.llmBaseline)
+		if err != nil {
+			return fmt.Errorf("llm baseline: %w", err)
+		}
+		edits, err := llmSectionEditsFrom(base, m.config.LLM)
 		if err != nil {
 			return err
 		}
-		if patchable {
-			return yamlpatch.PatchFile(path, edits)
-		}
+		// The file keeps its mode: the current one is passed through. Unlike
+		// PatchFile, PatchFileWithMode also accepts a blank llm.yaml.
+		return yamlpatch.PatchFileWithMode(path, edits, info.Mode().Perm())
 	}
 	return m.saveGated(sectionsDir, "llm.yaml", m.llmDirty, llmFileWrapper{LLM: m.config.LLM})
 }
@@ -44,27 +49,20 @@ func (m *ConfigManager) saveLLM(sectionsDir string) error {
 // an edit. A change no edit can express is an error naming the field; a caller
 // returns it rather than falling back to a typed rewrite.
 func LLMSectionEdits(persisted *LLMConfig, desired LLMConfig) ([]yamlpatch.KeyEdit, error) {
-	now, err := llmMappingOf(llmBaselineOf(desired))
-	if err != nil {
-		return nil, fmt.Errorf("llm section: %w", err)
-	}
 	base := &yaml.Node{Kind: yaml.MappingNode}
 	if persisted != nil {
+		var err error
 		if base, err = llmMappingOf(llmBaselineOf(*persisted)); err != nil {
 			return nil, fmt.Errorf("llm baseline: %w", err)
 		}
 	}
-	var edits []yamlpatch.KeyEdit
-	if err := diffLLMNodes([]string{"llm"}, base, now, &edits); err != nil {
-		return nil, err
-	}
-	return edits, nil
+	return llmSectionEditsFrom(base, desired)
 }
 
 // llmBaselineOf renders the llm section as the loaded or last saved state.
 // The bytes are a snapshot, so a map the caller still holds and mutates in
 // place cannot alias into the baseline. A nil result means the section could
-// not be rendered, and llmScalarEdits reports that as an error.
+// not be rendered, and llmMappingOf reports that as an error.
 func llmBaselineOf(cfg LLMConfig) []byte {
 	data, err := yaml.Marshal(llmFileWrapper{LLM: cfg})
 	if err != nil {
@@ -73,30 +71,20 @@ func llmBaselineOf(cfg LLMConfig) []byte {
 	return data
 }
 
-// llmScalarEdits returns the scalar replacements that turn the baseline llm
-// section into cur, with paths rooted at the document, as yamlpatch takes
-// them. patchable is false when the change is not a set of scalar
-// replacements. A removed key and a quoted value are not scalar replacements
-// here, so ConfigManager.saveLLM keeps its typed rewrite for them.
-func llmScalarEdits(baseline []byte, cur LLMConfig) ([]yamlpatch.KeyEdit, bool, error) {
-	base, err := llmMappingOf(baseline)
-	if err != nil {
-		return nil, false, fmt.Errorf("llm baseline: %w", err)
-	}
+// llmSectionEditsFrom returns the yamlpatch edits that turn the base llm mapping
+// into cur, with paths rooted at the document. The base is the mapping the
+// caller loaded or last saved, so a key the typed struct does not model is never
+// part of the diff and stays in the file untouched.
+func llmSectionEditsFrom(base *yaml.Node, cur LLMConfig) ([]yamlpatch.KeyEdit, error) {
 	now, err := llmMappingOf(llmBaselineOf(cur))
 	if err != nil {
-		return nil, false, fmt.Errorf("llm section: %w", err)
+		return nil, fmt.Errorf("llm section: %w", err)
 	}
 	var edits []yamlpatch.KeyEdit
-	if diffLLMNodes([]string{"llm"}, base, now, &edits) != nil {
-		return nil, false, nil
+	if err := diffLLMNodes([]string{"llm"}, base, now, &edits); err != nil {
+		return nil, err
 	}
-	for _, e := range edits {
-		if e.Remove || e.Quoted {
-			return nil, false, nil
-		}
-	}
-	return edits, true, nil
+	return edits, nil
 }
 
 // llmMappingOf returns the llm mapping of a document rendered from an

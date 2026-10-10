@@ -3,8 +3,9 @@ package config
 // llm_save_patch_test.go — U-05 (REQ-RC30-007): the branches of the llm Save
 // path beyond the AC-RC30-06 round-trip. unchanged, nested scalar, upserted
 // key, and upserted map entry are RED while the patch path is off: the typed
-// rewrite changes bytes and drops comments. The two fallback cases keep the
-// typed rewrite, so they are regression guards that pass either way.
+// rewrite changes bytes and drops comments. The two removal and quoting cases
+// take the same seam path now; their assertions are semantic, so they hold for
+// any path that writes the value.
 
 import (
 	"os"
@@ -120,7 +121,7 @@ func TestLLMSavePatchBranches(t *testing.T) {
 		}
 	})
 
-	t.Run("quoted_value_falls_back_and_round_trips", func(t *testing.T) {
+	t.Run("quoted_value_patched_and_round_trips", func(t *testing.T) {
 		t.Parallel()
 		root, path := writeLLMSaveFixture(t, llmSaveFixture+"  profile: high\n")
 		saveLLMMutation(t, root, func(c *LLMConfig) { c.Profile = "" })
@@ -128,11 +129,11 @@ func TestLLMSavePatchBranches(t *testing.T) {
 			t.Error("cleared profile survived the Save")
 		}
 		if got := reloadLLMSection(t, root).Profile; got != "" {
-			t.Errorf("profile after fallback Save = %q, want empty", got)
+			t.Errorf("profile after the Save = %q, want empty", got)
 		}
 	})
 
-	t.Run("removed_key_falls_back_and_round_trips", func(t *testing.T) {
+	t.Run("removed_key_patched_and_round_trips", func(t *testing.T) {
 		t.Parallel()
 		root, path := writeLLMSaveFixture(t, llmSaveFixture+"  claude_bin: /opt/claude\n")
 		saveLLMMutation(t, root, func(c *LLMConfig) { c.ClaudeBin = "" })
@@ -140,7 +141,7 @@ func TestLLMSavePatchBranches(t *testing.T) {
 			t.Error("cleared claude_bin survived the Save")
 		}
 		if got := reloadLLMSection(t, root).ClaudeBin; got != "" {
-			t.Errorf("claude_bin after fallback Save = %q, want empty", got)
+			t.Errorf("claude_bin after the Save = %q, want empty", got)
 		}
 	})
 }
