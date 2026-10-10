@@ -959,7 +959,8 @@ const codexLaneAutoPrompt = "Run `moai todo --auto` to consume the backlog queue
 func runCodexFactoryLane(cmd *cobra.Command, entry factoryFlagParse, debug bool) error {
 	// The lane session leases through `moai todo --auto` from the parent
 	// checkout — the lease machinery's own precondition (REQ-SD-010).
-	if err := codexLaneParentCheckout(resolveProjectDir()); err != nil {
+	launchDir := codexLaneLaunchDir()
+	if err := codexLaneParentCheckout(launchDir); err != nil {
 		return err
 	}
 	// Debug mode (SPEC-CODEX-DEBUG-MODE-001): the lane launch traces its own
@@ -978,7 +979,7 @@ func runCodexFactoryLane(cmd *cobra.Command, entry factoryFlagParse, debug bool)
 		_, _ = fmt.Fprintln(cmd.ErrOrStderr(), codexInstallHint)
 		return &exitCodeError{code: 1}
 	}
-	root := factoryCardRoot()
+	root := factory.ResolveTodoQueueRootAdopting(launchDir)
 	// The run id and the git requirement arrive together: a lane join
 	// resolves the single active run and refuses outside a git working tree
 	// before any write (REQ-SD-005) — the same door the cc/glm lane join
