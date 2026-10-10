@@ -2,21 +2,22 @@
 
 This file is the verification layer. Each criterion is written as Given-When-Then and names its verifying command. A release-blocking criterion carries a RED cell with four elements: (a) the command, as one shell invocation; (b) its stdout, verbatim; (c) its exit code, as a separate field; (d) the tree SHA. The requirement layer (GEARS) lives in spec.md §2 and is not restated here.
 
-Pre-implementation tree for every RED-now cell: `3975fe3cc25eb1cbc3be79aa16ff3bcd99f8ff21` (3975fe3cc) on `WT-3-2-0`. P-3 (plan.md §C) and M2 (plan.md §F) re-observe the same cells on the post-landing run base, and both observations are recorded in progress.md; neither replaces the other.
+Pre-implementation tree for every RED-now cell: `3975fe3cc25eb1cbc3be79aa16ff3bcd99f8ff21` (3975fe3cc) on `WT-3-2-0`. P-3 (plan.md §C, run phase) and M2 (plan.md §F, run phase) re-observe the in-scope cells on the post-landing run base, each with the run-base SHA recorded; both observations are recorded in progress.md beside the pinned-tree observations, and neither replaces the other.
 
-Evidence sources: `.moai/reports/t1630/evidence/` (local and git-ignored, not tracked; the tracked binding is `.moai/specs/SPEC-USER-SETTINGS-PROTECT-001/evidence-manifest.json`) holds every probe source, overlay definition, and script cited below. Probes run through `go -C <worktree> test -overlay <overlay>` and write nothing into the repository. Scripts: `.moai/reports/t1630/evidence/home-manifest.sh`, `.moai/reports/t1630/evidence/check-codex-env.sh`, `.moai/reports/t1630/evidence/run-ac009.sh`, `.moai/reports/t1630/evidence/grep-cell.sh`, and `.moai/reports/t1630/evidence/fakebin/codex`. Probe-written files exist only under `.moai/reports/t1630/evidence/throwaway-home/`. Repair-round probes: `.moai/reports/t1630/evidence/probe-ac003b_test.go.txt` (overlay `.moai/reports/t1630/evidence/overlay-ac003b.json`, AC-003 part B) and the `TestAC011DBEntryListed` test in `.moai/reports/t1630/evidence/probe-ac011_test.go.txt` (AC-011 clause ii), and `.moai/reports/t1630/evidence/probe-ac005b_test.go.txt` (overlay `.moai/reports/t1630/evidence/overlay-ac005b.json`, AC-005 case ii).
+Evidence sources: `.moai/reports/t1630/evidence/` (local and git-ignored, not tracked; the tracked binding is `.moai/specs/SPEC-USER-SETTINGS-PROTECT-001/evidence-manifest.json`) holds every probe source, overlay definition, and script cited below. Probes run through `go -C <worktree> test -overlay <overlay>` and write nothing into the repository. Scripts: `.moai/reports/t1630/evidence/home-manifest.sh`, `.moai/reports/t1630/evidence/check-codex-env.sh`, `.moai/reports/t1630/evidence/run-ac009.sh`, `.moai/reports/t1630/evidence/grep-cell.sh`, and `.moai/reports/t1630/evidence/fakebin/codex` (these scripts serve the moved criteria AC-006, AC-007, and AC-009; Out of Scope - moved to t1666). Probe-written files exist only under `.moai/reports/t1630/evidence/throwaway-home/`. Repair-round probes: `.moai/reports/t1630/evidence/probe-ac003b_test.go.txt` (overlay `.moai/reports/t1630/evidence/overlay-ac003b.json`, AC-003 part B) and the `TestAC011DBEntryListed` test in `.moai/reports/t1630/evidence/probe-ac011_test.go.txt` (AC-011 clause ii; Out of Scope - moved to t1666), and `.moai/reports/t1630/evidence/probe-ac005b_test.go.txt` (overlay `.moai/reports/t1630/evidence/overlay-ac005b.json`, AC-005 case ii).
 
 Class key: release-blocking (the run cannot close without it), regression-guard (green today and must stay green; or undecidable at plan time, per verification-completeness §2.1: not release-blocking, and not recorded as a pass until its RED is observed in the run phase), gate (a precondition the run checks before it changes anything).
 
 Executed-count gate: a selector counts as executed only when `-v` prints `=== RUN` lines. Each criterion states its minimum N. Zero executed, or a `no tests to run` line, is a failure.
 
-Precondition cell (run before every RED cell in this file):
-- (a) `git diff --quiet 3975fe3cc -- internal cmd`
+Precondition cell (applies to the RED observations recorded in this file; all were taken on the pinned tree 3975fe3cc):
+- (a) `git diff --stat 3975fe3cc HEAD -- internal cmd`, run at the revision under audit; it prints nothing when the Go sources at HEAD are identical to the pinned tree
 - (b) stdout: empty
 - (c) exit code: 0
 - (d) tree: 3975fe3cc25eb1cbc3be79aa16ff3bcd99f8ff21 (the Go sources are identical to the pinned commit)
+The run-base re-observation has its own precondition in plan.md §C (P-2 landing gate, then P-3 re-observation); it does not replace this cell. Out of Scope - moved to t1666: the post-t1619 baseline (a measurement pinned after commit 569a3fe5f).
 
-Test-environment rule: the session does not redirect the shell HOME (the worktree guard refuses such commands), so no probe changes the shell HOME. The AC-003 part B probe sets HOME and MOAI_HOME inside its own test process to t.TempDir paths, so no read or write reaches the operator's home. Each probe is chosen so that it resolves no home path, or runs in a package that has no TestMain (`internal/config/toolpolicy`, `internal/core/project`, `internal/contract/receipt`). The cli probes run in the cli package, whose TestMain redirects MOAI_HOME.
+Test-environment rule: the session does not redirect the shell HOME (the worktree guard refuses such commands), so no probe changes the shell HOME. The AC-003 part B probe sets HOME and MOAI_HOME inside its own test process to t.TempDir paths, so no read or write reaches the operator's home. Each in-scope probe is chosen so that it resolves no home path, or runs in a package that has no TestMain (`internal/config/toolpolicy`, `internal/core/project`). The cli and receipt probes belong to moved criteria (Out of Scope - moved to t1666).
 
 ## AC-001 — The default init path keeps the user's allow, ask, deny, and unmodelled keys (REQ-001)
 
@@ -83,9 +84,9 @@ Test-environment rule: the session does not redirect the shell HOME (the worktre
 Part A (release-blocking): the lists and unmodelled keys survive whether the existing defaultMode differs from or matches the resolved tier default.
 - Verifying command (part A): `go -C /Users/goos/MoAI/moai-adk-go/.moai/worktrees/t1630 test -overlay /Users/goos/MoAI/moai-adk-go/.moai/worktrees/t1630/.moai/reports/t1630/evidence/overlay-ac001-003.json -count=1 -v -run '^TestAC003ListsPreservedUnderEitherDisposition$' ./internal/config/toolpolicy/`.
 - Minimum executed: N=3 (the parent test and its two subtests `differing` and `matching`).
-- RED cell (observed on 3975fe3cc):
-  - (a) command: the verifying command for part A.
-  - (b) stdout (excerpt; the three identical `permissions.ask` and `permissions.deny` lines are elided as `[…]`, and the matching subtest's three lines are shown):
+- RED cell (observed on 3975fe3cc; re-observed in revision 2 at HEAD 5dc6c4530, where `git diff --stat 3975fe3cc HEAD -- internal cmd` prints nothing):
+  - (a) command: the verifying command for part A, run from the worktree root. The re-observation adds `2>/dev/null` so that the stdout stream can be shown on its own; the stdout below carries every line.
+  - (b) stdout (verbatim; re-observed at HEAD 5dc6c4530):
     ```
     === RUN   TestAC003ListsPreservedUnderEitherDisposition
     === RUN   TestAC003ListsPreservedUnderEitherDisposition/differing
@@ -93,22 +94,36 @@ Part A (release-blocking): the lists and unmodelled keys survive whether the exi
                 "defaultMode": "acceptEdits",
                 "additionalDirectories": ["/tmp/x"]
               },"env":{"FOO":"1"}}
-    [… permissions.ask and permissions.deny lines for differing …]
+        zz_ac001_003_test.go:79: permissions.ask was removed; after={"permissions": {
+                "defaultMode": "acceptEdits",
+                "additionalDirectories": ["/tmp/x"]
+              },"env":{"FOO":"1"}}
+        zz_ac001_003_test.go:79: permissions.deny was removed; after={"permissions": {
+                "defaultMode": "acceptEdits",
+                "additionalDirectories": ["/tmp/x"]
+              },"env":{"FOO":"1"}}
     === RUN   TestAC003ListsPreservedUnderEitherDisposition/matching
         zz_ac001_003_test.go:83: permissions.allow was removed; after={"permissions": {
                 "defaultMode": "acceptEdits",
                 "additionalDirectories": ["/tmp/x"]
               },"env":{"FOO":"1"}}
-    [… permissions.ask and permissions.deny lines for matching …]
-    --- FAIL: TestAC003ListsPreservedUnderEitherDisposition (0.01s)
+        zz_ac001_003_test.go:83: permissions.ask was removed; after={"permissions": {
+                "defaultMode": "acceptEdits",
+                "additionalDirectories": ["/tmp/x"]
+              },"env":{"FOO":"1"}}
+        zz_ac001_003_test.go:83: permissions.deny was removed; after={"permissions": {
+                "defaultMode": "acceptEdits",
+                "additionalDirectories": ["/tmp/x"]
+              },"env":{"FOO":"1"}}
+    --- FAIL: TestAC003ListsPreservedUnderEitherDisposition (0.00s)
         --- FAIL: TestAC003ListsPreservedUnderEitherDisposition/differing (0.00s)
         --- FAIL: TestAC003ListsPreservedUnderEitherDisposition/matching (0.00s)
     FAIL
-    FAIL	github.com/modu-ai/moai-adk/internal/config/toolpolicy	0.090s
+    FAIL	github.com/modu-ai/moai-adk/internal/config/toolpolicy	0.089s
     FAIL
     ```
   - (c) exit code: 1
-  - (d) tree: 3975fe3cc25eb1cbc3be79aa16ff3bcd99f8ff21
+  - (d) tree: 3975fe3cc25eb1cbc3be79aa16ff3bcd99f8ff21 (re-observed at HEAD 5dc6c4530)
   - Executed: 3.
 
 Part B (release-blocking; decided Q1): an existing USER-scope `permissions.defaultMode` that differs from the resolved tier default is kept on the default init path (`project.ApplyAutonomyTierBundle` with an empty persisted tier, which resolves to semi-auto) and on the automatic path (persisted tier `automatic`). Both calls take the user settings path, and the probe compares the value in place.
@@ -143,7 +158,7 @@ Part B (release-blocking; decided Q1): an existing USER-scope `permissions.defau
 
 - Given: the settings template `internal/template/templates/.claude/settings.json.tmpl`.
 - When: the template's `permissions.defaultMode` key is matched with the value `"default"`.
-- Then: the template carries exactly one `"defaultMode"` key, and its value is `"default"` (decided Q2; the value is pinned by the lane in progress.md §G, G-17). The rules that a fresh init writes the key only where it is absent and that update never modifies it are run-phase assertions, named in progress.md.
+- Then: the template carries exactly one `"defaultMode"` key, and its value is `"default"` (decided Q2; the value is pinned by the lane in progress.md §G, G-17). The rules that a fresh init writes the key only where it is absent and that update never modifies it are stated in spec.md REQ-004; the run-phase assertions that verify them are named in progress.md when they are authored.
 - Verifying command: `grep -c '"defaultMode": *"default"' /Users/goos/MoAI/moai-adk-go/.moai/worktrees/t1630/internal/template/templates/.claude/settings.json.tmpl`; the count must print 1.
 - Class: release-blocking (decided Q2). Minimum executed: N=1 (the count).
 - RED cell (observed on 3975fe3cc, this session, value pattern):
@@ -207,6 +222,8 @@ Part B (release-blocking; decided Q1): an existing USER-scope `permissions.defau
 
 ## AC-006 — Every package that reaches a home resolver sandboxes MOAI_HOME in its TestMain; the verifier observes it at run time (REQ-006)
 
+**Out of Scope - moved to t1666.** Reason: the sandbox criterion for REQ-006 moves with the test-isolation items; audit defects B5 and B10 sit in its cells. The text below is retained unchanged.
+
 Each cell below is one command with its own stdout and exit code. The text checks are plan-phase observations only. The run-time check is the verdict.
 
 - Verifying command (run-time, the verdict): `go -C /Users/goos/MoAI/moai-adk-go/.moai/worktrees/t1630 test -overlay /Users/goos/MoAI/moai-adk-go/.moai/worktrees/t1630/.moai/reports/t1630/evidence/overlay-ac006.json -count=1 -v -run '^TestAC006SandboxObserved$' ./internal/contract/receipt/`. The probe asserts, inside the test process, that MOAI_HOME and HOME are absolute roots. The run-phase repetition covers every reaching package listed in §A.4 Basis of plan.md (homestate, escalation, factory, factorymsg, web, contract/receipt), once TestMain installs the sandbox.
@@ -221,6 +238,8 @@ Each cell below is one command with its own stdout and exit code. The text check
 - Green path: after M6, Cell 2 returns a TestMain file for the receipt package, and the run-time check passes in all six packages.
 
 ## AC-007 — No test run writes under the operator's real home; the ~/.moai/run entry count does not increase (REQ-007; card judgement 2)
+
+**Out of Scope - moved to t1666.** Reason: the throwaway-HOME leak verifier and the ~/.moai/run growth-0 criterion (REQ-007); audit defect B3. The text below is retained unchanged.
 
 - Given: a before-manifest over the four home roots (`.moai`, `.claude`, `.codex`, `.agents`), taken on the operator's home by the operator (or on a throwaway account), before one scoped run.
 - When: the scoped run of the reaching packages (REQ-007 set) runs under a throwaway HOME. The full-suite verdict is not part of this criterion; it is delegated to the CI workflow on the pushed branch.
@@ -247,6 +266,8 @@ Each cell below is one command with its own stdout and exit code. The text check
 
 ## AC-008 — Under the MOAI_HOME sandbox, RunProjectDir and the store resolvers resolve under the sandbox root (REQ-008)
 
+**Out of Scope - moved to t1666.** Reason: its green path needs the receipt TestMain sandbox install, the AC-006 mechanism that moves with it (REQ-008). The text below is retained unchanged.
+
 - Given: a test process that inherits MOAI_HOME from its parent command and calls no helper that sets it.
 - When: the child-process probe calls `homestate.RunProjectDir`, and the receipt `StoreDir` test runs.
 - Then: the probe finds MOAI_HOME set, and RunProjectDir returns a path under it. The receipt StoreDir test passes.
@@ -272,6 +293,8 @@ Each cell below is one command with its own stdout and exit code. The text check
 
 ## AC-009 — The review-gate live Codex test sets CODEX_HOME to a temporary root (REQ-009; card item b)
 
+**Out of Scope - moved to t1666.** Reason: the Codex CODEX_HOME run cell and its check script (REQ-009); audit defect B2. The text below is retained unchanged.
+
 - Given: the live review-gate test runs with a codex binary first on PATH and MOAI_SKIP_LIVE_CODEX unset. The binary is the evidence fake (`.moai/reports/t1630/evidence/fakebin/codex`): it answers `--version`, writes a names-only record to `.moai/reports/t1630/evidence/codex-env-ac009.names.txt` for any other call (the variable names and a presence check; no values), and never reaches a model.
 - When: `TestHandleCodexReviewGate_LiveCodexBlocksInjectionAndKey` runs (`internal/cli/codex_review_gate_live_test.go:35`).
 - Then: the codex child environment carries CODEX_HOME (presence check on the names-only record). The record holds no values, so it cannot show where the value lies; the run-phase test asserts that under TMPDIR itself, because its CODEX_HOME comes from `t.TempDir()`. The verdict is the check script, because the test skips after the fake codex's review call fails (`codex review turn did not complete`), so the test's own assertion never runs.
@@ -285,6 +308,8 @@ Each cell below is one command with its own stdout and exit code. The text check
 - Green path: after M5 the test sets CODEX_HOME to a temporary root under `t.TempDir()`, the names-only record lists CODEX_HOME, and the check prints `PASS: CODEX_HOME present in the codex child environment (names-only record: …)` with exit 0.
 
 ## AC-010 — A package that omits the sandbox fails the guard with a named finding (REQ-010)
+
+**Out of Scope - moved to t1666.** Reason: its green path needs every reaching package's TestMain to call the sandbox helper, the AC-006 mechanism that moves with it (REQ-010). The text below is retained unchanged.
 
 - Guard name (named now): `TestSandboxGuard_ReachingPackagesInstallSandbox`, in `internal/testhome/guard_test.go` (package `testhome`, created in M6).
 - Guard design: the guard parses each reaching package's TestMain with `go/parser` and `go/ast`. It passes only when the TestMain body contains a call to the shared sandbox helper. A comment or a string that names the helper does not pass. The finding text is `SANDBOX-MISSING: <package dir> reaches a home resolver but its TestMain does not call the sandbox helper`.
@@ -300,6 +325,8 @@ Each cell below is one command with its own stdout and exit code. The text check
 - Green path: after M6 the guard runs and passes on the tree, and fails on the mutant.
 
 ## AC-011 — clean --home scans run and db items; a run item is a candidate only when unreferenced (REQ-011; card item e; Q3 DECIDED)
+
+**Out of Scope - moved to t1666.** Reason: the clean --home run and db candidates, decision Q3 (REQ-011), moved by the operator-delegated split (spec.md HISTORY, revision 2). The text below is retained unchanged.
 
 - Given: a moai home root holding one aged run/ entry that no live record references, and one aged db/ entry.
 - When: the clean-home candidate scan runs (`scanHomeCleanable`, retention 30 days).
@@ -323,6 +350,8 @@ Each cell below is one command with its own stdout and exit code. The text check
 
 ## AC-012 — Dry-run stays the default and --force deletes only allowlisted categories (REQ-012)
 
+**Out of Scope - moved to t1666.** Reason: it guards the clean --home allowlist that REQ-012 changes; REQ-012 and its pointer AC-011 move, so this regression guard has no subject in this SPEC. The text below is retained unchanged.
+
 - Given: a sandboxed home with deletable entries in allowlisted categories and carved-out segments.
 - When: the existing clean-home regression tests run.
 - Then: all three pass.
@@ -338,7 +367,7 @@ Each cell below is one command with its own stdout and exit code. The text check
 - Then: each test exits 0 before any run-phase change begins.
 - Verifying command: `git merge-base --is-ancestor <landing-sha> <run-base-tip>` for each of the three SHAs.
 - Class: gate. Not release-blocking.
-- Observed (plan phase, HEAD 3975fe3cc, representative commits named in plan.md E-14):
+- Observed (revision 2, HEAD 5dc6c4530; the plan-phase observation at worktree base 2aab5f797 gave the same exit values; representative commits named in plan.md E-14):
   - `git merge-base --is-ancestor 8108eb256 HEAD` → `t1619 ancestor-of-HEAD exit=1`
   - `git merge-base --is-ancestor e73a7cbf5 HEAD` → `t1578 ancestor-of-HEAD exit=1`
   - `git merge-base --is-ancestor a372a984c HEAD` → `t1591 ancestor-of-HEAD exit=1`
@@ -346,28 +375,42 @@ Each cell below is one command with its own stdout and exit code. The text check
 
 ## Edge cases
 
-- EC-1 — A settings file that does not exist yet. Observed (evidence probe `TestECObservations` in `.moai/reports/t1630/evidence/probe-ac001-003_test.go.txt`, tree 3975fe3cc): the writer returns no error and creates `{"permissions": {"defaultMode": "acceptEdits"}}`, with no lists. Bound to AC-001 (the run adds the expectation as an assertion).
-- EC-2 — A settings file with no `permissions` key. Observed: the writer returns `render … permissions block not found: no "permissions": key in body` and leaves the file unchanged (`{"env":{"FOO":"1"}}`). Bound to AC-001 (run-phase assertion of the error path). The earlier wording "no lists invented" is replaced by this observation.
-- EC-3 — A settings file that is not valid JSON. Observed: the writer returns `permissions block not found` and leaves the file unchanged (`{not json`). The error path is the observed behaviour, not a claim about the design. Bound to AC-001 (run-phase assertion).
-- EC-4 — A list with duplicate entries. Observed: the writer returns no error, and it removes the whole `allow` list (`{"permissions": {"defaultMode": "acceptEdits"}}`), which is the S-1 defect. The expectation that duplicates are preserved as written is unverified until the fix lands. Bound to AC-001 (run-phase assertion).
-- EC-5 — A HOME path that contains spaces or is a symbolic link. Not observed in plan phase. Unverified. Bound to AC-007 as a run-phase fixture on a throwaway account.
-- EC-6 — A test package whose test files reference no home resolver. Not observed; the set is a name-based measure (plan.md E-9, G-9). Unverified. Bound to the REQ-007 exclusion rule and to AC-006's package set, and checked by the run-phase reach measure.
+EC observation command (cited by EC-1 to EC-4; re-observed in revision 2 at HEAD 5dc6c4530; exit code 0): `go -C /Users/goos/MoAI/moai-adk-go/.moai/worktrees/t1630 test -overlay /Users/goos/MoAI/moai-adk-go/.moai/worktrees/t1630/.moai/reports/t1630/evidence/overlay-ac001-003.json -count=1 -v -run '^TestECObservations$' ./internal/config/toolpolicy/`. Raw stdout:
+
+```
+=== RUN   TestECObservations
+    zz_ac001_003_test.go:92: EC-1 absent file: err=<nil> after="{\n  \"permissions\": {\n    \"defaultMode\": \"acceptEdits\"\n  }\n}"
+    zz_ac001_003_test.go:100: EC-2 no permissions key: err=render "/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestECObservations1851103078/002/settings.json": permissions block not found: no "permissions": key in body after="{\"env\":{\"FOO\":\"1\"}}"
+    zz_ac001_003_test.go:108: EC-3 invalid JSON: err=render "/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestECObservations1851103078/003/settings.json": permissions block not found: no "permissions": key in body after="{not json"
+    zz_ac001_003_test.go:116: EC-4 duplicate allow entries: err=<nil> after="{\"permissions\": {\n    \"defaultMode\": \"acceptEdits\"\n  }}"
+--- PASS: TestECObservations (0.00s)
+PASS
+ok  	github.com/modu-ai/moai-adk/internal/config/toolpolicy	0.074s
+```
+
+- EC-1 — A settings file that does not exist yet. Observed (EC observation command above; the same probe as at 3975fe3cc, re-observed at HEAD 5dc6c4530): the writer returns no error and creates `{"permissions": {"defaultMode": "acceptEdits"}}`, with no lists. Bound to AC-001 (the run adds the expectation as an assertion).
+- EC-2 — A settings file with no `permissions` key. Observed (EC observation command above): the writer returns `render … permissions block not found: no "permissions": key in body` and leaves the file unchanged (`{"env":{"FOO":"1"}}`). Bound to AC-001 (run-phase assertion of the error path). The earlier wording "no lists invented" is replaced by this observation.
+- EC-3 — A settings file that is not valid JSON. Observed (EC observation command above): the writer returns `permissions block not found` and leaves the file unchanged (`{not json`). The error path is the observed behaviour, not a claim about the design. Bound to AC-001 (run-phase assertion).
+- EC-4 — A list with duplicate entries. Observed (EC observation command above): the writer returns no error, and it removes the whole `allow` list (`{"permissions": {"defaultMode": "acceptEdits"}}`), which is the S-1 defect. The expectation that duplicates are preserved as written is unverified until the fix lands. Bound to AC-001 (run-phase assertion).
+- EC-5 — A HOME path that contains spaces or is a symbolic link. Not observed in plan phase. Unverified. Bound to AC-007 as a run-phase fixture on a throwaway account. Out of Scope - moved to t1666 (with AC-007).
+- EC-6 — A test package whose test files reference no home resolver. Not observed; the set is a name-based measure (plan.md E-9, G-9). Unverified. Bound to the REQ-007 exclusion rule and to AC-006's package set, and checked by the run-phase reach measure. Out of Scope - moved to t1666 (REQ-007 and the AC-006 package set).
 
 ## Quality gate criteria
 
-- QG-1: every release-blocking criterion has an observed four-element RED cell on the pinned tree. No pending allowance exists for a release-blocking criterion. AC-007 is release-blocking, and its verifier was executed (RED cell, step 3). AC-011 clause (iii) is a regression-guard, not release-blocking; the run phase authors its RED before its GREEN; reason: plan.md G-21.
+- QG-1: every in-scope release-blocking criterion (AC-001 to AC-005) has an observed four-element RED cell on the pinned tree, and gate AC-013 is observed red at plan time. No pending allowance exists for a release-blocking criterion. The criteria moved to t1666 (AC-006 to AC-012) are not judged by this revision.
 - QG-2: every criterion names its verifying command.
-- QG-3: no criterion depends on the operator's home directory except AC-007, which runs on a throwaway account or a copy.
+- QG-3: no in-scope criterion depends on the operator's home directory. The one criterion that did, AC-007, is Out of Scope - moved to t1666.
 - QG-4: every named test exists, or is authored in run phase with its name recorded in progress.md.
-- QG-5: the criterion count is 13, within the Tier M ceiling of 16.
+- QG-5: in-scope criteria are six (AC-001 to AC-005 and AC-013), within the Tier M ceiling of 16. The file retains 13 criteria; AC-006 to AC-012 (seven) are Out of Scope - moved to t1666.
 
 ## Definition of Done
 
-- The release-blocking criteria (AC-001, AC-002, AC-003 parts A and B, AC-004 with count 1, AC-005, AC-006 to AC-010, and AC-011 clauses (i) and (ii)) are green on the post-fix tree, with verbatim output recorded.
-- The regression guards (AC-012 and AC-011 clause (iii)) are green on the post-fix tree.
+- The release-blocking criteria in scope (AC-001, AC-002, AC-003 parts A and B, AC-004 with count 1, and AC-005) are green on the post-fix tree, with verbatim output recorded. The criteria moved to t1666 (AC-006 to AC-012) are not part of this Definition of Done.
+- Done criterion kept from card 3.2-0-1: the permissions-section diff across `moai init` is 0 when the existing defaultMode already matches the resolved tier default (AC-002).
+- Out of Scope - moved to t1666: the regression guards AC-012 and AC-011 clause (iii).
 - The gate (AC-013) is green before run starts and again before sync.
 - The RED cells are re-observed on the post-landing run base at P-3 and M2, and both observations are recorded in progress.md.
-- AC-007's before-and-after manifest is recorded on a throwaway account.
-- Q1, Q2, Q3, and Q5 are DECIDED by the pinned board citation in decision-index.md. Q4 and Q6 are closed by the evidence produced at M2. Q7 stays open until an operator verdict is recorded. AC-011 clause (iii) is a regression-guard (plan.md G-21), not release-blocking; its RED is authored in the run phase before its GREEN. G-17, G-20, and G-23 (the run and db allowlist, progress.md §G) are closed by the lane in progress.md §G; G-19 by ruling d-20261010T081810Z-49e5; G-18 stays a disclosed gap.
-- Run-phase obligation, before the run phase's GREEN: the run phase adds a release-blocking criterion that observes deletion under `--force` for run candidates and db items (REQ-011, REQ-012). Its RED is observed first, as a four-element cell on the pre-implementation tree, before any GREEN change. Basis: no delete path exists at plan time (plan.md G-21; progress.md §G, G-23). The criterion takes the next free AC number, within the Tier M ceiling of 16.
+- Out of Scope - moved to t1666: AC-007's before-and-after manifest on a throwaway account.
+- Q1, Q2, and Q5 are DECIDED by the pinned board citation in decision-index.md. Q4 and Q6 are closed by the evidence produced at M2. Q3 and Q7 are Out of Scope - moved to t1666. G-17 and G-20 are closed by the lane in progress.md §G; G-18 stays a disclosed gap.
+- Out of Scope - moved to t1666: the run-phase deletion criterion for run and db candidates (REQ-011, REQ-012); its RED is observed first, as a four-element cell, in the follow-up.
 - S-7 (t1594) remains blocked on card text (M8). No requirement covers it in this revision.

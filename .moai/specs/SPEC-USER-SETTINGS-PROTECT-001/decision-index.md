@@ -12,13 +12,13 @@ Digest-prefix (definition approved by the leader in ruling `board:d-20261010T075
 
 | Row | Label | Class | Effect on run |
 |---|---|---|---|
-| Q1 | DECIDED | product-level | an existing USER-scope defaultMode is kept and written only when absent (REQ-003, AC-001, AC-003 part B) |
+| Q1 | DECIDED | product-level | an existing USER-scope defaultMode is kept and written only when absent; supersedes SPEC-AUT-PERMMODES-001 spec.md:83 for the defaultMode write path only (REQ-003, AC-001, AC-003 part B) |
 | Q2 | DECIDED | product-level | the template carries a defaultMode; a fresh init writes it only when absent; update never touches it (REQ-004, AC-004). The value is `"default"` (lane pin, progress.md §G; plan.md G-17) |
-| Q3 | DECIDED | product-level | run items are candidates only when no live record references them; db items are listed and deleted only with an explicit --yes (REQ-011, AC-011). The record's `--yes` is the existing `--force` flag (ruling d-20261010T081810Z-49e5; G-19) |
+| Q3 | DECIDED | product-level | Out of Scope - moved to t1666 (REQ-011, REQ-012, AC-011); row text retained: run items are candidates only when no live record references them; db items are listed and deleted only with an explicit --yes, which is the existing `--force` flag (ruling d-20261010T081810Z-49e5; G-19) |
 | Q4 | EVIDENCE-NEEDED | — | does not block run; closed by the evidence produced at M2 |
 | Q5 | DECIDED | product-level | user-added permissions.allow entries are kept by set union (REQ-005, AC-005). Detection is diff-based against a sidecar record (lane pin, progress.md §G; G-20) |
 | Q6 | EVIDENCE-NEEDED | — | does not block run; closed by the evidence produced at M2 |
-| Q7 | FOUNDER | implementation-level | open; no default applied; the autonomous Kickoff waits for an operator verdict |
+| Q7 | FOUNDER | implementation-level | Out of Scope - moved to t1666 (sandbox mechanism; REQ-006 to REQ-010); row text retained: open, no default applied |
 | Q8 | DECIDED | — | restores the committed contract (REQ-001, AC-001) |
 
 ---
@@ -33,7 +33,7 @@ decision record: decided_by=영실이 판단(운영자 위임) — session 영�
   body: 영실이 판단(운영자 위임) 10-10 — Q1 b · Q2 b(부재 시만) · Q3 c(+db 목록만) · Q5 b. Principle: a value the user changed is never overwritten on any path. Q1 (b): an existing defaultMode is kept; the new SPEC states that it supersedes SPEC-AUT-PERMMODES-001 spec.md:83 ('NOTHING else'), and tier_render.go:106 writes only when the value is absent. Q2 (b): the template carries the default; a fresh init writes it only when absent; update never touches it (t1567's intent: prevent sessions starting in auto mode when defaultMode is unset). Q3 (c): run/ items are delete candidates only when no live record (active run, lease, unclosed card) references them; db/ is listed only and deleted only with an explicit --yes. Q5 (b): user-added permissions.allow entries are kept by set union with the regenerated managed block (marker- or diff-based) and are removed only by the user. The run phase stays after t1578, t1591 and t1619 land.
 ```
 
-Decided behaviour (body line, Q1 (b)): an existing USER-scope `defaultMode` is kept, and the writer writes the key only when it is absent. The record says the new SPEC supersedes SPEC-AUT-PERMMODES-001 spec.md:83 ("NOTHING else") for this case. The record's remark that tier_render.go:106 "writes only when the value is absent" describes the rule, not the current code: the current writer overwrites the value (AC-003 part B RED cell, plan.md G-22).
+Decided behaviour (body line, Q1 (b)): an existing USER-scope `defaultMode` is kept, and the writer writes the key only when it is absent. The new SPEC supersedes SPEC-AUT-PERMMODES-001 spec.md:83 ("NOTHING else") for the defaultMode write path only, as the supersession note at spec.md REQ-003 states. The record's remark that tier_render.go:106 "writes only when the value is absent" describes the rule, not the current code: the current writer overwrites the value (AC-003 part B RED cell, plan.md G-22).
 Why unresolved: not open. Recorded because the record decides the question; the run implements the decided rule.
 Class: product-level (changes the default user-visible behaviour of `moai init` for an existing differing value)
 Operator verdict: decided_by 영실이 판단(운영자 위임); pinned citation board:d-20261010T073547Z-07ae#9c93e47809f9.
@@ -55,6 +55,8 @@ Class: product-level (changes a template default)
 Operator verdict: decided_by 영실이 판단(운영자 위임); pinned citation board:d-20261010T073547Z-07ae#9c93e47809f9.
 
 ### Q3: Which entries under `run/` and `db/` may `moai clean --home` treat as deletable candidates, and under which age or liveness rule?
+
+Out of Scope - moved to t1666 by the operator-delegated split recorded in spec.md HISTORY (revision 2): this decision moves with REQ-011, REQ-012, and AC-011. The text below is retained unchanged.
 
 Label: DECIDED
 Authority anchor: `board:d-20261010T073547Z-07ae#9c93e47809f9` (decision-board record; decided_by 영실이 판단, operator-delegated). Pinned lines, copied verbatim:
@@ -102,6 +104,8 @@ Evidence needed: a run-phase `moai init --force` on a throwaway project with a t
 Operator verdict:
 
 ### Q7: Which mechanism installs the test HOME and MOAI_HOME sandbox: a shared helper called from each package's TestMain (the card's wording), or a fail-closed guard inside the single home resolver?
+
+Out of Scope - moved to t1666 by the operator-delegated split recorded in spec.md HISTORY (revision 2): this decision has no subject once REQ-006 to REQ-010 and AC-006 to AC-010 move. The text below is retained unchanged.
 
 Label: FOUNDER
 Class: implementation-level
