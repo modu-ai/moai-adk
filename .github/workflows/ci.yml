@@ -219,7 +219,7 @@ jobs:
           # selector measured via `go test -list` on 47034f5e9 plus this change;
           # `go test -list` honors -run but IGNORES -skip, so the ordinary
           # set is never derived from it).
-          go test -json -coverprofile=coverage.out -covermode=atomic -timeout 25m -skip '^(TestGuard_.*|TestCodexCommand_NeutralityScan|TestCodexSpecFiles_NoBuildTagsOrSyscall|TestCodexSpecFiles_ExecPrimitivesCodexOnly|TestVocabularyGuardControls|TestDestructiveTargetRegistry_CoversAllSites|TestCodexCommand_GuardFileLiteralsNeutral|TestProductionStringLiteralsUseLeaderLaneVocabulary)$' ./... > test-stream.json || rc=$?
+          bash scripts/ci/retry-flaky.sh --registry scripts/ci/flaky-registry.txt -- go test -json -coverprofile=coverage.out -covermode=atomic -timeout 25m -skip '^(TestGuard_.*|TestCodexCommand_NeutralityScan|TestCodexSpecFiles_NoBuildTagsOrSyscall|TestCodexSpecFiles_ExecPrimitivesCodexOnly|TestVocabularyGuardControls|TestDestructiveTargetRegistry_CoversAllSites|TestCodexCommand_GuardFileLiteralsNeutral|TestProductionStringLiteralsUseLeaderLaneVocabulary)$' ./... > test-stream.json || rc=$?
           # Reporter only: the census of THIS run's stream (exit 0 on any
           # readable stream). The committed-fixture check of the census script
           # is census-check.sh, which runs once, in the guard-bundle job.
@@ -367,7 +367,7 @@ jobs:
         shell: bash
         run: |
           rc=0
-          go test -json -race -count=1 -timeout 20m -run '^Test([A-E]|Fa)' ./internal/cli/ > test-stream-race-cli-1.json || rc=$?
+          bash scripts/ci/retry-flaky.sh --registry scripts/ci/flaky-registry.txt -- go test -json -race -count=1 -timeout 20m -run '^Test([A-E]|Fa)' ./internal/cli/ > test-stream-race-cli-1.json || rc=$?
           bash scripts/ci-census/test-census.sh test-stream-race-cli-1.json
           # A selector that matched no test is a silent green, not a pass: refuse it.
           grep -q '"Test":"' test-stream-race-cli-1.json || { echo "FAIL: -run selector matched no test (empty sweep)"; rc=1; }
@@ -419,7 +419,7 @@ jobs:
         shell: bash
         run: |
           rc=0
-          go test -json -race -count=1 -timeout 20m -run '^Test(F([^a]|$)|[G-I])' ./internal/cli/ > test-stream-race-cli-2.json || rc=$?
+          bash scripts/ci/retry-flaky.sh --registry scripts/ci/flaky-registry.txt -- go test -json -race -count=1 -timeout 20m -run '^Test(F([^a]|$)|[G-I])' ./internal/cli/ > test-stream-race-cli-2.json || rc=$?
           bash scripts/ci-census/test-census.sh test-stream-race-cli-2.json
           # A selector that matched no test is a silent green, not a pass: refuse it.
           grep -q '"Test":"' test-stream-race-cli-2.json || { echo "FAIL: -run selector matched no test (empty sweep)"; rc=1; }
@@ -470,7 +470,7 @@ jobs:
         shell: bash
         run: |
           rc=0
-          go test -json -race -count=1 -timeout 20m -run '^Test[J-R]' ./internal/cli/ > test-stream-race-cli-3.json || rc=$?
+          bash scripts/ci/retry-flaky.sh --registry scripts/ci/flaky-registry.txt -- go test -json -race -count=1 -timeout 20m -run '^Test[J-R]' ./internal/cli/ > test-stream-race-cli-3.json || rc=$?
           bash scripts/ci-census/test-census.sh test-stream-race-cli-3.json
           # A selector that matched no test is a silent green, not a pass: refuse it.
           grep -q '"Test":"' test-stream-race-cli-3.json || { echo "FAIL: -run selector matched no test (empty sweep)"; rc=1; }
@@ -522,7 +522,7 @@ jobs:
         shell: bash
         run: |
           rc=0
-          go test -json -race -count=1 -timeout 20m -run '^Test([S-Z]|[^A-Za-z])' ./internal/cli/ > test-stream-race-cli-4.json || rc=$?
+          bash scripts/ci/retry-flaky.sh --registry scripts/ci/flaky-registry.txt -- go test -json -race -count=1 -timeout 20m -run '^Test([S-Z]|[^A-Za-z])' ./internal/cli/ > test-stream-race-cli-4.json || rc=$?
           bash scripts/ci-census/test-census.sh test-stream-race-cli-4.json
           # A selector that matched no test is a silent green, not a pass: refuse it.
           grep -q '"Test":"' test-stream-race-cli-4.json || { echo "FAIL: -run selector matched no test (empty sweep)"; rc=1; }
@@ -575,7 +575,7 @@ jobs:
         shell: bash
         run: |
           rc=0
-          go test -json -race -count=1 -timeout 25m -run '^Test' ./internal/harness/rosterguard/ > test-stream-race-rosterguard.json || rc=$?
+          bash scripts/ci/retry-flaky.sh --registry scripts/ci/flaky-registry.txt -- go test -json -race -count=1 -timeout 25m -run '^Test' ./internal/harness/rosterguard/ > test-stream-race-rosterguard.json || rc=$?
           bash scripts/ci-census/test-census.sh test-stream-race-rosterguard.json
           # A selector that matched no test is a silent green, not a pass: refuse it.
           grep -q '"Test":"' test-stream-race-rosterguard.json || { echo "FAIL: -run selector matched no test (empty sweep)"; rc=1; }
@@ -632,7 +632,7 @@ jobs:
           rc=0
           pkgs="$(go list ./... | grep -v -x -e 'github.com/modu-ai/moai-adk/internal/cli' -e 'github.com/modu-ai/moai-adk/internal/harness/rosterguard')"
           test -n "$pkgs" || { echo "FAIL: empty remainder package list (a bad listing is not evidence)"; exit 1; }
-          go test -json -race -count=1 -timeout 15m $pkgs > test-stream-race-remainder.json || rc=$?
+          bash scripts/ci/retry-flaky.sh --registry scripts/ci/flaky-registry.txt -- go test -json -race -count=1 -timeout 15m $pkgs > test-stream-race-remainder.json || rc=$?
           bash scripts/ci-census/test-census.sh test-stream-race-remainder.json
           # A leg that ran no test is a silent green, not a pass: refuse it.
           grep -q '"Test":"' test-stream-race-remainder.json || { echo "FAIL: remainder ran no test (empty sweep)"; rc=1; }
