@@ -1,0 +1,91 @@
+red-m1-repair.txt — SPEC-LOCAL-MAIN-FLOW-001, card t1616, run-phase RED repair (cycle_type=tdd).
+red-m1.txt (the original M1 step 1 RED record) is kept unchanged. This file is new.
+
+Seam (commit 1): the eight merge tests in internal/cli/local_main_merge_test.go call the exported
+factory.RunMergeStep directly through lmfStep. Operands: Root = primary checkout, IntegrationWorktree = primary
+checkout, IntegrationBranch = main, CardID = t1, CallerSessionID = sess-lane-1. ReadCard = the verb's own
+card-gate read (integrationReadMergeCardForRun, integration_merge.go:147). The surface gate
+(integrationMergeWorktree, integration_merge.go:128) is bypassed by construction. No production code changed.
+
+Measurement base: HEAD 8526e72de. The repaired test file was uncommitted in the working tree when the runs below
+were taken, so each run measures the repaired file on the unchanged production code.
+
+Verdict labels: RED = fails at its own criterion assertion; PASS-GUARD = passes on unchanged code (finding, not
+weakened); SURFACE-REFUSAL-NOT-VALID = fails on the verb surface refusal; BLOCKED = compile or seam blocker.
+
+=== Command 1 (commit 1: eight repaired merge tests) ===
+go test ./internal/cli/ -run '^(TestLocalMainMergeMergesIntoPrimary|TestLocalMainMergeRefusesDirtyPrimary|TestLocalMainMergeRefusesMovedHead|TestLocalMainMergeStatusSetUnchanged|TestLocalMainMergePreservesIgnoredFile|TestLocalMainMergeRefusesIgnoredAncestor|TestLocalMainMergeRefusesFileOverIgnoredDirectory|TestLocalMainMergeCaseAliasOutcome)$' -v -count=1
+--- verbatim output follows ---
+=== RUN   TestLocalMainMergeMergesIntoPrimary
+--- PASS: TestLocalMainMergeMergesIntoPrimary (4.02s)
+=== RUN   TestLocalMainMergeRefusesDirtyPrimary
+    local_main_merge_test.go:313: the guidance must forbid stashing (plan §B4): integration merge: the integration worktree is not clean (1 status lines); clean it and re-measure, then re-acquire
+--- FAIL: TestLocalMainMergeRefusesDirtyPrimary (1.95s)
+=== RUN   TestLocalMainMergeRefusesMovedHead
+    local_main_merge_test.go:331: a HEAD that moved to another branch during the merge must hold the landing (plan §B3 step 6)
+--- FAIL: TestLocalMainMergeRefusesMovedHead (3.76s)
+=== RUN   TestLocalMainMergeStatusSetUnchanged
+--- PASS: TestLocalMainMergeStatusSetUnchanged (3.84s)
+=== RUN   TestLocalMainMergePreservesIgnoredFile
+--- PASS: TestLocalMainMergePreservesIgnoredFile (4.66s)
+=== RUN   TestLocalMainMergeRefusesIgnoredAncestor
+--- PASS: TestLocalMainMergeRefusesIgnoredAncestor (2.52s)
+=== RUN   TestLocalMainMergeRefusesFileOverIgnoredDirectory
+--- PASS: TestLocalMainMergeRefusesFileOverIgnoredDirectory (2.59s)
+=== RUN   TestLocalMainMergeCaseAliasOutcome
+--- PASS: TestLocalMainMergeCaseAliasOutcome (2.88s)
+FAIL
+FAIL	github.com/modu-ai/moai-adk/internal/cli	27.644s
+FAIL
+exit: 1
+
+=== Verdicts from command 1 (read from the verbatim output above) ===
+Decisive lines are the t.Fatalf lines of internal/cli/local_main_merge_test.go, as the go test output names them.
+
+TestLocalMainMergeMergesIntoPrimary: PASS-GUARD. Output: "--- PASS: TestLocalMainMergeMergesIntoPrimary (4.02s)".
+  The unchanged step merges into the primary's local main and the first-parent, second-parent, and symbolic-HEAD assertions hold.
+TestLocalMainMergeRefusesDirtyPrimary: RED at local_main_merge_test.go:313.
+  The step returns MergeExitWorktreeDirty (the code assertion passes). Its message lacks the plan B4 guidance text "Do not stash" that AC-LMF-004 requires.
+  Decisive output line: "the guidance must forbid stashing (plan §B4)".
+TestLocalMainMergeRefusesMovedHead: RED at local_main_merge_test.go:331.
+  The step returns nil. Its post-merge checks read the merge tree and the worktree cleanliness, not the symbolic HEAD (plan B3 step 6).
+  Decisive output line: "a HEAD that moved to another branch during the merge must hold the landing".
+TestLocalMainMergeStatusSetUnchanged: PASS-GUARD. Output: "--- PASS: TestLocalMainMergeStatusSetUnchanged (3.84s)".
+TestLocalMainMergePreservesIgnoredFile: PASS-GUARD. Output: "--- PASS: TestLocalMainMergePreservesIgnoredFile (4.66s)".
+TestLocalMainMergeRefusesIgnoredAncestor: PASS-GUARD (shape A). Output: "--- PASS: TestLocalMainMergeRefusesIgnoredAncestor (2.52s)".
+  The existing collision check (integration_merge_step.go:313, FindAddedPathCollisions) returns MergeExitCollision naming runtime, and the ignored content is kept.
+TestLocalMainMergeRefusesFileOverIgnoredDirectory: PASS-GUARD (shape B). Output: "--- PASS: TestLocalMainMergeRefusesFileOverIgnoredDirectory (2.59s)".
+TestLocalMainMergeCaseAliasOutcome: PASS-GUARD (shape C), on the case-insensitive branch (test line 408).
+  A probe of the temp volume (a lowercase name resolves to an uppercase-created file) confirmed that branch.
+
+SURFACE-REFUSAL-NOT-VALID: none. No run printed "the only tree holding".
+
+=== Code observations (read at HEAD 8526e72de, not measured by command 1) ===
+- integration_merge_step.go:466 invokes git merge --no-ff --no-overwrite-ignore -q -m msg pinned. It carries no -c merge.autoStash=false (plan B3 step 5).
+- The post-merge checks at integration_merge_step.go:525-535 compare the merge tree and the worktree cleanliness. They do not read the symbolic HEAD (plan B3 step 6). Command 1 observes this through TestLocalMainMergeRefusesMovedHead.
+
+=== Command 1 re-run (after the header comment edit, same tree otherwise; this is the state committed as commit 1) ===
+=== RUN   TestLocalMainMergeMergesIntoPrimary
+--- PASS: TestLocalMainMergeMergesIntoPrimary (2.84s)
+=== RUN   TestLocalMainMergeRefusesDirtyPrimary
+    local_main_merge_test.go:313: the guidance must forbid stashing (plan §B4): integration merge: the integration worktree is not clean (1 status lines); clean it and re-measure, then re-acquire
+--- FAIL: TestLocalMainMergeRefusesDirtyPrimary (1.75s)
+=== RUN   TestLocalMainMergeRefusesMovedHead
+    local_main_merge_test.go:331: a HEAD that moved to another branch during the merge must hold the landing (plan §B3 step 6)
+--- FAIL: TestLocalMainMergeRefusesMovedHead (2.94s)
+=== RUN   TestLocalMainMergeStatusSetUnchanged
+--- PASS: TestLocalMainMergeStatusSetUnchanged (5.02s)
+=== RUN   TestLocalMainMergePreservesIgnoredFile
+--- PASS: TestLocalMainMergePreservesIgnoredFile (3.63s)
+=== RUN   TestLocalMainMergeRefusesIgnoredAncestor
+--- PASS: TestLocalMainMergeRefusesIgnoredAncestor (2.68s)
+=== RUN   TestLocalMainMergeRefusesFileOverIgnoredDirectory
+--- PASS: TestLocalMainMergeRefusesFileOverIgnoredDirectory (1.89s)
+=== RUN   TestLocalMainMergeCaseAliasOutcome
+--- PASS: TestLocalMainMergeCaseAliasOutcome (1.75s)
+FAIL
+FAIL	github.com/modu-ai/moai-adk/internal/cli	23.905s
+FAIL
+exit: 1
+
+Re-run verdicts match the first run: 2 FAIL (decisive lines 313 and 331), 6 PASS-GUARD, no surface refusal.

@@ -1,15 +1,21 @@
 package cli
 
 // local_main_merge_test.go — SPEC-LOCAL-MAIN-FLOW-001 (card t1616), M1 step 1
-// RED tests for the landing verb on the primary checkout's local main
+// RED tests for the landing merge on the primary checkout's local main
 // (REQ-LMF-003, REQ-LMF-004, REQ-LMF-006; plan §B3, §B4, §B5).
 //
-// Every test drives the production verb `moai integration merge --card t1` in
-// process against a real git fixture. On the unchanged code the verb refuses
-// the primary checkout inside integrationMergeWorktree, before any gate runs,
-// so each primary-surface assertion below fails at its own check.
+// Each merge test drives the exported factory.RunMergeStep directly, with the
+// primary checkout as IntegrationWorktree (the seam). The landing verb's
+// surface gate (integrationMergeWorktree) refuses the primary before the step
+// runs, so a verb-level call cannot reach these assertions; the surface is
+// covered by local_main_verb_test.go. Apart from the worktree, the seam passes
+// the verb's operands (integration_merge.go:100-106) and the same card-gate
+// read (integrationReadMergeCardForRun). The workflow gate is set as each
+// fixture states it, but the step does not read it: the surface decision
+// belongs to the verb, and the seam bypasses it.
 
 import (
+	"context"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -179,6 +185,31 @@ func lmfVerb(t *testing.T) error {
 	return err
 }
 
+// lmfStep runs the merge step directly for the fixture's card, as the landing
+// verb runs it after its surface gate (integration_merge.go:100-106): the
+// operands the verb passes, the primary checkout as the integration worktree,
+// and the card-gate read the verb's ReadCard seam performs. The surface gate is
+// bypassed by construction, so a failure here belongs to the step.
+func lmfStep(t *testing.T, root string) (string, error) {
+	t.Helper()
+	lane, err := factoryLaneLabelFromEnv("merge")
+	if err != nil {
+		t.Fatalf("fixture: the lane label must resolve: %v", err)
+	}
+	ctx := context.Background()
+	return factory.RunMergeStep(factory.MergeStepInput{
+		Root:                root,
+		IntegrationWorktree: root,
+		IntegrationBranch:   lmfBranch,
+		CardID:              lmfCard,
+		CallerSessionID:     lmfSession,
+	}, factory.MergeStepSeams{
+		ReadCard: func(cardID string) (factory.MergeCardState, error) {
+			return integrationReadMergeCardForRun(ctx, root, fcRun, cardID, lane)
+		},
+	})
+}
+
 // lmfStatus reads the primary's status with untracked files listed one by one.
 func lmfStatus(t *testing.T, root string) string {
 	t.Helper()
@@ -215,13 +246,13 @@ func lmfCaseInsensitive(t *testing.T) bool {
 	return err == nil
 }
 
-// lmfExpectCollision asserts that the landing verb refused with
+// lmfExpectCollision asserts that the merge step refused with
 // MergeExitCollision, named the colliding path, performed no merge, and
 // released the window.
 func lmfExpectCollision(t *testing.T, root, path string) {
 	t.Helper()
 	before := lmfHead(t, root)
-	err := lmfVerb(t)
+	_, err := lmfStep(t, root)
 	if err == nil {
 		t.Fatalf("a candidate that would overwrite ignored bytes at %q must be refused", path)
 	}
@@ -245,8 +276,8 @@ func TestLocalMainMergeMergesIntoPrimary(t *testing.T) {
 	root, cardWT := lmfMergeFixture(t, true, lmfSpec{cardPaths: []string{"alpha.txt"}})
 	before := lmfHead(t, root)
 	cardTip := fcGit(t, cardWT, "rev-parse", "HEAD")
-	if err := lmfVerb(t); err != nil {
-		t.Fatalf("with the gate on, the verb must merge the card into the primary's local main: %v", err)
+	if _, err := lmfStep(t, root); err != nil {
+		t.Fatalf("the step must merge the card into the primary's local main: %v", err)
 	}
 	if first := fcGit(t, root, "rev-parse", "HEAD^1"); first != before {
 		t.Fatalf("the first parent of the new HEAD must be the pre-merge HEAD %s, got %s", before, first)
@@ -270,7 +301,7 @@ func TestLocalMainMergeRefusesDirtyPrimary(t *testing.T) {
 		t.Fatal(err)
 	}
 	before := lmfHead(t, root)
-	err := lmfVerb(t)
+	_, err := lmfStep(t, root)
 	if err == nil {
 		t.Fatalf("a primary checkout with an uncommitted change must refuse the landing")
 	}
@@ -295,7 +326,7 @@ func TestLocalMainMergeRefusesMovedHead(t *testing.T) {
 	// symbolic HEAD no longer names the configured branch.
 	root, cardWT := lmfMergeFixture(t, true, lmfSpec{cardPaths: []string{"alpha.txt"}, hook: lmfMovedHeadHook})
 	cardTip := fcGit(t, cardWT, "rev-parse", "HEAD")
-	err := lmfVerb(t)
+	_, err := lmfStep(t, root)
 	if err == nil {
 		t.Fatalf("a HEAD that moved to another branch during the merge must hold the landing (plan §B3 step 6)")
 	}
@@ -315,8 +346,8 @@ func TestLocalMainMergeStatusSetUnchanged(t *testing.T) {
 	// the set before it (empty, by the fully-clean rule of plan §B4).
 	root, _ := lmfMergeFixture(t, true, lmfSpec{cardPaths: []string{"alpha.txt"}})
 	before := lmfStatus(t, root)
-	if err := lmfVerb(t); err != nil {
-		t.Fatalf("with the gate on, the landing must complete: %v", err)
+	if _, err := lmfStep(t, root); err != nil {
+		t.Fatalf("the landing step must complete: %v", err)
 	}
 	if after := lmfStatus(t, root); after != before {
 		t.Fatalf("the status set must be unchanged by the landing (REQ-LMF-006): before %q, after %q", before, after)
@@ -331,7 +362,7 @@ func TestLocalMainMergePreservesIgnoredFile(t *testing.T) {
 		cardPaths: []string{"alpha.txt"},
 		local:     map[string]string{"build/cache.bin": "cache-keep"},
 	})
-	if err := lmfVerb(t); err != nil {
+	if _, err := lmfStep(t, root); err != nil {
 		t.Fatalf("an ignored file off the merge path must not block the landing: %v", err)
 	}
 	lmfAssertFile(t, filepath.Join(root, "build", "cache.bin"), "cache-keep")
@@ -379,7 +410,7 @@ func TestLocalMainMergeCaseAliasOutcome(t *testing.T) {
 		lmfAssertFile(t, filepath.Join(root, "foo.txt"), "local-C")
 		return
 	}
-	if err := lmfVerb(t); err != nil {
+	if _, err := lmfStep(t, root); err != nil {
 		t.Fatalf("on a case-sensitive volume the landing completes and both files keep their own bytes: %v", err)
 	}
 	lmfAssertFile(t, filepath.Join(root, "foo.txt"), "local-C")
