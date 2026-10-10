@@ -5,13 +5,13 @@ Design decisions behind spec.md and plan.md. Every decision names its requiremen
 ## 1. Data model: shared roots remain the install source
 
 - Install source: the four `$HOME` roots at `internal/userassets/paths.go:36-43` (REQ-RC30-001). Operator direction D1 keeps this model. SPEC-USER-ASSET-INSTALL-001 (completed, on main) decided it.
-- Project-side copies (`.claude/skills/moai/**`, `.claude/agents/moai/**`) are not the install source. They are removed only after the profile-visibility check passes (REQ-RC30-003). Until then they stay.
+- Project-side copies (`.claude/skills/moai/**`, `.claude/agents/moai/**`) are not the install source. They are removed only after the profile-visibility check (AC-RC30-01, card t1668) passes (REQ-RC30-003). Until then they stay.
 - The profile directory is not written. Writing into it would conflict with REQ-002 of SPEC-USER-ASSET-INSTALL-001 (spec.md:255); the operator decided Q2 as option (c), which writes nothing into it (d-20261010T060848Z-dc3b).
 
 ## 2. Profile reach
 
-- Reach is decided: option (c), keeping the project-side copies when a profile is detected (d-20261010T060848Z-dc3b). The install into the profile directory (option (b)) is not adopted, and the runnable verification (AC-RC30-01) moved to SPEC B.
-- The design records option (c) as decided and option (b) as not adopted (d-20261010T060848Z-dc3b). Under option (c), a profile-mapped project keeps its shipped copies, so no removal can break a profile session; the runnable profile-visibility check (AC-RC30-01) moved to SPEC B.
+- Reach is decided: option (c), keeping the project-side copies in a profile-mapped project (d-20261010T060848Z-dc3b). The install into the profile directory (option (b)) is not adopted. The state "profile-mapped" is not a separate predicate in this design: the reach judgment is the doctor judgment after `moai update` (AC-RC30-28, the single judge of REQ-RC30-002). The runnable profile-visibility verification (AC-RC30-01) moved to card t1668.
+- The design records option (c) as decided and option (b) as not adopted (d-20261010T060848Z-dc3b). Under option (c), a profile-mapped project keeps its shipped copies. That keeping is safe only as a premise: project-level visibility under `CLAUDE_CONFIG_DIR` is partly measured (decision-index.md Q6: project skills 3 of 3 on the moai-adk profile; project agents and the mo.ai.kr profile not measured). The runnable check (AC-RC30-01) moved to card t1668.
 
 ## 3. Migration ordering
 
@@ -31,15 +31,15 @@ Design decisions behind spec.md and plan.md. Every decision names its requiremen
 ## 6. Output
 
 - One renderer: `internal/cli/update_tux.go`. Inputs are measured values only (REQ-RC30-011).
-- Layout order: banner once (REQ-RC30-013), step progress (REQ-RC30-014 [MOVED to the follow-up placement F1]), conflicts and warnings (REQ-RC30-017), one-screen summary with one restore command (REQ-RC30-016 [MOVED to the follow-up placement F1]), file lists collapsed (REQ-RC30-015).
+- Layout order: banner once (REQ-RC30-013), step progress (REQ-RC30-014 [MOVED to card t1669]), conflicts and warnings (REQ-RC30-017), one-screen summary with one restore command (REQ-RC30-016 [MOVED to card t1669]), file lists collapsed (REQ-RC30-015).
 - Glyphs: ✓, !, ✗ from the existing whitelist (REQ-TUXIU-004). Colour and motion follow REQ-TUXIU-041 and REQ-TUXIU-042.
-- Fallback: `NO_COLOR`, non-TTY, `CI`, and narrow terminals use plain lines with the same counts (REQ-RC30-018 [MOVED to the follow-up placement F1]).
-- Thresholds are named constants in the `internal/tui` defaults file (hardcoding rule). The width threshold is decision Q7, pending a leader or operator decision with no applied default.
+- Fallback: `NO_COLOR`, non-TTY, `CI`, and narrow terminals use plain lines with the same counts (REQ-RC30-018 [MOVED to card t1669]).
+- Thresholds are named constants in the `internal/tui` defaults file (hardcoding rule). The width threshold is 60 columns, the Q7 applied default (decision-index.md Q7; open to operator override).
 
 ## 7. Version and skip
 
 - The skip decision compares a template tree hash, not a version string (U-13). The stamp is checked against the deployed bytes (U-14).
-- A user root is never refreshed by an older binary (REQ-RC30-012, U-11). Both branches touch the install code that enforces this, so the change lands after absorption (M1).
+- A user root is never refreshed by an older binary (REQ-RC30-012, U-11). Both branches touch the install code that enforces this; both branches are absorbed (spec.md § G.2), so the change lands in M1 on the absorbed tree.
 
 ## 8. Out of design scope
 

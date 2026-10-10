@@ -1,6 +1,6 @@
 # SPEC-UPDATE-REPAIR-RC30-001 — Research and verification appendix
 
-Five sections, per `verification-claim-integrity.md` § 3: Claim, Evidence, Baseline-attribution, Gaps, Residual-risk. Tree for every RED cell in this appendix: `8fa0dc24b` (code paths equal main `2aab5f797b75983e132af451da68f69e3426557b`), unless a row names another ref.
+Five sections, per `verification-claim-integrity.md` § 3: Claim, Evidence, Baseline-attribution, Gaps, Residual-risk. Tree for every RED cell in this appendix: `8fa0dc24b` (code paths equal main `2aab5f797b75983e132af451da68f69e3426557b`), unless a row names another ref. Revision 0.1.4: the evidence blocks below are the revision 0.1.3 measurements at `8fa0dc24b`, kept as the historical record; the RED ledger is re-pinned to `6f95917a1` in acceptance.md, and its drift is recorded there.
 
 ## 1. Claim
 
@@ -210,17 +210,17 @@ $ grep -n "hideClaude" internal/template/harness_fs.go   (excerpt)
 112:	if h.hideClaude && (name == ".claude" || strings.HasPrefix(name, ".claude/")) {
 ```
 
-**E-R5 (item-register count, run after the revision)**
+**E-R5 (item-register count, re-run in revision 0.1.4 on the current spec.md)**
 ```text
 $ grep -Ec "^\| U-[0-9]{2} \|" .moai/specs/SPEC-UPDATE-REPAIR-RC30-001/spec.md
 31
 $ grep -E "^\| U-[0-9]{2} \|" .moai/specs/SPEC-UPDATE-REPAIR-RC30-001/spec.md | grep -Eo "IN-NOW|BLOCKED-ON|GAP-INVESTIGATE|DECISION-PENDING" | wc -l
-      28
+      23
 $ grep -E "^\| U-[0-9]{2} \|" .moai/specs/SPEC-UPDATE-REPAIR-RC30-001/spec.md | grep -Evc "IN-NOW|BLOCKED-ON|GAP-INVESTIGATE|DECISION-PENDING"
-3
-(counts by disposition cell: IN-NOW 13, BLOCKED-ON 7, GAP-INVESTIGATE 7, DECISION-PENDING 1; moved to SPEC B 3)
+8
+(per-token counts, the same pipeline with `grep -Eo` on one token at a time: IN-NOW 9, BLOCKED-ON 8, GAP-INVESTIGATE 6, DECISION-PENDING 0; the 8 rows without a token are U-02, U-10 and U-31 (card t1668) and U-26 to U-30 (card t1669))
 ```
-A first count returned 32 tokens. The extra token was in the Source cell of U-14 ("Lane brief IN-NOW example"). That repeat was removed, and the count above is the one after the removal.
+Revision 0.1.3 recorded 28 tokens, 3 rows without a token, and the counts 13, 7, 7 and 1. That transcript did not reproduce: on the revision 0.1.3 text, 8 rows carry no token, not 3, and the per-token counts differ. Revision 0.1.4 re-ran the check above on the current spec.md; the row count is unchanged at 31.
 
 **E-MIGRATE-PATH (C7)**
 ```text
@@ -251,12 +251,12 @@ Not observed in this run. Each gap is listed with the next step.
 8. **Locale mechanism (U-30).** Not read. Next step: find how update output strings are localized, if at all.
 9. **Queue card text.** t1527, t1594, and t1612 were not read. spec.md § F records their overlaps with the disposition undecided. Next step: read the three card texts before the overlap is decided.
 10. **docs-site path (U-20).** `docs-site/content/ko/cli-reference/update.md` was not checked. Next step: `ls` of the path.
-11. **Runnable profile-visibility command (AC-RC30-01).** Not measured. Next step: M0.
+11. **Runnable profile-visibility command (AC-RC30-01).** Not measured. Next step: card t1668 (operator-side profile session).
 12. **Coverage baseline.** Not measured. The target is 85% or more per package. Next step: `go test -cover` on each touched package, in M7.
 13. **Order deviation.** The SPEC-ID check ran after the write of spec.md, not before. The check now passes.
 14. **Base ambiguity.** The worktree is cut from main, while `.claude/rules/local/gitflow-lane-protocol.md` § 1 names develop. The lane must confirm the base before absorption.
 15. **Card t1616 status.** Landing waits for it. Its state was not checked.
-16. **Absorption order and terminal state (leader intake, confirmed by the leader).** The absorption order is t1591, then t1578, then t1619. Merge-ready is this card's terminal state until card t1616 lands. No merge is performed in this card.
+16. **Absorption order and terminal state (leader intake, confirmed by the leader).** The absorption order is t1591, then t1578, then t1619. The absorption is done (merges `ff2bc876d` and `6f95917a1`; progress.md § G). Merge-ready is this card's terminal state until card t1616 lands. No merge into main is performed in this card.
 17. **Integrity probe harness source (U-31).** The probe exists only on WT-update-migration-fixes (E-PROBE). Its codex-only RED cell (AC-RC30-26) can be captured only after M1 absorption. How the probe learns that a project is codex-only (the harness condition source) is not yet read in this tree, so the condition's exact source is a Gap.
 
 ## 5. Residual-risk
@@ -265,5 +265,5 @@ Not observed in this run. Each gap is listed with the next step.
 - **Overlap risk.** Both branches change `internal/userassets/install.go`. A plain merge at M1 may conflict in ways the file list does not show.
 - **Drift risk.** Branch tips move. Ranges stay correct only if they are re-measured after each absorption.
 - **Audit-carry risk.** Most root causes are audit claims (§ 4 item 4). A cause that is wrong in this tree will still appear in the plan until M0 corrects it.
-- **Budget risk.** Tier L allows 25 requirements (25 used, REQ-RC30-001 to REQ-RC30-025) and 25 criteria (26 used, AC-RC30-01 to AC-RC30-26; OPEN LEADER DECISION B1). The leader decides between a split and a merge; no relaxation is recorded.
-- **Decision risk.** Q2 is pending (operator decision). Q1 is resolved from disk. U-30 waits for the locale-mechanism read, and U-01 is DECISION-PENDING (Q2). Q7 is pending with no applied default.
+- **Budget risk.** Tier L allows 25 requirements and 25 criteria. SPEC A carries 17 requirements (REQ-RC30-003, -004 and -021 owned by card t1668; REQ-RC30-014, -016, -018, -019 and -020 owned by card t1669) and 22 criteria (AC-RC30-28 added in revision 0.1.4). Decision B1 is closed by the leader's split; no relaxation is recorded.
+- **Decision risk.** Q2 is decided (operator decision d-20261010T060848Z-dc3b). Q1 is resolved from disk. U-30 waits for the locale-mechanism read. Q7 carries the applied default of 60 columns (board ruling d-20261010T101935Z-4bc4), which the operator has not confirmed. Q6 is partly measured.

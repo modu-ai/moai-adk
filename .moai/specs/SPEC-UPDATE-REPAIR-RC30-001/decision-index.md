@@ -1,6 +1,6 @@
 # SPEC-UPDATE-REPAIR-RC30-001 — Decision index
 
-Stateless on the status axis: the lifecycle lives in spec.md. Each row follows Detect → Explain → Ask. No row carries a recommendation. No row carries an applied default. Authority anchors are committed artifacts; an anchor that cannot be verified routes the row to FOUNDER.
+Stateless on the status axis: the lifecycle lives in spec.md. Each row follows Detect → Explain → Ask. No row carries a recommendation. One row carries an applied default: Q7 (60 columns, kept by planning-session board ruling d-20261010T101935Z-4bc4). No other row carries an applied default. Authority anchors are committed artifacts; an anchor that cannot be verified routes the row to FOUNDER.
 
 ### Q1: Which set does R1's "16" name, and which set does R2(g)'s "four locale strings" name?
 
@@ -24,10 +24,10 @@ Authority anchor: SPEC-USER-ASSET-INSTALL-001 spec.md lines 237-238 (P6) and lin
 Why unresolved: The options change what `moai init` and `moai update` write, or what a profile session reads. The choice belongs to the operator.
 Options (factual; no recommendation):
 - **(a)** A reach mechanism that writes nothing into a profile directory. None is established by evidence in this card. Audit §3 records none. No evidenced option is stated.
-- **(b)** A link or copy of the common assets inside the profile directory. It requires amending REQ-002 (spec.md line 255) to permit a link or copy in a profile directory. P6 (spec.md lines 237-238) would be restated to match. Amendment scope: the line-255 clause only. Follow-on: if (b) is chosen, manager-spec performs the amendment in place in this card after WT-user-asset-bundle (t1591) is absorbed at run start (M1). The leader coordinates that with the other lane.
-- **(c)** Keep project-side copies when a profile session is detected. Consequence against D1: D1 names the shared roots as the copy target for `moai init` and `moai update`. Under (c), profile-detected projects hold a second copy of the common skills and agents inside the project tree, outside the shared-root model. That copy is refreshed only if U-12 is implemented, so the two copies can diverge.
+- **(b)** A link or copy of the common assets inside the profile directory. It requires amending REQ-002 (spec.md line 255) to permit a link or copy in a profile directory. P6 (spec.md lines 237-238) would be restated to match. Amendment scope: the line-255 clause only. Follow-on: if (b) is chosen, manager-spec performs the amendment in place in this card after WT-user-asset-bundle (t1591) is absorbed (done; spec.md § G.2). The leader coordinates that with the other lane.
+- **(c)** Keep project-side copies when a profile session is detected. Consequence against D1: D1 names the shared roots as the copy target for `moai init` and `moai update`. Under (c), profile-detected projects hold a second copy of the common skills and agents inside the project tree, outside the shared-root model. That copy is refreshed only if U-12 is implemented, so the two copies can diverge. Revision 0.1.4 replaces the "detected" predicate with the reach judgment of AC-RC30-28 (`moai doctor` after `moai update`).
 Default: none (no published rule ranks these options).
-Gated U-01 in SPEC A before this decision: AC-RC30-01 and AC-RC30-02 moved to SPEC B (d-20261009T235135Z-5e35) and remain there. U-01 proceeds under option (c).
+Gated U-01 in SPEC A before this decision: AC-RC30-01 and AC-RC30-02 moved to card t1668 (d-20261009T235135Z-5e35) and remain there. U-01 proceeds under option (c), judged by AC-RC30-27 (keep) and AC-RC30-28 (reach).
 Operator verdict: "(c) + 두 조건" (verbatim operator selection), board record d-20261010T060848Z-dc3b.
 
 ### Q3: Queue overlaps of t1527, t1594, and t1612 with this SPEC
@@ -54,44 +54,44 @@ Operator verdict:
 
 ### Q6: Are project-level .claude/skills and .claude/agents visible to a session launched with CLAUDE_CONFIG_DIR set to a profile directory?
 
-Label: EVIDENCE-NEEDED
+Label: EVIDENCE-NEEDED (partly measured; not decided)
 Authority anchor: none. Audit §3 covers user-level skills only.
-Why unresolved: The removal gate depends on the answer. It needs the runnable measurement AC-RC30-01, which is not yet run (its RED cell is pending).
+Measured so far (evidence, not an authority anchor): project skills 3 of 3 visible on the moai-adk profile, recorded in decision d-20261010T060848Z-dc3b. Project agents and the mo.ai.kr profile were not measured. Q6 is not decided beyond the skills measurement.
+Why unresolved: The removal gate depends on the answer. The runnable measurement AC-RC30-01 is moved to card t1668 and is not yet run; the reach judgment for the profile state is AC-RC30-28, whose doctor output is Gap G-28.
 Operator verdict:
 
-### Q7: What width threshold triggers the plain-line fallback for narrow terminals? — PENDING, leader or operator decision (no applied default)
+### Q7: What width threshold triggers the plain-line fallback for narrow terminals? — APPLIED DEFAULT: 60 columns
 
 Label: FOUNDER
 Class: implementation-level
-Status: PENDING. No default is applied. The width threshold stays unset until this row is answered. The question is raised through AskUserQuestion (askuser-protocol.md § Recommendation Placement Principles, condition 3: never a silently applied default).
-Authority anchor: none in the repository. R2f asks for the fallback, not a number.
-Why unresolved: R2f names narrow terminals without a width.
+Status: APPLIED DEFAULT. This is the one Q7 status, and spec.md § J and REQ-RC30-018 state the same value: 60 columns, kept by planning-session board ruling d-20261010T101935Z-4bc4. The operator may override it (option (i) or (iii)); until an override is recorded, the width threshold is 60 columns.
+Authority anchor: none in the repository. R2f asks for the fallback, not a number. The board ruling is cited as stated; its verbatim line is not pinned in this revision.
+Why unresolved: R2f names narrow terminals without a width. The choice is the board's, not a repository rule.
 Options (factual; no recommendation):
 - **(i)** 40 columns: plain lines are used on terminals narrower than 40 columns.
 - **(ii)** 60 columns: plain lines are used on terminals narrower than 60 columns.
 - **(iii)** Another width, stated by the operator or leader.
-Default: none. The published rule is not applied here because this row is not closed by it (see Q7 status).
-리더 선택, 운영자 재정 가능 (60열; 저장소 근거 없음; d-20261009T235135Z-5e35)
+Default: 60 columns (applied; board ruling d-20261010T101935Z-4bc4). Note: the published Default rule (the option with the smaller user-visible surface) would rank 40 columns; the 60-column default is a board ruling, not an application of that rule. Alternate: 40 columns.
 Operator verdict:
 
 ### Q8: How do the removal items U-02 and U-10 proceed, given that AC-RC30-01 needs a profile session?
 
 Label: FOUNDER
 Class: product-level
-Status: PENDING. AC-RC30-01 cannot be run in this card. The removal switch stays off in this card, and U-02 and U-10 are moved to SPEC B (split, d-20261009T235135Z-5e35); Q8 gates SPEC B only. The leader's split that moved U-02 and U-10 out of SPEC A (d-20261009T235135Z-5e35) is the scope the operator approved for audit (d-20261010T000832Z-efde); the operator verdict on Q8 itself is not recorded, and its line stays blank.
+Status: PENDING. AC-RC30-01 cannot be run in this card. The removal switch stays off in this card, and U-02 and U-10 are moved to card t1668 (split, d-20261009T235135Z-5e35); Q8 gates card t1668 only. The leader's split that moved U-02 and U-10 out of SPEC A (d-20261009T235135Z-5e35) is the scope the operator approved for audit (d-20261010T000832Z-efde); the operator verdict on Q8 itself is not recorded, and its line stays blank.
 Authority anchor: acceptance.md, AC-RC30-01 (judging command requires `CLAUDE_CONFIG_DIR` and a profile session); spec.md § D.2 gate sentence.
 Options (factual; no recommendation):
 - **(i)** An operator-side run of AC-RC30-01 on a profile session, recorded in progress.md, which adopts the criterion. The switch is then turned on and U-02 and U-10 proceed (plan.md § B.3, step 4).
 - **(ii)** The operator decides that U-02 and U-10 leave this SPEC or are re-scoped. The switch stays off.
 Default: none.
-Moved with the removal family to SPEC B (d-20261009T235135Z-5e35); no longer gates SPEC A. Status stays PENDING.
+Moved with the removal family to card t1668 (d-20261009T235135Z-5e35); no longer gates SPEC A. Status stays PENDING.
 Operator verdict:
 
-### B1: CLOSED by the leader's split (d-20261009T235135Z-5e35, option 1) — Tier L acceptance-criteria budget (21 of 25)
+### B1: CLOSED by the leader's split (d-20261009T235135Z-5e35, option 1) — Tier L acceptance-criteria budget (22 of 25)
 
 Label: FOUNDER
 Class: implementation-level
-Status: DECIDED by the leader: split (d-20261009T235135Z-5e35). SPEC A carries 21 criteria and 23 requirements; REQ-RC30-004 and REQ-RC30-021 moved with their criteria. Options (a) and (b) below are kept as the record; their counts predate the M3 move and the REQ moves.
+Status: DECIDED by the leader: split (d-20261009T235135Z-5e35). SPEC A carries 22 criteria (21 at revision 0.1.3, plus AC-RC30-28 in revision 0.1.4) and 17 requirements. REQ-RC30-003, -004 and -021 are owned by card t1668; REQ-RC30-014, -016, -018, -019 and -020 are owned by card t1669. Options (a) and (b) below are kept as the record; their counts predate the moves and the 0.1.4 criterion.
 Authority anchor: `.claude/rules/moai/workflow/spec-workflow.md` § SPEC Complexity Tier (REQ/AC budget table: Tier L ceiling 25).
 Options (factual; no recommendation):
 - **(a) Split.** Criteria that would move to a sibling SPEC: AC-RC30-25 (TUX golden and summary, U-26 to U-29) and AC-RC30-26 (integrity probe, U-31, t1578 scope). The parent keeps 24 criteria, under the ceiling. Effect on coverage: REQ-RC30-014, -016, -018, -019, and -020 are mapped only to AC-RC30-25, and REQ-RC30-021 only to AC-RC30-26, so these six requirements have no criterion in the parent (REQ-RC30-017 keeps AC-RC30-09). For the six to stay covered, AC-RC30-25 and AC-RC30-26 must both stay in the parent. A split that keeps both and moves one other criterion reaches 25; moved alone, any of AC-RC30-01, -02, -03, -04, -06, -09, -10, -11, -13, -19, -22, -23, or -24 leaves every requirement covered. Sibling scope: the moved items keep their IDs and disposition.
@@ -99,14 +99,15 @@ Options (factual; no recommendation):
 Default: none.
 Operator verdict:
 
-### F1: Follow-up placement of moved items (tracked record)
+### F1: Receiving cards of moved items (tracked record)
 
-Status: tracked record of the placement of items moved out of SPEC A. Moved items keep their IDs. Each row names the ruling or decision that moved it. The git-ignored draft of this list (.moai/reports/t1619/followup-cards-draft.md, excluded by .gitignore line 235) is not a citation target; this section is.
+Status: tracked record of the placement of items moved out of SPEC A. Moved items keep their IDs. Two receiving cards: card t1668 (the removal family) and card t1669 (the follow-up batch). Both depend on card t1619. The ruling texts quoted in this SPEC use earlier labels for these two cards; the card IDs above are the names used from revision 0.1.4 on. Each row names the ruling or decision that moved it. The git-ignored draft of this list (.moai/reports/t1619/followup-cards-draft.md, excluded by .gitignore line 235) is not a citation target; this section is.
 
-- Follow-up placement (ruling d-20261010T040402Z-94b9): AC-RC30-25 with REQ-RC30-014, REQ-RC30-016, REQ-RC30-018, REQ-RC30-019, REQ-RC30-020 and U-26 through U-30. Dispositions before the move (spec.md § C): U-26 to U-29 IN-NOW; U-30 GAP-INVESTIGATE.
-- SPEC B (ruling d-20261009T235135Z-5e35): AC-RC30-01, AC-RC30-02, AC-RC30-03, AC-RC30-11 with REQ-RC30-003, REQ-RC30-004 and U-02, U-10.
-- SPEC B (ruling d-20261010T033220Z-3c5f, decision d-20261010T084752Z-d4be): AC-RC30-26 with REQ-RC30-021 and U-31.
+- Card t1669 (ruling d-20261010T040402Z-94b9): AC-RC30-25 with REQ-RC30-014, REQ-RC30-016, REQ-RC30-018, REQ-RC30-019, REQ-RC30-020 and U-26 through U-30. Dispositions before the move (spec.md § C): U-26 to U-29 IN-NOW; U-30 GAP-INVESTIGATE. AC-RC30-25 also judges the count clause of REQ-RC30-017 (its one conflict count equals the Reconciliation conflict count).
+- Card t1668 (ruling d-20261009T235135Z-5e35): AC-RC30-01, AC-RC30-02, AC-RC30-03, AC-RC30-11 with REQ-RC30-003, REQ-RC30-004 and U-02, U-10. The removal half of AC-RC30-27 (TestMigrationRemovesSharedCopyWithoutProfileReach) moves with AC-RC30-01.
+- Card t1668 (ruling d-20261010T033220Z-3c5f, decision d-20261010T084752Z-d4be): AC-RC30-26 with REQ-RC30-021 and U-31.
+- Kept in SPEC A (added in revision 0.1.4): AC-RC30-28, the single reach judge of REQ-RC30-002 (`moai doctor` after `moai update`).
 - Gaps (not closed by any placement above):
-  - the AC-RC30-09 count clause of REQ-RC30-017 (AC-RC30-09 judges the literal string only; no count-level judge exists yet);
-  - the AC-RC30-24 cross-reference to REQ-RC30-003 (REQ-RC30-003 is owned by SPEC B under d-20261009T235135Z-5e35; AC-RC30-24 stays in SPEC A as a cross-reference, criterion text unchanged);
-  - the leader alternative of moving AC-RC30-24 with REQ-RC30-003, which would give 20 criteria and is not applied.
+  - The REQ-RC30-017 count clause: its judge is AC-RC30-25 in card t1669, which SPEC A does not adopt. Until card t1669 adopts it, the clause has no judge in SPEC A (owner: card t1669).
+  - The AC-RC30-24 cross-reference to REQ-RC30-003: REQ-RC30-003 is owned by card t1668 under d-20261009T235135Z-5e35; AC-RC30-24 stays in SPEC A as a cross-reference, criterion text unchanged.
+  - The leader alternative of moving AC-RC30-24 with REQ-RC30-003, which would leave 21 criteria in SPEC A and is not applied.
