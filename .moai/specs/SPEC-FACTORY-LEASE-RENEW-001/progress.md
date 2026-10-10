@@ -1358,7 +1358,7 @@ Summary of the quality gates:
 | QG-1 lint (7 packages, golangci-lint v2.1.6) | pass, 0 issues in each | Step 3 |
 | QG-2 race (factory full; homestate and cli subsets) | pass, 0 race reports | Step 5 |
 | QG-3 coverage | non-cli changed functions all at or above 85% (lowest 85.3%); four touched non-cli packages below 85% at package level: recorded as Gap; internal/cli changed functions (factory renew verb, MCP handlers) not measured in this lane, CI measures them per d-20261010T085601Z-991b | Step 6 |
-| QG-4 mirrors | key comparison pass; byte comparison pass for four of five files; `factory-dispatch.md` whole-file mismatch is pre-existing: recorded as Gap; cadence line pass | Step 1 |
+| QG-4 mirrors | PASS: key comparison pass; byte comparison pass for four of five files; `factory-dispatch.md` differs by one intended live-only line, pinned by TestAutoPickMirrorParity (AC-TAU-010, internal/cli/todo_auto_pick_doc_test.go:279), observed PASS in Step 1e; cadence line pass | Step 1 |
 | QG-5 traceability | pass, 18 of 18 commits name card t1663 | Step 8 |
 | Full cli package (step 4) | FAIL, exit 1, 901.031 s: recorded as Gap with classification | Step 4 |
 
@@ -1396,6 +1396,7 @@ Every heavy run was acquired and released with `moai slot`. Each lease is 30 min
 | 26 | `go test -race -count=1 -run '...' ./internal/homestate/` | 14:56:25Z | 14:26:39Z | exit 0 |
 | 27 | `go test -race -count=1 -run '...' ./internal/cli/` | 14:56:44Z | 14:27:49Z | exit 0 |
 | 28 | `GOOS=windows GOARCH=amd64 go build ./...` | 14:57:52Z | 14:27:58Z | exit 0 |
+| 29 | `go test -count=1 -v -run TestAutoPickMirrorParity ./internal/cli/` (Step 1e) | 15:06:56Z | 14:57:05Z | exit 0 |
 
 Notes on the leases: the lease for row 24 carries the description text "base-2204" (a typo in the description only; the lease itself is the session's). One acquire was refused by the guard before it ran, because its description contained the word git; it was re-issued with neutral text, and the refused attempt took no lease.
 
@@ -1543,7 +1544,7 @@ The one differing sentence is the local copy's trailing sentence on line 259, wh
 cmp cadence line 138 exit=0
 ````
 
-Pre-existing, verified at the commits the coordinator named (commands run in this lane, verbatim outputs):
+Intended, verified at the commits the coordinator named (commands run in this lane, verbatim outputs):
 
 `git cat-file -t 2aab5f797` →
 
@@ -1581,7 +1582,34 @@ and `git show 0662f6238:internal/template/templates/.claude/rules/moai/workflow/
 0
 ````
 
-Reading: the trailing sentence is in the local copy and absent from the template copy at both base commits. The only commit that touched either copy after `2aab5f797` is `1ded464af` (M3), and it changed the cadence line, not line 259. The mismatch predates this card. It is recorded as a Gap (QG-4), and this block does not change either copy: a template change would be a product change outside M5.
+Reading: the trailing sentence is in the local copy and absent from the template copy at both base commits (`2aab5f797` and `0662f6238`). The only commit that touched either copy after `2aab5f797` is `1ded464af` (M3), and it changed the cadence line, not line 259. The leader ruled the sentence intended, and TestAutoPickMirrorParity pins it (Step 1e). QG-4 is PASS. This block changes neither copy.
+
+#### Step 1e: the intended live-only line (AC-TAU-010, QG-4)
+
+Command: `go test -count=1 -v -run '^TestAutoPickMirrorParity$' ./internal/cli/`, run in this session under the go-heavy lease (slot row 29). Exit 0. The test is `internal/cli/todo_auto_pick_doc_test.go:279` (`func TestAutoPickMirrorParity`); its AC-TAU-010 header is at line 275, and its live-only subtest is at line 299. Verbatim output (18 lines):
+
+````text
+=== RUN   TestAutoPickMirrorParity
+=== RUN   TestAutoPickMirrorParity/byte-identical/.claude/rules/moai/workflow/factory-dispatch-cards.md
+=== RUN   TestAutoPickMirrorParity/byte-identical/.claude/rules/moai/workflow/auto-semantics.md
+=== RUN   TestAutoPickMirrorParity/byte-identical/.claude/skills/moai/workflows/gtd.md
+=== RUN   TestAutoPickMirrorParity/byte-identical/.claude/agents/moai/manager-todo.md
+=== RUN   TestAutoPickMirrorParity/byte-identical/.claude/skills/moai-factory-foreman/SKILL.md
+=== RUN   TestAutoPickMirrorParity/byte-identical/.claude/rules/moai/core/moai-mcp-tools-catalogue.md
+=== RUN   TestAutoPickMirrorParity/factory-dispatch.md_differs_by_exactly_the_live-only_sentence
+--- PASS: TestAutoPickMirrorParity (0.00s)
+    --- PASS: TestAutoPickMirrorParity/byte-identical/.claude/rules/moai/workflow/factory-dispatch-cards.md (0.00s)
+    --- PASS: TestAutoPickMirrorParity/byte-identical/.claude/rules/moai/workflow/auto-semantics.md (0.00s)
+    --- PASS: TestAutoPickMirrorParity/byte-identical/.claude/skills/moai/workflows/gtd.md (0.00s)
+    --- PASS: TestAutoPickMirrorParity/byte-identical/.claude/agents/moai/manager-todo.md (0.00s)
+    --- PASS: TestAutoPickMirrorParity/byte-identical/.claude/skills/moai-factory-foreman/SKILL.md (0.00s)
+    --- PASS: TestAutoPickMirrorParity/byte-identical/.claude/rules/moai/core/moai-mcp-tools-catalogue.md (0.00s)
+    --- PASS: TestAutoPickMirrorParity/factory-dispatch.md_differs_by_exactly_the_live-only_sentence (0.00s)
+PASS
+ok  	github.com/modu-ai/moai-adk/internal/cli	0.820s
+````
+
+Reading: six mirrors are byte-identical with their template copies, and `factory-dispatch.md` differs from its template copy by exactly the live-only sentence. The coordinator relayed an earlier run of this command with the same 18-line structure and an `ok` line of 1.151s. This block cites only the run above, which this session observed.
 
 #### Step 2: format (QG-1)
 
@@ -2396,11 +2424,11 @@ The card's cli change set does not touch any of the thirteen failing tests' file
 
 #### Gaps (each is a shortfall, not a pass)
 
-1. internal/cli full-package verdict (step 4): FAIL, exit 1, 901.031 s. Thirteen top-level tests fail in groups A to D above. Groups A, B, and C (HOME not isolated, /var link normalization) are handled in follow-up card t1675. The same results reproduce at the base copy `2aab5f797` on this machine (A and B in the supplementary run, C in the requested run). Group D (the 900-second bound timeout) has no follow-up card assigned; the leader decides it. The full run is judged by CI at push, as the lead directed.
+1. internal/cli full-package verdict (step 4): FAIL, exit 1, 901.031 s. Thirteen top-level tests fail in groups A to D above. Groups A, B, and C (HOME not isolated, /var link normalization) are handled in follow-up card t1675. The same results reproduce at the base copy `2aab5f797` on this machine (A and B in the supplementary run, C in the requested run). Group D (the 900-second bound timeout): `카드 미지정, CI 판정`. Basis: the lone run passed (row 20, 6.45 s); CI runs with `-timeout 25m` (`.github/workflows/ci.yml:204`), and a CI timeout gets a card then. The full run is judged by CI at push, as the lead directed.
 2. The full repository test suite is judged by CI at push, not locally.
 3. `/verify` was not run, because it runs `moai gate`, which runs `go test ./...`.
 4. The commit-time gate is off (`core.hooksPath=/dev/null` in the shared config): this block's commit has the gate result 게이트 미실행. The operator's decision for card t1673 (훅 재활성화 카드) is pending.
-5. QG-4, whole-file comparison of `factory-dispatch.md`: differs at line 259 (pre-existing, Step 1d). The cadence line 138 passes. This template drift is handled in follow-up card t1676, and it is identical at the base commit.
+5. Withdrawn: the factory-dispatch.md line 259 difference is intended and pinned by TestAutoPickMirrorParity (Step 1e); QG-4 is PASS.
 6. QG-3, package totals below 85%: homestate 82.7%, config 84.9%, template 82.7%, factory 83.1%. The base totals were not measured in this lane.
 7. The causal check for group A (a run with `HOME` set to an empty directory) was refused by the worktree guard before any go command ran. The guard's message, verbatim: "This session is isolated in the worktree /Users/goos/MoAI/moai-adk-go/.moai/worktrees/t1663, but this command sets HOME, injecting git configuration whose effect on where git writes can't be verified. Refusing to run it — a worktree-isolated session's git operations must target its own worktree. Run the equivalent from /Users/goos/MoAI/moai-adk-go/.moai/worktrees/t1663 without the redirect." The refused command named `HOME`, but nothing ran with it set: no go command in this lane ran with `HOME` changed. Group A's mechanism therefore rests on the code, the directory listing, and the base-copy reproduction.
 8. The causal check for group C (removing `~/.agents/skills/moai/SKILL.md`) was not run: that file belongs to the operator's installation and was not touched. Group C's mechanism rests on the code, the file's presence, and the base-copy reproduction.
@@ -2419,7 +2447,13 @@ The card's cli change set does not touch any of the thirteen failing tests' file
 
 ## §E.3 Run-phase Audit-Ready Signal
 
-_<pending run-phase>_
+- run_status: audit-ready
+- run_complete_at: 2026-10-10T14:46:20Z
+- run_commits: a6015345c, 8ad01ab89, 1b650dc20, 6656b73da, 8f4f3e2a2 (card t1663: the M5 record and its four corrections, in order). The range is bbc5c0b81 (exclusive) up to this record commit. In that range, `0a545ccec` is manager-spec's decision-index commit: not a run-phase commit, and not touched here. The M1 to M4 commits are in the §E.2 M1 to M4 blocks.
+- disposition AC-FLR-006-DOMAIN (dispose_in=run): the unparseable-duration subtests are `TestResolveFactoryLeaseRefusalsNameTheKeyAndTheRange/duration-empty` (`internal/homestate/factory_lease_resolve_test.go:52`) and `TestResolveFactoryLeaseRefusalsNameTheKeyAndTheRange/duration-bare-number` (`internal/homestate/factory_lease_resolve_test.go:53`; the value is "15", which `time.ParseDuration` rejects). The sub-two-minute refusal note is `internal/homestate/factory_lease.go:64` ("the card lease duration is shorter than two minutes, so no whole-minute renew interval satisfies the bound"), added to the refusal built at lines 66 to 68. The sub-two-minute subtest is `factory_lease_resolve_test.go:59` (`sub-two-minute-duration`), which requires "shorter than two minutes" and "no whole-minute renew interval" in the refusal text. All of these were re-read in this session.
+- disposition AC-FLR-014-SEAM (dispose_in=run): `internal/hook/lane_renew_interval_test.go:52` (inside `TestLaneRuleCarriesConfiguredRenewInterval`, line 19) calls `factoryLaneRuleForSource(source, lang)`. The symbol is defined at base `0662f6238` (`internal/hook/session_start_factory.go`), so no new symbol is introduced. GREEN evidence in §E.2: the M3 GREEN block, part 2, progress.md line 781 (`--- PASS: TestLaneRuleCarriesConfiguredRenewInterval (0.39s)`), with its 16 subtests at lines 782 to 797.
+- disposition AC-FLR-011-RECORD (dispose_in=run): I keep the model-written limit. I do not take the alternative of observing a refused renewal's snapshot, because no live watchdog turn was observed in the run phase. progress.md names the limit at line 695 ("No live watchdog turn was observed, and no snapshot file is written by code (spec.md Residual risk).") and at line 850 ("No live watchdog turn was observed, and no code writes the snapshot (spec.md Residual risk)."). No code writes the snapshot: no Go file references `state/watchdog`; `last_change_at` and `renew_result` appear in Go only in test string literals (`internal/template/auto_semantics_renew_test.go:214`, `internal/template/lane_watchdog_renew_test.go:127` and `:143`) and in comments (`internal/template/lane_watchdog_renew_test.go:7` and `:113`, `internal/cli/factory_card.go:1745`). The model writes the snapshot: `.claude/skills/moai-lane-watchdog/SKILL.md` lines 84 to 86 ("Write the new snapshot after the verdict ...").
+- Q5-CITE (dispose_in=sync) is not a run-phase debt and is not disposed in this block.
 
 ## §E.4 Sync-phase Audit-Ready Signal
 
