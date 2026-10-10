@@ -446,8 +446,10 @@ func initResumeCheckpoint(homeDir, projectRoot string) bool {
 	// Finding B (card t1591): a fresh init that died in or after its user-asset ensure
 	// leaves the init marker. The ensure can fail before any journal exists (a lock
 	// refusal), so the marker is the only interruption evidence a rerun can read.
+	initMarker := false
 	if _, err := os.Stat(initPendingPath(projectRoot)); err == nil {
 		interrupted = true
+		initMarker = true
 	}
 	if jData, ok := readManifestRecord(userassets.JournalPath(homeDir)); ok {
 		var j userassets.PendingJournal
@@ -478,10 +480,21 @@ func initResumeCheckpoint(homeDir, projectRoot string) bool {
 	// not hijack it into a resume consuming another project's pending
 	// intent. Its absence is the M6 window — deployed, setup unfinished —
 	// and stays resumable.
+	//
+	// Finding 1 (card t1591): the init marker outranks the deployment_mode read.
+	// An init that stopped after ApplyDeployMode wrote deployment_mode, but before
+	// the MCP and Codex wiring finished, still carries the marker: the project is
+	// deployed and its init unfinished, so the rerun resumes. The llm.yaml presence
+	// check stays first, so a project the executor never deployed keeps the original
+	// redirect even with the marker standing. The journal and the corrupt manifest
+	// are user-global evidence, so they keep the completeness read above.
 	sections := filepath.Join(projectRoot, ".moai", "config", "sections")
 	llmData, err := os.ReadFile(filepath.Join(sections, "llm.yaml"))
 	if err != nil {
 		return false
+	}
+	if initMarker {
+		return true
 	}
 	return !strings.Contains(string(llmData), "deployment_mode:")
 }
