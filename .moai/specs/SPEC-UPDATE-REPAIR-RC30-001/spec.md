@@ -1,7 +1,7 @@
 ---
 id: SPEC-UPDATE-REPAIR-RC30-001
 title: "moai update rc.30 repair: data-safety must-fix items, shared-root profile reach, and update output redesign"
-version: "0.1.2"
+version: "0.1.3"
 status: draft
 created: 2026-10-10
 updated: 2026-10-10
@@ -38,7 +38,7 @@ Operator direction D1 (verbatim, Korean, from the lane addendum): "원래 카드
 One REQ form is used everywhere: REQ-RC30-NNN. The Tier L requirement ceiling is 25; this SPEC carries 25.
 
 - **REQ-RC30-001** (Ubiquitous): The update flow shall keep the four shared roots `~/.claude/skills`, `~/.claude/agents`, `~/.agents/skills`, and `~/.codex/agents` as the install source for common skills and agents, and shall keep an agent or skill copy that is not refreshed from them visible in the update output. Items: U-01, U-12.
-- **REQ-RC30-002** (Event-driven): **When** a project is launched under a profile config directory (`CLAUDE_CONFIG_DIR`), the shared assets shall reach the profile session by the mechanism selected under operator decision Q2. Items: U-01, U-21. Status: decided by operator decision d-20261010T060848Z-dc3b, option (c) with two conditions (spec.md § D.2; decision-index.md). Judged by AC-RC30-21 for profile sync; a criterion for the selected mechanism is added when Q2 is answered.
+- **REQ-RC30-002** (Event-driven): **When** a project is launched under a profile config directory (`CLAUDE_CONFIG_DIR`), the shared assets shall reach the profile session by the mechanism selected under operator decision Q2. Items: U-01, U-21. Status: decided by operator decision d-20261010T060848Z-dc3b, option (c) with two conditions (spec.md § D.2; decision-index.md). Judged by AC-RC30-21 for profile sync; the criterion for the selected mechanism is pending (no criterion in SPEC A yet; see U-01).
 - **REQ-RC30-003** (Unwanted behavior): The update flow shall not delete a project-side managed skill or agent copy (for example `.claude/skills/moai/**`) until the runnable profile-visibility check AC-RC30-01 has passed on the tree being updated (AC-RC30-01 is moved to SPEC B; within this SPEC, REQ-RC30-003 is judged by AC-RC30-24). Items: U-01, U-25.
 - **REQ-RC30-004** (Event-driven): **When** the migration removes a file, the run backup shall contain a copy of that file, the migration step shall run after the backup step, and an emptied skill directory shall be removed with its last file. Items: U-02, U-10. moved to SPEC B (ID kept; criteria moved with it).
 - **REQ-RC30-005** (Event-driven): **When** a former plugin-mode project has optional packs that are not installed, or a managed skill has no catalog entry, the update output shall name the exact `moai bundle add <name>` command or the distinct no-catalog message for that skill. Items: U-03, U-09.
@@ -78,7 +78,7 @@ No IN-NOW file is changed on either branch (research.md § 2 E-OVERLAP, verbatim
 
 | U-ID | Source | Priority | Disposition | Root cause (file:line) | Acceptance |
 |------|--------|----------|-------------|------------------------|------------|
-| U-01 | Must-fix 1; D1; REQ-RC30-001, REQ-RC30-002, REQ-RC30-003 | High | IN-NOW. Option (c) is decided (d-20261010T060848Z-dc3b); the criterion is pending: no criterion in SPEC A (AC-RC30-01, AC-RC30-02 moved) | `internal/userassets/paths.go:36-43` (re-read): `ResolveRoots` returns `$HOME` roots only. Profile resolution `launcher.go:159` and `profile.go:240` (audit). `paths.go` is changed on WT-user-asset-bundle (research.md E-OVERLAP). | AC-RC30-01, AC-RC30-02 |
+| U-01 | Must-fix 1; D1; REQ-RC30-001, REQ-RC30-002, REQ-RC30-003 | High | BLOCKED-ON WT-user-asset-bundle (t1591). Option (c) is decided (d-20261010T060848Z-dc3b); the criterion is pending: no criterion in SPEC A (AC-RC30-01, AC-RC30-02 moved) | `internal/userassets/paths.go:36-43` (re-read): `ResolveRoots` returns `$HOME` roots only. Profile resolution `launcher.go:159` and `profile.go:240` (audit). `paths.go` is changed on WT-user-asset-bundle (research.md E-OVERLAP). | AC-RC30-01, AC-RC30-02 |
 | U-02 | Must-fix 2; D2; REQ-RC30-004 | High | moved to SPEC B | Removal `os.Remove(p)` at `internal/cli/migrate_project_assets.go:168` (re-read, E-04). Migration call `internal/cli/update_template_sync.go:1185` (re-read, E-20). `migrate_project_assets.go` is changed on WT-user-asset-bundle. The audit's `update/` path and its `:1183` line are wrong (research.md § 4 item 5). | AC-RC30-03 |
 | U-03 | Must-fix 3 (D3); REQ-RC30-005 | High | BLOCKED-ON WT-user-asset-bundle (t1591) | `internal/cli/user_asset_phase.go:105-125` (audit): core-only selection. The file is changed on WT-user-asset-bundle. | AC-RC30-04 |
 | U-04 | Must-fix 3 (D15); REQ-RC30-006 | Medium | IN-NOW | `internal/cli/bundle.go` (re-read, E-12): subcommands `bundle`, `add <bundle-name>`, `remove <bundle-name>`; no `list`. Not changed on either branch. | AC-RC30-05 |
@@ -110,7 +110,7 @@ No IN-NOW file is changed on either branch (research.md § 2 E-OVERLAP, verbatim
 | U-30 | R2g; REQ-RC30-019 | Medium | GAP-INVESTIGATE | Whether update output uses a locale table is not yet read in this tree. The four-locale set is resolved from disk (decision-index.md Q1; research.md § 2 E-LOCALE). | AC-RC30-25 (locale part) |
 | U-31 | Leader intake 10-10, t1578 card-review M3; REQ-RC30-021 | Medium | moved to SPEC B | Branch WT-update-migration-fixes, `internal/cli/update_integrity_probe.go:52` (line recorded at absorption, progress.md section G (Absorption Record); re-read, E-19): entry `{rel: ".claude/settings.json", check: probeJSON}`; `damageReason` returns `"missing"` when the file is absent (line recorded at absorption). Absent on main (`git cat-file -e main:internal/cli/update_integrity_probe.go` exits 128). On the tree, `internal/template/harness_fs.go:112` (re-read) hides `.claude` paths when `hideClaude` is set. | AC-RC30-26 |
 
-Item counts (research.md § 2 E-R5 is the check): 31 rows; 3 moved to SPEC B (U-02, U-10, U-31); the 28 rows in SPEC A carry IN-NOW 13 (U-04, U-05, U-06, U-07, U-08, U-13, U-14, U-16, U-18, U-26, U-27, U-28, U-29). DECISION-PENDING 0. BLOCKED-ON 7 (U-03, U-09, U-11, U-12, U-17, U-21, U-22). GAP-INVESTIGATE 7 (U-15, U-19, U-20, U-23, U-24, U-25, U-30).
+Item counts (research.md § 2 E-R5 is the check): 31 rows; 3 moved to SPEC B (U-02, U-10, U-31); the 28 rows in SPEC A carry IN-NOW 13 (U-04, U-05, U-06, U-07, U-08, U-13, U-14, U-16, U-18, U-26, U-27, U-28, U-29). DECISION-PENDING 0. BLOCKED-ON 8 (U-01, U-03, U-09, U-11, U-12, U-17, U-21, U-22). GAP-INVESTIGATE 7 (U-15, U-19, U-20, U-23, U-24, U-25, U-30).
 
 Note on U-22: owned by card t1578 and tracked here for traceability only. Note on U-31: not one of the eight must-fix items; it comes from leader intake (§ E).
 
@@ -128,7 +128,7 @@ Intended content is taken from D1 and from `SPEC-USER-ASSET-INSTALL-001` (comple
 | `~/.codex/agents` | Codex agent definitions | Root at `paths.go:41` | Gap: not listed in this run. | Whether the user root is populated is not verified. |
 | `~/.moai` | Manifest and backups only; no skills or agents directories (leader measurement on main) | Not a `ResolveRoots` entry. The manifest and backup roots are `.moai-backups/` and `.moai/backups/` in the project (audit §6). | Gap: `ls ~/.moai` not run in this run. | Leader's claim is unverified in this tree. |
 
-### D.2 Profile reach: shared assets for `CLAUDE_CONFIG_DIR` sessions (U-01, pending operator decision Q2)
+### D.2 Profile reach: shared assets for `CLAUDE_CONFIG_DIR` sessions (U-01, decided: option (c))
 
 Scope: U-01 only. The status table (§ D.1) and the init path check (§ D.3) are IN-NOW and are not part of this decision.
 
@@ -157,7 +157,7 @@ The eight must-fix items are the entries of `update-audit.md` § Fix list for rc
 
 | # | Audit must-fix text (abridged) | U-IDs | Disposition |
 |---|-------------------------------|-------|-------------|
-| 1 | D1: do not remove project-side skills or agents under a profile | U-01 | DECISION-PENDING (operator decision Q2). The "blocking warning" option is not adopted (lane addendum). |
+| 1 | D1: do not remove project-side skills or agents under a profile | U-01 | Decided by operator decision d-20261010T060848Z-dc3b (option (c)). The "blocking warning" option is not adopted (lane addendum). |
 | 2 | D2: back up every migration-removed file; move migration after backup | U-02 | moved to SPEC B (split, d-20261009T235135Z-5e35) |
 | 3 | D3 and D15: seed or announce optional bundles; add `moai bundle list` | U-03 (D3), U-04 (D15) | U-03 BLOCKED-ON WT-user-asset-bundle (t1591); U-04 IN-NOW |
 | 4 | D7 and D8: stop `ConfigManager.Save` dropping `deployment_mode` and unknown keys | U-05 (D7), U-06 (D8) | IN-NOW, IN-NOW |
@@ -166,7 +166,7 @@ The eight must-fix items are the entries of `update-audit.md` § Fix list for rc
 | 7 | D4 and D5: correct non-catalog skill message; remove emptied dirs | U-09 (D4), U-10 (D5) | U-09 BLOCKED-ON WT-user-asset-bundle (t1591); U-10 moved to SPEC B |
 | 8 | D10: refuse a user-root downgrade | U-11 | BLOCKED-ON WT-update-migration-fixes (t1578) and WT-user-asset-bundle (t1591) |
 
-Item 1 (U-01) is DECISION-PENDING with no criterion in SPEC A. Item 2 (U-02) moved to SPEC B. Item 7 (U-09) stays BLOCKED-ON; U-10 is moved to SPEC B. Items 3 (U-03) and 8 (U-11) are BLOCKED-ON an in-flight branch.
+Item 1 (U-01) is BLOCKED-ON t1591 and has no criterion in SPEC A yet. Item 2 (U-02) moved to SPEC B. Item 7 (U-09) stays BLOCKED-ON; U-10 is moved to SPEC B. Items 3 (U-03) and 8 (U-11) are BLOCKED-ON an in-flight branch.
 
 ## F. Queue overlaps (disposition undecided)
 
@@ -190,7 +190,7 @@ Note on the branch base: the worktree was cut from main tip `2aab5f797`. `.claud
 
 - Card **t1621**: the slug rule in `factoryWorktreeSlug`. Out of scope for this SPEC. Named here, not as an item.
 - Card **t1622**: the factory inbox error in `factory_msg_list` (`sql: no rows in result set`). Out of scope for this SPEC. Named here, not as an item.
-- Card **t1591** (WT-user-asset-bundle, which carries SPEC-USERASSET-DEPLOY-GUARD-001): BLOCKED-ON source for U-03, U-09, U-11, and U-12 (U-02 and U-10 moved to SPEC B). U-01 is not BLOCKED-ON t1591; it is pending Q2.
+- Card **t1591** (WT-user-asset-bundle, which carries SPEC-USERASSET-DEPLOY-GUARD-001): BLOCKED-ON source for U-03, U-09, U-11, and U-12 (U-02 and U-10 moved to SPEC B). U-01 is BLOCKED-ON t1591 (migrate_project_assets.go is changed on that branch); its option is decided (option (c)).
 - Card **t1578** (WT-update-migration-fixes, which carries SPEC-UPDATE-MIGRATION-FIX-001): BLOCKED-ON source for U-11, U-17, U-21, and U-22 (U-31 moved to SPEC B).
 - Card **t1616**: builds the local-main integration tooling. Landing of this card waits for it. Merge-ready is this card's terminal state until t1616 lands.
 - SPEC-USER-ASSET-INSTALL-001 (completed, on main): P6 at spec.md lines 237-238 and REQ-002 at spec.md line 255. Amending REQ-002 is option (b) of decision Q2.
@@ -218,7 +218,7 @@ Note on the branch base: the worktree was cut from main tip `2aab5f797`. `.claud
 ### Out of Scope — plugin distribution, new profile semantics, and other locales
 
 - No plugin distribution path (voided by operator decision 2026-10-06, SPEC-UPDATE-MIGRATION-001 § H).
-- No change to REQ-002 of SPEC-USER-ASSET-INSTALL-001 is made in this SPEC. An amendment is possible only under decision Q2 option (b).
+- No change to REQ-002 of SPEC-USER-ASSET-INSTALL-001 is made in this SPEC. No amendment is made: option (b) is not adopted (d-20261010T060848Z-dc3b).
 - Locales es, fr, and de (the other `language.yaml` conversation-language options) are not in REQ-RC30-019 and are out of scope.
 
 ## J. Decision points
@@ -226,7 +226,7 @@ Note on the branch base: the worktree was cut from main tip `2aab5f797`. `.claud
 Recorded in `decision-index.md`. Summary:
 
 - **Q1 (resolved from disk; not an operator question).** "16" in R1 names the 16 programming languages (a neutrality concern). "Four locale strings" in R2(g) names the four user-facing locales ko, en, ja, zh (a translation concern). The sets are disjoint. REQ-RC30-019 uses the four locales.
-- **Q2 (pending operator decision; FOUNDER, product-level).** Profile reach: options (a), (b), and (c) are stated factually in decision-index.md. Option (c) with conditions 1 and 2 is decided (operator decision d-20261010T060848Z-dc3b); option (b) is not adopted. U-01 proceeds under option (c).
+- **Q2 (decided by operator decision d-20261010T060848Z-dc3b; FOUNDER, product-level).** Profile reach: options (a), (b), and (c) are stated factually in decision-index.md. Option (c) with conditions 1 and 2 is decided (operator decision d-20261010T060848Z-dc3b); option (b) is not adopted. U-01 proceeds under option (c).
 - **Q3 (queue overlaps; disposition undecided).** t1527, t1594, and t1612 are recorded as overlaps in § F. Blocks no item of this SPEC.
 - **Q7 (recorded as the leader's choice of 60 columns, open to operator override (decision-index.md Q7)).** The narrow-terminal width threshold. Options are stated factually in decision-index.md. REQ-RC30-018 carries the value as pending.
 - **Q8 (pending; decision-index.md Q8).** U-02 and U-10 moved to SPEC B with the removal family (d-20261009T235135Z-5e35); Q8 stays pending and no longer gates SPEC A.
