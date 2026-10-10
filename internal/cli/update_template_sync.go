@@ -712,7 +712,7 @@ func runTemplateSyncWithReporter(cmd *cobra.Command, reporter project.ProgressRe
 				// A failed marker write is not fatal: this directory then counts as
 				// a run of its own, and the failure surfaces as a terminal warning.
 				if err := backup.WriteRunMarker(configBackupPath, runID); err != nil {
-					updateLedger.requiref(sevWarn, "backup run marker write failed: %v", err)
+					updateLedger.requiref(sevWarn, "%s", runMarkerWarning(projectRoot, err))
 				}
 				plBackup.Done(".moai/config backed up")
 			} else {
@@ -739,7 +739,7 @@ func runTemplateSyncWithReporter(cmd *cobra.Command, reporter project.ProgressRe
 				// Same run id as the config backup: the namespace directory is the
 				// second directory of this run (failure handling as above).
 				if err := backup.WriteRunMarker(nsBackupPath, runID); err != nil {
-					updateLedger.requiref(sevWarn, "backup run marker write failed: %v", err)
+					updateLedger.requiref(sevWarn, "%s", runMarkerWarning(projectRoot, err))
 				}
 				// Derive display-friendly project-root-relative path
 				displayNs := nsBackupPath

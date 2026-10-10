@@ -8,3 +8,6 @@ update.restore.settings_not_restored: "復元していません：%s。現在の
 update.restore.copy_by_hand: "手動で復元するには、バックアップのファイルをコピーしてください。コピー元：%s、コピー先：%s"
 update.restore.not_covered_heading: "バックアップにはあるが、このコマンドでは復元されない項目："
 update.restore.not_covered_item: "  %s（バックアップ内のコピー：%s）"
+
+# update backup surface (SPEC-UPDATE-REPAIR-RC30-001 D9)
+update.backup.run_marker_failed: "バックアップ実行マーカーの書き込みに失敗しました：%v"

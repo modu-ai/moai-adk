@@ -16,6 +16,7 @@ import (
 	"io/fs"
 	"os"
 	"path/filepath"
+	"regexp"
 	"sort"
 	"strings"
 	"time"
@@ -207,20 +208,21 @@ type BackupMetadata struct {
 }
 
 // CleanupOldBackups prunes old backup runs and returns the number of backup
-// directories it removed.
+// directories it removed. A negative keepCount deletes nothing.
 //
-// Retention counts runs, not directories. The backup roots are the config root
-// (.moai-backups/) and the namespace root (.moai/backups/). A run is the set of
-// directories, across both roots, that carry the same run marker (RunMarkerName);
-// a directory with no readable marker is a run of its own. Runs are ordered
-// newest first: a marked run by its run id, an unmarked run by its directory's
-// modification time, and ties by path ascending. The newest keepCount runs are
-// kept, and every directory of every older run is removed. A missing root
-// contributes no runs and is not an error.
+// Retention counts runs, not directories, across both backup roots: the config
+// root (.moai-backups/) and the namespace root (.moai/backups/). A run is the set
+// of directories that carry the same run marker (RunMarkerName), whichever root
+// they sit under. A directory without a readable marker is a run of its own only
+// when its name has a shape a backup writer produces under its root (see
+// configBackupName and namespaceBackupName); any other unmarked name is neither
+// counted nor deleted. Runs are ordered newest first: a marked run by its run id,
+// an unmarked run by its directory's modification time, and ties by path
+// ascending. The newest keepCount runs are kept, and every directory of every
+// older run is removed. A missing root contributes no runs and is not an error.
 func CleanupOldBackups(projectRoot string, keepCount int) int {
-	// A negative keepCount keeps no runs.
 	if keepCount < 0 {
-		keepCount = 0
+		return 0
 	}
 	runs := collectBackupRuns(projectRoot)
 	if len(runs) <= keepCount {
@@ -251,20 +253,47 @@ type backupRun struct {
 	dirs []string
 }
 
+// configBackupName matches the names the writers give the directories they create
+// directly under the config root: BackupMoaiConfig, ensureRunBackupDir, the deploy
+// pre-clean and legacy-memory backups, and BackupExistingProject all use a
+// defs.BackupTimestampFormat timestamp (YYYYMMDD_HHMMSS).
+var configBackupName = regexp.MustCompile(`^[0-9]{8}_[0-9]{6}$`)
+
+// namespaceBackupName matches the names the writers give the directories they
+// create directly under the namespace root: backupUserOwnedNamespace writes
+// update-<stamp> and clean reinstall writes v2-to-v3-<stamp>, where <stamp> is the
+// UTC 2006-01-02T15-04-05Z layout of newNamespaceBackupStamp and a same-second
+// collision appends -N.
+var namespaceBackupName = regexp.MustCompile(`^(update|v2-to-v3)-[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}-[0-9]{2}-[0-9]{2}Z(-[0-9]+)?$`)
+
+// backupRoot is one backup root and the name an unmarked directory under it must
+// match to count as a run.
+type backupRoot struct {
+	dir   string
+	names *regexp.Regexp
+}
+
+// backupRoots returns the config root and the namespace root of projectRoot.
+func backupRoots(projectRoot string) []backupRoot {
+	return []backupRoot{
+		{dir: filepath.Join(projectRoot, defs.BackupsDir), names: configBackupName},
+		{dir: filepath.Join(projectRoot, defs.MoAIDir, defs.NamespaceBackupsSubdir), names: namespaceBackupName},
+	}
+}
+
 // collectBackupRuns groups the directories under both backup roots into runs and
 // returns them newest first.
 func collectBackupRuns(projectRoot string) []*backupRun {
-	roots := []string{
-		filepath.Join(projectRoot, defs.BackupsDir),
-		filepath.Join(projectRoot, defs.MoAIDir, defs.NamespaceBackupsSubdir),
-	}
-
 	var runs []*backupRun
 	byID := make(map[string]*backupRun)
-	for _, root := range roots {
-		for _, dir := range listBackupDirs(root) {
+	for _, root := range backupRoots(projectRoot) {
+		for _, dir := range listBackupDirs(root.dir) {
 			id, ok := readRunID(dir.path)
 			if !ok {
+				if !root.names.MatchString(dir.name) {
+					// Not a name a backup writer produces: neither counted nor deleted.
+					continue
+				}
 				runs = append(runs, &backupRun{at: dir.modTime, dirs: []string{dir.path}})
 				continue
 			}
@@ -293,6 +322,7 @@ func collectBackupRuns(projectRoot string) []*backupRun {
 
 // backupDirEntry is one directory directly under a backup root.
 type backupDirEntry struct {
+	name    string
 	path    string
 	modTime time.Time
 }
@@ -319,7 +349,7 @@ func listBackupDirs(root string) []backupDirEntry {
 		if err != nil {
 			continue
 		}
-		dirs = append(dirs, backupDirEntry{path: filepath.Join(root, entry.Name()), modTime: fi.ModTime()})
+		dirs = append(dirs, backupDirEntry{name: entry.Name(), path: filepath.Join(root, entry.Name()), modTime: fi.ModTime()})
 	}
 	return dirs
 }

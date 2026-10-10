@@ -8,3 +8,6 @@ update.restore.settings_not_restored: "未恢复：%s。当前文件保持不变
 update.restore.copy_by_hand: "如需手动恢复，请复制备份文件。源：%s，目标：%s"
 update.restore.not_covered_heading: "备份中有、但本命令不会恢复的项目："
 update.restore.not_covered_item: "  %s（备份副本：%s）"
+
+# update backup surface (SPEC-UPDATE-REPAIR-RC30-001 D9)
+update.backup.run_marker_failed: "备份运行标记写入失败：%v"

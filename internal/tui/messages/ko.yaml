@@ -78,3 +78,6 @@ update.restore.settings_not_restored: "복원하지 않음: %s. 현재 파일은
 update.restore.copy_by_hand: "직접 복원하려면 백업 파일을 복사하세요. 원본: %s, 대상: %s"
 update.restore.not_covered_heading: "백업에는 있지만 이 명령으로는 복원하지 않는 항목:"
 update.restore.not_covered_item: "  %s (백업 사본: %s)"
+
+# update backup surface (SPEC-UPDATE-REPAIR-RC30-001 D9)
+update.backup.run_marker_failed: "백업 실행 마커 기록 실패: %v"
