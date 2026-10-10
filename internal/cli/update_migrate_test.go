@@ -677,6 +677,7 @@ func TestUnknownSkillPreservedAcrossLocalUpdates(t *testing.T) {
 // ---------------------------------------------------------------------------
 // Card t1438 card-review findings 1 and 2
 func TestMigrationPreservesExistingMirrorEntries(t *testing.T) {
+	enableRemovalForTest(t)
 	root := buildMigrationFixture(t)
 	mirrorEntry := filepath.Join(root, ".agents", "skills", "moai-foundation-core")
 	if err := os.MkdirAll(filepath.Dir(mirrorEntry), 0o755); err != nil {
@@ -1250,6 +1251,7 @@ func TestPreviewFlagsMigrationRemovalCandidates(t *testing.T) {
 // no longer see an already-removed file, so the deletion vanished from
 // every list.
 func TestTallyCountsMigrationRemovals(t *testing.T) {
+	enableRemovalForTest(t)
 	root := buildMigrationFixture(t)
 	home := installMigrationUserCounterparts(t)
 	t.Setenv("HOME", home)

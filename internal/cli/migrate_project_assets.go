@@ -32,6 +32,9 @@ var projectCommonAssetRels = []string{
 	".codex/agents/moai/",
 }
 
+// removalEnabled gates the project-side removal; its criterion (AC-RC30-02) is owned by card t1668.
+var removalEnabled = false
+
 // migrateProjectCommonAssets removes template-managed common skills and
 // agents from the project after confirming each user counterpart (REQ-020).
 // The user manifest is read-only here (the user-asset phase already ran and
@@ -169,6 +172,13 @@ func migrateProjectCommonAssets(projectRoot, homeDir string, userAssetsInstalled
 			resolvedP, resErr := filepath.EvalSymlinks(p)
 			if resErr != nil || !withinRootBoundary(rootResolved, resolvedP) {
 				report("  migration: removal refused (path escapes the project root through a symlink): %s", relSlash)
+				return nil
+			}
+			if !removalEnabled {
+				// AC-RC30-02 (the removal criterion) belongs to card t1668; the switch ships off.
+				stayed++
+				migrationPreservedProjectFiles[p] = true
+				report("  migration: kept project-side (removal is not enabled yet): %s", relSlash)
 				return nil
 			}
 			if err := os.Remove(p); err != nil {
