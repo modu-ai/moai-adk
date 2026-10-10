@@ -145,4 +145,22 @@ func TestLaneWatchdogRecordsRefusalAndMeasures(t *testing.T) {
 			t.Errorf("the measurement step lacks %q (snapshot record, REQ-FLR-011)", want)
 		}
 	}
+
+	// The snapshot write sentence must name every field the snapshot carries. last_change_at
+	// was missing from it (sync audit F4, card t1663): a lane that followed the sentence never
+	// persisted last_change_at, so no later pass could report a stall (REQ-FLR-013). This is a
+	// text check of the procedure, not an observation of a written snapshot.
+	writeAt := strings.Index(measureText, "Write the new snapshot")
+	if writeAt < 0 {
+		t.Fatalf("the measurement step has no snapshot write sentence (%q)", "Write the new snapshot")
+	}
+	writeSentence := measureText[writeAt:]
+	if end := strings.Index(writeSentence, "\n\n"); end >= 0 {
+		writeSentence = writeSentence[:end]
+	}
+	for _, want := range []string{"observed_at", "head_sha", "evidence_mtime_max", "window_state", "last_change_at", "renew_result"} {
+		if !strings.Contains(writeSentence, want) {
+			t.Errorf("the snapshot write sentence lacks %q (snapshot record, REQ-FLR-011 and REQ-FLR-013)", want)
+		}
+	}
 }

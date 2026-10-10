@@ -9,6 +9,8 @@ package cli
 import (
 	"context"
 	"encoding/json"
+	"os"
+	"path/filepath"
 	"strings"
 	"testing"
 	"time"
@@ -20,10 +22,12 @@ import (
 )
 
 // factoryRenewWire is the JSON that the renew verb (--json) and the factory_renew tool
-// return: the refusal class in result, and the lease expiry in expires_at.
+// return: the refusal class in result, the lease expiry in expires_at, and the refusal
+// text in detail (absent on a renewal).
 type factoryRenewWire struct {
 	Result    string `json:"result"`
 	ExpiresAt string `json:"expires_at"`
+	Detail    string `json:"detail,omitempty"`
 }
 
 // factoryRenewPlace places card t1 in the run state, leased to holder until expiry.
@@ -234,4 +238,223 @@ func TestFactoryRenewRefusalIsMachineReadable(t *testing.T) {
 	if eventsAfter != eventsBefore {
 		t.Errorf("refused renewal appended %d event rows, want none", eventsAfter-eventsBefore)
 	}
+}
+
+// factoryRenewAssertUnchanged asserts that a refused renewal left card t1 and the event
+// count as they were before the call: no version bump, no holder or expiry change, no event.
+func factoryRenewAssertUnchanged(t *testing.T, root string, before homestate.Card, eventsBefore int) {
+	t.Helper()
+	after, eventsAfter := factoryRenewRecord(t, root)
+	if after.Version != before.Version || after.State != before.State ||
+		after.LeaseHolder != before.LeaseHolder || after.LeaseExpiresAt != before.LeaseExpiresAt {
+		t.Errorf("refused renewal changed the card: v%d %s holder=%q expiry=%s → v%d %s holder=%q expiry=%s",
+			before.Version, before.State, before.LeaseHolder, before.LeaseExpiresAt,
+			after.Version, after.State, after.LeaseHolder, after.LeaseExpiresAt)
+	}
+	if eventsAfter != eventsBefore {
+		t.Errorf("refused renewal appended %d event rows, want none", eventsAfter-eventsBefore)
+	}
+}
+
+// factoryRenewCardIn reads card cardID of run runID.
+func factoryRenewCardIn(t *testing.T, root, runID, cardID string) homestate.Card {
+	t.Helper()
+	db, err := homestate.OpenFactory(root)
+	if err != nil {
+		t.Fatalf("open factory: %v", err)
+	}
+	defer func() { _ = db.Close() }()
+	card, err := db.LoadCard(context.Background(), runID, cardID)
+	if err != nil {
+		t.Fatalf("load %s in %s: %v", cardID, runID, err)
+	}
+	return card
+}
+
+// factoryRenewWriteLeaseDuration writes the workflow.yaml of root with the card lease
+// duration. The renew interval keeps its compiled default.
+func factoryRenewWriteLeaseDuration(t *testing.T, root, duration string) {
+	t.Helper()
+	dir := filepath.Join(root, ".moai", "config", "sections")
+	if err := os.MkdirAll(dir, 0o755); err != nil {
+		t.Fatal(err)
+	}
+	body := "workflow:\n  factory_lease:\n    duration: " + duration + "\n"
+	if err := os.WriteFile(filepath.Join(dir, "workflow.yaml"), []byte(body), 0o644); err != nil {
+		t.Fatal(err)
+	}
+}
+
+// AC-FLR-002 (REQ-FLR-002), legacy-label parity — sync-audit F1, card t1663. A lane whose
+// MOAI_FACTORY_WORKER carries a legacy spelling is refused by the renew verb before any work
+// (factoryLaneLabelFromEnv). The factory_renew tool must refuse it the same way: a tool error
+// that names the legacy label, and a lease left exactly as it was.
+func TestFactoryRenewRefusesLegacyLaneLabelOnBothSurfaces(t *testing.T) {
+	const legacy = "worker-1"
+	fresh := func(t *testing.T) string {
+		t.Helper()
+		root, _ := sdMoaiFixture(t)
+		sdRegisterLane(t, root, legacy)
+		factoryRenewPlace(t, root, legacy, fcNow.Add(5*time.Minute))
+		sdLaneEnv(t, legacy, "")
+		return root
+	}
+
+	t.Run("MCP tool", func(t *testing.T) {
+		root := fresh(t)
+		before, eventsBefore := factoryRenewRecord(t, root)
+		text, err := sdCallTool(t, factoryRenewMCPHandler(t, "factory_renew"),
+			map[string]any{projectRootArg: root, "card": "t1", "run": fcRun})
+		switch {
+		case err == nil:
+			t.Errorf("factory_renew under the legacy label %q was not refused; it returned %q", legacy, text)
+		case !strings.Contains(err.Error(), "legacy lane label"):
+			t.Errorf("factory_renew refusal does not name the legacy label: %v", err)
+		}
+		factoryRenewAssertUnchanged(t, root, before, eventsBefore)
+	})
+
+	t.Run("verb", func(t *testing.T) {
+		root := fresh(t)
+		before, eventsBefore := factoryRenewRecord(t, root)
+		_, _, err := runFactory(t, "renew", "t1", "--json", "--run", fcRun)
+		switch {
+		case err == nil:
+			t.Errorf("renew --json under the legacy label %q was not refused", legacy)
+		case !strings.Contains(err.Error(), "legacy lane label"):
+			t.Errorf("renew refusal does not name the legacy label: %v", err)
+		}
+		factoryRenewAssertUnchanged(t, root, before, eventsBefore)
+	})
+}
+
+// AC-FLR-002 (REQ-FLR-002), linked-worktree parity — sync-audit F2, card t1663. The factory
+// record is kept at the queue root (the primary checkout), but the renewal reads the lease
+// keys from the root it is handed. The verb hands it the queue root of its launch tree; the
+// tool must hand it the same root for a caller in a linked worktree. Otherwise the two
+// surfaces renew one card at two different durations.
+func TestFactoryRenewMatchesMCPLinkedWorktree(t *testing.T) {
+	for _, tc := range []struct {
+		name     string
+		duration string
+	}{
+		{"primary duration 20m", "20m"},
+		{"primary duration 0s", "0s"},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			primary, _ := sdMoaiFixture(t)
+			wt := addGitWorktree(t, primary)
+			sdRegisterLane(t, primary, "lane-1")
+			factoryRenewPlace(t, primary, "lane-1", fcNow.Add(5*time.Minute))
+			// The primary's keys are set after the fixture opened the factory: a 0s duration
+			// refuses the open, and the fixture itself must not be the first thing to see it.
+			factoryRenewWriteLeaseDuration(t, primary, tc.duration)
+			sdLaneEnv(t, "lane-1", "")
+			t.Setenv("CLAUDE_PROJECT_DIR", wt)
+
+			viaVerb, verbErr := factoryRenewViaVerb(t)
+			text, err := sdCallTool(t, factoryRenewMCPHandler(t, "factory_renew"),
+				map[string]any{projectRootArg: wt, "card": "t1", "run": fcRun})
+			if err != nil {
+				t.Fatalf("factory_renew from the linked worktree: tool error %v", err)
+			}
+			var viaMCP factoryRenewWire
+			if jerr := json.Unmarshal([]byte(strings.TrimSpace(text)), &viaMCP); jerr != nil {
+				t.Fatalf("factory_renew text %q is not the JSON outcome: %v", text, jerr)
+			}
+			if viaMCP != viaVerb {
+				t.Errorf("linked worktree: factory_renew = %+v, renew verb = %+v (verb error %v); want equal",
+					viaMCP, viaVerb, verbErr)
+			}
+			// Anchor: the verb reads the primary's keys, so the shared outcome must be the
+			// primary's configured one, not the compiled default that a worktree would give.
+			switch tc.duration {
+			case "20m":
+				want := fcNow.Add(20 * time.Minute).Format(time.RFC3339Nano)
+				if viaVerb.Result != "renewed" || viaVerb.ExpiresAt != want {
+					t.Errorf("verb outcome = %+v, want renewed to %s (the primary's 20m)", viaVerb, want)
+				}
+			case "0s":
+				if viaVerb.Result != "error" {
+					t.Errorf("verb outcome = %+v, want result error (the primary's 0s is refused)", viaVerb)
+				}
+			}
+		})
+	}
+}
+
+// AC-FLR-010 and AC-FLR-011, renewal without --run — sync-audit F3, card t1663. The watchdog's
+// renew step runs `moai factory renew <card> --json` with no --run. With two active factory
+// runs the single-run resolution refuses, so the renewal must resolve the lane's own run for
+// the card from the lane identity: the one run in which this lane holds the card.
+func TestFactoryRenewResolvesLaneRunWithoutRunArg(t *testing.T) {
+	// fixture seeds two owner-live runs. Card t1 exists in both. This lane (lane-1) holds it
+	// in run-b; in run-a the card is held by holderInA.
+	fixture := func(t *testing.T, holderInA string) string {
+		t.Helper()
+		root, _ := sdMoaiFixture(t)
+		seedLiveRun(t, root, "run-a")
+		seedLiveRun(t, root, "run-b")
+		sdRegisterLane(t, root, "lane-1")
+		sdRegisterLane(t, root, "lane-2")
+		live := fcNow.Add(5 * time.Minute).Format(time.RFC3339Nano)
+		fcPlace(t, root,
+			homestate.Card{RunID: "run-a", CardID: "t1", State: homestate.CardRun, Stage: homestate.CardRun,
+				OwnerLabel: holderInA, LeaseHolder: holderInA, LeaseExpiresAt: live, WorktreePath: root},
+			homestate.Card{RunID: "run-b", CardID: "t1", State: homestate.CardRun, Stage: homestate.CardRun,
+				OwnerLabel: "lane-1", LeaseHolder: "lane-1", LeaseExpiresAt: live, WorktreePath: root},
+		)
+		sdLaneEnv(t, "lane-1", "")
+		return root
+	}
+	want := fcNow.Add(15 * time.Minute).Format(time.RFC3339Nano)
+
+	t.Run("verb", func(t *testing.T) {
+		root := fixture(t, "lane-2")
+		before := factoryRenewCardIn(t, root, "run-a", "t1")
+		out, _, err := runFactory(t, "renew", "t1", "--json")
+		if err != nil {
+			t.Fatalf("renew t1 --json with no --run and two active runs: %v (stdout %q)", err, out)
+		}
+		var wire factoryRenewWire
+		if jerr := json.Unmarshal([]byte(strings.TrimSpace(out)), &wire); jerr != nil {
+			t.Fatalf("renew --json printed no JSON outcome (stdout %q): %v", out, jerr)
+		}
+		if wire.Result != "renewed" || wire.ExpiresAt != want {
+			t.Errorf("renew outcome = %+v, want renewed to %s", wire, want)
+		}
+		if got := factoryRenewCardIn(t, root, "run-b", "t1").LeaseExpiresAt; got != want {
+			t.Errorf("run-b lease expiry = %s, want %s", got, want)
+		}
+		if after := factoryRenewCardIn(t, root, "run-a", "t1"); after.LeaseExpiresAt != before.LeaseExpiresAt {
+			t.Errorf("run-a lease changed %s → %s; the renewal must touch only the lane's run",
+				before.LeaseExpiresAt, after.LeaseExpiresAt)
+		}
+	})
+
+	t.Run("MCP tool", func(t *testing.T) {
+		root := fixture(t, "lane-2")
+		text, err := sdCallTool(t, factoryRenewMCPHandler(t, "factory_renew"),
+			map[string]any{projectRootArg: root, "card": "t1"})
+		if err != nil {
+			t.Fatalf("factory_renew with no run and two active runs: %v", err)
+		}
+		var wire factoryRenewWire
+		if jerr := json.Unmarshal([]byte(strings.TrimSpace(text)), &wire); jerr != nil {
+			t.Fatalf("factory_renew text %q is not the JSON outcome: %v", text, jerr)
+		}
+		if wire.Result != "renewed" || wire.ExpiresAt != want {
+			t.Errorf("factory_renew outcome = %+v, want renewed to %s", wire, want)
+		}
+	})
+
+	// Guard arm: when the lane holds the card in BOTH active runs the renewal stays refused,
+	// and the refusal names --run so the operator can choose.
+	t.Run("held in both runs refuses and names --run", func(t *testing.T) {
+		fixture(t, "lane-1")
+		_, _, err := runFactory(t, "renew", "t1", "--json")
+		if err == nil || !strings.Contains(err.Error(), "--run") {
+			t.Errorf("renew with no --run while lane-1 holds t1 in both runs: err = %v, want a refusal naming --run", err)
+		}
+	})
 }
