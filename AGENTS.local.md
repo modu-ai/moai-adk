@@ -212,10 +212,11 @@ primary 체크아웃에서 착지하려면 `git status --porcelain=v1 -z --untra
 
 `origin/main`은 릴리스 PR로만 전진하며, 직접 push하지 않는다.
 
-- (1) 로컬 `main`을 origin의 `release/main-batch-YYYYMMDD` 브랜치로 push한다. `YYYYMMDD`는 배치의 날짜다.
+- (1) 로컬 `main`을 origin의 `release/main-batch-YYYYMMDD` 브랜치로 push한다. `YYYYMMDD`는 배치의 날짜다. 명령은 `git push origin main:refs/heads/release/main-batch-YYYYMMDD`이다.
 - (2) 그 브랜치에서 `main`으로 가는 pull request를 연다.
-- (3) 병합 커밋으로 병합한다. squash 병합은 하지 않는다.
+- (3) 병합 커밋(merge commit)으로 병합한다.
 - (4) 병합이 끝나면 4항의 재동기화로 로컬 `main`을 `origin/main`에 fast-forward한다.
+- 병합 방식은 squash를 쓰지 않는다(no squash).
 
 `main:release/*` 푸시에 대한 pre-push 훅의 판정은 아직 측정되지 않았다(OQ-10).
 
