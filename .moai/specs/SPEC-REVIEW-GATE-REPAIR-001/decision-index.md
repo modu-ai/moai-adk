@@ -1,12 +1,12 @@
 # 결정 색인 — SPEC-REVIEW-GATE-REPAIR-001
 
-> 이 색인은 상태 축을 갖지 않는다. 이 SPEC 의 생명주기는 spec.md 만이 가진다. 각 행의 `Operator verdict` 는 운영자 판정 원문과 보드 기록 번호로 채웠다(spec v0.1.1, 2026-10-10). 판정이 빈 행은 없다. 2회차(spec v0.1.2)에서 Q1 에 개정 판정 행을 더했고, 2회차 기록(F-2, 문서 불일치)은 Q 행 밖에 두었다.
+> 이 색인은 상태 축을 갖지 않는다. 이 SPEC 의 생명주기는 spec.md 만이 가진다. 각 행의 `Operator verdict` 는 운영자 판정 원문과 보드 기록 번호로 채웠다(spec v0.1.1, 2026-10-10). 판정이 빈 행은 없다. 2회차(spec v0.1.2)에서 Q1 에 개정 판정 행을 더했고, 2회차 기록(F-2, 문서 불일치)은 Q 행 밖에 두었다. v0.2.0 에서 Q1 은 t1662 로 이관되었다(d-20261010T070728Z-6cdf).
 
 ## 개요
 
 | 번호 | 질문 | 라벨 | 분류 | 기본값 (규칙 적용 결과) | 판정 |
 |---|---|---|---|---|---|
-| Q1 | 두 설정 키가 다른 ref 를 가리킬 때 기준 판정 | FOUNDER | product-level | (a) (rule: 순위 3) | (a) 합집합에서 최근접 후보 → 개정 (가) 합집합 유지 + 활성 흐름 가드 (d-20261010T063222Z-43e0) |
+| Q1 | 두 설정 키가 다른 ref 를 가리킬 때 기준 판정 | FOUNDER | product-level | (a) (rule: 순위 3) | (a) 합집합에서 최근접 후보 → 개정 (가) 합집합 유지 + 활성 흐름 가드 (d-20261010T063222Z-43e0) → t1662 로 이관 (d-20261010T070728Z-6cdf) |
 | Q2 | 연속 차단 상한 C 의 값 | FOUNDER | product-level | C = 1 (rule: 순위 3) | C = 1 |
 | Q3 | 실행 단위 스위치의 형태 | FOUNDER | product-level | 없음 (rule: 순위 3, 분리되지 않음) | (b) 주 체크아웃의 미추적 재정의 파일 |
 | Q4 | inconclusive 뒤 재검토 간격 | FOUNDER | product-level | 없음 (rule: 분리되지 않음) | (a) 간격 없음 |
@@ -47,6 +47,7 @@ Default: (a) (rule: 순위 3, 사용자에게 보이는 표면이 작은 것 —
 Alternate: (b).
 Operator verdict: (a) 합집합에서 최근접 후보 — 보드 기록 d-20261010T053034Z-c50f
 Operator verdict (amendment): (가) 합집합 유지 + 활성 흐름 가드 — 영실이 판단(운영자 위임), board d-20261010T063222Z-43e0
+Moved to t1662 (REQ-ACE-005) under d-20261010T070728Z-6cdf. The verdict lines above are kept as history.
 
 ---
 
@@ -143,6 +144,16 @@ F-2 — plan.md:111 correction approved — 영실이 판단(운영자 위임), 
 문서 불일치(AGENTS.md:94–95 · :166–167 과 `.claude/rules/local/gitflow-lane-protocol.md:16`) — record only, transferred to t1635 — 영실이 판단(운영자 위임), d-20261010T063222Z-43e0
 
 progress.md 를 M1–M7 공통 승인 파일로 plan.md §C 에 등록하고, 절 (a) 우선 판독(키 읽기 실패는 항상 절 (d); manual.workflow 부재·알 수 없음·모순은 두 키가 서로 다른 브랜치일 때에만 절 (d); 절 (a) 가 맞으면 manual.workflow 미판독; 리더 이의 없음 확인) — 리더 판정(승인), d-20261010T065057Z-229e
+
+---
+
+## 3회차 판정 기록 (Q 행 밖)
+
+기준 브랜치 선택 부분(카드 (2)항, REQ-RG-006·007·008 과 인수 기준, Q1 가드, F-3)을 후속 카드 t1662 로 분할했다(REQ-ACE-005). F-3 은 결함이므로 부채로 적지 않는다 — 영실이 판단(운영자 위임), d-20261010T070728Z-6cdf
+
+범위 축소 판정 d-20261010T072237Z-121e(영실이 판단, 운영자 위임), option (a): 이 SPEC은 (1)·(3)·(5)만 다룬다. (2)·(4)는 t1662로 이관한다. (6)~(10)은 t1637(3.2-1-4)이 후속으로 맡는다.
+
+리더 판정 d-20261010T072546Z-6d67, option (b): (6) 중 REQ-RG-016의 상태 메시지(D4)는 이 SPEC에 남고, 나머지 가시성 확장은 t1637이 맡는다. REQ-RG-016 과 묶인 AC(AC-RG-005, AC-RG-010, AC-RG-018, AC-RG-019)는 이 SPEC 에 둔다.
 
 ---
 

@@ -1,7 +1,7 @@
 ---
 id: SPEC-REVIEW-GATE-REPAIR-001
 title: "Codex 리뷰 게이트 수리 — 프롬프트 진입 교착을 풀고 리뷰 기준을 하나로 모은다"
-version: "0.1.2"
+version: "0.2.0"
 status: draft
 created: 2026-10-10
 updated: 2026-10-10
@@ -23,6 +23,7 @@ tags: "codex, review-gate, turn-end, prompt-entry, receipt, merge-base, card-t16
 - 2026-10-10 · v0.1.0 · manager-spec · 최초 작성(draft). Tier L 판정 근거는 plan.md §A. 측정 원천은 research.md(인용 전수 재검증, 기준선 셀 실행). 운영자 판정이 필요한 항목 Q1–Q6 은 decision-index.md 에 개방 상태로 두었다.
 - 2026-10-10 · v0.1.1 · manager-spec · plan-audit 1회차 FAIL(score 0.625, MP-7 실패; 근거 `.moai/reports/t1620/plan-audit.md` §1.4 의 D1–D12) 을 수리했다. 운영자 판정 Q1–Q6 과 보드 판정 D3·D4·D11 을 decision-index.md 에 원문으로 기록했다(보드 기록 d-20261010T053034Z-c50f, d-20261010T053834Z-422b, d-20261010T054047Z-3fc2). 요구사항 16개, 인수 기준 20개(Tier L 상한은 각각 25). 의미를 바꾸지 않는 감사 선택 항목(O1–O11)을 적용했다. **Q6 처분**: SPEC-GATE-BOTTLENECK-001 의 REQ-GBN-002·REQ-GBN-004·AC-GBN-004 는 이 SPEC 의 HISTORY 와 F5 에만 기록하며, 그 SPEC 은 편집하지 않는다. 재감사를 통과하기 전에는 Implementation Kickoff 를 열지 않는다.
 - 2026-10-10 · v0.1.2 · manager-spec · plan-audit 2회차 FAIL(codex, 영수증 rcpt-0efbcef22b780f388f658933)을 수리했다. **F-1**(감사자 주장, 레인은 임시 저장소로 재현하지 않음): 설계가 github-flow 에서 남아 있는 develop_branch 를 무시하지 않고 develop 을 항상 후보에 넣었다. 운영자 판정 Q1 은 (가) 합집합 유지 + 활성 흐름 가드로 개정되었다(영실이 판단, 운영자 위임, 보드 기록 d-20261010T063222Z-43e0). REQ-RG-006·007·008 을 `manual.workflow` 로 분기하는 네 절로 다시 썼다. 절 (c) 는 github-flow 에서 develop 을 후보에서 제외한다. 절 (d) 에는 리더가 확인한 판독에 따라 manual.workflow 부재, 알 수 없는 값, 두 키와의 모순을 inconclusive 조건으로 명시했다. 모순의 구체적 조합은 절 (a)–(c) 에서 확인되지 않았다(plan.md §F 위험 12). **F-2**: plan.md 의 마일스톤 중단 조건을 승인 파일 목록 기준으로 정정했다(workflow.yaml 금지는 §F 그대로). 같은 보드 기록이 보류 d-20261010T063038Z-f1a1 을 해소한다. 인수 기준 AC-RG-006·007·008·009 를 새 규칙에 맞추고 AC-RG-021~024 를 추가했다(총 24, 상한 25). 요구사항은 16 으로 유지했다. F6(문서 불일치의 t1635 이관, 기록만)을 등록했다. 리더 판정 d-20261010T065057Z-229e 를 반영했다: progress.md 를 M1–M7 공통 승인 파일로 plan.md §C 에 등록했고, 절 (d) 는 두 키를 읽을 수 없으면 항상 적용한다. manual.workflow 가 없거나 알 수 없는 값이거나 두 키와 모순되면, 두 키가 서로 다른 브랜치를 가리킬 때에만 적용한다. 절 (a) 가 맞으면 manual.workflow 를 읽지 않는다. 이 판독은 리더가 이의 없음으로 확인했다.
+- 2026-10-10 · v0.2.0 · manager-spec · 분할 판정 d-20261010T070728Z-6cdf(영실이 판단, 운영자 위임)에 따라 범위를 카드 항목 (1)·(3)·(5) 로 좁혔다 (판정 121e 옵션 (a): (6)~(10) 은 t1637, (2)·(4) 는 t1662, (6) 중 REQ-RG-016 은 이 SPEC). 계획 감사 3회차 FAIL(codex, 영수증 rcpt-3e341c03b359a26ff7d01963)의 발견 F-3(활성 모드를 무시하고 `manual.workflow` 를 읽는 P2 결함)은 부채가 아니라 결함이므로 이 SPEC 에서 갚지 않고, 기준 브랜치 선택 부분을 후속 카드 t1662 로 떼어 냈다(REQ-ACE-005). 제거된 요구사항: REQ-RG-005, REQ-RG-006, REQ-RG-007, REQ-RG-008. 제거된 인수 기준: AC-RG-006, AC-RG-007, AC-RG-008, AC-RG-009, AC-RG-016, AC-RG-020, AC-RG-021, AC-RG-022, AC-RG-023, AC-RG-024. 모두 t1662 로 이관되었다. REQ-RG-005 와 AC-RG-006 은 같은 공용 해석 함수의 설계와 소비자 일치를 다루므로 조정 요청에 따라 함께 이관했다. 남은 요구사항은 12개(REQ-RG-001–004, REQ-RG-009–016), 인수 기준은 14개(AC-RG-001–005, AC-RG-010–015, AC-RG-017–019)다. 범위 축소 판정 d-20261010T072237Z-121e(영실이 판단, 운영자 위임)에서 option (a) 를 선택했다. 이어 리더 판정 d-20261010T072546Z-6d67(option (b))로 REQ-RG-016 과 묶인 AC 는 이 SPEC 에 둔다. 이 SPEC 은 카드 항목 (1)·(3)·(5)와 (6) 중 REQ-RG-016 부분만 다루며, (2)·(4)는 t1662, (6)~(10)은 t1637(3.2-1-4)로 이관하되 (6) 중 REQ-RG-016 부분은 이 SPEC 에 남는다. ID 는 재번호 매기지 않았으며 번호 간격은 제거된 ID 다. 이전 기록 행은 편집하지 않았다.
 
 ---
 
@@ -50,7 +51,7 @@ tags: "codex, review-gate, turn-end, prompt-entry, receipt, merge-base, card-t16
 - 턴 종료 게이트와 card 범위 리뷰는 `cardMergeBase` 로 기준을 정한다. 이 함수는 `IntegrationTarget` 을 읽고(`internal/cli/codex_review_scope.go:189-191`), 그 값은 git-flow 수동 프로필에서 `develop_branch`(`.moai/config/sections/git-strategy.yaml:16`, 값 `develop`; 키 경로 `git_strategy.manual.develop_branch`)다(`internal/config/loader_integration_branch.go:123`).
 - 감사 도구는 `resolveReviewBase` 를 쓰며, 이 함수는 첫 단계로 `worktree_base_branch` 를 읽는다(`internal/cli/mcp_review_material.go:159`, 값 `main`, `git-strategy.yaml:5`). 이 단계는 커밋 `f82a078bb`(2026-10-03, 카드 t1426)가 추가했다.
 - 토폴로지(git 측정): `merge-base(main, develop) = db0c514d3`, `db0c514d3..main` 139 커밋, `db0c514d3..develop` 149 커밋.
-- 같은 저장소에서 두 해석기는 서로 다른 기준을 고른다. 두 해석을 하나의 함수로 모으는 이유다(REQ-RG-005).
+- 같은 저장소에서 두 해석기는 서로 다른 기준을 고른다. 두 해석을 하나의 함수로 모으는 이유다(t1662, REQ-ACE-005).
 
 ### A.3 완료된 SPEC 의 결정이 코드에서 뒤집혀 있다
 
@@ -106,37 +107,6 @@ When a turn ends with a fresh fail receipt for the current review key, the block
 When a turn ends with a fresh fail receipt for a review key whose block count has reached C, the turn-end gate shall allow the stop and shall show the unreviewed state in a visible system message.
 
 차단 횟수는 리뷰 키 단위의 총량이다(보드 판정 D3 = 키당 총 C회로 제한 (허용이 카운터를 되돌리지 않음)). 허용은 차단 횟수를 되돌리지 않는다. 그 키에 fresh pass 영수증이 기록되면 그 키의 차단 횟수를 제거한다. 키가 바뀌면 새 키는 0 에서 시작한다. C = 1(운영자 판정 Q2)이므로, 같은 fail 키는 처음 한 번만 차단되고 그 뒤의 턴 종료는 모두 허용되며 메시지가 표시된다. 이 규칙은 턴 단위로 카운터를 되돌리는 방식이 만드는 차단·허용의 반복(sawtooth)을 막는다. 허용 뒤의 다음 턴 종료는 AC-RG-017 이 확인한다.
-
-### REQ-RG-005 — 리뷰 기준은 하나의 해석 함수가 정한다 (Ubiquitous, M4)
-
-The turn-end gate, the card-scope review tool, and the audit tools shall obtain the review base from one shared resolution function.
-
-두 해석 경로가 같은 입력에 같은 기준을 내야 한다. 함수를 하나로 묶는 것만으로는 부족하고, 모든 호출 경로가 그 함수를 거쳐야 한다. 함수의 입력, 후보 집합, 거리 척도, 동점 규칙은 design.md §4 가 정한다.
-
-### REQ-RG-006 — 기준은 후보 가운데 HEAD 에 가장 가까운 공통 조상이다 (state-driven, M4)
-
-While the candidate set derived under REQ-RG-007 has at least one resolvable candidate, the shared resolution function shall select the candidate whose merge-base with HEAD has the fewest commits between that merge-base and HEAD.
-
-후보 집합은 REQ-RG-007 의 네 절이 정한다. 합집합은 절 (b) 에만 있다(design.md §4.1). 거리는 `rev-list --count <merge-base>..HEAD` 다(design.md §4.2). 절 (b) 에서 카드가 main 에서 잘렸다면 main 쪽 merge-base 가, develop 에서 잘렸다면 develop 쪽 merge-base 가 선택된다. 같은 거리의 동점 규칙은 design.md §4.3 이 정한다. merge-base SHA 가 다른 동점은 inconclusive 다(AC-RG-020).
-
-### REQ-RG-007 — 기준 후보 집합은 활성 흐름 설정이 정한다 (Ubiquitous, M4, 운영자 판정 Q1 개정 (가))
-
-The shared resolution function shall derive the candidate set from the keys `git_strategy.worktree_base_branch`, `git_strategy.manual.develop_branch`, and `git_strategy.manual.workflow` by applying clauses (a) to (d) in order; the first clause whose condition holds shall decide the set.
-
-- **(a)** `manual.develop_branch` 가 `main` 이거나 `worktree_base_branch` 가 `manual.develop_branch` 와 같으면, 단일 기준은 그 브랜치 하나다(첫 경우에는 `main`, 둘째 경우에는 공통 이름). 합집합을 쓰지 않으며 develop 후보를 넣지 않는다.
-- **(b)** `manual.workflow` 가 `git-flow` 이면, 후보 집합은 `worktree_base_branch` 와 `manual.develop_branch` 의 합집합이다. 최근접 후보를 REQ-RG-006 의 거리와 동점 규칙으로 고른다.
-- **(c)** `manual.workflow` 가 `github-flow` 이면, 단일 기준은 `worktree_base_branch` 다. develop 은 github-flow 에서 legacy 이므로 후보에서 제외한다.
-- **(d)** 설정만으로 활성 흐름을 정할 수 없을 때 적용한다. 그 경우는 다음 둘 중 하나다. (i) 두 키(`worktree_base_branch`, `manual.develop_branch`)를 읽을 수 없는 경우이며, 다른 조건과 무관하게 적용한다. (ii) 두 키가 서로 다른 브랜치를 가리키고, `manual.workflow` 가 없거나 알 수 없는 값이거나 두 키와 모순되는 경우다. 절 (a) 가 먼저 적용되며, 절 (a) 는 `manual.workflow` 를 읽지 않는다. 결과는 INCONCLUSIVE 이며, pass 로 캐시하지 않는다(REQ-RG-009).
-
-운영자 판정 Q1 의 개정 = (가) 합집합 유지 + 활성 흐름 가드(영실이 판단, 운영자 위임, 보드 기록 d-20261010T063222Z-43e0). 원판정 (a) 합집합에서 최근접 후보(보드 기록 d-20261010T053034Z-c50f)는 절 (b) 로 남는다. 키 불일치는 어느 절에서도 판정을 막는 사유가 아니다. 이 저장소의 현재 값은 절 (b) 에 해당하므로, 두 키가 다른 ref 를 가리키는 현재 구성(§A.2)이 판정을 막지 않는다. 결과에는 두 설정 값과 `manual.workflow` 값, 적용된 절을 함께 기록한다. 문언대로 키 불일치를 inconclusive 로 두면 모든 판정이 inconclusive 가 되므로 그 해석은 폐기되었다.
-
-절 (c) 와 (d) 는 운영자 판정이 명시하지 않은 경우에 대한 실행 레인의 해석이다. 절 (c) 가 github-flow 에서 develop 을 후보에서 제외하는 조건이 plan-audit 2회차 F-1 의 조건이다. 순서 규칙에 따라 같은 구성에 두 절이 맞으면 먼저 적힌 절이 정한다. 예를 들어 `manual.develop_branch` 가 `main` 이고 `manual.workflow` 가 `github-flow` 이면 절 (a) 가 정하고 절 (c) 는 쓰이지 않는다. 그래서 절 (a) 가 맞는 구성은 `manual.workflow` 를 읽지 않으며, 그 구성의 워크플로 부재나 알 수 없는 값은 절 (d) 로 가지 않는다. 순서는 판정 d-20261010T065057Z-229e 로 정해졌다. 운영자 확인 대상은 X1·X3 를 inconclusive 로 바꿀지와 설정 파일 부재가 키 읽기 실패에 해당하는지뿐이다(plan.md §F 위험 12·13). 절 (a)–(c) 에서 모순으로 확인된 조합은 아직 없다.
-
-### REQ-RG-008 — 기준 후보가 없으면 다른 기준으로 넘어가지 않는다 (event-detected, M4)
-
-When no candidate of the set derived under REQ-RG-007 resolves in the tree, the shared resolution function shall return an inconclusive result and shall not substitute another base.
-
-설정 밖의 ref(예: `origin/HEAD`)로의 대체도 금지된다. 절 (d) 의 inconclusive 도 같은 결과이며 다른 기준으로 넘어가지 않는다. 현행 감사 경로의 단계 1–2 대체(`origin/HEAD`, `main`)는 이 요구와 충돌하며, 그 단언의 기대값 변경은 AC-RG-016 이 근거와 함께 명시한다.
 
 ### REQ-RG-009 — 재사용은 pass 와 fail 에만 허용한다 (Ubiquitous, M5)
 
@@ -195,12 +165,12 @@ When the turn-end gate allows a stop and no fresh passing receipt backs that all
 
 ## §C AC 와 검증 구속
 
-- 모든 인수 기준은 acceptance.md 에 있다(AC-RG-001 ~ AC-RG-024, 요구와 1:1 이상 연결, 고아 기준 없음). 이 SPEC 은 plan 시점에 릴리스 게이트를 하나도 갖지 않는다. 이유: 행위 요구를 단언하는 테스트가 현재 트리에 없고(research.md §6, 테스트 이름 확인), 기존 행위 테스트는 결함을 고정할 뿐이다(acceptance.md §A). 릴리스 게이트로 승격하려면 run 단계가 구현 전 트리에서 RED 를 원문으로 기록해야 한다.
+- 모든 인수 기준은 acceptance.md 에 있다(AC-RG-001–005, AC-RG-010–015, AC-RG-017–019, 요구와 1:1 이상 연결, 고아 기준 없음. 제거된 ID 는 HISTORY v0.2.0 에 있다). 이 SPEC 은 plan 시점에 릴리스 게이트를 하나도 갖지 않는다. 이유: 행위 요구를 단언하는 테스트가 현재 트리에 없고(research.md §6, 테스트 이름 확인), 기존 행위 테스트는 결함을 고정할 뿐이다(acceptance.md §A). 릴리스 게이트로 승격하려면 run 단계가 구현 전 트리에서 RED 를 원문으로 기록해야 한다.
 - 검증 명령은 항상 작업 트리 루트에서, 단일 호출로 실행한다. 실행된 테스트 수를 함께 기록하며, 0개는 측정 불가로 보고한다.
 
 ## §D 실행 순서 구속
 
-1. 운영자 판정 Q1–Q6 과 보드 판정 D3·D4·D11 은 decision-index.md 에 기록되어 있다. run 단계는 여섯 Q 행의 `Operator verdict` 가 채워져 있는지 확인하고 시작한다.
+1. 운영자 판정 Q2–Q6 과 보드 판정 D3·D4·D11 은 decision-index.md 에 기록되어 있다. Q1 은 t1662 로 이관되었다(d-20261010T070728Z-6cdf). run 단계는 Q2–Q6 행의 `Operator verdict` 가 채워져 있는지 확인하고 시작한다.
 2. 각 마일스톤은 RED(실패 확인) → GREEN → 회귀 순으로 진행한다. RED 출력은 progress.md §E.2 에 원문으로 남긴다.
 3. **변경 세트(change set)는 커밋 하나다.** 두 면을 가진 파일은 같은 커밋에서 함께 갱신한다. 훅 래퍼(`.claude/hooks/moai/handle-codex-review-{entry,gate}.sh` 와 `internal/template/templates/.claude/hooks/moai/handle-codex-review-{entry,gate}.sh`)는 M6 의 한 커밋에 함께 담긴다. M7 의 규칙 문장 정정(F4)도 규칙 파일(`.claude/rules/moai/workflow/factory-dispatch-detail.md`)과 그 템플릿 미러를 한 커밋에서 맞춘다. 두 면이 서로 다른 커밋에 갈라지는 상태는 허용하지 않는다.
 
@@ -208,14 +178,23 @@ When the turn-end gate allows a stop and no fresh passing receipt backs that all
 
 ## §E 범위 밖 (Out of Scope)
 
+이 SPEC은 (1)·(3)·(5)와, 아래 (6) 중 REQ-RG-016 부분만 다룬다. (2)·(4)는 t1662로 이관한다. (6)~(10)은 t1637(3.2-1-4)이 후속으로 맡는다. (6) 중 REQ-RG-016의 상태 메시지(D4)는 이 SPEC에 남고, 나머지 가시성 확장은 t1637이 맡는다.
+
+- (6) 미리뷰 systemMessage 가시화 → REQ-RG-016 의 상태 메시지(D4)는 이 SPEC 에 남고, 나머지 가시성 확장은 t1637
+- (7) 차단 사유 중복·경로·길이 상한 → t1637
+- (8) 킥 중복 제거·동시 리뷰 상한·마커 누수 → t1637
+- (9) 빈 diff 무킥 → t1637
+- (10) 진입 훅 timeout 정합 → t1637
+- (4) 영수증을 병합 기준·내용 다이제스트에 결속 → t1662
+
 ### Out of Scope — 영수증 결합 기준의 변경 (F1)
 
-- 영수증을 HEAD 대신 (merge base, 내용 digest) 에 묶는 변경은 이 SPEC 에서 하지 않는다. Follow-up F1 로 추적한다.
+- 영수증을 HEAD 대신 (merge base, 내용 digest) 에 묶는 변경은 이 SPEC 에서 하지 않는다. t1662 로 추적한다(카드 항목 4, 영수증을 병합 기준·내용 다이제스트에 결속).
 - 현재 결합 필드 다섯 개의 구성 변경도 하지 않는다.
 
 ### Out of Scope — 가시성, 중복 제거, kick 정리 (F2)
 
-- 차단 사유의 중복 제거와 길이 상한, 미검토 상태의 systemMessage 표시 확장(REQ-RG-016 의 범위를 넘는 부분), kick 의 pid·liveness 기반 중복 제거와 레인 전체 동시성 상한, 마커 누수 정리, 추적 diff 가 비면 kick 하지 않는 규칙, 진입 훅 timeout 의 5초 정렬은 이 SPEC 밖이다. Follow-up F2 로 추적한다.
+- 차단 사유의 중복 제거와 길이 상한, 미검토 상태의 systemMessage 표시 확장(REQ-RG-016 의 범위를 넘는 부분), kick 의 pid·liveness 기반 중복 제거와 레인 전체 동시성 상한, 마커 누수 정리, 추적 diff 가 비면 kick 하지 않는 규칙, 진입 훅 timeout 의 5초 정렬은 이 SPEC 밖이다. Follow-up F2 (t1637) 로 추적한다.
 
 ### Out of Scope — factory 저장소 경로 (F3)
 
@@ -249,16 +228,21 @@ When the turn-end gate allows a stop and no fresh passing receipt backs that all
 
 - AGENTS.md:94–95 · :166–167 과 `.claude/rules/local/gitflow-lane-protocol.md:16` 의 충돌(카드 기준 브랜치가 main 인지 develop 인지)은 이 SPEC 에서 고치지 않는다. 기록만 남기고 카드 t1635(3.2-1-2)로 이관한다.
 
+### Out of Scope — 기준 브랜치 선택 (REQ-ACE-005, t1662)
+
+- 리뷰 기준 브랜치 선택(후보 집합, 활성 흐름·모드 인식, 키 불일치, 후보 없음 처리)은 이 SPEC 에서 하지 않는다. 후속 카드 t1662 가 맡는다(리더 판정 d-20261010T070728Z-6cdf).
+
 ---
 
 ## Follow-up
 
-- **F1 — 영수증 결합 기준 변경.** 영수증을 HEAD 대신 (merge base, 내용 digest) 에 묶는다(카드 항목 4). 별도 후속 카드로 추적한다. 요구사항을 붙이지 않는다.
-- **F2 — 가시성과 운영 정리.** 카드 항목 6–10: 미검토 상태를 systemMessage 로 드러내기(REQ-RG-016 밖의 범위), 차단 사유의 중복 제거와 길이 상한, kick 을 pid·liveness 로 중복 제거하고 레인 전체 상한을 두며 마커 약 64개 정리, 추적 diff 가 비면 kick 하지 않기, 진입 훅 timeout 을 5초에서 15초 예산과 맞추기. 요구사항을 붙이지 않는다.
+- **F1 — 영수증 결합 기준 변경.** 영수증을 HEAD 대신 (merge base, 내용 digest) 에 묶는다(카드 항목 4). t1662 로 추적한다(카드 항목 4, 영수증을 병합 기준·내용 다이제스트에 결속). 요구사항을 붙이지 않는다.
+- **F2 — 가시성과 운영 정리.** 카드 항목 6–10 은 t1637(3.2-1-4)이 맡는다. 다만 항목 6 중 REQ-RG-016 의 상태 메시지(D4)는 이 SPEC 에 남는다. 카드 항목 6–10: 미검토 상태를 systemMessage 로 드러내기(REQ-RG-016 밖의 범위), 차단 사유의 중복 제거와 길이 상한, kick 을 pid·liveness 로 중복 제거하고 레인 전체 상한을 두며 마커 약 64개 정리, 추적 diff 가 비면 kick 하지 않기, 진입 훅 timeout 을 5초에서 15초 예산과 맞추기. 요구사항을 붙이지 않는다.
 - **F3 — factory 후보 두 건(카드 t1620 밖).** (a) `internal/factory/todo_dispatch_current.go:53` 의 백로그 SQLite 열기가 JSON 큐 이관 전에 빈 SQLite 를 만들 수 있다. (b) `internal/factory/todo_runtime.go:364` 의 할당 트랜잭션에서 외부 저장소 변경 뒤 내부 커밋(약 368행)이 실패하면 복구되지 않는다. 두 주장의 검증 결과는 research.md §7 에 있다. 요구사항을 붙이지 않는다.
 - **F4 — 두 계층 동시 활성 doctor 점검 (운영자 판정 Q5 = (b)).** doctor 검사는 이 SPEC 에서 추가하지 않고 후속 항목으로 등록한다. 규칙 문장 `.claude/rules/moai/workflow/factory-dispatch-detail.md:157`(두 계층이 같은 카드 diff 를 두 번 검토한다는 문장)은 Q5 (b) 의 구성 요소로 run 단계(M7)에서 정정한다. 정정은 그 규칙 파일과 템플릿 미러를 같은 커밋에서 맞춘다. 이 plan 단계에서는 그 규칙 파일을 편집하지 않는다.
 - **F5 — Q6 기록 처분 (운영자 판정 Q6 = (b)).** 이 SPEC 은 SPEC-GATE-BOTTLENECK-001 의 REQ-GBN-002(`spec.md:43–47`, 진입 차단 절), REQ-GBN-004(`spec.md:51–54`)와 AC-GBN-004(`spec.md:67–68`, inconclusive 절)를 편집하지 않는다. 처분은 이 SPEC 의 HISTORY 와 이 항목에만 기록한다. 잔여 위험: 대상 SPEC 은 in-progress 이며, 코드의 진입 차단 동작과 REQ-GBN-002 가 주석 없이 어긋난 상태로 남는다.
 - **F6 — 문서 불일치의 t1635 이관 (운영자 판정, 보드 d-20261010T063222Z-43e0).** AGENTS.md:94–95 · :166–167 은 카드 브랜치를 로컬 main 에서 자르고 develop 을 legacy 라고 적으며, `.claude/rules/local/gitflow-lane-protocol.md:16` 은 카드 워크트리를 develop 에서 만든다고 적는다. 이 SPEC 은 두 문서를 고치지 않고 기록만 남겨 카드 t1635(3.2-1-2)로 넘긴다. 요구사항을 붙이지 않는다.
+- **F-3 — 기준 브랜치 선택 (활성 모드 인식 포함, 계획 감사 3회차 발견).** `manual.workflow` 를 활성 모드와 무관하게 읽는 결함이며 부채가 아니다. 후속 카드 t1662 로 이관했다(REQ-ACE-005, 리더 판정 d-20261010T070728Z-6cdf). 요구사항을 붙이지 않는다.
 
 ---
 
@@ -271,9 +255,9 @@ When the turn-end gate allows a stop and no fresh passing receipt backs that all
 ## §G 참조
 
 - research.md — 인용 재검증 등록부, 재현 근거, 전제 확인(§9: 수리 1회차 재검증)
-- design.md — 상태 모델, 기준 해석 함수, 스위치 해석, 판정 표
+- design.md — 상태 모델, 스위치 해석, 판정 표(기준 해석 함수는 t1662 로 이관)
 - plan.md — 마일스톤과 기술 접근
 - acceptance.md — 인수 기준 매트릭스와 기준선 셀
-- decision-index.md — 운영자 판정 Q1–Q6 과 보드 판정 D3·D4·D11, 2회차 개정 (가)·F-2·문서 불일치 기록(보드 d-20261010T063222Z-43e0)
+- decision-index.md — 운영자 판정 Q2–Q6 과 보드 판정 D3·D4·D11, 2회차 기록(보드 d-20261010T063222Z-43e0), Q1 의 t1662 이관(d-20261010T070728Z-6cdf)
 - `.moai/specs/SPEC-CODEX-REVIEW-TARGET-001/spec.md` §A.7 · `.moai/specs/SPEC-GATE-BOTTLENECK-001/spec.md` REQ-GBN-002 · REQ-GBN-004 · AC-GBN-004
 - `.moai/reports/t1620/plan-audit.md` §1.4 — 수리의 입력(감사 결함 D1–D12, 선택 항목 O1–O11). 이 SPEC 은 그 파일을 권한으로 인용하지 않는다.
