@@ -164,7 +164,7 @@ m1_to_mN_commit_strategy: commit 1 RED test only (9262172f8), commit 2 fix K1/K3
 ```yaml
 sync_status: complete
 audit_ready: true
-sync_commit_sha: pending-backfill
+sync_commit_sha: 430d9f5a28ffc4903f66017987c9a44ad36c796c
 sync_scope: spec.md status completed in the sync commit (in-progress to implemented to completed, one commit); section E.4 sync signal; no CHANGELOG or docs-site change
 sync_audit_backend: codex_audit (target baseBranch, project_root = card tree)
 ```
