@@ -9,14 +9,20 @@ package cli
 import (
 	"bytes"
 	"context"
+	"errors"
 	"fmt"
+	"io/fs"
 	"os"
 	"path/filepath"
 	"runtime"
 	"strings"
+	"syscall"
 	"testing"
+	"time"
 
+	"github.com/modu-ai/moai-adk/internal/cli/update/plan"
 	"github.com/modu-ai/moai-adk/internal/merge"
+	"github.com/modu-ai/moai-adk/pkg/version"
 )
 
 // integrityProbeRelPaths are the representative project paths the probe checks.
@@ -201,6 +207,40 @@ func writeProbeFile(t *testing.T, root, rel, content string) {
 	}
 }
 
+// probeReturnBound is how long one damageReason call may take before the test
+// treats it as blocked. A classification is one stat plus at most one bounded
+// read, so a healthy call returns in microseconds; the bound only has to tell a
+// block from a slow machine.
+const probeReturnBound = 5 * time.Second
+
+// damageReasonWithin runs e.damageReason(root) on its own goroutine and waits at
+// most bound for the classification. returned is false when the call is still
+// blocked when the bound expires.
+func damageReasonWithin(e integrityProbeEntry, root string, bound time.Duration) (reason string, returned bool) {
+	done := make(chan string, 1)
+	go func() { done <- e.damageReason(root) }()
+	select {
+	case reason = <-done:
+		return reason, true
+	case <-time.After(bound):
+		return "", false
+	}
+}
+
+// unblockPipe releases a goroutine stuck in the open-for-read of a named pipe at
+// abs: opening the pipe for writing completes the reader's open, and closing the
+// writer ends its stream. It does nothing for any other file type, so a bounded
+// test can call it unconditionally after a timeout.
+func unblockPipe(abs string) {
+	info, err := os.Lstat(abs)
+	if err != nil || info.Mode()&fs.ModeNamedPipe == 0 {
+		return
+	}
+	if w, err := os.OpenFile(abs, os.O_WRONLY|syscall.O_NONBLOCK, 0); err == nil {
+		_ = w.Close()
+	}
+}
+
 // TestIntegrityProbeEntry_DamageReasons pins every classification one
 // representative entry can return. The end-to-end tests reach only some of them:
 // a version match needs a non-empty system.yaml that carries the stamp, so the
@@ -208,6 +248,7 @@ func writeProbeFile(t *testing.T, root, rel, content string) {
 func TestIntegrityProbeEntry_DamageReasons(t *testing.T) {
 	settings := integrityProbeEntry{rel: ".claude/settings.json", check: probeJSON}
 	system := integrityProbeEntry{rel: ".moai/config/sections/system.yaml", check: probeNonEmpty}
+	manifest := integrityProbeEntry{rel: ".moai/manifest.json", check: probeJSON}
 
 	cases := []struct {
 		name  string
@@ -250,14 +291,86 @@ func TestIntegrityProbeEntry_DamageReasons(t *testing.T) {
 			}
 			t.Cleanup(func() { _ = os.Chmod(abs, 0o644) })
 		}, "unreadable"},
+		{"fifo_in_place_of_json", manifest, func(t *testing.T, root string) {
+			if err := os.MkdirAll(filepath.Join(root, ".moai"), 0o755); err != nil {
+				t.Fatal(err)
+			}
+			if err := makeCodexFIFOFixture(filepath.Join(root, ".moai", "manifest.json")); err != nil {
+				if errors.Is(err, errCodexFixtureUnsupported) {
+					t.Skip("named pipes cannot be created on this platform")
+				}
+				t.Fatalf("plant a named pipe where the manifest belongs: %v", err)
+			}
+		}, "not a file"},
+		{"oversized_json", manifest, func(t *testing.T, root string) {
+			// Valid JSON one byte past the read bound: the probe must refuse to read it.
+			writeProbeFile(t, root, ".moai/manifest.json", `{"pad":"`+strings.Repeat("x", plan.MaxConfigSize)+`"}`)
+		}, "unreadable"},
 	}
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
 			root := t.TempDir()
 			tc.setup(t, root)
-			if got := tc.entry.damageReason(root); got != tc.want {
+			got, returned := damageReasonWithin(tc.entry, root, probeReturnBound)
+			if !returned {
+				unblockPipe(filepath.Join(root, filepath.FromSlash(tc.entry.rel)))
+				t.Fatalf("damageReason(%s) did not return within %s: the probe is blocked on a read it must never make",
+					tc.entry.rel, probeReturnBound)
+			}
+			if got != tc.want {
 				t.Fatalf("damageReason(%s) = %q, want %q", tc.entry.rel, got, tc.want)
 			}
 		})
 	}
+}
+
+// TestIntegrityProbeSet_EveryMemberObservableOnVersionMatchedPath pins F3. The
+// probe runs only on the version-matched path, and that path is taken only while
+// the template-version stamp in system.yaml matches the package version. So every
+// member of the set must stay observable with the stamp intact: damaging a member
+// must not flip the skip predicate, or the probe never runs and never names it.
+func TestIntegrityProbeSet_EveryMemberObservableOnVersionMatchedPath(t *testing.T) {
+	for _, e := range managedSurfaceProbeSet {
+		t.Run(e.rel, func(t *testing.T) {
+			root := t.TempDir()
+			writeVersionStampedProject(t, root)
+			if !versionMatchSkips(t, root) {
+				t.Fatal("precondition: an intact stamped project must take the version-match skip")
+			}
+			if err := os.Remove(filepath.Join(root, filepath.FromSlash(e.rel))); err != nil {
+				t.Fatalf("damage fixture: %v", err)
+			}
+			if !versionMatchSkips(t, root) {
+				t.Fatalf("F3: removing %s flips the version-match predicate, so the probe never runs on this project and cannot name the member", e.rel)
+			}
+			var out bytes.Buffer
+			runManagedSurfaceIntegrityProbe(&out, root)
+			if !strings.Contains(out.String(), e.rel) {
+				t.Fatalf("F3: the version-matched probe did not name the removed member %s:\n%s", e.rel, out.String())
+			}
+		})
+	}
+}
+
+// writeVersionStampedProject lays down an intact project whose system.yaml carries
+// the package's template-version stamp, so the version-match predicate holds.
+func writeVersionStampedProject(t *testing.T, root string) {
+	t.Helper()
+	writeProbeFile(t, root, ".moai/config/sections/system.yaml",
+		fmt.Sprintf("moai:\n  template_version: %s\n", version.GetVersion()))
+	writeProbeFile(t, root, ".claude/settings.json", "{}")
+	writeProbeFile(t, root, ".moai/manifest.json", "{}")
+}
+
+// versionMatchSkips evaluates the real version-match predicate with the update
+// command's force flag pinned off, so state a sibling test left on the shared
+// command cannot change the answer.
+func versionMatchSkips(t *testing.T, root string) bool {
+	t.Helper()
+	prev := updateCmd.Flags().Lookup("force").Value.String()
+	t.Cleanup(func() { _ = updateCmd.Flags().Set("force", prev) })
+	if err := updateCmd.Flags().Set("force", "false"); err != nil {
+		t.Fatalf("set --force: %v", err)
+	}
+	return updateSkippedOnVersionMatch(updateCmd, root)
 }
