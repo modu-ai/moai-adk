@@ -1,12 +1,12 @@
 # 결정 색인 — SPEC-REVIEW-GATE-REPAIR-001
 
-> 이 색인은 상태 축을 갖지 않는다. 이 SPEC 의 생명주기는 spec.md 만이 가진다. 각 행의 `Operator verdict` 는 운영자 판정 원문과 보드 기록 번호로 채웠다(spec v0.1.1, 2026-10-10). 판정이 빈 행은 없다.
+> 이 색인은 상태 축을 갖지 않는다. 이 SPEC 의 생명주기는 spec.md 만이 가진다. 각 행의 `Operator verdict` 는 운영자 판정 원문과 보드 기록 번호로 채웠다(spec v0.1.1, 2026-10-10). 판정이 빈 행은 없다. 2회차(spec v0.1.2)에서 Q1 에 개정 판정 행을 더했고, 2회차 기록(F-2, 문서 불일치)은 Q 행 밖에 두었다.
 
 ## 개요
 
 | 번호 | 질문 | 라벨 | 분류 | 기본값 (규칙 적용 결과) | 판정 |
 |---|---|---|---|---|---|
-| Q1 | 두 설정 키가 다른 ref 를 가리킬 때 기준 판정 | FOUNDER | product-level | (a) (rule: 순위 3) | (a) 합집합에서 최근접 후보 |
+| Q1 | 두 설정 키가 다른 ref 를 가리킬 때 기준 판정 | FOUNDER | product-level | (a) (rule: 순위 3) | (a) 합집합에서 최근접 후보 → 개정 (가) 합집합 유지 + 활성 흐름 가드 (d-20261010T063222Z-43e0) |
 | Q2 | 연속 차단 상한 C 의 값 | FOUNDER | product-level | C = 1 (rule: 순위 3) | C = 1 |
 | Q3 | 실행 단위 스위치의 형태 | FOUNDER | product-level | 없음 (rule: 순위 3, 분리되지 않음) | (b) 주 체크아웃의 미추적 재정의 파일 |
 | Q4 | inconclusive 뒤 재검토 간격 | FOUNDER | product-level | 없음 (rule: 분리되지 않음) | (a) 간격 없음 |
@@ -30,6 +30,7 @@ Label: FOUNDER
 Class: product-level
 Authority anchor: 없음 (FOUNDER. 검증 가능한 권한 앵커가 없다.)
 Why unresolved: 카드 M2 의 문언("두 키가 다르면 inconclusive")을 이 저장소의 설정에 적용하면 모든 판정이 inconclusive 가 된다. 관측된 값: `worktree_base_branch` 는 `main`(`.moai/config/sections/git-strategy.yaml:5`), `develop_branch` 는 `develop`(같은 파일 :16). 턴 종료 기준 `IntegrationTarget` 은 git-flow 수동 프로필에서 `develop` 이다(`internal/config/loader_integration_branch.go:123`). 감사 경로는 `worktree_base_branch` 를 첫 단계로 읽는다(`internal/cli/mcp_review_material.go:159`, 카드 t1426 커밋 `f82a078bb`).
+Resolved by: d-20261010T063222Z-43e0 (운영자 위임 판정 (가), 아래 Operator verdict (amendment) 행). 이 Why unresolved 문단은 판정 이전의 원문이다.
 
 충돌하는 커밋 문서 출처가 둘 있다. (1) `AGENTS.md:94–95` 와 `:166–167`: 카드 브랜치는 로컬 `main` 에서 자르고, 카드 PR 은 `main` 으로 보내며, `develop` 은 2026-10-05 GitHub Flow 전환 뒤 legacy 라고 적는다. (2) `.claude/rules/local/gitflow-lane-protocol.md:16`: "카드 워크트리는 `develop`에서 만든다. `main`이 아니다." 이 파일은 `.claude/rules/local/` 아래 로컬 전용 문서이며 git 추적 파일이다. 권한 등록부 밖이므로 충돌 출처로만 인용한다. 두 출처는 카드 워크트리의 기준 브랜치를 서로 다르게 적는다.
 
@@ -45,6 +46,7 @@ Options:
 Default: (a) (rule: 순위 3, 사용자에게 보이는 표면이 작은 것 — `.claude/agents/moai/manager-spec.md:119`). 순위 1(현행 동작 보존): 세 선택지 모두 현행의 턴 종료 결과를 바꾼다. (c) 는 설정 값을 바꾸므로 그 값을 읽는 쪽의 현행 동작을 바꾸고, (a) 는 키 불일치 구성에서 턴 종료 기준을 바꾸며, (b) 는 이 저장소의 모든 턴 종료 판정을 inconclusive 로 만든다. 순위 1 로는 선택지가 나뉘지 않는다. 순위 2(이 SPEC 커밋 하나의 되돌리기): (c) 의 되돌리기는 SPEC-GITHUB-FLOW-DEFAULT-001 M5 묶음의 되돌리기이며 이 SPEC 의 커밋이 아니므로 탈락한다. (a)와 (b)는 이 SPEC 의 커밋 되돌리기로 원상복구된다. 순위 3: (b) 는 이 저장소의 모든 턴 종료에 inconclusive 메시지를 내고 판정을 쓰지 않으므로 사용자에게 보이는 표면이 크다. (a) 가 순위 3 을 만족한다. 이 기본값은 추천이 아니며, 운영자 판정 (a) 와 같은 방향이지만 근거는 순위 3 의 적용 결과다.
 Alternate: (b).
 Operator verdict: (a) 합집합에서 최근접 후보 — 보드 기록 d-20261010T053034Z-c50f
+Operator verdict (amendment): (가) 합집합 유지 + 활성 흐름 가드 — 영실이 판단(운영자 위임), board d-20261010T063222Z-43e0
 
 ---
 
@@ -131,6 +133,16 @@ Options:
 Default: (b) (rule: 순위 1 — 규칙의 문언은 "현행 동작 보존"이다. 세 선택지 모두 M2 의 진입 동작 변경과 함께 가므로 동작으로는 나뉘지 않는다. 순위 2 — (b) 는 대상 SPEC 을 편집하지 않아 이 SPEC 커밋의 되돌리기만으로 원상복구된다. (a) 는 대상 SPEC 파일을 편집하고, (c) 는 대상 SPEC 의 구조 변경을 동반하므로 되돌리기 범위가 이 SPEC 밖으로 넘어간다. `.claude/agents/moai/manager-spec.md:119`).
 Alternate: (a) 또는 (c).
 Operator verdict: (b) — 보드 기록 d-20261010T054047Z-3fc2
+
+---
+
+## 2회차 판정 기록 (Q 행 밖)
+
+F-2 — plan.md:111 correction approved — 영실이 판단(운영자 위임), d-20261010T063222Z-43e0
+
+문서 불일치(AGENTS.md:94–95 · :166–167 과 `.claude/rules/local/gitflow-lane-protocol.md:16`) — record only, transferred to t1635 — 영실이 판단(운영자 위임), d-20261010T063222Z-43e0
+
+progress.md 를 M1–M7 공통 승인 파일로 plan.md §C 에 등록하고, 절 (a) 우선 판독(키 읽기 실패는 항상 절 (d); manual.workflow 부재·알 수 없음·모순은 두 키가 서로 다른 브랜치일 때에만 절 (d); 절 (a) 가 맞으면 manual.workflow 미판독; 리더 이의 없음 확인) — 리더 판정(승인), d-20261010T065057Z-229e
 
 ---
 

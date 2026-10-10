@@ -2,15 +2,15 @@
 
 ## §A 맥락
 
-- **Tier L 판정.** 변경 표면이 네 서브시스템(진입 훅, 턴 종료 게이트, 영수증 저장과 재사용, 리뷰 기준 해석)과 설정 스위치에 걸친다. 인용하는 코드 파일이 15개를 넘고, 요구사항 16개와 인수 기준 20개를 가진다(각각 상한 25). 리서치 산출물(research.md)이 필요하므로 설계 산출물(design.md)과 함께 다섯 개 산출물을 둔다. 여기에 progress.md 와 decision-index.md 를 더한다. decision-index.md 는 `interview.decision_gate: on` 이므로 필수다.
-- **현재 상태.** 운영자 판정 Q1–Q6 과 보드 판정 D3·D4·D11 은 decision-index.md 에 기록되었다. 플랜 감사 1회차는 FAIL(score 0.625)이었고, 이 개정은 그 D1–D12 를 수리한다. 구현 코드는 건드리지 않았다. 재감사를 통과해야 Implementation Kickoff 를 열 수 있다.
+- **Tier L 판정.** 변경 표면이 네 서브시스템(진입 훅, 턴 종료 게이트, 영수증 저장과 재사용, 리뷰 기준 해석)과 설정 스위치에 걸친다. 인용하는 코드 파일이 15개를 넘고, 요구사항 16개와 인수 기준 24개를 가진다(각각 상한 25). 리서치 산출물(research.md)이 필요하므로 설계 산출물(design.md)과 함께 다섯 개 산출물을 둔다. 여기에 progress.md 와 decision-index.md 를 더한다. decision-index.md 는 `interview.decision_gate: on` 이므로 필수다.
+- **현재 상태.** 운영자 판정 Q1–Q6 과 보드 판정 D3·D4·D11 은 decision-index.md 에 기록되었다. 플랜 감사 1회차는 FAIL(score 0.625)이었고, 이 개정은 그 D1–D12 를 수리한다. 플랜 감사 2회차(codex, 영수증 rcpt-0efbcef22b780f388f658933)는 FAIL 이었고, 이 개정(spec v0.1.2)은 그 F-1·F-2 를 수리한다. 구현 코드는 건드리지 않았다. 재감사를 통과해야 Implementation Kickoff 를 열 수 있다.
 - **이 계획이 하지 않는 것.** 구현 코드 변경은 run 단계의 몫이다. F1·F2·F3·F5 는 구현 범위 밖이다. F4 의 규칙 문장 정정과 F1–F5 의 후속 등록은 M7 에서 한다.
 
 ## §B 되돌리기 어려운 결정 (구현 전 확정)
 
 가장 바뀌기 쉬운 결정부터 순서대로 적는다. 각 항목은 decision-index.md 의 같은 번호와 짝을 이룬다. 여섯 판정은 모두 기록되었다. 판정 원문과 보드 기록 번호는 decision-index.md 의 `Operator verdict` 행에 있다.
 
-1. **Q1 — 두 설정 키가 다른 ref 를 가리킬 때의 기준 규칙.** 판정: (a) 합집합에서 최근접 후보 (보드 기록 d-20261010T053034Z-c50f). 두 키의 후보 합집합에서 최근접 후보를 고르며, 키 불일치는 판정을 막지 않는다. 결과: REQ-RG-007, design.md §4, AC-RG-007·008.
+1. **Q1 — 두 설정 키가 다른 ref 를 가리킬 때의 기준 규칙.** 판정: (a) 합집합에서 최근접 후보 (보드 기록 d-20261010T053034Z-c50f). 개정 판정: (가) 합집합 유지 + 활성 흐름 가드 (영실이 판단, 운영자 위임, 보드 기록 d-20261010T063222Z-43e0; 보류 d-20261010T063038Z-f1a1 을 해소). 후보 집합은 `manual.workflow` 등 활성 흐름 키가 정하는 네 절로 고른다. 두 키의 후보 합집합에서 최근접 후보를 고르며, 키 불일치는 판정을 막지 않는다. 결과: REQ-RG-006·007·008, design.md §4, AC-RG-006·007·008·021–024.
 2. **Q6 — SPEC-GATE-BOTTLENECK-001 REQ-GBN-002 의 기록 처분.** 판정: (b) (보드 기록 d-20261010T054047Z-3fc2). 이 SPEC 의 HISTORY 와 F5 에만 기록하고 대상 SPEC 은 편집하지 않는다. 결과: spec.md §A.4, F5.
 3. **Q3 — 실행 단위 스위치의 형태.** 판정: (b) 주 체크아웃의 미추적 재정의 파일 (보드 기록 d-20261010T053834Z-422b). 결과: REQ-RG-011·012, design.md §5, AC-RG-012·013.
 4. **Q2 — 연속 차단 상한 C.** 판정: C = 1 (보드 기록 d-20261010T053834Z-422b). 차단 횟수는 키당 총량으로 제한된다(D3). 결과: REQ-RG-003·004, AC-RG-004·005·017.
@@ -42,8 +42,11 @@
 | `internal/template/templates/.claude/hooks/moai/handle-codex-review-{entry,gate}.sh` | 두 래퍼의 배포 미러. 같은 커밋에서 갱신한다(spec.md §D.3) | M6 |
 | `internal/verify/receipt.go` 63–96행, 70–76행, 90행 | 재사용 판정 입력. 결합 필드 다섯 개. 유효기간 0 은 기본값(10분)으로 바뀐다 | M2, M5 |
 | `.claude/rules/moai/workflow/factory-dispatch-detail.md` 157행 과 템플릿 미러 `internal/template/templates/.claude/rules/moai/workflow/factory-dispatch-detail.md` | 두 계층 동시 활성 문장. F4 의 정정 대상 | M7 |
+| `.moai/specs/SPEC-REVIEW-GATE-REPAIR-001/progress.md` (공통 승인 파일) | 현재 §E.1 만 채워진 진행 기록. 마일스톤별 기록(RED 출력 §E.2, 기대값 변경의 근거, 회귀 비교표)이 여기에 든다. 모든 마일스톤의 승인 파일 목록에 공통으로 든다 | M1–M7 (공통) |
 
 후보 집합, 거리 척도, 동점 규칙은 design.md §4 가 정한다. 파일 목록은 run 단계에서 확정한다. 목록이 Tier L 의 상한을 넘으면 Tier 판정을 다시 한다.
+
+`.moai/specs/SPEC-REVIEW-GATE-REPAIR-001/progress.md` 는 M1–M7 모든 마일스톤의 공통 승인 파일이다(위 표의 마지막 행). 따라서 각 마일스톤의 승인 파일 목록은 그 마일스톤에 묶인 행과 이 공통 행을 합친 것이다.
 
 ## §D 마일스톤 (우선순위 순)
 
@@ -52,8 +55,8 @@
 ### M1 — 판정 기록 확인 (우선순위 High, 차단 게이트)
 
 - Q1–Q6 과 보드 판정 D3·D4·D11 은 decision-index.md 에 기록되었다(plan 단계 완료). run 단계는 여섯 Q 행의 `Operator verdict:` 가 채워져 있는지 읽어 확인한다.
-- 완료 조건: 여섯 Q 행의 Operator verdict 가 모두 채워져 있고, 보드 판정 세 건이 같은 색인에 있다.
-- 재감사(plan-audit 2회차) 통과가 이 마일스톤의 전제다. 재감사 전에는 run 단계로 넘어가지 않는다.
+- 완료 조건: 여섯 Q 행의 Operator verdict 가 모두 채워져 있고, 보드 판정 세 건이 같은 색인에 있다. Q1 의 개정 판정 행과 2회차 기록(d-20261010T063222Z-43e0)도 같은 색인에 있다.
+- 다음 plan-audit 통과가 이 마일스톤의 전제다(수리 2회차 뒤의 재감사). 재감사 전에는 run 단계로 넘어가지 않는다.
 - Q6 처분은 (b) 이므로 대상 SPEC 의 편집을 여는 별도 작업은 없다.
 
 ### M2 — 진입 훅 비차단과 전달 기록 (우선순위 High, 사용자 흐름 변경과 새 데이터 모델)
@@ -74,9 +77,9 @@
 
 ### M4 — 리뷰 기준의 단일 해석 함수 (우선순위 High, Q1 판정 반영)
 
-- 요구: REQ-RG-005, REQ-RG-006, REQ-RG-007, REQ-RG-008. 인수 기준: AC-RG-006, AC-RG-007, AC-RG-008, AC-RG-009, AC-RG-016, AC-RG-020.
-- RED: 턴 종료 범위, card 범위 리뷰, 감사 기준이 같은 merge-base 를 낸다(AC-RG-006). 카드가 main 에서 잘렸으면 main 이 선택된다(AC-RG-007). 카드가 develop 에서 잘렸고 키가 다르면 최근접 develop 이 선택되며 inconclusive 가 아니다(AC-RG-008). 후보가 없으면 inconclusive 이며 다른 기준으로 넘어가지 않는다(AC-RG-009). 동점이고 merge-base SHA 가 다르면 inconclusive 다(AC-RG-020).
-- GREEN: `cardMergeBase`, `resolveReviewBase`, `resolveReviewMergeBase` 가 하나의 해석 함수(design.md §4)를 거치도록 수렴한다. 호출 경로를 모두 바꾼다.
+- 요구: REQ-RG-005, REQ-RG-006, REQ-RG-007, REQ-RG-008. 인수 기준: AC-RG-006, AC-RG-007, AC-RG-008, AC-RG-009, AC-RG-016, AC-RG-020, AC-RG-021, AC-RG-022, AC-RG-023, AC-RG-024.
+- RED: 턴 종료 범위, card 범위 리뷰, 감사 기준이 같은 merge-base 를 낸다(AC-RG-006). 카드가 main 에서 잘렸으면 main 이 선택된다(AC-RG-007). 카드가 develop 에서 잘렸고 키가 다르면 최근접 develop 이 선택되며 inconclusive 가 아니다(AC-RG-008). 후보가 없으면 inconclusive 이며 다른 기준으로 넘어가지 않는다(AC-RG-009). 동점이고 merge-base SHA 가 다르면 inconclusive 다(AC-RG-020). 절 (a) 픽스처에서 develop 이 후보에 들어오면 RED(AC-RG-021), 절 (b) 픽스처에서 origin 후보가 빠지면 RED(AC-RG-022), 절 (c) 픽스처에서 github-flow 인데 develop 이 선택되면 RED(AC-RG-023), 절 (d) 픽스처에서 inconclusive 가 pass 로 저장되면 RED(AC-RG-024).
+- GREEN: `cardMergeBase`, `resolveReviewBase`, `resolveReviewMergeBase` 가 하나의 해석 함수(design.md §4)를 거치도록 수렴한다. 이 함수는 `worktree_base_branch`, `manual.develop_branch`, `manual.workflow` 세 키를 읽어 절 (a)–(d) 로 후보 집합을 정한다(`manual.workflow` 읽기는 이 마일스톤에서 추가한다). 호출 경로를 모두 바꾼다.
 - 기대값 변경: `TestCodexAudit_BaseBranchResolutionChain` 의 단계 0 과 단계 1–2 단언은 Q1 결과와 REQ-RG-008 에 따라서만 바뀐다. 바뀌는 항목마다 근거를 progress.md 에 적는다(AC-RG-016).
 - 공허 검사 방지: 실행된 테스트 수(`--- PASS` 줄 수)를 기록한다.
 
@@ -100,7 +103,7 @@
 - 요구: REQ-RG-013, REQ-RG-014(회귀). 인수 기준: AC-RG-014, AC-RG-015, AC-RG-019(가드 부분).
 - 회귀 가드 전체를 변경 전후로 다시 실행하고 비교표를 progress.md 에 남긴다. 여기에는 `TestReviewGate_FailOpenOnMissingCodex` 처럼 셀 B-1 에 없는 reviewer 부재 가드를 포함한다.
 - F4 의 규칙 문장(`.claude/rules/moai/workflow/factory-dispatch-detail.md:157`)을 정정한다. 그 파일과 템플릿 미러를 같은 커밋에서 맞춘다.
-- F1–F5 를 후속 카드로 등록한다. 이 SPEC 의 Follow-up 항목을 그대로 옮긴다.
+- F1–F5 를 후속 카드로 등록하고, F6 은 카드 t1635(3.2-1-2)로 이관한다. 이 SPEC 의 Follow-up 항목을 그대로 옮긴다.
 
 ## §E 자기 검증 — run 단계 명령 형식
 
@@ -108,12 +111,12 @@
 - 테스트 호출 형식: `go test -count=1 -v -run '^<TestName>$' ./internal/cli/` 처럼 단일 호출로, 출력을 원문으로 남긴다. 종료 코드는 별도 필드로 기록한다.
 - 빌드 출처: 측정은 트리의 소스에서 만든 빌드로 한다. 설치된 빌드의 버전 문자열만으로 판정하지 않는다(verification-claim-integrity.md §2.2).
 - 공허 검사 방지: 실행된 테스트 수(`--- PASS` 줄 수)를 함께 기록한다. 0이면 측정 불가로 보고한다.
-- 트리 변화 점검: 각 마일스톤 종료 시 `git status --short` 를 본다. `.moai/config/sections/workflow.yaml` 외의 변화가 있으면 멈추고 보고한다.
+- 트리 변화 점검: 각 마일스톤 종료 시 `git status --short` 를 본다. 변화가 그 마일스톤의 승인 파일 목록(§C 파일 지도에서 그 마일스톤에 묶인 파일) 밖에 있으면 멈추고 보고한다. `.moai/config/sections/workflow.yaml` 은 어느 마일스톤에서도 건드리지 않는다(spec.md §F 의 제약, §E 범위 밖).
 - 변경 세트 점검: 마일스톤 커밋마다 `git show --stat <sha>` 로 두 면(`.claude/` 와 `internal/template/templates/`)이 같은 커밋에 있는지 확인한다.
 
 ## §F 위험
 
-1. **문언대로의 키 불일치는 이 저장소에서 항상 inconclusive 다.** Q1 = (a) 로 정해졌으므로 이 위험은 M4 의 RED(AC-RG-008)가 막는다.
+1. **Q1 위험은 개정 판정 (가) 로 해소되었다**(보드 기록 d-20261010T063222Z-43e0). 문언대로 키 불일치를 inconclusive 로 두면 이 저장소의 모든 판정이 inconclusive 가 되는데, 절 (b) 의 합집합이 이를 막는다. 남은 위험은 절 (a)·(c)·(d) 의 구현이다(github-flow 에서 develop 이 섞이는 경우, 읽기 실패가 pass 로 저장되는 경우). M4 의 RED(AC-RG-021·023·024)가 막는다.
 2. **결함을 고정한 테스트의 기대값 변경을 회귀로 오인하기 쉽다.** 두 테스트 모두 현재 PASS 이며(셀 B-2), 그 PASS 가 결함의 증거다. 기대값 변경은 근거와 함께 기록한다.
 3. **템플릿 미러 누락.** 래퍼가 두 면에 있다(§C). 한 면만 바꾸면 배포본과 저장소 본이 갈린다. D12 에 따라 M6 의 한 커밋에 함께 담는다.
 4. **스위치 해석의 두 층 불일치.** 셸 층과 Go 층이 주 체크아웃 해석기를 다르게 쓰면 같은 run 에서 두 층이 다른 값을 낸다(AC-RG-013).
@@ -124,6 +127,8 @@
 9. **리더의 미커밋 workflow.yaml 변경은 이 워크트리에서 재현되지 않았다.** 측정은 HEAD 기준이다. 리더가 같은 파일을 다시 바꾸면 M6 의 판독 경로가 그 값을 무시하는지 AC-RG-012 로 확인한다.
 10. **영수증과 로그는 기계 로컬이다.** 레인 저장소의 스냅샷과 상세 파일은 이 저장소의 커밋 대상이 아니다. 인용할 때는 기계 로컬 근거임을 밝힌다.
 11. **완료된 결정의 뒤집힘이 SPEC 본문에 없다.** 카드 t1426 의 감사 경로 결정 뒤집힘은 Q1 행과 HISTORY 에만 기록된다. SPEC-CODEX-REVIEW-TARGET-001 의 본문은 편집하지 않는다.
+12. **절 (d) 의 모순 조건과 순서 충돌.** 세 키의 조합 가운데 절 (a)–(c) 에서 모순으로 확인된 조합은 없다. 순서 규칙이 충돌을 정한다. (X1) `manual.develop_branch` 가 `main` 이고 `manual.workflow` 가 `github-flow` 이며 `worktree_base_branch` 가 `main` 이 아니면, 절 (a) 와 절 (c) 가 서로 다른 단일 기준을 낸다. 순서상 절 (a) 가 이긴다. (X2) `manual.develop_branch` 가 `main` 이거나 `worktree_base_branch` 가 `manual.develop_branch` 와 같은데 `manual.workflow` 가 없거나 알 수 없으면, 절 (a) 가 `manual.workflow` 를 읽지 않으므로 절 (d) 의 워크플로 조건은 적용되지 않는다. (X3) `manual.workflow` 가 `git-flow` 인데 `manual.develop_branch` 나 `worktree_base_branch` 가 비어 있거나 없으면, 절 (b) 가 합집합을 남은 한쪽 키로 줄여 적용하며, 절 (d) 의 키 읽기 조건은 적용되지 않는다. X1 과 X3 을 inconclusive 로 바꿀지는 운영자 확인 대상이다. 구체적 모순 조합이 확정될 때까지 AC-RG-024 는 그 픽스처를 두지 않는다. (리더 판정 d-20261010T065057Z-229e)
+13. **설정 파일 부재 시 키 읽기.** `git-strategy.yaml` 이 없을 때 설정 로더가 기본값을 돌려주면 키가 읽힌 것으로 보일 수 있다. 절 (d) 의 "키를 읽을 수 없음"이 이 경우를 포함하는지는 운영자 확인 대상이다. AC-RG-024 는 이 경우를 픽스처로 두지 않는다.
 
 ## §G 안티패턴
 

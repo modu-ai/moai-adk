@@ -52,28 +52,28 @@
 
 ### AC-RG-006 — 세 소비자가 같은 기준 merge-base 를 낸다 (REQ-RG-005)
 
-- **Given** 설정 `worktree_base_branch = main`, `develop_branch = develop` 이고, 두 로컬 ref 가 존재하며, 카드 HEAD 가 main 의 커밋에서 잘렸다. 원격 추적 ref 는 픽스처에 없다.
+- **Given** 임시 저장소 픽스처. 설정 `git_strategy.worktree_base_branch = main`, `git_strategy.manual.develop_branch = develop`, `git_strategy.manual.workflow = git-flow`(REQ-RG-007 절 (b))이고, 두 로컬 ref 가 존재하며, 카드 HEAD 가 main 의 커밋에서 잘렸다. 원격 추적 ref 는 픽스처에 없다.
 - **When** 턴 종료 게이트, card 범위 리뷰, 감사 도구가 각각 기준을 계산한다.
 - **Then** 세 결과의 선택 ref 이름과 merge-base SHA 가 모두 같다.
 - **분류** RG-PENDING. 부분 가드: `TestCardMergeBaseConfiguredMain` 과 `TestCodexAudit_BaseBranchResolutionChain`(셀 B-1). 두 가드는 소비자 사이의 일치를 검사하지 않는다.
 
 ### AC-RG-007 — 카드가 main 에서 잘렸으면 main 이 선택되고 develop 은 같은 거리의 동점 후보다 (REQ-RG-006)
 
-- **Given** 설정 `worktree_base_branch = main`, 통합 대상 `develop`(설정 `develop_branch = develop`). 픽스처의 "develop" 은 로컬 branch `develop` 이다. 카드 HEAD 는 main 의 커밋 X 에서 잘렸고, 로컬 `develop` 은 X 뒤로 커밋이 더 쌓여 전진했다. 원격 추적 ref 는 픽스처에 없다.
+- **Given** 임시 저장소 픽스처. 설정 `git_strategy.worktree_base_branch = main`, `git_strategy.manual.develop_branch = develop`, `git_strategy.manual.workflow = git-flow`(REQ-RG-007 절 (b)). 통합 대상 `develop`. 픽스처의 "develop" 은 로컬 branch `develop` 이다. 카드 HEAD 는 main 의 커밋 X 에서 잘렸고, 로컬 `develop` 은 X 뒤로 커밋이 더 쌓여 전진했다. 원격 추적 ref 는 픽스처에 없다.
 - **When** 기준을 계산한다.
 - **Then** 선택 이름은 `main` 이고 merge-base 는 X 다. 거리는 `rev-list --count X..HEAD` 의 값 d 다. `develop` 후보도 merge-base X 와 거리 d 를 가져 동점이며, 같은 SHA 이므로 고정 순서에 따라 `main` 이 이긴다.
 - **분류** RG-PENDING.
 
 ### AC-RG-008 — 두 설정 키가 다른 ref 를 가리켜도 inconclusive 가 아니며 최근접 후보를 고른다 (REQ-RG-007, REQ-RG-006)
 
-- **Given** 설정 `worktree_base_branch = main`, 통합 대상 `develop`(설정 `develop_branch = develop`). 카드 HEAD 는 로컬 `develop` 의 커밋 Y 에서 잘렸다. 로컬 `main` 은 Y 의 조상인 X 에 있어 `develop` 보다 뒤처졌다. 원격 추적 ref 는 픽스처에 없다.
+- **Given** 임시 저장소 픽스처. 설정 `git_strategy.worktree_base_branch = main`, `git_strategy.manual.develop_branch = develop`, `git_strategy.manual.workflow = git-flow`(REQ-RG-007 절 (b)). 카드 HEAD 는 로컬 `develop` 의 커밋 Y 에서 잘렸다. 로컬 `main` 은 Y 의 조상인 X 에 있어 `develop` 보다 뒤처졌다. 원격 추적 ref 는 픽스처에 없다.
 - **When** 기준을 계산한다.
-- **Then** 판정은 inconclusive 가 아니다. 선택 이름은 `develop` 이고 merge-base 는 Y 다. 결과는 두 설정 값 `main` 과 `develop` 을 함께 기록한다. `rev-list --count Y..HEAD` 가 `rev-list --count X..HEAD` 보다 작다.
+- **Then** 판정은 inconclusive 가 아니다. 선택 이름은 `develop` 이고 merge-base 는 Y 다. 결과는 두 설정 값 `main` 과 `develop`, `manual.workflow` 값 `git-flow`, 적용된 절 (b) 를 함께 기록한다. `rev-list --count Y..HEAD` 가 `rev-list --count X..HEAD` 보다 작다.
 - **분류** RG-PENDING. 현재 감사 경로(`resolveReviewBase`)는 `worktree_base_branch` 를 먼저 읽어 `main` 을 고르고, 턴 종료 경로(`cardMergeBase`)는 `IntegrationTarget`(`develop`)을 읽는다(research.md §3 #24, #30). 이 기준은 감사 경로의 현행 선택(`main`)과 다르다.
 
 ### AC-RG-009 — 기준 후보가 없으면 inconclusive 이고 다른 기준으로 넘어가지 않는다 (REQ-RG-008)
 
-- **Given** 설정된 두 키의 로컬 ref 와 원격 추적 ref 가 트리에서 모두 해석되지 않는다.
+- **Given** REQ-RG-007 이 정한 후보 집합의 로컬 ref 와 원격 추적 ref 가 트리에서 모두 해석되지 않는다.
 - **When** 기준을 계산한다.
 - **Then** inconclusive 가 나오고, `origin/HEAD` 나 다른 ref 가 기준으로 선택되지 않는다.
 - **분류** RG-PENDING. 관측 근거: 현재 `resolveReviewBase` 는 "no base branch resolves" 오류를 낸다(research.md §3, 부분 일치).
@@ -154,6 +154,34 @@
 - **When** 기준을 계산한다.
 - **Then** inconclusive 가 나오고, 두 이름과 두 merge-base SHA 가 함께 기록된다. 어느 쪽도 선택되지 않는다.
 - **분류** RG-PENDING. 픽스처 구성은 run 단계의 설계 세부다.
+
+### AC-RG-021 — 절 (a): 단일 기준이면 develop 은 후보에서 빠진다 (REQ-RG-007 절 (a))
+
+- **Given** 임시 저장소 픽스처 두 개. 픽스처 1: `git_strategy.worktree_base_branch = develop`, `git_strategy.manual.develop_branch = main`, `git_strategy.manual.workflow = git-flow`. 픽스처 2: `git_strategy.worktree_base_branch = develop`, `git_strategy.manual.develop_branch = develop`, `git_strategy.manual.workflow = git-flow`. 두 픽스처 모두 로컬 `main` 과 `develop` 이 있고 원격 추적 ref 는 없다. 카드 HEAD 는 로컬 `develop` 의 커밋 Y 에서 잘렸고, main 은 Y 의 조상 X 에 있다.
+- **When** 두 픽스처에서 기준 후보 집합과 선택을 계산한다.
+- **Then** 픽스처 1: 후보 집합은 `main` 뿐이고 `develop` 은 후보가 아니다. 선택 이름은 `main`, merge-base 는 X 다. 합집합을 쓰면 `develop`(merge-base Y)이 이기므로, 이 기대값은 절 (a) 를 따르지 않는 구현을 실패시킨다. 픽스처 2: 후보 집합은 `develop` 뿐이고, 선택 이름은 `develop`, merge-base 는 Y 다.
+- **분류** RG-PENDING. 픽스처 1 은 절 (a) 의 판별 픽스처다.
+
+### AC-RG-022 — 절 (b): git-flow 이면 두 키의 로컬 ref 와 원격 추적 ref 가 모두 후보다 (REQ-RG-007 절 (b), REQ-RG-006)
+
+- **Given** 임시 저장소 픽스처. `git_strategy.worktree_base_branch = main`, `git_strategy.manual.develop_branch = develop`, `git_strategy.manual.workflow = git-flow`. 로컬 `main`, 로컬 `develop`, 원격 추적 `origin/main`, `origin/develop` 이 모두 트리에 있다. 카드 HEAD 는 `origin/develop` 과 같은 커밋 Y 에서 잘렸고, main 은 Y 의 조상 X 에 있다.
+- **When** 기준 후보 집합과 선택을 계산한다.
+- **Then** 후보 집합은 네 ref 모두(`main`, `origin/main`, `develop`, `origin/develop`)다. 선택 이름은 `develop` 이고 merge-base 는 Y 다. 같은 SHA 의 `develop` 과 `origin/develop` 은 고정 순서에 따라 로컬 `develop` 이 이긴다. 출력은 두 설정 값 `main`·`develop`, `manual.workflow` 값 `git-flow`, 적용된 절 (b) 를 기록한다.
+- **분류** RG-PENDING.
+
+### AC-RG-023 — 절 (c): github-flow 이면 develop 은 후보에서 제외되고 worktree_base_branch 만 본다 (REQ-RG-007 절 (c))
+
+- **Given** 임시 저장소 픽스처. `git_strategy.worktree_base_branch = main`, `git_strategy.manual.develop_branch = develop`, `git_strategy.manual.workflow = github-flow`. 로컬 `main`, 로컬 `develop` 이 있고 원격 추적 ref 는 없다. 카드 HEAD 는 로컬 `develop` 의 커밋 Y 에서 잘렸고, main 은 Y 의 조상 X 에 있다(AC-RG-008 과 같은 분기 구성).
+- **When** 기준 후보 집합과 선택을 계산한다.
+- **Then** 후보 집합은 `main` 뿐이고 `develop` 은 후보가 아니다. 선택 이름은 `main`, merge-base 는 X 다. 대조군: 같은 픽스처에서 `manual.workflow` 만 `git-flow` 로 바꾸면 선택 이름은 `develop`(merge-base Y)이다. 이 대조는 활성 흐름 가드가 `manual.workflow` 를 실제로 읽는다는 증거다.
+- **분류** RG-PENDING.
+
+### AC-RG-024 — 절 (d): 키를 읽을 수 없거나 manual.workflow 가 없거나 알 수 없으면 inconclusive 이고 pass 로 캐시되지 않는다 (REQ-RG-007 절 (d), REQ-RG-009)
+
+- **Given** 임시 저장소 픽스처 세 개. 세 픽스처 모두 로컬 `main` 과 `develop` 이 있고, 카드 HEAD 는 로컬 `develop` 의 커밋에서 잘렸다. (i) `git-strategy.yaml` 은 `worktree_base_branch = main`, `manual.develop_branch = develop` 을 담지만 `manual.workflow` 키가 없다. (ii) 같은 두 키와 `manual.workflow: svn`(알 수 없는 값)을 담는다. (iii) `git-strategy.yaml` 전체가 파싱되지 않는 YAML 이다. 두 키와의 모순 조건은 구체적 조합이 확정되지 않았으므로 이 픽스처에 넣지 않는다(plan.md §F 위험 12).
+- **When** 기준을 계산해 리뷰 판정 결과를 영수증으로 저장하고, 같은 키의 다음 턴 종료가 온다.
+- **Then** 세 픽스처 모두 결과는 inconclusive 이고, 어떤 ref 도 기준으로 선택되지 않는다. 저장된 판정은 pass 가 아니며, 다음 턴 종료에서 pass 증거로 재사용되지 않는다(REQ-RG-009).
+- **분류** RG-PENDING.
 
 ## §C 기준선 셀 (실행 기록)
 
@@ -249,10 +277,10 @@ ok  	github.com/modu-ai/moai-adk/internal/cli	2.766s
 
 ## §E 완료 정의 (DoD)
 
-- Q1–Q6 의 운영자 판정과 보드 판정 D3·D4·D11 이 decision-index.md 에 기록되어 있다.
-- AC-RG-001 부터 AC-RG-020 까지 각 항목이 "가드 GREEN" 이거나 "RED 기록 후 구현 GREEN" 상태다.
+- Q1–Q6 의 운영자 판정과 보드 판정 D3·D4·D11 이 decision-index.md 에 기록되어 있다. Q1 의 개정 판정(가)과 2회차 기록(d-20261010T063222Z-43e0)도 같은 색인에 있다.
+- AC-RG-001 부터 AC-RG-024 까지 각 항목이 "가드 GREEN" 이거나 "RED 기록 후 구현 GREEN" 상태다.
 - 결함을 고정한 두 테스트의 기대값 변경이 근거(REQ 번호 또는 보드 판정)와 함께 progress.md 에 기록되어 있다.
-- 템플릿 미러가 맞고(M6 의 한 커밋), F1–F5 가 후속 카드로 등록되어 있다.
+- 템플릿 미러가 맞고(M6 의 한 커밋), F1–F5 가 후속 카드로 등록되고 F6 이 t1635 로 이관되어 있다.
 - 릴리스 게이트 승격 사례는 run 단계의 RED 셀로만 인용한다.
 
 ## §F 잔여 위험
