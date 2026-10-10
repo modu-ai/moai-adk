@@ -19,7 +19,7 @@
 | AC-RIB-010 | 오버플로 경로가 보존된다 — 기존 사다리 테스트가 재작성 후에도 Green (§D 제약) | regression-guard | 오늘 Green(`TestSessionStartRoleRulesSizeGate`) — 보존 성질이라 RED-now 불가 | M3: 전체 영향계열 스위트에서 동일 테스트 Green 유지 — 플립 없음이 곧 통과 형태 |
 | AC-RIB-011 | 상위 원장 36행 after-text 가 재작성된 배포 트리와 정합한다 (REQ-ALB-015 상시 계약) | regression-guard | 편집 전 원장-정합은 현재 트리에서 이미 Green — 실행 가능한 RED-now 가 구성 불가(§2 undecidable 처분, release-blocking 제외). 채택 증거는 M2 편집 후 재관측이다 | M2: 규칙 편집 뒤 `go test ./internal/template/` 원장 테스트 — 36행 after-text 갱신 전 RED 관측 → 갱신 뒤 `ok`. 편집-후 관측이 채택 증거 |
 | AC-RIB-012 | 라이브 레인 재진입(경계 소스 봉투 — startup + clear(핸드오프 대기 없음))에서 오버플로 공지 부재 + 합본 ≤10,000 관측 (§A.5 완료 기준 실측 반쪽) | regression-guard | 역사적 RED — lane-15 공지(§A.1 인용, 2026-10-09/10 관측)는 재실행 불가 → §2 undecidable 처분, release-blocking 제외 | M3: startup 재진입 + clear(핸드오프 대기 없음) 재진입 관측 — "역할 규칙 주입 초과" 부재 + systemMessage 이상 무, progress.md §E.2 에 세션·관측 기록 |
-| AC-RIB-013 | 봉투 밖 재주입 세션(핸드오프 본문 클레임 clear · armed-goal compact)에서 REQ-ALB-010 사다리가 단언 대로 작동한다 — 넘침 파일 폴백 유지 + 게이트 발화가 systemMessage 로 가시 (REQ-RIB-012) | regression-guard | 사다리의 과잉 분기 동작은 오늘 Green(`TestSessionStartRoleRulesSizeGate` 서브테스트 b/c — 보존 성질이라 RED-now 불가, §2 처분) | M3: 기존 사다리 서브테스트 Green 유지 + 봉투 밖 소스(클레임된 핸드오프 본문 · armed goal 재주입)를 합성한 과잉 픽스처에서 폴백 유지·systemMessage 가시를 단정하는 서브테스트 Green |
+| AC-RIB-013 | 봉투 밖 생산자(핸드오프 본문 클레임 clear · armed-goal compact · 전 소스 무조건 계보 배너)가 합본을 한도 넘으로 밀 때 REQ-ALB-010 사다리가 단언 대로 작동한다 — 넘침 파일 폴백 유지 + 게이트 발화가 systemMessage 로 가시 (REQ-RIB-012) | regression-guard | 사다리의 과잉 분기 동작은 오늘 Green(`TestSessionStartRoleRulesSizeGate` 서브테스트 b/c — 보존 성질이라 RED-now 불가, §2 처분) | M3: 기존 사다리 서브테스트 Green 유지 + 봉투 밖 생산자(클레임된 핸드오프 본문 · armed goal 재주입 · 무상한 배너)를 합성한 과잉 픽스처에서 폴백 유지·systemMessage 가시를 단정하는 서브테스트 Green |
 
 ## §B. 분류 요지
 
