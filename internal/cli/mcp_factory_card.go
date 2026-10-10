@@ -122,7 +122,7 @@ func mcpRequiredProjectRoot(req mcp.CallToolRequest, tool string) (string, error
 // handleFactoryNext is the MCP form of `moai factory next` (no --wait): one
 // selection+lease for the lane, then the REQ-SD-011 worktree step.
 func handleFactoryNext(ctx context.Context, req mcp.CallToolRequest) (*mcp.CallToolResult, error) {
-	root, err := mcpRequiredProjectRoot(req, "factory_next")
+	launch, err := mcpRequiredProjectRoot(req, "factory_next")
 	if err != nil {
 		return toolErr("factory_next", err), nil
 	}
@@ -133,9 +133,15 @@ func handleFactoryNext(ctx context.Context, req mcp.CallToolRequest) (*mcp.CallT
 	if lane == "" {
 		return toolErr("factory_next", fmt.Errorf("factory next: %s is empty — a lane session carries its lane label there", config.EnvMoaiFactoryWorker)), nil
 	}
-	if err := factoryAssertParentCheckout(root); err != nil {
+	// The parent-checkout assertion names the caller's own tree, so it stays on the raw
+	// project_root: a linked worktree is refused here, as the verb refuses it. A check run
+	// on the factory root instead would pass every worktree (its root IS the parent) and
+	// silently disable the refusal. The record and the lease keys come from the factory root
+	// of that tree, which after the assertion is the parent checkout itself (sync-audit N2).
+	if err := factoryAssertParentCheckout(launch); err != nil {
 		return toolErr("factory_next", err), nil
 	}
+	root := factoryRootOf(launch)
 	runID, err := resolveFactoryCardRun(ctx, root, req.GetString("run", ""))
 	if err != nil {
 		return toolErr("factory_next", fmt.Errorf("factory next: %w", err)), nil
@@ -194,7 +200,7 @@ func handleFactoryNext(ctx context.Context, req mcp.CallToolRequest) (*mcp.CallT
 
 // handleFactoryStage is the MCP form of `moai factory stage`.
 func handleFactoryStage(ctx context.Context, req mcp.CallToolRequest) (*mcp.CallToolResult, error) {
-	root, err := mcpRequiredProjectRoot(req, "factory_stage")
+	launch, err := mcpRequiredProjectRoot(req, "factory_stage")
 	if err != nil {
 		return toolErr("factory_stage", err), nil
 	}
@@ -206,7 +212,9 @@ func handleFactoryStage(ctx context.Context, req mcp.CallToolRequest) (*mcp.Call
 	if cardID == "" || state == "" {
 		return toolErr("factory_stage", errors.New("factory stage: card and state are required")), nil
 	}
-	card, err := factoryStageCard(ctx, root, cardID, state, req.GetString("evidence", ""), req.GetString("run", ""), strings.TrimSpace(os.Getenv(config.EnvMoaiFactoryWorker)))
+	// The factory root of the caller's tree, as the verb resolves its own (factoryCardRoot), so a
+	// linked worktree's lease keys come from the primary checkout on both surfaces (sync-audit N2).
+	card, err := factoryStageCard(ctx, factoryRootOf(launch), cardID, state, req.GetString("evidence", ""), req.GetString("run", ""), strings.TrimSpace(os.Getenv(config.EnvMoaiFactoryWorker)))
 	if err != nil {
 		return toolErr("factory_stage", err), nil
 	}
@@ -215,7 +223,7 @@ func handleFactoryStage(ctx context.Context, req mcp.CallToolRequest) (*mcp.Call
 
 // handleFactoryComplete is the MCP form of `moai factory complete`.
 func handleFactoryComplete(ctx context.Context, req mcp.CallToolRequest) (*mcp.CallToolResult, error) {
-	root, err := mcpRequiredProjectRoot(req, "factory_complete")
+	launch, err := mcpRequiredProjectRoot(req, "factory_complete")
 	if err != nil {
 		return toolErr("factory_complete", err), nil
 	}
@@ -231,7 +239,10 @@ func handleFactoryComplete(ctx context.Context, req mcp.CallToolRequest) (*mcp.C
 		return toolErr("factory_complete", errors.New("factory complete: card is required")), nil
 	}
 	out := &bytes.Buffer{}
-	if err := factoryCompleteCard(ctx, out, root, root, cardID, "", req.GetString("run", ""), lane); err != nil {
+	// The record and the git-flow config come from the factory root of the caller's tree (sync-audit N2).
+	// The integration window stays at the caller's own tree, as before: the verb's window root is
+	// integrationLockRoot(), a separate rule that this repair does not change.
+	if err := factoryCompleteCard(ctx, out, factoryRootOf(launch), launch, cardID, "", req.GetString("run", ""), lane); err != nil {
 		return toolErr("factory_complete", err), nil
 	}
 	return mcp.NewToolResultText(strings.TrimRight(out.String(), "\n")), nil
