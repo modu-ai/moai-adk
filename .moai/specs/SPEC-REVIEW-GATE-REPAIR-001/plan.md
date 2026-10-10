@@ -26,8 +26,12 @@
 | 파일 | 현재 역할 (근거) | 관련 마일스톤 |
 |---|---|---|
 | `internal/cli/codex_review_delay.go` | 진입 훅 `HandleCodexReviewEntry`(140행). 차단 분기 169–183행. 헤더 1–14행은 교착을 설계로 채택했다 | M2 |
+| `internal/cli/codex_review_delay_test.go` | 기존 테스트 파일. `TestReviewEntry_FreshFailBlocks`(363행)는 결함을 고정하므로 기대값을 바꾼다(셀 B-2). M2 의 기대값 변경 대상 | M2 |
+| `internal/cli/codex_review_entry_delivery_test.go` | 신규 RED 테스트 파일(AC-RG-001–003, 진입 훅 비차단과 전달 기록). M2 에서 만든다 | M2 |
 | `internal/cli/codex_review_gate.go` | 턴 종료 `HandleCodexReviewGate`(104행). stop_hook_active 109행. 수용 영수증 재사용 159–178행. 진행 중 표식 197–210행. 스위치 읽기 469행. 빈 루트 해석 `reviewGateConfigRoot` 489행 | M3, M5, M6 |
 | `internal/cli/codex_review_cache.go` | 유효기간 상수 29행. 상세 파일 읽기 72–76행 | M2, M5 |
+| `internal/cli/codex_review_cache_test.go` | 기존 테스트 파일. `TestReviewGate_InconclusiveReceiptIsNotPassEvidence`(236행)의 단언 262–269행이 허용을 고정한다(감사 O10). M5 의 기대값 변경 대상 | M5 |
+| `internal/cli/codex_review_inconclusive_test.go` | 신규 RED 테스트 파일(AC-RG-010–011, inconclusive 비재사용과 재검토 재시작). M5 에서 만든다 | M5 |
 | `internal/cli/codex_review_receipt.go` | 영수증 생산자. 키 측정 149행. inconclusive 기록 160–186행. 런타임 설정 전용 발견 사항의 재분류 176행 | M5 |
 | `internal/cli/mcp_codex.go` | `readCodexReviewGateEnabled` 2503행(빈 루트면 false). 감사 경로의 기준 기록 | M6 |
 | `internal/cli/codex_review_tree_scope.go` | 트리와 주 체크아웃 범위 판정 133–137행 | M6 |
