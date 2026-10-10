@@ -56,7 +56,7 @@ Renew this lane's own card lease before anything else, through the factory renew
 moai factory renew <card-id> --json
 ```
 
-Read `result` from the verb's JSON object on stdout. A refusal exits non-zero after printing that object, so read stdout even when the exit status is non-zero. `result` is one of `renewed`, `refused-expired`, `refused-not-holder`, or `error`. Hold the value for the snapshot: §1 copies it into the snapshot field `renew_result`. A refused renewal does not end the pass. A `refused-expired`, `refused-not-holder`, or `error` result is recorded, and the pass continues to §1 and measures in the same pass. Do not retry the renewal within the pass; the next pass renews again (REQ-FLR-010, REQ-FLR-011).
+Read `result` from the verb's JSON object on stdout. A refusal exits non-zero after printing that object, so read stdout even when the exit status is non-zero. `result` is one of `renewed`, `refused-expired`, `refused-not-holder`, or `error`. Hold the value for the snapshot: §1 copies it into the snapshot field `renew_result`. A refused renewal does not end the pass. A `refused-expired`, `refused-not-holder`, or `error` result is recorded, and the pass continues to §1 and measures in the same pass. Do not retry the renewal within the pass; the next pass renews again.
 
 ## 1. Measure progress
 
@@ -72,7 +72,7 @@ Compare against the previous snapshot at
 `evidence_mtime_max`, `window_state`, `renew_result`, `last_change_at`). The
 lane is stalled only when ALL THREE channels are unchanged since the previous
 snapshot AND at least N minutes have passed since the last observed channel
-change, which `last_change_at` records (REQ-FLR-013; auto-semantics §4). N
+change, which `last_change_at` records (auto-semantics §4). N
 defaults to 15 minutes and is a per-invocation parameter — never a config
 key. No previous snapshot → record a fresh one with `last_change_at` set to
 its own `observed_at`, no stall verdict (fail-open first observation). One

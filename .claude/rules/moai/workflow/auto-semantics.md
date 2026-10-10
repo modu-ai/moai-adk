@@ -68,7 +68,7 @@ time:
   so no home-surface visibility is needed
 - **fields**: `observed_at` (RFC3339), `head_sha`, `evidence_mtime_max`, and
   `window_state` (the integration-status output hash or holder id); and two
-  fields added with the renewal (SPEC-FACTORY-LEASE-RENEW-001): `renew_result`,
+  fields added with the renewal: `renew_result`,
   the class the renew verb reported for this pass (`renewed`,
   `refused-expired`, `refused-not-holder`, or `error`), and `last_change_at`,
   the RFC3339 `observed_at` of the last pass at which a channel changed
@@ -78,7 +78,7 @@ time:
   moved none carries the previous value forward. The verdict therefore falls on
   the first scheduled pass at or after N minutes without a channel change, so a
   lane with no channel change is reported as stalled no later than N minutes
-  plus one renewal period after that change (REQ-FLR-013)
+  plus one renewal period after that change
 - **single-writer** — the lane itself; no cross-writer discipline applies
 - **fail-open first observation**: a missing or corrupt snapshot means "no
   previous observation" — record a fresh one, with `last_change_at` set to its
@@ -416,5 +416,5 @@ progress resumes only on evidence.
 
 ---
 
-Version: 1.2.0 (the standing wake is armed at the renewal period, REQ-FLR-012, and the stall window counts from the last channel change, REQ-FLR-013; the ladder's terminal step is the lane's own judgment; Jev promoted to in-card advisory; the lane closes its own card at completion)
+Version: 1.2.0 (the standing wake is armed at the renewal period, and the stall window counts from the last channel change; the ladder's terminal step is the lane's own judgment; Jev promoted to in-card advisory; the lane closes its own card at completion)
 Classification: Canonical reference — the lane-surface `--auto` SSOT.
