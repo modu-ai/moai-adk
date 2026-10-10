@@ -501,10 +501,10 @@ func copyNode(n *yaml.Node) *yaml.Node {
 // deepMergeMapsTo is the testable core of DeepMergeMaps (2-way fallback). It
 // preserves old values where keys exist in both, adds old-only keys, and
 // always takes the new value for system fields. No advisory is emitted on the
-// 2-way path (REQ-UYP-007 binds only DeepMerge3Way). Key comments on this path
-// come from the template: with no base, a user's comment above a key cannot be
-// told apart from a template comment, so the 3-way rule (mergeCommentBlock) is
-// not applied here.
+// 2-way path (REQ-UYP-007 binds only DeepMerge3Way). Comments follow the old
+// file per slot (oldWinsComments): the user's block wins, and the template's
+// block fills only a slot the user left empty. With no base, a user's comment
+// cannot be told apart from a template comment, so the user's block always wins.
 func deepMergeMapsTo(newNode, oldNode *yaml.Node) (*yaml.Node, error) {
 	if !isMappingNode(newNode) || !isMappingNode(oldNode) {
 		// Non-mapping top level: keep old if present, else new.
@@ -515,11 +515,9 @@ func deepMergeMapsTo(newNode, oldNode *yaml.Node) (*yaml.Node, error) {
 	}
 	result := &yaml.Node{Kind: yaml.MappingNode, Tag: "!!map"}
 	if newNode != nil {
-		result.HeadComment = newNode.HeadComment
-		result.LineComment = newNode.LineComment
-		result.FootComment = newNode.FootComment
 		result.Style = newNode.Style
 	}
+	oldWinsComments(result, newNode, oldNode)
 
 	// Copy all new values in source order.
 	for i := 0; i+1 < len(newNode.Content); i += 2 {
@@ -529,14 +527,15 @@ func deepMergeMapsTo(newNode, oldNode *yaml.Node) (*yaml.Node, error) {
 			continue
 		}
 		key := keyNode.Value
-		oldV, oldExists := mappingGet(oldNode, key)
+		oldKey, oldV, oldExists := mappingPair(oldNode, key)
 		if !oldExists {
 			appendPairKeyed(result, keyNode, copyNode(newV))
 			continue
 		}
-		// System fields always use the new value.
+		pairKey := oldWinsCopy(keyNode, keyNode, oldKey)
+		// System fields always use the new value; the user's comments still win.
 		if systemFields[key] {
-			appendPairKeyed(result, keyNode, copyNode(newV))
+			appendPairKeyed(result, pairKey, oldWinsCopy(newV, newV, oldV))
 			continue
 		}
 		if isMappingNode(newV) && isMappingNode(oldV) {
@@ -544,10 +543,10 @@ func deepMergeMapsTo(newNode, oldNode *yaml.Node) (*yaml.Node, error) {
 			if err != nil {
 				return nil, err
 			}
-			appendPairKeyed(result, keyNode, merged)
+			appendPairKeyed(result, pairKey, merged)
 		} else {
-			// Keep old value (preserve user setting).
-			appendPairKeyed(result, keyNode, copyNode(oldV))
+			// Keep old value (preserve user setting), with the user's comments.
+			appendPairKeyed(result, pairKey, oldWinsCopy(oldV, newV, oldV))
 		}
 	}
 
@@ -569,4 +568,33 @@ func deepMergeMapsTo(newNode, oldNode *yaml.Node) (*yaml.Node, error) {
 	}
 
 	return result, nil
+}
+
+// oldWinsComments sets dst's comment trio on the 2-way path: per slot, the
+// user's block (oldN) wins, and the template's block (newN) fills a slot the
+// user left empty. It writes dst in place, so pass a copy when dst is a node
+// shared with a tree being merged (see oldWinsCopy).
+func oldWinsComments(dst, newN, oldN *yaml.Node) {
+	n, o := commentsOf(newN), commentsOf(oldN)
+	dst.HeadComment = oldBlockOr(o.head, n.head)
+	dst.LineComment = oldBlockOr(o.line, n.line)
+	dst.FootComment = oldBlockOr(o.foot, n.foot)
+}
+
+// oldWinsCopy returns a copy of chosen, the node the 2-way merge keeps at one
+// position, carrying the old-wins comment trio of that position. The caller's
+// nodes stay untouched.
+func oldWinsCopy(chosen, newN, oldN *yaml.Node) *yaml.Node {
+	c := copyNode(chosen)
+	oldWinsComments(c, newN, oldN)
+	return c
+}
+
+// oldBlockOr returns the user's comment block, or the template's when the user
+// left the slot empty.
+func oldBlockOr(oldC, newC string) string {
+	if oldC != "" {
+		return oldC
+	}
+	return newC
 }
