@@ -12,7 +12,7 @@ audit_ready: true
 
 Range: `0106da184..af8199f8f` (`git log --format='%h %s'`, read at HEAD `af8199f8f` before this commit). Excluded: the plan-phase tip `0106da184` and the absorb merge `e32f69c46`. Subjects are verbatim; each group is in chronological order.
 
-**M1** (REQ-LMF-001, 002, 003, 004, 006, and the primary re-sync of REQ-LMF-014; `eb3c477c0` is a one-line R2_D correction outside the M1 list)
+**M1** (REQ-LMF-001, 002, 003, 004, 006, and the primary re-sync of REQ-LMF-014; `eb3c477c0` is a one-line R2_D correction and is part of the M1 list below)
 - `fe2362f5d` test(SPEC-LOCAL-MAIN-FLOW-001): RED tests for primary-merge ignored-content shapes
 - `8526e72de` test(SPEC-LOCAL-MAIN-FLOW-001): RED tests for integration surface, configuration, and verb
 - `c6dab38f9` test(SPEC-LOCAL-MAIN-FLOW-001): repair merge RED tests to observe the step
@@ -65,11 +65,27 @@ Range: `0106da184..af8199f8f` (`git log --format='%h %s'`, read at HEAD `af8199f
 6. decision-index.md header and plan §H still list Q1 and Q2 as open
 7. §11 re-sync decision formula not checked against the code
 8. lane-protocol §6 target rule for card done; done is blocked until t1621
-9. V1 pre-existing gofmt violation in `internal/factory/integration_remeasure_test.go`
+9. V1 pre-existing gofmt violation in `internal/factory/integration_remeasure_test.go`: closed by `b542c1e57` (format-only, one line in that file; `gofmt -l internal/factory` prints nothing)
 10. Process deviation: three git commands chained with `;` in one read-only Bash call
 11. OQ-7 dependent markers still open (lane-protocol line 153; hns-release-specialist.md, 18 lines)
 12. plan §E slot label is wrong for the two path-scoped rule files
-13. V10 (PreToolUse hook verdict on a temporary primary) not observed
+13. V10 (PreToolUse hook verdict on a temporary primary): route A observed in `e831304a8` (`TestBranchGuardRouteAIntegrationVerb`, `internal/hook/branch_guard_integration_verb_test.go`). The test calls the in-process `preToolHandler.Handle` with the branch guard ON and `workflow.local_main_integration.enabled` ON, on a primary-checkout fixture (`primary=true`). `go test -count=1 -v`: 1 test and 2 subtests, all PASS. Verdict lines, verbatim from the run (full output in the gitignored scratch `.moai/reports/t1616/f8-route-a.txt`):
+    - `verdict case=ALLOWED command="moai integration merge --card t1616" decision="allow" reason=""`
+    - `verdict case=DENIED command="git merge --no-ff WT-10-10-class" decision="deny" reason="BRANCH_GUARD_VIOLATION: git merge in primary checkout (use a worktree; do not route around this by naming a spawned agent manager-git - the identity exemption does reach spawned agents, and using it that way defeats the guard; the MOAI_BRANCH_GUARD_EXEMPT sentinel is main-thread-only)"`
+    - Negative control (branch guard OFF in the fixture; scratch `.moai/reports/t1616/f8-red-guard-off.txt`): the DENIED subtest FAILs with `decision = "allow", want "deny" (reason="")`, so the deny depends on the guard. The guard setting was then restored; the committed file is the restored version and re-runs to PASS.
+    - Limits: the test calls the in-process hook handler. It does not exercise the installed moai binary's argv path or the Claude Code runtime hook wiring. The hook handler does not read `workflow.local_main_integration.enabled` (the CLI merge-target resolver reads it), so the flag is set in the fixture only and changes no hook verdict here.
+    - Route B (an operator-terminal end-to-end probe) is still open and is on the operator-return list.
+
+**Repair round (2026-10-10)**: the commits of the repair round in order; subjects verbatim from `git log --format=%h %s`:
+- `f3175f00d` test(SPEC-LOCAL-MAIN-FLOW-001): regression tests for sync-audit defects F1-F6 (card t1616)
+- `c3309ed2e` fix(SPEC-LOCAL-MAIN-FLOW-001): refuse a pre-existing merge and abort only our own (card t1616)
+- `a3606dc7f` test(SPEC-LOCAL-MAIN-FLOW-001): RED for a merge another actor begins after the probe (card t1616)
+- `afe74bc1b` fix(SPEC-LOCAL-MAIN-FLOW-001): do not abort a merge another actor began after the probe (card t1616)
+- `73d7e3e0d` fix(SPEC-LOCAL-MAIN-FLOW-001): re-sync validates before the move, takes the fetched baseline, keeps holder metadata, holds after a post-merge anomaly (card t1616)
+- `b542c1e57` style(SPEC-LOCAL-MAIN-FLOW-001): gofmt integration_remeasure_test.go (card t1616)
+- `5a3eed857` test(SPEC-LOCAL-MAIN-FLOW-001): RED for a foreign fetch that moves FETCH_HEAD under the re-sync (card t1616)
+- `b677c6741` fix(SPEC-LOCAL-MAIN-FLOW-001): re-sync takes BASELINE_SHA from an explicit origin/main fetch, not FETCH_HEAD (card t1616)
+- `e831304a8` test(SPEC-LOCAL-MAIN-FLOW-001): route-A observation of the integration verb under the branch guard (card t1616)
 
 ## §E.3 Run-phase Audit-Ready Signal
 
