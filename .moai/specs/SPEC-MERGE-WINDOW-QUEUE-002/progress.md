@@ -223,6 +223,8 @@ total_run_phase_files: 14
 m1_to_mN_commit_strategy: one commit per milestone (M1 a560b3b6f, M2 eac7fab39, M3 64aba35c1, M4 b50d61bb5, M6 a8f49f6ad as a test-only quality commit); M5 has no code change and is recorded in E.2.3; repair round for sync-audit F1 and F2 (§E.2.6) commits RED 84c31cd59, F1 79e1b56ec, F2 49ce704b0
 ```
 
+2026-10-10 correction (sync phase): the card diff against base 8673c2a95 is 23 paths at commit af55e8924 (git diff --name-only 8673c2a95 af55e8924 | wc -l = 23; git diff --stat 8673c2a95 af55e8924 | tail -n 1 = 23 files changed, 1383 insertions(+), 100 deletions(-)). The figure of 14 is not reproducible. The measurement record is in §E.4.5 D1.
+
 ### E.3.1 AC matrix (command → observed result)
 
 | AC | Status | Observed result (verbatim where short) |
