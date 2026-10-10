@@ -2,7 +2,7 @@
 id: SPEC-LOCAL-MAIN-FLOW-001
 title: "Local-main integration flow: tool-supported card landing into the primary checkout's main, one release pull request per batch"
 version: "0.8.0"
-status: implemented
+status: completed
 created: 2026-10-10
 updated: 2026-10-10
 author: manager-spec
