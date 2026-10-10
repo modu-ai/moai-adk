@@ -220,6 +220,10 @@ func runCleanReinstall(ctx context.Context, projectRoot string, opts CleanReinst
 	// Step 3 — Backup at .moai/backups/v2-to-v3-{stamp}/
 	// ---------------------------------------------------------------
 	stamp := newNamespaceBackupStamp()
+	// SPEC-UPDATE-REPAIR-RC30-001 D9: this run's id goes into both of its
+	// backup directories (the v2-to-v3 snapshot and the Step 4.5 config
+	// backup), so retention counts the clean reinstall as one run.
+	runID := backup.NewRunID()
 	baseBackupRoot := filepath.Join(projectRoot, defs.MoAIDir, defs.NamespaceBackupsSubdir)
 	v2BackupDir := filepath.Join(baseBackupRoot, "v2-to-v3-"+stamp)
 
@@ -236,6 +240,11 @@ func runCleanReinstall(ctx context.Context, projectRoot string, opts CleanReinst
 		return result, fmt.Errorf("step 3: snapshot PRESERVE inventory: %w", err)
 	}
 	result.BackupDir = finalBackupDir
+	// A failed marker write is not fatal: this directory then counts as a run of
+	// its own, and the failure is reported on the run's output.
+	if err := backup.WriteRunMarker(finalBackupDir, runID); err != nil {
+		_, _ = fmt.Fprintf(out, "[clean-reinstall] backup run marker write failed: %v\n", err)
+	}
 
 	_, _ = fmt.Fprintf(out, "[clean-reinstall] Backup created at %s\n", finalBackupDir)
 
@@ -393,6 +402,11 @@ func runCleanReinstall(ctx context.Context, projectRoot string, opts CleanReinst
 	if cfgBackupErr != nil {
 		return result, recovery.fail("step 4.5: backup .moai/config for merge-preservation", cfgBackupErr)
 	}
+	if configBackupPath != "" {
+		if err := backup.WriteRunMarker(configBackupPath, runID); err != nil {
+			_, _ = fmt.Fprintf(out, "[clean-reinstall] backup run marker write failed: %v\n", err)
+		}
+	}
 	// Mergeable root files handled by the normal path's 3-way engine (the
 	// template-sync collectMergeableFiles set minus .mcp.json). MergeUserFiles
 	// merges settings.json against the canonical snapshot of the previously
@@ -525,11 +539,10 @@ func runCleanReinstall(ctx context.Context, projectRoot string, opts CleanReinst
 		}
 		writeRetainedKeyAdvisoryLines(errOut, withoutStrippedKeys(retainedKeys, removedModelKeys))
 		_, _ = fmt.Fprintln(out, "[clean-reinstall] .moai/config/sections/*.yaml merge-restored (user values preserved)")
-		// Backup-dir accumulation cap — the same pruning the normal path
-		// performs after its restore step (backup.CleanupOldBackups). Only
-		// timestamped config-backup dirs under .moai-backups/ are candidates;
-		// the v2-to-v3-* forensic backups live under .moai/backups/ and are
-		// never touched by this cleanup.
+		// Backup-run accumulation cap — the same pruning the normal path
+		// performs after its restore step (backup.CleanupOldBackups). A run is
+		// counted across both backup roots: this run's config and v2-to-v3-*
+		// directories share one run id, so they count as one run.
 		if deleted := backup.CleanupOldBackups(projectRoot, 5); deleted > 0 {
 			_, _ = fmt.Fprintf(out, "[clean-reinstall] Cleaned up %d old config backup(s)\n", deleted)
 		}

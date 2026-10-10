@@ -248,8 +248,10 @@ func RestoreMoaiConfigLegacy(projectRoot, backupDir, configDir string) error {
 			return err
 		}
 
-		// Skip metadata and template defaults
+		// Skip metadata, the run marker (bookkeeping, never a user file), and
+		// template defaults
 		if filepath.Base(relPath) == "backup_metadata.json" ||
+			filepath.Base(relPath) == RunMarkerName ||
 			strings.HasPrefix(relPath, ".template-defaults") {
 			return nil
 		}

@@ -206,64 +206,34 @@ type BackupMetadata struct {
 	TemplateDefaultsDir string   `json:"template_defaults_dir,omitempty"`
 }
 
+// CleanupOldBackups prunes backup runs beyond the newest keepCount, across both
+// backup roots: the config root (.moai-backups/) and the namespace root
+// (.moai/backups/). A run is the set of directories that carry one run id in
+// their .moai-run marker, so a clean reinstall's two directories count as one
+// run (SPEC-UPDATE-REPAIR-RC30-001 D9, REQ-RC30-010). Every directory of an
+// older run is removed. A negative keepCount removes nothing. It returns the
+// number of directories removed.
 func CleanupOldBackups(projectRoot string, keepCount int) int {
-	backupDir := filepath.Join(projectRoot, defs.BackupsDir)
-
-	// Check if backup directory exists
-	info, err := os.Stat(backupDir)
-	if err != nil {
-		if os.IsNotExist(err) {
-			return 0 // No backups to clean up
-		}
-		// Return 0 on stat errors (ignore for cleanup)
+	if keepCount < 0 {
 		return 0
 	}
-	if !info.IsDir() {
+	runs := collectBackupRuns(projectRoot)
+	if len(runs) <= keepCount {
 		return 0
 	}
 
-	// Get all subdirectories in backup directory
-	entries, err := os.ReadDir(backupDir)
-	if err != nil {
-		return 0
-	}
+	// The newest keepCount runs survive; the rest, oldest last, are pruned.
+	sort.SliceStable(runs, func(i, j int) bool { return runs[i].newerThan(runs[j]) })
 
-	// Filter for directories matching YYYYMMDD_HHMMSS pattern
-	// Pattern: 8 digits + underscore + 6 digits = 15 characters
-	var backups []string
-	for _, entry := range entries {
-		if entry.IsDir() && len(entry.Name()) == 15 {
-			// Check if it matches the timestamp pattern (digits + underscore + digits)
-			parts := strings.SplitN(entry.Name(), "_", 2)
-			if len(parts) == 2 {
-				if len(parts[0]) == 8 && len(parts[1]) == 6 {
-					backups = append(backups, entry.Name())
-				}
-			}
-		}
-	}
-
-	// If we have fewer backups than keepCount, no cleanup needed
-	if len(backups) <= keepCount {
-		return 0
-	}
-
-	// Sort backups by name (timestamp) ascending (oldest first)
-	sort.Strings(backups)
-
-	// Delete the OLDEST excess backups so the NEWEST keepCount survive.
-	// The timestamps sort ascending, so the retention window is the tail
-	// backups[len-keepCount:]; everything before it is the oldest excess.
-	// (A prior revision deleted backups[keepCount:] — the newest — which
-	// destroyed the most recent restore points on every rotation.)
 	deletedCount := 0
-	for _, backupName := range backups[:len(backups)-keepCount] {
-		backupPath := filepath.Join(backupDir, backupName)
-		if err := os.RemoveAll(backupPath); err != nil {
-			// Log error but continue with other backups
-			fmt.Fprintf(os.Stderr, "Warning: failed to delete backup %s: %v\n", backupName, err)
-		} else {
-			deletedCount++
+	for _, run := range runs[keepCount:] {
+		for _, dir := range run.dirs {
+			if err := os.RemoveAll(dir); err != nil {
+				// Log error but continue with other backups
+				fmt.Fprintf(os.Stderr, "Warning: failed to delete backup %s: %v\n", dir, err)
+			} else {
+				deletedCount++
+			}
 		}
 	}
 

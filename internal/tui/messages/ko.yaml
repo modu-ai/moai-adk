@@ -72,3 +72,9 @@ common.ok: "확인"
 common.cancel: "취소"
 common.loading: "로드 중"
 common.unknown: "알 수 없음"
+
+# update restore surface
+update.restore.settings_not_restored: "%s은(는) 복원되지 않습니다. 현재 파일은 그대로 둡니다."
+update.restore.copy_by_hand: "직접 복원하려면 %s 파일을 %s 위치로 복사하세요."
+update.restore.not_covered_heading: "백업에는 있지만 이 명령으로 복원되지 않는 항목:"
+update.restore.not_covered_item: "  %s (백업 사본: %s)"

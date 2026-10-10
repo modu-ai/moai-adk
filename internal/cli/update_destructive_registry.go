@@ -104,8 +104,9 @@ var destructiveTargetRegistry = []destructiveSite{
 	{
 		File: "internal/cli/update/backup/backup.go", Function: "CleanupOldBackups", Sites: 1,
 		Exemption: "Retention pruning of moai-authored backup directories — NOT a same-call rewind. " +
-			"It deletes the oldest excess backups of PREVIOUS runs, filtered to the YYYYMMDD_HHMMSS " +
-			"name pattern under the backup root, so every directory it removes was authored by moai " +
+			"It deletes every directory of the oldest excess backup runs of PREVIOUS runs, across both " +
+			"backup roots, where a run is identified by its .moai-run marker and an unmarked directory " +
+			"counts only under its moai name shape, so every directory it removes was authored by moai " +
 			"itself under a declared retention policy. Exempt from the user-data protection set; not " +
 			"harmless to the recovery contract, since a sufficiently old restore point can be rotated " +
 			"out by a later run.",

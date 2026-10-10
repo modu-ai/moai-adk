@@ -72,3 +72,9 @@ common.ok: "OK"
 common.cancel: "Cancel"
 common.loading: "Loading"
 common.unknown: "Unknown"
+
+# update restore surface
+update.restore.settings_not_restored: "%s is not restored: the live file is left as it is."
+update.restore.copy_by_hand: "To restore it by hand, copy %s to %s."
+update.restore.not_covered_heading: "Backed up but not restored by this command:"
+update.restore.not_covered_item: "  %s (backup copy: %s)"
