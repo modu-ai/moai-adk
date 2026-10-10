@@ -867,6 +867,47 @@ Slot (go-heavy, identity 3e1318d7, labelled lane-17), acquired with `moai slot a
 - until 12:49:36Z: the final exit check, HEAD `bacca95c2`: the template criteria, the hook criteria and coverage, the cli verb run, `golangci-lint` on `./internal/hook/...` and `./internal/template/...`, and the ledger run.
 Each window was released after its runs. The Windows build and gofmt ran outside the slot, because they are builds and format checks, not test runs.
 
+### M3 closing checks, part 3 (card t1663): the whole template package, and the token fix
+
+The whole `internal/template` package was run once, because M3 changed its templates. `go test -count=1 ./internal/template/`, HEAD `e3e981017`, before the token fix, slot go-heavy held:
+```
+--- FAIL: TestTemplateNoInternalContentLeak (0.94s)
+--- FAIL: TestRuleProvenanceAudit (0.20s)
+FAIL
+FAIL	github.com/modu-ai/moai-adk/internal/template	233.665s
+```
+The failure lines, from the verbose run of the two tests:
+```
+    internal_content_leak_test.go:1653:   [1] templates/.claude/rules/moai/workflow/auto-semantics.md | class=C1-spec-id-prefix | match=SPEC-FACTORY-LEASE-RENEW-001
+    internal_content_leak_test.go:1653:   [2] templates/.claude/skills/moai-lane-watchdog/SKILL.md | class=S3-req-ac-token-any-prefix | match=REQ-FLR-010
+    internal_content_leak_test.go:1653:   [3] templates/.claude/skills/moai-lane-watchdog/SKILL.md | class=S3-req-ac-token-any-prefix | match=REQ-FLR-011
+    internal_content_leak_test.go:1653:   [4] templates/.claude/skills/moai-lane-watchdog/SKILL.md | class=S3-req-ac-token-any-prefix | match=REQ-FLR-013
+    internal_content_leak_test.go:1653:   [5] templates/.moai/config/sections/workflow.yaml | class=C1-spec-id-prefix | match=SPEC-FACTORY-LEASE-RENEW-001
+    rule_provenance_audit_test.go:208:   [1] .claude/rules/moai/workflow/auto-semantics.md | sentinel=RULE_REQ_AC_TOKEN_LEAK | class=REQ-AC-token | line=81 | match=REQ-FLR-013
+    rule_provenance_audit_test.go:208:   [2] .claude/rules/moai/workflow/auto-semantics.md | sentinel=RULE_REQ_AC_TOKEN_LEAK | class=REQ-AC-token | line=419 | match=REQ-FLR-012
+    rule_provenance_audit_test.go:208:   [3] .claude/rules/moai/workflow/auto-semantics.md | sentinel=RULE_REQ_AC_TOKEN_LEAK | class=REQ-AC-token | line=419 | match=REQ-FLR-013
+```
+Entries 1 to 4 of the leak test and entries 1 to 3 of the provenance test are M3's own text: a SPEC id and REQ identifiers in the shipped watchdog skill and the standing-wake rule. They are removed in `c91953768` (the statements stay, the identifiers go; the checked phrases do not change). Entry 5 is M1's text: the SPEC id in a comment of `internal/template/templates/.moai/config/sections/workflow.yaml`, introduced by M1 commit `bbde389f9`.
+
+Attribution of entry 5. The archived tree of `11b0e9ee9` (M2 HEAD, bytes from `git archive`, no git metadata) fails `TestTemplateNoInternalContentLeak` with that one occurrence and nothing else:
+```
+    internal_content_leak_test.go:1643: template internal-content leak detected (1 occurrences, mode=narrow):
+    internal_content_leak_test.go:1653:   [1] templates/.moai/config/sections/workflow.yaml | class=C1-spec-id-prefix | match=SPEC-FACTORY-LEASE-RENEW-001
+--- FAIL: TestTemplateNoInternalContentLeak (0.72s)
+```
+So entry 5 predates M3. M3 did not change `workflow.yaml`, and the lane did not change it: it is outside M3 scope.
+
+After the token fix, HEAD `c91953768` (the working tree held the same bytes before the commit). `TestRuleProvenanceAudit` PASSES: `--- PASS: TestRuleProvenanceAudit (0.18s)`. The whole package has one failing test, `go test -count=1 ./internal/template/`, 187.822s:
+```
+    internal_content_leak_test.go:1653:   [1] templates/.moai/config/sections/workflow.yaml | class=C1-spec-id-prefix | match=SPEC-FACTORY-LEASE-RENEW-001
+--- FAIL: TestTemplateNoInternalContentLeak (0.70s)
+FAIL
+FAIL	github.com/modu-ai/moai-adk/internal/template	187.822s
+```
+The M3 criteria and the affected template tests PASS after the fix, at the same bytes: `--- PASS: TestLaneWatchdogRenewsFirst`, `--- PASS: TestLaneWatchdogRecordsRefusalAndMeasures`, `--- PASS: TestAutoSemanticsArmFollowsRenewInterval`, `--- PASS: TestStallVerdictReachesAtRenewCadence`, `--- PASS: TestLaneRecheckDoctrine`, `--- PASS: TestBindingLedgerIntegrity (22.68s)`, `--- PASS: TestRuleTemplateMirrorDrift`, `--- PASS: TestDeclaredRuleMirrorForks`, `--- PASS: TestDeployedAlwaysLoadedCharBudget`, `ok  	github.com/modu-ai/moai-adk/internal/template	22.950s`.
+
+Decision owed (not taken in this lane): entry 5 needs a one-token edit to M1's comment, the SPEC id in `workflow.yaml`, made template-first with the local mirror. It is M1's text, and M3 scope excludes it. The lane will make that edit when the coordinator directs it.
+
 ## §E.3 Run-phase Audit-Ready Signal
 
 _<pending run-phase>_
