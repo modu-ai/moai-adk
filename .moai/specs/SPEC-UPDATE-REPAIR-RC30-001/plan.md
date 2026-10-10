@@ -25,7 +25,7 @@ Runs after plan-audit PASS.
 2. Measure every range from `CARD_BASE=$(git merge-base HEAD <absorbed-tip>)`, not from a literal SHA. Re-absorb if a branch moves.
 3. Resolve conflicts in `internal/userassets/install.go` (both branches) and `internal/cli/update.go` (t1578) by the rule that the branch's own tests keep passing.
 4. Implement the BLOCKED-ON items in this order:
-   - U-01 is DECISION-PENDING (operator decision Q2; decision-index.md). It is not a BLOCKED-ON item. The removal switch of step 1b is inert by default in SPEC A; turning it on belongs to SPEC B (AC-RC30-01 moved there). The reach mechanism waits for the Q2 verdict.
+   - U-01 is BLOCKED-ON t1591 (operator decision Q2 is decided as option (c), d-20261010T060848Z-dc3b; decision-index.md). The removal switch of step 1b is inert by default in SPEC A; turning it on belongs to SPEC B (AC-RC30-01 moved there). The reach mechanism follows option (c).
    - U-09 (non-catalog message), U-03 (bundle announce), U-12 (kept assets). U-02 and U-10 moved to SPEC B with AC-RC30-03 and AC-RC30-11 (split, d-20261009T235135Z-5e35).
    - U-11 (user-root downgrade refusal, both branches).
    - U-17 (one banner) and U-21 (profile sync resolution, t1578).
@@ -39,7 +39,7 @@ Exit condition: the absorbed refs are recorded; the removal call is inert by def
 2. Run the D.3 init path check: build this tree, invoke the built binary by path with `HOME` set to a scratch directory, and list which roots `init` writes.
 3. Moved to SPEC B (split, d-20261009T235135Z-5e35): the adoption of AC-RC30-01 is no longer a step of this SPEC. Until SPEC B adopts it, the removal switch stays off, no project-side copy is deleted, and no removal code path is turned on (REQ-RC30-003).
 4. Moved to SPEC B: turning the switch on, U-02 (backup before removal, AC-RC30-03), and U-10 (emptied-directory removal, AC-RC30-11) belong to SPEC B. Nothing in SPEC A enables them.
-5. Implement the profile-reach mechanism only after Q2 is answered (U-01).
+5. Implement the profile-reach mechanism under option (c) (U-01); Q2 is decided.
 
 Exit condition: AC-RC30-01, -03 and -11, and items U-02 and U-10, are moved to SPEC B; no criterion of this SPEC is owned by M2; the D.1 table has no Gap cell that the milestone could close.
 
@@ -95,7 +95,7 @@ Each GAP-INVESTIGATE item is closed by its named evidence, with its command and 
 - Tested: each touched package reaches 85% or more statement coverage (measured in M7). The packages are `internal/cli`, `internal/cli/update`, `internal/cli/update/report`, `internal/config`, `internal/userassets`, `internal/backup`, and `internal/tui`.
 - Readable: no new identifiers in the output that do not match existing style. Comments follow `code_comments: en`.
 - Unified: `gofmt` and the project linter (`golangci-lint`) run on touched packages.
-- Secured: no new file writes outside the project and the shared roots. The profile directory is not written (REQ-002 of SPEC-USER-ASSET-INSTALL-001, unless Q2 says otherwise).
+- Secured: no new file writes outside the project and the shared roots. The profile directory is not written (REQ-002 of SPEC-USER-ASSET-INSTALL-001); option (c) writes nothing there.
 - Trackable: conventional commits with the card id, as the lane commits (this planning phase commits nothing).
 
 ## E. Landing (merge-ready only)
@@ -110,7 +110,7 @@ Each GAP-INVESTIGATE item is closed by its named evidence, with its command and 
 | Risk | Effect | Mitigation |
 |------|--------|-----------|
 | The profile-visibility premise (project-side copies are seen by profile sessions) is unverified | A removal gate built on a false premise | AC-RC30-01 moved to SPEC B; no copy is deleted and no removal path is enabled in SPEC A |
-| REQ-002 of SPEC-USER-ASSET-INSTALL-001 (spec.md line 255) may bar a profile install | U-01 cannot use a reach mechanism that writes into a profile directory | Q2 is raised; U-01 is DECISION-PENDING (Q2), not BLOCKED-ON any branch |
+| REQ-002 of SPEC-USER-ASSET-INSTALL-001 (spec.md line 255) may bar a profile install | U-01 cannot use a reach mechanism that writes into a profile directory | Q2 is decided as option (c); U-01 is BLOCKED-ON t1591 |
 | Both branches change `internal/userassets/install.go` | Merge conflict at M1 | Plain merge; conflicts resolved with the branch tests kept green |
 | Branch tips move after absorption | Measurements go stale | Re-absorb on movement; ranges are measured from the merge-base each time |
 | Golden churn in the TUX output | Review load | Golden updates only through `make tui-snapshot` on a reviewed diff |
@@ -129,7 +129,7 @@ Out of scope: the factory slug rule (t1621), the factory inbox error (t1622), in
 
 | D-number | item (short name) | corresponding REQ/AC IDs in this SPEC | note |
 |---|---|---|---|
-| D1 | Shared-root assets vs. profile config directory | REQ-RC30-001, REQ-RC30-002, REQ-RC30-003; AC-RC30-01, AC-RC30-02 (both moved to SPEC B) | U-01; DECISION-PENDING (Q2); no criterion active in this SPEC |
+| D1 | Shared-root assets vs. profile config directory | REQ-RC30-001, REQ-RC30-002, REQ-RC30-003; AC-RC30-01, AC-RC30-02 (both moved to SPEC B) | U-01; Q2 decided as option (c); BLOCKED-ON t1591; no criterion active in this SPEC |
 | D2 | Migration deletes files before the backup step | REQ-RC30-004; AC-RC30-03 (moved to SPEC B) | U-02; moved to SPEC B |
 | D3 | Plugin-mode projects receive core assets only | REQ-RC30-005; AC-RC30-04 | U-03; BLOCKED-ON WT-user-asset-bundle (t1591) |
 | D4 | Renamed skill unremovable and labelled as opt-in | REQ-RC30-005; AC-RC30-10 | U-09; BLOCKED-ON WT-user-asset-bundle (t1591); AC-RC30-10 covers the non-catalog message only; no REQ or AC here covers the rename/retired map |

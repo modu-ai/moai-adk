@@ -6,12 +6,12 @@ Design decisions behind spec.md and plan.md. Every decision names its requiremen
 
 - Install source: the four `$HOME` roots at `internal/userassets/paths.go:36-43` (REQ-RC30-001). Operator direction D1 keeps this model. SPEC-USER-ASSET-INSTALL-001 (completed, on main) decided it.
 - Project-side copies (`.claude/skills/moai/**`, `.claude/agents/moai/**`) are not the install source. They are removed only after the profile-visibility check passes (REQ-RC30-003). Until then they stay.
-- The profile directory is not written by default. Writing into it conflicts with REQ-002 of SPEC-USER-ASSET-INSTALL-001 (spec.md:255). The operator decides this (decision Q2).
+- The profile directory is not written. Writing into it would conflict with REQ-002 of SPEC-USER-ASSET-INSTALL-001 (spec.md:255); the operator decided Q2 as option (c), which writes nothing into it (d-20261010T060848Z-dc3b).
 
 ## 2. Profile reach
 
-- Reach has two candidate mechanisms: an install into the profile directory (blocked by REQ-002 unless Q2 amends it), or a runnable verification that the profile session sees the shared assets (AC-RC30-01).
-- The design does not choose between them. It makes AC-RC30-01 the gate for every removal, so a wrong choice cannot delete a working project copy.
+- Reach is decided: option (c), keeping the project-side copies when a profile is detected (d-20261010T060848Z-dc3b). The install into the profile directory (option (b)) is not adopted, and the runnable verification (AC-RC30-01) moved to SPEC B.
+- The design records option (c) as decided and option (b) as not adopted (d-20261010T060848Z-dc3b). Under option (c), a profile-mapped project keeps its shipped copies, so no removal can break a profile session; the runnable profile-visibility check (AC-RC30-01) moved to SPEC B.
 
 ## 3. Migration ordering
 
