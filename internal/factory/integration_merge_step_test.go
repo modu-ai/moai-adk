@@ -20,6 +20,8 @@ import (
 	"strings"
 	"testing"
 	"time"
+
+	"github.com/modu-ai/moai-adk/internal/factorylane"
 )
 
 const (
@@ -471,7 +473,9 @@ func TestMergeStepMergeFailureCleanAbortsCause6(t *testing.T) {
 			if err := os.WriteFile(filepath.Join(f.integ, ".git", "MERGE_HEAD"), []byte("deadbeef\n"), 0o644); err != nil {
 				return "", err
 			}
-			return "", errors.New("simulated merge failure")
+			// git exits 1 when a merge stops with MERGE_HEAD left behind (a conflict), so
+			// the seam reports that status: this call began the merge and may abort it.
+			return "", &factorylane.GitExitError{ExitCode: 1, Stderr: "simulated merge failure"}
 		}
 		runner := exec.Command("git", args...)
 		runner.Dir = f.integ

@@ -557,19 +557,24 @@ func RunMergeStep(in MergeStepInput, seams MergeStepSeams) (string, error) {
 			}
 			// F1 same-SHA (sync audit, card t1616): foreignMergeHead above passes a MERGE_HEAD
 			// that names the pin, so a same-SHA merge another actor began after the probe
-			// would reach the abort below. git exits 1 only when this call began the merge and
-			// stopped with it in progress (a conflict, or a pre-merge-commit hook). Any other
-			// exit gives this call no claim on a MERGE_HEAD it finds (git refuses to start
-			// before it writes one, observed on git 2.54.0; a call killed by a signal is not
-			// credited either), so the step refuses and does not abort it.
-			if code, didNotStop := mergeCallDidNotStop(err); didNotStop {
+			// would reach the abort below. Only a call that ran git and got exit 1 began a
+			// merge and stopped with it in progress, so only that call may abort the MERGE_HEAD
+			// it left (mergeCallDidNotStop). Any other failure gives this call no claim on a
+			// MERGE_HEAD it finds (git refuses to start before it writes one, observed on git
+			// 2.54.0; a call killed by a signal is not credited either), so the step refuses and
+			// does not abort it. A call that never started has no exit status and began no
+			// merge, so the step refuses it without an abort even when no MERGE_HEAD exists.
+			if reason, didNotStop := mergeCallDidNotStop(err); didNotStop {
 				present, presentErr := mergeHeadPresent(git, in.IntegrationWorktree)
-				if presentErr != nil {
+				switch {
+				case presentErr != nil:
 					mergeForeignErr = mergeStepErr(MergeExitOther, "integration merge: read MERGE_HEAD after the failed merge: %v", presentErr)
 					return nil
-				}
-				if present {
-					mergeForeignErr = unfinishedMergeRefusal(fmt.Sprintf("MERGE_HEAD exists, and this merge call exited %d rather than stopping with exit 1", code))
+				case present:
+					mergeForeignErr = unfinishedMergeRefusal(fmt.Sprintf("MERGE_HEAD exists, and %s", reason))
+					return nil
+				case mergeCallNotStarted(err):
+					mergeForeignErr = mergeStepErr(MergeExitOther, "integration merge: git did not start the merge call (%v), so no merge was begun and the step did not abort", err)
 					return nil
 				}
 			}
@@ -1018,18 +1023,33 @@ func unfinishedMergeRefusal(reason string) *MergeStepError {
 	return mergeStepErr(MergeExitWorktreeDirty, "integration merge: refused — the integration worktree holds an unfinished merge (%s) that this step did not start. Finish or resolve it where it was begun, re-measure, then re-acquire. The step does not abort it.", reason)
 }
 
-// mergeCallDidNotStop reports the exit status of a failed `git merge` call when that
-// call did not stop with the merge in progress. git exits 1 only after the merge has
-// begun and stopped (a conflict, or a pre-merge-commit hook that left it unfinished);
-// any other status leaves a MERGE_HEAD found afterwards unattributable to this call.
-// Only the production runner's *factorylane.GitExitError carries a status, so an error
-// of any other shape is not classified here and the caller keeps its abort path.
-func mergeCallDidNotStop(err error) (int, bool) {
+// mergeCallDidNotStop reports whether a failed `git merge` call did NOT stop with the
+// merge in progress, and the reason the refusal states. git exits 1 only after the merge
+// has begun and stopped (a conflict, or a pre-merge-commit hook that left it unfinished),
+// so exit 1 is the one outcome that gives the call a claim on the MERGE_HEAD it left.
+// Every other outcome gives none: another exit status, a signal (factorylane reports a
+// killed process as -1), and an error with no exit status at all, which means git never
+// started.
+func mergeCallDidNotStop(err error) (string, bool) {
 	var exit *factorylane.GitExitError
-	if !errors.As(err, &exit) || exit.ExitCode == 1 {
-		return 0, false
+	if !errors.As(err, &exit) {
+		return fmt.Sprintf("this merge call did not start: %v", err), true
 	}
-	return exit.ExitCode, true
+	switch {
+	case exit.ExitCode == 1:
+		return "", false
+	case exit.ExitCode < 0:
+		return "this merge call was killed by a signal rather than stopping with exit 1", true
+	default:
+		return fmt.Sprintf("this merge call exited %d rather than stopping with exit 1", exit.ExitCode), true
+	}
+}
+
+// mergeCallNotStarted reports whether a failed merge call never ran git: its error carries
+// no exit status, the shape an exec start failure takes (factorylane.ExecGitRunner.Git).
+func mergeCallNotStarted(err error) bool {
+	var exit *factorylane.GitExitError
+	return !errors.As(err, &exit)
 }
 
 // mergeHeadPresent reports whether the integration worktree's MERGE_HEAD exists,

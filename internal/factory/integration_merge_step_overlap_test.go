@@ -117,12 +117,15 @@ func stepGitAfterMerge(f *stepFixture, after func()) func(args ...string) (strin
 
 // stepGitFailingMergeThenAbort returns a git seam whose merge fails before it
 // writes anything, so the step must abort. The real abort runs, and after runs
-// once it has returned: the status change that S-abort is measured against.
+// once it has returned: the status change that S-abort is measured against. git
+// refuses such a merge with exit 2 and writes no MERGE_HEAD (measured on git
+// 2.54.0, for a local change the merge would overwrite), so the seam reports that
+// status: the call ran and did not stop with a merge in progress.
 func stepGitFailingMergeThenAbort(f *stepFixture, after func()) func(args ...string) (string, error) {
 	return func(args ...string) (string, error) {
 		isMerge := len(args) >= 1 && args[0] == "merge"
 		if isMerge && !containsArg(args, "--abort") {
-			return "", errors.New("simulated merge failure")
+			return "", &factorylane.GitExitError{ExitCode: 2, Stderr: "simulated merge failure"}
 		}
 		runner := exec.Command("git", args...)
 		runner.Dir = f.integ
