@@ -22,7 +22,7 @@ workflow:
     # watchdog renewal period (renew_interval, default 5m; a whole number of
     # minutes from 1 to 59, and at most half of duration). Both are checked when
     # the factory opens; a value outside its bound refuses to open the factory
-    # and is never clamped (SPEC-FACTORY-LEASE-RENEW-001).
+    # and is never clamped.
     factory_lease:
         duration: 15m
         renew_interval: 5m
