@@ -965,16 +965,16 @@ run_complete_at: 2026-10-09
 ```yaml
 sync_status: complete
 sync_complete_at: 2026-10-10
-sync_commit_sha: 2eaaf1489   # 커밋은 자신의 해시를 인용할 수 없음 — 다음 커밋에서 backfill
+sync_commit_sha: pending-backfill-sync   # 커밋은 자신의 해시를 인용할 수 없음 — 다음 커밋에서 backfill
 b12_self_test_a: >-
-  pre-emission dedup grep: grep -c 'SPEC-USERASSET-DEPLOY-GUARD-001' CHANGELOG.md → 편집 전 1, 편집 후 1 (관측 시점 HEAD 273bf72a0).
+  pre-emission dedup grep: grep -c 'SPEC-USERASSET-DEPLOY-GUARD-001' CHANGELOG.md → 편집 전 1, 편집 후 1 (관측 시점 HEAD 62e203150).
   기존 엔트리 1건을 제자리에서 개정했고 새 엔트리는 추가하지 않았다 — 중복 등록 없음.
 b12_self_test_b: >-
-  AC 카운터: tier=L, ac_source=.moai/specs/SPEC-USERASSET-DEPLOY-GUARD-001/acceptance.md → live=27 excluded=0 ambiguous=0 (관측 시점 HEAD 273bf72a0, 0f962daac 이후 acceptance.md 무변경 확인, 선언된 접두사 없음).
+  AC 카운터: tier=L, ac_source=.moai/specs/SPEC-USERASSET-DEPLOY-GUARD-001/acceptance.md → live=27 excluded=0 ambiguous=0 (관측 시점 HEAD 62e203150; acceptance.md의 마지막 변경 커밋은 feb6ec390이며 라운드 2에서도 무변경 확인, 선언된 접두사 없음; AC-008 부재 재확인).
   CHANGELOG 엔트리의 "27 acceptance criteria" 참조와 일치한다. AC-008은 acceptance.md 어디에도 없어 범위 표기 AC-001..026 안에 번호 공백이 있으나, 개수는 식별자 기준이므로 판정에 영향이 없다.
 b12_self_test_c: >-
-  파일 경로 검증(ls·find, 관측 시점 HEAD 273bf72a0): 개정 엔트리가 명명하는 internal/cli/init_resume.go · internal/cli/init_profile_sync.go · internal/userassets/lock.go · SPEC 디렉터리의 spec.md·progress.md 전부 존재. 엔트리의 베어 파일명 install.go(internal/userassets/install.go)와 llm.yaml(.moai/config/sections/llm.yaml)도 존재를 확인했다.
-  엔트리가 명명하는 커밋 SHA 16종은 전부 HEAD의 조상임을 관측했다(git rev-list HEAD 대조, 16/16).
+  파일 경로 검증(ls·find, 관측 시점 HEAD 62e203150): 개정 엔트리가 명명하는 internal/cli/init_resume.go · internal/cli/init_profile_sync.go · internal/userassets/lock.go · SPEC 디렉터리의 spec.md·progress.md 전부 존재. 엔트리의 베어 파일명 install.go(internal/userassets/install.go)와 llm.yaml(.moai/config/sections/llm.yaml)도 존재를 확인했다.
+  엔트리가 명명하는 커밋 SHA 20종(라운드 1 16종 + 라운드 2 신규 4종 9812e0dfb, c2bae3a5d, 75a6a9ff6, 62e203150)은 전부 HEAD의 조상임을 관측했다(git rev-list HEAD 대조, 20/20). 라운드 2 신규 문장이 명명하는 테스트 4건을 같은 HEAD에서 worktree 환경 격리(unset MOAI_KANBAN_*) 후 직접 재실행했다: TestUserRootRealPathOfSymlinkedManagedAssetIsProtected와 TestUserRootRealPathOfSymlinkedManagedAssetDeleteIsProtected(internal/hook, PASS 2/2, exit 0), TestInitResumeRestoresBundleSelectionAfterLockFailure와 TestInitResumeKeepsSettingsSnapshotForInterruptedInit(internal/cli, PASS 2/2 + 하위 테스트 4/4, exit 0).
 changelog_entry_position: "[Unreleased] 첫 배치 ### Fixed 선두 (SPEC-RECEIPT-REUSE-001 엔트리 위)"
 frontmatter_status_transitions:
   spec_md: "draft → completed (3-phase close — 단일 sync 커밋 탑재, updated: 2026-10-10 갱신)"
@@ -992,10 +992,18 @@ sync_gaps: |-
   - progress §E.2 and §E.3 were not updated for the repair round. The run evidence for findings 2 and 3 is in the commit messages of 0d85c278a, 74a2da4c3, 55f8ce4c5, and 273bf72a0.
   - 이번 sync 패스에서 MX 주석은 변경하지 않았고 MX 검증 하위 단계도 재실행하지 않았다. mx-index도 재생성하지 않았다.
   - 이전 sync 라운드에서 이월된 gap(이번 라운드에서 재관측하지 않음): init 마커 창은 ensure 지점에서 열리므로, 그 이전 homestate.EnsureProjectLayout의 실패는 여전히 "already initialized"로 끝난다(후속 후보).
+  - 실경로 디렉터리를 포함하는 바깥 디렉터리에 대한 `rm -rf`는 수리되지 않았고 테스트되지도 않았다 (codex 지적 목록에 없음, 레인 지시에 따라 범위 밖).
+  - 재개는 기록된 bundle 이름을 현재 카탈로그와 다시 대조하지 않고 그대로 재생한다. 제거된 이름은 `unknown bundle`로 실패하고, 마커는 그 이름을 계속 보존한다 (codex 지적 목록에 없음, 수리하지 않음).
+  - 실경로에 대한 `mv`(move 분기)는 테스트되지 않았다. codex 지적 원문이 Write, Edit, delete만 명시하기 때문이다.
+  - `JudgeLeftoverMCPSnapshot`은 재개 시에도 여전히 `.mcp.json`을 판정한다. 같은 폐기 형태가 적용될 수 있으나 테스트하지도 수리하지도 않았다.
+  - RED 커밋 메시지 `95f70f66b`, `d869e1e04`, `fc44671ca`는 종료 코드와 실패 내용의 요약(paraphrase)을 기록하며 실패 출력 원문 줄은 담지 않는다. 원문 줄은 완료 보고에 있다. SHA가 바뀌므로 커밋 메시지는 고쳐 쓰지 않았다.
+  - 전체 `internal/cli` 스위트와 `internal/hook` 패키지 전체는 실행하지 않았다. 62e203150 기준 계열 값은 위임자가 관측한 값이다(delegate-observed): cli `^TestInit` 132.8 s, `^TestInitResume` 126.4 s, `^TestRunInit` 66.8 s, hook `UserRoot|Zone|Protected|Frozen` 4.7 s, 모두 exit 0. golangci-lint v2.1.6은 레인이 62e203150에서 `internal/cli`, `internal/hook`, `internal/config`에 대해 실행해 0 issues를 관측했다(위임자 관측값).
+  - progress §E.2와 §E.3은 라운드 2 수리에 대해 갱신하지 않았다. 실행 증거는 커밋 메시지와 카드 대기 로그에 있다.
+  - docs_claim_check 항목은 273bf72a0 기준 결과이며, 라운드 2 변경(62e203150)에 대해서는 docs-site·docs 주장 점검을 재실행하지 않았다.
 out_of_scope_comment: >-
   SPEC 계획이 명명하지 않은 함수의 주석 1건(같은 파일 update.go 의 11a 좌표 565–574 와 다른 함수, 카드 커밋 9ac2d2e4e에서 변경): internal/cli/update.go 의 ensureGlobalSettingsEnv 에 @MX:ANCHOR 주석 2줄 추가(commit 9ac2d2e4e). 사유: 이 카드의 59d702fca 가 재개 경로에서 세 번째 호출자를 만들어, fan-in 3 이상 앵커 규칙이 적용됨. 주석만 변경, 코드 불변. 리더 유지 결정.
 mx_tags_note: >-
-  a new `@MX:ANCHOR` on `initPendingPath` in `internal/cli/init_resume.go` (fan-in 3: persistInitPending, clearInitPending, initResumeCheckpoint) is a tag change for a human to note.
+  a new `@MX:ANCHOR` on `initPendingPath` in `internal/cli/init_resume.go` (fan-in 3: persistInitPending, clearInitPending, initResumeCheckpoint) is a tag change for a human to note. Round 2 (commit `9812e0dfb`) rewrote that tag's ANCHOR and REASON lines: REASON now counts fan_in=4, adding `initPendingBundles`. This sync pass did not change any MX annotation.
 ```
 
 ## §F Phase 4 Mode Selection
