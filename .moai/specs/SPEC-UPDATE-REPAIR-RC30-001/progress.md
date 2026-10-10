@@ -1504,6 +1504,132 @@ ok  	github.com/modu-ai/moai-adk/internal/cli	2.985s
 - Phase 1B snapshot: absent. `moai verify check --key-current` exited 1, with `"fresh": false` and reason `no snapshot recorded for the current working-tree key`.
 - Hook: whether a pre-commit hook runs is not relied on. `git config --get core.hooksPath` printed `/dev/null`, and the lane record says otherwise. A commit that prints hook output will quote it verbatim with its exit code.
 
+### M6 — round 2A: U-15 (AC-RC30-16) and U-16 (AC-RC30-17) (manager-develop, card t1619)
+
+**Tree and scope.** HEAD `51f957864` (the M5 record) on `WT-moai-update-repair`, clean before this round. The lead assigned U-15 and U-16 to this round as M6. Plan § B.7 places U-15 under M6; plan § B.5 step 5 places U-16 under M4 (AC-RC30-17 names M4 as its TDD RED milestone). The round follows the lead's assignment, and this entry keeps the plan's milestone labels.
+
+**Commit order.** This record commits first, on its own (docs only: the root cause and the RED outputs). The two test files and the U-16 API stub are the working-tree state these RED outputs were measured on. They commit with the code commit that follows, together with the GREEN implementation, so no commit carries a failing test. The GREEN record commits last. A baseline measured before a change must land in its own earlier commit (`verification-claim-integrity.md` §2.3); this record is that commit, and the code commit follows it.
+
+#### U-15 root cause (AC-RC30-16, REQ-RC30-024), recorded before the test
+
+Commands and verbatim output, in the order run.
+
+`git log --all --oneline -S TestPermissionsAskPreserved` (exit 0)
+
+```text
+18d9f6087 test(SPEC-UPDATE-REPAIR-RC30-001): pin the permissions retired-array restore scope (card t1619)
+edb327fc0 fix(SPEC-UPDATE-REPAIR-RC30-001): D11 permissions.ask preserved on merge (card t1619)
+520e2e0df docs(SPEC-UPDATE-REPAIR-RC30-001): add plan-phase SPEC draft (card t1619)
+```
+
+`git branch -a --contains edb327fc0` (exit 0)
+
+```text
++ worktree-agent-a51849d65be0c3627
+```
+
+`git merge-base --is-ancestor edb327fc0 HEAD` (exit 1: the fix commit is not in this branch's history)
+
+`git show --stat --format=%H%n%s%n%b edb327fc0` (stat lines, verbatim)
+
+```text
+ .../update/merge/permissions_ask_preserved_test.go | 67 ++++++++++++++++++
+ internal/merge/retired_user_array_test.go          | 81 ++++++++++++++++++++++
+ internal/merge/strategies.go                       | 61 +++++++++++++++-
+ 3 files changed, 207 insertions(+), 2 deletions(-)
+```
+
+`grep -rn "permissions" internal/merge/ --include='*.go' --exclude='*_test.go'` (no output: HEAD's merge engine has no permission-specific handling)
+
+`grep -rn "mergeJSON(\|NewEngine()\|JSONMerge" internal/merge --include='*.go' --exclude='*_test.go'` (exit 0)
+
+```text
+internal/merge/types.go:23:	// JSONMerge performs object-level merge for JSON files.
+internal/merge/types.go:24:	JSONMerge MergeStrategy = "json_merge"
+internal/merge/strategies.go:83:		return JSONMerge
+internal/merge/strategies.go:302:func mergeJSON(base, current, updated []byte) (*MergeResult, error) {
+internal/merge/strategies.go:326:		Strategy:     JSONMerge,
+internal/merge/three_way.go:14:func NewEngine() Engine {
+internal/merge/three_way.go:58:	case JSONMerge:
+internal/merge/three_way.go:59:		return mergeJSON(base, current, updated)
+```
+
+**Code path (HEAD `51f957864`).** `internal/cli/update/merge/merge.go:239` `MergeUserFilesWithOutcome` → `merge.go:257` `engine := mrg.NewEngine()` → `internal/merge/three_way.go:58-59` (JSONMerge calls `mergeJSON`) → `internal/merge/strategies.go:315` `deepMergeMap(baseMap, currentMap, updatedMap, "")`. `.claude/settings.json` is a JSON file, so `strategies.go:83` selects JSONMerge for it.
+
+**Cause, read from the code.** `deepMergeMap` (`internal/merge/strategies.go:366`) decides each top-level key by its three-way state:
+
+- `strategies.go:421-424` (`inBase && inCurrent && !inUpdated`, "Template removed key") keeps the user's value and records the key in `retained`. This is the per-key rule that keeps a key the template removed.
+- `strategies.go:439-441` (`!baseChanged && updChanged`, "Only template changed") runs `result[key] = updVal`. For `permissions`, the user left the object unchanged and the template changed it, so the whole template object replaces the user's. The template object has no `ask`, so `ask` is dropped. The recursion that would apply the per-key rule to the children of `permissions` runs only in the both-changed branch (`strategies.go:454-455`), not in this branch.
+
+The cause is the wholesale assignment at `strategies.go:441` for a map the user did not change. The three-way decision is sound for top-level keys. This turns the "inferred" cause in spec.md § U-15 into an established one: the mechanism is the 3-way merge, and the defect is the wholesale branch.
+
+**Corroboration, not a source of the fix.** The F-2 commit `edb327fc0` states the same cause ("The wholesale replacement for a key the user left unchanged skipped the per-key rule that keeps a key the template removed"). Its stat is recorded above. Its diff was not read; the fix below is written from HEAD's code and the U-15 fixture.
+
+**Fixture (spec.md § U-15, next step).** The base is the canonical settings snapshot with `permissions.ask: [sudo, chmod, chown]`. The template render has no `ask` key. The user copy carries the same `ask` list, unchanged from the base. The test runs the production path (`MergeUserFiles`, via `mergeSettings`), the same route as `settings_snapshot_base_test.go`.
+
+#### U-15 RED (AC-RC30-16), before the fix
+
+Test: `TestPermissionsAskPreserved` in `internal/cli/update/merge/permissions_ask_preserved_test.go` (new file). Fixture as in the root cause above. It runs through `mergeSettings` (`settings_snapshot_base_test.go`), so it reaches the production `MergeUserFiles` path, not the engine alone.
+
+Command: `go test -count=1 -race -run '^TestPermissionsAskPreserved$' -v ./internal/cli/update/merge/`
+
+```text
+=== RUN   TestPermissionsAskPreserved
+    permissions_ask_preserved_test.go:29: permissions.ask = <nil>, want [sudo chmod chown]
+--- FAIL: TestPermissionsAskPreserved (0.00s)
+FAIL
+FAIL	github.com/modu-ai/moai-adk/internal/cli/update/merge	0.417s
+FAIL
+```
+
+exit: 1 (this is the re-run on the same tree; the first run printed the same lines with duration 0.512s)
+
+The failure is behavioral. The test ran, and the merged file has no `permissions.ask`. It is not a build error. The cause is the branch at `internal/merge/strategies.go:439-441`.
+
+#### U-16 RED (AC-RC30-17), before the change
+
+**Scope reading.** REQ-RC30-015 says the update prints per-category counts "in place of the file list". This round reads that as the preserved list (the 369-line list of D13), which is what the test name and D13 name. Archived removals stay listed by path, because REQ-UPM-031 keeps deletions visible. Conflicts stay listed, because each names a sidecar the user must act on. The alternative reading (collapse every list) is named in the round report for the leader to decide.
+
+**API stub (working tree; it commits with the code commit that follows this record).** `RenderReconciliation` (`internal/cli/update/report/outcome.go`) gains a `verbose bool` parameter that the stub ignores, so the output is unchanged. Call sites: `internal/cli/update_tux.go` passes `updateVerboseMode`; `TestRenderReconciliation` (`internal/cli/update/report/outcome_test.go`) and `internal/cli/update/reconcile_test.go` pass `true`, which keeps their full-list expectations. No assertion in those tests changed. The stub makes the RED behavioral: without it, the test would not compile.
+
+Test: `TestPreservedLinesCountOnly` in `internal/cli/update/report/preserved_lines_test.go` (new file).
+
+Command: `go test -count=1 -race -run '^TestPreservedLinesCountOnly$' -v ./internal/cli/update/report/`
+
+```text
+=== RUN   TestPreservedLinesCountOnly
+    preserved_lines_test.go:22: 
+        	Error Trace:	/Users/goos/MoAI/moai-adk-go/.moai/worktrees/t1619/internal/cli/update/report/preserved_lines_test.go:22
+        	Error:      	Not equal: 
+        	            	expected: 1
+        	            	actual  : 3
+        	Test:       	TestPreservedLinesCountOnly
+    preserved_lines_test.go:23: 
+        	Error Trace:	/Users/goos/MoAI/moai-adk-go/.moai/worktrees/t1619/internal/cli/update/report/preserved_lines_test.go:23
+        	Error:      	"Reconciliation: 1 refreshed, 0 merged, 0 conflict(s), 3 preserved, 1 archived-removed\n  archived-removed: .claude/rules/moai/old-rule.md\n  preserved: .claude/rules/moai/a.md\n  preserved: .claude/rules/moai/b.md\n  preserved: .claude/rules/moai/c.md" does not contain "\n  preserved: 3 file(s) (run with --verbose to list)"
+        	Test:       	TestPreservedLinesCountOnly
+    preserved_lines_test.go:25: 
+        	Error Trace:	/Users/goos/MoAI/moai-adk-go/.moai/worktrees/t1619/internal/cli/update/report/preserved_lines_test.go:25
+        	Error:      	"Reconciliation: 1 refreshed, 0 merged, 0 conflict(s), 3 preserved, 1 archived-removed\n  archived-removed: .claude/rules/moai/old-rule.md\n  preserved: .claude/rules/moai/a.md\n  preserved: .claude/rules/moai/b.md\n  preserved: .claude/rules/moai/c.md" should not contain ".claude/rules/moai/a.md"
+        	Test:       	TestPreservedLinesCountOnly
+    preserved_lines_test.go:25: 
+        	Error Trace:	/Users/goos/MoAI/moai-adk-go/.moai/worktrees/t1619/internal/cli/update/report/preserved_lines_test.go:25
+        	Error:      	"Reconciliation: 1 refreshed, 0 merged, 0 conflict(s), 3 preserved, 1 archived-removed\n  archived-removed: .claude/rules/moai/old-rule.md\n  preserved: .claude/rules/moai/a.md\n  preserved: .claude/rules/moai/b.md\n  preserved: .claude/rules/moai/c.md" should not contain ".claude/rules/moai/b.md"
+        	Test:       	TestPreservedLinesCountOnly
+    preserved_lines_test.go:25: 
+        	Error Trace:	/Users/goos/MoAI/moai-adk-go/.moai/worktrees/t1619/internal/cli/update/report/preserved_lines_test.go:25
+        	Error:      	"Reconciliation: 1 refreshed, 0 merged, 0 conflict(s), 3 preserved, 1 archived-removed\n  archived-removed: .claude/rules/moai/old-rule.md\n  preserved: .claude/rules/moai/a.md\n  preserved: .claude/rules/moai/b.md\n  preserved: .claude/rules/moai/c.md" should not contain ".claude/rules/moai/c.md"
+        	Test:       	TestPreservedLinesCountOnly
+--- FAIL: TestPreservedLinesCountOnly (0.00s)
+FAIL
+FAIL	github.com/modu-ai/moai-adk/internal/cli/update/report	0.170s
+FAIL
+```
+
+exit: 1 (this is the re-run on the same tree; the first run printed the same lines with duration 0.326s)
+
+The failure is behavioral. The verbose assertions (the full list under `verbose=true`) already pass on the stub, which is expected: the stub prints the full list in every mode, so the RED sits on the default-mode assertions only.
+
 ## §E.3 Run-phase Audit-Ready Signal
 
 _pending run-phase (manager-develop)_
