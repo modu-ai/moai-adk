@@ -65,10 +65,10 @@
 - run_complete_at: 2026-10-09T22:40:00Z
 - run_commit_sha: 18ea52c0a
 - run_status: complete
-- ac_pass_count: 9 (릴리스 블로킹 전부 GREEN — AC-RDX-001/002/007/008/009/010/014/015/016)
+- ac_pass_count: 4 (릴리스 블로킹 GREEN — AC-RDX-001/002/007/009)
 - ac_fail_count: 0
 - ac_structural_signals: 5 (AC-RDX-003/004/005/006/017 — 판정 보류 강등분, 구조 면 착지 신호로 기록; 판정은 형제 카드 계측·plan §E7 검토면 — §E.2의 (a)(b)(c) 변제 기록 참조)
-- ac_guards_maintained: 3 (AC-RDX-011/012/013 — LED-011/012/013 기준선 유지 + LED-015 바이트 동일)
+- ac_guards_maintained: 2 (AC-RDX-011/013 — LED-011/012/013 기준선 유지 + LED-015 바이트 동일)
 - preserve_list_post_run_count: 9 (plan §A.5 전 행 — 상태 파일 무편집, source_request·sprint_contract·골격 불변, 스페셜리스트 기존 Phase 5/6/7b/7.5/8 유지, 러너 HARD 제약 유지, research 2건 무편집, 타 SPEC·reports 무편집)
 - l44_pre_commit_fetch: not-performed (leaf worker — 카드 브랜치 로컬 커밋만 수행, 통합 착지 전 병합 대상 재측정은 레인 착지 절차 소관)
 - l44_post_push_fetch: n/a (NO push — push는 레인 랜딩으로 이관, 스폰 프롬프트 B9)
