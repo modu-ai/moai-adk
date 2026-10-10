@@ -963,7 +963,7 @@ Judging build (§ 2.2): the build ID `moai_cp/20261007_195927-298-g3e7a64808` na
 
 Milestone M3 (plan § B.4 steps 1 to 5). Pre-flight, each its own command: `git rev-parse --short HEAD` gave `dd94d9570`; `git branch --show-current` gave `WT-moai-update-repair`; `git status --short` gave no output. Each item ran RED then GREEN, one commit per state. Commit SHAs are listed per item. Nothing was pushed.
 
-**Status.** AC-RC30-05, -06, -07 and -08 pass with their judging commands on the final tree. AC-RC30-22 and AC-RC30-23 are **blocked**, with the cause named below. The judging commands for both select zero tests on this tree.
+**Status.** AC-RC30-05, -06, -07 and -08 pass with their judging commands on the final tree. AC-RC30-22 and AC-RC30-23 were **blocked** at M3, with the cause named below. The judging commands for both selected zero tests on the M3 tree. **F8 correction:** both are PASS at HEAD (see the F8 entry after Step 4).
 
 **Environment.** Test runs touching a home or profile path ran as `unset CLAUDE_CONFIG_DIR MOAI_PROJECT_DIR && go test ...`. Every `internal/cli` run printed `moai-cli-test: userHomeDirFn redirected real home to sandbox`, so the cli HOME sandbox was active.
 
@@ -1053,7 +1053,7 @@ FAIL	github.com/modu-ai/moai-adk/internal/cli	0.867s
 - Related: `go test ./internal/cli/update/backup/ -count=1` gave `ok  	github.com/modu-ai/moai-adk/internal/cli/update/backup	0.675s`. `go test ./internal/tui/ -count=1` gave `ok  	github.com/modu-ai/moai-adk/internal/tui	0.275s`, which covers the catalog checks.
 - Gates: gofmt clean; `go vet` on `internal/cli/update/backup/` and `internal/cli/` no output; `golangci-lint` `0 issues.` on both.
 
-#### Step 4 — AC-RC30-22 and AC-RC30-23, investigation (U-23, U-24): BLOCKED
+#### Step 4 — AC-RC30-22 and AC-RC30-23, investigation (U-23, U-24): BLOCKED at M3 (PASS at HEAD, see F8)
 
 Both judging commands select zero tests on this tree. Verbatim, exit `0` for both:
 
@@ -1068,7 +1068,7 @@ ok  	github.com/modu-ai/moai-adk/internal/cli	1.070s [no tests to run]     (AC-R
 
 Under the AC ruling (d-20261010T040402Z-94b9, item 5) a run with no tests to run is a failure, not a pass.
 
-**AC-RC30-22, `TestGateYAMLCommentsSurviveRestore` (U-23): blocked, cause named.**
+**AC-RC30-22, `TestGateYAMLCommentsSurviveRestore` (U-23): blocked at M3, cause named; PASS at HEAD (F8).**
 
 - Reproduction. Probes ran as scratch tests in `internal/cli`, because the cycle lives there. They were not committed, and the file was deleted after the run.
 - The update cycle, `runTemplateSyncAt` on a fixture with a gate.yaml that carries 12 user comment lines. Verbatim: `PROBE gate.yaml comment lines before update: 12`, then `PROBE gate.yaml after update: user gate note lines=0, comment lines=66`, then `PROBE backup 20261010_221853 sections/gate.yaml user gate note lines: 12`. The backup keeps all 12. The live file keeps none.
@@ -1076,7 +1076,7 @@ Under the AC ruling (d-20261010T040402Z-94b9, item 5) a run with no tests to run
 - Cause named. The section restore merge in `internal/cli/update/backup/restore.go` (`RestoreMoaiConfigRetained`, the `sections/*.yaml` walk) rebuilds the file from the template's structure and the user's values. It does not carry comment lines that are not attached to a template key. The restore alone reproduces the loss. The deploy step also writes the template's gate.yaml over the user's file. I did not separate that deploy overwrite from the restore on the full cycle, so the attribution to the restore rests on the isolated probe.
 - Why it is blocked. The fix would change the three-way merge policy (`node_merge.go`), which is outside this item and outside `internal/config`. The judging command cannot reach it: a test in package `config` cannot import the backup package without a cycle through `config`. The leader decides the merge policy and the judging package.
 
-**AC-RC30-23, `TestLLMYamlRemarshalCallers` (U-24): blocked, premise does not hold.**
+**AC-RC30-23, `TestLLMYamlRemarshalCallers` (U-24): blocked at M3, premise does not hold; PASS at HEAD (F8).**
 
 - Premise check. The AC and U-24 name "each `ConfigManager.Save` caller". Production has none. The seven production `.Save()` calls are all on `manifest.Manager`: `internal/core/project/validator.go:355` and `:441`, `internal/core/project/initializer.go:610`, `internal/cli/update_manifest_retrack.go:65`, `internal/cli/update_template_sync.go:652`, `internal/cli/migrate_project_assets.go:246`, `internal/cli/update_reconcile.go:159`, and `internal/codexwiring/write.go:348`. No production code calls `ConfigManager.SetSection`, so `llmDirty` is set only in tests.
 - The writer that drops keys. `saveLLMSection` (`internal/cli/glm.go:708`) runs a typed `yaml.Marshal` of the whole llm section. It is reached from `persistTeamMode` (`glm.go:654`), from `disableTeamMode` (`glm.go:694`) through `resetTeamModeForCC` (`internal/cli/launcher.go:409`, the `moai cc` launch), and from `persistTeamMode(root, "glm")` (`launcher.go:304`, the `moai glm` launch). Its change-detection gate skips only unchanged writes.
@@ -1136,7 +1136,359 @@ This progress record: `.moai/specs/SPEC-UPDATE-REPAIR-RC30-001/progress.md` § E
 4. AC-RC30-05: the help is filled by a help func, so the catalog is not parsed at process start.
 5. AC-RC30-08: re-implemented from `design.md` § 5 and not absorbed from the sibling branch. Retention counts runs across both roots, and the clean reinstall's two directories share one run id.
 6. Locale keys in `en` and `ko` only. `ja` and `zh` fall back to English.
-7. AC-RC30-22 and AC-RC30-23 are blocked, with causes named. Nothing was fixed for them.
+7. AC-RC30-22 and AC-RC30-23 were blocked at M3, with causes named. Nothing was fixed for them at M3; both are PASS at HEAD (F8 entry below).
+
+#### F8 entry — AC-RC30-22 and AC-RC30-23 at HEAD (manager-develop, card t1619)
+
+The blocked status recorded above at M3 is superseded. Both criteria are GREEN at HEAD. Their fixes landed in the commits listed below, which follow the M3 baseline `6bede8ca3`.
+
+Each run uses a materialized copy of HEAD (`git checkout-index -a --prefix=<scratchpad>/head-step3/`), not the working tree. Command form: `go -C <head copy> test -count=1 -v -run '<regex>' ./internal/cli/`.
+
+Command: `-run '^TestGateYAMLCommentsSurviveRestore$'`, exit: 0
+
+```text
+=== RUN   TestGateYAMLCommentsSurviveRestore
+moai-cli-test: userHomeDirFn redirected real home to sandbox /var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/moai-cli-home-3689689345
+2026/10/11 02:10:07 INFO SUNSET_CONFIG_DORMANT_NOTICE spec="SPEC-V3R2-MIG-003 REQ-018" yaml_path=.moai/config/sections/sunset.yaml advice="SunsetConfig has no runtime hot path; activation requires a new SPEC"
+--- PASS: TestGateYAMLCommentsSurviveRestore (0.35s)
+PASS
+ok  	github.com/modu-ai/moai-adk/internal/cli	1.902s
+```
+
+Command: `-run '^TestLLMYamlRemarshalCallers$'`, exit: 0
+
+```text
+=== RUN   TestLLMYamlRemarshalCallers
+=== RUN   TestLLMYamlRemarshalCallers/resetTeamModeForCC
+=== RUN   TestLLMYamlRemarshalCallers/persistTeamMode_glm
+--- PASS: TestLLMYamlRemarshalCallers (0.00s)
+    --- PASS: TestLLMYamlRemarshalCallers/resetTeamModeForCC (0.00s)
+    --- PASS: TestLLMYamlRemarshalCallers/persistTeamMode_glm (0.00s)
+PASS
+ok  	github.com/modu-ai/moai-adk/internal/cli	0.705s
+```
+
+Commits after the M3 baseline. Each line is the output of `git log --oneline -1 <sha>`. The six listed are the AC-RC30-22 and AC-RC30-23 fix commits. They are a subset of the 24 commits in `6bede8ca3..HEAD` at this entry (`git rev-list --count 6bede8ca3..HEAD`).
+
+```text
+66c09f99b fix(SPEC-UPDATE-REPAIR-RC30-001): M3 AC-RC30-23 llm.yaml write keeps unrelated keys (card t1619)
+04a11cb6f fix(SPEC-UPDATE-REPAIR-RC30-001): ConfigManager.Save keeps llm keys through the seam (card t1619)
+68a70406c feat(SPEC-UPDATE-REPAIR-RC30-001): M3 AC-RC30-22 comment lines survive restore (card t1619)
+d118b5c7e feat(SPEC-UPDATE-REPAIR-RC30-001): M3 AC-RC30-22 2-way comments follow the user per slot (card t1619)
+fe3caa37c docs(SPEC-UPDATE-REPAIR-RC30-001): AC-RC30-22 scope excludes sequence-item comments; the exception names glm.models (card t1619)
+2e54b0a16 test(SPEC-UPDATE-REPAIR-RC30-001): M3 AC-RC30-22 placement notes match the comment rules (card t1619)
+```
+
+Code commits of this card under the narrowed gate (scoped checks in the sections below):
+- `942c729fb`: M4 remove forbidden archive summary literal (step 1; see the M4 entry).
+- `84319245d`: M5 skip on recorded template tree, warn on stamp skew, count preview as run (step 2; see the M5 entry).
+
+Gap: the full `internal/cli` suite and `go test ./...` were not run for this entry. The F8 runs cover the two named tests only. The repository-wide verdict belongs to CI on the integration branch, PENDING at this entry.
+
+### M4 — measured archive summary, AC-RC30-09 (U-08, F1) (manager-develop, card t1619)
+
+Scope of this entry: the literal `0 user customizations modified` only (AC-RC30-09 judges the literal). The rest of M4 (steps 1 to 7) is not in this entry.
+
+#### RED — judging grep on the pre-change tree (exit 0)
+
+Command: `grep -rn "0 user customizations modified" internal/cli --include='*.go' --exclude='*_test.go'`
+
+```text
+internal/cli/update_archive.go:282://	total: N skills archived, 0 user customizations modified
+internal/cli/update_archive.go:367:	_, _ = fmt.Fprintln(out, tui.Pill(tui.PillOpts{Kind: tui.PillOk, Solid: false, Label: fmt.Sprintf("total: %d skills archived, 0 user customizations modified", archived), Theme: &th}))
+```
+
+#### RED — new test, before the change (exit 1)
+
+Test added first: `TestArchiveSummaryCarriesMeasuredCountOnly` in `internal/cli/update_archive_summary_test.go`. It archives two legacy skills and checks the summary line carries the measured count and no customization claim. Command: `go test -count=1 -run '^TestArchiveSummaryCarriesMeasuredCountOnly$' -v ./internal/cli/`
+
+```text
+=== RUN   TestArchiveSummaryCarriesMeasuredCountOnly
+=== PAUSE TestArchiveSummaryCarriesMeasuredCountOnly
+=== CONT  TestArchiveSummaryCarriesMeasuredCountOnly
+    update_archive_summary_test.go:37: summary line must not carry an unmeasured customization count, got:
+        ✓  archive: moai-domain-db-docs  → .moai/archive/skills/v2.16/moai-domain-db-docs
+        ✓  archive: moai-domain-mobile  → .moai/archive/skills/v2.16/moai-domain-mobile
+         total: 2 skills archived, 0 user customizations modified 
+--- FAIL: TestArchiveSummaryCarriesMeasuredCountOnly (0.00s)
+FAIL
+FAIL	github.com/modu-ai/moai-adk/internal/cli	1.007s
+FAIL
+```
+
+The first assertion (`total: 2 skills archived`) held; the second (no `customizations`) failed on the literal.
+
+#### GREEN — change
+
+- `internal/cli/update_archive.go:282` (comment) and `:367` (Pill label): the summary is `total: %d skills archived`, built from the measured `archived` count (the count of successful archives in the run). The hardcoded clause is removed, not replaced with a number nothing measured.
+- `internal/cli/tuxiu_characterization_test.go:201`: the expectation `"3 skills archived, 0 user customizations modified"` becomes `"3 skills archived"`. This is the one expectation change the audit names (E-22). `"Updated 26 files"` is unchanged.
+
+Test-run output after the change (verbatim). exit: 0 for each block below. The step 1 re-run on the staged tree (commit `942c729fb`; the five named tests under `-race`, `go -C <scratchpad>/index-step1 test -count=1 -race -v -run '^(TestArchiveSummaryCarriesMeasuredCountOnly|TestTUXDataValuesPreserved|TestInitUpdateTUXCharacterization|TestTUXChannelPartition|TestTUXPostM4CarriesNewPresentation)$' ./internal/cli/`) exited 0 with all five PASS. The blocks below are the earlier run's text and are not byte-identical to that re-run.
+
+```text
+=== RUN   TestArchiveSummaryCarriesMeasuredCountOnly
+=== PAUSE TestArchiveSummaryCarriesMeasuredCountOnly
+=== CONT  TestArchiveSummaryCarriesMeasuredCountOnly
+--- PASS: TestArchiveSummaryCarriesMeasuredCountOnly (0.00s)
+PASS
+ok  	github.com/modu-ai/moai-adk/internal/cli	0.886s
+```
+
+```text
+=== RUN   TestTUXDataValuesPreserved
+--- PASS: TestTUXDataValuesPreserved (0.00s)
+PASS
+ok  	github.com/modu-ai/moai-adk/internal/cli	0.730s
+```
+
+#### GREEN — judging grep on the changed tree (exit 1)
+
+Command: `grep -rn "0 user customizations modified" internal/cli --include='*.go' --exclude='*_test.go'` — no output. The same command followed by `; echo "exit=$?"` printed `exit=1`.
+
+#### Checks
+
+- `go build ./...`: no output (success).
+- `go vet ./internal/cli/`: no output (success).
+- `gofmt -l` on the three Go files of this step: no output.
+
+#### Gaps (not observed in this entry)
+
+- The recorded golden fixtures under `internal/cli/testdata/tuxiu/` (pre-logo and `postm4/`, six files) still carry the old literal. AC-RC30-09 judges `*.go` files only (`--include='*.go'`), so these are outside its judged scope. They were not regenerated in this step. No step names an owner for regenerating these `testdata/tuxiu` fixtures: the golden regeneration of M4 step 7 is limited to `make tui-snapshot`, which covers `internal/tui` (E-09). The leader decides the owner.
+- `internal/cli/update_archive.go:396` (`dryRunArchiveLegacySkills`) prints the literal `0 will be archived` in a format string. It is the same class as REQ-RC30-011, but it is not the string AC-RC30-09 judges, and U-08 does not list it. It is not changed in this step.
+
+#### Residual risk
+
+- The summary no longer prints a customization count. The archive step never measured one, so the removed clause reported nothing; the drift backup warning (`archive drift backup: …`) still prints for each archived copy that was moved aside under `--force`.
+
+#### Files changed (M4 step 1)
+
+`internal/cli/update_archive.go`; `internal/cli/tuxiu_characterization_test.go`; `internal/cli/update_archive_summary_test.go` (new); this progress record.
+
+The commit SHA of this step cannot be named in its own commit. It is recorded in the § E.2 F8 entry (the step 3 record).
+
+### M5 — skip decision, stamp skew, preview count, AC-RC30-14/15/19 (U-13, U-14, U-18, F2) (manager-develop, card t1619)
+
+#### Design (named)
+
+1. U-13, AC-RC30-14: a version-matched run skips only when the recorded template tree equals the embedded tree. The recorded tree is `Manifest.TemplateTreeHash` (`internal/manifest/types.go`), written by the deploy step just before its manifest save; the value is `template.ComputeDirTreeHash` over the embedded FS. A project with no recorded tree keeps the version-only decision. That keeps `TestSkipSyncNoArchive/version_match_returns_skipped_true` (a fixture with only `system.yaml`) green, and the first deploy after this change records a tree. A manifest that fails to load does not skip.
+2. U-14, AC-RC30-15: after the run's steps, `warnStampSkew` compares `moai.template_version` in the deployed `system.yaml` with `version.GetVersion()` and prints one warning line on disagreement. No `system.yaml` means nothing to compare, so no warning.
+3. U-18, AC-RC30-19: the preview builds its deployer through `newTemplateSyncDeployer` with the run's deploy mode. It no longer uses `template.NewDeployerWithForceUpdate`. The run path's confirmation call now goes through the existing `confirmViaPreviewFn` seam, which defaults to the same function. The test needs the seam so that it does not block on the interactive confirmation.
+4. RED stage: the API stubs (the manifest field, and a no-op `warnStampSkew`) were added first so the tests compile and fail on behavior, not on a build error.
+
+#### RED — three named tests, before the implementation (exit 1)
+
+Command: `go test -count=1 -run 'TestSkipDecisionUsesTreeHash|TestStampSkewWarning|TestPreviewCountEqualsRunCount' -v ./internal/cli/`
+
+```text
+=== RUN   TestSkipDecisionUsesTreeHash
+=== RUN   TestSkipDecisionUsesTreeHash/same_version_same_tree_skips
+=== RUN   TestSkipDecisionUsesTreeHash/same_version_different_tree_does_not_skip
+    update_template_sync_measured_test.go:114: skipped = true, want false; output:
+        
+         ✓ Up to date · Skipping sync 
+--- FAIL: TestSkipDecisionUsesTreeHash (0.02s)
+    --- PASS: TestSkipDecisionUsesTreeHash/same_version_same_tree_skips (0.00s)
+    --- FAIL: TestSkipDecisionUsesTreeHash/same_version_different_tree_does_not_skip (0.00s)
+=== RUN   TestStampSkewWarning
+=== PAUSE TestStampSkewWarning
+=== RUN   TestPreviewCountEqualsRunCount
+    update_template_sync_measured_test.go:193: preview count 268 != run count 423 for the same fixture
+--- FAIL: TestPreviewCountEqualsRunCount (0.00s)
+=== CONT  TestStampSkewWarning
+=== RUN   TestStampSkewWarning/stale_stamp_on_disk_warns
+=== PAUSE TestStampSkewWarning/stale_stamp_on_disk_warns
+=== RUN   TestStampSkewWarning/matching_stamp_is_silent
+=== PAUSE TestStampSkewWarning/matching_stamp_is_silent
+=== RUN   TestStampSkewWarning/missing_config_is_silent
+=== PAUSE TestStampSkewWarning/missing_config_is_silent
+=== CONT  TestStampSkewWarning/stale_stamp_on_disk_warns
+=== CONT  TestStampSkewWarning/missing_config_is_silent
+=== CONT  TestStampSkewWarning/matching_stamp_is_silent
+=== NAME  TestStampSkewWarning/stale_stamp_on_disk_warns
+    update_template_sync_measured_test.go:138: a stamp that disagrees with the deployed bytes must warn, got:
+--- FAIL: TestStampSkewWarning (0.00s)
+    --- PASS: TestStampSkewWarning/missing_config_is_silent (0.00s)
+    --- FAIL: TestStampSkewWarning/stale_stamp_on_disk_warns (0.00s)
+    --- PASS: TestStampSkewWarning/matching_stamp_is_silent (0.00s)
+FAIL
+FAIL	github.com/modu-ai/moai-adk/internal/cli	1.054s
+FAIL
+```
+
+The positive controls passed on the RED tree (`same_version_same_tree_skips`, `matching_stamp_is_silent`, `missing_config_is_silent`). The failures are the three defects: the skip ignores the tree, the preview counts 268 files against the run's 423 on the same fixture, and a stale stamp prints nothing.
+
+#### GREEN — the same three tests (exit 0)
+
+Command: the same as RED.
+
+```text
+=== RUN   TestSkipDecisionUsesTreeHash
+=== RUN   TestSkipDecisionUsesTreeHash/same_version_same_tree_skips
+=== RUN   TestSkipDecisionUsesTreeHash/same_version_different_tree_does_not_skip
+--- PASS: TestSkipDecisionUsesTreeHash (0.04s)
+    --- PASS: TestSkipDecisionUsesTreeHash/same_version_same_tree_skips (0.01s)
+    --- PASS: TestSkipDecisionUsesTreeHash/same_version_different_tree_does_not_skip (0.01s)
+=== RUN   TestStampSkewWarning
+=== PAUSE TestStampSkewWarning
+=== RUN   TestPreviewCountEqualsRunCount
+--- PASS: TestPreviewCountEqualsRunCount (0.00s)
+=== CONT  TestStampSkewWarning
+=== RUN   TestStampSkewWarning/stale_stamp_on_disk_warns
+=== PAUSE TestStampSkewWarning/stale_stamp_on_disk_warns
+=== RUN   TestStampSkewWarning/matching_stamp_is_silent
+=== PAUSE TestStampSkewWarning/matching_stamp_is_silent
+=== RUN   TestStampSkewWarning/missing_config_is_silent
+=== PAUSE TestStampSkewWarning/missing_config_is_silent
+=== CONT  TestStampSkewWarning/stale_stamp_on_disk_warns
+=== CONT  TestStampSkewWarning/missing_config_is_silent
+=== CONT  TestStampSkewWarning/matching_stamp_is_silent
+--- PASS: TestStampSkewWarning (0.00s)
+    --- PASS: TestStampSkewWarning/missing_config_is_silent (0.00s)
+    --- PASS: TestStampSkewWarning/matching_stamp_is_silent (0.00s)
+    --- PASS: TestStampSkewWarning/stale_stamp_on_disk_warns (0.00s)
+PASS
+ok  	github.com/modu-ai/moai-adk/internal/cli	1.059s
+```
+
+#### Checks and regression (exact-name runs, each a single command)
+
+- `gofmt -l` on the four M5 Go files: no output. `gofmt -w` was applied to `internal/cli/update_template_sync.go` once, to fix the indentation of two hunks this step inserted (the save-line and the preview block); no other line changed.
+- `go build ./...`: no output (success).
+- `go vet ./internal/cli/`: no output (success).
+- `go test -count=1 ./internal/manifest/`: `ok  	github.com/modu-ai/moai-adk/internal/manifest	0.339s`.
+- `go test -count=1 -run 'TestSkipSyncNoArchive/version_match_returns_skipped_true' -v ./internal/cli/`: `--- PASS: TestSkipSyncNoArchive/version_match_returns_skipped_true`, `ok  	github.com/modu-ai/moai-adk/internal/cli	0.717s`.
+- `go test -count=1 -run 'TestTemplateSync_|TestCleanReinstall_SettingsSnapshotStagedBeforeMerge' -v ./internal/cli/`: six tests run and all PASS (`TestTemplateSync_LeavesNoEmptyManagedSkillDirs`, `TestTemplateSync_ManagedSweepFlagsPlantedEmptyDir`, `TestTemplateSync_MirrorNoticeGoesToStderrNotStdout`, `TestTemplateSync_NoFallbackEmitsNothing`, `TestTemplateSync_PlainDeployerStillDeploys`, `TestCleanReinstall_SettingsSnapshotStagedBeforeMerge`), `ok  	github.com/modu-ai/moai-adk/internal/cli	1.525s`.
+
+#### Gaps (not observed in this step)
+
+- The full `internal/cli` suite and `golangci-lint` were not run (the lead's constraint; the gate that would run them is blocked on the lead's decision, see the F8 record).
+- The stamp warning is covered through `warnStampSkew` directly. Its call at the end of the run path is not covered by an end-to-end run of `moai update`.
+- The tree record is observed only on test fixtures, not on a real project through `moai update`.
+- The cost of `embeddedTemplateTreeHash` on each version-matched run was not measured.
+
+#### Residual risk
+
+- A project whose manifest holds no recorded tree keeps the version-only skip until its first deploy with this binary. A same-version tree change on such a project still skips once.
+- The stamp check reports a disagreement; it does not repair one.
+
+#### Files changed (M5 step 2)
+
+`internal/cli/update_template_sync.go`; `internal/cli/update_template_sync_guard.go` (new); `internal/cli/update_template_sync_measured_test.go` (new); `internal/manifest/types.go`; this progress record.
+
+The commit SHA of this step cannot be named in its own commit. It is recorded in the § E.2 F8 entry (the step 3 record).
+
+### Scoped gate evidence, M4 and M5 (narrowed gate, card t1619)
+
+Basis: the lead's narrowed-gate decision. The scope is the named tests, plus every test whose assertions reference a changed identifier or output string. Runs are in the foreground, one `go test` per command. Exit codes are separate fields. The tool printed no exit-code error for the runs below, so each is recorded as `exit=0`.
+
+#### Repo-wide grep (narrowed gate, item 2)
+
+Command: `grep -rln -E 'skills archived|archiveLegacySkills|runTemplateSyncWith|confirmViaPreviewFn|versionMatchSkipsSync|warnStampSkew|recordTemplateTree|embeddedTemplateTreeHash|TemplateTreeHash|template_tree_hash|template stamp|Up to date|Already up-to-date|Found [0-9]+ files|total: ' internal --include='*_test.go'`
+
+Output: 35 files. Piped to `wc -l`, the same command printed `35`.
+
+```text
+internal/cli/update_idempotency_test.go
+internal/cli/update_home_seam_test.go
+internal/cli/doctor_codex_test.go
+internal/cli/update_characterization_test.go
+internal/cli/update_archive_flow_test.go
+internal/cli/update_codex_wiring_test.go
+internal/cli/update_archive_summary_test.go
+internal/cli/update_integrity_probe_test.go
+internal/cli/tuxiu_characterization_test.go
+internal/cli/update_hooks_guidance_test.go
+internal/cli/update_template_sync_measured_test.go
+internal/cli/update_claude_to_both_test.go
+internal/cli/update_identity_preserve_test.go
+internal/cli/coverage_improvement_test.go
+internal/cli/update_mirror_notice_test.go
+internal/cli/update_fileops_test.go
+internal/cli/update_integrity_probe_codex_test.go
+internal/cli/update_archive_force_test.go
+internal/cli/harness_profile_transition_test.go
+internal/cli/update_settings_snapshot_test.go
+internal/cli/update_archive_continue_test.go
+internal/cli/update_model_key_strip_test.go
+internal/cli/m0_surface_red_test.go
+internal/cli/update_observability_test.go
+internal/cli/update_repair_test.go
+internal/cli/update_skip_sync_test.go
+internal/cli/update_identity_unrenderable_test.go
+internal/cli/update_llm_preserve_test.go
+internal/cli/update_dry_run_test.go
+internal/cli/update_archive_test.go
+internal/cli/update_migrate_test.go
+internal/cli/target_coverage_test.go
+internal/cli/update/report/outcome_test.go
+internal/auditreceipt/store_edge_test.go
+internal/guardstate/axis_test.go
+```
+
+#### Named tests, foreground, race detector
+
+Command: `go test -count=1 -race -run '^(TestArchiveSummaryCarriesMeasuredCountOnly|TestTUXDataValuesPreserved|TestSkipDecisionUsesTreeHash|TestStampSkewWarning|TestPreviewCountEqualsRunCount)$' -v ./internal/cli/` — exit=0
+
+```text
+=== RUN   TestTUXDataValuesPreserved
+--- PASS: TestTUXDataValuesPreserved (0.00s)
+=== RUN   TestArchiveSummaryCarriesMeasuredCountOnly
+=== PAUSE TestArchiveSummaryCarriesMeasuredCountOnly
+=== RUN   TestSkipDecisionUsesTreeHash
+=== RUN   TestSkipDecisionUsesTreeHash/same_version_same_tree_skips
+=== RUN   TestSkipDecisionUsesTreeHash/same_version_different_tree_does_not_skip
+--- PASS: TestSkipDecisionUsesTreeHash (0.23s)
+    --- PASS: TestSkipDecisionUsesTreeHash/same_version_same_tree_skips (0.07s)
+    --- PASS: TestSkipDecisionUsesTreeHash/same_version_different_tree_does_not_skip (0.09s)
+=== RUN   TestStampSkewWarning
+=== PAUSE TestStampSkewWarning
+=== RUN   TestPreviewCountEqualsRunCount
+--- PASS: TestPreviewCountEqualsRunCount (0.06s)
+=== CONT  TestArchiveSummaryCarriesMeasuredCountOnly
+=== CONT  TestStampSkewWarning
+=== RUN   TestStampSkewWarning/stale_stamp_on_disk_warns
+=== PAUSE TestStampSkewWarning/stale_stamp_on_disk_warns
+=== RUN   TestStampSkewWarning/matching_stamp_is_silent
+=== PAUSE TestStampSkewWarning/matching_stamp_is_silent
+=== RUN   TestStampSkewWarning/missing_config_is_silent
+=== PAUSE TestStampSkewWarning/missing_config_is_silent
+=== CONT  TestStampSkewWarning/stale_stamp_on_disk_warns
+=== CONT  TestStampSkewWarning/missing_config_is_silent
+=== CONT  TestStampSkewWarning/matching_stamp_is_silent
+--- PASS: TestStampSkewWarning (0.00s)
+    --- PASS: TestStampSkewWarning/missing_config_is_silent (0.00s)
+    --- PASS: TestStampSkewWarning/stale_stamp_on_disk_warns (0.00s)
+    --- PASS: TestStampSkewWarning/matching_stamp_is_silent (0.00s)
+--- PASS: TestArchiveSummaryCarriesMeasuredCountOnly (0.01s)
+PASS
+ok  	github.com/modu-ai/moai-adk/internal/cli	3.271s
+```
+
+Command: `go test -count=1 -race -run 'TestSkipSyncNoArchive/^version_match_returns_skipped_true$' -v ./internal/cli/` — exit=0
+
+```text
+=== RUN   TestSkipSyncNoArchive
+=== RUN   TestSkipSyncNoArchive/version_match_returns_skipped_true
+--- PASS: TestSkipSyncNoArchive (0.01s)
+    --- PASS: TestSkipSyncNoArchive/version_match_returns_skipped_true (0.01s)
+PASS
+ok  	github.com/modu-ai/moai-adk/internal/cli	2.985s
+```
+
+#### Static checks (foreground)
+
+- `gofmt -l` on the seven touched Go files (`internal/cli/update_archive.go`, `internal/cli/tuxiu_characterization_test.go`, `internal/cli/update_archive_summary_test.go`, `internal/cli/update_template_sync.go`, `internal/cli/update_template_sync_guard.go`, `internal/cli/update_template_sync_measured_test.go`, `internal/manifest/types.go`): no output.
+- `go build ./...`: no output.
+- `go vet ./internal/cli/ ./internal/manifest/`: no output.
+- `golangci-lint run ./internal/cli/ ./internal/manifest/`: `0 issues.`
+
+#### Gaps
+
+- The 35 files above are not run. Their test functions were not run, so the grep-derived set is incomplete. The `TestSkipSyncNoArchive/skip_sync_with_force_does_invoke_archive` subtest is in that set, and it was not run: its own comment says it reaches the interactive confirmation.
+- The full-suite `go test` for the touched packages was not run locally (lane protocol §8). Its verdict comes from CI after the leader's batch push.
+- `/verify` was not invoked whole. Its Go test row is `go test -race` with no package scope, launched in the background (`workflows/gate.md` Phase 1 and Phase 2). Whether the `--file` scope narrows the Go test run was not verified. The static checks above were run by hand.
+- Phase 1B snapshot: absent. `moai verify check --key-current` exited 1, with `"fresh": false` and reason `no snapshot recorded for the current working-tree key`.
+- Hook: whether a pre-commit hook runs is not relied on. `git config --get core.hooksPath` printed `/dev/null`, and the lane record says otherwise. A commit that prints hook output will quote it verbatim with its exit code.
 
 ## §E.3 Run-phase Audit-Ready Signal
 
