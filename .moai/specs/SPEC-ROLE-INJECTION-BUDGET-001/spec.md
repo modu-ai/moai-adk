@@ -2,7 +2,7 @@
 id: SPEC-ROLE-INJECTION-BUDGET-001
 title: "역할 규칙 주입 예산 — 조립 합본 9,000자 회계, 역할 core 재작성, *-core 스텁 게이트, 버전 불일치 안내"
 version: "0.4.0"
-status: in-progress
+status: completed
 created: 2026-10-10
 updated: 2026-10-10
 author: manager-spec

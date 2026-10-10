@@ -173,3 +173,25 @@ card_review: codex pass, 0 findings (.moai/reports/t1617/card-review.md; base db
 - **검증**: go test ./internal/hook/ ./internal/template/ → ok/ok (FINAL, exit 0 — 슬롯 internal-hook-template-suite 임대 하); GOOS=windows GOARCH=amd64 및 darwin/arm64 빌드 → exit 0; golangci-lint (hook+template) → 0 issues; coverage internal/hook **87.5%** (≥85% 문턱).
 - **card-review**: codex scope=card → **pass**, findings 0 (`.moai/reports/t1617/card-review.md`; base db0c514d3 → head 190f7db5d) — advisory이며 리더의 증거 읽기와 독립 감사를 대체하지 않습니다.
 - **관측 (경계 생존 실측)**: 스텁 추가문의 초판이 스텁 게이트에 걸렸고 (10,630 > 10,000 — 3회 절단으로 9,915 수렴); TestTemplateNoInternalContentLeak 이 hooks 첫 편집의 SPEC-id 인용을 잡았습니다 — 두 경계 모두 생존하고 실제로 판정했습니다.
+
+## §E.4 Sync-phase Audit-Ready Signal
+
+sync_complete_at: 2026-10-10T19:07:08+09:00
+sync_commit_sha: pending-backfill-sync
+sync_status: complete
+sync_agent: manager-docs
+sync_scope: CHANGELOG 엔트리 + 3-phase close (spec.md frontmatter status 전이; plan.md/acceptance.md는 frontmatter 블록 부재로 `updated:` 리프레시 대상 없음 — 본문 무편집)
+changelog_entry_position: "[Unreleased] › Fixed — first entry (prepended)"
+changelog_duplicate_grep: 0
+b12_self_test_a: pass — 발행 전 `grep -c 'SPEC-ROLE-INJECTION-BUDGET-001' CHANGELOG.md` → 0 (exit 1, 중복 엔트리 없음)
+b12_self_test_b: pass — 선언 live AC 집합 = 13 (acceptance.md §A 표 AC-RIB-001..013 식별자 전수 대조, excluded 0 ambiguous 0); CHANGELOG 엔트리의 13 기재와 일치
+b12_self_test_c: pass — `ls`로 구현 파일 5건 존재 확인 (internal/hook/role_rules.go · role_injection_budget_test.go · role_rules_skew_predicate_test.go · role_rules_version_skew_test.go · internal/template/role_core_stub_gate_test.go)
+frontmatter_status_transitions.in-progress→implemented→completed: 단일 sync 커밋 병합 전이 (spec.md `status:` + `updated:` 만 편집; 본문 무편집 — updated는 당일 값 유지)
+mx_tag_validation: sync diff는 docs-only (CHANGELOG.md + spec.md frontmatter + progress.md §E.4) — 태그 변경 0
+ac_rib_012_disposition: 「운영자 확인 대기, 대체 증거 = 봉투 산술 실측」 — 레인·리더 모두 세션 재기동 불가(단말 런처 경계, 운영자 정정 10-09)로 리더가 운영자 복귀 체크리스트(보드 card:t1617)에 등재; 대체 증거는 조립 예산 테스트의 생산자 4,797 + 오버헤드 257 + core 3,786 = 8,843 ≤ 9,000 ≤ 10,000 양 트리 관측
+readme_docs_site_judgment: no-sync — 이 변경은 내부 주입 동작(예산 게이트 · 스텁 구조 · 오류 안내 문구)과 룰 파일 내용의 재배치로, README 4-locale · docs-site가 서술하는 사용자 대면 동작은 불변 (문서화된 CLI 표면 변화 없음)
+sync_evidence: 최종 런 스위트(ok/ok) · 커버리지 87.5% · lint 0 · 양 크로스컴파일 빌드는 §E.3 실측을 그대로 인용 — sync diff는 문서 전용으로 코드·룰 트리 무변경
+commit_plan: sync 커밋 1건(전이 · 엔트리 · §E.4 플레이스홀더 동승, `Authored-By-Agent: manager-docs` + `🗿 MoAI` 트레일러) + backfill 커밋 1건(실측 SHA로 이 칸 갱신)
+backfill: (대기 — sync 커밋 SHA 확정 후 갱신)
+
+Sync 요약: sync 페이즈는 코드·룰 트리에 0 변경을 두고 세 문서 표면만 만졌다 — (1) CHANGELOG [Unreleased] › Fixed 첫 항목 발행, (2) spec.md frontmatter `in-progress → completed` 전이(implemented 중간점 병합), (3) 이 §E.4 시그널. 런 페이즈의 검증 증거(§E.3 표 12/13 PASS + AC-RIB-012 리더·운영자 인계)는 sync diff가 docs-only라 그대로 유효하다. 판정: audit-ready — 리더가 본 트리에서 sync 감사(codex_audit, target=baseBranch)를 이어간다.
