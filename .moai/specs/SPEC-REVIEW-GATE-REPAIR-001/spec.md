@@ -1,7 +1,7 @@
 ---
 id: SPEC-REVIEW-GATE-REPAIR-001
 title: "Codex 리뷰 게이트 수리 — 프롬프트 진입 교착을 풀고 리뷰 기준을 하나로 모은다"
-version: "0.2.5"
+version: "0.2.6"
 status: draft
 created: 2026-10-10
 updated: 2026-10-10
@@ -31,6 +31,7 @@ tags: "codex, review-gate, turn-end, prompt-entry, receipt, merge-base, card-t16
   - v0.1.2의 AC-RG-006~009·016·020~024(퇴역 → t1662, v0.2.0에서 제거)
 - 2026-10-10 · v0.2.4 · manager-spec · plan-audit 7회차(v0.2.3, `.moai/reports/t1620/plan-audit-iter7.md`, FAIL 0.75, 차단 B1–B4, 필수 codex 레그 inconclusive)의 수리 라운드다. 운영자 결정 d-20261010T113614Z-2413 에 따라 이 카드의 plan 감사에서 codex 필수 레그를 advisory 로 바꾸고(도구 결함, t1662 범위, 판정 파일에 기록), B1–B4 를 한 번 고친다. B1: AC-RG-019 에 (d) reviewer 없음을 더했다. B3: AC-RG-019 의 각 경우를 상태 이름에 묶었다. B4: AC-RG-012 (a) 의 systemMessage 는 턴 종료 게이트만 낸다. B2: 마일스톤의 RED 선행은 커밋 그래프로 증명할 수 없으므로, 순서 조항을 기록 증거(progress.md §E.2)로만 확인한다는 문장으로 바꿨다(plan.md, spec.md §D.2, acceptance.md). 이 행은 감사 결과를 주장하지 않는다. [ID mapping v0.2.4: 적용 없음. 번호는 v0.2.2 와 같다.]
 - 2026-10-10 · v0.2.5 · manager-spec · plan-audit iter8 FAIL(`.moai/reports/t1620/plan-audit-iter8.md`, 0.75, 차단 D1·D2)의 수리 라운드다. 운영자 결정 d-20261010T130929Z-a280 에 따라 D1 은 (나)안으로 고쳤다(RED 선행 순서를 커밋 그래프 검사로 재작성, 이 SPEC 은 승격을 하지 않는다). D2 는 plan §C 승인 파일 목록에 M3·M5·M6 의 테스트 파일과 원천 파일을 보강했고, 파일 목록은 §C 가 정한다고 적었다. 이 행은 감사 결과를 주장하지 않는다. [ID mapping v0.2.5: 적용 없음. 번호는 v0.2.2 와 같다.]
+- 2026-10-10 · v0.2.6 · manager-spec · plan-audit iter9 FAIL(`.moai/reports/t1620/plan-audit-iter9.md`, 0.75, 차단 D1·D2·D3)의 수리 라운드다. 운영자 결정 d-20261010T135342Z-51a4 (가)에 따라 감사자가 제시한 문장을 그대로 적용했다. D1: 덮어쓰기 단위를 plan.md:61, spec.md §D.2, acceptance.md §E 세 곳에 같은 말로 정했다. D2: 완료 정의에 구현 뒤 GREEN 요구를 되살렸다. D3: M2·M5·M6 의 테스트 파일을 plan §C 에 묶고 기대값 변경 목록에 더했다. M6 셸 래퍼의 메시지 방식은 바이너리 호출로 정했다(REQ-RG-008, design.md §5). 이 행은 감사 결과를 주장하지 않는다. [ID mapping v0.2.6: 적용 없음. 번호는 v0.2.2 와 같다.]
 
 ---
 
@@ -143,9 +144,9 @@ The codex review gate shall take its enablement for each run from one override f
 
 ### REQ-RG-008 — 셸 층과 Go 층은 같은 스위치 값을 읽는다 (Ubiquitous, M6)
 
-The shell wrapper and the Go handler shall resolve the override file at the same primary-checkout path and shall derive the committed default from the same committed source, so that both layers return the same enablement for the same run.
+The entry hook shell wrapper and the Go handler shall resolve the override file at the same primary-checkout path and shall derive the committed default from the same committed source, so that both layers return the same enablement for the same run. The turn-end gate wrapper shall not resolve the switch: it shall call the Go handler on every turn end, including when the switch is off, so that the state message of REQ-RG-012 is emitted by one layer only.
 
-현재 Go 층은 `reviewGateConfigRoot`(`internal/cli/codex_review_gate.go:489`)를 거쳐 `auditreceipt.StoreRoot` 를 쓰는데, `StoreRoot` 는 트리에 workflow.yaml 이 있으면 그 트리를 그대로 돌려준다(`internal/auditreceipt/storeroot.go:243`). 따라서 재정의 파일의 경로는 `StoreRoot` 가 아니라 주 체크아웃을 돌려주는 `IdentifyPrimaryCheckout`(`internal/auditreceipt/storeroot.go:142`)으로 구한다. 셸 래퍼(`.claude/hooks/moai/handle-codex-review-entry.sh` 33–34행)는 지금 `CLAUDE_PROJECT_DIR` 의 workflow.yaml 을 읽으므로, 같은 해석을 따르도록 바뀐다. 해석기는 design.md §5 의 '주 체크아웃 해석' 항목을 따른다.
+현재 Go 층은 `reviewGateConfigRoot`(`internal/cli/codex_review_gate.go:489`)를 거쳐 `auditreceipt.StoreRoot` 를 쓰는데, `StoreRoot` 는 트리에 workflow.yaml 이 있으면 그 트리를 그대로 돌려준다(`internal/auditreceipt/storeroot.go:243`). 따라서 재정의 파일의 경로는 `StoreRoot` 가 아니라 주 체크아웃을 돌려주는 `IdentifyPrimaryCheckout`(`internal/auditreceipt/storeroot.go:142`)으로 구한다. 셸 래퍼(`.claude/hooks/moai/handle-codex-review-entry.sh` 33–34행)는 지금 `CLAUDE_PROJECT_DIR` 의 workflow.yaml 을 읽으므로, 같은 해석을 따르도록 바뀐다. 해석기는 design.md §5 의 '주 체크아웃 해석' 항목을 따른다. 턴 종료 게이트 래퍼(`.claude/hooks/moai/handle-codex-review-gate.sh`)는 스위치를 해석하지 않고 모든 턴 종료에서 Go 처리기를 부른다. 스위치 꺼짐의 메시지는 처리기가 낸다(REQ-RG-012, design.md §5).
 
 ### REQ-RG-009 — 현재 pass 영수증은 재검토 없이 허용한다 (State-driven, 회귀)
 
@@ -179,7 +180,7 @@ When the turn-end gate allows a stop and no fresh passing receipt backs that all
 ## §D 실행 순서 구속
 
 1. 운영자 판정 Q2–Q6 과 보드 판정 D3·D4·D11 은 decision-index.md 에 기록되어 있다. Q1 은 t1662 로 이관되었다(d-20261010T070728Z-6cdf). run 단계는 Q2–Q6 행의 `Operator verdict` 가 채워져 있는지 확인하고 시작한다.
-2. 각 마일스톤의 RED 선행은 plan.md 의 마일스톤 순서 조항이 정한 커밋 그래프 검사(첫 부모 트리에 새 테스트만 얹어 EXPECTED_RED 재현)로 확인하고, 그 원문은 progress.md §E.2 에 남긴다.
+2. 각 마일스톤의 RED 선행은 plan.md 의 마일스톤 순서 조항이 정한 커밋 그래프 검사(첫 부모 트리에 덮어쓰기 단위를 얹어 EXPECTED_RED 재현. 덮어쓰기 단위는 마일스톤 커밋이 추가하거나 바꾼 _test.go 파일의 그 커밋 시점 내용이다)로 확인하고, 그 원문은 progress.md §E.2 에 남긴다.
 3. **변경 세트(change set)는 커밋 하나다.** 두 면을 가진 파일은 같은 커밋에서 함께 갱신한다. 훅 래퍼(`.claude/hooks/moai/handle-codex-review-{entry,gate}.sh` 와 `internal/template/templates/.claude/hooks/moai/handle-codex-review-{entry,gate}.sh`)는 M6 의 한 커밋에 함께 담긴다. M7 의 규칙 문장 정정(F4)도 규칙 파일(`.claude/rules/moai/workflow/factory-dispatch-detail.md`)과 그 템플릿 미러를 한 커밋에서 맞춘다. 두 면이 서로 다른 커밋에 갈라지는 상태는 허용하지 않는다.
 
 ---

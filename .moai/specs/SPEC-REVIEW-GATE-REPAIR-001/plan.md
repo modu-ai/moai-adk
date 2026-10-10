@@ -26,17 +26,21 @@
 | 파일 | 현재 역할 (근거) | 관련 마일스톤 |
 |---|---|---|
 | `internal/cli/codex_review_delay.go` | 진입 훅 `HandleCodexReviewEntry`(140행). 차단 분기 169–183행. 헤더 1–14행은 교착을 설계로 채택했다. M5 의 진행 중 표식 구현 위치: 검토 프로세스 분리 실행 `:52`, 현행 버킷 경로 `:76–80`, 버킷 정리·배타 생성·시각 기록 `:98–113`(design.md §3 인용) | M2, M5 |
-| `internal/cli/codex_review_delay_test.go` | 기존 테스트 파일. `TestReviewEntry_FreshFailBlocks`(363행)는 결함을 고정하므로 기대값을 바꾼다(셀 B-2). M2 의 기대값 변경 대상 | M2 |
+| `internal/cli/codex_review_delay_test.go` | 기존 테스트 파일. `TestReviewEntry_FreshFailBlocks`(363행)는 결함을 고정하므로 기대값을 바꾼다(셀 B-2). M2 의 기대값 변경 대상(진입 차단 단언 :195–197, :267–269). M5 의 기대값 변경 대상(진행 중 표식 단언 :272–292) | M2, M5 |
 | `internal/cli/codex_review_entry_delivery_test.go` | 신규 RED 테스트 파일(AC-RG-001–003, 진입 훅 비차단과 전달 기록). M2 에서 만든다 | M2 |
 | `internal/cli/codex_review_gate.go` | 턴 종료 `HandleCodexReviewGate`(104행). stop_hook_active 109행. 수용 영수증 재사용 159–178행. 진행 중 표식 197–210행. 스위치 읽기 469행. 빈 루트 해석 `reviewGateConfigRoot` 489행. M3 의 턴 종료 상태표(차단 횟수 카운터, 재검토 시작, 메시지)는 이 파일의 턴 종료 처리에 둔다 | M3, M5, M6 |
 | `internal/cli/codex_review_gate_test.go` | 기존 테스트 파일(턴 종료 게이트 가드): `TestReviewGate_DisabledAllows`(40행), `TestReviewGate_LoopPreventionAllows`(65행), `TestReviewGate_FailOpenOnMissingCodex`(119행). M3 의 신규 테스트 함수(AC-RG-004 차단 횟수 1 단언, AC-RG-005, AC-RG-017 신규 가드(허용 뒤 재차단 없음), AC-RG-018·019 메시지 단언)는 이 파일에 둔다. M3 은 기존 테스트의 기대값을 바꾸지 않는다. `TestReviewGate_CacheHitReusesFailVerdict`(`internal/cli/codex_review_cache_test.go:68`)는 M5 파일이므로 M3 에서 고치지 않는다. M7 회귀 실행은 이 파일을 읽기만 한다 | M3 |
 | `internal/cli/codex_review_cache.go` | 유효기간 상수 29행. 상세 파일 읽기 72–76행 | M2, M5 |
-| `internal/cli/codex_review_cache_test.go` | 기존 테스트 파일. `TestReviewGate_InconclusiveReceiptIsNotPassEvidence`(236행)의 단언 262–269행이 허용을 고정한다(감사 O10). M5 의 기대값 변경 대상 | M5 |
+| `internal/cli/codex_review_cache_test.go` | 기존 테스트 파일. `TestReviewGate_InconclusiveReceiptIsNotPassEvidence`(236행)의 단언 262–269행이 허용을 고정한다(감사 O10). M2 의 기대값 변경 대상(진입 차단 단언 :216–227). M5 의 기대값 변경 대상 | M2, M5 |
+| `internal/cli/codex_review_gate_live_test.go` | 기존 테스트 파일(codex 가 있는 환경에서만 실행). 진입 차단 단언 `:129–133` 은 M2 의 기대값 변경 대상이다 | M2 |
 | `internal/cli/codex_review_inconclusive_test.go` | 신규 RED 테스트 파일(AC-RG-010–011, inconclusive 비재사용과 재검토 재시작). M5 에서 만든다 | M5 |
 | `internal/cli/codex_review_receipt.go` | 영수증 생산자. 키 측정 149행. inconclusive 기록 160–186행. 런타임 설정 전용 발견 사항의 재분류 176행 | M5 |
 | `internal/cli/mcp_codex.go` | `readCodexReviewGateEnabled` 2503행(빈 루트면 false). 감사 경로의 기준 기록 | M6 |
 | `internal/cli/codex_review_tree_scope.go` | 트리와 주 체크아웃 범위 판정 133–137행 | M6 |
 | `internal/cli/review_gate_config_key_test.go` | 기존 테스트 파일. AC-RG-013 부분 가드 `TestReviewGateReaders_AgreeWithConfigLoader`(96행)가 있으며 Go 층과 설정 로더의 일치만 검사한다. 셸 층을 검사하는 가드는 현재 없다 | M6 |
+| `internal/hook/review_gate_selfgate_test.go` | 기존 테스트 파일(셸 래퍼 단위). 스위치 꺼짐의 바이너리 기동 0회 단언(`:92–113`)을 1회로 바꾼다(M6 방식). 스위치 켜짐 단언(`:119–158`)은 그대로다 | M6 |
+| `internal/cli/mcp_codex_test.go` | 기존 테스트 파일. `TestReadCodexReviewGateEnabled_ConfigBranches`(`:522–552`)는 작업 트리 판독을 고정한다. 커밋 값 판독(design.md §5)으로 바뀌므로 기대값을 바꾼다 | M6 |
+| `internal/cli/mcp_codex_consoletest_test.go` | 기존 테스트 파일. 판독기 단언(`:46–47`, `:76–77`)을 같은 이유로 바꾼다 | M6 |
 | `internal/cli/codex_review_run_membership_test.go` | 신규 RED 테스트 파일. AC-RG-012 시나리오 (e)(주 체크아웃이나 다른 트리에서 시작한 세션은 재정의 파일을 무시하고 커밋된 값을 따른다)의 member lane 판정을 검사한다. M6 에서 만든다 | M6 |
 | `internal/homestate/card_worktree.go` | 기존 파일(`RecordCardWorktree` 20행, `PreviousCardWorktree` 73행, design.md §5 인용). M6 의 읽기 전용 조회(`run_id` 와 `worktree_path` 로 `cards` 행을 읽어 member lane 을 판정, 함수 이름은 run 단계가 정한다)를 이 파일에 추가한다. 쓰기 경로는 바꾸지 않는다 | M6 |
 | `internal/auditreceipt/storeroot.go` | `IdentifyPrimaryCheckout` 142행(주 체크아웃 해석, 재정의 파일 경로에 쓴다). `StoreRoot` 242–243행(트리에 workflow.yaml 이 있으면 그 트리를 돌려준다, 재정의 경로에는 쓰지 않는다) | M6 |
@@ -54,7 +58,7 @@
 
 ## §D 마일스톤 (우선순위 순)
 
-각 마일스톤의 RED 선행은 커밋 그래프만으로 검증한다. 마일스톤 커밋 M 의 첫 부모 P 의 트리에 M 이 추가한 새 테스트 파일만 얹어 기록된 명령을 실행하면, 기록된 단언에서 EXPECTED_RED 로 실패해야 한다. 그 실행의 명령, 종료 코드, 원문 출력은 progress.md §E.2 에 남긴다. 마일스톤의 순서는 되돌리기 어려운 결정을 먼저 두고, 기계적인 정리는 뒤에 둔다. 각 마일스톤은 한 커밋이며, 두 면을 가진 파일은 그 커밋에서 함께 갱신한다(spec.md §D.3).
+각 마일스톤의 RED 선행은 커밋 그래프만으로 검증한다. 마일스톤 커밋 M 의 첫 부모 P 의 트리에 덮어쓰기 단위를 얹어 기록된 명령을 실행하면, 기록된 단언에서 EXPECTED_RED 로 실패해야 한다. 덮어쓰기 단위는 마일스톤 커밋이 추가하거나 바꾼 _test.go 파일의 그 커밋 시점 내용이다. 검사 대상은 RED 단계가 있는 M2·M3·M5·M6 이다(M1·M7 은 RED 단계가 없어 제외한다). 그 실행의 명령, 종료 코드, 원문 출력은 progress.md §E.2 에 남긴다. 마일스톤의 순서는 되돌리기 어려운 결정을 먼저 두고, 기계적인 정리는 뒤에 둔다. 각 마일스톤은 한 커밋이며, 두 면을 가진 파일은 그 커밋에서 함께 갱신한다(spec.md §D.3).
 
 ### M1 — 판정 기록 확인 (우선순위 High, 차단 게이트)
 
@@ -68,7 +72,7 @@
 - 요구: REQ-RG-001, REQ-RG-002. 인수 기준: AC-RG-001, AC-RG-002, AC-RG-003.
 - RED: fail 영수증이 있어도 진입 훅은 차단하지 않는다(AC-RG-001). 같은 키의 첫 프롬프트에서 상세가 추가 맥락으로 한 번 전달되고 전달 기록이 남는다(AC-RG-002). 전달 기록이 있는 키에서는 반복하지 않는다(AC-RG-003).
 - GREEN: 진입 경로의 차단 분기를 추가 맥락 전달로 바꾸고, 키 단위 전달 기록을 둔다. 기록은 영수증 결합 필드 다섯 개의 조합을 키로 쓴다.
-- 기대값 변경: `TestReviewEntry_FreshFailBlocks` 는 결함을 고정하고 있으므로(acceptance.md §C, 셀 B-2) 같은 변경에서 기대값을 바꾼다. 바꾼 내용은 progress.md 에 "이전 기대값 → 새 기대값 → 근거 결정" 형식으로 남긴다. 근거는 REQ-RG-001 이다.
+- 기대값 변경: `TestReviewEntry_FreshFailBlocks` 는 결함을 고정하고 있으므로(acceptance.md §C, 셀 B-2) 같은 변경에서 기대값을 바꾼다. 바꾼 내용은 progress.md 에 "이전 기대값 → 새 기대값 → 근거 결정" 형식으로 남긴다. 근거는 REQ-RG-001 이다. 같은 이유로 `codex_review_cache_test.go:216–227`, `codex_review_delay_test.go:195–197`·`:267–269`, `codex_review_gate_live_test.go:129–133` 의 진입 차단 단언도 바꾼다.
 - 범위 밖: 진입 훅의 timeout 과 시간 상한은 F2 의 범위다. 이 마일스톤은 건드리지 않는다.
 
 ### M3 — 턴 종료 상태표: 차단 횟수, 재검토 시작, 메시지 (우선순위 High, 상태 카운터)
@@ -84,7 +88,7 @@
 - 요구: REQ-RG-005, REQ-RG-006. 인수 기준: AC-RG-010, AC-RG-011.
 - RED: inconclusive 영수증 뒤의 턴 종료는 재사용으로 허용만 하지 않고 재검토를 시작하며 메시지를 낸다(AC-RG-010). 다음 턴 종료에서 간격 없이 재검토가 다시 시작되고, 살아 있는 진행 중 표식이 있으면 중복되지 않는다(AC-RG-011). 소유자 pid 가 죽었거나 읽을 수 없는 표식은 회수되어 검토를 막지 않는다(AC-RG-011 (iii)).
 - GREEN: 재사용 판정을 pass 와 fail 로 제한한다. 간격 없는 재시작과 살아 있는 진행 중 표식 존중을 구현한다. 검토가 pass, fail, inconclusive 중 어떤 판정으로 끝나든 완료 시점에 표식을 해제하고, 고아 표식은 새 판정 전에 회수한다(design.md §3).
-- 기대값 변경: `TestReviewGate_InconclusiveReceiptIsNotPassEvidence` 는 결함을 고정하므로 기대값을 바꾼다(셀 B-2).
+- 기대값 변경: `TestReviewGate_InconclusiveReceiptIsNotPassEvidence` 는 결함을 고정하므로 기대값을 바꾼다(셀 B-2). 같은 이유로 `codex_review_delay_test.go:272–292`(진행 중 표식 단언과 kick 대역의 형식)도 바꾼다(REQ-RG-006, REQ-RG-011, design.md §3).
 - 이름과 단언의 어긋남(감사 O10): 테스트 이름은 inconclusive 가 pass 증거가 아님을 주장하고, 단언(`internal/cli/codex_review_cache_test.go:262–269`)은 허용(`out.Decision` 이 비어 있음)을 고정한다. 두 주장은 양립하지만, 이름이 가리키는 재사용 금지는 단언에 없다. 이 차이를 progress.md 에 기록한다.
 
 ### M6 — 실행 단위 스위치와 두 층의 읽기 (우선순위 Medium, Q3 판정 반영)
@@ -92,6 +96,8 @@
 - 요구: REQ-RG-007, REQ-RG-008. 인수 기준: AC-RG-012, AC-RG-013.
 - RED: 재정의 파일이 off 이면 같은 run 의 두 레인에서 두 훅 모두 검토 없이 허용한다(AC-RG-012). 재정의 파일이 없으면 커밋된 값을 따르며 작업 트리의 미커밋 값은 무시된다(AC-RG-012). 셸 층과 Go 층이 같은 스위치 결과를 낸다(AC-RG-013).
 - GREEN: 스위치 읽기를 하나의 해석 절차로 모은다. 재정의 파일의 주 체크아웃 해석과 커밋된 값의 판독을 두 층이 같이 쓴다. 추적 키 `codex.review_gate.enabled` 는 기본값 원천으로만 남긴다. 재정의 파일은 세션이 그 run 의 member lane 판정(design.md §5)을 통과할 때에만 적용한다. 이 판정을 위한 읽기 전용 조회(run_id 와 worktree_path)를 하나 추가한다.
+- 메시지 방식(레인 판단): 턴 종료 게이트 래퍼(`handle-codex-review-gate.sh`)는 스위치를 해석하지 않고 모든 턴 종료에서 Go 처리기를 부른다. 스위치 꺼짐의 메시지(REQ-RG-012)는 처리기가 낸다. 셸이 메시지를 직접 내는 방식은 상태 어휘를 두 층에 두므로 택하지 않았다. 대가: 스위치가 꺼진 턴 종료마다 바이너리 기동 한 번이 추가된다(래퍼 주석 :17–21 의 이전 비용 계약을 뒤집는다). 기본 상태(꺼짐)로 배포된 프로젝트는 턴 종료마다 이 비용을 낸다(래퍼 주석 :18–19).
+- 기대값 변경: `internal/hook/review_gate_selfgate_test.go:92–113` 의 스위치 꺼짐 단언(바이너리 기동 0회)을 1회로 바꾼다. `internal/cli/mcp_codex_test.go:522–552` 와 `internal/cli/mcp_codex_consoletest_test.go:46–47·76–77` 의 판독 단언을 커밋 값 판독에 맞춘다. 바꾼 내용은 progress.md 에 "이전 기대값 → 새 기대값 → 근거 결정" 형식으로 남긴다. 근거는 REQ-RG-008, REQ-RG-012 와 보드 판정 D4 다. 목록 밖 테스트의 기대값이 바뀌어야 하면 §E 의 트리 변화 점검(:118)에 따라 멈추고 보고한다.
 - 두 면 원칙(spec.md §D.3): 훅 래퍼의 `.claude/` 면과 `internal/template/templates/` 면, 그리고 Go 읽기 경로를 이 마일스톤의 한 커밋에서 함께 갱신한다. 템플릿 미러 갱신은 M7 에 두지 않는다.
 
 ### M7 — 회귀 정비와 문서 참조 정정 (우선순위 Low, 기계적)

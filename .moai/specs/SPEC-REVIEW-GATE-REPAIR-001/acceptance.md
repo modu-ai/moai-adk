@@ -199,6 +199,7 @@ ok  	github.com/modu-ai/moai-adk/internal/cli	2.766s
 ```
 
 - **해석:** 두 테스트가 PASS 한다는 것은 두 결함이 현재 트리에 존재하며 테스트가 그것을 기대값으로 고정하고 있다는 뜻이다. inconclusive 영수증이 "reusing the cached" 로 허용되고, fail 영수증이 진입 단계에서 차단된다. 이 두 기대값은 M2 와 M5 에서 의도적으로 바뀐다.
+- **결함 고정 목록 확장(v0.2.6):** 위 두 테스트 외에 기대값이 바뀌는 테스트는 plan.md §D 의 M2·M5·M6 기대값 변경 항목에 적혀 있다: `codex_review_cache_test.go:216–227`, `codex_review_delay_test.go:195–197`·`:267–269`·`:272–292`, `codex_review_gate_live_test.go:129–133`, `internal/hook/review_gate_selfgate_test.go:92–113`, `internal/cli/mcp_codex_test.go:522–552`, `internal/cli/mcp_codex_consoletest_test.go:46–47`·`:76–77`. 이 확장 목록의 원문 기준선은 이 판에서 실행하지 않았다(Gap). run 단계가 착수 전에 같은 형식으로 측정해 progress.md §E.2 에 남긴다.
 
 ### 트리 점검
 
@@ -214,7 +215,7 @@ ok  	github.com/modu-ai/moai-adk/internal/cli	2.766s
 ## §E 완료 정의 (DoD)
 
 - Q2–Q6 의 운영자 판정과 보드 판정 D3·D4·D11 이 decision-index.md 에 기록되어 있다. Q1 은 t1662 로 이관되었다(d-20261010T070728Z-6cdf). 2회차 기록(d-20261010T063222Z-43e0)도 같은 색인에 있다.
-- AC-RG-001–005, AC-RG-010–015, AC-RG-017–019 각 항목이 "가드 GREEN" 이거나 "마일스톤 커밋의 새 테스트는 첫 부모에서 EXPECTED_RED 로 실패한다(검사 기록은 progress.md §E.2)" 상태다.
+- AC-RG-001–005, AC-RG-010–015, AC-RG-017–019 각 항목이 "가드 GREEN" 이거나 "마일스톤 커밋의 새 테스트는 첫 부모에서 EXPECTED_RED 로 실패하고 마일스톤 커밋과 최종 트리에서 GREEN 이다(검사 기록은 progress.md §E.2)" 상태다. 덮어쓰기 단위는 마일스톤 커밋이 추가하거나 바꾼 _test.go 파일의 그 커밋 시점 내용이다.
 - 결함을 고정한 두 테스트의 기대값 변경이 근거(REQ 번호 또는 보드 판정)와 함께 progress.md 에 기록되어 있다.
 - 템플릿 미러가 맞고(M6 의 한 커밋), F1–F5 가 후속 카드로 등록되고 F6 이 t1635 로 이관되어 있다.
 - 릴리스 게이트 승격 사례는 이 SPEC 에서 인용하지 않는다.
