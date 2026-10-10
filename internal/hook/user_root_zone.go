@@ -144,7 +144,51 @@ func userRootZoneForms(cand string) []zoneForm {
 			addForm(userRootFormPrefix + slug)
 		}
 	}
+	// Finding 2 (card t1591): a managed asset reached through a symlink is judged by its
+	// REAL path too. The manifest tracks the LINK path (~/.claude/skills/demo/SKILL.md),
+	// and the candidate arrives as the real file behind the link, outside the install
+	// roots, so no root above matched it. Each link-path prefix of a tracked key whose
+	// real location is the candidate's resolved target produces the namespaced form of
+	// that link path, the key the manifest tracks.
+	if resolvedTarget, ok := zoneResolve(abs); ok {
+		targetFolded := config.FoldZoneText(filepath.ToSlash(resolvedTarget))
+		for _, key := range userRootManagedKeys(home) {
+			slug, rest, found := strings.Cut(key, "/")
+			dir, dirOK := userRootSlugDirs[slug]
+			if !found || !dirOK || rest == "" || hasDotDotSegment(rest) {
+				continue
+			}
+			parts := strings.Split(rest, "/")
+			for i := range parts {
+				prefix := strings.Join(parts[:i+1], "/")
+				linkReal, linkOK := zoneResolve(filepath.Join(home, filepath.FromSlash(dir), filepath.FromSlash(prefix)))
+				if linkOK && config.FoldZoneText(filepath.ToSlash(linkReal)) == targetFolded {
+					addForm(userRootFormPrefix + slug + "/" + prefix)
+				}
+			}
+		}
+	}
 	return out
+}
+
+// userRootManagedKeys returns the keys the user manifest tracks. An absent, unreadable,
+// or non-regular manifest reads as no keys, the same fail direction as userRootTracksAny.
+func userRootManagedKeys(home string) []string {
+	data, ok := readRegularFile(filepath.Join(home, ".moai", "user-assets.json"))
+	if !ok {
+		return nil
+	}
+	var m struct {
+		Files map[string]json.RawMessage `json:"files"`
+	}
+	if json.Unmarshal(data, &m) != nil {
+		return nil
+	}
+	keys := make([]string, 0, len(m.Files))
+	for k := range m.Files {
+		keys = append(keys, strings.TrimSuffix(k, "/"))
+	}
+	return keys
 }
 
 // hasDotDotSegment reports whether a slash-separated rest carries a ".."
