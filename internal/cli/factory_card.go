@@ -2431,20 +2431,30 @@ func resolveFactoryCardRun(ctx context.Context, root, explicit string) (string, 
 }
 
 // resolveFactoryRenewRun returns the run a renewal acts in (SPEC-FACTORY-LEASE-RENEW-001,
-// sync-audit F3 and F7, card t1663). An explicit --run value wins. Otherwise the run resolves as
-// resolveFactoryCardRun resolves it, and only the ambiguous outcome (several active runs survive
-// reconciliation) is narrowed by the roster. The lane's roster binding (workers.run_id, the run the
-// lane joined) must name an active run, and the card's lease must be held by this lane in that run.
-// The lease holder alone does not decide it: a label can be reused across runs, so a stale lease in
-// another run can name the same label. Every other case refuses, naming --run: no binding, a binding
-// outside the active set, or a card the lane does not hold in its bound run. Each refusal keeps the
-// detail that prevented the narrowing.
+// sync-audit F3, F7 and F11, card t1663). An explicit --run value wins. Otherwise the lane's roster
+// binding (workers.run_id, the run the lane joined) is read against the active runs. A sole active run
+// answers, except that a binding naming another run, active or not, refuses (F11); an empty binding or a
+// missing roster row keeps the sole-run answer. When several active runs survive reconciliation, the
+// binding must name an active run, and the card's lease must be held by this lane in that run: the lease
+// holder alone does not decide it, because a label can be reused across runs, so a stale lease in another
+// run can name the same label. Every other ambiguous case refuses, naming --run: no binding, a binding
+// outside the active set, or a card the lane does not hold in its bound run. Each refusal keeps the detail
+// that prevented the narrowing.
 func resolveFactoryRenewRun(ctx context.Context, root, explicit, lane, cardID string) (string, error) {
 	if run := strings.TrimSpace(explicit); run != "" {
 		return run, nil
 	}
 	run, err := factorymsg.ResolveActiveRun(ctx, root, "")
 	if err == nil {
+		// The roster binding is the lane's own run. A binding to any other run is a mismatch: refuse,
+		// naming --run, and write nothing.
+		bound, berr := factoryRenewBoundRun(ctx, root, lane)
+		if berr != nil {
+			return "", berr
+		}
+		if bound != "" && bound != run {
+			return "", fmt.Errorf("no --run given: lane %s is bound to run %s, not to the single active run %s; pass --run", lane, bound, run)
+		}
 		return run, nil
 	}
 	var ambiguous *factorymsg.AmbiguousRunsError
@@ -2477,6 +2487,17 @@ func resolveFactoryRenewRun(ctx context.Context, root, explicit, lane, cardID st
 		return "", refuse(fmt.Errorf("card %s is not held by lane %s in its bound run %s", cardID, lane, bound))
 	}
 	return bound, nil
+}
+
+// factoryRenewBoundRun returns the run the roster binds lane to: "" when the lane has no roster row or an
+// empty binding. The factory record is opened for that one read.
+func factoryRenewBoundRun(ctx context.Context, root, lane string) (string, error) {
+	db, err := homestate.OpenFactory(root)
+	if err != nil {
+		return "", fmt.Errorf("open the factory record for the roster binding of lane %s: %w", lane, err)
+	}
+	defer func() { _ = db.Close() }()
+	return db.WorkerRunBinding(ctx, lane)
 }
 
 // factoryRunListed reports whether runID is one of the active runs owners names.
