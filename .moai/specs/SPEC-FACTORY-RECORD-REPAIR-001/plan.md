@@ -1,6 +1,6 @@
 ---
 id: SPEC-FACTORY-RECORD-REPAIR-001
-version: "0.2.0"
+version: "0.4.0"
 updated: 2026-10-10
 ---
 
@@ -11,7 +11,7 @@ updated: 2026-10-10
 - Card t1621, Class C, Tier M. Work root: worktree `.moai/worktrees/t1621`, branch `WT-factory-record-fix`, base HEAD `2aab5f797`. This plan is the plan phase only; the implementing lane writes the code and commits.
 - Evidence is read-only and untracked. The lens-4 and lens-2 reports live in the primary checkout's `.moai/reports/audit-20261010/` and are not present in this worktree. Each code location below was re-read in this worktree. § Verified premises states, for each premise, whether it was read, run, or only reported by a lens.
 - Problem: the factory record can strand a holder's card (expired lease, no renewal, no recovery), it has no pushed-to-done edge for a card with a remote, and it has no detection of writes that bypass the transition API. The narrowed batch covers all three items (card body items 1 to 3).
-- Revision 0.2.0 narrows the plan to the three surviving items of the card re-scope, recorded as leader ruling `d-20261010T053435Z-006f`. It applies the operator verdicts of `d-20261010T053034Z-1a19` where their subjects survive. Q2, Q4, Q5, Q6, Q7, and Q13 are marked not applicable, because their subjects are retired (decision-index Routing). Revision 0.3.0 writes item (3) under leader ruling `d-20261010T060606Z-c5c4` (option a). Every decision is recorded in `decision-index.md`.
+- Revision 0.2.0 narrows the plan to the three surviving items of the card re-scope, recorded as leader ruling `d-20261010T053435Z-006f`. It applies the operator verdicts of `d-20261010T053034Z-1a19` where their subjects survive. Q2, Q4, Q5, Q6, Q7, and Q13 are marked not applicable, because their subjects are retired (decision-index Routing). Revision 0.3.0 writes item (3) under leader ruling `d-20261010T060606Z-c5c4` (option a). Revision 0.4.0 applies operator-delegated decision `d-20261010T064450Z-68b2` (option b): it renumbers the requirements (B1), transfers item (3), the record-call placement, and the non-holder ordering to 3.2-2-2 (B2, B4, B5), and bounds the watchdog renewal interval (B6). Every decision is recorded in `decision-index.md`.
 
 ## §B Known issues and evidence map
 
@@ -23,7 +23,7 @@ updated: 2026-10-10
 | R4 re-stamp (card body item 7) | lens-4 defect 7 (holder part); decision `d-20261009T180009Z-ae0f` | `card_transition.go:133-181` (no same-stage audit row); `:564` | Retired (006f); spec.md HISTORY 0.2.0 |
 | R5 worktree path (decision `d-20261009T182157Z-8ccf`; the re-lease of item 2) | decision `d-20261009T182157Z-8ccf` | `card_transition.go:520-545`; `internal/homestate/card_worktree.go:20-46`; `internal/cli/factory_card.go:569-602` | Active (item 2, re-lease); path source and timing closed (Q10) |
 | R6 interim guard (card body item 4) | lens-2 D1 (P0); lens-4 defect 8 | `card_transition.go:138`, `:546-549`, `:751-756` | Retired (006f); lens-2 D1 stays open (spec.md Residual risk) |
-| Item (3) pushed→done and out-of-band detection (card body item 3) | lens-4 defect 2 (pushed→done); card body (out-of-band claim, not re-measured) | `card_transition.go:156-158`, `:207-209`, `:668-670`; `card_evidence.go:64-73`; `internal/cli/factory_card.go:2803` (decide); premises (l) | Active (item 3); REQ-FRR-016 to REQ-FRR-019 (M8) |
+| Item (3) pushed→done and out-of-band detection (card body item 3) | lens-4 defect 2 (pushed→done); card body (out-of-band claim, not re-measured) | `card_transition.go:156-158`, `:207-209`, `:668-670`; `card_evidence.go:64-73`; `internal/cli/factory_card.go:2803` (decide); premises (l) | Transferred to 3.2-2-2 (t1639) by `d-20261010T064450Z-68b2`; not active here (`progress.md` § G) |
 
 ### Corrections to the card brief's defect numbers
 
@@ -38,13 +38,13 @@ The brief's numbering was checked against the lens-4 defect table. This plan use
 
 Each item names its source. "Read" means the line was opened in this worktree. "Run" means a read-only project command was executed. "Reported" means the claim comes from a lens report and was not re-measured.
 
-### (a) Retired with REQ-FRR-012
+### (a) Retired with old REQ-FRR-012
 
 The SPEC-id premise for the empty-stage edge (T7 refuses a card whose SPEC id is invalid, and the empty-stage edge cannot read the SPEC id) served the interim guard of old item (4). That guard is retired (spec.md HISTORY 0.2.0). The premise is recorded here only so that a reinstatement can re-read it.
 
-### (b) Retired with REQ-FRR-012
+### (b) Retired with old REQ-FRR-012
 
-The leader's settlement of the sync-to-run edge and the operator carrier of the empty-stage edge served REQ-FRR-008 and REQ-FRR-012. Both are retired. The operator verdict Q6 (c) is therefore not applied (decision-index Q6).
+The leader's settlement of the sync-to-run edge and the operator carrier of the empty-stage edge served old REQ-FRR-008 and old REQ-FRR-012. Both are retired. The operator verdict Q6 (c) is therefore not applied (decision-index Q6).
 
 ### (c) Plan-audit model and backend
 
@@ -77,7 +77,7 @@ The records `d-20261009T235640Z-3653` (R3) and `d-20261009T180009Z-ae0f` (R4) we
 - Read: the lease write (`card_transition.go:540-545`) sets the holder, heartbeat, and expiry and writes no worktree path. This is the premise of R5.
 - Read: the transition path reaps the same way before any other check (`card_transition.go:311-316`). The refusal text is `card %s lease held by %q expired at %s` (`:315`). `ErrLeaseExpired` itself reads `card lease expired` (`:22`). Neither names a recovery command.
 - Read: the next verb refuses a card in flight, including the holder's own expired row (`internal/cli/factory_card.go:1125-1128`). It also refuses to run from a non-parent checkout (`factoryAssertParentCheckout`, `:189-201`, refusal text at `:197-199`), so a lane inside its worktree cannot reach R2 through next. The stage verb's implementation (`factoryStageCard`, `:1702-1741`) has no parent-checkout check, so the worktree-reachable recovery path is the stage verb.
-- Read: `internal/homestate/card_record.go:91-93` binds the package variable `FactoryLeaseDuration` to `config.DefaultFactoryLeaseDuration` (`internal/config/defaults.go:65`, 15 minutes). The queue claim lease uses the constant directly (`internal/factory/backlog_store.go:1244`), and its test asserts about 15 minutes (`internal/factory/backlog_claim_test.go:154-155`). R1 must leave the constant and the queue lease unchanged (REQ-FRR-015).
+- Read: `internal/homestate/card_record.go:91-93` binds the package variable `FactoryLeaseDuration` to `config.DefaultFactoryLeaseDuration` (`internal/config/defaults.go:65`, 15 minutes). The queue claim lease uses the constant directly (`internal/factory/backlog_store.go:1244`), and its test asserts about 15 minutes (`internal/factory/backlog_claim_test.go:154-155`). R1 must leave the constant and the queue lease unchanged (REQ-FRR-010).
 - Run (search, plan phase): no `factory renew` verb exists in `internal/cli`, and `workflow.yaml` has no lease-duration key.
 - Reported (lens-4 §7 case (a) and defect 4): the reaping order and the stage path's commit-then-error are the lens-4 descriptions of the same code.
 
@@ -86,15 +86,15 @@ The records `d-20261009T235640Z-3653` (R3) and `d-20261009T180009Z-ae0f` (R4) we
 - Read: the table (`card_transition.go:133-181`) has T10 run → sync (`:149`) and T11 to T13 among the sync and sync-audit states. T17 is merged-local → pushed (`:156`, guardPush); T18 is merged-local → done (`:157`, guardNoRemote); T20 is ci-green → done (`:158`, guardApprovalDone). It has no pushed → done row. The reserved pushed → ci-green edge is at `:203-208`. Item (3) would add a pushed → done edge.
 - Read: the count-pin test `TestFR_AC005_TransitionTableEdgeCount` (`internal/homestate/fr_transition_test.go:146-166`) pins 71 accepted pairs and reports 73 table rows (`:165`). It stays in the code as a regression test. Its criterion (AC-FRR-016) is retired with the three rows it counted.
 
-### (g) Retired with REQ-FRR-008
+### (g) Retired with old REQ-FRR-008
 
-The verdict parser has no own-scope field (`internal/auditverdict/verdict.go:114-209`). The sync-to-run ruling discriminator that depended on this premise is retired with REQ-FRR-008 (spec.md HISTORY 0.2.0).
+The verdict parser has no own-scope field (`internal/auditverdict/verdict.go:114-209`). The sync-to-run ruling discriminator that depended on this premise is retired with old REQ-FRR-008 (spec.md HISTORY 0.2.0).
 
 ### (h) Watchdog cadence against the lease
 
 - Read: the standing awaken arms a recurring check with `7,27,47 * * * *`, that is every 20 minutes (`.claude/rules/moai/workflow/auto-semantics.md:108`). The lease lasts 15 minutes, so a renewal at each watchdog pass cannot keep a lease alive between passes.
 - Read: the watchdog's three measurement channels contain no lease channel (`.claude/skills/moai-lane-watchdog/SKILL.md` §1).
-- Default applied (decision-index Q3): the doctrine cadence and the default lease duration do not change in this SPEC. The 20-minute cycle versus 15-minute lease observation is recorded as evidence for the TTL design, which this SPEC owns (card t1621), and in spec.md's residual risk.
+- Default applied (decision-index Q3): the doctrine cadence and the default lease duration do not change in this SPEC. Since 0.4.0, REQ-FRR-005 bounds the renewal interval at one half of the lease duration key, and the wake schedule that would have to meet that bound is an open question (`progress.md` § G; not decided here).
 
 ### (i) Tests and catalogue pins the change touches
 
@@ -110,7 +110,7 @@ The verdict parser has no own-scope field (`internal/auditverdict/verdict.go:114
 
 - Read: `.moai/config/sections/interview.yaml:6` sets `decision_gate: on`. The decision-index rule therefore owes `decision-index.md` alongside the tier artifacts. Revision 0.2.0 rewrites it (Q1 to Q19 and Q21).
 
-### (l) Item (3): pushed-to-done and out-of-band detection (revision 0.3.0)
+### (l) Item (3), transferred to 3.2-2-2 by 68b2 (premises kept as evidence; revision 0.3.0)
 
 - Read: the table rows T17 (`card_transition.go:156`, merged-local → pushed, guardPush), T18 (`:157`, merged-local → done, guardNoRemote), and T20 (`:158`, ci-green → done, guardApprovalDone). No row leads from `pushed` to `done`. The edges from `pushed` are T21 (to needs-decision, `:161`), T25 (to abandoned, `:172-175`), and the reserved `pushed` → `ci-green` (`:207-209`). `pushed` is not a lease-holding state (`internal/homestate/card_record.go:66-68`), so T26 does not apply.
 - Read: `transitionTx` refuses the reserved edge with `ErrReservedEdge` before the table lookup (`card_transition.go:333-335`). The no-remote guard refuses merged-local → done while a remote is configured (`:668-670`). The card body's line numbers `:207-209` and `:668-670` match this tree.
@@ -119,7 +119,7 @@ The verdict parser has no own-scope field (`internal/auditverdict/verdict.go:114
 - Read: `PushGateTarget` (`internal/homestate/card_evidence.go:64-73`) returns `pushed` when the repository has a remote, and `done` otherwise.
 - Read: `verifyTransitionApproval` (`internal/homestate/leader_approval.go:530-543`) binds the receipt to the run, the card's version, the evidence SHA, and the owner label. `verifyPushed` (`internal/homestate/card_evidence_readers.go:360-384`) checks that the merge commit is an ancestor of the remote-tracking ref, and never fetches.
 - Read: every write that bumps the card row version appends an event that carries the new version. Callers of `updateCardRow`: `card_worktree.go:49` with `card.fields` (`:52`); `card_transition.go:425` with `lease.expired` (`:428`); `card_transition.go:777` with `card.transition` (`:807`); `leader_approval.go:401` with `card.dispatch-owner` (`:404`); `card_picked.go:194` with `card.fields` (`:197`). The row insert at `card_picked.go:166` appends `card.transition` at version 1 (`:173`).
-- Read: the lease renewal (`card_transition.go:465`) writes `heartbeat_at` and `lease_expires_at` with no version bump and no event. The state-and-version comparison of REQ-FRR-018 does not see those fields (spec.md Residual risk).
+- Read: the lease renewal (`card_transition.go:465`) writes `heartbeat_at` and `lease_expires_at` with no version bump and no event. The state-and-version comparison of the transferred REQ-FRR-018 does not see those fields (`progress.md` § G).
 - Read: the `record.drift` event (`internal/homestate/card_unavailable.go:186`) carries `card_id` and no version, so the version comparison excludes it.
 - Read: the count pin `TestFR_AC005_TransitionTableEdgeCount` (`internal/homestate/fr_transition_test.go:127-183`) pins 71 accepted and 370 refused (`:166-167`). Its refused-pair list (`:179-181`) names merged-local → done, `pushed` → `ci-green`, and ci-green → done as T18, T19, and T20. The test therefore names the reserved `pushed` → `ci-green` edge T19, and `card_transition.go:184` calls T19 "still-reserved".
 - Read: no `factory doctor` verb exists. The factory command group is defined at `internal/cli/factory_handoff_recover.go:20`, and no `doctor` command is registered under it. The existing `doctor` commands are top-level or in other packages. The MCP catalogue has no factory doctor tool.
@@ -131,13 +131,13 @@ The verdict parser has no own-scope field (`internal/auditverdict/verdict.go:114
 2. Confirm the existing columns for the lease holder, lease expiry, heartbeat, worktree path, and evidence hash in the cards table definition. Expected: no migration.
 3. Confirm that the dispatch's `wt` names the same tree that the lease's record step materializes (`.claude/rules/moai/workflow/factory-dispatch.md:111` and `:117`; `internal/cli/factory_card.go:581-602`), before M1 starts.
 4. Confirm the names. `TestBacklogClaim_ReclaimsExpired` and `TestBacklogClaim_RenewAfterExpiry` (AC-FRR-015) are present; both were confirmed with `go test -list` at HEAD 35d242f34 in repair round 1. The new names are written in the run phase: `TestBacklogClaim_QueueLeaseIgnoresCardLeaseDuration` (AC-FRR-015) and the names in §F.
-5. Before M1 starts, confirm what a retry does with a card worktree that was materialized but not recorded (REQ-FRR-011; mechanism in §F, M1 item 5).
-6. Before M8 starts, confirm that the edge id chosen for `pushed` → `done` is not T19, which the pair list at `internal/homestate/fr_transition_test.go:179-181` names for the reserved `pushed` → `ci-green` edge. Confirm also that every writer that bumps the card version still appends an event carrying the new version (premises (l)).
+5. Transferred with B2 to 3.2-2-2 (`progress.md` § G): the retry question for a card worktree that was materialized but not recorded is not a pre-flight item of this SPEC.
+6. Transferred with item (3) to 3.2-2-2 (`progress.md` § G); not a pre-flight item of this SPEC.
 
 ## §D Constraints
 
-- Local landing only. No push, no pull request, and no remote operation from this lane (lane boundary). The pushed-to-done edge is a change to the record's transition table in code, in scope under REQ-FRR-016. The card branch is `WT-factory-record-fix`.
-- Out of scope and not touched here: t1616 (lane-13) owns the local main landing. t1618 (picked; this lane has not verified its progress) owns the ceiling engine and the verdict file format. It references this SPEC for the lease renewal verb and the TTL configuration key, which this SPEC owns. REQ-FRR-010 is retired, and this plan does not touch the verdict parser. The done-transition opening belongs to this card (leader ruling `d-20261010T060606Z-c5c4`); t1616 does not own it.
+- Local landing only. No push, no pull request, and no remote operation from this lane (lane boundary). The card branch is `WT-factory-record-fix`.
+- Out of scope and not touched here: t1616 (lane-13) owns the local main landing. t1618 (picked; this lane has not verified its progress) owns the ceiling engine and the verdict file format. It references this SPEC for the lease renewal verb and the TTL configuration key, which this SPEC owns. Old REQ-FRR-010 is retired, and this plan does not touch the verdict parser. The done-transition opening is transferred to 3.2-2-2 (`d-20261010T064450Z-68b2`); t1616 does not own it.
 - Plan audit: runs on the session model, and codex is the required backend (§ Verified premises, item (c)).
 - Template-First: edit under `internal/template/templates/` first, run `make build`, then mirror the rendered copy into `.claude/` and `.moai/`.
 - Watchdog boundary amendment: the watchdog's Boundary 3 (SKILL.md) gains exactly one write, the lease heartbeat through the renew verb. Nothing else changes. REQ-FRR-005 states the same write.
@@ -147,39 +147,35 @@ The verdict parser has no own-scope field (`internal/auditverdict/verdict.go:114
 
 ## §E Self-verification (plan level)
 
-Traceability, requirement to criterion to milestone, for the active set:
+Traceability, requirement to criterion to milestone, for the active set (0.4.0 numbering; criteria keep their identifiers):
 
 | Requirement | Criterion | Milestone | Item |
 |---|---|---|---|
-| REQ-FRR-001 | AC-FRR-001 | M2 | (1) |
-| REQ-FRR-002 | AC-FRR-002 | M2 | (1) |
-| REQ-FRR-003 | AC-FRR-003 | M1 | (1) |
-| REQ-FRR-004 | AC-FRR-004 | M2 | (1) |
-| REQ-FRR-005 | AC-FRR-005 | M6 | (1) |
-| REQ-FRR-006 | AC-FRR-006 | M3 | (2) |
-| REQ-FRR-007 | AC-FRR-007 | M3 | (2) |
-| REQ-FRR-011 | AC-FRR-011 | M1 | (2), the re-lease |
-| REQ-FRR-014 | AC-FRR-014 | M2, M3 | (1) renewal, (2) recovery |
-| REQ-FRR-015 | AC-FRR-015 | M1 | (1), the TTL key |
-| REQ-FRR-016 | AC-FRR-017 | M8 | (3), edge opening |
-| REQ-FRR-017 | AC-FRR-018, AC-FRR-019 | M8 | (3), refusals and unchanged edges |
-| REQ-FRR-018 | AC-FRR-020 | M8 | (3), out-of-band detection |
-| REQ-FRR-019 | AC-FRR-021 | M8 | (3), read-only and empty sweep |
+| REQ-FRR-001 | AC-FRR-001 | M2 | renew verb |
+| REQ-FRR-002 | AC-FRR-002 | M2 | renew verb, MCP tool |
+| REQ-FRR-003 | AC-FRR-003 | M1 | lease-duration key |
+| REQ-FRR-004 | AC-FRR-004 | M2 | holder's refused renewal of an expired lease |
+| REQ-FRR-005 | AC-FRR-005 | M6 | watchdog renewal |
+| REQ-FRR-006 | AC-FRR-006 | M3 | one-step recovery (holder) |
+| REQ-FRR-007 | AC-FRR-007 | M3 | refusal names the recovery verb |
+| REQ-FRR-008 | AC-FRR-011 | M1 | worktree path at acquisition, including the re-lease |
+| REQ-FRR-009 | AC-FRR-014 | M2 | non-holder renewal of a live lease refused |
+| REQ-FRR-010 | AC-FRR-015 | M1 | queue claim independent of the card key |
 
-Every active requirement has at least one criterion. The active set has 14 requirements and 15 criteria, within the Tier M ceilings (16 and 16). Item (3) is carried by REQ-FRR-016 to REQ-FRR-019 and AC-FRR-017 to AC-FRR-021, all in milestone M8. These checks are plan-level reads of the written artifacts; the code checks belong to the lane.
+Every active requirement has at least one criterion. The active set has 10 requirements and 10 criteria, within the Tier M ceilings (16 and 16). Former milestone M8 is transferred to 3.2-2-2 and is not a milestone of this SPEC (see the note on M4 and M5 below). These checks are plan-level reads of the written artifacts; the code checks belong to the lane.
 
 ## §F Milestones
 
 Ordered by decision reversibility: data model and configuration first, then the new interface, then the user-facing flow, then the mechanical sync. Priority labels only. Milestones M4 and M5 are retired (see the note at the end of this section); their numbers are not reused.
 
-### M1: Lease data model, configuration, and acquisition path (Priority High; REQ-FRR-003, -011, -015)
+### M1: Lease data model, configuration, and acquisition path (Priority High; REQ-FRR-003, -008, -010)
 
 Files:
 1. `internal/template/templates/.moai/config/sections/workflow.yaml` and its rendered copy `.moai/config/sections/workflow.yaml`: add the lease-duration key (`workflow.factory_lease.duration`, default `15m`; Q18). Keep the repository-local overrides in the rendered file intact: `branch_guard.enabled`, `branch_guard.deny_commits_on`, and `commit_identity_guard.enabled` (Q19).
 2. `internal/config/types.go` (struct field and YAML tag), `internal/config/defaults.go` (default `15m`; `DefaultFactoryLeaseDuration` keeps its value), and the loader wiring in `internal/config/`, including the symmetry test's case list.
 3. `internal/config/testdata/shipped_key_inventory.yaml`: an entry for the new key with its class.
 4. `internal/homestate/card_record.go:91-93`: the package variable stays as the default. The factory handle carries the configured duration, set when `OpenFactory` runs. The lease acquisition (`card_transition.go:542`) and the renewal (`:463`) read the handle's value.
-5. Acquisition path (REQ-FRR-011; B5 option (i), the lane's model choice in revision 0.2.0): the card worktree is materialized first, by the factory's record step (`internal/cli/factory_card.go` `factoryEnsureCardWorktree`, `:581-602`), and then one transaction writes the holder, heartbeat, expiry, and the worktree path in `guardLeaseAcquire` (`internal/homestate/card_transition.go:520-545`). The record call moves inside that transaction, not after the lease. A failed materialization refuses the acquisition. A recorded path that differs from the materialized tree is refused (`card_worktree.go:42-43`). The path source and timing are closed in the next section.
+5. Acquisition path (REQ-FRR-008): the card worktree is materialized first, by the factory's record step (`internal/cli/factory_card.go` `factoryEnsureCardWorktree`, `:581-602`), and the path is recorded as part of the acquisition. A failed materialization refuses the acquisition. A recorded path that differs from the materialized tree is refused (`card_worktree.go:42-43`). The transaction boundary of the record call, and the order of the expiry check against it, are transferred with B2 to 3.2-2-2 (`progress.md` § G) and are not decided here.
 
 #### Closed before M1: R5 path source and timing (plan D5; decision-index Q10, operator verdict (ii) at T3)
 
@@ -187,7 +183,7 @@ Files:
 - Not chosen, first: a path the lane supplies. `factory next` runs from the parent checkout (`factoryAssertParentCheckout`, `factory_card.go:189-201`), and the MCP form derives the path internally (`internal/cli/mcp_factory_card.go:172-176`), so no lane-supplied path reaches the lease.
 - Not chosen, second: a path recorded at picked alone. The field-apply path accepts a caller-supplied absolute path (`card_picked.go:91-92`, `:115`) that the factory never checks against the materialized tree.
 - Timing: the lease acquisition itself, T3. The defect is that the lease can complete without a path: the lease write (`card_transition.go:540-545`) writes none, and the record step runs after the lease (`factory_card.go:1590-1600`). A later, different path is refused (`card_worktree.go:42-43`).
-- Mechanism (B5 option (i)): materialize, then record and lease in one transaction. A failed materialization records nothing and holds no lease. A failed transaction after a successful materialization also records nothing and holds no lease, and leaves an unrecorded tree on disk. The lane confirms before M1 starts how a retry treats an existing, unrecorded tree (§C item 5). The change keeps REQ-FRR-011's requirement that the path is recorded in the same acquisition as the lease.
+- Placement: transferred with B2 to 3.2-2-2 (`progress.md` § G). This SPEC does not choose the transaction boundary of the record call.
 - A carried binding from an earlier run (`factory_card.go:989`, card t1521) passes through the same `RecordCardWorktree` and keeps its behavior.
 
 RED first (predicted failures; not gates):
@@ -196,10 +192,10 @@ RED first (predicted failures; not gates):
 - CLI: `TestLeaseRefusedOnMaterializationFailure` (AC-FRR-011) forces the materialization to fail and asserts that the acquisition is refused with no lease and no path. On the unchanged tree the lease is acquired first (`factory_card.go:1590-1600`).
 - Regression, not RED: the existing claim-lease tests in `internal/factory` stay green, and the new `TestBacklogClaim_QueueLeaseIgnoresCardLeaseDuration` is observed green before M1 starts (REQ-FRR-015).
 
-### M2: Renewal verb and MCP tool (Priority High; REQ-FRR-001, -002, -004, -014)
+### M2: Renewal verb and MCP tool (Priority High; REQ-FRR-001, -002, -004, -009)
 
 Files:
-1. `internal/homestate/card_transition.go` `RenewLease` (`:441-463`) already exists and is reached only by the stage path (`internal/cli/factory_card.go:1737`). Its checks move so that the holder and the expiry are judged before any write: for the holder on a live lease it extends from the request time (REQ-FRR-001); for an expired lease it refuses with no write (REQ-FRR-004; Q9); for a caller that is not the holder it refuses with no write (REQ-FRR-014). The stage path's renewal call keeps its behavior, pinned by the existing stage tests.
+1. `internal/homestate/card_transition.go` `RenewLease` (`:441-463`) already exists and is reached only by the stage path (`internal/cli/factory_card.go:1737`). Its checks move so that the holder and the expiry are judged before any write: for the holder on a live lease it extends from the request time (REQ-FRR-001); for the holder on an expired lease it refuses with no write (REQ-FRR-004; Q9); for a caller that is not the holder of a live lease it refuses with no write (REQ-FRR-009). The stage path's renewal call keeps its behavior, pinned by the existing stage tests.
 2. `internal/cli/factory_card.go`: a `renew` subcommand built the way `stage` is built, with run and lane resolution as in `factoryStageCard` (`:1702`), plus help text and an output line that shows the new expiry.
 3. `internal/cli/mcp_factory_card.go`: the MCP handler calls the same implementation the CLI calls, following the pattern documented at `factory_card.go:1696-1699`.
 4. `internal/mcp/catalog.go` (tool declaration) and the pins in `internal/mcp/catalog_test.go:27-28, 67-68, 79-80, 106-107`.
@@ -208,15 +204,14 @@ Files:
 RED first (predicted failures; not gates):
 - `TestFactoryRenewExtendsLiveLease` (cli, AC-FRR-001): with a live lease of exactly 5 minutes, renewal sets the expiry to the request time plus the duration. Predicted: the verb is not registered.
 - `TestRenewRefusesExpiredWithoutWrite` (homestate, AC-FRR-004): an expired lease held by the caller is refused, and the version, state, and event count are unchanged. Predicted on the unchanged tree: `RenewLease` runs `applyLeaseExpiry` (`:452-457`), which bumps the version and appends `lease.expired`.
-- `TestNonHolderCannotReapOrRenew` (homestate, AC-FRR-014): a different label is refused on the expired-lease case, and nothing changes. Predicted on the unchanged tree: the expiry branch runs before the holder check, so the caller reaps the lease.
 - `TestNonHolderRenewRefusedCLIAndMCP` (cli, AC-FRR-014): the same refusal through the verb and through the MCP handler, on a live lease.
 - `TestFactoryRenewMatchesMCP` (cli, AC-FRR-002): the same card and caller through the verb and through the MCP handler give equal results. Predicted: no tool exists.
 - Catalogue pins: the expected count and the write-capable set change in the same edit. Predicted: the catalogue test fails until the tool is declared.
 
-### M3: One-shot recovery and refusal text (Priority High; REQ-FRR-006, -007, -014)
+### M3: One-shot recovery and refusal text (Priority High; REQ-FRR-006, -007; REQ-FRR-008 for the re-lease)
 
 Files:
-1. `internal/homestate/card_transition.go` `transitionTx` (`:309-316`): when the caller is the holder of an expired lease, collect the lease, re-lease the card to that holder, and apply the requested edge in the same transaction. The re-lease is an acquisition, so it runs the materialization and the path record of M1 item 5. If the requested edge is refused, the whole step is refused and the expired row is unchanged. For any other caller, refuse with no write (REQ-FRR-014). The refusal text (`:315`) names the factory stage verb (REQ-FRR-007; Q8).
+1. `internal/homestate/card_transition.go` `transitionTx` (`:309-316`): when the caller is the holder of an expired lease, collect the lease, re-lease the card to that holder, and apply the requested edge in the same transaction. The re-lease is an acquisition under REQ-FRR-008; the placement of its materialization and path record is the B2 subject transferred to 3.2-2-2 (`progress.md` § G), so this item does not choose it. If the requested edge is refused, the whole step is refused and the expired row is unchanged. The refusal text (`:315`) names the factory stage verb (REQ-FRR-007; Q8). A caller that is not the holder is not specified by this SPEC (B5, transferred).
 2. An expiry that returns the card to blocked (a merging card, `applyLeaseExpiry` `:416-420`) is not recovered by this step. It stays on the human unblock path.
 3. `internal/cli/factory_card.go` `next --card` refusal (`:1125-1128`): for the holder's own expired row, collect and re-lease instead of refusing as in flight. The verb keeps its parent-checkout rule (`:189-201`); defect 26 is out of scope.
 4. The renewal refusal text (`RenewLease`, `:456`) names the same stage verb (REQ-FRR-007; Q9).
@@ -229,33 +224,17 @@ RED first (predicted failures; not gates):
 
 ### M4 and M5: retired (decision `d-20261010T053435Z-006f`)
 
-M4 (holder re-stamp and sync-audit re-entry: REQ-FRR-008 to -010, AC-FRR-008 to -010, and the count pin AC-FRR-016) and M5 (interim empty-stage guard: REQ-FRR-012 and -013, AC-FRR-012 and -013) are retired with their requirements. Their file lists and RED lists are removed from this plan. Milestone numbers M1, M2, M3, M6, M7, and M8 are kept so that cross-references stay valid. M8 is the next free number and sits before M6 in this document: it changes a state transition and adds a user-visible verb, so it is ordered by reversibility ahead of the watchdog and the mechanical mirrors.
-
-### M8: Pushed-to-done edge and factory doctor (Priority High; REQ-FRR-016 to REQ-FRR-019)
-
-Files:
-1. `internal/homestate/card_transition.go`: one edge from `pushed` to `done` in `buildTransitionTable`. Its guard reuses the receipt check of the done edges (`verifyTransitionApproval`, as T20 does) and the containment reader of T17 (`verifyPushed`, which reads the remote-tracking ref and never fetches). Each failing condition returns its own refusal (`ErrDecider`, the receipt errors, or `ErrEvidence`), never `ErrIllegalTransition`. The edge id is a run-phase choice and must not be T19 (premises (l)). `isReservedEdge` (`:207-209`) and the no-remote guard (`:668-670`) stay as they are.
-2. `internal/homestate/fr_transition_test.go`: `TestFR_AC005_TransitionTableEdgeCount` is re-authored in place. The expected fixture gains `pushed` → `done`, the counts become 72 accepted and 369 refused, and the fixture supplies a receipt that verifies for that pair, as the other pairs' fixtures do. Every other pair keeps the outcome it had before this change.
-3. `internal/homestate/` (a new read-only comparison over the `cards` rows and the events; its name is chosen in the run phase): implements the agreement rule of REQ-FRR-018 and writes nothing.
-4. `internal/cli/factory_handoff_recover.go` (the `factory` command group, `:20`): a `doctor` subcommand that calls the comparison, prints the number of cards compared and each disagreement, and exits as REQ-FRR-018 and REQ-FRR-019 require. No MCP tool is added, because the card names a CLI verb.
-5. The verb's sweep and exit rules are stated in its help text. No catalogue row changes.
-
-RED first (predicted failures; not gates):
-- `TestPushedToDoneOpensWithReceipt` (homestate, AC-FRR-017): no `pushed` → `done` edge exists, so the request returns `ErrIllegalTransition`.
-- `TestPushedToDoneRefusalsLeaveRowUnchanged` (homestate, AC-FRR-018): on the unchanged tree every such request is refused as `ErrIllegalTransition`, so the named-condition assertion fails. The row-unchanged assertion alone would pass vacuously, which is why the named refusal is asserted.
-- `TestMergedLocalDoneAndCiGreenEdgesUnchanged` (homestate, AC-FRR-018): regression guard, green before and after by design.
-- `TestFR_AC005_TransitionTableEdgeCount` (homestate, AC-FRR-019): on the unchanged tree the count is 71 accepted and 370 refused, against the re-authored 72 and 369.
-- `TestDoctorReportsOutOfBandWrite` and `TestDoctorReadOnlyAndEmptySweep` (cli, AC-FRR-020 and AC-FRR-021): the verb is not registered, so the command returns an unknown-command error and the assertions fail. The tests go through the command tree, so they compile on the unchanged tree.
+M4 and M5 are retired (decision `d-20261010T053435Z-006f`): M4 (holder re-stamp and sync-audit re-entry: old REQ-FRR-008 to -010; AC-FRR-008 [RETIRED], AC-FRR-009 [RETIRED], AC-FRR-010 [RETIRED], and the count pin AC-FRR-016 [RETIRED]) and M5 (interim empty-stage guard: old REQ-FRR-012 and -013; AC-FRR-012 [RETIRED] and AC-FRR-013 [RETIRED]). Their file lists and RED lists are removed from this plan. Milestone numbers M1, M2, M3, M6, and M7 are kept so that cross-references stay valid. M8 (pushed-to-done edge and factory doctor) is transferred to 3.2-2-2 by `d-20261010T064450Z-68b2`; its number is not reused in this SPEC.
 
 ### M6: Watchdog renews first (Priority Medium; REQ-FRR-005)
 
 Files:
-1. `internal/template/templates/.claude/skills/moai-lane-watchdog/SKILL.md` (edit first): `allowed-tools` (line 17) gains `Bash(moai factory renew:*)`; §1 gains a first step that renews the lane's own card lease before the three-channel measurement; Boundary 3 names the renewal heartbeat as the one write added.
+1. `internal/template/templates/.claude/skills/moai-lane-watchdog/SKILL.md` (edit first): `allowed-tools` (line 17) gains `Bash(moai factory renew:*)`; §1 gains a first step that renews the lane's own card lease before the three-channel measurement, states the renewal interval bound of REQ-FRR-005 (no longer than one half of `workflow.factory_lease.duration`), and states that a refused renewal is recorded and the measurement still runs; Boundary 3 names the renewal heartbeat as the one write added.
 2. `make build` to refresh the embedded template, then mirror the rendered file to `.claude/skills/moai-lane-watchdog/SKILL.md`.
-3. `.claude/rules/moai/workflow/auto-semantics.md` §3 and its template mirror gain the renewal step. The cadence at line 108 is unchanged (20 minutes), and the observed gap is recorded as evidence for the TTL design this SPEC owns (decision-index Q3).
+3. `.claude/rules/moai/workflow/auto-semantics.md` §3 and its template mirror gain the renewal step. The cadence at line 108 is not changed by this SPEC; whether it should change is an open question (`progress.md` § G).
 
 RED first (predicted failure; not a gate):
-- `TestLaneWatchdogRenewsFirst` (AC-FRR-005): a template test asserts that the watchdog procedure names the renew verb before the measurement step, and that `allowed-tools` lists the renew command. Predicted: the current SKILL.md has neither (`allowed-tools` at line 17; §1 opens with measurement).
+- `TestLaneWatchdogRenewsFirst` (AC-FRR-005): a template test asserts that the watchdog procedure names the renew verb before the measurement step, that `allowed-tools` lists the renew command, that the procedure states the renewal interval bound, and that it states a refused renewal is recorded while the measurement still runs. Predicted: the current SKILL.md has none of these (`allowed-tools` at line 17; §1 opens with measurement).
 
 ### M7: Catalogue and rule mirrors (Priority Low; mechanical; no behavior change)
 
@@ -273,11 +252,9 @@ RED first: none for documentation. The M2 catalogue test is the check.
 - Touching the verdict parser or the verdict file format (t1618).
 - Widening `next` so that it runs from a card worktree (defect 26 is out of scope).
 - Citing a count from a report instead of measuring it.
-- Re-introducing REQ-FRR-008 to -010, -012, -013, or the M4 and M5 rows, without a new leader or operator decision. They are retired by `d-20261010T053435Z-006f`.
-- Recording the worktree path outside the lease acquisition transaction (M1 item 5, option (i)).
-- Opening `pushed` → `done` without the receipt gate or the containment check (M8). Using T19 as the new edge id, since the test names T19 for the reserved `pushed` → `ci-green` edge.
-- Letting the doctor write to the record, or repairing an out-of-band write in place (M8).
-- Reusing AC-FRR-016, or any other retired identifier, for the re-authored count pin.
+- Re-introducing the retired meanings of old REQ-FRR-008 to -010, REQ-FRR-012, or -013, or the M4 and M5 rows, without a new leader or operator decision. They are retired by `d-20261010T053435Z-006f`.
+- Recording the worktree path outside the lease acquisition, or choosing the transaction boundary of the record call in this SPEC (transferred with B2).
+- Reusing AC-FRR-016 [RETIRED] or any other retired criterion identifier.
 
 ## §H Cross-references
 
@@ -287,7 +264,7 @@ RED first: none for documentation. The M2 catalogue test is the check.
 - `.claude/rules/moai/workflow/tdd-result-contract.md`: EXPECTED_RED and TOOL_FAILURE.
 - `.claude/rules/moai/core/verification-claim-integrity.md` §2.2 and §2.3: build provenance for tool measurements, and the commit graph as the witness for ordering.
 - `.claude/rules/moai/workflow/factory-dispatch-mechanics.md`: the lease discussion updated in M7.
-- `decision-index.md`: every decision this revision carries, Q1 to Q19 and Q21 (Q20 is withdrawn), with its label, class, status, options, basis, and evidence.
+- `decision-index.md`: every decision this revision carries, Q1 to Q19, Q21, and Q22 (Q20 is withdrawn), with its label, class, status, options, basis, and evidence.
 - `progress.md`: the plan-phase §E skeleton, with §E.1 stating that the plan is awaiting re-audit.
 
 ## Decisions owed (plan numbering, mapped to decision-index.md)
@@ -295,17 +272,19 @@ RED first: none for documentation. The M2 catalogue test is the check.
 The plan's own numbering of its open judgments is kept here for traceability. Each entry names the decision-index row that records it and its status.
 
 - D1 (brief numbering, §B corrections): kept lens-4 numbering. Q15, default applied.
-- D2 (R6 operator carrier): retired with REQ-FRR-012. Q6 is not applicable (006f). The 1a19 value (c) is not written.
-- D3 (R3 own-scope discriminator): retired with REQ-FRR-008. Q4 is not applicable (006f). The 1a19 value (d) is not written.
-- D4 (watchdog cadence against the 15-minute lease): cadence and default duration unchanged; the observation is evidence for the TTL design this SPEC owns. Q3, default applied.
-- D5 (R5 path source and timing): source (ii) and timing T3 per 1a19 (Q10). Closed before M1. The acquisition model is option (i) of B5.
+- D2 (R6 operator carrier): retired with old REQ-FRR-012. Q6 is not applicable (006f). The 1a19 value (c) is not written.
+- D3 (R3 own-scope discriminator): retired with old REQ-FRR-008. Q4 is not applicable (006f). The 1a19 value (d) is not written.
+- D4 (watchdog cadence against the 15-minute lease): cadence and default duration unchanged in this SPEC; since 0.4.0, REQ-FRR-005 bounds the renewal interval (`d-20261010T064450Z-68b2`, B6). The cadence question is open (`progress.md` § G). Q3, default applied.
+- D5 (R5 path source and timing): source (ii) and timing T3 per 1a19 (Q10). Closed before M1. The placement of the record call is transferred with B2 (`progress.md` § G).
 - D6 (recovery verb in the refusal text): `moai factory stage`. Q8, operator verdict (a), 1a19.
 - D7 (renewal of an expired own lease): refused with no write; recovery stays on the transition path. Q9, operator verdict (a), 1a19.
-- D8 (residual empty-SPEC route): retired with REQ-FRR-013. Q13 is not applicable (006f). The residual is carried by the Residual risk of spec.md (lens-2 D1).
+- D8 (residual empty-SPEC route): retired with old REQ-FRR-013. Q13 is not applicable (006f). The residual is carried by the Residual risk of spec.md (lens-2 D1).
 - D9 (lens-4 defects 10, 13, 14, 19, 20, 22, 24, 25, and 26): stay unassigned. Q14, default applied.
 - D10 (decision-index.md and progress.md): decision-index.md rewritten (Q1 to Q19 and Q21); progress.md skeleton kept (Q12).
 - D11 (module field): `internal/homestate` kept as the brief specifies. Q16, default applied.
 - D12 (priority P0): kept. Q17, default applied.
 - D13 (configuration key name `workflow.factory_lease.duration`): kept. Q18, operator verdict (a), 1a19.
 - D14 (B1, criteria classification): the surviving criteria are regression guards and the release-gate wording is removed. Q1, operator verdict, 1a19.
-- D15 (item (3), pushed-to-done with out-of-band detection): written under leader ruling `d-20261010T060606Z-c5c4` (option a) as REQ-FRR-016 to REQ-FRR-019 and milestone M8. Q21 records the owner and scope decision; its sub-choices stay open for the operator.
+- D15 (item (3), pushed-to-done with out-of-band detection): written under leader ruling `d-20261010T060606Z-c5c4` (option a) as old REQ-FRR-016 to -019 and milestone M8; transferred to 3.2-2-2 by `d-20261010T064450Z-68b2` (Q21; subject moved).
+- D16 (audit iteration 3, B1; renumbering of the requirements): 0.4.0 renumbers to REQ-FRR-001 to -010 and reuses old REQ-FRR-008 to -010 with the map in spec.md § Requirements (Identifier map). Q22, decided by `d-20261010T064450Z-68b2`.
+- D17 (B2, B4, and B5 transfer; B3 and B6 repairs): by `d-20261010T064450Z-68b2`; reasons and moved identifiers in `progress.md` § G. The 1a19 verdicts stay on their surviving rows.

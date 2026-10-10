@@ -1,8 +1,8 @@
 # Decision index: SPEC-FACTORY-RECORD-REPAIR-001
 
-Card t1621 · Tier M · version 0.3.0 (item (3) written under leader ruling d-20261010T060606Z-c5c4; narrowed to the three surviving items per d-20261010T053435Z-006f; operator verdicts per d-20261010T053034Z-1a19; earlier history: 0.2.0, the narrowing; 0.1.1, repair round 1 after plan audit iteration 1, FAIL 0.56, 17 blocking defects).
+Card t1621 · Tier M · version 0.4.0 (repaired under d-20261010T064450Z-68b2: B1 renumbering; item (3), B2, B4, and B5 transferred to 3.2-2-2; B3 and B6 repaired; before that 0.3.0 wrote item (3) under leader ruling d-20261010T060606Z-c5c4; narrowed to the three surviving items per d-20261010T053435Z-006f; operator verdicts per d-20261010T053034Z-1a19; earlier history: 0.2.0, the narrowing; 0.1.1, repair round 1 after plan audit iteration 1, FAIL 0.56, 17 blocking defects).
 
-This index records every decision the SPEC carries: rows Q1 to Q19 and Q21, and one note on a proposal closed without a decision (Q20). Each row names what is unresolved, the options, what was applied, the basis, and the evidence. It is stateless on the status axis: the lifecycle lives in spec.md alone.
+This index records every decision the SPEC carries: rows Q1 to Q19, Q21, and Q22, and one note on a proposal closed without a decision (Q20). Each row names what is unresolved, the options, what was applied, the basis, and the evidence. It is stateless on the status axis: the lifecycle lives in spec.md alone.
 
 ## How to read a row
 
@@ -21,6 +21,13 @@ This index records every decision the SPEC carries: rows Q1 to Q19 and Q21, and 
 6. **Counts.** Operator verdicts recorded: Q1, Q8, Q9, Q10, Q18. Not applicable: Q2, Q4, Q5, Q6, Q7, Q13. DEFAULT-APPLIED: Q3, Q12, Q14, Q15, Q16, Q17. POLICY-COVERED, no verdict needed: Q11, Q19. Open: Q21.
 7. **Kickoff check, as the code reads it.** `internal/homestate/card_audit_kickoff.go:118-123` refuses a FOUNDER row whose Operator verdict value is literally empty. After this revision the only such row is Q21. `card_audit_kickoff.go:113-117` refuses DEFAULT-APPLIED on any row that is not implementation-level with a Default line; each DEFAULT-APPLIED row here carries both.
 8. **Round-2 split withdrawn.** A proposed move of the renewal verb and TTL key to t1618 was withdrawn by board d-20261010T012900Z-35d1. It is recorded under "Closed without a decision", not as a row. This SPEC (card t1621) owns those deliverables.
+
+## Routing (revision 0.4.0)
+
+1. **Renumbering (B1), recorded as Q22.** Operator-delegated decision `d-20261010T064450Z-68b2` (option b) renumbers the active requirements to a contiguous REQ-FRR-001 to REQ-FRR-010. The map is in spec.md § Requirements (Identifier map). It reuses the retired numbers REQ-FRR-008, REQ-FRR-009, and REQ-FRR-010. This amends the no-reuse rule of spec.md HISTORY 0.2.0, the rule that routing item 1 above cites; routing item 1 keeps its 0.2.0 text as history.
+2. **Item (3) transferred; Q21's subject moved.** `d-20261010T064450Z-68b2` moves item (3) to 3.2-2-2 (t1639). Q21's Status records that its subject moved. Its Operator verdict line stays empty, as that decision directs. Routing item 4 above still applies to an empty FOUNDER row, so Q21 continues to block the autonomous Kickoff until the operator answers or closes it.
+3. **B2, B4, and B5 carry no new row.** The transfers are recorded with their reasons in `progress.md` § G. Rows whose subjects were already retired keep their status: Q2, Q4, Q5, Q6, Q7, and Q13 remain not applicable.
+4. **Q3 and Q10 carry 0.4.0 notes.** Their verdicts are unchanged. Q3's note records the renewal-interval bound that REQ-FRR-005 now states, and the open wake-schedule question. Q10's note records that the placement it touched moved with B2.
 
 ## Pinned and cited authority
 
@@ -69,7 +76,8 @@ The card body that 006f quotes is the t1621 queue body read with `moai todo show
 | Q17 | What priority the SPEC carries | plan D12 | FOUNDER | implementation-level | DEFAULT-APPLIED |
 | Q18 | Configuration key name `workflow.factory_lease.duration` | plan D13 | FOUNDER | product-level | (a), 1a19 |
 | Q19 | Repository-local overrides a template sync must not overwrite; QG-4 scope | D17 | POLICY-COVERED | implementation-level | not required |
-| Q21 | Pushed-to-done (card body item 3): whether it is in this card, its owner, and its content | card body item (3) | FOUNDER | product-level | (open; leader ruling c5c4) |
+| Q21 | Pushed-to-done (card body item 3): whether it is in this card, its owner, and its content | card body item (3) | FOUNDER | product-level | (open; subject moved to 3.2-2-2 by 68b2) |
+| Q22 | Renumbering of the requirements to REQ-FRR-001 to -010, reusing REQ-FRR-008 to -010 (B1) | plan audit iteration 3, B1 | FOUNDER | implementation-level | operator verdict recorded (delegated, 68b2) |
 
 ## Rows
 
@@ -122,11 +130,12 @@ Status: DEFAULT-APPLIED
 Authority anchor: none routed. Search, run before the DEFAULT route was applied: the version-led HISTORY and Amendments rows of the 840 completed SPEC files were searched for cadence, awaken, heartbeat, renew, watchdog, lease-duration, and 15- and 20-minute terms. No row decides the cadence-versus-TTL question. The only lease-renewal rows in SPEC-FACTORY-ATOMIC-LEASE-001 concern the withCardTx lock, not the cadence or the duration.
 Why unresolved: a renewal at the start of each watchdog pass keeps the lease alive only while consecutive passes start within the lease duration. The standing cadence is 20 minutes and the lease is 15 minutes, so the gap between passes is not covered.
 Options (plan D4, reduced to the lane update's three): (a) change the cadence, for example to at most half the lease duration, a cost trade-off recorded in auto-semantics; (b) change the default lease duration, which alters the behaviour SPEC-FACTORY-ATOMIC-LEASE-001 defines; (c) keep both and carry the gap.
-Applied: (c). The cadence and the default duration do not change. REQ-FRR-005 keeps the guarantee statement, and spec.md Residual risk records the gap as evidence for the TTL design that this SPEC owns.
+Applied: (c). The cadence and the default duration do not change. REQ-FRR-005 keeps the guarantee statement, and the 0.4.0 note below records the bound that REQ-FRR-005 now states.
 Ownership: this SPEC (card t1621) owns the lease renewal verb and the TTL configuration key. Card t1618 references this SPEC for them and does not own them; board d-20261010T012900Z-35d1 states that a dispatched t1618 names t1621 as the owner.
 Evidence: `.claude/rules/moai/workflow/auto-semantics.md:108` (`7,27,47 * * * *`, every 20 minutes). `internal/config/defaults.go:65` (15 minutes). `internal/homestate/card_record.go:91-93`. The stage path also renews the lease after each successful transition (`internal/cli/factory_card.go:1737`), which narrows the gap for a lane that transitions between passes. That is a code reading, not a run. The leader's ruling d-20261010T010044Z-57f8 (point 3) and d-20261010T012900Z-35d1 are cited as evidence notes only.
 Note on routing: ruling 57f8, point (3), as written, routes the watchdog-versus-TTL mismatch to t1618 (lease renewal). Its later correction, d-20261010T012900Z-35d1, withdraws the split and states that only the watchdog-cycle versus lease-TTL mismatch observation stays routed as evidence to whichever card implements the TTL (t1621). This row follows 35d1.
 Default: no change to the doctrine cadence (`.claude/rules/moai/workflow/auto-semantics.md:108`) or to the default lease duration in this SPEC. The 20-minute cycle versus 15-minute lease observation is recorded here as evidence for the TTL design.
+Revision 0.4.0 note (68b2, B6): REQ-FRR-005 now bounds the renewal interval at no more than one half of `workflow.factory_lease.duration`, and spec.md no longer states a 20-minute cadence. This SPEC does not change the wake schedule in `auto-semantics.md:108`; whether it should change is an open question, not decided here. The verdict above is unchanged.
 Operator verdict: DEFAULT-APPLIED 2026-10-10T01:32:07Z manager-spec
 
 ### Q4: What returns a card from sync audit to run, and what does the factory record check? (verdict D2, D3; plan D3)
@@ -228,7 +237,7 @@ Why unresolved: REQ-FRR-011 did not name the source of the path or the moment it
 Options (plan D5): source: (i) a lane-supplied path, checked against the path recorded at picked; (ii) the card worktree the factory materializes, recorded by the lease's record step; (iii) the path recorded at picked alone. Timing: lease acquisition (T3) or assignment (T2).
 Applied: source (ii). Timing T3, the lease acquisition, with a later different path refused.
 Rationale (lane): (i) is unavailable through the MCP form. The MCP handler derives the path (`internal/cli/mcp_factory_card.go:172-176`), and the next verb takes no path argument and runs only from the parent checkout (`internal/cli/factory_card.go:189-201`). (iii) records a caller-supplied absolute path (`internal/homestate/card_picked.go:91-92`, `:115`) that the factory never checks against the materialized tree. (ii) is what the factory already records, so the repair moves that write into the acquisition, and a leased card can no longer exist without a path.
-Applied in 0.2.0: REQ-FRR-011 keeps this source and timing, and its B5 repair chooses option (i): materialize, then record and lease in one transaction (plan §F, M1 item 5). Q10 survives because REQ-FRR-011 also binds the re-lease of item (2).
+Applied in 0.2.0: REQ-FRR-011 keeps this source and timing, and its B5 repair chooses option (i): materialize, then record and lease in one transaction (plan §F, M1 item 5). Q10 survives because REQ-FRR-011 also binds the re-lease of item (2). Applied in 0.4.0: REQ-FRR-008 (old REQ-FRR-011) keeps this source and timing. Its placement clause, including the option (i) mechanism above, is transferred with B2 to 3.2-2-2 (`progress.md` § G) and is not in this SPEC.
 Evidence (file:line): the record step `internal/cli/factory_card.go:569-602` (`factoryEnsureCardWorktree`, "the REQ-SD-011 record step of a successful lease"), recording through `RecordCardWorktree` at `:598`. Its callers: `internal/cli/factory_card.go:1590-1600` (next: lease, then record), `internal/cli/mcp_factory_card.go:172-176`, and `internal/cli/todo_auto_lane.go:113`. The tree the dispatch names: `.claude/rules/moai/workflow/factory-dispatch.md:111` (`wt: .moai/worktrees/<name>`) and `:117` (`wt` names the new card's worktree). The record refuses a different recorded path: `internal/homestate/card_worktree.go:42-43`, and sets it at `:46`. The lease writes no path: `internal/homestate/card_transition.go:540-545`.
 Carried bindings (`internal/cli/factory_card.go:989`, card t1521, `internal/homestate/card_worktree.go:64-90`) pass through the same `RecordCardWorktree` and keep their behaviour.
 Default: none.
@@ -346,7 +355,7 @@ Operator verdict: not required (POLICY-COVERED)
 
 Label: FOUNDER
 Class: product-level (opens a new edge into `done` for a repository with a remote, which changes a card-state transition's user-visible behaviour)
-Status: open (leader ruling d-20261010T060606Z-c5c4 decided the owner and scope: option (a). The operator may confirm or overrule; the Operator verdict line stays empty.)
+Status: subject moved to 3.2-2-2 (t1639) by d-20261010T064450Z-68b2, which removes item (3) from this SPEC (revision 0.4.0). The Operator verdict line stays empty, as that decision directs. Earlier: leader ruling d-20261010T060606Z-c5c4 decided the owner and scope, option (a); the operator may confirm or overrule.
 Authority anchor: none. The ruling d-20261010T053435Z-006f names item (3) for this card. Leader ruling d-20261010T060606Z-c5c4 decides the owner and scope; it is a board record with no digest, so it does not make this row DECIDED. The SPEC's Adjacent-cards note, before revision 0.2.0, named t1616 as the owner of the done-transition opening, and the visible text of the t1616 queue entry at read time covers the local main integration flow. Neither is a DECIDED anchor: a board record carries no digest.
 Why it was open before 0.3.0: item (3) has two parts, and the 0.2.0 SPEC carried no requirement for either. The first is a pushed → done edge. The transition table has no such row: T17 is merged-local → pushed, T18 is merged-local → done (refused when a remote exists), and T20 is ci-green → done, with the reserved pushed → ci-green edge at `card_transition.go:203-208`. The second is out-of-band write detection, which the card body names as `factory doctor`. No existing text in the SPEC or in `.moai/reports/t1621` defines the detection signal. Writing either part would invent the guard and the signal.
 Options: (a) this card carries both parts, and a later revision writes the requirements and the guard. (b) t1616 keeps the done-transition opening, and this card carries only the out-of-band write detection. (c) the leader removes item (3) from this card and re-scopes it.
@@ -361,7 +370,23 @@ Not decided by c5c4. The lane took the conservative reading in each case, and th
 Basis: the card body item (3) and d-20261010T053435Z-006f for (a); the earlier Adjacent-cards note of this SPEC for (b); the leader's authority to re-scope the queue body for (c).
 Evidence: card body t1621 item (3), read with `moai todo show t1621`; `card_transition.go:156-158` and `:203-208`; spec.md Scope and Exclusions (revision 0.2.0).
 Default: none (no option is ranked by the published Default rule).
+Revision 0.4.0: removed from this SPEC by 68b2 (spec.md § Exclusions, Out of Scope — Item (3); transfer record `progress.md` § G).
 Operator verdict:
+
+### Q22: How are the requirements renumbered once item (3) moves out and the B1 gap test fails? (plan audit iteration 3, B1; decision d-20261010T064450Z-68b2)
+
+Label: FOUNDER
+Class: implementation-level (the renumbering changes identifiers; it does not change a shipped command's behaviour)
+Status: operator verdict recorded (delegated decision d-20261010T064450Z-68b2; reversible by the operator)
+Authority anchor: none. The delegated decision is a board record with no digest, so it does not make this row DECIDED.
+Why unresolved: the MP-1 gap test requires contiguous active requirement numbers (`.moai/reports/t1621/plan-audit-iter3.md`, must-pass MP-1 and blocking finding B1). Retired numbers are not reused under the 0.2.0 rule, and no renumbering within that rule closes the gap. The transfer leaves 10 active requirements.
+Options: (a) keep the gaps and exempt retired identifiers from the gap test by a ruling, which is the audit's first named fix; (b) renumber to a contiguous REQ-FRR-001 to REQ-FRR-010, amend the no-reuse rule, and keep a retired-identifier table with the old identifiers.
+Applied (0.4.0): option (b), as the delegated decision directs. REQ-FRR-011 becomes REQ-FRR-008; REQ-FRR-014 becomes REQ-FRR-009; REQ-FRR-015 becomes REQ-FRR-010; REQ-FRR-001 to -007 keep their numbers. Reused: the old REQ-FRR-008, -009, and -010, with the meanings in spec.md § Requirements (Identifier map). Not reused: old REQ-FRR-012, -013, and -016 to -019. Criterion identifiers are not renumbered.
+Basis: plan audit iteration 3, B1; decision-index routing item 1 (the no-reuse rule, amended here).
+Reversibility: the operator can reverse this ruling. Undo is a revert of this SPEC's 0.4.0 commit; the retired numbers then return to their 0.3.0 meanings, and the gap test must be exempted by ruling instead.
+Evidence: `.moai/reports/t1621/plan-audit-iter3.md` (MP-1 at line 86; B1 at line 111); spec.md § Requirements (Identifier map).
+Default: none (no published Default rule ranks it).
+Operator verdict: delegated decision d-20261010T064450Z-68b2 (영실이 판단, delegated by the operator). Cited, not digest-pinned, so not DECIDED.
 
 ## Defect disposition (verdict D1 to D28)
 

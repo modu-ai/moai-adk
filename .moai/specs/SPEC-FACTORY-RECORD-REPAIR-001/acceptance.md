@@ -1,12 +1,12 @@
 ---
 id: SPEC-FACTORY-RECORD-REPAIR-001
-version: "0.2.0"
+version: "0.4.0"
 updated: 2026-10-10
 ---
 
 # Acceptance criteria: SPEC-FACTORY-RECORD-REPAIR-001
 
-These criteria verify the active requirements in `spec.md` (REQ-FRR-001 to REQ-FRR-007, REQ-FRR-011, REQ-FRR-014, REQ-FRR-015, and REQ-FRR-016 to REQ-FRR-019). Each is a Given-When-Then scenario. The requirement text itself lives in `spec.md`. The active criteria are AC-FRR-001 to AC-FRR-007, AC-FRR-011, AC-FRR-014, AC-FRR-015, and AC-FRR-017 to AC-FRR-021 (AC-FRR-017 to -021 are item 3, HISTORY 0.3.0). The identifiers AC-FRR-008 to -010, -012, -013, and -016 are retired and are not reused (`spec.md` HISTORY 0.2.0).
+These criteria verify the active requirements in `spec.md` (REQ-FRR-001 to REQ-FRR-010 after the 0.4.0 renumbering). Each is a Given-When-Then scenario. The requirement text lives in `spec.md`, and the mapping from each criterion to its requirement is in `plan.md` §E. The active criteria are AC-FRR-001 to AC-FRR-007, AC-FRR-011 (REQ-FRR-008), AC-FRR-014 (REQ-FRR-009), and AC-FRR-015 (REQ-FRR-010). Criterion identifiers are not renumbered by 0.4.0. The identifiers AC-FRR-008 [RETIRED], AC-FRR-009 [RETIRED], AC-FRR-010 [RETIRED], AC-FRR-012 [RETIRED], AC-FRR-013 [RETIRED], and AC-FRR-016 [RETIRED] are retired and are not reused (`spec.md` HISTORY 0.2.0). AC-FRR-017 [RETIRED] to AC-FRR-021 [RETIRED] were moved to 3.2-2-2 by `d-20261010T064450Z-68b2` and are not active here (`progress.md` § G).
 
 ## Adoption status
 
@@ -71,7 +71,7 @@ Then the request is refused, and the card's state, version, and event count are 
 
 Given the lane stall watchdog skill is read for an awaken pass,
 When its procedure and allowed tools are read,
-Then the first procedural step renews the lane's own card lease, the renew command is among the allowed tools, and the measurement step follows the renewal.
+Then the first procedural step renews the lane's own card lease, the renew command is among the allowed tools, the measurement step follows the renewal, the procedure states the renewal interval bound (no longer than one half of `workflow.factory_lease.duration`), and the procedure states that a renewal the factory record refuses is recorded and the lane progress measurement still runs in that pass.
 
 - Classification: regression guard (decision-index Q1, operator verdict `d-20261010T053034Z-1a19`). Not a release gate.
 - Verification: `go test ./internal/template/ -run '^TestLaneWatchdogRenewsFirst$' -v -count=1`; passes only with `=== RUN TestLaneWatchdogRenewsFirst` and `--- PASS: TestLaneWatchdogRenewsFirst`.
@@ -107,11 +107,11 @@ Then each refusal text names the factory stage verb that L runs to re-lease X.
 - Stops firing: if the test is renamed, moved, or excluded, the ledger row loses its `=== RUN` line and reads FAIL with `[no tests to run]`, which the sync audit reads from `progress.md` §E.2.
 - Green path: M3.
 
-### AC-FRR-011: The lease records the worktree path at acquisition (REQ-FRR-011)
+### AC-FRR-011: The lease records the worktree path at acquisition (REQ-FRR-008)
 
 Given card X is assigned to lane L, no worktree path is recorded for X, and the factory materializes the card worktree for X,
 When L acquires the lease on X,
-Then the card records that worktree path in the same transaction that writes the holder, heartbeat, and expiry, and no lease is held on X without it.
+Then the card records that worktree path, and no lease is held on X without it.
 And given the materialization of the card worktree for X fails, when L attempts the acquisition, then the acquisition is refused, no lease is held on X, and no path is recorded.
 And given a different worktree path is already recorded for X, when L acquires the lease, then the acquisition is refused and the card is unchanged.
 
@@ -122,100 +122,37 @@ And given a different worktree path is already recorded for X, when L acquires t
 - Stops firing: if either test is renamed, moved, or excluded, its ledger row loses its `=== RUN` line and reads FAIL with `[no tests to run]`, which the sync audit reads from `progress.md` §E.2.
 - Green path: M1.
 
-### AC-FRR-014: A non-holder can neither renew nor reap an expired lease, and cannot renew a live one (REQ-FRR-014)
+### AC-FRR-014: A non-holder cannot renew a live lease (REQ-FRR-009)
 
 Given card X's lease is held by L,
-When a different label M runs the factory renew verb for X, or calls the MCP renew tool for X, while the lease is live, and separately runs the factory stage verb for X after the lease has expired,
+When a different label M runs the factory renew verb for X, or calls the MCP renew tool for X, while the lease is live,
 Then each request is refused, and the card's state, version, and events are unchanged.
 
 - Classification: regression guard (decision-index Q1, operator verdict `d-20261010T053034Z-1a19`). Not a release gate.
-- Verification: `go test ./internal/homestate/ -run '^TestNonHolderCannotReapOrRenew$' -v -count=1`; `go test ./internal/cli/ -run '^TestNonHolderRenewRefusedCLIAndMCP$' -v -count=1`. Each passes only with its own `=== RUN` and `--- PASS` lines.
-- Predicted failure (not observed): on the expired-lease case, the expiry branch reaps before the holder check (`internal/homestate/card_transition.go:311-316` and `:452-457`), so the version and events change. On the live-lease case, a missing renew verb fails the request with a different error; the test pins the holder-refusal class (`ErrLeaseHolder`), so a missing verb cannot satisfy it.
-- Stops firing: if either test is renamed, moved, or excluded, its ledger row loses its `=== RUN` line and reads FAIL with `[no tests to run]`, which the sync audit reads from `progress.md` §E.2.
-- Green path: M2 for the renewal; M3 for the transition.
+- Verification: `go test ./internal/cli/ -run '^TestNonHolderRenewRefusedCLIAndMCP$' -v -count=1`; passes only with `=== RUN TestNonHolderRenewRefusedCLIAndMCP` and `--- PASS: TestNonHolderRenewRefusedCLIAndMCP`.
+- Predicted failure (not observed): a missing renew verb fails the request with a different error; the test pins the holder-refusal class (`ErrLeaseHolder`), so a missing verb cannot satisfy it.
+- Stops firing: if the test is renamed, moved, or excluded, its ledger row loses its `=== RUN` line and reads FAIL with `[no tests to run]`, which the sync audit reads from `progress.md` §E.2.
+- Green path: M2.
+- Not in this criterion: a non-holder's request on an expired lease. That case is transferred with B5 (`progress.md` § G).
 
-### AC-FRR-015: The queue claim lease is unchanged (REQ-FRR-015)
+### AC-FRR-015: The queue claim lease is unchanged (REQ-FRR-010)
 
-Given the card lease duration is configured to 20 minutes, set on the card lease duration variable `FactoryLeaseDuration` in `internal/homestate` that the card lease reads,
+Given the lease-duration key `workflow.factory_lease.duration` is set to 20m in the configuration that the factory handle reads when `OpenFactory` runs,
 When a queue claim is made,
-Then its lease expiry stays 15 minutes after the claim, as the existing claim-lease tests assert.
+Then the lease expiry that the claim writes is 15 minutes after the claim, as the existing claim-lease tests assert.
 
 - Classification: regression guard (green before and after by design; not a failure to predict).
 - Verification: `go test ./internal/factory/ -run '^TestBacklogClaim_ReclaimsExpired$' -v -count=1`; `go test ./internal/factory/ -run '^TestBacklogClaim_RenewAfterExpiry$' -v -count=1`; `go test ./internal/factory/ -run '^TestBacklogClaim_QueueLeaseIgnoresCardLeaseDuration$' -v -count=1`. Each passes only with its own `=== RUN` and `--- PASS` lines.
-- The first two tests exist, and the first asserts a duration of about 15 minutes (`internal/factory/backlog_claim_test.go:154-155`). The third is new: it sets the card lease duration to 20 minutes, claims, and asserts the 15-minute queue expiry. It follows the `TestBacklogClaim_<Descriptor>` naming of that file. It is the mutant check: a queue claim that followed the card duration would fail it.
+- The first two tests exist, and the first asserts a duration of about 15 minutes (`internal/factory/backlog_claim_test.go:154-155`). The third is new. It writes the key to 20m through the configuration path, opens the factory handle, makes a claim, and observes the expiry that the claim row records; it passes when that expiry equals the claim time plus 15 minutes. It follows the `TestBacklogClaim_<Descriptor>` naming of that file. It is the mutant check: a queue claim that followed the card duration would fail it.
 - Stops firing: if the new test or either existing test is renamed, moved, or excluded, its ledger row loses its `=== RUN` line and reads FAIL with `[no tests to run]`, which the sync audit reads from `progress.md` §E.2.
 - Green path: M1 keeps it green.
-
-### AC-FRR-017: A pushed card reaches done through the receipt gate (REQ-FRR-016)
-
-Given card X is in state `pushed` in a repository with a remote, its merge commit is contained in the remote-tracking ref of the integration branch, and a leader approval receipt for X verifies against X's current version, evidence SHA, and owner label,
-When the human decider requests the `done` transition for X with X's backlog identity,
-Then the request is accepted, X is in state `done` at the next version, and X's event history gains one move from `pushed` to `done`.
-
-- Classification: regression guard, following the classification of Q1 (operator verdict `d-20261010T053034Z-1a19`). Not a release gate.
-- Verification: `go test ./internal/homestate/ -run '^TestPushedToDoneOpensWithReceipt$' -v -count=1`; passes only with `=== RUN TestPushedToDoneOpensWithReceipt` and `--- PASS: TestPushedToDoneOpensWithReceipt`.
-- Predicted failure (not observed): `buildTransitionTable` has no edge from `pushed` to `done` (`internal/homestate/card_transition.go:133-181`), so the request returns `ErrIllegalTransition`. A compile failure would be TOOL_FAILURE.
-- Stops firing: if the test is renamed, moved, or excluded, the ledger row loses its `=== RUN` line and reads FAIL with `[no tests to run]`, which the sync audit reads from `progress.md` §E.2.
-- Green path: M8.
-
-### AC-FRR-018: A refused done request leaves a pushed card unchanged, and the other edges keep their refusals (REQ-FRR-017)
-
-Given card X is in state `pushed` in a repository with a remote, and every condition of AC-FRR-017 holds except one,
-When the human decider requests the `done` transition for X,
-Then the request is refused with the refusal that names the failing condition, not the illegal-transition refusal, and X's state, version, and event history are unchanged.
-And given a card in state merged-local in the same repository, when `done` is requested for it, then the request is refused while the remote is configured, and the card is unchanged.
-And given a card in state `pushed`, when `ci-green` is requested for it, then the request is refused as the reserved edge, and the card is unchanged.
-
-- Classification: regression guard, following the classification of Q1 (operator verdict `d-20261010T053034Z-1a19`). Not a release gate.
-- Verification: `go test ./internal/homestate/ -run '^TestPushedToDoneRefusalsLeaveRowUnchanged$' -v -count=1`; `go test ./internal/homestate/ -run '^TestMergedLocalDoneAndCiGreenEdgesUnchanged$' -v -count=1`. Each passes only with its own `=== RUN` and `--- PASS` lines.
-- Predicted failure (not observed): on the unchanged tree every `pushed` → `done` request returns `ErrIllegalTransition`, so `TestPushedToDoneRefusalsLeaveRowUnchanged` fails on its named-refusal assertion. An unchanged-row check alone would pass vacuously, which is why the named refusal is asserted. `TestMergedLocalDoneAndCiGreenEdgesUnchanged` is green before and after by design (a regression guard, not a failure to predict).
-- Stops firing: if either test is renamed, moved, or excluded, its ledger row loses its `=== RUN` line and reads FAIL with `[no tests to run]`, which the sync audit reads from `progress.md` §E.2.
-- Green path: M8.
-
-### AC-FRR-019: The transition-count pin accepts exactly one new pair (REQ-FRR-016, REQ-FRR-017)
-
-Given the record's transition table, and a fixture that places each pair of card states under the conditions that pair needs,
-When every (from, to) pair of the card states is requested,
-Then exactly 72 pairs are accepted and 369 are refused, the one pair newly accepted is `pushed` → `done`, every other pair keeps the outcome it had before this change (71 accepted), and every refused pair leaves the record unchanged.
-
-- Classification: regression guard, following the classification of Q1 (operator verdict `d-20261010T053034Z-1a19`). Not a release gate. The count pin is re-authored in place, as decision-index Q2 anticipates when an edge is added.
-- Verification: `go test ./internal/homestate/ -run '^TestFR_AC005_TransitionTableEdgeCount$' -v -count=1`; passes only with `=== RUN TestFR_AC005_TransitionTableEdgeCount` and `--- PASS: TestFR_AC005_TransitionTableEdgeCount`.
-- Predicted failure (not observed): on the unchanged tree the test counts 71 accepted and 370 refused, against the re-authored expectation of 72 and 369, so its count assertion fails.
-- Stops firing: if the test is renamed, moved, or excluded, the ledger row loses its `=== RUN` line and reads FAIL with `[no tests to run]`, which the sync audit reads from `progress.md` §E.2.
-- Green path: M8.
-
-### AC-FRR-020: The doctor reports out-of-band writes and exits non-zero (REQ-FRR-018)
-
-Given a run whose record holds three cards: card A, written outside the transition API with its state set to `done` and no event that moves it into `done`; card B, whose version was raised with no event that carries the new version; and card C, which agrees with its history,
-When the operator runs `moai factory doctor` on that record,
-Then the output names card A and card B with the run, the recorded value, and the history value, does not name card C as a disagreement, and the exit status is non-zero.
-And given a record in which every card agrees with its history, when the operator runs `moai factory doctor` on it, then the output reports no disagreement and the exit status is zero.
-
-- Classification: regression guard, following the classification of Q1 (operator verdict `d-20261010T053034Z-1a19`). Not a release gate.
-- Verification: `go test ./internal/cli/ -run '^TestDoctorReportsOutOfBandWrite$' -v -count=1`; passes only with `=== RUN TestDoctorReportsOutOfBandWrite` and `--- PASS: TestDoctorReportsOutOfBandWrite`.
-- Predicted failure (not observed): the `factory` command group has no `doctor` subcommand (`internal/cli/factory_handoff_recover.go:20`), so the command returns an unknown-command error and the report assertions fail. The test goes through the command tree, so it compiles on the unchanged tree.
-- Stops firing: if the test is renamed, moved, or excluded, the ledger row loses its `=== RUN` line and reads FAIL with `[no tests to run]`, which the sync audit reads from `progress.md` §E.2.
-- Green path: M8.
-
-### AC-FRR-021: The doctor is read-only and never reports an empty sweep as clean (REQ-FRR-019)
-
-Given a record that holds cards for the run,
-When the operator runs `moai factory doctor` on it,
-Then the card rows and the event count are unchanged by the run, and the output reports the number of cards compared.
-And given a run that holds no cards, when the operator runs `moai factory doctor` on it, then the output reports an empty sweep with zero cards compared, the exit status is non-zero, and the output carries no clean result (verification-completeness §1.1, the empty swept set).
-
-- Classification: regression guard, following the classification of Q1 (operator verdict `d-20261010T053034Z-1a19`). Not a release gate.
-- Verification: `go test ./internal/cli/ -run '^TestDoctorReadOnlyAndEmptySweep$' -v -count=1`; passes only with `=== RUN TestDoctorReadOnlyAndEmptySweep` and `--- PASS: TestDoctorReadOnlyAndEmptySweep`.
-- Predicted failure (not observed): as for AC-FRR-020, the verb is not registered, so the command returns an unknown-command error and the assertions fail.
-- Stops firing: if the test is renamed, moved, or excluded, the ledger row loses its `=== RUN` line and reads FAIL with `[no tests to run]`, which the sync audit reads from `progress.md` §E.2.
-- Green path: M8.
 
 ## Edge cases
 
 - Expiry exactly at the request instant follows the existing rule in `LeaseExpired` (`card_record.go:146`). The predicted-failure test pins that rule; the criteria do not restate it.
 - Expiry of a lease on a merging card returns the card to blocked, not to assigned, so recovery does not apply (plan M3, item 2). This is covered by the M3 test set and is not a separate criterion.
 - A non-positive or unparseable lease duration is expected to be refused at config load, naming the key. This expectation is not yet a criterion and is to be confirmed with the lane (decision-index, Optional, deferred).
-- A holder whose worker row is missing follows the existing registration rule. AC-FRR-014 covers the non-holder side.
+- A holder whose worker row is missing follows the existing registration rule. AC-FRR-014 covers a non-holder's renewal of a live lease; the non-holder side on an expired lease is transferred (`progress.md` § G).
 
 ## Quality gates (not acceptance criteria)
 
@@ -228,9 +165,9 @@ And given a run that holds no cards, when the operator runs `moai factory doctor
 
 ## Definition of Done
 
-- Each Verification line of AC-FRR-001 to AC-FRR-007, AC-FRR-011, AC-FRR-014, AC-FRR-015, and AC-FRR-017 to AC-FRR-021 shows `=== RUN` and `--- PASS` for its named test, with an executed count above zero, recorded in `progress.md` §E.2 after the run-phase fix commit.
+- Each Verification line of AC-FRR-001 to AC-FRR-007, AC-FRR-011, AC-FRR-014, and AC-FRR-015 shows `=== RUN` and `--- PASS` for its named test, with an executed count above zero, recorded in `progress.md` §E.2 after the run-phase fix commit.
 - Every active criterion is a regression guard. None gates the release (decision-index Q1, operator verdict `d-20261010T053034Z-1a19`).
-- Item (3) of the card re-scope is carried by AC-FRR-017 to AC-FRR-021 under leader ruling `d-20261010T060606Z-c5c4`. Its sub-choices are open in decision-index Q21, and the operator may confirm or overrule them.
+- Item (3) of the card re-scope is transferred to 3.2-2-2 (t1639) by `d-20261010T064450Z-68b2`. No criterion in this SPEC carries it; the moved criteria are listed in `progress.md` § G.
 - QG-1 to QG-6 pass, or each shortfall is recorded as a Gap.
-- Decisions are recorded in `decision-index.md` before the plan re-audit runs. Q21 is open, and the autonomous Kickoff stays blocked until it is answered.
+- Decisions are recorded in `decision-index.md` before the plan re-audit runs. Q21's subject moved to 3.2-2-2 by `d-20261010T064450Z-68b2`; its Operator verdict line is left empty, as that decision directs.
 - Local landing only: no push, no pull request, and no remote operation from this lane.
