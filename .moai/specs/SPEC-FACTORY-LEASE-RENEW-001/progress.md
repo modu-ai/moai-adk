@@ -700,6 +700,19 @@ Residual risk
 - `go test ./internal/template/` as a package is red at HEAD `1ded464af` because of the blocker. The M3 criteria that live in that package are GREEN.
 - The hook change, when it lands, depends on the root that the factory opens. The factory opens `factoryCardRoot()`, which resolves through `factory.ResolveTodoQueueRoot`, with the base `CLAUDE_PROJECT_DIR` or the working directory (`internal/cli/session.go`). A hook that reads a different root would render a period the factory does not enforce. The design for the next step is to resolve the same root in the hook and to fall back to the default period on a refused configuration, and this fallback is not yet tested.
 
+### M3 slot usage and attribution note (card t1663)
+
+Slot (go-heavy, identity 3e1318d7, labelled lane-17). Each window was acquired with `moai slot acquire --resource go-heavy --name lane-17 --command "<run>" --max-duration 20m` and released with `moai slot release --resource go-heavy`. Windows, by the acquire line's `until` time:
+- until 12:24:28Z: the template RED run and the hook RED run, then released.
+- until 12:25:41Z: mutant A and mutant B, then released after both were restored.
+- until 12:29:29Z: the C1 GREEN runs (the watchdog criteria and the doctrine pin), then released.
+- until 12:30:36Z: the C2 GREEN run (AC-FLR-015), then released.
+- until 12:31:48Z: the C3 GREEN runs, the mirror-drift runs, the archived-tree attribution run, and `golangci-lint` on `./internal/template/...` and `./internal/hook/...`, then released.
+- until 12:36:36Z: the capture of the full blocker lines, then released.
+A compound command that chained `go test` with `moai slot release` and a `PIPESTATUS` expansion was refused by the worktree-isolation guard; it was split into plain steps, and nothing ran in the refused form. `moai slot status --resource go-heavy` printed `slot go-heavy: free` before the first window.
+
+HEAD attribution. The template RED run and the hook RED run (the first two RED runs in the M3 RED block) executed before the RED commit `f95603c45`. They ran on the tree of `11b0e9ee9` with the three test files untracked. Those files were not edited between the run and the commit, so `f95603c45` contains the same bytes that were run. The mutant runs, and the restoration check against `f95603c45`, executed after the commit. The label "HEAD f95603c45" in the RED block is therefore correct for the mutant runs and for the shipped text, and it describes the test-file content of the first two runs, not their HEAD.
+
 ## §E.3 Run-phase Audit-Ready Signal
 
 _<pending run-phase>_
