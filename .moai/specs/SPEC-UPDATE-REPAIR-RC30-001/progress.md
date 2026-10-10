@@ -1377,6 +1377,20 @@ ok  	github.com/modu-ai/moai-adk/internal/cli	1.059s
 
 The commit SHA of this step cannot be named in its own commit. It is recorded in the § E.2 F8 entry (the step 3 record).
 
+#### Consumer run, M5 identifiers (round 2A, lane-14)
+
+The 17:15Z watchdog entry in `.moai/reports/t1619/progress.md` recorded that this entry lacked the M5 consumer run. The lane ran the set itself under the heavy-run slot. This entry records that run with its provenance per field. Round 2A did not repeat the run (leader instruction: repeat only if the record is wrong).
+
+- Consumer set: `.moai/reports/t1619/m5-consumer-tests.txt`, line 6 (the `-run` regex). Lines 2-3 name the M5 tokens (`TemplateTreeHash`, `warnStampSkew`, `confirmViaPreviewFn`, `newTemplateSyncDeployer`, `runTemplateSyncWith`, `TestSkipSyncNoArchive`); line 5 selects 60 test functions.
+- Command shape: `go test -count=1 -race -run '<line 6 regex>' ./internal/cli/`, the form recorded by the lane in the 17:15Z watchdog entry (`.moai/reports/t1619/progress.md`, the entry whose step reads "보완 (레인 실행)").
+- Slot: `internal-cli-tests`, foreground. lane-14 ran the set under the heavy-run slot and acquired and released the slot itself.
+- Result line (as recorded by the lane, same source): `ok  	github.com/modu-ai/moai-adk/internal/cli	131.178s`
+exit: 0
+
+Gap G-M5-C1: the stdout of that run is not retained on disk. The result line and exit code above are carried from the lane's recorded result. They were not re-observed in round 2A, and no verbatim output is quoted here. A repeat costs about 131 s under the same slot.
+
+Residual risk: the run covers the 60 named functions only, not the full `internal/cli` suite (local scope rule). The repository-wide verdict is owned by CI on `origin/develop` and is PENDING at the time of this record.
+
 ### Scoped gate evidence, M4 and M5 (narrowed gate, card t1619)
 
 Basis: the lead's narrowed-gate decision. The scope is the named tests, plus every test whose assertions reference a changed identifier or output string. Runs are in the foreground, one `go test` per command. Exit codes are separate fields. The tool printed no exit-code error for the runs below, so each is recorded as `exit=0`.
