@@ -788,11 +788,35 @@ Residual risk
   - `golangci-lint run --new-from-rev=2aab5f797 ./internal/factory/...` -> `0 issues.` (exit 0)
 - Gaps (not run): /verify (the scoped checks above replace it); the full repository suite; `internal/cli`; CI (not observed); the observance push (not done; operator approval pending).
 - No pre-commit hook ran (`core.hooksPath` is `/dev/null`).
-- Sync-audit round 3: pending. One re-audit on the repair commit; a further FAIL stops the card.
+- Sync-audit round 3: FAIL (codex; receipt rcpt-efa5d18fc3db3f824af02df8; audited_sha fb40610af; findings P1 internal/factory/integration_merge_step.go:471 and P2 internal/factory/candidate_landing_check.go:74; verdict file .moai/reports/t1478/sync-audit.md). Repaired at 2ba6f102a under operator decision d-20261010T053347Z-da5d; round 4 audit pending.
 
 sync_commit_sha: pending-backfill
 
 The placeholder is the sanctioned one: this commit cannot cite its own SHA, so a later commit backfills it. Round 3 adds a third placeholder line; the backfill must set all three.
+- Gap: SyncStatusDrift (spec_audit MUST-FIX): status is implemented while sync artifacts exist. The completed transition is deferred; it is recorded here only, until the landing-resume record from the leader decides how to handle it. Round-3 sync-audit FAIL (codex, receipt rcpt-efa5d18fc3db3f824af02df8, audited_sha fb40610af), open findings P1 internal/factory/integration_merge_step.go:471 and P2 internal/factory/candidate_landing_check.go:74; see .moai/reports/t1478/sync-audit.md.
+
+### §E.4 round 4 — run re-entry (operator decision da5d)
+
+- Operator decision d-20261010T053347Z-da5d: two repairs and one audit. Repair commits on WT-10-03-tier: RED `b6c05d9d3` (tests only) and GREEN `2ba6f102a` (product code and one test trim; HEAD before this sync commit).
+- P1, `internal/factory/integration_merge_step.go`: the collision probe runs again inside the candidate lock, after the landing check and immediately before the merge. A colliding path refuses with cause 13, and a probe error with cause 9, both before any merge call.
+- P2, `internal/factory/candidate_landing_check.go`: `CandidateLandingCheck` refuses a record whose card id or pinned SHA differs from the merge's, judged before the branch identity.
+- Verification, as observed on the card tree at `2ba6f102a`. These are run-phase observations relayed into this record; the sync phase ran no test, lint, or build in this close.
+  - `gofmt -l` on the three changed files (`candidate_landing_check.go`, `integration_merge_step.go`, `integration_merge_step_test.go`): empty.
+  - `go vet ./internal/factory/...`: no output, exit 0.
+  - `golangci-lint run --new-from-rev=2aab5f797 ./internal/factory/...`: `0 issues.`
+  - `go test ./internal/factory/ -run '^(TestMergeStepIgnoredFileAfterProbeRefusesMerge|TestCandidateLandingCheckRefusesForeignIdentity)$' -race -count=5`: `ok  github.com/modu-ai/moai-adk/internal/factory  81.355s`
+- RED messages, quoted from the RED commit body (`b6c05d9d3`, observed on the unchanged product code before the fix):
+  - `TestMergeStepIgnoredFileAfterProbeRefusesMerge`: `the merge overwrote the late ignored byte: got "card work"`; `a merge commit landed`; `expected merge-step error with code 13, got success`.
+  - `TestCandidateLandingCheckRefusesForeignIdentity`: `a green record naming another card was admitted at this card's lookup path`; `a green record naming another pinned SHA was admitted at this card's lookup path`; `refusal target mismatch: ... want the identity mismatch to come before the target mismatch`.
+- Residual risk: the window between the final collision probe and the merge subprocess stays open. It is recorded as `@MX:DEBT` in `internal/factory/integration_merge_step.go` (line 513 at `2ba6f102a`).
+- Gap: the full package run `go test ./internal/factory/ -count=1 -timeout 30m` had NOT finished when the sync transition was made. The default 10-minute budget timed out under load in the run phase, with no assertion failure. Its result is not observed in this record.
+- Gap: the scratch-copy re-observation of RED on the RED tree is relayed from the run phase. Its command and verbatim output are not carried into this record, and the sync phase did not re-run it. The RED messages above are quoted from the commit body, not re-observed here.
+- Gap: sync-audit round 4 has not run yet.
+- Sync-audit round 4: pending.
+
+sync_commit_sha: pending-backfill
+
+Round 4 adds a fourth placeholder line; the backfill must set all four (this supersedes the count of three above).
 
 ## Lane Kickoff Decision Record (2026-10-09, lane-11)
 
