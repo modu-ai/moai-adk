@@ -19,6 +19,7 @@ import (
 	"strings"
 
 	"github.com/modu-ai/moai-adk/internal/manifest"
+	"github.com/modu-ai/moai-adk/internal/profile"
 	"github.com/modu-ai/moai-adk/internal/template"
 	"github.com/modu-ai/moai-adk/internal/userassets"
 )
@@ -89,6 +90,16 @@ func migrateProjectCommonAssets(projectRoot, homeDir string, userAssetsInstalled
 	if rootErr != nil {
 		return nil, fmt.Errorf("resolve project root: %w", rootErr)
 	}
+	// U-01 (option (c), AC-RC30-27): a project the launch ledger maps to a
+	// profile is one a profile session launches, so its shipped copies stay
+	// project-side. A normal run passes "." as the root, and a relative root
+	// misses the mapping of an ancestor project (a worktree), so the root is
+	// made absolute first. Resolved once per run; the ledger is only read.
+	rootAbs, absErr := filepath.Abs(projectRoot)
+	if absErr != nil {
+		return nil, fmt.Errorf("resolve project root: %w", absErr)
+	}
+	profileMapped := profile.ResolveLaunchProfileForProject(rootAbs, "") != ""
 	for _, rootRel := range projectCommonAssetRels {
 		absRoot := filepath.Join(projectRoot, filepath.FromSlash(rootRel))
 		err := filepath.WalkDir(absRoot, func(p string, d fs.DirEntry, err error) error {
@@ -156,6 +167,21 @@ func migrateProjectCommonAssets(projectRoot, homeDir string, userAssetsInstalled
 				preserved++
 				migrationPreservedProjectFiles[p] = true
 				report("  migration: preserved (you modified it): %s", relSlash)
+				return nil
+			}
+			// U-01 (option (c), AC-RC30-27): under profile reach a shipped copy
+			// (template_managed, bytes equal to the template) stays project-side
+			// and is marked for the profile session. It is neither removed nor
+			// refreshed in rc.30. A retired (deprecated) copy is not in the kept
+			// set. The counterpart check does not gate this keep, so every shipped
+			// copy of a mapped project carries the mark.
+			if profileMapped && provenance == string(manifest.TemplateManaged) {
+				if err := mgr.SetKeptBy(relSlash, manifest.KeptByProfileReach); err != nil {
+					return fmt.Errorf("mark profile-reach keep for %s: %w", relSlash, err)
+				}
+				stayed++
+				migrationPreservedProjectFiles[p] = true
+				report("  migration: kept (profile-mapped project — profile sessions need this shared copy, so it stays project-side): %s", relSlash)
 				return nil
 			}
 			// template_managed with template-matching bytes: removable once
