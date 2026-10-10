@@ -14,11 +14,12 @@ Resolution:
 Classification note: the anchor is a policy-layer rule file, not a constitution clause. The row is POLICY-COVERED because the rule text names both sets and their axes.
 Operator verdict:
 
-### Q2: Which mechanism reaches the shared assets for a profile session (CLAUDE_CONFIG_DIR)? — PENDING, operator decision
+### Q2: Which mechanism reaches the shared assets for a profile session (CLAUDE_CONFIG_DIR)? — DECIDED by operator decision d-20261010T060848Z-dc3b
 
 Label: FOUNDER
 Class: product-level
-Status: PENDING. No option is selected, and no default is applied. REQ-RC30-002 reads "the mechanism selected under operator decision Q2 (pending)".
+Status: DECIDED by operator decision d-20261010T060848Z-dc3b: option (c) with two conditions, and option (b) is not adopted. Condition 1 is a provenance mark on the kept project copy (the shipped hash or an equivalent marker) so the 3.2-2-5 doctor can identify and reclaim it; condition 2 is a card-record statement that the structural fix moves to 3.2-2-5 (t1642) and 3.2-2-6 (t1643).
+Residual Gap: the mo.ai.kr profile was not measured. The measurement was on the moai-adk profile lane session; its report is untracked, is cited by path only, and is not an authority anchor: .moai/reports/t1619/profile-skill-load-probe.md.
 Authority anchor: SPEC-USER-ASSET-INSTALL-001 spec.md lines 237-238 (P6) and line 255 (REQ-002), re-read on main in this run. The rest of REQ-002, after line 255, is unread.
 Why unresolved: The options change what `moai init` and `moai update` write, or what a profile session reads. The choice belongs to the operator.
 Options (factual; no recommendation):
@@ -26,8 +27,8 @@ Options (factual; no recommendation):
 - **(b)** A link or copy of the common assets inside the profile directory. It requires amending REQ-002 (spec.md line 255) to permit a link or copy in a profile directory. P6 (spec.md lines 237-238) would be restated to match. Amendment scope: the line-255 clause only. Follow-on: if (b) is chosen, manager-spec performs the amendment in place in this card after WT-user-asset-bundle (t1591) is absorbed at run start (M1). The leader coordinates that with the other lane.
 - **(c)** Keep project-side copies when a profile session is detected. Consequence against D1: D1 names the shared roots as the copy target for `moai init` and `moai update`. Under (c), profile-detected projects hold a second copy of the common skills and agents inside the project tree, outside the shared-root model. That copy is refreshed only if U-12 is implemented, so the two copies can diverge.
 Default: none (no published rule ranks these options).
-Still gates U-01 in SPEC A: AC-RC30-01 and AC-RC30-02 moved to SPEC B (d-20261009T235135Z-5e35). Status stays PENDING.
-Operator verdict:
+Gated U-01 in SPEC A before this decision: AC-RC30-01 and AC-RC30-02 moved to SPEC B (d-20261009T235135Z-5e35) and remain there. U-01 proceeds under option (c).
+Operator verdict: "(c) + 두 조건" (verbatim operator selection), board record d-20261010T060848Z-dc3b.
 
 ### Q3: Queue overlaps of t1527, t1594, and t1612 with this SPEC
 
