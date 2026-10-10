@@ -436,8 +436,10 @@ var holderGuards = map[edgeGuard]bool{
 
 // RenewLease extends the holder's lease on a lease-holding card and refreshes
 // the roster heartbeat. A renewal by any other label is refused with no
-// change; an already-expired lease is returned first (T27/T28). Renewal does
-// not change the card's state, so it does not advance the version.
+// change. An already-expired lease is refused with ErrLeaseExpired and no write
+// (REQ-FLR-004; decision-index Q3, ruling d-20261010T095731Z-5ddc): the renewal
+// does not reap the lease, so the card keeps its state, holder, and version.
+// Renewal does not change the card's state, so it does not advance the version.
 func (f *FactoryDB) RenewLease(ctx context.Context, runID, cardID, label string, now time.Time) (Card, error) {
 	if now.IsZero() {
 		now = time.Now()
@@ -450,10 +452,9 @@ func (f *FactoryDB) RenewLease(ctx context.Context, runID, cardID, label string,
 			return nil, err
 		}
 		if cur.LeaseExpired(now) {
-			if err := applyLeaseExpiry(ctx, tx, cur, now); err != nil {
-				return nil, err
-			}
-			return nil, commitThen(fmt.Errorf("%w: card %s lease expired at %s", ErrLeaseExpired, cur.CardID, cur.LeaseExpiresAt))
+			// Refused with no write: a plain error rolls the transaction back, so the
+			// lease-expiry row that applyLeaseExpiry would append is never committed.
+			return nil, fmt.Errorf("%w: card %s lease expired at %s", ErrLeaseExpired, cur.CardID, cur.LeaseExpiresAt)
 		}
 		if !IsLeaseHoldingState(cur.State) || cur.LeaseHolder == "" || strings.TrimSpace(label) != cur.LeaseHolder {
 			return nil, fmt.Errorf("%w: %q does not hold the lease on card %s", ErrLeaseHolder, label, cur.CardID)
