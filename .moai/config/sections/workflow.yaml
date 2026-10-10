@@ -39,6 +39,14 @@ workflow:
             glm: off
     default_mode: ""
     execution_mode: auto
+    # factory_lease: the card lease duration (duration, default 15m) and the
+    # watchdog renewal period (renew_interval, default 5m; a whole number of
+    # minutes from 1 to 59, and at most half of duration). Both are checked when
+    # the factory opens; a value outside its bound refuses to open the factory
+    # and is never clamped (SPEC-FACTORY-LEASE-RENEW-001).
+    factory_lease:
+        duration: 15m
+        renew_interval: 5m
     # context_folding: manager-lead's per-milestone Context-Folding trigger policy
     # (SPEC-HIERARCHICAL-TEAM-001 REQ-FOLD-001 OQ-1 decision). The fold procedure
     # itself reuses existing primitives (/compact + .moai/state/verify/ redirect +

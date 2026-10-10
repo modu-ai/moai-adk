@@ -429,7 +429,22 @@ type RalphConfig struct {
 // yaml:"-" tags so yaml.Unmarshal never binds to them, eliminating the
 // historical path-mismatch unmarshal failure while preserving Go API binary
 // compatibility.
+// FactoryLeaseConfig is the workflow.factory_lease block: the card lease
+// duration and the watchdog renewal period, as written in configuration.
+// Homestate parses and bounds-checks both when the factory opens
+// (SPEC-FACTORY-LEASE-RENEW-001 REQ-FLR-005 to REQ-FLR-009). They are held as
+// strings so that the refusal can name the key and the allowed range for any
+// value that is not a duration.
+type FactoryLeaseConfig struct {
+	// Duration is the card lease duration (workflow.factory_lease.duration).
+	Duration string `yaml:"duration"`
+	// RenewInterval is the watchdog renewal period (workflow.factory_lease.renew_interval).
+	RenewInterval string `yaml:"renew_interval"`
+}
+
 type WorkflowConfig struct {
+	// FactoryLease carries workflow.factory_lease.* (see FactoryLeaseConfig).
+	FactoryLease FactoryLeaseConfig `yaml:"factory_lease"`
 	// Nested canonical fields (yaml-aligned with workflow.yaml top-level keys).
 	AutoClear     AutoClearConfig `yaml:"auto_clear"`
 	DefaultMode   string          `yaml:"default_mode"`
