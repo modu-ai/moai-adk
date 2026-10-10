@@ -713,6 +713,150 @@ A compound command that chained `go test` with `moai slot release` and a `PIPEST
 
 HEAD attribution. The template RED run and the hook RED run (the first two RED runs in the M3 RED block) executed before the RED commit `f95603c45`. They ran on the tree of `11b0e9ee9` with the three test files untracked. Those files were not edited between the run and the commit, so `f95603c45` contains the same bytes that were run. The mutant runs, and the restoration check against `f95603c45`, executed after the commit. The label "HEAD f95603c45" in the RED block is therefore correct for the mutant runs and for the shipped text, and it describes the test-file content of the first two runs, not their HEAD.
 
+### M3 GREEN block, part 2 (card t1663; AC-FLR-014 GREEN; coordinator decisions 1 to 6 applied; M3 exit met at HEAD bacca95c2)
+
+Commits after part 1 (local, not pushed; every subject names card t1663)
+- `4a4058d9e` fix(SPEC-FACTORY-LEASE-RENEW-001): binding ledger follows the catalogue count change of 1f15ee972 (decision 1). Its GREEN is the ledger run in item 1.
+- `1c7dc50ec` test(SPEC-FACTORY-LEASE-RENEW-001): M3 RED for the session-start fallback (decision 2). Its RED ran at HEAD `4a4058d9e` with the file untracked; the commit holds the same bytes.
+- `e352e054a` feat(SPEC-FACTORY-LEASE-RENEW-001): M3 lane startup rule arms the standing wake at the renewal period (AC-FLR-014, decision 2). Its GREEN ran at HEAD `1c7dc50ec` with the change in the working tree; the content is the committed content.
+- `bacca95c2` docs(SPEC-FACTORY-LEASE-RENEW-001): M3 renew verb sentence in Factory Mode mechanics, both copies (decision 3).
+
+1. Ledger (decision 1). The three rows are ALB-0139 and ALB-0148 (the count, 47 to 48) and ALB-0141 (the project_root list, Twenty-two to Twenty-three, with `factory_renew` in the REQUIRE clause). Only `after_text` changed, to the wording the current companion carries. `before_text`, `source`, anchors, ids, `processing` (still `relocated` on each row), `reason`, and `head` are unchanged. The reason is in the schema's note field, `rewrite_note`, which 19 other rows also use; each note cites 1f15ee972. A dry run and the write both checked the change against the decoded file: `ALB-0139 after_text present in the current companion: True (length 470 -> 470)`, `ALB-0141 after_text present in the current companion: True (length 793 -> 831)`, `ALB-0148 after_text present in the current companion: True (length 241 -> 241)`, and `structural check passed: only after_text and rewrite_note differ; head, ids, order, before_text, anchors unchanged`. The fixture diff is 9 insertions and 6 deletions in `internal/template/testdata/binding_ledger.json`.
+
+   The coordinator's command, at the commit `4a4058d9e` (slot go-heavy, identity 3e1318d7):
+   ```
+   ok  	github.com/modu-ai/moai-adk/internal/template	21.798s
+   ```
+   The same test, verbose, on the same bytes:
+   ```
+       binding_ledger_test.go:835: [after-text presence] swept 363 rows (always=230 companion=97 role-core=36): direct=363 pending-M0-baseline=0 failures=0
+   --- PASS: TestBindingLedgerIntegrity (21.50s)
+   PASS
+   ok  	github.com/modu-ai/moai-adk/internal/template	21.690s
+   ```
+   At HEAD `bacca95c2`, the coordinator's command again: `ok  	github.com/modu-ai/moai-adk/internal/template	24.818s`.
+
+   The reason the fixture follows M2 and not the other way round: plan M2 item 4 requires the catalogue change, so 1f15ee972 stays and the fixture follows it.
+
+2. Session-start fallback (decision 2). The rule renders the default period when the configured `renew_interval` is refused (out of bound, not a whole minute, or unparseable). The refusal stays the factory's to name. Tests: `internal/hook/lane_renew_fallback_test.go`.
+
+   RED, observed before the hook change (HEAD `4a4058d9e`, the file untracked; `go test ./internal/hook/ -run '^(TestLaneRuleFallsBackToDefaultOnRefusedRenewInterval|TestLaneArmExpressionReadsWorkingDirectoryWhenProjectDirUnset)$' -v -count=1`, exit 1). The verdict lines, verbatim; the twelve assertion lines have the same form, and one of them is shown:
+   ```
+       lane_renew_fallback_test.go:69: rendered rule lacks the default arm expression "*/5 * * * *" after a refused renew_interval "8m":
+   --- FAIL: TestLaneRuleFallsBackToDefaultOnRefusedRenewInterval (0.07s)
+       --- FAIL: TestLaneRuleFallsBackToDefaultOnRefusedRenewInterval/over-bound-8m/en (0.00s)
+       --- FAIL: TestLaneRuleFallsBackToDefaultOnRefusedRenewInterval/over-bound-8m/ko (0.00s)
+       --- FAIL: TestLaneRuleFallsBackToDefaultOnRefusedRenewInterval/over-bound-8m/ja (0.00s)
+       --- FAIL: TestLaneRuleFallsBackToDefaultOnRefusedRenewInterval/over-bound-8m/zh (0.00s)
+       --- FAIL: TestLaneRuleFallsBackToDefaultOnRefusedRenewInterval/not-whole-minute-7m30s/en (0.00s)
+       --- FAIL: TestLaneRuleFallsBackToDefaultOnRefusedRenewInterval/not-whole-minute-7m30s/ko (0.00s)
+       --- FAIL: TestLaneRuleFallsBackToDefaultOnRefusedRenewInterval/not-whole-minute-7m30s/ja (0.00s)
+       --- FAIL: TestLaneRuleFallsBackToDefaultOnRefusedRenewInterval/not-whole-minute-7m30s/zh (0.00s)
+       --- FAIL: TestLaneRuleFallsBackToDefaultOnRefusedRenewInterval/unparseable/en (0.00s)
+       --- FAIL: TestLaneRuleFallsBackToDefaultOnRefusedRenewInterval/unparseable/ko (0.00s)
+       --- FAIL: TestLaneRuleFallsBackToDefaultOnRefusedRenewInterval/unparseable/ja (0.01s)
+       --- FAIL: TestLaneRuleFallsBackToDefaultOnRefusedRenewInterval/unparseable/zh (0.04s)
+       lane_renew_fallback_test.go:89: with CLAUDE_PROJECT_DIR unset the rule does not carry the working directory's renewal period "*/7 * * * *":
+   --- FAIL: TestLaneArmExpressionReadsWorkingDirectoryWhenProjectDirUnset (0.00s)
+   FAIL
+   FAIL	github.com/modu-ai/moai-adk/internal/hook	1.062s
+   ```
+
+   GREEN, after the hook change (HEAD `1c7dc50ec` with the change in the working tree; the content is commit `e352e054a`; `go test ./internal/hook/ -run '^(TestLaneRuleCarriesConfiguredRenewInterval|TestLaneRuleFallsBackToDefaultOnRefusedRenewInterval|TestLaneArmExpressionReadsWorkingDirectoryWhenProjectDirUnset)$' -count=1 -v`, exit 0). Verbatim:
+   ```
+   --- PASS: TestLaneRuleFallsBackToDefaultOnRefusedRenewInterval (0.51s)
+       --- PASS: TestLaneRuleFallsBackToDefaultOnRefusedRenewInterval/over-bound-8m/en (0.19s)
+       --- PASS: TestLaneRuleFallsBackToDefaultOnRefusedRenewInterval/over-bound-8m/ko (0.03s)
+       --- PASS: TestLaneRuleFallsBackToDefaultOnRefusedRenewInterval/over-bound-8m/ja (0.03s)
+       --- PASS: TestLaneRuleFallsBackToDefaultOnRefusedRenewInterval/over-bound-8m/zh (0.05s)
+       --- PASS: TestLaneRuleFallsBackToDefaultOnRefusedRenewInterval/not-whole-minute-7m30s/en (0.03s)
+       --- PASS: TestLaneRuleFallsBackToDefaultOnRefusedRenewInterval/not-whole-minute-7m30s/ko (0.03s)
+       --- PASS: TestLaneRuleFallsBackToDefaultOnRefusedRenewInterval/not-whole-minute-7m30s/ja (0.03s)
+       --- PASS: TestLaneRuleFallsBackToDefaultOnRefusedRenewInterval/not-whole-minute-7m30s/zh (0.03s)
+       --- PASS: TestLaneRuleFallsBackToDefaultOnRefusedRenewInterval/unparseable/en (0.03s)
+       --- PASS: TestLaneRuleFallsBackToDefaultOnRefusedRenewInterval/unparseable/ko (0.02s)
+       --- PASS: TestLaneRuleFallsBackToDefaultOnRefusedRenewInterval/unparseable/ja (0.03s)
+       --- PASS: TestLaneRuleFallsBackToDefaultOnRefusedRenewInterval/unparseable/zh (0.03s)
+   --- PASS: TestLaneArmExpressionReadsWorkingDirectoryWhenProjectDirUnset (0.03s)
+   --- PASS: TestLaneRuleCarriesConfiguredRenewInterval (0.39s)
+       --- PASS: TestLaneRuleCarriesConfiguredRenewInterval/configured-7m/startup/en (0.02s)
+       --- PASS: TestLaneRuleCarriesConfiguredRenewInterval/configured-7m/startup/ko (0.03s)
+       --- PASS: TestLaneRuleCarriesConfiguredRenewInterval/configured-7m/startup/ja (0.02s)
+       --- PASS: TestLaneRuleCarriesConfiguredRenewInterval/configured-7m/startup/zh (0.03s)
+       --- PASS: TestLaneRuleCarriesConfiguredRenewInterval/configured-7m/clear/en (0.03s)
+       --- PASS: TestLaneRuleCarriesConfiguredRenewInterval/configured-7m/clear/ko (0.02s)
+       --- PASS: TestLaneRuleCarriesConfiguredRenewInterval/configured-7m/clear/ja (0.02s)
+       --- PASS: TestLaneRuleCarriesConfiguredRenewInterval/configured-7m/clear/zh (0.02s)
+       --- PASS: TestLaneRuleCarriesConfiguredRenewInterval/default-5m/startup/en (0.02s)
+       --- PASS: TestLaneRuleCarriesConfiguredRenewInterval/default-5m/startup/ko (0.02s)
+       --- PASS: TestLaneRuleCarriesConfiguredRenewInterval/default-5m/startup/ja (0.02s)
+       --- PASS: TestLaneRuleCarriesConfiguredRenewInterval/default-5m/startup/zh (0.03s)
+       --- PASS: TestLaneRuleCarriesConfiguredRenewInterval/default-5m/clear/en (0.02s)
+       --- PASS: TestLaneRuleCarriesConfiguredRenewInterval/default-5m/clear/ko (0.02s)
+       --- PASS: TestLaneRuleCarriesConfiguredRenewInterval/default-5m/clear/ja (0.02s)
+       --- PASS: TestLaneRuleCarriesConfiguredRenewInterval/default-5m/clear/zh (0.02s)
+   PASS
+   ok  	github.com/modu-ai/moai-adk/internal/hook	1.640s
+   ```
+
+3. AC-FLR-014 (`TestLaneRuleCarriesConfiguredRenewInterval`, 16 of 16 subtests PASS, shown in item 2). Its RED stands from `f95603c45` (16 of 16 FAIL, part 1). The hook change: the four locale strings take `%[1]s`, `laneArmExpression` renders `*/N * * * *`, and `recheckRuleTokens` drops the literal (`internal/hook/session_start_factory_i18n.go`, `internal/hook/session_start_factory.go`, `internal/hook/lane_recheck_rule_test.go`).
+
+4. Coverage per changed function (decision d-20261010T085601Z-991b). Measured at HEAD `bacca95c2`: `go test ./internal/hook/ -run '^(TestLane|TestSD_AC019|TestFactory|TestLeaderNotice)' -count=1 -coverprofile=<scratch>/hook_final_broad.cover` printed `ok  	github.com/modu-ai/moai-adk/internal/hook	41.843s	coverage: 9.9% of statements`, and `go tool cover -func=<scratch>/hook_final_broad.cover` printed:
+   ```
+   github.com/modu-ai/moai-adk/internal/hook/session_start_factory.go:97:		factoryLaneRuleForSource			94.4%
+   github.com/modu-ai/moai-adk/internal/hook/session_start_factory.go:150:		laneArmExpression				100.0%
+   ```
+   Both are at or above 85%, so no further test was added. The package total of 9.9% is the scoped set, and it is context only. The template package changed no Go production function in M3.
+
+5. Lint at HEAD `bacca95c2` (slot go-heavy held): `golangci-lint run --timeout=5m ./internal/hook/...` printed `0 issues.` (exit 0), and `golangci-lint run --timeout=5m ./internal/template/...` printed `0 issues.` (exit 0). gofmt printed nothing for the eight Go files M3 changed.
+
+6. Cross-platform build at HEAD `bacca95c2`: `GOOS=windows GOARCH=amd64 go build ./...` exit 0 (no output).
+
+7. Mechanics (decision 3). The sentence sits under "## Factory Mode mechanics" in both copies of `factory-dispatch-mechanics.md`, which are byte-identical (`cmp` printed nothing). `TestRuleTemplateMirrorDrift/factory-dispatch-mechanics.md` printed `--- PASS: TestRuleTemplateMirrorDrift/factory-dispatch-mechanics.md (0.00s)`. `make build` regenerated no tracked file beyond the change.
+
+8. M3 exit check at HEAD `bacca95c2` (the coordinator's item 4), slot go-heavy held:
+   - template: `--- PASS: TestLaneWatchdogRenewsFirst (0.00s)`, `--- PASS: TestLaneWatchdogRecordsRefusalAndMeasures (0.00s)`, `--- PASS: TestAutoSemanticsArmFollowsRenewInterval (0.00s)` (text, gap-every-N, mutant-2-59-refused, mutant-6-7-refused all PASS), `--- PASS: TestStallVerdictReachesAtRenewCadence (0.00s)` (period-5m, period-7m, old-cadence-equal, rule-text all PASS), `ok  	github.com/modu-ai/moai-adk/internal/template	0.196s`.
+   - hook: `--- PASS: TestLaneRuleCarriesConfiguredRenewInterval (0.36s)`, `--- PASS: TestLaneRuleFallsBackToDefaultOnRefusedRenewInterval (0.25s)`, `--- PASS: TestLaneArmExpressionReadsWorkingDirectoryWhenProjectDirUnset (0.02s)`, `--- PASS: TestLaneRuleCarriesStandingRecheckCron (0.75s)`, `--- PASS: TestLaneRuleOmitsCronOnCodexLane (0.00s)`, `ok  	github.com/modu-ai/moai-adk/internal/hook	1.951s	coverage: 0.5% of statements`.
+   - cli, AC-FLR-011 verb half: `--- PASS: TestFactoryRenewRefusalIsMachineReadable (0.75s)`, `ok  	github.com/modu-ai/moai-adk/internal/cli	1.408s`.
+   - ledger: `ok  	github.com/modu-ai/moai-adk/internal/template	24.818s`.
+   The template exit run, verbatim (`go test ./internal/template/ -run '^(TestLaneWatchdogRenewsFirst|TestLaneWatchdogRecordsRefusalAndMeasures|TestAutoSemanticsArmFollowsRenewInterval|TestStallVerdictReachesAtRenewCadence)$' -count=1 -v`, HEAD `bacca95c2`):
+   ```
+   --- PASS: TestAutoSemanticsArmFollowsRenewInterval (0.00s)
+       --- PASS: TestAutoSemanticsArmFollowsRenewInterval/text (0.00s)
+       --- PASS: TestAutoSemanticsArmFollowsRenewInterval/gap-every-N (0.00s)
+       --- PASS: TestAutoSemanticsArmFollowsRenewInterval/mutant-2-59-refused (0.00s)
+       --- PASS: TestAutoSemanticsArmFollowsRenewInterval/mutant-6-7-refused (0.00s)
+   --- PASS: TestStallVerdictReachesAtRenewCadence (0.00s)
+       --- PASS: TestStallVerdictReachesAtRenewCadence/period-5m (0.00s)
+       --- PASS: TestStallVerdictReachesAtRenewCadence/period-7m (0.00s)
+       --- PASS: TestStallVerdictReachesAtRenewCadence/old-cadence-equal (0.00s)
+       --- PASS: TestStallVerdictReachesAtRenewCadence/rule-text (0.00s)
+   --- PASS: TestLaneWatchdogRenewsFirst (0.00s)
+   --- PASS: TestLaneWatchdogRecordsRefusalAndMeasures (0.00s)
+   PASS
+   ok  	github.com/modu-ai/moai-adk/internal/template	0.196s
+   ```
+   Criteria: AC-FLR-010 GREEN, AC-FLR-011 GREEN (both halves), AC-FLR-013 GREEN, AC-FLR-014 GREEN, AC-FLR-015 GREEN. M3 exit met.
+
+9. Plan §G (the 20-minute literal). At HEAD `bacca95c2`, `grep -rn` for `7,27,47`, `every 20 minutes`, and `20-minute cadence` outside SPEC artifacts, CHANGELOG, and marketing returns: the absence-check constants `internal/template/auto_semantics_renew_test.go:20` and `internal/hook/lane_renew_interval_test.go:62-63`; and `internal/template/testdata/binding_ledger.json:5525`, which is the anchor-era `before_text` of ALB-0276 (the row-coverage check compares it with the anchor commit `a2a184ad3`). No current cadence statement remains.
+
+10. Subagent-boundary grep (E4) at HEAD `bacca95c2`: `internal/hook/pre_tool.go:856:	if input.ToolName == "AskUserQuestion" {`, pre-existing.
+
+11. Decision 5 (recorded for M4 onward): the lane's scoped set runs `TestBindingLedgerIntegrity` whenever a rule or catalogue companion changes.
+
+12. Decision 6: `/verify` was not invoked. A standalone `moai gate` runs the project-wide test step, and the brief forbids `go test ./...` locally. The scoped equivalents above stand. The trailer layout is kept: `Authored-By-Agent` in its own paragraph, the MoAI marker last. The M2 commits used the other layout.
+
+Gaps
+- No live watchdog turn was observed, and no code writes the snapshot (spec.md Residual risk). AC-FLR-010 and the procedure half of AC-FLR-011 are text checks.
+- The fallback hides a refusal from the lane. The lane's first factory verb names the refused key; the rule's arm expression does not.
+- `laneArmExpression` resolves the root through `factory.ResolveTodoQueueRoot`, which calls git. The function's documentation calls it pure, and that purity was not measured here. The session-start cost of the call was not timed.
+- The three ledger rows keep `processing: relocated`, the label they already carried. The label was not reviewed.
+- Coverage of `internal/cli` is not measured here; M3 changed no `internal/cli` code.
+
+Residual risk
+- Any future change to the catalogue companion, or to a rule that the ledger quotes, can break `TestBindingLedgerIntegrity` again. Decision 5 covers the lane's own runs; other lanes' runs are not covered by that rule.
+- The fallback renders `*/5 * * * *` for a refused value. If an operator expects the refused value to win, the lane's standing wake runs at the default period until the configuration is fixed.
+
 ## §E.3 Run-phase Audit-Ready Signal
 
 _<pending run-phase>_
