@@ -2,8 +2,9 @@
 
 ## Budget, status, and adoption
 
-- Tier L ceiling: 25 acceptance criteria. This file carries **21** criteria (26 minus AC-RC30-01 [RETIRED], -02, -03, -11, -26, which moved to SPEC B under decision d-20261009T235135Z-5e35). Within the ceiling. OPEN LEADER DECISION B1 (decision-index.md) is closed by that split.
-- U-22 (owned by card t1578) carries no criterion. U-30 is judged by the locale part of AC-RC30-25 (REQ-RC30-019).
+- Tier L ceiling: 25 acceptance criteria. This file carries **20** criteria (26 minus AC-RC30-01 [RETIRED], -02, -03, -11, -26, which moved to SPEC B under decision d-20261009T235135Z-5e35, and AC-RC30-25 [RETIRED], which moved out of rc.30 under decision d-20261010T040402Z-94b9). Within the ceiling. OPEN LEADER DECISION B1 (decision-index.md) is closed by that split.
+- U-22 (owned by card t1578) carries no criterion. U-30 is judged by the locale part of AC-RC30-25 [RETIRED] (REQ-RC30-019).
+- Requirements with no active criterion in this file after the AC-RC30-25 [RETIRED] move (ruling d-20261010T040402Z-94b9): REQ-RC30-014, REQ-RC30-016, REQ-RC30-018, REQ-RC30-019 and REQ-RC30-020. Their disposition (moved with the criterion, as d-20261009T235135Z-5e35 moved REQ-RC30-004 and REQ-RC30-021, or kept with a follow-up marker) is an open operator verdict for the leader's next round. This file does not decide it.
 - **Tree for every RED cell:** `8fa0dc24b`. Its code paths equal main `2aab5f797`, and the SPEC-only commits after it leave them unchanged. Each RED cell is one single-invocation command (no pipes, redirection, or chaining), its verbatim stdout, its exit status, and the tree SHA.
 - **Release gate versus regression-guard** (MP-8):
   - A criterion whose judging command exists on the tree is a release gate only when a RED cell is recorded for it.
@@ -113,7 +114,7 @@ E-20  command: grep -n "migrateProjectCommonAssets(" internal/cli/update_templat
 
 E-21  command: grep -rn "conversation_language" internal/cli/update_tux.go internal/cli/update_archive.go internal/cli/update/report/outcome.go
       stdout:  (none)
-      exit:    1   (the update renderer files read no locale setting; the locale part of AC-RC30-25 is RED)
+      exit:    1   (the update renderer files read no locale setting; the locale part of AC-RC30-25 [RETIRED] is RED)
 
 E-22  command: grep -n "0 user customizations modified" internal/cli/tuxiu_characterization_test.go
       stdout:  201:		for _, want := range []string{"Updated 26 files", "3 skills archived, 0 user customizations modified"} {
@@ -161,14 +162,14 @@ AC-RC30-11 [RETIRED] moved to SPEC B (split, d-20261009T235135Z-5e35).
 | AC-RC30-22 | U-23 | REQ-RC30-007 | `go test ./internal/config/ -run TestGateYAMLCommentsSurviveRestore -count=1 -v` (fixture: 12 comment lines) | `--- PASS`. All comment lines survive backup, wipe, deploy, and restore. | none: the loss is audit-cited and not reproduced in this tree | GAP-INVESTIGATE. Regression-guard. |
 | AC-RC30-23 | U-24 | REQ-RC30-007 | `go test ./internal/cli/ -run TestLLMYamlRemarshalCallers -count=1 -v` (one case per `ConfigManager.Save` caller) | `--- PASS` for each caller. Each caller that drops a key is named. | E-14 (Save path has no `deployment_mode` reference) | GAP-INVESTIGATE. Regression-guard. |
 | AC-RC30-24 | U-25 | REQ-RC30-003 | Investigation: `ls -la .moai/logs/config-change-audit.log` is the audit's path. The log is absent from this tree (E-18). The log is located in the operator profile first, and the result is recorded in research.md with its command and output. | The untraced removal is attributed to a command with evidence, or recorded as unresolved with the missing evidence named. | E-18 (no such file in this tree) | GAP-INVESTIGATE. Regression-guard. |
-| AC-RC30-25 | U-26, U-27, U-28, U-29, U-30 | REQ-RC30-014, REQ-RC30-016, REQ-RC30-017, REQ-RC30-018, REQ-RC30-019, REQ-RC30-020 | `make tui-snapshot-verify` (target exists, E-09) and `go test ./internal/cli/ -run 'TestUpdateOutputGolden\|TestUpdatePlainFallback' -count=1 -v` (TTY golden shows N of M, bar, one ✓/!/✗ line per step, one-screen summary, one conflict count above the summary; plain fallback carries the same counts; locale part: `go test ./internal/cli/ -run TestUpdateLocaleKeyParity -count=1 -v`, which requires the four locale tables ko, en, ja, and zh to define the same keys and the summary to show the same counts in each locale) | `--- PASS` for each. The golden is changed only through `make tui-snapshot`, on a reviewed diff. | E-10 (the step line renderer at 134-139); E-21 (no `conversation_language` reference in the renderer files) | Release gate from its TDD RED milestone (M4). Regression-guard until then. |
+| AC-RC30-25 [RETIRED] | U-26, U-27, U-28, U-29, U-30 | REQ-RC30-014, REQ-RC30-016, REQ-RC30-017, REQ-RC30-018, REQ-RC30-019, REQ-RC30-020 | `make tui-snapshot-verify` (target exists, E-09) and `go test ./internal/cli/ -run 'TestUpdateOutputGolden\|TestUpdatePlainFallback' -count=1 -v` (TTY golden shows N of M, bar, one ✓/!/✗ line per step, one-screen summary, one conflict count above the summary; plain fallback carries the same counts; locale part: `go test ./internal/cli/ -run TestUpdateLocaleKeyParity -count=1 -v`, which requires the four locale tables ko, en, ja, and zh to define the same keys and the summary to show the same counts in each locale) | `--- PASS` for each. The golden is changed only through `make tui-snapshot`, on a reviewed diff. | E-10 (the step line renderer at 134-139); E-21 (no `conversation_language` reference in the renderer files) | Release gate from its TDD RED milestone (M4). Regression-guard until then. |
 AC-RC30-26 [RETIRED] moved to SPEC B; the repair stays with card t1578 (leader correction).
 
 ## Mutant probes (verification-completeness § 2)
 
 - AC-RC30-09 (literal): a relocated literal in another file passes a single-file grep. The judge is the repo-wide grep above, and both lines 282 and 367 must go.
 - AC-RC30-18 (one banner): a mutant that removes the identity band and keeps `update.go:200` passes "exactly one line". The judge must also assert the band is present (REQ-TUXIU-015).
-- AC-RC30-25 (golden): a mutant that regenerates the golden from the current output passes. Golden updates must be made only through `make tui-snapshot` on a reviewed diff.
+- AC-RC30-25 [RETIRED] (golden): a mutant that regenerates the golden from the current output passes. Golden updates must be made only through `make tui-snapshot` on a reviewed diff.
 
 ## Definition of Done (for the run phase)
 
