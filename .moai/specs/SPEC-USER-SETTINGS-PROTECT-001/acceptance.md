@@ -79,13 +79,13 @@ Test-environment rule: the session does not redirect the shell HOME (the worktre
   - Executed: 1.
 - Green path: after M2 the writer skips the rewrite when the resolved values already match, so the bytes are unchanged.
 
-## AC-003 — The lists survive under either defaultMode state, and an existing defaultMode is kept on the default and automatic paths (REQ-003; Q1 DECIDED)
+## AC-003 — The lists survive under either defaultMode state, and an existing defaultMode is kept on the default and automatic paths (decision Q1, DECIDED; the restated clause is in the spec.md §2 note on REQ-003)
 
 Part A (release-blocking): the lists and unmodelled keys survive whether the existing defaultMode differs from or matches the resolved tier default.
 - Verifying command (part A): `go -C /Users/goos/MoAI/moai-adk-go/.moai/worktrees/t1630 test -overlay /Users/goos/MoAI/moai-adk-go/.moai/worktrees/t1630/.moai/reports/t1630/evidence/overlay-ac001-003.json -count=1 -v -run '^TestAC003ListsPreservedUnderEitherDisposition$' ./internal/config/toolpolicy/`.
 - Minimum executed: N=3 (the parent test and its two subtests `differing` and `matching`).
 - RED cell (observed on 3975fe3cc; re-observed in revision 2 at HEAD 5dc6c4530, where `git diff --stat 3975fe3cc HEAD -- internal cmd` prints nothing):
-  - (a) command: the verifying command for part A, run from the worktree root. The re-observation adds `2>/dev/null` so that the stdout stream can be shown on its own; the stdout below carries every line.
+  - (a) command: the verifying command for part A, verbatim and with no redirect: `go -C /Users/goos/MoAI/moai-adk-go/.moai/worktrees/t1630 test -overlay /Users/goos/MoAI/moai-adk-go/.moai/worktrees/t1630/.moai/reports/t1630/evidence/overlay-ac001-003.json -count=1 -v -run '^TestAC003ListsPreservedUnderEitherDisposition$' ./internal/config/toolpolicy/`.
   - (b) stdout (verbatim; re-observed at HEAD 5dc6c4530):
     ```
     === RUN   TestAC003ListsPreservedUnderEitherDisposition
@@ -154,11 +154,11 @@ Part B (release-blocking; decided Q1): an existing USER-scope `permissions.defau
   - Executed: 3.
 - Green path: after M2 the writer writes `defaultMode` only when it is absent; both subtests pass.
 
-## AC-004 — The settings template carries one permissions.defaultMode key with the value "default" (REQ-004; Q2 DECIDED)
+## AC-004 — The settings template carries one permissions.defaultMode key with the value "default" (decision Q2, DECIDED; the restated clause is in the spec.md §2 note on REQ-004)
 
 - Given: the settings template `internal/template/templates/.claude/settings.json.tmpl`.
 - When: the template's `permissions.defaultMode` key is matched with the value `"default"`.
-- Then: the template carries exactly one `"defaultMode"` key, and its value is `"default"` (decided Q2; the value is pinned by the lane in progress.md §G, G-17). The rules that a fresh init writes the key only where it is absent and that update never modifies it are stated in spec.md REQ-004; the run-phase assertions that verify them are named in progress.md when they are authored.
+- Then: the template carries exactly one `"defaultMode"` key, and its value is `"default"` (decided Q2; the value is pinned by the lane in progress.md §G, G-17). The rules that a fresh init writes the key only where it is absent and that update never modifies it are not asserted by this criterion; they are stated in the spec.md §2 note on REQ-004, and their normative content is carried by follow-up card t1666.
 - Verifying command: `grep -c '"defaultMode": *"default"' /Users/goos/MoAI/moai-adk-go/.moai/worktrees/t1630/internal/template/templates/.claude/settings.json.tmpl`; the count must print 1.
 - Class: release-blocking (decided Q2). Minimum executed: N=1 (the count).
 - RED cell (observed on 3975fe3cc, this session, value pattern):
@@ -222,7 +222,7 @@ Part B (release-blocking; decided Q1): an existing USER-scope `permissions.defau
 
 ## AC-006 — Every package that reaches a home resolver sandboxes MOAI_HOME in its TestMain; the verifier observes it at run time (REQ-006)
 
-**Out of Scope - moved to t1666.** Reason: the sandbox criterion for REQ-006 moves with the test-isolation items; audit defects B5 and B10 sit in its cells. The text below is retained unchanged.
+**Out of Scope - moved to t1666.** Reason: the sandbox criterion for REQ-006 moves with the test-isolation items; audit defects B5 (the AC-006 cell 1 order) and B10 (the AC-006 run-time verdict) sit in its cells. The text below is retained unchanged.
 
 Each cell below is one command with its own stdout and exit code. The text checks are plan-phase observations only. The run-time check is the verdict.
 
@@ -239,7 +239,7 @@ Each cell below is one command with its own stdout and exit code. The text check
 
 ## AC-007 — No test run writes under the operator's real home; the ~/.moai/run entry count does not increase (REQ-007; card judgement 2)
 
-**Out of Scope - moved to t1666.** Reason: the throwaway-HOME leak verifier and the ~/.moai/run growth-0 criterion (REQ-007); audit defect B3. The text below is retained unchanged.
+**Out of Scope - moved to t1666.** Reason: the throwaway-HOME leak verifier and the ~/.moai/run growth-0 criterion (REQ-007); audit defect B3 (AC-007). The text below is retained unchanged.
 
 - Given: a before-manifest over the four home roots (`.moai`, `.claude`, `.codex`, `.agents`), taken on the operator's home by the operator (or on a throwaway account), before one scoped run.
 - When: the scoped run of the reaching packages (REQ-007 set) runs under a throwaway HOME. The full-suite verdict is not part of this criterion; it is delegated to the CI workflow on the pushed branch.
@@ -293,7 +293,7 @@ Each cell below is one command with its own stdout and exit code. The text check
 
 ## AC-009 — The review-gate live Codex test sets CODEX_HOME to a temporary root (REQ-009; card item b)
 
-**Out of Scope - moved to t1666.** Reason: the Codex CODEX_HOME run cell and its check script (REQ-009); audit defect B2. The text below is retained unchanged.
+**Out of Scope - moved to t1666.** Reason: the Codex CODEX_HOME run cell and its check script (REQ-009); audit defect B2 (the AC-009 run path). The text below is retained unchanged.
 
 - Given: the live review-gate test runs with a codex binary first on PATH and MOAI_SKIP_LIVE_CODEX unset. The binary is the evidence fake (`.moai/reports/t1630/evidence/fakebin/codex`): it answers `--version`, writes a names-only record to `.moai/reports/t1630/evidence/codex-env-ac009.names.txt` for any other call (the variable names and a presence check; no values), and never reaches a model.
 - When: `TestHandleCodexReviewGate_LiveCodexBlocksInjectionAndKey` runs (`internal/cli/codex_review_gate_live_test.go:35`).
@@ -406,7 +406,7 @@ ok  	github.com/modu-ai/moai-adk/internal/config/toolpolicy	0.074s
 ## Definition of Done
 
 - The release-blocking criteria in scope (AC-001, AC-002, AC-003 parts A and B, AC-004 with count 1, and AC-005) are green on the post-fix tree, with verbatim output recorded. The criteria moved to t1666 (AC-006 to AC-012) are not part of this Definition of Done.
-- Done criterion kept from card 3.2-0-1: the permissions-section diff across `moai init` is 0 when the existing defaultMode already matches the resolved tier default (AC-002).
+- Done criterion kept from card 3.2-0-1: the permissions-section diff across `moai init` is 0 when the existing defaultMode already matches the resolved tier default (AC-002). This is not measured in this SPEC: AC-002 measures the USER-scope writer only (plan.md R-1); the init-level observation is a Gap carried to the run phase.
 - Out of Scope - moved to t1666: the regression guards AC-012 and AC-011 clause (iii).
 - The gate (AC-013) is green before run starts and again before sync.
 - The RED cells are re-observed on the post-landing run base at P-3 and M2, and both observations are recorded in progress.md.

@@ -19,11 +19,11 @@ tier: M
 ## HISTORY
 
 - 2026-10-10: v0.1.0 created by manager-spec. Card t1630 (backlog 3.2-0-1 "사용자 설정 보호", priority P0, change class C, design change), plan phase only. Dispatched by factory lane-18 (run tmnboq). Absorbed card in scope: t1567. Absorbed card t1594 is blocked on its card text and has no requirement (spec.md §1, §6). Measured evidence and gaps: plan.md §A. Operator decisions the artifacts depend on: decision-index.md rows Q1-Q7.
-- 2026-10-10: revision 2 of 0.1.0 (repair round after plan-audit iteration 2, FAIL 0.69; the version field is unchanged). Split under the operator-delegated ruling d-20261010T091713Z-10fe (decision board, card t1630): decisions Q1, Q2, and Q5 and their requirements and criteria stay in this SPEC, with the text and evidence defects of audit iteration 2 (B1, B4, B6 wording, B8, B9, B11, and B12). Out of Scope - moved to t1666 (origin split, parent t1630): the test-isolation items (REQ-006 to REQ-010 and AC-006 to AC-010), the clean --home run and db items (REQ-011, REQ-012, AC-011, AC-012, and decision Q3), decision Q7, the ~/.moai/run growth-0 criterion, and the post-t1619 B6 baseline, together with audit defects B2, B3, B5, B7, and B10. The ceiling count restarts at this revision.
+- 2026-10-10: revision 2 of 0.1.0 (repair round after plan-audit iteration 2, FAIL 0.69; the version field is unchanged). Split under the operator-delegated ruling d-20261010T091713Z-10fe (decision board, card t1630): decisions Q1, Q2, and Q5 and their requirements and criteria stay in this SPEC, with the text and evidence defects of audit iteration 2 (B1, B4, B6 wording, B8, B9, B11, and B12). Out of Scope - moved to t1666 (origin split, parent t1630): the test-isolation items (REQ-006 to REQ-010 and AC-006 to AC-010), the clean --home run and db items (REQ-011, REQ-012, AC-011, AC-012, and decision Q3), decision Q7, the ~/.moai/run growth-0 criterion, and the post-t1619 B6 baseline, together with audit defects B2 (the AC-009 run path), B3 (AC-007), B5 (the AC-006 cell 1 order), B7 (the REQ-011 and REQ-012 deletion clauses), and B10 (the AC-006 run-time verdict). The ceiling count restarts at this revision.
 
 ## 0. Tier basis (provisional)
 
-Tier M was kept by the orchestrator's decision (lane-18, ladder ⑤) and confirmed by ruling d-20261010T081810Z-49e5 (board, kind=ruling) at the pre-split scope of 16 files, with the Q2 template file counted. Revision 2 (ruling d-20261010T091713Z-10fe) moves the test-isolation and clean --home items to t1666; the in-scope set is four files (plan.md §A.4 Basis: items 1 to 3 and the template file), below the Tier M file band, which is a guide and not a gate. The tier is not re-decided in this revision and is recorded as an open item in progress.md §G. The file band of 5 to 15 files is a guide, not a gate. The ceilings (16 requirements and 16 criteria, counted independently) restart at this revision. The in-scope counts are in progress.md §E.1, and moved items are not counted as in scope. The Tier judgment is normally a Socratic question in spec-assembly; this SPEC runs without a user channel, so the lane records the judgment in progress.md §G.
+Tier M was kept by the orchestrator's decision (lane-18, ladder ⑤) and confirmed by ruling d-20261010T081810Z-49e5 (board, kind=ruling) at the pre-split scope of 16 files, with the Q2 template file counted. Revision 2 (ruling d-20261010T091713Z-10fe) moves the test-isolation and clean --home items to t1666; the in-scope set is four files (plan.md §A.4 Basis: items 1 to 3 and the template file), below the Tier M file band, which is a guide and not a gate. The tier is kept as M, as recorded by the leader's decision on board record d-20261010T094229Z-74f2; it is not re-decided in this revision. The file band of 5 to 15 files is a guide, not a gate. The ceilings (16 requirements and 16 criteria, counted independently) restart at this revision. The in-scope counts are in progress.md §E.1, and moved items are not counted as in scope. The Tier judgment is normally a Socratic question in spec-assembly; this SPEC runs without a user channel, so the lane records the judgment in progress.md §G.
 
 Q5 adds no file: the PROJECT-scope change lives in `internal/config/toolpolicy/tier_render.go`, which is already counted as item 1.
 
@@ -47,10 +47,11 @@ The measured state at tree 2aab5f797 (commands and verbatim output in plan.md §
 
 - REQ-001: The `moai init` USER-scope settings writer shall preserve every existing `permissions.allow`, `permissions.ask`, and `permissions.deny` entry and every other key of the existing `permissions` object, changing only `permissions.defaultMode`. This restores the condition pinned by SPEC-INIT-WIZARD-REPAIR-001 §4 (decision-index.md Q8, DECIDED).
 - REQ-002: When `moai init` writes the USER-scope settings file and the resolved defaultMode already matches the value in the file, the writer shall not rewrite the `permissions` region, so that its bytes are identical before and after the init run.
-- REQ-003: The `moai init` default path and automatic path shall keep an existing USER-scope `permissions.defaultMode` value and write that key only when it is absent (decision Q1, DECIDED).
+
+Non-normative note (REQ-003 and REQ-004 are moved out of the normative requirement list in this revision; their numbers are kept so that references stay stable). REQ-003 (decision Q1, DECIDED): "The `moai init` default path and automatic path shall keep an existing USER-scope `permissions.defaultMode` value and write that key only when it is absent." REQ-004 (decision Q2, DECIDED; the value is pinned in progress.md §G): "The settings template `.claude/settings.json.tmpl` shall carry a `permissions.defaultMode` value of `"default"`; a fresh `moai init` shall write that key only where it is absent, and `moai update` shall not modify it." The normative content of both clauses is carried by follow-up card t1666, together with its acceptance criteria. This SPEC adds no criterion for either clause; AC-003 part B and AC-004 stay here and verify decisions Q1 and Q2 (decision-index.md).
 
 Supersession note (non-normative; decision Q1): this SPEC supersedes SPEC-AUT-PERMMODES-001 spec.md:83 ("NOTHING else") for the defaultMode write path only. That line states that the unset and semi-auto selections write only the USER-scope defaultMode key and nothing else. Under decision Q1, an existing USER-scope defaultMode value is kept, and the key is written only when it is absent. No other clause of SPEC-AUT-PERMMODES-001 is changed by this SPEC.
-- REQ-004: The settings template `.claude/settings.json.tmpl` shall carry a `permissions.defaultMode` value of `"default"`; a fresh `moai init` shall write that key only where it is absent, and `moai update` shall not modify it (decision Q2, DECIDED; the value is pinned in progress.md §G).
+
 - REQ-005: Where a tool-policy document is present and the policy bundle is applied, the PROJECT-scope writer shall keep every user-added `permissions.allow` entry by set union with the regenerated managed block (decision Q5, DECIDED).
 
 Rationale (non-normative; decision Q5, detection pinned in progress.md §G, G-20): the writer keeps the last generated managed allow list in `.moai/state/tool-policy/managed-allow.json` as `last_generated`. A user-added entry is an existing allow entry absent from `last_generated`. With no such record, every existing entry is kept, so nothing is removed. Only the user removes a user-added entry.
@@ -83,9 +84,9 @@ Note (non-normative; audit defect B6): the RED observations in acceptance.md are
 
 ## 3. Acceptance Criteria (summary)
 
-The authoritative matrix lives in acceptance.md (AC-001 to AC-013, 13 criteria, each naming its verifying command; six are in scope, and AC-006 to AC-012 are Out of Scope - moved to t1666). Coverage map: REQ-001 → AC-001; REQ-002 → AC-002; REQ-003 → AC-003; REQ-004 → AC-004; REQ-005 → AC-005; REQ-006 → AC-006; REQ-007 → AC-007; REQ-008 → AC-008; REQ-009 → AC-009; REQ-010 → AC-010; REQ-011 → AC-011; REQ-012 → AC-012; REQ-013 → AC-013.
+The authoritative matrix lives in acceptance.md (AC-001 to AC-013, 13 criteria, each naming its verifying command; six are in scope, and AC-006 to AC-012 are Out of Scope - moved to t1666). Coverage map: REQ-001 → AC-001; REQ-002 → AC-002; REQ-005 → AC-005; REQ-006 → AC-006; REQ-007 → AC-007; REQ-008 → AC-008; REQ-009 → AC-009; REQ-010 → AC-010; REQ-011 → AC-011; REQ-012 → AC-012; REQ-013 → AC-013. REQ-003 and REQ-004 are not in the map: they sit in the §2 note, and AC-003 and AC-004 verify decisions Q1 and Q2.
 
-The completion judgements from the card are carried as criteria. The permissions-section diff across `moai init` is 0 when the existing defaultMode already matches the resolved tier default (AC-002). The differing case is decided by Q1 (the existing value is kept) and covered by AC-003 part B; the lists survive in both cases (AC-003 part A). Out of Scope - moved to t1666: the entry count under `~/.moai/run` increases by 0 after one test run (AC-007).
+The completion judgements from the card are carried as criteria. The permissions-section diff across `moai init` is 0 when the existing defaultMode already matches the resolved tier default (AC-002). This is not measured in this SPEC: AC-002 measures the USER-scope writer only (plan.md R-1), so the init-level diff is a Gap carried to the run phase. The differing case is decided by Q1 (the existing value is kept) and covered by AC-003 part B; the lists survive in both cases (AC-003 part A). Out of Scope - moved to t1666: the entry count under `~/.moai/run` increases by 0 after one test run (AC-007).
 
 ## 4. Constraints
 
@@ -105,7 +106,7 @@ decision-index.md carries the rows. Q1 (existing defaultMode kept), Q2 (template
 ### Out of Scope — install design reconstruction
 
 - The phrase "설치 설계 §9" does not appear in any committed document of this tree (plan.md G-4). This SPEC does not reconstruct or cite its contents.
-- The t1594 residue inventory is blocked on its card text (M8; plan.md G-2, §B B4). It has no requirement in this revision. This is a blocked disposition, not an out-of-scope one.
+- The t1594 residue inventory is blocked on its card text (M8; plan.md G-2, §B K4). It has no requirement in this revision. This is a blocked disposition, not an out-of-scope one.
 
 ### Out of Scope — writer attribution and drift detection
 
@@ -124,12 +125,12 @@ decision-index.md carries the rows. Q1 (existing defaultMode kept), Q2 (template
 
 ### Out of Scope — moved to t1666 (origin split, ruling d-20261010T091713Z-10fe)
 
-- Test isolation: REQ-006 to REQ-010 and AC-006 to AC-010 (the MOAI_HOME and HOME sandboxes, the live Codex CODEX_HOME run cell, and the sandbox guard). The requirement text stays in §2, marked.
+- Test isolation: REQ-006 to REQ-010 and AC-006 to AC-010 (the MOAI_HOME and HOME sandboxes, the live Codex CODEX_HOME run cell, and the sandbox guard), and the edge cases EC-5 and EC-6 in acceptance.md (EC-5 is bound to AC-007; EC-6 to the REQ-007 exclusion rule and the AC-006 package set). The requirement text stays in §2, marked.
 - clean --home run and db candidates: REQ-011, REQ-012, AC-011, AC-012, and decision Q3.
 - The ~/.moai/run entry-count criterion and the operator-home before-and-after manifest (AC-007).
 - Decision Q7 (sandbox mechanism), which has no subject once the test-isolation items move.
 - The post-t1619 B6 baseline (a measurement pinned after commit 569a3fe5f).
-- Audit iteration-2 defects B2, B3, B5, B7, and B10.
+- Audit iteration-2 defects B2 (the AC-009 run path), B3 (AC-007), B5 (the AC-006 cell 1 order), B7 (the REQ-011 and REQ-012 deletion clauses), and B10 (the AC-006 run-time verdict). The in-scope "B5 wording" is not audit defect B5: it refers to the plan.md §B item K5 (S-6, t1567), whose blocker wording was corrected in this revision.
 
 ## 7. Covering-SPEC cross-check
 
@@ -138,7 +139,7 @@ Each entry states what the SPEC covers, what it does not cover, and the delta th
 1. SPEC-USER-ASSET-INSTALL-001 (status completed, tier L).
    - Covers: per-user folder install of common skills and agents; the project payload reduced to default settings, AGENTS.md, the lock file, and the project-only harness (REQ-005); the init first-install trigger (REQ-024). Live: `internal/cli/init.go` calls `ensureUserAssetsLocked` after the executor (E-5).
    - Does not cover: the permissions content of any settings file, including the USER-scope file the autonomy bundle writes. No REQ names `permissions`.
-   - Delta: REQ-001 to REQ-005 of this SPEC govern the permissions content. The per-profile rule (REQ-002 of USER-ASSET) is not changed.
+   - Delta: REQ-001, REQ-002, and REQ-005 of this SPEC, and the §2 note on REQ-003 and REQ-004, govern the permissions content. The per-profile rule (REQ-002 of USER-ASSET) is not changed.
 2. SPEC-SETTINGS-ORIGIN-001 (status completed, tier S, read-only investigation).
    - Covers: the attribution question for dirty tracked project `.claude/settings.json` copies in worktrees t452 and t334. §5 excludes production code changes.
    - Does not cover: any writer fix, and the USER-scope file.
