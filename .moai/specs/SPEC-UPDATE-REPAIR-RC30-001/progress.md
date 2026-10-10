@@ -892,6 +892,73 @@ Scope: the whole-project gate (standalone `moai gate`) and `go test ./...` were 
 
 **Files changed.** `internal/manifest/types.go` (stub) and `internal/cli/migrate_profile_reach_test.go` (restored and trimmed), in the RED commit `ca631aab7`. `internal/manifest/manifest.go` and `internal/cli/migrate_project_assets.go`, in the GREEN commit `22dc423ff`. `.moai/specs/SPEC-UPDATE-REPAIR-RC30-001/progress.md`, in this record's commit.
 
+### M2 bundle F — D.1 status table, D.3 init path check, AC-RC30-28 doctor run (manager-develop, card t1619)
+
+Bundle F of M2 (plan § B.3 steps 1, 2 and 7). Tree before the bundle: HEAD `3e7a64808` on `WT-moai-update-repair` (M2 bundle E complete), clean. Pre-flight, each its own command: `git branch --show-current` gave `WT-moai-update-repair`; `git rev-parse --short HEAD` gave `3e7a64808`; `git status --short` gave no output.
+
+**Refused runs (verification-claim-integrity § 3.1).** The worktree-isolation guard refused every command that set `HOME` inline, which is the scratch-home form this bundle requires. Three commands were refused, all `--help` probes: `env -u CLAUDE_CONFIG_DIR -u MOAI_PROJECT_DIR HOME=<scratch> ./bin/moai init --help`, the same form with `update --help`, and the same form with `doctor --help`. The refusal text, verbatim: "This session is isolated in the worktree /Users/goos/MoAI/moai-adk-go/.moai/worktrees/t1619, but this command sets HOME, injecting git configuration whose effect on where git writes can't be verified. Refusing to run it — a worktree-isolated session's git operations must target its own worktree. Run the equivalent from /Users/goos/MoAI/moai-adk-go/.moai/worktrees/t1619 without the redirect." The guard's advice is to run without the redirect, which would write into the real home, so no other route was tried. Each refusal is recorded in the primary checkout's `.moai/lessons-inbox.jsonl` as `tool_failure:Bash:WorktreeGuardRefusal` (first row `2026-10-10T12:39:09Z`; three rows carry this worktree's path in the 12:xx window). Blocked: D.3 (step 2 from the init run onward) and AC-RC30-28 (step 7 from the update run onward). The scratch home `/private/tmp/claude-501/-Users-goos-MoAI-moai-adk-go/40f97120-d133-4bd7-a79c-a6466b3a087c/scratchpad/m2f-home.xWSvod` was created with `mktemp -d` and never written to.
+
+**Step 2.1 — build.** `make build` reported no error; the last line is the `go build -ldflags … -o bin/moai ./cmd/moai` command, and the binary reports the build ID below. Its prerequisites ran four drift-check test packages, all passing, verbatim:
+
+```text
+ok  	github.com/modu-ai/moai-adk/internal/template/agentemit	0.317s
+ok  	github.com/modu-ai/moai-adk/internal/template/commandemit	0.243s
+ok  	github.com/modu-ai/moai-adk/internal/config/toolpolicy	0.246s
+ok  	github.com/modu-ai/moai-adk/internal/template/embedemit	0.644s
+```
+
+The prerequisites also ran `templ generate` and `gen-catalog-hashes --all`, which rewrote `catalog.yaml` with the same content: `git status --short` after the build gave no output. `./bin/moai version`, verbatim:
+
+```text
+╭────────────────────────────────────╮
+│                                    │
+│  moai-adk moai_cp/20261007_195927  │
+│                                    │
+│                                    │
+╰────────────────────────────────────╯
+ moai_cp/20261007_195927   moai_cp/20261007_195927-298-g3e7a64808   built 2026-10-10T12:38:49Z
+```
+
+Judging build (§ 2.2): the build ID `moai_cp/20261007_195927-298-g3e7a64808` names commit `3e7a64808`, the tree's HEAD.
+
+**Steps 2.2 and 2.3 — D.3 init path check: Gap (blocked; source reading only).** Not run (see Refused runs). Source reading, not a measurement: `internal/cli/init.go:944` calls `resumeInitializedProject` (`internal/cli/init_resume.go:60`), which builds the installer at `init_resume.go:118` through `newUserAssetInstaller` (`internal/cli/user_asset_phase.go:57`). The installer's roots are the four `ResolveRoots` entries (`internal/userassets/paths.go:36-43`); the manifest and backup home sit under `~/.moai` (`paths.go:71`, `paths.go:97`). What init wrote under a scratch home is unobserved.
+
+**Step 1 — D.1 status table (read-only on the real home).** Commands: plain `ls -la` and `ls -1A` on the operator home (`~`), `ls -1 … | grep -c '^moai'`, `diff -rq` per skill name, and `test -d`. This shell's `ls` also prints `.` and `..`, so the counts below exclude them. No moai command ran against the real home, and nothing was written.
+
+- **`~/.claude/skills`** (`ls -la ~/.claude/skills`). 36 entries: 19 `moai*` directories (`moai`, `moai-factory-foreman`, `moai-foundation-core`, `moai-foundation-quality`, `moai-foundation-thinking`, `moai-lane-watchdog`, `moai-plan`, `moai-ref-cross-model-audit`, `moai-ref-owasp-checklist`, `moai-ref-secops`, `moai-ref-testing-pyramid`, `moai-run`, `moai-sync`, `moai-workflow-ddd`, `moai-workflow-project`, `moai-workflow-spec`, `moai-workflow-tdd`, `moai-workflow-testing`, `moai-workflow-worktree`) and 17 other entries, not classified here. The count of 19 matches audit § 2. Against this tree's claude-side template (`internal/template/templates/.claude/skills/<name>`, `diff -rq` per name): 13 identical; 3 differ (`moai/workflows/gtd.md`, `moai-factory-foreman/SKILL.md`, `moai-lane-watchdog/SKILL.md`); 3 have no claude-side template (`moai-plan`, `moai-run`, `moai-sync`) and are identical to `internal/template/templates/.agents/skills/<name>`. So audit § 2's "byte-identical to the template" holds for 13 of 19 against this tree. The claude-side template holds 38 `moai*` directories, of which 19 are installed here.
+  - Gap left: profile-session reads (audit § 3) are unobserved; which command wrote these copies is not attributed; the rule that selects the 19 from the 38 (catalog L0 / user-install view) is not re-derived; the content of the 3 differing files is not characterized.
+- **`~/.claude/agents`** (`ls -1A ~/.claude/agents`). 6 files: `manager-develop.md`, `manager-docs.md`, `manager-lead.md`, `manager-spec.md`, `plan-auditor.md`, `sync-auditor.md`. Mtimes: 2026-10-08 03:26 for four of them, 2026-10-10 10:29 for `plan-auditor.md`, and 2026-10-10 11:06 for `manager-lead.md`. The five names other than `manager-lead` are `l0CoreAgents` in `internal/template/catalog_user_install_view_test.go`; `manager-lead` is the sixth.
+  - Gap left: the audit § A removal on 2026-10-09 (no backup) is not established by a listing; the restoration path (U-25) stays open.
+- **`~/.agents/skills`** (`ls -la ~/.agents/skills`). 36 entries: the same 19 `moai*` names as above, plus 17 others. Against the claude-side template: 6 identical (`moai-ref-cross-model-audit`, `moai-ref-owasp-checklist`, `moai-ref-secops`, `moai-ref-testing-pyramid`, `moai-workflow-ddd`, `moai-workflow-tdd`); 10 differ; 3 (`moai-plan`, `moai-run`, `moai-sync`) have no claude-side template and are identical to the Codex-side template. The one sampled difference, `moai-foundation-core/SKILL.md`, is a path rewrite (`~/.claude/skills/…` to `~/.agents/skills/…`, `.claude/rules/…` to `.moai/policies/…`). This root is therefore a rendered Codex variant rather than a copy, and audit § 2's byte-identity claim does not apply to it.
+  - Gap left: whether `moai init` or `moai update` populated this root is not attributed (blocked run); the rendering rule is confirmed on one file only.
+- **`~/.codex/agents`** (`ls -1A ~/.codex/agents`). 6 files: `manager-develop.toml`, `manager-docs.toml`, `manager-lead.toml`, `manager-spec.toml`, `plan-auditor.toml`, `sync-auditor.toml`. All six mtimes are 2026-10-10 11:06.
+  - Gap left: the writing command is not attributed; the content is not compared with the `.codex` TOMLs of this tree.
+- **`~/.moai`** (`ls -la ~/.moai`: 33 entries). `ls -d ~/.moai/skills ~/.moai/agents` gave `ls: /Users/goos/.moai/agents: No such file or directory` and `ls: /Users/goos/.moai/skills: No such file or directory`, exit status 1. So the row's "no skills or agents directories" holds. Entries the user-asset package owns: `user-assets.json` (104,340 bytes, 2026-10-10 11:48; the manifest, `paths.go:71`), `backups/` (the REQ-023 backup home, `paths.go:97`), and `user-assets.acquire-guard.guard` (0 bytes, 2026-10-08 03:26). `user-assets-journal.json` is absent, so no install journal is pending. The other 30 entries, including `claude-profiles/` (the profile base, `internal/profile/profile.go:55-65`), are not classified here.
+  - Gap left: "manifest and backups only" describes the user-asset footprint, not the whole directory; the leader's measurement on main is not compared.
+
+**Step 7 — AC-RC30-28 reach: Gap (G-28 unchanged; blocked).** Not run. The `moai update` and `moai doctor` runs under `HOME=<scratch>` and `CLAUDE_CONFIG_DIR=<scratch>/.moai/claude-profiles/work` were refused, so there is no update output, no doctor output, and no exit code. No scratch project, profile directory, or ledger was created, because the run that reads them could not start. Source reading only (not a run):
+
+- Ledger format, for the run that follows: `launch.yaml` under `GetBaseDir()` (`internal/profile/profile.go:55-65`, `~/.moai/claude-profiles`). The mapping sits under `projects:`, keyed by the cleaned, symlink-resolved project root (`normalizeProjectKey`, `profile.go:277-286`), with the profile name as value. It counts only when `<base>/<name>` is an existing directory and the name is traversal-safe (`launchCandidateIsUsable`, `profile.go:435-441`). `last_profile` is write-only on this binary (`profile.go:25-35`). The scratch path under `/private/tmp` is already canonical, so no resolution is needed.
+- Doctor: the user-install row is `checkUserInstallIntegrity` (`internal/cli/doctor_user_install.go:25`, name "User Install"). It reads `ManifestPath(homeDir)` and compares the manifest with the four `ResolveRoots(homeDir)` roots. That file has no reference to `profile`, `CLAUDE_CONFIG_DIR`, the launch ledger, or the keep marker (`KeptBy`); its only two matches for "reach" are unrelated comments (lines 135 and 159). `internal/cli/doctor.go` has no reference to `profile` or `CLAUDE_CONFIG_DIR`. The keep marker is written in `internal/cli/migrate_project_assets.go` and defined in `internal/manifest`, and no doctor file references it. `internal/cli/doctor_disk.go` reports per-profile sizes (`doctor_disk.go:4-5`, `:146`), not reach.
+- Reading: as read from source, no doctor check computes the reach judgment that AC-RC30-28 names. This is a finding about the code, not the runtime line. G-28 stays open until a profile-session doctor output is recorded.
+
+**Build gate.** `GOOS=windows GOARCH=amd64 go build ./...`: no output.
+
+**Gaps (not observed in this bundle).**
+- D.3: the init run to a scratch home, and the four roots plus `.moai` listings under it. Refused (see above); the source reading is not a measurement.
+- AC-RC30-28: the update and doctor output with exit codes, and the reach line or its absence. Refused; G-28 stays open.
+- The scratch project, profile directory, and ledger were not created, because their only reader was the blocked run.
+- D.1, per row: profile-session reads of `~/.claude/skills`; install attribution for every root; the rule behind the 19-of-38 selection; the content of the 3 differing claude-side files; the Codex rendering rule beyond one sampled file.
+- No test run beyond the four drift-check packages inside `make build`. No code changed, so no coverage or test claim is made.
+
+**Residual risk.**
+- This shell's environment sets `CLAUDE_CONFIG_DIR` to this session's real profile and `MOAI_PROJECT_DIR` to the worktree. Any scratch run must override or unset both, as in the `env -u` form above, or moai can act on the real profile or the worktree.
+- The source reading finds no reach judgment in doctor. If the operator's profile-session doctor output also has none, AC-RC30-28 cannot pass on this code, whatever the migration keep (bundle E) does. This is a product gap for the leader to decide; nothing was patched.
+- Audit § 2's byte-identity claim fails for 3 of 19 claude-side files against this tree's template, and for 10 of 19 in the Codex mirror. The audit may have used another template revision; that was not checked.
+- `make build` ran its drift-check tests and the catalog generator under the real HOME, because a HOME redirect was refused. Go toolchain caches are written under the real home by default. I did not observe moai state written there, and the real `~/.moai` directory's own mtime (2026-10-10 11:48) predates the build. Writes inside its subdirectories were not audited.
+
+**Files changed.** `.moai/specs/SPEC-UPDATE-REPAIR-RC30-001/progress.md` (this record). No other tracked file changed: `git status --short` was empty after the build and after the source reads. `bin/moai` is build output and is not tracked.
+
 ## §E.3 Run-phase Audit-Ready Signal
 
 _pending run-phase (manager-develop)_
