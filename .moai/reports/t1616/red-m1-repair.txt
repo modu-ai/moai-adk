@@ -89,3 +89,47 @@ FAIL
 exit: 1
 
 Re-run verdicts match the first run: 2 FAIL (decisive lines 313 and 331), 6 PASS-GUARD, no surface refusal.
+
+=== Command 2 (commit 2: four re-sync tests against the compile-only stubs in local_main_resync.go) ===
+go test ./internal/cli/ -run '^(TestLocalMainResyncFastForwards|TestLocalMainResyncRefusesDiverged|TestLocalMainResyncAheadIsNoop|TestLocalMainResyncPreservesIgnoredFile)$' -v -count=1
+--- verbatim output follows ---
+=== RUN   TestLocalMainResyncFastForwards
+    local_main_resync_test.go:81: local main behind origin/main must fast-forward: local-main resync: not implemented
+--- FAIL: TestLocalMainResyncFastForwards (1.14s)
+=== RUN   TestLocalMainResyncRefusesDiverged
+    local_main_resync_test.go:111: the diverged refusal must carry MergeExitNotDescendant (3), got code 0 (ok=false): local-main resync: not implemented
+--- FAIL: TestLocalMainResyncRefusesDiverged (1.40s)
+=== RUN   TestLocalMainResyncAheadIsNoop
+    local_main_resync_test.go:130: a local main that contains origin/main must be a no-op, not an error: local-main resync: not implemented
+--- FAIL: TestLocalMainResyncAheadIsNoop (1.06s)
+=== RUN   TestLocalMainResyncPreservesIgnoredFile
+    local_main_resync_test.go:160: the ignored-file refusal must carry MergeExitCollision (13), got code 0 (ok=false): local-main resync: not implemented
+--- FAIL: TestLocalMainResyncPreservesIgnoredFile (1.20s)
+FAIL
+FAIL	github.com/modu-ai/moai-adk/internal/cli	6.186s
+FAIL
+exit: 1
+
+=== Verdicts from command 2 (read from the verbatim output above) ===
+All four are RED. Each fails at its own criterion assertion, and the failure carries the stub's text "local-main resync: not implemented".
+
+TestLocalMainResyncFastForwards: RED at local_main_resync_test.go:81.
+  Decisive output line: "local main behind origin/main must fast-forward: local-main resync: not implemented".
+TestLocalMainResyncRefusesDiverged: RED at local_main_resync_test.go:111.
+  The stub's error carries no exit class, so the code assertion sees code 0 (ok=false) where MergeExitNotDescendant (3) is expected.
+  Decisive output line: "the diverged refusal must carry MergeExitNotDescendant (3), got code 0 (ok=false)".
+TestLocalMainResyncAheadIsNoop: RED at local_main_resync_test.go:130.
+  Decisive output line: "a local main that contains origin/main must be a no-op, not an error: local-main resync: not implemented".
+TestLocalMainResyncPreservesIgnoredFile: RED at local_main_resync_test.go:160.
+  Decisive output line: "the ignored-file refusal must carry MergeExitCollision (13), got code 0 (ok=false)".
+
+SURFACE-REFUSAL-NOT-VALID: none. BLOCKED: none. Compile errors: none (go test -run '^$' compiled the package before command 2).
+
+=== Scoped checks for commit 2 (not RED runs) ===
+gofmt -l internal/cli/local_main_resync.go internal/cli/local_main_resync_test.go : no output (formatted)
+go test ./internal/cli/ -run '^$' -count=1                                          : ok, [no tests to run] (compile only)
+go vet ./internal/cli/                                                              : no output (static analysis, no tests executed)
+
+/verify (moai gate): NOT RUN. Its Test Check runs the test suite (gate.md Phase 2). Without --file scoping that is the full suite,
+and --file scoping applies only "if discoverable". This spawn excludes the full suite, so the gate was not invoked.
+golangci-lint: NOT RUN in this commit. Gap for the GREEN stage, where the stub file is replaced.
