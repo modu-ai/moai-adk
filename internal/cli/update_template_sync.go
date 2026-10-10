@@ -1082,16 +1082,7 @@ func runTemplateSyncWithReporter(cmd *cobra.Command, reporter project.ProgressRe
 	// (the error paths above return first), so the record is written only
 	// over a completed sync.
 	if migration != nil {
-		switch migration.outcome {
-		case migrateConfirmed:
-			if err := template.ApplyDeployMode(projectRoot, "plugin"); err != nil {
-				_, _ = fmt.Fprintf(errOut, "  %s deployment_mode write warning: %v\n", uikit.SymWarning(), err)
-			}
-		case migrateNotDemonstrated, migrateOptedOut:
-			if err := template.ApplyDeployMode(projectRoot, "local"); err != nil {
-				_, _ = fmt.Fprintf(errOut, "  %s deployment_mode write warning: %v\n", uikit.SymWarning(), err)
-			}
-		}
+		stampMigrationDeployMode(projectRoot, migration.outcome, errOut)
 	}
 
 	return nil
