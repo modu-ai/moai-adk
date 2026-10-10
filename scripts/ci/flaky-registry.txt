@@ -1,0 +1,16 @@
+# Known-flaky test registry for the CI race and test jobs (REQ-CCI-013, design D8).
+#
+# Read by scripts/ci/retry-flaky.sh. A test listed here that fails in a candidate or
+# integration run is re-run exactly once, and the retry is recorded. A failure of a
+# test not listed here is never retried.
+#
+# Format: one entry per line. The test name comes first, then the evidence that
+# earned the entry. The citation is required; an entry without one refuses the run.
+#
+#   <TestName>  <evidence citation: a verbatim CI log reference or a SPEC path>
+#
+# An entry is admitted only from a verbatim GitHub Actions log
+# (SPEC-CI-FLAKY-STABILIZE-001 §A). The registry records a flaky test; it does not
+# excuse its repair, which stays with the SPEC-CI-FLAKY-STABILIZE series.
+#
+# Entries: none. Add one only with a verbatim CI log citation.
