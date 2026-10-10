@@ -611,6 +611,41 @@ func TestMergeStepStartFailureSameShaMergeIsNotAborted(t *testing.T) {
 	requireWindowReleasedAndCPromoted(t, f)
 }
 
+func TestMergeStepStartFailureWithoutMergeHeadRefusesWithoutAbort(t *testing.T) {
+	// F1 start-failure, no MERGE_HEAD (sync audit, card t1616): our merge call fails to
+	// start, so git began no merge and no MERGE_HEAD exists. The step must refuse with
+	// MergeExitOther and must not run `git merge --abort` on the strength of a call that
+	// began nothing. The refusal releases the window.
+	f := newMergeFixture(t)
+	card := f.withCardTree(readyCardPtr())
+	seams := f.seams(card)
+	aborted := false
+	seams.Git = func(args ...string) (string, error) {
+		if len(args) >= 1 && args[0] == "merge" {
+			if containsArg(args, "--abort") {
+				aborted = true
+			} else {
+				// A process-start failure: the exec error, which carries no exit status.
+				return "", &exec.Error{Name: "git", Err: exec.ErrNotFound}
+			}
+		}
+		runner := exec.Command("git", args...)
+		runner.Dir = f.integ
+		out, err := runner.CombinedOutput()
+		return string(out), err
+	}
+	_, err := RunMergeStep(f.input(), seams)
+	if aborted {
+		t.Error("the step ran `git merge --abort` although its merge call never started")
+	}
+	requireCode(t, err, MergeExitOther)
+	if _, statErr := os.Stat(filepath.Join(f.integ, ".git", "MERGE_HEAD")); !os.IsNotExist(statErr) {
+		t.Fatalf("no MERGE_HEAD may exist after a merge call that never started: %v", statErr)
+	}
+	requireNoMerge(t, f)
+	requireWindowReleasedAndCPromoted(t, f)
+}
+
 func TestMergeStepHookStoppedOwnMergeIsAbortedCause6(t *testing.T) {
 	// Characterization (card t1616, F1 same-SHA): the step's own merge can begin and
 	// stop without a conflict. A pre-merge-commit hook that refuses the merge commit
