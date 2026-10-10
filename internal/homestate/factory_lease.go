@@ -65,6 +65,19 @@ func resolveFactoryLease(raw config.FactoryLeaseConfig) (factoryLeaseKeys, error
 	return factoryLeaseKeys{Duration: duration, RenewInterval: renew}, nil
 }
 
+// EffectiveFactoryLease returns the card lease duration and the watchdog renewal
+// period that the factory opens with for projectRoot. It reads through the same entry
+// point as OpenFactory, and it does not open the database, so a surface that must
+// report the values can do so without creating one. A configuration that the factory
+// would refuse returns the same refusal.
+func EffectiveFactoryLease(projectRoot string) (cardLease, renewInterval time.Duration, err error) {
+	keys, err := loadFactoryLease(projectRoot)
+	if err != nil {
+		return 0, 0, err
+	}
+	return keys.Duration, keys.RenewInterval, nil
+}
+
 // refuseFactoryLease returns a refusal that wraps errFactoryLeaseRefused.
 func refuseFactoryLease(format string, args ...any) error {
 	return fmt.Errorf("%w: %s", errFactoryLeaseRefused, fmt.Sprintf(format, args...))

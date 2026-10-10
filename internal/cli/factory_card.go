@@ -2583,6 +2583,11 @@ type factoryStatusReport struct {
 	// Unavailable lists the dispatch mirror writes that failed and have not
 	// been reconciled by a later successful write (REQ-FR-025).
 	Unavailable []homestate.RecordUnavailableEntry `json:"unavailable"`
+	// LeaseDuration and RenewInterval are the effective workflow.factory_lease values
+	// the factory opens with (SPEC-FACTORY-LEASE-RENEW-001, REQ-FLR-009), as Go duration
+	// strings. They sit before Quota, which stays last.
+	LeaseDuration string `json:"lease_duration"`
+	RenewInterval string `json:"renew_interval"`
 	// Quota is the read-only quota block (SPEC-QUOTA-AWARE-SCHEDULING-001
 	// REQ-QAS-013): present only while the quota gate is enabled and some window
 	// has data, and last, so every pre-existing key keeps its place.
@@ -2624,6 +2629,14 @@ func newFactoryStatusCommand() *cobra.Command {
 				ctx = context.Background()
 			}
 			report := factoryStatusReport{Run: strings.TrimSpace(run), Cards: []factoryCardView{}}
+			// The effective lease values are reported whether or not a database exists.
+			// A refused configuration is refused here as it is at open.
+			leaseDuration, renewInterval, err := homestate.EffectiveFactoryLease(root)
+			if err != nil {
+				return fmt.Errorf("factory status: %w", err)
+			}
+			report.LeaseDuration = leaseDuration.String()
+			report.RenewInterval = renewInterval.String()
 			path, err := homestate.FactoryDBPath(root)
 			if err != nil {
 				return fmt.Errorf("factory status: %w", err)
