@@ -1377,7 +1377,7 @@ ok  	github.com/modu-ai/moai-adk/internal/cli	1.059s
 
 The commit SHA of this step cannot be named in its own commit. It is recorded in the § E.2 F8 entry (the step 3 record).
 
-#### Consumer run, M5 identifiers (round 2A, lane-14)
+#### Consumer run 1, M5 identifiers: 60 functions (lane-14, round 2A)
 
 The 17:15Z watchdog entry in `.moai/reports/t1619/progress.md` recorded that this entry lacked the M5 consumer run. The lane ran the set itself under the heavy-run slot. This entry records that run with its provenance per field. Round 2A did not repeat the run (leader instruction: repeat only if the record is wrong).
 
@@ -1390,6 +1390,19 @@ exit: 0
 Gap G-M5-C1: the stdout of that run is not retained on disk. The result line and exit code above are carried from the lane's recorded result. They were not re-observed in round 2A, and no verbatim output is quoted here. A repeat costs about 131 s under the same slot.
 
 Residual risk: the run covers the 60 named functions only, not the full `internal/cli` suite (local scope rule). The repository-wide verdict is owned by CI on `origin/develop` and is PENDING at the time of this record.
+
+#### Consumer run 2, M5 identifiers: 105 functions (writer's run, relayed)
+
+**Provenance first.** This result was not observed in round 2A. The writer's run is session scratch and is not in the repository. team-lead relayed its counts and final line for this record (round-2A addition, instruction: do not re-run the 105 set unless a record is wrong). The names set is verified here against its file.
+
+- Consumer set: `.moai/reports/t1619/m5-consumers-105.txt`, last line (the `-run` regex). The file has 6 lines. Its last line names 105 test functions, all unique. Round 2A verified this by counting the names on that line (`grep -o "Test[A-Za-z0-9_]*"`, then `wc -l`: 105 and 105 after `sort -u`).
+- Counts (relayed): 105 PASS, 0 FAIL, 0 SKIP.
+- Final line (relayed, as given by team-lead): `ok  github.com/modu-ai/moai-adk/internal/cli  270.581s`
+- Exit code: not relayed separately. The `ok` final line implies a passing package run (exit 0); this is an inference, not a relayed value.
+
+Gap G-M5-C2: the writer's log is not in the repository, so the counts and the final line are carried from the relay and were not re-observed in round 2A. The names set is observed (105 names in the file).
+
+Residual risk: the run covers the 105 named functions only, not the full `internal/cli` suite (local scope rule). The repository-wide verdict is owned by CI on `origin/develop` and is PENDING at the time of this record.
 
 ### Scoped gate evidence, M4 and M5 (narrowed gate, card t1619)
 
