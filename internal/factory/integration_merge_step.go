@@ -343,9 +343,13 @@ func RunMergeStep(in MergeStepInput, seams MergeStepSeams) (string, error) {
 	// ignored file at an added path created in that window was silently
 	// overwritten (F5; git refuses untracked clobber, overwrites ignored
 	// bytes). The section holds the mutation lock across the merge: a
-	// takeover waits for it and then refuses on holdership, and the
-	// re-probe closes the check→merge gap. The clock is read INSIDE the
-	// section (F9) — the recheck's own purpose is "expired mid-step".
+	// takeover waits for it and then refuses on holdership. On the candidate
+	// path the check→merge gap is narrowed to the merge subprocess's own
+	// startup by the collision re-probe inside the candidate lock, immediately
+	// before the merge (P1, below; its @MX:DEBT records the residual). The
+	// disabled-key path keeps the section probe as its last check before the
+	// merge, with the card-gate re-read between them. The clock is read INSIDE
+	// the section (F9) — the recheck's own purpose is "expired mid-step".
 	mergeMsg := fmt.Sprintf("Merge %s into %s (card %s, integration merge)", cardBranch, in.IntegrationBranch, in.CardID)
 	var recheckErr *MergeStepError
 	var mergeErr error
@@ -413,10 +417,12 @@ func RunMergeStep(in MergeStepInput, seams MergeStepSeams) (string, error) {
 		if writeErr := writeIntegrationLock(integrationLockPath(in.Root), w); writeErr != nil {
 			return writeErr
 		}
-		// F5: the collision probe re-runs immediately before the merge, in
-		// the same serialized section — an ignored byte at an added path
+		// F5: the collision probe re-runs inside the same serialized section,
+		// before the candidate lock is taken — an ignored byte at an added path
 		// created after the first check is caught here, with every colliding
-		// byte still untouched.
+		// byte still untouched. A byte that appears during the candidate-lock
+		// wait is not seen by this probe; the candidate path re-probes inside
+		// the lock, immediately before the merge (P1, below).
 		colliding, err := FindAddedPathCollisions(in.IntegrationWorktree, tip, pinned)
 		if err != nil {
 			recheckErr = mergeStepErr(MergeExitOther, "integration merge: the collision check errored: %v", err)
@@ -468,9 +474,26 @@ func RunMergeStep(in MergeStepInput, seams MergeStepSeams) (string, error) {
 		// cannot deadlock.
 		if seams.LandingCheck != nil {
 			var landingRecheckErr error
+			var lateCollisionErr *MergeStepError
 			if lockErr := WithCandidateMutation(in.Root, in.CardID, func() error {
 				landingRecheckErr = seams.LandingCheck(in.CardID, pinned)
 				if landingRecheckErr != nil {
+					return nil
+				}
+				// P1 (card t1478 sync audit round 3): the collision probe runs AGAIN
+				// here, inside the candidate lock, after the landing check has passed
+				// and immediately before the merge. The probe in the window section
+				// ran before this lock was taken, so an ignored byte that appeared
+				// while the step waited for the lock was never seen. A colliding path
+				// refuses with cause 13 and a probe error with cause 9, both before
+				// any merge call.
+				colliding, probeErr := FindAddedPathCollisions(in.IntegrationWorktree, tip, pinned)
+				if probeErr != nil {
+					lateCollisionErr = mergeStepErr(MergeExitOther, "integration merge: the collision check errored: %v", probeErr)
+					return nil
+				}
+				if len(colliding) > 0 {
+					lateCollisionErr = mergeStepErr(MergeExitCollision, "integration merge: refused — the candidate would overwrite ignored/untracked bytes at %s; remove or commit them, then re-measure", strings.Join(colliding, ", "))
 					return nil
 				}
 				// The merge, of the PINNED SHA never the branch name
@@ -483,12 +506,12 @@ func RunMergeStep(in MergeStepInput, seams MergeStepSeams) (string, error) {
 				// merge-commit contract) forces the three-way (ort) path,
 				// which overwrites an ignored byte at an added path whatever
 				// the flag says (probe: ff rc=1 refused; --no-ff and
-				// true-3way both rc=0, byte overwritten). The in-section
+				// true-3way both rc=0, byte overwritten). The in-lock
 				// re-probe above catches every byte present before the merge
-				// subprocess starts; the residual below is what remains.
+				// subprocess starts on this path; the residual below is what remains.
 				//
-				// @MX:DEBT: an ignored byte at an added path created inside the re-probe→merge span is overwritten by the three-way merge — the flag does not reach the ort path on current git
-				// @MX:CEILING: the window is one git-subprocess spawn inside a flock-serialized section in a policy-protected integration worktree; the post-merge tree check cannot see it (a worktree-only loss, the commit's tree is unchanged)
+				// @MX:DEBT: an ignored byte at an added path created after the in-lock re-probe is overwritten by the three-way merge — the flag does not reach the ort path on current git
+				// @MX:CEILING: the window is the git-subprocess spawn that follows the in-lock re-probe, inside the candidate lock and a flock-serialized section in a policy-protected integration worktree; the post-merge tree check cannot see it (a worktree-only loss, the commit's tree is unchanged)
 				// @MX:UPGRADE: a git whose ort path honors --no-overwrite-ignore (then this flag starts refusing), or an in-process merge that checks ignored paths atomically with the write
 				if _, err := git("merge", "--no-ff", "--no-overwrite-ignore", "-q", "-m", mergeMsg, pinned); err != nil {
 					mergeErr = err
@@ -518,6 +541,12 @@ func RunMergeStep(in MergeStepInput, seams MergeStepSeams) (string, error) {
 				recheckErr = mergeStepErr(MergeExitLandingRefused, "integration merge: the landing check refused %s at the merge point: %v", pinned[:12], landingRecheckErr)
 				return nil
 			}
+			if lateCollisionErr != nil {
+				// P1: the in-lock probe refused before the merge — a pre-merge
+				// cause, so the window releases through the default branch below.
+				recheckErr = lateCollisionErr
+				return nil
+			}
 			if mergeErr != nil || headReadErr != nil {
 				// The merge attempt already ran (inside the lock span);
 				// nothing further in this section.
@@ -527,8 +556,8 @@ func RunMergeStep(in MergeStepInput, seams MergeStepSeams) (string, error) {
 			// The disabled-key path keeps the merge where it was — no
 			// candidate lock is owed when no landing check exists.
 			//
-			// @MX:DEBT: an ignored byte at an added path created inside the re-probe→merge span is overwritten by the three-way merge — the flag does not reach the ort path on current git
-			// @MX:CEILING: the window is one git-subprocess spawn inside a flock-serialized section in a policy-protected integration worktree; the post-merge tree check cannot see it (a worktree-only loss, the commit's tree is unchanged)
+			// @MX:DEBT: an ignored byte at an added path created after the section's collision probe is overwritten by the three-way merge — the flag does not reach the ort path on current git
+			// @MX:CEILING: the window is the card-gate re-read and one git-subprocess spawn after the section's collision probe, inside a flock-serialized section in a policy-protected integration worktree; the post-merge tree check cannot see it (a worktree-only loss, the commit's tree is unchanged)
 			// @MX:UPGRADE: a git whose ort path honors --no-overwrite-ignore (then this flag starts refusing), or an in-process merge that checks ignored paths atomically with the write
 			if _, err := git("merge", "--no-ff", "--no-overwrite-ignore", "-q", "-m", mergeMsg, pinned); err != nil {
 				mergeErr = err

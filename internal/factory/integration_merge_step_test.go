@@ -703,7 +703,7 @@ func TestMergeStepIgnoredFileAfterProbeRefusesMerge(t *testing.T) {
 		if string(got) != "late ignored byte" {
 			t.Errorf("the merge overwrote the late ignored byte: got %q", got)
 		}
-		if head := stepMustGit(t, f.integ, "rev-parse", "HEAD"); head != f.record.Base {
+		if head := strings.TrimSpace(stepMustGit(t, f.integ, "rev-parse", "HEAD")); head != f.record.Base {
 			t.Errorf("a merge commit landed: HEAD %s, want the base %s", head, f.record.Base)
 		}
 		requireCode(t, err, MergeExitCollision)

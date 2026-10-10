@@ -1,11 +1,11 @@
 // candidate_landing_check.go — the SHARED landing check (card t1478,
 // SPEC-CANDIDATE-CI-001 REQ-CCI-011, design.md D2/D10): the gate-5 seam
 // both call sites wire. A merge may land only on a green candidate whose
-// record is bound to THIS merge's target — same branch (identity refuses
-// outright), same tip (an advance voids the verification with re-candidate
-// guidance), candidate still descending from the pinned SHA. The check
-// reads the record it judges and the git state it needs; it never writes
-// anything and never touches the window.
+// record is bound to THIS merge — same card and pinned SHA, same target
+// branch (identity refuses outright), same tip (an advance voids the
+// verification with re-candidate guidance), candidate still descending from
+// the pinned SHA. The check reads the record it judges and the git state it
+// needs; it never writes anything and never touches the window.
 package factory
 
 import (
@@ -58,12 +58,14 @@ func (in LandingCheckInput) git() (func(args ...string) (string, error), error) 
 
 // CandidateLandingCheck refuses anything that is not a green candidate
 // record bound to the merge's actual target. Refusal order follows the
-// record's own trust chain: identity first (a candidate verified against
-// another target is evidence about a different merge — nothing about the
-// verdict repairs that), then tip equality (the verified tree must be the
-// tree about to be merged), then the verdict (pending is not-green —
-// fail-closed by default), then ancestry (an old green for an ancestor
-// must not admit the new tip).
+// record's own trust chain: identity first — the record read at this card's
+// lookup path must name this card and this pinned SHA, and it must have been
+// verified against this target (a record of another card, of another pinned
+// SHA, or of another target is evidence about a different merge, and nothing
+// about the verdict repairs that) — then tip equality (the verified tree must
+// be the tree about to be merged), then the verdict (pending is not-green —
+// fail-closed by default), then ancestry (an old green for an ancestor must
+// not admit the new tip).
 func CandidateLandingCheck(in LandingCheckInput) error {
 	rec, err := ReadCandidateRecord(in.Root, in.CardID, in.PinnedSHA)
 	if errors.Is(err, ErrCandidateRecordAbsent) {
@@ -71,6 +73,15 @@ func CandidateLandingCheck(in LandingCheckInput) error {
 	}
 	if err != nil {
 		return fmt.Errorf("read the candidate record: %v", err)
+	}
+
+	// (0) RECORD IDENTITY (P2, card t1478 sync audit round 3): the record read
+	// at this card's lookup path must name this card and this pinned SHA.
+	// ReadCandidateRecord returns the key fields as written, so a valid record
+	// of another card or of another pinned SHA stored at this path is evidence
+	// about a different merge; it never admits, whatever its verdict.
+	if rec.CardID != in.CardID || rec.PinnedSHA != in.PinnedSHA {
+		return fmt.Errorf("identity mismatch: the candidate record stored for card %s at pinned %s names card %s at pinned %s — a record of another card or pinned SHA never admits; re-candidate with moai integration candidate --card %s", in.CardID, shortSHAFull(in.PinnedSHA), orUnset(rec.CardID), orUnset(shortSHAFull(rec.PinnedSHA)), in.CardID)
 	}
 
 	// (i) BRANCH IDENTITY (D10): a mismatch refuses OUTRIGHT — no
