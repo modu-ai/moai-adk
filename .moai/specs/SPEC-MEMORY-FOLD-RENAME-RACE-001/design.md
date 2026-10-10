@@ -35,6 +35,7 @@ The lock is strictly additive: acquisition precedes the first `checkFoldUnchange
 
 - Non-cooperating writers (editors) keep the byte-comparison narrowing; the lock cannot protect what never acquires it (spec.md Out of Scope).
 - Other memory verbs adopt the lock in a follow-up (decision-index Q5); today only fold applies cooperate, which is exactly the observed defect class.
+- The lock file's identity is not defended. The POSIX open above follows symbolic links and makes no descriptor-versus-path identity check, so the mechanism assumes the lock path names a regular file the fold never replaces. A link planted at the lock path is out of scope by operator decision `d-20261010T042423Z-722b` (spec.md §4); the residual risk is spec.md §5 R-1.
 
 ## Promotion path
 

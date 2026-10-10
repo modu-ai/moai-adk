@@ -29,6 +29,7 @@ Acceptance criteria for the fold rename-window lost-update fix. Every criterion 
 - **Command**: `go test -race -count=10 ./internal/cli -run '^TestFoldRenameWindowConcurrentWriter$'`
 - **Expected**: exit 0; `ok`; 10 of 10 iterations green under the race detector. **Observed at HEAD `a7b89e294` in the repair pass**: `ok  github.com/modu-ai/moai-adk/internal/cli  2.192s`, exit 0 (§5, E-HEAD-001).
 - **Flips**: M2 step 3. The writer's non-blocking acquire is refused inside the apply, and the post-release publish lands.
+- **Requirements verified**: REQ-MRR-004 (green half) and REQ-MRR-008. The refused-then-re-published sequence is exactly this test's writer: refused during the apply, published after the release, line present in the final store.
 
 ### AC-MRR-003 — Contended fold refuses cleanly
 
@@ -57,12 +58,12 @@ Acceptance criteria for the fold rename-window lost-update fix. Every criterion 
 
 ### AC-MRR-006 — The card-close step's bound is intact under contention
 
-- **Class**: regression guard (must-pass at card close). Cell 2's precondition is added in M5 (plan §F).
+- **Class**: regression guard (must-pass at card close). Cell 2's precondition belonged to M5, which is not run (operator decision `d-20261010T042423Z-722b`; plan §F), so it is not part of this criterion.
 - **Cell 1 — Given** a contended store and the card-close fold step under a shortened bound (200 ms), **When** the bound expires while the step waits, **Then** the step reports at most one stderr line and begins no write.
 - **Cell 2 — Given** the step holding the lock with its apply in flight when the bound expires, **When** the caller's timeout branch reports abandonment and the worker's exit is observed, **Then** a subsequent non-blocking acquire on the same store succeeds, because the worker's deferred release ran after its apply observed the abandonment.
-- **Cell 2 precondition (checked; M5)**: while the apply is parked at its `mutateBetweenWrites` point and before the test signals "lock held", a non-blocking acquire by a second lock object is refused. An acquisition at that point fails cell 2, because the step did not hold the lock when the bound expired.
+- **Cell 2 precondition (not adopted; M5 not run)**: the planned check — while the apply is parked at its `mutateBetweenWrites` point and before the test signals "lock held", a non-blocking acquire by a second lock object is refused. An acquisition at that point would fail cell 2, because the step did not hold the lock when the bound expired. No test code performs this check at the closing tree; cell 2 observes the release after abandonment, not the hold before it (spec.md §5 R-3).
 - **Command**: `go test -race -count=1 ./internal/cli -run '^TestFoldOnDoneContentionAbandonsWithoutWrite$'` (both cells live in the same test).
-- **Expected**: exit 0. Recorded in run M3: `ok  github.com/modu-ai/moai-adk/internal/cli  5.325s`, exit 0. The precondition becomes part of the expected outcome once M5 lands.
+- **Expected**: exit 0. Recorded in run M3: `ok  github.com/modu-ai/moai-adk/internal/cli  5.325s`, exit 0. The cell-2 precondition is not part of the expected outcome.
 - **Why no RED-now**: both cells set the contention through the M2 lock API. The test was authored in M3 (`memory_fold_wiring_test.go`, commit `1ab3503f1`), so no pre-fix run exists that could be red for the defect.
 
 ### AC-MRR-007 — The fold family stays green (regression surface: t1502 fold family and MEMORY.md index)
@@ -71,8 +72,8 @@ Acceptance criteria for the fold rename-window lost-update fix. Every criterion 
 - **Given** the fixed tree, **When** the affected family runs — the 27 `TestMemoryFold*` tests (including the write-ordering regression `TestMemoryFold_ArchiveRecheckedBeforeMemoryRename`, the abandonment and timeout-cleanup cells, and the 13 `TestMemoryFoldOnDone_*` wiring tests), plus `TestReviewArchiveUpdateDuringEffectiveScan` and `TestReviewSequentialAbandonedTempOwnership` (the codex-review round-2 regression over the wiring's per-worker temp ownership) — **Then** every test passes under the race detector, and the module graph is unchanged.
 - **Command 1**: `go test -race -count=1 -timeout 900s ./internal/cli -run '^(TestMemoryFold|TestReviewArchiveUpdate|TestReviewSequentialAbandonedTempOwnership).*$'`
 - **Expected 1**: exit 0; equal in health to the green-before measured at plan phase (progress.md §E.1, attempt 4: `ok  github.com/modu-ai/moai-adk/internal/cli  42.974s`, exit 0). The swept set is the 29 tests verified by the `go test -list` gate of plan §C.1 before each use.
-- **Command 2**: `git diff --exit-code 2aab5f797 HEAD -- go.mod go.sum`
-- **Expected 2**: exit 0, no output. This is the REQ-MRR-007 "no new module dependency" check. Both ends are pinned: `2aab5f797` is the pre-implementation base and `HEAD` is the tree under test, so the comparison is between two commits, not against a moving ref. **Observed at HEAD `a7b89e294` in the repair pass**: exit 0 (§5, E-HEAD-001).
+- **Command 2**: `git diff --exit-code 2aab5f797 f30bb9088cde7b12612993026b5e8d2f1244e4f0 -- go.mod go.sum`
+- **Expected 2**: exit 0, no output. This is the REQ-MRR-007 "no new module dependency" check. Both ends are commit SHAs: `2aab5f797` is the pre-implementation base, and `f30bb9088cde7b12612993026b5e8d2f1244e4f0` is the tree plan-audit iteration 5 judged (resolved 2026-10-10 in the card worktree; the commits after it on this branch change only files under `.moai/specs/`). The comparison is between two fixed commits, so a later `go.mod` change elsewhere cannot flip it. **Observed for this pin**: exit 0, no output (§5, E-HEAD-002). The earlier observation with `HEAD` resolving to `a7b89e294` is E-HEAD-001.
 - **Full-suite note**: the whole `./internal/cli` suite is judged by CI (plan §B-1). `go build ./...` exit 0 accompanies this criterion (recorded at M4).
 
 ### AC-MRR-008 — Windows parity (regression guard with a post-close observation)
@@ -85,41 +86,42 @@ Acceptance criteria for the fold rename-window lost-update fix. Every criterion 
 
 ### AC-MRR-009 — The whole-apply span is held
 
-- **Class**: regression guard (must-pass at card close on both entry points once M5 lands). The verb-path check is in place. The card-close check is absent at HEAD and is required by M5.
-- **Given** a store and a second independent lock object (its own descriptor), **When** the fold apply runs on each entry point — the verb (`moai memory fold --yes`) and the card-close step (`foldOnDoneStep`, through the wiring fixture) — and the test samples a non-blocking acquire at four points, **Then** the recorded outcomes are exactly (acquired, refused, refused, refused) on each entry point. The four points are:
-  1. Before the apply, with the lock not yet held: **acquired**. On the verb path this is the `mutateDisk` seam, which fires in `newMemoryFoldCmd` (`memory_fold.go:183–187`). `mutateDisk` is not on the card-close path, so the card-close subtest takes this sample immediately before it invokes the step. The expected outcome is unchanged.
+- **Class**: regression guard (must-pass at card close, on the verb path). The card-close entry point is not sampled: its check belonged to M5, which is not run (operator decision `d-20261010T042423Z-722b`; plan §F). The span on that entry point is unverified residual risk (spec.md §5 R-3).
+- **Given** a store and a second independent lock object (its own descriptor), **When** the fold apply runs on the verb entry point (`moai memory fold --yes`) and the test samples a non-blocking acquire at four points, **Then** the recorded outcomes are exactly (acquired, refused, refused, refused). The four points are:
+  1. Before the apply, with the lock not yet held: **acquired**. On the verb path this is the `mutateDisk` seam, which fires in `newMemoryFoldCmd` (`memory_fold.go:183–187`). `mutateDisk` is not on the card-close path, which is one reason the card-close entry point needed its own test (M5, not run).
   2. Inside the first write (the archive append; `mutateDuringWrite` for that surface): **refused**.
   3. Between the two writes (`mutateBetweenWrites`, after the archive append and before the MEMORY.md rewrite): **refused**.
   4. Inside the second write (the MEMORY.md rewrite; `mutateBeforeRename` for that surface): **refused**.
 - **Command**: `go test -race -count=10 ./internal/cli -run '^TestFoldStoreLockSpanHeldThroughApply$'`
-- **Expected**: exit 0; 10 of 10 iterations green, with both entry-point subtests run. A run that executes no subtest is not a pass. **Observed at HEAD `a7b89e294` in the repair pass** (verb path only, as implemented at HEAD): `ok  github.com/modu-ai/moai-adk/internal/cli  1.980s`, exit 0 (§5, E-HEAD-001).
+- **Expected**: exit 0; `ok`; 10 of 10 iterations green on the verb path, which is the whole of the test at the closing tree (it has no subtests). A run that prints `[no tests to run]` is not a pass. **Observed at HEAD `a7b89e294` in the repair pass** (verb path): `ok  github.com/modu-ai/moai-adk/internal/cli  1.980s`, exit 0 (§5, E-HEAD-001).
 - **Why it kills both mutant classes**: a per-rename lock yields (acquired, refused, acquired, …), because the third sample acquires. A per-write lock, acquired and released once per `atomicWriteFoldFile` call, yields (acquired, refused, acquired, refused), because the between-writes sample acquires. Only a whole-apply span yields (acquired, refused, refused, refused). The per-write mutant was demonstrated by the iteration-2 codex backend; it was not re-run in this pass.
 - **Why no RED-now**: the test was authored in M2 (`5d60d2e8e`) and uses the M2 lock API, so it cannot run at `84bdf072c`.
 
 ### AC-MRR-010 — Cross-process exclusion, observed through a child process
 
-- **Class**: unadopted until M5 records its RED-now cell; then adopted. If the operator chooses plan §F, M5 option (b), it stays unadopted, and REQ-MRR-001's cross-process clause is carried as residual risk.
+- **Class**: unadopted. Adoption needed M5 to record the RED-now cell, and M5 is not run (operator decision `d-20261010T042423Z-722b`, option (b); plan §F). This criterion is never cited as a pass, and REQ-MRR-001's cross-process clause is unverified residual risk (spec.md §5 R-2). The text below is kept as the definition a later adoption would start from; `TestFoldStoreLockCrossProcess` does not exist at the closing tree.
 - **Given** a store directory and a parent process that holds the store lock, **When** a child process runs the fold verb on the same store — the test binary re-executed with a `-test.run` filter and an environment marker, the helper-process pattern of `internal/execerr/execerr_test.go` — **Then** the child's fold is refused while the parent holds the lock (non-zero exit; the error names the store; the store bytes are unchanged), and the child's fold succeeds after the parent releases.
 - **Sentinel rule**: the child prints one sentinel line per outcome (`FOLD-CHILD=refused`, then `FOLD-CHILD=applied`), and the parent records each through `t.Logf`. A child that runs zero tests exits 0 with no sentinel, so it fails this criterion. The empty-sweep rule of verification-completeness §1.1 applies.
 - **Command**: `go test -count=1 -v ./internal/cli -run '^TestFoldStoreLockCrossProcess$'`
-- **Expected (GREEN; on HEAD once M5 lands)**: exit 0; the verbatim output contains `--- PASS: TestFoldStoreLockCrossProcess`, both sentinel lines in the order refused → applied, and no `[no tests to run]` line.
+- **Expected (GREEN; not observed — the test is not written)**: exit 0; the verbatim output contains `--- PASS: TestFoldStoreLockCrossProcess`, both sentinel lines in the order refused → applied, and no `[no tests to run]` line.
 - **Mutant it must kill**: an in-process lock (a process-local mutex in place of the file lock) and a no-op lock both let the child apply while the parent holds the lock, so the refused expectation fails. The in-process criteria (AC-MRR-002, -003, -005, -006, -009) pass under the in-process mutant. That is the iteration-2 codex overlay result, reported here and not re-run.
-- **RED-now (required for adoption; M5 step 1)**: on `84bdf072c` (POSIX), the parent holds `<store>/.moai-fold.lock` through a raw `flock` (no M2 API exists there), and the child fold applies while the parent holds it. The expected red is the refused expectation failing for the defect's reason. Record the verbatim output, exit code, and tree SHA in progress.md §E.2 before the GREEN.
+- **RED-now (required for adoption; not recorded — M5 step 1 is not run)**: on `84bdf072c` (POSIX), the parent holds `<store>/.moai-fold.lock` through a raw `flock` (no M2 API exists there), and the child fold applies while the parent holds it. The expected red is the refused expectation failing for the defect's reason. Record the verbatim output, exit code, and tree SHA in progress.md §E.2 before the GREEN.
 - **Windows**: the RED-now is POSIX-only. The GREEN also runs on the Windows leg after card close, which is a post-close observation (§4).
 
 ## §2 Traceability
 
 | REQ (spec.md §2) | AC |
 |---|---|
-| REQ-MRR-001 (whole-apply span; cross-process clause) | AC-MRR-002, AC-MRR-004, AC-MRR-009 (both entry points), AC-MRR-010 (cross-process) |
+| REQ-MRR-001 (whole-apply span; cross-process clause) | AC-MRR-002, AC-MRR-004, AC-MRR-009 (verb path), AC-MRR-010 (cross-process; unadopted). The cross-process clause and the card-close entry point have no adopted criterion — spec.md §5 R-2, R-3 |
 | REQ-MRR-002 (one lock per store, both surfaces) | AC-MRR-004, AC-MRR-005, AC-MRR-009 |
 | REQ-MRR-003 (bounded clean refusal) | AC-MRR-003 |
 | REQ-MRR-004 (no silent loss) | AC-MRR-001 (RED half), AC-MRR-002 (green half), AC-MRR-004 (per surface) |
 | REQ-MRR-005 (tooling-invisible lock file) | AC-MRR-005 |
-| REQ-MRR-006 (abandonment bound intact) | AC-MRR-006 (cells 1–2; cell-2 precondition in M5) |
+| REQ-MRR-006 (abandonment bound intact) | AC-MRR-006 (cells 1–2; the cell-2 precondition is not adopted) |
 | REQ-MRR-007 (POSIX and Windows, no new dependency) | AC-MRR-007 (family; go.mod and go.sum), AC-MRR-008 (card-close build and vet; post-close Windows leg) |
+| REQ-MRR-008 (refused publish, re-made after release, present) | AC-MRR-002 |
 
-Every requirement has at least one criterion. Every criterion traces to at least one requirement, so there is no orphan criterion. The counts are 7 requirements and 10 criteria, within the Tier M ceilings of 16 each.
+Every requirement has at least one criterion. Every criterion traces to at least one requirement, so there is no orphan criterion. The counts are 8 requirements and 10 criteria, within the Tier M ceilings of 16 each. Nine criteria are adopted or regression guards; AC-MRR-010 is unadopted and is listed for traceability, not as coverage.
 
 ## §3 Edge cases
 
@@ -127,6 +129,7 @@ Every requirement has at least one criterion. Every criterion traces to at least
 - The lock file cannot be created (read-only store): the acquire error surfaces as the fold's clean refusal — a store that cannot be locked is a store the fold must not write; the refusal path of AC-MRR-003 covers the shape.
 - Two folds on DIFFERENT stores: distinct lock files, no interference — the unit test holds two locks simultaneously.
 - The close-path step abandoned WHILE holding the lock: the caller's timeout branch returns before the worker does, so the release is the WORKER's deferred `release()` — it lands when the worker's apply observes the abandonment and returns (synchronized in tests via the wiring's worker-exit signal). Covered by AC-MRR-006's second cell; the release is not synchronous with the caller's return, and in a one-shot CLI process the kernel releases the flock at exit regardless (recorded boundary).
+- The lock path is a symbolic link, or anything other than a regular file the fold never replaces: OUT OF SCOPE (spec.md §4, operator decision `d-20261010T042423Z-722b`). Every case above assumes the lock path names such a file. The open follows links and checks no identity, so a link from `<store>/.moai-fold.lock` to a store file lets the fold's first rename change which object the lock names. No criterion plants a link, and none of the cells above covers this case. Threat model and residual risk: spec.md §4 and §5 R-1.
 
 ## §4 Quality gates, Definition of Done, and open items
 
@@ -134,13 +137,13 @@ Every requirement has at least one criterion. Every criterion traces to at least
 - **AC-MRR-008 post-close exception.** AC-MRR-008's observation is the Windows leg of `release-pr-multi-os.yml`, which the release process runs at the release window (`release/*` pull requests), after card close; card close is judged on the local gates, and AC-MRR-008's result is carried to the release window and is not recorded as a card-close pass.
 - **Definition of Done (card close)**:
   1. AC-MRR-001's RED-now is recorded (§5, E-RED-001). AC-MRR-004's per-surface RED comes from the same observation.
-  2. AC-MRR-002, -003, -004, -005, -006, -007, and -009 are green, with their command output on record in progress.md §E.2/§E.3. The card-close subtest of AC-MRR-009 and the cell-2 precondition of AC-MRR-006 are included once M5 lands.
+  2. AC-MRR-002, -003, -004, -005, -006, -007, and -009 are green, with their command output on record in progress.md §E.2/§E.3. AC-MRR-009 is judged on the verb path, and AC-MRR-006 without the cell-2 precondition; the card-close subtest and the precondition belonged to M5, which is not run.
   3. AC-MRR-007's post-fix green equals the green-before recorded at plan phase, and its `go.mod`/`go.sum` comparison exits 0.
-  4. AC-MRR-010 is adopted only with its RED-now on record (M5). If the operator chooses option (b) (plan §F), its cross-process clause is recorded as residual risk; until the operator chooses, the clause stays open.
+  4. AC-MRR-010 is not adopted and is not part of card close. The operator chose option (b) (board record `d-20261010T042423Z-722b`, 2026-10-10; plan §F, M5): M5 is not run, so no RED-now exists for it. REQ-MRR-001's cross-process clause and the card-close entry point are recorded as unverified residual risk in spec.md §5 (R-2, R-3), and the SPEC stays `completed` on that record.
   5. The AC-MRR-008 post-close exception above is stated where the chain is read (plan §E, M3 item 4, M4 item 3).
   6. progress.md §E.2/§E.3 is populated by manager-develop; §E.4 by manager-docs.
 - Indirect verification: none required beyond the family command. CI is the full-suite judge (plan §B-1).
-- **Open items at iteration 4 (not closed by this document)**: (a) the AC-MRR-006 cell-2 precondition, the AC-MRR-009 card-close subtest, and AC-MRR-010 need test code that is absent at HEAD (plan §F, M5; the scope decision is open); (b) AC-MRR-003, -005, and -009 have no RED-now cell (§0, with the reasons in each criterion); (c) AC-MRR-010 is unadopted until its RED-now is recorded; (d) AC-MRR-008's Windows observation lands at the release window.
+- **Items accepted as open at close (operator decision `d-20261010T042423Z-722b`)**: (a) the AC-MRR-006 cell-2 precondition, the AC-MRR-009 card-close subtest, and AC-MRR-010 need test code that is absent at the closing tree; M5 is not run, and the gaps are spec.md §5 R-2 and R-3; (a2) a symbolic link at the lock path is out of scope, with the residual risk in spec.md §5 R-1; (b) AC-MRR-003, -005, and -009 have no RED-now cell (§0, with the reasons in each criterion); (c) AC-MRR-010 stays unadopted; (d) AC-MRR-008's Windows observation lands at the release window.
 
 ## §5 Evidence entries
 
@@ -178,3 +181,12 @@ Code facts used by the repairs (read at HEAD and at `84bdf072c`):
 - `mutateDisk` is invoked only inside `newMemoryFoldCmd` (`memory_fold.go:183–187`), not in `applyFold` and not in `foldOnDoneStep`.
 - `mutateDuringWrite` and `mutateBeforeRename` are invoked inside `atomicWriteFoldFile`, and `mutateBetweenWrites` inside `applyFold`. All three fire on both entry points.
 - The cell-2 `mutateBetweenWrites` callback in `memory_fold_wiring_test.go` signals and parks, with no probe.
+
+### E-HEAD-002 — `go.mod`/`go.sum` comparison at the pinned tree (v0.1.5 revision)
+
+- **Tree**: `f30bb9088cde7b12612993026b5e8d2f1244e4f0`, compared against the base `2aab5f797`. Both are commit SHAs; the result does not depend on any checkout's `HEAD`.
+- **Command**: `git diff --exit-code 2aab5f797 f30bb9088cde7b12612993026b5e8d2f1244e4f0 -- go.mod go.sum`, run against the card worktree's repository on 2026-10-10.
+- **Exit code**: 0.
+- **Verbatim stdout**: empty.
+- **Criterion**: AC-MRR-007 command 2.
+- **Note on E-HEAD-001**: its last row records the same comparison as it was run in the repair pass, with `HEAD` resolving to `a7b89e294`. That row is a record of a past run and is left as written.
