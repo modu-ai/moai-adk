@@ -348,3 +348,23 @@ decision record: decided_by=lane-5 (sync-entry, run tmnboq) evidence_refs=board:
 - Gaps carried unchanged: F4 is not yet observed; coverage 83.9% (the shortfall predates this card) is unchanged; F7 is out of scope (leader); F9 (moving-ref pins in §J) is the leader's remedy.
 
 decision record: decided_by=lane-5 (run re-entry, run tmnboq) evidence_refs=sync-audit-1.md(F1,F2,F3);jev_ask keep_and_record=0.95 leave_acceptance=0.93;spec-amendment=07c4d4fe6;q1=f27361328 ladder_path=jev_ask early rung (advisory) + own judgment, recorded
+
+- F4 built-binary observation (AC-MWQ2-005 debt; sync-audit-1 F4): taken on the repaired tree, by path, not the installed build.
+  - Build: `make build` in the card tree at HEAD `26022a3f9`. `./bin/moai version` reports BuildID `moai_cp/20261007_195927-135-g26022a3f9`, built `2026-10-10T00:42:53Z`. `bin/moai` is git-ignored (`.gitignore:12`). The installed build `db0c514d3` is not used as evidence (VCI §2.2).
+  - Fixture: a throwaway repository `.moai/state/f4-merge-fixture` (git-ignored state), built to the shape of `mergeReadyFixture` (`internal/cli/factory_merge_test.go:32`): develop with two commits, `WT-card` with its own commit and a `--no-ff` absorb of develop. Candidate tree `cca1377e26e2ce841ee10fd78f5f61e6dda22f10`; absorbed base `99eb2f5455bb46296c7fb700275abded72deda2b`. Lock root `.moai/state/f4-merge-lock` as `CLAUDE_PROJECT_DIR`; `MOAI_FACTORY_WORKER=lane-5`. Command in every scenario: `bin/moai factory merge ready --card t9001 --spec SPEC-MERGE-READY-FIXTURE-001 --branch WT-card --develop develop --session sess-lane-5 --json`, run from the fixture.
+  - Results (exit = process exit code; verdict lines verbatim):
+
+| Scenario | §E.4 `sync_status` | Re-measure record | Exit | Verdict line (verbatim) |
+|---|---|---|---|---|
+| A single measurement failure | `complete` | absent | 1 | `merge-readiness: REFUSED — failing condition: re-measure-record` / `no window was taken` |
+| B composite (sync-audit first, measurement second) | `audit-ready` | absent | 1 | `merge-readiness: REFUSED — failing condition: sync-audit`; checks list `re-measure-record FAIL` |
+| C control: non-measurement refusal only | `audit-ready` | valid | 0 | `merge-readiness: REFUSED — failing condition: sync-audit`; checks list `re-measure-record PASS` |
+| D waiting (window held) | `complete` | valid | 0 | `merge-readiness: WAITING — the integration window is held by lane-9 (session sess-holder, pid 74982)`; all four checks PASS |
+
+  - The non-zero code is `MergeExitRecordInvalid = 1` (`internal/factory/integration_merge_step.go:39`), the value the measurement-failure branch of `internal/cli/factory_merge.go` (`remeasureRecordFailed`) returns. Scenario B is the instance sync-audit-1 F1 named; the composite RED test (`TestFactoryMergeReadyCompositeFailureResolvesNonZeroExit`) observed it red before the fix (repair evidence §E.2).
+  - Seeded inputs, disclosed: the sync status in each scenario and the re-measure record in C and D are written by hand, the same way the fixture helper seeds them. The record JSON has `command: "true"`, `exit_code: 0`, `structured_required: false`, `structured_count: false`. C and D therefore observe the exit decision, not a measured `go test`.
+  - The holder in D was seated by the binary's own `moai integration acquire --name lane-9 --card t9002 --branch develop --session sess-holder` (exit 0; status `held`, lease until `2026-10-10T01:17:11Z`, pid 74982). No scenario took the window (A to C refused before it, D waiting).
+  - Gaps (not observed): (1) the binary before the repair, for scenario B; only the code path, sync-audit-1 F1, and the red test are evidence; (2) liveness of pid 74982 was not probed separately; the WAITING verdict (not "reclaimable") is the only evidence; (3) no composite-with-holder scenario in the binary (unit level only); (4) the fixture has no `.moai/config`, so the binary ran on defaults (WARN lines in scratch); (5) no `go test` and no `/verify` run in this observation.
+  - Lease: the row's expiry was `2026-10-10T00:48:01Z`; the recovery order of `d-20261009T170040Z-8859` applies at the next transition.
+  - Scratch outputs (`f4-scen{A,B,C,D}.{out,err}`, `f4-holder-*.out`) are not cited; the decisive lines are carried above.
+  - decision record: decided_by=lane-5 (F4 observation, run tmnboq) evidence_refs=bin/moai@26022a3f9 (by path);scenarios A-D above;integration_merge_step.go:39 ladder_path=own observation (AC-MWQ2-005 debt; sync-audit-1 F4)
