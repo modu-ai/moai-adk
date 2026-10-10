@@ -1,6 +1,6 @@
 # Decision index: SPEC-FACTORY-RECORD-REPAIR-001
 
-Card t1621 · Tier M · version 0.2.0 (narrowed to the three surviving items per d-20261010T053435Z-006f; operator verdicts per d-20261010T053034Z-1a19; earlier history: 0.1.1, repair round 1 after plan audit iteration 1, FAIL 0.56, 17 blocking defects).
+Card t1621 · Tier M · version 0.3.0 (item (3) written under leader ruling d-20261010T060606Z-c5c4; narrowed to the three surviving items per d-20261010T053435Z-006f; operator verdicts per d-20261010T053034Z-1a19; earlier history: 0.2.0, the narrowing; 0.1.1, repair round 1 after plan audit iteration 1, FAIL 0.56, 17 blocking defects).
 
 This index records every decision the SPEC carries: rows Q1 to Q19 and Q21, and one note on a proposal closed without a decision (Q20). Each row names what is unresolved, the options, what was applied, the basis, and the evidence. It is stateless on the status axis: the lifecycle lives in spec.md alone.
 
@@ -15,9 +15,9 @@ This index records every decision the SPEC carries: rows Q1 to Q19 and Q21, and 
 
 1. **Narrowing applied (006f).** Leader ruling `d-20261010T053435Z-006f` re-scopes the card body to three items. The re-scope text is quoted in spec.md HISTORY 0.2.0. Retired requirements and criteria: REQ-FRR-008, -009, -010, -012, -013 and AC-FRR-008, -009, -010, -012, -013, -016. Their rows are marked not applicable: Q2, Q4, Q5, Q6, Q7, and Q13. Each cites `d-20261010T053435Z-006f`. The retired text is kept in git history at `53ea27f4f`.
 2. **Operator verdicts applied (1a19).** Q1 (B1: the surviving criteria are reclassified as regression guards and the release-gate wording is removed), Q8 (a), Q9 (a), Q10 (ii, at T3), and Q18 (a). Each verdict cell cites `d-20261010T053034Z-1a19`. The 1a19 board line carries its header and evidence references, not the values. The values written here are the leader's assignment for this revision, and they reproduce `.moai/reports/t1621/operator-brief.md` §2.
-3. **Not written: Q4 (d), Q5 (a), Q6 (c), and Q7 (a). Leader confirmation requested.** The leader's assignment lists these four as surviving. The card body places their subjects in old items (4) and (7). Item (4) names the interim empty-stage guard, which is Q6 and Q7. Item (7) names the holder audit re-entry edge, which covers the sync-audit to run ruling (Q4) and the holder re-stamp (Q5). Items (4) and (7) are retired by 006f, so the rows are marked not applicable and no verdict is written on them. If the leader confirms that they survive, the four verdicts apply and the retired text returns from `53ea27f4f`.
-4. **Open FOUNDER row: Q21.** Its Operator verdict is empty, and it is the only such row. The autonomous Kickoff stays blocked until it is answered. Card body item (3) names the pushed-to-done edge for this card, but the SPEC carries no requirement for it, and its owner is open.
-5. **Authority register note.** The board records cited here (`d-20261010T053435Z-006f`, `d-20261010T053034Z-1a19`, and `d-20261010T010044Z-57f8`) carry no digest, so none anchors a DECIDED row. A FOUNDER row resolved by an operator's answer carries the answer and its record id, and its Status reads `operator verdict recorded`.
+3. **Not written: Q4 (d), Q5 (a), Q6 (c), and Q7 (a). Leader confirmed (c5c4).** The leader's assignment lists these four as surviving. The card body places their subjects in old items (4) and (7). Item (4) names the interim empty-stage guard, which is Q6 and Q7. Item (7) names the holder audit re-entry edge, which covers the sync-audit to run ruling (Q4) and the holder re-stamp (Q5). Items (4) and (7) are retired by 006f, so the rows are marked not applicable and no verdict is written on them. Leader ruling `d-20261010T060606Z-c5c4` (point 2) confirms that they stay not applicable and that no retired requirement or criterion is restored.
+4. **Open FOUNDER row: Q21.** Its Operator verdict is empty, and it is the only such row. The leader ruled the owner and scope under `d-20261010T060606Z-c5c4` (option a), and spec.md 0.3.0 carries the content as REQ-FRR-016 to REQ-FRR-019. The autonomous Kickoff stays blocked until the operator confirms or overrules Q21.
+5. **Authority register note.** The board records cited here (`d-20261010T060606Z-c5c4`, `d-20261010T053435Z-006f`, `d-20261010T053034Z-1a19`, and `d-20261010T010044Z-57f8`) carry no digest, so none anchors a DECIDED row. A FOUNDER row resolved by an operator's answer carries the answer and its record id, and its Status reads `operator verdict recorded`.
 6. **Counts.** Operator verdicts recorded: Q1, Q8, Q9, Q10, Q18. Not applicable: Q2, Q4, Q5, Q6, Q7, Q13. DEFAULT-APPLIED: Q3, Q12, Q14, Q15, Q16, Q17. POLICY-COVERED, no verdict needed: Q11, Q19. Open: Q21.
 7. **Kickoff check, as the code reads it.** `internal/homestate/card_audit_kickoff.go:118-123` refuses a FOUNDER row whose Operator verdict value is literally empty. After this revision the only such row is Q21. `card_audit_kickoff.go:113-117` refuses DEFAULT-APPLIED on any row that is not implementation-level with a Default line; each DEFAULT-APPLIED row here carries both.
 8. **Round-2 split withdrawn.** A proposed move of the renewal verb and TTL key to t1618 was withdrawn by board d-20261010T012900Z-35d1. It is recorded under "Closed without a decision", not as a row. This SPEC (card t1621) owns those deliverables.
@@ -35,6 +35,13 @@ Board records that govern revision 0.2.0, copied from the same output and cited 
 ```text
 decision record: decided_by=leader session 359ce07d (factory leader, run tmnboq, generation 3) evidence_refs=moai todo list 05:3xZ, t1621 body tail: '[재범위 10-10·3.2 계획 §1.1] 범위를 팩토리 v2(3.2-2-2) 선행 수리로 한정: (1) 임대 renew 동사 + TTL 설정 키 + 워치독 첫 단계 갱신 (2) 만료 수거 원자화 (3) pushed→done 엣지 개방 + 대역 외 쓰기 탐지. (4)~(12)는 3.2-2-2가 흡수 ... 새 본문으로 재감사' (leader read); lane-1 message 05:31Z; board 1a19 403d 3f34 ladder_path=leader ruling reconciling operator decision 1a19 with the operator-approved queue re-scope id=d-20261010T053435Z-006f scope=card:t1621 kind=ruling
 decision record: decided_by=operator (first-hand AskUserQuestion answers to leader session 359ce07d, 2026-10-10T05:0xZ; recorded verbatim by leader) evidence_refs=.moai/worktrees/t1621/.moai/reports/t1621/operator-brief.md:16-38 ladder_path=operator first-hand answer id=d-20261010T053034Z-1a19 scope=card:t1621 kind=ceiling-exception
+```
+
+Board record that governs revision 0.3.0, copied verbatim from the `moai decision read --scope card:t1621` output and cited as an evidence note, not pinned:
+
+```text
+decision record: decided_by=leader session 359ce07d (factory leader, run tmnboq, generation 3) evidence_refs=lane-1 message 06:0xZ; commit 7ee58d6f5 (narrowed SPEC); queue body re-scope item (3) ladder_path=leader ruling refining 006f id=d-20261010T060606Z-c5c4 scope=card:t1621 kind=ruling
+  body: t1621, refining 006f. (1) Item (3) of the re-scoped body (pushed-to-done edge and out-of-band write detection) belongs to THIS card, option (a): the queue body names it, and t1616 (local-main landing) does not own the done transition. manager-spec writes its requirement and acceptance criteria now. (2) The lane's reading stands: the verdicts Q4 (d), Q5 (a), Q6 (c), Q7 (a) attach to the retired items (4) and (7) and are marked not-applicable under 006f; no retired requirement is restored. (3) A second SPEC commit is allowed for this (the one-commit wording of 006f was the leader's, not the operator's); the single plan audit of 1a19 then runs on the final commit.
 ```
 
 The card body that 006f quotes is the t1621 queue body read with `moai todo show t1621` in revision 0.2.0. Items (4) and (7) are quoted in spec.md HISTORY 0.2.0.
@@ -62,7 +69,7 @@ The card body that 006f quotes is the t1621 queue body read with `moai todo show
 | Q17 | What priority the SPEC carries | plan D12 | FOUNDER | implementation-level | DEFAULT-APPLIED |
 | Q18 | Configuration key name `workflow.factory_lease.duration` | plan D13 | FOUNDER | product-level | (a), 1a19 |
 | Q19 | Repository-local overrides a template sync must not overwrite; QG-4 scope | D17 | POLICY-COVERED | implementation-level | not required |
-| Q21 | Pushed-to-done (card body item 3): whether it is in this card, its owner, and its content | card body item (3) | FOUNDER | product-level | (open) |
+| Q21 | Pushed-to-done (card body item 3): whether it is in this card, its owner, and its content | card body item (3) | FOUNDER | product-level | (open; leader ruling c5c4) |
 
 ## Rows
 
@@ -90,7 +97,7 @@ Operator verdict: B1 (reclassify the surviving criteria as regression guards; re
 
 Label: FOUNDER
 Class: implementation-level
-Status: not applicable (retired by d-20261010T053435Z-006f: AC-FRR-016 counted only the three rows that item (7)'s requirements add)
+Status: not applicable (retired by d-20261010T053435Z-006f: AC-FRR-016 counted only the three rows that item (7)'s requirements add; leader confirmation d-20261010T060606Z-c5c4)
 Authority anchor: none routed. Anchor search, run with the same terms and scope as Q1 before the DEFAULT route was applied. Candidates were verified at HEAD with `git grep`, each SPEC at `status: completed`. SPEC-TODO-HOLD-STATE-001, HISTORY row 0.2.0, item D1: an autodone acceptance criterion green at M1 is pinned as a regression guard, not a live red. SPEC-LOCAL-INSTRUCTIONS-MIGRATE-001, HISTORY row 0.2.1, item D2: AC-IFU-029 passed before any work and is recorded as a regression guard with its baseline. The lane applied the DEFAULT route, so neither candidate is routed DECIDED. The lane can re-route this row if it judges the question identical.
 Precedent (noted, not DECIDED):
 ```text
@@ -126,7 +133,7 @@ Operator verdict: DEFAULT-APPLIED 2026-10-10T01:32:07Z manager-spec
 
 Label: FOUNDER
 Class: product-level (the stage verb gains a sync-audit to run transition)
-Status: not applicable (retired by d-20261010T053435Z-006f: the sync-audit to run edge is old item (7) of the card body; REQ-FRR-008 and -009 are retired)
+Status: not applicable (retired by d-20261010T053435Z-006f: the sync-audit to run edge is old item (7) of the card body; REQ-FRR-008 and -009 are retired; leader confirmation d-20261010T060606Z-c5c4)
 Authority anchor: none for the mechanism. The standing rule d-20261009T235640Z-3653 records the policy that "defects in a card's own scope are repaired in that card". It does not say how own scope is told apart, and its digest cannot be pinned in this round, so it is cited for context and not relied on for routing.
 Why unresolved: the state machine has no sync-audit to run edge (`internal/homestate/card_transition.go:133-181`), and the verdict parser has no own-scope field (`internal/auditverdict/verdict.go:115-162`). A verdict-based discriminator would either cross t1618's boundary or admit defects outside the card's scope.
 Options (plan D3): (a) defer REQ-FRR-008 until the verdict format carries an own-scope field (t1618); (b) add a field to the verdict format in this batch, which crosses t1618's boundary; (c) treat any FAIL with a blocking count of one or more as own-scope, which admits defects outside the card's scope; (d) a leader-recorded decision of kind ruling with scope card:<card-id>, which cites the sync-audit verdict file path and that verdict's audited SHA, checked against the card's sync evidence hash.
@@ -142,7 +149,7 @@ Operator verdict: not required (not applicable, d-20261010T053435Z-006f). The 1a
 
 Label: FOUNDER
 Class: product-level (adds a refusal to the stage verb's re-audit entry)
-Status: not applicable (retired by d-20261010T053435Z-006f: the holder re-stamp is old item (7) of the card body; REQ-FRR-010 is retired)
+Status: not applicable (retired by d-20261010T053435Z-006f: the holder re-stamp is old item (7) of the card body; REQ-FRR-010 is retired; leader confirmation d-20261010T060606Z-c5c4)
 Authority anchor: none.
 Why unresolved: AC-FRR-010 and M4 assumed a refusal that REQ-FRR-010 did not state.
 Options: (a) add the refusal to REQ-FRR-010; (b) remove the mismatch case from AC-FRR-010 and M4.
@@ -157,7 +164,7 @@ Operator verdict: not required (not applicable, d-20261010T053435Z-006f). The 1a
 
 Label: FOUNDER
 Class: product-level (the empty-stage to run refusal is user-visible)
-Status: not applicable (retired by d-20261010T053435Z-006f: the interim empty-stage guard is the stopgap named by old item (4) of the card body; REQ-FRR-012 is retired)
+Status: not applicable (retired by d-20261010T053435Z-006f: the interim empty-stage guard is the stopgap named by old item (4) of the card body; REQ-FRR-012 is retired; leader confirmation d-20261010T060606Z-c5c4)
 Authority anchor: none.
 Why unresolved: the audit found that a recorded operator decision was allowed to admit the transition, while the edge carries no operator carrier.
 Options (plan D2): (a) add an operator-decided edge at T4b in this batch; (b) keep an operator branch inert until a carrier lands in a later SPEC; (c) limit R6 to the plan-verdict branch and write no operator branch.
@@ -172,7 +179,7 @@ Operator verdict: not required (not applicable, d-20261010T053435Z-006f). The 1a
 
 Label: FOUNDER
 Class: product-level (a card whose SPEC id is malformed needs a plan verdict to reach run)
-Status: not applicable (retired by d-20261010T053435Z-006f: the interim guard is old item (4) of the card body; REQ-FRR-012 is retired)
+Status: not applicable (retired by d-20261010T053435Z-006f: the interim guard is old item (4) of the card body; REQ-FRR-012 is retired; leader confirmation d-20261010T060606Z-c5c4)
 Authority anchor: none.
 Why unresolved: AC-FRR-012 covered only valid ids, while REQ-FRR-012 says non-empty. A non-empty malformed id fell under no criterion.
 Options: (a) every non-empty SPEC id, valid or invalid, as REQ-FRR-012 is written; (b) valid ids only, which would leave malformed ids on the empty-stage route.
@@ -256,7 +263,7 @@ Operator verdict: DEFAULT-APPLIED 2026-10-10T01:32:07Z manager-spec
 
 Label: FOUNDER
 Class: implementation-level
-Status: not applicable (retired by d-20261010T053435Z-006f: the route was kept unchanged by REQ-FRR-013, which is retired with the interim guard of old item (4))
+Status: not applicable (retired by d-20261010T053435Z-006f: the route was kept unchanged by REQ-FRR-013, which is retired with the interim guard of old item (4); leader confirmation d-20261010T060606Z-c5c4)
 Authority anchor: none.
 Why unresolved: a card with an empty SPEC id can still reach run through the empty-stage edge, because REQ-FRR-013 keeps that route unchanged.
 Options: (a) accept the residual as spec.md states it; (b) move the narrow part of lens-4 defect 5 (setting the SPEC id while leased) into this SPEC.
@@ -339,11 +346,18 @@ Operator verdict: not required (POLICY-COVERED)
 
 Label: FOUNDER
 Class: product-level (opens a new edge into `done` for a repository with a remote, which changes a card-state transition's user-visible behaviour)
-Status: open
-Authority anchor: none. The ruling d-20261010T053435Z-006f names item (3) for this card. The SPEC's Adjacent-cards note, before revision 0.2.0, named t1616 as the owner of the done-transition opening, and the visible text of the t1616 queue entry at read time covers the local main integration flow. Neither is a DECIDED anchor: a board record carries no digest.
-Why unresolved: item (3) has two parts, and the SPEC carries no requirement for either. The first is a pushed → done edge. The transition table has no such row: T17 is merged-local → pushed, T18 is merged-local → done (refused when a remote exists), and T20 is ci-green → done, with the reserved pushed → ci-green edge at `card_transition.go:203-208`. The second is out-of-band write detection, which the card body names as `factory doctor`. No existing text in the SPEC or in `.moai/reports/t1621` defines the detection signal. Writing either part would invent the guard and the signal.
+Status: open (leader ruling d-20261010T060606Z-c5c4 decided the owner and scope: option (a). The operator may confirm or overrule; the Operator verdict line stays empty.)
+Authority anchor: none. The ruling d-20261010T053435Z-006f names item (3) for this card. Leader ruling d-20261010T060606Z-c5c4 decides the owner and scope; it is a board record with no digest, so it does not make this row DECIDED. The SPEC's Adjacent-cards note, before revision 0.2.0, named t1616 as the owner of the done-transition opening, and the visible text of the t1616 queue entry at read time covers the local main integration flow. Neither is a DECIDED anchor: a board record carries no digest.
+Why it was open before 0.3.0: item (3) has two parts, and the 0.2.0 SPEC carried no requirement for either. The first is a pushed → done edge. The transition table has no such row: T17 is merged-local → pushed, T18 is merged-local → done (refused when a remote exists), and T20 is ci-green → done, with the reserved pushed → ci-green edge at `card_transition.go:203-208`. The second is out-of-band write detection, which the card body names as `factory doctor`. No existing text in the SPEC or in `.moai/reports/t1621` defines the detection signal. Writing either part would invent the guard and the signal.
 Options: (a) this card carries both parts, and a later revision writes the requirements and the guard. (b) t1616 keeps the done-transition opening, and this card carries only the out-of-band write detection. (c) the leader removes item (3) from this card and re-scopes it.
-Applied: none. Open.
+Applied: option (a), under leader ruling `d-20261010T060606Z-c5c4` (card:t1621, kind=ruling): this card carries both parts, and t1616 does not own the done transition. The content is spec.md 0.3.0 REQ-FRR-016 to REQ-FRR-019 and acceptance.md AC-FRR-017 to AC-FRR-021, within the Tier M ceilings (14 requirements, 15 criteria).
+
+Not decided by c5c4. The lane took the conservative reading in each case, and the operator may overrule any of them:
+1. Whether pushed → done also needs a CI verdict. The card text does not say, and no CI verdict reader exists (the reserved edge, REQ-FCR-010). The reading here is the receipt and containment conditions of T20 and T17, with no CI condition.
+2. Which operator surface carries the pushed → done decision. `decide --gate push` takes only merged-local cards (and the merged-PR case) today (`internal/cli/factory_card.go`, decideOne).
+3. Whether an empty record is an empty sweep with a non-zero exit. The reading here is yes (REQ-FRR-019).
+4. Whether the doctor reads every run or only the run the caller names. The reading here is every run unless one is named (REQ-FRR-018).
+5. How often the doctor runs. Nothing in this SPEC makes it run (spec.md Residual risk).
 Basis: the card body item (3) and d-20261010T053435Z-006f for (a); the earlier Adjacent-cards note of this SPEC for (b); the leader's authority to re-scope the queue body for (c).
 Evidence: card body t1621 item (3), read with `moai todo show t1621`; `card_transition.go:156-158` and `:203-208`; spec.md Scope and Exclusions (revision 0.2.0).
 Default: none (no option is ranked by the published Default rule).
