@@ -115,7 +115,7 @@ stub-delta: `workflow/factory-dispatch-core.md` (배포·템플릿 쌍, 동일) 
 
 ### 라이브 재진입 확인(AC-RIB-012) — 리더 인계 Gap
 
-레인은 스스로 세션을 재기동할 수 없음(단말 런처 경계 — `moai cc -w` 는 터미널 전용, 운영자 10-09 실측). AC-RIB-012 의 라이브 관측(startup + clear 재진입에서 넘침 공지 부재 + 합본 ≤10,000)은 **리더/운영자 협력 항목으로 인계**한다. 측정 대체 증거: 조립 예산 테스트가 생산자 상한 4,797 + 오버헤드 257 + core 3,786 = **8,843 ≤ 9,000 ≤ 10,000** 을 양 트리에서 단언(경계 소스 봉투의 산술 전체) — 라이브 관측이 남긴 Gap 은「실제 세션 착화 1회」뿐이다.
+레인은 스스로 세션을 재기동할 수 없음(단말 런처 경계 — `moai cc -w` 는 터미널 전용, 운영자 10-09 실측). AC-RIB-012 의 라이브 관측(startup + clear 재진입에서 넘침 공지 부재 + 합본 ≤10,000)은 **리더/운영자 협력 항목으로 인계**한다. 측정 대체 증거: 조립 예산 테스트가 생산자 상한 4,797 + 오버헤드 257 + core 3,786 = **8,840 ≤ 9,000 ≤ 10,000** 을 양 트리에서 단언(경계 소스 봉투의 산술 전체) — 라이브 관측이 남긴 Gap 은「실제 세션 착화 1회」뿐이다.
 
 ```text
 [M3 verbatim, tree 070025bfc + M3 edits]
@@ -169,7 +169,7 @@ card_review: codex pass, 0 findings (.moai/reports/t1617/card-review.md; base db
 | AC-RIB-012 | **리더 인계** | 라이브 재진입 — 레인 권한 밖 (아래 참조) |
 | AC-RIB-013 | PASS | 봉투 밖 사다리 서브테스트 + codex_review_ownership 도크트린 GREEN |
 
-- **AC-RIB-012 (라이브 재진입 확인) — 리더/운영자 인계**: 레인은 스스로 세션을 재기동할 수 없습니다 (단말 런처 경계 — `moai cc -w` 는 터미널 전용, 운영자 정정 10-09). 라이브 관측 (startup + clear 재진입에서 넘침 공지 부재 + 합본 ≤10,000) 은 리더/운영자 협력 소관으로 인계합니다. 대체 증거: 조립 예산 테스트가 생산자 상한 4,797 + 오버헤드 257 + core 3,786 = **8,843 ≤ 9,000 ≤ 10,000** 을 양 트리에서 단언 — 경계 소스 봉투의 산술 전체가 관측됨. 남는 Gap 은 「실제 세션 착화 1회 관측」뿐입니다.
+- **AC-RIB-012 (라이브 재진입 확인) — 리더/운영자 인계**: 레인은 스스로 세션을 재기동할 수 없습니다 (단말 런처 경계 — `moai cc -w` 는 터미널 전용, 운영자 정정 10-09). 라이브 관측 (startup + clear 재진입에서 넘침 공지 부재 + 합본 ≤10,000) 은 리더/운영자 협력 소관으로 인계합니다. 대체 증거: 조립 예산 테스트가 생산자 상한 4,797 + 오버헤드 257 + core 3,786 = **8,840 ≤ 9,000 ≤ 10,000** 을 양 트리에서 단언 — 경계 소스 봉투의 산술 전체가 관측됨. 남는 Gap 은 「실제 세션 착화 1회 관측」뿐입니다.
 - **검증**: go test ./internal/hook/ ./internal/template/ → ok/ok (FINAL, exit 0 — 슬롯 internal-hook-template-suite 임대 하); GOOS=windows GOARCH=amd64 및 darwin/arm64 빌드 → exit 0; golangci-lint (hook+template) → 0 issues; coverage internal/hook **87.5%** (≥85% 문턱).
 - **card-review**: codex scope=card → **pass**, findings 0 (`.moai/reports/t1617/card-review.md`; base db0c514d3 → head 190f7db5d) — advisory이며 리더의 증거 읽기와 독립 감사를 대체하지 않습니다.
 - **관측 (경계 생존 실측)**: 스텁 추가문의 초판이 스텁 게이트에 걸렸고 (10,630 > 10,000 — 3회 절단으로 9,915 수렴); TestTemplateNoInternalContentLeak 이 hooks 첫 편집의 SPEC-id 인용을 잡았습니다 — 두 경계 모두 생존하고 실제로 판정했습니다.
@@ -188,7 +188,7 @@ b12_self_test_b: pass — 선언 live AC 집합 = 13 (acceptance.md §A 표 AC-R
 b12_self_test_c: pass — `ls`로 구현 파일 5건 존재 확인 (internal/hook/role_rules.go · role_injection_budget_test.go · role_rules_skew_predicate_test.go · role_rules_version_skew_test.go · internal/template/role_core_stub_gate_test.go)
 frontmatter_status_transitions.in-progress→implemented→completed: 단일 sync 커밋 병합 전이 (spec.md `status:` + `updated:` 만 편집; 본문 무편집 — updated는 당일 값 유지)
 mx_tag_validation: sync diff는 docs-only (CHANGELOG.md + spec.md frontmatter + progress.md §E.4) — 태그 변경 0
-ac_rib_012_disposition: 「운영자 확인 대기, 대체 증거 = 봉투 산술 실측」 — 레인·리더 모두 세션 재기동 불가(단말 런처 경계, 운영자 정정 10-09)로 리더가 운영자 복귀 체크리스트(보드 card:t1617)에 등재; 대체 증거는 조립 예산 테스트의 생산자 4,797 + 오버헤드 257 + core 3,786 = 8,843 ≤ 9,000 ≤ 10,000 양 트리 관측
+ac_rib_012_disposition: 「운영자 확인 대기, 대체 증거 = 봉투 산술 실측」 — 레인·리더 모두 세션 재기동 불가(단말 런처 경계, 운영자 정정 10-09)로 리더가 운영자 복귀 체크리스트(보드 card:t1617)에 등재; 대체 증거는 조립 예산 테스트의 생산자 4,797 + 오버헤드 257 + core 3,786 = 8,840 ≤ 9,000 ≤ 10,000 양 트리 관측
 readme_docs_site_judgment: no-sync — 이 변경은 내부 주입 동작(예산 게이트 · 스텁 구조 · 오류 안내 문구)과 룰 파일 내용의 재배치로, README 4-locale · docs-site가 서술하는 사용자 대면 동작은 불변 (문서화된 CLI 표면 변화 없음)
 sync_evidence: 최종 런 스위트(ok/ok) · 커버리지 87.5% · lint 0 · 양 크로스컴파일 빌드는 §E.3 실측을 그대로 인용 — sync diff는 문서 전용으로 코드·룰 트리 무변경
 commit_plan: sync 커밋 1건(전이 · 엔트리 · §E.4 플레이스홀더 동승, `Authored-By-Agent: manager-docs` + `🗿 MoAI` 트레일러) + backfill 커밋 1건(실측 SHA로 이 칸 갱신)
