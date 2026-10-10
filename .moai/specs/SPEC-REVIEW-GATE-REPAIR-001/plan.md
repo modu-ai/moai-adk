@@ -25,16 +25,20 @@
 
 | 파일 | 현재 역할 (근거) | 관련 마일스톤 |
 |---|---|---|
-| `internal/cli/codex_review_delay.go` | 진입 훅 `HandleCodexReviewEntry`(140행). 차단 분기 169–183행. 헤더 1–14행은 교착을 설계로 채택했다 | M2 |
+| `internal/cli/codex_review_delay.go` | 진입 훅 `HandleCodexReviewEntry`(140행). 차단 분기 169–183행. 헤더 1–14행은 교착을 설계로 채택했다. M5 의 진행 중 표식 구현 위치: 검토 프로세스 분리 실행 `:52`, 현행 버킷 경로 `:76–80`, 버킷 정리·배타 생성·시각 기록 `:98–113`(design.md §3 인용) | M2, M5 |
 | `internal/cli/codex_review_delay_test.go` | 기존 테스트 파일. `TestReviewEntry_FreshFailBlocks`(363행)는 결함을 고정하므로 기대값을 바꾼다(셀 B-2). M2 의 기대값 변경 대상 | M2 |
 | `internal/cli/codex_review_entry_delivery_test.go` | 신규 RED 테스트 파일(AC-RG-001–003, 진입 훅 비차단과 전달 기록). M2 에서 만든다 | M2 |
-| `internal/cli/codex_review_gate.go` | 턴 종료 `HandleCodexReviewGate`(104행). stop_hook_active 109행. 수용 영수증 재사용 159–178행. 진행 중 표식 197–210행. 스위치 읽기 469행. 빈 루트 해석 `reviewGateConfigRoot` 489행 | M3, M5, M6 |
+| `internal/cli/codex_review_gate.go` | 턴 종료 `HandleCodexReviewGate`(104행). stop_hook_active 109행. 수용 영수증 재사용 159–178행. 진행 중 표식 197–210행. 스위치 읽기 469행. 빈 루트 해석 `reviewGateConfigRoot` 489행. M3 의 턴 종료 상태표(차단 횟수 카운터, 재검토 시작, 메시지)는 이 파일의 턴 종료 처리에 둔다 | M3, M5, M6 |
+| `internal/cli/codex_review_gate_test.go` | 기존 테스트 파일(턴 종료 게이트 가드): `TestReviewGate_DisabledAllows`(40행), `TestReviewGate_LoopPreventionAllows`(65행), `TestReviewGate_FailOpenOnMissingCodex`(119행). M3 의 신규 테스트 함수(AC-RG-004 차단 횟수 1 단언, AC-RG-005, AC-RG-017 신규 가드(허용 뒤 재차단 없음), AC-RG-018·019 메시지 단언)는 이 파일에 둔다. M3 은 기존 테스트의 기대값을 바꾸지 않는다. `TestReviewGate_CacheHitReusesFailVerdict`(`internal/cli/codex_review_cache_test.go:68`)는 M5 파일이므로 M3 에서 고치지 않는다. M7 회귀 실행은 이 파일을 읽기만 한다 | M3 |
 | `internal/cli/codex_review_cache.go` | 유효기간 상수 29행. 상세 파일 읽기 72–76행 | M2, M5 |
 | `internal/cli/codex_review_cache_test.go` | 기존 테스트 파일. `TestReviewGate_InconclusiveReceiptIsNotPassEvidence`(236행)의 단언 262–269행이 허용을 고정한다(감사 O10). M5 의 기대값 변경 대상 | M5 |
 | `internal/cli/codex_review_inconclusive_test.go` | 신규 RED 테스트 파일(AC-RG-010–011, inconclusive 비재사용과 재검토 재시작). M5 에서 만든다 | M5 |
 | `internal/cli/codex_review_receipt.go` | 영수증 생산자. 키 측정 149행. inconclusive 기록 160–186행. 런타임 설정 전용 발견 사항의 재분류 176행 | M5 |
 | `internal/cli/mcp_codex.go` | `readCodexReviewGateEnabled` 2503행(빈 루트면 false). 감사 경로의 기준 기록 | M6 |
 | `internal/cli/codex_review_tree_scope.go` | 트리와 주 체크아웃 범위 판정 133–137행 | M6 |
+| `internal/cli/review_gate_config_key_test.go` | 기존 테스트 파일. AC-RG-013 부분 가드 `TestReviewGateReaders_AgreeWithConfigLoader`(96행)가 있으며 Go 층과 설정 로더의 일치만 검사한다. 셸 층을 검사하는 가드는 현재 없다 | M6 |
+| `internal/cli/codex_review_run_membership_test.go` | 신규 RED 테스트 파일. AC-RG-012 시나리오 (e)(주 체크아웃이나 다른 트리에서 시작한 세션은 재정의 파일을 무시하고 커밋된 값을 따른다)의 member lane 판정을 검사한다. M6 에서 만든다 | M6 |
+| `internal/homestate/card_worktree.go` | 기존 파일(`RecordCardWorktree` 20행, `PreviousCardWorktree` 73행, design.md §5 인용). M6 의 읽기 전용 조회(`run_id` 와 `worktree_path` 로 `cards` 행을 읽어 member lane 을 판정, 함수 이름은 run 단계가 정한다)를 이 파일에 추가한다. 쓰기 경로는 바꾸지 않는다 | M6 |
 | `internal/auditreceipt/storeroot.go` | `IdentifyPrimaryCheckout` 142행(주 체크아웃 해석, 재정의 파일 경로에 쓴다). `StoreRoot` 242–243행(트리에 workflow.yaml 이 있으면 그 트리를 돌려준다, 재정의 경로에는 쓰지 않는다) | M6 |
 | `.claude/hooks/moai/handle-codex-review-entry.sh` | 33–34행: `CLAUDE_PROJECT_DIR` 기준 workflow.yaml 을 읽는다. 주 체크아웃 해석으로 바뀐다 | M6 |
 | `.claude/hooks/moai/handle-codex-review-gate.sh` | 마지막 줄: 훅 호출에 stderr 리다이렉트가 없다 | M6 |
@@ -44,13 +48,13 @@
 | `.claude/rules/moai/workflow/factory-dispatch-detail.md` 157행 과 템플릿 미러 `internal/template/templates/.claude/rules/moai/workflow/factory-dispatch-detail.md` | 두 계층 동시 활성 문장. F4 의 정정 대상 | M7 |
 | `.moai/specs/SPEC-REVIEW-GATE-REPAIR-001/progress.md` (공통 승인 파일) | 현재 §E.1 만 채워진 진행 기록. 마일스톤별 기록(RED 출력 §E.2, 기대값 변경의 근거, 회귀 비교표)이 여기에 든다. 모든 마일스톤의 승인 파일 목록에 공통으로 든다 | M1–M3, M5–M7 (공통) |
 
-후보 집합, 거리 척도, 동점 규칙은 t1662 가 정한다(REQ-ACE-005). 파일 목록은 run 단계에서 확정한다. 목록이 Tier L 의 상한을 넘으면 Tier 판정을 다시 한다.
+후보 집합, 거리 척도, 동점 규칙은 t1662 가 정한다(REQ-ACE-005). 파일 목록은 이 §C 가 정한다. run 단계가 목록 밖 파일을 바꿔야 하면 멈추고 보고한다(마일스톤 종료 시 트리 변화 점검). 목록이 Tier L 의 상한을 넘으면 Tier 판정을 다시 한다.
 
 `.moai/specs/SPEC-REVIEW-GATE-REPAIR-001/progress.md` 는 M1–M3·M5–M7 모든 마일스톤의 공통 승인 파일이다(위 표의 마지막 행). M4 는 t1662 로 이관되어 이 SPEC 에 없다. 따라서 각 마일스톤의 승인 파일 목록은 그 마일스톤에 묶인 행과 이 공통 행을 합친 것이다.
 
 ## §D 마일스톤 (우선순위 순)
 
-각 마일스톤에서 RED 가 GREEN 보다 먼저였다는 사실은 구현 전 트리에서 실행한 RED 출력을 원문으로 남긴 progress.md §E.2 기록으로만 확인한다(tdd-result-contract.md). 한 마일스톤 커밋 안의 선후는 커밋 그래프로 증명되지 않는다. 이 한계는 잔여 위험이다. 마일스톤의 순서는 되돌리기 어려운 결정을 먼저 두고, 기계적인 정리는 뒤에 둔다. 각 마일스톤은 한 커밋이며, 두 면을 가진 파일은 그 커밋에서 함께 갱신한다(spec.md §D.3).
+각 마일스톤의 RED 선행은 커밋 그래프만으로 검증한다. 마일스톤 커밋 M 의 첫 부모 P 의 트리에 M 이 추가한 새 테스트 파일만 얹어 기록된 명령을 실행하면, 기록된 단언에서 EXPECTED_RED 로 실패해야 한다. 그 실행의 명령, 종료 코드, 원문 출력은 progress.md §E.2 에 남긴다. 마일스톤의 순서는 되돌리기 어려운 결정을 먼저 두고, 기계적인 정리는 뒤에 둔다. 각 마일스톤은 한 커밋이며, 두 면을 가진 파일은 그 커밋에서 함께 갱신한다(spec.md §D.3).
 
 ### M1 — 판정 기록 확인 (우선순위 High, 차단 게이트)
 

@@ -1,7 +1,7 @@
 ---
 id: SPEC-REVIEW-GATE-REPAIR-001
 title: "Codex 리뷰 게이트 수리 — 프롬프트 진입 교착을 풀고 리뷰 기준을 하나로 모은다"
-version: "0.2.4"
+version: "0.2.5"
 status: draft
 created: 2026-10-10
 updated: 2026-10-10
@@ -30,6 +30,7 @@ tags: "codex, review-gate, turn-end, prompt-entry, receipt, merge-base, card-t16
   - v0.1.2의 REQ-RG-005~008(퇴역 → t1662, v0.2.0에서 제거)
   - v0.1.2의 AC-RG-006~009·016·020~024(퇴역 → t1662, v0.2.0에서 제거)
 - 2026-10-10 · v0.2.4 · manager-spec · plan-audit 7회차(v0.2.3, `.moai/reports/t1620/plan-audit-iter7.md`, FAIL 0.75, 차단 B1–B4, 필수 codex 레그 inconclusive)의 수리 라운드다. 운영자 결정 d-20261010T113614Z-2413 에 따라 이 카드의 plan 감사에서 codex 필수 레그를 advisory 로 바꾸고(도구 결함, t1662 범위, 판정 파일에 기록), B1–B4 를 한 번 고친다. B1: AC-RG-019 에 (d) reviewer 없음을 더했다. B3: AC-RG-019 의 각 경우를 상태 이름에 묶었다. B4: AC-RG-012 (a) 의 systemMessage 는 턴 종료 게이트만 낸다. B2: 마일스톤의 RED 선행은 커밋 그래프로 증명할 수 없으므로, 순서 조항을 기록 증거(progress.md §E.2)로만 확인한다는 문장으로 바꿨다(plan.md, spec.md §D.2, acceptance.md). 이 행은 감사 결과를 주장하지 않는다. [ID mapping v0.2.4: 적용 없음. 번호는 v0.2.2 와 같다.]
+- 2026-10-10 · v0.2.5 · manager-spec · plan-audit iter8 FAIL(`.moai/reports/t1620/plan-audit-iter8.md`, 0.75, 차단 D1·D2)의 수리 라운드다. 운영자 결정 d-20261010T130929Z-a280 에 따라 D1 은 (나)안으로 고쳤다(RED 선행 순서를 커밋 그래프 검사로 재작성, 이 SPEC 은 승격을 하지 않는다). D2 는 plan §C 승인 파일 목록에 M3·M5·M6 의 테스트 파일과 원천 파일을 보강했고, 파일 목록은 §C 가 정한다고 적었다. 이 행은 감사 결과를 주장하지 않는다. [ID mapping v0.2.5: 적용 없음. 번호는 v0.2.2 와 같다.]
 
 ---
 
@@ -178,7 +179,7 @@ When the turn-end gate allows a stop and no fresh passing receipt backs that all
 ## §D 실행 순서 구속
 
 1. 운영자 판정 Q2–Q6 과 보드 판정 D3·D4·D11 은 decision-index.md 에 기록되어 있다. Q1 은 t1662 로 이관되었다(d-20261010T070728Z-6cdf). run 단계는 Q2–Q6 행의 `Operator verdict` 가 채워져 있는지 확인하고 시작한다.
-2. 각 마일스톤의 순서(RED(실패 확인) → GREEN → 회귀)는 progress.md §E.2 에 원문으로 남긴 RED 출력으로만 확인한다. 한 마일스톤 커밋 안의 선후는 커밋 그래프로 증명되지 않는다. 이 한계는 잔여 위험이다.
+2. 각 마일스톤의 RED 선행은 plan.md 의 마일스톤 순서 조항이 정한 커밋 그래프 검사(첫 부모 트리에 새 테스트만 얹어 EXPECTED_RED 재현)로 확인하고, 그 원문은 progress.md §E.2 에 남긴다.
 3. **변경 세트(change set)는 커밋 하나다.** 두 면을 가진 파일은 같은 커밋에서 함께 갱신한다. 훅 래퍼(`.claude/hooks/moai/handle-codex-review-{entry,gate}.sh` 와 `internal/template/templates/.claude/hooks/moai/handle-codex-review-{entry,gate}.sh`)는 M6 의 한 커밋에 함께 담긴다. M7 의 규칙 문장 정정(F4)도 규칙 파일(`.claude/rules/moai/workflow/factory-dispatch-detail.md`)과 그 템플릿 미러를 한 커밋에서 맞춘다. 두 면이 서로 다른 커밋에 갈라지는 상태는 허용하지 않는다.
 
 ---
