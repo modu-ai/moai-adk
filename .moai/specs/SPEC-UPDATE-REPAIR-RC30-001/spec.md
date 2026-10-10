@@ -203,7 +203,7 @@ Note on the branch base: the worktree was cut from main tip `2aab5f797`. `.claud
 - SPEC-CLI-TUX-INIT-UPDATE-001 (completed, on main): REQ-TUXIU-004, -012 to -016, -020 to -022, -041, -054.
 - SPEC-V3R6-UPDATE-NOISE-001 (implemented, on main): `--verbose` semantics, REQ-UN-005 and REQ-UN-010.
 - SPEC-V3R6-UPDATE-PROGRESS-001 (implemented, on main): `tui.ProgressLine`.
-- SPEC-UPDATE-MIGRATION-001 (completed, on main): REQ-UPM-030 to -032 (summary reporting, plain counts).
+- SPEC-UPDATE-MIGRATION-001 (completed, on main): REQ-UPM-030 to -032 (summary reporting): REQ-UPM-030 requires per-path listings of refreshed, merged, conflicting, preserved, and archived-removed files; REQ-UPM-031 requires the summary to state managed-file deletions; REQ-UPM-032 requires plain counts and path lists that do not pre-commit the t1527 UX overhaul.
 - SPEC-UPDATE-YAML-PRESERVE-001 (completed, on main): comment preservation (U-23).
 
 ## I. Exclusions
