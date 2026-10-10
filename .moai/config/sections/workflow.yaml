@@ -150,7 +150,11 @@ workflow:
     worktree:
         # 2026-05-22: auto_create false (user policy feedback_worktree_autonomous 정렬).
         # L1 worktree는 Claude Code runtime autonomous — MoAI orchestrator는 자동 생성 안함.
-        # auto_merge 유지 (사용자 수동 worktree 생성 시에만 자동 머지).
+        # auto_merge: false. Session-exit auto-merge merges into
+        # git_strategy.manual.develop_branch (main in this repository). The only
+        # tree holding main is the primary checkout, and the auto path has no
+        # primary-checkout refusal (internal/cli/session_worktree_automerge.go).
+        # Re-enable only after a SPEC gives that path a primary-aware refusal.
         #
         # auto_cleanup: true → false (SPEC-WORKTREE-REAPER-001 M1 착지 조건).
         # M1이 gh no-answer 경로에서 git fallback을 되살리면서, 이 저장소의
@@ -161,7 +165,7 @@ workflow:
         # (acceptance.md AC-WR-023(b)).
         auto_cleanup: true
         auto_create: true
-        auto_merge: true
+        auto_merge: false
         session_name_pattern: moai-{ProjectName}-{SPEC-ID}
         tmux_preferred: true
     # branch_guard: primary checkout protection against branch-state mutations
