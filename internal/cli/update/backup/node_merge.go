@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"io"
 	"os"
+	"strings"
 
 	"gopkg.in/yaml.v3"
 )
@@ -176,19 +177,28 @@ func decodeDoc(data []byte, label string) (*yaml.Node, error) {
 	return root, nil
 }
 
-// mappingGet returns the value node paired with the given scalar key in a
-// mapping node, or (nil, false) if absent.
-func mappingGet(n *yaml.Node, key string) (*yaml.Node, bool) {
+// mappingPair returns the key node and the value node paired with the given
+// scalar key in a mapping node, or (nil, nil, false) if absent. The key node is
+// needed by the comment merge: a comment written above a key is carried on the
+// key node, not on the value.
+func mappingPair(n *yaml.Node, key string) (*yaml.Node, *yaml.Node, bool) {
 	if n == nil || n.Kind != yaml.MappingNode {
-		return nil, false
+		return nil, nil, false
 	}
 	for i := 0; i+1 < len(n.Content); i += 2 {
 		k := n.Content[i]
 		if k != nil && k.Kind == yaml.ScalarNode && k.Value == key {
-			return n.Content[i+1], true
+			return k, n.Content[i+1], true
 		}
 	}
-	return nil, false
+	return nil, nil, false
+}
+
+// mappingGet returns the value node paired with the given scalar key in a
+// mapping node, or (nil, false) if absent.
+func mappingGet(n *yaml.Node, key string) (*yaml.Node, bool) {
+	_, v, ok := mappingPair(n, key)
+	return v, ok
 }
 
 // mappingHasKey reports whether a scalar key exists in a mapping node.
@@ -203,6 +213,83 @@ func mappingHasKey(n *yaml.Node, key string) bool {
 // key node (e.g. a comment immediately above a key) is carried with the key.
 func appendPairKeyed(m, srcKey, value *yaml.Node) {
 	m.Content = append(m.Content, copyNode(srcKey), value)
+}
+
+// nodeComments is the comment trio a yaml.v3 node carries: the block above it,
+// the comment on its own line, and the block below it.
+type nodeComments struct {
+	head, line, foot string
+}
+
+// commentsOf returns the comment trio of n, or the zero trio for a nil node — a
+// position the template or the base does not have.
+func commentsOf(n *yaml.Node) nodeComments {
+	if n == nil {
+		return nodeComments{}
+	}
+	return nodeComments{head: n.HeadComment, line: n.LineComment, foot: n.FootComment}
+}
+
+// mergeComments sets dst's comment trio to the 3-way merge of the same position
+// in the template (newN), the user's file (oldN), and the base (baseN). Each of
+// the three slots is merged on its own by mergeCommentBlock.
+func mergeComments(dst, newN, oldN, baseN *yaml.Node) {
+	n, o, b := commentsOf(newN), commentsOf(oldN), commentsOf(baseN)
+	dst.HeadComment = mergeCommentBlock(n.head, o.head, b.head)
+	dst.LineComment = mergeCommentBlock(n.line, o.line, b.line)
+	dst.FootComment = mergeCommentBlock(n.foot, o.foot, b.foot)
+}
+
+// mergedCopy returns a copy of chosen, the node the merge keeps at one position,
+// carrying the merged comment trio of that position. The copy leaves the
+// caller's nodes untouched: they are shared with the trees being merged.
+func mergedCopy(chosen, newN, oldN, baseN *yaml.Node) *yaml.Node {
+	c := copyNode(chosen)
+	mergeComments(c, newN, oldN, baseN)
+	return c
+}
+
+// mergeCommentBlock applies the 3-way rule to one comment slot, line by line.
+// A block the user left as it stood in the base takes the template's block.
+// Once the user has changed it, the user's lines keep their place, a line the
+// template removed is dropped, a line the template added is appended, and a
+// template line the user deleted stays deleted.
+func mergeCommentBlock(newC, oldC, baseC string) string {
+	if oldC == baseC {
+		return newC
+	}
+	newLines, oldLines, baseLines := splitCommentLines(newC), splitCommentLines(oldC), splitCommentLines(baseC)
+	inNew, inOld, inBase := lineSet(newLines), lineSet(oldLines), lineSet(baseLines)
+	var out []string
+	for _, line := range oldLines {
+		if inNew[line] || !inBase[line] {
+			out = append(out, line)
+		}
+	}
+	for _, line := range newLines {
+		if !inOld[line] && !inBase[line] {
+			out = append(out, line)
+		}
+	}
+	return strings.Join(out, "\n")
+}
+
+// splitCommentLines returns the lines of a comment block, or nil for an empty
+// block.
+func splitCommentLines(block string) []string {
+	if block == "" {
+		return nil
+	}
+	return strings.Split(block, "\n")
+}
+
+// lineSet returns the set of lines in a comment block.
+func lineSet(lines []string) map[string]bool {
+	set := make(map[string]bool, len(lines))
+	for _, line := range lines {
+		set[line] = true
+	}
+	return set
 }
 
 // nodeValuesEqual reports whether two nodes decode to equal values. It decodes
@@ -300,19 +387,18 @@ func deepMerge3WayTo(newNode, oldNode, baseNode *yaml.Node, notes *retainedKeyNo
 
 // mergeMappingNode3Way walks the new mapping's keys in source order, resolving
 // each against the old (user) and base (previous template) mappings, then
-// appends old-only keys at the end (REQ-UYP-006). Comments and key order come
-// from whichever document supplied each surviving node.
+// appends old-only keys at the end (REQ-UYP-006). Key order comes from the
+// template. Comments are merged position by position (mergeComments), so a
+// comment line the user wrote survives on whichever key, value, or mapping node
+// yaml.v3 attached it to. Sequence items are taken whole and carry no merge.
 func mergeMappingNode3Way(newNode, oldNode, baseNode *yaml.Node, path string, notes *retainedKeyNotes) (*yaml.Node, error) {
 	result := &yaml.Node{Kind: yaml.MappingNode, Tag: "!!map"}
-	// Inherit the template's (newNode's) comment and style metadata so nested
-	// mappings — including flow mappings like `{ effort: max }` carrying a
-	// trailing LineComment — survive with their comments and style intact.
+	// Inherit the template's (newNode's) style so nested flow mappings such as
+	// `{ effort: max }` keep their style; the comment trio is merged below.
 	if newNode != nil {
-		result.HeadComment = newNode.HeadComment
-		result.LineComment = newNode.LineComment
-		result.FootComment = newNode.FootComment
 		result.Style = newNode.Style
 	}
+	mergeComments(result, newNode, oldNode, baseNode)
 
 	// First pass: resolve every key present in the new template.
 	for i := 0; i+1 < len(newNode.Content); i += 2 {
@@ -324,24 +410,22 @@ func mergeMappingNode3Way(newNode, oldNode, baseNode *yaml.Node, path string, no
 		key := keyNode.Value
 		childPath := joinPath(path, key)
 
-		// System fields always take the new template value (REQ-UYP-010).
-		if systemFields[key] {
-			appendPairKeyed(result, keyNode, copyNode(newV))
-			continue
-		}
-
-		oldV, oldExists := mappingGet(oldNode, key)
+		oldKey, oldV, oldExists := mappingPair(oldNode, key)
 		if !oldExists {
 			// New field added by the template → take it.
 			appendPairKeyed(result, keyNode, copyNode(newV))
 			continue
 		}
 
-		// Both new and old present.
-		var baseV *yaml.Node
-		baseExists := false
-		if baseNode != nil {
-			baseV, baseExists = mappingGet(baseNode, key)
+		// Both new and old present. The key keeps the comments the user wrote
+		// above, beside, or below it, merged over the template's and the base's.
+		baseKey, baseV, baseExists := mappingPair(baseNode, key)
+		pairKey := mergedCopy(keyNode, keyNode, oldKey, baseKey)
+
+		// System fields always take the new template value (REQ-UYP-010).
+		if systemFields[key] {
+			appendPairKeyed(result, pairKey, mergedCopy(newV, newV, oldV, baseV))
+			continue
 		}
 
 		if isMappingNode(newV) && isMappingNode(oldV) {
@@ -354,21 +438,18 @@ func mergeMappingNode3Way(newNode, oldNode, baseNode *yaml.Node, path string, no
 			if err != nil {
 				return nil, err
 			}
-			appendPairKeyed(result, keyNode, merged)
+			appendPairKeyed(result, pairKey, merged)
 			continue
 		}
 
-		// Scalar / sequence value: apply the decision.
-		if !baseExists {
-			// No base entry → user added this value → preserve old.
-			appendPairKeyed(result, keyNode, copyNode(oldV))
-		} else if nodeValuesEqual(oldV, baseV) {
-			// User unchanged from base → take new template value.
-			appendPairKeyed(result, keyNode, copyNode(newV))
-		} else {
-			// User changed from base → preserve user value.
-			appendPairKeyed(result, keyNode, copyNode(oldV))
+		// Scalar / sequence value: apply the decision. A user-added value (no
+		// base entry) and a user-changed value keep the user's; a value the user
+		// left as the base carried takes the template's.
+		chosen := oldV
+		if baseExists && nodeValuesEqual(oldV, baseV) {
+			chosen = newV
 		}
+		appendPairKeyed(result, pairKey, mergedCopy(chosen, newV, oldV, baseV))
 	}
 
 	// Second pass: old-only keys (absent from the new template). REQ-UYP-006
@@ -420,7 +501,10 @@ func copyNode(n *yaml.Node) *yaml.Node {
 // deepMergeMapsTo is the testable core of DeepMergeMaps (2-way fallback). It
 // preserves old values where keys exist in both, adds old-only keys, and
 // always takes the new value for system fields. No advisory is emitted on the
-// 2-way path (REQ-UYP-007 binds only DeepMerge3Way).
+// 2-way path (REQ-UYP-007 binds only DeepMerge3Way). Key comments on this path
+// come from the template: with no base, a user's comment above a key cannot be
+// told apart from a template comment, so the 3-way rule (mergeCommentBlock) is
+// not applied here.
 func deepMergeMapsTo(newNode, oldNode *yaml.Node) (*yaml.Node, error) {
 	if !isMappingNode(newNode) || !isMappingNode(oldNode) {
 		// Non-mapping top level: keep old if present, else new.
