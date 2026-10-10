@@ -274,6 +274,157 @@ Warning mechanism (ruling part a, chosen for the GREEN step): the repo's config 
 
 Slot (go-heavy): acquired by this session for the `go vet ./internal/cli/` compile check (until 11:46:13Z) and released; re-acquired for the CLI RED runs (until 11:47:24Z) and released after the split run.
 
+### M2 GREEN block (card t1663; HEAD `e46a0b836` for each verbatim output below unless a line names another SHA)
+
+Commits (local, not pushed; every subject names card t1663):
+- `c8fda81b1` test: M2 RED tests (test files only).
+- `49cdb0af1` test: M2 RED, non-holder legs as subtests (test file only).
+- `8c2c645d1` docs: M2 RED record in section E.2 (the block above).
+- `90a732255` fix: an undecodable `workflow.yaml` falls back to the defaults with a warning; out-of-range lease keys name the config file. Cites d-20261010T111725Z-3ef9.
+- `953e092b3` fix: RenewLease refuses an expired lease with no write. Cites d-20261010T095731Z-5ddc.
+- `4750b8b57` feat: the `moai factory renew <card> [--run] [--json]` verb (lane-only, beside stage; one implementation `factoryRenewCard`).
+- `08ac017e6` feat: the `factory_renew` MCP tool, declared write-capable in `internal/mcp/catalog.go`, through the same `factoryRenewCard`; the catalog pins of `c8fda81b1` go GREEN here.
+- `1f15ee972` docs: the MCP catalogue rule and its template mirror name the tool (byte-identical; `make build` ran; no tracked file regenerated).
+- `e46a0b836` test: coverage tests for the changed homestate functions below 85% (decision d-20261010T085601Z-991b).
+
+Ruling d-20261010T111725Z-3ef9, applied (part a: fail-open; part b: refusal names the config file):
+- Part (a) mechanism: `config.LoadFactoryLease` returns the defaults (15m and 5m) when `workflow.yaml` cannot be read or decoded, and emits `slog.Warn("failed to load factory lease config, using defaults", "path", <workflow.yaml path>, "error", <err>)`, the config fallback path the workflow section uses (stderr through the default slog handler). The function's error return is removed in `90a732255`, because a file-level failure no longer produces an error. The sibling loaders are unchanged.
+- Part (a) boundary (for the leader to confirm): every failure of the file read or decode is file-level. A YAML type mismatch inside a `factory_lease` key stops the decode, so it falls back. A scalar that the duration parser rejects (for example `banana`) is a value the file parsed, so it refuses the open.
+- Part (b): `resolveFactoryLease` still refuses out-of-range and unparseable values, with no clamp. `loadFactoryLease` appends ` (config: <root>/.moai/config/sections/workflow.yaml)` to the refusal. The key path and the allowed range were already named.
+- Per the ruling, the M1 record of the old refusal behaviour stays above, and the AC-FLR-008 proxy mutant is accepted as evidence without an exact mutant.
+
+Mutants (M2): none executed. No M2 criterion is green on the unchanged tree (see the RED block), so the mutant rule does not apply to M2.
+
+GREEN, verbatim (HEAD `e46a0b836`, this run)
+
+`go test ./internal/homestate/ -run '^(TestRenewLeaseRefusalsAndExpiry|TestRenewRefusesExpiredWithoutWrite|TestOpenFactoryFallsBackOnAWorkflowFileThatCannotBeRead|TestFactoryLeaseRefusalNamesTheConfigFile|TestLeaseAcquisitionRefusesAnUnreadableRoster|TestOpenFactoryRefusesAnUnopenableRecord)$' -v -count=1`, exit 0:
+
+```
+=== RUN   TestRenewLeaseRefusalsAndExpiry
+--- PASS: TestRenewLeaseRefusalsAndExpiry (0.52s)
+=== RUN   TestOpenFactoryRefusesAnUnopenableRecord
+--- PASS: TestOpenFactoryRefusesAnUnopenableRecord (0.39s)
+=== RUN   TestLeaseAcquisitionRefusesAnUnreadableRoster
+--- PASS: TestLeaseAcquisitionRefusesAnUnreadableRoster (0.47s)
+=== RUN   TestFactoryLeaseRefusalNamesTheConfigFile
+--- PASS: TestFactoryLeaseRefusalNamesTheConfigFile (0.00s)
+=== RUN   TestOpenFactoryFallsBackOnAWorkflowFileThatCannotBeRead
+--- PASS: TestOpenFactoryFallsBackOnAWorkflowFileThatCannotBeRead (0.23s)
+=== RUN   TestRenewRefusesExpiredWithoutWrite
+--- PASS: TestRenewRefusesExpiredWithoutWrite (0.45s)
+PASS
+ok  	github.com/modu-ai/moai-adk/internal/homestate	2.206s
+```
+
+`go test ./internal/config/ -run '^(TestLoadFactoryLeaseMalformedFileFallsBackWithWarning|TestLoadFactoryLeaseReadsBothKeys)$' -v -count=1`, exit 0:
+
+```
+=== RUN   TestLoadFactoryLeaseReadsBothKeys
+--- PASS: TestLoadFactoryLeaseReadsBothKeys (0.00s)
+=== RUN   TestLoadFactoryLeaseMalformedFileFallsBackWithWarning
+--- PASS: TestLoadFactoryLeaseMalformedFileFallsBackWithWarning (0.00s)
+PASS
+ok  	github.com/modu-ai/moai-adk/internal/config	0.298s
+```
+
+`go test ./internal/mcp/ -run '^(TestMoaiMCPTools_CatalogSize|TestMoaiMCPTools_WriteCapableSet)$' -v -count=1`, exit 0:
+
+```
+=== RUN   TestMoaiMCPTools_CatalogSize
+--- PASS: TestMoaiMCPTools_CatalogSize (0.00s)
+=== RUN   TestMoaiMCPTools_WriteCapableSet
+--- PASS: TestMoaiMCPTools_WriteCapableSet (0.00s)
+PASS
+ok  	github.com/modu-ai/moai-adk/internal/mcp	0.235s
+```
+
+`go test ./internal/cli/ -run '^(TestFactoryRenewExtendsLiveLease|TestFactoryRenewMatchesMCP|TestNonHolderRenewRefusedCLIAndMCP|TestFactoryRenewRefusalIsMachineReadable|TestMoaiMCPServer_RegistrationMatchesCatalog|TestSD_AC012_StageAppliesEdgeAndRenews)$' -v -count=1`, exit 0, slot `go-heavy` held by this session for this run:
+
+```
+=== RUN   TestSD_AC012_StageAppliesEdgeAndRenews
+=== RUN   TestSD_AC012_StageAppliesEdgeAndRenews/holder_applies_plan_→_plan-audit,_actor_recorded,_lease_renewed
+=== RUN   TestSD_AC012_StageAppliesEdgeAndRenews/another_lane_is_refused_by_F1_verbatim
+--- PASS: TestSD_AC012_StageAppliesEdgeAndRenews (2.96s)
+    --- PASS: TestSD_AC012_StageAppliesEdgeAndRenews/holder_applies_plan_→_plan-audit,_actor_recorded,_lease_renewed (1.21s)
+    --- PASS: TestSD_AC012_StageAppliesEdgeAndRenews/another_lane_is_refused_by_F1_verbatim (1.75s)
+=== RUN   TestFactoryRenewExtendsLiveLease
+--- PASS: TestFactoryRenewExtendsLiveLease (1.19s)
+=== RUN   TestFactoryRenewMatchesMCP
+=== RUN   TestFactoryRenewMatchesMCP/live_lease:_the_same_expiry_fields
+=== RUN   TestFactoryRenewMatchesMCP/expired_lease:_the_same_refusal_class
+--- PASS: TestFactoryRenewMatchesMCP (1.47s)
+    --- PASS: TestFactoryRenewMatchesMCP/live_lease:_the_same_expiry_fields (0.72s)
+    --- PASS: TestFactoryRenewMatchesMCP/expired_lease:_the_same_refusal_class (0.75s)
+=== RUN   TestNonHolderRenewRefusedCLIAndMCP
+=== RUN   TestNonHolderRenewRefusedCLIAndMCP/verb
+=== RUN   TestNonHolderRenewRefusedCLIAndMCP/MCP_tool
+--- PASS: TestNonHolderRenewRefusedCLIAndMCP (1.09s)
+    --- PASS: TestNonHolderRenewRefusedCLIAndMCP/verb (0.19s)
+    --- PASS: TestNonHolderRenewRefusedCLIAndMCP/MCP_tool (0.13s)
+=== RUN   TestFactoryRenewRefusalIsMachineReadable
+--- PASS: TestFactoryRenewRefusalIsMachineReadable (0.99s)
+=== RUN   TestMoaiMCPServer_RegistrationMatchesCatalog
+--- PASS: TestMoaiMCPServer_RegistrationMatchesCatalog (0.01s)
+PASS
+ok  	github.com/modu-ai/moai-adk/internal/cli	8.699s
+```
+
+Earlier GREEN, observed at the commit named (each before the next commit): at `953e092b3`, `--- PASS: TestRenewLeaseRefusalsAndExpiry (0.75s)` and `--- PASS: TestRenewRefusesExpiredWithoutWrite (0.70s)`; at `4750b8b57`, `--- PASS: TestFactoryRenewExtendsLiveLease (1.13s)` before the SilenceUsage fix, and then `--- PASS: TestFactoryRenewExtendsLiveLease (1.19s)` and `--- PASS: TestFactoryRenewRefusalIsMachineReadable (0.89s)` after it (the commit includes the fix); at `08ac017e6`, the MCP subtests above passed in the same run shape, and `TestMoaiMCPTools_CatalogSize`, `TestMoaiMCPTools_WriteCapableSet`, `TestMCPConsoleRendersAllTools`, `TestMCPConsoleToolCountMatchesCatalog`, and `TestMCPToggleRowWriteCapableBadge` (internal/web) and the internal/settings package passed.
+
+Rule mirror (HEAD `1f15ee972`): `go test ./internal/template/ -run '^(TestRuleTemplateMirrorDrift|TestDeclaredRuleMirrorForks)$' -v -count=1 | tail -4` printed `--- PASS: TestRuleTemplateMirrorDrift/verification-plan-contract.md (0.00s)`, `--- PASS: TestRuleTemplateMirrorDrift/cross-session-messaging.md (0.00s)`, `PASS`, `ok  	github.com/modu-ai/moai-adk/internal/template	0.381s`. The `moai-mcp-tools-catalogue.md` subtest sits inside that set.
+
+Race, scoped (QG-2, partial): `go test -race ./internal/homestate/ -run '^(TestRenewLeaseRefusalsAndExpiry|TestRenewRefusesExpiredWithoutWrite|TestCardLeaseUsesConfiguredDuration|TestOpenFactoryFallsBackOnAWorkflowFileThatCannotBeRead|TestLeaseAcquisitionRefusesAnUnreadableRoster)$' -count=1 -v`, exit 0: every named test `--- PASS`, `ok  	github.com/modu-ai/moai-adk/internal/homestate	8.152s`. The race run of `./internal/factory/` is not done (Gap).
+
+Coverage, per changed function (decision d-20261010T085601Z-991b). Profiles are in the session scratchpad (`config.cover`, `homestate2.cover`, `homestate3.cover`), and each function is read with `go tool cover -func`.
+
+| Package | Changed function | Before the coverage tests | After (HEAD `e46a0b836`) |
+|---|---|---|---|
+| internal/config | LoadFactoryLease | 100.0% | 100.0% |
+| internal/config | NewDefaultWorkflowConfig | 100.0% | 100.0% |
+| internal/homestate | OpenFactory | 76.9% | 92.3% |
+| internal/homestate | OpenFactoryBounded | 76.9% | 92.3% |
+| internal/homestate | planTransition | 84.0% | 85.3% |
+| internal/homestate | RenewLease | 89.3% | 89.3% |
+| internal/homestate | loadFactoryLease, resolveFactoryLease, EffectiveFactoryLease, refuseFactoryLease, CardLeaseDuration, RenewInterval | 100.0% | 100.0% |
+
+Package totals, context only: internal/config 84.9%; internal/homestate 82.4% before the coverage tests and 82.7% after. internal/cli is not measured here (CI measures it, per the ruling). internal/mcp has no changed function (its change is catalog data).
+
+Lint, `golangci-lint run --timeout=5m` (or `10m` for cli) per package, HEAD `e46a0b836`: `./internal/config/...` → `0 issues.`; `./internal/homestate/...` → `0 issues.`; `./internal/mcp/...` → `0 issues.`; `./internal/cli/...` → `0 issues.` (the cli run held the slot).
+
+Cross-platform build: `GOOS=windows GOARCH=amd64 go build ./...` at HEAD `e46a0b836` printed no output and reported no error.
+
+Formatting: `gofmt -l` over every Go file M2 changed or added printed no output.
+
+Boundary grep (E4), canonical form `grep -rn 'AskUserQuestion' internal/hook --include='*.go' | grep -v _test.go | grep -v '// '`: one match, `internal/hook/pre_tool.go:856: if input.ToolName == "AskUserQuestion" {`, pre-existing (it predates M2, and internal/hook was not touched). The same filter over internal/cli, internal/homestate, internal/config, and internal/mcp returns only help-text lines in unrelated files (`harness.go`, `pr_watch_cmd.go`, `harness_mute.go`, `harness_clusters.go`, `agentlint/agent_lint.go`, `harness/propose.go`, `harness/execute.go`, `harness/install.go`). None of them is a file M2 touched.
+
+Template-First: `make build` at the template edit (tree `08ac017e6` plus the template change, dirty) exited 0 with `catalog.yaml updated successfully (24330 bytes)` and built `bin/moai` (git-ignored). The build regenerated no tracked file (`git status --short` listed only the template file). The local mirror was copied from the template and is byte-identical (`diff -q` printed nothing).
+
+Rule-loading budget: `.claude/rules/moai/core/moai-mcp-tools-catalogue.md` is path-scoped (`paths:` frontmatter). It went from 27029 to 27354 bytes (+325). No always-loaded file changed.
+
+Slot (go-heavy, identity 3e1318d7; each window released by `moai slot release --resource go-heavy`):
+- acquired until 11:46:13Z → `go vet ./internal/cli/` (compile check) → released.
+- acquired until 11:47:24Z → the CLI RED runs at `c8fda81b1` and the split run at `49cdb0af1` → released.
+- acquired until 11:53:23Z → the verb GREEN and regression set → released.
+- acquired until 11:56:02Z → the MCP GREEN set → released.
+- acquired until 12:09:00Z → `golangci-lint run ./internal/cli/...` → released.
+- acquired until 12:10:25Z → the final CLI GREEN record run → released.
+
+Gaps (not observed, or not done in M2)
+- AC-FLR-011 procedure half (the watchdog text and its `renew_result` copy step): M3, not run here.
+- Console labels: `internal/web/assets/i18n.js` has no `f.mcp.tools.factory_renew.enabled.*` keys in the four locales. The brief bars locale strings in this lane, so the keys are not added; the console shows the tool without a translated label until a locale owner adds them. No test requires the keys (`TestMCPConsoleRendersAllTools` passes without them).
+- docs-site pages (`docs-site/content/{en,ja,ko,zh}/guides/mcp-server.md`) list the `project_root` tools and still say twenty-two; they are not updated (outside the M2 list; the four-locale same-PR rule applies to that follow-up).
+- `.moai/policies/core/moai-mcp-tools-catalogue.md` is an older, different copy of the catalogue rule; it is not updated (outside the M2 list).
+- Race on `./internal/factory/` (QG-2 names it) not run: M2 changed no file in internal/factory.
+- internal/cli coverage: not measured (CI, per the ruling).
+- `/verify` was not run before the code commits `90a732255`, `953e092b3`, `4750b8b57`, and `08ac017e6`. The equivalent checks named above (scoped tests, golangci-lint per package, the Windows build) were run after each commit as recorded, but `/verify` itself was not invoked.
+- Trailer layout: each commit ends with the `🗿 MoAI` line followed by the `Authored-By-Agent: manager-develop` trailer, the layout of the M1 commits. The brief reads as the trailer before the 🗿 line; the M1 layout was kept so the authorship trailer stays a trailer block.
+- The lease at 12:30:00Z (run v14) was not renewed by this lane; every commit above landed locally before that time, and nothing was pushed.
+
+Residual risk (what could still be wrong despite the observations)
+- The fail-open boundary: a YAML type mismatch inside a `factory_lease` key falls back to the defaults instead of refusing (see the boundary note above). If the leader reads that case as part (b), `loadFactoryLease` needs a per-key decode.
+- The non-zero exit of `moai factory renew` on any non-renewed outcome is a design choice the SPEC does not state. The watchdog (M3) treats a refusal as a result, not a stop, so it does not depend on the exit status, but a script that stops on non-zero exits will stop on a refusal.
+- `factory_renew` has no i18n label in the console (Gap above).
+
 ## §E.3 Run-phase Audit-Ready Signal
 
 _<pending run-phase>_
