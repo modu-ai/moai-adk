@@ -1344,6 +1344,1078 @@ ok  	github.com/modu-ai/moai-adk/internal/cli	28.163s
 
 Decision id: d-20261010T131225Z-073c.
 
+### M5: quality gates, mirrors, and the cli family (card t1663; decision d-20261010T131225Z-073c)
+
+Scope: plan §F M5 and QG-1 to QG-5 (acceptance.md). Measurements were taken at HEAD `bbc5c0b81`, the tree at M4's close, unless a line names another SHA. Work tree: `git status --short` was empty after `make build`. After the last heavy run, the only write to the tree was this block, made by a script that writes `progress.md` alone; `git status --short` then listed `progress.md` and nothing else. The only commit after the measurements is this block's record commit.
+
+Gate status of this block and of its commit: 게이트 미실행(core.hooksPath=/dev/null, 공유 설정). The commit-time hook did not run. No `SKIP_MOAI_PRECOMMIT`, no `--no-verify`, no `git -c core.hooksPath`, and the shared config was not changed. `/verify` was not run: it runs `moai gate`, which runs `go test ./...`. Operator decision for card t1673 is pending.
+
+Summary of the quality gates:
+
+| Gate | Result | Where |
+|------|--------|-------|
+| QG-1 format (gofmt, 32 changed Go files) | pass | Step 2 |
+| QG-1 lint (7 packages, golangci-lint v2.1.6) | pass, 0 issues in each | Step 3 |
+| QG-2 race (factory full; homestate and cli subsets) | pass, 0 race reports | Step 5 |
+| QG-3 coverage | changed functions all at or above 85%; four touched packages are below 85% at package level: recorded as Gap | Step 6 |
+| QG-4 mirrors | key comparison pass; byte comparison pass for four of five files; `factory-dispatch.md` whole-file mismatch is pre-existing: recorded as Gap; cadence line pass | Step 1 |
+| QG-5 traceability | pass, 18 of 18 commits name card t1663 | Step 8 |
+| Full cli package (step 4) | FAIL, exit 1, 901.031 s: recorded as Gap with classification | Step 4 |
+
+#### Slot usage (resource go-heavy, lane-17, session 3e1318d7-e243-4fde-838f-fc8257e14e96)
+
+Every heavy run was acquired and released with `moai slot`. Each lease is 30 minutes, and "until" is the bound printed at acquire. The release time is the time printed by the release call or the background chain, in UTC.
+
+| # | Run | Lease until | Released at | Result |
+|---|-----|-------------|-------------|--------|
+| 1 | `make build` | 14:08:12Z | time not printed | exit 0 |
+| 2 | `golangci-lint run --timeout=10m ./internal/homestate/...` | 14:10:27Z | 13:40:31Z | exit 0, `0 issues.` |
+| 3 | `golangci-lint run --timeout=10m ./internal/config/...` (first attempt) | 14:10:33Z | 13:40:41Z | exit 3, refused: `parallel golangci-lint is running` |
+| 4 | `go test -count=1 -coverprofile ... ./internal/homestate/` | 14:10:55Z | 13:42:39Z | ok |
+| 5 | `go test -count=1 -coverprofile ... ./internal/config/` | 14:12:42Z | 13:42:49Z | ok |
+| 6 | `go test -count=1 -coverprofile ... ./internal/mcp/` | 14:12:53Z | 13:42:57Z | ok |
+| 7 | `go test -count=1 -coverprofile ... ./internal/template/` | 14:12:59Z | 13:46:25Z | ok |
+| 8 | `go test -count=1 -coverprofile ... ./internal/factory/` | 14:16:27Z | 13:51:42Z | ok |
+| 9 | `go test -count=1 -coverprofile ... ./internal/hook/` | 14:21:45Z | 13:55:40Z | ok |
+| 10 | `golangci-lint run --timeout=10m ./internal/config/...` (retry) | 14:25:44Z | 13:55:48Z | exit 0, `0 issues.` |
+| 11 | `golangci-lint run --timeout=10m ./internal/mcp/...` | 14:25:49Z | 13:55:53Z | exit 0, `0 issues.` |
+| 12 | `golangci-lint run --timeout=10m ./internal/template/...` | 14:25:55Z | 13:55:58Z | exit 0, `0 issues.` |
+| 13 | `golangci-lint run --timeout=10m ./internal/factory/...` | 14:26:00Z | 13:56:04Z | exit 0, `0 issues.` |
+| 14 | `golangci-lint run --timeout=10m ./internal/hook/...` | 14:26:05Z | 13:56:09Z | exit 0, `0 issues.` |
+| 15 | `golangci-lint run --timeout=10m ./internal/cli/...` | 14:26:11Z | 13:56:16Z | exit 0, `0 issues.` |
+| 16 | `go test -count=1 -timeout 900s ./internal/cli/` | 14:26:21Z | 14:11:29Z | exit 1, 901.031 s |
+| 17 | (a) `go test -count=1 -v -run '^TestCountCodexAgentTOMLs' ./internal/cli/` | 14:43:39Z | 14:13:46Z | exit 1 |
+| 18 | (b) `go test -count=1 -v -run '^TestCodexReviewGate' ./internal/cli/` | 14:43:57Z | 14:14:26Z | exit 1 |
+| 19 | (c) `go test -count=1 -timeout 240s -v -run '^TestRunDoctor_WithFixFlag$' ./internal/cli/` | 14:44:32Z | 14:14:42Z | exit 0 |
+| 20 | (d) supplementary `go test -count=1 -v -run '^TestFactoryLaneHandoffOperatorAbandon$' ./internal/cli/` | 14:44:52Z | 14:15:06Z | exit 0 |
+| 21 | HOME-override diagnostic (see Gaps, item 7) | 14:45:32Z | time not printed | refused by the worktree guard before any go command ran |
+| 22 | `go test -race -count=1 -timeout 25m ./internal/factory/` | 14:45:55Z | 14:23:54Z | exit 0 |
+| 23 | (e) `go test -count=1 -v -run '^TestCheckCodexWiring_' ./internal/cli/` (worktree) | 14:54:01Z | 14:24:08Z | exit 1 |
+| 24 | (f) the same command in the base copy (see Step 9) | 14:54:24Z | 14:25:04Z | exit 1 |
+| 25 | (g) base copy, `^TestCountCodexAgentTOMLs\|^TestCodexReviewGate` | 14:55:41Z | 14:26:16Z | exit 1 |
+| 26 | `go test -race -count=1 -run '...' ./internal/homestate/` | 14:56:25Z | 14:26:39Z | exit 0 |
+| 27 | `go test -race -count=1 -run '...' ./internal/cli/` | 14:56:44Z | 14:27:49Z | exit 0 |
+| 28 | `GOOS=windows GOARCH=amd64 go build ./...` | 14:57:52Z | 14:27:58Z | exit 0 |
+
+Notes on the leases: the lease for row 24 carries the description text "base-2204" (a typo in the description only; the lease itself is the session's). One acquire was refused by the guard before it ran, because its description contained the word git; it was re-issued with neutral text, and the refused attempt took no lease.
+
+#### Step 1: mirrors (QG-4)
+
+1a. `make build` (acquired under row 1). Exit 0. Output (80 lines, verbatim):
+
+````text
+ok  	github.com/modu-ai/moai-adk/internal/template/agentemit	0.368s
+ok  	github.com/modu-ai/moai-adk/internal/template/commandemit	0.245s
+ok  	github.com/modu-ai/moai-adk/internal/config/toolpolicy	0.247s
+ok  	github.com/modu-ai/moai-adk/internal/template/embedemit	0.297s
+go run github.com/a-h/templ/cmd/templ generate -path ./internal/web
+(✓) Post-generation event received, processing... [ updates=0 needsRestart=true needsBrowserReload=true ]
+(✓) Complete [ updates=0 duration=71.034708ms ]
+Computing hashes for all 70 entries...
+  moai: 543b5a6b4dc541a9c9f825b773264b260a98a1eb391dcf1a32002d6429899d3b
+  moai-factory-foreman: f2f10b926c501eec4688211e190eee2ffa6b9116c4bc5d2bf5d42426d4e1ff1f
+  moai-foundation-core: 2b6036e84a4189a637ce859752f6a597cbd4f4db8478ab0ee3ae20d5fad0ff91
+  moai-foundation-quality: b47c1d4a523f95c60cb9c78984faa5007f5323a2ab599952e2d0abb365ffa770
+  moai-foundation-thinking: b8d5cd34431cf4043ea78593fbd453f942a4bef6fcf21b8663012e7c1a75eb26
+  moai-lane-watchdog: 46be25045c22c056e8692fb25437e3478c209ade2cdc4d25746adf3bfc84cd1b
+  moai-plan: ab86a1939cde6dfa1d97a66ec451c2d05026cf630ed7e28699ff5fd917279ea1
+  moai-ref-cross-model-audit: cdd99445b591b30b2083f342c7e79d7e1f99fe36d6ab4bb7603ca7a8cbed7d87
+  moai-ref-owasp-checklist: 813cf69d9a6c25bd99fceb1fd35482fca1cba80b78a81bdc183f29abef60336f
+  moai-ref-secops: c0f1bc085835379932dfe175e9281e6b8af2d0501bcbbb0282549a017bf951d6
+  moai-ref-testing-pyramid: be77cf6a41f99e25cb1ff1c65690b955c490c9492aabe85cdb2174d42c3ef7fc
+  moai-run: 56812b8d9bfd21b7b0167257b4876b76a49e21a219111f98b02a3467fdb8e222
+  moai-sync: 259b1dcdd8ccdb06af4bf15552009e38a8bee794d3d98477ee427c3e9eac9466
+  moai-workflow-ddd: 163da2b86d0a027be3de591c5d03be1ef38d597aa165fd12288016d011d43e26
+  moai-workflow-project: 98e3cb9d3e093411e864237b66abf44410fb4402456b5f87857f5a3cdadb21aa
+  moai-workflow-spec: b0b866dc84760992c03dcad16cf6505f0931d04c17c16cff0526abf3cf9093e2
+  moai-workflow-tdd: 1f551af0f059a0e7df3135d7dad89db2d12596752fc3439cbfad03413c017709
+  moai-workflow-testing: 490954dc78e6135eccb7e960498792fd8c2143c9e783806fc83f7270ec676ead
+  moai-workflow-worktree: e90525aaf18e0c48e359e2c665b1315f9a425eb949c04feb92e530e67ab42055
+  manager-develop: fbbdcd7c9f2714a70cc9728d3ca1af5ed69d4efb3eb811e137ca16a408b7eb49
+  manager-docs: 302de7a09579c95512072d7cdf2e78030cb7540c6b162d5d0482a46ffae0fca0
+  manager-lead: e318754e8fb0531f3f9883bdc69436980d14bc81caa6a0b038b5f98e6fedc44d
+  manager-spec: fbba83b6fb68f8f0809dcef24cccd89b6666e2719247e0c45090e94c9412fca4
+  plan-auditor: 38a6f17a362990019f819d227174c748d94e81163ad7d3812f06d58a5669f83a
+  sync-auditor: 73f30e883a5d069f06ed0ebfc7be32ed6cf199a3ef67ccabbbb53cc92e28c52c
+  moai-ref-git-workflow: 0440292378de665eb805deb439564984494411495946f9f7a96a740f54772d73
+  manager-git: b8b7b79cfad3b0321450639b016a15ea1efcb0a4976b1d40848979b2a44d91bf
+  moai-domain-humanize: 2b4c74c1bebba3f0cf3842191e894fee08803c4417f8cfaa2c7a1740a3f92ab5
+  moai-foundation-cc: bb29b631ef1c66f3f75792386101bf6423fb506498a9f979155d27604b5f9388
+  moai-harness-learner: 05f85006101b5e2054510f9418af9b64812b73ee0b6aab10506faebbe84b53c2
+  moai-jev-skill-suggestion: 65bc06796226a5aabba9f0780286f1b99696c43f6ebaaab1a2f8c49f99646ca2
+  moai-meta-harness: 4f8afd3860591b6159d76d94e4bb0614554d637331bf0a89945cf44c2f0ee22e
+  moai-ref-aside-browser: 653940540ae35059faa4dcdd7d4f2bf4d7b4960de023f6da405e9632c0030b5f
+  moai-ref-jev-question-design: 8921b54c4752ddcd83b995c69d0c6261ac610266e8d4d717700ee973272c2490
+  moai-workflow-docs-claim-check: daef35e4f6e1856625a591e30a7b262fd109d135b1e7f6b6fb7e0ab354bb3521
+  moai-workflow-loop: eadc2cf7d5029c7d9acd89f627d51ee4a722e54645eb61be8679144b430bf81f
+  moai-clean: 73b5afcb5ff9198d70eb5af9955cff517a17f2295850673b3e154eae147f8f32
+  moai-codemaps: 8ab5e7351c68052b36516d058565ba577d5b5139025acabe028c57a33e74d225
+  moai-e2e: d6a80302481e3c0dcd4e786448df35efffcd8c4052665e672a346db8c34d07f3
+  moai-feedback: 2a35ab80ba9c4e6b54adaa81264e89e9f56947f1a865a8c1effb5d9251ebfb63
+  moai-fix: 6faafb575ce2d69888fb8563adf4802e9a91333651ea7a1b8fe8394faacbb07a
+  moai-gate: 548e9ed0f35a533aa8302ceddae7f8b690e7d35bf8d135d1e9a55d942a0cb7c1
+  moai-goal: 371c292fdfaf895936696b35b6fa395b701c98675a6b8dee3a3212900b52ebb7
+  moai-gtd: 888fe21dcf7c70aeebaad5d751c05dba82b8f7788870c4c7716bfcfcc5f95357
+  moai-harness: 09c89f3970afac8813a378ccd557c9fc4e583b0c443228453ae32d52cda51757
+  moai-loop: 0b83c4b7be7040b5c5eba8c1f70df1d2e8301cefa29a1ec52c4f93618111e305
+  moai-mx: fa11d2b6c9a5065447046d9e63ceb0e83e1caa05257459356aefe1c890970c0f
+  moai-project: 095fd1b8d5c9f565e94b1bf1e00dc77b256ee8cf148ec256db865b1a22d55e4b
+  moai-review: f098d342be7fd499e3f0a5a980b51a74ea7b175a13a70a1f43b2509f277aa6a7
+  moai-todo: 058049e8a835f341894f63905b6109b04638747813fad5d7e7da1e31d774724d
+  moai-ref-owasp-checklist: 813cf69d9a6c25bd99fceb1fd35482fca1cba80b78a81bdc183f29abef60336f
+  moai-ref-llm-security: 4c847baf1c957a4a3e0e56c90c043bed13ef8b48ff5074e397e05ee736e7cec7
+  moai-ref-cross-model-audit: cdd99445b591b30b2083f342c7e79d7e1f99fe36d6ab4bb7603ca7a8cbed7d87
+  moai-ref-supply-chain: 8d8ddb8032d8aebe24787fe285ac3891803bff42265aa917aaa6ffa5f43b480e
+  moai-ref-secops: c0f1bc085835379932dfe175e9281e6b8af2d0501bcbbb0282549a017bf951d6
+  moai-domain-frontend: 909ada3e5d0ac21169b1b94f3e53976f5e3fa2d1c955da3c7e78214ef1eaee5b
+  moai-ref-react-patterns: 1bf865afaa742266a1449546a58cca9fd405bd515fa3f490cbd9855d04437b4c
+  moai-ref-ui-polish: bf7ea9eac5ad067c57a5b3b49a7674ef67f419b30608d7cd6c040510ef61fb52
+  moai-ref-seo: 64b86faef2f6600f12ebc683759e1229f636229fdcaa7127bcf3404e5972f9c8
+  moai-domain-backend: 563a35038e06cf3478ab907892597a75d42d5882290dc1807c5a8d2dd6481000
+  moai-domain-database: fb7cbf5ea66ae69fa2cae07f75a48369a24c9b55b2b9f9c1e7120b33ec409f71
+  moai-ref-api-patterns: 8c84e6cda6f315b4068cbfc29771d575d21d339a0697cf8d6c95cd494d75ff3c
+  e2e-tester: 556995a6d185384bac85da8607123fc67df665fc10935d4c8f5f40bff51cdc3f
+  manager-design: b60c34aa9a6e90de61c395105576a09a5889f539ec837d31c99d6789da4433b0
+  manager-todo: 3b3df6a984571ab767988cc13c08c6586666013c22bdfdbd4cd31f726a8a9aff
+  super-advisor: 488234c9e818bf16cbdeb46cb4de2a5b62bf43e1ac060de79af20b14f3269668
+  moai-domain-design-dna: cf40ecbaacbd0279f372eed515ef7143710ae86a40a033c884a6ec7897dd82f9
+  moai-domain-html-report: 7ea8d361d84632ce15d66c5f6eef8d3d757bf8f66884348f286b4d1399a76403
+  moai-domain-svg-infographic: 99d8b3819a86e5a259049eb69fa0523641d169fe1d0f9429f0dc5aba1b17470d
+  builder-harness: 9863199e8392136330d5d7978dfe17059b5666b5ec52fa86ebed2d347a00302a
+catalog.yaml updated successfully (24330 bytes)
+go build -ldflags "-s -w -X github.com/modu-ai/moai-adk/pkg/version.Version=moai_cp/20261007_195927 -X github.com/modu-ai/moai-adk/pkg/version.Commit=bbc5c0b81 -X github.com/modu-ai/moai-adk/pkg/version.Date=2026-10-10T13:38:13Z -X github.com/modu-ai/moai-adk/pkg/version.BuildID=moai_cp/20261007_195927-206-gbbc5c0b81" -o bin/moai ./cmd/moai
+````
+
+After the build, `git status --short` printed nothing, so no tracked file was regenerated. The `catalog.yaml` rewrite (`updated successfully`) left the bytes unchanged. The templ generation reported `updates=0`.
+
+1b. Key-scoped comparison of `workflow.yaml` (QG-4 part a). Command form: `yq -o=json -I=0 '<key path>' <file>`, for the rendered `.moai/config/sections/workflow.yaml` and the template `internal/template/templates/.moai/config/sections/workflow.yaml`. Output, in this order: rendered `workflow.factory_lease`; template `workflow.factory_lease`; rendered and template `workflow.branch_guard.enabled`; rendered and template `workflow.branch_guard.deny_commits_on`; rendered and template `workflow.commit_identity_guard.enabled`:
+
+````text
+{"duration":"15m","renew_interval":"5m"}
+{"duration":"15m","renew_interval":"5m"}
+true
+false
+["main"]
+[]
+true
+false
+````
+
+Reading: the lease keys are equal by value (`duration` 15m and `renew_interval` 5m in both). The three repository overrides differ as QG-4 expects: rendered `true`, `["main"]`, `true`; template `false`, `[]`, `false`.
+
+1c. Byte comparison of each changed rule and skill mirror, local against template (`cmp`, with the exit status, then `shasum -a 256` of each file):
+
+````text
+.claude/rules/moai/workflow/factory-dispatch.md internal/template/templates/.claude/rules/moai/workflow/factory-dispatch.md differ: char 27866, line 259
+cmp factory-dispatch.md exit=1
+cmp auto-semantics.md exit=0
+cmp factory-dispatch-mechanics.md exit=0
+cmp moai-lane-watchdog SKILL.md exit=0
+cmp moai-mcp-tools-catalogue.md exit=0
+````
+
+````text
+b35b02a39a9166f176f9f8e6d9fc1ad3347c2b276f623e9bc84b3d2ad2a18c0e  .claude/rules/moai/workflow/factory-dispatch.md
+81bee0c763f4462da9aec97e6b752e26347fb3364a767d794e09c7a3c8c42c31  internal/template/templates/.claude/rules/moai/workflow/factory-dispatch.md
+a261fe2c203bb1505a46b8fcd0e558d0b25bc72015ad971b16131424f9e4c28a  .claude/rules/moai/workflow/auto-semantics.md
+a261fe2c203bb1505a46b8fcd0e558d0b25bc72015ad971b16131424f9e4c28a  internal/template/templates/.claude/rules/moai/workflow/auto-semantics.md
+a2e08b2fb3b7ff6e7cd84abd533d8af5cfb1280bcf8916a78fcb761cc6e1f91b  .claude/rules/moai/workflow/factory-dispatch-mechanics.md
+a2e08b2fb3b7ff6e7cd84abd533d8af5cfb1280bcf8916a78fcb761cc6e1f91b  internal/template/templates/.claude/rules/moai/workflow/factory-dispatch-mechanics.md
+1fd592ffbb910a13ffb71b45799901ce759e5f0e5e30bb471f35fc17d8c6e1fa  .claude/skills/moai-lane-watchdog/SKILL.md
+1fd592ffbb910a13ffb71b45799901ce759e5f0e5e30bb471f35fc17d8c6e1fa  internal/template/templates/.claude/skills/moai-lane-watchdog/SKILL.md
+89cca92df1d8d0eef883521b11e8d3fd080331baea41a97d7de618e90170c974  .claude/rules/moai/core/moai-mcp-tools-catalogue.md
+89cca92df1d8d0eef883521b11e8d3fd080331baea41a97d7de618e90170c974  internal/template/templates/.claude/rules/moai/core/moai-mcp-tools-catalogue.md
+````
+
+Reading: `auto-semantics.md`, `factory-dispatch-mechanics.md`, the watchdog `SKILL.md`, and the MCP catalogue rule are byte-identical with their template copies. `factory-dispatch.md` is not: the whole-file comparison differs at line 259. The `diff` output (verbatim):
+
+````text
+259c259
+< [HARD] A lane whose card has passed verification does not wait for the leader to integrate it: the lane merges its own branch into the batch's release branch (`release/vX.Y.Z`) itself. This is the **git-flow variant** — it applies only where the project's git strategy names git-flow; under github-flow (the distributed default) the delivery is `moai factory complete`'s pull-request edge and the full sequence is `factory-dispatch-mechanics.md` § The lane's standard landing. Where it applies, the window is taken with `moai integration acquire --name <lane> --card <card-id>` BEFORE entering the release worktree, released after the completion report is sent; the lane enters the release worktree with `EnterWorktree` (a cross-tree `git -C` is refused), merges `--no-ff`, re-reads `HEAD` before the commit and again before the push, pushes `release/vX.Y.Z` (never force), and leaves the batch pull request with the leader. The full window procedure: `factory-dispatch-mechanics.md` § Integration into the release branch is self-served · the `acquire` settings-drift assertion: `factory-dispatch-gates.md` § The pre-merge settings-drift assertion. Once the card's work is confirmed landed on the remote integration branch, disposing the card's worktree is the sweep's step: `moai worktree sweep` disposes remote-landing-confirmed trees across both tiers, hoisting evidence before every removal (`worktree-integration.md` § Hoist a tree's evidence before disposing it).
+---
+> [HARD] A lane whose card has passed verification does not wait for the leader to integrate it: the lane merges its own branch into the batch's release branch (`release/vX.Y.Z`) itself. This is the **git-flow variant** — it applies only where the project's git strategy names git-flow; under github-flow (the distributed default) the delivery is `moai factory complete`'s pull-request edge and the full sequence is `factory-dispatch-mechanics.md` § The lane's standard landing. Where it applies, the window is taken with `moai integration acquire --name <lane> --card <card-id>` BEFORE entering the release worktree, released after the completion report is sent; the lane enters the release worktree with `EnterWorktree` (a cross-tree `git -C` is refused), merges `--no-ff`, re-reads `HEAD` before the commit and again before the push, pushes `release/vX.Y.Z` (never force), and leaves the batch pull request with the leader. The full window procedure: `factory-dispatch-mechanics.md` § Integration into the release branch is self-served · the `acquire` settings-drift assertion: `factory-dispatch-gates.md` § The pre-merge settings-drift assertion.
+diff factory-dispatch.md exit=1
+````
+
+The one differing sentence is the local copy's trailing sentence on line 259, which the template copy does not carry. The QG-4 scope for this file is its cadence sentence, which is line 138 in both copies: `cmp` of the two extracted lines (`sed -n '138p'`, 1386 bytes each) reports identical bytes.
+
+````text
+cmp cadence line 138 exit=0
+````
+
+Pre-existing, verified at the commits the coordinator named (commands run in this lane, verbatim outputs):
+
+`git cat-file -t 2aab5f797` →
+
+````text
+commit
+````
+
+`git show 2aab5f797:.claude/rules/moai/workflow/factory-dispatch.md | grep -c "Once the card's work is confirmed landed"` →
+
+````text
+1
+````
+
+`git show 2aab5f797:internal/template/templates/.claude/rules/moai/workflow/factory-dispatch.md | grep -c "Once the card's work is confirmed landed"` →
+
+````text
+0
+````
+
+`git log --oneline 2aab5f797..HEAD -- .claude/rules/moai/workflow/factory-dispatch.md internal/template/templates/.claude/rules/moai/workflow/factory-dispatch.md` →
+
+````text
+1ded464af feat(SPEC-FACTORY-LEASE-RENEW-001): M3 standing wake armed at the renewal period (card t1663)
+````
+
+At the card's own base `0662f6238`, the same comparison on the sentence the diff shows (`moai worktree sweep`): `git show 0662f6238:.claude/rules/moai/workflow/factory-dispatch.md | grep -c "moai worktree sweep"` →
+
+````text
+1
+````
+
+and `git show 0662f6238:internal/template/templates/.claude/rules/moai/workflow/factory-dispatch.md | grep -c "moai worktree sweep"` →
+
+````text
+0
+````
+
+Reading: the trailing sentence is in the local copy and absent from the template copy at both base commits. The only commit that touched either copy after `2aab5f797` is `1ded464af` (M3), and it changed the cadence line, not line 259. The mismatch predates this card. It is recorded as a Gap (QG-4), and this block does not change either copy: a template change would be a product change outside M5.
+
+#### Step 2: format (QG-1)
+
+`git diff --name-only 0662f6238..HEAD -- '*.go'` lists 32 Go files (written to the scratch file `m5-go-files.txt`). `xargs gofmt -l < m5-go-files.txt` printed nothing and exited 0. The output is empty by observation.
+
+#### Step 3: lint (QG-1)
+
+`golangci-lint run --timeout=10m` on each affected package. Final line of each run, verbatim, in the order homestate, config, mcp, cli, template, factory, hook (all exit 0):
+
+````text
+0 issues.
+0 issues.
+0 issues.
+0 issues.
+0 issues.
+0 issues.
+0 issues.
+````
+
+The first config attempt (row 3) was refused by golangci-lint itself with exit 3, verbatim:
+
+```
+Error: parallel golangci-lint is running
+Failed executing command with error: parallel golangci-lint is running
+```
+
+At that moment another session's golangci-lint was running (`pgrep -fl golangci-lint` listed `90112 golangci-lint run --new-from-rev=HEAD ./internal/cli/...`, started from the worktree `t1604`). No process was stopped. The config run was repeated after `pgrep -fl "golangci-lint run"` found no process (row 10), and that retry is the recorded result.
+
+#### Step 4: affected-package tests (QG-3 and step 6 in the same runs), and the full cli package
+
+Command form: `go test -count=1 -coverprofile=<scratch>/m5-cover-<pkg>.out ./internal/<pkg>/`. Deviation from the brief: the coverage profile was written in the same invocation, so this run serves step 4, QG-3, and step 6. The final line of each package, verbatim, in the order homestate, config, mcp, template, factory, hook (all exit 0, no `--- FAIL` line in any of the six):
+
+````text
+ok  	github.com/modu-ai/moai-adk/internal/homestate	100.676s	coverage: 82.7% of statements
+ok  	github.com/modu-ai/moai-adk/internal/config	3.410s	coverage: 84.9% of statements
+ok  	github.com/modu-ai/moai-adk/internal/mcp	0.243s	coverage: 100.0% of statements
+ok  	github.com/modu-ai/moai-adk/internal/template	201.273s	coverage: 82.7% of statements
+ok  	github.com/modu-ai/moai-adk/internal/factory	309.653s	coverage: 83.1% of statements
+ok  	github.com/modu-ai/moai-adk/internal/hook	227.952s	coverage: 87.5% of statements
+````
+
+internal/cli, full package, `go test -count=1 -timeout 900s ./internal/cli/` (no coverage; cli is measured by CI). Exit 1. Last three lines of the output, verbatim:
+
+````text
+	/Users/goos/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.8.darwin-arm64/src/database/sql/sql.go:841 +0x114
+FAIL	github.com/modu-ai/moai-adk/internal/cli	901.031s
+FAIL
+````
+
+The failing tests and their decisive lines, verbatim: every `--- FAIL` line, every assertion line that follows one, the panic line, and the package lines. The full output is 1530 lines and is not quoted in full (Residual risk):
+
+````text
+--- FAIL: TestCountCodexAgentTOMLs_BadPatternRoot (0.00s)
+    codex_readiness_test.go:545: count = 6, want 0 (a glob error degrades to zero, never an error)
+--- FAIL: TestCountCodexAgentTOMLs (0.00s)
+    codex_readiness_test.go:563: count = 6, want 2 (TOMLs only)
+    codex_readiness_test.go:566: count on an unwired root = 6, want 0
+    codex_readiness_test.go:575: agents row = "agents   6 TOML", want "agents   2 TOML"
+--- FAIL: TestCodexReviewGatePrimaryCheckoutSkip (0.75s)
+    codex_review_gate_primary_scope_red_test.go:84: the primary-skip row must carry the resolved tree, got dir "/private/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestCodexReviewGatePrimaryCheckoutSkip983028954/001" want "/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestCodexReviewGatePrimaryCheckoutSkip983028954/001"
+--- FAIL: TestCodexReviewGate_TreeScopeRequestShapeUnchanged (0.73s)
+    codex_review_scope_test.go:87: thread/start cwd = "/private/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestCodexReviewGate_TreeScopeRequestShapeUnchanged364351404/001", want the resolved tree "/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestCodexReviewGate_TreeScopeRequestShapeUnchanged364351404/001"
+--- FAIL: TestCodexReviewGate_StaleEnvKeepsTreeScope (1.16s)
+    codex_review_scope_test.go:280: tree-scope cwd = "/private/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestCodexReviewGate_StaleEnvKeepsTreeScope3560648004/001", want the resolved tree "/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestCodexReviewGate_StaleEnvKeepsTreeScope3560648004/001"
+--- FAIL: TestCheckCodexWiring_MirrorAbsentAdvisesRedeploy (0.01s)
+    doctor_codex_test.go:1267: absent mirror on a wired project status = ok, want Warn: {Name:Codex Wiring Status:ok Message:wired and consistent (hooks valid, sidecar matches, moai on PATH, config canonical) Detail:}
+--- FAIL: TestCheckCodexWiring_DanglingMirrorEntriesCounted (0.01s)
+    doctor_codex_test.go:1292: dangling entries status = ok, want Warn: {Name:Codex Wiring Status:ok Message:wired and consistent (hooks valid, sidecar matches, moai on PATH, config canonical) Detail:}
+--- FAIL: TestCheckCodexWiring_CopyModeDetailOnly (0.01s)
+    doctor_codex_test.go:1323: Detail does not report the copy-mode count: ""
+--- FAIL: TestCheckCodexWiring_UnmirroredSkillsDetailOnly (0.01s)
+    doctor_codex_test.go:1348: Detail does not report the unmirrored count 2: ""
+--- FAIL: TestCheckCodexWiring_MirrorUnreadableIndeterminate (0.01s)
+    doctor_codex_test.go:1437: Detail does not record the indeterminate condition: ""
+--- FAIL: TestCheckCodexWiring_MirrorSummaryWidth (0.01s)
+    --- FAIL: TestCheckCodexWiring_MirrorSummaryWidth/absent (0.01s)
+        doctor_codex_test.go:1467: premise broken — expected exactly one mirror finding: {Name:Codex Wiring Status:ok Message:wired and consistent (hooks valid, sidecar matches, moai on PATH, config canonical) Detail:}
+    --- FAIL: TestCheckCodexWiring_MirrorSummaryWidth/dangling (0.01s)
+        doctor_codex_test.go:1467: premise broken — expected exactly one mirror finding: {Name:Codex Wiring Status:ok Message:wired and consistent (hooks valid, sidecar matches, moai on PATH, config canonical) Detail:}
+--- FAIL: TestCheckCodexWiring_MirrorFindingParticipatesInTailDrop (0.01s)
+    --- FAIL: TestCheckCodexWiring_MirrorFindingParticipatesInTailDrop/tail_drop_keeps_the_lead_and_detail_keeps_everything (0.01s)
+        doctor_codex_test.go:1523: premise broken — the joined summaries did not exceed 113 runes, so no tail-drop occurred: "~/.codex/config.toml: 1 stale skill entry"
+    --- FAIL: TestCheckCodexWiring_MirrorFindingParticipatesInTailDrop/lead_summary_exception_stays_unreachable_for_mirror_summaries (0.01s)
+        doctor_codex_test.go:1553: premise broken — expected the lone mirror finding: {Name:Codex Wiring Status:ok Message:wired and consistent (hooks valid, sidecar matches, moai on PATH, config canonical) Detail:}
+--- FAIL: TestCheckCodexWiring_MirrorUsesExistingRowTwoRegisters (0.00s)
+    doctor_codex_test.go:1578: summary register empty of the mirror observation: "wired and consistent (hooks valid, sidecar matches, moai on PATH, config canonical)"
+    doctor_codex_test.go:1581: detail register carries no fuller mirror text: ""
+panic: test timed out after 15m0s
+FAIL	github.com/modu-ai/moai-adk/internal/cli	901.031s
+FAIL
+````
+
+The alarm block, verbatim (lines 865 to 868 of the output):
+
+````text
+panic: test timed out after 15m0s
+	running tests:
+		TestFactoryLaneHandoffOperatorAbandon (1s)
+		TestFactoryLaneHandoffOperatorAbandon/RESERVED (1s)
+````
+
+Classification, as observed in this run:
+
+- 13 top-level tests failed. The lane's triage named five of them (groups A and B below). Group C is eight tests the triage did not name. The thirteen tests live in `codex_readiness_test.go`, `codex_review_gate_primary_scope_red_test.go`, `codex_review_scope_test.go`, and `doctor_codex_test.go`. None of those files is in the card's change set. The six cli files the card changed are `factory_card.go`, `factory_handoff_recover.go` (one line: it registers `newFactoryRenewCommand()`), `mcp_factory_card.go`, and the tests `factory_renew_cadence_test.go`, `factory_renew_test.go`, `factory_status_lease_test.go`.
+- Group A, count tests (2): `TestCountCodexAgentTOMLs_BadPatternRoot`, `TestCountCodexAgentTOMLs`. Standalone (a) reproduces both (Step 5). Cause as observed: `countCodexAgentTOMLs` (`internal/cli/codex_readiness.go:219` to `:230`) returns the count of `$HOME/.codex/agents/*.toml` when that directory holds any `.toml` file, and uses the project root only when it holds none. This machine's `~/.codex/agents/` holds six (`manager-develop`, `manager-docs`, `manager-lead`, `manager-spec`, `plan-auditor`, `sync-auditor`), so every call returns 6, whatever the root. The tests do not stub `$HOME` for this function. The triage's attribution to a worktree-versus-primary root is not what this run shows: the root argument does not decide the count here.
+- Group B, codex review (3): `TestCodexReviewGatePrimaryCheckoutSkip`, `TestCodexReviewGate_TreeScopeRequestShapeUnchanged`, `TestCodexReviewGate_StaleEnvKeepsTreeScope`. Standalone (b) reproduces all three. Cause as observed: the reported temp-directory path is `/private/var/...` and the expected form is `/var/...`; on this machine `/var` is a symlink (`ls -ld /var` printed `lrwxr-xr-x@ 1 root  wheel  11 Sep 24 16:10 /var -> private/var`). The path is the test's temp directory: it is neither the worktree path nor the primary checkout path.
+- Group C, codex wiring (8): `TestCheckCodexWiring_MirrorAbsentAdvisesRedeploy`, `TestCheckCodexWiring_DanglingMirrorEntriesCounted`, `TestCheckCodexWiring_CopyModeDetailOnly`, `TestCheckCodexWiring_UnmirroredSkillsDetailOnly`, `TestCheckCodexWiring_MirrorUnreadableIndeterminate`, `TestCheckCodexWiring_MirrorSummaryWidth`, `TestCheckCodexWiring_MirrorFindingParticipatesInTailDrop`, `TestCheckCodexWiring_MirrorUsesExistingRowTwoRegisters`. Standalone (e) and the base-copy run (f) reproduce the same eight, with the same messages (Step 9). Cause as observed in code and on disk: `checkCodexWiring` observes the project mirror only when `userCodexInstallPresent()` is false (`internal/cli/doctor_codex.go:329`). That function reads `os.UserHomeDir()` and stats `.agents/skills/moai/SKILL.md` (`internal/cli/user_asset_phase.go:161` to `:168`). On this machine that file exists (`ls -la ~/.agents/skills/moai/SKILL.md` → 33469 bytes). No test stubs this check (no test file names `userCodexInstallPresent`). Each of the eight expects a mirror finding and receives `wired and consistent`.
+- Group D, timeout: the bound fired at 901.031 s, while the sequential run was still in progress. The test running at the alarm, `TestFactoryLaneHandoffOperatorAbandon/RESERVED`, passes alone in 6.45 s (row 20). In the goroutine dump, that test's goroutines wait on a `git` subprocess through `homestate.canonicalProjectRoot`, and carry no minutes annotation (blocked for under a minute at the dump). The parallel tests paused for 5 and 9 minutes are waiting for the sequential run to finish. Per-test durations for this run were not recorded (no `-v`), so the package-level duration is not measured. The M4 run's 600-second timeout also fired on a running test (`TestRunDoctor_WithFixFlag`), which passes alone (row 19).
+
+Blocker check: no affected package other than `internal/cli` failed. No blocker is raised.
+
+#### Step 5: race (QG-2)
+
+Race runs, each with its exit status and final line, verbatim, in the order factory, homestate, cli (all exit 0; zero `DATA RACE` lines in each output; no `[no tests to run]` marker, so each run swept at least one test):
+
+````text
+ok  	github.com/modu-ai/moai-adk/internal/factory	471.905s
+ok  	github.com/modu-ai/moai-adk/internal/homestate	9.368s
+ok  	github.com/modu-ai/moai-adk/internal/cli	24.110s
+````
+
+Commands: `go test -race -count=1 -timeout 25m ./internal/factory/` (deviation: `-timeout 25m` added, because Go's default per-binary timeout is 10 minutes and the same package's non-race run took 309.653 s); `go test -race -count=1 -run 'TestFactoryOpen|TestCardLeaseUsesConfiguredDuration|TestEffectiveFactoryLease|TestRenew|TestLease' ./internal/homestate/`; `go test -race -count=1 -run 'TestRenewCadenceKeepsLeaseLive|TestFactoryRenew|TestNonHolderRenewRefusedCLIAndMCP|TestFactoryStatusReportsLeaseKeys' ./internal/cli/`.
+
+#### Step 6: coverage of the changed functions (decision d-20261010T085601Z-991b)
+
+Measured with `go tool cover -func` on the profiles written by the step-4 runs, filtered to the changed functions. The profiles are in the session scratchpad, not in the tree.
+
+homestate (package total 82.7%):
+
+````text
+github.com/modu-ai/moai-adk/internal/homestate/card_transition.go:443:			RenewLease					89.3%
+github.com/modu-ai/moai-adk/internal/homestate/card_transition.go:487:			planTransition					85.3%
+github.com/modu-ai/moai-adk/internal/homestate/factory.go:171:				OpenFactory					92.3%
+github.com/modu-ai/moai-adk/internal/homestate/factory.go:203:				OpenFactoryBounded				92.3%
+github.com/modu-ai/moai-adk/internal/homestate/factory_lease.go:39:			loadFactoryLease				100.0%
+github.com/modu-ai/moai-adk/internal/homestate/factory_lease.go:52:			resolveFactoryLease				100.0%
+github.com/modu-ai/moai-adk/internal/homestate/factory_lease.go:78:			EffectiveFactoryLease				100.0%
+github.com/modu-ai/moai-adk/internal/homestate/factory_lease.go:87:			refuseFactoryLease				100.0%
+github.com/modu-ai/moai-adk/internal/homestate/factory_lease.go:94:			CardLeaseDuration				100.0%
+github.com/modu-ai/moai-adk/internal/homestate/factory_lease.go:104:			RenewInterval					100.0%
+total:											(statements)					82.7%
+````
+
+config (package total 84.9%):
+
+````text
+github.com/modu-ai/moai-adk/internal/config/defaults.go:1411:			NewDefaultWorkflowConfig		100.0%
+github.com/modu-ai/moai-adk/internal/config/loader_factory_lease.go:24:		LoadFactoryLease			100.0%
+total:										(statements)				84.9%
+````
+
+hook (package total 87.5%):
+
+````text
+github.com/modu-ai/moai-adk/internal/hook/session_start_factory.go:97:		factoryLaneRuleForSource			94.4%
+github.com/modu-ai/moai-adk/internal/hook/session_start_factory.go:150:		laneArmExpression				100.0%
+total:										(statements)					87.5%
+````
+
+Reading: every changed function is at or above 85%. The lowest is `planTransition` at 85.3%. No test was added, and no commit cites d-20261010T085601Z-991b, because the rule requires one only for a changed function below 85%.
+
+Package totals (QG-3, touched packages): homestate 82.7%, config 84.9%, mcp 100.0%, template 82.7%, factory 83.1%, hook 87.5%. Four packages are below the 85% target at package level. Those are recorded as Gaps, not passes. The base-commit package totals were not measured in this lane, so the change in those totals is not known.
+
+#### Step 7: Windows build
+
+`GOOS=windows GOARCH=amd64 go build ./...`: exit 0, no output (0 lines, file `m5-windows-build.txt`).
+
+#### Step 8: traceability (QG-5)
+
+`git log --format='%h %s' 11b0e9ee9..HEAD` (18 commits, all naming card t1663 in the subject):
+
+````text
+bbc5c0b81 docs(SPEC-FACTORY-LEASE-RENEW-001): step 0, M4, and commit record in section E.2 (card t1663)
+449d75119 test(SPEC-FACTORY-LEASE-RENEW-001): AC-FLR-012 renewal cadence keeps the lease live (card t1663)
+ee1441fcc fix(SPEC-FACTORY-LEASE-RENEW-001): the M1 workflow.yaml comment carries no SPEC id (card t1663)
+da9ce6b5e docs(SPEC-FACTORY-LEASE-RENEW-001): M3 closing checks of the template package in section E.2 (card t1663)
+c91953768 fix(SPEC-FACTORY-LEASE-RENEW-001): M3 template text carries no internal REQ or SPEC tokens (card t1663)
+e3e981017 docs(SPEC-FACTORY-LEASE-RENEW-001): M3 slot usage of part 2 in section E.2 (card t1663)
+54346386e docs(SPEC-FACTORY-LEASE-RENEW-001): M3 GREEN record part 2 and exit check in section E.2 (card t1663)
+bacca95c2 docs(SPEC-FACTORY-LEASE-RENEW-001): M3 renew verb sentence in Factory Mode mechanics, both copies (card t1663)
+e352e054a feat(SPEC-FACTORY-LEASE-RENEW-001): M3 lane startup rule arms the standing wake at the renewal period (card t1663)
+1c7dc50ec test(SPEC-FACTORY-LEASE-RENEW-001): M3 RED for the session-start fallback of the standing wake (card t1663)
+4a4058d9e fix(SPEC-FACTORY-LEASE-RENEW-001): binding ledger follows the catalogue count change of 1f15ee972 (card t1663)
+7abd7cf27 docs(SPEC-FACTORY-LEASE-RENEW-001): M3 slot usage and HEAD attribution note in section E.2 (card t1663)
+8b1bed034 docs(SPEC-FACTORY-LEASE-RENEW-001): M3 GREEN record, part 1 and blocker, in section E.2 (card t1663)
+1ded464af feat(SPEC-FACTORY-LEASE-RENEW-001): M3 standing wake armed at the renewal period (card t1663)
+d3a6a1bde fix(SPEC-FACTORY-LEASE-RENEW-001): M3 stall verdict counts from the last channel change (card t1663)
+3fdfedfdc feat(SPEC-FACTORY-LEASE-RENEW-001): M3 watchdog renews the card lease first and records the refusal (card t1663)
+041b13584 docs(SPEC-FACTORY-LEASE-RENEW-001): M3 RED record in section E.2 (card t1663)
+f95603c45 test(SPEC-FACTORY-LEASE-RENEW-001): M3 RED tests for watchdog renewal, stall window, and standing wake (card t1663)
+````
+
+`git log --format='%h %s' --invert-grep --grep=t1663 11b0e9ee9..HEAD` lists the commits whose full message does not contain `t1663`. Its output is empty, so every commit message names the card:
+
+(no output)
+
+#### Step 9: codex wiring family, worktree and base copy (lead request)
+
+Base copy. Made with `git archive 2aab5f797 | tar -x -C <scratchpad>/base-2aab5f797` (an archive, not a clone). The copy has no `.git` directory; its `go.mod` is `module github.com/modu-ai/moai-adk`, `go 1.26.8`. It lives in the session scratchpad, outside the worktree.
+
+(e) Worktree, verbatim (cwd is the worktree root; HOME not touched). Command: `go test -count=1 -v -run '^TestCheckCodexWiring_' ./internal/cli/`. Exit 1, 136 lines:
+
+````text
+=== RUN   TestCheckCodexWiring_NonBooleanEnabled
+=== RUN   TestCheckCodexWiring_NonBooleanEnabled/integer
+=== RUN   TestCheckCodexWiring_NonBooleanEnabled/double_quoted_true
+=== RUN   TestCheckCodexWiring_NonBooleanEnabled/single_quoted_false
+--- PASS: TestCheckCodexWiring_NonBooleanEnabled (0.01s)
+    --- PASS: TestCheckCodexWiring_NonBooleanEnabled/integer (0.00s)
+    --- PASS: TestCheckCodexWiring_NonBooleanEnabled/double_quoted_true (0.00s)
+    --- PASS: TestCheckCodexWiring_NonBooleanEnabled/single_quoted_false (0.00s)
+=== RUN   TestCheckCodexWiring_PathAbsentIsNotFatal
+--- PASS: TestCheckCodexWiring_PathAbsentIsNotFatal (0.00s)
+=== RUN   TestCheckCodexWiring_FatalFindingNamesMeasuredVersion
+--- PASS: TestCheckCodexWiring_FatalFindingNamesMeasuredVersion (0.00s)
+=== RUN   TestCheckCodexWiring_FatalSummaryStaysInsideWidthBand
+--- PASS: TestCheckCodexWiring_FatalSummaryStaysInsideWidthBand (0.00s)
+=== RUN   TestCheckCodexWiring_MissingEnabledKeyIsReportedFatal
+--- PASS: TestCheckCodexWiring_MissingEnabledKeyIsReportedFatal (0.00s)
+=== RUN   TestCheckCodexWiring_DeclaredEnabledKeyStaysQuiet
+=== RUN   TestCheckCodexWiring_DeclaredEnabledKeyStaysQuiet/bare_true
+=== RUN   TestCheckCodexWiring_DeclaredEnabledKeyStaysQuiet/bare_false
+--- PASS: TestCheckCodexWiring_DeclaredEnabledKeyStaysQuiet (0.01s)
+    --- PASS: TestCheckCodexWiring_DeclaredEnabledKeyStaysQuiet/bare_true (0.00s)
+    --- PASS: TestCheckCodexWiring_DeclaredEnabledKeyStaysQuiet/bare_false (0.00s)
+=== RUN   TestCheckCodexWiring_MixedFindingSurfacesAdvisoryText
+--- PASS: TestCheckCodexWiring_MixedFindingSurfacesAdvisoryText (0.00s)
+=== RUN   TestCheckCodexWiring_UnwiredWithCodexInstalledWarns
+--- PASS: TestCheckCodexWiring_UnwiredWithCodexInstalledWarns (0.00s)
+=== RUN   TestCheckCodexWiring_StaleHomeSkillsReported
+--- PASS: TestCheckCodexWiring_StaleHomeSkillsReported (0.00s)
+=== RUN   TestCheckCodexWiring_EmptyPathEntryNotCountedMissing
+--- PASS: TestCheckCodexWiring_EmptyPathEntryNotCountedMissing (0.00s)
+=== RUN   TestCheckCodexWiring_UnspecifiedEnabledReportedSeparately
+--- PASS: TestCheckCodexWiring_UnspecifiedEnabledReportedSeparately (0.00s)
+=== RUN   TestCheckCodexWiring_NonBooleanEnabledCountedSeparatelyInStaleSplit
+=== RUN   TestCheckCodexWiring_NonBooleanEnabledCountedSeparatelyInStaleSplit/non-boolean_leaves_unspecified_empty,_bare_booleans_unmoved
+=== RUN   TestCheckCodexWiring_NonBooleanEnabledCountedSeparatelyInStaleSplit/absent_key_stays_unspecified_alongside_a_non-boolean
+--- PASS: TestCheckCodexWiring_NonBooleanEnabledCountedSeparatelyInStaleSplit (0.02s)
+    --- PASS: TestCheckCodexWiring_NonBooleanEnabledCountedSeparatelyInStaleSplit/non-boolean_leaves_unspecified_empty,_bare_booleans_unmoved (0.00s)
+    --- PASS: TestCheckCodexWiring_NonBooleanEnabledCountedSeparatelyInStaleSplit/absent_key_stays_unspecified_alongside_a_non-boolean (0.01s)
+=== RUN   TestCheckCodexWiring_CodexHomeHonoured
+--- PASS: TestCheckCodexWiring_CodexHomeHonoured (0.01s)
+=== RUN   TestCheckCodexWiring_CodexHomeConfigRead
+--- PASS: TestCheckCodexWiring_CodexHomeConfigRead (0.01s)
+=== RUN   TestCheckCodexWiring_IndeterminateStatNotMissing
+--- PASS: TestCheckCodexWiring_IndeterminateStatNotMissing (0.00s)
+=== RUN   TestCheckCodexWiring_DirectoryPathNotMissing
+--- PASS: TestCheckCodexWiring_DirectoryPathNotMissing (0.00s)
+=== RUN   TestCheckCodexWiring_MessageWidthStaysInBand
+--- PASS: TestCheckCodexWiring_MessageWidthStaysInBand (0.00s)
+=== RUN   TestCheckCodexWiring_RenderedPanelStaysInBand
+--- PASS: TestCheckCodexWiring_RenderedPanelStaysInBand (0.00s)
+=== RUN   TestCheckCodexWiring_HealthyHomeSkillsNoFinding
+--- PASS: TestCheckCodexWiring_HealthyHomeSkillsNoFinding (0.00s)
+=== RUN   TestCheckCodexWiring_AbsentHomeConfigSilent
+--- PASS: TestCheckCodexWiring_AbsentHomeConfigSilent (0.00s)
+=== RUN   TestCheckCodexWiring_ClaudeOnlyMachineStaysSilent
+--- PASS: TestCheckCodexWiring_ClaudeOnlyMachineStaysSilent (0.00s)
+=== RUN   TestCheckCodexWiring_InactiveProjectInformationalSkip
+--- PASS: TestCheckCodexWiring_InactiveProjectInformationalSkip (0.00s)
+=== RUN   TestCheckCodexWiring_HealthyProjectOK
+--- PASS: TestCheckCodexWiring_HealthyProjectOK (0.00s)
+=== RUN   TestCheckCodexWiring_DivergenceAdvisesReTrust
+--- PASS: TestCheckCodexWiring_DivergenceAdvisesReTrust (0.00s)
+=== RUN   TestCheckCodexWiring_ValidationFailureReported
+--- PASS: TestCheckCodexWiring_ValidationFailureReported (0.00s)
+=== RUN   TestCheckCodexWiring_MoaiNotOnPathReported
+--- PASS: TestCheckCodexWiring_MoaiNotOnPathReported (0.00s)
+=== RUN   TestCheckCodexWiring_ConfigTableDriftReported
+--- PASS: TestCheckCodexWiring_ConfigTableDriftReported (0.00s)
+=== RUN   TestCheckCodexWiring_ClaudeOnlyMachineNoMirrorRow
+--- PASS: TestCheckCodexWiring_ClaudeOnlyMachineNoMirrorRow (0.00s)
+=== RUN   TestCheckCodexWiring_MirrorAbsentAdvisesRedeploy
+    doctor_codex_test.go:1267: absent mirror on a wired project status = ok, want Warn: {Name:Codex Wiring Status:ok Message:wired and consistent (hooks valid, sidecar matches, moai on PATH, config canonical) Detail:}
+--- FAIL: TestCheckCodexWiring_MirrorAbsentAdvisesRedeploy (0.00s)
+=== RUN   TestCheckCodexWiring_DanglingMirrorEntriesCounted
+    doctor_codex_test.go:1292: dangling entries status = ok, want Warn: {Name:Codex Wiring Status:ok Message:wired and consistent (hooks valid, sidecar matches, moai on PATH, config canonical) Detail:}
+--- FAIL: TestCheckCodexWiring_DanglingMirrorEntriesCounted (0.00s)
+=== RUN   TestCheckCodexWiring_CopyModeDetailOnly
+    doctor_codex_test.go:1323: Detail does not report the copy-mode count: ""
+--- FAIL: TestCheckCodexWiring_CopyModeDetailOnly (0.00s)
+=== RUN   TestCheckCodexWiring_UnmirroredSkillsDetailOnly
+    doctor_codex_test.go:1348: Detail does not report the unmirrored count 2: ""
+--- FAIL: TestCheckCodexWiring_UnmirroredSkillsDetailOnly (0.00s)
+=== RUN   TestCheckCodexWiring_UnwiredNoMirrorNag
+=== RUN   TestCheckCodexWiring_UnwiredNoMirrorNag/no_mirror_directory
+=== RUN   TestCheckCodexWiring_UnwiredNoMirrorNag/reportable_mirror_still_silent
+--- PASS: TestCheckCodexWiring_UnwiredNoMirrorNag (0.00s)
+    --- PASS: TestCheckCodexWiring_UnwiredNoMirrorNag/no_mirror_directory (0.00s)
+    --- PASS: TestCheckCodexWiring_UnwiredNoMirrorNag/reportable_mirror_still_silent (0.00s)
+=== RUN   TestCheckCodexWiring_MirrorUnreadableIndeterminate
+    doctor_codex_test.go:1437: Detail does not record the indeterminate condition: ""
+--- FAIL: TestCheckCodexWiring_MirrorUnreadableIndeterminate (0.00s)
+=== RUN   TestCheckCodexWiring_MirrorSummaryWidth
+=== RUN   TestCheckCodexWiring_MirrorSummaryWidth/absent
+    doctor_codex_test.go:1467: premise broken — expected exactly one mirror finding: {Name:Codex Wiring Status:ok Message:wired and consistent (hooks valid, sidecar matches, moai on PATH, config canonical) Detail:}
+=== RUN   TestCheckCodexWiring_MirrorSummaryWidth/dangling
+    doctor_codex_test.go:1467: premise broken — expected exactly one mirror finding: {Name:Codex Wiring Status:ok Message:wired and consistent (hooks valid, sidecar matches, moai on PATH, config canonical) Detail:}
+--- FAIL: TestCheckCodexWiring_MirrorSummaryWidth (0.01s)
+    --- FAIL: TestCheckCodexWiring_MirrorSummaryWidth/absent (0.00s)
+    --- FAIL: TestCheckCodexWiring_MirrorSummaryWidth/dangling (0.00s)
+=== RUN   TestCheckCodexWiring_MirrorCheckIsReadOnly
+--- PASS: TestCheckCodexWiring_MirrorCheckIsReadOnly (0.00s)
+=== RUN   TestCheckCodexWiring_MirrorFindingParticipatesInTailDrop
+=== RUN   TestCheckCodexWiring_MirrorFindingParticipatesInTailDrop/tail_drop_keeps_the_lead_and_detail_keeps_everything
+    doctor_codex_test.go:1523: premise broken — the joined summaries did not exceed 113 runes, so no tail-drop occurred: "~/.codex/config.toml: 1 stale skill entry"
+=== RUN   TestCheckCodexWiring_MirrorFindingParticipatesInTailDrop/lead_summary_exception_stays_unreachable_for_mirror_summaries
+    doctor_codex_test.go:1553: premise broken — expected the lone mirror finding: {Name:Codex Wiring Status:ok Message:wired and consistent (hooks valid, sidecar matches, moai on PATH, config canonical) Detail:}
+--- FAIL: TestCheckCodexWiring_MirrorFindingParticipatesInTailDrop (0.01s)
+    --- FAIL: TestCheckCodexWiring_MirrorFindingParticipatesInTailDrop/tail_drop_keeps_the_lead_and_detail_keeps_everything (0.00s)
+    --- FAIL: TestCheckCodexWiring_MirrorFindingParticipatesInTailDrop/lead_summary_exception_stays_unreachable_for_mirror_summaries (0.00s)
+=== RUN   TestCheckCodexWiring_MirrorUsesExistingRowTwoRegisters
+    doctor_codex_test.go:1578: summary register empty of the mirror observation: "wired and consistent (hooks valid, sidecar matches, moai on PATH, config canonical)"
+    doctor_codex_test.go:1581: detail register carries no fuller mirror text: ""
+--- FAIL: TestCheckCodexWiring_MirrorUsesExistingRowTwoRegisters (0.00s)
+=== RUN   TestCheckCodexWiring_HalfWiredCodexInstalled
+--- PASS: TestCheckCodexWiring_HalfWiredCodexInstalled (0.00s)
+=== RUN   TestCheckCodexWiring_HalfWiredCodexAbsent
+=== RUN   TestCheckCodexWiring_HalfWiredCodexAbsent/clean_home
+=== RUN   TestCheckCodexWiring_HalfWiredCodexAbsent/stale_home
+--- PASS: TestCheckCodexWiring_HalfWiredCodexAbsent (0.00s)
+    --- PASS: TestCheckCodexWiring_HalfWiredCodexAbsent/clean_home (0.00s)
+    --- PASS: TestCheckCodexWiring_HalfWiredCodexAbsent/stale_home (0.00s)
+=== RUN   TestCheckCodexWiring_HalfWiredCountIndependent
+=== RUN   TestCheckCodexWiring_HalfWiredCountIndependent/1_definitions
+=== RUN   TestCheckCodexWiring_HalfWiredCountIndependent/12_definitions
+=== RUN   TestCheckCodexWiring_HalfWiredCountIndependent/empty_agents_directory
+--- PASS: TestCheckCodexWiring_HalfWiredCountIndependent (0.00s)
+    --- PASS: TestCheckCodexWiring_HalfWiredCountIndependent/1_definitions (0.00s)
+    --- PASS: TestCheckCodexWiring_HalfWiredCountIndependent/12_definitions (0.00s)
+    --- PASS: TestCheckCodexWiring_HalfWiredCountIndependent/empty_agents_directory (0.00s)
+=== RUN   TestCheckCodexWiring_HalfWiredReadOnly
+--- PASS: TestCheckCodexWiring_HalfWiredReadOnly (0.00s)
+=== RUN   TestCheckCodexWiring_HalfWiredMessageWidthStaysInBand
+--- PASS: TestCheckCodexWiring_HalfWiredMessageWidthStaysInBand (0.00s)
+FAIL
+FAIL	github.com/modu-ai/moai-adk/internal/cli	1.156s
+FAIL
+````
+
+(f) Base copy, verbatim. Command: `go -C <scratchpad>/base-2aab5f797 test -count=1 -v -run '^TestCheckCodexWiring_' ./internal/cli/` (HOME not touched; the copy is run from inside itself through `go -C`). Exit 1, 136 lines:
+
+````text
+=== RUN   TestCheckCodexWiring_NonBooleanEnabled
+=== RUN   TestCheckCodexWiring_NonBooleanEnabled/integer
+=== RUN   TestCheckCodexWiring_NonBooleanEnabled/double_quoted_true
+=== RUN   TestCheckCodexWiring_NonBooleanEnabled/single_quoted_false
+--- PASS: TestCheckCodexWiring_NonBooleanEnabled (0.02s)
+    --- PASS: TestCheckCodexWiring_NonBooleanEnabled/integer (0.01s)
+    --- PASS: TestCheckCodexWiring_NonBooleanEnabled/double_quoted_true (0.00s)
+    --- PASS: TestCheckCodexWiring_NonBooleanEnabled/single_quoted_false (0.01s)
+=== RUN   TestCheckCodexWiring_PathAbsentIsNotFatal
+--- PASS: TestCheckCodexWiring_PathAbsentIsNotFatal (0.00s)
+=== RUN   TestCheckCodexWiring_FatalFindingNamesMeasuredVersion
+--- PASS: TestCheckCodexWiring_FatalFindingNamesMeasuredVersion (0.00s)
+=== RUN   TestCheckCodexWiring_FatalSummaryStaysInsideWidthBand
+--- PASS: TestCheckCodexWiring_FatalSummaryStaysInsideWidthBand (0.01s)
+=== RUN   TestCheckCodexWiring_MissingEnabledKeyIsReportedFatal
+--- PASS: TestCheckCodexWiring_MissingEnabledKeyIsReportedFatal (0.01s)
+=== RUN   TestCheckCodexWiring_DeclaredEnabledKeyStaysQuiet
+=== RUN   TestCheckCodexWiring_DeclaredEnabledKeyStaysQuiet/bare_true
+=== RUN   TestCheckCodexWiring_DeclaredEnabledKeyStaysQuiet/bare_false
+--- PASS: TestCheckCodexWiring_DeclaredEnabledKeyStaysQuiet (0.01s)
+    --- PASS: TestCheckCodexWiring_DeclaredEnabledKeyStaysQuiet/bare_true (0.01s)
+    --- PASS: TestCheckCodexWiring_DeclaredEnabledKeyStaysQuiet/bare_false (0.01s)
+=== RUN   TestCheckCodexWiring_MixedFindingSurfacesAdvisoryText
+--- PASS: TestCheckCodexWiring_MixedFindingSurfacesAdvisoryText (0.01s)
+=== RUN   TestCheckCodexWiring_UnwiredWithCodexInstalledWarns
+--- PASS: TestCheckCodexWiring_UnwiredWithCodexInstalledWarns (0.00s)
+=== RUN   TestCheckCodexWiring_StaleHomeSkillsReported
+--- PASS: TestCheckCodexWiring_StaleHomeSkillsReported (0.01s)
+=== RUN   TestCheckCodexWiring_EmptyPathEntryNotCountedMissing
+--- PASS: TestCheckCodexWiring_EmptyPathEntryNotCountedMissing (0.01s)
+=== RUN   TestCheckCodexWiring_UnspecifiedEnabledReportedSeparately
+--- PASS: TestCheckCodexWiring_UnspecifiedEnabledReportedSeparately (0.01s)
+=== RUN   TestCheckCodexWiring_NonBooleanEnabledCountedSeparatelyInStaleSplit
+=== RUN   TestCheckCodexWiring_NonBooleanEnabledCountedSeparatelyInStaleSplit/non-boolean_leaves_unspecified_empty,_bare_booleans_unmoved
+=== RUN   TestCheckCodexWiring_NonBooleanEnabledCountedSeparatelyInStaleSplit/absent_key_stays_unspecified_alongside_a_non-boolean
+--- PASS: TestCheckCodexWiring_NonBooleanEnabledCountedSeparatelyInStaleSplit (0.01s)
+    --- PASS: TestCheckCodexWiring_NonBooleanEnabledCountedSeparatelyInStaleSplit/non-boolean_leaves_unspecified_empty,_bare_booleans_unmoved (0.01s)
+    --- PASS: TestCheckCodexWiring_NonBooleanEnabledCountedSeparatelyInStaleSplit/absent_key_stays_unspecified_alongside_a_non-boolean (0.01s)
+=== RUN   TestCheckCodexWiring_CodexHomeHonoured
+--- PASS: TestCheckCodexWiring_CodexHomeHonoured (0.01s)
+=== RUN   TestCheckCodexWiring_CodexHomeConfigRead
+--- PASS: TestCheckCodexWiring_CodexHomeConfigRead (0.00s)
+=== RUN   TestCheckCodexWiring_IndeterminateStatNotMissing
+--- PASS: TestCheckCodexWiring_IndeterminateStatNotMissing (0.01s)
+=== RUN   TestCheckCodexWiring_DirectoryPathNotMissing
+--- PASS: TestCheckCodexWiring_DirectoryPathNotMissing (0.01s)
+=== RUN   TestCheckCodexWiring_MessageWidthStaysInBand
+--- PASS: TestCheckCodexWiring_MessageWidthStaysInBand (0.00s)
+=== RUN   TestCheckCodexWiring_RenderedPanelStaysInBand
+--- PASS: TestCheckCodexWiring_RenderedPanelStaysInBand (0.00s)
+=== RUN   TestCheckCodexWiring_HealthyHomeSkillsNoFinding
+--- PASS: TestCheckCodexWiring_HealthyHomeSkillsNoFinding (0.01s)
+=== RUN   TestCheckCodexWiring_AbsentHomeConfigSilent
+--- PASS: TestCheckCodexWiring_AbsentHomeConfigSilent (0.00s)
+=== RUN   TestCheckCodexWiring_ClaudeOnlyMachineStaysSilent
+--- PASS: TestCheckCodexWiring_ClaudeOnlyMachineStaysSilent (0.00s)
+=== RUN   TestCheckCodexWiring_InactiveProjectInformationalSkip
+--- PASS: TestCheckCodexWiring_InactiveProjectInformationalSkip (0.00s)
+=== RUN   TestCheckCodexWiring_HealthyProjectOK
+--- PASS: TestCheckCodexWiring_HealthyProjectOK (0.02s)
+=== RUN   TestCheckCodexWiring_DivergenceAdvisesReTrust
+--- PASS: TestCheckCodexWiring_DivergenceAdvisesReTrust (0.02s)
+=== RUN   TestCheckCodexWiring_ValidationFailureReported
+--- PASS: TestCheckCodexWiring_ValidationFailureReported (0.00s)
+=== RUN   TestCheckCodexWiring_MoaiNotOnPathReported
+--- PASS: TestCheckCodexWiring_MoaiNotOnPathReported (0.01s)
+=== RUN   TestCheckCodexWiring_ConfigTableDriftReported
+--- PASS: TestCheckCodexWiring_ConfigTableDriftReported (0.01s)
+=== RUN   TestCheckCodexWiring_ClaudeOnlyMachineNoMirrorRow
+--- PASS: TestCheckCodexWiring_ClaudeOnlyMachineNoMirrorRow (0.00s)
+=== RUN   TestCheckCodexWiring_MirrorAbsentAdvisesRedeploy
+    doctor_codex_test.go:1267: absent mirror on a wired project status = ok, want Warn: {Name:Codex Wiring Status:ok Message:wired and consistent (hooks valid, sidecar matches, moai on PATH, config canonical) Detail:}
+--- FAIL: TestCheckCodexWiring_MirrorAbsentAdvisesRedeploy (0.01s)
+=== RUN   TestCheckCodexWiring_DanglingMirrorEntriesCounted
+    doctor_codex_test.go:1292: dangling entries status = ok, want Warn: {Name:Codex Wiring Status:ok Message:wired and consistent (hooks valid, sidecar matches, moai on PATH, config canonical) Detail:}
+--- FAIL: TestCheckCodexWiring_DanglingMirrorEntriesCounted (0.01s)
+=== RUN   TestCheckCodexWiring_CopyModeDetailOnly
+    doctor_codex_test.go:1323: Detail does not report the copy-mode count: ""
+--- FAIL: TestCheckCodexWiring_CopyModeDetailOnly (0.01s)
+=== RUN   TestCheckCodexWiring_UnmirroredSkillsDetailOnly
+    doctor_codex_test.go:1348: Detail does not report the unmirrored count 2: ""
+--- FAIL: TestCheckCodexWiring_UnmirroredSkillsDetailOnly (0.01s)
+=== RUN   TestCheckCodexWiring_UnwiredNoMirrorNag
+=== RUN   TestCheckCodexWiring_UnwiredNoMirrorNag/no_mirror_directory
+=== RUN   TestCheckCodexWiring_UnwiredNoMirrorNag/reportable_mirror_still_silent
+--- PASS: TestCheckCodexWiring_UnwiredNoMirrorNag (0.01s)
+    --- PASS: TestCheckCodexWiring_UnwiredNoMirrorNag/no_mirror_directory (0.00s)
+    --- PASS: TestCheckCodexWiring_UnwiredNoMirrorNag/reportable_mirror_still_silent (0.01s)
+=== RUN   TestCheckCodexWiring_MirrorUnreadableIndeterminate
+    doctor_codex_test.go:1437: Detail does not record the indeterminate condition: ""
+--- FAIL: TestCheckCodexWiring_MirrorUnreadableIndeterminate (0.03s)
+=== RUN   TestCheckCodexWiring_MirrorSummaryWidth
+=== RUN   TestCheckCodexWiring_MirrorSummaryWidth/absent
+    doctor_codex_test.go:1467: premise broken — expected exactly one mirror finding: {Name:Codex Wiring Status:ok Message:wired and consistent (hooks valid, sidecar matches, moai on PATH, config canonical) Detail:}
+=== RUN   TestCheckCodexWiring_MirrorSummaryWidth/dangling
+    doctor_codex_test.go:1467: premise broken — expected exactly one mirror finding: {Name:Codex Wiring Status:ok Message:wired and consistent (hooks valid, sidecar matches, moai on PATH, config canonical) Detail:}
+--- FAIL: TestCheckCodexWiring_MirrorSummaryWidth (0.01s)
+    --- FAIL: TestCheckCodexWiring_MirrorSummaryWidth/absent (0.00s)
+    --- FAIL: TestCheckCodexWiring_MirrorSummaryWidth/dangling (0.01s)
+=== RUN   TestCheckCodexWiring_MirrorCheckIsReadOnly
+--- PASS: TestCheckCodexWiring_MirrorCheckIsReadOnly (0.01s)
+=== RUN   TestCheckCodexWiring_MirrorFindingParticipatesInTailDrop
+=== RUN   TestCheckCodexWiring_MirrorFindingParticipatesInTailDrop/tail_drop_keeps_the_lead_and_detail_keeps_everything
+    doctor_codex_test.go:1523: premise broken — the joined summaries did not exceed 113 runes, so no tail-drop occurred: "~/.codex/config.toml: 1 stale skill entry"
+=== RUN   TestCheckCodexWiring_MirrorFindingParticipatesInTailDrop/lead_summary_exception_stays_unreachable_for_mirror_summaries
+    doctor_codex_test.go:1553: premise broken — expected the lone mirror finding: {Name:Codex Wiring Status:ok Message:wired and consistent (hooks valid, sidecar matches, moai on PATH, config canonical) Detail:}
+--- FAIL: TestCheckCodexWiring_MirrorFindingParticipatesInTailDrop (0.01s)
+    --- FAIL: TestCheckCodexWiring_MirrorFindingParticipatesInTailDrop/tail_drop_keeps_the_lead_and_detail_keeps_everything (0.01s)
+    --- FAIL: TestCheckCodexWiring_MirrorFindingParticipatesInTailDrop/lead_summary_exception_stays_unreachable_for_mirror_summaries (0.01s)
+=== RUN   TestCheckCodexWiring_MirrorUsesExistingRowTwoRegisters
+    doctor_codex_test.go:1578: summary register empty of the mirror observation: "wired and consistent (hooks valid, sidecar matches, moai on PATH, config canonical)"
+    doctor_codex_test.go:1581: detail register carries no fuller mirror text: ""
+--- FAIL: TestCheckCodexWiring_MirrorUsesExistingRowTwoRegisters (0.01s)
+=== RUN   TestCheckCodexWiring_HalfWiredCodexInstalled
+--- PASS: TestCheckCodexWiring_HalfWiredCodexInstalled (0.00s)
+=== RUN   TestCheckCodexWiring_HalfWiredCodexAbsent
+=== RUN   TestCheckCodexWiring_HalfWiredCodexAbsent/clean_home
+=== RUN   TestCheckCodexWiring_HalfWiredCodexAbsent/stale_home
+--- PASS: TestCheckCodexWiring_HalfWiredCodexAbsent (0.00s)
+    --- PASS: TestCheckCodexWiring_HalfWiredCodexAbsent/clean_home (0.00s)
+    --- PASS: TestCheckCodexWiring_HalfWiredCodexAbsent/stale_home (0.00s)
+=== RUN   TestCheckCodexWiring_HalfWiredCountIndependent
+=== RUN   TestCheckCodexWiring_HalfWiredCountIndependent/1_definitions
+=== RUN   TestCheckCodexWiring_HalfWiredCountIndependent/12_definitions
+=== RUN   TestCheckCodexWiring_HalfWiredCountIndependent/empty_agents_directory
+--- PASS: TestCheckCodexWiring_HalfWiredCountIndependent (0.01s)
+    --- PASS: TestCheckCodexWiring_HalfWiredCountIndependent/1_definitions (0.00s)
+    --- PASS: TestCheckCodexWiring_HalfWiredCountIndependent/12_definitions (0.00s)
+    --- PASS: TestCheckCodexWiring_HalfWiredCountIndependent/empty_agents_directory (0.00s)
+=== RUN   TestCheckCodexWiring_HalfWiredReadOnly
+--- PASS: TestCheckCodexWiring_HalfWiredReadOnly (0.00s)
+=== RUN   TestCheckCodexWiring_HalfWiredMessageWidthStaysInBand
+--- PASS: TestCheckCodexWiring_HalfWiredMessageWidthStaysInBand (0.00s)
+FAIL
+FAIL	github.com/modu-ai/moai-adk/internal/cli	1.486s
+FAIL
+````
+
+Comparison, test by test. Per-test timing tokens were removed from both outputs and the two were diffed. The only remaining difference is the package line:
+
+````text
+135c135
+< FAIL	github.com/modu-ai/moai-adk/internal/cli	1.156s
+---
+> FAIL	github.com/modu-ai/moai-adk/internal/cli	1.486s
+diff_exit=1
+````
+
+Result: the same eight tests fail in both runs, with identical failure messages. Both runs have 8 top-level FAIL lines and 35 top-level PASS lines.
+
+Limitations of the copy: (1) no `.git`, so any code path that resolves the project root through git would differ. The check's own imports make no git call in non-test code: `internal/cli/uikit`, `internal/codexadapter`, `internal/codexwiring`, and `internal/template` (a grep for `exec.Command` with a literal `"git"` argument found no match in them; the one `internal/template` match is in its subpackage `internal/template/embedemit`, which `doctor_codex.go` does not import). Other parts of `internal/cli` do call git, so the missing `.git` could affect other tests in the package; for this family the two runs gave identical results. (2) The copy's absolute path differs from the worktree and the primary checkout; the tests use `t.TempDir()` roots, so the path does not appear in their assertions. (3) The copy was built from a cold build cache. None of these changes the result observed here, but they are limits, and no pass is recorded on their account.
+
+Path named by these messages. Among the eight group C messages, the only path-like text is `~/.codex/config.toml` (in the tail-drop subtest). That string is a constant display label, `codexHomeConfigDisplay = "~/.codex/config.toml"` (`internal/cli/doctor_codex.go:88`), chosen by the code for the default codex home; it is not a resolved path. The subtest uses a stub codex home (`internal/cli/doctor_codex_test.go:1511`). It is neither the worktree path nor the primary checkout path, and not a `/var` form.
+
+Supplementary, base copy, count and codex review tests (same copy, same HOME). Command: `go -C <scratchpad>/base-2aab5f797 test -count=1 -v -run '^TestCountCodexAgentTOMLs|^TestCodexReviewGate' ./internal/cli/`. Exit 1, 84 lines:
+
+````text
+=== RUN   TestCodexReviewGate_DeniesFileChangeApprovalRequest
+--- PASS: TestCodexReviewGate_DeniesFileChangeApprovalRequest (0.00s)
+=== RUN   TestCountCodexAgentTOMLs_BadPatternRoot
+    codex_readiness_test.go:545: count = 6, want 0 (a glob error degrades to zero, never an error)
+--- FAIL: TestCountCodexAgentTOMLs_BadPatternRoot (0.00s)
+=== RUN   TestCountCodexAgentTOMLs
+    codex_readiness_test.go:563: count = 6, want 2 (TOMLs only)
+    codex_readiness_test.go:566: count on an unwired root = 6, want 0
+    codex_readiness_test.go:575: agents row = "agents   6 TOML", want "agents   2 TOML"
+--- FAIL: TestCountCodexAgentTOMLs (0.00s)
+=== RUN   TestCodexReviewGatePrimaryCheckoutSkip
+    codex_review_gate_primary_scope_red_test.go:84: the primary-skip row must carry the resolved tree, got dir "/private/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestCodexReviewGatePrimaryCheckoutSkip3703788811/001" want "/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestCodexReviewGatePrimaryCheckoutSkip3703788811/001"
+--- FAIL: TestCodexReviewGatePrimaryCheckoutSkip (0.89s)
+=== RUN   TestCodexReviewGatePrimaryPolicySharedByBothPaths
+--- PASS: TestCodexReviewGatePrimaryPolicySharedByBothPaths (0.99s)
+=== RUN   TestCodexReviewGateRuntimeDriftFindingsReclassified
+--- PASS: TestCodexReviewGateRuntimeDriftFindingsReclassified (0.62s)
+=== RUN   TestCodexReviewGateMultiPathFindingKeepsStrictDisposition
+--- PASS: TestCodexReviewGateMultiPathFindingKeepsStrictDisposition (0.49s)
+=== RUN   TestCodexReviewGateRuntimeDriftFindingAnchoredToRepoRoot
+--- PASS: TestCodexReviewGateRuntimeDriftFindingAnchoredToRepoRoot (1.01s)
+=== RUN   TestCodexReviewGateTitleBodyCrossCandidateKeepsStrictDisposition
+--- PASS: TestCodexReviewGateTitleBodyCrossCandidateKeepsStrictDisposition (0.61s)
+=== RUN   TestCodexReviewGateRuntimeDriftFindingsAbsolutePathsReclassified
+--- PASS: TestCodexReviewGateRuntimeDriftFindingsAbsolutePathsReclassified (0.73s)
+=== RUN   TestCodexReviewGate_SubcommandRegistered
+--- PASS: TestCodexReviewGate_SubcommandRegistered (0.00s)
+=== RUN   TestCodexReviewGateNonGitDirNoPrimarySkip
+codex review gate: background review started for this tree state; the verdict is enforced at the next turn entry (codex-review-entry)
+--- PASS: TestCodexReviewGateNonGitDirNoPrimarySkip (0.13s)
+=== RUN   TestCodexReviewGate_WTBranchWithoutBaseReviewsWholeTree
+codex review gate: background review started for this tree state; the verdict is enforced at the next turn entry (codex-review-entry)
+codex review: fail: - [P1] ownership probe finding
+--- PASS: TestCodexReviewGate_WTBranchWithoutBaseReviewsWholeTree (1.14s)
+=== RUN   TestCodexReviewGate_TreeScopeSkip
+=== RUN   TestCodexReviewGate_TreeScopeSkip/main
+codex review gate: background review started for this tree state; the verdict is enforced at the next turn entry (codex-review-entry)
+codex review: fail: - [P1] ownership probe finding
+=== RUN   TestCodexReviewGate_TreeScopeSkip/develop
+codex review gate: background review started for this tree state; the verdict is enforced at the next turn entry (codex-review-entry)
+codex review: fail: - [P1] ownership probe finding
+=== RUN   TestCodexReviewGate_TreeScopeSkip/detached
+codex review gate: background review started for this tree state; the verdict is enforced at the next turn entry (codex-review-entry)
+codex review: fail: - [P1] ownership probe finding
+=== RUN   TestCodexReviewGate_TreeScopeSkip/non-git
+--- PASS: TestCodexReviewGate_TreeScopeSkip (5.42s)
+    --- PASS: TestCodexReviewGate_TreeScopeSkip/main (1.53s)
+    --- PASS: TestCodexReviewGate_TreeScopeSkip/develop (1.66s)
+    --- PASS: TestCodexReviewGate_TreeScopeSkip/detached (1.95s)
+    --- PASS: TestCodexReviewGate_TreeScopeSkip/non-git (0.29s)
+=== RUN   TestCodexReviewGate_TreeScopeRequestShapeUnchanged
+codex review: fail: - [P1] tree scope findings
+    codex_review_scope_test.go:87: thread/start cwd = "/private/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestCodexReviewGate_TreeScopeRequestShapeUnchanged1323747437/001", want the resolved tree "/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestCodexReviewGate_TreeScopeRequestShapeUnchanged1323747437/001"
+--- FAIL: TestCodexReviewGate_TreeScopeRequestShapeUnchanged (1.21s)
+=== RUN   TestCodexReviewGate_CardScopeRequestIsCardDiff
+codex review: fail: - [P1] card findings
+--- PASS: TestCodexReviewGate_CardScopeRequestIsCardDiff (1.29s)
+=== RUN   TestCodexReviewGate_StaleEnvKeepsTreeScope
+codex review: fail: - [P1] tree findings
+    codex_review_scope_test.go:280: tree-scope cwd = "/private/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestCodexReviewGate_StaleEnvKeepsTreeScope381626746/001", want the resolved tree "/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestCodexReviewGate_StaleEnvKeepsTreeScope381626746/001"
+--- FAIL: TestCodexReviewGate_StaleEnvKeepsTreeScope (2.02s)
+=== RUN   TestCodexReviewGate_BranchAloneDecidesCardScope
+--- PASS: TestCodexReviewGate_BranchAloneDecidesCardScope (1.03s)
+=== RUN   TestCodexReviewGate_FrozenProjectDirBypassed
+codex review gate: background review started for this tree state; the verdict is enforced at the next turn entry (codex-review-entry)
+codex review: fail: - [P1] card findings
+--- PASS: TestCodexReviewGate_FrozenProjectDirBypassed (1.70s)
+=== RUN   TestCodexReviewGate_EmptyCardDiffSkipsReviewer
+{"basis":"branch match: WT-fixture-empty","branch":"WT-fixture-empty","gate":"codex-review-gate","scope":"card"}
+--- PASS: TestCodexReviewGate_EmptyCardDiffSkipsReviewer (1.02s)
+=== RUN   TestCodexReviewGate_AndProducerSeeSameScope
+codex review gate: background review started for this tree state; the verdict is enforced at the next turn entry (codex-review-entry)
+codex review: fail: - [P1] card findings
+--- PASS: TestCodexReviewGate_AndProducerSeeSameScope (1.94s)
+=== RUN   TestCodexReviewGate_ScopeLogObservability
+codex review gate: background review started for this tree state; the verdict is enforced at the next turn entry (codex-review-entry)
+{"basis":"primary checkout (git dir == git common dir): /private/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestCodexReviewGate_ScopeLogObservability3950422367/001","gate":"codex-review-gate","primary_scope":"skip","scope":"tree"}
+--- PASS: TestCodexReviewGate_ScopeLogObservability (1.52s)
+=== RUN   TestCodexReviewGate_CardScopeFailOpenOnMissingReviewer
+{"basis":"branch match: WT-fixture-card","branch":"WT-fixture-card","gate":"codex-review-gate","scope":"card"}
+--- PASS: TestCodexReviewGate_CardScopeFailOpenOnMissingReviewer (1.36s)
+FAIL
+FAIL	github.com/modu-ai/moai-adk/internal/cli	26.076s
+FAIL
+````
+
+Result: the same five top-level tests fail at base as in the worktree (`TestCountCodexAgentTOMLs_BadPatternRoot`, `TestCountCodexAgentTOMLs`, `TestCodexReviewGatePrimaryCheckoutSkip`, `TestCodexReviewGate_TreeScopeRequestShapeUnchanged`, `TestCodexReviewGate_StaleEnvKeepsTreeScope`). Their assertion lines match the worktree's standalone runs (a) and (b) except for the random suffixes in the temp-directory names.
+
+#### Standalone runs for the cli family (lead request), verbatim
+
+(a) `go test -count=1 -v -run '^TestCountCodexAgentTOMLs' ./internal/cli/` (exit 1):
+
+````text
+=== RUN   TestCountCodexAgentTOMLs_BadPatternRoot
+    codex_readiness_test.go:545: count = 6, want 0 (a glob error degrades to zero, never an error)
+--- FAIL: TestCountCodexAgentTOMLs_BadPatternRoot (0.00s)
+=== RUN   TestCountCodexAgentTOMLs
+    codex_readiness_test.go:563: count = 6, want 2 (TOMLs only)
+    codex_readiness_test.go:566: count on an unwired root = 6, want 0
+    codex_readiness_test.go:575: agents row = "agents   6 TOML", want "agents   2 TOML"
+--- FAIL: TestCountCodexAgentTOMLs (0.00s)
+FAIL
+FAIL	github.com/modu-ai/moai-adk/internal/cli	0.920s
+FAIL
+````
+
+(b) `go test -count=1 -v -run '^TestCodexReviewGate' ./internal/cli/` (exit 1):
+
+````text
+=== RUN   TestCodexReviewGate_DeniesFileChangeApprovalRequest
+--- PASS: TestCodexReviewGate_DeniesFileChangeApprovalRequest (0.00s)
+=== RUN   TestCodexReviewGatePrimaryCheckoutSkip
+    codex_review_gate_primary_scope_red_test.go:84: the primary-skip row must carry the resolved tree, got dir "/private/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestCodexReviewGatePrimaryCheckoutSkip1125391069/001" want "/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestCodexReviewGatePrimaryCheckoutSkip1125391069/001"
+--- FAIL: TestCodexReviewGatePrimaryCheckoutSkip (0.94s)
+=== RUN   TestCodexReviewGatePrimaryPolicySharedByBothPaths
+--- PASS: TestCodexReviewGatePrimaryPolicySharedByBothPaths (1.07s)
+=== RUN   TestCodexReviewGateRuntimeDriftFindingsReclassified
+--- PASS: TestCodexReviewGateRuntimeDriftFindingsReclassified (0.55s)
+=== RUN   TestCodexReviewGateMultiPathFindingKeepsStrictDisposition
+--- PASS: TestCodexReviewGateMultiPathFindingKeepsStrictDisposition (0.50s)
+=== RUN   TestCodexReviewGateRuntimeDriftFindingAnchoredToRepoRoot
+--- PASS: TestCodexReviewGateRuntimeDriftFindingAnchoredToRepoRoot (0.90s)
+=== RUN   TestCodexReviewGateTitleBodyCrossCandidateKeepsStrictDisposition
+--- PASS: TestCodexReviewGateTitleBodyCrossCandidateKeepsStrictDisposition (0.50s)
+=== RUN   TestCodexReviewGateRuntimeDriftFindingsAbsolutePathsReclassified
+--- PASS: TestCodexReviewGateRuntimeDriftFindingsAbsolutePathsReclassified (0.44s)
+=== RUN   TestCodexReviewGate_SubcommandRegistered
+--- PASS: TestCodexReviewGate_SubcommandRegistered (0.00s)
+=== RUN   TestCodexReviewGateNonGitDirNoPrimarySkip
+codex review gate: background review started for this tree state; the verdict is enforced at the next turn entry (codex-review-entry)
+--- PASS: TestCodexReviewGateNonGitDirNoPrimarySkip (0.10s)
+=== RUN   TestCodexReviewGate_WTBranchWithoutBaseReviewsWholeTree
+codex review gate: background review started for this tree state; the verdict is enforced at the next turn entry (codex-review-entry)
+codex review: fail: - [P1] ownership probe finding
+--- PASS: TestCodexReviewGate_WTBranchWithoutBaseReviewsWholeTree (1.06s)
+=== RUN   TestCodexReviewGate_TreeScopeSkip
+=== RUN   TestCodexReviewGate_TreeScopeSkip/main
+codex review gate: background review started for this tree state; the verdict is enforced at the next turn entry (codex-review-entry)
+codex review: fail: - [P1] ownership probe finding
+=== RUN   TestCodexReviewGate_TreeScopeSkip/develop
+codex review gate: background review started for this tree state; the verdict is enforced at the next turn entry (codex-review-entry)
+codex review: fail: - [P1] ownership probe finding
+=== RUN   TestCodexReviewGate_TreeScopeSkip/detached
+codex review gate: background review started for this tree state; the verdict is enforced at the next turn entry (codex-review-entry)
+codex review: fail: - [P1] ownership probe finding
+=== RUN   TestCodexReviewGate_TreeScopeSkip/non-git
+--- PASS: TestCodexReviewGate_TreeScopeSkip (4.93s)
+    --- PASS: TestCodexReviewGate_TreeScopeSkip/main (1.83s)
+    --- PASS: TestCodexReviewGate_TreeScopeSkip/develop (1.36s)
+    --- PASS: TestCodexReviewGate_TreeScopeSkip/detached (1.56s)
+    --- PASS: TestCodexReviewGate_TreeScopeSkip/non-git (0.18s)
+=== RUN   TestCodexReviewGate_TreeScopeRequestShapeUnchanged
+codex review: fail: - [P1] tree scope findings
+    codex_review_scope_test.go:87: thread/start cwd = "/private/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestCodexReviewGate_TreeScopeRequestShapeUnchanged2650619794/001", want the resolved tree "/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestCodexReviewGate_TreeScopeRequestShapeUnchanged2650619794/001"
+--- FAIL: TestCodexReviewGate_TreeScopeRequestShapeUnchanged (0.86s)
+=== RUN   TestCodexReviewGate_CardScopeRequestIsCardDiff
+codex review: fail: - [P1] card findings
+--- PASS: TestCodexReviewGate_CardScopeRequestIsCardDiff (0.88s)
+=== RUN   TestCodexReviewGate_StaleEnvKeepsTreeScope
+codex review: fail: - [P1] tree findings
+    codex_review_scope_test.go:280: tree-scope cwd = "/private/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestCodexReviewGate_StaleEnvKeepsTreeScope3693749621/001", want the resolved tree "/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestCodexReviewGate_StaleEnvKeepsTreeScope3693749621/001"
+--- FAIL: TestCodexReviewGate_StaleEnvKeepsTreeScope (1.25s)
+=== RUN   TestCodexReviewGate_BranchAloneDecidesCardScope
+--- PASS: TestCodexReviewGate_BranchAloneDecidesCardScope (1.00s)
+=== RUN   TestCodexReviewGate_FrozenProjectDirBypassed
+codex review gate: background review started for this tree state; the verdict is enforced at the next turn entry (codex-review-entry)
+codex review: fail: - [P1] card findings
+--- PASS: TestCodexReviewGate_FrozenProjectDirBypassed (1.43s)
+=== RUN   TestCodexReviewGate_EmptyCardDiffSkipsReviewer
+{"basis":"branch match: WT-fixture-empty","branch":"WT-fixture-empty","gate":"codex-review-gate","scope":"card"}
+--- PASS: TestCodexReviewGate_EmptyCardDiffSkipsReviewer (1.02s)
+=== RUN   TestCodexReviewGate_AndProducerSeeSameScope
+codex review gate: background review started for this tree state; the verdict is enforced at the next turn entry (codex-review-entry)
+codex review: fail: - [P1] card findings
+--- PASS: TestCodexReviewGate_AndProducerSeeSameScope (1.29s)
+=== RUN   TestCodexReviewGate_ScopeLogObservability
+codex review gate: background review started for this tree state; the verdict is enforced at the next turn entry (codex-review-entry)
+{"basis":"primary checkout (git dir == git common dir): /private/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestCodexReviewGate_ScopeLogObservability300572575/001","gate":"codex-review-gate","primary_scope":"skip","scope":"tree"}
+--- PASS: TestCodexReviewGate_ScopeLogObservability (1.26s)
+=== RUN   TestCodexReviewGate_CardScopeFailOpenOnMissingReviewer
+{"basis":"branch match: WT-fixture-card","branch":"WT-fixture-card","gate":"codex-review-gate","scope":"card"}
+--- PASS: TestCodexReviewGate_CardScopeFailOpenOnMissingReviewer (1.11s)
+FAIL
+FAIL	github.com/modu-ai/moai-adk/internal/cli	21.866s
+FAIL
+````
+
+(c) `go test -count=1 -timeout 240s -v -run '^TestRunDoctor_WithFixFlag$' ./internal/cli/` (exit 0; the lane's earlier figure was 9.28 s, this run measured 3.08 s):
+
+````text
+=== RUN   TestRunDoctor_WithFixFlag
+  ○ Go Runtime
+  ✓ Go Runtime
+  ○ Git
+  ✓ Git
+  ○ Claude Code
+  ✓ Claude Code
+  ○ GitHub CLI
+  ✓ GitHub CLI
+  ○ ast-grep CLI
+  ✓ ast-grep CLI
+  ○ Shared Flag Slot
+  ✓ Shared Flag Slot
+  ○ MoAI Config
+  ✓ MoAI Config
+  ○ Claude Config
+  ✓ Claude Config
+  ○ MoAI Version
+  ✓ MoAI Version
+  ○ Binary Freshness
+  ✓ Binary Freshness
+  ○ MCP Scope Duplicates
+  ✓ MCP Scope Duplicates
+  ○ MCP Provider Duplicates
+  ✓ MCP Provider Duplicates
+  ○ MCP Server Version
+  ✓ MCP Server Version
+  ○ Hook Missing Log
+  ✓ Hook Missing Log
+  ○ Served Model
+  ✓ Served Model
+  ○ Todo Store Divergence
+moai-cli-test: userHomeDirFn redirected real home to sandbox /var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/moai-cli-home-4281432624
+  ✓ Todo Store Divergence
+  ○ Todo Ghost Inventory
+  ✓ Todo Ghost Inventory
+  ○ Session CC Version
+  ✓ Session CC Version
+  ○ Agent Emit Embed
+  ✓ Agent Emit Embed
+  ○ Constitution Registry
+  ✓ Constitution Registry
+  ○ Harness 5-Layer
+  ✓ Harness 5-Layer
+  ○ Migration
+  ✓ Migration
+  ○ User Install
+  ✓ User Install
+  ○ Project Lock
+  ✓ Project Lock
+  ○ Plugin Migration
+  ✓ Plugin Migration
+  ○ Home Disk Usage
+  ✓ Home Disk Usage
+  ○ Hooks Config
+  ✓ Hooks Config
+  ○ Hook Wiring
+  ✓ Hook Wiring
+  ○ Hook Delivery
+  ✓ Hook Delivery
+  ○ Hook opt-in:
+  ✓ Hook opt-in:
+  ○ Slash Commands
+  ✓ Slash Commands
+  ○ Settings DefaultMode
+  ✓ Settings DefaultMode
+  ○ Skills Allowlist
+  ✓ Skills Allowlist
+  ○ MX Tag Config
+  ✓ MX Tag Config
+  ○ Worktree State
+  ✓ Worktree State
+  ○ Worktree Base Branch
+  ✓ Worktree Base Branch
+  ○ Git Strategy Workflow
+  ✓ Git Strategy Workflow
+  ○ Factory Run
+  ✓ Factory Run
+  ○ Owner Label Drift
+  ✓ Owner Label Drift
+  ○ BODP Config
+  ✓ BODP Config
+  ○ Telemetry Config
+  ✓ Telemetry Config
+  ○ Glamour Cache
+  ✓ Glamour Cache
+  ○ Codex Wiring
+  ✓ Codex Wiring
+  ○ Jev
+2026/10/10 23:14:42 WARN config sections directory not found, using defaults path=/private/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestRunDoctor_WithFixFlag116977249/001/.moai/config/sections
+  ✓ Jev
+--- PASS: TestRunDoctor_WithFixFlag (3.08s)
+PASS
+ok  	github.com/modu-ai/moai-adk/internal/cli	3.890s
+````
+
+(d) supplementary, `go test -count=1 -v -run '^TestFactoryLaneHandoffOperatorAbandon$' ./internal/cli/` (exit 0):
+
+````text
+=== RUN   TestFactoryLaneHandoffOperatorAbandon
+=== RUN   TestFactoryLaneHandoffOperatorAbandon/RESERVED
+=== RUN   TestFactoryLaneHandoffOperatorAbandon/WT_READY
+=== RUN   TestFactoryLaneHandoffOperatorAbandon/SWITCH_PENDING_INTERACTIVE
+=== RUN   TestFactoryLaneHandoffOperatorAbandon/SWITCH_PENDING_HEADLESS
+=== RUN   TestFactoryLaneHandoffOperatorAbandon/no_handoff_on_slot
+--- PASS: TestFactoryLaneHandoffOperatorAbandon (6.45s)
+    --- PASS: TestFactoryLaneHandoffOperatorAbandon/RESERVED (1.24s)
+    --- PASS: TestFactoryLaneHandoffOperatorAbandon/WT_READY (1.49s)
+    --- PASS: TestFactoryLaneHandoffOperatorAbandon/SWITCH_PENDING_INTERACTIVE (1.46s)
+    --- PASS: TestFactoryLaneHandoffOperatorAbandon/SWITCH_PENDING_HEADLESS (1.65s)
+    --- PASS: TestFactoryLaneHandoffOperatorAbandon/no_handoff_on_slot (0.61s)
+PASS
+ok  	github.com/modu-ai/moai-adk/internal/cli	7.113s
+````
+
+Path forms for group A and group B, from the tool output: `/private/var/...` (reported) against `/var/...` (expected) for group B; `$HOME/.codex/agents` (six TOML files) for group A.
+
+#### Blocker and M1 to M4 relevance
+
+The card's cli change set does not touch any of the thirteen failing tests' files (listed in Step 4). The M1 to M4 test files that pass in the cli package are `factory_renew_cadence_test.go` (AC-FLR-012), `factory_renew_test.go`, and `factory_status_lease_test.go`, and they are selected by name in the race run (row 27), which passed. Their M4 runs also passed by name (the M4 record above).
+
+#### Gaps (each is a shortfall, not a pass)
+
+1. internal/cli full-package verdict (step 4): FAIL, exit 1, 901.031 s. Thirteen top-level tests fail in groups A to D above. Groups A, B, and C reproduce at the base copy `2aab5f797` on this machine (A and B in the supplementary run, C in the requested run). Group D is the package-level duration bound. The full run is judged by CI at push, as the lead directed.
+2. The full repository test suite is judged by CI at push, not locally.
+3. `/verify` was not run, because it runs `moai gate`, which runs `go test ./...`.
+4. The commit-time gate is off (`core.hooksPath=/dev/null` in the shared config): this block's commit has the gate result 게이트 미실행. The operator's decision for card t1673 is pending.
+5. QG-4, whole-file comparison of `factory-dispatch.md`: differs at line 259 (pre-existing, Step 1d). The cadence line 138 passes.
+6. QG-3, package totals below 85%: homestate 82.7%, config 84.9%, template 82.7%, factory 83.1%. The base totals were not measured in this lane.
+7. The causal check for group A (a run with `HOME` set to an empty directory) was refused by the worktree guard before any go command ran. The guard's message, verbatim: "This session is isolated in the worktree /Users/goos/MoAI/moai-adk-go/.moai/worktrees/t1663, but this command sets HOME, injecting git configuration whose effect on where git writes can't be verified. Refusing to run it — a worktree-isolated session's git operations must target its own worktree. Run the equivalent from /Users/goos/MoAI/moai-adk-go/.moai/worktrees/t1663 without the redirect." No command in this lane set `HOME`. Group A's mechanism therefore rests on the code, the directory listing, and the base-copy reproduction.
+8. The causal check for group C (removing `~/.agents/skills/moai/SKILL.md`) was not run: that file belongs to the operator's installation and was not touched. Group C's mechanism rests on the code, the file's presence, and the base-copy reproduction.
+9. Per-test durations for the full cli run were not recorded (no `-v`), so the package duration is not measured. Group D's attribution is inferred from the bound and the goroutine dump.
+10. Deviations from the brief: (a) step 4 runs carried `-coverprofile` (one run serves steps 4, 6, and QG-3); (b) the factory race run carried `-timeout 25m`; (c) the base copy is an archive without `.git`, built with a cold cache; (d) one lease description contains the typo "base-2204" (description only).
+11. golangci-lint refused the first config run (exit 3) because another session's golangci-lint was running. It was retried after that process finished (row 10). No process was stopped.
+
+#### Residual risk
+
+- CI at push is the verdict for the full suite. Groups A to C reproduce at base on this machine, so CI may show the same failures; this lane cannot say what CI will show.
+- Group D's attribution is inferred, not measured per test (Gap 9).
+- Coverage figures come from instrumented runs. Instrumentation is not expected to change verdicts, but the runs are not plain runs (Gap 10a).
+- The factory race run took 471.905 s inside a 30-minute lease; a longer run would need a renewal.
+- No mirror, test, or production file was changed in this block. The commit contains this record only.
+
 ## §E.3 Run-phase Audit-Ready Signal
 
 _<pending run-phase>_
