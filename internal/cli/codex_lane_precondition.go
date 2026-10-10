@@ -4,7 +4,6 @@ import (
 	"errors"
 	"fmt"
 	"os"
-	"os/exec"
 	"path/filepath"
 	"strings"
 
@@ -22,11 +21,11 @@ func codexLaneLaunchDir() string {
 	if err != nil {
 		return ""
 	}
-	out, err := exec.Command("git", "-C", cwd, "rev-parse", "--show-toplevel").Output()
+	out, err := runScrubbedGit(cwd, "rev-parse", "--show-toplevel")
 	if err != nil {
 		return cwd
 	}
-	return strings.TrimSpace(string(out))
+	return strings.TrimSpace(out)
 }
 
 // codexLaneParentCheckout is the REQ-SD-010 parent-checkout rule for the lane
