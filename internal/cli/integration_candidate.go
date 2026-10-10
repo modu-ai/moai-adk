@@ -173,7 +173,7 @@ func newIntegrationCandidateCmd() *cobra.Command {
 		},
 	}
 	cmd.Flags().StringVar(&cardFlag, "card", "", "The card id the candidate is built for")
-	cmd.Flags().StringVar(&runFlag, "run", "", "Factory run id (default: MOAI_KANBAN_ID, then the single active run) — read for the card record the tree guard verifies against")
+	cmd.Flags().StringVar(&runFlag, "run", "", "Factory run id (default: "+config.EnvFactoryRunID+", then the single active run) — read for the card record the tree guard verifies against")
 	cmd.Flags().BoolVar(&observeFlag, "observe", false, "Observe the CI runs for this card's latest candidate and record the first binding run's verdict (REQ-CCI-010) instead of pushing a new candidate")
 	return cmd
 }
@@ -680,7 +680,7 @@ func candidateGhRunner(dir string, args ...string) (string, error) {
 
 // candidateRunSelection resolves the factory run the card record is read
 // from (card t1478 M2 repair): the explicit --run flag first, then the
-// launcher-selected run (MOAI_KANBAN_ID — the autoLaneRunResolveFn
+// launcher-selected run (config.EnvFactoryRunID — the autoLaneRunResolveFn
 // precedent, whose ResolveActiveRun validates the selection against the
 // active-run table so a stale selection fails closed), then the
 // single-active-run discovery.
