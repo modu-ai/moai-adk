@@ -11,7 +11,7 @@
 #
 # CONTRACT UNDER TEST (REQ-CCI-013, AC-CCI-013-1, design D8)
 #   1. A failing registry test is re-run exactly once; the retry's status is the run's.
-#   2. The retry and its outcome are recorded on stdout and in the retry log.
+#   2. The retry and its outcome are recorded on stderr and in the retry log.
 #   3. A registry test that also fails on the retry fails the run.
 #   4. A failure outside the registry never retries, even beside a registry test.
 #   5. A registry entry without an evidence citation refuses the run before any command runs.
@@ -176,17 +176,23 @@ REG
 uncited="$tmp/registry-uncited.txt"
 printf 'TestFlakyRegistered\n' > "$uncited"
 
-# run_case <label> <scenario> <registry> — runs the wrapper around the fixture.
-# Sets rc (wrapper exit status), out (stdout and stderr), count (fixture runs),
-# and log (contents of the retry log).
+# run_case <label> <scenario> <registry> — runs the wrapper around the fixture, with stdout
+# and stderr captured apart. Sets rc (wrapper exit status), count (fixture runs), log (the
+# retry log), sout (stdout), serr (stderr), out (both), and jq_rc (0 when stdout reads as
+# JSON lines, which only the JSON cases check).
 run_case() {
 	counter="$tmp/count-$1"
 	FLAKY_RETRY_LOG="$tmp/retry-$1.log"
 	export FLAKY_RETRY_LOG
-	out="$(bash "$wrapper" --registry "$3" -- "$tmp/fake-test.sh" "$2" "$counter" 2>&1)"
+	bash "$wrapper" --registry "$3" -- "$tmp/fake-test.sh" "$2" "$counter" > "$tmp/stdout-$1.txt" 2> "$tmp/stderr-$1.txt"
 	rc=$?
 	count="$(cat "$counter" 2>/dev/null || echo 0)"
 	log="$(cat "$FLAKY_RETRY_LOG" 2>/dev/null || true)"
+	sout="$(cat "$tmp/stdout-$1.txt")"
+	serr="$(cat "$tmp/stderr-$1.txt")"
+	out="$(cat "$tmp/stdout-$1.txt" "$tmp/stderr-$1.txt")"
+	jq -c . "$tmp/stdout-$1.txt" > /dev/null 2>&1
+	jq_rc=$?
 }
 
 # make_registry <label> — one temporary registry per JSON case; sets reg_path.
@@ -198,23 +204,6 @@ TestFlakyRegistered  fixture-evidence: SPEC-CI-FLAKY-STABILIZE-001 precedent
 REG
 }
 
-# run_split <label> <scenario> <registry> — as run_case, but stdout and stderr stay
-# apart: sout is the stdout stream, serr the stderr text, jq_rc the status of reading
-# stdout as JSON lines (0 when every line parses).
-run_split() {
-	counter="$tmp/count-$1"
-	FLAKY_RETRY_LOG="$tmp/retry-$1.log"
-	export FLAKY_RETRY_LOG
-	bash "$wrapper" --registry "$3" -- "$tmp/fake-test.sh" "$2" "$counter" > "$tmp/stdout-$1.json" 2> "$tmp/stderr-$1.txt"
-	rc=$?
-	count="$(cat "$counter" 2>/dev/null || echo 0)"
-	log="$(cat "$FLAKY_RETRY_LOG" 2>/dev/null || true)"
-	sout="$(cat "$tmp/stdout-$1.json")"
-	serr="$(cat "$tmp/stderr-$1.txt")"
-	jq -c . "$tmp/stdout-$1.json" > /dev/null 2>&1
-	jq_rc=$?
-}
-
 echo "=== retry-flaky fixture cases ==="
 
 expect_eq "wrapper present" "yes" "$([ -f "$wrapper" ] && echo yes || echo no)"
@@ -223,7 +212,7 @@ expect_eq "wrapper present" "yes" "$([ -f "$wrapper" ] && echo yes || echo no)"
 run_case flaky-once flaky-once "$registry"
 expect_eq   "flaky-once: exit status is the retry's (0)" "0" "$rc"
 expect_eq   "flaky-once: command ran exactly twice" "2" "$count"
-expect_has  "flaky-once: retry recorded on stdout" "retried: TestFlakyRegistered, attempt 2, outcome pass" "$out"
+expect_has  "flaky-once: retry recorded on stderr" "retried: TestFlakyRegistered, attempt 2, outcome pass" "$serr"
 expect_has  "flaky-once: retry recorded in the log" "retried: TestFlakyRegistered, attempt 2, outcome pass" "$log"
 
 # Case 2: a registry test fails on both attempts; exactly one retry, and the run fails.
@@ -259,7 +248,7 @@ echo "=== retry-flaky JSON-stream cases ==="
 
 # JSON case 1: a go test -json registry test fails once and passes on the retry.
 make_registry json-flaky-once
-run_split json-flaky-once json-flaky-once "$reg_path"
+run_case json-flaky-once json-flaky-once "$reg_path"
 expect_eq    "json flaky-once: exit status is the retry's (0)" "0" "$rc"
 expect_eq    "json flaky-once: command ran exactly twice" "2" "$count"
 expect_has   "json flaky-once: retry recorded on stderr" "retried: TestFlakyRegistered, attempt 2, outcome pass" "$serr"
@@ -273,7 +262,7 @@ expect_has   "json flaky-once: retry recorded in the log" "retried: TestFlakyReg
 
 # JSON case 2: a go test -json registry test fails on both attempts; one retry, and the run fails.
 make_registry json-flaky-always
-run_split json-flaky-always json-flaky-always "$reg_path"
+run_case json-flaky-always json-flaky-always "$reg_path"
 expect_eq    "json flaky-always: run fails (non-zero)" "1" "$rc"
 expect_eq    "json flaky-always: exactly one retry (two runs in total)" "2" "$count"
 expect_has   "json flaky-always: failed retry recorded on stderr" "retried: TestFlakyRegistered, attempt 2, outcome fail" "$serr"
@@ -283,7 +272,7 @@ expect_lacks "json flaky-always: stdout omits the first attempt" "ATTEMPT-ONE" "
 
 # JSON case 3: a non-registry failure never retries.
 make_registry json-solid
-run_split json-solid json-solid "$reg_path"
+run_case json-solid json-solid "$reg_path"
 expect_eq    "json solid: run fails (non-zero)" "1" "$rc"
 expect_eq    "json solid: zero retries (one run in total)" "1" "$count"
 expect_has   "json solid: refusal named on stderr" "TestSolid is not in the registry; no retry" "$serr"
@@ -293,7 +282,7 @@ expect_has   "json solid: stdout is the single attempt's stream" "SOLID-MARK" "$
 
 # JSON case 4: a registry failure beside a non-registry failure does not retry.
 make_registry json-mixed
-run_split json-mixed json-mixed "$reg_path"
+run_case json-mixed json-mixed "$reg_path"
 expect_eq    "json mixed: run fails (non-zero)" "1" "$rc"
 expect_eq    "json mixed: zero retries (one run in total)" "1" "$count"
 expect_has   "json mixed: refusal names the unregistered test on stderr" "TestSolid is not in the registry; no retry" "$serr"
@@ -302,7 +291,7 @@ expect_eq    "json mixed: stdout is valid JSON lines" "0" "$jq_rc"
 
 # JSON case 5: a passing run is not re-run.
 make_registry json-pass
-run_split json-pass json-pass "$reg_path"
+run_case json-pass json-pass "$reg_path"
 expect_eq    "json pass: exit status 0" "0" "$rc"
 expect_eq    "json pass: one run in total" "1" "$count"
 expect_lacks "json pass: no retry recorded" "retried:" "$serr"
@@ -312,7 +301,7 @@ expect_has   "json pass: stdout carries the stream" "\"Action\":\"pass\"" "$sout
 # JSON case 6: a registry test beside a package-level failure that names no test does not
 # retry. The unnamed package is fixture-b; fixture-a's registry test alone would retry.
 make_registry json-unnamed-pkg
-run_split json-unnamed-pkg json-unnamed-pkg "$reg_path"
+run_case json-unnamed-pkg json-unnamed-pkg "$reg_path"
 expect_eq    "json unnamed-pkg: run fails (non-zero)" "1" "$rc"
 expect_eq    "json unnamed-pkg: zero retries (a failure that names no test blocks the retry)" "1" "$count"
 expect_has   "json unnamed-pkg: refusal names the package on stderr" "example/fixture-b" "$serr"
@@ -320,7 +309,7 @@ expect_lacks "json unnamed-pkg: no retry recorded" "retried:" "$serr"
 
 # JSON case 7: an uncited registry entry refuses the run before the command runs.
 printf 'TestFlakyRegistered\n' > "$tmp/registry-json-uncited.txt"
-run_split json-uncited json-flaky-once "$tmp/registry-json-uncited.txt"
+run_case json-uncited json-flaky-once "$tmp/registry-json-uncited.txt"
 expect_eq    "json uncited: refused with usage status 2" "2" "$rc"
 expect_eq    "json uncited: command never ran" "0" "$count"
 expect_has   "json uncited: refusal named on stderr" "without an evidence citation" "$serr"
