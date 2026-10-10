@@ -1,7 +1,7 @@
 ---
 id: SPEC-REVIEW-GATE-REPAIR-001
 title: "Codex 리뷰 게이트 수리 — 프롬프트 진입 교착을 풀고 리뷰 기준을 하나로 모은다"
-version: "0.2.3"
+version: "0.2.4"
 status: draft
 created: 2026-10-10
 updated: 2026-10-10
@@ -29,6 +29,7 @@ tags: "codex, review-gate, turn-end, prompt-entry, receipt, merge-base, card-t16
 - 2026-10-10 · v0.2.3 · manager-spec · 최종 문서 수리 라운드. 운영자 위임 판정 d-20261010T090503Z-8963(영실이 판단, 리더 전달)을 적용했다. 리더 정정에 따라 살아 있는 번호는 v0.2.2 그대로 REQ-RG-001–012 로 둔다(판정 (1)의 번호 복원은 적용하지 않았다). (1) 폐기된 식별자 표는 요구사항 본문에서 빼고 이 행으로 옮겼다. v0.2.2 번호 주석의 내용도 이 행에 남긴다. REQ-RG-005–008 은 v0.2.2 에서 살아 있는 요구사항의 번호로 다시 쓰였고, 폐기된 식별자는 아래 두 줄과 과거 기록 행에만 남는다. (2) 진행 중 표식은 검토가 어떤 판정(pass, fail, inconclusive)으로 끝나든 완료 시점에 풀리고, 소유자 pid 가 살아 있지 않은 고아 표식은 새 판정 전에 회수된다. 같은 커밋의 재검토는 결과 캐시(pass·fail)가 막으며, 표식은 동시 실행만 막는다(REQ-RG-006, REQ-RG-011, design.md §2·§3, AC-RG-011). (3) 재정의 파일은 그 run 의 member lane(카드 워크트리)에만 적용되며, 저장소 전체 스위치는 없다(REQ-RG-007, design.md §5, AC-RG-012 시나리오 (e)). (4)·(5) codex 필수 게이트의 대상과 plan-aware 영수증은 t1662 로 이관한다(Out of Scope, F1). (6) 레인 판단으로 보정했다(리더 확인 대상). plan.md 의 M5 RED·GREEN 에 '살아 있는' 한정, 완료 시 해제, 고아 회수를, M6 GREEN 에 member lane 검사를 적었고, plan.md:5 의 폐기 식별자에 판 번호 v0.1.2를 붙였다. design.md §3 (다)에 pid 를 읽을 수 없는 표식의 처리(고아로 회수, fail-open)를, §5 에 경로 정규화 실패의 처리(member 아님)를 더했다. acceptance.md AC-RG-011 에 (iii) 시나리오를 더했고, decision-index.md 에 4회차 이후 판정 기록 절을 더했다. 이 행은 감사 결과를 주장하지 않는다. [ID mapping v0.2.3: 적용 없음. 번호는 v0.2.2 와 같다.]
   - v0.1.2의 REQ-RG-005~008(퇴역 → t1662, v0.2.0에서 제거)
   - v0.1.2의 AC-RG-006~009·016·020~024(퇴역 → t1662, v0.2.0에서 제거)
+- 2026-10-10 · v0.2.4 · manager-spec · plan-audit 7회차(v0.2.3, `.moai/reports/t1620/plan-audit-iter7.md`, FAIL 0.75, 차단 B1–B4, 필수 codex 레그 inconclusive)의 수리 라운드다. 운영자 결정 d-20261010T113614Z-2413 에 따라 이 카드의 plan 감사에서 codex 필수 레그를 advisory 로 바꾸고(도구 결함, t1662 범위, 판정 파일에 기록), B1–B4 를 한 번 고친다. B1: AC-RG-019 에 (d) reviewer 없음을 더했다. B3: AC-RG-019 의 각 경우를 상태 이름에 묶었다. B4: AC-RG-012 (a) 의 systemMessage 는 턴 종료 게이트만 낸다. B2: 마일스톤의 RED 선행은 커밋 그래프로 증명할 수 없으므로, 순서 조항을 기록 증거(progress.md §E.2)로만 확인한다는 문장으로 바꿨다(plan.md, spec.md §D.2, acceptance.md). 이 행은 감사 결과를 주장하지 않는다. [ID mapping v0.2.4: 적용 없음. 번호는 v0.2.2 와 같다.]
 
 ---
 
@@ -177,7 +178,7 @@ When the turn-end gate allows a stop and no fresh passing receipt backs that all
 ## §D 실행 순서 구속
 
 1. 운영자 판정 Q2–Q6 과 보드 판정 D3·D4·D11 은 decision-index.md 에 기록되어 있다. Q1 은 t1662 로 이관되었다(d-20261010T070728Z-6cdf). run 단계는 Q2–Q6 행의 `Operator verdict` 가 채워져 있는지 확인하고 시작한다.
-2. 각 마일스톤은 RED(실패 확인) → GREEN → 회귀 순으로 진행한다. RED 출력은 progress.md §E.2 에 원문으로 남긴다.
+2. 각 마일스톤의 순서(RED(실패 확인) → GREEN → 회귀)는 progress.md §E.2 에 원문으로 남긴 RED 출력으로만 확인한다. 한 마일스톤 커밋 안의 선후는 커밋 그래프로 증명되지 않는다. 이 한계는 잔여 위험이다.
 3. **변경 세트(change set)는 커밋 하나다.** 두 면을 가진 파일은 같은 커밋에서 함께 갱신한다. 훅 래퍼(`.claude/hooks/moai/handle-codex-review-{entry,gate}.sh` 와 `internal/template/templates/.claude/hooks/moai/handle-codex-review-{entry,gate}.sh`)는 M6 의 한 커밋에 함께 담긴다. M7 의 규칙 문장 정정(F4)도 규칙 파일(`.claude/rules/moai/workflow/factory-dispatch-detail.md`)과 그 템플릿 미러를 한 커밋에서 맞춘다. 두 면이 서로 다른 커밋에 갈라지는 상태는 허용하지 않는다.
 
 ---
