@@ -760,7 +760,7 @@ func resolveCardBranch(cardWorktree, cardID string) (string, error) {
 	}
 	out, err := execGitIn(cardWorktree, "rev-parse", "--abbrev-ref", "HEAD")
 	if err != nil {
-		return "", fmt.Errorf("read the branch of %s: %v", cardWorktree, err)
+		return "", fmt.Errorf("card %s: read the branch of %s: %v", cardID, cardWorktree, err)
 	}
 	branch := strings.TrimSpace(out)
 	if !strings.HasPrefix(branch, "WT-") {

@@ -26,7 +26,8 @@
 #     only, so it stays one pure test stream. Every notice the wrapper writes goes
 #     to stderr, and the command's own stderr passes through to stderr. The first
 #     attempt is buffered, because the wrapper learns whether it is final only when
-#     it ends; a non-final attempt never reaches stdout. The final attempt streams
+#     it ends; a non-final attempt never reaches stdout. An interrupted first attempt
+#     writes its partial stream to stderr instead. The final attempt streams
 #     straight through. When a retry runs, the first attempt's stream is kept as
 #     <log-stem>.attempt1.json beside the retry log.
 #   - Reading a stream needs jq, as scripts/ci-census/test-census.sh does. Without
@@ -114,8 +115,15 @@ work="$(mktemp -d "${TMPDIR:-/tmp}/retry-flaky.XXXXXX")"
 trap 'rm -rf "$work"' EXIT
 
 # Attempt 1 is buffered: until it ends, the wrapper cannot tell whether it is the final attempt.
+# A TERM or INT during attempt 1 keeps its partial stream: the trap writes it to stderr, never
+# stdout, and exits with 128 plus the signal number. bash runs a trap only after the foreground
+# command ends, so the child's exit is what releases it. The traps are cleared once attempt 1
+# ends, so an interrupt during the final attempt does not dump the first attempt's stream.
+trap 'cat "$work/attempt1.json" >&2; exit 143' TERM
+trap 'cat "$work/attempt1.json" >&2; exit 130' INT
 "$@" > "$work/attempt1.json"
 status=$?
+trap - TERM INT
 if [ "$status" -eq 0 ]; then
 	cat "$work/attempt1.json"
 	exit 0
