@@ -2457,7 +2457,37 @@ The card's cli change set does not touch any of the thirteen failing tests' file
 
 ## §E.4 Sync-phase Audit-Ready Signal
 
-_<pending sync-phase>_
+- sync_status: audit-ready
+- sync_complete_at: 2026-10-10T15:06:13Z
+- sync_commit_sha: pending-backfill
+- sync_commit: the single sync-phase commit of card t1663 (`docs(SPEC-FACTORY-LEASE-RENEW-001): sync-phase artifacts and 3-phase close (card t1663)`). It carries the `in-progress → implemented → completed` transition and this block. Its gate result is in its commit body: 게이트 미실행(core.hooksPath=/dev/null, 공유 설정).
+- sync_artifacts_changed: `spec.md` (frontmatter `status:` and `updated:` only), `progress.md` (§E.4 only), `CHANGELOG.md` (one line under `[Unreleased]`, `### Added`).
+- status_transition: `spec.md` `status: in-progress` → `completed`; `updated: 2026-10-10` → `2026-10-11`. `plan.md`, `acceptance.md`, and `decision-index.md` are not changed by this commit.
+- ac_source: `.moai/specs/SPEC-FACTORY-LEASE-RENEW-001/acceptance.md` (tier M, from `spec.md`). Live acceptance criteria: 15 (B12 counter: `live=15 excluded=0 ambiguous=0`).
+- landing_condition: card t1616 only, as the leader stated on 2026-10-10. Card t1673 is not a landing prerequisite. Landing rule aa99: push, then `workflow_dispatch` CI green, then local landing. The leader coordinates the CI dispatch at landing time.
+
+Debt disposition (the four §E.1 debts):
+
+| Debt | Disposition | Evidence |
+|---|---|---|
+| AC-FLR-006-DOMAIN | disposed in run; see §E.3 | `internal/homestate/factory_lease_resolve_test.go:52` and `:53` (unparseable durations), `:59` (sub-two-minute case); refusal note `internal/homestate/factory_lease.go:64` |
+| AC-FLR-014-SEAM | disposed in run; see §E.3 | `internal/hook/lane_renew_interval_test.go:52` calls `factoryLaneRuleForSource`, defined at `internal/hook/session_start_factory.go:97` |
+| AC-FLR-011-RECORD | disposed in run by keeping the model-written limit; see §E.3 | limit named at progress.md lines 695 and 850; model-written snapshot step at `.claude/skills/moai-lane-watchdog/SKILL.md:84-86` |
+| Q5-CITE | disposed in sync by commit `0a545ccec` (decision-index Q5 citation) | `git show --stat 0a545ccec`: `decision-index.md` 1 insertion, 1 deletion. The debt premise did not hold as stated; the verified carriers are in that commit body. |
+
+- gap_carry_over: the numbered gaps of the §E.2 M5 block (`#### Gaps`) are items 1 to 12. This block cites them by number; their verdicts stay in §E.2.
+  - Gap 1: groups A to C, card t1675; group D, `카드 미지정, CI 판정`.
+  - Gaps 2 and 3: no card in the record.
+  - Gap 4: hook re-activation card t1673.
+  - Gap 5: withdrawn; QG-4 is PASS (Step 1e).
+  - Gaps 6 to 11: no card in the record.
+  - Gap 12: decision d-20261010T085601Z-991b.
+
+- follow_up_candidates (not done in this card):
+  - (a) `factory_renew` i18n label is missing. `internal/web/assets/i18n.js` has `factory_next` keys at lines 827-828 (en), 1109-1110 (ko), 1947-1948 (ja), and 2785-2786 (zh), and no `factory_renew` key in any locale.
+  - (b) Stale tool count: `docs-site/content/en/guides/mcp-server.md:101` reads "Twenty-two tools accept an optional `project_root` string". The ja, ko, and zh pages carry the numeral 22 at line 101.
+  - (c) Old catalogue copy: `.moai/policies/core/moai-mcp-tools-catalogue.md` is git-tracked and has no `factory_renew` row (`factory_next` at lines 152 and 234). The live companion `.claude/rules/moai/core/moai-mcp-tools-catalogue.md` has 4 `factory_renew` matches.
+  - (d) No exit-code statement in the SPEC artifacts. spec.md and acceptance.md have no "exit" match, and decision-index.md has none. plan.md lines 139, 153, 169, 183, and 191 are milestone "Exit:" criteria. progress.md lines 997, 1001, 1005, 1009, and 1013 quote test-failure messages "want a non-zero exit" for refused renewals; these are not a stated exit code.
 
 ## §G Override and Refusal Record
 
