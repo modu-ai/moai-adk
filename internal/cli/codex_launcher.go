@@ -1030,6 +1030,7 @@ func runCodexFactoryLane(cmd *cobra.Command, entry factoryFlagParse, debug bool)
 		config.EnvFactoryBackend+"="+factory.BackendGPT,
 		config.EnvFactoryRunID+"="+runID,
 	)
+	env = codexLaneChildEnv(env, root)
 	if debug {
 		env = codexApplyDebugEnv(env)
 	}

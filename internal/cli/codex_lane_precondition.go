@@ -7,6 +7,8 @@ import (
 	"os/exec"
 	"path/filepath"
 	"strings"
+
+	"github.com/modu-ai/moai-adk/internal/config"
 )
 
 // codexLaneLaunchDir is the directory `moai codex -l` was run from, resolved to
@@ -52,4 +54,19 @@ func codexLaneJoinError(err error) error {
 		return err
 	}
 	return errors.New("no live factory leader to join: start the factory leader first (moai cc -f or moai glm -f), then run moai codex -l again")
+}
+
+// codexLaneChildEnv gives the codex child the project anchor this launch
+// selected. The child inherits CLAUDE_PROJECT_DIR, and its own start prompt runs
+// moai todo --auto, whose precondition reads that anchor before the child's
+// working directory; a stale card-tree anchor would refuse it (t1628, card-review P2).
+func codexLaneChildEnv(env []string, root string) []string {
+	out := make([]string, 0, len(env)+1)
+	for _, entry := range env {
+		key, _, _ := strings.Cut(entry, "=")
+		if key != config.EnvClaudeProjectDir {
+			out = append(out, entry)
+		}
+	}
+	return append(out, config.EnvClaudeProjectDir+"="+root)
 }
