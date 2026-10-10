@@ -4,7 +4,7 @@ Gate status. **Independent**: the criterion does not depend on any decision or o
 
 Claim labels. A claim about the local repository (HEAD, local main, the primary checkout) is marked `[local]`. A claim about a remote-tracking ref, or about what a remote holds, is marked `[origin]`. BASELINE_SHA, the origin/main value recorded at pre-flight, is used only for `[origin]` claims.
 
-Tree attribution. Revision 0.4 covers cells E-01 to E-60 at HEAD `e32f69c46`. E-58 to E-60 were measured in revision 0.4; E-01 to E-57 were re-measured in revision 0.3. E-32 is retired because its command is identical to E-21. Revision 0.5 adds the lint and audit cells E-61 to E-65, measured at the same HEAD, each with its judging build in the note. Revision 0.6 re-runs E-22, E-27, and E-61 to E-65 at HEAD `366b45155`, with the revision 0.6 edits to the SPEC directory uncommitted, and adds E-66 to E-77. After the revision 0.6 commit `b1ae4d4a6`, E-22, E-27, and E-67 to E-70 are re-run and pinned there. Revision 0.7 changes the V4 command of E-69 (it names `TestLocalMainMergePreservesIgnoredFile`) and adds E-78. Revision 0.8 adds E-79. The current pins name their trees: E-65, E-69, E-78, and E-79 are measured at 77100366d; E-61 to E-64, E-75, and E-76 are measured on the revision 0.8 working tree (spec.md f6fa550e78af9b82, plan.md 439a2b3d3951e202). E-66 shows that the only files changed between `e32f69c46` and `366b45155` are the five SPEC files, so the code named by the other cells' tree pins is unchanged. E-22 and E-27 are historical: their starting states (the absent SPEC directory and the absent decision index) no longer exist, so they cannot be re-executed to the same result and carry no release-blocking weight. Both test existence only; neither tests the gap specification that AC-LMF-015 names. E-23, E-34, and E-45 read the moving ref `main`. They are subject claims about what local main carries when the criterion is evaluated, and they are re-run at that time; they are not pins.
+Tree attribution. Revision 0.4 covers cells E-01 to E-60 at HEAD `e32f69c46`. E-58 to E-60 were measured in revision 0.4; E-01 to E-57 were re-measured in revision 0.3. E-32 is retired because its command is identical to E-21. Revision 0.5 adds the lint and audit cells E-61 to E-65, measured at the same HEAD, each with its judging build in the note. Revision 0.6 re-runs E-22, E-27, and E-61 to E-65 at HEAD `366b45155`, with the revision 0.6 edits to the SPEC directory uncommitted, and adds E-66 to E-77. After the revision 0.6 commit `b1ae4d4a6`, E-22, E-27, and E-67 to E-70 are re-run and pinned there. Revision 0.7 changes the V4 command of E-69 (it names `TestLocalMainMergePreservesIgnoredFile`) and adds E-78. Revision 0.8 adds E-79. The current pins name their trees: E-61 to E-65, E-69, E-73, E-75, E-76, and E-79 are measured at 0106da184, the committed revision 0.8; E-78 is measured at 822abfdca, and its last run is kept. E-66 shows that the only files changed between `e32f69c46` and `366b45155` are the five SPEC files, so the code named by the other cells' tree pins is unchanged. E-22 and E-27 are historical: their starting states (the absent SPEC directory and the absent decision index) no longer exist, so they cannot be re-executed to the same result and carry no release-blocking weight. Both test existence only; neither tests the gap specification that AC-LMF-015 names. E-23, E-34, and E-45 read the moving ref `main`. They are subject claims about what local main carries when the criterion is evaluated, and they are re-run at that time; they are not pins.
 
 ## D. AC Matrix
 
@@ -168,7 +168,7 @@ No first-merge check names origin/main; BASELINE_SHA applies only to the re-sync
 
 ## E. Evidence ledger
 
-Each entry records one command, its verbatim standard output, and its exit code, and names the tree it was measured on. Revision 0.8 is the current revision of this ledger: it adds E-79, the release-blocking RED cell for the shape scenarios of AC-LMF-004. Each pin names its tree: E-65, E-69, E-78, and E-79 are measured at 77100366d; E-61 to E-64, E-75, and E-76 are measured on the revision 0.8 working tree (spec.md f6fa550e78af9b82, plan.md 439a2b3d3951e202). The revision 0.6 and 0.7 pins of these cells are superseded by these. Entries are fenced because a table cell mangles shell metacharacters (verification-completeness §2.1). Every cell was re-run in revision 0.3 at tree `e32f69c46`. E-22 and E-27 are historical (see the header above). E-35 is a pipeline and is not release-blocking: it is a byte measurement of a clause that plan §B9 replaces. E-32 is retired because it repeats E-21. Revision 0.4 adds E-58 to E-60 at the same tree. HEAD moved from `e32f69c46` to `0cca5364f` when the five SPEC files were committed, and to `366b45155` in the revision 0.5 commit. Revision 0.6 re-runs E-22, E-27, and E-61 to E-65 at `366b45155`, corrects the E-63 note, and adds E-66 to E-77. E-66 shows that the only files changed between `e32f69c46` and `366b45155` are the five SPEC files, so the code named in the other cells' tree fields is unchanged. The supersede set of AC-LMF-011 is cells E-38 to E-44 (lines 216, 218, 219, 179, 195, 196, and 199); the two unmarked lines are E-36 (line 212) and E-37 (line 214).
+Each entry records one command, its verbatim standard output, and its exit code, and names the tree it was measured on. Revision 0.8 is the current revision of this ledger: it adds E-79, the release-blocking RED cell for the shape scenarios of AC-LMF-004. Each pin names its tree: E-61 to E-65, E-69, E-73, E-75, E-76, and E-79 are measured at 0106da184, the committed revision 0.8; E-78 is measured at 822abfdca. The revision 0.6 and 0.7 pins of these cells are superseded by these. Entries are fenced because a table cell mangles shell metacharacters (verification-completeness §2.1). Every cell was re-run in revision 0.3 at tree `e32f69c46`. E-22 and E-27 are historical (see the header above). E-35 is a pipeline and is not release-blocking: it is a byte measurement of a clause that plan §B9 replaces. E-32 is retired because it repeats E-21. Revision 0.4 adds E-58 to E-60 at the same tree. HEAD moved from `e32f69c46` to `0cca5364f` when the five SPEC files were committed, and to `366b45155` in the revision 0.5 commit. Revision 0.6 re-runs E-22, E-27, and E-61 to E-65 at `366b45155`, corrects the E-63 note, and adds E-66 to E-77. E-66 shows that the only files changed between `e32f69c46` and `366b45155` are the five SPEC files, so the code named in the other cells' tree fields is unchanged. The supersede set of AC-LMF-011 is cells E-38 to E-44 (lines 216, 218, 219, 179, 195, 196, and 199); the two unmarked lines are E-36 (line 212) and E-37 (line 214).
 
 ```text
 E-01
@@ -699,19 +699,19 @@ E-61
 command: moai spec lint SPEC-LOCAL-MAIN-FLOW-001
 stdout: SEVERITY  CODE                  FILE                                                                                                   LINE  MESSAGE
 stdout: --------  ----                  ----                                                                                                   ----  -------
-stdout: Gap: [WARNING row omitted: its VacuousTestAssertion message quotes the apostrophe test name window_naming_the_card's_own_branch, which the rule flags; the row is at acceptance.md line 975 in the revision 0.8 state.]
+stdout: Gap: [WARNING row omitted: its VacuousTestAssertion message quotes the name prefix window_naming_the_card of the apostrophe test name window_naming_the_card's_own_branch, which the rule flags; the row is at acceptance.md line 975 at 0106da184.]
 stdout: 
 stdout: 0 error(s), 1 warning(s)
 exit: 0
-tree: revision 0.8 working tree (spec.md f6fa550e78af9b82, plan.md 439a2b3d3951e202)
-note: judging build = installed `moai version` v3.2.0-rc.29, commit 4f8aba061. Ancestry check: `git merge-base --is-ancestor 4f8aba061 HEAD` exits 1 at 77100366d (E-65), so the installed build is not an ancestor of the tree HEAD 77100366d. This row is a lag-check result; the tree rows E-63 and E-64 judge the tree. Re-run in revision 0.8 on the working tree. Re-run in revision 0.6 after REQ-LMF-013 was rewritten in the GEARS shall-not form: an earlier run in the same revision reported LegacyEARSKeyword for an If/then clause, and that clause was removed. The WARNING row is omitted from this stdout because its message quotes the apostrophe test name window_naming_the_card's_own_branch, which the rule flags. At the revision 0.8 state the VacuousTestAssertion warning is at acceptance.md:975; it comes from the apostrophe in the verbatim subtest name window_naming_the_card's_own_branch, and the lint name prefix stops before the apostrophe.
+tree: 0106da184
+note: judging build = installed `moai version` v3.2.0-rc.29, commit 4f8aba061. Ancestry check: `git merge-base --is-ancestor 4f8aba061 0106da184` exits 1 (E-65), so the installed build is not an ancestor of the tree at 0106da184. This row is a lag-check result; the tree rows E-63 and E-64 judge the tree. Re-run at 0106da184. Re-run in revision 0.6 after REQ-LMF-013 was rewritten in the GEARS shall-not form: an earlier run in the same revision reported LegacyEARSKeyword for an If/then clause, and that clause was removed. The WARNING row is omitted from this stdout because its VacuousTestAssertion message quotes the name prefix window_naming_the_card, cut at the apostrophe of the subtest name window_naming_the_card's_own_branch, which the rule flags. At 0106da184 the warning is at acceptance.md:975; the pins kept the line count of this file, so the working tree places the same row at line 975.
 ```
 
 ```text
 E-62
 command: moai spec audit --filter-spec SPEC-LOCAL-MAIN-FLOW-001 --json
 stdout: {
-stdout:   "audited_at": "2026-10-10T00:29:21.728383Z",
+stdout:   "audited_at": "2026-10-10T01:11:27.063215Z",
 stdout:   "total_specs": 1,
 stdout:   "grandfathered": 0,
 stdout:   "modern_era_clean": 1,
@@ -728,28 +728,28 @@ stdout:     }
 stdout:   ]
 stdout: }
 exit: 0
-tree: revision 0.8 working tree (spec.md f6fa550e78af9b82, plan.md 439a2b3d3951e202)
-note: judging build = installed `moai version` v3.2.0-rc.29, commit 4f8aba061. Ancestry check: E-65 (exit 1; not an ancestor of 77100366d). Re-run in revision 0.8 on the working tree; audited_at is the time of that run. The MCP tool `mcp__moai__spec_audit` on the same installed build reported V3R6 with no drift at revision 0.5; it was not re-run in revision 0.8, and it is not a shell command, so it has no cell of its own.
+tree: 0106da184
+note: judging build = installed `moai version` v3.2.0-rc.29, commit 4f8aba061. Ancestry check: E-65 (exit 1; not an ancestor of 0106da184). Re-run at 0106da184; audited_at is the time of that run. The MCP tool `mcp__moai__spec_audit` on the same installed build reported V3R6 with no drift at revision 0.5; it was not re-run at 0106da184, and it is not a shell command, so it has no cell of its own.
 ```
 
 ```text
 E-63
-command: moai-tree-novcs spec lint SPEC-LOCAL-MAIN-FLOW-001
+command: moai-tree-0106da184 spec lint SPEC-LOCAL-MAIN-FLOW-001
 stdout: SEVERITY  CODE                  FILE                                                                                                   LINE  MESSAGE
 stdout: --------  ----                  ----                                                                                                   ----  -------
-stdout: Gap: [WARNING row omitted: its VacuousTestAssertion message quotes the apostrophe test name window_naming_the_card's_own_branch, which the rule flags; the row is at acceptance.md line 975 in the revision 0.8 state.]
+stdout: Gap: [WARNING row omitted: its VacuousTestAssertion message quotes the name prefix window_naming_the_card of the apostrophe test name window_naming_the_card's_own_branch, which the rule flags; the row is at acceptance.md line 975 at 0106da184.]
 stdout: 
 stdout: 0 error(s), 1 warning(s)
 exit: 0
-tree: revision 0.8 working tree (spec.md f6fa550e78af9b82, plan.md 439a2b3d3951e202)
-note: judging build = a build of this tree: `go build -buildvcs=false -o <scratchpad>/moai-tree-novcs ./cmd/moai`, run from the worktree root. sha256 c3dab13107c42c7267219db763a06e8a5e94d165148c8c8284be9713aeebd9be; a second build with the same flags, writing to another path, reproduced that hash in revision 0.6, and a build of the 822abfdca tree reproduced it again in revision 0.7 (`go build -buildvcs=false -o <scratchpad>/moai-tree-822abfdca ./cmd/moai`). Its version identity is the source default (v3.1.3, commit none), not the release build. The binary carries no VCS stamp: it has no vcs.revision, vcs.time, or vcs.modified key and no buildvcs build setting (E-73). The binary is outside the repository, at the session scratchpad `/private/tmp/claude-501/-Users-goos-MoAI-moai-adk-go/2890cd8c-1262-4d8d-9c24-5b650c5ab263/scratchpad/moai-tree-novcs`; the build command above reproduces it. The Go packages are unchanged since the revision 0.7 build (`git diff --stat e32f69c46 77100366d -- internal cmd pkg` is empty). At the revision 0.8 state the VacuousTestAssertion warning is at acceptance.md:975; it comes from the apostrophe in the verbatim subtest name window_naming_the_card's_own_branch, and the lint name prefix stops before the apostrophe.
+tree: 0106da184
+note: judging build = a build of this tree at 0106da184: `go build -buildvcs=false -o <scratchpad>/moai-tree-0106da184 ./cmd/moai`, run from the worktree root. sha256 c3dab13107c42c7267219db763a06e8a5e94d165148c8c8284be9713aeebd9be; the R1 build reproduces the hash recorded for the builds of the earlier trees (revisions 0.6 and 0.7). Its version identity is the source default (v3.1.3, commit none), not the release build. The binary carries no VCS stamp: it has no vcs.revision, vcs.time, or vcs.modified key and no buildvcs build setting (E-73). The binary is outside the repository, at the session scratchpad `/private/tmp/claude-501/-Users-goos-MoAI-moai-adk-go/2890cd8c-1262-4d8d-9c24-5b650c5ab263/scratchpad/moai-tree-0106da184`. The Go packages are unchanged from e32f69c46 to 0106da184 (the tree field of E-69). The warning is at acceptance.md:975 at 0106da184, and at line 975 in the working tree of this file (see E-61).
 ```
 
 ```text
 E-64
-command: moai-tree-novcs spec audit --filter-spec SPEC-LOCAL-MAIN-FLOW-001 --json
+command: moai-tree-0106da184 spec audit --filter-spec SPEC-LOCAL-MAIN-FLOW-001 --json
 stdout: {
-stdout:   "audited_at": "2026-10-10T00:29:22.535962Z",
+stdout:   "audited_at": "2026-10-10T01:11:50.974738Z",
 stdout:   "total_specs": 1,
 stdout:   "grandfathered": 0,
 stdout:   "modern_era_clean": 1,
@@ -766,17 +766,17 @@ stdout:     }
 stdout:   ]
 stdout: }
 exit: 0
-tree: revision 0.8 working tree (spec.md f6fa550e78af9b82, plan.md 439a2b3d3951e202)
-note: judging build = the tree build described in E-63 (sha256 c3dab13107c42c7267219db763a06e8a5e94d165148c8c8284be9713aeebd9be; no VCS stamp, E-73; version identity the source default v3.1.3). Same findings as the installed build (E-62): V3R6, no MUST-FIX. Re-run in revision 0.8 on the working tree; audited_at is the time of that run.
+tree: 0106da184
+note: judging build = the tree build described in E-63 (sha256 c3dab13107c42c7267219db763a06e8a5e94d165148c8c8284be9713aeebd9be; no VCS stamp, E-73; version identity the source default v3.1.3). Same findings as the installed build (E-62): V3R6, no MUST-FIX. Re-run at 0106da184; audited_at is the time of that run.
 ```
 
 ```text
 E-65
-command: git merge-base --is-ancestor 4f8aba061 HEAD
+command: git merge-base --is-ancestor 4f8aba061 0106da184
 stdout: (none)
 exit: 1
-tree: 77100366d
-note: re-run in revision 0.8 at HEAD 77100366d: exit 1. Earlier runs at 822abfdca (revision 0.7), 366b45155 (revision 0.6), 0cca5364f, and e32f69c46 also exited 1 (the code tree is identical, E-66). The installed build's commit 4f8aba061 is not an ancestor of the tree. Exit 1 (not 128) means both commits resolve and the first is not an ancestor of the second.
+tree: 0106da184
+note: re-run at 0106da184: exit 1. Earlier runs at 822abfdca (revision 0.7), 366b45155 (revision 0.6), 0cca5364f, and e32f69c46 also exited 1 (the code tree is identical, E-66). The installed build's commit 4f8aba061 is not an ancestor of the tree. Exit 1 (not 128) means both commits resolve and the first is not an ancestor of the second.
 ```
 
 ```text
@@ -958,7 +958,7 @@ E-69
 command: go test ./internal/cli/ -list '^(TestIntegrationSurfaceSelectsPrimaryWhenEnabled|TestIntegrationSurfaceRefusesPrimaryWhenDisabled|TestIntegrationSurfaceRefusesPrimaryOffBranch|TestIntegrationSurfaceRefusesNoHolder|TestIntegrationSurfaceSeparateWorktreeUnchanged|TestLocalMainMergeMergesIntoPrimary|TestLocalMainMergeRefusesDirtyPrimary|TestLocalMainMergeRefusesMovedHead|TestLocalMainMergeStatusSetUnchanged|TestLocalMainMergePreservesIgnoredFile|TestLocalMainMergeRefusesIgnoredAncestor|TestLocalMainMergeRefusesFileOverIgnoredDirectory|TestLocalMainMergeCaseAliasOutcome|TestLocalMainResyncFastForwards|TestLocalMainResyncRefusesDiverged|TestLocalMainResyncAheadIsNoop|TestLocalMainResyncPreservesIgnoredFile|TestIntegrationMergeWorktreeRefusesPrimaryHoldingBranch|TestIntegrationMergeWorktreeAcceptsPrimaryWhenEnabled|TestIntegrationMergeWorktreeRefusesUnheldBranch|TestFactoryCompletePrimaryTreeGateEnabled|TestFactoryCompletePrimaryTreeGateDisabled|TestFactoryCompleteNoIntegrationTreeRefused|TestMWQ19_Scenario5_AdoptionRefusedAfterNewCommit|TestSD_AC013_ClaudeCompleteViaIntegrationWorktree|TestSD_AC024_CodexMergeRefusedComplete|TestSD_AC024_CodexMergeRefusedStage|TestSD_AC024_CodexMergeRefusedMCP|TestSD_AC025_IntegrationWindowSerializes|TestAutoMergeOffBaseline|TestAutoMergeHappyPath|TestAutoMergeNonCleanExit|TestAutoMergeUnconfiguredTarget|TestAutoMergeBusyWindow|TestAutoMergeZeroPush|TestAutoMergeConflict|TestAutoMergeSourceDirty|TestAutoMergeTargetGuards|TestAutoMergeNoOpSilent|TestAutoMergeNoticePrefixDistinct|TestAutoMergeToggleIndependence|TestAutoMergeFailurePaths|TestAutoMergeRealImplErrorPaths)$' | grep -c '^Test' && go test ./internal/cli/ -run '^(TestIntegrationSurfaceSelectsPrimaryWhenEnabled|TestIntegrationSurfaceRefusesPrimaryWhenDisabled|TestIntegrationSurfaceRefusesPrimaryOffBranch|TestIntegrationSurfaceRefusesNoHolder|TestIntegrationSurfaceSeparateWorktreeUnchanged|TestLocalMainMergeMergesIntoPrimary|TestLocalMainMergeRefusesDirtyPrimary|TestLocalMainMergeRefusesMovedHead|TestLocalMainMergeStatusSetUnchanged|TestLocalMainMergePreservesIgnoredFile|TestLocalMainMergeRefusesIgnoredAncestor|TestLocalMainMergeRefusesFileOverIgnoredDirectory|TestLocalMainMergeCaseAliasOutcome|TestLocalMainResyncFastForwards|TestLocalMainResyncRefusesDiverged|TestLocalMainResyncAheadIsNoop|TestLocalMainResyncPreservesIgnoredFile|TestIntegrationMergeWorktreeRefusesPrimaryHoldingBranch|TestIntegrationMergeWorktreeAcceptsPrimaryWhenEnabled|TestIntegrationMergeWorktreeRefusesUnheldBranch|TestFactoryCompletePrimaryTreeGateEnabled|TestFactoryCompletePrimaryTreeGateDisabled|TestFactoryCompleteNoIntegrationTreeRefused|TestMWQ19_Scenario5_AdoptionRefusedAfterNewCommit|TestSD_AC013_ClaudeCompleteViaIntegrationWorktree|TestSD_AC024_CodexMergeRefusedComplete|TestSD_AC024_CodexMergeRefusedStage|TestSD_AC024_CodexMergeRefusedMCP|TestSD_AC025_IntegrationWindowSerializes|TestAutoMergeOffBaseline|TestAutoMergeHappyPath|TestAutoMergeNonCleanExit|TestAutoMergeUnconfiguredTarget|TestAutoMergeBusyWindow|TestAutoMergeZeroPush|TestAutoMergeConflict|TestAutoMergeSourceDirty|TestAutoMergeTargetGuards|TestAutoMergeNoOpSilent|TestAutoMergeNoticePrefixDistinct|TestAutoMergeToggleIndependence|TestAutoMergeFailurePaths|TestAutoMergeRealImplErrorPaths)$' -v -count=1
 stdout: 22
 stdout: === RUN   TestMWQ19_Scenario5_AdoptionRefusedAfterNewCommit
-stdout: --- PASS: TestMWQ19_Scenario5_AdoptionRefusedAfterNewCommit (1.87s)
+stdout: --- PASS: TestMWQ19_Scenario5_AdoptionRefusedAfterNewCommit (2.02s)
 stdout: === RUN   TestSD_AC013_ClaudeCompleteViaIntegrationWorktree
 stdout: === RUN   TestSD_AC013_ClaudeCompleteViaIntegrationWorktree/pre-merged_card_reaches_merged-local;_the_window_stays_held
 stdout: === RUN   TestSD_AC013_ClaudeCompleteViaIntegrationWorktree/complete_performs_the_merge_itself_and_records_the_re-measure_evidence
@@ -966,29 +966,29 @@ stdout: === RUN   TestSD_AC013_ClaudeCompleteViaIntegrationWorktree/integration_
 stdout: === RUN   TestSD_AC013_ClaudeCompleteViaIntegrationWorktree/integration_branch_held_by_no_tree:_not_provisioned
 stdout: === RUN   TestSD_AC013_ClaudeCompleteViaIntegrationWorktree/caller-source_window:_refused_naming_--branch
 stdout: === RUN   TestSD_AC013_ClaudeCompleteViaIntegrationWorktree/window_naming_the_card's_own_branch:_refused
-stdout: --- PASS: TestSD_AC013_ClaudeCompleteViaIntegrationWorktree (8.57s)
-stdout:     --- PASS: TestSD_AC013_ClaudeCompleteViaIntegrationWorktree/pre-merged_card_reaches_merged-local;_the_window_stays_held (1.25s)
-stdout:     --- PASS: TestSD_AC013_ClaudeCompleteViaIntegrationWorktree/complete_performs_the_merge_itself_and_records_the_re-measure_evidence (2.13s)
-stdout:     --- PASS: TestSD_AC013_ClaudeCompleteViaIntegrationWorktree/integration_branch_held_only_by_the_parent_checkout:_not_provisioned (1.11s)
-stdout:     --- PASS: TestSD_AC013_ClaudeCompleteViaIntegrationWorktree/integration_branch_held_by_no_tree:_not_provisioned (1.12s)
-stdout:     --- PASS: TestSD_AC013_ClaudeCompleteViaIntegrationWorktree/caller-source_window:_refused_naming_--branch (1.17s)
-stdout:     --- PASS: TestSD_AC013_ClaudeCompleteViaIntegrationWorktree/window_naming_the_card's_own_branch:_refused (1.79s)
+stdout: --- PASS: TestSD_AC013_ClaudeCompleteViaIntegrationWorktree (9.42s)
+stdout:     --- PASS: TestSD_AC013_ClaudeCompleteViaIntegrationWorktree/pre-merged_card_reaches_merged-local;_the_window_stays_held (1.26s)
+stdout:     --- PASS: TestSD_AC013_ClaudeCompleteViaIntegrationWorktree/complete_performs_the_merge_itself_and_records_the_re-measure_evidence (2.45s)
+stdout:     --- PASS: TestSD_AC013_ClaudeCompleteViaIntegrationWorktree/integration_branch_held_only_by_the_parent_checkout:_not_provisioned (1.49s)
+stdout:     --- PASS: TestSD_AC013_ClaudeCompleteViaIntegrationWorktree/integration_branch_held_by_no_tree:_not_provisioned (1.40s)
+stdout:     --- PASS: TestSD_AC013_ClaudeCompleteViaIntegrationWorktree/caller-source_window:_refused_naming_--branch (1.20s)
+stdout:     --- PASS: TestSD_AC013_ClaudeCompleteViaIntegrationWorktree/window_naming_the_card's_own_branch:_refused (1.61s)
 stdout: === RUN   TestSD_AC024_CodexMergeRefusedComplete
-stdout: --- PASS: TestSD_AC024_CodexMergeRefusedComplete (1.18s)
+stdout: --- PASS: TestSD_AC024_CodexMergeRefusedComplete (1.15s)
 stdout: === RUN   TestSD_AC024_CodexMergeRefusedStage
-stdout: --- PASS: TestSD_AC024_CodexMergeRefusedStage (1.16s)
+stdout: --- PASS: TestSD_AC024_CodexMergeRefusedStage (1.22s)
 stdout: === RUN   TestSD_AC025_IntegrationWindowSerializes
-stdout: --- PASS: TestSD_AC025_IntegrationWindowSerializes (4.32s)
+stdout: --- PASS: TestSD_AC025_IntegrationWindowSerializes (4.89s)
 stdout: === RUN   TestSD_AC024_CodexMergeRefusedMCP
-stdout: --- PASS: TestSD_AC024_CodexMergeRefusedMCP (0.87s)
+stdout: --- PASS: TestSD_AC024_CodexMergeRefusedMCP (0.85s)
 stdout: === RUN   TestIntegrationMergeWorktreeRefusesPrimaryHoldingBranch
-stdout: --- PASS: TestIntegrationMergeWorktreeRefusesPrimaryHoldingBranch (0.57s)
+stdout: --- PASS: TestIntegrationMergeWorktreeRefusesPrimaryHoldingBranch (0.54s)
 stdout: === RUN   TestIntegrationMergeWorktreeRefusesUnheldBranch
-stdout: --- PASS: TestIntegrationMergeWorktreeRefusesUnheldBranch (0.42s)
+stdout: --- PASS: TestIntegrationMergeWorktreeRefusesUnheldBranch (0.45s)
 stdout: === RUN   TestAutoMergeOffBaseline
 stdout: --- PASS: TestAutoMergeOffBaseline (0.00s)
 stdout: === RUN   TestAutoMergeHappyPath
-stdout: --- PASS: TestAutoMergeHappyPath (1.70s)
+stdout: --- PASS: TestAutoMergeHappyPath (1.33s)
 stdout: === RUN   TestAutoMergeNonCleanExit
 stdout: --- PASS: TestAutoMergeNonCleanExit (0.00s)
 stdout: === RUN   TestAutoMergeUnconfiguredTarget
@@ -1012,9 +1012,9 @@ stdout: --- PASS: TestAutoMergeZeroPush (0.00s)
 stdout: === RUN   TestAutoMergeConflict
 stdout: === RUN   TestAutoMergeConflict/seam_abort_path
 stdout: === RUN   TestAutoMergeConflict/real_git_conflict_leaves_no_merge_head
-stdout: --- PASS: TestAutoMergeConflict (1.66s)
+stdout: --- PASS: TestAutoMergeConflict (1.72s)
 stdout:     --- PASS: TestAutoMergeConflict/seam_abort_path (0.00s)
-stdout:     --- PASS: TestAutoMergeConflict/real_git_conflict_leaves_no_merge_head (1.66s)
+stdout:     --- PASS: TestAutoMergeConflict/real_git_conflict_leaves_no_merge_head (1.72s)
 stdout: === RUN   TestAutoMergeSourceDirty
 stdout: --- PASS: TestAutoMergeSourceDirty (0.00s)
 stdout: === RUN   TestAutoMergeTargetGuards
@@ -1032,11 +1032,11 @@ stdout: === RUN   TestAutoMergeToggleIndependence/merge=off/cleanup=off
 stdout: === RUN   TestAutoMergeToggleIndependence/merge=on/cleanup=off
 stdout: === RUN   TestAutoMergeToggleIndependence/merge=off/cleanup=on
 stdout: === RUN   TestAutoMergeToggleIndependence/merge=on/cleanup=on
-stdout: --- PASS: TestAutoMergeToggleIndependence (0.12s)
+stdout: --- PASS: TestAutoMergeToggleIndependence (0.18s)
 stdout:     --- PASS: TestAutoMergeToggleIndependence/merge=off/cleanup=off (0.00s)
 stdout:     --- PASS: TestAutoMergeToggleIndependence/merge=on/cleanup=off (0.00s)
-stdout:     --- PASS: TestAutoMergeToggleIndependence/merge=off/cleanup=on (0.06s)
-stdout:     --- PASS: TestAutoMergeToggleIndependence/merge=on/cleanup=on (0.06s)
+stdout:     --- PASS: TestAutoMergeToggleIndependence/merge=off/cleanup=on (0.09s)
+stdout:     --- PASS: TestAutoMergeToggleIndependence/merge=on/cleanup=on (0.09s)
 stdout: === RUN   TestAutoMergeFailurePaths
 stdout: === RUN   TestAutoMergeFailurePaths/branch_probe_fails
 stdout: === RUN   TestAutoMergeFailurePaths/ahead_check_fails
@@ -1060,12 +1060,12 @@ stdout:     --- PASS: TestAutoMergeFailurePaths/abort_also_fails (0.00s)
 stdout:     --- PASS: TestAutoMergeFailurePaths/source_dirty_check_fails (0.00s)
 stdout:     --- PASS: TestAutoMergeFailurePaths/target_dirty_check_fails (0.00s)
 stdout: === RUN   TestAutoMergeRealImplErrorPaths
-stdout: --- PASS: TestAutoMergeRealImplErrorPaths (0.08s)
+stdout: --- PASS: TestAutoMergeRealImplErrorPaths (0.12s)
 stdout: PASS
-stdout: ok  	github.com/modu-ai/moai-adk/internal/cli	23.174s
+stdout: ok  	github.com/modu-ai/moai-adk/internal/cli	24.550s
 exit: 0
-tree: 77100366d (`git diff --stat e32f69c46 77100366d -- internal cmd pkg` is empty)
-note: compound command, verbatim from plan §F block V4 (a pipeline, as E-35; not release-blocking). The block names 43 tests in both regexes (revision 0.8). The selected count is 22. Of the 43 required names, 21 are not selected: the three shape names added by revision 0.8 (TestLocalMainMergeRefusesIgnoredAncestor, TestLocalMainMergeRefusesFileOverIgnoredDirectory, TestLocalMainMergeCaseAliasOutcome) are absent until M1, and so are the names that M1 adds to the existing set. The first stdout line is the selected count. The run held the internal-cli-suite slot lease (acquired and released in this run). Timings differ between runs. The subtest line that carries the apostrophe (window_naming_the_card's_own_branch:_refused) is kept verbatim; the lint's VacuousTestAssertion warning on it is at acceptance.md:975 in the revision 0.8 state, and it comes from that apostrophe, because the lint name prefix stops before the apostrophe. The gate sentences carry the `--- PASS: <name> ` delimiter.
+tree: 0106da184 (`git diff --stat e32f69c46 0106da184 -- internal cmd pkg` printed nothing, exit 0)
+note: compound command, verbatim from plan §F block V4 (a pipeline, as E-35; not release-blocking). The block names 43 tests in both regexes (revision 0.8). The selected count is 22. Of the 43 required names, 21 are not selected: the three shape names added by revision 0.8 (TestLocalMainMergeRefusesIgnoredAncestor, TestLocalMainMergeRefusesFileOverIgnoredDirectory, TestLocalMainMergeCaseAliasOutcome) are absent until M1, and so are the names that M1 adds to the existing set. The first stdout line is the selected count. The run held the internal-cli-suite slot lease: `moai slot status --resource internal-cli-suite` read the slot as free, `moai slot acquire --resource internal-cli-suite --max-duration 20m` acquired it, and `moai slot release --resource internal-cli-suite` released it after the run. Timings differ between runs. The subtest line that carries the apostrophe (window_naming_the_card's_own_branch:_refused) is kept verbatim; the lint's VacuousTestAssertion warning on it is at acceptance.md:975 at 0106da184 (E-61), and it comes from that apostrophe, because the lint name prefix stops before the apostrophe. The gate sentences carry the `--- PASS: <name> ` delimiter.
 ```
 
 ```text
@@ -1150,11 +1150,11 @@ note: observed in revision 0.6. Run A refuses with exit 1 and leaves HEAD and th
 
 ```text
 E-73
-command: go version -m <scratchpad>/moai-tree-novcs | grep -c -e vcs.revision -e vcs.time -e vcs.modified -e buildvcs
+command: go version -m <scratchpad>/moai-tree-0106da184 | grep -c -e vcs.revision -e vcs.time -e vcs.modified -e buildvcs
 stdout: 0
 exit: 1
-tree: 366b45155
-note: pipeline, not release-blocking. Zero matches: the tree build has no VCS stamp and no buildvcs build setting (its build settings are lines 79 to 88 of the go version -m output; toolchain go1.26.8). E-63 cites this cell.
+tree: 0106da184
+note: pipeline, not release-blocking. Zero matches: the tree build has no VCS stamp and no buildvcs build setting (its build settings are lines 79 to 88 of the go version -m output; toolchain go1.26.8, checked at 0106da184). exit 1 is grep's status for no match. E-63 cites this cell.
 ```
 
 ```text
@@ -1176,20 +1176,20 @@ note: one match per fragment, on the clause lines named in AC-LMF-011. Each frag
 
 ```text
 E-75
-command: grep -c '^Open:' .moai/specs/SPEC-LOCAL-MAIN-FLOW-001/plan.md
-stdout: 2
+command: git grep -c '^Open:' 0106da184 -- .moai/specs/SPEC-LOCAL-MAIN-FLOW-001/plan.md
+stdout: 0106da184:.moai/specs/SPEC-LOCAL-MAIN-FLOW-001/plan.md:2
 exit: 0
-tree: revision 0.8 working tree (spec.md f6fa550e78af9b82, plan.md 439a2b3d3951e202)
-note: the F-15 count on the revision 0.8 working tree is 2: the two open-item lines are the OQ-10 line in §G.2 and the MI-2 line in §G.3, both beginning with "Open:". At 822abfdca (the revision 0.7 fixes commit) the count was 2; at 366b45155 it was 1.
+tree: 0106da184
+note: the F-15 count at 0106da184 is 2: the two open-item lines are the OQ-10 line in §G.2 and the MI-2 line in §G.3, both beginning with "Open:". At 822abfdca (the revision 0.7 fixes commit) the count was 2; at 366b45155 it was 1. The command runs from the repository root without -C, and git grep names the tree in its output.
 ```
 
 ```text
 E-76
-command: grep -c '^Operator verdict:$' .moai/specs/SPEC-LOCAL-MAIN-FLOW-001/decision-index.md
-stdout: 2
+command: git grep -c '^Operator verdict:$' 0106da184 -- .moai/specs/SPEC-LOCAL-MAIN-FLOW-001/decision-index.md
+stdout: 0106da184:.moai/specs/SPEC-LOCAL-MAIN-FLOW-001/decision-index.md:2
 exit: 0
-tree: revision 0.8 working tree (spec.md f6fa550e78af9b82, plan.md 439a2b3d3951e202, decision-index.md 8a4f0d1a7a1f67d3)
-note: both verdict lines are empty; Q1 and Q2 stay open (F-16). decision-index.md is unchanged by revision 0.8, so the count is the same as at 822abfdca.
+tree: 0106da184
+note: both verdict lines are empty; Q1 and Q2 stay open (F-16). decision-index.md is not changed between 822abfdca and 0106da184 (`git diff --stat 822abfdca 0106da184 -- <path>` printed nothing), so the count is the same as at 822abfdca.
 ```
 
 ```text
@@ -1207,7 +1207,7 @@ command: mkdir /Users/goos/MoAI/moai-adk-go/.moai/worktrees/t1616/.moai/state/e7
 stdout: local
 stdout: card
 exit: 0 (every link of the && chain ran to its last command; `git status --porcelain` and `git ls-files --others --ignored --exclude-standard` printed no lines)
-tree: 77100366d (the probe runs in a nested scratch repository under the git-ignored .moai/state/ and reads no card tree; the recorded run was made at 822abfdca)
+tree: 822abfdca (the probe runs in a nested scratch repository under the git-ignored .moai/state/ and reads no card tree; this is the last recorded run, made at 822abfdca, and it is not re-run at 0106da184)
 note: compound command, not release-blocking. Observation C13: `git -c merge.autoStash=false merge --no-ff --no-overwrite-ignore` replaced the ignored `b.txt` (`local` before the merge, `card` after it) and the merge completed. The flag does not protect ignored files on the no-fast-forward path, so the collision check of plan §B3 step 4a is the protection. It is a basis observation for the ignored-file clause of AC-LMF-004 and does not change that criterion's matrix cell (E-28 for the dirty-primary clause; E-79 for the shape scenarios). The directory name is part of the command: a re-run needs a new name, because removal is denied and the directory stays; this run used `e78-noff-probe-c3`, and the revision 0.7 fixes run used `e78-noff-probe-fix2`.
 ```
 
@@ -1257,8 +1257,8 @@ stdout: local content after: []
 stdout: tree after (excluding .git): . ./.gitignore ./Foo.txt 
 stdout: card content now at 'Foo.txt': card
 exit: 0
-tree: 77100366d (the parent of the revision commit; the probe reads no card tree)
-note: release-blocking RED for the shape scenarios of AC-LMF-004. The command is a single read-only invocation from the worktree root; it writes only scratch repositories under a new mktemp directory, outside the card tree. It shows that the planned primary merge command (plan §B3 step 5, with the exact intersection I of B5 as the only ignored check) exits 0 in all three shapes, loses the local content, and leaves git status empty. The three shape scenarios answer that red. The probe body is inline below and is the same text as probe-shapes.sh.
+tree: 0106da184 (the revision 0.8 commit; the probe reads no card tree)
+note: release-blocking RED for the shape scenarios of AC-LMF-004. The command is a single read-only invocation from the worktree root; it writes only scratch repositories under a new mktemp directory, outside the card tree. It shows that the planned primary merge command (plan §B3 step 5, with the exact intersection I of B5 as the only ignored check) exits 0 in all three shapes, loses the local content, and leaves git status empty. The three shape scenarios answer that red. Re-run at 0106da184: the stdout is identical to the stdout of the earlier run at 77100366d. The probe body is inline below and is the same text as probe-shapes.sh.
 ```
 
 Probe body (`probe-shapes.sh`, the same text as the file):

@@ -4,7 +4,9 @@ Plan-phase skeleton. The four §E headings are the canonical markers, in this or
 
 ## §E.1 Plan-phase Audit-Ready Signal
 
-_<pending plan-audit: plan-auditor records the plan-phase audit-ready signal here>_
+```yaml
+audit_ready: true
+```
 
 ## §E.2 Run-phase Evidence
 
