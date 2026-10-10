@@ -1346,7 +1346,7 @@ Decision id: d-20261010T131225Z-073c.
 
 ### M5: quality gates, mirrors, and the cli family (card t1663; decision d-20261010T131225Z-073c)
 
-Scope: plan §F M5 and QG-1 to QG-5 (acceptance.md). Measurements were taken at HEAD `bbc5c0b81`, the tree at M4's close, unless a line names another SHA. Work tree: `git status --short` was empty after `make build`. After the last heavy run, the only write to the tree was this block, made by a script that writes `progress.md` alone; `git status --short` then listed `progress.md` and nothing else. The only commit after the measurements is this block's record commit.
+Scope: plan §F M5 and QG-1 to QG-5 (acceptance.md). Measurements were taken at HEAD `bbc5c0b81`, the tree at M4's close, unless a line names another SHA. Work tree: `git status --short` was empty after `make build`. After the last heavy run, the only write to the tree was this block, made by a script that writes `progress.md` alone; `git status --short` then listed `progress.md` and nothing else. The only commits after the measurements touch `progress.md` alone: this block's record commit, and a wording correction to it.
 
 Gate status of this block and of its commit: 게이트 미실행(core.hooksPath=/dev/null, 공유 설정). The commit-time hook did not run. No `SKIP_MOAI_PRECOMMIT`, no `--no-verify`, no `git -c core.hooksPath`, and the shared config was not changed. `/verify` was not run: it runs `moai gate`, which runs `go test ./...`. Operator decision for card t1673 is pending.
 
