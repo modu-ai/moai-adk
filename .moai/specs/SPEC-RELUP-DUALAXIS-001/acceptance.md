@@ -87,22 +87,22 @@ tier: M
 
 ### 게이팅 처분 (B-07) — 블로킹 AC 연결과 강등
 
-분할 결정(efde) 이후 블로킹 AC를 가진 REQ는 002·010·014 세 종뿐이다. REQ-RDX-001·004·009·012는 블로킹 면을 잃어 강등되었다(아래 표). 처분은 다음과 같다 — 강등(판정 보류·회귀 가드), REQ-RDX-013·015는 E7 종결 게이트 편입(D4, §D.5 항목 6). 소유자 `unassigned, leader to issue`는 카드·SPEC id를 발행하지 않은 상태이며, 형제 카드 발행은 리더 소관이다.
+분할 결정(efde) 이후 블로킹 AC를 가진 REQ는 002·010·014 세 종뿐이다. REQ-RDX-001·004·009·012는 블로킹 면을 잃어 강등되었다(아래 표). 처분은 다음과 같다 — 강등(판정 보류·회귀 가드), REQ-RDX-013·015는 E7 종결 게이트 편입(D4, §D.5 항목 6). 소유자 `unassigned, leader to issue`는 카드·SPEC id를 발행하지 않은 상태이다. 형제 카드는 t1627로 발행되어 있다(큐 queued, 리더 결정 2026-10-10). 검증 보류 행의 소유자는 t1627이고, 회귀 가드 행은 소유자 미지정 상태를 유지한다.
 
 | REQ | 게이트 상태 | 처분 | 소유자 |
 |---|---|---|---|
-| REQ-RDX-001 | 없음 — AC-RDX-014 판정 보류 (F3, 분할 efde) | 강등: 판정 보류 가드 | unassigned, leader to issue |
+| REQ-RDX-001 | 없음 — AC-RDX-014 판정 보류 (F3, 분할 efde) | 강등: 판정 보류 가드 | t1627 (queued) |
 | REQ-RDX-003 | 없음 — AC-RDX-006 판정 보류 (CX-8); 보존 면은 AC-RDX-011(합병) 회귀 가드 | 강등: 판정 보류 가드 | t1627 (queued) |
-| REQ-RDX-004 | 없음 — AC-RDX-014 판정 보류 (F3, 분할 efde) | 강등: 판정 보류 가드 | unassigned, leader to issue |
+| REQ-RDX-004 | 없음 — AC-RDX-014 판정 보류 (F3, 분할 efde) | 강등: 판정 보류 가드 | t1627 (queued) |
 | REQ-RDX-005 | 없음 — AC-RDX-011 회귀 가드 (합병 — (a) 부재 클레임, 오늘 녹색, RED-now 셀 없음) | 강등: 회귀 가드 (undecidable disposition) | unassigned, leader to issue |
 | REQ-RDX-006 | 없음 — AC-RDX-003 판정 보류 (CX-7); 동작 면 E3-P3·P4는 착지 신호 | 강등: 판정 보류 가드 | t1627 (queued) |
 | REQ-RDX-007 | 없음 — AC-RDX-004 판정 보류 (CX-7) | 강등: 판정 보류 가드 | t1627 (queued) |
 | REQ-RDX-008 | 없음 — AC-RDX-005 판정 보류 (CX-7) | 강등: 판정 보류 가드 | t1627 (queued) |
-| REQ-RDX-009 | 없음 — AC-RDX-015 판정 보류 (F4, 분할 efde) | 강등: 판정 보류 가드 | unassigned, leader to issue |
+| REQ-RDX-009 | 없음 — AC-RDX-015 판정 보류 (F4, 분할 efde) | 강등: 판정 보류 가드 | t1627 (queued) |
 | REQ-RDX-011 | 없음 — AC-RDX-013 회귀 가드 (기준선 녹색, RED-now 셀 없음) | 강등: 회귀 가드 | unassigned, leader to issue |
-| REQ-RDX-012 | 없음 — AC-RDX-008 판정 보류 (F7, 분할 efde) | 강등: 판정 보류 가드 | unassigned, leader to issue |
-| REQ-RDX-013 | 블로킹 AC 없음 — AC-RDX-016 판정 보류 (CX-13); 구속 판정은 plan §E7(d) → §D.5 항목 6 (증거 항목 (d)) | E7 종결 게이트 편입 (D4) | unassigned, leader to issue |
-| REQ-RDX-015 | 블로킹 AC 없음 — AC-RDX-017 판정 보류 (CX-12); 구속 판정은 plan §E7(a)–(c) → §D.5 항목 6 (증거 항목 (d): E7(a)) | E7 종결 게이트 편입 (D4) | unassigned, leader to issue |
+| REQ-RDX-012 | 없음 — AC-RDX-008 판정 보류 (F7, 분할 efde) | 강등: 판정 보류 가드 | t1627 (queued) |
+| REQ-RDX-013 | 블로킹 AC 없음 — AC-RDX-016 판정 보류 (CX-13); 구속 판정은 plan §E7(d) → §D.5 항목 6 (증거 항목 (d)) | E7 종결 게이트 편입 (D4) | t1627 (queued) |
+| REQ-RDX-015 | 블로킹 AC 없음 — AC-RDX-017 판정 보류 (CX-12); 구속 판정은 plan §E7(a)–(c) → §D.5 항목 6 (증거 항목 (d): E7(a)) | E7 종결 게이트 편입 (D4) | t1627 (queued) |
 
 블로킹 AC를 가진 REQ는 3종이다: 002 → AC-007, 010 → AC-001·002, 014 → AC-009(제거면 LED-021 + 계수 LED-028). 004 → AC-014, 009 → AC-015, 012 → AC-008은 판정 보류라 블로킹 AC가 없다(분할 결정 efde).
 

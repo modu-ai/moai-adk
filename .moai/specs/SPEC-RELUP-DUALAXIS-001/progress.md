@@ -2,7 +2,7 @@
 
 ## §E.1 Plan-phase Audit-Ready Signal
 
-- plan_status: audit-ready
+- plan_status: debt-admitted (8df9·bb5d, 잔여→t1627)
 - plan_complete_at: 2026-10-09T13:20:00Z
 - rdx-sibling-card → t1627 (queued; 리더 진술 기준 — 레인은 큐를 조회하지 않았다)
 
