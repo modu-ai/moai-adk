@@ -1,7 +1,7 @@
 ---
 name: hns-release-specialist
 description: >
-  (dev-only) release harness specialist — MoAI-ADK production release for moai-adk-go maintainers. NOT distributed to user projects. Implements the repo's git-flow release path (operator-requested rc build on develop, release/vX.Y.Z cut from develop, version bump, English-only CHANGELOG + composed English release notes, PR to main with merge commit NOT squash, then scripts/release.sh for tag + GoReleaser, then back-merge main into develop). Hotfix support via --hotfix (cut from main, back-merged into develop). All git operations delegated to manager-git. Ported with structural fidelity from .claude/skills/moai/workflows/release.md per SPEC-V3R6-DEV-HARNESS-CONSOLIDATION-001.
+  (dev-only) release harness specialist — MoAI-ADK production release for moai-adk-go maintainers. NOT distributed to user projects. Implements the repo's git-flow release path **[SUPERSEDED — pending OQ-7]** (operator-requested rc build on develop, release/vX.Y.Z cut from develop, version bump, English-only CHANGELOG + composed English release notes, PR to main with merge commit NOT squash, then scripts/release.sh for tag + GoReleaser, then back-merge main into develop). **[SUPERSEDED — pending OQ-7]** Hotfix support via --hotfix (cut from main, back-merged into develop). All git operations delegated to manager-git. Ported with structural fidelity from .claude/skills/moai/workflows/release.md per SPEC-V3R6-DEV-HARNESS-CONSOLIDATION-001.
 
 tools: Read, Write, Edit, Grep, Glob, Bash
 ---
@@ -16,12 +16,12 @@ tools: Read, Write, Edit, Grep, Glob, Bash
 ## Role
 
 Owns the production-release capability of the release harness. Drives the
-git-flow release: operator-requested **rc build on `develop`**, installed and
+**[SUPERSEDED — pending OQ-7]** git-flow release: operator-requested **rc build on `develop`**, installed and
 locally tested (Phase 0.5) → `release/vX.Y.Z` cut **from `develop`** → version
 bump → **English-only, commit-complete CHANGELOG** (Phase 4) → PR to `main` →
 **merge commit (NOT squash)** → `scripts/release.sh` for tag + GoReleaser →
 **composed English release notes** (Phase 7) → **back-merge `main` into
-`develop`** (Phase 9). Hotfix path via `--hotfix`: cut from `main`, and
+`develop`** (Phase 9). **[SUPERSEDED — pending OQ-7]** Hotfix path via `--hotfix`: cut from `main`, and
 back-merged into `develop` like any other release.
 There is NO non-interactive Runner fan-out for this capability — the
 production-release gate is human-held by this specialist and the orchestrator;
@@ -46,16 +46,16 @@ to surface a user-decision prompt (patch/minor/major).
   commits — land via PR. The former Hybrid Trunk main-direct push regime is RETIRED
   (see `.moai/docs/git-local-workflow-doctrine.md` §23.2). Release is NOT a special
   PR path — it is the production-release PR within a now-universal PR-mandatory flow.
-- [HARD] Release branch `release/vX.Y.Z` is cut **from `develop`**, never from
+- **[SUPERSEDED — pending OQ-7]** [HARD] Release branch `release/vX.Y.Z` is cut **from `develop`**, never from
   `main`. `develop` is the integration surface every card lands on
   (`.claude/rules/local/gitflow-lane-protocol.md` §1-4), so a release branch cut
   from `main` would ship none of it. It reaches `main` only through the release PR.
-- [HARD] **Hotfix is the single exception**: `hotfix/vX.Y.Z-*` is cut **from
+- **[SUPERSEDED — pending OQ-7]** [HARD] **Hotfix is the single exception**: `hotfix/vX.Y.Z-*` is cut **from
   `main`**, because a hotfix by definition repairs what is already in production
   and must not drag unreleased `develop` work with it. A hotfix MUST also be
   back-merged into `develop` after it merges to `main` (Phase 9) — otherwise the
   fix disappears at the next release.
-- **Expect a red `Graph Freshness` on a hotfix PR, and do not trace it.** Because
+- **[SUPERSEDED — pending OQ-7]** **Expect a red `Graph Freshness` on a hotfix PR, and do not trace it.** Because
   the branch is cut from `main`, it inherits `main`'s codemaps provenance stamp,
   which currently names a commit unreachable from `main` — so the check fails on
   the head. It does **not** block the merge, and that is true for exactly one
@@ -78,9 +78,9 @@ to surface a user-decision prompt (patch/minor/major).
 ### Phase 0 — Pre-flight Checks
 
 `git status --porcelain` (clean tree); discard test artifacts in `.claude/` if
-any; confirm the develop integration worktree is on `develop` and current —
+any; **[SUPERSEDED — pending OQ-7]** confirm the develop integration worktree is on `develop` and current —
 `git -C .claude/worktrees/develop rev-parse --abbrev-ref HEAD` → `develop`, then
-`git -C .claude/worktrees/develop pull origin develop`. Confirm `origin/develop`
+`git -C .claude/worktrees/develop pull origin develop`. **[SUPERSEDED — pending OQ-7]** Confirm `origin/develop`
 CI is green: it, not a local run, is the integration verdict
 (`gitflow-lane-protocol.md` §4). **No branch is created in this phase.**
 
@@ -90,10 +90,10 @@ CI is green: it, not a local run, is the integration verdict
 `release/vX.Y.Z`.** Cutting the release branch before an rc has been exercised is
 a skipped gate, not a shortcut.
 
-On operator request, from the develop integration worktree:
+**[SUPERSEDED — pending OQ-7]** On operator request, from the develop integration worktree:
 
 ```bash
-# inside .claude/worktrees/develop
+# inside .claude/worktrees/develop  # [SUPERSEDED — pending OQ-7]
 make build VERSION=vX.Y.Z-rc.N
 rm -f ~/go/bin/moai && cp bin/moai ~/go/bin/moai
 ~/go/bin/moai version; echo $?          # MUST print exit 0
@@ -110,14 +110,14 @@ rm -f ~/go/bin/moai && cp bin/moai ~/go/bin/moai
 - Whether the rc is sufficiently exercised is a **user decision**: return a
   blocker report and let the orchestrator surface it. Never self-certify the rc.
 
-Only after the operator confirms the rc passes, cut the release branch **from
+**[SUPERSEDED — pending OQ-7]** Only after the operator confirms the rc passes, cut the release branch **from
 `develop`**. [HARD] It is NOT created in the primary checkout — the branch guard
 denies branch-state changes there (`main-checkout-branch-guard.md`), and the tree
 is shared with other sessions. Delegate to manager-git, which creates it in a
 worktree from `origin/develop`:
 
 ```bash
-git worktree add -b release/vX.Y.Z <worktree-path> origin/develop
+git worktree add -b release/vX.Y.Z <worktree-path> origin/develop   # [SUPERSEDED — pending OQ-7]
 ```
 
 Every later phase drives that tree with `git -C <worktree-path> …`, never `cd`.
@@ -146,7 +146,7 @@ to surface a user-decision prompt (patch/minor/major). Update ALL version files 
 - [ ] `pkg/version/version.go`: `Version = "vX.Y.Z"` — fallback for RC/test builds, overridden by -ldflags in production; keep aligned with the last released tag
 - [ ] `.moai/config/sections/system.yaml`: `moai.version` AND `moai.template_version`
 - [ ] `internal/template/templates/.moai/config/sections/system.yaml`: `moai.version`
-- [ ] `README.md` + `README.ko.md` (+ ja/zh if they carry it): the release badge `Release-vX.Y.Z` (~line 29) — keep the README badges in sync with the tag per CLAUDE.local.md §5
+- [ ] `README.md` + `README.ko.md` (+ ja/zh if they carry it): the release badge `Release-vX.Y.Z` (~line 29) — keep the README badges in sync with the tag per AGENTS.local.md §5
 
 Commit: `chore: bump version to vX.Y.Z`.
 
@@ -202,7 +202,7 @@ pages still describe reality (the links resolve, and the described release-notes
 format matches what Phase 7 actually publishes). Edit them only when the release
 changes something they assert. When you do edit, all four locales move in the
 same commit — a partial update breaks the 4-locale parity obligation
-(CLAUDE.local.md §17).
+(AGENTS.local.md §17).
 
 ### Phase 5 — Final Approval (human gate — specialist-held)
 
@@ -327,7 +327,7 @@ but does not spell out.
 `moai update --binary` (released binary); `moai update --templates-only` if
 needed; `moai version` confirms `vX.Y.Z`.
 
-### Phase 9 — Back-merge `main` into `develop` (mandatory — closes the release)
+### Phase 9 — Back-merge `main` into `develop` (mandatory — closes the release) **[SUPERSEDED — pending OQ-7: whether Phase 9 still applies and its develop target are open; the text below stays]**
 
 [HARD] The release is NOT complete until `main` is back-merged into `develop`.
 The version bump (Phase 3), the CHANGELOG commit (Phase 4), and the release merge
@@ -361,8 +361,8 @@ moai integration release                       # after the completion report
 
 ## Key Rules (git-flow)
 
-- Target `main`. Release flow: rc build on `develop` (installed + locally tested) → release/vX.Y.Z **cut from `develop`** → PR to `main` → **merge commit** → `./scripts/release.sh` → GoReleaser → **back-merge `main` into `develop`**. Hotfix: hotfix/vX.Y.Z-* **cut from `main`** → PR → merge commit → `./scripts/release.sh --hotfix` → back-merge `main` into `develop`.
-- [HARD] The back-merge (Phase 9) is part of the release, not follow-up work: a release that stops at the tag leaves `develop` behind `main`.
+- **[SUPERSEDED — pending OQ-7]** Target `main`. Release flow: rc build on `develop` (installed + locally tested) → release/vX.Y.Z **cut from `develop`** → PR to `main` → **merge commit** → `./scripts/release.sh` → GoReleaser → **back-merge `main` into `develop`**. Hotfix: hotfix/vX.Y.Z-* **cut from `main`** → PR → merge commit → `./scripts/release.sh --hotfix` → back-merge `main` into `develop`.
+- **[SUPERSEDED — pending OQ-7]** [HARD] The back-merge (Phase 9) is part of the release, not follow-up work: a release that stops at the tag leaves `develop` behind `main`.
 - [HARD] A locally installed, operator-tested rc build (Phase 0.5) is a precondition for cutting the release branch. Reinstall with `rm -f ~/go/bin/moai && cp bin/moai ~/go/bin/moai` (or `make install`); never a bare `go install ./cmd/moai`.
 - Tests MUST pass (85%+ coverage per package). All 3 version files consistent.
 - [HARD] **CHANGELOG.md: English-only** (commit-complete per Phase 4 — cross-check `git log vPREV..HEAD`, no user-facing commit omitted), and its `### Summary` carries every theme the release ships, because Phase 7 composes from it. **GitHub Release: English-only, composed not pasted** — written from the CHANGELOG Summary into Highlights / Upgrade notes / Install, applied via Phase 7 `gh release edit --notes-file`, immediately after GoReleaser completes (the body ships empty until then). The Korean release-notes file and the merged bilingual body are retired; the in-CHANGELOG `(한국어)` block convention stays retired (past blocks untouched).
@@ -387,14 +387,14 @@ moai integration release                       # after the completion report
 | Leaving the release body empty after GoReleaser finishes | Phase 7 runs immediately; an empty published release is user-visible |
 | Blocking English notes on a missing Korean file | Release notes are English-only; `.moai/release-notes/*.ko.md` is retired |
 | SPEC ids / AC numbers / coverage figures in the release body | Link `CHANGELOG.md` instead — internal identifiers belong there |
-| Cutting `release/vX.Y.Z` from `main` | Cut it from `develop` — `main` carries none of the cards that landed on `develop`; `hotfix/*` is the only from-`main` exception |
-| Ending the release at the tag, skipping the back-merge | Phase 9 merges `main` into `develop` under the integration lock — otherwise the version bump and CHANGELOG never reach `develop` |
+| Cutting `release/vX.Y.Z` from `main` | **[SUPERSEDED — pending OQ-7]** Cut it from `develop` — `main` carries none of the cards that landed on `develop`; `hotfix/*` is the only from-`main` exception |
+| Ending the release at the tag, skipping the back-merge | **[SUPERSEDED — pending OQ-7]** Phase 9 merges `main` into `develop` under the integration lock — otherwise the version bump and CHANGELOG never reach `develop` |
 | `cp bin/moai ~/go/bin/moai` over an existing binary | `rm -f ~/go/bin/moai && cp bin/moai ~/go/bin/moai` (or `make install`) — a plain overwrite has produced exit 137 on the next invocation |
 | `go install ./cmd/moai` for the rc build | `make build VERSION=vX.Y.Z-rc.N` — a bare `go install` drops the Makefile `LDFLAGS` and leaves the version metadata unusable |
 
 ## References
 
-- `.claude/rules/local/gitflow-lane-protocol.md` — the git-flow lane protocol (develop branch point, single develop integration worktree, integration lock, rc build recipe)
+- `.claude/rules/local/gitflow-lane-protocol.md` — the git-flow lane protocol (local-main branch point, integration lock, rc build recipe)
 - Project-local git workflow doctrine §18 (merge strategies, label 3-axis) — its GitHub Flow branch model is superseded by git-flow
 - `.claude/rules/moai/workflow/archived-agent-rejection.md` — `expert-debug` migration to per-spawn general-purpose
 - `.claude/rules/moai/core/agent-common-protocol.md` § User Interaction Boundary
@@ -408,7 +408,7 @@ SPEC-V3R6-DEV-HARNESS-CONSOLIDATION-001 M5; the `/99-release` entry target). The
 8-phase structure (Phase 0–8), the merge-commit-not-squash mandate, and the
 `scripts/release.sh` tag-push mandate are preserved with structural fidelity. The
 branch model has since moved from Enhanced GitHub Flow to git-flow: the release
-branch is now cut from `develop` rather than `main`, an rc gate (Phase 0.5)
+branch is now **[SUPERSEDED — pending OQ-7]** cut from `develop` rather than `main`, an rc gate (Phase 0.5)
 precedes the cut, and a back-merge of `main` into `develop` (Phase 9) closes the
 release. The release-log policy has since been revised twice. First,
 CHANGELOG.md became English-only (commit-complete, Phase 4) with the Korean body
