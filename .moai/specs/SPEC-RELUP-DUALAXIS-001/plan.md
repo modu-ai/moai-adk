@@ -40,7 +40,7 @@ tier: M
 - **B6 Out of Scope 헤딩**: `## Out of Scope` h2 단독은 `MissingExclusions` lint ERROR — `### Out of Scope — <topic>` h3 + `-` 불릿으로 작성했다(spec.md §6).
 - **B8 워킹 트리 위생**: 런타임 관리 파일(`.moai/harness/`, `.moai/state/`) 편집 금지. 커밋은 지정 pathspec만.
 - **B10 범위 규율**: §A.5 PRESERVE 이외 무변경. 특히 Go 트리(`internal/`) 0변경 — AC-RDX-011이 지키는 회귀 가드다.
-- **B11 사용자 질의 금지**: leaf worker — 열린 질문은 전부 spec.md §1.2 결정 기록으로 봉쇄했다. `[NEEDS CLARIFICATION]` 마커 0개.
+- **B11 사용자 질의 금지**: leaf worker — 열린 질문은 전부 spec.md §1.2 결정 기록으로 봉쇄했다. 미해결 판단 표지 0개.
 - **상태 파일 특이사항**: `last-codex-version.json`은 gitignored 기계 로컬이라 CI가 판정할 수 없다 — AC는 본문 쓰기 지점을 측정면으로 삼는다(§5.2).
 - **node --check 한계**: 러너 JS 파스 검증에 `node --check`는 무음 통과 한계가 있다(운영 교훈) — §E에서 CommonJS require() 스모크로 보강한다.
 
@@ -86,20 +86,20 @@ grep -c "hns-release-update-run.js" .claude/commands/harness/release-update/mani
 
 | 표면 | 고정 앵커 (리터럴) | AC |
 |---|---|---|
-| manifest.json `domain` | 필드 스코프 패턴 `'"domain".*Codex CLI upstream change tracking'` — domain 키 행만 매치, source_request 동 문구 불매 (CX-3 재앵커). **보존 절**(D9): `'"domain".*Claude Code'` — 동일 스코프; 누락 입력은 acceptance §D.3-d CTRL-F | AC-RDX-001 |
+| manifest.json `domain` | 필드 스코프 패턴 `'"domain".*Codex CLI upstream change tracking'` — domain 키 행만 매치, source_request 동 문구 불매 (CX-3 재앵커). **보존 절**(D9): `'"domain".*Claude Code'` — 동일 스코프; 누락 입력은 acceptance §D.3-d CTRL-F (보존 절은 판정 보류 — F8, 분할 efde) | AC-RDX-001 |
 | manifest.json `domain` | 필드 스코프 패턴 `'"domain".*best-practices axis'` — 동일 스코프 | AC-RDX-002 |
 | runner | `selectCodexSweepTargets(args)` 출현 **≥2** — 제1 출현=정의, 제2 출현=top-level 런타임 블록 병합 지점. 병합 형태 고정: `const allTargets = ccTargets.concat(codexTargets);` + `parallel(allTargets` 호출식. codex 렌즈 라벨 접두사 `codex-release-notes:`(CC의 `cc-release-notes:`와 병렬 — E3-P3 판정 토큰). 정적 면 LED-003 + 동적 면 LED-016(§E3-P3 모의-런타임 — codex 라벨 agent 호출 실측). `module.exports`에 `selectCodexSweepTargets` 추가 필요 | AC-RDX-003 |
 | runner | 상수 `CODEX_COMMITS_FALLBACK` — 본문 비어 있을 때의 커밋 API 복원 절차 문서 블록 앵커. 절차 내용: (1) 릴리즈 본문 1줄 제목만 관측되면 `gh api repos/openai/codex/commits`/`pulls` 주제 복원, (2) 복원 항목 전부 "commit-topic-derived" 라벨, (3) 잠재 티어1 후보는 PR 본문 확인으로 격상(#49713 정합 절차) | AC-RDX-004 |
 | runner | 상수 `CODEX_THEME_CHECKLIST` — 6테마 리터럴 `thread` / `rollout` / `subagent` / `compaction` / `MCP` / `other`. 행 형식: 테마 키 + 관측 PR 번호 목록 + MoAI 노출면 | AC-RDX-005 |
 | specialist | `last-codex-version.json` — Phase 0(판독·부재 기본값) + Phase 7a(쓰기)에 등장 | AC-RDX-006 |
 | specialist | `rust-v0.161.0` — 시드 기술 | AC-RDX-007 |
-| specialist | `Best-Practices` 상시 절차 섹션 — 헤딩 행 스코프 `^#+ .*best-practice`(대소문자 무관; 주석·산문 매치 제외 — D8) | AC-RDX-008 |
-| specialist | Phase 3 URL **6종 캐노니컬 전문 열거** — `code.claude.com/docs/en/hooks`·`...en/sub-agents`·`...en/skills`·`...en/plugins`·`...en/mcp`·`...en/settings` 각각 ≥1 — **Phase 3 블록(`### Phase 3`~`### Phase 4`) 안**(LED-022..027 육면 열거면, CX-18: URL 전부 삭제 mutant 봉쇄; D2 블록 스코프) **+ 제거면 LED-021**: 구형 `docs.anthropic.com` 참조는 **파일 전체**에서 0 / exit 1(주변 서술 잔존분 포함 전부 제거 — CX-14; D2: 제거면은 블록 스코프가 아님; M3 항목 5, 이 카드 소관 — B-02). 육면 검사는 좌측 경계 + 이스케이프 점 + 종결 경계 패턴(B-03, D1) | AC-RDX-009 |
-| specialist | `HTML proposal report` — BP 섹션 블록(첫 `best-practice` 헤딩 ~ 다음 동급 헤딩 직전) 안의 deliverable 행에 존재해야 한다 (D8) | AC-RDX-010 |
-| specialist | `rust-v0.161.0` 부재 기본값 — Phase 0 codex 블록(acceptance §D.3-c, 71행 앵커 ~ 95행 — `### Phase 1` 헤딩 직전)이 부재 기본값(`rust-v0.161.0` + 경고)과 키군 4종을 포함해야 한다 (블록 스코프 게이트 — B-07·B-08) | AC-RDX-014 |
+| specialist | `Best-Practices` 상시 절차 섹션 — 헤딩 행 스코프 `^#+ .*best-practice`(대소문자 무관) — 주석 안 가짜 헤딩은 세므로 판정 보류 (F7, 분할 efde) | AC-RDX-008 |
+| specialist | Phase 3 URL **6종 캐노니컬 전문 열거** — `code.claude.com/docs/en/hooks`·`...en/sub-agents`·`...en/skills`·`...en/plugins`·`...en/mcp`·`...en/settings` 각각 ≥1 — **Phase 3 블록(`### Phase 3`~`### Phase 4`) 안**(LED-022..027 육면 열거면, CX-18: URL 전부 삭제 mutant 봉쇄; D2 블록 스코프) **+ 제거면 LED-021**: 구형 `docs.anthropic.com` 참조는 **파일 전체**에서 0 / exit 1(주변 서술 잔존분 포함 전부 제거 — CX-14; D2: 제거면은 블록 스코프가 아님; M3 항목 5, 이 카드 소관 — B-02). 육면 검사는 좌측 경계 + 이스케이프 점 + 종결 경계 패턴(B-03, D1); 육면 열거면·블록 스코프 면은 판정 보류 (F1·F2, 분할 efde), 블로킹 면은 제거면 LED-021 | AC-RDX-009 |
+| specialist | `HTML proposal report` — BP 섹션 블록(첫 `best-practice` 헤딩 ~ 다음 동급 헤딩 직전) 안의 deliverable 행에 존재해야 한다 (D8; 주석 안 deliverable은 세므로 판정 보류 F7, 분할 efde) | AC-RDX-010 |
+| specialist | `rust-v0.161.0` 부재 기본값 — Phase 0 codex 블록(acceptance §D.3-c, 71행 앵커 ~ 95행 — `### Phase 1` 헤딩 직전)이 부재 기본값(`rust-v0.161.0` + 경고)과 키군 4종을 포함해야 한다 (블록 스코프 면은 판정 보류 — F3, 분할 efde; 구조 검사는 후속 카드) | AC-RDX-014 |
 | specialist | `7a-codex` — Phase 7a 기록 단계 제목 리터럴(CC의 Step 7a와 병렬; codex 상태 기록 절차의 사이트 앵커 — CX-6). `last-codex-version.json` 출현 **≥2**: 제1=Phase 0 판독·부재 기본값 블록, 제2=Phase 7a 기록 단계(단일 사이트 mutant는 둘 중 하나에서 좌초) | AC-RDX-006 |
 | specialist | `only the CC axis` — Phase 2 조기 종료 문장의 축별 재범위화 리터럴 (REQ-RDX-015, CX-9). **이중 면**: LED-018(신규 리터럴 ≥1) + LED-019 제거면 — 구형 무조건 문장 전문 `If no entries: emit "No new versions since vX.Y.Z" and stop`은 착지 후 **0**이어야 한다(주석 포함 어디에도 생존 금지 — 주석 mutant도 문장 생존 시 적색, fresh-run CX-10) | AC-RDX-017 |
-| runner | alpha watch 규범 — CODEX_THEME_CHECKLIST 블록(acceptance §D.3-c, 79행 주석 ~ 92행 닫는 괄호 `];`)이 "alpha 테마는 watch 관찰목록, 안정 탑재 시에만 채택 판정" 규범 문장(81–84행)을 포함해야 한다 (블록 스코프 게이트 — B-08) | AC-RDX-015 |
+| runner | alpha watch 규범 — CODEX_THEME_CHECKLIST 블록(acceptance §D.3-c, 79행 주석 ~ 92행 닫는 괄호 `];`)이 "alpha 테마는 watch 관찰목록, 안정 탑재 시에만 채택 판정" 규범 문장(81–84행)을 포함해야 한다 (블록 스코프 면은 판정 보류 — F4, 분할 efde; 구조 검사는 후속 카드) | AC-RDX-015 |
 | specialist | `source-first` — 원문 패치 선행 강제 리터럴 (REQ-RDX-013, mutant M-4의 기계 판정면) | AC-RDX-016 |
 
 ### §D2 결정 전파 (재논의 금지 — spec.md §1.2)
@@ -113,11 +113,11 @@ grep -c "hns-release-update-run.js" .claude/commands/harness/release-update/mani
 - `internal/`·`internal/template/templates/` 편집 금지 (Go 0변경 — AC-RDX-011).
 - `--no-verify`·force-push 금지. 커밋은 Conventional + 카드 id + `🗿 MoAI` 트레일러.
 - 상태 파일(`.moai/state/*.json`) 편집 금지.
-- `[NEEDS CLARIFICATION]` 마커 신설 금지 — 판단 필요 시 결정 기록으로 자결.
+- 미해결 판단 표지 신설 금지 — 판단 필요 시 결정 기록으로 자결.
 
 ## §E Self-Verification (run-phase 납품)
 
-- **E1 AC 매트릭스** — acceptance.md §D 전 AC(16종: 블로킹 8 + 판정 보류 6 + 회귀 가드 2) PASS/FAIL/보류 + 검증 명령 + 실측 출력 (§E 삼중 귀속: 명령·출력·HEAD SHA).
+- **E1 AC 매트릭스** — acceptance.md §D 전 AC(16종: 블로킹 4 + 판정 보류 10 + 회귀 가드 2; 분할 결정 efde 반영) PASS/FAIL/보류 + 검증 명령 + 실측 출력 (§E 삼중 귀속: 명령·출력·HEAD SHA).
 - **E2 RED→GREEN 전수 재측정** — §C의 RED-now 앵커 15종(grep) + 검증 동사 2종(E3-P3·P4)이 대응 마일스톤 착지 후 뒤집혔는지 exit code 포함 재실행하고, AC-RDX-009 육면 셀(§C의 LED-022G..027G 행, Phase 3 블록 스코프)은 착지 GREEN 1을 확인한다 — §C의 LED-021 핀 행(`docs.anthropic.com`, 핀 2aab5f797)은 육면 셀이 아니며 착지 목표는 0 / exit 1이다.
 - **E3 러너 런타임-형태 어댑터 스모크 (plan-audit iter1 CX-4 재설계)** — 러너는 ESM `export const meta`(1행)와 top-level `return`(153행)/`await`(143행)를 결합한 **하이브리드 형태**라 네이티브 Node 모듈 로딩이 어느 목표로도 파스하지 못한다(아래 근거). 워크플로 런타임은 본문을 함수-래핑 평가하므로, 스모크는 그 평가 형태를 재현한다: 행선지 스코프로 `export` 문만 적출한 뒤 AsyncFunction 본문으로 컴파일·실행하고 export 경로로 셀렉터를 실측 호출한다. 이 어댑터가 곧 top-level-형태 보존의 기계 면이다 — `return`/`await`가 함수 래핑 형태에서 벗어나면 컴파일이 즉시 적색으로 뒤집힌다.
 
@@ -149,7 +149,7 @@ grep -c "hns-release-update-run.js" .claude/commands/harness/release-update/mani
 - **E4 JSON 파스** — `python3 -c "import json;json.load(open('.claude/commands/harness/release-update/manifest.json'))"` exit 0 (domain 문자열 편집 후).
 - **E5 회귀 가드** — §C PRESERVE 앵커 3종 + sprint_contract 판독(LED-015 — dimensions·thresholds 출력이 기준선 `['Functionality', 'Consistency'] {'Functionality': 0.85, 'Consistency': 0.8}`와 일치; CX-3, internal/ 0힛 · last-cc-version.json ≥3 · runner_workflow 참조 1 포함).
 - **E6 spec-lint** — `go run ./cmd/moai spec lint SPEC-RELUP-DUALAXIS-001` (또는 프로젝트 규약 형태) exit 0 — MissingExclusions·FrontmatterInvalid 0건 확인.
-- **E7 의미론 검토면 (CX-12·CX-13 이관 — REQ-RDX-015·REQ-RDX-013의 유일한 구속 판정면)** — 기계 면이 paraphrase·반전 클래스에 우회됨이 실증됐으므로, run-exit E1 인간 검토가 의미론을 검증한다. **REQ-RDX-015 축별 종료**: (a) Phase 2 조기 종료가 CC 축 한정인지, (b) codex·BP 축의 계속 실행·기록이 같은 절차에 명시돼 있는지, (c) Phase 8 완료 게이트가 3축(CC/codex/BP) 실행 상태를 집계하는지. **REQ-RDX-013 source-first (리더 재개 CX-13 합류)**: (d) BP 인벤토리 항목이 제안 근거로 쓰일 때 원문 패치 선행이 절차상 실제 강제인지 — `source-first` 리터럴의 존재만으로 충분하지 않다(리터럴 유지·규칙 역전 mutant 실증). **run-phase 위임 프롬프트는 이 검토 항목들을 반드시 운반한다**(manager-develop-prompt-template §E 성격 — 누락 시 재위임 리스크). **종결 게이트 편입 (D4, option (a))**: 이 검토면은 REQ-RDX-013·REQ-RDX-015의 구속 판정면이며, 판정 기록은 `acceptance.md §D.5` 항목 6의 증거 항목 (d)로 편입된다. E7(a) 판정(REQ-RDX-015 — Phase 2 조기 종료의 CC 축 한정 여부)이 run-exit E1 기록에 없으면 종결 게이트는 충족되지 않는다.
+- **E7 의미론 검토면 (CX-12·CX-13 이관 — REQ-RDX-015·REQ-RDX-013의 유일한 구속 판정면)** — 기계 면이 paraphrase·반전 클래스에 우회됨이 실증됐으므로, run-exit E1 인간 검토가 의미론을 검증한다. **REQ-RDX-015 축별 종료**: (a) Phase 2 조기 종료가 CC 축 한정인지, (b) codex·BP 축의 계속 실행·기록이 같은 절차에 명시돼 있는지, (c) Phase 8 완료 게이트가 3축(CC/codex/BP) 실행 상태를 집계하는지. **REQ-RDX-013 source-first (리더 재개 CX-13 합류)**: (d) BP 인벤토리 항목이 제안 근거로 쓰일 때 원문 패치 선행이 절차상 실제 강제인지 — `source-first` 리터럴의 존재만으로 충분하지 않다(리터럴 유지·규칙 역전 mutant 실증). **run-phase 위임 프롬프트는 이 검토 항목들을 반드시 운반한다**(manager-develop-prompt-template §E 성격 — 누락 시 재위임 리스크). **종결 게이트 편입 (D4, option (a))**: 이 검토면은 REQ-RDX-013·REQ-RDX-015의 구속 판정면이며, 판정 기록은 `acceptance.md §D.5` 항목 6의 증거 항목 (d)로 편입된다. E7(a) 판정(REQ-RDX-015 — Phase 2 조기 종료의 CC 축 한정 여부)이 run-exit E1 기록에 없으면 종결 게이트는 충족되지 않는다. E7(a)–(d) 각각은 긍정 판단으로 증거와 함께 기록해야 하며, 부정·보류·기록 없음은 종결 차단이다(F5).
 
 ## §F Milestones (결정 가역성 순 — 변동 가능성 높은 결정부터)
 
