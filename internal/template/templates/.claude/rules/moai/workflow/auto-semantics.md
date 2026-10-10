@@ -59,19 +59,31 @@ is progress, not a stall.
 
 ## 4. The observation snapshot
 
-The N-minute verdict compares TWO observations, so each watchdog awaken
-persists one:
+The N-minute verdict compares the current observation with the last observed
+channel change, so each watchdog awaken persists the observation and the change
+time:
 
 - **path**: `.moai/state/watchdog/<card-id>.json` inside the lane's own
   worktree — gitignored runtime state, tree-local; the lane measures itself,
   so no home-surface visibility is needed
 - **fields**: `observed_at` (RFC3339), `head_sha`, `evidence_mtime_max`, and
-  `window_state` (the integration-status output hash or holder id)
+  `window_state` (the integration-status output hash or holder id); and two
+  fields added with the renewal (SPEC-FACTORY-LEASE-RENEW-001): `renew_result`,
+  the class the renew verb reported for this pass (`renewed`,
+  `refused-expired`, `refused-not-holder`, or `error`), and `last_change_at`,
+  the RFC3339 `observed_at` of the last pass at which a channel changed
 - **verdict**: stall iff (no channel change vs the previous snapshot) AND
-  the previous observation is at least N minutes old
+  (`observed_at` minus `last_change_at`) is at least N minutes. A pass that
+  moved a channel sets `last_change_at` to its own `observed_at`; a pass that
+  moved none carries the previous value forward. The verdict therefore falls on
+  the first scheduled pass at or after N minutes without a channel change, so a
+  lane with no channel change is reported as stalled no later than N minutes
+  plus one renewal period after that change (REQ-FLR-013)
 - **single-writer** — the lane itself; no cross-writer discipline applies
 - **fail-open first observation**: a missing or corrupt snapshot means "no
-  previous observation" — record a fresh one, no stall verdict
+  previous observation" — record a fresh one, with `last_change_at` set to its
+  own `observed_at`, and no stall verdict. A snapshot written before
+  `last_change_at` existed takes the same first observation.
 
 ## 5. The awaken rule
 
