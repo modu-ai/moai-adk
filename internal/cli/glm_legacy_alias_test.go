@@ -108,3 +108,61 @@ func TestSaveLLMSectionRemovesOnlyTheLegacyAliasKeys(t *testing.T) {
 		t.Errorf("header comment lost:\n%s", raw)
 	}
 }
+
+// TestSaveLLMSectionKeepsSameNamedGLMKeyBesideModels pins the other side of the
+// alias scope. An unmodelled key named opus directly under llm.glm, beside the
+// models mapping, is not a legacy alias: the real write removes the three aliases
+// from llm.glm.models and leaves that key, deployment_mode, and future_flag alone.
+func TestSaveLLMSectionKeepsSameNamedGLMKeyBesideModels(t *testing.T) {
+	t.Parallel()
+	root := t.TempDir()
+	sectionsDir := filepath.Join(root, defs.MoAIDir, defs.SectionsSubdir)
+	if err := os.MkdirAll(sectionsDir, 0o755); err != nil {
+		t.Fatal(err)
+	}
+	path := filepath.Join(sectionsDir, "llm.yaml")
+	src := "# llm header kept\n" +
+		"llm:\n" +
+		"  team_mode: cg\n" +
+		"  deployment_mode: plugin\n" +
+		"  future_flag: keep-me\n" +
+		"  glm:\n" +
+		"    opus: keep-me-too\n" +
+		"    models:\n" +
+		"      high: glm-5.3-flash\n" +
+		"      medium: glm-5.3-flash\n" +
+		"      low: glm-5.3-flash\n" +
+		"      fable: glm-5.3\n" +
+		"      opus: glm-5.2\n" +
+		"      sonnet: glm-5.2\n" +
+		"      haiku: glm-5.2\n"
+	if err := os.WriteFile(path, []byte(src), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	if err := persistTeamMode(root, "glm"); err != nil {
+		t.Fatalf("persistTeamMode: %v", err)
+	}
+	raw, err := os.ReadFile(path)
+	if err != nil {
+		t.Fatal(err)
+	}
+	var tree map[string]any
+	if err := yaml.Unmarshal(raw, &tree); err != nil {
+		t.Fatalf("parse rewritten llm.yaml: %v\n%s", err, raw)
+	}
+	llm, _ := tree["llm"].(map[string]any)
+	glm, _ := llm["glm"].(map[string]any)
+	models, _ := glm["models"].(map[string]any)
+	if keys := slices.Sorted(maps.Keys(models)); !slices.Equal(keys, []string{"fable", "high", "low", "medium"}) {
+		t.Errorf("llm.glm.models keys = %v, want exactly [fable high low medium]\n%s", keys, raw)
+	}
+	if glm["opus"] != "keep-me-too" {
+		t.Errorf("unmodelled llm.glm.opus did not survive: %v\n%s", glm["opus"], raw)
+	}
+	if llm["deployment_mode"] != "plugin" || llm["future_flag"] != "keep-me" {
+		t.Errorf("unknown keys did not survive: deployment_mode=%v future_flag=%v\n%s", llm["deployment_mode"], llm["future_flag"], raw)
+	}
+	if !strings.Contains(string(raw), "# llm header kept") {
+		t.Errorf("header comment lost:\n%s", raw)
+	}
+}
