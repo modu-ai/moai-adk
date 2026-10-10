@@ -5,7 +5,7 @@ Milestones are ordered by decision reversibility: the decisions most likely to c
 ## A. Context
 
 - Tree of the RED cells: `8fa0dc24b` (code paths equal main `2aab5f797`). Main = `2aab5f797`. The SPEC-only commits after `8fa0dc24b` leave the code paths unchanged (`git diff --name-only 8fa0dc24b 00ab5bbb1 -- internal cmd` is empty).
-- Absorbed refs (recorded at M1, not before plan-audit): `WT-user-asset-bundle` (t1591) = `df559b729`, 81 files changed relative to main (`git diff --stat main...df559b729`); `WT-update-migration-fixes` (t1578) = `40ab940f4`, 13 files changed relative to main (`git diff --stat main...40ab940f4`).
+- Absorbed refs (recorded at M1, not before plan-audit): `WT-user-asset-bundle` (t1591) and `WT-update-migration-fixes` (t1578), absorbed at run start; the absorption-time tip is recorded in progress.md section G (Absorption Record).
 - Installed `moai` binary (`4f8aba061`) is not evidence for this tree. Any build used for a measurement is built from this tree and invoked by path.
 - Existing SPECs whose decisions bind this plan: SPEC-USER-ASSET-INSTALL-001 (P6, REQ-002), SPEC-CLI-TUX-INIT-UPDATE-001 (REQ-TUXIU-004, -012 to -016, -020 to -022, -041, -054), SPEC-V3R6-UPDATE-NOISE-001 (`--verbose`, REQ-UN-005, REQ-UN-010), SPEC-V3R6-UPDATE-PROGRESS-001 (`tui.ProgressLine`), SPEC-UPDATE-MIGRATION-001 (REQ-UPM-030 to -032, § H out-of-scope notes for t1509 and t1527), SPEC-UPDATE-YAML-PRESERVE-001 (comment preservation).
 
@@ -13,7 +13,7 @@ Milestones are ordered by decision reversibility: the decisions most likely to c
 
 ### B.1 Milestone M0 — RED capture (High)
 
-Before any change: capture the RED-now cell of every criterion in `acceptance.md` on tree `8fa0dc24b` (code paths equal main `2aab5f797`), as single-invocation commands with verbatim stdout, exit code, and tree SHA. Measure the runnable profile-visibility command form (AC-RC30-01) and confirm the `make tui-snapshot` target. Record each result in `progress.md` § E.2 (run-phase evidence).
+Before any change: capture the RED-now cell of every criterion in `acceptance.md` on tree `8fa0dc24b` (code paths equal main `2aab5f797`), as single-invocation commands with verbatim stdout, exit code, and tree SHA. Measure the runnable profile-visibility command form (AC-RC30-01, moved to SPEC B) and confirm the `make tui-snapshot` target. Record each result in `progress.md` § E.2 (run-phase evidence).
 
 Exit condition: every criterion has a RED cell or a recorded reason it cannot be captured (Gap).
 
@@ -21,27 +21,27 @@ Exit condition: every criterion has a RED cell or a recorded reason it cannot be
 
 Runs after plan-audit PASS.
 
-1. Absorb `WT-user-asset-bundle` (t1591) and `WT-update-migration-fixes` (t1578) into this tree with plain `git merge`. Do not rebase. Route (a) is chosen for the removal call: the absorbed content is merged unchanged, and the removal call at `internal/cli/migrate_project_assets.go:174` (df559b729) is made inert in step 1b, before any run or commit. Route (a) keeps the plain merge and the branch's content whole; route (b) would select hunks from one file that carries both the predicate fix (hunk `@@ -282,0 +289,11 @@`) and the removal call, which breaks the plain-merge rule. 1b. TDD RED then GREEN for AC-RC30-02: write `TestMigrationRemovalGate`, asserting that the removal call runs only when `removalEnabled` is true and that its default is false; its first run fails on the merged code (TDD RED at M1). Then add `removalEnabled` (default false) around the call at line 174 (GREEN). Record both tip SHAs in `progress.md` § G Absorption Record.
+1. Absorb in the order below. Each branch is merged with `git merge --no-commit --no-ff`; plain `git merge` (commit on success) is not used. (1) Absorb `WT-user-asset-bundle` (t1591). (2) Write the TDD RED test for the removal switch on the staged tree. (3) Add `removalEnabled` (default false) around the removal call (its line is recorded at absorption). (4) Commit that merge. (5) Absorb `WT-update-migration-fixes` (t1578) the same way, then commit it. Do not rebase. Route (a) is chosen for the removal call: each branch's content stays whole, with no hunk selection, and the switch is added inside the first merge before its commit; route (b) would select hunks from one file that carries both the predicate fix and the removal call, which breaks the whole-branch merge. 1b. AC-RC30-02, the judging criterion of the switch, is moved to SPEC B; the switch is inert by default (`removalEnabled` false) and has no criterion in this SPEC. Record each absorption-time tip in `progress.md` section G (Absorption Record).
 2. Measure every range from `CARD_BASE=$(git merge-base HEAD <absorbed-tip>)`, not from a literal SHA. Re-absorb if a branch moves.
 3. Resolve conflicts in `internal/userassets/install.go` (both branches) and `internal/cli/update.go` (t1578) by the rule that the branch's own tests keep passing.
 4. Implement the BLOCKED-ON items in this order:
-   - U-01 is DECISION-PENDING (operator decision Q2; decision-index.md). It is not a BLOCKED-ON item. The removal switch of step 1b is inert by default; turning it on waits for AC-RC30-01 adoption, which this card cannot run (§ B.3). The reach mechanism waits for the Q2 verdict.
-   - U-09 (non-catalog message), U-03 (bundle announce), U-12 (kept assets). U-02 and U-10 are DECISION-PENDING: they wait for AC-RC30-01 adoption, which needs a profile session this card cannot run (§ B.3).
+   - U-01 is DECISION-PENDING (operator decision Q2; decision-index.md). It is not a BLOCKED-ON item. The removal switch of step 1b is inert by default in SPEC A; turning it on belongs to SPEC B (AC-RC30-01 moved there). The reach mechanism waits for the Q2 verdict.
+   - U-09 (non-catalog message), U-03 (bundle announce), U-12 (kept assets). U-02 and U-10 moved to SPEC B with AC-RC30-03 and AC-RC30-11 (split, d-20261009T235135Z-5e35).
    - U-11 (user-root downgrade refusal, both branches).
    - U-17 (one banner) and U-21 (profile sync resolution, t1578).
-   - U-31 (integrity probe, codex-only harness condition, t1578): the codex-only fixture test is written first (RED), then the harness-conditioned fix (GREEN).
+   - U-31 moved to SPEC B; the repair stays with card t1578 (leader correction).
 
-Exit condition: the absorbed refs are recorded; AC-RC30-02 passes (the removal call is inert by default); AC-RC30-04, -10, -12, -13, -18, -21 pass or have a recorded blocker.
+Exit condition: the absorbed refs are recorded; the removal call is inert by default (judged by AC-RC30-02, moved to SPEC B); AC-RC30-04, -10, -12, -13, -18, -21 pass or have a recorded blocker.
 
 ### B.3 Milestone M2 — Shared-root data model and profile reach (High; decision-dependent)
 
 1. Record the § D.1 status table with runnable evidence for the four roots and `~/.moai`. Each Gap cell is replaced with the command and output that closes it.
 2. Run the D.3 init path check: build this tree, invoke the built binary by path with `HOME` set to a scratch directory, and list which roots `init` writes.
-3. Adoption of AC-RC30-01 is not reachable in this card: its command needs a profile session on the operator side (acceptance.md, AC-RC30-01). No adoption is claimed. Until it is adopted, the removal switch stays off, no project-side copy is deleted, and no removal code path is turned on (REQ-RC30-003).
-4. DECISION-PENDING (blocked on step 3): turning the switch on, U-02 (backup before removal, AC-RC30-03), and U-10 (emptied-directory removal, AC-RC30-11) wait for AC-RC30-01 adoption. Nothing in this card enables them.
+3. Moved to SPEC B (split, d-20261009T235135Z-5e35): the adoption of AC-RC30-01 is no longer a step of this SPEC. Until SPEC B adopts it, the removal switch stays off, no project-side copy is deleted, and no removal code path is turned on (REQ-RC30-003).
+4. Moved to SPEC B: turning the switch on, U-02 (backup before removal, AC-RC30-03), and U-10 (emptied-directory removal, AC-RC30-11) belong to SPEC B. Nothing in SPEC A enables them.
 5. Implement the profile-reach mechanism only after Q2 is answered (U-01).
 
-Exit condition: AC-RC30-01 is not adopted in this card (blocker recorded); U-02 and U-10 stay DECISION-PENDING; the D.1 table has no Gap cell that the milestone could close.
+Exit condition: AC-RC30-01, -03 and -11, and items U-02 and U-10, are moved to SPEC B; no criterion of this SPEC is owned by M2; the D.1 table has no Gap cell that the milestone could close.
 
 ### B.4 Milestone M3 — Config data model and restore (High; not gated on M1)
 
@@ -52,7 +52,7 @@ Config save and restore are data-model changes. They do not overlap either branc
 3. `--restore` applies the backed-up `settings.json`, lists uncovered paths, and counts retention per run (U-07, AC-RC30-08).
 4. `gate.yaml` comment loss and the `llm.yaml` re-marshal trigger are investigated with their tests first (U-23, U-24, AC-RC30-22, -23). Fixes follow the named cause.
 
-Exit condition: AC-RC30-06, -07, -08 pass; -22 and -23 are RED with the cause named.
+Exit condition: AC-RC30-06, -07, -08 pass; AC-RC30-22 and -23 are recorded as blocked with the cause named, per the Definition of Done.
 
 ### B.5 Milestone M4 — Output TUX and report wording (High; user-visible; not gated on M1)
 
@@ -109,7 +109,7 @@ Each GAP-INVESTIGATE item is closed by its named evidence, with its command and 
 
 | Risk | Effect | Mitigation |
 |------|--------|-----------|
-| The profile-visibility premise (project-side copies are seen by profile sessions) is unverified | A removal gate built on a false premise | AC-RC30-01 is measured before any removal; no copy is deleted until it passes |
+| The profile-visibility premise (project-side copies are seen by profile sessions) is unverified | A removal gate built on a false premise | AC-RC30-01 moved to SPEC B; no copy is deleted and no removal path is enabled in SPEC A |
 | REQ-002 of SPEC-USER-ASSET-INSTALL-001 (spec.md line 255) may bar a profile install | U-01 cannot use a reach mechanism that writes into a profile directory | Q2 is raised; U-01 is DECISION-PENDING (Q2), not BLOCKED-ON any branch |
 | Both branches change `internal/userassets/install.go` | Merge conflict at M1 | Plain merge; conflicts resolved with the branch tests kept green |
 | Branch tips move after absorption | Measurements go stale | Re-absorb on movement; ranges are measured from the merge-base each time |

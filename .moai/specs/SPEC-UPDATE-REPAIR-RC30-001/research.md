@@ -215,10 +215,10 @@ $ grep -n "hideClaude" internal/template/harness_fs.go   (excerpt)
 $ grep -Ec "^\| U-[0-9]{2} \|" .moai/specs/SPEC-UPDATE-REPAIR-RC30-001/spec.md
 31
 $ grep -E "^\| U-[0-9]{2} \|" .moai/specs/SPEC-UPDATE-REPAIR-RC30-001/spec.md | grep -Eo "IN-NOW|BLOCKED-ON|GAP-INVESTIGATE|DECISION-PENDING" | wc -l
-31
+      28
 $ grep -E "^\| U-[0-9]{2} \|" .moai/specs/SPEC-UPDATE-REPAIR-RC30-001/spec.md | grep -Evc "IN-NOW|BLOCKED-ON|GAP-INVESTIGATE|DECISION-PENDING"
-0
-(counts by disposition cell: IN-NOW 13, BLOCKED-ON 10, GAP-INVESTIGATE 7, DECISION-PENDING 1)
+3
+(counts by disposition cell: IN-NOW 13, BLOCKED-ON 7, GAP-INVESTIGATE 7, DECISION-PENDING 1; moved to SPEC B 3)
 ```
 A first count returned 32 tokens. The extra token was in the Source cell of U-14 ("Lane brief IN-NOW example"). That repeat was removed, and the count above is the one after the removal.
 

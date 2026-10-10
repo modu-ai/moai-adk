@@ -2,7 +2,7 @@
 
 ## Budget, status, and adoption
 
-- Tier L ceiling: 25 acceptance criteria. This file carries **26**: AC-RC30-01 to AC-RC30-26. That is one over the ceiling. OPEN LEADER DECISION B1 (decision-index.md) chooses between a split and a merge. Until the leader decides, the text keeps 26.
+- Tier L ceiling: 25 acceptance criteria. This file carries **21** criteria (26 minus AC-RC30-01, -02, -03, -11, -26, which moved to SPEC B under decision d-20261009T235135Z-5e35). Within the ceiling. OPEN LEADER DECISION B1 (decision-index.md) is closed by that split.
 - U-22 (owned by card t1578) carries no criterion. U-30 is judged by the locale part of AC-RC30-25 (REQ-RC30-019).
 - **Tree for every RED cell:** `8fa0dc24b`. Its code paths equal main `2aab5f797`, and the SPEC-only commits after it leave them unchanged. Each RED cell is one single-invocation command (no pipes, redirection, or chaining), its verbatim stdout, its exit status, and the tree SHA.
 - **Release gate versus regression-guard** (MP-8):
@@ -102,10 +102,10 @@ E-18  command: ls -la .moai/logs/config-change-audit.log
       stderr:  ls: .moai/logs/config-change-audit.log: No such file or directory
       exit:    1
 
-E-19  command: git grep -n "settings.json" 40ab940f4 -- internal/cli/update_integrity_probe.go
-      stdout:  40ab940f4:internal/cli/update_integrity_probe.go:47://   - .claude/settings.json: the Claude Code settings merge target; must parse as JSON.
-               40ab940f4:internal/cli/update_integrity_probe.go:52:	{rel: ".claude/settings.json", check: probeJSON},
-      exit:    0   (the t1578 tip carries the unconditional entry; main has no such file)
+E-19  command: git grep -n "settings.json" WT-update-migration-fixes -- internal/cli/update_integrity_probe.go
+      stdout:  WT-update-migration-fixes:internal/cli/update_integrity_probe.go:47://   - .claude/settings.json: the Claude Code settings merge target; must parse as JSON.
+               WT-update-migration-fixes:internal/cli/update_integrity_probe.go:52:	{rel: ".claude/settings.json", check: probeJSON},
+      exit:    0   (dated reference, observed 2026-10-10 on the branch tip read in this run: WT-update-migration-fixes carries the unconditional entry; main has no such file; absorbed at run start; the absorption-time tip is recorded in progress.md section G (Absorption Record))
 
 E-20  command: grep -n "migrateProjectCommonAssets(" internal/cli/update_template_sync.go
       stdout:  1185:		removed, err := migrateProjectCommonAssets(projectRoot, homeDir, userAssetsInstalled, nil, func(format string, args ...interface{}) {
@@ -137,9 +137,9 @@ Columns: AC | Items | REQ | Judging command | Expected result | RED cell | Statu
 
 | AC | Items | REQ | Judging command | Expected result | RED cell | Status |
 |----|-------|-----|-----------------|-----------------|----------|--------|
-| AC-RC30-01 | U-01 | REQ-RC30-001, REQ-RC30-003 | `CLAUDE_CONFIG_DIR="<profile-dir>" claude -p "List every skill name you can invoke, one per line." \| grep -c "moai-plan"` (the profile directory name is a leader or operator input; the command has not been run) | The count is at least 1. A count of 0 keeps REQ-RC30-003 in force, and no removal path is merged. | none: needs a Claude Code profile session, which this card cannot run | Regression-guard. Not adoptable in this card: the command needs a profile session on the operator side (plan.md § B.3, step 3). No adoption is claimed; the removal switch stays off. |
-| AC-RC30-02 | U-01 | REQ-RC30-001, REQ-RC30-003 | `go test ./internal/cli/ -run TestMigrationRemovalGate -count=1 -v` | `--- PASS: TestMigrationRemovalGate`. A removal with no passing AC-RC30-01 leaves the project copy in place. | E-04 (the removal call has no gate predicate; on the t1591 tip it is at migrate_project_assets.go:174) | Release gate from its TDD RED milestone (M1). Regression-guard until then. |
-| AC-RC30-03 | U-02 | REQ-RC30-004 | `go test ./internal/cli/ -run TestMigrationBackupBeforeRemoval -count=1 -v` | `--- PASS`. Every removed file has a copy in the run backup before removal. | E-20 (the migration call at 1185 runs in the run order the audit describes) | DECISION-PENDING (U-02 waits for AC-RC30-01 adoption; plan.md § B.3). Regression-guard until then. |
+AC-RC30-01 moved to SPEC B (split, d-20261009T235135Z-5e35).
+AC-RC30-02 moved to SPEC B (split, d-20261009T235135Z-5e35).
+AC-RC30-03 moved to SPEC B (split, d-20261009T235135Z-5e35).
 | AC-RC30-04 | U-03 | REQ-RC30-005 | `go test ./internal/cli/ -run TestBundleAnnounceForPluginMode -count=1 -v` | `--- PASS`. Output carries the exact `moai bundle add <name>` line for each optional pack not installed. | E-13 (`user_asset_phase.go` has only a comment about `bundle add`) | Release gate from its TDD RED milestone (M1). Regression-guard until then. |
 | AC-RC30-05 | U-04 | REQ-RC30-006 | `go test ./internal/cli/ -run TestBundleList -count=1 -v` | `--- PASS`. Output names each catalog bundle with its skill and agent counts. | E-12 (no `list` subcommand) | Release gate from its TDD RED milestone (M3). Regression-guard until then. |
 | AC-RC30-06 | U-05 | REQ-RC30-007 | `go test ./internal/config/ -run TestConfigSaveRoundTripLLM -count=1 -v` | `--- PASS`. A fixture `llm.yaml` with `deployment_mode`, an unmodelled key, and comments is unchanged by Save except for the intended field. | E-14 (no `deployment_mode` in `manager.go`), E-15 (alias fields absent) | Release gate from its TDD RED milestone (M3). Regression-guard until then. |
@@ -147,7 +147,7 @@ Columns: AC | Items | REQ | Judging command | Expected result | RED cell | Statu
 | AC-RC30-08 | U-07 | REQ-RC30-009, REQ-RC30-010 | `go test ./internal/cli/ -run TestRestoreSettingsAndRetention -count=1 -v` | `--- PASS`. Restore applies the backed-up `settings.json`. Restore output lists uncovered paths. Retention keeps N directories per run. | E-11 (restore code has no `settings.json` reference) | Release gate from its TDD RED milestone (M3). Regression-guard until then. |
 | AC-RC30-09 | U-08 | REQ-RC30-011, REQ-RC30-017 | `grep -rn "0 user customizations modified" internal/cli --include='*.go' --exclude='*_test.go'` (production code; the characterization test at line 201 is excluded from the scope and is updated in the same change, E-22) | After the fix: no output, exit 1. Both production lines in update_archive.go (282 and 367) are removed, and the same change removes the literal from the test expectation at `tuxiu_characterization_test.go:201` (E-22 then prints no output). The GREEN reachability check (E-23) is empty outside update_archive.go. | E-24: production matches at update_archive.go lines 282 and 367, exit 0; E-22: excluded test match at line 201; E-23: no other production match | Release gate (RED cell recorded). |
 | AC-RC30-10 | U-09 | REQ-RC30-005 | `go test ./internal/cli/ -run TestNonCatalogSkillMessage -count=1 -v` | `--- PASS`. A managed skill with no catalog entry gets a distinct message, not "opt in via moai bundle add". | E-05 (the "opt in via" message at line 160) | Release gate from its TDD RED milestone (M1). Regression-guard until then. |
-| AC-RC30-11 | U-10 | REQ-RC30-004 | `go test ./internal/cli/ -run TestEmptiedSkillDirRemoved -count=1 -v` | `--- PASS`. A skill directory emptied by the migration is removed with its last file. | E-04 (`os.Remove(p)` removes one file per call; no pruning call) | DECISION-PENDING (U-10 waits for AC-RC30-01 adoption; plan.md § B.3). Regression-guard until then. |
+AC-RC30-11 moved to SPEC B (split, d-20261009T235135Z-5e35).
 | AC-RC30-12 | U-11 | REQ-RC30-012 | `go test ./internal/userassets/ -run TestUserRootDowngradeRefused -count=1 -v` | `--- PASS`. An older binary does not refresh a user root with a newer recorded version. | E-16 (`stateManifestMatch` has no version comparison in the visible lines) | Release gate from its TDD RED milestone (M1, after absorption). Regression-guard until then. |
 | AC-RC30-13 | U-12 | REQ-RC30-001 | `go test ./internal/cli/ -run TestKeptOptionalAssetRefresh -count=1 -v` | `--- PASS`. A kept optional agent or `.agents/skills` copy is refreshed in place or gets a notice. | E-05 (the kept message at line 160; no refresh call is visible at that site) | Regression-guard (effect cell is the message only; the refresh absence is not yet shown by grep). |
 | AC-RC30-14 | U-13 | REQ-RC30-022 | `go test ./internal/cli/ -run TestSkipDecisionUsesTreeHash -count=1 -v` | `--- PASS`. A same-version run with a different template tree does not skip. | none: the skip lines are audit-cited (`update_template_sync.go:247`, `:1143`) and not yet re-read | Regression-guard. |
@@ -162,7 +162,7 @@ Columns: AC | Items | REQ | Judging command | Expected result | RED cell | Statu
 | AC-RC30-23 | U-24 | REQ-RC30-007 | `go test ./internal/cli/ -run TestLLMYamlRemarshalCallers -count=1 -v` (one case per `ConfigManager.Save` caller) | `--- PASS` for each caller. Each caller that drops a key is named. | E-14 (Save path has no `deployment_mode` reference) | GAP-INVESTIGATE. Regression-guard. |
 | AC-RC30-24 | U-25 | REQ-RC30-003 | Investigation: `ls -la .moai/logs/config-change-audit.log` is the audit's path. The log is absent from this tree (E-18). The log is located in the operator profile first, and the result is recorded in research.md with its command and output. | The untraced removal is attributed to a command with evidence, or recorded as unresolved with the missing evidence named. | E-18 (no such file in this tree) | GAP-INVESTIGATE. Regression-guard. |
 | AC-RC30-25 | U-26, U-27, U-28, U-29, U-30 | REQ-RC30-014, REQ-RC30-016, REQ-RC30-017, REQ-RC30-018, REQ-RC30-019, REQ-RC30-020 | `make tui-snapshot-verify` (target exists, E-09) and `go test ./internal/cli/ -run 'TestUpdateOutputGolden\|TestUpdatePlainFallback' -count=1 -v` (TTY golden shows N of M, bar, one ✓/!/✗ line per step, one-screen summary, one conflict count above the summary; plain fallback carries the same counts; locale part: `go test ./internal/cli/ -run TestUpdateLocaleKeyParity -count=1 -v`, which requires the four locale tables ko, en, ja, and zh to define the same keys and the summary to show the same counts in each locale) | `--- PASS` for each. The golden is changed only through `make tui-snapshot`, on a reviewed diff. | E-10 (the step line renderer at 134-139); E-21 (no `conversation_language` reference in the renderer files) | Release gate from its TDD RED milestone (M4). Regression-guard until then. |
-| AC-RC30-26 | U-31 | REQ-RC30-021 | `go test ./internal/cli/ -run TestIntegrityProbeCodexOnlyNoClaudeSettings -count=1 -v` (codex-only fixture with `hideClaude=true` first, RED; then the harness-conditioned fix, GREEN; a Claude fixture with `.claude/settings.json` deleted must still report "missing") | RED before the fix: `--- FAIL` with a `.claude/settings.json` "missing" finding on the codex-only fixture. GREEN after the fix: `--- PASS`, and the Claude sub-case still reports "missing". | E-19 (the t1578 tip requires `.claude/settings.json` unconditionally at line 52) | Release gate from its TDD RED milestone (M1, after absorption; the probe is absent on main). Regression-guard until then. |
+AC-RC30-26 moved to SPEC B; the repair stays with card t1578 (leader correction).
 
 ## Mutant probes (verification-completeness § 2)
 
@@ -174,5 +174,5 @@ Columns: AC | Items | REQ | Judging command | Expected result | RED cell | Statu
 
 - Every criterion has its RED cell (or its stated regression-guard reason) recorded in progress.md § E.2 on the then-current tree.
 - Every test-named criterion has its effect cell recorded now (E-01 to E-24) and its TDD RED milestone named in the matrix.
-- Each criterion passes at its owning milestone, with the `-v` output recorded in progress.md.
+- Each criterion in this SPEC passes at its owning milestone, with the -v output recorded in progress.md, or is recorded in progress.md as blocked or deferred with a named trigger.
 - The coverage target of 85% or more per touched package is measured by `go test -cover` on those packages (measurement Gap until M7).
