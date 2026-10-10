@@ -560,6 +560,11 @@ func zoneShellCovered(forms []zoneForm, load config.ProtectedZoneLoad, root stri
 		if load.State == config.ZoneStateOK {
 			for i := range load.Zone.Entries {
 				entry := load.Zone.Entries[i]
+				if entry.Kind == config.ZoneUserRoot {
+					// a user-root Pattern is root-relative ("claude-skills/moai-demo/"), so it
+					// cannot name a project parent; user-root targets are judged by zoneUserRootCovered
+					continue
+				}
 				if entry.Kind == config.ZoneBaseGlob {
 					// no path prefix to contain, but removing the directory
 					// removes every file the glob matches there. The walk
