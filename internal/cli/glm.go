@@ -525,7 +525,7 @@ func handleGLMKeyFlag(cmd *cobra.Command, args []string) (bool, error) {
 	extra = append(extra, args[:flagIdx]...)
 	extra = append(extra, rest...)
 	if len(extra) > 0 {
-		return true, fmt.Errorf("--key cannot be combined with other arguments (found %q); run 'moai glm --key <api-key>' by itself", redactArg(extra[0]))
+		return true, fmt.Errorf("--key cannot be combined with other arguments (found %q); run 'moai glm --key <api-key>' by itself", redactArg(extra[0], strings.TrimSpace(value)))
 	}
 	trimmed := strings.TrimSpace(value)
 	if trimmed == "" {
@@ -601,12 +601,18 @@ var glmFlagNames = map[string]bool{
 }
 
 // redactArg renders a conflicting token for a usage error without
-// disclosing any key value the token may carry (REQ-GJK-010): the
+// disclosing any key value the token may carry (REQ-GJK-010): a token equal
+// to the key is the key itself and is masked first; the
 // `--key=<value>` spelling keeps only the flag name plus a marker, a token
 // that is exactly one of glm's parsed flag names keeps its name, and
 // everything else is masked outright — a key value is a positional token
 // here, and it can look like anything.
-func redactArg(arg string) string {
+func redactArg(arg, key string) string {
+	// A token equal to the key is the key itself. Mask it before any allowlist
+	// lookup, so a key spelled like a flag name ("-f") is not passed through.
+	if key != "" && arg == key {
+		return "****"
+	}
 	if arg == "--key" {
 		return arg
 	}
