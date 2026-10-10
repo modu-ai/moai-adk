@@ -965,16 +965,16 @@ run_complete_at: 2026-10-09
 ```yaml
 sync_status: complete
 sync_complete_at: 2026-10-10
-sync_commit_sha: 5a8a07159   # 커밋은 자신의 해시를 인용할 수 없음 — 다음 커밋에서 backfill
+sync_commit_sha: pending-backfill-sync   # 커밋은 자신의 해시를 인용할 수 없음 — 다음 커밋에서 backfill
 b12_self_test_a: >-
-  pre-emission dedup grep: grep -c 'SPEC-USERASSET-DEPLOY-GUARD-001' CHANGELOG.md → 편집 전 1, 편집 후 1 (관측 시점 HEAD 0f962daac).
+  pre-emission dedup grep: grep -c 'SPEC-USERASSET-DEPLOY-GUARD-001' CHANGELOG.md → 편집 전 1, 편집 후 1 (관측 시점 HEAD 273bf72a0).
   기존 엔트리 1건을 제자리에서 개정했고 새 엔트리는 추가하지 않았다 — 중복 등록 없음.
 b12_self_test_b: >-
-  AC 카운터: tier=L, ac_source=.moai/specs/SPEC-USERASSET-DEPLOY-GUARD-001/acceptance.md → live=27 excluded=0 ambiguous=0 (관측 시점 HEAD 0f962daac, 파일 무변경, 선언된 접두사 없음).
+  AC 카운터: tier=L, ac_source=.moai/specs/SPEC-USERASSET-DEPLOY-GUARD-001/acceptance.md → live=27 excluded=0 ambiguous=0 (관측 시점 HEAD 273bf72a0, 0f962daac 이후 acceptance.md 무변경 확인, 선언된 접두사 없음).
   CHANGELOG 엔트리의 "27 acceptance criteria" 참조와 일치한다. AC-008은 acceptance.md 어디에도 없어 범위 표기 AC-001..026 안에 번호 공백이 있으나, 개수는 식별자 기준이므로 판정에 영향이 없다.
 b12_self_test_c: >-
-  파일 경로 검증(ls, 관측 시점 HEAD 0f962daac): 개정 엔트리가 명명하는 internal/cli/init_resume.go · internal/cli/init_profile_sync.go · internal/cli/init_resume_global_settings_test.go · internal/userassets/lock.go · internal/userassets/lock_release_once_test.go · SPEC 디렉터리의 spec.md·progress.md 전부 존재.
-  이번 개정이 명명한 커밋 5종(df559b729, 01e510335, edc144270, dc3d749f3, 59d702fca)은 git merge-base --is-ancestor로 HEAD의 조상임을 관측했다(exit 0).
+  파일 경로 검증(ls·find, 관측 시점 HEAD 273bf72a0): 개정 엔트리가 명명하는 internal/cli/init_resume.go · internal/cli/init_profile_sync.go · internal/userassets/lock.go · SPEC 디렉터리의 spec.md·progress.md 전부 존재. 엔트리의 베어 파일명 install.go(internal/userassets/install.go)와 llm.yaml(.moai/config/sections/llm.yaml)도 존재를 확인했다.
+  엔트리가 명명하는 커밋 SHA 16종은 전부 HEAD의 조상임을 관측했다(git rev-list HEAD 대조, 16/16).
 changelog_entry_position: "[Unreleased] 첫 배치 ### Fixed 선두 (SPEC-RECEIPT-REUSE-001 엔트리 위)"
 frontmatter_status_transitions:
   spec_md: "draft → completed (3-phase close — 단일 sync 커밋 탑재, updated: 2026-10-10 갱신)"
@@ -983,9 +983,15 @@ canary_compliance_check: "N/A — 본 SPEC은 자기 sync 테스트를 정의하
 docs_claim_check: >-
   docs-site/content 4-locale + docs/: protected-zone 설정 섹션 자체가 미문서화(grep 0적중),
   doctor/init 페이지의 기존 주장과 본 카드 변경 충돌 없음 — 위조된 주장 0건, 4-locale 후속 불필요
-sync_gaps: >-
-  코드맵 stale(154/40), edges stale 2/0, mx-index 부재(새 워크트리), 이 트리 빌드 0f962daac-dirty 로 측정(측정 시점 트리 HEAD 14e6d690d; 빌드는 HEAD의 조상으로 3커밋 뒤처짐, 이 3커밋의 Go 주석·삽입 줄은 반영되지 않았음, 재측정 안 함), 로컬 착지는 CI graph-freshness 대상 아님. 재생성은 후속 후보(리더 수령). sync-auditor 판정에 맡김.
-  Run-phase repair-round gaps: (a) the repair round has RED and GREEN commits in this order: ffd332cac, 0d0b47a9a, d9c969f23, f3d099234, aeb2f1f11, e4ec6c24e (test commits are RED, fix commits GREEN); (b) golangci-lint v2.1.6 on ./internal/cli/ at e4ec6c24e: 0 issues (a lane measurement, full package run; not re-run in this sync pass); (c) the /verify full gate was not run locally, by the leader's ruling (AGENTS.md section 4); the full internal/cli suite was not observed locally, and CI owns it; (d) the init marker window opens at the ensure, so a failure in homestate.EnsureProjectLayout before it still ends in "already initialized" (a candidate follow-up); (e) codemaps and the mx-index were not regenerated in this round, and the existing codemap gap stays.
+sync_gaps: |-
+  - The /verify full gate was not run. The full internal/cli suite was not observed locally (leader ruling).
+  - golangci-lint v2.1.6, full packages internal/cli, internal/hook, and internal/config, run by the lane at 273bf72a0: 0 issues.
+  - internal/hook family: go test ./internal/hook/ -count=1 passed in 594.411 s, exit 0. This is a delegate-observed value and was not re-run by the lane; it finished 5.6 s under the go test default 10-minute package timeout. internal/config family: passed in 39.6 s, exit 0, delegate-observed.
+  - Adjacent holes of the same class: .moai/reports/t1591/adjacent-holes.md (disk only; not committed, by operator directive).
+  - Codemaps were not regenerated in the repair round. The last graph check was measured at tree 0f962daac (stale 154/40) and was not re-measured at 273bf72a0.
+  - progress §E.2 and §E.3 were not updated for the repair round. The run evidence for findings 2 and 3 is in the commit messages of 0d85c278a, 74a2da4c3, 55f8ce4c5, and 273bf72a0.
+  - 이번 sync 패스에서 MX 주석은 변경하지 않았고 MX 검증 하위 단계도 재실행하지 않았다. mx-index도 재생성하지 않았다.
+  - 이전 sync 라운드에서 이월된 gap(이번 라운드에서 재관측하지 않음): init 마커 창은 ensure 지점에서 열리므로, 그 이전 homestate.EnsureProjectLayout의 실패는 여전히 "already initialized"로 끝난다(후속 후보).
 out_of_scope_comment: >-
   SPEC 계획이 명명하지 않은 함수의 주석 1건(같은 파일 update.go 의 11a 좌표 565–574 와 다른 함수, 카드 커밋 9ac2d2e4e에서 변경): internal/cli/update.go 의 ensureGlobalSettingsEnv 에 @MX:ANCHOR 주석 2줄 추가(commit 9ac2d2e4e). 사유: 이 카드의 59d702fca 가 재개 경로에서 세 번째 호출자를 만들어, fan-in 3 이상 앵커 규칙이 적용됨. 주석만 변경, 코드 불변. 리더 유지 결정.
 mx_tags_note: >-
