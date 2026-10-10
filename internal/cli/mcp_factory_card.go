@@ -1,6 +1,7 @@
-// mcp_factory_card.go — the four factory card MCP tools
+// mcp_factory_card.go — the five factory card MCP tools
 // (SPEC-FACTORY-SELF-DISPATCH-001 REQ-SD-014/-024): factory_next,
-// factory_stage, factory_complete, factory_decide. Each is a thin wrapper
+// factory_stage, factory_complete, factory_decide, and factory_renew
+// (SPEC-FACTORY-LEASE-RENEW-001 REQ-FLR-002). Each is a thin wrapper
 // over the SAME function the cobra RunE body calls (design.md §3 — one
 // implementation per verb): factoryNextLeaseOnce + factoryEnsureCardWorktree
 // + factoryNextWriteOutput, factoryStageCard, factoryCompleteCard,
@@ -24,6 +25,7 @@ package cli
 import (
 	"bytes"
 	"context"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"io"
@@ -79,6 +81,15 @@ func registerFactoryCardMCPTools(add func(name string, tool mcp.Tool, handler se
 		projectRootOption(),
 		mcp.WithReadOnlyHintAnnotation(false),
 	), handleFactoryDecide)
+
+	add("factory_renew", mcp.NewTool(
+		"factory_renew",
+		mcp.WithDescription("Extend the lane's card lease by the configured duration — the MCP form of `moai factory renew --json` (SPEC-FACTORY-LEASE-RENEW-001 REQ-FLR-002). Lane session only. Returns the same JSON outcome as the verb: result (renewed, refused-expired, refused-not-holder, or error) and expires_at. A refused renewal writes nothing and is returned as that result, not as a tool error."),
+		mcp.WithString("card", mcp.Required(), mcp.Description("The card id.")),
+		mcp.WithString("run", mcp.Description("Factory run id (default: the single active run).")),
+		requiredProjectRootOption(),
+		mcp.WithReadOnlyHintAnnotation(false),
+	), handleFactoryRenew)
 }
 
 // requiredProjectRootOption declares project_root on a tool where the
@@ -255,4 +266,33 @@ func handleFactoryDecide(ctx context.Context, req mcp.CallToolRequest) (*mcp.Cal
 		return toolErr("factory_decide", err), nil
 	}
 	return mcp.NewToolResultText(strings.TrimRight(out.String(), "\n")), nil
+}
+
+// handleFactoryRenew is the MCP form of `moai factory renew --json`: the same
+// factoryRenewCard the verb calls (SPEC-FACTORY-LEASE-RENEW-001 REQ-FLR-002). Every
+// renewal outcome is returned as its JSON text, so that a refusal is data the watchdog
+// reads and not a tool error. The outcome carries the same detail the verb's error
+// carries. Only the lane gates and the card argument are tool errors.
+func handleFactoryRenew(ctx context.Context, req mcp.CallToolRequest) (*mcp.CallToolResult, error) {
+	root, err := mcpRequiredProjectRoot(req, "factory_renew")
+	if err != nil {
+		return toolErr("factory_renew", err), nil
+	}
+	if !factoryLaneAdmission() {
+		return toolErr("factory_renew", factoryNotALaneError("renew")), nil
+	}
+	lane := strings.TrimSpace(os.Getenv(config.EnvMoaiFactoryWorker))
+	if lane == "" {
+		return toolErr("factory_renew", fmt.Errorf("factory renew: %s is empty — a lane session carries its lane label there", config.EnvMoaiFactoryWorker)), nil
+	}
+	cardID := strings.TrimSpace(req.GetString("card", ""))
+	if cardID == "" {
+		return toolErr("factory_renew", errors.New("factory renew: card is required")), nil
+	}
+	outcome, _ := factoryRenewCard(ctx, root, cardID, req.GetString("run", ""), lane)
+	body, err := json.Marshal(outcome)
+	if err != nil {
+		return toolErr("factory_renew", err), nil
+	}
+	return mcp.NewToolResultText(string(body)), nil
 }
