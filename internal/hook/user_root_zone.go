@@ -144,7 +144,53 @@ func userRootZoneForms(cand string) []zoneForm {
 			addForm(userRootFormPrefix + slug)
 		}
 	}
+	// Finding 2 (card t1591): a managed asset reached through a symlink is judged by its
+	// REAL path too. The manifest tracks the LINK path (~/.claude/skills/demo/SKILL.md),
+	// and the candidate arrives as the real file behind the link, outside the install
+	// roots, so no root above matched it. Each link-path prefix of a tracked key whose
+	// real location the candidate is or contains produces the namespaced form of that
+	// link path, the key the manifest tracks. Containment, not equality: removing or
+	// moving an ancestor of the real location takes the managed asset with it (round-3
+	// P1). A candidate below the real location is judged by the tracked key under it.
+	if resolvedTarget, ok := zoneResolve(abs); ok {
+		targetFolded := config.FoldZoneText(filepath.ToSlash(resolvedTarget))
+		for _, key := range userRootManagedKeys(home) {
+			slug, rest, found := strings.Cut(key, "/")
+			dir, dirOK := userRootSlugDirs[slug]
+			if !found || !dirOK || rest == "" || hasDotDotSegment(rest) {
+				continue
+			}
+			parts := strings.Split(rest, "/")
+			for i := range parts {
+				prefix := strings.Join(parts[:i+1], "/")
+				linkReal, linkOK := zoneResolve(filepath.Join(home, filepath.FromSlash(dir), filepath.FromSlash(prefix)))
+				if linkOK && zoneIsAncestorOrSelf(targetFolded, config.FoldZoneText(filepath.ToSlash(linkReal))) {
+					addForm(userRootFormPrefix + slug + "/" + prefix)
+				}
+			}
+		}
+	}
 	return out
+}
+
+// userRootManagedKeys returns the keys the user manifest tracks. An absent, unreadable,
+// or non-regular manifest reads as no keys, the same fail direction as userRootTracksAny.
+func userRootManagedKeys(home string) []string {
+	data, ok := readRegularFile(filepath.Join(home, ".moai", "user-assets.json"))
+	if !ok {
+		return nil
+	}
+	var m struct {
+		Files map[string]json.RawMessage `json:"files"`
+	}
+	if json.Unmarshal(data, &m) != nil {
+		return nil
+	}
+	keys := make([]string, 0, len(m.Files))
+	for k := range m.Files {
+		keys = append(keys, strings.TrimSuffix(k, "/"))
+	}
+	return keys
 }
 
 // hasDotDotSegment reports whether a slash-separated rest carries a ".."
@@ -172,6 +218,13 @@ func dropDotSegments(rest string) string {
 		out = append(out, seg)
 	}
 	return strings.Join(out, "/")
+}
+
+// zoneIsAncestorOrSelf reports whether ancestor is child itself or one of child's
+// ancestors. The filesystem root contains every absolute path, so its trailing slash
+// is trimmed before the separator is appended.
+func zoneIsAncestorOrSelf(ancestor, child string) bool {
+	return ancestor == child || strings.HasPrefix(child, strings.TrimSuffix(ancestor, "/")+"/")
 }
 
 // userRootKey parses a namespaced form into the manifest key

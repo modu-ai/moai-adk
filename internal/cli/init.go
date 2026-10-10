@@ -887,7 +887,15 @@ func runInit(cmd *cobra.Command, args []string) (err error) {
 	// @MX:WARN: [AUTO] leftover judgement placement — keep above executor.Execute
 	// @MX:REASON: after the deploy the live file is the new render, so an abort with no revert
 	// would be discarded instead of promoted (plan.md B8)
-	backup.JudgeLeftoverSettingsSnapshot(opts.ProjectRoot, cmd.ErrOrStderr())
+	// Finding 3 (card t1591): a resumed init keeps the staging copy its interrupted first
+	// run took. The judgement discards a copy whose live file has changed since, and the
+	// interrupted run's own autonomy answer changes it, so a resume skips the judgement
+	// and the copy is promoted by the resume's settle once every post-step completed.
+	// --force reinitializes from scratch and is judged as before.
+	resuming := !getBoolFlag(cmd, "force") && initResumeCheckpoint(userHomeDirOrEmpty(), opts.ProjectRoot)
+	if !resuming {
+		backup.JudgeLeftoverSettingsSnapshot(opts.ProjectRoot, cmd.ErrOrStderr())
+	}
 	// Card t1029: same judgement for the .mcp.json staging copy.
 	backup.JudgeLeftoverMCPSnapshot(opts.ProjectRoot, cmd.ErrOrStderr())
 
@@ -990,7 +998,7 @@ func runInit(cmd *cobra.Command, args []string) (err error) {
 		// Finding B (card t1591): open the ensure window with its marker. An ensure that
 		// fails before any journal exists (a lock refusal) leaves this marker, and the
 		// rerun reads it as the interruption checkpoint. Best-effort, like the record.
-		if pendErr := persistInitPending(opts.ProjectRoot); pendErr != nil {
+		if pendErr := persistInitPending(opts.ProjectRoot, selection); pendErr != nil {
 			emitSeverityLine(cmd.ErrOrStderr(), sevWarn, resolveTheme(), "Could not record the init resume marker: %v", pendErr)
 		}
 		if err := ensureUserAssetsLockedFn(homeDir, selection, cmd.OutOrStdout()); err != nil {
