@@ -388,9 +388,9 @@ func TestFactoryRenewMatchesMCPLinkedWorktree(t *testing.T) {
 // runs the single-run resolution refuses, so the renewal must resolve the lane's own run for
 // the card from the lane identity: the one run in which this lane holds the card.
 func TestFactoryRenewResolvesLaneRunWithoutRunArg(t *testing.T) {
-	// fixture seeds two owner-live runs. Card t1 exists in both. This lane (lane-1) holds it
-	// in run-b; in run-a the card is held by holderInA.
-	fixture := func(t *testing.T, holderInA string) string {
+	// fixture seeds two owner-live runs. Card t1 exists in both, held by holderInA in run-a and
+	// by holderInB in run-b. The lane under test is lane-1.
+	fixture := func(t *testing.T, holderInA, holderInB string) string {
 		t.Helper()
 		root, _ := sdMoaiFixture(t)
 		seedLiveRun(t, root, "run-a")
@@ -402,7 +402,7 @@ func TestFactoryRenewResolvesLaneRunWithoutRunArg(t *testing.T) {
 			homestate.Card{RunID: "run-a", CardID: "t1", State: homestate.CardRun, Stage: homestate.CardRun,
 				OwnerLabel: holderInA, LeaseHolder: holderInA, LeaseExpiresAt: live, WorktreePath: root},
 			homestate.Card{RunID: "run-b", CardID: "t1", State: homestate.CardRun, Stage: homestate.CardRun,
-				OwnerLabel: "lane-1", LeaseHolder: "lane-1", LeaseExpiresAt: live, WorktreePath: root},
+				OwnerLabel: holderInB, LeaseHolder: holderInB, LeaseExpiresAt: live, WorktreePath: root},
 		)
 		sdLaneEnv(t, "lane-1", "")
 		return root
@@ -410,7 +410,7 @@ func TestFactoryRenewResolvesLaneRunWithoutRunArg(t *testing.T) {
 	want := fcNow.Add(15 * time.Minute).Format(time.RFC3339Nano)
 
 	t.Run("verb", func(t *testing.T) {
-		root := fixture(t, "lane-2")
+		root := fixture(t, "lane-2", "lane-1")
 		before := factoryRenewCardIn(t, root, "run-a", "t1")
 		out, _, err := runFactory(t, "renew", "t1", "--json")
 		if err != nil {
@@ -433,7 +433,7 @@ func TestFactoryRenewResolvesLaneRunWithoutRunArg(t *testing.T) {
 	})
 
 	t.Run("MCP tool", func(t *testing.T) {
-		root := fixture(t, "lane-2")
+		root := fixture(t, "lane-2", "lane-1")
 		text, err := sdCallTool(t, factoryRenewMCPHandler(t, "factory_renew"),
 			map[string]any{projectRootArg: root, "card": "t1"})
 		if err != nil {
@@ -448,13 +448,21 @@ func TestFactoryRenewResolvesLaneRunWithoutRunArg(t *testing.T) {
 		}
 	})
 
-	// Guard arm: when the lane holds the card in BOTH active runs the renewal stays refused,
-	// and the refusal names --run so the operator can choose.
-	t.Run("held in both runs refuses and names --run", func(t *testing.T) {
-		fixture(t, "lane-1")
-		_, _, err := runFactory(t, "renew", "t1", "--json")
-		if err == nil || !strings.Contains(err.Error(), "--run") {
-			t.Errorf("renew with no --run while lane-1 holds t1 in both runs: err = %v, want a refusal naming --run", err)
-		}
-	})
+	// Guard arms. The renewal stays refused, and the refusal names --run, when the lane holds
+	// the card in both active runs (ambiguous) or in neither (not found). Both arms pass on the
+	// pre-fix code too, since the ambiguous refusal already named --run; they pin that the
+	// narrowing never turns a refusal into a renewal.
+	for _, tc := range []struct{ name, holderInA, holderInB string }{
+		{"held in both runs refuses and names --run", "lane-1", "lane-1"},
+		{"held in neither run refuses and names --run", "lane-2", "lane-2"},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			fixture(t, tc.holderInA, tc.holderInB)
+			_, _, err := runFactory(t, "renew", "t1", "--json")
+			if err == nil || !strings.Contains(err.Error(), "--run") {
+				t.Errorf("renew with no --run (holders %s, %s): err = %v, want a refusal naming --run",
+					tc.holderInA, tc.holderInB, err)
+			}
+		})
+	}
 }
