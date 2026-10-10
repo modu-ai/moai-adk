@@ -1048,7 +1048,11 @@ func TestAgentsSkillsCounterpartMapsToClaudeSource(t *testing.T) {
 	if err != nil {
 		t.Fatalf("embedded source: %v", err)
 	}
-	sum := sha256.Sum256(current)
+	// The agents-skills root is a Codex face: the installer writes the converted
+	// bytes (targetBytes → NormalizeCodexRoleForDeploy) and records their hash,
+	// so the healthy counterpart is the converted source, not the raw one.
+	installed := template.NormalizeCodexRoleForDeploy(current)
+	sum := sha256.Sum256(installed)
 	um := &userassets.Manifest{Files: map[string]userassets.FileEntry{
 		"agents-skills/moai-foundation-core/SKILL.md": {
 			SHA256: hex.EncodeToString(sum[:]), Bundle: "core",
@@ -1063,7 +1067,7 @@ func TestAgentsSkillsCounterpartMapsToClaudeSource(t *testing.T) {
 		t.Fatal(err)
 	}
 	userCopy := filepath.Join(dir, "moai-foundation-core", "SKILL.md")
-	if err := os.WriteFile(userCopy, current, 0o644); err != nil {
+	if err := os.WriteFile(userCopy, installed, 0o644); err != nil {
 		t.Fatal(err)
 	}
 

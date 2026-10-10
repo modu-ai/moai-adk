@@ -650,17 +650,16 @@ func runInit(cmd *cobra.Command, args []string) (err error) {
 		wizardRan = true
 
 		// Conversation language + user name: the wizard answer wins over the
-		// profile value. Update both opts (drives template deployment of
-		// language.yaml/user.yaml) AND prefs (SyncToProjectConfig runs after
-		// deployment and would otherwise re-apply the stale profile value over
-		// the wizard choice). Empty answers leave the profile fallback intact.
+		// profile value. Update opts (drives template deployment of
+		// language.yaml/user.yaml). The profile sync after deployment takes the same
+		// answers from wizardResult (syncInitProfile), so the healthy tail and the
+		// resume dispatch cannot disagree about them. Empty answers leave the profile
+		// fallback intact.
 		if result.ConversationLang != "" {
 			opts.ConvLang = result.ConversationLang
-			prefs.ConversationLang = result.ConversationLang
 		}
 		if result.UserName != "" {
 			opts.UserName = result.UserName
-			prefs.UserName = result.UserName
 		}
 
 		// Apply wizard results to opts (wizard values override empty flags).
@@ -902,7 +901,29 @@ func runInit(cmd *cobra.Command, args []string) (err error) {
 		// REQ-TUX2-015: re-running init on an initialized project without
 		// --force is usually a template-refresh intent — redirect to
 		// `moai update` alongside the existing --force guidance.
+		// M6 (SPEC: init resume, REQ-SRF-007 + audit DEBT R4): when the
+		// PRIOR attempt died at the user-asset ensure (initialized but
+		// incomplete), the re-run RESUMES instead of refusing: the ensure
+		// shortfall completes, and the setup steps the failed attempt never
+		// reached (ApplyHarness, the MCP entry, the Codex wiring) run now.
+		// DEBT R4: the resume is judged by CONTENT — the harness config the
+		// resume writes is asserted, not merely the directory's existence.
+		// Gate round 35-3: the resume is GATED on an explicit interruption
+		// checkpoint — a pending-install journal (interrupted mid-install)
+		// or a corrupt user manifest (failed before/at the ensure). A
+		// healthy project's ordinary re-run keeps the update redirect.
 		if !getBoolFlag(cmd, "force") && strings.Contains(err.Error(), "already initialized") {
+			// M6: the resume fires only on an interruption checkpoint
+			// (gate round 35-3) — a healthy project's ordinary re-run
+			// keeps the original update redirect below.
+			if initResumeCheckpoint(userHomeDirOrEmpty(), opts.ProjectRoot) {
+				if resumeErr := resumeInitializedProject(cmd, &opts, agentWiringSelection, wizardRan, wizardResult, prefs); resumeErr != nil {
+					return fmt.Errorf("initialization resume failed: %w\n  Hint: this directory already contains a MoAI project — 'moai update' refreshes templates in place; --force reinitializes from scratch", resumeErr)
+				}
+				p.Info("Initialized MoAI project (resumed: user-asset shortfall completed, setup steps finished).")
+				flushUpdateNotice(p)
+				return nil
+			}
 			return fmt.Errorf("initialization failed: %w\n  Hint: this directory already contains a MoAI project — did you mean 'moai update' (refresh templates in place)? Re-run with --force only to reinitialize from scratch", err)
 		}
 		// SPEC-INIT-DEPLOY-EXIT-001 (REQ-IDE-003): a deployment failure aborts
@@ -944,6 +965,13 @@ func runInit(cmd *cobra.Command, args []string) (err error) {
 	if homeDir, homeErr := userHomeDirFn(); homeErr == nil {
 		selection := parseBundleSelection(getStringFlag(cmd, "bundles"))
 		if err := ensureUserAssetsLocked(homeDir, selection, cmd.OutOrStdout()); err != nil {
+			// Finding 1 (card t1591): this run is the interrupted one the
+			// resume completes. Record the harness it selected so the resume
+			// restores that selection, not the claude default. Best-effort:
+			// a record that cannot be written is named, never dropped silently.
+			if recErr := persistResumeWiring(opts.ProjectRoot, agentWiringSelection); recErr != nil {
+				emitSeverityLine(cmd.ErrOrStderr(), sevWarn, resolveTheme(), "Could not record the harness selection for the resume: %v", recErr)
+			}
 			return fmt.Errorf("user-asset install failed: %w\n  Fix the cause and re-run 'moai init' — the ensure is idempotent and completes the shortfall", err)
 		}
 	} else {
@@ -995,8 +1023,9 @@ func runInit(cmd *cobra.Command, args []string) (err error) {
 	for _, w := range result.Warnings {
 		p.Collect(w)
 	}
-	// Sync profile preferences to project config (after template deployment)
-	if err := profile.SyncToProjectConfig(opts.ProjectRoot, prefs); err != nil {
+	// Sync profile preferences to project config (after template deployment). The
+	// helper is shared with the resume dispatch, so the two paths cannot drift (t1591 Item D).
+	if err := syncInitProfile(opts.ProjectRoot, prefs, wizardResult); err != nil {
 		p.Warn("Failed to sync profile to project config: %v", err)
 	}
 
