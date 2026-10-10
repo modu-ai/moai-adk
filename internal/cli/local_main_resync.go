@@ -246,6 +246,21 @@ func localMainResyncInWindow(repoRoot, sessionID string) (string, error) {
 		return "", localMainResyncAnomaly(repoRoot, baseline, factory.MergeExitPostMerge, "integration resync: after the fast-forward HEAD no longer names %s. Inspect the primary from your own terminal before any further merge.", localMainResyncBranch)
 	}
 
+	// Step 6, status (card t1616, F5): the clean check ran before the move, and the
+	// fast-forward writes tracked paths only, so a file that appears in the primary
+	// after the move goes unseen unless the status is read here. An unreadable status
+	// is not proof of a clean primary, so it takes the same class, as
+	// localMainResyncFailed does. The porcelain output is NUL-separated; the hold names
+	// it with the NULs turned into "; ".
+	postStatus, err := git("status", "--porcelain=v1", "-z", "--untracked-files=all")
+	if err != nil {
+		return "", localMainResyncAnomaly(repoRoot, baseline, factory.MergeExitMergeDirty, "integration resync: the primary could not be read after the fast-forward (%v). Inspect the primary from your own terminal before any further merge.", err)
+	}
+	if postStatus != "" {
+		dirty := strings.ReplaceAll(strings.TrimSuffix(postStatus, "\x00"), "\x00", "; ")
+		return "", localMainResyncAnomaly(repoRoot, baseline, factory.MergeExitMergeDirty, "integration resync: the primary is not clean after the fast-forward: %s. Inspect the primary from your own terminal before any further merge.", dirty)
+	}
+
 	// Step 7: report the old and new SHAs.
 	return fmt.Sprintf("local main fast-forwarded %s -> %s to origin/%s", localMainResyncShort(head), localMainResyncShort(baseline), localMainResyncBranch), nil
 }
