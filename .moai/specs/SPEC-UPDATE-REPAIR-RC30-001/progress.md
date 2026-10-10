@@ -1510,6 +1510,8 @@ ok  	github.com/modu-ai/moai-adk/internal/cli	2.985s
 
 **Commit order.** This record commits first, on its own (docs only: the root cause and the RED outputs). The two test files and the U-16 API stub are the working-tree state these RED outputs were measured on. They commit with the code commit that follows, together with the GREEN implementation, so no commit carries a failing test. The GREEN record commits last. A baseline measured before a change must land in its own earlier commit (`verification-claim-integrity.md` §2.3); this record is that commit, and the code commit follows it.
 
+**Status at the close of round 2A.** U-15 is GREEN and committed (`c9ab1903f`). U-16 is BLOCKED: its GREEN breaks four existing consumer expectations, so it is not committed (see § U-16 GREEN attempt and blocker). The M5 consumer-run record is `51f957864`; the step 2 M5 code is `84319245d`.
+
 #### U-15 root cause (AC-RC30-16, REQ-RC30-024), recorded before the test
 
 Commands and verbatim output, in the order run.
@@ -1629,6 +1631,90 @@ FAIL
 exit: 1 (this is the re-run on the same tree; the first run printed the same lines with duration 0.326s)
 
 The failure is behavioral. The verbose assertions (the full list under `verbose=true`) already pass on the stub, which is expected: the stub prints the full list in every mode, so the RED sits on the default-mode assertions only.
+
+#### U-15 GREEN (AC-RC30-16), the fix (commit `c9ab1903f`)
+
+**Fix.** `internal/merge/strategies.go`. In `deepMergeMap`, the branch "Only template changed" keeps the user's arrays under the top-level `permissions` object that the template no longer carries (lines 442-448, which call the helper). The constant `permissionsKey` (line 489) and the helper `keepRetiredArrays` (line 496) are new. Objects and hook arrays keep the template's value, as before (REQ-RC30-024). **Test:** `internal/cli/update/merge/permissions_ask_preserved_test.go` (new file, RED recorded above).
+
+Targeted GREEN, command `go test -count=1 -race -run '^TestPermissionsAskPreserved$' -v ./internal/cli/update/merge/`:
+
+```text
+=== RUN   TestPermissionsAskPreserved
+--- PASS: TestPermissionsAskPreserved (0.00s)
+PASS
+ok  	github.com/modu-ai/moai-adk/internal/cli/update/merge	1.590s
+```
+
+exit: 0
+
+**Consumers, repo-wide grep over `internal/**/*_test.go` (verbatim).**
+
+- `grep -rn "permissions" internal/merge --include='*_test.go'`: no output. No existing test pins the permissions merge.
+- `grep -rln "deepMergeMap\|mergeJSON" internal --include='*_test.go'`: `internal/merge/coverage_extra_test.go`, `internal/merge/strategies_test.go`, `internal/cli/update/backup/node_merge_edge_test.go`, `internal/cli/update/backup/node_merge_twoway_comments_test.go`. The two backup files match the substring `deepMergeMapsTo`, a different function in `backup/node_merge.go`; `grep -rln "internal/merge\"" internal/cli/update/backup/ --include='*.go'` returns nothing, so they do not consume this change.
+- `grep -rn "keepRetiredArrays\|permissionsKey" internal --include='*_test.go'`: no output.
+
+**Package runs (exit 0 each).** `go test -count=1 -race ./internal/merge/` → `ok  	github.com/modu-ai/moai-adk/internal/merge	2.104s`. `go test -count=1 -race ./internal/cli/update/merge/` → `ok  	github.com/modu-ai/moai-adk/internal/cli/update/merge	1.434s`. Neither package imports the report package, so the U-16 working-tree state does not change these results.
+
+**Gate-equivalent checks (lint, vet, gofmt, build).**
+
+- `go build ./internal/cli/... ./internal/merge/...`: exit 0.
+- `go vet ./internal/merge/ ./internal/cli/update/...`: exit 0. `go vet ./internal/cli/`: exit 0.
+- `gofmt -l` on the seven touched Go files: no output.
+- `golangci-lint run --timeout=10m ./internal/merge/ ./internal/cli/update/merge/ ./internal/cli/update/report/`: `0 issues.`, exit 0.
+- `golangci-lint run --timeout=10m ./internal/cli/ ./internal/cli/update/`: `0 issues.`, exit 0. This run includes the U-16 working-tree files.
+
+**Consumer run, the 60-function M5 set under the heavy-run slot.** `moai slot acquire --resource internal-cli-tests --max-duration 30m` exit 0; the run; `moai slot release --resource internal-cli-tests` exit 0. Command: `go test -count=1 -race -v -run '<the 60-name list, line 6 of .moai/reports/t1619/m5-consumer-tests.txt>' ./internal/cli/ > <scratchpad>/m6-consumer-run.txt 2>&1`. The file is machine-local scratch, so the deciding lines are carried here. Result: exit 1, `FAIL	github.com/modu-ai/moai-adk/internal/cli	110.248s`. Top-level counts: 56 `--- PASS`, 4 `--- FAIL`, so all 60 selected names ran. The settings-family tests in the set passed: `--- PASS: TestUpdateForce_UserCustomizationSurvivesTwoUpdates (6.43s)`, `--- PASS: TestUpdateForce_TemplateChangedKeyStillPropagates (4.40s)`, `--- PASS: TestUpdateLLMYAMLCommentsSurvive (0.50s)`, `--- PASS: TestUpdatePreservesUserModifiedPolicies (0.48s)`, `--- PASS: TestSettingsSnapshot_WriteSites (11.80s)`.
+
+The four failures are not U-15. Each asserts that the default summary names a preserved path, which is the U-16 default change (see the next section):
+
+```text
+update_migrate_test.go:453: force-run summary did not list the preserved foreign skill:        (TestForceUpdatePreservesUserCommonAssets)
+update_migrate_test.go:490: run 2 summary did not list the preserved foreign skill:            (TestNotDemonstratedPreservationHoldsAtNextLocalUpdate)
+update_migrate_test.go:520: summary did not report the local-only section as preserved:        (TestPreservedSectionSurvivesRestoreUntouched)
+update_migrate_test.go:1133: the preserved post-removal file never reached the summary:        (TestPostRemovalUserFileSurvivesNextUpdate)
+```
+
+#### U-16 GREEN attempt and blocker (AC-RC30-17), NOT committed
+
+**What passes.** `go test -count=1 -race -run '^TestPreservedLinesCountOnly$' -v ./internal/cli/update/report/` → `--- PASS: TestPreservedLinesCountOnly (0.00s)`, `ok  	github.com/modu-ai/moai-adk/internal/cli/update/report	1.343s`, exit 0. The whole report package, `go test -count=1 -race -v ./internal/cli/update/report/`, exits 0 with `ok  	github.com/modu-ai/moai-adk/internal/cli/update/report	1.184s`, and `TestRenderReconciliation` passes. `TestUpdate_SummaryHonesty` (`internal/cli/update/reconcile_test.go`, its only consumer of the new call shape) passes: `ok  	github.com/modu-ai/moai-adk/internal/cli/update	1.349s`.
+
+**What breaks.** The 60-function run above: four existing tests in `internal/cli/update_migrate_test.go` assert that the default update summary names a preserved path. The GREEN prints `  preserved: 3 file(s) (run with --verbose to list)` in its place.
+
+**The conflict, read from the requirements.**
+
+- REQ-RC30-015 (spec.md line 56, item U-16): without `--verbose`, "the update shall print per-category counts in place of the file list". AC-RC30-17 expects the count line by default.
+- SPEC-UPDATE-MIGRATION-001 REQ-UPM-031/032: preserved files are listed, so the summary cannot claim a deletion-free run over what it kept. The rationale is written in `internal/cli/update/report/outcome.go` and in the `TestRenderReconciliation` comment. plan.md § A binds REQ-UPM-030 to -032, and the four failing tests encode that requirement.
+- The U-16 row in spec.md (line 98) does not mention REQ-UPM-031.
+
+**Decision needed (leader, then operator).** (A) Accept that REQ-RC30-015 supersedes the path listing of REQ-UPM-031 for preserved files only. Then the four expectations move to the count line and the `--verbose` list, in a separate commit that states the reason, and the SPEC gets an amendment note. Or (B) keep REQ-UPM-031 (preserved paths listed by default), and send AC-RC30-17 and REQ-RC30-015 back to manager-spec. The lane does not choose between them and does not change the four expectations (leader rule: never change an expectation to make a test pass).
+
+**Left in the working tree, uncommitted.** Tracked: `internal/cli/update/report/outcome.go` (the `verbose` parameter and the count line), `internal/cli/update/report/outcome_test.go` and `internal/cli/update/reconcile_test.go` (the `true` argument), and `internal/cli/update_tux.go` (the `updateVerboseMode` argument and its comment). Untracked: `internal/cli/update/report/preserved_lines_test.go` (TestPreservedLinesCountOnly). The tracked diff is saved as `/private/tmp/claude-501/-Users-goos-MoAI-moai-adk-go/40f97120-d133-4bd7-a79c-a6466b3a087c/scratchpad/u16-tracked.patch` (4 files, 18 insertions, 11 deletions). Its RED evidence is committed in `30de29d36`.
+
+#### Commit order actually used (supersedes the "Commit order" paragraph above)
+
+- `51f957864`: the M5 consumer-run record (docs; round 2A task 1).
+- `30de29d36`: the M6 root cause and RED record (docs only).
+- `c9ab1903f`: the U-15 fix and its test (code: `internal/merge/strategies.go`, `internal/cli/update/merge/permissions_ask_preserved_test.go`).
+- U-16: not committed (blocked, see above).
+- This GREEN record commits last.
+
+The U-15 code commit is separate from U-16 on purpose: the merge packages do not import the report package, so the U-15 commit stands alone, and the U-16 change stays out of the commit until the decision is made.
+
+#### Gate scope (deviation, recorded)
+
+The pre-commit gate (`/verify`, delegating to the moai skill's `gate --staged`) runs the full Go test suite under `--staged` (gate.md, Scoping: "Tests always run full suite"). The lane rules forbid a repository-wide `go test` locally, so the gate was not run as specified. The gate-equivalent checks above were run instead: lint, vet, gofmt, build, the change-scoped test packages, and the 60-function M5 consumer set under the heavy-run slot. The repository-wide test verdict is owned by CI on `origin/develop` and is PENDING.
+
+#### Gaps (not observed in this round)
+
+- G-M6-1: the repository-wide test verdict (the gate's full `--staged` suite) was not run locally. CI on `origin/develop` owns it, PENDING.
+- G-M6-2: the 60-function run was made on the combined working tree (U-15 committed, U-16 uncommitted). U-15's contribution to the 56 PASS is not isolated by a separate run.
+- G-M6-3: the full `internal/cli` suite was not run. Only the 60-function consumer set ran, plus lint and vet of the package.
+- G-M6-4: AC-RC30-16's starting observation is recorded above (RED, exit 1). The cause is established from the code (`strategies.go:439-441`) and corroborated by the F-2 commit message. The F-2 diff was not read.
+
+#### Residual risk
+
+- R-M6-1: the U-15 fix applies to any top-level JSON or YAML object named `permissions` that the user left unchanged and the template changed. The merge engine does not receive the file path, so the scope is wider than `.claude/settings.json`. Retired permission arrays now also appear in the retained-key advisory (`permissions.<array>`), with the same semantics as other template-removed keys.
+- R-M6-2: under decision (A) the four expectations change, and under (B) the default summary keeps the path lists and U-16 needs re-scoping.
 
 ## §E.3 Run-phase Audit-Ready Signal
 
