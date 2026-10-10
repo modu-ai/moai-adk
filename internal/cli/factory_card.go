@@ -1740,6 +1740,105 @@ func factoryStageCard(ctx context.Context, root, cardID, state, evidence, run, l
 	return next, nil
 }
 
+// The renew outcome classes of `moai factory renew` and the factory_renew tool
+// (SPEC-FACTORY-LEASE-RENEW-001 REQ-FLR-001, REQ-FLR-002, REQ-FLR-011). The four values
+// are the closed set that the watchdog copies into renew_result.
+const (
+	factoryRenewRenewed        = "renewed"
+	factoryRenewRefusedExpired = "refused-expired"
+	factoryRenewRefusedHolder  = "refused-not-holder"
+	factoryRenewError          = "error"
+)
+
+// factoryRenewOutcome is the machine-readable outcome of one renewal request. After a
+// renewal, expires_at is the new expiry. After a refusal it is the expiry that the card
+// still carries, which is empty when the card holds no lease. detail names the refusal
+// in prose and is omitted on a renewal.
+type factoryRenewOutcome struct {
+	Result    string `json:"result"`
+	ExpiresAt string `json:"expires_at"`
+	Detail    string `json:"detail,omitempty"`
+}
+
+// newFactoryRenewCommand — `moai factory renew <card> [--json]`
+// (SPEC-FACTORY-LEASE-RENEW-001 REQ-FLR-001, REQ-FLR-011): a lane extends its own card
+// lease by the configured card lease duration and prints the new expiry. With --json it
+// prints the outcome as one JSON object, and a refusal exits non-zero after printing it.
+func newFactoryRenewCommand() *cobra.Command {
+	var run string
+	var asJSON bool
+	cmd := &cobra.Command{
+		Use:          "renew <card>",
+		Short:        "Extend the lane's card lease by the configured duration (lane session)",
+		Args:         cobra.ExactArgs(1),
+		SilenceUsage: true,
+		RunE: func(cmd *cobra.Command, args []string) error {
+			if !factoryLaneAdmission() {
+				return factoryNotALaneError("renew")
+			}
+			lane, err := factoryLaneLabelFromEnv("renew")
+			if err != nil {
+				return err
+			}
+			ctx := cmd.Context()
+			if ctx == nil {
+				ctx = context.Background()
+			}
+			outcome, renewErr := factoryRenewCard(ctx, factoryCardRoot(), args[0], run, lane)
+			switch {
+			case asJSON:
+				body, err := json.Marshal(outcome)
+				if err != nil {
+					return err
+				}
+				_, _ = fmt.Fprintln(cmd.OutOrStdout(), string(body))
+			case renewErr == nil:
+				_, _ = fmt.Fprintf(cmd.OutOrStdout(), "%s lease renewed until %s\n", args[0], outcome.ExpiresAt)
+			}
+			return renewErr
+		},
+	}
+	cmd.Flags().StringVar(&run, "run", "", "factory run id (default: the single active run)")
+	cmd.Flags().BoolVar(&asJSON, "json", false, "print the outcome as JSON: result and expires_at")
+	return cmd
+}
+
+// factoryRenewCard is the one implementation of the renew verb and of the factory_renew
+// tool (design.md §3: one implementation per verb). It renews the lease that lane holds on
+// card cardID through the factory record. RenewLease extends the lease from the request
+// time by the handle's card lease duration, which is the configured
+// workflow.factory_lease.duration. A refusal writes nothing, and the outcome class names
+// it: an expired lease, a caller that does not hold the lease, or any other failure.
+func factoryRenewCard(ctx context.Context, root, cardID, run, lane string) (factoryRenewOutcome, error) {
+	fail := func(err error) (factoryRenewOutcome, error) {
+		return factoryRenewOutcome{Result: factoryRenewError, Detail: err.Error()}, fmt.Errorf("factory renew: %w", err)
+	}
+	runID, err := resolveFactoryCardRun(ctx, root, run)
+	if err != nil {
+		return fail(err)
+	}
+	db, err := homestate.OpenFactory(root)
+	if err != nil {
+		return fail(err)
+	}
+	defer func() { _ = db.Close() }()
+	card, err := db.RenewLease(ctx, runID, cardID, lane, factoryCardNow())
+	if err == nil {
+		return factoryRenewOutcome{Result: factoryRenewRenewed, ExpiresAt: card.LeaseExpiresAt}, nil
+	}
+	outcome := factoryRenewOutcome{Result: factoryRenewError, Detail: err.Error()}
+	switch {
+	case errors.Is(err, homestate.ErrLeaseExpired):
+		outcome.Result = factoryRenewRefusedExpired
+	case errors.Is(err, homestate.ErrLeaseHolder):
+		outcome.Result = factoryRenewRefusedHolder
+	}
+	if cur, lerr := db.LoadCard(ctx, runID, cardID); lerr == nil {
+		outcome.ExpiresAt = cur.LeaseExpiresAt
+	}
+	return outcome, fmt.Errorf("factory renew: %w", err)
+}
+
 // newFactoryCompleteCommand — `moai factory complete <card> [remeasure]`
 // (REQ-SD-013/-023): a Claude-harness lane takes a merge-ready card through
 // `merging` to `merged-local` by the F1 merge gate, using as integration
