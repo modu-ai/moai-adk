@@ -17,6 +17,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/modu-ai/moai-adk/internal/config"
 	"github.com/modu-ai/moai-adk/internal/template"
 	"github.com/modu-ai/moai-adk/internal/userassets"
 	"github.com/modu-ai/moai-adk/pkg/version"
@@ -156,7 +157,28 @@ func runUserAssetUpdatePhase(homeDir string, out io.Writer) error {
 			_, _ = fmt.Fprintf(out, "  failure: %s: %s\n", f.Path, f.Reason)
 		}
 	}
+	announceUnselectedOptionalPacks(".", saved.Bundles, out)
 	return nil
+}
+
+// announceUnselectedOptionalPacks names each optional pack the recorded
+// selection lacks, with the exact command that installs it (REQ-RC30-005,
+// U-03). It runs for a recorded plugin-mode project only: such a project
+// receives core assets alone, so this line is its only pointer to the
+// optional packs it does not have.
+func announceUnselectedOptionalPacks(projectRoot string, selection []string, out io.Writer) {
+	if config.ReadDeployMode(projectRoot) != "plugin" {
+		return
+	}
+	selected := make(map[string]bool, len(selection))
+	for _, name := range selection {
+		selected[name] = true
+	}
+	for _, name := range bundleNames() {
+		if !selected[name] {
+			_, _ = fmt.Fprintf(out, "  optional pack not installed: %s — run: moai bundle add %s\n", name, name)
+		}
+	}
 }
 
 // userCodexInstallPresent reports whether the per-user Codex dispatcher

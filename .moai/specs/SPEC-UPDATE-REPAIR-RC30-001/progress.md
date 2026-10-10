@@ -418,6 +418,83 @@ ok  	github.com/modu-ai/moai-adk/internal/cli	1.233s
 
 **Residual risk.** The change alters one output line for a catalog-less managed skill. Removal behavior is unchanged; the removal of such a copy stays with card t1668.
 
+### M1 step 4, bundle B — U-03 (AC-RC30-04) (manager-develop, card t1619)
+
+**RED (TDD order).** The judging test is new: `TestBundleAnnounceForPluginMode` in `internal/cli/bundle_announce_test.go`. It compiles against the tree as it stands. Fixture: `.moai/config/sections/llm.yaml` with `deployment_mode: plugin`, an empty user selection (L0 only), and a temporary HOME. The plugin-mode subtest is the RED. The local-mode subtest pins the gate (a local-mode project gets no announce); it passes on arrival, which is the REQ's intended behavior for that arm.
+
+Command: `go test ./internal/cli/ -run TestBundleAnnounceForPluginMode -count=1 -v`, exit 1. Verbatim output:
+
+```text
+=== RUN   TestBundleAnnounceForPluginMode
+=== RUN   TestBundleAnnounceForPluginMode/plugin_mode_names_each_uninstalled_pack
+    bundle_announce_test.go:24: update output lacks the add command for 11 optional pack(s) [backend commands consult creative delivery deployment design devops frontend ops-tools testing]:
+        user-asset update: 394 installed, 0 refreshed, 0 removed, 0 collision-skipped, 0 divergence-preserved
+          unconverted reference (no Codex-side mapping — report to the harness maintainers): agents-skills/moai-workflow-project/references/navigator.md
+          unconverted reference (no Codex-side mapping — report to the harness maintainers): agents-skills/moai-workflow-worktree/SKILL.md
+          unconverted reference (no Codex-side mapping — report to the harness maintainers): agents-skills/moai-workflow-worktree/modules/moai-adk-integration.md
+          unconverted reference (no Codex-side mapping — report to the harness maintainers): agents-skills/moai-workflow-worktree/modules/tools-integration.md
+          unconverted reference (no Codex-side mapping — report to the harness maintainers): agents-skills/moai-workflow-worktree/references/examples.md
+          unconverted reference (no Codex-side mapping — report to the harness maintainers): agents-skills/moai/SKILL.md
+          unconverted reference (no Codex-side mapping — report to the harness maintainers): agents-skills/moai/workflows/codemaps.md
+          unconverted reference (no Codex-side mapping — report to the harness maintainers): agents-skills/moai/workflows/design.md
+          unconverted reference (no Codex-side mapping — report to the harness maintainers): agents-skills/moai/workflows/gtd.md
+          unconverted reference (no Codex-side mapping — report to the harness maintainers): agents-skills/moai/workflows/harness-build-entry.md
+          unconverted reference (no Codex-side mapping — report to the harness maintainers): agents-skills/moai/workflows/harness-builder.md
+          unconverted reference (no Codex-side mapping — report to the harness maintainers): agents-skills/moai/workflows/harness.md
+          unconverted reference (no Codex-side mapping — report to the harness maintainers): agents-skills/moai/workflows/plan.md
+          unconverted reference (no Codex-side mapping — report to the harness maintainers): agents-skills/moai/workflows/plan/spec-assembly.md
+          unconverted reference (no Codex-side mapping — report to the harness maintainers): agents-skills/moai/workflows/project/doc-generation.md
+          unconverted reference (no Codex-side mapping — report to the harness maintainers): agents-skills/moai/workflows/project/meta-harness.md
+          unconverted reference (no Codex-side mapping — report to the harness maintainers): agents-skills/moai/workflows/review.md
+          unconverted reference (no Codex-side mapping — report to the harness maintainers): agents-skills/moai/workflows/run.md
+          unconverted reference (no Codex-side mapping — report to the harness maintainers): agents-skills/moai/workflows/run/context-loading.md
+          unconverted reference (no Codex-side mapping — report to the harness maintainers): agents-skills/moai/workflows/run/task-decomposition.md
+          unconverted reference (no Codex-side mapping — report to the harness maintainers): agents-skills/moai/workflows/sync.md
+          unconverted reference (no Codex-side mapping — report to the harness maintainers): agents-skills/moai/workflows/sync/delivery.md
+          unconverted reference (no Codex-side mapping — report to the harness maintainers): agents-skills/moai/workflows/sync/doc-execution.md
+          unconverted reference (no Codex-side mapping — report to the harness maintainers): agents-skills/moai/workflows/sync/quality-gates-quality.md
+          unconverted reference (no Codex-side mapping — report to the harness maintainers): codex-agents/manager-develop.toml
+          unconverted reference (no Codex-side mapping — report to the harness maintainers): codex-agents/manager-docs.toml
+          unconverted reference (no Codex-side mapping — report to the harness maintainers): codex-agents/manager-lead.toml
+          unconverted reference (no Codex-side mapping — report to the harness maintainers): codex-agents/manager-spec.toml
+          unconverted reference (no Codex-side mapping — report to the harness maintainers): codex-agents/plan-auditor.toml
+          unconverted reference (no Codex-side mapping — report to the harness maintainers): codex-agents/sync-auditor.toml
+        user-asset prune: 0 removed, 0 divergence-preserved
+=== RUN   TestBundleAnnounceForPluginMode/local_mode_names_no_pack
+--- FAIL: TestBundleAnnounceForPluginMode (1.49s)
+    --- FAIL: TestBundleAnnounceForPluginMode/plugin_mode_names_each_uninstalled_pack (0.56s)
+    --- PASS: TestBundleAnnounceForPluginMode/local_mode_names_no_pack (0.92s)
+FAIL
+FAIL	github.com/modu-ai/moai-adk/internal/cli	2.778s
+```
+
+The failure is behavioral. The phase runs, and its output lacks `moai bundle add <name>` for all 11 optional packs of the embedded catalog. The 30 `unconverted reference` lines are the phase's existing output (`writeInstallSummary`), not part of this change.
+
+**Implementation.** `internal/cli/user_asset_phase.go`: `runUserAssetUpdatePhase` calls a new helper, `announceUnselectedOptionalPacks(".", saved.Bundles, out)`, after the prune summary. The helper prints one line per optional pack the recorded selection lacks: `  optional pack not installed: <name> — run: moai bundle add <name>`. It returns at once unless `config.ReadDeployMode(".")` is `plugin`. The `config` import is new in this file. The project root is `"."` as in the rest of the update flow (`resolveUpdateDeployMode(".", ...)`).
+
+**GREEN.** Same command, exit 0:
+
+```text
+=== RUN   TestBundleAnnounceForPluginMode
+=== RUN   TestBundleAnnounceForPluginMode/plugin_mode_names_each_uninstalled_pack
+=== RUN   TestBundleAnnounceForPluginMode/local_mode_names_no_pack
+--- PASS: TestBundleAnnounceForPluginMode (1.15s)
+    --- PASS: TestBundleAnnounceForPluginMode/plugin_mode_names_each_uninstalled_pack (0.68s)
+    --- PASS: TestBundleAnnounceForPluginMode/local_mode_names_no_pack (0.47s)
+PASS
+ok  	github.com/modu-ai/moai-adk/internal/cli	2.474s
+```
+
+**Gates (each its own command).**
+- `gofmt -l internal/cli/user_asset_phase.go internal/cli/bundle_announce_test.go`: no output.
+- `go vet ./internal/cli/`: no output.
+- `golangci-lint run ./internal/cli/`: `0 issues.`
+- `GOOS=windows GOARCH=amd64 go build ./...` (B1): no output.
+
+**Gaps (not observed in this item).** The announce was not observed in a real `moai update` run on an operator profile; the judging test drives `runUserAssetUpdatePhase` directly, not the whole update command. Coverage not measured (M7).
+
+**Residual risk.** A plugin-mode project sees one line per unselected pack on every update, for as long as the pack stays unselected; the phase keeps no once-only record. A project whose `deployment_mode` record is absent or out of set is not announced, which follows `ReadDeployMode`'s record-less reading.
+
 ## §E.3 Run-phase Audit-Ready Signal
 
 _pending run-phase (manager-develop)_
