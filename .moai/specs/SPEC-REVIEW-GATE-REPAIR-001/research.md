@@ -87,7 +87,7 @@
 | 56 | `normalizeFindingPath` 가 있으나 여기에 적용되지 않는다 | (코드) | 확인하지 않았다 | 관측불가 |
 | 57 | 두 리뷰 계층이 같은 카드 diff 를 두 번 검토한다 | `factory-dispatch-detail.md:157` | 157행 "**One review per diff.** ... enable one of the two." | 확인 |
 | 58 | card-review 단계가 필수다 | `factory-dispatch.md:136` (파일 정정: 실제는 132행) | 136행은 빈 줄이다. 필수 문장은 132행: "[HARD] ... every lane runs a `card-review` stage" | 이동(132행) |
-| 59 | workflow.yaml:301-302 의 `enabled: true` | `workflow.yaml:301-302` | HEAD 에서 301행 `review_gate:`, 302행 `enabled: true`. 작업 트리에서는 302행이 `enabled: false` 다(미커밋 변경, `git diff` 한 줄) | 확인(HEAD). 작업 트리는 다름 |
+| 59 | workflow.yaml:301-302 의 `enabled: true` | `workflow.yaml:301-302` | HEAD 에서 301행 `review_gate:`, 302행 `enabled: true`. 앞선 세션 관측으로는 작업 트리의 302행이 `enabled: false` 였다(미커밋 변경, `git diff` 한 줄) | 확인(HEAD). 작업 트리 값은 앞선 세션의 관측이며 이 워크트리에서 재현되지 않았다(§9) |
 | 60 | 리뷰 범위 해석 호출 | `mcp_selfreview.go:119` | 119행 `rs = reviewScopeResolver(root)` | 확인 |
 | 61 | 버킷이 15분 단위로 정렬된다 | `codex_review_delay.go:77` | 77행 `bucket := now.Unix() / int64(config.DefaultCodexReviewGateTimeout.Seconds())`. 값 900 s 는 `internal/config/defaults.go:807` | 확인 |
 | 62 | 직전 버킷의 마커만 수집한다 | `codex_review_delay.go:98-100` | 98행 `prev := codexReviewKickMarkerPath(...)`, 99행 `now.Add(-config.DefaultCodexReviewGateTimeout))` | 확인 |
@@ -254,7 +254,7 @@
 
 판정:
 
-- 카드의 재현 사례(fail 영수증이 main 쪽 발견 사항으로 생성되고, 카드가 바꾼 것이 없다)는 관측과 맞는다. 키가 이 트리의 HEAD 와 같고, 상세는 카드가 건드리지 않은 main 쪽 코드 두 곳을 가리킨다.
+- 카드의 재현 사례(fail 영수증이 main 쪽 발견 사항으로 생성된다)는 관측과 맞는다. 키가 이 트리의 HEAD 와 같고, 상세 파일의 발견 사항 두 건은 이 트리의 두 위치를 가리킨다. "카드가 바꾼 것이 없다"는 전제는 관측되지 않았다(§8 Gap 1).
 - 24시간 잠금: 기록 시각 2026-10-10 01:37:46 KST 에 유효기간 24시간(`internal/cli/codex_review_cache.go:29`)을 더한 2026-10-11 01:37 KST 는 산술 결과이며 관측이 아니다. 진입 훅이 실제로 막았는지는 이 세션에서 재현하지 않았다(§3 #22).
 - 관측불가: 레인 자체의 커밋 수(git 가드 거부), 발견 사항의 옳고 그름. 기계 로컬 파일이므로 이 저장소의 커밋 근거로 쓸 수 없다.
 
@@ -271,10 +271,10 @@
 | P-7 | 문서에는 두 계층 중복 문장이 있다 | `.claude/rules/moai/workflow/factory-dispatch-detail.md:157` | 확인 |
 | P-8 | 설정 `interview.decision_gate` 는 on 이다 | `.moai/config/sections/interview.yaml:6` `decision_gate: on`, `:9` `recommendation_mode: pull` | 확인 |
 | P-9 | 추적 workflow.yaml 의 턴 종료 스위치는 HEAD 에서 true 다 | HEAD 302행 `enabled: true` | 확인 |
-| P-10 | 작업 트리의 workflow.yaml 은 리더의 미커밋 변경이 있다 | `git diff -- .moai/config/sections/workflow.yaml`: `-            enabled: true` / `+            enabled: false`(한 줄) | 확인 |
+| P-10 | (앞선 세션 관측) 작업 트리의 workflow.yaml 에 리더의 미커밋 변경이 있었다 | `git diff -- .moai/config/sections/workflow.yaml`: `-            enabled: true` / `+            enabled: false`(한 줄) | 앞선 세션의 관측. 이 워크트리에서는 재현되지 않았다(§9) |
 | P-11 | 영수증 결합 필드가 다섯 개다 | `internal/verify/receipt.go:70-76`: head, tree_digest, config_digest, command, tool_version | 확인 |
 | P-12 | 영수증 유효기간 0 은 기본값 10분이다 | `internal/verify/receipt.go:61,90`(`ttl <= 0` 이면 DefaultTTL), `internal/verify/freshness.go:5-7`(`DefaultTTL = 10 * time.Minute`) | 확인 |
-| P-13 | 진입 훅이 추가 맥락을 실을 수 있다 | `HookOutput.AdditionalContext` 사용처: `internal/hook/subagent_start.go:79`, `internal/hook/session_start_compact.go:72` | 확인 |
+| P-13 | 진입 훅이 추가 맥락을 실을 수 있다 | `HookOutput.AdditionalContext` 사용처: `internal/hook/subagent_start.go:79`, `internal/hook/session_start_compact.go:72`. UserPromptSubmit 출력의 `additionalContext` 는 `.claude/rules/moai/core/hooks-system.md:91` 에 있다 | 확인 |
 | P-14 | 진입 훅은 설계상 차단을 쓴다 | `internal/cli/codex_review_delay.go` 1–14행: "a fresh FAIL blocks the prompt" 와 `async:true` 를 채택하지 않은 이유 | 확인 |
 | P-15 | 진행 중 SPEC 이 같은 차단을 명시한다 | `.moai/specs/SPEC-GATE-BOTTLENECK-001/spec.md`: `status: in-progress`, 43–46행 REQ-GBN-002, 67–68행 AC-GBN-004 | 확인 |
 | P-16 | 설치 빌드는 트리의 후손이다 | `git merge-base --is-ancestor HEAD 4f8aba061` 참 | 확인 |
@@ -312,7 +312,7 @@
 
 ## §8 Gaps (관측하지 못한 것)
 
-1. 레인 t1543 저장소의 git 상태: 자체 커밋 수, 168 파일 diff, 현재 브랜치(`WT-t1534-hold-1` 주장). 워크트리 가드가 다른 워크트리 대상의 git 호출을 거부했다.
+1. 레인 t1543 저장소의 git 상태: 자체 커밋 수, 168 파일 diff, 현재 브랜치(`WT-t1534-hold-1` 주장). 워크트리 가드가 다른 워크트리 대상의 git 호출을 거부했다. "카드 변경 없음" 전제(spec.md §A.1 Gap 1)가 이 항목에 속한다.
 2. 설치 빌드의 라이브 재현(표준입력 파이프와 `moai hook codex-review-entry`). 단일 호출 형식 밖이고, 설치 빌드는 트리와 다르다.
 3. 레인 저장소 말뭉치(lens-1 §1 집계 48/48/21, lens-5 §A 전체 수치, 마커 64개, `--allow-empty` 우회, 같은 digest 재검토). 모두 기계 로컬이며 이 세션에서 재계산하지 않았다.
 4. 훅 타임아웃 측정(1.53 s, 1.90 s)과 부하 18 의 재현.
@@ -324,3 +324,26 @@
 10. factory 큐 쓰기 경로의 실제 실패 창 도달성(§7 F3(a), F3(b)).
 11. 다른 플랫폼(Windows 등)의 동작과 `.codex` 훅 연결.
 12. lens-5 의 `factory_card.go:1229-1238` 분기 본문과 `feedback_*` 기억 파일들(저장소 밖).
+
+## §9 재검증 기록 (수리 1회차, 2026-10-10)
+
+수리 라운드에서 새로 인용하거나 고친 근거다. 명령은 모두 읽기 전용이다.
+
+- `git rev-parse 2aab5f797` → `2aab5f797b75983e132af451da68f69e3426557b`. acceptance.md §A.1 의 전체 SHA 핀.
+- `git rev-parse --short HEAD` → `6218869fa`(plan 커밋).
+- `git status --short` → 출력 없음. 리더의 미커밋 workflow.yaml 변경은 이 워크트리에서 재현되지 않았다. §3 #59 와 §5 P-10 의 앞선 관측을 정정했다.
+- `git show HEAD:.moai/config/sections/workflow.yaml` 299–303행: 302행 `enabled: true`(커밋된 값).
+- `git ls-files --error-unmatch .claude/rules/local/gitflow-lane-protocol.md` → 추적 파일. 권한 등록부 밖이며 충돌 출처로만 인용한다.
+- `git check-ignore -v .moai/state/codex-review-gate/run-switch.json` → `.gitignore:401:.moai/state/`(무시됨, exit 0).
+- `ls internal/cli/doctor*.go | wc -l` → 71. `grep -l -i -E 'card-review|turn-end|review.gate|reviewgate|codex.review|review_gate' internal/cli/doctor*.go` → 출력 없음(exit 1). §5 P-6 의 전수 검색이다.
+- `AGENTS.md:94–95`(카드 브랜치는 로컬 main 에서 자르고, 카드 PR 은 main 으로, develop 은 legacy), `AGENTS.md:166–167`(같은 내용의 다른 절).
+- `.claude/rules/local/gitflow-lane-protocol.md:16` → "카드 워크트리는 `develop`에서 만든다. `main`이 아니다."
+- `.claude/agents/moai/manager-spec.md:108`(결정 색인 라벨), `:115`(권한 등록부), `:119`(Default 순위 규칙, `(rule: <rule>)` 토큰).
+- `.claude/skills/moai/workflows/plan/clarity-interview.md:63`, `:177`(결정 색인 작성 규칙).
+- `.moai/specs/SPEC-GATE-BOTTLENECK-001/spec.md`: `:5`(status in-progress), `:43–47`(REQ-GBN-002), `:51–54`(REQ-GBN-004), `:67–68`(AC-GBN-004).
+- `.moai/specs/SPEC-GITHUB-FLOW-DEFAULT-001/plan.md`: `:12`(CUTOVER-TIME 행), `:105`(M5 헤딩), `:111`(M5 묶음 설명), `:154–156`(운영자가 직접 수행하는 단계 목록).
+- `.claude/rules/moai/core/hooks-system.md:91`(UserPromptSubmit 행의 stdout 에 additionalContext), `:103`(Stop 행의 stdout 에 systemMessage).
+- `internal/cli/factory_card.go:1622`(`--run` 도움말 "factory run id (default: the single active run)").
+- `internal/auditreceipt/storeroot.go:142`(`IdentifyPrimaryCheckout`, 주 체크아웃을 돌려준다), `:243`(`if !IsConfigOrphanedRoot(root) { return root, nil }`).
+- `internal/cli/codex_review_gate.go:469`(스위치 읽기), `:489`(`reviewGateConfigRoot`). `internal/cli/mcp_codex.go:2503–2510`(`readCodexReviewGateEnabled`, 빈 루트면 거짓).
+- `.claude/hooks/moai/handle-codex-review-entry.sh:33–34`. 템플릿 미러 `internal/template/templates/.claude/hooks/moai/handle-codex-review-{entry,gate}.sh` 와 `internal/template/templates/.claude/rules/moai/workflow/factory-dispatch-detail.md` 의 존재를 `ls` 로 확인했다.
