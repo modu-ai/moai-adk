@@ -981,3 +981,40 @@ func TestMergeStepCardDriftAfterMergeHoldsNamingSHA(t *testing.T) {
 		t.Fatalf("the hold must name the mid-merge drift, got %q", policy.Reason)
 	}
 }
+
+func TestResolveCardBranchRefusalsNameTheCard(t *testing.T) {
+	// AC-CCI-004-1 (review F10): every refusal of the card-branch resolution
+	// names the card, so the operator reads which card to act on. The three
+	// refusal arms are a detached HEAD, a worktree directory that no longer
+	// exists, and a tree on a branch that is not WT-.
+	t.Run("detached HEAD", func(t *testing.T) {
+		f := newMergeFixture(t)
+		stepMustGit(t, f.cardTree, "checkout", "-q", "--detach")
+		_, err := resolveCardBranch(f.cardTree, stepCard)
+		requireRefusalNamesCard(t, err)
+	})
+	t.Run("missing worktree directory", func(t *testing.T) {
+		f := newMergeFixture(t)
+		gone := filepath.Join(f.root, "vanished")
+		_, err := resolveCardBranch(gone, stepCard)
+		requireRefusalNamesCard(t, err)
+	})
+	t.Run("non-WT branch", func(t *testing.T) {
+		f := newMergeFixture(t)
+		stepMustGit(t, f.cardTree, "checkout", "-q", "-b", "scratch-branch")
+		_, err := resolveCardBranch(f.cardTree, stepCard)
+		requireRefusalNamesCard(t, err)
+	})
+}
+
+// requireRefusalNamesCard fails unless the resolver refused and the refusal
+// names the card id.
+func requireRefusalNamesCard(t *testing.T, err error) {
+	t.Helper()
+	if err == nil {
+		t.Fatalf("resolveCardBranch must refuse this tree, but it resolved a branch")
+	}
+	if !strings.Contains(err.Error(), stepCard) {
+		t.Fatalf("the refusal must name card %s, got: %v", stepCard, err)
+	}
+}

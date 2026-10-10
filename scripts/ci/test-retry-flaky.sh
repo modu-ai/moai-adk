@@ -20,6 +20,7 @@
 #   7. Stdout carries the final attempt's stream only, as valid JSON lines; notices go to stderr.
 #   8. A retried first attempt is kept beside the retry log.
 #   9. A failure that names no test (a package-level failure) never retries, even beside a registry test.
+#  10. An interrupted first attempt's partial stream reaches stderr; stdout never carries it.
 #
 # Usage: bash scripts/ci/test-retry-flaky.sh
 # Exit:  0 when every case passes; 1 when any case fails.
@@ -163,6 +164,11 @@ case "$scenario" in
 		echo '{"Time":"2026-10-10T00:00:00Z","Action":"fail","Package":"example/fixture-b","Elapsed":0}'
 		exit 1
 		;;
+		interrupt-partial)
+			echo "$$" > "$counter.pid"
+			echo '{"Time":"2026-10-10T00:00:00Z","Action":"output","Package":"example/fixture","Test":"TestSolid","Output":"INTERRUPT-MARK\n"}'
+			exec sleep 30
+			;;
 esac
 FAKE
 chmod +x "$tmp/fake-test.sh"
@@ -313,6 +319,40 @@ run_case json-uncited json-flaky-once "$tmp/registry-json-uncited.txt"
 expect_eq    "json uncited: refused with usage status 2" "2" "$rc"
 expect_eq    "json uncited: command never ran" "0" "$count"
 expect_has   "json uncited: refusal named on stderr" "without an evidence citation" "$serr"
+
+echo "=== retry-flaky interrupt cases ==="
+
+# Interrupt case 1: a TERM during the first attempt keeps its partial stream on stderr, and
+# stdout never carries it. The fixture prints one marked JSON line, then sleeps 30 seconds, so
+# the case waits (bounded, about 10 seconds) for the mark to reach the wrapper's attempt-1 file,
+# signals the wrapper and then its child, and stays fast. TMPDIR points at a test-owned
+# directory, so the wrapper's work directory is found by glob.
+interrupt_tmp="$tmp/interrupt-tmp"
+mkdir -p "$interrupt_tmp"
+icount="$tmp/count-interrupt-partial"
+FLAKY_RETRY_LOG="$tmp/retry-interrupt-partial.log"
+export FLAKY_RETRY_LOG
+TMPDIR="$interrupt_tmp" bash "$wrapper" --registry "$registry" -- "$tmp/fake-test.sh" interrupt-partial "$icount" > "$tmp/stdout-interrupt-partial.txt" 2> "$tmp/stderr-interrupt-partial.txt" &
+wpid=$!
+polls=0
+until grep -qs 'INTERRUPT-MARK' "$interrupt_tmp"/retry-flaky.*/attempt1.json || [ "$polls" -ge 100 ]; do
+	sleep 0.1
+	polls=$((polls + 1))
+done
+kill -TERM "$wpid" 2> /dev/null
+sleep 0.2
+ipid="$(cat "$icount.pid" 2> /dev/null || true)"
+if [ -n "$ipid" ]; then
+	kill -TERM "$ipid" 2> /dev/null
+fi
+wait "$wpid"
+irc=$?
+ierr="$(cat "$tmp/stderr-interrupt-partial.txt")"
+iout="$(cat "$tmp/stdout-interrupt-partial.txt")"
+expect_eq    "interrupt: exit status is 128 plus SIGTERM (143)" "143" "$irc"
+expect_has   "interrupt: the first attempt's partial stream reaches stderr" "INTERRUPT-MARK" "$ierr"
+expect_lacks "interrupt: stdout does not carry the interrupted attempt" "INTERRUPT-MARK" "$iout"
+expect_eq    "interrupt: the work directory is removed" "0" "$(ls -d "$interrupt_tmp"/retry-flaky.* 2> /dev/null | wc -l | tr -d ' ')"
 
 echo "=== retry-flaky fixture: failures=$failures ==="
 if [ "$failures" -eq 0 ]; then
