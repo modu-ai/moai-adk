@@ -1201,6 +1201,7 @@ func TestAgentsOriginSkillMapsToItsOwnCatalogSource(t *testing.T) {
 // confirms — the preview must state that conditional removal as its own
 // disposition, never fold it into "user-owned — left untouched".
 func TestPreviewFlagsMigrationRemovalCandidates(t *testing.T) {
+	enableRemovalForTest(t)
 	root := t.TempDir()
 	embedded, err := template.EmbeddedTemplates()
 	if err != nil {
@@ -1241,6 +1242,45 @@ func TestPreviewFlagsMigrationRemovalCandidates(t *testing.T) {
 	}
 	if !strings.Contains(got, "preserved: "+migForeignSkill) {
 		t.Errorf("the control (untracked local-only skill) must stay plain preserved:\n%s", got)
+	}
+}
+
+// TestPreviewOmitsRemovalCandidateWhileSwitchOff: with the removal switch at its
+// default (off) the migration keeps the copy, so the dry-run preview must not
+// announce its removal as a candidate. The copy is still named, not dropped.
+func TestPreviewOmitsRemovalCandidateWhileSwitchOff(t *testing.T) {
+	root := t.TempDir()
+	embedded, err := template.EmbeddedTemplates()
+	if err != nil {
+		t.Fatal(err)
+	}
+	identical, err := fs.ReadFile(embedded, migIdenticalSkill)
+	if err != nil {
+		t.Fatalf("embedded read: %v", err)
+	}
+	writeFixtureFile(t, root, migIdenticalSkill, string(identical))
+	mgr := manifest.NewManager()
+	if _, err := mgr.Load(root); err != nil {
+		t.Fatal(err)
+	}
+	if err := mgr.Track(migIdenticalSkill, manifest.TemplateManaged, manifest.HashBytes(identical)); err != nil {
+		t.Fatal(err)
+	}
+	if err := mgr.Save(); err != nil {
+		t.Fatal(err)
+	}
+
+	var out bytes.Buffer
+	if err := previewReconciliation(root, template.DeployModeLocal, &out); err != nil {
+		t.Fatalf("previewReconciliation: %v", err)
+	}
+	got := out.String()
+
+	if strings.Contains(got, "migration candidate: "+migIdenticalSkill) {
+		t.Errorf("the preview announces a removal the switched-off migration will not make:\n%s", got)
+	}
+	if !strings.Contains(got, migIdenticalSkill) {
+		t.Errorf("the preview dropped the copy instead of naming it:\n%s", got)
 	}
 }
 

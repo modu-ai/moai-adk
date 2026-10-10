@@ -78,7 +78,7 @@ func previewReconciliation(projectRoot string, deployMode template.DeployMode, o
 		// the user counterpart confirms — folding it into "user-owned — left
 		// untouched" promised a preservation the run then breaks. The preview
 		// states the conditional removal as its own disposition.
-		if isCommonAssetCleanTarget(f.RelPath) && migrationRemovalCandidate(projectRoot, mf, f.RelPath) {
+		if removalEnabled && isCommonAssetCleanTarget(f.RelPath) && migrationRemovalCandidate(projectRoot, mf, f.RelPath) {
 			_, _ = fmt.Fprintln(out, tui.CheckLine("warn", "[dry-run] migration candidate: "+f.RelPath,
 				"template-managed common asset — removed by the asset migration once your user-side copy is confirmed", "", &th))
 			continue
