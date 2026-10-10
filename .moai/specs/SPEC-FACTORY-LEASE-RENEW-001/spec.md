@@ -2,7 +2,7 @@
 id: SPEC-FACTORY-LEASE-RENEW-001
 title: "Factory lease renewal: renew verb, lease configuration keys, and watchdog renewal (card t1663)"
 version: "0.1.1"
-status: draft
+status: in-progress
 created: 2026-10-10
 updated: 2026-10-10
 author: manager-spec (card t1663)
