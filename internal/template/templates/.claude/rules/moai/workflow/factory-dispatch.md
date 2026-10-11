@@ -185,11 +185,11 @@ The leader's own session is cleared the same way, between cards: once a card rea
 
 [HARD] **A card session starts inside its worktree and stays there — moving a running card session into another card worktree is prohibited**; end the session and launch inside the new tree instead (the full clause lives on the always-loaded stub; measured detail: `factory-dispatch-mechanics.md` § Isolation).
 <!-- moai:role-core-start -->
-<!-- moai:role-core-start -->
-[HARD] A card session starts in its worktree (`moai cc -w`) and stays; moving into another card worktree is prohibited (exit-and-relaunch serves the new-card rule); an integration-tree merge entry is exempt but returns to the card worktree before card work; an unavoidable move takes `/clear` once, after, never before.
+[HARD] Card work happens in a launcher-entered worktree — never a bare `git worktree add` (mechanics § Isolation).
 <!-- moai:role-core-end -->
 
-[HARD] Card work happens in a launcher-entered worktree — never a bare `git worktree add` (mechanics § Isolation).
+<!-- moai:role-core-start -->
+[HARD] A card session starts in its worktree (`moai cc -w`) and stays; moving into another card worktree is prohibited (exit-and-relaunch serves the new-card rule); an integration-tree merge entry is exempt but returns to the card worktree before card work; an unavoidable move takes `/clear` once, after, never before.
 <!-- moai:role-core-end -->
 
 <!-- moai:role-core-start -->
