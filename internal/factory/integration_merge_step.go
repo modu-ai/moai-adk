@@ -20,10 +20,12 @@
 package factory
 
 import (
+	"encoding/hex"
 	"errors"
 	"fmt"
 	"os"
 	"path/filepath"
+	"sort"
 	"strings"
 	"time"
 
@@ -237,15 +239,40 @@ func RunMergeStep(in MergeStepInput, seams MergeStepSeams) (string, error) {
 		return "", mergeStepErr(MergeExitOther, "integration merge: refresh the window: %v", err)
 	}
 
-	// (12) the integration worktree must be clean before the merge —
-	// --untracked-files=all so a hidden untracked byte cannot hide behind
-	// the config (O2).
-	clean, status, err := gitIntegrationWorktreeClean(in.IntegrationWorktree)
-	if err != nil {
-		return "", releaseWindow(in, seams, mergeStepErr(MergeExitOther, "integration merge: status the integration worktree: %v", err))
+	// (12) the dirty precondition depends on the surface (plan §B4, §B5). The
+	// primary checkout keeps the fully-clean rule: its uncommitted changes may
+	// belong to other sessions, and an overlap test cannot judge a path whose
+	// owner it cannot identify. A separate integration worktree has no foreign
+	// owners, so the overlap decision applies there; it needs the pinned SHA and
+	// runs after the pin below (REQ-LMF-005). The surface is the integration
+	// worktree being the primary checkout that Root names. The primary is also
+	// re-read inside the mutation section, immediately before the merge: this
+	// check runs before the lock is taken, so a file created in the gap would
+	// otherwise reach the merge (card t1616).
+	primary := sameIntegrationTree(in.IntegrationWorktree, in.Root)
+	if primary {
+		// --untracked-files=all so a hidden untracked byte cannot hide behind
+		// the config (O2).
+		clean, status, err := gitIntegrationWorktreeClean(in.IntegrationWorktree)
+		if err != nil {
+			return "", releaseWindow(in, seams, mergeStepErr(MergeExitOther, "integration merge: status the integration worktree: %v", err))
+		}
+		if !clean {
+			return "", releaseWindow(in, seams, integrationWorktreeDirtyRefusal(status))
+		}
 	}
-	if !clean {
-		return "", releaseWindow(in, seams, mergeStepErr(MergeExitWorktreeDirty, "integration merge: the integration worktree is not clean (%d status lines); clean it and re-measure, then re-acquire", strings.Count(status, "\n")+1))
+
+	// F1 (sync audit, card t1616): an unfinished merge in the integration worktree
+	// belongs to another actor, so refuse it here on both surfaces, before the
+	// overlap decision and before any merge call. The clean check above already
+	// refuses unmerged entries; a MERGE_HEAD with a clean tree passes it, and the
+	// abort after a failed merge would discard that merge.
+	inFlight, probeErr := unfinishedMergeReason(git, in.IntegrationWorktree)
+	if probeErr != nil {
+		return "", releaseWindow(in, seams, mergeStepErr(MergeExitOther, "integration merge: the unfinished-merge check errored: %v", probeErr))
+	}
+	if inFlight != "" {
+		return "", releaseWindow(in, seams, unfinishedMergeRefusal(inFlight))
 	}
 
 	// Resolve the card's WT- branch at the card's tree and pin ONE SHA
@@ -269,6 +296,20 @@ func RunMergeStep(in MergeStepInput, seams MergeStepSeams) (string, error) {
 		return "", releaseWindow(in, seams, mergeStepErr(MergeExitOther, "integration merge: read the integration tip: %v", err))
 	}
 	tip = strings.TrimSpace(tip)
+
+	// (12, separate worktree) the overlap decision of plan §B5 (REQ-LMF-005):
+	// refuse when a dirty path equals or nests with a target path, or when an
+	// ignored file sits at a target path. The pinned SHA is needed for the
+	// target set, so this runs after the pin.
+	if !primary {
+		reason, err := integrationOverlapRefusal(git, pinned)
+		if err != nil {
+			return "", releaseWindow(in, seams, mergeStepErr(MergeExitOther, "integration merge: the overlap decision errored: %v", err))
+		}
+		if reason != "" {
+			return "", releaseWindow(in, seams, mergeStepErr(MergeExitWorktreeDirty, "integration merge: refused — %s. Move or commit those changes, re-measure, then re-acquire. Do not stash: the stash is repository-wide.", reason))
+		}
+	}
 
 	// (1) the re-measure record must be valid for THIS tree (REQ-MWQ-014/015
 	// — one verifier, the local form while candidate_ci is absent).
@@ -344,7 +385,15 @@ func RunMergeStep(in MergeStepInput, seams MergeStepSeams) (string, error) {
 	var mergeErr error
 	var headReadErr error
 	var mergeDirtyAfterAbort bool
+	// mergeForeignErr is set when the failed merge left another actor's MERGE_HEAD in
+	// place: the step refuses and does not abort (F1 follow-up).
+	var mergeForeignErr *MergeStepError
 	var mergeSHA string
+	// REQ-LMF-006 (plan §B5): S-before, set inside the section, and whether the
+	// status set changed across the merge. The primary surface's baseline stays nil,
+	// the empty set its fully-clean precondition established.
+	var statusBefore []statusRecord
+	var statusChanged bool
 	sectionErr := withIntegrationLockMutation(in.Root, func() error {
 		w, readErr := ReadIntegrationLock(in.Root)
 		if readErr != nil {
@@ -447,6 +496,51 @@ func RunMergeStep(in MergeStepInput, seams MergeStepSeams) (string, error) {
 			recheckErr = mergeStepErr(MergeExitCardGate, "integration merge: refused — card %s's record changed mid-step (version %d as gated, %d as re-read); re-acquire", in.CardID, card.Version, recheckCard.Version)
 			return nil
 		}
+		// S-before (REQ-LMF-006, plan §B5): the separate surface takes it here, in
+		// the section, immediately before the merge. The primary surface keeps the
+		// nil baseline set above.
+		if !primary {
+			before, statusErr := integrationStatusSet(git)
+			if statusErr != nil {
+				recheckErr = mergeStepErr(MergeExitOther, "integration merge: read the status set before the merge: %v", statusErr)
+				return nil
+			}
+			statusBefore = before
+		}
+
+		// F1 (sync audit, card t1616): the unfinished-merge probe runs inside the same
+		// section, ahead of the merge subprocess and of the primary's status re-read
+		// below. A merge already in progress belongs to another actor: git refuses to
+		// start one over it. A merge that begins after this probe is caught from
+		// MERGE_HEAD after the failed merge, before any abort (the failure branch below).
+		pendingMerge, pendingErr := unfinishedMergeReason(git, in.IntegrationWorktree)
+		if pendingErr != nil {
+			recheckErr = mergeStepErr(MergeExitOther, "integration merge: the unfinished-merge probe errored: %v", pendingErr)
+			return nil
+		}
+		if pendingMerge != "" {
+			recheckErr = unfinishedMergeRefusal(pendingMerge)
+			return nil
+		}
+
+		// (12, primary surface) the primary's dirty precondition is re-read inside the
+		// section, immediately before the merge subprocess. The clean check above ran
+		// before the mutation lock was taken, so another session that does not take the
+		// lock can create an untracked file in the primary after it (SPEC-LOCAL-MAIN-FLOW-001,
+		// card t1616). The merge would then run over the dirty primary, and only the
+		// post-merge checks would see it, after main had advanced.
+		if primary {
+			clean, status, statusErr := gitIntegrationWorktreeClean(in.IntegrationWorktree)
+			if statusErr != nil {
+				recheckErr = mergeStepErr(MergeExitOther, "integration merge: re-read the integration worktree status before the merge: %v", statusErr)
+				return nil
+			}
+			if !clean {
+				recheckErr = integrationWorktreeDirtyRefusal(status)
+				return nil
+			}
+		}
+
 		// The merge, of the PINNED SHA never the branch name (REQ-MWQ-017),
 		// inside the section (F4).
 		//
@@ -463,14 +557,57 @@ func RunMergeStep(in MergeStepInput, seams MergeStepSeams) (string, error) {
 		// @MX:DEBT: an ignored byte at an added path created inside the re-probe→merge span is overwritten by the three-way merge — the flag does not reach the ort path on current git
 		// @MX:CEILING: the window is one git-subprocess spawn inside a flock-serialized section in a policy-protected integration worktree; the post-merge tree check cannot see it (a worktree-only loss, the commit's tree is unchanged)
 		// @MX:UPGRADE: a git whose ort path honors --no-overwrite-ignore (then this flag starts refusing), or an in-process merge that checks ignored paths atomically with the write
-		if _, err := git("merge", "--no-ff", "--no-overwrite-ignore", "-q", "-m", mergeMsg, pinned); err != nil {
+		// --no-autostash is git's switch for merge.autoStash=false on this call
+		// (plan §B5): with autostash on, a staged change is stashed and re-applied
+		// unstaged, which changes the status set by itself.
+		if _, err := git("merge", "--no-ff", "--no-autostash", "--no-overwrite-ignore", "-q", "-m", mergeMsg, pinned); err != nil {
 			mergeErr = err
-			// (6)/(7): abort, then decide by the worktree the abort left —
+			// F1 follow-up (sync audit, card t1616): abort only a merge this call
+			// started. The in-section probe ran before the merge call, so a merge another
+			// actor began after it shows up here, in MERGE_HEAD, naming a commit other than
+			// the pin. Its abort would discard that merge, so the step refuses and changes
+			// nothing instead.
+			foreignName, foreign, ownerErr := foreignMergeHead(git, in.IntegrationWorktree, pinned)
+			if ownerErr != nil {
+				mergeForeignErr = mergeStepErr(MergeExitOther, "integration merge: read MERGE_HEAD after the failed merge: %v", ownerErr)
+				return nil
+			}
+			if foreign {
+				mergeForeignErr = unfinishedMergeRefusal(fmt.Sprintf("MERGE_HEAD names another commit %s", foreignName[:12]))
+				return nil
+			}
+			// F1 same-SHA (sync audit, card t1616): foreignMergeHead above passes a MERGE_HEAD
+			// that names the pin, so a same-SHA merge another actor began after the probe
+			// would reach the abort below. Only a call that ran git and got exit 1 began a
+			// merge and stopped with it in progress, so only that call may abort the MERGE_HEAD
+			// it left (mergeCallDidNotStop). Any other failure gives this call no claim on a
+			// MERGE_HEAD it finds (git refuses to start before it writes one, observed on git
+			// 2.54.0; a call killed by a signal is not credited either), so the step refuses and
+			// does not abort it. A call that never started has no exit status and began no
+			// merge, so the step refuses it without an abort even when no MERGE_HEAD exists.
+			if reason, didNotStop := mergeCallDidNotStop(err); didNotStop {
+				present, presentErr := mergeHeadPresent(git, in.IntegrationWorktree)
+				switch {
+				case presentErr != nil:
+					mergeForeignErr = mergeStepErr(MergeExitOther, "integration merge: read MERGE_HEAD after the failed merge: %v", presentErr)
+					return nil
+				case present:
+					mergeForeignErr = unfinishedMergeRefusal(fmt.Sprintf("MERGE_HEAD exists, and %s", reason))
+					return nil
+				case mergeCallNotStarted(err):
+					mergeForeignErr = mergeStepErr(MergeExitOther, "integration merge: git did not start the merge call (%v), so no merge was begun and the step did not abort", err)
+					return nil
+				}
+			}
+			// (6)/(7): abort, then decide by the status set the abort left against S-before —
 			// inside the section, so no acquisition can interleave between
-			// our failed merge and its cleanup.
+			// our failed merge and its cleanup. The abort reaches this point only when
+			// MERGE_HEAD is absent (git's abort then refuses and changes nothing), names
+			// the pinned SHA only when this call began that merge (exit 1, checked above),
+			// or names no commit at all.
 			_, _ = git("merge", "--abort")
-			clean, _, cleanErr := gitIntegrationWorktreeClean(in.IntegrationWorktree)
-			mergeDirtyAfterAbort = cleanErr != nil || !clean
+			after, statusErr := integrationStatusSet(git)
+			mergeDirtyAfterAbort = statusErr != nil || !integrationStatusEqual(after, statusBefore)
 			return nil
 		}
 		sha, shaErr := git("rev-parse", "HEAD")
@@ -481,6 +618,9 @@ func RunMergeStep(in MergeStepInput, seams MergeStepSeams) (string, error) {
 			return nil
 		}
 		mergeSHA = strings.TrimSpace(sha)
+		// S-after (REQ-LMF-006, plan §B5): taken after the merge commit, in the section.
+		after, statusErr := integrationStatusSet(git)
+		statusChanged = statusErr != nil || !integrationStatusEqual(after, statusBefore)
 		return nil
 	})
 	if sectionErr != nil {
@@ -507,6 +647,11 @@ func RunMergeStep(in MergeStepInput, seams MergeStepSeams) (string, error) {
 		return "", postMergeHold(in, seams, mergeStepErr(MergeExitPostMerge, "integration merge: read the merge HEAD: %v", headReadErr), "")
 	}
 	if mergeErr != nil {
+		if mergeForeignErr != nil {
+			// F1 follow-up: another actor's merge stays in place and was not aborted;
+			// the refusal releases the window through the normal pre-merge path.
+			return "", releaseWindow(in, seams, mergeForeignErr)
+		}
 		if mergeDirtyAfterAbort {
 			// (7): still dirty after the abort — hold FIRST, then release
 			// (REQ-MWQ-018: no later holder is promoted onto this state).
@@ -530,8 +675,19 @@ func RunMergeStep(in MergeStepInput, seams MergeStepSeams) (string, error) {
 		}
 		return "", postMergeHold(in, seams, mergeStepErr(MergeExitPostMerge, "integration merge: the merge commit's tree %s differs from the record's tree %s", got, record.Tree[:12]), mergeSHA)
 	}
-	if clean, _, err := gitIntegrationWorktreeClean(in.IntegrationWorktree); err != nil || !clean {
-		return "", postMergeHold(in, seams, mergeStepErr(MergeExitPostMerge, "integration merge: the worktree is not clean after the merge (autostash residue included)"), mergeSHA)
+	// B3 step 6 (SPEC-LOCAL-MAIN-FLOW-001): SHA equality alone does not prove
+	// the branch did not change, because a post-merge hook can move HEAD to
+	// another branch at the merge commit. The hold names that merge; the tool
+	// never switches HEAD back.
+	if head, headErr := git("symbolic-ref", "HEAD"); headErr != nil || strings.TrimSpace(head) != "refs/heads/"+in.IntegrationBranch {
+		return "", postMergeHold(in, seams, mergeStepErr(MergeExitPostMerge, "integration merge: HEAD no longer names %s after the merge (it moved off the branch during the merge)", in.IntegrationBranch), mergeSHA)
+	}
+	if statusChanged {
+		msg := "integration merge: the worktree is not clean after the merge (autostash residue included)"
+		if !primary {
+			msg = "integration merge: the status set changed across the merge (autostash residue included)"
+		}
+		return "", postMergeHold(in, seams, mergeStepErr(MergeExitPostMerge, "%s", msg), mergeSHA)
 	}
 
 	// t1576 review round 1 (F1): the section's card re-gate reads BEFORE the
@@ -742,6 +898,285 @@ func postMergeHold(in MergeStepInput, seams MergeStepSeams, cause *MergeStepErro
 func execGitIn(dir string, args ...string) (string, error) {
 	runner := factorylane.ExecGitRunner{Dir: dir}
 	return runner.Git(args...)
+}
+
+// statusRecord is one record of the status set S (plan §B5): its exact bytes
+// and every path it names. A rename or copy names its source as well.
+type statusRecord struct {
+	raw   string
+	paths []string
+}
+
+// integrationStatusSet reads the status set S of plan §B5: the records of
+// `git status --porcelain=v1 -z --untracked-files=all`, sorted bytewise by path.
+func integrationStatusSet(git func(args ...string) (string, error)) ([]statusRecord, error) {
+	out, err := git("status", "--porcelain=v1", "-z", "--untracked-files=all")
+	if err != nil {
+		return nil, err
+	}
+	fields := strings.Split(out, "\x00")
+	var records []statusRecord
+	for i := 0; i < len(fields); i++ {
+		field := fields[i]
+		if field == "" {
+			continue
+		}
+		if len(field) < 4 || field[2] != ' ' {
+			return nil, fmt.Errorf("unrecognized status record %q", field)
+		}
+		rec := statusRecord{raw: field, paths: []string{field[3:]}}
+		if x, y := field[0], field[1]; x == 'R' || x == 'C' || y == 'R' || y == 'C' {
+			// A rename or copy carries its source in the next NUL-terminated field.
+			if i+1 >= len(fields) {
+				return nil, fmt.Errorf("status record %q carries no source path", field)
+			}
+			i++
+			rec.raw = field + "\x00" + fields[i]
+			rec.paths = append(rec.paths, fields[i])
+		}
+		records = append(records, rec)
+	}
+	sort.SliceStable(records, func(a, b int) bool { return records[a].paths[0] < records[b].paths[0] })
+	return records, nil
+}
+
+// integrationStatusEqual reports whether two status sets hold the same records,
+// as exact record bytes in the same order (plan §B5).
+func integrationStatusEqual(a, b []statusRecord) bool {
+	if len(a) != len(b) {
+		return false
+	}
+	for i := range a {
+		if a[i].raw != b[i].raw {
+			return false
+		}
+	}
+	return true
+}
+
+// unfinishedMergeReason reports why the integration worktree holds a merge
+// another actor began: MERGE_HEAD exists, or the index holds unmerged entries
+// (a merge stopped at a conflict, or a stash pop that conflicted). It returns
+// "" when neither holds. `git rev-parse --git-path` names MERGE_HEAD in the
+// worktree's own git directory, which is right for a linked worktree and for
+// the main checkout alike. git answers relative to the directory the runner
+// executes in, so a relative answer is joined onto worktree.
+func unfinishedMergeReason(git func(args ...string) (string, error), worktree string) (string, error) {
+	mergeHead, err := mergeHeadPath(git, worktree)
+	if err != nil {
+		return "", err
+	}
+	_, statErr := os.Stat(mergeHead)
+	if statErr == nil {
+		return "MERGE_HEAD exists", nil
+	}
+	if !os.IsNotExist(statErr) {
+		return "", fmt.Errorf("stat MERGE_HEAD: %w", statErr)
+	}
+	unmerged, err := git("ls-files", "-u")
+	if err != nil {
+		return "", fmt.Errorf("list unmerged entries: %w", err)
+	}
+	if strings.TrimSpace(unmerged) != "" {
+		return "unmerged index entries exist", nil
+	}
+	return "", nil
+}
+
+// mergeHeadPath locates the integration worktree's MERGE_HEAD. `git rev-parse
+// --git-path` names it in the worktree's own git directory, which is right for a
+// linked worktree and for the main checkout alike. git answers relative to the
+// directory the runner executes in, so a relative answer is joined onto worktree.
+func mergeHeadPath(git func(args ...string) (string, error), worktree string) (string, error) {
+	out, err := git("rev-parse", "--git-path", "MERGE_HEAD")
+	if err != nil {
+		return "", fmt.Errorf("locate MERGE_HEAD: %w", err)
+	}
+	path := strings.TrimSpace(out)
+	if path == "" {
+		return "", errors.New("git named no MERGE_HEAD path")
+	}
+	if !filepath.IsAbs(path) {
+		path = filepath.Join(worktree, path)
+	}
+	return path, nil
+}
+
+// foreignMergeHead reports a full object name in the integration worktree's
+// MERGE_HEAD other than sha: a merge another actor began. An absent MERGE_HEAD
+// names nothing, and one that names only sha is this call's own merge. A value
+// that is not a full object name is not a merge any session began (git writes
+// full names), so it is not foreign and the abort proceeds as before.
+func foreignMergeHead(git func(args ...string) (string, error), worktree, sha string) (string, bool, error) {
+	path, err := mergeHeadPath(git, worktree)
+	if err != nil {
+		return "", false, err
+	}
+	data, err := os.ReadFile(path)
+	if os.IsNotExist(err) {
+		return "", false, nil
+	}
+	if err != nil {
+		return "", false, fmt.Errorf("read MERGE_HEAD: %w", err)
+	}
+	for _, name := range strings.Fields(string(data)) {
+		if name != sha && isFullObjectName(name) {
+			return name, true, nil
+		}
+	}
+	return "", false, nil
+}
+
+// isFullObjectName reports whether s is a full SHA-1 or SHA-256 object name.
+func isFullObjectName(s string) bool {
+	if len(s) != 40 && len(s) != 64 {
+		return false
+	}
+	_, err := hex.DecodeString(s)
+	return err == nil
+}
+
+// unfinishedMergeRefusal is the cause-12 refusal for an integration worktree
+// that holds an unfinished merge this step did not start. The step never
+// aborts such a merge: finishing or aborting it belongs to the session that
+// began it.
+func unfinishedMergeRefusal(reason string) *MergeStepError {
+	return mergeStepErr(MergeExitWorktreeDirty, "integration merge: refused — the integration worktree holds an unfinished merge (%s) that this step did not start. Finish or resolve it where it was begun, re-measure, then re-acquire. The step does not abort it.", reason)
+}
+
+// integrationWorktreeDirtyRefusal is the cause-12 refusal for an integration worktree
+// that is not clean. Both reads of the clean precondition share it, the check before
+// the lock is taken and the re-read inside the section, so the wording cannot drift
+// between them.
+func integrationWorktreeDirtyRefusal(status string) *MergeStepError {
+	return mergeStepErr(MergeExitWorktreeDirty, "integration merge: the integration worktree is not clean (%d status lines); clean it and re-measure, then re-acquire. Move the uncommitted or untracked changes into a card worktree and commit them there, or ask the session that owns them to commit or discard them. Do not stash: the stash is repository-wide.", strings.Count(status, "\n")+1)
+}
+
+// mergeCallDidNotStop reports whether a failed `git merge` call did NOT stop with the
+// merge in progress, and the reason the refusal states. git exits 1 only after the merge
+// has begun and stopped (a conflict, or a pre-merge-commit hook that left it unfinished),
+// so exit 1 is the one outcome that gives the call a claim on the MERGE_HEAD it left.
+// Every other outcome gives none: another exit status, a signal (factorylane reports a
+// killed process as -1), and an error with no exit status at all, which means git never
+// started.
+func mergeCallDidNotStop(err error) (string, bool) {
+	var exit *factorylane.GitExitError
+	if !errors.As(err, &exit) {
+		return fmt.Sprintf("this merge call did not start: %v", err), true
+	}
+	switch {
+	case exit.ExitCode == 1:
+		return "", false
+	case exit.ExitCode < 0:
+		return "this merge call was killed by a signal rather than stopping with exit 1", true
+	default:
+		return fmt.Sprintf("this merge call exited %d rather than stopping with exit 1", exit.ExitCode), true
+	}
+}
+
+// mergeCallNotStarted reports whether a failed merge call never ran git: its error carries
+// no exit status, the shape an exec start failure takes (factorylane.ExecGitRunner.Git).
+func mergeCallNotStarted(err error) bool {
+	var exit *factorylane.GitExitError
+	return !errors.As(err, &exit)
+}
+
+// mergeHeadPresent reports whether the integration worktree's MERGE_HEAD exists,
+// whichever commit it names.
+func mergeHeadPresent(git func(args ...string) (string, error), worktree string) (bool, error) {
+	path, err := mergeHeadPath(git, worktree)
+	if err != nil {
+		return false, err
+	}
+	_, statErr := os.Stat(path)
+	if statErr == nil {
+		return true, nil
+	}
+	if os.IsNotExist(statErr) {
+		return false, nil
+	}
+	return false, fmt.Errorf("stat MERGE_HEAD: %w", statErr)
+}
+
+// integrationOverlapRefusal decides the separate-worktree dirty precondition
+// (plan §B5) against the pinned SHA. It returns the refusal reason when
+// Overlap(D, T) holds or the ignored overlap I is non-empty, and "" when the
+// merge may proceed.
+func integrationOverlapRefusal(git func(args ...string) (string, error), pinned string) (string, error) {
+	base, err := git("merge-base", "HEAD", pinned)
+	if err != nil {
+		var exit *factorylane.GitExitError
+		if errors.As(err, &exit) && exit.ExitCode == 1 {
+			// No common ancestor: the ancestry gate refuses this pin before any
+			// merge call, so no overlap decision is owed here.
+			return "", nil
+		}
+		return "", fmt.Errorf("merge-base of HEAD and %s: %w", pinned, err)
+	}
+	status, err := integrationStatusSet(git)
+	if err != nil {
+		return "", fmt.Errorf("read the dirty set: %w", err)
+	}
+	diff, err := git("diff", "--name-only", "-z", "--no-renames", strings.TrimSpace(base), pinned)
+	if err != nil {
+		return "", fmt.Errorf("read the target set: %w", err)
+	}
+	targets := nonEmptyNULFields(diff)
+	ignoredOut, err := git("ls-files", "--others", "--ignored", "--exclude-standard", "-z")
+	if err != nil {
+		return "", fmt.Errorf("read the ignored files: %w", err)
+	}
+	ignored := make(map[string]bool)
+	for _, path := range nonEmptyNULFields(ignoredOut) {
+		ignored[path] = true
+	}
+	var ignoredTargets []string
+	for _, target := range targets {
+		if ignored[target] {
+			ignoredTargets = append(ignoredTargets, target)
+		}
+	}
+	var overlapping []string
+	seen := make(map[string]bool)
+	for _, rec := range status {
+		for _, dirty := range rec.paths {
+			if seen[dirty] {
+				continue
+			}
+			for _, target := range targets {
+				if pathsOverlap(dirty, target) {
+					seen[dirty] = true
+					overlapping = append(overlapping, dirty)
+					break
+				}
+			}
+		}
+	}
+	var reasons []string
+	if len(overlapping) > 0 {
+		reasons = append(reasons, "the integration worktree holds uncommitted or untracked changes at paths this card changes: "+strings.Join(overlapping, ", "))
+	}
+	if len(ignoredTargets) > 0 {
+		reasons = append(reasons, "the integration worktree holds ignored files at paths this card changes: "+strings.Join(ignoredTargets, ", "))
+	}
+	return strings.Join(reasons, "; "), nil
+}
+
+// pathsOverlap reports whether two repository paths are equal, or one names a
+// directory that contains the other (plan §B5, Overlap).
+func pathsOverlap(a, b string) bool {
+	return a == b || strings.HasPrefix(b, a+"/") || strings.HasPrefix(a, b+"/")
+}
+
+// nonEmptyNULFields splits a NUL-terminated git listing into its paths.
+func nonEmptyNULFields(out string) []string {
+	var paths []string
+	for _, path := range strings.Split(out, "\x00") {
+		if path != "" {
+			paths = append(paths, path)
+		}
+	}
+	return paths
 }
 
 // gitFail reports an error only when the git call FAILS — the ancestry

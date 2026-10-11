@@ -73,6 +73,44 @@ type StdinData struct {
 	Agent          *AgentInfo         `json:"agent,omitempty"`     // Active agent identity when the session runs as one (claude --agent); nil otherwise
 	Worktree       *WorktreeInfo      `json:"worktree,omitempty"`  // Worktree session details; nil when the session is in the primary checkout
 	ExceedsLong    bool               `json:"exceeds_200k_tokens"` // long-context overflow boolean (false if absent)
+
+	// SubagentTasks carries the subagentStatusLine `tasks[]` payload rows
+	// (Claude Code v2.1.293+). Nil when the key is absent — ordinary statusline
+	// stdin payloads never carry it, so an ordinary session decodes to nil and
+	// keeps the bar render; a present-but-empty `[]` decodes non-nil and takes
+	// the JSONL row contract with zero rows (REQ-CC-HAIKU55-010).
+	SubagentTasks []SubagentTaskInfo `json:"tasks,omitempty"`
+}
+
+// SubagentTaskInfo carries one row of the subagentStatusLine `tasks[]`
+// payload. Field set mirrors the official task-fields table (id required;
+// name, model optional; agentType requires CC v2.1.293+). Optional fields
+// are pointer-nil: the key is absent in CC payloads older than v2.1.293 and
+// decodes to nil from an explicit JSON null — both degrade silently to a
+// badge-less row and must never error, panic, or drop the row
+// (REQ-CC-HAIKU55-011).
+//
+// @MX:NOTE: [AUTO] subagentStatusLine tasks[] row — optional fields are
+// pointer-nil so absent-key and JSON-null shapes (CC pre-2.1.293 payloads,
+// omitted optional fields) degrade silently per REQ-CC-HAIKU55-011. Type /
+// Status / Description / Label / CWD are raw-passthrough — unknown values
+// are not rejected. Effort is string-or-number upstream, so it is carried
+// as raw JSON.
+type SubagentTaskInfo struct {
+	ID                string          `json:"id"`                  // task identifier; echoed as id in the JSONL row this package writes back
+	Name              *string         `json:"name,omitempty"`      // optional: the name the subagent is addressed by; nil when absent
+	Type              string          `json:"type"`                // task kind (e.g. "local_agent"); distinct from agentType
+	AgentType         *string         `json:"agentType,omitempty"` // subagent type the task runs as (v2.1.293+); nil when absent/null
+	Status            string          `json:"status"`              // running / completed / failed / killed (raw-passthrough)
+	Description       string          `json:"description"`         // short task description
+	Label             string          `json:"label"`               // short progress summary when CC has one
+	StartTime         int64           `json:"startTime"`           // Unix epoch milliseconds
+	Model             *string         `json:"model,omitempty"`     // optional: resolved model ID; nil until resolved
+	Effort            json.RawMessage `json:"effort"`              // string or number upstream — carried raw
+	ContextWindowSize int             `json:"contextWindowSize"`   // tokens; 0 when model is omitted
+	TokenCount        int             `json:"tokenCount"`          // running token count
+	TokenSamples      []int           `json:"tokenSamples"`        // up to last 16 tokenCount readings, oldest first
+	CWD               string          `json:"cwd"`                 // the subagent's own working directory
 }
 
 // WorktreeInfo describes a worktree session, from the statusline stdin

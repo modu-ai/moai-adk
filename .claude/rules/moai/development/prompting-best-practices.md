@@ -4,7 +4,7 @@ paths: "**/.claude/agents/**,**/.claude/skills/**/SKILL.md"
 
 # Prompting Best Practices (Claude Latest Models)
 
-Condensed reference of Anthropic's official prompt-engineering guidance for Claude's latest models (Opus 4.8 / 4.7, Sonnet (current generation), Haiku 4.5), applied to MoAI agent prompts, skill bodies, and orchestrator output. Complements the Karpathy quick-reference (`.claude/rules/moai/development/karpathy-quickref.md`) and skill-writing craft (`.claude/rules/moai/development/skill-writing-craft.md`); cross-referenced from `.claude/rules/moai/development/agent-authoring.md`.
+Condensed reference of Anthropic's official prompt-engineering guidance for Claude's latest models (Opus 5/5.5, Sonnet 5.5, Haiku 5.5), applied to MoAI agent prompts, skill bodies, and orchestrator output. Complements the Karpathy quick-reference (`.claude/rules/moai/development/karpathy-quickref.md`) and skill-writing craft (`.claude/rules/moai/development/skill-writing-craft.md`); cross-referenced from `.claude/rules/moai/development/agent-authoring.md`.
 
 > **Loading scope**: read when authoring or tuning an agent prompt / skill body / system prompt. Reference: https://platform.claude.com/docs/en/build-with-claude/prompt-engineering/claude-prompting-best-practices
 

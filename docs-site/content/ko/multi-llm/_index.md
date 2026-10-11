@@ -54,7 +54,8 @@ MoAI-ADK가 세션을 시작할 때 정하는 것이 하나 있습니다. 바로
 | **Claude Fable 5** | `claude-fable-5` | 1M | 신규 Mythos-tier 범용 최상위. 가장 깊은 추론과 복잡한 코딩 |
 | **Claude Opus 5.5 / 5 / 4.8** | — | 1M | 복잡한 아키텍처와 고난도 추론 |
 | **Claude Sonnet 5** | — | 1M | 속도와 지능의 균형, 일상 코딩 |
-| **Claude Haiku 4.5** | `claude-haiku-4-5-20251001` | 200K | 가장 빠르고 경제적, 단순·대량 작업 |
+| **Claude Haiku 5.5** | `claude-haiku-5-5` | 1M | 가장 빠르고 경제적 (Anthropic API 기본 Haiku, CC v2.1.293+) |
+| **Claude Haiku 4.5** | `claude-haiku-4-5-20251001` | 200K | 가장 빠르고 경제적, 단순·대량 작업 (AWS 계열 별칭 대상) |
 
 {{< callout type="info" >}}
 **라인업과 선택은 다릅니다.** 위 표는 "사용 가능한 모델"을 보여 줄 뿐입니다.
