@@ -2,9 +2,9 @@
 id: SPEC-REVIEW-GATE-REPAIR-001
 title: "Codex 리뷰 게이트 수리 — 프롬프트 진입 교착을 풀고 리뷰 기준을 하나로 모은다"
 version: "0.2.8"
-status: draft
+status: in-progress
 created: 2026-10-10
-updated: 2026-10-10
+updated: 2026-10-11
 author: manager-spec
 priority: P0
 phase: "v3.2.0 target"
