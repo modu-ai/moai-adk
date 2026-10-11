@@ -824,6 +824,7 @@ Read against the 85% floor (`quality.yaml` `test_coverage_target: 85`; the manag
 - `go build ./...` → `.moai/reports/t1595/build-native-dbadebc1c.txt`
 - `GOOS=windows GOARCH=amd64 go build ./...` → `.moai/reports/t1595/build-windows-dbadebc1c.txt`
 - `go vet ./internal/cli/ ./internal/hook/` → `.moai/reports/t1595/vet-dbadebc1c.txt`
+- 5d7c 1번 적용, 충돌 경로 CHANGELOG.md
 
 ## §E.3 Run-phase Audit-Ready Signal
 
