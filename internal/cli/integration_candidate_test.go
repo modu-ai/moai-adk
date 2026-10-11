@@ -13,6 +13,7 @@ import (
 	"github.com/modu-ai/moai-adk/internal/config"
 	"github.com/modu-ai/moai-adk/internal/factory"
 	"github.com/modu-ai/moai-adk/internal/factorylane"
+	"github.com/modu-ai/moai-adk/internal/git/convention"
 	"github.com/modu-ai/moai-adk/internal/gitenv"
 	"github.com/modu-ai/moai-adk/internal/homestate"
 )
@@ -611,6 +612,33 @@ func placeCardRow(t *testing.T, db *homestate.FactoryDB, runID, cardID, worktree
 func placeCardRowIn(t *testing.T, db *homestate.FactoryDB, runID, cardID, worktree string) {
 	t.Helper()
 	placeCardRow(t, db, runID, cardID, worktree)
+}
+
+// TestIntegrationCandidateTitleConvention pins the candidate commit's subject
+// to every built-in commit convention (card t1478 finding C). The pre-push
+// validator reads this header against the repository's configured convention,
+// so a subject that fails any built-in convention is a defect even though the
+// candidate branch is disposable.
+func TestIntegrationCandidateTitleConvention(t *testing.T) {
+	t.Parallel()
+	root, cardWT := candidateFixture(t)
+	writeCandidateCIConfig(t, root, "true", "true")
+	rec, err := runIntegrationCandidate(integrationCandidateInput{
+		Root: root, CardID: "t9001", CardWorktree: cardWT, IntegrationBranch: "develop",
+	}, integrationCandidateSeams{Now: func() time.Time { return time.Date(2026, 10, 9, 12, 0, 0, 0, time.UTC) }})
+	if err != nil {
+		t.Fatalf("runIntegrationCandidate: %v", err)
+	}
+	subject := candidateGit(t, cardWT, "log", "-1", "--format=%s", rec.CandidateSHA)
+	for _, name := range convention.BuiltinNames() {
+		conv, err := convention.ParseBuiltin(name)
+		if err != nil {
+			t.Fatalf("ParseBuiltin(%s): %v", name, err)
+		}
+		if result := convention.Validate(subject, conv); !result.Valid {
+			t.Errorf("%s convention rejects the candidate subject %q: %+v", name, subject, result.Violations)
+		}
+	}
 }
 
 // sameStringSet compares two string slices ignoring order.
