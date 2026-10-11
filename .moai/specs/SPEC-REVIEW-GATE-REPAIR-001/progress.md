@@ -1,6 +1,6 @@
 # 진행 기록 — SPEC-REVIEW-GATE-REPAIR-001
 
-상태: completed (3-phase close, amendment 뒤 재종결). 이 파일의 §E.1 ~ §E.4 는 각 단계 담당자가 채운 기록이다.
+상태: completed (3-phase close, F2 수리와 F1 정정 뒤 재종결). 이 파일의 §E.1 ~ §E.4 는 각 단계 담당자가 채운 기록이다.
 
 ## §E.1 Plan-phase Audit-Ready Signal
 
@@ -576,16 +576,21 @@ run-phase 의 M1, M2, M3(후속 포함), M7 은 로컬 커밋으로 끝났고, s
 
 audit_ready: true
 sync_status: audit-ready
-sync_complete_at: 2026-10-11T03:07:23Z
-sync_commit_sha: c861336ee64bbb81f304eec02bea7a9f97dd5af2
+sync_complete_at: 2026-10-11T04:19:56Z
+sync_commit_sha: pending-backfill
 
-SF-1 수리(§E.2)와 SF-2 수정 증서(커밋 `582bed1f8`, spec.md `## Amendments`) 뒤의 재종결이다. 수정 증서가 SPEC 을 in-progress 로 되돌렸고, 이 커밋이 completed 로 다시 닫는다. 이전 종결의 sync_commit_sha `7716c99ff2347dc004ee0e209791fc648772e1ef` 는 spec.md 의 prior_completed_sha 와 같은 값이다. 커밋은 자신의 해시를 기록할 수 없으므로 이 커밋의 sync_commit_sha 는 pending-backfill 자리표시다. 실제 SHA 는 다음 커밋에서 backfill 한다(spec-workflow.md § Sync (close), spec-frontmatter-schema.md § SHA placeholder backfill exemption).
+F2 수리와 F1 정정 뒤의 재종결이다(3-phase close). 델타 감사 2회차(`.moai/reports/t1620/sync-audit-iter2.md`, 판정 FAIL)의 차단 발견 F2(키별 차단 잠금의 심볼릭 링크 추적)는 커밋 `a93efb76d3`(RED), `40f56c3c70`(수리), `d480f2704d`(§E.2 증거)로 고쳤다. 차단 발견 F1(REQ-RG-007 범위 한계 표의 열거 불완전)은 커밋 `9ca86ae4f`(표를 사실에 맞춘 정정)로 고쳤다. 이 커밋이 spec.md 를 `status: completed` 로 다시 닫는다. 앞선 재종결의 sync_commit_sha `c861336ee64bbb81f304eec02bea7a9f97dd5af2` 는 spec.md 의 prior_completed_sha 와 같은 값이다. 커밋은 자신의 해시를 기록할 수 없으므로 이 재종결 커밋의 sync_commit_sha 는 pending-backfill 자리표시로 적었다. 실제 SHA 는 다음 backfill 커밋이 이 커밋의 전체 SHA 로 바꾼다(spec-workflow.md § Sync (close), spec-frontmatter-schema.md § SHA placeholder backfill exemption).
 
 **§E.4 Gaps (델타 감사로 넘김)**
 
 - (i) 잠금 시한 초과 분기와 Windows 죽은 소유자 파기에는 테스트가 없다. 파기 함수 `codexReviewBreakStaleBlockLock` 의 함수 커버리지는 12.5%다(§E.2 SF-1 Gap 4 와 같은 수치).
 - (ii) 래퍼의 35·36·79–80행 종료는 SPEC 에 명명되어 있고 그 변경은 t1674 몫이므로, 이 SPEC 은 래퍼를 바꾸지 않는다.
 - (iii) SF-3 은 영구 편차다. §G 에 기록했다.
+- (iv) 처리기 본체(`HandleCodexReviewGate`)의 허용 분기는 전수 대조하지 않았다. 처리기가 nil 출력을 돌려주는 경로가 있는지는 확인하지 않았다.
+- (v) 처리기를 빈 입력으로 실행하지 않았다. 빈 입력 경로(765–769행)는 디코더 프로브(`json.Unmarshal` 의 빈 입력 오류)로만 관측했다.
+- (vi) Go 773–777행(처리기 오류 경로)의 최종 처분은 리더 판정 대상이다.
+- (vii) `/verify` 전체 게이트 미실행(범위 점검으로 대체). 이 Gap 은 이 재종결 커밋과 backfill 커밋에 적용된다. 두 커밋은 문서만 바꾼다.
+- (viii) 범위 밖 결함 두 건은 후속 카드 t1674 에 있으며 이 SPEC 에서 고치지 않았다. `internal/cli/gate_lock.go:99` 의 게이트 실행 잠금은 `O_NOFOLLOW` 없이 여는 공유 원시 잠금(`internal/cli/gate_lock_unix.go:39`)에 닿는다. Windows 의 `codexReviewBreakStaleBlockLock` 은 링크를 통해 읽는다(읽기로만 확인했고 Windows 에서 실행하지 않았다).
 
 ## §G Override and Refusal Record
 
@@ -596,3 +601,5 @@ SF-1 수리(§E.2)와 SF-2 수정 증서(커밋 `582bed1f8`, spec.md `## Amendme
 - 귀속 표 (영실이 판단, 리더 전달, 2026-10-10): F1 → t1662 (relate 142) · F2 → t1637 (relate 143) · F3 → t1639 (relate 145; 본문 추가 todo_runtime.go:364, todo_dispatch_current.go:53 은 기존) · F4 → t1683 (doctor 경고만 맡고, 규칙 문장 정정은 범위 밖이다. 정정은 M7 에서 수행) · F5 → t1674 (relate 146; 본문 "plan 시작 시 반영") · F6 → t1635 (relate 144).
 - 2026-10-11 · **SF-3 영구 편차 (permanent deviation).** sync 커밋 `7716c99ff` 의 제목(`docs(SPEC-REVIEW-GATE-REPAIR-001): close the sync phase and record the audit-ready signal (card t1620)`)에는 닫기 중위(close infix)가 없다. sync-audit 은 이 제목을 `run-partial` / `in-progress` 로 분류했다(`.moai/reports/t1620/sync-audit.md` E-7 관측). 이력은 다시 쓸 수 없으므로 이 편차는 영구다. 이 기록은 보드 `d-20261011T023045Z-326e` 의 리더 판정 (d) 를 따르며, 랜딩 시점의 드리프트 처리는 리더의 판정이다.
 - 2026-10-11 · **sync 감사 FAIL 기록.** 파일 `.moai/reports/t1620/sync-audit.md` (audited_sha 3c2f5dfa2, 판정 FAIL) 는 이 커밋에서 편집하지 않았다. SF-1 은 커밋 `4bd5d433a`(RED), `a13e02705`(GREEN), `e62a8bdd5`(§E.2 증거)로 수리했다. SF-2 는 커밋 `582bed1f8` 이 SPEC 본문(REQ-RG-007 범위 한계, Amendments 절)에 래퍼 네 종료 경로를 명명했고, 래퍼 동작은 바뀌지 않았다(t1674 몫). G1 감사 레그(필수 교차 모델, codex)는 델타 감사에서 실행하며, 그때 2413·a280 advisory 를 적용한다.
+- 2026-10-11 · **운영자 결정 48b4 (F2 좁은 수리, F1 정정, 델타 감사 1회).** 보드 기록 `d-20261011T034504Z-48b4`. F2 는 키별 차단 잠금 경로만 고쳤다(`Lstat` 거부와 `O_NOFOLLOW`, 커밋 `40f56c3c70`). 공유 원시 잠금 `acquireGateLockImpl` 은 다른 호출자를 위해 바꾸지 않았고, 그 잔여 노출(`internal/cli/gate_lock.go:99`)은 후속 카드 t1674 몫으로 남겼다. F1 은 spec.md REQ-RG-007 범위 한계 표를 사실에 맞춰 정정했다(커밋 `9ca86ae4f`; 상태 어휘와 규범 문장은 그대로).
+- 2026-10-11 · **델타 감사 2회차 FAIL 기록.** 파일 `.moai/reports/t1620/sync-audit-iter2.md` (audited_sha 6995a1696, 판정 FAIL) 는 이 재종결에서 편집하지 않았다. 차단 발견은 F1(범위 한계 표의 열거 불완전)과 F2(키별 차단 잠금의 심볼릭 링크 추적) 두 건이다. F1 은 커밋 `9ca86ae4f` 로, F2 는 커밋 `a93efb76d3`·`40f56c3c70`·`d480f2704d` 로 처리했다. 같은 파일의 나머지 발견 F3(후속 카드), F4(영구 편차, §G 기록), F6(리더 판정), F7(선택)은 이 재종결에서 고치지 않았다. F5(§E.4 문구)는 재작성한 문단이 시점을 밝히도록 고쳐 다뤘다. 교차 모델 레그(codex)의 fail 은 advisory(2413·a280)로 기록되었고 판정 근거가 아니다.
