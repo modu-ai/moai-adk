@@ -461,6 +461,55 @@ ok  	github.com/modu-ai/moai-adk/internal/cli	3.683s
 4. 라이브 codex 테스트는 실행하지 않았다. 컴파일 확인만 했다(리더 지시). 게이트 계열 실행의 명령에는 `-skip 'LiveCodex'` 가 붙어 있다.
 5. 과정 결함: M3 검증은 `TestWSR006_ReviewGateRootMatrix` 를 돌리지 않았다. M3 검증의 `-run` 패턴(`^(TestReviewGate_|TestReviewEntry_|TestProduceCodexReviewReceipt_|TestProducerFailReceipt|TestHandleCodexReviewGate|TestCodexReviewGate)`)이 이 테스트를 포함하지 않았다. 회귀는 M3 커밋 `1002a14c1` 에서 생겼고, M3 후속 GREEN 점검에서 발견됐다. 기대값을 바꾼 커밋 `4f94abf73` 이 처리했다.
 
+### SF-1 수리 (sync-audit FAIL 뒤)
+
+sync 감사의 SF-1(REQ-RG-004, 차단 횟수)을 고쳤다. 키당 차단 횟수의 확인(읽기와 상한 비교)과 기록(+1)을 키별 잠금 안의 한 단계로 묶었다. 잠금 대기는 1초로 상한을 두며, 상한 안에 잡지 못하면 `차단 횟수 기록 실패`로 허용한다. 허용 결정은 바꾸지 않았고(REQ-RG-006), 새 상태 이름은 없다.
+
+- 시작 상태: `git rev-parse --short HEAD` 는 `3c2f5dfa2`, `git branch --show-current` 는 `WT-review-gate-fix`. 일치했다.
+- RED 커밋 `4bd5d433a`: `internal/cli/codex_review_gate_concurrency_test.go` 하나(테스트 파일만).
+- GREEN 커밋 `a13e02705`: `internal/cli/codex_review_gate.go` 하나(프로덕션 파일만).
+- 잠금 헬퍼: 같은 패키지의 기존 원시 잠금 `acquireGateLockImpl`(`gate_lock_unix.go` 는 flock, `gate_lock_windows.go` 는 O_EXCL)을 재사용했다. 대기 상한과 죽은 소유자 파기는 `codex_review_gate.go` 에 새로 두었다. 재사용하지 않은 후보와 이유는 다음과 같다. `verify.acquireKeyLock` 은 다른 패키지의 비공개 함수이고 상한 뒤 잠금 없이 진행하는 fail-open 이라 요구와 반대다. `waitForGateLock` 과 `AcquireGateLock` 은 게이트 실행 산출물에 고정되어 있고 상한 뒤 무잠금으로 실행한다. `ClearStaleGateLock` 은 프로젝트 경로에 고정되어 있다. `lockfile.Lock` 은 상한이 없는 블로킹 잠금이다.
+
+**RED** — 명령 `MOAI_SKIP_LIVE_CODEX=1 go test -count=1 -skip LiveCodex -run '^TestReviewGate_ConcurrentBlockCap$' ./internal/cli/`, 종료 코드 **1**. 수정 전 트리에서 관측한 원문:
+
+```
+--- FAIL: TestReviewGate_ConcurrentBlockCap (1.56s)
+    codex_review_gate_concurrency_test.go:73: concurrent turn ends for one fail key blocked more than the cap (C = 1) in 73 of 100 rounds; 8 simultaneous turn ends per round, max blocks in one round = 8
+FAIL
+FAIL	github.com/modu-ai/moai-adk/internal/cli	3.066s
+FAIL
+```
+
+**GREEN** — 명령 `MOAI_SKIP_LIVE_CODEX=1 go test -count=3 -skip LiveCodex -run '^TestReviewGate_ConcurrentBlockCap$' ./internal/cli/`, 종료 코드 **0**, 원문 `ok  	github.com/modu-ai/moai-adk/internal/cli	14.749s`. 커밋 `a13e02705` 과 같은 내용에서 실행했다. 주석 한 곳을 고치기 전에 같은 명령을 돌린 실행도 `ok  	github.com/modu-ai/moai-adk/internal/cli	14.426s`, 종료 코드 0 이었다.
+
+**회귀 family** — HEAD `a13e02705`, 명령 형식 `MOAI_SKIP_LIVE_CODEX=1 go test -count=1 -v -skip LiveCodex -run '<패턴>' ./internal/cli/`. 패턴은 `.moai/reports/t1620/progress.md` 의 01:20Z 블록 "회귀 확인 목록" (a)–(d) 를 그대로 옮겼다. (d) 는 목록의 이름 나열에서 정규식을 만들었다.
+
+- (a) 게이트 family: 최상위 PASS 80, FAIL 3, 종료 코드 1, 패키지 줄 `FAIL	github.com/modu-ai/moai-adk/internal/cli	103.727s`. FAIL 3개는 기준선과 같은 macOS 심볼릭 링크 실패(위 Run-phase Gap 1)다: `TestCodexReviewGatePrimaryCheckoutSkip`, `TestCodexReviewGate_TreeScopeRequestShapeUnchanged`, `TestCodexReviewGate_StaleEnvKeepsTreeScope`. 새 실패는 없다. 신규 `TestReviewGate_ConcurrentBlockCap` 은 PASS (4.68s)다. M3 기록의 집계 82(PASS 79, FAIL 3)보다 1 늘었고, 신규 테스트 한 개다.
+- (b) WSR `^TestWSR`: 최상위 PASS 13, FAIL 0, 종료 코드 0, `ok  	github.com/modu-ai/moai-adk/internal/cli	26.212s`. `TestWSR006_ReviewGateRootMatrix` 는 PASS 다.
+- (c) stop 예외 경로 `^(TestStdinFailClosed_StopIgnoresStopHookActive|TestStdinFailClosed_CodexStopExempt)$`: PASS 2, FAIL 0, 종료 코드 0, `ok  	github.com/modu-ai/moai-adk/internal/cli	1.357s`.
+- (d) stop-chain·tree-scope `^(TestStaleBinarySkip_|TestTreeScope|TestPrimaryScopeReader_|TestCodexStopChain_TreeScopeSkip$|TestStopChainEffectParityGolden$)`: 최상위 PASS 19, FAIL 0, 종료 코드 0, `ok  	github.com/modu-ai/moai-adk/internal/cli	104.115s`. 기록된 이름 18개에 `TestTreeScopedSelfGateSkipsConfigOnlyTree` 가 더해졌다(`TestTreeScope*` 와일드카드에 걸린다). 기록의 `TestTreeScope_NonSkipValuesKeepTreeScope` 는 현재 소스에서 `TestTreeScope_NonSkipValuesKeepTreeRequest` 로 실행되었다. 이름 기록만 낡았고 결과에는 영향이 없다.
+
+**정적 검사** — `gofmt -l internal/cli/codex_review_gate.go internal/cli/codex_review_gate_concurrency_test.go`: 출력 없음, 종료 0. `go build ./internal/cli/`: 종료 0. `GOOS=windows GOARCH=amd64 go build ./internal/cli/`: 종료 0(Windows 잠금 구현의 컴파일 확인). `golangci-lint run ./internal/cli/`(v2.1.6): `0 issues.`, 종료 0.
+
+**커버리지(함수 단위)** — `-coverprofile` 로 차단 횟수 테스트 부분집합(`TestReviewGate_BlockCount*`, `TestReviewGate_ConcurrentBlockCap`, `TestReviewGate_FreshPassClearsBlockCount`, `TestReviewGate_BlockCapAllowsNextTurnWithMessage`, `TestReviewGate_AllowedAfterCapStaysAllowedAndCountKept`, `TestReviewGate_NonFreshStateNamedInMessage`)을 돌렸다. `codexReviewGateFail` 100.0%, `codexReviewClearBlocks` 100.0%, `codexReviewBlockLockPath` 100.0%, `codexReviewReserveBlock` 84.6%, `acquireCodexBlockLock` 86.7%, `codexReviewBreakStaleBlockLock` 12.5%. 패키지 전체 비율은 측정하지 않았다. 부분집합의 패키지 비율 6.0% 는 의미가 없다.
+
+**Gaps (미검증)**
+
+1. `internal/cli` 패키지 전체 스위트는 실행하지 않았다(레인 지시의 금지 명령).
+2. 라이브 Codex 테스트는 실행하지 않았다. 모든 실행에 `-skip LiveCodex` 를 붙였다.
+3. 전체 `/verify` 게이트는 실행하지 않았다.
+4. 잠금 대기 상한 분기(`acquireCodexBlockLock` 의 시한 초과 반환)와 죽은 소유자 파기 본체(`codexReviewBreakStaleBlockLock`, 커버리지 12.5%)를 실행하는 테스트가 없다. 파기 본체는 `codexReviewBlockLockBreakable` 이 참일 때(Windows)만 동작하며, 이 머신에서 Windows 실행은 하지 않았고 크로스 컴파일만 확인했다. 후속 RED 후보는 구현 전에 쓴다: (i) 살아 있는 소유자가 쥔 잠금은 상한 안에 반환하며 `차단 횟수 기록 실패`로 허용하고, 차단 횟수 기록을 남기지 않는다. (ii) 죽은 PID 를 적은 산출물은 파기된 뒤 차단으로 이어진다. (iii) 살아 있는 PID 를 적은 산출물은 유지된다. (iv) 소유자 없이 오래된 빈 산출물은 파기된다. 이 카드는 엄격한 RED→GREEN 순서를 지키려고 구현 뒤에 테스트를 넣지 않았다.
+
+**잔여 위험 (Residual-risk)**
+
+- Windows 죽은 소유자 파기: 재읽기는 파기 창을 좁힐 뿐 닫지 못한다(`ClearStaleGateLock` 과 같은 잔여). 점검과 파기 사이에 잠금이 다른 프로세스로 넘어가면 드물게 살아 있는 잠금을 지울 수 있다.
+- PID 재사용: 죽은 소유자의 PID 가 살아 있는 다른 프로세스에 쓰이면 산출물은 살아 있는 것으로 읽힌다. 그 키는 상한 뒤에도 `차단 횟수 기록 실패` 허용으로 남는다. 차단 횟수는 손상되지 않고 fail-open 이다. "결국 파기된다"는 PID 가 풀릴 때까지 성립하지 않는다.
+- 시한 초과: 소유자가 살아 있으나 1초를 넘겨 멈추면, 경합하는 턴 종료는 차단 대신 허용한다(fail-open).
+- 차단 횟수 정리: 잠금을 시한 안에 잡지 못하면 기록을 잠금 없이 지운다. 같은 키에서 차단과 정리가 겹치면 횟수가 되살아날 수 있다. 같은 키의 FAIL→PASS 전이가 전제라서 드물다.
+- Unix 잠금 산출물(`blocked-<digest>.json.lock`)은 파기되지 않고 남는다. flock 산출물을 지우면 대기자와 경쟁이 생기기 때문이다. 키당 한 개의 무해한 빈 파일이다.
+
+**커밋** — 이 항목의 커밋 제목: `docs(SPEC-REVIEW-GATE-REPAIR-001): record the SF-1 repair evidence in §E.2 (card t1620)`.
+
 ## §E.3 Run-phase Audit-Ready Signal
 
 audit_ready: true
