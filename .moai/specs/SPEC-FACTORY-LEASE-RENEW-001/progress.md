@@ -3557,6 +3557,10 @@ Observations, verbatim from the verdict file's 관측 section (not counted as bl
 
 4. (새 관측, 코드 판독, 실행하지 않음, 신뢰도 중상) 갱신과 next의 비대칭: c097b73b3 이후, 로스터가 레인을 retire된 run에 묶어 둔 상태에서 `factory renew`(`--run` 없음)는 유일한 활성 run의 리스를 거부한다. 반면 `factory next`는 :1557에서 로스터를 보지 않고 그 run을 고르고, 리스 획득 전이(homestate/card_transition.go:521-528)는 `SELECT count(*) FROM workers WHERE label=?`로 라벨 등록 여부만 본다. 그래서 자기 run의 리더보다 오래 산 레인은 새 run에서 카드를 리스할 수 있지만 `--run` 없이는 갱신하지 못한다. 워치독 SKILL은 `moai factory renew <card-id> --json`(템플릿 SKILL.md:56, `--run` 없음)으로 갱신하므로, 그런 레인은 매 패스 `renew_result: error`를 기록하고 리스는 D 뒤에 만료된다(추론). 인수 기준의 이름 붙은 시험을 깨지는 않는다. 해법은 관측 3과 같은 자리(next·stage·complete에 같은 바인딩 규칙을 적용하거나, run이 바뀔 때 레인을 다시 묶기)에 있다.
 
+Lease re-record request (written by the lane session under the lead's contingency rule; the decision by 영실이 is still pending and may pass the lease end):
+
+- lease re-record requested: t1663, 사유: FAIL #4 처분(영실이, 운영자 위임)이 아직 없고, 임대(until 2026-10-11T00:37:12Z)가 그 전에 끝날 수 있음; 원하는 만료: 2026-10-11T03:00Z (처분 뒤 수리 또는 재감사 한 주기를 덮을 만큼).
+
 ## §G Override and Refusal Record
 
 - 2026-10-10T09:51:05Z SPEC-FACTORY-LEASE-RENEW-001 ceiling-refusal outcome=hold reasons="plan-audit ceiling reached (round count 2 >= tier ceiling 2); the verdict matches no admitting arm and holds, entry blocked (REQ-ACE-006) — release path: the split/new-SPEC route of REQ-ACE-005 or an operator decision recorded in progress.md §G" evidence=/Users/goos/MoAI/moai-adk-go/.moai/worktrees/t1663/.moai/reports/t1663/plan-audit-iter2.md,/Users/goos/MoAI/moai-adk-go/.moai/worktrees/t1663/.moai/reports/t1663/plan-audit.md
