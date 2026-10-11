@@ -619,3 +619,9 @@ Opus 감사자 승인 대기 — 승인 전 코드·규칙 파일 변경 없음.
 그 외 en 필드: laneOwnedCardRule 770 · autoModeGuide 569×2 · laneManualDispatchRule 516 · leaderStagger 403 등. Opus overlay 측정(en lane=1,122)과 본 근사(815)의 차이는 형식 토큰·%s 치환 반영 차이로 추정 — 축약 시뮬레이션은 실호출로 재측정 필요.
 
 레인 en 합성 11,621 실측의 절감 여지가 이 3문구에 집중됨(전체 초과 1,621 중 3문구 합 3,058). (가) 채택 시 각 문구의 필수 요소(임대 동사·착지 절차·재확인 3항목)는 유지하면서 안내 서술을 압축하는 방향이 될 것.
+
+### 일괄 갱신 항목 기록 (리더 지시, 2026-10-11) — 처분 반영 커밋 때 함께
+
+1. **F4 시험 갱신**: TestInjectedCoreCarriesCodexReachableObligations — 현재 ALB-0272(디스패치 형식, OUT 이동)의 "fixed-field" 문구를 표지 안에서 찾아 FAIL. 갱신: OUT 이동 의무는 읽기 지시 문장 존재 + 본문 파일 요소 단언으로 검사 대상 변경(시험 삭제 아님). ALB-0276(디스크 대기)은 IN 유지 확인 — 원장 role-core·양 트리 표지 안 \`disk wait\` 문구 존재 재확인(본 절 기록 시점, 2026-10-11).
+2. **예산 상수**: TestRoleInjectionAssemblyBudget — budgetCoreCeiling 4,073 / budgetCompositeLimit 9,127 → manager-spec이 IN/OUT 반영 실측에 맞춰 재설정.
+3. **(C) 최종 조정 대기**: en 3문구 축약 + 추가 en 생산자 축약(ko 불변) + IN 하위 우선순위 OUT 이동(0303·0260 끝까지 IN, IN 집합 양 로캘 공통) — 리더 Opus가 최종 문안·IN/OUT 목록·4칸 실측 일괄 산출 중. 도착 시 글자 그대로 반영.
