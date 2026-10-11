@@ -301,7 +301,7 @@ func runIntegrationCandidate(in integrationCandidateInput, seams integrationCand
 	}
 	tree = strings.TrimSpace(tree)
 	tree = gitFirstLine(tree)
-	candidateMsg := fmt.Sprintf("Candidate: merge %s (%s) into %s for card %s (pre-landing candidate; disposable ci/ branch)", cardBranch, shortSHA(pinned), in.IntegrationBranch, in.CardID)
+	candidateMsg := fmt.Sprintf("test(candidate): merge %s (%s) into %s for card %s", cardBranch, shortSHA(pinned), in.IntegrationBranch, in.CardID)
 	candidateSHA, err := git(in.CardWorktree, "commit-tree", tree, "-p", tip, "-p", pinned, "-m", candidateMsg)
 	if err != nil {
 		return factory.CandidateRecord{}, fmt.Errorf("integration candidate: commit-tree: %v", err)
