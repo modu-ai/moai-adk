@@ -80,6 +80,7 @@ var reviewGateChangeDetector = hasReviewableChanges
 // take in total (SPEC-REVIEW-GATE-REPAIR-001 REQ-RG-003 and REQ-RG-004; operator
 // verdict Q2 = 1). An allowance never gives a block back, and a fresh pass for
 // the key clears its count.
+// C = 1, operator ruling Q2 (REQ-RG-004).
 //
 // @MX:NOTE: [AUTO] C = 1 is an operator decision (Q2), not a tuned threshold; the count is per review key, not per turn
 const codexReviewBlockLimit = 1
@@ -88,15 +89,18 @@ const codexReviewBlockLimit = 1
 // why a turn end was allowed without a fresh passing receipt (REQ-RG-007). They
 // are the systemMessage vocabulary, so the names are the contract readers match on.
 const (
-	codexStateAbsent          = "absent"
-	codexStateStale           = "stale"
-	codexStateKeyMismatch     = "key-mismatch"
-	codexStateInconclusive    = "inconclusive"
-	codexStateBlockExhausted  = "차단 횟수 소진"
-	codexStateSwitchOff       = "스위치 꺼짐"
-	codexStateNoChange        = "검토할 변경 없음"
-	codexStateStopHookRelease = "stop-hook 해제"
-	codexStateReviewerAbsent  = "reviewer 없음"
+	codexStateAbsent            = "absent"
+	codexStateStale             = "stale"
+	codexStateKeyMismatch       = "key-mismatch"
+	codexStateInconclusive      = "inconclusive"
+	codexStateBlockExhausted    = "차단 횟수 소진"
+	codexStateBlockRecordFailed = "차단 횟수 기록 실패"
+	codexStateSwitchOff         = "스위치 꺼짐"
+	codexStateNoChange          = "검토할 변경 없음"
+	codexStateStopHookRelease   = "stop-hook 해제"
+	codexStateReviewerAbsent    = "reviewer 없음"
+	codexStateStaleBinarySkip   = "stale 바이너리 건너뜀"
+	codexStateTreeScopeSkip     = "tree_scope 건너뜀"
 )
 
 // HandleCodexReviewGate is the Stop-hook gate logic. ALLOW/BLOCK contract:
@@ -118,8 +122,9 @@ const (
 //  5. codex missing                         → ALLOW (fail-open; no reviewer to kick)
 //  6. fresh receipt for the tree key        → reuse its verdict (REQ-GBN-001):
 //     FAIL blocks carrying the preserved detail while the key's block count is
-//     below C (REQ-RG-003) and otherwise ALLOWs naming the exhausted count
-//     (REQ-RG-004); PASS clears the key's block count; inconclusive ALLOWs naming
+//     below C (REQ-RG-003) and otherwise ALLOWs naming why (REQ-RG-004): the
+//     exhausted count, or the record failure when the count cannot be read or
+//     recorded; PASS clears the key's block count; inconclusive ALLOWs naming
 //     inconclusive
 //  7. cache miss                            → kick the review in the background
 //     and ALLOW (REQ-GBN-002); the verdict is enforced at the NEXT turn entry
@@ -159,13 +164,13 @@ func HandleCodexReviewGate(input *hook.HookInput, enabled bool, projectDir strin
 	// the code under review — skip before any scope-dependent policy runs.
 	// Shared with the Codex Stop-chain path (REQ-CRO-006).
 	if staleBinarySkipApplies(scope.Dir) {
-		return allow, nil
+		return codexGateAllowed(codexStateStaleBinarySkip), nil
 	}
 	// (3a) The tree_scope policy: a tree-class session with no WT- evidence has
 	// no card to attribute its tree to. The read root is the one `enabled` came
 	// from (reviewGateConfigRoot), resolved only when the class is tree.
 	if treeScopeSkipApplies(scope, func() string { return reviewGateConfigRoot(projectDir) }) {
-		return allow, nil
+		return codexGateAllowed(codexStateTreeScopeSkip), nil
 	}
 	if !reviewGateScopedChangeDetector(scope) {
 		return codexGateAllowed(codexStateNoChange), nil // (4) scoped self-gate — nothing reviewable in the session's scope ⇒ no false block
@@ -271,17 +276,23 @@ func codexGateAllowed(state string) *hook.HookOutput {
 
 // codexReviewGateFail decides a fresh FAIL at turn end (REQ-RG-003, REQ-RG-004).
 // While the key's block count is below C it blocks, carrying the preserved fail
-// detail, and records the block before the block is returned. At C, or when the
-// count cannot be read or recorded, it allows and names the exhausted count: a
-// count the gate cannot prove is below C never blocks (fail-open).
+// detail, and records the block before the block is returned. Every allow here is
+// fail-open and names its own state (REQ-RG-007): at C the allow names the
+// exhausted count; a count that cannot be read, or a block that cannot be
+// recorded, names the record failure instead, so an unreadable or unwritable
+// count is never reported as exhausted. A count the gate cannot prove is below C
+// never blocks.
 func codexReviewGateFail(dir string, state verify.ReceiptState, r verify.Receipt, now time.Time) *hook.HookOutput {
 	blocks, ok := codexReviewBlockCount(dir, state)
-	if !ok || blocks >= codexReviewBlockLimit {
+	if !ok {
+		return codexGateAllowed(codexStateBlockRecordFailed)
+	}
+	if blocks >= codexReviewBlockLimit {
 		return codexGateAllowed(codexStateBlockExhausted)
 	}
 	if err := codexReviewRecordBlock(dir, state, blocks+1, now); err != nil {
 		_, _ = fmt.Fprintf(os.Stderr, "codex review gate: block count not recorded (%v) — allowing (fail-open)\n", err)
-		return codexGateAllowed(codexStateBlockExhausted)
+		return codexGateAllowed(codexStateBlockRecordFailed)
 	}
 	// The cached block still says WHAT to fix: the fail's summary and findings
 	// were preserved at record time by the receipt producer (the receipt store
