@@ -26,7 +26,13 @@ The operational threshold is model-specific. Larger windows tolerate higher perc
 | GLM-5.3 (1M) | 1,000,000 tokens | 50% | ~500,000 tokens |
 | Fable / Sonnet 5.5 (1M) | 1,000,000 tokens | 50% | ~500,000 tokens |
 | Sonnet 4.5 and earlier (200K) | 200,000 tokens | 90% | ~180,000 tokens |
+| Haiku 5.5 (1M) | 1,000,000 tokens | 50% | ~500,000 tokens |
 | Haiku (200K) | 200,000 tokens | 90% | ~180,000 tokens |
+
+Read the Haiku 5.5 row (Claude Code v2.1.293+, Anthropic API) together with the rule above — when a
+session matches both a 1M row and the 200K-sessions row, the 200K row wins. On AWS Bedrock / GCP
+Agent Platform / Microsoft Foundry the `haiku` alias still resolves to Haiku 4.5 (200K), so an
+AWS-lineage Haiku session keeps the 200K / 90% thresholds.
 
 GLM-5.3 (via `moai glm`) is a 1M-context model and is operated at the 50% threshold. Claude Code reports `context_window_size` based on the Claude slot (Opus=1M, Sonnet/Haiku=200K), so raw telemetry may show ~180K under GLM; MoAI corrects this to 1M. Trust the statusline CW% gauge.
 

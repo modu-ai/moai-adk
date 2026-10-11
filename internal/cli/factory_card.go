@@ -1883,14 +1883,22 @@ func factoryCompleteCard(ctx context.Context, out io.Writer, root, lockRoot, car
 	if (cardBranch != "" && branch == cardBranch) || factorySameTree(windowTree, card.WorktreePath) || factorySameTree(integTree, card.WorktreePath) {
 		return fmt.Errorf("factory complete: refused — the integration branch %q is the card's own branch (worktree %s): a card's own branch never serves as its integration branch", branch, card.WorktreePath)
 	}
-	// (3) The integration worktree must be provisioned: the only tree holding
-	// the integration branch may not be the parent checkout (which never
-	// changes branch), and no tree at all is the same refusal.
+	// (3) The integration worktree must be provisioned. The parent checkout
+	// serves as the integration tree only where the shared surface resolver
+	// admits it (SPEC-LOCAL-MAIN-FLOW-001 plan §B2 case 4: the local-main gate
+	// is on). The verdict comes from integrationMergeWorktree, the same
+	// resolver the merge verb uses; complete keeps its own refusal wording.
+	// No tree at all is the same refusal.
 	primary, _, err := identifyPrimaryCheckout(root)
 	if err != nil {
 		return fmt.Errorf("factory complete: cannot identify the parent checkout of %s: %w", root, err)
 	}
-	if integTree == "" || factorySameTree(integTree, primary) {
+	parentRefused := false
+	if factorySameTree(integTree, primary) {
+		_, surfaceErr := integrationMergeWorktree(lockRoot, branch)
+		parentRefused = surfaceErr != nil
+	}
+	if integTree == "" || parentRefused {
 		return fmt.Errorf("factory complete: refused — the integration worktree for %q is not provisioned: no tree holds it, or only the parent checkout %s does (the parent never changes branch; the leader provisions the integration worktree)", branch, primary)
 	}
 

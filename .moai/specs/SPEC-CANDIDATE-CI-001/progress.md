@@ -825,3 +825,73 @@ decision record: decided_by=claude+lane-11 (self-dispatch lane, ladder terminal)
 Judgment: PASS-WITH-DEBT is a passing form — 0 must-pass failures, 0 blocking; the codex required-backend machine disagreement is transparently adjudicated per-item in the verdict (P2-A refuted with tree evidence ci.yml:67/:234/:246, P2-B/P2-C accepted as optional/debts N2/N1). Post-verdict deltas (bc4d46f63, b10bcfd0e) are M5 verification-command mechanics the auditor confirmed non-conflicting at b10bcfd0e. Debts 1-3 and optional N5-N7 travel with the SPEC; N5 (one-word doc fix) rides the sync phase.
 
 Run-phase entry: M1 first (config gate workflow.candidate_ci.enabled + candidate record schema), RED-first per plan.md test-name conventions.
+
+## Absorb of local main 478285ab4 (card t1478)
+
+Merge that prepares the landing. Nothing is landed or pushed here: the merge commit stays unpushed on `WT-10-03-tier`, and the landing waits for the operator step and a leader nomination. Logs are under `.moai/reports/t1478/` (gitignored).
+
+- Preconditions: `git rev-parse --short main` → `478285ab4`; `git branch --contains 1236348ac` lists `main` (also `WT-10-10-class`, `WT-high-10-07`, `rc30-preview`). HEAD before the merge: `7939ae72e`, tree clean.
+- Merge base `2aab5f797b75983e132af451da68f69e3426557b`; `git rev-list --count --left-right main...HEAD` → `214	49`.
+- Command: `git merge --no-ff main` (no `-m`). Exit 1, stopped on conflicts. `git diff --name-only --diff-filter=U` listed six files.
+
+Conflicted files and the resolution of each:
+
+- `internal/factory/integration_merge_step.go` (one hunk): HEAD held the landing recheck and a merge inside `WithCandidateMutation` (M4); main held the t1616 flow (S-before status set, F1 unfinished-merge probe, primary dirty re-read, `--no-autostash`, foreign MERGE_HEAD handling, S-after). Resolved as one `mergeInSection` sequence run by both paths. The candidate path runs it inside the candidate lock after the landing recheck, with the P1 in-lock collision re-probe as the last check before `git merge --no-ff --no-autostash --no-overwrite-ignore`. The disabled-key path runs it inline. The residual `@MX:DEBT` / `@MX:CEILING` / `@MX:UPGRADE` block is now one block, at line 596.
+- `internal/cli/integration.go`: `AddCommand` keeps main's `newIntegrationResyncCmd()` and adds HEAD's `newIntegrationCandidateCmd()`.
+- `internal/factorylane/merge.go`: doc comment combines main's exit-status description with HEAD's repo-scoping paragraph; the body is unchanged.
+- `.github/test-input-filters.yml`: keeps HEAD's `scripts/ci/**` and main's t1587 block (`scripts/release.sh`, `scripts/verify-release-provenance.sh`, `.goreleaser.yml`).
+- `AGENTS.local.md` (two hunks): main's `[SUPERSEDED by §4.0]` marks are kept. HEAD's candidate-path exception (REQ-CCI-016) is kept as its own bullet and as the pointer in item 2.
+- `.claude/rules/local/gitflow-lane-protocol.md`: keeps HEAD's candidate-path exception paragraph and main's `origin/main` leader-verification paragraph, which replaces HEAD's develop paragraph.
+
+Auto-merged without a textual conflict, changed on both sides: `.moai/config/sections/workflow.yaml`, `.moai/docs/gitflow-integration-chain.md`, `internal/cli/factory_card.go`, `internal/cli/integration_merge.go`, `internal/cli/mcp_build_identity_test.go`, `internal/config/testdata/shipped_key_inventory.yaml`, `internal/config/types.go`, `internal/factory/integration_merge_step_test.go`, `internal/template/templates/.moai/config/sections/workflow.yaml`. Two of these were expected to conflict: `mcp_build_identity_test.go` and `integration_merge_step_test.go` auto-merged. Both were checked by the gate below. The pin `"integration.go:287"` in `mcp_build_identity_test.go` still names the doc mention: `git grep -n -E "merge-base \.\.HEAD|exit status 128" -- internal/cli/integration.go` → `internal/cli/integration.go:287:// base died with ...`.
+- Post-resolution wording: the auto-merged "Class C" comment in `integration_merge_step.go` said the disabled-key path keeps the section probe as its last check before the merge. That became inaccurate once the t1616 probes ran there too; it now reads "last collision check", with the card-gate re-read and the t1616 pre-merge probes between them.
+
+Verification (run in this worktree, sequentially):
+
+- Conflict markers: `git grep -n -E "^(<<<<<<<|=======|>>>>>>>)" -- <the six conflicted files>` → no output.
+- `gofmt -l internal cmd` → no output, exit 0 (covers the 49 Go files the merge changes against HEAD).
+- `go vet ./internal/factory/ ./internal/cli/ ./internal/factorylane/ ./internal/hook/ ./internal/config/ ./internal/template/` → no output, exit 0 (`vet-absorb.log`).
+- Race families, `go test -race -count=5`:
+  - factory, `-run 'TestMergeStep|TestCandidate'`: `ok  	github.com/modu-ai/moai-adk/internal/factory	1095.623s` (`race-factory-families.log`)
+  - cli, `-run 'TestCandidate|TestLocalMain|TestAuditLag'`: `ok  	github.com/modu-ai/moai-adk/internal/cli	205.397s` (`race-cli-families.log`)
+  - config, `-run 'TestAuditLoaderCompleteness|TestStructYAMLSymmetry|TestLocalMainIntegration|TestShippedConfigKeysHaveReaders'`: `ok  	github.com/modu-ai/moai-adk/internal/config	38.510s` (`race-config-families.log`)
+  - hook, `-run 'TestNoNewEnvLiteralsInDiff'` (the `TestNoNewEnvLiterals` family): `ok  	github.com/modu-ai/moai-adk/internal/hook	2.613s` (`race-hook-families.log`)
+  - template, `-run 'TestTestInputFiltersSingleSource|TestTestInputFiltersCoversGoTestInputs'`: `ok  	github.com/modu-ai/moai-adk/internal/template	1.938s` (`race-template-families.log`)
+- Env-literal guard, verbose (`hook-env-literal-guard-v.log`): `env-literal sweep: 4241 added lines swept across internal/hook internal/factorymsg internal/cli (envkeys.go and _test.go excluded), base=db0c514d3b0ce16befa5a6d35126a35b6b0f73d0, distinct literals=0`; `--- PASS: TestNoNewEnvLiteralsInDiff (0.39s)`; `ok  	github.com/modu-ai/moai-adk/internal/hook	1.145s`. The swept set was non-empty, so the pass asserts something.
+- Test-input-filter parity, verbose (`template-input-filters-v.log`): `--- PASS: TestTestInputFiltersSingleSource (0.00s)`; `--- PASS: TestTestInputFiltersCoversGoTestInputs (0.00s)`; `ok  	github.com/modu-ai/moai-adk/internal/template	0.404s`.
+- Full packages, `go test -count=1 -timeout 30m`:
+  - factorylane: `ok  	github.com/modu-ai/moai-adk/internal/factorylane	42.058s` (`full-factorylane.log`)
+  - config: `ok  	github.com/modu-ai/moai-adk/internal/config	5.422s` (`full-config.log`)
+  - hook: `ok  	github.com/modu-ai/moai-adk/internal/hook	296.695s` (`full-hook.log`; includes `TestHookWrapperCopiesStayIdentical`)
+  - factory: `ok  	github.com/modu-ai/moai-adk/internal/factory	599.467s` (`full-factory.log`)
+  - cli: `FAIL	github.com/modu-ai/moai-adk/internal/cli	1800.957s` (`full-cli.log`); see Gaps.
+- CLI tests defined in the 12 `internal/cli` test files the merge changed (103 top-level names, `-count=1 -v`, `cli-changed-test-files-v.log`): 102 `--- PASS`, 0 `--- FAIL`, 1 `--- SKIP: TestManagedCodexTUIFakeCodex` (the re-exec helper, skipped by design); `ok  	github.com/modu-ai/moai-adk/internal/cli	157.044s`.
+- `golangci-lint run --new-from-rev=478285ab4 ./internal/factory/... ./internal/cli/... ./internal/factorylane/... ./internal/hook/... ./internal/config/...` → `0 issues.` (`lint-absorb.log`).
+- `grep -n develop_branch .moai/config/sections/git-strategy.yaml` → `16:        develop_branch: main`.
+
+Pre-commit gate (the `gate` workflow, run in this worktree at the scope the brief allows):
+
+- Phase 1B snapshot check: `moai verify check --key-current` → exit 1, `"fresh": false`, `"reason": "no snapshot recorded for the current working-tree key"`, key `7939ae72e3810c70d7aa425c23a4a96f80459b7c:3cb9d979b655ccc4`. Nothing was reused; every category was executed.
+- Format, repository-wide: `gofmt -l .` → no output, exit 0.
+- Type, repository-wide: `go vet ./...` → no output, exit 0 (`gate-vet-full.log`, 0 bytes).
+- Lint, repository-wide, issues new relative to local main: `golangci-lint run --new-from-rev=478285ab4 ./...` → `0 issues.`, exit 0 (`gate-lint-full.log`).
+- Test, scoped to the 29 changed Go test files: `go test -race -count=1 -timeout 30m -run '^(<top-level names>)$' ./<pkg>/`, once per package, covering 245 top-level tests in 11 packages (atomicfile 14, bugreport 3, cli 103, config 2, factory 40, factorylane 15, feedback 1, hook 63, runtime 1, statusline 1, template 2). All 11 exit 0 with `ok` lines, for example `ok  	github.com/modu-ai/moai-adk/internal/cli	227.199s`, `ok  	github.com/modu-ai/moai-adk/internal/factory	156.350s`, `ok  	github.com/modu-ai/moai-adk/internal/hook	28.884s`. Per-package logs are `gate-test-*.log`; the index is `gate-test-summary.txt`.
+- Test, full scope (`go test -race ./...`): NOT RUN, excluded by the brief (no full-repository go test). The repository-wide test verdict is owned by the CI run on the integration branch and is PENDING at report time.
+- Snapshot recording: not performed. The gate records a measured duration for each full-scope check, and no duration was captured at execution time, so nothing was written to the snapshot store. Recording is fail-open and does not change the verdict.
+- Gate verdict for the executed scope: PASS (format, type, lint, scoped test). The full-scope test check was not executed.
+
+Gaps:
+
+- Full `internal/cli` run: `panic: test timed out after 30m0s`, with `TestFactoryNextOwnAssignedCardIgnoresSiblingAssignments` running. About 1,622 of 5,470 top-level tests (`cli-test-list.txt`) finished before the limit. The remaining 3,848 were not run in this absorb. Only the changed-file subset above and the race families cover them.
+- Fifteen top-level tests failed in the full `internal/cli` run (`full-cli.log`):
+  - Thirteen reproduce identically on the pre-merge tree. That tree is `7939ae72e`, exported with `git archive` to the scratchpad and run with `go -C` (no `.git` directory), and the merged tree in isolation (`base-7939ae72e-cli-codex-v.log`, `cli-codex-failing-isolated-v.log`): `TestCountCodexAgentTOMLs` and `TestCountCodexAgentTOMLs_BadPatternRoot` (`count = 6`; `countCodexAgentTOMLs` globs the real home `~/.codex/agents` first, which holds six TOML files on this host); `TestCodexReviewGatePrimaryCheckoutSkip`, `TestCodexReviewGate_TreeScopeRequestShapeUnchanged`, `TestCodexReviewGate_StaleEnvKeepsTreeScope` (`codex review: fail: - [P1] tree scope findings` on both trees); and eight `TestCheckCodexWiring_*` tests (Mirror, DetailOnly, Count, Width, TailDrop, TwoRegisters) with their subtests. These depend on this host's Codex state and are not attributed to the merge.
+  - Two are intermittent. `TestCodexGoalUnmeasuredCapBoundsContinuation` failed in the full run (`did not finish within its internal budget`) and passed in isolation on the merged tree and on the pre-merge tree. `TestCodexHarnessHooksRegisterNoFactoryPeer/lane` failed in 2 of 13 merged observations (the full run, and the isolated run right after it, under heavy load: `factory inbox degraded ... context deadline exceeded`) and in 0 of 12 pre-merge observations; the merged tree then passed 11 of 11 once the load fell (`merged-peer-test-count3-v.log`, `merged-peer-lane-count8-v.log`). Not reproduced deterministically. Treated as a load-sensitive flake, not as a regression. Unresolved: a same-load repetition on both trees was not run.
+- Repository-wide test verdict: not run (`go test ./...` is excluded by the brief). The verdict belongs to the CI run on the integration branch after landing and is PENDING at report time.
+- The machine was shared with other sessions' `go test` processes during this run (load averages 22.9 to 36.9, `uptime`). Timings and the timing-sensitive results above are read with that in mind.
+
+Residual risk:
+
+- The residual `@MX:DEBT` window is unchanged in substance: an ignored byte at an added path created after the last collision probe. The candidate path narrows it to the in-lock re-probe. The tag now sits at `internal/factory/integration_merge_step.go:596`.
+- The candidate path's order is new: the t1616 checks (S-before, F1 probe, primary dirty re-read) now run inside the candidate lock, before the P1 re-probe and the merge. The factory families and the full factory package cover it, and all pass.
+
+No status field, `audited_sha`, or other section is changed by this block.

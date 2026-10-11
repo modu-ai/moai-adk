@@ -86,8 +86,11 @@ type ExecGitRunner struct {
 	Dir string
 }
 
-// Git implements GitRunner with os/exec. A non-zero exit becomes a
-// *GitExitError carrying both streams; other failures pass through verbatim.
+// Git implements GitRunner with os/exec. A process that runs and exits non-zero
+// becomes a *GitExitError carrying its exit code and both streams; a process
+// ended by a signal reports -1, as exec.ExitError does. Any other failure, where
+// the process could not be started or waited on, is returned as is: it has no
+// exit status, so none is invented for it.
 //
 // The child runs with the repo-scoping environment variables removed
 // (card t1478 M2 repair, P1): the git environment outranks cmd.Dir, so an
@@ -103,12 +106,11 @@ func (r ExecGitRunner) Git(args ...string) (string, error) {
 	var stdout, stderr bytes.Buffer
 	cmd.Stdout, cmd.Stderr = &stdout, &stderr
 	if err := cmd.Run(); err != nil {
-		code := 1
 		var ee *exec.ExitError
-		if errors.As(err, &ee) {
-			code = ee.ExitCode()
+		if !errors.As(err, &ee) {
+			return stdout.String(), err
 		}
-		return stdout.String(), &GitExitError{ExitCode: code, Stdout: stdout.String(), Stderr: stderr.String()}
+		return stdout.String(), &GitExitError{ExitCode: ee.ExitCode(), Stdout: stdout.String(), Stderr: stderr.String()}
 	}
 	return stdout.String(), nil
 }

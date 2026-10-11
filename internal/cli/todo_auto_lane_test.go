@@ -408,6 +408,36 @@ func TestAutoLaneCycleAssignedCardBeforeQueuedRanking(t *testing.T) {
 	}
 }
 
+// TestAutoLaneCycleAssignedCardWithNoQueuedCandidates — card t1588: the exact
+// reported instance, a quota-free pass whose only remaining card is the one
+// assigned to this lane (zero queued candidates). The pre-#1804 cycle ranked
+// the queued-only candidate list, found nothing, and returned "no work" with
+// the assigned card still owed; the assigned arm precedes the ranking, so the
+// pass leases the card instead of terminating.
+func TestAutoLaneCycleAssignedCardWithNoQueuedCandidates(t *testing.T) {
+	root, _ := nmBase(t, factory.BacklogStatePicked)
+	fcPlace(t, root, homestate.Card{CardID: "t1", State: homestate.CardAssigned, OwnerLabel: "lane-1", Stage: homestate.CardRun})
+	nmLaneEnv(t, "lane-1", "")
+	nmIsolatedWorktrees(t, "t1")
+	laneAutoSeams(t)
+	laneAutoSeedEvidence(t, root, "t1")
+
+	tick := 0
+	sleep, now := laneAutoTickClock(&tick)
+	var out, errOut bytes.Buffer
+	if err := runAutoLaneCycle(context.Background(), root, &out, &errOut, laneAutoOpts(t, 5*time.Minute, sleep, now)); err != nil {
+		t.Fatalf("lane cycle: %v (stderr %q)", err, errOut.String())
+	}
+	got := out.String()
+	if !strings.Contains(got, "t1 stage=") {
+		t.Fatalf("the cycle terminated with the lane's assigned card still owed (the t1588 starvation):\n%s", got)
+	}
+	if !strings.Contains(got, "card: t1") {
+		t.Errorf("the dispatch directive does not name the assigned card:\n%s", got)
+	}
+	nmAssertLeased(t, root, "t1", "lane-1")
+}
+
 // TestAutoLaneCycleHonorsLauncherRunID — card t1577: the launcher names the
 // factory run in the environment (config.EnvFactoryRunID) and the lane cycle
 // must honor that selection, falling back to auto-discovery only when the
