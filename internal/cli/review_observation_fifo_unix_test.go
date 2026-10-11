@@ -78,9 +78,10 @@ func TestReviewFindingAbandonedFoldReleasesLockOnApplyReads(t *testing.T) {
 
 	probe := make(chan error, 1)
 	go func() {
-		r, err := acquireFoldStoreLock(memDir, nil)
+		locker := newFoldStoreLock()
+		err := locker.acquire(memDir)
 		if err == nil {
-			defer r()
+			defer func() { _ = locker.release() }()
 		}
 		probe <- err
 	}()
@@ -125,9 +126,10 @@ func TestReviewFindingAbandonedFoldReleasesStoreLock(t *testing.T) {
 	// fold acquires it within a bounded wait.
 	probe := make(chan error, 1)
 	go func() {
-		r, err := acquireFoldStoreLock(memDir, nil)
+		locker := newFoldStoreLock()
+		err := locker.acquire(memDir)
 		if err == nil {
-			defer r()
+			defer func() { _ = locker.release() }()
 		}
 		probe <- err
 	}()

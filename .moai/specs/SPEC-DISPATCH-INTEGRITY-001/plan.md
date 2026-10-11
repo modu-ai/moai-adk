@@ -118,8 +118,9 @@ M1 first.
   classification into `progress.md` §E.2, then trim the drop-ins to the
   owned subset before any commit — INCLUDING the re-authoring of
   `TestReviewFindingFoldInterleavedArchiveLoss` to the serialized shape
-  AC-DI-010 pins (fold B a separate process completing after A releases
-  the lock; strengthened-assertion duty per AC-DI-010) and the measurement
+  AC-DI-010 pins (fold B a separate process that waits at the store lock for the
+  bounded interval, refuses inside A's window with the bounded-wait refusal,
+  and is filed exactly once on a re-run after A releases the lock; strengthened-assertion duty per AC-DI-010) and the measurement
   of that re-authored body's RED-now into the ledger. Exit:
   classification table re-affirmed on the current tree, and every baseline
   cell — including the re-authored AC-DI-010 body's RED-now and the

@@ -78,20 +78,21 @@ func TestReviewFindingAbandonedFoldDoesNotPublish(t *testing.T) {
 }
 
 // TestReviewFindingLockFileRefusesSymlink is the post-close gate's finding
-// 4: the lock file must not follow symlinks. A `.moai-store-lock` that is a
+// 4: the lock file must not follow symlinks. A `.moai-fold.lock` that is a
 // symlink pointed O_CREATE outside the store — the gate's repro locked
 // another repository's `.git/index.lock` into existence. The acquisition
 // must refuse, and the symlink target must stay untouched.
 func TestReviewFindingLockFileRefusesSymlink(t *testing.T) {
 	dir := t.TempDir()
 	outside := filepath.Join(t.TempDir(), "outside.lock")
-	lockPath := filepath.Join(dir, foldLockName)
+	lockPath := filepath.Join(dir, foldLockFileName)
 	if err := os.Symlink(outside, lockPath); err != nil {
 		t.Fatal(err)
 	}
-	release, err := acquireFoldStoreLock(dir, nil)
+	lock := newFoldStoreLock()
+	err := lock.acquire(dir)
 	if err == nil {
-		release()
+		_ = lock.release()
 		t.Fatal("the lock acquisition followed a symlinked lock file and locked the target outside the store")
 	}
 	t.Logf("symlinked lock refused: %v", err)
@@ -106,9 +107,9 @@ func TestReviewFindingLockFileRefusesSymlink(t *testing.T) {
 	if err := os.WriteFile(lockPath, nil, 0o644); err != nil {
 		t.Fatal(err)
 	}
-	release2, err := acquireFoldStoreLock(dir, nil)
-	if err != nil {
+	lock2 := newFoldStoreLock()
+	if err := lock2.acquire(dir); err != nil {
 		t.Fatalf("a regular lock file must still acquire: %v", err)
 	}
-	release2()
+	_ = lock2.release()
 }

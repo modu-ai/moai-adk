@@ -80,9 +80,26 @@ type foldTestSeam struct {
 	// ("effective-start" then "bytes-done") — the codex-review round-2
 	// ordering regression asserts on this sequence.
 	orderProbe func(stage string)
+	// mutateBeforeRename is invoked inside atomicWriteFoldFile immediately
+	// before os.Rename — after every pre-rename check has passed — the
+	// rename window a concurrent writer's publish is destroyed in while the
+	// fold returns success (SPEC-MEMORY-FOLD-RENAME-RACE-001 M1, AC-MRR-001).
+	mutateBeforeRename func(dir, name string)
+	// mutateBetweenWrites is invoked in applyFold after the archive append
+	// completes and before the MEMORY.md rewrite — the re-read/effective-state
+	// position that separates a whole-apply lock from a per-write one
+	// (AC-MRR-009's span observation).
+	mutateBetweenWrites func(dir string)
 }
 
 var memoryFoldSeam foldTestSeam
+
+// foldLockFileName is the per-store advisory lock file the fold apply path
+// holds for the whole applyFold span (REQ-MRR-001/002,
+// SPEC-MEMORY-FOLD-RENAME-RACE-001). It is created on first acquire and
+// never removed on release (plan.md D-3 — the removal would race a
+// concurrent opener; the lock's kernel lifetime makes removal unnecessary).
+const foldLockFileName = ".moai-fold.lock"
 
 // normalizeFoldCardID validates --card per REQ-MFB-001: t<digits> or bare
 // digits normalized to t<digits>. Every other value is refused before the
@@ -167,13 +184,12 @@ func newMemoryFoldCmd() *cobra.Command {
 			// nothing to do answers here — on a readable-but-not-writable
 			// store too, where lock-file creation would fail (the preview
 			// fix's mirror on the --yes path, post-close gate finding).
-			// Only when actual application is needed does the write
-			// transaction take the lock and re-compute the plan inside it:
-			// optimistic outside, authoritative inside — the plan the apply
-			// executes is always computed from the post-wait store. The
-			// optimistic snapshot is discarded here; the apply re-reads
-			// inside the lock.
-			plan, comp, _, err := computeFoldPlan()
+			// Only when actual application is needed does applyFold take the
+			// store lock (REQ-MRR-001). Under that lock it checks the store's
+			// bytes against this plan's snapshot, so a store that changed in between
+			// is refused, never published over. The plan above is read outside the
+			// lock, and applyFold's byte checks under the lock catch any later change.
+			plan, comp, before, err := computeFoldPlan()
 			if err != nil {
 				return err
 			}
@@ -191,49 +207,25 @@ func newMemoryFoldCmd() *cobra.Command {
 				renderFoldPreview(out, plan)
 				return nil
 			}
-			// REQ-DISPATCH-008: the whole transaction — snapshot read, plan,
-			// and both index writes — runs inside the store's cross-process
-			// lock, so a concurrent fold's process waits and re-plans
-			// against the post-transaction store. The hold spans exactly
-			// the index-write critical section: the result's printing is
-			// captured here and runs AFTER the lock is released — a blocked
-			// stdout pipe must never extend the hold past the completed
-			// file update (post-close gate finding, lock-scope discipline).
-			var render func() error
-			err = withFoldStoreLock(store.Dir, nil, func() error {
-				plan, comp, before, err := computeFoldPlan()
-				if err != nil {
-					return err
-				}
-				if len(comp.plan.Removed) == 0 {
-					render = func() error { return renderNoFold(plan, comp) }
-					return nil
-				}
-				if memoryFoldSeam.mutateDisk != nil {
-					// Test seam (AC-MFB-007 iii): a concurrent writer lands
-					// between the plan and the apply; the content re-checks
-					// below must catch it.
-					memoryFoldSeam.mutateDisk(store.Dir)
-				}
-				if err := applyFold(store.Dir, before, comp, nil, nil); err != nil {
-					return err
-				}
-				plan.Applied = true
-				render = func() error {
-					if jsonOutput {
-						return renderFoldPlanJSON(out, plan)
-					}
-					_, _ = fmt.Fprintf(out, "filed %d line(s) into %s\n", len(comp.plan.Removed), comp.archive)
-					renderFoldUnlinked(out, comp.unlinked)
-					renderFoldKept(out, comp.kept)
-					return nil
-				}
-				return nil
-			})
-			if err != nil {
+			if memoryFoldSeam.mutateDisk != nil {
+				// Test seam (AC-MFB-007 iii): a concurrent writer lands
+				// between the plan and the apply; the content re-checks
+				// inside applyFold must catch it.
+				memoryFoldSeam.mutateDisk(store.Dir)
+			}
+			if err := applyFold(store.Dir, before, comp, nil, nil); err != nil {
 				return err
 			}
-			return render()
+			plan.Applied = true
+			// The result's print runs after applyFold has released the store lock:
+			// a blocked stdout pipe must never extend the hold (lock-scope discipline).
+			if jsonOutput {
+				return renderFoldPlanJSON(out, plan)
+			}
+			_, _ = fmt.Fprintf(out, "filed %d line(s) into %s\n", len(comp.plan.Removed), comp.archive)
+			renderFoldUnlinked(out, comp.unlinked)
+			renderFoldKept(out, comp.kept)
+			return nil
 		},
 	}
 	cmd.Flags().StringVar(&card, "card", "", "Card id whose open-work lines to fold (t<digits> or bare digits)")
@@ -466,6 +458,28 @@ func buildFoldPlan(before taxonomy.StoreSnapshot, cardID string) (foldComputed, 
 // preceded by a comparison of the on-disk bytes against the content the plan
 // was computed from.
 func applyFold(dir string, before taxonomy.StoreSnapshot, comp foldComputed, writesForbidden func() bool, run *foldOnDoneRun) error {
+	// The store lock spans the WHOLE apply (REQ-MRR-001): acquired before
+	// the first pre-write check and released after the last rename, so two
+	// fold processes on one store never overlap their check→rename windows
+	// and a cooperating writer's publish lands before a check or after the
+	// renames — never inside one, destroyed (SPEC-MEMORY-FOLD-RENAME-RACE-001).
+	// Strictly additive to the REQ-MFB-004 ordering below: nothing between
+	// the existing checks moves (plan.md D-1). Contention returns
+	// REQ-MRR-003's clean refusal naming the store; the release is the
+	// deferred one even when a write fails mid-apply.
+	lock := newFoldStoreLock()
+	if err := lock.acquireUntil(dir, writesForbidden); err != nil {
+		return err
+	}
+	defer func() { _ = lock.release() }()
+	return applyFoldLocked(dir, before, comp, writesForbidden, run)
+}
+
+// applyFoldLocked is applyFold's body for a caller that already holds the
+// store's fold lock: the on-done step's transaction (runUnderFoldLock). It
+// takes no lock of its own, since a second acquisition from the same process
+// would wait on the hold the caller already has.
+func applyFoldLocked(dir string, before taxonomy.StoreSnapshot, comp foldComputed, writesForbidden func() bool, run *foldOnDoneRun) error {
 	archive := comp.archive
 
 	// An abandoned close-path step (the card-close bound expired) must not
@@ -499,6 +513,13 @@ func applyFold(dir string, before taxonomy.StoreSnapshot, comp foldComputed, wri
 		if err := atomicWriteFoldFile(dir, archive, comp.planned[archive], before[archive], nil, writesForbidden, run); err != nil {
 			return err
 		}
+	}
+	// Test-only span-observation point (AC-MRR-009): after the archive
+	// append and before the MEMORY.md rewrite — the re-read/effective-state
+	// position where a whole-apply lock is still held and a per-write lock
+	// is not.
+	if memoryFoldSeam.mutateBetweenWrites != nil {
+		memoryFoldSeam.mutateBetweenWrites(dir)
 	}
 	// (2) re-read the archive from disk and confirm every moved line's
 	// link-target set is present on one line — regardless of whether this
@@ -749,7 +770,7 @@ func atomicWriteFoldFile(dir, name string, want, planTime []byte, guard *foldRen
 	// here and refused, never published over. The irreducible tail between
 	// this comparison and the rename is AC-DI-009's stated residual risk
 	// against a writer that bypasses every protocol; the store lock
-	// (withFoldStoreLock) closes the window for cooperating writers.
+	// closes the window for cooperating writers.
 	if err := checkFoldUnchanged(dir, name, planTime, writesForbidden); err != nil {
 		return err
 	}
@@ -765,6 +786,9 @@ func atomicWriteFoldFile(dir, name string, want, planTime []byte, guard *foldRen
 	if writesForbidden != nil && writesForbidden() {
 		return fmt.Errorf("memory fold: %s: the step was abandoned — not writing", name)
 	}
+	if memoryFoldSeam.mutateBeforeRename != nil {
+		memoryFoldSeam.mutateBeforeRename(dir, name)
+	}
 	if err := os.Rename(tmpName, filepath.Join(dir, name)); err != nil {
 		return fmt.Errorf("memory fold: rename %s: %w", name, err)
 	}
@@ -775,48 +799,29 @@ func atomicWriteFoldFile(dir, name string, want, planTime []byte, guard *foldRen
 	return nil
 }
 
-// foldLockName is the store's cross-process lock file (REQ-DISPATCH-008,
-// SPEC-DISPATCH-INTEGRITY-001): a dot-prefixed non-.md resident BESIDE the
-// store's index. The path must derive from the store alone — never from a
-// process-local environment value such as TMPDIR — or two processes
-// addressing one store under different environments would resolve different
-// lock files and stop serializing (run-gate finding 1). The lock is durable
-// named infrastructure of the store: the store-shape helpers
-// (storeHashes, requireNoTempFiles) exempt it by name.
-const foldLockName = ".moai-store-lock"
-
-// foldLockPath is the lock file's path for one store.
-func foldLockPath(dir string) string {
-	return filepath.Join(dir, foldLockName)
-}
-
-// withFoldStoreLock runs fn inside the store's cross-process lock
-// (REQ-DISPATCH-008): the lock spans the fold's whole transaction — the
-// snapshot read, the plan, and both index writes — so a second fold's
-// PROCESS waits at the lock and re-plans against the post-transaction store
-// instead of interleaving its writes with the holder's renames. Two
-// `moai memory fold` invocations are separate OS processes; an in-process
-// mutex cannot serialize them (constraint C5). A non-nil forbidden makes
-// the ACQUISITION wait itself abandonment-aware (the abandonment trio's
-// third member): a bounded step whose caller timed out exits the wait
-// instead of staying stuck until an external release.
+// runUnderFoldLock runs fn while the store's fold lock is held (REQ-DISPATCH-008):
+// the on-done step's transaction — snapshot read, plan, and both index writes —
+// runs inside it, so a second fold's PROCESS waits at the lock and re-plans
+// against the post-transaction store. Two `moai memory fold` invocations are
+// separate OS processes, so the lock is the cross-process file lock of
+// fold_store_lock_{unix,windows}.go (constraint C5). The lock path derives from
+// the store alone, never from a process-local TMPDIR value, so two processes
+// addressing one store always serialize on the same file. A non-nil forbidden
+// makes the ACQUISITION wait itself abandonment-aware: a bounded step whose
+// caller timed out exits the wait instead of staying stuck until an external
+// release.
 //
-// The bounded on-done step keeps its own discipline under the lock: the
-// wait for the lock happens inside acquire, and the step's forbidden()
-// checks still refuse the write of an abandoned step after the wait.
+// fn must apply through applyFoldLocked, not applyFold: a second acquisition of
+// the same lock from inside fn would wait on the hold this call already has.
 //
-// @MX:WARN: [AUTO] Cross-process file lock — while held it blocks every
-// other fold process on this store until released or the holder exits.
-// @MX:REASON: a concurrent fold's process must serialize its whole
-// transaction (read, plan, both index writes) against the holder's; without
-// it a fold completing inside the holder's window lost its line to the
-// holder's pre-window snapshot rename (EL-009/EL-002).
-func withFoldStoreLock(dir string, forbidden func() bool, fn func() error) error {
-	release, err := acquireFoldStoreLock(dir, forbidden)
-	if err != nil {
+// @MX:WARN: [AUTO] Cross-process file lock — while held it blocks every other fold process on this store until released or the holder exits.
+// @MX:REASON: a concurrent fold's process must serialize its whole transaction (read, plan, both index writes) against the holder's; without it a fold completing inside the holder's window lost its line to the holder's pre-window snapshot rename (EL-009/EL-002).
+func runUnderFoldLock(dir string, forbidden func() bool, fn func() error) error {
+	lock := newFoldStoreLock()
+	if err := lock.acquireUntil(dir, forbidden); err != nil {
 		return err
 	}
-	defer release()
+	defer func() { _ = lock.release() }()
 	return fn()
 }
 
@@ -1344,13 +1349,13 @@ func foldOnDoneStep(cardID string, run *foldOnDoneRun) (string, error) {
 		return "", fmt.Errorf("the step was abandoned before its write")
 	}
 	// REQ-DISPATCH-008: the on-done step's transaction takes the store's
-	// cross-process lock like the verb. The wait happens inside the
+	// fold lock. The wait happens inside the
 	// acquire; an abandoned step's forbidden() checks still refuse the
 	// write after the wait — and the read itself is abandonment-polled
 	// (run-gate finding 2): a read that blocks past the bound releases the
 	// lock instead of pinning it for every follow-up fold.
 	var summary string
-	err = withFoldStoreLock(chosen.Dir, forbidden, func() error {
+	err = runUnderFoldLock(chosen.Dir, forbidden, func() error {
 		before, err := snapshotStoreBounded(chosen.Dir, forbidden)
 		if err != nil {
 			return err
@@ -1365,7 +1370,7 @@ func foldOnDoneStep(cardID string, run *foldOnDoneRun) (string, error) {
 		if forbidden() {
 			return fmt.Errorf("the step was abandoned before its write")
 		}
-		if err := applyFold(chosen.Dir, before, comp, forbidden, run); err != nil {
+		if err := applyFoldLocked(chosen.Dir, before, comp, forbidden, run); err != nil {
 			return err
 		}
 		summary = fmt.Sprintf("filed %d line(s) of %s into %s (store: %s)",

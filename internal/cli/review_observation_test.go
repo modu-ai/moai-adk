@@ -141,18 +141,18 @@ func TestReviewFindingFoldConcurrentWrite(t *testing.T) {
 	}
 }
 
-// TestReviewFindingFoldInterleavedArchiveLoss is AC-DI-010's RE-AUTHORED
-// serialized shape (plan-audit gate-P2; the synchronous in-callback original
-// pinned the defective concurrency semantics). Fold A runs in-process with
-// the order seam; at its archive-write probe — inside A's write transaction —
-// the test starts fold B as a SEPARATE OS PROCESS for a different card, and
-// A's critical section is held open until B's whole fold has finished or the
-// bounded wait expires. Under the cross-process lock (REQ-DISPATCH-008) B
-// cannot finish inside A's window: it waits at the lock, and after A's
-// transaction completes and releases it, B completes normally against the
-// post-A store. Under today's unlocked code B finishes inside A's window,
-// A's pre-B snapshot rename overwrites B's archive write, and A refuses the
-// MEMORY.md write — B's completed line lands in neither index.
+// TestReviewFindingFoldInterleavedArchiveLoss pins the verb path's contract when
+// a second fold process meets a store lock held by a first fold. Fold A runs
+// in-process with the order seam; at its bytes-done probe — inside A's apply,
+// with the store lock held — the test starts fold B as a SEPARATE OS PROCESS
+// for a different card and keeps A's critical section open until B has
+// finished. Under the cross-process lock (REQ-DISPATCH-008, bounded by
+// REQ-MRR-003) B waits at the lock for the bounded interval, then refuses
+// cleanly: it names the contended store, writes nothing, and its line stays in
+// the store. Once A has released the lock, re-running B files that line exactly
+// once. Under today's unlocked code B finishes inside A's window, A's pre-B
+// snapshot rename overwrites B's archive write, and A refuses the MEMORY.md
+// write — B's completed line lands in neither index.
 func TestReviewFindingFoldInterleavedArchiveLoss(t *testing.T) {
 	line2 := "- [t9003 other card](project_card_t9003_other.md)"
 	files := minimalFiles()
@@ -163,11 +163,13 @@ func TestReviewFindingFoldInterleavedArchiveLoss(t *testing.T) {
 	t.Cleanup(func() { memoryFoldSeam = prev })
 
 	var (
-		bCmd      *exec.Cmd
-		bWaitErr  error
-		bExitAt   time.Time
-		bInWindow bool // B's process finished while A's transaction was open
-		bDone     chan error
+		bCmd                     *exec.Cmd
+		bOut                     *bytes.Buffer
+		bWaitErr                 error
+		bStartAt, bExitAt        time.Time
+		bInWindow                bool   // B's process finished while A's transaction was open
+		memBefore, archiveBefore string // store bytes just before B starts
+		memAfter, archiveAfter   string // store bytes right after B exits, inside A's window
 	)
 	memoryFoldSeam.orderProbe = func(stage string) {
 		if stage != "bytes-done" {
@@ -175,62 +177,75 @@ func TestReviewFindingFoldInterleavedArchiveLoss(t *testing.T) {
 		}
 		// Disarm: A's second write must not start a second fold B.
 		memoryFoldSeam = foldTestSeam{}
-		bCmd = foldSubprocess(t, dir, "t9003")
+		memBefore = foldRead(t, dir, "MEMORY.md")
+		archiveBefore = foldRead(t, dir, fixtureArchive)
+		bCmd, bOut = foldSubprocess(t, dir, "t9003")
+		bStartAt = time.Now()
 		if err := bCmd.Start(); err != nil {
 			t.Errorf("start fold B process: %v", err)
 			return
 		}
-		bDone = make(chan error, 1)
+		bDone := make(chan error, 1)
 		go func() { bDone <- bCmd.Wait() }()
-		// Hold A's write transaction open until B's whole fold has finished
-		// (unlocked code) or the bounded wait expires (the serialized wait
-		// the cross-process lock produces — B makes no progress inside A's
-		// window because it is waiting at the lock).
+		// Hold A's write transaction open until B's process has finished. B must
+		// finish inside this window: its lock wait is bounded, so it ends in a
+		// refusal and never blocks A's transaction indefinitely.
 		select {
 		case bWaitErr = <-bDone:
 			bExitAt = time.Now()
 			bInWindow = true
 		case <-time.After(foldSubprocessWait):
-			bInWindow = false
+			_ = bCmd.Process.Kill()
+			bWaitErr = <-bDone
 		}
+		memAfter = foldRead(t, dir, "MEMORY.md")
+		archiveAfter = foldRead(t, dir, fixtureArchive)
 	}
 	first := runMemoryFold(t, "--card", "t9001", "--yes", "--dir", dir)
-	aReturnAt := time.Now()
+	if first.err != nil {
+		t.Fatalf("fold A (the lock holder) must complete: %v\nstderr: %s", first.err, first.stderr)
+	}
 	if bCmd == nil {
 		t.Fatal("fold A's seam never started fold B")
 	}
+	// AC-DI-010's Then, asserted on B's own process result and on the file
+	// CONTENT (D12 strengthened-assertion duty): B refused inside A's window with
+	// the bounded-wait refusal naming the contended store, changed no index byte,
+	// and its line is filed exactly once after a re-run.
 	if !bInWindow {
-		// The serialized arrangement: B was still waiting when A's
-		// transaction closed. Join B's own process result now — it completes
-		// against the post-A store.
-		select {
-		case bWaitErr = <-bDone:
-			bExitAt = time.Now()
-		case <-time.After(foldSubprocessWait):
-			_ = bCmd.Process.Kill()
-			bWaitErr = <-bDone
-			t.Error("fold B process did not finish after fold A released the store")
-		}
+		t.Fatalf("fold B's process did not finish inside fold A's window (ceiling %v) — the bounded lock wait must end in a refusal", foldSubprocessWait)
+	}
+	if bWaitErr == nil {
+		t.Fatal("fold B completed while fold A held the store lock — a second fold must refuse, not write inside the holder's transaction")
+	}
+	refusal := "the store lock on " + dir + " stayed held for " + foldStoreLockRetryDeadline.String() + " — refusing to write"
+	if !strings.Contains(bOut.String(), refusal) {
+		t.Errorf("fold B's refusal does not carry the bounded-wait message\nwant substring: %q\nfold B output:\n%s", refusal, bOut.String())
+	}
+	if waited := bExitAt.Sub(bStartAt); waited < foldStoreLockRetryDeadline {
+		t.Errorf("fold B refused after %v, before the %v bounded wait elapsed — the refusal did not come from the lock wait", waited, foldStoreLockRetryDeadline)
+	}
+	if memAfter != memBefore {
+		t.Error("fold B changed MEMORY.md although it refused")
+	}
+	if archiveAfter != archiveBefore {
+		t.Error("fold B changed the archive although it refused")
+	}
+	if !strings.Contains(memAfter, line2) {
+		t.Error("fold B's refused line is no longer in MEMORY.md — the refusal must keep it for a re-run")
+	}
+	// The re-run, once the holder has released the lock, files the refused line.
+	rerun := runMemoryFold(t, "--card", "t9003", "--yes", "--dir", dir)
+	if rerun.err != nil {
+		t.Fatalf("the re-run of the refused fold must complete once the lock is free: %v\nstderr: %s", rerun.err, rerun.stderr)
 	}
 	mem := foldRead(t, dir, "MEMORY.md")
 	archive := foldRead(t, dir, fixtureArchive)
-	t.Logf("fold A err=%v; fold B err=%v in-window=%v; line t9003 in MEMORY=%v archive=%v; line t9001 in MEMORY=%v archive=%v",
-		first.err, bWaitErr, bInWindow, strings.Contains(mem, line2), strings.Contains(archive, line2), strings.Contains(mem, line9001), strings.Contains(archive, line9001))
-	// AC-DI-010's Then, asserted on file CONTENT and on B's own process
-	// result (D12 strengthened-assertion duty): B completed normally, after
-	// A's transaction closed, and every completed fold's index line is
-	// present exactly once — no line lost, no duplicate.
-	if bWaitErr != nil {
-		t.Errorf("the waiting fold did not complete normally: %v", bWaitErr)
-	}
-	if !bExitAt.After(aReturnAt) {
-		t.Errorf("fold B's process finished at %v, before fold A's transaction closed at %v — it did not wait for the store lock", bExitAt, aReturnAt)
-	}
 	if got := strings.Count(mem, line2) + strings.Count(archive, line2); got != 1 {
-		t.Errorf("completed fold B's line is present %d times across the indexes after both folds terminated, want exactly 1", got)
+		t.Errorf("fold B's line is present %d times across the indexes after the re-run, want exactly 1", got)
 	}
 	if got := strings.Count(mem, line9001) + strings.Count(archive, line9001); got != 1 {
-		t.Errorf("completed fold A's line is present %d times across the indexes after both folds terminated, want exactly 1", got)
+		t.Errorf("fold A's line is present %d times across the indexes after both folds, want exactly 1", got)
 	}
 }
 
@@ -340,10 +355,9 @@ const (
 	// with it set; ordinary runs leave it unset and skip.
 	foldSubprocessDirEnv  = "MOAI_FOLD_SUBPROCESS_DIR"
 	foldSubprocessCardEnv = "MOAI_FOLD_SUBPROCESS_CARD"
-	// foldSubprocessWait bounds the wait for fold B's process: long enough
-	// for the subprocess to boot and fold under -race on a loaded machine
-	// (its unlocked whole fold lands well inside), short enough to keep the
-	// serialized (post-fix) runs cheap.
+	// foldSubprocessWait is a ceiling on the wait for fold B's process: a healthy
+	// run ends sooner, at the bounded lock refusal (REQ-MRR-003, 2s) plus the
+	// subprocess boot under -race on a loaded machine.
 	foldSubprocessWait = 60 * time.Second
 )
 
@@ -364,21 +378,22 @@ func TestFoldSubprocessHelper(t *testing.T) {
 }
 
 // foldSubprocess builds the re-exec'd test-binary command for one fold in a
-// separate process. The parent reads the child's exit status as the fold's
-// result.
-func foldSubprocess(t *testing.T, dir, card string) *exec.Cmd {
+// separate process. It returns the command and the child's stdout, which
+// carries the child's failure text when the fold refuses.
+func foldSubprocess(t *testing.T, dir, card string) (*exec.Cmd, *bytes.Buffer) {
 	t.Helper()
 	cmd := exec.Command(os.Args[0], "-test.run", "^TestFoldSubprocessHelper$", "-test.timeout", "10m")
 	cmd.Env = append(os.Environ(), foldSubprocessDirEnv+"="+dir, foldSubprocessCardEnv+"="+card)
-	var out, errBuf bytes.Buffer
-	cmd.Stdout = &out
+	out := &bytes.Buffer{}
+	var errBuf bytes.Buffer
+	cmd.Stdout = out
 	cmd.Stderr = &errBuf
 	t.Cleanup(func() {
 		if cmd.Process != nil {
 			_ = cmd.Process.Kill()
 		}
 	})
-	return cmd
+	return cmd, out
 }
 
 // gateBlockingWriter passes the first `pass` writes and blocks every write
@@ -436,9 +451,10 @@ func TestReviewFindingResultPrintedOutsideLockHold(t *testing.T) {
 	// The result's print is (or was) next: the lock must be FREE now.
 	probe := make(chan error, 1)
 	go func() {
-		r, err := acquireFoldStoreLock(dir, nil)
+		locker := newFoldStoreLock()
+		err := locker.acquire(dir)
 		if err == nil {
-			defer r()
+			defer func() { _ = locker.release() }()
 		}
 		probe <- err
 	}()
@@ -550,11 +566,11 @@ func TestReviewFindingAbandonedFoldExitsLockWait(t *testing.T) {
 
 	// A long-term holder — another fold's process equivalent — holds the
 	// store's lock and never releases during the fold's bound.
-	release, err := acquireFoldStoreLock(memDir, nil)
-	if err != nil {
+	holder := newFoldStoreLock()
+	if err := holder.acquire(memDir); err != nil {
 		t.Fatalf("holder acquire: %v", err)
 	}
-	defer release()
+	defer func() { _ = holder.release() }()
 
 	// The bounded fold's worker waits at the acquisition; the caller's
 	// abandonment must end it without the lock being released.
@@ -584,8 +600,8 @@ func TestReviewFindingAbandonedFoldExitsLockWait(t *testing.T) {
 // different lock and let it enter the first's critical section.
 func TestReviewFindingStoreLockIndependentOfTempDir(t *testing.T) {
 	dir := t.TempDir()
-	release, err := acquireFoldStoreLock(dir, nil)
-	if err != nil {
+	holder := newFoldStoreLock()
+	if err := holder.acquire(dir); err != nil {
 		t.Fatalf("acquire the store lock: %v", err)
 	}
 	// The second locker carries a DIFFERENT temp dir — the identity a second
@@ -594,9 +610,10 @@ func TestReviewFindingStoreLockIndependentOfTempDir(t *testing.T) {
 	t.Setenv("TMPDIR", t.TempDir())
 	acquired := make(chan error, 1)
 	go func() {
-		r, err := acquireFoldStoreLock(dir, nil)
+		locker := newFoldStoreLock()
+		err := locker.acquire(dir)
 		if err == nil {
-			defer r()
+			defer func() { _ = locker.release() }()
 		}
 		acquired <- err
 	}()
@@ -606,7 +623,7 @@ func TestReviewFindingStoreLockIndependentOfTempDir(t *testing.T) {
 	case <-time.After(700 * time.Millisecond):
 		// Still blocked after the grace: the two lockers serialize.
 	}
-	release()
+	_ = holder.release()
 	if err := <-acquired; err != nil {
 		t.Errorf("the waiting locker failed after the lock was released: %v", err)
 	}

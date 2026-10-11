@@ -170,18 +170,18 @@ follow-the-probe detection is the defense for the rest. Baseline cell:
 EL-001 (RED, exit 1, trees 81786284e/544462a8d); green path: M4 flips it
 green. Trace: REQ-DISPATCH-008.
 
-## AC-DI-010 — Defect (8b): a waiting fold completes without losing a completed fold's line
+## AC-DI-010 — Defect (8b): the second fold refuses within the bounded wait, names the store, writes nothing, and its line is filed on re-run, without losing a completed fold's line
 
 **Given** fold A running against the store holds the cross-process store
 lock across its whole write transaction, and fold B — a SEPARATE process
 with its own lock acquisition — starts for a different card while A holds
-the lock (the committed test observes B's wait and completion from B's own
+the lock (the committed test observes B's bounded-wait refusal from B's own
 process result; B never writes inside A's window),
-**When** A's transaction completes and releases the lock,
-**Then** B acquires the lock, completes normally against the post-A store,
-and after BOTH folds terminate every completed fold's index line is
-present in `MEMORY.md` or the archive exactly once — no line lost, no
-duplicate.
+**When** A's transaction completes and releases the lock, and fold B is re-run,
+**Then** fold B refuses inside A's window with the bounded-wait refusal,
+changes no index byte, and its line is filed exactly once after a re-run;
+and after BOTH folds terminate every completed fold's index line is present in
+`MEMORY.md` or the archive exactly once — no line lost, no duplicate.
 
 Committed-test note: `TestReviewFindingFoldInterleavedArchiveLoss` is
 RE-AUTHORED to this serialized shape — M0 owns the re-authoring and its

@@ -195,6 +195,13 @@ func foldRead(t *testing.T, dir, name string) string {
 // requireSameStore asserts two hash maps describe the identical store.
 func requireSameStore(t *testing.T, before, after map[string]string) {
 	t.Helper()
+	// The per-store lock file is the lock mechanism's own resident, not
+	// store content (foldLockFileName, SPEC-MEMORY-FOLD-RENAME-RACE-001
+	// D-3): an apply that created it between the two snapshots is not a
+	// store change, so it is normalized out of both sides here — the same
+	// narrowing requireNoTempFiles applies to its temp-file prefix.
+	delete(before, foldLockFileName)
+	delete(after, foldLockFileName)
 	if len(before) != len(after) {
 		t.Fatalf("store file list changed: %d files before, %d after", len(before), len(after))
 	}
@@ -206,8 +213,10 @@ func requireSameStore(t *testing.T, before, after map[string]string) {
 }
 
 // requireNoTempFiles asserts the fold left no temporary file behind
-// (AC-MFB-001, AC-MFB-007). The store's cross-process lock file
-// (foldLockName) is durable named infrastructure, not a temporary.
+// (AC-MFB-001, AC-MFB-007). The per-store lock file (foldLockFileName,
+// SPEC-MEMORY-FOLD-RENAME-RACE-001 D-3) is an intended permanent resident
+// — never removed on release — so only the temp-file prefix
+// (.moai-fold-*.tmp) is a leftover.
 func requireNoTempFiles(t *testing.T, dir string) {
 	t.Helper()
 	entries, err := os.ReadDir(dir)
@@ -215,10 +224,7 @@ func requireNoTempFiles(t *testing.T, dir string) {
 		t.Fatalf("read store %s: %v", dir, err)
 	}
 	for _, e := range entries {
-		if e.Name() == foldLockName {
-			continue
-		}
-		if strings.HasPrefix(e.Name(), ".moai-fold") {
+		if strings.HasPrefix(e.Name(), ".moai-fold-") {
 			t.Errorf("temporary file %s remained after the fold", e.Name())
 		}
 	}
@@ -1401,4 +1407,212 @@ func TestMemoryFold_DuplicateStrongLineFiledOnce(t *testing.T) {
 		t.Errorf("the different-wording copy was folded although its wording differs")
 	}
 	requireNoTempFiles(t, dir)
+}
+
+// foldRaceLine1568 is the t1568-shaped STRONG line the race tests fold: the
+// title names the card, the target is a store-local card topic file.
+var foldRaceLine1568 = "- [t1568 fold rename race — done, merged](project_card_t1568_race.md) — merged; detail lives in the topic file"
+
+// foldRaceFiles is the minimal store's files — the linked archive index
+// carrying the doctor's threshold of resolved links — plus the t1568 topic
+// file the race line links to.
+func foldRaceFiles() map[string]string {
+	files := minimalFiles()
+	files[fixtureArchive] = minimalArchive()
+	files["project_card_t1568_race.md"] = "---\n---\nbody\n"
+	return files
+}
+
+// foldRaceWriterLine is the concurrent writer's distinct publish, appended
+// inside the rename window by the seam hook.
+const foldRaceWriterLine = "- [t1568 concurrent writer](feedback_writer.md) — published inside the fold's rename window\n"
+
+// TestFoldRenameWindowConcurrentWriter is AC-MRR-001/002/004: a writer's
+// publish must survive a fold apply on the same store whatever the fold's
+// outcome (REQ-MRR-004). The writer publishes at the mutateBeforeRename
+// point of one write surface at a time (both atomicWriteFoldFile call sites
+// carry the identical check→rename tail — premise P3).
+//
+// The writer is the COOPERATING form (plan §A.3): a direct in-window write
+// would still be destroyed — the lock cannot protect a writer that ignores
+// it (spec.md P6) — so the writer attempts a non-blocking acquire of the
+// very lock the fold holds, records "serialized-out" on refusal, and
+// re-publishes after the fold's release. The final assertion is the
+// contract form: the writer's line is present in the final store, whatever
+// the fold's outcome. The RED cell this test carried pre-fix (M1: the
+// direct-write form, 10/10 iterations red, fold success + line destroyed)
+// is on record in progress.md §E.2.
+func TestFoldRenameWindowConcurrentWriter(t *testing.T) {
+	for _, tc := range []struct {
+		name   string // the write surface whose rename races the writer
+		target string // the store file that write replaces
+	}{
+		{name: "archive-append", target: fixtureArchive},
+		{name: "memory-rewrite", target: memoryIndexName},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			dir := seedFoldStore(t, minimalMemory(foldRaceLine1568), foldRaceFiles())
+			var serializedOut bool
+			memoryFoldSeam = foldTestSeam{
+				mutateBeforeRename: func(storeDir, name string) {
+					if name != tc.target {
+						return
+					}
+					// The writer's publish attempt: a non-blocking try on
+					// the lock the fold holds. Refusal IS the serialization
+					// (REQ-MRR-004's refused-then-re-published cooperating
+					// form); acquiring inside the apply would mean the
+					// whole-apply span is broken.
+					w := newFoldStoreLock()
+					if err := w.tryAcquire(storeDir); err == nil {
+						_ = w.release()
+						t.Errorf("the cooperating writer acquired the store lock inside the %s apply — the whole-apply span (REQ-MRR-001) is broken", tc.name)
+						return
+					}
+					serializedOut = true
+				},
+			}
+			t.Cleanup(func() { memoryFoldSeam = foldTestSeam{} })
+
+			runFoldOK(t, "--card", "t1568", "--yes", "--dir", dir)
+
+			if !serializedOut {
+				t.Errorf("the writer's publish was never serialized by the store lock — the window exercised nothing")
+			}
+			// The refused publish is the writer's to re-run after the fold's
+			// release (REQ-MRR-004); the re-run lands unharmed.
+			path := filepath.Join(dir, tc.target)
+			data, err := os.ReadFile(path)
+			if err != nil {
+				t.Fatalf("read %s: %v", tc.target, err)
+			}
+			published := append([]byte(nil), data...)
+			published = append(published, foldRaceWriterLine...)
+			if err := os.WriteFile(path, published, 0o644); err != nil {
+				t.Fatalf("the writer's post-release publish: %v", err)
+			}
+
+			final := foldRead(t, dir, tc.target)
+			if !strings.Contains(final, foldRaceWriterLine) {
+				t.Errorf("REQ-MRR-004 violated: the writer's line is absent from the final %s after a serialized-then-republished publish", tc.target)
+			}
+			requireNoTempFiles(t, dir)
+		})
+	}
+}
+
+// TestFoldStoreLockSpanHeldThroughApply is AC-MRR-009: a second independent
+// lock object samples a non-blocking acquire at the FOUR seam points while
+// the fold apply runs on the verb path. The observed tuple
+// (success, refusal, refusal, refusal) pins the whole-apply span of
+// REQ-MRR-001 and fails on BOTH mutant classes: a per-rename lock yields
+// (success, refusal, success, …) at the between-writes sample, and a
+// per-write lock (acquire/release per atomicWriteFoldFile call) yields
+// (success, refusal, SUCCESS, refusal) there too — the codex-demonstrated
+// iter-2 mutant the fourth sample kills.
+func TestFoldStoreLockSpanHeldThroughApply(t *testing.T) {
+	dir := seedFoldStore(t, minimalMemory(foldRaceLine1568), foldRaceFiles())
+
+	var samples []string
+	probe := func(point string) {
+		p := newFoldStoreLock()
+		if err := p.tryAcquire(dir); err != nil {
+			samples = append(samples, point+"=refused")
+			return
+		}
+		samples = append(samples, point+"=acquired")
+		if err := p.release(); err != nil {
+			t.Errorf("probe release at %s: %v", point, err)
+		}
+	}
+	memoryFoldSeam = foldTestSeam{
+		mutateDisk: func(string) { probe("mutateDisk") },
+		mutateDuringWrite: func(_, name string) {
+			if name == fixtureArchive { // inside the FIRST write
+				probe("mutateDuringWrite")
+			}
+		},
+		mutateBetweenWrites: func(string) { probe("mutateBetweenWrites") },
+		mutateBeforeRename: func(_, name string) {
+			if name == memoryIndexName { // inside the SECOND write
+				probe("mutateBeforeRename")
+			}
+		},
+	}
+	t.Cleanup(func() { memoryFoldSeam = foldTestSeam{} })
+
+	runFoldOK(t, "--card", "t1568", "--yes", "--dir", dir)
+
+	want := "mutateDisk=acquired mutateDuringWrite=refused mutateBetweenWrites=refused mutateBeforeRename=refused"
+	if got := strings.Join(samples, " "); got != want {
+		t.Errorf("the lock span samples are %q, want exactly %q — the whole-apply span of REQ-MRR-001 is not held", got, want)
+	}
+	requireNoTempFiles(t, dir)
+}
+
+// TestFoldStoreLockContentionRefusesCleanly is AC-MRR-003: with the store
+// lock held by another holder, the fold verb exits non-zero, its error
+// names the contended store, and it writes NOTHING — both store files stay
+// byte-identical to their pre-invocation state. (The refusal takes the
+// bounded-wait path: the fold waits out the 2s deadline and refuses.)
+func TestFoldStoreLockContentionRefusesCleanly(t *testing.T) {
+	dir := seedFoldStore(t, minimalMemory(foldRaceLine1568), foldRaceFiles())
+	held := newFoldStoreLock()
+	if err := held.acquire(dir); err != nil {
+		t.Fatalf("hold the store lock: %v", err)
+	}
+	t.Cleanup(func() { _ = held.release() })
+
+	before := storeHashes(t, dir)
+	r := runFoldRefused(t, "--card", "t1568", "--yes", "--dir", dir)
+	if msg := r.stderr + r.stdout; !strings.Contains(msg, dir) {
+		t.Errorf("the contention refusal does not name the contended store %s: %s", dir, msg)
+	}
+	requireSameStore(t, before, storeHashes(t, dir))
+}
+
+// TestFoldLockFileInvisibleToTooling is AC-MRR-005: a store directory
+// carrying .moai-fold.lock produces byte-identical `memory doctor` and fold
+// preview output to the same store without it — the lock file changes no
+// observable fold or doctor output (REQ-MRR-005).
+func TestFoldLockFileInvisibleToTooling(t *testing.T) {
+	dir := seedFoldStore(t, minimalMemory(foldRaceLine1568), foldRaceFiles())
+
+	runDoctor := func() string {
+		t.Helper()
+		var out bytes.Buffer
+		cmd := newMemoryDoctorCmd()
+		cmd.SetOut(&out)
+		cmd.SetErr(&out)
+		cmd.SetArgs([]string{"--dir", dir, "--json"})
+		if err := cmd.Execute(); err != nil {
+			t.Fatalf("memory doctor: %v", err)
+		}
+		return out.String()
+	}
+	runPreview := func() string {
+		t.Helper()
+		return runFoldOK(t, "--card", "t1568", "--dir", dir) // no --yes: preview writes nothing
+	}
+
+	doctorWithout, previewWithout := runDoctor(), runPreview()
+
+	// Leave the lock file behind exactly the shape a prior fold's acquire
+	// does: created on acquire, never removed on release (D-3).
+	l := newFoldStoreLock()
+	if err := l.acquire(dir); err != nil {
+		t.Fatalf("acquire to seed the lock file: %v", err)
+	}
+	if err := l.release(); err != nil {
+		t.Fatalf("release: %v", err)
+	}
+
+	doctorWith, previewWith := runDoctor(), runPreview()
+
+	if doctorWith != doctorWithout {
+		t.Errorf("doctor output changed with %s present:\nwithout:\n%s\nwith:\n%s", foldLockFileName, doctorWithout, doctorWith)
+	}
+	if previewWith != previewWithout {
+		t.Errorf("fold preview output changed with %s present:\nwithout:\n%s\nwith:\n%s", foldLockFileName, previewWithout, previewWith)
+	}
 }

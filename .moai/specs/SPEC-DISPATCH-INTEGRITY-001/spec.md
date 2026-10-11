@@ -2,9 +2,9 @@
 id: SPEC-DISPATCH-INTEGRITY-001
 title: "Factory dispatch and bundle integrity — eight P1 review findings"
 version: "0.1.6"
-status: completed
+status: in-progress
 created: 2026-10-09
-updated: 2026-10-09
+updated: 2026-10-11
 author: manager-spec
 priority: P1
 phase: "v3.2.0"
@@ -12,6 +12,7 @@ module: "internal/cli"
 lifecycle: spec-anchored
 tags: "factory, dispatch, bundle, memory-fold, concurrency, review-findings, t1595"
 tier: M
+amendment_of: SPEC-DISPATCH-INTEGRITY-001
 ---
 
 # SPEC-DISPATCH-INTEGRITY-001 — Factory Dispatch & Bundle Integrity
@@ -97,6 +98,16 @@ tier: M
   "both bodies are RED" sentence removed from the owned-tests README so
   only the per-body observed classification stands.
 
+## Amendments
+
+**2026-10-11 — in-place amendment of the prior `completed` SPEC (v0.1.6).**
+
+- Transition: `completed → in-progress` per the SSOT amendment contract (`.claude/rules/moai/development/spec-frontmatter-schema.md` § completed → in-progress (amendment)); `amendment_of: SPEC-DISPATCH-INTEGRITY-001` (self-referential). Authorized by the factory leader's re-delegation to manager-spec (D-NEW-1 inline-fix pattern).
+- Prior completed version: **0.1.6** — last closed 2026-10-10 (sync-phase re-sync).
+- `prior_completed_sha: c282c3920` — the prior close's `sync_commit_sha` (progress.md §E.4); that field is left unmodified.
+- Rationale: 잠금 통합: main(t1568)의 유계 fold 잠금(.moai-fold.lock)을 정식으로 채택하며 REQ-DISPATCH-008·AC-DI-010을 블로킹 대기에서 유계 대기 후 거부로 정정 (결정 기록: df4f, 23b2)
+- Scope: REQ-DISPATCH-008 (spec.md); AC-DI-010 (acceptance.md: heading, Given, When, Then); the plan.md M0 design description of the AC-DI-010 test shape.
+
 ## Requirements
 
 GEARS notation. Per-defect traceability: REQ-DISPATCH-001 → defect (1) …
@@ -159,10 +170,16 @@ lane or held expired.
 
 **While** two memory-fold executions act on the same memory store, the fold
 shall serialize its index writes through a cross-process lock spanning the
-fold's whole write transaction; **When** a concurrent index change is
-detected between the fold's last verification and its rename, the fold shall
-refuse the write (no silent overwrite), and a completed fold's index line
-shall survive every other fold's completion or refusal.
+fold's whole write transaction; **When** a second fold process cannot acquire
+that lock immediately, the second fold shall wait at the lock for the bounded
+interval of 2 seconds and, if the lock is still held when the interval
+expires, refuse cleanly: it shall name the contended store in its error, exit
+non-zero, write nothing, and leave its index line in the store so that a re-run
+files it once the holder has released the lock. **When** a concurrent index
+change is detected between the fold's last verification and its rename, the
+fold shall refuse the write (no silent overwrite), and a completed fold's index
+line shall survive every other fold's completion or refusal. The bounded wait is
+aligned with main REQ-MRR-003 and AC-MFB-007 iii.
 
 ## Constraints
 
