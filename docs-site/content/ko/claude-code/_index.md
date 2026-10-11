@@ -18,7 +18,7 @@ description: "MoAI-ADK가 올라타는 플랫폼, Claude Code를 처음부터 �
 이 문서는 MoAI-ADK가 올라타 있는 플랫폼인 **Claude Code 자체**를 다루는 배경 자료입니다. MoAI-ADK 자체 기능은 사이드바 위쪽 섹션에서 다룹니다.
 {{< /callout >}}
 
-Claude Code는 터미널에서 실행되는 코딩 에이전트로, 에이전틱 루프(agentic loop)를 돌며 코드를 읽고 고치고 셸 명령을 실행하며 사용자와 대화합니다. 2026년 9월을 기준으로 Claude Code는 Fable 5·Opus 5.5·Sonnet 5.5·Haiku 4.5의 모델 라인업 위에서 동작하고, 서브에이전트(sub-agent)는 기본적으로 백그라운드에서 실행되며 깊이 3까지 중첩해 spawn할 수 있습니다. MoAI-ADK는 이 플랫폼이 제공하는 루프·도구·확장점 위에 올라탄 오케스트레이션 계층입니다.
+Claude Code는 터미널에서 실행되는 코딩 에이전트로, 에이전틱 루프(agentic loop)를 돌며 코드를 읽고 고치고 셸 명령을 실행하며 사용자와 대화합니다. 2026년 10월을 기준으로 Claude Code는 Fable 5·Opus 5.5·Sonnet 5.5·Haiku 5.5(Anthropic API 기준, CC v2.1.293+; AWS 계열 별칭은 Haiku 4.5 유지)의 모델 라인업 위에서 동작하고, 서브에이전트(sub-agent)는 기본적으로 백그라운드에서 실행되며 깊이 3까지 중첩해 spawn할 수 있습니다. MoAI-ADK는 이 플랫폼이 제공하는 루프·도구·확장점 위에 올라탄 오케스트레이션 계층입니다.
 
 세 가지 핵심 가치 — **토크노믹스** (Token Economics), **에이전틱 루프 엔지니어링** (Agentic Loop Engineering), **에이전틱 하네스** (Agentic Harness) — 는 모두 이 섹션이 짚어 주는 기본 메커니즘에서 출발합니다. 컨텍스트 윈도우와 프롬프트 캐싱을 모르면 토크노믹스를 설계할 수 없고, 서브에이전트와 `/goal`을 모르면 에이전틱 루프를 말할 수 없으며, 스킬·훅·MCP를 모르면 하네스를 지을 수 없습니다.
 
