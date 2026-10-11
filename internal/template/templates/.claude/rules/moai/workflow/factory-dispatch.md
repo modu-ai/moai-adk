@@ -98,7 +98,7 @@ The leader classifies each card as it leaves `backlog` and names the entry stage
 <!-- moai:role-core-end -->
 
 <!-- moai:role-core-start -->
-A message is a nudge, never the delegation — an idle notice says when to look, not what the evidence says.
+[HARD] The dispatch block is fixed-field (`card:` `spec:` `cmd:` `wt:` `evidence:`; `lens:` optional) — never prose, at most 10 lines.
 <!-- moai:role-core-end -->
 
 ### Dispatch language
@@ -118,10 +118,14 @@ A message is a nudge, never the delegation — an idle notice says when to look,
 With `tree_scope: skip` configured for the leader's checkout, the leader session carries no turn-end codex review gate and reviews its own internal output directly with the same tools. Stage order, evidence fields, and the re-review ceiling: `factory-dispatch-detail.md` § The card-review stage.
 
 <!-- moai:role-core-start -->
-[HARD] Every lane runs a `card-review` (`codex_review` → `.moai/reports/<card-id>/card-review.md`) before integration — advisory only.
+[HARD] Every lane runs a `card-review` before integration — advisory only.
 <!-- moai:role-core-end -->
 
 ### Lane waits are explicit, and stalls are watched
+
+<!-- moai:role-core-start -->
+[HARD] A stuck lane records a disk wait and ends its turn — never idles on a reply; on awaken: the stall watchdog runs first, then the §6 ladder.
+<!-- moai:role-core-end -->
 
 [HARD] A lane that cannot proceed records an explicit wait on disk — reason, whom, recheck point — and ends its turn; it never idles open-ended on a reply. On its next awaken the lane runs the stall watchdog first — invoke Skill("moai-lane-watchdog") and follow it — which measures progress, classifies the stall cause, and resolves the judgment through the decision ladder (doctrine: `.claude/rules/moai/workflow/auto-semantics.md` §6). The ladder's terminal step is the lane's own judgment + decision record — the lane never asks the leader and waits on a judgment; reaching the leader is a gate boundary (a keep-set category or a cross-card conflict), not a ladder step. The lead's decision board carries leader-level rulings only — cross-card conflicts, serial-slot policy calls, keep-set gate relays — never a lane's in-card judgment. A lane also arms a standing recheck cron (`CronCreate`, recurring, every 20 minutes) before its first stage and keeps it until its completion report: a lane stopped by an API error (429) or by a delegate's report that never comes wakes without outside help only if something armed before it stopped fires, and every wake reads the disk evidence (progress record, reports, commits, the delegate's deliverable) before it replies (`.claude/rules/moai/workflow/auto-semantics.md` §5.1).
 

@@ -236,3 +236,14 @@ t1616이 로컬 main(`478285ab4`)에 착지한 뒤, 카드 트리가 이를 흡�
 - **축소 한계**: 필드 목록을 빼면 122로 들어가지만 의무의 실체(필드 명세)가 사라져 조건 ①(의미 비축소) 위반 — 기각
 - **판정**: (가) 불가 → **(나) 주입 경로 변경(설계 변경) — 영실이 판단 대기**. 수리 없음, RED 시험 `f2f2b67ec`는 미래 수리의 게이트로 잔존
 - **Gap**: ② 격리 HOME 라이브 주입 확인은 수리가 없어 미실행(검증 대상 변경 없음 — 부재는 RED 시험이 기계 증명); Codex 세션 실주입 미관측 Gap은 (나) 판정 뒤 수리 시 소멸
+
+### F4 수리 — 1순위 상쇄 성공, 표지 내 재삽입 (리더 지시, 2026-10-11)
+
+- **상쇄 (비의무 문구 164 ≥ 121, [HARD] 실체 무손상)** — 전·후 원문과 바이트:
+  - [12] 제거 (106, [HARD] 없는 설명 행 — 내용은 cross-session-messaging이 소유): 전 「A message is a nudge, never the delegation — an idle notice says when to look, not what the evidence says.」 → 후 «삭제»
+  - [15] 예시 상세 절감 (58): 전 「[HARD] Every lane runs a `card-review` (`codex_review` → `.moai/reports/<card-id>/card-review.md`) before integration — advisory only.」 → 후 「[HARD] Every lane runs a `card-review` before integration — advisory only.」 (도구·경로 상세는 factory-dispatch-detail.md § The card-review stage가 소유)
+- **재삽입 (표지 안)**: A 「[HARD] The dispatch block is fixed-field (`card:` `spec:` `cmd:` `wt:` `evidence:`; `lens:` optional) — never prose, at most 10 lines.」(134, dispatch cycle 절) · B 「[HARD] A stuck lane records a disk wait and ends its turn — never idles on a reply; on awaken: the stall watchdog runs first, then the §6 ladder.」(145, lane waits 절) — 원문 대조: 스텁 압축판과 동일 의무, §6·필드 목록 보존
+- **관문 실측**: RED `f2f2b67ec` → **GREEN** (`TestInjectedCoreCarriesCodexReachableObligations` ok 0.991s) · core **3,903** ≤ 3,946 · 합성 **8,957** ≤ 9,000 (양 트리 32구역 동일) · MirrorParity+문서계열 ok 29.996s · StubGate ok 0.517s
+- **천장 개정**: 불요 — 상쇄 164가 281을 흡수(순증 +117)
+- **Gap (② 라이브 주입 확인 미실행)**: 리더 지정 형태 `env -i HOME=$(mktemp -d) … bin/moai hook session-start`가 worktree 세션 가드에 3형태 전부 거부됨(`env -i` 복합·`env -i` 단순·`env HOME=` 오버라이드 — "injecting git configuration whose effect cannot be verified"). 조립 본문의 문구 존재는 GREEN 시험이 기계 증명(ExtractRoleCoreRegions = buildRoleCore의 반환 본문 그대로), 미관측은 훅 end-to-end 호출(역할 감지→파일 판독→조립)의 선행 절 — 다음 Claude 세션 착화 시 소멸 가능한 Gap
+- **부채 → t1637**: F1·F1b·F5·F3, F2 선택 보강, 스텁 spec: 문구, RIB-D2(:328 YAML 파싱), :345 os.ReadFile, budget-test env 격리, hooks-system.md:132 내부 인용(P3)
