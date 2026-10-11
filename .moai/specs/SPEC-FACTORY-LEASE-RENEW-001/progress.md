@@ -3813,6 +3813,9 @@ Verdict-file normalization, recorded before the merge-ready transition consumes 
 - No repair followed, so no re-review ran.
 - Gap: the lane did not reproduce any finding. The reviewer ran a static review only.
 
+- Leader disposition of this review (boards 16ac and b8a8): the base is main. Finding 2 is carried to t1680 as advisory, not reproduced, with no data path. It is not fixed in this card, and no delta sync audit follows. Findings 1 and 3 are out of scope under the main base and are attached to the t1680 body as follow-up candidates only. The same line is in `.moai/reports/t1663/card-review.md` under "Leader disposition".
+- Lease re-record requested: t1663. Reason: the landing nomination follows t1578, t1626, t1628, t1568, and t1579, so it may pass 03:00Z; the pre-landing push and CI dispatch run before it. Desired expiry: 2026-10-11T06:00Z. No withdrawal.
+
 ## §G Override and Refusal Record
 
 - 2026-10-10T09:51:05Z SPEC-FACTORY-LEASE-RENEW-001 ceiling-refusal outcome=hold reasons="plan-audit ceiling reached (round count 2 >= tier ceiling 2); the verdict matches no admitting arm and holds, entry blocked (REQ-ACE-006) — release path: the split/new-SPEC route of REQ-ACE-005 or an operator decision recorded in progress.md §G" evidence=/Users/goos/MoAI/moai-adk-go/.moai/worktrees/t1663/.moai/reports/t1663/plan-audit-iter2.md,/Users/goos/MoAI/moai-adk-go/.moai/worktrees/t1663/.moai/reports/t1663/plan-audit.md
