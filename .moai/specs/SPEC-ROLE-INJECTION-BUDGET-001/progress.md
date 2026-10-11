@@ -585,3 +585,9 @@ Opus 감사자 승인 대기 — 승인 전 코드·규칙 파일 변경 없음.
 - **합성 13,027자 분해**: role-core 밖 고정분 = 생산자 4,797(실제 레인 기준) + 조립 오버헤드 257(헤더·포인터·구분) = **5,054** · role-core 7,973. 고정분만으로도 캡의 절반.
 - **넘침 시 앞 2,000자 미리보기 원문**: /tmp/t1617-preview2000.txt — **role-core 내용 0자**: 넘침 안내문(NOTE) + 세션 속성 + GLM 라우팅 고지만 보임(코어 시작 3,829 > 2,000). 즉 넘침 세션의 미리보기로는 어떤 [HARD] 의무도 전달되지 않고, 전문은 넘침 파일을 읽어야 함.
 - 라이브 주입 확인 Gap 소멸 — 실호출 원문 확보(본 절 + /tmp/t1617-hook-live2.json).
+
+### 마커 중첩 회귀 시험 존재 확인 (리더 지시, 2026-10-11)
+
+- **생산 코드 검증은 존재**: role_rules.go:221-240 깊이 검사기 — "a start marker before its enclosing region is closed" 거부. 본 카드의 실호출 후퇴(3,647자)가 바로 이 검증이 설계대로 동작한 결과(실패 안전).
+- **회귀 시험은 없음**: role_rules_test.go malformed 계열(unclosed_region·end_before_start·unmarked·absent·unreadable·empty)에 **nested-start 형태(start가 열린 영역 안에 다시 삽입)의 subtest가 없음** — 본 카드 스크립트 결함이 만든 정확한 형태. 처분 뒤 반영 항목: fixture에 중첩 start 삽입 → assertFailVisible("before its enclosing region is closed") 1 subtest 추가.
+- **end-to-end core 포함 시험도 없음**: 기존 계열은 주입 결정 구조체와 크기 게이트 사다리만 검사 — 실제 조립 출력(훅 additionalContext)에 코어가 온전히 포함되는지 단언하는 end-to-end 시험은 없음(본 카드의 bin/moai 실호출이 첫 관측). 처분 뒤 반영 항목 2: 실호출(또는 조립 함수 직호출) 출력에 두 의무 문구+코어 헤더 존재 단언.
