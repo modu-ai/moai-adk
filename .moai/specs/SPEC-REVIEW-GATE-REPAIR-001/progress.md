@@ -329,6 +329,8 @@ AC 번호가 없는 두 테스트는 플랜 M3 의 RED 목록 밖이다. 청산 
 - Gap:
   - (a) 정책 건너뜀 두 경로, 즉 오래된 바이너리(`staleBinarySkipApplies`)와 tree_scope 건너뜀은 메시지를 내지 않는다. 설계 §7 의 아홉 상태 어휘에 두 경로의 이름이 없다. REQ-RG-007 의 문언("검토 없이 허용되는 턴 종료")은 두 경로를 포함하므로 어휘를 정하는 판정이 필요하다. 리더 판정 대상이다.
   - (b) 차단 횟수 기록을 쓸 수 없거나 읽을 수 없으면 허용하고 `차단 횟수 소진` 을 낸다(fail-open). 어휘에 맞는 이름이 없어 가장 가까운 이름을 골랐다. 리더 판정 대상이다.
+    - → 해결 (65c24753a): (a) 정책 건너뜀 두 경로(stale 바이너리 건너뜀, tree_scope 건너뜀)가 이제 각자의 상태 이름을 systemMessage 에 낸다. 허용 결정은 그대로다.
+    - → 해결 (65c24753a): (b) 차단 횟수를 읽을 수 없거나 쓸 수 없으면 이제 `차단 횟수 기록 실패`를 낸다. `차단 횟수 소진`은 C 도달 상한 경로에만 남는다.
   - (c) `/verify` 게이트를 실행하지 않았다. 이 실행의 범위 밖이다.
   - (d) 저장소의 `core.hooksPath` 가 `/dev/null` 이므로 커밋 시 git 훅이 실행되지 않았다(관측).
   - (e) internal/cli 패키지 전체 커버리지는 측정하지 않았다. 위 부분집합 수치는 패키지 수치가 아니다.
@@ -344,9 +346,128 @@ AC 번호가 없는 두 테스트는 플랜 M3 의 RED 목록 밖이다. 청산 
 
 이 파일은 자기 커밋의 SHA 를 적지 않는다. 커밋 메시지와 `git log` 가 기록이다.
 
+### M3 후속 — RED→GREEN, 기대값 변경, 리더 결정
+
+- RED 커밋: `1fc6ef92f` (`test(SPEC-REVIEW-GATE-REPAIR-001): add RED tests for named skip and record-failure states (card t1620)`). 테스트 파일만 바뀌었다. 바뀐 파일은 `internal/cli/codex_review_gate_test.go` 하나이고 numstat 은 106 insertions · 0 deletions 다. 기존 줄은 한 줄도 바뀌지 않았고, 프로덕션 코드는 이 커밋에 없다. 정책 건너뜀 두 경로와 기록 실패 두 경로의 상태 이름을 확인하는 테스트 네 개다.
+- RED 명령: `MOAI_SKIP_LIVE_CODEX=1 go test -count=1 -v -skip LiveCodex -run '^(TestReviewGate_StaleBinarySkipNamesState|TestReviewGate_TreeScopeSkipNamesState|TestReviewGate_BlockCountReadFailureNamesRecordFailure|TestReviewGate_BlockCountWriteFailureNamesRecordFailure)$' ./internal/cli/`. 원문 (`.moai/state/verify/t1620-m3-red.txt` 28줄을 그대로 옮김):
+
+```text
+=== RUN   TestReviewGate_StaleBinarySkipNamesState
+{"basis":"no card branch: main","branch":"main","gate":"codex-review-gate","scope":"tree"}
+    codex_review_gate_test.go:571: systemMessage must name state "stale 바이너리 건너뜀", got ""
+--- FAIL: TestReviewGate_StaleBinarySkipNamesState (0.24s)
+=== RUN   TestReviewGate_TreeScopeSkipNamesState
+{"basis":"no card branch: main","branch":"main","gate":"codex-review-gate","scope":"tree"}
+    codex_review_gate_test.go:590: systemMessage must name state "tree_scope 건너뜀", got ""
+--- FAIL: TestReviewGate_TreeScopeSkipNamesState (0.24s)
+=== RUN   TestReviewGate_BlockCountReadFailureNamesRecordFailure
+codex review: fail: Verdict: fail
+
+blocking finding on shared file.
+{"basis":"no card branch: main","branch":"main","gate":"codex-review-gate","scope":"tree"}
+    codex_review_gate_test.go:616: systemMessage must name state "차단 횟수 기록 실패", got "codex review gate: turn allowed without a fresh pass (state: 차단 횟수 소진)"
+    codex_review_gate_test.go:618: an unreadable count must not be named as exhausted, got "codex review gate: turn allowed without a fresh pass (state: 차단 횟수 소진)"
+--- FAIL: TestReviewGate_BlockCountReadFailureNamesRecordFailure (1.12s)
+=== RUN   TestReviewGate_BlockCountWriteFailureNamesRecordFailure
+codex review: fail: Verdict: fail
+
+blocking finding on shared file.
+{"basis":"no card branch: main","branch":"main","gate":"codex-review-gate","scope":"tree"}
+codex review gate: block count not recorded (create temp file: open /private/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestReviewGate_BlockCountWriteFailureNamesRecordFailure2539332822/001/.moai/state/verify/codex-review/.settings-local-3335700200.tmp: permission denied) — allowing (fail-open)
+    codex_review_gate_test.go:653: systemMessage must name state "차단 횟수 기록 실패", got "codex review gate: turn allowed without a fresh pass (state: 차단 횟수 소진)"
+    codex_review_gate_test.go:655: an unrecordable count must not be named as exhausted, got "codex review gate: turn allowed without a fresh pass (state: 차단 횟수 소진)"
+--- FAIL: TestReviewGate_BlockCountWriteFailureNamesRecordFailure (1.53s)
+FAIL
+FAIL	github.com/modu-ai/moai-adk/internal/cli	4.087s
+FAIL
+```
+
+- RED 분류 (tdd-result-contract):
+  - 네 개 모두 EXPECTED_RED 다. 네 개의 전제가 모두 성립했다.
+  - 네 경우 모두 허용(allow)이고 빠진 것은 상태 메시지다.
+  - TOOL_FAILURE 와 REGRESSION_FAILURE 는 없다. 쓰기 실패 경로의 stderr 줄(`permission denied`)은 실제로 쓰기가 실패했음을 보여 준다.
+- GREEN 커밋: `65c24753a` (`fix(SPEC-REVIEW-GATE-REPAIR-001): name the skip and record-failure states at turn end (card t1620)`). 프로덕션 파일 `internal/cli/codex_review_gate.go` 하나이고 29 insertions · 18 deletions 다. 주석 한 줄(C = 1, operator ruling Q2)도 이 커밋에 들어 있다. 커밋 순서(RED 가 GREEN 보다 먼저)는 리더가 확인했다.
+- GREEN 결과: RED 네 테스트를 GREEN 에서 실행한 원문 (`.moai/state/verify/t1620-m3-green.txt`):
+
+```text
+--- PASS: TestReviewGate_StaleBinarySkipNamesState (0.25s)
+--- PASS: TestReviewGate_TreeScopeSkipNamesState (0.24s)
+--- PASS: TestReviewGate_BlockCountReadFailureNamesRecordFailure (1.13s)
+--- PASS: TestReviewGate_BlockCountWriteFailureNamesRecordFailure (1.14s)
+PASS
+ok  	github.com/modu-ai/moai-adk/internal/cli	3.683s
+```
+
+- GREEN 게이트 계열 (기준선과 같은 `-run` 패턴, `.moai/state/verify/t1620-m3-green-family.txt`): 최상위 `--- PASS` 79, `--- FAIL` 3. 전체는 82개다(기준선 65 + M2 5 + M3 8 + RED 4). FAIL 셋은 기준선에서 이미 있던 심볼릭 링크 실패다(Run-phase Gap 1). 패키지 판정 줄: `FAIL	github.com/modu-ai/moai-adk/internal/cli	68.462s`.
+- GREEN 린트: `golangci-lint run ./internal/cli/... --timeout=2m` 최종 줄 `0 issues.` (`.moai/state/verify/t1620-m3-green-lint.txt`).
+- 게이트 계열 밖 (`.moai/state/verify/t1620-m3-green-extra.txt`): 최상위 PASS 18개다(`TestStaleBinarySkip_*` 3, `TestTreeScopeReader_*` 2, `TestPrimaryScopeReader_*` 2, `TestCodexStopChain_TreeScopeSkip`, `TestTreeScope_NonSkipValuesKeepTreeScope`, `TestTreeScopeSkip_WTSessionsStillReviewed`, `TestTreeScopePolicy_*` 6, `TestTreeScopeSkipRow`, `TestStopChainEffectParityGolden`). 이 실행의 FAIL 은 `TestWSR006_ReviewGateRootMatrix` 하나다. M3 에서 생긴 회귀이며, 아래 WSR006 소절에 적었다.
+
+### WSR006 기대값 변경 — 다른 SPEC 테스트, 리더 결정 1
+
+- 대상: `TestWSR006_ReviewGateRootMatrix` (`internal/cli/wsr_state_root_test.go`). 다른 SPEC 의 테스트다. 바뀐 파일은 이 하나이고 numstat 은 5/2, gofmt 출력은 없다.
+- 이전 값 (원문): `if len(*calls) != 0 || codexOut != "{}" || multiOut != "{}"`
+- 새 값: `codexOut != wantCodexSwitchOff`. multi 절은 그대로 `"{}"` 다. 여기서 `wantCodexSwitchOff` 는 `{"systemMessage":"codex review gate: turn allowed without a fresh pass (state: 스위치 꺼짐)"}` 다.
+- 근거: REQ-RG-007 과 SPEC D4 (허용 시 항상 메시지). 되돌리면 SPEC 과 충돌한다.
+- 원인 커밋: `1002a14c1` (M3). 스위치 꺼짐 분기가 bare allow 에서 이름 붙은 메시지로 바뀌었다.
+- 기대값 변경 커밋: `4f94abf73` (`test(SPEC-REVIEW-GATE-REPAIR-001): expect the named switch-off state on the codex stop path (card t1620)`). 커밋 메시지에 같은 근거를 원문으로 적었다.
+- 리더 결정 1: 기대값을 이름 붙은 메시지로 바꾼다. 제시된 두 안 가운데 (b) 스위치 꺼짐 경로를 다시 조용한 allow 로 되돌리는 안은 D4 위반으로 기록되어 있어 택하지 않았다.
+- 회귀 증거 (원문):
+  - 988230ea3 (M3 의 부모) 추출본: `--- PASS: TestWSR006_ReviewGateRootMatrix/F-noid_row_4 (0.25s)`, `ok  	github.com/modu-ai/moai-adk/internal/cli	14.599s` (scratch `wsr-988230ea3.txt`).
+  - GREEN 직전 트리: `--- FAIL: TestWSR006_ReviewGateRootMatrix/F-noid_row_4 (0.19s)` (`.moai/state/verify/t1620-m3-baseline-red-and-wsr006.txt`).
+  - GREEN 트리: `wsr_state_root_test.go:425: admin HEAD deleted: want N′ (both {} and no detector call), got codex={"systemMessage":"codex review gate: turn allowed without a fresh pass (state: 스위치 꺼짐)"} multi={} calls=[]` (`.moai/state/verify/t1620-m3-green-wsr.txt`). `no git` 변형도 같은 출력이다.
+  - 원인: 테스트는 codex 경로에서 정확히 `{}` 를 요구한다(`wsr_state_root_test.go:424`). GREEN 은 이 출력을 바꾸지 않았다.
+- 검증 산출 (디스크 확인): `--- PASS: TestWSR006_ReviewGateRootMatrix (9.96s)` (`.moai/state/verify/t1620-wsr-after.txt`). 같은 계열 전체는 최상위 `--- PASS` 13, `--- FAIL` 0 이다 (같은 디렉터리의 `t1620-wsr-all.txt`). `^func TestWSR` 정의는 13개다 (`git grep` 확인).
+
+### M7 — 규칙 문장 정정, 전후 비교표, 후속 카드 매핑
+
+- 커밋 `34e8a6973` (`docs(SPEC-REVIEW-GATE-REPAIR-001): correct the card-review double-review sentence (card t1620)`). 바뀐 파일은 규칙 파일 두 개, 라이브 `.claude/rules/moai/workflow/factory-dispatch-detail.md` 와 템플릿 미러 `internal/template/templates/…` 이다. numstat 은 2 insertions · 2 deletions 다.
+- 커밋 전 점검 (디스크):
+  - `git diff --stat`: 3 files, 3 insertions, 2 deletions. 세 번째 파일은 `internal/cli/codex_review_gate.go` 의 주석 한 줄이며, 이 커밋에는 넣지 않았다.
+  - `gofmt -l internal/cli/codex_review_gate.go`: 출력 없음.
+  - `cmp` (두 규칙 파일): 동일, 출력 없음.
+- 템플릿 키 확인: 라이브 `.moai/config/sections/workflow.yaml:300–302` 에 `codex:` → `review_gate:` → `enabled: true`. 배포 템플릿 `internal/template/templates/.moai/config/sections/workflow.yaml:152–154` 에 같은 경로가 `enabled: false`(opt-in)로 있다. 규칙 문장은 "켜 둔 저장소"를 가리키므로 맞다.
+- 가드 테스트 (라이브 트리, 커밋 전): 명령 `go test -count=1 -v -run '^(TestCardIDBaselineHasNoStaleEntries|TestCardIDBaselineIsPerFileAndPerLiteral|TestCardIDLeakClassDetectsShapes|TestCardIDLeakClassIgnoresLookalikes|TestDeclaredRuleMirrorForks|TestRuleTemplateMirrorDrift|TestReviewOwnership_CardReviewDoctrine|TestReviewOwnership_DoctrineMutants)$' ./internal/template/`. 판정 줄: `--- PASS` 8개(위 여덟 이름 전부), `PASS`, `ok  	github.com/modu-ai/moai-adk/internal/template	0.451s`. 실패 0.
+- 전후 비교표 (기록 2026-10-11T01:14Z, 리더 결정 전 상태, 원문):
+
+| 계열 | 기준선 `f4b38e2a3` (M2 이전) | 현재 `65c24753a` | 근거 파일 · 비고 |
+|---|---|---|---|
+| 게이트 family (`-run` 패턴 동일, 최상위) | 65 개: PASS 62, FAIL 3 | 82 개: PASS 79, FAIL 3 | `before-run.txt`, `t1620-m3-green-family.txt`. 증가 17 = M2 신규 5 + M3 신규 8 + RED 4. FAIL 3 은 기준선과 같은 테스트(symlink)다. |
+| 기대값 변경 (family 안) | 해당 없음 | M2 에서 기록한 변경(진행 기록 §2)뿐. M3 와 GREEN 은 0 | GREEN 커밋은 프로덕션 파일 하나만 바꿨다(`git show --stat 65c24753a`). |
+| family 밖 계열 (stop-chain, tree-scope 등) | 측정하지 않았다 (Gap) | PASS 18, FAIL 0 (WSR 제외) | `t1620-m3-green-extra.txt`. 기준선에서 같은 계열을 돌리지 않았다. |
+| `TestWSR006_ReviewGateRootMatrix` | `988230ea3` (M3 부모): PASS | `65c24753a`: FAIL (`F-noid_row_4`) | 회귀, M3 에서 생김. GREEN 은 출력을 바꾸지 않았다. 결정 대기(위 결정 1). |
+| 린트 `internal/cli` | M3 시점 0 issues (진행 기록 §5) | 0 issues | `t1620-m3-green-lint.txt`. |
+
+위 표는 기록 원문 그대로다. 그 뒤 `TestWSR006_ReviewGateRootMatrix` 행의 "결정 대기"는 WSR006 소절의 기대값 변경(`4f94abf73`)으로 끝났다.
+
+- 후속 카드 매핑 (리더 지정, 이 SPEC 의 Follow-up 항목 그대로): F1 → t1662, F2 → t1637, F3 → t1639, F4 → t1683, F5 → t1674, F6 → t1635. F4 는 t1683 이 doctor 경고 추가만 맡고, 규칙 문장 정정은 이 M7 에서 수행했다. 큐 등록은 리더(운영자) 몫이라 레인은 등록하지 않았다. 이 매핑은 진행 기록에만 두고, 배포되는 규칙 파일에는 넣지 않았다.
+
+### 리더 판정과 해결 기록
+
+- 정책 건너뜀 이름 (6. Gap 과 잔여 위험 (a)): 리더는 (b) 안을 채택했다. 정책 건너뜀 두 경로(`codex_review_gate.go:161–169`, stale 바이너리와 tree_scope)에 systemMessage 만 더한다. 이름은 `stale 바이너리 건너뜀`, `tree_scope 건너뜀`. 허용 결정은 그대로다. 순서는 RED → GREEN 이다. 해결: `65c24753a`.
+- 기록 실패 이름 (6. Gap 과 잔여 위험 (b)): 같은 M3 후속에서 `codex_review_gate.go:279–284` 의 읽기·쓰기 실패 경로를 `차단 횟수 기록 실패` 로 바꾼다. C 도달 상한 경로는 `차단 횟수 소진` 을 유지한다. 현재 코드는 두 경로 모두 `차단 횟수 소진` 을 냈다(`:279–280`, `:284`). 해결: `65c24753a`.
+- REQ-RG-006 본문: 고치지 않았다. "검토 건너뜀의 결정은 바뀌지 않는다"는 모든 건너뜀 경로에 걸리는 일반 규칙이라, 두 경로를 열거하지 않아도 HISTORY 인용은 맞다. 판단 주체는 리더로 기록했다.
+- 결정 1 (WSR006 기대값, 다른 SPEC 의 테스트): 이름 붙은 메시지로 바꾼다. 근거와 검증은 WSR006 소절, 커밋은 `4f94abf73` 이다.
+- 결정 2 (tree_scope 이름): `tree_scope 건너뜀` 이름은 바꾸지 않고 유지한다. 잔여 위험으로 기록한다. 기본 설정(primary_scope=skip)의 primary checkout 건너뜀도 같은 이름으로 표시된다. `treeScopeSkipApplies`(`codex_review_tree_scope.go:132–153`)가 primary 갈래와 tree_scope 갈래 모두에서 true 를 돌려주기 때문이다. tree_scope 를 설정하지 않은 운영자가 혼동할 수 있다. 리더가 t1674 본문에 "두 갈래 분리 또는 사유 표시"를 추가했다.
+
+### Run-phase Gap
+
+1. **기준선 실패 3개 (이 카드의 변경과 무관).** 기준선은 `f4b38e2a3` (M2 이전, 편집 전 추출본) 이다. 명령: `MOAI_SKIP_LIVE_CODEX=1 go -C <scratch>/base-f4b38e2a3 test -count=1 -v -skip LiveCodex -run '^(TestReviewGate_|TestReviewEntry_|TestProducerFailReceipt|TestProduceCodexReviewReceipt_|TestKickInFlight_|TestRunCodexReviewRPC_|TestHasReviewableChanges_|TestCodexReviewGate|TestCodexReviewEntry_|TestHandleCodexReviewGate_|TestCodexReviewScope_|TestCardMergeBaseConfiguredMain|TestReviewableFromPorcelain)' ./internal/cli/`. 결과: 최상위 65개 중 62 PASS, 3 FAIL, `FAIL	github.com/modu-ai/moai-adk/internal/cli	46.848s`.
+   - `--- FAIL: TestCodexReviewGatePrimaryCheckoutSkip (0.72s)` — `codex_review_gate_primary_scope_red_test.go:84: the primary-skip row must carry the resolved tree, got dir "/private/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestCodexReviewGatePrimaryCheckoutSkip118067050/001" want "/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestCodexReviewGatePrimaryCheckoutSkip118067050/001"`
+   - `--- FAIL: TestCodexReviewGate_TreeScopeRequestShapeUnchanged (0.74s)` — `codex_review_scope_test.go:87: thread/start cwd = "/private/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestCodexReviewGate_TreeScopeRequestShapeUnchanged2101977025/001", want the resolved tree "/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestCodexReviewGate_TreeScopeRequestShapeUnchanged2101977025/001"`
+   - `--- FAIL: TestCodexReviewGate_StaleEnvKeepsTreeScope (1.14s)` — `codex_review_scope_test.go:280: tree-scope cwd = "/private/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestCodexReviewGate_StaleEnvKeepsTreeScope403953538/001", want the resolved tree "/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestCodexReviewGate_StaleEnvKeepsTreeScope403953538/001"`
+   - 원인은 macOS 임시 디렉터리 심볼릭 링크(`/var` → `/private/var`)다. 같은 세 테스트는 M3 이전 커밋 `988230ea3` 의 추출본(`FAIL	github.com/modu-ai/moai-adk/internal/cli	3.482s`)과 M3 직후 실행(`FAIL	github.com/modu-ai/moai-adk/internal/cli	54.829s`)에서도 FAIL 이었다. 이 카드는 고치지 않는다.
+2. 카드 워크트리에서 `internal/cli` 패키지 전체는 실행하지 않았다. 구조적 적색이며, 착지 전 CI 가 게이트다(리더 확인 대상).
+3. 전체 `/verify` 게이트는 실행하지 않았다(리더 수락 Gap).
+4. 라이브 codex 테스트는 실행하지 않았다. 컴파일 확인만 했다(리더 지시). 게이트 계열 실행의 명령에는 `-skip 'LiveCodex'` 가 붙어 있다.
+5. 과정 결함: M3 검증은 `TestWSR006_ReviewGateRootMatrix` 를 돌리지 않았다. M3 검증의 `-run` 패턴(`^(TestReviewGate_|TestReviewEntry_|TestProduceCodexReviewReceipt_|TestProducerFailReceipt|TestHandleCodexReviewGate|TestCodexReviewGate)`)이 이 테스트를 포함하지 않았다. 회귀는 M3 커밋 `1002a14c1` 에서 생겼고, M3 후속 GREEN 점검에서 발견됐다. 기대값을 바꾼 커밋 `4f94abf73` 이 처리했다.
+
 ## §E.3 Run-phase Audit-Ready Signal
 
-_run-phase 진입 전. 자리표시._
+audit_ready: true
+run_status: audit-ready
+run_complete_at: 2026-10-11T01:21:03Z
+
+run-phase 의 M1, M2, M3(후속 포함), M7 은 로컬 커밋으로 끝났고, sync 는 시작하지 않았다.
 
 ## §E.4 Sync-phase Audit-Ready Signal
 
