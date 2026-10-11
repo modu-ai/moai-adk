@@ -146,9 +146,10 @@ func newMemoryFoldCmd() *cobra.Command {
 				_, _ = fmt.Fprintf(out, "store: %s (%s)\n", store.Dir, store.Origin)
 			}
 			// computeFoldPlan builds the fold plan from one snapshot of the
-			// store. The preview reads it unlocked (read-only invocation);
-			// the apply re-computes it INSIDE the lock, so the plan the
-			// apply executes is always computed from the post-wait store.
+			// store. The preview reads it unlocked (read-only invocation). The verb
+			// computes its plan before the lock and verifies that plan under the lock:
+			// a store changed in between is refused. Only the on-done step re-plans,
+			// after it has acquired the lock.
 			computeFoldPlan := func() (memoryFoldPlan, foldComputed, taxonomy.StoreSnapshot, error) {
 				before, err := taxonomy.SnapshotStore(store.Dir)
 				if err != nil {
@@ -801,11 +802,11 @@ func atomicWriteFoldFile(dir, name string, want, planTime []byte, guard *foldRen
 
 // runUnderFoldLock runs fn while the store's fold lock is held (REQ-DISPATCH-008):
 // the on-done step's transaction — snapshot read, plan, and both index writes —
-// runs inside it, so a second fold's PROCESS waits at the lock for the
-// bounded interval (REQ-MRR-003) and, once it holds the lock, re-plans against
-// the post-transaction store; a wait that expires refuses cleanly, writing
-// nothing. Two `moai memory fold` invocations are
-// separate OS processes, so the lock is the cross-process file lock of
+// runs inside it. A second on-done process waits at the lock for the bounded
+// interval (REQ-MRR-003) and, once it holds the lock, re-plans against the
+// post-transaction store; a wait that expires refuses cleanly, writing nothing.
+// A `moai memory fold` verb process does not re-plan: it verifies its plan under
+// the lock (see applyFold). The lock is the cross-process file lock of
 // fold_store_lock_{unix,windows}.go (constraint C5). The lock path derives from
 // the store alone, never from a process-local TMPDIR value, so two processes
 // addressing one store always serialize on the same file. A non-nil forbidden
@@ -816,8 +817,8 @@ func atomicWriteFoldFile(dir, name string, want, planTime []byte, guard *foldRen
 // fn must apply through applyFoldLocked, not applyFold: a second acquisition of
 // the same lock from inside fn would wait on the hold this call already has.
 //
-// @MX:WARN: [AUTO] Cross-process file lock — while held it blocks every other fold process on this store until released or the holder exits.
-// @MX:REASON: a concurrent fold's process must serialize its whole transaction (read, plan, both index writes) against the holder's; without it a fold completing inside the holder's window lost its line to the holder's pre-window snapshot rename (EL-009/EL-002).
+// @MX:WARN: [AUTO] Cross-process file lock — while held, another fold process on this store waits up to the bounded interval and then refuses; none writes until release or holder exit.
+// @MX:REASON: an on-done fold must serialize its whole transaction (read, plan, both index writes) against the holder's, and a verb fold must serialize its byte verification and writes; without the lock a fold completing inside the holder's window lost its line to the holder's pre-window snapshot rename (EL-009/EL-002).
 func runUnderFoldLock(dir string, forbidden func() bool, fn func() error) error {
 	lock := newFoldStoreLock()
 	if err := lock.acquireUntil(dir, forbidden); err != nil {

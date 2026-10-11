@@ -176,7 +176,9 @@ green. Trace: REQ-DISPATCH-008.
 lock across its whole write transaction, and fold B — a SEPARATE process
 with its own lock acquisition — starts for a different card while A holds
 the lock (the committed test observes B's bounded-wait refusal from B's own
-process result; B never writes inside A's window),
+process result; B never writes inside A's window), and A keeps the lock
+until B's bounded wait expires and B's refusal is observed (A는 B의 유계 대기
+기한이 지나 거부가 관측될 때까지 잠금을 유지한다),
 **When** A's transaction completes and releases the lock, and fold B is re-run,
 **Then** fold B refuses inside A's window with the bounded-wait refusal,
 changes no index byte, and its line is filed exactly once after a re-run;
@@ -199,8 +201,14 @@ Two-cell: the original-body RED — the archive-preceding snapshot
 overwrite, B's completed line vanishing into neither index — is EL-002
 (RED, exit 1, trees 81786284e/544462a8d); the RE-AUTHORED body's RED-now
 (under today's unlocked code B does not wait and the loss still occurs)
-is captured in M0 as a four-element ledger entry, and M4 flips it green.
-Trace: REQ-DISPATCH-008.
+is the four-element ledger entry EL-009 (RED, exit 1, tree 5a91b5758), the
+shared RED observable: fold B completes with `err=<nil> in-window=true`
+inside A's held transaction. The re-authored body rejects that observable at
+lines 218-220 of `internal/cli/review_observation_test.go` as of merge commit
+`e2104d4c46`, and it turns green at that commit. M4's blocking lock is not
+the green path for this body: a blocking wait cannot produce the
+bounded-wait refusal that lines 215-220 of the same file require. Trace:
+REQ-DISPATCH-008.
 
 ## AC-DI-011 — Defect (8) concurrency discipline: race detector, repeated
 

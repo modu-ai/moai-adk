@@ -2,7 +2,7 @@
 id: SPEC-DISPATCH-INTEGRITY-001
 title: "Factory dispatch and bundle integrity — eight P1 review findings"
 version: "0.1.6"
-status: completed
+status: in-progress
 created: 2026-10-09
 updated: 2026-10-11
 author: manager-spec
@@ -107,6 +107,14 @@ amendment_of: SPEC-DISPATCH-INTEGRITY-001
 - `prior_completed_sha: c282c3920` — the prior close's `sync_commit_sha` (progress.md §E.4); that field is left unmodified.
 - Rationale: 잠금 통합: main(t1568)의 유계 fold 잠금(.moai-fold.lock)을 정식으로 채택하며 REQ-DISPATCH-008·AC-DI-010을 블로킹 대기에서 유계 대기 후 거부로 정정 (결정 기록: df4f, 23b2)
 - Scope: REQ-DISPATCH-008 (spec.md); AC-DI-010 (acceptance.md: heading, Given, When, Then); the plan.md M0 design description of the AC-DI-010 test shape.
+
+**2026-10-11 — second in-place amendment of the prior `completed` SPEC (v0.1.6).**
+
+- Transition: `completed → in-progress` per the SSOT amendment contract (`.claude/rules/moai/development/spec-frontmatter-schema.md` § completed → in-progress (amendment)); `amendment_of: SPEC-DISPATCH-INTEGRITY-001` (self-referential). Authorized by the factory leader's re-delegation to manager-spec (D-NEW-1 inline-fix pattern).
+- Prior completed version: **0.1.6** (unchanged version string) — last closed by the sync commit `7be18e95dc`, which re-closed the first amendment.
+- `prior_completed_sha: 7be18e95dc` — the prior close's `sync_commit_sha` (progress.md §E.4); that field is left unmodified.
+- Rationale: F1·F4 정정: AC-DI-010 Given에 A의 잠금 유지 기간을 명시하고, 공동 시험 노트의 녹색 경로를 merge e2104d4c46으로 지정하며, RED-now를 EL-009 공유 관측으로 결속 (델타 감사 지적 정정)
+- Scope: acceptance.md AC-DI-010 Given and the committed-test note (its Two-cell line carries the RED-now binding and the green path); the AC-DI-010 heading, When, and Then, and all requirements are unchanged by this entry.
 
 ## Requirements
 
