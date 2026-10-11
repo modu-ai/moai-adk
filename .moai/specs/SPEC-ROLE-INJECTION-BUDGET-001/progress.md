@@ -216,3 +216,11 @@ t1616이 로컬 main(`478285ab4`)에 착지한 뒤, 카드 트리가 이를 흡�
 - **Gaps**: codex P2 3건은 이전 감사 SHA f40bfb59f에 이미 존재(감사자 git show 대조), 델타 무관, D1 복원·D2/D3 → t1637 (리더가 t1617 relates-to t1637 relate 기록)
 - **RIB-D1 복원 (4f2c D1 → (a) 원래 집 복원, 스텁 예산 10,000 보존(측정 9,915+133=10,048 초과로 스텁 삽입 기각))**: 구 트리 `2aab5f797` factory-dispatch.md:116 행을 live·템플릿 미러 양 트리 "The dispatch cycle" 절에 바이트 그대로 복원 — 스텁 무접촉(REQ-RIB-011 예산 영향 없음). 문장: "`card`, `cmd`, `wt`, and `evidence` are always present. `spec` joins once a SPEC exists; a Class B card carries none, and its `evidence` names whatever record the leader will read instead. `lens` appears only when the leader names review lenses for the card's sync gate."
 - **RIB-D2 (role_rules.go:328 YAML 문자열 절단) · RIB-D3 (role_core_stub_gate_test.go:72 WalkDir 오류 삼킴)**: 부채 기록, 후속 카드 t1637 귀속 (리더·영실이 판단, 착지 비차단)
+
+### 델타 감사 2라운드 (sync-audit-delta2) — 착지 관문 판정과 B1 수리 (2026-10-11)
+
+- **델타2 판정**: FAIL 0.6 (must_pass_failed 1 · blocking 1, codex required fail 수렴 rcpt-caa859f7b7b708666c0552d2) — 판정 파일 `.moai/reports/t1617/sync-audit-delta2.md`. **auditor-model 공백 공시**: codex_audit 결과 JSON에 model 필드가 없어(키: verdict/summary/findings/next_steps/audit_receipt/build_commit/review_base) 응답 모델 id를 원문으로 남길 수 없음을 판정 파일에 명시 — 규칙 3대로 기재, 리더 관문 판단 귀속
+- **B1 (블로킹, 본 델타)**: 복원 행이 `2aab5f797:116`과 바이트 비일치 — 원문은 `- ` 목록 항목(273B)인데 복원은 백틱 시작(271B), 2바이트 누락. 커밋 `5c788d57a` 메시지와 본 progress의 "바이트 그대로" 주장이 엄밀히 거짓이었음 — **정정**: 그 주장은 `5c788d57a` 시점 기준 참이 아님(내용 복원은 정확, 목록 접두 누락)
+- **B1 수리**: 양 트리 복원 행에 `- ` 접두 부여 → 감사자 기준 시험 `grep -cxF -f <sed -n '116p'>` = **양 트리 1** (바이트 일치). 검증: `TestAutoPickMirrorParity|TestAutoPick|TestAutoRank|TestAutoDoc` ok 16.291s · `TestRoleCoreStubGate` ok 0.447s (-count=1)
+- **재확인 표 (감사자 관측 인용)**: D1 — f40bfb59f에서 결함 형태 존재(스텁 양쪽 문장 부재), 본문은 본 수리로 변경 · D2 — f40bfb59f 존재(:328 strings.Cut), 미변경 · D3 — 존재(:72 WalkDir 삼킴), 미변경 · 신규 P2 `role_rules.go:345` (os.ReadFile) — f40bfb59f 존재, 미변경 → **t1637 부채계열 추가** · 신규 P3 `hooks-system.md:132` (23,166자 내부 인용) — f40bfb59f 존재, 미변경 → **리더 처분 (t1637 범위 주석 또는 별도)**
+- **스텁 예산 수치 정정**: 이전 기록 "9,915+133=10,048"은 리더 룰링 인용치 — 자체 미재측정(감사자 지적)
