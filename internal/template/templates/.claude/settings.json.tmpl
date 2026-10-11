@@ -417,6 +417,15 @@
 {{- end}}
     "refreshInterval": 60
   },
+  "subagentStatusLine": {
+    "type": "command",
+{{- if eq .Platform "windows"}}
+    "command": "bash \"$CLAUDE_PROJECT_DIR/.moai/status_line.sh\"",
+{{- else}}
+    "command": "\"$CLAUDE_PROJECT_DIR/.moai/status_line.sh\"",
+{{- end}}
+    "refreshInterval": 60
+  },
   "skillListingBudgetFraction": 0.02,
   "showThinkingSummaries": false,
   "cleanupPeriodDays": 30,

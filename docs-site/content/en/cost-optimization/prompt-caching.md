@@ -237,6 +237,8 @@ no error).
 > New models in the 2026 lineup, like Opus 4.8 (1M context), get their own
 > per-family minimum cache tokens — for models not in the table above, check
 > the [official prompt caching documentation](https://platform.claude.com/docs/en/build-with-claude/prompt-caching).
+> Haiku 5.5 (`claude-haiku-5-5`, 1M, requires CC v2.1.293+) is not in the table
+> yet either — check the official documentation.
 
 ## Cost-saving habits
 

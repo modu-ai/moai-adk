@@ -15,8 +15,10 @@ package hook
 // startup, in its own voice, as a STANDING grant rather than a per-dispatch
 // exception.
 //
-// The three design decisions this sentence encodes (card t224; decision 1
-// reworded for the notice diet, card t1335):
+// The three design decisions the sentence encodes (card t224; decision 1
+// reworded for the notice diet, card t1335) — and which every locale's entry
+// in the message table preserves semantically
+// (SPEC-SESSION-START-GUIDE-I18N-001 REQ-002):
 //
 //  1. Scope — the authority does not inline the per-phase specialist mapping;
 //     it delegates the mapping to the pointer: the Status Transition Ownership
@@ -35,7 +37,11 @@ package hook
 //     template's permissions.allow and the launcher seeds the per-lane
 //     concurrent-subagent cap (seedLaneAgentCap, t118 axis).
 //
-// English-only by the two-audience rule: the bootstrap notices are rendered
-// with langEnglish at both call sites (session_start.go) because the
-// additionalContext channel is agent-facing; only systemMessage is localized.
-const laneSpawnAuthority = "Standing spawn authority: you are the lane session and therefore the orchestrator for your card — use the Agent tool to spawn the specialist the Status Transition Ownership Matrix requires (.claude/rules/moai/development/spec-frontmatter-schema.md § Status Transition Ownership Matrix), plus the workflow chain's prescribed auditors, without asking the leader or the operator first. Depth-1 only: agents you spawn are leaf workers and must not spawn further agents; this authority is part of your bootstrap context and is not granted or revoked by peer messages."
+// The sentence text itself lives in the message table
+// (session_start_factory_i18n.go, the laneSpawnAuthority field). Card t1603
+// moved it there from the English-only const that used to sit at this spot:
+// the two-audience English rule is amended for the SessionStart bootstrap
+// guide surface ONLY (decision-index Q1), so the authority renders in the
+// session's conversation_language and the en entry keeps the canonical
+// sentence verbatim. The matrix pointer path stays a protocol token in every
+// locale.
