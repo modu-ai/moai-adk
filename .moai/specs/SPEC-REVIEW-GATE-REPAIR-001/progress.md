@@ -1,6 +1,6 @@
 # 진행 기록 — SPEC-REVIEW-GATE-REPAIR-001
 
-상태: completed (3-phase close, sync 단계에서 전환). 이 파일의 §E.1 ~ §E.4 는 각 단계 담당자가 채운 기록이다.
+상태: completed (3-phase close, amendment 뒤 재종결). 이 파일의 §E.1 ~ §E.4 는 각 단계 담당자가 채운 기록이다.
 
 ## §E.1 Plan-phase Audit-Ready Signal
 
@@ -522,10 +522,16 @@ run-phase 의 M1, M2, M3(후속 포함), M7 은 로컬 커밋으로 끝났고, s
 
 audit_ready: true
 sync_status: audit-ready
-sync_complete_at: 2026-10-11T01:50:45Z
-sync_commit_sha: 7716c99ff2347dc004ee0e209791fc648772e1ef
+sync_complete_at: 2026-10-11T03:07:23Z
+sync_commit_sha: pending-backfill
 
-sync 단계를 3-phase close 단일 커밋으로 마쳤다. spec.md 의 status 와 이 파일의 상태 줄을 completed 로 전환했고, CHANGELOG 항목은 Fixed 절 맨 위에 추가했다. sync_commit_sha 는 pending-backfill 자리표시였다. 커밋은 자신의 해시를 기록할 수 없으므로 실제 SHA 는 다음 커밋에서 backfill 한다(spec-workflow.md § Sync (close), spec-frontmatter-schema.md § SHA placeholder backfill exemption).
+SF-1 수리(§E.2)와 SF-2 수정 증서(커밋 `582bed1f8`, spec.md `## Amendments`) 뒤의 재종결이다. 수정 증서가 SPEC 을 in-progress 로 되돌렸고, 이 커밋이 completed 로 다시 닫는다. 이전 종결의 sync_commit_sha `7716c99ff2347dc004ee0e209791fc648772e1ef` 는 spec.md 의 prior_completed_sha 와 같은 값이다. 커밋은 자신의 해시를 기록할 수 없으므로 이 커밋의 sync_commit_sha 는 pending-backfill 자리표시다. 실제 SHA 는 다음 커밋에서 backfill 한다(spec-workflow.md § Sync (close), spec-frontmatter-schema.md § SHA placeholder backfill exemption).
+
+**§E.4 Gaps (델타 감사로 넘김)**
+
+- (i) 잠금 시한 초과 분기와 Windows 죽은 소유자 파기에는 테스트가 없다. 파기 함수 `codexReviewBreakStaleBlockLock` 의 함수 커버리지는 12.5%다(§E.2 SF-1 Gap 4 와 같은 수치).
+- (ii) 래퍼의 35·36·79–80행 종료는 SPEC 에 명명되어 있고 그 변경은 t1674 몫이므로, 이 SPEC 은 래퍼를 바꾸지 않는다.
+- (iii) SF-3 은 영구 편차다. §G 에 기록했다.
 
 ## §G Override and Refusal Record
 
@@ -534,3 +540,5 @@ sync 단계를 3-phase close 단일 커밋으로 마쳤다. spec.md 의 status �
 
 - 2026-10-10T23:27:18Z SPEC-REVIEW-GATE-REPAIR-001 operator-decision kickoff=approve decider=human actor=operator engine-event=seq-1250 (card.transition kickoff->assigned v57) source=AskUserQuestion(영실이 세션; 리더 전달, 레인은 AskUserQuestion 자체를 보지 않음) board=d-20261010T232653Z-a596 codex-leg=advisory(2413·a280) lane=transcribed-from-engine-event-not-authored
 - 귀속 표 (영실이 판단, 리더 전달, 2026-10-10): F1 → t1662 (relate 142) · F2 → t1637 (relate 143) · F3 → t1639 (relate 145; 본문 추가 todo_runtime.go:364, todo_dispatch_current.go:53 은 기존) · F4 → t1683 (doctor 경고만 맡고, 규칙 문장 정정은 범위 밖이다. 정정은 M7 에서 수행) · F5 → t1674 (relate 146; 본문 "plan 시작 시 반영") · F6 → t1635 (relate 144).
+- 2026-10-11 · **SF-3 영구 편차 (permanent deviation).** sync 커밋 `7716c99ff` 의 제목(`docs(SPEC-REVIEW-GATE-REPAIR-001): close the sync phase and record the audit-ready signal (card t1620)`)에는 닫기 중위(close infix)가 없다. sync-audit 은 이 제목을 `run-partial` / `in-progress` 로 분류했다(`.moai/reports/t1620/sync-audit.md` E-7 관측). 이력은 다시 쓸 수 없으므로 이 편차는 영구다. 이 기록은 보드 `d-20261011T023045Z-326e` 의 리더 판정 (d) 를 따르며, 랜딩 시점의 드리프트 처리는 리더의 판정이다.
+- 2026-10-11 · **sync 감사 FAIL 기록.** 파일 `.moai/reports/t1620/sync-audit.md` (audited_sha 3c2f5dfa2, 판정 FAIL) 는 이 커밋에서 편집하지 않았다. SF-1 은 커밋 `4bd5d433a`(RED), `a13e02705`(GREEN), `e62a8bdd5`(§E.2 증거)로 수리했다. SF-2 는 커밋 `582bed1f8` 이 SPEC 본문(REQ-RG-007 범위 한계, Amendments 절)에 래퍼 네 종료 경로를 명명했고, 래퍼 동작은 바뀌지 않았다(t1674 몫). G1 감사 레그(필수 교차 모델, codex)는 델타 감사에서 실행하며, 그때 2413·a280 advisory 를 적용한다.
