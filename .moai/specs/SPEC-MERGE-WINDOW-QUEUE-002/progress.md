@@ -554,3 +554,22 @@ decision record: decided_by=lane-5 (run re-entry, run tmnboq) evidence_refs=sync
 - **Push and CI.** The push (fast-forward) follows this commit. The CI run record (URL and concluded SHA) goes to `.moai/reports/t1582/ci-verdict.md` (gitignored) and to the leader.
 - **Residual risk.** macOS path-case behavior differs from the Linux CI checkout; CI decides that Gap. The audit reaches the auto-merged clash only as far as its review goes (Gap 8).
 - decision record: decided_by=lane-5 (post-absorb verification, run tmnboq) evidence_refs=codex receipt rcpt-a6392fad73008f9ba46bb939; .moai/reports/t1582/absorb-delta-audit.md; .moai/reports/t1582/absorb-verification.md ladder_path=codex_audit verdict pass, no fallback; build lag disclosed (Gap 7)
+
+### Landing record (card t1582, nominated run tmnboq, 2026-10-11)
+
+- **Claim.** The absorb merge 2f26743c9c (tree 57a0500c) passes the impacted families: internal/factory as a plain full-package run, and the internal/cli family recorded with go test -json. Factory is excluded from the remeasure scope because of defect t1677.
+- **Absorb.** Local main, read right before the absorb: b9087f4d8dc2657b04683eaf462b356ff3f21737 (t1663 landed). Merge commit 2f26743c9c; parents 88f8f857766d2f0cee3de4533356622e3e03547c (card) and b9087f4d8dc2657b04683eaf462b356ff3f21737 (main). 5d7c case 1: no textual conflict, nothing hand-resolved, so no re-audit. Intersection (CHANGELOG.md, internal/cli/factory_card.go) is in `.moai/reports/t1582/absorb-b9087f4d8.md` (gitignored).
+- **Evidence (verbatim).**
+  - internal/factory, plain full package, environment-isolated, tree 57a0500c: `ok  	github.com/modu-ai/moai-adk/internal/factory	441.051s` (factory plain exit=0 at 08:38:17Z).
+  - Direct go test -json capture of the remeasure command (factory and cli, -run family), tree 57a0500c: internal/factory 34 test pass events, 0 fail events; internal/cli 48 pass events, 0 fail events. The literal `[no test files]` appears in one internal/factory output event (t1677).
+  - Remeasure v1 (shell wrapper): exit 1, record invalid (structured_required false). Superseded.
+  - Remeasure v2 (go test -json, factory and cli): refused by the verb with `[no test files] — an empty sweep cannot stand for a re-measure`. Record exit_code 0, structured_count false. Not valid.
+- **Rule source.** Defect t1677 (leader): an internal/factory test prints the literal string `[no test files]`, and countGoTestJSONTests reads it as an empty sweep. Earlier cases: t1616 and t1628.
+- **Scope disposition (leader).** factory는 t1677 거짓 양성 때문에 remeasure에서 제외, plain ok로 대신함. The cli family is recorded with `go test -json -count=1 ./internal/cli/ -run 'FactoryCard|FactoryMerge|Remeasure|RedT1582|ShellJoin|IntegrationMerge|ConfiguredIntegrationBranch|CardMergeBase'` on the new tree; the record is in the primary checkout store, keyed by tree, and checked before the push.
+- **Gaps.**
+  1. The factory package is excluded from the remeasure scope (t1677); the plain ok line above stands in for it.
+  2. The codex path test (TestCodexTaskResumeScope_WorkKeyResumesOwnCardThread) is a leader-ruled Gap; CI decides.
+  3. Build lag db0c514d3 of the audit verdict is a Gap (leader accepted the codex pass; no re-audit).
+  4. The docs commit after the merge changes the tree. The Go tree is unchanged (`git diff --name-only ... -- '*.go'` empty), so the factory plain result is attributed to the Go tree of 57a0500c.
+- **Judging builds (§2.2).** The remeasure record's build_identity is the installed moai build (v3.2.0-rc.29, 4f8aba061), which is not an ancestor of HEAD (checked earlier).
+- decision record: decided_by=lane-5 (landing, nominated run tmnboq) evidence_refs=absorb 2f26743c9c (tree 57a0500c); factory plain ok (factory-plain/status.txt, exit 0); direct -json capture (json-diag); leader disposition for t1677 ladder_path=leader nomination, steps 1-2 done; step 4 record on the docs-commit tree pending
