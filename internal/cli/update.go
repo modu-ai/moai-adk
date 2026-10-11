@@ -602,6 +602,15 @@ func runUpdate(cmd *cobra.Command, _ []string) error {
 	// Pre-fix UX leaked a "Skipping sync" line immediately followed by
 	// "Legacy skill archive failed" because the archive ran unconditionally.
 	if syncSkipped {
+		// SPEC-UPDATE-MIGRATION-FIX-001 (REQ-UMF-001..003): the managed-surface
+		// integrity probe runs on the version-match entry only. A user-cancelled
+		// merge returns the same skipped=true, so the version predicate that
+		// updateSkippedOnVersionMatch re-evaluates also gates the probe. The probe
+		// runs before the strip below because it is pure observation and the strip
+		// mutates configuration.
+		if updateSkippedOnVersionMatch(cmd, ".") {
+			runManagedSurfaceIntegrityProbe(out, ".")
+		}
 		// A version-matched update runs no sync and no merge, so the retired
 		// per-agent model/effort keys are stripped here, after its own backup.
 		// A user-cancelled merge returns the same skipped=true; the helper
