@@ -119,6 +119,37 @@ func TestWindowHoldDirectGrant(t *testing.T) {
 	})
 }
 
+func TestWindowHoldRefusalPersists(t *testing.T) {
+	t.Run("a red ticket withdrawn by a refused acquire is written back to the record", func(t *testing.T) {
+		root := t.TempDir()
+		writeWorkflowCandidateCI(t, root, "true")
+		windowHoldSeed(t, root, "tRed", CandidateVerdictRed)
+		windowHoldSeed(t, root, "tRed2", CandidateVerdictRed)
+		if err := os.MkdirAll(filepath.Dir(integrationLockPath(root)), 0o755); err != nil {
+			t.Fatal(err)
+		}
+		// An open window with no holder, whose only queued waiter is a red card.
+		if err := writeIntegrationLock(integrationLockPath(root), &IntegrationLock{
+			Queue: []IntegrationTicket{windowHoldTicket("sess-red", "tRed")},
+		}); err != nil {
+			t.Fatal(err)
+		}
+		// A second red card asks for the window directly and is refused.
+		if _, err := AcquireIntegrationWindow(root, IntegrationLock{
+			SessionID: "sess-red2", PID: os.Getpid(), PIDSource: PIDSourceSessionOwner, Branch: "develop", Card: "tRed2",
+		}, false, nil); !IsCandidateHold(err) {
+			t.Fatalf("acquire for a red card: err %v, want a candidate-hold refusal", err)
+		}
+		lock, err := ReadIntegrationLock(root)
+		if err != nil {
+			t.Fatal(err)
+		}
+		if len(lock.Queue) != 0 {
+			t.Errorf("record queue %+v after the refused acquire: the red ticket the refresh withdrew was not written back, so it stays on disk and can be promoted later in its old place", lock.Queue)
+		}
+	})
+}
+
 func TestWindowHoldQueuePromotion(t *testing.T) {
 	now := time.Date(2026, 10, 10, 9, 0, 0, 0, time.UTC)
 

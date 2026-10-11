@@ -402,7 +402,7 @@ func AcquireIntegrationWindow(projectRoot string, want IntegrationLock, force bo
 		// conditionally: a record the refresh did NOT change is not
 		// rewritten, and its refusal formats exactly as before.
 		persistRefreshed := func() error {
-			if len(report.Dropped) == 0 && report.Promoted == nil && !report.Displaced {
+			if len(report.Dropped) == 0 && len(report.Refused) == 0 && report.Promoted == nil && !report.Displaced {
 				return nil
 			}
 			return writeIntegrationLock(path, current)
