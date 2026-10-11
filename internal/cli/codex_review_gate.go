@@ -308,11 +308,12 @@ func codexReviewBlockLockPath(dir string, state verify.ReceiptState) string {
 }
 
 // acquireCodexBlockLock takes the review key's block lock, waiting at most
-// codexReviewBlockLockWait. The try primitive is the gate-run lock's
-// acquireGateLockImpl (flock on Unix, exclusive create on Windows); this helper
-// adds the bounded wait and the stale-owner break. ok is false when the lock is not
-// taken within the bound or the lock machinery fails, and the caller then allows
-// (REQ-RG-004): a turn end never blocks without a recorded count.
+// codexReviewBlockLockWait. The try primitive is acquireGateLockNoFollowImpl, the
+// gate-run lock's open that refuses a symbolic-link path (flock on Unix, exclusive
+// create on Windows); this helper adds the bounded wait and the stale-owner break.
+// ok is false when the lock is not taken within the bound or the lock machinery
+// fails (a refused path included), and the caller then allows (REQ-RG-004): a
+// turn end never blocks without a recorded count.
 //
 // @MX:WARN: [AUTO] cross-process lock on the per-key block count; a holder that is alive but stalled past the bound makes contending turn ends allow instead of block
 // @MX:REASON: the check and the record of one block must be a single step across processes (REQ-RG-004); the bound and the dead-owner break keep a stuck or crashed holder from wedging the gate
@@ -323,7 +324,7 @@ func acquireCodexBlockLock(dir string, state verify.ReceiptState) (release func(
 	}
 	deadline := time.Now().Add(codexReviewBlockLockWait)
 	for {
-		impl, err := acquireGateLockImpl(path)
+		impl, err := acquireGateLockNoFollowImpl(path)
 		if err == nil {
 			return func() { _ = impl.release() }, true
 		}
