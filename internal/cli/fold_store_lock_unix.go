@@ -56,16 +56,30 @@ func newFoldStoreLock() *foldStoreLock {
 // at <dir>/.moai-fold.lock. A nil return means this lock object holds the
 // flock; contention returns errFoldStoreContended immediately — the caller
 // decides to retry or refuse. The lock file is created on first acquire,
-// mode 0644, O_CREAT|O_RDWR|O_CLOEXEC, and never removed on release
+// mode 0644, O_CREAT|O_RDWR|O_CLOEXEC|O_NOFOLLOW (a symlink is refused), and
+// never removed on release
 // (plan.md D-3).
 func (l *foldStoreLock) tryAcquire(dir string) error {
 	l.mu.Lock()
 	defer l.mu.Unlock()
 
 	path := filepath.Join(dir, foldLockFileName)
-	fd, err := unix.Open(path, unix.O_CREAT|unix.O_RDWR|unix.O_CLOEXEC, 0o644)
+	// O_NOFOLLOW: a symlinked lock file is refused, never followed, so the lock
+	// is never taken on a file outside the store (post-close gate finding 4).
+	fd, err := unix.Open(path, unix.O_CREAT|unix.O_RDWR|unix.O_CLOEXEC|unix.O_NOFOLLOW, 0o644)
 	if err != nil {
 		return fmt.Errorf("memory fold: store lock open %s: %w", path, err)
+	}
+	// Every other non-regular shape (a FIFO standing in for the lock, a device
+	// node) is refused the same way.
+	var st unix.Stat_t
+	if err := unix.Fstat(fd, &st); err != nil {
+		_ = unix.Close(fd)
+		return fmt.Errorf("memory fold: stat the store lock %s: %w", path, err)
+	}
+	if st.Mode&unix.S_IFMT != unix.S_IFREG {
+		_ = unix.Close(fd)
+		return fmt.Errorf("memory fold: the store lock %s is not a regular file — refusing", path)
 	}
 	if ferr := unix.Flock(fd, unix.LOCK_EX|unix.LOCK_NB); ferr != nil {
 		_ = unix.Close(fd)
@@ -80,6 +94,15 @@ func (l *foldStoreLock) tryAcquire(dir string) error {
 // refusal of REQ-MRR-003 — write nothing, exit non-zero, name the contended
 // store — never an unbounded block.
 func (l *foldStoreLock) acquire(dir string) error {
+	return l.acquireUntil(dir, nil)
+}
+
+// acquireUntil is acquire with an abandonment-aware wait: a non-nil forbidden
+// is polled on every contended retry, and a true reading ends the wait at
+// once, holding nothing. A bounded step whose caller gave up therefore never
+// keeps waiting for a hold its holder may not release soon. The deadline
+// still bounds the wait.
+func (l *foldStoreLock) acquireUntil(dir string, forbidden func() bool) error {
 	deadline := time.Now().Add(foldStoreLockRetryDeadline)
 	for {
 		err := l.tryAcquire(dir)
@@ -88,6 +111,9 @@ func (l *foldStoreLock) acquire(dir string) error {
 		}
 		if !errors.Is(err, errFoldStoreContended) {
 			return err
+		}
+		if forbidden != nil && forbidden() {
+			return fmt.Errorf("memory fold: the step was abandoned while waiting for the store lock %s", filepath.Join(dir, foldLockFileName))
 		}
 		if !time.Now().Before(deadline) {
 			return fmt.Errorf("memory fold: the store lock on %s stayed held for %s — refusing to write (lock file %s)", dir, foldStoreLockRetryDeadline, filepath.Join(dir, foldLockFileName))

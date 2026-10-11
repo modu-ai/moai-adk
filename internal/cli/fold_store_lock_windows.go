@@ -5,6 +5,7 @@ package cli
 import (
 	"errors"
 	"fmt"
+	"os"
 	"path/filepath"
 	"sync"
 	"time"
@@ -58,6 +59,12 @@ func (l *foldStoreLock) tryAcquire(dir string) error {
 	defer l.mu.Unlock()
 
 	path := filepath.Join(dir, foldLockFileName)
+	// CreateFile follows a symlink unless told not to, so the Lstat guard refuses
+	// one before the open (a narrow TOCTOU tail remains between the lstat and the
+	// open; the unix half is O_NOFOLLOW-exact).
+	if fi, statErr := os.Lstat(path); statErr == nil && fi.Mode()&os.ModeSymlink != 0 {
+		return fmt.Errorf("memory fold: the store lock %s is a symlink — refusing", path)
+	}
 	pathW, err := windows.UTF16PtrFromString(path)
 	if err != nil {
 		return fmt.Errorf("memory fold: store lock utf16 %s: %w", path, err)
@@ -101,6 +108,15 @@ func (l *foldStoreLock) tryAcquire(dir string) error {
 // refusal of REQ-MRR-003 — write nothing, exit non-zero, name the contended
 // store — never an unbounded block.
 func (l *foldStoreLock) acquire(dir string) error {
+	return l.acquireUntil(dir, nil)
+}
+
+// acquireUntil is acquire with an abandonment-aware wait: a non-nil forbidden
+// is polled on every contended retry, and a true reading ends the wait at
+// once, holding nothing. A bounded step whose caller gave up therefore never
+// keeps waiting for a hold its holder may not release soon. The deadline
+// still bounds the wait.
+func (l *foldStoreLock) acquireUntil(dir string, forbidden func() bool) error {
 	deadline := time.Now().Add(foldStoreLockRetryDeadline)
 	for {
 		err := l.tryAcquire(dir)
@@ -109,6 +125,9 @@ func (l *foldStoreLock) acquire(dir string) error {
 		}
 		if !errors.Is(err, errFoldStoreContended) {
 			return err
+		}
+		if forbidden != nil && forbidden() {
+			return fmt.Errorf("memory fold: the step was abandoned while waiting for the store lock %s", filepath.Join(dir, foldLockFileName))
 		}
 		if !time.Now().Before(deadline) {
 			return fmt.Errorf("memory fold: the store lock on %s stayed held for %s — refusing to write (lock file %s)", dir, foldStoreLockRetryDeadline, filepath.Join(dir, foldLockFileName))

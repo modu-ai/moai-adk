@@ -145,25 +145,32 @@ func newMemoryFoldCmd() *cobra.Command {
 			if !jsonOutput {
 				_, _ = fmt.Fprintf(out, "store: %s (%s)\n", store.Dir, store.Origin)
 			}
-			before, err := taxonomy.SnapshotStore(store.Dir)
-			if err != nil {
-				return err
+			// computeFoldPlan builds the fold plan from one snapshot of the
+			// store. The preview reads it unlocked (read-only invocation). The verb
+			// computes its plan before the lock and verifies that plan under the lock:
+			// a store changed in between is refused. Only the on-done step re-plans,
+			// after it has acquired the lock.
+			computeFoldPlan := func() (memoryFoldPlan, foldComputed, taxonomy.StoreSnapshot, error) {
+				before, err := taxonomy.SnapshotStore(store.Dir)
+				if err != nil {
+					return memoryFoldPlan{}, foldComputed{}, nil, err
+				}
+				comp, err := buildFoldPlan(before, cardID)
+				if err != nil {
+					return memoryFoldPlan{}, foldComputed{}, nil, err
+				}
+				plan := memoryFoldPlan{
+					Store:    store,
+					Card:     cardID,
+					Archive:  comp.archive,
+					Removed:  comp.plan.Removed,
+					Appended: comp.plan.Appended,
+					Kept:     comp.kept,
+					Unlinked: comp.unlinked,
+				}
+				return plan, comp, before, nil
 			}
-			comp, err := buildFoldPlan(before, cardID)
-			if err != nil {
-				return err
-			}
-			plan := memoryFoldPlan{
-				Store:    store,
-				Card:     cardID,
-				Archive:  comp.archive,
-				Removed:  comp.plan.Removed,
-				Appended: comp.plan.Appended,
-				Kept:     comp.kept,
-				Unlinked: comp.unlinked,
-			}
-
-			if len(comp.plan.Removed) == 0 {
+			renderNoFold := func(plan memoryFoldPlan, comp foldComputed) error {
 				// Nothing to fold: no line names the card, or every STRONG
 				// line is kept under REQ-MFB-005 (REQ-MFB-006).
 				if jsonOutput {
@@ -173,6 +180,27 @@ func newMemoryFoldCmd() *cobra.Command {
 				renderFoldKept(out, comp.kept)
 				return nil
 			}
+			// The no-change discovery is a READ-ONLY act: the plan is
+			// computed from the snapshot OUTSIDE the lock, and a fold with
+			// nothing to do answers here — on a readable-but-not-writable
+			// store too, where lock-file creation would fail (the preview
+			// fix's mirror on the --yes path, post-close gate finding).
+			// Only when actual application is needed does applyFold take the
+			// store lock (REQ-MRR-001). Under that lock it checks the store's
+			// bytes against this plan's snapshot, so a store that changed in between
+			// is refused, never published over. The plan above is read outside the
+			// lock, and applyFold's byte checks under the lock catch any later change.
+			plan, comp, before, err := computeFoldPlan()
+			if err != nil {
+				return err
+			}
+			if len(comp.plan.Removed) == 0 {
+				return renderNoFold(plan, comp)
+			}
+			// A preview without --yes is a READ-ONLY invocation: it takes no
+			// write lock and creates no lock file — a readable but not
+			// writable store must still preview (the baseline behavior; the
+			// locked verb regressed it, post-report gate finding 2).
 			if !yes {
 				if jsonOutput {
 					return renderFoldPlanJSON(out, plan)
@@ -183,13 +211,15 @@ func newMemoryFoldCmd() *cobra.Command {
 			if memoryFoldSeam.mutateDisk != nil {
 				// Test seam (AC-MFB-007 iii): a concurrent writer lands
 				// between the plan and the apply; the content re-checks
-				// below must catch it.
+				// inside applyFold must catch it.
 				memoryFoldSeam.mutateDisk(store.Dir)
 			}
 			if err := applyFold(store.Dir, before, comp, nil, nil); err != nil {
 				return err
 			}
 			plan.Applied = true
+			// The result's print runs after applyFold has released the store lock:
+			// a blocked stdout pipe must never extend the hold (lock-scope discipline).
 			if jsonOutput {
 				return renderFoldPlanJSON(out, plan)
 			}
@@ -439,11 +469,18 @@ func applyFold(dir string, before taxonomy.StoreSnapshot, comp foldComputed, wri
 	// REQ-MRR-003's clean refusal naming the store; the release is the
 	// deferred one even when a write fails mid-apply.
 	lock := newFoldStoreLock()
-	if err := lock.acquire(dir); err != nil {
+	if err := lock.acquireUntil(dir, writesForbidden); err != nil {
 		return err
 	}
 	defer func() { _ = lock.release() }()
+	return applyFoldLocked(dir, before, comp, writesForbidden, run)
+}
 
+// applyFoldLocked is applyFold's body for a caller that already holds the
+// store's fold lock: the on-done step's transaction (runUnderFoldLock). It
+// takes no lock of its own, since a second acquisition from the same process
+// would wait on the hold the caller already has.
+func applyFoldLocked(dir string, before taxonomy.StoreSnapshot, comp foldComputed, writesForbidden func() bool, run *foldOnDoneRun) error {
 	archive := comp.archive
 
 	// An abandoned close-path step (the card-close bound expired) must not
@@ -454,7 +491,7 @@ func applyFold(dir string, before taxonomy.StoreSnapshot, comp foldComputed, wri
 
 	// A change that landed between the plan and the apply is caught here,
 	// before the archive gains a line (AC-MFB-007 iii).
-	if err := checkFoldUnchanged(dir, memoryIndexName, before[memoryIndexName]); err != nil {
+	if err := checkFoldUnchanged(dir, memoryIndexName, before[memoryIndexName], writesForbidden); err != nil {
 		return err
 	}
 
@@ -466,7 +503,7 @@ func applyFold(dir string, before taxonomy.StoreSnapshot, comp foldComputed, wri
 	// loses index qualification even though the moved line survives), makes
 	// the fold refuse here, with MEMORY.md untouched (REQ-MFB-004; gate
 	// overlay regression).
-	if err := checkFoldUnchanged(dir, archive, before[archive]); err != nil {
+	if err := checkFoldUnchanged(dir, archive, before[archive], writesForbidden); err != nil {
 		return err
 	}
 
@@ -489,7 +526,10 @@ func applyFold(dir string, before taxonomy.StoreSnapshot, comp foldComputed, wri
 	// link-target set is present on one line — regardless of whether this
 	// attempt appended, so the deletion from MEMORY.md never outruns the
 	// archive's observed copy (REQ-MFB-004 step 2).
-	data, err := os.ReadFile(filepath.Join(dir, archive))
+	// The re-read is abandonment-polled like every read inside the lock
+	// hold (post-report gate finding 1): a blocked read releases the lock
+	// on abandonment instead of pinning it.
+	data, err := readFileBounded(filepath.Join(dir, archive), writesForbidden)
 	if err != nil {
 		return fmt.Errorf("memory fold: re-read %s: %w", archive, err)
 	}
@@ -511,7 +551,7 @@ func applyFold(dir string, before taxonomy.StoreSnapshot, comp foldComputed, wri
 	// target no longer resolves. The SAME verification re-runs at the
 	// pre-rename position (guard.check below), so the window between this
 	// check and the rename is covered too (codex-review round 2).
-	if err := verifyArchiveEffectiveState(dir, before, comp); err != nil {
+	if err := verifyArchiveEffectiveState(dir, before, comp, writesForbidden); err != nil {
 		return err
 	}
 
@@ -530,7 +570,7 @@ func applyFold(dir string, before taxonomy.StoreSnapshot, comp foldComputed, wri
 		&foldRenameGuard{
 			name:  archive,
 			want:  comp.planned[archive],
-			check: func(dir string) error { return verifyArchiveEffectiveState(dir, before, comp) },
+			check: func(dir string) error { return verifyArchiveEffectiveState(dir, before, comp, writesForbidden) },
 		}, writesForbidden, run)
 }
 
@@ -544,8 +584,14 @@ func applyFold(dir string, before taxonomy.StoreSnapshot, comp foldComputed, wri
 // refuses and keeps it. Only a target that EXISTED when the plan was
 // computed and is gone NOW is a mid-run move: a never-existed target is
 // the plan phase's clean refusal, not a concurrency signal.
-func verifyArchiveEffectiveState(dir string, before taxonomy.StoreSnapshot, comp foldComputed) error {
-	current, err := taxonomy.SnapshotStore(dir)
+func verifyArchiveEffectiveState(dir string, before taxonomy.StoreSnapshot, comp foldComputed, forbidden func() bool) error {
+	var current taxonomy.StoreSnapshot
+	var err error
+	if forbidden != nil {
+		current, err = snapshotStoreBounded(dir, forbidden)
+	} else {
+		current, err = taxonomy.SnapshotStore(dir)
+	}
 	if err != nil {
 		return err
 	}
@@ -568,11 +614,44 @@ func verifyArchiveEffectiveState(dir string, before taxonomy.StoreSnapshot, comp
 	return nil
 }
 
+// readFileBounded is one file read for a bounded on-done step, polling the
+// step's abandonment flag while the read runs (post-report gate finding 1:
+// EVERY read inside the lock hold is cancellable — a read that blocks past
+// the bound must release the lock, not pin it). A nil forbidden reads
+// plainly — the unbounded verb path.
+func readFileBounded(path string, forbidden func() bool) ([]byte, error) {
+	if forbidden == nil {
+		return os.ReadFile(path)
+	}
+	type readResult struct {
+		data []byte
+		err  error
+	}
+	ch := make(chan readResult, 1)
+	go func() {
+		data, err := os.ReadFile(path)
+		ch <- readResult{data, err}
+	}()
+	tick := time.NewTimer(foldAbandonedReadPoll)
+	defer tick.Stop()
+	for {
+		select {
+		case res := <-ch:
+			return res.data, res.err
+		case <-tick.C:
+			if forbidden() {
+				return nil, fmt.Errorf("memory fold: the step was abandoned while reading %s", path)
+			}
+			tick.Reset(foldAbandonedReadPoll)
+		}
+	}
+}
+
 // checkFoldUnchanged aborts when the on-disk file no longer holds the bytes
 // the plan was computed from (REQ-MFB-004; the host-write race of plan.md
 // §G narrows here).
-func checkFoldUnchanged(dir, name string, planTime []byte) error {
-	current, err := os.ReadFile(filepath.Join(dir, name))
+func checkFoldUnchanged(dir, name string, planTime []byte, forbidden func() bool) error {
+	current, err := readFileBounded(filepath.Join(dir, name), forbidden)
 	if err != nil {
 		return fmt.Errorf("memory fold: re-read %s: %w", name, err)
 	}
@@ -671,17 +750,40 @@ func atomicWriteFoldFile(dir, name string, want, planTime []byte, guard *foldRen
 			}
 		}
 	}
-	if err := checkFoldUnchanged(dir, name, planTime); err != nil {
+	if err := checkFoldUnchanged(dir, name, planTime, writesForbidden); err != nil {
 		return err
 	}
 	if guard != nil {
-		if err := checkFoldUnchanged(dir, guard.name, guard.want); err != nil {
+		if err := checkFoldUnchanged(dir, guard.name, guard.want, writesForbidden); err != nil {
 			return err
 		}
 	}
 	if memoryFoldSeam.orderProbe != nil {
 		memoryFoldSeam.orderProbe("bytes-done")
 	}
+	if writesForbidden != nil && writesForbidden() {
+		return fmt.Errorf("memory fold: %s: the step was abandoned — not writing", name)
+	}
+	// The FINAL byte comparison (REQ-DISPATCH-008, AC-DI-009; plan-audit
+	// D9): a byte comparison FOLLOWS the probe and is the last check before
+	// the rename. Whatever a non-cooperating concurrent author wrote in the
+	// probe's window — into THIS file or into the guard file — is detected
+	// here and refused, never published over. The irreducible tail between
+	// this comparison and the rename is AC-DI-009's stated residual risk
+	// against a writer that bypasses every protocol; the store lock
+	// closes the window for cooperating writers.
+	if err := checkFoldUnchanged(dir, name, planTime, writesForbidden); err != nil {
+		return err
+	}
+	if guard != nil {
+		if err := checkFoldUnchanged(dir, guard.name, guard.want, writesForbidden); err != nil {
+			return err
+		}
+	}
+	// An abandoned step must not publish: the bounded reads above can
+	// complete inside a poll interval and return normally after the
+	// caller's deadline has passed — re-check at the last observable moment
+	// before the rename (post-close gate finding).
 	if writesForbidden != nil && writesForbidden() {
 		return fmt.Errorf("memory fold: %s: the step was abandoned — not writing", name)
 	}
@@ -698,9 +800,38 @@ func atomicWriteFoldFile(dir, name string, want, planTime []byte, guard *foldRen
 	return nil
 }
 
+// runUnderFoldLock runs fn while the store's fold lock is held (REQ-DISPATCH-008):
+// the on-done step's transaction — snapshot read, plan, and both index writes —
+// runs inside it. A second on-done process waits at the lock for the bounded
+// interval (REQ-MRR-003) and, once it holds the lock, re-plans against the
+// post-transaction store; a wait that expires refuses cleanly, writing nothing.
+// A `moai memory fold` verb process does not re-plan: it verifies its plan under
+// the lock (see applyFold). The lock is the cross-process file lock of
+// fold_store_lock_{unix,windows}.go (constraint C5). The lock path derives from
+// the store alone, never from a process-local TMPDIR value, so two processes
+// addressing one store always serialize on the same file. A non-nil forbidden
+// makes the ACQUISITION wait itself abandonment-aware: a bounded step whose
+// caller timed out exits the wait instead of staying stuck until an external
+// release.
+//
+// fn must apply through applyFoldLocked, not applyFold: a second acquisition of
+// the same lock from inside fn would wait on the hold this call already has.
+//
+// @MX:WARN: [AUTO] Cross-process file lock — while held, another fold process on this store waits up to the bounded interval and then refuses; none writes until release or holder exit.
+// @MX:REASON: an on-done fold must serialize its whole transaction (read, plan, both index writes) against the holder's, and a verb fold must serialize its byte verification and writes; without the lock a fold completing inside the holder's window lost its line to the holder's pre-window snapshot rename (EL-009/EL-002).
+func runUnderFoldLock(dir string, forbidden func() bool, fn func() error) error {
+	lock := newFoldStoreLock()
+	if err := lock.acquireUntil(dir, forbidden); err != nil {
+		return err
+	}
+	defer func() { _ = lock.release() }()
+	return fn()
+}
+
 // resolveFoldStore resolves the one store a fold acts on (§1.6): --dir, or
 // the first candidate from memoryCandidateStores whose directory carries
 // MEMORY.md.
+
 func resolveFoldStore(dirOverride string) (memoryStore, error) {
 	if dirOverride != "" {
 		abs, err := filepath.Abs(dirOverride)
@@ -1200,7 +1331,13 @@ func foldOnDoneStep(cardID string, run *foldOnDoneRun) (string, error) {
 	if rec != nil {
 		rec.fileOpen(filepath.Join(chosen.Dir, memoryIndexName))
 	}
-	before, err := taxonomy.SnapshotStore(chosen.Dir)
+	// The no-change discovery is a bounded, LOCK-FREE read: a fold with
+	// nothing to do answers quietly without creating the store's lock file
+	// or waiting out another fold's hold (the no-op parity of the verb's
+	// --yes path, post-close gate finding). Only an actual change takes the
+	// lock — and re-plans inside it, so the applied plan is always computed
+	// from the post-wait store.
+	before, err := snapshotStoreBounded(chosen.Dir, forbidden)
 	if err != nil {
 		return "", err
 	}
@@ -1214,9 +1351,72 @@ func foldOnDoneStep(cardID string, run *foldOnDoneRun) (string, error) {
 	if forbidden() {
 		return "", fmt.Errorf("the step was abandoned before its write")
 	}
-	if err := applyFold(chosen.Dir, before, comp, forbidden, run); err != nil {
+	// REQ-DISPATCH-008: the on-done step's transaction takes the store's
+	// fold lock. The wait happens inside the
+	// acquire; an abandoned step's forbidden() checks still refuse the
+	// write after the wait — and the read itself is abandonment-polled
+	// (run-gate finding 2): a read that blocks past the bound releases the
+	// lock instead of pinning it for every follow-up fold.
+	var summary string
+	err = runUnderFoldLock(chosen.Dir, forbidden, func() error {
+		before, err := snapshotStoreBounded(chosen.Dir, forbidden)
+		if err != nil {
+			return err
+		}
+		comp, err := buildFoldPlan(before, cardID)
+		if err != nil {
+			return err
+		}
+		if len(comp.plan.Removed) == 0 {
+			return nil
+		}
+		if forbidden() {
+			return fmt.Errorf("the step was abandoned before its write")
+		}
+		if err := applyFoldLocked(chosen.Dir, before, comp, forbidden, run); err != nil {
+			return err
+		}
+		summary = fmt.Sprintf("filed %d line(s) of %s into %s (store: %s)",
+			len(comp.plan.Removed), cardID, comp.archive, chosen.Dir)
+		return nil
+	})
+	if err != nil {
 		return "", err
 	}
-	return fmt.Sprintf("filed %d line(s) of %s into %s (store: %s)",
-		len(comp.plan.Removed), cardID, comp.archive, chosen.Dir), nil
+	return summary, nil
+}
+
+// foldAbandonedReadPoll is how often a bounded step's blocking read checks
+// the abandonment flag while it waits.
+const foldAbandonedReadPoll = 100 * time.Millisecond
+
+// snapshotStoreBounded runs SnapshotStore for a bounded on-done step,
+// polling the step's abandonment flag while the read runs: a read that
+// blocks — a FIFO standing in for the index, a hung filesystem — must not
+// pin the store lock past the step's own bound. On abandonment the caller
+// releases the lock and returns; the read's own goroutine (still blocked)
+// holds nothing and its result is discarded.
+func snapshotStoreBounded(dir string, forbidden func() bool) (taxonomy.StoreSnapshot, error) {
+	type foldReadResult struct {
+		snap taxonomy.StoreSnapshot
+		err  error
+	}
+	ch := make(chan foldReadResult, 1)
+	go func() {
+		snap, err := taxonomy.SnapshotStore(dir)
+		ch <- foldReadResult{snap, err}
+	}()
+	tick := time.NewTimer(foldAbandonedReadPoll)
+	defer tick.Stop()
+	for {
+		select {
+		case res := <-ch:
+			return res.snap, res.err
+		case <-tick.C:
+			if forbidden() {
+				return nil, fmt.Errorf("memory fold: the step was abandoned while reading the store")
+			}
+			tick.Reset(foldAbandonedReadPoll)
+		}
+	}
 }
