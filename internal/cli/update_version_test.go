@@ -282,16 +282,17 @@ func newMockGithubTLS(t *testing.T, cfg mockAPIConfig) (*httptest.Server, *http.
 	return ts, client, &capturedHost
 }
 
-// buildMockArchive builds a tar.gz containing a single "moai" entry copied from
-// the running test binary (a real executable so validateBinaryFormat accepts
-// it). Returns the archive bytes and the SHA256 hex of those bytes.
+// buildMockArchive builds a tar.gz containing a single "moai" entry. The entry is
+// a small stub that starts with the ELF magic bytes: validateBinaryFormat (the
+// product check) inspects only the leading magic, so the stub passes it. Nothing
+// in these tests executes the payload: installVersionTag never runs it, and the
+// one test that reaches runVersionBranch sets --binary, which skips the re-exec.
+// Returns the archive bytes and the SHA256 hex of those bytes.
 func buildMockArchive(t *testing.T) ([]byte, string) {
 	t.Helper()
-	// Use the running test binary as the payload — it is a valid Mach-O/ELF/PE.
-	src, err := os.ReadFile(os.Args[0])
-	if err != nil {
-		t.Fatalf("read test binary: %v", err)
-	}
+	// Using a copy of the running test binary as the payload made every install
+	// test gzip, hash, and transfer a full test binary on each run.
+	src := []byte("\x7fELF install-test stub: validateBinaryFormat checks magic bytes only")
 	var buf bytes.Buffer
 	gz := gzip.NewWriter(&buf)
 	tw := tar.NewWriter(gz)

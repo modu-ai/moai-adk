@@ -2427,6 +2427,12 @@
 - path: "workflow.branch_guard.enabled"
   class: W
   evidence: "reader: internal/hook preToolHandler.branchGuardEnabled (SPEC-WORKTREE-BRANCH-GUARD-OPTIN-001); gates both BranchGuard deny classes since SPEC-MAIN-COMMIT-BAN-001"
+- path: "workflow.candidate_ci.enabled"
+  class: W
+  evidence: "reader: internal/cli candidateCIEnabled (SPEC-CANDIDATE-CI-001); gates the candidate verb and the merge step's LandingCheck seam"
+- path: "workflow.candidate_ci.guard_bundle_required"
+  class: R
+  evidence: "reserved: the guard-bundle verdict admission is wired at the workflow layer (SPEC-CANDIDATE-CI-001 M5); no Go reader by design"
 - path: "workflow.commit_identity_guard.deny_emails"
   class: W
   evidence: reader

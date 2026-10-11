@@ -24,6 +24,8 @@ import (
 	"sort"
 	"strings"
 	"time"
+
+	"github.com/modu-ai/moai-adk/internal/gitenv"
 )
 
 // The three condition names of the re-pinned triple. They are the record's
@@ -89,9 +91,18 @@ type ExecGitRunner struct {
 // ended by a signal reports -1, as exec.ExitError does. Any other failure, where
 // the process could not be started or waited on, is returned as is: it has no
 // exit status, so none is invented for it.
+//
+// The child runs with the repo-scoping environment variables removed
+// (card t1478 M2 repair, P1): the git environment outranks cmd.Dir, so an
+// inherited GIT_DIR / GIT_WORK_TREE had a git child build and push in
+// ANOTHER repository than the one Dir names. Scope follows
+// gitenv.RepoScopingVars exactly — identity and behavior vars stay, only
+// repository LOCATION goes (the gitenv.Env per-child form, the same shape
+// core/git and homestate use).
 func (r ExecGitRunner) Git(args ...string) (string, error) {
 	cmd := exec.Command("git", args...)
 	cmd.Dir = r.Dir
+	cmd.Env = gitenv.Env()
 	var stdout, stderr bytes.Buffer
 	cmd.Stdout, cmd.Stderr = &stdout, &stderr
 	if err := cmd.Run(); err != nil {

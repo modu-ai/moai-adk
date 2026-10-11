@@ -8,6 +8,8 @@
 > - **여전히 구속력 있음**: `main` 브랜치 보호(`enforce_admins: true`, PR 필수 §18.7), `main`으로 가는 릴리스 PR, merge strategy(release = merge commit), label 3축, Release Drafter, hotfix 명명 규칙. 릴리스 브랜치가 `main` 대신 `develop`에서 분기한다는 점만 바뀐다.
 >
 > 아래 본문은 그 구분 아래 읽는다 — 통째로 폐기된 것이 아니다.
+>
+> **후보 경로 예외 — 운영자 승인 2026-10-03 (SPEC-CANDIDATE-CI-001, REQ-CCI-016).** `moai integration candidate --card <card-id>`는 후보 커밋을 `ci/<card-id>`로 push해 착지 전 CI 판정을 받는 경로다. 이 경로에 한해 `WT push · CI 요청 금지`를 대체하며, 통합 브랜치 push는 여전히 리더의 일괄 행위이고 후보 verb는 통합 창을 잡지 않는다. 정본은 `AGENTS.local.md` §4.1이다. 이 문서의 develop 서술과 상단 고지는 그대로 남는다.
 
 ---
 
