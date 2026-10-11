@@ -488,6 +488,7 @@ type zoneFuncBodies struct {
 // P1).
 type zoneWalker struct {
 	h        *preToolHandler
+	root     string // project root; an in-project absolute cd is tracked under it (K2)
 	cwds     []zoneCwd
 	mutating bool
 	// funcs holds each generation's function registry as zoneFuncBodies
@@ -662,19 +663,39 @@ func (w *zoneWalker) zoneRedirects(redirs []*syntax.Redirect) {
 }
 
 // zoneNextCwd returns the working directory after a cd from cur. Only a plain
-// literal relative argument is tracked — a bare cd, several arguments (bash
-// rejects them and the cd fails), substitution, a glob, an option, or an
-// absolute path leaves it untracked (reset to the root), the documented
-// under-match (merge-gate round 1 P1-3). The dots are cleaned here because
+// literal relative argument is tracked — a bare cd, several arguments,
+// substitution, a glob, an option word, or an absolute path outside the root
+// resets to the root, the documented under-match (merge-gate round 1 P1-3).
+// Several arguments reset only as a pooled set: bash 3.2.57 moves into the
+// first operand and ignores the rest, so zoneCdMove keeps this reset and also
+// tracks that first operand (SPEC-ZONE-SHELL-CD-TRACKING-001 F1/F2). An option
+// word before it also moves the shell, but that form keeps the reset alone: the
+// known limitation of this change, not tracked. An absolute
+// path inside the root is tracked under its root-relative form (REQ-ZSCD-002,
+// SPEC-ZONE-SHELL-CD-TRACKING-001 K2): the shell stands there whatever cur was,
+// so the result never concatenates onto cur. The dots are cleaned here because
 // the shell's cd already resolved the directory: this is the logical cwd the
 // next segment's relative names concatenate onto, never a pre-clean of a
 // target path.
-func zoneNextCwd(cur string, dirs []string) string {
+func zoneNextCwd(root, cur string, dirs []string) string {
 	if len(dirs) != 1 {
 		return "."
 	}
 	arg := dirs[0]
-	if arg == "-" || strings.HasPrefix(arg, "-") || strings.ContainsAny(arg, "$*?") || zoneIsAbs(arg) {
+	if arg == "-" || strings.ContainsAny(arg, "$*?") {
+		return "."
+	}
+	if zoneIsAbs(arg) {
+		// the lexical form only (REQ-SIPZ-006 semantics, zoneLexicalRel): an
+		// absolute path outside the root, or one whose cleaned form escapes it,
+		// keeps the reset (REQ-ZSCD-003)
+		rel, inside := zoneLexicalRel(root, arg)
+		if !inside {
+			return "."
+		}
+		return rel
+	}
+	if strings.HasPrefix(arg, "-") {
 		return "."
 	}
 	next := arg
@@ -941,6 +962,13 @@ func (w *zoneWalker) zoneCdMove(world int, cmd *syntax.CallExpr) {
 	var reading string
 	dual := false
 	dynamic := multi
+	// first is the operand bash moves into when several words reach cd
+	// (SPEC-ZONE-SHELL-CD-TRACKING-001 F1). haveFirst records that one was
+	// seen. optionFirst records an option word before any operand: the
+	// union stays off for that cd, and the reset is the only reading.
+	var first string
+	haveFirst := false
+	optionFirst := false
 	if !multi {
 		if r, lit := zoneWordWorldReadings(cmd.Args[1]); !lit {
 			dynamic = true
@@ -949,12 +977,45 @@ func (w *zoneWalker) zoneCdMove(world int, cmd *syntax.CallExpr) {
 			dual = zoneWordDual(cmd.Args[1])
 		}
 	} else {
+		// SPEC-ZONE-SHELL-CD-TRACKING-001 K1 (REQ-ZSCD-001): the first bare `--`
+		// ends cd's option parsing and is the separator, never a directory word.
+		// It is dropped here, so `cd -- zone_dir` yields the one operand the
+		// shell moves into. A second `--` is a literal operand. Several operands
+		// keep the pooled reset; the first operand is tracked too, because bash
+		// 3.2.57 moves into the first operand and ignores the rest (F1/F2). An
+		// option word before that operand keeps the reset alone (a known limitation, not tracked).
+		sepSeen := false
 		for _, a := range cmd.Args[1:] {
-			if t, lit := zoneWordText(a); lit {
-				pooled = append(pooled, t)
-			} else {
+			t, lit := zoneWordText(a)
+			if !lit {
 				pooled = append(pooled, "?dynamic")
+				if !haveFirst && !optionFirst {
+					first, haveFirst = "?dynamic", true
+				}
+				continue
 			}
+			if !sepSeen && t == "--" {
+				sepSeen = true
+				continue
+			}
+			if sepSeen && t != "-" && strings.HasPrefix(t, "-") {
+				// SPEC-ZONE-SHELL-CD-TRACKING-001 K3 (REQ-ZSCD-001): after the
+				// separator a hyphen-leading word is an ordinary operand — the shell
+				// moves `cd -- -zone` into ./-zone. The ./ spelling states that to the
+				// lexical judgment. The bare `-` (OLDPWD, unknown to the guard) and the
+				// words before the separator keep their option reset.
+				t = "./" + t
+			}
+			// an option word before the first operand blocks the union: no first
+			// operand is recorded after it. An option after the first operand does not.
+			option := !sepSeen && t != "-" && strings.HasPrefix(t, "-")
+			if option && !haveFirst {
+				optionFirst = true
+			}
+			if !option && !haveFirst && !optionFirst {
+				first, haveFirst = t, true
+			}
+			pooled = append(pooled, t)
 		}
 	}
 	next := make([]zoneCwd, 0, len(w.cwds)*2)
@@ -968,16 +1029,25 @@ func (w *zoneWalker) zoneCdMove(world int, cmd *syntax.CallExpr) {
 		}
 		switch {
 		case dynamic:
-			next = append(next, zoneCwd{dir: zoneNextCwd(cwd.dir, pooled), gen: gen})
+			next = append(next, zoneCwd{dir: zoneNextCwd(w.root, cwd.dir, pooled), gen: gen})
+			if multi && haveFirst {
+				// SPEC-ZONE-SHELL-CD-TRACKING-001 F1/F2: bash 3.2.57 moves into the
+				// first operand and ignores the rest. The reset above stays, and the
+				// first operand is added as a second possible directory, so a following
+				// deletion is judged under both outcomes. No first operand is recorded
+				// when an option word comes before it. A single operand gives two
+				// equal entries, which setCwds drops.
+				next = append(next, zoneCwd{dir: zoneNextCwd(w.root, cwd.dir, []string{first}), gen: gen})
+			}
 		case !dual:
 			// a generation-identical reading keeps the directory's
 			// neutrality: the single reading serves this world too
-			next = append(next, zoneCwd{dir: zoneNextCwd(cwd.dir, []string{reading}), gen: gen})
+			next = append(next, zoneCwd{dir: zoneNextCwd(w.root, cwd.dir, []string{reading}), gen: gen})
 		default:
 			if reading == "" {
 				continue // an empty reading moves nothing for this world
 			}
-			next = append(next, zoneCwd{dir: zoneNextCwd(cwd.dir, []string{reading}), gen: gen})
+			next = append(next, zoneCwd{dir: zoneNextCwd(w.root, cwd.dir, []string{reading}), gen: gen})
 		}
 	}
 	// the cd may fail (a missing directory leaves the caller where it
@@ -1958,7 +2028,7 @@ func (h *preToolHandler) checkProtectedZoneShell(agentID string, toolInput json.
 	if !ok {
 		return ""
 	}
-	w := &zoneWalker{h: h, cwds: []zoneCwd{{dir: ".", gen: -1}}, funcs: [2]map[string]*zoneFuncBodies{{}, {}}, calling: [2]map[string]bool{{}, {}}, calls: [2]map[string]int{{}, {}}, world: -1}
+	w := &zoneWalker{h: h, root: root, cwds: []zoneCwd{{dir: ".", gen: -1}}, funcs: [2]map[string]*zoneFuncBodies{{}, {}}, calling: [2]map[string]bool{{}, {}}, calls: [2]map[string]int{{}, {}}, world: -1}
 
 	for _, stmt := range file.Stmts {
 		w.zoneWalkStmt(stmt)

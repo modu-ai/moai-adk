@@ -21,17 +21,22 @@
 package cli
 
 import (
+	"bytes"
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
+	"math"
 	"os"
 	"os/exec"
 	"path/filepath"
+	"runtime"
 	"strings"
 	"time"
 
 	"github.com/modu-ai/moai-adk/internal/auditreceipt"
+	"github.com/modu-ai/moai-adk/internal/factory"
 	"github.com/modu-ai/moai-adk/internal/hook"
 	"github.com/modu-ai/moai-adk/internal/verify"
 
@@ -75,9 +80,62 @@ var (
 // (true = reviewable change present, false = clean / no-edit turn).
 var reviewGateChangeDetector = hasReviewableChanges
 
+// codexReviewBlockLimit is C, the number of turn-end blocks one review key may
+// take in total (SPEC-REVIEW-GATE-REPAIR-001 REQ-RG-003 and REQ-RG-004; operator
+// verdict Q2 = 1). An allowance never gives a block back, and a fresh pass for
+// the key clears its count.
+// C = 1, operator ruling Q2 (REQ-RG-004).
+//
+// @MX:NOTE: [AUTO] C = 1 is an operator decision (Q2), not a tuned threshold; the count is per review key, not per turn
+const codexReviewBlockLimit = 1
+
+// codexReviewBlockLockWait bounds how long one turn end waits for its review key's
+// block lock (SPEC-REVIEW-GATE-REPAIR-001 REQ-RG-004). The critical section is one
+// count read and one count write, so the bound is generous. Past it the turn end
+// allows and names codexStateBlockRecordFailed: the gate never blocks without a
+// recorded count, and never waits without a bound.
+const codexReviewBlockLockWait = time.Second
+
+// codexReviewBlockLockRetry is the pause between lock attempts within that bound.
+const codexReviewBlockLockRetry = 5 * time.Millisecond
+
+// codexReviewBlockLockStaleAfter is the age past which a block-lock artifact that
+// names no owner is abandoned: its holder died between creating the artifact and
+// recording its identity, which a live holder does in microseconds.
+const codexReviewBlockLockStaleAfter = 30 * time.Second
+
+// codexReviewBlockLockBreakable says whether a block-lock artifact whose holder
+// died may be broken. Only the atomic-create substrate (Windows) leaves an artifact
+// that outlives its holder: on Unix the kernel releases the flock when the process
+// exits, so a held artifact is never stale there. This is the platform gate
+// ClearStaleGateLock states. It is a variable so the breaking path can be exercised
+// on any platform.
+var codexReviewBlockLockBreakable = runtime.GOOS == "windows"
+
+// The turn-end state names (SPEC-REVIEW-GATE-REPAIR-001 design.md §7). Each names
+// why a turn end was allowed without a fresh passing receipt (REQ-RG-007). They
+// are the systemMessage vocabulary, so the names are the contract readers match on.
+const (
+	codexStateAbsent            = "absent"
+	codexStateStale             = "stale"
+	codexStateKeyMismatch       = "key-mismatch"
+	codexStateInconclusive      = "inconclusive"
+	codexStateBlockExhausted    = "차단 횟수 소진"
+	codexStateBlockRecordFailed = "차단 횟수 기록 실패"
+	codexStateSwitchOff         = "스위치 꺼짐"
+	codexStateNoChange          = "검토할 변경 없음"
+	codexStateStopHookRelease   = "stop-hook 해제"
+	codexStateReviewerAbsent    = "reviewer 없음"
+	codexStateStaleBinarySkip   = "stale 바이너리 건너뜀"
+	codexStateTreeScopeSkip     = "tree_scope 건너뜀"
+)
+
 // HandleCodexReviewGate is the Stop-hook gate logic. ALLOW/BLOCK contract:
 //   - empty HookOutput ({})                            = ALLOW (Claude may stop)
 //   - {Decision: "block", Reason: "..."}               = BLOCK (keep working)
+//
+// An ALLOW may carry a systemMessage that names the state it allowed under
+// (SPEC-REVIEW-GATE-REPAIR-001 REQ-RG-007). The decision itself is unchanged by it.
 //
 // Decision order (AC-MCP-009 self-gate + AC-MCP-010 opt-in + REQ-MCP-012
 // fail-open; scope resolution per SPEC-CODEX-GATE-SCOPE-001):
@@ -90,10 +148,15 @@ var reviewGateChangeDetector = hasReviewableChanges
 //  4. no reviewable change IN THE SCOPE     → ALLOW (self-gate; no false block)
 //  5. codex missing                         → ALLOW (fail-open; no reviewer to kick)
 //  6. fresh receipt for the tree key        → reuse its verdict (REQ-GBN-001):
-//     FAIL blocks carrying the preserved detail, otherwise ALLOW
+//     FAIL blocks carrying the preserved detail while the key's block count is
+//     below C (REQ-RG-003) and otherwise ALLOWs naming why (REQ-RG-004): the
+//     exhausted count, or the record failure when the count cannot be read or
+//     recorded, or the key's block lock cannot be taken within its bound; PASS
+//     clears the key's block count; inconclusive ALLOWs naming inconclusive
 //  7. cache miss                            → kick the review in the background
 //     and ALLOW (REQ-GBN-002); the verdict is enforced at the NEXT turn entry
-//     (HandleCodexReviewEntry). A failed kick allows (AC-GBN-004).
+//     (HandleCodexReviewEntry). A failed kick allows (AC-GBN-004). The allow
+//     names the key's state: absent, stale, or key-mismatch (REQ-RG-007).
 //
 // `enabled` is read by the caller (runCodexReviewGate via
 // readCodexReviewGateEnabled) and passed in; it is re-checked here as
@@ -104,10 +167,10 @@ var reviewGateChangeDetector = hasReviewableChanges
 func HandleCodexReviewGate(input *hook.HookInput, enabled bool, projectDir string) (*hook.HookOutput, error) {
 	allow := &hook.HookOutput{}
 	if !enabled {
-		return allow, nil // (1) opt-in default-off
+		return codexGateAllowed(codexStateSwitchOff), nil // (1) opt-in default-off
 	}
 	if input != nil && input.StopHookActive {
-		return allow, nil // (2) loop prevention — never re-block an already-continuing turn
+		return codexGateAllowed(codexStateStopHookRelease), nil // (2) loop prevention — never re-block an already-continuing turn
 	}
 	// (3) The scope is determined BEFORE any review or consult (REQ-CGS-001),
 	// from the SESSION's working-directory tree — never from a spawn-frozen
@@ -128,21 +191,21 @@ func HandleCodexReviewGate(input *hook.HookInput, enabled bool, projectDir strin
 	// the code under review — skip before any scope-dependent policy runs.
 	// Shared with the Codex Stop-chain path (REQ-CRO-006).
 	if staleBinarySkipApplies(scope.Dir) {
-		return allow, nil
+		return codexGateAllowed(codexStateStaleBinarySkip), nil
 	}
 	// (3a) The tree_scope policy: a tree-class session with no WT- evidence has
 	// no card to attribute its tree to. The read root is the one `enabled` came
 	// from (reviewGateConfigRoot), resolved only when the class is tree.
 	if treeScopeSkipApplies(scope, func() string { return reviewGateConfigRoot(projectDir) }) {
-		return allow, nil
+		return codexGateAllowed(codexStateTreeScopeSkip), nil
 	}
 	if !reviewGateScopedChangeDetector(scope) {
-		return allow, nil // (4) scoped self-gate — nothing reviewable in the session's scope ⇒ no false block
+		return codexGateAllowed(codexStateNoChange), nil // (4) scoped self-gate — nothing reviewable in the session's scope ⇒ no false block
 	}
 
 	binaryPath, err := codexLookPath(codexBinaryName)
 	if err != nil {
-		return allow, nil // (5) fail-open: a missing reviewer must not trap the session
+		return codexGateAllowed(codexStateReviewerAbsent), nil // (5) fail-open: a missing reviewer must not trap the session
 	}
 
 	// (4a) SPEC-GATE-BOTTLENECK-001 REQ-GBN-001 — the tree-keyed reuse cache:
@@ -155,28 +218,33 @@ func HandleCodexReviewGate(input *hook.HookInput, enabled bool, projectDir strin
 	// below runs an RPC anymore (the 900s context left with the live arm,
 	// REQ-GBN-002).
 	state, stateErr := codexReviewReceiptStateForScope(context.Background(), scope, binaryPath)
+	// keyState names the key's receipt state for the allows below (REQ-RG-007).
+	// With no key there is no receipt for it, which reads as absent.
+	keyState := codexStateAbsent
 	if stateErr == nil {
-		if chk := verify.CheckReceipt(verify.LoadReceipt(scope.Dir, state), state, time.Now(), codexReviewCacheTTL); chk.Run {
+		now := time.Now()
+		stored := verify.LoadReceipt(scope.Dir, state)
+		if chk := verify.CheckReceipt(stored, state, now, codexReviewCacheTTL); chk.Run {
 			codexReviewCacheSkips.Add(1)
-			if isBlockVerdict(chk.Receipt.Verdict) {
-				// The cached block still says WHAT to fix: the fail's summary
-				// and findings were preserved at record time by the receipt
-				// producer (the receipt store carries no free text). An
-				// unreadable detail file keeps the bare verdict — fail-open,
-				// never invented.
-				reason := "codex review gate (cached verdict): " + chk.Receipt.Verdict
-				if detail := codexReviewCachedDetail(scope.Dir, *chk.Receipt); detail != "" {
-					reason += "\n\n" + detail
-				}
-				return &hook.HookOutput{
-					Decision: hook.DecisionBlock,
-					Reason:   reason,
-				}, nil
+			switch {
+			case isBlockVerdict(chk.Receipt.Verdict):
+				// REQ-RG-003 / REQ-RG-004: a fail blocks while the key is under C
+				// and otherwise allows, naming the exhausted count.
+				return codexReviewGateFail(scope.Dir, state, *chk.Receipt, now), nil
+			case isPassVerdict(chk.Receipt.Verdict):
+				codexReviewClearBlocks(scope.Dir, state) // REQ-RG-004: a fresh pass ends the key's block history
+				_, _ = fmt.Fprintf(os.Stderr, "codex review gate: reusing the cached %s verdict for the unchanged tree (skip #%d)\n",
+					chk.Receipt.Verdict, codexReviewCacheSkips.Load())
+				return allow, nil
+			default:
+				// inconclusive, and any verdict that is neither pass nor fail, allows
+				// naming the state (REQ-RG-007); it is never read as a pass.
+				_, _ = fmt.Fprintf(os.Stderr, "codex review gate: reusing the cached %s verdict for the unchanged tree (skip #%d)\n",
+					chk.Receipt.Verdict, codexReviewCacheSkips.Load())
+				return codexGateAllowed(codexStateInconclusive), nil
 			}
-			_, _ = fmt.Fprintf(os.Stderr, "codex review gate: reusing the cached %s verdict for the unchanged tree (skip #%d)\n",
-				chk.Receipt.Verdict, codexReviewCacheSkips.Load())
-			return allow, nil
 		}
+		keyState = codexReviewKeyState(stored, state, now)
 	}
 	// A state or cache-read failure falls through to the kick — the cache is
 	// an accelerator, never an authority (fail-open, REQ-GBN-004).
@@ -197,17 +265,17 @@ func HandleCodexReviewGate(input *hook.HookInput, enabled bool, projectDir strin
 	inFlight, markerPath := kickInFlight(scope.Dir, state, time.Now())
 	if inFlight {
 		_, _ = fmt.Fprintln(os.Stderr, "codex review gate: a background review for this tree state is already in flight; not re-kicking")
-		return allow, nil
+		return codexGateAllowed(keyState), nil
 	}
 	if kickErr := codexReviewBackgroundKick(scope.Dir); kickErr != nil {
 		if markerPath != "" {
 			_ = os.Remove(markerPath) // a failed start is retryable on the next Stop
 		}
 		_, _ = fmt.Fprintf(os.Stderr, "codex review gate: background review not started (%v) — allowing; the next Stop re-kicks\n", kickErr)
-		return allow, nil
+		return codexGateAllowed(keyState), nil
 	}
 	_, _ = fmt.Fprintln(os.Stderr, "codex review gate: background review started for this tree state; the verdict is enforced at the next turn entry (codex-review-entry)")
-	return allow, nil
+	return codexGateAllowed(keyState), nil
 }
 
 // isBlockVerdict reports whether a codex verdict should BLOCK the session. A
@@ -216,6 +284,240 @@ func HandleCodexReviewGate(input *hook.HookInput, enabled bool, projectDir strin
 // "fail" / "FAIL" / "failed" all block while "inconclusive" / "pass" do not.
 func isBlockVerdict(verdict string) bool {
 	return strings.HasPrefix(strings.ToLower(strings.TrimSpace(verdict)), "fail")
+}
+
+// isPassVerdict reports whether a stored verdict is a pass, matched the way
+// isBlockVerdict matches a fail: case-insensitively, ignoring surrounding space.
+func isPassVerdict(verdict string) bool {
+	return strings.EqualFold(strings.TrimSpace(verdict), codexReviewVerdictPass)
+}
+
+// codexGateAllowed is an ALLOW that names the state it allowed under
+// (REQ-RG-007). The decision stays an empty allow (REQ-RG-006): the message is
+// the only addition. A fresh pass never reaches this helper, so it stays silent.
+func codexGateAllowed(state string) *hook.HookOutput {
+	return &hook.HookOutput{
+		SystemMessage: "codex review gate: turn allowed without a fresh pass (state: " + state + ")",
+	}
+}
+
+// codexReviewBlockLockPath is the lock artifact that guards one review key's block
+// count. It sits beside the count record, with a ".lock" suffix.
+func codexReviewBlockLockPath(dir string, state verify.ReceiptState) string {
+	return codexReviewBlockPath(dir, state) + ".lock"
+}
+
+// acquireCodexBlockLock takes the review key's block lock, waiting at most
+// codexReviewBlockLockWait. The try primitive is acquireGateLockNoFollowImpl, the
+// gate-run lock's open that refuses a symbolic-link path (flock on Unix, exclusive
+// create on Windows); this helper adds the bounded wait and the stale-owner break.
+// ok is false when the lock is not taken within the bound or the lock machinery
+// fails (a refused path included), and the caller then allows (REQ-RG-004): a
+// turn end never blocks without a recorded count.
+//
+// @MX:WARN: [AUTO] cross-process lock on the per-key block count; a holder that is alive but stalled past the bound makes contending turn ends allow instead of block
+// @MX:REASON: the check and the record of one block must be a single step across processes (REQ-RG-004); the bound and the dead-owner break keep a stuck or crashed holder from wedging the gate
+func acquireCodexBlockLock(dir string, state verify.ReceiptState) (release func(), ok bool) {
+	path := codexReviewBlockLockPath(dir, state)
+	if err := os.MkdirAll(filepath.Dir(path), 0o755); err != nil {
+		return nil, false
+	}
+	deadline := time.Now().Add(codexReviewBlockLockWait)
+	for {
+		impl, err := acquireGateLockNoFollowImpl(path)
+		if err == nil {
+			return func() { _ = impl.release() }, true
+		}
+		if !errors.Is(err, ErrGateLockHeld) {
+			return nil, false // the lock machinery failed; this is not contention
+		}
+		if time.Now().After(deadline) {
+			return nil, false
+		}
+		if !codexReviewBreakStaleBlockLock(path, time.Now()) {
+			time.Sleep(codexReviewBlockLockRetry)
+		}
+	}
+}
+
+// codexReviewBreakStaleBlockLock removes a block-lock artifact whose holder died,
+// and reports whether it did (REQ-RG-004: a lock left by a crashed process must
+// eventually be broken). An artifact is broken only when the owner it names is
+// positively observed dead, or when it names no owner and is older than
+// codexReviewBlockLockStaleAfter. A live owner is never broken.
+//
+// The removal follows a re-read that must find the artifact unchanged, so a lock
+// that changed hands during the inspection is kept. The re-read narrows the
+// inspection-to-removal window without closing it, because removal takes a path.
+// That residual is the one ClearStaleGateLock states.
+func codexReviewBreakStaleBlockLock(path string, now time.Time) bool {
+	if !codexReviewBlockLockBreakable {
+		return false
+	}
+	raw, err := os.ReadFile(path)
+	if err != nil {
+		return false
+	}
+	var stale bool
+	if owner, perr := parseGateLockOwner(raw); perr == nil {
+		stale = !factory.FactoryProcessAlive(owner.PID)
+	} else if info, serr := os.Stat(path); serr == nil {
+		stale = now.Sub(info.ModTime()) > codexReviewBlockLockStaleAfter
+	}
+	if !stale {
+		return false
+	}
+	again, err := os.ReadFile(path)
+	if err != nil || !bytes.Equal(raw, again) {
+		return false
+	}
+	return os.Remove(path) == nil
+}
+
+// codexReviewReserveBlock is the check and the record of one turn-end block, made as
+// ONE step under the review key's block lock (REQ-RG-003, REQ-RG-004). It reports
+// whether the turn end blocks; when it does, the block is already counted. When it
+// does not, allowState names why the stop is allowed (REQ-RG-007). A count that
+// cannot be read or recorded, and a lock that cannot be taken within the bound, all
+// name the record failure, never the exhausted count.
+func codexReviewReserveBlock(dir string, state verify.ReceiptState, now time.Time) (blocked bool, allowState string) {
+	release, ok := acquireCodexBlockLock(dir, state)
+	if !ok {
+		return false, codexStateBlockRecordFailed
+	}
+	defer release()
+	blocks, ok := codexReviewBlockCount(dir, state)
+	if !ok {
+		return false, codexStateBlockRecordFailed
+	}
+	if blocks >= codexReviewBlockLimit {
+		return false, codexStateBlockExhausted
+	}
+	if err := codexReviewRecordBlock(dir, state, blocks+1, now); err != nil {
+		_, _ = fmt.Fprintf(os.Stderr, "codex review gate: block count not recorded (%v) — allowing (fail-open)\n", err)
+		return false, codexStateBlockRecordFailed
+	}
+	return true, ""
+}
+
+// codexReviewGateFail decides a fresh FAIL at turn end (REQ-RG-003, REQ-RG-004).
+// While the key's block count is below C it blocks, carrying the preserved fail
+// detail. The check and the record of the block are one step under the key's block
+// lock (codexReviewReserveBlock), so simultaneous turn ends cannot each read the
+// same count and each block. Every allow here is fail-open and names its own state
+// (REQ-RG-007): at C the allow names the exhausted count; a count that cannot be
+// read or recorded, and a lock that cannot be taken in time, name the record
+// failure instead. An unreadable, unwritable, or contended count is never reported
+// as exhausted, and a count the gate cannot prove is below C never blocks.
+func codexReviewGateFail(dir string, state verify.ReceiptState, r verify.Receipt, now time.Time) *hook.HookOutput {
+	blocked, allowState := codexReviewReserveBlock(dir, state, now)
+	if !blocked {
+		return codexGateAllowed(allowState)
+	}
+	// The cached block still says WHAT to fix: the fail's summary and findings
+	// were preserved at record time by the receipt producer (the receipt store
+	// carries no free text). An unreadable detail file keeps the bare verdict —
+	// fail-open, never invented.
+	reason := "codex review gate (cached verdict): " + r.Verdict
+	if detail := codexReviewCachedDetail(dir, r); detail != "" {
+		reason += "\n\n" + detail
+	}
+	return &hook.HookOutput{
+		Decision: hook.DecisionBlock,
+		Reason:   reason,
+	}
+}
+
+// codexReviewKeyState names why the current review key has no fresh receipt
+// (design.md §1): absent when the store holds no receipt for the key, stale when
+// every bound field matches and only the TTL has run out, and key-mismatch when a
+// receipt is held but a bound field differs. The store is keyed by head and tree
+// digest, so a receipt recorded for an earlier tree reads as absent here.
+func codexReviewKeyState(stored *verify.Receipt, state verify.ReceiptState, now time.Time) string {
+	if stored == nil {
+		return codexStateAbsent
+	}
+	// An unbounded TTL isolates the bound-field comparison from the freshness leg:
+	// the check passes exactly when only the TTL failed.
+	if verify.CheckReceipt(stored, state, now, math.MaxInt64).Run {
+		return codexStateStale
+	}
+	return codexStateKeyMismatch
+}
+
+// codexReviewBlockRecord is the per-key block count (REQ-RG-003, REQ-RG-004): how
+// many turn-end blocks the review key has taken. The five receipt fields are kept
+// verbatim, as the key's delivery record keeps them, so the record reads back
+// against the key it counts.
+type codexReviewBlockRecord struct {
+	Head         string    `json:"head"`
+	TreeDigest   string    `json:"tree_digest"`
+	ConfigDigest string    `json:"config_digest"`
+	Command      string    `json:"command"`
+	ToolVersion  string    `json:"tool_version"`
+	Blocks       int       `json:"blocks"`
+	UpdatedAt    time.Time `json:"updated_at"`
+}
+
+// codexReviewBlockPath is the block-count record of one review key. It sits in
+// the same state directory as the key's delivery record and takes that record's
+// name with the "blocked-" prefix, so the two records cannot disagree on what one
+// key is.
+func codexReviewBlockPath(dir string, state verify.ReceiptState) string {
+	delivery := codexReviewDeliveryPath(dir, state)
+	return filepath.Join(filepath.Dir(delivery), strings.Replace(filepath.Base(delivery), "delivered-", "blocked-", 1))
+}
+
+// codexReviewBlockCount reports how many turn-end blocks the key has taken. A
+// missing record is zero. An unreadable or malformed record reports ok=false: the
+// gate cannot prove the count is below C, so the caller allows rather than block.
+func codexReviewBlockCount(dir string, state verify.ReceiptState) (int, bool) {
+	raw, err := os.ReadFile(codexReviewBlockPath(dir, state))
+	if os.IsNotExist(err) {
+		return 0, true
+	}
+	if err != nil {
+		return 0, false
+	}
+	var rec codexReviewBlockRecord
+	if err := json.Unmarshal(raw, &rec); err != nil || rec.Blocks < 0 {
+		return 0, false
+	}
+	return rec.Blocks, true
+}
+
+// codexReviewRecordBlock stores the key's block count through the shared atomic
+// writer, so a reader never sees a torn record. The count it writes is only a
+// correct count when the caller holds the key's block lock (codexReviewReserveBlock):
+// the read that produced blocks and this write must be one step.
+func codexReviewRecordBlock(dir string, state verify.ReceiptState, blocks int, now time.Time) error {
+	rec := codexReviewBlockRecord{
+		Head:         state.Head,
+		TreeDigest:   state.TreeDigest,
+		ConfigDigest: state.ConfigDigest,
+		Command:      state.Command,
+		ToolVersion:  state.ToolVersion,
+		Blocks:       blocks,
+		UpdatedAt:    now.UTC(),
+	}
+	b, err := json.Marshal(rec)
+	if err != nil {
+		return err
+	}
+	return writeFileAtomic(codexReviewBlockPath(dir, state), append(b, '\n'), 0o644)
+}
+
+// codexReviewClearBlocks removes the key's block count (REQ-RG-004): a fresh pass for
+// the key ends its block history. The removal takes the block lock when it can, so
+// it cannot interleave with a block's read and record and put the count back after
+// the pass. When the lock is not taken within the bound, the record is removed
+// anyway: a pass is never held back by lock contention. A missing record is already
+// clear.
+func codexReviewClearBlocks(dir string, state verify.ReceiptState) {
+	if release, ok := acquireCodexBlockLock(dir, state); ok {
+		defer release()
+	}
+	_ = os.Remove(codexReviewBlockPath(dir, state))
 }
 
 // hasReviewableChanges reports whether the working tree at projectDir carries

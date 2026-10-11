@@ -61,8 +61,13 @@ const (
 	// DefaultFactoryLeaseDuration is how long a factory worker's card lease
 	// lasts past its last heartbeat. It bounds worker liveness only: the
 	// decision-pending card states hold no lease, so a human decision is never
-	// raced by it. A chosen value, not a measured one; no config key reads it.
+	// raced by it. A chosen value, not a measured one. It is the default of
+	// workflow.factory_lease.duration (NewDefaultWorkflowConfig).
 	DefaultFactoryLeaseDuration = 15 * time.Minute
+	// DefaultFactoryLeaseRenewInterval is the default watchdog renewal period
+	// (workflow.factory_lease.renew_interval). It must stay at most half of the
+	// card lease duration, or the factory refuses to open.
+	DefaultFactoryLeaseRenewInterval = 5 * time.Minute
 	// QuotaHeartbeatInterval is how old a window-carrying session telemetry
 	// record may grow, with an unchanged reading, before the statusline writer
 	// rewrites it to refresh its capture time (SPEC-QUOTA-AWARE-SCHEDULING-001
@@ -1410,6 +1415,10 @@ func NewDefaultWorkflowConfig() WorkflowConfig {
 			AfterPlan:      true,
 			AfterRun:       false,
 			TokenThreshold: 150000,
+		},
+		FactoryLease: FactoryLeaseConfig{
+			Duration:      DefaultFactoryLeaseDuration.String(),
+			RenewInterval: DefaultFactoryLeaseRenewInterval.String(),
 		},
 		DefaultMode: "",
 		// "auto" (not "team") aligns with the template SSOT

@@ -193,6 +193,26 @@ func zoneParsingMatrixCells() []zoneMatrixCell {
 	add("quoting_double_conditional", "false && rm() { :; }; rm \"zone_dir/x\"", zoneMatrixDenyProbe)
 	add("quoting_single_exec_path", "rm() { :; }; '/bin/rm' zone_dir/x", zoneMatrixDenyProbe)
 
+	// -- cd-tracking group (SPEC-ZONE-SHELL-CD-TRACKING-001, REQ-ZSCD-005): the
+	// destinations the M1 fix tracks — the post-`--` operand across rm/cp/mv, the
+	// hyphen-leading operand after `--`, and an in-project absolute destination
+	// ({ROOT} is the fixture root, substituted by the runner). The F1/F2 cells
+	// track the first operand of a multi-word cd, a second `--` included.
+	// Allow dispositions for cd shapes live in TestProtectedZoneShellCdAllowDispositions,
+	// outside this matrix (REQ-ZSCD-005). Every other cell asserts deny. The relative
+	// preserve shape is pinned once by bare_cd_tracking_control
+	// above and is not repeated here. The ./<word> pin nests the spelled operand
+	// under a tracked cwd: the zone is sub/-zone/, so the deletion is covered only
+	// when the non-root join (sub + ./-zone) is kept.
+	add("cd_track_dashdash_rm", "cd -- zone_dir && rm a.log", zoneMatrixDenyProbe)
+	add("cd_track_dashdash_cp", "cd -- zone_dir && cp a.log /tmp/matrix-out", zoneMatrixDenyProbe)
+	add("cd_track_dashdash_mv", "cd -- zone_dir && mv a.log /tmp/matrix-out", zoneMatrixDenyProbe)
+	addDash("cd_track_dashdash_hyphen_rm", "cd -- -zone && rm a.log", zoneMatrixDenyProbe)
+	add("cd_track_absolute_in_project_rm", "cd {ROOT}/zone_dir && rm a.log", zoneMatrixDenyProbe)
+	add("cd_track_dashdash_second_separator_rm", "cd -- zone_dir -- && rm a.log", zoneMatrixDenyProbe)
+	add("cd_track_multi_word_rm", "cd zone_dir extra && rm a.log", zoneMatrixDenyProbe)
+	cells = append(cells, zoneMatrixCell{name: "cd_track_dot_slash_spelling_pin", command: "cd sub && cd -- -zone && rm a.log", paths: "sub/-zone/", want: zoneMatrixDenyProbe})
+
 	if len(cells) == 0 {
 		return nil
 	}
@@ -223,6 +243,10 @@ func TestProtectedZoneShellParsingMatrix(t *testing.T) {
 				root = newZoneRoot(t, zoneShippedDoc(fmt.Sprintf("  probe_zone:\n    paths: [%q]\n", paths)), "")
 			}
 			h := zoneTestHandler(t, root)
+			// SPEC-ZONE-SHELL-CD-TRACKING-001 (REQ-ZSCD-005): {ROOT} in a cell command
+			// names the fixture root, so an in-project absolute destination is judged
+			// against the real root. No landed cell carries the placeholder.
+			tc.command = strings.ReplaceAll(tc.command, "{ROOT}", root)
 
 			d, r := zoneCall(t, h, "Bash", harnessLearnerIdentity, map[string]any{"command": tc.command})
 			switch tc.want {
@@ -237,6 +261,29 @@ func TestProtectedZoneShellParsingMatrix(t *testing.T) {
 				if d == DecisionDeny {
 					t.Errorf("%s: decision=%q reason=%q, want allow", tc.command, d, r)
 				}
+			}
+		})
+	}
+}
+
+// TestProtectedZoneShellCdAllowDispositions holds the allow dispositions for cd
+// shapes. REQ-ZSCD-005 keeps them outside the parsing matrix. The one control
+// here is a two-word cd whose operands are both outside the zone: the first
+// operand is tracked as a possible directory, and the deletion stays allowed.
+func TestProtectedZoneShellCdAllowDispositions(t *testing.T) {
+	cases := []struct {
+		name    string
+		command string
+	}{
+		{name: "multi_word_outside_zone", command: "cd sub extra && rm a.log"},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			root := newZoneRoot(t, zoneShippedDoc(fmt.Sprintf("  probe_zone:\n    paths: [%q]\n", "zone_dir/")), "")
+			h := zoneTestHandler(t, root)
+			d, r := zoneCall(t, h, "Bash", harnessLearnerIdentity, map[string]any{"command": tc.command})
+			if d == DecisionDeny {
+				t.Errorf("%s: decision=%q reason=%q, want allow", tc.command, d, r)
 			}
 		})
 	}

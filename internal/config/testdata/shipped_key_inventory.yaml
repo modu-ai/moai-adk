@@ -2451,6 +2451,12 @@
 - path: "workflow.execution_mode"
   class: W
   evidence: reader
+- path: "workflow.factory_lease.duration"
+  class: W
+  evidence: reader
+- path: "workflow.factory_lease.renew_interval"
+  class: W
+  evidence: reader
 - path: "workflow.jev.enabled"
   class: W
   evidence: reader

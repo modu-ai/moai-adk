@@ -14,10 +14,10 @@ when_to_use: >
   proceed and no reply has arrived.
 license: Apache-2.0
 compatibility: Designed for Claude Code and Codex sessions
-allowed-tools: Read, Grep, Glob, Bash(git rev-parse:*), Bash(git status:*), Bash(git log:*), Bash(stat:*), Bash(ls:*), Bash(test:*), Bash(moai integration status:*)
+allowed-tools: Read, Grep, Glob, Bash(git rev-parse:*), Bash(git status:*), Bash(git log:*), Bash(stat:*), Bash(ls:*), Bash(test:*), Bash(moai integration status:*), Bash(moai factory renew:*)
 user-invocable: false
 metadata:
-  version: "1.0.0"
+  version: "1.1.0"
   category: "workflow"
   status: "active"
   tags: "watchdog, stall, lane, ladder, decision-ladder, unattended, auto"
@@ -48,6 +48,16 @@ A keep-set gate — environment-impossible, operator-held, or an irreversible
 external-shared operation — is never satisfied here: the recheck reads the
 gate surface, and finding no change, it re-records the wait and yields.
 
+## 0a. Renew the card lease (first step of every pass)
+
+Renew this lane's own card lease before anything else, through the factory renew verb, with the card id this lane holds (the same id the snapshot path below names):
+
+```bash
+moai factory renew <card-id> --json
+```
+
+Read `result` from the verb's JSON object on stdout. A refusal exits non-zero after printing that object, so read stdout even when the exit status is non-zero. `result` is one of `renewed`, `refused-expired`, `refused-not-holder`, or `error`. Hold the value for the snapshot: §1 copies it into the snapshot field `renew_result`. A refused renewal does not end the pass. A `refused-expired`, `refused-not-holder`, or `error` result is recorded, and the pass continues to §1 and measures in the same pass. Do not retry the renewal within the pass; the next pass renews again.
+
 ## 1. Measure progress
 
 Three channels (doctrine §3–4):
@@ -59,15 +69,22 @@ Three channels (doctrine §3–4):
 
 Compare against the previous snapshot at
 `.moai/state/watchdog/<card-id>.json` (fields: `observed_at`, `head_sha`,
-`evidence_mtime_max`, `window_state`). The lane is stalled only when ALL
-THREE channels are unchanged AND the previous observation is at least N
-minutes old. N defaults to 15 minutes and is a per-invocation parameter —
-never a config key. No previous snapshot → record a fresh one, no stall
-verdict (fail-open first observation). One channel moving is progress —
-evidence mtime advancing without a commit included: end the iteration with
-a one-line status — unless the lane itself is parked on a delegate (§3.5):
-then the movement is the delegate's, and the deliverable read in §3.5
-decides, not this rule. Write the new snapshot after the verdict.
+`evidence_mtime_max`, `window_state`, `renew_result`, `last_change_at`). The
+lane is stalled only when ALL THREE channels are unchanged since the previous
+snapshot AND at least N minutes have passed since the last observed channel
+change, which `last_change_at` records (auto-semantics §4). N
+defaults to 15 minutes and is a per-invocation parameter — never a config
+key. No previous snapshot → record a fresh one with `last_change_at` set to
+its own `observed_at`, no stall verdict (fail-open first observation). One
+channel moving is progress — evidence mtime advancing without a commit
+included: end the iteration with a one-line status — unless the lane itself
+is parked on a delegate (§3.5): then the movement is the delegate's, and the
+deliverable read in §3.5 decides, not this rule. A pass that moved a channel
+sets `last_change_at` to its `observed_at`; a pass that moved none carries
+the previous value forward. Write the new snapshot after the verdict, in the
+same pass as the renewal of §0a: the four measurement fields (`observed_at`,
+`head_sha`, `evidence_mtime_max`, `window_state`), `last_change_at` (the value
+this pass settled, per the rule above), and `renew_result`.
 
 ## 2. Classify the cause
 
