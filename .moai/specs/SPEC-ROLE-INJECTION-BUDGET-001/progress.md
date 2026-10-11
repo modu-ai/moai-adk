@@ -209,3 +209,10 @@ t1616이 로컬 main(`478285ab4`)에 착지한 뒤, 카드 트리가 이를 흡�
   - `go test -timeout 20m ./internal/template/` → `ok github.com/modu-ai/moai-adk/internal/template 344.218s` (첫 시도는 go test 기본 10분 상한 초과로 중단 — 실패 판정 아님, 상한 재실행)
 - **git-strategy.yaml 확인**: 작업 사본 `develop_branch: main` (`.moai/config/sections/git-strategy.yaml:16`)
 - **착지 diff 기준**: `2aab5f797` (리더 기록) — 흡수 후 병합 기저는 `478285ab4`
+
+### 델타 감사 (sync-audit-delta1) 처분 — 리더 판정 d-20261011T030402Z-4f2c (2026-10-11)
+
+- **델타 자체 PASS**: 흡수 병합 · ledger 3-way · CHANGELOG · 문서 커밋 — 리더 착지 관문에서 PASS 판독 (델타 감사는 리더 착지 관문이지 엔진 전이가 아니므로 카드는 merge-ready 유지, 엔진 정산 불요)
+- **Gaps**: codex P2 3건은 이전 감사 SHA f40bfb59f에 이미 존재(감사자 git show 대조), 델타 무관, D1 복원·D2/D3 → t1637 (리더가 t1617 relates-to t1637 relate 기록)
+- **RIB-D1 복원 (4f2c D1 → (a) 원래 집 복원, 스텁 예산 10,000 보존(측정 9,915+133=10,048 초과로 스텁 삽입 기각))**: 구 트리 `2aab5f797` factory-dispatch.md:116 행을 live·템플릿 미러 양 트리 "The dispatch cycle" 절에 바이트 그대로 복원 — 스텁 무접촉(REQ-RIB-011 예산 영향 없음). 문장: "`card`, `cmd`, `wt`, and `evidence` are always present. `spec` joins once a SPEC exists; a Class B card carries none, and its `evidence` names whatever record the leader will read instead. `lens` appears only when the leader names review lenses for the card's sync gate."
+- **RIB-D2 (role_rules.go:328 YAML 문자열 절단) · RIB-D3 (role_core_stub_gate_test.go:72 WalkDir 오류 삼킴)**: 부채 기록, 후속 카드 t1637 귀속 (리더·영실이 판단, 착지 비차단)

@@ -89,6 +89,8 @@ The leader classifies each card as it leaves `backlog` and names the entry stage
 
 ## The dispatch cycle
 
+`card`, `cmd`, `wt`, and `evidence` are always present. `spec` joins once a SPEC exists; a Class B card carries none, and its `evidence` names whatever record the leader will read instead. `lens` appears only when the leader names review lenses for the card's sync gate.
+
 ### The delegation channel is the queue
 
 <!-- moai:role-core-start -->
