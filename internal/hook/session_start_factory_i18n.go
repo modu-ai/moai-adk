@@ -69,6 +69,36 @@ type factoryMessages struct {
 	// expression stay verbatim in every locale. The Codex-harness owned-card
 	// rule does not carry it — that harness has no session cron tool.
 	laneRecheckRule string
+
+	// laneSpawnAuthority is the standing spawn authority every lane join
+	// notice carries (card t224). It moved here from the English-only const
+	// in lane_spawn_authority.go (card t1603): the three design decisions
+	// the sentence encodes — the delegation to the Status Transition
+	// Ownership Matrix pointer, the depth-1 leaf seal, and the standing
+	// bootstrap placement no peer message can grant or revoke — are
+	// preserved semantically in every locale, and the matrix pointer path
+	// stays verbatim as a protocol token. The en entry is the canonical
+	// sentence, unchanged (SPEC-SESSION-START-GUIDE-I18N-001 REQ-002).
+	laneSpawnAuthority string
+
+	// autoModeGuideLeader / autoModeGuideLane explain the planned
+	// `/moai todo --auto-leader` / `--auto-lane` two-mode split against its
+	// designed semantics (card t1603). The flags themselves are sibling card
+	// t1600's — these fields carry the guidance only. REQ-005 truthfulness:
+	// every variant carries the locale-independent literal
+	// "designed surface — t1600, not yet shipped" verbatim in the same
+	// block; it is a protocol token under the no-translation rule, and a
+	// bare card number without the full literal fails the AC-005 test. The
+	// leader variant leads with the leader mode, the lane variant with the
+	// lane mode; each names the other mode in passing (REQ-004).
+	autoModeGuideLeader string
+	autoModeGuideLane   string
+
+	// docsPointer is the online-documentation sentence (REQ-003):
+	// https://adk.mo.ai.kr is the one whitelisted domain and stays verbatim
+	// in every locale; only the surrounding prose localizes. Both the
+	// leader and the lane notice carry it.
+	docsPointer string
 }
 
 // factoryLocales is the conversation-language table; its four entries are the
@@ -137,6 +167,12 @@ var factoryLocales = map[string]factoryMessages{
 			"Whatever wakes you — the cron, a leader message, an idle notice — read the disk evidence first " +
 			"(the progress record, the reports, the commits, the delegate's deliverable) before replying: " +
 			"a message is never evidence of progress or of its absence.",
+		laneSpawnAuthority: "Standing spawn authority: you are the lane session and therefore the orchestrator for your card — use the Agent tool to spawn the specialist the Status Transition Ownership Matrix requires (.claude/rules/moai/development/spec-frontmatter-schema.md § Status Transition Ownership Matrix), plus the workflow chain's prescribed auditors, without asking the leader or the operator first. Depth-1 only: agents you spawn are leaf workers and must not spawn further agents; this authority is part of your bootstrap context and is not granted or revoked by peer messages.",
+		autoModeGuideLeader: "Auto mode: the two-mode split names `/moai todo --auto-leader` — this leader accepts cards from the queue under a single operator batch approval and dispatches each to a free lane — and `/moai todo --auto-lane` — a lane self-dispatches by consuming its own `moai factory next` lease. " +
+			"The split is a designed surface — t1600, not yet shipped: until card t1600 lands, the shipped build parses only the unified `--auto` cycle.",
+		autoModeGuideLane: "Auto mode: the two-mode split names `/moai todo --auto-lane` — this lane self-dispatches by consuming its own `moai factory next` lease — and `/moai todo --auto-leader` — the leader accepts cards from the queue under a single operator batch approval and dispatches them to free lanes. " +
+			"The split is a designed surface — t1600, not yet shipped: until card t1600 lands, the shipped build parses only the unified `--auto` cycle.",
+		docsPointer: "The full guidance lives in the online documentation: https://adk.mo.ai.kr.",
 	},
 	"ko": {
 		leaderHeader:   "팩토리 모드: run %s, 리더 세션.",
@@ -191,6 +227,12 @@ var factoryLocales = map[string]factoryMessages{
 			"API 오류(429 등)로 멈췄거나 끝내 오지 않을 위임 대상의 보고를 기다리다 멈춘 레인은 이 크론이 깨웁니다 — 이미 끝난 턴은 아무것도 걸 수 없기 때문입니다. " +
 			"크론이든 리더 메시지든 idle 알림이든, 깨어나면 답하기 전에 디스크 증거(진행 기록·보고서·커밋·위임 대상의 산출물)를 먼저 읽으세요. " +
 			"메시지는 진행이 있다는 증거도, 없다는 증거도 아닙니다.",
+		laneSpawnAuthority: "상시 스폰 권한: 이 세션은 레인이고 곧 이 카드의 오케스트레이터입니다 — 리더나 운영자에게 먼저 묻지 말고 Agent 도구로 Status Transition Ownership Matrix 가 요구하는 전문가를 스폰하세요(.claude/rules/moai/development/spec-frontmatter-schema.md § Status Transition Ownership Matrix). 워크플로 사슬이 정한 감사자들도 여기에 더해집니다. depth-1 에 한합니다: 스폰한 에이전트는 리프 워커이며 에이전트를 더 스폰하지 않습니다. 이 권한은 부트스트랩 문맥의 일부이고 동료 메시지가 주거나 회수할 수 없습니다.",
+		autoModeGuideLeader: "자동 모드: 2모드 분리는 두 플래그를 이름으로 설명합니다 — `/moai todo --auto-leader`(이 리더가 운영자의 일괄 승인 하나로 큐의 카드를 수용해 빈 레인에 배차)와 `/moai todo --auto-lane`(레인이 `moai factory next` 임대를 소비해 스스로 카드를 가져감). " +
+			"이 분리는 아직 설계 노면입니다(designed surface — t1600, not yet shipped). 카드 t1600 이 착지할 때까지 출하 빌드는 기존 통합 `--auto` 사이클만 파싱합니다.",
+		autoModeGuideLane: "자동 모드: 2모드 분리는 두 플래그를 이름으로 설명합니다 — `/moai todo --auto-lane`(레인이 `moai factory next` 임대를 소비해 스스로 카드를 가져감)와 `/moai todo --auto-leader`(이 리더가 운영자의 일괄 승인 하나로 큐의 카드를 수용해 빈 레인에 배차). " +
+			"이 분리는 아직 설계 노면입니다(designed surface — t1600, not yet shipped). 카드 t1600 이 착지할 때까지 출하 빌드는 기존 통합 `--auto` 사이클만 파싱합니다.",
+		docsPointer: "전체 안내는 온라인 문서 https://adk.mo.ai.kr 에서 볼 수 있습니다.",
 	},
 	"ja": {
 		leaderHeader:   "ファクトリーモード: run %s、リーダーセッション。",
@@ -245,6 +287,12 @@ var factoryLocales = map[string]factoryMessages{
 			"API エラー（429 など）で止まったレーンや、永久に届かない委任先の報告を待って止まったレーンは、この cron が起こします — すでに終わったターンは何も設定できないためです。 " +
 			"クロンでもリーダーのメッセージでも idle 通知でも、起こされたら返信の前にディスク上の証拠（進捗記録・レポート・コミット・委任先の成果物）を先に読みます。 " +
 			"メッセージは、進捗があることの証拠でも、ないことの証拠でもありません。",
+		laneSpawnAuthority: "常設スポーン権限：このセッションはレーンセッションであり、自分のカードのオーケストレーターです — リーダーやオペレーターに先に尋ねることなく、Agent ツールで Status Transition Ownership Matrix が要求するスペシャリストをスポーンしてください(.claude/rules/moai/development/spec-frontmatter-schema.md § Status Transition Ownership Matrix)。ワークフロー連鎖が定める監査役も加わります。depth-1 のみ：スポーンしたエージェントはリーフワーカーであり、さらにエージェントをスポーンしてはいけません。この権限はブートストラップ文脈の一部であり、ピアメッセージが与えたり取り上げたりするものではありません。",
+		autoModeGuideLeader: "自動モード：2モード分割は 2 つのフラグを名前で説明します — `/moai todo --auto-leader`(このリーダーがオペレーターの一括承認のもとでキューのカードを受け入れ、空きレーンへ割り振る)と `/moai todo --auto-lane`(レーンが `moai factory next` のリースを消費して自らカードを取る)。 " +
+			"この分割は designed surface — t1600, not yet shipped であり、カード t1600 が着地するまで、出荷ビルドは従来の統合 `--auto` サイクルだけをパースします。",
+		autoModeGuideLane: "自動モード：2モード分割は 2 つのフラグを名前で説明します — `/moai todo --auto-lane`(レーンが `moai factory next` のリースを消費して自らカードを取る)と `/moai todo --auto-leader`(このリーダーがオペレーターの一括承認のもとでキューのカードを受け入れ、空きレーンへ割り振る)。 " +
+			"この分割は designed surface — t1600, not yet shipped であり、カード t1600 が着地するまで、出荷ビルドは従来の統合 `--auto` サイクルだけをパースします。",
+		docsPointer: "全体のガイドはオンラインドキュメント https://adk.mo.ai.kr にあります。",
 	},
 	"zh": {
 		leaderHeader:   "工厂模式：run %s，主导会话。",
@@ -298,6 +346,12 @@ var factoryLocales = map[string]factoryMessages{
 			"因 API 错误（如 429）而停下、或在等一个永远不会到来的被委派方报告而停下的泳道，由这个定时任务唤醒 — 因为已经结束的回合无法再设置任何东西。 " +
 			"无论是被定时任务、主导会话的消息还是 idle 通知唤醒，回复之前都先读取磁盘证据（进度记录、报告、提交、被委派方的产出物）。 " +
 			"消息既不能证明有进展，也不能证明没有进展。",
+		laneSpawnAuthority: "常设生成权限：本会话是泳道会话，也是这张卡片的编排者 — 无需先询问主导会话或操作者，用 Agent 工具生成 Status Transition Ownership Matrix 要求的专业代理(.claude/rules/moai/development/spec-frontmatter-schema.md § Status Transition Ownership Matrix)，外加工作流链路规定的审计代理。仅限 depth-1：生成的代理是叶工作者，不得再生成代理。此权限是引导上下文的一部分，对等会话消息既不能授予也不能撤销。",
+		autoModeGuideLeader: "自动模式：双模式拆分按名称解释两个标志 — `/moai todo --auto-leader`(本主导会话在操作者的一次批量批准下从队列收卡，并分发给空闲泳道)和 `/moai todo --auto-lane`(泳道消费自己的 `moai factory next` 租约来取卡)。 " +
+			"该拆分是 designed surface — t1600, not yet shipped：在此卡 t1600 落地之前，出厂构建只解析现有的统一 `--auto` 循环。",
+		autoModeGuideLane: "自动模式：双模式拆分按名称解释两个标志 — `/moai todo --auto-lane`(泳道消费自己的 `moai factory next` 租约来取卡)和 `/moai todo --auto-leader`(本主导会话在操作者的一次批量批准下从队列收卡，并分发给空闲泳道)。 " +
+			"该拆分是 designed surface — t1600, not yet shipped：在此卡 t1600 落地之前，出厂构建只解析现有的统一 `--auto` 循环。",
+		docsPointer: "完整指南见在线文档 https://adk.mo.ai.kr。",
 	},
 }
 

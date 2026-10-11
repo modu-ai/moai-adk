@@ -234,6 +234,11 @@ workflow:
     branch_guard:
         enabled: false
         deny_commits_on: []
+    # local_main_integration: lets the integration verbs use the primary checkout
+    # as the tree that holds the integration branch (local-main flow). Shipped
+    # default false, which keeps the primary-refusal behavior unchanged.
+    local_main_integration:
+        enabled: false
     # commit_identity_guard: refuse a shell command that would create a commit
     # under a known test-fixture identity (an email your test suites use for
     # throwaway repositories). The guard reads the identity the commit would
