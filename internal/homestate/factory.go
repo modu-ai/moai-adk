@@ -676,8 +676,15 @@ func (f *FactoryDB) Close() error { return f.DB.Close() }
 // binds nothing: ImportLegacyWorkers leaves run_id empty), returns "". Callers refuse on "" rather than infer a
 // run from the label, because a label can be reused across runs.
 func (f *FactoryDB) WorkerRunBinding(ctx context.Context, label string) (string, error) {
+	return workerRunBinding(ctx, f.DB, label)
+}
+
+// workerRunBinding reads the roster binding of label through q, the factory connection or a transaction on it
+// (sync-audit F14, card t1663): the lease write reads it inside its own transaction. "" means the label has no
+// roster row or an empty binding.
+func workerRunBinding(ctx context.Context, q queryRower, label string) (string, error) {
 	var runID string
-	err := f.DB.QueryRowContext(ctx, `SELECT run_id FROM workers WHERE label=?`, label).Scan(&runID)
+	err := q.QueryRowContext(ctx, `SELECT run_id FROM workers WHERE label=?`, label).Scan(&runID)
 	if errors.Is(err, sql.ErrNoRows) {
 		return "", nil
 	}

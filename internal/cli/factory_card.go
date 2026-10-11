@@ -1828,7 +1828,7 @@ func factoryRenewCard(ctx context.Context, root, cardID, run, lane string) (fact
 	fail := func(err error) (factoryRenewOutcome, error) {
 		return factoryRenewOutcome{Result: factoryRenewError, Detail: err.Error()}, fmt.Errorf("factory renew: %w", err)
 	}
-	runID, err := resolveFactoryRenewRun(ctx, root, run, lane, cardID)
+	runID, rule, err := resolveFactoryRenewRunRule(ctx, root, run, lane, cardID)
 	if err != nil {
 		return fail(err)
 	}
@@ -1840,9 +1840,14 @@ func factoryRenewCard(ctx context.Context, root, cardID, run, lane string) (fact
 		return fail(err)
 	}
 	defer func() { _ = db.Close() }()
-	card, err := db.RenewLease(ctx, runID, cardID, lane, factoryCardNow())
+	// The write re-checks the roster binding inside its transaction (sync-audit F14, card t1663): a
+	// re-registration after the resolution above is refused here, with no write, and the message names --run.
+	card, err := db.RenewLeaseUnderRoster(ctx, runID, cardID, lane, factoryCardNow(), rule)
 	if err == nil {
 		return factoryRenewOutcome{Result: factoryRenewRenewed, ExpiresAt: card.LeaseExpiresAt}, nil
+	}
+	if errors.Is(err, homestate.ErrRosterBinding) {
+		err = fmt.Errorf("no --run given: %w; pass --run", err)
 	}
 	outcome := factoryRenewOutcome{Result: factoryRenewError, Detail: err.Error()}
 	switch {
@@ -2448,9 +2453,14 @@ func resolveFactoryCardRun(ctx context.Context, root, explicit string) (string, 
 // run can name the same label. Every other ambiguous case refuses, naming --run: no binding, a binding
 // outside the active set, or a card the lane does not hold in its bound run. Each refusal keeps the detail
 // that prevented the narrowing.
-func resolveFactoryRenewRun(ctx context.Context, root, explicit, lane, cardID string) (string, error) {
+// resolveFactoryRenewRunRule returns the run a renewal acts in and the roster rule its lease write must re-check
+// (sync-audit F14, card t1663). An explicit --run value wins with no rule. The pre-check below reads the
+// binding; the write then re-reads it inside its own transaction and applies the rule (homestate
+// RenewLeaseUnderRoster), so a re-registration after this read is refused there. The sole-run answer carries
+// RosterSoleRun, and the ambiguous-set answer carries RosterBound.
+func resolveFactoryRenewRunRule(ctx context.Context, root, explicit, lane, cardID string) (string, homestate.RosterRule, error) {
 	if run := strings.TrimSpace(explicit); run != "" {
-		return run, nil
+		return run, homestate.RosterUnchecked, nil
 	}
 	run, err := factorymsg.ResolveActiveRun(ctx, root, "")
 	if err == nil {
@@ -2458,43 +2468,50 @@ func resolveFactoryRenewRun(ctx context.Context, root, explicit, lane, cardID st
 		// naming --run, and write nothing.
 		bound, berr := factoryRenewBoundRun(ctx, root, lane)
 		if berr != nil {
-			return "", berr
+			return "", homestate.RosterUnchecked, berr
 		}
 		if bound != "" && bound != run {
-			return "", fmt.Errorf("no --run given: lane %s is bound to run %s, not to the single active run %s; pass --run", lane, bound, run)
+			return "", homestate.RosterUnchecked, fmt.Errorf("no --run given: lane %s is bound to run %s, not to the single active run %s; pass --run", lane, bound, run)
 		}
-		return run, nil
+		return run, homestate.RosterSoleRun, nil
 	}
 	var ambiguous *factorymsg.AmbiguousRunsError
 	if !errors.As(err, &ambiguous) {
-		return "", fmt.Errorf("no --run given and no single active factory run (%w)", err)
+		return "", homestate.RosterUnchecked, fmt.Errorf("no --run given and no single active factory run (%w)", err)
 	}
 	refuse := func(detail error) error {
 		return fmt.Errorf("no --run given and no single active factory run (%w): %v; pass --run", err, detail)
 	}
 	db, derr := homestate.OpenFactory(root)
 	if derr != nil {
-		return "", refuse(derr)
+		return "", homestate.RosterUnchecked, refuse(derr)
 	}
 	defer func() { _ = db.Close() }()
 	bound, berr := db.WorkerRunBinding(ctx, lane)
 	if berr != nil {
-		return "", refuse(berr)
+		return "", homestate.RosterUnchecked, refuse(berr)
 	}
 	if bound == "" {
-		return "", refuse(fmt.Errorf("lane %s has no roster binding", lane))
+		return "", homestate.RosterUnchecked, refuse(fmt.Errorf("lane %s has no roster binding", lane))
 	}
 	if !factoryRunListed(ambiguous.Owners, bound) {
-		return "", refuse(fmt.Errorf("lane %s is bound to run %s, which is not an active run", lane, bound))
+		return "", homestate.RosterUnchecked, refuse(fmt.Errorf("lane %s is bound to run %s, which is not an active run", lane, bound))
 	}
 	card, cerr := db.LoadCard(ctx, bound, cardID)
 	if cerr != nil {
-		return "", refuse(fmt.Errorf("card %s in its bound run %s: %w", cardID, bound, cerr))
+		return "", homestate.RosterUnchecked, refuse(fmt.Errorf("card %s in its bound run %s: %w", cardID, bound, cerr))
 	}
 	if card.LeaseHolder != lane {
-		return "", refuse(fmt.Errorf("card %s is not held by lane %s in its bound run %s", cardID, lane, bound))
+		return "", homestate.RosterUnchecked, refuse(fmt.Errorf("card %s is not held by lane %s in its bound run %s", cardID, lane, bound))
 	}
-	return bound, nil
+	return bound, homestate.RosterBound, nil
+}
+
+// resolveFactoryRenewRun returns the run a renewal acts in; resolveFactoryRenewRunRule also returns the roster
+// rule the lease write re-checks.
+func resolveFactoryRenewRun(ctx context.Context, root, explicit, lane, cardID string) (string, error) {
+	run, _, err := resolveFactoryRenewRunRule(ctx, root, explicit, lane, cardID)
+	return run, err
 }
 
 // factoryRenewBoundRun returns the run the roster binds lane to: "" when the lane has no roster row or an
