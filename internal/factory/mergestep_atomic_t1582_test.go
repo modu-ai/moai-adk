@@ -16,6 +16,8 @@ import (
 	"strings"
 	"testing"
 	"time"
+
+	"github.com/modu-ai/moai-adk/internal/factorylane"
 )
 
 // cause7GapProbe is how long the seam waits for an injected mutation to finish.
@@ -35,7 +37,7 @@ func TestRedT1582Cause7HoldAndReleaseAreOneMutation(t *testing.T) {
 			if err := os.WriteFile(filepath.Join(f.integ, "residue-untracked.txt"), []byte("residue"), 0o644); err != nil {
 				return "", err
 			}
-			return "", fmt.Errorf("simulated merge failure (t1582 cause-7 interleaving)")
+			return "", cause7MergeExit()
 		}
 		return execGitIn(f.integ, args...)
 	}
@@ -112,9 +114,51 @@ func cause7MergeGit(f *stepFixture) func(args ...string) (string, error) {
 			if err := os.WriteFile(filepath.Join(f.integ, "residue-untracked.txt"), []byte("residue"), 0o644); err != nil {
 				return "", err
 			}
-			return "", fmt.Errorf("simulated merge failure (t1582 cause-7 failure branch)")
+			return "", cause7MergeExit()
 		}
 		return execGitIn(f.integ, args...)
+	}
+}
+
+// cause7MergeExit is the merge outcome the cause-7 pair is reachable from: the merge
+// call started, stopped with git exit status 1, and left its untracked residue behind.
+// An error with no exit status means git never started (main's commit b870598702,
+// card t1616), so the step refuses without abort and never reaches the cause-7 pair.
+// The cause-7 tests inject this exit-1 form, so the abort and the hold-then-release
+// path are the ones they exercise.
+func cause7MergeExit() error {
+	return &factorylane.GitExitError{ExitCode: 1, Stderr: "CONFLICT (simulated for card t1582 cause-7)"}
+}
+
+// TestMergeStepStartFailureRefusesWithoutAbort pins the rule main's commit b870598702
+// (card t1616) gave a start failure: a merge call whose error carries no git exit status
+// never ran git, so the step refuses the merge without aborting and writes no cause-7
+// hold. Only a merge that started and stopped with exit status 1 reaches the cause-7
+// pair (see cause7MergeExit).
+func TestMergeStepStartFailureRefusesWithoutAbort(t *testing.T) {
+	f := newMergeFixture(t)
+	card := f.withCardTree(readyCardPtr())
+	seams := f.seams(card)
+	var calls []string
+	seams.Git = func(args ...string) (string, error) {
+		calls = append(calls, strings.Join(args, " "))
+		if args[0] == "merge" {
+			return "", fmt.Errorf("exec: git: executable file not found in $PATH (simulated start failure)")
+		}
+		return execGitIn(f.integ, args...)
+	}
+	_, stepErr := RunMergeStep(f.input(), seams)
+	requireCode(t, stepErr, MergeExitOther)
+	if msg := stepErr.Error(); !strings.Contains(msg, "did not start the merge call") || !strings.Contains(msg, "did not abort") {
+		t.Fatalf("a start failure must be refused as one, without an abort: %v", stepErr)
+	}
+	for _, c := range calls {
+		if c == "merge --abort" {
+			t.Fatalf("a start failure must not abort the merge; git calls: %v", calls)
+		}
+	}
+	if policy, err := ReadIntegrationWindowPolicy(f.root); err == nil && policy.Policy == PolicyHold {
+		t.Fatalf("a start failure must not write the cause-7 hold, got %q (%s)", policy.Policy, policy.Reason)
 	}
 }
 

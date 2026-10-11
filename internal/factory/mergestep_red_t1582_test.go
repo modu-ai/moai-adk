@@ -12,7 +12,6 @@ package factory
 // repair — recorded honestly in acceptance.md, not papered over here.
 
 import (
-	"fmt"
 	"os"
 	"path/filepath"
 	"strings"
@@ -33,7 +32,7 @@ func TestRedT1582Cause7SeedingWritesHoldThenReleases(t *testing.T) {
 			if err := os.WriteFile(filepath.Join(f.integ, "residue-untracked.txt"), []byte("residue"), 0o644); err != nil {
 				return "", err
 			}
-			return "", fmt.Errorf("simulated merge failure (t1582 cause-7 seeding)")
+			return "", cause7MergeExit()
 		}
 		// Everything else passes through to the real git runner — the seam
 		// only scripts the merge act itself.
