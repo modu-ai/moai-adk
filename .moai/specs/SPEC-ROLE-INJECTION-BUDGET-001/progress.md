@@ -329,3 +329,113 @@ unset MOAI_KANBAN_ID MOAI_KANBAN_LEAD_ADDR MOAI_KANBAN_SETTINGS_INJECTED && go t
 ```
 
 - **해석 (레인 기록, 판단은 리더/영실이)**: 58줄 전체는 M2 압축의 문서화된 흔적 — base의 장문 [HARD] 단락들이 재작성으로 압축 one-liner가 되어 줄 단위 일치가 성립하지 않음. 의미 보존은 363행 relocation ledger가 담당하며 plan-audit PASS 0.90(4라운드)·sync-audit PASS 0.95·delta1/2/3 감사가 그 ledger와 본문을 검증. **본 F4 수리의 신규 손실 없음**(A·B는 추가, [12]·[15]는 복원). 줄 단위 일치 기준을 그대로 적용하면 압축 전체가 '빠진 줄'이 되므로, codex 진행 여부는 리더/영실이 판정 — 규칙대로 codex 전에 중단.
+### ⓐⓑⓒ 행선지 추적 (리더 지시, 2026-10-11) — base 478285ab4 주입 본문 줄 58 전수
+
+**ⓐ 대응표 (base 줄 → 원장 행)**: 미매핑 **0건** — 58/58 매핑. ALB-0303은 before_text 스냅숏과 478285ab4 문언의 미세 드리프트로 엄격 포함이 놓쳐 토큰 자카드(≥0.5)로 확인(행 존재 확인, 원장 누락 아님). 매핑:
+- ALB-0254 · role-core:workflow/factory-dispatch.md · «[HARD] **The leader is the queue's sole producer.** The operator asks; the leader turns th»
+- ALB-0255 · role-core:workflow/factory-dispatch.md · «[HARD] **Standing sources are the other producers, and they produce on the operator's prio»
+- ALB-0256 · role-core:workflow/factory-dispatch.md · «[HARD] **Promotion is the operator's act, in person or in advance.** After a /clear, the l»
+- ALB-0258 · role-core:workflow/factory-dispatch.md · «[HARD] **The self-dispatch lane exception.** In a self-dispatch factory run, a lane sessio»
+- ALB-0260 · role-core:workflow/factory-dispatch.md · «[HARD] **The leader may attach a finding; it may not act on one.** Analysis records a rela»
+- ALB-0261 · role-core:workflow/factory-dispatch.md · «[HARD] **The pre-dispatch PR cross-check.** Before dispatching a card out of backlog, the »
+- ALB-0262 · role-core:workflow/factory-dispatch.md · «[HARD] **The cross-check also asks whether a completed SPEC already covers the work.** A c»
+- ALB-0263 · role-core:workflow/factory-dispatch.md · «[HARD] **The cross-check reports; it never vetoes.** Where the card carries an open pull r»
+- ALB-0264 · role-core:workflow/factory-dispatch.md · «[HARD] **A milestone-bearing report under .moai/reports/ carries a ## Card Cross-Check sec»
+- ALB-0266 · role-core:workflow/factory-dispatch.md · «[HARD] **Class A is admitted on checked evidence, not on an assertion.** Two of its three »
+- ALB-0269 · role-core:workflow/factory-dispatch.md · «[HARD] Work is delegated through the queue on disk, not through messages. The queue file r»
+- ALB-0270 · role-core:workflow/factory-dispatch.md · «A cross-session message is a nudge, never the delegation itself. **A lane can be asked to »
+- ALB-0271 · role-core:workflow/factory-dispatch.md · «[HARD] A dispatch is written in the operator's conversation_language — the operator watche»
+- ALB-0272 · always:.claude/rules/moai/workflow/factory-dispatch-core.md · «[HARD] A dispatch is a fixed-field address block, not prose. The fields:»
+- ALB-0001 · companion:.claude/rules/moai/core/agent-common-protocol-detail.md · «»
+- ALB-0272 · always:.claude/rules/moai/workflow/factory-dispatch-core.md · «card: <id>»
+- ALB-0272 · always:.claude/rules/moai/workflow/factory-dispatch-core.md · «spec: <SPEC-ID>»
+- ALB-0272 · always:.claude/rules/moai/workflow/factory-dispatch-core.md · «cmd: /moai run <SPEC-ID>»
+- ALB-0272 · always:.claude/rules/moai/workflow/factory-dispatch-core.md · «wt: .moai/worktrees/<name>»
+- ALB-0272 · always:.claude/rules/moai/workflow/factory-dispatch-core.md · «evidence: .moai/specs/<SPEC-ID>/progress.md»
+- ALB-0272 · always:.claude/rules/moai/workflow/factory-dispatch-core.md · «lens: --security --deep»
+- ALB-0001 · companion:.claude/rules/moai/core/agent-common-protocol-detail.md · «»
+- ALB-0272 · always:.claude/rules/moai/workflow/factory-dispatch-core.md · «- card, cmd, wt, and evidence are always present. spec joins once a SPEC exists; a Class B»
+- ALB-0272 · always:.claude/rules/moai/workflow/factory-dispatch-core.md · «- wt names the new card's worktree, never a previous card's tree. The tree keeps the card »
+- ALB-0272 · always:.claude/rules/moai/workflow/factory-dispatch-core.md · «- **No explanatory prose.** Procedure, background, and justification live in the card text»
+- ALB-0272 · always:.claude/rules/moai/workflow/factory-dispatch-core.md · «- **Ceiling: the block is at most 10 lines.** A dispatch that does not fit is trying to be»
+- ALB-0272 · always:.claude/rules/moai/workflow/factory-dispatch-core.md · «- **[HARD] The send is read, not assumed.** A routing object on the result means an in-pro»
+- ALB-0273 · role-core:workflow/factory-dispatch.md · «[HARD] A lane session tracks its card's execution on the session's task tools. At card int»
+- ALB-0275 · role-core:workflow/factory-dispatch.md · «[HARD] Between run-exit verification and integration every lane runs a card-review stage: »
+- ALB-0276 · always:.claude/rules/moai/workflow/factory-dispatch-core.md · «[HARD] A lane that cannot proceed records an explicit wait on disk — reason, whom, recheck»
+- ALB-0277 · role-core:workflow/factory-dispatch.md · «[HARD] **The deputy is resident, not optional.** Before the batch's first lane dispatch, t»
+- ALB-0278 · role-core:workflow/factory-dispatch.md · «[HARD] **A completion report reaches the leader as a RECOMMEND: summary, not as raw readin»
+- ALB-0279 · role-core:workflow/factory-dispatch.md · «[HARD] **The deputy never holds a power of consequence.** Final PASS/FAIL verdicts, final »
+- ALB-0280 · role-core:workflow/factory-dispatch.md · «[HARD] The leader advances a card on **evidence it read**, not on a lane's reply. Before m»
+- ALB-0284 · always:.claude/rules/moai/workflow/factory-dispatch-core.md · «[HARD] A gh pr checks row naming CodeRabbit is not evidence that a review happened: the st»
+- ALB-0284 · always:.claude/rules/moai/workflow/factory-dispatch-core.md · «1. The **combined** endpoint /commits/{sha}/status shows state == "success" **and** descri»
+- ALB-0284 · always:.claude/rules/moai/workflow/factory-dispatch-core.md · «bash»
+- ALB-0284 · always:.claude/rules/moai/workflow/factory-dispatch-core.md · «gh api "repos/$REPO/commits/$HEAD_SHA/status" \»
+- ALB-0284 · always:.claude/rules/moai/workflow/factory-dispatch-core.md · «--jq '.statuses[] | select(.context == "CodeRabbit" and .state == "success") | .descriptio»
+- ALB-0001 · companion:.claude/rules/moai/core/agent-common-protocol-detail.md · «»
+- ALB-0284 · always:.claude/rules/moai/workflow/factory-dispatch-core.md · «2. A Merge Risk: line exists whose commit prefix matches the current headRefOid.»
+- ALB-0286 · role-core:workflow/factory-dispatch.md · «[HARD] A lane session does not carry one card's context into the next card. When a card re»
+- ALB-0287 · role-core:workflow/factory-dispatch.md · «[HARD] On a card transition inside a lane session, /clear happens exactly once, **after** »
+- ALB-0290 · role-core:workflow/factory-dispatch.md · «[HARD] A card's work happens inside a worktree, and that worktree is **entered through the»
+- ALB-0291 · role-core:workflow/factory-dispatch.md · «[HARD] A Codex factory agent must never call moai cc -w, EnterWorktree, or ExitWorktree; t»
+- ALB-0292 · role-core:workflow/factory-dispatch.md · «[HARD] **moai worktree done closes L2 trees only** — project trees under .claude/worktrees»
+- ALB-0293 · role-core:workflow/factory-dispatch.md · «[HARD] **The card's branch is unpushed, so its worktree is the work's only instance.** Dis»
+- ALB-0294 · always:.claude/rules/moai/workflow/factory-dispatch-core.md · «[HARD] **A card session starts inside its worktree and stays there.** The standard is a la»
+- ALB-0295 · role-core:workflow/factory-dispatch.md · «[HARD] **A new card starts in a new worktree** — a lane anchored in the previous card's tr»
+- ALB-0296 · role-core:workflow/factory-dispatch.md · «[HARD] **Card worktree branches carry the WT- prefix and a descriptive slug — never the ca»
+- ALB-0297 · role-core:workflow/factory-dispatch.md · «[HARD] **Inside a worktree session that <path> is the worktree's own absolute path** — the»
+- ALB-0298 · role-core:workflow/factory-dispatch.md · «[HARD] **Lane-local verification is scoped to the card.** A lane runs the tests its own ch»
+- ALB-0299 · role-core:workflow/factory-dispatch.md · «[HARD] **Never spawn background load.** Where a verification genuinely needs contention, t»
+- ALB-0300 · role-core:workflow/factory-dispatch.md · «[HARD] Inside a worktree, an environment-scrubbed verification runs as one compound unset »
+- ALB-0284 · always:.claude/rules/moai/workflow/factory-dispatch-core.md · «bash»
+- ALB-0300 · role-core:workflow/factory-dispatch.md · «unset MOAI_KANBAN_ID MOAI_KANBAN_LEAD_ADDR MOAI_KANBAN_SETTINGS_INJECTED && go test ./...»
+- ALB-0001 · companion:.claude/rules/moai/core/agent-common-protocol-detail.md · «»
+
+**ⓑ role-core 행선지 32행 — 기계 검사**: after_text가 수리 후 주입 본문에 문자 그대로 존재 — **FAIL 0건(전부 통과)**. 검증: perl UTF-16 마커 추출 본문 + python norm 포함 검사(본 대조와 동일 구현). base 원문과 after_text 나란히:
+
+| base 원문(478285ab4) | ledger after_text(현재 core) |
+|---|---|
+| «[HARD] **The leader is the queue's sole producer.** The operator asks; the leader turns the request into a card with moai gtd add "<description>" (moai gtd alon» | ALB-0254 «[HARD] Only the operator's requests enter the queue; the leader adds the card (moai gtd add) and never invents work.» |
+| «[HARD] **Standing sources are the other producers, and they produce on the operator's prior authorization.** /moai project issues one card when it completes ([P» | ALB-0255 «[HARD] Standing sources (/moai project, codemaps-debt) also produce — one prefixed card per occasion, on prior operator authorization (gtd § Standing sources).» |
+| «[HARD] **Promotion is the operator's act, in person or in advance.** After a /clear, the leader presents the queued cards through AskUserQuestion and the operat» | ALB-0256 «[HARD] Promotion is the operator's act: present queued cards after /clear; never pick, reorder, or silently promote outside --auto.» |
+| «[HARD] **The self-dispatch lane exception.** In a self-dispatch factory run, a lane session may lease the next queued card — the one promotion a lane performs —» | ALB-0258 «[HARD] A self-dispatch lane leases its next card only via moai factory next; other queue mutations and contract signing stay forbidden to a lane.» |
+| «[HARD] **The leader may attach a finding; it may not act on one.** Analysis records a relation between two cards (moai gtd relate); the record is evidence the o» | ALB-0260 «[HARD] The leader attaches findings (moai gtd relate), never acts on them; it may only refuse a duplicate of a queued or picked card.» |
+| «[HARD] **The pre-dispatch PR cross-check.** Before dispatching a card out of backlog, the leader reads that card's pull-request and landed state (moai gtd pr <i» | ALB-0261 «[HARD] The pre-dispatch cross-check reads the card's PR and landed state and reports the same turn — an unchecked card is a gap.» |
+| «[HARD] **The cross-check also asks whether a completed SPEC already covers the work.** A card id cannot answer "has someone else already done this" — where the » | ALB-0262 «[HARD] The cross-check also reports completed-SPEC coverage; neither read is conclusive — the final discriminator stays reproduction.» |
+| «[HARD] **The cross-check reports; it never vetoes.** Where the card carries an open pull request or is already landed, the leader surfaces that and the operator» | ALB-0263 «[HARD] The cross-check reports, never vetoes — the operator confirms or withdraws; never withhold a picked card.» |
+| «[HARD] **A milestone-bearing report under .moai/reports/ carries a ## Card Cross-Check section** — one table row per milestone, a card column holding the delive» | ALB-0264 «[HARD] Milestone reports carry a ## Card Cross-Check section — mappings verified against the queue, never remembered.» |
+| «[HARD] **Class A is admitted on checked evidence, not on an assertion.** Two of its three properties are mechanically checked and cited: the diff is measured (g» | ALB-0266 «[HARD] Class A needs checked evidence: measured diff and CI green on the merging head, both cited.» |
+| «[HARD] Work is delegated through the queue on disk, not through messages. The queue file resolves against the primary checkout from every linked worktree — one » | ALB-0269 «[HARD] Work is delegated through the queue on disk, not messages — one queue, visible from every worktree.» |
+| «A cross-session message is a nudge, never the delegation itself. **A lane can be asked to report when it next goes idle** (SendMessage notify_when_idle), but [H» | ALB-0270 «A message is a nudge, never the delegation — an idle notice says when to look, not what the evidence says.» |
+| «[HARD] A dispatch is written in the operator's conversation_language — the operator watches it scroll past, which makes it user-facing output rather than intern» | ALB-0271 «[HARD] Dispatches go in the operator's conversation_language; Agent() prompts stay English; identifiers verbatim.» |
+| «[HARD] A lane session tracks its card's execution on the session's task tools. At card intake it registers the card's execution stages via TaskCreate before beg» | ALB-0273 «[HARD] A lane tracks its card's stages via TaskCreate/TaskUpdate; a list contradicting its report is a gap.» |
+| «[HARD] Between run-exit verification and integration every lane runs a card-review stage: a card-scope self-review through codex_review (glm_review optional) wh» | ALB-0275 «[HARD] Every lane runs a card-review (codex_review → .moai/reports/<card-id>/card-review.md) before integration — advisory only.» |
+| «[HARD] **The deputy is resident, not optional.** Before the batch's first lane dispatch, the factory leader session spawns exactly one UNNAMED background Agent(» | ALB-0277 «[HARD] The deputy is resident: one UNNAMED background Agent() running manager-lead, kept for the batch.» |
+| «[HARD] **A completion report reaches the leader as a RECOMMEND: summary, not as raw reading batches** — turn occupancy moves; the leader's own evidence-read bef» | ALB-0278 «[HARD] Completion reports arrive as RECOMMEND: summaries — occupancy moves; the leader's evidence read does not.» |
+| «[HARD] **The deputy never holds a power of consequence.** Final PASS/FAIL verdicts, final merge approval (LEAD-MERGE-APPROVED), operator gates, card issuance an» | ALB-0279 «[HARD] The deputy holds no power of consequence: verdicts, merge approval, operator gates, issuance, adjudication stay with the leader.» |
+| «[HARD] The leader advances a card on **evidence it read**, not on a lane's reply. Before moving a card out of a working stage, the leader reads the card's progr» | ALB-0280 «[HARD] The leader advances a card on evidence it read; missing or stale evidence is a gap — the card stays put.» |
+| «[HARD] A lane session does not carry one card's context into the next card. When a card reaches done and the leader has read its evidence, the leader **asks the» | ALB-0286 «[HARD] One card's context never crosses to the next: at done the leader asks the operator to /clear that session.» |
+| «[HARD] On a card transition inside a lane session, /clear happens exactly once, **after** the session has moved into the next card's worktree — not before the m» | ALB-0287 «[HARD] /clear exactly once per transition, after moving into the next worktree — never before.» |
+| «[HARD] A card's work happens inside a worktree, and that worktree is **entered through the launcher** — never created with a bare git worktree add. Launcher tab» | ALB-0290 «[HARD] Card work happens in a launcher-entered worktree — never a bare git worktree add (mechanics § Isolation).» |
+| «[HARD] A Codex factory agent must never call moai cc -w, EnterWorktree, or ExitWorktree; those are Claude Code entry mechanisms.» | ALB-0291 «[HARD] A Codex factory agent never calls moai cc -w, EnterWorktree, or ExitWorktree.» |
+| «[HARD] **moai worktree done closes L2 trees only** — project trees under .claude/worktrees/ and .moai/worktrees/ are L1 and absent from its registry. The full L» | ALB-0292 «[HARD] moai worktree done closes L2 trees only (worktree-integration § Terminology Glossary).» |
+| «[HARD] **The card's branch is unpushed, so its worktree is the work's only instance.** Dispose of no worktree — L1 or L2 — until the leader has integrated the b» | ALB-0293 «[HARD] The card's branch is unpushed — the worktree is the work's only copy until the remote merge lands.» |
+| «[HARD] **A new card starts in a new worktree** — a lane anchored in the previous card's tree MUST ExitWorktree before entering the next one; the fresh tree is c» | ALB-0295 «[HARD] A new card starts in a new worktree — exit the old tree first; never reuse; merge dependencies inside the new tree.» |
+| «[HARD] **Card worktree branches carry the WT- prefix and a descriptive slug — never the card id** (rename in place with git branch -m WT-<slug>); the worktree d» | ALB-0296 «[HARD] Branches carry WT- + a descriptive slug, never the card id; traceability = dispatch card: + commit message + evidence path + PR title.» |
+| «[HARD] **Inside a worktree session that <path> is the worktree's own absolute path** — the guard refuses -C ., relative paths, runtime-computed paths, and paths» | ALB-0297 «[HARD] In a worktree session <path> is that worktree's absolute path — relative, computed, and outside forms are refused.» |
+| «[HARD] **Lane-local verification is scoped to the card.** A lane runs the tests its own change can affect, then pushes and lets CI run the full suite. (Incident» | ALB-0298 «[HARD] Verification is lane-local — only what the change can affect; CI runs the full suite (gates § incident record).» |
+| «[HARD] **Never spawn background load.** Where a verification genuinely needs contention, the load must be cleanup-guaranteed — kills registered with the test fr» | ALB-0299 «[HARD] Never spawn background load — contention needs cleanup-guaranteed kills or a timeout wrapper.» |
+| «[HARD] Inside a worktree, an environment-scrubbed verification runs as one compound unset … && <command> invocation — each Bash call is a fresh process, so a se» | ALB-0300 «[HARD] Env-scrubbed verification is one compound unset … && <command> call — a separate unset carries nothing.» |
+| «unset MOAI_KANBAN_ID MOAI_KANBAN_LEAD_ADDR MOAI_KANBAN_SETTINGS_INJECTED && go test ./...» | ALB-0300 «[HARD] Env-scrubbed verification is one compound unset … && <command> call — a separate unset carries nothing.» |
+
+**ⓒ 비주입 행선지 [HARD] 행 6건 — Codex 레인 불요 사유 초안(레인 작성, 수용/기각은 리더 Opus 감사자)**:
+
+- **ALB-0272** (always:.claude/rules/moai/workflow/factory-dispatch-core.md) — base «[HARD] A dispatch is a fixed-field address block, not prose. The fields:» → 사유 초안: core의 복원 행(ALB-0272 대응 F4 삽입)이 필드 명세(`card:` `spec:` `cmd:` `wt:` `evidence:`; `lens:` optional)·비산문·최대 10행을 전달 — 블록의 예시 형태(``` 필드표)는 표기 중복. 미전달 잔여: send-read 판별 세부(라우팅 객체 형태)는 cross-session-messaging 규칙 계열 소유.
+- **ALB-0001** (companion:.claude/rules/moai/core/agent-common-protocol-detail.md) — base «» → 사유 초안: (초안 미작성)
+- **ALB-0276** (always:.claude/rules/moai/workflow/factory-dispatch-core.md) — base «[HARD] A lane that cannot proceed records an explicit wait on disk — reason, who» → 사유 초안: core의 B 행(F4 복원)이 동일 의무 전달 — 디스크 대기 기록·턴 종료·각성 시 워치독 선행·§6 사다리. 세부 절차는 본문 일반 텍스트에도 존재(파일을 읽으면 도달).
+- **ALB-0284** (always:.claude/rules/moai/workflow/factory-dispatch-core.md) — base «[HARD] A gh pr checks row naming CodeRabbit is not evidence that a review happen» → 사유 초안: CodeRabbit PR 상태 판독은 카드 PR 경로의 착지 후 검증 절차로, 레인의 주입 의무 경로는 core 내 card-review 행(ALB-0275)이 전달하는 codex_review 독립 리뷰가 담당 — Codex 레인은 PR 상태 판독 없이도 독립 리뷰 의무가 이행됨.
+- **ALB-0294** (always:.claude/rules/moai/workflow/factory-dispatch-core.md) — base «[HARD] **A card session starts inside its worktree and stays there.** The standa» → 사유 초안: core의 worktree one-liner 행들(런처 진입·Codex 금지·새 카드 새 트리·절대경로)이 동일 의무를 전달 — 세부 표는 중복.
+- **ALB-0303** (always:.claude/rules/moai/workflow/factory-dispatch-core.md) — base «[HARD] A lane whose card has passed verification does not wait for the leader to» → 사유 초안: git-flow 변항은 본 리포의 현재 전략(github-flow)에서 미적용 — github-flow 경로는 core 내 card-review 행이 전달하는 factory complete PR 엣지가 담당. 본문 일반 텍스트에도 전문 존재(파일 읽기 도달).
+
+- **ALB-0001 오매핑 주석**: base의 ``` 구조행 4건이 상세 컴패니언의 일반 블록과 토큰 겹쳐 매핑된 것 — 구조 프래그먼트로 소유 의무는 각 모행의 행이 담당(추적 대상 제외 주석).
+
+**판정**: 레인 판정 없음 — ⓐ 0누락·ⓑ 0실패·ⓒ 7행 초안. 리더 Opus 읽기 전용 감사자가 ⓒ 항목별 수용/기각.
