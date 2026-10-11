@@ -25,16 +25,16 @@ func TestInjectedCoreCarriesCodexReachableObligations(t *testing.T) {
 		phrase string
 		inBody bool
 	}{
-		{"disk wait", true},           // ALB-0276 (IN): stuck-lane obligation
-		{"gate boundary", true},       // ALB-0276: leader reach limit
-		{"git-flow only", true},       // ALB-0303 (IN): landing scope condition
-		{"never force", true},         // ALB-0303: push discipline
-		{"normalized text is identical", true}, // ALB-0260 (IN): rejection criterion
+		{"disk wait", true},                                          // ALB-0276 (IN): stuck-lane obligation
+		{"gate boundary", true},                                      // ALB-0276: leader reach limit
+		{"git-flow only", true},                                      // ALB-0303 (IN): landing scope condition
+		{"never force", true},                                        // ALB-0303: push discipline
+		{"normalized text is identical", true},                       // ALB-0260 (IN): rejection criterion
 		{"never folds away, reorders around, drops, or edits", true}, // ALB-0260
-		{"tree_scope: skip", true},    // ALB-0275 (IN): leader self-review
-		{"no failure signal is not a pass", true}, // ALB-0280 (IN)
-		{"fixed-field", false}, // ALB-0272 (OUT): body delivery
-		{"not Class B", false},               // ALB-0272: Class B spec omission
+		{"tree_scope: skip", true},                                   // ALB-0275 (IN): leader self-review
+		{"no failure signal is not a pass", true},                    // ALB-0280 (IN)
+		{"fixed-field", false},                                       // ALB-0272 (OUT): body delivery
+		{"not Class B", false},                                       // ALB-0272: Class B spec omission
 	}
 	for _, rel := range surfaces {
 		t.Run(rel, func(t *testing.T) {
