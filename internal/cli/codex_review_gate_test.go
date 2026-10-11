@@ -6,10 +6,13 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"runtime"
 	"strings"
 	"testing"
 	"time"
 
+	"github.com/modu-ai/moai-adk/internal/binlag"
+	"github.com/modu-ai/moai-adk/internal/config"
 	"github.com/modu-ai/moai-adk/internal/hook"
 	"github.com/modu-ai/moai-adk/internal/verify"
 )
@@ -548,4 +551,107 @@ func TestReviewGate_FreshInconclusiveAllowsWithMessage(t *testing.T) {
 	m3RecordReceipt(t, root, m3ReceiptState(t, root), codexReviewVerdictInconclusive, time.Now())
 
 	m3WantAllowWithState(t, m3GateTurnEnd(t, root), "inconclusive")
+}
+
+// TestReviewGate_StaleBinarySkipNamesState — REQ-RG-007: a turn end where the
+// binary-age skip applies (the gate binary predates the session tree) keeps its
+// allow decision and names the state "stale 바이너리 건너뜀" in systemMessage.
+func TestReviewGate_StaleBinarySkipNamesState(t *testing.T) {
+	root := m3GateFixture(t)
+	judged := stubLag(t, binlag.StatusBehind)
+	skipRows := 0
+	prevLog := binaryAgeSkipLogger
+	binaryAgeSkipLogger = func(binlag.Verdict) { skipRows++ }
+	t.Cleanup(func() { binaryAgeSkipLogger = prevLog })
+
+	out := m3GateTurnEnd(t, root)
+	if !*judged || skipRows != 1 {
+		t.Fatalf("premise: the binary-age skip must apply once (judge consulted=%v, skip rows=%d)", *judged, skipRows)
+	}
+	m3WantAllowWithState(t, out, "stale 바이너리 건너뜀")
+}
+
+// TestReviewGate_TreeScopeSkipNamesState — REQ-RG-007: a turn end where the
+// tree_scope skip applies (a tree-scope session with no WT- evidence, under
+// tree_scope skip) keeps its allow decision and names the state
+// "tree_scope 건너뜀" in systemMessage.
+func TestReviewGate_TreeScopeSkipNamesState(t *testing.T) {
+	root := m3GateFixture(t)
+	stubLag(t, binlag.StatusNotApplicable) // the binary-age policy does not skip; the tree_scope arm decides
+	prevTree := reviewGateTreeScopeReader
+	reviewGateTreeScopeReader = func(string) string { return config.CodexReviewGateTreeScopeSkip }
+	t.Cleanup(func() { reviewGateTreeScopeReader = prevTree })
+	skips := captureTreeScopeSkips(t)
+
+	out := m3GateTurnEnd(t, root)
+	if len(*skips) != 1 || (*skips)[0].Primary {
+		t.Fatalf("premise: the tree_scope arm must decide with one non-primary skip row, got %+v", *skips)
+	}
+	m3WantAllowWithState(t, out, "tree_scope 건너뜀")
+}
+
+// TestReviewGate_BlockCountReadFailureNamesRecordFailure — REQ-RG-004 and
+// REQ-RG-007: a fresh fail whose block count cannot be read is allowed (fail-open)
+// and names the state "차단 횟수 기록 실패". The exhausted-count name is kept for
+// the cap, so an unreadable count must not be reported as exhausted.
+func TestReviewGate_BlockCountReadFailureNamesRecordFailure(t *testing.T) {
+	root := m3GateFixture(t)
+	m3ProduceFail(t, root, "Verdict: fail\n\nblocking finding on shared file.")
+	state := m3ReceiptState(t, root)
+
+	// A record that does not parse as a block record reads as unreadable
+	// (ok=false): the gate cannot prove the count is below C, so it allows.
+	recordPath := m3BlockRecordPath(root, state)
+	if err := os.MkdirAll(filepath.Dir(recordPath), 0o755); err != nil {
+		t.Fatalf("mkdir block record dir: %v", err)
+	}
+	if err := os.WriteFile(recordPath, []byte("{not a block record\n"), 0o644); err != nil {
+		t.Fatalf("write malformed block record: %v", err)
+	}
+	if _, ok := codexReviewBlockCount(root, state); ok {
+		t.Fatal("premise: a malformed block record must read as unreadable")
+	}
+
+	out := m3GateTurnEnd(t, root)
+	m3WantAllowWithState(t, out, "차단 횟수 기록 실패")
+	if strings.Contains(out.SystemMessage, "차단 횟수 소진") {
+		t.Errorf("an unreadable count must not be named as exhausted, got %q", out.SystemMessage)
+	}
+}
+
+// TestReviewGate_BlockCountWriteFailureNamesRecordFailure — REQ-RG-004 and
+// REQ-RG-007: a fresh fail whose block count cannot be recorded is allowed
+// (fail-open) and names the state "차단 횟수 기록 실패". The count record is
+// absent, so the read is clean and the write is the step that fails.
+func TestReviewGate_BlockCountWriteFailureNamesRecordFailure(t *testing.T) {
+	if runtime.GOOS == "windows" {
+		t.Skip("os.Chmod does not stop directory writes on Windows")
+	}
+	if os.Getuid() == 0 {
+		t.Skip("root bypasses directory write permissions")
+	}
+	root := m3GateFixture(t)
+	m3ProduceFail(t, root, "Verdict: fail\n\nblocking finding on shared file.")
+	state := m3ReceiptState(t, root)
+
+	recordDir := filepath.Dir(m3BlockRecordPath(root, state))
+	if err := os.MkdirAll(recordDir, 0o755); err != nil {
+		t.Fatalf("mkdir block record dir: %v", err)
+	}
+	if err := os.Chmod(recordDir, 0o555); err != nil {
+		t.Fatalf("lock block record dir: %v", err)
+	}
+	t.Cleanup(func() { _ = os.Chmod(recordDir, 0o755) })
+	if err := os.WriteFile(filepath.Join(recordDir, "m3-write-probe.tmp"), []byte("probe\n"), 0o644); err == nil {
+		t.Fatal("premise: the locked block record directory must refuse writes")
+	}
+	if got := m3BlockCount(t, root, state); got != 0 {
+		t.Fatalf("premise: the block record must be absent so the read is clean, got count %d", got)
+	}
+
+	out := m3GateTurnEnd(t, root)
+	m3WantAllowWithState(t, out, "차단 횟수 기록 실패")
+	if strings.Contains(out.SystemMessage, "차단 횟수 소진") {
+		t.Errorf("an unrecordable count must not be named as exhausted, got %q", out.SystemMessage)
+	}
 }
