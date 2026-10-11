@@ -510,6 +510,60 @@ FAIL
 
 **커밋** — 이 항목의 커밋 제목: `docs(SPEC-REVIEW-GATE-REPAIR-001): record the SF-1 repair evidence in §E.2 (card t1620)`.
 
+### F2 수리 (델타 감사 iter2 뒤)
+
+델타 감사 iter2 의 F2(차단 잠금)를 고쳤다. 키별 차단 잠금을 여는 코드가 잠금 경로의 심볼릭 링크를 따라가, 소유자 기록이 링크 대상 파일에 쓰였다(감사가 OS 수준에서 덮어쓰기를 재현했다). 이제 잠금 열기는 심볼릭 링크이거나 일반 파일이 아닌 경로를 `Lstat` 으로 먼저 거부하고, `O_NOFOLLOW` 로 연다. 거부된 경로는 기존 상태 `차단 횟수 기록 실패` 로 허용한다(fail-open). 새 상태 이름은 없고 허용 결정도 바뀌지 않았다(REQ-RG-006). 공유 원시 잠금 `acquireGateLockImpl` 은 건드리지 않았다(운영자 결정 48b4: 다른 호출자 보존).
+
+- 시작 상태: `git rev-parse --short HEAD` 는 `6995a1696a`, `git branch --show-current` 는 `WT-review-gate-fix`. 일치했고 작업 트리는 깨끗했다.
+- RED 커밋 `a93efb76d`: `internal/cli/codex_review_gate_symlink_test.go` 하나(테스트 파일만). 제품 코드는 `6995a1696` 그대로다. 테스트는 `//go:build !windows` 이며, 임시 디렉터리의 센티넬 파일을 링크 대상으로 삼고, `codexReviewBlockLockPath` 위치에 심볼릭 링크를 만든 뒤 `codexReviewGateFail` 을 호출한다.
+- GREEN 커밋 `40f56c3c7`: `internal/cli/gate_lock_unix.go`(`os` import, 새 함수 `acquireGateLockNoFollowImpl`), `internal/cli/gate_lock_windows.go`(같은 이름의 함수 하나, `acquireGateLockImpl` 을 그대로 호출), `internal/cli/codex_review_gate.go`(잠금 호출 한 줄과 그 위 주석 문장). 3 files, 53 insertions · 6 deletions.
+
+**RED** — 명령 `MOAI_SKIP_LIVE_CODEX=1 go test -count=1 -skip LiveCodex -run '^TestReviewGate_BlockLockRefusesSymlink$' ./internal/cli/`, 종료 코드 **1**. 수정 전 트리에서 관측한 원문:
+
+```
+--- FAIL: TestReviewGate_BlockLockRefusesSymlink (0.40s)
+    codex_review_gate_symlink_test.go:57: the block lock wrote through the symbolic link: the target now holds "{\n  \"pid\": 51022,\n  \"created_at\": \"2026-10-11T03:50:32Z\"\n}\n", want the sentinel "sentinel: the block lock must not write through a symbolic link\n"
+    codex_review_gate_symlink_test.go:64: want allow naming state "차단 횟수 기록 실패", got block: &{Continue:<nil> StopReason: SystemMessage: SuppressOutput:false Decision:block Reason:codex review gate (cached verdict): fail HookSpecificOutput:<nil> UpdatedInput: Retry:false ExitCode:0 WorktreePath: Data:[]}
+FAIL
+FAIL	github.com/modu-ai/moai-adk/internal/cli	1.369s
+FAIL
+```
+
+센티넬은 소유자 기록으로 덮였고, 결정은 `block` 이었다. 두 관측 모두 결함의 증거다.
+
+**GREEN** — 명령 `MOAI_SKIP_LIVE_CODEX=1 go test -count=3 -skip LiveCodex -run '^TestReviewGate_BlockLockRefusesSymlink$' ./internal/cli/`, 종료 코드 **0**, 원문 `ok  	github.com/modu-ai/moai-adk/internal/cli	3.821s`.
+
+**회귀 family** — HEAD `40f56c3c7`, 명령 형식 `MOAI_SKIP_LIVE_CODEX=1 go test -count=1 -v -skip LiveCodex -run '<패턴>' ./internal/cli/`. 패턴은 `.moai/reports/t1620/progress.md` 의 01:20Z 블록 "회귀 확인 목록" (a)–(d) 를 그대로 옮겼다.
+
+- (a) 게이트 family: 최상위 PASS 81, FAIL 3, 종료 코드 1, 패키지 줄 `FAIL	github.com/modu-ai/moai-adk/internal/cli	136.175s`. FAIL 3개는 기준선과 같은 macOS 심볼릭 링크 실패다: `TestCodexReviewGatePrimaryCheckoutSkip`, `TestCodexReviewGate_TreeScopeRequestShapeUnchanged`, `TestCodexReviewGate_StaleEnvKeepsTreeScope`. 세 메시지 모두 `/private/var/...` 대 `/var/...` 불일치다. 신규 `TestReviewGate_BlockLockRefusesSymlink` 는 PASS (1.07s)다. SF-1 기록의 PASS 80 에서 1 늘었고, 신규 테스트 한 개다. 새 실패는 없다.
+- (b) WSR `^TestWSR`: 최상위 PASS 13, FAIL 0, 종료 코드 0, `ok  	github.com/modu-ai/moai-adk/internal/cli	34.640s`. `TestWSR006_ReviewGateRootMatrix` 는 PASS (17.39s)다.
+- (c) stop 예외 경로 `^(TestStdinFailClosed_StopIgnoresStopHookActive|TestStdinFailClosed_CodexStopExempt)$`: PASS 2, FAIL 0, 종료 코드 0, `ok  	github.com/modu-ai/moai-adk/internal/cli	1.293s`.
+- (d) stop-chain·tree-scope `^(TestStaleBinarySkip_|TestTreeScope|TestPrimaryScopeReader_|TestCodexStopChain_TreeScopeSkip$|TestStopChainEffectParityGolden$)`: 최상위 PASS 19, FAIL 0, 종료 코드 0, `ok  	github.com/modu-ai/moai-adk/internal/cli	135.242s`.
+
+**정적 검사** — `gofmt -l internal/cli/gate_lock_unix.go internal/cli/gate_lock_windows.go internal/cli/codex_review_gate.go internal/cli/codex_review_gate_symlink_test.go`: 출력 없음. `go build ./internal/cli/`: 종료 0. `GOOS=windows GOARCH=amd64 go build ./internal/cli/`: 종료 0. `golangci-lint run ./internal/cli/`: `0 issues.`, 종료 0.
+
+**Windows — 해당 없음.** Windows 원시 잠금은 `O_CREATE|O_EXCL` 로 만든다. Go 1.26.8 툴체인 소스 `src/syscall/syscall_windows.go:436-438` 에서 이 조합은 `CREATE_NEW` 와 `FILE_FLAG_OPEN_REPARSE_POINT`("don't follow symlinks")로 옮겨진다. 그래서 이미 있는 링크를 열지 않고, 이미 있다는 실패는 `ErrGateLockHeld` 로 돌아간다. Windows 쪽 함수는 기존 원시 잠금을 그대로 호출하며, 교차 컴파일만 확인했다.
+
+**Gaps (미검증)**
+1. `internal/cli` 전체 스위트와 `go test ./...` 는 실행하지 않았다(레인 지시의 금지 명령).
+2. 라이브 Codex 테스트는 실행하지 않았다. 모든 실행에 `MOAI_SKIP_LIVE_CODEX=1` 과 `-skip LiveCodex` 를 붙였다.
+3. `/verify` 는 실행하지 않았다. 그 게이트의 Go 항목은 `go test -race` 로 적혀 있고(`.claude/skills/moai/workflows/gate.md`), 전체 스위트를 금지한 지시와 충돌한다. 커밋 전 훅은 없다(`core.hooksPath=/dev/null`). 대신 `golangci-lint` 과 빌드를 돌렸다.
+4. `go test -race` 는 신규 테스트를 포함해 실행하지 않았다.
+5. Windows 실행은 하지 않았다. 교차 컴파일과 툴체인 소스 대조만 했다.
+6. SF-1 Gap 4(잠금 시한 초과 분기와 죽은 소유자 파기 본체의 테스트 부재)는 그대로 남아 있다. 이 수리의 범위 밖이다.
+
+**잔여 위험 (Residual-risk)**
+- `Lstat` 과 `open` 사이의 창: 심볼릭 링크가 아닌 특수 파일로 경로가 바뀌는 경우는 `O_NOFOLLOW` 가 막지 못하며, 그 뒤의 동작은 측정하지 않았다. 링크를 따른 덮어쓰기는 시점과 무관하게 `O_NOFOLLOW` 가 막는다.
+- 중간 디렉터리의 심볼릭 링크는 거부하지 않는다. `Lstat` 과 `O_NOFOLLOW` 는 마지막 구성요소만 본다. 상태 디렉터리는 신뢰 경계로 둔다.
+- 중복: 새 함수는 `acquireGateLockImpl` 의 flock·기록 꼬리를 복제했다. 공유 원시 잠금을 바이트 단위로 그대로 두기 위한 선택이며, 나중에 한 헬퍼로 합칠 수 있다.
+- 공유 원시 잠금은 여전히 링크를 따른다(아래 Out-of-scope 첫 항목).
+
+**Out-of-scope 관찰 (t1674 몫, 고치지 않았다)**
+- `internal/cli/gate_lock_unix.go:39` 의 `acquireGateLockImpl` 은 `O_NOFOLLOW` 없이 연다. 그 다른 호출자 `internal/cli/gate_lock.go:99`(게이트 실행 잠금)에는 같은 링크 추적 위험이 남아 있다. 운영자 결정 48b4 에 따라 바꾸지 않았다.
+- `internal/cli/codex_review_gate.go:357` 과 `:364` 의 `os.ReadFile`·`os.Stat` 은 `codexReviewBreakStaleBlockLock` 에서 링크를 따라 읽는다. 이 경로는 Windows 에서만 작동한다(`codexReviewBlockLockBreakable`). 제거(`:374`, `os.Remove`)는 링크 자체를 지운다. Windows 에서 실행하지 않은 관찰이다.
+
+**커밋** — 이 항목의 커밋 제목: `docs(SPEC-REVIEW-GATE-REPAIR-001): record the F2 repair evidence in §E.2 (card t1620)`.
+
 ## §E.3 Run-phase Audit-Ready Signal
 
 audit_ready: true
