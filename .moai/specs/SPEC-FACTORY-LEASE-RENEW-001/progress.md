@@ -3504,6 +3504,59 @@ Scope boundary, as the verdict file states it:
 
 - Scope boundaries stated by the lead, not re-audited: the full internal/cli package verdict (CI's), the commit-time gate (off; 게이트 미실행), and /verify (not run).
 
+### Sync audit verdict #4: FAIL (basis recorded here; the verdict file is local-only and not committed)
+
+- verdict: FAIL
+- audited_sha: 680a24938066caec40fd7940d200ea2541c0f2c4
+- auditor-model: claude-opus-5-5
+- required_backend_fail: codex
+- codex receipt: rcpt-e73943608f39b6e5b359289a
+
+Gate statement, in plain words: The verdict is FAIL because the required backend, codex, fails on the audited commit. The verdict file names F14 as the only basis for that fail, and F14 is not an acceptance-criterion violation. No repair has been started. The decision is pending with 영실이 (operator-delegated). The lease was re-acquired at 00:22:19Z via the parent-root factory_next, version 37, and runs until 2026-10-11T00:37:12Z. These operational facts come from the lead; the verdict file does not contain them.
+
+Acceptance criteria and earlier findings, one line each:
+
+- AC-FLR-001 to AC-FLR-015: PASS, observed at R3 (audit commit 680a24938). The file: 인수 기준 15건은 감사 커밋에서 전부 PASS로 관측했다.
+- F11: 닫힘 (closed). The file: F11 판정: 닫힘.
+- F12: 닫힘 (잔여 F15) (closed; residual F15). The file: F12 판정: 닫힘 (잔여 F15).
+- F13: 성립 (holds). The file: F13 판정: 성립.
+- F7: 회귀 없음 (no regression).
+- N2: 회귀 없음 (no regression).
+- F3: 회귀 없음 (no regression).
+- F1: 회귀 없음 (no regression).
+- F2: 회귀 없음 (no regression).
+- F4: 회귀 없음 (no regression).
+
+Finding F14 (codex P1), verbatim from the verdict file's F14 section. The line below holds the codex reproduction (재현 ①, the codex test run on the audit commit), the sole-run reproduction (재현 ③, which shows the same gap in the single-run branch), and the auditor's own rating (내 평가 P2 Medium, with 실제 빈도는 낮음으로 추정한다, that is, low frequency):
+
+- F14 [P1(codex) / 내 평가 P2 Medium] [게이트 차단 — 필수 백엔드 fail의 유일한 근거. 인수 기준 위반은 아님. 리드 결정 사항] internal/cli/factory_card.go:1826, :1835 (확인과 쓰기), :2451, :2472 (바인딩 읽기) - `--run` 없는 갱신은 `resolveFactoryRenewRun`에서 로스터 바인딩을 읽고 연결을 닫은 뒤, `factoryRenewCard`가 팩토리를 다시 열어 `RenewLease`로 쓴다. 두 단계는 서로 다른 트랜잭션이다. 그 사이에 죽은 것으로 판정된 레인 라벨을 새 런처가 다른 run으로 재등록하면(`factory.ClaimFactoryLane`), 쓰기는 바인딩을 다시 확인하지 않고 이전 run의 리스를 연장한다. `RenewLease`는 같은 트랜잭션에서 `UPDATE workers SET heartbeat_at=? WHERE label=?`(homestate/card_transition.go:474)도 실행하므로 새 로스터 행의 heartbeat까지 바뀐다. 재현 ① codex 시험 원문(`/tmp/t1663-review-bmh5ezy_/renew_probe_test.go`, sha256 5e619cd6e433e3c26d740ddebd6148ad23d1a5a49c1900fd79d2596eb52b22e7)을 읽은 뒤 수정 없이 `-overlay`로 실행했다. 두 활성 run(모호 분기)에서 감사 커밋 결과는 `factory_renew_sole_run_test.go:222: rebound=true roster=run-b result=renewed error=<nil> before=2026-09-26T09:05:00Z after=2026-09-26T09:15:00Z`, `--- FAIL: TestReviewRenewRosterRebindBeforeWrite (2.87s)`(verb, MCP_tool 둘 다 FAIL). 재현 ② 같은 시험을 수리 전 factory_card.go(b499a8a75, blob ec49c0655) 위에서 돌려도 같은 줄과 `--- FAIL: TestReviewRenewRosterRebindBeforeWrite (5.22s)`가 나온다. 그러니 이번 라운드가 들여온 결함은 아니고, 바인딩 확인이 처음 생긴 a94b7ced0부터 있었다(추론: a94b7ced0 이전에는 바인딩을 읽지 않았다). 재현 ③ 같은 끼워 넣기를 이번 라운드의 단일 run 분기로 옮긴 감사 전용 시험(활성 run 하나, 레인은 그 run에 바인딩)에서도 `zz_audit4_sole_run_race_test.go:49: sole-run rebound=true roster=run-b result=renewed err=<nil> before=2026-09-26T09:05:00Z after=2026-09-26T09:15:00Z`, `--- FAIL: TestAudit4SoleRunRosterRebindBeforeWrite (2.53s)`. 즉 c097b73b3의 새 확인에도 같은 틈이 있다. 신뢰도: 메커니즘 높음(두 코드 판, 두 분기, 두 표면). 실제 빈도는 낮음으로 추정한다(추론). 기존 레인 세션의 기록된 pid가 죽은 것으로 판정되는 순간, 그 세션이 띄운 갱신 자식 프로세스가 확인과 쓰기 사이에 있어야 하고, 같은 시각에 새 런처가 같은 라벨을 다른 run으로 집어야 한다. 영향은 낡은 리스가 한 주기(D) 더 사는 것과 새 행의 heartbeat 갱신이다. - Required fix (리드 결정): 바인딩 확인을 쓰기 트랜잭션 안으로 옮긴다. 예컨대 `RenewLease`가 기대 바인딩(또는 기대 run)을 받아 같은 트랜잭션에서 `workers.run_id`를 다시 읽고, 다르면 쓰기 없이 거부한다. 두 분기(단일 run, 모호)에 같은 규칙을 적용하고, 위 재현 ①·③ 형태를 양쪽 표면 회귀 시험으로 둔다. Repair 3 기록이 이번을 마지막 수리 라운드로 못 박았으므로, 수리 대신 리드·운영자가 감사 밖에서 codex 게이트 결과를 처분하는 길도 있다. 어느 쪽이든 이 감사자는 필수 백엔드 fail 위에서 PASS를 낼 수 없다.
+
+Optional findings F15 and F16, verbatim (non-blocking):
+
+- F15 [P4] [optional] internal/cli/factory_renew_sole_run_test.go:98-101, .moai/specs/SPEC-FACTORY-LEASE-RENEW-001/progress.md:3216 - 시험 주석은 "Two refusal arms have no fixture"라고 하고, 기록 제목은 "every refusal arm is pinned, except two"라고 한다. 실제로 실행되지 않는 오류 반환은 넷이다. 모호 분기의 OpenFactory 거부(factory_card.go:2468-2470), 모호 분기의 바인딩 읽기 거부(:2473-2475), 그리고 단일 run 분기의 도우미 오류 반환(:2452-2454)으로 이어지는 `factoryRenewBoundRun`의 두 원천(:2496-2498, homestate/factory.go:684-686)이다. 근거: 커버리지 프로필의 실행 횟수 0 블록 `internal/cli/factory_card.go:2452.18,2454.4 1 0`, `:2468.17,2470.3 1 0`, `:2473.17,2475.3 1 0`, `:2496.16,2498.3 1 0`, `internal/homestate/factory.go:684.16,686.3 1 0`. 기록의 세 번째 글머리(progress.md:3238)가 도우미의 오류 반환을 밝히고 있어 숨긴 것은 없고, 개수 표현만 어긋난다. 신뢰도 높음, 영향 낮음. - Required fix (선택): 기록 제목과 시험 주석을 "결함 주입으로만 닿는 오류 반환 넷(모호 분기 둘, 단일 run 도우미 둘)은 고정하지 않는다"로 고친다.
+- F16 [P4] [optional] internal/cli/factory_card.go:2452-2454 - 단일 run 분기는 `factoryRenewBoundRun`의 열기·읽기 오류를 그대로 돌려준다(`open the factory record for the roster binding of lane %s: %w` 또는 `read the roster binding of %s: %w`). 모호 분기는 같은 실패를 `refuse()`로 감싸 `no --run given ... ; pass --run`을 붙인다(:2464-2475). 실패 시 쓰지 않고 거부하는 방향은 옳고, 차이는 안내 문구뿐이다. 결함 주입으로만 닿는 경로다. factoryRenewCard 자신의 열기 실패(:1830-1833)도 `--run`을 안내하지 않으므로 갱신 동사 전체로 보면 일관성이 깨지는 정도는 작다. 신뢰도 높음, 영향 낮음. - Required fix (선택): 같은 안내 문구로 감싸거나, 지금 꼴을 의도로 기록한다.
+
+Debts, verbatim, each with its dispose_in value (non-blocking):
+
+- debt: N1 dispose_in=later — MCP next·stage·complete가 MOAI_FACTORY_WORKER를 직접 읽고 레거시 라벨 검사를 하지 않는다(F1 부류). 카드 t1680.
+- debt: N3 dispose_in=later — resolveFactoryCardRun을 쓰는 다른 레인 동사는 활성 run이 여럿이면 `--run` 없이 거부한다(F3 부류). 카드 t1680.
+- debt: F8 dispose_in=later — 거부된 갱신도 재조정으로 죽은 run을 retire하고 이벤트를 남긴다. 카드 t1680. 이번 라운드의 단일 run 거부도 재조정 뒤 경로에서는 같은 쓰기를 앞세운다(F8 이월 항목).
+- debt: F5/D7 dispose_in=later — AC-FLR-008 가드 깊이(internal/factory/backlog_claim_lease_test.go:14-26). 선택 부채.
+- debt: D1 dispose_in=later — QG-3 패키지 커버리지 85% 확인을 이번에도 하지 않았다(이름 지정 실행 조건).
+- debt: D2 dispose_in=later — internal/cli 패키지 전체 판정은 CI 몫이다.
+- debt: D3 dispose_in=later — 커밋 게이트 꺼짐(`git config --get core.hooksPath` → `/dev/null`). 이번 라운드 커밋 세 개(bbc52dfa1, c097b73b3, 680a24938)의 본문 모두에 `Gate status: 게이트 미실행(core.hooksPath=/dev/null, 공유 설정).`이 있다. 게이트 미실행으로 기록한다(훅 재활성 카드 번호 t1673은 3회차 기록에서 이월한 것이고 이번에 다시 확인하지 않았다).
+- debt: D4·D5·D6·D8 dispose_in=later — 1회차부터 이월(factory_renew i18n 라벨, docs-site project_root 도구 수, 옛 카탈로그 사본, renew 거부 시 종료 코드 문언 부재). 이번에 다시 감사하지 않았다.
+
+Observations, verbatim from the verdict file's 관측 section (not counted as blocking; the file gives no dispose_in for them):
+
+1. factory decide의 MCP 루트: MCP는 `root, err := resolveToolProjectRoot(req)`(mcp_factory_card.go:255)로 받은 원래 루트를 `factoryDecideCards(ctx, root, ...)`(:276)에 넘기고, 동사는 `factoryDecideCards(ctx, factoryCardRoot(), ...)`(factory_card.go:2990)를 쓴다. 이번 라운드에서 mcp_factory_card.go는 바뀌지 않았다. 이 카드의 인수 기준은 decide를 다루지 않는다.
+
+2. complete 경로의 통합 창 루트: 동사는 `factoryCompleteCard(ctx, cmd.OutOrStdout(), factoryCardRoot(), integrationLockRoot(), ...)`(factory_card.go:1882), MCP는 `factoryCompleteCard(ctx, out, factoryRootOf(launch), launch, ...)`(mcp_factory_card.go:245)다. 링크드 워크트리에서 MCP complete가 성공까지 가는 경로는 이번에도 실행하지 않았다.
+
+3. stage·complete(그리고 next)의 단일 run 잔여분: 세 동사는 resolveFactoryCardRun(factory_card.go:2422-2431)으로 run을 정하고, 이 함수는 활성 run이 하나면 로스터를 읽지 않고 그 run을 돌려준다(호출처 :1557 next, :1720 stage, :1914 complete). Repair 3 기록의 잔여 위험(progress.md:3396)도 stage를 같은 부류로 적었다. t1680 또는 리드 결정 사항이다.
+
+4. (새 관측, 코드 판독, 실행하지 않음, 신뢰도 중상) 갱신과 next의 비대칭: c097b73b3 이후, 로스터가 레인을 retire된 run에 묶어 둔 상태에서 `factory renew`(`--run` 없음)는 유일한 활성 run의 리스를 거부한다. 반면 `factory next`는 :1557에서 로스터를 보지 않고 그 run을 고르고, 리스 획득 전이(homestate/card_transition.go:521-528)는 `SELECT count(*) FROM workers WHERE label=?`로 라벨 등록 여부만 본다. 그래서 자기 run의 리더보다 오래 산 레인은 새 run에서 카드를 리스할 수 있지만 `--run` 없이는 갱신하지 못한다. 워치독 SKILL은 `moai factory renew <card-id> --json`(템플릿 SKILL.md:56, `--run` 없음)으로 갱신하므로, 그런 레인은 매 패스 `renew_result: error`를 기록하고 리스는 D 뒤에 만료된다(추론). 인수 기준의 이름 붙은 시험을 깨지는 않는다. 해법은 관측 3과 같은 자리(next·stage·complete에 같은 바인딩 규칙을 적용하거나, run이 바뀔 때 레인을 다시 묶기)에 있다.
+
 ## §G Override and Refusal Record
 
 - 2026-10-10T09:51:05Z SPEC-FACTORY-LEASE-RENEW-001 ceiling-refusal outcome=hold reasons="plan-audit ceiling reached (round count 2 >= tier ceiling 2); the verdict matches no admitting arm and holds, entry blocked (REQ-ACE-006) — release path: the split/new-SPEC route of REQ-ACE-005 or an operator decision recorded in progress.md §G" evidence=/Users/goos/MoAI/moai-adk-go/.moai/worktrees/t1663/.moai/reports/t1663/plan-audit-iter2.md,/Users/goos/MoAI/moai-adk-go/.moai/worktrees/t1663/.moai/reports/t1663/plan-audit.md
