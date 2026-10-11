@@ -3820,12 +3820,12 @@ Verdict-file normalization, recorded before the merge-ready transition consumes 
 
 - dispatched with `gh workflow run ci.yml --ref WT-factory-lease-renew`. Run 38106050278, event workflow_dispatch, headSha 61854c9a2b232432e2d84aee596bf5385ef20350, conclusion failure.
 - failing jobs: `Test (ubuntu-latest)`, step "Run tests with coverage (fast — no race detector)"; `Race Test 2`, step "Run race detector across all packages". The failed-step log was read with `gh run view 38106050278 --log-failed`.
-- Class A, this card's factory_renew surface. These were carried as debts D4, D5, and D6, but CI enforces them as hard failures:
-  - A1, tool list and count: the docs-site project-root pages in four locales lack `factory_renew`, as `TestDocsSiteProjectRootMatchesServer` (en, ja, ko, zh) reports. The catalogue copies (`.claude/rules/moai/core/moai-mcp-tools-catalogue.md` and its mirror under `internal/template/templates/`) carry the count word "Twenty-three" that `mcp_project_root_doc_test.go:133` cannot read, and a stale REQUIRE-count sentence that `mcp_selfreview_test.go:1063` rejects (it wants "Four of the twenty-two"). `TestProjectRootDocMatchesServer` reports the same tool-list gap: `tools/list` declares `factory_renew`, and the docs list does not.
+- Class A, this card's factory_renew surface. These were carried as debts D4 and D5, and CI enforces them as hard failures. D6 is not CI-enforced (see the correction below):
+  - A1, tool list and count: the docs-site project-root pages in four locales lack `factory_renew`, as `TestDocsSiteProjectRootMatchesServer` (en, ja, ko, zh) reports. The catalogue copies (`.claude/rules/moai/core/moai-mcp-tools-catalogue.md` and its mirror under `internal/template/templates/`) carry the count word "Twenty-three" that `mcp_project_root_doc_test.go:133` cannot read, and a stale REQUIRE-count sentence that `mcp_selfreview_test.go:1063` rejects (it wants "Four of the twenty-two"). `TestProjectRootDocMatchesServer` failed only on the count word (`mcp_project_root_doc_test.go:133`). The tool-list gap was reported by `TestDocsSiteProjectRootMatchesServer` (`mcp_project_root_doc_test.go:78`): `tools/list` declares `factory_renew`, and the docs list does not.
   - A2, status golden: `internal/cli/factory_quota_lanes_test.go` at lines 334, 379, 394, 400, and 946. `status --json` now emits `"lease_duration": "15m0s"` and `"renew_interval": "5m0s"`, and the goldens do not carry them.
   - A3, i18n: the keys `f.mcp.tools.factory_renew.enabled.title` and `.desc` are absent from the web dictionary in all four locales (`internal/web/i18n_test.go:273`, `internal/web/schema_label_test.go:107`; also `TestI18nKeySetParity` and `TestDataI18nKeysSubsetOfDictionary`). The `internal/web` package has no change from this card.
 - Class B, outside this card's diff: `TestStaleLockReclaimDoesNotDeleteTheNewLock` (`internal/feedback/queue_lock_test.go:85`) failed once, on the ubuntu fast job only. The feedback package has no change since 2aab5f797, and main's CI at 2aab5f797 succeeded. Locally, `go test -count=20 -run '^TestStaleLockReclaimDoesNotDeleteTheNewLock$' ./internal/feedback/` passed 20 of 20 at 61854c9a2 (ok, 49.547s). This is a probable flake. A re-run is needed to confirm it.
-- Process note: debts D4, D5, and D6 were carried with dispose_in=later. CI blocks on them, so that carry was wrong for CI-enforced tests.
+- Process note: debts D4 and D5 were carried with dispose_in=later. CI blocks on them, so that carry was wrong for CI-enforced tests.
 - State constraint: merge-ready has no edge back to sync. The only edges leaving it are T14 (merge-ready → merging) and, from merging, T15 (merging → merge-ready). A repair therefore needs the leader to re-open the card.
 - Pending leader decisions: (1) whether to re-open the card to sync for A1–A3, followed by a delta sync audit; (2) the A2 direction, either keep the two keys and update the goldens, or drop the keys from `status --json`; (3) whether to re-run CI to confirm the Class B flake.
 
@@ -3869,9 +3869,28 @@ Verdict-file normalization, recorded before the merge-ready transition consumes 
     ok  	github.com/modu-ai/moai-adk/internal/web	2.248s
     ```
   - `gofmt -l` on the two edited Go test files: no output (exit 0).
-- Correction: the earlier carry of debts D4, D5, and D6 with dispose_in=later was wrong for CI-enforced tests. CI failed on them, and they are repaired in this round, not carried.
+- Correction: the earlier carry of debts D4 and D5 with dispose_in=later was wrong for CI-enforced tests. CI failed on them, and they are repaired in this round (D4 is A3, and D5 is A1). D6 is not repaired in this round, because it is not CI-enforced. D6 is the old catalogue copy `.moai/policies/core/moai-mcp-tools-catalogue.md`, which is git-tracked and has no factory_renew row (count 0), and no CI test reads it (`mcp_project_root_doc_test.go:30-33` lists only the two shipped copies). D6 stays carried with dispose_in=later. This correction answers the delta audit's finding F1.
 - Class B, the stale-lock flake (`TestStaleLockReclaimDoesNotDeleteTheNewLock`): not re-run, by the leader's decision. If it appears in the next CI run, it is recorded under the t1679 race-flake line and does not block, because the diff does not touch that package and main is green.
-- Still pending: the one delta sync audit over these four commits, from the merge-base, and then one push and one CI re-dispatch.
+
+### Delta audit of the CI repair (one round; verdict PASS-WITH-DEBT)
+
+- auditor-model: claude-opus-5-5. audited_sha: 4a84e14a1966a7215926b8b42d8a87ea64911cfa. HEAD and a clean tree were checked at the start of the audit and again before the verdict was written.
+- verdict file (local, git-ignored, not committed): `.moai/reports/t1663/sync-audit-6.md`. Its machine lines: `verdict: PASS-WITH-DEBT` and `audited_sha` as above. No `required_backend_fail` line is written, because no required backend failed.
+- codex receipt: rcpt-b46a5e6a8a0908886fd327b3 (tool audit_multi, tree_root this worktree, codex_verdict pass, created_at 2026-10-11T03:39:52Z; file `.moai/state/audit-receipts/receipts/rcpt-b46a5e6a8a0908886fd327b3.json`).
+- scope: the brief said five commits. The delta `61854c9a2..4a84e14a1` has six, because `11f3526be` (the CI-red record) is also in it. The auditor read all six. Every claim was baselined against the merge-base 2aab5f797.
+- the auditor's own runs, verbatim summary lines: `ok  	github.com/modu-ai/moai-adk/internal/cli	145.314s` with all named tests `--- PASS` (QAS AC008–AC022, TestDocsSiteProjectRootMatchesServer, TestProjectRootDocMatchesServer, TestSelfReview_CatalogueAndGuideCarryTheNewRows, TestI18nKeySetParity), and `ok  	github.com/modu-ai/moai-adk/internal/web	1.071s` with `--- PASS: TestDataI18nKeysSubsetOfDictionary` and `--- PASS: TestI18nKeySetParity`. Both exited 0. The auditor also ran TestFactoryStatusReportsLeaseKeys (defaults and configured), two TestJevConsentWording_* tests, and 21 web i18n tests. All passed. `gofmt -l` printed nothing.
+- findings and dispositions:
+  - F1 (Medium): fixed in this record by the correction above. The D6 line in the record was wrong.
+  - F2 (Low): fixed in this record. `TestProjectRootDocMatchesServer` failed only at `mcp_project_root_doc_test.go:133` (the count word). The tool-list difference was reported by `TestDocsSiteProjectRootMatchesServer` at `mcp_project_root_doc_test.go:78`.
+  - F3 (Low, optional): the Korean label `아무것도 쓰지 않습니다` in `internal/web/assets/i18n.js` (the factory_renew desc) can read as "uses nothing". The auditor suggests `기록하지 않습니다`. It was not changed in this round, because a change would move the audited code. Carried with dispose_in=later.
+  - F4 (Low, optional, existing design): the count literals at `mcp_project_root_doc_test.go:41-46` are hardcoded. The list check is independent of them, so a stale count with a correct list could pass. Accepted as the existing design. Carried as an observation.
+  - F5 (Info, outside this card, a hypothesis that was not executed): `todo_claim` (`internal/cli/mcp_todo.go:45-52`) declares project_root but is outside the catalogue. With `mcp.yaml` enabled it may raise the count to 24. Carried to t1680 as an observation.
+  - F6 (Info): the scope count correction, six commits, is recorded above.
+  - F7 (Info): every commit in the delta carries "Gate status: 게이트 미실행". This is the existing debt D3, and it continues.
+- not verified by the auditor: the card state (merge-ready), the leader's board decision `d-20261011T031555Z-2c28` (it is on the leader's board, not on disk), the Class B flake re-run, the coverage re-measure, the full-package, race, and hugo builds.
+
+- convergence check: `moai verify audit-plan --project-root /Users/goos/MoAI/moai-adk-go/.moai/worktrees/t1663 --result-file .moai/state/audit-plan-result.json` → `"convergence_check": {"ok": true, "unmet": []}`. The result file is a digest of receipt rcpt-b46a5e6a8a0908886fd327b3 (overall pass; codex / required / pass; plan_source config).
+- Still pending: one push and one CI re-dispatch, as the leader's order says.
 
 ## §G Override and Refusal Record
 
