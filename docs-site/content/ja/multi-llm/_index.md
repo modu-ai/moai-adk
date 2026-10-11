@@ -56,7 +56,8 @@ MoAI-ADK がセッションを開始するときに決めることがひとつ�
 | **Claude Fable 5** | `claude-fable-5` | 1M | 新世代 Mythos ティアの汎用最上位。最も深い推論と複雑なコーディング |
 | **Claude Opus 5.5 / 5 / 4.8** | — | 1M | 複雑なアーキテクチャと高難度の推論 |
 | **Claude Sonnet 5** | — | 1M | 速度と知性のバランス、日常的なコーディング |
-| **Claude Haiku 4.5** | `claude-haiku-4-5-20251001` | 200K | 最も速く経済的、単純·大量作業 |
+| **Claude Haiku 5.5** | `claude-haiku-5-5` | 1M | 最も速く経済的 (Anthropic API 既定の Haiku、CC v2.1.293+) |
+| **Claude Haiku 4.5** | `claude-haiku-4-5-20251001` | 200K | 最も速く経済的、単純·大量作業 (AWS 系の別名解決先) |
 
 {{< callout type="info" >}}
 **ラインナップと選択は別物です。** 上の表は「使えるモデル」を示すだけです。
