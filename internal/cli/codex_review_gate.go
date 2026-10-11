@@ -21,18 +21,22 @@
 package cli
 
 import (
+	"bytes"
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
 	"math"
 	"os"
 	"os/exec"
 	"path/filepath"
+	"runtime"
 	"strings"
 	"time"
 
 	"github.com/modu-ai/moai-adk/internal/auditreceipt"
+	"github.com/modu-ai/moai-adk/internal/factory"
 	"github.com/modu-ai/moai-adk/internal/hook"
 	"github.com/modu-ai/moai-adk/internal/verify"
 
@@ -85,6 +89,29 @@ var reviewGateChangeDetector = hasReviewableChanges
 // @MX:NOTE: [AUTO] C = 1 is an operator decision (Q2), not a tuned threshold; the count is per review key, not per turn
 const codexReviewBlockLimit = 1
 
+// codexReviewBlockLockWait bounds how long one turn end waits for its review key's
+// block lock (SPEC-REVIEW-GATE-REPAIR-001 REQ-RG-004). The critical section is one
+// count read and one count write, so the bound is generous. Past it the turn end
+// allows and names codexStateBlockRecordFailed: the gate never blocks without a
+// recorded count, and never waits without a bound.
+const codexReviewBlockLockWait = time.Second
+
+// codexReviewBlockLockRetry is the pause between lock attempts within that bound.
+const codexReviewBlockLockRetry = 5 * time.Millisecond
+
+// codexReviewBlockLockStaleAfter is the age past which a block-lock artifact that
+// names no owner is abandoned: its holder died between creating the artifact and
+// recording its identity, which a live holder does in microseconds.
+const codexReviewBlockLockStaleAfter = 30 * time.Second
+
+// codexReviewBlockLockBreakable says whether a block-lock artifact whose holder
+// died may be broken. Only the atomic-create substrate (Windows) leaves an artifact
+// that outlives its holder: on Unix the kernel releases the flock when the process
+// exits, so a held artifact is never stale there. This is the platform gate
+// ClearStaleGateLock states. It is a variable so the breaking path can be exercised
+// on any platform.
+var codexReviewBlockLockBreakable = runtime.GOOS == "windows"
+
 // The turn-end state names (SPEC-REVIEW-GATE-REPAIR-001 design.md §7). Each names
 // why a turn end was allowed without a fresh passing receipt (REQ-RG-007). They
 // are the systemMessage vocabulary, so the names are the contract readers match on.
@@ -124,8 +151,8 @@ const (
 //     FAIL blocks carrying the preserved detail while the key's block count is
 //     below C (REQ-RG-003) and otherwise ALLOWs naming why (REQ-RG-004): the
 //     exhausted count, or the record failure when the count cannot be read or
-//     recorded; PASS clears the key's block count; inconclusive ALLOWs naming
-//     inconclusive
+//     recorded, or the key's block lock cannot be taken within its bound; PASS
+//     clears the key's block count; inconclusive ALLOWs naming inconclusive
 //  7. cache miss                            → kick the review in the background
 //     and ALLOW (REQ-GBN-002); the verdict is enforced at the NEXT turn entry
 //     (HandleCodexReviewEntry). A failed kick allows (AC-GBN-004). The allow
@@ -274,25 +301,117 @@ func codexGateAllowed(state string) *hook.HookOutput {
 	}
 }
 
-// codexReviewGateFail decides a fresh FAIL at turn end (REQ-RG-003, REQ-RG-004).
-// While the key's block count is below C it blocks, carrying the preserved fail
-// detail, and records the block before the block is returned. Every allow here is
-// fail-open and names its own state (REQ-RG-007): at C the allow names the
-// exhausted count; a count that cannot be read, or a block that cannot be
-// recorded, names the record failure instead, so an unreadable or unwritable
-// count is never reported as exhausted. A count the gate cannot prove is below C
-// never blocks.
-func codexReviewGateFail(dir string, state verify.ReceiptState, r verify.Receipt, now time.Time) *hook.HookOutput {
+// codexReviewBlockLockPath is the lock artifact that guards one review key's block
+// count. It sits beside the count record, with a ".lock" suffix.
+func codexReviewBlockLockPath(dir string, state verify.ReceiptState) string {
+	return codexReviewBlockPath(dir, state) + ".lock"
+}
+
+// acquireCodexBlockLock takes the review key's block lock, waiting at most
+// codexReviewBlockLockWait. The try primitive is the gate-run lock's
+// acquireGateLockImpl (flock on Unix, exclusive create on Windows); this helper
+// adds the bounded wait and the stale-owner break. ok is false when the lock is not
+// taken within the bound or the lock machinery fails, and the caller then allows
+// (REQ-RG-004): a turn end never blocks without a recorded count.
+//
+// @MX:WARN: [AUTO] cross-process lock on the per-key block count; a holder that is alive but stalled past the bound makes contending turn ends allow instead of block
+// @MX:REASON: the check and the record of one block must be a single step across processes (REQ-RG-004); the bound and the dead-owner break keep a stuck or crashed holder from wedging the gate
+func acquireCodexBlockLock(dir string, state verify.ReceiptState) (release func(), ok bool) {
+	path := codexReviewBlockLockPath(dir, state)
+	if err := os.MkdirAll(filepath.Dir(path), 0o755); err != nil {
+		return nil, false
+	}
+	deadline := time.Now().Add(codexReviewBlockLockWait)
+	for {
+		impl, err := acquireGateLockImpl(path)
+		if err == nil {
+			return func() { _ = impl.release() }, true
+		}
+		if !errors.Is(err, ErrGateLockHeld) {
+			return nil, false // the lock machinery failed; this is not contention
+		}
+		if time.Now().After(deadline) {
+			return nil, false
+		}
+		if !codexReviewBreakStaleBlockLock(path, time.Now()) {
+			time.Sleep(codexReviewBlockLockRetry)
+		}
+	}
+}
+
+// codexReviewBreakStaleBlockLock removes a block-lock artifact whose holder died,
+// and reports whether it did (REQ-RG-004: a lock left by a crashed process must
+// eventually be broken). An artifact is broken only when the owner it names is
+// positively observed dead, or when it names no owner and is older than
+// codexReviewBlockLockStaleAfter. A live owner is never broken.
+//
+// The removal follows a re-read that must find the artifact unchanged, so a lock
+// that changed hands during the inspection is kept. The re-read narrows the
+// inspection-to-removal window without closing it, because removal takes a path.
+// That residual is the one ClearStaleGateLock states.
+func codexReviewBreakStaleBlockLock(path string, now time.Time) bool {
+	if !codexReviewBlockLockBreakable {
+		return false
+	}
+	raw, err := os.ReadFile(path)
+	if err != nil {
+		return false
+	}
+	var stale bool
+	if owner, perr := parseGateLockOwner(raw); perr == nil {
+		stale = !factory.FactoryProcessAlive(owner.PID)
+	} else if info, serr := os.Stat(path); serr == nil {
+		stale = now.Sub(info.ModTime()) > codexReviewBlockLockStaleAfter
+	}
+	if !stale {
+		return false
+	}
+	again, err := os.ReadFile(path)
+	if err != nil || !bytes.Equal(raw, again) {
+		return false
+	}
+	return os.Remove(path) == nil
+}
+
+// codexReviewReserveBlock is the check and the record of one turn-end block, made as
+// ONE step under the review key's block lock (REQ-RG-003, REQ-RG-004). It reports
+// whether the turn end blocks; when it does, the block is already counted. When it
+// does not, allowState names why the stop is allowed (REQ-RG-007). A count that
+// cannot be read or recorded, and a lock that cannot be taken within the bound, all
+// name the record failure, never the exhausted count.
+func codexReviewReserveBlock(dir string, state verify.ReceiptState, now time.Time) (blocked bool, allowState string) {
+	release, ok := acquireCodexBlockLock(dir, state)
+	if !ok {
+		return false, codexStateBlockRecordFailed
+	}
+	defer release()
 	blocks, ok := codexReviewBlockCount(dir, state)
 	if !ok {
-		return codexGateAllowed(codexStateBlockRecordFailed)
+		return false, codexStateBlockRecordFailed
 	}
 	if blocks >= codexReviewBlockLimit {
-		return codexGateAllowed(codexStateBlockExhausted)
+		return false, codexStateBlockExhausted
 	}
 	if err := codexReviewRecordBlock(dir, state, blocks+1, now); err != nil {
 		_, _ = fmt.Fprintf(os.Stderr, "codex review gate: block count not recorded (%v) — allowing (fail-open)\n", err)
-		return codexGateAllowed(codexStateBlockRecordFailed)
+		return false, codexStateBlockRecordFailed
+	}
+	return true, ""
+}
+
+// codexReviewGateFail decides a fresh FAIL at turn end (REQ-RG-003, REQ-RG-004).
+// While the key's block count is below C it blocks, carrying the preserved fail
+// detail. The check and the record of the block are one step under the key's block
+// lock (codexReviewReserveBlock), so simultaneous turn ends cannot each read the
+// same count and each block. Every allow here is fail-open and names its own state
+// (REQ-RG-007): at C the allow names the exhausted count; a count that cannot be
+// read or recorded, and a lock that cannot be taken in time, name the record
+// failure instead. An unreadable, unwritable, or contended count is never reported
+// as exhausted, and a count the gate cannot prove is below C never blocks.
+func codexReviewGateFail(dir string, state verify.ReceiptState, r verify.Receipt, now time.Time) *hook.HookOutput {
+	blocked, allowState := codexReviewReserveBlock(dir, state, now)
+	if !blocked {
+		return codexGateAllowed(allowState)
 	}
 	// The cached block still says WHAT to fix: the fail's summary and findings
 	// were preserved at record time by the receipt producer (the receipt store
@@ -367,7 +486,9 @@ func codexReviewBlockCount(dir string, state verify.ReceiptState) (int, bool) {
 }
 
 // codexReviewRecordBlock stores the key's block count through the shared atomic
-// writer, so a reader never sees a torn record.
+// writer, so a reader never sees a torn record. The count it writes is only a
+// correct count when the caller holds the key's block lock (codexReviewReserveBlock):
+// the read that produced blocks and this write must be one step.
 func codexReviewRecordBlock(dir string, state verify.ReceiptState, blocks int, now time.Time) error {
 	rec := codexReviewBlockRecord{
 		Head:         state.Head,
@@ -385,9 +506,16 @@ func codexReviewRecordBlock(dir string, state verify.ReceiptState, blocks int, n
 	return writeFileAtomic(codexReviewBlockPath(dir, state), append(b, '\n'), 0o644)
 }
 
-// codexReviewClearBlocks removes the key's block count (REQ-RG-004): a fresh pass
-// for the key ends its block history. A missing record is already clear.
+// codexReviewClearBlocks removes the key's block count (REQ-RG-004): a fresh pass for
+// the key ends its block history. The removal takes the block lock when it can, so
+// it cannot interleave with a block's read and record and put the count back after
+// the pass. When the lock is not taken within the bound, the record is removed
+// anyway: a pass is never held back by lock contention. A missing record is already
+// clear.
 func codexReviewClearBlocks(dir string, state verify.ReceiptState) {
+	if release, ok := acquireCodexBlockLock(dir, state); ok {
+		defer release()
+	}
 	_ = os.Remove(codexReviewBlockPath(dir, state))
 }
 
