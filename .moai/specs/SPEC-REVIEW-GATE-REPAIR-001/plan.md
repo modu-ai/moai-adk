@@ -65,7 +65,7 @@
 
 - 요구: REQ-RG-003, REQ-RG-004, REQ-RG-007. 인수 기준: AC-RG-004, AC-RG-005, AC-RG-017, AC-RG-018, AC-RG-019, AC-RG-025.
 - RED: 차단 횟수가 C(= 1)에 이른 뒤 턴 종료가 허용되고 미검토 상태가 systemMessage 로 드러난다(AC-RG-005). 허용 뒤의 다음 턴 종료도 차단하지 않는다(AC-RG-017). absent·stale·key-mismatch 턴 종료는 허용하고 상태 이름을 메시지로 낸다(AC-RG-018). 현재 키의 fresh inconclusive 턴 종료는 허용하고 systemMessage 에 `inconclusive` 를 낸다(AC-RG-025). 재검토 시작은 t1674 몫이다. 검토 없이 허용되는 턴 종료(스위치 꺼짐, 검토할 변경 없음, stop-hook 해제, reviewer 없음)는 상태를 명명한 메시지를 낸다(AC-RG-019).
-- GREEN: 리뷰 키 단위 차단 횟수 카운터를 둔다. 차단할 때 1 올린다. 허용은 값을 바꾸지 않는다. 같은 키의 fresh pass 기록에서 제거한다. 키가 바뀌면 새 키는 0 에서 시작한다. C = 1(Q2). 메시지 상태 어휘는 design.md §7 의 아홉 상태를 쓴다.
+- GREEN: 리뷰 키 단위 차단 횟수 카운터를 둔다. 차단할 때 1 올린다. 허용은 값을 바꾸지 않는다. 같은 키의 fresh pass 기록에서 제거한다. 키가 바뀌면 새 키는 0 에서 시작한다. C = 1(Q2). 메시지 상태 어휘는 design.md §7 의 열두 상태를 쓴다.
 - 차단 사유의 형식은 바꾸지 않는다(F2 의 범위).
 - 기대값 변경: 현재 테스트에는 허용 뒤 재차단이 없는지를 단언하는 가드가 없다. 그 거동은 신규 가드(AC-RG-017)로 추가한다. 기존 `TestReviewGate_CacheHitReusesFailVerdict` 는 첫 차단만 본다(RG-GUARD).
 

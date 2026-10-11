@@ -1,7 +1,7 @@
 ---
 id: SPEC-REVIEW-GATE-REPAIR-001
 title: "Codex 리뷰 게이트 수리 — 프롬프트 진입 교착을 풀고 리뷰 기준을 하나로 모은다"
-version: "0.2.8"
+version: "0.2.9"
 status: in-progress
 created: 2026-10-10
 updated: 2026-10-11
@@ -34,6 +34,7 @@ tags: "codex, review-gate, turn-end, prompt-entry, receipt, merge-base, card-t16
 - 2026-10-10 · v0.2.6 · manager-spec · plan-audit iter9 FAIL(`.moai/reports/t1620/plan-audit-iter9.md`, 0.75, 차단 D1·D2·D3)의 수리 라운드다. 운영자 결정 d-20261010T135342Z-51a4 (가)에 따라 감사자가 제시한 문장을 그대로 적용했다. D1: 덮어쓰기 단위를 plan.md:61, spec.md §D.2, acceptance.md §E 세 곳에 같은 말로 정했다. D2: 완료 정의에 구현 뒤 GREEN 요구를 되살렸다. D3: M2·M5·M6 의 테스트 파일을 plan §C 에 묶고 기대값 변경 목록에 더했다. M6 셸 래퍼의 메시지 방식은 바이너리 호출로 정했다(REQ-RG-008, design.md §5). 이 행은 감사 결과를 주장하지 않는다. [ID mapping v0.2.6: 적용 없음. 번호는 v0.2.2 와 같다.]
 - 2026-10-10 · v0.2.7 · manager-spec · plan-audit iter10 FAIL(`.moai/reports/t1620/plan-audit-iter10.md`, 0.75, 차단 B1·B2)의 뒤 분할 개정이다. 운영자 결정 51a4 의 (나) 조건과 리더 결정 d-20261010T143913Z-d5a3 에 따라 M5·M6 (요구 REQ-RG-005–008, AC-RG-010–013, 파일 묶음)을 후속 카드 t1674 로 옮겼다(depends t1620). B2 컴파일 전제 한 문장을 M2·M3 의 덮어쓰기 검사에 더했다. 이 행은 감사 결과를 주장하지 않는다. [ID mapping v0.2.7: 살아 있는 번호는 그대로다. 이관된 ID 는 이 행과 과거 기록 행에만 남는다.]
 - 2026-10-10 · v0.2.8 · manager-spec · plan-audit split-iter1 FAIL(`.moai/reports/t1620/plan-audit-split-iter1.md`, 0.75, MP-1 실패, 차단 D1–D5)의 수리 라운드다. 운영자 위임 판정 d-20261010T151958Z-1adf 에 따라 REQ-RG-011 을 t1674 로 옮기고 살아 있는 REQ 를 001–007 로 다시 매겼다(구→신: 009→005, 010→006, 012→007). D3 의 inconclusive 메시지 AC(AC-RG-025)를 더했다. D4·D5 는 감사자 문장대로 고쳤다. 이 행은 감사 결과를 주장하지 않는다.
+- 2026-10-11 · v0.2.9 · manager-spec · 메시지 상태 어휘를 아홉 상태에서 열두 상태로 늘렸다. 정책 건너뜀 두 경로에 상태 이름을 더했다: `stale 바이너리 건너뜀`, `tree_scope 건너뜀`. 현재 코드는 이 두 경로에서 메시지를 내지 않는다(progress.md §E.2, M3). `차단 횟수 기록 실패`를 `차단 횟수 소진`에서 분리했다. 이제 `차단 횟수 소진`은 차단 횟수가 C 에 이른 상한 경로만 가리키며, 차단 횟수를 읽거나 쓰지 못해 허용하는 경로는 `차단 횟수 기록 실패`를 낸다. 코드가 내는 문구를 이 어휘에 맞추는 일은 sync 감사 항목이다. 허용 결정은 바뀌지 않는다(REQ-RG-006). 이 행은 감사 결과를 주장하지 않는다.
 
 ---
 
@@ -132,7 +133,7 @@ The codex review gate shall keep its current allow decision for disabled gates, 
 
 When the turn-end gate allows a stop and no fresh passing receipt backs that allow, the turn-end gate shall emit a visible system message that names the state.
 
-보드 판정 D4 = 항상 메시지 표시. 이 문장은 "allows a stop without a fresh passing review" 를 문언대로 옮긴 것이다. 따라서 absent, stale, key-mismatch, inconclusive, 차단 횟수 소진, 스위치 꺼짐, 검토할 변경 없음, stop-hook 해제, reviewer 없음이 모두 포함된다. 키가 없는 상태(스위치 꺼짐, 검토할 변경 없음)도 포함하는 것은 §0 의 "검토가 되지 않은 상태는 드러나야 한다"에 따른다. 메시지는 Stop 훅의 `systemMessage` 로 낸다(`.claude/rules/moai/core/hooks-system.md:103`). 허용 결정 자체는 바뀌지 않는다(REQ-RG-006). 상태 어휘는 design.md §7 이 정한다. 배포 경로에서는 턴 종료 게이트 래퍼가 Go 처리기를 부르기 전에 조용히 종료하므로(`.claude/hooks/moai/handle-codex-review-gate.sh` 60행), 스위치 꺼짐의 메시지가 전달되지 않는다. 이 수정은 후속 카드 t1674 의 몫이다.
+보드 판정 D4 = 항상 메시지 표시. 이 문장은 "allows a stop without a fresh passing review" 를 문언대로 옮긴 것이다. 따라서 absent, stale, key-mismatch, inconclusive, 차단 횟수 소진, 차단 횟수 기록 실패, 스위치 꺼짐, 검토할 변경 없음, stop-hook 해제, reviewer 없음, stale 바이너리 건너뜀, tree_scope 건너뜀이 모두 포함된다. 키가 없는 상태(스위치 꺼짐, 검토할 변경 없음)도 포함하는 것은 §0 의 "검토가 되지 않은 상태는 드러나야 한다"에 따른다. 메시지는 Stop 훅의 `systemMessage` 로 낸다(`.claude/rules/moai/core/hooks-system.md:103`). 허용 결정 자체는 바뀌지 않는다(REQ-RG-006). 상태 어휘는 design.md §7 이 정한다. 배포 경로에서는 턴 종료 게이트 래퍼가 Go 처리기를 부르기 전에 조용히 종료하므로(`.claude/hooks/moai/handle-codex-review-gate.sh` 60행), 스위치 꺼짐의 메시지가 전달되지 않는다. 이 수정은 후속 카드 t1674 의 몫이다.
 
 ---
 
