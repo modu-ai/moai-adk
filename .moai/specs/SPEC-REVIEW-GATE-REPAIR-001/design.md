@@ -88,5 +88,6 @@
 ## 7. 관측 가능성
 
 - 메시지 상태 어휘(REQ-RG-007 의 열두 상태): `absent`, `stale`, `key-mismatch`, `inconclusive`, `차단 횟수 소진`, `차단 횟수 기록 실패`, `스위치 꺼짐`, `검토할 변경 없음`, `stop-hook 해제`, `reviewer 없음`, `stale 바이너리 건너뜀`, `tree_scope 건너뜀`. 출처 기록과 `커밋 값 읽기 실패`는 t1674 와 함께 온다.
+- 래퍼 종료 네 곳(`.claude/hooks/moai/handle-codex-review-gate.sh`, 템플릿 미러 동일): 35행(`workflow.yaml` 없음), 36행(`awk` 없음), 60행(게이트 꺼짐 또는 설정 읽기 실패), 79–80행(moai 바이너리 없음). 35·36·79–80행은 Go 처리기가 실행되지 않으므로 이 어휘에 이름이 없다(t1674 wrapper scope). 60행은 `스위치 꺼짐` 이름이 어휘에 있으나, 이 경로에서는 래퍼가 먼저 끝나 메시지가 나오지 않는다(기존 처분: 후속 카드 t1674). 이 절은 새 상태 이름을 더하지 않는다.
 - 메시지는 Stop 훅의 `systemMessage` 로 낸다(`.claude/rules/moai/core/hooks-system.md:103`). 차단 사유 전반의 가시성 확장은 F2 가 맡는다.
 - 스위치 출처 기록(재정의 파일인지 커밋된 값인지)은 t1674 와 함께 온다.

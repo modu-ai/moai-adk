@@ -202,4 +202,4 @@ ok  	github.com/modu-ai/moai-adk/internal/cli	2.766s
 - AC-RG-004 가드(`TestReviewGate_CacheHitReusesFailVerdict`)와 셀 B-2 의 `TestReviewGate_InconclusiveReceiptIsNotPassEvidence` 는 단언의 끝부분을 이 문서 작성 중 다시 읽지 않았다(research.md §8 Gap 7). run 단계가 읽는다.
 - 셀 B-2 의 두 번째 테스트는 stderr 로 inconclusive 를 허용한다는 사실을 보여 주지만, 그 판단이 옳은지는 판정하지 않는다.
 - AC-RG-019 와 AC-RG-005 의 메시지 범위(키가 없는 상태 포함)는 운영자 확인 대상이다(plan.md §F 6).
-- 배포 경로 공백: 스위치 꺼짐의 메시지는 턴 종료 게이트 래퍼(`.claude/hooks/moai/handle-codex-review-gate.sh` 60행)가 Go 처리기를 부르기 전에 끝나므로 배포 경로에서 전달되지 않는다. 이 SPEC 의 상태 메시지 요구(REQ-RG-007)는 Go 처리기 수준에서만 충족된다. 전달 수정은 t1674 몫이다.
+- 배포 경로 공백: 턴 종료 게이트 래퍼(`.claude/hooks/moai/handle-codex-review-gate.sh`, 템플릿 미러 동일)가 Go 처리기를 부르기 전에 네 곳에서 exit 0 으로 끝나므로, 이 네 경로에서는 메시지가 나오지 않는다. 이 SPEC 의 상태 메시지 요구(REQ-RG-007)는 Go 처리기 수준에서만 충족된다. 네 경로와 처분은 다음과 같다. (1) 60행, 게이트 꺼짐: 상태 이름 `스위치 꺼짐` 은 있으나 메시지가 나오지 않는다. 기존 처분대로 후속 카드 t1674 의 몫이다. (2) 35행, `workflow.yaml` 없음. (3) 36행, `awk` 없음. (4) 79–80행, moai 바이너리 없음. 셋(2–4) 모두 Go 처리기가 실행되지 않으므로 상태 어휘에 이름이 없고, t1674 wrapper scope(후속 카드 t1674 의 래퍼 범위)로 배정한다. 관측: 각 경로의 선행 조건만 실패하도록 격리한 래퍼 실행에서 네 경로 모두 종료 코드 0, 표준 출력·표준 오류 0바이트였다.
