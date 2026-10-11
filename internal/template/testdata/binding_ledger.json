@@ -4825,8 +4825,8 @@
       },
       "before_text": "[HARD] **The leader is the queue's sole producer.** The operator asks; the leader turns the request into a card with `moai gtd add \"<description>\"` (`moai gtd` alone lists the queue). Production is the one queue mutation the leader performs on its own authority — translation, not invention: nothing enters the queue the operator did not ask for.",
       "after_text": "[HARD] The leader is the sole queue producer, and production its only self-authority queue mutation: `moai gtd add` turns an operator request into a card (translation, not invention; `moai gtd` alone lists); nothing the operator did not ask for enters.",
-      "location": "role-core:workflow/factory-dispatch.md",
-      "processing": "rewrite",
+      "location": "rule-body:.claude/rules/moai/workflow/factory-dispatch.md",
+      "processing": "relocated",
       "entry_points": [
         {
           "entry_point": "factory-leader",
@@ -4849,7 +4849,7 @@
           "delivery": "REQ-ALB-024"
         }
       ],
-      "rewrite_note": "compressed rewrite in role core (t1617 M2); procedure detail at the named companion ; Opus final wording applied verbatim to the core (operator decision 6c5e)"
+      "rewrite_note": "compressed rewrite in role core (t1617 M2); procedure detail at the named companion ; Opus final wording applied verbatim to the core (operator decision 6c5e) ; moved OUT of the markers per the Opus IN/OUT selection (leader gate, card t1617): delivered by the [HARD] read directive naming this file"
     },
     {
       "id": "ALB-0255",
@@ -4862,8 +4862,8 @@
       },
       "before_text": "[HARD] **Standing sources are the other producers, and they produce on the operator's prior authorization.** `/moai project` issues one card when it completes (`[PROJECT] ` prefix); the codemaps-debt trigger in `moai integration release` issues one per debt period (`[GRAPH] ` prefix). The full conditions — one per occasion, derived not invented, marked, id reported, starting still a separate pick — are the SSOT at `.claude/skills/moai/workflows/gtd.md` § Standing sources, and that set is **conditional, not closed**. Nothing else produces; a report milestone, an audit finding, or an open issue still reaches the queue only as a card request the operator approves.",
       "after_text": "[HARD] On prior operator authorization, standing sources also produce: `/moai project` one `[PROJECT] ` card at completion, codemaps-debt one `[GRAPH] ` card per debt period; each per occasion, derived not invented, marked, id reported, start a separate pick (gtd § Standing sources; conditional, not closed); nothing else produces: milestones, audit findings, open issues enter only as operator-approved card requests.",
-      "location": "role-core:workflow/factory-dispatch.md",
-      "processing": "rewrite",
+      "location": "rule-body:.claude/rules/moai/workflow/factory-dispatch.md",
+      "processing": "relocated",
       "entry_points": [
         {
           "entry_point": "factory-leader",
@@ -4886,7 +4886,7 @@
           "delivery": "REQ-ALB-024"
         }
       ],
-      "rewrite_note": "compressed rewrite in role core (t1617 M2); procedure detail at the named companion ; Opus final wording applied verbatim to the core (operator decision 6c5e)"
+      "rewrite_note": "compressed rewrite in role core (t1617 M2); procedure detail at the named companion ; Opus final wording applied verbatim to the core (operator decision 6c5e) ; moved OUT of the markers per the Opus IN/OUT selection (leader gate, card t1617): delivered by the [HARD] read directive naming this file"
     },
     {
       "id": "ALB-0256",
@@ -4899,8 +4899,8 @@
       },
       "before_text": "[HARD] **Promotion is the operator's act, in person or in advance.** After a `/clear`, the leader presents the queued cards through `AskUserQuestion` and the operator picks; only then does the leader route the card whole to a free lane. Outside an --auto authorization the leader never picks for the operator, never reorders by inferred priority, and never silently promotes a backlog item. An empty queue is a state to report, not a prompt to invent work. The one ranking the queue admits is the `--auto` cycle's own, bounded in the next paragraph.",
       "after_text": "[HARD] Promotion is the operator's act, live or in advance: after `/clear` present the queue via `AskUserQuestion`, the operator picks, then route the card whole to a free lane; outside `--auto` never pick, reorder, or silently promote; report an empty queue, never invent work.",
-      "location": "role-core:workflow/factory-dispatch.md",
-      "processing": "rewrite",
+      "location": "rule-body:.claude/rules/moai/workflow/factory-dispatch.md",
+      "processing": "relocated",
       "entry_points": [
         {
           "entry_point": "factory-leader",
@@ -4923,7 +4923,7 @@
           "delivery": "REQ-ALB-024"
         }
       ],
-      "rewrite_note": "compressed rewrite in role core (t1617 M2); procedure detail at the named companion ; Opus final wording applied verbatim to the core (operator decision 6c5e)"
+      "rewrite_note": "compressed rewrite in role core (t1617 M2); procedure detail at the named companion ; Opus final wording applied verbatim to the core (operator decision 6c5e) ; moved OUT per the final Opus fit (d-1670/88a7 arc): read-directive delivery, card t1617"
     },
     {
       "id": "ALB-0257",
@@ -5163,8 +5163,8 @@
       },
       "before_text": "[HARD] **A milestone-bearing report under `.moai/reports/` carries a `## Card Cross-Check` section** — one table row per milestone, a `card` column holding the delivering card id or an explicit new-card marker. A mapping claim is verified against the queue (`moai gtd`), never remembered. Before the leader turns a report into card requests, the request message states the full comparison — `N milestones → N cards` — naming every milestone with no card in the live queue. Detail: `factory-dispatch-cards.md` § Report milestones ↔ queue cards.",
       "after_text": "[HARD] A milestone report under `.moai/reports/` carries `## Card Cross-Check`: a row per milestone, `card` = delivering id or explicit new-card marker, checked against `moai gtd`, never memory; card requests first state `N milestones → N cards`, naming every milestone without a live-queue card.",
-      "location": "role-core:workflow/factory-dispatch.md",
-      "processing": "rewrite",
+      "location": "rule-body:.claude/rules/moai/workflow/factory-dispatch.md",
+      "processing": "relocated",
       "entry_points": [
         {
           "entry_point": "factory-leader",
@@ -5187,7 +5187,7 @@
           "delivery": "REQ-ALB-024"
         }
       ],
-      "rewrite_note": "compressed rewrite in role core (t1617 M2); procedure detail at the named companion ; Opus final wording applied verbatim to the core (operator decision 6c5e)"
+      "rewrite_note": "compressed rewrite in role core (t1617 M2); procedure detail at the named companion ; Opus final wording applied verbatim to the core (operator decision 6c5e) ; moved OUT of the markers per the Opus IN/OUT selection (leader gate, card t1617): delivered by the [HARD] read directive naming this file"
     },
     {
       "id": "ALB-0265",
@@ -5221,8 +5221,8 @@
       },
       "before_text": "[HARD] **Class A is admitted on checked evidence, not on an assertion.** Two of its three properties are mechanically checked and cited: the diff is measured (`git diff --stat` against the base, showing the one file) and CI is green **on the head that will merge**. The third — no design judgement in it — is a judgement, stated in the dispatch where the operator can disagree with it. A card that cannot cite both measurements is not Class A. The justification is never \"it is faster\".",
       "after_text": "[HARD] Class A requires both cited: `git diff --stat` vs base showing one file, and CI green on the merging head (else not Class A); the dispatch states no-design-judgement for the operator to dispute; never \"faster\" as the reason.",
-      "location": "role-core:workflow/factory-dispatch.md",
-      "processing": "rewrite",
+      "location": "rule-body:.claude/rules/moai/workflow/factory-dispatch.md",
+      "processing": "relocated",
       "entry_points": [
         {
           "entry_point": "factory-leader",
@@ -5245,7 +5245,7 @@
           "delivery": "REQ-ALB-024"
         }
       ],
-      "rewrite_note": "compressed rewrite in role core (t1617 M2); procedure detail at the named companion ; Opus final wording applied verbatim to the core (operator decision 6c5e)"
+      "rewrite_note": "compressed rewrite in role core (t1617 M2); procedure detail at the named companion ; Opus final wording applied verbatim to the core (operator decision 6c5e) ; moved OUT of the markers per the Opus IN/OUT selection (leader gate, card t1617): delivered by the [HARD] read directive naming this file"
     },
     {
       "id": "ALB-0267",
@@ -5337,8 +5337,8 @@
       },
       "before_text": "A cross-session message is a nudge, never the delegation itself. **A lane can be asked to report when it next goes idle** (`SendMessage` `notify_when_idle`), but [HARD] the notice is not the completion signal — it says *when to read the evidence*, nothing about what it says. **A nudge can be refused outright under fan-out**; read the send result, and a refusal costs the run nothing because the queue already carries the delegation (`cross-session-messaging.md` § An idle notice is a scheduling hint, § Configuration surface).",
       "after_text": "A message is a nudge, never the delegation; `notify_when_idle` can request an idle report, but [HARD] the notice is not completion, only when to read the evidence; read the send result: a fan-out refusal costs nothing, the queue holds the delegation.",
-      "location": "role-core:workflow/factory-dispatch.md",
-      "processing": "rewrite",
+      "location": "rule-body:.claude/rules/moai/workflow/factory-dispatch.md",
+      "processing": "relocated",
       "entry_points": [
         {
           "entry_point": "factory-leader",
@@ -5361,7 +5361,7 @@
           "delivery": "REQ-ALB-024"
         }
       ],
-      "rewrite_note": "restored verbatim in the F4 repair; the offset trim of this line was reverted by the leader ruling ; Opus final wording applied verbatim to the core (operator decision 6c5e)",
+      "rewrite_note": "restored verbatim in the F4 repair; the offset trim of this line was reverted by the leader ruling ; Opus final wording applied verbatim to the core (operator decision 6c5e) ; moved OUT per the final Opus fit (d-1670/88a7 arc): read-directive delivery, card t1617",
       "reason": "F4 restoration (leader ruling d-030402Z-4f2c + 영실이 2순위): the explanation line returned to the core — offset trim rejected because it cut Codex-reachable obligation delivery"
     },
     {
@@ -5412,8 +5412,8 @@
       },
       "before_text": "[HARD] A dispatch is a fixed-field address block, not prose. The fields:\n\n```\ncard: <id>\nspec: <SPEC-ID>\ncmd: /moai run <SPEC-ID>\nwt: .moai/worktrees/<name>\nevidence: .moai/specs/<SPEC-ID>/progress.md\nlens: --security --deep\n```\n\n- `card`, `cmd`, `wt`, and `evidence` are always present. `spec` joins once a SPEC exists; a Class B card carries none, and its `evidence` names whatever record the leader will read instead. `lens` appears only when the leader names review lenses for the card's sync gate.\n- `wt` names the new card's worktree, never a previous card's tree. The tree keeps the card id; the branch takes a descriptive slug (§ Isolation below).\n- **No explanatory prose.** Procedure, background, and justification live in the card text and the SPEC artifacts the block points at.\n- **Ceiling: the block is at most 10 lines.** A dispatch that does not fit is trying to be a handoff; move the payload into the card and send the block.\n- **[HARD] The send is read, not assumed.** A `routing` object on the result means an in-process mailbox took the block — lost (re-send to `name [ref]`); a following `[Cross-session delivery notice]` means the lane's permission policy is holding or refused it (surface it to the operator, do not re-send); anything else queued it. None of the three establishes that the lane's Claude read it. Full shape table: `cross-session-messaging.md` § A send result has three shapes.",
       "after_text": "[HARD] A dispatch is a ≤10-line fixed-field block, no prose (overflow goes into the card): always `card:`, `cmd:` (`/moai run <SPEC-ID>`), `wt:` (the new card tree, never a prior one), `evidence:` (`progress.md`; Class B: the record the leader reads); `spec:` once a SPEC exists (not Class B); `lens:` only if the leader names sync-gate lenses. [HARD] Read the send result: `routing` = lost, re-send to `name [ref]`; `[Cross-session delivery notice]` = held or refused, tell the operator, never re-send; else queued; none proves the lane read it.",
-      "location": "role-core:workflow/factory-dispatch.md",
-      "processing": "rewrite",
+      "location": "rule-body:.claude/rules/moai/workflow/factory-dispatch.md",
+      "processing": "relocated",
       "entry_points": [
         {
           "entry_point": "factory-leader",
@@ -5436,7 +5436,7 @@
           "delivery": "REQ-ALB-024"
         }
       ],
-      "rewrite_note": "stub factory-dispatch-core.md § The dispatch cycle (multi-obligation composite — fuller text at the always-surface preserves the delivery-shape nuance the 3,946 core budget cannot) ; Opus final wording applied verbatim to the core (operator decision 6c5e)"
+      "rewrite_note": "stub factory-dispatch-core.md § The dispatch cycle (multi-obligation composite — fuller text at the always-surface preserves the delivery-shape nuance the 3,946 core budget cannot) ; Opus final wording applied verbatim to the core (operator decision 6c5e) ; moved OUT of the markers per the Opus IN/OUT selection (leader gate, card t1617): delivered by the [HARD] read directive naming this file"
     },
     {
       "id": "ALB-0273",
@@ -5449,8 +5449,8 @@
       },
       "before_text": "[HARD] A lane session tracks its card's execution on the session's task tools. At card intake it registers the card's execution stages via `TaskCreate` before beginning the first stage; at every stage transition it keeps the list current via `TaskUpdate` so the list always shows the stage in flight; and it reports completion only while the list reflects the end state — or carries an explicit annotation naming why it does not. A task list that contradicts its completion report is the same gap as a missing evidence file (§ Completion is read, never trusted).",
       "after_text": "[HARD] A lane `TaskCreate`s its stages at intake, `TaskUpdate`s every transition, reports done only when the list shows the end state (or says why not); a contradicting list is a missing-evidence gap.",
-      "location": "role-core:workflow/factory-dispatch.md",
-      "processing": "rewrite",
+      "location": "rule-body:.claude/rules/moai/workflow/factory-dispatch.md",
+      "processing": "relocated",
       "entry_points": [
         {
           "entry_point": "factory-leader",
@@ -5473,7 +5473,7 @@
           "delivery": "REQ-ALB-024"
         }
       ],
-      "rewrite_note": "compressed rewrite in role core (t1617 M2); procedure detail at the named companion ; Opus final wording applied verbatim to the core (operator decision 6c5e)"
+      "rewrite_note": "compressed rewrite in role core (t1617 M2); procedure detail at the named companion ; Opus final wording applied verbatim to the core (operator decision 6c5e) ; moved OUT per the final Opus fit (d-1670/88a7 arc): read-directive delivery, card t1617"
     },
     {
       "id": "ALB-0274",
@@ -5575,8 +5575,8 @@
       },
       "before_text": "[HARD] **The deputy is resident, not optional.** Before the batch's first lane dispatch, the factory leader session spawns exactly one UNNAMED background `Agent()` running manager-lead as its **coordination deputy** and keeps it for the batch. Its delegable/retained matrix lives in the agent itself (`manager-lead.md` § Deputy dispatch surface); this stub carries only the boundary that binds the queue.",
       "after_text": "[HARD] Before the first lane dispatch the leader spawns exactly one resident UNNAMED background `Agent()` running manager-lead as deputy, kept for the batch.",
-      "location": "role-core:workflow/factory-dispatch.md",
-      "processing": "rewrite",
+      "location": "rule-body:.claude/rules/moai/workflow/factory-dispatch.md",
+      "processing": "relocated",
       "entry_points": [
         {
           "entry_point": "factory-leader",
@@ -5599,7 +5599,7 @@
           "delivery": "REQ-ALB-024"
         }
       ],
-      "rewrite_note": "compressed rewrite in role core (t1617 M2); procedure detail at the named companion ; Opus final wording applied verbatim to the core (operator decision 6c5e)"
+      "rewrite_note": "compressed rewrite in role core (t1617 M2); procedure detail at the named companion ; Opus final wording applied verbatim to the core (operator decision 6c5e) ; moved OUT of the markers per the Opus IN/OUT selection (leader gate, card t1617): delivered by the [HARD] read directive naming this file"
     },
     {
       "id": "ALB-0278",
@@ -5649,8 +5649,8 @@
       },
       "before_text": "[HARD] **The deputy never holds a power of consequence.** Final PASS/FAIL verdicts, final merge approval (`LEAD-MERGE-APPROVED`), operator gates, card issuance and `done` (`moai gtd` mutations), CodeRabbit slot-wait adjudication, and cross-session dispute coordination stay with the leader session. Round-report measurement and drafting are the deputy's; the asserted figures are the leader's — every figure names its measurer. Nothing structural moves with the delegation: the queue stays the channel, completion stays evidence the leader read, and the verdict's home stays the lead.",
       "after_text": "[HARD] The deputy holds no power of consequence: final PASS/FAIL verdicts, final merge approval (`LEAD-MERGE-APPROVED`), operator gates, card issuance and `done`, CodeRabbit slot-wait adjudication, cross-session dispute coordination stay with the leader; the deputy measures and drafts round reports, the leader asserts the figures, each naming its measurer.",
-      "location": "role-core:workflow/factory-dispatch.md",
-      "processing": "rewrite",
+      "location": "rule-body:.claude/rules/moai/workflow/factory-dispatch.md",
+      "processing": "relocated",
       "entry_points": [
         {
           "entry_point": "factory-leader",
@@ -5673,7 +5673,7 @@
           "delivery": "REQ-ALB-024"
         }
       ],
-      "rewrite_note": "compressed rewrite in role core (t1617 M2); procedure detail at the named companion ; Opus final wording applied verbatim to the core (operator decision 6c5e)"
+      "rewrite_note": "compressed rewrite in role core (t1617 M2); procedure detail at the named companion ; Opus final wording applied verbatim to the core (operator decision 6c5e) ; moved OUT of the markers per the Opus IN/OUT selection (leader gate, card t1617): delivered by the [HARD] read directive naming this file"
     },
     {
       "id": "ALB-0280",
@@ -5786,8 +5786,8 @@
       },
       "before_text": "[HARD] A `gh pr checks` row naming CodeRabbit is not evidence that a review happened: the status is `success` **even when no review ran**, and the row prints `pass` byte-identically in both cases. A row counts only when BOTH hold:\n\n1. The **combined** endpoint `/commits/{sha}/status` shows `state == \"success\"` **and** description `Review completed`:\n\n    ```bash\n    gh api \"repos/$REPO/commits/$HEAD_SHA/status\" \\\n      --jq '.statuses[] | select(.context == \"CodeRabbit\" and .state == \"success\") | .description'\n    ```\n\n2. A `Merge Risk:` line exists whose commit prefix matches the current `headRefOid`.",
       "after_text": "[HARD] A CodeRabbit `gh pr checks` row is not evidence (success even with no review); count it only when combined `/commits/{sha}/status` shows `success` + `Review completed` AND a `Merge Risk:` line commit prefix matches the current `headRefOid`.",
-      "location": "role-core:workflow/factory-dispatch.md",
-      "processing": "rewrite",
+      "location": "rule-body:.claude/rules/moai/workflow/factory-dispatch.md",
+      "processing": "relocated",
       "entry_points": [
         {
           "entry_point": "factory-leader",
@@ -5810,7 +5810,7 @@
           "delivery": "REQ-ALB-024"
         }
       ],
-      "rewrite_note": "stub factory-dispatch-core.md § CodeRabbit (two-condition predicate kept whole at the always-surface) ; Opus final wording applied verbatim to the core (operator decision 6c5e)"
+      "rewrite_note": "stub factory-dispatch-core.md § CodeRabbit (two-condition predicate kept whole at the always-surface) ; Opus final wording applied verbatim to the core (operator decision 6c5e) ; moved OUT of the markers per the Opus IN/OUT selection (leader gate, card t1617): delivered by the [HARD] read directive naming this file"
     },
     {
       "id": "ALB-0285",
@@ -5844,8 +5844,8 @@
       },
       "before_text": "[HARD] A lane session does not carry one card's context into the next card. When a card reaches `done` and the leader has read its evidence, the leader **asks the operator to `/clear` that lane session** — `/clear` is a user-typed command and cannot be sent as an instruction. The leader's message states, in order: what closed (card, evidence read), which session to `/clear` (by name), and what happens next.",
       "after_text": "[HARD] No card context crosses to the next: at `done`, evidence read, the leader asks the operator to `/clear` that lane session (user-typed, never sendable), stating in order: what closed (card, evidence read), which session (name), what next.",
-      "location": "role-core:workflow/factory-dispatch.md",
-      "processing": "rewrite",
+      "location": "rule-body:.claude/rules/moai/workflow/factory-dispatch.md",
+      "processing": "relocated",
       "entry_points": [
         {
           "entry_point": "factory-leader",
@@ -5868,7 +5868,7 @@
           "delivery": "REQ-ALB-024"
         }
       ],
-      "rewrite_note": "compressed rewrite in role core (t1617 M2); procedure detail at the named companion ; Opus final wording applied verbatim to the core (operator decision 6c5e)"
+      "rewrite_note": "compressed rewrite in role core (t1617 M2); procedure detail at the named companion ; Opus final wording applied verbatim to the core (operator decision 6c5e) ; moved OUT of the markers per the Opus IN/OUT selection (leader gate, card t1617): delivered by the [HARD] read directive naming this file"
     },
     {
       "id": "ALB-0287",
@@ -6071,8 +6071,8 @@
       },
       "before_text": "[HARD] **The card's branch is unpushed, so its worktree is the work's only instance.** Dispose of no worktree — L1 or L2 — until the leader has integrated the branch and the remote merge has landed.",
       "after_text": "[HARD] An unpushed card branch makes its worktree the only copy: dispose of none (L1 or L2) until the leader integrated it and the remote merge landed.",
-      "location": "role-core:workflow/factory-dispatch.md",
-      "processing": "rewrite",
+      "location": "rule-body:.claude/rules/moai/workflow/factory-dispatch.md",
+      "processing": "relocated",
       "entry_points": [
         {
           "entry_point": "factory-leader",
@@ -6095,7 +6095,7 @@
           "delivery": "REQ-ALB-024"
         }
       ],
-      "rewrite_note": "compressed rewrite in role core (t1617 M2); procedure detail at the named companion ; Opus final wording applied verbatim to the core (operator decision 6c5e)"
+      "rewrite_note": "compressed rewrite in role core (t1617 M2); procedure detail at the named companion ; Opus final wording applied verbatim to the core (operator decision 6c5e) ; moved OUT of the markers per the Opus IN/OUT selection (leader gate, card t1617): delivered by the [HARD] read directive naming this file"
     },
     {
       "id": "ALB-0294",
@@ -6108,8 +6108,8 @@
       },
       "before_text": "[HARD] **A card session starts inside its worktree and stays there.** The standard is a lane session launched inside the card's worktree through the launcher (`moai cc -w`); it starts with that tree's project skill set. Moving a running card session from one card worktree into another card worktree is prohibited — that transition attaches a second skill listing on top of the session's first, and that duplication is what this rule exists to prevent. Two composition rules bound the prohibition rather than leaving it implicit: (a) the \"A new card starts in a new worktree\" clause below composes with it — its exit-first requirement is satisfied by ending the lane session and launching the next session inside the new tree, never by moving the running session; (b) the brief entry into the release/integration worktree that the same files mandate for merging a card branch is NOT covered by the prohibition — it keeps its own re-entry rule (return to the card worktree before continuing card work). Where a worktree move is unavoidable anyway, `/clear` is issued exactly once, after the move — never before it.",
       "after_text": "[HARD] A card session starts in its worktree (`moai cc -w`) and stays; moving into another card worktree is prohibited (exit-and-relaunch serves the new-card rule); an integration-tree merge entry is exempt but returns to the card worktree before card work; an unavoidable move takes `/clear` once, after, never before.",
-      "location": "role-core:workflow/factory-dispatch.md",
-      "processing": "rewrite",
+      "location": "rule-body:.claude/rules/moai/workflow/factory-dispatch.md",
+      "processing": "relocated",
       "entry_points": [
         {
           "entry_point": "factory-leader",
@@ -6132,7 +6132,7 @@
           "delivery": "REQ-ALB-024"
         }
       ],
-      "rewrite_note": "stub factory-dispatch-core.md § Isolation and integration (composite: stay-put + move ban + composition rules + clear-once) ; Opus final wording applied verbatim to the core (operator decision 6c5e)"
+      "rewrite_note": "stub factory-dispatch-core.md § Isolation and integration (composite: stay-put + move ban + composition rules + clear-once) ; Opus final wording applied verbatim to the core (operator decision 6c5e) ; moved OUT of the markers per the Opus IN/OUT selection (leader gate, card t1617): delivered by the [HARD] read directive naming this file"
     },
     {
       "id": "ALB-0295",
@@ -6145,8 +6145,8 @@
       },
       "before_text": "[HARD] **A new card starts in a new worktree** — a lane anchored in the previous card's tree MUST `ExitWorktree` before entering the next one; the fresh tree is created from the configured base, never reused. Where the new card depends on a prior card's unmerged code, merge that branch inside the new worktree.",
       "after_text": "[HARD] A new card gets a new worktree from the configured base, never reused; `ExitWorktree` the old tree first; merge an unmerged prior-card dependency inside the new tree.",
-      "location": "role-core:workflow/factory-dispatch.md",
-      "processing": "rewrite",
+      "location": "rule-body:.claude/rules/moai/workflow/factory-dispatch.md",
+      "processing": "relocated",
       "entry_points": [
         {
           "entry_point": "factory-leader",
@@ -6169,7 +6169,7 @@
           "delivery": "REQ-ALB-024"
         }
       ],
-      "rewrite_note": "compressed rewrite in role core (t1617 M2); procedure detail at the named companion ; Opus final wording applied verbatim to the core (operator decision 6c5e)"
+      "rewrite_note": "compressed rewrite in role core (t1617 M2); procedure detail at the named companion ; Opus final wording applied verbatim to the core (operator decision 6c5e) ; moved OUT of the markers per the Opus IN/OUT selection (leader gate, card t1617): delivered by the [HARD] read directive naming this file"
     },
     {
       "id": "ALB-0296",
@@ -6396,7 +6396,7 @@
         "start_line": 185
       },
       "before_text": "[HARD] A lane whose card has passed verification does not wait for the leader to integrate it: the lane merges its own branch into the batch's release branch (`release/vX.Y.Z`) itself. The window is taken with `moai integration acquire --name <lane> --card <card-id>` BEFORE entering the release worktree, released after the completion report is sent; the lane enters the release worktree with `EnterWorktree` (a cross-tree `git -C` is refused), merges `--no-ff`, re-reads `HEAD` before the commit and again before the push, pushes `release/vX.Y.Z` (never force), and leaves the batch pull request with the leader. The full window procedure: `factory-dispatch-mechanics.md` § Integration into the release branch is self-served · the `acquire` settings-drift assertion: `factory-dispatch-gates.md` § The pre-merge settings-drift assertion.",
-      "after_text": "[HARD] git-flow only (github-flow default: `moai factory complete` PR edge, mechanics § standard landing): a verified lane merges its branch into `release/vX.Y.Z` itself, no leader wait: `moai integration acquire --name <lane> --card <card-id>` before entry, release after the completion report; `EnterWorktree` in (cross-tree `git -C` refused); `--no-ff`; re-read `HEAD` before the commit and again before the push; push, never force; the batch PR stays with the leader.",
+      "after_text": "[HARD] git-flow only (github-flow default: `moai factory complete` PR edge, mechanics § standard landing): a verified lane merges its branch into `release/vX.Y.Z` itself, no leader wait: `moai integration acquire --name <lane> --card <card-id>` before entry, release after the completion report; `EnterWorktree` in (Codex: `git -C <absolute release worktree path>`); `--no-ff`; re-read `HEAD` before the commit and again before the push; push, never force; the batch PR stays with the leader.",
       "location": "role-core:workflow/factory-dispatch.md",
       "processing": "rewrite",
       "entry_points": [
@@ -6421,7 +6421,7 @@
           "delivery": "REQ-ALB-024"
         }
       ],
-      "rewrite_note": "stub factory-dispatch-core.md § Isolation and integration (composite: self-integration + variant scoping + window steps; full window procedure at mechanics § Integration) ; Opus final wording applied verbatim to the core (operator decision 6c5e)"
+      "rewrite_note": "stub factory-dispatch-core.md § Isolation and integration (composite: self-integration + variant scoping + window steps; full window procedure at mechanics § Integration) ; Opus final wording applied verbatim to the core (operator decision 6c5e) ; EnterWorktree entry means defined for Codex lanes per the leader gate (card t1617)"
     },
     {
       "id": "ALB-0304",

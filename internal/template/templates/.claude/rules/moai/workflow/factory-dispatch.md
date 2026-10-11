@@ -27,19 +27,19 @@ One boundary: nudge delivery rides on cross-session messaging, absent on native 
 
 > Moved to the detail companion: `factory-dispatch-mechanics.md` ("Entry into the queue is an operator act").
 
-<!-- moai:role-core-start -->
 [HARD] The leader is the sole queue producer, and production its only self-authority queue mutation: `moai gtd add` turns an operator request into a card (translation, not invention; `moai gtd` alone lists); nothing the operator did not ask for enters.
-<!-- moai:role-core-end -->
 
-<!-- moai:role-core-start -->
 [HARD] On prior operator authorization, standing sources also produce: `/moai project` one `[PROJECT] ` card at completion, codemaps-debt one `[GRAPH] ` card per debt period; each per occasion, derived not invented, marked, id reported, start a separate pick (gtd § Standing sources; conditional, not closed); nothing else produces: milestones, audit findings, open issues enter only as operator-approved card requests.
-<!-- moai:role-core-end -->
 
 <!-- moai:role-core-start -->
-[HARD] Promotion is the operator's act, live or in advance: after `/clear` present the queue via `AskUserQuestion`, the operator picks, then route the card whole to a free lane; outside `--auto` never pick, reorder, or silently promote; report an empty queue, never invent work.
+[HARD] Before any work, read `.claude/rules/moai/workflow/factory-dispatch.md` to the end — this injection is a summary; that file holds the remaining duties.
 <!-- moai:role-core-end -->
 
 [HARD] **Promotion is the operator's act, in person or in advance.** After a `/clear`, the leader presents the queued cards through `AskUserQuestion` and the operator picks; only then does the leader route the card whole to a free lane. Outside an --auto authorization the leader never picks for the operator, never reorders by inferred priority, and never silently promotes a backlog item. An empty queue is a state to report, not a prompt to invent work. The one ranking the queue admits is the `--auto` cycle's own, bounded in the next paragraph.
+
+[HARD] Promotion is the operator's act, live or in advance: after `/clear` present the queue via `AskUserQuestion`, the operator picks, then route the card whole to a free lane; outside `--auto` never pick, reorder, or silently promote; report an empty queue, never invent work.
+
+A message is a nudge, never the delegation; `notify_when_idle` can request an idle report, but [HARD] the notice is not completion, only when to read the evidence; read the send result: a fan-out refusal costs nothing, the queue holds the delegation.
 
 The one reconciliation is named, not excepted: `/moai:todo --auto` is the operator's batch approval: it authorizes the invoked session to take cards from the queue on its own judgment, and nothing else; a lane session only through a lease (`moai factory next --card <id>`), never a keep-set card. The `--auto` cycle derives its authority solely from that invocation, never from queue emptiness, card readiness, or a peer's request. The cycle carries one auto-scoped ranking exception: it may rank the queued candidates it is about to accept (a Jev signal when the capability is available, else recorded priority and readiness), which changes its selection order only — it never reorders, admits, drops or edits cards, the queue itself is unchanged, and the invocation remains the operator's batch approval. Detail: the gtd workflow's `--auto` section. That batch authorization is the card-pick gate's AUTONOMOUS form (`.claude/rules/moai/workflow/auto-semantics.md` §9.3) — the `--auto` invocation IS the approval; queue ADMISSION (production) stays the operator's.
 
@@ -71,17 +71,13 @@ A card the operator chose to start when it was issued is not a silent promotion:
 
 ## Report milestones ↔ queue cards
 
-<!-- moai:role-core-start -->
 [HARD] A milestone report under `.moai/reports/` carries `## Card Cross-Check`: a row per milestone, `card` = delivering id or explicit new-card marker, checked against `moai gtd`, never memory; card requests first state `N milestones → N cards`, naming every milestone without a live-queue card.
-<!-- moai:role-core-end -->
 
 ## Card classes — not every card needs every stage
 
 The leader classifies each card as it leaves `backlog` and names the entry stage in the dispatch: **A — direct close** (one file, one line, no design judgement, CI catches the regression; `plan` skipped), **B — defect, cause unknown** (`run → sync`; no SPEC exists), **C — design change** (a decision, or spans subsystems; all three stages). Full table and rationale: `factory-dispatch-cards.md` § Card classes.
 
-<!-- moai:role-core-start -->
 [HARD] Class A requires both cited: `git diff --stat` vs base showing one file, and CI green on the merging head (else not Class A); the dispatch states no-design-judgement for the operator to dispute; never "faster" as the reason.
-<!-- moai:role-core-end -->
 
 **Class B skips `plan`, not the sync gate's review** — the lane owns the investigation; the cause-establishing evidence goes into the card's progress record before the card leaves `run`, and the completion report names that path.
 
@@ -97,13 +93,7 @@ The leader classifies each card as it leaves `backlog` and names the entry stage
 [HARD] Work is delegated through the queue on disk, not messages — one queue, visible from every worktree.
 <!-- moai:role-core-end -->
 
-<!-- moai:role-core-start -->
 [HARD] A dispatch is a ≤10-line fixed-field block, no prose (overflow goes into the card): always `card:`, `cmd:` (`/moai run <SPEC-ID>`), `wt:` (the new card tree, never a prior one), `evidence:` (`progress.md`; Class B: the record the leader reads); `spec:` once a SPEC exists (not Class B); `lens:` only if the leader names sync-gate lenses. [HARD] Read the send result: `routing` = lost, re-send to `name [ref]`; `[Cross-session delivery notice]` = held or refused, tell the operator, never re-send; else queued; none proves the lane read it.
-<!-- moai:role-core-end -->
-
-<!-- moai:role-core-start -->
-A message is a nudge, never the delegation; `notify_when_idle` can request an idle report, but [HARD] the notice is not completion, only when to read the evidence; read the send result: a fan-out refusal costs nothing, the queue holds the delegation.
-<!-- moai:role-core-end -->
 
 ### Dispatch language
 
@@ -113,9 +103,7 @@ A message is a nudge, never the delegation; `notify_when_idle` can request an id
 
 ### The lane's task list carries the card's stages
 
-<!-- moai:role-core-start -->
 [HARD] A lane `TaskCreate`s its stages at intake, `TaskUpdate`s every transition, reports done only when the list shows the end state (or says why not); a contradicting list is a missing-evidence gap.
-<!-- moai:role-core-end -->
 
 > Moved to the detail companion: `factory-dispatch-mechanics.md` ("The lane's task list carries the card's stages").
 
@@ -135,17 +123,13 @@ With `tree_scope: skip` configured for the leader's checkout, the leader session
 
 ## Deputy dispatch surface
 
-<!-- moai:role-core-start -->
 [HARD] Before the first lane dispatch the leader spawns exactly one resident UNNAMED background `Agent()` running manager-lead as deputy, kept for the batch.
-<!-- moai:role-core-end -->
 
 <!-- moai:role-core-start -->
 [HARD] Completion reports arrive as `RECOMMEND:` summaries — occupancy moves; the leader's evidence read does not.
 <!-- moai:role-core-end -->
 
-<!-- moai:role-core-start -->
 [HARD] The deputy holds no power of consequence: final PASS/FAIL verdicts, final merge approval (`LEAD-MERGE-APPROVED`), operator gates, card issuance and `done`, CodeRabbit slot-wait adjudication, cross-session dispute coordination stay with the leader; the deputy measures and drafts round reports, the leader asserts the figures, each naming its measurer.
-<!-- moai:role-core-end -->
 
 ## Completion is read, never trusted
 
@@ -161,17 +145,13 @@ For a lane card the declared evidence list also carries `.moai/reports/<card-id>
 
 ### CodeRabbit is not read from `gh pr checks`
 
-<!-- moai:role-core-start -->
 [HARD] A CodeRabbit `gh pr checks` row is not evidence (success even with no review); count it only when combined `/commits/{sha}/status` shows `success` + `Review completed` AND a `Merge Risk:` line commit prefix matches the current `headRefOid`.
-<!-- moai:role-core-end -->
 
 Anything else is a gap, not a pass. `Review rate limited` means the review never started, and a card carrying it does not leave `sync`. (Endpoint choice: `factory-dispatch-gates.md` § CodeRabbit endpoint measurement.)
 
 ## The `/clear` handoff between cards
 
-<!-- moai:role-core-start -->
 [HARD] No card context crosses to the next: at `done`, evidence read, the leader asks the operator to `/clear` that lane session (user-typed, never sendable), stating in order: what closed (card, evidence read), which session (name), what next.
-<!-- moai:role-core-end -->
 
 <!-- moai:role-core-start -->
 [HARD] `/clear` exactly once per transition, after moving into the next worktree — never before.
@@ -188,9 +168,7 @@ The leader's own session is cleared the same way, between cards: once a card rea
 [HARD] Card work happens in a launcher-entered worktree — never a bare `git worktree add` (mechanics § Isolation).
 <!-- moai:role-core-end -->
 
-<!-- moai:role-core-start -->
 [HARD] A card session starts in its worktree (`moai cc -w`) and stays; moving into another card worktree is prohibited (exit-and-relaunch serves the new-card rule); an integration-tree merge entry is exempt but returns to the card worktree before card work; an unavoidable move takes `/clear` once, after, never before.
-<!-- moai:role-core-end -->
 
 <!-- moai:role-core-start -->
 [HARD] A Codex factory agent never calls `moai cc -w`, `EnterWorktree`, or `ExitWorktree`.
@@ -200,14 +178,10 @@ The leader's own session is cleared the same way, between cards: once a card rea
 [HARD] `moai worktree done` closes L2 trees only (worktree-integration § Terminology Glossary).
 <!-- moai:role-core-end -->
 
-<!-- moai:role-core-start -->
 [HARD] An unpushed card branch makes its worktree the only copy: dispose of none (L1 or L2) until the leader integrated it and the remote merge landed.
-<!-- moai:role-core-end -->
 
 
-<!-- moai:role-core-start -->
 [HARD] A new card gets a new worktree from the configured base, never reused; `ExitWorktree` the old tree first; merge an unmerged prior-card dependency inside the new tree.
-<!-- moai:role-core-end -->
 
 <!-- moai:role-core-start -->
 [HARD] Branches carry `WT-` + a descriptive slug, never the card id; traceability = dispatch `card:` + commit message + evidence path + PR title.
@@ -240,7 +214,7 @@ The leader's own session is cleared the same way, between cards: once a card rea
 > Moved to the detail companion: `factory-dispatch-mechanics.md` ("Integration into the release branch is self-served").
 
 <!-- moai:role-core-start -->
-[HARD] git-flow only (github-flow default: `moai factory complete` PR edge, mechanics § standard landing): a verified lane merges its branch into `release/vX.Y.Z` itself, no leader wait: `moai integration acquire --name <lane> --card <card-id>` before entry, release after the completion report; `EnterWorktree` in (cross-tree `git -C` refused); `--no-ff`; re-read `HEAD` before the commit and again before the push; push, never force; the batch PR stays with the leader.
+[HARD] git-flow only (github-flow default: `moai factory complete` PR edge, mechanics § standard landing): a verified lane merges its branch into `release/vX.Y.Z` itself, no leader wait: `moai integration acquire --name <lane> --card <card-id>` before entry, release after the completion report; `EnterWorktree` in (Codex: `git -C <absolute release worktree path>`); `--no-ff`; re-read `HEAD` before the commit and again before the push; push, never force; the batch PR stays with the leader.
 <!-- moai:role-core-end -->
 
 [HARD] A lane whose card has passed verification does not wait for the leader to integrate it: the lane merges its own branch into the batch's release branch (`release/vX.Y.Z`) itself. This is the **git-flow variant** — it applies only where the project's git strategy names git-flow; under github-flow (the distributed default) the delivery is `moai factory complete`'s pull-request edge and the full sequence is `factory-dispatch-mechanics.md` § The lane's standard landing. Where it applies, the window is taken with `moai integration acquire --name <lane> --card <card-id>` BEFORE entering the release worktree, released after the completion report is sent; the lane enters the release worktree with `EnterWorktree` (a cross-tree `git -C` is refused), merges `--no-ff`, re-reads `HEAD` before the commit and again before the push, pushes `release/vX.Y.Z` (never force), and leaves the batch pull request with the leader. The full window procedure: `factory-dispatch-mechanics.md` § Integration into the release branch is self-served · the `acquire` settings-drift assertion: `factory-dispatch-gates.md` § The pre-merge settings-drift assertion.
