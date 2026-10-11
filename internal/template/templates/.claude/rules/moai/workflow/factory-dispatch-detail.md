@@ -154,7 +154,7 @@ Running `[card-review]`:
 - **Ceiling.** After a repair the lane re-reviews at most 2 times, the same ceiling as the run-exit verify gate's re-entry limit. A finding still open at the ceiling is written down with its disposition and raised to the leader; the lane does not widen the ceiling.
 - **Advisory.** The result carries no authority by itself: the card's completion verdict is the lane's own, and the review receipt is the independent evidence beneath it (§ The verdict's home). A missing reviewer or an `inconclusive` result is recorded as "review not performed", never as a pass. The stage is a card step rather than a turn-end hook, so it never blocks a turn.
 - **Continued firing.** A stage that silently stops being run shows at the leader's completion read: the declared evidence list names `card-review.md`, and a card whose progress record neither cites it nor records why it is absent stays in its stage (stub § Completion is read, never trusted). No hook enforces the file; the leader's read is the answer to what would look different if the stage stopped.
-- **One review per diff.** A repository that also enables the card-scope turn-end gate for its lanes reviews the same card diff twice; enable one of the two.
+- **One review per diff.** The card-review stage is mandatory for every lane, so a repository that also keeps the turn-end review gate on (`workflow.codex.review_gate.enabled`) can review the same card diff twice.
 - **The leader.** A leader reviews its own internal output with the same tools at `scope: uncommitted`. In the primary checkout that scope covers the whole shared working tree, which may include another session's work.
 
 ## The verdict's home
