@@ -801,8 +801,10 @@ func atomicWriteFoldFile(dir, name string, want, planTime []byte, guard *foldRen
 
 // runUnderFoldLock runs fn while the store's fold lock is held (REQ-DISPATCH-008):
 // the on-done step's transaction — snapshot read, plan, and both index writes —
-// runs inside it, so a second fold's PROCESS waits at the lock and re-plans
-// against the post-transaction store. Two `moai memory fold` invocations are
+// runs inside it, so a second fold's PROCESS waits at the lock for the
+// bounded interval (REQ-MRR-003) and, once it holds the lock, re-plans against
+// the post-transaction store; a wait that expires refuses cleanly, writing
+// nothing. Two `moai memory fold` invocations are
 // separate OS processes, so the lock is the cross-process file lock of
 // fold_store_lock_{unix,windows}.go (constraint C5). The lock path derives from
 // the store alone, never from a process-local TMPDIR value, so two processes
