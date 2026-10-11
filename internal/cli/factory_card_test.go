@@ -454,7 +454,7 @@ func TestFR_AC017_DecideUnblock(t *testing.T) {
 // AC-018 (command half) — the push gate reads the remote-tracking ref and
 // never fetches; a repository with no remote goes straight to done.
 func TestFR_AC018_DecidePushGate(t *testing.T) {
-	root, _ := fcFixture(t)
+	root, store := fcFixture(t)
 	fcGitFlowConfig(t, root)
 	dir, merge := fcRepo(t, true)
 	fcPlace(t, root, homestate.Card{CardID: "p1", State: homestate.CardMergedLocal, OwnerLabel: "worker-1", MergeSHA: merge, WorktreePath: dir})
@@ -473,21 +473,79 @@ func TestFR_AC018_DecidePushGate(t *testing.T) {
 	}
 
 	bare, bareMerge := fcRepo(t, false)
-	fcPlace(t, root, homestate.Card{CardID: "p2", State: homestate.CardMergedLocal, OwnerLabel: "worker-1", MergeSHA: bareMerge, WorktreePath: bare})
-	if _, _, err := runFactory(t, "decide", "p2", "--gate", "push", "--run", fcRun); err != nil {
-		t.Fatalf("push gate with no remote: %v", err)
+	// REQ-FCR-002b (SPEC-FACTORY-COMPLETION-RECOVERY-001): the no-remote edge
+	// requires a leader approval receipt bound to the backlog identity —
+	// decide resolves the uuid from the queue record (review round-6 P1-2);
+	// the pre-M1 expectation (receipt-less done accepted) is inverted.
+	p2 := addShapeCard(t, "no-remote push gate card")
+	fcBindDispatch(t, root, p2, fcRun)
+	fcPlace(t, root, homestate.Card{CardID: p2, RunID: fcRun, State: homestate.CardMergedLocal, OwnerLabel: "worker-1", Version: 1, MergeSHA: bareMerge, WorktreePath: bare, EvidenceSHA: bareMerge})
+	if _, _, err := runFactory(t, "decide", p2, "--gate", "push", "--run", fcRun); err == nil {
+		t.Fatal("no-remote push gate accepted done without a leader approval receipt")
 	}
-	if c := fcCard(t, root, "p2"); c.State != homestate.CardDone {
+	if c := fcCard(t, root, p2); c.State != homestate.CardMergedLocal {
+		t.Fatalf("p2 = %s, want merged-local", c.State)
+	}
+	uuidP2 := recheckUUID(t, root, store, p2)
+	fcPlaceApprovalRaw(t, root, homestate.LeaderApproval{
+		CardUUID: uuidP2, RunID: fcRun, CardID: p2, FactoryVersion: 1,
+		EvidenceHash: bareMerge, Issuer: "lead", IssuerRole: homestate.ApprovalIssuerLeader,
+	})
+	if _, _, err := runFactory(t, "decide", p2, "--gate", "push", "--run", fcRun); err != nil {
+		t.Fatalf("push gate with no remote and a receipt: %v", err)
+	}
+	if c := fcCard(t, root, p2); c.State != homestate.CardDone {
 		t.Fatalf("p2 = %s, want done", c.State)
 	}
+	// The approval chain (review round-8 P2-2): the T17 version bump re-
+	// stamps the validated receipt inside the decide transaction, so the
+	// follow-up backlog archive accepts the SAME receipt instead of
+	// demanding a re-approval. This arms the queue card's done; a factory
+	// card in this fixture is terminal, so the archive check rides a twin
+	// card below.
+	if _, _, err := runTodo(t, "done", p2); err != nil {
+		t.Fatalf("follow-up backlog done after the chained approval: %v", err)
+	}
+}
+
+// Review round-8 P2-2 continuation (card t1538): on the WITH-remote branch
+// the decide targets pushed (T17), and the validated receipt is re-stamped
+// to the post-transition version in the decide transaction — approve →
+// decide-push → todo-done accepts the same receipt.
+func TestFactoryDecidePushChainsApprovalVersion(t *testing.T) {
+	root, store := fcFixture(t)
+	fcGitFlowConfig(t, root)
+	dir, merge := fcRepo(t, true)
+	cardID := addShapeCard(t, "push chain card")
+	// The push gate reads the remote-tracking ref as it stands: land the
+	// local merge on origin before deciding.
+	fcGit(t, dir, "push", "-q", "origin", "integration")
+	fcLinkRuntime(t, root, cardID)
+	fcBindDispatch(t, root, cardID, fcRun)
+	fcPlace(t, root, homestate.Card{CardID: cardID, RunID: fcRun, State: homestate.CardMergedLocal, OwnerLabel: "worker-1", Version: 1, MergeSHA: merge, WorktreePath: dir, EvidenceSHA: merge})
+	uuid := recheckUUID(t, root, store, cardID)
+	fcPlaceApprovalRaw(t, root, homestate.LeaderApproval{
+		CardUUID: uuid, RunID: fcRun, CardID: cardID, FactoryVersion: 1,
+		EvidenceHash: merge, Issuer: "lead", IssuerRole: homestate.ApprovalIssuerLeader,
+	})
+
+	if _, _, err := runFactory(t, "decide", cardID, "--gate", "push", "--run", fcRun); err != nil {
+		t.Fatalf("decide push: %v", err)
+	}
+	if c := fcCard(t, root, cardID); c.State != homestate.CardPushed || c.Version != 2 {
+		t.Fatalf("card = %s v%d, want pushed v2", c.State, c.Version)
+	}
 	db := fcOpen(t, root)
-	var payload string
-	if err := db.DB.QueryRow(`SELECT payload_json FROM events WHERE kind='card.transition' ORDER BY seq DESC LIMIT 1`).Scan(&payload); err != nil {
+	a, err := db.FindLeaderApproval(context.Background(), uuid)
+	if err != nil {
 		t.Fatal(err)
 	}
 	_ = db.Close()
-	if !strings.Contains(payload, "no remote — no CI verdict") {
-		t.Fatalf("no-remote event payload = %s", payload)
+	if a.FactoryVersion != 2 {
+		t.Fatalf("receipt version = %d, want 2 (chained across T17)", a.FactoryVersion)
+	}
+	if _, _, err := runTodo(t, "done", cardID); err != nil {
+		t.Fatalf("backlog done with the chained receipt: %v", err)
 	}
 }
 

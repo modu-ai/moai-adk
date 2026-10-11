@@ -56,7 +56,26 @@ func captureFactoryProvenance(root, specID string) factoryProvenance {
 }
 
 func RecordFactoryCardAssignment(root, runID, cardID, owner, specID string) error {
-	return RecordFactoryCardState(root, runID, cardID, owner, specID, "picked", "card.assigned")
+	provenance := captureFactoryProvenance(root, specID)
+	payload, err := json.Marshal(provenance)
+	if err != nil {
+		return err
+	}
+	return NewBacklogStore(BacklogPathForRoot(root)).recordRuntimeHook(TodoRuntimeRun{RunID: runID, ManifestJSON: "{}"}, &TodoRuntimeAssignment{
+		RunID: runID, CardID: cardID, OwnerLabel: owner, ReportedState: "picked", EventKind: "card.assigned", ProvenanceJSON: string(payload),
+	}, func() error {
+		// The dispatch binding follows every successful assignment, in the
+		// same queue-lock critical section (review round-20 P1,
+		// SPEC-FACTORY-COMPLETION-RECOVERY-001): a completion path cannot
+		// interleave between the assignment save and the binding re-point,
+		// and no caller can forget the re-point. REQ-FCR-002's scope
+		// sentence holds inside — a card with no factory row in ANY run is
+		// an ordinary card and the write skips silently.
+		// A same-run reassignment moves the row's owner in the same
+		// factory transaction as the binding (review round-24 P1-2/P1-4,
+		// V1): a refusal commits neither.
+		return RecordDispatchEngagementIfEngaged(root, cardID, runID, owner)
+	})
 }
 
 func RecordFactoryCardState(root, runID, cardID, owner, specID, state, eventKind string) error {

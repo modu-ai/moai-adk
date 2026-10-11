@@ -345,6 +345,14 @@ func SpoolGeneration() (uint64, error) {
 var spoolGenerationFn = SpoolGeneration
 
 func BumpSpoolGeneration() error {
+	return BumpSpoolGenerationContext(context.Background())
+}
+
+// BumpSpoolGenerationContext is BumpSpoolGeneration with the caller's
+// cancellation: the claim retry loop honors ctx (a withdrawal with a
+// deadline must not wait out the full bump claim deadline behind a held
+// lock — gate finding, the DrainContext withdrawal path).
+func BumpSpoolGenerationContext(ctx context.Context) error {
 	path, err := SpoolGenerationPath()
 	if err != nil {
 		return err
@@ -360,9 +368,32 @@ func BumpSpoolGeneration() error {
 	// propagates: an unbumped generation is a withdrawal that did not
 	// happen, and every in-flight reader treating the store as live is the
 	// failure this bump exists to prevent.
-	release, err := atomicfile.ClaimSection(context.Background(), path+".lock", 0o600, generationSectionRetries, generationSectionDelay)
-	if err != nil {
-		return err
+	//
+	// Contention beyond one ClaimSection retry budget (CI, Race Test 2:
+	// 32 concurrent purges under -race exhausted the 8×5ms budget — "lock
+	// held" skips a bump) retries on the lock-held shape until the bump
+	// deadline — or until the CALLER's ctx cancels, whichever comes first
+	// (gate finding: the retry loop originally used context.Background(),
+	// so a DrainContext deadline behind a held lock waited the full bump
+	// deadline out).
+	deadline := time.Now().Add(spoolBumpClaimDeadline)
+	var release func() error
+	for {
+		release, err = atomicfile.ClaimSection(ctx, path+".lock", 0o600, spoolSectionRetries, spoolSectionDelay)
+		if err == nil {
+			break
+		}
+		if !errors.Is(err, os.ErrExist) {
+			return err
+		}
+		select {
+		case <-ctx.Done():
+			return fmt.Errorf("bugreport: bump claim canceled: %w", ctx.Err())
+		case <-time.After(spoolSectionDelay):
+		}
+		if !time.Now().Before(deadline) {
+			return err
+		}
 	}
 	defer func() { _ = release() }()
 	gen, err := spoolGenerationFn()
@@ -512,20 +543,13 @@ const (
 	spoolSectionDelay   = 5 * time.Millisecond
 )
 
-// generationSectionRetries / generationSectionDelay bound the generation
-// bump's wait for the marker's own section. Unlike the capture append, a
-// failed bump FAILS THE PURGE — dropping is not the acceptable outcome —
-// so the budget is generous. Under 32-way contention with the race
-// detector a live holder's section runs tens of ms, and the old 8×5ms
-// budget exhausted while every holder was alive (4-dim audit, card t1606:
-// 6 of 8 repeated -race -count=5 runs failed on claim exhaustion); even
-// the 40×10ms follow-up failed once under a fully loaded machine, so the
-// budget is a full second — the bump is operator-triggered, and waiting
-// costs nothing next to a failed purge.
-const (
-	generationSectionRetries = 50
-	generationSectionDelay   = 20 * time.Millisecond
-)
+// spoolBumpClaimDeadline bounds how long a generation bump keeps retrying
+// the section claim under contention before propagating the lock-held
+// error. Sized for the observed worst contender fan-out (the CI race test's
+// 32 concurrent purges under -race scheduling) with an order of magnitude
+// of headroom — the bump's P1 contract is that every purge's withdrawal
+// lands, serialized, so contention waits instead of failing.
+const spoolBumpClaimDeadline = 10 * time.Second
 
 // claimSpoolSection takes the spool's critical section, returning its
 // release func. The lock is the SAME owner-verified claim the queue uses

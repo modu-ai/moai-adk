@@ -684,7 +684,13 @@ func TestAuditLagUsesBinlagSeam(t *testing.T) {
 		// above this comparison, moving it from :349. Same single ancestry
 		// comparison (the auto-done scan's merge-base --is-ancestor), same
 		// count — only the coordinate moved.
-		"todo_autodone.go:352": true,
+		// Re-measured at card t1538 (SPEC-FACTORY-COMPLETION-RECOVERY-001):
+		// the leader-approval receipt gate (REQ-FCR-003) added the scan-time
+		// receipt state — the outcome snapshot fields and planAutoDone's
+		// receipt assembly — above this comparison, moving it 352→381. Same
+		// single ancestry comparison, same count — only the coordinate moved
+		// (the t948 precedent).
+		"todo_autodone.go:381": true,
 		// SPEC-CODEX-GATE-SCOPE-001 (card t1383): the card-diff BASE
 		// measurement — gitflow-lane-protocol §8 requires the gate to recompute
 		// `git merge-base develop HEAD` per evaluation. It selects which
@@ -762,6 +768,16 @@ func TestAuditLagUsesBinlagSeam(t *testing.T) {
 		// precedent).
 		"todo_issuance.go:204": true,
 		"todo_issuance.go:215": true,
+		// SPEC-LOCAL-MAIN-FLOW-001 (card t1616): localMainResyncAncestor
+		// answers the two ancestry questions the local-main resync asks: does
+		// local main already contain origin/main, and can local main
+		// fast-forward to it. :414 is the function's doc comment naming the
+		// primitive (a doc mention; no ancestry call runs there) and :417 is
+		// the call itself. Both are branch-ancestry questions about two
+		// revisions, not a comparison of the running binary against its
+		// source, so binlag.Evaluate does not own them.
+		"local_main_resync.go:414": true,
+		"local_main_resync.go:417": true,
 	}
 	got := map[string]bool{}
 	entries, err := os.ReadDir(".")

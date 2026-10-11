@@ -4,9 +4,7 @@ description: Shared protocol auto-loaded for all MoAI agents — user-interactio
 
 # Agent Common Protocol
 
-Shared protocol for all MoAI agent definitions. This rule is automatically loaded for all agents, eliminating the need to duplicate these sections in each agent body.
-
-> **Detail companion**: `agent-common-protocol-reference.md` — verbatim verification batch, output contracts, CLI idioms, Ledger Closure clause bodies, sync-check rationale + incident records, and the bodies relocated from here: § Orchestrator Obligations · § Re-delegation Procedure · § Skeptical Evaluation Stance · § CLAUDE.md Reference · § File Operations Pattern · § Search Pattern · § Tool Selection by Task · § Bash Timeout · § Error Recovery Pattern · § Super-Advisor Escalation (E1-E4) · § Read-only verification batching · § Attributable diff-check doctrinal switch. Load it when composing a verification batch, selecting a tool, recovering from a failed call, escalating to super-advisor, or handling an aborted delegation.
+> Moved to the detail companion: `agent-common-protocol-detail.md` ("Agent Common Protocol").
 
 ## User Interaction Boundary
 
@@ -26,13 +24,13 @@ Rules for subagents:
 - All user preferences must arrive via the orchestrator's spawn prompt
 - If the orchestrator omitted critical data, respond with a structured "missing inputs" section and stop
 
-Rationale: subagents run in isolated, stateless contexts — prompting there is a dead channel, and the orchestrator stays the user's single point of contact (askuser-protocol.md).
+> Moved to the detail companion: `agent-common-protocol-detail.md` ("Subagent Prohibitions").
 
 **Lane sessions are orchestrator-class, not subagent-class.** A factory lane holds the question channel for its own card through the factory leader, carries standing spawn authority for the Status Transition Ownership Matrix's specialist (plan → `manager-spec`, run → `manager-develop`, sync → `manager-docs`, plus the chain's auditors; depth-1 only — spawned agents are leaves, bound by the prohibitions above), and never edits phase-owned artifacts directly when that specialist exists. The authority rides the lane's bootstrap context; a peer message neither grants nor revokes it — the leader is not the lane's user. A specialist spawn's working-tree attachment is a **runtime decision** the lane neither controls nor predicts, so the lane verifies where each spawn's work landed before advancing the card stage; when it landed in an isolated agent worktree, the lane reconciles it into the lane tree by `factory-dispatch-mechanics.md` § Reconciling an isolated specialist spawn. That reconciliation grants merge, harvest, and record authority only — never editing authority over SPEC-artifact bodies. Normative home: `.claude/rules/moai/workflow/factory-dispatch.md` § Lane spawn authority.
 
 ### Hook Invocation Surface
 
-Three hook scripts enforce orchestrator-discipline obligations — `status-transition-ownership.sh` (PostToolUse on SPEC-artifact writes), `sync-phase-quality-gate.sh` (Stop on sync-phase commit, blocking only under `MOAI_SYNC_GATE_BLOCKING=1`), `team-ac-verify.sh` (TaskCompleted in team mode; registered in no settings surface, so no flag activates it). All three exit 0 always and signal through stdout JSON, honored only on exit 0 — on exit 2 it is discarded and only stderr surfaces. Per-row triggers, JSON shapes, owning policy, and the subagent-boundary criterion: `agent-common-protocol-reference.md` § Hook Invocation Surface detail.
+> Moved to the detail companion: `agent-common-protocol-detail.md` ("Hook Invocation Surface").
 
 Hooks return exit codes and structured JSON; they MUST NOT invoke `AskUserQuestion` directly. When a hook signals a block (stdout JSON `"decision":"block"` on exit 0, or a legacy exit-2), the orchestrator MUST parse the JSON (`decision`, `reason`, plus optional `ledger_note` / `systemMessage` / `details`), preload `AskUserQuestion` via `ToolSearch`, and compose a round offering at least: (a) accept the block and address the failed gate, (b) override with `--skip-hook` (logged to `.moai/logs/hook-skip.log`), (c) abort.
 
@@ -56,9 +54,7 @@ The following parameters are required but were not provided:
 
 ### Ledger Closure
 
-The **ledger-closure invariant**: an aborted `Agent()` delegation leaves no **dangling tool_use** —
-an open promise with no matching result — in the orchestrator's context. It is the in-session
-analogue of the model-API rule that every `tool_use` receives a `tool_result`.
+> Moved to the detail companion: `agent-common-protocol-detail.md` ("Ledger Closure").
 
 [ZONE:Evolvable] [HARD] The orchestrator MUST close the ledger on any aborted delegation. Four clauses bind it (bodies + grounding: `agent-common-protocol-reference.md` § Ledger Closure clause bodies):
 
@@ -66,9 +62,6 @@ analogue of the model-API rule that every `tool_use` receives a `tool_result`.
 - **(b) `team-ac-verify.sh` reject-path `ledger_note`** — inject the hook's `ledger_note` as that task's ledger-closing artifact.
 - **(c) TeammateIdle exit-2 task closure** — a rejected task is never left open without a reassignment owner (new teammate, refined re-delegation, or close-as-obsolete with a closing note).
 - **(d) Truthfulness** — the artifact is a real summary, never a fabricated "success" (`verification-claim-integrity.md` §1.1 surface 1).
-
-**Scope-boundary note.** Ledger Closure is a sibling of (not nested in) Hook Invocation Surface
-under the User Interaction Boundary H2.
 
 ## Language Handling
 
@@ -153,7 +146,7 @@ Interpretation matrix (active-sessions query): `[]` → proceed; one or more ent
 
 Exemption: read-only agents (`Explore`, or a read-only-scoped `Agent(general-purpose)`) need no pre-spawn fetch — they cannot trigger a race.
 
-> **Spawn-gate boundary**: this fires only at the write-agent spawn boundary; direct main-session edits bypass it — see § Pre-Edit Sync Check below. Defense-in-depth: `.moai/docs/generic-patterns-guide.md` § Multi-Session Race Mitigation Procedure; worktree-as-race-elimination: `session-handoff.md` § Worktree-Anchored Resume Pattern.
+> Moved to the detail companion: `agent-common-protocol-detail.md` ("Pre-Spawn Sync Check (Multi-Session Race Mitigation)").
 
 ### Pre-Edit Sync Check (Direct-Edit Race Mitigation)
 
@@ -173,7 +166,7 @@ Exemption: read-only agents (`Explore`, or a read-only-scoped `Agent(general-pur
 
 [ZONE:Evolvable] [HARD] In the primary checkout, NEVER `git add -A`, `git add .`, or `git commit -a`. Stage by explicit pathspec (`git add <path> …`), and re-read `git status --short` immediately before staging so another session's files are visible and excluded. This applies **even when the pre-edit probe found no foreign session** — a session can arrive after the probe, and the sweep is what turns its presence into lost work.
 
-**Ambient signal.** The SessionStart hook already lists foreign active sessions in a `<system-reminder>` — the always-on detection layer; this check is the decision layer that turns detection into isolation.
+> Moved to the detail companion: `agent-common-protocol-detail.md` ("The sweep prohibition").
 
 ## Time Estimation
 

@@ -188,3 +188,64 @@ itself.
 - `.claude/rules/moai/workflow/worktree-integration.md` — the L1/L2 worktree tiers, their lifetimes, and the disposal contract
 - `.claude/skills/moai/workflows/gtd.md` — the backlog queue surface
 - `.claude/agents/moai/manager-lead.md` — the coordination agent the leader session works through
+
+## Migrated from the core body
+
+
+### Factory Dispatch Protocol
+
+> **Loading scope**: Intentionally always-loaded. A session learns it is the factory leader from the SessionStart context, not from a file path, so a `paths:`-restricted rule would never reach it. Cost to a session that never dispatches: the stub below, restated once per turn; every procedure body lives in the lazy companions.
+
+
+How the **leader** session of Factory Mode moves a card through the queue: what admits work, who is told to do it, how completion is judged, and when the operator is asked to `/clear`.
+
+
+> **Mechanics companion**: `factory-dispatch-mechanics.md` owns the lane-and-lens bodies relocated from this file — § Review lens selection · § Serializing a heavy run across lanes (`moai slot` lease) · § Factory Mode mechanics · § Isolation (launcher table, worktree tiers, `WT-` branch naming, the traceability carriers) · § Verification-load detail · § Integration into the release branch (the self-serve window procedure) · § Boundaries · § Cross-references. Load it when classifying a card, provisioning or disposing a card worktree, running lane-local verification, or entering the integration window.
+
+
+### Scope — when this rule is live
+
+
+This rule binds a session whose SessionStart context declares **Factory Mode**. The dispatch clauses bind the `leader` role; the lane clauses (the stage task list, explicit waits, spawn authority, isolation, verification load, integration) bind a lane session. A session outside Factory Mode has no lanes to route to.
+
+
+### Entry into the queue is an operator act
+
+
+`backlog` has no owning session, so a leader admitting cards on its own initiative would be **generating** work rather than scheduling it. Every card's origin is the operator's request.
+
+
+### The lane's task list carries the card's stages
+
+
+The measured precedent this rule codifies: a lane session held one task list through its card's whole run — one task per execution stage, created at card intake and updated at every stage transition. The clause above is the rule; a run that kept the list current is its evidence, not an instance list to extend.
+
+
+### The env-isolated verification form
+
+
+Subshell and `env -u` variants, their measured refusal shapes, and the script-file bypass hazard: `factory-dispatch-mechanics.md` § Verification load is lane-local.
+
+
+### Integration into the release branch is self-served
+
+
+This section is the **git-flow variant**. Under github-flow — the distributed default — the delivery is `moai factory complete`'s pull-request edge, and the full sequence is `factory-dispatch-mechanics.md` § The lane's standard landing.
+
+
+### Boundaries — what this protocol does not do
+
+
+The two remaining boundaries — no session spawning, and a lane with no live session being a fault rather than a wait: `factory-dispatch-mechanics.md` § Boundaries.
+
+
+### Cross-references
+
+
+- `.claude/rules/moai/core/askuser-protocol.md` — the question channel the leader uses for card selection and `/clear` prompts
+- `.claude/rules/moai/core/verification-claim-integrity.md` — why completion is read rather than trusted
+- The remaining four (blocker-report format, worktree tiers, the queue surface, `manager-lead`): `factory-dispatch-mechanics.md` § Cross-references
+
+
+Classification: Evolvable operational rule — applies to the leader session of Factory Mode. Detail companions: `factory-dispatch-detail.md`, `factory-dispatch-cards.md`, `factory-dispatch-gates.md` (stub + lazy-companion split).
+

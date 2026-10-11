@@ -156,7 +156,13 @@ func runFactoryBundleLocked(cmd *cobra.Command, l *factory.LockedBacklog, root, 
 	if hf := factoryGeneratedHubFields(factoryHubChainFields(rec, rows, cards[0], memberSet), headRow); hf.HintAfter != nil {
 		members[0].HintAfter = *hf.HintAfter
 	}
-	head, err := factoryBundleRecord(ctx, db, runID, members, lane, now)
+	// The head's T2 re-points its dispatch binding onto this run inside the
+	// chain's transaction, so the queue's current-dispatch record — written
+	// under this held lock — follows inside it, right before the commit (turn-end
+	// gate, card t1538): an unwritable record rolls the whole load back.
+	head, err := factoryBundleRecord(ctx, db, runID, members, lane, now, func(head homestate.Card) error {
+		return l.RefreshDispatchCurrent(head.CardID, runID, head.OwnerLabel)
+	})
 	if err != nil {
 		return err
 	}
@@ -166,8 +172,8 @@ func runFactoryBundleLocked(cmd *cobra.Command, l *factory.LockedBacklog, root, 
 
 // factoryBundleRecord is the record step of the bundle load — the seam the
 // lock-hold test drives. The default is one RecordBundleChain transaction.
-var factoryBundleRecord = func(ctx context.Context, db *homestate.FactoryDB, runID string, members []homestate.BundleMemberSpec, lane string, now time.Time) (homestate.Card, error) {
-	return db.RecordBundleChain(ctx, runID, members, lane, "bundle", now)
+var factoryBundleRecord = func(ctx context.Context, db *homestate.FactoryDB, runID string, members []homestate.BundleMemberSpec, lane string, now time.Time, beforeCommit func(head homestate.Card) error) (homestate.Card, error) {
+	return db.RecordBundleChain(ctx, runID, members, lane, "bundle", now, beforeCommit)
 }
 
 // factoryRefuseForeignChain refuses loading a card whose factory record

@@ -1,6 +1,7 @@
 package cli
 
 import (
+	"context"
 	"fmt"
 	"io"
 	"os"
@@ -308,20 +309,54 @@ func runAutoCycle(out io.Writer, store *factory.BacklogStore, root string, opts 
 		}
 		_, _ = fmt.Fprintf(out, "accept %s %s\n", card.ID, todoTextPrefix(card.Text))
 		// Claim the card before dispatch: a queued card becomes picked (the
-		// cycle's own pick); a dead-owner picked card is already claimed. The
-		// card this cycle picked is the only one it may later close.
-		if card.State == factory.BacklogStateQueued {
+		// cycle's own pick); a dead-owner picked card is already claimed —
+		// and its dispatch binding re-points to THIS run (review round-17
+		// P1). The card this cycle picked is the only one it may later
+		// close.
+		if card.State == factory.BacklogStateQueued || card.State == factory.BacklogStatePicked {
+			claimed := card.State == factory.BacklogStatePicked
 			if err := store.Mutate(func(r *factory.BacklogRecord) error {
 				for i := range r.Items {
 					if r.Items[i].ID == card.ID {
 						// REQ-THS-012: positive enumeration — the pick
 						// admits exactly `queued`, refuses everything else
-						// by name.
-						if r.Items[i].State == factory.BacklogStateQueued {
+						// by name; the dead-owner rescue admits exactly
+						// `picked` (already claimed) and only re-points the
+						// dispatch binding.
+						switch r.Items[i].State {
+						case factory.BacklogStateQueued:
+							if claimed {
+								return fmt.Errorf("auto: card %s is queued — lost the dead-owner claim", card.ID)
+							}
 							r.Items[i].State = factory.BacklogStatePicked
-							return nil
+						case factory.BacklogStatePicked:
+							if !claimed {
+								return fmt.Errorf("auto: card %s is picked, not a dead-owner rescue", card.ID)
+							}
+						default:
+							return fmt.Errorf("auto: card %s is %s, not a claimable state", card.ID, r.Items[i].State)
 						}
-						return fmt.Errorf("auto: card %s is %s, not queued — refusing the pick", card.ID, r.Items[i].State)
+						// The dispatch binding follows the re-selection
+						// (review round-16 P1-2): a card with an old run's
+						// approval, re-selected into the current run, is
+						// bound HERE — the later completion gate then
+						// resolves the current run and refuses the old
+						// approval. Silent skip when no factory run env
+						// is set (non-factory auto usage); a binding
+						// failure refuses the pick.
+						if envRunID := os.Getenv(config.EnvFactoryRunID); envRunID != "" && os.Getenv(config.EnvMoaiFactoryWorkers) != "" {
+							// Mutate holds the queue lock; the current-dispatch
+							// record is written FIRST (no owner is claimed; turn-end
+							// gate, card t1538), so a record that cannot be written
+							// stops the re-selection before the binding moves.
+							if cerr := store.RefreshDispatchCurrentLockHeld(card.ID, envRunID, ""); cerr != nil {
+								return cerr
+							}
+							if berr := recordDispatchBindingAtRoot(card.ID, envRunID, root); berr != nil {
+								return berr
+							}
+						}
+						return nil
 					}
 				}
 				return fmt.Errorf("auto: card %s vanished", card.ID)
@@ -340,19 +375,43 @@ func runAutoCycle(out io.Writer, store *factory.BacklogStore, root string, opts 
 
 		if collected {
 			_, _ = fmt.Fprintf(out, "evidence collected: %s\n", evidence)
-			err := store.Mutate(func(r *factory.BacklogRecord) error {
-				for i := range r.Items {
-					if r.Items[i].ID == card.ID {
-						// REQ-THS-012: positive enumeration — the done
-						// admits exactly `picked`, refuses everything else
-						// by name.
-						if r.Items[i].State == factory.BacklogStatePicked {
-							return r.ArchiveCard(card.ID)
-						}
-						return fmt.Errorf("auto: card %s is %s, not picked — changed hands mid-flight", card.ID, r.Items[i].State)
-					}
+			err := store.WithLock(func(l *factory.LockedBacklog) error {
+				// The leader-approval gate (SPEC-FACTORY-COMPLETION-RECOVERY-001
+				// REQ-FCR-002a): the third completion surface verifies the
+				// receipt at the archive moment, and the factory write
+				// transaction is held across the queue write's persistence —
+				// serialized exactly like the manual done path.
+				gate, gateErr := holdDoneApprovalGate(context.Background(), root)
+				if gateErr != nil {
+					return gateErr
 				}
-				return fmt.Errorf("auto: card %s vanished", card.ID)
+				mutErr := l.Mutate(func(r *factory.BacklogRecord) error {
+					for i := range r.Items {
+						if r.Items[i].ID == card.ID {
+							// REQ-THS-012: positive enumeration — the done
+							// admits exactly `picked`, refuses everything else
+							// by name.
+							if r.Items[i].State == factory.BacklogStatePicked {
+								// A first dispatch racing in under this queue
+								// lock re-opens the nil gate at archive moment
+								// (review round-5 P2).
+								refreshed, rerr := refreshDoneApprovalGate(context.Background(), root, gate)
+								if rerr != nil {
+									return rerr
+								}
+								gate = refreshed
+								if err := gate.verifyForClose(context.Background(), card.ID, todoCardUUID(&r.Items[i])); err != nil {
+									return err
+								}
+								return r.ArchiveCard(card.ID)
+							}
+							return fmt.Errorf("auto: card %s is %s, not picked — changed hands mid-flight", card.ID, r.Items[i].State)
+						}
+					}
+					return fmt.Errorf("auto: card %s vanished", card.ID)
+				})
+				gate.release()
+				return mutErr
 			})
 			if err != nil {
 				// The card changed hands mid-flight: this cycle's claim is

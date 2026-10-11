@@ -82,3 +82,59 @@ Integration Points:
 
 Classification: Lazy companion — model-tier guidance and lesson-handling procedure only. Every core
 principle and every Agent Core Behavior stays in `moai-constitution.md`.
+
+## Migrated from the core body
+
+
+### Opus 5.5 Prompt Philosophy
+
+
+Rationale and the model-id table: `moai-constitution-detail.md` § Opus 5.5 Prompt Philosophy.
+
+
+### Lessons Protocol
+
+
+Categories, the file cap and archive path, the repo-local inbox drain contract, auto-capture
+triggers, the domain-matching algorithm, and the workflow integration points:
+`moai-constitution-detail.md` § Lessons Protocol.
+
+
+### Agent Core Behaviors
+
+
+Six cross-cutting HARD behaviors that apply to all agents regardless of active skill or workflow phase. These supplement the per-skill rules defined in individual SKILL.md files.
+
+
+### 1. Surface Assumptions [ZONE:Evolvable] [HARD]
+
+
+Format:
+```
+ASSUMPTIONS I'M MAKING:
+1. [assumption about requirements]
+2. [assumption about architecture]
+→ Correct me now or I'll proceed with these.
+```
+
+
+Anti-pattern: silently picking one interpretation of ambiguous requirements and running with it. Discovery triggers: AGENTS.md §13 (Context-First Discovery).
+
+
+### 2. Manage Confusion Actively [ZONE:Evolvable] [HARD]
+
+
+Anti-pattern: "I see X in the spec but Y in the existing code" followed by silently choosing Y because it's easier.
+
+
+### 3. Push Back When Warranted [ZONE:Evolvable] [HARD]
+
+
+Anti-pattern: "Of course!" followed by implementing a known-bad idea.
+
+
+### 4. Enforce Simplicity [ZONE:Evolvable] [HARD]
+
+
+The ladder orders reuse before new code or a new dependency, and is language-neutral: "standard library" and "native platform feature" name whichever capability source the project's language provides.
+

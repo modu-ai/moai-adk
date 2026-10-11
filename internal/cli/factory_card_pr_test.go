@@ -644,7 +644,7 @@ func TestFactoryDecidePushGateClosesAMergedPRCard(t *testing.T) {
 	fcQueue(t, store, factory.BacklogStatePicked)
 	fcPlace(t, root, homestate.Card{CardID: "t1", State: homestate.CardMergedPR})
 	db := fcOpen(t, root)
-	got, err := decideOne(context.Background(), db, fcRun, "t1", "push", "", "")
+	got, err := decideOne(context.Background(), db, root, fcRun, "t1", "push", "", "")
 	if err != nil {
 		t.Fatalf("decide --gate push on a merged-pr card: %v", err)
 	}

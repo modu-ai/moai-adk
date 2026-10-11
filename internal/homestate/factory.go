@@ -141,6 +141,22 @@ CREATE TABLE IF NOT EXISTS handoff_events (
   detail TEXT NOT NULL DEFAULT '',
   created_at TEXT NOT NULL
 );
+CREATE TABLE IF NOT EXISTS leader_approvals (
+  card_uuid TEXT NOT NULL,
+  run_id TEXT NOT NULL,
+  card_id TEXT NOT NULL,
+  factory_version INTEGER NOT NULL,
+  evidence_hash TEXT NOT NULL,
+  issuer TEXT NOT NULL,
+  issuer_role TEXT NOT NULL,
+  issued_at TEXT NOT NULL,
+  PRIMARY KEY(card_uuid, run_id)
+);
+CREATE TABLE IF NOT EXISTS card_dispatch (
+  card_id TEXT PRIMARY KEY,
+  run_id TEXT NOT NULL,
+  recorded_at TEXT NOT NULL
+);
 `
 
 type FactoryDB struct {
@@ -185,6 +201,68 @@ func OpenFactoryBounded(projectRoot string, busy time.Duration) (*FactoryDB, err
 // registry path rather than a project root.
 func OpenFactoryPath(path string) (*FactoryDB, error) {
 	return openFactoryPathBusy(path, factoryBusyTimeoutDefault)
+}
+
+// OpenFactoryReadonly opens a factory database strictly for reading: no DDL
+// runs, no migration fires, nothing is created. A reader that cannot write
+// must never migrate a store as a side effect (SPEC-FACTORY-COMPLETION-RECOVERY-001
+// review P2-2): a database on an older schema is read as it stands, and
+// tables a later schema added are simply absent — callers treat a missing
+// table as empty data, never as a reason to migrate. The path must already
+// exist; a missing file is an error here, so callers stat before they call.
+func OpenFactoryReadonly(path string) (*FactoryDB, error) {
+	// A missing file is refused here rather than created: the read-only
+	// surface observes a store that exists, it never bootstraps one.
+	if _, statErr := os.Stat(path); statErr != nil {
+		return nil, fmt.Errorf("open factory database read-only: %w", statErr)
+	}
+	values := url.Values{}
+	// mode=ro makes the CONNECTION read-only at the SQLite layer: a
+	// read-write connection opened with query_only alone still CHECKPOINTS
+	// the WAL on query or close when a crashed writer left WAL behind, so a
+	// dry-run could physically modify factory.db (review round-8 P2). A
+	// live writer's WAL makes this open fail explicitly (SQLITE_CANTOPEN
+	// when the -shm cannot be created read-only) — that failure surfaces
+	// as-is and the scan degrades to unknown; there is no read-write
+	// fallback. The no-migration guarantee is the missing schema DDL.
+	values.Add("mode", "ro")
+	values.Add("_pragma", "query_only(ON)")
+	values.Add("_pragma", fmt.Sprintf("busy_timeout(%d)", factoryBusyTimeoutDefault.Milliseconds()))
+	p := filepath.ToSlash(path)
+	if !strings.HasPrefix(p, "/") {
+		p = "/" + p
+	}
+	dsn := (&url.URL{Scheme: "file", Path: p, RawQuery: values.Encode()}).String()
+	db, err := sql.Open("sqlite", dsn)
+	if err != nil {
+		return nil, err
+	}
+	db.SetMaxOpenConns(1)
+	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	defer cancel()
+	if err := db.PingContext(ctx); err != nil {
+		_ = db.Close()
+		return nil, fmt.Errorf("open factory database read-only: %w", err)
+	}
+	return &FactoryDB{DB: db, Path: path}, nil
+}
+
+// FactoryTablePresent reports whether the named table exists in the factory
+// database — the missing-table check read-only consumers run instead of
+// migrating. Read-only safe.
+func (f *FactoryDB) FactoryTablePresent(ctx context.Context, table string) (bool, error) {
+	switch table {
+	case "meta", "workers", "runs", "cards", "events", "dead_letters",
+		"resume_handoffs", "memory_handoffs", "handoff_events", "leader_approvals",
+		"card_dispatch":
+		// SQL: the allowlist pins table to a known identifier; the value never
+		// reaches the query from input.
+	default:
+		return false, fmt.Errorf("%w: unknown factory table %q", ErrInvalidCardInput, table)
+	}
+	var present int
+	err := f.DB.QueryRowContext(ctx, `SELECT count(*) FROM sqlite_master WHERE type='table' AND name=?`, table).Scan(&present)
+	return present > 0, err
 }
 
 func openFactoryPathBusy(path string, busy time.Duration) (*FactoryDB, error) {

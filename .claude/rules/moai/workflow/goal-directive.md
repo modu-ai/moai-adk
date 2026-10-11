@@ -1,20 +1,12 @@
 # Goal Directive (`/moai goal`) — Autonomous Continuation
 
-`/moai goal` is MoAI's session-scoped completion condition: a condition-declared loop that keeps the session working across turns until the condition holds. It is the single goal-arming surface for every orchestrator emission path.
-
-> **Full detail** (Comparing Approaches table, condition-authoring guide, T1-T4 condition templates, MoAI Integration Notes, Native `/goal` Prohibition rationale) lives in `goal-directive-detail.md`. Load it when actively arming a goal or choosing between `/moai goal` and `/moai loop`.
+> Moved to the detail companion: `goal-directive-detail.md` ("Goal Directive (`/moai goal`) — Autonomous Continuation").
 
 ## What It Is
 
-`/moai goal "<condition>"` registers a completion condition and arms it for the active session. The condition text is parsed into a `conditions[]` array mixing **mechanical** conditions (a shell command whose exit code decides) and **model** conditions (a claim the transcript must demonstrate). The `moai hook stop-goal` Stop-hook evaluator loads the session's goal state at each turn-end and emits a block decision until the goal converges or a bound fires — so the session keeps working without a prompt at each step.
+> Moved to the detail companion: `goal-directive-detail.md` ("What It Is").
 
 Prefix the condition with `model:` or `cmd:` to declare which tier is meant — without a prefix, a non-English claim is read as a shell command that never exits 0 and blocks every turn until the bound fires.
-
-State lives at `.moai/state/goal/<session-id>.json`, one file per session. A turn ceiling (default 30) bounds the loop; at the ceiling the evaluator emits a 5-section verdict and stops blocking. The runtime's consecutive-block cap (default 8, `CLAUDE_CODE_STOP_HOOK_BLOCK_CAP`) overrides the block first on an unattended run — the effective bound is `min(ceiling, cap)`, and a missing verdict must not be read as convergence. A stagnation guard halts the loop after N consecutive no-progress iterations.
-
-`/moai goal` is **arm-only** (see § Goal-Presentation Timing). The delivered verbs are `/moai goal "<condition>"` (register + arm), `/moai goal status [--all]`, and `/moai goal clear`. Full verb surface, the progression-mode axis, and the safety invariants live in `.claude/skills/moai/workflows/goal.md`.
-
-Availability: `/moai goal` needs hooks enabled (its evaluator IS a Stop hook); it is unavailable when `disableAllHooks` or `allowManagedHooksOnly` is set. It carries no runtime-version floor of its own.
 
 ## Goal-Presentation Timing
 
@@ -37,11 +29,6 @@ Where `workflow.autonomy.mode: contract` — the Kickoff gate named here is the 
 
 ## Cross-references
 
-- `.claude/skills/moai/workflows/goal.md` — verb surface, progression-mode axis, semi-autonomous checkpoint flow, safety invariants
-- `.claude/skills/moai/workflows/run.md` § Run-phase Autonomy — the `ac_converge` condition wiring
-- `goal-directive-detail.md` — the lazy companion. Load it for § Comparing Autonomous-Continuation Approaches · § Writing an Effective Condition · § Arming Under Multi-Session Concurrency · § Trigger condition templates · § Proactive Recommendation Triggers · § MoAI Integration Notes · § Native `/goal` Prohibition
+> Moved to the detail companion: `goal-directive-detail.md` ("Cross-references").
 
 ---
-
-Version: 2.1.0 (stub reduced; detail moved to `goal-directive-detail.md` lazy companion)
-Classification: Evolvable orchestration guidance — applies to autonomous multi-turn continuation

@@ -1,6 +1,10 @@
 # 의존성 그래프
 
-## 현재 최종 통합 트리의 의존성 — e65b3b
+## t1469 판의 의존성 — main 흡수 병합 트리
+
+기준은 카드 t1469 병합 트리(HEAD `77e296541`, origin/main 흡수 `1f3606d0f` 직후)다. `go list -deps -json ./...`에서 모듈 패키지 174개, 내부 import 512쌍, 최상위 집계 320쌍을 측정했다. 앵커 `e65b3b469`의 170/481/306 대비 패키지 +4(`internal/bugreport`+`captureframesprobe`·`internal/feedback/outbox`·`internal/feedback/publish`), 엣지 +31/+14다. 새 의존성은 피드백 참여 파이프라인이 연다 — `internal/bugreport`는 `internal/config`·`internal/paths`·`pkg/version`을, `internal/feedback/outbox`는 `internal/config`·`internal/paths`·`pkg/version`을, `internal/feedback/publish`는 `internal/config`를 새로 import 한다(민감정보 마스킹은 기존 `internal/feedback` 스크러버 재사용). `internal/atomicfile`의 신규 bootid·owner·section 파일은 기존 소비자 관계를 바꾸지 않는다. 아래 fan-in/out 표와 순환 절은 이전 판 수치로 남긴다(이번 판의 최상위 fan-in 최상위는 `internal/config` 48·`internal/harness` 25·`internal/cli` 24, fan-out 최상위는 `internal/cli` 167·`internal/hook` 64다).
+
+## 이전 최종 통합 트리의 의존성 — e65b3b
 
 기준은 `e65b3b469c0ee71195b0b568b4b66d0b364b6f3d`다. 현재 darwin/arm64의 `go list -deps -json ./...`에서 모듈 패키지170개, 내부 import481쌍, 최상위 집계306쌍을 측정했다. 보존된840826 JSON과 정확한 set 비교에서 `internal/factorylane` → `internal/auditverdict` 한 쌍이 package·folded 집계에 각각 추가됐고 제거는0개였다. 패키지 집합170개는 같고 `go.mod`·`go.sum`도 변하지 않았다. 숫자만 같아서 관계 동일성을 추정한 결과가 아니다.
 

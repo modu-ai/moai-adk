@@ -20,6 +20,8 @@ import (
 	"strings"
 	"testing"
 	"time"
+
+	"github.com/modu-ai/moai-adk/internal/factorylane"
 )
 
 const (
@@ -408,7 +410,10 @@ func TestMergeStepPreMergeCausesReleaseWithDistinctCodes(t *testing.T) {
 			}
 		}},
 		{"12 dirty before merge", MergeExitWorktreeDirty, func(f *stepFixture, seams *MergeStepSeams, card *MergeCardState) {
-			if err := os.WriteFile(filepath.Join(f.integ, "untracked.txt"), []byte("x"), 0o644); err != nil {
+			// M2 (card t1616, plan §B5): the byte sits at a path the card changes.
+			// card.txt is that path and the base .gitignore ignores it, so the
+			// refusal is the ignored overlap I, not a status-set record.
+			if err := os.WriteFile(filepath.Join(f.integ, "card.txt"), []byte("x"), 0o644); err != nil {
 				t.Fatal(err)
 			}
 		}},
@@ -468,7 +473,9 @@ func TestMergeStepMergeFailureCleanAbortsCause6(t *testing.T) {
 			if err := os.WriteFile(filepath.Join(f.integ, ".git", "MERGE_HEAD"), []byte("deadbeef\n"), 0o644); err != nil {
 				return "", err
 			}
-			return "", errors.New("simulated merge failure")
+			// git exits 1 when a merge stops with MERGE_HEAD left behind (a conflict), so
+			// the seam reports that status: this call began the merge and may abort it.
+			return "", &factorylane.GitExitError{ExitCode: 1, Stderr: "simulated merge failure"}
 		}
 		runner := exec.Command("git", args...)
 		runner.Dir = f.integ
@@ -544,18 +551,22 @@ func TestMergeStepCause8LeavesCommitAndHoldsNamingSHA(t *testing.T) {
 }
 
 func TestMergeStepCause8bO3SeamInjectsResidue(t *testing.T) {
-	// AC-MWQ-018 row 8b via the O3 seam: the residue appears after every
-	// pre-merge check passed; the post-merge clean check finds it, the hold
-	// is written BEFORE the release, and the exit code is cause 8's.
+	// AC-MWQ-018 row 8b via the O3 seam (SPEC-MERGE-WINDOW-QUEUE-001,
+	// acceptance.md:156; card t1479, commit 5f66afa83). The residue is written
+	// after the merge call, which is where row 8b leaves it ("merge commit
+	// created, autostash residue left"). The post-merge status-set check finds
+	// it, the hold is written BEFORE the release, and the exit code is cause 8's.
+	// A residue written before the merge would sit in the S-before baseline
+	// (plan §B5 of SPEC-LOCAL-MAIN-FLOW-001) and never count as a change.
 	f := newMergeFixture(t)
 	card := f.withCardTree(readyCardPtr())
 	seams := f.seams(card)
 	holdWrittenBeforeRelease := false
-	seams.AfterPrecheck = func() {
+	seams.Git = stepGitAfterMerge(f, func() {
 		if err := os.WriteFile(filepath.Join(f.integ, "autostash-residue.txt"), []byte("residue"), 0o644); err != nil {
 			t.Fatal(err)
 		}
-	}
+	})
 	// Track the write order through the policy record's set time versus the
 	// release: the release promotes C only when the policy is open, so a
 	// held policy after the run proves the hold landed first.

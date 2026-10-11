@@ -843,7 +843,7 @@ func discardAll(ctx context.Context) error {
 	// re-enqueues a discarded report, and a sender mid-search publishes
 	// one, until the generation advances. The bump is the first act, before
 	// any removal.
-	if err := bugreport.BumpSpoolGeneration(); err != nil {
+	if err := bugreport.BumpSpoolGenerationContext(ctx); err != nil {
 		return fmt.Errorf("outbox: discard generation: %w", err)
 	}
 	spoolHadContent := spoolFileNonEmpty()
