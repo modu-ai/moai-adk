@@ -577,7 +577,7 @@ run-phase 의 M1, M2, M3(후속 포함), M7 은 로컬 커밋으로 끝났고, s
 audit_ready: true
 sync_status: audit-ready
 sync_complete_at: 2026-10-11T04:19:56Z
-sync_commit_sha: pending-backfill
+sync_commit_sha: 8d7034129a1dc9560902cb23990e72925799a960
 
 F2 수리와 F1 정정 뒤의 재종결이다(3-phase close). 델타 감사 2회차(`.moai/reports/t1620/sync-audit-iter2.md`, 판정 FAIL)의 차단 발견 F2(키별 차단 잠금의 심볼릭 링크 추적)는 커밋 `a93efb76d3`(RED), `40f56c3c70`(수리), `d480f2704d`(§E.2 증거)로 고쳤다. 차단 발견 F1(REQ-RG-007 범위 한계 표의 열거 불완전)은 커밋 `9ca86ae4f`(표를 사실에 맞춘 정정)로 고쳤다. 이 커밋이 spec.md 를 `status: completed` 로 다시 닫는다. 앞선 재종결의 sync_commit_sha `c861336ee64bbb81f304eec02bea7a9f97dd5af2` 는 spec.md 의 prior_completed_sha 와 같은 값이다. 커밋은 자신의 해시를 기록할 수 없으므로 이 재종결 커밋의 sync_commit_sha 는 pending-backfill 자리표시로 적었다. 실제 SHA 는 다음 backfill 커밋이 이 커밋의 전체 SHA 로 바꾼다(spec-workflow.md § Sync (close), spec-frontmatter-schema.md § SHA placeholder backfill exemption).
 
