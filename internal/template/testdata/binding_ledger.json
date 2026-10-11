@@ -5336,9 +5336,9 @@
         "start_line": 67
       },
       "before_text": "A cross-session message is a nudge, never the delegation itself. **A lane can be asked to report when it next goes idle** (`SendMessage` `notify_when_idle`), but [HARD] the notice is not the completion signal — it says *when to read the evidence*, nothing about what it says. **A nudge can be refused outright under fan-out**; read the send result, and a refusal costs the run nothing because the queue already carries the delegation (`cross-session-messaging.md` § An idle notice is a scheduling hint, § Configuration surface).",
-      "after_text": "A message is a nudge, never the delegation — an idle notice says when to look, not what the evidence says.",
-      "location": "role-core:workflow/factory-dispatch.md",
-      "processing": "rewrite",
+      "after_text": "What it establishes is *when to go look*; what it says about the work is nothing.",
+      "location": "always:.claude/rules/moai/workflow/cross-session-messaging-core.md",
+      "processing": "relocated",
       "entry_points": [
         {
           "entry_point": "factory-leader",
@@ -5361,7 +5361,8 @@
           "delivery": "REQ-ALB-024"
         }
       ],
-      "rewrite_note": "compressed rewrite in role core (t1617 M2); procedure detail at the named companion"
+      "rewrite_note": "F4 offset trim: the [12] explanation line duplicated the stub idle-notice boundary; the queue-on-disk obligation remains in core (ALB-0269 region)",
+      "reason": "explanatory duplicate trimmed in F4 offset (card t1617); the idle-notice obligation lives in the always-loaded stub"
     },
     {
       "id": "ALB-0271",
@@ -5499,7 +5500,7 @@
         "start_line": 98
       },
       "before_text": "[HARD] Between run-exit verification and integration every lane runs a `card-review` stage: a card-scope self-review through `codex_review` (`glm_review` optional) whose result is written to `.moai/reports/<card-id>/card-review.md` — advisory only, never a replacement for the leader's evidence read or an independent audit. With `tree_scope: skip` configured for the leader's checkout, the leader session carries no turn-end codex review gate and reviews its own internal output directly with the same tools. Stage order, evidence fields, and the re-review ceiling: `factory-dispatch-detail.md` § The card-review stage.",
-      "after_text": "[HARD] Every lane runs a `card-review` (`codex_review` → `.moai/reports/<card-id>/card-review.md`) before integration — advisory only.",
+      "after_text": "[HARD] Every lane runs a `card-review` before integration — advisory only.",
       "location": "role-core:workflow/factory-dispatch.md",
       "processing": "rewrite",
       "entry_points": [
@@ -5524,7 +5525,7 @@
           "delivery": "REQ-ALB-024"
         }
       ],
-      "rewrite_note": "compressed rewrite in role core (t1617 M2); procedure detail at the named companion"
+      "rewrite_note": "F4 offset trim: tool/path example detail removed; the detail lives in factory-dispatch-detail.md § The card-review stage (card t1617)"
     },
     {
       "id": "ALB-0276",
