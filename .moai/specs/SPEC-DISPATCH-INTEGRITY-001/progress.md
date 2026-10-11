@@ -895,6 +895,44 @@ notes: 13/13 ACs PASS (6 as committed regression guards with recorded not-reprod
 
 ## §E.4 Sync-phase Audit-Ready Signal
 
+### Re-close record — second amendment re-close (card t1595, 2026-10-11)
+
+This record re-closes the second in-place amendment declared in `spec.md` § Amendments (second entry, 2026-10-11; prior completed version 0.1.6). The correction commit `b38bc0fd62` had set `status: in-progress`; this sync sets it back to `completed` and changes no other line of `spec.md`. The earlier close records are kept unchanged below as history. The sync commit could not cite its own hash, so this record carries the literal placeholder `pending-backfill-sync`; the real SHA is backfilled in the following commit, not in this one (`spec-workflow.md` § Sync (close); `spec-frontmatter-schema.md` § SHA placeholder backfill exemption).
+
+sync_complete_at: 2026-10-11T11:06:05Z (current UTC at this sync edit; the sync commit's committer time supersedes it at backfill)
+sync_commit_sha: pending-backfill-sync
+sync_status: complete
+prior_close_record: sync_commit_sha 7be18e95dc (sync_complete_at 2026-10-11T10:11:56Z) retained below as history, not deleted; prior_completed_sha in spec.md § Amendments (second entry) equals it
+ac_source: .moai/specs/SPEC-DISPATCH-INTEGRITY-001/acceptance.md (tier M; resolved, non-empty)
+spec_frontmatter: status in-progress → completed, the `in-progress → implemented → completed` row of `spec-frontmatter-schema.md` § Status Transition Ownership Matrix (manager-docs, single sync commit); updated 2026-10-11 (unchanged — already the sync date)
+spec_amendment_fields: amendment_of retained (SPEC-DISPATCH-INTEGRITY-001); both `## Amendments` entries unchanged; the second `completed → in-progress (amendment)` transition was performed by `b38bc0fd62` before this sync and is not re-performed here
+frontmatter_status_transitions.in_progress_to_implemented: merged into the sync commit (3-phase close)
+frontmatter_status_transitions.implemented_to_completed: merged into the sync commit (3-phase close — no separate Mx commit)
+plan_acceptance_frontmatter: neither artifact carries a frontmatter block (both open with an H1 heading; stateless per the schema), so no `updated:` refresh applies
+progress_frontmatter: none (progress.md opens with an H1 heading; `sync_status` above is its status-bearing field)
+changelog_entry_position: unchanged by this re-close; no CHANGELOG edit and no entry appended (the CHANGELOG.md:36 items named in the debt sub-section below are deferred)
+b12_self_test_a: N/A for this re-close (no CHANGELOG emission or edit in this pass)
+b12_self_test_b: N/A for this re-close (no CHANGELOG emission or edit in this pass); the AC source resolved above (acceptance.md, tier M)
+b12_self_test_c: N/A for this re-close (no CHANGELOG entry names a file path in this pass)
+canary_compliance_check: N/A (this SPEC defines no forward-looking policy carrying its own sync tests)
+mx_tag_validation: no code changed by this sync edit; no tag owed
+
+### Deferred debt (delta audit stage 2, P4, optional)
+
+These findings (F5–F15, all P4 and optional) come from the stage-2 delta audit verdict `.moai/reports/t1595/delta-audit-5d7c-stage2-opus.md`. They are excluded from the correction commit `b38bc0fd62` and are candidates for follow-up cards, to be recorded by the leader. Each line gives the file and line as the verdict cites them (the verdict's tree is `e46c3abece`) and the fix the auditor recommended. Checked at HEAD `b38bc0fd62`: the F6–F8 wording is unchanged but sits eight lines lower in `spec.md` (the second Amendments entry), and the other cited ranges still contain the cited text. F9, F14 and F15 state no one-line fix in the verdict, so their lines give what the verdict recommends or observes instead.
+
+- F5 — `.moai/specs/SPEC-DISPATCH-INTEGRITY-001/plan.md:119-124` — fix: keep M0's historical body and add one sentence naming the second re-authoring.
+- F6 — `.moai/specs/SPEC-DISPATCH-INTEGRITY-001/spec.md:181-182` — fix: "The bounded wait is REQ-MRR-003's; the verb's under-lock byte check keeps AC-MFB-007 iii."
+- F7 — `.moai/specs/SPEC-DISPATCH-INTEGRITY-001/spec.md:178-180` — fix: "a concurrent index change landing before the fold's final byte comparison is detected there and refused".
+- F8 — `.moai/specs/SPEC-DISPATCH-INTEGRITY-001/spec.md:176-177` — fix: scope "exit non-zero" to `moai memory fold`.
+- F9 — `.moai/specs/SPEC-DISPATCH-INTEGRITY-001/spec.md:4` and `:101-109` — no fix line; the verdict records it as a traceability note and states the schema does not require a version bump.
+- F10 — `CHANGELOG.md:36`, item (2) — fix: "… exits the lock wait at the next 10 ms retry instead of waiting out the 2-second bound".
+- F11 — `CHANGELOG.md:36`, headline — fix: after G1 is closed, record it and re-attribute, or add "AC-DI-010 amended 2026-10-11; re-measured at <sha>".
+- F12 — `internal/cli/review_observation_test.go:153` — fix: "Under the pre-fix unlocked code (EL-009, `5a91b5758`) …".
+- F13 — `internal/cli/fold_store_lock_unix.go:84-86` and `internal/cli/fold_store_lock_windows.go:91-100` — fix: map only the contention errnos to contention, and return other errors at once.
+- F14 — `internal/cli/fold_store_lock_windows.go:62-67` — no fix line; the verdict's recommended hardening is `CreateFile` with `FILE_FLAG_OPEN_REPARSE_POINT` plus a reparse-attribute check on the handle, which would make the refusal exact.
+- F15 — `internal/cli/memory_budget_test.go:202-206` — no fix line; the verdict notes the preview's no-lock guarantee is still covered by `TestReviewFindingPreviewNeedsNoWriteAccess`, on POSIX only.
+
 ### Re-close record — amendment re-close (card t1595, 2026-10-11)
 
 This record re-closes the in-place amendment declared in `spec.md` § Amendments (2026-10-11; prior completed version 0.1.6). The prior close record below is kept unchanged as history. The sync commit could not cite its own hash, so this record carried the literal placeholder `pending-backfill-sync` until the real SHA, `7be18e95dc`, was backfilled in this commit, not in a later one (`spec-workflow.md` § Sync (close); `spec-frontmatter-schema.md` § SHA placeholder backfill exemption).
