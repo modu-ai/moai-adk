@@ -591,3 +591,9 @@ Opus 감사자 승인 대기 — 승인 전 코드·규칙 파일 변경 없음.
 - **생산 코드 검증은 존재**: role_rules.go:221-240 깊이 검사기 — "a start marker before its enclosing region is closed" 거부. 본 카드의 실호출 후퇴(3,647자)가 바로 이 검증이 설계대로 동작한 결과(실패 안전).
 - **회귀 시험은 없음**: role_rules_test.go malformed 계열(unclosed_region·end_before_start·unmarked·absent·unreadable·empty)에 **nested-start 형태(start가 열린 영역 안에 다시 삽입)의 subtest가 없음** — 본 카드 스크립트 결함이 만든 정확한 형태. 처분 뒤 반영 항목: fixture에 중첩 start 삽입 → assertFailVisible("before its enclosing region is closed") 1 subtest 추가.
 - **end-to-end core 포함 시험도 없음**: 기존 계열은 주입 결정 구조체와 크기 게이트 사다리만 검사 — 실제 조립 출력(훅 additionalContext)에 코어가 온전히 포함되는지 단언하는 end-to-end 시험은 없음(본 카드의 bin/moai 실호출이 첫 관측). 처분 뒤 반영 항목 2: 실호출(또는 조립 함수 직호출) 출력에 두 의무 문구+코어 헤더 존재 단언.
+
+### 고정분 최대 경우 실측 — 리더 역할 시뮬레이션 이상 관측 (리더 지시, 2026-10-11)
+
+- **lane 역할(GLM, synthetic)**: 마커 수복 후 실호출 — additionalContext 12,143자(온전한 넘침 경로), role-block 시작 3,829(synthetic 생산자; 실제 lane-15 세션은 4,797). 최대 경우 추정: 4,797 + 257 + 7,973 = **13,027**.
+- **리더 역할 시뮬레이션**: `env -u MOAI_FACTORY_WORKER MOAI_FACTORY_WORKERS=1 bin/moai hook session-start` → additionalContext **0자** (세션 속성 등 생산자도 0 — 훅 exit 0, stderr는 무관한 다중 세션 고지). 원인 미규명 — 리더 전용 생산자가 실제 리더 세션 상태(소켓·부트스트랩)를 필요로 하거나, 시뮬레이션 env로는 리더 역할 경로가 완전 동작하지 않을 수 있음.
+- **판단 회신**: 리더 역할의 고정분 최대치는 본 시뮬레이션으로 측정 불가 — 실제 리더 세션의 SessionStart 추가Context에서 직접 재는 것이 정확(리더 소관). 레인 측 정확치: 실제 lane-15 세션 고정분 4,797(델타1 감사자 측정) + 본 트리 코어 7,973 = 합성 13,027.
