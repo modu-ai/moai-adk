@@ -247,3 +247,16 @@ t1616이 로컬 main(`478285ab4`)에 착지한 뒤, 카드 트리가 이를 흡�
 - **천장 개정**: 불요 — 상쇄 164가 281을 흡수(순증 +117)
 - **Gap (② 라이브 주입 확인 미실행)**: 리더 지정 형태 `env -i HOME=$(mktemp -d) … bin/moai hook session-start`가 worktree 세션 가드에 3형태 전부 거부됨(`env -i` 복합·`env -i` 단순·`env HOME=` 오버라이드 — "injecting git configuration whose effect cannot be verified"). 조립 본문의 문구 존재는 GREEN 시험이 기계 증명(ExtractRoleCoreRegions = buildRoleCore의 반환 본문 그대로), 미관측은 훅 end-to-end 호출(역할 감지→파일 판독→조립)의 선행 절 — 다음 Claude 세션 착화 시 소멸 가능한 Gap
 - **부채 → t1637**: F1·F1b·F5·F3, F2 선택 보강, 스텁 spec: 문구, RIB-D2(:328 YAML 파싱), :345 os.ReadFile, budget-test env 격리, hooks-system.md:132 내부 인용(P3)
+
+### 천장 개정 (SPEC 0.4.0 → 0.5.0) — 리더 지시 ceiling raise (2026-10-11)
+
+본 카드 SPEC 본문의 구속 수치를 측정 수요로 올리는 개정. SPEC 표면은 manager-spec이(본 절), 테스트 상수는 레인이(본 커밋 뒤 후속) 나눠 갖는다.
+
+- **개정 수치** (측정 수요, 패딩 없음): 역할 core 천장 **3,946 → 4,073** UTF-16 · 조립 합본 예산 **9,000 → 9,127** (= 생산자 상한 4,797 + 오버헤드 257 + core 4,073 — 파생) · 변이 경계 3,947 → **4,074**. 하드 캡 10,000 · 스텁 예산 10,000 **무변경**.
+- **사유 (운영자 언어 그대로)**: 「Codex 전용 레인에서 [HARD] 의무 2개가 사라지는 회귀 방지, 상쇄는 Codex 전달 의무를 깎아 기각」 — M2 재작성과 그 뒤 offset 절단이 각각 Codex 전용 설치 레인에 레인 의무의 전달 경로를 남기지 않았고, 두 의무 복원 + 신규 2개(F4 수리)에 구 천장보다 127단위가 더 필요하다.
+- **offset 대안 기각 (리더)**: 의무 아닌 core 문단을 깎아 자리를 만드는 대안은 2회 codex 델타 라운드에서 Codex 도달 의무 전달을 깎는 것이 입증돼 기각 — 영수증 `rcpt-f32250556030f729fbb7f86c` · `rcpt-356d2c64e2dec47d24e28669`.
+- **결정 사슬**: 영실이 위임 판단 → 리더 처분 `d-20261010T075659Z-7d7c` → `d-20261011T030402Z-4f2c` → offset 기각(상기 영수증) → 본 천장 개정.
+- **측정 귀속 (본 세션 직접 관측 — 커밋 시점 트리, HEAD `49862d316a` + 미커밋 복원분)**: region-split UTF-16 합산 명령(`python3 -c "…split('<!-- moai:role-core-start -->')…"`) — deployed core **4,073** (33영역) · template core **4,073** (33영역), 양 트리 동일. core 4,073 = 천장 4,073 — 여유 0 (측정 수요 그대로).
+- **갱신 표면**: spec.md(제목·§A.4 주석·§A.5 1행·§B core 예산/설계 목표·REQ-RIB-001/002/004·§D 분할 기각 산술 + HISTORY 0.5.0 행) · plan.md(헤더·§A.1·§B core 예산·M1 상수 주석·M2 기록 주석) · acceptance.md(AC-RIB-001 3칸·§B 변이 탐침·§C 원장 헤더·§C 참고 산식) · 본 절.
+- **보존 (개정 아님)**: acceptance.md §C 증거 원장의 E1/E2 축자 명령·출력(`n<=3946`)은 채택 시점 관측 원문 — 무편집. progress.md §E.1~§E.4의 기존 기록 행(파생 수치·완료 기준 원문·core 3,786 ≤ 3,946 · core 3,903/합성 8,957 ≤ 9,000 등)은 각 시점의 계획·관측 기록 — 무편집. relocation-ledger.md · `.moai/reports/t1617/measurements.md` 는 run 이력 — 무편집. `.claude/rules/`·템플릿 규칙 트리 그림 스윕(3,946|9,000|3,800|3946|3947|9000|3800, 양성 대조 통과) — 히트 0, 갱신할 미러 없음.
+- **대기 단계 (레인 소관, 본 커밋 뒤)**: `internal/hook/role_injection_budget_test.go` 상수 `budgetCompositeLimit = 9000` → `9127`, `budgetCoreCeiling = 3946` → `4073` — 갱신 전 본 트리에서 조립 예산 테스트는 **예상 RED** (core 4,073 > 구 천장 3,946).
