@@ -523,7 +523,7 @@ run-phase 의 M1, M2, M3(후속 포함), M7 은 로컬 커밋으로 끝났고, s
 audit_ready: true
 sync_status: audit-ready
 sync_complete_at: 2026-10-11T03:07:23Z
-sync_commit_sha: pending-backfill
+sync_commit_sha: c861336ee64bbb81f304eec02bea7a9f97dd5af2
 
 SF-1 수리(§E.2)와 SF-2 수정 증서(커밋 `582bed1f8`, spec.md `## Amendments`) 뒤의 재종결이다. 수정 증서가 SPEC 을 in-progress 로 되돌렸고, 이 커밋이 completed 로 다시 닫는다. 이전 종결의 sync_commit_sha `7716c99ff2347dc004ee0e209791fc648772e1ef` 는 spec.md 의 prior_completed_sha 와 같은 값이다. 커밋은 자신의 해시를 기록할 수 없으므로 이 커밋의 sync_commit_sha 는 pending-backfill 자리표시다. 실제 SHA 는 다음 커밋에서 backfill 한다(spec-workflow.md § Sync (close), spec-frontmatter-schema.md § SHA placeholder backfill exemption).
 
