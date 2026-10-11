@@ -3829,6 +3829,50 @@ Verdict-file normalization, recorded before the merge-ready transition consumes 
 - State constraint: merge-ready has no edge back to sync. The only edges leaving it are T14 (merge-ready → merging) and, from merging, T15 (merging → merge-ready). A repair therefore needs the leader to re-open the card.
 - Pending leader decisions: (1) whether to re-open the card to sync for A1–A3, followed by a delta sync audit; (2) the A2 direction, either keep the two keys and update the goldens, or drop the keys from `status --json`; (3) whether to re-run CI to confirm the Class B flake.
 
+### CI repair A1–A3 and the golden decision A2 (leader disposition d-20261011T031555Z-2c28; the delta audit is pending)
+
+- Commits, oldest first: f32c831de (A1, docs-site), 6bfa80c5b (A1, test expectations), 572200d3b (A3, i18n), 35b4de817 (A2, golden). Each carries the gate statement and the agent trailer. The card state is unchanged (merge-ready).
+- A1, docs-site: the project_root paragraph in `docs-site/content/{en,ko,ja,zh}/guides/mcp-server.md` says 23 tools (was 22). It names `factory_renew` in the list and in the required set.
+- A1, catalogue: both copies are unchanged, because they were already correct. The evidence is verbatim: `moai-mcp-tools-catalogue.md:317` "Twenty-three tools accept an optional `project_root` string", and `:323` "Five of the twenty-three". The five REQUIRE tools are factory_next, factory_stage, factory_complete, factory_renew, and codex_task.
+- A1, test expectations changed (previous value → new value, with the evidence above; the leader approved this deviation): `internal/cli/mcp_project_root_doc_test.go:42` "Twenty-two tools" → "Twenty-three tools"; `:43` "22개 도구" → "23개 도구"; `:44` "22個のツール" → "23個のツール"; `:45` "22 个工具" → "23 个工具"; `:97` the count map gains `"Twenty-three": 23`. `internal/cli/mcp_selfreview_test.go:1062` and `:1063`: "Four of the twenty-two" → "Five of the twenty-three". Why the old values were wrong: the server declares 23 tools with project_root (factory_renew included), and five of them are REQUIRE. The old values predate factory_renew. Writing "Four of the twenty-two" into the catalogue would have been a false statement, so the catalogue was left as it is.
+- A3, i18n: `internal/web/assets/i18n.js` gains `f.mcp.tools.factory_renew.enabled.title` and `.desc` in en, ko, ja, and zh. The labels are "Factory renew" / "팩토리 임대 갱신" / "ファクトリーリース更新" / "工厂租约续订".
+- A2, golden: `internal/cli/testdata/qas_baseline_factory_status.golden.json` gains `"lease_duration": "15m0s"` and `"renew_interval": "5m0s"` in both objects (empty and one_card). The keys are kept.
+- SPEC/AC check, requested by the leader: the keys are named explicitly. `acceptance.md:118-123` is AC-FLR-009, which says: "When `moai factory status --json` runs in that project, Then the output reports `lease_duration` as `15m0s` and `renew_interval` as `5m0s`." `plan.md:134` (M1 item 5) also names them. The keys are additive JSON fields, so keeping them is consistent with the AC.
+- Local runs, verbatim (run on the working tree before the four commits; `git status` then listed exactly these files):
+  - `go test -count=1 -v -run '^(TestDocsSiteProjectRootMatchesServer|TestProjectRootDocMatchesServer|TestSelfReview_CatalogueAndGuideCarryTheNewRows|TestI18nKeySetParity|TestQAS_AC0[0-9]+_.*)$' ./internal/cli/` → exit 0. The summary lines:
+    ```
+    --- PASS: TestQAS_AC012_StatusQuotaBlockOnlyWhenGateEnabledWithData (12.73s)
+    --- PASS: TestQAS_AC018_LaneInventoryCandidates (2.88s)
+    --- PASS: TestQAS_AC019_AutoAndStatusRecommendNonClaudeLanes (3.16s)
+    --- PASS: TestQAS_AC020_NoNonClaudeLaneWarnsOnly (5.76s)
+    --- PASS: TestQAS_AC021_SteeringChangesNothing (6.06s)
+    --- PASS: TestQAS_AC022_GateOffOrPressureOffOutputUnchanged (14.27s)
+    --- PASS: TestQAS_AC008_ClaudeLaneHeldAtThreshold (47.22s)
+    --- PASS: TestQAS_AC009_HoldLineCarriesResetTime (13.70s)
+    --- PASS: TestQAS_AC010_WaitLatchReleasesOnlyBelowMarginOrResetOrUnknown (45.29s)
+    --- PASS: TestQAS_AC011_NonClaudeBackendsNeverHeld (26.40s)
+    --- PASS: TestQAS_AC014_AggregatorIsOfflineSpawnFreeAndReadOnly (0.31s)
+    --- PASS: TestQAS_AC013_AcquireWarnsNeverRefuses (10.61s)
+    --- PASS: TestQAS_AC017_SharedPressureEvaluationAndSurfaces (20.70s)
+    --- PASS: TestDocsSiteProjectRootMatchesServer (0.01s)
+    --- PASS: TestProjectRootDocMatchesServer (0.02s)
+    --- PASS: TestSelfReview_CatalogueAndGuideCarryTheNewRows (0.00s)
+    --- PASS: TestI18nKeySetParity (0.00s)
+    PASS
+    ok  	github.com/modu-ai/moai-adk/internal/cli	210.809s
+    ```
+  - `go test -count=1 -v -run '^(TestDataI18nKeysSubsetOfDictionary|TestI18nKeySetParity)$' ./internal/web/` → exit 0. The summary lines:
+    ```
+    --- PASS: TestDataI18nKeysSubsetOfDictionary (0.40s)
+    --- PASS: TestI18nKeySetParity (0.96s)
+    PASS
+    ok  	github.com/modu-ai/moai-adk/internal/web	2.248s
+    ```
+  - `gofmt -l` on the two edited Go test files: no output (exit 0).
+- Correction: the earlier carry of debts D4, D5, and D6 with dispose_in=later was wrong for CI-enforced tests. CI failed on them, and they are repaired in this round, not carried.
+- Class B, the stale-lock flake (`TestStaleLockReclaimDoesNotDeleteTheNewLock`): not re-run, by the leader's decision. If it appears in the next CI run, it is recorded under the t1679 race-flake line and does not block, because the diff does not touch that package and main is green.
+- Still pending: the one delta sync audit over these four commits, from the merge-base, and then one push and one CI re-dispatch.
+
 ## §G Override and Refusal Record
 
 - 2026-10-10T09:51:05Z SPEC-FACTORY-LEASE-RENEW-001 ceiling-refusal outcome=hold reasons="plan-audit ceiling reached (round count 2 >= tier ceiling 2); the verdict matches no admitting arm and holds, entry blocked (REQ-ACE-006) — release path: the split/new-SPEC route of REQ-ACE-005 or an operator decision recorded in progress.md §G" evidence=/Users/goos/MoAI/moai-adk-go/.moai/worktrees/t1663/.moai/reports/t1663/plan-audit-iter2.md,/Users/goos/MoAI/moai-adk-go/.moai/worktrees/t1663/.moai/reports/t1663/plan-audit.md
