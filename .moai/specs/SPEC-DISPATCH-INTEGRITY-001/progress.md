@@ -897,10 +897,10 @@ notes: 13/13 ACs PASS (6 as committed regression guards with recorded not-reprod
 
 ### Re-close record — second amendment re-close (card t1595, 2026-10-11)
 
-This record re-closes the second in-place amendment declared in `spec.md` § Amendments (second entry, 2026-10-11; prior completed version 0.1.6). The correction commit `b38bc0fd62` had set `status: in-progress`; this sync sets it back to `completed` and changes no other line of `spec.md`. The earlier close records are kept unchanged below as history. The sync commit could not cite its own hash, so this record carries the literal placeholder `pending-backfill-sync`; the real SHA is backfilled in the following commit, not in this one (`spec-workflow.md` § Sync (close); `spec-frontmatter-schema.md` § SHA placeholder backfill exemption).
+This record re-closes the second in-place amendment declared in `spec.md` § Amendments (second entry, 2026-10-11; prior completed version 0.1.6). The correction commit `b38bc0fd62` had set `status: in-progress`; this sync sets it back to `completed` and changes no other line of `spec.md`. The earlier close records are kept unchanged below as history. The sync commit could not cite its own hash, so the sync commit's copy of this record carried the literal placeholder `pending-backfill-sync`, which the following backfill commit replaces with the real SHA (`spec-workflow.md` § Sync (close); `spec-frontmatter-schema.md` § SHA placeholder backfill exemption).
 
-sync_complete_at: 2026-10-11T11:06:05Z (current UTC at this sync edit; the sync commit's committer time supersedes it at backfill)
-sync_commit_sha: pending-backfill-sync
+sync_complete_at: 2026-10-11T11:10:33Z (committer time of the sync commit 47148e66c4)
+sync_commit_sha: 47148e66c4
 sync_status: complete
 prior_close_record: sync_commit_sha 7be18e95dc (sync_complete_at 2026-10-11T10:11:56Z) retained below as history, not deleted; prior_completed_sha in spec.md § Amendments (second entry) equals it
 ac_source: .moai/specs/SPEC-DISPATCH-INTEGRITY-001/acceptance.md (tier M; resolved, non-empty)
