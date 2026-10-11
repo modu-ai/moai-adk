@@ -520,3 +520,37 @@ decision record: decided_by=lane-5 (run re-entry, run tmnboq) evidence_refs=sync
   - Lease: the row's expiry was `2026-10-10T00:48:01Z`; the recovery order of `d-20261009T170040Z-8859` applies at the next transition.
   - Scratch outputs (`f4-scen{A,B,C,D}.{out,err}`, `f4-holder-*.out`) are not cited; the decisive lines are carried above.
   - decision record: decided_by=lane-5 (F4 observation, run tmnboq) evidence_refs=bin/moai@26022a3f9 (by path);scenarios A-D above;integration_merge_step.go:39 ladder_path=own observation (AC-MWQ2-005 debt; sync-audit-1 F4)
+
+### Post-absorb verification record (card t1582, run tmnboq, lane-5, 2026-10-11)
+
+- **Claim.** At 423ce3ad03 the absorbed tree passes the affected packages under the environment-isolated form. One codex-path cli test fails for an environment reason outside the card diff. By leader ruling it is a Gap; CI decides.
+- **Evidence.** Full verbatim lines and commands: `.moai/reports/t1582/absorb-verification.md` (gitignored). Decisive lines:
+  - internal/factory, environment-isolated, 423ce3ad03: `ok  	github.com/modu-ai/moai-adk/internal/factory	450.916s`.
+  - internal/cli affected family, environment-isolated, 423ce3ad03: `ok  	github.com/modu-ai/moai-adk/internal/cli	24.664s`.
+  - codex path test, environment-isolated confirm at the git-registered spelling: `--- FAIL: TestCodexTaskResumeScope_WorkKeyResumesOwnCardThread (0.39s)`; the path still resolves to the capital spelling.
+  - template at 13cde8b7f7: `ok  	github.com/modu-ai/moai-adk/internal/template	326.426s`; the delta since is two test files only.
+  - Superseded: factory at 13cde8b7f7, four cause-7 FAIL lines (`factory exit=1`).
+- **Injection change (verbatim, before → after).**
+  - mergestep_atomic_t1582_test.go, interleaving: `return "", fmt.Errorf("simulated merge failure (t1582 cause-7 interleaving)")` → `return "", cause7MergeExit()`
+  - mergestep_atomic_t1582_test.go, failure branch (shared helper cause7MergeGit): `return "", fmt.Errorf("simulated merge failure (t1582 cause-7 failure branch)")` → `return "", cause7MergeExit()`
+  - mergestep_red_t1582_test.go, seeding: `return "", fmt.Errorf("simulated merge failure (t1582 cause-7 seeding)")` → `return "", cause7MergeExit()`
+  - New helper: `func cause7MergeExit() error { return &factorylane.GitExitError{ExitCode: 1, Stderr: "CONFLICT (simulated for card t1582 cause-7)"} }`
+  - New test: TestMergeStepStartFailureRefusesWithoutAbort (a plain error is a start failure: refused with exit 9, no `merge --abort`, no cause-7 hold).
+- **Rule source.** Main commit b870598702 (card t1616): an error without a git exit status means the merge call never started (mergeCallNotStarted). The step refuses without abort (integration_merge_step.go:595-607, 1117-1137).
+- **Scope correction.** The 815a approval named "3 tests"; the leader corrected it to four cause-7 tests.
+- **Baseline attribution.** 423ce3ad03 differs from 13cde8b7f7 only in test files; the production code is identical. The environment-isolated factory run at 423ce3ad03 is the decisive one.
+- **Audit.** codex_audit (mode adversarial, target baseBranch, focus: the absorbed classifier against the cause-7 injections): verdict pass, no findings, receipt rcpt-a6392fad73008f9ba46bb939. Verdict file: `.moai/reports/t1582/absorb-delta-audit.md` (gitignored; auditor-model line and receipt in its header). The judging build db0c514d3 is a strict ancestor of HEAD 423ce3ad03, and the tool reports build lag (Gap 7).
+- **Gaps.**
+  1. The first affected-test run (outside the lease, default 10m timeout) panicked with `test timed out after 10m0s` in TestMergeStepPrimaryDirtyBeforeMergeRefusesWithoutMerge. It is not a result; reruns used the lease with -timeout 60m.
+  2. Lease-label mismatch: the slot label of the 13cde8b7f7 run names a2d607c36e (script text); the status file records head=13cde8b7f7 as the tested head.
+  3. The 13cde8b7f7 cli run was a name-filtered subset (`-run 'Factory|Integration|Merge|Remeasure|Lease|Lane|Nominat|Dispatch|Classify|Window|Measure|Card'`), not the whole package, and not environment-isolated.
+  4. The factory re-run started at 04:37:27Z was not environment-isolated. It was stopped after about three minutes (partial output not cited) and replaced by the environment-isolated run.
+  5. TestCodexTaskResumeScope_WorkKeyResumesOwnCardThread fails under both spellings in this environment. Git registers `/Users/goos/moai/...`; the session cwd is `/Users/goos/MoAI/...`; the refusal is at internal/cli/codex_audit_launch.go:339. The card diff does not touch that file or the test. The PWD override did not change the spelling the test resolves, so the cause is open. Leader ruling: Gap; CI decides; the leader records the case-path issue as a defect candidate.
+  6. Correction: an earlier note said bootstrap.go reads MOAI_KANBAN_*. The hit at bootstrap.go:79 is a comment. The scrub follows the factory-dispatch environment-isolation rule.
+  7. The audit's judging build lags the tree (db0c514d3 vs HEAD 423ce3ad03; the tool states that fixes after db0c514d3 are not in the running binary). Not re-run on a rebuilt binary. The leader decides whether a re-audit is required before landing.
+  8. The audit output has a one-line summary and no coverage list; its reach into the classifier interaction is not observable from the output.
+  9. Lesson (leader's wording): absorb audits must cover the absorbed side's semantic changes and their interaction with card tests, not only the conflict hunks. A plain-error seam injection is read by the absorbed classifier as "merge did not start".
+- **Judging builds (§2.2).** The go test runs compile the tree itself and involve no moai build. The codex_audit verdict is cited with both coordinates (tree HEAD 423ce3ad03; judging build db0c514d3) and the lag in Gap 7.
+- **Push and CI.** The push (fast-forward) follows this commit. The CI run record (URL and concluded SHA) goes to `.moai/reports/t1582/ci-verdict.md` (gitignored) and to the leader.
+- **Residual risk.** macOS path-case behavior differs from the Linux CI checkout; CI decides that Gap. The audit reaches the auto-merged clash only as far as its review goes (Gap 8).
+- decision record: decided_by=lane-5 (post-absorb verification, run tmnboq) evidence_refs=codex receipt rcpt-a6392fad73008f9ba46bb939; .moai/reports/t1582/absorb-delta-audit.md; .moai/reports/t1582/absorb-verification.md ladder_path=codex_audit verdict pass, no fallback; build lag disclosed (Gap 7)
