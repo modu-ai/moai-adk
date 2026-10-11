@@ -180,9 +180,17 @@ func (in *Installer) Install(selection []string) (*Result, error) {
 		}
 	}
 	manifest.Bundles = normalizeSelection(selection)
-	targets, err := in.installTargets(manifest.Bundles)
+	targets, emptyTargets, err := in.installTargets(manifest.Bundles)
 	if err != nil {
 		return nil, err
+	}
+	// REQ-UMF-006 (SPEC-UPDATE-MIGRATION-FIX-001): an empty directory target is
+	// reported as a failure with its reason and is never counted as installed.
+	for _, name := range emptyTargets {
+		res.Failures = append(res.Failures, FileOutcome{
+			Path:   name + "/",
+			Reason: "empty install target: the catalog directory yields no file to install (REQ-UMF-006)",
+		})
 	}
 
 	// RF5 (review fix): run the collision determination FIRST — a target
@@ -361,43 +369,54 @@ type installTarget struct {
 // entries land flat in both agent roots — the Claude body from
 // .claude/agents/moai/<name>.md, the Codex body from the emitted
 // .codex/agents/moai/<name>.toml (REQ-022).
-func (in *Installer) installTargets(selection []string) ([]installTarget, error) {
+//
+// REQ-UMF-006 (SPEC-UPDATE-MIGRATION-FIX-001): the second result names every
+// directory entry that yields no file target. The caller reports each one as a
+// failure with its reason; none of them is counted as installed.
+func (in *Installer) installTargets(selection []string) ([]installTarget, []string, error) {
 	entries := in.collectEntries(selection)
 	var targets []installTarget
+	var emptyTargets []string
 	for _, e := range entries {
 		switch {
 		case strings.HasSuffix(e.Path, "/"):
 			// Skill directory — both harness roots. Source paths are
 			// catalog paths with the templates/ prefix stripped
 			// (EmbeddedTemplates exposes the stripped FS).
+			before := len(targets)
 			for _, slug := range []RootSlug{RootClaudeSkills, RootAgentsSkills} {
 				ts, err := in.dirTargets(slug, e, strings.TrimSuffix(srcPath(e.Path), "/"))
 				if err != nil {
-					return nil, err
+					return nil, nil, err
 				}
 				targets = append(targets, ts...)
+			}
+			if len(targets) == before {
+				// REQ-UMF-006: the directory target carries no file at all.
+				emptyTargets = append(emptyTargets, e.Name)
 			}
 		case strings.HasSuffix(e.Path, ".md"):
 			// Claude agent body.
 			t, err := in.fileTarget(RootClaudeAgents, e.Name+".md", srcPath(e.Path), e)
 			if err != nil {
-				return nil, err
+				return nil, nil, err
 			}
 			targets = append(targets, t)
 			// Codex agent body — the emitted TOML (REQ-022).
 			tomlPath := ".codex/agents/moai/" + e.Name + ".toml"
 			if _, err := fs.Stat(in.Source, tomlPath); err != nil {
-				return nil, fmt.Errorf("codex agent TOML for %s: %w", e.Name, err)
+				return nil, nil, fmt.Errorf("codex agent TOML for %s: %w", e.Name, err)
 			}
 			t, err = in.fileTarget(RootCodexAgents, e.Name+".toml", tomlPath, e)
 			if err != nil {
-				return nil, err
+				return nil, nil, err
 			}
 			targets = append(targets, t)
 		}
 	}
 	sort.Slice(targets, func(i, j int) bool { return targets[i].manifestKey < targets[j].manifestKey })
-	return targets, nil
+	sort.Strings(emptyTargets)
+	return targets, emptyTargets, nil
 }
 
 func (in *Installer) dirTargets(slug RootSlug, e template.Entry, srcDir string) ([]installTarget, error) {
