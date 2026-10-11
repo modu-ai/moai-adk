@@ -33,6 +33,8 @@ type profileSetupText struct {
 	ModelPolicyHigh    string
 	ModelPolicyMedium  string
 	ModelPolicyLow     string
+	ParticipationTitle string
+	ParticipationDesc  string
 	ModelOverrideTitle string
 	ModelOverrideDesc  string
 	ModelOpus          string
@@ -167,6 +169,8 @@ var profileSetupTexts = map[string]profileSetupText{
 		ModelPolicyHigh:       "High - Opus 5.5 (high~medium) + Sonnet (low, docs/single-shot rows)",
 		ModelPolicyMedium:     "Medium - Opus 5.5 (high~low) + Sonnet (low, docs/single-shot rows)",
 		ModelPolicyLow:        "Low - Opus 5.5 (high~low) + Sonnet (low, docs/e2e/single-shot rows)",
+		ParticipationTitle:    "Improvement participation",
+		ParticipationDesc:     "Let moai-adk file a public GitHub issue from your own account when it detects one of its own defects. Off by default; change it later in the moai web settings screen.",
 		ModelOverrideTitle:    "Default model override",
 		ModelOverrideDesc:     "Override the model when launching with this profile.",
 		ModelOpus:             "opus (Opus 5.5, adaptive thinking)",
@@ -262,6 +266,8 @@ var profileSetupTexts = map[string]profileSetupText{
 		ModelPolicyHigh:       "High - Opus 5.5 (high~medium) + Sonnet (low, docs/single-shot rows)",
 		ModelPolicyMedium:     "Medium - Opus 5.5 (high~low) + Sonnet (low, docs/single-shot rows)",
 		ModelPolicyLow:        "Low - Opus 5.5 (high~low) + Sonnet (low, docs/e2e/single-shot rows)",
+		ParticipationTitle:    "개선 참여",
+		ParticipationDesc:     "moai-adk가 자기 결함을 감지하면 사용자 본인 GitHub 계정으로 공개 이슈를 올립니다. 기본값은 꺼짐이며 moai 웹 설정 화면에서 나중에 바꿀 수 있습니다.",
 		ModelOverrideTitle:    "기본 모델 오버라이드",
 		ModelOverrideDesc:     "이 프로필로 실행할 때 모델을 오버라이드합니다.",
 		ModelOpus:             "opus (Opus 5.5, 적응형 사고)",
@@ -358,6 +364,8 @@ var profileSetupTexts = map[string]profileSetupText{
 		ModelPolicyHigh:       "High - Opus 5.5 (high~medium) + Sonnet (low, docs/single-shot rows)",
 		ModelPolicyMedium:     "Medium - Opus 5.5 (high~low) + Sonnet (low, docs/single-shot rows)",
 		ModelPolicyLow:        "Low - Opus 5.5 (high~low) + Sonnet (low, docs/e2e/single-shot rows)",
+		ParticipationTitle:    "改善への参加",
+		ParticipationDesc:     "moai-adk が自身の欠陥を検出すると、利用者本人の GitHub アカウントで公開 Issue を起票します。既定はオフで、moai ウェブ設定画面から後で変更できます。",
 		ModelOverrideTitle:    "デフォルトモデルオーバーライド",
 		ModelOverrideDesc:     "このプロファイルで起動する際のモデルをオーバーライドします。",
 		ModelOpus:             "opus (Opus 5.5、適応型思考)",
@@ -454,6 +462,8 @@ var profileSetupTexts = map[string]profileSetupText{
 		ModelPolicyHigh:       "High - Opus 5.5 (high~medium) + Sonnet (low, docs/single-shot rows)",
 		ModelPolicyMedium:     "Medium - Opus 5.5 (high~low) + Sonnet (low, docs/single-shot rows)",
 		ModelPolicyLow:        "Low - Opus 5.5 (high~low) + Sonnet (low, docs/e2e/single-shot rows)",
+		ParticipationTitle:    "改进参与",
+		ParticipationDesc:     "moai-adk 检测到自身缺陷时，会以您本人的 GitHub 账户提交公开 Issue。默认关闭，可随时在 moai 网页设置中更改。",
 		ModelOverrideTitle:    "默认模型覆盖",
 		ModelOverrideDesc:     "使用此配置文件启动时覆盖模型。",
 		ModelOpus:             "opus (Opus 5.5，自适应思考)",

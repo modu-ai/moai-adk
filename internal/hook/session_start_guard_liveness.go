@@ -3,6 +3,8 @@ package hook
 import (
 	"context"
 	"log/slog"
+
+	"github.com/modu-ai/moai-adk/internal/bugreport"
 	"time"
 
 	"github.com/modu-ai/moai-adk/internal/guardliveness"
@@ -203,6 +205,7 @@ func guardLivenessAdvisory(root string, async bool) string {
 	go func() {
 		defer func() {
 			if r := recover(); r != nil {
+				bugreport.Capture(bugreport.KindPanic, nil, "", nil)
 				slog.Debug("session start: guard liveness render panicked (non-blocking)", "recover", r)
 			}
 		}()

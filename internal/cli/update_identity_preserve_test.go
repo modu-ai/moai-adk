@@ -112,7 +112,7 @@ func runForcedTemplateSyncAt(t *testing.T, root string) string {
 	cmd.SetErr(&errBuf)
 	cmd.SetContext(context.Background())
 
-	if syncErr := runTemplateSyncWithReporter(cmd, nil, true); syncErr != nil {
+	if syncErr := runTemplateSyncWithReporter(cmd, nil, true, nil); syncErr != nil {
 		t.Fatalf("runTemplateSyncWithReporter: %v\noutput: %s\nstderr: %s", syncErr, buf.String(), errBuf.String())
 	}
 	return buf.String()

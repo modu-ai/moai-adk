@@ -18,6 +18,8 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+
+	"github.com/modu-ai/moai-adk/internal/bugreport"
 	"io"
 	"os"
 	"path/filepath"
@@ -424,6 +426,7 @@ func (c *codexStopChain) advisoryMember(ctx context.Context, n int) stopMemberOu
 	go func() {
 		defer func() {
 			if r := recover(); r != nil {
+				bugreport.Capture(bugreport.KindPanic, nil, "", nil)
 				done <- result{err: fmt.Errorf("panic: %v", r), sentAt: time.Now()}
 			}
 		}()

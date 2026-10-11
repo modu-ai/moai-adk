@@ -46,6 +46,7 @@ var sinkRegistry = []string{
 	"permission.log",                // internal/permission/conflict.go
 	"slot-lease-audit.jsonl",        // internal/factory/slot_lease.go
 	"task-metrics.jsonl",            // internal/hook/post_tool_metrics.go
+	"codex-review-bg.log",           // internal/cli/codex_review_delay.go (the review gate's detached background review)
 }
 
 // sinkSet is the lookup form of the registry.

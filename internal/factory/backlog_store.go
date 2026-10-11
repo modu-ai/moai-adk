@@ -964,6 +964,31 @@ func (l *LockedBacklog) LoadPure() (*BacklogRecord, error) {
 	return l.s.LoadPure()
 }
 
+// Claim is the lock-held form of BacklogStore.Claim: the CAS+lease body is
+// identical, but the caller already holds the queue lock and needs the
+// claim and its follow-up writes (the dispatch binding) to land under that
+// one held lock — a claim whose binding update can interleave with a
+// concurrent completion would let the old run's approval close new work
+// (SPEC-FACTORY-COMPLETION-RECOVERY-001 review round-16 P1-1).
+func (l *LockedBacklog) Claim(holder string) (*BacklogClaim, error) {
+	if strings.TrimSpace(holder) == "" {
+		holder = BacklogOperatorHolder
+	}
+	var result *BacklogClaim
+	err := l.Mutate(func(rec *BacklogRecord) error {
+		res, err := claimBacklogMutation(rec, holder, time.Now().UTC())
+		if err != nil {
+			return err
+		}
+		result = res
+		return nil
+	})
+	if err != nil {
+		return nil, err
+	}
+	return result, nil
+}
+
 // Mutate is today's Mutate body without the lock acquisition: it loads the
 // record, applies mutate in place, and atomically writes the result. Returning
 // an error from mutate aborts with the file unchanged.
@@ -1198,48 +1223,56 @@ func (s *BacklogStore) Claim(holder string) (*BacklogClaim, error) {
 	if strings.TrimSpace(holder) == "" {
 		holder = BacklogOperatorHolder
 	}
-	now := time.Now().UTC()
-	expiry := now.Add(config.DefaultFactoryLeaseDuration).Format(time.RFC3339)
-	stamp := now.Format(time.RFC3339)
 	var result *BacklogClaim
 	err := s.Mutate(func(rec *BacklogRecord) error {
-		reclaimed := reclaimExpiredBacklogLeases(rec, now)
-		for i := range rec.Items {
-			// POSITIVE enumeration (REQ-TCL-011): only state=='queued' is
-			// claimable; every other state — a future one included — falls
-			// through the selection and refuses below.
-			if rec.Items[i].State != BacklogStateQueued {
-				continue
-			}
-			it := &rec.Items[i]
-			it.State = BacklogStatePicked
-			it.PickedBy = &holder
-			it.LeaseExpiresAt = &expiry
-			it.PickedAt = &stamp
-			result = &BacklogClaim{Item: *it, Reclaimed: reclaimed}
-			return nil
+		res, err := claimBacklogMutation(rec, holder, time.Now().UTC())
+		if err != nil {
+			return err
 		}
-		if reclaimed != nil {
-			// Unreachable: a reclaim leaves a queued card, which the loop
-			// above would have claimed. Kept as the race-free guarantee that
-			// a claim over its own reclamation never reports failure.
-			result = &BacklogClaim{Item: rec.Items[0], Reclaimed: reclaimed}
-			return nil
-		}
-		for _, it := range rec.Items {
-			if it.State == BacklogStatePicked {
-				// A picked card survived the expiry-first pass: its lease is
-				// live — this claim lost (REQ-TCL-006).
-				return fmt.Errorf("%w: %s is held by %s until %s", ErrClaimRaced,
-					it.ID, derefOr(it.PickedBy, "unknown"), derefOr(it.LeaseExpiresAt, "unknown"))
-			}
-		}
-		return ErrClaimNoCard
+		result = res
+		return nil
 	})
 	if err != nil {
 		return nil, err
 	}
 	return result, nil
+}
+
+// claimBacklogMutation is the CAS+lease claim body shared by the
+// store-level Claim (self-locking) and the lock-held LockedBacklog.Claim.
+func claimBacklogMutation(rec *BacklogRecord, holder string, now time.Time) (*BacklogClaim, error) {
+	expiry := now.Add(config.DefaultFactoryLeaseDuration).Format(time.RFC3339)
+	stamp := now.Format(time.RFC3339)
+	reclaimed := reclaimExpiredBacklogLeases(rec, now)
+	for i := range rec.Items {
+		// POSITIVE enumeration (REQ-TCL-011): only state=='queued' is
+		// claimable; every other state — a future one included — falls
+		// through the selection and refuses below.
+		if rec.Items[i].State != BacklogStateQueued {
+			continue
+		}
+		it := &rec.Items[i]
+		it.State = BacklogStatePicked
+		it.PickedBy = &holder
+		it.LeaseExpiresAt = &expiry
+		it.PickedAt = &stamp
+		return &BacklogClaim{Item: *it, Reclaimed: reclaimed}, nil
+	}
+	if reclaimed != nil {
+		// Unreachable: a reclaim leaves a queued card, which the loop
+		// above would have claimed. Kept as the race-free guarantee that
+		// a claim over its own reclamation never reports failure.
+		return &BacklogClaim{Item: rec.Items[0], Reclaimed: reclaimed}, nil
+	}
+	for _, it := range rec.Items {
+		if it.State == BacklogStatePicked {
+			// A picked card survived the expiry-first pass: its lease is
+			// live — this claim lost (REQ-TCL-006).
+			return nil, fmt.Errorf("%w: %s is held by %s until %s", ErrClaimRaced,
+				it.ID, derefOr(it.PickedBy, "unknown"), derefOr(it.LeaseExpiresAt, "unknown"))
+		}
+	}
+	return nil, ErrClaimNoCard
 }
 
 // @MX:ANCHOR: [AUTO] RenewLease — the holder-checked lease extension

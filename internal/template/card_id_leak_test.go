@@ -42,7 +42,10 @@ var cardIDBaseline = []cardIDBaselineEntry{
 	{".claude/rules/moai/workflow/auto-semantics.md", "t1393"},
 	{".claude/rules/moai/workflow/factory-dispatch-detail.md", "t133"},
 	{".claude/rules/moai/workflow/factory-dispatch-detail.md", "t224"},
-	{".claude/rules/moai/workflow/factory-dispatch.md", "t1330"},
+	// (".claude/rules/moai/workflow/factory-dispatch.md", "t1330") DELETED
+	// (card t1469 gate repair): the M3-migrated precedent sentence was
+	// neutralized — the card id left the file, and the removal-only baseline
+	// demands its entry's deletion so a re-introduced citation is flagged.
 	{".claude/rules/moai/workflow/session-handoff-format.md", "t1303"},
 	{".claude/rules/moai/workflow/worktree-integration-ops.md", "t529"},
 	{".claude/rules/moai/workflow/worktree-integration-ops.md", "t741"},

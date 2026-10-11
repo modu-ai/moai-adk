@@ -28,7 +28,6 @@ import (
 
 	"github.com/mark3labs/mcp-go/mcp"
 
-	"github.com/modu-ai/moai-adk/internal/hook"
 	mcpcat "github.com/modu-ai/moai-adk/internal/mcp"
 )
 
@@ -384,13 +383,15 @@ func TestSelfReview_CodexUncommittedRequestShapeIsTheGatesTreeRequest(t *testing
 	writeCardFile(t, plainCanon, filepath.Join(".moai", "config", "sections", "workflow.yaml"),
 		"workflow:\n  codex:\n    review_gate:\n      primary_scope: review\n")
 
-	// The gate's own request for the same plain tree is the reference.
+	// The review request for the same plain tree is the reference — the
+	// receipt producer assembles it now (M2, SPEC-GATE-BOTTLENECK-001
+	// REQ-GBN-002; the gate resolves the scope and kicks).
 	gateSess := withCodexSession(t, codexSessionScript(realCleanReview))
-	if _, err := HandleCodexReviewGate(&hook.HookInput{SessionID: "ref", CWD: plainCanon}, true, plainCanon); err != nil {
-		t.Fatalf("gate: %v", err)
+	if _, err := produceCodexReviewReceipt(context.Background(), plainCanon); err != nil {
+		t.Fatalf("producer: %v", err)
 	}
 	if len(gateSess.sent) < 3 {
-		t.Fatalf("fixture error: the gate sent %d requests", len(gateSess.sent))
+		t.Fatalf("fixture error: the producer sent %d requests", len(gateSess.sent))
 	}
 	gateThread, gateReview := gateSess.sent[1], gateSess.sent[2]
 

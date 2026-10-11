@@ -9,6 +9,13 @@ statusline:
   #   github | gitlab | none
   # An unrecognised value renders nothing rather than falling back to
   # detection, so a typo shows as an absent segment instead of a wrong count.
+  #
+  # Where to put the key: this file is template-managed — `moai update` wipes
+  # and redeploys the whole .moai/config root, so a value uncommented here
+  # vanishes on the next update. The update-durable home is
+  # .moai/statusline.local.yaml (directly under .moai/, outside the wiped
+  # root): the same `statusline.forge` key, and the local file wins when both
+  # are set.
   # forge: gitlab
 
   # Individual segment toggles — the only runtime lever.

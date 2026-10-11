@@ -1,9 +1,11 @@
 package hook
 
 import (
+	"errors"
 	"fmt"
 	"log/slog"
 	"strings"
+	"time"
 
 	"github.com/modu-ai/moai-adk/internal/auditreceipt"
 )
@@ -113,9 +115,34 @@ func recordAuditorStart(input *HookInput) {
 		// background auditor of the session: an existing marker keeps the
 		// earliest start, so a second concurrent spawn does not move
 		// StartedAt forward past receipts the first instance will cite.
-		if _, err := auditreceipt.ReadStartMarker(g.store, key); err == nil {
-			return
+		// Every start still counts on the instance ledger
+		// (SPEC-RECEIPT-REUSE-001): the outstanding count is what tells a
+		// single-live end from an ambiguous one.
+		if err := auditreceipt.RecordInstanceStart(g.store, key, auditreceipt.Now()); err != nil {
+			slog.Warn("auditor start not counted", "agent_id", key, "error", err)
+			// The dropped start makes the outstanding count short: mark the
+			// key duratively so no later end advances the boundary on a count
+			// known to be incomplete (post-sync review P2-2). Best-effort —
+			// if even the mark fails, only this log remains.
+			if merr := auditreceipt.MarkInstanceStartUncertain(g.store, key); merr != nil {
+				slog.Warn("auditor start uncertainty not marked", "agent_id", key, "error", merr)
+			}
 		}
+		// The anchor write is a keep-earliest CAS under the key's lock: two
+		// concurrent same-session starts cannot both observe the marker
+		// absent and let the later write overwrite the earliest StartedAt
+		// (post-sync review r3 — the race refused a legitimate receipt
+		// minted between the two starts).
+		m := auditreceipt.StartMarker{
+			AgentID:   key,
+			AgentType: input.AgentType,
+			SessionID: input.SessionID,
+			TreeRoot:  g.tree,
+		}
+		if err := auditreceipt.EnsureStartMarker(g.store, &m); err != nil {
+			slog.Warn("auditor start marker not recorded", "agent_id", key, "tree_root", g.tree, "error", err)
+		}
+		return
 	}
 	m := auditreceipt.StartMarker{
 		AgentID:   key,
@@ -125,6 +152,14 @@ func recordAuditorStart(input *HookInput) {
 	}
 	if err := auditreceipt.WriteStartMarker(g.store, &m); err != nil {
 		slog.Warn("auditor start marker not recorded", "agent_id", key, "tree_root", g.tree, "error", err)
+		// The failed marker save leaves a durable trace for this agent id: an
+		// id-bearing (foreground) instance is live WITHOUT a background
+		// ledger start, and its end must contribute nothing to that ledger
+		// even when background survivors leave the room test unguarded
+		// (post-sync repair r5 supplement 3). Best-effort.
+		if merr := auditreceipt.MarkForegroundMarkerFailure(g.store, m.AgentID); merr != nil {
+			slog.Warn("foreground marker failure not traced", "agent_id", key, "error", merr)
+		}
 	}
 }
 
@@ -146,6 +181,7 @@ func checkAuditorStop(input *HookInput) *HookOutput {
 		if !g.assumed() {
 			_, key := readStartMarker(g.store, input)
 			consumeStartMarker(g.store, key)
+			recordAuditorEnd(g.store, endAggregationKey(g.store, input, key))
 		}
 		return nil
 	}
@@ -164,7 +200,24 @@ func checkAuditorStop(input *HookInput) *HookOutput {
 		cause = auditreceipt.GateAssumedRequiredNote + ", so no audit receipt can be recorded or checked for this tree"
 	case parsed:
 		start, foundKey := readStartMarker(g.store, input)
-		ok, failure := auditreceipt.CheckCitedReceipts(g.store, start, cited)
+		boundary, berr := instanceEndBoundary(g.store, foundKey)
+		if berr != nil {
+			// Fail closed (SPEC-RECEIPT-REUSE-001, --security --deep): an
+			// unreadable ledger or pending end record makes the boundary
+			// unknowable, and unknowable is not zero — zero would wave the
+			// predecessor era through. The refusal names the condition the
+			// operator fixes, the same reading checkAuditReceiptSpawn applies
+			// to unreadable rejection records.
+			slog.Warn("instance boundary unknowable", "agent_id", foundKey, "error", berr)
+			cause = auditreceipt.CauseInstanceLedgerUnreadable
+			if errors.Is(berr, auditreceipt.ErrPendingEndUnreadable) {
+				cause = auditreceipt.CauseInstancePendingUnreadable
+			} else if errors.Is(berr, auditreceipt.ErrPendingEndUnresolved) {
+				cause = auditreceipt.CauseInstancePendingUnresolved
+			}
+			break
+		}
+		ok, failure := auditreceipt.CheckCitedReceiptsSince(g.store, start, boundary, cited)
 		if ok {
 			// A proven PASS clears this role's outstanding refusals in THIS tree —
 			// the other SPECs' and the unknown-spec one included (operator
@@ -175,6 +228,7 @@ func checkAuditorStop(input *HookInput) *HookOutput {
 				slog.Warn("audit rejections not cleared", "agent_type", input.AgentType, "tree_root", g.tree, "error", err)
 			}
 			consumeStartMarker(g.store, foundKey)
+			recordAuditorEnd(g.store, endAggregationKey(g.store, input, foundKey))
 			return nil
 		}
 		cause = failure
@@ -191,6 +245,7 @@ func checkAuditorStop(input *HookInput) *HookOutput {
 		if !g.assumed() {
 			_, key := readStartMarker(g.store, input)
 			consumeStartMarker(g.store, key)
+			recordAuditorEnd(g.store, endAggregationKey(g.store, input, key))
 		}
 		return &HookOutput{SystemMessage: fmt.Sprintf(
 			"%s: this %s PASS is not accepted — %s. Phase-entry spawns (manager-develop / manager-docs / manager-git) stay denied in %s until a PASS citing a valid audit receipt is recorded.",
@@ -280,6 +335,83 @@ func consumeStartMarker(store, key string) {
 	if err := auditreceipt.RemoveStartMarker(store, key); err != nil {
 		slog.Debug("start marker not removed", "agent_id", key, "error", err)
 	}
+}
+
+// endAggregationKey resolves the key a terminal end is counted on: the key
+// the marker was found under when there is one — else the derived session-era
+// key the start's LEDGER record was filed under. The ledger start record does
+// not depend on the marker file, so a marker whose save failed must not
+// orphan the instance's end: a marker-less end would leave a phantom survivor
+// that froze the boundary forever (post-sync repair r5). A stop carrying an
+// agent id whose own marker is missing while a foreground-failure trace
+// exists is a foreground instance whose marker save failed: its start was
+// never counted in the background ledger, so its end contributes nothing —
+// checked BEFORE the marker-less fallback, which would otherwise attribute
+// the end to a live background instance's anchor (post-sync repair r5
+// supplement 3, gate round 33) or count it into that instance's ledger
+// outright (post-sync repair r8, gate round 37).
+func endAggregationKey(store string, input *HookInput, foundKey string) string {
+	// The foreground-failure trace vetoes every attribution path: an
+	// agent-id-bearing instance whose marker save failed has no start counted
+	// in the background ledger, so its end contributes nothing there —
+	// whether the marker lookup found a sibling's derived anchor or found
+	// nothing at all.
+	if id := strings.TrimSpace(input.AgentID); id != "" {
+		if failed, err := auditreceipt.ForegroundMarkerFailed(store, id); err == nil && failed {
+			return ""
+		}
+	}
+	if foundKey == "" {
+		return auditreceipt.StartMarkerKey("", input.SessionID, input.AgentType)
+	}
+	return foundKey
+}
+
+// recordAuditorEnd counts a terminal instance end on the derived key's
+// instance ledger (SPEC-RECEIPT-REUSE-001). Only a derived key carries the
+// ledger: an agent-id-keyed marker is the instance's own boundary, consumed at
+// its own stop. A first-stop block is deliberately NOT terminal — the
+// instance continues and must stay able to prove the receipt it mints then
+// (REQ-RR-005) — so the call sites are exactly the accepted PASS, the FAIL
+// verdict, and the re-entry refusal.
+func recordAuditorEnd(store, key string) {
+	if key == "" || !auditreceipt.IsDerivedMarkerKey(key) {
+		return
+	}
+	if err := auditreceipt.RecordInstanceEnd(store, key, auditreceipt.Now()); err != nil {
+		// RecordInstanceEnd parks the end as a pending record carrying the
+		// judgment made at end time (post-sync repair r5 supplement 3); a
+		// pending whose own mark fails is lost to the ledger — the documented
+		// no-record residual, logged here as the only trace.
+		slog.Warn("auditor end not counted", "agent_id", key, "error", err)
+	}
+}
+
+// instanceEndBoundary returns the end-event boundary a citation judged against
+// the marker found under key must respect (SPEC-RECEIPT-REUSE-001), or the
+// error when the ledger exists but cannot be read — the caller fails closed on
+// that. A zero boundary with no error means no single-live predecessor end has
+// sealed the era, and the anchor's own StartedAt is the only fence, as before.
+// Only a derived key carries a ledger: an agent-id-keyed marker starts with
+// its instance, so its before-start fence already covers predecessor receipts.
+func instanceEndBoundary(store, key string) (time.Time, error) {
+	if key == "" || !auditreceipt.IsDerivedMarkerKey(key) {
+		return time.Time{}, nil
+	}
+	// A pending end mark that exists but is not yet folded into the ledger —
+	// readable or not — leaves the boundary older than the true last terminal
+	// end: hold the approval rather than judge against the stale boundary
+	// (post-sync repair r4 + r5 supplement 2). An unreadable mark cannot be
+	// applied at all; a readable one is applied by the next ledger operation,
+	// so that hold resolves itself.
+	if hold := auditreceipt.PendingEndHold(store, key); hold != nil {
+		return time.Time{}, hold
+	}
+	l, err := auditreceipt.ReadInstanceLedger(store, key)
+	if err != nil {
+		return time.Time{}, err
+	}
+	return l.EndedAt, nil
 }
 
 // checkAuditReceiptSpawn is the PreToolUse consumer (REQ-CAG-014). It returns

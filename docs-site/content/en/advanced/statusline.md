@@ -122,6 +122,14 @@ statusline:
 | `none` (or `off`) | No counting — the pair is dropped entirely (not `-/-`) |
 | Any other value | No counting, and **no fall back to detection** — the pair is dropped entirely |
 
+**Where to put the key.** `statusline.yaml` is template-managed: `moai update` wipes and redeploys the whole `.moai/config` root, so a value added there by hand vanishes on the next update. The update-durable home is `.moai/statusline.local.yaml` — directly under `.moai/`, outside the wiped root — carrying the same `statusline.forge` key. The local file wins when both are present; the managed one stays as the fallback.
+
+```yaml
+# .moai/statusline.local.yaml — survives `moai update`
+statusline:
+  forge: gitlab    # github | gitlab | none
+```
+
 That last row matters. On a typo, quietly counting against whatever the hostname suggested would make a wrong number look right. So an unrecognised value surfaces neither as a number nor as `-/-`, but as **an absent pair**. No warning is printed; that absence is the symptom, and it traces straight back to the value just typed.
 
 A self-hosted instance carries no signal in its name: a company GitLab at `git.example.com` is indistinguishable in shape from a company GitHub Enterprise. Only the two public hosts are auto-detected; anything else waits for this key rather than being guessed at.

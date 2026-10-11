@@ -156,7 +156,7 @@ func settingsTabDesc(tabID string) string {
 	case "crosssession":
 		return "How launched sessions treat messages from your other sessions."
 	case "feedback":
-		return "Feedback target repository and pre-submission confirmation."
+		return "Feedback target repository, the pre-submission confirmation toggle, and the opt-in automatic improvement participation (its value lives in your user-scoped moai home, not this project)."
 	case "gate":
 		return "Commit-time quality gate posture."
 	default:

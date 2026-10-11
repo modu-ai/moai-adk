@@ -122,6 +122,14 @@ statusline:
 | `none` (또는 `off`) | 세지 않습니다 — 쌍이 통째로 사라집니다(`-/-`가 아닙니다) |
 | 그 밖의 값 | **탐지로 되돌아가지 않고** 세지 않습니다 — 쌍이 통째로 사라집니다 |
 
+**키를 어디에 둘 것인가.** `statusline.yaml`은 템플릿이 관리하는 파일이라 `moai update`가 `.moai/config` 뿌리를 통째로 다시 배포하면서, 여기 손으로 넣은 값은 다음 update에서 사라집니다. update를 견디는 자리는 `.moai/statusline.local.yaml`입니다 — 지워지지 않는 `.moai/` 바로 아래(`config/` 밖)에 같은 `statusline.forge` 키를 두면 됩니다. 두 파일이 모두 있으면 로컬 파일이 이기고, 관리 파일은 대체 수단으로 남습니다.
+
+```yaml
+# .moai/statusline.local.yaml — moai update가 지우지 않는 자리
+statusline:
+  forge: gitlab    # github | gitlab | none
+```
+
 마지막 줄이 중요합니다. 오타를 냈을 때 호스트 이름이 시사하는 쪽으로 조용히 세어 버리면 틀린 숫자가 맞는 것처럼 보입니다. 그래서 알 수 없는 값은 숫자도 `-/-`도 아닌 **사라진 쌍**으로 나타납니다. 경고 메시지는 따로 없고, 그 부재가 방금 적은 설정 값을 곧장 되짚게 하는 증상입니다.
 
 자체 호스팅 인스턴스는 이름만으로 구분이 되지 않습니다 — 사내 GitLab `git.example.com`과 사내 GitHub Enterprise는 주소 모양이 같습니다. 그래서 공개 호스트 두 곳만 자동 판별하고, 그 밖에는 추측하지 않고 이 키를 기다립니다.

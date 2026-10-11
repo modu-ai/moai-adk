@@ -132,6 +132,14 @@ func TestSchemaPerFieldInvariants(t *testing.T) {
 			if f.Persist.Section == "" || len(f.Persist.Path) == 0 {
 				t.Errorf("field %q (seam) has empty Persist.Section/Path", f.Name)
 			}
+		case PersistUserScoped:
+			// SPEC-FEEDBACK-PARTICIPATION-001: the value persists to the
+			// user-scoped consent file and has NO project location — Section,
+			// Key, and Path all stay empty by design (sectionFileFor returns
+			// "").
+			if f.Persist.Section != "" || f.Persist.Key != "" || len(f.Persist.Path) != 0 {
+				t.Errorf("field %q (user-scoped) carries a project location %+v; it must have none", f.Name, f.Persist)
+			}
 		default:
 			t.Errorf("field %q has unknown Persist.Kind %q", f.Name, f.Persist.Kind)
 		}

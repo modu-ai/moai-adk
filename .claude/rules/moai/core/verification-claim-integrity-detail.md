@@ -89,12 +89,12 @@ item back — a scan in the shipped `plan/context-discovery.md` that globbed
 feature from every distributed user", and recommended a separate retirement SPEC instead.
 
 That premise was never checked. The orchestrator had verified the scan was *reachable*
-(`plan.md`'s routing table points at it) and had read that `SPEC-V3R3-BRAIN-001` still carried
+(`plan.md`'s routing table points at it) and had read that the originating brain SPEC still carried
 `status: implemented`, then treated both facts as evidence the feature was live. Neither establishes
 that. When the producers were finally enumerated, every one was already gone: the `/moai brain`
 command, `workflows/brain.md`, the `manager-brain` agent, the `moai brain` CLI, the
 `/moai project --from-brain` flag, the `templates/.moai/brain/` scaffold, and the docs-site pages in
-all four locales. `SPEC-SUBCOMMAND-RETIRE-001` (status: completed) had retired the feature from the
+all four locales. A later retirement SPEC (status: completed) had retired the feature from the
 template source permanently, for all distributed users, and a later cleanup commit had swept the
 orphans that retirement left behind. The scan simply survived both passes. With no producer and no
 scaffold, the glob could only ever return zero on a user's machine.
@@ -107,13 +107,12 @@ retirement SPEC. An objection whose premise was never verified is an unobserved 
 
 ## Moving-ref predicate — the four tests, the grounded instances, and the detection limits
 
-> Relocated from the stub's §2.1 by card t492 (always-loaded surface diet), extended by card t908
-> with the remediation layer t492 left out of its approved scope. The stub retains the [HARD]
-> clauses only: the invariant, the read-this-companion pointer, and the classification-is-not-remedy
-> rule. What lives here is the procedure for reaching a class, the four remediation branches with
-> their cost table, the exemption-marker syntax, the adjudicated instances the predicate was derived
-> from, and what a mechanism enforcing it cannot see. Read this section before applying the
-> predicate for the first time, and again before choosing a remedy.
+> Relocated here from the stub's §2.1 to keep the always-loaded surface small. The stub retains the
+> [HARD] clauses only: the invariant, the read-this-companion pointer, and the
+> classification-is-not-remedy rule. What lives here is the procedure for reaching a class, the four
+> remediation branches with their cost table, the exemption-marker syntax, the adjudicated instances
+> the predicate was derived from, and what a mechanism enforcing it cannot see. Read this section
+> before applying the predicate for the first time, and again before choosing a remedy.
 
 ### The four tests
 
@@ -141,7 +140,7 @@ Applied in order. Every test is answerable by reading the sentence the ref appea
 
 ### The four remediation branches
 
-Relocated from the stub by card t908 — the "aggressive layer" card t492 identified and left out of its approved scope. The stub retains the [HARD] invariant, the [HARD] read-this-companion pointer, and the [HARD] classification-is-not-remedy rule; what lives here is the branch table, its cost table, and the exemption-marker syntax. Reaching a remedy without having run the four tests above is indiscriminate pinning by another name.
+Relocated from the stub by a later always-loaded surface diet — the remediation layer the first diet identified and left out of its approved scope. The stub retains the [HARD] clauses only: the invariant, the read-this-companion pointer, and the classification-is-not-remedy rule; what lives here is the branch table, its cost table, and the exemption-marker syntax. Reaching a remedy without having run the four tests above is indiscriminate pinning by another name.
 
 | | Branch | Class | When | Form |
 |---|---|---|---|---|
@@ -184,11 +183,11 @@ A document-wide lint skip is not the exemption path: it silences a whole file, w
 
 **Instance 1 — provenance narrative.** The claim's subject is what `origin/main` *currently carries*. Substituting a SHA converts "what mainline carries" into "what this one commit carried" — different and weaker. → **SUBJECT / S1 → R3.**
 
-**Instance 2 — a line number as the subject of a correction** (`SPEC-GRAPH-FRESHNESS-CADENCE-001`, whose citation refresh deliberately left three source coordinates unrefreshed because they were the *subject* of an audit finding rather than addresses into the tree). Substituting the current coordinate destroys the record of the miscitation. → **SUBJECT / S1 → R3.** This instance establishes the predicate's generality beyond git refs.
+**Instance 2 — a line number as the subject of a correction** (a cadence SPEC whose citation refresh deliberately left three source coordinates unrefreshed because they were the *subject* of an audit finding rather than addresses into the tree). Substituting the current coordinate destroys the record of the miscitation. → **SUBJECT / S1 → R3.** This instance establishes the predicate's generality beyond git refs.
 
 **Instance 3 — a dispatch's base line.** "The tip of develop you will start from", written as a SHA. Test 1 read at read-time: the substitution decays immediately, because the sentence means "whatever the tip is when you enter". Test 3: re-measuring next week gives a different tip **and that variance is the point**. → **SUBJECT / S2 → R4.** This instance is why Test 4 exists. An earlier form of the predicate classified it ANCHOR → R2, which would have had the *dispatcher* freeze a value — the very shape that failed. The defect is not that the wrong SHA was chosen; it is that a value was stated where a command belonged.
 
-**Instance 4 — a quoted command string** (`AC-COORD-016`, which asserts a literal command is preserved verbatim in a document). The ref token sits inside quoted subject matter and no reader measures anything on the strength of it. Test 4: no read-time action. → **SUBJECT / S1 → R3.** This is the class a shape-reading detector most often flags wrongly, and it is what the marker is for.
+**Instance 4 — a quoted command string** (an acceptance criterion asserting that a literal command is preserved verbatim in a document). The ref token sits inside quoted subject matter and no reader measures anything on the strength of it. Test 4: no read-time action. → **SUBJECT / S1 → R3.** This is the class a shape-reading detector most often flags wrongly, and it is what the marker is for.
 
 **Instance 5 — the same case as remedy.** Instance 3 rewritten as a standing dispatch format: *measure at entry with `git fetch origin develop`, dispatch-time reference value `<sha>`*. It is the only one of the five that shows the remedy rather than the defect.
 
@@ -219,3 +218,56 @@ A divergence figure measured once — `git rev-list --count --left-right` return
 Classification: Lazy companion — rationale, elaboration, cross-references, incident records, and
 the §2.1 predicate procedure. Every obligation stays in `verification-claim-integrity.md`: the
 predicate procedure here is HOW a class is reached, never WHETHER it must be applied.
+
+## Migrated from the core body
+
+
+### Verification-Claim Integrity
+
+
+Doctrine establishing the **"no unobserved-verification-claim" invariant** for all MoAI actors. This rule is automatically loaded for the orchestrator and all agents. It is a policy-layer doctrine — it defines the norm; it does not itself run a runtime detector.
+
+
+> The motivating defect class is general: an actor claiming a verification or completion it did not actually observe. A complementary runtime layer (advisory, warn-first, fail-open) may detect one shape of this violation; this doctrine codifies the policy norm that binds every actor regardless of whether such a runtime layer is present.
+
+
+### 1. The Invariant — no unobserved-claim (verification, defect, OR premise)
+
+
+> **Evidence absent ≠ evidence of success — NOR of failure.**
+
+
+This direction is the more dangerous one, because its failure is silent. A wrong "remove it" claim is contradicted by the next build or test run; a wrong "keep it" claim preserves dead code and is never contradicted by any signal at all.
+
+
+This is a policy-layer norm, not a mechanical guarantee. A complementary mechanical-detection layer may surface one shape of this violation at runtime, but the norm binds every actor independently of that layer.
+
+
+### 2.2 Tool-provenance attribution — which build judged the tree
+
+
+The silence is **symmetric**: a stale build and a current build produce the same clean-pass signals, so a green result is evidence only that whatever checks the invoked build carries reported nothing.
+
+
+**Not a substitute for the tooling's own verdict.** Where the tooling already computes a freshness verdict, that verdict is the mechanism; this clause governs the **citation**, and holds whether or not the invoked build is one that reports it. A build old enough to predate the freshness check is exactly the build that cannot warn you about itself.
+
+
+### 3. The 5-Section Evidence-Bearing Report Format
+
+
+What each section contains in full, the cross-reference table, and the two worked-example incident
+records (the defect-claim hazard and the retention-claim hazard the §1 clauses were written from)
+live in the detail companion `verification-claim-integrity-detail.md`. Load it when composing an
+evidence-bearing report for the first time, or when tracing a clause back to its originating
+failure.
+
+
+### 3.1 Refused-tool degradation — a refusal is a Gap, never a silent substitution
+
+
+The hazard is quiet in a specific way: a refusal is loud to the actor when it happens and invisible in the artifact afterwards. An auditor whose command was refused can still reach a PASS by reading source — "confirmed by measurement" becomes "inferred by reading" with nothing in the verdict recording the change. §1 already forbids the resulting claim; this clause fixes WHERE the difference is written down.
+
+
+Version: 1.3.0
+Classification: Canonical Reference (policy-layer codification) — do not duplicate cross-referenced content; cross-reference this file instead.
+

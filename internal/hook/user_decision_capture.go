@@ -24,6 +24,8 @@ package hook
 import (
 	"encoding/json"
 	"fmt"
+
+	"github.com/modu-ai/moai-adk/internal/bugreport"
 	"log/slog"
 	"os"
 	"strings"
@@ -90,6 +92,7 @@ func captureUserDecision(input *HookInput) {
 	// and returns, leaving the caller's allow posture intact.
 	defer func() {
 		if r := recover(); r != nil {
+			bugreport.Capture(bugreport.KindPanic, nil, "", nil)
 			fmt.Fprintf(os.Stderr,
 				"[user-decision-capture] recovered from panic (advisory/fail-open, REQ-ADM-009): %v\n",
 				r)

@@ -7,7 +7,7 @@ draft: false
 MoAI-ADK에 피드백이나 버그 리포트를 제출하는 명령어입니다.
 
 {{< callout type="info" >}}
-**한 줄 요약**: `/moai feedback`은 MoAI-ADK 자체에 대한 개선 제안이나 버그 리포트를 **GitHub 이슈로 자동 생성**해주는 명령어입니다.
+**한 줄 요약**: `/moai feedback`은 MoAI-ADK 자체에 대한 개선 제안이나 버그 리포트를 담아, **확인한 뒤에만 GitHub 이슈**를 만들어주는 명령어입니다.
 {{< /callout >}}
 
 {{< callout type="info" >}}
@@ -196,7 +196,7 @@ flowchart TD
 > /moai feedback
 ```
 
-MoAI 오케스트레이터가 피드백 유형, 제목, 설명을 차례로 물어봅니다. 답을 채워 넣으면 GitHub 이슈가 만들어지고 이슈 URL이 돌아옵니다.
+MoAI 오케스트레이터가 피드백 유형, 제목, 설명을 차례로 물어봅니다. 작성된 이슈를 검토하고 확인한 뒤에만 GitHub 이슈가 만들어지고 이슈 URL이 돌아옵니다.
 
 ```
 GitHub 이슈가 생성되었습니다:

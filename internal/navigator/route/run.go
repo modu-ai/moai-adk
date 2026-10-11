@@ -22,6 +22,8 @@ import (
 
 	"log/slog"
 
+	"github.com/modu-ai/moai-adk/internal/bugreport"
+
 	navsync "github.com/modu-ai/moai-adk/internal/navigator/sync"
 )
 
@@ -49,6 +51,7 @@ const routeTimeout = 500 * time.Millisecond
 func Run(ctx context.Context, projectRoot string) (err error) {
 	defer func() {
 		if r := recover(); r != nil {
+			bugreport.Capture(bugreport.KindPanic, nil, "", nil)
 			slog.Debug("navigator-route: recovered from panic (fail-open)", "recover", r)
 			err = nil
 		}

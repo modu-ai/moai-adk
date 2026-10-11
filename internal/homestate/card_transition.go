@@ -63,12 +63,30 @@ type TransitionRequest struct {
 	// transaction, right before the commit; its reading replaces QueueHold
 	// so a hold set after an earlier read still refuses.
 	QueueHoldRead func() string
+	// ApprovalUUID is the backlog card's identity (its projected card uuid)
+	// for receipt-gated done edges (T18, T20). It is identity knowledge —
+	// never a verdict — and the receipt gate compares it against the
+	// recorded approval so a receipt minted for a different card cannot
+	// complete this one (review round-6 P1-2).
+	ApprovalUUID string
 	// VerifyRemeasure (card t1479, REQ-MWQ-021), when set, replaces the
 	// re-measure FILE read at T16: the caller verifies the RECORD keyed to
 	// the merge commit's tree — a file merely naming the merge SHA as text
 	// is no longer sufficient. Nil keeps the pre-t1479 file read (callers
 	// that predate the record store).
 	VerifyRemeasure func(treeSHA, mergeSHA string) error
+	// BeforeCommit (card t1538, turn-end gate), when set, runs once inside the
+	// transition's transaction — after every guard has passed and the new row
+	// is written, right before the commit; its error rolls the whole
+	// transition back. It orders a write to ANOTHER store ahead of this
+	// commit: the queue's current-dispatch record has to name the run before
+	// the binding moves onto it (T2, T3, T8a re-point the binding in their own
+	// transaction), and only for a transition that will land — a refused
+	// transition never reaches the hook, and a record that cannot be written
+	// stops the transition instead of trailing it. The hook must not touch
+	// this factory database (its transaction is open); next is the row the
+	// transition writes.
+	BeforeCommit func(next Card) error
 	// Now is the injected clock; zero means time.Now().
 	Now time.Time
 }
@@ -99,6 +117,7 @@ const (
 	guardAbandon
 	guardFail
 	guardKickoffAudit
+	guardApprovalDone
 )
 
 type transitionEdge struct {
@@ -136,6 +155,7 @@ func buildTransitionTable() []transitionEdge {
 		{"T16", CardMerging, CardMergedLocal, guardMerge},
 		{"T17", CardMergedLocal, CardPushed, guardPush},
 		{"T18", CardMergedLocal, CardDone, guardNoRemote},
+		{"T20", CardCIGreen, CardDone, guardApprovalDone},
 	}
 	t = append(t, prTransitionEdges()...) // github-flow delivery (card_pr_states.go)
 	t21 := append(append([]string{CardPicked, CardAssigned}, leaseHoldingStates...), CardMergedLocal, CardPushed, CardCIGreen)
@@ -161,7 +181,7 @@ func buildTransitionTable() []transitionEdge {
 }
 
 // TransitionEdges returns the requested edges of the transition table
-// (T2-T26 without the reserved T19/T20; T1 creates a row and T27/T28 are
+// (T2-T26 without the still-reserved T19; T1 creates a row and T27/T28 are
 // automatic, so none of them is a requested pair).
 func TransitionEdges() []TransitionEdge {
 	out := make([]TransitionEdge, 0, len(transitionTable))
@@ -180,8 +200,12 @@ func findEdge(from, to string) (transitionEdge, bool) {
 	return transitionEdge{}, false
 }
 
+// isReservedEdge — pushed → ci-green stays reserved: the CI verdict reader
+// that admits it is M2's (REQ-FCR-010). ci-green → done left the reserved
+// set in M1: the receipt gate inside the transition admits it
+// (guardApprovalDone; REQ-FCR-002b).
 func isReservedEdge(from, to string) bool {
-	return (from == CardPushed && to == CardCIGreen) || (from == CardCIGreen && to == CardDone)
+	return from == CardPushed && to == CardCIGreen
 }
 
 // resumeTarget maps a needs-decision card's recorded resume state onto the
@@ -222,6 +246,16 @@ type transitionPlan struct {
 	// keepColumns leaves every column but state and version as they were
 	// (the operator abandon, which records nothing else about the card).
 	keepColumns bool
+	// approvalRebindTo, when non-zero, re-stamps the leader approval
+	// receipt's factory_version to this value inside the commit transaction
+	// (review round-8 P2-2): a validated approval that a state advance
+	// (T17) would otherwise stale stays bound to the post-transition row.
+	// approvalRebindUUID scopes that re-stamp to the receipt the gate
+	// actually verified (review round-22): a run/card can carry approvals
+	// from several card identities, and an unverified stale one must never
+	// be refreshed back to validity.
+	approvalRebindTo   int64
+	approvalRebindUUID string
 }
 
 // Transition applies one requested card transition as a single transaction:
@@ -248,6 +282,11 @@ func (f *FactoryDB) Transition(ctx context.Context, req TransitionRequest) (Card
 		c, err := transitionTx(ctx, f, tx, req, now)
 		if err != nil {
 			return nil, err
+		}
+		if req.BeforeCommit != nil {
+			if err := req.BeforeCommit(c); err != nil {
+				return nil, err
+			}
 		}
 		result = c
 		return nil, nil
@@ -463,6 +502,20 @@ func (f *FactoryDB) planTransition(ctx context.Context, tx *sql.Tx, cur Card, ed
 				return plan, err
 			}
 		}
+		// The dispatch binding (SPEC-FACTORY-COMPLETION-RECOVERY-001 review
+		// rounds 4-5): T2 records THIS run as the card's current factory
+		// engagement in the SAME transaction as the state change — a failed
+		// assignment leaves the binding exactly as it was, and the assign
+		// command, the dispatch mirror, and factory next all funnel through
+		// this one edge, so no assignment path can leave it behind. The run
+		// row is ensured here too (review P2-2): an assigned card is never
+		// stranded without the metadata its binding names.
+		if err := ensureRunRowTx(ctx, tx, cur.RunID, nowText); err != nil {
+			return plan, err
+		}
+		if err := upsertDispatchBindingTx(ctx, tx, cur.CardID, cur.RunID, nowText); err != nil {
+			return plan, err
+		}
 		plan.next.OwnerLabel = owner
 	case guardLeaseAcquire:
 		label := strings.TrimSpace(req.Actor)
@@ -472,6 +525,17 @@ func (f *FactoryDB) planTransition(ctx context.Context, tx *sql.Tx, cur Card, ed
 		}
 		if label == "" || registered == 0 || label != cur.OwnerLabel {
 			return plan, fmt.Errorf("%w: %q is not the registered owner %q of card %s", ErrLeaseHolder, label, cur.OwnerLabel, cur.CardID)
+		}
+		// The dispatch binding follows the lease (review round-9 P1): the
+		// assigned-candidate path leases through T3, so the binding write
+		// rides the same transaction — a card leased from a run other than
+		// the one its binding names re-points the binding here, atomically
+		// with the state change.
+		if err := ensureRunRowTx(ctx, tx, cur.RunID, nowText); err != nil {
+			return plan, err
+		}
+		if err := upsertDispatchBindingTx(ctx, tx, cur.CardID, cur.RunID, nowText); err != nil {
+			return plan, err
 		}
 		plan.next.LeaseHolder = label
 		plan.next.HeartbeatAt = nowText
@@ -538,6 +602,15 @@ func (f *FactoryDB) planTransition(ctx context.Context, tx *sql.Tx, cur Card, ed
 		if _, err := tx.ExecContext(ctx, `UPDATE workers SET heartbeat_at=? WHERE label=?`, nowText, label); err != nil {
 			return plan, err
 		}
+		// The dispatch binding follows this lease too (review round-10 P1):
+		// T8a leases from a run whose row may sit behind a stale binding —
+		// same transaction, same authority as T2/T3.
+		if err := ensureRunRowTx(ctx, tx, cur.RunID, nowText); err != nil {
+			return plan, err
+		}
+		if err := upsertDispatchBindingTx(ctx, tx, cur.CardID, cur.RunID, nowText); err != nil {
+			return plan, err
+		}
 		clearDecision(&plan.next)
 		plan.next.Stage = CardRun
 		plan.next.Decider, plan.next.DecidedAt = DeciderAudit, nowText
@@ -596,7 +669,19 @@ func (f *FactoryDB) planTransition(ctx context.Context, tx *sql.Tx, cur Card, ed
 			if remote {
 				return plan, fmt.Errorf("%w: merged-local → done is refused while a remote is configured", ErrIllegalTransition)
 			}
-			plan.note = "no remote — no CI verdict"
+			// REQ-FCR-002b: a repository with no remote still does not
+			// complete without the leader's receipt — the gate runs inside
+			// this transition's transaction, so it binds the row as the
+			// transition will commit it.
+			if err := verifyTransitionApproval(ctx, tx, cur, req.ApprovalUUID); err != nil {
+				return plan, err
+			}
+			// Approval chain (review round-8 P2-2): the validated receipt is
+			// re-stamped to the post-transition version in this same
+			// transaction, so the follow-up backlog archive accepts it.
+			plan.approvalRebindTo = cur.Version + 1
+			plan.approvalRebindUUID = strings.TrimSpace(req.ApprovalUUID)
+			plan.note = "no remote — leader approval verified"
 		} else {
 			if !remote {
 				return plan, fmt.Errorf("%w: merged-local → pushed requires a configured remote", ErrIllegalTransition)
@@ -606,8 +691,39 @@ func (f *FactoryDB) planTransition(ctx context.Context, tx *sql.Tx, cur Card, ed
 				return plan, err
 			}
 			plan.evidence["merge_sha"], plan.evidence["remote_ref"] = cur.MergeSHA, ref
+			// Approval chain (review round-8 P2-2): when the caller's uuid
+			// validates the receipt at the PRE-transition version, the T17
+			// version bump would stale it before the follow-up backlog
+			// archive can run. Re-stamp the receipt to the post-transition
+			// version inside this same transaction, so the approved final
+			// state survives the two-surface completion. A receipt that does
+			// not validate here is left untouched — the later done edge
+			// refuses it as usual.
+			if uuid := strings.TrimSpace(req.ApprovalUUID); uuid != "" {
+				if a, err := findLeaderApprovalForCardTx(ctx, tx, cur.RunID, cur.CardID); err == nil {
+					if a.VerifyBinding(uuid, cur.RunID, cur.Version, cur.EvidenceSHA, cur.OwnerLabel) == nil {
+						plan.approvalRebindTo = cur.Version + 1
+						plan.approvalRebindUUID = uuid
+					}
+				} else if !errors.Is(err, ErrApprovalMissing) {
+					return plan, err
+				}
+			}
 		}
 		plan.next.Decider, plan.next.DecidedAt = DeciderHuman, nowText
+	case guardApprovalDone:
+		// T20 (ci-green → done), the reserved edge M1 admits (REQ-FCR-002b,
+		// REQ-FCR-010): the receipt gate inside the transition — a CI reader
+		// never opens a done edge, and nothing else does either.
+		if req.Decider != DeciderHuman {
+			return plan, fmt.Errorf("%w: F1 accepts only decider %q, got %q", ErrDecider, DeciderHuman, req.Decider)
+		}
+		if err := verifyTransitionApproval(ctx, tx, cur, req.ApprovalUUID); err != nil {
+			return plan, err
+		}
+		plan.approvalRebindTo = cur.Version + 1
+		plan.approvalRebindUUID = strings.TrimSpace(req.ApprovalUUID)
+		plan.note = "leader approval verified"
 	case guardQuestion:
 		q := strings.TrimSpace(req.Question)
 		if q == "" {
@@ -660,6 +776,18 @@ func commitTransition(ctx context.Context, tx *sql.Tx, cur Card, plan transition
 	next.UpdatedAt = now.Format(time.RFC3339Nano)
 	if err := updateCardRow(ctx, tx, next, cur.Version); err != nil {
 		return Card{}, err
+	}
+	// The approval chain planned by guardPush: the receipt stays bound to
+	// the post-transition version, committed in this same transaction. The
+	// re-stamp is scoped to the receipt the gate actually verified — a
+	// run/card can carry approvals from several card identities, and an
+	// unverified stale one must never be refreshed back to validity
+	// (review round-22).
+	if plan.approvalRebindTo != 0 {
+		if _, err := tx.ExecContext(ctx, `UPDATE leader_approvals SET factory_version=? WHERE run_id=? AND card_id=? AND card_uuid=?`,
+			plan.approvalRebindTo, cur.RunID, cur.CardID, plan.approvalRebindUUID); err != nil {
+			return Card{}, err
+		}
 	}
 	if err := injectFault("before-event"); err != nil {
 		return Card{}, err

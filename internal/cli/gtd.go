@@ -18,12 +18,25 @@ var gtdIDPattern = regexp.MustCompile(`^gtd-[0-9a-f]{16}$`)
 type gtdCLIOwner struct {
 	readback func() (bool, error)
 	apply    func() error
+	// The dispatch reconciliation identifiers (review round-21): the
+	// assigned card and its run, when this owner performs a dispatch whose
+	// operation Target/MissionID name another vocabulary (the goal
+	// mission's gtd item ref and session). Empty leaves the engine on the
+	// op's own identifiers.
+	reconcileCardID string
+	reconcileRunID  string
 }
 
 func (o gtdCLIOwner) Readback(_ context.Context, _ factory.GTDOperation) (bool, error) {
 	return o.readback()
 }
 func (o gtdCLIOwner) Apply(_ context.Context, _ factory.GTDOperation) error { return o.apply() }
+
+// DispatchReconcileIdentifiers is factory.DispatchIdentifiers (review
+// round-21): the assigned card and its run for a dispatch owner.
+func (o gtdCLIOwner) DispatchReconcileIdentifiers() (string, string) {
+	return o.reconcileCardID, o.reconcileRunID
+}
 
 func printGTD(cmd *cobra.Command, value any, jsonOutput bool) error {
 	if jsonOutput {
@@ -45,20 +58,23 @@ func requireGTDID(id string) error {
 	return nil
 }
 
-// NewGTDCommand returns the canonical user-facing name for the established
-// queue command. The entire verb tree is built by newTodoCmd so gtd and the
-// compatibility todo spelling cannot acquire different handlers or flags.
+// NewGTDCommand mounts the established queue command under `gtd`, the fully
+// supported compatibility alias of the canonical `todo` spelling. The entire
+// verb tree is built by newTodoCmd so todo and the compatibility gtd spelling
+// cannot acquire different handlers or flags.
 // Internal package names and the on-disk todo/backlog.db location deliberately
 // remain unchanged.
 func NewGTDCommand() *cobra.Command {
 	cmd := newTodoCmd()
 	cmd.Use = "gtd"
-	cmd.Short = "Operate the GTD-managed backlog queue"
+	cmd.Short = "Operate the backlog queue (compatibility alias of moai todo)"
 	cmd.Long = `Manage captured work through Capture, Clarify, Organize, Reflect, and Engage.
 
+This is the compatibility alias of the canonical moai todo command — same
+database, same card identities, same ordering, archive, and restore path.
 Captured GTD items stay separate from the established development queue. Only
 an explicitly approved Engage operation may publish into the same backlog.db
-used by the todo compatibility command; the queue's existing states, IDs,
+used by the canonical todo command; the queue's existing states, IDs,
 ordering, archive, and restore behavior remain unchanged.`
 	cmd.AddCommand(newGTDCaptureCmd(), newGTDClarifyCmd(), newGTDOrganizeCmd(), newGTDReflectCmd(), newGTDEngageCmd(), newGTDAnswerCmd())
 	return cmd
@@ -255,6 +271,13 @@ func newGTDEngageCmd() *cobra.Command {
 				return false, nil
 			}, apply: func() error {
 				root := resolveTodoQueueRoot()
+				// The assignment primitive carries the dispatch binding in
+				// its own queue-lock critical section (review round-20 P1):
+				// the completion path cannot interleave between the save
+				// and the re-point, and even when the mirror fails
+				// (FACTORY_RECORD_UNAVAILABLE) the old run's approval is
+				// inert — the completion gate resolves the NEW run and
+				// refuses.
 				if err := factory.RecordFactoryCardAssignment(root, runID, result.CardID, lane, ""); err != nil {
 					return err
 				}

@@ -88,6 +88,11 @@ var schemaFieldBridge = map[string]func(t profileSetupText) uikit.TuiLabel{
 	"f.git_convention.validation.enforce_on_push": func(t profileSetupText) uikit.TuiLabel {
 		return uikit.TuiLabel{Title: t.GitEnforceOnPushTitle, Desc: t.GitEnforceOnPushDesc}
 	},
+	// Feedback (SPEC-FEEDBACK-PARTICIPATION-001): the opt-in toggle renders in
+	// the web settings schema like every other bool.
+	"f.feedback.participation": func(t profileSetupText) uikit.TuiLabel {
+		return uikit.TuiLabel{Title: t.ParticipationTitle, Desc: t.ParticipationDesc}
+	},
 }
 
 // schemaSegmentBridge는 16개 statusline 세그먼트의 스키마 키(예: "seg.git_branch")를

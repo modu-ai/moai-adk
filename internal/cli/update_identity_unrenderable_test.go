@@ -83,7 +83,7 @@ func runForcedTemplateSyncResult(t *testing.T, root string) (output string, sync
 	cmd.SetContext(context.Background())
 
 	processErr := captureProcessStderr(t, func() {
-		syncErr = runTemplateSyncWithReporter(cmd, nil, true)
+		syncErr = runTemplateSyncWithReporter(cmd, nil, true, nil)
 	})
 	return buf.String() + errBuf.String() + processErr, syncErr
 }

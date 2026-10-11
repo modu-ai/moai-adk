@@ -14,7 +14,12 @@ func TestClaudeAuditTemplateSurfacesAndCatalogHash(t *testing.T) {
 		t.Fatal(err)
 	}
 	for _, path := range []string{
-		".claude/rules/moai/core/moai-mcp-tools.md",
+		// SPEC-ALWAYS-LOADED-BUDGET-001 M3/M4 location update (card t1469):
+		// the Claude audit contract moved with the MCP tool catalogue to the
+		// detail companion; the stub carries only the family pointer. The
+		// assertion's meaning is unchanged — the deployed tree carries the
+		// contract — only the file it is read from moves.
+		".claude/rules/moai/core/moai-mcp-tools-catalogue.md",
 		".claude/rules/moai/core/moai-mcp-tools-catalogue.md",
 		".claude/skills/moai-ref-cross-model-audit/SKILL.md",
 		".claude/agents/moai/plan-auditor.md",

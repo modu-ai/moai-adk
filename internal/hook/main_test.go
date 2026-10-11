@@ -81,6 +81,10 @@ func TestMain(m *testing.M) {
 	_ = os.Unsetenv(config.EnvClaudeProjectDir)
 	_ = os.Unsetenv("MOAI_PROFILE_LEASE_TOKEN")
 	_ = os.Unsetenv(config.EnvClaudeConfigDir)
+	// SPEC-TEST-ENV-HERMETIC-001 M3: strip the lane-gate family axes before
+	// the first test runs, beside the CLAUDE_PROJECT_DIR scrub above; the
+	// guard pair in lane_env_axes_test.go keeps the declared set honest.
+	scrubLaneEnvAxes()
 	// Git fixtures must not inherit a hook's or lane's repository (GH #1691).
 	if err := gitenv.ScrubProcess(); err != nil {
 		fmt.Fprintf(os.Stderr, "TestMain: %v\n", err)

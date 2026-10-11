@@ -50,7 +50,6 @@ Rules:
 - To supersede a lesson, add `[SUPERSEDED by #{new_lesson_number}]` prefix to the old entry
 - Session start: scan lessons for patterns matching current task domain
 - Repo-local lessons inbox (`.moai/lessons-inbox.jsonl`): tool failures and test failures append structured stubs (timestamp, event_key, summary, source) here as they occur — the two wired families are `tool_failure:<tool>:<sig>` and `test_fail:<pkg>:`. **Capture scope (capability + composition):** the inbox records failure-event stubs only; it is not a record of defect families that produce neither a tool failure nor a test failure (vacuous green checks, skip-before-verdict, empty-result-set pass conditions, sibling repair misses, moving-ref assertions, stale-value quotations). The human-mediated loop (lane discovery → factory leader judgment → auto-memory `feedback_*.md` + `MEMORY.md` record) is the learning channel for those tool-invisible families; the measured live composition and its dated baseline live in the learning-channel scope anchor document, not in prose. **Drain actor: the MoAI orchestrator. Drain trigger: when the inbox backlog grows large enough to obscure recurring patterns (a cluster of same-`event_key` stubs), the orchestrator drains these stubs into topic-file lesson entries as part of the Lessons Protocol — converting each recurring `event_key` cluster into one candidate `feedback_*.md` topic file before human review, and discarding one-off noise (single-occurrence stubs with no recurring pattern). Drained stubs are marked (the drain-marking mechanism is an implementation detail).**
-  - Scope anchor (maintainer repository): `.moai/docs/learning-channel-scope.md` — full bounded claim, dated baseline, re-verification commands.
 
 Harness Edit Discipline (decision observability):
 - Harness surface tag: each lesson entry SHOULD carry a `surface:` tag naming the harness component it binds to (rule / agent / skill / hook / config / template / workflow) — enables clustering recurring failures by component
@@ -83,3 +82,59 @@ Integration Points:
 
 Classification: Lazy companion — model-tier guidance and lesson-handling procedure only. Every core
 principle and every Agent Core Behavior stays in `moai-constitution.md`.
+
+## Migrated from the core body
+
+
+### Opus 5.5 Prompt Philosophy
+
+
+Rationale and the model-id table: `moai-constitution-detail.md` § Opus 5.5 Prompt Philosophy.
+
+
+### Lessons Protocol
+
+
+Categories, the file cap and archive path, the repo-local inbox drain contract, auto-capture
+triggers, the domain-matching algorithm, and the workflow integration points:
+`moai-constitution-detail.md` § Lessons Protocol.
+
+
+### Agent Core Behaviors
+
+
+Six cross-cutting HARD behaviors that apply to all agents regardless of active skill or workflow phase. These supplement the per-skill rules defined in individual SKILL.md files.
+
+
+### 1. Surface Assumptions [ZONE:Evolvable] [HARD]
+
+
+Format:
+```
+ASSUMPTIONS I'M MAKING:
+1. [assumption about requirements]
+2. [assumption about architecture]
+→ Correct me now or I'll proceed with these.
+```
+
+
+Anti-pattern: silently picking one interpretation of ambiguous requirements and running with it. Discovery triggers: AGENTS.md §13 (Context-First Discovery).
+
+
+### 2. Manage Confusion Actively [ZONE:Evolvable] [HARD]
+
+
+Anti-pattern: "I see X in the spec but Y in the existing code" followed by silently choosing Y because it's easier.
+
+
+### 3. Push Back When Warranted [ZONE:Evolvable] [HARD]
+
+
+Anti-pattern: "Of course!" followed by implementing a known-bad idea.
+
+
+### 4. Enforce Simplicity [ZONE:Evolvable] [HARD]
+
+
+The ladder orders reuse before new code or a new dependency, and is language-neutral: "standard library" and "native platform feature" name whichever capability source the project's language provides.
+

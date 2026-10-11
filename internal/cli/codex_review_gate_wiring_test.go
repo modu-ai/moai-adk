@@ -25,11 +25,17 @@ package cli
 
 import (
 	"bytes"
+	"context"
 	"encoding/json"
+	"os"
+	"path/filepath"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/spf13/cobra"
+
+	"github.com/modu-ai/moai-adk/internal/verify"
 )
 
 // newCodexGateCmd builds a throwaway cobra command wired to the
@@ -118,52 +124,60 @@ func TestRunCodexReviewGate_HappyPathAllow(t *testing.T) {
 }
 
 // --- AC-CCR-004: handler error fails open, with the reason on stderr ---
-
-// TestRunCodexReviewGate_HandlerErrorFailsOpen proves a handler error degrades
-// to an empty ALLOW with a diagnostic on stderr, rather than propagating out of
-// Execute() and trapping the Stop pipeline.
 //
-// The stderr assertion is the only discriminator available: the error branch
-// and the success branch write byte-identical {} to stdout, so a stdout-only
-// test would assert nothing about this arm.
-//
-// All three codex seams are swapped together under one t.Cleanup, copied from
-// TestReviewGate_FailOpenOnCodexError (codex_review_gate_test.go). The
-// codexLookPath line is mandatory, not one of three interchangeable seams: the
-// production default is exec.LookPath and the handler consults it at step 4,
-// BEFORE the session starts, so an unswapped fixture performs a real PATH
-// lookup and the verdict then depends on whether the host happens to carry a
-// codex binary.
-func TestRunCodexReviewGate_HandlerErrorFailsOpen(t *testing.T) {
-	dir := writeWorkflowYAML(t, "workflow:\n  codex:\n    review_gate:\n      enabled: true\n")
-	withChangeDetector(t, true)
-	prevRunner, prevLook, prevSess := codexRunner, codexLookPath, codexSession
-	codexRunner = stubCodexRunner{}
-	codexLookPath = func(string) (string, error) { return "/fake/codex", nil }
-	codexSession = &fakeCodexSession{startErr: errFakeCodexCrash}
-	t.Cleanup(func() { codexRunner, codexLookPath, codexSession = prevRunner, prevLook, prevSess })
-
-	cmd, out, errOut := newCodexGateCmd(codexGatePayload(t, "sess-err", dir))
-	if err := cmd.Execute(); err != nil {
-		t.Fatalf("handler error must not error out of Execute (fail-open); got %v", err)
-	}
-	assertAllowJSON(t, out.String())
-	if !strings.Contains(errOut.String(), "codex-review-gate: error:") {
-		t.Errorf("stderr must carry the handler-error diagnostic, got %q", errOut.String())
-	}
-}
+// M2 note (SPEC-GATE-BOTTLENECK-001): the dedicated handler-error wiring test
+// retired with the in-hook live review — HandleCodexReviewGate no longer has
+// a reachable error return (every path is an allow or a cached-verdict block),
+// so the RunE error branch is defensive only. Its behavior (emit {} on the
+// error path) is byte-identical to the invalid-stdin path above, which stays
+// tested.
 
 // --- AC-CCR-005: BLOCK propagates through the RunE ---
 
 // TestRunCodexReviewGate_BlockVerdictPropagates proves the RunE forwards the
 // handler's BLOCK to stdout rather than substituting an ALLOW: with the gate
-// enabled, a reviewable change present, and a canned session whose review text
-// carries severity-tagged finding bullets, stdout decodes to
-// {decision: "block", reason: ...}.
+// enabled and a fresh FAIL receipt recorded for the current tree key, stdout
+// decodes to {decision: "block", reason: ...}. M2 (REQ-GBN-002): the BLOCK
+// rides the cached-verdict path — the in-hook live review is gone.
 func TestRunCodexReviewGate_BlockVerdictPropagates(t *testing.T) {
-	dir := writeWorkflowYAML(t, "workflow:\n  codex:\n    review_gate:\n      enabled: true\n")
+	dir := cacheTestRoot(t)
+	withFixedVersionProbe(t)
+	withPrimaryScopeReview(t)
 	withChangeDetector(t, true)
-	withCodexSession(t, codexSessionScript("- [P1] found issues\n- [P2] more issues"))
+	withCodexLookPath(t, func(string) (string, error) { return "/fake/codex", nil })
+	withCodexRunner(t, &fakeCodexRunner{stdoutByCmd: map[string]string{"--version": "9.9.9\n"}})
+	cfgDir := filepath.Join(dir, ".moai", "config", "sections")
+	if err := os.MkdirAll(cfgDir, 0o755); err != nil {
+		t.Fatalf("mkdir config sections: %v", err)
+	}
+	if err := os.WriteFile(filepath.Join(cfgDir, "workflow.yaml"),
+		[]byte("workflow:\n  codex:\n    review_gate:\n      enabled: true\n"), 0o644); err != nil {
+		t.Fatalf("write workflow.yaml: %v", err)
+	}
+	// A reviewable SOURCE change alongside the config write: the tree-scope
+	// self-gate excludes a config-only turn (REQ-CGSC-007), and this fixture's
+	// only change would otherwise be the untracked workflow.yaml — the gate
+	// would silently allow before ever consulting the receipt. The receipt
+	// below is recorded AFTER this write, so the key covers it.
+	if err := os.WriteFile(filepath.Join(dir, "main.go"), []byte("package main\n"), 0o644); err != nil {
+		t.Fatalf("write main.go: %v", err)
+	}
+	state, err := codexReviewReceiptStateForScope(context.Background(), reviewScopeResolver(dir), "/fake/codex")
+	if err != nil {
+		t.Fatalf("receipt state: %v", err)
+	}
+	if err := verify.RecordReceipt(dir, verify.Receipt{
+		CheckID:      codexReviewCheckID,
+		Head:         state.Head,
+		TreeDigest:   state.TreeDigest,
+		ConfigDigest: state.ConfigDigest,
+		Command:      state.Command,
+		ToolVersion:  state.ToolVersion,
+		Verdict:      codexReviewVerdictFail,
+		RecordedAt:   time.Now(),
+	}); err != nil {
+		t.Fatalf("record the fail: %v", err)
+	}
 
 	cmd, out, _ := newCodexGateCmd(codexGatePayload(t, "sess-block", dir))
 	if err := cmd.Execute(); err != nil {

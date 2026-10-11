@@ -11,6 +11,7 @@ import (
 	"path/filepath"
 	"strings"
 
+	"github.com/modu-ai/moai-adk/internal/config"
 	"gopkg.in/yaml.v3"
 )
 
@@ -53,7 +54,18 @@ func fieldYAMLPath(f FieldDef) []string {
 func SchemaCurrentValues(projectRoot string) (map[string]string, error) {
 	docs := map[string]*yaml.Node{}
 	out := map[string]string{}
+	// The user-scoped consent value is read once, before the field loop: it
+	// lives in <moai home>/config/participation.yaml, not in any project
+	// section document (SPEC-FEEDBACK-PARTICIPATION-001 REQ-ANON-020).
+	userParticipationEnabled := "false"
+	if config.ReadUserParticipation().Enabled {
+		userParticipationEnabled = "true"
+	}
 	for _, f := range allFields() {
+		if f.Persist.Kind == PersistUserScoped {
+			out[f.Name] = userParticipationEnabled
+			continue
+		}
 		file := sectionFileFor(f)
 		if file == "" {
 			continue // profile-store / 기존 project-config 필드는 기존 read seam 소관

@@ -191,6 +191,17 @@ var workflowOptMirroredPaths = []string{
 	".claude/rules/moai/core/hooks-system.md",
 	// Layer E — Phase Transitions skip policy
 	".claude/rules/moai/workflow/spec-workflow.md",
+	// card t1586 core+detail split: spec-workflow-detail.md is the lazy detail
+	// companion of spec-workflow.md (Route A/B step tables + merge_method
+	// footnote, [SHOULD] anti-patterns, DDD/TDD methodology bodies, Phase 1
+	// Depends_on Pre-flight, Report Persistence). Both trees are byte-identical;
+	// token-cleanliness adjudication: the only internal SPEC token the move
+	// carries is SPEC-AUDIT-SNAPSHOT-001 (allowlisted for this file in
+	// internal_content_leak_test.go — the move cannot be made token-free because
+	// the Report Persistence hash-subject prose cites its origin). Enrolled at
+	// creation so a future single-tree edit on either half of the split is
+	// caught at CI rather than after a release.
+	".claude/rules/moai/workflow/spec-workflow-detail.md",
 	// SPEC-SESSION-HANDOFF-ALIGN-001 — session-handoff.md mirror parity (REQ-SHA-007).
 	// Both trees are byte-identical post-neutralization (Diet/V0/`/cd` blocks ported +
 	// internal SPEC-IDs stripped per CLAUDE.local.md §25). Enrolled here so future
@@ -286,6 +297,45 @@ var workflowOptMirroredPaths = []string{
 	// byte-parity cannot hold. Its doctrine-propagation parity is enforced by
 	// TestSanitizedPairParity (sanitized_pair_parity_test.go registry) and its
 	// mirror cleanliness by TestTemplateNoInternalContentLeak — not here.
+
+	// SPEC-ALWAYS-LOADED-BUDGET-001 M4 (card t1469): every rule pair this
+	// SPEC's M3 split changed or created, enrolled so a future single-tree
+	// edit is caught at CI (AC-ALB-024). The role-gated full bodies
+	// (factory-dispatch.md, cross-session-messaging.md) carry top-level
+	// paths: and ship byte-identically; their always-loaded representatives
+	// are the stub pair. Three pairs of this SPEC's touched set are
+	// deliberately NOT here — they are the declared forked pairs above
+	// (verification-claim-integrity.md, agent-common-protocol-reference.md,
+	// cross-session-messaging-detail.md) whose local copies carry internal
+	// provenance the template must not absorb.
+	".claude/rules/moai/core/agent-common-protocol-detail.md",
+	".claude/rules/moai/core/askuser-protocol.md",
+	".claude/rules/moai/core/moai-constitution.md",
+	".claude/rules/moai/core/moai-constitution-detail.md",
+	".claude/rules/moai/core/moai-mcp-tools.md",
+	".claude/rules/moai/core/moai-mcp-tools-catalogue.md",
+	".claude/rules/moai/core/native-idiom-and-register.md",
+	".claude/rules/moai/core/native-idiom-and-register-detail.md",
+	".claude/rules/moai/core/verification-claim-integrity-detail.md",
+	// agent-authoring.md is deliberately NOT here: it is a declared
+	// live-vs-template difference pair owned by
+	// TestRunExternalDelegationDoctrine/pairdelta (4 differing lines — the
+	// live dogfood copy carries the SPEC-AGENT-ARCH-V2-001 token and the
+	// moai-cg teammate-runtime wording). A byte-parity enrollment would
+	// re-absorb that drift, the same shape as the factory-dispatch.md note
+	// above.
+	".claude/rules/moai/workflow/cache-aware-execution-reference.md",
+	".claude/rules/moai/workflow/context-window-management.md",
+	".claude/rules/moai/workflow/context-window-management-detail.md",
+	".claude/rules/moai/workflow/cross-session-messaging.md",
+	".claude/rules/moai/workflow/cross-session-messaging-core.md",
+	".claude/rules/moai/workflow/factory-dispatch-core.md",
+	".claude/rules/moai/workflow/factory-dispatch-mechanics.md",
+	".claude/rules/moai/workflow/goal-directive.md",
+	".claude/rules/moai/workflow/goal-directive-detail.md",
+	".claude/rules/moai/workflow/main-checkout-branch-guard.md",
+	".claude/rules/moai/workflow/main-checkout-branch-guard-detail.md",
+	".claude/rules/moai/workflow/session-handoff-format.md",
 }
 
 // SPEC-V3R5-LATE-BRANCH-001 mirrored files. Each entry MUST have a byte-identical

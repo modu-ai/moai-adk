@@ -598,6 +598,13 @@ var pedagogicalAllowlist = []pedagogicalAllowlistEntry{
 		SpecID:    "SPEC-AUDIT-SNAPSHOT-001",
 		Rationale: "Mirror-parity-enforced provenance (spec-workflow.md byte-parity with .claude/ source); internal SPEC provenance retained on both trees (t262 adjudication)",
 	},
+	{
+		File:      ".claude/rules/moai/workflow/spec-workflow-detail.md",
+		LineStart: 0,
+		LineEnd:   0,
+		SpecID:    "SPEC-AUDIT-SNAPSHOT-001",
+		Rationale: "Mirror-parity-enforced provenance (spec-workflow-detail.md is the lazy detail companion split from spec-workflow.md; byte-parity with .claude/ source); the Report Persistence hash-subject prose cites SPEC-AUDIT-SNAPSHOT-001 A1 as the origin of the design.md/research.md hash-subject rule, and the verbatim move carries that citation to both trees",
+	},
 	// Grammar / schema teaching placeholders (verified absent from the registry):
 	{
 		File:      ".claude/agents/moai/manager-spec.md",

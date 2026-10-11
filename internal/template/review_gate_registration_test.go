@@ -16,13 +16,21 @@ import (
 // registration on BOTH surfaces and pin the shell self-gate that keeps the
 // registration free for the users who never opt in.
 
-// reviewGateWrappers are the two wrappers under test, with the timeout each
-// must carry. 900s mirrors config.DefaultCodexReviewGateTimeout /
+// reviewGateWrappers are the two Stop-side wrappers under test, with the
+// timeout each must carry. 900s mirrors config.DefaultCodexReviewGateTimeout /
 // config.DefaultMultiReviewGateTimeout: a real review runs far past the 5s
 // moai-default hook budget.
 var reviewGateWrappers = map[string]float64{
 	"handle-codex-review-gate.sh": 900,
 	"handle-multi-review-gate.sh": 900,
+}
+
+// reviewGateEntryWrappers is the delayed block's NEXT-TURN-ENTRY wrapper
+// (SPEC-GATE-BOTTLENECK-001 REQ-GBN-002), registered on UserPromptSubmit. It
+// only reads the receipt store — no RPC — so it keeps the 5s fast-hook
+// budget the event's registration ceiling allows.
+var reviewGateEntryWrappers = map[string]float64{
+	"handle-codex-review-entry.sh": 5,
 }
 
 // stopHookEntry models one entry of a settings.json Stop array. The two
@@ -53,48 +61,65 @@ func (e stopHookEntry) script() string {
 // document.
 func parseStopHooks(t *testing.T, raw string) []stopHookEntry {
 	t.Helper()
+	return parseEventHooks(t, raw, "Stop", "Stop array")
+}
+
+// parseUserPromptSubmitHooks extracts the flattened UserPromptSubmit-array
+// entries (the delayed block's entry-hook surface).
+func parseUserPromptSubmitHooks(t *testing.T, raw string) []stopHookEntry {
+	t.Helper()
+	return parseEventHooks(t, raw, "UserPromptSubmit", "UserPromptSubmit array")
+}
+
+func parseEventHooks(t *testing.T, raw, event, label string) []stopHookEntry {
+	t.Helper()
 	var doc struct {
-		Hooks struct {
-			Stop []struct {
-				Hooks []stopHookEntry `json:"hooks"`
-			} `json:"Stop"`
+		Hooks map[string][]struct {
+			Hooks []stopHookEntry `json:"hooks"`
 		} `json:"hooks"`
 	}
 	if err := json.Unmarshal([]byte(raw), &doc); err != nil {
 		t.Fatalf("settings JSON did not parse: %v", err)
 	}
 	var out []stopHookEntry
-	for _, group := range doc.Hooks.Stop {
+	for _, group := range doc.Hooks[event] {
 		out = append(out, group.Hooks...)
 	}
 	if len(out) == 0 {
-		t.Fatal("Stop array is empty; the settings document is not what this test expects")
+		t.Fatalf("%s is empty; the settings document is not what this test expects", label)
 	}
 	return out
 }
 
-// assertRegistered asserts every review-gate wrapper appears exactly once in
-// entries with its required timeout.
-func assertRegistered(t *testing.T, surface string, entries []stopHookEntry) {
+// assertRegistered asserts every wrapper in the wanted map appears exactly
+// once in entries with its required timeout.
+func assertRegisteredIn(t *testing.T, surface string, entries []stopHookEntry, wanted map[string]float64, event string) {
 	t.Helper()
 	seen := map[string]int{}
 	for _, e := range entries {
-		if want, ok := reviewGateWrappers[e.script()]; ok {
+		if want, ok := wanted[e.script()]; ok {
 			seen[e.script()]++
 			if e.Timeout != want {
 				t.Errorf("%s: %s timeout = %v, want %v", surface, e.script(), e.Timeout, want)
 			}
 		}
 	}
-	for script := range reviewGateWrappers {
+	for script := range wanted {
 		switch seen[script] {
 		case 1: // registered exactly once
 		case 0:
-			t.Errorf("%s: %s is NOT registered in the Stop array — the gate can never fire", surface, script)
+			t.Errorf("%s: %s is NOT registered in the %s array — the gate can never fire", surface, script, event)
 		default:
 			t.Errorf("%s: %s registered %d times, want exactly 1", surface, script, seen[script])
 		}
 	}
+}
+
+// assertRegistered asserts every Stop-side review-gate wrapper appears exactly
+// once in entries with its required timeout.
+func assertRegistered(t *testing.T, surface string, entries []stopHookEntry) {
+	t.Helper()
+	assertRegisteredIn(t, surface, entries, reviewGateWrappers, "Stop")
 }
 
 // TestReviewGatesRegisteredInTemplateSettings pins the registration in the
@@ -119,6 +144,33 @@ func TestReviewGatesRegisteredInRepoSettings(t *testing.T) {
 	assertRegistered(t, ".claude/settings.json", parseStopHooks(t, string(raw)))
 }
 
+// TestReviewEntryRegisteredInTemplateSettings pins the delayed block's
+// NEXT-TURN-ENTRY wrapper on the UserPromptSubmit array of the deployed
+// surface (SPEC-GATE-BOTTLENECK-001 REQ-GBN-002). Same unreachable-wrapper
+// failure this file exists for: a wrapper no settings entry names can never
+// fire, whatever the code does.
+func TestReviewEntryRegisteredInTemplateSettings(t *testing.T) {
+	for _, platform := range []string{"darwin", "linux", "windows"} {
+		t.Run(platform, func(t *testing.T) {
+			rendered := renderTemplate(t, ".claude/settings.json.tmpl", testContext(platform))
+			assertRegisteredIn(t, "settings.json.tmpl ("+platform+")",
+				parseUserPromptSubmitHooks(t, rendered), reviewGateEntryWrappers, "UserPromptSubmit")
+		})
+	}
+}
+
+// TestReviewEntryRegisteredInRepoSettings pins the same registration in this
+// repo's own .claude/settings.json.
+func TestReviewEntryRegisteredInRepoSettings(t *testing.T) {
+	path := filepath.Join(repoRootFromTemplatePkg(t), ".claude", "settings.json")
+	raw, err := os.ReadFile(path)
+	if err != nil {
+		t.Fatalf("read %s: %v", path, err)
+	}
+	assertRegisteredIn(t, ".claude/settings.json",
+		parseUserPromptSubmitHooks(t, string(raw)), reviewGateEntryWrappers, "UserPromptSubmit")
+}
+
 // TestReviewGateWrappersSelfGateBeforeBinaryResolution pins the cost
 // constraint that makes registration acceptable. Both gates ship OFF, so a
 // wrapper that resolved and exec'd the moai binary unconditionally would add
@@ -128,8 +180,9 @@ func TestReviewGatesRegisteredInRepoSettings(t *testing.T) {
 func TestReviewGateWrappersSelfGateBeforeBinaryResolution(t *testing.T) {
 	root := repoRootFromTemplatePkg(t)
 	for script, gate := range map[string]string{
-		"handle-codex-review-gate.sh": "codex",
-		"handle-multi-review-gate.sh": "multi",
+		"handle-codex-review-gate.sh":  "codex",
+		"handle-codex-review-entry.sh": "codex",
+		"handle-multi-review-gate.sh":  "multi",
 	} {
 		for _, dir := range []string{
 			filepath.Join(root, ".claude", "hooks", "moai"),

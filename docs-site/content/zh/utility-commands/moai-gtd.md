@@ -7,7 +7,7 @@ new: true
 
 # /moai gtd
 
-`/moai gtd` 与 `moai gtd` 是正式的 GTD 入口：先收集工作、判断是否可执行，再把获准的工作接入现有开发队列。原有 `todo` SQLite 数据库、卡片 ID、顺序、`queued`/`picked`/`dropped` 状态以及归档和恢复语义均不改变。`todo` 作为共用同一命令树的兼容名称继续保留。
+`/moai gtd` 与 `moai gtd` 是 GTD 入口：先收集工作、判断是否可执行，再把获准的工作接入现有开发队列。正式名称是 `/moai todo` 与 `moai todo`；SQLite 数据库、卡片 ID、顺序、`queued`/`picked`/`dropped` 状态以及归档和恢复语义均不改变。`moai gtd` 作为共用同一命令树的兼容名称继续获得完整支持。
 
 ```bash
 moai gtd add "整理认证错误路径"
@@ -16,7 +16,7 @@ moai gtd next t1 --spec SPEC-AUTH-001
 moai gtd done t1 --expect "认证"
 ```
 
-现有 `moai todo ...` 调用也会得到相同结果。完整的队列动词与参数见 [todo 兼容命令参考](/zh/utility-commands/moai-todo)。
+正式名称 `moai todo ...` 也会得到相同结果。完整的队列动词与参数见 [todo 命令参考](/zh/utility-commands/moai-todo)。
 
 五个 GTD 专用动词会沿用同一条 SQLite 记录。
 

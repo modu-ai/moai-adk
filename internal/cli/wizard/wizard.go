@@ -526,9 +526,15 @@ func saveAnswer(id, value string, result *WizardResult, locale *string) {
 //
 // SPEC-JEV-OPTIN-MEASURE-001 (REQ-JEVO-001) reopens it: the Jev opt-in is a
 // confirm, and it is the only one.
+//
+// SPEC-FEEDBACK-PARTICIPATION-001 (REQ-ANON-003) adds the second: the
+// participation opt-in, init-only like the Jev slot, captured the same way.
 func saveBoolAnswer(id string, value bool, result *WizardResult) {
-	if id == JevQuestionID {
+	switch id {
+	case JevQuestionID:
 		result.JevEnabled = value
+	case ParticipationQuestionID:
+		result.ParticipationEnabled = value
 	}
 }
 

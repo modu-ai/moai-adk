@@ -83,7 +83,7 @@ func TestUpdate_Characterize_SkippingSync_NoHooksGuidance(t *testing.T) {
 	cmd.Flags().Bool("yes", false, "")
 	cmd.Flags().Bool("force", false, "")
 
-	skipped, syncErr := runTemplateSyncWithProgress(cmd)
+	skipped, syncErr := runTemplateSyncWithProgress(cmd, true)
 	if syncErr != nil {
 		t.Fatalf("runTemplateSyncWithProgress: %v", syncErr)
 	}

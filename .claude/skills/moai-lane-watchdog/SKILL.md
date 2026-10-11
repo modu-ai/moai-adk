@@ -29,6 +29,9 @@ progressive_disclosure:
 
 # Lane Stall Watchdog — One Iteration
 
+<!-- moai:role-rules-required -->
+[HARD] Before the first watchdog pass of a session running this skill, read BOTH role-gated rule files in full: `.claude/rules/moai/workflow/factory-dispatch.md` and `.claude/rules/moai/workflow/cross-session-messaging.md`. A Codex-only project deploys the same files under `.moai/policies/` (for example `.moai/policies/workflow/factory-dispatch.md`) — read whichever layout this project carries. The always-loaded surface carries only their stubs; the lane obligations and the messaging rules the ladder operates under live in those two files.
+
 One watchdog pass for a lane session (a factory lane running
 under `moai cc` / `moai glm` / `moai codex`). The law — the ladder, the
 outcome transitions, the gate inventory, the view–SSOT rule, the record

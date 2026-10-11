@@ -208,6 +208,43 @@ func TestDeployerListTemplates(t *testing.T) {
 			t.Errorf("expected 0 templates from empty FS, got %d", len(list))
 		}
 	})
+
+	// Repair round (card t1547, gate r4 finding 1): the deploy walk skips the
+	// common-asset roots before any content read (isCommonAssetRoot,
+	// SPEC-USER-ASSET-INSTALL-001 REQ-005) — the listing must apply the SAME
+	// exclusion, so every consumer that derives the deploy scope or the
+	// outcome accounting from it (merge analysis, "Updated N files",
+	// managed-redeploy count) sees exactly what the run writes. The parity
+	// breach printed 758 files for a 414-file deploy (344 phantom adds).
+	t.Run("excludes_common_asset_roots_like_the_deploy_walk", func(t *testing.T) {
+		d := NewDeployer(fstest.MapFS{
+			".claude/skills/moai-fake/SKILL.md":        &fstest.MapFile{Data: []byte("skill")},
+			".claude/agents/moai/manager-fake.md":      &fstest.MapFile{Data: []byte("agent")},
+			".agents/skills/moai-fake/SKILL.md":        &fstest.MapFile{Data: []byte("mirror skill")},
+			".codex/agents/moai/manager-fake.toml":     &fstest.MapFile{Data: []byte("codex agent")},
+			".claude/rules/moai/core/deployed-rule.md": &fstest.MapFile{Data: []byte("rule")},
+			".claude/agents/expert/expert-backend.md":  &fstest.MapFile{Data: []byte("expert")},
+		})
+		got := map[string]bool{}
+		for _, item := range d.ListTemplates() {
+			got[item] = true
+		}
+		for _, phantom := range []string{
+			".claude/skills/moai-fake/SKILL.md",
+			".claude/agents/moai/manager-fake.md",
+			".agents/skills/moai-fake/SKILL.md",
+			".codex/agents/moai/manager-fake.toml",
+		} {
+			if got[phantom] {
+				t.Errorf("ListTemplates counted the common-asset path %q — the deploy never writes it", phantom)
+			}
+		}
+		for _, deployed := range []string{".claude/rules/moai/core/deployed-rule.md", ".claude/agents/expert/expert-backend.md"} {
+			if !got[deployed] {
+				t.Errorf("ListTemplates lost the deployable path %q", deployed)
+			}
+		}
+	})
 }
 
 func TestValidateDeployPath(t *testing.T) {

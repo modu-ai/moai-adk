@@ -1,0 +1,5 @@
+<!-- moai-bugreport:v1 schema=v1 fingerprint=0123456789abcdef kind=panic version=v3.2.0 commit=abcdef1234567 os_arch=linux/amd64 frames=internal/cli.Execute,internal/cli/root.Execute -->
+
+A moai-adk user opted into automatic improvement participation and hit this defect.
+This report is machine-generated from closed fixed fields: no error text, no paths,
+no project or session data. The fingerprint family key is in the title.

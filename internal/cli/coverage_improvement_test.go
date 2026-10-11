@@ -2373,7 +2373,7 @@ func TestRunTemplateSyncWithProgress_VersionMatch(t *testing.T) {
 
 	// SPEC-V3R6-UPDATE-ARCHIVE-CONTRACT-001: return shape is now (skipped, err).
 	// Version-match + !force path emits skipped=true.
-	skipped, err := runTemplateSyncWithProgress(cmd)
+	skipped, err := runTemplateSyncWithProgress(cmd, true)
 	if err != nil {
 		t.Fatalf("error: %v", err)
 	}
@@ -2956,7 +2956,7 @@ func TestRunTemplateSyncWithReporter_VersionMatch(t *testing.T) {
 	cmd.SetOut(&buf)
 	cmd.SetContext(context.Background())
 
-	err := runTemplateSyncWithReporter(cmd, nil, true)
+	err := runTemplateSyncWithReporter(cmd, nil, true, nil)
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
@@ -3009,7 +3009,7 @@ func TestRunTemplateSyncWithReporter_FullDeploy(t *testing.T) {
 	cmd.SetOut(&buf)
 	cmd.SetContext(context.Background())
 
-	err := runTemplateSyncWithReporter(cmd, nil, true)
+	err := runTemplateSyncWithReporter(cmd, nil, true, nil)
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
@@ -3062,7 +3062,7 @@ func TestRunTemplateSyncWithReporter_ForceFlag(t *testing.T) {
 	cmd.SetContext(context.Background())
 
 	// skipConfirm=true to avoid interactive merge
-	err := runTemplateSyncWithReporter(cmd, nil, true)
+	err := runTemplateSyncWithReporter(cmd, nil, true, nil)
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
@@ -3687,7 +3687,7 @@ func TestRunTemplateSyncWithProgress_VersionMismatch(t *testing.T) {
 
 	// SPEC-V3R6-UPDATE-ARCHIVE-CONTRACT-001: signature is now (skipped, err).
 	// Version-mismatch path emits skipped=false (sync actually runs).
-	_, err := runTemplateSyncWithProgress(cmd)
+	_, err := runTemplateSyncWithProgress(cmd, true)
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}

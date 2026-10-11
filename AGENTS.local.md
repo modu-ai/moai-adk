@@ -115,9 +115,9 @@ Never add files directly to the local project directories without also adding th
 
 전체 레지스트리(30+ 항목, 경로·사유·이력 포함): `.moai/docs/local-dev-guide.md` § 2a. 핵심만: `settings.local.json`(런타임 관리) · `.claude/rules/local/*`(dev-only 룰) · `scripts/{ci-watch,ci-autofix,jev,ac-baseline}/` · `.moai/{cache,logs,state,specs,plans,reports,docs} 내용물` · `.moai/docs/*.md` dev-only 문서 전체 — **전부 템플릿 미러가 없어야 하는 파일이며, §2.3의 관리 대상 뿌리 밖에 두거나 뿌리 안에서도 삭제되지 않는 위치에 둔다.**
 
-### [HARD] §2.3 moai update는 관리 대상 뿌리 안의 로컬 전용 파일을 통째로 삭제한다
+### [HARD] §2.3 moai update의 생존 규칙 — 코드 강제 + 잔여 주의 (card t750 → card t1547 개정)
 
-**요지 — 본문 전량은 `.moai/docs/update-local-file-survival.md` 로 이관됐다(card t750).** `CleanMoaiManagedPaths`(`internal/cli/update/deploy/deploy.go:107`)가 템플릿 재배포 **전에** 관리 대상 뿌리(`.claude/settings.json` · `.claude/{commands,agents,hooks}/moai` · `.claude/skills/moai*` 글롭 · `.claude/rules/moai` · `.claude/output-styles/moai` · `.moai/config`)를 통째로 삭제하고 임베드 템플릿에 있는 것만 다시 깐다. **보호 목록 설정은 존재하지 않고**, `Updated N files` 요약에 삭제는 나타나지 않는다. **[HARD] 새 로컬 전용 파일은 위 뿌리 밖에 둔다** — 용도별 배치 표(룰·스킬·ast-grep·하네스)는 이관 문서에 있다. **[HARD] update 후엔 매번** ① 삭제 검증(`git status --porcelain | grep '^ D'` — 0이어야 정상)과 ② `git-strategy.yaml` git-flow 키 **+ `worktree_base_branch: main`** 재적용을 실행한다(전환 후 기저는 `main`이다 — 이 키를 develop 으로 두면 `moai worktree new` 가 스테일 develop 에서 카드 트리를 판다; 2026-09-24 역방향 사고 6건, card t1159. 재적용 원천은 `main`의 커밋 사본이다 — 템플릿 기본값은 중립 `""`이다) — 명령과 실측 근거는 이관 문서에.
+**요지 — 본문 전량은 `.moai/docs/update-local-file-survival.md` 로 이관됐다(card t750; 2026-10-07 card t1547 에서 코드 강제로 개정).** 기존 프로젝트 update는 더 이상 관리 대상 뿌리를 통째로 삭제하지 않는다 — 분류(4부류: template-owned/user-modified/user-owned/stale) 후 새로 고침·병합·보존·아카이브 후 삭제로 갈리고, 로컬 전용 파일과 operator-set `git-strategy.yaml` 값(`worktree_base_branch: main` 등)은 코드로 생존한다(SPEC-UPDATE-MIGRATION-001). `Updated N files` 요약도 관리 대상 파일을 세고 삭제를 전부 나열한다. **그래도 [HARD]가 남는다**: ① 새 로컬 전용 파일은 여전히 관리 대상 뿌리 **밖**이 기본이다(보존은 보장이지 면제가 아님 — 용도별 배치 표는 이관 문서에); ② update 후 검증(`git status --porcelain | grep '^ D'` — 0이어야 정상)은 유지한다; ③ **레거시 fresh-install 경로**(config 비호환)만 wholesale 제거가 남는데, 그때도 user-owned·미해결 user-modified는 가드가 건너뛴다; ④ 충돌은 `<경로>.moai-new` 사이드카로 보고되며 자동 해결 없음 — 쌓이면 사용자가 정리한다; ⑤ `worktree_base_branch` 값은 전환 후 기저 `main`을 유지한다(이 키를 develop 으로 두면 `moai worktree new` 가 스테일 develop 에서 카드 트리를 판다; 2026-09-24 역방향 사고 6건, card t1159) — 매번 재적용은 불필요해졌지만 확인 grep은 유용하다. 명령·실측 근거·부류 표는 이관 문서에.
 
 ### [HARD] settings.local.json Separation
 
@@ -172,11 +172,68 @@ Language policy는 `.claude/rules/moai/development/coding-standards.md`에 정�
 
 Conventional Commits — `<type>(<scope>): <description>` + 선택 본문/푸터. Types: feat, fix, docs, style, refactor, perf, test, chore, revert. 예시와 서식 전문: `.moai/docs/local-dev-guide.md` § 4a.
 
+### §4.0 Default development flow (local-main integration)
+
+카드 작업은 primary 체크아웃의 로컬 `main`으로 착지하고, 원격 `origin/main`은 릴리스 PR로만 전진한다. §4.1에서 표식이 붙은 조항은 이 절이 대체하며, 표식이 없는 조항은 그대로 유효하다.
+
+**[HARD] 1. 분기 기준**
+
+카드 워크트리는 로컬 `main`에서 분기한다. origin/main은 로컬 `main`보다 뒤처질 수 있으므로 분기 기준으로 쓰지 않는다. 이 저장소는 템플릿의 "Create the fresh tree from the remote default branch." 문장을 이 절로 대체한다. 배포 템플릿은 바뀌지 않는다.
+
+**[HARD] 2. 병합 착지**
+
+- 착지 면은 `workflow.local_main_integration.enabled`가 `true`이고, primary 체크아웃의 HEAD가 `main`을 가리키며, 별도 통합 워크트리가 `main`을 잡고 있지 않을 때다. 조건이 맞지 않으면 도구는 병합하지 않고 이유를 안내한다.
+- 병합은 `moai integration merge --card <id>`만 수행한다. `moai factory complete`가 레인 세션에서 이 명령을 호출한다. 에이전트가 Bash에 `git merge`를 직접 쓰는 것은 여전히 거부된다. 이 경로는 설계된 예외다.
+- 도구는 (1) 통합 창을 잡고, (2) HEAD를 심볼릭으로 읽어 `main`을 가리키는지 확인하며, (3) primary가 깨끗한지 확인하고(3항), (4) 카드 브랜치의 끝 커밋(tip)을 고정한 뒤 병합이 쓸 경로와 그 상위·하위 경로에 무시 파일이나 미추적 파일이 있으면 거부한다. 도구는 파일을 지우거나 stash하지 않는다. 이어서 (5) autostash를 끈 no-fast-forward 병합을 수행하고, (6) 첫 부모, HEAD, 상태 집합을 병합 전과 비교하며, (7) 병합 SHA와 트리를 기록하고 통합 창을 놓는다(`moai integration release`).
+
+**[HARD] 3. 깨끗한 primary 규칙**
+
+primary 체크아웃에서 착지하려면 `git status --porcelain=v1 -z --untracked-files=all`의 결과가 비어 있어야 한다. primary는 여러 세션이 함께 쓰므로 미커밋 변경의 소유자를 가릴 수 없다. 변경이 있으면 병합을 거부하고, 변경을 카드 워크트리로 옮기거나 소유 세션에 맡긴다. stash는 저장소 전체에 걸리므로 쓰지 않는다. 별도 통합 워크트리에는 겹침 규칙(REQ-LMF-005)이 적용된다.
+
+**[HARD] 4. 재동기화**
+
+릴리스 배치가 `origin/main`에 착지하면 로컬 `main`을 따라간다. 도구가 통합 창 안에서 fast-forward 전용으로 수행하며, 운영자 터미널에서는 하지 않는다.
+
+- (1) 창을 잡고 HEAD가 `main`을 가리키는지, primary가 깨끗한지 확인한다.
+- (2) `git fetch origin main`을 실행하고 exit 상태를 확인한다. 얻은 `origin/main` 값을 기준선으로 고정하고, 이후의 원격 비교는 모두 이 값으로 한다.
+- (3) HEAD와 기준선의 조상 관계를 읽는다. HEAD가 기준선보다 뒤처져 있으면 무시 파일 덮어쓰기를 검사한 뒤 fast-forward한다. 기준선이 HEAD의 조상이거나 두 값이 같으면 갱신이 필요 없다고 보고하고 HEAD는 둔다. 둘 중 어느 쪽도 조상이 아니면 갈라진 것이므로 거부하고 HEAD는 움직이지 않는다.
+- (4) 이동 뒤 HEAD가 기준선과 같고 여전히 `main`을 가리키는지 다시 읽은 뒤, 옛 SHA와 새 SHA를 보고하고 창을 놓는다.
+
+갈라진 경우의 처리 방법은 운영자 결정 Q2가 정한다(`.moai/specs/SPEC-LOCAL-MAIN-FLOW-001/decision-index.md`).
+
+**[HARD] 5. 마감과 워크트리 폐기**
+
+- 로컬 `main` 면에서 병합된 카드를 마감하는 일은 push하지 않으며, 릴리스 배치를 기다리지 않는다.
+- 카드 워크트리를 폐기하는 일은 그 병합을 실은 배치가 origin에 착지할 때까지 기다린다. 그전까지 카드 브랜치에는 원격 사본이 없으므로 워크트리가 작업의 유일한 사본이다.
+- 마감 조건은 다음과 같다. 병합 커밋이 두 부모를 가지고 그 트리가 두 번째 부모의 트리와 같으며 통합 브랜치에서 도달 가능해야 한다. 그 트리를 키로 한 재측정 기록이 검증을 통과해야 한다. 결정자는 사람이고 리더 승인 영수증이 검증되어야 한다. 레인이 낸 증거 파일은 재측정 기록을 대신하지 못한다.
+- 이 규칙의 구현은 후속 카드 t1621이 맡는다. t1621이 done 전이를 열기 전에는 병합된 카드가 done에 닿지 못한다.
+
+**[HARD] 6. 배치 릴리스 절차**
+
+`origin/main`은 릴리스 PR로만 전진하며, 직접 push하지 않는다.
+
+- (1) 로컬 `main`을 origin의 `release/main-batch-YYYYMMDD` 브랜치로 push한다. `YYYYMMDD`는 배치의 날짜다. 명령은 `git push origin main:refs/heads/release/main-batch-YYYYMMDD`이다.
+- (2) 그 브랜치에서 `main`으로 가는 pull request를 연다.
+- (3) 병합 커밋(merge commit)으로 병합한다.
+- (4) 병합이 끝나면 4항의 재동기화로 로컬 `main`을 `origin/main`에 fast-forward한다.
+- 병합 방식은 squash를 쓰지 않는다(no squash).
+
+`main:release/*` 푸시에 대한 pre-push 훅의 판정은 아직 측정되지 않았다(OQ-10).
+
+**[HARD] 7. 배치 닫기 규칙**
+
+- 배치를 닫는 시점은 계수 트리거가 정한다. `git rev-list --count origin/main..main`이 `git_strategy.manual.lead_push_threshold`에 닿으면 리더가 배치를 닫고 6항의 절차를 시작한다. 임계값의 원천은 `.moai/config/sections/git-strategy.yaml`이다.
+- 트리거는 통합 창이 닫힌 뒤에만 평가한다.
+- 초록 조건부가 계수 트리거보다 우선한다. 카드 병합마다 통합 창의 병합 트리 재측정을 통과해야 하며, 마지막으로 착지한 배치의 `origin/main` CI가 red인 동안 다음 배치는 보류한다. 그 CI 판정이 아직 없으면 보류 사유가 아니다.
+- 임계값이 0이거나 키가 없으면 트리거는 꺼진 것이며, 배치를 닫는 시점은 리더가 판단한다. 이것은 오류 조건이 아니다.
+
+근거: SPEC-LOCAL-MAIN-FLOW-001 (spec REQ-LMF-010·REQ-LMF-011·§G; plan §B2·§B3·§B3a·§B4·§B7·§B9·§G.1).
+
 ### §4.1 통합 체인 (main)
 
 카드별로 각각 검증해 머지했는데 **합쳐진 상태는 아무도 보지 않는** 구멍을 막는다. 2026-08-15에 PR 12개가 각각 초록불로 main에 들어갔고, 합류 후에야 `moai update`가 로컬 전용 파일을 지운다는 사실이 드러났다. 2026-10-05 GitHub Flow 전환(M2)으로 통합 기저는 `main`이다 — 아래 체인은 전환 후 기준이고, develop 체인은 아래 [SUPERSEDED] 표식과 함께 역사로 남는다.
 
-**[HARD] 표준 체인 — GitHub Flow 전환(운영자 지시, 2026-10-05 M2 착지)**
+**[SUPERSEDED by §4.0]** **[HARD] 표준 체인 — GitHub Flow 전환(운영자 지시, 2026-10-05 M2 착지)**
 
 ```
 origin/main
@@ -192,11 +249,11 @@ local/main
 
 **[HARD] 규율**
 
-1. **카드 브랜치는 `main`에서 판다.** 카드가 끝나면 카드 PR(base `main`)로 `main`에 반영한다. `develop`은 legacy다 — 새 카드의 기저로 쓰지 않는다.
-2. **`main`은 원격 기본 브랜치다.** 그 head의 CI가 통합 판정을 만든다. 병합·push는 **리더가 일괄**로 수행한다(2026-09-02 — 레인은 push하지 않는다).
+1. **[SUPERSEDED by §4.0]** **카드 브랜치는 `main`에서 판다.** 카드가 끝나면 카드 PR(base `main`)로 `main`에 반영한다. `develop`은 legacy다 — 새 카드의 기저로 쓰지 않는다.
+2. **[SUPERSEDED by §4.0]** **`main`은 원격 기본 브랜치다.** 그 head의 CI가 통합 판정을 만든다. 병합·push는 **리더가 일괄**로 수행한다(2026-09-02 — 레인은 push하지 않는다).
 3. **통합 창은 직렬이다.** `moai integration acquire --card <card-id>` → 병합 → `release` — push는 창 밖이다(리더 일괄, 2026-09-02). 락은 병합을 직렬화하는 장치이지 수리를 직렬화하는 장치가 아니므로, 수리가 남았으면 준비된 뒤에 잡는다.
 4. **판정은 CI.** 로컬 통과는 조기 신호일 뿐이다 — 깨끗한 환경도, darwin/windows 매트릭스도 아니다. 병합 전 검증을 병합 후 근거로 재사용하지 않는다: 병합 트리에서 다시 재거나, 병합 커밋의 `git rev-parse <merge>^{tree}`가 재측정한 트리와 동일함을 보인다.
-5. **로컬 `main`은 commit-dead다 (SPEC-MAIN-COMMIT-BAN-001, 카드 t1337).** 어느 세션도 primary 체크아웃의 `main` 안에서 커밋하지 않는다 — `git commit` / `git revert` / `git cherry-pick`은 BranchGuard(`workflow.branch_guard.deny_commits_on: [main]`)가 거부하고, 커밋은 `main`에서 분기한 카드 워크트리에서만 만든다. 리더의 `main` push는 배치 트리거로 닫는다 — `git rev-list --count origin/main..main`이 `git_strategy.manual.lead_push_threshold`에 닿으면 배치를 닫는다(설정 파일의 계수 주석은 아직 `origin/develop..develop`을 가리킨다 — drift). 현재값의 원천은 설정 파일이고 이 규율은 키와 계수 명령을 명명할 뿐이다. push는 초록 조건부를 따른다 — 카드 병합마다 통합 창의 병합 트리 재측정이 사전 게이트이고, 마지막 push의 `origin/main` CI가 red인 동안 다음 push는 보류된다. 상세는 `.claude/rules/local/gitflow-lane-protocol.md` §4(해당 룰은 아직 develop 서술 — drift).
+5. **[SUPERSEDED by §4.0]** **로컬 `main`은 commit-dead다 (SPEC-MAIN-COMMIT-BAN-001, 카드 t1337).** 어느 세션도 primary 체크아웃의 `main` 안에서 커밋하지 않는다 — `git commit` / `git revert` / `git cherry-pick`은 BranchGuard(`workflow.branch_guard.deny_commits_on: [main]`)가 거부하고, 커밋은 `main`에서 분기한 카드 워크트리에서만 만든다. 리더의 `main` push는 배치 트리거로 닫는다 — `git rev-list --count origin/main..main`이 `git_strategy.manual.lead_push_threshold`에 닿으면 배치를 닫는다(설정 파일의 계수 주석은 아직 `origin/develop..develop`을 가리킨다 — drift). 현재값의 원천은 설정 파일이고 이 규율은 키와 계수 명령을 명명할 뿐이다. push는 초록 조건부를 따른다 — 카드 병합마다 통합 창의 병합 트리 재측정이 사전 게이트이고, 마지막 push의 `origin/main` CI가 red인 동안 다음 push는 보류된다. 상세는 `.claude/rules/local/gitflow-lane-protocol.md` §4(해당 룰은 아직 develop 서술 — drift).
 
 **[SUPERSEDED by 위 체인 — 2026-10-05]** 2026-08-29~2026-10-05의 develop GitFlow 체인(카드는 develop에서 분기해 develop으로 `--no-ff` 병합, main에는 release PR만)과 그 이전 규위(develop 원격 미푸시 · 카드별 main PR · 일회용 develop)은 모두 폐기됐다 — 폐기 사실과 사유의 보존은 두 문서가 반대 지시를 하지 않게 하기 위함이며, develop 체인의 전문은 `.moai/docs/gitflow-integration-chain.md` 에 있다.
 
@@ -213,10 +270,10 @@ Factory(리더 `moai cc -f` · 레인 `moai cc -l`) 모드에서 레인은 카�
 
 - **self-dispatch lane 예외 — 병합 창.** Claude self-dispatch 팩토리 run의 레인은 위 요청을 하지 않는다 — `moai integration merge --card`를 부르는 `moai factory complete`의 통합 절차로 스스로 통합 창을 잡고 자기 카드를 `main`에 반영한다(OD-2). Codex 레인은 예외가 아니다 — merge-ready에서 정지한다(REQ-SD-025). 이 예외도 위의 다른 큐 변경(`add`, `drop`, `done`, `edit` 등) 금지와 `moai contract sign` 금지는 바꾸지 않는다(카드 임대만 `moai factory next`로 허용 — OD-1; `.claude/rules/local/gitflow-lane-protocol.md` §6).
 - 완료 보고에 담을 것: 카드 id · 브랜치와 HEAD · 로컬 병합 SHA · 미푸시 커밋 수 · 증거 경로(primary 반출 여부) · 재측정 범위
-- `moai integration status`가 `free`인 것은 **승인이 아니다.** open 정책에서 대기열 맨 앞으로 승격되어 창을 쥔 레인은 리더 지명 없이 병합한다.
+- **[SUPERSEDED by §4.0]** `moai integration status`가 `free`인 것은 **승인이 아니다.** open 정책에서 대기열 맨 앞으로 승격되어 창을 쥔 레인은 리더 지명 없이 병합한다.
 - **레인은 `main`에 손으로 git merge 하지 않고 moai integration merge --card 또는 그것을 부르는 moai factory complete 로만 병합한다.** 창은 대기열이 스케줄하고, 리더는 `moai integration policy open|hold`로 정책만 잡는다(창을 받으면 acquire --wait로 대기열에 선다 — 재측정은 대기 전, 창 안은 병합뿐이다).
-- 창을 받으면: `moai integration acquire --name <lane> --card <card-id>` → 본인 워크트리에서 `git merge main` 흡수(대상은 **로컬** `main` — 원격이 아니다. 흡수 **전에** 그 로컬 main 이 최신인지부터 본다 — 판정식과 갱신 경로는 `.claude/rules/local/gitflow-lane-protocol.md` §11, 아직 develop 서술 — drift) → **병합 트리에서 재측정** → 통합 워크트리 진입 → `main` 반영(카드 PR base `main` 병합 또는 `--no-ff` 병합 — 세부 형태는 이관 문서가 정한다) → `moai integration release` → `ExitWorktree keep` → 완료 보고(반영 SHA를 리더에게 보고 — push·병합은 리더가 일괄로 한다)
-- **[HARD] 카드 PR(base `main`)이 유일한 공개 경로다 (2026-10-05 전환 개정).** 카드가 마감되면 레인은 카드 브랜치를 push해 PR(base `main`)을 열되 **직접 병합하지 않는다** — 병합·push는 리더가 일괄로 수행하고 레인은 그 주체가 아니다. 레인은 `gh run rerun`/`workflow dispatch` 등 CI를 직접 요청·재요청하지도 않는다 — CI 판정은 `main` 반영이 일으키는 실행에 맡기고, 판독은 리더 몫이다. (종전 금지 — 운영자 지시 2026-09-01, WT 브랜치 push 금지·develop 일괄 push 체제 — 는 develop 체인과 함께 역사가 됐다; 당일 lane-2가 `WT-version-stamp-predicate`를 origin에 push한 전례로 추가됐던 조항이다)
+- **[SUPERSEDED by §4.0]** 창을 받으면: `moai integration acquire --name <lane> --card <card-id>` → 본인 워크트리에서 `git merge main` 흡수(대상은 **로컬** `main` — 원격이 아니다. 흡수 **전에** 그 로컬 main 이 최신인지부터 본다 — 판정식과 갱신 경로는 `.claude/rules/local/gitflow-lane-protocol.md` §11, 아직 develop 서술 — drift) → **병합 트리에서 재측정** → 통합 워크트리 진입 → `main` 반영(카드 PR base `main` 병합 또는 `--no-ff` 병합 — 세부 형태는 이관 문서가 정한다) → `moai integration release` → `ExitWorktree keep` → 완료 보고(반영 SHA를 리더에게 보고 — push·병합은 리더가 일괄로 한다)
+- **[SUPERSEDED by §4.0]** **[HARD] 카드 PR(base `main`)이 유일한 공개 경로다 (2026-10-05 전환 개정).** 카드가 마감되면 레인은 카드 브랜치를 push해 PR(base `main`)을 열되 **직접 병합하지 않는다** — 병합·push는 리더가 일괄로 수행하고 레인은 그 주체가 아니다. 레인은 `gh run rerun`/`workflow dispatch` 등 CI를 직접 요청·재요청하지도 않는다 — CI 판정은 `main` 반영이 일으키는 실행에 맡기고, 판독은 리더 몫이다. (종전 금지 — 운영자 지시 2026-09-01, WT 브랜치 push 금지·develop 일괄 push 체제 — 는 develop 체인과 함께 역사가 됐다; 당일 lane-2가 `WT-version-stamp-predicate`를 origin에 push한 전례로 추가됐던 조항이다)
 - **[HARD] `acquire`는 창을 기록하기 전에 호출자 트리를 먼저 단정한다.** tracked `.claude/settings.json`의 워킹 사본이 수정돼 있는지 `git --no-optional-locks status --porcelain -- .claude/settings.json`으로 재고, 적중이면 그 사본을 primary 체크아웃의 `.moai/state/settings-drift/` 아래로 보존한 뒤 같은 자리 `ledger.jsonl`에 한 줄을 남기고 보존 경로·sha256을 출력한다. **검출·보존·원장은 설정과 무관하게 매번 돈다**(9일 동안 아무도 보지 않아서 놓친 것이 문제였지 막지 않아서가 아니다). 거절만 opt-in이며(`workflow.settings_drift_gate.enabled`, 이 저장소는 켠다) 우회는 `--allow-settings-drift`다 — `--force`는 "살아 있는 보유자에게서 창을 빼앗는다"는 다른 축이라 우회로 쓰지 않는다. 창과 무관하게 손으로 확인할 때는 `moai integration preflight [경로]`. **어떤 경우에도 자동 복원하지 않는다** — 그 파일은 런타임이 쓰고 토큰·절대경로·tmux pane id를 담을 수 있어 자동 복원 자체가 데이터 파괴다. 적중 보고를 받으면 리더가 처분을 정한다.
 - **워크트리는 원격 머지가 확인되기 전까지 폐기하지 않는다.** 미푸시 브랜치의 워크트리는 그 작업의 유일본이다.
 - sync는 병합 **전에** 워크트리 안에서 끝낸다. run만 닫고 병합하면 SPEC이 `in-progress`로 `main`에 올라가 창을 다시 받아야 한다(2026-08-29 t342 실사례).

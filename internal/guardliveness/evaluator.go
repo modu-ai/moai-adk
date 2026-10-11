@@ -4,6 +4,8 @@ import (
 	"context"
 	"errors"
 	"log/slog"
+
+	"github.com/modu-ai/moai-adk/internal/bugreport"
 	"time"
 )
 
@@ -158,6 +160,7 @@ func (e *Evaluator) OnActivation(ctx context.Context, act Activation) *Refresh {
 		defer close(r.done)
 		defer func() {
 			if rec := recover(); rec != nil {
+				bugreport.Capture(bugreport.KindPanic, nil, "", nil)
 				slog.Debug("guard liveness: refresh panicked (non-blocking)", "recover", rec)
 				r.err = errors.New("guard liveness: refresh panicked")
 			}

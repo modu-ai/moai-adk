@@ -246,7 +246,7 @@ func runTemplateSyncCapturing(t *testing.T, dep template.Deployer) (stdout, stde
 	cmd.SetErr(&errBuf)
 	cmd.SetContext(context.Background())
 
-	if err := runTemplateSyncWithReporter(cmd, nil, true); err != nil {
+	if err := runTemplateSyncWithReporter(cmd, nil, true, nil); err != nil {
 		t.Fatalf("runTemplateSyncWithReporter: %v\nstdout: %s\nstderr: %s", err, outBuf.String(), errBuf.String())
 	}
 	return outBuf.String(), errBuf.String()

@@ -191,16 +191,36 @@ func remoteHost(raw string) string {
 	return strings.ToLower(u.Hostname())
 }
 
-// forgeOverride reads statusline.forge from the project's statusline.yaml.
+// forgeOverride reads statusline.forge for the project, local file first.
+//
+// Two files can carry the key. `.moai/statusline.local.yaml` sits directly
+// under .moai/ — outside the .moai/config root that `moai update`
+// (CleanMoaiManagedPaths) deletes wholesale before redeploying the templates —
+// so an operator's per-repo forge choice written there survives every update.
+// The managed `statusline.yaml` keeps working as the fallback: it was the only
+// documented home until now, and dropping it would silently void overrides
+// existing projects already carry. The local file wins when both are present;
+// an absent, unreadable, malformed, or empty one falls through to the other,
+// and a file naming no forge yields an empty override so detection decides.
 //
 // A local shape rather than the full config loader, matching how this package
-// already reads llm.yaml: an absent, unreadable, or malformed file yields an
-// empty override and detection decides instead.
+// already reads llm.yaml. Every caller — the render check, the refresh gate,
+// and the detached child — reaches its override through this one function, so
+// the precedence holds on all three paths.
 func forgeOverride(boardRoot string) string {
 	if boardRoot == "" {
 		return ""
 	}
-	data, err := os.ReadFile(filepath.Join(boardRoot, ".moai", "config", "sections", "statusline.yaml"))
+	if v := forgeOverrideFromFile(filepath.Join(boardRoot, ".moai", "statusline.local.yaml")); v != "" {
+		return v
+	}
+	return forgeOverrideFromFile(filepath.Join(boardRoot, ".moai", "config", "sections", "statusline.yaml"))
+}
+
+// forgeOverrideFromFile reads statusline.forge from one YAML file: "" when the
+// file is absent, unreadable, malformed, or carries no value.
+func forgeOverrideFromFile(path string) string {
+	data, err := os.ReadFile(path)
 	if err != nil {
 		return ""
 	}

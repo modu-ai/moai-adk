@@ -330,10 +330,14 @@ func (d *deployer) ExtractTemplate(name string) ([]byte, error) {
 }
 
 // ListTemplates returns sorted relative paths of all files in the embedded FS.
-// The deploy-mode exclusion (SPEC-INIT-SHRINK-001 REQ-001) applies here too:
-// a plugin-mode deployer lists no .claude/skills/** or .claude/commands/**
-// entry, so every consumer that derives the deploy scope from the listing
-// (merge analysis, outcome accounting) sees exactly what the run writes.
+// The deploy walk's common-asset exclusion (isCommonAssetRoot,
+// SPEC-USER-ASSET-INSTALL-001 REQ-005) applies here TOO (card t1547 repair
+// round, gate r4 finding 1): the deploy skips those roots before any content
+// read, so a listing that counted them reported files the run never writes —
+// every consumer that derives the deploy scope or the outcome accounting
+// from the listing (merge analysis, the "Updated N files" pill, the
+// managed-redeploy count) saw phantom entries (measured: 758 reported for a
+// 414-file deploy). The listing and the deploy now see one scope.
 func (d *deployer) ListTemplates() []string {
 	var list []string
 
@@ -342,6 +346,11 @@ func (d *deployer) ListTemplates() []string {
 			return nil // skip errors during listing
 		}
 		if path == "." || entry.IsDir() {
+			return nil
+		}
+		// Deploy parity: the same exclusion, at the same walk position as
+		// DeployWithResult's skip.
+		if isCommonAssetRoot(path) {
 			return nil
 		}
 		// Strip .tmpl suffix to return deployment target paths

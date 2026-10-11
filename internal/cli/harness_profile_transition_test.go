@@ -46,7 +46,7 @@ func runUpdatePathAt(t *testing.T, root string) string {
 	cmd.SetOut(&buf)
 	cmd.SetErr(&buf)
 	cmd.SetContext(context.Background())
-	if err := runTemplateSyncWithReporter(cmd, nil, true); err != nil {
+	if err := runTemplateSyncWithReporter(cmd, nil, true, nil); err != nil {
 		t.Fatalf("template sync: %v\n%s", err, buf.String())
 	}
 	refreshCodexWiringBestEffort(&buf, &buf)

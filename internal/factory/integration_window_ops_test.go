@@ -9,6 +9,7 @@ package factory
 
 import (
 	"fmt"
+	"os"
 	"strings"
 	"testing"
 	"time"
@@ -83,7 +84,90 @@ func baseTicket(at time.Time) IntegrationTicket {
 	}
 }
 
+func TestRefreshWindowDisplacedSnapshotStaysShallow(t *testing.T) {
+	// t1576 review round 9: the displaced snapshot copied the previous
+	// Displaced pointer — every handover nested the whole handover history
+	// (depth 40, 46KB after 40 releases) into a record the status path
+	// polls. The snapshot keeps the LAST holder only, queue not copied.
+	_, now := opsClock()
+	at := now()
+	lock := baseHolder(4001, at)
+	lock.Displaced = baseHolder(4000, at)
+	lock.Queue = []IntegrationTicket{baseTicket(at)}
+	later := at.Add(IntegrationLeaseDefault + time.Minute)
+	RefreshWindow(lock, IntegrationWindowPolicy{Policy: PolicyHold},
+		liveProbe(map[int]bool{4001: true}, nil), later, IntegrationLeaseDefault)
+	if lock.Displaced == nil {
+		t.Fatalf("the displaced holder must be recorded")
+	}
+	if lock.Displaced.Displaced != nil {
+		t.Fatalf("the snapshot must not nest the previous displaced record")
+	}
+	if lock.Displaced.Queue != nil {
+		t.Fatalf("the snapshot must not copy the queue")
+	}
+}
+
+func TestForceTakeoverDisplacedSnapshotStaysShallow(t *testing.T) {
+	// t1576 review round 11: the --force seizure copied the previous
+	// Displaced chain — 12 force takeovers nested depth 11 into the polled
+	// record. The snapshot keeps the LAST holder only (the round-9 class's
+	// last site).
+	root := t.TempDir()
+	_, now := opsClock()
+	pinWindowClock(t, now()) // the fixture lease must be young at the production clock too
+	holder := baseHolder(os.Getpid(), now())
+	holder.SessionID = "sess-old"
+	holder.Displaced = baseHolder(4000, now())
+	if err := UpdateIntegrationWindow(root, func(w *IntegrationLock) error { *w = *holder; return nil }); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := AcquireIntegrationWindow(root, IntegrationLock{
+		SessionID: "sess-f", SessionName: "lane-f",
+		PID: os.Getpid(), PIDSource: PIDSourceSessionOwner,
+		Branch: "develop", BranchSource: BranchSourceConfig,
+		Worktree: "/repo/.claude/worktrees/develop",
+	}, true, nil); err != nil {
+		t.Fatalf("the force takeover must succeed: %v", err)
+	}
+	lock, err := ReadIntegrationLock(root)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if lock.Displaced == nil {
+		t.Fatalf("the seizure must record the displaced holder")
+	}
+	if lock.Displaced.Displaced != nil {
+		t.Fatalf("the force snapshot must not nest the previous displaced chain")
+	}
+	if lock.Displaced.Queue != nil {
+		t.Fatalf("the force snapshot must not copy the queue")
+	}
+}
+
 func openPolicy() IntegrationWindowPolicy { return IntegrationWindowPolicy{Policy: PolicyOpen} }
+
+func TestRefreshWindowHoldClearReportsDisplacement(t *testing.T) {
+	// t1576 review round 4: clearing a stale holder under hold is a CHANGE —
+	// the report's displaced flag is what the acquire mutation's
+	// persist-on-refusal reads, and a hold clear that left it unset kept the
+	// stale holder on disk after the refusal (holder="old" persisted,
+	// displaced=nil).
+	_, now := opsClock()
+	at := now()
+	lock := baseHolder(4001, at)
+	// The lease lapsed: the refresh runs a step past the default lease, so
+	// the expiry path — not owner liveness — is what makes the holder stale.
+	later := at.Add(IntegrationLeaseDefault + time.Minute)
+	report := RefreshWindow(lock, IntegrationWindowPolicy{Policy: PolicyHold},
+		liveProbe(map[int]bool{4001: true}, nil), later, IntegrationLeaseDefault)
+	if !report.Displaced {
+		t.Fatalf("a hold clear of a stale holder must flag the displacement on the report: %+v", report)
+	}
+	if lock.Held() {
+		t.Fatalf("the stale holder must be cleared: %+v", lock)
+	}
+}
 
 func TestRefreshWindowPromotesOnRelease(t *testing.T) {
 	// AC-MWQ-006 scenario 1: A holds, B waits, A releases — B is the holder,

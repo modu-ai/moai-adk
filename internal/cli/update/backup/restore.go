@@ -81,7 +81,13 @@ func RestoreMoaiConfig(projectRoot, backupDir string, recordFallback MergeFallba
 // per-key advisory text to the stderr sink — the caller owns rendering (one
 // TUI summary line by default, the full list under --verbose), so no raw
 // advisory line interleaves with a cursor-controlled progress redraw.
-func RestoreMoaiConfigRetained(projectRoot, backupDir string, recordFallback MergeFallbackRecorder) ([]RetainedKeyRef, error) {
+//
+// The optional skipRel filters (SPEC-UPDATE-MIGRATION-001, card t1547 gate
+// round 10 finding 3): a backup section file whose sections-relative path is
+// claimed by any filter is NOT restored. The reconciliation pipeline
+// archive-then-REMOVES stale section files, and a restore that re-created
+// them from the backup would contradict the summary's reported removal.
+func RestoreMoaiConfigRetained(projectRoot, backupDir string, recordFallback MergeFallbackRecorder, skipRel ...func(relPath string) bool) ([]RetainedKeyRef, error) {
 	configDir := filepath.Join(projectRoot, defs.MoAIDir, defs.ConfigSubdir)
 	templateDefaultsDir := filepath.Join(backupDir, ".template-defaults")
 
@@ -127,6 +133,15 @@ func RestoreMoaiConfigRetained(projectRoot, backupDir string, recordFallback Mer
 		relPath, err := filepath.Rel(sectionsBackupDir, backupPath)
 		if err != nil {
 			return err
+		}
+
+		// Card t1547 (finding 3): a skipped file is neither merged nor
+		// re-created — the pipeline archived and removed it, and the summary
+		// already reports the removal.
+		for _, skip := range skipRel {
+			if skip != nil && skip(relPath) {
+				return nil
+			}
 		}
 
 		targetPath := filepath.Join(configDir, "sections", relPath)

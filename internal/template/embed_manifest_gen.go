@@ -69,6 +69,7 @@ import "embed"
 //go:embed templates/.claude/commands/moai/todo.md
 //go:embed templates/.claude/hooks/moai/chain-event.sh
 //go:embed templates/.claude/hooks/moai/handle-agent-hook.sh.tmpl
+//go:embed templates/.claude/hooks/moai/handle-codex-review-entry.sh
 //go:embed templates/.claude/hooks/moai/handle-codex-review-gate.sh
 //go:embed templates/.claude/hooks/moai/handle-compact.sh.tmpl
 //go:embed templates/.claude/hooks/moai/handle-config-change.sh.tmpl
@@ -117,6 +118,7 @@ import "embed"
 //go:embed templates/.claude/output-styles/moai/moai-learn.md
 //go:embed templates/.claude/output-styles/moai/moai.md
 //go:embed templates/.claude/rules/moai/NOTICE.md
+//go:embed templates/.claude/rules/moai/core/agent-common-protocol-detail.md
 //go:embed templates/.claude/rules/moai/core/agent-common-protocol-reference.md
 //go:embed templates/.claude/rules/moai/core/agent-common-protocol.md
 //go:embed templates/.claude/rules/moai/core/agent-hooks.md
@@ -182,11 +184,13 @@ import "embed"
 //go:embed templates/.claude/rules/moai/workflow/context-window-management.md
 //go:embed templates/.claude/rules/moai/workflow/contract-autonomy.md
 //go:embed templates/.claude/rules/moai/workflow/contract-sign-guard.md
+//go:embed templates/.claude/rules/moai/workflow/cross-session-messaging-core.md
 //go:embed templates/.claude/rules/moai/workflow/cross-session-messaging-detail.md
 //go:embed templates/.claude/rules/moai/workflow/cross-session-messaging.md
 //go:embed templates/.claude/rules/moai/workflow/delivery-policy.md
 //go:embed templates/.claude/rules/moai/workflow/dynamic-workflows.md
 //go:embed templates/.claude/rules/moai/workflow/factory-dispatch-cards.md
+//go:embed templates/.claude/rules/moai/workflow/factory-dispatch-core.md
 //go:embed templates/.claude/rules/moai/workflow/factory-dispatch-detail.md
 //go:embed templates/.claude/rules/moai/workflow/factory-dispatch-gates.md
 //go:embed templates/.claude/rules/moai/workflow/factory-dispatch-mechanics.md
@@ -214,6 +218,7 @@ import "embed"
 //go:embed templates/.claude/rules/moai/workflow/skill-routing-detail.md
 //go:embed templates/.claude/rules/moai/workflow/skill-routing.md
 //go:embed templates/.claude/rules/moai/workflow/snapshot-consumer-contract.md
+//go:embed templates/.claude/rules/moai/workflow/spec-workflow-detail.md
 //go:embed templates/.claude/rules/moai/workflow/spec-workflow.md
 //go:embed templates/.claude/rules/moai/workflow/sync-backup-integrity.md
 //go:embed templates/.claude/rules/moai/workflow/sync-coverage-scope-contract.md

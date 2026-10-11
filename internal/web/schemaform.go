@@ -358,8 +358,12 @@ func schemaPanelMeta(panelID string) schemaSectionMeta {
 }
 
 // schemaEditableField는 이 필드가 M2b 제네릭 폼 경로의 편집 대상인지 보고한다.
+// PersistUserScoped (SPEC-FEEDBACK-PARTICIPATION-001 REQ-ANON-020)도 편집
+// 대상이다 — 값의 영속처가 사용자 스코프 동의 파일일 뿐, 폼 파싱·제출·게이트
+// 경로는 seam/typed 필드와 동일하다.
 func schemaEditableField(f settings.FieldDef) bool {
-	return f.Persist.Kind == settings.PersistSeam || f.Persist.Kind == settings.PersistTypedSection
+	return f.Persist.Kind == settings.PersistSeam || f.Persist.Kind == settings.PersistTypedSection ||
+		f.Persist.Kind == settings.PersistUserScoped
 }
 
 // parseSchemaForm은 제출 폼에서 확장 필드 값을 스키마 주도로 파싱한다.

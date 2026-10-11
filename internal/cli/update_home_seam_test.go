@@ -122,7 +122,7 @@ func TestUpdateSubsystem_HomeSeamReach(t *testing.T) {
 		cmd.SetOut(&buf)
 		cmd.SetContext(context.Background())
 
-		if syncErr := runTemplateSyncWithReporter(cmd, nil, true); syncErr != nil {
+		if syncErr := runTemplateSyncWithReporter(cmd, nil, true, nil); syncErr != nil {
 			t.Fatalf("runTemplateSyncWithReporter: %v\noutput: %s", syncErr, buf.String())
 		}
 

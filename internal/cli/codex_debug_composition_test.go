@@ -42,10 +42,15 @@ func stagedLaneEntry() factoryFlagParse {
 // LaneRole factory entry handed straight to runCodexLaunch: runCodex routes -l
 // to the relaunch loop and never reaches that branch. The join lands on the
 // staged leader's run (the discovery fallback the shared join gate owns).
-func driveCodexLaneLaunch(t *testing.T, debug bool) string {
+func driveCodexLaneLaunch(t *testing.T, debug bool, slowLaunchMS string) string {
 	t.Helper()
 	root := discoveryTestRoot(t)
 	clearFactoryTestEnv(t)
+	// Set the threshold AFTER clearFactoryTestEnv: M2 (SPEC-TEST-ENV-HERMETIC-001)
+	// added EnvMoaiFactorySlowLaunchMS to factoryAmbientEnvKeys, so the clear now
+	// wipes a value the caller set before this helper ran. The threshold here is
+	// the test's own deliberate value, not ambient lane state.
+	t.Setenv(config.EnvMoaiFactorySlowLaunchMS, slowLaunchMS)
 	stageDiscoveredLeaders(t, stagedSingleLeader(t))
 	cap := withCodexLaunchCapture(t)
 	withCodexProjectRoot(t, root)
@@ -84,7 +89,7 @@ func TestCodexDebugSupersedesLaunchThreshold(t *testing.T) {
 	// A threshold no real pre-exec phase exceeds: the threshold path must
 	// stay silent while the debug dump prints.
 	t.Setenv(config.EnvMoaiFactorySlowLaunchMS, "3600000")
-	stderr := driveCodexLaneLaunch(t, true)
+	stderr := driveCodexLaneLaunch(t, true, "3600000")
 	if got := factoryLaunchLineCount(stderr); got != 0 {
 		t.Errorf("threshold report printed under a one-hour threshold (%d lines) — REQ-015 boundary broken:\n%s", got, stderr)
 	}
@@ -111,7 +116,7 @@ func TestCodexDebugSupersedesLaunchThreshold(t *testing.T) {
 func TestCodexDebugOffKeepsTimingReportFrozen(t *testing.T) {
 	t.Run("fast lane launch is silent (debug off)", func(t *testing.T) {
 		t.Setenv(config.EnvMoaiFactorySlowLaunchMS, "3600000")
-		stderr := driveCodexLaneLaunch(t, false)
+		stderr := driveCodexLaneLaunch(t, false, "3600000")
 		if got := factoryLaunchLineCount(stderr); got != 0 {
 			t.Errorf("fast debug-off lane launch printed %d threshold lines:\n%s", got, stderr)
 		}
@@ -121,7 +126,7 @@ func TestCodexDebugOffKeepsTimingReportFrozen(t *testing.T) {
 	})
 	t.Run("slow lane launch prints exactly the threshold report (debug off)", func(t *testing.T) {
 		t.Setenv(config.EnvMoaiFactorySlowLaunchMS, "0")
-		stderr := driveCodexLaneLaunch(t, false)
+		stderr := driveCodexLaneLaunch(t, false, "0")
 		lines := strings.Split(strings.TrimRight(stderr, "\n"), "\n")
 		if len(lines) < 2 {
 			t.Fatalf("slow debug-off lane launch printed %d lines, want the summary + step lines:\n%s", len(lines), stderr)

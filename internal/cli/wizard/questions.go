@@ -276,6 +276,23 @@ var initSharedQuestionIDs = []string{"conversation_language", "user_name"}
 // reads the answer it produces.
 const JevQuestionID = "jev_enabled"
 
+// ParticipationQuestionID is the id of the init-only improvement-participation
+// opt-in question (SPEC-FEEDBACK-PARTICIPATION-001 REQ-ANON-003). Exported for
+// the same three surfaces as JevQuestionID, plus the update ask step that
+// reuses the question text as its single source of truth.
+const ParticipationQuestionID = "feedback_participation"
+
+// userParticipationDefault reads the stored user-scoped consent to pre-select
+// the question default: re-running init over an existing consent must never
+// silently withdraw it. A missing or unreadable store reads false — the same
+// fail-closed rule the pipeline's reader applies.
+func userParticipationDefault() string {
+	if config.ReadUserParticipation().Enabled {
+		return "true"
+	}
+	return "false"
+}
+
 // InitQuestions returns the `moai init` question set: conversation_language
 // and user_name picked by ID from DefaultQuestions, followed by Page3Questions
 // (agent_wiring, autonomy_tier, jev_enabled). It is the single assembly point
@@ -426,6 +443,25 @@ func Page3Questions(projectRoot string) []Question {
 			Title:       "Enable Jev typed judgments? (optional, off by default)",
 			Description: "Jev answers a typed question about supplied state and returns a probability; it makes no decision itself. A person reads its answer; where software uses it automatically, it is only as a signal — for example the order in which `moai todo --auto` considers queued cards, or an optional Kickoff cross-check that can only confirm or hand over to a person — never to approve, merge, or change a card on its own. Enabling it sends card text or request text to a third-party server. This question is asked only at init — change it later in `moai web` settings.",
 			Default:     "false",
+			Required:    false,
+		},
+		// SPEC-FEEDBACK-PARTICIPATION-001 (REQ-ANON-003/005) — the improvement
+		// participation opt-in, in its own group immediately after the Jev
+		// question. Same placement rules as the Jev slot: this constructor only
+		// (never DefaultQuestions, never ReconfigureQuestions), own group label
+		// so the disclosure page cannot scroll, not Required, and the default is
+		// the stored user-scoped value rather than a constant, so re-running
+		// init never silently withdraws an existing consent. The description
+		// carries the full REQ-ANON-005 statement set — the same strings the
+		// `moai web` console description carries (pinned by the cross-surface
+		// equality tests), so every enablement surface discloses the same facts.
+		{
+			ID:          ParticipationQuestionID,
+			Group:       "Participation",
+			Type:        QuestionTypeConfirm,
+			Title:       "Enable automatic improvement participation? (optional, off by default)",
+			Description: "When on, moai files a public GitHub issue in the moai-adk repository from your own GitHub account whenever it detects one of its own defects — automatically, with no per-report confirmation. The issue and its comments are public, their creation time is public, and GitHub subscribes your account to later comments on every issue you file. Your account becomes publicly associated with using moai-adk (this version, this operating system). Only machine-generated fixed fields are sent: the error kind, a fingerprint derived from the moai version, build commit, platform, and internal function frames, and a closed-set detail token — no error text, no paths, no project or session data. Preview what would be filed with moai feedback participation preview; change this setting later in the moai web settings screen. An issue already filed cannot be recalled by the tool. Composing the issue summary may spend your own model-subscription tokens; when no model is available a fixed template text is used instead.",
+			Default:     userParticipationDefault(),
 			Required:    false,
 		},
 	}

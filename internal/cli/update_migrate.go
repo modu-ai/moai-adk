@@ -97,10 +97,20 @@ func computeRunCleanTargets(projectRoot string, deployMode template.DeployMode, 
 
 // isCommonAssetCleanTarget reports whether a managed-clean display path
 // lives under a common-asset root (whose removal is now exclusively the
-// migration's per-file job).
+// migration's per-file job). The display path is normalized to slash form
+// FIRST (repair round, Windows data-loss fix): ManagedCleanTargets builds
+// DisplayPath with filepath.Join, so on Windows it carries backslashes while
+// projectCommonAssetRels is slash-rooted — a raw prefix comparison missed,
+// the exclusion silently opened the clean scope over preserved assets, and
+// the cleanup deleted them. The normalization is host-independent (not
+// filepath.ToSlash, which only rewrites the HOST separator): a Windows-shaped
+// display path must classify as common-asset on every platform, and the
+// rare Unix filename containing a literal backslash can only ever be
+// SPARED by the rewrite (exclusion is the safe direction).
 func isCommonAssetCleanTarget(displayPath string) bool {
+	norm := strings.ReplaceAll(displayPath, "\\", "/")
 	for _, root := range projectCommonAssetRels {
-		if strings.HasPrefix(displayPath, root) || strings.HasPrefix(displayPath, strings.TrimSuffix(root, "/")) {
+		if strings.HasPrefix(norm, root) || strings.HasPrefix(norm, strings.TrimSuffix(root, "/")) {
 			return true
 		}
 	}

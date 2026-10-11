@@ -57,7 +57,7 @@ func TestUpdateClaudeToBothSucceeds(t *testing.T) {
 	cmd.SetOut(&buf)
 	cmd.SetErr(&buf)
 	cmd.SetContext(context.Background())
-	if err := runTemplateSyncWithReporter(cmd, nil, true); err != nil {
+	if err := runTemplateSyncWithReporter(cmd, nil, true, nil); err != nil {
 		t.Fatalf("template sync after claude -> both: %v\n%s", err, tailLines(buf.String(), 20))
 	}
 }

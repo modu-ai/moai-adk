@@ -32,6 +32,8 @@ import (
 
 	"log/slog"
 
+	"github.com/modu-ai/moai-adk/internal/bugreport"
+
 	navsync "github.com/modu-ai/moai-adk/internal/navigator/sync"
 )
 
@@ -103,6 +105,7 @@ func (r Result) SignalJSON() ([]byte, error) {
 func Run(opts Options) (res Result) {
 	defer func() {
 		if r := recover(); r != nil {
+			bugreport.Capture(bugreport.KindPanic, nil, "", nil)
 			slog.Debug("navigator-fix: recovered from panic (fail-open)", "recover", r)
 			res = Result{Status: "skipped", Message: fmt.Sprintf("internal error recovered: %v", r)}
 		}

@@ -63,6 +63,13 @@ type WizardResult struct {
 	// the question, leaves the capability off — the same state the shipped
 	// config default carries.
 	JevEnabled bool // workflow.jev.enabled
+
+	// ParticipationEnabled (SPEC-FEEDBACK-PARTICIPATION-001 REQ-ANON-003):
+	// the init-only improvement-participation opt-in. Same fail-safe shape as
+	// JevEnabled — false covers both the zero value and a decline — and the
+	// apply step additionally gates on wizardRan and an empty CI environment
+	// before anything is written to the user-scoped consent file.
+	ParticipationEnabled bool // feedback.participation, user-scoped
 }
 
 // QuestionType represents the type of wizard question.

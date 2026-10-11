@@ -198,6 +198,7 @@ func TestStopChainEffectParityGolden(t *testing.T) {
 		const passReview = realCleanReview
 		setup := func(t *testing.T) *stopFixture {
 			t.Helper()
+			withKickRecorder(t) // REQ-GBN-002: no golden may reach the production kick
 			f := newStopFixture(t)
 			f.write(t, "main.go", "package main\n\nfunc main() { _ = 3 }\n")
 			f.commit(t, "feat: not a sync commit") // keep member 2 out of the way
@@ -227,19 +228,29 @@ func TestStopChainEffectParityGolden(t *testing.T) {
 
 		t.Run("codex installed, no receipt", func(t *testing.T) {
 			f := setup(t)
+			kicked := withKickRecorder(t)
 			claude := claudeReview(t, f, failReview, false)
-			// SPEC-GATE-BOTTLENECK-001 REQ-GBN-001: the Claude gate RECORDS the
-			// live review's verdict now, so after the Claude pass the shared
-			// store holds a fresh FAIL receipt — the Codex member reads the
-			// same verdict class the explicit FAIL-receipt leg pins (one
-			// store, both harnesses), no longer the pre-M1 unmeasured shape.
-			// Premise assertion: a regression that silently drops the record
-			// would re-vacate this leg to unmeasured while staying green.
-			if r := receiptForCurrentState(t, f); r == nil || r.Verdict != codexReviewVerdictFail {
-				t.Fatalf("premise: the Claude live review must record a %q receipt (REQ-GBN-001)", codexReviewVerdictFail)
+			// SPEC-GATE-BOTTLENECK-001 REQ-GBN-002 — a DECLARED §D3.4 deviation.
+			// The M1 contract ("the Claude gate records the live verdict, one
+			// store, both harnesses") is superseded by the delayed block: a
+			// cache-miss Claude Stop no longer runs the review in-hook — it
+			// KICKS the receipt producer's review in the background and
+			// ALLOWS. The verdict is enforced at the next turn entry
+			// (HandleCodexReviewEntry), a surface the Codex Stop chain has no
+			// counterpart for, so the two harnesses deliberately diverge on
+			// this arm: Claude allows + kicks; the Codex member keeps its
+			// no-receipt continuation (unmeasured), which still names the
+			// review command. Premise assertions keep both halves honest.
+			if claude != codexadapter.DecisionAllow {
+				t.Fatalf("the delayed block must ALLOW a cache-miss Claude Stop, got %s", claude)
+			}
+			if len(*kicked) != 1 {
+				t.Fatalf("the cache-miss Stop must kick exactly one background review, got %d", len(*kicked))
 			}
 			got := codex(t, f, false)
-			wantPair(t, claude, got, codexadapter.DecisionDeny, reasonGateFailed)
+			if got.Decision != codexadapter.DecisionDeny || got.Class != reasonUnmeasured {
+				t.Fatalf("the Codex no-receipt continuation is unchanged: got %s/%q", got.Decision, got.Class)
+			}
 			if !strings.Contains(got.Reason, codexwiring.CodexReviewReceiptCommand) {
 				t.Fatalf("reason must name the review runner; got %q", got.Reason)
 			}
@@ -285,8 +296,12 @@ func TestStopChainEffectParityGolden(t *testing.T) {
 		})
 		t.Run("codex installed, FAIL receipt", func(t *testing.T) {
 			f := setup(t)
-			claude := claudeReview(t, f, failReview, false)
+			// M2 ordering (REQ-GBN-002): the receipt must be in the store
+			// BEFORE the Claude Stop — produce-first makes the Stop ride the
+			// cached-verdict path. (Under the M1 live path the order was
+			// irrelevant: the Claude call ran the review itself.)
 			produce(t, f, failReview)
+			claude := claudeReview(t, f, failReview, false)
 			wantPair(t, claude, codex(t, f, false), codexadapter.DecisionDeny, reasonGateFailed)
 		})
 		t.Run("stale receipt, HEAD moved", func(t *testing.T) {
@@ -294,15 +309,24 @@ func TestStopChainEffectParityGolden(t *testing.T) {
 			produce(t, f, passReview)
 			f.commit(t, "feat: move HEAD after the review")
 			f.dirty(t, "reviewable again")
+			kicked := withKickRecorder(t)
 			claude := claudeReview(t, f, failReview, false)
-			// REQ-GBN-001, stale arm: the stale key fell through to the live
-			// review, which recorded a fresh FAIL receipt for the NEW key —
-			// the same shared-store shape the no-receipt leg documents.
-			if r := receiptForCurrentState(t, f); r == nil || r.Verdict != codexReviewVerdictFail {
-				t.Fatalf("premise: the stale-key live review must record a %q receipt for the moved key (REQ-GBN-001)", codexReviewVerdictFail)
+			// REQ-GBN-002, stale arm — the same declared §D3.4 deviation as the
+			// no-receipt leg: the moved key made the stored receipt stale, and
+			// the M2 gate kicks the background review for the NEW key instead
+			// of running the live review in-hook. Claude allows + kicks; the
+			// Codex member reads no receipt for the moved key and keeps its
+			// unmeasured continuation.
+			if claude != codexadapter.DecisionAllow {
+				t.Fatalf("the delayed block must ALLOW a stale-key Claude Stop, got %s", claude)
+			}
+			if len(*kicked) != 1 {
+				t.Fatalf("the stale-key Stop must kick exactly one background review for the moved key, got %d", len(*kicked))
 			}
 			got := codex(t, f, false)
-			wantPair(t, claude, got, codexadapter.DecisionDeny, reasonGateFailed)
+			if got.Decision != codexadapter.DecisionDeny || got.Class != reasonUnmeasured {
+				t.Fatalf("the Codex stale-key continuation is unchanged: got %s/%q", got.Decision, got.Class)
+			}
 		})
 		t.Run("codex binary missing", func(t *testing.T) {
 			f := setup(t)
@@ -507,23 +531,6 @@ func TestStopChainEffectParityGolden(t *testing.T) {
 }
 
 func intp(n int) *int { return &n }
-
-// receiptForCurrentState reads the review receipt bound to the fixture
-// tree's CURRENT state — the same binding the Codex member 6 consults — so a
-// golden leg can premise-assert what the shared store holds before reading
-// the member's outcome. The binary path is a literal: fakeCodexVersion pins
-// codexVersionProbe for the whole golden, so the tool_version matches what
-// the gate recorded whatever path is named (the fixture never resolves a real
-// binary — and never names the live-resolution idiom this package's live-axis
-// detector scans for).
-func receiptForCurrentState(t *testing.T, f *stopFixture) *verify.Receipt {
-	t.Helper()
-	state, err := codexReviewReceiptStateForScope(context.Background(), reviewScopeResolver(f.root), "/fake/codex")
-	if err != nil {
-		t.Fatalf("receipt state: %v", err)
-	}
-	return verify.LoadReceipt(f.root, state)
-}
 
 // allowMember1 stands in for `moai hook stop` where a golden isolates another
 // member.

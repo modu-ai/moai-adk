@@ -122,6 +122,14 @@ statusline:
 | `none`（或 `off`） | 不统计 —— 数对整个消失（不是 `-/-`） |
 | 其他任何取值 | 不统计，且**不退回自动判定** —— 数对整个消失 |
 
+**键放在哪里。** `statusline.yaml` 由模板管理：`moai update` 会整棵重新部署 `.moai/config` 根，手写在这里的取值会在下一次 update 时消失。能扛住 update 的位置是 `.moai/statusline.local.yaml` —— 就在不会被删除的 `.moai/` 直下（`config/` 之外），放同一个 `statusline.forge` 键即可。两个文件都在时本地文件优先，托管文件留作后备。
+
+```yaml
+# .moai/statusline.local.yaml — moai update 不会删除的位置
+statusline:
+  forge: gitlab    # github | gitlab | none
+```
+
 最后一行很重要。拼错时若按主机名暗示的一侧悄悄统计，错误的数字看起来就像是对的。所以无法识别的取值既不呈现为数字，也不呈现为 `-/-`，而是呈现为**消失的数对**。不会打印警告；这份缺席就是症状，能直接追回刚刚写下的配置值。
 
 自托管实例仅凭名字无法区分 —— 公司内网 GitLab `git.example.com` 与公司内网 GitHub Enterprise 的地址形状相同。因此只自动判别两个公开主机，其他情况不做猜测，等待这个键。

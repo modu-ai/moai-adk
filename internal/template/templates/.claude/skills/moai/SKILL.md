@@ -78,8 +78,8 @@ The `--team` / `--solo` flags are forced overrides onto the catalog; the flag-fr
 - **e2e** (aliases: e2e-test, end-to-end): Multi-platform end-to-end testing (web/mobile/desktop) with project-type auto-detection and CLI-first toolchain selection
 - **harness** (aliases: hrn): harness lifecycle management — learning-lifecycle verbs (status / apply / rollback &lt;date&gt; / disable) + v4-lifecycle verbs (list / edit / remove / doctor), all dispatching through the unified `moai harness` Go-binary Cobra subcommand tree; the slash command is the documented user-facing entry point
 - **goal**: Two compatible modes — a condition goal (`/moai goal "<condition>"`) or an approved auto mission (`/moai goal --auto "<mission>"`) with `approve`, `run`, `status`, `revoke`, and `resume` lifecycle verbs
-- **gtd**: Canonical GTD task-management workflow
-- **todo** (aliases: backlog): Compatibility alias — route to the canonical **gtd** workflow while preserving the supplied arguments
+- **todo** (aliases: backlog): Canonical queue workflow — the operator's backlog queue (GTD task management)
+- **gtd**: Compatibility alias — route to the canonical **todo** workflow while preserving the supplied arguments
 
 ### Priority 2: SPEC-ID Detection
 
@@ -103,7 +103,7 @@ Only if BOTH Priority 1 AND Priority 2 did not match: Classify the intent of the
 - Architecture-map language (architecture map, code maps, dependency graph, structure documentation) routes to **codemaps**
 - Feedback and bug report language (report, feedback, suggestion, issue) routes to **feedback**
 - MX tag language (mx tag, annotation, code context, legacy annotate) routes to **mx**
-- Backlog language (add to the backlog, note this for later, what should I work on next, remind me to) routes to **gtd** — semantic exemplars; a request in any conversation_language expressing "queue this, do not start it now" routes identically
+- Backlog language (add to the backlog, note this for later, what should I work on next, remind me to) routes to **todo** — semantic exemplars; a request in any conversation_language expressing "queue this, do not start it now" routes identically
 - Implementation language (implement, build, create, add, develop) with clear scope routes to **moai** (default autonomous)
 
 ### Priority 4: Default Behavior
@@ -170,15 +170,15 @@ For detailed orchestration: Read workflows/goal.md
 Where `workflow.autonomy.mode: contract` — the Kickoff approval named here is the contract signature checked by `moai contract kickoff-check`; the progression mode is chosen when a goal is armed after that check passes. See `.claude/rules/moai/workflow/contract-autonomy.md` § The signing gate.
 
 <!-- moai:contract-mode-end -->
-### gtd - GTD Workflow and Backlog Queue
+### todo - Queue Workflow and Backlog Queue
 
 Purpose: Carry captured work through Capture, Clarify, Organize, Reflect, and Engage, and hold what the operator wants to work on next. `backlog` has no owning session, so admission to the board is always an operator act — this is that surface.
-Verbs — slash surface: `/moai gtd "<description>"` (append), bare `/moai gtd` (list). CLI only: `moai gtd next` (print queued cards; `moai gtd next <n> [--spec <SPEC-ID>]` marks one picked — the pick itself is presented through AskUserQuestion), `moai gtd done <n>` (remove).
+Verbs — slash surface: `/moai todo "<description>"` (append), bare `/moai todo` (list). CLI only: `moai todo next` (print queued cards; `moai todo next <n> [--spec <SPEC-ID>]` marks one picked — the pick itself is presented through AskUserQuestion), `moai todo done <n>` (remove).
 GTD stages: `capture`, `clarify`, `organize`, `reflect`, `engage`, plus `answer` for a gate-blocked card. Captured items stay separate from the established development queue until an explicitly approved Engage publishes one.
-Compatibility: `/moai todo` and `moai todo` are the compat alias of the canonical `/moai gtd` and `moai gtd` — same database, same card identities, same ordering, archive, and restore path.
+Compatibility: `/moai gtd` and `moai gtd` are the compat alias of the canonical `/moai todo` and `moai todo` — same database, same card identities, same ordering, archive, and restore path.
 State: `~/.moai/db/<project-key>/todo/backlog.db` — home-scoped, project-keyed, not committed, a SQLite database every mutation takes a cross-process lock over. A `backlog.json` beside an existing database is an export or a legacy leftover; the read verbs report that distinction. Before migration, a legacy JSON-only queue remains readable.
 The pick is the operator's: never preselect, never reorder by inferred priority (the `--auto` cycle's own candidate ranking is the one auto-scoped ranking exception — selection order only), never auto-populate from TODO comments or issues.
-Enablement: when `workflow.todo.enabled` is `false` in `.moai/config/sections/workflow.yaml`, do NOT route to this workflow by inference — a backlog-shaped phrase the operator did not name a subcommand for is answered directly instead of being queued. The gate binds AUTOMATIC routing only: an explicit `/moai gtd` or `/moai gtd "<description>"` still runs normally, exactly as it does when the key is absent or `true`. The flag suppresses guidance, not the feature — the queue verbs stay registered and every one of them keeps working, so refusing or silently ignoring a named invocation is a defect, not the intended behavior.
+Enablement: when `workflow.todo.enabled` is `false` in `.moai/config/sections/workflow.yaml`, do NOT route to this workflow by inference — a backlog-shaped phrase the operator did not name a subcommand for is answered directly instead of being queued. The gate binds AUTOMATIC routing only: an explicit `/moai todo` or `/moai todo "<description>"` still runs normally, exactly as it does when the key is absent or `true`. The flag suppresses guidance, not the feature — the queue verbs stay registered and every one of them keeps working, so refusing or silently ignoring a named invocation is a defect, not the intended behavior.
 For detailed orchestration: Read workflows/gtd.md
 
 ### fix - Auto-Fix Errors

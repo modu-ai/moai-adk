@@ -36,18 +36,31 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"os"
 	"path/filepath"
+	"strings"
 	"time"
 
+	"github.com/modu-ai/moai-adk/internal/config"
 	"github.com/modu-ai/moai-adk/internal/factory"
+	"github.com/modu-ai/moai-adk/internal/factorymsg"
 	"github.com/modu-ai/moai-adk/internal/homestate"
 )
 
 // autoLaneRunResolveFn resolves the factory run the lane cycle leases from.
-// A package var so tests pin the fixture run; production resolves the single
-// active run, exactly as `moai factory next` does.
+// A package var so tests pin the fixture run; production prefers the
+// launcher-selected run (config.EnvFactoryRunID — the launcher stamps the
+// chosen run into the lane environment) and falls back to single-active-run
+// discovery only when the environment names none (card t1577). Both branches
+// resolve through factorymsg.ResolveActiveRun, whose explicit branch checks
+// the selection against the active-run table (safeID + active status) — a
+// stale launcher selection fails closed instead of leasing blind (gate
+// round 5: resolveFactoryCardRun's explicit path returns unvalidated).
 var autoLaneRunResolveFn = func(ctx context.Context, root string) (string, error) {
-	return resolveFactoryCardRun(ctx, root, "")
+	if run := strings.TrimSpace(os.Getenv(config.EnvFactoryRunID)); run != "" {
+		return factorymsg.ResolveActiveRun(ctx, root, run)
+	}
+	return factorymsg.ResolveActiveRun(ctx, root, "")
 }
 
 // runAutoLaneCycle executes the lane `--auto` cycle against the queue at root,
@@ -122,17 +135,19 @@ func autoLeaseRanked(ctx context.Context, store *factory.BacklogStore, root, run
 		if err != nil || !leased {
 			return card, factory.BacklogItem{}, leased, err
 		}
-		// The work card needs the queue item (the directive's card field and
-		// text prefix); a read failure degrades to the id alone, never to an
-		// empty directive.
-		if rec, rerr := store.LoadPure(); rerr == nil {
-			for _, it := range rec.Items {
-				if it.ID == card.CardID {
-					return card, it, true, nil
-				}
-			}
-		}
-		return card, factory.BacklogItem{ID: card.CardID}, true, nil
+		return card, autoAssignedItem(store, card.CardID), true, nil
+	}
+	// The lane's own assigned card precedes any new-candidate ranking (card
+	// t1577): a quota-free pass still owes the leader-dispatched card, which
+	// the queued-only candidate list below never sees. The same gated lease
+	// the hold arm runs (noNewCards) leases only what is already this lane's,
+	// assigned bundle heads included.
+	card, leased, err := factoryNextLeaseOnceGated(ctx, root, runID, lane, true)
+	if err != nil {
+		return homestate.Card{}, factory.BacklogItem{}, false, err
+	}
+	if leased {
+		return card, autoAssignedItem(store, card.CardID), true, nil
 	}
 	rec, err := store.LoadPure()
 	if err != nil {
@@ -175,6 +190,20 @@ func autoLeaseRanked(ctx context.Context, store *factory.BacklogStore, root, run
 		}
 	}
 	return homestate.Card{}, factory.BacklogItem{}, false, nil
+}
+
+// autoAssignedItem loads the queue item of an already-assigned card for the
+// dispatch directive (the directive's card field and text prefix); a read
+// failure degrades to the id alone, never to an empty directive.
+func autoAssignedItem(store *factory.BacklogStore, cardID string) factory.BacklogItem {
+	if rec, err := store.LoadPure(); err == nil {
+		for _, it := range rec.Items {
+			if it.ID == cardID {
+				return it
+			}
+		}
+	}
+	return factory.BacklogItem{ID: cardID}
 }
 
 // autoLaneWorkCard is the foreman contract for one leased card: the dispatch

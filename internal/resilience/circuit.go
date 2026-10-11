@@ -3,6 +3,8 @@ package resilience
 import (
 	"context"
 	"sync"
+
+	"github.com/modu-ai/moai-adk/internal/bugreport"
 	"sync/atomic"
 	"time"
 )
@@ -226,7 +228,11 @@ func (cb *CircuitBreaker) transitionTo(newState CircuitState) {
 		// here (out of M5 scope; preserved existing dispatch shape).
 		onStateChange := cb.config.OnStateChange
 		go func() {
-			defer func() { _ = recover() }()
+			defer func() {
+				if r := recover(); r != nil {
+					bugreport.Capture(bugreport.KindPanic, nil, "", nil)
+				}
+			}()
 			onStateChange(oldState, newState)
 		}()
 	}

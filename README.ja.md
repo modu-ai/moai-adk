@@ -256,7 +256,7 @@ git clone https://github.com/modu-ai/moai-adk.git
 cd moai-adk && make build
 ```
 
-すでにインストール済みなら、`moai update` で最新版に上げる。v3.1.1 から `moai update` は、テンプレート管理ディレクトリを消して敷き直す前に、その中にあった管理対象外のファイルを `.moai-backups/<タイムスタンプ>/pre-clean/` へ先に退避する。バックアップに失敗すれば削除へは進まずその場で止まる — 自分で置いたファイルが再配置で黙って流されることはない。
+すでにインストール済みなら、`moai update` で最新版に上げる。v3.2.0 から `moai update` は既存プロジェクトを保存ベースで更新する — テンプレート管理ディレクトリを消して敷き直すことはもうない。自分で置いたファイルはその場に残り、テンプレートファイルへの変更は 3-way マージされる(衝突時は編集分を残し、新版を `<path>.moai-new.N` サイドカーとして隣に置く)。テンプレートがもう運ばないファイルは削除前に `.moai/archive/files/` へ退避される — サマリーが更新・マージ・衝突・保存・アーカイブを経路ごとにすべて報告する。
 
 > 💡 **コストを減らすには — z.ai GLM 推奨**: [このリンク](https://z.ai/subscribe?ic=1NDV03BGWU)から z.ai に登録すると一定トークンがボーナスでもらえる。このリンクは moai-adk オープンソース開発を支援する経路でもある。無料モデル (GLM-4.7-Flash, GLM-4.5-Flash) もあるので、[z.ai 料金プラン](https://docs.z.ai/guides/overview/pricing)を参照のこと。
 
@@ -735,7 +735,7 @@ Claude の各ティアは `ANTHROPIC_DEFAULT_*_MODEL` 環境変数を通じて G
 | `moai init` | 対話式プロジェクト設定 (言語/フレームワーク/方法論を自動検出) |
 | `moai doctor` | システム状態の診断と環境検証 — Home Disk Usage 項目が `~/.moai` がどれだけ膨らんだかを勧告として知らせる |
 | `moai status` | プロジェクト状態の要約 (Git ブランチ、品質指標) |
-| `moai update` | 最新版へ更新 (削除前バックアップ · 自動ロールバック対応) |
+| `moai update` | 最新版へ更新 (ローカルファイル保存 · 3-way マージ+衝突サイドカー · 削除前アーカイブ) |
 | `moai graph <build\|query>` | コードベースグラフ (edges.jsonl) の生成・照会 — 呼び出し元の検索、影響半径、マイルストーンの交差検査 |
 | `moai cc` / `moai glm` | Claude 専用 / GLM 専用のセッション |
 | `moai codex [cli\|status\|app]` | Codex ランチャー — 引数なしで呼ぶと Codex CLI を起動する。`status` は準備状態を表示するだけで何も起動しない |

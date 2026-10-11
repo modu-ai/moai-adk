@@ -19,6 +19,7 @@ import (
 	"charm.land/lipgloss/v2"
 
 	"github.com/modu-ai/moai-adk/internal/cli/uikit"
+	"github.com/modu-ai/moai-adk/internal/cli/update"
 	"github.com/modu-ai/moai-adk/internal/cli/update/backup"
 	"github.com/modu-ai/moai-adk/internal/cli/update/report"
 	"github.com/modu-ai/moai-adk/internal/merge"
@@ -159,6 +160,12 @@ type updateOutcomeDetail struct {
 	// RemovedLocalOnly counts removed files the embedded templates do not
 	// restore — the local-only losses the summary must not hide.
 	RemovedLocalOnly int
+	// ArchivedForRecovery counts removals whose copies reached the
+	// reconciliation archive (SPEC-UPDATE-MIGRATION-001, gate round 21): a
+	// recovery copy is NOT a redeployment — the file is gone from place and
+	// only recoverable by hand, so the breakdown must never claim "all
+	// re-deployed" over it.
+	ArchivedForRecovery int
 	// NamespaceBackupPath is the user-owned namespace backup root the run
 	// created ("" when none) — REQ-ICU-004 full-root accounting. The three-root
 	// structure itself is a recorded deliberate decision
@@ -177,10 +184,43 @@ type updateOutcomeDetail struct {
 	UpdatedFiles int
 	// ConflictFiles counts high-risk (conflict-class) files the merge flagged.
 	ConflictFiles int
+	// MigrationRemoved counts files the per-file user-asset migration
+	// removed after confirming each counterpart (gate round 12): content-safe
+	// by construction — the confirmed user copy holds the bytes — so they
+	// must never read as losses (local-only) or recoveries (archived). The
+	// breakdown gives them their own segment.
+	MigrationRemoved int
+}
+
+// renderReconciliationOutcome emits the reconciliation outcome lines
+// (SPEC-UPDATE-MIGRATION-001 REQ-UPM-030/031/032) through the existing
+// report renderer — plain counts plus the conflict, preserved, and
+// archived-removed path lists. Silent when the run reconciled nothing (the
+// zero-total boundary; REQ-UPM-031 binds only runs that actually removed).
+func renderReconciliationOutcome(w io.Writer, s update.ReconciliationSummary, th tui.Theme) {
+	counts := report.ReconciliationCounts{
+		Refreshed:       len(s.Refreshed),
+		Merged:          len(s.Merged),
+		Conflicts:       len(s.Conflicts),
+		Preserved:       len(s.Preserved),
+		ArchivedRemoved: len(s.ArchivedRemoved),
+	}
+	conflicted := make([]string, 0, len(s.Conflicts))
+	for _, c := range s.Conflicts {
+		conflicted = append(conflicted, c.Path+" (sidecar: "+c.Sidecar+")")
+	}
+	if text := report.RenderReconciliation(counts, conflicted, s.Preserved, s.ArchivedRemoved); text != "" {
+		_, _ = fmt.Fprintln(w, paintToken(text, th.Dim, false))
+	}
 }
 
 func renderUpdateOutcome(w io.Writer, fileCount int, detail updateOutcomeDetail, backupPath string, th tui.Theme) {
-	header := report.RenderOutcome(report.OutcomeUpdatedFiles, fileCount+detail.ManagedRedeployed, "")
+	// SPEC-UPDATE-MIGRATION-001 (card t1547, REQ-UPM-032): the caller's
+	// fileCount ALREADY includes the managed-root files (the plan.AnalyzeFiles
+	// exclusion is gone), so the pill no longer adds detail.ManagedRedeployed
+	// — that would double-count. The field survives as the breakdown's
+	// inclusion note.
+	header := report.RenderOutcome(report.OutcomeUpdatedFiles, fileCount, "")
 	_, _ = fmt.Fprintln(w, tui.Pill(tui.PillOpts{Kind: tui.PillOk, Solid: true, Label: header, Theme: &th}))
 	// Card t1527 D3: carry the merge-class breakdown (add/update/conflict) to
 	// the end-of-run summary — the pre-confirm classification card previously
@@ -201,18 +241,37 @@ func renderUpdateOutcome(w io.Writer, fileCount int, detail updateOutcomeDetail,
 	if detail.ManagedRedeployed > 0 || detail.RemovedManaged > 0 {
 		var breakdown string
 		if detail.ManagedRedeployed > 0 {
-			breakdown = fmt.Sprintf("%d merged/added + %d managed re-deployed", fileCount, detail.ManagedRedeployed)
+			breakdown = fmt.Sprintf("%d total (includes %d managed re-deployed)", fileCount, detail.ManagedRedeployed)
 		}
-		if detail.RemovedManaged > 0 {
+		// Gate round 12: the wholesale segment counts only what the walk or
+		// the reconcile removed — the migration's confirmed-counterpart
+		// removals carry their own segment, so "(all re-deployed)" can never
+		// cover a migration removal (its content is safe user-side, which is
+		// the opposite of re-deployed).
+		wholesale := detail.RemovedManaged - detail.MigrationRemoved
+		if wholesale > 0 {
 			sep := " · "
 			if breakdown == "" {
 				sep = ""
 			}
-			if detail.RemovedLocalOnly > 0 {
-				breakdown += fmt.Sprintf("%sremoved %d under managed paths (%d not restored — local-only)", sep, detail.RemovedManaged, detail.RemovedLocalOnly)
-			} else {
-				breakdown += fmt.Sprintf("%sremoved %d under managed paths (all re-deployed)", sep, detail.RemovedManaged)
+			switch {
+			case detail.ArchivedForRecovery > 0:
+				// Gate round 21: a recovery copy is not a redeployment — the
+				// stale files are gone from place and recoverable only from
+				// the archive, so the honest wording says so.
+				breakdown += fmt.Sprintf("%sremoved %d under managed paths (%d stale file(s) archived for recovery — not redeployed)", sep, wholesale, detail.ArchivedForRecovery)
+			case detail.RemovedLocalOnly > 0:
+				breakdown += fmt.Sprintf("%sremoved %d under managed paths (%d not restored — local-only)", sep, wholesale, detail.RemovedLocalOnly)
+			default:
+				breakdown += fmt.Sprintf("%sremoved %d under managed paths (all re-deployed)", sep, wholesale)
 			}
+		}
+		if detail.MigrationRemoved > 0 {
+			sep := " · "
+			if breakdown == "" {
+				sep = ""
+			}
+			breakdown += fmt.Sprintf("%s%d removed by the asset migration (your user copy holds the content)", sep, detail.MigrationRemoved)
 		}
 		_, _ = fmt.Fprintln(w, paintToken(breakdown, th.Dim, false))
 	}

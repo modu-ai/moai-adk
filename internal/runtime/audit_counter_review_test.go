@@ -1,6 +1,7 @@
 package runtime
 
 import (
+	"fmt"
 	"os"
 	"path/filepath"
 	"strings"
@@ -199,5 +200,297 @@ func TestDiffInsideAnchorsHunkScope(t *testing.T) {
 	tip := git("rev-parse", "HEAD")
 	if diffInsideAnchors(root, mid, tip, anchor) {
 		t.Fatal("an out-of-anchor hunk in the anchored file verified")
+	}
+}
+
+// SPEC-AUDIT-CEILING-REPAIR-001 reproduction tests (card t1560). Each RED
+// test below was observed failing on unmodified main 903ccd028 for its
+// stated reason before its fix, per the engine family convention
+// ("RED is a new test — E8 evidence required").
+
+// AC-ACR-001 (D1 RED) — previousAuditedSHA: the round counter counts BOTH
+// families and can select a legacy-family file (<SpecID>-review-<N>.md, the
+// card-review F4 stream) as RoundEvidence.LatestPath, so the LATEST round
+// number must resolve through the same dual-family parse the prior-round
+// scan applies. With the defect, iterationOf (convention-only) returns 0
+// for a legacy latest, the latestN <= 0 guard aborts, and the previous
+// audited SHA is lost.
+func TestPreviousAuditedSHALatestLegacyRound(t *testing.T) {
+	specID := "SPEC-ACE-LEG2-001"
+	dir := t.TempDir()
+	writeReview := func(n int, sha string) {
+		t.Helper()
+		p := filepath.Join(dir, fmt.Sprintf("%s-review-%d.md", specID, n))
+		if err := os.WriteFile(p, []byte("# review\nverdict: FAIL\naudited_sha: "+sha+"\n"), 0o600); err != nil {
+			t.Fatal(err)
+		}
+	}
+	writeReview(1, "sha-rev1")
+	writeReview(2, "sha-rev2")
+	writeReview(3, "sha-rev3")
+	ev, err := CountAuditRounds(specID, []string{dir})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if ev.LatestPath == "" || !strings.HasSuffix(ev.LatestPath, "-review-3.md") {
+		t.Fatalf("latest %q, want the legacy -review-3.md stream tip", ev.LatestPath)
+	}
+	in := VerdictCeilingInput{SpecID: specID, ProjectRoot: t.TempDir()}
+	if got := previousAuditedSHA(in, ev); got != "sha-rev2" {
+		t.Fatalf("previous audited SHA %q, want sha-rev2 (largest round strictly below the legacy latest)", got)
+	}
+}
+
+// AC-ACR-002 (D1 mixed families) — once the latest number resolves through
+// the dual-family parse, the prior-round scan's existing dual-family
+// behavior finds a convention-family prior below a legacy-family latest.
+func TestPreviousAuditedSHAMixedFamilyPrior(t *testing.T) {
+	specID := "SPEC-ACE-MIXFAM-001"
+	dir := t.TempDir()
+	iter2 := writeAuditFixture(t, dir, "plan-audit-iter2.md", specID, "FAIL", 0)
+	if err := os.WriteFile(iter2, []byte(replaceSHA(t, iter2, "sha-iter2")), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	rev3 := filepath.Join(dir, specID+"-review-3.md")
+	if err := os.WriteFile(rev3, []byte("# review\nverdict: FAIL\naudited_sha: sha-rev3\n"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	ev, err := CountAuditRounds(specID, []string{dir})
+	if err != nil {
+		t.Fatal(err)
+	}
+	in := VerdictCeilingInput{SpecID: specID, ProjectRoot: t.TempDir()}
+	if got := previousAuditedSHA(in, ev); got != "sha-iter2" {
+		t.Fatalf("previous audited SHA %q, want sha-iter2 (convention prior below the legacy latest)", got)
+	}
+}
+
+// AC-ACR-003 (D1 preservation, RG) — a latest name parsing under NEITHER
+// family keeps the no-prior-round fail-closed semantics: "" before and
+// after the fix. Preserve-behavior check — passes on unmodified main and
+// must keep passing; never a RED observation.
+func TestPreviousAuditedSHAUnparseableLatestStaysEmpty(t *testing.T) {
+	specID := "SPEC-ACE-GARBAGE-001"
+	dir := t.TempDir()
+	p := filepath.Join(dir, "garbage.md")
+	if err := os.WriteFile(p, []byte("# verdict\naudited_sha: sha-x\n"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	ev := RoundEvidence{Sources: []string{p}, LatestPath: p}
+	in := VerdictCeilingInput{SpecID: specID, ProjectRoot: t.TempDir()}
+	if got := previousAuditedSHA(in, ev); got != "" {
+		t.Fatalf("previous audited SHA %q, want empty for an unparseable latest name (fail-closed)", got)
+	}
+}
+
+// AC-ACR-014 (D4 RED + preserve arms) — CountAuditRounds: a bare base
+// report and an Atoi-overflowing iteration suffix each count as their OWN
+// round (the n=1 initialization at audit_counter.go:109 and the Atoi
+// collapse at :111 are the defect); parsed-number dedupe, the bare base
+// alone, and explicit-0 parity are preserved.
+func TestCountAuditRoundsOverflowOwnRound(t *testing.T) {
+	specID := "SPEC-ACE-OF-001"
+
+	// (a) base + overflow suffix → 2. RED today: 1 — the Atoi range error
+	// leaves n at its initialized 1, deduping into seen[1]; the overflow
+	// file is fail-counted and never becomes LatestPath.
+	t.Run("base_plus_overflow_suffix_counts_2", func(t *testing.T) {
+		dir := t.TempDir()
+		writeAuditFixture(t, dir, "plan-audit.md", specID, "FAIL", 0)
+		writeAuditFixture(t, dir, "plan-audit-iter99999999999999999999.md", specID, "FAIL", 0)
+		ev, err := CountAuditRounds(specID, []string{dir})
+		if err != nil {
+			t.Fatal(err)
+		}
+		if ev.Count != 2 {
+			t.Fatalf("count %d, want 2 (the base and the overflow suffix are two rounds)", ev.Count)
+		}
+		if ev.LatestPath == "" || !strings.HasSuffix(ev.LatestPath, "plan-audit.md") {
+			t.Fatalf("latest %q, want the base report — an overflow suffix never becomes LatestPath", ev.LatestPath)
+		}
+	})
+
+	// (b) base vs numbered → 2. RED today: 1 — the convention branch
+	// initializes n = 1 BEFORE the Atoi attempt, so base and iter1 collapse
+	// into seen[1].
+	t.Run("base_versus_numbered_counts_2", func(t *testing.T) {
+		dir := t.TempDir()
+		writeAuditFixture(t, dir, "plan-audit.md", specID, "FAIL", 0)
+		writeAuditFixture(t, dir, "plan-audit-iter1.md", specID, "FAIL", 0)
+		ev, err := CountAuditRounds(specID, []string{dir})
+		if err != nil {
+			t.Fatal(err)
+		}
+		if ev.Count != 2 {
+			t.Fatalf("count %d, want 2 (the base never merges with iter1)", ev.Count)
+		}
+		if ev.LatestPath == "" || !strings.Contains(ev.LatestPath, "iter1") {
+			t.Fatalf("latest %q, want iter1 (the numbered round orders after the base)", ev.LatestPath)
+		}
+	})
+
+	// (c) one normal + two overflow files → 1+N = 3. RED today: 1 with
+	// sources=3 (the collapse the leader's gate measured at 903ccd028).
+	t.Run("one_normal_plus_two_overflow_counts_3", func(t *testing.T) {
+		dir := t.TempDir()
+		writeAuditFixture(t, dir, "plan-audit-iter1.md", specID, "FAIL", 0)
+		writeAuditFixture(t, dir, "plan-audit-iter99999999999999999998.md", specID, "FAIL", 0)
+		writeAuditFixture(t, dir, "plan-audit-iter99999999999999999999.md", specID, "FAIL", 0)
+		ev, err := CountAuditRounds(specID, []string{dir})
+		if err != nil {
+			t.Fatal(err)
+		}
+		if ev.Count != 3 {
+			t.Fatalf("count %d (sources %d), want 3 (1 normal + 2 unparseable)", ev.Count, len(ev.Sources))
+		}
+	})
+
+	// Preserve: a bare base alone counts 1 and remains the LatestPath.
+	t.Run("bare_base_alone_counts_1_and_stays_latest", func(t *testing.T) {
+		dir := t.TempDir()
+		writeAuditFixture(t, dir, "plan-audit.md", specID, "PASS", 0)
+		ev, err := CountAuditRounds(specID, []string{dir})
+		if err != nil {
+			t.Fatal(err)
+		}
+		if ev.Count != 1 {
+			t.Fatalf("count %d, want 1", ev.Count)
+		}
+		if ev.LatestPath == "" || !strings.HasSuffix(ev.LatestPath, "plan-audit.md") {
+			t.Fatalf("latest %q, want the base report", ev.LatestPath)
+		}
+	})
+
+	// Preserve (f): explicit-0 parity — plan-audit-0.md keeps its own
+	// seen[0] identity and never merges with the bare base; LatestPath
+	// stays the base.
+	t.Run("explicit_zero_keeps_own_round_parity", func(t *testing.T) {
+		dir := t.TempDir()
+		writeAuditFixture(t, dir, "plan-audit.md", specID, "FAIL", 0)
+		writeAuditFixture(t, dir, "plan-audit-0.md", specID, "FAIL", 0)
+		ev, err := CountAuditRounds(specID, []string{dir})
+		if err != nil {
+			t.Fatal(err)
+		}
+		if ev.Count != 2 {
+			t.Fatalf("count %d, want 2 (base and plan-audit-0.md are distinct rounds)", ev.Count)
+		}
+		if ev.LatestPath == "" || !strings.HasSuffix(ev.LatestPath, "plan-audit.md") {
+			t.Fatalf("latest %q, want the base report (explicit-0 parity)", ev.LatestPath)
+		}
+	})
+}
+
+// AC-ACR-014 arm (e) (D4 RED) — previousAuditedSHA: the base report orders
+// EARLIEST (round 0, the planAuditRoundFile convention), so a numbered
+// latest resolves the base as its previous audited round when no numbered
+// round orders between them. RED today: "" — the scan skips the base
+// (n >= latestN).
+func TestPreviousAuditedSHABaseRoundBaseline(t *testing.T) {
+	specID := "SPEC-ACE-BASE-001"
+	dir := t.TempDir()
+	base := writeAuditFixture(t, dir, "plan-audit.md", specID, "FAIL", 0)
+	if err := os.WriteFile(base, []byte(replaceSHA(t, base, "sha-base")), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	iter1 := writeAuditFixture(t, dir, "plan-audit-iter1.md", specID, "FAIL", 0)
+	if err := os.WriteFile(iter1, []byte(replaceSHA(t, iter1, "sha-iter1")), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	ev, err := CountAuditRounds(specID, []string{dir})
+	if err != nil {
+		t.Fatal(err)
+	}
+	// The previous-baseline assertion comes first: it is the RED face of
+	// this arm. (The counter's own n=1 collapse makes the same fixture
+	// count 1 at the pre-repair tree, so the count assertions below read
+	// only after the previous-baseline behavior is established.)
+	in := VerdictCeilingInput{SpecID: specID, ProjectRoot: t.TempDir()}
+	if got := previousAuditedSHA(in, ev); got != "sha-base" {
+		t.Fatalf("previous audited SHA %q, want sha-base (the base is round 0, the previous audited round)", got)
+	}
+	if ev.Count != 2 {
+		t.Fatalf("count %d, want 2", ev.Count)
+	}
+	if ev.LatestPath == "" || !strings.Contains(ev.LatestPath, "iter1") {
+		t.Fatalf("latest %q, want iter1", ev.LatestPath)
+	}
+}
+
+// F1 (sync-audit-1, leader ruling #2 adopted) — CountAuditRounds: a
+// legacy-family file whose numeric suffix overflows the integer range is
+// fail-counted as its own round, exactly like a convention-family overflow
+// (the same REQ-ACR-009 semantics) — never clamped into seen[MaxInt] (which
+// merged distinct overflow files into one round) and never elected
+// LatestPath over a legit round.
+func TestCountAuditRoundsLegacyOverflowOwnRound(t *testing.T) {
+	specID := "SPEC-ACE-LEGOF-001"
+	dir := t.TempDir()
+	writeReview := func(name, sha string) {
+		t.Helper()
+		if err := os.WriteFile(filepath.Join(dir, name), []byte("# review\nverdict: FAIL\naudited_sha: "+sha+"\n"), 0o600); err != nil {
+			t.Fatal(err)
+		}
+	}
+	writeReview(specID+"-review-99999999999999999998.md", "sha-of1")
+	writeReview(specID+"-review-99999999999999999999.md", "sha-of2")
+	writeReview(specID+"-review-1.md", "sha-rev1")
+	ev, err := CountAuditRounds(specID, []string{dir})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if ev.Count != 3 {
+		t.Fatalf("count %d, want 3 (two overflow legacy suffixes fail-count their own rounds + one normal)", ev.Count)
+	}
+	if ev.LatestPath == "" || !strings.HasSuffix(ev.LatestPath, "-review-1.md") {
+		t.Fatalf("latest %q, want -review-1.md — an overflow legacy suffix never becomes LatestPath", ev.LatestPath)
+	}
+}
+
+// Round-3 repair 2 — round-0 family parity: the same (round 0, round 2)
+// history expressed in the convention family and in the legacy family must
+// yield the SAME previous audited SHA and the SAME count. With the defect,
+// evidenceRoundOf treats a parsed plan-audit-0.md as unparseable while the
+// legacy branch honors -review-0.md, so renaming the history between
+// families loses the previous-round baseline and can flip an admitted
+// delta to a final hit.
+func TestPreviousAuditedSHARoundZeroFamilyParity(t *testing.T) {
+	specID := "SPEC-ACE-R0PAR-001"
+
+	// Convention family: an explicit round 0 (plan-audit-0.md) + round 2.
+	convDir := t.TempDir()
+	zero := writeAuditFixture(t, convDir, "plan-audit-0.md", specID, "FAIL", 0)
+	if err := os.WriteFile(zero, []byte(replaceSHA(t, zero, "sha-round0")), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	iter2 := writeAuditFixture(t, convDir, "plan-audit-iter2.md", specID, "FAIL", 0)
+	if err := os.WriteFile(iter2, []byte(replaceSHA(t, iter2, "sha-round2")), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	evConv, err := CountAuditRounds(specID, []string{convDir})
+	if err != nil {
+		t.Fatal(err)
+	}
+	prevConv := previousAuditedSHA(VerdictCeilingInput{SpecID: specID, ProjectRoot: t.TempDir()}, evConv)
+
+	// The same history renamed into the legacy family.
+	legDir := t.TempDir()
+	if err := os.WriteFile(filepath.Join(legDir, specID+"-review-0.md"), []byte("# review\nverdict: FAIL\naudited_sha: sha-round0\n"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(legDir, specID+"-review-2.md"), []byte("# review\nverdict: FAIL\naudited_sha: sha-round2\n"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	evLeg, err := CountAuditRounds(specID, []string{legDir})
+	if err != nil {
+		t.Fatal(err)
+	}
+	prevLeg := previousAuditedSHA(VerdictCeilingInput{SpecID: specID, ProjectRoot: t.TempDir()}, evLeg)
+
+	if prevConv != prevLeg || prevConv != "sha-round0" {
+		t.Fatalf("previous SHA differs across families: convention %q legacy %q, want sha-round0 in both (round-0 family parity)", prevConv, prevLeg)
+	}
+	if evConv.Count != evLeg.Count {
+		t.Fatalf("count differs across families: convention %d, legacy %d", evConv.Count, evLeg.Count)
 	}
 }

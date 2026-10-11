@@ -8,6 +8,7 @@ import (
 	"strings"
 
 	"github.com/modu-ai/moai-adk/internal/config"
+	"github.com/modu-ai/moai-adk/internal/factory"
 	"github.com/modu-ai/moai-adk/internal/homestate"
 )
 
@@ -42,10 +43,24 @@ func factoryAuditDecideCards(ctx context.Context, root string, out io.Writer, ca
 			err = fmt.Errorf("card is %s, not %s", cur.State, homestate.CardKickoff)
 		}
 		if err == nil {
-			cur, err = db.Transition(ctx, homestate.TransitionRequest{
-				RunID: runID, CardID: cardID, To: homestate.CardRun, ExpectedVersion: cur.Version,
-				// The hold is read inside the transition, right before the commit.
-				Actor: actor, Decider: homestate.DeciderAudit, QueueHoldRead: func() string { return factoryQueueHold(cardID) }, Now: factoryCardNow(),
+			// T8a leases from this run and re-points the binding onto it in the
+			// same transaction, so the queue's current-dispatch record has to
+			// follow (turn-end gate, card t1538): otherwise a retried older
+			// dispatch reads the stale record as current and drags the binding
+			// back, and the older run's approval verifies again beside the new
+			// run's valid lease. The record is written under the queue lock,
+			// inside the factory transaction right before its commit — an
+			// unwritable record rolls the approval back, and a refused approval
+			// never reaches the hook.
+			err = todoStoreAt(root).WithLock(func(l *factory.LockedBacklog) error {
+				var terr error
+				cur, terr = db.Transition(ctx, homestate.TransitionRequest{
+					RunID: runID, CardID: cardID, To: homestate.CardRun, ExpectedVersion: cur.Version,
+					// The hold is read inside the transition, right before the commit.
+					Actor: actor, Decider: homestate.DeciderAudit, QueueHoldRead: func() string { return factoryQueueHold(cardID) }, Now: factoryCardNow(),
+					BeforeCommit: func(next homestate.Card) error { return l.RefreshDispatchCurrent(cardID, runID, next.OwnerLabel) },
+				})
+				return terr
 			})
 		}
 		if err != nil {

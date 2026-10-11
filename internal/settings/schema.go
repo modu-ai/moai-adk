@@ -139,6 +139,15 @@ const (
 	// (WriteSectionViaSeam)으로만 저장한다 (REQ-WC11-017). Section은 섹션 파일
 	// base name, Path는 문서 루트부터의 키 경로다.
 	PersistSeam PersistKind = "seam"
+	// PersistUserScoped (SPEC-FEEDBACK-PARTICIPATION-001 REQ-ANON-020): the
+	// field's value persists to the USER-scoped consent file
+	// (<moai home>/config/participation.yaml) through WriteUserParticipation,
+	// never to any project-tier section file. Consent is a property of the
+	// person and their GitHub account; a project-tier write would let a cloned
+	// repository's console session record a consent the next user's account
+	// would obey. sectionFileFor returns "" for this kind — it has no project
+	// section file at all.
+	PersistUserScoped PersistKind = "user-scoped"
 )
 
 // PersistTarget은 필드 값의 영속화 대상을 선언한다. ProfileStore 필드의 경우

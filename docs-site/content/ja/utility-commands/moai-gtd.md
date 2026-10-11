@@ -7,7 +7,7 @@ new: true
 
 # /moai gtd
 
-`/moai gtd` と `moai gtd` は、仕事を収集し、実行可能かを判断してから既存の開発キューへつなぐ正式な GTD 入口です。従来の `todo` SQLite DB、カード ID、並び順、`queued`・`picked`・`dropped` 状態、アーカイブ・復元の意味は変わりません。`todo` は同じコマンドツリーを使う互換名として残ります。
+`/moai gtd` と `moai gtd` は、仕事を収集し、実行可能かを判断してから既存の開発キューへつなぐ GTD 入口です。正式名称は `/moai todo` と `moai todo` で、SQLite DB、カード ID、並び順、`queued`・`picked`・`dropped` 状態、アーカイブ・復元の意味は変わりません。`moai gtd` は同じコマンドツリーを使う互換名として引き続き完全にサポートされます。
 
 ```bash
 moai gtd add "認証のエラー経路を整理"
@@ -16,7 +16,7 @@ moai gtd next t1 --spec SPEC-AUTH-001
 moai gtd done t1 --expect "認証"
 ```
 
-従来の `moai todo ...` も同じ結果になります。キューの全動詞とフラグは [todo 互換コマンドのリファレンス](/ja/utility-commands/moai-todo) を参照してください。
+正式名称の `moai todo ...` も同じ結果になります。キューの全動詞とフラグは [todo コマンドのリファレンス](/ja/utility-commands/moai-todo) を参照してください。
 
 GTD 専用の 5 動詞は、同じ SQLite 項目を順に引き継ぎます。
 

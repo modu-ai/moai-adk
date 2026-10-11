@@ -256,7 +256,7 @@ git clone https://github.com/modu-ai/moai-adk.git
 cd moai-adk && make build
 ```
 
-已安装过？用 `moai update` 升到最新版本。从 v3.1.1 起，`moai update` 在清空并重铺模板管理目录之前，会先把那里面不受管理的文件挪到 `.moai-backups/<时间戳>/pre-clean/`。备份失败就当场停下，不会往删除那一步走 —— 你自己放进去的文件不会在重铺时被悄悄冲掉。
+已安装过？用 `moai update` 升到最新版本。从 v3.2.0 起，`moai update` 以保留优先的方式更新已有项目 —— 不再清空重铺模板管理目录。你自己放进去的文件原地保留，对模板文件的修改会做 3-way 合并（冲突时保留你的修改，新版本以 `<path>.moai-new.N` sidecar 放在旁边），模板不再携带的文件在删除前先移入 `.moai/archive/files/` —— 汇总会按路径报告全部刷新、合并、冲突、保留与归档。
 
 > 💡 **想省成本 —— 推荐 z.ai GLM**：通过[这个链接](https://z.ai/subscribe?ic=1NDV03BGWU)注册 z.ai 可获得一定量的赠送 token。这个链接也是赞助 moai-adk 开源开发的途径。也有免费模型（GLM-4.7-Flash、GLM-4.5-Flash），参见 [z.ai 定价](https://docs.z.ai/guides/overview/pricing)。
 
@@ -734,7 +734,7 @@ Claude 的每一档通过 `ANTHROPIC_DEFAULT_*_MODEL` 环境变量映射到 GLM 
 | `moai init` | 交互式项目初始化（自动检测语言/框架/方法论） |
 | `moai doctor` | 系统状态诊断与环境校验 —— Home Disk Usage 项会告诉你 `~/.moai` 膨胀到了多大 |
 | `moai status` | 项目状态摘要（Git 分支、质量指标） |
-| `moai update` | 升级到最新版（删除前备份 · 支持自动回滚） |
+| `moai update` | 升级到最新版（保留本地文件 · 3-way 合并与冲突 sidecar · 删除前归档） |
 | `moai graph <build\|query>` | 生成/查询代码库图（edges.jsonl）—— 找调用方、波及范围、里程碑交叉检查 |
 | `moai cc` / `moai glm` | Claude 专用 / GLM 专用会话 |
 | `moai codex [cli\|status\|app]` | Codex 启动器 — 不带动词调用即启动 Codex CLI；`status` 只显示就绪状态，不启动任何东西 |

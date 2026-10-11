@@ -3,6 +3,8 @@ package hook
 import (
 	"context"
 	"log/slog"
+
+	"github.com/modu-ai/moai-adk/internal/bugreport"
 	"time"
 
 	"github.com/modu-ai/moai-adk/internal/binlag"
@@ -70,6 +72,7 @@ func binaryLagAdvisory(ctx context.Context, dir string, async bool) string {
 	go func() {
 		defer func() {
 			if r := recover(); r != nil {
+				bugreport.Capture(bugreport.KindPanic, nil, "", nil)
 				slog.Debug("session start: binary lag comparison panicked (non-blocking)", "recover", r)
 			}
 		}()

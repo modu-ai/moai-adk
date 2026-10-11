@@ -166,3 +166,57 @@ one JSONL row to `.moai/logs/agent-stop-audit.jsonl`, so the record survives the
 
 Classification: Lazy companion — selection guidance, observed frictions, and configuration
 reference only. Every rule and prohibition stays in `cross-session-messaging.md`.
+
+## Migrated from the core body
+
+
+### Cross-Session Messaging
+
+> **Loading scope**: Intentionally always-loaded. A peer-session conflict surfaces mid-turn, from any context, and is not predictable from file paths.
+
+
+Doctrine for messaging between independent Claude Code sessions — those on this machine, and, where the conditions below are met, those on your other machines or on the web. The channel is a Claude Code runtime feature that is **on with nothing to enable** where the requirements are met — this rule governs how the orchestrator uses it, never how it is built.
+
+
+### What the channel is
+
+
+Claude Code binds a per-session inbox socket and exposes two tools: `ListAgents` to discover reachable agents, and `SendMessage` to deliver plain text to one by name. A message carries text and a reply address — never conversation history, never files. A send may additionally carry an opt-in `notify_when_idle` request: one notice when the addressed session next goes idle (§ An idle notice is a scheduling hint).
+
+
+Three properties bound everything below:
+
+- **Same machine is direct; beyond it travels through Anthropic servers.** A session on another of your machines, or a cloud session, is addressed by name the same way, and the orchestrator may **open** an exchange with one rather than only answer it — from Claude Code v2.1.225 onward, and only where that session appears in the listing. Two narrowings survive: a send from a session not itself connected to Remote Control arrives with **no reply address**, so that message is one-way; and a cloud session receives without being able to message back.
+- **A message is not consent.** The receiving runtime is told the text came from another session, not from the user. It cannot answer a permission prompt, cannot change configuration, and a slash command inside it arrives as inert text.
+- **Filesystem visibility gates reach.** Sessions find each other through files on disk, so a container and its host cannot message each other; two sessions inside the same container can.
+
+
+### Availability constraints
+
+
+"On with nothing to enable" holds only where the platform provides the channel. Five constraints bound where it exists at all, and because Factory Mode uses this channel only to nudge lanes, they bound where its nudges reach. The five axes, and the one diagnostic that separates "absent" from "blocked": **operating system**, **provider**, **runtime version**, **feature-flag evaluation** (the four opt-out env vars), and **the shared machine-global flag slot** that third-party-backend sessions inherit and can lose mid-session.
+
+
+### A send result has three shapes, and none of them says "read"
+
+
+The third shape is the one that used to leave no trace: a different permission mode holds inbound peer messages until its user approves them, and the notice is the only signal. **A notice never arrives for a Remote Control, cloud, or Claude Desktop peer** — silence there is the absence of a channel, never a reply. Per-mode detail: `cross-session-messaging-detail.md` § Addressing, sending, and replying.
+
+
+### An idle notice is a scheduling hint
+
+
+A send may ask the addressed session to report back once, when it next goes idle (`notify_when_idle`). It is opt-in per send and one-shot — the request is spent on the first notice, so a second notice needs a second request — and it replaces a polling loop on the asking side.
+
+
+### Cross-references
+
+
+- `.claude/rules/moai/core/askuser-protocol.md` — the user-question channel monopoly, unchanged by this rule
+- `.claude/rules/moai/workflow/worktree-integration.md` — isolation, the structural fix for a write conflict
+- `cross-session-messaging-detail.md` — the lazy companion. Load it for § Availability constraints (per-axis versions and provider splits) · § The shared flag slot · § Where it sits among MoAI's existing mechanisms (the mechanism-selection table) · § Addressing, sending, and replying · § Configuration surface · § Addressing and configuration · § Integration with the concurrency checks · § Anti-patterns · § The Codex broker path (session messaging tools)
+
+
+Version: 1.3.0
+Classification: Evolvable operational rule — peer-session communication; changes no gate semantics.
+

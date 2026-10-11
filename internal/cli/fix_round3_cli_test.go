@@ -34,7 +34,7 @@ func TestFR3_1_MigrationPreservesOnUnverifiable(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	if err := migrateProjectCommonAssets(root, home, nil, func(string, ...interface{}) {}); err != nil {
+	if _, err := migrateProjectCommonAssets(root, home, true, nil, func(string, ...interface{}) {}); err != nil {
 		t.Fatal(err)
 	}
 	if _, err := os.Stat(live); err != nil {

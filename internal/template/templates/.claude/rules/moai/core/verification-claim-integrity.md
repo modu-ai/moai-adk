@@ -2,25 +2,19 @@
 
 <!-- mirror-fork: intentional — this copy is deliberately divergent from the local dogfood copy; do not sync mechanically -->
 
-Doctrine establishing the **"no unobserved-verification-claim" invariant** for all MoAI actors. This rule is automatically loaded for the orchestrator and all agents. It is a policy-layer doctrine — it defines the norm; it does not itself run a runtime detector.
-
-> The motivating defect class is general: an actor claiming a verification or completion it did not actually observe. A complementary runtime layer (advisory, warn-first, fail-open) may detect one shape of this violation; this doctrine codifies the policy norm that binds every actor regardless of whether such a runtime layer is present.
+> Moved to the detail companion: `verification-claim-integrity-detail.md` ("Verification-Claim Integrity").
 
 ## 1. The Invariant — no unobserved-claim (verification, defect, OR premise)
 
 [ZONE:Evolvable] [HARD] An actor MUST NOT assert a verification, a completion, **a defect / debt / drift, OR the premise underlying a recommendation** it did not actually verify with the domain's mechanical tooling.
 
-> **Evidence absent ≠ evidence of success — NOR of failure.**
+> Moved to the detail companion: `verification-claim-integrity-detail.md` ("1. The Invariant — no unobserved-claim (verification, defect, OR premise)").
 
 The absence of a failure signal is not, by itself, evidence that a check passed. A claim of "tests pass", "coverage met", "lint clean", or "remote in sync" is only valid when the actor actually ran the command and observed its output. An unran command, a skipped step, or a silent assumption is a gap — never a pass.
 
 Symmetrically, inferring a defect, a debt item, a drift, or an anomalous state from text patterns, grep matches, or file absence alone — without the domain's dedicated verification tool — is not evidence the defect exists: a text-pattern inference is a hypothesis, never a verified defect. The invariant binds both directions.
 
 The binding extends to the premise beneath a recommendation. A recommendation to KEEP, retain, or preserve something rests on a premise — that the thing is still live, still reachable, still depended upon. Observing that an artifact is *referenced* establishes only that a reference exists; it does not establish that the referenced capability is still live. **Reachability is not justification.** Before recommending retention, the actor MUST verify the referenced capability's lifecycle status — whether its producer still exists, and whether a completed retirement already covers it. An unverified premise dressed as a reason is an unobserved claim.
-
-This direction is the more dangerous one, because its failure is silent. A wrong "remove it" claim is contradicted by the next build or test run; a wrong "keep it" claim preserves dead code and is never contradicted by any signal at all.
-
-This is a policy-layer norm, not a mechanical guarantee. A complementary mechanical-detection layer may surface one shape of this violation at runtime, but the norm binds every actor independently of that layer.
 
 ### 1.1 Binding scope — ALL FOUR surfaces
 
@@ -67,7 +61,7 @@ The branch table, its cost table, and the exemption-marker syntax live in `verif
 
 [ZONE:Evolvable] [HARD] A measurement produced by the project's own tooling is attributed to **two** coordinates, not one: the tree it read, and the build that judged it. §2 binds the first. This clause binds the second, because a tool invoked through a shell path resolves to an *installed* build, which need not be the build the tree describes.
 
-The silence is **symmetric**: a stale build and a current build produce the same clean-pass signals, so a green result is evidence only that whatever checks the invoked build carries reported nothing.
+> Moved to the detail companion: `verification-claim-integrity-detail.md` ("2.2 Tool-provenance attribution — which build judged the tree").
 
 **The obligation.** A tool measurement cited as evidence MUST have been produced by a build made from the tree under measurement. Concretely, either:
 
@@ -77,8 +71,6 @@ The silence is **symmetric**: a stale build and a current build produce the same
 **What the citation carries.** A cited tool measurement names the judging build's commit next to the tree's HEAD. A measurement citing only the tree is unattributed under §2: a Gap, not a Claim.
 
 **Where it does not bind.** A build with no repository to compare against — a released artifact inside a user's project, a checkout without history — has no lag to state, and this clause requires nothing of it. A missing second coordinate is a defect only where the coordinate exists.
-
-**Not a substitute for the tooling's own verdict.** Where the tooling already computes a freshness verdict, that verdict is the mechanism; this clause governs the **citation**, and holds whether or not the invoked build is one that reports it. A build old enough to predate the freshness check is exactly the build that cannot warn you about itself.
 
 
 ### 2.3 Ordering attribution — the commit graph is the only sequencing witness
@@ -99,11 +91,7 @@ The five sections, in order:
 | **Gaps** (미검증) | what was explicitly **NOT** observed; an empty Gaps section asserts nothing was left unobserved, which must itself be true |
 | **Residual-risk** (잔여 위험) | what could still be wrong *despite* what was observed — distinct from Gaps, which is what was not observed |
 
-What each section contains in full, the cross-reference table, and the two worked-example incident
-records (the defect-claim hazard and the retention-claim hazard the §1 clauses were written from)
-live in the detail companion `verification-claim-integrity-detail.md`. Load it when composing an
-evidence-bearing report for the first time, or when tracing a clause back to its originating
-failure.
+> Moved to the detail companion: `verification-claim-integrity-detail.md` ("3. The 5-Section Evidence-Bearing Report Format").
 
 ### 3.1 Refused-tool degradation — a refusal is a Gap, never a silent substitution
 
@@ -111,7 +99,7 @@ failure.
 
 Falling back to reading the source is a legitimate response to a refusal. Presenting the result of that fallback as the measurement is not: the report then reads as measured where it was inferred, and no reader can tell.
 
-The hazard is quiet in a specific way: a refusal is loud to the actor when it happens and invisible in the artifact afterwards. An auditor whose command was refused can still reach a PASS by reading source — "confirmed by measurement" becomes "inferred by reading" with nothing in the verdict recording the change. §1 already forbids the resulting claim; this clause fixes WHERE the difference is written down.
+> Moved to the detail companion: `verification-claim-integrity-detail.md` ("3.1 Refused-tool degradation — a refusal is a Gap, never a silent substitution").
 
 Two consequences, and the first is the one actors get wrong:
 
@@ -119,6 +107,3 @@ Two consequences, and the first is the one actors get wrong:
 - **The refusal is recorded mechanically as well**, so the Gaps entry is checkable against a record the actor does not write: the failure-event hook writes a refused tool call as a `tool_failure:<tool>:<category>` row in `.moai/lessons-inbox.jsonl`. A Gaps section silent about a refusal the record carries is a divergence a reviewer can find without taking the actor's word for it.
 
 ---
-
-Version: 1.3.0
-Classification: Canonical Reference (policy-layer codification) — do not duplicate cross-referenced content; cross-reference this file instead.

@@ -62,13 +62,15 @@ func TestCodexReviewGate_TreeScopeRequestShapeUnchanged(t *testing.T) {
 
 	sess := withCodexSession(t, codexSessionScript("- [P1] tree scope findings"))
 
-	input := &hook.HookInput{SessionID: "sess-tree", CWD: f.root}
-	out, err := HandleCodexReviewGate(input, true /* enabled */, f.root)
+	// M2 (REQ-GBN-002): the request is assembled by the receipt PRODUCER now —
+	// the gate resolves and logs the scope, then kicks; the request-shape pin
+	// rides the producer (the same shared reviewRequestParams).
+	r, err := produceCodexReviewReceipt(context.Background(), f.root)
 	if err != nil {
-		t.Fatalf("gate error: %v", err)
+		t.Fatalf("receipt producer error: %v", err)
 	}
-	if out == nil || out.Decision != hook.DecisionBlock {
-		t.Fatalf("a fail verdict must BLOCK; got %+v", out)
+	if r.Verdict != codexReviewVerdictFail {
+		t.Fatalf("a fail verdict must record a fail receipt; got %q", r.Verdict)
 	}
 
 	if len(sess.sent) < 3 {
@@ -227,13 +229,13 @@ func TestCodexReviewGate_CardScopeRequestIsCardDiff(t *testing.T) {
 	f := newCardScopeFixture(t)
 	sess := withCodexSession(t, codexSessionScript("- [P1] card findings"))
 
-	input := &hook.HookInput{SessionID: "sess-card", CWD: f.card, ProjectDir: f.primary}
-	out, err := HandleCodexReviewGate(input, true /* enabled */, f.primary)
+	// M2 (REQ-GBN-002): the card-diff request is the producer's to send.
+	r, err := produceCodexReviewReceipt(context.Background(), f.card)
 	if err != nil {
-		t.Fatalf("gate error: %v", err)
+		t.Fatalf("receipt producer error: %v", err)
 	}
-	if out == nil || out.Decision != hook.DecisionBlock {
-		t.Fatalf("the fixture review fails, so the turn must BLOCK; got %+v", out)
+	if r.Verdict != codexReviewVerdictFail {
+		t.Fatalf("the fixture review fails, so the receipt must record fail; got %q", r.Verdict)
 	}
 	requireCardRequest(t, sess.sent, f)
 }
@@ -262,12 +264,13 @@ func TestCodexReviewGate_StaleEnvKeepsTreeScope(t *testing.T) {
 	}
 
 	sess := withCodexSession(t, codexSessionScript("- [P1] tree findings"))
-	out, err := HandleCodexReviewGate(&hook.HookInput{SessionID: "s", CWD: f.primary}, true, f.primary)
+	// M2 (REQ-GBN-002): the request rides the producer.
+	r, err := produceCodexReviewReceipt(context.Background(), f.primary)
 	if err != nil {
-		t.Fatalf("gate error: %v", err)
+		t.Fatalf("receipt producer error: %v", err)
 	}
-	if out == nil || out.Decision != hook.DecisionBlock {
-		t.Fatalf("the fixture review fails, so the turn must BLOCK; got %+v", out)
+	if r.Verdict != codexReviewVerdictFail {
+		t.Fatalf("the fixture review fails, so the receipt must record fail; got %q", r.Verdict)
 	}
 	if len(sess.sent) < 3 {
 		t.Fatalf("expected >=3 sent requests; got %d", len(sess.sent))
@@ -333,20 +336,41 @@ func TestCodexReviewScope_LabelValuesDoNotAffectDecision(t *testing.T) {
 // TestCodexReviewGate_FrozenProjectDirBypassed proves the §A.3(b) shape: the
 // session sits in its card worktree while both the payload project_dir and the
 // frozen CLAUDE_PROJECT_DIR name the primary. The scope resolves from the
-// SESSION's working directory tree, and the primary-only change (file F) is
-// not reviewed (REQ-CGS-005).
+// SESSION's working directory tree (observed on the gate's scope row — M2's
+// gate logs the scope and kicks), and the card-diff review request — the
+// producer's to send now — names the card worktree (REQ-CGS-005).
 func TestCodexReviewGate_FrozenProjectDirBypassed(t *testing.T) {
 	f := newCardScopeFixture(t)
 	t.Setenv("CLAUDE_PROJECT_DIR", f.primary) // the spawn-frozen env arm
 	sess := withCodexSession(t, codexSessionScript("- [P1] card findings"))
+	kicked := withKickRecorder(t)
+
+	var gotClass string
+	prev := reviewGateScopeLogger
+	reviewGateScopeLogger = func(scope reviewScope, _ map[string]string) { gotClass = scope.Class }
+	t.Cleanup(func() { reviewGateScopeLogger = prev })
 
 	input := &hook.HookInput{SessionID: "s", CWD: f.card, ProjectDir: f.primary}
 	out, err := HandleCodexReviewGate(input, true, f.primary)
 	if err != nil {
 		t.Fatalf("gate error: %v", err)
 	}
-	if out == nil || out.Decision != hook.DecisionBlock {
-		t.Fatalf("the fixture review fails, so the turn must BLOCK; got %+v", out)
+	if out == nil || out.Decision == hook.DecisionBlock {
+		t.Fatalf("a cache-miss Stop must ALLOW (the review is kicked), got %+v", out)
+	}
+	if gotClass != reviewScopeCard {
+		t.Fatalf("the scope must resolve from the session tree (card), got %q", gotClass)
+	}
+	if len(*kicked) != 1 || (*kicked)[0] != f.card {
+		t.Fatalf("the kick must carry the session tree, got %v", *kicked)
+	}
+	// The card-diff review request is the producer's to send now.
+	r, err := produceCodexReviewReceipt(context.Background(), f.card)
+	if err != nil {
+		t.Fatalf("receipt producer error: %v", err)
+	}
+	if r.Verdict != codexReviewVerdictFail {
+		t.Fatalf("the fixture review fails, so the receipt must record fail; got %q", r.Verdict)
 	}
 	requireCardRequest(t, sess.sent, f)
 }
@@ -529,40 +553,49 @@ func TestCodexReviewScope_AbsorbedDevelopRecomputesBase(t *testing.T) {
 // --- AC-CGS-010: the two execution paths see the same scope ---
 
 // TestCodexReviewGate_AndProducerSeeSameScope proves REQ-CGS-009: for the same
-// session state, the turn-end path and `moai verify codex-review` assemble the
-// SAME scope — identical cwd on thread/start and an identical target object on
-// review/start. One discriminator serves both (plan §C [HARD]).
+// session state, the turn-end path and `moai verify codex-review` see the SAME
+// scope. M2 (REQ-GBN-002) moved the review request to the producer alone, so
+// the gate's half of the observation is its scope row: the same card class and
+// merge base the producer's assembled request pins. One discriminator serves
+// both (plan §C [HARD]).
 func TestCodexReviewGate_AndProducerSeeSameScope(t *testing.T) {
 	f := newCardScopeFixture(t)
 	fakeCodexVersion(t, "codex-cli 0.0.0-scope")
 	sess := withCodexSession(t, codexSessionScript("- [P1] card findings"))
+	kicked := withKickRecorder(t)
+
+	var gateScope reviewScope
+	prev := reviewGateScopeLogger
+	reviewGateScopeLogger = func(scope reviewScope, _ map[string]string) { gateScope = scope }
+	t.Cleanup(func() { reviewGateScopeLogger = prev })
 
 	if _, err := HandleCodexReviewGate(&hook.HookInput{SessionID: "s", CWD: f.card}, true, f.primary); err != nil {
 		t.Fatalf("gate error: %v", err)
 	}
+	if len(*kicked) != 1 {
+		t.Fatalf("the gate must kick the producer's review, got %v", *kicked)
+	}
 	if _, err := runVerifyCodexReview(t, f.card); err != nil {
 		t.Fatalf("producer error: %v", err)
 	}
-	if len(sess.sent) < 6 {
-		t.Fatalf("expected 6 sent requests (gate 3 + producer 3); got %d (%v)", len(sess.sent), sess.sent)
+	if len(sess.sent) < 3 {
+		t.Fatalf("expected the producer's 3 sent requests; got %d (%v)", len(sess.sent), sess.sent)
 	}
-	gateThread, _ := sentRequest(t, sess.sent[1])["params"].(map[string]any)
-	prodThread, _ := sentRequest(t, sess.sent[4])["params"].(map[string]any)
-	gateReview, _ := sentRequest(t, sess.sent[2])["params"].(map[string]any)
-	prodReview, _ := sentRequest(t, sess.sent[5])["params"].(map[string]any)
-
-	if got, want := gateThread["cwd"], prodThread["cwd"]; got != want || want != f.card {
-		t.Errorf("both paths must review the card tree: gate cwd=%v, producer cwd=%v, want %q", got, want, f.card)
+	// The gate's scope row and the producer's request must name the same
+	// card scope: class card, the same merge base.
+	if gateScope.Class != reviewScopeCard {
+		t.Fatalf("gate scope = %+v, want card scope", gateScope)
 	}
-	gateTarget, _ := gateReview["target"].(map[string]any)
+	prodThread, _ := sentRequest(t, sess.sent[1])["params"].(map[string]any)
+	prodReview, _ := sentRequest(t, sess.sent[2])["params"].(map[string]any)
+	if got, _ := prodThread["cwd"].(string); got != f.card {
+		t.Errorf("producer thread/start cwd = %q, want the card tree %q", got, f.card)
+	}
 	prodTarget, _ := prodReview["target"].(map[string]any)
-	if !reflect.DeepEqual(gateTarget, prodTarget) {
-		t.Errorf("both paths must assemble the same target: gate=%v, producer=%v", gateTarget, prodTarget)
+	if got, _ := prodTarget["type"].(string); got != codexTargetBaseBranch {
+		t.Errorf("card session target.type = %q, want %q", got, codexTargetBaseBranch)
 	}
-	if got, _ := gateTarget["type"].(string); got != codexTargetBaseBranch {
-		t.Errorf("card session target.type = %q on both paths, want %q", got, codexTargetBaseBranch)
-	}
-	if got, _ := gateTarget["branch"].(string); got != f.base {
+	if got, _ := prodTarget["branch"].(string); got != f.base {
 		t.Errorf("card session target.branch = %q, want the merge base %q", got, f.base)
 	}
 }
@@ -588,6 +621,7 @@ func TestCodexReviewGate_ScopeLogObservability(t *testing.T) {
 	t.Cleanup(func() { reviewGateScopeLogger = prev })
 
 	withCodexSession(t, codexSessionScript("- [P1] findings"))
+	kicked := withKickRecorder(t) // M2: both gate turns reach the kick
 	t.Setenv(config.EnvMoaiFactoryWorker, "worker-3-obs")
 
 	if _, err := HandleCodexReviewGate(&hook.HookInput{SessionID: "card-turn", CWD: f.card}, true, f.primary); err != nil {
@@ -595,6 +629,12 @@ func TestCodexReviewGate_ScopeLogObservability(t *testing.T) {
 	}
 	if _, err := HandleCodexReviewGate(&hook.HookInput{SessionID: "tree-turn", CWD: f.primary}, true, f.primary); err != nil {
 		t.Fatalf("gate error (tree turn): %v", err)
+	}
+	if len(*kicked) != 1 || (*kicked)[0] != f.card {
+		// The tree turn sits in the PRIMARY checkout: the distributed
+		// primary-scope skip (REQ-CGSC-002) allows it before any kick — the
+		// card turn is the one cache-miss kick here.
+		t.Fatalf("the card turn must kick its tree; got %v", *kicked)
 	}
 
 	if len(rows) != 2 {
