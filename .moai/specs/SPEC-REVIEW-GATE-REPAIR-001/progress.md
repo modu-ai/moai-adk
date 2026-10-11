@@ -1,6 +1,6 @@
 # 진행 기록 — SPEC-REVIEW-GATE-REPAIR-001
 
-상태: draft (plan 단계). 이 파일의 §E.2 ~ §E.4 는 자리표시다. 해당 단계의 담당자가 채운다.
+상태: completed (3-phase close, sync 단계에서 전환). 이 파일의 §E.1 ~ §E.4 는 각 단계 담당자가 채운 기록이다.
 
 ## §E.1 Plan-phase Audit-Ready Signal
 
@@ -471,7 +471,12 @@ run-phase 의 M1, M2, M3(후속 포함), M7 은 로컬 커밋으로 끝났고, s
 
 ## §E.4 Sync-phase Audit-Ready Signal
 
-_sync-phase 진입 전. 자리표시._
+audit_ready: true
+sync_status: audit-ready
+sync_complete_at: 2026-10-11T01:50:45Z
+sync_commit_sha: pending-backfill
+
+sync 단계를 3-phase close 단일 커밋으로 마쳤다. spec.md 의 status 와 이 파일의 상태 줄을 completed 로 전환했고, CHANGELOG 항목은 Fixed 절 맨 위에 추가했다. sync_commit_sha 는 pending-backfill 자리표시다. 커밋은 자신의 해시를 기록할 수 없으므로 실제 SHA 는 다음 커밋에서 backfill 한다(spec-workflow.md § Sync (close), spec-frontmatter-schema.md § SHA placeholder backfill exemption).
 
 ## §G Override and Refusal Record
 
