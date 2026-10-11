@@ -3797,6 +3797,11 @@ Gaps (each is a shortfall, not a pass):
 - The full internal/cli package and CLI-level real concurrency were not run (D2, CI's job).
 - The auditor's `env -u … go test` form was refused by the worktree guard. The auditor ran one `unset … && go test` call instead (the auditor's report).
 
+Verdict-file normalization, recorded before the merge-ready transition consumes the file:
+- The machine line `required_backend_fail: none` in `.moai/reports/t1663/sync-audit-5.md` was removed. The round-5 auditor wrote `none` because the orchestration prompt asked for `<codex | none>`. The admission parser (`internal/auditverdict` `Parse`) collects every non-empty `required_backend_fail:` value as a failing backend, so `none` would refuse the transition with `required backend(s) recorded fail: none`.
+- The removal changes no decision field: `verdict: PASS-WITH-DEBT`, `audited_sha: 1c26c0b6039cc42e6cf0c1171cfe6d11bb12207b`, and the codex receipt are unchanged, and the rest of the file is byte-identical (`diff` shows one removed line).
+- The original file is kept as a lane-scratch copy with sha256 `d670797534d2f991842c3ac082e7c1696c1663f6865227c6ebaf1c33d5e5e881`. The `required_backend_fail: none` line quoted above is the auditor's original wording.
+
 ## §G Override and Refusal Record
 
 - 2026-10-10T09:51:05Z SPEC-FACTORY-LEASE-RENEW-001 ceiling-refusal outcome=hold reasons="plan-audit ceiling reached (round count 2 >= tier ceiling 2); the verdict matches no admitting arm and holds, entry blocked (REQ-ACE-006) — release path: the split/new-SPEC route of REQ-ACE-005 or an operator decision recorded in progress.md §G" evidence=/Users/goos/MoAI/moai-adk-go/.moai/worktrees/t1663/.moai/reports/t1663/plan-audit-iter2.md,/Users/goos/MoAI/moai-adk-go/.moai/worktrees/t1663/.moai/reports/t1663/plan-audit.md
