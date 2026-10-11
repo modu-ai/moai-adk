@@ -876,6 +876,50 @@ This entry records the merge that absorbed main `817a9859` into the card branch,
 - The card's earlier name `.moai-fold-lock` matched the `.moai-fold-` prefix that `requireNoTempFiles` sweeps (`memory_fold_test.go:220–231`). `.moai-fold.lock` does not match it. That is a string comparison read at HEAD, not a run; the `-race` family result would show it if it mattered.
 - `foldSubprocessWait` (60 s) is a test-only kill ceiling. It does not bound the lock.
 
+### AC-DI-011 selector, `-count=5 -race`, at HEAD a1cffd43e (card t1595, 2026-10-11)
+
+**Claim.** The 29-name AC-DI-011 selector (the E3 alternation at line 645 of this file, used verbatim) passes under `-count=5 -race` on the tree at HEAD `a1cffd43e` (the backfill commit C7). The swept set is 145 top-level executions = 29 names × 5 counts. None failed, skipped, or reported a data race.
+
+**Evidence.** Command (exact invocation; the regex is the E3 alternation verbatim):
+
+```
+go test -race -count=5 -v -timeout 9m -run '<E3 alternation, line 645>' ./internal/cli/
+```
+
+Stdout and stderr went to a scratch file, and the exit code was appended to it as `EXIT=$?`. Bounded verbatim tail of the run:
+
+```
+PASS
+ok  	github.com/modu-ai/moai-adk/internal/cli	144.529s
+EXIT=0
+```
+
+Counts over the same output (`grep -c`):
+
+| Pattern | Count |
+|---|---|
+| `^=== RUN` (top-level starts) | 145 |
+| `^--- PASS: ` (top-level passes) | 145 |
+| `^--- FAIL` | 0 |
+| `^--- SKIP` | 0 |
+| `DATA RACE` | 0 |
+| `no tests to run` / `no test files` | 0 |
+| `^panic` / `timed out` | 0 |
+
+The full `-v` log is scratch and machine-local. Only the lines above are carried into this record.
+
+**Baseline-attribution.** This run, this tree. HEAD `a1cffd43e` (`git rev-parse --short HEAD`); `git status --short` was empty before the run. Toolchain `go1.26.8 darwin/arm64` (`go version`). The go-heavy slot was free at 2026-10-11T12:05:27Z (`moai slot status`), acquired by session 38d63349 until 2026-10-11T12:30:34Z (`moai slot acquire`), and released after the run (`moai slot release`). The run was a background task; its wall time is the package duration in the tail.
+
+**Gaps.**
+- The full verbose log is not a citation target (scratch). The counts above are the deciding evidence and are carried in full.
+- Citation mapping for two stale references in this section (recorded here, not edited, since this section is append-only). Line 852 cites acceptance lines 173–184 for AC-DI-010; the block now spans 173–186 (heading 173, Given 175–181, When 182, Then 183–186). Line 875 cites acceptance lines 808–809 and 830–832 for EL-026 and EL-027; the blocks now start at 807 (EL-026) and 835 (EL-027).
+- The second amendment moved `spec.md` through `completed → in-progress → completed`. The plan-audit verdict cache was not re-run for this record, so no plan-audit verdict is claimed here.
+- The stage-two verdict file (`.moai/reports/t1595/delta-audit-5d7c-stage2-opus.md`, gitignored; read on disk by the lead per `audit-artifact-convention.md` § Committing) carries a correction note. The race-run prohibition in its G1 came from the lane's own audit prompt, not from a leader instruction.
+- Tool provenance (`verification-claim-integrity.md` §2.2) does not apply to this run, since it is `go test` built from this tree. It does apply to the codex delta, which is recorded after the next commit.
+- Code under test: since the correction commit `b38bc0fd62`, only `progress.md` (+38) and one `spec.md` status line changed (`git diff --stat b38bc0fd62 HEAD`). The tree tested here therefore equals the correction commit's tree, including its comment-only changes.
+
+**Residual-risk.** One `-race` run of 145 executions is one observation on one machine at one moment; load during the run was not captured. The wider families (the 62-test `Fold|ReviewFinding|ReviewArchive|StoreLock|RenameWindow|MemoryBudget` family measured at `e46c3abece`, and the full `internal/cli` suite) were not re-run on this tree in this record. The full-suite verdict remains CI's job.
+
 ## §E.3 Run-phase Audit-Ready Signal
 
 run_complete_at: 2026-10-09T06:34:36+09:00 (source: `git show -s --format=%cI 281d490bc`, the committer time of the run commit; sync re-audit r2 F2. Superseded value 2026-10-09T22:30+09:00, not reconcilable with the commit history)
