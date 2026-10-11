@@ -80,9 +80,26 @@ type foldTestSeam struct {
 	// ("effective-start" then "bytes-done") — the codex-review round-2
 	// ordering regression asserts on this sequence.
 	orderProbe func(stage string)
+	// mutateBeforeRename is invoked inside atomicWriteFoldFile immediately
+	// before os.Rename — after every pre-rename check has passed — the
+	// rename window a concurrent writer's publish is destroyed in while the
+	// fold returns success (SPEC-MEMORY-FOLD-RENAME-RACE-001 M1, AC-MRR-001).
+	mutateBeforeRename func(dir, name string)
+	// mutateBetweenWrites is invoked in applyFold after the archive append
+	// completes and before the MEMORY.md rewrite — the re-read/effective-state
+	// position that separates a whole-apply lock from a per-write one
+	// (AC-MRR-009's span observation).
+	mutateBetweenWrites func(dir string)
 }
 
 var memoryFoldSeam foldTestSeam
+
+// foldLockFileName is the per-store advisory lock file the fold apply path
+// holds for the whole applyFold span (REQ-MRR-001/002,
+// SPEC-MEMORY-FOLD-RENAME-RACE-001). It is created on first acquire and
+// never removed on release (plan.md D-3 — the removal would race a
+// concurrent opener; the lock's kernel lifetime makes removal unnecessary).
+const foldLockFileName = ".moai-fold.lock"
 
 // normalizeFoldCardID validates --card per REQ-MFB-001: t<digits> or bare
 // digits normalized to t<digits>. Every other value is refused before the
@@ -412,6 +429,21 @@ func buildFoldPlan(before taxonomy.StoreSnapshot, cardID string) (foldComputed, 
 // preceded by a comparison of the on-disk bytes against the content the plan
 // was computed from.
 func applyFold(dir string, before taxonomy.StoreSnapshot, comp foldComputed, writesForbidden func() bool, run *foldOnDoneRun) error {
+	// The store lock spans the WHOLE apply (REQ-MRR-001): acquired before
+	// the first pre-write check and released after the last rename, so two
+	// fold processes on one store never overlap their check→rename windows
+	// and a cooperating writer's publish lands before a check or after the
+	// renames — never inside one, destroyed (SPEC-MEMORY-FOLD-RENAME-RACE-001).
+	// Strictly additive to the REQ-MFB-004 ordering below: nothing between
+	// the existing checks moves (plan.md D-1). Contention returns
+	// REQ-MRR-003's clean refusal naming the store; the release is the
+	// deferred one even when a write fails mid-apply.
+	lock := newFoldStoreLock()
+	if err := lock.acquire(dir); err != nil {
+		return err
+	}
+	defer func() { _ = lock.release() }()
+
 	archive := comp.archive
 
 	// An abandoned close-path step (the card-close bound expired) must not
@@ -445,6 +477,13 @@ func applyFold(dir string, before taxonomy.StoreSnapshot, comp foldComputed, wri
 		if err := atomicWriteFoldFile(dir, archive, comp.planned[archive], before[archive], nil, writesForbidden, run); err != nil {
 			return err
 		}
+	}
+	// Test-only span-observation point (AC-MRR-009): after the archive
+	// append and before the MEMORY.md rewrite — the re-read/effective-state
+	// position where a whole-apply lock is still held and a per-write lock
+	// is not.
+	if memoryFoldSeam.mutateBetweenWrites != nil {
+		memoryFoldSeam.mutateBetweenWrites(dir)
 	}
 	// (2) re-read the archive from disk and confirm every moved line's
 	// link-target set is present on one line — regardless of whether this
@@ -645,6 +684,9 @@ func atomicWriteFoldFile(dir, name string, want, planTime []byte, guard *foldRen
 	}
 	if writesForbidden != nil && writesForbidden() {
 		return fmt.Errorf("memory fold: %s: the step was abandoned — not writing", name)
+	}
+	if memoryFoldSeam.mutateBeforeRename != nil {
+		memoryFoldSeam.mutateBeforeRename(dir, name)
 	}
 	if err := os.Rename(tmpName, filepath.Join(dir, name)); err != nil {
 		return fmt.Errorf("memory fold: rename %s: %w", name, err)

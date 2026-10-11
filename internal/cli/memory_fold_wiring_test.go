@@ -1002,3 +1002,126 @@ func waitWorkerExit(t *testing.T, env *wireEnv) {
 		t.Fatalf("the fold step goroutine did not exit within 5s — the abandoned step leaked\nstacks:\n%s", buf[:n])
 	}
 }
+
+// TestFoldOnDoneContentionAbandonsWithoutWrite is AC-MRR-006: the
+// card-close step's existing abandonment bound survives the store lock
+// (REQ-MRR-006) in BOTH directions.
+//
+// Cell 1 — the step WAITS on a contended store: with the lock held, the
+// bound expires while the step waits on the lock acquisition, the caller
+// reports at most one stderr line, and the step begins no write.
+//
+// Cell 2 — the step HOLDS the lock with its apply in flight when the bound
+// expires: the caller's timeout branch reports abandonment, the worker's
+// exit is observed, and a subsequent non-blocking acquire on the same
+// store succeeds — the worker's deferred release ran after its apply
+// observed the abandonment (§3 edge 4: the release is the WORKER's, not
+// the caller's).
+func TestFoldOnDoneContentionAbandonsWithoutWrite(t *testing.T) {
+	// ── Cell 1: waiting under contention — one line, no write ──
+	env1 := wireFixture(t)
+	seedWireCard(t, env1)
+	held := newFoldStoreLock()
+	if err := held.acquire(env1.memDir); err != nil {
+		t.Fatalf("hold the store lock: %v", err)
+	}
+	memoryFoldOnDoneBound = 200 * time.Millisecond
+	t.Setenv(config.EnvMemoryFoldOnDone, "1")
+	if _, _, err := runWireClose(t, env1, "done"); err != nil {
+		t.Fatalf("done: %v", err)
+	}
+	lines1 := wireErrLines(t, env1)
+	if len(lines1) != 1 || !strings.Contains(lines1[0], "abandoned") {
+		t.Fatalf("want exactly one abandonment stderr line, got %v", lines1)
+	}
+	waitWorkerExit(t, env1)
+	// The step began no write: the t9001 line stays in MEMORY.md and never
+	// reached the archive.
+	if got := foldRead(t, env1.memDir, "MEMORY.md"); !strings.Contains(got, line9001) {
+		t.Errorf("the contended step wrote: the card line left MEMORY.md")
+	}
+	if got := foldRead(t, env1.memDir, fixtureArchive); strings.Contains(got, line9001) {
+		t.Errorf("the contended step filed the line into the archive")
+	}
+	requireNoTempFiles(t, env1.memDir)
+	if err := held.release(); err != nil {
+		t.Fatalf("release the held lock: %v", err)
+	}
+
+	// ── Cell 2: holding the lock, apply in flight, bound expires ──
+	env2 := wireFixture(t)
+	seedWireCard(t, env2)
+	memoryFoldOnDoneBound = 200 * time.Millisecond
+	t.Setenv(config.EnvMemoryFoldOnDone, "1")
+	// The step parks inside the apply AFTER the lock is held: the
+	// mutateBetweenWrites seam signals "lock held, apply in flight" and
+	// parks until the test releases it — the release then lets the apply
+	// run into the abandonment guard, whose refusal returns the worker to
+	// its deferred lock release.
+	lockHeld := make(chan struct{}, 1)
+	releasePark := make(chan struct{})
+	// releaseOnce makes the park's release idempotent so the success-path
+	// close below and the cleanup cannot double-close: a Fatalf between the
+	// lock-held receive and that close would otherwise leak the parked
+	// worker holding the store lock. The cleanup releases and then re-arms
+	// the waitWorkerExit-before-restore edge (gate P2) — but only when the
+	// seam was actually entered, so an earlier command failure that launched
+	// no worker does not wait on a channel nothing closes.
+	var releaseOnce sync.Once
+	release := func() { releaseOnce.Do(func() { close(releasePark) }) }
+	var parkEntered atomic.Bool
+	t.Cleanup(func() {
+		if !parkEntered.Load() {
+			return
+		}
+		release()
+		waitWorkerExit(t, env2)
+	})
+	memoryFoldSeam = foldTestSeam{
+		mutateBetweenWrites: func(string) {
+			parkEntered.Store(true)
+			lockHeld <- struct{}{}
+			<-releasePark
+		},
+	}
+	if _, _, err := runWireClose(t, env2, "done"); err != nil {
+		t.Fatalf("done: %v", err)
+	}
+	// The bound expired while the step held the lock in flight. The receive
+	// arms on the worker's exit and a deadline too: on a slow CI the worker
+	// can pass the bound before reaching the seam and exit via the
+	// abandonment path without ever signalling lockHeld — the select turns
+	// that into an immediate, diagnosable failure instead of a package-wide
+	// hang. The 200ms bound itself is untouched.
+	select {
+	case <-lockHeld:
+	case <-env2.workerExit:
+		t.Fatalf("the worker exited without signalling the lock — it abandoned before reaching the apply seam (slow CI passed the bound first)")
+	case <-time.After(5 * time.Second):
+		t.Fatalf("neither lock held nor worker exit within 5s — the worker neither reached the apply seam nor exited")
+	}
+	lines2 := wireErrLines(t, env2)
+	if len(lines2) != 1 || !strings.Contains(lines2[0], "abandoned") {
+		t.Fatalf("want exactly one abandonment stderr line, got %v", lines2)
+	}
+	// Let the apply observe the abandonment and return the worker to its
+	// deferred release.
+	release()
+	waitWorkerExit(t, env2)
+
+	// The worker's deferred release ran: a fresh non-blocking acquire on
+	// the same store succeeds.
+	probe := newFoldStoreLock()
+	if err := probe.tryAcquire(env2.memDir); err != nil {
+		t.Errorf("the non-blocking acquire after the worker's exit failed — the worker's deferred release did not run: %v", err)
+	} else {
+		if err := probe.release(); err != nil {
+			t.Errorf("probe release: %v", err)
+		}
+	}
+	// The abandoned apply's MEMORY.md write never began.
+	if got := foldRead(t, env2.memDir, "MEMORY.md"); !strings.Contains(got, line9001) {
+		t.Errorf("the abandoned step deleted the card line from MEMORY.md after reporting no further write")
+	}
+	requireNoTempFiles(t, env2.memDir)
+}

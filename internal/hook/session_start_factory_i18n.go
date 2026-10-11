@@ -65,8 +65,10 @@ type factoryMessages struct {
 	// carries after its next-card or manual-dispatch rule (card t1451): the
 	// standing recheck cron that wakes a lane stopped on an API error or on a
 	// delegate's report that never comes, and the disk-evidence-first reading
-	// of any wake. The tool names, the watchdog skill name and the cron
-	// expression stay verbatim in every locale. The Codex-harness owned-card
+	// of any wake. The tool names and the watchdog skill name stay verbatim
+	// in every locale; the cron expression is the %[1]s argument, the arm
+	// expression rendered from the effective renewal period
+	// (workflow.factory_lease.renew_interval, SPEC-FACTORY-LEASE-RENEW-001 REQ-FLR-012). The Codex-harness owned-card
 	// rule does not carry it — that harness has no session cron tool.
 	laneRecheckRule string
 
@@ -159,7 +161,7 @@ var factoryLocales = map[string]factoryMessages{
 		laneManualDispatchRule: "Factory lane manual-dispatch rule: this session launched with --no-auto-dispatch — " +
 			"manual dispatch mode. Do not lease cards yourself: the operator (or the factory leader) routes each card to you explicitly. " +
 			"When a card is routed to you, work it in the current worktree and record its stages with `moai factory stage`.",
-		laneRecheckRule: "Stall recovery: before the first stage of a card, arm ONE recurring recheck with `CronCreate` (cron `7,27,47 * * * *`, recurring) " +
+		laneRecheckRule: "Stall recovery: before the first stage of a card, arm ONE recurring recheck with `CronCreate` (cron `%[1]s`, recurring) " +
 			"whose prompt runs the lane stall watchdog first — invoke Skill(\"moai-lane-watchdog\") and follow it — and then resumes the card from its progress record; " +
 			"confirm it with `CronList` at card intake and after every clear, and re-arm it if it is missing or has expired; delete it with `CronDelete` when you send the completion report. " +
 			"The cron is what wakes a lane that stopped on an API error (such as a 429) or on a delegate's report that will never come, " +
@@ -221,7 +223,7 @@ var factoryLocales = map[string]factoryMessages{
 		laneManualDispatchRule: "팩토리 레인 수동 디스패치 규칙: 이 세션은 --no-auto-dispatch 로 시작했습니다 — 수동 디스패치 모드입니다. " +
 			"카드를 임대하려고 `moai factory next` 를 실행하지 마세요: 운영자(또는 팩토리 리더)가 카드를 명시적으로 배분합니다. " +
 			"배분받은 카드는 현재 워크트리에서 작업하고 각 단계를 `moai factory stage` 로 기록합니다.",
-		laneRecheckRule: "정지 복구: 카드의 첫 단계를 시작하기 전에 `CronCreate` 로 반복 재점검 크론 하나를 겁니다(cron `7,27,47 * * * *`, recurring). " +
+		laneRecheckRule: "정지 복구: 카드의 첫 단계를 시작하기 전에 `CronCreate` 로 반복 재점검 크론 하나를 겁니다(cron `%[1]s`, recurring). " +
 			"프롬프트는 먼저 레인 스톨 워치독을 실행하고 — Skill(\"moai-lane-watchdog\") 를 호출해 따릅니다 — 그다음 카드의 진행 기록에서 작업을 재개하도록 씁니다. " +
 			"카드를 넘겨받을 때와 `/clear` 뒤마다 `CronList` 로 확인하고, 없거나 만료됐으면 다시 걸고, 완료 보고를 보낼 때 `CronDelete` 로 지웁니다. " +
 			"API 오류(429 등)로 멈췄거나 끝내 오지 않을 위임 대상의 보고를 기다리다 멈춘 레인은 이 크론이 깨웁니다 — 이미 끝난 턴은 아무것도 걸 수 없기 때문입니다. " +
@@ -281,7 +283,7 @@ var factoryLocales = map[string]factoryMessages{
 		laneManualDispatchRule: "ファクトリーレーン手動ディスパッチ規則：このセッションは --no-auto-dispatch で起動しました — 手動ディスパッチモードです。 " +
 			"カードをリースするために `moai factory next` を実行しないでください：オペレーター（またはファクトリーリーダー）がカードを明示的に割り当てます。 " +
 			"割り当てられたカードは現在のワークツリーで作業し、各段階を `moai factory stage` で記録します。",
-		laneRecheckRule: "停止からの復旧：カードの最初の段階を始める前に、`CronCreate` で繰り返しの再点検用 cron を1つ設定します（cron `7,27,47 * * * *`、recurring）。 " +
+		laneRecheckRule: "停止からの復旧：カードの最初の段階を始める前に、`CronCreate` で繰り返しの再点検用 cron を1つ設定します（cron `%[1]s`、recurring）。 " +
 			"プロンプトは、まずレーン停滞ウォッチドッグを実行し — Skill(\"moai-lane-watchdog\") を呼び出して従います — そのあとカードの進捗記録から作業を再開する内容にします。 " +
 			"カードを引き継ぐときと `/clear` のたびに `CronList` で確認し、なければ、または期限切れなら設定し直し、完了報告を送るときに `CronDelete` で削除します。 " +
 			"API エラー（429 など）で止まったレーンや、永久に届かない委任先の報告を待って止まったレーンは、この cron が起こします — すでに終わったターンは何も設定できないためです。 " +
@@ -340,7 +342,7 @@ var factoryLocales = map[string]factoryMessages{
 		laneManualDispatchRule: "工厂泳道手动调度规则：本会话以 --no-auto-dispatch 启动 — 手动调度模式。 " +
 			"不要运行 `moai factory next` 去租用卡片：由操作者（或工厂主导会话）显式分配每张卡片。 " +
 			"被分配的卡片在当前工作树中处理，各阶段用 `moai factory stage` 记录。",
-		laneRecheckRule: "停滞恢复：在开始卡片的第一个阶段之前，用 `CronCreate` 设置一个循环复查定时任务（cron `7,27,47 * * * *`，recurring）。 " +
+		laneRecheckRule: "停滞恢复：在开始卡片的第一个阶段之前，用 `CronCreate` 设置一个循环复查定时任务（cron `%[1]s`，recurring）。 " +
 			"其提示词先运行泳道停滞看门狗 — 调用 Skill(\"moai-lane-watchdog\") 并按其执行 — 再依据卡片的进度记录继续工作。 " +
 			"接手卡片时以及每次 `/clear` 之后，用 `CronList` 确认；若缺失或已过期则重新设置，发送完成报告时用 `CronDelete` 删除它。 " +
 			"因 API 错误（如 429）而停下、或在等一个永远不会到来的被委派方报告而停下的泳道，由这个定时任务唤醒 — 因为已经结束的回合无法再设置任何东西。 " +
