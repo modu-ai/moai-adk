@@ -101,6 +101,10 @@ The leader classifies each card as it leaves `backlog` and names the entry stage
 [HARD] The dispatch block is fixed-field (`card:` `spec:` `cmd:` `wt:` `evidence:`; `lens:` optional) — never prose, at most 10 lines.
 <!-- moai:role-core-end -->
 
+<!-- moai:role-core-start -->
+A message is a nudge, never the delegation — an idle notice says when to look, not what the evidence says.
+<!-- moai:role-core-end -->
+
 ### Dispatch language
 
 <!-- moai:role-core-start -->
@@ -118,7 +122,7 @@ The leader classifies each card as it leaves `backlog` and names the entry stage
 With `tree_scope: skip` configured for the leader's checkout, the leader session carries no turn-end codex review gate and reviews its own internal output directly with the same tools. Stage order, evidence fields, and the re-review ceiling: `factory-dispatch-detail.md` § The card-review stage.
 
 <!-- moai:role-core-start -->
-[HARD] Every lane runs a `card-review` before integration — advisory only.
+[HARD] Every lane runs a `card-review` (`codex_review` → `.moai/reports/<card-id>/card-review.md`) before integration — advisory only.
 <!-- moai:role-core-end -->
 
 ### Lane waits are explicit, and stalls are watched
