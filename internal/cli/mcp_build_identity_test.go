@@ -668,7 +668,12 @@ func TestAuditLagUsesBinlagSeam(t *testing.T) {
 		// primitive name in that COMMENT — a doc mention, the same class as
 		// the t1561 lane-12 doc-block precedent: no ancestry call executes
 		// here, so binlag.Evaluate stays the one binary-lag comparison.
-		"integration.go:277": true,
+		// Re-measured at card t1478 (CI red on 9a16d364): the M2 root-resolution
+		// repair added ten lines above this doc comment (the gitenv import and the
+		// rev-parse closure), moving it 277→287. The line is the same doc mention
+		// of the primitive, and no line added above it is a comparison — same
+		// count, only the coordinate moved.
+		"integration.go:287": true,
 		// Re-measured at card t948: the coverage-budget constant and its
 		// deadline attribution were added above these two comparisons, moving
 		// them from 245/253. Same two comparisons, same count — only the

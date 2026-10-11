@@ -2030,6 +2030,19 @@ func factoryCompleteCard(ctx context.Context, out io.Writer, root, lockRoot, car
 	acquiredHere := false
 	if !heldByUs {
 		ownerPID, _ := session.ResolveOwnerPID()
+		// The per-card red hold (SPEC-CANDIDATE-CI-001 REQ-CCI-012, card t1478
+		// Finding 4): complete's own acquisition is a window grant to this card,
+		// so a red candidate refuses it before the window record is touched. The
+		// refusal carries the landing refusal's exit code — the same red candidate,
+		// reached one step earlier.
+		if candidateCIEnabled(lockRoot) {
+			if holdErr := factory.CandidateHoldRefusal(lockRoot, card.CardID); holdErr != nil {
+				return &exitCodeError{code: factory.MergeExitLandingRefused, msg: fmt.Sprintf("factory complete: refused — %v", holdErr)}
+			}
+		}
+		if factoryCompleteAcquireHook != nil {
+			factoryCompleteAcquireHook()
+		}
 		replaced, err := factory.AcquireIntegrationWindow(lockRoot, factory.IntegrationLock{
 			SessionID:    sessionID,
 			SessionName:  lane,
@@ -2120,6 +2133,29 @@ func factoryCompleteCard(ctx context.Context, out io.Writer, root, lockRoot, car
 	// complete's state transitions are done. The step's pre-merge causes
 	// release inside it; a step failure leaves the card state unchanged
 	// (REQ-MWQ-019: the card state shall not change).
+	mergeSeams := factory.MergeStepSeams{
+		ReadCard: func(id string) (factory.MergeCardState, error) {
+			return integrationReadMergeCardForRun(ctx, root, runID, id, lane)
+		},
+	}
+	// AC-CCI-011-1's both-call-sites clause: the self-issued merge path
+	// wires the SAME shared landing check the merge verb does — its seams
+	// formerly carried only ReadCard, and the step gates on
+	// seams.LandingCheck != nil, so an unwired complete merged with no
+	// landing gate at all. The step's own fail-closed guard refuses an
+	// unwired seam when the key is enabled, so this wiring is mandatory
+	// exactly while the gate is on.
+	if candidateCIEnabled(lockRoot) {
+		mergeSeams.LandingCheck = func(id, sha string) error {
+			return factory.CandidateLandingCheck(factory.LandingCheckInput{
+				Root:                lockRoot,
+				CardID:              id,
+				PinnedSHA:           sha,
+				TargetBranch:        branch,
+				IntegrationWorktree: integTree,
+			})
+		}
+	}
 	mergeSHA, err := factory.RunMergeStep(factory.MergeStepInput{
 		Root:                lockRoot,
 		IntegrationWorktree: integTree,
@@ -2127,11 +2163,7 @@ func factoryCompleteCard(ctx context.Context, out io.Writer, root, lockRoot, car
 		CardID:              cardID,
 		CallerSessionID:     sessionID,
 		DeferRelease:        true,
-	}, factory.MergeStepSeams{
-		ReadCard: func(id string) (factory.MergeCardState, error) {
-			return integrationReadMergeCardForRun(ctx, root, runID, id, lane)
-		},
-	})
+	}, mergeSeams)
 	if err != nil {
 		if code, ok := factory.MergeExitCode(err); ok {
 			return &exitCodeError{code: code, msg: fmt.Sprintf("factory complete: the merge step refused: %v", err)}
@@ -2228,6 +2260,11 @@ const completePostMergeTransitionConflictExit = 20
 // integrationLockMutationTestHook established). Every production path
 // leaves it nil, and the call site is nil-guarded.
 var factoryCompleteTransitionHook func()
+
+// factoryCompleteAcquireHook is the acquisition's test seam (card t1478
+// Finding 4): called just before complete takes the integration window for
+// its card, after the card's own refusals. A red candidate must never reach it.
+var factoryCompleteAcquireHook func()
 
 // cliGitIn runs one git command in dir — the small adoption probes' helper.
 func cliGitIn(dir string, args ...string) (string, error) {

@@ -238,7 +238,7 @@ func RunMergeStep(in MergeStepInput, seams MergeStepSeams) (string, error) {
 		if policyErr != nil {
 			return policyErr
 		}
-		RefreshWindow(w, policy, seams.probe(), now, lease)
+		RefreshWindowGated(w, policy, seams.probe(), now, lease, CandidateGrantGate(in.Root))
 		return nil
 	}); err != nil {
 		return "", mergeStepErr(MergeExitOther, "integration merge: refresh the window: %v", err)
@@ -347,7 +347,14 @@ func RunMergeStep(in MergeStepInput, seams MergeStepSeams) (string, error) {
 	}
 
 	// (5) the shared landing check — absent no-op while candidate_ci is
-	// disabled (spec.md §F).
+	// disabled (spec.md §F). Fail-closed (AC-CCI-011-1): with the key
+	// ENABLED, a call site that wired no LandingCheck refuses instead of
+	// merging unchecked — no caller, current or future, omits the gate.
+	// The disabled-with-nil-seam shape is the pre-candidate contract and
+	// stays exactly what it was.
+	if candidateCIRequired(in.Root) && seams.LandingCheck == nil {
+		return "", releaseWindow(in, seams, mergeStepErr(MergeExitLandingRefused, "integration merge: the candidate-CI gate is enabled but this call site wired no landing check — refusing to merge unchecked (fail-closed)"))
+	}
 	if seams.LandingCheck != nil {
 		if err := seams.LandingCheck(in.CardID, pinned); err != nil {
 			return "", releaseWindow(in, seams, mergeStepErr(MergeExitLandingRefused, "integration merge: the landing check refused %s: %v", ShortSHA(pinned), err))
@@ -382,9 +389,13 @@ func RunMergeStep(in MergeStepInput, seams MergeStepSeams) (string, error) {
 	// ignored file at an added path created in that window was silently
 	// overwritten (F5; git refuses untracked clobber, overwrites ignored
 	// bytes). The section holds the mutation lock across the merge: a
-	// takeover waits for it and then refuses on holdership, and the
-	// re-probe closes the check→merge gap. The clock is read INSIDE the
-	// section (F9) — the recheck's own purpose is "expired mid-step".
+	// takeover waits for it and then refuses on holdership. On the candidate
+	// path the check→merge gap is narrowed to the merge subprocess's own
+	// startup by the collision re-probe inside the candidate lock, immediately
+	// before the merge (P1, below; its @MX:DEBT records the residual). The
+	// disabled-key path keeps the section probe as its last collision check before the
+	// merge, with the card-gate re-read and the t1616 pre-merge probes between them. The clock is read INSIDE
+	// the section (F9) — the recheck's own purpose is "expired mid-step".
 	mergeMsg := fmt.Sprintf("Merge %s into %s (card %s, integration merge)", cardBranch, in.IntegrationBranch, in.CardID)
 	var recheckErr *MergeStepError
 	var mergeErr error
@@ -462,10 +473,12 @@ func RunMergeStep(in MergeStepInput, seams MergeStepSeams) (string, error) {
 		if writeErr := writeIntegrationLock(integrationLockPath(in.Root), w); writeErr != nil {
 			return writeErr
 		}
-		// F5: the collision probe re-runs immediately before the merge, in
-		// the same serialized section — an ignored byte at an added path
+		// F5: the collision probe re-runs inside the same serialized section,
+		// before the candidate lock is taken — an ignored byte at an added path
 		// created after the first check is caught here, with every colliding
-		// byte still untouched.
+		// byte still untouched. A byte that appears during the candidate-lock
+		// wait is not seen by this probe; the candidate path re-probes inside
+		// the lock, immediately before the merge (P1, below).
 		colliding, err := FindAddedPathCollisions(in.IntegrationWorktree, tip, pinned)
 		if err != nil {
 			recheckErr = mergeStepErr(MergeExitOther, "integration merge: the collision check errored: %v", err)
@@ -503,137 +516,195 @@ func RunMergeStep(in MergeStepInput, seams MergeStepSeams) (string, error) {
 			recheckErr = mergeStepErr(MergeExitCardGate, "integration merge: refused — card %s's record changed mid-step (version %d as gated, %d as re-read); re-acquire", in.CardID, card.Version, recheckCard.Version)
 			return nil
 		}
-		// S-before (REQ-LMF-006, plan §B5): the separate surface takes it here, in
-		// the section, immediately before the merge. The primary surface keeps the
-		// nil baseline set above.
-		if !primary {
-			before, statusErr := integrationStatusSet(git)
-			if statusErr != nil {
-				recheckErr = mergeStepErr(MergeExitOther, "integration merge: read the status set before the merge: %v", statusErr)
-				return nil
-			}
-			statusBefore = before
-		}
-
-		// F1 (sync audit, card t1616): the unfinished-merge probe runs inside the same
-		// section, ahead of the merge subprocess and of the primary's status re-read
-		// below. A merge already in progress belongs to another actor: git refuses to
-		// start one over it. A merge that begins after this probe is caught from
-		// MERGE_HEAD after the failed merge, before any abort (the failure branch below).
-		pendingMerge, pendingErr := unfinishedMergeReason(git, in.IntegrationWorktree)
-		if pendingErr != nil {
-			recheckErr = mergeStepErr(MergeExitOther, "integration merge: the unfinished-merge probe errored: %v", pendingErr)
-			return nil
-		}
-		if pendingMerge != "" {
-			recheckErr = unfinishedMergeRefusal(pendingMerge)
-			return nil
-		}
-
-		// (12, primary surface) the primary's dirty precondition is re-read inside the
-		// section, immediately before the merge subprocess. The clean check above ran
-		// before the mutation lock was taken, so another session that does not take the
-		// lock can create an untracked file in the primary after it (SPEC-LOCAL-MAIN-FLOW-001,
-		// card t1616). The merge would then run over the dirty primary, and only the
-		// post-merge checks would see it, after main had advanced.
-		if primary {
-			clean, status, statusErr := gitIntegrationWorktreeClean(in.IntegrationWorktree)
-			if statusErr != nil {
-				recheckErr = mergeStepErr(MergeExitOther, "integration merge: re-read the integration worktree status before the merge: %v", statusErr)
-				return nil
-			}
-			if !clean {
-				recheckErr = integrationWorktreeDirtyRefusal(status)
-				return nil
-			}
-		}
-
-		// The merge, of the PINNED SHA never the branch name (REQ-MWQ-017),
-		// inside the section (F4).
+		// The merge sequence of the window section (F4, card t1616), run by BOTH
+		// paths below. The candidate path runs it INSIDE the candidate-record lock
+		// span, after the landing recheck (card t1478 M4 repair): the gate-5 verdict
+		// was read outside this section, and an observe flipping the candidate red
+		// between the check and the merge landed a RED candidate on the integration
+		// branch. The re-verification and the merge share the exclusion an observe or
+		// a push takes, so no verdict flip can interleave between the final green and
+		// the merge decision. Lock ordering is one-way (window section → candidate
+		// lock; candidate paths never take the window lock), so the nesting cannot
+		// deadlock. The disabled-key path owes no candidate lock and runs inline.
 		//
-		// t1576 review round 1 asked for --no-overwrite-ignore at the effect
-		// point. It is passed — and probed INEFFECTIVE on the path this step
-		// always takes: current git enforces it on the fast-forward update
-		// only, while --no-ff (REQ-MWQ-017's merge-commit contract) forces
-		// the three-way (ort) path, which overwrites an ignored byte at an
-		// added path whatever the flag says (probe: ff rc=1 refused;
-		// --no-ff and true-3way both rc=0, byte overwritten). The in-section
-		// re-probe above catches every byte present before the merge
-		// subprocess starts; the residual below is what remains.
-		//
-		// @MX:DEBT: an ignored byte at an added path created inside the re-probe→merge span is overwritten by the three-way merge — the flag does not reach the ort path on current git
-		// @MX:CEILING: the window is one git-subprocess spawn inside a flock-serialized section in a policy-protected integration worktree; the post-merge tree check cannot see it (a worktree-only loss, the commit's tree is unchanged)
-		// @MX:UPGRADE: a git whose ort path honors --no-overwrite-ignore (then this flag starts refusing), or an in-process merge that checks ignored paths atomically with the write
-		// --no-autostash is git's switch for merge.autoStash=false on this call
-		// (plan §B5): with autostash on, a staged change is stashed and re-applied
-		// unstaged, which changes the status set by itself.
-		if _, err := git("merge", "--no-ff", "--no-autostash", "--no-overwrite-ignore", "-q", "-m", mergeMsg, pinned); err != nil {
-			mergeErr = err
-			// F1 follow-up (sync audit, card t1616): abort only a merge this call
-			// started. The in-section probe ran before the merge call, so a merge another
-			// actor began after it shows up here, in MERGE_HEAD, naming a commit other than
-			// the pin. Its abort would discard that merge, so the step refuses and changes
-			// nothing instead.
-			foreignName, foreign, ownerErr := foreignMergeHead(git, in.IntegrationWorktree, pinned)
-			if ownerErr != nil {
-				mergeForeignErr = mergeStepErr(MergeExitOther, "integration merge: read MERGE_HEAD after the failed merge: %v", ownerErr)
-				return nil
+		// preMerge is the candidate path's in-lock collision re-probe (P1), the last
+		// check before the merge subprocess; the disabled-key path passes nil.
+		mergeInSection := func(preMerge func() *MergeStepError) {
+			// S-before (REQ-LMF-006, plan §B5): the separate surface takes it here, in
+			// the section, immediately before the merge. The primary surface keeps the
+			// nil baseline set above.
+			if !primary {
+				before, statusErr := integrationStatusSet(git)
+				if statusErr != nil {
+					recheckErr = mergeStepErr(MergeExitOther, "integration merge: read the status set before the merge: %v", statusErr)
+					return
+				}
+				statusBefore = before
 			}
-			if foreign {
-				mergeForeignErr = unfinishedMergeRefusal(fmt.Sprintf("MERGE_HEAD names another commit %s", foreignName[:12]))
-				return nil
+
+			// F1 (sync audit, card t1616): the unfinished-merge probe runs inside the same
+			// section, ahead of the merge subprocess and of the primary's status re-read
+			// below. A merge already in progress belongs to another actor: git refuses to
+			// start one over it. A merge that begins after this probe is caught from
+			// MERGE_HEAD after the failed merge, before any abort (the failure branch below).
+			pendingMerge, pendingErr := unfinishedMergeReason(git, in.IntegrationWorktree)
+			if pendingErr != nil {
+				recheckErr = mergeStepErr(MergeExitOther, "integration merge: the unfinished-merge probe errored: %v", pendingErr)
+				return
 			}
-			// F1 same-SHA (sync audit, card t1616): foreignMergeHead above passes a MERGE_HEAD
-			// that names the pin, so a same-SHA merge another actor began after the probe
-			// would reach the abort below. Only a call that ran git and got exit 1 began a
-			// merge and stopped with it in progress, so only that call may abort the MERGE_HEAD
-			// it left (mergeCallDidNotStop). Any other failure gives this call no claim on a
-			// MERGE_HEAD it finds (git refuses to start before it writes one, observed on git
-			// 2.54.0; a call killed by a signal is not credited either), so the step refuses and
-			// does not abort it. A call that never started has no exit status and began no
-			// merge, so the step refuses it without an abort even when no MERGE_HEAD exists.
-			if reason, didNotStop := mergeCallDidNotStop(err); didNotStop {
-				present, presentErr := mergeHeadPresent(git, in.IntegrationWorktree)
-				switch {
-				case presentErr != nil:
-					mergeForeignErr = mergeStepErr(MergeExitOther, "integration merge: read MERGE_HEAD after the failed merge: %v", presentErr)
-					return nil
-				case present:
-					mergeForeignErr = unfinishedMergeRefusal(fmt.Sprintf("MERGE_HEAD exists, and %s", reason))
-					return nil
-				case mergeCallNotStarted(err):
-					mergeForeignErr = mergeStepErr(MergeExitOther, "integration merge: git did not start the merge call (%v), so no merge was begun and the step did not abort", err)
-					return nil
+			if pendingMerge != "" {
+				recheckErr = unfinishedMergeRefusal(pendingMerge)
+				return
+			}
+
+			// (12, primary surface) the primary's dirty precondition is re-read inside the
+			// section, immediately before the merge subprocess. The clean check above ran
+			// before the mutation lock was taken, so another session that does not take the
+			// lock can create an untracked file in the primary after it (SPEC-LOCAL-MAIN-FLOW-001,
+			// card t1616). The merge would then run over the dirty primary, and only the
+			// post-merge checks would see it, after main had advanced.
+			if primary {
+				clean, status, statusErr := gitIntegrationWorktreeClean(in.IntegrationWorktree)
+				if statusErr != nil {
+					recheckErr = mergeStepErr(MergeExitOther, "integration merge: re-read the integration worktree status before the merge: %v", statusErr)
+					return
+				}
+				if !clean {
+					recheckErr = integrationWorktreeDirtyRefusal(status)
+					return
 				}
 			}
-			// (6)/(7): abort, then decide by the status set the abort left against S-before —
-			// inside the section, so no acquisition can interleave between
-			// our failed merge and its cleanup. The abort reaches this point only when
-			// MERGE_HEAD is absent (git's abort then refuses and changes nothing), names
-			// the pinned SHA only when this call began that merge (exit 1, checked above),
-			// or names no commit at all.
-			_, _ = git("merge", "--abort")
-			after, statusErr := integrationStatusSet(git)
-			mergeDirtyAfterAbort = statusErr != nil || !integrationStatusEqual(after, statusBefore)
-			if mergeDirtyAfterAbort {
-				// (7), REQ-MWQ2-007: the hold and the window release run here,
-				// inside this section, as one serialized mutation — no status
-				// refresh or waiter promotion can land between them.
-				causeSevenHoldErr, causeSevenReleaseErr = holdThenReleaseCauseSeven(in, seams, fmt.Sprintf("merge failed and the worktree is still dirty after abort (card %s)", in.CardID))
+
+			// P1 (card t1478 sync audit round 3): the collision probe runs AGAIN here,
+			// inside the candidate lock, after the landing check has passed and immediately
+			// before the merge. The probe in the window section ran before this lock was
+			// taken, so an ignored byte that appeared while the step waited for the lock
+			// was never seen. A colliding path refuses with cause 13 and a probe error with
+			// cause 9, both before any merge call.
+			if preMerge != nil {
+				if refusal := preMerge(); refusal != nil {
+					recheckErr = refusal
+					return
+				}
 			}
-			return nil
+
+			// The merge, of the PINNED SHA never the branch name (REQ-MWQ-017), inside
+			// the section (F4) and, on the candidate path, inside the candidate-record lock.
+			//
+			// t1576 review round 1 asked for --no-overwrite-ignore at the effect point. It
+			// is passed — and probed INEFFECTIVE on the path this step always takes: current
+			// git enforces it on the fast-forward update only, while --no-ff (REQ-MWQ-017's
+			// merge-commit contract) forces the three-way (ort) path, which overwrites an
+			// ignored byte at an added path whatever the flag says (probe: ff rc=1 refused;
+			// --no-ff and true-3way both rc=0, byte overwritten). The collision probes above
+			// catch every byte present before the merge subprocess starts; the residual
+			// below is what remains.
+			//
+			// @MX:DEBT: an ignored byte at an added path created after the last collision probe is overwritten by the three-way merge — the flag does not reach the ort path on current git
+			// @MX:CEILING: the window is the git-subprocess spawn that follows the last collision probe (the in-lock re-probe on the candidate path, the section probe on the disabled-key path), inside a flock-serialized section in a policy-protected integration worktree; the post-merge tree check cannot see it (a worktree-only loss, the commit's tree is unchanged)
+			// @MX:UPGRADE: a git whose ort path honors --no-overwrite-ignore (then this flag starts refusing), or an in-process merge that checks ignored paths atomically with the write
+			// --no-autostash is git's switch for merge.autoStash=false on this call
+			// (plan §B5): with autostash on, a staged change is stashed and re-applied
+			// unstaged, which changes the status set by itself.
+			if _, err := git("merge", "--no-ff", "--no-autostash", "--no-overwrite-ignore", "-q", "-m", mergeMsg, pinned); err != nil {
+				mergeErr = err
+				// F1 follow-up (sync audit, card t1616): abort only a merge this call
+				// started. The in-section probe ran before the merge call, so a merge another
+				// actor began after it shows up here, in MERGE_HEAD, naming a commit other than
+				// the pin. Its abort would discard that merge, so the step refuses and changes
+				// nothing instead.
+				foreignName, foreign, ownerErr := foreignMergeHead(git, in.IntegrationWorktree, pinned)
+				if ownerErr != nil {
+					mergeForeignErr = mergeStepErr(MergeExitOther, "integration merge: read MERGE_HEAD after the failed merge: %v", ownerErr)
+					return
+				}
+				if foreign {
+					mergeForeignErr = unfinishedMergeRefusal(fmt.Sprintf("MERGE_HEAD names another commit %s", foreignName[:12]))
+					return
+				}
+				// F1 same-SHA (sync audit, card t1616): foreignMergeHead above passes a MERGE_HEAD
+				// that names the pin, so a same-SHA merge another actor began after the probe
+				// would reach the abort below. Only a call that ran git and got exit 1 began a
+				// merge and stopped with it in progress, so only that call may abort the MERGE_HEAD
+				// it left (mergeCallDidNotStop). Any other failure gives this call no claim on a
+				// MERGE_HEAD it finds (git refuses to start before it writes one, observed on git
+				// 2.54.0; a call killed by a signal is not credited either), so the step refuses and
+				// does not abort it. A call that never started has no exit status and began no
+				// merge, so the step refuses it without an abort even when no MERGE_HEAD exists.
+				if reason, didNotStop := mergeCallDidNotStop(err); didNotStop {
+					present, presentErr := mergeHeadPresent(git, in.IntegrationWorktree)
+					switch {
+					case presentErr != nil:
+						mergeForeignErr = mergeStepErr(MergeExitOther, "integration merge: read MERGE_HEAD after the failed merge: %v", presentErr)
+						return
+					case present:
+						mergeForeignErr = unfinishedMergeRefusal(fmt.Sprintf("MERGE_HEAD exists, and %s", reason))
+						return
+					case mergeCallNotStarted(err):
+						mergeForeignErr = mergeStepErr(MergeExitOther, "integration merge: git did not start the merge call (%v), so no merge was begun and the step did not abort", err)
+						return
+					}
+				}
+				// (6)/(7): abort, then decide by the status set the abort left against S-before —
+				// inside the section, so no acquisition can interleave between
+				// our failed merge and its cleanup. The abort reaches this point only when
+				// MERGE_HEAD is absent (git's abort then refuses and changes nothing), names
+				// the pinned SHA only when this call began that merge (exit 1, checked above),
+				// or names no commit at all.
+				_, _ = git("merge", "--abort")
+				after, statusErr := integrationStatusSet(git)
+				mergeDirtyAfterAbort = statusErr != nil || !integrationStatusEqual(after, statusBefore)
+				if mergeDirtyAfterAbort {
+					// (7), REQ-MWQ2-007: the hold and the window release run here,
+					// inside this section, as one serialized mutation — no status
+					// refresh or waiter promotion can land between them.
+					causeSevenHoldErr, causeSevenReleaseErr = holdThenReleaseCauseSeven(in, seams, fmt.Sprintf("merge failed and the worktree is still dirty after abort (card %s)", in.CardID))
+				}
+				return
+			}
+			sha, shaErr := git("rev-parse", "HEAD")
+			if shaErr != nil {
+				// The commit exists — only the in-section read failed. The
+				// cause-8 class (post-merge) names no SHA it cannot read.
+				headReadErr = shaErr
+				return
+			}
+			mergeSHA = strings.TrimSpace(sha)
+			// S-after (REQ-LMF-006, plan §B5): taken after the merge commit, in the section.
+			after, statusErr := integrationStatusSet(git)
+			statusChanged = statusErr != nil || !integrationStatusEqual(after, statusBefore)
 		}
-		sha, shaErr := git("rev-parse", "HEAD")
-		if shaErr != nil {
-			// The commit exists — only the in-section read failed. The
-			// cause-8 class (post-merge) names no SHA it cannot read.
-			headReadErr = shaErr
-			return nil
+		if seams.LandingCheck != nil {
+			var landingRecheckErr error
+			if lockErr := WithCandidateMutation(in.Root, in.CardID, func() error {
+				landingRecheckErr = seams.LandingCheck(in.CardID, pinned)
+				if landingRecheckErr != nil {
+					return nil
+				}
+				mergeInSection(func() *MergeStepError {
+					colliding, probeErr := FindAddedPathCollisions(in.IntegrationWorktree, tip, pinned)
+					if probeErr != nil {
+						return mergeStepErr(MergeExitOther, "integration merge: the collision check errored: %v", probeErr)
+					}
+					if len(colliding) > 0 {
+						return mergeStepErr(MergeExitCollision, "integration merge: refused — the candidate would overwrite ignored/untracked bytes at %s; remove or commit them, then re-measure", strings.Join(colliding, ", "))
+					}
+					return nil
+				})
+				return nil
+			}); lockErr != nil {
+				recheckErr = mergeStepErr(MergeExitOther, "integration merge: the candidate record lock failed: %v", lockErr)
+				return nil
+			}
+			if landingRecheckErr != nil {
+				recheckErr = mergeStepErr(MergeExitLandingRefused, "integration merge: the landing check refused %s at the merge point: %v", pinned[:12], landingRecheckErr)
+				return nil
+			}
+		} else {
+			// The disabled-key path owes no candidate lock: the section's collision probe
+			// above is its last collision probe, and the sequence runs inline.
+			mergeInSection(nil)
 		}
-		mergeSHA = strings.TrimSpace(sha)
-		// S-after (REQ-LMF-006, plan §B5): taken after the merge commit, in the section.
-		after, statusErr := integrationStatusSet(git)
-		statusChanged = statusErr != nil || !integrationStatusEqual(after, statusBefore)
 		return nil
 	})
 	if sectionErr != nil {
@@ -856,6 +927,17 @@ func validateCardGate(card MergeCardState, requestedCard, windowCard string) err
 	return nil
 }
 
+// ResolveCardBranch is the exported form of the REQ-CCI-004 resolution
+// contract (SPEC-CANDIDATE-CI-001): the card's worktree resolves to its
+// WT- branch, and a missing, detached, or non-WT tree refuses naming the
+// card. The candidate verb shares this resolver so the candidate, the
+// merge step, and the record all name the same branch — the contract the
+// two committed anchors cite (integration_merge_step.go's resolveCardBranch
+// comment and its caller).
+func ResolveCardBranch(cardWorktree, cardID string) (string, error) {
+	return resolveCardBranch(cardWorktree, cardID)
+}
+
 // resolveCardBranch resolves the card's WT- branch at the card's tree: the
 // branch checked out there, which MUST carry the WT- prefix (kanban
 // dispatch § Isolation). The card worktree path is the read the card gate
@@ -867,7 +949,7 @@ func resolveCardBranch(cardWorktree, cardID string) (string, error) {
 	}
 	out, err := execGitIn(cardWorktree, "rev-parse", "--abbrev-ref", "HEAD")
 	if err != nil {
-		return "", fmt.Errorf("read the branch of %s: %v", cardWorktree, err)
+		return "", fmt.Errorf("card %s: read the branch of %s: %v", cardID, cardWorktree, err)
 	}
 	branch := strings.TrimSpace(out)
 	if !strings.HasPrefix(branch, "WT-") {

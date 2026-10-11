@@ -107,7 +107,7 @@ func integrationWaitInQueue(root, sessionID string, ticket factory.IntegrationTi
 		if policyErr != nil {
 			return policyErr
 		}
-		return factory.EnqueueTicket(w, ticket, factory.DefaultWindowProcProbe(), factory.WindowClock(), policy)
+		return factory.EnqueueTicketGated(w, ticket, factory.DefaultWindowProcProbe(), factory.WindowClock(), policy, factory.CandidateGrantGate(root))
 	})
 	if err != nil {
 		return err
@@ -135,7 +135,7 @@ func integrationWaitInQueue(root, sessionID string, ticket factory.IntegrationTi
 			if policyErr != nil {
 				return policyErr
 			}
-			outcome, pErr := factory.PromotedAfterBound(w, sessionID, deadline, factory.DefaultWindowProcProbe(), now, factory.WindowLeaseDuration, policy)
+			outcome, pErr := factory.PromotedAfterBoundGated(w, sessionID, deadline, factory.DefaultWindowProcProbe(), now, factory.WindowLeaseDuration, policy, factory.CandidateGrantGate(root))
 			if pErr != nil {
 				return pErr
 			}
@@ -164,7 +164,16 @@ func integrationWaitInQueue(root, sessionID string, ticket factory.IntegrationTi
 			return readErr
 		}
 		if factory.TicketPosition(lock, sessionID) == 0 && !(lock.Held() && lock.SessionID == sessionID) { //nolint:staticcheck // QF1001 — the negated conjunction IS the documented drop condition
-			return fmt.Errorf("integration window: your ticket was dropped (%s) — re-acquire with --wait re-enters at the tail", waiterDropReason(lock, ticket, now))
+			reason := waiterDropReason(lock, ticket, now)
+			// A ticket the per-card red hold withdrew names the hold, not the
+			// generic removal (card t1478 Finding 4). Only the generic reason is
+			// refined: a dead owner or a stale heartbeat keeps its own reason.
+			if reason == waiterTicketRemovedReason && candidateCIEnabled(root) {
+				if holdErr := factory.CandidateHoldRefusal(root, ticket.Card); holdErr != nil {
+					return fmt.Errorf("integration window: your ticket was withdrawn from the queue by the candidate hold — %v; re-candidate the card, then re-acquire with --wait re-enters at the tail", holdErr)
+				}
+			}
+			return fmt.Errorf("integration window: your ticket was dropped (%s) — re-acquire with --wait re-enters at the tail", reason)
 		}
 
 		// REQ-MWQ-002: refresh the ticket's heartbeat every 15 seconds while
@@ -179,10 +188,15 @@ func integrationWaitInQueue(root, sessionID string, ticket factory.IntegrationTi
 				if policyErr != nil {
 					return policyErr
 				}
-				report := factory.RefreshWindow(w, policy, factory.DefaultWindowProcProbe(), now, factory.WindowLeaseDuration)
+				report := factory.RefreshWindowGated(w, policy, factory.DefaultWindowProcProbe(), now, factory.WindowLeaseDuration, factory.CandidateGrantGate(root))
 				for i := range w.Queue {
 					if w.Queue[i].SessionID == sessionID {
 						w.Queue[i].Heartbeat = now.Format(time.RFC3339)
+					}
+				}
+				if out != nil {
+					for _, r := range report.Refused {
+						_, _ = fmt.Fprintf(out, "refused ticket: %s\n", r)
 					}
 				}
 				if len(report.Dropped) > 0 && out != nil {
@@ -227,7 +241,7 @@ func integrationWaitInQueue(root, sessionID string, ticket factory.IntegrationTi
 						promotedWithinBound = true
 						return nil
 					}
-					outcome, pErr := factory.PromotedAfterBound(w, sessionID, deadline, factory.DefaultWindowProcProbe(), now, factory.WindowLeaseDuration, policy)
+					outcome, pErr := factory.PromotedAfterBoundGated(w, sessionID, deadline, factory.DefaultWindowProcProbe(), now, factory.WindowLeaseDuration, policy, factory.CandidateGrantGate(root))
 					if pErr != nil {
 						return pErr
 					}
@@ -260,6 +274,10 @@ func integrationWaitInQueue(root, sessionID string, ticket factory.IntegrationTi
 	}
 }
 
+// waiterTicketRemovedReason is the generic drop reason: the ticket left the
+// queue with no dead owner and no stale heartbeat to name.
+const waiterTicketRemovedReason = "ticket removed from the queue"
+
 // waiterDropReason reconstructs why a waiter's own ticket is gone: the
 // waiter is alive by construction (it is running), so the drop it observes
 // was owner-gone or heartbeat-stale — decided from what this process can
@@ -271,7 +289,7 @@ func waiterDropReason(lock *factory.IntegrationLock, ticket factory.IntegrationT
 	if beat, err := time.Parse(time.RFC3339, ticket.Heartbeat); err == nil && now.Sub(beat) > factory.WaiterHeartbeatWindow {
 		return "heartbeat stale"
 	}
-	return "ticket removed from the queue"
+	return waiterTicketRemovedReason
 }
 
 // mustReadWindow reads the window record, tolerating absence (an empty
