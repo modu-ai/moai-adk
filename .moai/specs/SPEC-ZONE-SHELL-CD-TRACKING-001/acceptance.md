@@ -1,9 +1,9 @@
 ---
 id: SPEC-ZONE-SHELL-CD-TRACKING-001
 title: "Acceptance criteria — cd destination tracking (post-`--` operand incl. hyphen-leading, in-project absolute), cd-class regression cells"
-version: "0.2.0"
+version: "0.2.1"
 created: 2026-10-09
-updated: 2026-10-09
+updated: 2026-10-11
 author: manager-spec
 tier: M
 ---
@@ -495,7 +495,7 @@ ok  	github.com/modu-ai/moai-adk/internal/hook	1.227s [no tests to run]
 
 ## §D.2 Edge Cases
 
-- `cd -- dir1 dir2` (two operands after the separator): bash rejects the cd, the shell stays put — the reset is CORRECT and stays; the matrix may pin it as a preserve observation, never as an allow control for a hyphen-leading shape.
+- `cd -- dir1 dir2` (two operands after the separator) and `cd dir1 dir2` (two operands without the separator): bash moves into dir1 and ignores dir2; the guard keeps the reset and also tracks dir1 as a possible directory, so a deletion under dir1 is DENIED. The matrix pins the two-operand shapes as DENY (cd_track_multi_word_rm for `cd zone_dir extra`, cd_track_dashdash_second_separator_rm for `cd -- zone_dir --`); the non-zone two-operand shape `cd sub extra` is an allow disposition in TestProtectedZoneShellCdAllowDispositions, outside the matrix (REQ-ZSCD-005).
 - `cd -` (OLDPWD): stays reset (the guard cannot know OLDPWD); not a matrix cell.
 - `cd -- -L dir`-shaped option-before-separator forms: the hyphen reset stays in force BEFORE the `--`; only post-`--` operands become ordinary operands.
 - `cd <root>/../<root>/zone_dir`-shaped absolutes: cleaned inside the root → tracked (REQ-ZSCD-002 lexical rule); cleaned outside → reset.

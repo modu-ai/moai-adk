@@ -663,10 +663,14 @@ func (w *zoneWalker) zoneRedirects(redirs []*syntax.Redirect) {
 }
 
 // zoneNextCwd returns the working directory after a cd from cur. Only a plain
-// literal relative argument is tracked — a bare cd, several arguments (bash
-// rejects them and the cd fails), substitution, a glob, an option before the
-// separator, or an absolute path outside the root leaves it untracked (reset to
-// the root), the documented under-match (merge-gate round 1 P1-3). An absolute
+// literal relative argument is tracked — a bare cd, several arguments,
+// substitution, a glob, an option word, or an absolute path outside the root
+// resets to the root, the documented under-match (merge-gate round 1 P1-3).
+// Several arguments reset only as a pooled set: bash 3.2.57 moves into the
+// first operand and ignores the rest, so zoneCdMove keeps this reset and also
+// tracks that first operand (SPEC-ZONE-SHELL-CD-TRACKING-001 F1/F2). An option
+// word before it also moves the shell, but that form keeps the reset alone: the
+// known limitation of this change, not tracked. An absolute
 // path inside the root is tracked under its root-relative form (REQ-ZSCD-002,
 // SPEC-ZONE-SHELL-CD-TRACKING-001 K2): the shell stands there whatever cur was,
 // so the result never concatenates onto cur. The dots are cleaned here because
@@ -958,6 +962,13 @@ func (w *zoneWalker) zoneCdMove(world int, cmd *syntax.CallExpr) {
 	var reading string
 	dual := false
 	dynamic := multi
+	// first is the operand bash moves into when several words reach cd
+	// (SPEC-ZONE-SHELL-CD-TRACKING-001 F1). haveFirst records that one was
+	// seen. optionFirst records an option word before any operand: the
+	// union stays off for that cd, and the reset is the only reading.
+	var first string
+	haveFirst := false
+	optionFirst := false
 	if !multi {
 		if r, lit := zoneWordWorldReadings(cmd.Args[1]); !lit {
 			dynamic = true
@@ -969,13 +980,18 @@ func (w *zoneWalker) zoneCdMove(world int, cmd *syntax.CallExpr) {
 		// SPEC-ZONE-SHELL-CD-TRACKING-001 K1 (REQ-ZSCD-001): the first bare `--`
 		// ends cd's option parsing and is the separator, never a directory word.
 		// It is dropped here, so `cd -- zone_dir` yields the one operand the
-		// shell moves into. A second `--` is a literal operand, and two operands
-		// keep the reset (bash rejects a two-operand cd and the shell stays put).
+		// shell moves into. A second `--` is a literal operand. Several operands
+		// keep the pooled reset; the first operand is tracked too, because bash
+		// 3.2.57 moves into the first operand and ignores the rest (F1/F2). An
+		// option word before that operand keeps the reset alone (a known limitation, not tracked).
 		sepSeen := false
 		for _, a := range cmd.Args[1:] {
 			t, lit := zoneWordText(a)
 			if !lit {
 				pooled = append(pooled, "?dynamic")
+				if !haveFirst && !optionFirst {
+					first, haveFirst = "?dynamic", true
+				}
 				continue
 			}
 			if !sepSeen && t == "--" {
@@ -989,6 +1005,15 @@ func (w *zoneWalker) zoneCdMove(world int, cmd *syntax.CallExpr) {
 				// lexical judgment. The bare `-` (OLDPWD, unknown to the guard) and the
 				// words before the separator keep their option reset.
 				t = "./" + t
+			}
+			// an option word before the first operand blocks the union: no first
+			// operand is recorded after it. An option after the first operand does not.
+			option := !sepSeen && t != "-" && strings.HasPrefix(t, "-")
+			if option && !haveFirst {
+				optionFirst = true
+			}
+			if !option && !haveFirst && !optionFirst {
+				first, haveFirst = t, true
 			}
 			pooled = append(pooled, t)
 		}
@@ -1005,6 +1030,15 @@ func (w *zoneWalker) zoneCdMove(world int, cmd *syntax.CallExpr) {
 		switch {
 		case dynamic:
 			next = append(next, zoneCwd{dir: zoneNextCwd(w.root, cwd.dir, pooled), gen: gen})
+			if multi && haveFirst {
+				// SPEC-ZONE-SHELL-CD-TRACKING-001 F1/F2: bash 3.2.57 moves into the
+				// first operand and ignores the rest. The reset above stays, and the
+				// first operand is added as a second possible directory, so a following
+				// deletion is judged under both outcomes. No first operand is recorded
+				// when an option word comes before it. A single operand gives two
+				// equal entries, which setCwds drops.
+				next = append(next, zoneCwd{dir: zoneNextCwd(w.root, cwd.dir, []string{first}), gen: gen})
+			}
 		case !dual:
 			// a generation-identical reading keeps the directory's
 			// neutrality: the single reading serves this world too
