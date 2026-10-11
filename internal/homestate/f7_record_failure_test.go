@@ -9,7 +9,7 @@ import (
 
 // RenewLease refuses degenerate renewals the same way Transition does: an
 // unknown card, a card that holds no lease, and — after the clock passes the
-// expiry — the lease itself, returning the card to assigned first.
+// expiry — the lease itself, refused with no write (REQ-FLR-004).
 func TestRenewLeaseRefusalsAndExpiry(t *testing.T) {
 	db := frOpen(t)
 	repo := frNewRepo(t, true)
@@ -37,8 +37,9 @@ func TestRenewLeaseRefusalsAndExpiry(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if got.State != CardAssigned || got.LeaseHolder != "" {
-		t.Fatalf("card after expired renewal = %s holder=%q, want assigned with no holder", got.State, got.LeaseHolder)
+	if got.State != CardRun || got.LeaseHolder != "worker-1" || got.Version != expired.Version {
+		t.Fatalf("card after expired renewal = %s holder=%q v%d, want run, still held by worker-1, version v%d unchanged (REQ-FLR-004: refused with no write)",
+			got.State, got.LeaseHolder, got.Version, expired.Version)
 	}
 
 	// A zero clock means "now": the renewal still stamps a fresh expiry. The

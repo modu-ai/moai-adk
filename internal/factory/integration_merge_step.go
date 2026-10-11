@@ -119,6 +119,11 @@ type MergeStepSeams struct {
 	Probe WindowProcProbe
 	// LeaseDuration overrides the lease stamp; 0 is the default.
 	LeaseDuration time.Duration
+	// AfterHold runs on the cause-7 outcome between the hold write and the
+	// window release (REQ-MWQ2-007). It is the interleaving seam the overlay
+	// test uses to present a foreign mutation in the gap the outcome must close;
+	// nil is the production behavior.
+	AfterHold func()
 }
 
 func (s *MergeStepSeams) gitRunner(worktree string) func(args ...string) (string, error) {
@@ -318,34 +323,34 @@ func RunMergeStep(in MergeStepInput, seams MergeStepSeams) (string, error) {
 		return "", releaseWindow(in, seams, mergeStepErr(MergeExitRecordInvalid, "integration merge: %v", err))
 	}
 	if err := ValidateRemeasureRecord(record); err != nil {
-		return "", releaseWindow(in, seams, mergeStepErr(MergeExitRecordInvalid, "integration merge: the re-measure for tree %s is invalid: %v", pinnedTree[:12], err))
+		return "", releaseWindow(in, seams, mergeStepErr(MergeExitRecordInvalid, "integration merge: the re-measure for tree %s is invalid: %v", ShortSHA(pinnedTree), err))
 	}
 
 	// (2) the record's base must still be the integration tip — the
 	// re-measure-and-re-acquire code names both SHAs; the lane re-absorbs,
 	// re-measures, and re-acquires at the tail.
 	if record.Base != tip {
-		return "", releaseWindow(in, seams, mergeStepErr(MergeExitBaseMoved, "integration merge: the integration branch moved past the record's base %s to %s — re-measure against the new tip, then re-acquire --wait", record.Base[:12], tip[:12]))
+		return "", releaseWindow(in, seams, mergeStepErr(MergeExitBaseMoved, "integration merge: the integration branch moved past the record's base %s to %s — re-measure against the new tip, then re-acquire --wait", ShortSHA(record.Base), ShortSHA(tip)))
 	}
 
 	// (10) nothing to merge — the pinned SHA IS the base.
 	if pinned == record.Base {
-		return "", releaseWindow(in, seams, mergeStepErr(MergeExitNothingToMerge, "integration merge: %s equals the record's base — nothing to merge", pinned[:12]))
+		return "", releaseWindow(in, seams, mergeStepErr(MergeExitNothingToMerge, "integration merge: %s equals the record's base — nothing to merge", ShortSHA(pinned)))
 	}
 
 	// (3) ancestry, (4) tree identity.
 	if err := gitFail(git, "merge-base", "--is-ancestor", record.Base, pinned); err != nil {
-		return "", releaseWindow(in, seams, mergeStepErr(MergeExitNotDescendant, "integration merge: pinned %s does not descend from the record's base %s", pinned[:12], record.Base[:12]))
+		return "", releaseWindow(in, seams, mergeStepErr(MergeExitNotDescendant, "integration merge: pinned %s does not descend from the record's base %s", ShortSHA(pinned), ShortSHA(record.Base)))
 	}
 	if pinnedTree != record.Tree {
-		return "", releaseWindow(in, seams, mergeStepErr(MergeExitTreeMismatch, "integration merge: pinned tree %s differs from the record's tree %s", pinnedTree[:12], record.Tree[:12]))
+		return "", releaseWindow(in, seams, mergeStepErr(MergeExitTreeMismatch, "integration merge: pinned tree %s differs from the record's tree %s", ShortSHA(pinnedTree), ShortSHA(record.Tree)))
 	}
 
 	// (5) the shared landing check — absent no-op while candidate_ci is
 	// disabled (spec.md §F).
 	if seams.LandingCheck != nil {
 		if err := seams.LandingCheck(in.CardID, pinned); err != nil {
-			return "", releaseWindow(in, seams, mergeStepErr(MergeExitLandingRefused, "integration merge: the landing check refused %s: %v", pinned[:12], err))
+			return "", releaseWindow(in, seams, mergeStepErr(MergeExitLandingRefused, "integration merge: the landing check refused %s: %v", ShortSHA(pinned), err))
 		}
 	}
 
@@ -385,6 +390,8 @@ func RunMergeStep(in MergeStepInput, seams MergeStepSeams) (string, error) {
 	var mergeErr error
 	var headReadErr error
 	var mergeDirtyAfterAbort bool
+	// The cause-7 pair's outcome, written inside the section (REQ-MWQ2-007).
+	var causeSevenHoldErr, causeSevenReleaseErr error
 	// mergeForeignErr is set when the failed merge left another actor's MERGE_HEAD in
 	// place: the step refuses and does not abort (F1 follow-up).
 	var mergeForeignErr *MergeStepError
@@ -443,7 +450,7 @@ func RunMergeStep(in MergeStepInput, seams MergeStepSeams) (string, error) {
 			return nil
 		}
 		if tipNow = strings.TrimSpace(tipNow); tipNow != tip {
-			recheckErr = mergeStepErr(MergeExitBaseMoved, "integration merge: refused — the integration branch moved mid-step (tip %s as gated, %s now); re-measure against the new tip, then re-acquire", tip[:12], tipNow[:12])
+			recheckErr = mergeStepErr(MergeExitBaseMoved, "integration merge: refused — the integration branch moved mid-step (tip %s as gated, %s now); re-measure against the new tip, then re-acquire", ShortSHA(tip), ShortSHA(tipNow))
 			return nil
 		}
 		recheckNow := seams.now()
@@ -608,6 +615,12 @@ func RunMergeStep(in MergeStepInput, seams MergeStepSeams) (string, error) {
 			_, _ = git("merge", "--abort")
 			after, statusErr := integrationStatusSet(git)
 			mergeDirtyAfterAbort = statusErr != nil || !integrationStatusEqual(after, statusBefore)
+			if mergeDirtyAfterAbort {
+				// (7), REQ-MWQ2-007: the hold and the window release run here,
+				// inside this section, as one serialized mutation — no status
+				// refresh or waiter promotion can land between them.
+				causeSevenHoldErr, causeSevenReleaseErr = holdThenReleaseCauseSeven(in, seams, fmt.Sprintf("merge failed and the worktree is still dirty after abort (card %s)", in.CardID))
+			}
 			return nil
 		}
 		sha, shaErr := git("rev-parse", "HEAD")
@@ -653,13 +666,18 @@ func RunMergeStep(in MergeStepInput, seams MergeStepSeams) (string, error) {
 			return "", releaseWindow(in, seams, mergeForeignErr)
 		}
 		if mergeDirtyAfterAbort {
-			// (7): still dirty after the abort — hold FIRST, then release
-			// (REQ-MWQ-018: no later holder is promoted onto this state).
-			holdErr := writeMergeHold(in, seams, fmt.Sprintf("merge failed and the worktree is still dirty after abort (card %s)", in.CardID))
-			if holdErr != nil {
-				return "", mergeStepErr(MergeExitMergeDirty, "integration merge: merge failed, the abort left the worktree dirty, and writing the hold failed: %v (merge error: %v)", holdErr, mergeErr)
+			// (7): still dirty after the abort. The hold was written FIRST and the
+			// window released after it, inside the pre-merge section (REQ-MWQ2-007,
+			// REQ-MWQ-018: no later holder is promoted onto this state). Report what
+			// those two writes did.
+			if causeSevenHoldErr != nil {
+				return "", mergeStepErr(MergeExitMergeDirty, "integration merge: merge failed, the abort left the worktree dirty, and writing the hold failed: %v (merge error: %v)", causeSevenHoldErr, mergeErr)
 			}
-			return "", releaseWindow(in, seams, mergeStepErr(MergeExitMergeDirty, "integration merge: merge failed and the worktree is still dirty after abort; the window policy is held for the leader: %v", mergeErr))
+			cause := mergeStepErr(MergeExitMergeDirty, "integration merge: merge failed and the worktree is still dirty after abort; the window policy is held for the leader: %v", mergeErr)
+			if causeSevenReleaseErr != nil {
+				return "", fmt.Errorf("%w (releasing the window also failed: %v — moai integration status reads it)", cause, causeSevenReleaseErr)
+			}
+			return "", cause
 		}
 		return "", releaseWindow(in, seams, mergeStepErr(MergeExitMergeFailed, "integration merge: merge failed: %v", mergeErr))
 	}
@@ -671,9 +689,9 @@ func RunMergeStep(in MergeStepInput, seams MergeStepSeams) (string, error) {
 	if err != nil || strings.TrimSpace(mergedTree) != record.Tree {
 		got := "unreadable"
 		if err == nil {
-			got = strings.TrimSpace(mergedTree)[:12]
+			got = ShortSHA(strings.TrimSpace(mergedTree))
 		}
-		return "", postMergeHold(in, seams, mergeStepErr(MergeExitPostMerge, "integration merge: the merge commit's tree %s differs from the record's tree %s", got, record.Tree[:12]), mergeSHA)
+		return "", postMergeHold(in, seams, mergeStepErr(MergeExitPostMerge, "integration merge: the merge commit's tree %s differs from the record's tree %s", got, ShortSHA(record.Tree)), mergeSHA)
 	}
 	// B3 step 6 (SPEC-LOCAL-MAIN-FLOW-001): SHA equality alone does not prove
 	// the branch did not change, because a post-merge hook can move HEAD to
@@ -744,6 +762,19 @@ func minStrLen(s string, max int) int {
 		return len(s)
 	}
 	return max
+}
+
+// ShortSHA renders the first twelve bytes of a SHA, or the whole value when it
+// is shorter — the length-safe prefix every SHA render on the merge surface
+// goes through (REQ-MWQ2-002). A malformed value renders whole and never
+// panics on the slice; the refusal paths that render it must not be the
+// thing that dies before the window is released.
+//
+// @MX:ANCHOR: [AUTO] ShortSHA — the length-safe SHA prefix every merge-surface render goes through
+// @MX:REASON: seven distinct callers across four files (internal/cli/factory_card.go, internal/cli/integration_merge.go, internal/cli/integration_remeasure.go, internal/factory/integration_merge_step.go); a prefix that slices without the length guard brings back the short-base panic that REQ-MWQ2-002 removed, and that panic killed the step before the integration window was released
+// @MX:SPEC: SPEC-MERGE-WINDOW-QUEUE-002
+func ShortSHA(sha string) string {
+	return sha[:minStrLen(sha, 12)]
 }
 
 // sameIntegrationTree compares two worktree paths as DIRECTORIES, not
@@ -876,13 +907,37 @@ func writeMergeHold(in MergeStepInput, seams MergeStepSeams, reason string) erro
 	})
 }
 
+// holdThenReleaseCauseSeven is the cause-7 pair (REQ-MWQ2-007). It runs inside
+// the pre-merge mutation section, so the hold write and the window release are
+// one serialized mutation, and the caller's own release cannot fail on a holder
+// that took the window in the gap. It calls the unlocked bodies: the section
+// already holds the mutation lock, and the locked wrappers would contend with
+// it. A failed hold write returns before any release, so the window stays held
+// for the leader, as it always has.
+func holdThenReleaseCauseSeven(in MergeStepInput, seams MergeStepSeams, reason string) (holdErr, releaseErr error) {
+	holdErr = atomicWriteFile(integrationWindowPolicyPath(in.Root), IntegrationWindowPolicy{
+		Policy: PolicyHold,
+		Reason: reason,
+		SetBy:  fmt.Sprintf("integration-merge-step (card %s)", in.CardID),
+		SetAt:  seams.now().Format(time.RFC3339),
+	})
+	if holdErr != nil {
+		return holdErr, nil
+	}
+	if seams.AfterHold != nil {
+		seams.AfterHold()
+	}
+	_, releaseErr = releaseIntegrationLockLocked(in.Root, in.CallerSessionID, 0, false)
+	return nil, releaseErr
+}
+
 // postMergeHold is the cause-8 outcome: the merge commit exists, so it
 // stays in place; the hold names the cause AND the merge SHA the leader
 // inspects; then the window releases. The cause's message carries the same
 // extension the hold's reason does — one message, both surfaces.
 func postMergeHold(in MergeStepInput, seams MergeStepSeams, cause *MergeStepError, mergeSHA string) error {
 	if mergeSHA != "" {
-		cause.Msg = fmt.Sprintf("%s (merge commit %s left in place for the leader)", cause.Msg, mergeSHA[:12])
+		cause.Msg = fmt.Sprintf("%s (merge commit %s left in place for the leader)", cause.Msg, ShortSHA(mergeSHA))
 	}
 	if err := writeMergeHold(in, seams, cause.Msg); err != nil {
 		return fmt.Errorf("%w (writing the hold also failed: %v)", cause, err)
