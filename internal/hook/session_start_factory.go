@@ -31,9 +31,11 @@ import (
 	"os"
 	"strconv"
 	"strings"
+	"time"
 
 	"github.com/modu-ai/moai-adk/internal/config"
 	"github.com/modu-ai/moai-adk/internal/factory"
+	"github.com/modu-ai/moai-adk/internal/homestate"
 )
 
 // factoryBootstrapNotice returns the factory announcement for this session in
@@ -137,10 +139,11 @@ func factoryLaneRuleForSource(source, lang string) string {
 		// owned-card rule below does not, because that harness has no session
 		// cron tool.
 		m := factoryMessagesFor(lang)
+		recheck := fmt.Sprintf(m.laneRecheckRule, laneArmExpression())
 		if os.Getenv(config.EnvFactoryAutoDispatch) == config.FactoryDispatchManual {
-			return m.laneManualDispatchRule + "\n\n" + m.laneRecheckRule
+			return m.laneManualDispatchRule + "\n\n" + recheck
 		}
-		return m.laneNextCardRule + "\n\n" + m.laneRecheckRule
+		return m.laneNextCardRule + "\n\n" + recheck
 	case factory.BackendGPT:
 		cardID := os.Getenv(config.EnvFactoryCard)
 		if cardID == "" {
@@ -153,6 +156,29 @@ func factoryLaneRuleForSource(source, lang string) string {
 	default:
 		return ""
 	}
+}
+
+// laneArmExpression renders the arm expression of the standing recheck, `*/N * * * *`,
+// for the effective watchdog renewal period, workflow.factory_lease.renew_interval
+// (SPEC-FACTORY-LEASE-RENEW-001 REQ-FLR-012). The configuration is read from the
+// project root the factory opens: the launch base, CLAUDE_PROJECT_DIR or else the
+// working directory, resolved through factory.ResolveTodoQueueRoot. That is the
+// resolution the factory's own root uses (internal/cli factoryCardRoot), so the
+// rendered period is the one the factory enforces. A configuration the factory
+// refuses renders the default period, because a session-start hook must not block;
+// the factory's own open names the refused key.
+func laneArmExpression() string {
+	renew := config.DefaultFactoryLeaseRenewInterval
+	base := os.Getenv(config.EnvClaudeProjectDir)
+	if base == "" {
+		base, _ = os.Getwd()
+	}
+	if base != "" {
+		if _, configured, err := homestate.EffectiveFactoryLease(factory.ResolveTodoQueueRoot(base)); err == nil {
+			renew = configured
+		}
+	}
+	return fmt.Sprintf("*/%d * * * *", int(renew/time.Minute))
 }
 
 // factoryLanesEnv reads the run's fan-out size from the environment the

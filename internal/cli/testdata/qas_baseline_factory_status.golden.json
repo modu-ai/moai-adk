@@ -2,7 +2,9 @@
   "empty": {
     "run": "run-cli",
     "cards": [],
-    "unavailable": []
+    "unavailable": [],
+    "lease_duration": "15m0s",
+    "renew_interval": "5m0s"
   },
   "one_card": {
     "run": "run-cli",
@@ -30,6 +32,8 @@
         "priority": "high"
       }
     ],
-    "unavailable": []
+    "unavailable": [],
+    "lease_duration": "15m0s",
+    "renew_interval": "5m0s"
   }
 }

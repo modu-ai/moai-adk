@@ -62,6 +62,7 @@ var kindRegister = []KindRow{
 			"internal/hook/navigator_detect.go:158",
 			"internal/hook/navigator_detect.go:180",
 			"internal/hook/session_start_memory_budget.go:125",
+			"internal/cli/update_integrity_probe.go:144",
 		},
 	},
 	{

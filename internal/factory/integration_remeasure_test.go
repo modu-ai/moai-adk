@@ -118,6 +118,99 @@ func TestClassifyNoTestFilesAndUnknownTool(t *testing.T) {
 	}
 }
 
+func TestClassifyAllNoTestSweepStaysEmpty(t *testing.T) {
+	// REQ-MWQ2-009 / AC-MWQ2-003 edge: removing the marker refusal does not make
+	// an all-no-test sweep valid. Every package reports `[no test files]` and a
+	// package-level skip, and the total per-test pass count is zero: the stream
+	// reads structured-with-zero, and the verifier refuses the zero count.
+	stream := "" +
+		`{"Action":"output","Package":"p","Output":"?   \tp\t[no test files]\n"}` + "\n" +
+		`{"Action":"skip","Package":"p"}` + "\n"
+	count, structured, err := ClassifyStructuredOutput("go test -json ./p/...", strings.NewReader(stream))
+	if err != nil || !structured || count != 0 {
+		t.Fatalf("an all-no-test sweep must read structured-with-zero: count=%d structured=%v err=%v", count, structured, err)
+	}
+	rec := &RemeasureRecord{
+		Tree: remeasureFixtureTree, Base: "b" + strings.Repeat("0", 39),
+		Command: "go test -json ./p/...", ExitCode: 0,
+		StructuredRequired: true, HasStructured: structured, TestCount: count,
+		BuildIdentity: "moai test",
+	}
+	if err := ValidateRemeasureRecord(rec); err == nil {
+		t.Fatal("an all-no-test sweep must not validate as a re-measure")
+	}
+}
+
+func TestRemeasureRecordRefusesMalformedTreeAndBase(t *testing.T) {
+	// REQ-MWQ2-001 / AC-MWQ2-001 edge: the tree key and the absorbed base are
+	// both held to the full-SHA form, and a malformed value of either field is
+	// refused as the same record-invalid cause. Uppercase hex is refused too:
+	// git prints lowercase, so any other form cannot be the tree or commit the
+	// merge step compares against.
+	valid := "b" + strings.Repeat("0", 39)
+	cases := []struct {
+		name string
+		tree string
+		base string
+	}{
+		{name: "short base", tree: remeasureFixtureTree, base: "bad"},
+		{name: "short tree", tree: "abc", base: valid},
+		{name: "uppercase tree", tree: strings.ToUpper(remeasureFixtureTree), base: valid},
+		{name: "39-character base", tree: remeasureFixtureTree, base: strings.Repeat("a", 39)},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			rec := &RemeasureRecord{
+				Tree: tc.tree, Base: tc.base,
+				Command: "true", ExitCode: 0, BuildIdentity: "moai test",
+			}
+			if err := ValidateRemeasureRecord(rec); err == nil || !strings.Contains(err.Error(), "40-character hex SHA") {
+				t.Fatalf("a malformed %s must be refused naming the SHA format: %v", tc.name, err)
+			}
+		})
+	}
+}
+
+func TestRemeasureRecordRefusesMissingIdentity(t *testing.T) {
+	// REQ-MWQ-014/015: the verifier refuses a record missing an identity field,
+	// carrying a non-zero exit, or claiming structure it does not carry; a nil
+	// record is the missing-record refusal. The valid record is the control.
+	valid := func() RemeasureRecord {
+		return RemeasureRecord{
+			Tree: remeasureFixtureTree, Base: "b" + strings.Repeat("0", 39),
+			Command: "true", ExitCode: 0, BuildIdentity: "moai test",
+		}
+	}
+	cases := []struct {
+		name   string
+		mutate func(r *RemeasureRecord)
+	}{
+		{name: "empty tree", mutate: func(r *RemeasureRecord) { r.Tree = "" }},
+		{name: "empty base", mutate: func(r *RemeasureRecord) { r.Base = "" }},
+		{name: "empty command", mutate: func(r *RemeasureRecord) { r.Command = "" }},
+		{name: "empty build identity", mutate: func(r *RemeasureRecord) { r.BuildIdentity = "" }},
+		{name: "non-zero exit", mutate: func(r *RemeasureRecord) { r.ExitCode = 3 }},
+		{name: "structured required, none recognized", mutate: func(r *RemeasureRecord) { r.StructuredRequired = true }},
+		{name: "structured with zero tests", mutate: func(r *RemeasureRecord) { r.StructuredRequired, r.HasStructured = true, true }},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			rec := valid()
+			tc.mutate(&rec)
+			if err := ValidateRemeasureRecord(&rec); err == nil {
+				t.Fatalf("%s must be refused", tc.name)
+			}
+		})
+	}
+	if err := ValidateRemeasureRecord(nil); err == nil {
+		t.Fatal("a missing record must be refused")
+	}
+	good := valid()
+	if err := ValidateRemeasureRecord(&good); err != nil {
+		t.Fatalf("the valid control must pass: %v", err)
+	}
+}
+
 func TestClassifyEnvPrefixIsGoTest(t *testing.T) {
 	// t1576 review round 2: env assignments and a leading `env` word prefix
 	// the real tool — `GOMAXPROCS=2 go test -json ./... | cat` and `env

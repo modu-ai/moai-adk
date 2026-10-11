@@ -63,7 +63,7 @@ catalog:
             - name: moai-lane-watchdog
               tier: core
               path: templates/.claude/skills/moai-lane-watchdog/
-              hash: 3b5becd47bf8a9689724fbbf4c7c152b62caf9c3cbb9d961892ad83d4e4fb536
+              hash: 734677c3b48429874873ae1bcd37b0eb844c05d46bd1bc4f980ec78fa6eff1ab
               version: 1.0.0
               depends_agents:
                 - manager-lead
