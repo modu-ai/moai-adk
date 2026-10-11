@@ -3762,6 +3762,41 @@ Lease re-record request (written by the lane session under the lead's contingenc
 
 - lease re-record requested: t1663, 사유: FAIL #4 처분(영실이, 운영자 위임)이 아직 없고, 임대(until 2026-10-11T00:37:12Z)가 그 전에 끝날 수 있음; 원하는 만료: 2026-10-11T03:00Z (처분 뒤 수리 또는 재감사 한 주기를 덮을 만큼).
 
+### Sync audit verdict #5: PASS-WITH-DEBT (basis recorded here; the verdict file is local-only and not committed)
+
+- verdict: PASS-WITH-DEBT
+- audited_sha: 1c26c0b6039cc42e6cf0c1171cfe6d11bb12207b (HEAD at the start of the audit and again before the verdict was written; `git status --short` was empty at both points)
+- auditor-model: claude-opus-5-5
+- required_backend_fail: none
+- codex receipt: rcpt-354c97311ba4b9c3d24c1d7b (tool audit_multi, tree_root this worktree, codex_verdict pass, created_at 2026-10-11T02:16:33Z; file .moai/state/audit-receipts/receipts/rcpt-354c97311ba4b9c3d24c1d7b.json)
+- convergence check: `moai verify audit-plan --project-root /Users/goos/MoAI/moai-adk-go/.moai/worktrees/t1663 --result-file .moai/state/audit-plan-result.json` → `"convergence_check": {"ok": true, "unmet": []}`. The result file is a digest of the receipt above: overall_verdict pass, codex / required / pass, plan_source config (the plan's codex gate comes from config.gates).
+- verdict file: `.moai/reports/t1663/sync-audit-5.md` (local, git-ignored, not committed)
+- lease: the T11 transition (sync → sync-audit, version 42, on 1c26c0b60) reset the lease to +15 minutes; the lead re-recorded it to 2026-10-11T03:00:00Z at version 43 under the request above (progress.md:3562).
+
+Gate statement, in plain words: the verdict is PASS-WITH-DEBT. The required backend, codex, passed on the audited commit. F14 is closed. The debts below are non-blocking, and each carries a proposed disposition for the lead to confirm. Nothing was repaired in this round.
+
+F14 closure, the deciding evidence (verbatim from the verdict file's F14 section). The auditor ran 8 cases: the ambiguous set once, and the sole-run set with three starting states, each on the verb and on the MCP tool. A roster re-registration to run-b was injected at the real claim path between resolution and write.
+- At 1c26c0b60 all 8 refuse. Sample: `zz_audit5_f14_probe_test.go:183: outcome result=error expires_at=2026-09-26T09:05:00Z detail="no --run given: roster binding changed: lane lane-1 is bound to run run-b, not to run run-a; pass --run" ...`
+- On the pre-fix blobs of 0af587ad5 (hash-object matched) all 8 renew. Sample: `zz_audit5_f14_probe_test.go:183: outcome result=renewed expires_at=2026-09-26T09:15:00Z detail="" call_err=<nil>`
+
+Acceptance criteria: AC-FLR-001 to 015 are carried by 19 named tests, all PASS at 1c26c0b60, FAIL 0 (cli 6, homestate 5, factory 3, template 4, hook 1), per the verdict file. The lane's own observation at HEAD 1c26c0b60, the code identical to e7deded88, with the named set (seven tests plus the renew family): `go test -count=1 -v -run '^(TestRenewRebindBeforeWriteAmbiguousRefuses|TestRenewRebindBeforeWriteSoleRunRefuses|TestFactoryRenewSoleRunExplicitMismatchRefuses|TestResolveFactoryRenewRunRefusalArms|TestFactoryRenewRefusesLabelReuseAcrossRuns|TestLaneVerbsMatchMCPLeaseDuration|TestFactoryRenewResolvesLaneRunWithoutRunArg)$' ./internal/cli/` → `ok  github.com/modu-ai/moai-adk/internal/cli  61.760s`, 50 `--- PASS` lines, 0 `--- FAIL`.
+
+Scores from the verdict file: Functionality 90, Security 85, Craft 74 (UNVERIFIED: coverage not measured), Consistency 85. Weighted total 84.8.
+
+Debts, non-blocking, each with a proposed disposition (the lead confirms):
+- F17 [P4] internal/cli/factory_card.go:2446-2460 and :2512: the doc comment of `resolveFactoryRenewRunRule` sits in the old function's paragraph with no blank line, and the two-value wrapper `resolveFactoryRenewRun` has no operational caller (one test only). proposed dispose_in=later (card t1680).
+- F18 [P4] internal/homestate/card_transition.go:525: the explicit `--run` path overwrites the heartbeat of a roster row re-registered to another run (observed `roster="run-b" hb=2026-09-26T09:00:00Z`). This is by design of the explicit path and outside the AC scope. proposed dispose_in=later (t1680 design decision).
+- F19 [P4] internal/cli/factory_renew_rebind_test.go:54-98: the F14 regression tests re-register through a fixture UPDATE and the seam. They do not assert the real claim path, the heartbeat, or the version. proposed dispose_in=later (t1680, test strength).
+- F20 [P4] internal/homestate/card_transition.go:455-464: the `admits` default arm is unreachable (coverage 75.0%), so an out-of-range `RosterRule` would admit. proposed dispose_in=later (t1680).
+- F21 [P4] progress.md:3414, :3418, :3424 (the Repair 4 sub-block): the defect text names the HEAD line of `resolveFactoryRenewRun` (at 680a24938 it was :2443), the range `437-465` ends on a blank line, and "nine of them in unrelated tests" covers two AC tests. The Repair 4 text stays as audited. proposed dispose_in=later (t1680 record cleanup).
+- Residual risk carried to t1680 (candidates A and B from the repair agent, confirmed by the auditor as residual, not as findings): the write does not re-check the active run set. A lane unbound at resolution still renews after another run starts (observed `run-a expiry 2026-09-26T09:05:00Z -> 2026-09-26T09:15:00Z`), which a fresh resolution at the same time refuses. The stage verb's renewal is `RosterUnchecked`. The existing stage/complete single-run residual also stays.
+
+Gaps (each is a shortfall, not a pass):
+- The lane did not re-measure golangci-lint or gofmt on this round. The repair agent measured them at e7deded88: `golangci-lint run --timeout=10m ./internal/cli/... ./internal/homestate/...` → `0 issues.`, and `gofmt -l` on the four changed Go files gave no output. The round-5 auditor reports golangci-lint 0 issues, vet, gofmt, and the Windows build clean at 1c26c0b60, recorded in its verdict file (Craft). The lane's own observation is absent. This Gap was recorded before the verdict text went to the lead, as the lead requested.
+- Package coverage (QG-3, 85%) was measured by neither the lane nor the auditor. The runs were named-test runs only (D1), so Craft is UNVERIFIED for coverage.
+- The full internal/cli package and CLI-level real concurrency were not run (D2, CI's job).
+- The auditor's `env -u … go test` form was refused by the worktree guard. The auditor ran one `unset … && go test` call instead (the auditor's report).
+
 ## §G Override and Refusal Record
 
 - 2026-10-10T09:51:05Z SPEC-FACTORY-LEASE-RENEW-001 ceiling-refusal outcome=hold reasons="plan-audit ceiling reached (round count 2 >= tier ceiling 2); the verdict matches no admitting arm and holds, entry blocked (REQ-ACE-006) — release path: the split/new-SPEC route of REQ-ACE-005 or an operator decision recorded in progress.md §G" evidence=/Users/goos/MoAI/moai-adk-go/.moai/worktrees/t1663/.moai/reports/t1663/plan-audit-iter2.md,/Users/goos/MoAI/moai-adk-go/.moai/worktrees/t1663/.moai/reports/t1663/plan-audit.md
