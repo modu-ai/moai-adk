@@ -895,6 +895,28 @@ notes: 13/13 ACs PASS (6 as committed regression guards with recorded not-reprod
 
 ## §E.4 Sync-phase Audit-Ready Signal
 
+### Re-close record — amendment re-close (card t1595, 2026-10-11)
+
+This record re-closes the in-place amendment declared in `spec.md` § Amendments (2026-10-11; prior completed version 0.1.6). The prior close record below is kept unchanged as history. The sync commit could not cite its own hash, so this record carried the literal placeholder `pending-backfill-sync` until the real SHA, `7be18e95dc`, was backfilled in this commit, not in a later one (`spec-workflow.md` § Sync (close); `spec-frontmatter-schema.md` § SHA placeholder backfill exemption).
+
+sync_complete_at: 2026-10-11T10:11:56Z (committer time of the sync commit 7be18e95dc)
+sync_commit_sha: 7be18e95dc
+sync_status: complete
+prior_close_record: sync_commit_sha c282c3920 (sync_complete_at 2026-10-09T17:16:03Z) retained below as history, not deleted; prior_completed_sha in spec.md § Amendments equals it
+ac_source: .moai/specs/SPEC-DISPATCH-INTEGRITY-001/acceptance.md (tier M)
+spec_frontmatter: status in-progress → completed, the `in-progress → implemented → completed` row of `spec-frontmatter-schema.md` § Status Transition Ownership Matrix (manager-docs, single sync commit); updated 2026-10-11 (unchanged — already the sync date)
+spec_amendment_fields: amendment_of retained (SPEC-DISPATCH-INTEGRITY-001); `## Amendments` entry unchanged; the `completed → in-progress (amendment)` transition was performed before this sync and is not re-performed here
+frontmatter_status_transitions.in_progress_to_implemented: merged into the sync commit (3-phase close)
+frontmatter_status_transitions.implemented_to_completed: merged into the sync commit (3-phase close — no separate Mx commit)
+plan_acceptance_frontmatter: neither artifact carries a frontmatter block (both open with an H1 heading; stateless per the schema), so no `updated:` refresh applies
+progress_frontmatter: none (progress.md carries no frontmatter; `sync_status` above is its status-bearing field)
+changelog_entry_position: [Unreleased] §Fixed, the single SPEC-DISPATCH-INTEGRITY-001 entry, corrected in place: items (2), (3), and (6) rewritten to the lock-unification and bounded-refusal contract; no other entry text changed; no entry appended
+b12_self_test_a: `grep -c 'SPEC-DISPATCH-INTEGRITY-001' CHANGELOG.md` = 1 before the correction (an in-place correction, not an append, so the duplicate-entry halt does not apply)
+b12_self_test_b: reserved-token-aware AC counter on acceptance.md = 13 (live=13 excluded=0 ambiguous=0); the corrected entry cites 13 acceptance criteria AC-DI-001..013
+b12_self_test_c: file paths named in the corrected items verified with `ls -l`: internal/cli/memory_fold.go, internal/cli/fold_store_lock_unix.go, internal/cli/fold_store_lock_windows.go, internal/cli/review_observation_publish_fifo_unix_test.go (build tag `!windows`); test name `TestReviewFindingLockFileRefusesSymlink` located at review_observation_publish_fifo_unix_test.go:85
+canary_compliance_check: N/A (this SPEC defines no forward-looking policy carrying its own sync tests)
+mx_tag_validation: no code changed by this sync edit; no tag owed
+
 sync_complete_at: 2026-10-09T17:16:03Z
 sync_commit_sha: c282c3920
 sync_status: complete
@@ -911,28 +933,6 @@ plan_acceptance_frontmatter: neither artifact carries a frontmatter block (state
 canary_compliance_check: N/A (this SPEC defines no forward-looking policy carrying its own sync tests)
 mx_tag_validation: sync sub-step — the touched production files carry @MX:WARN on withFoldStoreLock (with @MX:REASON, cross-process file lock) and @MX:NOTE/@MX:ANCHOR annotations from the run phase; no new tags owed by the sync edit (docs-only change), no stale tags found on the changed symbols
 readme_docs_judgment: no README/docs-site staleness — the 4-locale command tables list `moai memory <doctor|archive>` only (`moai memory fold` and the factory verbs are not README-documented), and none of the four behaviors changes a documented surface; no edit emitted (edit-for-its-own-sake avoided)
-
-### Re-close record — amendment re-close (card t1595, 2026-10-11)
-
-This record re-closes the in-place amendment declared in `spec.md` § Amendments (2026-10-11; prior completed version 0.1.6). The prior close record above is kept unchanged as history. The `sync_commit_sha` below is the literal placeholder: a commit cannot cite its own hash, so the next commit on the branch backfills the real SHA (`spec-workflow.md` § Sync (close); `spec-frontmatter-schema.md` § SHA placeholder backfill exemption).
-
-sync_complete_at: 2026-10-11T10:05:53Z (source: `date -u` observed while this record was written; the sync commit's committer time supersedes it at backfill)
-sync_commit_sha: pending-backfill-sync
-sync_status: complete
-prior_close_record: sync_commit_sha c282c3920 (sync_complete_at 2026-10-09T17:16:03Z) retained above as history, not deleted; prior_completed_sha in spec.md § Amendments equals it
-ac_source: .moai/specs/SPEC-DISPATCH-INTEGRITY-001/acceptance.md (tier M)
-spec_frontmatter: status in-progress → completed, the `in-progress → implemented → completed` row of `spec-frontmatter-schema.md` § Status Transition Ownership Matrix (manager-docs, single sync commit); updated 2026-10-11 (unchanged — already the sync date)
-spec_amendment_fields: amendment_of retained (SPEC-DISPATCH-INTEGRITY-001); `## Amendments` entry unchanged; the `completed → in-progress (amendment)` transition was performed before this sync and is not re-performed here
-frontmatter_status_transitions.in_progress_to_implemented: merged into the sync commit (3-phase close)
-frontmatter_status_transitions.implemented_to_completed: merged into the sync commit (3-phase close — no separate Mx commit)
-plan_acceptance_frontmatter: neither artifact carries a frontmatter block (both open with an H1 heading; stateless per the schema), so no `updated:` refresh applies
-progress_frontmatter: none (progress.md carries no frontmatter; `sync_status` above is its status-bearing field)
-changelog_entry_position: [Unreleased] §Fixed, the single SPEC-DISPATCH-INTEGRITY-001 entry, corrected in place: items (2), (3), and (6) rewritten to the lock-unification and bounded-refusal contract; no other entry text changed; no entry appended
-b12_self_test_a: `grep -c 'SPEC-DISPATCH-INTEGRITY-001' CHANGELOG.md` = 1 before the correction (an in-place correction, not an append, so the duplicate-entry halt does not apply)
-b12_self_test_b: reserved-token-aware AC counter on acceptance.md = 13 (live=13 excluded=0 ambiguous=0); the corrected entry cites 13 acceptance criteria AC-DI-001..013
-b12_self_test_c: file paths named in the corrected items verified with `ls -l`: internal/cli/memory_fold.go, internal/cli/fold_store_lock_unix.go, internal/cli/fold_store_lock_windows.go, internal/cli/review_observation_publish_fifo_unix_test.go (build tag `!windows`); test name `TestReviewFindingLockFileRefusesSymlink` located at review_observation_publish_fifo_unix_test.go:85
-canary_compliance_check: N/A (this SPEC defines no forward-looking policy carrying its own sync tests)
-mx_tag_validation: no code changed by this sync edit; no tag owed
 
 ## §F Phase 4 Mode Selection
 
