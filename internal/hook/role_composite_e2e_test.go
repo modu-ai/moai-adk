@@ -14,7 +14,12 @@ import (
 // factoryBootstrapNoticeForSource + factoryLaneRuleForSource + bound line +
 // roleRuleInjectionFor -> assembleInjectionComposite -> roleRuleSizeGate)
 // for leader/lane roles x ko/en locales, against the 10,000 delivery cap
-// (operator decisions 6c5e / 1670 / leader ruling on the instrument).
+// (operator decisions 6c5e / 1670 / leader ruling on the instrument). The
+// leader cells carry the REAL leader notice of run tmnboq (leader narrow-
+// repair item F5): run id tmnboq (factory record + mission file), fan-out 18
+// (recorded owners lane-1..lane-18 on the run), lead addr
+// /tmp/moai-socket-factory/tmnboq (FactoryLeaderSocketPath(runID) — the exact
+// value the launcher publishes as EnvFactoryLeadAddr).
 // The variable advisory pad is the lane-ko measured value 1,470 UTF-16
 // (binary-latency + guard banners + chain banner + degraded notice; source:
 // lane-15 live capture, delta1 audit 4,797 fixed - 3,327 decisive), applied
@@ -50,13 +55,22 @@ func TestCompositeBudgetRealAssembly(t *testing.T) {
 				t.Setenv(config.EnvMoaiFactoryWorker, "lane-15")
 			}
 			if tc.leader {
-				t.Setenv(config.EnvMoaiFactoryWorkers, "1")
+				// the real leader notice of run tmnboq (F5): the run id, the
+				// recorded fan-out, and the launcher-published lead addr — an
+				// empty notice here would measure a leader composite without
+				// its bootstrap block, which is the F5 gap.
+				t.Setenv(config.EnvMoaiFactoryWorkers, "18")
+				t.Setenv(config.EnvFactoryRunID, "tmnboq")
+				t.Setenv(config.EnvFactoryLeadAddr, "/tmp/moai-socket-factory/tmnboq")
 			}
 			t.Setenv(config.EnvFactoryBackend, factoryBackendGLMForTest)
 
 			attribution := "moai session attribution: source_session_id=measure-e2e\n"
 			glm := glmGuardrailReminderText
 			bootstrap := factoryBootstrapNoticeForSource("startup", root, "measure-e2e", tc.lang)
+			if tc.leader && bootstrap == "" {
+				t.Fatal("leader cell produced no bootstrap notice — the real leader notice is the F5 measurement input")
+			}
 			laneRule := factoryLaneRuleForSource("startup", tc.lang)
 
 			pad := ""
