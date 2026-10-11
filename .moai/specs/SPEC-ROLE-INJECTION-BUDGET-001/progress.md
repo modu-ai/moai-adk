@@ -224,3 +224,15 @@ t1616이 로컬 main(`478285ab4`)에 착지한 뒤, 카드 트리가 이를 흡�
 - **B1 수리**: 양 트리 복원 행에 `- ` 접두 부여 → 감사자 기준 시험 `grep -cxF -f <sed -n '116p'>` = **양 트리 1** (바이트 일치). 검증: `TestAutoPickMirrorParity|TestAutoPick|TestAutoRank|TestAutoDoc` ok 16.291s · `TestRoleCoreStubGate` ok 0.447s (-count=1)
 - **재확인 표 (감사자 관측 인용)**: D1 — f40bfb59f에서 결함 형태 존재(스텁 양쪽 문장 부재), 본문은 본 수리로 변경 · D2 — f40bfb59f 존재(:328 strings.Cut), 미변경 · D3 — 존재(:72 WalkDir 삼킴), 미변경 · 신규 P2 `role_rules.go:345` (os.ReadFile) — f40bfb59f 존재, 미변경 → **t1637 부채계열 추가** · 신규 P3 `hooks-system.md:132` (23,166자 내부 인용) — f40bfb59f 존재, 미변경 → **리더 처분 (t1637 범위 주석 또는 별도)**
 - **스텁 예산 수치 정정**: 이전 기록 "9,915+133=10,048"은 리더 룰링 인용치 — 자체 미재측정(감사자 지적)
+
+### F4 수리 시도 — 예산 불가 판정 (리더 지시 ②-(가), 2026-10-11)
+
+- **RED 시험 선커밋**: `f2f2b67ec` — `TestInjectedCoreCarriesCodexReachableObligations` (internal/hook/role_core_reach_test.go): 주입 role-core 본문(config.ExtractRoleCoreRegions)에 두 의무 핵심 문구("fixed-field"·"disk wait") 존재 기계 단언. **RED 관측 원문**: 양 문구 × 양 트리 4건 전부 "the injected role-core body does not carry" — F4 재현.
+- **현재 실측**: core 3,786 (양 트리 동일, 31구역) — 천장 3,946, 여유 **160**
+- **의미 보존 압축문 측정** (원문은 스텁 압축판이 담당하는 두 의무 전문):
+  - A(디스패치 고정 필드): 「[HARD] The dispatch block is fixed-field (`card:` `spec:` `cmd:` `wt:` `evidence:`; `lens:` optional) — never prose, at most 10 lines.」 = **134**
+  - B(진행 불가 레인 디스크 대기): 「[HARD] A stuck lane records a disk wait and ends its turn — never idles on a reply; on awaken: the stall watchdog runs first, then the §6 ladder.」 = **145**
+  - 합계 +구분 2 = **281 > 160 (121 초과)** → **수리 불가**
+- **축소 한계**: 필드 목록을 빼면 122로 들어가지만 의무의 실체(필드 명세)가 사라져 조건 ①(의미 비축소) 위반 — 기각
+- **판정**: (가) 불가 → **(나) 주입 경로 변경(설계 변경) — 영실이 판단 대기**. 수리 없음, RED 시험 `f2f2b67ec`는 미래 수리의 게이트로 잔존
+- **Gap**: ② 격리 HOME 라이브 주입 확인은 수리가 없어 미실행(검증 대상 변경 없음 — 부재는 RED 시험이 기계 증명); Codex 세션 실주입 미관측 Gap은 (나) 판정 뒤 수리 시 소멸
