@@ -826,6 +826,56 @@ Read against the 85% floor (`quality.yaml` `test_coverage_target: 85`; the manag
 - `go vet ./internal/cli/ ./internal/hook/` → `.moai/reports/t1595/vet-dbadebc1c.txt`
 - 5d7c 1번 적용, 충돌 경로 CHANGELOG.md
 
+### Lock unification and the bounded refusal contract — supersession record (card t1595, tree e2104d4c46)
+
+This entry records the merge that absorbed main `817a9859` into the card branch, and the change of contract that the merge brings. It is an append only: no existing line of §E.2, §E.1, or any other section was edited or deleted. Every observation below is read-only, either a git object query or a read of the working tree, which equals HEAD. No test was executed for this entry. The `-race` family result is not claimed here; it is PENDING.
+
+**Attribution.** HEAD `e2104d4c46` on `WT-dispatch-integrity`; `git status --short` was empty before this append. Commands and observed output:
+
+- `git log -1 --format='%H %P %s' e2104d4c46` gives parents `9e5ceeb12` (card branch) and `817a9859` (main), with the subject "Merge main into WT-dispatch-integrity (card t1595, absorb 817a9859: lock unification, R2 bounded-refusal contract)". `git merge-base --is-ancestor 817a9859 e2104d4c46` exits 0. `git show --stat e2104d4c46` reports 149 paths, 18169 insertions, and 628 deletions against the first parent.
+- `git grep -l -E 'withFoldStoreLock|acquireFoldStoreLock|releaseFoldStoreLockFunc|foldLockName|foldLockPath|moai-store-lock' HEAD -- ':!.moai/specs/SPEC-DISPATCH-INTEGRITY-001/progress.md'` lists only `acceptance.md` (RED outputs at lines 808–809 and 830–832) and `CHANGELOG.md` (line 36). No Go source matches.
+- `git cat-file -e HEAD:internal/cli/memory_fold_lock_unix.go` and the same query for `_windows.go` both exit 128 (absent). `fold_store_lock_unix.go` and `fold_store_lock_windows.go` exist.
+- `git grep -n -E '^- D-[0-9]' HEAD -- .moai/specs/SPEC-MEMORY-FOLD-RENAME-RACE-001/plan.md` gives D-3 at line 45 (`<store-dir>/.moai-fold.lock`). `git merge-base --is-ancestor d273a21806 e2104d4c46` exits 0, so card t1568's merge to main is in HEAD.
+
+**1. The card lock is discarded.** The card's `withFoldStoreLock` and its `.moai-store-lock` file are not in the tree at `e2104d4c46`. Neither are the card's `memory_fold_lock_unix.go` and `memory_fold_lock_windows.go`.
+
+**2. The adopted lock is main's `foldStoreLock` on `<store>/.moai-fold.lock`.** The name is declared at `internal/cli/memory_fold.go:102` (`foldLockFileName`), and the lock is implemented in `internal/cli/fold_store_lock_unix.go` and `internal/cli/fold_store_lock_windows.go`. The card's requirements are carried onto it:
+
+- Abandonment-aware acquisition wait: `acquireUntil(dir, forbidden)` at `fold_store_lock_unix.go:105` and `fold_store_lock_windows.go:119`. `acquire` is `acquireUntil(dir, nil)` (unix `:97`).
+- Lock-file symlink refusal: POSIX opens with `O_NOFOLLOW` (`fold_store_lock_unix.go:69`) and then fstats for a regular file (`:75–83`). Windows calls `os.Lstat` and refuses `ModeSymlink` before the open (`fold_store_lock_windows.go:65`).
+- On-done transaction under `runUnderFoldLock` (`memory_fold.go:819`, called at `:1358`). `applyFoldLocked` (`memory_fold.go:482`) takes no lock of its own (comment at `:478–481`). `applyFold` calls it after `acquireUntil` (`:471`, `:475`), and the `runUnderFoldLock` closure calls it at `:1373`.
+
+**3. The verb-path contract changed.** Both fold paths now wait at the store lock for a bounded interval of 2 seconds (`foldStoreLockRetryDeadline = 2 * time.Second`, unix `:20`, windows `:21`). REQ-DISPATCH-008 (`spec.md:169–182`) states the interval, and REQ-MRR-003 (`.moai/specs/SPEC-MEMORY-FOLD-RENAME-RACE-001/spec.md:62`) states the clean-refusal rule; the 2-second value is that SPEC's plan.md D-2. On expiry the fold refuses cleanly. The error names the store (`memory fold: the store lock on <dir> stayed held for 2s — refusing to write (lock file …)`, unix `:119`). The refusal returns before any write, and the refused line stays in the store for a re-run. The `--yes` apply path (`memory_fold.go:216`, `applyFold(…, nil, nil)`) takes the same bounded wait, because a nil `forbidden` still runs under the deadline. A preview without `--yes` takes no lock (`memory_fold.go:199–209`). The committed test asserts this shape (`review_observation_test.go:190–192` and `:215–240`; read at HEAD, not run here).
+
+**The earlier contract, a blocking wait followed by a re-plan that completed, is SUPERSEDED.** A second fold that cannot take the lock within the bound neither re-plans nor completes. A second fold whose bounded wait succeeds proceeds under the lock, and its apply re-checks the store under the lock before any write (`memory_fold.go:493`).
+
+**4. SPEC amendment state.** `spec.md` frontmatter reads `status: in-progress` (line 5) and `amendment_of: SPEC-DISPATCH-INTEGRITY-001` (line 15). The `## Amendments` section (line 101) holds the 2026-10-11 entry (line 103), with `prior_completed_sha: c282c3920` (line 107). That value equals §E.4 `sync_commit_sha` (line 849). The amendment's scope names REQ-DISPATCH-008 in `spec.md`, AC-DI-010 in `acceptance.md` (heading and Given/When/Then, lines 173–184, which match the bounded shape), and the plan.md M0 description (lines 121–123, which match it). The re-close to `completed` is the next commit, not this entry.
+
+**5. The `-race` family result is PENDING.** It is not run and not claimed here. The AC-DI-011 selector is recorded at line 645 (29 names), and the AC-DI-012 family selectors at lines 620–642. A re-run must count `=== RUN` lines per family (see line 676). The full-suite verdict remains CI's (C2).
+
+**Superseded statements (not rewritten).** Scope: lines 13–828 as they stood before this entry. Each listed line describes a superseded wait, design, bound, or name. Observations recorded inside those lines stand as measured history, for example the EL-009 RED output at line 64 and the 60.02 s duration at line 234. The re-plan lines are superseded only as to the open-ended wait they presume.
+
+- Blocking or unbounded wait, and the re-plan it was followed by: 205, 207, 210, 234, 339–340, 343–346, 350, 359, 463–464, 519.
+- The 60-second held-open design: 62–64, 234, 263, 269, 364. The figure survives only as the test-harness kill ceiling `foldSubprocessWait = 60 * time.Second` (`review_observation_test.go:361`). It is not a lock-hold bound.
+- The lock names `.moai-fold-lock` and `.moai-store-lock`: 205, 255–260, 287–290, 342, 414, 453, 457, 502, 510.
+- Card-era mechanism identifiers and file names, discarded with the card lock. These lines are symbol and coverage records pinned to tree `08b9b31c0`, which were not re-derived here: 202, 348, 491, 522, 578, 586, 591–593, 595, 597–598, 607, 609–611, 614, 669, 763–764, 767–768, 771, 793–798, 802.
+
+**Gaps.**
+
+- No test was executed for this entry, so the RED and GREEN state of the amended tests at `e2104d4c46` is not measured. The test source was read (`review_observation_test.go:190–240`) and not run.
+- The refusal's exit status is taken from the test's expectation (`review_observation_test.go:218–220`), not from an observed exit code.
+- The `GOOS=windows` build and vet of the merged tree were not run. `fold_store_lock_windows.go` was read only.
+- The plan-recompute placement in the post-close rows (lines 339–340, 459–468, 505–508) was not re-verified against the merged code. Only the lock calls were read.
+- The merge brings 149 paths relative to the card branch. This entry reviewed the lock paths and did not review the rest, such as the factory lease, lane renew, template catalog, hook, and userassets paths.
+
+**Residual-risk.**
+
+- `internal/cli/memory_fold.go:804–805` (the `runUnderFoldLock` doc comment) still reads "a second fold's PROCESS waits at the lock and re-plans against the post-transaction store". That is the superseded phrasing, now in code. This record does not edit code.
+- `CHANGELOG.md:36` (the card's sync-phase close entry) still names `.moai-store-lock`. The re-close has to reconcile it.
+- `acceptance.md:808–809` and `:830–832` keep card-era identifiers inside pinned RED outputs (EL-026, EL-027). They are historical observations and were not edited here.
+- The card's earlier name `.moai-fold-lock` matched the `.moai-fold-` prefix that `requireNoTempFiles` sweeps (`memory_fold_test.go:220–231`). `.moai-fold.lock` does not match it. That is a string comparison read at HEAD, not a run; the `-race` family result would show it if it mattered.
+- `foldSubprocessWait` (60 s) is a test-only kill ceiling. It does not bound the lock.
+
 ## §E.3 Run-phase Audit-Ready Signal
 
 run_complete_at: 2026-10-09T06:34:36+09:00 (source: `git show -s --format=%cI 281d490bc`, the committer time of the run commit; sync re-audit r2 F2. Superseded value 2026-10-09T22:30+09:00, not reconcilable with the commit history)
@@ -861,6 +911,28 @@ plan_acceptance_frontmatter: neither artifact carries a frontmatter block (state
 canary_compliance_check: N/A (this SPEC defines no forward-looking policy carrying its own sync tests)
 mx_tag_validation: sync sub-step — the touched production files carry @MX:WARN on withFoldStoreLock (with @MX:REASON, cross-process file lock) and @MX:NOTE/@MX:ANCHOR annotations from the run phase; no new tags owed by the sync edit (docs-only change), no stale tags found on the changed symbols
 readme_docs_judgment: no README/docs-site staleness — the 4-locale command tables list `moai memory <doctor|archive>` only (`moai memory fold` and the factory verbs are not README-documented), and none of the four behaviors changes a documented surface; no edit emitted (edit-for-its-own-sake avoided)
+
+### Re-close record — amendment re-close (card t1595, 2026-10-11)
+
+This record re-closes the in-place amendment declared in `spec.md` § Amendments (2026-10-11; prior completed version 0.1.6). The prior close record above is kept unchanged as history. The `sync_commit_sha` below is the literal placeholder: a commit cannot cite its own hash, so the next commit on the branch backfills the real SHA (`spec-workflow.md` § Sync (close); `spec-frontmatter-schema.md` § SHA placeholder backfill exemption).
+
+sync_complete_at: 2026-10-11T10:05:53Z (source: `date -u` observed while this record was written; the sync commit's committer time supersedes it at backfill)
+sync_commit_sha: pending-backfill-sync
+sync_status: complete
+prior_close_record: sync_commit_sha c282c3920 (sync_complete_at 2026-10-09T17:16:03Z) retained above as history, not deleted; prior_completed_sha in spec.md § Amendments equals it
+ac_source: .moai/specs/SPEC-DISPATCH-INTEGRITY-001/acceptance.md (tier M)
+spec_frontmatter: status in-progress → completed, the `in-progress → implemented → completed` row of `spec-frontmatter-schema.md` § Status Transition Ownership Matrix (manager-docs, single sync commit); updated 2026-10-11 (unchanged — already the sync date)
+spec_amendment_fields: amendment_of retained (SPEC-DISPATCH-INTEGRITY-001); `## Amendments` entry unchanged; the `completed → in-progress (amendment)` transition was performed before this sync and is not re-performed here
+frontmatter_status_transitions.in_progress_to_implemented: merged into the sync commit (3-phase close)
+frontmatter_status_transitions.implemented_to_completed: merged into the sync commit (3-phase close — no separate Mx commit)
+plan_acceptance_frontmatter: neither artifact carries a frontmatter block (both open with an H1 heading; stateless per the schema), so no `updated:` refresh applies
+progress_frontmatter: none (progress.md carries no frontmatter; `sync_status` above is its status-bearing field)
+changelog_entry_position: [Unreleased] §Fixed, the single SPEC-DISPATCH-INTEGRITY-001 entry, corrected in place: items (2), (3), and (6) rewritten to the lock-unification and bounded-refusal contract; no other entry text changed; no entry appended
+b12_self_test_a: `grep -c 'SPEC-DISPATCH-INTEGRITY-001' CHANGELOG.md` = 1 before the correction (an in-place correction, not an append, so the duplicate-entry halt does not apply)
+b12_self_test_b: reserved-token-aware AC counter on acceptance.md = 13 (live=13 excluded=0 ambiguous=0); the corrected entry cites 13 acceptance criteria AC-DI-001..013
+b12_self_test_c: file paths named in the corrected items verified with `ls -l`: internal/cli/memory_fold.go, internal/cli/fold_store_lock_unix.go, internal/cli/fold_store_lock_windows.go, internal/cli/review_observation_publish_fifo_unix_test.go (build tag `!windows`); test name `TestReviewFindingLockFileRefusesSymlink` located at review_observation_publish_fifo_unix_test.go:85
+canary_compliance_check: N/A (this SPEC defines no forward-looking policy carrying its own sync tests)
+mx_tag_validation: no code changed by this sync edit; no tag owed
 
 ## §F Phase 4 Mode Selection
 
