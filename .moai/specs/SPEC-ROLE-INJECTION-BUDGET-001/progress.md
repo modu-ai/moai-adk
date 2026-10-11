@@ -625,3 +625,40 @@ Opus 감사자 승인 대기 — 승인 전 코드·규칙 파일 변경 없음.
 1. **F4 시험 갱신**: TestInjectedCoreCarriesCodexReachableObligations — 현재 ALB-0272(디스패치 형식, OUT 이동)의 "fixed-field" 문구를 표지 안에서 찾아 FAIL. 갱신: OUT 이동 의무는 읽기 지시 문장 존재 + 본문 파일 요소 단언으로 검사 대상 변경(시험 삭제 아님). ALB-0276(디스크 대기)은 IN 유지 확인 — 원장 role-core·양 트리 표지 안 \`disk wait\` 문구 존재 재확인(본 절 기록 시점, 2026-10-11).
 2. **예산 상수**: TestRoleInjectionAssemblyBudget — budgetCoreCeiling 4,073 / budgetCompositeLimit 9,127 → manager-spec이 IN/OUT 반영 실측에 맞춰 재설정.
 3. **(C) 최종 조정 대기**: en 3문구 축약 + 추가 en 생산자 축약(ko 불변) + IN 하위 우선순위 OUT 이동(0303·0260 끝까지 IN, IN 집합 양 로캘 공통) — 리더 Opus가 최종 문안·IN/OUT 목록·4칸 실측 일괄 산출 중. 도착 시 글자 그대로 반영.
+
+### 좁은 수리 1라운드 완료 — ③④⑤⑥ (리더 승인 7d7c·④ Opus 판정은 리더 세션, 2026-10-11)
+
+#### ③ rule-body 스코프 한정 + 변이 시험 2건 (커밋 6f838bed38)
+
+- **원인 규명(스윕이 식재를 못 잡던 이유)**: AC-021(2) 스윕은 배포 파일을 `os.ReadFile`로 직접 읽어 `env.readFile` 오버라이드가 스윕에 도달하지 않음(binding_ledger_test.go on-demand walk). factory-dispatch.md는 멤버가 아니라 on-demand 스윕 대상이고, rule-body 면제 블록이 그 파일의 swept set에서 15개 rule-body 행의 줄을 지우는 살아있는 역할.
+- **(ra) TestRuleBodyLocationScopeBindings**: rule-body 행(ALB-0254)을 임의 on-demand 파일(.claude/rules/moai/workflow/auto-semantics.md)로 이동+readFile 시딩 → 신규 `checkRuleBodyRowsScope`가 위치를 거부("rule-body: is scoped to the read-directive target faces") + AC-021(2) 스윕 동반 포착. **RED 관측 실측**: 검사 호출을 임시 제거 → FAIL, 복원 → GREEN(관측 후 커밋). 검사는 위치를 읽기 지시 대상 면 2곳(.claude/rules/moai/workflow/factory-dispatch.md + internal/template/templates 미러)과 kind binding/normative로 한정, 빈 스윕도 실패 처리.
+- **(rb) TestRuleBodyFragmentSweepStillCatchesUnsanctioned**: 승인된 rule-body 줄(ALB-0254의 40+ 단위 줄)을 **다른** on-demand 파일의 실제 배포본(t.TempDir 트리)에 심음 → AC-021(2)가 행 id 명명과 함께 포착. 면제는 자기 면에만 적용, blanket 텍스트 면제 아님을 고정. 초기 formulation의 식재가 readFile 오버라이드라 스윕이 못 보던 점과, 면 대상 면 자체 식재는 면제가 승인하는 점(첫 formulation 결함)은 커밋 전 시험 주석에 기록.
+- gofmt: role_core_reach_test.go 정렬 수정 포함.
+
+#### ⑤ F5 — 실측 리더 notice 포함 4칸 측정
+
+- 리더 셀 실측값: run id **tmnboq**(팩토리 기록+미션 파일 .moai/state/mission/069be28e-*.json), fan-out **18**(run tmnboq 기록 owners lane-1..lane-18, `moai factory status` 전수 계수), lead addr **/tmp/moai-socket-factory/tmnboq**(FactoryLeaderSocketPath("tmnboq") — internal/cli/factory.go:793이 EnvFactoryLeadAddr에 싣는 정확한 값). 리더 notice 공백 시 Fatal 단언 추가(F5 갭 재발 방지).
+- 커밋 전 측정(0303 수정 전): lane-ko 8,793 / lane-en 9,490 / leader-ko 7,914 / leader-en 8,838.
+
+#### ④ ALB-0303 문안 — 리더 세션 Opus 판정 승인 수령 (커밋 5fedbbab0)
+
+- 최종 괄호부: `` `EnterWorktree` in (cross-tree `git -C` refused; Codex: `git -C <absolute release worktree path>`) `` — 기저는 final-wording-opus.md:49 Opus 승인문 그대로, Codex 절 덧붙임. 양 면(.claude + templates 미러) + 원장 after_text 동시 반영, TestBindingLedgerIntegrity GREEN.
+- 리더 판정 근거(수신 원문 요지): 괄호부가 Opus 승인문을 글자 그대로 보존, Codex 절은 AGENTS.md §3과 일치·표지 내 "Codex는 EnterWorktree 불호출" 행과 충돌 없음, 요소 누락·범위 확장 없음.
+
+#### 커밋 뒤 4칸 재측정 (0303 덧붙임 +29자 반영, TestCompositeBudgetRealAssembly 실호출)
+
+| 칸 | utf16 | 한도 | 여유 |
+|---|---|---|---|
+| lane-ko | 8,822 | 10,000 | 1,178 |
+| lane-en | 9,519 | 10,000 | 481 |
+| leader-ko | 7,943 | 10,000 | 2,057 |
+| leader-en | 8,867 | 10,000 | 1,133 |
+
+전 칸 ≤10,000 — lane-en >10,000 정지 규칙 미발동.
+
+#### ⑥ clean·형식 원문 (커밋 5fedbbab0 직후, 이 progress 기록 전 실측)
+
+- `git status --short` → **출력 0줄**(exit 0)
+- `gofmt -l internal/` → **출력 0줄**(exit 0)
+
+push는 이 기록 커밋 뒤 origin/WT-3-2-1로 1회, 최종 HEAD는 완료 보고로 리더 전달.
