@@ -195,3 +195,17 @@ commit_plan: sync 커밋 1건(전이 · 엔트리 · §E.4 플레이스홀더 �
 backfill: done (sync 커밋 11480a26e989182a77ff8eacf7e4b391abda3d37 로 이 칸을 갱신 — 본 backfill 커밋이 뒤따른다)
 
 Sync 요약: sync 페이즈는 코드·룰 트리에 0 변경을 두고 세 문서 표면만 만졌다 — (1) CHANGELOG [Unreleased] › Fixed 첫 항목 발행, (2) spec.md frontmatter `in-progress → completed` 전이(implemented 중간점 병합), (3) 이 §E.4 시그널. 런 페이즈의 검증 증거(§E.3 표 12/13 PASS + AC-RIB-012 리더·운영자 인계)는 sync diff가 docs-only라 그대로 유효하다. 판정: audit-ready — 리더가 본 트리에서 sync 감사(codex_audit, target=baseBranch)를 이어간다.
+
+### 착지 준비 — 로컬 main 흡수 (리더 지시 d-20261011T010153Z-16ac, 2026-10-11)
+
+t1616이 로컬 main(`478285ab4`)에 착지한 뒤, 카드 트리가 이를 흡수했다.
+
+- **흡수 커밋**: `c73b0ca6e` — `merge: absorb local main 478285ab4 (t1616 landing) into WT-3-2-1 (card t1617)`; 병합 기저 `2aab5f797`, 충돌 2건
+- **충돌 1 — CHANGELOG.md**: 양측 [Unreleased] › Fixed 엔트리 유니온 병합(본 카드 SPEC-ROLE-INJECTION-BUDGET-001 + main 유입 SPEC-CODEX-CONFORMANCE-001 card t1607 — 양측 원문 보존)
+- **충돌 2 — internal/template/testdata/binding_ledger.json**: 본 카드가 JSON 재직렬화(들여쓰기 2칸)로 36행 갱신, main이 ALB-0203·0204의 after_text(Haiku 5.5 반영)를 편집 — 3-way 의미 병합(python json, base=`2aab5f797` 버전 대조): main의 2행 after_text만 ours에 적용, 본 카드의 나머지 갱신 전부 보존. 검증: `our_edits_lost: none` · `main_edits_in: True` · rows=363 양측 행 집합 일치
+- **흡수 트리 검증 원문 (2026-10-11, 트리 `c73b0ca6e`)**:
+  - `go test ./internal/hook/ ./internal/template/ ./internal/cli -run 'TestRoleInjectionAssemblyBudget|TestRoleCoreStubGate|TestAutoPick|TestAutoRank|TestAutoDoc'` → `ok internal/hook 1.025s` · `ok internal/template 0.640s` · `ok internal/cli 28.314s`
+  - `go test ./internal/hook/` → `ok github.com/modu-ai/moai-adk/internal/hook 558.657s`
+  - `go test -timeout 20m ./internal/template/` → `ok github.com/modu-ai/moai-adk/internal/template 344.218s` (첫 시도는 go test 기본 10분 상한 초과로 중단 — 실패 판정 아님, 상한 재실행)
+- **git-strategy.yaml 확인**: 작업 사본 `develop_branch: main` (`.moai/config/sections/git-strategy.yaml:16`)
+- **착지 diff 기준**: `2aab5f797` (리더 기록) — 흡수 후 병합 기저는 `478285ab4`
