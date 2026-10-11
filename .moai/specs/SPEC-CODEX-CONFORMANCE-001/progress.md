@@ -1,0 +1,256 @@
+# SPEC-CODEX-CONFORMANCE-001 — progress.md
+
+status: in-progress
+
+## §E.1 Plan-phase Audit-Ready Signal
+
+plan_status: audit-ready
+plan_complete_at: 2026-10-09
+plan_audit: iter 1 FAIL 0.875 (MP-8 fail, blocking 6, required backend codex fail — receipt rcpt-f829a5596d422b6433546552, verdict `.moai/reports/t1607/plan-audit.md`); iter 2 repair applied — fixes 1-7(D1-D8) + lane inputs (D6 CI-trigger correction, 0.161.0 하위명령 실측 해소); iter 2 재감사는 감사자 429 사망으로 미완료; plan amendment round (2026-10-08T17:12:42Z) — 레인 실측(2026-10-08T16:56Z+) 접기: 제너레이터 출력 형상(39파일·v1/v2 분할·소비 8종 전부 존재, 이전 감사의 "이름 누락"은 ls 별칭 인공물로 반증) + vendoring 구성 결정(소비 부분집합, decision-index Q7 기본 적용); iter 2 FAIL 0.94 (MP-8 잔여 AC-CONF-005 + N2/N3/N4, receipt rcpt-2f21e144af2e5bef92bb82f6) — round-3 repairs applied (N4 005 채용 지연+기준선 원리 정정+Q4 앵커 갱신, N2 양세계 family-green 완결 경로, N3 죽은 출처 참조 제거, O2 스탬프 UTC 정정, O3 스테이징 디렉터)
+artifacts: spec.md, plan.md, acceptance.md, decision-index.md, progress.md (Tier M set + decision gate on)
+red_now_ledger: acceptance.md §B (LEDGER-1/2/3 — tree 81786284e; AC-CONF-006의 RED 채용은 M3 E8 시점)
+open_items: decision-index Q4 (EVIDENCE-NEEDED — 0.161.0 login-status 출력; 미인증 형태 포획은 AC-CONF-005의 최소 필수 관측으로 강화, keyring 변형만 기록 갭 허용)
+
+## §E.2 Run-phase Evidence
+
+### M1 — fixture 재생성 + 소비자 이전 (2026-10-09, tree dce9596be 이후 본 카드 브랜치)
+
+**생성 환경 관측 (npx -y @openai/codex@0.161.0, lane 지정 핀)**:
+
+- `npx -y @openai/codex@0.161.0 --version` → stdout `codex-cli 0.161.0`, exit 0 (본 실행 재관측; 레인 선행 실측과 일치).
+- `npx -y @openai/codex@0.161.0 app-server generate-json-schema --out /tmp/t1607-m1/schema-staging` → exit 0. 출력: 최상위 39파일 + `v1/`(2파일) + `v2/`(274파일) = 총 315파일, 4.3MB. 소비 8종 Response 스키마는 최상위에 전부 존재(레인 선행 관측과 일치; plan §A "실파일 39개"는 최상위 기준).
+- **소비 8종 바이트 동일성**: `cmp`로 0.160.0 vendored 세트와 전수 대조 → 8종 전부 IDENTICAL (ApplyPatchApprovalResponse/CommandExecutionRequestApprovalResponse/DynamicToolCallResponse/ExecCommandApprovalResponse/FileChangeRequestApprovalResponse/JSONRPCError/McpServerElicitationRequestResponse/PermissionsRequestApprovalResponse). 0.160.0 → 0.161.0 응답 스키마 불변 — M1 전환이 동작 보존임을 기계가 증명.
+- **REQ-CONF-004 판정 재료 — resume --help 옵션 집합 관측**: `npx -y @openai/codex@0.161.0 resume --help` → exit 0, 115행. `--remote <ADDR>`(37행)와 `--remote-auth-token-env <ENV_VAR>`(42행) **둘 다 존재** → **옵션 존재 세계** 확정. `real_help_supported` 기대값 갱신 불요(acceptance.md §C AC-CONF-003의 첫 Then이 완결 경로). 신규 캡처 본문은 커밋된 0.160.0 resume-help.txt와 `diff` exit 0 = 바이트 동일.
+- vendoring: 소비 8종을 스테이징에서 이름 지정 기계 복사(내용 편집 0) + resume-help.txt 캡처본 + README 재생성(0.161.0 명기, 생성 명령, 부분집합 구성 근거) → `internal/cli/testdata/codex-0.161.0/` 8+2 구성. `codex-0.160.0/` 디렉터 삭제. decision-index Q7(소비 부분집합)·Q1(교체) 기본 적용 이행.
+
+**RED 원문 (소비자 이전 직후·vendoring 전, tree dce9596be)**:
+
+```text
+$ go test ./internal/cli -run '^(TestManagedServerRequestPolicyMatchesCodexSchema|TestManagedCodexRemoteSupportProbe|TestManagedCodexServerRequestPolicy)$' -count=1
+--- FAIL: TestManagedCodexRemoteSupportProbe (0.00s)
+    --- FAIL: TestManagedCodexRemoteSupportProbe/real_help_supported (0.00s)
+        managed_codex_tui_test.go:1057: open testdata/codex-0.161.0/resume-help.txt: no such file or directory
+--- FAIL: TestManagedServerRequestPolicyMatchesCodexSchema (0.00s)
+    managed_hardening_test.go:626: read vendored schema JSONRPCError.json: open testdata/codex-0.161.0/JSONRPCError.json: no such file or directory
+FAIL
+FAIL	github.com/modu-ai/moai-adk/internal/cli	1.835s
+```
+
+(acceptance.md §B가 예고한 두 실패 입력 그대로 — resume-help `os.ReadFile` 실패 + `read vendored schema` 실패. `TestManagedCodexServerRequestPolicy`는 fixture 디렉터를 직접 읽지 않아 적색 대상이 아니며, 그 0.161.0 정합은 AC-CONF-002/003의 가드가 대리한다.)
+
+**GREEN 원문 (vendoring 후)**:
+
+```text
+$ go test ./internal/cli -run '^(TestManagedServerRequestPolicyMatchesCodexSchema|TestManagedCodexRemoteSupportProbe|TestManagedCodexServerRequestPolicy)$' -count=1
+ok  	github.com/modu-ai/moai-adk/internal/cli	2.100s
+```
+
+**M1 폐쇄 관측 (두 세계 공통 요구 — family green)**:
+
+```text
+$ go test ./internal/cli -run '^TestManagedCodexTUIPreconditionsAndFallback$' -count=1
+ok  	github.com/modu-ai/moai-adk/internal/cli	13.329s
+$ grep -rn "codex-0.160.0" internal/cli | wc -l
+       0
+```
+
+(프로브는 실제 새 help 텍스트를 입력으로 실행됐다 — fake의 `tuiFakeHelpFileEnv`가 `tuiResumeHelpFixture` 절대경로를 읽고, 그 fixture가 이제 0.161.0 캡처이다. 합성 텍스트만의 녹색 아님.)
+
+**빌드**: `go build ./...` exit 0 / `GOOS=windows GOARCH=amd64 go build ./...` exit 0.
+
+**AC-CONF-005 예비 관측 (M2 소관이지만 동일 생성 환경에서 포획 — REQ-CONF-007 최소 필수 관측)**:
+
+- 명령: `CODEX_HOME=<빈 디렉터> npx -y @openai/codex@0.161.0 login status` (미인증 상태 보장 — 격리 CODEX_HOME)
+- verbatim 출력: **stderr에 `Not logged in` 한 줄**, stdout 빈 송출, **exit 1**
+- 바이너리 버전: codex-cli 0.161.0
+- 판정 재료: 이 출력은 stage 2 전체라인 문법 `logged in using (chatgpt|api key)`와 불일치 → `parseCodexAuthLine`은 `codexAuthUnknown`(갭)이어야 하며, "미인증" 판정을 내선 안 된다 — REQ-CONF-006 계약과 정합. M2가 이 포획본을 vendored 샘플로 삼아 분류 시험으로 봉인한다.
+
+### M2 — auth/keyring 정합 (2026-10-09, tree 0d42ec4f3 이후)
+
+**AC-CONF-004 부재-하강 명시 시험 확인 (기존 시험 재확인 — 추가 불요)**:
+
+- `TestClassifyCodexAuth_LadderIntegration`(`internal/cli/codex_auth_ladder_test.go:523`)의 서브시험 "no auth.json + stderr-only probe"(:539)과 "no auth.json + stdout-only probe"(:553)이 **부재 auth.json → stage 2 하강**을 명시 단언한다(`stub.calls == 1` — 프로브가 정확히 1회 호출). `TestClassifyCodexAuth_RejectedAuthFileFallsBackToProbe`(:568)가 존재-기각 3형(빈 토큰·미지 모드·파스 실패)의 하강을, `TestClassifyCodexAuth_UnreadableProbeIsAGap`(:595)가 4축 갭(양 스트림 빈송출·러너 오류·비영exit 무문법·파스 실패+무음 프로브)을 각각 담는다. REQ-CONF-006의 계약이 이미 시험으로 봉인돼 있어 신규 RED/GREEN 쌍 불요 — plan §F M2의 "없으면 추가" 조건 불발.
+
+**AC-CONF-005 봉인 — vendored 샘플 + 분류 시험 (TDD RED/GREEN)**:
+
+- 신규 시험 `TestClassifyCodexAuth_Codex0161CapturedOutputIsAGap`(`codex_auth_ladder_test.go` 말미): vendored 포획본(`testdata/codex-0.161.0-auth/login-status-not-logged-in.txt`, `cp` 바이트 동일 복사 + README에 캡처 출처 기록)을 바이트 단정한 뒤 ① 순수 파서 `combineCodexStreams(nil, raw)` → `parseCodexAuthLine(combined, 1)` ② 전체 사다리(부재 auth.json + 포획 스트림을 그대로 돌려주는 러너 스텁) 두 경로 모두 `codexAuthUnknown`을 단언.
+- **RED 원문 (vendoring 전)**:
+
+```text
+$ go test ./internal/cli -run '^TestClassifyCodexAuth_Codex0161CapturedOutputIsAGap$' -count=1
+--- FAIL: TestClassifyCodexAuth_Codex0161CapturedOutputIsAGap (0.00s)
+    codex_auth_ladder_test.go:644: read vendored 0.161.0 login-status sample: open testdata/codex-0.161.0-auth/login-status-not-logged-in.txt: no such file or directory
+FAIL
+FAIL	github.com/modu-ai/moai-adk/internal/cli	0.949s
+```
+
+- **GREEN 원문 (vendoring 후)**:
+
+```text
+$ go test ./internal/cli -run '^TestClassifyCodexAuth_Codex0161CapturedOutputIsAGap$' -count=1 -v
+--- PASS: TestClassifyCodexAuth_Codex0161CapturedOutputIsAGap (0.00s)
+    --- PASS: TestClassifyCodexAuth_Codex0161CapturedOutputIsAGap/pure_parser_on_combined_capture (0.00s)
+    --- PASS: TestClassifyCodexAuth_Codex0161CapturedOutputIsAGap/full_ladder_on_captured_streams (0.00s)
+ok  	github.com/modu-ai/moai-adk/internal/cli	0.880s
+```
+
+- 사다리 계열 전체 재실행: `go test ./internal/cli -run '^(TestClassifyCodexAuth|TestParseCodexAuthLine|TestCodexLoginStatusRunner|TestCombineCodexStreams|TestReadCodexAuthFile|TestCodexTokenSet|TestCodexAuthFileTypes|TestCodexAuthLadder)' -count=1` → `ok ... 1.780s`. `go test ./internal/cli -run 'TestMcpCodexAuth|TestCodexAuth' -count=1` → `ok ... 0.902s`.
+
+**기록 갭 (REQ-CONF-007가 허용하는 유일한 것)**: keyring 로그인 변형("Logged in using …" 실측 형태의 keyring 저장 시 출력)은 포획 불가 — 생성 환경에 자격증명이 없어 로그인 자체가 불가능. 미인증 형태 포획(최소 필수 관측)은 성립했으므로 AC-CONF-005는 자동 PASS; keyring 변형은 수동 검증 대기 항목으로 남는다(증거 없는 갭 기록이 아니라 포획 불가능성이 기록된 갭).
+
+**결론**: stage 2 전체라인 문법은 0.161.0 출력(미인증 형태)에 대해 0.160 세대와 동일 규칙으로 분류한다 — 문법 일치 라인이 없으면 `codexAuthUnknown`(갭), 어느 경우에도 "미인증" 판정 아님. `internal/cli/mcp_codex.go` 어댑터 본문 변경 0건(PRESERVE 준수).
+
+### M3 — resume 표면 재검증 (2026-10-09, tree 49e9c65ee 이후)
+
+**AC-CONF-006 재생 프레임 내성 — 신규 시험 `TestManagedCodexTUIConsumesResumedThreadReplayFrames`(`managed_codex_tui_test.go` AC-CONF-006 절)**:
+
+- **프레임 근거 (REQ-CONF-005의 근거 절 이행)**: 재생 프레임 필드는 **0.161.0 바이너리가 자체 생성한 프로토콜 스키마에서 유도**했다 — M1 생성 산출의 `v2/ItemStartedNotification.json`·`v2/ItemCompletedNotification.json`·`v2/TurnCompletedNotification.json`·`v2/ThreadTokenUsageUpdatedNotification.json`·`v2/TurnDiffUpdatedNotification.json`(npx @openai/codex@0.161.0 generate-json-schema 출력; rust-v0.161.0 태그=커밋 979011409de0a60b52f179721948e65531d26144의 `codex-rs/app-server-protocol/src/protocol/v2/item.rs`·`turn.rs`·`thread.rs` 정의와 교차 확인). fake 서버 자체 생성 응답은 근거로 사용하지 않았다(자기-생성 순환 배제 — mutant-probe 채용 규칙). 재생 버스트 5프레임: agentMessage ThreadItem(phase/memoryCitation/delivery/questions 포함)의 item/started, commandExecution ThreadItem(commandActions/durationMs/pluginId 등 전 필드)의 item/completed, 0.161.0 Turn 형상(id/items/status 필수)을 실은 **외래 턴**의 turn/completed, 어댑터가 모르는 메서드 thread/tokenUsage/updated, turn/diff/updated.
+- **양성 대조 (AC 요구 — 동기화 감사 F1+추가 지적을 반영한 최종 형태, 소유자 측 3축)**: 재생 버스트의 양성 대조는 **소유자 측 신호만으로** 소비를 증명한다 — fake의 송신 측 로그(`turn-completed` 등)는 전송 시점에 기록되므로 증거로 불충분하고(동기화 감사 F1), 드라이버 종료 nil도 증거가 못 된다(TUI 종료가 대기 턴을 접속-종료 경로로 풀어 드라이버가 TUI의 종료 상태를 반환한다 — REQ-MT-010; 턴종료 리뷰 게이트 추가 지적, 채택). 서브시험은 `f.drive` 대신 **세션을 직접 구동**해(`newSession` + `AttachOperator`) `DeliverTurn` 반환값을 시험이 직접 쥔다:
+  1. **재생 외래 턴의 turn/started가 소유자 턴 테이블에 접힘**: 프라이밍 턴 소강(`!sess.Busy()` 확인으로 모호성 제거) 뒤 버스트 첫 프레임(0.161.0 TurnStartedNotification 형상 — threadId+Turn) 주입 → `waitUntil(sess.Busy)` — 소유자의 read 고루린이 프레임을 접을 때만 뒤집히는 소유자 상태(`noteTurnStarted` → `trackStartedLocked` 무조건 트래킹, `managed_codex_factory.go:312-322`). fake 송신만으로는 이 상태가 변하지 않는다.
+  2. **재생 외래 턴의 turn/completed가 소유자 테이블에서 접혀 나옴**: 버스트 나머지 주입 뒤 `waitUntil(!sess.Busy)` — 재생 완료 프레임의 소유자 측 소비.
+  3. **소유자 자신의 DeliverTurn 성공 반환을 종료 전 직접 관측**: 버스트 뒤 소유자 턴의 `DeliverTurn`을 고루린으로 띄우고 `tuiRunWait` 상한으로 **반환값을 블로킹 관측**(err == nil 단언) — 이 단계에는 TUI 종료가 없어 접속-종료 완화로 증거가 덮이는 빠짐이 구조적으로 없다. 프라이밍 턴의 DeliverTurn 성공 반환도 선행 관측해 소비 기계가 버스트 전부터 작동함을 확인. "bye/exit 종료"는 모든 단언이 예치된 뒤에야 실행.
+- **실패 관측 가능성 — canary 서브시험**: 동일 버스트 + `tuiFakeStatusesEnv=completed,failed`로 소유자 턴을 스크립트 실패시키면 `Factory turn failed`가 **관측된다** — 위 부재 단언이 살아 있는 신호에 묶여 있음을 증명(verification-completeness §1.1의 관측된 실패 축).
+- **mutant probe (채용 전 관찰된 실패 — 본 AC의 E8 RED 원문)**: read loop의 미모델 프레임 폐기 지점(`managed_codex_factory.go` `read()`의 `case event.Method != "" || !event.hasID(): continue`)을 일시 변이(`continue` → `return` — 디코드 실패형 접속 종료 시뮬레이션)한 뒤 시험 실행 → **적색 관측**:
+
+```text
+$ go test ./internal/cli -run '^TestManagedCodexTUIConsumesResumedThreadReplayFrames$' -count=1
+--- FAIL: TestManagedCodexTUIConsumesResumedThreadReplayFrames (22.00s)
+    --- FAIL: TestManagedCodexTUIConsumesResumedThreadReplayFrames/replay_frames_keep_the_owner_turn_alive (11.48s)
+        managed_codex_tui_test.go:1484: a server request after the replay burst was not answered: the reader died on the replay frames
+        managed_codex_tui_test.go:1490: the owner's own turn after the replay burst never completed:
+            [...fake app-server 로그 발췌...]
+FAIL
+```
+
+  변이는 즉시 원복됐고 원복 확인: `git diff --stat internal/cli/managed_codex_factory.go` 빈 출력 + 재실행 GREEN:
+
+```text
+$ go test ./internal/cli -run '^TestManagedCodexTUIConsumesResumedThreadReplayFrames$' -count=1
+ok  	github.com/modu-ai/moai-adk/internal/cli	2.589s
+```
+
+  (정상 트리에서의 이 시험은 착시적 green이 아니다 — canary가 실패 관측을, mutant probe가 결함 클래스 검출을 각각 실측했다. 내성 그 자체는 구조적 lenient 디코드가 이미 보유한 계약이라 구현 변경 0건.)
+
+**F1 수리 — 소유자 측 양성 대조의 변이 검증 (동기화 감사 결함 delta + 턴종료 게이트 추가 지적, 2026-10-09)**: 세 결함 클래스에 대해 강화된 컨트롤의 검출력을 각각 변이로 실측했다. 변이는 전부 `managed_codex_factory.go`에 일시 적용 후 바이트 동일 원복(`git diff --stat` 빈 출력) + 재실행 GREEN 확인.
+
+- **변이 1 — 리더 사망** (`read()`의 미모델 프레임 폐기 `continue` → `return`): 1차 mutant probe. 적색: `a server request after the replay burst was not answered: the reader died on the replay frames` + `the owner's own turn after the replay burst never completed` (FAIL, 22.00s). 원복 후 `ok ... 2.589s`.
+- **변이 2 — 재생 프레임 무소비(리더 생존)** (동기화 감사 F1): `case event.Method == "turn/started":` 라벨 무효화 — 재생 외래 turn/started가 폐기 분기로 떨어짐. 구 컨트롤의 관측면(send-side 완료선·turn failure 부재·요청 응답)은 이 변이에서 모두 통과했을 것이다. **RED 원문**:
+
+```text
+$ go test ./internal/cli -run '^TestManagedCodexTUIConsumesResumedThreadReplayFrames$' -count=1
+--- FAIL: TestManagedCodexTUIConsumesResumedThreadReplayFrames (6.83s)
+    --- FAIL: TestManagedCodexTUIConsumesResumedThreadReplayFrames/replay_frames_keep_the_owner_turn_alive (6.34s)
+        managed_codex_tui_test.go:1504: the owner never consumed the replayed foreign turn/started (Busy never flipped): the replay burst is not proven consumed
+FAIL
+FAIL	github.com/modu-ai/moai-adk/internal/cli	7.672s
+FAIL
+```
+
+  원복 후 `ok ... 2.422s`.
+
+- **변이 3 — 소유자 턴 완료 프레임 폐기(종료-완화 빠짐)** (턴종료 리뷰 게이트 추가 지적): `observe()`의 완료 접기에서 `fake-turn-2`를 스킵 — 프라이밍은 정상(컨트롤 기반 작동 증명), 소유자 턴의 완료 프레임만 미소비. **구 컨트롤(드라이버 nil)은 이 변이에서 TUI 종료가 대기 턴을 풀어 REQ-MT-010 경로로 nil을 반환해 통과했을 것이다; 신설 직접 반환 단언은 TUI 종료 전에 적색으로 잡는다. RED 원문**:
+
+```text
+$ go test ./internal/cli -run '^TestManagedCodexTUIConsumesResumedThreadReplayFrames$' -count=1
+--- FAIL: TestManagedCodexTUIConsumesResumedThreadReplayFrames (26.58s)
+    --- FAIL: TestManagedCodexTUIConsumesResumedThreadReplayFrames/replay_frames_keep_the_owner_turn_alive (20.81s)
+        managed_codex_tui_test.go:1554: the owner's DeliverTurn after the replay burst never returned while the TUI was still running: the completion frame was not consumed
+    --- FAIL: TestManagedCodexTUIConsumesResumedThreadReplayFrames/failed_own_turn_still_marks_Factory_turn_failed (5.77s)
+        managed_codex_tui_test.go:1599: a failed own turn did not mark Factory turn failed — the tolerance assertion above would pass vacuously:
+            fake-appserver-stderr-line
+FAIL
+FAIL	github.com/modu-ai/moai-adk/internal/cli	27.706s
+FAIL
+```
+
+  적색 지점이 정확히 신설 직접 반환 단언이다(20.81s = tuiRunWait 상한 바운드 — 정지가 아니라 신속 적색). canary의 적색은 이 변이의 필연적 부수(canary의 실패 턴도 fake-turn-2라 마커가 안 찍힘)이며, 관찰된 실패의 2차 확인이다. 원복 확인: `git diff --stat internal/cli/managed_codex_factory.go` 빈 출력 + 재실행 GREEN:
+
+```text
+$ go test ./internal/cli -run '^TestManagedCodexTUIConsumesResumedThreadReplayFrames$' -count=1
+ok  	github.com/modu-ai/moai-adk/internal/cli	2.409s
+```
+
+**codex_role_fingerprint.go rollout 소비 재확인 (plan §F M3)**:
+
+- 측정: rust-v0.161.0(커밋 979011409de0a60b52f179721948e65531d26144)의 `codex-rs/history/src/lib.rs` RolloutItem 열거와 `codex-rs/history/src/rollout_payload.rs` RolloutItemWire 직렬화(`#[serde(tag = "type", rename_all = "snake_case")]` — `session_meta`/`response_item`/`turn_context` 등 태그 + `payload` 래퍼)를 fetch해 어댑터의 `codexRolloutLine`(`{type, ordinal, payload}`) 소비 형상과 대조.
+- 판정: **라인 형상 불변** — type 판별자(snake_case)·payload·ordinal 필드 모두 0.161.0에서 유지. `agent_role` 필드도 세션 소스 표면에 존재 유지(상위 자체 테스트 픽스처에서 `agent_role: None` 필드 관측). `codex_role_fingerprint.go` 소비는 failure-soft(파스 실패 → 라벨 없음, 오류 아님 — REQ-RLP-015)라 잔여 리스크가 낮다. **어댑터 변경 0건 — 비목표/후속 없음.**
+- 갭: `session_meta` payload 내 `subagent.thread_spawn.agent_role` 중첩 경로의 바이트 수준 재확인은 상위 프로토콜 크레이트 추가 fetch 없이는 미수행 — 라인 형상과 agent_role 존재로 뒷받침되는 결정이며, failure-soft 소비가 형상 변화를 "오류"가 아닌 "라벨 없음"으로 강하므로 본 카드 범위의 재검증 결론에는 영향 없다.
+
+### M4 — 불변 표면 검증 + 문서 (2026-10-09, tree 9767bdbb1 이후)
+
+**AC-CONF-007 기각 정책 불변 (회귀 가드)**:
+
+```text
+$ go test ./internal/cli -run '^TestManagedCodexServerRequestPolicy$' -count=1
+ok  	github.com/modu-ai/moai-adk/internal/cli	1.406s
+```
+
+11 서브시험(명령 실행·파일 변경·권한·elicitation·사용자 입력·동적 도구·토큰 갱신·attestation·레거시 승인 2종·미지 method) 전부 통과 — fixture 갱신과 무관하게 소유자의 답 정책표 불변. 스키마 가드 재실행: `go test ./internal/cli -run '^(TestManagedServerRequestPolicyMatchesCodexSchema|TestManagedCodexRemoteSupportProbe)$' -count=1` → `ok ... 1.434s`.
+
+**REQ-CONF-008 오퍼레이터 경로 노출면 관측 기록 (기록 전용 — 새 승인 처리 없음)**: 오퍼레이터가 붙은 턴의 서버 요청은 `leavesForOperator`(`internal/cli/managed_codex_tui.go:654`, 분기 `managed_codex_factory.go` answerServerRequest)에 따라 소유자가 답하지 않고 오퍼레이터 TUI에 남는다("Factory server request left for the operator"). 파일시스템 escalation(#49353)의 의미 확장이 넓힐 수 있는 권한 폭은 그 **인간 승인**이 풀 수 있는 것으로, codex 자체 승인 프롬프트의 영역이다 — 어댑터 답 정책의 변화가 아니므로 본 카드는 코드 변경 0건으로 NO-OP 확정한다(decision-index Q6 기본 적용). 본 실행에서 소유자 경로 정책 시험이 갱신 fixture 위에서 green으로 재관측됐고, 오퍼레이터 경로 파일은 전혀 손대지 않았다(PRESERVE).
+
+**AC-CONF-008 모델 핀 정합 (회귀 가드)**:
+
+```text
+$ go test ./internal/config -count=1
+ok  	github.com/modu-ai/moai-adk/internal/config	3.748s
+```
+
+`DefaultCodexAuditModel = "gpt-6.1-sol"`(`internal/config/closed_sets.go:96`)과 defaults의 `{gpt-6.1-sol, high}` Codex 핀 — 어댑터 코드 변경 0건 하에 기존 시험 전부 통과.
+
+**문서 갱신**: `.moai/docs/factory-managed-session.md` — 버전 표기 0.160.0 → 0.161.0 2곳(:51 스키마 서술·vendored 경로, :120 검증 명령 절) 및 vendored 경로 `codex-0.161.0/` 반영. CHANGELOG는 sync 소관이라 손대지 않음.
+
+**최종 빌드 (E2)**:
+
+```text
+$ go build ./...                           → exit 0
+$ GOOS=windows GOARCH=amd64 go build ./... → exit 0
+```
+
+**경계 grep (E4)**: `grep -rn 'AskUserQuestion' internal/cli | grep -v _test.go | grep -v '// '` → **44행, 병합 기준 트리(81786284e→dce9596be)에서의 44행과 동일 — 본 카드 신규 발생 0건**. 44행 전부 기존 존재물로, raw string 안의 문서 텍스트(하네스 도움말의 "does not directly call AskUserQuestion" 서술 등)와 vendored rollout testdata JSONL이라 프로덕션 호출면이 아니다.
+
+**lint (E5)**: `golangci-lint run --timeout=2m` → `0 issues.` (exit 0) — 신규/기존 구분 불요(0건).
+
+
+
+
+
+## §E.3 Run-phase Audit-Ready Signal
+
+run_complete_at: 2026-10-09
+run_commit_sha: pending-backfill-m4
+run_status: complete
+ac_pass_count: 8
+ac_fail_count: 0
+ac_matrix: AC-CONF-001~003 PASS(M1 — 차단, LEDGER-1/3 RED 소멸), AC-CONF-004 PASS(회귀 가드 — 부재-하강 명시 시험 기존 존재 확인), AC-CONF-005 PASS(차단 — M2 최소 관측 포획 + vendored 샘플 자동 시험; keyring 변형만 기록 갭), AC-CONF-006 PASS(차단 — M3 채용: 프레임 근거 0.161.0 생성 스키마 + canary + mutant probe RED 실측), AC-CONF-007/008 PASS(회귀 가드)
+preserve_list_post_run_count: 0 — PRESERVE 대상(mcp_codex.go auth 사다리 본문, 기각 정책표, internal/config 핀 3파일, templates/**, 타 SPEC 산출물) 전부 무변경; 내성은 기존 계약이라 구현 변경 0건(mcp_codex.go/closed_sets.go/defaults.go/audit_models.go diff 0)
+l44_pre_commit_fetch: not-run (카드 워크트리 세션 — 공유 체크아웃 직접 편집 아님, B8 위생 경로)
+l44_post_push_fetch: not-applicable (본 스폰은 push 소관 아님 — 카드 브랜치 커밋까지만; push는 레인/리더 후속)
+new_warnings_or_lints_introduced: 0 (golangci-lint 0 issues)
+cross_platform_build.darwin: pass (go build ./... exit 0)
+cross_platform_build.windows: pass (GOOS=windows GOARCH=amd64 go build ./... exit 0)
+total_run_phase_files: 17 (신규 12: testdata/codex-0.161.0 8스키마+resume-help+README 10 + testdata/codex-0.161.0-auth 샘플+README 2; 수정 5: managed_hardening_test.go, managed_codex_tui_test.go, codex_auth_ladder_test.go, factory-managed-session.md, SPEC artifacts[spec.md 상태 전이+progress.md]; 삭제 10: testdata/codex-0.160.0 전체 — git rename 감지로 8스키마+resume-help는 동일 바이트 이동)
+m1_to_mN_commit_strategy: 마일스톤별 1커밋(M1 fixture+소비자 이전+상태 전이 → M2 auth 샘플 봉인 → M3 재생 내성+mutant probe → M4 불변 검증+문서), 전부 Conventional Commits + card: t1607 + Authored-By-Agent 트레일러
+residual_risks: 전체 internal/cli 스위트 등판면은 본 카드의 main 통합 PR 병합 헤드 CI run(DoD-5) — 레인-로컬 명명 계열 green은 조기 신호; keyring 로그인 변형 login-status 출력 미포획(REQ-CONF-007 기록 갭); session_meta 중첩 경로 바이트 재확인은 failure-soft 소비로 강하다(§E.2 M3 갭)
+
+
+## §E.4 Sync-phase Audit-Ready Signal
+
+sync_complete_at: 2026-10-09
+sync_commit_sha: "c602ae901"
+sync_status: complete
+b12_self_test_a: pre-emission grep `grep -c 'SPEC-CODEX-CONFORMANCE-001' CHANGELOG.md` → 0 적중(exit 1) — 중복 항목 위험 없음
+b12_self_test_b: AC counter on acceptance.md → live=8 excluded=0 ambiguous=0 — CHANGELOG 항목의 8건(AC-CONF-001..008)과 일치
+b12_self_test_c: file paths verified via ls — `internal/cli/testdata/codex-0.161.0/`(스키마 8종+resume-help.txt+README), `internal/cli/testdata/codex-0.161.0-auth/`(login-status-not-logged-in.txt+README), 구 `codex-0.160.0/` 부재 확인
+changelog_entry_position: [Unreleased] § 최상단 `### Fixed` 블록 첫 행
+frontmatter_status_transitions.in-progress_to_completed: 단일 sync 커밋에 병합 반영(3-phase close — 별도 Mx 커밋 없음)
+canary_compliance_check: n/a — 본 SPEC이 정의하는 forward-looking policy 없음(§F는 다음 스윕 카드의 입력 절차 기술뿐)
+public_surface_assessment: 공개 표면 변경 불요 — README 4파일·docs-site에서 `codex-0.160` 0 적중(실측 grep 2026-10-09); fixture 핀을 기술하는 문서 표면은 내부 전용 `.moai/docs/factory-managed-session.md`뿐이며 M4에서 갱신 완료; CHANGELOG 역사 항목(SPEC-FACTORY-MANAGED-HARDEN-001)의 0.160.0 언급은 당시 상태 기록으로 유지
+
+## §F Phase 4 Mode Selection
+
+- Input parameters: tier M; scope ~6 files (fixture dir + 2 test consumers + 1 ops doc + SPEC artifacts); domains 1 (Go CLI adapter + its tests); language mix Go + machine-generated fixtures; concurrency benefit LOW (coding-heavy, M1 fixture regeneration gates M2/M3); Agent Teams prereqs n/a (explicit-request-only).
+- Mode evaluation: direct — not selected (semantic multi-milestone work); serial — selected; fanout — not selected (not research-heavy, single domain); sweep — not selected (semantic work, not mechanical-uniform bulk); agent-team — not selected (no operator request).
+- Decision: serial
+- Justification: single-domain coding-heavy conformance work with a strict milestone dependency chain — sequential manager-develop delegation with per-milestone commits is the safe default per the coding-task parallelism caveat; no other mode's selection criteria are unambiguously met.
+- Kickoff record (autonomous form): decision record: decided_by=lane-21 evidence_refs=.moai/reports/t1607/plan-audit.md (iter-4 PASS 1.0, must_pass 0, blocking 0; codex required backend pass, governing receipt rcpt-f16b809f87c02e929297a2e9 fresh on the unchanged final state; plan_artifact_hash 93f2e64f8bbb38ba93a0ec664ddfa00796321566a9300da3f7223b115f34b795 via the canonical runtime.ComputeHash recipe — name:len:NUL+bytes+NUL per planArtifactNames order — unchanged since verdict; the earlier 21aba6a7 figure was the concatenation recipe and is superseded per gate review) ladder_path=plan-to-run Kickoff autonomous form — verdict PASS + 1.0 ≥ 0.80 Tier M threshold + artifact hash unchanged + no open blocker — run-phase entry approved.

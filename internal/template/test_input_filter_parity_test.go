@@ -109,6 +109,12 @@ var requiredGoCodeRoots = []string{
 	".claude/settings.json",
 	"CLAUDE.md",
 	"scripts/ci-census/**",
+	// Card t1587: the release test suite's non-Go inputs — the
+	// internal/template release test family reads these files as fixtures,
+	// so a PR touching only them must classify as a test-input change.
+	"scripts/release.sh",
+	"scripts/verify-release-provenance.sh",
+	".goreleaser.yml",
 }
 
 func TestTestInputFiltersCoversGoTestInputs(t *testing.T) {
