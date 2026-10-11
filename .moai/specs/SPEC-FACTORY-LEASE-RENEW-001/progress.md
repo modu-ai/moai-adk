@@ -3802,6 +3802,17 @@ Verdict-file normalization, recorded before the merge-ready transition consumes 
 - The removal changes no decision field: `verdict: PASS-WITH-DEBT`, `audited_sha: 1c26c0b6039cc42e6cf0c1171cfe6d11bb12207b`, and the codex receipt are unchanged, and the rest of the file is byte-identical (`diff` shows one removed line).
 - The original file is kept as a lane-scratch copy with sha256 `d670797534d2f991842c3ac082e7c1696c1663f6865227c6ebaf1c33d5e5e881`. The `required_backend_fail: none` line quoted above is the auditor's original wording.
 
+### Card review (codex_review, scope card; advisory, not the completion verdict)
+
+- backend: codex. verdict: fail (advisory; the review files no audit receipt). The call came after HEAD 8b5cfc6a3.
+- review file (local, git-ignored, not committed): `.moai/reports/t1663/card-review.md`
+- scope base: db0c514d3 (merge base with develop, tip 966f1b158). This card's own base on main is 2aab5f797. The reviewed diff is 217 files, +33993 / -1115. The card's own diff against 2aab5f797 is 64 files, +9355 / -133. The difference is main-only history.
+- Finding 1, internal/homestate/card_transition.go:286 (BeforeCommit runs RefreshDispatchCurrent in a separate connection): not adopted for this card. The call site has no change since 2aab5f797, and the code predates this card. Follow-up candidate for the t1538 owner.
+- Finding 2, internal/homestate/factory.go:174 (OpenFactory reads lease keys from the passed root, while FactoryDBPath resolves the shared database): open, leader decision. Lines 172-177 are this card's M1 change. It is the deferred "decide raw root" class (sync audit #4 observation 1, t1680), and M1 turns it into a refusal when a linked worktree's workflow.yaml carries an invalid lease key. Lane recommendation: carry to t1680. Alternative: fix in this card and run a delta sync audit before landing.
+- Finding 3, internal/factory/gtd_operation.go:583 (lookup errors read as absence): not adopted for this card. The file has no change since 2aab5f797. Follow-up candidate for the dispatch-binding owner.
+- No repair followed, so no re-review ran.
+- Gap: the lane did not reproduce any finding. The reviewer ran a static review only.
+
 ## §G Override and Refusal Record
 
 - 2026-10-10T09:51:05Z SPEC-FACTORY-LEASE-RENEW-001 ceiling-refusal outcome=hold reasons="plan-audit ceiling reached (round count 2 >= tier ceiling 2); the verdict matches no admitting arm and holds, entry blocked (REQ-ACE-006) — release path: the split/new-SPEC route of REQ-ACE-005 or an operator decision recorded in progress.md §G" evidence=/Users/goos/MoAI/moai-adk-go/.moai/worktrees/t1663/.moai/reports/t1663/plan-audit-iter2.md,/Users/goos/MoAI/moai-adk-go/.moai/worktrees/t1663/.moai/reports/t1663/plan-audit.md
