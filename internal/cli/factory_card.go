@@ -1812,6 +1812,11 @@ func newFactoryRenewCommand() *cobra.Command {
 	return cmd
 }
 
+// factoryRenewBeforeWrite is a test seam (sync-audit F14, card t1663). It runs after factoryRenewCard
+// resolves the renewal's run and before the lease write, so a test can interleave a roster change at that
+// point. Production leaves it nil, and a nil seam carries no behavior.
+var factoryRenewBeforeWrite func()
+
 // factoryRenewCard is the one implementation of the renew verb and of the factory_renew
 // tool (design.md §3: one implementation per verb). It renews the lease that lane holds on
 // card cardID through the factory record. RenewLease extends the lease from the request
@@ -1826,6 +1831,9 @@ func factoryRenewCard(ctx context.Context, root, cardID, run, lane string) (fact
 	runID, err := resolveFactoryRenewRun(ctx, root, run, lane, cardID)
 	if err != nil {
 		return fail(err)
+	}
+	if factoryRenewBeforeWrite != nil {
+		factoryRenewBeforeWrite()
 	}
 	db, err := homestate.OpenFactory(root)
 	if err != nil {
