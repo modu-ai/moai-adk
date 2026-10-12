@@ -797,3 +797,31 @@ ci.yml dispatch run **38221651759** → **success** (HEAD c1a7aad665 기준 — 
 #### ⑤ 잔여
 
 ② 처분 결정 뒤: 예산 4칸·원장·실조립 4칸 재측정 원문 + hook·template 직렬 + 미커밋 0·gofmt 0 → push. 그 전까지 push 금지(로컬 커밋만).
+
+### ② 처분 결정 (board d-20261012T083256Z-4567) + 기계 보완 시험 — 2026-10-12
+
+- **처분**: (a) 확정 — ①을 main 의미 복원의 충분한 이행으로 인정. 원장은 0276 rewrite_note 기록과 Gap 명시로 대체. 검사기 한계(본문 사본에 앵커 단위 없음 — 행 커버리지 1:1 계약)는 **t1637 (4)**로 이관.
+- **② 구조 차단 원문(재기록)**: `row ALB-0364 (workflow/factory-dispatch.md:122) has no extracted anchor unit` — 시험 `go test ./internal/template -run TestBindingLedgerIntegrity` FAIL(2026-10-12 관측), ALB-0364 되돌림 후 ok 복귀.
+
+#### 기계 보완 시험 (원장이 못 지키는 본문 문구를 단언)
+
+- 신설: `internal/template/renew_interval_body_test.go` — `TestFactoryDispatchBodyCarriesRenewIntervalLinkage`: 양 면 factory-dispatch.md의 디스크 대기 **본문 문단을 내용 키로 탐색**(줄번호 미사용)해 "every renewal period of `workflow.factory_lease.renew_interval`" 존재 + "every 20 minutes" 부재를 단언.
+- **RED 원문(c1a7aad665 트리 내용으로 실패 관측 — 양 면 4 hunk)**:
+  - `.claude/rules/moai/workflow/factory-dispatch.md: the disk-wait body paragraph lacks main's renewal-period wording "every renewal period of `workflow.factory_lease.renew_interval`" — the renew_interval linkage was lost`
+  - `.claude/rules/moai/workflow/factory-dispatch.md: ... still carries the stale fixed-period wording "every 20 minutes"`
+  - `internal/template/templates/...factory-dispatch.md:` 위 두 줄과 동일
+  - `--- FAIL: TestFactoryDispatchBodyCarriesRenewIntervalLinkage` (하위 2 hunk 모두)
+- **GREEN(현재 트리)**: `--- PASS: TestFactoryDispatchBodyCarriesRenewIntervalLinkage` / `ok 0.785s`.
+
+#### hook 전체 스위트 FAIL 판정 — 부하 계열(카드 무관) 확인, 2026-10-12/13
+
+- 이전 로그(/tmp/t1617-hook-suite.log, 601.279s)의 실패: `panic: test timed out after 10m0s` + TestFactoryHookZeroTurnAndCapabilityTruth(lock deadline exceeded 271ms) + TestReviewGateResolverRegularExecutablePrecedence(signal: killed) — 시간·부하 계열.
+- **단독 실행 판정(리더 판정법)**: 이 트리에서 두 시험만 `-run` 단독 실행 → **둘 다 PASS**(3.59s / 6.70s, `ok 11.912s`) — 기록 교훈 t1542 계열 부하 오패로 판정, 카드 원인 아님.
+- 기계 부하 실측 754(리더 관측) → 로컬 전체 스위트 재실행 철회(영실이 판단), **CI가 hook 전체를 판정**(ci.yml dispatch). pid 86996의 배경 재실행은 종료·타임아웃까지 방치(결과는 보조 기록).
+- 로컬 좁은 재측정(-run role·budget·ledger·renew_interval)은 부하가 내려간 뒤 수행 예정 — 이전 라운드의 예산 4칸·e2e 4칸·원장+신시험 원문은 부하 전 실측분으로 유효.
+
+#### hook 재실행(Run B) 결과 — exit=1, 상세 출력 미착지 이상 기록
+
+- Run B(pid 86996, `> /tmp/t1617-hook-suite.log` 리다이렉트) 종료 **exit=1**(래퍼 echo 관측, ~601s — 10m 타임아웃 추정). 기계 부하 754 하 실행.
+- **이상**: 로그 파일 mtime·크기 불변(431,188B, 이전 런 것으로 추정) — Run B의 상세 출력이 파일에 착지하지 않음. Run B의 실패 시험 상세는 **미관측**(래퍼 exit=1만 관측). 버퍼 미플러시 또는 래퍼 종료 경로 추정 — 원인 미규명, Gap.
+- 판정은 변하지 않음: 두 지명 시험의 **단독 실행 PASS**(이 트리, 3.59s/6.70s — 리더 판정법 충족) + 부하 754 실측 → 부하 계열·카드 무관. 전체 스위트 판정은 **CI에 일임**(dispatch 예정).
