@@ -48,13 +48,15 @@ const (
 	// header 125 (incl. its trailing "\n\n") + joiner 2 + pointer 128.
 	budgetOverhead = 257
 	// budgetCompositeLimit is the assembled-composite budget (REQ-RIB-001,
-	// SPEC 0.5.0 ceiling amendment): the assembled reading of 「역할별 조립
-	// ≤9,127자」 (spec.md §A.4; was 9,000 before the 0.5.0 amendment).
-	budgetCompositeLimit = 9127
-	// budgetCoreCeiling is the derived role-core ceiling: 9,127 − 4,797 − 257
-	// (SPEC 0.5.0 amendment; was 3,946 before it — leader-binding, measured
-	// need without padding; the lane header is 2 units smaller → 4,075).
-	budgetCoreCeiling = 4073
+	// SPEC 0.6.0 ceiling amendment): the assembled reading of 「역할별 조립
+	// ≤9,146자」 (spec.md §A.4; was 9,127 after the 0.5.0 amendment, 9,000
+	// originally).
+	budgetCompositeLimit = 9146
+	// budgetCoreCeiling is the derived role-core ceiling: 9,146 − 4,797 − 257
+	// (SPEC 0.6.0 amendment; was 4,073 after 0.5.0, 3,946 before —
+	// leader-binding, measured need without padding; the lane header is 2
+	// units smaller → 4,094).
+	budgetCoreCeiling = 4092
 	// budgetCoreTarget is the former design target (superseded by the 0.5.0
 	// amendment); a diagnostic log line, not an assertion.
 	budgetCoreTarget = 3800
