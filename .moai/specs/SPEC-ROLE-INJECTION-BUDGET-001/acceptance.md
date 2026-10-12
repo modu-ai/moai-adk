@@ -7,7 +7,7 @@
 
 | AC | 요구 | 분류 | RED-now | Green 경로 |
 |---|---|---|---|---|
-| AC-RIB-001 | 조립 예산 테스트(REQ-RIB-001/002)가 템플릿·배포 양 트리에서 레지스트리 역할마다 조립 합본 ≤9,127 을 단정하고 breakdown 을 출력한다 (0.5.0 개정 — 채택 시 ≤9,000) | release-blocking | E1+E2 — core 17,793/18,114 > 3,946, exit 1 (이유: 현재 core 가 파생 예산을 초과 — 이 SPEC 이 고치는 상태 그 자체; 임계 3,946 기준 채택 시점 관측 — 0.5.0 개정 후 임계는 4,073) | M1 작성 시 같은 명령이 FAIL 로 관측되고, M2 재작성 뒤 `go test -run TestRoleInjectionAssemblyBudget ./internal/hook/` 가 `ok` — 각 역할 행의 breakdown 이 9,127 이하를 보인다 (0.5.0 개정) |
+| AC-RIB-001 | 조립 예산 테스트(REQ-RIB-001/002)가 템플릿·배포 양 트리에서 레지스트리 역할마다 조립 합본 ≤9,146 을 단정하고 breakdown 을 출력한다 (0.6.0 개정 — 0.5.0 개정 채택 시 ≤9,127, 최초 채택 시 ≤9,000) | release-blocking | E1+E2 — core 17,793/18,114 > 3,946, exit 1 (이유: 현재 core 가 파생 예산을 초과 — 이 SPEC 이 고치는 상태 그 자체; 임계 3,946 기준 채택 시점 관측 — 0.6.0 개정 후 임계는 4,092) | M1 작성 시 같은 명령이 FAIL 로 관측되고, M2 재작성 뒤 `go test -run TestRoleInjectionAssemblyBudget ./internal/hook/` 가 `ok` — 각 역할 행의 breakdown 이 9,146 이하를 보인다 (0.6.0 개정) |
 | AC-RIB-002 | 재배치 감사 원장(REQ-RIB-003)이 core 의 모든 앵커 영역을 한 행 이상 가진다 | release-blocking | E3 — 원장 부재, exit 2 (이유: 감사 원장이 아직 작성되지 않음) | M2 가 `relocation-ledger.md` 를 작성 — 36행 이상, 모든 행이 목적지(companion 절 확인 포함) 명명; plan-audit·sync-audit 가 원장을 읽고 의미 보존을 판정 |
 | AC-RIB-003 | 스텁 게이트(REQ-RIB-005)가 `*-core.md` 를 기계 열거해 표지 0·≤10,000 을 단정한다 | regression-guard | 오늘 이미 참(표지 0, 8,583/8,072 ≤10,000) — RED-now 대신 §1.1 관측-실패 완료: 게이트 자체의 모터 서브테스트(표지 심은 픽스처·초과 픽스처에서 FAIL 관측)가 채택 증거 | M1 작성, 모터 관측을 progress.md §E.2 에 기록; M2 전체 스위트 Green |
 | AC-RIB-004 | InjectionFailed 경로(REQ-RIB-006)가 불일치를 이름 대고 `moai update` 를 안내한다 (4개 로캘 포함) | release-blocking | E4 — `moai update` 0히트, exit 1 (이유: 안내 문구가 아직 어디에도 없음) | M3 플립: 술어·로캘 테스트 `go test -run 'TestRoleRulesVersionSkew' ./internal/hook/` `ok`, 4개 로캘 행 모두 안내 포함 |
@@ -25,9 +25,9 @@
 
 - **release-blocking 7개** — AC-RIB-001·002·004·005·006·007·009 — 각각 §2.1 네 요소(명령·축자 stdout·exit·트리 SHA)를 §C 원장 행으로 충족한다. 원장 항목은 8개(E1–E8): E1·E2 가 함께 AC-RIB-001 의 양 트리 관측이다. AC-RIB-001 의 단정 범위는 §A.5 경계 소스 봉투(startup · clear-핸드오프 대기 없음 · compact-goal 없음)로 재범위됐다(결정 d-20261010T072910Z-f1c3). AC-RIB-009 의 RED 는 REQ-RIB-011 이 고정한 `stub-delta:` 라벨의 부재 관측이다(E8).
 - **regression-guard 6개** — AC-RIB-003·008·010·011·012·013 — §2 undecidable/보존-성질 처분을 따른다: release-blocking 상등을 받지 않으며, green 경로가 생존·보존·편집-후 재관측을 운반한다. AC-RIB-011 은 F3 수리로, AC-RIB-013 은 결정 d-20261010T072910Z-f1c3 의 봉투 밖 단언으로 regression-guard 다.
-- **변이 탐침**(§2): AC-RIB-001은 core 를 4,074자로 늘리는 변이로 실패함을 테스트 자체가 보인다(단정이 경계값 4,073에서 작동 — 0.5.0 개정; 구 3,947/3,946). AC-RIB-003은 모터 서브테스트가 변이 관측을 내장한다.
+- **변이 탐침**(§2): AC-RIB-001은 core 를 4,093자로 늘리는 변이로 실패함을 테스트 자체가 보인다(단정이 경계값 4,092에서 작동 — 0.6.0 개정; 구 4,074/4,073, 최초 3,947/3,946). AC-RIB-003은 모터 서브테스트가 변이 관측을 내장한다.
 
-## §C. 증거 원장 (RED-now — 트리 2aab5f797, 2026-10-10 관측; E1/E2는 F1 수리 임계 3,946으로 재관측 — 값·exit 동일; 0.5.0 개정으로 합본 9,127·core 천장 4,073 — 아래 E1/E2 명령의 `n<=3946` 임계는 채택 시점 관측 원문으로 그대로 보존)
+## §C. 증거 원장 (RED-now — 트리 2aab5f797, 2026-10-10 관측; E1/E2는 F1 수리 임계 3,946으로 재관측 — 값·exit 동일; 0.6.0 개정으로 합본 9,146·core 천장 4,092 — 아래 E1/E2 명령의 `n<=3946` 임계는 채택 시점 관측 원문으로 그대로 보존)
 
 ```text
 [E1] AC-RIB-001 (template tree)
@@ -72,4 +72,4 @@ $ grep -c 'stub-delta' .moai/specs/SPEC-ROLE-INJECTION-BUDGET-001/progress.md
 exit code: 1
 ```
 
-참고(측정 귀속 — F1 수리 산식): 조립 합본 = 생산자 + `"\n\n"` + 헤더(뒤 개행 포함) + core + `"\n\n"` + 포인터 (role_rules.go:102–123 `assembleInjectionComposite` · :373–380 `roleRuleInjectionFor` — 헤더의 뒤 `\n\n` 뒤에 core가 직접 붙어 결합자 없음). 오버헤드 257(leader 최악). 생산자 상한 4,797 = 게이트 실측 합본 23,166 − 본 트리 역할 블록 18,369(= 2 + 123 + 18,114 + 2 + 128; 18,114에 로컬 꼬리 +321 포함). core 예산 3,946 = 9,000 − 4,797 − 257. 원문 전체는 `.moai/reports/t1617/measurements.md`. **0.5.0 개정**: 합본 예산 9,127 = 4,797 + 257 + 4,073 (구 산식 9,000/3,946은 F1 수리 시점 기록으로 보존 — 위 E1/E2 명령·출력 포함 채택 시점 원문 무편집).
+참고(측정 귀속 — F1 수리 산식): 조립 합본 = 생산자 + `"\n\n"` + 헤더(뒤 개행 포함) + core + `"\n\n"` + 포인터 (role_rules.go:102–123 `assembleInjectionComposite` · :373–380 `roleRuleInjectionFor` — 헤더의 뒤 `\n\n` 뒤에 core가 직접 붙어 결합자 없음). 오버헤드 257(leader 최악). 생산자 상한 4,797 = 게이트 실측 합본 23,166 − 본 트리 역할 블록 18,369(= 2 + 123 + 18,114 + 2 + 128; 18,114에 로컬 꼬리 +321 포함). core 예산 3,946 = 9,000 − 4,797 − 257. 원문 전체는 `.moai/reports/t1617/measurements.md`. **0.5.0 개정**: 합본 예산 9,127 = 4,797 + 257 + 4,073 (0.5.0 시점 기록으로 보존). **0.6.0 개정**: 합본 예산 9,146 = 4,797 + 257 + 4,092 — 본 트리 core 실측 4,092 (템플릿·배포 × factory-lane·factory-leader 4조합 동일, `go test ./internal/hook -run TestRoleInjectionAssemblyBudget -count=1 -v`; 합본 실측 lane 9,144·leader 9,146). ALB-0303 Codex-clause 부속(+29 UTF-16)은 운영자 승인 문구(리더 세션 Opus 판정, board gate-verdict-3e6c18dbd)라 천장이 실측 수요를 따른다 — board d-20261012T061322Z-f5b3, 사유(운영자 언어 그대로) 「SessionStart 물리 상한 10,000 이내, 최악 조합 lane-en 실측과 마진」 (e2e 실조립 최악 셀 TestCompositeBudgetRealAssembly lane-en 9,519 ≤ 10,000, 마진 481). 구 산식 9,000/3,946은 F1 수리 시점 기록으로 보존 — 위 E1/E2 명령·출력 포함 채택 시점 원문 무편집.

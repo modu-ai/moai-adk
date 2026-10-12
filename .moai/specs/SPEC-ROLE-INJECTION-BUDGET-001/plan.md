@@ -1,7 +1,7 @@
 # SPEC-ROLE-INJECTION-BUDGET-001 — Plan
 
 > 카드 t1617 (3.2-1-5 · P0 · Class C) · 기준 트리 HEAD `2aab5f797` (WT-3-2-1) · 상위 SPEC `SPEC-ALWAYS-LOADED-BUDGET-001` 후속 수리
-> 해석 결정: 「역할별 조립 ≤9,000자」 = 조립 합본 판독 (spec.md §A.4). 생산자 상한 4,797 (게이트 함의, §B — 직접 분해 4,376은 startup 참조점). core 예산 **4,073** / 합본 예산 **9,127** (0.5.0 천장 개정 — 구 3,946/9,000; 설계 목표 3,800은 superseded 폐기) / REQ-RIB-004 정지 밸브가 구속 후퇴선.
+> 해석 결정: 「역할별 조립 ≤9,000자」 = 조립 합본 판독 (spec.md §A.4). 생산자 상한 4,797 (게이트 함의, §B — 직접 분해 4,376은 startup 참조점). core 예산 **4,092** / 합본 예산 **9,146** (0.6.0 천장 개정 — board d-20261012T061322Z-f5b3 운영자 결정 N1 천장 재설정; 0.5.0 개정 4,073/9,127, 최초 3,946/9,000; 설계 목표 3,800은 superseded 폐기) / REQ-RIB-004 정지 밸브가 구속 후퇴선.
 > 완료 기준: 경계 소스 봉투 (결정 d-20261010T072910Z-f1c3, option (a)) — spec.md §A.5 세 줄. 생산자 상한 4,797은 봉투 안 최중 소스(startup)에서 파생.
 
 ## §A. 범위
@@ -10,7 +10,7 @@
 
 | 축 | 파일 | 성격 |
 |---|---|---|
-| 규칙 | `.claude/rules/moai/workflow/factory-dispatch.md` + 템플릿 미러 | 역할 core 36영역 18,114/17,793 → 예산 안으로 압축 재작성 (재배치 감사 동반) — 채택 시 예산 3,946·목표 3,800, 0.5.0 개정으로 예산 4,073 (목표 폐기) |
+| 규칙 | `.claude/rules/moai/workflow/factory-dispatch.md` + 템플릿 미러 | 역할 core 36영역 18,114/17,793 → 예산 안으로 압축 재작성 (재배치 감사 동반) — 채택 시 예산 3,946·목표 3,800, 0.5.0 개정으로 4,073, 0.6.0 개정으로 예산 4,092 (목표 폐기) |
 | 규칙 | `.claude/rules/moai/workflow/cross-session-messaging.md` + 템플릿 미러 | 빈 영역 유지 확인 (예산에 최유리) — 내용 변경 없음이 기본, 미러 정합만 |
 | 규칙 | `internal/template/templates/.claude/rules/moai/core/hooks-system.md` (미러 원본, 34,482바이트 — 선행 편집) → `.claude/rules/moai/core/hooks-system.md` (paths:-scoped) | :131 두 한도 구분 기재 (REQ-RIB-009) — Template-First 순서로 미러 원본 먼저 |
 | 로컬 | `.claude/rules/local/gitflow-lane-protocol.md` | REQ-RIB-010 정합 확인 — 원칙 무편집, 갈림 시에만 지목 문장 수정 (로컬 전용, 미러 없음) |
@@ -45,7 +45,7 @@ plan 단계 전수 재측정 완료 (커밋 `2aab5f797`, 원문 `.moai/reports/t
 | 포인터 | 128, 결합자 각 2 | 〃 |
 | 조립 산식 | 생산자 + `"\n\n"` + 헤더 + core + `"\n\n"` + 포인터 (오버헤드 257, leader 최악) | role_rules.go:102–123·:373–380 코드 인용 |
 | 생산자 상한 | **4,797** = 합본 실측 23,166 − 본 트리 역할 블록 18,369; 직접 분해 4,376(startup 참조점)과 차 421 | dispatch 기록 + 코드 산식 |
-| core 예산 | **4,073** = 9,127 − 4,797 − 257 (leader 구속); lane 4,075. 설계 목표 3,800은 0.5.0 개정으로 superseded (기록 보존) | §B 파생 + 0.5.0 개정 |
+| core 예산 | **4,092** = 9,146 − 4,797 − 257 (leader 구속); lane 4,094. 설계 목표 3,800은 0.5.0 개정으로 superseded (기록 보존) | §B 파생 + 0.6.0 개정 (board d-20261012T061322Z-f5b3) |
 | 스텁 | 8,583 (여유 14.2%) / 8,072 (19.3%) UTF-16, role-core 표지 0, `role-rules-required` 각 1 | 〃 + grep |
 | 상위 원장 | `role-core:` 행 정확히 36개, 전부 `workflow/factory-dispatch.md` | json 행수 |
 | 배포−템플릿 갈림 | 마지막 영역 꼬리 문장 1개뿐 (sweep 처분) | diff |
@@ -57,7 +57,7 @@ plan 단계 전수 재측정 완료 (커밋 `2aab5f797`, 원문 `.moai/reports/t
 
 ### M1 — RED: 테스트·고정물 (규칙·코드 무편집)
 
-1. **조립 예산 테스트** `internal/hook` (package hook — `buildRoleCore` 직접 접근, 조립 공식 중복 방지): 모듈 루트 해석 헬퍼(runtime.Caller 기반)로 템플릿 트리(`internal/template/templates/.claude/rules/moai/workflow/`)와 배포 트리(`.claude/rules/moai/workflow/`)를 각각 읽는다. 레지스트리 역할마다: `buildRoleCore` → 역할 블록(헤더+core+결합자+포인터, role_rules.go:102–123·:373–380 산식) 조립 → `4,797(생산자 상한) + 257(오버헤드) + core ≤ 9,127` 단정, 실패 메시지에 breakdown(생산자/결합자/헤더/core/포인터/합) 출력; 진단 하위 단정 core ≤ 4,073. **0.5.0 개정 수치(구 9,000/3,946) — 테스트 상수 갱신은 SPEC 개정 커밋 뒤 레인 후속 커밋 소관이며, 갱신 전 본 트리에서 예상 RED**. 상수 옆에 출처 주석(합본 실측 23,166 − 역할 블록 18,369; startup 최중 소스 근거 — spec.md REQ-RIB-002) 필수. 예상 RED(M1 채택 당시 임계 3,946 기준의 역사적 관측): 템플릿 17,793 > 3,946 → `--- FAIL` (이유: 당시 core가 그 예산을 초과 — 옳은 RED).
+1. **조립 예산 테스트** `internal/hook` (package hook — `buildRoleCore` 직접 접근, 조립 공식 중복 방지): 모듈 루트 해석 헬퍼(runtime.Caller 기반)로 템플릿 트리(`internal/template/templates/.claude/rules/moai/workflow/`)와 배포 트리(`.claude/rules/moai/workflow/`)를 각각 읽는다. 레지스트리 역할마다: `buildRoleCore` → 역할 블록(헤더+core+결합자+포인터, role_rules.go:102–123·:373–380 산식) 조립 → `4,797(생산자 상한) + 257(오버헤드) + core ≤ 9,146` 단정, 실패 메시지에 breakdown(생산자/결합자/헤더/core/포인터/합) 출력; 진단 하위 단정 core ≤ 4,092. **0.6.0 개정 수치(0.5.0 개정 9,127/4,073, 최초 9,000/3,946) — 테스트 상수 갱신은 SPEC 개정 커밋 뒤 레인 후속 커밋 소관이며, 갱신 전 본 트리에서 예상 RED**. 상수 옆에 출처 주석(합본 실측 23,166 − 역할 블록 18,369; startup 최중 소스 근거 — spec.md REQ-RIB-002) 필수. 예상 RED(M1 채택 당시 임계 3,946 기준의 역사적 관측): 템플릿 17,793 > 3,946 → `--- FAIL` (이유: 당시 core가 그 예산을 초과 — 옳은 RED).
 2. **스텁 게이트** `internal/template` 신규 테스트: 배포·템플릿 규칙 트리에서 `*-core.md` glob 기계 열거 → 각 파일 (a) role-core 표지 0, (b) ≤10,000 UTF-16. 자기 모터 서브테스트: 표지를 심은 임시 스텁 픽스처와 10,000 초과 픽스처로 게이트가 실제로 FAIL 하는 것을 스위트 안에서 관측(§1.1 관측-실패 완료 — 오늘 이미 참인 성질이라 RED-now 대신 이 관측이 채택 증거).
 3. **불일치 술어·안내 테스트** `internal/hook`: 술어(같음/다름/판독 불가 3케이스, 픽스처) + 4개 로캘 경고에 `moai update` 안내 존재 단정. 예상 RED: 구현 부재 → 컴파일 실패 or 0히트 단정 FAIL.
 4. 런 단계 재고정 절차(§B) 실행 — RED 원문(command+stdout+exit+SHA)을 progress.md §E.2 와 acceptance.md 증거 원장에 기록.
@@ -65,7 +65,7 @@ plan 단계 전수 재측정 완료 (커밋 `2aab5f797`, 원문 `.moai/reports/t
 ### M2 — GREEN(규칙 축): 역할 core 재작성 + 재배치 감사
 
 1. 36영역 전수 재배치 감사 표 작성(영역 id·before 요지·after 위치 {core-압축|companion §|스텁}·after 요지·이미-동반본-확인). `relocation-ledger.md` 로 커밋. 원칙(§D): 구속 절은 core 압축 재작성(의미 보존) 또는 스텁; 이미 companion 이 본문을 가진 절차 중복·포인터 꼬리만 core에서 정리; 삭제 금지.
-2. `factory-dispatch.md` 템플릿본 재작성 → core ≤ 3,800 (예산 3,946 −146 여유) — **M2 실행 시점 기록; 설계 목표 3,800은 0.5.0 개정으로 폐기, 정지 밸브 임계는 현재 4,073**. 지압 지점: 영역 내 포인터 꼬리(스텁의 companion 지도와 중복) 제거, 1,300–1,500자 대형 복합절을 항목형 [HARD] 목록으로 압축(절차 본문은 mechanics/gates/cards 가 소유 — 감사가 선행 확인), 인접 동종 영역 병합. 바닥이 천장(0.5.0 개정 4,073)을 넘으면 REQ-RIB-004 정지 밸브 — 편집 전 정지·보고.
+2. `factory-dispatch.md` 템플릿본 재작성 → core ≤ 3,800 (예산 3,946 −146 여유) — **M2 실행 시점 기록; 설계 목표 3,800은 0.5.0 개정으로 폐기, 정지 밸브 임계는 현재 4,092**. 지압 지점: 영역 내 포인터 꼬리(스텁의 companion 지도와 중복) 제거, 1,300–1,500자 대형 복합절을 항목형 [HARD] 목록으로 압축(절차 본문은 mechanics/gates/cards 가 소유 — 감사가 선행 확인), 인접 동종 영역 병합. 바닥이 천장(0.6.0 개정 4,092)을 넘으면 REQ-RIB-004 정지 밸브 — 편집 전 정지·보고.
 3. 배포본 동일 재작성 — 로컬 +321 꼬리는 감사 행으로 처리(`worktree-integration.md` § Hoist 본문 확인 후 압축·정리). 두 트리 모두 ≤ 예산.
 4. 상위 원장 36행 after-text 갱신 → `internal/template` 원장 테스트 GREEN 확인.
 5. gitflow 정합(REQ-RIB-010): 재작성 후 `Isolation` 절 존재 + 이동 금지 [HARD] 생존 확인, 로컬 규칙 지목 문장과 대조 (갈림 시에만 로컬 파일 수정).
