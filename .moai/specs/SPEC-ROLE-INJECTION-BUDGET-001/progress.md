@@ -704,3 +704,61 @@ push는 이 기록 커밋 뒤 origin/WT-3-2-1로 1회, 최종 HEAD는 완료 보
  M internal/hook/role_injection_budget_test.go
 ```
 - 전 커밋 뒤 push 직전 상태는 완료 보고로 리더 전달(재판독 원문 동봉).
+
+### main 흡수 라운드 — (b) 결정 이행 (board d-20261012T074431Z-b8ca, 2026-10-12)
+
+#### 충돌 조정 경위
+
+- main 흡수 시 코드 충돌 4건(양 면 factory-dispatch·i18n·CHANGELOG) — 정지 보고 후 영실이 판단으로 조정(흡수 커밋 fc6f9d7c3e: 원장 행 단위 3-way 병합 363행, en laneRecheckRule `%[1]s` 채택, CHANGELOG 합집합).
+- 조정 직후 예산 초과(core 4,127 > 4,092) — 조건 ③ 정지. 운영자 결정 **(b)**: 압축 행에서 주기 수치·용어 제외, 연동은 본문+`cron %[1]s` 인자가 전달. 리더 권고 (b) 채택.
+
+#### ① ALB-0276 요소 대조표 — 결정 (b) 적용 후
+
+| Opus 승인 의무 요소 | 압축 행 표현 | 상태 |
+|---|---|---|
+| 대기 기록의 이유 (reason) | "writes a disk wait (reason, whom, recheck point)" | 유지 |
+| 대기 대상 (whom) | "the leader only at a gate boundary (keep-set, cross-card conflict), its board for leader-level rulings only" | 유지 |
+| 재확인 시점 (recheck timing) | "armed before the first stage, kept to the completion report" | **유지 — 최소 표현 불필요(행에 남아 있음 확인)** |
+| 재확인 주기 (period) | (삭제 — "20-min"→"renew_interval" 표기 거친 뒤 (b)로 완전 제외) | **본문 문단 + laneRecheckRule `cron %[1]s` 인자가 전달** |
+| 각성 판독 (disk-evidence-first) | "each wake reads disk evidence (progress, reports, commits, delegate output) before replying" | 유지 |
+
+- 바뀐 문안 원문: `a recurring 20-min `CronCreate` recheck armed before the first stage` → `a recurring `CronCreate` recheck armed before the first stage` (양 면 + 원장 after_text 동기, byte 대조 확인).
+
+#### ② 레인 합성 주입 — %[1]s 채워진 실렌더 원문 1줄
+
+실조립 렌더(실측 프로브, arm expression = `*/5 * * * *` — 이 저장소 실효 factory lease 설정):
+
+> Stall recovery: before a card's first stage, arm ONE recurring `CronCreate` recheck (cron `*/5 * * * *`, recurring) whose prompt runs the stall watchdog first — Skill("moai-lane-watchdog") — then resumes the card from its progress record; check it with `CronList` at intake and after every clear (re-arm if missing or expired); `CronDelete` it when you send the completion report.
+
+#### ③ 예산 시험 4칸 PASS 원문 (`go test ./internal/hook -run TestRoleInjectionAssemblyBudget -count=1 -v`)
+
+| 트리 | 역할 | composite | budget | core | ceiling |
+|---|---|---|---|---|---|
+| template | factory-lane | 9,137 | 9,146 | 4,085 | 4,092 |
+| template | factory-leader | 9,139 | 9,146 | 4,085 | 4,092 |
+| deployed | factory-lane | 9,137 | 9,146 | 4,085 | 4,092 |
+| deployed | factory-leader | 9,139 | 9,146 | 4,085 | 4,092 |
+
+`--- PASS: TestRoleInjectionAssemblyBudget` — 4 하위 전부 PASS. (흡수 직전 4,092 대비 −7: 주기 표기 삭제가 잉여 여유 +7을 만듦 — SPEC 천장 4,092/9,146은 결정 (b)에 따라 무변경.)
+
+#### 실조립 4칸 재측정 (TestCompositeBudgetRealAssembly — 흡수+결정 (b) 트리, 실호출)
+
+| 칸 | utf16 | 여유 |
+|---|---|---|
+| lane-ko | 8,811 | 1,189 |
+| lane-en | 9,508 | 492 |
+| leader-ko | 7,936 | 2,064 |
+| leader-en | 8,860 | 1,140 |
+
+#### 가족 직렬 실행 (결정 (b) 트리)
+
+| 대상 | 결과 |
+|---|---|
+| `go test ./internal/hook -count=1` | **ok 426.160s** |
+| `go test ./internal/template -count=1` | **ok 525.754s** |
+
+#### ⑥ clean·형식 원문 (커밋 직전 실측 — 이질 파일 없음, 이 라운드 4파일만)
+
+- `gofmt -l internal/` → **출력 0줄**(exit 0)
+- `git status --short` → `.claude/rules/moai/workflow/factory-dispatch.md` · `.moai/specs/.../progress.md` · `internal/template/templates/.claude/rules/moai/workflow/factory-dispatch.md` · `internal/template/testdata/binding_ledger.json` (4파일)
+- 전 커밋 뒤 push 직전 재판독은 완료 보고에 동봉.
