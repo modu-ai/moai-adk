@@ -1085,3 +1085,90 @@ func TestLinter_SpecsDirMissingSpecFile_BothDirections(t *testing.T) {
 		t.Error("expected CoverageIncomplete to still fire on SPEC-LIVE-001; its absence would mean the per-SPECDoc rules were silenced, not that the blind spot was closed")
 	}
 }
+
+// lintSkipFixture renders a schema-valid SPEC body whose frontmatter carries
+// extra lines (a lint.skip block in one of its two spellings).
+func lintSkipFixture(extra string) string {
+	return "---\n" +
+		"id: SPEC-LINTSKIP-001\n" +
+		"title: \"lint skip fixture\"\n" +
+		"version: \"0.1.0\"\n" +
+		"status: draft\n" +
+		"created: 2026-10-13\n" +
+		"updated: 2026-10-13\n" +
+		"author: Test Author\n" +
+		"priority: P2 Medium\n" +
+		"phase: \"v3.2.0\"\n" +
+		"module: \"internal/spec\"\n" +
+		"lifecycle: spec-anchored\n" +
+		"tags: \"test\"\n" +
+		extra +
+		"---\n\n# Fixture\n\n### 1.1 Out of Scope — nothing\n\n- nothing\n"
+}
+
+// TestLinter_LintSkipFlatForm — card t1667. The flat frontmatter form
+// `lint.skip: [Code]` binds nothing: SPECFrontmatter reads the code list only
+// through the nested lint: block, so a flat skip list is silently ignored and
+// the codes it lists keep firing. The lint must make that drop visible — the
+// flat key warns (one LintSkipFlatForm finding, pointing at the raw line and
+// at the nested form as the effective one) — while the nested form stays
+// silent.
+func TestLinter_LintSkipFlatForm(t *testing.T) {
+	writeSpec := func(t *testing.T, frontmatter string) string {
+		t.Helper()
+		dir := filepath.Join(t.TempDir(), "SPEC-LINTSKIP-001")
+		if err := os.MkdirAll(dir, 0o755); err != nil {
+			t.Fatal(err)
+		}
+		path := filepath.Join(dir, "spec.md")
+		if err := os.WriteFile(path, []byte(frontmatter), 0o644); err != nil {
+			t.Fatal(err)
+		}
+		return path
+	}
+	lint := func(t *testing.T, path string) []spec.Finding {
+		t.Helper()
+		report, err := spec.NewLinter(spec.LinterOptions{
+			BaseDir: filepath.Dir(filepath.Dir(path)),
+		}).Lint([]string{path})
+		if err != nil {
+			t.Fatalf("Lint: %v", err)
+		}
+		return findingsForCode(report.Findings, "LintSkipFlatForm")
+	}
+
+	t.Run("nested form does not warn", func(t *testing.T) {
+		path := writeSpec(t, lintSkipFixture("lint:\n  skip: [DanglingRuleReference]\n"))
+		if got := lint(t, path); len(got) != 0 {
+			t.Errorf("nested lint.skip: findings = %+v, want none", got)
+		}
+	})
+
+	t.Run("flat form warns exactly once", func(t *testing.T) {
+		path := writeSpec(t, lintSkipFixture("lint.skip: [DanglingRuleReference]\n"))
+		got := lint(t, path)
+		if len(got) != 1 {
+			t.Fatalf("flat lint.skip: findings = %+v, want exactly 1", got)
+		}
+		if got[0].Severity != spec.SeverityWarning {
+			t.Errorf("severity = %q, want warning", got[0].Severity)
+		}
+		// The key sits on raw frontmatter line 14: line 1 is the opening ---,
+		// lines 2-13 the twelve canonical fields, line 14 the flat key.
+		if got[0].Line != 14 {
+			t.Errorf("line = %d, want 14 (the flat key's own line)", got[0].Line)
+		}
+		if !strings.Contains(got[0].Message, "nested") {
+			t.Errorf("message %q must point at the nested form as the effective one", got[0].Message)
+		}
+	})
+
+	t.Run("flat continuation items warn", func(t *testing.T) {
+		// `- item` continuations under a column-0 `lint.skip:` key are the
+		// same flat form; the indented `skip:` under `lint:` is not.
+		path := writeSpec(t, lintSkipFixture("lint.skip:\n  - DanglingRuleReference\n"))
+		if got := lint(t, path); len(got) != 1 {
+			t.Fatalf("flat continuation form: findings = %+v, want exactly 1", got)
+		}
+	})
+}
