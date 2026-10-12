@@ -77,7 +77,7 @@ Exit condition: AC-RC30-14, -15, -19 pass.
 
 ### B.7 Milestone M6 — Investigations (Medium)
 
-Each GAP-INVESTIGATE item is closed by its named evidence, with its command and output in research.md: U-15 (AC-RC30-16), U-19 and U-20 (AC-RC30-20), U-25 (AC-RC30-24). U-30 [MOVED to card t1669] has no M6 work: its locale mechanism is read in M4 step 6, before the parity check (§ B.5; Q1 is resolved from disk, decision-index.md Q1).
+Each GAP-INVESTIGATE item is closed by its named evidence, with its command and output in research.md: U-15 (AC-RC30-16), U-19 and U-20 (AC-RC30-20). U-25 (AC-RC30-24) is deferred to the operator's rc.30 field run per ruling d-20261010T223350Z-7f6e and is not closed by evidence here. U-30 [MOVED to card t1669] has no M6 work: its locale mechanism is read in M4 step 6, before the parity check (§ B.5; Q1 is resolved from disk, decision-index.md Q1).
 
 ### B.8 Milestone M7 — Verification and merge-ready (High)
 
