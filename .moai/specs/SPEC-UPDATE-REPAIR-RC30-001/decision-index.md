@@ -36,7 +36,7 @@ Label: FOUNDER
 Class: implementation-level
 Status: PENDING. Overlap facts are recorded in spec.md § F with the disposition undecided. No Default is recorded.
 Authority anchor: SPEC-UPDATE-MIGRATION-001 § H (spec.md lines 228-230) names t1527 as owner of banners, progress rendering, and severity prefixes. The card texts for t1527, t1594, and t1612 were not read in this run.
-Operator verdict:
+Operator verdict: "(i) record overlaps only, SPEC A unchanged (overlap owners t1527/t1612->t1654, t1594->t1630; all three absorbed-closed in queue)" (operator verdict 2026-10-11 (AskUserQuestion, 영실이 session)), board record d-20261010T223148Z-1e76.
 
 ### Q4: Are common skills and agents installed into the shared roots by moai init and moai update?
 
@@ -72,7 +72,7 @@ Options (factual; no recommendation):
 - **(ii)** 60 columns: plain lines are used on terminals narrower than 60 columns.
 - **(iii)** Another width, stated by the operator or leader.
 Default: 60 columns (applied; board ruling d-20261010T101935Z-4bc4). Note: the published Default rule (the option with the smaller user-visible surface) would rank 40 columns; the 60-column default is a board ruling, not an application of that rule. Alternate: 40 columns.
-Operator verdict:
+Operator verdict: "(ii) keep 60 columns" (operator verdict 2026-10-11 (AskUserQuestion, 영실이 session)), board record d-20261010T223148Z-1e76.
 
 ### Q8: How do the removal items U-02 and U-10 proceed, given that AC-RC30-01 needs a profile session?
 
@@ -85,7 +85,7 @@ Options (factual; no recommendation):
 - **(ii)** The operator decides that U-02 and U-10 leave this SPEC or are re-scoped. The switch stays off.
 Default: none.
 Moved with the removal family to card t1668 (d-20261009T235135Z-5e35); no longer gates SPEC A. Status stays PENDING.
-Operator verdict:
+Operator verdict: "(ii) U-02/U-10 leave the SPEC family, removal switch stays off (re-scope at t1668 / 3.2-2-5)" (operator verdict 2026-10-11 (AskUserQuestion, 영실이 session)), board record d-20261010T223148Z-1e76.
 
 ### Q9: Which scope does AC-RC30-22 take against REQ-UYP-014 for comments on sequence items? — DECIDED by delegated judgment d-20261010T143542Z-5d19
 
@@ -112,7 +112,7 @@ Options (factual; no recommendation):
 - **(a) Split.** Criteria that would move to a sibling SPEC: AC-RC30-25 (TUX golden and summary, U-26 to U-29) and AC-RC30-26 (integrity probe, U-31, t1578 scope). The parent keeps 24 criteria, under the ceiling. Effect on coverage: REQ-RC30-014, -016, -018, -019, and -020 are mapped only to AC-RC30-25, and REQ-RC30-021 only to AC-RC30-26, so these six requirements have no criterion in the parent (REQ-RC30-017 keeps AC-RC30-09). For the six to stay covered, AC-RC30-25 and AC-RC30-26 must both stay in the parent. A split that keeps both and moves one other criterion reaches 25; moved alone, any of AC-RC30-01, -02, -03, -04, -06, -09, -10, -11, -13, -19, -22, -23, or -24 leaves every requirement covered. Sibling scope: the moved items keep their IDs and disposition.
 - **(b) Merge.** Merge AC-RC30-14 (skip decision, U-13) and AC-RC30-15 (stamp skew, U-14) into one criterion with two named sub-cases. Coverage kept: U-13 and U-14 both remain judged, by two sub-cases of one test. The parent keeps 25 criteria.
 Default: none.
-Operator verdict:
+Operator verdict: "(a) split, leader split 5e35 confirmed" (operator verdict 2026-10-11 (AskUserQuestion, 영실이 session)), board record d-20261010T223148Z-1e76.
 
 ### F1: Receiving cards of moved items (tracked record)
 
