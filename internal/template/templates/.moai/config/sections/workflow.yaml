@@ -18,6 +18,14 @@ workflow:
         enabled: true
         token_threshold: 150000
     execution_mode: auto
+    # factory_lease: the card lease duration (duration, default 15m) and the
+    # watchdog renewal period (renew_interval, default 5m; a whole number of
+    # minutes from 1 to 59, and at most half of duration). Both are checked when
+    # the factory opens; a value outside its bound refuses to open the factory
+    # and is never clamped.
+    factory_lease:
+        duration: 15m
+        renew_interval: 5m
     # Iteration-ceiling precedence: CLI --max flag > ralph.yaml loop.max_iterations
     # > workflow.yaml loop_prevention.max_iterations (this block — the lowest-
     # precedence documented ceiling surface for the diagnostic fix-loop). The
@@ -326,3 +334,15 @@ workflow:
         transcript_activity_window: 48h
         heartbeat_stale_window: 24h
         min_age_days: 7
+    # candidate_ci: the pre-landing candidate-CI gate. enabled turns on
+    # `moai integration candidate` (a per-card merge-tree candidate pushed
+    # to ci/<card>) and the merge step's shared landing check, which lets
+    # the integration branch advance only on a green candidate — ships OFF:
+    # the whole path is inert until a maintainer opts in.
+    # guard_bundle_required decides whether a red guard-bundle CI check reds
+    # the candidate verdict; ships TRUE because it preserves the default
+    # gating, where the drift-prone guard families ride the ordinary
+    # required test suite.
+    candidate_ci:
+        enabled: false
+        guard_bundle_required: true

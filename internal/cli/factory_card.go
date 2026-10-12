@@ -68,8 +68,17 @@ const (
 // worktree-step lock; a test shortens it and restores it at cleanup.
 var factoryWorktreeStepWait = factoryWorktreeStepWaitDefault
 
-// factoryCardRoot is the project root the factory record and the queue share.
-func factoryCardRoot() string { return resolveTodoQueueRoot() }
+// factoryCardRoot is the project root the factory record and the queue share: the factory
+// root of the process's launch directory.
+func factoryCardRoot() string { return factoryRootOf(resolveProjectDir()) }
+
+// factoryRootOf is the one factory-root rule (SPEC-FACTORY-LEASE-RENEW-001, sync-audit F2,
+// card t1663): the queue root of a launch tree, which for a linked worktree is the primary
+// checkout. The factory record is kept at that root, and the lease keys are read from the root
+// the factory is opened at, so every surface that opens the factory for a launch tree applies
+// this rule. The verb applies it to its launch directory (factoryCardRoot); the factory_renew
+// tool applies it to the caller's project_root.
+func factoryRootOf(launch string) string { return factory.ResolveTodoQueueRoot(launch) }
 
 // Lane predicates (SPEC-FACTORY-SELF-DISPATCH-001 REQ-SD-015), deliberately
 // asymmetric. Admission — the right to run `moai factory next`, `stage`, and
@@ -1740,6 +1749,119 @@ func factoryStageCard(ctx context.Context, root, cardID, state, evidence, run, l
 	return next, nil
 }
 
+// The renew outcome classes of `moai factory renew` and the factory_renew tool
+// (SPEC-FACTORY-LEASE-RENEW-001 REQ-FLR-001, REQ-FLR-002, REQ-FLR-011). The four values
+// are the closed set that the watchdog copies into renew_result.
+const (
+	factoryRenewRenewed        = "renewed"
+	factoryRenewRefusedExpired = "refused-expired"
+	factoryRenewRefusedHolder  = "refused-not-holder"
+	factoryRenewError          = "error"
+)
+
+// factoryRenewOutcome is the machine-readable outcome of one renewal request. After a
+// renewal, expires_at is the new expiry. After a refusal it is the expiry that the card
+// still carries, which is empty when the card holds no lease. detail names the refusal
+// in prose and is omitted on a renewal.
+type factoryRenewOutcome struct {
+	Result    string `json:"result"`
+	ExpiresAt string `json:"expires_at"`
+	Detail    string `json:"detail,omitempty"`
+}
+
+// newFactoryRenewCommand — `moai factory renew <card> [--json]`
+// (SPEC-FACTORY-LEASE-RENEW-001 REQ-FLR-001, REQ-FLR-011): a lane extends its own card
+// lease by the configured card lease duration and prints the new expiry. With --json it
+// prints the outcome as one JSON object, and a refusal exits non-zero after printing it.
+func newFactoryRenewCommand() *cobra.Command {
+	var run string
+	var asJSON bool
+	cmd := &cobra.Command{
+		Use:          "renew <card>",
+		Short:        "Extend the lane's card lease by the configured duration (lane session)",
+		Args:         cobra.ExactArgs(1),
+		SilenceUsage: true,
+		RunE: func(cmd *cobra.Command, args []string) error {
+			if !factoryLaneAdmission() {
+				return factoryNotALaneError("renew")
+			}
+			lane, err := factoryLaneLabelFromEnv("renew")
+			if err != nil {
+				return err
+			}
+			ctx := cmd.Context()
+			if ctx == nil {
+				ctx = context.Background()
+			}
+			outcome, renewErr := factoryRenewCard(ctx, factoryCardRoot(), args[0], run, lane)
+			switch {
+			case asJSON:
+				body, err := json.Marshal(outcome)
+				if err != nil {
+					return err
+				}
+				_, _ = fmt.Fprintln(cmd.OutOrStdout(), string(body))
+			case renewErr == nil:
+				_, _ = fmt.Fprintf(cmd.OutOrStdout(), "%s lease renewed until %s\n", args[0], outcome.ExpiresAt)
+			}
+			return renewErr
+		},
+	}
+	cmd.Flags().StringVar(&run, "run", "", "factory run id (default: the single active run)")
+	cmd.Flags().BoolVar(&asJSON, "json", false, "print the outcome as JSON: result and expires_at")
+	return cmd
+}
+
+// factoryRenewBeforeWrite is a test seam (sync-audit F14, card t1663). It runs after factoryRenewCard
+// resolves the renewal's run and before the lease write, so a test can interleave a roster change at that
+// point. Production leaves it nil, and a nil seam carries no behavior.
+var factoryRenewBeforeWrite func()
+
+// factoryRenewCard is the one implementation of the renew verb and of the factory_renew
+// tool (design.md §3: one implementation per verb). It renews the lease that lane holds on
+// card cardID through the factory record. RenewLease extends the lease from the request
+// time by the handle's card lease duration, which is the configured
+// workflow.factory_lease.duration. A refusal writes nothing, and the outcome class names
+// it: an expired lease, a caller that does not hold the lease, or any other failure. Without
+// an explicit run the run resolves through resolveFactoryRenewRun.
+func factoryRenewCard(ctx context.Context, root, cardID, run, lane string) (factoryRenewOutcome, error) {
+	fail := func(err error) (factoryRenewOutcome, error) {
+		return factoryRenewOutcome{Result: factoryRenewError, Detail: err.Error()}, fmt.Errorf("factory renew: %w", err)
+	}
+	runID, rule, err := resolveFactoryRenewRunRule(ctx, root, run, lane, cardID)
+	if err != nil {
+		return fail(err)
+	}
+	if factoryRenewBeforeWrite != nil {
+		factoryRenewBeforeWrite()
+	}
+	db, err := homestate.OpenFactory(root)
+	if err != nil {
+		return fail(err)
+	}
+	defer func() { _ = db.Close() }()
+	// The write re-checks the roster binding inside its transaction (sync-audit F14, card t1663): a
+	// re-registration after the resolution above is refused here, with no write, and the message names --run.
+	card, err := db.RenewLeaseUnderRoster(ctx, runID, cardID, lane, factoryCardNow(), rule)
+	if err == nil {
+		return factoryRenewOutcome{Result: factoryRenewRenewed, ExpiresAt: card.LeaseExpiresAt}, nil
+	}
+	if errors.Is(err, homestate.ErrRosterBinding) {
+		err = fmt.Errorf("no --run given: %w; pass --run", err)
+	}
+	outcome := factoryRenewOutcome{Result: factoryRenewError, Detail: err.Error()}
+	switch {
+	case errors.Is(err, homestate.ErrLeaseExpired):
+		outcome.Result = factoryRenewRefusedExpired
+	case errors.Is(err, homestate.ErrLeaseHolder):
+		outcome.Result = factoryRenewRefusedHolder
+	}
+	if cur, lerr := db.LoadCard(ctx, runID, cardID); lerr == nil {
+		outcome.ExpiresAt = cur.LeaseExpiresAt
+	}
+	return outcome, fmt.Errorf("factory renew: %w", err)
+}
+
 // newFactoryCompleteCommand — `moai factory complete <card> [remeasure]`
 // (REQ-SD-013/-023): a Claude-harness lane takes a merge-ready card through
 // `merging` to `merged-local` by the F1 merge gate, using as integration
@@ -1908,6 +2030,19 @@ func factoryCompleteCard(ctx context.Context, out io.Writer, root, lockRoot, car
 	acquiredHere := false
 	if !heldByUs {
 		ownerPID, _ := session.ResolveOwnerPID()
+		// The per-card red hold (SPEC-CANDIDATE-CI-001 REQ-CCI-012, card t1478
+		// Finding 4): complete's own acquisition is a window grant to this card,
+		// so a red candidate refuses it before the window record is touched. The
+		// refusal carries the landing refusal's exit code — the same red candidate,
+		// reached one step earlier.
+		if candidateCIEnabled(lockRoot) {
+			if holdErr := factory.CandidateHoldRefusal(lockRoot, card.CardID); holdErr != nil {
+				return &exitCodeError{code: factory.MergeExitLandingRefused, msg: fmt.Sprintf("factory complete: refused — %v", holdErr)}
+			}
+		}
+		if factoryCompleteAcquireHook != nil {
+			factoryCompleteAcquireHook()
+		}
 		replaced, err := factory.AcquireIntegrationWindow(lockRoot, factory.IntegrationLock{
 			SessionID:    sessionID,
 			SessionName:  lane,
@@ -1990,7 +2125,7 @@ func factoryCompleteCard(ctx context.Context, out io.Writer, root, lockRoot, car
 	}
 	if _, err := factory.ReadRemeasureRecord(lockRoot, candidateTree); err != nil {
 		releaseOwnAcquisition()
-		return &exitCodeError{code: factory.MergeExitBaseMoved, msg: fmt.Sprintf("factory complete: refused — no valid re-measure record for the candidate tree %s (%v); run moai integration remeasure, then re-acquire --wait — the re-measure-and-re-acquire code", candidateTree[:12], err)}
+		return &exitCodeError{code: factory.MergeExitBaseMoved, msg: fmt.Sprintf("factory complete: refused — no valid re-measure record for the candidate tree %s (%v); run moai integration remeasure, then re-acquire --wait — the re-measure-and-re-acquire code", factory.ShortSHA(candidateTree), err)}
 	}
 
 	// REQ-MWQ-019 step 4 — the merge runs ONLY by calling the REQ-MWQ-017
@@ -1998,6 +2133,29 @@ func factoryCompleteCard(ctx context.Context, out io.Writer, root, lockRoot, car
 	// complete's state transitions are done. The step's pre-merge causes
 	// release inside it; a step failure leaves the card state unchanged
 	// (REQ-MWQ-019: the card state shall not change).
+	mergeSeams := factory.MergeStepSeams{
+		ReadCard: func(id string) (factory.MergeCardState, error) {
+			return integrationReadMergeCardForRun(ctx, root, runID, id, lane)
+		},
+	}
+	// AC-CCI-011-1's both-call-sites clause: the self-issued merge path
+	// wires the SAME shared landing check the merge verb does — its seams
+	// formerly carried only ReadCard, and the step gates on
+	// seams.LandingCheck != nil, so an unwired complete merged with no
+	// landing gate at all. The step's own fail-closed guard refuses an
+	// unwired seam when the key is enabled, so this wiring is mandatory
+	// exactly while the gate is on.
+	if candidateCIEnabled(lockRoot) {
+		mergeSeams.LandingCheck = func(id, sha string) error {
+			return factory.CandidateLandingCheck(factory.LandingCheckInput{
+				Root:                lockRoot,
+				CardID:              id,
+				PinnedSHA:           sha,
+				TargetBranch:        branch,
+				IntegrationWorktree: integTree,
+			})
+		}
+	}
 	mergeSHA, err := factory.RunMergeStep(factory.MergeStepInput{
 		Root:                lockRoot,
 		IntegrationWorktree: integTree,
@@ -2005,11 +2163,7 @@ func factoryCompleteCard(ctx context.Context, out io.Writer, root, lockRoot, car
 		CardID:              cardID,
 		CallerSessionID:     sessionID,
 		DeferRelease:        true,
-	}, factory.MergeStepSeams{
-		ReadCard: func(id string) (factory.MergeCardState, error) {
-			return integrationReadMergeCardForRun(ctx, root, runID, id, lane)
-		},
-	})
+	}, mergeSeams)
 	if err != nil {
 		if code, ok := factory.MergeExitCode(err); ok {
 			return &exitCodeError{code: code, msg: fmt.Sprintf("factory complete: the merge step refused: %v", err)}
@@ -2085,12 +2239,12 @@ func completeTransitions(ctx context.Context, db *homestate.FactoryDB, out io.Wr
 // own, distinct from the thirteen.
 func completePostMergeConflict(out io.Writer, lockRoot, sessionID, cardID, mergeSHA string, transitionErr error) error {
 	if holdErr := factory.CompletePostMergeHold(lockRoot, cardID, mergeSHA); holdErr != nil {
-		_, _ = fmt.Fprintf(out, "  writing the hold also failed (%v) — the merge commit %s stays on the integration branch; moai integration policy hold by hand\n", holdErr, mergeSHA[:12])
+		_, _ = fmt.Fprintf(out, "  writing the hold also failed (%v) — the merge commit %s stays on the integration branch; moai integration policy hold by hand\n", holdErr, factory.ShortSHA(mergeSHA))
 	}
 	if _, err := factory.ReleaseIntegrationLock(lockRoot, sessionID, 0, false); err != nil {
 		_, _ = fmt.Fprintf(out, "  releasing the window failed (%v) — release it by hand after reading the hold\n", err)
 	}
-	return &exitCodeError{code: completePostMergeTransitionConflictExit, msg: fmt.Sprintf("factory complete: %v — the merge commit %s stays on the integration branch; the window policy holds with cause post-merge-transition-conflict", transitionErr, mergeSHA[:12])}
+	return &exitCodeError{code: completePostMergeTransitionConflictExit, msg: fmt.Sprintf("factory complete: %v — the merge commit %s stays on the integration branch; the window policy holds with cause post-merge-transition-conflict", transitionErr, factory.ShortSHA(mergeSHA))}
 }
 
 // completePostMergeTransitionConflictExit is complete's own exit code
@@ -2106,6 +2260,11 @@ const completePostMergeTransitionConflictExit = 20
 // integrationLockMutationTestHook established). Every production path
 // leaves it nil, and the call site is nil-guarded.
 var factoryCompleteTransitionHook func()
+
+// factoryCompleteAcquireHook is the acquisition's test seam (card t1478
+// Finding 4): called just before complete takes the integration window for
+// its card, after the card's own refusals. A red candidate must never reach it.
+var factoryCompleteAcquireHook func()
 
 // cliGitIn runs one git command in dir — the small adoption probes' helper.
 func cliGitIn(dir string, args ...string) (string, error) {
@@ -2327,6 +2486,98 @@ func resolveFactoryCardRun(ctx context.Context, root, explicit string) (string, 
 		return "", fmt.Errorf("no --run given and no single active factory run (%w)", err)
 	}
 	return run, nil
+}
+
+// resolveFactoryRenewRun returns the run a renewal acts in (SPEC-FACTORY-LEASE-RENEW-001,
+// sync-audit F3, F7 and F11, card t1663). An explicit --run value wins. Otherwise the lane's roster
+// binding (workers.run_id, the run the lane joined) is read against the active runs. A sole active run
+// answers, except that a binding naming another run, active or not, refuses (F11); an empty binding or a
+// missing roster row keeps the sole-run answer. When several active runs survive reconciliation, the
+// binding must name an active run, and the card's lease must be held by this lane in that run: the lease
+// holder alone does not decide it, because a label can be reused across runs, so a stale lease in another
+// run can name the same label. Every other ambiguous case refuses, naming --run: no binding, a binding
+// outside the active set, or a card the lane does not hold in its bound run. Each refusal keeps the detail
+// that prevented the narrowing.
+// resolveFactoryRenewRunRule returns the run a renewal acts in and the roster rule its lease write must re-check
+// (sync-audit F14, card t1663). An explicit --run value wins with no rule. The pre-check below reads the
+// binding; the write then re-reads it inside its own transaction and applies the rule (homestate
+// RenewLeaseUnderRoster), so a re-registration after this read is refused there. The sole-run answer carries
+// RosterSoleRun, and the ambiguous-set answer carries RosterBound.
+func resolveFactoryRenewRunRule(ctx context.Context, root, explicit, lane, cardID string) (string, homestate.RosterRule, error) {
+	if run := strings.TrimSpace(explicit); run != "" {
+		return run, homestate.RosterUnchecked, nil
+	}
+	run, err := factorymsg.ResolveActiveRun(ctx, root, "")
+	if err == nil {
+		// The roster binding is the lane's own run. A binding to any other run is a mismatch: refuse,
+		// naming --run, and write nothing.
+		bound, berr := factoryRenewBoundRun(ctx, root, lane)
+		if berr != nil {
+			return "", homestate.RosterUnchecked, berr
+		}
+		if bound != "" && bound != run {
+			return "", homestate.RosterUnchecked, fmt.Errorf("no --run given: lane %s is bound to run %s, not to the single active run %s; pass --run", lane, bound, run)
+		}
+		return run, homestate.RosterSoleRun, nil
+	}
+	var ambiguous *factorymsg.AmbiguousRunsError
+	if !errors.As(err, &ambiguous) {
+		return "", homestate.RosterUnchecked, fmt.Errorf("no --run given and no single active factory run (%w)", err)
+	}
+	refuse := func(detail error) error {
+		return fmt.Errorf("no --run given and no single active factory run (%w): %v; pass --run", err, detail)
+	}
+	db, derr := homestate.OpenFactory(root)
+	if derr != nil {
+		return "", homestate.RosterUnchecked, refuse(derr)
+	}
+	defer func() { _ = db.Close() }()
+	bound, berr := db.WorkerRunBinding(ctx, lane)
+	if berr != nil {
+		return "", homestate.RosterUnchecked, refuse(berr)
+	}
+	if bound == "" {
+		return "", homestate.RosterUnchecked, refuse(fmt.Errorf("lane %s has no roster binding", lane))
+	}
+	if !factoryRunListed(ambiguous.Owners, bound) {
+		return "", homestate.RosterUnchecked, refuse(fmt.Errorf("lane %s is bound to run %s, which is not an active run", lane, bound))
+	}
+	card, cerr := db.LoadCard(ctx, bound, cardID)
+	if cerr != nil {
+		return "", homestate.RosterUnchecked, refuse(fmt.Errorf("card %s in its bound run %s: %w", cardID, bound, cerr))
+	}
+	if card.LeaseHolder != lane {
+		return "", homestate.RosterUnchecked, refuse(fmt.Errorf("card %s is not held by lane %s in its bound run %s", cardID, lane, bound))
+	}
+	return bound, homestate.RosterBound, nil
+}
+
+// resolveFactoryRenewRun returns the run a renewal acts in; resolveFactoryRenewRunRule also returns the roster
+// rule the lease write re-checks.
+func resolveFactoryRenewRun(ctx context.Context, root, explicit, lane, cardID string) (string, error) {
+	run, _, err := resolveFactoryRenewRunRule(ctx, root, explicit, lane, cardID)
+	return run, err
+}
+
+// factoryRenewBoundRun returns the run the roster binds lane to: "" when the lane has no roster row or an
+// empty binding. The factory record is opened for that one read.
+func factoryRenewBoundRun(ctx context.Context, root, lane string) (string, error) {
+	db, err := homestate.OpenFactory(root)
+	if err != nil {
+		return "", fmt.Errorf("open the factory record for the roster binding of lane %s: %w", lane, err)
+	}
+	defer func() { _ = db.Close() }()
+	return db.WorkerRunBinding(ctx, lane)
+}
+
+// factoryRunListed reports whether runID is one of the active runs owners names.
+func factoryRunListed(owners []homestate.RunOwner, runID string) bool {
+	for _, owner := range owners {
+		if owner.RunID == runID {
+			return true
+		}
+	}
+	return false
 }
 
 // queueItemState reads the queue state of cardID, anchored at root; ok is
@@ -2591,6 +2842,11 @@ type factoryStatusReport struct {
 	// Unavailable lists the dispatch mirror writes that failed and have not
 	// been reconciled by a later successful write (REQ-FR-025).
 	Unavailable []homestate.RecordUnavailableEntry `json:"unavailable"`
+	// LeaseDuration and RenewInterval are the effective workflow.factory_lease values
+	// the factory opens with (SPEC-FACTORY-LEASE-RENEW-001, REQ-FLR-009), as Go duration
+	// strings. They sit before Quota, which stays last.
+	LeaseDuration string `json:"lease_duration"`
+	RenewInterval string `json:"renew_interval"`
 	// Quota is the read-only quota block (SPEC-QUOTA-AWARE-SCHEDULING-001
 	// REQ-QAS-013): present only while the quota gate is enabled and some window
 	// has data, and last, so every pre-existing key keeps its place.
@@ -2632,6 +2888,14 @@ func newFactoryStatusCommand() *cobra.Command {
 				ctx = context.Background()
 			}
 			report := factoryStatusReport{Run: strings.TrimSpace(run), Cards: []factoryCardView{}}
+			// The effective lease values are reported whether or not a database exists.
+			// A refused configuration is refused here as it is at open.
+			leaseDuration, renewInterval, err := homestate.EffectiveFactoryLease(root)
+			if err != nil {
+				return fmt.Errorf("factory status: %w", err)
+			}
+			report.LeaseDuration = leaseDuration.String()
+			report.RenewInterval = renewInterval.String()
 			path, err := homestate.FactoryDBPath(root)
 			if err != nil {
 				return fmt.Errorf("factory status: %w", err)

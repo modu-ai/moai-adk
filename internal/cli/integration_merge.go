@@ -90,13 +90,20 @@ func newIntegrationMergeCmd() *cobra.Command {
 				},
 			}
 			// The landing check rides the candidate-CI key (spec.md §F):
-			// absent/false is the absent no-op seam. While t1478 is
-			// unlanded the key cannot read true — but if a future
-			// configuration flips it early, the step refuses LOUDLY rather
-			// than silently skipping a gate the project asked for.
+			// absent/false is the absent no-op seam. Enabled, BOTH call
+			// sites wire the SAME shared check (REQ-CCI-011, design.md
+			// D2/D10) — and the step itself fail-closes on an unwired
+			// seam, so omitting this wiring refuses rather than merges
+			// unchecked.
 			if candidateCIEnabled(root) {
-				seams.LandingCheck = func(string, string) error {
-					return fmt.Errorf("the shared landing check is not wired until SPEC-CANDIDATE-CI-001 lands")
+				seams.LandingCheck = func(cardID, sha string) error {
+					return factory.CandidateLandingCheck(factory.LandingCheckInput{
+						Root:                root,
+						CardID:              cardID,
+						PinnedSHA:           sha,
+						TargetBranch:        integBranch,
+						IntegrationWorktree: integ,
+					})
 				}
 			}
 			mergeSHA, err := factory.RunMergeStep(factory.MergeStepInput{
@@ -109,7 +116,7 @@ func newIntegrationMergeCmd() *cobra.Command {
 			if err != nil {
 				return err
 			}
-			_, _ = fmt.Fprintf(cmd.OutOrStdout(), "integration merge: card %s merged as %s into %s (window released; the next queued ticket holds it)\n", cardFlag, mergeSHA[:12], integBranch)
+			_, _ = fmt.Fprintf(cmd.OutOrStdout(), "integration merge: card %s merged as %s into %s (window released; the next queued ticket holds it)\n", cardFlag, factory.ShortSHA(mergeSHA), integBranch)
 			return nil
 		},
 	}
@@ -194,18 +201,16 @@ func integrationReadMergeCardForRun(ctx context.Context, root, runID, cardID, la
 	}, nil
 }
 
-// candidateCIEnabled reports whether the shared landing check is wired.
-// SPEC-CANDIDATE-CI-001 (card t1478) owns the workflow.candidate_ci.enabled
-// key and has not landed: absent reads FALSE, so the landing check is the
-// absent no-op seam (spec.md §F), and whichever card lands second wires
-// this read to the real key and assigns the LandingCheck seam its real
-// implementation.
-//
-// @MX:DEBT: constant-false placeholder for the landing-check gate
-// @MX:CEILING: only until SPEC-CANDIDATE-CI-001 lands its key
-// @MX:UPGRADE: t1478's landing — replace with the real config read and
-// wire factory.MergeStepSeams.LandingCheck
+// candidateCIEnabled reports whether the candidate-CI path is enabled:
+// the config key workflow.candidate_ci.enabled (SPEC-CANDIDATE-CI-001,
+// REQ-CCI-006). An absent key and an unreadable config both read FALSE —
+// the path never enables itself on uncertainty — so the landing check
+// stays the absent no-op seam and the candidate verb refuses until a
+// maintainer opts in.
 func candidateCIEnabled(root string) bool {
-	_ = root // the key arrives with t1478; absent reads false today
-	return false
+	cfg, err := config.NewLoader().Load(filepath.Join(root, ".moai"))
+	if err != nil || cfg == nil {
+		return false
+	}
+	return cfg.Workflow.CandidateCI.Enabled
 }

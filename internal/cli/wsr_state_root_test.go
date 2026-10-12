@@ -408,7 +408,10 @@ func TestWSR006_ReviewGateRootMatrix(t *testing.T) {
 		}
 	}
 
+	// The codex path names the switch-off state (REQ-RG-007, D4; changed from
+	// "{}" by commit 1002a14c1); the multi path stays "{}"; no detector call.
 	t.Run("F-noid row 4", func(t *testing.T) {
+		wantCodexSwitchOff := `{"systemMessage":"codex review gate: turn allowed without a fresh pass (state: 스위치 꺼짐)"}`
 		for _, variant := range []string{"admin HEAD deleted", "no git"} {
 			nfx := newWSRFixture(t, wsrWorkflowF)
 			if variant == "no git" {
@@ -421,8 +424,8 @@ func TestWSR006_ReviewGateRootMatrix(t *testing.T) {
 			calls := wsrDetector(t)
 			codexOut := wsrRunGate(t, false, map[string]any{"session_id": sid, "cwd": nfx.W})
 			multiOut := wsrRunGate(t, true, map[string]any{"session_id": sid, "cwd": nfx.W})
-			if len(*calls) != 0 || codexOut != "{}" || multiOut != "{}" {
-				t.Errorf("%s: want N′ (both {} and no detector call), got codex=%s multi=%s calls=%v", variant, codexOut, multiOut, *calls)
+			if len(*calls) != 0 || codexOut != wantCodexSwitchOff || multiOut != "{}" {
+				t.Errorf("%s: want the codex path to name the switch-off state (REQ-RG-007, D4; changed from {} by commit 1002a14c1), the multi path to stay {}, and no detector call; got codex=%s multi=%s calls=%v", variant, codexOut, multiOut, *calls)
 			}
 		}
 	})

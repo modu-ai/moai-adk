@@ -61,8 +61,13 @@ const (
 	// DefaultFactoryLeaseDuration is how long a factory worker's card lease
 	// lasts past its last heartbeat. It bounds worker liveness only: the
 	// decision-pending card states hold no lease, so a human decision is never
-	// raced by it. A chosen value, not a measured one; no config key reads it.
+	// raced by it. A chosen value, not a measured one. It is the default of
+	// workflow.factory_lease.duration (NewDefaultWorkflowConfig).
 	DefaultFactoryLeaseDuration = 15 * time.Minute
+	// DefaultFactoryLeaseRenewInterval is the default watchdog renewal period
+	// (workflow.factory_lease.renew_interval). It must stay at most half of the
+	// card lease duration, or the factory refuses to open.
+	DefaultFactoryLeaseRenewInterval = 5 * time.Minute
 	// QuotaHeartbeatInterval is how old a window-carrying session telemetry
 	// record may grow, with an unchanged reading, before the statusline writer
 	// rewrites it to refresh its capture time (SPEC-QUOTA-AWARE-SCHEDULING-001
@@ -1411,6 +1416,10 @@ func NewDefaultWorkflowConfig() WorkflowConfig {
 			AfterRun:       false,
 			TokenThreshold: 150000,
 		},
+		FactoryLease: FactoryLeaseConfig{
+			Duration:      DefaultFactoryLeaseDuration.String(),
+			RenewInterval: DefaultFactoryLeaseRenewInterval.String(),
+		},
 		DefaultMode: "",
 		// "auto" (not "team") aligns with the template SSOT
 		// workflow.yaml (execution_mode: auto) per SPEC-INIT-UPDATE-CONSISTENCY-001
@@ -1503,6 +1512,17 @@ func NewDefaultWorkflowConfig() WorkflowConfig {
 		// `enabled: true` anywhere under internal/template/templates/.
 		SettingsDriftGate: SettingsDriftGateConfig{
 			Enabled: false,
+		},
+		// The candidate-CI path ships inert (SPEC-CANDIDATE-CI-001 REQ-CCI-006):
+		// no candidate verb operates and the merge step's landing check stays
+		// the absent no-op seam while Enabled is false. GuardBundleRequired
+		// ships TRUE deliberately — it preserves today's gating, where the
+		// drift-prone guard families ride the ordinary required test suite
+		// (design.md D6). This entry is load-bearing for that TRUE: the zero
+		// value would ship guard-bundle reds silently admitted.
+		CandidateCI: CandidateCIConfig{
+			Enabled:             false,
+			GuardBundleRequired: true,
 		},
 		// The slot-lease guard ships inert: a project that never runs several
 		// sessions against one machine has nothing to serialize. The `moai

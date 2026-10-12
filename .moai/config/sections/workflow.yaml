@@ -39,6 +39,14 @@ workflow:
             glm: off
     default_mode: ""
     execution_mode: auto
+    # factory_lease: the card lease duration (duration, default 15m) and the
+    # watchdog renewal period (renew_interval, default 5m; a whole number of
+    # minutes from 1 to 59, and at most half of duration). Both are checked when
+    # the factory opens; a value outside its bound refuses to open the factory
+    # and is never clamped.
+    factory_lease:
+        duration: 15m
+        renew_interval: 5m
     # context_folding: manager-lead's per-milestone Context-Folding trigger policy
     # (SPEC-HIERARCHICAL-TEAM-001 REQ-FOLD-001 OQ-1 decision). The fold procedure
     # itself reuses existing primitives (/compact + .moai/state/verify/ redirect +
@@ -311,3 +319,14 @@ workflow:
             enabled: true
         task:
             allow_write: true
+    # candidate_ci (SPEC-CANDIDATE-CI-001, card t1478): the pre-landing
+    # candidate-CI path. enabled gates `moai integration candidate` and the
+    # merge step's shared landing check — default false ships the whole
+    # path inert. guard_bundle_required decides whether a red guard-bundle
+    # CI check reds the candidate verdict; default true preserves today's
+    # gating, where the drift-prone guard families ride the ordinary
+    # required test suite. Flip enabled after the operator reviews the
+    # candidate-path rollout.
+    candidate_ci:
+        enabled: false
+        guard_bundle_required: true

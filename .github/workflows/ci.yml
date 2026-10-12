@@ -15,7 +15,14 @@ name: CI
 
 on:
   push:
-    branches: [main]
+    # ci/** carries the pre-landing candidates `moai integration candidate`
+    # pushes (SPEC-CANDIDATE-CI-001 AC-CCI-007-1): the CI run on the
+    # candidate branch is the verdict the merge step's landing check gates
+    # on. No paths: filter here by design — a workflow-only candidate (a
+    # diff touching only ci.yml) must still run (plan.md §G).
+    branches:
+      - main
+      - 'ci/**'
   pull_request:
     branches: [main]  # main으로 향하는 모든 PR에서 CI 실행
   # Enabling change only. A workflow_dispatch trigger becomes dispatchable
@@ -31,10 +38,20 @@ on:
 permissions:
   contents: read
 
-# Cancel in-progress runs for the same branch
+# Cancel in-progress runs for the same ref — EXCEPT the integration verdict
+# surfaces (SPEC-CANDIDATE-CI-001 AC-CCI-014-1; AGENTS.local.md §4.1 canon):
+# main is the remote default branch whose head's CI IS the integration
+# verdict, and the leader batch-pushes it — a later push cancelling that
+# run would destroy the verdict the batch exists to produce. develop is
+# excluded with it (the post-cutover integration target per
+# git-strategy.yaml; the push trigger above does not even carry it — legacy,
+# but the exception costs nothing and survives a re-trigger). Candidate refs
+# (ci/**) keep cancellation: a re-candidate supersedes the prior run, which
+# is dead weight the moment the new push lands. A workflow expression cannot
+# read the repo's config, so whoever moves the target updates this mirror.
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
-  cancel-in-progress: true
+  cancel-in-progress: ${{ github.ref != 'refs/heads/main' && github.ref != 'refs/heads/develop' }}
 
 jobs:
   # ---------------------------------------------------------------------------
@@ -63,7 +80,7 @@ jobs:
 
   # ---------------------------------------------------------------------------
   # Test: Run tests with coverage (fast — NO race detector). The race
-  # detector moved to the separate `test-race-1`/`test-race-2` jobs
+  # detector moved to the separate `test-race-*` jobs
   # (advisory, non-required):
   # the ~9-min race runtime was dominated by internal/cli exec.Command tests
   # + internal/hook/mx ast-grep scans, which -race amplifies. This job keeps
@@ -170,14 +187,6 @@ jobs:
       # Moved to release-pr-multi-os.yml's windows leg at release time
       # (SPEC-V3R6-CI-PR-SPEEDUP-001).
 
-      # test-census.sh is a reporter: it exits 0 on any readable stream, so a
-      # census whose output is wrong never turns the test step below red.
-      # census-check.sh diffs the census output on a committed fixture against
-      # the expected text, so a breakage the fixture exercises fails here.
-      - name: Check test census against its fixture
-        shell: bash
-        run: bash scripts/ci-census/census-check.sh
-
       # `-json` writes a per-test event stream to a FILE, so the console keeps
       # its one-line-per-package shape while the run stops being unreadable
       # after the fact: without it, rc=0 cannot distinguish "the test passed"
@@ -201,7 +210,19 @@ jobs:
           # on the next (37221992371, card t1519) with the last test still
           # starting. 25m clears the edge while staying inside this job's
           # timeout-minutes: 30 budget.
-          go test -json -coverprofile=coverage.out -covermode=atomic -timeout 25m ./... > test-stream.json || rc=$?
+          #
+          # The -skip set is the GUARD bundle's membership (SPEC-CANDIDATE-CI-001
+          # M5, card t1478): the source-scan and line-key guard families run in
+          # the dedicated guard-bundle job below, so a guard drift reds THAT
+          # named check instead of reddening the ordinary suite. The two scopes
+          # PARTITION: 10 guard tests / 5423 ordinary in ./internal/cli (the
+          # selector measured via `go test -list` on 47034f5e9 plus this change;
+          # `go test -list` honors -run but IGNORES -skip, so the ordinary
+          # set is never derived from it).
+          bash scripts/ci/retry-flaky.sh --registry scripts/ci/flaky-registry.txt -- go test -json -coverprofile=coverage.out -covermode=atomic -timeout 25m -skip '^(TestGuard_.*|TestCodexCommand_NeutralityScan|TestCodexSpecFiles_NoBuildTagsOrSyscall|TestCodexSpecFiles_ExecPrimitivesCodexOnly|TestVocabularyGuardControls|TestDestructiveTargetRegistry_CoversAllSites|TestCodexCommand_GuardFileLiteralsNeutral|TestProductionStringLiteralsUseLeaderLaneVocabulary)$' ./... > test-stream.json || rc=$?
+          # Reporter only: the census of THIS run's stream (exit 0 on any
+          # readable stream). The committed-fixture check of the census script
+          # is census-check.sh, which runs once, in the guard-bundle job.
           bash scripts/ci-census/test-census.sh test-stream.json
           exit $rc
 
@@ -248,19 +269,77 @@ jobs:
   # main carry no head_ref, so !startsWith() is true there and they keep this
   # job as their only race run.
   # ---------------------------------------------------------------------------
-  # Sharded two ways by the internal/cli test-name prefix (card t1495):
-  # develop run 37185766779 measured the single job at 1964s vs the 2100s
-  # -timeout cap (6.5% headroom), with internal/cli alone at 1772.9s. The
-  # prefix regex balances the two legs — -run covers 826 tests / 834.5s and
-  # -skip the other 4264 / 947s (`go test -list` verified); realtime waits
-  # were measured NOT the cause (lease/stall names 136.0s = 7.6%), so the
-  # split rides the slow test-name prefix, not wait time.
-  test-race-1:
-    name: Race Test 1
+  # Guard Bundle (SPEC-CANDIDATE-CI-001 M5, card t1478): the source-scan and
+  # line-key guard families + the census fixture check run as ONE named
+  # check, so a guard drift reds THIS check (attribution) without reddening
+  # the ordinary `test` job. The required test job skips the SAME set (the
+  # -skip selector above) — the two scopes PARTITION (10 guard / 5423
+  # ordinary in ./internal/cli, measured; `go test -list` honors -run but
+  # ignores -skip, so the ordinary set is the explicit set difference).
+  # Admission: workflow.candidate_ci.guard_bundle_required (default true)
+  # decides whether the candidate verdict reads this check as required —
+  # enforced by the verdict collector (candidateRunVerdict), not by branch
+  # protection (a required-check name is static).
+  # ---------------------------------------------------------------------------
+  guard-bundle:
+    name: Guard Bundle
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v7
+
+      - name: Setup Go
+        uses: actions/setup-go@v7
+        with:
+          go-version-file: go.mod
+          cache: true
+
+      - name: Run the guard families (source-scan + line-key guards)
+        shell: bash
+        run: |
+          rc=0
+          # The selector is the MEASURED guard-family membership: 10 tests
+          # (go test -list verified). Run with -run, never -skip.
+          go test -count=1 -timeout 8m -run '^(TestGuard_.*|TestCodexCommand_NeutralityScan|TestCodexSpecFiles_NoBuildTagsOrSyscall|TestCodexSpecFiles_ExecPrimitivesCodexOnly|TestVocabularyGuardControls|TestDestructiveTargetRegistry_CoversAllSites|TestCodexCommand_GuardFileLiteralsNeutral|TestProductionStringLiteralsUseLeaderLaneVocabulary)$' ./internal/cli/ || rc=$?
+          exit $rc
+
+      # census-check.sh diffs test-census.sh's output on a committed fixture
+      # against the expected text. It is independent of this run, so it runs
+      # ONCE, here; the ordinary test job runs only the reporter.
+      - name: Census fixture check
+        run: bash scripts/ci-census/census-check.sh
+
+  # ---------------------------------------------------------------------------
+  # Six race legs replace the former two-way prefix split (SPEC-CANDIDATE-CI-001
+  # M6, card t1478). Measured basis: CI run 37861953651 (headSha 2aab5f797, main),
+  # the test-stream-ci-race-1 and -race-2 artifacts. Summing the per-test elapsed
+  # of the `pass` rows gives 868.6s (race-1) and 1151.2s (race-2) for internal/cli,
+  # against package wall times of 870.3s and 1141.5s, so the per-test sum is a
+  # balance proxy within about 1%. The TestInstall tests were measured before
+  # af529c799 (the payload fix), so their cost in the proxy is an upper bound.
+  #
+  # internal/cli is partitioned by the first letter of each top-level name after
+  # `Test`. Every valid Go test name falls in exactly one selector (the last shard
+  # also takes every non-letter first character), so a new test is covered with
+  # no name list to maintain. The F letter is split on its second character: the
+  # Factory family alone weighs 321s of the letter's 365s.
+  #
+  # Rosterguard is a separate package (internal/harness/rosterguard) measured at
+  # 782.4s, longer than any internal/cli shard, so it gets its own leg. The
+  # remainder leg runs every other package once. Each leg refuses an empty
+  # sweep (no test event in its stream), so a green leg cannot be a selector
+  # that matched nothing. Re-run the exact-cover listing (`go test -list` per
+  # selector against the full internal/cli list) whenever a selector changes.
+  #
+  # -timeout is per test binary. Each ceiling sits about 2x its measured proxy;
+  # each job's timeout-minutes covers setup and compilation on top of it.
+  test-race-cli-1:
+    name: Race Test (internal/cli 1 of 4)
     needs: detect
     if: needs.detect.outputs.go_code == 'true' && !startsWith(github.head_ref, 'release/')
     runs-on: ubuntu-latest
-    timeout-minutes: 40
+    timeout-minutes: 30
     steps:
       - name: Checkout code
         uses: actions/checkout@v7
@@ -278,48 +357,43 @@ jobs:
 
       # ast-grep is needed because internal/cli rewrite-guard tests shell out
       # to `sg`; without it those tests skip and the race run misses the very
-      # exec.Command paths that dominate race runtime (internal/cli ~379s/70%).
+      # exec.Command paths that dominate race runtime.
       - name: Install ast-grep (provides `sg`)
         run: npm install -g @ast-grep/cli@0.40.5
 
-      # See the `test` job's test step for why `|| rc=$?` (not `; rc=$?`) and
-      # why only stdout is redirected.
-      - name: Run race detector across all packages
+      # Selector: letters A-E plus the Factory family (prefix "Fa"). Proxy 605s
+      # over 1937 tests; -timeout 20m is about 2x that.
+      - name: Run race detector (internal/cli 1 of 4)
         shell: bash
         run: |
           rc=0
-          # -timeout is per test binary, not per job: Go's 10m default kills
-          # internal/cli, whose -race runtime was 1128s on the last green develop
-          # run (37135148076) and hit the old 20m cap on run 37161322193 with 276
-          # t.Parallel tests never started. The 3883 tests common to both runs
-          # took 716s then 1024s (+43%) on the same hosted runner class, so the
-          # ceiling needs headroom over the last green figure: 35m clears it
-          # while staying inside this job's timeout-minutes: 40 budget.
-          go test -json -race -count=1 -timeout 35m -run '^(TestFactory|TestInstall|TestTodo|TestRun)' ./... > test-stream-race-1.json || rc=$?
-          bash scripts/ci-census/test-census.sh test-stream-race-1.json
+          bash scripts/ci/retry-flaky.sh --registry scripts/ci/flaky-registry.txt -- go test -json -race -count=1 -timeout 20m -run '^Test([A-E]|Fa)' ./internal/cli/ > test-stream-race-cli-1.json || rc=$?
+          bash scripts/ci-census/test-census.sh test-stream-race-cli-1.json
+          # A selector that matched no test is a silent green, not a pass: refuse it.
+          grep -q '"Test":"' test-stream-race-cli-1.json || { echo "FAIL: -run selector matched no test (empty sweep)"; rc=1; }
           exit $rc
 
       - name: Compress test event stream
         if: always()
         shell: bash
         run: |
-          if [ -f test-stream-race-1.json ]; then gzip -f test-stream-race-1.json; fi
+          if [ -f test-stream-race-cli-1.json ]; then gzip -f test-stream-race-cli-1.json; fi
 
       - name: Upload test event stream
         if: always()
         uses: actions/upload-artifact@v7
         with:
-          name: test-stream-ci-race-1
-          path: test-stream-race-1.json.gz
+          name: test-stream-ci-race-cli-1
+          path: test-stream-race-cli-1.json.gz
           retention-days: 7
           if-no-files-found: warn
 
-  test-race-2:
-    name: Race Test 2
+  test-race-cli-2:
+    name: Race Test (internal/cli 2 of 4)
     needs: detect
     if: needs.detect.outputs.go_code == 'true' && !startsWith(github.head_ref, 'release/')
     runs-on: ubuntu-latest
-    timeout-minutes: 40
+    timeout-minutes: 30
     steps:
       - name: Checkout code
         uses: actions/checkout@v7
@@ -335,41 +409,247 @@ jobs:
       - name: Download dependencies
         run: go mod download
 
-      # ast-grep is needed because internal/cli rewrite-guard tests shell out
-      # to `sg`; without it those tests skip and the race run misses the very
-      # exec.Command paths that dominate race runtime (internal/cli ~379s/70%).
+      # ast-grep: see the internal/cli 1 of 4 leg above for why `sg` is needed.
       - name: Install ast-grep (provides `sg`)
         run: npm install -g @ast-grep/cli@0.40.5
 
-      # See the `test` job's test step for why `|| rc=$?` (not `; rc=$?`) and
-      # why only stdout is redirected.
-      - name: Run race detector across all packages
+      # Selector: F-letter names other than Factory, plus letters G-I (the
+      # Install family is in this shard). Proxy 408s over 741 tests.
+      - name: Run race detector (internal/cli 2 of 4)
         shell: bash
         run: |
           rc=0
-          # -timeout is per test binary, not per job: Go's 10m default kills
-          # internal/cli, whose -race runtime was 1128s on the last green develop
-          # run (37135148076) and hit the old 20m cap on run 37161322193 with 276
-          # t.Parallel tests never started. The 3883 tests common to both runs
-          # took 716s then 1024s (+43%) on the same hosted runner class, so the
-          # ceiling needs headroom over the last green figure: 35m clears it
-          # while staying inside this job's timeout-minutes: 40 budget.
-          go test -json -race -count=1 -timeout 35m -skip '^(TestFactory|TestInstall|TestTodo|TestRun)' ./... > test-stream-race-2.json || rc=$?
-          bash scripts/ci-census/test-census.sh test-stream-race-2.json
+          bash scripts/ci/retry-flaky.sh --registry scripts/ci/flaky-registry.txt -- go test -json -race -count=1 -timeout 20m -run '^Test(F([^a]|$)|[G-I])' ./internal/cli/ > test-stream-race-cli-2.json || rc=$?
+          bash scripts/ci-census/test-census.sh test-stream-race-cli-2.json
+          # A selector that matched no test is a silent green, not a pass: refuse it.
+          grep -q '"Test":"' test-stream-race-cli-2.json || { echo "FAIL: -run selector matched no test (empty sweep)"; rc=1; }
           exit $rc
 
       - name: Compress test event stream
         if: always()
         shell: bash
         run: |
-          if [ -f test-stream-race-2.json ]; then gzip -f test-stream-race-2.json; fi
+          if [ -f test-stream-race-cli-2.json ]; then gzip -f test-stream-race-cli-2.json; fi
 
       - name: Upload test event stream
         if: always()
         uses: actions/upload-artifact@v7
         with:
-          name: test-stream-ci-race-2
-          path: test-stream-race-2.json.gz
+          name: test-stream-ci-race-cli-2
+          path: test-stream-race-cli-2.json.gz
+          retention-days: 7
+          if-no-files-found: warn
+
+  test-race-cli-3:
+    name: Race Test (internal/cli 3 of 4)
+    needs: detect
+    if: needs.detect.outputs.go_code == 'true' && !startsWith(github.head_ref, 'release/')
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+
+      - name: Setup Go
+        uses: actions/setup-go@v7
+        with:
+          go-version-file: go.mod
+          cache: true
+
+      - name: Download dependencies
+        run: go mod download
+
+      # ast-grep: see the internal/cli 1 of 4 leg above for why `sg` is needed.
+      - name: Install ast-grep (provides `sg`)
+        run: npm install -g @ast-grep/cli@0.40.5
+
+      # Selector: letters J-R. Proxy 532s over 1644 tests.
+      - name: Run race detector (internal/cli 3 of 4)
+        shell: bash
+        run: |
+          rc=0
+          bash scripts/ci/retry-flaky.sh --registry scripts/ci/flaky-registry.txt -- go test -json -race -count=1 -timeout 20m -run '^Test[J-R]' ./internal/cli/ > test-stream-race-cli-3.json || rc=$?
+          bash scripts/ci-census/test-census.sh test-stream-race-cli-3.json
+          # A selector that matched no test is a silent green, not a pass: refuse it.
+          grep -q '"Test":"' test-stream-race-cli-3.json || { echo "FAIL: -run selector matched no test (empty sweep)"; rc=1; }
+          exit $rc
+
+      - name: Compress test event stream
+        if: always()
+        shell: bash
+        run: |
+          if [ -f test-stream-race-cli-3.json ]; then gzip -f test-stream-race-cli-3.json; fi
+
+      - name: Upload test event stream
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: test-stream-ci-race-cli-3
+          path: test-stream-race-cli-3.json.gz
+          retention-days: 7
+          if-no-files-found: warn
+
+  test-race-cli-4:
+    name: Race Test (internal/cli 4 of 4)
+    needs: detect
+    if: needs.detect.outputs.go_code == 'true' && !startsWith(github.head_ref, 'release/')
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+
+      - name: Setup Go
+        uses: actions/setup-go@v7
+        with:
+          go-version-file: go.mod
+          cache: true
+
+      - name: Download dependencies
+        run: go mod download
+
+      # ast-grep: see the internal/cli 1 of 4 leg above for why `sg` is needed.
+      - name: Install ast-grep (provides `sg`)
+        run: npm install -g @ast-grep/cli@0.40.5
+
+      # Selector: letters S-Z plus every non-letter first character. Proxy 496s
+      # over 1113 tests.
+      - name: Run race detector (internal/cli 4 of 4)
+        shell: bash
+        run: |
+          rc=0
+          bash scripts/ci/retry-flaky.sh --registry scripts/ci/flaky-registry.txt -- go test -json -race -count=1 -timeout 20m -run '^Test([S-Z]|[^A-Za-z])' ./internal/cli/ > test-stream-race-cli-4.json || rc=$?
+          bash scripts/ci-census/test-census.sh test-stream-race-cli-4.json
+          # A selector that matched no test is a silent green, not a pass: refuse it.
+          grep -q '"Test":"' test-stream-race-cli-4.json || { echo "FAIL: -run selector matched no test (empty sweep)"; rc=1; }
+          exit $rc
+
+      - name: Compress test event stream
+        if: always()
+        shell: bash
+        run: |
+          if [ -f test-stream-race-cli-4.json ]; then gzip -f test-stream-race-cli-4.json; fi
+
+      - name: Upload test event stream
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: test-stream-ci-race-cli-4
+          path: test-stream-race-cli-4.json.gz
+          retention-days: 7
+          if-no-files-found: warn
+
+  test-race-rosterguard:
+    name: Race Test (rosterguard)
+    needs: detect
+    if: needs.detect.outputs.go_code == 'true' && !startsWith(github.head_ref, 'release/')
+    runs-on: ubuntu-latest
+    timeout-minutes: 35
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+
+      - name: Setup Go
+        uses: actions/setup-go@v7
+        with:
+          go-version-file: go.mod
+          cache: true
+
+      - name: Download dependencies
+        run: go mod download
+
+      # ast-grep: kept so this leg runs in the same environment as the other race legs.
+      - name: Install ast-grep (provides `sg`)
+        run: npm install -g @ast-grep/cli@0.40.5
+
+      # Standalone leg: the whole rosterguard package (20 top-level tests), scoped
+      # with -run. Measured 782.4s as package wall time in the race-2 leg; -timeout
+      # 25m is about 2x that.
+      - name: Run race detector (rosterguard)
+        shell: bash
+        run: |
+          rc=0
+          bash scripts/ci/retry-flaky.sh --registry scripts/ci/flaky-registry.txt -- go test -json -race -count=1 -timeout 25m -run '^Test' ./internal/harness/rosterguard/ > test-stream-race-rosterguard.json || rc=$?
+          bash scripts/ci-census/test-census.sh test-stream-race-rosterguard.json
+          # A selector that matched no test is a silent green, not a pass: refuse it.
+          grep -q '"Test":"' test-stream-race-rosterguard.json || { echo "FAIL: -run selector matched no test (empty sweep)"; rc=1; }
+          exit $rc
+
+      - name: Compress test event stream
+        if: always()
+        shell: bash
+        run: |
+          if [ -f test-stream-race-rosterguard.json ]; then gzip -f test-stream-race-rosterguard.json; fi
+
+      - name: Upload test event stream
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: test-stream-ci-race-rosterguard
+          path: test-stream-race-rosterguard.json.gz
+          retention-days: 7
+          if-no-files-found: warn
+
+  test-race-remainder:
+    name: Race Test (remainder packages)
+    needs: detect
+    if: needs.detect.outputs.go_code == 'true' && !startsWith(github.head_ref, 'release/')
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+
+      - name: Setup Go
+        uses: actions/setup-go@v7
+        with:
+          go-version-file: go.mod
+          cache: true
+
+      - name: Download dependencies
+        run: go mod download
+
+      # ast-grep: the hook/mx scans in this leg need `sg` as before the split.
+      - name: Install ast-grep (provides `sg`)
+        run: npm install -g @ast-grep/cli@0.40.5
+
+      # Every package except internal/cli (the four shards above) and the
+      # rosterguard package (its own leg), so each package runs exactly once. The
+      # largest remaining package binary measured 383s over both legs
+      # (internal/factory); -timeout 15m is about 2x that. An empty package list
+      # is refused, so a bad listing cannot pass as a clean run.
+      - name: Run race detector (remainder packages)
+        shell: bash
+        run: |
+          rc=0
+          pkgs="$(go list ./... | grep -v -x -e 'github.com/modu-ai/moai-adk/internal/cli' -e 'github.com/modu-ai/moai-adk/internal/harness/rosterguard')"
+          test -n "$pkgs" || { echo "FAIL: empty remainder package list (a bad listing is not evidence)"; exit 1; }
+          bash scripts/ci/retry-flaky.sh --registry scripts/ci/flaky-registry.txt -- go test -json -race -count=1 -timeout 15m $pkgs > test-stream-race-remainder.json || rc=$?
+          bash scripts/ci-census/test-census.sh test-stream-race-remainder.json
+          # A leg that ran no test is a silent green, not a pass: refuse it.
+          grep -q '"Test":"' test-stream-race-remainder.json || { echo "FAIL: remainder ran no test (empty sweep)"; rc=1; }
+          exit $rc
+
+      - name: Compress test event stream
+        if: always()
+        shell: bash
+        run: |
+          if [ -f test-stream-race-remainder.json ]; then gzip -f test-stream-race-remainder.json; fi
+
+      - name: Upload test event stream
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: test-stream-ci-race-remainder
+          path: test-stream-race-remainder.json.gz
           retention-days: 7
           if-no-files-found: warn
 

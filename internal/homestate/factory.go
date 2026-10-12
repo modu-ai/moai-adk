@@ -162,9 +162,19 @@ CREATE TABLE IF NOT EXISTS card_dispatch (
 type FactoryDB struct {
 	DB   *sql.DB
 	Path string
+	// lease holds the effective workflow.factory_lease values of a handle opened
+	// through a project root. Zero values fall back to the compiled defaults through
+	// CardLeaseDuration and RenewInterval.
+	lease factoryLeaseKeys
 }
 
 func OpenFactory(projectRoot string) (*FactoryDB, error) {
+	// The lease keys are checked before the database is opened, so a refused open
+	// leaves no database behind (SPEC-FACTORY-LEASE-RENEW-001, REQ-FLR-006, REQ-FLR-007).
+	lease, err := loadFactoryLease(projectRoot)
+	if err != nil {
+		return nil, err
+	}
 	if err := EnsureProjectLayout(projectRoot); err != nil {
 		return nil, err
 	}
@@ -172,7 +182,12 @@ func OpenFactory(projectRoot string) (*FactoryDB, error) {
 	if err != nil {
 		return nil, err
 	}
-	return OpenFactoryPath(path)
+	db, err := OpenFactoryPath(path)
+	if err != nil {
+		return nil, err
+	}
+	db.lease = lease
+	return db, nil
 }
 
 // factoryBusyTimeoutDefault is the busy timeout every connection opened
@@ -186,6 +201,10 @@ const factoryBusyTimeoutDefault = 5 * time.Second
 // record connection through it so that a claim stalled behind another writer
 // overshoots its deadline by at most the busy timeout.
 func OpenFactoryBounded(projectRoot string, busy time.Duration) (*FactoryDB, error) {
+	lease, err := loadFactoryLease(projectRoot)
+	if err != nil {
+		return nil, err
+	}
 	if err := EnsureProjectLayout(projectRoot); err != nil {
 		return nil, err
 	}
@@ -193,7 +212,12 @@ func OpenFactoryBounded(projectRoot string, busy time.Duration) (*FactoryDB, err
 	if err != nil {
 		return nil, err
 	}
-	return openFactoryPathBusy(path, busy)
+	db, err := openFactoryPathBusy(path, busy)
+	if err != nil {
+		return nil, err
+	}
+	db.lease = lease
+	return db, nil
 }
 
 // OpenFactoryPath opens a factory database at an already-resolved path. It is
@@ -645,6 +669,30 @@ func isFactoryBusy(err error) bool {
 }
 
 func (f *FactoryDB) Close() error { return f.DB.Close() }
+
+// WorkerRunBinding returns the factory run the roster binds a lane label to: the run_id of the workers row
+// for label (internal/homestate/factory.go:24-32 declares the column; internal/factory/factory_slots.go:355
+// writes it when the lane joins a run). A label with no row, and a row with an empty run_id (a legacy import
+// binds nothing: ImportLegacyWorkers leaves run_id empty), returns "". Callers refuse on "" rather than infer a
+// run from the label, because a label can be reused across runs.
+func (f *FactoryDB) WorkerRunBinding(ctx context.Context, label string) (string, error) {
+	return workerRunBinding(ctx, f.DB, label)
+}
+
+// workerRunBinding reads the roster binding of label through q, the factory connection or a transaction on it
+// (sync-audit F14, card t1663): the lease write reads it inside its own transaction. "" means the label has no
+// roster row or an empty binding.
+func workerRunBinding(ctx context.Context, q queryRower, label string) (string, error) {
+	var runID string
+	err := q.QueryRowContext(ctx, `SELECT run_id FROM workers WHERE label=?`, label).Scan(&runID)
+	if errors.Is(err, sql.ErrNoRows) {
+		return "", nil
+	}
+	if err != nil {
+		return "", fmt.Errorf("read the roster binding of %s: %w", label, err)
+	}
+	return runID, nil
+}
 
 // ImportLegacyWorkers imports workers.json only when the SQLite roster is
 // empty. The legacy file remains as read-only downgrade evidence.

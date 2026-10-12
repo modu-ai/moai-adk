@@ -42,7 +42,7 @@ func newIntegrationRemeasureCmd() *cobra.Command {
 			// error returns — the caller keeps the evidence AND the exit
 			// code (t1576 review round 2: the INVALID print alone exited 0,
 			// and a calling script read the re-measure as passed).
-			_, _ = fmt.Fprintf(cmd.OutOrStdout(), "re-measure recorded for tree %s (base %s): %s\n", rec.Tree[:12], rec.Base[:12], verdict)
+			_, _ = fmt.Fprintf(cmd.OutOrStdout(), "re-measure recorded for tree %s (base %s): %s\n", factory.ShortSHA(rec.Tree), factory.ShortSHA(rec.Base), verdict)
 			_, _ = fmt.Fprintf(cmd.OutOrStdout(), "  command: %s (exit %d)\n", rec.Command, rec.ExitCode)
 			return vErr
 		},
@@ -125,7 +125,7 @@ func remeasureWorktreeDir() (string, error) {
 // (t1576 review round 2).
 func remeasureVerdictError(rec *factory.RemeasureRecord) (string, error) {
 	if err := factory.ValidateRemeasureRecord(rec); err != nil {
-		return "INVALID: " + err.Error(), fmt.Errorf("integration remeasure: the record for tree %s is not valid: %w", rec.Tree[:12], err)
+		return "INVALID: " + err.Error(), fmt.Errorf("integration remeasure: the record for tree %s is not valid: %w", factory.ShortSHA(rec.Tree), err)
 	}
 	return "valid", nil
 }
