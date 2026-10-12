@@ -825,3 +825,11 @@ ci.yml dispatch run **38221651759** → **success** (HEAD c1a7aad665 기준 — 
 - Run B(pid 86996, `> /tmp/t1617-hook-suite.log` 리다이렉트) 종료 **exit=1**(래퍼 echo 관측, ~601s — 10m 타임아웃 추정). 기계 부하 754 하 실행.
 - **이상**: 로그 파일 mtime·크기 불변(431,188B, 이전 런 것으로 추정) — Run B의 상세 출력이 파일에 착지하지 않음. Run B의 실패 시험 상세는 **미관측**(래퍼 exit=1만 관측). 버퍼 미플러시 또는 래퍼 종료 경로 추정 — 원인 미규명, Gap.
 - 판정은 변하지 않음: 두 지명 시험의 **단독 실행 PASS**(이 트리, 3.59s/6.70s — 리더 판정법 충족) + 부하 754 실측 → 부하 계열·카드 무관. 전체 스위트 판정은 **CI에 일임**(dispatch 예정).
+
+### F3 한 줄 정정 라운드 — core 스텁 주기 문구 (board d-20261012T164933Z-1028, 2026-10-13)
+
+- **F3[High]**: 양 면 factory-dispatch-core.md:28 "a 20-min recheck cron" 잔존(카드 M2 070025bfcc가 들여온 행) — main의 renew_interval 연동과 충돌. 운영자가 한 줄 정정 1회 허용.
+- **① 적용**: "a 20-min recheck cron (`CronCreate`)" → "a recurring recheck cron (`CronCreate`, every renewal period of `workflow.factory_lease.renew_interval`)" — 양 면 동일. UTF-16 델타 **+68 ≤ 잔여 85**(줄임 불필요, 주기 수치 미포함).
+- **② 보충 시험 확장**: TestFactoryDispatchBodyCarriesRenewIntervalLinkage에 core 스텁 양 면 추가("20-min"·"20 minutes" 부재 + renew_interval 존재 단언, 내용 키 탐색). **RED 원문(be47242a8d 내용 관측)**: `.claude/rules/moai/workflow/factory-dispatch-core.md (core stub): the disk-wait paragraph lacks main's renewal-period wording "every renewal period of `workflow.factory_lease.renew_interval`" — the renew_interval linkage was lost` + `... still carries the stale fixed-period wording "20-min"` (미러 면 동일 2줄) — `--- FAIL` 2 hunk. **GREEN**: 본문 2면+스텁 2면 전부 PASS (`ok 0.459s`).
+- **③ 전수 grep** (`20-min|20 minutes|every 20|20분` — .claude/rules·templates·i18n·skills·.moai/policies·.agents·AGENTS.md): 필터 전 히트 **2건**, 전부 error-analysis.md:210(배포+미러, "5-15 minutes" 시간표 — 리더가 무관 판정). 그 외 0건.
+- **④ 측정**: 스텁 예산 ok 0.529s · ALB-0276 원장 ok 70.491s · 합성 4칸 core 4,085/합성 9,137·9,139 (≤4,092/9,146, core:28은 스텁 파일이라 role core 불변) · 확장 시험 ok.
