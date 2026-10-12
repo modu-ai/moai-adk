@@ -34,7 +34,7 @@ Operator verdict: "(c) + 두 조건" (verbatim operator selection), board record
 
 Label: FOUNDER
 Class: implementation-level
-Status: PENDING. Overlap facts are recorded in spec.md § F with the disposition undecided. No Default is recorded.
+Status: DECIDED by operator decision d-20261010T223148Z-1e76: option (i). Overlap facts are recorded in spec.md § F and SPEC A is unchanged. No Default is recorded.
 Authority anchor: SPEC-UPDATE-MIGRATION-001 § H (spec.md lines 228-230) names t1527 as owner of banners, progress rendering, and severity prefixes. The card texts for t1527, t1594, and t1612 were not read in this run.
 Operator verdict: "(i) record overlaps only, SPEC A unchanged (overlap owners t1527/t1612->t1654, t1594->t1630; all three absorbed-closed in queue)" (operator verdict 2026-10-11 (AskUserQuestion, 영실이 session)), board record d-20261010T223148Z-1e76.
 
@@ -78,13 +78,13 @@ Operator verdict: "(ii) keep 60 columns" (operator verdict 2026-10-11 (AskUserQu
 
 Label: FOUNDER
 Class: product-level
-Status: PENDING. AC-RC30-01 cannot be run in this card. The removal switch stays off in this card, and U-02 and U-10 are moved to card t1668 (split, d-20261009T235135Z-5e35); Q8 gates card t1668 only. The leader's split that moved U-02 and U-10 out of SPEC A (d-20261009T235135Z-5e35) is the scope the operator approved for audit (d-20261010T000832Z-efde); the operator verdict on Q8 itself is not recorded, and its line stays blank.
+Status: DECIDED by operator decision d-20261010T223148Z-1e76: option (ii). AC-RC30-01 cannot be run in this card. The removal switch stays off in this card, and U-02 and U-10 are moved to card t1668 (split, d-20261009T235135Z-5e35); Q8 gates card t1668 only. The leader's split that moved U-02 and U-10 out of SPEC A (d-20261009T235135Z-5e35) is the scope the operator approved for audit (d-20261010T000832Z-efde).
 Authority anchor: acceptance.md, AC-RC30-01 (judging command requires `CLAUDE_CONFIG_DIR` and a profile session); spec.md § D.2 gate sentence.
 Options (factual; no recommendation):
 - **(i)** An operator-side run of AC-RC30-01 on a profile session, recorded in progress.md, which adopts the criterion. The switch is then turned on and U-02 and U-10 proceed (plan.md § B.3, step 4).
 - **(ii)** The operator decides that U-02 and U-10 leave this SPEC or are re-scoped. The switch stays off.
 Default: none.
-Moved with the removal family to card t1668 (d-20261009T235135Z-5e35); no longer gates SPEC A. Status stays PENDING.
+Moved with the removal family to card t1668 (d-20261009T235135Z-5e35); no longer gates SPEC A. Status: DECIDED by operator decision d-20261010T223148Z-1e76: option (ii).
 Operator verdict: "(ii) U-02/U-10 leave the SPEC family, removal switch stays off (re-scope at t1668 / 3.2-2-5)" (operator verdict 2026-10-11 (AskUserQuestion, 영실이 session)), board record d-20261010T223148Z-1e76.
 
 ### Q9: Which scope does AC-RC30-22 take against REQ-UYP-014 for comments on sequence items? — DECIDED by delegated judgment d-20261010T143542Z-5d19
