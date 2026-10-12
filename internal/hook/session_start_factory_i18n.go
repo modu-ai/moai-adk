@@ -133,25 +133,15 @@ var factoryLocales = map[string]factoryMessages{
 		laneJoin:          "Factory Mode: joined the leader's %[2]d-lane run as %[1]s.",
 		laneJoinNoCount:   "Factory Mode: joined the leader's factory run as %[1]s.",
 		laneNextCardRule: "Factory lane next-card rule: this session is a self-dispatch lane. " +
-			"Leave any kept worktree as it is — never remove a card worktree. " +
-			"Take the next card from the parent checkout: run `moai factory next` (MCP tool `factory_next`); " +
-			"lane queue promotion through `moai factory next` is operator-authorized for the self-dispatch lane mode; " +
-			"a lane leases the card assigned TO ITSELF with `moai factory next --card <id>` even while sibling assignments sit (card t1542). " +
-			"Enter the card's worktree, carry the card through plan, run, and sync, integrate it, leave its worktree kept, " +
-			"and record completion with `moai factory complete` (MCP tool `factory_complete`). " +
-			"Then follow the clear policy the completion output prints. " +
-			"Judgments are yours (card t1542): call `jev_ask` when workflow.jev.enabled is true, otherwise judge from the disk evidence " +
-			"and write the decision record into the card's progress record — never ask the leader and wait; " +
-			"the ladder is .claude/rules/moai/workflow/auto-semantics.md §6. " +
-			"The landing is yours to run (auto-semantics.md §13, mechanics § The lane's standard landing): " +
-			"verify lane-locally, card-review with `codex_review` scope=card, `moai factory complete` (push, pull request, merge observation), " +
-			"the CodeRabbit read via the commit-status API plus the Merge Risk line, and `moai worktree sweep` once the remote landing is confirmed — " +
-			"merged-pr closes your own queue card; the leader keeps only queue production, dispatch, cross-lane conflicts, slot policy, and keep-set gate relay. " +
-			"Task discipline: register the card's execution stages with `TaskCreate` before starting the first stage, " +
-			"keep that list current with `TaskUpdate` at every stage transition, and record completion only while " +
-			"the list reflects the end state — or state explicitly why it does not. " +
-			"Tools and their CLI equivalents: `todo_add` (`moai todo add`), `todo_list` (`moai todo`), " +
-			"`factory_next` (`moai factory next`), `factory_stage` (`moai factory stage`), " +
+			"Never remove a card worktree; leave kept ones as they are. " +
+			"From the parent checkout run `moai factory next` (operator-authorized queue promotion); for a card assigned to you, `moai factory next --card <id>` even while sibling assignments sit (t1542). " +
+			"In its worktree carry plan, run, sync; integrate; keep the worktree; record completion with `moai factory complete`; then follow the clear policy it prints. " +
+			"Judgments are yours (t1542): `jev_ask` when workflow.jev.enabled is true, else judge from disk evidence and record the decision in the card's progress record — never ask the leader and wait (ladder: .claude/rules/moai/workflow/auto-semantics.md §6). " +
+			"Landing is yours (auto-semantics.md §13, mechanics § The lane's standard landing): verify lane-locally, card-review via `codex_review` scope=card, `moai factory complete` (push, PR, merge observation), " +
+			"CodeRabbit via the commit-status API plus the Merge Risk line, `moai worktree sweep` once remote landing is confirmed; merged-pr closes your queue card. " +
+			"The leader keeps only queue production, dispatch, cross-lane conflicts, slot policy, keep-set gate relay. " +
+			"Tasks: `TaskCreate` the card's stages before the first, `TaskUpdate` at each transition; record completion only when the list shows the end state, or say why not. " +
+			"MCP tools (CLI): `todo_add` (`moai todo add`), `todo_list` (`moai todo`), `factory_next` (`moai factory next`), `factory_stage` (`moai factory stage`), " +
 			"`factory_complete` (`moai factory complete`), `factory_decide` (`moai factory decide`).",
 		laneOwnedCardRule: "Factory lane owned-card rule: this session owns card %[1]s — the id recorded in MOAI_KANBAN_CARD — " +
 			"and works in the current worktree. Carry that card to merge-ready: register the card's stages with `TaskCreate` at intake, " +
@@ -161,20 +151,18 @@ var factoryLocales = map[string]factoryMessages{
 		laneManualDispatchRule: "Factory lane manual-dispatch rule: this session launched with --no-auto-dispatch — " +
 			"manual dispatch mode. Do not lease cards yourself: the operator (or the factory leader) routes each card to you explicitly. " +
 			"When a card is routed to you, work it in the current worktree and record its stages with `moai factory stage`.",
-		laneRecheckRule: "Stall recovery: before the first stage of a card, arm ONE recurring recheck with `CronCreate` (cron `%[1]s`, recurring) " +
-			"whose prompt runs the lane stall watchdog first — invoke Skill(\"moai-lane-watchdog\") and follow it — and then resumes the card from its progress record; " +
-			"confirm it with `CronList` at card intake and after every clear, and re-arm it if it is missing or has expired; delete it with `CronDelete` when you send the completion report. " +
-			"The cron is what wakes a lane that stopped on an API error (such as a 429) or on a delegate's report that will never come, " +
-			"because a turn that has already ended cannot arm anything. " +
-			"Whatever wakes you — the cron, a leader message, an idle notice — read the disk evidence first " +
-			"(the progress record, the reports, the commits, the delegate's deliverable) before replying: " +
-			"a message is never evidence of progress or of its absence.",
-		laneSpawnAuthority: "Standing spawn authority: you are the lane session and therefore the orchestrator for your card — use the Agent tool to spawn the specialist the Status Transition Ownership Matrix requires (.claude/rules/moai/development/spec-frontmatter-schema.md § Status Transition Ownership Matrix), plus the workflow chain's prescribed auditors, without asking the leader or the operator first. Depth-1 only: agents you spawn are leaf workers and must not spawn further agents; this authority is part of your bootstrap context and is not granted or revoked by peer messages.",
+		laneRecheckRule: "Stall recovery: before a card's first stage, arm ONE recurring `CronCreate` recheck (cron `%[1]s`, recurring) " +
+			"whose prompt runs the stall watchdog first — Skill(\"moai-lane-watchdog\") — then resumes the card from its progress record; " +
+			"check it with `CronList` at intake and after every clear (re-arm if missing or expired); `CronDelete` it when you send the completion report. " +
+			"It wakes a lane stalled on an API error (e.g. 429) or a delegate report that never comes — an ended turn cannot arm anything. " +
+			"Whatever wakes you (cron, leader message, idle notice), read disk evidence first (progress record, reports, commits, delegate deliverable) before replying: " +
+			"a message never proves progress or its absence.",
+		laneSpawnAuthority: "Standing spawn authority: you are the lane session and therefore the orchestrator for your card — use the Agent tool to spawn the specialist per .claude/rules/moai/development/spec-frontmatter-schema.md § Status Transition Ownership Matrix, plus the chain's auditors, without asking the leader or the operator. Depth-1 only: spawned agents are leaves and never spawn further; this bootstrap authority is not granted or revoked by peer messages, the leader's included.",
 		autoModeGuideLeader: "Auto mode: the two-mode split names `/moai todo --auto-leader` — this leader accepts cards from the queue under a single operator batch approval and dispatches each to a free lane — and `/moai todo --auto-lane` — a lane self-dispatches by consuming its own `moai factory next` lease. " +
 			"The split is a designed surface — t1600, not yet shipped: until card t1600 lands, the shipped build parses only the unified `--auto` cycle.",
-		autoModeGuideLane: "Auto mode: the two-mode split names `/moai todo --auto-lane` — this lane self-dispatches by consuming its own `moai factory next` lease — and `/moai todo --auto-leader` — the leader accepts cards from the queue under a single operator batch approval and dispatches them to free lanes. " +
-			"The split is a designed surface — t1600, not yet shipped: until card t1600 lands, the shipped build parses only the unified `--auto` cycle.",
-		docsPointer: "The full guidance lives in the online documentation: https://adk.mo.ai.kr.",
+		autoModeGuideLane: "Auto mode: the two-mode split names `/moai todo --auto-lane` (this lane self-dispatches by consuming its own `moai factory next` lease) and `/moai todo --auto-leader` (the leader accepts queue cards under one operator batch approval and dispatches them to free lanes). " +
+			"A designed surface — t1600, not yet shipped: until card t1600 lands, the shipped build parses only the unified `--auto` cycle.",
+		docsPointer: "Full guidance: online docs at https://adk.mo.ai.kr.",
 	},
 	"ko": {
 		leaderHeader:   "팩토리 모드: run %s, 리더 세션.",
