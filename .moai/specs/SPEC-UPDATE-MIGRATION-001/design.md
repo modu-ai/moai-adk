@@ -84,9 +84,7 @@ check applies per section FILE, not per key.
 
 Extend `internal/cli/update/report/outcome.go` with reconciliation outcome categories:
 `refreshed`, `merged`, `conflicted`, `preserved`, `archived-removed`. Managed files join the
-counted set (the `plan.go:73` exclusion is removed with the wipe). Output stays plain counts +
-path lists on the existing report structures — no new banner/progress vocabulary (t1527
-boundary, C-4).
+counted set (the `plan.go:73` exclusion is removed with the wipe). By default the preserved files are reported as plain counts on the existing report structures; the per-item path list of preserved files appears only under `--verbose`. No new banner or progress vocabulary (t1527 boundary, C-4).
 
 ## 6. Ordering and abort semantics (NFR-UPM-002)
 
