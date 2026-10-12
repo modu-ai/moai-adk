@@ -662,3 +662,45 @@ Opus 감사자 승인 대기 — 승인 전 코드·규칙 파일 변경 없음.
 - `gofmt -l internal/` → **출력 0줄**(exit 0)
 
 push는 이 기록 커밋 뒤 origin/WT-3-2-1로 1회, 최종 HEAD는 완료 보고로 리더 전달.
+
+### N1 천장 재설정 라운드 — 운영자 결정 이행 (board d-20261012T061322Z-f5b3, 2026-10-12)
+
+#### 결정 이행 내역
+
+- **운영자 결정**: N1을 문장 축소가 아니라 **천장 수치 재설정**으로 해결. 문장은 그대로 둠. 여유분 없음(실측 그대로).
+- **근거 문구(운영자)**: 「SessionStart 물리 상한 10,000 이내, 최악 조합 lane-en 실측과 마진」.
+- **manager-spec 스폰**: SPEC 0.6.0 천장 개정 — spec.md·acceptance.md·plan.md 3파일 25행(구 9,127/4,073/4,074 → 신 9,146/4,092/4,093; 역사 관측 원문 보존; 잔존 구수치 전수 이력 분류 증명 포함). 코드 무변경.
+- **manager-develop 스폰**: internal/hook/role_injection_budget_test.go 상수 갱신 — budgetCompositeLimit 9127→**9146**, budgetCoreCeiling 4073→**4092**, 주석에 0.6.0 계보. producer 4,797·overhead 257·target 3,800 불변. 사슬 항등 4,797+257+4,092=9,146 유지.
+- **상수 시험 원문(스폰 검증, 이 트리 이 런)**: 4 하위 시험 전부 PASS — lane composite=9144 (budget 9146), leader composite=9146 (budget 9146), core=4092 (ceiling 4092). gofmt 0줄, go vet 통과.
+
+#### 시험 가족 목록 (지시 ② — 수정 식별자·파일을 읽는 시험 grep 전수, 실행 전 기록)
+
+- **A. 예산 상수 리더** (budgetCoreCeiling|budgetCompositeLimit|budgetProducerCeiling|budgetOverhead): internal/hook/role_injection_budget_test.go — 1파일
+- **B. factory-dispatch.md 리더** (grep -rln "factory-dispatch" --include="*_test.go"): template 13(codex_review_ownership_m4·role_core_stub_gate·role_entry_points·rule_template_mirror·catalog_user_install_view·card_id_leak·binding_ledger·jev_auto_exception·contract_mode_guided·workflow_rule_paths_pinned·docs_delegation_lane_flow·deployed_rule_section_refs·lane_recheck_doctrine) + cli 5(todo_auto_pick_doc·init_headroom_export·todo_session_start_guide_doc·update_retired_rules_backup·todo_auto_doc) + hook 3(role_core_reach·role_core_elements·role_rules) — 21파일
+- **C. 조립 경로 리더** (roleRuleInjectionFor|assembleInjectionComposite|buildRoleCore|roleRuleFiles): hook 6(role_injection_budget·role_rules·role_composite_e2e·role_rules_fifo·role_composite_budget_meas·role_rules_version_skew)
+- **실행 계획**: internal/hook **전체 스위트**(A·C·e2e 4칸·reach·elements 포괄) + internal/template **전체 스위트**(B 13포괄·binding_ledger·변이 2건) + internal/cli는 B리스트 5파일 **한정**(카드 트리 cli 전체 스위트는 구조적 적색 — 기록 교훈 t1542).
+- 지난 라운드 누락(판정 C9 — e2e만 돌리고 상수 시험 빠뜨림)의 재발 방지 조치가 본 목록화.
+
+#### 가족 실행 결과 (지시 ② — 목록 전부 실행)
+
+| 대상 | 명령 | 결과 |
+|---|---|---|
+| internal/hook 전체 | `go test ./internal/hook -count=1` | **ok 365.155s** — 예산 상수 4 하위 PASS·e2e 4칸 PASS 포함 |
+| internal/template 전체 | `go test ./internal/template -count=1` | **ok 585.615s** — binding_ledger·변이 2건·B리스트 13포괄 |
+| internal/cli 가족 11종 | `-run 'TestAuto…|TestHeadroom…|TestUpdateRemoves…'` | **10 PASS + TestHeadroomInitSurfaceExport SKIP**(설계 게이트: `-headroom-export` 미지정) → 플래그 투입 재실행 **PASS**(1.71s) — 11종 전부 관측 |
+
+- 첫 cli 시도에서 파일명 기반 -run 정규식이 0매치(`[no tests to run]`) — 시험 함수명을 grep으로 재추출해 11종 실행(빈 스윕을 통과로 읽지 않음 — 기록 교훈 t1538 적용).
+- **경합 오패 경위(자기 귀속)**: 최초 시도에서 hook·template 두 스위트를 한 명령으로 병렬 실행해 양쪽 모두 go-test 기본 600s 타임아웃 FAIL(경합 hang — 기록 교훈 t1542 위반, 2회 재연). tail 파이프로 hook 결과 유실. **단독 직렬 재실행으로 양쪽 ok 관측** — 위 표의 수치는 직렬 관측값. 병렬 실행의 FAIL은 오패로 기록, 판정 근거 아님.
+
+#### ⑥ clean·형식 원문 (커밋 직전 실측 — 커밋 후 push)
+
+- `gofmt -l internal/` → **출력 0줄**(exit 0) — 위 실측 시점 원문.
+- `git status --short` → 커밋 전 시점 원문(이 라운드 5파일만, 이질 파일 없음):
+```
+ M .moai/specs/SPEC-ROLE-INJECTION-BUDGET-001/acceptance.md
+ M .moai/specs/SPEC-ROLE-INJECTION-BUDGET-001/plan.md
+ M .moai/specs/SPEC-ROLE-INJECTION-BUDGET-001/progress.md
+ M .moai/specs/SPEC-ROLE-INJECTION-BUDGET-001/spec.md
+ M internal/hook/role_injection_budget_test.go
+```
+- 전 커밋 뒤 push 직전 상태는 완료 보고로 리더 전달(재판독 원문 동봉).
