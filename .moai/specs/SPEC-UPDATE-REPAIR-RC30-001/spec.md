@@ -178,9 +178,9 @@ Each card below is recorded only as an overlap with this SPEC. The operator verd
 
 | Card | Overlap facts (basis) | Status |
 |------|------------------------|--------|
-| t1527 | Owner of banners, progress rendering, and severity prefixes per `SPEC-UPDATE-MIGRATION-001` § H (spec.md:228-230). Overlaps this SPEC's update-side items U-16, U-17, U-18 (in SPEC A), and U-26 to U-29 [MOVED to card t1669]. The init-side presentation is decided by SPEC-CLI-TUX-INIT-UPDATE-001 Group D and touches `internal/cli/init*.go`, which WT-user-asset-bundle also changes (file-level overlap on WT-user-asset-bundle, research.md § 2 E-OVERLAP). | overlap, recorded overlap, SPEC A unchanged |
-| t1594 | User-asset residue. The audit maps D4 and D5 to t1594 by inference. Overlaps U-09 and U-10, which sit in `internal/cli/migrate_project_assets.go`, a file changed on WT-user-asset-bundle. | overlap, recorded overlap, SPEC A unchanged |
-| t1612 | CLI output redesign. The audit maps D12 and D13 to t1527 and t1612, and D17 as adjacent. Overlaps U-08 and U-16. Non-update CLI output has no decided scope in this tree (Gap). | overlap, recorded overlap, SPEC A unchanged |
+| t1527 | Owner of banners, progress rendering, and severity prefixes per `SPEC-UPDATE-MIGRATION-001` § H (spec.md:228-230). Overlaps this SPEC's update-side items U-16, U-17, U-18 (in SPEC A), and U-26 to U-29 [MOVED to card t1669]. The init-side presentation is decided by SPEC-CLI-TUX-INIT-UPDATE-001 Group D and touches `internal/cli/init*.go`, which WT-user-asset-bundle also changes (file-level overlap on WT-user-asset-bundle, research.md § 2 E-OVERLAP). | recorded overlap, SPEC A unchanged |
+| t1594 | User-asset residue. The audit maps D4 and D5 to t1594 by inference. Overlaps U-09 and U-10, which sit in `internal/cli/migrate_project_assets.go`, a file changed on WT-user-asset-bundle. | recorded overlap, SPEC A unchanged |
+| t1612 | CLI output redesign. The audit maps D12 and D13 to t1527 and t1612, and D17 as adjacent. Overlaps U-08 and U-16. Non-update CLI output has no decided scope in this tree (Gap). | recorded overlap, SPEC A unchanged |
 
 ## G. Landing and absorption
 
@@ -215,7 +215,7 @@ Note on the branch base: the worktree was cut from main tip `2aab5f797`. `.claud
 
 ### Out of Scope — init-side presentation
 
-- Init banner, init success card, and init-side output are not in this SPEC's item register. Their queue overlap with t1527 is recorded in § F with recorded overlap, SPEC A unchanged. The decided init presentation is SPEC-CLI-TUX-INIT-UPDATE-001 Group D.
+- Init banner, init success card, and init-side output are not in this SPEC's item register. Their queue overlap with t1527 is recorded in § F as an overlap, with SPEC A unchanged. The decided init presentation is SPEC-CLI-TUX-INIT-UPDATE-001 Group D.
 
 ### Out of Scope — mo.ai.kr operator recovery
 
@@ -233,9 +233,9 @@ Recorded in `decision-index.md`. Summary:
 
 - **Q1 (resolved from disk; not an operator question).** "16" in R1 names the 16 programming languages (a neutrality concern). "Four locale strings" in R2(g) names the four user-facing locales ko, en, ja, zh (a translation concern). The sets are disjoint. REQ-RC30-019 [MOVED to card t1669] uses the four locales.
 - **Q2 (decided by operator decision d-20261010T060848Z-dc3b; FOUNDER, product-level).** Profile reach: options (a), (b), and (c) are stated factually in decision-index.md. Option (c) with conditions 1 and 2 is decided (operator decision d-20261010T060848Z-dc3b); option (b) is not adopted. U-01 proceeds under option (c).
-- **Q3 (queue overlaps; recorded overlap, SPEC A unchanged).** t1527, t1594, and t1612 are recorded as overlaps in § F. Blocks no item of this SPEC.
-- **Q7 (applied default: 60 columns, kept by board ruling d-20261010T101935Z-4bc4; open to operator override (decision-index.md Q7)).** The narrow-terminal width threshold. Options are stated factually in decision-index.md. REQ-RC30-018 [MOVED to card t1669] carries the value 60 columns (applied default).
-- **Q8 (pending; decision-index.md Q8).** U-02 and U-10 moved to card t1668 with the removal family (d-20261009T235135Z-5e35); Q8 stays pending and no longer gates SPEC A.
+- **Q3 (queue overlaps; recorded as overlaps, SPEC A unchanged).** t1527, t1594, and t1612 are recorded as overlaps in § F. Blocks no item of this SPEC.
+- **Q7 (applied default: 60 columns, kept by board ruling d-20261010T101935Z-4bc4; operator-confirmed, option (ii), board d-20261010T223148Z-1e76; decision-index.md Q7).** The narrow-terminal width threshold. Options are stated factually in decision-index.md. REQ-RC30-018 [MOVED to card t1669] carries the value 60 columns (applied default).
+- **Q8 (decided by operator decision d-20261010T223148Z-1e76: option (ii); decision-index.md Q8).** U-02 and U-10 moved to card t1668 with the removal family (d-20261009T235135Z-5e35); Q8 is decided and no longer gates SPEC A.
 - **B1 (CLOSED).** Decided by the leader's split (d-20261009T235135Z-5e35, option 1): SPEC A carries 22 criteria against the budget of 25 and 17 requirements (21 at revision 0.1.3, plus AC-RC30-28 in revision 0.1.4). Options (a) and (b) remain in decision-index.md as the record.
 
 ## K. Requirement and AC budget
