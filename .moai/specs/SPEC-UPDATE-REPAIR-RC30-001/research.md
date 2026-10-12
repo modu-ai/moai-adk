@@ -430,7 +430,7 @@ $ ~/.zsh_history (2072 epoch-tagged entries, parsed)                            
 
 The one background task near the bracket is `b8g4eb8vq`. Its command, a `git merge --no-ff --no-commit WT-news-og-body-halt` in the mo.ai.kr session at 02:26:22Z, was moved to background at 02:26:23Z. Its output file (`/private/tmp/claude-501/-Users-goos-MoAI-mo-ai-kr/b4f5059b-9f5b-4d67-a0d3-35ad9970cbc5/tasks/b8g4eb8vq.output`, 542 bytes, mtime 11:26 local) holds a pre-commit hook failure message and `[exited with code 0]`, and it names no path. It cannot attribute the removal.
 
-Verdict: the removal is bracketed and its producer is identified; the removing command is **not** attributed (§4 item 18). AC-RC30-24 stays FAIL until a command with observed output names the removal.
+Verdict: the removal is bracketed and its producer is identified; the removing command is **not** attributed (§4 item 18). AC-RC30-24 is deferred: excluded from the landing verdict; the operator checks the log at the 3.2-6-2 rc.30 field run (mo.ai.kr).
 
 ## 3. Baseline-attribution
 
