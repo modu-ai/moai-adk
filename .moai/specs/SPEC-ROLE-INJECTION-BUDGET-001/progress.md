@@ -762,3 +762,38 @@ push는 이 기록 커밋 뒤 origin/WT-3-2-1로 1회, 최종 HEAD는 완료 보
 - `gofmt -l internal/` → **출력 0줄**(exit 0)
 - `git status --short` → `.claude/rules/moai/workflow/factory-dispatch.md` · `.moai/specs/.../progress.md` · `internal/template/templates/.claude/rules/moai/workflow/factory-dispatch.md` · `internal/template/testdata/binding_ledger.json` (4파일)
 - 전 커밋 뒤 push 직전 재판독은 완료 보고에 동봉.
+
+### 마지막 좁은 정정 라운드 — ④ 전수 확인 + ①③ 완료, ② 구조적 차단 (board d-20261012T081654Z-6586, 2026-10-12)
+
+#### ④ 카드·main 공동 변경 5파일 main hunk 전수 판정 (merge-base 478285ab4c → f518deac8e)
+
+| 파일 | main hunk | HEAD 판정 |
+|---|---|---|
+| .claude/rules/moai/workflow/factory-dispatch.md | 디스크 대기 문단 주기 문구("every 20 minutes"→"every renewal period of `workflow.factory_lease.renew_interval`") | **유실 — 본문 사본(:122)에 구형 잔존(F1) → ① 복원** |
+| internal/template/templates/...factory-dispatch.md (미러) | 동일 | **유실 → ① 복원** |
+| internal/hook/session_start_factory_i18n.go | 코멘트 renew_interval 언급 1 hunk + ko/ja/zh `cron %[1]s` 3 hunk | 그대로 있음(전수 확인: renew_interval 1행·`%[1]s` 4로캘 모두 HEAD 존재) |
+| internal/template/testdata/binding_ledger.json | MCP 원장 행 3건(47→48 도구·factory_renew·rewrite_note) | 그대로 있음(병합에서 theirs 수용 — "48 tools"×4·factory_renew×4 확인). 행 id 대조: main 추가 행 0건, 누락 0건 |
+| CHANGELOG.md | main 측 신규 엔트리 다수 | 그대로 있으나 카드 측 블록과 SPEC-CODEX-CONFORMANCE-001 중복(F2) → ③ 제거 |
+
+#### ① 본문 문구 복원 — 완료
+
+양 면 :122 본문 사본의 주기 문구를 main 문구로 복원: "every 20 minutes" → "every renewal period of `workflow.factory_lease.renew_interval`".
+
+#### ③ CHANGELOG 중복 제거 — 완료
+
+SPEC-CODEX-CONFORMANCE-001 항목 2건 → 1건(카드 측 사본 제거, main 측 보존).
+
+#### ② 원장 본문 행 분리 복원 — **구조적 차단, 미수행**
+
+- 시도: ALB-0364 신설(rule-body: 위치, main의 장문 after_text) → `TestBindingLedgerIntegrity` FAIL — 원문: "row ALB-0364 (workflow/factory-dispatch.md:122) has no extracted anchor unit".
+- 원인(검사 코드 binding_ledger_test.go:501-527): 행 커버리지 계약은 **앵커 단위 1:1** — 각 행은 앵커 SHA 본문에서 추출된 단위와 start_line으로 매칭되고, 단위당 행 1개(duplicate claim 오류), before_text=단위 텍스트 필수. 본문 사본은 앵커 시점에 존재하지 않아(카드가 흡수 전 추가) 대응 앵커 단위가 없음. 기존 363단위는 전부 점유 — 분리 행이 들어갈 단위가 없음. 앵커 재설정은 363행 전면 재유도라 좁은 정정 범위 밖.
+- ALB-0364 되돌림 — 원장 시험 재관측 **ok 55.682s**(363행).
+- 판단: main의 의미(renew_interval)는 ①로 본문에 복원됐고 본문은 읽기 지시 대상 면이므로 압축 행(0276, role-core)과 배달면이 분리돼 있음. 원장 위 표현은 0276의 rewrite_note에 기록된 카드 의도(압축 rewrite)와 (b) 결정(연동은 본문+인자 전달)로 귀속됨.
+
+#### CI (독립 관측)
+
+ci.yml dispatch run **38221651759** → **success** (HEAD c1a7aad665 기준 — 본 정정 커밋 전 트리).
+
+#### ⑤ 잔여
+
+② 처분 결정 뒤: 예산 4칸·원장·실조립 4칸 재측정 원문 + hook·template 직렬 + 미커밋 0·gofmt 0 → push. 그 전까지 push 금지(로컬 커밋만).
