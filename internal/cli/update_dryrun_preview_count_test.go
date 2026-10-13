@@ -71,3 +71,15 @@ func TestPreviewPreservedLinesCountByDefault(t *testing.T) {
 		t.Errorf("verbose preview must not carry the count hint, got:\n%s", gotVerbose)
 	}
 }
+
+// withVerboseMode turns the package-level updateVerboseMode on for one test and
+// restores the previous value when the test ends. Callers must not call
+// t.Parallel: the flag is package state that the preview reads. The --verbose
+// twins of the count-by-default tests use it, so each per-path assertion that
+// the default now replaces with a count still runs under --verbose.
+func withVerboseMode(t *testing.T) {
+	t.Helper()
+	prev := updateVerboseMode
+	t.Cleanup(func() { updateVerboseMode = prev })
+	updateVerboseMode = true
+}

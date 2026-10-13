@@ -1254,14 +1254,68 @@ func TestPreviewFlagsMigrationRemovalCandidates(t *testing.T) {
 	if strings.Contains(got, "preserved: "+migIdenticalSkill) {
 		t.Errorf("the migration candidate was also listed as user-owned — the dispositions must not overlap:\n%s", got)
 	}
-	if !strings.Contains(got, "preserved: "+migForeignSkill) {
-		t.Errorf("the control (untracked local-only skill) must stay plain preserved:\n%s", got)
+	// Default (no --verbose): the control is counted, not listed by path, and the
+	// count line says the migration candidate sits outside the count.
+	// TestPreviewFlagsMigrationRemovalCandidates_VerboseListsControl keeps the
+	// path check.
+	if !strings.Contains(got, "[dry-run] preserved: 1 file(s)") {
+		t.Errorf("the control (untracked local-only skill) must stay plain preserved in the count:\n%s", got)
+	}
+	if strings.Contains(got, "preserved: "+migForeignSkill) {
+		t.Errorf("default preview lists the control path by name; the count is the default:\n%s", got)
+	}
+	if !strings.Contains(got, "migration candidates are not counted here (listed above)") {
+		t.Errorf("the count line must say the migration candidate is outside the count:\n%s", got)
+	}
+}
+
+// TestPreviewFlagsMigrationRemovalCandidates_VerboseListsControl is the --verbose
+// twin of TestPreviewFlagsMigrationRemovalCandidates: the same fixture, with the
+// control listed by path and the migration candidate kept out of the preserved
+// listing. It is serial because it sets updateVerboseMode.
+func TestPreviewFlagsMigrationRemovalCandidates_VerboseListsControl(t *testing.T) {
+	enableRemovalForTest(t)
+	withVerboseMode(t)
+	root := t.TempDir()
+	embedded, err := template.EmbeddedTemplates()
+	if err != nil {
+		t.Fatal(err)
+	}
+	identical, err := fs.ReadFile(embedded, migIdenticalSkill)
+	if err != nil {
+		t.Fatalf("embedded read: %v", err)
+	}
+	writeFixtureFile(t, root, migIdenticalSkill, string(identical))
+	mgr := manifest.NewManager()
+	if _, err := mgr.Load(root); err != nil {
+		t.Fatal(err)
+	}
+	if err := mgr.Track(migIdenticalSkill, manifest.TemplateManaged, manifest.HashBytes(identical)); err != nil {
+		t.Fatal(err)
+	}
+	if err := mgr.Save(); err != nil {
+		t.Fatal(err)
+	}
+	writeFixtureFile(t, root, migForeignSkill, "# moai-custom: the user's own skill\n")
+
+	var out bytes.Buffer
+	if err := previewReconciliation(root, template.DeployModeLocal, &out); err != nil {
+		t.Fatalf("previewReconciliation (verbose): %v", err)
+	}
+	got := out.String()
+
+	if !strings.Contains(got, "[dry-run] preserved: "+migForeignSkill) {
+		t.Errorf("verbose preview must list the control (untracked local-only skill) by path:\n%s", got)
+	}
+	if strings.Contains(got, "[dry-run] preserved: "+migIdenticalSkill) {
+		t.Errorf("the migration candidate was listed as user-owned under --verbose:\n%s", got)
 	}
 }
 
 // TestPreviewOmitsRemovalCandidateWhileSwitchOff: with the removal switch at its
 // default (off) the migration keeps the copy, so the dry-run preview must not
-// announce its removal as a candidate. The copy is still named, not dropped.
+// announce its removal as a candidate. The copy is still counted, not dropped;
+// TestPreviewOmitsRemovalCandidateWhileSwitchOff_VerboseNamesCopy names it.
 func TestPreviewOmitsRemovalCandidateWhileSwitchOff(t *testing.T) {
 	root := t.TempDir()
 	embedded, err := template.EmbeddedTemplates()
@@ -1293,8 +1347,55 @@ func TestPreviewOmitsRemovalCandidateWhileSwitchOff(t *testing.T) {
 	if strings.Contains(got, "migration candidate: "+migIdenticalSkill) {
 		t.Errorf("the preview announces a removal the switched-off migration will not make:\n%s", got)
 	}
-	if !strings.Contains(got, migIdenticalSkill) {
-		t.Errorf("the preview dropped the copy instead of naming it:\n%s", got)
+	// Default (no --verbose): the copy is counted as preserved, not dropped.
+	// TestPreviewOmitsRemovalCandidateWhileSwitchOff_VerboseNamesCopy keeps the
+	// path check.
+	if !strings.Contains(got, "[dry-run] preserved: 1 file(s)") {
+		t.Errorf("the preview dropped the copy instead of counting it as preserved:\n%s", got)
+	}
+	if strings.Contains(got, "[dry-run] preserved: "+migIdenticalSkill) {
+		t.Errorf("default preview lists the copy by path; the count is the default:\n%s", got)
+	}
+}
+
+// TestPreviewOmitsRemovalCandidateWhileSwitchOff_VerboseNamesCopy is the
+// --verbose twin of TestPreviewOmitsRemovalCandidateWhileSwitchOff: with the
+// switch off, the copy is listed by path as preserved and is not announced as a
+// migration candidate. It is serial because it sets updateVerboseMode.
+func TestPreviewOmitsRemovalCandidateWhileSwitchOff_VerboseNamesCopy(t *testing.T) {
+	withVerboseMode(t)
+	root := t.TempDir()
+	embedded, err := template.EmbeddedTemplates()
+	if err != nil {
+		t.Fatal(err)
+	}
+	identical, err := fs.ReadFile(embedded, migIdenticalSkill)
+	if err != nil {
+		t.Fatalf("embedded read: %v", err)
+	}
+	writeFixtureFile(t, root, migIdenticalSkill, string(identical))
+	mgr := manifest.NewManager()
+	if _, err := mgr.Load(root); err != nil {
+		t.Fatal(err)
+	}
+	if err := mgr.Track(migIdenticalSkill, manifest.TemplateManaged, manifest.HashBytes(identical)); err != nil {
+		t.Fatal(err)
+	}
+	if err := mgr.Save(); err != nil {
+		t.Fatal(err)
+	}
+
+	var out bytes.Buffer
+	if err := previewReconciliation(root, template.DeployModeLocal, &out); err != nil {
+		t.Fatalf("previewReconciliation (verbose): %v", err)
+	}
+	got := out.String()
+
+	if strings.Contains(got, "migration candidate: "+migIdenticalSkill) {
+		t.Errorf("the preview announces a removal the switched-off migration will not make:\n%s", got)
+	}
+	if !strings.Contains(got, "[dry-run] preserved: "+migIdenticalSkill) {
+		t.Errorf("verbose preview must name the copy by path as preserved, got:\n%s", got)
 	}
 }
 
