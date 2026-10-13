@@ -2132,6 +2132,128 @@ exact TestInitQuestionsWithAgentWiring_PrefillsRecordedDefault in ./internal/cli
 - An untagged value with invalid UTF-8 written through `PatchFile` is stored as `!!binary`, not refused. This card did not change that behavior, and the new tests do not assert it. It is noted because the llm save path writes through the same seam.
 - The three config reasons depend on yaml.v3 v3.0.1 (`go.mod` line 33) not failing on the `LLMConfig` type tree. A field of a chan, func, or complex type added later would make line 69 reachable and invalidate its reason.
 
+### E.3 closure (bundles A, B1, B2)
+
+**Claim.** Of the 182 derived unexecuted lines in the four open packages (`internal/userassets`, `internal/cli/update/backup`, `internal/hook`, `internal/cli`), 157 are now executed by the tests of bundles A, B1, and B2. The other 25 have no test, and each carries a per-line reason below. The 167 Windows-only lines are not closed by this subsection; they await CI evidence (section D below).
+
+**Scope and method.** The closure rule is ruling d-20261013T042601Z-e2af: every unexecuted changed line in every changed package other than `internal/config` gets a test, or a per-line reason. Package-wide 85% applies to `internal/config` only, and that package is not re-measured here. Windows-only lines are closed per ruling d-20261013T055746Z-d954: cite the run id of job Release Verify (windows-latest) in `release-pr-multi-os.yml` if it is green, and record a Gap if it is red or times out. The method is the one in the **Method** paragraph of the top-up measurement above (line 2010). Case and default labels are X. A function signature line is X, per the `signatures` entry in the X class list of that paragraph. The figures below were re-derived with a block-coverage reconstruction. The top-up table above stays unchanged.
+
+**Commits.** Test-only, one test file each unless noted. Each SHA was checked against the repository before citation: the bundle B2 SHAs with `git log --oneline e8be988600..HEAD`, and the bundle A and B1 SHAs with `git log --no-walk`.
+
+- Bundle A (2 test files per commit): `dcfb6e3be8` test(userassets) +560; `3bcc2093f5` test(backup) +294; `b1b574b8b2` test(hook) +360.
+- Bundle B1: `b383efcee1` test(cli) init resume +575; `ff6f1de31d` test(cli) doctor lock markers +95; `e8be988600` test(cli) codex skills disable +112.
+- Bundle B2 (10 commits): `cde3801170` doctor user-install +93; `47d2332bec` doctor user-lock home fallback +33; `754f0a5bcd` doctor harness +63; `56d8433c7d` integrity probe +67; `0d43ece3cb` update disk backup +45; `9223960d57` migrate deploy-mode +46; `b0f90b3826` update restore +29; `5d2b798153` template sync +43; `bd4391261b` bundle announce +39; `722f0e0fc4` glm +48.
+
+The commit that records this subsection is not cited here. The D3 backfill rule applies, as in the top-up subsection.
+
+**Per-package figures.** N is the count of changed non-test lines. U is the unexecuted count, shown as before → after the bundle that closes it. The E.3 column is the top-up figure for the same files. Where the two differ, the difference is listed under Discrepancies.
+
+| Package | N | U before → after | E.3 | Open lines |
+|---|---:|---:|---:|---|
+| internal/userassets | 859 | 30 → 6 | 30 | install.go 963, 973-974, 978; journal.go 138; lock_guard_unix.go 103 |
+| internal/cli/update/backup | 345 | 21 → 0 | 21 | none |
+| internal/hook | 597 | 25 → 1 | 25 | zone_user_read_unix.go 34 |
+| internal/cli, `init_resume.go` | 562 | 31 → 1 | 31 | init_resume.go 120 |
+| internal/cli, `doctor_lock_markers.go` | 120 | 15 → 0 | 16 | none |
+| internal/cli, `codex_skills_disable.go` | 31 | 13 → 0 | 14 | none |
+
+**Bundle B2 files** (internal/cli; N 798 in total over these 17 files; per-file N is not split out).
+
+| File | U before → after | E.3 | Open lines |
+|---|---:|---:|---|
+| `doctor_user_install.go` | 6 → 0 | 6 | none |
+| `update_integrity_probe.go` | 6 → 2 | 6 | 124, 134 |
+| `update_disk_backup.go` | 4 → 0 | 5 | none |
+| `doctor_harness.go` | 4 → 0 | 4 | none |
+| `update_template_sync_guard.go` | 4 → 4 | 4 | 23, 34, 35, 62 |
+| `doctor.go` | 3 → 0 | 3 | none |
+| `update_migrate.go` | 3 → 0 | 3 | none |
+| `update_template_sync.go` | 3 → 2 | 3 | 712, 739 |
+| `glm.go` | 2 → 0 | 2 | none |
+| `init_resume_read_unix.go` | 1 → 1 | 2 | 32 |
+| `init.go` | 2 → 2 | 2 | 996, 1002 |
+| `migrate_project_assets.go` | 2 → 2 | 2 | 100, 180 |
+| `update_clean_install.go` | 2 → 2 | 2 | 239, 405 |
+| `update_restore.go` | 2 → 0 | 2 | none |
+| `bundle.go` | 1 → 1 | 1 | 164 |
+| `init_update_notice.go` | 1 → 1 | 1 | 80 |
+| `user_asset_phase.go` | 1 → 0 | 1 | none |
+| **Total** | **47 → 17** | **49** | 17 lines |
+
+**Totals.** Derived U before 182 (76 + 59 + 47), after 25 (7 + 1 + 17), closed 157. The E.3 figure for the same files is 186 (30 + 21 + 25 + 110). The before parts are: 76 for bundle A (userassets 30, backup 21, hook 25), 59 for bundle B1 (init_resume.go 31, doctor_lock_markers.go 15, codex_skills_disable.go 13), and 47 for bundle B2. The after parts are: 7 for bundle A (userassets 6, backup 0, hook 1), 1 for init_resume.go, and 17 for bundle B2.
+
+**Open lines and reasons (25 in total).** Each open line is one of two kinds, or a third case that is flagged rather than forced into a kind. **Unreachable**: no input the code can receive reaches the line. **I/O fault**: the line needs a read, write, or OS fault that a test cannot produce. The split is 8 unreachable, 16 I/O fault, and 1 neither (`init_update_notice.go` 80). Every reason below comes from code reading, not from observed failures.
+
+- internal/userassets `install.go` 963 — **I/O fault**. The exhausted-name return needs eight O_EXCL collisions on names built from `os.Getpid()` and `time.Now().UnixNano()`. This is a collision sequence rather than a read or write error. There is no injectable seam, so no deterministic input reaches it.
+- `install.go` 973-974 — **I/O fault**. The Chmod-failure cleanup. fchmod(2) on a descriptor this process just created in a writable pinned directory fails only with EPERM, EROFS, or EIO, and a test cannot produce those.
+- `install.go` 978 — **I/O fault**. The Close-failure cleanup. close(2) on a local temp file needs a final-close I/O error.
+- `journal.go` 138 — **unreachable**. The header peek at line 130 rejects every schema_version other than SchemaVersion, and a header decode error routes to line 135. Evidence: 18 crafted journal bodies drove LoadJournal, and the profile block 137.38,139.3 had count 0.
+- `lock_guard_unix.go` 103 — **I/O fault**. io.ReadAll fails after fstat reports a regular file. Needs a read(2) I/O failure.
+- internal/hook `zone_user_read_unix.go` 34 — **I/O fault**. The same class: io.ReadAll fails on an open regular file after the fstat gate. Needs a read(2) I/O failure.
+- internal/cli `init_resume.go` 120 — **unreachable**. `return err` after newUserAssetInstaller. The constructor fails only if the embedded catalog or the embedded templates fail to load, which is compiled-in data. The constructor is a plain function and cannot be stubbed. Evidence: TestInitResumeInstallerBuildsFromEmbeddedCatalog observes success.
+- `update_integrity_probe.go` 124 — **I/O fault**. f.Stat() fails after a successful open. Needs an OS fault on an open descriptor.
+- `update_integrity_probe.go` 134 — **I/O fault**. io.ReadAll fails, or the file grows after the stat. Needs a read fault or a concurrent write.
+- `update_template_sync_guard.go` 23, 34, 35, 62 — **unreachable**. embeddedTemplateTreeHash cannot fail: fs.Sub with the constant "templates" rejects only invalid paths, and ComputeDirTreeHash over an embed.FS fails only through WalkDir or ReadFile errors, which an embed.FS does not produce.
+- `update_template_sync.go` 712 and 739 — **I/O fault**. The run-marker warning after a failed WriteRunMarker, in the time-stamped backup directories that the same run creates. Needs a write fault in a directory the same run creates.
+- `init_resume_read_unix.go` 32 — **I/O fault**. io.ReadAll fails on an open regular file. Needs a read(2) fault.
+- `init.go` 996 and 1002 — **I/O fault**. The persistResumeWiring and persistInitPending warnings. Needs a write fault in a directory the same run creates.
+- `migrate_project_assets.go` 100 — **I/O fault**. filepath.Abs fails. Needs an unreadable ancestor of the working directory. Root bypasses that permission check, and the lane runs as a non-root user.
+- `migrate_project_assets.go` 180 — **unreachable**. SetKeptBy follows a GetEntry that just succeeded, and the !hasEntry guard returns first.
+- `update_clean_install.go` 239 and 405 — **I/O fault**. The run-marker warning after a failed WriteRunMarker. The backup path is created by the same run with a second-resolution timestamp (`internal/cli/update_namespace_protect.go:63-65`), so no fixture can block it.
+- internal/cli `bundle.go` 164 — **unreachable in practice**. LoadEmbeddedCatalog fails only for a malformed compiled-in catalog, and there is no seam.
+- `init_update_notice.go` 80 — **neither**. This is the default runWizardFn body, the interactive wizard entry. A test would block on the terminal. It is not an I/O fault and not an unreachable line, so it is recorded here as a third case for the leader to classify.
+
+**Windows-only lines (167; not measured on darwin/arm64).** `init_resume_read_windows.go` 27 (internal/cli); `zone_user_read_windows.go` 28 (internal/hook); `lock_guard_windows.go` 112 (internal/userassets). Status: pending CI evidence (section D). Under ruling d-20261013T055746Z-d954 they close only if the Release Verify (windows-latest) run in `release-pr-multi-os.yml` is green. Section D is empty in this subsection, so the 167 lines are an open Gap here.
+
+**Discrepancies with the top-up table (recorded, not reconciled here).**
+
+- `update_disk_backup.go`: E.3 says 5, the re-derivation says 4. The difference is the function header at line 139 (`runMarkerWarning`), which the signature rule classes as X.
+- `init_resume_read_unix.go`: E.3 says 2, the re-derivation says 1. Line 28 was executed by `TestInitResumeManifestReadFailureIsReturnedAndKeepsMarker` in `b383efcee1`, a cross-file effect. For this file alone, the re-derived "before" figure is taken on the tree where that commit had already landed, so the 1 is a post-B1 figure and the 2 is the top-up baseline.
+- `doctor_lock_markers.go`: E.3 says 16, the re-derivation says 15. `codex_skills_disable.go`: E.3 says 14, the re-derivation says 13. The cause is not attributed.
+- The cli total is 110 in E.3 and 106 in the re-derivation (59 + 47). The four-line difference is the four discrepancies above.
+
+**Narrowed `ok` figures (narrowed families, not package-wide; reference only).**
+
+- Bundle A (`close-A-userassets-narrowed-1.log`, `close-A-backup-narrowed-1.log`, `close-A-hook-narrowed-1.log`): internal/userassets 0.768s, 54.7% of statements; backup 0.481s, 15.9%; hook 1.802s, 2.3%.
+- Bundle B1 (`close-B1-run-after2-TestInit.log`, `close-B1-run-after2-TestInitResume.log`): TestInit 68.561s, 7.3%; TestInitResume 37.358s, 6.6%.
+- After bundle B2 (`close-B2-run-TestDoctor-after.log`, `close-B2-run-TestIntegrityProbe-after.log`, `close-B2-run-TestUpdate-after.log`, `close-B2-run-TestMigrat-after.log`, `close-B2-run-TestTemplateSync-after.log`, `close-B2-run-TestBundle-after.log`, `close-B2-run-TestSaveLLM-after.log`): TestDoctor 80.631s, 10.7%; TestIntegrityProbe 1.434s, 7.7%; TestUpdate 59.755s, 11.4%; TestMigrat 6.121s, 8.3%; TestTemplateSync 3.459s, 7.4%; TestBundle 3.386s, 5.0%; TestSaveLLM 0.765s, 4.8%.
+
+These figures were checked against the named logs in `.moai/state/verify/t1619-topup/`. The earlier B1 after-runs in that directory, `close-B1-run-after-TestInit.log` (68.183s, 7.2%) and `close-B1-run-after-TestInitResume.log` (39.439s, 6.6%), are not cited.
+
+**New family prefix.** `TestCodexSkillDisable` (6 tests, `internal/cli/t1619_codex_skills_disable_coverage_test.go`) is added to the narrowed family list. The existing tests `TestUpsertCodexSkillDisable*`, `TestRunCodexSkillDisable*`, `TestResolveCodexSkillMirrorPath*`, and `TestSkillsDisableRequiresCodexFlag` match no E.3 family and were not run.
+
+**Slot discipline.** Every run in bundles A, B1, and B2 released the go-heavy slot. The lane's transcript-count checks showed acquire equal to release at 06:11Z for B1 (29 and 29) and at 06:51Z for B2 (6 and 6). No acquire was refused. Bundle A's report lists seven acquire-and-release pairs. These are the lane's own counts and were not re-observed in this run.
+
+**Evidence.** The per-file counts, the per-line reasons, and the commit list are the closure figures recorded above. The commit SHAs were checked before citation. The test names cited above (`TestInitResumeManifestReadFailureIsReturnedAndKeepsMarker`, `TestInitResumeInstallerBuildsFromEmbeddedCatalog`, the six `TestCodexSkillDisable*` functions, and the pid literal `2147483647`) were found in the tree. The narrowed figures are family runs made by the lane. They are carried here as reported and were checked against the scratch logs named above.
+
+**Baseline-attribution.** Each figure is attributed to the family runs made after the bundle that closed it, on that bundle's final tree: bundle A on `b1b574b8b2`, bundle B1 on `e8be988600`, and bundle B2 on `722f0e0fc4`. The "before" figures are the top-up baseline, except the `init_resume_read_unix.go` figure noted under Discrepancies. The slot counts are the lane's own and are not re-observed here.
+
+**Gaps (not observed, or not closed).**
+
+- No `GOOS=windows` build or test was run, and golangci-lint was not run on the new files. The 167 Windows-only lines stay open until the CI evidence in section D exists.
+- The 25 per-line reasons come from code reading, not from observed failures.
+- Commit-by-commit compilation was not verified. The family runs were on the final tree after each bundle, not at every commit.
+- The full `internal/cli` package was not run. The figures above are for narrowed families only, and package-wide percentages are reference only.
+- Root execution is untested. The permission-based tests skip under root.
+
+**Residual risk.**
+
+- Coupling: the doctor and codex test files use helpers defined in `t1619_init_resume_coverage_test.go` (for example `t1619MustWrite`). Removing that file breaks the test build of the package.
+- One dead-owner test uses pid 2147483647 (`internal/cli/t1619_doctor_lock_markers_coverage_test.go`), which may be out of range on other platforms.
+- The header-line rule (`update_disk_backup.go:139`) is a classifier policy question for the leader. This subsection records both figures (E.3 says 5, the re-derivation says 4) and does not choose between them.
+- The verbatim outputs of the narrowed runs, and the per-file classifier outputs, are in the machine-local scratch directory `.moai/state/verify/t1619-topup/`. That directory is gitignored and does not reach another clone, so the narrowed figures cannot be re-checked from git alone. This is a known loss.
+
+**CI evidence (section D).** A later docs-only commit fills these cells after the runs finish. This commit records no value in them.
+
+| Item | Value |
+|---|---|
+| Pushed HEAD (dispatched SHA) | |
+| ci.yml run id | |
+| ci.yml conclusion | |
+| release-pr-multi-os.yml run id | |
+| Release Verify (windows-latest) conclusion | |
+| `git diff <dispatched SHA>..HEAD --stat` (raw output) | |
+
 ## §E.4 Sync-phase Audit-Ready Signal
 
 ```yaml
