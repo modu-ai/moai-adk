@@ -514,12 +514,12 @@ func TestAC_CIG_007b_ProbeTimeoutRealPath(t *testing.T) {
 		t.Fatalf("git not found: %v", err)
 	}
 	shimDir := t.TempDir()
-	if err := os.Symlink(realGit, filepath.Join(shimDir, "git.real")); err != nil {
-		t.Fatalf("symlink real git: %v", err)
-	}
 	// `$3 == "var"` — `git -C <dir> var GIT_*_IDENT`: only the identity probe
 	// sleeps; the scope probe (rev-parse) execs the real git immediately.
-	shim := "#!/bin/sh\nif [ \"$3\" = \"var\" ]; then sleep 5; fi\nexec \"" + filepath.Join(shimDir, "git.real") + "\" \"$@\"\n"
+	// The shim execs realGit by its own path: on macOS /usr/bin/git is an xcrun
+	// stub that resolves the tool by its invoked name, so a renamed link
+	// (e.g. git.real) makes it prompt to install the developer tools.
+	shim := "#!/bin/sh\nif [ \"$3\" = \"var\" ]; then sleep 5; fi\nexec \"" + realGit + "\" \"$@\"\n"
 	if err := os.WriteFile(filepath.Join(shimDir, "git"), []byte(shim), 0o755); err != nil {
 		t.Fatalf("write shim: %v", err)
 	}
