@@ -1,6 +1,6 @@
 ---
 id: SPEC-RELUP-STRUCT-AUDIT-001
-title: "plan — release-update 구조 검사 설계 (마크다운 구조 파서 6면 + M1–M8 음성 대조)"
+title: "plan — release-update 구조 검사 설계 (마크다운 구조 파서 6면 + M1–M10 음성 대조)"
 created: 2026-10-13
 author: manager-spec
 tier: M
@@ -10,13 +10,13 @@ tier: M
 
 ## §A 접근 (Approach)
 
-**한 문장**: `internal/harness/relup_structure_audit_test.go` (신설, 단일 테스트 파일, package `harness`)에 공용 마크다운 구조 헬퍼(스코프 파라미터 마스킹/제거 + 줄시작 헤딩 경계 + 이중 클래스 중복 처리 계약)와 여섯 면의 검사 함수를 두고, M1–M8 우회 probe를 인메모리 문자열 변이로 음성 대조하며, 실트리 양성 대조로 착지를 판정한다 — 게이팅은 표준 `go test ./internal/harness/` 스위트(CI 배치 릴리스 경로)다. (spec.md §1.2 결정 D1–D8)
+**한 문장**: `internal/harness/relup_structure_audit_test.go` (신설, 단일 테스트 파일, package `harness`)에 공용 마크다운 구조 헬퍼(스코프 파라미터 마스킹/제거 + 줄시작 헤딩 경계 + 이중 클래스 중복 처리 계약)와 여섯 면의 검사 함수를 두고, M1–M10 우회 probe를 인메모리 문자열 변이로 음성 대조하며, 실트리 양성 대조로 착지를 판정한다 — 게이팅은 표준 `go test ./internal/harness/` 스위트(CI 배치 릴리스 경로)다. (spec.md §1.2 결정 D1–D8)
 
 **변경 파일 (전체 허용 경로)**:
 
 | 경로 | 신설/수정 | 내용 |
 |---|---|---|
-| `internal/harness/relup_structure_audit_test.go` | 신설 | 공용 헬퍼(비공개, test 전용) + 5개 테스트 함수 + M1–M8 변이 단위 테스트 |
+| `internal/harness/relup_structure_audit_test.go` | 신설 | 공용 헬퍼(비공개, test 전용) + 5개 테스트 함수 + M1–M10 변이 단위 테스트 |
 | `.moai/specs/SPEC-RELUP-STRUCT-AUDIT-001/{spec,plan,acceptance}.md` | plan-phase (이미 착지) | SPEC 산출물 |
 | `.moai/specs/SPEC-RELUP-STRUCT-AUDIT-001/progress.md` | run/sync | §E 시그널 (상태 전환 소관 에이전트) |
 | `.moai/reports/t1627/` | run/sync | 카드 증거 (verdict 등) |
@@ -62,7 +62,7 @@ RED-now 전체 귀속은 acceptance.md §A 트리 핀(`79d0a0a47d`)이다. 상�
 | S5 | specialist BP 섹션 — 매칭 전 **주석·펜스 제거**(매칭 모드). 헤딩면: 대소문자 무시 줄시작 헤딩 `best-practice` ≥1 (참고: 299행 `## Best-Practices Axis (standing procedure — every sweep)`). deliverable면: 첫 best-practice 헤딩부터 다음 동급·상위 헤딩 직전까지의 블록 안 `HTML proposal report` ≥1 (참고: 316행) — **비주석 행만 계수**. BP 헤딩 선택은 **class F first-match**(첫 일치 헤딩이 블록을 선택하고 중복 헤딩은 실패·재선택이 아니다 — 결정 D8, 0.2.0 수리 P2) | AC-RSA-006 |
 | S6 | manifest.json **JSON 디코딩** — 최상위 `domain` 키 존재·문자열형·3절 리터럴 보유: `Claude Code` · `Codex CLI upstream change tracking` · `best-practices axis` (참고값: 3행). 다른 키는 무게 0 | AC-RSA-007 |
 | 헬퍼 | 비공개 함수群(같은 파일) — **스코프 파라미터 마스크/제거 원시**(주석·펜스 독립 선택, 행 위치 보존: S1은 주석만 제거·펜스 보존(0.2.0 수리 P1), S5는 둘 다 제거) · `lineStartHeadingBlocks`(**class E exactly-once** 오류 반환 — S2 경계 마커) · **class F first-match 선택자**(S5 BP 헤딩 — 결정 D8) · `countInBlock` 계열. **git 호출 금지**: 파일에 `os/exec`·`exec.Command`·`"git ` 문자열 0건 | AC-RSA-001·009 |
-| 테스트 이름 | 5개 테스트 함수: `TestRelupStructurePhase3URLs`(S1·S2) · `TestRelupStructureCodexParagraph`(S3) · `TestRelupStructureWatchNormSentence`(S4) · `TestRelupStructureBPFaces`(S5) · `TestRelupStructureManifestDomain`(S6) — probe 단위 테스트 이름에 `M1_`…`M8_` 접두 각 1건 이상, 8종 (`go test -v` 판독면) | AC-RSA-001·008 |
+| 테스트 이름 | 5개 테스트 함수: `TestRelupStructurePhase3URLs`(S1·S2) · `TestRelupStructureCodexParagraph`(S3) · `TestRelupStructureWatchNormSentence`(S4) · `TestRelupStructureBPFaces`(S5) · `TestRelupStructureManifestDomain`(S6) — probe 단위 테스트 이름에 `M1_`…`M10_` 접두 각 1건 이상, 10종 (`go test -v` 판독면) | AC-RSA-001·008 |
 
 ### §D2 결정 전파 (재논의 금지 — spec.md §1.2와 쌍)
 
@@ -79,7 +79,7 @@ RED-now 전체 귀속은 acceptance.md §A 트리 핀(`79d0a0a47d`)이다. 상�
 ```bash
 # GREEN 1 — 전체 신설 패밀리 (AC-RSA-001): 기대 exit 0 + `ok github.com/modu-ai/moai-adk/internal/harness`
 go test ./internal/harness/
-# GREEN 2 — probe 판독면 (AC-RSA-008): 기대 exit 0 + M1_…M7_ 단위 테스트 전수 PASS 행
+# GREEN 2 — probe 판독면 (AC-RSA-008): 기대 exit 0 + M1_…M10_ 단위 테스트 전수 PASS 행
 go test -v -run '^(TestRelupStructurePhase3URLs|TestRelupStructureCodexParagraph|TestRelupStructureWatchNormSentence|TestRelupStructureBPFaces|TestRelupStructureManifestDomain)$' ./internal/harness/
 # RED 재관측 (구현 전 — §C와 동일): compile error = RED 증거 (E8 축자)
 go test -run '^(TestRelupStructurePhase3URLs|TestRelupStructureCodexParagraph|TestRelupStructureWatchNormSentence|TestRelupStructureBPFaces|TestRelupStructureManifestDomain)$' ./internal/harness/

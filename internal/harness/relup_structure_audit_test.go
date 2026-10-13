@@ -103,42 +103,43 @@ type relupMaskScope struct {
 // relupMaskLines returns the content split into lines with the selected span
 // kinds masked. Line positions are always preserved (masked lines become
 // empty) so boundary detection never sees fence- or comment-carried text.
-// Semantics:
+// Semantics (card t1627 card-review round 1, P2-a/P2-b):
 //   - An HTML comment span is recognized only OUTSIDE a code fence (P1:
 //     fence content is preserved verbatim when fences are not masked).
 //   - A comment span opened outside a fence swallows everything up to its
 //     closing marker, fence markers included (M8 sealing).
-//   - Fence delimiter lines and fence interior lines are masked iff
-//     scope.fences.
+//   - After a closing marker the REMAINDER of the line is re-parsed by the
+//     same tokenizer, so residue that immediately opens a new comment
+//     (`--> <!--`) is masked too (M9 — card-review P2-a).
+//   - A code fence records its opener's delimiter kind (backtick vs tilde)
+//     and length; only a closing fence of the SAME kind with length >= the
+//     opener's closes it (CommonMark; M10 — card-review P2-b). Tilde fences
+//     are fences. Fence interior lines are masked when scope.fences.
 func relupMaskLines(content string, scope relupMaskScope) []string {
 	lines := strings.Split(content, "\n")
 	out := make([]string, len(lines))
 	inComment := false
 	inFence := false
+	var fenceChar byte
+	fenceLen := 0
 	for i, line := range lines {
 		switch {
 		case inComment:
-			// Comment spans are cleared FIRST wherever they are recognized;
-			// text on the closing line after the marker survives.
-			end := strings.Index(line, "-->")
-			if end < 0 {
-				out[i] = strings.Repeat(" ", len(line))
-			} else {
-				out[i] = strings.Repeat(" ", end+3) + line[end+3:]
-				inComment = false
-			}
+			// Comment spans are cleared FIRST wherever they are recognized.
+			out[i] = relupMaskCommentSpans(line, &inComment)
 		case inFence:
+			if _, _, ok := relupClosingFence(line, fenceChar, fenceLen); ok {
+				inFence = false
+			}
 			if scope.fences {
 				out[i] = ""
 			} else {
 				out[i] = line
 			}
-			if strings.HasPrefix(strings.TrimSpace(line), "```") {
-				inFence = false
-			}
 		default:
-			if strings.HasPrefix(strings.TrimSpace(line), "```") {
+			if c, n, ok := relupOpeningFence(line); ok {
 				inFence = true
+				fenceChar, fenceLen = c, n
 				if scope.fences {
 					out[i] = ""
 				} else {
@@ -151,29 +152,94 @@ func relupMaskLines(content string, scope relupMaskScope) []string {
 				continue
 			}
 			// Span-precise comment masking on a fresh line.
-			var b strings.Builder
-			rest := line
-			for {
-				start := strings.Index(rest, "<!--")
-				if start < 0 {
-					b.WriteString(rest)
-					break
-				}
-				b.WriteString(rest[:start])
-				rest = rest[start:]
-				end := strings.Index(rest, "-->")
-				if end < 0 {
-					b.WriteString(strings.Repeat(" ", len(rest)))
-					inComment = true
-					break
-				}
-				b.WriteString(strings.Repeat(" ", end+3))
-				rest = rest[end+3:]
-			}
-			out[i] = b.String()
+			out[i] = relupMaskCommentSpans(line, &inComment)
 		}
 	}
 	return out
+}
+
+// relupMaskCommentSpans masks the HTML comment spans of one line, carrying
+// open/close state through inComment across lines. After a closing marker
+// the remainder of the line re-enters the same loop, so a residue that
+// immediately re-opens a comment (`--> <!-- ...`) stays masked (card-review
+// round 1 P2-a) instead of leaking as content.
+func relupMaskCommentSpans(line string, inComment *bool) string {
+	var b strings.Builder
+	rest := line
+	for {
+		if *inComment {
+			end := strings.Index(rest, "-->")
+			if end < 0 {
+				b.WriteString(strings.Repeat(" ", len(rest)))
+				return b.String()
+			}
+			b.WriteString(strings.Repeat(" ", end+3))
+			rest = rest[end+3:]
+			*inComment = false
+			continue
+		}
+		start := strings.Index(rest, "<!--")
+		if start < 0 {
+			b.WriteString(rest)
+			return b.String()
+		}
+		b.WriteString(rest[:start])
+		rest = rest[start:]
+		*inComment = true
+	}
+}
+
+// relupOpeningFence reports whether the line opens a CommonMark code fence:
+// at least three '`' or '~' characters, indented up to three spaces; a
+// backtick fence opener's info string must not contain a backtick. Returns
+// the delimiter character and its length (card-review round 1 P2-b).
+func relupOpeningFence(line string) (byte, int, bool) {
+	ind := 0
+	for ind < len(line) && ind < 3 && line[ind] == ' ' {
+		ind++
+	}
+	rest := line[ind:]
+	if len(rest) < 3 {
+		return 0, 0, false
+	}
+	c := rest[0]
+	if c != '`' && c != '~' {
+		return 0, 0, false
+	}
+	n := 0
+	for n < len(rest) && rest[n] == c {
+		n++
+	}
+	if n < 3 {
+		return 0, 0, false
+	}
+	if c == '`' && strings.Contains(rest[n:], "`") {
+		return 0, 0, false
+	}
+	return c, n, true
+}
+
+// relupClosingFence reports whether the line closes the currently open fence:
+// at least three of the opener's delimiter character and at least as long as
+// the opener (CommonMark), indented up to three spaces, with only whitespace
+// after the closing run.
+func relupClosingFence(line string, fenceChar byte, fenceLen int) (byte, int, bool) {
+	ind := 0
+	for ind < len(line) && ind < 3 && line[ind] == ' ' {
+		ind++
+	}
+	rest := line[ind:]
+	n := 0
+	for n < len(rest) && rest[n] == fenceChar {
+		n++
+	}
+	if n < 3 || n < fenceLen {
+		return 0, 0, false
+	}
+	if strings.TrimSpace(rest[n:]) != "" {
+		return 0, 0, false
+	}
+	return fenceChar, n, true
 }
 
 // relupExactlyOnceLineStart implements the class E contract (D8): the named
@@ -791,6 +857,66 @@ func TestRelupStructureBPFaces(t *testing.T) {
 		}
 		if deliverables != 0 {
 			t.Errorf("deliverable face with no selectable BP block counted %d, want 0", deliverables)
+		}
+	})
+
+	t.Run("M9_comment_end_residue_reopens_comment_yields_0", func(t *testing.T) {
+		t.Parallel()
+		// Card-review round 1 P2-a: a multi-line comment whose closing line
+		// carries residue that IMMEDIATELY opens a new comment (`--> <!--`)
+		// must keep everything after it masked. The old single-pass emitter
+		// leaked the residue verbatim and counted the smuggled heading and
+		// deliverable as real content.
+		const realHeading = "## Best-Practices Axis (standing procedure — every sweep)"
+		if !strings.Contains(real, realHeading) {
+			t.Fatal("fixture drift: BP heading line not found verbatim")
+		}
+		smuggled := "<!-- real BP heading was here\n" +
+			"--> residue smuggle <!--\n" +
+			"## Best-Practices Axis (comment-end residue heading)\n" +
+			"HTML proposal report (comment-end residue deliverable)\n" +
+			"-->"
+		variant := strings.Replace(real, realHeading, smuggled, 1)
+		headings, deliverables := relupBPFaces(variant)
+		if headings != 0 {
+			t.Errorf("residue-reopened comment leaked %d heading(s), want 0", headings)
+		}
+		if deliverables != 0 {
+			t.Errorf("residue-reopened comment leaked %d deliverable(s), want 0", deliverables)
+		}
+	})
+
+	t.Run("M10_fence_kind_and_length_mismatch_yields_0", func(t *testing.T) {
+		t.Parallel()
+		// Card-review round 1 P2-b: fence delimiter KIND and LENGTH must be
+		// tracked (CommonMark). (i) A tilde-fenced BP section is a fence —
+		// its headings and deliverable are masked. (ii) A fence opened with
+		// four backticks is not closed by three, so interior fakes stay
+		// masked.
+		const realHeading = "## Best-Practices Axis (standing procedure — every sweep)"
+		const delegationHeading = "## Delegation Map"
+		if !strings.Contains(real, realHeading) || !strings.Contains(real, delegationHeading) {
+			t.Fatal("fixture drift: BP or Delegation Map heading line not found verbatim")
+		}
+
+		tildeFenced := strings.Replace(real, realHeading, "~~~\n"+realHeading, 1)
+		tildeFenced = strings.Replace(tildeFenced, delegationHeading, "~~~\n"+delegationHeading, 1)
+		headings, deliverables := relupBPFaces(tildeFenced)
+		if headings != 0 {
+			t.Errorf("tilde-fenced BP section leaked %d heading(s), want 0", headings)
+		}
+		if deliverables != 0 {
+			t.Errorf("tilde-fenced BP section leaked %d deliverable(s), want 0", deliverables)
+		}
+
+		shortClosed := strings.Replace(real, realHeading,
+			"````markdown\n```\n## Best-Practices Axis (short-close bypass heading)\nHTML proposal report (short-close bypass deliverable)\n````", 1)
+		headings, deliverables = relupBPFaces(shortClosed)
+		if headings != 0 {
+			t.Errorf("short-close bypass leaked %d heading(s), want 0", headings)
+		}
+		if deliverables != 0 {
+			t.Errorf("short-close bypass leaked %d deliverable(s), want 0", deliverables)
 		}
 	})
 
