@@ -2240,7 +2240,7 @@ These figures were checked against the named logs in `.moai/state/verify/t1619-t
 
 - Coupling: the doctor and codex test files use helpers defined in `t1619_init_resume_coverage_test.go` (for example `t1619MustWrite`). Removing that file breaks the test build of the package.
 - One dead-owner test uses pid 2147483647 (`internal/cli/t1619_doctor_lock_markers_coverage_test.go`), which may be out of range on other platforms.
-- The header-line rule (`update_disk_backup.go:139`) is a classifier policy question for the leader. This subsection records both figures (E.3 says 5, the re-derivation says 4) and does not choose between them.
+- The header-line rule (`update_disk_backup.go:139`) was ruled by the leader on the decision board as `d-20261013T112233Z-cd14`: the function-header line is classified X under the signature rule, the derived count is 4, and the classify.awk count of 5 is recorded alongside it.
 - The verbatim outputs of the narrowed runs, and the per-file classifier outputs, are in the machine-local scratch directory `.moai/state/verify/t1619-topup/`. That directory is gitignored and does not reach another clone, so the narrowed figures cannot be re-checked from git alone. This is a known loss.
 
 **CI evidence (section D).** A later docs-only commit fills these cells after the runs finish. This commit records no value in them.
@@ -2252,7 +2252,7 @@ These figures were checked against the named logs in `.moai/state/verify/t1619-t
 | ci.yml conclusion | `failure`. Job `Test (ubuntu-latest)` failed on one test, `TestFactoryLeaseSerialCrossProcessExactlyOne` (internal/cli). `Race Test 1` and `Race Test 2` succeeded. The other jobs succeeded, and the two matrix jobs (`Test (${{ matrix.os }})`, `Integration Tests (${{ matrix.os }})`) were skipped. |
 | release-pr-multi-os.yml run id | `38363720321` (dispatched 2026-10-13T07:36:25Z). Run conclusion `failure`. `Release Verify (ubuntu-latest)` failed: package internal/cli reported `FAIL` at 2100.377s under `go test -json -race -timeout 35m ./...`. `Release PR Multi-OS Gate` failed. `Release Verify (macos-latest)` was `cancelled`. |
 | Release Verify (windows-latest) conclusion | `cancelled` (not green, so the Windows-line closure stays a Gap) |
-| `git diff <dispatched SHA>..HEAD --stat` (raw output) | |
+| `git diff <dispatched SHA>..HEAD --stat` (raw output) | range 0eaa52e9f6..2a005ca3ab: `.moai/specs/SPEC-UPDATE-REPAIR-RC30-001/progress.md \| 10 +++++-----` / `1 file changed, 5 insertions(+), 5 deletions(-)` |
 
 ## §E.4 Sync-phase Audit-Ready Signal
 
