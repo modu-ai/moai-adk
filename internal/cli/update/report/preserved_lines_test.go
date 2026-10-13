@@ -18,7 +18,7 @@ func TestPreservedLinesCountOnly(t *testing.T) {
 	archived := []string{".claude/rules/moai/old-rule.md"}
 
 	// Default: one count line for the preserved category, no per-path line.
-	dflt := RenderReconciliation(counts, nil, preserved, archived)
+	dflt := RenderReconciliation(counts, nil, preserved, archived, false)
 	assert.Equal(t, 1, strings.Count(dflt, "\n  preserved: "))
 	assert.Contains(t, dflt, "\n  preserved: 3 file(s) (run with --verbose to list)")
 	for _, p := range preserved {
@@ -27,13 +27,13 @@ func TestPreservedLinesCountOnly(t *testing.T) {
 	assert.Contains(t, dflt, "\n  archived-removed: .claude/rules/moai/old-rule.md")
 
 	// --verbose: every preserved path is listed, and no count hint is printed.
-	verbose := RenderReconciliation(counts, nil, preserved, archived)
+	verbose := RenderReconciliation(counts, nil, preserved, archived, true)
 	for _, p := range preserved {
 		assert.Contains(t, verbose, "\n  preserved: "+p)
 	}
 	assert.NotContains(t, verbose, "run with --verbose to list")
 
 	// Nothing preserved: no preserved line in either mode.
-	none := RenderReconciliation(ReconciliationCounts{Refreshed: 1}, nil, nil, nil)
+	none := RenderReconciliation(ReconciliationCounts{Refreshed: 1}, nil, nil, nil, false)
 	assert.NotContains(t, none, "preserved:")
 }

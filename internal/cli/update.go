@@ -86,7 +86,7 @@ func init() {
 	updateCmd.Flags().Bool("no-hooks", false, "Skip git hook installation (REQ-CIAUT-002)")
 	updateCmd.Flags().Bool("no-plugin", false, "Skip the moai plugin install step during a record-less project's migration and record deployment_mode: local (also MOAI_SKIP_PLUGIN_INSTALL=1; SPEC-INIT-SHRINK-001 REQ-015)")
 	updateCmd.Flags().String("restore", "", "Restore .moai/config from a backup directory left by a previous update (works on a tree whose .moai/config/sections/system.yaml was destroyed)")
-	updateCmd.Flags().Bool("verbose", false, "Show all warnings including acknowledged reserved-name and 3-way merge fallback notices (diagnostic mode; SPEC-V3R6-UPDATE-NOISE-001 REQ-UN-005/010)")
+	updateCmd.Flags().Bool("verbose", false, "Show all warnings including acknowledged reserved-name and 3-way merge fallback notices, and list each preserved file by path in the update summary (diagnostic mode; the default summary shows a count; SPEC-V3R6-UPDATE-NOISE-001 REQ-UN-005/010; SPEC-UPDATE-REPAIR-RC30-001 REQ-RC30-015)")
 
 	// Retired --profile (SPEC-AGENT-MODEL-INHERIT-001 D10): accepted for script
 	// compatibility, warns, and has no effect.
@@ -161,7 +161,8 @@ func runUpdate(cmd *cobra.Command, _ []string) error {
 	// 3-strike suppression. `moai update` is single-process sequential — no
 	// synchronization needed. The flag is reset on function exit so subsequent
 	// in-process invocations (CLI tests, helpers) start with the default
-	// suppression-on behavior.
+	// suppression-on behavior. The reconciliation summary reads the same flag
+	// for its preserved list (SPEC-UPDATE-REPAIR-RC30-001 REQ-RC30-015).
 	updateVerboseMode = getBoolFlag(cmd, "verbose")
 	defer func() { updateVerboseMode = false }()
 
