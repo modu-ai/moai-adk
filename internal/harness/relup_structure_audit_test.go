@@ -117,6 +117,11 @@ type relupMaskScope struct {
 //     are fences. Fence interior lines are masked when scope.fences.
 func relupMaskLines(content string, scope relupMaskScope) []string {
 	lines := strings.Split(content, "\n")
+	// Inline code spans are resolved at PARAGRAPH level once, then mapped
+	// back to per-line column ranges — a span crossing a newline keeps its
+	// markers literal on every line it touches (leader ruling
+	// d-20261013T135901Z-b08d P2-h).
+	lineSpans := relupLineCodeSpans(lines)
 	out := make([]string, len(lines))
 	inComment := false
 	inFence := false
@@ -126,7 +131,7 @@ func relupMaskLines(content string, scope relupMaskScope) []string {
 		switch {
 		case inComment:
 			// Comment spans are cleared FIRST wherever they are recognized.
-			out[i] = relupMaskCommentSpans(line, &inComment)
+			out[i] = relupMaskCommentSpans(line, lineSpans[i], &inComment)
 		case inFence:
 			if _, _, ok := relupClosingFence(line, fenceChar, fenceLen); ok {
 				inFence = false
@@ -152,22 +157,74 @@ func relupMaskLines(content string, scope relupMaskScope) []string {
 				continue
 			}
 			// Span-precise comment masking on a fresh line.
-			out[i] = relupMaskCommentSpans(line, &inComment)
+			out[i] = relupMaskCommentSpans(line, lineSpans[i], &inComment)
 		}
 	}
 	return out
+}
+
+// relupLineCodeSpans resolves inline code spans over each PARAGRAPH (a
+// maximal run of non-blank lines — a blank line ends the paragraph) and maps
+// every span back to per-line [startCol,endCol) ranges, preserving line
+// coordinates. Simplification vs CommonMark: fence delimiter lines are not
+// treated as paragraph terminators; harmless here because neither comment
+// scanning nor span consultation ever runs on fence-interior lines.
+func relupLineCodeSpans(lines []string) [][][2]int {
+	out := make([][][2]int, len(lines))
+	paraStart := 0
+	for i := 0; i <= len(lines); i++ {
+		if i == len(lines) || strings.TrimSpace(lines[i]) == "" {
+			if i > paraStart {
+				relupMapParagraphSpans(lines, paraStart, i, out)
+			}
+			paraStart = i + 1
+		}
+	}
+	return out
+}
+
+func relupMapParagraphSpans(lines []string, from, to int, out [][][2]int) {
+	joined := strings.Join(lines[from:to], "\n")
+	spans := relupInlineCodeSpans(joined)
+	if len(spans) == 0 {
+		return
+	}
+	// Offset of each paragraph line within the joined text.
+	offsets := make([]int, to-from)
+	acc := 0
+	for k := from; k < to; k++ {
+		offsets[k-from] = acc
+		acc += len(lines[k]) + 1
+	}
+	for _, sp := range spans {
+		for k := from; k < to; k++ {
+			base := offsets[k-from]
+			lineEnd := base + len(lines[k])
+			if sp[1] <= base || sp[0] >= lineEnd {
+				continue
+			}
+			cs, ce := sp[0], sp[1]
+			if cs < base {
+				cs = base
+			}
+			if ce > lineEnd {
+				ce = lineEnd
+			}
+			out[k] = append(out[k], [2]int{cs - base, ce - base})
+		}
+	}
 }
 
 // relupMaskCommentSpans masks the HTML comment spans of one line, carrying
 // open/close state through inComment across lines. After a closing marker
 // the remainder of the line re-enters the same loop, so a residue that
 // immediately re-opens a comment (`--> <!-- ...`) stays masked (card-review
-// round 1 P2-a) instead of leaking as content. A `<!--` inside an inline
-// code span (backtick runs) is NOT structural — code spans are tracked by
-// the opener search (card-review round 2 P2-e); inside an open comment the
+// round 1 P2-a) instead of leaking as content. A `<!--` inside a resolved
+// inline code span (paragraph-level, passed in as spans) is NOT structural
+// (card-review round 2 P2-e, round 3 P2-h); inside an open comment the
 // closer scan stays raw text (`-->` anywhere closes), matching HTML comment
 // semantics.
-func relupMaskCommentSpans(line string, inComment *bool) string {
+func relupMaskCommentSpans(line string, spans [][2]int, inComment *bool) string {
 	var b strings.Builder
 	rest := line
 	for {
@@ -182,7 +239,20 @@ func relupMaskCommentSpans(line string, inComment *bool) string {
 			*inComment = false
 			continue
 		}
-		start := relupIndexOutsideInlineCode(rest, "<!--")
+		start := -1
+		at := 0
+		for {
+			next := strings.Index(rest[at:], "<!--")
+			if next < 0 {
+				break
+			}
+			pos := at + next
+			if !relupInSpans(spans, pos) {
+				start = pos
+				break
+			}
+			at = pos + 1
+		}
 		if start < 0 {
 			b.WriteString(rest)
 			return b.String()
@@ -193,32 +263,20 @@ func relupMaskCommentSpans(line string, inComment *bool) string {
 	}
 }
 
-// relupIndexOutsideInlineCode returns the index of the first occurrence of
-// marker in s that lies OUTSIDE an inline code span, or -1.
-func relupIndexOutsideInlineCode(s, marker string) int {
-	spans := relupInlineCodeSpans(s)
-	at := 0
-	for {
-		next := strings.Index(s[at:], marker)
-		if next < 0 {
-			return -1
-		}
-		pos := at + next
-		if !relupInSpans(spans, pos) {
-			return pos
-		}
-		at = pos + 1
-	}
-}
-
 // relupInlineCodeSpans returns the [start,end) ranges of inline code spans
 // (delimiters included) in s: a run of N backticks closes at the next run of
 // exactly N backticks; an unmatched opener stays literal text (CommonMark).
+// A backslash-escaped backtick (`\“) is a literal tick and never delimits a
+// span (leader ruling d-20261013T135901Z-b08d P2-g).
 func relupInlineCodeSpans(s string) [][2]int {
 	var spans [][2]int
 	i := 0
 	for i < len(s) {
 		if s[i] != '`' {
+			i++
+			continue
+		}
+		if relupBacktickEscaped(s, i) {
 			i++
 			continue
 		}
@@ -236,12 +294,27 @@ func relupInlineCodeSpans(s string) [][2]int {
 	return spans
 }
 
+// relupBacktickEscaped reports whether the backtick at s[i] is preceded by an
+// odd number of backslashes (i.e. is a backslash-escaped literal tick).
+func relupBacktickEscaped(s string, i int) bool {
+	n := 0
+	for j := i - 1; j >= 0 && s[j] == '\\'; j-- {
+		n++
+	}
+	return n%2 == 1
+}
+
 // relupCloseCodeRun finds the closing backtick run of exactly n ticks at or
-// after from, returning the index just past it.
+// after from, returning the index just past it. Escaped ticks are literal
+// content and cannot close a span.
 func relupCloseCodeRun(s string, from, n int) (int, bool) {
 	j := from
 	for j < len(s) {
 		if s[j] != '`' {
+			j++
+			continue
+		}
+		if relupBacktickEscaped(s, j) {
 			j++
 			continue
 		}
@@ -599,17 +672,26 @@ func relupBPFaces(content string) (headings, deliverables int) {
 
 // relupManifestDomainClauses is the S6 check (REQ-RSA-007): manifest.json is
 // DECODED as JSON and only the top-level `domain` string is asserted against
-// the three clause literals. Other keys carry no weight (M7).
+// the three clause literals. Other keys carry no weight (M7). The key lookup
+// is EXACT lowercase — encoding/json struct matching folds key case, so a
+// `Domain`-capped sibling key must not satisfy the read (leader ruling
+// d-20261013T135901Z-b08d P2-f).
 func relupManifestDomainClauses(content string) (int, error) {
-	var manifest struct {
-		Domain string `json:"domain"`
-	}
-	if err := json.Unmarshal([]byte(content), &manifest); err != nil {
+	var top map[string]any
+	if err := json.Unmarshal([]byte(content), &top); err != nil {
 		return 0, fmt.Errorf("manifest is not decodable JSON: %w", err)
+	}
+	v, ok := top["domain"]
+	if !ok {
+		return 0, nil
+	}
+	domain, ok := v.(string)
+	if !ok {
+		return 0, nil
 	}
 	clauses := 0
 	for _, c := range []string{"Claude Code", "Codex CLI upstream change tracking", "best-practices axis"} {
-		if strings.Contains(manifest.Domain, c) {
+		if strings.Contains(domain, c) {
 			clauses++
 		}
 	}
@@ -778,6 +860,43 @@ func TestRelupStructurePhase3URLs(t *testing.T) {
 		}
 	})
 
+	t.Run("M16_multiline_code_span_literal_marker_yields_expected", func(t *testing.T) {
+		t.Parallel()
+		// Leader ruling d-20261013T135901Z-b08d P2-h: a code span crossing a
+		// newline (opener on one line, closer lines later) is resolved at
+		// PARAGRAPH level — a literal marker inside such a span must not
+		// open a phantom comment that masks the real headings.
+		inserted := "Inline code across lines: `<!-- this marker is span content\nstill inside the span` and the block below is real."
+		variant := relupInsertBeforeFirstLineStart(real, "### Phase 3", inserted)
+		p3, p4, err := relupPhase3Boundaries(variant)
+		if err != nil {
+			t.Fatalf("multi-line code span broke the class E boundaries: %v", err)
+		}
+		lines := strings.Split(variant, "\n")
+		realHeading := -1
+		realHeading4 := -1
+		for i, line := range lines {
+			switch {
+			case realHeading < 0 && strings.HasPrefix(line, "### Phase 3 —"):
+				realHeading = i
+			case realHeading4 < 0 && strings.HasPrefix(line, "### Phase 4"):
+				realHeading4 = i
+			}
+		}
+		if p3 != realHeading || p4 != realHeading4 {
+			t.Errorf("boundaries moved — got [%d,%d), real headings at [%d,%d]", p3, p4, realHeading, realHeading4)
+		}
+		counts, err := relupPhase3URLFacetCounts(variant)
+		if err != nil {
+			t.Fatalf("S1 check errored on the multi-line span variant: %v", err)
+		}
+		for _, facet := range relupDocFacets {
+			if got := relupFacetCount(counts, facet); got != 1 {
+				t.Errorf("facet %q: got %d, want 1 (span-resolved marker must not mask the block)", facet, got)
+			}
+		}
+	})
+
 	t.Run("M2_duplicate_phase3_heading_fails_check", func(t *testing.T) {
 		t.Parallel()
 		variant := relupInsertAfterFirstLineStart(real, "### Phase 3",
@@ -907,6 +1026,29 @@ func TestRelupStructureCodexParagraph(t *testing.T) {
 		for _, tok := range []string{"last_analyzed_version", "last_analyzed_date", "last_master_research", "analysis_history[]"} {
 			if counts[tok] != realCounts[tok] {
 				t.Errorf("token %q changed (%d -> %d) on a comment-only mutation", tok, realCounts[tok], counts[tok])
+			}
+		}
+	})
+
+	t.Run("M15_escaped_backtick_comment_is_masked_yields_0", func(t *testing.T) {
+		t.Parallel()
+		// Leader ruling d-20261013T135901Z-b08d P2-g: a backslash-escaped
+		// backtick (\`) is a literal tick, never a code-span delimiter — so
+		// the HTML comment between two escaped ticks is REAL and its tokens
+		// must be masked, not preserved.
+		const sentenceSpan = "`since_codex = \"rust-v0.161.0\"`, emit warning"
+		if !strings.Contains(real, sentenceSpan) {
+			t.Fatal("fixture drift: default-sentence span not found verbatim")
+		}
+		variant := strings.Replace(real, sentenceSpan,
+			"\\`<!-- since_codex = \"rust-v0.161.0\", emit warning (hidden) -->\\`", 1)
+		counts, err := relupCodexTokenCounts(variant)
+		if err != nil {
+			t.Fatalf("S3 check errored on the escaped-backtick variant: %v", err)
+		}
+		for _, tok := range []string{"rust-v0.161.0", "emit warning"} {
+			if got := counts[tok]; got != 0 {
+				t.Errorf("escaped-backtick comment leaked token %q (count %d), want 0", tok, got)
 			}
 		}
 	})
@@ -1159,6 +1301,27 @@ func TestRelupStructureManifestDomain(t *testing.T) {
 		}
 		if clauses != 3 {
 			t.Errorf("top-level domain carries %d/3 clause literals, want 3", clauses)
+		}
+	})
+
+	t.Run("M14_domain_key_case_bypass_yields_0", func(t *testing.T) {
+		t.Parallel()
+		// Leader ruling d-20261013T135901Z-b08d P2-f: the manifest check reads
+		// the EXACT lowercase `domain` key only — a clause set carried by a
+		// case-capped sibling key must not satisfy S6 (encoding/json struct
+		// matching folds key case; a map lookup does not).
+		const domainLine = `"domain": "moai-adk-go dev-only maintainer tooling — Claude Code + Codex CLI upstream change tracking and the best-practices axis",`
+		if !strings.Contains(real, domainLine) {
+			t.Fatal("fixture drift: manifest domain line not found verbatim")
+		}
+		variant := strings.Replace(real, domainLine,
+			`"Domain": "moai-adk-go dev-only maintainer tooling — Claude Code + Codex CLI upstream change tracking and the best-practices axis",`, 1)
+		clauses, err := relupManifestDomainClauses(variant)
+		if err != nil {
+			t.Fatalf("variant manifest failed to decode: %v", err)
+		}
+		if clauses != 0 {
+			t.Errorf("case-capped sibling key leaked %d clauses, want 0 — S6 must read the exact lowercase domain only", clauses)
 		}
 	})
 
