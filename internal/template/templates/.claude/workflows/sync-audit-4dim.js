@@ -58,10 +58,33 @@ export const meta = {
   ],
 }
 
-// determinism: all inputs injected via args; no wall-clock, no random in body
-const SPEC_ID = (args && args.spec_id) || 'SPEC-UNKNOWN'
+// determinism: all inputs injected via args; no wall-clock, no random in body.
+// Ghost-surface guard input: a missing/non-string spec_id resolves
+// to '' — the pre-spawn guard below refuses instead of fabricating a ghost SPEC.
+const SPEC_ID = (args && typeof args.spec_id === 'string') ? args.spec_id.trim() : ''
 const THRESHOLD = (args && typeof args.threshold === 'number') ? args.threshold : 0.85
 const TIER = (args && args.tier) || 'M'
+
+// PRE-SPAWN SURFACE GUARD — runs before ANY agent spawns. A launch
+// without a usable SPEC id (a no-SPEC card, a 'none' placeholder, or the
+// legacy ghost marker 'SPEC-UNKNOWN') refuses explicitly: this workflow judges a
+// SPEC surface and must NOT adopt an unrelated one (observed live: with a ghost
+// id the Context agent adopted an unrelated SPEC found in the repo and the
+// judges scored a delta the card never touched). INCOMPLETE is never binding
+// (the runtime binding predicate treats any non-PASS verdict as fallback): the
+// cold sync-auditor
+// stays the fallback verdict owner — close a no-SPEC card's audit there on its
+// card-delta surface (merge-base..HEAD) instead.
+if (!SPEC_ID || SPEC_ID.toUpperCase() === 'SPEC-UNKNOWN' || SPEC_ID.toLowerCase() === 'none') {
+  return {
+    verdict: 'INCOMPLETE',
+    missing: ['audit-surface'],
+    reason: 'no usable spec_id injected — refusing to adopt an unrelated SPEC (observed live). For a no-SPEC card, run the cold sync-auditor on the card-delta surface (merge-base..HEAD) instead.',
+    tier: TIER,
+    threshold: THRESHOLD,
+    spec_id: SPEC_ID || '(none)',
+  }
+}
 
 // The four audit dimensions. Verdict order below MUST match this array (judges[i] <-> DIMENSIONS[i]).
 const DIMENSIONS = ['Functionality', 'Security', 'Craft', 'Consistency']
@@ -171,6 +194,10 @@ Return the audit surface as an object with EXACTLY these fields:
 - test_command: the single command that runs this SPEC's test suite (e.g. "go test ./internal/foo/...")
 - snapshot_evidence: the exact \`moai verify check --key-current\` command and output, or an explicit gap
 - binding_run_conditions: every item under the \`Binding run conditions\` heading of the SPEC's progress.md (debts a PASS-WITH-DEBT plan verdict made binding), each with its id, whether it is disposed, and the evidence; an empty list when the heading is absent
+
+If the .moai/specs/${SPEC_ID}/ directory does not exist, do NOT adopt or substitute a different
+SPEC: return spec_id exactly as given ("${SPEC_ID}"), empty acceptance_criteria and changed_files,
+an empty test_command, and record the missing SPEC directory in snapshot_evidence as an explicit gap.
 
 Report only what you can VERIFY from the artifacts. If a field cannot be determined, return it empty
 rather than guessing.`
