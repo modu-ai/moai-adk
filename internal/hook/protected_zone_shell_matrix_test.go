@@ -145,6 +145,28 @@ func zoneParsingMatrixCells() []zoneMatrixCell {
 	add("wrapped_cd_command_tracked", "command cd zone_dir && rm a.log", zoneMatrixDenyProbe)
 	add("wrapped_cd_builtin_tracked", "builtin cd zone_dir && rm a.log", zoneMatrixDenyProbe)
 
+	// -- card t1685 card-review round-1 P2 contrasts: each locks an OVER-DENY
+	// the bypass repair would otherwise introduce, paired with the guard cell
+	// that must NOT regress in the same fix. Allow dispositions follow the
+	// family convention (the control fails only on a deny).
+	// P2-a: `env -u rm` unsets the variable NAMED rm — the real command is
+	// read-only echo, never a deletion.
+	add("env_opt_u_split_consumes_name", "env -u rm echo zone_dir/x", zoneMatrixAllow)
+	// P2-a guard: the split form still disappears into the option, and the
+	// real rm after it resolves to the verb.
+	add("env_opt_u_guard_still_denies", "env -u HOME rm zone_dir/x", zoneMatrixDenyProbe)
+	// P2-b: the outer env is an external binary that execs `command` in a
+	// CHILD process — the inner shell-preserving wrapper cannot move the
+	// parent shell, so the cd stays untracked.
+	add("wrapped_cd_env_command_not_tracked", "env command cd zone_dir; rm a.log", zoneMatrixAllow)
+	// P2-c: a path-form cd is an external executable — the K4 rule (a path
+	// form never resolves to a shell builtin) excludes it from tracking even
+	// under a shell-preserving wrapper.
+	add("wrapped_cd_path_form_not_tracked", "command /usr/bin/cd zone_dir; rm harmless", zoneMatrixAllow)
+	// P2-c guard: the path fold still names the verb for a mutating path
+	// form — the exclusion is cd-tracking-only.
+	add("wrapper_command_path_verb", "command /bin/rm zone_dir/x", zoneMatrixDenyProbe)
+
 	// -- the audit-D1 cross: a declared function shadowing a mutation verb,
 	// invoked through EACH enumerated wrapper — the stripped head never
 	// re-enters the funcs table, so every cell denies, never walking the

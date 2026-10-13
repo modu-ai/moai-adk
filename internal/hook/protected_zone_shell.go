@@ -908,17 +908,21 @@ func (w *zoneWalker) zoneCall(cmd *syntax.CallExpr) {
 			name = path.Base(name)
 		}
 		switch {
-		case name == "cd" && (wclass == zoneWrapperNone || wclass == zoneWrapperShell):
-			// A BARE cd, and a cd under the shell-builtin-preserving
-			// wrappers (card t1685, REQ-ZSCD-004): `command cd` and
-			// `builtin cd` execute the builtin IN THE CURRENT SHELL, so the
-			// directory argument really moves the parent shell and must be
-			// tracked — the move is judged on the STRIPPED operand list, so
-			// the wrapper words never read as cd operands. A cd under the
-			// external wrappers stays untracked (card t1574): `env cd` is
-			// not a working cd at all and `nohup cd` runs in a child
-			// process, so its directory argument cannot move the parent
-			// shell.
+		case name == "cd" && !strings.Contains(headReadings[world], "/") &&
+			(wclass == zoneWrapperNone || wclass == zoneWrapperShell):
+			// A BARE cd, and a bare-named cd under the shell-builtin-
+			// preserving wrappers (card t1685, REQ-ZSCD-004): `command cd`
+			// and `builtin cd` execute the builtin IN THE CURRENT SHELL, so
+			// the directory argument really moves the parent shell and must
+			// be tracked — the move is judged on the STRIPPED operand list,
+			// so the wrapper words never read as cd operands. Two cd shapes
+			// stay untracked (card t1574; card-review P2-c): a cd under the
+			// external wrappers — `env cd` is not a working cd at all and
+			// `nohup cd` runs in a child process — and a PATH-FORM cd
+			// (`command /usr/bin/cd`, `./cd`): the K4 rule above folds the
+			// path to the verb name for the judgment, but a path form never
+			// resolves to a shell builtin — it execs as an external child
+			// whose cwd cannot move the parent shell.
 			w.zoneCdMove(world, args)
 		case zoneMutationVerbs[name]:
 			// the verb's world binds its own argument readings (gate
@@ -1142,12 +1146,16 @@ func (w *zoneWalker) walkFunctionBodies(world int, name string) {
 	}
 }
 
-// zoneWrapperClass reports what kind of wrapper zoneStripWrapperPrefix last
-// consumed. The distinction decides cd tracking (card t1685, REQ-ZSCD-004):
-// `command` and `builtin` execute their argument as a SHELL BUILTIN in the
-// CURRENT shell — a wrapped `cd` really moves the parent shell — while
-// `env` and `nohup` are external binaries that exec their argument in a
-// child process whose cd cannot move the parent.
+// zoneWrapperClass reports how the stripped head executes under the wrapper
+// chain zoneStripWrapperPrefix consumed. The distinction decides cd tracking
+// (card t1685, REQ-ZSCD-004): `command` and `builtin` execute their argument
+// as a SHELL BUILTIN in the CURRENT shell — a wrapped `cd` really moves the
+// parent shell — while `env` and `nohup` are external binaries that exec
+// their argument in a child process whose cd cannot move the parent.
+// EXTERNAL DOMINATES (card-review P2-b): once an external wrapper is in the
+// chain the head runs in (or under) a child process regardless of any inner
+// shell-preserving wrapper — `env command cd zone_dir` still cannot move the
+// parent shell.
 type zoneWrapperClass int
 
 const (
@@ -1172,10 +1180,11 @@ const (
 // timeout, xargs, sudo, ...) stay the documented under-matches (spec D2).
 // The loop is bounded by the argument list itself and handles nested forms
 // (`env command rm x`); an empty stripped head under-matches exactly as
-// today. The second result is the class of the LAST stripped wrapper — the
-// wrapper the stripped head directly executes under (gate round: `env cd
-// zone_dir` runs a child process whose cd cannot move the parent shell,
-// while `command cd zone_dir` runs the builtin in this shell).
+// today. The second result is the wrapper class governing how the stripped
+// head executes, with EXTERNAL DOMINATING: the outermost external wrapper in
+// the chain decides, and an inner `command`/`builtin` never demotes it (gate
+// round: `env cd zone_dir` runs a child process whose cd cannot move the
+// parent shell, while `command cd zone_dir` runs the builtin in this shell).
 func zoneStripWrapperPrefix(args []*syntax.Word) ([]*syntax.Word, zoneWrapperClass) {
 	class := zoneWrapperNone
 	for len(args) > 0 {
@@ -1185,7 +1194,12 @@ func zoneStripWrapperPrefix(args []*syntax.Word) ([]*syntax.Word, zoneWrapperCla
 		}
 		switch head {
 		case "command":
-			class = zoneWrapperShell
+			// card-review P2-b: an external wrapper already consumed stays
+			// decisive — the inner shell-preserving wrapper itself runs in
+			// that external child process.
+			if class != zoneWrapperExternal {
+				class = zoneWrapperShell
+			}
 			args = args[1:]
 			if len(args) > 0 {
 				if t, lit := zoneWordText(args[0]); lit && t == "-p" {
@@ -1214,6 +1228,16 @@ func zoneStripWrapperPrefix(args []*syntax.Word) ([]*syntax.Word, zoneWrapperCla
 				// disjoint and the loop order is irrelevant.
 				if strings.HasPrefix(t, "-") {
 					args = args[1:]
+					// card-review P2-a: the SPLIT form of `-u` consumes one
+					// following word — its NAME argument — so `env -u rm
+					// echo …` resolves the read-only echo, never a phantom
+					// rm verb. The glued `-uNAME` carries the name inside
+					// the token; getopt takes a required short-option
+					// argument from the next argv even when it starts with
+					// a hyphen.
+					if t == "-u" && len(args) > 0 {
+						args = args[1:]
+					}
 					continue
 				}
 				if !zoneEnvAssignment(t) {
@@ -1221,10 +1245,11 @@ func zoneStripWrapperPrefix(args []*syntax.Word) ([]*syntax.Word, zoneWrapperCla
 				}
 				args = args[1:]
 			}
-		case "nohup", "builtin":
-			if head == "nohup" {
-				class = zoneWrapperExternal
-			} else {
+		case "nohup":
+			class = zoneWrapperExternal
+			args = args[1:]
+		case "builtin":
+			if class != zoneWrapperExternal {
 				class = zoneWrapperShell
 			}
 			args = args[1:]
