@@ -2247,11 +2247,11 @@ These figures were checked against the named logs in `.moai/state/verify/t1619-t
 
 | Item | Value |
 |---|---|
-| Pushed HEAD (dispatched SHA) | |
-| ci.yml run id | |
-| ci.yml conclusion | |
-| release-pr-multi-os.yml run id | |
-| Release Verify (windows-latest) conclusion | |
+| Pushed HEAD (dispatched SHA) | `0eaa52e9f6cebfca382afb410c749b134ef95121` |
+| ci.yml run id | `38363715718` (dispatched 2026-10-13T07:36:22Z) |
+| ci.yml conclusion | `failure`. Job `Test (ubuntu-latest)` failed on one test, `TestFactoryLeaseSerialCrossProcessExactlyOne` (internal/cli). `Race Test 1` and `Race Test 2` succeeded. The other jobs succeeded, and the two matrix jobs (`Test (${{ matrix.os }})`, `Integration Tests (${{ matrix.os }})`) were skipped. |
+| release-pr-multi-os.yml run id | `38363720321` (dispatched 2026-10-13T07:36:25Z). Run conclusion `failure`. `Release Verify (ubuntu-latest)` failed: package internal/cli reported `FAIL` at 2100.377s under `go test -json -race -timeout 35m ./...`. `Release PR Multi-OS Gate` failed. `Release Verify (macos-latest)` was `cancelled`. |
+| Release Verify (windows-latest) conclusion | `cancelled` (not green, so the Windows-line closure stays a Gap) |
 | `git diff <dispatched SHA>..HEAD --stat` (raw output) | |
 
 ## §E.4 Sync-phase Audit-Ready Signal
