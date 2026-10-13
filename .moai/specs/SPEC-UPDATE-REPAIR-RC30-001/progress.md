@@ -930,7 +930,7 @@ Judging build (§ 2.2): the build ID `moai_cp/20261007_195927-298-g3e7a64808` na
 - **`~/.claude/skills`** (`ls -la ~/.claude/skills`). 36 entries: 19 `moai*` directories (`moai`, `moai-factory-foreman`, `moai-foundation-core`, `moai-foundation-quality`, `moai-foundation-thinking`, `moai-lane-watchdog`, `moai-plan`, `moai-ref-cross-model-audit`, `moai-ref-owasp-checklist`, `moai-ref-secops`, `moai-ref-testing-pyramid`, `moai-run`, `moai-sync`, `moai-workflow-ddd`, `moai-workflow-project`, `moai-workflow-spec`, `moai-workflow-tdd`, `moai-workflow-testing`, `moai-workflow-worktree`) and 17 other entries, not classified here. The count of 19 matches audit § 2. Against this tree's claude-side template (`internal/template/templates/.claude/skills/<name>`, `diff -rq` per name): 13 identical; 3 differ (`moai/workflows/gtd.md`, `moai-factory-foreman/SKILL.md`, `moai-lane-watchdog/SKILL.md`); 3 have no claude-side template (`moai-plan`, `moai-run`, `moai-sync`) and are identical to `internal/template/templates/.agents/skills/<name>`. So audit § 2's "byte-identical to the template" holds for 13 of 19 against this tree. The claude-side template holds 38 `moai*` directories, of which 19 are installed here.
   - Gap left: profile-session reads (audit § 3) are unobserved; which command wrote these copies is not attributed; the rule that selects the 19 from the 38 (catalog L0 / user-install view) is not re-derived; the content of the 3 differing files is not characterized.
 - **`~/.claude/agents`** (`ls -1A ~/.claude/agents`). 6 files: `manager-develop.md`, `manager-docs.md`, `manager-lead.md`, `manager-spec.md`, `plan-auditor.md`, `sync-auditor.md`. Mtimes: 2026-10-08 03:26 for four of them, 2026-10-10 10:29 for `plan-auditor.md`, and 2026-10-10 11:06 for `manager-lead.md`. The five names other than `manager-lead` are `l0CoreAgents` in `internal/template/catalog_user_install_view_test.go`; `manager-lead` is the sixth.
-  - Gap left: the audit § A removal on 2026-10-09 (no backup) is not established by a listing; the restoration path (U-25) stays open.
+  - Gap left: the audit § A removal on 2026-10-09 (no backup) is not established by a listing; the restoration path (U-25) stays open. Disposition (recorded later, same § E.2): U-25 / AC-RC30-24 is deferred to the operator's rc.30 field run per ruling d-20261010T223350Z-7f6e; see `### AC-RC30-24 (U-25) — deferral record` at the end of § E.2. The "stays open" wording above is kept as dated history at the time of this listing.
 - **`~/.agents/skills`** (`ls -la ~/.agents/skills`). 36 entries: the same 19 `moai*` names as above, plus 17 others. Against the claude-side template: 6 identical (`moai-ref-cross-model-audit`, `moai-ref-owasp-checklist`, `moai-ref-secops`, `moai-ref-testing-pyramid`, `moai-workflow-ddd`, `moai-workflow-tdd`); 10 differ; 3 (`moai-plan`, `moai-run`, `moai-sync`) have no claude-side template and are identical to the Codex-side template. The one sampled difference, `moai-foundation-core/SKILL.md`, is a path rewrite (`~/.claude/skills/…` to `~/.agents/skills/…`, `.claude/rules/…` to `.moai/policies/…`). This root is therefore a rendered Codex variant rather than a copy, and audit § 2's byte-identity claim does not apply to it.
   - Gap left: whether `moai init` or `moai update` populated this root is not attributed (blocked run); the rendering rule is confirmed on one file only.
 - **`~/.codex/agents`** (`ls -1A ~/.codex/agents`). 6 files: `manager-develop.toml`, `manager-docs.toml`, `manager-lead.toml`, `manager-spec.toml`, `plan-auditor.toml`, `sync-auditor.toml`. All six mtimes are 2026-10-10 11:06.
@@ -1893,9 +1893,115 @@ The whole `TestPreview` family (13 tests, including the unchanged tests named ab
 - R-4: The probe's recover now emits a `KindPanic` signal. The walk checks that the call exists, not what it does at runtime. Capture is consent-gated and fail-open.
 - R-5: The full CI job log and the local outputs are in machine-local scratch under `.moai/state/verify/t1619-ci-fix/`, which is not committed. The lines above are the carried evidence. The rest is a known loss.
 
+### AC-RC30-24 (U-25) — deferral record (manager-develop, card t1619)
+
+**Criterion.** AC-RC30-24 (acceptance.md line 237; REQ-RC30-003, owned by card t1668, cross-referenced here). Judging step: locate `.moai/logs/config-change-audit.log` in the operator profile, and attribute the untraced removal of 2026-10-09 11:26:48 (`.claude/skills/moai/**`, 46 files, and six core agents) to a command whose output is recorded in research.md. PASS only when that attribution is recorded.
+
+**Disposition.** Deferred and excluded from the landing verdict, per ruling d-20261010T223350Z-7f6e (plan.md § B.7). This card does not close the criterion and claims no attribution. The E-18 observation stands: `ls -la .moai/logs/config-change-audit.log` exits 1 on this tree (M1 entry above). The research.md removal-attribution verdict still reads that the removing command is not attributed.
+
+**Trigger (verbatim, acceptance.md line 237, Status column).**
+
+> deferred: excluded from the landing verdict; the operator checks the log at the 3.2-6-2 rc.30 field run (mo.ai.kr). Regression-guard. REQ-RC30-003 is owned by card t1668; this row is its cross-reference.
+
+The trigger is the operator's check of the log at the 3.2-6-2 rc.30 field run (mo.ai.kr). The operator-profile search named in the judging step was not performed by this card.
+
+**Decision commits.** Both exist in this run (`git log -1 --format=%h%x20%s <sha>`):
+
+- `bd190dd294 docs(SPEC-UPDATE-REPAIR-RC30-001): defer AC-RC30-24 U-25 closure to operator field run (card t1619)`. Edits plan.md § B.7 and the spec.md U-25 row (Next step marked operator-terminal).
+- `277c9eddc9 docs(SPEC-UPDATE-REPAIR-RC30-001): align AC-RC30-24 stale wording with its deferral (card t1619)`. Edits the research.md removal-attribution verdict sentence and the spec.md U-25 status cell.
+
+**Gap carried.** The removing command is not attributed, and the audit log is absent from this tree. The criterion stays unclosed until the operator field run records the attribution.
+
 ## §E.3 Run-phase Audit-Ready Signal
 
-_pending run-phase (manager-develop)_
+**Scope.** This record is the M7 measurement that finding N1 of the sync audit at HEAD `30659e8e1a` asks for (plan.md § B.8 step 2; acceptance.md Definition of Done, line 262). It covers M7 only. It is not a run-phase completion claim.
+
+**Claim.** At HEAD `30659e8e1aba4332bb1d20a6271c9df09b3a6708`, M7 is not met. Of the 15 impacted packages, 8 meet 85% and pass their test run; 5 pass their test run but fall below 85%; 2 do not pass their test run: `internal/cli` (timed out, no valid figure) and `internal/hook` (one failing test; its 87.6% comes from a completed run).
+
+**Evidence.** Command, run once while the `go-heavy` slot was held. Output was redirected to `.moai/state/verify/t1619-m7/go-test-cover.txt` (machine-local scratch, gitignored):
+
+```text
+go test -cover -count=1 ./internal/bugreport ./internal/cli ./internal/cli/update ./internal/cli/update/backup ./internal/cli/update/merge ./internal/cli/update/report ./internal/cli/wizard ./internal/config ./internal/hook ./internal/manifest ./internal/merge ./internal/settings/yamlpatch ./internal/template ./internal/userassets ./internal/web
+```
+
+Package result lines, verbatim:
+
+```text
+ok  	github.com/modu-ai/moai-adk/internal/bugreport	2.357s	coverage: 71.7% of statements
+FAIL	github.com/modu-ai/moai-adk/internal/cli	601.501s
+ok  	github.com/modu-ai/moai-adk/internal/cli/update	3.341s	coverage: 85.2% of statements
+ok  	github.com/modu-ai/moai-adk/internal/cli/update/backup	2.766s	coverage: 85.3% of statements
+ok  	github.com/modu-ai/moai-adk/internal/cli/update/merge	2.701s	coverage: 93.1% of statements
+ok  	github.com/modu-ai/moai-adk/internal/cli/update/report	0.415s	coverage: 95.1% of statements
+ok  	github.com/modu-ai/moai-adk/internal/cli/wizard	13.437s	coverage: 94.2% of statements
+ok  	github.com/modu-ai/moai-adk/internal/config	70.345s	coverage: 84.8% of statements
+FAIL	github.com/modu-ai/moai-adk/internal/hook	594.339s
+ok  	github.com/modu-ai/moai-adk/internal/manifest	0.523s	coverage: 89.2% of statements
+ok  	github.com/modu-ai/moai-adk/internal/merge	0.682s	coverage: 87.9% of statements
+ok  	github.com/modu-ai/moai-adk/internal/settings/yamlpatch	0.490s	coverage: 83.2% of statements
+ok  	github.com/modu-ai/moai-adk/internal/template	590.183s	coverage: 82.7% of statements
+ok  	github.com/modu-ai/moai-adk/internal/userassets	17.731s	coverage: 86.4% of statements
+ok  	github.com/modu-ai/moai-adk/internal/web	151.180s	coverage: 73.5% of statements
+```
+
+Two coverage lines carry no package name. Output line 387 sits inside the `internal/cli` block and is followed by the timeout panic. Output line 1240 directly precedes the `internal/hook` FAIL line.
+
+```text
+coverage: 21.9% of statements
+coverage: 87.6% of statements
+```
+
+**Impacted package set.** `git diff --name-only 2aab5f797 HEAD -- '*.go'` lists 162 Go files in 15 directories (saved as `.moai/state/verify/t1619-m7/touched-go-files.txt`). No Go file is deleted in that range. The 15 directories are the package lines above.
+
+**Threshold comparison.** The threshold is 85% per touched package: plan.md line 98 (Tested pillar), acceptance.md line 262 (Definition of Done), and the SSOT key `test_coverage_target: 85` (`.moai/config/sections/quality.yaml` line 13).
+
+| Package | Test verdict | Coverage figure | Against 85% |
+|---|---|---|---|
+| internal/bugreport | ok | 71.7% | below by 13.3 points |
+| internal/cli | FAIL, timed out | no valid figure (Gap G-M7-1) | no number |
+| internal/cli/update | ok | 85.2% | meets |
+| internal/cli/update/backup | ok | 85.3% | meets |
+| internal/cli/update/merge | ok | 93.1% | meets |
+| internal/cli/update/report | ok | 95.1% | meets |
+| internal/cli/wizard | ok | 94.2% | meets |
+| internal/config | ok | 84.8% | below by 0.2 points |
+| internal/hook | FAIL, one test | 87.6% (completed run) | figure meets; test verdict FAIL (Gap G-M7-2) |
+| internal/manifest | ok | 89.2% | meets |
+| internal/merge | ok | 87.9% | meets |
+| internal/settings/yamlpatch | ok | 83.2% | below by 1.8 points |
+| internal/template | ok | 82.7% | below by 2.3 points |
+| internal/userassets | ok | 86.4% | meets |
+| internal/web | ok | 73.5% | below by 11.5 points |
+
+**Heavy-run slot, verbatim.**
+
+```text
+slot go-heavy acquired by b6daac3a-0119-4eb1-a070-c751d00d25b2 until 2026-10-13T04:35:10Z
+slot go-heavy released (was b6daac3a-0119-4eb1-a070-c751d00d25b2)
+```
+
+No refusal was returned by either call.
+
+**gofmt and go vet, verbatim.**
+
+- `gofmt -l` over the touched Go files (the diff list, passed as arguments): no output. Cross-check, `gofmt -l internal/bugreport internal/cli internal/config internal/hook internal/manifest internal/merge internal/settings/yamlpatch internal/template internal/userassets internal/web` (every Go file in the 15 directories): no output. Positive control, `gofmt -l .moai/state/verify/t1619-m7/gofmt-control.go`, printed `.moai/state/verify/t1619-m7/gofmt-control.go`.
+- `go vet ./internal/bugreport ./internal/cli ./internal/cli/update ./internal/cli/update/backup ./internal/cli/update/merge ./internal/cli/update/report ./internal/cli/wizard ./internal/config ./internal/hook ./internal/manifest ./internal/merge ./internal/settings/yamlpatch ./internal/template ./internal/userassets ./internal/web`: no output and no error (`.moai/state/verify/t1619-m7/go-vet.txt` is empty). Positive control, `go vet .moai/state/verify/t1619-m7/vet-control.go`, printed `.moai/state/verify/t1619-m7/vet-control.go:6:14: fmt.Printf format %d has arg "not-an-int" of wrong type string` and failed.
+
+**Baseline-attribution.** Tree: HEAD `30659e8e1aba4332bb1d20a6271c9df09b3a6708` (`git rev-parse HEAD`). `git status --short` was empty before the run. Toolchain: `go version go1.26.8 darwin/arm64`. One run, `-count=1`, default per-binary timeout (`-test.timeout=10m0s`, visible in the process list). The record commit changes only this progress file (staged by explicit path), so the Go tree this record measures is the Go tree at the record commit.
+
+**Gaps (not observed in this record).**
+
+- G-M7-1 `internal/cli`: no valid figure, and the test verdict is FAIL. The test binary hit its 10-minute limit (`panic: test timed out after 10m0s`; running test `TestTreeScopeSkip_WTSessionsStillReviewed`), and `FAIL	github.com/modu-ai/moai-adk/internal/cli	601.501s` carries no figure. The `coverage: 21.9% of statements` line (output line 387) comes from the killed binary, so it reflects an incomplete run and is not a measurement of the package. Four top-level tests failed before the timeout: `TestCodexGoalUnmeasuredCapBoundsContinuation` (sub-test `a_measured_unmet_evaluation_resets_the_streak_(same_tree_key)`), `TestCountCodexAgentTOMLs_BadPatternRoot`, `TestCountCodexAgentTOMLs`, and `TestCodexReviewGatePrimaryCheckoutSkip`. Causes were not investigated.
+- G-M7-2 `internal/hook`: the test verdict is FAIL. `--- FAIL: TestSessionStart_DeferredScanJoinsWithinBound`, sub-test `slow_scan_drops_advisory`: `Handle blocked 773.396ms; expected return near the 250ms bound`. The 87.6% figure above is from a completed run, but the package does not pass its test run, so M7 is not met for it. Cause not investigated.
+- G-M7-3 Scope of "touched package". Plan.md line 98 names `internal/backup` and `internal/tui`. `internal/backup` is not a package path in this tree; the touched backup package is `internal/cli/update/backup` (85.3%, measured above). `internal/tui` has no Go change: `git diff --name-only 2aab5f797 HEAD -- internal/tui` lists four locale catalogs (`internal/tui/messages/en.yaml`, `ja.yaml`, `ko.yaml`, `zh.yaml`). It is outside the impacted Go set and was not measured in this run. Of the five packages below 85%, `internal/config` is named in plan.md line 98; `internal/bugreport`, `internal/settings/yamlpatch`, `internal/template`, and `internal/web` are not. Which set governs the DoD is a decision for the leader.
+- G-M7-4 The run-level signal fields (`run_status`, `ac_pass_count`, and the other fields of the § E.3 signal schema) are not populated. This pass measured M7 only.
+- G-M7-5 The coverage step of CI run `38334739075` (headSha `0d322db302`, cited in § E.4) was not read. Its log may carry per-package figures for G-M7-1 and G-M7-2. That SHA is not this record's baseline.
+
+**Residual risk.**
+
+- R-M7-1 `internal/template` finished at 590.183s against the 600s per-binary limit. A slower run would time out and lose its figure.
+- R-M7-2 The host was shared during the run. `pgrep` showed another session's `vitest` process (a different repository) active while the run was in progress. The timing-bound failure in G-M7-2 and the timeout in G-M7-1 may depend on load; that is not established here.
+- R-M7-3 `TestCountCodexAgentTOMLs` reported `count = 6`, and the operator's `~/.codex/agents` holds six `.toml` files (the § M2 bundle F entry, `~/.codex/agents`). Whether the test reads the real home was not checked; the match is a hypothesis only.
 
 ## §E.4 Sync-phase Audit-Ready Signal
 
