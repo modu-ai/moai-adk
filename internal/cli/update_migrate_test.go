@@ -430,7 +430,7 @@ func TestUpdateNeverFlipsModeRecord(t *testing.T) {
 // the user-asset install surface (M4), never the sync's removal targets.
 // The joint t1547×t1509 contract a force run must hold: the record never
 // flips (REQ-018), every common-root file survives byte-for-byte, and the
-// summary lists the user's own skill as preserved.
+// summary counts the user's own skill among the preserved files.
 func TestForceUpdatePreservesUserCommonAssets(t *testing.T) {
 	root := buildMigrationFixture(t)
 	runUpdateCobraCmd(t, root, map[string]string{"yes": "true"})
@@ -449,8 +449,13 @@ func TestForceUpdatePreservesUserCommonAssets(t *testing.T) {
 		t.Errorf("force update absorbed the user-modified skill:\n%s", got)
 	}
 	assertFilePresent(t, root, migIdenticalSkill)
-	if !strings.Contains(out, "moai-custom") {
-		t.Errorf("force-run summary did not list the preserved foreign skill:\n%s", out)
+	// REQ-RC30-015 (U-16): the default summary counts the preserved files and
+	// names no preserved path; the path list is --verbose only.
+	if !strings.Contains(out, "file(s) (run with --verbose to list)") {
+		t.Errorf("force-run summary did not count the preserved foreign skill:\n%s", out)
+	}
+	if strings.Contains(out, "preserved: "+migForeignSkill) {
+		t.Errorf("force-run summary listed the preserved foreign skill by path by default:\n%s", out)
 	}
 }
 
@@ -461,7 +466,7 @@ func TestForceUpdatePreservesUserCommonAssets(t *testing.T) {
 // behavior this test previously pinned. The next recorded-local update
 // RECONCILES the managed roots: a foreign file under the moai* managed glob
 // (template-carriage gate — not carried, no manifest record) classifies
-// user-owned and survives byte-for-byte, listed in the reconciliation
+// user-owned and survives byte-for-byte, counted in the reconciliation
 // summary (REQ-UPM-002/013; AC-UPM-001's flow-level form). The old
 // managed-glob removal-with-backup was exactly the D-15 loss path
 // REQ-UPM-002 exists to close (leader-approved test-contract update,
@@ -481,13 +486,16 @@ func TestNotDemonstratedPreservationHoldsAtNextLocalUpdate(t *testing.T) {
 
 	// Run 2 — the recorded-local update reconciles the managed roots: the
 	// foreign skill is user-owned (never removal-eligible) and survives
-	// byte-for-byte, and the summary lists it as preserved.
+	// byte-for-byte, and the summary counts it as preserved.
 	out, _ := runUpdateCobraCmd(t, root, map[string]string{"yes": "true", "no-plugin": "true", "force": "true"})
 	if got := readFixtureFile(t, root, migForeignSkill); got != foreignBefore {
 		t.Errorf("run 2 altered the foreign skill:\n%s", got)
 	}
-	if !strings.Contains(out, "moai-custom") {
-		t.Errorf("run 2 summary did not list the preserved foreign skill:\n%s", out)
+	if !strings.Contains(out, "file(s) (run with --verbose to list)") {
+		t.Errorf("run 2 summary did not count the preserved foreign skill:\n%s", out)
+	}
+	if strings.Contains(out, "preserved: "+migForeignSkill) {
+		t.Errorf("run 2 summary listed the preserved foreign skill by path by default:\n%s", out)
 	}
 }
 
@@ -516,8 +524,11 @@ func TestPreservedSectionSurvivesRestoreUntouched(t *testing.T) {
 	}
 
 	out, _ := runUpdateCobraCmd(t, root, map[string]string{"yes": "true"})
-	if !strings.Contains(out, "local-only.yaml") {
-		t.Errorf("summary did not report the local-only section as preserved:\n%s", out)
+	if !strings.Contains(out, "file(s) (run with --verbose to list)") {
+		t.Errorf("summary did not count the local-only section among the preserved files:\n%s", out)
+	}
+	if strings.Contains(out, "preserved: "+localOnly) {
+		t.Errorf("default summary listed the local-only section by path:\n%s", out)
 	}
 	if got := readFixtureFile(t, root, localOnly); got != content {
 		t.Errorf("the update rewrote the preserved local-only section file:\n--- before ---\n%s\n--- after ---\n%s", content, got)
@@ -1129,8 +1140,11 @@ func TestPostRemovalUserFileSurvivesNextUpdate(t *testing.T) {
 	} else if string(data) != userBytes {
 		t.Errorf("the next update rewrote the user's post-removal local file: %q", data)
 	}
-	if !strings.Contains(out, "zzz-stale-never-in-template") {
-		t.Errorf("the preserved post-removal file never reached the summary:\n%s", out)
+	if !strings.Contains(out, "file(s) (run with --verbose to list)") {
+		t.Errorf("the preserved post-removal file was not counted in the summary:\n%s", out)
+	}
+	if strings.Contains(out, "preserved: "+staleRel) {
+		t.Errorf("default summary listed the preserved post-removal file by path:\n%s", out)
 	}
 }
 
