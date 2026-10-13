@@ -38,14 +38,31 @@ const (
 	// `missing` entry naming the absent audit surface.
 	guardMarkerMissingSurface = "missing: ['audit-surface']"
 	// the ghost-marker rejection: the script must treat 'SPEC-UNKNOWN' as a
-	// refusal condition, not only as a fallback assignment.
-	guardMarkerGhostReject = "SPEC-UNKNOWN"
+	// refusal condition, not only as a fallback assignment. The marker is the
+	// EXECUTABLE comparison form — a comment quoting the ghost marker must
+	// never satisfy this assertion (codex card-review round 1, P2).
+	guardMarkerGhostReject = "SPEC_ID.toUpperCase() === 'SPEC-UNKNOWN'"
 	// the Context-prompt discretion block: when a spec_id IS injected but its
 	// SPEC directory does not exist, the agent must not adopt a different SPEC.
 	promptMarkerNoAdoption = "do NOT adopt or substitute"
 	// the spawn point the guard must precede.
 	contextSpawnMarker = "phase('Context')"
 )
+
+// codeOnlySource strips full-line JS comments so a marker hidden in prose can
+// never satisfy a guard assertion. The workflow scripts carry no block
+// comments before the guarded region, so dropping lines whose first
+// non-blank token is `//` is a complete comment filter here.
+func codeOnlySource(src string) string {
+	var kept []string
+	for _, ln := range strings.Split(src, "\n") {
+		if strings.HasPrefix(strings.TrimSpace(ln), "//") {
+			continue
+		}
+		kept = append(kept, ln)
+	}
+	return strings.Join(kept, "\n")
+}
 
 // TestSyncAudit4DimRefusesSpecIdlessRun asserts both copies of
 // sync-audit-4dim.js carry the pre-spawn surface guard, the ghost-marker
@@ -65,7 +82,10 @@ func TestSyncAudit4DimRefusesSpecIdlessRun(t *testing.T) {
 			if err != nil {
 				t.Fatalf("workflow script unreadable: %v", err)
 			}
-			source := string(src)
+			// All assertions run over the COMMENT-STRIPPED source: a comment
+			// sitting earlier in the file than the executable guard must not
+			// satisfy any marker (codex card-review round 1, P2).
+			source := codeOnlySource(string(src))
 
 			assertContains := func(marker, what string) int {
 				idx := strings.Index(source, marker)
