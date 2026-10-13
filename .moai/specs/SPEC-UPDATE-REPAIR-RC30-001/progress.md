@@ -1710,7 +1710,7 @@ update_migrate_test.go:1133: the preserved post-removal file never reached the s
 - `51f957864`: the M5 consumer-run record (docs; round 2A task 1).
 - `30de29d36`: the M6 root cause and RED record (docs only).
 - `c9ab1903f`: the U-15 fix and its test (code: `internal/merge/strategies.go`, `internal/cli/update/merge/permissions_ask_preserved_test.go`).
-- U-16: not committed (blocked, see above).
+- U-16: not committed in the blocked round (blocked, see above). Resolved by operator ruling `d-20261012T221654Z-9ced`: the summary surface landed as `024e740a6e` (RED) and `6ecfb4a1e0` (GREEN). The `--dry-run` preview surface is round 3 below (`0ddb588ce9` RED, `e5b11c04e` GREEN).
 - This GREEN record commits last.
 
 The U-15 code commit is separate from U-16 on purpose: the merge packages do not import the report package, so the U-15 commit stands alone, and the U-16 change stays out of the commit until the decision is made.
@@ -1730,6 +1730,90 @@ The pre-commit gate (`/verify`, delegating to the moai skill's `gate --staged`) 
 
 - R-M6-1: the U-15 fix applies to any top-level JSON or YAML object named `permissions` that the user left unchanged and the template changed. The merge engine does not receive the file path, so the scope is wider than `.claude/settings.json`. Retired permission arrays now also appear in the retained-key advisory (`permissions.<array>`), with the same semantics as other template-removed keys.
 - R-M6-2: under decision (A) the four expectations change, and under (B) the default summary keeps the path lists and U-16 needs re-scoping.
+
+### M6 round 3 — `--dry-run` preview counts preserved files by default (AC-RC30-17, U-16) (manager-develop, card t1619)
+
+**Scope.** The U-16 summary surface had already landed (see the resolution note in the commit-order list above). This round applies the same rule to the `--dry-run` reconciliation preview (`previewReconciliation`, `internal/cli/update_dryrun_preview.go`), which still listed every preserved path.
+
+**Commits.** `0ddb588ce9` is the RED (test only, prior round). `e5b11c04e44217e8cdfc5c8138025b0a4f6a1472` is the GREEN (implementation plus the five changed tests). This record is the commit after `e5b11c04e` and cannot name its own SHA.
+
+**Decision.** (1) By default the preserved user-owned files are one line, `[dry-run] preserved: N file(s)`. Each path is listed only under `--verbose` (ruling `d-20261012T221654Z-9ced`). (2) Header option (c): the header line `N files: … N preserved …` is unchanged. It counts every user-owned file, migration candidates included. (3) The count line appends `; migration candidates are not counted here (listed above)` only when at least one migration candidate is listed above it. The round's decision text asked for the note on the default count line. It is narrowed to that case, because on the common path no candidate is listed, and the note would describe a candidate that is not on screen.
+
+**Starting observation (RED at HEAD `0ddb588ce9`, re-observed in this run).** Command: `go test ./internal/cli/ -run '^TestPreviewPreservedLinesCountByDefault$' -count=1 -v`. Exit 1. Assertion lines, verbatim:
+
+```text
+    update_dryrun_preview_count_test.go:44: default preview lists the preserved path .claude/skills/moai-domain-db-docs/SKILL.md; the count is the default, got:
+    update_dryrun_preview_count_test.go:44: default preview lists the preserved path .claude/skills/moai-domain-mobile/SKILL.md; the count is the default, got:
+    update_dryrun_preview_count_test.go:48: default preview must carry the preserved count line, got:
+    update_dryrun_preview_count_test.go:51: default preview must name the --verbose route to the list, got:
+--- FAIL: TestPreviewPreservedLinesCountByDefault (0.00s)
+FAIL	github.com/modu-ai/moai-adk/internal/cli	0.998s
+```
+
+The echoed preview body shows the HEAD per-path format (`[dry-run] preserved: .claude/skills/… user-owned — left untouched`), so the binary was built from HEAD. Method: the GREEN file was saved as a patch, HEAD was restored with `git checkout`, the test ran, and the patch was re-applied. The re-apply was issued in the same batch as the test run, and the output format fixes which tree was compiled. The blob hash of the restored file (`1103579f09…`) matched the hash the patch recorded.
+
+**Failures before the test edits (GREEN preview, old default-mode assertions).** Command: `go test ./internal/cli/ -run TestPreview -count=1 -v`. Exit 1. Five tests failed. Assertion lines, verbatim:
+
+```text
+    update_migrate_test.go:1258: the control (untracked local-only skill) must stay plain preserved:
+--- FAIL: TestPreviewFlagsMigrationRemovalCandidates (0.00s)
+    update_migrate_test.go:1297: the preview dropped the copy instead of naming it:
+--- FAIL: TestPreviewOmitsRemovalCandidateWhileSwitchOff (0.00s)
+    update_observability_test.go:319: preview must still classify (conservative no-record route), got:
+--- FAIL: TestPreviewReconciliation_ReadOnlyOnCorruptManifest (0.00s)
+    update_observability_test.go:350: local-mode preview lost the preserved skill listing:
+--- FAIL: TestPreviewReconciliation_ModeScoped (0.00s)
+    update_observability_test.go:254: preview must name the preserved local-only skill path, got:
+--- FAIL: TestPreviewReconciliation (0.00s)
+```
+
+`TestPreviewPreservedLinesCountByDefault`, `TestPreviewCountEqualsRunCount`, and `TestPreviewReconciliation_EmptyProject` passed in that run.
+
+**Changed tests.** Each per-path assertion that the count contract replaces by default moved into a serial `--verbose` twin, placed next to its original. A twin sets `updateVerboseMode` through the helper `withVerboseMode(t)` (in `update_dryrun_preview_count_test.go`, restored in `t.Cleanup`) and does not call `t.Parallel`. Go runs parallel top-level tests only after the sequential ones finish, so the package flag is not raced.
+
+| Original test (default mode) | Default-mode expectation now | Verbose twin keeps the path check |
+|---|---|---|
+| `TestPreviewFlagsMigrationRemovalCandidates` | `[dry-run] preserved: 1 file(s)`, control path absent, count note present | `TestPreviewFlagsMigrationRemovalCandidates_VerboseListsControl` |
+| `TestPreviewOmitsRemovalCandidateWhileSwitchOff` | `[dry-run] preserved: 1 file(s)`, copy path absent | `TestPreviewOmitsRemovalCandidateWhileSwitchOff_VerboseNamesCopy` |
+| `TestPreviewReconciliation_ReadOnlyOnCorruptManifest` | `[dry-run] preserved: 1 file(s)`, `.claude/rules/moai/local.md` absent | `TestPreviewReconciliation_ReadOnlyOnCorruptManifest_VerboseListsLocalRule` |
+| `TestPreviewReconciliation_ModeScoped` | `[dry-run] preserved: 1 file(s)`, `.claude/skills/moai-custom/SKILL.md` absent | `TestPreviewReconciliation_ModeScoped_VerboseListsSkill` |
+| `TestPreviewReconciliation` | `[dry-run] preserved: 1 file(s)`, skill path absent | `TestPreviewReconciliation_VerboseListsPreservedSkill` |
+
+Unchanged: `TestPreviewPreservedLinesCountByDefault` (the RED, from `0ddb588ce9`; it passes now), `TestPreviewCountEqualsRunCount` (it compares merge-review counts and never reads the preview text), and `TestPreviewReconciliation_EmptyProject`. Each default-mode test keeps its non-path assertions (read-only contract, migration candidate line, no-overlap check, refreshed count).
+
+**Targeted runs after the edits (exact names, `-count=1`).** Each changed or new test passed on its own:
+
+```text
+--- PASS: TestPreviewPreservedLinesCountByDefault (0.00s)
+--- PASS: TestPreviewFlagsMigrationRemovalCandidates (0.00s)
+--- PASS: TestPreviewFlagsMigrationRemovalCandidates_VerboseListsControl (0.00s)
+--- PASS: TestPreviewOmitsRemovalCandidateWhileSwitchOff (0.00s)
+--- PASS: TestPreviewOmitsRemovalCandidateWhileSwitchOff_VerboseNamesCopy (0.00s)
+--- PASS: TestPreviewReconciliation (0.00s)
+--- PASS: TestPreviewReconciliation_VerboseListsPreservedSkill (0.00s)
+--- PASS: TestPreviewReconciliation_ReadOnlyOnCorruptManifest (0.00s)
+--- PASS: TestPreviewReconciliation_ReadOnlyOnCorruptManifest_VerboseListsLocalRule (0.00s)
+--- PASS: TestPreviewReconciliation_ModeScoped (0.00s)
+--- PASS: TestPreviewReconciliation_ModeScoped_VerboseListsSkill (0.00s)
+```
+
+The whole `TestPreview` family (13 tests, including the unchanged tests named above) ran as one command: `PASS` and `ok  	github.com/modu-ai/moai-adk/internal/cli	0.759s`, exit 0. Neighbouring tests that drive the real update or dry-run path all passed, exit 0: `TestUpdateDryRun_EmitsCleanReinstallPlan`, `TestUpdateDryRun_EmitsResidueCleanupPlan`, `TestUpdateDryRun_ZeroMutation` (both subtests), `TestUpdateDryRun_PreservesExistingOutput`, `TestForceUpdatePreservesUserCommonAssets`, `TestNotDemonstratedPreservationHoldsAtNextLocalUpdate`, `TestPreservedSectionSurvivesRestoreUntouched`, and `TestPostRemovalUserFileSurvivesNextUpdate`. Before commit B, `gofmt -l` on the four touched Go files produced no output.
+
+**Files changed (round 3, commit `e5b11c04e`).** `internal/cli/update_dryrun_preview.go` (count, candidate counter, note); `internal/cli/update_dryrun_preview_count_test.go` (`withVerboseMode` helper); `internal/cli/update_observability_test.go` (three default-mode assertions, three twins); `internal/cli/update_migrate_test.go` (two default-mode assertions, two twins). `internal/cli/update_clean_install.go` is untouched.
+
+**Gaps (not observed in round 3).**
+
+- G-R3-1: `/verify` was not run before commit `e5b11c04e`. `.claude/skills/moai/workflows/gate.md` documents `--fix`, `--staged`, `--file PATH`, and `--fresh`, and no package-scope option. The only narrowing flag, `--file PATH`, checks the named files, and its Go test check runs the `internal/cli` package suite, which this lane does not run locally (CI owns it). The gate is therefore not run here. The first full verdict is the push-time CI run on `origin/develop`.
+- G-R3-2: the repository-wide test verdict is PENDING (CI on `origin/develop` owns it).
+- G-R3-3: the full `internal/cli` suite was not run, and `internal/cli` coverage was not measured.
+- G-R3-4: for `e5b11c04e`, `git log -1 --format=%(trailers:key=Authored-By-Agent,valueonly)` returns empty. The `🗿 MoAI` marker is last, per the attribution mandate. The `Authored-By-Agent:` line sits in its own paragraph, and the ownership consumer's predicate matches it (body line 7). This is the known limitation of git's trailer parser for a marker-last layout, not a missing attribution.
+
+**Residual risk.**
+
+- R-R3-1: when every user-owned file is a migration candidate, the count line does not print (`preserved > 0` guard). The header still reads `N preserved` and the note cannot appear. Header option (c) leaves that case unexplained, and no test covers it.
+- R-R3-2: each verbose twin repeats the fixture of its default-mode original. A fixture edit in one must be mirrored in the other.
+- R-R3-3: the count assertions match exact text (`[dry-run] preserved: 1 file(s)` and the note). A wording change needs a test edit in the same commit.
+- R-R3-4: the summary surface (`internal/cli/update/report/outcome.go`) and the preview surface now carry the same count rule through two code paths. A later change to one may not reach the other.
 
 ## §E.3 Run-phase Audit-Ready Signal
 
