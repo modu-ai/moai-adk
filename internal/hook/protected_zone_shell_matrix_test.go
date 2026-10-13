@@ -126,6 +126,25 @@ func zoneParsingMatrixCells() []zoneMatrixCell {
 	add("wrapped_cd_nohup_not_tracked", "nohup cd zone_dir; rm harmless", zoneMatrixAllow)
 	add("bare_cd_tracking_control", "cd zone_dir; rm harmless", zoneMatrixDenyProbe)
 
+	// -- card t1685 bypass 1 — wrapper flag/separator spellings (REQ-ZSP-003
+	// lineage): the strip must consume `command`'s `--` separator and env's
+	// `-`-prefixed option words, so the real verb after them resolves and the
+	// zone-covered target denies. Pre-fix the stripped head stopped at `--` /
+	// `-i` / `--`-for-env, matched no verb, and the deletion went through.
+	add("wrapper_command_dashdash_rm", "command -- rm zone_dir/x", zoneMatrixDenyProbe)
+	add("wrapper_command_p_dashdash_rm", "command -p -- rm zone_dir/x", zoneMatrixDenyProbe)
+	add("wrapper_env_option_i_rm", "env -i rm zone_dir/x", zoneMatrixDenyProbe)
+	add("wrapper_env_dashdash_rm", "env -- rm zone_dir/x", zoneMatrixDenyProbe)
+
+	// -- card t1685 bypass 2 — wrapped-cd tracking (REQ-ZSCD-004): `command cd`
+	// and `builtin cd` execute the SHELL BUILTIN cd in the CURRENT shell — the
+	// parent shell really moves — so the move must be tracked and the
+	// following covered rm denies. The external wrappers keep their
+	// not-tracked dispositions above (wrapped_cd_env_not_tracked,
+	// wrapped_cd_nohup_not_tracked).
+	add("wrapped_cd_command_tracked", "command cd zone_dir && rm a.log", zoneMatrixDenyProbe)
+	add("wrapped_cd_builtin_tracked", "builtin cd zone_dir && rm a.log", zoneMatrixDenyProbe)
+
 	// -- the audit-D1 cross: a declared function shadowing a mutation verb,
 	// invoked through EACH enumerated wrapper — the stripped head never
 	// re-enters the funcs table, so every cell denies, never walking the
