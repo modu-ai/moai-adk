@@ -2003,6 +2003,135 @@ No refusal was returned by either call.
 - R-M7-2 The host was shared during the run. `pgrep` showed another session's `vitest` process (a different repository) active while the run was in progress. The timing-bound failure in G-M7-2 and the timeout in G-M7-1 may depend on load; that is not established here.
 - R-M7-3 `TestCountCodexAgentTOMLs` reported `count = 6`, and the operator's `~/.codex/agents` holds six `.toml` files (the § M2 bundle F entry, `~/.codex/agents`). Whether the test reads the real home was not checked; the match is a hypothesis only.
 
+### E.3 top-up measurement
+
+**Scope.** Top-up of the M7 measurement above, under the coordinator's refinement of the coverage criterion. Package-wide 85% applies to `internal/config` only. Every other changed package is judged by changed-line coverage: each added Go line of the card is checked against the coverage profile of its package. Package-wide percentages are reference only. This subsection is not a run-phase completion claim; the factory stage stays `sync`.
+
+**Method.** Changed lines are the added lines of `git diff -U0 2aab5f797b75983e132af451da68f69e3426557b HEAD -- '*.go'`, non-test files only (test lines are not coverage targets). A changed line is **executed (E)** when an instrumented coverage block covering it has count > 0 in the package's profile. A line is **non-executable (X)** when no instrumented block covers it: declarations, struct fields, signatures, comments, braces, case labels, package and import lines, and data literals. A line in a `*_windows.go` file is **Windows-only (P)**: it is not compiled on the darwin/arm64 host and is not measured here. A line that is executable and covered by no profile is **unexecuted (U)**. The classifier is an awk program over the diff and the profile; its output is kept in the machine-local scratch directory and is not a citation target.
+
+**Package list (the 15 directories of the diff, verbatim).** DoD, package-wide 85%: `internal/config`. Changed-line criterion: `internal/bugreport`, `internal/cli`, `internal/cli/update`, `internal/cli/update/backup`, `internal/cli/update/merge`, `internal/cli/update/report`, `internal/cli/wizard`, `internal/hook`, `internal/manifest`, `internal/merge`, `internal/settings/yamlpatch`, `internal/template`, `internal/userassets`, `internal/web`. `internal/cli/update` and `internal/cli/update/merge` carry test-file changes only (N = 0).
+
+**Config (DoD), package-wide, verbatim.**
+
+```text
+before (HEAD 0f9ac47081, go test -count=1 -coverprofile ./internal/config/):
+ok  	github.com/modu-ai/moai-adk/internal/config	3.330s	coverage: 84.8% of statements   (2321 of 2736 statements)
+after (commit d4ba3234e tree, same command):
+ok  	github.com/modu-ai/moai-adk/internal/config	3.682s	coverage: 85.4% of statements   (2337 of 2736 statements)
+```
+
+The after figure is from a final re-run at the same tree (`ok  	github.com/modu-ai/moai-adk/internal/config	3.682s	coverage: 85.4% of statements`). The added test file is `internal/config/llm_save_branches_test.go`; no production code changed.
+
+**Changed-line table.** N = changed non-test lines; E, U, X, P as defined above. Package-wide figures in the last column are reference only.
+
+| Package | N | E | U | X | P | Status | Package-wide (reference) |
+|---|---:|---:|---:|---:|---:|---|---|
+| internal/bugreport | 1 | 0 | 0 | 1 | 0 | closed: the one line is a data literal in a package-level registry | 71.7% |
+| internal/cli (narrowed union, see below) | 1637 | 479 | 110 | 1021 | 27 | open: 110 U | not measured (full package not run) |
+| internal/cli/update | 0 | 0 | 0 | 0 | 0 | no production change (test file only) | 85.2% |
+| internal/cli/update/backup | 345 | 124 | 21 | 200 | 0 | open: 21 U | 85.3% |
+| internal/cli/update/merge | 0 | 0 | 0 | 0 | 0 | no production change (test files only) | 93.1% |
+| internal/cli/update/report | 12 | 5 | 0 | 7 | 0 | closed | 95.1% |
+| internal/cli/wizard | 34 | 11 | 0 | 23 | 0 | closed | 94.2% |
+| internal/config (DoD) | 321 | 132 | 3 | 186 | 0 | 3 U, each with a reason (below) | 85.4% (criterion met) |
+| internal/hook | 597 | 207 | 25 | 337 | 28 | open: 25 U; 28 P | 87.6% |
+| internal/manifest | 31 | 9 | 0 | 22 | 0 | closed | 89.2% |
+| internal/merge | 40 | 20 | 0 | 20 | 0 | closed by 152bbcad8 (was U = 19) | 91.1% (was 87.9%) |
+| internal/settings/yamlpatch | 133 | 66 | 0 | 67 | 0 | closed by 6cdd488e4 (was U = 8) | 87.4% (was 83.2%) |
+| internal/template | 8 | 1 | 0 | 7 | 0 | closed | 82.7% |
+| internal/userassets | 859 | 262 | 30 | 455 | 112 | open: 30 U; 112 P | 86.4% |
+| internal/web | 16 | 8 | 0 | 8 | 0 | closed | 73.5% |
+| **Total** | **4034** | **1324** | **189** | **2354** | **167** | 186 open U, 3 reasoned U | |
+
+Per-file unexecuted counts of the open packages: `internal/cli` 110 = init_resume.go 31, doctor_lock_markers.go 16, codex_skills_disable.go 14, doctor_user_install.go 6, update_integrity_probe.go 6, update_disk_backup.go 5, doctor_harness.go 4, update_template_sync_guard.go 4, doctor.go 3, update_migrate.go 3, update_template_sync.go 3, glm.go 2, init_resume_read_unix.go 2, init.go 2, migrate_project_assets.go 2, update_clean_install.go 2, update_restore.go 2, bundle.go 1, init_update_notice.go 1, user_asset_phase.go 1. `internal/cli/update/backup` 21 = backup.go 11, run_marker.go 9, restore.go 1. `internal/hook` 25 = user_root_zone.go 23, zone_user_read_unix.go 2. `internal/userassets` 30 = install.go 20, remove.go 5, lock_guard_unix.go 3, journal.go 1, lock.go 1. Windows-only: `internal/cli/init_resume_read_windows.go` 27, `internal/hook/zone_user_read_windows.go` 28, `internal/userassets/lock_guard_windows.go` 112.
+
+The packages closed in this run were measured at the tree where they stood: the test files added in d4ba3234e, 152bbcad8, and 6cdd488e4 are in packages other than the open ones, so the open figures hold at HEAD 0f9ac47081 and at the commit tree.
+
+**Config: the three unexecuted changed lines, with reasons.** All three are error returns that the typed rendering cannot produce:
+
+- `llm_save.go` line 56 (`return nil, fmt.Errorf("llm baseline: %w", err)` in `LLMSectionEdits`) propagates `llmMappingOf(llmBaselineOf(*persisted))`. `llmBaselineOf` returns nil only on the `yaml.Marshal` failure branch (line 69), and `llmMappingOf` finds the llm mapping in every document `llmBaselineOf` renders.
+- `llm_save.go` line 69 (`return nil` in `llmBaselineOf`) is the `yaml.Marshal` failure branch. No input reaches it. The type tree of `LLMConfig` holds only string, bool, int, struct, and string-keyed map fields (`internal/config/types.go` lines 274-340 and 394-399; `ModelEffort` at `internal/config/audit_models.go` lines 65-68). yaml.v3 v3.0.1 encodes an untagged string with invalid UTF-8 as `!!binary` instead of failing (observed, see Evidence). The encoder's refusal sites (`encode.go` lines 331, 334, 546, 549, 575) need a tagged scalar or an unknown node kind, and the typed rendering produces neither.
+- `llm_save.go` line 81 (`return nil, fmt.Errorf("llm section: %w", err)` in `llmSectionEditsFrom`) propagates `llmMappingOf(llmBaselineOf(cur))`, which fails for the same reason as line 56.
+
+**Hook, four-way triage (`TestSessionStart_DeferredScanJoinsWithinBound`, file `internal/hook/session_start_parallel_test.go`, not changed by the card).**
+
+```text
+(1) package run, this tree, under the go-heavy slot:
+ok  	github.com/modu-ai/moai-adk/internal/hook	250.088s	coverage: 87.6% of statements
+    (no FAIL line)
+(2) this tree, alone: go test ./internal/hook/ -run '^TestSessionStart_DeferredScanJoinsWithinBound$' -count=1 -v
+--- PASS: TestSessionStart_DeferredScanJoinsWithinBound (0.58s)
+    --- PASS: TestSessionStart_DeferredScanJoinsWithinBound/fast_scan_lands_advisory (0.26s)
+    --- PASS: TestSessionStart_DeferredScanJoinsWithinBound/slow_scan_drops_advisory (0.32s)
+ok  	github.com/modu-ai/moai-adk/internal/hook	1.336s
+(3) main worktree (commit 79d0a0a47d), alone: go -C /Users/goos/MoAI/moai-adk-go/.claude/worktrees/main test ./internal/hook/ -run '^TestSessionStart_DeferredScanJoinsWithinBound$' -count=1 -v
+    (not refused; the go invocation ran)
+--- PASS: TestSessionStart_DeferredScanJoinsWithinBound (0.52s)
+    --- PASS: TestSessionStart_DeferredScanJoinsWithinBound/fast_scan_lands_advisory (0.19s)
+    --- PASS: TestSessionStart_DeferredScanJoinsWithinBound/slow_scan_drops_advisory (0.33s)
+ok  	github.com/modu-ai/moai-adk/internal/hook	1.119s
+(4) failure recorded in the M7 measurement (HEAD 30659e8e1a, under host load, R-M7-2), not reproduced in this run:
+--- FAIL: TestSessionStart_DeferredScanJoinsWithinBound
+    --- FAIL: TestSessionStart_DeferredScanJoinsWithinBound/slow_scan_drops_advisory
+        Handle blocked 773.396ms; expected return near the 250ms bound
+```
+
+Decision under the leader's rule: the test passes alone in this tree, so it is unrelated to the card. It is recorded as a Gap and not fixed. No hook code changed.
+
+**Narrowed `internal/cli` coverage (each line is narrowed; none is a package figure).** Each invocation was `go test ./internal/cli/ -run '<one prefix>' -count=1 -v -coverprofile=...`. The changed-line union above is the union of these families.
+
+```text
+TestInit               ok  	github.com/modu-ai/moai-adk/internal/cli	185.287s	coverage: 7.1% of statements   (83 top-level PASS)
+TestDoctor             ok  	github.com/modu-ai/moai-adk/internal/cli	130.654s	coverage: 10.5% of statements   (94 top-level PASS)
+TestUpdate             ok  	github.com/modu-ai/moai-adk/internal/cli	91.026s	coverage: 11.3% of statements   (87 top-level PASS)
+TestMigrat             ok  	github.com/modu-ai/moai-adk/internal/cli	8.187s	coverage: 8.3% of statements   (55 top-level PASS)
+TestBundle             ok  	github.com/modu-ai/moai-adk/internal/cli	8.106s	coverage: 5.0% of statements   (7 top-level PASS)
+TestInitResume         ok  	github.com/modu-ai/moai-adk/internal/cli	37.744s	coverage: 6.5% of statements   (29 top-level PASS)
+TestPreview            ok  	github.com/modu-ai/moai-adk/internal/cli	1.195s	coverage: 5.2% of statements   (13 top-level PASS)
+TestIntegrityProbe     ok  	github.com/modu-ai/moai-adk/internal/cli	1.344s	coverage: 7.7% of statements   (4 top-level PASS)
+TestSaveLLM            ok  	github.com/modu-ai/moai-adk/internal/cli	0.934s	coverage: 4.8% of statements   (13 top-level PASS)
+TestRestoreSettings    ok  	github.com/modu-ai/moai-adk/internal/cli	0.827s	coverage: 4.9% of statements   (2 top-level PASS)
+TestCleanReinstall     ok  	github.com/modu-ai/moai-adk/internal/cli	8.303s	coverage: 8.8% of statements   (23 top-level PASS)
+TestRecordless         ok  	github.com/modu-ai/moai-adk/internal/cli	0.920s	coverage: 6.4% of statements   (2 top-level PASS)
+TestDeployedWiring     ok  	github.com/modu-ai/moai-adk/internal/cli	0.754s	coverage: 4.7% of statements   (1 top-level PASS)
+TestLLMYaml            ok  	github.com/modu-ai/moai-adk/internal/cli	0.749s	coverage: 4.8% of statements   (1 top-level PASS)
+TestProfileSync        ok  	github.com/modu-ai/moai-adk/internal/cli	3.951s	coverage: 7.4% of statements   (1 top-level PASS)
+TestSkipSync           ok  	github.com/modu-ai/moai-adk/internal/cli	0.904s	coverage: 4.8% of statements   (1 top-level PASS)
+TestCodexInstall       ok  	github.com/modu-ai/moai-adk/internal/cli	1.027s	coverage: 4.7% of statements   (1 top-level PASS)
+TestGateYAML           ok  	github.com/modu-ai/moai-adk/internal/cli	1.738s	coverage: 6.2% of statements   (1 top-level PASS)
+TestTemplateSync       ok  	github.com/modu-ai/moai-adk/internal/cli	1.477s	coverage: 7.4% of statements   (5 top-level PASS)
+TestSkipDecision       ok  	github.com/modu-ai/moai-adk/internal/cli	3.295s	coverage: 4.8% of statements   (1 top-level PASS)
+TestLegacyLLM          ok  	github.com/modu-ai/moai-adk/internal/cli	0.997s	coverage: 4.7% of statements   (1 top-level PASS)
+TestKeptOptional       ok  	github.com/modu-ai/moai-adk/internal/cli	2.797s	coverage: 5.1% of statements   (1 top-level PASS)
+TestNonCatalog         ok  	github.com/modu-ai/moai-adk/internal/cli	1.597s	coverage: 5.1% of statements   (1 top-level PASS)
+TestUpdateSingle       ok  	github.com/modu-ai/moai-adk/internal/cli	1.287s	coverage: 7.4% of statements   (1 top-level PASS)
+TestStampSkew          ok  	github.com/modu-ai/moai-adk/internal/cli	0.805s	coverage: 4.7% of statements   (1 top-level PASS)
+TestPreviewCount       ok  	github.com/modu-ai/moai-adk/internal/cli	0.771s	coverage: 5.0% of statements   (1 top-level PASS)
+TestInitQuestions      ok  	github.com/modu-ai/moai-adk/internal/cli	0.833s	coverage: 4.6% of statements [no tests to run]   (EXCLUDED: zero tests swept)
+exact TestInitQuestionsWithAgentWiring_PrefillsRecordedDefault in ./internal/cli/   ok  	github.com/modu-ai/moai-adk/internal/cli	1.155s	coverage: 4.6% of statements [no tests to run]   (EXCLUDED: zero tests swept; the test is in internal/cli/wizard)
+```
+
+**Commits (one concern each).** `d4ba3234e5ed4eba99124d70683f0106f6d310f5` test(config) (`internal/config/llm_save_branches_test.go`, 183 insertions); `152bbcad87d63ee208770e24d9a9142b3a787fd0` test(merge) (`internal/merge/permissions_retired_arrays_test.go`, 67 insertions); `6cdd488e4068b14dda9bc2e4eed9b9aefb33462f` test(yamlpatch) (`internal/settings/yamlpatch/branches_test.go`, 161 insertions). This subsection is the commit after them; its own SHA is not cited here (D3 backfill).
+
+**Evidence.** Commands and outputs are in the lines above. Three corrections were observed during the run and are kept rather than rewritten. (a) The first yamlpatch invalid-UTF-8 test asserted a refusal of an untagged value; it failed with `PatchFile err = <nil>, want an encode refusal`, because yaml.v3 writes that value as `!!binary`. The test now uses the quoted form, which pins the `!!str` tag, and passes. (b) Two narrowed cli runs named tests that are not in `internal/cli` and swept zero tests (both print `[no tests to run]`). They are excluded above. (c) The first config commit message says lines 56, 69, and 81 are returns of `yaml.Marshal`; in fact 56 and 81 propagate `llmMappingOf` errors, whose root is the line 69 branch. This record is the authority for that wording.
+
+**Baseline-attribution.** Every figure is attributed to the command above run in this session against the tree named there. The coverage tests added in this run are tests written after the code they cover (closing coverage on existing code); the RED state for each is the zero count of its line in the baseline profile, observed before the test was added.
+
+**Gaps (not observed, or not closed).**
+
+- The per-line rule is not met for 186 executable changed lines: `internal/hook` 25, `internal/userassets` 30, `internal/cli` 110, `internal/cli/update/backup` 21. No test and no reason was written for them in this run. Each is a real statement that the families run here did not reach, so none qualifies for a per-line reason. This is the open item for the leader's decision.
+- 167 Windows-only changed lines (`init_resume_read_windows.go` 27, `zone_user_read_windows.go` 28, `lock_guard_windows.go` 112) are not measurable on darwin/arm64. A `GOOS=windows` run is required to measure them.
+- The full `internal/cli` package was not run, per the instruction. Its figure is the narrowed union only (26 families: TestInit, TestDoctor, TestUpdate, TestMigrat, TestBundle, TestInitResume, TestPreview, TestIntegrityProbe, TestSaveLLM, TestRestoreSettings, TestCleanReinstall, TestRecordless, TestDeployedWiring, TestLLMYaml, TestProfileSync, TestSkipSync, TestCodexInstall, TestGateYAML, TestTemplateSync, TestSkipDecision, TestLegacyLLM, TestKeptOptional, TestNonCatalog, TestUpdateSingle, TestStampSkew, TestPreviewCount).
+- The M7 hook failure was not reproduced in this run, and its cause was not investigated. The package passed in this run.
+- `internal/cli/wizard` was measured as a full package (no `-run` filter). Its changed lines are closed on that basis.
+
+**Residual risk.**
+
+- The changed-line method marks a line executed when a covering block ran. A multi-line statement shares one block range, so a continuation line can be counted executed when only a sibling line ran. This can overstate E.
+- The narrowed cli union can only reduce U when more families are added, so 110 is an upper bound on cli unexecuted lines under these families, not a claim about the package.
+- An untagged value with invalid UTF-8 written through `PatchFile` is stored as `!!binary`, not refused. This card did not change that behavior, and the new tests do not assert it. It is noted because the llm save path writes through the same seam.
+- The three config reasons depend on yaml.v3 v3.0.1 (`go.mod` line 33) not failing on the `LLMConfig` type tree. A field of a chan, func, or complex type added later would make line 69 reachable and invalidate its reason.
+
 ## §E.4 Sync-phase Audit-Ready Signal
 
 ```yaml
