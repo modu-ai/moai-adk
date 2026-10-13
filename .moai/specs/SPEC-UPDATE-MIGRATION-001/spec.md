@@ -21,7 +21,7 @@ tier: L
 | Version | Date | Author | Change |
 |---------|------|--------|--------|
 | 0.1.0 | 2026-10-07 | GOOS | Initial draft. Card t1547. Supersedes the withdrawn t1541 `.claude-plugin` distribution-path premise (operator decision 2026-10-06). |
-| 0.1.1 | 2026-10-13 | GOOS | Amended REQ-UPM-030: the number of preserved user-owned files is reported as a count, not a per-path listing. Other REQ-UPM-030 listings unchanged; REQ-UPM-031 and REQ-UPM-032 unchanged. Decided in SPEC-UPDATE-REPAIR-RC30-001 under ruling d-20261010T223350Z-7f6e (option A). Widened under operator ruling d-20261012T221654Z-9ced (card t1619): REQ-UPM-013, AC-UPM-020, AC-UPM-032, plan.md M5, and design.md §5 apply the same count-by-default rule, so the per-path list of preserved files appears only under `--verbose`. Status stays completed. |
+| 0.1.1 | 2026-10-13 | GOOS | Amended REQ-UPM-030: the number of preserved user-owned files is reported as a count, not a per-path listing. Other REQ-UPM-030 listings unchanged; REQ-UPM-031 and REQ-UPM-032 unchanged. Decided in SPEC-UPDATE-REPAIR-RC30-001 under ruling d-20261010T223350Z-7f6e (option A). Widened under operator ruling d-20261012T221654Z-9ced (card t1619): REQ-UPM-013, AC-UPM-020, AC-UPM-032, plan.md M5, and design.md §5 apply the same count-by-default rule, so the per-path list of preserved files appears only under `--verbose`. REQ-UPM-030 carries the same `--verbose` carve-out as REQ-UPM-013. The widened design.md locations are §2 (the user-owned row) and §3 (the preserve bullet), aligned by commit 9c16c6b2bd, and §5, aligned by commit 5e91fae3b6. Status stays completed. |
 
 ## A. Background
 
@@ -142,8 +142,8 @@ B.4: 030-032, B.5: 040); the gaps between blocks are reserved ranges, not omissi
 
 - REQ-UPM-030: The update summary shall report, with per-path listings: refreshed files,
   merged files, conflicts (preserved local + `.moai-new` sidecar), and archived-removed stale
-  files; the number of preserved user-owned files shall be reported as a count, not as a
-  per-path listing.
+  files; the number of preserved user-owned files shall be reported as a count by default, and
+  the per-path list of preserved files shall appear only under `--verbose`.
 - REQ-UPM-031: The update summary shall include deletions of managed files; a run that
   removes N managed files shall state so — the summary shall never report a deletion-free run
   while the removal machinery deleted files.
