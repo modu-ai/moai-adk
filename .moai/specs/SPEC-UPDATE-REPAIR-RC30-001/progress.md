@@ -1803,7 +1803,7 @@ The whole `TestPreview` family (13 tests, including the unchanged tests named ab
 
 **Gaps (not observed in round 3).**
 
-- G-R3-1: `/verify` was not run before commit `e5b11c04e`. `.claude/skills/moai/workflows/gate.md` documents `--fix`, `--staged`, `--file PATH`, and `--fresh`, and no package-scope option. The only narrowing flag, `--file PATH`, checks the named files, and its Go test check runs the `internal/cli` package suite, which this lane does not run locally (CI owns it). The gate is therefore not run here. The first full verdict is the push-time CI run on `origin/develop`.
+- G-R3-1: `/verify` was not run before commit `e5b11c04e`. `.claude/skills/moai/workflows/gate.md` documents `--fix`, `--staged`, `--file PATH`, and `--fresh`, and no package-scope option. Its `--file PATH` form is documented as checking the named files, with tests run "only matching test files if discoverable". `gate.md` does not say which Go tests that selects, so that scope was not observed, and the gate was not run: this lane does not run the `internal/cli` suite locally, and CI owns it. The first full verdict is the push-time CI run on `origin/develop`.
 - G-R3-2: the repository-wide test verdict is PENDING (CI on `origin/develop` owns it).
 - G-R3-3: the full `internal/cli` suite was not run, and `internal/cli` coverage was not measured.
 - G-R3-4: for `e5b11c04e`, `git log -1 --format=%(trailers:key=Authored-By-Agent,valueonly)` returns empty. The `🗿 MoAI` marker is last, per the attribution mandate. The `Authored-By-Agent:` line sits in its own paragraph, and the ownership consumer's predicate matches it (body line 7). This is the known limitation of git's trailer parser for a marker-last layout, not a missing attribution.
