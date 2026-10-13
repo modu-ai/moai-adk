@@ -1821,6 +1821,78 @@ The whole `TestPreview` family (13 tests, including the unchanged tests named ab
 - R-R3-3: the count assertions match exact text (`[dry-run] preserved: 1 file(s)` and the note). A wording change needs a test edit in the same commit.
 - R-R3-4: the summary surface (`internal/cli/update/report/outcome.go`) and the preview surface now carry the same count rule through two code paths. A later change to one may not reach the other.
 
+### CI fix — Linux CI run 38330633013, four failing tests (manager-develop, card t1619)
+
+**Scope.** Job `Test (ubuntu-latest)` (job id 115079438840) of CI run 38330633013, head branch `WT-moai-update-repair`, head SHA `ccf9aa6ae96716e29e068f9b536d18f8d387307c`, concluded `failure` in the step "Run tests with coverage (fast — no race detector)". The run was still in progress when it was read, so only the job log was available.
+
+**Commits.** Commit 1 `507844b67aad90777b4694e9039467afc0d606c6` carries the code and test-hermeticity fix. This record is commit 2 and cannot name its own SHA. The after-fix results below were measured on the tree of commit 1; the staged diff was committed unchanged.
+
+**The failing lines, verbatim (CI job log of job 115079438840).**
+
+```text
+    register_test.go:191: recover site internal/cli/update_integrity_probe.go:runManagedSurfaceIntegrityProbe neither calls the capture entry point nor is allowlisted
+    update_integrity_probe_test.go:184: REQ-UMF-002: a probe fault must never return an error: load manifest: manifest load: read .moai/manifest.json: is a directory
+--- FAIL: TestProfileSyncResolution (0.00s)
+    update_profile_sync_test.go:67: profile sync did not resolve the project's ledger profile: conversation_language = "en", want "ja" (work profile)
+    update_single_banner_test.go:60: a run must print exactly one version line, got 0: []
+    update_single_banner_test.go:63: the identity band must be kept (REQ-TUXIU-015)
+--- FAIL: TestUpdateSingleBanner (0.00s)
+```
+
+**Cause and evidence, per test.**
+
+1. `TestEveryRecoverSiteReportsOrIsAllowlisted`. Confirmed cause: the deferred recover in `runManagedSurfaceIntegrityProbe` (`internal/cli/update_integrity_probe.go`, introduced on this branch) neither calls the capture entry point nor is on the allowlist. Not Linux-specific: it fails identically on macOS.
+   - Before. Command: `go test ./internal/bugreport/ -run '^TestEveryRecoverSiteReportsOrIsAllowlisted$' -count=1`. Output: `--- FAIL: TestEveryRecoverSiteReportsOrIsAllowlisted (1.83s)`, the register line above verbatim, `FAIL`. Exit 1.
+   - Fix: the recover calls `bugreport.Capture(bugreport.KindPanic, nil, "", nil)`, the convention for recovered panics, and `internal/bugreport/register.go` lists the site. The allowlist is not extended.
+   - After. `--- PASS: TestEveryRecoverSiteReportsOrIsAllowlisted (2.55s)`, `ok  	github.com/modu-ai/moai-adk/internal/bugreport	2.731s`. `TestEmitSiteRegister`: `--- PASS: TestEmitSiteRegister (0.00s)`.
+
+2. `TestIntegrityProbe_FailOpen`. Confirmed cause: not the probe. The version-match predicate `versionMatchSkipsSync` (`internal/cli/update_template_sync_guard.go`, RC30 M5 design item 1) returned false when `manifest.Load` failed, so the run went into the template sync. The sync's own manifest load failed on the same directory (`update_template_sync.go:270-275`), and `runUpdate` returned that error (`update.go:577-580`) before the probe, which runs only on the skip path (`update.go:613`). Not Linux-specific: the macOS and CI traces match line for line.
+   - Before. Command: `go test ./internal/cli/ -run '^TestIntegrityProbe_FailOpen$' -count=1 -v`. Output: the `update_integrity_probe_test.go:184` line above verbatim, `✓ Version check complete`, `✗ Manifest load failed: manifest load: read .moai/manifest.json: is a directory`, `--- FAIL: TestIntegrityProbe_FailOpen (2.24s)`. Exit 1.
+   - Fix: on a load error the predicate returns `!errors.Is(err, manifest.ErrManifestCorrupt)`. Observed with a temporary diagnostic test (deleted before the commit): `missing: versionMatchSkipsSync=true corrupt-sidecar-exists=false`, `corrupt: versionMatchSkipsSync=false corrupt-sidecar-exists=true`, `directory: versionMatchSkipsSync=true corrupt-sidecar-exists=false`.
+   - After. `--- PASS: TestIntegrityProbe_FailOpen (0.56s)`.
+   - **Decision (narrows M5 item 1 above).** The sentence "A manifest that fails to load does not skip." now applies to corrupt manifests only. Reasons: (a) REQ-UMF-002 and AC-UMF-002 (release-blocking in SPEC-UPDATE-MIGRATION-FIX-001) require a version-matched run with a damaged representative path to exit 0 with one integrity row; (b) the sync cannot rebuild a path it cannot read, so the sentence as written turned the probe's warning into a hard failure on every version-matched run with such a manifest; (c) a corrupt manifest still syncs, because `Load` moves it aside and the sync rebuilds it, and that branch is unchanged.
+
+3. `TestProfileSyncResolution`. Confirmed cause: a test-order leak, not Linux. `TestUpdateCmd_TemplatesOnlyAndBinaryMutuallyExclusive` (`internal/cli/update_mode_test.go`) set `templates-only` and `binary` on the package-level `updateCmd` and never restored them. The first validation in `runUpdate` (`update.go:179-181`) then returns "--binary and --templates-only are mutually exclusive" before the identity band (`update.go:202`), before the sync, and before the profile step. Every later run in the package returns at once, which is the 0.00s in the CI job. The test passes alone (`--- PASS: TestProfileSyncResolution (0.50s)`), which is why a single-name run cannot show the cause.
+   - Before, leaker first. Command: `go test ./internal/cli/ -run '^(TestUpdateCmd_TemplatesOnlyAndBinaryMutuallyExclusive|TestProfileSyncResolution)$' -count=1 -v`. Output: `--- PASS: TestUpdateCmd_TemplatesOnlyAndBinaryMutuallyExclusive (0.00s)`, the `update_profile_sync_test.go:67` line above verbatim, `--- FAIL: TestProfileSyncResolution (0.00s)`. Exit 1.
+   - Observed early return, with a temporary diagnostic test (deleted): `leaked binary=true templates-only=true`, `RunE err=--binary and --templates-only are mutually exclusive`, `RunE output=""`.
+   - Fix: the leaking test snapshots and restores `templates-only`, `binary`, and `yes` through `t.Cleanup`, the pattern `runUpdateFixtureErr` already uses for the shared command.
+   - After, in CI order. Command: `go test ./internal/cli/ -run '^(TestRunUpdate_CodexOnlyVersionMatch_PrintsNoIntegrityRow|TestUpdateCmd_TemplatesOnlyAndBinaryMutuallyExclusive|TestProfileSyncResolution)$' -count=1 -v`. The codex test is the earlier test that leaves `force=true` set in CI order. Output: `--- PASS: TestProfileSyncResolution (0.50s)`, `PASS`, `ok  	github.com/modu-ai/moai-adk/internal/cli	2.111s`.
+
+4. `TestUpdateSingleBanner`. Same cause as item 3. Before, leaker first: `update_single_banner_test.go:60` and `:63` lines above verbatim, `--- FAIL: TestUpdateSingleBanner (0.00s)`. After, alone: `--- PASS: TestUpdateSingleBanner (0.51s)`. After, in CI order (same three-name chain with `TestUpdateSingleBanner`): `--- PASS: TestUpdateSingleBanner (0.49s)`, `ok  	github.com/modu-ai/moai-adk/internal/cli	4.362s`.
+
+**Attribution scan (read with `git grep`, not run).** Every write to the shared update command's flags in `internal/cli` tests was listed. `update_mode_test.go:101-103` is the only writer of `binary` or `templates-only` without cleanup. `update_harness_test.go` (via `resetUpdateFlags`, then `force` and `yes`) and `update_integrity_probe_codex_test.go` (via `runCodexOnlyProjectThenUpdate`) leave `force` and `yes` set. The victims pass with that state, as the CI-order chain shows.
+
+**Regression checks after the fix (tree of commit 1).** Each command was run alone, one name per invocation, `-count=1`.
+- `TestSkipDecisionUsesTreeHash`: `--- PASS: TestSkipDecisionUsesTreeHash (0.04s)`, both subtests pass.
+- `TestSkipSyncNoArchive`: `--- PASS: TestSkipSyncNoArchive (0.01s)`.
+- `TestRunUpdate_VersionMatch_RunsIntegrityProbe`: `--- PASS: TestRunUpdate_VersionMatch_RunsIntegrityProbe (0.66s)`.
+- `TestRunUpdate_UserCancelled_SkipsIntegrityProbe`: `--- PASS: TestRunUpdate_UserCancelled_SkipsIntegrityProbe (0.33s)`.
+- `TestIntegrityProbeSet_EveryMemberObservableOnVersionMatchedPath`: `--- PASS` for both members.
+- `TestIntegrityProbeEntry_DamageReasons`: `--- PASS` for all eight subtests.
+- `TestReadProbeFile_HandleRecheckRefusesNonRegular`: `--- PASS (0.01s)`.
+- `TestUpdateCmd_TemplatesOnlyAndBinaryMutuallyExclusive`: `--- PASS (0.00s)`.
+- `go vet ./internal/bugreport/ ./internal/cli/`: no output, exit 0.
+- `golangci-lint run ./internal/bugreport/ ./internal/cli/`: `0 issues.`
+- `gofmt -l` on the four changed files: no output.
+- `go test -count=1 -run '^$' ./internal/bugreport/ ./internal/cli/`: `ok  	github.com/modu-ai/moai-adk/internal/bugreport	0.519s [no tests to run]` and `ok  	github.com/modu-ai/moai-adk/internal/cli	0.956s [no tests to run]`.
+
+**Files changed (commit 1).** `internal/cli/update_integrity_probe.go` (import; `KindPanic` capture in the recover). `internal/bugreport/register.go` (one `KindPanic` lead). `internal/cli/update_mode_test.go` (restore of the three flags the test sets). `internal/cli/update_template_sync_guard.go` (predicate on a manifest load error, and its comment).
+
+**Gaps (not observed).**
+- G-1: Linux was not run locally. The Linux evidence is the CI log: the test-2 trace matches the macOS trace. The Linux verdict for commit 1 is the next CI run on this branch, which the lane dispatches.
+- G-2: The full `internal/cli` suite and `go test ./...` were not run, per the brief. The victims were checked in the CI-order chain of three named tests. The full-package order was not observed.
+- G-3: `/verify` was not run. `.claude/skills/moai/workflows/gate.md` documents `--fix`, `--staged`, `--file PATH`, and `--fresh`, with no package scope. Its Go test step is `go test -race` over the module, and `gate.md` does not define the `--file` test scope for Go, so running it would run the module suite. The lane decides. The package-scoped checks are the vet, gofmt, lint, and targeted test lines above.
+- G-4: The corrupt-manifest branch of the predicate has no targeted test on the update path. It was observed only through the temporary diagnostic.
+- G-5: The trailer-parse query `git log -1 --format=%(trailers:key=Authored-By-Agent,valueonly)` was refused by the worktree guard as too complex, so the trailer was not parsed by git. The layout was checked by reading the body with `git log -1 --format=%B`. It matches commit `e5b11c04e`.
+- G-6: Two- and three-name `go test -run` invocations were used only for the order-dependent reproduction. Every other run named one test.
+
+**Residual risk.**
+- R-1: For a corrupt manifest on a version-matched run, the predicate still does not skip, so the probe does not name the damage. REQ-UMF F3 ("every member observable on the version-matched path") is not met for that class. This is unchanged from RC30, and the sync rebuilds the file.
+- R-2: Behaviour change. A version-matched project with an unreadable, non-corrupt manifest now exits 0 with one integrity row. Before this commit it exited 1 with `load manifest`.
+- R-3: Tests 3 and 4 depend on the leaking test's cleanup. A future test that sets `binary` or `templates-only` on `updateCmd` without cleanup reopens them. The `force` and `yes` leaks in the harness tests are a hermeticity debt, left as they are.
+- R-4: The probe's recover now emits a `KindPanic` signal. The walk checks that the call exists, not what it does at runtime. Capture is consent-gated and fail-open.
+- R-5: The full CI job log and the local outputs are in machine-local scratch under `.moai/state/verify/t1619-ci-fix/`, which is not committed. The lines above are the carried evidence. The rest is a known loss.
+
 ## §E.3 Run-phase Audit-Ready Signal
 
 _pending run-phase (manager-develop)_
