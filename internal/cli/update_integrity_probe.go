@@ -23,6 +23,7 @@ import (
 	"path/filepath"
 	"syscall"
 
+	"github.com/modu-ai/moai-adk/internal/bugreport"
 	"github.com/modu-ai/moai-adk/internal/cli/update/plan"
 	"github.com/modu-ai/moai-adk/internal/config"
 	"github.com/modu-ai/moai-adk/internal/tui"
@@ -143,6 +144,9 @@ func runManagedSurfaceIntegrityProbe(out io.Writer, projectRoot string) {
 	th := resolveTheme()
 	defer func() {
 		if r := recover(); r != nil {
+			// The recovered panic is a KindPanic signal (REQ-ANON-006). Capture is
+			// itself fail-open, so the warn row below is still printed.
+			bugreport.Capture(bugreport.KindPanic, nil, "", nil)
 			_, _ = fmt.Fprintln(out, tui.CheckLine("warn", "Integrity", "probe internal error", fmt.Sprint(r), &th))
 		}
 	}()

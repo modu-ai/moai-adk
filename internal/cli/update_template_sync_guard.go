@@ -1,6 +1,7 @@
 package cli
 
 import (
+	"errors"
 	"fmt"
 	"io"
 	"os"
@@ -39,12 +40,19 @@ func recordTemplateTree(mgr manifest.Manager, errOut io.Writer) {
 // versionMatchSkipsSync reports whether a run whose template_version matches the
 // binary may skip the template sync (REQ-RC30-022). The recorded template tree
 // must also equal the embedded tree. A project with no recorded tree keeps the
-// version-only decision. A tree that cannot be read or measured does not skip,
-// so the run syncs.
+// version-only decision. A tree that cannot be measured does not skip, so the
+// run syncs.
+//
+// A manifest that fails to load is judged by whether the sync can rebuild it. A
+// corrupt manifest does not skip: Load moves it aside and the sync rebuilds it.
+// Any other load failure (a directory or an unreadable file where the manifest
+// belongs) skips, because the sync's own load would fail the same way. The
+// integrity probe then names the file as a warning, so the update exits 0
+// (REQ-UMF-002).
 func versionMatchSkipsSync(projectRoot string) bool {
 	m, err := manifest.NewManager().Load(projectRoot)
 	if err != nil {
-		return false
+		return !errors.Is(err, manifest.ErrManifestCorrupt)
 	}
 	if m.TemplateTreeHash == "" {
 		return true
