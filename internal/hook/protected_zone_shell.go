@@ -1228,15 +1228,25 @@ func zoneStripWrapperPrefix(args []*syntax.Word) ([]*syntax.Word, zoneWrapperCla
 				// disjoint and the loop order is irrelevant.
 				if strings.HasPrefix(t, "-") {
 					args = args[1:]
-					// card-review P2-a: the SPLIT form of `-u` consumes one
-					// following word — its NAME argument — so `env -u rm
+					// card-review P2-a/P2-d: the SPLIT forms of the unset
+					// option (`-u NAME`, `--unset NAME`) consume one
+					// following word — their NAME argument — so `env -u rm
 					// echo …` resolves the read-only echo, never a phantom
-					// rm verb. The glued `-uNAME` carries the name inside
-					// the token; getopt takes a required short-option
-					// argument from the next argv even when it starts with
-					// a hyphen.
-					if t == "-u" && len(args) > 0 {
+					// rm verb. The glued forms (`-uNAME`, `--unset=NAME`)
+					// carry the name inside the token; getopt takes a
+					// required option argument from the next argv even when
+					// it starts with a hyphen.
+					if (t == "-u" || t == "--unset") && len(args) > 0 {
 						args = args[1:]
+					}
+					// card-review P2-e: GNU env's info-only options print
+					// and EXIT WITHOUT running the command — the trailing
+					// words never execute. The strip returns an empty list,
+					// and zoneCall's empty-stripped-head path performs no
+					// verb judgment, no cd tracking, and collects no
+					// candidates for this call.
+					if t == "--help" || t == "--version" {
+						return nil, class
 					}
 					continue
 				}

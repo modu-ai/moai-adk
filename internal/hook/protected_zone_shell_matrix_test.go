@@ -167,6 +167,22 @@ func zoneParsingMatrixCells() []zoneMatrixCell {
 	// form — the exclusion is cd-tracking-only.
 	add("wrapper_command_path_verb", "command /bin/rm zone_dir/x", zoneMatrixDenyProbe)
 
+	// -- card t1685 card-review round-3 P2 contrasts (leader ruling, limited
+	// scope: P2-d/e only).
+	// P2-d: the split long-form `--unset` consumes its NAME argument exactly
+	// like `-u` — `env --unset rm echo …` unsets the variable NAMED rm and
+	// runs the read-only echo. The glued `--unset=NAME` already carries the
+	// name in-token.
+	add("env_opt_unset_split_consumes_name", "env --unset rm echo zone_dir/x", zoneMatrixAllow)
+	// P2-d guard: the split form disappears into the option and the real rm
+	// after it resolves to the verb (the `-u` guard's long-form twin).
+	add("env_opt_unset_guard_still_denies", "env --unset HOME rm zone_dir/x", zoneMatrixDenyProbe)
+	// P2-e: GNU env's info-only options print and EXIT WITHOUT running the
+	// command — the trailing rm never executes, so this call earns no verb
+	// analysis at all (no tracking, no candidates).
+	add("env_opt_help_info_only_no_verb_analysis", "env --help rm zone_dir/x", zoneMatrixAllow)
+	add("env_opt_version_info_only_no_verb_analysis", "env --version rm zone_dir/x", zoneMatrixAllow)
+
 	// -- the audit-D1 cross: a declared function shadowing a mutation verb,
 	// invoked through EACH enumerated wrapper — the stripped head never
 	// re-enters the funcs table, so every cell denies, never walking the
