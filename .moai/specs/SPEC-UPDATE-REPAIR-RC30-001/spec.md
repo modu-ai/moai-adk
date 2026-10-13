@@ -2,9 +2,9 @@
 id: SPEC-UPDATE-REPAIR-RC30-001
 title: "moai update rc.30 repair: data-safety must-fix items, shared-root profile reach, and update output redesign"
 version: "0.1.5"
-status: in-progress
+status: completed
 created: 2026-10-10
-updated: 2026-10-11
+updated: 2026-10-13
 author: "GOOS (via manager-spec, card t1619)"
 priority: P0
 phase: "v3.2.0-rc.30 target"

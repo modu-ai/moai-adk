@@ -1900,19 +1900,69 @@ _pending run-phase (manager-develop)_
 ## §E.4 Sync-phase Audit-Ready Signal
 
 ```yaml
-sync_complete_at: 2026-10-11T01:11:28+09:00
-sync_commit_sha: pending-backfill   # a commit cannot name its own SHA; backfilled in a following commit (spec-frontmatter-schema.md § SHA placeholder backfill exemption)
-sync_status: audit-ready   # sync-audit (sync-auditor) and card-review not yet run; spec.md stays in-progress
+sync_complete_at: 2026-10-13T02:46:08Z
+sync_commit_sha: pending-backfill-sync   # a commit cannot name its own SHA; backfilled in a following commit (spec-frontmatter-schema.md § SHA placeholder backfill exemption)
+sync_status: audit-ready   # sync-audit verdict at HEAD not observed (see Gaps); card-review.md absent (see Gaps)
 b12_self_test_a: pass   # grep -c 'SPEC-UPDATE-REPAIR-RC30-001' CHANGELOG.md → 0 before the entry was appended
 b12_self_test_b: pass   # acceptance.md counter: stdout 22, stderr live=22 excluded=6 ambiguous=0; the entry carries no AC count (acceptance.md line 5 declares 22)
 b12_self_test_c: pass   # ls .moai/specs/SPEC-UPDATE-REPAIR-RC30-001/spec.md (the only path the entry names)
 changelog_entry_position: "CHANGELOG.md:28 — [Unreleased] → Changed, after the SPEC-UPDATE-MIGRATION-FIX-001 entry"
 frontmatter_status_transitions:
-  spec_md: "in-progress (unchanged; the completed transition is deferred to the lane; updated: not refreshed)"
-  plan_md: unchanged (no status field, spec-frontmatter-schema.md § Artifact Statelessness)
-  acceptance_md: unchanged (no status field)
-  progress_md: "§E.4 placeholder replaced; no other section changed"
+  spec_md: "in-progress → implemented → completed (this sync commit, manager-docs); updated: 2026-10-11 → 2026-10-13"
+  plan_md: unchanged body; updated not refreshed (outside this commit's scope; no status field, spec-frontmatter-schema.md § Artifact Statelessness)
+  acceptance_md: unchanged body; updated not refreshed (outside this commit's scope; no status field)
+  progress_md: "§E.4 updated in this sync commit; §E.1 to §E.3 and §G unchanged"
 ```
+
+Scope: card t1619 lands on the current SPEC scope only (leader scope decision, 2026-10-13). The subsection at the end of this section records the card-body items outside the SPEC and where each one is handed off.
+
+t1591 closes together with this card's tip when the tip lands (leader instruction, 2026-10-13).
+
+Run-phase commits covered (`git log --oneline -6`, read at HEAD `0d322db302` before this sync commit):
+
+```text
+0d322db302 docs(SPEC-UPDATE-REPAIR-RC30-001): record E.2 for Linux CI fix (card t1619)
+507844b67a fix(update): make card t1619 integrity, profile, and banner tests pass on Linux CI (card t1619)
+ccf9aa6ae9 docs(SPEC-UPDATE-REPAIR-RC30-001): record twin mutant probes in E.2 (card t1619)
+5c523fd804 docs(SPEC-UPDATE-REPAIR-RC30-001): correct E.2 gate-scope gap to what gate.md documents (card t1619)
+4c78154f7f docs(SPEC-UPDATE-REPAIR-RC30-001): record E.2 for dry-run preview count-by-default (card t1619)
+e5b11c04e4 fix(update): dry-run preview counts preserved files by default (card t1619)
+```
+
+CI evidence. Command: `gh run view 38334739075 --json conclusion,headSha,status,name,url,headBranch,event`. Observed output (2026-10-13):
+
+```text
+{"conclusion":"success","event":"workflow_dispatch","headBranch":"WT-moai-update-repair","headSha":"0d322db302a4074c01a556b79cfa7844f15b1a73","name":"CI","status":"completed","url":"https://github.com/modu-ai/moai-adk/actions/runs/38334739075"}
+```
+
+CHANGELOG.md: not edited by this commit. `grep -n -i changelog` over plan.md, acceptance.md, and spec.md printed no lines, so the SPEC requires no entry. The entry at CHANGELOG.md:28 comes from the earlier sync commit `ab0adb3830`, the last commit that touched CHANGELOG.md (see the b12 lines above).
+
+**Gaps (not observed in this record).**
+- Sync-auditor verdict at HEAD `0d322db302`: not observed. The sync audit on disk (`.moai/reports/t1619/sync-audit.md`, `verdict: FAIL`, `audited_sha: ab0adb38308dc7a008b5d73af222bb4e0847f377`) predates HEAD. Of its 17 findings (F1 to F17: 7 High, 5 Medium, 5 Low), this record re-checked only F10: the decision rows it named (`decision-index.md` lines 39, 75, 88, 115) now carry operator verdicts. F6 still holds at HEAD: §E.3 reads `_pending run-phase (manager-develop)_`.
+- `card-review.md`: absent. `ls .moai/reports/t1619` lists no `card-review.md`. Not yet run.
+- Coverage: not measured. This is a docs-only commit with no test run.
+
+**Residual risk.**
+- The SPEC is recorded `completed` before a sync-audit verdict at HEAD exists.
+- `sync_commit_sha` holds the placeholder `pending-backfill-sync`. The real SHA lands in a follow-up commit.
+- The CHANGELOG.md:28 entry is not required by the SPEC. This commit leaves it in place.
+
+### 카드 본문 중 SPEC 밖 항목 → 후속 이관
+
+| 카드 본문 항목 | SPEC 착지 조건 | 후속 이관 | 상태 |
+|---|---|---|---|
+| 출력 TUI/TUX 전면 개편 (a)–(g) | 밖 (U-16·U-17 일부만 SPEC 안) | t1668 · t1669 · t1681 (겹치는 부분, 리더 지정) | 겹치지 않는 나머지는 아래 미배정 |
+| update 후 스킬 트리 소실 (git D 55건, ~/.claude/skills 이전 36개, 나머지 소실) | 밖 | t1668 (update 제거 가족, 리더 지정) | 리더 확인 요청 |
+| 에이전트 명부 두 루트 분리 (6개 ~/.claude/agents, 6개 프로젝트 측 보존) | 밖 | t1668 | 리더 확인 요청 |
+| 프로필 설정 폴더에서 스킬 가시성 (가설) | 밖 | 미배정 | 검증 필요 |
+| 빈 껍데기 스킬 폴더 3개, 옛 이름 moai-kanban-foreman, 소문자 파일명 | 밖 | 미배정 | — |
+| 백업 두 루트, "Cleaned up 1 old backup"의 유일본 삭제 여부 | 밖 | 미배정 | 미확인 |
+| 출력 문제: preserved 369줄 무페이징 (U-16으로 SPEC 안 착지), 버전 배너 2회 (U-17로 SPEC 안 착지), 분류표 잘림·모순 문장 | 일부 안 | 분류표 잘림·모순 문장은 미배정 | 리더 확인 요청 |
+| config restore가 .moai/config/sections/*.yaml만 복원 (evaluator-profiles/, astgrep-rules/ 미복원) | 밖 (복원 범위 확인 필요) | 미배정 | 확인 필요 |
+| 설치 바이너리와 배포 규칙의 버전 스큐가 조용함 | 밖 | 미배정 | — |
+| 요구: 자산 소실·복구 불가 경로 0, 성공 메시지 사실 일치, 이동·제외·복구 명령 출력, 프로필 설정 폴더 사용자 동작 | SPEC 항목과 대응 확인 필요 | 본 카드 SPEC (항목별 대응은 관문에서 확인) | — |
+| 템플릿 범용 제약 (16개 언어, Claude Code·Codex 두 하네스) | 공통 제약 | 미배정 (전 카드 공통) | 리더 확인 요청 |
+| 겹침: t1591 (SPEC-USERASSET-DEPLOY-GUARD-001), t1578 (SPEC-UPDATE-MIGRATION-FIX-001), t1527·t1594·t1612 (큐) | 관계 | t1591은 이 카드 팁과 함께 닫힘 (리더 지시) | t1578·t1527·t1594·t1612는 리더 확인 요청 |
 
 ## §G Absorption Record
 
