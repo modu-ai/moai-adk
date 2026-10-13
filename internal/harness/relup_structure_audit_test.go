@@ -162,7 +162,11 @@ func relupMaskLines(content string, scope relupMaskScope) []string {
 // open/close state through inComment across lines. After a closing marker
 // the remainder of the line re-enters the same loop, so a residue that
 // immediately re-opens a comment (`--> <!-- ...`) stays masked (card-review
-// round 1 P2-a) instead of leaking as content.
+// round 1 P2-a) instead of leaking as content. A `<!--` inside an inline
+// code span (backtick runs) is NOT structural — code spans are tracked by
+// the opener search (card-review round 2 P2-e); inside an open comment the
+// closer scan stays raw text (`-->` anywhere closes), matching HTML comment
+// semantics.
 func relupMaskCommentSpans(line string, inComment *bool) string {
 	var b strings.Builder
 	rest := line
@@ -178,7 +182,7 @@ func relupMaskCommentSpans(line string, inComment *bool) string {
 			*inComment = false
 			continue
 		}
-		start := strings.Index(rest, "<!--")
+		start := relupIndexOutsideInlineCode(rest, "<!--")
 		if start < 0 {
 			b.WriteString(rest)
 			return b.String()
@@ -187,6 +191,97 @@ func relupMaskCommentSpans(line string, inComment *bool) string {
 		rest = rest[start:]
 		*inComment = true
 	}
+}
+
+// relupIndexOutsideInlineCode returns the index of the first occurrence of
+// marker in s that lies OUTSIDE an inline code span, or -1.
+func relupIndexOutsideInlineCode(s, marker string) int {
+	spans := relupInlineCodeSpans(s)
+	at := 0
+	for {
+		next := strings.Index(s[at:], marker)
+		if next < 0 {
+			return -1
+		}
+		pos := at + next
+		if !relupInSpans(spans, pos) {
+			return pos
+		}
+		at = pos + 1
+	}
+}
+
+// relupInlineCodeSpans returns the [start,end) ranges of inline code spans
+// (delimiters included) in s: a run of N backticks closes at the next run of
+// exactly N backticks; an unmatched opener stays literal text (CommonMark).
+func relupInlineCodeSpans(s string) [][2]int {
+	var spans [][2]int
+	i := 0
+	for i < len(s) {
+		if s[i] != '`' {
+			i++
+			continue
+		}
+		n := 0
+		for i+n < len(s) && s[i+n] == '`' {
+			n++
+		}
+		if end, ok := relupCloseCodeRun(s, i+n, n); ok {
+			spans = append(spans, [2]int{i, end})
+			i = end
+		} else {
+			i += n
+		}
+	}
+	return spans
+}
+
+// relupCloseCodeRun finds the closing backtick run of exactly n ticks at or
+// after from, returning the index just past it.
+func relupCloseCodeRun(s string, from, n int) (int, bool) {
+	j := from
+	for j < len(s) {
+		if s[j] != '`' {
+			j++
+			continue
+		}
+		m := 0
+		for j+m < len(s) && s[j+m] == '`' {
+			m++
+		}
+		if m == n {
+			return j + m, true
+		}
+		j += m
+	}
+	return 0, false
+}
+
+func relupInSpans(spans [][2]int, pos int) bool {
+	for _, sp := range spans {
+		if pos >= sp[0] && pos < sp[1] {
+			return true
+		}
+	}
+	return false
+}
+
+// relupATXHeading is the shared CommonMark ATX heading reader used by block
+// boundaries AND first-match selection: 1-6 '#' characters at line start
+// followed by a space, a tab, or end-of-line. `#TODO`-style plain text is
+// not a heading (card-review round 2 P2-d). Returns the heading level.
+func relupATXHeading(line string) (int, bool) {
+	n := 0
+	for n < len(line) && line[n] == '#' {
+		n++
+	}
+	if n < 1 || n > 6 {
+		return 0, false
+	}
+	if n < len(line) && line[n] != ' ' && line[n] != '\t' {
+		return 0, false
+	}
+	return n, true
 }
 
 // relupOpeningFence reports whether the line opens a CommonMark code fence:
@@ -270,15 +365,6 @@ func relupFirstLineStart(lines []string, prefix string) int {
 		}
 	}
 	return -1
-}
-
-// relupHeadingLevel counts the leading '#' of a line-start heading.
-func relupHeadingLevel(line string) int {
-	n := 0
-	for n < len(line) && line[n] == '#' {
-		n++
-	}
-	return n
 }
 
 // relupCountWholeToken counts whole-token occurrences: an occurrence counts
@@ -407,7 +493,8 @@ func relupCodexBlockBounds(lines []string) (int, int, error) {
 		return -1, -1, fmt.Errorf("codex paragraph anchor %q not found at line start", "**Codex axis state")
 	}
 	for i := start + 1; i < len(lines); i++ {
-		if strings.TrimSpace(lines[i]) == "" || strings.HasPrefix(lines[i], "#") {
+		_, isHeading := relupATXHeading(lines[i])
+		if strings.TrimSpace(lines[i]) == "" || isHeading {
 			return start, i, nil
 		}
 	}
@@ -415,9 +502,11 @@ func relupCodexBlockBounds(lines []string) (int, int, error) {
 }
 
 // relupCodexTokenCounts is the S3 check (REQ-RSA-004): the six tokens are
-// counted with whole-token matching, INSIDE the bounded block only.
+// counted with whole-token matching, INSIDE the bounded block only, on
+// comment-masked text — tokens hidden inside HTML comments count nothing
+// (card-review round 2 P2-c).
 func relupCodexTokenCounts(content string) (map[string]int, error) {
-	lines := strings.Split(content, "\n")
+	lines := relupMaskLines(content, relupMaskScope{comments: true})
 	s, e, err := relupCodexBlockBounds(lines)
 	if err != nil {
 		return nil, err
@@ -484,24 +573,24 @@ func relupBPFaces(content string) (headings, deliverables int) {
 	first := -1
 	firstLevel := 0
 	for i, line := range lines {
-		if !strings.HasPrefix(line, "#") {
-			continue
-		}
-		if !strings.Contains(strings.ToLower(line), "best-practice") {
+		level, ok := relupATXHeading(line)
+		if !ok || !strings.Contains(strings.ToLower(line), "best-practice") {
 			continue
 		}
 		headings++
 		if first < 0 {
 			first = i
-			firstLevel = relupHeadingLevel(line)
+			firstLevel = level
 		}
 	}
 	if first < 0 {
 		return headings, 0 // class F: nothing selected — deliverable face is 0
 	}
 	for i := first; i < len(lines); i++ {
-		if i > first && strings.HasPrefix(lines[i], "#") && relupHeadingLevel(lines[i]) <= firstLevel {
-			break
+		if i > first {
+			if level, ok := relupATXHeading(lines[i]); ok && level <= firstLevel {
+				break
+			}
 		}
 		deliverables += strings.Count(lines[i], "HTML proposal report")
 	}
@@ -652,6 +741,43 @@ func TestRelupStructurePhase3URLs(t *testing.T) {
 		}
 	})
 
+	t.Run("M13_inline_code_comment_marker_is_literal", func(t *testing.T) {
+		t.Parallel()
+		// Card-review round 2 P2-e: a `<!--` inside an inline code span
+		// (backtick runs) is literal text, not a structural comment opener.
+		// The old tokenizer opened a comment there, masking the rest of the
+		// document and failing the class E boundary reads.
+		inserted := "Inline literal sample: `<!-- open marker stays code` and the block below is real."
+		variant := relupInsertBeforeFirstLineStart(real, "### Phase 3", inserted)
+		p3, p4, err := relupPhase3Boundaries(variant)
+		if err != nil {
+			t.Fatalf("inline-code marker broke the class E boundaries: %v", err)
+		}
+		lines := strings.Split(variant, "\n")
+		realHeading := -1
+		realHeading4 := -1
+		for i, line := range lines {
+			switch {
+			case realHeading < 0 && strings.HasPrefix(line, "### Phase 3 —"):
+				realHeading = i
+			case realHeading4 < 0 && strings.HasPrefix(line, "### Phase 4"):
+				realHeading4 = i
+			}
+		}
+		if p3 != realHeading || p4 != realHeading4 {
+			t.Errorf("boundaries moved — got [%d,%d), real headings at [%d,%d]", p3, p4, realHeading, realHeading4)
+		}
+		counts, err := relupPhase3URLFacetCounts(variant)
+		if err != nil {
+			t.Fatalf("S1 check errored on the inline-code variant: %v", err)
+		}
+		for _, facet := range relupDocFacets {
+			if got := relupFacetCount(counts, facet); got != 1 {
+				t.Errorf("facet %q: got %d, want 1 (inline-code marker must not mask the block)", facet, got)
+			}
+		}
+	})
+
 	t.Run("M2_duplicate_phase3_heading_fails_check", func(t *testing.T) {
 		t.Parallel()
 		variant := relupInsertAfterFirstLineStart(real, "### Phase 3",
@@ -680,6 +806,25 @@ func relupInsertAfterFirstLineStart(content, prefix, insertion string) string {
 	}
 	if !inserted {
 		panic("relupInsertAfterFirstLineStart: anchor " + prefix + " not found")
+	}
+	return strings.Join(out, "\n")
+}
+
+// relupInsertBeforeFirstLineStart inserts `line` immediately BEFORE the
+// first line starting with `prefix` (fixture builder for M-probe variants).
+func relupInsertBeforeFirstLineStart(content, prefix, line string) string {
+	lines := strings.Split(content, "\n")
+	out := make([]string, 0, len(lines)+2)
+	inserted := false
+	for _, l := range lines {
+		if !inserted && strings.HasPrefix(l, prefix) {
+			out = append(out, line)
+			inserted = true
+		}
+		out = append(out, l)
+	}
+	if !inserted {
+		panic("relupInsertBeforeFirstLineStart: anchor " + prefix + " not found")
 	}
 	return strings.Join(out, "\n")
 }
@@ -730,6 +875,38 @@ func TestRelupStructureCodexParagraph(t *testing.T) {
 			if variantCounts[tok] != realCounts[tok] {
 				t.Errorf("token %q: appended copy leaked into the block (%d -> %d) — terminating blank-line boundary breached",
 					tok, realCounts[tok], variantCounts[tok])
+			}
+		}
+	})
+
+	t.Run("M11_comment_hidden_sentences_yield_0", func(t *testing.T) {
+		t.Parallel()
+		// Card-review round 2 P2-c: the default/warning sentences hidden
+		// inside a same-line HTML comment must not satisfy the in-boundary
+		// reads — the S3 check masks comment spans BEFORE bounding and
+		// counting.
+		const sentenceSpan = "`since_codex = \"rust-v0.161.0\"`, emit warning"
+		if !strings.Contains(real, sentenceSpan) {
+			t.Fatal("fixture drift: default-sentence span not found verbatim")
+		}
+		variant := strings.Replace(real, sentenceSpan,
+			"<!-- since_codex = \"rust-v0.161.0\", emit warning (hidden) -->", 1)
+		counts, err := relupCodexTokenCounts(variant)
+		if err != nil {
+			t.Fatalf("S3 check errored on the comment-hidden variant: %v", err)
+		}
+		for _, tok := range []string{"rust-v0.161.0", "emit warning"} {
+			if got := counts[tok]; got != 0 {
+				t.Errorf("comment-hidden token %q counted %d, want 0", tok, got)
+			}
+		}
+		realCounts, err := relupCodexTokenCounts(real)
+		if err != nil {
+			t.Fatalf("baseline S3 failed: %v", err)
+		}
+		for _, tok := range []string{"last_analyzed_version", "last_analyzed_date", "last_master_research", "analysis_history[]"} {
+			if counts[tok] != realCounts[tok] {
+				t.Errorf("token %q changed (%d -> %d) on a comment-only mutation", tok, realCounts[tok], counts[tok])
 			}
 		}
 	})
@@ -917,6 +1094,35 @@ func TestRelupStructureBPFaces(t *testing.T) {
 		}
 		if deliverables != 0 {
 			t.Errorf("short-close bypass leaked %d deliverable(s), want 0", deliverables)
+		}
+	})
+
+	t.Run("M12_non_atx_hash_text_neither_truncates_nor_hijacks_selection", func(t *testing.T) {
+		t.Parallel()
+		// Card-review round 2 P2-d: `#TODO`-style plain text is not an ATX
+		// heading (1-6 '#' followed by space or end-of-line). It must not
+		// truncate the BP block (dropping the deliverable) and must not
+		// hijack first-match selection.
+		realHeadings, realDeliverables := relupBPFaces(real)
+
+		truncated := relupInsertAfterFirstLineStart(real, "## Best-Practices Axis",
+			"#TODO (plain text, not an ATX heading)\n")
+		headings, deliverables := relupBPFaces(truncated)
+		if headings != realHeadings {
+			t.Errorf("body #TODO changed heading count %d -> %d", realHeadings, headings)
+		}
+		if deliverables != realDeliverables {
+			t.Errorf("body #TODO truncated the BP block: deliverable %d -> %d, want unchanged", realDeliverables, deliverables)
+		}
+
+		hijacked := relupInsertBeforeFirstLineStart(real, "## Best-Practices Axis",
+			"#best-practice hint (plain text, not an ATX heading)")
+		headings, deliverables = relupBPFaces(hijacked)
+		if headings != realHeadings {
+			t.Errorf("pre-heading #best-practice hijacked the heading face: %d -> %d", realHeadings, headings)
+		}
+		if deliverables != realDeliverables {
+			t.Errorf("pre-heading #best-practice hijacked selection: deliverable %d -> %d, want unchanged", realDeliverables, deliverables)
 		}
 	})
 
