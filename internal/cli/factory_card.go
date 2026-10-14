@@ -2271,6 +2271,7 @@ var factoryCompleteAcquireHook func()
 func cliGitIn(dir string, args ...string) (string, error) {
 	cmd := exec.Command("git", args...)
 	cmd.Dir = dir
+	cmd.Env = gitenv.Env() // an inherited GIT_DIR would outrank cmd.Dir
 	out, err := cmd.Output()
 	return string(out), err
 }
