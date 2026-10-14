@@ -8,7 +8,7 @@ Revisions 0.1.0 to 0.2.1 measured at f35103480f. Revision 0.2.2 re-measured the 
 
 - Tree commit: `f35103480f03ad5a8418652bb03223dd67efa3dd`. Tree object: `ca8fc594f5f23c4691cf41c876a4b12191cab47d`. Both were re-read with `git rev-parse` in revision 0.1.1.
 - The document-level pin binds every tree-attributed cell in acceptance.md §C, per verification-completeness §2.1. Each tree-reading command also names the commit (`git grep … f35103480f`), so the pin is in the cell.
-- The SPEC directory is untracked. The tracked tree was clean at every measurement (`git status --short` shows only that directory).
+- The SPEC directory is untracked (as at f35103480f, revision 0.1.x). It has been tracked since d2932a0555. The tracked tree was clean at every measurement (`git status --short` shows only that directory).
 - External observations (the GitHub branch protection API and the public release list) are not tree properties. They carry the observation window in acceptance.md §A and are labelled `external`.
 
 ### A.2 Tool provenance (verification-claim-integrity §2.2)

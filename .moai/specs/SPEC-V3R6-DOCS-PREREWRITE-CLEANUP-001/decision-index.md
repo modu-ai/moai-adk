@@ -16,7 +16,7 @@ Revision 0.2.0 changes five things. It follows the umbrella split (decision Q20 
 
 Labels: DECIDED and POLICY-COVERED need a committed anchor in the authority register (committed artifacts only). None of the rows below has one, so every row routes to FOUNDER or EVIDENCE-NEEDED. `.moai/docs/docs-site-i18n-rules.md` is a committed document outside the authority register; the rows cite it as a fact, not as an authority.
 
-Evidence references (E-nn) point to acceptance.md §C, measured at tree f35103480f.
+Evidence references (E-nn) point to acceptance.md §C, measured at tree 8816de4dae for the RED-now cells; the supporting cells are labelled at f35103480f and listed in the drift table in acceptance.md section A.
 
 ### Q1: Which single Korean page keeps the CG retirement passage?
 Label: FOUNDER
