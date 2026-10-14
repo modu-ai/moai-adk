@@ -4,7 +4,9 @@ import (
 	"log/slog"
 	"path/filepath"
 
+	"github.com/modu-ai/moai-adk/internal/config"
 	"github.com/modu-ai/moai-adk/internal/hygiene"
+	"github.com/modu-ai/moai-adk/internal/paths"
 )
 
 // hygieneRunFn is the SessionStart hygiene seam (SPEC-MOAI-HYGIENE-001
@@ -20,11 +22,12 @@ var hygieneRunFn = runSessionHygiene
 
 // runSessionHygiene executes one hygiene pass for the project in the
 // configured mode. The SessionStart auto path is governed by
-// workflow.hygiene.mode alone — report (the shipped default) never rotates
-// or deletes anything; apply is the operator's explicit config opt-in
-// (REQ-HYG-013). Every failure is logged and swallowed: the session launch
-// is never blocked or delayed by hygiene (REQ-HYG-014's best-effort
-// contract).
+// workflow.hygiene.mode alone — apply (the shipped default as of
+// SPEC-CAPACITY-RECLAIM-001 AC-CAP-008) runs the non-destructive categories
+// (audit-log rotation, closed-registry state GC); report never rotates or
+// deletes anything (REQ-HYG-013). Every failure is logged and swallowed: the
+// session launch is never blocked or delayed by hygiene (REQ-HYG-014's
+// best-effort contract).
 func runSessionHygiene(projectDir string) error {
 	settings := hygiene.LoadSettingsFrom(projectDir)
 	if err := settings.Validate(); err != nil {
@@ -55,5 +58,40 @@ func runSessionHygiene(projectDir string) error {
 		slog.Warn("session start (deferred): hygiene gc failed (non-blocking)",
 			"error", gcErr.Error())
 	}
+	runProfileCapAdvisory()
 	return nil
+}
+
+// runProfileCapAdvisory is the SessionStart profile-cap advisory check
+// (SPEC-CAPACITY-RECLAIM-001 REQ-CAP-009): it reads the HOME-tier
+// state.profile_max_bytes and logs one advisory per profile above the cap.
+// Warning-only — nothing is deleted; space is reclaimed with
+// `moai clean --home --force`. Time-boxed (Advisory-Check Discipline): the
+// profile sizing walk runs under config.ProfileCapAdvisoryTimeout, and every
+// failure (absent key, unreadable config, deadline) is logged and swallowed —
+// the session launch is never blocked or delayed by this check.
+func runProfileCapAdvisory() {
+	capBytes, ok, err := hygiene.LoadProfileCapMaxBytes()
+	if err != nil {
+		slog.Debug("session start (deferred): profile-cap advisory skipped (config unreadable)",
+			"error", err.Error())
+		return
+	}
+	if !ok {
+		return // absent key: no warning (REQ-CAP-009); no compiled fallback
+	}
+	profilesDir, err := paths.ProfilesDir()
+	if err != nil {
+		slog.Debug("session start (deferred): profile-cap advisory skipped (home unresolved)",
+			"error", err.Error())
+		return
+	}
+	advisories, advErr := hygiene.ProfileCapAdvisories(profilesDir, capBytes, config.ProfileCapAdvisoryTimeout)
+	for _, msg := range advisories {
+		slog.Warn("session start (deferred): " + msg)
+	}
+	if advErr != nil {
+		slog.Debug("session start (deferred): profile-cap advisory incomplete (time-boxed, non-blocking)",
+			"error", advErr.Error())
+	}
 }

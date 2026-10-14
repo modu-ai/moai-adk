@@ -294,10 +294,9 @@ secret-*.*
 # Harness State + Learning History (per-machine, never tracked)
 # The usage log and the lessons inbox are unbounded per-machine runtime
 # state; the monthly learning-history archives are append-only retention
-# output whose authoritative copies live where they were produced
-# (SPEC-CAPACITY-RECLAIM-001 REQ-CAP-001/002/003/010). The corrupt-file
-# rule reaches any depth under .moai/ so a damaged archive never re-enters
-# an index.
+# output whose authoritative copies live where they were produced. The
+# corrupt-file rule reaches any depth under .moai/ so a damaged archive
+# never re-enters an index.
 # ===========================================
 .moai/harness/usage-log.jsonl
 .moai/lessons-inbox.jsonl

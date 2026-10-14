@@ -459,6 +459,13 @@ const (
 	DefaultProfileUnusedDays            = 90
 	DefaultProfileMaxBytes              = 5 * 1024 * 1024 * 1024
 
+	// ProfileCapAdvisoryTimeout bounds the SessionStart profile-cap advisory
+	// check (SPEC-CAPACITY-RECLAIM-001 REQ-CAP-009): the check walks the
+	// claude-profiles tree to size profiles, so the time-box keeps it off
+	// the launch critical path (Advisory-Check Discipline) — on deadline it
+	// degrades to a skip notice and never blocks the session start.
+	ProfileCapAdvisoryTimeout = 2 * time.Second
+
 	// Reports-archive defaults (SPEC-REPORTS-LIFECYCLE-001 REQ-RLC-007) for
 	// `moai clean --reports-archive`. Age-based, not volume-based: machine-
 	// local accumulation under .moai/reports/ differs per checkout, so the

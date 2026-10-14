@@ -2178,6 +2178,9 @@
 - path: "security.sandbox.required"
   class: R
   evidence: none
+- path: "state.profile_max_bytes"
+  class: W
+  evidence: reader
 - path: "state.state_dir"
   class: W
   evidence: reader

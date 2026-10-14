@@ -19,10 +19,12 @@ package hook
 // Clause 3 (added at M3) — the profile-cap advisory check fires in the pass.
 
 import (
+	"bytes"
 	"crypto/sha256"
 	"encoding/json"
 	"io"
 	"io/fs"
+	"log/slog"
 	"os"
 	"path/filepath"
 	"strings"
@@ -190,6 +192,18 @@ func readSplitAuditRows(t *testing.T, path string) []splitAuditRow {
 	return rows
 }
 
+// captureSlog swaps the default logger for one writing to a buffer and
+// returns the buffer plus a restore func. The calling test must be serial
+// (no t.Parallel): slog's default is process-global.
+func captureSlog(t *testing.T) *bytes.Buffer {
+	t.Helper()
+	var buf bytes.Buffer
+	prev := slog.Default()
+	slog.SetDefault(slog.New(slog.NewTextHandler(&buf, nil)))
+	t.Cleanup(func() { slog.SetDefault(prev) })
+	return &buf
+}
+
 // TestSessionStartAutoPathSplit drives the SessionStart hygiene pass through
 // the hygieneRunFn seam and asserts the three clauses of AC-CAP-012.
 func TestSessionStartAutoPathSplit(t *testing.T) {
@@ -205,8 +219,14 @@ func TestSessionStartAutoPathSplit(t *testing.T) {
 
 	homeBefore := hashTree(t, home)
 
+	// Clause 3, fixture-2 arm — the home carries no state.profile_max_bytes
+	// key, so the pass emits no profile-cap advisory (no compiled fallback).
+	logs1 := captureSlog(t)
 	if err := hygieneRunFn(project); err != nil {
 		t.Fatalf("hygieneRunFn: %v", err)
+	}
+	if strings.Contains(logs1.String(), "profile_max_bytes") {
+		t.Fatalf("absent-key home produced a profile-cap advisory: %s", logs1.String())
 	}
 
 	rows := readSplitAuditRows(t, filepath.Join(moaiRoot, "logs", "hygiene-audit.jsonl"))
@@ -260,6 +280,38 @@ func TestSessionStartAutoPathSplit(t *testing.T) {
 		t.Fatalf("the pass mutated the fixture home (backups/releases must stay untouched)")
 	}
 
-	// The seeded verify entry itself is the only state candidate; whatever
-	// its verdict, the home was never read for deletion and clause 2 holds.
+	// Clause 3, fixture-1 arm — a home whose state.yaml sets
+	// state.profile_max_bytes: 1048576 and whose profile is above it: the
+	// pass emits the warning naming the profile and the key, and deletes
+	// nothing (the home is byte-identical after the pass).
+	home2 := t.TempDir()
+	sections := filepath.Join(home2, ".moai", "config", "sections")
+	if err := os.MkdirAll(sections, 0o755); err != nil {
+		t.Fatalf("mkdir home2 sections: %v", err)
+	}
+	if err := os.WriteFile(filepath.Join(sections, "state.yaml"),
+		[]byte("state:\n    profile_max_bytes: 1048576\n"), 0o644); err != nil {
+		t.Fatalf("seed home2 state.yaml: %v", err)
+	}
+	bigProjects := filepath.Join(home2, ".moai", "claude-profiles", "p-big", "projects", "session-x")
+	if err := os.MkdirAll(bigProjects, 0o755); err != nil {
+		t.Fatalf("mkdir home2 profile: %v", err)
+	}
+	if err := os.WriteFile(filepath.Join(bigProjects, "chunk.bin"), bytesOfLen(2*1024*1024), 0o644); err != nil {
+		t.Fatalf("seed home2 profile payload: %v", err)
+	}
+	t.Setenv("HOME", home2)
+	t.Setenv("MOAI_HOME", "")
+
+	home2Before := hashTree(t, home2)
+	logs2 := captureSlog(t)
+	if err := hygieneRunFn(project); err != nil {
+		t.Fatalf("hygieneRunFn (fixture-1 home): %v", err)
+	}
+	if !strings.Contains(logs2.String(), "profile_max_bytes") || !strings.Contains(logs2.String(), "p-big") {
+		t.Fatalf("profile-cap advisory did not fire for the over-cap profile; logs=%s", logs2.String())
+	}
+	if home2After := hashTree(t, home2); string(home2After) != string(home2Before) {
+		t.Fatalf("the pass mutated the over-cap fixture home (advisory must delete nothing)")
+	}
 }
