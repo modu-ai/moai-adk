@@ -45,9 +45,16 @@ Additional premises re-observed: `grep -n -E 'usage-log\|lessons\|corrupt' inter
 
 Affected-family test baseline (before any edit, this tree): `go test ./internal/harness/ -count=1` → first run FAIL, then three consecutive `ok` runs (the sole first-run failure coincided with the template suite running concurrently in a parallel shell; judged machine contention, not a code defect — green on repeated runs per the concurrency-testing discipline). `go test ./internal/template/ -count=1` → FAIL, exactly `--- FAIL: TestRuleDateProvenance` (`.claude/rules/moai/core/hooks-system.md:368` date-provenance leak) — **pre-existing baseline red**, unrelated to this SPEC's template edits (`.moai/config/sections/*` and `.gitignore`), left untouched per scope discipline. `go test ./internal/hook/ -count=1` → `ok` (316.7s). `go test ./internal/hygiene/ -count=1` → `ok`.
 
-### M0/B0 baseline (measured pre-B0; recorded as the B0 progress.md-only commit, which precedes the M2 untracking commit B1)
+### M0/B0 baseline (measured pre-B0 on `e993fff989`; recorded as the B0 progress.md-only commit, which precedes the M2 untracking commit B1)
 
-The baseline numbers below were measured before any tracking change; they are recorded verbatim in the B0 commit (which touches only `progress.md`).
+The numbers below were measured before any tracking change, from the worktree root.
+
+- `wc -c .moai/harness/usage-log.jsonl .moai/lessons-inbox.jsonl` → `90331575 .moai/harness/usage-log.jsonl` / `6681068 .moai/lessons-inbox.jsonl` (`97012643 total`).
+- `wc -c .moai/harness/learning-history/archive/*.jsonl.gz .moai/harness/learning-history/archive/*.corrupt` → 2026-04: `149`; 2026-05: `12995`; 2026-06: `1371`; 2026-07: `874561`; 2026-08: `1898703`; 2026-09: `2142019`; 2026-07.corrupt: `4179609`; 2026-08.corrupt: `14398585`; 2026-09.corrupt: `11764350`; `35272342 total`.
+- `shasum -a 256` (three `.corrupt`): `0714d958ee1e53ba5f7de039f078f939629c75dfacebd99fc9eea638483b6e66  .moai/harness/learning-history/archive/2026-07.jsonl.gz.corrupt`; `61e77c0040d4206270d6905b4d9c9e6717eb8908639d212624b369c50640dc19  .moai/harness/learning-history/archive/2026-08.jsonl.gz.corrupt`; `8d0df96f247642307f543abec72264f02666cd98280ad53fc21dc17b969af687  .moai/harness/learning-history/archive/2026-09.jsonl.gz.corrupt`.
+- `shasum -a 256` (six `.jsonl.gz`): `a9dc51bfb65410b29fda88f4193a786b1ce0b5eb516f790fd33abeb19ded7d0c` (2026-04); `3f9b775f4b6dcbdbc5c5e652fc90ba43c3af4888efcee285dead59af34b71f31` (2026-05); `f0cd00b598ac35cb8b02b7027ada85906d543f86c5cf674bf7c8da28f3bff053` (2026-06); `373f749fe95d1d3b8e64871f2a32a8f8fe78164ed65a7f02205314a92f3812ac` (2026-07); `0347b1a115ac00343725c938a5737c5e713055a897e5ab03760fca0e1e396172` (2026-08); `4be02485537e55925c973d300cbb1cab276429574273f39645b92dcafea80e9b` (2026-09).
+- `git ls-files -- .moai/harness/usage-log.jsonl .moai/lessons-inbox.jsonl .moai/harness/learning-history/archive` → identical to EV-002 (eleven paths).
+- B0 SHA: recorded below after the commit lands.
 
 ### RED / mutant observations (E8; captured BEFORE the implementation that flips each)
 
