@@ -9,8 +9,10 @@ two-cell pair: a **RED-now** observation taken on the pre-implementation tree an
 (verification-completeness §2). The preservation criterion (AC-SOU-005) carries a measured
 baseline instead of a RED cell — its assertion is that today's behavior survives.
 
-Baseline tree for every RED-now cell: `1ced8cab9435b655934529fdff2d3648441003c1`
-(worktree `t1732`, branch `WT-10-14-class`, measured 2026-10-15).
+Baseline tree for every RED-now cell: `0d057bd1e` (worktree `t1732`, branch
+`WT-10-14-class`, re-measured 2026-10-15 for audit iteration 2; iteration-1 baseline was
+`1ced8cab9435b655934529fdff2d3648441003c1` — the commits between touch only
+`.moai/specs/**`, so every code-tree observation holds on both).
 
 ## §B. AC ID Convention
 
@@ -45,18 +47,23 @@ reached) whose failure output names any observed call surface.
 - **Green path**: M1 removes the gate and the collector → E4's command exits 1; the new
   behavioral test (M4) passes. Both observed at completion.
 
-### AC-SOU-002 (MUST, release-blocking; maps REQ-SOU-001, REQ-SOU-005) — structural removal guard: the three paths are gone and cannot return silently
+### AC-SOU-002 (MUST, release-blocking; maps REQ-SOU-001, REQ-SOU-005) — structural removal guard: all three paths, including the credential files, are gone and cannot return silently
 
 **Given** the production (non-test) Go files under `internal/statusline/`, **when** the
-guard test (plan.md D6b) runs, **then** no file matches the removed-path marker pattern
-(`api.anthropic.com`, `oauth-2025-04-20`, `find-generic-password`,
-`Claude Code-credentials`, `haiku-4-5`), and the guard test itself fails the suite naming
-any offender when one reappears.
+guard test (plan.md D6b) runs, **then** no file matches the removed-path marker pattern —
+`api.anthropic.com`, `oauth-2025-04-20`, `find-generic-password`,
+`Claude Code-credentials`, `haiku-4-5`, **and `credentials\.json` (covering both
+`~/.claude/.credentials.json` and `~/.claude/credentials.json`)** — and the guard test
+itself fails the suite naming any offender when one reappears. The credential-file
+markers close the audit's mutant: a credential-file read reintroduced under a renamed
+symbol carries the path string in source and fails this release-blocking AC even though
+AC-SOU-006 (name-based) would not see it (§E.1 mutant table).
 
-- **RED-now (E1)**: command
-  `grep -rln --include='*.go' --exclude='*_test.go' -E "api\.anthropic\.com|oauth-2025-04-20|find-generic-password|Claude Code-credentials|haiku-4-5" internal/statusline`,
-  stdout `internal/statusline/usage.go`, exit 0. Red because the file carrying all three
-  removed paths exists on the baseline tree.
+- **RED-now (E1, extended pattern)**: command
+  `grep -rln --include='*.go' --exclude='*_test.go' -E "api\.anthropic\.com|oauth-2025-04-20|find-generic-password|Claude Code-credentials|haiku-4-5|credentials\.json" internal/statusline`,
+  stdout `internal/statusline/usage.go`, exit 0 (§E ledger row E1). Red because the file
+  carrying all removed paths — the credential-file paths included (E8) — exists on the
+  baseline tree.
 - **Green path**: M1 deletes `usage.go` → the same command prints nothing, exit 1; M4 adds
   the guard test encoding the same predicate permanently, passing.
 
@@ -104,16 +111,54 @@ the builder does not read the snapshot fallback.
   (b) the M4 Claude-form builder test asserts the fallback field is nil when
   `rate_limits` are present.
 
-### AC-SOU-006 (MUST; maps REQ-SOU-005) — retired identifiers deleted
+### AC-SOU-006 (MUST; maps REQ-SOU-005) — retired identifiers deleted, credential readers named
 
 **Given** the package after M1, **when** the symbol search runs, **then**
-`UsageProvider`, `NewUsageCollector`, `usageCollector`, `UsageData`, `UsageResult`, and
-`usageCacheFile` have zero occurrences in production files, and the corresponding test
-fixtures (`mockUsageProvider`, `realisticUsage`) are gone from `builder_test.go`.
+`UsageProvider`, `NewUsageCollector`, `usageCollector`, `UsageData`, `UsageResult`,
+`usageCacheFile`, **`readOAuthToken`, and `readTokenFromKeychain`** have zero occurrences
+in production files, and the corresponding test fixtures (`mockUsageProvider`,
+`realisticUsage` — 26 references in `builder_test.go`) are gone from `builder_test.go`.
 
-- **Verification**: `go build ./...` (compile fails on any dangling reference) plus a
-  grep of the retired names returning empty for non-test files. `go vet` and
-  `golangci-lint run` clean for the package.
+- **RED-now (E6)**: command
+  `grep -rn "readOAuthToken\|readTokenFromKeychain" internal/statusline --include='*.go' --exclude='*_test.go'`,
+  stdout 6 lines (`usage.go:114, 118, 357, 362, 402, 404`), exit 0. Red because both
+  credential readers exist on the baseline tree.
+- **Green path**: M1 deletes `usage.go` → the same command prints nothing, exit 1;
+  `go build ./...` additionally fails on any dangling reference, and `go vet` /
+  `golangci-lint run` are clean for the package.
+
+### AC-SOU-009 (MUST, release-blocking; maps REQ-SOU-003) — a worktree-rooted render still reads the primary checkout's records
+
+**Given** a build anchored at a linked-worktree-shaped project root — `.git` a regular
+file whose `gitdir:` line names a primary checkout that holds the ONLY context-usage
+record carrying a window — **when** the statusline renders with GLM-form stdin, **then**
+the 5H/7D bars render that primary record's values (REQ-SOU-003), not `n/a`. Malformed or
+missing `gitdir` lines degrade fail-open to the single-root scan (worst case `n/a`),
+pinned by M4 degradation tests.
+
+- **RED-now (E7)**: command `grep -n "IsDir" internal/statusline/quota_dirs.go`, stdout
+  `43:	if info, err := os.Stat(gitDir); err != nil || !info.IsDir() {`, exit 0 — the
+  worktree-enumeration gate skips every worktree root; combined with E5 (the builder
+  never reads the aggregator), a worktree-rooted fallback reading
+  `QuotaStateDirs(projDir, ...)` today would see only the worktree's own (window-less)
+  records. Live confirmation: this card worktree's own `.git` is a regular file
+  (`gitdir: /Users/goos/MoAI/moai-adk-go/.git/worktrees/t1732`).
+- **Green path**: M2's D7 helper resolves the primary root builder-side (quota_dirs.go
+  preserved) → the M4 worktree-fixture test passes with the primary record's values.
+
+### AC-SOU-010 (MUST; maps REQ-SOU-006) — an over-deadline fallback read degrades to n/a instead of stalling the render
+
+**Given** a render whose context is already past deadline when the fallback phase runs,
+**when** the builder executes, **then** the fallback yields no data (segments render
+`n/a`) and the build call returns promptly — the bounded best-effort contract of the
+rescoped REQ-SOU-006, with the named residual (the abandoned `os.ReadFile` still
+finishing in its goroutine) accepted and recorded there.
+
+- **RED-now (E5)**: command `grep -rn "AggregateQuotaDirs" internal/statusline/builder.go`,
+  stdout empty, exit 1 — no fallback read exists to bound today, so the contract is
+  unmet by absence.
+- **Green path**: M2's D8 context guard + M4's pre-cancelled-context test (prompt
+  return + `n/a` output asserted).
 
 ### AC-SOU-007 (MUST; maps REQ-SOU-007) — Template-First cycle green
 
@@ -138,16 +183,39 @@ meets the project quality gate's coverage threshold.
 
 | Row | Command (single invocation, verbatim) | Verbatim stdout | Exit | Tree SHA |
 |-----|----------------------------------------|-----------------|------|----------|
-| E1 | `grep -rln --include='*.go' --exclude='*_test.go' -E "api\.anthropic\.com\|oauth-2025-04-20\|find-generic-password\|Claude Code-credentials\|haiku-4-5" internal/statusline` | `internal/statusline/usage.go` | 0 | `1ced8cab9435b655934529fdff2d3648441003c1` |
-| E2 | `grep -rn "n/a" internal/statusline/renderer.go` | (no output) | 1 | `1ced8cab9435b655934529fdff2d3648441003c1` |
+| E1 | `grep -rln --include='*.go' --exclude='*_test.go' -E "api\.anthropic\.com\|oauth-2025-04-20\|find-generic-password\|Claude Code-credentials\|haiku-4-5\|credentials\.json" internal/statusline` | `internal/statusline/usage.go` | 0 | `0d057bd1e` |
+| E2 | `grep -rn "n/a" internal/statusline/renderer.go` | (no output) | 1 | `0d057bd1e` |
 | E3 | `go test ./internal/statusline/ -count=1` | `ok  	github.com/modu-ai/moai-adk/internal/statusline	46.767s` | 0 | `1ced8cab9435b655934529fdff2d3648441003c1` |
-| E4 | `grep -n "usageProvider" internal/statusline/builder.go` | 7 lines: 23, 92, 115, 123, 135, 406, 408 (406 shown under AC-SOU-001) | 0 | `1ced8cab9435b655934529fdff2d3648441003c1` |
-| E5 | `grep -rn "AggregateQuotaDirs" internal/statusline/builder.go` | (no output) | 1 | `1ced8cab9435b655934529fdff2d3648441003c1` |
+| E4 | `grep -n "usageProvider" internal/statusline/builder.go` | 7 lines: 23, 92, 115, 123, 135, 406, 408 (406 shown under AC-SOU-001) | 0 | `0d057bd1e` |
+| E5 | `grep -rn "AggregateQuotaDirs" internal/statusline/builder.go` | (no output) | 1 | `0d057bd1e` |
+| E6 | `grep -rn "readOAuthToken\|readTokenFromKeychain" internal/statusline --include='*.go' --exclude='*_test.go'` | 6 lines: usage.go 114, 118, 357, 362, 402, 404 | 0 | `0d057bd1e` |
+| E7 | `grep -n "IsDir" internal/statusline/quota_dirs.go` | `43:	if info, err := os.Stat(gitDir); err != nil || !info.IsDir() {` | 0 | `0d057bd1e` |
+| E8 | `grep -rn "credentials.json" internal/statusline --include='*.go' --exclude='*_test.go'` | 4 lines, all `usage.go` (358, 359, 360, 371) | 0 | `0d057bd1e` |
 
-Note on E1's pattern spelling: the ledger cell escapes `|` as `\|` because the cell is
-table-delimited; the executed command used the shell alternation
-`"api\.anthropic\.com|oauth-2025-04-20|find-generic-password|Claude Code-credentials|haiku-4-5"`.
-Re-run the executed spelling, not the table-escaped one.
+Note on ledger-cell pattern spelling: the cells escape `|` as `\|` because the table is
+pipe-delimited; the executed commands use the shell alternation with a bare `|` inside
+the quoted pattern (e.g. E1's executed pattern is
+`"api\.anthropic\.com|oauth-2025-04-20|find-generic-password|Claude Code-credentials|haiku-4-5|credentials\.json"`).
+Re-run the executed spelling, not the table-escaped one. E3 was measured on the
+iteration-1 tree and not re-run for iteration 2 (preservation baseline; the code tree is
+identical — see §A).
+
+### §E.1 Mutant closure (audit B3)
+
+Every reintroduction vector of a removed surface must fail at least one
+release-blocking AC. Checked per vector:
+
+| Mutant (reintroduction vector) | AC-SOU-001 (behavioral) | AC-SOU-002 (guard, release-blocking) | AC-SOU-006 (names) | AC-SOU-009 (worktree) |
+|---|---|---|---|---|
+| Network call to api.anthropic.com | fails (observable in-process) | fails (marker `api.anthropic.com`) | — | — |
+| Keychain `find-generic-password` spawn | fails (exec observable) | fails (markers `find-generic-password`, `Claude Code-credentials`) | — | — |
+| Credential-file read (`~/.claude/.credentials.json` / `credentials.json`) under a RENAMED symbol | may pass (file read not behaviorally observed) | **fails** (marker `credentials\.json`) — release-blocking, so the mutant cannot pass the gate | passes (name-based — this is why the marker AC exists) | — |
+| Same-name reintroduction (`readOAuthToken` et al.) | — | fails (its path markers) | fails (symbol list, E6 green path) | — |
+| Fallback that skips primary-root resolution | — | — | — | **fails** (AC-SOU-009 worktree fixture) |
+
+The audit's specific mutant — a credential-file reader that survives every v1 condition —
+now fails AC-SOU-002, a release-blocking criterion, by source-marker scan independent of
+the symbol's name.
 
 ## §F. Residual risks (named, not silently accepted)
 

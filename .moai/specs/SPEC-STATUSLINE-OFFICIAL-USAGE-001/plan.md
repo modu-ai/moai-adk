@@ -8,7 +8,9 @@ endpoint, and the credential reads from `internal/statusline/usage.go`; feed the
 bars from stdin `rate_limits`, falling back to the local context-usage snapshot, else `n/a`.
 
 Tier M. This worktree (`.moai/worktrees/t1732`, branch `WT-10-14-class`) is the card tree;
-plan baseline SHA `1ced8cab9435b655934529fdff2d3648441003c1`.
+iteration-1 baseline SHA `1ced8cab9435b655934529fdff2d3648441003c1`; iteration-2 revisions
+re-measured on `0d057bd1e` (the two commits between differ only by files under
+`.moai/specs/`, so every code-tree observation below holds on both).
 
 ### §A.1 Investigation confidence
 
@@ -23,7 +25,9 @@ Every claim below was verified by reading the named code on the baseline tree, n
 | Account-level aggregator exists, is pure, is test-covered | `quota.go` (`AggregateQuota`, `QuotaAggregate`, `QuotaReading{State, UsedPercentage, ResetsAt, CapturedAt, ExhaustedAt}`, fresh/reset/unknown states), `quota_dirs.go` (`QuotaStateDirs`, `AggregateQuotaDirs`) | High |
 | Aggregator has no production caller yet | Repo-wide grep for `AggregateQuota` — only `quota.go`, `quota_dirs.go`, and their tests | High |
 | Collector has no consumer outside the package | Repo-wide grep for `CollectUsage|UsageProvider|NewUsageCollector` excluding `internal/statusline` — zero hits | High |
-| Test inventory | `usage_test.go` 29 test funcs (~1,300 lines); `builder_test.go` `mockUsageProvider` at lines 427-699; quota aggregator tests in `quota_test.go` (3), `context_usage_quota_test.go` (5), `quota_dirs_test.go` (7) | High |
+| Test inventory | `usage_test.go` 29 test funcs, **1,189 lines** (`wc -l`); `builder_test.go` **1,878 lines** with **26 references** to `mockUsageProvider`/`realisticUsage` (first at `:427`, type def `:536-543`, helper `:575-578`, call sites through `:1218`); quota aggregator tests in `quota_test.go` (3), `context_usage_quota_test.go` (5), `quota_dirs_test.go` (7) | Measured |
+| Worktree blindness (audit B1) | `QuotaStateDirs` returns only the caller's own state dir when `<root>/.git` is a regular file (`quota_dirs.go:43` `!info.IsDir()`), so a worktree-rooted render never sees the primary checkout's records. Live on this card tree: `.git` here is a regular file — `gitdir: /Users/goos/MoAI/moai-adk-go/.git/worktrees/t1732` — from which the primary root is mechanically derivable | Measured |
+| Bounded-read residual (audit B2) | The aggregator's bounds are metadata-only: `maxDirs` caps worktree-metadata enumeration and the ModTime pre-filter caps parsed-record count, but `ReadSessionTelemetry` is an unbounded `os.ReadFile` (no size cap, no context, a FIFO would block) | High — read |
 | No template/docs asset documents the removed paths | grep over `internal/template/templates/` for haiku/oauth/credentials — only unrelated llm.yaml model-slot comments and OAuth how-to docs; `README.md`/docs-site (en) — zero hits | High |
 | Baseline suite green | `go test ./internal/statusline/ -count=1` → `ok ... 46.767s` on the baseline tree | Measured |
 
@@ -43,17 +47,42 @@ tree; the affected-package suite plus CI is the verdict surface.
 ## §B. Design decisions
 
 **D1 — Fallback data source: the existing quota aggregator (no new reader).**
-`AggregateQuotaDirs(QuotaStateDirs(projDir, maxDirs), now, maxAge)` already implements the
-card's fallback exactly: it reads every context-usage record under the primary checkout and
-linked-worktree state dirs ("the last values a Claude session on the same machine
-received" — the quota is account-level, so any live Claude session's record describes it),
-picks per window the freshest capture, applies freshness / max-age / clock-skew /
-reset-rollover rules, and returns `QuotaReading{State, UsedPercentage, ResetsAt, CapturedAt,
-ExhaustedAt}` — `CapturedAt` is the "recorded time" the card requires displayed. Writing a
-new reader would duplicate verified machinery; reading only the current session's record
+`AggregateQuotaDirs(stateDirs, now, maxAge)` already implements the card's fallback
+exactly: it reads context-usage records across the given state directories, picks per
+window the freshest capture, applies freshness / max-age / clock-skew / reset-rollover
+rules, and returns `QuotaReading{State, UsedPercentage, ResetsAt, CapturedAt,
+ExhaustedAt}` — `CapturedAt` is the "recorded time" the card requires displayed. Writing
+a new reader would duplicate verified machinery; reading only the current session's record
 would make the fallback dead under GLM (a GLM session never writes windows). Wiring the
 aggregator into the render path also gives the currently caller-less aggregator its first
 production consumer.
+
+**D7 — Scan roots resolved builder-side: the worktree blind spot (audit B1).**
+`QuotaStateDirs` cannot be handed a linked-worktree root as-is: with `.git` a regular file
+it returns only that worktree's own state dir (`quota_dirs.go:43`), so a card-tree session
+would never see the primary checkout's records. The fix is builder-side, keeping
+`quota_dirs.go` on the PRESERVE list: a new package helper (suggested
+`quotaScanStateDirs(projDir string, maxDirs int) []string` in a new
+`usage_fallback.go`) that (a) if `projDir/.git` is a regular file, reads its first
+`gitdir:` line and derives the primary checkout root by stripping the
+`/.git/worktrees/<name>` suffix, then (b) calls `QuotaStateDirs(primaryRoot, maxDirs)` —
+which returns the primary state dir plus every linked worktree's, the current one
+included. When `projDir/.git` is a directory (session anchored at the primary checkout)
+the helper is the identity over today's single call. Degradation is fail-open: an
+unreadable, malformed, or non-worktree `gitdir` line yields today's behavior
+(`QuotaStateDirs(projDir, ...)`), whose worst case is `n/a` — never wrong data. The card's
+"the last values a Claude session on the same machine received" intent is preserved: the
+quota is account-level, and the primary checkout is where Claude sessions run.
+
+**D8 — Context-guarded read, not an absolute latency promise (audit B2).**
+The fallback read runs inside the builder's collect phase, which already carries the
+render context. The helper guards the read with a `select` on `ctx.Done()`: an
+over-deadline read abandons the fallback (field stays nil → segments render `n/a`)
+instead of stalling the render. `quota.go`/`quota_dirs.go` stay PRESERVE — no size cap or
+context is added inside them; the named residual (an unbounded `os.ReadFile` inside the
+abandoned goroutine) is accepted and recorded in REQ-SOU-006 because the directory holds
+only tool-written small JSON records and is not attacker-controlled. The requirement is
+deliberately scoped to bounded best-effort, matching the mechanism.
 
 **D2 — Retire `UsageResult`/`UsageData`; introduce a snapshot-typed field.**
 The network-era types (`types.go:429-441`, `StatusData.Usage` at `types.go:296`) carry no
@@ -84,9 +113,11 @@ writes it; the directory is shared with the update checker. No migration, no cle
 tests with GLM-form stdin complete against snapshot fixtures with no network/keychain
 surface available; (b) structural — a guard test scans production (non-test) files under
 `internal/statusline/` for the removed-path markers (`api.anthropic.com`,
-`oauth-2025-04-20`, `find-generic-password`, `Claude Code-credentials`, `haiku-4-5`) and
-fails the suite naming any offender. Compile-time absence alone is not a test; the guard
-makes the removal permanent (AC-SOU-002).
+`oauth-2025-04-20`, `find-generic-password`, `Claude Code-credentials`, `haiku-4-5`,
+`credentials\.json` — the last covering both credential files, audit B3's mutant
+closure: a credential read reintroduced under a renamed symbol still carries the path
+string) and fails the suite naming any offender. Compile-time absence alone is not a
+test; the guard makes the removal permanent (AC-SOU-002).
 
 ## §C. Milestones
 
@@ -102,11 +133,12 @@ under it).
 
 **M2 — Wire the snapshot fallback (builder).**
 When the parsed stdin carries no `rate_limits`, resolve `projDir` via the existing
-`resolveStateAnchor(input)` (already used for the snapshot write at builder.go:201) and
-populate the new `StatusData` field with `AggregateQuotaDirs(QuotaStateDirs(projDir,
-N), now, maxAge)` (D1, D4). When `projDir` is empty or the rate_limits are present, the
-field stays nil — no read. Cost bound: the aggregator's ModTime pre-filter plus
-`maxDirs` already cap the work (REQ-SOU-006).
+`resolveStateAnchor(input)` (already used for the snapshot write at builder.go:201),
+derive the scan state dirs through the D7 helper (`quotaScanStateDirs`), and populate the
+new `StatusData` field with `AggregateQuotaDirs(dirs, now, maxAge)` guarded by the D8
+context select. When `projDir` is empty or the rate_limits are present, the field stays
+nil — no read. Worktree case included: a projDir whose `.git` is a regular file yields
+the primary checkout's state dir plus all linked worktrees' (D7).
 
 **M3 — Renderer fallback + `n/a`.**
 In the 5H/7D segment rendering, replace the deleted `data.Usage` branch with the snapshot
@@ -116,12 +148,19 @@ with percentage, existing reset-time formatter (Unix-seconds input already suppo
 style; exact string at implementation); `reset`/`unknown`/nil → `n/a`.
 
 **M4 — Tests.**
-Delete `usage_test.go`. Rework `builder_test.go`: remove `mockUsageProvider`, the
-`UsageProvider` option references, and the realistic-usage fixtures; add snapshot-fixture
-builder tests (temp state dir with seeded context-usage records via the existing record
-schema) covering: GLM-form input + no snapshot → `n/a`; GLM-form + fresh record → snapshot
-values + captured-at; Claude-form input → bars from stdin, fallback not read. Add the
-guard test (D6b). Keep the quota aggregator tests untouched. Verify race variant for the
+Delete `usage_test.go` (1,189 lines). Rework `builder_test.go` (1,878 lines): remove the
+26 `mockUsageProvider`/`realisticUsage` references and the `UsageProvider` option uses;
+add snapshot-fixture builder tests (temp state dir with seeded context-usage records via
+the existing `SessionTelemetryRecord` schema) covering: GLM-form input + no snapshot →
+`n/a`; GLM-form + fresh record → snapshot values + captured-at; Claude-form input → bars
+from stdin, fallback not read. Add (audit B1) the worktree-fixture test: a temp
+worktree-shaped tree whose `.git` is a regular file (`gitdir: <primary>/.git/worktrees/x`)
+pointing at a temp primary that holds the ONLY window-carrying record — the render must
+show the primary record's values, not `n/a`; plus the degradation cases (malformed
+`gitdir` line, missing `.git`). Add (audit B2) the abandonment test: a pre-cancelled
+render context → the fallback yields nothing and the render completes promptly with
+`n/a`. Add the guard test (D6b) with the extended marker set (audit B3: the credential
+files included). Keep the quota aggregator tests untouched. Verify race variant for the
 new code paths.
 
 **M5 — Template/docs sweep + Template-First cycle.**
@@ -142,7 +181,9 @@ is sync-phase work (manager-docs), not M5.
 | `internal/statusline/renderer.go` | `data.Usage` branches replaced by snapshot + `n/a`; comments updated |
 | `internal/statusline/builder_test.go` | `mockUsageProvider` removed; snapshot-fixture tests added |
 | `internal/statusline/renderer_test.go` | RateLimits rendering tests preserved; new fallback/n-a cases |
-| `internal/statusline/usage_guard_test.go` (new) | D6b structural guard test |
+| `internal/statusline/usage_fallback.go` (new) | D7 scan-roots helper (primary-root resolution from a worktree `.git` file) + D8 context guard |
+| `internal/statusline/usage_fallback_test.go` (new) | Worktree/degradation/abandonment tests (M4) |
+| `internal/statusline/usage_guard_test.go` (new) | D6b structural guard test, extended marker set |
 | `internal/cli/statusline.go` | Stale collector comments only (budget stays) |
 | `internal/template/templates/.moai/config/sections/statusline.yaml` | Only if a comment references the removed paths (expected: no change) |
 
@@ -175,6 +216,16 @@ PRESERVE (do not touch): `context_usage.go`, `quota.go`, `quota_dirs.go`, `quota
   its record well within that, and `unknown` degrades to `n/a` (never wrong data). The
   D4 decision is revisited only if the AC-SOU-004 test shows the default rejects a
   just-written fixture.
+- **R5 — Primary-root derivation edge cases (audit B1 follow-through)**: a `.git` file
+  whose `gitdir:` line is malformed, relative, or does not match the
+  `/.git/worktrees/<name>` shape (e.g. a submodule or a moved worktree) degrades via D7's
+  fail-open path to today's single-root scan — the worst case is `n/a`, never wrong
+  data. The M4 degradation tests pin each case.
+- **R6 — Abandoned read still consumes wall-clock in its goroutine (audit B2 residual)**:
+  the D8 context select returns the render promptly but does not interrupt an in-flight
+  `os.ReadFile`; the goroutine finishes when the read does. Accepted in REQ-SOU-006
+  because records are tool-written small JSON; the abandonment test asserts the
+  caller-visible contract (prompt return + `n/a`), not goroutine teardown.
 
 ## §G. Verification plan
 

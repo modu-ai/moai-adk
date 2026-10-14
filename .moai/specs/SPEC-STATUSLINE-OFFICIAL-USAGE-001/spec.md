@@ -1,7 +1,7 @@
 ---
 id: SPEC-STATUSLINE-OFFICIAL-USAGE-001
 title: "Statusline usage lookup: official input only (stdin rate_limits + local snapshot)"
-version: "0.1.0"
+version: "0.2.0"
 status: draft
 created: 2026-10-15
 updated: 2026-10-15
@@ -69,6 +69,19 @@ then often renders `0%`.
   reset-rollover rules. It is a pure reader: no network, no process spawn, no write. Its
   only in-repo callers today are its own tests — the fallback below becomes its first
   production consumer.
+- **Worktree blindness (plan-audit iteration-1 B1)**: `QuotaStateDirs` enumerates linked
+  worktrees only when `<root>/.git` is a directory (`quota_dirs.go:43` — `!info.IsDir()`
+  returns the caller's own state dir alone). A linked worktree's `.git` is a regular file,
+  so a render anchored at a worktree root never sees the primary checkout's records. The
+  blind spot is live on this repository's own card trees: this worktree's `.git` is a
+  regular file (`gitdir: /Users/goos/MoAI/moai-adk-go/.git/worktrees/t1732`). The fallback
+  therefore resolves the primary checkout root builder-side (§B) and keeps
+  `quota_dirs.go` untouched.
+- **Bounded-read residual (plan-audit iteration-1 B2)**: the aggregator's bounds are
+  metadata-only — `maxDirs` caps the worktree-metadata enumeration, and the ModTime
+  pre-filter caps how many records are parsed, but `ReadSessionTelemetry` is an unbounded
+  `os.ReadFile` (no size cap, no context). REQ-SOU-006 is scoped to what the mechanism
+  delivers: bounded best-effort, not an absolute latency guarantee.
 - The usage collector is self-contained in `internal/statusline`: a repo-wide search for
   `CollectUsage|UsageProvider|NewUsageCollector` outside `internal/statusline` returns
   nothing, so removal has no cross-package blast radius.
@@ -82,11 +95,14 @@ official or local:
    While present, bars render from it byte-identically to today (REQ-SOU-002).
 2. **The local context-usage snapshot** (new fallback). While stdin carries no
    `rate_limits`, the builder reads the account-level aggregate via the existing
-   `AggregateQuotaDirs(QuotaStateDirs(projDir, maxDirs), now, maxAge)` reader and the
-   renderer shows the freshest recorded `five_hour` / `seven_day` values **together with
-   the source record's `captured_at` time** (REQ-SOU-003). When no usable record carries a
-   window — or the window has rolled over — the segment renders **`n/a`** instead of
-   today's `0%` bar (REQ-SOU-004).
+   `AggregateQuotaDirs` reader over scan roots it resolves builder-side: the state
+   directory of the primary checkout **plus** every linked worktree, derived from
+   `projDir` even when the session is anchored inside a linked worktree (whose `.git` is
+   a regular file — see the §A worktree-blindness fact; quota_dirs.go itself is not
+   modified). The renderer shows the freshest recorded `five_hour` / `seven_day` values
+   **together with the source record's `captured_at` time** (REQ-SOU-003). When no usable
+   record carries a window — or the window has rolled over — the segment renders **`n/a`**
+   instead of today's `0%` bar (REQ-SOU-004).
 
 Everything that touches the network or a credential store is deleted: `usage.go` in full
 (both fetchers, `readOAuthToken`, `readTokenFromKeychain`, the `usageCacheFile` cache at
@@ -118,9 +134,11 @@ snapshot fallback in that case.
 
 **REQ-SOU-003** (State-driven): **While** the stdin payload carries no `rate_limits`, the
 5H/7D bars shall render the values aggregated from the context-usage session telemetry
-records (`five_hour` / `seven_day`, freshest capture time wins, subject to the existing
-freshness / max-age / clock-skew / reset-rollover rules of the quota aggregator), each
-rendered bar carrying the source record's `captured_at` time.
+records of the primary checkout and every linked worktree (`five_hour` / `seven_day`,
+freshest capture time wins, subject to the existing freshness / max-age / clock-skew /
+reset-rollover rules of the quota aggregator), each rendered bar carrying the source
+record's `captured_at` time. A render anchored at a linked-worktree root shall read the
+same record population as one anchored at the primary checkout.
 
 **REQ-SOU-004** (State-driven): **While** no usable snapshot record carries a window
 (aggregate state `unknown`) **or** the winning window has rolled over (aggregate state
@@ -129,16 +147,28 @@ percentage.
 
 **REQ-SOU-005** (Capability gate, removal): **Where** the collector is removed, the
 retired identifiers (`UsageProvider`, `NewUsageCollector`, `usageCollector`,
-`UsageResult`, `UsageData`, `usageCacheFile`) and their tests shall be deleted from the
-package, the builder gate and auto-create block shall be removed, and a guard test shall
-fail the suite when any removed-path marker reappears in a production (non-test) file
-under `internal/statusline`.
+`UsageResult`, `UsageData`, `usageCacheFile`, `readOAuthToken`, `readTokenFromKeychain`)
+and their tests shall be deleted from the package, the builder gate and auto-create block
+shall be removed, and a guard test shall fail the suite when any removed-path marker
+reappears in a production (non-test) file under `internal/statusline` — the network
+endpoints, the beta header, the probe model, the keychain service and command, **and the
+credential-file paths (`~/.claude/.credentials.json`, `~/.claude/credentials.json`)** —
+so a credential read reintroduced under a renamed symbol is still caught by its path
+string.
 
-**REQ-SOU-006** (Ubiquitous, cost bound): **While** the snapshot fallback is read, the
-read shall remain local-only and bounded — reusing the existing aggregator's
-modification-time pre-filter and per-directory scan (no recursive walk, no network, no
-process spawn) — so the statusline render budget (800 ms) is never at risk from the
-fallback.
+**REQ-SOU-006** (Ubiquitous, cost bound — bounded best-effort): **While** the snapshot
+fallback is read, the read shall remain local-only and best-effort bounded: directory
+enumeration is metadata-only, the count of parsed records is bounded by the aggregator's
+modification-time pre-filter within the max age, no recursive walk / network / process
+spawn is introduced, and the read phase shall run under the render's context so an
+over-deadline read abandons the fallback (the segments degrade to `n/a`) rather than
+stalling the render. Known residual, named and accepted: the aggregator's per-record
+`os.ReadFile` carries no size cap and no context (quota.go is on this SPEC's PRESERVE
+list), so a pathological on-disk record can consume wall-clock inside the abandoned read;
+this is bounded in practice because the directory holds only records the tool itself
+writes (small JSON, schema v3) and is not attacker-controlled. This requirement
+deliberately does NOT promise an absolute latency bound — requirement strength matches
+what the mechanism delivers.
 
 **REQ-SOU-007** (Capability gate, Template-First): **Where** a template-side asset
 (`internal/template/templates/**`) documents or references the removed usage collection,
@@ -172,4 +202,5 @@ requirement carries them.
 
 | Version | Date | Author | Description |
 |---------|------|--------|-------------|
+| 0.2.0 | 2026-10-15 | manager-spec | Plan-audit iteration-1 remediation (card t1732): B1 worktree-blind fallback fixed builder-side (primary-root resolution, quota_dirs.go preserved); B2 REQ-SOU-006 rescoped to bounded best-effort with named residual; B3 guard markers extended to the credential files, `readOAuthToken`/`readTokenFromKeychain` added to the retired-symbol list, mutant closure recorded; non-blocking citation fixes (measured file sizes, corrected spans, AC-SOU-006 two-cell pair). |
 | 0.1.0 | 2026-10-15 | manager-spec | Initial plan-phase draft (card t1732, Tier M). |
