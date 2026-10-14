@@ -20,16 +20,19 @@ llm:
         manager-lead:
             model: opus
             effort: medium
+        manager-spec:
+            model: opus
+            effort: high
         manager-todo:
             model: sonnet
             effort: low
         plan-auditor:
             model: opus
-            effort: medium
+            effort: high
         sync-auditor:
             model: opus
-            effort: medium
-    agent_overrides_consume: false
+            effort: high
+    agent_overrides_consume: true
     claude_models:
         high: ""
         medium: ""
