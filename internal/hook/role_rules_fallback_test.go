@@ -171,6 +171,40 @@ func TestRoleRulesUnmarkedWithoutEmbeddedFailsVisible(t *testing.T) {
 	assertFailVisible(t, inj, "unmarked-without-embedded")
 }
 
+// TestRoleRulesNewerOrUnparseableStampKeepsDeployed pins the directional
+// skew (audit round-2 P2): only a stamp genuinely OLDER than the binary
+// swaps to the embedded copy. A NEWER stamp (a newer binary deployed the
+// project; an older binary runs now) or an unorderable free-form stamp
+// keeps the deployed core — the swap must never regress a newer deployment.
+func TestRoleRulesNewerOrUnparseableStampKeepsDeployed(t *testing.T) {
+	for _, tc := range []struct{ name, stamp string }{
+		{"newer_stamp", "v9.9.9"},
+		{"unorderable_stamp", "cutover/github-flow"},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			clearFactoryEnv(t)
+			t.Setenv(config.EnvMoaiFactoryWorkers, "1")
+			stubEmbeddedRule(t, markedEmbeddedRule(), true)
+
+			root := t.TempDir()
+			writeRoleRuleFixture(t, root, roleRuleFiles[0], smallMarkedRule("DEPLOYED-CORE"))
+			writeRoleRuleFixture(t, root, roleRuleFiles[1], smallMarkedRule("messaging"))
+			writeSystemYAMLFixture(t, root, "moai:\n  template_version: "+tc.stamp+"\n")
+
+			inj := roleRuleInjectionFor(root, "startup", langEnglish)
+			if inj.OperatorNotice != "" {
+				t.Fatalf("non-older stamp must not fail the session; notice: %s", inj.OperatorNotice)
+			}
+			if !strings.Contains(inj.Context, "DEPLOYED-CORE") {
+				t.Fatalf("deployed core was replaced under a %s stamp:\n%s", tc.stamp, inj.Context)
+			}
+			if strings.Contains(inj.Context, embeddedFallbackCoreText) {
+				t.Fatalf("embedded copy regressed a %s deployment:\n%s", tc.stamp, inj.Context)
+			}
+		})
+	}
+}
+
 // TestRoleRulesEndMarkerOnlyStaysFailVisible pins the audit round-1 P2 fix:
 // a file carrying ONLY an end marker is corruption, not a stale generation —
 // the embedded fallback must NOT rescue it; the REQ-ALB-009 pair fires.
@@ -200,8 +234,8 @@ func TestRoleRulesRemediationNamesWorktreeCause(t *testing.T) {
 	if detail == "" {
 		t.Fatal("skewed fixture produced no skew detail")
 	}
-	if !strings.Contains(detail, "moai worktree sync") {
-		t.Errorf("skew detail does not name the worktree refresh verb: %s", detail)
+	if !strings.Contains(detail, "git merge") {
+		t.Errorf("skew detail does not name the working refresh (merge the base branch into the worktree): %s", detail)
 	}
 	if !strings.Contains(detail, "uncommitted") {
 		t.Errorf("skew detail does not name the uncommitted-update cause: %s", detail)
@@ -209,8 +243,8 @@ func TestRoleRulesRemediationNamesWorktreeCause(t *testing.T) {
 
 	for _, lang := range []string{"ko", "ja", "zh", "en"} {
 		warn := roleRuleLocaleFor(lang).InjectionFailed("factory-lane", "role rule file absent: x")
-		if !strings.Contains(warn, "moai worktree sync") {
-			t.Errorf("locale %q InjectionFailed does not name the worktree refresh verb: %s", lang, warn)
+		if !strings.Contains(warn, "git merge") {
+			t.Errorf("locale %q InjectionFailed does not name the worktree refresh (merge the base branch): %s", lang, warn)
 		}
 		if !strings.Contains(warn, "moai update") {
 			t.Errorf("locale %q InjectionFailed lost the primary-checkout update guidance: %s", lang, warn)

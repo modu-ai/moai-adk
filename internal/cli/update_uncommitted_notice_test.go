@@ -20,15 +20,23 @@ import (
 // file at rel (content v1). Returns the file's absolute path.
 func initTrackedFile(t *testing.T, dir, rel, content string) string {
 	t.Helper()
+	return initTrackedFileUnder(t, dir, dir, rel, content)
+}
+
+// initTrackedFileUnder inits the git repository at repoRoot with one
+// tracked, committed file at projectDir/rel — the project-in-subdirectory
+// shape the path-basis test needs.
+func initTrackedFileUnder(t *testing.T, repoRoot, projectDir, rel, content string) string {
+	t.Helper()
 	run := func(args ...string) {
 		t.Helper()
-		cmd := exec.Command("git", append([]string{"-C", dir}, args...)...)
+		cmd := exec.Command("git", append([]string{"-C", repoRoot}, args...)...)
 		if out, err := cmd.CombinedOutput(); err != nil {
 			t.Fatalf("git %s: %v: %s", strings.Join(args, " "), err, out)
 		}
 	}
 	run("init", "-q")
-	path := filepath.Join(dir, filepath.FromSlash(rel))
+	path := filepath.Join(projectDir, filepath.FromSlash(rel))
 	if err := os.MkdirAll(filepath.Dir(path), 0o755); err != nil {
 		t.Fatalf("mkdir for seed file: %v", err)
 	}
@@ -73,8 +81,8 @@ func TestUncommittedTemplateNotice(t *testing.T) {
 		if got == "" {
 			t.Fatal("uncommitted template change must fire the notice")
 		}
-		if !strings.Contains(got, "moai worktree sync") {
-			t.Errorf("notice does not name the worktree refresh verb: %s", got)
+		if !strings.Contains(got, "git merge") {
+			t.Errorf("notice does not name the working refresh (merge the base branch into the worktree): %s", got)
 		}
 		if !strings.Contains(got, "1 template file") {
 			t.Errorf("notice does not carry the changed-file count: %s", got)
@@ -125,6 +133,41 @@ func TestUncommittedTemplateNotice(t *testing.T) {
 		got := notice(t, dir, ".claude/rules/moai/brand-new/new-rule.md")
 		if got == "" {
 			t.Fatal("an untracked NEW directory's template file must fire the notice")
+		}
+	})
+
+	t.Run("project_subdir_of_repo_fires", func(t *testing.T) {
+		// Porcelain paths are REPO-root-relative while templatePaths are
+		// project-relative; with the project inside a subdirectory the raw
+		// exact-match intersection misses every changed file (audit
+		// round-2 P2). The bases must be normalized.
+		repo := t.TempDir()
+		proj := filepath.Join(repo, "apps", "service")
+		path := initTrackedFileUnder(t, repo, proj, ".claude/rules/moai/workflow/factory-dispatch.md", "v1\n")
+		if err := os.WriteFile(path, []byte("v2 refreshed by the update\n"), 0o644); err != nil {
+			t.Fatalf("rewrite: %v", err)
+		}
+		if got := uncommittedTemplateNotice(proj, []string{".claude/rules/moai/workflow/factory-dispatch.md"}); got == "" {
+			t.Fatal("a changed template file under a project subdirectory must fire the notice")
+		}
+	})
+
+	t.Run("inherited_git_env_cannot_redirect_the_query", func(t *testing.T) {
+		// Discriminator shape (audit round-2 P2): the project is CLEAN while
+		// the foreign repository (whose GIT_DIR the child git would inherit)
+		// carries the same template path as an uncommitted change. Without
+		// the env scrub the query reads the foreign repo and fires a FALSE
+		// notice; with it, the clean project stays silent.
+		dir := t.TempDir()
+		initTrackedFile(t, dir, ".claude/rules/moai/workflow/factory-dispatch.md", "v1 committed, clean\n")
+		other := t.TempDir()
+		otherPath := initTrackedFile(t, other, ".claude/rules/moai/workflow/factory-dispatch.md", "v1\n")
+		if err := os.WriteFile(otherPath, []byte("v2 uncommitted in the FOREIGN repo\n"), 0o644); err != nil {
+			t.Fatalf("rewrite foreign: %v", err)
+		}
+		t.Setenv("GIT_DIR", filepath.Join(other, ".git"))
+		if got := uncommittedTemplateNotice(dir, []string{".claude/rules/moai/workflow/factory-dispatch.md"}); got != "" {
+			t.Fatalf("an inherited GIT_DIR leaked the foreign repo's state into the notice: %s", got)
 		}
 	})
 

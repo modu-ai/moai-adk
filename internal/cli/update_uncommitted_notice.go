@@ -5,6 +5,7 @@ import (
 	"os/exec"
 	"strings"
 
+	"github.com/modu-ai/moai-adk/internal/gitenv"
 	"github.com/modu-ai/moai-adk/internal/merge"
 )
 
@@ -35,15 +36,51 @@ func uncommittedTemplateNotice(projectRoot string, templatePaths []string) strin
 	if len(templatePaths) == 0 {
 		return ""
 	}
-	// --untracked-files=all: default porcelain collapses a wholly-untracked
-	// NEW directory to "?? dir/", which the exact-path intersection below
-	// would never match (audit round-1 P2, card t1729) — enumerate files.
-	out, err := exec.Command("git", "-C", projectRoot, "status", "--porcelain", "--untracked-files=all").Output()
+	// gitenv.Env (audit round-2 P2, card t1729): an inherited GIT_DIR /
+	// GIT_WORK_TREE would redirect the query at another repository — the
+	// child's repo is determined by -C projectRoot alone.
+	runGit := func(args ...string) (string, error) {
+		cmd := exec.Command("git", append([]string{"-C", projectRoot}, args...)...)
+		cmd.Env = gitenv.Env()
+		out, err := cmd.Output()
+		return string(out), err
+	}
+	// Path-basis normalization (audit round-2 P2): porcelain prints
+	// REPO-root-relative paths while templatePaths are project-relative; a
+	// project living in a subdirectory of its repository would never match
+	// without prefixing. `rev-parse --show-prefix` is git's own answer for
+	// the cwd→repo-root prefix (slash-terminated, empty at the toplevel) —
+	// it also fails outside a repository, keeping the fail-open shape, and
+	// avoids the resolved-vs-symlinked path mismatch a toplevel Rel() would
+	// hit on macOS (/private/var vs /var).
+	prefOut, err := runGit("rev-parse", "--show-prefix")
 	if err != nil {
 		return ""
 	}
-	changed := make(map[string]bool)
-	for line := range strings.SplitSeq(string(out), "\n") {
+	prefix := strings.TrimSpace(prefOut)
+	wanted := make(map[string]bool, len(templatePaths))
+	pathspecs := make([]string, 0, len(templatePaths))
+	for _, p := range templatePaths {
+		if p = strings.TrimSpace(p); p != "" {
+			wanted[prefix+p] = true
+			pathspecs = append(pathspecs, p)
+		}
+	}
+	if len(wanted) == 0 {
+		return ""
+	}
+	// --untracked-files=all: default porcelain collapses a wholly-untracked
+	// NEW directory to "?? dir/", which the exact-path intersection below
+	// would never match (audit round-1 P2). The pathspecs scope the query
+	// to this sync's change set (git resolves them cwd-relative), so a
+	// user's unrelated edits still never trigger the notice.
+	args := append([]string{"status", "--porcelain", "--untracked-files=all", "--"}, pathspecs...)
+	out, err := runGit(args...)
+	if err != nil {
+		return ""
+	}
+	n := 0
+	for line := range strings.SplitSeq(out, "\n") {
 		line = strings.TrimRight(line, "\r")
 		if len(line) < 4 {
 			continue
@@ -52,19 +89,14 @@ func uncommittedTemplateNotice(projectRoot string, templatePaths []string) strin
 		// carry "old -> new"; the exact-path intersection below matches the
 		// whole tail only, so a renamed template path is not counted — the
 		// notice undercounts rather than crying wolf.
-		changed[strings.TrimSpace(line[3:])] = true
-	}
-	n := 0
-	for _, p := range templatePaths {
-		p = strings.TrimSpace(p)
-		if p != "" && changed[p] {
+		if wanted[strings.TrimSpace(line[3:])] {
 			n++
 		}
 	}
 	if n == 0 {
 		return ""
 	}
-	return fmt.Sprintf("update left %d template file(s) uncommitted — worktrees branched from the committed base will not see them until committed: commit on the base branch, then refresh a worktree with `moai worktree sync`", n)
+	return fmt.Sprintf("update left %d template file(s) uncommitted — worktrees branched from the committed base will not see them until committed: commit on the base branch, then merge the base branch into each worktree (`git merge main` inside the worktree)", n)
 }
 
 // mergeAnalysisPaths extracts the deployment-relative paths one template
