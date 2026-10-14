@@ -185,6 +185,52 @@ func TestAdoptResumedLeaderRunMintsWhenNoCandidates(t *testing.T) {
 	}
 }
 
+// Card-review round 2 — the automatic path shares the explicit path's
+// cross-backend guard: a codex-led run is warned, never adopted by a claude
+// leader.
+func TestAdoptResumedLeaderRunWarnsCodexLedCandidate(t *testing.T) {
+	root := adoptSandbox(t)
+	db := openAdoptFactory(t, root)
+	if err := db.RecordRun(context.Background(), homestate.FactoryRun{
+		RunID: "run-cx", Backend: "codex", ManifestJSON: "{}", LeadPID: 99999999, LeadProcessStart: "gone-before-resume",
+	}); err != nil {
+		t.Fatalf("record run: %v", err)
+	}
+	if _, err := db.DB.Exec(`INSERT INTO cards(run_id,card_id,state,updated_at) VALUES(?,?,?,?)`,
+		"run-cx", "card-run-cx", "run", "2026-10-14T00:00:00Z"); err != nil {
+		t.Fatalf("insert card: %v", err)
+	}
+	if err := db.Close(); err != nil {
+		t.Fatalf("close seeding handle: %v", err)
+	}
+
+	t.Setenv(config.EnvFactoryRunID, "minted01")
+	var warn bytes.Buffer
+	adopted, err := adoptResumedLeaderRun(root, true, &warn)
+	if err != nil {
+		t.Fatalf("adopt: %v", err)
+	}
+	if adopted != "" {
+		t.Fatalf("adopted = %q, want none (a codex-led run is not adoptable by a claude leader)", adopted)
+	}
+	if got := os.Getenv(config.EnvFactoryRunID); got != "minted01" {
+		t.Fatalf("env %s = %q, want minted01 (untouched)", config.EnvFactoryRunID, got)
+	}
+	if !strings.Contains(warn.String(), "codex") {
+		t.Fatalf("warn %q does not name the codex-led refusal", warn.String())
+	}
+}
+
+// Card-review round 2 — the carrier scan uses the guard polarity, which
+// matches Claude's option model: `--debug --resume <id>` reads as a resume
+// carrier, not as --debug consuming --resume as its value.
+func TestResumeCarrierSeenGuardPolarity(t *testing.T) {
+	seen, _ := scanResumeArgs([]string{"--debug", "--resume", "sess-1"}, true)
+	if !seen {
+		t.Fatalf("guard polarity missed the resume carrier behind --debug; the launcher would mint a new run instead of adopting")
+	}
+}
+
 // The minted-ness predicate mirrors leaderRunID's three steps: only the
 // NewRunID() fallback counts as minted.
 func TestLeaderRunIDWasMinted(t *testing.T) {

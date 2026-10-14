@@ -209,8 +209,12 @@ func runClaudeEntry(cmd *cobra.Command, args []string, commandName, mode, backen
 		// the prior run instead (card t1707): the run id survives only in the
 		// launch environment, so the resume launch would otherwise mint a new
 		// run over the live one and the dead-owner reconciliation would retire
-		// the prior run's records behind it.
-		resumeSeen, _ := scanResumeArgs(filteredArgs, false)
+		// the prior run's records behind it. The carrier scan uses the guard
+		// polarity because that is what matches Claude's option model: a
+		// flag-shaped token is its own option, so `--debug --resume <id>`
+		// must read as a resume carrier, not as --debug consuming --resume as
+		// its value (card-review round 2).
+		resumeSeen, _ := scanResumeArgs(filteredArgs, true)
 		adopted, adoptErr := adoptResumedLeaderRun(launchProjectRoot(), resumeSeen && entry.FactoryRun == "" && leaderRunIDWasMinted(leaderLabel, priorRunID), cmd.ErrOrStderr())
 		if adoptErr != nil {
 			return fmt.Errorf("re-adopt factory run: %w", adoptErr)

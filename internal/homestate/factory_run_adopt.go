@@ -47,23 +47,28 @@ OR EXISTS(SELECT 1 FROM workers WHERE run_id=?1)`, runID).Scan(&live); err != ni
 // resuming leader is a NEW process (new pid, new fingerprint), so the
 // recorded stamp classifies dead even though the run's records are alive.
 //
-// Adoption is admitted ONLY for a dead owner (sync-audit finding F2): live
-// records prove unfinished work, not the owner's death, and the batch-probe
-// miss path classifies a probe-verified-live owner indeterminate — auto-
-// adopting on indeterminate could overwrite a live leader's stamp. An
-// absent-or-unproven owner therefore routes to the caller's warn-and-offer
-// path instead, the same direction ClassifyOwnerWith gives every other
-// absence of knowledge (REQ-003b).
+// Adoption is admitted ONLY for a single candidate classified dead ON THE
+// ROW'S OWN STAMP (sync-audit finding F2, card-review round 2): live records
+// prove unfinished work, not the owner's death, and the batch-probe miss path
+// classifies a probe-verified-live owner indeterminate — auto-adopting on
+// indeterminate could overwrite a live leader's stamp. An unstamped legacy
+// row classified through the leader-peer fallback carries no row-level
+// identity to compare-and-set against, so it routes to the caller's
+// warn-and-offer path too — the peer's identity is the broker's, not the
+// row's. Absent-or-unproven owners therefore never auto-adopt, the same
+// direction ClassifyOwnerWith gives every other absence of knowledge
+// (REQ-003b).
 //
-// Exactly one candidate classified dead → it is returned as adopt with the
-// candidate list. Anything else — zero candidates (a cold start mints as
-// before), a single indeterminate candidate, or several candidates (the
-// caller warns and offers the deliberate --factory-run path) — returns a zero
-// adopt with the full candidate list, which the caller distinguishes by
-// length and classification.
+// Exactly one candidate classified dead on its stamp → it is returned as
+// adopt with the candidate list. Anything else — zero candidates (a cold
+// start mints as before), a single indeterminate or peer-classified
+// candidate, or several candidates (the caller warns and offers the
+// deliberate --factory-run path) — returns a zero adopt with the full
+// candidate list, which the caller distinguishes by length and
+// classification.
 //
-// @MX:NOTE: [AUTO] only a single DEAD-owner candidate is returned as adopt; indeterminate candidates surface through the warn list
-// @MX:REASON: auto-adopting an unproven owner can overwrite a live leader's stamp; the asymmetric risk mirrors REQ-003b (sync-audit t1707 F2)
+// @MX:NOTE: [AUTO] only a single DEAD-owner candidate classified on its own stamp is returned as adopt; indeterminate and peer-classified candidates surface through the warn list
+// @MX:REASON: auto-adopting an unproven or identity-less owner can overwrite a live leader's stamp; the asymmetric risk mirrors REQ-003b (sync-audit t1707 F2, card-review round 2)
 func (f *FactoryDB) FindResumableRun(ctx context.Context, opts ReconcileOptions) (RunOwner, []RunOwner, error) {
 	owners, err := f.classifyRuns(ctx, opts, "active")
 	if err != nil {
@@ -84,7 +89,7 @@ func (f *FactoryDB) FindResumableRun(ctx context.Context, opts ReconcileOptions)
 			candidates = append(candidates, o)
 		}
 	}
-	if len(candidates) == 1 && candidates[0].Classification == OwnerDead {
+	if len(candidates) == 1 && candidates[0].Classification == OwnerDead && candidates[0].Basis == BasisStamp {
 		return candidates[0], candidates, nil
 	}
 	return RunOwner{}, candidates, nil

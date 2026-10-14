@@ -115,6 +115,29 @@ func TestFindResumableRunWarnsSingleIndeterminateOwner(t *testing.T) {
 	}
 }
 
+// Card-review round 2 — an unstamped legacy row classified through the
+// leader-peer fallback carries no row-level identity to compare-and-set
+// against, so it is listed for the warn path but never auto-adopted.
+func TestFindResumableRunWarnsUnstampedPeerClassifiedRun(t *testing.T) {
+	db := openSandboxFactory(t)
+	mustRecordRun(t, db, FactoryRun{RunID: "run-legacy", ManifestJSON: "{}"})
+	mustInsertCard(t, db, "run-legacy", "c1", "run")
+
+	adopt, candidates, err := db.FindResumableRun(context.Background(), ReconcileOptions{
+		Classify: fixedClassifier(OwnerDead),
+		Fallback: func(string) (int, string, bool) { return 42, "peer-start", true },
+	})
+	if err != nil {
+		t.Fatalf("find resumable run: %v", err)
+	}
+	if adopt.RunID != "" {
+		t.Fatalf("adopt = %+v, want none (a peer-classified unstamped row has no row identity to CAS on)", adopt)
+	}
+	if len(candidates) != 1 || candidates[0].RunID != "run-legacy" || candidates[0].Basis != BasisPeer {
+		t.Fatalf("candidates = %+v, want run-legacy classified on the peer basis", candidates)
+	}
+}
+
 // Adoption restamps the owner to the resuming process and appends one
 // run.resumed event carrying the adoption basis, with the row left active.
 func TestAdoptRunRestampsOwnerAndAppendsResumedEvent(t *testing.T) {

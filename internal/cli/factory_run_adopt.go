@@ -2,6 +2,7 @@ package cli
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"io"
 	"os"
@@ -76,6 +77,17 @@ func adoptResumedLeaderRun(root string, shouldAdopt bool, warn io.Writer) (adopt
 		for _, c := range candidates {
 			fmt.Fprintf(warn, "factory leader resume: run %s (owner %s) still holds live records — adopting nothing; to adopt one deliberately, relaunch with `moai cc -f --factory-run %s`\n", c.RunID, c.Classification, c.RunID)
 		}
+		return "", nil
+	}
+	// The automatic path shares the explicit path's cross-backend guard
+	// (card-review round 2): a codex-led run is never adopted by a claude
+	// leader, deliberately or automatically — it is warned with the same
+	// re-adoption/retire offer instead of being taken over silently.
+	if err := refuseCodexLeaderRun(root, adopt.RunID); err != nil {
+		if !errors.Is(err, ErrRunLedByCodex) {
+			return "", err
+		}
+		fmt.Fprintf(warn, "factory leader resume: run %s is led by codex — a claude leader does not adopt it; retire it first or relaunch the codex leader deliberately\n", adopt.RunID)
 		return "", nil
 	}
 	if err := db.AdoptRun(context.Background(), adopt, os.Getpid(), homestate.CurrentProcessFingerprint(), leaderResumeAdoptionBasis); err != nil {

@@ -663,6 +663,12 @@ func resumeDiscoveredRun(root string, leader discovery.VerifiedLeader) error {
 	return db.ResumeRun(context.Background(), leader.RunID, leader.PID, leader.ProcessStart, leader.Basis)
 }
 
+// ErrRunLedByCodex marks refuseCodexLeaderRun's cross-backend refusal: the
+// named run's leader backend is codex, so a claude leader cannot adopt it
+// (card t1707's card-review round 2 — the automatic adoption path shares this
+// guard with the explicit --factory-run path).
+var ErrRunLedByCodex = errors.New("factory run is led by codex")
+
 // refuseCodexLeaderRun prevents a different leader from adopting an active
 // Codex-led run. Lane joins are handled separately and may cross backends.
 func refuseCodexLeaderRun(root, runID string) (err error) {
@@ -678,8 +684,8 @@ func refuseCodexLeaderRun(root, runID string) (err error) {
 	if backend != BackendCodex {
 		return nil
 	}
-	return fmt.Errorf("factory run %s is led by %s and cannot be adopted by another leader; retire it with 'moai factory runs --retire %s' before starting a new run",
-		runID, BackendCodex, runID)
+	return fmt.Errorf("%w: %s cannot be adopted by another leader; retire it with 'moai factory runs --retire %s' before starting a new run",
+		ErrRunLedByCodex, runID, runID)
 }
 
 // recordFactoryRunStart records a run's start. declaredLanes is the run's
