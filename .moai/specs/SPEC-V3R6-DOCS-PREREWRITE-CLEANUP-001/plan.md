@@ -1,6 +1,8 @@
-# SPEC-V3R6-DOCS-PREREWRITE-CLEANUP-001 — Implementation Plan (umbrella, revision 0.2.1)
+# SPEC-V3R6-DOCS-PREREWRITE-CLEANUP-001 — Implementation Plan (umbrella, revision 0.2.2)
 
 ## A. Pin, provenance, and method
+
+Revisions 0.1.0 to 0.2.1 measured at f35103480f. Revision 0.2.2 re-measured the RED-now cells at 8816de4dae (the card branch after absorbing main 763193861b) and recorded their outputs verbatim. The supporting, verification, and protocol cells stay at f35103480f and are labelled; the drift table in acceptance section A lists the four items that differ at 8816de4dae. The whole-tree cells E-09b2 and E-28 exclude this SPEC's own directory by definition (leader ruling d-20261014T072226Z-9b67).
 
 ### A.1 Measurement pin
 
@@ -23,7 +25,7 @@
 - The stale-reference families are a sweep, not the producer. The producer (M1) must reproduce the family counts on the same tree before the RED cells can be called a finding of the producer.
 - Prose noise is excluded by scope: tokens such as "moai is", "moai command", "moai available", "moai folder", "moai managed", "moai entry", "moai sessions", "moai runs", "instance already", and "plugin carries" match a broad regex but are not commands. The producer scans code contexts only (inline code and fenced blocks) plus the slash surface, and derives the CLI verb set from the tree build, not from a hard-coded list.
 
-## B. Child map and closing measurement (umbrella, revision 0.2.1)
+## B. Child map and closing measurement (umbrella, revision 0.2.2)
 
 Revision 0.2.0 splits the work into eleven child SPECs (decision Q20 = (c), `d-20261014T055241Z-1bc6`). The former milestones M0 to M5 are owned by the children in the table below, and the children land independently, in any order. M6 stays in this umbrella as the closing measurement. A child starts only when each decision row it depends on carries an operator verdict, attributed to the operator with a UTC timestamp. A `Planner default applied:` value is not a verdict.
 

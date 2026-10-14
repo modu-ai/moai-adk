@@ -1,4 +1,4 @@
-# Acceptance Criteria — SPEC-V3R6-DOCS-PREREWRITE-CLEANUP-001 (revision 0.2.1, umbrella)
+# Acceptance Criteria — SPEC-V3R6-DOCS-PREREWRITE-CLEANUP-001 (revision 0.2.2, umbrella)
 
 ## A. Pin and conventions
 
@@ -10,6 +10,17 @@
 - **External cells** (E-20c, E-21) are labelled `external`, are not tree-attributed, and are never recorded as a pass (verification-completeness §2.1, undecidable disposition). They were observed in this revision before `2026-10-14T03:19:53Z`.
 - **RED-now.** A cell is red when it reports a nonzero match count, a present forbidden path, or an absent required job.
 - **Classes.** `release-blocking (gated)`: the closing check is re-executable on the tree and counts toward the completion verdict once its gate rows carry operator verdicts (§D). `regression-guard`: not counted toward the verdict; the reason is stated in §D.
+
+Revisions 0.1.0 to 0.2.1 measured at f35103480f. Revision 0.2.2 re-measured the RED-now cells at 8816de4dae (the card branch after absorbing main 763193861b) and recorded their outputs verbatim. The supporting, verification, and protocol cells stay at f35103480f and are labelled; the drift table in acceptance section A lists the four items that differ at 8816de4dae. The whole-tree cells E-09b2 and E-28 exclude this SPEC's own directory by definition (leader ruling d-20261014T072226Z-9b67).
+
+### Drift at 8816de4dae (revision 0.2.2)
+
+| Item | At f35103480f | At 8816de4dae | Disposition |
+|------|---------------|---------------|-------------|
+| E-05b (flags in Go source) | 24 lines, 101 matching lines | 25 lines, 102 matching lines (one more file under internal/cli) | Cell stays at f35103480f. |
+| E-27b (SPEC ID not tracked) | no output | 5 files, because the SPEC directory is tracked since 8f4020a125 | Cell stays at f35103480f and means "before the SPEC was committed". |
+| E-00 (HEAD and tree status) | HEAD `f35103480f03ad5a8418652bb03223dd67efa3dd`; tree `ca8fc594f5f23c4691cf41c876a4b12191cab47d`; `git status --short` shows `?? .moai/specs/SPEC-V3R6-DOCS-PREREWRITE-CLEANUP-001/` | HEAD `8816de4dae`; the tracked tree is clean | Cell stays at f35103480f. |
+| E-06 BuildID (binary cells E-06, E-07, E-07b, E-25a) | BuildID `moai_cp/20261007_195927-847-gf35103480f` carries the f35103480f build | not rebuilt at 8816de4dae; the binary still carries the f35103480f build | These cells stay at f35103480f until a rebuild at 8816de4dae. |
 
 ## A.1 Traceability matrix (AC to REQ)
 
@@ -200,6 +211,8 @@ Each entry gives the command (one invocation, pinned), the exit code as its own 
 
 ### E-00 — pins and tree status
 
+> Measured at f35103480f in revision 0.1.1; compared at 8816de4dae in revision 0.2.2: changed; see the drift table in section A.
+
 - `git -C /Users/goos/MoAI/moai-adk-go/.moai/worktrees/t1655 rev-parse --show-toplevel` — exit 0 — stdout: `/Users/goos/MoAI/moai-adk-go/.moai/worktrees/t1655`
 - `git -C /Users/goos/MoAI/moai-adk-go/.moai/worktrees/t1655 rev-parse HEAD` — exit 0 — stdout: `f35103480f03ad5a8418652bb03223dd67efa3dd`
 - `git -C /Users/goos/MoAI/moai-adk-go/.moai/worktrees/t1655 rev-parse HEAD^{tree}` — exit 0 — stdout: `ca8fc594f5f23c4691cf41c876a4b12191cab47d`
@@ -207,64 +220,66 @@ Each entry gives the command (one invocation, pinned), the exit code as its own 
 
 ### E-01 — family F1: CLI forms of the absent verbs (RED-now; notice excluded)
 
-- Command: `git grep -c -E "(^|[^/])moai (cg|gpt|audit|codemaps|model)([^[:alnum:]-]|$)" f35103480f -- README.md README.ko.md README.ja.md README.zh.md docs-site/content ':!docs-site/content/en/multi-llm/cg-mode.md' ':!docs-site/content/ja/multi-llm/cg-mode.md' ':!docs-site/content/ko/multi-llm/cg-mode.md' ':!docs-site/content/zh/multi-llm/cg-mode.md'`
+- Command: `git grep -c -E "(^|[^/])moai (cg|gpt|audit|codemaps|model)([^[:alnum:]-]|$)" 8816de4dae -- README.md README.ko.md README.ja.md README.zh.md docs-site/content ':!docs-site/content/en/multi-llm/cg-mode.md' ':!docs-site/content/ja/multi-llm/cg-mode.md' ':!docs-site/content/ko/multi-llm/cg-mode.md' ':!docs-site/content/zh/multi-llm/cg-mode.md'`
 - Exit code: 0.
 - Stdout (verbatim; 48 lines; derived: 48 files, 60 matching lines):
 
 ```
-f35103480f:README.ja.md:4
-f35103480f:README.ko.md:4
-f35103480f:README.md:4
-f35103480f:README.zh.md:4
-f35103480f:docs-site/content/en/advanced/bas-navigator.md:1
-f35103480f:docs-site/content/en/advanced/factory-mode.md:1
-f35103480f:docs-site/content/en/advanced/profile-matrix.md:1
-f35103480f:docs-site/content/en/advanced/tokenomics-overview.md:1
-f35103480f:docs-site/content/en/core-concepts/what-is-moai-adk.md:1
-f35103480f:docs-site/content/en/cost-optimization/prompt-caching.md:1
-f35103480f:docs-site/content/en/getting-started/cli.md:1
-f35103480f:docs-site/content/en/getting-started/windows-guide.md:1
-f35103480f:docs-site/content/en/guides/mcp-server.md:1
-f35103480f:docs-site/content/en/multi-llm/_index.md:1
-f35103480f:docs-site/content/en/multi-llm/model-policy.md:1
-f35103480f:docs-site/content/ja/advanced/bas-navigator.md:1
-f35103480f:docs-site/content/ja/advanced/factory-mode.md:1
-f35103480f:docs-site/content/ja/advanced/profile-matrix.md:1
-f35103480f:docs-site/content/ja/advanced/tokenomics-overview.md:1
-f35103480f:docs-site/content/ja/core-concepts/what-is-moai-adk.md:1
-f35103480f:docs-site/content/ja/cost-optimization/prompt-caching.md:1
-f35103480f:docs-site/content/ja/getting-started/cli.md:1
-f35103480f:docs-site/content/ja/getting-started/windows-guide.md:1
-f35103480f:docs-site/content/ja/guides/mcp-server.md:1
-f35103480f:docs-site/content/ja/multi-llm/_index.md:1
-f35103480f:docs-site/content/ja/multi-llm/model-policy.md:1
-f35103480f:docs-site/content/ko/advanced/bas-navigator.md:1
-f35103480f:docs-site/content/ko/advanced/factory-mode.md:1
-f35103480f:docs-site/content/ko/advanced/profile-matrix.md:1
-f35103480f:docs-site/content/ko/advanced/tokenomics-overview.md:1
-f35103480f:docs-site/content/ko/core-concepts/what-is-moai-adk.md:1
-f35103480f:docs-site/content/ko/cost-optimization/prompt-caching.md:1
-f35103480f:docs-site/content/ko/getting-started/cli.md:1
-f35103480f:docs-site/content/ko/getting-started/windows-guide.md:1
-f35103480f:docs-site/content/ko/guides/mcp-server.md:1
-f35103480f:docs-site/content/ko/multi-llm/_index.md:1
-f35103480f:docs-site/content/ko/multi-llm/model-policy.md:1
-f35103480f:docs-site/content/zh/advanced/bas-navigator.md:1
-f35103480f:docs-site/content/zh/advanced/factory-mode.md:1
-f35103480f:docs-site/content/zh/advanced/profile-matrix.md:1
-f35103480f:docs-site/content/zh/advanced/tokenomics-overview.md:1
-f35103480f:docs-site/content/zh/core-concepts/what-is-moai-adk.md:1
-f35103480f:docs-site/content/zh/cost-optimization/prompt-caching.md:1
-f35103480f:docs-site/content/zh/getting-started/cli.md:1
-f35103480f:docs-site/content/zh/getting-started/windows-guide.md:1
-f35103480f:docs-site/content/zh/guides/mcp-server.md:1
-f35103480f:docs-site/content/zh/multi-llm/_index.md:1
-f35103480f:docs-site/content/zh/multi-llm/model-policy.md:1
+8816de4dae:README.ja.md:4
+8816de4dae:README.ko.md:4
+8816de4dae:README.md:4
+8816de4dae:README.zh.md:4
+8816de4dae:docs-site/content/en/advanced/bas-navigator.md:1
+8816de4dae:docs-site/content/en/advanced/factory-mode.md:1
+8816de4dae:docs-site/content/en/advanced/profile-matrix.md:1
+8816de4dae:docs-site/content/en/advanced/tokenomics-overview.md:1
+8816de4dae:docs-site/content/en/core-concepts/what-is-moai-adk.md:1
+8816de4dae:docs-site/content/en/cost-optimization/prompt-caching.md:1
+8816de4dae:docs-site/content/en/getting-started/cli.md:1
+8816de4dae:docs-site/content/en/getting-started/windows-guide.md:1
+8816de4dae:docs-site/content/en/guides/mcp-server.md:1
+8816de4dae:docs-site/content/en/multi-llm/_index.md:1
+8816de4dae:docs-site/content/en/multi-llm/model-policy.md:1
+8816de4dae:docs-site/content/ja/advanced/bas-navigator.md:1
+8816de4dae:docs-site/content/ja/advanced/factory-mode.md:1
+8816de4dae:docs-site/content/ja/advanced/profile-matrix.md:1
+8816de4dae:docs-site/content/ja/advanced/tokenomics-overview.md:1
+8816de4dae:docs-site/content/ja/core-concepts/what-is-moai-adk.md:1
+8816de4dae:docs-site/content/ja/cost-optimization/prompt-caching.md:1
+8816de4dae:docs-site/content/ja/getting-started/cli.md:1
+8816de4dae:docs-site/content/ja/getting-started/windows-guide.md:1
+8816de4dae:docs-site/content/ja/guides/mcp-server.md:1
+8816de4dae:docs-site/content/ja/multi-llm/_index.md:1
+8816de4dae:docs-site/content/ja/multi-llm/model-policy.md:1
+8816de4dae:docs-site/content/ko/advanced/bas-navigator.md:1
+8816de4dae:docs-site/content/ko/advanced/factory-mode.md:1
+8816de4dae:docs-site/content/ko/advanced/profile-matrix.md:1
+8816de4dae:docs-site/content/ko/advanced/tokenomics-overview.md:1
+8816de4dae:docs-site/content/ko/core-concepts/what-is-moai-adk.md:1
+8816de4dae:docs-site/content/ko/cost-optimization/prompt-caching.md:1
+8816de4dae:docs-site/content/ko/getting-started/cli.md:1
+8816de4dae:docs-site/content/ko/getting-started/windows-guide.md:1
+8816de4dae:docs-site/content/ko/guides/mcp-server.md:1
+8816de4dae:docs-site/content/ko/multi-llm/_index.md:1
+8816de4dae:docs-site/content/ko/multi-llm/model-policy.md:1
+8816de4dae:docs-site/content/zh/advanced/bas-navigator.md:1
+8816de4dae:docs-site/content/zh/advanced/factory-mode.md:1
+8816de4dae:docs-site/content/zh/advanced/profile-matrix.md:1
+8816de4dae:docs-site/content/zh/advanced/tokenomics-overview.md:1
+8816de4dae:docs-site/content/zh/core-concepts/what-is-moai-adk.md:1
+8816de4dae:docs-site/content/zh/cost-optimization/prompt-caching.md:1
+8816de4dae:docs-site/content/zh/getting-started/cli.md:1
+8816de4dae:docs-site/content/zh/getting-started/windows-guide.md:1
+8816de4dae:docs-site/content/zh/guides/mcp-server.md:1
+8816de4dae:docs-site/content/zh/multi-llm/_index.md:1
+8816de4dae:docs-site/content/zh/multi-llm/model-policy.md:1
 ```
 
 - Reading: the `moai-codemaps` pages contribute no line here, because their 80 matches are the registered slash command (E-01s). Before the notice exclusion the same command gives 52 files and 64 lines; the four excluded lines are E-01a.
 
 ### E-01a — the retained retirement notice (exclusion evidence)
+
+> Measured at f35103480f in revision 0.1.1; compared at 8816de4dae in revision 0.2.2: unchanged.
 
 - Command: `git grep -n -E "(^|[^/])moai (cg|gpt|audit|codemaps|model)([^[:alnum:]-]|$)" f35103480f -- docs-site/content/en/multi-llm/cg-mode.md docs-site/content/ja/multi-llm/cg-mode.md docs-site/content/ko/multi-llm/cg-mode.md docs-site/content/zh/multi-llm/cg-mode.md`
 - Exit code: 0.
@@ -279,25 +294,29 @@ f35103480f:docs-site/content/zh/multi-llm/cg-mode.md:8:`moai cg` 已停用。它
 
 ### E-01s — slash forms of the family (verification; derived)
 
+> Measured at f35103480f in revision 0.1.1; compared at 8816de4dae in revision 0.2.2: unchanged.
+
 - Command: `git grep -c -E "/moai codemaps([^[:alnum:]-]|$)" f35103480f -- README.md README.ko.md README.ja.md README.zh.md docs-site/content` — derived: 44 files, 152 matching lines. Every slash match of the E-01 family is this registered command (`.claude/commands/moai/codemaps.md`, E-26b). The E-01 family's slash lines therefore resolve.
 - Command: `git grep -n -E "/moai (cg|gpt|audit|model)([^[:alnum:]-]|$)" f35103480f -- README.md README.ko.md README.ja.md README.zh.md docs-site/content` — exit 1 (wrapper-confirmed) — stdout: no output. No slash form of an absent name exists.
 
 ### E-02 — family F2: CLI forms of absent sub-verbs (RED-now; `web console` and todo examples excluded)
 
-- Command: `git grep -c -E "(^|[^/])moai (codex (job|task|setup)|todo (rename|pick)|spec list)" f35103480f -- README.md README.ko.md README.ja.md README.zh.md docs-site/content ':!docs-site/content/en/utility-commands/moai-todo.md' ':!docs-site/content/ja/utility-commands/moai-todo.md' ':!docs-site/content/ko/utility-commands/moai-todo.md' ':!docs-site/content/zh/utility-commands/moai-todo.md'`
+- Command: `git grep -c -E "(^|[^/])moai (codex (job|task|setup)|todo (rename|pick)|spec list)" 8816de4dae -- README.md README.ko.md README.ja.md README.zh.md docs-site/content ':!docs-site/content/en/utility-commands/moai-todo.md' ':!docs-site/content/ja/utility-commands/moai-todo.md' ':!docs-site/content/ko/utility-commands/moai-todo.md' ':!docs-site/content/zh/utility-commands/moai-todo.md'`
 - Exit code: 0.
 - Stdout (verbatim; 4 lines; derived: 24 matching lines):
 
 ```
-f35103480f:docs-site/content/en/guides/mcp-server.md:6
-f35103480f:docs-site/content/ja/guides/mcp-server.md:6
-f35103480f:docs-site/content/ko/guides/mcp-server.md:6
-f35103480f:docs-site/content/zh/guides/mcp-server.md:6
+8816de4dae:docs-site/content/en/guides/mcp-server.md:6
+8816de4dae:docs-site/content/ja/guides/mcp-server.md:6
+8816de4dae:docs-site/content/ko/guides/mcp-server.md:6
+8816de4dae:docs-site/content/zh/guides/mcp-server.md:6
 ```
 
 - Correction (N1, found in re-measurement). The 0.1.0 family `codex (job|task|setup)|web console|todo (rename|pick)|spec list` gave 42 lines, which are 24 CLI lines (above), 8 lines in the moai-todo pages (E-02t), and 10 `web console` lines that name a UI, not a command: `README.md:116`, `README.md:428`, `README.md:431`, `docs-site/content/en/_index.md:34`, `docs-site/content/en/_index.md:36`, `docs-site/content/en/advanced/config-sections.md:215`, `docs-site/content/en/advanced/config-sections.md:269`, `docs-site/content/en/cli-reference/epic.md:107`, `docs-site/content/en/guides/mcp-server.md:293`, `docs-site/content/en/utility-commands/moai-feedback.md:103`. No CLI form of `web console` exists: `moai web --help` lists flags only (E-07). The alternative is dropped.
 
 ### E-02t — the moai-todo examples (exemption evidence)
+
+> Measured at f35103480f in revision 0.1.1; compared at 8816de4dae in revision 0.2.2: unchanged.
 
 - Command: `git grep -c -E "(^|[^/])moai (codex (job|task|setup)|todo (rename|pick)|spec list)" f35103480f -- docs-site/content/en/utility-commands/moai-todo.md docs-site/content/ja/utility-commands/moai-todo.md docs-site/content/ko/utility-commands/moai-todo.md docs-site/content/zh/utility-commands/moai-todo.md`
 - Exit code: 0.
@@ -314,20 +333,22 @@ f35103480f:docs-site/content/zh/utility-commands/moai-todo.md:2
 
 ### E-03 — family F3: Mermaid labels citing `moai run` and `moai sync` (RED-now; CLI form)
 
-- Command: `git grep -n -E "(^|[^/])moai (run|sync) SPEC-ID" f35103480f -- docs-site/content`
+- Command: `git grep -n -E "(^|[^/])moai (run|sync) SPEC-ID" 8816de4dae -- docs-site/content`
 - Exit code: 0.
 - Stdout (verbatim; 8 lines; the value is 8, not 12):
 
 ```
-f35103480f:docs-site/content/en/worktree/_index.md:91:        B2 --> B3["moai run SPEC-ID"]
-f35103480f:docs-site/content/en/worktree/_index.md:92:        B3 --> B4["moai sync SPEC-ID"]
-f35103480f:docs-site/content/ja/worktree/_index.md:87:        B2 --> B3["moai run SPEC-ID"]
-f35103480f:docs-site/content/ja/worktree/_index.md:88:        B3 --> B4["moai sync SPEC-ID"]
-f35103480f:docs-site/content/ko/worktree/_index.md:119:        B2 --> B3["moai run SPEC-ID"]
-f35103480f:docs-site/content/ko/worktree/_index.md:120:        B3 --> B4["moai sync SPEC-ID"]
-f35103480f:docs-site/content/zh/worktree/_index.md:96:        B2 --> B3["moai run SPEC-ID"]
-f35103480f:docs-site/content/zh/worktree/_index.md:97:        B3 --> B4["moai sync SPEC-ID"]
+8816de4dae:docs-site/content/en/worktree/_index.md:91:        B2 --> B3["moai run SPEC-ID"]
+8816de4dae:docs-site/content/en/worktree/_index.md:92:        B3 --> B4["moai sync SPEC-ID"]
+8816de4dae:docs-site/content/ja/worktree/_index.md:87:        B2 --> B3["moai run SPEC-ID"]
+8816de4dae:docs-site/content/ja/worktree/_index.md:88:        B3 --> B4["moai sync SPEC-ID"]
+8816de4dae:docs-site/content/ko/worktree/_index.md:119:        B2 --> B3["moai run SPEC-ID"]
+8816de4dae:docs-site/content/ko/worktree/_index.md:120:        B3 --> B4["moai sync SPEC-ID"]
+8816de4dae:docs-site/content/zh/worktree/_index.md:96:        B2 --> B3["moai run SPEC-ID"]
+8816de4dae:docs-site/content/zh/worktree/_index.md:97:        B3 --> B4["moai sync SPEC-ID"]
 ```
+
+> Measured at f35103480f in revision 0.1.1; compared at 8816de4dae in revision 0.2.2: unchanged.
 
 - Command (slash form; not in the family; verification): `git grep -n -E "/moai (run|sync) SPEC-ID" f35103480f -- docs-site/content` — exit 0 — stdout (verbatim; 4 lines):
 
@@ -340,38 +361,40 @@ f35103480f:docs-site/content/zh/worktree/faq.md:121:    E --> F["/moai run SPEC-
 
 ### E-04 — family F4: slash forms the commands surface does not register (RED-now)
 
-- Command: `git grep -c -E "/moai[: ](design|issue|bug|fb|init|brain|relationship)([^[:alnum:]-]|$)" f35103480f -- README.md README.ko.md README.ja.md README.zh.md docs-site/content`
+- Command: `git grep -c -E "/moai[: ](design|issue|bug|fb|init|brain|relationship)([^[:alnum:]-]|$)" 8816de4dae -- README.md README.ko.md README.ja.md README.zh.md docs-site/content`
 - Exit code: 0.
 - Stdout (verbatim; 22 lines; derived: 45 matching lines):
 
 ```
-f35103480f:docs-site/content/en/claude-code/foundations/_index.md:1
-f35103480f:docs-site/content/en/core-concepts/verification-claim-integrity.md:1
-f35103480f:docs-site/content/en/getting-started/faq.md:1
-f35103480f:docs-site/content/en/utility-commands/moai-feedback.md:3
-f35103480f:docs-site/content/en/workflow-commands/_index.md:1
-f35103480f:docs-site/content/en/workflow-commands/_meta.yaml:1
-f35103480f:docs-site/content/en/workflow-commands/moai-design.md:5
-f35103480f:docs-site/content/ja/getting-started/faq.md:1
-f35103480f:docs-site/content/ja/utility-commands/moai-feedback.md:3
-f35103480f:docs-site/content/ja/workflow-commands/_index.md:1
-f35103480f:docs-site/content/ja/workflow-commands/_meta.yaml:1
-f35103480f:docs-site/content/ja/workflow-commands/moai-design.md:4
-f35103480f:docs-site/content/ko/getting-started/faq.md:1
-f35103480f:docs-site/content/ko/utility-commands/moai-feedback.md:3
-f35103480f:docs-site/content/ko/workflow-commands/_index.md:2
-f35103480f:docs-site/content/ko/workflow-commands/_meta.yaml:1
-f35103480f:docs-site/content/ko/workflow-commands/moai-design.md:5
-f35103480f:docs-site/content/zh/getting-started/faq.md:1
-f35103480f:docs-site/content/zh/utility-commands/moai-feedback.md:3
-f35103480f:docs-site/content/zh/workflow-commands/_index.md:1
-f35103480f:docs-site/content/zh/workflow-commands/_meta.yaml:1
-f35103480f:docs-site/content/zh/workflow-commands/moai-design.md:4
+8816de4dae:docs-site/content/en/claude-code/foundations/_index.md:1
+8816de4dae:docs-site/content/en/core-concepts/verification-claim-integrity.md:1
+8816de4dae:docs-site/content/en/getting-started/faq.md:1
+8816de4dae:docs-site/content/en/utility-commands/moai-feedback.md:3
+8816de4dae:docs-site/content/en/workflow-commands/_index.md:1
+8816de4dae:docs-site/content/en/workflow-commands/_meta.yaml:1
+8816de4dae:docs-site/content/en/workflow-commands/moai-design.md:5
+8816de4dae:docs-site/content/ja/getting-started/faq.md:1
+8816de4dae:docs-site/content/ja/utility-commands/moai-feedback.md:3
+8816de4dae:docs-site/content/ja/workflow-commands/_index.md:1
+8816de4dae:docs-site/content/ja/workflow-commands/_meta.yaml:1
+8816de4dae:docs-site/content/ja/workflow-commands/moai-design.md:4
+8816de4dae:docs-site/content/ko/getting-started/faq.md:1
+8816de4dae:docs-site/content/ko/utility-commands/moai-feedback.md:3
+8816de4dae:docs-site/content/ko/workflow-commands/_index.md:2
+8816de4dae:docs-site/content/ko/workflow-commands/_meta.yaml:1
+8816de4dae:docs-site/content/ko/workflow-commands/moai-design.md:5
+8816de4dae:docs-site/content/zh/getting-started/faq.md:1
+8816de4dae:docs-site/content/zh/utility-commands/moai-feedback.md:3
+8816de4dae:docs-site/content/zh/workflow-commands/_index.md:1
+8816de4dae:docs-site/content/zh/workflow-commands/_meta.yaml:1
+8816de4dae:docs-site/content/zh/workflow-commands/moai-design.md:4
 ```
 
 - Reading (N2, open). The family also counts narrative and error examples: `docs-site/content/en/getting-started/faq.md:24` (`/moai init` described as a misconception), `docs-site/content/en/core-concepts/verification-claim-integrity.md:84` (a retired `/moai brain` narrative; one line, text not reproduced here), and the invocation list at `docs-site/content/en/utility-commands/moai-feedback.md:32–34` (`/moai fb`, `/moai bug`, `/moai issue`, which are unregistered). An exemption decision is needed before the producer counts the first two. The E-04 pattern is unchanged in this revision.
 
 ### E-05 — family F5: the two flags in docs (informational; not a cell of AC-PRC-001)
+
+> Measured at f35103480f in revision 0.1.1; compared at 8816de4dae in revision 0.2.2: unchanged.
 
 - Command: `git grep -c -F -e "--factory-run" -e "--clear-policy" f35103480f -- README.md README.ko.md README.ja.md README.zh.md docs-site/content`
 - Exit code: 0.
@@ -395,6 +418,8 @@ f35103480f:docs-site/content/zh/cli-reference/launchers.md:2
 - Reading: the flags are real parsed flags, not stale citations (verdict D3). They are not in AC-PRC-001. Their disposition is decision Q18.
 
 ### E-05b (= E-25b) — the flags are defined and parsed in the Go source
+
+> Measured at f35103480f in revision 0.1.1; compared at 8816de4dae in revision 0.2.2: changed; see the drift table in section A.
 
 - Command: `git grep -c -F -e "factory-run" -e "clear-policy" f35103480f -- internal cmd`
 - Exit code: 0.
@@ -429,6 +454,8 @@ f35103480f:internal/template/testdata/binding_ledger.json:2
 
 ### E-06 — verb surface of the tree build (verification; not a RED cell)
 
+> Measured at f35103480f in revision 0.1.1; compared at 8816de4dae in revision 0.2.2: binary output, not rebuilt at 8816de4dae; see the drift table in section A.
+
 - Version output. Command: `<scratchpad>/moai-head-make version` — exit 0 — stdout (verbatim):
 
 ```
@@ -458,12 +485,16 @@ f35103480f:internal/template/testdata/binding_ledger.json:2
 
 ### E-07 — COMMANDS blocks, command column (verification; not a RED cell)
 
+> Measured at f35103480f in revision 0.1.1; compared at 8816de4dae in revision 0.2.2: binary output, not rebuilt at 8816de4dae; see the drift table in section A.
+
 - `<scratchpad>/moai-head-make spec --help` — exit 0 — COMMANDS, command column: `status <SPEC-ID> <new-status>`, `drift`, `view <SPEC-ID>`, `lint [SPEC-ID | path/to/spec.md | SPEC directory ...]`, `close SPEC-ID`, `audit`, `archive`, `ceiling <SPEC-ID>`. No `list`.
 - `<scratchpad>/moai-head-make todo --help` — exit 0 — COMMANDS, command column: `add <text>`, `list`, `done <n>`, `undone <n>`, `next [<n>]`, `claim`, `unpick <n>`, `edit <n> <text>`, `move <n>`, `drop <n> <reason>`, `undrop <n>`, `merge <into> <from>`, `hold <n>`, `unhold <n>`, `analyze`, `relate <a> <b>`, `unrelate <index>`, `why <n>`, `trace <id>`, `pr [<id>]`, `landed <n>`, `auto-done`, `export-json`, `history [<id|n>]`, `show <id|n>`, `triage <id>...`. No `rename`, no `pick` (`next` picks; `unpick` reverts).
 - `<scratchpad>/moai-head-make codex --help` — exit 0 — COMMANDS, command column: `audit <role>`, `role-audit <role>`. No `job`, `task`, or `setup`.
 - `<scratchpad>/moai-head-make web --help` — exit 0 — no COMMANDS block; flags `--port <int>`, `--no-open`, `--no-reuse`.
 
 ### E-07b — absent sub-verbs exit 0 and print the parent help (observation O8)
+
+> Measured at f35103480f in revision 0.1.1; compared at 8816de4dae in revision 0.2.2: binary output, not rebuilt at 8816de4dae; see the drift table in section A.
 
 - `<scratchpad>/moai-head-make spec list` — no error displayed (exit 0) — stdout: the `spec` parent help, beginning `Manage SPEC documents in .moai/specs/ directory.`
 - `<scratchpad>/moai-head-make codex job --help` — no error displayed (exit 0) — stdout: the `codex` parent help, beginning `Launch Codex, or ask what is installed and wired.`
@@ -472,41 +503,41 @@ f35103480f:internal/template/testdata/binding_ledger.json:2
 
 ### E-08 — CG retirement sentence copies (RED-now; Korean pages)
 
-- Command: `git grep -c -F "설정 이전 안내와 함께 종료합니다" f35103480f -- docs-site/content/ko`
+- Command: `git grep -c -F "설정 이전 안내와 함께 종료합니다" 8816de4dae -- docs-site/content/ko`
 - Exit code: 0.
 - Stdout (verbatim; 9 lines; 8 outside the canonical page):
 
 ```
-f35103480f:docs-site/content/ko/advanced/tokenomics-overview.md:1
-f35103480f:docs-site/content/ko/cli-reference/launchers.md:1
-f35103480f:docs-site/content/ko/core-concepts/what-is-moai-adk.md:1
-f35103480f:docs-site/content/ko/cost-optimization/prompt-caching.md:1
-f35103480f:docs-site/content/ko/getting-started/cli.md:1
-f35103480f:docs-site/content/ko/getting-started/introduction.md:1
-f35103480f:docs-site/content/ko/getting-started/windows-guide.md:1
-f35103480f:docs-site/content/ko/multi-llm/_index.md:1
-f35103480f:docs-site/content/ko/multi-llm/cg-mode.md:1
+8816de4dae:docs-site/content/ko/advanced/tokenomics-overview.md:1
+8816de4dae:docs-site/content/ko/cli-reference/launchers.md:1
+8816de4dae:docs-site/content/ko/core-concepts/what-is-moai-adk.md:1
+8816de4dae:docs-site/content/ko/cost-optimization/prompt-caching.md:1
+8816de4dae:docs-site/content/ko/getting-started/cli.md:1
+8816de4dae:docs-site/content/ko/getting-started/introduction.md:1
+8816de4dae:docs-site/content/ko/getting-started/windows-guide.md:1
+8816de4dae:docs-site/content/ko/multi-llm/_index.md:1
+8816de4dae:docs-site/content/ko/multi-llm/cg-mode.md:1
 ```
 
 ### E-08b — link baseline to the CG page on the eight other Korean pages (RED-now)
 
-- Command: `git grep -c -F "multi-llm/cg-mode" f35103480f -- docs-site/content/ko/advanced/tokenomics-overview.md docs-site/content/ko/cli-reference/launchers.md docs-site/content/ko/core-concepts/what-is-moai-adk.md docs-site/content/ko/cost-optimization/prompt-caching.md docs-site/content/ko/getting-started/cli.md docs-site/content/ko/getting-started/introduction.md docs-site/content/ko/getting-started/windows-guide.md docs-site/content/ko/multi-llm/_index.md`
+- Command: `git grep -c -F "multi-llm/cg-mode" 8816de4dae -- docs-site/content/ko/advanced/tokenomics-overview.md docs-site/content/ko/cli-reference/launchers.md docs-site/content/ko/core-concepts/what-is-moai-adk.md docs-site/content/ko/cost-optimization/prompt-caching.md docs-site/content/ko/getting-started/cli.md docs-site/content/ko/getting-started/introduction.md docs-site/content/ko/getting-started/windows-guide.md docs-site/content/ko/multi-llm/_index.md`
 - Exit code: 0.
 - Stdout (verbatim; 7 lines; `what-is-moai-adk.md` has no match):
 
 ```
-f35103480f:docs-site/content/ko/advanced/tokenomics-overview.md:1
-f35103480f:docs-site/content/ko/cli-reference/launchers.md:2
-f35103480f:docs-site/content/ko/cost-optimization/prompt-caching.md:2
-f35103480f:docs-site/content/ko/getting-started/cli.md:1
-f35103480f:docs-site/content/ko/getting-started/introduction.md:1
-f35103480f:docs-site/content/ko/getting-started/windows-guide.md:2
-f35103480f:docs-site/content/ko/multi-llm/_index.md:2
+8816de4dae:docs-site/content/ko/advanced/tokenomics-overview.md:1
+8816de4dae:docs-site/content/ko/cli-reference/launchers.md:2
+8816de4dae:docs-site/content/ko/cost-optimization/prompt-caching.md:2
+8816de4dae:docs-site/content/ko/getting-started/cli.md:1
+8816de4dae:docs-site/content/ko/getting-started/introduction.md:1
+8816de4dae:docs-site/content/ko/getting-started/windows-guide.md:2
+8816de4dae:docs-site/content/ko/multi-llm/_index.md:2
 ```
 
 ### E-09a — unreferenced image paths (RED-now)
 
-- Command: `git ls-tree -r --name-only f35103480f -- assets/images/cg-mode-infographic-en.png assets/images/cg-mode-infographic-ja.png assets/images/cg-mode-infographic-ko.png assets/images/cg-mode-infographic-zh.png assets/images/moai-adk-social.png`
+- Command: `git ls-tree -r --name-only 8816de4dae -- assets/images/cg-mode-infographic-en.png assets/images/cg-mode-infographic-ja.png assets/images/cg-mode-infographic-ko.png assets/images/cg-mode-infographic-zh.png assets/images/moai-adk-social.png`
 - Exit code: 0.
 - Stdout (verbatim; 5 lines):
 
@@ -520,25 +551,27 @@ assets/images/moai-adk-social.png
 
 ### E-09b — references in the scoped paths (RED-now; rescoped per verdict D16)
 
-- Command: `git grep -c -F -e "cg-mode-infographic" -e "moai-adk-social" f35103480f -- README.md README.ko.md README.ja.md README.zh.md docs-site assets .moai/docs .claude/skills internal`
+- Command: `git grep -c -F -e "cg-mode-infographic" -e "moai-adk-social" 8816de4dae -- README.md README.ko.md README.ja.md README.zh.md docs-site assets .moai/docs .claude/skills internal`
 - Exit code: 1 (wrapper-confirmed).
 - Stdout: no output.
 
-### E-09b2 — tracked references in the whole tree (RED-now; the historical report named)
+### E-09b2 — tracked references in the whole tree (RED-now; the historical report named; this SPEC's directory excluded)
 
-- Command: `git grep -l -F -e "cg-mode-infographic" -e "moai-adk-social" f35103480f`
+- Command: `git grep -l -F -e "cg-mode-infographic" -e "moai-adk-social" 8816de4dae -- ':!.moai/specs/SPEC-V3R6-DOCS-PREREWRITE-CLEANUP-001' .`
 - Exit code: 0.
 - Stdout (verbatim; 1 line):
 
 ```
-f35103480f:.moai/reports/historical/gpt-final-design-20260914-b40ff9f4/inventory.json
+8816de4dae:.moai/reports/historical/gpt-final-design-20260914-b40ff9f4/inventory.json
 ```
 
   This tracked historical report names the five images. It is a historical artifact outside the scoped paths of E-09b; it does not make the images referenced for display. The deletion decision (Q2) is unaffected.
 
+  The historical report inventories past state and is not a live reference (leader ruling 75ac); expected value 1.
+
 ### E-09c — sizes of the five files (RED-now; `derived` total)
 
-- Command: `git ls-tree -r -l f35103480f -- assets/images/cg-mode-infographic-en.png assets/images/cg-mode-infographic-ja.png assets/images/cg-mode-infographic-ko.png assets/images/cg-mode-infographic-zh.png assets/images/moai-adk-social.png`
+- Command: `git ls-tree -r -l 8816de4dae -- assets/images/cg-mode-infographic-en.png assets/images/cg-mode-infographic-ja.png assets/images/cg-mode-infographic-ko.png assets/images/cg-mode-infographic-zh.png assets/images/moai-adk-social.png`
 - Exit code: 0.
 - Stdout (verbatim; 5 lines):
 
@@ -554,35 +587,35 @@ f35103480f:.moai/reports/historical/gpt-final-design-20260914-b40ff9f4/inventory
 
 ### E-10 — the OG image (RED-now)
 
-- Command: `git cat-file -s f35103480f:assets/images/moai-adk-og.png` — exit 0 — stdout: `7837648`
-- Command: `git grep -n -F "moai-adk-og.png" f35103480f -- README.md README.ko.md README.ja.md README.zh.md` — exit 0 — stdout (verbatim; 4 lines):
+- Command: `git cat-file -s 8816de4dae:assets/images/moai-adk-og.png` — exit 0 — stdout: `7837648`
+- Command: `git grep -n -F "moai-adk-og.png" 8816de4dae -- README.md README.ko.md README.ja.md README.zh.md` — exit 0 — stdout (verbatim; 4 lines):
 
 ```
-f35103480f:README.ja.md:2:  <img src="./assets/images/moai-adk-og.png" alt="MoAI-ADK" width="100%">
-f35103480f:README.ko.md:2:  <img src="./assets/images/moai-adk-og.png" alt="MoAI-ADK" width="100%">
-f35103480f:README.md:2:  <img src="./assets/images/moai-adk-og.png" alt="MoAI-ADK" width="100%">
-f35103480f:README.zh.md:2:  <img src="./assets/images/moai-adk-og.png" alt="MoAI-ADK" width="100%">
+8816de4dae:README.ja.md:2:  <img src="./assets/images/moai-adk-og.png" alt="MoAI-ADK" width="100%">
+8816de4dae:README.ko.md:2:  <img src="./assets/images/moai-adk-og.png" alt="MoAI-ADK" width="100%">
+8816de4dae:README.md:2:  <img src="./assets/images/moai-adk-og.png" alt="MoAI-ADK" width="100%">
+8816de4dae:README.zh.md:2:  <img src="./assets/images/moai-adk-og.png" alt="MoAI-ADK" width="100%">
 ```
 
 ### E-11a — Nextra-name counts (RED-now)
 
-- Command: `git grep -c -i -e "nextra" f35103480f -- docs-site README.md README.ko.md README.ja.md README.zh.md scripts .claude/skills .claude/rules .moai/docs AGENTS.md`
+- Command: `git grep -c -i -e "nextra" 8816de4dae -- docs-site README.md README.ko.md README.ja.md README.zh.md scripts .claude/skills .claude/rules .moai/docs AGENTS.md`
 - Exit code: 0.
 - Stdout (verbatim; 7 lines):
 
 ```
-f35103480f:.claude/skills/moai-workflow-project/SKILL.md:3
-f35103480f:.moai/docs/docs-site-i18n-rules.md:1
-f35103480f:docs-site/README.md:1
-f35103480f:docs-site/content/en/core-concepts/ddd.md:1
-f35103480f:docs-site/scripts/fix-mdx-formatting.js:2
-f35103480f:docs-site/themes/hugo-geekdoc/static/js/search-8a051f6b.bundle.min.js:1
-f35103480f:scripts/convert-nextra-to-hextra/main.go:5
+8816de4dae:.claude/skills/moai-workflow-project/SKILL.md:3
+8816de4dae:.moai/docs/docs-site-i18n-rules.md:1
+8816de4dae:docs-site/README.md:1
+8816de4dae:docs-site/content/en/core-concepts/ddd.md:1
+8816de4dae:docs-site/scripts/fix-mdx-formatting.js:2
+8816de4dae:docs-site/themes/hugo-geekdoc/static/js/search-8a051f6b.bundle.min.js:1
+8816de4dae:scripts/convert-nextra-to-hextra/main.go:5
 ```
 
 ### E-11b — tracked files in the two script folders (RED-now)
 
-- Command: `git ls-tree -r --name-only f35103480f -- docs-site/scripts scripts/convert-nextra-to-hextra`
+- Command: `git ls-tree -r --name-only 8816de4dae -- docs-site/scripts scripts/convert-nextra-to-hextra`
 - Exit code: 0.
 - Stdout (verbatim; 7 lines):
 
@@ -598,86 +631,88 @@ scripts/convert-nextra-to-hextra/main.go
 
 ### E-12 — callers of the Nextra-era and translation scripts (RED-now)
 
-- Command: `git grep -n -E "fix-mdx-formatting|convert-nextra-to-hextra|translate\.mjs|migrate-frontmatter" f35103480f -- .github Makefile lefthook.yml docs-site/hugo.toml docs-site/vercel.json scripts docs-site/scripts`
+- Command: `git grep -n -E "fix-mdx-formatting|convert-nextra-to-hextra|translate\.mjs|migrate-frontmatter" 8816de4dae -- .github Makefile lefthook.yml docs-site/hugo.toml docs-site/vercel.json scripts docs-site/scripts`
 - Exit code: 0.
-- Stdout (verbatim; 19 lines; every match is inside `docs-site/scripts/` or `scripts/convert-nextra-to-hextra/`; the paths `.github`, `Makefile`, `lefthook.yml`, `hugo.toml`, and `vercel.json` have none):
+- Stdout (verbatim; 18 lines; every match is inside `docs-site/scripts/` or `scripts/convert-nextra-to-hextra/`; the paths `.github`, `Makefile`, `lefthook.yml`, `hugo.toml`, and `vercel.json` have none):
 
 ```
-f35103480f:docs-site/scripts/README_TRANSLATE.md:5:The `translate.mjs` script translates Korean MDX content to English, Japanese, and Chinese while preserving code blocks, frontmatter structure, and technical terms.
-f35103480f:docs-site/scripts/README_TRANSLATE.md:9:`/Users/goos/MoAI/moai-docs/scripts/translate.mjs`
-f35103480f:docs-site/scripts/README_TRANSLATE.md:27:node scripts/translate.mjs
-f35103480f:docs-site/scripts/README_TRANSLATE.md:30:node scripts/translate.mjs --target-locale en
-f35103480f:docs-site/scripts/README_TRANSLATE.md:33:node scripts/translate.mjs --dry-run
-f35103480f:docs-site/scripts/README_TRANSLATE.md:36:node scripts/translate.mjs --source-dir content/core-concepts --target-locale en
-f35103480f:docs-site/scripts/README_TRANSLATE.md:39:node scripts/translate.mjs --help
-f35103480f:docs-site/scripts/fix-mdx-formatting.js:11: * Usage: node scripts/fix-mdx-formatting.js
-f35103480f:docs-site/scripts/migrate-frontmatter.sh:2:# migrate-frontmatter.sh — Hextra → hugo-geekdoc frontmatter 마이그레이션
-f35103480f:docs-site/scripts/migrate-frontmatter.sh:12:#   ./scripts/migrate-frontmatter.sh --dry-run   # 변경 사항 미리보기
-f35103480f:docs-site/scripts/migrate-frontmatter.sh:13:#   ./scripts/migrate-frontmatter.sh             # 실제 적용
-f35103480f:docs-site/scripts/translate.mjs:14: *   node scripts/translate.mjs [options]
-f35103480f:docs-site/scripts/translate.mjs:126:  node scripts/translate.mjs [options]
-f35103480f:docs-site/scripts/translate.mjs:138:  node scripts/translate.mjs
-f35103480f:docs-site/scripts/translate.mjs:141:  node scripts/translate.mjs --target-locale en
-f35103480f:docs-site/scripts/translate.mjs:144:  node scripts/translate.mjs --dry-run
-f35103480f:docs-site/scripts/translate.mjs:147:  node scripts/translate.mjs --source-dir content/core-concepts --target-locale en
-f35103480f:scripts/convert-nextra-to-hextra/main.go:1:// convert-nextra-to-hextra: Bulk Nextra MDX → Hextra Markdown converter
+8816de4dae:docs-site/scripts/README_TRANSLATE.md:5:The `translate.mjs` script translates Korean MDX content to English, Japanese, and Chinese while preserving code blocks, frontmatter structure, and technical terms.
+8816de4dae:docs-site/scripts/README_TRANSLATE.md:9:`/Users/goos/MoAI/moai-docs/scripts/translate.mjs`
+8816de4dae:docs-site/scripts/README_TRANSLATE.md:27:node scripts/translate.mjs
+8816de4dae:docs-site/scripts/README_TRANSLATE.md:30:node scripts/translate.mjs --target-locale en
+8816de4dae:docs-site/scripts/README_TRANSLATE.md:33:node scripts/translate.mjs --dry-run
+8816de4dae:docs-site/scripts/README_TRANSLATE.md:36:node scripts/translate.mjs --source-dir content/core-concepts --target-locale en
+8816de4dae:docs-site/scripts/README_TRANSLATE.md:39:node scripts/translate.mjs --help
+8816de4dae:docs-site/scripts/fix-mdx-formatting.js:11: * Usage: node scripts/fix-mdx-formatting.js
+8816de4dae:docs-site/scripts/migrate-frontmatter.sh:2:# migrate-frontmatter.sh — Hextra → hugo-geekdoc frontmatter 마이그레이션
+8816de4dae:docs-site/scripts/migrate-frontmatter.sh:12:#   ./scripts/migrate-frontmatter.sh --dry-run   # 변경 사항 미리보기
+8816de4dae:docs-site/scripts/migrate-frontmatter.sh:13:#   ./scripts/migrate-frontmatter.sh             # 실제 적용
+8816de4dae:docs-site/scripts/translate.mjs:14: *   node scripts/translate.mjs [options]
+8816de4dae:docs-site/scripts/translate.mjs:126:  node scripts/translate.mjs [options]
+8816de4dae:docs-site/scripts/translate.mjs:138:  node scripts/translate.mjs
+8816de4dae:docs-site/scripts/translate.mjs:141:  node scripts/translate.mjs --target-locale en
+8816de4dae:docs-site/scripts/translate.mjs:144:  node scripts/translate.mjs --dry-run
+8816de4dae:docs-site/scripts/translate.mjs:147:  node scripts/translate.mjs --source-dir content/core-concepts --target-locale en
+8816de4dae:scripts/convert-nextra-to-hextra/main.go:1:// convert-nextra-to-hextra: Bulk Nextra MDX → Hextra Markdown converter
 ```
 
 ### E-13 — the Python-era docs-site README (RED-now)
 
-- Command: `git cat-file -s f35103480f:docs-site/README.md` — exit 0 — stdout: `42512`
+- Command: `git cat-file -s 8816de4dae:docs-site/README.md` — exit 0 — stdout: `42512`
 
 ### E-14a — llms.txt last change (RED-now)
 
-- Command: `git log -1 --format=%cI f35103480f -- docs-site/static/llms.txt` — exit 0 — stdout: `2026-04-20T06:15:43Z`
+- Command: `git log -1 --format=%cI 8816de4dae -- docs-site/static/llms.txt` — exit 0 — stdout: `2026-04-20T06:15:43Z`
 
 ### E-14b — EARS-style wording in llms.txt (RED-now)
 
-- Command: `git grep -n -i -E "ears|shall|THEN" f35103480f -- docs-site/static/llms.txt`
+- Command: `git grep -n -i -E "ears|shall|THEN" 8816de4dae -- docs-site/static/llms.txt`
 - Exit code: 0.
 - Stdout (verbatim):
 
 ```
-f35103480f:docs-site/static/llms.txt:8:- **SPEC 기반 개발**: EARS 형식으로 요구사항을 명확화하고 DDD 방식으로 안전하게 구현
+8816de4dae:docs-site/static/llms.txt:8:- **SPEC 기반 개발**: EARS 형식으로 요구사항을 명확화하고 DDD 방식으로 안전하게 구현
 ```
 
 ### E-15a — redirect source keys (supporting)
+
+> Measured at f35103480f in revision 0.1.1; compared at 8816de4dae in revision 0.2.2: unchanged.
 
 - Command: `git grep -c -E "\"source\"" f35103480f -- docs-site/vercel.json` — exit 0 — stdout: `f35103480f:docs-site/vercel.json:42`
 - Derived (E-15f): `git show f35103480f:docs-site/vercel.json | python3 -I -c "…"` (a parse of the pinned blob, outside the cell) — `redirects=39 rewrites=1 headers=2`.
 
 ### E-15b — design destinations (RED-now)
 
-- Command: `git grep -n -E "\"destination\": \"[^\"]*design" f35103480f -- docs-site/vercel.json`
+- Command: `git grep -n -E "\"destination\": \"[^\"]*design" 8816de4dae -- docs-site/vercel.json`
 - Exit code: 0.
 - Stdout (verbatim; 3 lines; the three sources are at lines 88, 93, and 98):
 
 ```
-f35103480f:docs-site/vercel.json:89:      "destination": "/:locale/design/:path*",
-f35103480f:docs-site/vercel.json:94:      "destination": "/:locale/design",
-f35103480f:docs-site/vercel.json:99:      "destination": "/design/:path*",
+8816de4dae:docs-site/vercel.json:89:      "destination": "/:locale/design/:path*",
+8816de4dae:docs-site/vercel.json:94:      "destination": "/:locale/design",
+8816de4dae:docs-site/vercel.json:99:      "destination": "/design/:path*",
 ```
 
 ### E-15c — changelog redirect lines (RED-now)
 
-- Command: `git grep -n -E "changelog" f35103480f -- docs-site/vercel.json`
+- Command: `git grep -n -E "changelog" 8816de4dae -- docs-site/vercel.json`
 - Exit code: 0.
 - Stdout (verbatim; 2 lines; the destinations at lines 114 and 119 are `https://github.com/modu-ai/moai-adk/releases`, `"permanent": false`):
 
 ```
-f35103480f:docs-site/vercel.json:113:      "source": "/:locale(ko|en|ja|zh)/changelog",
-f35103480f:docs-site/vercel.json:118:      "source": "/changelog",
+8816de4dae:docs-site/vercel.json:113:      "source": "/:locale(ko|en|ja|zh)/changelog",
+8816de4dae:docs-site/vercel.json:118:      "source": "/changelog",
 ```
 
 ### E-15d-design — design content paths in the four locales (RED-now)
 
-- Command: `git ls-tree -r --name-only f35103480f -- docs-site/content/en/design docs-site/content/en/design.md docs-site/content/ja/design docs-site/content/ja/design.md docs-site/content/ko/design docs-site/content/ko/design.md docs-site/content/zh/design docs-site/content/zh/design.md`
+- Command: `git ls-tree -r --name-only 8816de4dae -- docs-site/content/en/design docs-site/content/en/design.md docs-site/content/ja/design docs-site/content/ja/design.md docs-site/content/ko/design docs-site/content/ko/design.md docs-site/content/zh/design docs-site/content/zh/design.md`
 - Exit code: 0.
 - Stdout: no output (no `design` path in any locale).
 
 ### E-15d-changelog — changelog content paths in the four locales (RED-now)
 
-- Command: `git ls-tree -r --name-only f35103480f -- docs-site/content/en/changelog docs-site/content/en/changelog.md docs-site/content/ja/changelog docs-site/content/ja/changelog.md docs-site/content/ko/changelog docs-site/content/ko/changelog.md docs-site/content/zh/changelog docs-site/content/zh/changelog.md`
+- Command: `git ls-tree -r --name-only 8816de4dae -- docs-site/content/en/changelog docs-site/content/en/changelog.md docs-site/content/ja/changelog docs-site/content/ja/changelog.md docs-site/content/ko/changelog docs-site/content/ko/changelog.md docs-site/content/zh/changelog docs-site/content/zh/changelog.md`
 - Exit code: 0.
 - Stdout (verbatim; 4 lines):
 
@@ -689,6 +724,8 @@ docs-site/content/zh/changelog/_index.md
 ```
 
 ### E-15e — Korean destinations of the non-design rules (verification; ko only)
+
+> Measured at f35103480f in revision 0.1.1; compared at 8816de4dae in revision 0.2.2: unchanged.
 
 - Command: `git ls-tree -r --name-only f35103480f -- docs-site/content/ko/design docs-site/content/ko/design.md docs-site/content/ko/advanced/manager-lead.md docs-site/content/ko/advanced/manager-lead docs-site/content/ko/advanced/profile-matrix.md docs-site/content/ko/cli-reference/inventory.md docs-site/content/ko/cli-reference/status.md docs-site/content/ko/cli-reference/update.md docs-site/content/ko/cli-reference/profile.md docs-site/content/ko/core-concepts/book.md docs-site/content/ko/core-concepts/book docs-site/content/ko/guides/github-integration.md docs-site/content/ko/utility-commands/moai-codemaps.md docs-site/content/ko/utility-commands/_index.md docs-site/content/ko/changelog docs-site/content/ko/changelog.md docs-site/content/ko/advanced/factory-mode.md docs-site/content/ko/guides/github-integration docs-site/content/ko/cli-reference/_index.md`
 - Exit code: 0.
@@ -714,29 +751,31 @@ docs-site/content/ko/utility-commands/moai-codemaps.md
 
 ### E-16a — the workflow matches for hugo, link-check, and continue-on-error (RED-now)
 
-- Command: `git grep -n -i -e "hugo" -e "link-check" -e "lychee" -e "linkcheck" -e "markdown-link" -e "continue-on-error" f35103480f -- .github/workflows`
+- Command: `git grep -n -i -e "hugo" -e "link-check" -e "lychee" -e "linkcheck" -e "markdown-link" -e "continue-on-error" 8816de4dae -- .github/workflows`
 - Exit code: 0.
 - Stdout (verbatim; 13 lines):
 
 ```
-f35103480f:.github/workflows/ci.yml:257:  # blocks the PR feedback loop. NOT continue-on-error: a race failure must
-f35103480f:.github/workflows/ci.yml:262:  # green-mergeable regardless of this job's result. (continue-on-error:true
-f35103480f:.github/workflows/ci.yml:886:  # SPEC-V3R2-CON-001 — continue-on-error so CI doesn't block on missing registry
-f35103480f:.github/workflows/ci.yml:893:    continue-on-error: true
-f35103480f:.github/workflows/ci.yml:922:        # SPEC-ZONE-REGISTRY-RESYNC-001 (M2): this job is continue-on-error: true,
-f35103480f:.github/workflows/docs-i18n-check.yml:85:        continue-on-error: ${{ steps.mode.outputs.strict != 'true' }}
-f35103480f:.github/workflows/pr-multi-os-gate.yml:11:# a pinned SHA, continue-on-error, and the matrix keyed on `!= 'false'` — is
-f35103480f:.github/workflows/pr-multi-os-gate.yml:58:        continue-on-error: true
-f35103480f:.github/workflows/pr-multi-os-gate.yml:70:  # blocks the gate: there is no continue-on-error and no exclusion — the
-f35103480f:.github/workflows/release-pr-multi-os.yml:57:      # continue-on-error plus full-matrix-test's `!= 'false'` comparison keep
-f35103480f:.github/workflows/release-pr-multi-os.yml:64:        continue-on-error: true
-f35103480f:.github/workflows/release-pr-multi-os.yml:101:    # pinned to continue-on-error while it carried 71 known failures across
-f35103480f:.github/workflows/test-install.yml:46:  # originals. adk.mo.ai.kr serves the docs-site copies (Hugo static/), while
+8816de4dae:.github/workflows/ci.yml:257:  # blocks the PR feedback loop. NOT continue-on-error: a race failure must
+8816de4dae:.github/workflows/ci.yml:262:  # green-mergeable regardless of this job's result. (continue-on-error:true
+8816de4dae:.github/workflows/ci.yml:886:  # SPEC-V3R2-CON-001 — continue-on-error so CI doesn't block on missing registry
+8816de4dae:.github/workflows/ci.yml:893:    continue-on-error: true
+8816de4dae:.github/workflows/ci.yml:922:        # SPEC-ZONE-REGISTRY-RESYNC-001 (M2): this job is continue-on-error: true,
+8816de4dae:.github/workflows/docs-i18n-check.yml:85:        continue-on-error: ${{ steps.mode.outputs.strict != 'true' }}
+8816de4dae:.github/workflows/pr-multi-os-gate.yml:11:# a pinned SHA, continue-on-error, and the matrix keyed on `!= 'false'` — is
+8816de4dae:.github/workflows/pr-multi-os-gate.yml:58:        continue-on-error: true
+8816de4dae:.github/workflows/pr-multi-os-gate.yml:70:  # blocks the gate: there is no continue-on-error and no exclusion — the
+8816de4dae:.github/workflows/release-pr-multi-os.yml:57:      # continue-on-error plus full-matrix-test's `!= 'false'` comparison keep
+8816de4dae:.github/workflows/release-pr-multi-os.yml:64:        continue-on-error: true
+8816de4dae:.github/workflows/release-pr-multi-os.yml:101:    # pinned to continue-on-error while it carried 71 known failures across
+8816de4dae:.github/workflows/test-install.yml:46:  # originals. adk.mo.ai.kr serves the docs-site copies (Hugo static/), while
 ```
 
-- The strictness step (verified by reading the workflow file at f35103480f): lines 67–78 set `strict=true` for `workflow_dispatch` with the input, `strict=false` for `push` (line 74), and `strict=false` for every other event, which is pull_request (lines 75–77). The run step (lines 88–92) uses `DOCS_I18N_STRICT=1` only when `strict` is `true`.
+- The strictness step (re-measured at 8816de4dae (block below)): lines 67–78 set `strict=true` for `workflow_dispatch` with the input, `strict=false` for `push` (line 74), and `strict=false` for every other event, which is pull_request (lines 75–77). The run step (lines 88–92) uses `DOCS_I18N_STRICT=1` only when `strict` is `true`.
 
 ### E-16b — the i18n script references in the workflow (verification)
+
+> Measured at f35103480f in revision 0.1.1; compared at 8816de4dae in revision 0.2.2: unchanged.
 
 - Command: `git grep -n -F "scripts/docs-i18n-check.sh" f35103480f -- .github/workflows`
 - Exit code: 0.
@@ -755,6 +794,8 @@ f35103480f:.github/workflows/docs-i18n-check.yml:153:              'scripts/docs
 
 ### E-16c — the i18n script is tracked and executable (precondition; green)
 
+> Measured at f35103480f in revision 0.1.1; compared at 8816de4dae in revision 0.2.2: unchanged.
+
 - Command: `git ls-tree f35103480f -- scripts/docs-i18n-check.sh` — exit 0 — stdout:
 
 ```
@@ -763,27 +804,27 @@ f35103480f:.github/workflows/docs-i18n-check.yml:153:              'scripts/docs
 
 ### E-16b-skill — negative existence statements about docs-i18n-check (RED-now; done check)
 
-- Command: `git grep -n -i -E "docs-i18n-check.*(not exist|DO$)" f35103480f -- '.claude/skills/hns-oss-docs-*' .moai/docs/docs-site-i18n-rules.md`
+- Command: `git grep -n -i -E "docs-i18n-check.*(not exist|DO$)" 8816de4dae -- '.claude/skills/hns-oss-docs-*' .moai/docs/docs-site-i18n-rules.md`
 - Exit code: 0.
 - Stdout (verbatim; 3 lines):
 
 ```
-f35103480f:.claude/skills/hns-oss-docs-i18n-rules/SKILL.md:115:Also: the scripts `docs-i18n-check.sh` and `gen_menu.py` referenced there DO
-f35103480f:.claude/skills/hns-oss-docs-verify/SKILL.md:9:  docs-i18n-check.sh and gen_menu.py do not exist.
-f35103480f:.claude/skills/hns-oss-docs-verify/SKILL.md:23:`docs-i18n-check.sh` and `gen_menu.py` DO NOT exist — never shell out to
+8816de4dae:.claude/skills/hns-oss-docs-i18n-rules/SKILL.md:115:Also: the scripts `docs-i18n-check.sh` and `gen_menu.py` referenced there DO
+8816de4dae:.claude/skills/hns-oss-docs-verify/SKILL.md:9:  docs-i18n-check.sh and gen_menu.py do not exist.
+8816de4dae:.claude/skills/hns-oss-docs-verify/SKILL.md:23:`docs-i18n-check.sh` and `gen_menu.py` DO NOT exist — never shell out to
 ```
 
 - Reading: the sentence at `hns-oss-docs-i18n-rules/SKILL.md` lines 115–116 reads "…referenced there DO" / "NOT exist." The pattern is therefore written to match the split line. The unrelated line `.claude/skills/moai-workflow-project/SKILL.md:157` ("…features that do not exist in the codebase") matched the 0.1.0 broad pattern and is outside this pattern's file set.
 
 ### E-16b-hextra — Hextra as the current toolchain (RED-now; done check)
 
-- Command: `git grep -n -F "Hextra" f35103480f -- .moai/docs/docs-site-i18n-rules.md`
+- Command: `git grep -n -F "Hextra" 8816de4dae -- .moai/docs/docs-site-i18n-rules.md`
 - Exit code: 0.
 - Stdout (verbatim; 2 lines):
 
 ```
-f35103480f:.moai/docs/docs-site-i18n-rules.md:35:### §17.2 Markdown/Hextra 작성 규칙
-f35103480f:.moai/docs/docs-site-i18n-rules.md:37:**[HARD] 강조 표기와 괄호 사이 공백 필수** (Nextra 시대 유래, Hextra/Goldmark 검증 완료 후 유지 여부 재평가):
+8816de4dae:.moai/docs/docs-site-i18n-rules.md:35:### §17.2 Markdown/Hextra 작성 규칙
+8816de4dae:.moai/docs/docs-site-i18n-rules.md:37:**[HARD] 강조 표기와 괄호 사이 공백 필수** (Nextra 시대 유래, Hextra/Goldmark 검증 완료 후 유지 여부 재평가):
 ```
 
 ### E-16d — docs i18n check, strict mode (green; AC-PRC-012 precondition)
@@ -793,6 +834,7 @@ f35103480f:.moai/docs/docs-site-i18n-rules.md:37:**[HARD] 강조 표기와 괄�
 - Stdout (verbatim):
 
 ```
+
 === Preflight: locale directory presence ===
 
 === Check 1: File path parity (ko ↔ target locales) ===
@@ -821,13 +863,13 @@ OK: all 4 locales pass parity, frontmatter, H1, and glossary checks.
 
 ### E-17b — the Vercel Hugo pin (RED-now; pin check)
 
-- Command: `git grep -n -F "HUGO_VERSION" f35103480f -- docs-site/vercel.json`
+- Command: `git grep -n -F "HUGO_VERSION" 8816de4dae -- docs-site/vercel.json`
 - Exit code: 0.
-- Stdout (verbatim): `f35103480f:docs-site/vercel.json:11:      "HUGO_VERSION": "0.160.1",`
+- Stdout (verbatim): `8816de4dae:docs-site/vercel.json:11:      "HUGO_VERSION": "0.160.1",`
 
 ### E-18a — link-check tools in the workflows (RED-now)
 
-- Command: `git grep -c -i -E "lychee|linkinator|htmltest|link-check|linkcheck|markdown-link-check" f35103480f -- .github/workflows`
+- Command: `git grep -c -i -E "lychee|linkinator|htmltest|link-check|linkcheck|markdown-link-check" 8816de4dae -- .github/workflows`
 - Exit code: 1 (wrapper-confirmed).
 - Stdout: no output.
 
@@ -841,7 +883,7 @@ OK: all 4 locales pass parity, frontmatter, H1, and glossary checks.
 
 ### E-19a — a Hugo build step in any workflow (RED-now)
 
-- Command: `git grep -c -i -E "hugo +(--minify|build)|setup-hugo|hugo-action|peaceiris|cli/hugo" f35103480f -- .github/workflows`
+- Command: `git grep -c -i -E "hugo +(--minify|build)|setup-hugo|hugo-action|peaceiris|cli/hugo" 8816de4dae -- .github/workflows`
 - Exit code: 1 (wrapper-confirmed).
 - Stdout: no output.
 
@@ -869,33 +911,33 @@ hugo v0.160.1+extended+withdeploy darwin/arm64 BuildDate=2026-04-08T14:02:42Z Ve
  Aliases      │   6 │   5 │   5 │   5 
  Cleaned      │   0 │   0 │   0 │   0 
 
-Total in 4708 ms
+Total in 16237 ms
 ```
 
-- Reading: the build writes to the scratchpad only; `git status --short` after the build shows only the untracked SPEC directory.
+- Reading: the build writes to the scratchpad only; `git status --short` after the build is empty. The Total in N ms line varies from run to run; it is included verbatim and is not a compared value. The page counts and the exit code are the checked values.
 
 ### E-20a — README Release badges (supporting; tree)
 
-- Command: `git grep -n -F "img.shields.io/badge/Release-" f35103480f -- README.md README.ko.md README.ja.md README.zh.md`
+- Command: `git grep -n -F "img.shields.io/badge/Release-" 8816de4dae -- README.md README.ko.md README.ja.md README.zh.md`
 - Exit code: 0.
 - Stdout (verbatim; 4 lines):
 
 ```
-f35103480f:README.ja.md:24:  <a href="https://github.com/modu-ai/moai-adk/releases"><img src="https://img.shields.io/badge/Release-v3.1.3-blue.svg" alt="Release"></a>
-f35103480f:README.ko.md:24:  <a href="https://github.com/modu-ai/moai-adk/releases"><img src="https://img.shields.io/badge/Release-v3.1.3-blue.svg" alt="Release"></a>
-f35103480f:README.md:24:  <a href="https://github.com/modu-ai/moai-adk/releases"><img src="https://img.shields.io/badge/Release-v3.1.3-blue.svg" alt="Release"></a>
-f35103480f:README.zh.md:24:  <a href="https://github.com/modu-ai/moai-adk/releases"><img src="https://img.shields.io/badge/Release-v3.1.3-blue.svg" alt="Release"></a>
+8816de4dae:README.ja.md:24:  <a href="https://github.com/modu-ai/moai-adk/releases"><img src="https://img.shields.io/badge/Release-v3.1.3-blue.svg" alt="Release"></a>
+8816de4dae:README.ko.md:24:  <a href="https://github.com/modu-ai/moai-adk/releases"><img src="https://img.shields.io/badge/Release-v3.1.3-blue.svg" alt="Release"></a>
+8816de4dae:README.md:24:  <a href="https://github.com/modu-ai/moai-adk/releases"><img src="https://img.shields.io/badge/Release-v3.1.3-blue.svg" alt="Release"></a>
+8816de4dae:README.zh.md:24:  <a href="https://github.com/modu-ai/moai-adk/releases"><img src="https://img.shields.io/badge/Release-v3.1.3-blue.svg" alt="Release"></a>
 ```
 
 ### E-20b — hugo.toml version lines (supporting; tree)
 
-- Command: `git grep -n -E "version|releaseDate" f35103480f -- docs-site/hugo.toml`
+- Command: `git grep -n -E "version|releaseDate" 8816de4dae -- docs-site/hugo.toml`
 - Exit code: 0.
 - Stdout (verbatim):
 
 ```
-f35103480f:docs-site/hugo.toml:55:  version = "v3.1.3"
-f35103480f:docs-site/hugo.toml:56:  releaseDate = "2026-08-24"
+8816de4dae:docs-site/hugo.toml:55:  version = "v3.1.3"
+8816de4dae:docs-site/hugo.toml:56:  releaseDate = "2026-08-24"
 ```
 
 ### E-20c — public release list (external; not tree-attributed)
@@ -923,17 +965,23 @@ v3.0.0		v3.0.0	2026-07-19T21:32:00Z
 
 ### E-22 — badge policy in committed docs and rules (supporting; Q8 anchor)
 
+> Measured at f35103480f in revision 0.1.1; compared at 8816de4dae in revision 0.2.2: unchanged.
+
 - Command: `git grep -n -i -E "badge" f35103480f -- .moai/docs .claude/rules AGENTS.md`
 - Exit code: 0.
 - Stdout (verbatim): `f35103480f:.claude/rules/moai/languages/rust.md:108:- `/launchbadge/sqlx` - SQLx async SQL` (an unrelated package name; no release-badge policy exists).
 
 ### E-23a — strict mode in the docs-site and CG-retirement SPECs (supporting)
 
+> Measured at f35103480f in revision 0.1.1; compared at 8816de4dae in revision 0.2.2: unchanged.
+
 - Command: `git grep -c -i -E "strict" f35103480f -- .moai/specs/SPEC-DOCS-SITE-001 .moai/specs/SPEC-MOAI-CG-RETIRE-001`
 - Exit code: 1 (wrapper-confirmed).
 - Stdout: no output.
 
 ### E-23b — SPEC status and phase lines (supporting)
+
+> Measured at f35103480f in revision 0.1.1; compared at 8816de4dae in revision 0.2.2: unchanged.
 
 - Command: `git grep -n -E "^status:|^phase:" f35103480f -- .moai/specs/SPEC-MOAI-CG-RETIRE-001/spec.md .moai/specs/SPEC-DOCS-SITE-001/spec.md`
 - Exit code: 0.
@@ -947,6 +995,8 @@ f35103480f:.moai/specs/SPEC-MOAI-CG-RETIRE-001/spec.md:10:phase: "v3.3.0 target"
 ```
 
 ### E-24 — four-locale same-PR obligation, corrected pattern (supporting; Q17)
+
+> Measured at f35103480f in revision 0.1.1; compared at 8816de4dae in revision 0.2.2: unchanged.
 
 - Command: `git grep -n -E "동일 PR|4개 locale|4로케일|four locales|same PR|en/zh/ja" f35103480f -- .moai/docs/docs-site-i18n-rules.md`
 - Exit code: 0.
@@ -963,16 +1013,22 @@ f35103480f:.moai/docs/docs-site-i18n-rules.md:110:- [ ] Vercel Preview URL 수�
 
 ### E-25a — help text does not name the flags (supporting; Q18)
 
+> Measured at f35103480f in revision 0.1.1; compared at 8816de4dae in revision 0.2.2: binary output, not rebuilt at 8816de4dae; see the drift table in section A.
+
 - Commands: `<scratchpad>/moai-head-make cc --help` (91 lines), `… factory --help` (30 lines), `… goal --help` (55 lines), and `… codex --help` (read in full). Exit 0 for each.
 - Observation: none of the four outputs contains `factory-run` or `clear-policy`. The full stdout is not reproduced here (supporting cell, about 180 lines); each output was read in full in this revision. `cc` was not measured in 0.1.0, so gap G6 is closed for `cc`.
 
 ### E-26a — the design workflow is not user-invocable (supporting; Q14)
+
+> Measured at f35103480f in revision 0.1.1; compared at 8816de4dae in revision 0.2.2: unchanged.
 
 - Command: `git grep -n -i -E "user-invocable|user_invocable" f35103480f -- .claude/skills/moai/workflows/design.md`
 - Exit code: 0.
 - Stdout (verbatim): `f35103480f:.claude/skills/moai/workflows/design.md:11:user-invocable: false`
 
 ### E-26b — registered slash commands (supporting)
+
+> Measured at f35103480f in revision 0.1.1; compared at 8816de4dae in revision 0.2.2: unchanged.
 
 - Command: `git ls-tree -r --name-only f35103480f -- .claude/commands/moai`
 - Exit code: 0.
@@ -1000,17 +1056,23 @@ f35103480f:.moai/docs/docs-site-i18n-rules.md:110:- [ ] Vercel Preview URL 수�
 
 ### E-27a — SPEC ID pre-write self-check (protocol; not a RED cell)
 
+> Measured at f35103480f in revision 0.1.1; compared at 8816de4dae in revision 0.2.2: unchanged.
+
 - Command: `ID="SPEC-V3R6-DOCS-PREREWRITE-CLEANUP-001"; [[ "$ID" =~ ^SPEC(-[A-Z][A-Z0-9]*)+-[0-9]{3}$ ]] && echo PASS || echo FAIL` — exit 0 — stdout: `PASS`
 
 ### E-27b — the SPEC ID is not tracked (protocol; supporting)
 
+> Measured at f35103480f in revision 0.1.1; compared at 8816de4dae in revision 0.2.2: changed; see the drift table in section A.
+
 - Command: `git ls-tree -r --name-only f35103480f -- .moai/specs/SPEC-V3R6-DOCS-PREREWRITE-CLEANUP-001 .moai/specs/_archive/SPEC-V3R6-DOCS-PREREWRITE-CLEANUP-001` — exit 0 — stdout: no output.
 
-### E-28 — no cited-verbs producer in the tracked tree (RED-now)
+### E-28 — no cited-verbs producer in the tracked tree (RED-now; this SPEC's directory excluded)
 
-- Command: `git grep -n -i -E "cited-verbs|cited_verbs|citedverbs|docs-cited|cited verbs" f35103480f`
+- Command: `git grep -n -i -E "cited-verbs|cited_verbs|citedverbs|docs-cited|cited verbs" 8816de4dae -- ':!.moai/specs/SPEC-V3R6-DOCS-PREREWRITE-CLEANUP-001' .`
 - Exit code: 1 (wrapper-confirmed).
 - Stdout: no output.
+
+This SPEC's directory is excluded because the SPEC quotes the pattern it measures. Without the exclusion the query returns 22 lines, all inside this directory (measured at 8816de4dae). No producer exists outside this directory.
 
 ## D. Definition of done — umbrella closing table (every AC is listed; each is release-blocking (gated) or a regression-guard with a reason)
 

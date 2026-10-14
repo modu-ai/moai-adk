@@ -1,6 +1,8 @@
 # Decision Index — SPEC-V3R6-DOCS-PREREWRITE-CLEANUP-001
 
-Revision 0.2.1 (2026-10-14). Each row states one decision the operator does not settle in the interview. No row carries a recommendation.
+Revision 0.2.2 (2026-10-14). Each row states one decision the operator does not settle in the interview. No row carries a recommendation.
+
+Revision 0.2.2 re-pins the RED-now cells to 8816de4dae under leader ruling `d-20261014T072226Z-9b67` and the leader's scope choice B+. Supporting, verification, and protocol cells stay at f35103480f and are labelled; the drift table in acceptance section A lists the four items that differ. E-09b2 and E-28 exclude this SPEC's directory. The E-12 header count, the E-19b reading note, and the Q2 wording are corrected. No label, class, default, or verdict changed.
 
 Revision 0.2.1 corrects revision 0.2.0 under leader ruling `d-20261014T070143Z-75ac`: the G21 gap sentence in acceptance.md, the E-04 count (22 files, 45 matching lines), and the Q2 reference scope (E-09b and E-09b2). No label, class, default, or verdict changed.
 
@@ -30,7 +32,7 @@ Operator verdict:
 ### Q2: Do the five unreferenced images go, or do they gain a reference?
 Label: FOUNDER
 Authority anchor: none in the committed tree
-Why unresolved: no live reference from documentation, the docs site, templates, or code exists in the scoped paths (E-09b: no output, exit 1). The whole-tree check E-09b2 records one tracked file, `.moai/reports/historical/gpt-final-design-20260914-b40ff9f4/inventory.json`, which inventories past state and is not a live reference, and the Hugo source root `docs-site/` does not contain them. The deletion removes no displayed content. Whether a future page needs them is not decided. REQ-PRC-005 is conditional on this row.
+Why unresolved: no live reference from documentation, the docs site, templates, or code exists in the scoped paths (E-09b: no output, exit 1). The whole-tree check E-09b2, with this SPEC's directory excluded, records one tracked file, `.moai/reports/historical/gpt-final-design-20260914-b40ff9f4/inventory.json`, which inventories past state and is not a live reference. The Hugo source root `docs-site/` does not contain the five images. The deletion removes no displayed content. Whether a future page needs them is not decided. REQ-PRC-005 is conditional on this row.
 Class: implementation-level
 Child: RESID
 Default: delete (rule: preserves current behavior)
