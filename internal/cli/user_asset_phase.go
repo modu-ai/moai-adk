@@ -17,6 +17,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/modu-ai/moai-adk/internal/config"
 	"github.com/modu-ai/moai-adk/internal/template"
 	"github.com/modu-ai/moai-adk/internal/userassets"
 	"github.com/modu-ai/moai-adk/pkg/version"
@@ -32,6 +33,13 @@ func ensureUserAssetsLocked(homeDir string, selection []string, out io.Writer) e
 		return fmt.Errorf("acquire user-asset lock: %w", err)
 	}
 	defer func() { _ = lock.Release() }()
+
+	// Card t1619 (leader ruling d-20261014T041318Z-dcea, D2): a damaged user manifest is
+	// quarantined here, under the same lock, before the install reads it. The rename keeps
+	// the damaged bytes beside the install (never deleted or rewritten), the same rule the
+	// resume path applies. Without it the re-run promise of card t1587 fails on a damaged
+	// manifest, because the pre-executor ensure runs before any resume route exists.
+	quarantineCorruptUserManifest(homeDir)
 
 	inst, err := newUserAssetInstaller(homeDir)
 	if err != nil {
@@ -93,6 +101,9 @@ func writeInstallSummary(out io.Writer, label string, res *userassets.Result) {
 	for _, d := range res.DeferredDeps {
 		_, _ = fmt.Fprintf(out, "  kept (declared dependency of a preserved asset — re-evaluated at the next removal/update): %s\n", d)
 	}
+	for _, u := range res.Unconverted {
+		_, _ = fmt.Fprintf(out, "  unconverted reference (no Codex-side mapping — report to the harness maintainers): %s\n", u)
+	}
 }
 
 // runUserAssetUpdatePhase is `moai update`'s user-asset phase (SPEC-USER-
@@ -153,7 +164,28 @@ func runUserAssetUpdatePhase(homeDir string, out io.Writer) error {
 			_, _ = fmt.Fprintf(out, "  failure: %s: %s\n", f.Path, f.Reason)
 		}
 	}
+	announceUnselectedOptionalPacks(".", saved.Bundles, out)
 	return nil
+}
+
+// announceUnselectedOptionalPacks names each optional pack the recorded
+// selection lacks, with the exact command that installs it (REQ-RC30-005,
+// U-03). It runs for a recorded plugin-mode project only: such a project
+// receives core assets alone, so this line is its only pointer to the
+// optional packs it does not have.
+func announceUnselectedOptionalPacks(projectRoot string, selection []string, out io.Writer) {
+	if config.ReadDeployMode(projectRoot) != "plugin" {
+		return
+	}
+	selected := make(map[string]bool, len(selection))
+	for _, name := range selection {
+		selected[name] = true
+	}
+	for _, name := range bundleNames() {
+		if !selected[name] {
+			_, _ = fmt.Fprintf(out, "  optional pack not installed: %s — run: moai bundle add %s\n", name, name)
+		}
+	}
 }
 
 // userCodexInstallPresent reports whether the per-user Codex dispatcher

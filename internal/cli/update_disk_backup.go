@@ -7,7 +7,9 @@ import (
 	"path/filepath"
 	"time"
 
+	"github.com/modu-ai/moai-adk/internal/config"
 	"github.com/modu-ai/moai-adk/internal/defs"
+	"github.com/modu-ai/moai-adk/internal/tui"
 )
 
 // SPEC-UPDATE-DATA-SURVIVAL-001 M3 — on-disk backup before the first
@@ -128,4 +130,16 @@ func guardFirstDestructiveStep(projectRoot, backupDir string, destructive func()
 		return err
 	}
 	return destructive()
+}
+
+// runMarkerWarning renders the non-fatal warning for a backup directory whose run
+// marker could not be written. That directory then counts as a run of its own
+// (SPEC-UPDATE-REPAIR-RC30-001 D9). The text comes from the catalog in the
+// project's conversation language, falling back to English.
+func runMarkerWarning(projectRoot string, err error) string {
+	lang := config.LoadUpdateRenderValues(projectRoot).ConversationLanguage
+	if lang == "" {
+		lang = "en"
+	}
+	return fmt.Sprintf(tui.Translate("update.backup.run_marker_failed", lang), err)
 }
