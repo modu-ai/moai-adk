@@ -1219,20 +1219,11 @@ func handleSpecDrift(_ context.Context, req mcp.CallToolRequest) (*mcp.CallToolR
 	}), nil
 }
 
-// moaiAuditCache is the process-shared AuditCache backing the audit_cache MCP
-// tool. It persists across calls within ONE moai mcp-server process so that a
-// store in one call is visible to a lookup in a later call (the prior per-call
-// NewInMemoryCache made lookup ALWAYS return hit:false).
-//
-// @MX:DEBT: single-process in-memory cache only
-// @MX:CEILING: single moai mcp-server process lifetime, sequential calls
-// @MX:UPGRADE: the plan-audit gate (audit_gate.go) runs in a separate /moai run
-//
-//	process and does NOT populate this cache; true cross-process verdict reuse
-//	requires lookup to read the durable daily-report cache (AuditReporter).
-//
-// @MX:REASON: [AUTO] fan_in >= 3 (compute_hash/lookup/store ops + tests)
-var moaiAuditCache = runtime.NewInMemoryCache()
+// stateAuditCacheFor binds the disk-persisted store to the call's project root
+// (REQ-MN-020). The project root was resolved and validated by the caller.
+func stateAuditCacheFor(root string) *runtime.StateAuditCache {
+	return runtime.NewStateAuditCache(root)
+}
 
 // handleAuditCache wraps runtime.AuditCache ComputeHash/Lookup/Store over the
 // process-shared moaiAuditCache. The store op lets a caller record a PASS
@@ -1242,8 +1233,9 @@ func handleAuditCache(_ context.Context, req mcp.CallToolRequest) (*mcp.CallTool
 	if rootErr != nil {
 		return toolErr("audit_cache", rootErr), nil
 	}
-	_ = root
-	_ = source
+	// REQ-MN-020: the store is the project's own — entries persist under the
+	// named tree's state root, carrying verdict-file evidence.
+	cache := stateAuditCacheFor(root)
 	op := req.GetString("op", "")
 	// REQ-MN-009: under the gate exposure audit_cache is the READ member —
 	// its store operation is one of the mutating operations the exclusion
@@ -1257,7 +1249,7 @@ func handleAuditCache(_ context.Context, req mcp.CallToolRequest) (*mcp.CallTool
 		if specDir == "" {
 			return toolErr("audit_cache", fmt.Errorf("op=compute_hash requires spec_dir")), nil
 		}
-		hash, err := moaiAuditCache.ComputeHash(specDir)
+		hash, err := cache.ComputeHash(specDir)
 		if err != nil {
 			return toolErr("audit_cache", err), nil
 		}
@@ -1265,11 +1257,12 @@ func handleAuditCache(_ context.Context, req mcp.CallToolRequest) (*mcp.CallTool
 	case "lookup":
 		specID := req.GetString("spec_id", "")
 		hash := req.GetString("hash", "")
-		entry, ok := moaiAuditCache.Lookup(specID, hash, time.Now())
+		entry, ok := cache.Lookup(specID, hash, time.Now())
 		return toolJSONWithRoot("audit_cache", map[string]any{"op": op, "hit": ok, "entry": entry}, root, source), nil
 	case "store":
-		// Record a PASS verdict so a later lookup (same process) returns a hit.
-		// Only PASS verdicts are cached (audit_cache.go Store guards on VerdictPass).
+		// Record a PASS verdict whose evidence is an existing verdict file
+		// (REQ-MN-020): a store whose report file is missing or unreadable is
+		// an error, never a stored entry.
 		specID := req.GetString("spec_id", "")
 		hash := req.GetString("hash", "")
 		if specID == "" || hash == "" {
@@ -1278,13 +1271,16 @@ func handleAuditCache(_ context.Context, req mcp.CallToolRequest) (*mcp.CallTool
 		// REQ-MN-010: the cache store is a project-state write — serialized
 		// through the one server-wide write mutex.
 		releaseCache := mcpStateWriteLock()
-		moaiAuditCache.Store(specID, hash, &runtime.AuditResult{
+		storeErr := cache.StoreVerdict(specID, hash, &runtime.AuditResult{
 			Verdict:        runtime.VerdictPass,
 			AuditAt:        time.Now(),
 			AuditorVersion: req.GetString("auditor_version", ""),
 			ReportPath:     req.GetString("report_path", ""),
 		})
 		releaseCache()
+		if storeErr != nil {
+			return toolErr("audit_cache", storeErr), nil
+		}
 		return toolJSONWithRoot("audit_cache", map[string]any{"op": op, "stored": true, "spec_id": specID, "hash": hash}, root, source), nil
 	default:
 		return toolErr("audit_cache", fmt.Errorf("unknown op %q (want compute_hash|lookup|store)", op)), nil

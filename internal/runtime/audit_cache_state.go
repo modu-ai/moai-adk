@@ -1,0 +1,154 @@
+// audit_cache_state.go — SPEC-MCP-NEUTRALITY-001 M6 (card t1632, REQ-MN-020):
+// the disk-persisted audit_cache store. Entries live under the project's
+// state root instead of process memory, each entry carries the SHA-256 of an
+// EXISTING verdict file as its evidence, and a lookup revalidates that file's
+// existence and digest before reusing the entry — a verdict file that changed
+// (or vanished) since the store is never reused as a pass.
+package runtime
+
+import (
+	"crypto/sha256"
+	"encoding/hex"
+	"encoding/json"
+	"fmt"
+	"os"
+	"path/filepath"
+	"strings"
+	"time"
+)
+
+// stateCacheDirRel is the store's location under the project root.
+const stateCacheDirRel = ".moai/state/audit-cache"
+
+// stateEntry is the on-disk form of one cached PASS verdict.
+type stateEntry struct {
+	SpecID           string    `json:"spec_id"`
+	PlanArtifactHash string    `json:"plan_artifact_hash"`
+	VerdictFileSHA   string    `json:"verdict_file_sha"`
+	ReportPath       string    `json:"report_path"`
+	AuditorVersion   string    `json:"auditor_version"`
+	AuditAt          time.Time `json:"audit_at"`
+}
+
+// StateAuditCache is the AuditCache implementation the MCP audit_cache tool
+// serves: in-process reads over an on-disk store, so an entry written by one
+// process (or one server restart ago) is still a hit for the next.
+type StateAuditCache struct {
+	root string
+}
+
+// NewStateAuditCache builds the store over projectRoot's state root.
+func NewStateAuditCache(projectRoot string) *StateAuditCache {
+	return &StateAuditCache{root: projectRoot}
+}
+
+func (c *StateAuditCache) dir() string { return filepath.Join(c.root, stateCacheDirRel) }
+
+func (c *StateAuditCache) entryPath(specID string) string {
+	return filepath.Join(c.dir(), sanitizeStateKey(specID)+".json")
+}
+
+// sanitizeStateKey keeps a caller-supplied SPEC id inside the store directory —
+// the same discipline the receipt store's sanitizeKey applies to its keys.
+func sanitizeStateKey(s string) string {
+	var b strings.Builder
+	for _, r := range s {
+		switch {
+		case r >= 'a' && r <= 'z', r >= 'A' && r <= 'Z', r >= '0' && r <= '9', r == '-', r == '_', r == '.':
+			b.WriteRune(r)
+		default:
+			b.WriteRune('_')
+		}
+	}
+	out := b.String()
+	if out == "" || out == "." || out == ".." {
+		return "_"
+	}
+	return out
+}
+
+// ComputeHash delegates to the shared artifact hashing (which refuses a
+// non-SPEC directory with the empty-input error).
+func (c *StateAuditCache) ComputeHash(specDir string) (string, error) {
+	return (&InMemoryCache{}).ComputeHash(specDir)
+}
+
+// StoreVerdict records one PASS verdict whose evidence is an EXISTING verdict
+// file: the file's SHA-256 is computed and stored WITH the entry, and a store
+// whose verdict file does not exist (or cannot be read) writes nothing and
+// returns the error — an entry without file evidence is exactly the
+// self-attesting cache REQ-MN-020 removes.
+func (c *StateAuditCache) StoreVerdict(specID, hash string, result *AuditResult) error {
+	if result == nil || result.Verdict != VerdictPass {
+		return fmt.Errorf("audit cache stores PASS verdicts only")
+	}
+	report := result.ReportPath
+	if strings.TrimSpace(report) == "" {
+		return fmt.Errorf("audit cache store requires a verdict report path")
+	}
+	sum, err := fileSHA256(report)
+	if err != nil {
+		return fmt.Errorf("verdict file evidence: %w", err)
+	}
+	e := stateEntry{
+		SpecID:           specID,
+		PlanArtifactHash: hash,
+		VerdictFileSHA:   sum,
+		ReportPath:       report,
+		AuditorVersion:   result.AuditorVersion,
+		AuditAt:          result.AuditAt,
+	}
+	data, err := json.MarshalIndent(e, "", "  ")
+	if err != nil {
+		return err
+	}
+	if err := os.MkdirAll(c.dir(), 0o755); err != nil {
+		return err
+	}
+	return os.WriteFile(c.entryPath(specID), append(data, '\n'), 0o644)
+}
+
+// Lookup returns the cached entry when one exists for (specID, hash) AND its
+// verdict file still exists with the SAME SHA-256 the store recorded — the
+// reuse validation REQ-MN-020 requires before any reuse. The `now` parameter
+// is vestigial and ignored.
+func (c *StateAuditCache) Lookup(specID, hash string, _ time.Time) (*CachedEntry, bool) {
+	data, err := os.ReadFile(c.entryPath(specID))
+	if err != nil {
+		return nil, false
+	}
+	var e stateEntry
+	if err := json.Unmarshal(data, &e); err != nil || e.PlanArtifactHash != hash {
+		return nil, false
+	}
+	sum, err := fileSHA256(e.ReportPath)
+	if err != nil || sum != e.VerdictFileSHA {
+		// The verdict file changed (or vanished) since the store: the entry is
+		// evidence for a state that no longer exists — a miss, never a hit.
+		return nil, false
+	}
+	return &CachedEntry{
+		AuditAt:          e.AuditAt,
+		AuditorVersion:   e.AuditorVersion,
+		ReportPath:       e.ReportPath,
+		PlanArtifactHash: e.PlanArtifactHash,
+		VerdictFileSHA:   e.VerdictFileSHA,
+	}, true
+}
+
+// Store implements the AuditCache interface: PASS results with an existing
+// verdict file are stored; anything else is refused silently at this
+// signature (the error-carrying surface is StoreVerdict).
+func (c *StateAuditCache) Store(specID, hash string, result *AuditResult) {
+	_ = c.StoreVerdict(specID, hash, result)
+}
+
+// fileSHA256 computes the hex SHA-256 of a file's bytes.
+func fileSHA256(path string) (string, error) {
+	data, err := os.ReadFile(path)
+	if err != nil {
+		return "", err
+	}
+	sum := sha256.Sum256(data)
+	return hex.EncodeToString(sum[:]), nil
+}

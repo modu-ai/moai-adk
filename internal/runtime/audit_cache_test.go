@@ -262,20 +262,18 @@ func TestSystemClockNow(t *testing.T) {
 	}
 }
 
-// TestComputeHashEmptyDirFails verifies hash fails when spec.md is missing.
+// TestComputeHashEmptyDirFails verifies hash refuses a directory with no plan
+// artifacts. SPEC-MCP-NEUTRALITY-001 REQ-MN-020 supersedes the old behavior
+// (a valid empty-input hash): a directory with NO artifact is not a SPEC
+// directory, and a hash of nothing must not read as a legitimate cache
+// identity — ComputeHash errors on it.
 func TestComputeHashEmptyDirFails(t *testing.T) {
 	t.Parallel()
 
 	cache := NewInMemoryCache()
 	emptyDir := t.TempDir() // No files
 
-	// Empty dir with no spec.md should produce a valid (empty) hash, not error.
-	// The hash will be the hash of nothing — not an error condition.
-	hash, err := cache.ComputeHash(emptyDir)
-	if err != nil {
-		t.Errorf("ComputeHash on empty dir should not error (optional files are skipped), got: %v", err)
-	}
-	if hash == "" {
-		t.Error("ComputeHash should return a non-empty hash even for empty dir")
+	if _, err := cache.ComputeHash(emptyDir); err == nil {
+		t.Error("ComputeHash on empty dir should error — a non-SPEC directory is refused, never hashed (REQ-MN-020)")
 	}
 }

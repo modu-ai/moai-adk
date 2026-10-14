@@ -25,6 +25,7 @@ import (
 	"errors"
 	"fmt"
 	"os"
+	"os/exec"
 	"path/filepath"
 	"regexp"
 	"slices"
@@ -79,10 +80,12 @@ const (
 	CauseReceiptBeforeStart        = "receipt created before the auditor started"
 	CauseReceiptReused             = "receipt created before the previous auditor instance of this session ended"
 	CauseReceiptNotACodexAudit     = "receipt is not a codex audit"
+	CauseReceiptAuditNotRun        = "receipt records an audit that never produced a verdict"
+	CauseReceiptVerdictFail        = "receipt records a FAIL verdict"
+	CauseReceiptTreeStateChanged   = "receipt judged a different tree state (head or digest moved)"
 	CauseInstanceLedgerUnreadable  = "instance ledger unreadable"
 	CauseInstancePendingUnreadable = "instance end record unreadable"
 	CauseInstancePendingUnresolved = "instance end record unresolved"
-	CauseReceiptAuditNotRun        = "receipt records an audit that never produced a verdict"
 	CauseVerdictLineMissing        = "verdict line missing"
 )
 
@@ -106,6 +109,11 @@ const (
 // here rather than imported because the store is the leaf package: internal/cli
 // depends on it, not the other way round.
 const codexVerdictInconclusive = "inconclusive"
+
+// codexVerdictFail is the verdict a codex audit records when it ran and found
+// a blocking failure. Such a receipt must never corroborate a PASS
+// (SPEC-MCP-NEUTRALITY-001 REQ-MN-020).
+const codexVerdictFail = "fail"
 
 // gateRequired is the ONLY value that opts a tree into the receipt checks. The
 // resolver (config.ResolveAuditPlan) trims surrounding whitespace and matches
@@ -148,6 +156,43 @@ type Receipt struct {
 	CreatedAt    time.Time `json:"created_at"`
 	CodexVerdict string    `json:"codex_verdict,omitempty"`
 	GateUnmet    string    `json:"gate_unmet,omitempty"`
+	// HeadCommit and TreeDigest bind the receipt to the tree state it judged
+	// (SPEC-MCP-NEUTRALITY-001 REQ-MN-020): the head commit and a deterministic
+	// digest of the working-tree state at audit time. A reuse check compares
+	// them against the tree's CURRENT state — a receipt whose state moved is
+	// not evidence for the state that now exists. Empty on receipts written
+	// before the binding existed (a record without them is unattributable, not
+	// contradictory — the reuse check skips the comparison rather than
+	// inventing a difference).
+	HeadCommit string `json:"head_commit,omitempty"`
+	TreeDigest string `json:"tree_digest,omitempty"`
+}
+
+// TreeState returns the (head commit, tree digest) of the state a receipt
+// recorded against treeRoot. The digest is deterministic over the state a
+// backend audit actually judged: the head commit plus `git status --porcelain`
+// — the same uncommitted surface the default audit target names. It is a var
+// so tests stub the git reads; the real implementation shells out to the tree's
+// own git. Any failure returns empty values: the receipt is then written
+// WITHOUT the binding (recorded evidence beats a missing field), and the reuse
+// check skips the comparison for a receipt that carries no binding.
+//
+// @MX:ANCHOR: [AUTO] tree-state binding seam; feeds every receipt write and the reuse check
+// @MX:REASON: the binding's honesty rests on this one derivation — a digest that misses the judged state would forge freshness
+var TreeState = func(treeRoot string) (head, digest string, err error) {
+	if strings.TrimSpace(treeRoot) == "" {
+		return "", "", nil
+	}
+	headOut, err := gitIn(treeRoot, "rev-parse", "HEAD")
+	if err != nil {
+		return "", "", err
+	}
+	statusOut, err := gitIn(treeRoot, "status", "--porcelain")
+	if err != nil {
+		return "", "", err
+	}
+	sum := sha256.Sum256([]byte("head:" + headOut + "\x00status\x00" + statusOut))
+	return headOut, hex.EncodeToString(sum[:]), nil
 }
 
 // StartMarker records that an auditor subagent instance began, so a receipt
@@ -913,8 +958,24 @@ func NewReceiptID() (string, error) {
 	return "rcpt-" + hex.EncodeToString(buf), nil
 }
 
+// gitIn runs one git command inside treeRoot and returns its trimmed stdout.
+// A missing git or a non-repository tree errors: the caller decides whether a
+// missing binding is tolerable (receipt writes tolerate it; a reuse
+// comparison is skipped rather than invented).
+func gitIn(treeRoot string, args ...string) (string, error) {
+	cmd := exec.Command("git", append([]string{"-C", treeRoot}, args...)...)
+	out, err := cmd.Output()
+	if err != nil {
+		return "", fmt.Errorf("git %s in %s: %w", strings.Join(args, " "), treeRoot, err)
+	}
+	return strings.TrimSpace(string(out)), nil
+}
+
 // WriteReceipt stores a receipt, filling ReceiptID and CreatedAt when unset,
-// and returns the ID.
+// and returns the ID. REQ-MN-020: it also binds the receipt to the tree state
+// it judged — head commit + tree digest from the TreeState seam. A state read
+// that fails leaves the binding empty (recorded evidence beats a missing
+// field) and does not fail the write.
 func WriteReceipt(treeRoot string, r *Receipt) (string, error) {
 	if r.ReceiptID == "" {
 		id, err := NewReceiptID()
@@ -925,6 +986,11 @@ func WriteReceipt(treeRoot string, r *Receipt) (string, error) {
 	}
 	if r.CreatedAt.IsZero() {
 		r.CreatedAt = Now()
+	}
+	if r.HeadCommit == "" && r.TreeDigest == "" {
+		if head, digest, sErr := TreeState(r.TreeRoot); sErr == nil {
+			r.HeadCommit, r.TreeDigest = head, digest
+		}
 	}
 	if err := writeJSON(filepath.Join(StateDir(treeRoot), receiptsRel, r.ReceiptID+".json"), r); err != nil {
 		return "", err
@@ -1234,6 +1300,8 @@ func CheckCitedReceiptsSince(treeRoot string, start *StartMarker, endBoundary ti
 			CauseReceiptReused,
 			CauseReceiptNotACodexAudit,
 			CauseReceiptAuditNotRun,
+			CauseReceiptVerdictFail,
+			CauseReceiptTreeStateChanged,
 		} {
 			if c == cause {
 				return i
@@ -1272,6 +1340,25 @@ func CheckCitedReceiptsSince(treeRoot string, start *StartMarker, endBoundary ti
 			// codex_verdict stays permissive: it means the field was not
 			// recorded, not that the audit failed.
 			cause = CauseReceiptAuditNotRun
+		case strings.TrimSpace(r.CodexVerdict) == codexVerdictFail:
+			// REQ-MN-020: the audit RAN and found a blocking failure — a PASS
+			// citing this receipt contradicts the evidence it cites, so the
+			// corroboration is refused rather than reinforced.
+			cause = CauseReceiptVerdictFail
+		case r.HeadCommit != "" || r.TreeDigest != "":
+			// REQ-MN-020: the receipt binds the tree state it judged. A
+			// binding whose state differs from the tree's CURRENT state is
+			// evidence for a state that no longer exists — not reusable. A
+			// state read that fails leaves the refusal undecided here (the
+			// receipt keeps its other arms) — a broken git must not flip a
+			// receipt into a false contradiction, and must equally never
+			// forge freshness. A receipt with NO binding (written before the
+			// binding existed) is unattributable, not contradictory.
+			if head, digest, sErr := TreeState(treeRoot); sErr == nil && (head != "" || digest != "") {
+				if r.HeadCommit != head || r.TreeDigest != digest {
+					cause = CauseReceiptTreeStateChanged
+				}
+			}
 		}
 		if cause == "" {
 			return true, ""

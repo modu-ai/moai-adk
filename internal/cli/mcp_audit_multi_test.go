@@ -269,8 +269,12 @@ func TestAuditMulti_UnknownOriginWithoutAnchorRunsClaudeAndRequiredFailureBlocks
 		t.Fatal(err)
 	}
 	body := toolResultText(res)
-	if !strings.Contains(body, `"overall_verdict":"fail"`) || !strings.Contains(body, "required gate unmet") {
-		t.Fatalf("required Claude failure did not block: %s", body)
+	// REQ-MN-021/022: the required Claude leg left without a verdict is a
+	// could-not-run — the outcome is the distinct not-converged inconclusive
+	// (never the old converged fail, equally never a pass), and the unmet gate
+	// is still named.
+	if !strings.Contains(body, `"overall_verdict":"inconclusive"`) || !strings.Contains(body, "required gate unmet") {
+		t.Fatalf("required Claude failure did not reach the not-converged block: %s", body)
 	}
 	rc.mu.Lock()
 	defer rc.mu.Unlock()

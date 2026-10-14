@@ -38,7 +38,7 @@
     "fail_open_backends": [
       "codex"
     ],
-    "overall_verdict": "pass",
+    "overall_verdict": "inconclusive",
     "participant_count": 2,
     "per_backend_verdicts": [
       {
@@ -108,7 +108,7 @@
     "fail_open_backends": [
       "codex"
     ],
-    "overall_verdict": "pass",
+    "overall_verdict": "inconclusive",
     "participant_count": 2,
     "per_backend_verdicts": [
       {

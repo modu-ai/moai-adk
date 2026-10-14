@@ -6,6 +6,34 @@ import (
 	"github.com/modu-ai/moai-adk/internal/auditreceipt"
 )
 
+// auditProvenanceFor records the auditor identity on a codex/glm audit
+// verdict (SPEC-MCP-NEUTRALITY-001 REQ-MN-020): the same provenance surface
+// the claude_audit verdict fills, so every backend's verdict names the model
+// that produced it. Only the fields these transports actually know are set —
+// the token counters stay nil (a pointer nil is the provenance contract's
+// "not measured"), and the unknown strings stay empty rather than being
+// invented.
+func auditProvenanceFor(backend, requestedModel, resolvedModel, resolvedEffort string) *AuditProvenance {
+	var transport string
+	switch backend {
+	case "codex":
+		transport = "codex app-server"
+	case "glm":
+		transport = "z.ai http"
+	default:
+		transport = backend + " transport"
+	}
+	return &AuditProvenance{
+		Backend:         backend,
+		Transport:       transport,
+		Source:          "moai mcp-server",
+		RequestedModel:  requestedModel,
+		ResolvedModel:   resolvedModel,
+		RequestedEffort: resolvedEffort,
+		ToolSurface:     backend + "_audit",
+	}
+}
+
 // mcp_audit_receipt.go — SPEC-CODEX-AUDIT-GATE-AXES-001 axis (b), server half.
 //
 // Every codex audit this server performs leaves a receipt in the audited

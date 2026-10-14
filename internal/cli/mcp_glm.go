@@ -317,6 +317,9 @@ func handleGLMAudit(ctx context.Context, req mcp.CallToolRequest) (*mcp.CallTool
 	if base != nil {
 		out.ReviewBase = base.String()
 	}
+	// REQ-MN-020: the auditor model rides the verdict's provenance, exactly as
+	// the claude_audit verdict records it.
+	out.Provenance = auditProvenanceFor("glm", req.GetString("model", ""), me.Model, me.Effort)
 	return review(out), nil
 }
 

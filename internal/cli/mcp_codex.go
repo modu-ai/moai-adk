@@ -2188,6 +2188,12 @@ func handleCodexAudit(ctx context.Context, req mcp.CallToolRequest) (*mcp.CallTo
 	if base != nil {
 		out.ReviewBase = base.String()
 	}
+	// REQ-MN-020: the auditor model rides the verdict's provenance, exactly as
+	// the claude_audit verdict records it — a verdict a reader cannot attribute
+	// to a model is a verdict that cannot be re-checked against the pin.
+	if me, mErr := resolveCodexAuditModelEffort(params); mErr == nil {
+		out.Provenance = auditProvenanceFor("codex", model, me.Model, me.Effort)
+	}
 	out = applyGateUnmet(out, root)
 	out.BuildCommit, out.BuildLag = buildCommit, buildLag
 	out.AuditReceipt, out.StateNotice = recordAuditReceipt(auditreceipt.ToolCodexAudit, rootArg, out.Verdict, out.GateUnmet)
