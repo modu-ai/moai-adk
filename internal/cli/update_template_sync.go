@@ -1090,6 +1090,15 @@ func runTemplateSyncWithReporter(cmd *cobra.Command, reporter project.ProgressRe
 	// (the AC-WBG-009 wording travels with it verbatim).
 	updateLedger.referencef("%s", worktreeAdvisoryText(projectRoot))
 
+	// t1729: template files this sync changed but the tree has not committed
+	// are invisible to worktrees branched from the committed base — the
+	// SessionStart role-rule injection in such a worktree serves a stale
+	// deployed copy. One Reference line names the commit-then-sync path
+	// (rides the same Reference section as the advisory above).
+	if notice := uncommittedTemplateNotice(projectRoot, mergeAnalysisPaths(analysis.Files)); notice != "" {
+		updateLedger.referencef("%s", notice)
+	}
+
 	// SPEC-INIT-SHRINK-001 (REQ-015, design §3 step 5): a completed
 	// migration run writes the record — plugin after a confirmed install,
 	// local under every other arm. A record-bearing project is unchanged:
