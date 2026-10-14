@@ -25,7 +25,6 @@ import (
 	"errors"
 	"fmt"
 	"io"
-	"os"
 	"os/exec"
 	"path/filepath"
 	"strconv"
@@ -35,6 +34,7 @@ import (
 	"github.com/modu-ai/moai-adk/internal/config"
 	"github.com/modu-ai/moai-adk/internal/factory"
 	"github.com/modu-ai/moai-adk/internal/factorylane"
+	"github.com/modu-ai/moai-adk/internal/gitenv"
 	"github.com/modu-ai/moai-adk/internal/homestate"
 )
 
@@ -48,10 +48,17 @@ var factoryGHTimeout = 10 * time.Second
 var factoryGH = func(ctx context.Context, dir string, args ...string) ([]byte, error) {
 	cmd := exec.CommandContext(ctx, "gh", args...)
 	cmd.Dir = dir
-	cmd.Env = append(os.Environ(), "GH_PROMPT_DISABLED=1")
+	cmd.Env = factoryGHEnv()
 	// A gh that ignores the kill must not hold the call past its bound.
 	cmd.WaitDelay = 2 * time.Second
 	return cmd.Output()
+}
+
+// factoryGHEnv is the environment a gh call runs with: the caller's, minus the
+// git variables that choose a repository (an inherited GIT_DIR would outrank
+// the directory gh is started in).
+func factoryGHEnv() []string {
+	return append(gitenv.Env(), "GH_PROMPT_DISABLED=1")
 }
 
 // factoryPRFields is the `gh pr view --json` field list the edge reads.
@@ -136,6 +143,7 @@ func factoryReadPR(dir, branch string) (pr *factoryPR, found bool, err error) {
 // factoryGitRead runs `git -C dir <args>` and returns trimmed stdout.
 func factoryGitRead(dir string, args ...string) (string, error) {
 	cmd := exec.Command("git", append([]string{"-C", dir}, args...)...)
+	cmd.Env = gitenv.Env() // an inherited GIT_DIR would outrank -C
 	out, err := cmd.Output()
 	if err != nil {
 		var ee *exec.ExitError
