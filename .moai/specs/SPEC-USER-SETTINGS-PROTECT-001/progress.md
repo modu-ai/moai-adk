@@ -278,6 +278,38 @@ The F2 cell is the auditor's inversion observed directly (record = A's generatio
 
 **Named for the leader (not fixed in-card)**: (1) F2's serialization is in-process only — two distinct `moai` PROCESSES rendering the same project concurrently are outside the mutex's reach; the cross-process variant needs a file lock with a stale-holder story (flock is unix-only; Windows parity undecided) and is a follow-up surface. (2) F4 [minor, optional] — `WriteUserDefaultMode` fail-open on a locatable-but-unparseable permissions region — routes with F1's ruling or t1666 per the verdict; not fixed in-card because its disposition rides F1's routing. (3) F5 (comment drift), F6 (`mergeProjectAllow` inline union vs `unionStrings` dedup), F7 (helper rename) — optional-grade, left named. (4) F1 [P1] — the full-bundle USER write vs Q1 — pending the leader's recorded ruling per the verdict; not touched.
 
+### Sync-audit repair F2' — project-scoped inter-process record lock (operator decision d-20261014T055241Z-1bc6)
+
+**Finding** (sync-audit re-entry #1, `.moai/reports/t1630/sync-audit.md` Re-entry #1 verdict FAIL at 486fc3747d): **F2' [P1]** — two concurrent moai OS PROCESSES interleave outside `recordProtocolMu` (in-process mutex only) and can invert the sidecar record against the settings file; codex's two-process reproduction made a record-missing entry survive an empty-policy render. This was the cross-process residual the F2 repair had named; the operator chose the IN-CARD fix over the carry-over card (decision **d-20261014T055241Z-1bc6**).
+
+**Disposition: fixed** (commit 9b9fc6806). A project-scoped inter-process lockfile at `<projectRoot>/.moai/state/tool-policy/managed-allow.lock` guards the SAME protocol span (record read → Q5 classification → stage-ahead → settings write → converge/rollback) in both `RenderTierPermissions` and `BuildInto`'s TargetJSON span:
+
+- **Portable shape (no flock)**: acquisition is `os.OpenFile(O_CREATE|O_EXCL|O_WRONLY, 0o600)` — atomic on darwin/linux/windows; the lockfile records holder pid + creation timestamp; release removes the file via defer on every path (success, render error, rollback error, stamp error).
+- **Bounded retry, no wedge**: on EEXIST the acquire retries at 50ms for up to 5s; at budget exhaustion the holder is probed — takeover only when the recorded pid is provably dead (signal-0 probe on unix; both `os.ErrProcessDone` and `syscall.ESRCH` count as dead, since a fresh `FindProcess` handle never observes the exit) or the lockfile mtime age exceeds the 30s stale bound. On windows there is no portable liveness probe, so the age bound is the takeover test (build-tagged `record_lock_probe_{unix,windows}.go`). A LIVE holder beyond the budget surfaces an error.
+- **Ordering**: `recordProtocolMu` first, file lock second — intra-process callers queue on the mutex and only one touches the lockfile (commented at both spans).
+- **F8** (included per dispatch): the stale `managedAllowRecord` doc comment now matches the F3 rollback semantics ("rolled back to its pre-render content", not "staged superset").
+
+**RED evidence** (two-process repro at HEAD 486fc3747d, `go test ./internal/config/toolpolicy/ -run 'TestInterProcessRecordLock_TwoProcessRepro' -v -count=1`):
+
+```
+=== RUN   TestInterProcessRecordLock_TwoProcessRepro/blocks-until-child-releases-and-converges
+    tier_render_test.go:789: render returned while the inter-process lock was still held: lockfile present (err=<nil>) — the render did not respect the cross-process lock
+=== RUN   TestInterProcessRecordLock_TwoProcessRepro/takes-over-a-dead-pid-lockfile
+    tier_render_test.go:820: dead-pid lockfile was not taken over and released; stat err=<nil>
+=== RUN   TestInterProcessRecordLock_TwoProcessRepro/errors-after-budget-on-a-live-holder
+    tier_render_test.go:849: render must error when a live holder keeps the lock beyond the retry budget
+--- FAIL: TestInterProcessRecordLock_TwoProcessRepro (1.54s)
+FAIL    github.com/modu-ai/moai-adk/internal/config/toolpolicy  1.821s
+```
+
+The repro is a true two-process shape (TestMain reexec): the child process acquires the lock, writes a known record state, signals readiness, and holds; the parent renders against it. The dead-pid lockfile is seeded with the pid of a reaped short-lived child.
+
+**GREEN evidence** (post-fix, same command): all three subtests PASS — `--- PASS: TestInterProcessRecordLock_TwoProcessRepro (11.63s)` / `PASS ok ... toolpolicy 11.962s` (the two takeover/error paths each pay the 5s retry budget by design; the windows probe file cross-compiles via `GOOS=windows go build`).
+
+**Post-fix verification** (env-scrubbed, this run, this tree, HEAD 9b9fc6806): `go test -count=1 ./internal/config/toolpolicy/ ./internal/core/project/` → both `ok` (14.860s / 5.690s); the record-protocol family (9 tests incl. the lock test and the F2 burst) under `go test -race -count=1` → all PASS (`ok ... 17.262s`); `go build ./...` → exit 0; `GOOS=windows GOARCH=amd64 go build ./...` → exit 0; `go test -count=1 ./internal/config/toolpolicy/ -cover` → `coverage: 88.0% of statements` (threshold ≥ 85%; the dip from 90.3% is the new lock machinery's uncovered error branches — stamp/close-failure and budget-exhaustion message paths); `golangci-lint run --timeout=2m ./internal/config/toolpolicy/` → `0 issues.` (first pass raced a parallel lane's lint and surfaced 4 errcheck findings — unchecked `fmt.Fprintf`/`f.Close` on the lockfile stamp, both production and test — fixed: production releases the lock on a failed stamp/close, test ignores explicitly); `gofmt -l` → clean.
+
+**Named for the leader (unchanged surfaces)**: F1 [P1] ruling still pending (full-bundle USER write vs Q1); F4-F7 optional-grade findings untouched per dispatch ("anything beyond the lock + F8: do NOT include"); AC-013 predecessors t1619 + t1591 still to land.
+
 ## §E.3 Run-phase Audit-Ready Signal
 
 ```yaml
