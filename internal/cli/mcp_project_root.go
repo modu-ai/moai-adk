@@ -149,6 +149,10 @@ func toolProjectRootArgument(req mcp.CallToolRequest) (string, bool, error) {
 // "<tool>: project_root is required for mutating calls" once the handler
 // wraps it with toolErr. An accepted root's provenance is always
 // rootSourceParam.
+//
+// @MX:ANCHOR: [AUTO] the mutating-call root resolver every root-taking MCP family shares
+// @MX:REASON: 8 call sites across the eight families; the pinned "project_root is required for mutating calls" wire shape and the argument-validation (non-policy) classification live here
+// @MX:SPEC: SPEC-MCP-NEUTRALITY-001
 func resolveRequiredToolProjectRoot(req mcp.CallToolRequest) (string, string, error) {
 	raw, present, err := toolProjectRootArgument(req)
 	if err != nil {
@@ -230,6 +234,10 @@ func confineToServerRepository(ctx context.Context, serverRoot, canonical, raw s
 // canonicalized but NOT confined to the server's own repository — codex_audit
 // and its siblings legitimately name ANOTHER repository's tree to audit. The
 // absent case falls back exactly as resolveToolProjectRootWithSource.
+//
+// @MX:ANCHOR: [AUTO] the audit-surface root resolver (validated, deliberately not confined)
+// @MX:REASON: 3 call sites (codex_audit, glm_audit, self-review); an audit legitimately names another repository's tree, so the server-repository confinement is scoped out here
+// @MX:SPEC: SPEC-MCP-NEUTRALITY-001
 func resolveValidatedToolProjectRoot(req mcp.CallToolRequest) (string, string, error) {
 	raw, present, err := toolProjectRootArgument(req)
 	if err != nil {

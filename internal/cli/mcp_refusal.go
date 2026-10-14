@@ -62,6 +62,10 @@ type mcpRefusal struct {
 // whose structured content AND text content block carry the same refusal JSON
 // (design §D1 — one serializer, two blocks). The observer's refused:true
 // classification keys on this payload.
+//
+// @MX:ANCHOR: [AUTO] the one refusal serializer every factory/todo/msg MCP handler shares
+// @MX:REASON: 18 call sites plus the failure observer's refused:true classification key on this single function — a divergent serializer would split the wire shape
+// @MX:SPEC: SPEC-MCP-NEUTRALITY-001
 func toolRefusal(payload mcpRefusal) *mcp.CallToolResult {
 	data, err := json.Marshal(payload)
 	if err != nil {

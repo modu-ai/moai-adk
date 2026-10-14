@@ -2,9 +2,9 @@
 id: SPEC-MCP-NEUTRALITY-001
 title: "MCP refusal structuring and harness neutrality"
 version: "0.1.0"
-status: in-progress
+status: completed
 created: 2026-10-14
-updated: 2026-10-14
+updated: 2026-10-15
 author: manager-spec
 priority: P0
 phase: "v3.2.0"

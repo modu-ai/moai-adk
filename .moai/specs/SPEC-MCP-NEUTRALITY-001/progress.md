@@ -312,7 +312,18 @@ debts_remaining: none open from this SPEC — N3 (serial-slot instance red at M1
 
 ## §E.4 Sync-phase Audit-Ready Signal
 
-_pending sync-phase_
+sync_audit_ready: true
+sync_complete_at: 2026-10-15
+sync_commit_sha: "pending-backfill-sync"
+sync_status: complete (3-phase close — spec.md frontmatter in-progress → completed on this commit; the placeholder is backfilled with the real SHA in the follow-up commit, since a commit cannot cite its own hash)
+sync_commit_range: HEAD 226c387e3 (run close) → the sync commit (CHANGELOG entry, §E.4 signal, frontmatter terminal transition, MX anchors ×3)
+sync_artifacts: CHANGELOG.md [Unreleased]/Added first bullet · spec.md frontmatter (status+updated only) · progress.md §E.4 (this section) · MX tag changes: @MX:ANCHOR added ×3 — toolRefusal (18 callers, internal/cli/mcp_refusal.go), resolveRequiredToolProjectRoot (8 callers, internal/cli/mcp_project_root.go), resolveValidatedToolProjectRoot (3 callers, same file); zero tags removed; pre-existing tags in internal/auditreceipt/store.go, internal/factorymsg/store.go, internal/cli/codex_review_gate.go verified intact
+changelog_entry_position: [Unreleased] → ### Added, first bullet
+b12_self_test_a: PASS — pre-emission grep `grep -c 'SPEC-MCP-NEUTRALITY-001' CHANGELOG.md` → 0 (halt condition clear)
+b12_self_test_b: PASS — B12 AC counter on acceptance.md (tier L source): live=25 excluded=0 ambiguous=0; entry references 25 ACs (AC-MN-001..025)
+b12_self_test_c: PASS — all cited paths verified by ls: internal/cli/{mcp_refusal,mcp_project_root,mcp_server_call_log,codex_review_gate,codex_stop_chain,mcp_review_material,mcp_audit_multi_record,mcp_convergence}.go, internal/runtime/audit_cache_state.go, internal/auditreceipt/store.go, internal/factorymsg/store.go, internal/hook/{failure_observer,factory_messages}.go, internal/codexwiring/configtoml.go, internal/mcp/catalog.go, internal/config/envkeys.go, internal/template/templates/AGENTS.md.tmpl
+frontmatter_status_transitions: in-progress → completed (this sync commit, manager-docs, Authored-By-Agent: manager-docs trailer)
+canary_compliance_check: not applicable — this SPEC defines no forward-looking policy whose sync tests would self-apply
 
 ## §F Phase 4 Mode Selection
 
