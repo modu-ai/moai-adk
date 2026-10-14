@@ -419,6 +419,27 @@ Repair matrix (run at HEAD 47ad706c2, this tree):
 | F16 shared plain bool in the F13 pin (data race under -race) | FIXED | `go test -race ./internal/cli -run '^TestAuditMulti_ReceiptBindsStartOfConvergenceState$' -count=1` | `ok  github.com/modu-ai/moai-adk/internal/cli  2.210s` — the postEdit flag is an atomic.Bool (Store in the errgroup goroutine, Load in the TreeState stub); no race report |
 | F17 orphaned recordAuditReceiptAt doc comment | FIXED | `go build ./...` + lint | `ok` — the orphan folded into recordAuditReceiptAtBound's own doc (the wrapper it described was removed when every caller migrated to the bound surface) |
 
+### Sync-audit r5 delta repair round — foreground codex_task cancel regression (card t1632, branch WT-3-2-0-2)
+
+Commit: `17a0547b6` (fix: repair the foreground codex_task cancel path). Base: the follow-up-card memo head `43209a255`. RED already on disk: `TestCodexTask_ForegroundSessionStillBoundToRequest` panicked (nil deref at codex_task_session_ctx_test.go:317). Push state: nothing pushed; clean on WT-3-2-0-2.
+
+Root cause (all inside this card's own diff — the leader's "M2 이후 무변경" premise corrected):
+
+1. **Containment listing on the request context**: this card's REQ-MN-009 repair added the MCP-listing precondition to `openCodexSessionResolved` **before** the session opens, and it ran on the REQUEST context. An already-cancelled request failed the listing ("mcp list: context canceled"), the session never opened, the session-context double's `start` was never called, its `openCtx` stayed nil, and the foreground-cancel test panicked dereferencing `sess.current()`'s nil context (test line 317 — NOT a nil `*mcp.CallToolResult`; the handler always returned a structured `status=failed`, verified by an instrumented exact copy). The listing now runs on the BACKGROUND context — the same precondition-before-session-work rule the serving anchor lookup already applied (codex_task.go: "the git verification runs on the background context, and the cancellation surfaces later, at the session").
+2. **Session doubles lacked the containment stub**: `withCtxBoundCodexSession`, `withCodexConn`, and the codex_task process-context fixtures never stubbed `codexAuditMCPList`, so after the listing precondition existed every session-opening test executed the stub binary and failed before opening. Each now installs the same empty-server stub `withCodexSession` already carried.
+3. **Background-job tests re-anchored on the serving tree**: the job registry, the cancel call, and the REQ-MN-005 confine must describe ONE repository — a temp fixture root is not a registered worktree, so the cancel's confine refused it ("belongs to a different repository" / "server root ... is not a git repository" depending on fixture state). The three background tests and the cancel call now use `thisRepoRoot` for both, with registry records removed in cleanup.
+
+Repair matrix (run at HEAD 17a0547b6, this tree):
+
+| Check | Command (verbatim) | Observed output |
+|-------|--------------------|-----------------|
+| The r5 RED (foreground cancel panic) | `go test ./internal/cli -run '^TestCodexTask' -count=1` | `ok` — the whole family green including the formerly panicking test: status=failed returned structured, the session opened on the request context (`openCtx.Err() != nil` after cancel), and the child ended |
+| Broader family | the same run | all `^TestCodexTask*` selectors green (background detach/cancel/turn-bound, protocol liveness, process-context) |
+
+**Why the regression survived four rounds — verification-scope disclosure**: `TestCodexTask_Foreground*` (and the whole codex_task_session_ctx/process_context files) appeared in NO §E.2 verification batch — the milestone batches ran the audit/review/self-review families and the M3 batch scoped hook+factorymsg, but never the codex_task session-context files, and the F2 correction's 8-root lint re-measure fixed lint visibility without extending the TEST surface. This round adds the codex_task session-context family to the standing batch surface.
+
+Authored-By-Agent: manager-develop
+
 ## §E.3 Run-phase Audit-Ready Signal
 
 run_audit_ready: true
