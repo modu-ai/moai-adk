@@ -6,10 +6,10 @@
 package skillresidue
 
 import (
+	"fmt"
 	"os"
 	"path/filepath"
 	"slices"
-	"strings"
 )
 
 // retiredSkills maps a skill folder name MoAI no longer ships to the name that
@@ -39,13 +39,17 @@ type Action struct {
 	Path string
 	// Kind is one of removed-empty-dir, renamed-skill-file,
 	// reported-both-skill-files, archived-retired-skill,
-	// kept-retired-skill-with-user-files, or removed-stale-link.
+	// kept-retired-skill-with-user-files, removed-stale-link, or
+	// refused-symlinked-root.
 	Kind string
 }
 
 // Clean repairs the skill-folder residue under projectRoot/.claude/skills and
 // returns what it did. A second pass over a repaired tree returns nothing.
 func Clean(projectRoot string, opts Options) ([]Action, error) {
+	if link, found := symlinkedRoot(projectRoot); found {
+		return []Action{{Path: link, Kind: "refused-symlinked-root"}}, nil
+	}
 	skillsDir := filepath.Join(projectRoot, ".claude", "skills")
 	entries, err := os.ReadDir(skillsDir)
 	if os.IsNotExist(err) {
@@ -177,7 +181,11 @@ func removeStaleLink(projectRoot, name string) (bool, error) {
 	if err != nil {
 		return false, err
 	}
-	if !strings.HasSuffix(filepath.ToSlash(filepath.Clean(target)), ".claude/skills/"+name) {
+	resolved := target
+	if !filepath.IsAbs(resolved) {
+		resolved = filepath.Join(filepath.Dir(link), resolved)
+	}
+	if filepath.Clean(resolved) != filepath.Join(projectRoot, ".claude", "skills", name) {
 		return false, nil
 	}
 	if err := os.Remove(link); err != nil {
@@ -186,13 +194,61 @@ func removeStaleLink(projectRoot, name string) (bool, error) {
 	return true, nil
 }
 
+// moveFile is os.Rename. A test replaces it to make one move fail on any filesystem.
+var moveFile = os.Rename
+
 // renameSkillFile renames skill.md to SKILL.md through a temporary name, so the
 // change also holds on a case-insensitive filesystem.
 func renameSkillFile(dir string) error {
 	lower := filepath.Join(dir, "skill.md")
-	tmp := filepath.Join(dir, "skill.md.tmp-rename")
-	if err := os.Rename(lower, tmp); err != nil {
+	tmp, err := freeName(dir, "skill.md.tmp-rename")
+	if err != nil {
 		return err
 	}
-	return os.Rename(tmp, filepath.Join(dir, "SKILL.md"))
+	if err := moveFile(lower, tmp); err != nil {
+		return err
+	}
+	if err := moveFile(tmp, filepath.Join(dir, "SKILL.md")); err != nil {
+		// The content is still under tmp. Put it back under its own name, so no
+		// content is left where nothing reads it.
+		if restoreErr := moveFile(tmp, lower); restoreErr != nil {
+			return fmt.Errorf("%w (restoring %s also failed: %v)", err, lower, restoreErr)
+		}
+		return err
+	}
+	return nil
+}
+
+// freeName returns dir/base, or dir/base-N for the first N that names nothing in
+// dir. A rename onto an existing name replaces it, so a temporary name must never
+// be one a user file already holds.
+func freeName(dir, base string) (string, error) {
+	for n := range 100 {
+		name := base
+		if n > 0 {
+			name = fmt.Sprintf("%s-%d", base, n)
+		}
+		p := filepath.Join(dir, name)
+		_, err := os.Lstat(p)
+		if os.IsNotExist(err) {
+			return p, nil
+		}
+		if err != nil {
+			return "", err
+		}
+	}
+	return "", fmt.Errorf("no free temporary name beside %s", filepath.Join(dir, base))
+}
+
+// symlinkedRoot reports the first of .moai, .claude, or .claude/skills under
+// projectRoot that is a symbolic link. Cleanup reads, moves, and removes entries
+// under those paths, so a link there would reach a directory outside the project.
+func symlinkedRoot(projectRoot string) (string, bool) {
+	for _, rel := range []string{".moai", ".claude", ".claude/skills"} {
+		info, err := os.Lstat(filepath.Join(projectRoot, filepath.FromSlash(rel)))
+		if err == nil && info.Mode()&os.ModeSymlink != 0 {
+			return rel, true
+		}
+	}
+	return "", false
 }

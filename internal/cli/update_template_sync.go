@@ -877,7 +877,12 @@ func runTemplateSyncWithReporter(cmd *cobra.Command, reporter project.ProgressRe
 				if retrackErr := retrackSectionFiles(projectRoot, errOut); retrackErr != nil {
 					emitSeverityLine(errOut, sevWarn, resolveTheme(), "manifest retrack (config sections) failed: %v", retrackErr)
 				}
-				deletedCount := backup.CleanupOldBackups(projectRoot, 5)
+				deletedCount := 0
+				if backup.OldBackupRootRefused(projectRoot) {
+					emitSeverityLine(errOut, sevWarn, resolveTheme(), "skipped old backup pruning: the backup root is a symbolic link or leads outside the project")
+				} else {
+					deletedCount = backup.CleanupOldBackups(projectRoot, 5)
+				}
 				if deletedCount > 0 {
 					_, _ = fmt.Fprintf(out, "  %s Cleaned up %d old backup(s)\n", uikit.SymSuccess(), deletedCount)
 				}

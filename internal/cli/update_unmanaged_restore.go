@@ -21,6 +21,8 @@ func unmanagedRestoreMessages(refs []backup.UnmanagedRestoreRef, backupDir strin
 			msgs = append(msgs, fmt.Sprintf("kept the new template at %s; the backup copy is %s.from-%s", ref.Path, ref.Path, stamp))
 		case "side-copy-blocked":
 			msgs = append(msgs, fmt.Sprintf("%s differs from the backup, but %s.from-%s already holds other content; nothing written", ref.Path, ref.Path, stamp))
+		case "side-copy-refused":
+			msgs = append(msgs, fmt.Sprintf("%s differs from the backup, but its side copy name is a symbolic link or leads outside the config directory; nothing written", ref.Path))
 		}
 	}
 	return msgs

@@ -215,6 +215,9 @@ type BackupMetadata struct {
 // number of backups removed.
 func CleanupOldBackups(projectRoot string, keepCount int) int {
 	backupDir := filepath.Join(projectRoot, defs.BackupsDir)
+	if !backupRootContained(projectRoot, backupDir) {
+		return 0
+	}
 
 	// Check if backup directory exists
 	info, err := os.Stat(backupDir)
@@ -305,6 +308,9 @@ func pruneBackups(backupDir string, sorted []string, keepCount int) int {
 // unique-content guard of pruneBackups governs every removal.
 func CleanupNamespaceBackups(projectRoot string, keepCount int) int {
 	root := filepath.Join(projectRoot, defs.MoAIDir, defs.NamespaceBackupsSubdir)
+	if !backupRootContained(projectRoot, root) {
+		return 0
+	}
 	entries, err := os.ReadDir(root)
 	if err != nil {
 		return 0
@@ -320,6 +326,39 @@ func CleanupNamespaceBackups(projectRoot string, keepCount int) int {
 	}
 	sort.Strings(backups)
 	return pruneBackups(root, backups, keepCount)
+}
+
+// backupRootContained reports whether a backup root is a real directory inside
+// projectRoot. A root that is a symbolic link, or that sits under one, would make
+// pruning delete entries outside the project, so the root must pass both checks
+// that the restore path already applies to its targets.
+func backupRootContained(projectRoot, root string) bool {
+	if IsSymlinkEntry(root) {
+		return false
+	}
+	absProject, err := filepath.Abs(projectRoot)
+	if err != nil {
+		return false
+	}
+	absRoot, err := filepath.Abs(root)
+	if err != nil {
+		return false
+	}
+	return ParentChainContained(absProject, absRoot)
+}
+
+// OldBackupRootRefused reports whether CleanupOldBackups refuses the timestamped
+// backup root because it is a symbolic link or leads outside projectRoot. A missing
+// root is not refused. The cleanup returns only a count, so the caller reports the
+// refusal itself.
+func OldBackupRootRefused(projectRoot string) bool {
+	return !backupRootContained(projectRoot, filepath.Join(projectRoot, defs.BackupsDir))
+}
+
+// NamespaceBackupRootRefused is OldBackupRootRefused for the namespace backup root
+// that CleanupNamespaceBackups prunes.
+func NamespaceBackupRootRefused(projectRoot string) bool {
+	return !backupRootContained(projectRoot, filepath.Join(projectRoot, defs.MoAIDir, defs.NamespaceBackupsSubdir))
 }
 
 // backupFileKey identifies one file inside a backup by its path there and the

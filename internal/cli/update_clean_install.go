@@ -540,7 +540,9 @@ func runCleanReinstall(ctx context.Context, projectRoot string, opts CleanReinst
 		// timestamped config-backup dirs under .moai-backups/ are candidates;
 		// the v2-to-v3-* forensic backups live under .moai/backups/ and are
 		// never touched by this cleanup.
-		if deleted := backup.CleanupOldBackups(projectRoot, 5); deleted > 0 {
+		if backup.OldBackupRootRefused(projectRoot) {
+			_, _ = fmt.Fprintln(out, "[clean-reinstall] skipped old config backup pruning: the backup root is a symbolic link or leads outside the project")
+		} else if deleted := backup.CleanupOldBackups(projectRoot, 5); deleted > 0 {
 			_, _ = fmt.Fprintf(out, "[clean-reinstall] Cleaned up %d old config backup(s)\n", deleted)
 		}
 	}

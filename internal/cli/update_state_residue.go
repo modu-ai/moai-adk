@@ -94,7 +94,9 @@ func runUpdateHousekeeping(projectRoot string) {
 	if removed := removeStateResidue(projectRoot); len(removed) > 0 {
 		updateLedger.referencef("removed %d leftover state file(s): %s", len(removed), strings.Join(removed, ", "))
 	}
-	if pruned := backup.CleanupNamespaceBackups(projectRoot, namespaceBackupRetainCount); pruned > 0 {
+	if backup.NamespaceBackupRootRefused(projectRoot) {
+		updateLedger.requiref(sevWarn, "namespace backup pruning skipped: the backup root is a symbolic link or leads outside the project")
+	} else if pruned := backup.CleanupNamespaceBackups(projectRoot, namespaceBackupRetainCount); pruned > 0 {
 		updateLedger.referencef("pruned %d old namespace backup(s), keeping the newest %d", pruned, namespaceBackupRetainCount)
 	}
 	// Skill-folder residue: empty folders of shipped skills, a retired skill name,
@@ -137,6 +139,8 @@ func skillActionMessage(a skillresidue.Action) string {
 		return fmt.Sprintf("kept retired skill %s: it holds files besides SKILL.md", a.Path)
 	case "removed-stale-link":
 		return fmt.Sprintf("removed link %s (it pointed at the archived skill)", a.Path)
+	case "refused-symlinked-root":
+		return fmt.Sprintf("refused to clean skill folders: %s is a symbolic link; nothing under it was changed", a.Path)
 	}
 	return fmt.Sprintf("%s: %s", a.Kind, a.Path)
 }
