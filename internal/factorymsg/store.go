@@ -181,6 +181,13 @@ func OpenWithContext(ctx context.Context, projectRoot, runID string) (*Store, er
 	return openWithContext(ctx, projectRoot, runID, 5*time.Second)
 }
 
+// ErrRunNotActive is the sentinel ValidateActiveRun returns when the run id is
+// well-formed but is not the currently active run (or no run table exists
+// yet). The string keeps the historical NO_ACTIVE_FACTORY spelling every
+// string-matching consumer reads; callers classify it with errors.Is
+// (SPEC-MCP-NEUTRALITY-001 maps it to the stale-run policy code).
+var ErrRunNotActive = errors.New("NO_ACTIVE_FACTORY")
+
 // ValidateActiveRun rejects stale or invented run identifiers without
 // initializing registry state.
 func ValidateActiveRun(ctx context.Context, projectRoot, runID string) (err error) {
@@ -192,7 +199,7 @@ func ValidateActiveRun(ctx context.Context, projectRoot, runID string) (err erro
 		return err
 	}
 	if _, err := os.Stat(path); err != nil {
-		return errors.New("NO_ACTIVE_FACTORY")
+		return ErrRunNotActive
 	}
 	db, err := sql.Open("sqlite", "file:"+filepath.ToSlash(path)+"?_pragma=busy_timeout(100)")
 	if err != nil {
@@ -201,7 +208,7 @@ func ValidateActiveRun(ctx context.Context, projectRoot, runID string) (err erro
 	defer closeInto(&err, db, "factory state")
 	var status string
 	if err := db.QueryRowContext(ctx, `SELECT status FROM runs WHERE run_id=?`, runID).Scan(&status); err != nil || status != "active" {
-		return errors.New("NO_ACTIVE_FACTORY")
+		return ErrRunNotActive
 	}
 	return nil
 }
