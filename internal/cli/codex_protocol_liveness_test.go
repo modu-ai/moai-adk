@@ -182,6 +182,7 @@ func withCodexConn(t *testing.T, conn codexConn) {
 	codexRunner = stubCodexRunner{}
 	codexLookPath = func(string) (string, error) { return "/fake/codex", nil }
 	codexSession = fixedConnSessionRunner{conn: conn}
+	stubCodexContainmentListing(t)
 	t.Cleanup(func() { codexRunner, codexLookPath, codexSession = prevRunner, prevLook, prevSess })
 }
 

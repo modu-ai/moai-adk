@@ -885,9 +885,16 @@ func openCodexSessionResolved(ctx context.Context, binaryPath string, params map
 	// REQ-MN-024: the session also runs under a READ-ONLY sandbox policy — a
 	// reviewer never needs to write, and the config override is the app-server
 	// surface's spelling of the `-s read-only` the codex exec role path uses.
+	// Card t1632 sync-audit r5: the containment listing runs on the BACKGROUND
+	// context, the same precondition-before-session-work rule the serving
+	// anchor lookup applies (codex_task.go) — an already-cancelled request
+	// must fail AT THE SESSION (which stays on the request context), not at
+	// the containment read that runs before the session exists. Before this
+	// repair, a cancelled request failed the listing with "context canceled"
+	// and the session never opened at all.
 	argv := []string{codexAppServerSubcmd, "-c", "sandbox_mode=read-only"}
 	if root, ok := params["cwd"].(string); ok && root != "" {
-		containment, err := codexGateContainmentArgs(ctx, binaryPath, root)
+		containment, err := codexGateContainmentArgs(context.Background(), binaryPath, root)
 		if err != nil {
 			return nil, &codexSessionError{summary: "codex session containment failed: " + err.Error(), cause: err}
 		}

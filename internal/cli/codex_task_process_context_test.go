@@ -191,6 +191,10 @@ done
 	prevLook, prevSession := codexLookPath, codexSession
 	codexLookPath = func(string) (string, error) { return bin, nil }
 	codexSession = realCodexSessionRunner{}
+	// REQ-MN-009 containment: the pre-open listing is stubbed to an EMPTY
+	// server list — this fixture's script answers only the handshake, and the
+	// test's subject is the process lifetime, not the containment listing.
+	stubCodexContainmentListing(t)
 	t.Cleanup(func() { codexLookPath, codexSession = prevLook, prevSession })
 
 	ctx, cancel := context.WithCancel(context.Background())
@@ -239,6 +243,10 @@ done
 	prevLook, prevSession := codexLookPath, codexSession
 	codexLookPath = func(string) (string, error) { return bin, nil }
 	codexSession = realCodexSessionRunner{}
+	// REQ-MN-009 containment: the pre-open listing is stubbed to an EMPTY
+	// server list — this fixture's script answers only the handshake, and the
+	// test's subject is the process lifetime, not the containment listing.
+	stubCodexContainmentListing(t)
 	t.Cleanup(func() { codexLookPath, codexSession = prevLook, prevSession })
 	stdio := startCodexTaskMCPStdio(t, root)
 	t.Cleanup(func() {
@@ -294,6 +302,10 @@ while IFS= read -r line; do :; done
 	prevLook, prevSession := codexLookPath, codexSession
 	codexLookPath = func(string) (string, error) { return bin, nil }
 	codexSession = realCodexSessionRunner{}
+	// REQ-MN-009 containment: the pre-open listing is stubbed to an EMPTY
+	// server list — this fixture's script answers only the handshake, and the
+	// test's subject is the process lifetime, not the containment listing.
+	stubCodexContainmentListing(t)
 	t.Cleanup(func() { codexLookPath, codexSession = prevLook, prevSession })
 	stdio := startCodexTaskMCPStdio(t, root)
 	t.Cleanup(func() {
@@ -392,6 +404,7 @@ func TestCodexTaskBackgroundHandshakeHonorsTaskBound(t *testing.T) {
 	runner := &recordingSessionRunner{inner: realCodexSessionRunner{}}
 	codexLookPath = func(string) (string, error) { return bin, nil }
 	codexSession = runner
+	stubCodexContainmentListing(t)
 	t.Cleanup(func() { codexLookPath, codexSession = prevLook, prevSession })
 	t.Cleanup(func() { // fixture only: never leave a spawned child behind
 		for _, pid := range runner.pids() {
@@ -480,6 +493,10 @@ done
 	prevLook, prevSession := codexLookPath, codexSession
 	codexLookPath = func(string) (string, error) { return bin, nil }
 	codexSession = realCodexSessionRunner{}
+	// REQ-MN-009 containment: the pre-open listing is stubbed to an EMPTY
+	// server list — this fixture's script answers only the handshake, and the
+	// test's subject is the process lifetime, not the containment listing.
+	stubCodexContainmentListing(t)
 	t.Cleanup(func() { codexLookPath, codexSession = prevLook, prevSession })
 
 	res, err := handleCodexTask(context.Background(), mcp.CallToolRequest{Params: mcp.CallToolParams{

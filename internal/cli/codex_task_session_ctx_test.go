@@ -2,6 +2,8 @@ package cli
 
 import (
 	"context"
+	"os"
+	"path/filepath"
 	"strings"
 	"sync"
 	"testing"
@@ -127,8 +129,14 @@ func withCtxBoundCodexSession(t *testing.T, lines []string, gateAt int) *ctxBoun
 	prevRunner, prevLook, prevSess := codexRunner, codexLookPath, codexSession
 	codexRunner = stubCodexRunner{}
 	codexLookPath = func(string) (string, error) { return "/fake/codex", nil }
+	// REQ-MN-009 containment (added mid-card): the listing that precedes the
+	// session open is stubbed to an EMPTY server list, exactly as
+	// withCodexSession does — a test spawn carries no config.toml MCP servers
+	// to disable, and without this stub the listing executes the stub binary
+	// and fails, so no session ever opens (the r5 foreground-cancel regression).
 	s := &ctxBoundCodexSession{lines: lines, gateAt: gateAt, releaseCh: make(chan struct{})}
 	codexSession = s
+	stubCodexContainmentListing(t)
 	t.Cleanup(func() {
 		s.release()
 		if c, _ := s.current(); c != nil {
@@ -141,12 +149,21 @@ func withCtxBoundCodexSession(t *testing.T, lines []string, gateAt int) *ctxBoun
 
 // startCtxBoundBackgroundJob drives handleCodexTask with background=true and a
 // request context the caller ends; it returns the job id and the cancel func.
+// project_root and the serving-project resolver BOTH name THIS repository (the
+// worktree the test process runs in): the REQ-MN-005 confine and the job
+// registry must describe one tree, and this worktree is the only registered
+// worktree a test process can legally name. The registry records this test
+// writes there are removed in cleanup.
 func startCtxBoundBackgroundJob(t *testing.T) (string, context.CancelFunc) {
 	t.Helper()
+	root := thisRepoRoot(t)
+	t.Cleanup(func() {
+		_ = os.RemoveAll(filepath.Join(root, ".moai", "state", codexJobsSubdir))
+	})
 	ctx, cancel := context.WithCancel(context.Background())
 	t.Cleanup(cancel)
 	res, err := handleCodexTask(ctx, mcp.CallToolRequest{
-		Params: mcp.CallToolParams{Arguments: map[string]any{"prompt": "audit the module", "background": true, "project_root": thisRepoRoot(t)}},
+		Params: mcp.CallToolParams{Arguments: map[string]any{"prompt": "audit the module", "background": true, "project_root": root}},
 	})
 	if err != nil {
 		t.Fatalf("handleCodexTask returned a Go error: %v", err)
@@ -162,8 +179,11 @@ func startCtxBoundBackgroundJob(t *testing.T) (string, context.CancelFunc) {
 // ─── RED reproduction ───
 
 func TestCodexTask_BackgroundSessionOutlivesRequestContext(t *testing.T) {
-	root := t.TempDir()
+	root := thisRepoRoot(t)
 	withCodexProjectDir(t, root)
+	// The job registry this test reads lives under the serving tree's state
+	// root — its records are test residue and are removed on cleanup.
+	t.Cleanup(func() { _ = os.RemoveAll(filepath.Join(root, ".moai", "state", codexJobsSubdir)) })
 	// Handshake (ids 1, 2) flows freely; everything from the turn/start ack on
 	// waits until the request context has already ended.
 	sess := withCtxBoundCodexSession(t, codexTaskScript("trn-bg-t1186", "background work done"), 2)
@@ -221,6 +241,10 @@ func assertSessionEnded(t *testing.T, sess *ctxBoundCodexSession) {
 // (a) codex_job_cancel still terminates a running background job's child.
 func TestCodexTask_BackgroundDetachedSessionIsCancellable(t *testing.T) {
 	root := t.TempDir()
+	// The job registry, the cancel call, and the REQ-MN-005 confine all key on
+	// this tree — it must be a git repository for the confine's server-side
+	// read to have a repository to compare against.
+	cardScopeGit(t, root, "init", "-q", "-b", "main")
 	withCodexProjectDir(t, root)
 	lines := hangingTaskScript("trn-bg-cancel")
 	sess := withCtxBoundCodexSession(t, lines, len(lines))
@@ -249,7 +273,9 @@ func TestCodexTask_BackgroundDetachedSessionIsCancellable(t *testing.T) {
 		t.Fatal("the session died with the request context; nothing is left to cancel")
 	}
 
-	res := callCodexJobTool(t, handleCodexJobCancel, map[string]any{"job_id": jobID})
+	// REQ-MN-005/M2: codex_job_cancel takes project_root — the same tree the
+	// job was created against, so the cancel reads the same job registry.
+	res := callCodexJobTool(t, handleCodexJobCancel, map[string]any{"job_id": jobID, "project_root": projectDirResolver()})
 	if res.IsError {
 		t.Fatalf("cancel returned IsError: %s", resultText(res))
 	}
@@ -272,8 +298,11 @@ func TestCodexTask_BackgroundDetachedSessionIsCancellable(t *testing.T) {
 // (b) the codex_task turn bound still ends a hung background job.
 func TestCodexTask_BackgroundDetachedSessionHonorsTurnBound(t *testing.T) {
 	withCodexTaskTimeout(t, 120*time.Millisecond)
-	root := t.TempDir()
+	root := thisRepoRoot(t)
 	withCodexProjectDir(t, root)
+	// The job registry this test reads lives under the serving tree's state
+	// root — its records are test residue and are removed on cleanup.
+	t.Cleanup(func() { _ = os.RemoveAll(filepath.Join(root, ".moai", "state", codexJobsSubdir)) })
 	lines := hangingTaskScript("trn-bg-bound")
 	sess := withCtxBoundCodexSession(t, lines, len(lines))
 
@@ -289,8 +318,11 @@ func TestCodexTask_BackgroundDetachedSessionHonorsTurnBound(t *testing.T) {
 
 // (c) foreground stays tied to the request: cancelling it ends the child.
 func TestCodexTask_ForegroundSessionStillBoundToRequest(t *testing.T) {
-	root := t.TempDir()
+	root := thisRepoRoot(t)
 	withCodexProjectDir(t, root)
+	// The job registry this test reads lives under the serving tree's state
+	// root — its records are test residue and are removed on cleanup.
+	t.Cleanup(func() { _ = os.RemoveAll(filepath.Join(root, ".moai", "state", codexJobsSubdir)) })
 	sess := withCtxBoundCodexSession(t, codexTaskScript("trn-fg-cancel", "never"), 2)
 
 	ctx, cancel := context.WithCancel(context.Background())
@@ -322,8 +354,11 @@ func TestCodexTask_ForegroundSessionStillBoundToRequest(t *testing.T) {
 
 // (d) until hand-off the request still bounds the background handshake.
 func TestCodexTask_BackgroundHandshakeStillBoundToRequest(t *testing.T) {
-	root := t.TempDir()
+	root := thisRepoRoot(t)
 	withCodexProjectDir(t, root)
+	// The job registry this test reads lives under the serving tree's state
+	// root — its records are test residue and are removed on cleanup.
+	t.Cleanup(func() { _ = os.RemoveAll(filepath.Join(root, ".moai", "state", codexJobsSubdir)) })
 	sess := withCtxBoundCodexSession(t, codexTaskScript("trn-hs", "never"), 0)
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()

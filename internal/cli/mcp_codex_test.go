@@ -119,6 +119,18 @@ func withCodexSessionStderr(t *testing.T, lines []string, stderr string) *fakeCo
 	return sess
 }
 
+// stubCodexContainmentListing installs the EMPTY-server listing the REQ-MN-009
+// containment precondition reads before every codex session open — the same
+// rule withCodexSession applies: a test spawn carries no config.toml MCP
+// servers to disable, and without the stub the listing executes the stub
+// binary and fails, so no session ever opens.
+func stubCodexContainmentListing(t *testing.T) {
+	t.Helper()
+	prevList := codexAuditMCPList
+	codexAuditMCPList = func(context.Context, string, string) (string, error) { return "[]", nil }
+	t.Cleanup(func() { codexAuditMCPList = prevList })
+}
+
 // withCodexSession installs a fake session that replays `lines` and exposes the
 // recorded sent request lines. The single-shot runner + LookPath seams are also
 // pointed at a stub binary so the gate's binary-resolution succeeds, and the
@@ -132,11 +144,9 @@ func withCodexSession(t *testing.T, lines []string) *fakeCodexSession {
 	codexLookPath = func(string) (string, error) { return "/fake/codex", nil }
 	sess := &fakeCodexSession{lines: lines}
 	codexSession = sess
-	prevList := codexAuditMCPList
-	codexAuditMCPList = func(context.Context, string, string) (string, error) { return "[]", nil }
+	stubCodexContainmentListing(t)
 	t.Cleanup(func() {
 		codexRunner, codexLookPath, codexSession = prevRunner, prevLook, prevSess
-		codexAuditMCPList = prevList
 	})
 	return sess
 }
