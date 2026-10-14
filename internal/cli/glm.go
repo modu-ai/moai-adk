@@ -259,6 +259,7 @@ func runGLM(cmd *cobra.Command, args []string) error {
 	factoryLabel, isFactoryLane := parseFactoryLaneLabel(filteredArgs)
 	switch resolveFactoryBranch(entry.FactoryEnabled, isFactoryLane) {
 	case factoryBranchLeader:
+		priorRunID := os.Getenv(config.EnvFactoryRunID)
 		leaderLabel, _ := parseLeaderLabel(filteredArgs)
 		restoreFactory := enterFactoryLeaderMode(entry.FactoryLanes, leaderLabel)
 		defer restoreFactory()
@@ -267,11 +268,18 @@ func runGLM(cmd *cobra.Command, args []string) error {
 			return runErr
 		}
 		defer restoreRun()
+		// Same resume re-adoption as the cc leader (card t1707): the run id
+		// survives only in the launch environment, so a resumed GLM leader
+		// would otherwise mint a new run over the live one.
+		adopted, adoptErr := leaderEntryRunAdoption(launchProjectRoot(), filteredArgs, leaderLabel, priorRunID, entry.FactoryRun, cmd.ErrOrStderr())
+		if adoptErr != nil {
+			return fmt.Errorf("re-adopt factory run: %w", adoptErr)
+		}
 		// Same recording as the cc leader: the factory run state a lane's -l join
 		// resolves. Without it every GLM-led run is unjoinable
 		// (NO_ACTIVE_FACTORY).
-		if err := recordFactoryRunStart(launchProjectRoot(), os.Getenv(config.EnvFactoryRunID), factory.BackendGLM, entry.Spec, factoryDeclaredLanes(entry)); err != nil {
-			return fmt.Errorf("record factory run: %w", err)
+		if err := recordLeaderRunStart(launchProjectRoot(), adopted, factory.BackendGLM, entry.Spec, factoryDeclaredLanes(entry)); err != nil {
+			return err
 		}
 		defer exportFactoryLaunchFacts(entry.Spec, factory.BackendGLM)()
 		var leaderName string
