@@ -32,6 +32,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/modu-ai/moai-adk/internal/gitenv"
 	"github.com/modu-ai/moai-adk/pkg/version"
 )
 
@@ -50,11 +51,15 @@ type RemeasureRecord struct {
 	// recognized structured report (go test): the verifier then demands
 	// one. A tool with no recognized report leaves it false and is valid
 	// on exit code zero (REQ-MWQ-015's last clause).
-	StructuredRequired bool   `json:"structured_required"`
-	HasStructured      bool   `json:"structured_count"`
-	TestCount          int    `json:"test_count,omitempty"`
-	BuildIdentity      string `json:"build_identity"`
-	RecordedAt         string `json:"recorded_at"`
+	StructuredRequired bool `json:"structured_required"`
+	HasStructured      bool `json:"structured_count"`
+	TestCount          int  `json:"test_count,omitempty"`
+	// Failing names the failing test or package the structured report
+	// reported when the sweep failed (card t1677, t1568's undiagnosable
+	// failure). Empty on a green sweep.
+	Failing       []string `json:"failing,omitempty"`
+	BuildIdentity string   `json:"build_identity"`
+	RecordedAt    string   `json:"recorded_at"`
 }
 
 // remeasureDir resolves the re-measure store under the project's state
@@ -436,6 +441,47 @@ func requestsGoTestJSON(command string) bool {
 	return false
 }
 
+// failingSweepError is the classifier's refusal for a stream carrying a fail
+// event. It carries the failing name(s) so the run can record them in
+// RemeasureRecord.Failing and name them in its refusal — a failed re-measure
+// is then diagnosable from the record alone (card t1677, t1568's undiagnosable
+// failure).
+type failingSweepError struct {
+	failing []string
+}
+
+func (e *failingSweepError) Error() string {
+	return fmt.Sprintf("go test -json stream reports a failing test %q — a failing sweep cannot stand for a re-measure", e.failing[0])
+}
+
+// failingTestsOf returns the failing name(s) a classifier refusal carries, or
+// nil for any other error.
+func failingTestsOf(err error) []string {
+	var refuse *failingSweepError
+	if errors.As(err, &refuse) {
+		return refuse.failing
+	}
+	return nil
+}
+
+// boundedFailing renders a bounded name list for the run's refusal — the
+// first three names, then a count of the rest.
+func boundedFailing(names []string) string {
+	shown := names
+	if len(shown) > 3 {
+		shown = shown[:3]
+	}
+	quoted := make([]string, len(shown))
+	for i, name := range shown {
+		quoted[i] = fmt.Sprintf("%q", name)
+	}
+	text := strings.Join(quoted, ", ")
+	if len(names) > 3 {
+		text += fmt.Sprintf(" and %d more", len(names)-3)
+	}
+	return text
+}
+
 // countGoTestJSONTests counts the per-test pass events in a go test -json
 // stream. The judgment is the stream's TOTAL per-test pass count (REQ-MWQ2-003,
 // which supersedes the marker refusal of REQ-MWQ-015): a package without tests
@@ -476,13 +522,15 @@ func countGoTestJSONTests(text string) (count int, structured bool, err error) {
 		// pipe's exit 0 while a test failed — the stream is the verdict the
 		// exit code cannot carry. Any fail event (per-test, or package-level
 		// — a build or setup failure behind which no per-test event may
-		// exist) invalidates the record.
+		// exist) invalidates the record. The name rides a typed error so the
+		// run can record it (card t1677): t1568's re-measure failed with no
+		// failing name anywhere in its record.
 		if event.Action == "fail" {
 			name := event.Test
 			if name == "" {
 				name = event.Package + " (package-level)"
 			}
-			return 0, true, fmt.Errorf("go test -json stream reports a failing test %q — a failing sweep cannot stand for a re-measure", name)
+			return 0, true, &failingSweepError{failing: []string{name}}
 		}
 		switch {
 		case event.Action == "start" && event.Package != "":
@@ -539,6 +587,7 @@ func IsIntegrationWorktreeCleanError(err error) bool {
 func gitIntegrationWorktreeClean(dir string) (bool, string, error) {
 	cmd := exec.Command("git", "status", "--porcelain", "--untracked-files=all")
 	cmd.Dir = dir
+	cmd.Env = gitenv.Env() // an inherited GIT_DIR would outrank cmd.Dir
 	out, err := cmd.Output()
 	if err != nil {
 		return false, "", fmt.Errorf("git status in %s: %v: %s", dir, err, out)
@@ -608,6 +657,9 @@ func RunRemeasure(projectRoot, worktree, baseBranch, command string) (*Remeasure
 		}
 	}
 	count, structured, classifyErr := ClassifyStructuredOutput(command, bytes.NewReader(outBytes))
+	// Card t1677: the failing name(s) the classifier refusal carries ride
+	// into the record and the run's refusal, whichever cause branch fires.
+	failing := failingTestsOf(classifyErr)
 	// REQ-MWQ2-009: a go test stream whose total per-test pass count is zero is
 	// an empty sweep. The classifier reports the zero (its contract, pinned by
 	// TestClassifyEmptySweepAndUnstructured); the run refuses it here, so the
@@ -646,6 +698,7 @@ func RunRemeasure(projectRoot, worktree, baseBranch, command string) (*Remeasure
 		StructuredRequired: isGoTestCommand(command),
 		HasStructured:      structured,
 		TestCount:          count,
+		Failing:            failing,
 		BuildIdentity:      moaiBuildIdentity(),
 		RecordedAt:         WindowClock().Format(time.RFC3339),
 	}
@@ -653,7 +706,11 @@ func RunRemeasure(projectRoot, worktree, baseBranch, command string) (*Remeasure
 		return nil, err
 	}
 	if exitCode != 0 {
-		return rec, fmt.Errorf("integration remeasure: %q exited %d (recorded as observed; the record is invalid until a green re-measure)", command, exitCode)
+		msg := fmt.Sprintf("integration remeasure: %q exited %d (recorded as observed; the record is invalid until a green re-measure)", command, exitCode)
+		if len(failing) > 0 {
+			msg += " — failing: " + boundedFailing(failing)
+		}
+		return rec, errors.New(msg)
 	}
 	if classifyErr != nil {
 		return rec, fmt.Errorf("integration remeasure: %q is not a valid re-measure (%v); the record is written and the verifier refuses it", command, classifyErr)

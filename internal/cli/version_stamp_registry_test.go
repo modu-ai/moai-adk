@@ -49,7 +49,9 @@ const (
 	// expectedRegistryEntries is the number of exact paths the registry
 	// holds. Held as a constant, never derived from a parse of itself — a
 	// count compared with itself is always equal and asserts nothing.
-	expectedRegistryEntries = 35
+	// (35 → 34: SPEC-CAPACITY-RECLAIM-001 AC-CAP-004 untracked
+	// .moai/lessons-inbox.jsonl; the registry names tracked files only.)
+	expectedRegistryEntries = 34
 
 	// expectedStampEntries is the number of entries classified stamp. Held
 	// separately from expectedRegistryEntries on purpose: deriving one from
@@ -79,13 +81,12 @@ type versionStampEntry struct {
 // versionStampRegistry names every tracked file outside the sweep's exclusion
 // groups that carried the authoritative version token at authoring time,
 // classified by what a version bump owes each. The stamp half mirrors the
-// version-sync document's Version Stamps list; the prose half is the 21
-// further files measured carrying the token at tree 051f209b0 that no bump
-// rewrites. The registry lives in Go rather than in the document because the
-// document is the bump operator's work order — burying 21 never-rewritten
-// paths in it would bury the 7 that are the actual work. The stamp set and
-// the document list are held equal by assertion, so the two lists cannot
-// drift apart quietly.
+// version-sync document's Version Stamps list; the prose half is the 27
+// further files carrying the token that no bump rewrites. The registry lives
+// in Go rather than in the document because the document is the bump
+// operator's work order — burying 27 never-rewritten paths in it would bury
+// the 7 that are the actual work. The stamp set and the document list are
+// held equal by assertion, so the two lists cannot drift apart quietly.
 var versionStampRegistry = []versionStampEntry{
 	// Stamps — a bump rewrites all seven.
 	{path: "README.md", class: versionStampClassStamp},
@@ -99,7 +100,6 @@ var versionStampRegistry = []versionStampEntry{
 	// Prose — citations of releases; a bump rewrites none of them.
 	// Historical artifacts remain exact-path prose entries; no exclusion is widened.
 	{path: ".moai/archive/worktrees/t204.diff", class: versionStampClassProse},
-	{path: ".moai/lessons-inbox.jsonl", class: versionStampClassProse},
 	{path: "reports/backlog-status-20260825.html", class: versionStampClassProse},
 	{path: "reports/backlog-status-20260826.html", class: versionStampClassProse},
 	{path: "reports/backlog-status-20260826.md", class: versionStampClassProse},
@@ -437,8 +437,8 @@ func TestVersionStampSyntheticVacuity(t *testing.T) {
 		in.population = in.population[:len(in.population)-1]
 		delete(in.contents, dropped.path)
 		findings := judgeVersionStampRegistry(in.token, in.population, in.contents, in.registry, in.docStamps)
-		if len(findings) != 1 || findings[0] != "registry entries=34 expected=35" {
-			t.Errorf("check did not emit expected failure: registry entries=34 expected=35 (got %v)", findings)
+		if len(findings) != 1 || findings[0] != "registry entries=33 expected=34" {
+			t.Errorf("check did not emit expected failure: registry entries=33 expected=34 (got %v)", findings)
 		}
 	})
 	t.Run("holds the stamp classification count", func(t *testing.T) {
@@ -589,7 +589,7 @@ func TestVersionStampSyntheticPopulationReach(t *testing.T) {
 		const unreadable = "dist/artifact.bin"
 		in.population = append(in.population, unreadable)
 		findings := judgeVersionStampRegistry(in.token, in.population, in.contents, in.registry, in.docStamps)
-		want := "judged=35 handed=36"
+		want := "judged=34 handed=35"
 		if len(findings) != 1 || findings[0] != want {
 			t.Errorf("check did not emit expected failure: %s (got %v)", want, findings)
 		}

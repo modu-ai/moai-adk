@@ -48,27 +48,29 @@ const (
 	stateLockCIMutationCost = 33 * time.Millisecond
 
 	// stateLockHeadroom is the stated headroom factor over the product
-	// above. Ten means: survive roughly ten consecutive rounds of losing
-	// to every peer before a stuck holder is declared.
+	// above. It is sized in claim-cap units as well as lost-race rounds: the
+	// lease claim's wait cap must fit three times within the budget
+	// (factory_lease_bound_test.go TestFactoryLeaseCapWithinBoardBudget,
+	// card t1696), and the claim deadline is now 2 s — sized to the load-32
+	// storm of 2026-10-14 where a single record verb measured 2.1 s and the
+	// previous 800 ms deadline killed committed transactions mid-write across
+	// every lane. 25 x 10 x 33 ms = 8.25 s ≥ 3 x 2.2 s with margin.
 	//
-	// The product stateLockSupportedWriters * stateLockHeadroom = 100 is the
-	// serialized-mutation count this policy budgets for, comfortably above
-	// the 8 x 6 = 48 mutations TestConcurrencyStress serializes through
-	// one flock. That near-coincidence used to be accidental;
-	// TestStateLockWaitBudgetCoversSerializedMutations (state_lock_wait_test.go,
-	// SPEC-STRESS-INVARIANT-VERDICT-001) now pins it, so lowering either
-	// constant here fails that guard. It is a constant-coherence relation and
-	// asserts nothing about the wait a real machine needs.
+	// The round budget stays generous: 250 is the serialized-mutation count
+	// this policy budgets for, well above the 48 TestConcurrencyStress
+	// serializes through one flock (the pinned floor in
+	// TestStateLockWaitBudgetCoversSerializedMutations is 100).
 	//
 	// Headroom history: 5 budgeted 1.65s, and CI run 36475337568 (9cc3fdc4d)
 	// starved a contender past it — TestBacklogConcurrentAdd_UniqueIDs lost
 	// the flock for the whole window under -race load with 8 contenders
 	// (flock is not FIFO-fair, so a descheduled goroutine can lose the
 	// wake-up race repeatedly). This is the second exhaustion of this class:
-	// the retired 1.025s window was the first. 10 doubles the window; if a
+	// the retired 1.025s window was the first. 10 doubled the window; if a
 	// third exhaustion lands, the fix is lock fairness (a real queue), not
-	// another raise.
-	stateLockHeadroom = 10
+	// another raise — the 2026-10-14 raise above is claim-cap sizing, not an
+	// exhaustion event.
+	stateLockHeadroom = 25
 
 	// stateLockWaitBudget is the derived elapsed window a contender polls
 	// before giving up. Bounding by elapsed time rather than by an attempt

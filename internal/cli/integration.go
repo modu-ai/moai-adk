@@ -105,6 +105,7 @@ func integrationLockRoot() string {
 func canonicalTreeSpelling(dir string) string {
 	cmd := exec.Command("git", "rev-parse", "--show-toplevel")
 	cmd.Dir = dir
+	cmd.Env = gitenv.Env() // an inherited GIT_DIR would outrank cmd.Dir
 	out, err := cmd.Output()
 	if err != nil {
 		return dir

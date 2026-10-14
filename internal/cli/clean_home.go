@@ -185,9 +185,11 @@ func scanHomeCleanable(root string, retentionDays, releaseKeep int, currentVersi
 	}
 
 	// Category 0 — per-profile projects/ entries. Age-based expiry is 180
-	// days, independent of debug/log retention. If a profile remains above the
-	// 5 GiB cap, oldest project entries become additional candidates until the
-	// estimated post-clean size is within the cap.
+	// days, independent of debug/log retention. The size cap is NOT a
+	// candidate source: state.profile_max_bytes is advisory-only
+	// (SPEC-CAPACITY-RECLAIM-001 REQ-CAP-009) — the SessionStart pass warns
+	// about profiles above the cap and deletes nothing; reclaiming space is
+	// `moai clean --home --force` on the age rules alone.
 	profilesDir := filepath.Join(root, defs.ClaudeProfilesSubdir)
 	if profiles, err := os.ReadDir(profilesDir); err == nil {
 		for _, p := range profiles {
@@ -196,10 +198,6 @@ func scanHomeCleanable(root string, retentionDays, releaseKeep int, currentVersi
 			}
 			profileRoot := filepath.Join(profilesDir, p.Name())
 			if activeClaudeProfile(profileRoot) {
-				continue
-			}
-			profileBytes, _, walkErr := walkHomeSize(profileRoot)
-			if walkErr != nil {
 				continue
 			}
 			projectsDir := filepath.Join(profileRoot, "projects")
@@ -230,25 +228,9 @@ func scanHomeCleanable(root string, retentionDays, releaseKeep int, currentVersi
 			}
 			sort.Slice(all, func(i, j int) bool { return all[i].mtime.Before(all[j].mtime) })
 			projectCutoff := now.AddDate(0, 0, -config.DefaultProfileProjectsRetentionDays)
-			selected := map[string]bool{}
 			for _, entry := range all {
 				if entry.mtime.Before(projectCutoff) {
-					if add(entry.abs, "projects", entry.size) {
-						selected[entry.abs] = true
-						profileBytes -= entry.size
-					}
-				}
-			}
-			for _, entry := range all {
-				if profileBytes <= config.DefaultProfileMaxBytes {
-					break
-				}
-				if selected[entry.abs] {
-					continue
-				}
-				if add(entry.abs, "projects", entry.size) {
-					selected[entry.abs] = true
-					profileBytes -= entry.size
+					add(entry.abs, "projects", entry.size)
 				}
 			}
 		}
@@ -307,26 +289,52 @@ func scanHomeCleanable(root string, retentionDays, releaseKeep int, currentVersi
 		}
 	}
 
-	// Category 4 — backups/removed-* directories older than retention.
+	// Category 4 — backups/removed-* directories: the three newest are kept
+	// regardless of age, and any other is a candidate only when it is ALSO
+	// older than the retention window. Removal therefore requires both
+	// "beyond the newest three" and "older than the window" (the A12 floor,
+	// SPEC-CAPACITY-RECLAIM-001 REQ-CAP-008).
+	//
+	// @MX:NOTE: [AUTO] Keep-floor invariant: the three newest backups are
+	// never candidates regardless of age — both floor conditions must hold
+	// for removal.
+	// @MX:SPEC: SPEC-CAPACITY-RECLAIM-001
 	backupsDir := filepath.Join(root, "backups")
 	if entries, err := os.ReadDir(backupsDir); err == nil {
+		type backupEntry struct {
+			abs   string
+			mtime time.Time
+		}
+		var backups []backupEntry
 		for _, e := range entries {
 			if !e.IsDir() || !strings.HasPrefix(e.Name(), "removed-") {
 				continue
 			}
 			info, err := e.Info()
-			if err != nil || !info.ModTime().Before(cutoff) {
+			if err != nil {
 				continue
 			}
-			abs := filepath.Join(backupsDir, e.Name())
-			if homeDirContainsCarvedOut(root, abs) {
+			backups = append(backups, backupEntry{
+				abs:   filepath.Join(backupsDir, e.Name()),
+				mtime: info.ModTime(),
+			})
+		}
+		sort.Slice(backups, func(i, j int) bool { return backups[i].mtime.After(backups[j].mtime) })
+		for i, b := range backups {
+			if i < 3 {
+				continue // the three newest are kept (A12 floor)
+			}
+			if !b.mtime.Before(cutoff) {
+				continue // inside the retention window
+			}
+			if homeDirContainsCarvedOut(root, b.abs) {
 				continue // R1: whole-container skip
 			}
-			size, _, walkErr := walkHomeSize(abs)
+			size, _, walkErr := walkHomeSize(b.abs)
 			if walkErr != nil {
 				continue
 			}
-			add(abs, "backups", size)
+			add(b.abs, "backups", size)
 		}
 	}
 

@@ -72,6 +72,17 @@ func TestTemplateGitignoreIgnoresLocalArtifacts(t *testing.T) {
 		{".moai/reports/graph-report.md", true, "regenerating derived artifact"},
 		{".moai/reports/plan-audit/SPEC-X.md", true, "plan-audit verdict"},
 
+		// SPEC-CAPACITY-RECLAIM-001 (AC-CAP-003): per-machine harness state
+		// and learning-history archives — untracked in the repo tree, so the
+		// deployed template must ignore them in every user project too.
+		{".moai/harness/usage-log.jsonl", true, "harness usage log (REQ-CAP-001/002)"},
+		{".moai/lessons-inbox.jsonl", true, "lessons inbox (REQ-CAP-001/002)"},
+		{".moai/harness/learning-history/archive/2026-07.jsonl.gz.corrupt", true, "corrupt archive (REQ-CAP-001/003)"},
+		{".moai/harness/learning-history/archive/2026-07.jsonl.gz", true, "monthly learning archive (REQ-CAP-001/010)"},
+		// Control: the tier-promotions ledger inside the same directory stays
+		// trackable — the archive rule must not swallow the whole tree.
+		{".moai/harness/learning-history/tier-promotions.jsonl", false, "tracked learning ledger"},
+
 		// Scaffolds — must stay trackable so the directories ship.
 		{".moai/logs/.gitkeep", false, "logs directory scaffold"},
 		{".moai/reports/plan-audit/.gitkeep", false, "plan-audit directory scaffold"},

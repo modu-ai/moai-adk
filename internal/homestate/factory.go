@@ -668,6 +668,12 @@ func isFactoryBusy(err error) bool {
 	}
 }
 
+// IsBusy reports whether err is the SQLite busy/locked class — another
+// writer or reader holding the database past the connection's busy timeout.
+// The lease claim's error classification (card t1696) uses it to report a
+// lock race as a lock race, distinct from its own deadline passing.
+func IsBusy(err error) bool { return isFactoryBusy(err) }
+
 func (f *FactoryDB) Close() error { return f.DB.Close() }
 
 // WorkerRunBinding returns the factory run the roster binds a lane label to: the run_id of the workers row

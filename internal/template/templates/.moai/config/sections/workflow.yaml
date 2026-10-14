@@ -324,11 +324,13 @@ workflow:
     # .moai hygiene engine: size-based audit-log rotation and finished-session
     # state GC. mode governs the SessionStart auto path only — the
     # `moai clean --audit-logs/--session-state` CLI mutates only with --apply
-    # on that invocation. report (default) never rotates or deletes anything.
-    # audit_log_kept_rotations is pinned to 1; any other value refuses the
-    # run (config-invalid) rather than clamping.
+    # on that invocation. apply (the shipped default) performs the auto
+    # path's non-destructive categories (audit-log rotation, closed-registry
+    # state GC); set report to make the auto path report-only, never rotating
+    # or deleting anything. audit_log_kept_rotations is pinned to 1; any
+    # other value refuses the run (config-invalid) rather than clamping.
     hygiene:
-        mode: report              # report | apply (auto path only)
+        mode: apply               # report | apply (auto path only)
         audit_log_max_bytes: 10485760
         audit_log_kept_rotations: 1
         transcript_activity_window: 48h
