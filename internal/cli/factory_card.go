@@ -49,13 +49,17 @@ var factoryLeaseBeforeClaim = func(arm, cardID string) error { return nil }
 var factoryLeaseAtPassEntry = func() {}
 
 // The lease path's claim bound and the worktree step's lock wait
-// (SPEC-FACTORY-ATOMIC-LEASE-001 plan D2, D3). The claim wait cap is the sum of
-// the claim's context deadline and the busy timeout its record connection
-// carries; it must stay within one third of the queue lock's wait budget
-// (factory.LockWaitBudget). The worktree step takes its lock for at most
+// (SPEC-FACTORY-ATOMIC-LEASE-001 plan D2, D3; deadline resized by card
+// t1696). The claim wait cap is the sum of the claim's context deadline and
+// the busy timeout its record connection carries; it must stay within one
+// third of the queue lock's wait budget (factory.LockWaitBudget). The
+// deadline is 2 s: sized to the load-32 storm of 2026-10-14 (run tmvgvn),
+// where a single record verb measured 2.1 s and the previous 800 ms deadline
+// killed committed transactions mid-write on every lane
+// (factoryClaimFailure). The worktree step takes its lock for at most
 // factoryWorktreeStepWait (factoryCreateAndRenameWorktree).
 const (
-	factoryLeaseClaimDeadline    = 800 * time.Millisecond
+	factoryLeaseClaimDeadline    = 2 * time.Second
 	factoryLeaseClaimBusyTimeout = 200 * time.Millisecond
 	factoryLeaseClaimWaitCap     = factoryLeaseClaimDeadline + factoryLeaseClaimBusyTimeout
 
@@ -63,6 +67,12 @@ const (
 	// lanes (10) x the worst observed step (2.9 s) x headroom (2), taken as 60 s.
 	factoryWorktreeStepWaitDefault = 60 * time.Second
 )
+
+// factoryLeaseClaimDeadlineOverride is the claim deadline's test seam
+// (card t1696): a positive value replaces the constant for the calls in this
+// process, so a test can drive the deadline paths deterministically. Zero
+// leaves the constant in force.
+var factoryLeaseClaimDeadlineOverride time.Duration
 
 // factoryWorktreeStepWait is the wait factoryEnsureCardWorktree gives the
 // worktree-step lock; a test shortens it and restores it at cleanup.
@@ -442,25 +452,44 @@ func factoryQueueLockError(err error) error {
 var errFactoryRecordBusy = errors.New("the factory record stayed busy")
 
 // factoryClaimContext bounds one claim — RecordPicked and the two transitions
-// taken together — by factoryLeaseClaimDeadline, and marks it so that none of
+// taken together — by the claim deadline, and marks it so that none of
 // its record writes waits for the drift log's lock (plan D2). The record
 // connection's own busy timeout bounds how far past the deadline one write can
 // run; a child of an already-bounded claim context cannot extend it.
 func factoryClaimContext(ctx context.Context) (context.Context, context.CancelFunc) {
-	return context.WithTimeout(homestate.WithBoundedReconcile(ctx), factoryLeaseClaimDeadline)
+	deadline := factoryLeaseClaimDeadline
+	if factoryLeaseClaimDeadlineOverride > 0 {
+		deadline = factoryLeaseClaimDeadlineOverride
+	}
+	return context.WithTimeout(homestate.WithBoundedReconcile(ctx), deadline)
+}
+
+// factoryClaimOneLine flattens an inner error for a claim wrap: retryFactoryBusy
+// returns errors.Join (newline-separated), and a refusal line that embeds it
+// verbatim breaks the one-line refusal contract (card t1696, family
+// regression run 2026-10-14).
+func factoryClaimOneLine(err error) string {
+	return strings.NewReplacer("\n", "; ").Replace(err.Error())
 }
 
 // factoryClaimFailure marks a claim write's error as the busy-record outcome
-// when the claim's deadline has passed; a stale version or a holder mismatch is
-// the lost race the caller already retries, and any other error stays as it is.
+// and names the class (card t1696): a deadline the claim's own context
+// passed is the host under load — never a lock race — a SQLite busy/locked
+// error is another writer holding the record, and a stale version or a
+// holder mismatch is the lost race the caller already retries. Any other
+// error stays as it is.
 func factoryClaimFailure(claimCtx context.Context, err error) error {
 	if errors.Is(err, homestate.ErrStaleVersion) || errors.Is(err, homestate.ErrLeaseHolder) {
 		return err
 	}
-	if errors.Is(claimCtx.Err(), context.DeadlineExceeded) {
-		return fmt.Errorf("%w for %s: %v", errFactoryRecordBusy, factoryLeaseClaimWaitCap, err)
+	switch {
+	case errors.Is(err, context.DeadlineExceeded) || errors.Is(claimCtx.Err(), context.DeadlineExceeded):
+		return fmt.Errorf("%w — the claim deadline (%s) passed while a record write was still running: the host is under load, not a lock race: %s", errFactoryRecordBusy, factoryLeaseClaimWaitCap, factoryClaimOneLine(err))
+	case homestate.IsBusy(err):
+		return fmt.Errorf("%w — another writer held the record past every retry: %s", errFactoryRecordBusy, factoryClaimOneLine(err))
+	default:
+		return err
 	}
-	return err
 }
 
 // factoryCardWorktreeDir is the card's landing directory under the shared
@@ -610,6 +639,26 @@ func factoryEnsureCardWorktree(ctx context.Context, root, runID string, card hom
 	return wt, true, nil
 }
 
+// uniqueWorktreeBranchName returns SessionWorktreeBranchPrefix+slug, or the
+// first suffixed form WT-<slug>-N (N from 2) whose branch ref does not yet
+// exist (card t1696, defect D3): slug tokens truncate to the same name for
+// sibling cards ("[3.2-0-1 …" and "[3.2-0-3 …" both derived WT-3-2-0), and
+// the blind rename then failed for the second card. The card id is never
+// part of the name.
+func uniqueWorktreeBranchName(slug string, exists func(string) bool) (string, error) {
+	base := SessionWorktreeBranchPrefix + slug
+	name := base
+	for n := 2; ; n++ {
+		if !exists(name) {
+			return name, nil
+		}
+		if n > 100 {
+			return "", fmt.Errorf("no free worktree branch name under %s within 100 numeric suffixes", base)
+		}
+		name = fmt.Sprintf("%s-%d", base, n)
+	}
+}
+
 // factoryCreateAndRenameWorktree runs the creator and the in-place branch
 // rename under the worktree-step lock (SPEC-FACTORY-ATOMIC-LEASE-001 plan D3):
 // two lanes creating a worktree at the same instant collided in git's own ref
@@ -629,7 +678,16 @@ func factoryCreateAndRenameWorktree(root, cardID, slug string, out io.Writer) (s
 	if err != nil {
 		return "", fmt.Errorf("create the card worktree: %w", err)
 	}
-	rename := exec.Command("git", "-C", wt, "branch", "-m", SessionWorktreeBranchPrefix+slug)
+	name, err := uniqueWorktreeBranchName(slug, func(ref string) bool {
+		// rev-parse --verify --quiet exits non-zero when the ref is absent;
+		// every failure reads as absent, and the rename below reports a real
+		// clash loudly if one remains.
+		return exec.Command("git", "-C", wt, "rev-parse", "--verify", "--quiet", "refs/heads/"+ref).Run() == nil
+	})
+	if err != nil {
+		return "", fmt.Errorf("name the card worktree branch: %w", err)
+	}
+	rename := exec.Command("git", "-C", wt, "branch", "-m", name)
 	if outb, err := rename.CombinedOutput(); err != nil {
 		return "", fmt.Errorf("rename the card worktree branch: %v: %s", err, strings.TrimSpace(string(outb)))
 	}
@@ -960,11 +1018,15 @@ func factoryNextSelectAndLease(ctx context.Context, l *factory.LockedBacklog, db
 // hub-chain after hint (REQ-TCI-020); the unnominated arms pass the hub
 // read's answer, the nominated path the one computed inside its section.
 func factoryNextRecordAndClaim(ctx context.Context, db *homestate.FactoryDB, root, runID, cardID, lane string, fields homestate.CardFields) (homestate.Card, bool, bool, error) {
-	ctx, cancel := factoryClaimContext(ctx)
+	// T1's own window (card t1696): it closes here, so the claim below wraps
+	// the CALLER's context and T2/T3 receive a full claim window instead of
+	// whatever T1 left of this one — the nested WithTimeout used to shrink
+	// the lease edge to T1's remainder.
+	recordCtx, cancel := factoryClaimContext(ctx)
 	defer cancel()
-	fresh, err := db.RecordPicked(ctx, runID, cardID, fields, "factory-next", factoryCardNow())
+	fresh, err := db.RecordPicked(recordCtx, runID, cardID, fields, "factory-next", factoryCardNow())
 	if err != nil {
-		return factoryNextClaimRefused(factoryClaimFailure(ctx, err))
+		return factoryNextClaimRefused(factoryClaimFailure(recordCtx, err))
 	}
 	// RecordPicked returns the existing row unchanged when fields are empty —
 	// whatever state it is in (card_picked.go). Both callers are queue-picked
@@ -1431,7 +1493,7 @@ func factoryNominateInSection(ctx context.Context, l *factory.LockedBacklog, db 
 	case cerr != nil:
 		return homestate.Card{}, cerr
 	case errors.Is(claimErr, errFactoryRecordBusy):
-		return homestate.Card{}, factoryRefusal(factoryRefuseRaced, "the factory record was busy for the whole %s claim wait cap, so %s was not leased; retry", factoryLeaseClaimWaitCap, cardID)
+		return homestate.Card{}, factoryRefusal(factoryRefuseRaced, "%s was not leased: %v; retry when the host is quieter", cardID, claimErr)
 	case otherHolder || claimErr == nil:
 		return homestate.Card{}, factoryRefusal(factoryRefuseRaced, "another lane leased or claimed %s first", cardID)
 	default:
@@ -1604,7 +1666,10 @@ func newFactoryNextCommand() *cobra.Command {
 				if leased {
 					wt, _, err := factoryEnsureCardWorktree(ctx, root, runID, card, lane, cmd.OutOrStdout())
 					if err != nil {
-						return fmt.Errorf("factory next: %w", err)
+						// The lease already committed (card t1696, the lane-20
+						// shape): the refusal must say so, or the lane retries a
+						// card it already holds.
+						return fmt.Errorf("factory next: %s was leased (the lease stands in the record; do not re-run next for it — settle the worktree step instead): %w", card.CardID, err)
 					}
 					card.WorktreePath = wt
 					return factoryNextPrint(cmd, card)
@@ -2642,6 +2707,7 @@ func requireQueuePicked(root, cardID string) error {
 
 func newFactoryAssignCommand() *cobra.Command {
 	var to, prefer, after, spec, worktree, contractRef, run string
+	var reassign bool
 	cmd := &cobra.Command{
 		Use:   "assign <card>",
 		Short: "Record a queue-picked card in the factory record, optionally assigning it to a lane",
@@ -2725,6 +2791,29 @@ func newFactoryAssignCommand() *cobra.Command {
 				}
 			}
 			now := factoryCardNow()
+			if reassign {
+				// The leader's recovery path (card t1696, defect D2): a dead
+				// lane's label is never reused, so its assigned cards need a
+				// way back into a lease. A lane session is refused, and the
+				// reassignment changes the owner only.
+				if factoryLaneRefusal() {
+					return fmt.Errorf("factory assign: refused — %s: reassignment is the leader path's act (%s=%s marks a lane)", factoryLaneBoundarySentinel, config.EnvFactoryRole, config.FactoryRoleLane)
+				}
+				if strings.TrimSpace(to) == "" {
+					return errors.New("factory assign: --reassign needs --to <lane>")
+				}
+				for _, name := range []string{"prefer", "after", "spec", "worktree", "contract-ref"} {
+					if cmd.Flags().Changed(name) {
+						return fmt.Errorf("factory assign: --reassign takes --to only; --%s changes no other field", name)
+					}
+				}
+				prevOwner, err := factoryAssignReassign(ctx, queueStore, db, runID, cardID, to, now)
+				if err != nil {
+					return fmt.Errorf("factory assign: %w", err)
+				}
+				_, _ = fmt.Fprintf(cmd.OutOrStdout(), "%s assigned owner=%s (reassigned from %s)\n", cardID, to, dash(prevOwner))
+				return nil
+			}
 			var card homestate.Card
 			err = queueStore.WithLock(func(l *factory.LockedBacklog) error {
 				recordCard, err := db.RecordPicked(ctx, runID, cardID, fields, "assign", now)
@@ -2794,7 +2883,9 @@ func newFactoryAssignCommand() *cobra.Command {
 			return nil
 		},
 	}
-	cmd.Flags().StringVar(&to, "to", "", "assign the card to this lane label (picked → assigned)")
+	cmd.Flags().StringVar(&to, "to", "", "assign the card to this lane label (picked → assigned); with --reassign, the lane that takes over an assigned card")
+	cmd.Flags().BoolVar(&reassign, "reassign", false,
+		"move an assigned card to --to's registered lane (the leader path for a card whose owner lane is gone; refuses a live lease and every other field)")
 	cmd.Flags().StringVar(&prefer, "prefer", "", "assignment preference hint, key=value (reported, never enforced)")
 	cmd.Flags().StringVar(&after, "after", "", "predecessor card that must reach merged-local (git-flow) or merged-pr (github-flow) first (\"\" clears)")
 	cmd.Flags().StringVar(&spec, "spec", "", "SPEC identifier for the card")
@@ -2802,6 +2893,27 @@ func newFactoryAssignCommand() *cobra.Command {
 	cmd.Flags().StringVar(&contractRef, "contract-ref", "", "contract pointer <spec-id>,<sha256>,<signed-at>[,<event>]")
 	cmd.Flags().StringVar(&run, "run", "", "factory run id (default: the single active run)")
 	return cmd
+}
+
+// factoryAssignReassign is the write half of `factory assign --reassign`
+// (card t1696, defect D2): under the queue lock, it moves an `assigned` card
+// whose owner lane is gone to another registered lane, refreshing the queue's
+// current-dispatch mirror inside the same transaction. The caller has already
+// refused lanes and a missing --to.
+func factoryAssignReassign(ctx context.Context, queueStore *factory.BacklogStore, db *homestate.FactoryDB, runID, cardID, to string, now time.Time) (string, error) {
+	var prevOwner string
+	err := queueStore.WithLock(func(l *factory.LockedBacklog) error {
+		cur, err := db.LoadCard(ctx, runID, cardID)
+		if err != nil {
+			return err
+		}
+		prevOwner = cur.OwnerLabel
+		_, err = db.ReassignCard(ctx, runID, cardID, to, "assign --reassign", now, func(homestate.Card) error {
+			return l.RefreshDispatchCurrent(cardID, runID, to)
+		})
+		return err
+	})
+	return prevOwner, err
 }
 
 // factoryCardView is one card as `status` reports it.
