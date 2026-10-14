@@ -151,20 +151,32 @@ func zoneResolveWalk(p string, depth int, windows bool) (string, bool) {
 		case "", ".":
 			// repeated or trailing separators, and the dot itself
 		case "..":
-			if skipped == 0 {
-				if absolute {
-					// POSIX root semantics (card t1712 repair round): ".." at
-					// the filesystem root stays at the root — the shell
-					// resolves /../r/alias as r/alias and deletes through it.
-					// The walk continues from the root instead of failing
-					// closed, matching the EvalSymlinks fast path and the
-					// lexical arm's Clean on the same spelling. A RELATIVE
-					// walk keeps the fail-closed answer: nothing vouches for
-					// a ".." above its base.
-					continue
+			if absolute {
+				// POSIX root semantics (card t1712 repair round): ".." at the
+				// filesystem root stays at the root — the shell resolves
+				// /../r/alias as r/alias and deletes through it. The walk
+				// continues from the root instead of failing closed, matching
+				// the EvalSymlinks fast path and the lexical arm's Clean on
+				// the same spelling.
+				// Root-reach is decided from the RESOLVED PREFIX STRING, never
+				// the skipped counter (card t1712 repair round 6): one
+				// resolved dir symlink adds many real components but a single
+				// counter unit, so a counter-driven root rule runs out
+				// mid-walk and ignores the remaining ".." while real bash is
+				// still climbing INSIDE the zone. ".." is a no-op only when
+				// the resolved prefix IS the filesystem root; otherwise it
+				// pops one real component — the same climb the shell performs.
+				if resolved != filepath.ToSlash(volume)+"/" {
+					trimmed := strings.TrimSuffix(resolved, "/")
+					if idx := strings.LastIndex(trimmed, "/"); idx >= 0 {
+						resolved = trimmed[:idx+1]
+					}
 				}
-				// ".." over a prefix that never resolved: the path walks
-				// outside anything this function can vouch for
+				continue
+			}
+			if skipped == 0 {
+				// RELATIVE walk keeps the fail-closed answer: nothing vouches
+				// for a ".." above its base
 				return "", false
 			}
 			trimmed := strings.TrimSuffix(resolved, "/")

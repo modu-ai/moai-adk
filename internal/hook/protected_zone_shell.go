@@ -110,12 +110,31 @@ func zoneUnlinkLinkOwn(cand string, windows bool) bool {
 	if seg == "." || seg == ".." {
 		return false
 	}
-	if windows && strings.TrimRight(seg, ". ") != seg {
-		// Win32 strips trailing dots/spaces — the name is non-canonical and
-		// aliases a different entry; never judge it as the link's own
+	if windows && (strings.TrimRight(seg, ". ") != seg || hasShortNameShape(seg)) {
+		// Win32 strips trailing dots/spaces from the final component and NTFS
+		// 8.3 aliases a long name onto its "~N" short name — both spellings
+		// name a DIFFERENT entry than the raw text judges, so they never
+		// route to the link-own resolver (which preserves the raw name); the
+		// target-following resolver's EvalSymlinks/Lstat work judges the
+		// REAL entry (card t1712 repair rounds 5-6)
 		return false
 	}
 	return true
+}
+
+// hasShortNameShape reports the NTFS 8.3 short-name shape — a "~" followed
+// by a digit anywhere in the final component (SECRET~1.MD, REPORT~2.TXT):
+// with 8.3 name generation enabled that spelling removes the long name it
+// aliases, and the Go stdlib offers no short-name expansion, so the raw name
+// cannot be canonicalized here. The classifier only detects the shape.
+// Ceiling: 8.3 aliases outside the "~digit" shape are not covered.
+func hasShortNameShape(seg string) bool {
+	for i := 0; i+1 < len(seg); i++ {
+		if seg[i] == '~' && seg[i+1] >= '0' && seg[i+1] <= '9' {
+			return true
+		}
+	}
+	return false
 }
 
 // zoneGitMutating are the git subcommands of REQ-SIPZ-007.

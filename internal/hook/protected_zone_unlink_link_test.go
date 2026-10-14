@@ -276,15 +276,24 @@ func TestZoneUnlinkLinkOwnWindowsSeparators(t *testing.T) {
 		{cand: `secret.md.`, windows: true, want: false},
 		{cand: `secret.md `, windows: true, want: false},
 		{cand: `dir\secret.md.`, windows: true, want: false},
+		// windows: an NTFS 8.3 short-name shape (~N) aliases the long name
+		// (SECRET~1.MD removes secret-long-name.md) and the stdlib cannot
+		// expand it — never judge it as the link's own entry.
+		{cand: `SECRET~1.MD`, windows: true, want: false},
+		{cand: `dir\REPORT~2.TXT`, windows: true, want: false},
 		// POSIX: the backslash is a filename character — the identical texts
 		// stay link-own finals (the backslash-literal SPEC's constraint).
 		{cand: `zonelink\.`, windows: false, want: true},
 		{cand: `zonelink\`, windows: false, want: true},
 		// POSIX: a trailing dot or space is an ORDINARY filename character —
-		// `secret.md.` is a real, distinct entry and stays link-own.
+		// `secret.md.` is a real, distinct entry and stays link-own. A "~N"
+		// substring is likewise an ordinary name on POSIX — no 8.3 aliasing
+		// exists there.
 		{cand: `secret.md.`, windows: false, want: true},
 		{cand: `secret.md `, windows: false, want: true},
 		{cand: `dir/secret.md.`, windows: false, want: true},
+		{cand: `SECRET~1.MD`, windows: false, want: true},
+		{cand: `dir/REPORT~2.TXT`, windows: false, want: true},
 		{cand: `zone_dir/link_x`, windows: false, want: true},
 		{cand: `zone_dir/link_x/`, windows: false, want: false},
 		{cand: `zonelink/.`, windows: false, want: false},
@@ -316,7 +325,7 @@ func TestZoneUnlinkLinkOwnWindowsSeparators(t *testing.T) {
 // observation.
 func TestZoneResolveWalkWindowsRootedDotDot(t *testing.T) {
 	root := newUnlinkLinkRoot(t)
-	windowsPath := strings.ReplaceAll("/../"+root+"/zonelink", "/", "\\")
+	windowsPath := zoneRootedDotDotPath(root, "/zonelink", true)
 	resolved, ok := zoneResolveWalk(windowsPath, 0, true)
 	if !ok {
 		t.Fatalf("zoneResolveWalk(%q, windows=true) failed closed — a leading \\ roots the path on the current drive, the walk must continue at the filesystem root", windowsPath)
@@ -325,9 +334,80 @@ func TestZoneResolveWalkWindowsRootedDotDot(t *testing.T) {
 		t.Errorf("zoneResolveWalk(%q, windows=true) = %q, want the rooted parent resolved through the symlink (…/protected)", windowsPath, got)
 	}
 	// the POSIX control pins the "/" spelling's round-1 rule unchanged
-	resolved, ok = zoneResolveWalk("/../"+root+"/zonelink", 0, false)
+	resolved, ok = zoneResolveWalk(zoneRootedDotDotPath(root, "/zonelink", false), 0, false)
 	if !ok || !strings.HasSuffix(filepath.ToSlash(resolved), "/protected") {
 		t.Errorf("zoneResolveWalk(/..-rooted, windows=false) = %q ok=%v, want the root-rule resolution …/protected", resolved, ok)
+	}
+	// repair round 6 P1: a resolved dir symlink adds MANY real components but
+	// a SINGLE counter unit, so the walked DEFICIT (alias chain length) can
+	// exceed the counter the prefix funded — then some ".." is IGNORED-at-
+	// root while real bash is still climbing INSIDE the zone. The chain must
+	// be deeper than any host's resolved prefix (darwin temp roots resolve
+	// to ~8 components), so the cell composes both from one constant: twelve
+	// dirs deep, twelve "..". The buggy counter runs out mid-chain and the
+	// walk sticks at a dN dir (missing name → allow) while real bash lands
+	// on …/protected and removes secret.md inside the zone. Root-reach must
+	// come from the resolved prefix string, and the pop from it — never the
+	// counter.
+	const aliasDepth = 12
+	chain := make([]string, 0, aliasDepth+1)
+	chain = append(chain, "protected")
+	for i := 0; i < aliasDepth; i++ {
+		chain = append(chain, fmt.Sprintf("d%d", i))
+	}
+	deep := filepath.Join(root, filepath.Join(chain...))
+	if err := os.MkdirAll(deep, 0o755); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.Symlink(filepath.Join(chain...), filepath.Join(root, "deepalias")); err != nil {
+		t.Skipf("symlinks unavailable: %v", err)
+	}
+	final := "/deepalias/" + strings.Repeat("../", aliasDepth) + "secret.md"
+	resolved, ok = zoneResolveWalk(zoneRootedDotDotPath(root, final, false), 0, false)
+	if !ok || !strings.HasSuffix(filepath.ToSlash(resolved), "/protected/secret.md") {
+		t.Errorf("zoneResolveWalk(deep-alias .. chain, windows=false) = %q ok=%v, want the resolved-prefix pop landing on the protected entry …/protected/secret.md — the guard's deny", resolved, ok)
+	}
+}
+
+// zoneRootedDotDotPath composes the drive-rooted ".." spelling a test walks:
+// the fixture root with the volume split off, prefixed "/../" (slash-flipped
+// on windows). Repair round 6 P2: splitting the volume FIRST keeps a
+// Windows-host root (e.g. "C:\...\001") composing "\..\...\final" — rooted
+// on the current drive — instead of splicing the drive letter mid-path after
+// the "..", which no Win32 API resolves.
+func zoneRootedDotDotPath(root, final string, windows bool) string {
+	volume := filepath.VolumeName(root)
+	if volume == "" && len(root) >= 2 && root[1] == ':' &&
+		(('A' <= root[0] && root[0] <= 'Z') || ('a' <= root[0] && root[0] <= 'z')) {
+		// a Windows drive volume is a property of the root STRING, not of
+		// the running host — filepath.VolumeName only recognizes the form
+		// on a windows GOOS, and this composition must behave identically
+		// on every OS
+		volume = root[:2]
+	}
+	remainder := strings.TrimPrefix(strings.TrimPrefix(root[len(volume):], "/"), "\\")
+	rooted := "/../" + remainder + final
+	if windows {
+		return strings.ReplaceAll(rooted, "/", "\\")
+	}
+	return rooted
+}
+
+// TestZoneRootedDotDotPathSplitsVolume — repair round 6 P2: the rooted ".."
+// composition strips the fixture root's volume BEFORE prefixing, so a
+// Windows-style root composes "\..\Users\...\zonelink" with no drive letter
+// after the "..". The volume is a property of the root STRING, not of the
+// host, so injecting a synthetic "C:\"-style root exercises the composition
+// on every OS.
+func TestZoneRootedDotDotPathSplitsVolume(t *testing.T) {
+	const syntheticRoot = `C:\Users\goos\T\root001`
+	got := zoneRootedDotDotPath(syntheticRoot, "/zonelink", true)
+	if want := `\..\Users\goos\T\root001\zonelink`; got != want {
+		t.Errorf("zoneRootedDotDotPath(%q, windows=true) = %q, want %q — the volume must split off before the \"..\" prefix (a drive letter after \"\\\\..\\\\\" does not resolve on Windows)", syntheticRoot, got, want)
+	}
+	posix := zoneRootedDotDotPath(syntheticRoot, "/zonelink", false)
+	if strings.Contains(posix, "C:") {
+		t.Errorf("zoneRootedDotDotPath(%q, windows=false) = %q, want the volume split off here too", syntheticRoot, posix)
 	}
 }
 
