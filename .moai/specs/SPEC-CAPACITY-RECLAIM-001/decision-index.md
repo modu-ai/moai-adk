@@ -1,6 +1,6 @@
 # Decision Index — SPEC-CAPACITY-RECLAIM-001
 
-Authored because `.moai/config/sections/interview.yaml` sets `decision_gate: on` (line 6). Stateless on the status axis (no status field). Operator verdicts are left empty at authoring. No row is implementation-level, so no `DEFAULT-APPLIED` line is written at plan close. All four rows remain OPEN in revision v0.1.2.
+Authored because `.moai/config/sections/interview.yaml` sets `decision_gate: on` (line 6). Stateless on the status axis (no status field). No row is implementation-level, so no `DEFAULT-APPLIED` line is written at plan close. Revision v0.2.0: Q1, Q2, and Q4 carry operator verdict 8a62 (2026-10-10); Q3's measurement is recorded and its untracking is authorized by the operator's narrowed-scope decision of 2026-10-10. The bulk-run scope that Q2 rejected (the sweep report fields, the `--yes` narrowing, `moai worktree list`, the evidence rows, the 10 GiB target) moved to card B under that same decision; the doctor cap read-path moved to card D; the inbox rotation moved to card t1653.
 
 ### Q1: Should the shipped default of `workflow.hygiene.mode` change from `report` to `apply`?
 
@@ -17,11 +17,11 @@ Operator verdict: 8a62, 2026-10-10. APPROVED as a split default (decided by the 
 Label: FOUNDER
 Class: product-level (fail-closed: irreversible disposal of user work)
 Authority anchor: none
-Why unresolved: disposal is irreversible. `moai worktree sweep --yes` disposes every candidate whose predicates pass; its evaluation has no owner predicate and no unpushed-commit predicate today (`internal/cli/worktree/sweep.go:409–525`), and its `--yes` loop has no owner-confirmation step. An unpushed branch holds the only copy of its work until a remote has it. Under this SPEC's REQ-CAP-011 the owner is an advisory report field and changes no `--yes` disposal (operator verdict 8a62), so a bulk run would remove the same trees as today, whatever their owner state. Manually created trees keep the `moai worktree done` path (`internal/cli/worktree/done.go`). Whether a bulk run is acceptable is part of this decision. The approval gates only the bulk run this SPEC executes (M4); it does not remove the `--yes` verb, which REQ-CAP-011 does not narrow.
+Why unresolved: disposal is irreversible. `moai worktree sweep --yes` disposes every candidate whose predicates pass; its evaluation has no owner predicate and no unpushed-commit predicate today (`internal/cli/worktree/sweep.go:409–525`), and its `--yes` loop has no owner-confirmation step. An unpushed branch holds the only copy of its work until a remote has it. Under verdict 8a62 the owner is an advisory report field and changes no `--yes` disposal, so a bulk run would remove the same trees as today, whatever their owner state; the report-field and narrowing scope that raised this question moved to card B (operator narrowed-scope decision, 2026-10-10). Manually created trees keep the `moai worktree done` path (`internal/cli/worktree/done.go`). Whether a bulk run is acceptable is part of this decision. The verdict gates the bulk run; it does not remove the `--yes` verb.
 Default: reject (no bulk run executed under this SPEC) (rule: the option that preserves current behavior: no disposal happened)
 Alternate: approve a bulk run against the report, after M3 and M4 are in place
 Size target (pending operator confirmation; not part of verdict 8a62): linked worktrees below 10 GiB (10,485,760 KiB). Source: plan row 3.2-0-2 of the untracked card scope, not a committed authority (`spec.md` A12). AC-CAP-002 is bound to this pending value.
-Operator verdict: 8a62, 2026-10-10. REJECTED under this SPEC (matches the Default): no bulk run is executed here. The candidate report of REQ-CAP-010 is a required deliverable and carries owner, branch, unpushed commit count, and last activity. The actual sweep is run by the operator with `--yes`, outside this SPEC; this SPEC approves no disposal narrowing for it.
+Operator verdict: 8a62, 2026-10-10. REJECTED under this SPEC (matches the Default): no bulk run is executed here. The actual sweep is run by the operator with `--yes`, outside this SPEC; this SPEC approves no disposal narrowing for it. Narrowed-scope decision, 2026-10-10: the sweep report deliverable and the 10 GiB size target moved to card B with the rest of the sweep scope; no criterion of card A depends on this row.
 
 ### Q3: Which clones hold local data in `usage-log.jsonl` and `lessons-inbox.jsonl` that the untracking commit would affect on pull?
 
@@ -30,7 +30,7 @@ Authority anchor: none
 Why unresolved: the number of clones and each clone's local state are not measured. A commit that removes a tracked file changes the working copy of each clone that pulls it. How git treats a locally modified copy on that pull (refusal, or removal of a copy identical to HEAD) is git's behavior and is not measured in this SPEC. Measurement recipe, to be run by the operator in each clone: `git status --porcelain -- .moai/harness/usage-log.jsonl .moai/lessons-inbox.jsonl` (a listed path differs from HEAD) and `wc -c .moai/harness/usage-log.jsonl .moai/lessons-inbox.jsonl`. Record the count of clones with a listed path, and the byte counts, in the row before the verdict.
 Default: hold the M2 push until the evidence is recorded (rule: the option that preserves current behavior: the files stay tracked)
 Alternate: push the M2 commit after the evidence is recorded
-Operator verdict:
+Operator verdict: measurement recorded (2026-10-10): the per-clone recipe was executed across the registered clones and is recorded at `.moai/reports/t1631/q3-clone-measurement.md` (usage-log modified against HEAD in the primary checkout and in several card trees; lessons-inbox clean everywhere but the primary; byte counts recorded per clone). The untracking (M2, commit B1) is authorized by the operator's narrowed-scope decision of 2026-10-10 and lands through the card's normal landing path; the lane does not push.
 
 ### Q4: Should `.moai/harness/usage-log.jsonl` be rotated by the hygiene rotator instead of its existing owner?
 
