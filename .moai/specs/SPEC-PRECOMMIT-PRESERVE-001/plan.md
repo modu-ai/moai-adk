@@ -11,11 +11,13 @@ nothing else.
 
 ## §A Context
 
-`internal/cli/hook_install_precommit.go` (179 lines `@294b4b6ab`) is the implementation surface. Two
-callers, both invoking `installPreCommitHookOptional` and both gated by `--no-hooks`:
-`internal/cli/update_template_sync.go:575 @294b4b6ab` and `internal/cli/init.go:898 @294b4b6ab`.
+`internal/cli/hook_install_precommit.go` (179 lines `@294b4b6ab`) is the implementation surface. Three
+callers, each invoking `installPreCommitHookOptional` and each gated by `--no-hooks`:
+`internal/cli/update_template_sync.go:575 @294b4b6ab`, `internal/cli/init.go:898 @294b4b6ab`, and
+the resume path added at v0.6.0: `resumeInitializedProject` in `internal/cli/init_resume.go`
+(line 158 `@cae7e28fe`).
 
-**Each caller changes by exactly one line, and no more.** Version 0.2.0 of this plan said "neither
+**Each existing caller changes by exactly one line, and the resume caller gains exactly one call; no more.** Version 0.2.0 of this plan said "neither
 caller changes", which made REQ-PCP-004 ("on stderr") unsatisfiable: the installer has a single
 writer, and the `moai update` caller binds it to **stdout** (`out := cmd.OutOrStdout()` at
 `update_template_sync.go:69 @7b2f42be0`, inside `runTemplateSyncWithReporter`; a second,
@@ -25,10 +27,27 @@ repair — weakening AC-PCP-004 to capture `os.Stderr` — which is exactly the 
 SPEC exists to prevent.
 
 The permitted change is: add a warning-writer parameter to `installPreCommitHookOptional`, and pass
-the stderr writer each caller already holds — `errOut` (`update_template_sync.go:72 @7b2f42be0`) and
-`cmd.ErrOrStderr()` (`init.go:898 @7b2f42be0`). Nothing else in either caller moves: not the
+the stderr writer each existing caller already holds — `errOut` (`update_template_sync.go:72 @7b2f42be0`) and
+`cmd.ErrOrStderr()` (`init.go:898 @7b2f42be0`). Nothing else in either existing caller moves: not the
 `--no-hooks` gate, not the ordering against `installPrePushHookOptional`, not the existing progress
-writer. spec.md §C.4 carries the same permission; anything wider is out of scope.
+writer.
+
+**Third call site (added at v0.6.0).** The resume path that completes an interrupted `moai init` —
+`resumeInitializedProject` in `internal/cli/init_resume.go`, whose `installPreCommitHookOptional`
+call is at line 158 `@cae7e28fe` — is permitted exactly **one new call**, not a changed line. The
+call must take the form
+`installPreCommitHookOptional(opts.ProjectRoot, getBoolFlag(cmd, "no-hooks"), cmd.ErrOrStderr(), cmd.ErrOrStderr())`,
+the form `init.go` uses, so the progress writer and the warning writer are both the command's
+stderr. It sits directly after the `installPrePushHookOptional` call, in the order `init.go` uses,
+and a returned error is reported to the operator and not returned, so it does not fail the resume.
+This permission covers that one call and nothing else in `init_resume.go`; the rest of the resume
+path belongs to card SPEC-USERASSET-DEPLOY-GUARD-001 and is not brought into scope here. The resume
+dispatch branch that `runInit` in `internal/cli/init.go` takes to hand an interrupted init to
+`resumeInitializedProject` is not a change to the existing installer call at `init.go`; it changes
+neither that call, its `--no-hooks` gate, its writers, nor its ordering, and it is outside this
+caller-change restriction.
+`spec.md §C.4` carries the same permission in the same words; a wider caller change is out of scope
+and belongs to its own card.
 
 ## §B Known Issues carried in
 
@@ -66,8 +85,9 @@ writer. spec.md §C.4 carries the same permission; anything wider is out of scop
   necessary during M1 or M2, the sidecar decision (spec.md §A.5, Decision 1) has been abandoned —
   stop and re-open that decision rather than absorbing the edit quietly.
 - `make build` is not expected at any point: no template or embedded content changes.
-- Caller edits are limited to the single-line warning-writer argument at each of the two call sites
-  (§A). A caller change beyond that is a scope violation, not an implementation detail.
+- Caller edits are limited to the single-line warning-writer argument at each of the two existing call
+  sites, and to the one new call in the resume path, exactly as §A permits. A caller change beyond that
+  is a scope violation, not an implementation detail.
 - The hook body stays byte-identical throughout. AC-PCP-005 sub-case (c) and AC-PCP-013 observe it;
   if either goes red, an edit has reached the constant or the template and the run has left scope.
 - **Release composition is a constraint on this SPEC's release, not on this SPEC's diff** (spec.md

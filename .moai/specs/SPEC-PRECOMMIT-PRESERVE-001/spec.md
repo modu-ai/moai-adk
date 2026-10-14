@@ -1,10 +1,10 @@
 ---
 id: SPEC-PRECOMMIT-PRESERVE-001
 title: "Pre-commit hook install must never silently discard a local patch"
-version: "0.5.0"
-status: completed
+version: "0.6.0"
+status: in-progress
 created: 2026-08-24
-updated: 2026-08-25
+updated: 2026-10-10
 author: manager-spec (card t230)
 priority: P2
 tier: M
@@ -12,6 +12,7 @@ phase: "v3.1.4 target"
 module: "internal/cli"
 lifecycle: spec-anchored
 tags: "hooks, cli, pre-commit, data-loss, provenance, install-safety"
+amendment_of: SPEC-PRECOMMIT-PRESERVE-001
 ---
 
 # SPEC-PRECOMMIT-PRESERVE-001 — Pre-commit hook install must never silently discard a local patch
@@ -27,6 +28,18 @@ tags: "hooks, cli, pre-commit, data-loss, provenance, install-safety"
 | 2026-08-24 | 0.3.0 | Plan-audit iteration 1 remediation (`.moai/reports/t230/plan-audit.md`, PASS-WITH-DEBT 0.875). D1 closed: REQ-PCP-010 now states the backup-failure precedence explicitly and separates it from the provenance-failure case. D2 closed: REQ-PCP-004's "on stderr" reconciled with the installer's single-writer signature by adding a warning writer and permitting the two-line caller change (plan.md §A). D3 closed: the one-entry previous-digest corpus is evaluated and rejected on its own terms (§A.5), the release composition is decided (§A.5 Decision 3 — the hook-body change ships after the classifier), and REQ-PCP-015/AC-PCP-015 bind that composition mechanically. D4 (sweep-pattern semantics, §A.4), D5 (backup-succeeded/write-failed edge row), D6 (AC-PCP-002 falsification label), D7 (`Where` → `When` on four requirements) also closed. 14 REQ/AC → 15. |
 | 2026-08-25 | 0.5.0 | Plan-audit iteration 3 remediation (`.moai/reports/t230/plan-audit-3.md`, PASS-WITH-DEBT 0.8875, flat). **D1 closed**: the release-composition constraint is restored as §A.5 Decision 3 and re-scoped from "the successor card" to **any** hook-body change competing for the classifier's release, naming card t237/#1641 (re-measured this round: issue open, verified patch on `t312-precommit-vet @ b6f478b1a`); §C.2's "moot / any order" is corrected to hold on the merge-conflict axis only; the constraint's three red-moments are named, one of them a DoD item (acceptance.md §D.3) that is not green by construction, and the release-candidate moment is routed outward rather than faked as an internal criterion. **D2 closed**: AC-PCP-005's Decides now runs `-v` with the run's skip status inspected, and its Then clause fails on a skipped sub-case (c) — the treatment AC-PCP-013 already used. **D3 closed**: acceptance.md §D.4 states sub-case (c)'s pin rule and the re-pin obligation on a legitimate body change, separating the REQ-PCP-005 check from the body-stability guard (which stays with plan.md §F's M2 scope gate and AC-PCP-013). **D5 closed** (the edge-case citation now names the creating call). D4 declined — a third notice element weakens a notice whose strength is its size, and REQ-PCP-006's disclosure floor holds without it. D6 needs no action. 12 REQ / 12 AC unchanged. |
 | 2026-08-24 | 0.4.0 | Scope reduction after plan-audit iteration 2 (`.moai/reports/t230/plan-audit-2.md`, PASS-WITH-DEBT 0.8875). The `pre-commit.local` extension point (REQ-PCP-011, REQ-PCP-012) and the release-composition binding (REQ-PCP-015) are **removed from this SPEC and moved to a successor card** — see §D Out of Scope → the `pre-commit.local` extension point. Reason: all four of the iteration-2 blocking defects (N1 unenforceable release constraint, N2 three-referent "last released hook body", N3 unresolved t237 collision, N4 unmeasured first-upgrade population) exist only because M3 changes the hook body, which forces this SPEC to reason about release composition. Removing M3 dissolves N1-N3 outright; N4 survives on its own terms and is closed here by AC-PCP-005 sub-case (c). The auditor found M1 and M2 fit to enter run-phase as they stand. Minors N5 (AC-PCP-004 clause (ii) Decides), N6 (§A.4 self-counting numeral) and N7 (non-agent subject) also closed. 15 REQ/AC → 12. **Identifiers are not renumbered**: REQ/AC-PCP-011, -012 and -015 are retired, leaving gaps, because renumbering would invalidate every citation in the two audit reports and in this HISTORY. |
+| 2026-10-10 | 0.6.0 | In-place amendment (`completed → in-progress`): §C.4 admits a third call site, the resume path `resumeInitializedProject` in `internal/cli/init_resume.go` (card t1591, SPEC-USERASSET-DEPLOY-GUARD-001). plan.md §A and §D restate the same permission. Prior close 0.5.0, prior_completed_sha `cd90ec40b`. See `## Amendments`. |
+
+## Amendments
+
+In-place amendment to version 0.6.0 (status `completed` → `in-progress`, 2026-10-10). The prior close is version 0.5.0; its sync commit is `cd90ec40b`.
+
+| Item | Value |
+|---|---|
+| prior completed version | 0.5.0 |
+| prior_completed_sha | `cd90ec40b`, the `sync_commit_sha` in progress.md §E.4 (full `cd90ec40b2f033959cb05909262b79c062eb3ae6`, "docs(SPEC-PRECOMMIT-PRESERVE-001): sync-phase artifacts (t230)"). This is the pre-squash sync commit of the card branch WT-precommit-preserve. Measured 2026-10-10: it is not an ancestor of `main`, which carries the same close through squash-merged commits. |
+| rationale | Card t1591 (SPEC-USERASSET-DEPLOY-GUARD-001) adds a resume path for an interrupted `moai init`: `resumeInitializedProject` in `internal/cli/init_resume.go`. Its pre-commit install call (line 158 `@cae7e28fe`, added by commit `f9a58fa4e`) brings the resume to parity with a healthy init, which installs the same hook. That is a third caller of `installPreCommitHookOptional`, and the closed §C.4 named exactly two. The operator decided (factory decision board, record `d-20261009T180845Z-ae0e`) to amend this clause so that it agrees with the card, and not to remove the resume caller or to bend the card to the old clause. |
+| scope | §C.4: one new call in `resumeInitializedProject`, in the form §C.4 states. plan.md §A and §D restate that permission. The resume dispatch branch in `runInit` (`init.go`) that hands an interrupted init to `resumeInitializedProject` is carved out: it changes neither the existing installer call at `init.go`, nor its `--no-hooks` gate, writers, or ordering, and it is outside this caller-change restriction. The frontmatter (`status`, `amendment_of`, `version`, `updated`) and the HISTORY row change with it. Not changed by this amendment: REQ-PCP-004 (its "both callers" wording), AC-PCP-004 clause (ii) in acceptance.md, the plan.md §F M2 bullet (historical wording), the installer, the hook body (`preCommitHookContent` and its template twin), and the two existing call sites. |
 
 ## §A.0 Citation convention
 
@@ -455,8 +468,24 @@ REQ-PCP-004 requires a warning writer distinct from the progress writer, which t
 single-writer signature cannot express. This SPEC therefore permits **exactly one** change at each
 call site: passing the already-available stderr writer as the new parameter —
 `errOut` at `internal/cli/update_template_sync.go:72 @7b2f42be0`, and `cmd.ErrOrStderr()` at
-`internal/cli/init.go:898 @7b2f42be0`. Nothing else in either caller changes: not the `--no-hooks`
-gate, not the ordering relative to `installPrePushHookOptional`, not the existing progress writer.
+`internal/cli/init.go:898 @7b2f42be0`. Nothing else in either existing caller changes: not the
+`--no-hooks` gate, not the ordering relative to `installPrePushHookOptional`, not the existing
+progress writer.
+
+**Third call site (added at v0.6.0).** The resume path that completes an interrupted `moai init` —
+`resumeInitializedProject` in `internal/cli/init_resume.go`, whose `installPreCommitHookOptional`
+call is at line 158 `@cae7e28fe` — is permitted exactly **one new call**, not a changed line. The
+call must take the form
+`installPreCommitHookOptional(opts.ProjectRoot, getBoolFlag(cmd, "no-hooks"), cmd.ErrOrStderr(), cmd.ErrOrStderr())`,
+the form `init.go` uses, so the progress writer and the warning writer are both the command's
+stderr. It sits directly after the `installPrePushHookOptional` call, in the order `init.go` uses,
+and a returned error is reported to the operator and not returned, so it does not fail the resume.
+This permission covers that one call and nothing else in `init_resume.go`; the rest of the resume
+path belongs to card SPEC-USERASSET-DEPLOY-GUARD-001 and is not brought into scope here. The resume
+dispatch branch that `runInit` in `internal/cli/init.go` takes to hand an interrupted init to
+`resumeInitializedProject` is not a change to the existing installer call at `init.go`; it changes
+neither that call, its `--no-hooks` gate, its writers, nor its ordering, and it is outside this
+caller-change restriction.
 `plan.md §A` carries the same permission in the same words; a wider caller change is out of scope
 and belongs to its own card.
 

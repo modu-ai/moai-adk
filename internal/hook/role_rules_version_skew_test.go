@@ -59,7 +59,9 @@ func TestRoleRulesVersionSkewFailureDetailNamesRemedy(t *testing.T) {
 	// The fixture stamp deliberately differs from the build-default version
 	// (pkg/version defaults to v3.1.3) so the skew is detectable and both
 	// versions are nameable in the detail (REQ-RIB-006).
-	root := skewFixtureRoot(t, "template_version: v0.0.0-fixture-stamp\n")
+	// The stamp sits under the moai section, the shape the shipped system.yaml uses
+	// (card t1619, codex review P2: the stamp is read as YAML, not searched).
+	root := skewFixtureRoot(t, "moai:\n  template_version: v0.0.0-fixture-stamp\n")
 	t.Setenv("MOAI_FACTORY_WORKER", "lane-1")
 
 	inj := roleRuleInjectionFor(root, "startup", "en")
