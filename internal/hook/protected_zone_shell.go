@@ -2250,12 +2250,23 @@ func (h *preToolHandler) checkProtectedZoneShell(agentID string, toolInput json.
 	// dedup BEFORE the cap: a unicode-free command contributes the same
 	// path from both worlds, and capping before dedup would false-deny a
 	// plain command whose deduped set fits (gate round 19 P2). The link-own
-	// list dedups the same way, and both lists count against the one cap —
-	// the split partitions one candidate set, so the total is unchanged
-	// (card t1712).
+	// list dedups the same way, and the cap counts the DEDUPLICATED UNION of
+	// both lists by folded path form (card t1712 repair round 3): one
+	// command naming the same path under rm (link-own) and tee
+	// (target-following) lands it in BOTH lists, and counting the
+	// memberships additively denied a set whose unique population is within
+	// the cap. Each membership still judges under its own semantics below —
+	// a path present in both lists stays deny when either reading hits the
+	// zone.
 	w.cands = zoneDedupStrings(w.cands)
 	w.linkCands = zoneDedupStrings(w.linkCands)
-	overCap := len(w.cands)+len(w.linkCands) > zoneCandidateCap
+	unique := make(map[string]bool, len(w.cands)+len(w.linkCands))
+	for _, list := range [2][]string{w.cands, w.linkCands} {
+		for _, cand := range list {
+			unique[config.FoldZoneText(cand)] = true
+		}
+	}
+	overCap := len(unique) > zoneCandidateCap
 	if overCap {
 		// a candidate set beyond the cap cannot be judged soundly at this
 		// scale — denied fail-closed REGARDLESS of manifest state: a set

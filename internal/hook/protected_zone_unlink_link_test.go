@@ -287,3 +287,54 @@ func TestZoneUnlinkLinkOwnWindowsSeparators(t *testing.T) {
 		})
 	}
 }
+
+// TestZoneResolveWalkWindowsRootedDotDot — repair round 3 P1: on WINDOWS a
+// leading "\" ROOTS the path on the current drive, so `\..\<root>\zonelink`
+// IS `<root>\zonelink` and the walk must continue at the filesystem root —
+// the same root rule the "/" spelling got in repair round 1. Treated as
+// relative, the walk fails closed at that ".." (skipped==0), the parent
+// symlink is never resolved, and the rooted deletion through it reads allow.
+// The windows flag rides in as an argument (the pathSegments idiom); Windows
+// end-to-end semantics are not executable on this darwin host — this walk
+// unit is the measurable surface, CI's windows matrix owns the guard-level
+// observation.
+func TestZoneResolveWalkWindowsRootedDotDot(t *testing.T) {
+	root := newUnlinkLinkRoot(t)
+	windowsPath := strings.ReplaceAll("/../"+root+"/zonelink", "/", "\\")
+	resolved, ok := zoneResolveWalk(windowsPath, 0, true)
+	if !ok {
+		t.Fatalf("zoneResolveWalk(%q, windows=true) failed closed — a leading \\ roots the path on the current drive, the walk must continue at the filesystem root", windowsPath)
+	}
+	if got := filepath.ToSlash(resolved); !strings.HasSuffix(got, "/protected") {
+		t.Errorf("zoneResolveWalk(%q, windows=true) = %q, want the rooted parent resolved through the symlink (…/protected)", windowsPath, got)
+	}
+	// the POSIX control pins the "/" spelling's round-1 rule unchanged
+	resolved, ok = zoneResolveWalk("/../"+root+"/zonelink", 0, false)
+	if !ok || !strings.HasSuffix(filepath.ToSlash(resolved), "/protected") {
+		t.Errorf("zoneResolveWalk(/..-rooted, windows=false) = %q ok=%v, want the root-rule resolution …/protected", resolved, ok)
+	}
+}
+
+// TestProtectedZoneShellCandidateCapCountsUniquePaths — repair round 3 P2:
+// the candidate cap bounds UNIQUE candidate paths, not list memberships. One
+// command naming the same paths under rm (link-own list) and tee
+// (target-following list) lands each path in BOTH lists; counting the lists
+// additively denied a set whose deduplicated population is within the cap —
+// 2 lists × 2,100 memberships = 4,200 > 4,096 while 2,100 unique paths sit
+// comfortably under it. All operands sit outside the zone, so over-cap is
+// the only possible deny source and the allow outcome is the assertion.
+func TestProtectedZoneShellCandidateCapCountsUniquePaths(t *testing.T) {
+	const perSemantics = 2100
+	var rmArgs, teeArgs strings.Builder
+	for i := 0; i < perSemantics; i++ {
+		fmt.Fprintf(&rmArgs, " f%04d.md", i)
+		fmt.Fprintf(&teeArgs, " f%04d.md", i)
+	}
+	command := "rm" + rmArgs.String() + "; tee" + teeArgs.String()
+	root := newZoneRoot(t, zoneShippedDoc(ulZoneManifest), "")
+	h := zoneTestHandler(t, root)
+	d, r := zoneCall(t, h, "Bash", harnessLearnerIdentity, map[string]any{"command": command})
+	if d == DecisionDeny {
+		t.Errorf("cap counting: decision=%q reason=%q, want allow — %d unique candidates across both semantics are within the %d cap; only list MEMBERSHIPS (%d) exceed it", d, r, perSemantics, zoneCandidateCap, 2*perSemantics)
+	}
+}

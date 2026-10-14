@@ -129,7 +129,7 @@ func zoneResolveDepth(p string, depth int) (string, bool) {
 	if real, err := filepath.EvalSymlinks(p); err == nil {
 		return real, true
 	}
-	return zoneResolveWalk(p, depth)
+	return zoneResolveWalk(p, depth, runtime.GOOS == "windows")
 }
 
 // zoneResolveWalk is the physical component walk behind zoneResolveDepth,
@@ -138,12 +138,13 @@ func zoneResolveDepth(p string, depth int) (string, bool) {
 // symlink against the LEXICAL parent, which a parent-only resolution cannot
 // afford — a fully-existing `dirlink/..` would rejoin the final name against
 // the lexical parent while the shell walks it physically.
-func zoneResolveWalk(p string, depth int) (string, bool) {
+func zoneResolveWalk(p string, depth int, windows bool) (string, bool) {
 	volume := filepath.VolumeName(p)
-	parts := pathSegments(strings.TrimPrefix(p, volume), runtime.GOOS == "windows")
+	parts := pathSegments(strings.TrimPrefix(p, volume), windows)
 	resolved := filepath.ToSlash(volume) + "/"
 	skipped := 0
-	absolute := volume != "" || strings.HasPrefix(p, "/")
+	absolute := volume != "" || strings.HasPrefix(p, "/") ||
+		(windows && strings.HasPrefix(p, "\\"))
 	for i := 1; i < len(parts); i++ {
 		part := parts[i]
 		switch part {
@@ -393,7 +394,7 @@ func zoneResolveParent(p string) (string, bool) {
 	if dir == "" || final == "" || final == "." || final == ".." {
 		return "", false
 	}
-	resolved, ok := zoneResolveWalk(filepath.FromSlash(dir), 0)
+	resolved, ok := zoneResolveWalk(filepath.FromSlash(dir), 0, runtime.GOOS == "windows")
 	if !ok {
 		return "", false
 	}
