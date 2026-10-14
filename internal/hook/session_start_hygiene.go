@@ -58,20 +58,20 @@ func runSessionHygiene(projectDir string) error {
 		slog.Warn("session start (deferred): hygiene gc failed (non-blocking)",
 			"error", gcErr.Error())
 	}
-	runProfileCapAdvisory()
+	runProfileCapAdvisory(projectDir)
 	return nil
 }
 
 // runProfileCapAdvisory is the SessionStart profile-cap advisory check
-// (SPEC-CAPACITY-RECLAIM-001 REQ-CAP-009): it reads the HOME-tier
-// state.profile_max_bytes and logs one advisory per profile above the cap.
-// Warning-only — nothing is deleted; space is reclaimed with
+// (SPEC-CAPACITY-RECLAIM-001 REQ-CAP-009): it reads state.profile_max_bytes
+// (HOME tier first, then the project tier) and logs one advisory per profile
+// above the cap. Warning-only — nothing is deleted; space is reclaimed with
 // `moai clean --home --force`. Time-boxed (Advisory-Check Discipline): the
 // profile sizing walk runs under config.ProfileCapAdvisoryTimeout, and every
 // failure (absent key, unreadable config, deadline) is logged and swallowed —
 // the session launch is never blocked or delayed by this check.
-func runProfileCapAdvisory() {
-	capBytes, ok, err := hygiene.LoadProfileCapMaxBytes()
+func runProfileCapAdvisory(projectDir string) {
+	capBytes, ok, err := hygiene.LoadProfileCapMaxBytes(projectDir)
 	if err != nil {
 		slog.Debug("session start (deferred): profile-cap advisory skipped (config unreadable)",
 			"error", err.Error())

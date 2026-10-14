@@ -15,6 +15,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/modu-ai/moai-adk/internal/defs"
 	"github.com/modu-ai/moai-adk/internal/hygiene"
 	"github.com/modu-ai/moai-adk/internal/paths"
 )
@@ -103,8 +104,10 @@ func TestProfileCapWarnsWithoutDeleting(t *testing.T) {
 		t.Setenv("HOME", home)
 		t.Setenv("MOAI_HOME", "")
 
-		// The loader reads the fixture key with no compiled fallback.
-		capBytes, ok, err := hygiene.LoadProfileCapMaxBytes()
+		// The loader reads the fixture key with no compiled fallback. The
+		// empty project dir exercises the HOME-tier-first ordering: the home
+		// key wins before any project fallback is consulted.
+		capBytes, ok, err := hygiene.LoadProfileCapMaxBytes("")
 		if err != nil {
 			t.Fatalf("LoadProfileCapMaxBytes: %v", err)
 		}
@@ -160,8 +163,9 @@ func TestProfileCapWarnsWithoutDeleting(t *testing.T) {
 		// runProfileCapAdvisory) — the advisory function itself is only ever
 		// invoked with a cap that was actually loaded. The end-to-end
 		// absent-key-no-warning behavior is the hook test's clause-3
-		// fixture-2 arm, which drives the real pass.
-		capBytes, ok, err := hygiene.LoadProfileCapMaxBytes()
+		// fixture-2 arm, which drives the real pass. The empty project dir
+		// ends the fallback chain after the key-absent home tier.
+		capBytes, ok, err := hygiene.LoadProfileCapMaxBytes("")
 		if err != nil {
 			t.Fatalf("LoadProfileCapMaxBytes: %v", err)
 		}
@@ -173,7 +177,7 @@ func TestProfileCapWarnsWithoutDeleting(t *testing.T) {
 		homeNoFile := t.TempDir()
 		t.Setenv("HOME", homeNoFile)
 		t.Setenv("MOAI_HOME", "")
-		fileAbsentBytes, fileAbsentOk, fileAbsentErr := hygiene.LoadProfileCapMaxBytes()
+		fileAbsentBytes, fileAbsentOk, fileAbsentErr := hygiene.LoadProfileCapMaxBytes(t.TempDir())
 		if fileAbsentErr != nil {
 			t.Fatalf("LoadProfileCapMaxBytes (no state.yaml): %v", fileAbsentErr)
 		}
@@ -185,6 +189,51 @@ func TestProfileCapWarnsWithoutDeleting(t *testing.T) {
 		for _, c := range candidates {
 			if c.Category == "projects" {
 				t.Fatalf("projects candidate without any cap in play: %+v", c)
+			}
+		}
+	})
+
+	t.Run("project-tier fallback: home key-absent state.yaml falls through to the project sections", func(t *testing.T) {
+		home := seedProfileFixture(t, false, 6*miB) // home state.yaml present WITHOUT the key
+		moai := filepath.Join(home, ".moai")
+		project := t.TempDir()
+		sections := filepath.Join(project, defs.MoAIDir, defs.SectionsSubdir)
+		if err := os.MkdirAll(sections, 0o755); err != nil {
+			t.Fatalf("mkdir project sections: %v", err)
+		}
+		if err := os.WriteFile(filepath.Join(sections, "state.yaml"),
+			[]byte("state:\n    profile_max_bytes: 1048576\n"), 0o644); err != nil {
+			t.Fatalf("seed project state.yaml: %v", err)
+		}
+		t.Setenv("HOME", home)
+		t.Setenv("MOAI_HOME", "")
+
+		// The project tier carries the shipped default the home tier omits.
+		capBytes, ok, err := hygiene.LoadProfileCapMaxBytes(project)
+		if err != nil {
+			t.Fatalf("LoadProfileCapMaxBytes (project fallback): %v", err)
+		}
+		if !ok || capBytes != 1048576 {
+			t.Fatalf("project fallback cap = (%d, %v), want (1048576, true)", capBytes, ok)
+		}
+
+		// The advisory still names the profile and the key.
+		profilesDir, err := paths.ProfilesDir()
+		if err != nil {
+			t.Fatalf("ProfilesDir: %v", err)
+		}
+		msgs, err := hygiene.ProfileCapAdvisories(profilesDir, capBytes, 5*time.Second)
+		if err != nil {
+			t.Fatalf("ProfileCapAdvisories: %v", err)
+		}
+		if len(msgs) != 1 || !strings.Contains(msgs[0], "prof-a") || !strings.Contains(msgs[0], "state.profile_max_bytes") {
+			t.Fatalf("project-fallback advisories = %v, want one naming prof-a and the key", msgs)
+		}
+
+		// And the scan still produces no cap-driven projects candidate.
+		for _, c := range scanHomeCleanable(moai, 30, 3, "v9.9.9", now) {
+			if c.Category == "projects" {
+				t.Fatalf("cap produced a projects deletion candidate under the project-tier cap: %+v", c)
 			}
 		}
 	})

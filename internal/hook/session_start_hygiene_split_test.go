@@ -258,9 +258,11 @@ func TestSessionStartAutoPathSplit(t *testing.T) {
 	// Clause 2 — no row names a path outside .moai/logs and .moai/state.
 	// Apply-mode rows carry absolute sink paths (rotate.go), so absolute
 	// paths are resolved against the fixture root; relative paths are
-	// checked by their slash-normalized prefix.
-	logsRoot := filepath.ToSlash(filepath.Join(moaiRoot, "logs")) + string(filepath.Separator)
-	stateRoot := filepath.ToSlash(filepath.Join(moaiRoot, "state")) + string(filepath.Separator)
+	// checked by their slash-normalized prefix. Both comparisons run on
+	// slash-normalized text, so the appended separator is the literal "/" —
+	// a platform separator here would never match on Windows.
+	logsRoot := filepath.ToSlash(filepath.Join(moaiRoot, "logs")) + "/"
+	stateRoot := filepath.ToSlash(filepath.Join(moaiRoot, "state")) + "/"
 	for _, row := range rows {
 		if row.Path == "" {
 			continue

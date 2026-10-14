@@ -21,22 +21,28 @@ import (
 
 	"gopkg.in/yaml.v3"
 
+	"github.com/modu-ai/moai-adk/internal/defs"
 	"github.com/modu-ai/moai-adk/internal/paths"
 )
 
-// profileCapYAML reads state.profile_max_bytes from the HOME-tier
-// state.yaml. Every field is a pointer: nil means the key is absent.
+// profileCapYAML reads state.profile_max_bytes from a tier's state.yaml.
+// Every field is a pointer: nil means the key is absent.
 type profileCapYAML struct {
 	State struct {
 		ProfileMaxBytes *int64 `yaml:"profile_max_bytes"`
 	} `yaml:"state"`
 }
 
-// LoadProfileCapMaxBytes reads state.profile_max_bytes from the HOME tier —
-// ~/.moai/config/sections/state.yaml resolved via
-// paths.UserConfigSectionsDir(). The ok result is false when the file or the
-// key is absent; there is no compiled fallback, so an absent key yields no
-// warning (REQ-CAP-009). A non-positive explicit value is config-invalid and
+// LoadProfileCapMaxBytes reads state.profile_max_bytes for the advisory
+// check. The HOME tier — ~/.moai/config/sections/state.yaml resolved via
+// paths.UserConfigSectionsDir() — is read first; when the file or the key is
+// absent there and projectDir is non-empty, the PROJECT tier
+// (<projectDir>/.moai/config/sections/state.yaml) is read, because the
+// shipped default (profile_max_bytes in the template state.yaml) lands in
+// the project tier and a project that never configured the home tier still
+// carries a cap. Both tiers absent, or the key absent in both: ok is false —
+// there is no compiled fallback, so an absent key yields no warning
+// (REQ-CAP-009 / D11). A non-positive explicit value is config-invalid and
 // is refused, mirroring the D30 fail-closed floors. Read and parse failures
 // are returned as errors so callers choose their degradation.
 //
@@ -44,27 +50,45 @@ type profileCapYAML struct {
 // ok=false and callers must NOT substitute config.DefaultProfileMaxBytes —
 // a compiled fallback would warn on projects that never configured a cap.
 // @MX:SPEC: SPEC-CAPACITY-RECLAIM-001
-func LoadProfileCapMaxBytes() (capBytes int64, ok bool, err error) {
-	dir, err := paths.UserConfigSectionsDir()
+func LoadProfileCapMaxBytes(projectDir string) (capBytes int64, ok bool, err error) {
+	// HOME tier first — semantics unchanged from the home-only loader.
+	capBytes, ok, err = readProfileCapTier(func() (string, error) { return paths.UserConfigSectionsDir() })
+	if err != nil || ok {
+		return capBytes, ok, err
+	}
+	if projectDir == "" {
+		return 0, false, nil
+	}
+	// PROJECT tier fallback: the canonical project sections directory
+	// <projectDir>/.moai/config/sections, joined from the defs constants.
+	projectSections := filepath.Join(projectDir, defs.MoAIDir, defs.SectionsSubdir)
+	return readProfileCapTier(func() (string, error) { return projectSections, nil })
+}
+
+// readProfileCapTier reads state.profile_max_bytes from one tier's sections
+// directory. File-absent or key-absent yields ok=false; a non-positive
+// explicit value is config-invalid; other read/parse failures are errors.
+func readProfileCapTier(sectionsDir func() (string, error)) (int64, bool, error) {
+	dir, err := sectionsDir()
 	if err != nil {
-		return 0, false, fmt.Errorf("resolve home config dir: %w", err)
+		return 0, false, fmt.Errorf("resolve config sections dir: %w", err)
 	}
 	data, err := os.ReadFile(filepath.Join(dir, "state.yaml"))
 	if err != nil {
 		if os.IsNotExist(err) {
 			return 0, false, nil
 		}
-		return 0, false, fmt.Errorf("read home state.yaml: %w", err)
+		return 0, false, fmt.Errorf("read state.yaml: %w", err)
 	}
 	var wrapper profileCapYAML
 	if err := yaml.Unmarshal(data, &wrapper); err != nil {
-		return 0, false, fmt.Errorf("parse home state.yaml: %w", err)
+		return 0, false, fmt.Errorf("parse state.yaml: %w", err)
 	}
 	if wrapper.State.ProfileMaxBytes == nil {
 		return 0, false, nil
 	}
 	if *wrapper.State.ProfileMaxBytes <= 0 {
-		return 0, false, fmt.Errorf("home state.yaml: state.profile_max_bytes must be strictly positive, got %d",
+		return 0, false, fmt.Errorf("state.yaml: state.profile_max_bytes must be strictly positive, got %d",
 			*wrapper.State.ProfileMaxBytes)
 	}
 	return *wrapper.State.ProfileMaxBytes, true, nil
