@@ -22,6 +22,14 @@
 - sync: verdict.md and card-review.md written under `.moai/reports/t1589/`.
 - Remote: none (no push; merged-local + SHA is the endpoint).
 
+## Merge attempt (not reached)
+
+- `moai integration acquire --name lane-27 --card t1589 --branch main` → exit 0 (window held).
+- `moai integration merge --card t1589 --run tmvgvn --session <id>` → exit 14 (MergeExitNotHolder) on the first call; the window then read `free` (holder pid 85243 is the acquire CLI process, not a session process — suspected liveness misread, unverified).
+- Re-acquire + merge in one command → exit 11 (MergeExitCardGate: card not merge-ready / no lease). Window read `free` again afterwards; no release needed.
+- Result: local merge into `main` NOT done. The card gate needs the card at merge-ready with this lane's lease, which the lane does not hold. Merge-ready is the leader's to set.
+- Commit `4faf5ff818` is the merge candidate; merged-local SHA: pending leader.
+
 ## Open for leader
 
 - Card body's strategy-branch defect (git-flow config vs github-flow operation) — not repaired here.
