@@ -49,6 +49,7 @@ moai cc [-p profile] [-w [name]] [-- claude-args...]
 
 ```bash
 moai glm setup <api-key>   # 保存 API 密钥(首次一次)
+moai glm --key <api-key>   # 保存 API 密钥(旗标形式 — 与 setup 使用同一存储)
 moai glm                   # 以 GLM 后端启动
 moai glm -p work           # 以 'work' 配置启动
 moai glm status            # 检查凭据状态
@@ -59,7 +60,10 @@ moai glm status            # 检查凭据状态
 | 子命令 | 说明 |
 |-------------|------|
 | `moai glm setup [api-key]` | 保存 GLM API 密钥 |
+| `moai glm --key <api-key>` | 保存 GLM API 密钥(旗标形式 — 两种形式写入同一文件,后保存的值生效) |
 | `moai glm status` | 显示当前 GLM 凭据状态 |
+
+Jev(TypeSafe)凭据使用 `moai jev --key <credential>` 保存 — 写入 `~/.moai/.env.typesafe`(模式 0600),`moai doctor` 与 Web 控制台读取同一文件。不带 `--key` 运行 `moai jev` 只会打印帮助。
 
 {{< callout type="warning" >}}
 GLM 不支持 `auto` 权限模式。请在符合条件的 Claude 会话中选择该模式。已停用的 CG 不能作为并发执行的替代方案。
