@@ -11,6 +11,7 @@ package cli
 import (
 	"os"
 	"path/filepath"
+	"runtime"
 	"strings"
 	"testing"
 	"time"
@@ -234,6 +235,58 @@ func TestProfileCapWarnsWithoutDeleting(t *testing.T) {
 		for _, c := range scanHomeCleanable(moai, 30, 3, "v9.9.9", now) {
 			if c.Category == "projects" {
 				t.Fatalf("cap produced a projects deletion candidate under the project-tier cap: %+v", c)
+			}
+		}
+	})
+
+	t.Run("unreadable subdirectory: over-cap profile still warns with partial-size semantics", func(t *testing.T) {
+		if runtime.GOOS == "windows" {
+			t.Skip("directory permission bits are not enforced on Windows")
+		}
+		if os.Geteuid() == 0 {
+			t.Skip("root bypasses directory permissions")
+		}
+		home := seedProfileFixture(t, true, 6*miB) // 6 MiB profile above the 1 MiB cap
+		moai := filepath.Join(home, ".moai")
+		t.Setenv("HOME", home)
+		t.Setenv("MOAI_HOME", "")
+
+		// A chmod-000 directory inside the profile: the sync-audit P2-2
+		// runtime reproduction. The walker must skip it (counted), not
+		// abort the profile's measurement — the advisory still fires.
+		locked := filepath.Join(moai, "claude-profiles", "prof-a", "projects", "locked-dir")
+		if err := os.MkdirAll(locked, 0o755); err != nil {
+			t.Fatalf("mkdir locked dir: %v", err)
+		}
+		if err := os.WriteFile(filepath.Join(locked, "secret.bin"), []byte("unreadable"), 0o600); err != nil {
+			t.Fatalf("seed locked dir: %v", err)
+		}
+		if err := os.Chmod(locked, 0o000); err != nil {
+			t.Fatalf("chmod locked dir: %v", err)
+		}
+		t.Cleanup(func() { _ = os.Chmod(locked, 0o755) })
+
+		capBytes, ok, err := hygiene.LoadProfileCapMaxBytes("")
+		if err != nil {
+			t.Fatalf("LoadProfileCapMaxBytes: %v", err)
+		}
+		if !ok {
+			t.Fatalf("cap not loaded")
+		}
+		profilesDir, err := paths.ProfilesDir()
+		if err != nil {
+			t.Fatalf("ProfilesDir: %v", err)
+		}
+		msgs, err := hygiene.ProfileCapAdvisories(profilesDir, capBytes, 5*time.Second)
+		if err != nil {
+			t.Fatalf("ProfileCapAdvisories: %v", err)
+		}
+		if len(msgs) != 1 {
+			t.Fatalf("advisories = %v, want exactly one despite the unreadable subdirectory", msgs)
+		}
+		for _, want := range []string{"prof-a", "state.profile_max_bytes", "measurement partial"} {
+			if !strings.Contains(msgs[0], want) {
+				t.Fatalf("advisory %q does not name %q", msgs[0], want)
 			}
 		}
 	})

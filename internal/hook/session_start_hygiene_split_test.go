@@ -205,7 +205,11 @@ func captureSlog(t *testing.T) *bytes.Buffer {
 }
 
 // TestSessionStartAutoPathSplit drives the SessionStart hygiene pass through
-// the hygieneRunFn seam and asserts the three clauses of AC-CAP-012.
+// the hygieneRunFn seam and asserts the three clauses of AC-CAP-012. The
+// profile-cap advisory is installed ASYNCHRONOUSLY in production (its own
+// goroutine, sync-audit P2-1), so this test swaps in a synchronous spawn to
+// make the clause-3 warning assertions deterministic; the async isolation
+// itself is TestSessionStartDeferredSiblingsProceedDuringCapWalk.
 func TestSessionStartAutoPathSplit(t *testing.T) {
 	project := writeSplitFixtureProject(t)
 	home := writeSplitFixtureHome(t)
@@ -216,6 +220,10 @@ func TestSessionStartAutoPathSplit(t *testing.T) {
 
 	moaiRoot := filepath.Join(project, ".moai")
 	hygiene.RegisterTestRoot(moaiRoot)
+
+	origSpawn := profileCapSpawnFn
+	profileCapSpawnFn = func(dir string) { profileCapAdvisoryFn(dir) } // synchronous for determinism
+	t.Cleanup(func() { profileCapSpawnFn = origSpawn })
 
 	homeBefore := hashTree(t, home)
 
@@ -315,5 +323,66 @@ func TestSessionStartAutoPathSplit(t *testing.T) {
 	}
 	if home2After := hashTree(t, home2); string(home2After) != string(home2Before) {
 		t.Fatalf("the pass mutated the over-cap fixture home (advisory must delete nothing)")
+	}
+}
+
+// TestSessionStartDeferredSiblingsProceedDuringCapWalk proves the sync-audit
+// P2-1 fix: the profile-cap walk is installed OFF the deferred pass's
+// critical path. The advisory body is stubbed to block until released; while
+// it is still blocked, computeDeferredAdvisory — the pass whose results are
+// joined at deferredScanJoinBound (250ms) — must already have RETURNED, and
+// its sibling step (pruneTelemetry) must have run: the stale telemetry file
+// is gone.
+func TestSessionStartDeferredSiblingsProceedDuringCapWalk(t *testing.T) {
+	project := writeSplitFixtureProject(t)
+
+	t.Setenv("HOME", t.TempDir())
+	t.Setenv("MOAI_HOME", "")
+	t.Setenv("CLAUDE_CONFIG_DIR", "")
+
+	moaiRoot := filepath.Join(project, ".moai")
+	hygiene.RegisterTestRoot(moaiRoot)
+
+	// The sibling observable: an aged telemetry file that pruneTelemetry
+	// (90-day retention, date-encoded names) removes.
+	stale := filepath.Join(moaiRoot, "evolution", "telemetry",
+		"usage-"+time.Now().AddDate(0, 0, -91).Format("2006-01-02")+".jsonl")
+	if err := os.MkdirAll(filepath.Dir(stale), 0o755); err != nil {
+		t.Fatalf("mkdir telemetry dir: %v", err)
+	}
+	if err := os.WriteFile(stale, []byte("{}\n"), 0o644); err != nil {
+		t.Fatalf("seed stale telemetry: %v", err)
+	}
+
+	started := make(chan struct{})
+	release := make(chan struct{})
+	origBody := profileCapAdvisoryFn
+	profileCapAdvisoryFn = func(dir string) {
+		close(started) // the walk "started"
+		<-release      // blocked far past any join bound
+	}
+	t.Cleanup(func() {
+		profileCapAdvisoryFn = origBody
+		close(release) // unblock; the spawned goroutine exits cleanly
+	})
+	origSpawn := profileCapSpawnFn
+	profileCapSpawnFn = func(dir string) { go profileCapAdvisoryFn(dir) } // the REAL async install
+	t.Cleanup(func() { profileCapSpawnFn = origSpawn })
+
+	h := &sessionStartHandler{}
+	done := make(chan map[string]any, 1)
+	go func() { done <- h.computeDeferredAdvisory(project, false) }()
+
+	<-started // the advisory walk is now blocked inside its own goroutine
+
+	// While the walk is blocked, the joined pass must already be done: the
+	// sibling steps (pruneTelemetry among them) never waited on the walk.
+	select {
+	case <-done:
+	case <-time.After(5 * time.Second):
+		t.Fatalf("computeDeferredAdvisory blocked behind the profile-cap walk (sync-audit P2-1)")
+	}
+	if _, err := os.Stat(stale); !os.IsNotExist(err) {
+		t.Fatalf("sibling pruneTelemetry did not run while the cap walk was blocked: %v", err)
 	}
 }

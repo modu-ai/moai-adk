@@ -58,8 +58,30 @@ func runSessionHygiene(projectDir string) error {
 		slog.Warn("session start (deferred): hygiene gc failed (non-blocking)",
 			"error", gcErr.Error())
 	}
-	runProfileCapAdvisory(projectDir)
+	runProfileCapAdvisoryAsync(projectDir)
 	return nil
+}
+
+// profileCapAdvisoryFn is the advisory body (the seam tests stub to model a
+// slow or failing walk).
+var profileCapAdvisoryFn = runProfileCapAdvisory
+
+// profileCapSpawnFn installs the profile-cap advisory OFF the deferred pass's
+// critical path (sync-audit P2-1, Advisory-Check Discipline): production
+// spawns it in its OWN goroutine, so the profile-sizing walk — the one step
+// whose runtime grows with the very profiles the 8 GiB default targets —
+// never consumes the deferredScanJoinBound (250ms) window that the deferred
+// pass's sibling steps share. The walk keeps its own time-box
+// (config.ProfileCapAdvisoryTimeout) inside the goroutine: on deadline the
+// advisory degrades to a skip notice and the goroutine exits cleanly. The
+// split-behavior test installs a synchronous variant for determinism.
+var profileCapSpawnFn = func(projectDir string) {
+	go profileCapAdvisoryFn(projectDir)
+}
+
+// runProfileCapAdvisoryAsync installs the advisory for one deferred pass.
+func runProfileCapAdvisoryAsync(projectDir string) {
+	profileCapSpawnFn(projectDir)
 }
 
 // runProfileCapAdvisory is the SessionStart profile-cap advisory check
