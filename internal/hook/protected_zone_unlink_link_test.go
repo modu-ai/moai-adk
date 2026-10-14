@@ -17,6 +17,7 @@ package hook
 // assumption.
 
 import (
+	"fmt"
 	"os"
 	"path/filepath"
 	"strings"
@@ -235,6 +236,54 @@ func TestProtectedZoneShellUnlinkAbsoluteRootDotDot(t *testing.T) {
 			h := zoneTestHandler(t, root)
 			d, r := zoneCall(t, h, "Bash", harnessLearnerIdentity, map[string]any{"command": tc.command(root)})
 			wantZoneDeny(t, tc.name, d, r, harnessLearnerIdentity, "category", "probe_zone")
+		})
+	}
+}
+
+// TestZoneUnlinkLinkOwnWindowsSeparators — the classifier-level repair
+// round 2: on WINDOWS a "\" separates, so `zonelink\.` and `zonelink\` name
+// the directory THROUGH the link (dereference spellings, target-following
+// judgment) and a "\child" suffix keeps the link a parent component; on
+// POSIX the backslash is an ORDINARY filename character
+// (SPEC-HOOK-ZONE-BACKSLASH-001) and the same texts stay link-own finals.
+// The windows flag rides in as an argument — the package's pathSegments
+// idiom — so both branches classify identically on every host. Windows shell
+// semantics themselves are not executable on this darwin host: this unit is
+// the measurable surface, and CI's windows matrix owns the end-to-end
+// observation.
+func TestZoneUnlinkLinkOwnWindowsSeparators(t *testing.T) {
+	cells := []struct {
+		cand    string
+		windows bool
+		want    bool
+	}{
+		// windows: the backslash separates — dereference spellings route to
+		// the target-following judgment, a real final name stays link-own.
+		{cand: `zonelink\.`, windows: true, want: false},
+		{cand: `zonelink\`, windows: true, want: false},
+		{cand: `zonelink\child`, windows: true, want: true},
+		{cand: `C:\dir\link`, windows: true, want: true},
+		{cand: `zonelink/child`, windows: true, want: true},
+		{cand: `zonelink/`, windows: true, want: false},
+		// POSIX: the backslash is a filename character — the identical texts
+		// stay link-own finals (the backslash-literal SPEC's constraint).
+		{cand: `zonelink\.`, windows: false, want: true},
+		{cand: `zonelink\`, windows: false, want: true},
+		{cand: `zone_dir/link_x`, windows: false, want: true},
+		{cand: `zone_dir/link_x/`, windows: false, want: false},
+		{cand: `zonelink/.`, windows: false, want: false},
+		{cand: `zonelink/..`, windows: false, want: false},
+	}
+	if len(cells) == 0 {
+		t.Fatal("empty separator cell list — the sweep would assert nothing")
+	}
+	t.Logf("unlink final-component separator sweep: %d cells", len(cells))
+	for _, tc := range cells {
+		tc := tc
+		t.Run(fmt.Sprintf("%s/windows=%v", tc.cand, tc.windows), func(t *testing.T) {
+			if got := zoneUnlinkLinkOwn(tc.cand, tc.windows); got != tc.want {
+				t.Errorf("zoneUnlinkLinkOwn(%q, windows=%v) = %v, want %v", tc.cand, tc.windows, got, tc.want)
+			}
 		})
 	}
 }

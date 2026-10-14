@@ -46,6 +46,7 @@ import (
 	"io/fs"
 	"path"
 	"path/filepath"
+	"runtime"
 	"strings"
 
 	"mvdan.cc/sh/v3/syntax"
@@ -69,16 +70,35 @@ var zoneUnlinkVerbs = map[string]bool{
 }
 
 // zoneUnlinkLinkOwn reports whether an rm/unlink operand names its final
-// component AS ITSELF: no trailing separator (the "/" spelling names the
+// component AS ITSELF: no trailing separator (a separator spelling names the
 // directory THROUGH the link) and no "." or ".." final segment (those spell
 // the directory too). A child path after the link keeps the link a PARENT
 // component — the parent resolves as today and the final name rejoins onto
-// the resolved parent.
-func zoneUnlinkLinkOwn(cand string) bool {
-	if cand == "" || strings.HasSuffix(cand, "/") {
+// the resolved parent. The separator set is platform-aware (card t1712
+// repair round 2): "/" separates everywhere, "\" additionally on windows —
+// `zonelink\.` names the directory through the link there — while on POSIX a
+// backslash is an ordinary filename character
+// (SPEC-HOOK-ZONE-BACKSLASH-001) and the same texts stay link-own finals.
+// windows rides in as an argument, the package's pathSegments idiom, so both
+// branches classify identically on every host; the single production caller
+// passes runtime.GOOS == "windows".
+func zoneUnlinkLinkOwn(cand string, windows bool) bool {
+	if cand == "" {
 		return false
 	}
-	seg := cand[strings.LastIndexByte(cand, '/')+1:]
+	last := strings.LastIndexByte(cand, '/')
+	if windows {
+		if idx := strings.LastIndexByte(cand, '\\'); idx > last {
+			last = idx
+		}
+		if strings.HasSuffix(cand, "\\") {
+			return false
+		}
+	}
+	if strings.HasSuffix(cand, "/") {
+		return false
+	}
+	seg := cand[last+1:]
 	return seg != "." && seg != ".."
 }
 
@@ -969,7 +989,7 @@ func (w *zoneWalker) zoneCall(cmd *syntax.CallExpr) {
 				// candidates (gate rounds 13/14).
 				zonePathCandidatesWorld(args[1:], world, func(cand string, dual bool) {
 					joined := zoneRelativeToSet(w.cwds, cand, world)
-					if !dual && zoneUnlinkLinkOwn(cand) {
+					if !dual && zoneUnlinkLinkOwn(cand, runtime.GOOS == "windows") {
 						w.linkCands = append(w.linkCands, joined...)
 						return
 					}
