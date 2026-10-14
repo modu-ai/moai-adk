@@ -27,7 +27,7 @@ Verification commands are single-invocation, read-only forms run from the worktr
 | AC-MN-003 | Given the gate-session measurement harness of plan §F M3, When the measurement runs against the gate fixtures, Then it prints the metric line `<successes>/<total> (<pct>%)` with the sample count; a run that prints no metric line is a FAIL. Metric: a gate call is successful when the moai MCP server returns a non-error, non-refused result to the gate-session-shaped client; the denominator is the fixture call set — initialize, tools/list, and one call per tool in the REQ-MN-009 read-only subset, issued by the M3 harness; the numerator is the successful count over that set; the instrument is the M3 measurement test in `internal/cli`. | REQ-MN-009 + gate path — **card gate 3: Codex 게이트 호출 성공률 측정** | EV-003 | M3 |
 | AC-MN-004 | Given a spawn recorded as lane-A, an active run R1 and a completed run R0, When the tool is called with `actor: lane-B` on R1 and with `actor: lane-A` on R0, Then both refuse (`refused: true`, codes `owned` / `stale-run`, `is_error` false) and a lane-A call on R1 proceeds. | REQ-MN-003 | EV-004 | M1 |
 | AC-MN-005 | Given a session with no lane env and no operator mark, When `factory_decide` is called, Then it refuses with unknown attribution; with the positive operator mark it proceeds. | REQ-MN-003 | EV-005 | M1 |
-| AC-MN-006 | Given the server on a registered worktree, When a root-less family tool receives `project_root: 42`, Then an invalid-argument error results (no silent coercion); When a mutating family tool omits `project_root`, Then the JSON-RPC invalid-params argument error returns (`is_error` true — argument validation, outside the five policy codes) with a naming hint; When called correctly, Then the result carries `_root{dir, source: "param"}`; and When `factory_complete` runs with `project_root`, Then the integration lock root resolves through the same git-common-dir resolver the CLI uses. | REQ-MN-004, REQ-MN-005 | EV-006 | M2 |
+| AC-MN-006 | Given the server on a registered worktree, When a root-less family tool receives `project_root: 42`, Then an invalid-argument error results (no silent coercion); When a mutating family tool omits `project_root`, Then the call refuses at the tool layer with the wire result `{"isError": true, "content": [{"type": "text", "text": "<tool>: project_root is required for mutating calls"}]}` — argument validation, outside the five policy codes; no JSON-RPC `-32602` protocol error is produced for this case; When called correctly, Then the result carries `_root{dir, source: "param"}`; and When `factory_complete` runs with `project_root`, Then the integration lock root resolves through the same git-common-dir resolver the CLI uses. | REQ-MN-004, REQ-MN-005 | EV-006 | M2 |
 | AC-MN-007 | Given `project_root: "<home>"` and `project_root: "<sibling repo>"`, When a root-taking tool is called, Then both are rejected; a registered worktree of the server's repository is accepted. | REQ-MN-005 | EV-007 | M2 |
 | AC-MN-008 | Given the built server, When `tools/list` is called, Then `todo_claim` appears; given a test registering a name absent from the catalogue, Then the build-time gate fails it. | REQ-MN-006 | EV-008 | M2 |
 | AC-MN-009 | Given the schema lint test over all served tools, When run on the fixed tree, Then it passes; run on a fixture missing a property description or carrying an undeclared handler-read argument, Then it fails. | REQ-MN-007 | EV-009 | M2 |
@@ -69,18 +69,26 @@ green   : M1 flips it — the same call returns is_error=false with refused:true
 
 ```
 EV-002 (AC-MN-002 · release-blocking · RED, measured)
-command : grep -oE "refused|tool_failure" internal/hook/failure_observer.go | sort | uniq -c
-stdout  :    4 tool_failure
+command : grep -oE "refused|tool_failure" internal/hook/failure_observer.go
+stdout  : tool_failure
+          tool_failure
+          tool_failure
+          tool_failure
 exit    : 0
-tree    : a33f31fc3efe78c02e68336d0b85bb128adcf015
-red why : positive control present (4 tool_failure references — the observer
-          classifies and records tool failures), probe absent (0 "refused" — no
-          exclusion exists); combined with EV-001 (every policy refusal is an
-          error today), every refusal flows into the tool_failure rows — the
-          behavior AC-MN-002 forbids. Wired at internal/hook/post_tool_failure.go
-          (recordToolFailureEvent).
+tree    : 43ae15cf0d1ad05ac2ef5ff77699ecaa0c251f13
+red why : single invocation, no pipes — the positive control is IN the stdout
+          (four tool_failure references: the observer classifies and records
+          tool failures) and the probe is the measured absence (zero refused
+          lines: no exclusion exists); with EV-001 (every policy refusal is an
+          error today) every refusal flows into the tool_failure rows — the
+          behavior AC-MN-002 forbids. Behavioral corroboration: the §1
+          production stat of 409 refusal rows recorded as mcp failures; the
+          isolated-inbox reproduction (N forced refusals + 1 genuine error →
+          exactly 1 mcp row) is M1's stronger cell. Wired at
+          internal/hook/post_tool_failure.go (recordToolFailureEvent).
 green   : M1 flips it — the observer classifies refused:true payloads and
-          excludes them; forced-refusal fixture yields exactly 1 genuine row.
+          excludes them; the forced-refusal fixture yields exactly 1 genuine
+          row.
 ```
 
 ```
