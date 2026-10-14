@@ -702,18 +702,46 @@ func TestSD_AC024_CodexMergeRefusedMCP(t *testing.T) {
 	sdCardUnchanged(t, "codex mcp arms", root, "t1", before)
 }
 
-// The slug the card worktree branch derives from never contains the card id
-// and stays within the naming rule (≤3 tokens, ≤24 chars, [a-z0-9-]).
+// numericSlug reports whether the slug is a bare number/dash shape — the
+// metadata-derivation defect card t1713 fixes ("[3.2-2-5·P1·Class C·…]" once
+// produced WT-3-2-2-style branches).
+func numericSlug(s string) bool {
+	if s == "" {
+		return false
+	}
+	for _, r := range s {
+		if (r < '0' || r > '9') && r != '-' {
+			return false
+		}
+	}
+	return true
+}
+
+// The slug the card worktree branch derives from never contains the card id,
+// never reads as a bare number (card t1713), and stays within the naming rule
+// (≤3 tokens, ≤24 chars, [a-z0-9-]). A leading [...] metadata prefix and
+// pure-number/label tokens (dates, P0/P1, Class C) never reach the slug.
 func TestSD_WorktreeSlugShape(t *testing.T) {
-	for _, tc := range []struct{ cardID, title, want string }{
-		{"t1", "factory card 1", "factory-card-1"},
-		{"t1240", "t1240 fix the flaky gate", "fix-the-flaky"}, // the id token is dropped
-		{"t9", "Fix the ÜBER gate", "fix-the-ber"},             // non-ASCII falls to [a-z0-9]
-		{"t2", "  spaced   out   words here ", "spaced-out-words"},
+	for _, tc := range []struct{ cardID, title, specID, want string }{
+		{"t1", "factory card 1", "", "factory-card"},
+		{"t1240", "t1240 fix the flaky gate", "", "fix-the-flaky"}, // the id token is dropped
+		{"t9", "Fix the ÜBER gate", "", "fix-the-ber"},             // non-ASCII falls to [a-z0-9]
+		{"t2", "  spaced   out   words here ", "", "spaced-out-words"},
+		// card t1713 RED pair: both titles once produced numeric slugs
+		// (WT-3-2-5 / WT-class-b-p0) instead of reading the title body.
+		{"t1712", "[3.2-2-5·P1·Class C·운영자 승인 10-10] 설치 모델 분리 지원", "", "card"},
+		{"t1713", "[Class B·P0·operator-reported 10-14] User-asset skills bundling", "", "user-asset-skills"},
+		// A SPEC-linked card whose title body has no ASCII words takes the
+		// SPEC id slug (card t1713).
+		{"t1200", "[3.2-1-2·P1] 설치 모델 분리 지원", "SPEC-MCP-NEUTRALITY-001", "mcp-neutrality"},
+		{"t1201", "", "SPEC-V3R6-GRAPH-FRESHNESS-001", "v3r6-graph-freshness"},
 	} {
-		got := factoryWorktreeSlug(tc.cardID, tc.title)
+		got := factoryWorktreeSlug(tc.cardID, tc.title, tc.specID)
 		if got != tc.want {
 			t.Errorf("factoryWorktreeSlug(%q, %q) = %q, want %q", tc.cardID, tc.title, got, tc.want)
+		}
+		if numericSlug(got) {
+			t.Errorf("factoryWorktreeSlug(%q, %q) = %q, want a non-numeric slug", tc.cardID, tc.title, got)
 		}
 		if len(got) > 24 {
 			t.Errorf("slug %q exceeds 24 characters", got)
@@ -722,7 +750,7 @@ func TestSD_WorktreeSlugShape(t *testing.T) {
 			t.Errorf("slug %q contains the card id %q", got, tc.cardID)
 		}
 	}
-	if got := factoryWorktreeSlug("t1", ""); got != "card" {
+	if got := factoryWorktreeSlug("t1", "", ""); got != "card" {
 		t.Errorf("empty-title slug = %q, want the card fallback", got)
 	}
 }
