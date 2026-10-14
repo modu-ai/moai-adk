@@ -5,6 +5,7 @@ package cli
 
 import (
 	"context"
+	"sync/atomic"
 	"testing"
 
 	"github.com/modu-ai/moai-adk/internal/auditreceipt"
@@ -21,20 +22,22 @@ func TestAuditMulti_ReceiptBindsStartOfConvergenceState(t *testing.T) {
 	seedWorkflowGates(t, root, map[string]string{"codex": config.AuditGateRequired})
 
 	// The backends run, THEN the tree state moves: the fan-out stub flips the
-	// flag its own invocation completed.
-	postEdit := false
+	// flag its own invocation completed. Atomic (card t1632 sync-audit r4 F16):
+	// the backends run on goroutines of the errgroup, so the flag is written
+	// there and read in TreeState concurrently.
+	var postEdit atomic.Bool
 	rc := &recordingCallerMulti{verdictBy: map[string]ReviewOutput{BackendCodex: inconclusiveVerdict("codex unavailable")}}
 	orig := backendCall
 	backendCall = func(ctx context.Context, backend, target, focus, projectRoot string) ReviewOutput {
 		out := rc.call(ctx, backend, target, focus, projectRoot)
-		postEdit = true
+		postEdit.Store(true)
 		return out
 	}
 	t.Cleanup(func() { backendCall = orig })
 
 	prev := auditreceipt.TreeState
 	auditreceipt.TreeState = func(treeRoot string) (string, string, error) {
-		if postEdit {
+		if postEdit.Load() {
 			return "post-edit-head", "post-edit-digest", nil
 		}
 		return "start-head", "start-digest", nil

@@ -74,21 +74,21 @@ func recordAuditReceiptBound(tool, projectRoot, codexVerdict, gateUnmet, bindHea
 	return recordAuditReceiptAtBound(tool, projectRoot, codexVerdict, gateUnmet, nil, bindHead, bindDigest, bindFailed)
 }
 
-// recordAuditReceiptAt is recordAuditReceipt with the codex gate the exposure
-// follows supplied by the caller: a non-nil codexRequired is the gate fixed at
-// call start (the one the unmet-gate enforcement used), so the id exposed and
-// the verdict persisted cannot disagree under an edit of the tree's
-// configuration made while the backends ran (SPEC-AUDIT-MODEL-CONVERGE-001
-// REQ-ACV-009). A nil codexRequired keeps the read of the tree's configuration
-// that every caller carrying no call-start plan has always had. The receipt is
-// recorded either way; only its exposure follows the gate.
-// recordAuditReceiptAtBound is recordAuditReceiptAt with the caller-supplied
-// state binding (card t1632 sync-audit F5): non-empty bindHead/bindDigest are
-// written into the receipt verbatim, so the receipt attests the state the
-// audit STARTED with. bindFailed records the explicit capture-failed marker
-// (sync-audit r3 F14) — the receipt then carries NO binding and the reuse
-// check refuses it. Empty values without the marker keep the write-time bind
-// (the pre-F5 callers).
+// recordAuditReceiptAtBound records one receipt with the codex gate the
+// exposure follows supplied by the caller: a non-nil codexRequired is the gate
+// fixed at call start (the one the unmet-gate enforcement used), so the id
+// exposed and the verdict persisted cannot disagree under an edit of the
+// tree's configuration made while the backends ran
+// (SPEC-AUDIT-MODEL-CONVERGE-001 REQ-ACV-009). A nil codexRequired keeps the
+// read of the tree's configuration that every caller carrying no call-start
+// plan has always had. The receipt is recorded either way; only its exposure
+// follows the gate.
+// Card t1632 sync-audit F5: the caller-supplied state binding — non-empty
+// bindHead/bindDigest are written into the receipt verbatim, so the receipt
+// attests the state the audit STARTED with. Card t1632 sync-audit r3 F14:
+// bindFailed records the explicit capture-failed marker — the receipt then
+// carries NO binding and the reuse check refuses it; the write-time fallback
+// is forbidden, because a binding written after the audit judged nothing.
 func recordAuditReceiptAtBound(tool, projectRoot, codexVerdict, gateUnmet string, codexRequired *bool, bindHead, bindDigest string, bindFailed bool) (id, notice string) {
 	root, source := receiptTarget(projectRoot)
 	if root == "" {
