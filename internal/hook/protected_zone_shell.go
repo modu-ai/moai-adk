@@ -524,6 +524,46 @@ func (w *zoneWalker) setCwds(dirs []zoneCwd) {
 	}
 }
 
+// zoneMergeGens folds a directory reached in BOTH generations into the one
+// generation-neutral entry the type already defines: a directory every
+// generation can be in is exactly what neutral means — the neutral entry
+// executes both worlds' cds and joins both generations' file readings — so
+// the fold keeps the reachable-state set intact while dropping the
+// per-generation PAIR whose duplication doubled the count the K8 bound
+// reads (card t1574 K8, REQ-ZSP-006). Unfolded, one cd command's world 0
+// and world 1 moves over the same accumulated set left the same directory
+// tagged once per generation, and a chain of 4 literal cds outgrew
+// zoneCwdsBound, denying a legitimate script fail-closed as loop-unbounded.
+// The fold is a DEDUPLICATION of reachable states, never a truncation: the
+// cd-may-fail conservatism (round 8 P1) keeps the pre-move set in the union
+// before this runs, every directory the walk could be in survives, and a
+// longer chain still denies fail-closed once it genuinely outgrows the
+// bound. Order is stable: callers compose these sets positionally.
+func zoneMergeGens(cwds []zoneCwd) []zoneCwd {
+	reached := map[string]int{}
+	for _, c := range cwds {
+		switch c.gen {
+		case 0:
+			reached[c.dir] |= 1
+		case 1:
+			reached[c.dir] |= 2
+		}
+	}
+	out := make([]zoneCwd, 0, len(cwds))
+	seen := map[zoneCwd]bool{}
+	for _, c := range cwds {
+		if (c.gen == 0 || c.gen == 1) && reached[c.dir] == 3 {
+			c = zoneCwd{dir: c.dir, gen: -1}
+		}
+		if seen[c] {
+			continue
+		}
+		seen[c] = true
+		out = append(out, c)
+	}
+	return out
+}
+
 // zoneRelativeTo prefixes one directory onto relative candidates, keeping the
 // raw segments for the normalization and symlink layers; absolute candidates
 // are judged as they land. An empty dir leaves the candidates unchanged.
@@ -1070,6 +1110,7 @@ func (w *zoneWalker) zoneCdMove(world int, args []*syntax.Word) {
 	// was): the pre-cd set survives into the next statement either way
 	// (round 8 P1)
 	next = append(next, w.cwds...)
+	next = zoneMergeGens(next)
 	w.setCwds(next)
 	if len(w.cwds) > zoneCwdsBound {
 		// card t1574 K8: every cd unions the pre-cd set into the next set,

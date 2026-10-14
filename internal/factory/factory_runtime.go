@@ -11,6 +11,7 @@ import (
 	"time"
 
 	"github.com/modu-ai/moai-adk/internal/cli/specid"
+	"github.com/modu-ai/moai-adk/internal/gitenv"
 )
 
 // factoryProvenance is captured at card assignment/state-change time. A
@@ -49,7 +50,9 @@ func captureFactoryProvenance(root, specID string) factoryProvenance {
 			}
 		}
 	}
-	if out, err := exec.Command("git", "-C", root, "rev-parse", "HEAD").Output(); err == nil {
+	cmd := exec.Command("git", "-C", root, "rev-parse", "HEAD")
+	cmd.Env = gitenv.Env() // an inherited GIT_DIR would outrank -C
+	if out, err := cmd.Output(); err == nil {
 		manifest.GitCommit = strings.TrimSpace(string(out))
 	}
 	return manifest

@@ -29,7 +29,7 @@ llm:
         sync-auditor:
             model: opus
             effort: medium
-    agent_overrides_consume: false
+    agent_overrides_consume: true
     claude_models:
         high: ""
         medium: ""

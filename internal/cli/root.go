@@ -55,6 +55,7 @@ var trivialCommands = map[string]bool{
 	"cc":         true, // launcher: exec's claude, discards the graph
 	"cg":         true, // retired token: never initialize launch dependencies
 	"glm":        true, // launcher: exec's claude, discards the graph
+	"jev":        true, // deps-free: reads flags and the jevcred writer only (SPEC-GLM-JEV-KEY-001)
 }
 
 // @MX:ANCHOR: [AUTO] Execute is the main entry point for the moai CLI
