@@ -302,6 +302,12 @@ func TestZoneCanonicalDirEntryName(t *testing.T) {
 		{names: []string{"Ä.txt", "zz.md"}, final: "missing.txt", want: "missing.txt"},
 		{names: nil, final: "ä.txt", want: "ä.txt"},
 		{names: []string{"report~1.txt"}, final: "REPORT~1.TXT", want: "report~1.txt"},
+		// repair round 12 P1: the EXACT match wins before any fold — on a
+		// case-sensitive volume both spellings can exist, and a fold-first
+		// scan would canonicalize to whichever sibling the listing order hit
+		// first (the sibling is listed FIRST here to force the old defect:
+		// judging the unprotected spelling deletes the protected file)
+		{names: []string{"Ä.txt", "ä.txt"}, final: "ä.txt", want: "ä.txt"},
 		// the EqualFold boundary: locale fold pairs (ı/I — NTFS locale case
 		// tables equate them) are Unicode SIMPLE-fold misses, so the raw name
 		// is kept; windows closes that class structurally by deferring the
@@ -334,6 +340,86 @@ func TestZoneCanonicalDirEntryName(t *testing.T) {
 	}
 	if got := zoneCanonicalDirEntryName(names, "ä.txt"); got != "Ä.txt" {
 		t.Errorf("ReadDir-backed match: zoneCanonicalDirEntryName(%q, %q) = %q, want Ä.txt", names, "ä.txt", got)
+	}
+}
+
+// zoneFakeDirEntry — a synthetic os.DirEntry for listings injected through
+// the zoneParentLister swap (both-case listings cannot coexist on darwin's
+// default APFS).
+type zoneFakeDirEntry struct{ name string }
+
+func (e zoneFakeDirEntry) Name() string               { return e.name }
+func (e zoneFakeDirEntry) IsDir() bool                { return false }
+func (e zoneFakeDirEntry) Type() os.FileMode          { return 0 }
+func (e zoneFakeDirEntry) Info() (os.FileInfo, error) { return nil, os.ErrNotExist }
+
+// TestZoneResolveParentKeepsRawAlongsideCanonical — repair round 12 P1: on
+// a case-sensitive volume both spellings can exist, so judging only the
+// canonicalized spelling would let `ä.txt` ride its sibling's verdict; the
+// resolver keeps the RAW final name as a form alongside the canonicalized
+// one and the zone-form dedup absorbs the identity. The synthetic listing
+// rides the zoneParentLister injection.
+func TestZoneResolveParentKeepsRawAlongsideCanonical(t *testing.T) {
+	root := newUnlinkLinkRoot(t)
+	prev := zoneParentLister
+	zoneParentLister = func(dir string) ([]os.DirEntry, error) {
+		return []os.DirEntry{
+			zoneFakeDirEntry{name: "secret.md"},
+			zoneFakeDirEntry{name: "zone-file.md"},
+			zoneFakeDirEntry{name: "Ä.txt"},
+		}, nil
+	}
+	t.Cleanup(func() { zoneParentLister = prev })
+	prevGetwd := zoneGetwd
+	zoneGetwd = func() (string, error) { return root, nil }
+	t.Cleanup(func() { zoneGetwd = prevGetwd })
+
+	forms := resolveZoneLinkTarget(root, filepath.Join("zonelink", "ä.txt"))
+	want := map[string]bool{"protected/Ä.txt": false, "protected/ä.txt": false}
+	for _, f := range forms {
+		if _, ok := want[f.Folded]; ok {
+			want[f.Folded] = true
+		}
+	}
+	for folded, seen := range want {
+		if !seen {
+			t.Errorf("raw-alongside: forms %+v miss %q — both spellings must judge", forms, folded)
+		}
+	}
+}
+
+// TestZoneParentListingReadOncePerGuardCall — repair round 12 P2: N
+// candidates sharing one resolved parent read that parent's listing ONCE
+// per guard call (the cache the candidate loop threads through every
+// resolution), never list-per-candidate and never across guard calls.
+func TestZoneParentListingReadOncePerGuardCall(t *testing.T) {
+	root := newUnlinkLinkRoot(t)
+	prev := zoneParentLister
+	counts := map[string]int{}
+	zoneParentLister = func(dir string) ([]os.DirEntry, error) {
+		counts[dir]++
+		return os.ReadDir(dir)
+	}
+	t.Cleanup(func() { zoneParentLister = prev })
+	h := zoneTestHandler(t, root)
+	d, r := zoneCall(t, h, "Bash", harnessLearnerIdentity, map[string]any{
+		"command": "rm zone_dir/link_x zone_dir/broken zone_dir/innermissing",
+	})
+	if d == DecisionDeny {
+		t.Fatalf("listing cache: decision=%q reason=%q, want the operands judged (links outside the zone)", d, r)
+	}
+	listed := 0
+	for dir, n := range counts {
+		if !strings.HasSuffix(filepath.ToSlash(dir), "/zone_dir") {
+			continue
+		}
+		listed++
+		if n != 1 {
+			t.Errorf("parent listing re-read: %s listed %d times in ONE guard call, want once — the per-call cache absorbs the sibling candidates", filepath.ToSlash(dir), n)
+		}
+	}
+	if listed != 1 {
+		t.Errorf("parent listing re-read: %d /zone_dir keyed entries observed, want exactly one", listed)
 	}
 }
 

@@ -2345,8 +2345,12 @@ func (h *preToolHandler) checkProtectedZoneShell(agentID string, toolInput json.
 		})
 		return reason
 	}
+	// one LISTING CACHE per guard call (repair round 12 P2): N candidates
+	// sharing a resolved parent read that parent's directory listing once —
+	// never carried across guard calls.
+	listings := make(map[string][]string)
 	for _, cand := range w.cands {
-		if reason := h.zoneDenyIfCovered(agentID, root, load, cand, resolveZoneTarget(root, cand)); reason != "" {
+		if reason := h.zoneDenyIfCovered(agentID, root, load, cand, resolveZoneTarget(root, cand, listings)); reason != "" {
 			return reason
 		}
 	}
@@ -2354,7 +2358,7 @@ func (h *preToolHandler) checkProtectedZoneShell(agentID string, toolInput json.
 		// card t1712: the link-own candidates resolve with the final
 		// component unfollowed — the link's own path is all the judgment
 		// sees, so a link outside the zone pointing at a zone file passes.
-		if reason := h.zoneDenyIfCovered(agentID, root, load, cand, resolveZoneLinkTarget(root, cand)); reason != "" {
+		if reason := h.zoneDenyIfCovered(agentID, root, load, cand, resolveZoneLinkTarget(root, cand, listings)); reason != "" {
 			return reason
 		}
 	}
