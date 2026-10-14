@@ -231,16 +231,21 @@ func BuildInto(path string, doc *PolicyDocument, targetKind TargetKind, defaultM
 	// block so the codegen does not drop non-list permission settings.
 	block.Raw = existing.Raw
 
-	// Record-ahead (card t1630 card-review round 2, P2-2): the TargetJSON
-	// target is the project's settings file (the only production JSON target
-	// of this codegen — the `moai tool-policy build` local target), so ALL
-	// policy-generation paths maintain the sidecar record the Q5 union
-	// classification reads. Stage before the settings mutation, converge after
-	// it lands — the same protocol RenderTierPermissions uses. The
-	// TargetTemplate target is the distribution template, not a project
-	// settings file; it maintains no record.
+	// Record protocol (card t1630 card-review round 2 P2-2 + sync-audit F2/F3):
+	// the TargetJSON target is the project's settings file (the only
+	// production JSON target of this codegen — the `moai tool-policy build`
+	// local target), so ALL policy-generation paths maintain the sidecar
+	// record the Q5 union classification reads. Stage before the settings
+	// mutation, converge after it lands, roll back to the pre-render record on
+	// a failed write — the same protocol RenderTierPermissions uses, under the
+	// same protocol lock. The TargetTemplate target is the distribution
+	// template, not a project settings file; it maintains no record.
 	isProjectTarget := targetKind == TargetJSON
+	var prior []string
 	if isProjectTarget {
+		recordProtocolMu.Lock()
+		defer recordProtocolMu.Unlock()
+		prior = readManagedAllowRecordList(path)
 		if err := stageManagedAllowRecord(path, block.Allow); err != nil {
 			return nil, fmt.Errorf("stage managed-allow record: %w", err)
 		}
@@ -256,10 +261,20 @@ func BuildInto(path string, doc *PolicyDocument, targetKind TargetKind, defaultM
 		return nil, fmt.Errorf("unknown target kind %q", targetKind)
 	}
 	if err != nil {
+		if isProjectTarget {
+			if rbErr := rollbackManagedAllowRecord(path, prior); rbErr != nil {
+				return nil, fmt.Errorf("codegen render %q: %w (record rollback failed: %v)", path, err, rbErr)
+			}
+		}
 		return nil, fmt.Errorf("codegen render %q: %w", path, err)
 	}
 
 	if err := atomicfile.Write(path, out, defs.FilePerm); err != nil {
+		if isProjectTarget {
+			if rbErr := rollbackManagedAllowRecord(path, prior); rbErr != nil {
+				return nil, fmt.Errorf("codegen write %q: %w (record rollback failed: %v)", path, err, rbErr)
+			}
+		}
 		return nil, fmt.Errorf("codegen write %q: %w", path, err)
 	}
 	if isProjectTarget {

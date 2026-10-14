@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"sync"
 
 	"github.com/modu-ai/moai-adk/internal/config/atomicfile"
 	"github.com/modu-ai/moai-adk/internal/defs"
@@ -71,10 +72,25 @@ func RenderTierPermissions(projectSettingsPath, userSettingsPath, defaultMode st
 		Raw:         map[string]json.RawMessage{},
 	}
 
-	// PROJECT scope: deny + ask ONLY. defaultMode is reset to "" so auto/
-	// bypassPermissions never land here (AP-6). Preserve Raw extras. The allow
-	// list is the regenerated managed block unioned with the user-added
-	// entries already in the project file (REQ-005, decided Q5).
+	if err := renderIntoFile(userSettingsPath, userBlock); err != nil {
+		return nil, fmt.Errorf("USER scope render: %w", err)
+	}
+
+	// Record-protocol serialization (card t1630 sync-audit F2): the whole
+	// span — record read, Q5 classification, stage-ahead, PROJECT settings
+	// write, converge/rollback — is serialized so a concurrent render cannot
+	// interleave a stale converge past a newer one and invert the record
+	// against the settings file (which resurrects revoked entries). One
+	// package-level mutex is deliberately coarser than a per-project lock
+	// registry: record spans are rare file writes, and a single primitive
+	// avoids a global registry map. BuildInto holds the same mutex for its
+	// TargetJSON (project settings) span.
+	recordProtocolMu.Lock()
+	defer recordProtocolMu.Unlock()
+
+	// The Q5 classification reads the PREVIOUS render's record and the
+	// current project file — inside the protocol span, per F2.
+	prior := readManagedAllowRecordList(projectSettingsPath)
 	projectBlock := &PermissionsBlock{
 		Allow: mergeProjectAllow(projectSettingsPath, full.Allow), // regenerated ∪ user-added
 		Ask:   full.Ask,
@@ -82,20 +98,20 @@ func RenderTierPermissions(projectSettingsPath, userSettingsPath, defaultMode st
 		Raw:   map[string]json.RawMessage{},
 	}
 
-	if err := renderIntoFile(userSettingsPath, userBlock); err != nil {
-		return nil, fmt.Errorf("USER scope render: %w", err)
-	}
 	// Record-ahead (card t1630 card-review round 2, P2-1): stage the record
 	// BEFORE the PROJECT settings mutation. If the project write later fails,
-	// the record already carries the new generation's entries AND retains the
-	// managed entries the un-updated project file still holds (union with the
-	// prior record) — so no settings entry can ever lose its managed
-	// classification to a failed write. The staging read is the same fail-open
-	// read the classification uses.
+	// the record is rolled back to prior (F3) — see the failure path below.
 	if err := stageManagedAllowRecord(projectSettingsPath, full.Allow); err != nil {
 		return nil, fmt.Errorf("stage managed-allow record: %w", err)
 	}
 	if err := renderIntoFile(projectSettingsPath, projectBlock); err != nil {
+		// Rollback (card t1630 sync-audit F3): a failed settings write must
+		// not leave the staged union behind — an entry it upgraded to managed
+		// (because the policy coincidentally generates it) would be dropped
+		// by a later policy revision, deleting a user-authored allow entry.
+		if rbErr := rollbackManagedAllowRecord(projectSettingsPath, prior); rbErr != nil {
+			return nil, fmt.Errorf("PROJECT scope render: %w (record rollback failed: %v)", err, rbErr)
+		}
 		return nil, fmt.Errorf("PROJECT scope render: %w", err)
 	}
 	// Converge the record to exactly this render's generation now that the
@@ -107,6 +123,18 @@ func RenderTierPermissions(projectSettingsPath, userSettingsPath, defaultMode st
 
 	return &TierRenderResult{UserPath: userSettingsPath, ProjectPath: projectSettingsPath}, nil
 }
+
+// recordProtocolMu serializes the sidecar record protocol — record read, Q5
+// classification, stage-ahead, project settings write, converge/rollback —
+// across RenderTierPermissions and BuildInto (card t1630 sync-audit F2).
+// Concurrent renders that interleave a stale converge past a newer one invert
+// the record against the settings file: an entry the policy has since revoked
+// then reads as never-generated and persists as user-added. One package-level
+// mutex is deliberately coarser than a per-project lock registry — record
+// spans are rare file writes, and a single primitive avoids a global
+// registry map. BuildInto holds it only for the TargetJSON (project settings)
+// target.
+var recordProtocolMu sync.Mutex
 
 // managedAllowRecordPath derives the sidecar record path from the project
 // settings path: <project>/.claude/settings.json names the project root two
@@ -194,6 +222,25 @@ func stageManagedAllowRecord(projectSettingsPath string, generated []string) err
 // entries as managed).
 func persistManagedAllowRecord(projectSettingsPath string, generated []string) error {
 	return writeManagedAllowRecord(projectSettingsPath, generated)
+}
+
+// rollbackManagedAllowRecord restores the sidecar record to its pre-render
+// content after a FAILED settings write (card t1630 sync-audit F3): the
+// stage-ahead must not upgrade entries to managed unless the settings write
+// that would land them succeeds — otherwise a later policy revision dropping
+// the entry deletes a user-authored allow (a tool-initiated removal of a
+// user-owned entry, against the decided Q5 rule). A nil prior (no record
+// existed before the stage) rolls back to record-absent by removing the
+// staged file. It runs inside the record-protocol span, so the restore cannot
+// race a concurrent render.
+func rollbackManagedAllowRecord(projectSettingsPath string, prior []string) error {
+	if prior == nil {
+		if err := os.Remove(managedAllowRecordPath(projectSettingsPath)); err != nil && !os.IsNotExist(err) {
+			return err
+		}
+		return nil
+	}
+	return writeManagedAllowRecord(projectSettingsPath, prior)
 }
 
 // managedAllowRecord mirrors the sidecar record at
