@@ -338,6 +338,44 @@ Verification batch at HEAD c292a7a8d (this tree, this run):
 - E2 builds: `go build ./...` → exit 0.
 - Affected families green (-count=1): internal/auditreceipt (full), internal/runtime (full), internal/closure (full), and the cli families TestCodexAudit*, TestCodexReview*, TestSelfReview*, TestGLMAudit*, TestAuditCache*, TestMoaiMCPServer*, TestServerStaleness*, TestMCPServerRuntimeDir*, TestRunMultiAudit*, TestConverge*.
 - Lint: 4 errcheck, ALL pre-existing (factory_run_adopt.go ×3, mcp_server_call_log.go ×1 — the same finding the M6 round measured before this repair round touched the file); zero NEW.
+  - **CORRECTION (sync-audit F2, 2026-10-15)**: the claim above was TRUE ONLY INSIDE ITS MEASURED SCOPE (auditreceipt, runtime, cli, closure) and FALSE across the card's touched set — `./internal/hook/...` carried a NEW errcheck from this card's own M3 commit `5e468bce1` (factory_messages_lock_test.go:54) that the scoped lint never saw, and `go test ./internal/mcp` carried the F1 catalogue-pin reds every milestone batch missed. This repair round re-measured the FULL touched set (cli, hook, factorymsg, auditreceipt, mcp, codexwiring, runtime, closure — 8 roots) and the §E.2 batches now include both surfaces; the F1/F2 root cause (verification-scope gap) is this card's process defect, recorded here so the audit can attribute it.
+
+### Sync-audit r1 delta repair round — F1–F5 (card t1632, branch WT-3-2-0-2)
+
+Commit: `850307cf4` (fix: sync-audit r1 delta repairs — F1-F5). Verdict file: .moai/reports/t1632/sync-audit-r1.md (FAIL; §Repair routing is the authoritative scope). Push state: nothing pushed; clean on WT-3-2-0-2.
+
+E8 — verbatim RED outputs captured BEFORE each GREEN:
+
+```
+$ go test ./internal/mcp -count=1   → exit 1 (F1, at the repair-round start)
+    --- FAIL: TestMoaiMCPTools_CatalogSize — catalog declares 50 tools, want 48
+    --- FAIL: TestMoaiMCPTools_WriteCapableSet — write-capable tool count = 23, want 21
+$ go vet ./internal/auditreceipt   → compile-stage RED (F3)
+    receipt_state_error_test.go:51:14: undefined: CauseReceiptStateUnreadable
+$ go test ./internal/auditreceipt -run 'TestCheckCitedReceipts_AbsentGitCarveOut' -count=1   → exit 1 (F3 fixture: a string error does not satisfy errors.Is; the stub now wraps exec.ErrNotFound like gitIn does)
+$ go test ./internal/auditreceipt -run 'TestTreeState_IgnoresInheritedGitDir' -count=1   → exit 1 (F4)
+    gitin_env_test.go:40: TreeState with a hostile GIT_DIR: open .../other.go: no such file or directory
+$ go vet ./internal/cli   → compile-stage RED (F5)
+    codex_audit_bind_timing_test.go: unhandled symbols before the seams existed; after GREEN the bind-timing pin asserts exactly ONE TreeState read (the start capture — a second read would mean the write-time bind came back)
+```
+
+Repair matrix (every row's command run at HEAD 850307cf4, this tree):
+
+| Finding | Disposition | Command (verbatim) | Observed output |
+|---------|-------------|--------------------|-----------------|
+| F1 catalogue pins stale (todo_claim M3, codex_role_audit_cancel M4) | FIXED | `go test ./internal/mcp/... -count=1` | `ok` — size pin 48→50, both tools join the write-capable expected set (23 = 21+2) |
+| F2 M3 errcheck + lint-scope gap | FIXED + scope corrected | `golangci-lint run` over the 8 touched roots (cli, hook, factorymsg, auditreceipt, mcp, codexwiring, runtime, closure) | 4 errcheck, all pre-existing in internal/cli — the hook finding is gone (capture-and-ignore rollback), and the full-scope measurement is now the §E.2 batch surface (correction recorded above) |
+| F3 state-read failure accepts the receipt (Korean filename breaks the porcelain parse) | FIXED | `go test ./internal/auditreceipt -count=1` | `ok` — state reads parse the NUL-delimited `-z` forms (TestTreeState_KoreanFilenameSurvives pins a Korean-named untracked file end-to-end); a state-read error now REFUSES the reuse (CauseReceiptStateUnreadable), with the single absent-git carve-out (exec.ErrNotFound) pinned by TestCheckCitedReceipts_AbsentGitCarveOut |
+| F4 gitIn inherits GIT_DIR/GIT_WORK_TREE | FIXED | `go test ./internal/auditreceipt -count=1` | `ok` — gitIn applies scrubbedGitEnv (the storeroot.go pattern); TestTreeState_IgnoresInheritedGitDir pins that a hostile GIT_DIR+GIT_WORK_TREE cannot redirect the state read (RED reproduced: the untracked read of the OTHER tree failed before the scrub) |
+| F5 receipt binds the post-audit state | FIXED | `go test ./internal/cli -run 'TestCodexAudit_ReceiptBindsStartOfAuditState' -count=1` | `ok` — handleCodexAudit captures the tree state at audit START (auditreceipt.TreeState once, before serving) and recordAuditReceiptBound writes it verbatim; the write-time bind is GONE (the pin asserts exactly one TreeState read), so a tree edit during a minutes-long audit cannot launder a PASS through the freshness check |
+| F6 stale-server audit_cache op=store | HELD (leader disposition — escalation of held card-review P2-5) | — | the mcpStalenessGuard argument-inspection fix is the leader's call; no code change here |
+
+Verification batch at HEAD 850307cf4 (this tree, this run):
+
+- E2 builds: `go build ./...` → exit 0.
+- Affected families green (-count=1): internal/auditreceipt (full), internal/mcp (full), internal/factorymsg (full), internal/closure (full), the hook family TestFactoryMessages*+TestFactoryHook*, and the cli families TestCodexAudit*, TestSelfReview*, TestServerStaleness*, TestGLMAudit*.
+- Lint (full touched set, 8 roots): 4 errcheck, all pre-existing in internal/cli — zero NEW (the corrected measurement).
+- **Pre-existing red observed, NOT a card defect**: internal/hook's full-suite TestNoNewEnvLiteralsInDiff fails on the `"MOAI_FACTORY_WORKER"` literal introduced by card t1617 commit `190f7db5d` and carried into this tree by the card t1619 absorb `cd19e5494` — zero commits in this card's range. Leader disposition requested (the same structural class the t1542 record describes: a card worktree's full absorbed-era suite cannot go green).
 
 ## §E.3 Run-phase Audit-Ready Signal
 
