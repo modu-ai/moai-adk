@@ -80,7 +80,7 @@ The decision rows in decision-index.md carry the questions (Q1 to Q24). A row th
 
 - Body language. `language.yaml` sets `documentation: ko`. Recent docs SPECs mix English structure with Korean narrative, and this SPEC follows that mix: English structure and GEARS text, Korean card labels where they help. The operator may ask for a different convention.
 - The page measure for "CG 문단 8쪽→1쪽". The repository defines no page count. This SPEC uses the count of pages that carry the exact retirement sentence (9 files, 8 outside the canonical page) as the proxy. The proxy is labelled as a proxy in acceptance.md (G7).
-- The owner of Q22. The proposal is GATE, pending leader confirmation (decision-index.md, Q22; acceptance.md G22).
+- The owner of Q22. Q22 owner = GATE, leader-confirmed (card:t1655, 2026-10-14) (decision-index.md, Q22; acceptance.md G22).
 - The owner of Q7 and Q21 is RESID and REDIR, as child-cards.md assigns them. Their decisions are taken inside those children (decision `d-20261014T114834Z-e039`).
 
 ## G. Observations deferred to other cards or rows
