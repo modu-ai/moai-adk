@@ -6,15 +6,21 @@
 // factory leader or lane session still needs their binding blocks, so the
 // SessionStart hook injects the role core — the regions the neutral markers
 // enclose in the DEPLOYED rule files — into the session's additional
-// context. The core is built solely from the deployed files (REQ-ALB-023):
-// the binding ledger fixture is a test artifact this package never reads.
+// context. The core is built from the deployed files, with the binary's
+// embedded template copy as the stale-copy fallback (REQ-ALB-023 keeps the
+// binding ledger fixture out of both sources).
 //
 // Three properties shape the flow:
 //
-//   - Fail-visible, not fail-open (REQ-ALB-009): a role session whose rule
-//     files are absent, unreadable, empty, or unmarked gets an
-//     operator-visible warning AND an agent-facing read directive, never a
-//     silent start.
+//   - Fail-visible for what the binary cannot replace (REQ-ALB-009): a role
+//     session whose rule files are absent, unreadable, empty, or malformed
+//     gets an operator-visible warning AND an agent-facing read directive,
+//     never a silent start. A STALE deployed copy — unmarked, or stamped
+//     behind the binary (t1729) — does NOT fail: the core is served from the
+//     binary's embedded template copy, with a one-line notice naming the
+//     cause and the refresh path (a worktree branched from a main with an
+//     uncommitted `moai update` cannot be fixed by running `moai update`
+//     inside the worktree).
 //   - No truncation (REQ-ALB-010): when the final additional context
 //     exceeds the runtime's documented 10,000-character per-string delivery
 //     cap, the role core goes out INTACT — the runtime saves oversized
@@ -28,11 +34,13 @@ package hook
 import (
 	"errors"
 	"fmt"
+	"io/fs"
 	"os"
 	"path/filepath"
 	"strings"
 
 	"github.com/modu-ai/moai-adk/internal/config"
+	"github.com/modu-ai/moai-adk/internal/template"
 	"github.com/modu-ai/moai-adk/pkg/version"
 	"gopkg.in/yaml.v3"
 )
@@ -165,6 +173,29 @@ func roleRuleDeployRel(root string, rule roleRuleFile) string {
 // path with the rule path named.
 var errNotRegularFile = fmt.Errorf("role rule file is not a regular file")
 
+// errRoleRuleUnmarked is the no-markers rejection, a SENTINEL so the caller
+// can distinguish "stale deployed copy" (t1729: the embedded-fallback case)
+// from the other REQ-ALB-009 failures, which keep failing the session.
+var errRoleRuleUnmarked = fmt.Errorf("role rule file carries no %s markers", config.RoleCoreMarkerStart)
+
+// roleRuleEmbeddedRule is the embedded-template seam (t1729): it returns the
+// binary's embedded template copy of one deployed rule file, addressed by
+// the deployment-relative path (EmbeddedTemplates strips the "templates/"
+// prefix, so the embedded paths match the deployment targets 1:1). ok=false
+// is a miss — the caller keeps the original failure. Production reads the
+// real embed; tests stub it with fixture content.
+var roleRuleEmbeddedRule = func(rel string) (string, bool) {
+	fsys, err := template.EmbeddedTemplates()
+	if err != nil {
+		return "", false
+	}
+	data, err := fs.ReadFile(fsys, rel)
+	if err != nil {
+		return "", false
+	}
+	return string(data), true
+}
+
 func buildRoleCore(root string, rule roleRuleFile) (string, error) {
 	rel := roleRuleDeployRel(root, rule)
 	path := filepath.Join(root, filepath.FromSlash(rel))
@@ -184,13 +215,23 @@ func buildRoleCore(root string, rule roleRuleFile) (string, error) {
 		}
 		return "", fmt.Errorf("role rule file unreadable: %s: %w", rel, err)
 	}
-	content := string(data)
+	return roleCoreFromContent(string(data), rel)
+}
+
+// roleCoreFromContent validates one rule file's content and returns its role
+// core: the marker-enclosed regions joined with blank lines. label names the
+// source in error messages (the deployed rel for a session-tree read, the
+// template rel for an embedded-copy read). An empty marker pair yields an
+// empty core (a legitimate state — the caller emits the pointer only).
+// Every failure names its cause; the binding ledger is never read
+// (REQ-ALB-023).
+func roleCoreFromContent(content, label string) (string, error) {
 	if strings.TrimSpace(content) == "" {
-		return "", fmt.Errorf("role rule file empty: %s", rel)
+		return "", fmt.Errorf("role rule file empty: %s", label)
 	}
 	regions, marked := config.ExtractRoleCoreRegions(content)
 	if !marked {
-		return "", fmt.Errorf("role rule file carries no %s markers: %s", config.RoleCoreMarkerStart, rel)
+		return "", fmt.Errorf("%w: %s", errRoleRuleUnmarked, label)
 	}
 	// A start marker without its closing pair is a malformed file, not an
 	// empty core: the required rules would silently vanish from the session.
@@ -198,7 +239,7 @@ func buildRoleCore(root string, rule roleRuleFile) (string, error) {
 	// start+end) on the empty-core path while sending every unclosed region
 	// to the REQ-ALB-009 failure path.
 	if strings.Count(content, config.RoleCoreMarkerStart) != strings.Count(content, config.RoleCoreMarkerEnd) {
-		return "", fmt.Errorf("role rule file has an unclosed %s region (unbalanced marker counts): %s", config.RoleCoreMarkerStart, rule.Rel)
+		return "", fmt.Errorf("role rule file has an unclosed %s region (unbalanced marker counts): %s", config.RoleCoreMarkerStart, label)
 	}
 	// Balanced counts alone still pass an END-before-START file: the
 	// extractor scans forward from the FIRST start marker, so a file whose
@@ -209,7 +250,7 @@ func buildRoleCore(root string, rule roleRuleFile) (string, error) {
 	// occurrence in the content must be a start marker. Balanced counts
 	// guarantee both indexes exist at this point.
 	if strings.Index(content, config.RoleCoreMarkerEnd) < strings.Index(content, config.RoleCoreMarkerStart) {
-		return "", fmt.Errorf("role rule file carries a %s marker before any %s marker (malformed marker order): %s", config.RoleCoreMarkerEnd, config.RoleCoreMarkerStart, rule.Rel)
+		return "", fmt.Errorf("role rule file carries a %s marker before any %s marker (malformed marker order): %s", config.RoleCoreMarkerEnd, config.RoleCoreMarkerStart, label)
 	}
 	// Full sequence validation: every start marker must be closed by its own
 	// end marker BEFORE the next start marker. Count balance plus first-
@@ -229,7 +270,7 @@ func buildRoleCore(root string, rule roleRuleFile) (string, error) {
 			}
 			if si >= 0 && (ei < 0 || si < ei) {
 				if depth > 0 {
-					return "", fmt.Errorf("role rule file has a %s marker before its enclosing region is closed: %s", config.RoleCoreMarkerStart, rule.Rel)
+					return "", fmt.Errorf("role rule file has a %s marker before its enclosing region is closed: %s", config.RoleCoreMarkerStart, label)
 				}
 				depth = 1
 				rest = rest[si+len(config.RoleCoreMarkerStart):]
@@ -239,10 +280,34 @@ func buildRoleCore(root string, rule roleRuleFile) (string, error) {
 			rest = rest[ei+len(config.RoleCoreMarkerEnd):]
 		}
 		if depth != 0 {
-			return "", fmt.Errorf("role rule file has an unclosed %s region (marker sequence ends inside a region): %s", config.RoleCoreMarkerStart, rule.Rel)
+			return "", fmt.Errorf("role rule file has an unclosed %s region (marker sequence ends inside a region): %s", config.RoleCoreMarkerStart, label)
 		}
 	}
 	return strings.Join(regions, "\n\n"), nil
+}
+
+// embeddedRoleCore validates and extracts the embedded template copy of one
+// role rule (t1729). A miss — or an embedded copy that fails the same
+// validation the deployed copy gets — returns an error the caller folds into
+// the REQ-ALB-009 failure path; the embedded copy is never trusted blindly.
+func embeddedRoleCore(rule roleRuleFile) (string, error) {
+	content, ok := roleRuleEmbeddedRule(rule.Rel)
+	if !ok {
+		return "", fmt.Errorf("embedded template copy absent: %s", rule.Rel)
+	}
+	return roleCoreFromContent(content, rule.Rel)
+}
+
+// embeddedFallbackNotice is the one-line notice the injected context carries
+// when a rule core was served from the binary's embedded template copy
+// (t1729): the session must be able to tell an embedded-copy core from a
+// deployed-file core, and the operator-visible remediation names the real
+// cause in a worktree — an uncommitted `moai update` on the base branch —
+// not a bare "run `moai update` here".
+func embeddedFallbackNotice(names []string) string {
+	return fmt.Sprintf(
+		"NOTE: the deployed copy of %s predates this binary or carries no role-core markers — the core below was injected from the binary's embedded template copy. Usual cause in a worktree: an uncommitted `moai update` on the base branch; commit it there and refresh this worktree (`moai worktree sync`), or run `moai update` in the primary checkout.",
+		strings.Join(names, ", "))
 }
 
 // roleRuleLocaleTable carries the operator-facing warnings by locale. The
@@ -263,7 +328,7 @@ type roleRuleLocaleTable struct {
 var roleRuleLocales = map[string]roleRuleLocaleTable{
 	"ko": {
 		InjectionFailed: func(session, detail string) string {
-			return fmt.Sprintf("역할 규칙 주입이 %s 세션에서 실패했습니다: %s. 에이전트에는 두 규칙 파일을 경로로 읽으라는 지시가 전달됐습니다. 규칙 파일이 바이너리보다 낡은 버전 불일치라면 `moai update` 로 규칙 파일을 갱신한 뒤 세션을 다시 시작하세요.", session, detail)
+			return fmt.Sprintf("역할 규칙 주입이 %s 세션에서 실패했습니다: %s. 에이전트에는 두 규칙 파일을 경로로 읽으라는 지시가 전달됐습니다. 규칙 파일이 바이너리보다 낡은 버전 불일치라면, 워크트리에서는 보통 베이스 브랜치에 커밋되지 않은 `moai update` 가 원인입니다 — 베이스 브랜치에서 커밋한 뒤 `moai worktree sync` 로 갱신하고, 기본 체크아웃에서는 `moai update` 를 실행한 뒤 세션을 다시 시작하세요.", session, detail)
 		},
 		OverflowUnavailable: func(session string, total, limit int) string {
 			return fmt.Sprintf("역할 규칙 주입 초과(%s 세션): 조립된 맥락(%d자)이 %d자 전달 한도를 넘는데 넘침 파일 전달을 쓸 수 없어, 역할 core 대신 읽기 지시를 보냈습니다.", session, total, limit)
@@ -274,7 +339,7 @@ var roleRuleLocales = map[string]roleRuleLocaleTable{
 	},
 	"ja": {
 		InjectionFailed: func(session, detail string) string {
-			return fmt.Sprintf("ロールルールの注入が %s セッションで失敗しました: %s。エージェントには両ルールファイルをパスで読むよう指示を送りました。ルールファイルがバイナリより古いバージョン不整合なら、`moai update` でルールファイルを更新してセッションを再起動してください。", session, detail)
+			return fmt.Sprintf("ロールルールの注入が %s セッションで失敗しました: %s。エージェントには両ルールファイルをパスで読むよう指示を送りました。ルールファイルがバイナリより古い場合(バージョン不整合)は、ワークツリーでは通常ベースブランチに未コミットの `moai update` が原因です。ベースブランチでコミットしてから `moai worktree sync` で更新し、プライマリチェックアウトでは `moai update` を実行してセッションを再起動してください。", session, detail)
 		},
 		OverflowUnavailable: func(session string, total, limit int) string {
 			return fmt.Sprintf("ロールルール注入のオーバーフロー(%s セッション): 組み立てたコンテキスト(%d文字)が %d文字の配信上限を超えていますが、オーバーフローファイル配信が使えないため、ロール core の代わりに読み取り指示を送りました。", session, total, limit)
@@ -285,7 +350,7 @@ var roleRuleLocales = map[string]roleRuleLocaleTable{
 	},
 	"zh": {
 		InjectionFailed: func(session, detail string) string {
-			return fmt.Sprintf("角色规则注入在 %s 会话中失败:%s。已指示代理按路径完整读取两个规则文件。若规则文件比二进制旧(版本不匹配),请运行 `moai update` 更新规则文件后重启会话。", session, detail)
+			return fmt.Sprintf("角色规则注入在 %s 会话中失败:%s。已指示代理按路径完整读取两个规则文件。若规则文件比二进制旧(版本不匹配),工作树中的常见原因是基分支上有未提交的 `moai update` — 请在基分支提交后用 `moai worktree sync` 刷新;在主检出中运行 `moai update` 并重启会话。", session, detail)
 		},
 		OverflowUnavailable: func(session string, total, limit int) string {
 			return fmt.Sprintf("角色规则注入溢出(%s 会话):组装后的上下文(%d 字符)超出 %d 字符的传递上限,且溢出文件传递不可用,因此以读取指示代替角色 core。", session, total, limit)
@@ -297,7 +362,7 @@ var roleRuleLocales = map[string]roleRuleLocaleTable{
 	langEnglish: {
 		InjectionFailed: func(session, detail string) string {
 			return fmt.Sprintf(
-				"Role-rule injection failed for the %s session: %s. The agent was directed to read both rule files by path. If the rule files are older than the binary (version skew), run `moai update` to refresh them and restart the session.",
+				"Role-rule injection failed for the %s session: %s. The agent was directed to read both rule files by path. If the rule files are older than the binary (version skew), the usual cause in a worktree is an uncommitted `moai update` on the base branch — commit it there and refresh this worktree with `moai worktree sync`; in the primary checkout, run `moai update` and restart the session.",
 				session, detail)
 		},
 		OverflowUnavailable: func(session string, total, limit int) string {
@@ -346,22 +411,40 @@ func detectRoleRuleVersionSkew(systemYAML, binaryVersion string) (skewed bool, r
 	return stamp != binaryVersion, stamp, true
 }
 
-// roleRuleSkewDetail reads the deployed system.yaml under root and, when the
-// stamp differs from the running binary, returns the one-line skew naming
-// both versions and the remediation. Any read failure returns "" — the
-// missing-markers failure path stays the sole error surface.
-func roleRuleSkewDetail(root string) string {
+// roleRuleSkewInfo reads the deployed system.yaml under root and reports
+// whether its template_version stamp differs from the running binary.
+// ok=false means the stamp is absent or unreadable — the caller skips
+// silently (fail-open: the skew handling is advisory, never a new failure
+// path). The comparison is pure work over the parsed stamp — unit-tested
+// with fixtures only (REQ-RIB-007; a live-repo self-assertion would be
+// permanently red on a skewed installation).
+func roleRuleSkewInfo(root string) (skewed bool, stamp string) {
 	// The non-blocking rule read (card t1619, codex review P2): a FIFO at system.yaml
 	// is refused as a non-regular file instead of blocking the diagnostic.
 	data, err := readRuleFileBytes(filepath.Join(root, filepath.FromSlash(roleRuleSystemYAMLRel)))
 	if err != nil {
-		return ""
+		return false, ""
 	}
 	skewed, stamp, ok := detectRoleRuleVersionSkew(string(data), version.GetVersion())
-	if !ok || !skewed {
+	if !ok {
+		return false, ""
+	}
+	return skewed, stamp
+}
+
+// roleRuleSkewDetail renders the one-line skew for the REQ-ALB-009 failure
+// detail, naming both versions and the remediation. t1729 corrected the
+// advice: inside a worktree the cause is usually an uncommitted `moai
+// update` sitting on the base branch, so the line names commit-then-sync —
+// running `moai update` inside the worktree does not fix the class. Any
+// read failure returns "" — the missing-markers failure path stays the sole
+// error surface.
+func roleRuleSkewDetail(root string) string {
+	skewed, stamp := roleRuleSkewInfo(root)
+	if !skewed {
 		return ""
 	}
-	return fmt.Sprintf("version skew: rule files stamped %s, running binary %s — run `moai update` to refresh the rule files", stamp, version.GetVersion())
+	return fmt.Sprintf("version skew: rule files stamped %s, running binary %s — in a worktree the usual cause is an uncommitted `moai update` on the base branch: commit it there and refresh this worktree (`moai worktree sync`); in the primary checkout, run `moai update` to refresh the rule files", stamp, version.GetVersion())
 }
 
 // roleRuleLocaleFor resolves the operator-locale table, failing open to
@@ -396,12 +479,45 @@ func roleRuleInjectionFor(root, source, lang string) roleRuleInjection {
 		return roleRuleInjection{}
 	}
 
-	// Build every core first; any failure takes the REQ-ALB-009 path.
+	// Build every core first; any failure the embedded fallback cannot cover
+	// takes the REQ-ALB-009 path.
+	skewed, _ := roleRuleSkewInfo(root)
 	var parts []string
 	var failures []string
+	var fallbackNames []string
 	pointer := ""
 	for _, rule := range roleRuleFiles {
 		core, err := buildRoleCore(root, rule)
+		fromEmbedded := false
+		if err != nil {
+			// t1729: a stale deployed copy — the worktree branched from a
+			// main whose committed rule files predate this binary — is
+			// exactly the shape a stale-until-committed update leaves
+			// behind, and re-running `moai update` inside the worktree
+			// cannot fix it. The binary itself carries a fresh copy, so an
+			// UNMARKED deployed file falls back to the embedded template
+			// copy instead of failing the session. Other failures (absent,
+			// unreadable, empty, malformed markers) keep the REQ-ALB-009
+			// path: the binary cannot reconstruct a file it did not
+			// deploy.
+			if errors.Is(err, errRoleRuleUnmarked) {
+				if fb, ferr := embeddedRoleCore(rule); ferr == nil {
+					core, err = fb, nil
+					fromEmbedded = true
+				}
+			}
+		} else if skewed {
+			// t1729: a detected version skew makes the deployed copy stale
+			// by definition — the binary's embedded copy is authoritative
+			// even when the deployed file still parses. When the embedded
+			// read fails (a packaging bug), keep the deployed core rather
+			// than manufacturing a new failure; the skew line still rides
+			// any failure detail.
+			if fb, ferr := embeddedRoleCore(rule); ferr == nil {
+				core = fb
+				fromEmbedded = true
+			}
+		}
 		if err != nil {
 			failures = append(failures, err.Error())
 			continue
@@ -414,6 +530,9 @@ func roleRuleInjectionFor(root, source, lang string) roleRuleInjection {
 			continue
 		}
 		parts = append(parts, core)
+		if fromEmbedded {
+			fallbackNames = append(fallbackNames, rule.Name)
+		}
 	}
 	if len(failures) > 0 {
 		detail := strings.Join(failures, "; ")
@@ -428,6 +547,12 @@ func roleRuleInjectionFor(root, source, lang string) roleRuleInjection {
 	}
 
 	var sb strings.Builder
+	if len(fallbackNames) > 0 {
+		// t1729: the one-line notice — the session must be able to tell an
+		// embedded-copy core from a deployed-file core.
+		sb.WriteString(embeddedFallbackNotice(fallbackNames))
+		sb.WriteString("\n\n")
+	}
 	fmt.Fprintf(&sb, "Role-gated rules (factory %s session — injected at session start; the always-loaded surface carries the stubs):\n\n", role.Name)
 	sb.WriteString(strings.Join(parts, "\n\n"))
 	if pointer != "" {
