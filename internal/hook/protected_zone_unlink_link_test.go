@@ -338,3 +338,29 @@ func TestProtectedZoneShellCandidateCapCountsUniquePaths(t *testing.T) {
 		t.Errorf("cap counting: decision=%q reason=%q, want allow — %d unique candidates across both semantics are within the %d cap; only list MEMBERSHIPS (%d) exceed it", d, r, perSemantics, zoneCandidateCap, 2*perSemantics)
 	}
 }
+
+// TestProtectedZoneShellCandidateCapCountsExactStrings — repair round 4 P2:
+// the cap union dedups by EXACT candidate string, never by folded form. On a
+// case-sensitive filesystem `f0000.md` and `F0000.md` are DIFFERENT paths, so
+// a command carrying more than zoneCandidateCap case-variant candidates is a
+// set too large to verify soundly and must deny fail-closed; a folded union
+// key collapses the variants onto one key and lets the flood reach
+// per-candidate resolution. 2,100 base names in both case spellings, named
+// under both semantics: 4,200 exact strings (> the 4,096 cap) folding to
+// 2,100 keys. The over-cap deny is the assertion — all operands sit outside
+// the zone, so over-cap is the only possible deny source.
+func TestProtectedZoneShellCandidateCapCountsExactStrings(t *testing.T) {
+	const perSemantics = 2100
+	var rmArgs, teeArgs strings.Builder
+	for i := 0; i < perSemantics; i++ {
+		fmt.Fprintf(&rmArgs, " f%04d.md F%04d.md", i, i)
+		fmt.Fprintf(&teeArgs, " f%04d.md F%04d.md", i, i)
+	}
+	command := "rm" + rmArgs.String() + "; tee" + teeArgs.String()
+	root := newZoneRoot(t, zoneShippedDoc(ulZoneManifest), "")
+	h := zoneTestHandler(t, root)
+	d, r := zoneCall(t, h, "Bash", harnessLearnerIdentity, map[string]any{"command": command})
+	if d != DecisionDeny {
+		t.Errorf("cap counting: decision=%q reason=%q, want over-cap deny — %d EXACT candidate strings exceed the %d cap (case variants are distinct paths on a case-sensitive filesystem) and must not reach per-candidate resolution", d, r, 2*perSemantics, zoneCandidateCap)
+	}
+}
