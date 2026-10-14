@@ -294,6 +294,11 @@ func scanHomeCleanable(root string, retentionDays, releaseKeep int, currentVersi
 	// older than the retention window. Removal therefore requires both
 	// "beyond the newest three" and "older than the window" (the A12 floor,
 	// SPEC-CAPACITY-RECLAIM-001 REQ-CAP-008).
+	//
+	// @MX:NOTE: [AUTO] Keep-floor invariant: the three newest backups are
+	// never candidates regardless of age — both floor conditions must hold
+	// for removal.
+	// @MX:SPEC: SPEC-CAPACITY-RECLAIM-001
 	backupsDir := filepath.Join(root, "backups")
 	if entries, err := os.ReadDir(backupsDir); err == nil {
 		type backupEntry struct {

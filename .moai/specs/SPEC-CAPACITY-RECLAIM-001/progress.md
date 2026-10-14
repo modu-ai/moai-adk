@@ -165,7 +165,40 @@ _<pending run-phase>_
 
 ## §E.4 Sync-phase Audit-Ready Signal
 
-_<pending sync-phase>_
+Recorded by manager-docs in the single sync commit (3-phase close, plan→run→sync). The commit cannot cite its own hash, so `sync_commit_sha` holds the placeholder and the real SHA is backfilled in a following commit. This section records what was observed at commit time; the sync-audit verdict belongs to the auditor.
+
+sync_complete_at: 2026-10-14T05:26:04Z
+sync_commit_sha: "pending-backfill-sync"
+sync_status: complete
+audit_ready: true
+b12_self_test_a: duplicate-entry guard before emission — `grep -c 'SPEC-CAPACITY-RECLAIM-001' CHANGELOG.md` printed `0` (grep exit 1, no-match), so the emission proceeded with no existing entry to duplicate
+b12_self_test_b: AC counter over acceptance.md (the SSOT) — §D.0 lists exactly AC-CAP-001..013, all live, none carrying a `[RETIRED]`/`[REF]` reserved token; `live=13 excluded=0 ambiguous=0`; the CHANGELOG entry states the same count (13 acceptance criteria AC-CAP-001..013)
+b12_self_test_c: every file path the CHANGELOG entries cite was checked with `ls -l` in this pass — internal/hygiene/profile_cap.go, internal/hook/session_start_hygiene.go, internal/cli/clean_home.go, internal/template/templates/.moai/config/sections/state.yaml, internal/template/templates/.gitignore, internal/config/defaults.go, and this progress.md all exist; entries were drafted from the actual diff (`git diff --name-only e993fff989..804180777c`), not from plan.md descriptions
+changelog_entry_position: CHANGELOG.md `## [Unreleased]` — one entry at the top of `### Added` (profile-cap advisory) and three entries at the top of `### Changed` (template hygiene default apply, per-machine state untracking, backup keep-3 floor), each ending with the `🗿 MoAI` trailer
+mx_tag_sync: 3 `@MX:NOTE: [AUTO]` tags added, each with an `@MX:SPEC: SPEC-CAPACITY-RECLAIM-001` sub-line — `LoadProfileCapMaxBytes` and `ProfileCapAdvisories` in `internal/hygiene/profile_cap.go` (no-compiled-fallback and warning-only invariants), and the backups keep-3 floor block in `internal/cli/clean_home.go` (A12 floor invariant). 0 tags updated, 0 removed. No `@MX:TODO` (both new exported functions are tested — cross-package coverage 75.0%/60.9% per §E.2 E3); no `@MX:WARN` (no goroutines, no complexity trigger); no `@MX:ANCHOR` (fan_in < 3). gofmt clean, `go vet` clean after the tag edits
+frontmatter_status_transitions.spec_md: `status: in-progress -> completed`; `updated: 2026-10-14` already the sync date, unchanged
+frontmatter_status_transitions.plan_md: no frontmatter block and no status field; nothing to refresh, not edited
+frontmatter_status_transitions.acceptance_md: no frontmatter block and no status field; nothing to refresh, not edited
+frontmatter_status_transitions.progress_md: header `status:` line still reads `status: draft` (plan-phase value; the run phase did not flip it) — outside this dispatch's allowed surface (§E.4 only), left untouched and reported to the lane
+known_defect_note: a stale duplicate `## §E.3 Run-phase Audit-Ready Signal` heading carrying `_<pending run-phase>_` sits below the populated §E.3 (run-phase surface, outside the sync-phase allowed scope, left untouched and reported); era classification is unaffected — the parser matches the populated §E.3 heading and the §E.4 `sync_commit_sha` field
+
+### AC matrix (acceptance.md is the SSOT; 13 criteria; verdicts transcribed from §E.3, not re-run at sync)
+
+| AC | Class | Verdict | Evidence anchor (§E.2) |
+|---|---|---|---|
+| AC-CAP-001 | MS | PASS | `300746 total` (< 5,000,000) — M2 green runs |
+| AC-CAP-002 | MS | PASS | 21 `"mode":"apply"` rows, `rotated` on the seeded sink — CLI-path fixture runs |
+| AC-CAP-003 | RB | PASS | extended test RED pre-edit (4 positive cases) → `ok` post-edit — RED + M2 |
+| AC-CAP-004 | RB | PASS | `git ls-files` of the eleven paths → empty — M2 green runs |
+| AC-CAP-005 | RG | HELD | eleven local copies exist; nine archive digests byte-identical to B0 — M2 green runs |
+| AC-CAP-006 | RG | HELD | `sinks.go:91` owner exception only; no registry entry — CLI-path fixture runs |
+| AC-CAP-007 | RG | HELD | inbox 39 B + SHA unchanged; 0 audit rows name it — CLI-path fixture runs |
+| AC-CAP-008 | RB | PASS | template `workflow.yaml:331` now `mode: apply` — M1 |
+| AC-CAP-009 | RB | PASS | test green vs unchanged prune; mutant FAIL recorded, reverted — RED |
+| AC-CAP-010 | MS | PASS | `TestHomeCleanKeepFloors` RED pre-change (both fixtures) → `ok` — RED + M3 |
+| AC-CAP-011 | RB | PASS | `DefaultProfileMaxBytes` gone from clean_home.go; fixture test green; compiled-fallback mutant FAIL recorded (one mutant direction unobservable, recorded as Gap) — M3 |
+| AC-CAP-012 | RB | PASS | behavioral RED pre-flip → clauses 1-3 green — RED + M1 + M3 |
+| AC-CAP-013 | MS | PASS | `git merge-base B0 B1` = B0 full SHA; B0 touches only progress.md — M2 green runs |
 
 ## §F Phase 4 Mode Selection
 

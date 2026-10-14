@@ -39,6 +39,11 @@ type profileCapYAML struct {
 // warning (REQ-CAP-009). A non-positive explicit value is config-invalid and
 // is refused, mirroring the D30 fail-closed floors. Read and parse failures
 // are returned as errors so callers choose their degradation.
+//
+// @MX:NOTE: [AUTO] No-compiled-fallback contract: an absent key returns
+// ok=false and callers must NOT substitute config.DefaultProfileMaxBytes —
+// a compiled fallback would warn on projects that never configured a cap.
+// @MX:SPEC: SPEC-CAPACITY-RECLAIM-001
 func LoadProfileCapMaxBytes() (capBytes int64, ok bool, err error) {
 	dir, err := paths.UserConfigSectionsDir()
 	if err != nil {
@@ -73,6 +78,11 @@ func LoadProfileCapMaxBytes() (capBytes int64, ok bool, err error) {
 // The walk is bounded by timeout (Advisory-Check Discipline): on deadline
 // the advisories measured so far are returned together with
 // context.DeadlineExceeded, which the caller degrades on without blocking.
+//
+// @MX:NOTE: [AUTO] Warning-only invariant: this function deletes nothing —
+// space is reclaimed with `moai clean --home --force`. A repair that turns
+// an advisory into a deletion breaks REQ-CAP-009.
+// @MX:SPEC: SPEC-CAPACITY-RECLAIM-001
 func ProfileCapAdvisories(profilesDir string, capBytes int64, timeout time.Duration) ([]string, error) {
 	entries, err := os.ReadDir(profilesDir)
 	if err != nil {
