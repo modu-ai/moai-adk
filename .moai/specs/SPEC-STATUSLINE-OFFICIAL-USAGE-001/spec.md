@@ -1,7 +1,7 @@
 ---
 id: SPEC-STATUSLINE-OFFICIAL-USAGE-001
 title: "Statusline usage lookup: official input only (stdin rate_limits + local snapshot)"
-version: "0.2.0"
+version: "0.3.0"
 status: draft
 created: 2026-10-15
 updated: 2026-10-15
@@ -202,5 +202,7 @@ requirement carries them.
 
 | Version | Date | Author | Description |
 |---------|------|--------|-------------|
+| 0.3.0 | 2026-10-15 | manager-spec | Iteration-3 (board d-20261014T235405Z-8b55, superseding e209): the two plan-audit debts are absorbed into planned M4 scope — sou-debt-1 becomes AC-SOU-010's mid-read abandonment pin (context cancelled AFTER the fallback read starts, blocked/slow fixture; closes the entry-check mutant) and sou-debt-2 becomes D7/M4 work (quotaScanStateDirs resolves a relative `gitdir:` pointer via Clean+Join with projDir; relative-pointer fixture; AC-SOU-009 extended). The two debts no longer exist as conditions; they are in-scope work. |
+| 0.2.0 | 2026-10-15 | manager-spec | Plan-audit iteration-1 remediation (card t1732): B1 worktree-blind fallback fixed builder-side (primary-root resolution, quota_dirs.go preserved); B2 REQ-SOU-006 rescoped to bounded best-effort with named residual; B3 guard markers extended to the credential files, `readOAuthToken`/`readTokenFromKeychain` added to the retired-symbol list, mutant closure recorded; non-blocking citation fixes (measured file sizes, corrected spans, AC-SOU-006 two-cell pair). |
 | 0.2.0 | 2026-10-15 | manager-spec | Plan-audit iteration-1 remediation (card t1732): B1 worktree-blind fallback fixed builder-side (primary-root resolution, quota_dirs.go preserved); B2 REQ-SOU-006 rescoped to bounded best-effort with named residual; B3 guard markers extended to the credential files, `readOAuthToken`/`readTokenFromKeychain` added to the retired-symbol list, mutant closure recorded; non-blocking citation fixes (measured file sizes, corrected spans, AC-SOU-006 two-cell pair). |
 | 0.1.0 | 2026-10-15 | manager-spec | Initial plan-phase draft (card t1732, Tier M). |

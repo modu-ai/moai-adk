@@ -57,7 +57,7 @@ would make the fallback dead under GLM (a GLM session never writes windows). Wir
 aggregator into the render path also gives the currently caller-less aggregator its first
 production consumer.
 
-**D7 — Scan roots resolved builder-side: the worktree blind spot (audit B1).**
+**D7 — Scan roots resolved builder-side: the worktree blind spot (audit B1; relative pointers per board d-20261014T235405Z-8b55).**
 `QuotaStateDirs` cannot be handed a linked-worktree root as-is: with `.git` a regular file
 it returns only that worktree's own state dir (`quota_dirs.go:43`), so a card-tree session
 would never see the primary checkout's records. The fix is builder-side, keeping
@@ -65,24 +65,31 @@ would never see the primary checkout's records. The fix is builder-side, keeping
 `quotaScanStateDirs(projDir string, maxDirs int) []string` in a new
 `usage_fallback.go`) that (a) if `projDir/.git` is a regular file, reads its first
 `gitdir:` line and derives the primary checkout root by stripping the
-`/.git/worktrees/<name>` suffix, then (b) calls `QuotaStateDirs(primaryRoot, maxDirs)` —
-which returns the primary state dir plus every linked worktree's, the current one
-included. When `projDir/.git` is a directory (session anchored at the primary checkout)
-the helper is the identity over today's single call. Degradation is fail-open: an
-unreadable, malformed, or non-worktree `gitdir` line yields today's behavior
-(`QuotaStateDirs(projDir, ...)`), whose worst case is `n/a` — never wrong data. The card's
-"the last values a Claude session on the same machine received" intent is preserved: the
-quota is account-level, and the primary checkout is where Claude sessions run.
+`/.git/worktrees/<name>` suffix — resolving a RELATIVE pointer (git accepts them as valid
+worktree anchors; the package's own mirrored reader at `quota_dirs.go:77` is abs-only)
+via `filepath.Clean` + `filepath.Join` with `projDir` before the suffix strip — then
+(b) calls `QuotaStateDirs(primaryRoot, maxDirs)` — which returns the primary state dir
+plus every linked worktree's, the current one included. When `projDir/.git` is a
+directory (session anchored at the primary checkout) the helper is the identity over
+today's single call. Degradation is fail-open: an unreadable, malformed, or non-worktree
+`gitdir` line yields today's behavior (`QuotaStateDirs(projDir, ...)`), whose worst case
+is `n/a` — never wrong data. The card's "the last values a Claude session on the same
+machine received" intent is preserved: the quota is account-level, and the primary
+checkout is where Claude sessions run.
 
-**D8 — Context-guarded read, not an absolute latency promise (audit B2).**
+**D8 — Context-guarded read, not an absolute latency promise (audit B2; mid-read pin per board d-20261014T235405Z-8b55).**
 The fallback read runs inside the builder's collect phase, which already carries the
 render context. The helper guards the read with a `select` on `ctx.Done()`: an
 over-deadline read abandons the fallback (field stays nil → segments render `n/a`)
-instead of stalling the render. `quota.go`/`quota_dirs.go` stay PRESERVE — no size cap or
-context is added inside them; the named residual (an unbounded `os.ReadFile` inside the
-abandoned goroutine) is accepted and recorded in REQ-SOU-006 because the directory holds
-only tool-written small JSON records and is not attacker-controlled. The requirement is
-deliberately scoped to bounded best-effort, matching the mechanism.
+instead of stalling the render. The guard's check must sit on the read path itself — not
+only an entry check before launching — because an entry-check-only form admits a mutant
+that passes a pre-cancelled-context test while never honoring mid-read cancellation; M4's
+blocked/slow fixture exercises exactly the mid-read path (AC-SOU-010).
+`quota.go`/`quota_dirs.go` stay PRESERVE — no size cap or context is added inside them;
+the named residual (an unbounded `os.ReadFile` inside the abandoned goroutine) is
+accepted and recorded in REQ-SOU-006 because the directory holds only tool-written small
+JSON records and is not attacker-controlled. The requirement is deliberately scoped to
+bounded best-effort, matching the mechanism.
 
 **D2 — Retire `UsageResult`/`UsageData`; introduce a snapshot-typed field.**
 The network-era types (`types.go:429-441`, `StatusData.Usage` at `types.go:296`) carry no
@@ -157,11 +164,18 @@ from stdin, fallback not read. Add (audit B1) the worktree-fixture test: a temp
 worktree-shaped tree whose `.git` is a regular file (`gitdir: <primary>/.git/worktrees/x`)
 pointing at a temp primary that holds the ONLY window-carrying record — the render must
 show the primary record's values, not `n/a`; plus the degradation cases (malformed
-`gitdir` line, missing `.git`). Add (audit B2) the abandonment test: a pre-cancelled
-render context → the fallback yields nothing and the render completes promptly with
-`n/a`. Add the guard test (D6b) with the extended marker set (audit B3: the credential
-files included). Keep the quota aggregator tests untouched. Verify race variant for the
-new code paths.
+`gitdir` line, missing `.git`). Add (sou-debt-2 absorbed, board
+d-20261014T235405Z-8b55) the **relative-pointer fixture case**: the same worktree-shaped
+tree whose `gitdir:` line is RELATIVE to the worktree root (resolved per D7 via
+`filepath.Clean` + `filepath.Join`) must also surface the primary record's values —
+AC-SOU-009 covers both pointer shapes. Add (sou-debt-1 absorbed; audit B2) the
+**mid-read abandonment test**: a blocked/slow-read fixture (the fallback read has
+STARTED) with the render context cancelled after the read begins — the fallback abandons
+mid-read, the build returns promptly, and segments render `n/a`; the pre-cancelled
+context remains covered as the entry case but is not the sole pin (a pre-cancelled-only
+test admits the entry-check mutant). Add the guard test (D6b) with the extended marker
+set (audit B3: the credential files included). Keep the quota aggregator tests untouched.
+Verify race variant for the new code paths.
 
 **M5 — Template/docs sweep + Template-First cycle.**
 Grep `internal/template/templates/` for references to the removed collection (expected:

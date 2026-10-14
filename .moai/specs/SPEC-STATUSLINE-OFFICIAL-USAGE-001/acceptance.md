@@ -127,38 +127,49 @@ in production files, and the corresponding test fixtures (`mockUsageProvider`,
   `go build ./...` additionally fails on any dangling reference, and `go vet` /
   `golangci-lint run` are clean for the package.
 
-### AC-SOU-009 (MUST, release-blocking; maps REQ-SOU-003) — a worktree-rooted render still reads the primary checkout's records
+### AC-SOU-009 (MUST, release-blocking; maps REQ-SOU-003) — a worktree-rooted render still reads the primary checkout's records, absolute and relative pointers alike
 
 **Given** a build anchored at a linked-worktree-shaped project root — `.git` a regular
 file whose `gitdir:` line names a primary checkout that holds the ONLY context-usage
 record carrying a window — **when** the statusline renders with GLM-form stdin, **then**
-the 5H/7D bars render that primary record's values (REQ-SOU-003), not `n/a`. Malformed or
-missing `gitdir` lines degrade fail-open to the single-root scan (worst case `n/a`),
-pinned by M4 degradation tests.
+the 5H/7D bars render that primary record's values (REQ-SOU-003), not `n/a`. The case is
+pinned for BOTH pointer shapes: an ABSOLUTE `gitdir:` line, and a RELATIVE one (git
+accepts relative pointers as valid worktree anchors), resolved per plan D7 via
+`filepath.Clean` + `filepath.Join` with the worktree root before the primary-root
+derivation. Malformed or missing `gitdir` lines degrade fail-open to the single-root
+scan (worst case `n/a`), pinned by M4 degradation tests.
 
-- **RED-now (E7)**: command `grep -n "IsDir" internal/statusline/quota_dirs.go`, stdout
+- **RED-now (E7 + E9)**: `grep -n "IsDir" internal/statusline/quota_dirs.go` →
   `43:	if info, err := os.Stat(gitDir); err != nil || !info.IsDir() {`, exit 0 — the
-  worktree-enumeration gate skips every worktree root; combined with E5 (the builder
-  never reads the aggregator), a worktree-rooted fallback reading
+  worktree-enumeration gate skips every worktree root; and
+  `grep -n "IsAbs" internal/statusline/quota_dirs.go` →
+  `77:	if !filepath.IsAbs(gitFile) {`, exit 0 — the package's existing gitdir handling
+  is abs-only, so relative pointers have no resolution path today; combined with E5 (the
+  builder never reads the aggregator), a worktree-rooted fallback reading
   `QuotaStateDirs(projDir, ...)` today would see only the worktree's own (window-less)
-  records. Live confirmation: this card worktree's own `.git` is a regular file
-  (`gitdir: /Users/goos/MoAI/moai-adk-go/.git/worktrees/t1732`).
-- **Green path**: M2's D7 helper resolves the primary root builder-side (quota_dirs.go
-  preserved) → the M4 worktree-fixture test passes with the primary record's values.
+  records under either pointer shape. Live confirmation: this card worktree's own `.git`
+  is a regular file (`gitdir: /Users/goos/MoAI/moai-adk-go/.git/worktrees/t1732`).
+- **Green path**: M2's D7 helper (with the absorbed relative-pointer resolution) → the
+  M4 worktree-fixture AND relative-pointer-fixture tests pass with the primary record's
+  values under both shapes.
 
-### AC-SOU-010 (MUST; maps REQ-SOU-006) — an over-deadline fallback read degrades to n/a instead of stalling the render
+### AC-SOU-010 (MUST; maps REQ-SOU-006) — the fallback read abandons MID-READ when the render context ends, not only at entry
 
-**Given** a render whose context is already past deadline when the fallback phase runs,
-**when** the builder executes, **then** the fallback yields no data (segments render
-`n/a`) and the build call returns promptly — the bounded best-effort contract of the
-rescoped REQ-SOU-006, with the named residual (the abandoned `os.ReadFile` still
-finishing in its goroutine) accepted and recorded there.
+**Given** a fallback read that has STARTED (a blocked/slow-read fixture), **when** the
+render context is cancelled after the read begins, **then** the fallback abandons
+mid-read: the build call returns promptly, the snapshot field stays nil, and the 5H/7D
+segments render `n/a` — the bounded best-effort contract of the rescoped REQ-SOU-006,
+with the named residual (the abandoned `os.ReadFile` still finishing in its goroutine)
+accepted and recorded there. A pre-cancelled context is additionally covered as the
+entry case, but it is NOT the sole pin: a check placed only before launching the read
+(an entry-check mutant) passes a pre-cancelled-only test while never honoring mid-read
+cancellation — the mid-read fixture is what excludes it.
 
 - **RED-now (E5)**: command `grep -rn "AggregateQuotaDirs" internal/statusline/builder.go`,
   stdout empty, exit 1 — no fallback read exists to bound today, so the contract is
   unmet by absence.
-- **Green path**: M2's D8 context guard + M4's pre-cancelled-context test (prompt
-  return + `n/a` output asserted).
+- **Green path**: M2's D8 context guard (the check sits on the read path itself, not
+  only at entry) + M4's blocked/slow mid-read fixture (prompt return + `n/a` asserted).
 
 ### AC-SOU-007 (MUST; maps REQ-SOU-007) — Template-First cycle green
 
@@ -191,6 +202,7 @@ meets the project quality gate's coverage threshold.
 | E6 | `grep -rn "readOAuthToken\|readTokenFromKeychain" internal/statusline --include='*.go' --exclude='*_test.go'` | 6 lines: usage.go 114, 118, 357, 362, 402, 404 | 0 | `0d057bd1e` |
 | E7 | `grep -n "IsDir" internal/statusline/quota_dirs.go` | `43:	if info, err := os.Stat(gitDir); err != nil || !info.IsDir() {` | 0 | `0d057bd1e` |
 | E8 | `grep -rn "credentials.json" internal/statusline --include='*.go' --exclude='*_test.go'` | 4 lines, all `usage.go` (358, 359, 360, 371) | 0 | `0d057bd1e` |
+| E9 | `grep -n "IsAbs" internal/statusline/quota_dirs.go` | `77:	if !filepath.IsAbs(gitFile) {` | 0 | `17c3e8f72` |
 
 Note on ledger-cell pattern spelling: the cells escape `|` as `\|` because the table is
 pipe-delimited; the executed commands use the shell alternation with a bare `|` inside
@@ -213,9 +225,15 @@ release-blocking AC. Checked per vector:
 | Same-name reintroduction (`readOAuthToken` et al.) | — | fails (its path markers) | fails (symbol list, E6 green path) | — |
 | Fallback that skips primary-root resolution | — | — | — | **fails** (AC-SOU-009 worktree fixture) |
 
-The audit's specific mutant — a credential-file reader that survives every v1 condition —
-now fails AC-SOU-002, a release-blocking criterion, by source-marker scan independent of
-the symbol's name.
+Two further mutants are excluded by construction rather than by a table row: the
+entry-check-only cancellation guard (`if ctx.Err() != nil { return }` before launching;
+sou-debt-1's mutant) passes a pre-cancelled-only abandonment test while violating
+REQ-SOU-006's mid-read abandonment — AC-SOU-010's pin is the MID-READ fixture (context
+cancelled after the read starts), which an entry-check-only guard cannot satisfy; and a
+fallback that resolves only ABSOLUTE `gitdir:` pointers fails AC-SOU-009's
+relative-pointer fixture. The audit's B3 mutant — a credential-file reader that survives
+every v1 condition — fails AC-SOU-002, a release-blocking criterion, by source-marker
+scan independent of the symbol's name.
 
 ## §F. Residual risks (named, not silently accepted)
 
