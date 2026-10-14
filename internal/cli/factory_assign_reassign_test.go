@@ -6,6 +6,8 @@ package cli
 
 import (
 	"bytes"
+	"database/sql"
+	"path/filepath"
 	"strings"
 	"testing"
 	"time"
@@ -98,5 +100,46 @@ func TestFactoryAssignReassignRefusals(t *testing.T) {
 			t.Fatalf("err=%v stderr=%q, want the registration refusal", err, stderr)
 		}
 		_ = root
+	})
+	t.Run("a stale run refuses", func(t *testing.T) {
+		// Sync-audit F6 (card t1696): the card's dispatch mirror names its
+		// current run; a reassign resolved against another run must refuse
+		// instead of dragging the mirror back and admitting a second lease.
+		_, store := nmBase(t, factory.BacklogStatePicked)
+		_, _, _ = reassignRun(t, "t1", "--run", fcRun, "--to", "lane-9")
+		mdb, err := sql.Open("sqlite", "file:"+filepath.ToSlash(store.EnginePath()))
+		if err != nil {
+			t.Fatal(err)
+		}
+		// The fixture queue may predate the runtime migration: the full
+		// runtime schema the migration writes (todoRuntimeDDL's shape) is
+		// created here when absent, so LoadPure reads the mirror instead of
+		// reading a half-stamped schema as corrupt.
+		for _, stmt := range []string{
+			`CREATE TABLE IF NOT EXISTS todo_runtime_runs (
+ run_id TEXT PRIMARY KEY, backend TEXT NOT NULL, manifest_json TEXT NOT NULL
+)`,
+			`CREATE TABLE IF NOT EXISTS todo_runtime_assignments (
+ run_id TEXT NOT NULL, card_id TEXT NOT NULL, owner_label TEXT NOT NULL,
+ reported_state TEXT NOT NULL, event_kind TEXT NOT NULL, provenance_json TEXT NOT NULL,
+ PRIMARY KEY(run_id, card_id)
+)`,
+			`CREATE TABLE IF NOT EXISTS todo_dispatch_current (
+ card_id TEXT PRIMARY KEY, run_id TEXT NOT NULL, owner_label TEXT NOT NULL
+)`,
+			`INSERT INTO meta(key,value) VALUES('runtime_schema_version','1') ON CONFLICT(key) DO NOTHING`,
+		} {
+			if _, err := mdb.Exec(stmt); err != nil {
+				t.Fatalf("ensure the runtime schema: %v", err)
+			}
+		}
+		if _, err := mdb.Exec(`INSERT INTO todo_dispatch_current(card_id,run_id,owner_label) VALUES('t1','run-stale','lane-9')`); err != nil {
+			t.Fatalf("seed the stale mirror: %v", err)
+		}
+		_ = mdb.Close()
+		_, stderr, err := reassignRun(t, "t1", "--run", fcRun, "--reassign", "--to", "lane-15")
+		if err == nil || !strings.Contains(stderr+err.Error(), "current dispatch is run run-stale") {
+			t.Fatalf("err=%v stderr=%q, want the stale-run refusal", err, stderr)
+		}
 	})
 }

@@ -2904,6 +2904,21 @@ func factoryAssignReassign(ctx context.Context, queueStore *factory.BacklogStore
 	var prevOwner string
 	var next homestate.Card
 	err := queueStore.WithLock(func(l *factory.LockedBacklog) error {
+		// The stale-run guard (sync-audit F6 of card t1696): the card's
+		// current dispatch names the run its mirror must keep in step, and
+		// the mirror write overwrites run_id unconditionally — a reassign
+		// resolved against a stale run would drag the mirror to the old run
+		// and admit a second live lease. No dispatch row means nothing keeps
+		// step and the guard passes.
+		rec, err := l.LoadPure()
+		if err != nil {
+			return fmt.Errorf("read the queue's current dispatch: %w", err)
+		}
+		for _, entry := range rec.Runtime.DispatchCurrent {
+			if entry.CardID == cardID && entry.RunID != "" && entry.RunID != runID {
+				return fmt.Errorf("card %s's current dispatch is run %s, not %s; reassign in the card's current run (pass --run %s)", cardID, entry.RunID, runID, entry.RunID)
+			}
+		}
 		cur, err := db.LoadCard(ctx, runID, cardID)
 		if err != nil {
 			return err
