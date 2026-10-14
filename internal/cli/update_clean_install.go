@@ -231,6 +231,13 @@ func runCleanReinstall(ctx context.Context, projectRoot string, opts CleanReinst
 	if mkErr := os.MkdirAll(finalBackupDir, 0o755); mkErr != nil {
 		return result, fmt.Errorf("step 3: create backup dir: %w", mkErr)
 	}
+	// SPEC-UPDATE-REPAIR-RC30-001 D9: one clean reinstall is one backup run. The
+	// run id marks this namespace directory here and the config directory at
+	// Step 4.5, so retention counts and prunes both as one run.
+	runID := backup.NewRunID()
+	if markErr := backup.WriteRunMarker(finalBackupDir, runID); markErr != nil {
+		_, _ = fmt.Fprintf(out, "[clean-reinstall] %s\n", runMarkerWarning(projectRoot, markErr))
+	}
 
 	if err := snapshotPreserveInventory(projectRoot, inv, finalBackupDir); err != nil {
 		return result, fmt.Errorf("step 3: snapshot PRESERVE inventory: %w", err)
@@ -393,6 +400,11 @@ func runCleanReinstall(ctx context.Context, projectRoot string, opts CleanReinst
 	if cfgBackupErr != nil {
 		return result, recovery.fail("step 4.5: backup .moai/config for merge-preservation", cfgBackupErr)
 	}
+	if configBackupPath != "" {
+		if markErr := backup.WriteRunMarker(configBackupPath, runID); markErr != nil {
+			_, _ = fmt.Fprintf(out, "[clean-reinstall] %s\n", runMarkerWarning(projectRoot, markErr))
+		}
+	}
 	// Mergeable root files handled by the normal path's 3-way engine (the
 	// template-sync collectMergeableFiles set minus .mcp.json). MergeUserFiles
 	// merges settings.json against the canonical snapshot of the previously
@@ -525,11 +537,12 @@ func runCleanReinstall(ctx context.Context, projectRoot string, opts CleanReinst
 		}
 		writeRetainedKeyAdvisoryLines(errOut, withoutStrippedKeys(retainedKeys, removedModelKeys))
 		_, _ = fmt.Fprintln(out, "[clean-reinstall] .moai/config/sections/*.yaml merge-restored (user values preserved)")
-		// Backup-dir accumulation cap — the same pruning the normal path
-		// performs after its restore step (backup.CleanupOldBackups). Only
-		// timestamped config-backup dirs under .moai-backups/ are candidates;
-		// the v2-to-v3-* forensic backups live under .moai/backups/ and are
-		// never touched by this cleanup.
+		// Backup-run accumulation cap — the same pruning the normal path
+		// performs after its restore step (backup.CleanupOldBackups). Retention
+		// counts runs across both backup roots: this run's v2-to-v3-* forensic
+		// backup and its config backup share one run marker, so they are kept or
+		// pruned together, and an unmarked directory is a candidate only under a
+		// name a moai writer produces.
 		if deleted := backup.CleanupOldBackups(projectRoot, 5); deleted > 0 {
 			_, _ = fmt.Fprintf(out, "[clean-reinstall] Cleaned up %d old config backup(s)\n", deleted)
 		}

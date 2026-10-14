@@ -1,10 +1,10 @@
 ---
 id: SPEC-UPDATE-MIGRATION-001
 title: "Preservation-based moai update migration for existing projects"
-version: "0.1.0"
+version: "0.1.1"
 status: completed
 created: 2026-10-07
-updated: 2026-10-07
+updated: 2026-10-13
 author: GOOS (via manager-spec)
 priority: P1
 phase: "v3.2.0"
@@ -21,6 +21,7 @@ tier: L
 | Version | Date | Author | Change |
 |---------|------|--------|--------|
 | 0.1.0 | 2026-10-07 | GOOS | Initial draft. Card t1547. Supersedes the withdrawn t1541 `.claude-plugin` distribution-path premise (operator decision 2026-10-06). |
+| 0.1.1 | 2026-10-13 | GOOS | Amended REQ-UPM-030: the number of preserved user-owned files is reported as a count, not a per-path listing. Other REQ-UPM-030 listings unchanged; REQ-UPM-031 and REQ-UPM-032 unchanged. Decided in SPEC-UPDATE-REPAIR-RC30-001 under ruling d-20261010T223350Z-7f6e (option A). Widened under operator ruling d-20261012T221654Z-9ced (card t1619): REQ-UPM-013, AC-UPM-020, AC-UPM-032, plan.md M5, and design.md §5 apply the same count-by-default rule, so the per-path list of preserved files appears only under `--verbose`. REQ-UPM-030 carries the same `--verbose` carve-out as REQ-UPM-013. The widened design.md locations are §2 (the user-owned row) and §3 (the preserve bullet), aligned by commit 9c16c6b2bd, and §5, aligned by commit 5e91fae3b6. Status stays completed. |
 
 ## A. Background
 
@@ -109,7 +110,9 @@ B.4: 030-032, B.5: 040); the gaps between blocks are reserved ranges, not omissi
   (`<path>.moai-new.2`, `<path>.moai-new.3`, …), shall report the collision in the update
   summary, and shall never overwrite the existing sibling.
 - REQ-UPM-013: The update flow shall preserve `user-owned` files untouched — no backup, no
-  archive, no rewrite — and shall list each preserved path in the update summary.
+  archive, no rewrite — and the update summary shall report the number of preserved user-owned
+  files as a count by default; the per-path list of preserved files shall appear only under
+  `--verbose`.
 - REQ-UPM-014: The update flow shall archive-then-remove `stale` files (a prior template
   carried the path; the current one does not) into the migration archive root
   (`.moai/archive/files/<tag>/`, the existing `ArchiveFilesRoot()` layout; copies are written
@@ -138,8 +141,9 @@ B.4: 030-032, B.5: 040); the gaps between blocks are reserved ranges, not omissi
 ### B.4 Summary reporting
 
 - REQ-UPM-030: The update summary shall report, with per-path listings: refreshed files,
-  merged files, conflicts (preserved local + `.moai-new` sidecar), preserved user-owned
-  files, and archived-removed stale files.
+  merged files, conflicts (preserved local + `.moai-new` sidecar), and archived-removed stale
+  files; the number of preserved user-owned files shall be reported as a count by default, and
+  the per-path list of preserved files shall appear only under `--verbose`.
 - REQ-UPM-031: The update summary shall include deletions of managed files; a run that
   removes N managed files shall state so — the summary shall never report a deletion-free run
   while the removal machinery deleted files.

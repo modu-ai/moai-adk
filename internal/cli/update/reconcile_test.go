@@ -832,7 +832,7 @@ func TestUpdate_SummaryHonesty(t *testing.T) {
 		ArchivedRemoved: len(summary.ArchivedRemoved),
 	}
 	rendered := report.RenderReconciliation(counts,
-		[]string{summary.Conflicts[0].Path}, summary.Preserved, summary.ArchivedRemoved)
+		[]string{summary.Conflicts[0].Path}, summary.Preserved, summary.ArchivedRemoved, true)
 	if !strings.Contains(rendered, ".claude/rules/moai/old-rule.md") {
 		t.Errorf("rendered summary must name every archived removal, got:\n%s", rendered)
 	}

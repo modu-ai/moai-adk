@@ -454,9 +454,10 @@ func applylintSkip(findings []Finding, skipCodes []string) []Finding {
 // points the author at the nested form, which is the one that binds.
 //
 // The nested form (`skip:` indented under a `lint:` line) does NOT warn: it
-// is the effective spelling. Only a `lint.skip:` key at column 0 — whether
-// the inline `[Code]` form or with `- item` continuations — is the flat form,
-// so the discriminator is a raw-line prefix match at column 0.
+// is the effective spelling. Any top-level `lint.skip` key is the flat form, the
+// inline `[Code]` form or with `- item` continuations, quoted or spaced before
+// the colon, at whatever indent the mapping uses; the discriminator is the parsed
+// top-level key, never the raw text.
 type LintSkipFlatFormRule struct{}
 
 func (r *LintSkipFlatFormRule) Code() string { return "LintSkipFlatForm" }
@@ -476,18 +477,24 @@ func (r *LintSkipFlatFormRule) Check(doc *SPECDoc, _ []*SPECDoc) []Finding {
 	}}
 }
 
-// lintSkipFlatLine returns the 1-based line of the first top-level
-// `lint.skip:` key in raw frontmatter text, or 0 when there is none. The raw
-// text begins at file line 1, so split index i is file line i+1. A key at
-// column 0 is the flat form regardless of what follows it; an indented
-// `skip:` line never matches, which is exactly the nested form's shape.
+// lintSkipFlatLine returns the 1-based line of the first top-level `lint.skip`
+// key in raw frontmatter text, or 0 when there is none. The key is read from the
+// parsed YAML, because the decoder reads a quoted key ("lint.skip"), whitespace
+// before the colon, and a fully indented mapping as the same top-level key, and
+// it ignores all of them. The raw text begins at file line 1, which is also the
+// node line numbering. Text that does not parse reads as no key.
 func lintSkipFlatLine(raw string) int {
-	if raw == "" {
+	var doc yaml.Node
+	if err := yaml.Unmarshal([]byte(raw), &doc); err != nil || len(doc.Content) == 0 {
 		return 0
 	}
-	for i, line := range strings.Split(raw, "\n") {
-		if strings.HasPrefix(line, "lint.skip:") {
-			return i + 1
+	top := doc.Content[0]
+	if top.Kind != yaml.MappingNode {
+		return 0
+	}
+	for i := 0; i+1 < len(top.Content); i += 2 {
+		if top.Content[i].Value == "lint.skip" {
+			return top.Content[i].Line
 		}
 	}
 	return 0

@@ -34,6 +34,7 @@ import (
 
 	"github.com/modu-ai/moai-adk/internal/config"
 	"github.com/modu-ai/moai-adk/pkg/version"
+	"gopkg.in/yaml.v3"
 )
 
 // roleRulesContextLimit is the documented delivery cap per
@@ -321,16 +322,24 @@ const roleRuleSystemYAMLRel = ".moai/config/sections/system.yaml"
 // template_version stamp against the running binary version. ok=false means
 // the rule-side stamp is absent or unreadable — the caller skips silently
 // (fail-open: the skew notice is advisory, never a new failure path). The
-// comparison is pure string work over the parsed stamp — unit-tested with
+// comparison is pure work over the parsed stamp — unit-tested with
 // fixtures only (REQ-RIB-007; a live-repo self-assertion would be
 // permanently red on a skewed installation).
+//
+// The stamp is read as YAML from moai.template_version (card t1619, codex review
+// P2): a trailing comment is not part of the value, and a commented-out occurrence
+// is not the stamp. A system.yaml that does not parse, or carries no stamp, is
+// skipped.
 func detectRoleRuleVersionSkew(systemYAML, binaryVersion string) (skewed bool, ruleVersion string, ok bool) {
-	_, rest, found := strings.Cut(systemYAML, "template_version:")
-	if !found {
+	var doc struct {
+		Moai struct {
+			TemplateVersion string `yaml:"template_version"`
+		} `yaml:"moai"`
+	}
+	if err := yaml.Unmarshal([]byte(systemYAML), &doc); err != nil {
 		return false, "", false
 	}
-	stamp := strings.TrimSpace(strings.SplitN(rest, "\n", 2)[0])
-	stamp = strings.Trim(stamp, ` "'`)
+	stamp := strings.TrimSpace(doc.Moai.TemplateVersion)
 	if stamp == "" || binaryVersion == "" {
 		return false, "", false
 	}
@@ -342,7 +351,9 @@ func detectRoleRuleVersionSkew(systemYAML, binaryVersion string) (skewed bool, r
 // both versions and the remediation. Any read failure returns "" — the
 // missing-markers failure path stays the sole error surface.
 func roleRuleSkewDetail(root string) string {
-	data, err := os.ReadFile(filepath.Join(root, filepath.FromSlash(roleRuleSystemYAMLRel)))
+	// The non-blocking rule read (card t1619, codex review P2): a FIFO at system.yaml
+	// is refused as a non-regular file instead of blocking the diagnostic.
+	data, err := readRuleFileBytes(filepath.Join(root, filepath.FromSlash(roleRuleSystemYAMLRel)))
 	if err != nil {
 		return ""
 	}

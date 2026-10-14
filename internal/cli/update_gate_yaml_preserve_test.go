@@ -27,10 +27,12 @@ import (
 // drift fails the fixture builder instead of yielding a vacuous green.
 
 const (
-	// gateUserMarkerComment rides a USER-ADDED key (absent from the template),
-	// so the merge retains it with its comment — the same placement rule the
-	// llm.yaml contract measured (a comment on a template-carried key is
-	// dropped with the template's own key comment).
+	// gateUserMarkerComment rides a USER-ADDED key (absent from the template):
+	// that is the placement this fixture measures. Both merge paths carry a
+	// user-added key from the user's file unchanged, comment included. The
+	// rules for a comment above a template-carried key are pinned in
+	// node_merge_comments_test.go (3-way) and node_merge_twoway_comments_test.go
+	// (2-way).
 	gateUserMarkerComment = "# T461-GATE-PRESERVE-MARKER: user note pinned above a user-added key"
 
 	gateUserMarkerKey   = "t461_user_marker_key"
