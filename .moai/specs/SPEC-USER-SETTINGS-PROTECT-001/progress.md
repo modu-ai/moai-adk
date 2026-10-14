@@ -164,6 +164,55 @@ PASS    ok      github.com/modu-ai/moai-adk/internal/config/toolpolicy  0.298s
 
 **Post-fix verification** (all env-scrubbed `unset MOAI_KANBAN_ID MOAI_KANBAN_LEAD_ADDR MOAI_KANBAN_SETTINGS_INJECTED`, this run, this tree): `go test ./internal/config/toolpolicy/ ./internal/core/project/` → both `ok`; `go build ./...` → exit 0; `GOOS=windows GOARCH=amd64 go build ./...` → exit 0; `go test ./internal/config/toolpolicy/ -cover` → `coverage: 90.4% of statements` (threshold ≥ 85%); `gofmt -l internal/config/toolpolicy/` → clean. The existing AC-005 union test in `internal/core/project/autonomy_bundle_test.go` (`TestAC005WithRecordKeepsUserAddedEntry`, which pre-seeds the record) passes unmodified — the classification reads the previous render's record before the write overwrites it.
 
+### Card-review repair round 2 (P2-1 + P2-2) — record-maintenance completeness
+
+**Findings** (card-review round 2, both verified by the lane as completeness gaps of the record-maintenance rule):
+
+- **P2-1 failure-ordering**: the round-1 writer persisted the record AFTER the PROJECT settings write. A record save failing after a successful settings write left new managed entries in settings but not in `last_generated` — a later policy removal could not drop them (the same resurrection hazard class this SPEC fights).
+- **P2-2 BuildInto path**: the `moai tool-policy build` local target (`BuildInto`/`BuildIntoAuto`, `TargetJSON` — `internal/cli/tool_policy.go:119`) generated the same project allow list but never refreshed the record, so entries entering settings through that path were equally unrecorded.
+
+**Disposition: fixed** (commit 026ba839a), all inside `internal/config/toolpolicy`:
+
+- **Stage/converge protocol** (P2-1): the render now stages `prior ∪ generated` into the record BEFORE the PROJECT settings mutation (`stageManagedAllowRecord`), and converges the record to exactly the generation after the settings write lands (`persistManagedAllowRecord`). Failure directions verified: a failed STAGE errors out before any settings mutation (settings untouched); a failed SETTINGS write after a successful stage leaves the staged union — the safe direction, since a superset can only mark more entries as managed, and the next successful render then re-adds still-generated entries as managed or drops the revoked one (the deciding test observes exactly this recovery).
+- **BuildInto wiring** (P2-2): the same stage/converge protocol is wired into `BuildInto` for the `TargetJSON` target (the project settings file — the only production JSON target of the codegen); the `TargetTemplate` target is the distribution template, not a project settings file, and maintains no record.
+- Round-1's failure-path test was REVISED to the new contract: a failed render may advance the record to the staged union (safe); the protected invariants are now "PROJECT settings untouched" + "record in the safe staged state". The round-1 P1 deciding test (`RemovedGeneratedEntryIsDropped`), the writer test, and both existing AC-005 tests in `internal/core/project` pass unmodified under the new semantics.
+
+**RED evidence** (pre-fix run, this tree, selector `-run 'TestRenderTierPermissions_RecordStageFailureLeavesProjectSettingsUntouched|TestRenderTierPermissions_SettingsWriteFailureAfterRecordStage_ClassifiesCorrectlyNextRender|TestBuildIntoPersistsManagedAllowRecord_RemovedEntryNotKeptAsUserAdded|TestRenderTierPermissions_FailedProjectRenderLeavesSettingsUntouchedRecordSafe' -v`):
+
+```
+=== RUN   TestRenderTierPermissions_FailedProjectRenderLeavesSettingsUntouchedRecordSafe
+    tier_render_test.go:349: record after failed render = [Bash(sentinel:*)], want the safe staged union [Bash(managed-a:*) Bash(sentinel:*)]
+    tier_render_test.go:371: managed-allow record not written: open .../fresh/.moai/state/tool-policy/managed-allow.json: no such file or directory
+--- FAIL: TestRenderTierPermissions_FailedProjectRenderLeavesSettingsUntouchedRecordSafe (0.00s)
+=== RUN   TestRenderTierPermissions_RecordStageFailureLeavesProjectSettingsUntouched
+    tier_render_test.go:416: PROJECT settings mutated although the record stage failed:
+        before={"permissions": {"defaultMode": "default"}}
+        after={"permissions": {"allow": ["Bash(managed-a:*)"], "ask": [...], "deny": [...]}}
+--- FAIL: TestRenderTierPermissions_RecordStageFailureLeavesProjectSettingsUntouched (0.01s)
+=== RUN   TestRenderTierPermissions_SettingsWriteFailureAfterRecordStage_ClassifiesCorrectlyNextRender
+    tier_render_test.go:460: record after failed settings write = [Bash(managed-a:*) Bash(managed-b:*)], want staged union [Bash(managed-a:*) Bash(managed-b:*) Bash(managed-c:*)]
+--- FAIL: TestRenderTierPermissions_SettingsWriteFailureAfterRecordStage_ClassifiesCorrectlyNextRender (0.01s)
+=== RUN   TestBuildIntoPersistsManagedAllowRecord_RemovedEntryNotKeptAsUserAdded
+    tier_render_test.go:508: BuildInto did not maintain the managed-allow record: open .../.moai/state/tool-policy/managed-allow.json: no such file or directory
+    tier_render_test.go:533: entry built by BuildInto then removed from the policy was kept as user-added: allow = [Bash(managed-a:*) Bash(managed-b:*)], want [Bash(managed-a:*)]
+--- FAIL: TestBuildIntoPersistsManagedAllowRecord_RemovedEntryNotKeptAsUserAdded (0.01s)
+FAIL    github.com/modu-ai/moai-adk/internal/config/toolpolicy  0.314s
+```
+
+**GREEN evidence** (post-fix, same selector):
+
+```
+--- PASS: TestRenderTierPermissions_FailedProjectRenderLeavesSettingsUntouchedRecordSafe (0.01s)
+--- PASS: TestRenderTierPermissions_RecordStageFailureLeavesProjectSettingsUntouched (0.00s)
+--- PASS: TestRenderTierPermissions_SettingsWriteFailureAfterRecordStage_ClassifiesCorrectlyNextRender (0.01s)
+--- PASS: TestBuildIntoPersistsManagedAllowRecord_RemovedEntryNotKeptAsUserAdded (0.01s)
+PASS    ok      github.com/modu-ai/moai-adk/internal/config/toolpolicy  0.297s
+```
+
+**Post-fix verification** (env-scrubbed, this run, this tree, HEAD 026ba839a): `go test -count=1 ./internal/config/toolpolicy/ ./internal/core/project/` → both `ok` (0.450s / 2.238s); `go build ./...` → exit 0; `GOOS=windows GOARCH=amd64 go build ./...` → exit 0; `go test -count=1 ./internal/config/toolpolicy/ -cover` → `coverage: 91.0% of statements` (threshold ≥ 85%; round 1 measured 90.4%); `golangci-lint run --timeout=2m ./internal/config/toolpolicy/` → `0 issues.`; `gofmt -l` → clean. Named re-confirmations: round-1 P1 tests `TestRenderTierPermissions_RemovedGeneratedEntryIsDropped` + `TestRenderTierPermissions_PersistsManagedAllowRecord` PASS; `TestAC005PolicyPathKeepsUserAllowEntry` + `TestAC005WithRecordKeepsUserAddedEntry` PASS unmodified.
+
+**Residual corner (named, not worked around)**: the two-file update (settings + record) is not atomic, so a settings-write failure that coincides with a policy REVOCATION in the same render cannot keep the revoked entry's managed status under exact-generation converge — after recovery the entry is reclassified user-added and persists. The stage-ahead union narrows this to that single coincidence window (new entries are always recorded before settings can gain them; the record-ahead protocol removed the lag hazard P2-1 named). Closing the window fully would need a compensating record restore on the settings-write failure path — un-decided surface, named for the leader to disposition if wanted.
+
 ## §E.3 Run-phase Audit-Ready Signal
 
 ```yaml
