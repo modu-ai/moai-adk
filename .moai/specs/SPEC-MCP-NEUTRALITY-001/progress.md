@@ -241,6 +241,64 @@ Interpretation notes for the audit (M5):
 5. **The lock arm re-pinned**: the count path succeeds UNDER a held write lock within 250ms — the strongest possible REQ-MN-011 pin (the old "degraded under lock" premise is the defect itself).
 6. **factory_msg_list's already-claimed entries** (AC-MN-010's M5 half): the Claim returns live-claimed entries with their tokens alongside new claims — the response is never empty-only for live claims.
 
+### M6 — audit integrity, could-not-run split, target honesty, sandbox, state-root seam (card t1632, branch WT-3-2-0-2)
+
+Commits: `b5d602c5c` (could-not-run split + not-converged convergence + stderr retention + one retry + REQ-MN-022), `09e4cd60a` (GLM narrow decode, REQ-MN-023), `21c419757` (EC-1/EC-4 characterization refresh), `36a04bff4` (receipt integrity + audit_cache evidence + auditor model, REQ-MN-020), `6e21dea76` (target honesty + sandbox + material marks + state-root seam, REQ-MN-019/024/025), `cf3546753` (schema snapshot + receipt-site count refresh). Push state: nothing pushed; clean on WT-3-2-0-2.
+
+E8 — verbatim RED outputs captured BEFORE each GREEN:
+
+```
+$ go test ./internal/cli -run 'TestCodexAudit_CouldNotRunNotConvertedToFail|TestCodexAudit_StderrPreservedOnCouldNotRun|TestCodexAudit_CouldNotRunRetriesOnce|TestEnforceRequiredGateUnmet_CouldNotRunNotConvergedToFail' -count=1   → exit 1
+    codex_audit_could_not_run_test.go:34: verdict = fail — a could-not-run was converted into a reviewed failure (REQ-MN-021)
+    codex_audit_could_not_run_test.go:38: gate_unmet = "workflow.audit.gates.codex is `required`, but this audit returned no verdict (fail-open inconclusive)", want it to carry could-not-run
+    codex_audit_could_not_run_test.go:55: stderr = "", want the backend's stderr preserved
+    codex_audit_could_not_run_test.go:83: codexReviewRPC calls = 1, want exactly 2 (original + one retry)
+    codex_audit_could_not_run_test.go:117: overall = fail — could-not-run converted into a converged failure (REQ-MN-021)
+$ go test ./internal/cli -run 'TestParseGLMReview_NarrowDecode' -count=1   → exit 1
+    mcp_glm_narrow_test.go:37: model-supplied provenance survived the decode: &{Backend:codex ...}
+    mcp_glm_narrow_test.go:40: model-supplied gate_unmet survived: "injected"
+    mcp_glm_narrow_test.go:43: model-supplied audit_receipt survived: "forged"
+$ go vet ./internal/auditreceipt   → compile-stage RED (REQ-MN-020)
+    receipt_integrity_test.go:17:10: undefined: TreeState
+    receipt_integrity_test.go:52:9: got.HeadCommit undefined (type Receipt has no field or method HeadCommit)
+    receipt_integrity_test.go:78:14: undefined: CauseReceiptVerdictFail
+$ go vet ./internal/runtime   → compile-stage RED (REQ-MN-020 audit_cache)
+    audit_cache_state_test.go:45:7: undefined: NewStateAuditCache
+$ go vet ./internal/cli   → compile-stage RED (REQ-MN-019/024/025)
+    codex_review_state_root_test.go:42:16: undefined: codexReviewStateRoot
+$ go test ./internal/cli -run 'TestCodexAudit_AdversarialBaseBranchAppliesTheTarget|...UnresolvableStatesNotApplied|...ClaimsNoReviewBase' -count=1   → exit 1 (REQ-MN-019)
+$ go test ./internal/cli -run 'TestCodexAudit_SessionSpawnsUnderReadOnlySandbox|TestCodexReview_SessionSpawnsUnderReadOnlySandbox' -count=1   → exit 1 (REQ-MN-024)
+$ go test ./internal/cli -run 'TestGLMAudit_MarksTruncatedMaterial|TestGLMAudit_MarksExcludedUntracked' -count=1   → exit 1 (REQ-MN-024)
+$ go test ./internal/cli -run 'TestCodexAudit_RecordsAuditorModel|TestGLMAudit_RecordsAuditorModel' -count=1   → exit 1 (REQ-MN-020)
+```
+
+AC matrix (M6-mapped rows; every row's command run at HEAD cf3546753, this tree):
+
+| AC | Status | Command (verbatim) | Observed output |
+|----|--------|--------------------|-----------------|
+| AC-MN-021 (could-not-run split + retry + stderr) | PASS | `go test ./internal/cli -run 'TestCodexAudit_CouldNotRunNotConvertedToFail\|TestCodexAudit_StderrPreservedOnCouldNotRun\|TestCodexAudit_CouldNotRunRetriesOnce\|TestCodexAudit_SuccessVerdictRetriesNever\|TestEnforceRequiredGateUnmet_CouldNotRunNotConvergedToFail' -count=1` | `ok` — a forced transport failure keeps verdict `inconclusive` (never `fail`), gate_unmet carries could-not-run, the backend's stderr tail rides the result, and the leg retried exactly once (calls=2); a real verdict never retries (calls=1) |
+| AC-MN-021 (baseBranch target honesty) | PASS | `go test ./internal/cli -run 'TestCodexAudit_Adversarial' -count=1` | `ok` — an adversarial audit asked for baseBranch carries the resolved base SHA + the diff instruction in the turn/start prompt, review_base names the judged base, and an unresolvable base returns inconclusive naming "target not applied" |
+| AC-MN-022 (not-converged + narrow decode) | PASS | `go test ./internal/cli -run 'TestConverge\|TestParseGLMReview\|TestEnforceRequiredGateUnmet' -count=1` | `ok` — a required-inconclusive convergence stays not-converged (never pass on the caller's submitted verdict); model-supplied provenance/gate_unmet/audit_receipt do not survive the GLM decode |
+| AC-MN-023 (receipt evidence binding) | PASS | `go test ./internal/auditreceipt -count=1` + `go test ./internal/runtime -count=1` | `ok` — a receipt carries head_commit + tree_digest; a FAIL-verdict receipt and a receipt whose state moved are refused as PASS corroboration; audit_cache entries persist to the project state root requiring an existing verdict file's SHA-256 (revalidated at lookup); ComputeHash refuses a non-SPEC directory; codex and GLM verdicts record the auditor model on provenance |
+| AC-MN-024 (sandbox + material marks + empty guard) | PASS | `go test ./internal/cli -run 'TestCodexAudit_SessionSpawnsUnderReadOnlySandbox\|TestCodexReview_SessionSpawnsUnderReadOnlySandbox\|TestGLMAudit_MarksTruncatedMaterial\|TestGLMAudit_MarksExcludedUntracked\|TestGLMAudit_EmptyMaterialNeverInvokesBackend' -count=1` | `ok` — audit and review sessions spawn with the read-only sandbox override on argv and the scrubbed codexChildEnv; truncated/excluded_untracked ride the result; empty material invokes neither backend |
+| AC-MN-025 (state-root seam) | PASS | `go test ./internal/cli -run 'TestCodexReviewStateRootAgreesWithProducer' -count=1` | `ok` — the Stop chain's receipt reader resolves the same git-toplevel root the producer wrote under for a session started in a subdirectory; the false "receipt absent" negative no longer reproduces |
+
+Verification batch at HEAD cf3546753 (this tree, this run):
+
+- E2 builds: `go build ./...` → exit 0.
+- Affected families green (-count=1): internal/auditreceipt (full package), internal/runtime (full package), internal/closure (full package), and the cli families — TestCodexAudit*, TestRunMultiAudit*, TestSelfReview* (51 files family), TestGLMAudit*, TestConvergence*, TestCodexBlankReview*, TestContradiction*, TestAuditMulti_NoConfigNoArgs/PinsOnly/ArgumentRequired/ExplicitClaudeToken/PaddedConfiguredGate/SuppliedGateOverrides/CarrylessCaller/EnforcementFollowsTheCallStartPlan/ReceiptExposure/UnknownOriginWithoutAnchor, TestEffectiveScopeFor, TestCodexReviewStateRootAgreesWithProducer.
+- Lint: `golangci-lint run ./internal/auditreceipt/... ./internal/runtime/... ./internal/cli/... ./internal/closure/...` → 4 errcheck findings, ALL pre-existing on committed files (factory_run_adopt.go ×3, mcp_server_call_log.go ×1) — confirmed by re-linting with the M6 sources temporarily reverted to HEAD (b5d602c5c ancestry): same 4. Zero NEW lint findings from this milestone.
+
+Interpretation notes for the audit (M6):
+
+1. **REQ-MN-021/022 supersede the #1632-axis-3 fail-closed conversion at both surfaces**: a backend leg that produced NO verdict is a not-performed result. `applyGateUnmet` keeps the verdict inconclusive and names could-not-run in gate_unmet; `enforceRequiredGateUnmet` keeps the overall at the distinct not-converged outcome (REQ-MN-022), never a converged fail — the pass the old claude-anchor fall-through produced stays equally unreachable, so the gate still blocks. The bytes this changes for a machine consumer: `could_not_run: true` rides the result (additive, omitempty).
+2. **runMultiAudit re-stamps the per-backend gate from the tree's raw workflow.yaml BEFORE converge** (codex/glm only; the in-session claude anchor keeps its own default-required hierarchy): an explicitly advisory backend no longer rides the engine-default `required` into not-converged — the explicit-advisory-never-blocks contract is preserved byte-for-byte where it matters (TestRunMultiAudit_ExplicitAdvisoryGateUnmet_StillPasses), while an UNSET gate's byte-for-byte pass clause is superseded by REQ-MN-022 (not-converged, documented in the updated pin).
+3. **The retry is exactly-once and seam-observable**: handleCodexAudit retries a could-not-run leg exactly once via the codexReviewRPC seam (calls=2 pinned); a real verdict never retries (calls=1 pinned). A missing binary is a could-not-run that never enters the RPC path, so it does not retry (deterministic failure — retrying cannot change LookPath).
+4. **stderr is best-effort by construction**: a process that never started has no stderr; a handshake captured one carries the tail (4KiB bound) through codexSessionError; the reuse check treats a receipt with NO binding as unattributable, never contradictory.
+5. **M2 follow-through landed inside this milestone** (same-SPEC cascade, L46): the audit-tool schema snapshot (testdata/audit-tools-schema-pre.json) was regenerated for M2's schema strictness + the M6 wire fields — the snapshot test had been failing since M2 landed the strictness without regenerating; the self-review fixtures carry the REQ-MN-005 server-root seam (the fixture trees live in their own repositories, so the confinement was refusing every self-review call — a latent M2 regression the M6 family run surfaced); glm_audit moves to resolveValidatedToolProjectRoot, the audit-surface root validation its codex/claude siblings already had.
+6. **REQ-MN-025 scope**: the Stop chain's receipt readers (members using verify.LoadReceipt) now resolve codexReviewStateRoot — the same git-toplevel anchoring the producer applies via reviewExclusionRoot. The full cross-harness state unification stays out of scope (§5 Non-Goal).
+7. **Pre-existing failures observed during M6 verification (NOT introduced here)**: TestCodexReviewGatePrimaryCheckoutSkip / _TreeScopeRequestShapeUnchanged / _StaleEnvKeepsTreeScope (macOS /var→/private symlink spelling in three gate pins — reproduced at HEAD 554053cf9 with the M6 sources reverted, so they predate this milestone) and TestAuditMulti_CodexLegDeadline_FailsClosedNamed / _UnconfiguredFailsOpen / TestAuditMulti_ModelMulti_CodexUnavailable_FailsClosedNamed (same reproduction method — the containment listing executes the stubbed binary before the timeout path). Leader disposition requested: both classes reproduce on the M5 HEAD tree.
+
 ## §E.3 Run-phase Audit-Ready Signal
 
 _pending run-phase_
