@@ -23,22 +23,30 @@ tier: M
 - `internal/cli/codex_review_scope.go`의 `cardScopeFromBranch` — 공유 판별자, 소비자로서만 사용(수정 없음).
 - 형제 git 명령 가드 면: BranchGuard PreToolUse 훅, 워크트리 세션 가드 — 비간섭.
 - `internal/factory/gtd_operation.go:583` — 지정 표면 밖 선존 결함, 편입 금지.
-- `codex_hooks_seed.go`·`session_worktree.go`의 `worktreeFlagValue` 호출 — 가드 아닌 소비자, 강제 이관 금지(Out of Scope).
-- `internal/cli/launch_chain.go`·`lane_resume.go`의 기존 argv 규약 — 본 SPEC이 요구하는 것은 기동 경로(launch path)의 단일 해석뿐; 레인 재개 어셈블러 등 인접 면의 기존 판독은 건드리지 않는다.
+- `internal/cli/lane_resume.go`의 레인 재개 어셈블러(`laneJoinChildArgv`) — 비리더 인접 면, 기존 argv 규약 보존(AC-LA-014; 기동 경로 호출 클로저 밖).
+- (plan-repair 1) 구판의 "`codex_hooks_seed.go`·`session_worktree.go`·`launch_chain.go` 판독 강제 이관 금지"는 철회됐다 — 본 트리 실측에서 이 파일들의 worktree 판독자는 기동 경로 위이며 M1의 뷰 편입 대상이다(§A.4 설계 노트).
 
 ### §A.3 연결 좌표 (본 트리 plan-phase 실측, 커밋 `1ced8cab9` 기준)
 
 | 좌표 | 내용 |
 |---|---|
-| `internal/cli/cc.go:186-312` | 진입 파싱 → 리더 케이스(194-231) → `resolveWorktreeL2Path`(282) → `resolveWorktreeExistingBranch`(289) → `ccWorktreeWriterPrecheck`(296) → `seedAdmittedWorktreeHooks`(302) → `normalizeWorktreeFlag`(304) → `launch(...)`(312) |
-| `internal/cli/glm.go` | cc의 쌍둥이 흐름(t1604 기준 가드 삽입점 `glm.go:278`) |
+| `internal/cli/cc.go:186-312` | 진입 파싱 → 리더 케이스(194-231)·레인 케이스(232-280, 양 케이스 모두 공용 꼬리로 낙하) → 공용 꼬리: `resolveWorktreeL2Path`(282) → `resolveWorktreeExistingBranch`(289) → `ccWorktreeWriterPrecheck`(296) → `seedAdmittedWorktreeHooks`(302) → `normalizeWorktreeFlag`(304) → `launch(...)`(312) |
+| `internal/cli/glm.go:334,339,347,348` | cc 공용 꼬리의 쌍둥이 — `resolveWorktreeL2Path`(334)·`resolveWorktreeExistingBranch`(339)·`seedAdmittedWorktreeHooks`(347)·`normalizeWorktreeFlag`(348). t1604 기준 가드 삽입점 `glm.go:278` |
 | `internal/cli/launcher.go:601` | `runLaunchClaude` — 소비 루프 658-692(`-b`·`-c`·`--model`·`--permission-mode`·`--`), 5b settings 동기화 700, `buildArgs` 735-752, `execOrSpawnClaude` 호출 |
 | `internal/cli/launcher.go:917` | `normalizeWorktreeFlag` — `-w`/`--worktree` 철자를 정규 2토큰형으로 |
 | `internal/cli/launcher.go:1030` | `worktreeFlagValue` — 구분자 앞 첫 값 판독(가드 아닌 소비자와 공유) |
+| `internal/cli/session_worktree.go:1012` | `ccWorktreeWriterPrecheck` — 동시 작성자 사전 점검; `worktreeFlagValue` :1015 (호출 cc.go:296) — plan-repair 1 실측으로 기동 경로 위로 재분류 |
+| `internal/cli/worktree_branch_flag.go:57,86,121` | `resolveWorktreeExistingBranch`/`splitWorktreeBranchFlag` — `--branch` 소비·materialize(t295); `worktreeFlagValue` :121 |
+| `internal/cli/launch_chain.go:34,58` | `injectChainNodeForLaunch`→`extractWorktreeLaunchTarget` — 정규화 뒤 launch args의 `--worktree` 판독(launcher.go:864 경유) — plan-repair 1 실측으로 기동 경로 위로 재분류 |
+| `internal/cli/lane_resume_test.go:19` | `TestLaneJoinChildArgv` — 레인 재개 어셈블러 시험(AC-LA-014 선택자가 명시적으로 닿는다 — plan-repair 1 실측) |
 | `internal/cli/worktree_branch_flag.go:58,86` | `resolveWorktreeExistingBranch` / `splitWorktreeBranchFlag` — `--branch` 소비·materialize(t295) |
 | `internal/cli/codex_review_scope.go:170` | `cardScopeFromBranch` — 공유 카드 접두 판정 |
 | 보존 트리 `internal/cli/factory.go:629-868` | 이식 원: `guardLeaderLaunchAnchor` 배치·`stripAllowCardAnchorFlag`·`enforceLeaderAnchorGuard`·`openLeaderAnchorAuditLog`(위생)·`appendLeaderAnchorAuditRow` |
 | 보존 트리 `internal/cli/cc.go:197-213` | 가드의 변이 전 배치 원형(REQ-FD-007 주석 포함) |
+
+### §A.4 설계 노트 — 기동 경로 판독자의 뷰 편입 (plan-audit D5, plan-repair 1, 2026-10-15)
+
+선행 감사(iter 1, FAIL, blocking D5)가 지적한 모순 — REQ-LA-001의 기동 경로 재유도 금지와 Out of Scope의 비가드 소비자 보존의 충돌 — 은 선택지 **(i) 이관**으로 푼다. 근거는 본 트리 실측이다: `worktreeFlagValue`의 비-test 호출자 넷과 정규화 뒤 판독기 하나(`extractWorktreeLaunchTarget`)는 **전부** 기동 경로 위에 있다(§A.3 표; cc·glm의 케이스 스위치가 공용 꼬리 282-312로 낙하하므로 레인 흐름도 같은 꼬리를 지난다). 이 판독자들이 공유하는 `worktreeFlagValue`는 구분자 앞 첫 값만 읽는 모형이라 백엔드의 최후 우선 모형과 어긋나 있다 — 계열 (b)의 모양이 비가드 소비자 안에 이미 살아 있다. 판정면만 뷰로 좁히는 선택지 (ii)는 그 살아 있는 같은-계열 인스턴스를 명명된 예외로 봉인하므로, 여섯 번의 순환을 끝내려는 본 SPEC의 목적과 반대된다. 따라서 다섯 판독자 전부 M1에서 뷰를 소비하도록 재배선하고 Out of Scope는 호출 클로저 밖의 인접 면으로 축소한다. 감사가 "session_worktree.go:1015 비기동 흐름"으로 분류한 점은 본 트리에서 정정된다 — :1015는 `ccWorktreeWriterPrecheck`(cc.go:296 호출) 안이다.
 
 ## §B Known Issues (알려진 함정)
 
@@ -80,7 +88,8 @@ tier: M
 - 뷰 구조체(launch view): `finalArgv []string`(exec에 넘겨지는 최종 백엔드 argv), worktree 선택(철자·값·해석된 트리 경로·존재 여부·실효 브랜치), 생성 주석(`--branch` 값), 재정의 플래그 존재.
 - 해석기 추출: `runLaunchClaude`의 소비 루프(658-692)를 순수 해석기로 추출 — 런처 소비 옵션 제거, `--` 처리, `normalizeWorktreeFlag` 산물 포함, 백엔드 옵션 모형에 따른 worktree 선택(최후 우선·클러스터 분해·네 철자)을 뷰에 채운다. `runLaunchClaude`는 뷰를 소비하도록 재배선(두 번째 해석 삭제).
 - `--branch` 주석: `splitWorktreeBranchFlag`의 판독을 해석기가 재사용(재해석 아님 — 같은 함수 호출)해 주석으로 실고, materialize 실행 자체는 현 위치(cc.go:289)에 그대로 둔다.
-- 리더 진입 경로(cc·glm 리더 케이스)는 변이 전에 해석기를 호출해 뷰를 얻고 같은 뷰를 판정·실행에 흘려보낸다(단일 해석 보장 — REQ-LA-001/002).
+- 리더 진입 경로(cc·glm 리더 케이스)는 변이 전에 해석기를 호출해 뷰를 얻고 같은 뷰를 판정·실행에 흘려보낸다(단일 해석 보장 — REQ-LA-001/002). 해석기 호출은 기동당 한 번이며 리더·레인·비팩토리 모든 흐름이 같은 뷰를 소비한다 — 공용 꼬리 판독자의 입력도 이 뷰다.
+- 기동 경로 판독자의 뷰 편입(plan-audit D5 — §A.4 설계 노트): 공용 꼬리와 runLaunchClaude 안의 worktree 선택 판독자 다섯 — `resolveWorktreeL2Path`(cc.go:282·glm.go:334), `resolveWorktreeExistingBranch`→`splitWorktreeBranchFlag`(cc.go:289·glm.go:339), `ccWorktreeWriterPrecheck`(cc.go:296), `seedAdmittedWorktreeHooks`(cc.go:302·glm.go:347), `extractWorktreeLaunchTarget`(launch_chain.go:58, launcher.go:864 경유) — 은 raw args 재판독을 끊고 뷰(또는 뷰가 실은 파싱 값: 트리 이름·해석 경로·생성 주석)를 입력으로 받는다. 케이스별 argv 변이(레이블 치환·레인 조인 조립·settings 부착)도 뷰의 finalArgv에 적용해 판정 시점의 선택과 exec 시점의 선택이 갈라지지 않게 한다(AC-LA-005 동일성의 전제).
 - 검증: 비리더 경로 characterize(AC-LA-014) GREEN, 뷰-exec 동일성 시험(AC-LA-005) GREEN.
 
 ### M2 (Priority High) — 판정면 교체 + 회귀 셀 (RED→GREEN)
@@ -96,10 +105,10 @@ tier: M
 - **RED 관측 프로토콜**: (a)-(c) 셀은 **소비 전 argv를 읽는 변형 돌연변이(mutant)** 를 해석기에 잠시 가하고 세 셀 전부가 죽는 것을 관측해 기록(트리 SHA 고정) — 이것이 계열의 재현 원이라 하나의 변형으로 세 셀의 감지력을 증명한다. (d)는 계수기를 레거시 경로로 되돌린 변형으로 죽음을 관측. RED 원문(명령·출력·SHA)은 progress.md §E.2에 남기고 돌연변이를 되돌린다.
 - 검증: AC-LA-001..004·006..012 GREEN + RED 기록 완료.
 
-### M3 (Priority Medium) — 병렬 판독기 정리 + 단일 해석 소스 스캔
+### M3 (Priority Medium) — 기동 경로 판독자 이관 완료 + 단일 해석 소스 스캔
 
-- 기동 경로(cc/glm → launch → runLaunchClaude)에서 뷰 바깥의 worktree 재유도 제거: 본 트리에 존재하는 이중 판독(해석기 도입으로 생긴 중복 호출) 정리. **보존 브랜치의 병렬 판독기 가족(`worktreeScanAdvance`·`worktreeNextValue`·`launcherConsumedSpan`·`segmentClass` 가드부 사용·교차 구분자 짝짓기)은 본 트리에 존재하지 않으므로 새로 만들지 않는 것이 곧 삭제다** — 소스 스캔이 이를 묶는다.
-- `TestLaunchViewSingleParse`: (i) 소스 스캔 — 기동 경로 파일에서 해석기 바깥의 worktree 값 판독 패턴 0건, (ii) 동일성 하위시험 재확인.
+- M1의 뷰 재배선이 기동 경로 판독자 전부를 덮는지 소스 스캔으로 확인한다: 기동 경로 호출 클로저 파일(cc.go, glm.go, launcher.go, codex_hooks_seed.go, session_worktree.go, worktree_branch_flag.go, launch_chain.go)에서 해석기와 그 산책 헬퍼 밖의 worktree 값 판독(`worktreeFlagValue` 호출 포함)은 0건이다 — `worktreeFlagValue`의 첫-값 판독기는 기동 경로에서 비-test 호출자 0이 된다. **보존 브랜치의 병렬 판독기 가족(`worktreeScanAdvance`·`worktreeNextValue`·`launcherConsumedSpan`·`segmentClass` 가드부 사용·교차 구분자 짝짓기)은 본 트리에 존재하지 않으므로 새로 만들지 않는 것이 곧 삭제다** — 소스 스캔이 이를 묶는다.
+- `TestLaunchViewSingleParse`: (i) 소스 스캔 — 위 클로저 파일 집합에서 해석기 밖의 worktree 값 판독 패턴 0건(스캔 집합은 호출 클로저 기준으로 고정 — codex_hooks_seed.go 같은 헬퍼 파일 뒤에 숨은 판독도 집합 안에서 센다), (ii) 동일성 하위시험 재확인.
 - 검증: AC-LA-013 GREEN.
 
 ### M4 (Priority Medium) — 품질 게이트 + 인계

@@ -114,9 +114,10 @@ related_specs: [SPEC-FACTORY-DISCIPLINE-001]
 
 - SPEC-FACTORY-DISCIPLINE-001의 Stop 훅 병목·리더 스킵 면은 본 SPEC의 범위가 아니다. 그 구현은 보존 브랜치에 남아 있으며 본 SPEC이 다루는 유일한 면은 리더 앵커 가드의 argv 판정면이다.
 
-### Out of Scope — 비가드 `worktreeFlagValue` 소비자의 강제 이관
+### Out of Scope — 기동 경로 밖 인접 면의 argv 규약 (plan-repair 1 재획정)
 
-- `codex_hooks_seed.go`·`session_worktree.go` 등 가드 아닌 소비자의 `worktreeFlagValue` 호출을 뷰 기반으로 강제 이관하는 것은 본 SPEC의 범위가 아니다(후속 후보). 본 SPEC은 기동 경로(launch path) 안에서의 재유도 금지만 요구한다(REQ-LA-001).
+- 기동 경로 위의 worktree 선택 판독자는 범위 **안**이다. 본 트리 실측(HEAD `de846d000`, 2026-10-15)에서 기동 경로의 판독자는 다섯이다 — `resolveWorktreeL2Path`(launcher.go:992, 호출 cc.go:282·glm.go:334), `resolveWorktreeExistingBranch`→`splitWorktreeBranchFlag`(worktree_branch_flag.go:57·86·121, 호출 cc.go:289·glm.go:339), `ccWorktreeWriterPrecheck`(session_worktree.go:1012, 호출 cc.go:296), `seedAdmittedWorktreeHooks`(codex_hooks_seed.go:62, 호출 cc.go:302·glm.go:347), `extractWorktreeLaunchTarget`(launch_chain.go:58, launcher.go:864 경유) — 이며 M1에서 전부 런치 뷰를 소비하도록 재배선된다(REQ-LA-001과 구판 배제 절의 모순 해소 — plan §A.4 설계 노트).
+- 강제 이관 금지(범위 밖 보존)는 기동 경로 호출 클로저 밖의 인접 면에만 적용된다: 레인 재개 어셈블러(`lane_resume.go` `laneJoinChildArgv` — 비리더 레인 조인 조립, §2 비리더 보존·AC-LA-014가 행동을 묶는다)와 `moai worktree` 같은 세션 워크트리 관리 표면의 비기동 흐름. 이들은 AC-LA-013의 스캔 집합(기동 경로 호출 클로저) 밖이다.
 
 ### Out of Scope — Claude Code 런타임 내부
 
