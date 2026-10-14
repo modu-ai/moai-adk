@@ -179,6 +179,13 @@ func runUpdate(cmd *cobra.Command, _ []string) error {
 		return fmt.Errorf("--binary and --templates-only are mutually exclusive")
 	}
 
+	// --dry-run promises no filesystem change. The --config and --binary paths
+	// housekeep (and --binary installs) before the dry-run branch, and the config
+	// wizard writes on confirm, so the combinations are refused up front.
+	if getBoolFlag(cmd, "dry-run") && (editConfig || binaryOnly) {
+		return fmt.Errorf("--dry-run cannot be combined with --config or --binary: those paths change the filesystem before any preview")
+	}
+
 	// REQ-ITI-001: `moai update` carries NO profile entry — no confirmation, no
 	// profile wizard, whatever stdin and the flags are. The profile wizard
 	// starts only from `moai profile setup` / `--setup`.
