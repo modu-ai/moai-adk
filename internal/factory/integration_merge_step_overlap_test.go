@@ -705,32 +705,41 @@ func stepRelocateToPrimary(t *testing.T, f *stepFixture) {
 }
 
 func TestMergeStepPrimaryDirtyBeforeMergeRefusesWithoutMerge(t *testing.T) {
-	// SPEC-LOCAL-MAIN-FLOW-001 (card t1616): on the primary surface the dirty precondition is
-	// read once, before the mutation section. Another session that does not take the mutation
-	// lock can create an untracked file in the primary after that read, and the merge then
-	// runs over the dirty primary; only the post-merge checks would see it, after main has
-	// advanced. The gap is modelled at the first git call through the seam after the clean
-	// check: the unfinished-merge probe's `rev-parse --git-path MERGE_HEAD`. The clean check
-	// runs through exec, not the seam, so the file lands after it and before any merge call,
-	// and it does not sit inside the merge call itself, which would skip the gap the
-	// re-read has to close. The step must re-read the primary inside the section,
-	// immediately before the merge, and refuse with MergeExitWorktreeDirty without merging.
+	// SPEC-LOCAL-MAIN-FLOW-001 (card t1616, re-read position pinned by card
+	// t1677 R3-F1): on the primary surface the dirty precondition is read
+	// once, before the mutation section. Another session that does not take
+	// the mutation lock can create an untracked file in the primary after
+	// that read, and the merge then runs over the dirty primary; only the
+	// post-merge checks would see it, after main has advanced. The gap is
+	// modelled at the SECTION's unfinished-merge probe — the SECOND
+	// `rev-parse --git-path MERGE_HEAD` through the seam — so the file lands
+	// after the lock is taken and after any re-read a refactor could hoist
+	// ABOVE the section (a pre-lock re-read sees a clean tree there), yet
+	// before the in-section primary re-read. The t1616 round-3 test dirtied
+	// at the FIRST seam call, which a mutant re-reading the primary before
+	// the lock still caught, so it passed the mutant unchanged. The step must
+	// re-read the primary inside the section, immediately before the merge,
+	// and refuse with MergeExitWorktreeDirty without merging.
 	f := newMergeFixture(t)
 	card := f.withCardTree(readyCardPtr())
 	stepRelocateToPrimary(t, f)
 	seams := f.seams(card)
 	runner := factorylane.ExecGitRunner{Dir: f.integ}
+	mergeHeadProbes := 0
 	dirtied := false
 	seams.Git = func(args ...string) (string, error) {
-		if !dirtied {
-			dirtied = true
-			stepWriteFile(t, f.integ, "other-session.txt", "another session's bytes\n")
+		if len(args) >= 2 && args[0] == "rev-parse" && args[1] == "--git-path" {
+			mergeHeadProbes++
+			if mergeHeadProbes == 2 {
+				dirtied = true
+				stepWriteFile(t, f.integ, "other-session.txt", "another session's bytes\n")
+			}
 		}
 		return runner.Git(args...)
 	}
 	_, err := RunMergeStep(f.input(), seams)
 	if !dirtied {
-		t.Fatal("fixture: the step never reached a git call after its clean check")
+		t.Fatal("fixture: the step never reached the section's second MERGE_HEAD probe")
 	}
 	if code, ok := MergeExitCode(err); !ok || code != MergeExitWorktreeDirty {
 		t.Errorf("a primary dirtied after its clean check must refuse with MergeExitWorktreeDirty (%d), got code %d (ok %v, err %v)", MergeExitWorktreeDirty, code, ok, err)
@@ -740,6 +749,56 @@ func TestMergeStepPrimaryDirtyBeforeMergeRefusesWithoutMerge(t *testing.T) {
 	}
 	if body, readErr := os.ReadFile(filepath.Join(f.integ, "other-session.txt")); readErr != nil || string(body) != "another session's bytes\n" {
 		t.Errorf("the other session's untracked file must stay in place: body %q (err %v)", body, readErr)
+	}
+	requireWindowReleasedAndCPromoted(t, f)
+}
+
+func TestMergeStepPrimaryStatusRereadErrorRefusesWithCause9(t *testing.T) {
+	// R3-F2 (sync audit, card t1616; coverage by card t1677): the in-section
+	// primary re-read's status-ERROR branch (class 9, "re-read the integration
+	// worktree status before the merge") had zero coverage — the audit's
+	// profile row `534.24,537.5 2 0`. The re-read runs git status through
+	// exec, not the seam, so the test injects the failure the moment the
+	// section's unfinished-merge probe has fully PASSED — right after the
+	// probe's second `git ls-files -u` returns. The index is healthy for the
+	// pre-lock status check and for both probes' reads; corrupting it as the
+	// in-zone probe exits makes the immediately following status re-read the
+	// first caller to read the broken index, so its failure lands in the
+	// error branch — before any merge call.
+	f := newMergeFixture(t)
+	card := f.withCardTree(readyCardPtr())
+	stepRelocateToPrimary(t, f)
+	seams := f.seams(card)
+	runner := factorylane.ExecGitRunner{Dir: f.integ}
+	indexPath := filepath.Join(f.integ, ".git", "index")
+	unfinishedProbes := 0
+	brokeIndex := false
+	seams.Git = func(args ...string) (string, error) {
+		out, callErr := runner.Git(args...)
+		if callErr == nil && len(args) >= 1 && args[0] == "ls-files" {
+			unfinishedProbes++
+			if unfinishedProbes == 2 && !brokeIndex {
+				brokeIndex = true
+				if writeErr := os.WriteFile(indexPath, []byte("not an index"), 0o644); writeErr != nil {
+					t.Errorf("fixture: corrupt the integration worktree's index: %v", writeErr)
+				}
+			}
+		}
+		return out, callErr
+	}
+	_, err := RunMergeStep(f.input(), seams)
+	if !brokeIndex {
+		t.Fatal("fixture: the step never reached the section's unfinished-merge probe")
+	}
+	if code, ok := MergeExitCode(err); !ok || code != MergeExitOther {
+		t.Errorf("a status re-read that ERRORS must refuse with MergeExitOther (%d), got code %d (ok %v, err %v)", MergeExitOther, code, ok, err)
+	}
+	var step *MergeStepError
+	if !errors.As(err, &step) || !strings.Contains(step.Msg, "re-read the integration worktree status before the merge") {
+		t.Errorf("the refusal must carry the status re-read error branch's message, got %v", err)
+	}
+	if head := strings.TrimSpace(stepMustGit(t, f.integ, "rev-parse", "HEAD")); head != f.record.Base {
+		t.Errorf("the refusal must perform no merge: HEAD %s, want the base %s", head, f.record.Base)
 	}
 	requireWindowReleasedAndCPromoted(t, f)
 }

@@ -214,7 +214,9 @@ func handleFactoryNext(ctx context.Context, req mcp.CallToolRequest) (*mcp.CallT
 	}
 	wt, _, err := factoryEnsureCardWorktree(ctx, root, runID, card, lane, io.Discard)
 	if err != nil {
-		return toolErr("factory_next", fmt.Errorf("factory next: %w", err)), nil
+		// The lease already committed (card t1696, the lane-20 shape): the
+		// refusal must say so, or the lane retries a card it already holds.
+		return toolErr("factory_next", fmt.Errorf("factory next: %s was leased (the lease stands in the record; do not re-run next for it — settle the worktree step instead): %w", card.CardID, err)), nil
 	}
 	card.WorktreePath = wt
 	out, errOut := &bytes.Buffer{}, &bytes.Buffer{}
