@@ -99,6 +99,9 @@ func runUpdateHousekeeping(projectRoot string) {
 	} else if pruned := backup.CleanupNamespaceBackups(projectRoot, namespaceBackupRetainCount); pruned > 0 {
 		updateLedger.referencef("pruned %d old namespace backup(s), keeping the newest %d", pruned, namespaceBackupRetainCount)
 	}
+	if kept, oldest := backup.NamespaceBackupsKept(projectRoot, namespaceBackupRetainCount); kept > 0 {
+		updateLedger.referencef("kept %d older namespace backup(s) that hold content no newer backup has (oldest: %s)", kept, oldest)
+	}
 	// Skill-folder residue: empty folders of shipped skills, a retired skill name,
 	// and a lowercase skill.md. Each change is reported; see skillresidue.Clean.
 	skillActions, skillErr := skillresidue.Clean(projectRoot, skillresidue.Options{

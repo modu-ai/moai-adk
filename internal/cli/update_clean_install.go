@@ -545,6 +545,9 @@ func runCleanReinstall(ctx context.Context, projectRoot string, opts CleanReinst
 		} else if deleted := backup.CleanupOldBackups(projectRoot, 5); deleted > 0 {
 			_, _ = fmt.Fprintf(out, "[clean-reinstall] Cleaned up %d old config backup(s)\n", deleted)
 		}
+		if kept, oldest := backup.OldBackupsKept(projectRoot, 5); kept > 0 {
+			updateLedger.referencef("kept %d older config backup(s) that hold content no newer backup has (oldest: %s)", kept, oldest)
+		}
 	}
 	// MergeUserFiles preserves the user's version on any merge failure, so a
 	// warning (not a hard error) matches the normal path's tolerance. The call

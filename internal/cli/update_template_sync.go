@@ -886,6 +886,9 @@ func runTemplateSyncWithReporter(cmd *cobra.Command, reporter project.ProgressRe
 				if deletedCount > 0 {
 					_, _ = fmt.Fprintf(out, "  %s Cleaned up %d old backup(s)\n", uikit.SymSuccess(), deletedCount)
 				}
+				if kept, oldest := backup.OldBackupsKept(projectRoot, 5); kept > 0 {
+					updateLedger.referencef("kept %d older backup(s) that hold content no newer backup has (oldest: %s)", kept, oldest)
+				}
 			}
 			// Merge .gitignore: preserve user-added patterns via EntryMerge
 			if len(gitignoreBackup) > 0 {

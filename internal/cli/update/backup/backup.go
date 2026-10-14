@@ -242,14 +242,8 @@ func CleanupOldBackups(projectRoot string, keepCount int) int {
 	// Pattern: 8 digits + underscore + 6 digits = 15 characters
 	var backups []string
 	for _, entry := range entries {
-		if entry.IsDir() && len(entry.Name()) == 15 {
-			// Check if it matches the timestamp pattern (digits + underscore + digits)
-			parts := strings.SplitN(entry.Name(), "_", 2)
-			if len(parts) == 2 {
-				if len(parts[0]) == 8 && len(parts[1]) == 6 {
-					backups = append(backups, entry.Name())
-				}
-			}
+		if entry.IsDir() && isTimestampBackupName(entry.Name()) {
+			backups = append(backups, entry.Name())
 		}
 	}
 
@@ -286,8 +280,8 @@ func pruneBackups(backupDir string, sorted []string, keepCount int) int {
 		// keepCount 0 is an explicit wipe, not a rotation: nothing is retained to
 		// compare against, so the guard applies only when something is retained.
 		if keepCount > 0 {
-			if unique := backupUniqueFile(backupPath, retained); unique != "" {
-				fmt.Fprintf(os.Stderr, "Warning: kept backup %s: %s holds content no retained backup has\n", backupName, unique)
+			if backupUniqueFile(backupPath, retained) != "" {
+				// Kept, not warned: the caller reports kept entries as one ledger row.
 				continue
 			}
 		}
@@ -361,6 +355,69 @@ func NamespaceBackupRootRefused(projectRoot string) bool {
 	return !backupRootContained(projectRoot, filepath.Join(projectRoot, defs.MoAIDir, defs.NamespaceBackupsSubdir))
 }
 
+// OldBackupsKept reports the excess entries under .moai-backups that the retention
+// pass left in place: the entries beyond the newest keepCount that still exist. The
+// count and the oldest name are the one ledger row for that pass. A refused root
+// reports nothing.
+func OldBackupsKept(projectRoot string, keepCount int) (int, string) {
+	return keptBackups(projectRoot, filepath.Join(projectRoot, defs.BackupsDir), keepCount, isTimestampBackupName)
+}
+
+// NamespaceBackupsKept is OldBackupsKept for the namespace backup root.
+func NamespaceBackupsKept(projectRoot string, keepCount int) (int, string) {
+	root := filepath.Join(projectRoot, defs.MoAIDir, defs.NamespaceBackupsSubdir)
+	return keptBackups(projectRoot, root, keepCount, func(name string) bool {
+		return strings.HasPrefix(name, "update-")
+	})
+}
+
+// keptBackups lists the entries of root that match, oldest first, and returns how
+// many lie beyond the newest keepCount, with the oldest of them.
+func keptBackups(projectRoot, root string, keepCount int, match func(string) bool) (int, string) {
+	if !backupRootContained(projectRoot, root) {
+		return 0, ""
+	}
+	entries, err := os.ReadDir(root)
+	if err != nil {
+		return 0, ""
+	}
+	var names []string
+	for _, entry := range entries {
+		if entry.IsDir() && match(entry.Name()) {
+			names = append(names, entry.Name())
+		}
+	}
+	if len(names) <= keepCount {
+		return 0, ""
+	}
+	sort.Strings(names)
+	return len(names) - keepCount, names[0]
+}
+
+// isTimestampBackupName reports whether name has the shape of a .moai-backups
+// entry, YYYYMMDD_HHMMSS: 15 characters with an underscore after the eighth.
+func isTimestampBackupName(name string) bool {
+	parts := strings.SplitN(name, "_", 2)
+	return len(name) == 15 && len(parts) == 2 && len(parts[0]) == 8 && len(parts[1]) == 6
+}
+
+// backupBookkeeping names the files a backup writes about itself rather than with
+// content it saved: the config backup's metadata (timestamp and item lists) and the
+// namespace backup's completion marker (stamp, file count, time). Two backups of the
+// same content differ in these, so they are not part of the identity that decides
+// whether an excess entry is redundant. Only files at the entry root count.
+var backupBookkeeping = map[string]bool{
+	BackupMarkerFile: true,
+	".complete":      true,
+}
+
+// isBackupBookkeeping reports whether path is one of backupBookkeeping at the root
+// of backupDir.
+func isBackupBookkeeping(backupDir, path string) bool {
+	rel, err := filepath.Rel(backupDir, path)
+	return err == nil && backupBookkeeping[rel]
+}
+
 // backupFileKey identifies one file inside a backup by its path there and the
 // SHA-256 of its content. A restore resolves a file by that path, so identical
 // bytes at a different path do not make a file redundant.
@@ -382,7 +439,7 @@ func backupFileKey(backupDir, path string) (string, error) {
 // excess backup look more unique, which keeps it.
 func addRetainedBackupKeys(backupDir string, keys map[string]bool) {
 	_ = filepath.WalkDir(backupDir, func(path string, d fs.DirEntry, err error) error {
-		if err != nil || !d.Type().IsRegular() {
+		if err != nil || !d.Type().IsRegular() || isBackupBookkeeping(backupDir, path) {
 			return nil
 		}
 		if key, keyErr := backupFileKey(backupDir, path); keyErr == nil {
@@ -406,6 +463,9 @@ func backupUniqueFile(backupDir string, retained map[string]bool) string {
 		case !d.Type().IsRegular():
 			unique = path
 		default:
+			if isBackupBookkeeping(backupDir, path) {
+				return nil
+			}
 			if key, keyErr := backupFileKey(backupDir, path); keyErr != nil || !retained[key] {
 				unique = path
 			} else {
