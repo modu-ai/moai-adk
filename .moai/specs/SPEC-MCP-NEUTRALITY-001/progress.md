@@ -406,6 +406,17 @@ Verification batch at the r3 repair head (this tree, this run):
 - Lint (full 8-root touched set): 4 errcheck, all pre-existing in internal/cli — zero NEW.
 - The absorbed-era pin family TestAuditMulti_CodexLegDeadline_* stays red pending the leader disposition this card already requested (F11 note above) — unchanged by this round.
 
+### Sync-audit r4 delta repair round — F16/F17 (card t1632, branch WT-3-2-0-2)
+
+Commit: `47ad706c2` (fix: sync-audit r4 repairs — F16/F17). Base: the r3-repair head `e6854e5d8`. Verdict file: .moai/reports/t1632/sync-audit-r3.md (F12/F13/F14 resolved; F16 blocking, F17 note). Push state: nothing pushed; clean on WT-3-2-0-2.
+
+Repair matrix (run at HEAD 47ad706c2, this tree):
+
+| Finding | Disposition | Command (verbatim) | Observed output |
+|---------|-------------|--------------------|-----------------|
+| F16 shared plain bool in the F13 pin (data race under -race) | FIXED | `go test -race ./internal/cli -run '^TestAuditMulti_ReceiptBindsStartOfConvergenceState$' -count=1` | `ok  github.com/modu-ai/moai-adk/internal/cli  2.210s` — the postEdit flag is an atomic.Bool (Store in the errgroup goroutine, Load in the TreeState stub); no race report |
+| F17 orphaned recordAuditReceiptAt doc comment | FIXED | `go build ./...` + lint | `ok` — the orphan folded into recordAuditReceiptAtBound's own doc (the wrapper it described was removed when every caller migrated to the bound surface) |
+
 ## §E.3 Run-phase Audit-Ready Signal
 
 run_audit_ready: true
