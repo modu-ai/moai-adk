@@ -122,6 +122,16 @@ Pre-existing baseline on this tree: 0 issues; NEW issues introduced by this run:
 
 No push, no PR, no force, no --amend, no --no-verify (git-flow lane protocol B9: the leader batches the push).
 
+### Init-level end-to-end observation (the card completion criterion; plan.md R-1 gap carried to the run phase)
+
+Binary built from this tree and invoked by path (verification-claim-integrity §2.2): `go build -o /tmp/t1630-moai-bin/moai ./cmd/moai` → exit 0. Three scenarios, each `HOME=<sandbox> MOAI_HOME=<sandbox> /tmp/t1630-moai-bin/moai init --non-interactive <tmp-project> </dev/null` (init exit 0 each):
+
+1. Matching defaultMode (`acceptEdits`) + allow/ask/deny + sibling env, non-canonical layout: **permissions content diff is 0** — after holds the same allow/ask/deny/defaultMode values. The whole-file byte diff is NOT 0: `ensureGlobalSettingsEnv` (internal/cli/update.go:1057, called from init.go:1067 — a pre-existing writer outside this SPEC's REQ set) re-marshal-parses the file, adds `CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS`, `CLAUDE_DISABLE_PATH_WARNING`, and `PATH` to `env` (the user's own `env` keys survive), and the map re-marshal normalizes key order alphabetically. The toolpolicy codegen is not involved in that rewrite (its canonical order is defaultMode-first; the observed order is alphabetical).
+2. Differing defaultMode (`"plan"`) + allow: **kept** — after init `defaultMode: plan`, `allow: ['Bash(make:*)']` (Q1 holds through the full init executor).
+3. Fresh home (no user settings file): created with `defaultMode: acceptEdits`, no lists invented (EC-1 holds end-to-end).
+
+Card completion criterion disposition: `init 전후 settings diff 0` is met at the content level the criterion's own parenthetical defines ("init preserves user permissions and an existing defaultMode") — both hold in every scenario. The strict byte-level no-diff is not met, and the cause is the pre-existing `ensureGlobalSettingsEnv` whole-file env merge, not the writer this SPEC fixes. Making that writer byte-preserving is un-decided surface outside this SPEC's REQ set; named for the leader to disposition (accept content-level, or cut a follow-up card for the env writer).
+
 ## §E.3 Run-phase Audit-Ready Signal
 
 ```yaml
