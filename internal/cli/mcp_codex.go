@@ -892,13 +892,21 @@ func openCodexSessionResolved(ctx context.Context, binaryPath string, params map
 	// the containment read that runs before the session exists. Before this
 	// repair, a cancelled request failed the listing with "context canceled"
 	// and the session never opened at all.
+	// Card t1632 sync-audit r6 F20: the detached read is still BOUNDED — a
+	// listing that hangs on a wedged child must not outlive the request by
+	// minutes; the bound is the containment's own, generous next to the
+	// session's task bound.
+	listCtx, cancelList := context.WithTimeout(context.Background(), config.DefaultCodexTaskTimeout)
 	argv := []string{codexAppServerSubcmd, "-c", "sandbox_mode=read-only"}
 	if root, ok := params["cwd"].(string); ok && root != "" {
-		containment, err := codexGateContainmentArgs(context.Background(), binaryPath, root)
+		containment, err := codexGateContainmentArgs(listCtx, binaryPath, root)
+		cancelList()
 		if err != nil {
 			return nil, &codexSessionError{summary: "codex session containment failed: " + err.Error(), cause: err}
 		}
 		argv = append(argv, containment...)
+	} else {
+		cancelList()
 	}
 	conn, err := codexSession.start(ctx, binaryPath, argv)
 	if err != nil {
