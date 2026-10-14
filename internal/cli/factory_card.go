@@ -19,6 +19,7 @@ import (
 	"github.com/modu-ai/moai-adk/internal/config"
 	"github.com/modu-ai/moai-adk/internal/factory"
 	"github.com/modu-ai/moai-adk/internal/factorymsg"
+	"github.com/modu-ai/moai-adk/internal/gitenv"
 	"github.com/modu-ai/moai-adk/internal/homestate"
 	"github.com/modu-ai/moai-adk/internal/session"
 	"github.com/modu-ai/moai-adk/internal/statusline"
@@ -2335,6 +2336,7 @@ var factoryCompleteAcquireHook func()
 func cliGitIn(dir string, args ...string) (string, error) {
 	cmd := exec.Command("git", args...)
 	cmd.Dir = dir
+	cmd.Env = gitenv.Env() // an inherited GIT_DIR would outrank cmd.Dir
 	out, err := cmd.Output()
 	return string(out), err
 }
@@ -2476,6 +2478,7 @@ func factoryBranchOfWorktree(dir string) string {
 	}
 	cmd := exec.Command("git", "rev-parse", "--abbrev-ref", "HEAD")
 	cmd.Dir = dir
+	cmd.Env = gitenv.Env() // an inherited GIT_DIR would outrank cmd.Dir
 	out, err := cmd.Output()
 	if err != nil {
 		return ""
@@ -2491,6 +2494,7 @@ func factoryBranchOfWorktree(dir string) string {
 func factoryWorktreeForBranchIn(repoDir, branch string) string {
 	cmd := exec.Command("git", "worktree", "list", "--porcelain")
 	cmd.Dir = repoDir
+	cmd.Env = gitenv.Env() // an inherited GIT_DIR would outrank cmd.Dir
 	out, err := cmd.Output()
 	if err != nil {
 		return ""
