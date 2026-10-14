@@ -75,6 +75,18 @@ var profileCapAdvisoryFn = runProfileCapAdvisory
 // (config.ProfileCapAdvisoryTimeout) inside the goroutine: on deadline the
 // advisory degrades to a skip notice and the goroutine exits cleanly. The
 // split-behavior test installs a synchronous variant for determinism.
+//
+// @MX:DEBT: the advisory goroutine is detached, so it races the short-lived
+// hook process's exit (session_start.go spawnDeferredAdvisoryScans documents
+// the same gap): a very large profile walk can be torn down before its
+// warning lands — the advisory is silently undelivered for that session.
+// @MX:CEILING: warning-only loss — the walk deletes nothing, so the worst
+// case is a skipped one-session advisory; every session retries for free.
+// @MX:UPGRADE: a separate-process or early-session cached writer (the
+// Advisory-Check Discipline's cached clause — key the result on a cheap
+// invariant and fill it out of band, as the drift cache does) closes the
+// race; revisit when a real miss is observed in the wild.
+// @MX:SPEC: SPEC-CAPACITY-RECLAIM-001
 var profileCapSpawnFn = func(projectDir string) {
 	go profileCapAdvisoryFn(projectDir)
 }
