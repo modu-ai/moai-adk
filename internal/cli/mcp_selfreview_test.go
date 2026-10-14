@@ -999,7 +999,8 @@ func TestSelfReview_SourceReferencesNoAuditMachinery(t *testing.T) {
 	// audit_multi path later moved to recordAuditReceiptAt, which takes the
 	// call-start codex gate (SPEC-AUDIT-MODEL-CONVERGE-001 M9); the sites are
 	// therefore counted under both spellings: recordAuditReceipt( on its
-	// definition and the two codex_audit calls (3), recordAuditReceiptAt( on its
+	// definition and the codex_audit calls (definition + 2 legacy + the
+	// REQ-MN-019 target-not-applied arm = 4), recordAuditReceiptAt( on its
 	// definition, the delegation inside recordAuditReceipt and the audit_multi
 	// call (3). The self-review file stays at zero (checked above).
 	entries, err := os.ReadDir(".")
@@ -1017,8 +1018,8 @@ func TestSelfReview_SourceReferencesNoAuditMachinery(t *testing.T) {
 			}
 		}
 	}
-	if sites != 6 {
-		t.Errorf("recordAuditReceipt( / recordAuditReceiptAt( appear on %d non-comment lines, want the 6 the receipt writers and their callers occupy (the self-review tools add none)", sites)
+	if sites != 7 {
+		t.Errorf("recordAuditReceipt( / recordAuditReceiptAt( appear on %d non-comment lines, want the 7 the receipt writers and their callers occupy (the self-review tools add none)", sites)
 	}
 }
 

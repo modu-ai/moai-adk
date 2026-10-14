@@ -98,6 +98,15 @@
         "could_not_run": {
           "type": "boolean"
         },
+        "excluded_untracked": {
+          "items": {
+            "type": "string"
+          },
+          "type": [
+            "null",
+            "array"
+          ]
+        },
         "findings": {
           "items": {
             "additionalProperties": false,
@@ -241,6 +250,9 @@
         },
         "synthesis_note": {
           "type": "string"
+        },
+        "truncated": {
+          "type": "boolean"
         },
         "verdict": {
           "type": "string"
@@ -310,6 +322,15 @@
         "could_not_run": {
           "type": "boolean"
         },
+        "excluded_untracked": {
+          "items": {
+            "type": "string"
+          },
+          "type": [
+            "null",
+            "array"
+          ]
+        },
         "findings": {
           "items": {
             "additionalProperties": false,
@@ -453,6 +474,9 @@
         },
         "synthesis_note": {
           "type": "string"
+        },
+        "truncated": {
+          "type": "boolean"
         },
         "verdict": {
           "type": "string"
@@ -514,6 +538,15 @@
         "could_not_run": {
           "type": "boolean"
         },
+        "excluded_untracked": {
+          "items": {
+            "type": "string"
+          },
+          "type": [
+            "null",
+            "array"
+          ]
+        },
         "findings": {
           "items": {
             "additionalProperties": false,
@@ -657,6 +690,9 @@
         },
         "synthesis_note": {
           "type": "string"
+        },
+        "truncated": {
+          "type": "boolean"
         },
         "verdict": {
           "type": "string"
