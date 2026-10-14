@@ -204,6 +204,43 @@ Interpretation notes for the audit (M4):
 5. **Call log nil-when-direct**: mcpCallLog is bound ONLY inside runMCPServerWithIOAndExposure — direct-construction tests leave it nil, so no test writes the real project's state tree (B8 hygiene).
 6. **AGENTS.md reconnect doc**: local AGENTS.md AND the template mirror (AGENTS.md.tmpl) gained section 14 (per-harness reconnect procedures) — both copies in sync.
 
+### M5 — generation migration, token stability, count-only hook, Stop scope (card t1632, branch WT-3-2-0-2)
+
+Commits (after the M4-boundary absorb `fa05db2fb` = 0d53d09fa + main t1619): `db9fb0e7b` (generation migration + token stability + count-only hook + Stop scope). Push state: nothing pushed; clean on WT-3-2-0-2.
+
+E8 — verbatim RED outputs captured BEFORE each GREEN:
+
+```
+$ go test ./internal/cli -run 'TestStoreGenerationAdvanceMigratesPending|TestClaimTokenStableOnRelist' -count=1   → exit 1
+    factorymsg_claim_stability_test.go:72: claims at generation 2 = 0, want 1 (the pending message must migrate, not orphan)
+    factorymsg_claim_stability_test.go:94: second claim returned 0 entries, want the already-claimed entry
+$ go test ./internal/hook -run 'TestFactoryHookEmptyInboxSkipsWriteLock' (M3) — the counting-path premise extends to M5's count-only hook (no claim either)
+```
+
+AC matrix (M5-mapped rows; every row's command run at HEAD db9fb0e7b, this tree):
+
+| AC | Status | Command (verbatim) | Observed output |
+|----|--------|--------------------|-----------------|
+| AC-MN-016 (generation migration) | PASS | `go test ./internal/cli -run '^TestStoreGenerationAdvanceMigratesPending$' -count=1` | `ok` — a same-session generation advance migrates the pending message to the new generation (claimable at gen 2) |
+| AC-MN-017 (token stability) | PASS | `go test ./internal/cli -run '^TestClaimTokenStableOnRelist$' -count=1` | `ok` — the second claim returns the SAME message with the SAME token (extended lease); ReadBody with the original token still works |
+| AC-MN-017 (hook count-only) | PASS | `go test ./internal/hook -run 'TestFactoryHook\|TestRebound' -count=1` | `ok` — the hook's inspections claim nothing, settle nothing, write nothing; repeated inspections are idempotent counts |
+| AC-MN-018 (line-boundary cut + Stop scope) | PASS | the same hook family run | `ok` — the byte cut falls on a line boundary (ContextAndContinuationSafety's 16-message render); Stop blocks only for blocker/status_request (dispatch_notice delivers as a count without forcing the turn); the lock arm pins the count path succeeding UNDER a held write lock within 250ms |
+| AC-MN-010 M5 half (already-claimed entries) | PASS | `go test ./internal/cli -run '^TestClaimTokenStableOnRelist$' -count=1` | `ok` — factory_msg_list's Claim returns the already-claimed entries with their tokens (never an empty-only response for live claims) |
+
+Verification batch at HEAD db9fb0e7b (this tree, this run):
+
+- E2 builds: `go build ./...` → exit 0; `GOOS=windows GOARCH=amd64 go build ./...` → exit 0.
+- Affected families green (-count=1): internal/factorymsg (full package), the hook inbox family, the cli claim-stability + generation-migration tests.
+
+Interpretation notes for the audit (M5):
+
+1. **Generation migration is same-session-scoped**: a SLOT REBIND to a different session UUID keeps the REQ-DHR-020 superseded semantics (the no-silent-retargeting fence, pinned by TestFactorySessionGenerationOwnership). The migration fires only for a same-session generation advance — the pure "generation change alone" case REQ-MN-016 names. The idempotency-scope test updated: a same-key re-Send to the migrated recipient returns the ORIGINAL envelope (the scope spans the migration).
+2. **Token stability is lease-gated**: a LIVE claim keeps its token; an EXPIRED claim mints a fresh one (the dispatch-result exactly-once fencing contract, pinned by TestDispatchResultExactlyOnce, requires the old holder's identity to die with its lease). The distinction is claim_expires_at vs now.
+3. **The hook is now FULLY read-only**: no claim, no settle, no write probe (M3 removed the probe+settle; M5 removes the claim). The factory_msg_list tool is the only claim surface; the hook renders pending ids + kinds and the Stop decision reads kinds. TestFactoryHookZeroTurnAndCapabilityTruth's receipt arm updated: a receipt-only inspection leaves the receipt pending; the receipt answers via the MCP receipt tool.
+4. **Stop scope**: only blocker/status_request force the leader's turn; dispatch_notice and other kinds deliver as counts (cont=false). PendingList sorts decision-required kinds FIRST so a rendered batch always carries them even past the 16-tool limit.
+5. **The lock arm re-pinned**: the count path succeeds UNDER a held write lock within 250ms — the strongest possible REQ-MN-011 pin (the old "degraded under lock" premise is the defect itself).
+6. **factory_msg_list's already-claimed entries** (AC-MN-010's M5 half): the Claim returns live-claimed entries with their tokens alongside new claims — the response is never empty-only for live claims.
+
 ## §E.3 Run-phase Audit-Ready Signal
 
 _pending run-phase_
