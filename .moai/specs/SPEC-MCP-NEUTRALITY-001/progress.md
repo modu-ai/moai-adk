@@ -333,7 +333,7 @@ Repair matrix (every row's command run at HEAD c292a7a8d, this tree):
 | P2-5 audit_cache per-op write classification | HELD (leader disposition) | — | the catalogue WriteCapable reclassification is a design change, not a mechanical fix; follow-up card |
 | P2-6 stderr buffer synchronization | HELD (leader disposition) | — | deep mcp_codex change (mutex-guarded buffer or post-close read); risk/benefit judged by the leader with the real-usage evidence |
 
-**Follow-up card ids (leader, 2026-10-14T21:4xZ)**: F6 + DHR-020 dead-letter half → **t1747**; the two pre-existing flaky classes (symlink 3 + deadline pins 3, F11) → **t1746**. The P2-4/5/6 held findings ride t1747's scope per the sync-audit-r4 §Debt record. TestNoNewEnvLiteralsInDiff is main-origin (t1617 190f7db5d) — deliberately not this card's.
+**Follow-up card ids (leader, 2026-10-14T21:4xZ)**: F6 + DHR-020 dead-letter half → **t1747**; the two pre-existing flaky classes (symlink 3 + deadline pins 3, F11) → **t1746**. The P2-4/5/6 held findings ride t1747's scope per the sync-audit-r4 §Debt record. ~~TestNoNewEnvLiteralsInDiff is main-origin (t1617 190f7db5d) — deliberately not this card's.~~ **CORRECTION (sync-audit r6 F21, 2026-10-15) — this main-origin sentence was FALSE and contradicted the r2 measurement and the r3 CORRECTION at this file's repair-round block: the guard's added-line set carries THIS card's own two comment lines (M1 `ebba213f0` mcp_refusal.go, M2-PartA `9e7a4a9a9` mcp_factory_card.go), reworded and the guard made green in the r3 repair. The t1617-side introductions in the sweep range are test-file-only.**
 
 Verification batch at HEAD c292a7a8d (this tree, this run):
 
@@ -437,6 +437,25 @@ Repair matrix (run at HEAD 17a0547b6, this tree):
 | Broader family | the same run | all `^TestCodexTask*` selectors green (background detach/cancel/turn-bound, protocol liveness, process-context) |
 
 **Why the regression survived four rounds — verification-scope disclosure**: `TestCodexTask_Foreground*` (and the whole codex_task_session_ctx/process_context files) appeared in NO §E.2 verification batch — the milestone batches ran the audit/review/self-review families and the M3 batch scoped hook+factorymsg, but never the codex_task session-context files, and the F2 correction's 8-root lint re-measure fixed lint visibility without extending the TEST surface. This round adds the codex_task session-context family to the standing batch surface.
+
+Authored-By-Agent: manager-develop
+
+### Sync-audit r6 delta repair round — F19/F18/F20/F21 (card t1632, branch WT-3-2-0-2)
+
+Commit: `807db1c8c` (fix: sync-audit r6 delta repairs — F19/F18/F20) + the F21 correction in this file. Base: the r5 evidence head `19089dac8`. Verdict file: .moai/reports/t1632/sync-audit-r5.md. Push state: nothing pushed; clean on WT-3-2-0-2.
+
+| Finding | Disposition | Command (verbatim) | Observed output |
+|---------|-------------|--------------------|-----------------|
+| F19 cleanup removes the serving tree's real job registry | FIXED + canary measurement | `go test ./internal/cli -run 'TestCodexTask_Background' -count=1` | `ok` — the cleanup removes ONLY the test's own record file; a canary record (`canary-pre-existing-record.json`, planted before the job with real-record content) is asserted to SURVIVE the cleanup, then removed as the test's own planting — a future widening back into a directory removal fails loudly on the canary check |
+| F18 handshake bound test flaked 4/5 at the 700ms margin | FIXED (margin + measured cause) | `go test ./internal/cli -run '^TestCodexTaskBackgroundHandshakeHonorsTaskBound$' -count=5` | `ok  github.com/modu-ai/moai-adk/internal/cli  6.190s` — green at -count=5. Measured cause: the handler's path to its structured "timed out after 100ms" result crosses real git queries whose latency under concurrent git load (live ps during the hang showed another session's `git status --porcelain` running and a network `git clone` in flight) exceeded the 700ms watchdog while the 100ms task bound itself had long fired. The pinned contract is the bound ending the handshake (the error text), not a 700ms wall clock; the watchdog margin is 2s |
+| F20 unbounded detached containment listing | FIXED | `go build ./...` + the bound applied in openCodexSessionResolved | `ok` — the background-context listing is bounded by its own context timeout (DefaultCodexTaskTimeout), so a wedged-child listing can no longer outlive the request by minutes |
+| F21 progress.md env-literal origin sentence contradicts the r2 measurement and the r3 CORRECTION | FIXED (correction in place) | the F21 CORRECTION at this file's follow-up-memo line | the main-origin sentence is struck and replaced with the measured attribution (this card's own M1/M2 comment lines), matching the r2 measurement and the r3 CORRECTION |
+
+Verification batch at HEAD 807db1c8c (this tree, this run):
+
+- E2 builds: `go build ./...` → exit 0.
+- Affected families green: `go test ./internal/cli -run '^TestCodexTask' -count=1` → ok (full family incl. the r5 RED test); internal/auditreceipt full → ok; internal/hook full → ok (501s; the env-literal guard stays green after the F12 rewording).
+- Lint (cli + hook): 4 errcheck, all pre-existing — zero NEW.
 
 Authored-By-Agent: manager-develop
 
