@@ -66,6 +66,61 @@ Interpretation notes for the audit:
 6. **Pre-existing load-sensitive flake classified**: TestFactoryLeaseQueueLockStallBounded failed once inside a 10-minute broad union run (timing assertion over by 19.7 ms; the union also hit go's 10m package timeout); isolated run and -count=3 pass. Not touched by this diff (CLI lease wait budget path).
 7. **Existing behavior-pinning tests updated with the change** (the EV-018 pattern): the freeze snapshot (AC-SD-022) re-baselined with provenance, the MCP parity inputs pin gained `actor`, TestSD_AC016's unmarked success arm now stamps the operator mark, and the stage parity twin's refusal arm moved onto fresh fixtures (it previously passed by matching an illegal-transition error on both sides — the holder refusal it names requires a card still at plan).
 
+### M2 — root contract, catalogue, schemas, wire honesty (card t1632, branch WT-3-2-0-2)
+
+Commits (oldest first, after the leader's absorb merge `d1c7033429` = 8227a091b9 + main t1696/t1677): `8767d545b7` (**M2 Part A, CLI absorb**) — the M1 identity contract on the CLI verb layer: factoryDecideGate as the ONE predicate both decide surfaces run (positive operator mark admits / lane keeps the boundary refusal / unmarked is unknown attribution), `--actor` on next/stage/complete/renew with shared legacy-label validation, and an explicit run whose row exists but is not active refuses stale before any expired row is read (row-based: a run with no row has nothing expired to read). `decc922a6` (**M2 root confinement + factory_msg**) — validateProjectRoot confined to a registered worktree of the server's own repository (codexAuditValidateRoot acceptance set generalized), home rejected explicitly, non-string rejected as an invalid argument (the GetString coercion closed), factory_msg anchored at the caller's root with the four mutating members requiring it. `045733087` (**M2 body**) — REQ-MN-004 across the remaining families, REQ-MN-006 catalogue hard source, REQ-MN-007 schema lint, REQ-MN-008 wire honesty.
+
+E8 — verbatim RED outputs captured BEFORE each GREEN (Part A + the M2 clusters):
+
+```
+$ go test ./internal/cli -run '^(TestFactoryDecideGate_PositiveMark|TestFactoryActorFlag|TestFactoryStaleRunRefused)$' -count=1   → exit 1
+    factory_identity_absorb_test.go:40: cli decide accepted an unmarked session — env absence still grants operator
+    factory_identity_absorb_test.go:103: cli stage --actor lane-2: err = unknown flag: --actor, want the F1 holder refusal naming lane-2
+    factory_identity_absorb_test.go:142: cli stale-run refusal = factory stage: card evidence refused: artifact path "" is not usable, want the not-active refusal
+$ go test ./internal/cli -run '^(TestMCPRootConfinement|TestMCPRootRequiredForMutating)$' -count=1   → exit 1
+    mcp_root_contract_test.go:48: the home directory was accepted as a project root
+    mcp_root_contract_test.go:62: sibling repository .../002 was accepted
+    mcp_root_contract_test.go:81: project_root 42 was accepted            [GetString coercion]
+    mcp_root_contract_test.go:118: mutating family tool without project_root was accepted (stale-run refused it first — the argument contract did not exist)
+$ go test ./internal/cli -run 'TestMCPSchemaLint_ServedTools' -count=1   → exit 1
+    schema lint findings (95): R1 additionalProperties not declared (sweep-wide) · R2 the 19 undescribed factory_msg_* properties · R4 seven read-only tools carrying the SDK default destructive hint (audit_cache, claude_audit, codex_job_result, codex_job_status, codex_review, codex_role_audit_result, ...)
+$ grep -c "todo_claim" internal/mcp/catalog.go   → 0   [the catalogue row absent — the serve arm of TestMCPCatalogue_ServesTodoClaim is red by construction]
+$ go test ./internal/cli -run 'TestFactoryMsgList_EmptyIsArrayAndTextMirrors' -count=1 (pre-fix probe)   → exit 1
+    mcp_wire_honesty_test.go:66: empty claim set serialized as null: {"body_lookup":"factory_msg_body","messages":null}
+```
+
+AC matrix (M2-mapped rows; every row's command run at HEAD 045733087, this tree):
+
+| AC | Status | Command (verbatim) | Observed output |
+|----|--------|--------------------|-----------------|
+| AC-MN-004/005 CLI half (Part A) | PASS | `go test ./internal/cli -run '^(TestFactoryDecideGate_PositiveMark\|TestFactoryActorFlag\|TestFactoryStaleRunRefused)$' -count=1` | `ok` — CLI decide flips to the positive mark, `--actor` decides whose label acts, a completed run refuses stale |
+| AC-MN-005 MCP (factory_decide gate shared) | PASS | same batch incl. `TestMCPOperatorMark_Required` | `ok` — one predicate, both surfaces, identical texts |
+| AC-MN-006 (resolver + mutating wire + _root) | PASS | `go test ./internal/cli -run '^TestMCPRootRequiredForMutating$' -count=1` | `ok` — absent project_root → isError true, text exactly `factory_msg_send: project_root is required for mutating calls`; correct calls carry `_root{dir, source:"param"}` (TestMCPRootConfinement's param arm) |
+| AC-MN-007 (confinement) | PASS | `go test ./internal/cli -run '^TestMCPRootConfinement$' -count=1` | `ok` — home rejected explicitly, sibling repository rejected, registered worktree accepted (canonical), project_root 42 → invalid argument, never coerced |
+| AC-MN-008 (todo_claim catalogue + fail-closed gate) | PASS | `go test ./internal/cli -run 'TestMCPCatalogue' -count=1` | `ok` — todo_claim in tools/list, HasTool pins, the gate panics on a catalogue-absent name and admits a row |
+| AC-MN-009 (schema lint) | PASS | `go test ./internal/cli -run 'TestMCPSchemaLint' -count=1` | `ok` — R1 additionalProperties policy declared on every served tool (strict, applied at the registration gate), R2 every property described (the 19 factory_msg properties included), R3 required ⊆ declared (goal_status dropped the session_id required the enforcement never had), R4 read-only never destructive (the SDK default flipped on seven tools); handler-read args pinned (codex_task.model + project_root, goal_status.session_id) |
+| AC-MN-010 M2 half (wire honesty) | PASS | `go test ./internal/cli -run '^TestFactoryMsgList_EmptyIsArrayAndTextMirrors$' -count=1` | `ok` — zero claims → `"messages":[]` (never null); the text block carries the same JSON as structuredContent |
+| AC-MN-003 (card gate 3) | NOT M2 | — | M3 flips it |
+
+Verification batch at HEAD 045733087 (this tree, this run):
+
+- E2 builds: `go build ./...` → exit 0; `GOOS=windows GOARCH=amd64 go build ./...` → exit 0.
+- E3 coverage (change-scoped, per plan D8): `mcp_project_root.go` M2 functions — resolveToolProjectRootWithSource 80.0%, toolProjectRootArgument 100.0%, resolveRequiredToolProjectRoot 77.8%, confineToolProjectRoot 80.0%, confineToServerRepository 80.0%. Instrument: `go test -coverprofile` over the refusal/root/catalogue families.
+- E4 boundary grep: the only AskUserQuestion hits in internal/cli are pre-existing CLI documentation strings (harness.go, pr_watch_cmd.go — CLI surfaces, not the MCP handlers this diff touches); zero in the M2 diff.
+- E5 lint: `golangci-lint run` over internal/cli, internal/mcp, internal/hook, internal/config, internal/codexwiring, internal/factorymsg → **0 issues**.
+- Affected families green (-count=1): the root-contract sweep (confinement, required-root, catalogue, schema lint, registration guard), session_msg (4 tools + data-argument family), jev_ask, goal arms, session_list, audit_cache, codex_job_status/result/cancel, glm_task + glm_job_status/result/cancel, factory_msg 5, graph root honor family, verify_snapshot/trend root family, spec redirect family, factory CLI absorb tests.
+
+Interpretation notes for the audit (M2):
+
+1. **Part A ordering**: Part A (`8767d545b7`) landed BEFORE the M2 body per the delegation; the leader's absorb `d1c7033429` carried t1696, so internal/cli/factory_card.go edits happened after re-verification that the off-limits constraint was lifted.
+2. **Row-based CLI stale-run**: the CLI refuses an explicit run when a run ROW exists and is not active; a run with no row passes through (nothing expired to read — the verb's own LoadCard answers). The MCP path keeps the stricter existence-based check (M1). The distinction keeps 40 fixture files' semantics intact and is documented on resolveFactoryCardRun.
+3. **Confinement resolves the server root through projectDirResolver** (the same seam the codex/glm handlers swap): in-process fixtures substitute the server's repository there, so the confinement compares against the root the serving machinery actually resolves.
+4. **verify_trend's no-root arm premise updated**: the store-root rules (SPEC-MCP-WORKTREE-UNTRACKED-001) keep ONE state store per repository — a same-repository fallback worktree resolves to the primary's store, so root-based record invisibility no longer holds; the guarantee the test pins moved to the `_root` provenance (fallback source + warning + the store source actually read). TestVerifySnapshot's isolation half still holds (verify.Load is identity-keyed).
+5. **toolJSONWithRoot normalizes typed payloads to maps** (to merge `_root` at the top level); two tests asserting typed StructuredContent (factorymsg.Envelope, []jev.Answer) decode via a JSON round-trip now.
+6. **session_msg broker anchoring moved**: newSessionMsgStoreFor(root) anchors the broker at the caller's confined root — the pre-M2 "takes NO project_root argument (design.md §6)" note is superseded by REQ-MN-004's family list.
+7. **Pre-existing on the absorbed base, leader disposition**: TestFactoryLeaseQueueLockStallBounded and TestFactoryLeaseDriftLogVerbWorktreeWriteWaits exceed their pinned timing bounds without this diff (attribution run recorded in the Part A commit message).
+8. **Scope note**: codex_role_audit* and codex_setup already carried their own root contracts (the codexAuditValidateRoot path this SPEC generalizes); audit_multi/codex_audit keep their pass-through resolution (resolveOptionalToolProjectRoot) per their REQ-2 semantics, now confinement-checked when a root is supplied.
+
 ## §E.3 Run-phase Audit-Ready Signal
 
 _pending run-phase_
