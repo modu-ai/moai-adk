@@ -154,7 +154,7 @@ semi-auto 下，等待任务开工批准或回答问题很容易停超过 5 分�
 | Claude Opus 4.7 | 1M | 2,048 |
 | Claude Haiku 4.5 | 200K | 4,096 |
 
-> 像 2026 年阵容里的 Opus 4.8（1M 上下文）这样的新模型，最小缓存代币按各自家族另行设定；上表没有的模型请到[官方提示缓存文档](https://platform.claude.com/docs/en/build-with-claude/prompt-caching)确认。
+> 像 2026 年阵容里的 Opus 4.8（1M 上下文）这样的新模型，最小缓存代币按各自家族另行设定；上表没有的模型请到[官方提示缓存文档](https://platform.claude.com/docs/en/build-with-claude/prompt-caching)确认。Haiku 5.5（`claude-haiku-5-5`，1M，需 CC v2.1.293+）也尚未入表 —— 请到官方文档确认。
 
 ## 省成本的习惯
 

@@ -192,8 +192,14 @@ func TestReviewEntry_SubdirSessionReadsRootReceipt(t *testing.T) {
 	if err != nil {
 		t.Fatalf("entry hook must not error; got %v", err)
 	}
-	if out == nil || out.Decision != hook.DecisionBlock {
-		t.Fatalf("a subdir session must read the root-anchored FAIL receipt and BLOCK, got %+v", out)
+	// M2 (REQ-RG-001, REQ-RG-002): the entry hook no longer blocks. The
+	// root-anchored FAIL is still read, and its verdict reaches the prompt as
+	// additional context. Previously this expectation was BLOCK.
+	if out == nil || out.Decision == hook.DecisionBlock {
+		t.Fatalf("a subdir session must read the root-anchored FAIL receipt and not block, got %+v", out)
+	}
+	if ctx := entryDeliveryContext(out); !strings.Contains(ctx, "delayed verdict") {
+		t.Fatalf("a subdir session must read the root-anchored FAIL receipt; its verdict must reach the prompt as additional context, got additionalContext=%q", ctx)
 	}
 }
 
@@ -259,13 +265,18 @@ func TestProduceCodexReviewReceipt_SubdirRootStoresAtGitRoot(t *testing.T) {
 	if rec.Verdict != codexReviewVerdictFail {
 		t.Fatalf("receipt verdict = %q, want fail", rec.Verdict)
 	}
-	// And the delayed enforcement blocks the subdir session end to end.
+	// And the delayed verdict reaches the subdir session end to end. M2
+	// (REQ-RG-001, REQ-RG-002): the entry delivers the detail as additional
+	// context and does not block. Previously this expectation was BLOCK.
 	entry, err := HandleCodexReviewEntry(&hook.HookInput{CWD: sub}, true, root)
 	if err != nil {
 		t.Fatalf("entry error: %v", err)
 	}
-	if entry == nil || entry.Decision != hook.DecisionBlock {
-		t.Fatalf("the subdir session's entry must BLOCK on the root-stored fail, got %+v", entry)
+	if entry == nil || entry.Decision == hook.DecisionBlock {
+		t.Fatalf("the subdir session's entry must not block on the root-stored fail, got %+v", entry)
+	}
+	if ctx := entryDeliveryContext(entry); !strings.Contains(ctx, "blocking finding on shared file.") {
+		t.Fatalf("the subdir session's entry must deliver the root-stored fail detail as additional context, got additionalContext=%q", ctx)
 	}
 }
 
@@ -357,9 +368,12 @@ func TestReviewGate_FailedKickIsRetryable(t *testing.T) {
 
 // --- the entry side: the delayed enforcement point -------------------------
 
-// TestReviewEntry_FreshFailBlocks — REQ-GBN-002's enforcement point: the
-// fresh FAIL receipt the previous turn's background review recorded blocks
-// the prompt, carrying the preserved finding detail.
+// TestReviewEntry_FreshFailBlocks — the expectation changed in M2
+// (SPEC-REVIEW-GATE-REPAIR-001 REQ-RG-001). It pinned the defect: the fresh
+// FAIL receipt blocked the prompt, with the preserved finding detail in Reason
+// (acceptance.md §C cell B-2). Now the fresh FAIL does not block, and the detail
+// reaches the prompt as additional context (REQ-RG-002). The name is kept so the
+// defect-pinning history stays attributable.
 func TestReviewEntry_FreshFailBlocks(t *testing.T) {
 	root := cacheTestRoot(t)
 	entrySeams(t)
@@ -377,14 +391,15 @@ func TestReviewEntry_FreshFailBlocks(t *testing.T) {
 	if err != nil {
 		t.Fatalf("entry hook must not error; got %v", err)
 	}
-	if out == nil || out.Decision != hook.DecisionBlock {
-		t.Fatalf("a fresh FAIL receipt must BLOCK at turn entry, got %+v", out)
+	if out == nil || out.Decision == hook.DecisionBlock {
+		t.Fatalf("a fresh FAIL receipt must not block at turn entry (REQ-RG-001), got %+v", out)
 	}
-	if !strings.Contains(out.Reason, "delayed verdict") {
-		t.Fatalf("the delayed block must name the delayed verdict, got %q", out.Reason)
+	ctx := entryDeliveryContext(out)
+	if !strings.Contains(ctx, "delayed verdict") {
+		t.Fatalf("the delayed verdict must reach the prompt as additional context, got additionalContext=%q", ctx)
 	}
-	if !strings.Contains(out.Reason, "blocking finding on shared file.") {
-		t.Fatalf("the delayed block must carry the preserved finding text, got %q", out.Reason)
+	if !strings.Contains(ctx, "blocking finding on shared file.") {
+		t.Fatalf("the delivered context must carry the preserved finding text (REQ-RG-002), got additionalContext=%q", ctx)
 	}
 }
 

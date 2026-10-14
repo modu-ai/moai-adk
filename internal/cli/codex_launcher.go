@@ -48,6 +48,7 @@ import (
 	"github.com/modu-ai/moai-adk/internal/factory"
 	"github.com/modu-ai/moai-adk/internal/factorymsg"
 	"github.com/modu-ai/moai-adk/internal/homestate"
+	"github.com/modu-ai/moai-adk/internal/paths"
 	"github.com/modu-ai/moai-adk/internal/session"
 	"github.com/spf13/cobra"
 )
@@ -127,6 +128,28 @@ func codexChildArgs(kind codexVerb, tail []string) []string {
 	}
 	return append(args, tail...)
 }
+
+// codexMoaiHomeAddDir returns `--add-dir <moai home>` for an interactive
+// codex session. The project databases live under ~/.moai, outside the
+// workspace a workspace-write sandbox may write, and SQLite must create its
+// -wal/-shm/journal files beside a database even to read it — without the
+// flag every `moai todo` / `moai factory` call inside the session fails with
+// "unable to open database file (14)". A home that cannot be resolved or does
+// not exist yet adds nothing; the launch proceeds as before.
+func codexMoaiHomeAddDir() []string {
+	home, err := paths.MoaiHome()
+	if err != nil {
+		return nil
+	}
+	if info, err := os.Stat(home); err != nil || !info.IsDir() {
+		return nil
+	}
+	return []string{"--add-dir", home}
+}
+
+// codexMoaiHomeAddDirArgs is the seam the launch paths call; tests that pin
+// exact child argv replace it.
+var codexMoaiHomeAddDirArgs = codexMoaiHomeAddDir
 
 // codexLocalDeveloperInstructionArgs is codexLocalDeveloperInstructions without
 // the list of files read, for callers that only need the argv pair.
@@ -959,7 +982,8 @@ const codexLaneAutoPrompt = "Run `moai todo --auto` to consume the backlog queue
 func runCodexFactoryLane(cmd *cobra.Command, entry factoryFlagParse, debug bool) error {
 	// The lane session leases through `moai todo --auto` from the parent
 	// checkout — the lease machinery's own precondition (REQ-SD-010).
-	if err := factoryAssertParentCheckout(resolveProjectDir()); err != nil {
+	launchDir := codexLaneLaunchDir()
+	if err := codexLaneParentCheckout(launchDir); err != nil {
 		return err
 	}
 	// Debug mode (SPEC-CODEX-DEBUG-MODE-001): the lane launch traces its own
@@ -978,7 +1002,7 @@ func runCodexFactoryLane(cmd *cobra.Command, entry factoryFlagParse, debug bool)
 		_, _ = fmt.Fprintln(cmd.ErrOrStderr(), codexInstallHint)
 		return &exitCodeError{code: 1}
 	}
-	root := factoryCardRoot()
+	root := factory.ResolveTodoQueueRootAdopting(launchDir)
 	// The run id and the git requirement arrive together: a lane join
 	// resolves the single active run and refuses outside a git working tree
 	// before any write (REQ-SD-005) — the same door the cc/glm lane join
@@ -986,7 +1010,7 @@ func runCodexFactoryLane(cmd *cobra.Command, entry factoryFlagParse, debug bool)
 	// ②): named or empty, the shared gate resolves it.
 	restoreRun, err := enterCodexRelaunchJoin(root, entry, launchTiming)
 	if err != nil {
-		return err
+		return codexLaneJoinError(err)
 	}
 	defer restoreRun()
 	runID := strings.TrimSpace(os.Getenv(config.EnvFactoryRunID))
@@ -1022,6 +1046,7 @@ func runCodexFactoryLane(cmd *cobra.Command, entry factoryFlagParse, debug bool)
 		return fmt.Errorf("load Codex local instructions: %w", err)
 	}
 	args := append([]string{"-C", root}, localArgs...)
+	args = append(args, codexMoaiHomeAddDirArgs()...)
 	args = append(args, codexLaneAutoPrompt)
 	env := append(codexChildEnv(),
 		config.EnvFactoryRole+"="+config.FactoryRoleLane,
@@ -1029,6 +1054,7 @@ func runCodexFactoryLane(cmd *cobra.Command, entry factoryFlagParse, debug bool)
 		config.EnvFactoryBackend+"="+factory.BackendGPT,
 		config.EnvFactoryRunID+"="+runID,
 	)
+	env = codexLaneChildEnv(env, root)
 	if debug {
 		env = codexApplyDebugEnv(env)
 	}
@@ -1151,7 +1177,13 @@ func runCodexLaunch(cmd *cobra.Command, kind codexVerb, tail []string, spawn boo
 		launchTiming.annotateDetail("resolved " + resolved + "; writer-check ok")
 		dir = resolved
 	}
-	childArgs := append(localArgs, codexChildArgs(kind, tail)...)
+	childArgs := localArgs
+	if kind == codexVerbLaunchCli {
+		// The desktop app is not the sandboxed CLI session; only the CLI
+		// session needs the moai home writable.
+		childArgs = append(childArgs, codexMoaiHomeAddDirArgs()...)
+	}
+	childArgs = append(childArgs, codexChildArgs(kind, tail)...)
 	req := codexLaunchRequest{Program: binaryPath, Args: childArgs, Dir: dir, Debug: debug, timing: launchTiming}
 	// SPEC-FACTORY-MANAGED-SESSION-001 M3 (design.md D-7): the divert engages
 	// only when the explicit opt-in MOAI_FACTORY_MANAGED (1/true) AND the

@@ -11,6 +11,7 @@ package cli
 
 import (
 	"fmt"
+	"os"
 
 	"golang.org/x/sys/unix"
 )
@@ -37,6 +38,42 @@ func (f *flockGateLock) release() error {
 // and the previous owner's record stands.
 func acquireGateLockImpl(lockPath string) (gateLockImpl, error) {
 	fd, err := unix.Open(lockPath, unix.O_CREAT|unix.O_RDWR|unix.O_CLOEXEC, 0o644)
+	if err != nil {
+		return nil, fmt.Errorf("open gate-run lock %s: %w", lockPath, err)
+	}
+	if err := unix.Flock(fd, unix.LOCK_EX|unix.LOCK_NB); err != nil {
+		_ = unix.Close(fd)
+		return nil, ErrGateLockHeld
+	}
+
+	record := newGateLockOwnerRecord()
+	if err := unix.Ftruncate(fd, 0); err != nil {
+		_ = unix.Close(fd)
+		return nil, fmt.Errorf("record gate-run lock owner (truncate) %s: %w", lockPath, err)
+	}
+	if _, err := unix.Write(fd, record); err != nil {
+		_ = unix.Close(fd)
+		return nil, fmt.Errorf("record gate-run lock owner %s: %w", lockPath, err)
+	}
+	return &flockGateLock{fd: fd}, nil
+}
+
+// acquireGateLockNoFollowImpl is acquireGateLockImpl with the link-following
+// hazard closed, for a lock path that must name the lock file and nothing else.
+// It refuses a path that is a symbolic link or not a regular file (Lstat, before
+// the open), then opens with O_NOFOLLOW, so a link created after the Lstat fails
+// the open rather than being followed. The refusal is not ErrGateLockHeld, so the
+// caller stops at once instead of waiting out the contention bound. The flock and
+// the owner record match acquireGateLockImpl, which is left unchanged.
+func acquireGateLockNoFollowImpl(lockPath string) (gateLockImpl, error) {
+	if info, err := os.Lstat(lockPath); err == nil {
+		if !info.Mode().IsRegular() {
+			return nil, fmt.Errorf("gate-run lock path %s is a symbolic link or not a regular file", lockPath)
+		}
+	} else if !os.IsNotExist(err) {
+		return nil, fmt.Errorf("stat gate-run lock %s: %w", lockPath, err)
+	}
+	fd, err := unix.Open(lockPath, unix.O_CREAT|unix.O_RDWR|unix.O_CLOEXEC|unix.O_NOFOLLOW, 0o644)
 	if err != nil {
 		return nil, fmt.Errorf("open gate-run lock %s: %w", lockPath, err)
 	}

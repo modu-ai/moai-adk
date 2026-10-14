@@ -18,7 +18,7 @@ import (
 
 func TestRemeasureVerdictErrorCarriesInvalid(t *testing.T) {
 	valid := &factory.RemeasureRecord{
-		Tree: "abc123def4567890abc123def4567890abc12345", Base: "b0",
+		Tree: "abc123def4567890abc123def4567890abc12345", Base: "b0" + strings.Repeat("0", 38),
 		Command: "true", ExitCode: 0, BuildIdentity: "moai test",
 	}
 	verdict, err := remeasureVerdictError(valid)
