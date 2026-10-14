@@ -302,6 +302,12 @@ func TestZoneCanonicalDirEntryName(t *testing.T) {
 		{names: []string{"Ä.txt", "zz.md"}, final: "missing.txt", want: "missing.txt"},
 		{names: nil, final: "ä.txt", want: "ä.txt"},
 		{names: []string{"report~1.txt"}, final: "REPORT~1.TXT", want: "report~1.txt"},
+		// the EqualFold boundary: locale fold pairs (ı/I — NTFS locale case
+		// tables equate them) are Unicode SIMPLE-fold misses, so the raw name
+		// is kept; windows closes that class structurally by deferring the
+		// narrowing (repair round 8), and the landing repair documents the
+		// same residual on POSIX case-insensitive volumes
+		{names: []string{"I.txt"}, final: "ı.txt", want: "ı.txt"},
 	}
 	if len(cells) == 0 {
 		t.Fatal("empty canonical-name cell list — the sweep would assert nothing")
