@@ -763,6 +763,20 @@ func (s *Store) CheckWritable(ctx context.Context) (err error) {
 	return err
 }
 
+// PendingCount counts the messages the next Claim could deliver to p — the
+// read-only counting query the hook's empty-inbox path runs (SPEC-MCP-NEUTRALITY-001
+// REQ-MN-011). It takes NO write lock: in WAL a plain SELECT answers while a
+// writer holds the database, which is exactly the property the counting path
+// needs. Receipt-kind rows are excluded — settling them is a write the
+// counting path must not perform; they stay pending until a delivery-path
+// inspection or the receipt tool answers them.
+func (s *Store) PendingCount(ctx context.Context, p Peer) (int, error) {
+	now := s.now().UTC().Format(time.RFC3339Nano)
+	var n int
+	err := s.db.QueryRowContext(ctx, `SELECT count(*) FROM messages WHERE recipient_session=? AND recipient_generation=? AND kind<>? AND (state='pending' OR (state='claimed' AND claim_expires_at<=?))`, p.SessionUUID, p.Generation, KindReceipt, now).Scan(&n)
+	return n, err
+}
+
 func validKind(k string) bool {
 	switch k {
 	case KindDispatchNotice, KindStatusRequest, KindStatusReport, KindBlocker, KindReceipt:

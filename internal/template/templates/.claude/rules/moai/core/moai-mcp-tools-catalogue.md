@@ -1,5 +1,5 @@
 ---
-description: "Detail companion for moai-mcp-tools.md — the full 48-tool moai MCP catalogue with per-family tables, consumers, and CLI equivalents"
+description: "Detail companion for moai-mcp-tools.md — the full 49-tool moai MCP catalogue with per-family tables, consumers, and CLI equivalents"
 paths: "**/moai-mcp-tools.md,**/internal/cli/mcp_server.go,**/.claude/agents/moai/*.md"
 ---
 
@@ -7,11 +7,11 @@ paths: "**/moai-mcp-tools.md,**/internal/cli/mcp_server.go,**/.claude/agents/moa
 
 > Detail companion of `moai-mcp-tools.md` (the always-loaded stub). The stub owns the
 > MCP-over-CLI preference rule, the family index, and the unwired-by-design note. This file owns
-> the per-tool catalogue: purpose, wired consumer, and CLI equivalent for each of the 48 tools.
+> the per-tool catalogue: purpose, wired consumer, and CLI equivalent for each of the 49 tools.
 > Load it when wiring a tool into an agent's `tools:` list, or when choosing between an MCP tool
 > and its Bash equivalent for a specific capability.
 
-## Tool catalogue (48 tools)
+## Tool catalogue (49 tools)
 
 ### SPEC lifecycle
 
@@ -185,6 +185,7 @@ well-formed questions live in the reference skill; the call path lives in
 | `mcp__moai__factory_decide` | Record one operator decision (MCP form of `moai factory decide`); inverted gate — refused FOR a lane session | attributed factory lead | `moai factory decide` |
 | `mcp__moai__factory_renew` | Extend the lane's own card lease by the configured duration (MCP form of `moai factory renew --json`; `project_root` required); a refused renewal writes nothing | factory lane session — refused outside one | `moai factory renew` |
 | `mcp__moai__todo_add` | Append one card to the backlog queue; lane-refused like the CLI guard | factory lead or lane session | `moai todo add` |
+| `mcp__moai__todo_claim` | Claim the oldest queued card under a lease (atomic CAS), or renew a held lease | operator or lane session | `moai todo claim` |
 | `mcp__moai__todo_list` | Render the backlog queue, lock-free; read-only, no lane guard | any session | `moai todo list` |
 
 The lane verbs read the caller's lane identity from `MOAI_FACTORY_ROLE` and
@@ -249,7 +250,7 @@ Classification: Lazy companion — catalogue tables and per-family guidance only
 stays in `moai-mcp-tools.md`. Update this file whenever a tool is added, removed, or renamed on the
 `moai mcp-server` (the Go producer lives in `internal/cli/mcp_server.go`).
 
-## Tool families (44 of the 48 tools; the session-messaging family follows below)
+## Tool families (44 of the 49 tools; the session-messaging family follows below)
 
 | Family | Tools | Wired consumers |
 |---|---|---|
@@ -302,7 +303,7 @@ producer lives in `internal/cli/mcp_server.go`).
 ### moai-mcp Tool Catalogue
 
 
-> Single source of truth for the 48 tools exposed by the self-hosted `moai` MCP
+> Single source of truth for the 49 tools exposed by the self-hosted `moai` MCP
 > server (`.mcp.json` → `{command: "moai", args: ["mcp-server"]}`). Each tool is
 > prefixed `mcp__moai__` at the call site. This rule tells agents and the
 > orchestrator WHEN to prefer an MCP tool over its CLI/slash equivalent.
@@ -361,6 +362,6 @@ opinions about the same tree.
 
 
 `moai-mcp-tools-catalogue.md` — the lazy companion. Load it for § Tool catalogue
-(48 tools) · § Tool families (the family-to-consumer map) · § Session messaging
+(49 tools) · § Tool families (the family-to-consumer map) · § Session messaging
 broker (Claude ↔ Codex) · § Unwired-by-design (why `goal_arm` reaches no agent).
 

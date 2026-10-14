@@ -225,6 +225,27 @@ func confineToServerRepository(ctx context.Context, serverRoot, canonical, raw s
 	return "", fmt.Errorf("project_root %q is not a registered worktree of this repository", raw)
 }
 
+// resolveValidatedToolProjectRoot is the audit/delegation-surface variant
+// (SPEC-MCP-NEUTRALITY-001 M3 scoping): the root is validated and
+// canonicalized but NOT confined to the server's own repository — codex_audit
+// and its siblings legitimately name ANOTHER repository's tree to audit. The
+// absent case falls back exactly as resolveToolProjectRootWithSource.
+func resolveValidatedToolProjectRoot(req mcp.CallToolRequest) (string, string, error) {
+	raw, present, err := toolProjectRootArgument(req)
+	if err != nil {
+		return "", "", err
+	}
+	if !present {
+		dir, source := resolveProjectDirWithSource()
+		return dir, source, nil
+	}
+	root, err := validateProjectRoot(raw)
+	if err != nil {
+		return "", "", err
+	}
+	return root, rootSourceParam, nil
+}
+
 // rootProvenanceMap builds the "_root" block a catalog response carries:
 // which tree was read and where the resolution came from. A warning is
 // attached ONLY when the source is not "param" — a fallback resolution froze

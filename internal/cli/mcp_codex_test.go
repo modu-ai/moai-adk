@@ -104,7 +104,10 @@ func (c *fakeCodexConn) close() error { return nil }
 
 // withCodexSession installs a fake session that replays `lines` and exposes the
 // recorded sent request lines. The single-shot runner + LookPath seams are also
-// pointed at a stub binary so the gate's binary-resolution succeeds.
+// pointed at a stub binary so the gate's binary-resolution succeeds, and the
+// REQ-MN-009 containment listing is stubbed to an EMPTY server list — a test
+// spawn carries no config.toml MCP servers to disable, while a real listing
+// failure still refuses the spawn (fail-closed).
 func withCodexSession(t *testing.T, lines []string) *fakeCodexSession {
 	t.Helper()
 	prevRunner, prevLook, prevSess := codexRunner, codexLookPath, codexSession
@@ -112,7 +115,12 @@ func withCodexSession(t *testing.T, lines []string) *fakeCodexSession {
 	codexLookPath = func(string) (string, error) { return "/fake/codex", nil }
 	sess := &fakeCodexSession{lines: lines}
 	codexSession = sess
-	t.Cleanup(func() { codexRunner, codexLookPath, codexSession = prevRunner, prevLook, prevSess })
+	prevList := codexAuditMCPList
+	codexAuditMCPList = func(context.Context, string, string) (string, error) { return "[]", nil }
+	t.Cleanup(func() {
+		codexRunner, codexLookPath, codexSession = prevRunner, prevLook, prevSess
+		codexAuditMCPList = prevList
+	})
 	return sess
 }
 

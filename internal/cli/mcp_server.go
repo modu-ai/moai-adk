@@ -24,6 +24,8 @@ import (
 	"os"
 	"os/signal"
 	"path/filepath"
+	"strings"
+	"sync"
 	"sync/atomic"
 	"syscall"
 	"time"
@@ -70,7 +72,7 @@ const (
 // boundary, C-HRA-008 / REQ-MCP-014). MCP tool handlers return structured
 // results only; the orchestrator owns all user interaction.
 func newMCPServerCmd() *cobra.Command {
-	return &cobra.Command{
+	cmd := &cobra.Command{
 		Use:   moaiMCPServerSubcommand,
 		Short: "Run the moai self-hosted MCP server (stdio JSON-RPC)",
 		Long: `Run a long-running stdio JSON-RPC MCP server exposing moai's core
@@ -85,18 +87,41 @@ this subcommand only RUNS the server. Use ` + "`moai init`" + ` / ` + "`moai web
 provision the entry (M4).`,
 		SilenceUsage: true,
 		RunE: func(c *cobra.Command, _ []string) error {
-			return runMCPServer()
+			exposure, _ := c.Flags().GetString("exposure")
+			if exposure == "" {
+				exposure = mcpServerExposureFromEnv()
+			}
+			return runMCPServerWithIOAndExposure(os.Stdin, os.Stdout, exposure)
 		},
 	}
+	// REQ-MN-009: the gate child's containment overrides pass --exposure gate
+	// (the MOAI_MCP_EXPOSURE env is the equivalent input), restricting the
+	// served surface to the gate read-only subset.
+	cmd.Flags().String("exposure", "", `Serve a restricted surface: "gate" serves only the gate read-only subset (set by the gate child's containment overrides).`)
+	return cmd
+}
+
+// mcpServerExposureFromEnv reads the exposure input MOAI_MCP_EXPOSURE (the
+// flag-free carrier; the gate child's env table can set it).
+func mcpServerExposureFromEnv() string {
+	return strings.TrimSpace(os.Getenv("MOAI_MCP_EXPOSURE"))
 }
 
 // runMCPServer builds the moai MCP server and serves it over stdio (blocking,
-// until the stdio stream closes). REQ-MCP-001.
+// until the stdio stream closes). REQ-MCP-001. The exposure comes from the
+// --exposure flag, defaulted by MOAI_MCP_EXPOSURE (REQ-MN-009: the gate
+// child's containment overrides pass "gate").
 func runMCPServer() error {
-	return runMCPServerWithIO(os.Stdin, os.Stdout)
+	return runMCPServerWithIOAndExposure(os.Stdin, os.Stdout, mcpServerExposureFromEnv())
 }
 
 func runMCPServerWithIO(stdin io.Reader, stdout io.Writer) error {
+	return runMCPServerWithIOAndExposure(stdin, stdout, mcpServerExposureFromEnv())
+}
+
+// runMCPServerWithIOAndExposure serves under an explicit exposure (REQ-MN-009:
+// "gate" restricts the surface to the gate read-only subset).
+func runMCPServerWithIOAndExposure(stdin io.Reader, stdout io.Writer, exposure string) error {
 	projectDir := resolveProjectDir()
 	admissionLock, lockErr := homestate.AcquireAdmissionLock(projectDir)
 	if lockErr != nil {
@@ -116,7 +141,7 @@ func runMCPServerWithIO(stdin io.Reader, stdout io.Writer) error {
 		_ = admissionLock.Release()
 		return fmt.Errorf("register MCP runtime before serving: %w", err)
 	}
-	s := newMoaiMCPServer()
+	s := newMoaiMCPServerWithExposure(exposure)
 	defer stopCodexBackgroundJobs()
 	// ServeStdio waits for in-flight tool workers on EOF before cancelling its
 	// internal context. A worker stalled in an app-server handshake would keep
@@ -186,6 +211,21 @@ func newMoaiMCPServer() *server.MCPServer {
 	return s
 }
 
+// newMoaiMCPServerWithExposure is newMoaiMCPServer with an explicit exposure
+// (SPEC-MCP-NEUTRALITY-001 REQ-MN-009): "gate" serves ONLY the gate
+// read-only subset; empty serves the full catalogue.
+func newMoaiMCPServerWithExposure(exposure string) *server.MCPServer {
+	s := server.NewMCPServer(
+		moaiMCPServerName,
+		version.GetFullVersion(),
+		server.WithToolCapabilities(true),
+		server.WithLogging(),
+		server.WithInstructions(moaiMCPServerInstructions()),
+	)
+	registerMoaiMCPToolsWithExposure(s, resolveProjectDir(), exposure)
+	return s
+}
+
 // moaiMCPServerInstructions returns the server `instructions` string sent in
 // the `initialize` result. It names the running build so an operator reading
 // the host's MCP panel can compare it against `moai version` without calling
@@ -218,11 +258,69 @@ func mcpCatalogueGate(name string) {
 }
 
 func registerMoaiMCPTools(s *server.MCPServer, projectDir string) {
+	registerMoaiMCPToolsWithExposure(s, projectDir, "")
+}
+
+// moaiMCPExposureGate is the exposure value the gate-session containment
+// serves: ONLY the gate read-only subset (plan §F M3's enumerated set).
+const moaiMCPExposureGate = "gate"
+
+// moaiGateExposureTools is the enumerated gate-session read-only subset
+// (REQ-MN-009, plan §F M3): every served tool whose registered annotation is
+// read-only and whose handler performs no write to project state. The
+// exposure test asserts the SERVED set equals this set exactly — the
+// derivation rule's output is fixed here so a new read-only tool must DECIDE
+// whether it is gate-visible, in this one table.
+var moaiGateExposureTools = map[string]bool{
+	"spec_progress":       true,
+	"spec_audit":          true,
+	"spec_drift":          true,
+	"verify_trend":        true,
+	"session_list":        true,
+	"audit_cache":         true, // read op only: the store op is refused under this exposure
+	"goal_status":         true,
+	"graph_file_api":      true,
+	"graph_find_code":     true,
+	"graph_trace_calls":   true,
+	"graph_shortest_path": true,
+	"todo_list":           true,
+	"jev_ask":             true,
+	"session_msg_list":    true,
+	"factory_msg_status":  true,
+	"codex_setup":         true,
+	"codex_job_status":    true,
+	"codex_job_result":    true,
+	"glm_job_status":      true,
+	"glm_job_result":      true,
+}
+
+// moaiCurrentExposure carries the exposure the process's server was
+// constructed under (REQ-MN-009). One server per process is the production
+// reality, so the handlers that enforce an exposure-dependent rule read this
+// package-level value instead of threading the exposure through every
+// handler signature.
+var moaiCurrentExposure string
+
+// registerMoaiMCPToolsWithExposure registers the tool surface under an
+// exposure (REQ-MN-009): the "gate" exposure intersects the enablement map
+// with the enumerated read-only subset, so a gate session's moai server
+// serves exactly that subset and nothing else.
+func registerMoaiMCPToolsWithExposure(s *server.MCPServer, projectDir, exposure string) {
+	moaiCurrentExposure = exposure
 	// SPEC-MCP-CONSOLE-001 M1 (REQ-C-2): per-tool enablement consulted at
 	// registration time. A disabled tool is NOT registered and does NOT appear
 	// in tools/list. Default all-enabled (owner decision 2026-08-12) — a
 	// missing/unreadable/absent mcp.yaml registers every tool.
 	enabled := readMCPToolEnablement(projectDir)
+	if exposure == moaiMCPExposureGate {
+		gated := make(map[string]bool, len(moaiGateExposureTools))
+		for name := range moaiGateExposureTools {
+			if enabled[name] {
+				gated[name] = true
+			}
+		}
+		enabled = gated
+	}
 	// add gates one tool registration on the per-tool enablement map. The name
 	// argument MUST match both the mcp.NewTool name and the catalog
 	// (internal/mcp MoaiMCPTools) — the guard test
@@ -887,9 +985,14 @@ func handleGoalArm(ctx context.Context, req mcp.CallToolRequest) (*mcp.CallToolR
 		g.Ceiling.MaxTurns = maxTurns
 	}
 	g.Ceiling.MaxDuration = maxDuration
+	// REQ-MN-010: the goal state write is a project-state write — serialized
+	// through the one server-wide write mutex.
+	releaseGoal := mcpStateWriteLock()
 	if err := goal.SaveGoal(root, g); err != nil {
+		releaseGoal()
 		return toolErr("goal_arm", err), nil
 	}
+	releaseGoal()
 	return toolJSONWithRoot("goal_arm", map[string]any{
 		"action":           "arm",
 		"session_id":       sessionID,
@@ -954,7 +1057,11 @@ func handleVerifySnapshot(_ context.Context, req mcp.CallToolRequest) (*mcp.Call
 			Command:  cmd,
 			ExitCode: req.GetInt("exit_code", 0),
 		}
+		// REQ-MN-010: the snapshot record is a project-state write — the one
+		// server-wide write mutex serializes it against the other writers.
+		release := mcpStateWriteLock()
 		snap, err := verify.RecordCheck(store, key, entry)
+		release()
 		if err != nil {
 			return toolErr("verify_snapshot", err), nil
 		}
@@ -1082,6 +1189,12 @@ func handleAuditCache(_ context.Context, req mcp.CallToolRequest) (*mcp.CallTool
 	_ = root
 	_ = source
 	op := req.GetString("op", "")
+	// REQ-MN-009: under the gate exposure audit_cache is the READ member —
+	// its store operation is one of the mutating operations the exclusion
+	// names, and a gate session's server refuses it.
+	if op == "store" && moaiCurrentExposure == moaiMCPExposureGate {
+		return toolErr("audit_cache", fmt.Errorf("op=store is not available to gate sessions")), nil
+	}
 	switch op {
 	case "compute_hash":
 		specDir := req.GetString("spec_dir", "")
@@ -1106,12 +1219,16 @@ func handleAuditCache(_ context.Context, req mcp.CallToolRequest) (*mcp.CallTool
 		if specID == "" || hash == "" {
 			return toolErr("audit_cache", fmt.Errorf("op=store requires spec_id and hash")), nil
 		}
+		// REQ-MN-010: the cache store is a project-state write — serialized
+		// through the one server-wide write mutex.
+		releaseCache := mcpStateWriteLock()
 		moaiAuditCache.Store(specID, hash, &runtime.AuditResult{
 			Verdict:        runtime.VerdictPass,
 			AuditAt:        time.Now(),
 			AuditorVersion: req.GetString("auditor_version", ""),
 			ReportPath:     req.GetString("report_path", ""),
 		})
+		releaseCache()
 		return toolJSONWithRoot("audit_cache", map[string]any{"op": op, "stored": true, "spec_id": specID, "hash": hash}, root, source), nil
 	default:
 		return toolErr("audit_cache", fmt.Errorf("unknown op %q (want compute_hash|lookup|store)", op)), nil
@@ -1164,6 +1281,22 @@ func provisionMoaiMCPServerEntryAt(configPath string) error {
 		root["mcpServers"] = servers
 		return true, nil
 	})
+}
+
+// ─── project-state write serialization (REQ-MN-010) ───────────────────────────
+
+// mcpStateWriteMu serializes the project-state writes the tool handlers
+// perform under the caller's .moai/state — the goal state, the verification
+// snapshots, and the audit cache. Concurrent tool calls on one server hold
+// this ONE mutex across their read-modify-write sections, so interleaved
+// writers cannot corrupt or double-write the same artifact (REQ-MN-010).
+var mcpStateWriteMu sync.Mutex
+
+// mcpStateWriteLock takes the project-state write mutex and returns the
+// release func — the handlers' defer shape.
+func mcpStateWriteLock() func() {
+	mcpStateWriteMu.Lock()
+	return mcpStateWriteMu.Unlock
 }
 
 // ─── result-shaping helpers (structured results, never AskUserQuestion) ───────

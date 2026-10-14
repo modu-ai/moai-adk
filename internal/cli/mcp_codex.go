@@ -769,11 +769,54 @@ func openCodexSessionOn(ctx context.Context, binaryPath string, params map[strin
 // openCodexSessionOn, which resolves exactly as before this SPEC (REQ-AMP-008).
 // Since SPEC-AUDIT-CEILING-002 the resolver's error return propagates to the
 // turn that consumes it.
+// moaiGateExposureArg is the config override that flips the moai MCP server
+// the gate child spawns into the gate exposure (REQ-MN-009): the served
+// surface collapses to the gate read-only subset.
+const moaiGateExposureArg = `mcp_servers.moai.args=["mcp-server","--exposure","gate"]`
+
+// codexGateContainmentArgs builds the argv that contains a codex child to the
+// moai server (REQ-MN-009): every NON-moai MCP server the child would resolve
+// is disabled (the role-audit path's containment, shared), and the moai
+// server's args are overridden to the gate exposure. Fail-closed: a listing
+// failure refuses the spawn — an uncontained gate child is the 38/38
+// defect family this closes.
+func codexGateContainmentArgs(ctx context.Context, binaryPath, root string) ([]string, error) {
+	disable, err := codexAuditMCPDisableArgs(ctx, binaryPath, root)
+	if err != nil {
+		return nil, err
+	}
+	// Drop the moai disable pair: the disable args stub EVERY listed server,
+	// and the moai server is the one the gate session keeps — its gate
+	// exposure rides the appended args override instead.
+	kept := make([]string, 0, len(disable)+2)
+	for i := 0; i < len(disable); i++ {
+		if disable[i] == "-c" && i+1 < len(disable) && strings.Contains(disable[i+1], "mcp_servers.moai.") {
+			i++ // skip the value too
+			continue
+		}
+		kept = append(kept, disable[i])
+	}
+	return append(kept, "-c", moaiGateExposureArg), nil
+}
+
 func openCodexSessionResolved(ctx context.Context, binaryPath string, params map[string]any, resumeThreadID string, resolve func(map[string]any) (config.ModelEffort, error)) (*codexSessionHandle, error) {
 	if resolve == nil {
 		resolve = pinFreeEffortResolver
 	}
-	conn, err := codexSession.start(ctx, binaryPath, []string{codexAppServerSubcmd})
+	// REQ-MN-009 gate/audit child containment: every codex app-server this
+	// path spawns is contained to the moai server in gate exposure, anchored
+	// at the reviewed tree (params["cwd"]). An uncontainable spawn is
+	// refused — the containment failure must not degrade into an uncontained
+	// child silently.
+	argv := []string{codexAppServerSubcmd}
+	if root, ok := params["cwd"].(string); ok && root != "" {
+		containment, err := codexGateContainmentArgs(ctx, binaryPath, root)
+		if err != nil {
+			return nil, &codexSessionError{summary: "codex session containment failed: " + err.Error(), cause: err}
+		}
+		argv = append(argv, containment...)
+	}
+	conn, err := codexSession.start(ctx, binaryPath, argv)
 	if err != nil {
 		return nil, &codexSessionError{summary: "codex session start failed: " + err.Error(), cause: err}
 	}
@@ -1994,7 +2037,16 @@ func handleCodexAudit(ctx context.Context, req mcp.CallToolRequest) (*mcp.CallTo
 	// parameter exists to fix. The rejection is a tool error, not the fail-open
 	// inconclusive verdict: fail-open covers an absent or broken codex, not a
 	// caller input the caller can correct.
-	root, rootSource, rootErr := resolveToolProjectRootWithSource(req)
+	//
+	// SPEC-MCP-NEUTRALITY-001 M3 scoping: the audit/delegation surface is EXEMPT
+	// from the server-repository confinement — codex_audit legitimately names
+	// another repository's tree to audit (the reviewed repo is an explicit
+	// caller input, and the receipt/gate state under the caller's own project
+	// stays where the caller named it). The root is still validated as a git
+	// worktree and canonicalized; only the server-repository comparison is
+	// skipped. The wrong-tree hazard stays closed: an unusable path is
+	// rejected, never silently replaced.
+	root, rootSource, rootErr := resolveValidatedToolProjectRoot(req)
 	if rootErr != nil {
 		return toolErr("codex_audit", rootErr), nil
 	}

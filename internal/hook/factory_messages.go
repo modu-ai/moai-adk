@@ -259,6 +259,19 @@ func factoryHookBatchForRun(ctx context.Context, input *HookInput, event EventTy
 		}
 		return "", false, "degraded: " + err.Error()
 	}
+	// SPEC-MCP-NEUTRALITY-001 REQ-MN-011: the COUNTING path is read-only. A
+	// read SELECT decides emptiness — no CheckWritable write probe, no settle
+	// write, no claim — so an empty inbox answers without ever taking the
+	// broker's write lock (the 1,619-recorded "inbox context deadline
+	// exceeded" defect family). Only a NON-empty inbox continues into the
+	// delivery path below, which claims exactly what it renders.
+	pending, err := s.PendingCount(ctx, p)
+	if err != nil {
+		return "", false, "degraded: " + err.Error()
+	}
+	if pending == 0 {
+		return "", false, "empty-or-receipt-only"
+	}
 	if err := s.CheckWritable(ctx); err != nil {
 		return "", false, "degraded: " + err.Error()
 	}

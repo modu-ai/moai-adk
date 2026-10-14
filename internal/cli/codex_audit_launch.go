@@ -603,13 +603,10 @@ func codexAuditParseRoleTOML(src string) (map[string]string, error) {
 	return out, nil
 }
 
-// codexAuditMCPDisableArgs disables every server Codex resolves for root.
-// Plugin transports are resolved after bootstrap config validation: an
-// enabled=false override alone creates an invalid, transport-less table.
-// Preserve the transport kind with inert descriptors for bootstrap validation.
-// Never forward real URLs or commands: these may contain credentials and would
-// leak through process arguments even when launch records redact them.
-func codexAuditMCPDisableArgs(ctx context.Context, program, root string) ([]string, error) {
+// codexAuditMCPList is the seam the containment listing runs through: the
+// `codex mcp list --json` stdout (tests substitute canned listings so the
+// containment argv is testable without a codex binary).
+var codexAuditMCPList = func(ctx context.Context, program, root string) (string, error) {
 	lctx, cancel := context.WithTimeout(ctx, config.DefaultCodexAuditListTimeout)
 	defer cancel()
 	cmd := exec.CommandContext(lctx, program, "mcp", "list", "--json")
@@ -620,7 +617,21 @@ func codexAuditMCPDisableArgs(ctx context.Context, program, root string) ([]stri
 	configureClaudeAuditProcess(cmd)
 	cmd.WaitDelay = 2 * time.Second
 	if err := runClaudeAuditProcess(cmd); err != nil {
-		return nil, fmt.Errorf("mcp list: %w: %s", err, strings.TrimSpace(stderr.String()))
+		return "", fmt.Errorf("mcp list: %w: %s", err, strings.TrimSpace(stderr.String()))
+	}
+	return stdout.String(), nil
+}
+
+// codexAuditMCPDisableArgs disables every server Codex resolves for root.
+// Plugin transports are resolved after bootstrap config validation: an
+// enabled=false override alone creates an invalid, transport-less table.
+// Preserve the transport kind with inert descriptors for bootstrap validation.
+// Never forward real URLs or commands: these may contain credentials and would
+// leak through process arguments even when launch records redact them.
+func codexAuditMCPDisableArgs(ctx context.Context, program, root string) ([]string, error) {
+	stdout, err := codexAuditMCPList(ctx, program, root)
+	if err != nil {
+		return nil, err
 	}
 	var servers []struct {
 		Name      string `json:"name"`
@@ -630,7 +641,7 @@ func codexAuditMCPDisableArgs(ctx context.Context, program, root string) ([]stri
 			URL     string `json:"url"`
 		} `json:"transport"`
 	}
-	if err := json.Unmarshal(stdout.Bytes(), &servers); err != nil {
+	if err := json.Unmarshal([]byte(stdout), &servers); err != nil {
 		return nil, fmt.Errorf("mcp list output is not a JSON server list: %w", err)
 	}
 	seen := map[string]bool{}

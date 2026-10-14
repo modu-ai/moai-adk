@@ -728,12 +728,31 @@ func TestFactoryHookZeroTurnAndCapabilityTruth(t *testing.T) {
 	if ctx, cont, state := factoryHookBatch(context.Background(), in, EventStop); ctx != "" || cont || state != "empty-or-receipt-only" {
 		t.Fatalf("receipt=%q %v %s", ctx, cont, state)
 	}
+	// SPEC-MCP-NEUTRALITY-001 REQ-MN-011: the counting path WRITES NOTHING —
+	// a receipt-only inspection leaves the receipt pending instead of
+	// settling it (settling is a write the counting path must not perform).
+	status0, err := s.Status(context.Background())
+	if err != nil {
+		t.Fatal(err)
+	}
+	if status0.Pending != 1 || status0.Acknowledged != 0 {
+		t.Fatalf("counting path wrote on a receipt-only inbox: %+v", status0)
+	}
+	// The receipt reaches its terminal acknowledged state on the DELIVERY
+	// path: a real message makes the inspection non-empty, and that
+	// inspection settles the receipt while claiming the real message.
+	if _, e := s.Send(context.Background(), factorymsg.SendRequest{From: from, To: to, Kind: factorymsg.KindStatusRequest, IdempotencyKey: "real", TaskRef: "t1074", CorrelationID: "c-real", TTL: time.Hour, Payload: []byte("real")}); e != nil {
+		t.Fatal(e)
+	}
+	if ctx, cont, state := factoryHookBatch(context.Background(), in, EventStop); ctx == "" || !cont || state != "pending-at-turn-boundary" {
+		t.Fatalf("delivery=%q %v %s", ctx, cont, state)
+	}
 	status, err := s.Status(context.Background())
 	if err != nil {
 		t.Fatal(err)
 	}
-	if status.Acknowledged != 1 || status.Claimed != 0 {
-		t.Fatalf("receipt control not terminal: %+v", status)
+	if status.Acknowledged != 1 || status.Claimed != 1 {
+		t.Fatalf("receipt control not terminal after the delivery path: %+v", status)
 	}
 	if ctx, cont, state := factoryHookBatch(context.Background(), in, EventStop); ctx != "" || cont || state != "empty-or-receipt-only" {
 		t.Fatalf("settled receipt redelivered: %q %v %s", ctx, cont, state)
@@ -756,6 +775,12 @@ func TestFactoryHookZeroTurnAndCapabilityTruth(t *testing.T) {
 	path, err := factorymsg.BrokerPath(in.ProjectDir, os.Getenv(config.EnvFactoryRunID))
 	if err != nil {
 		t.Fatal(err)
+	}
+	// The lock-degradation premise is the DELIVERY path's: REQ-MN-011's
+	// counting path answers an empty inbox without the write lock, so this
+	// arm seeds a real message to reach CheckWritable.
+	if _, e := s.Send(context.Background(), factorymsg.SendRequest{From: from, To: to, Kind: factorymsg.KindStatusRequest, IdempotencyKey: "lock-arm", TaskRef: "t1074", CorrelationID: "c-lock", TTL: time.Hour, Payload: []byte("lock arm")}); e != nil {
+		t.Fatal(e)
 	}
 	locker, err := sql.Open("sqlite", "file:"+path)
 	if err != nil {
