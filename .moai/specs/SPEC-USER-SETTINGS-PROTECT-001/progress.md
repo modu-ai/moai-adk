@@ -59,9 +59,86 @@ Corroborating probes: no commit naming t1619/t1591 or SPEC-UPDATE-REPAIR-RC30-00
 
 Gate-purpose containment measurement (why the run proceeded): `MB=$(git merge-base 8108eb256 HEAD)` → 32035f28b; `git diff $MB 8108eb256 --stat -- internal/config/toolpolicy internal/core/project internal/template/templates` → only `templates/.moai/config/sections/protected-zone.yaml` (+8), zero overlap with this SPEC's target files (the t1619 branch delta touches internal/cli/init.go +89/-13 and 103 files total, none of them this SPEC's writer/template paths; no in-scope AC measures the init executor — plan.md R-1 carries that level as a Gap). The t1619/t1591 landing is cross-card work the lane cannot land itself; the leader owns its disposition (merge before this card's batch, or re-pin the gate).
 
+### E1 — AC matrix (release-blocking in-scope set green; verbatim output from this run, tree e581bdbb20)
+
+| AC | Status | Verification command | Actual output (verbatim deciding lines) |
+|----|--------|---------------------|------------------------------------------|
+| AC-001 | PASS | `go test -count=1 -v -run '^(TestAC001PreservesListsAndUnmodelledKeys)$' ./internal/config/toolpolicy/` (repository-authored; same assertion as the overlay probe) | `--- PASS: TestAC001PreservesListsAndUnmodelledKeys (0.01s)` + 4 EC subtests RUN (N=5 executed) |
+| AC-002 | PASS | `go test -count=1 -v -run '^(TestAC002RegionBytesUnchangedWhenDefaultModeMatches)$' ./internal/config/toolpolicy/` | `--- PASS: TestAC002RegionBytesUnchangedWhenDefaultModeMatches (0.00s)` (N=1) |
+| AC-003 part A | PASS | `go test -count=1 -v -run '^(TestAC003ListsPreservedUnderEitherDisposition)$' ./internal/config/toolpolicy/` | `--- PASS: TestAC003ListsPreservedUnderEitherDisposition (0.00s)` with `differing` + `matching` RUN (N=3) |
+| AC-003 part B | PASS | `go test -count=1 -v -run '^(TestAC003DefaultModeKeptOnBothPaths)$' ./internal/core/project/` | `--- PASS: TestAC003DefaultModeKeptOnBothPaths (0.00s)` with `default-init` + `automatic` RUN (N=3) |
+| AC-004 | PASS | `grep -c '"defaultMode": *"default"' internal/template/templates/.claude/settings.json.tmpl` | `1`; total `"defaultMode"` occurrences also `1` (N=1) |
+| AC-005 case (i) | PASS | `go test -count=1 -v -run '^(TestAC005PolicyPathKeepsUserAllowEntry)$' ./internal/core/project/` | `--- PASS: TestAC005PolicyPathKeepsUserAllowEntry (0.00s)` (N=1) |
+| AC-005 case (ii) | PASS | `go test -count=1 -v -run '^(TestAC005WithRecordKeepsUserAddedEntry)$' ./internal/core/project/` | `--- PASS: TestAC005WithRecordKeepsUserAddedEntry (0.00s)`; both assertions held (user-added kept, old-managed absent) (N=1) |
+| AC-013 (gate) | FAIL (measured divergence, leader disposition pending) | `git merge-base --is-ancestor <sha> HEAD` per §E.2 gate block | t1619 8108eb256 exit 1; t1578 e73a7cbf5 exit 0; t1591 a372a984c exit 1 — see §E.2 for the containment measurement and the dispatch-vs-tree divergence |
+
+Repository test names recorded per acceptance.md QG-4: `TestAC001PreservesListsAndUnmodelledKeys` (+ subtests `ec1-absent-file`, `ec2-no-permissions-key`, `ec3-invalid-json`, `ec4-duplicate-allow-entries`), `TestAC002RegionBytesUnchangedWhenDefaultModeMatches`, `TestAC003ListsPreservedUnderEitherDisposition` (+ `differing`, `matching`), `TestAC003DefaultModeKeptOnBothPaths` (+ `default-init`, `automatic`), `TestAC005PolicyPathKeepsUserAllowEntry`, `TestAC005WithRecordKeepsUserAddedEntry`.
+
+Invariant rows (spec.md §4): C1 no probe wrote outside `.moai/reports/t1630/evidence/` and `t.TempDir()` roots (overlay probes only); C2 the writer targets only its settings file through the existing atomicfile path (unchanged); C4 every change landed test-first (RED observed in-repo before GREEN — `go test -count=1 -v -run '^(TestAC001...|TestAC002...|TestAC003Lists...)$'` FAILED at lines 257/260/263/334/361/403/406/409 and autonomy_bundle_test.go 332/391/441 before the implementation commit; verbatim RED bodies in the P-3 block above and in the overlay-cell outputs); C5 gate semantics untouched (`EffectiveTierWithGates`/`SandboxProofKind` unmodified — the five pre-existing autonomy_bundle tests pass unchanged); C6 every claim above carries its command and verbatim output.
+
+### E2 — cross-platform build (tree e581bdbb20)
+
+```
+$ go build ./...                           → exit 0
+$ GOOS=windows GOARCH=amd64 go build ./... → exit 0
+```
+
+### E3 — coverage (affected packages, this run)
+
+```
+$ go test -cover ./internal/config/toolpolicy/ ./internal/core/project/
+ok  github.com/modu-ai/moai-adk/internal/config/toolpolicy  0.738s  coverage: 88.6% of statements
+ok  github.com/modu-ai/moai-adk/internal/core/project       2.808s  coverage: 89.0% of statements
+```
+
+Both above the 85% threshold.
+
+### E4 — subagent-boundary grep (C-HRA-008 family)
+
+```
+$ grep -rn 'AskUserQuestion\|mcp__askuser' internal/config/toolpolicy internal/core/project | grep -v _test.go | grep -v '// '
+(no output; grep exit 1 = zero matches)
+```
+
+### E5 — lint status
+
+```
+$ golangci-lint run --timeout=2m
+0 issues.
+```
+
+Pre-existing baseline on this tree: 0 issues; NEW issues introduced by this run: 0.
+
+### E6 — regression families and known baseline failure
+
+- `go test -count=1 ./internal/config/toolpolicy/... ./internal/core/project/...` → both `ok` (post-GREEN, twice).
+- `go test -count=1 ./internal/template/...` → `internal/template` FAIL, exactly one failing test: `TestRuleDateProvenance` — a date-provenance leak (`2026-10-09`, line 368) in `internal/template/templates/.claude/rules/moai/core/hooks-system.md`. PRE-EXISTING on this tree (B5 classification): that file was last touched by absorbed-mainline commit ec193e4777 ("rule + template" row edit), is not in this run's file set, and the test is a static scan of files this run does not modify. All settings/template tests this run CAN affect pass (`TestSettingsTemplatePermissions`, `TestTemplate_NoBypassPermissionsDefault`, `TestTemplate_NoFullyAutonomousPreSelection`, `TestSettingsTemplatePowerShellDenyParity` darwin/linux/windows, embedemit/agentemit/commandemit subpackages all ok). Remediation (removing the work-date string from the template rule row) is mainline work outside this SPEC's envelope — left to the leader. A first family run had also failed at exactly 600.5s (go test's default package timeout) under machine load; the 900s-timeout verbose re-run completed with the single failure above.
+- `internal/cli` is not run as a suite (structurally red in card worktrees, per the t1542 measurement; CI is the full verdict). This run's launcher.go change is comment-only; both builds compile it, and no cli test reads the template content (verified by grep).
+
+### E7 — commit list (no push performed)
+
+- 057db17c41 `feat(SPEC-USER-SETTINGS-PROTECT-001): M1 run-phase entry, draft to in-progress (card t1630)`
+- e581bdbb20 `feat(SPEC-USER-SETTINGS-PROTECT-001): M2+M3 writer preservation, policy-path union, template defaultMode (card t1630)`
+
+No push, no PR, no force, no --amend, no --no-verify (git-flow lane protocol B9: the leader batches the push).
+
 ## §E.3 Run-phase Audit-Ready Signal
 
-_<pending run-phase>_
+```yaml
+run_complete_at: "2026-10-14T02:39:16Z"
+run_commit_sha: e581bdbb20   # the M2+M3 implementation commit; this §E.3 block rides the following evidence-close commit
+run_status: complete   # release-blocking in-scope set (AC-001..AC-005) fully green; AC-013 gate carries a measured divergence owned by the leader (§E.2)
+ac_pass_count: 5
+ac_fail_count: 1   # AC-013 (class: gate, not release-blocking); divergence + containment measurement recorded in §E.2
+preserve_list_post_run_count: 0   # no plan.md §A.5 PRESERVE violation; changed files = plan items 1-3 + the Q2 template file + two invalidated comment sentences in launcher.go + one consumer test re-pinned to the Q2 contract
+l44_pre_commit_fetch: not-performed   # lane-local run on a card worktree; no push per git-flow lane protocol (B9)
+l44_post_push_fetch: not-performed   # no push performed by the lane
+new_warnings_or_lints_introduced: 0   # golangci-lint: 0 issues
+cross_platform_build.native: exit 0   # go build ./...
+cross_platform_build.windows: exit 0   # GOOS=windows GOARCH=amd64 go build ./...
+total_run_phase_files: 8   # 6 implementation/template/test files + spec.md + progress.md
+m1_to_mN_commit_strategy: "M1 entry (057db17c41) + single M2+M3 implementation commit (e581bdbb20) + this evidence-close commit"
+```
 
 ## §E.4 Sync-phase Audit-Ready Signal
 
