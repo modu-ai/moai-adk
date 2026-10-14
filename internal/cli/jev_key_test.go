@@ -427,18 +427,29 @@ func TestGlmKeyAfterDashDashPassthrough(t *testing.T) {
 	const key = "test-key-1234567890"
 	launchedArgs := overrideLaunch(t)
 
+	// The launch path writes the project's llm.yaml (applyGLMMode), so the
+	// project root is redirected to a temp dir, as spec_drift_fill_test does.
+	projectRoot := t.TempDir()
+	origRootFn := findProjectRootFn
+	findProjectRootFn = func() (string, error) { return projectRoot, nil }
+	t.Cleanup(func() { findProjectRootFn = origRootFn })
+	// The launch path needs a stored key; the test seam supplies one without
+	// touching the credential file.
+	t.Setenv("MOAI_TEST_GLM_KEY", "test-token")
+
 	out, err := execRoot(t, "glm", "--", "--key", key)
+	if err != nil {
+		t.Fatalf("the launch path must be reached and succeed, got: %v (output: %q)", err, out)
+	}
 	nothingStoredAt(t, filepath.Join(home, ".moai", ".env.glm"))
 	if strings.Contains(out, "GLM API key stored") {
-		t.Errorf("no save confirmation may appear for a post--- token, got: %q", out)
+		t.Errorf("no save confirmation may appear for a post-`--` token, got: %q", out)
 	}
-	if err != nil && *launchedArgs == nil {
-		// The launch path's own refusal is an acceptable observation — the
-		// tokens reached the launch path, never a save.
-		t.Logf("launch path refused with: %v", err)
+	if *launchedArgs == nil {
+		t.Fatal("the launch path was not reached: no child arguments were captured")
 	}
-	if *launchedArgs != nil && !slices.Contains(*launchedArgs, "--key") {
-		t.Errorf("post--- tokens must reach the child unmodified, got: %v", *launchedArgs)
+	if want := []string{"--", "--key", key}; !slices.Equal(*launchedArgs, want) {
+		t.Errorf("post-`--` tokens must reach the child unmodified\nwant: %q\ngot:  %q", want, *launchedArgs)
 	}
 }
 
