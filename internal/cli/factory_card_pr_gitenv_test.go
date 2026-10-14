@@ -14,8 +14,13 @@ import (
 func TestFactoryDeliveryGitReadsIgnoreInheritedGitEnv(t *testing.T) {
 	wt := t1589Repo(t, "card worktree tip", "WT-card-branch")
 	other := t1589Repo(t, "unrelated repository tip", "other-branch")
+	wantTip := t1589Git(t, wt, "rev-parse", "HEAD")
 	t.Setenv("GIT_DIR", filepath.Join(other, ".git"))
 	t.Setenv("GIT_WORK_TREE", other)
+
+	if tip := factoryBranchTip(wt, "WT-card-branch"); tip != wantTip {
+		t.Errorf("factoryBranchTip() = %q, want the card worktree's tip %q (the inherited GIT_DIR answered for %q)", tip, wantTip, other)
+	}
 
 	subject, err := factoryGitRead(wt, "log", "-1", "--format=%s")
 	if err != nil {
@@ -44,7 +49,8 @@ func t1589Repo(t *testing.T, subject, branch string) string {
 	return dir
 }
 
-func t1589Git(t *testing.T, dir string, args ...string) {
+// t1589Git runs one git command in dir and returns its trimmed stdout.
+func t1589Git(t *testing.T, dir string, args ...string) string {
 	t.Helper()
 	full := append([]string{"-C", dir,
 		"-c", "user.name=test", "-c", "user.email=test@example.invalid"}, args...)
@@ -52,4 +58,5 @@ func t1589Git(t *testing.T, dir string, args ...string) {
 	if err != nil {
 		t.Fatalf("git %s: %v\n%s", strings.Join(args, " "), err, out)
 	}
+	return strings.TrimSpace(string(out))
 }
