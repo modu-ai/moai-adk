@@ -11,6 +11,8 @@
 package backup
 
 import (
+	"crypto/sha256"
+	"encoding/hex"
 	"encoding/json"
 	"fmt"
 	"io/fs"
@@ -206,6 +208,11 @@ type BackupMetadata struct {
 	TemplateDefaultsDir string   `json:"template_defaults_dir,omitempty"`
 }
 
+// CleanupOldBackups keeps the newest keepCount timestamped backups under
+// .moai-backups and removes the older excess. An excess backup is removed only
+// when every file in it is also held, at the same path, in a retained backup.
+// keepCount 0 is an explicit wipe and removes every backup. It returns the
+// number of backups removed.
 func CleanupOldBackups(projectRoot string, keepCount int) int {
 	backupDir := filepath.Join(projectRoot, defs.BackupsDir)
 
@@ -256,9 +263,31 @@ func CleanupOldBackups(projectRoot string, keepCount int) int {
 	// backups[len-keepCount:]; everything before it is the oldest excess.
 	// (A prior revision deleted backups[keepCount:] — the newest — which
 	// destroyed the most recent restore points on every rotation.)
+	return pruneBackups(backupDir, backups, keepCount)
+}
+
+// pruneBackups removes the oldest excess entries of sorted, keeping the newest
+// keepCount under backupDir, and returns how many it removed. An excess entry is
+// removed only when each of its files appears, at the same path with the same
+// content, in a retained entry. Otherwise it holds the only copy of some version:
+// it stays, and a warning names the file. keepCount 0 removes every entry.
+func pruneBackups(backupDir string, sorted []string, keepCount int) int {
+	retained := make(map[string]bool)
+	for _, backupName := range sorted[len(sorted)-keepCount:] {
+		addRetainedBackupKeys(filepath.Join(backupDir, backupName), retained)
+	}
+
 	deletedCount := 0
-	for _, backupName := range backups[:len(backups)-keepCount] {
+	for _, backupName := range sorted[:len(sorted)-keepCount] {
 		backupPath := filepath.Join(backupDir, backupName)
+		// keepCount 0 is an explicit wipe, not a rotation: nothing is retained to
+		// compare against, so the guard applies only when something is retained.
+		if keepCount > 0 {
+			if unique := backupUniqueFile(backupPath, retained); unique != "" {
+				fmt.Fprintf(os.Stderr, "Warning: kept backup %s: %s holds content no retained backup has\n", backupName, unique)
+				continue
+			}
+		}
 		if err := os.RemoveAll(backupPath); err != nil {
 			// Log error but continue with other backups
 			fmt.Fprintf(os.Stderr, "Warning: failed to delete backup %s: %v\n", backupName, err)
@@ -268,6 +297,85 @@ func CleanupOldBackups(projectRoot string, keepCount int) int {
 	}
 
 	return deletedCount
+}
+
+// CleanupNamespaceBackups applies the same retention to the namespace backup
+// root (.moai/<NamespaceBackupsSubdir>, entries named update-<stamp>), which
+// CleanupOldBackups never reads and which therefore grew without bound. The
+// unique-content guard of pruneBackups governs every removal.
+func CleanupNamespaceBackups(projectRoot string, keepCount int) int {
+	root := filepath.Join(projectRoot, defs.MoAIDir, defs.NamespaceBackupsSubdir)
+	entries, err := os.ReadDir(root)
+	if err != nil {
+		return 0
+	}
+	var backups []string
+	for _, entry := range entries {
+		if entry.IsDir() && strings.HasPrefix(entry.Name(), "update-") {
+			backups = append(backups, entry.Name())
+		}
+	}
+	if len(backups) <= keepCount {
+		return 0
+	}
+	sort.Strings(backups)
+	return pruneBackups(root, backups, keepCount)
+}
+
+// backupFileKey identifies one file inside a backup by its path there and the
+// SHA-256 of its content. A restore resolves a file by that path, so identical
+// bytes at a different path do not make a file redundant.
+func backupFileKey(backupDir, path string) (string, error) {
+	rel, err := filepath.Rel(backupDir, path)
+	if err != nil {
+		return "", err
+	}
+	data, err := os.ReadFile(path)
+	if err != nil {
+		return "", err
+	}
+	sum := sha256.Sum256(data)
+	return rel + "\x00" + hex.EncodeToString(sum[:]), nil
+}
+
+// addRetainedBackupKeys records the backupFileKey of every regular file under
+// backupDir. An entry that cannot be read is left out: that can only make an
+// excess backup look more unique, which keeps it.
+func addRetainedBackupKeys(backupDir string, keys map[string]bool) {
+	_ = filepath.WalkDir(backupDir, func(path string, d fs.DirEntry, err error) error {
+		if err != nil || !d.Type().IsRegular() {
+			return nil
+		}
+		if key, keyErr := backupFileKey(backupDir, path); keyErr == nil {
+			keys[key] = true
+		}
+		return nil
+	})
+}
+
+// backupUniqueFile returns the path of the first file under backupDir that no
+// retained backup holds, or "" when every file is redundant. An entry that
+// cannot be read or classified cannot be shown redundant, so it counts as unique.
+func backupUniqueFile(backupDir string, retained map[string]bool) string {
+	unique := ""
+	_ = filepath.WalkDir(backupDir, func(path string, d fs.DirEntry, err error) error {
+		switch {
+		case err != nil:
+			unique = path
+		case d.IsDir():
+			return nil
+		case !d.Type().IsRegular():
+			unique = path
+		default:
+			if key, keyErr := backupFileKey(backupDir, path); keyErr != nil || !retained[key] {
+				unique = path
+			} else {
+				return nil
+			}
+		}
+		return fs.SkipAll
+	})
+	return unique
 }
 
 // IsSymlinkEntry reports whether path is a symbolic link (via os.Lstat, which
