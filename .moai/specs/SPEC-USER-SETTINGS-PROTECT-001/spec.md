@@ -2,7 +2,7 @@
 id: SPEC-USER-SETTINGS-PROTECT-001
 title: "User settings protection: init keeps user permissions and an existing defaultMode"
 version: "0.1.0"
-status: in-progress
+status: completed
 created: 2026-10-10
 updated: 2026-10-14
 author: manager-spec

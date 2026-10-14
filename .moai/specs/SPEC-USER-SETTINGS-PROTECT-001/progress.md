@@ -264,7 +264,24 @@ m1_to_mN_commit_strategy: "M1 entry (057db17c41) + single M2+M3 implementation c
 
 ## §E.4 Sync-phase Audit-Ready Signal
 
-_<pending sync-phase>_
+```yaml
+sync_complete_at: "2026-10-14T03:59:35Z"
+sync_commit_sha: "pending-backfill-sync"   # placeholder — a commit cannot cite its own SHA; backfilled with the real SHA in the following commit (D3)
+sync_status: complete
+ac_source: ".moai/specs/SPEC-USER-SETTINGS-PROTECT-001/acceptance.md"   # Tier M: acceptance.md is the AC source; spec.md ACs are inline-NA
+b12_self_test_a: pass   # pre-emission grep: grep -c 'SPEC-USER-SETTINGS-PROTECT-001' CHANGELOG.md → 0 (exit 1, no prior entry)
+b12_self_test_b: pass   # AC counter (reserved-token grammar) on acceptance.md: live=13, excluded=0, ambiguous=0 (exit 0); the file declares 13 identifiers of which the SPEC's own scope record moves AC-006..AC-012 out of this card (t1666 / gate) — the entry names the 6 in-scope ACs (AC-001..005 + AC-013) per acceptance.md scope record + §E.3
+b12_self_test_c: pass   # every repo path named in the CHANGELOG entry verified to exist (spec.md, progress.md, tier_render.go, codegen.go, settings.json.tmpl)
+changelog_entry_position: "CHANGELOG.md [Unreleased] § Changed, first entry"
+frontmatter_status_transitions:
+  spec_md: "in-progress → implemented → completed (merged into the single sync commit; 3-phase close)"
+  plan_md: "no frontmatter — artifact statelessly omits it (schema-permitted); nothing refreshed"
+  acceptance_md: "no frontmatter — artifact statelessly omits it (schema-permitted); nothing refreshed"
+canary_compliance_check:
+  applicable: false   # this SPEC defines no forward-looking policy that its own sync tests enforce
+mx_tag_validation: "sync sub-step pass — new exported writers carry @MX:NOTE [AUTO] tags (tier_render.go WriteUserDefaultMode / mergeProjectAllow); no TODO/WARN debt added"
+```
+
 
 ## §G Lane design decisions (plan phase)
 
