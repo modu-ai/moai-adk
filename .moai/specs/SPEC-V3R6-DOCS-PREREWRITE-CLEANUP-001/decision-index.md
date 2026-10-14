@@ -1,6 +1,8 @@
 # Decision Index — SPEC-V3R6-DOCS-PREREWRITE-CLEANUP-001
 
-Revision 0.2.0 (2026-10-14). Each row states one decision the operator does not settle in the interview. No row carries a recommendation.
+Revision 0.2.1 (2026-10-14). Each row states one decision the operator does not settle in the interview. No row carries a recommendation.
+
+Revision 0.2.1 corrects revision 0.2.0 under leader ruling `d-20261014T070143Z-75ac`: the G21 gap sentence in acceptance.md, the E-04 count (22 files, 45 matching lines), and the Q2 reference scope (E-09b and E-09b2). No label, class, default, or verdict changed.
 
 Revision 0.2.0 changes five things. It follows the umbrella split (decision Q20 = (c), `d-20261014T055241Z-1bc6`) and two later operator records (`d-20261014T060405Z-0fcd` and `d-20261014T061812Z-f5ca`):
 
@@ -28,7 +30,7 @@ Operator verdict:
 ### Q2: Do the five unreferenced images go, or do they gain a reference?
 Label: FOUNDER
 Authority anchor: none in the committed tree
-Why unresolved: no tracked file references them (E-09b), and the Hugo source root `docs-site/` does not contain them. The deletion removes no displayed content. Whether a future page needs them is not decided. REQ-PRC-005 is conditional on this row.
+Why unresolved: no live reference from documentation, the docs site, templates, or code exists in the scoped paths (E-09b: no output, exit 1). The whole-tree check E-09b2 records one tracked file, `.moai/reports/historical/gpt-final-design-20260914-b40ff9f4/inventory.json`, which inventories past state and is not a live reference, and the Hugo source root `docs-site/` does not contain them. The deletion removes no displayed content. Whether a future page needs them is not decided. REQ-PRC-005 is conditional on this row.
 Class: implementation-level
 Child: RESID
 Default: delete (rule: preserves current behavior)
@@ -200,7 +202,7 @@ Operator verdict:
 ### Q20: Is this SPEC's tier M, or L with the Tier L artifact set?
 Label: FOUNDER
 Authority anchor: none in the committed tree that decides this SPEC's tier. The tier table is `.claude/rules/moai/workflow/spec-workflow.md` § SPEC Complexity Tier.
-Why unresolved: the frontmatter says `tier: M` (three artifacts, PASS threshold 0.80). The planned edit set spans more than the 15 files that Tier M allows. The stale families alone touch 48 files for CLI forms (E-01) and 23 files for slash forms (E-04), and the image, script, workflow, redirect, and skill edits add to that. Tier L requires `design.md` and `research.md` and a 0.85 threshold. The operator decides between the two options. This revision keeps `tier: M`, authors neither file, and does not decide the question.
+Why unresolved: the frontmatter says `tier: M` (three artifacts, PASS threshold 0.80). The planned edit set spans more than the 15 files that Tier M allows. The stale families alone touch 48 files for CLI forms (E-01) and 22 files for slash forms (E-04; 45 matching lines), and the image, script, workflow, redirect, and skill edits add to that. Tier L requires `design.md` and `research.md` and a 0.85 threshold. The operator decides between the two options. This revision keeps `tier: M`, authors neither file, and does not decide the question.
 Options: (a) keep Tier M, reduce the scope to 15 files or fewer, and state the reasoning; (b) move to Tier L, author `design.md` and `research.md`, and re-audit at 0.85; (c) split into child SPECs, each tier M, with the umbrella keeping tier M.
 Class: implementation-level. This row changes the artifact set and the audit gate, not shipped behavior. No Default is ranked.
 Child: parent (umbrella tier)

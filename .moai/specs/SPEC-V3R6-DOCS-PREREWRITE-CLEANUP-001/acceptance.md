@@ -1,4 +1,4 @@
-# Acceptance Criteria — SPEC-V3R6-DOCS-PREREWRITE-CLEANUP-001 (revision 0.2.0, umbrella)
+# Acceptance Criteria — SPEC-V3R6-DOCS-PREREWRITE-CLEANUP-001 (revision 0.2.1, umbrella)
 
 ## A. Pin and conventions
 
@@ -37,7 +37,7 @@
 
 Owner: README (SPEC-V3R6-DOCS-PREREWRITE-README-001) for the README files; SWEEPA (SPEC-V3R6-DOCS-PREREWRITE-SWEEPA-001), SWEEPB (SPEC-V3R6-DOCS-PREREWRITE-SWEEPB-001), SWEEPC (SPEC-V3R6-DOCS-PREREWRITE-SWEEPC-001), SWEEPD (SPEC-V3R6-DOCS-PREREWRITE-SWEEPD-001), SWEEPE (SPEC-V3R6-DOCS-PREREWRITE-SWEEPE-001), and SWEEPF (SPEC-V3R6-DOCS-PREREWRITE-SWEEPF-001) for their page files. Closing run: parent (M6).
 
-- Given the tree at f35103480f, four family cells report matches for absent or unregistered forms: E-01 (CLI forms of the absent verbs `cg`, `gpt`, `audit`, `codemaps`, `model`; 60 lines in 48 files, with the retained retirement notice excluded), E-02 (absent sub-verbs `codex job|task|setup` and `todo rename|pick` and `spec list`; 24 lines in 4 files), E-03 (Mermaid labels citing `moai run SPEC-ID` and `moai sync SPEC-ID` as CLI verbs; 8 lines), and E-04 (slash forms the commands surface does not register; 45 lines in 23 files). E-06 and E-07 show the absent forms are absent from the tree build.
+- Given the tree at f35103480f, four family cells report matches for absent or unregistered forms: E-01 (CLI forms of the absent verbs `cg`, `gpt`, `audit`, `codemaps`, `model`; 60 lines in 48 files, with the retained retirement notice excluded), E-02 (absent sub-verbs `codex job|task|setup` and `todo rename|pick` and `spec list`; 24 lines in 4 files), E-03 (Mermaid labels citing `moai run SPEC-ID` and `moai sync SPEC-ID` as CLI verbs; 8 lines), and E-04 (slash forms the commands surface does not register; 45 matching lines in 22 files (one stdout line of the E-04 block in section C per file)). E-06 and E-07 show the absent forms are absent from the tree build.
 - When the closing tree is measured with the same four cells and the same exclusions, then each cell exits 1 with empty stdout.
 - RED-now cells: E-01, E-02, E-03, E-04. Verification cells: E-06, E-07. The flags `--factory-run` and `--clear-policy` (E-05) are not cells of this criterion (verdict D3; decision Q18).
 - Green path: M4 (content fixes per Q13 and Q14), with the M1 producer as the independent check.
@@ -1062,4 +1062,4 @@ Named in plan.md §E and not run here: `docs_cited_verbs_test` (three fixture ca
 - G18 — The `build` recipe's prerequisites were not run (plan §A.2). The binary is built from the recipe's `go build` line, with the scratchpad as its output.
 - G19 — Zero-match exit codes are confirmed with a measurement wrapper outside the cell only where marked `wrapper-confirmed`; the other zero-match entries show `no output`.
 - G20 — The Q7 regenerate branch has no generator in the tree. The verdict's section 5, item 8 reports the same finding; it was not re-measured in revision 0.1.1.
-- G21 — Child SPEC content is written by the lanes that hold the child cards (GATE t1717, REDIR t1718, RESID t1719, README t1720, SWEEPA t1721, SWEEPB t1722, SWEEPC t1723, SWEEPD t1724, SWEEPE t1725, FLAG t1726, and SWEEPF t1727), and it is not observed in revision 0.2.0. No child spec.md, plan.md, or acceptance.md exists yet, so no closing check can observe the child content here. This gap is numbered G21 because G3 already names the Vercel installCommand gap, and gap numbers are not reused.
+- G21 — Child SPEC content is written by the lanes that hold the child cards, and it is not observed in revision 0.2.1; no child spec.md, plan.md, or acceptance.md exists yet.
