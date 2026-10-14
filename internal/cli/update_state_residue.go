@@ -1,0 +1,142 @@
+package cli
+
+import (
+	"fmt"
+	"io/fs"
+	"os"
+	"path/filepath"
+	"strings"
+	"time"
+
+	"github.com/modu-ai/moai-adk/internal/cli/update/backup"
+	"github.com/modu-ai/moai-adk/internal/cli/update/skillresidue"
+	"github.com/modu-ai/moai-adk/internal/defs"
+	"github.com/modu-ai/moai-adk/internal/template"
+)
+
+// stateResidueMinAge is how long a candidate must have sat untouched before it
+// is removed. A session that has only just created its database may still hold
+// it open, and unlinking an open file would discard that session's first write.
+const stateResidueMinAge = 10 * time.Minute
+
+// removeStateResidue deletes what earlier state layouts left under .moai/state:
+// zero-byte *.db stubs (an empty SQLite file, no queue data) and the zero-byte
+// backlog.json.lock, the retired lock name that no current reader opens. Rollback
+// snapshots such as backlog.json, live locks such as backlog.lock, populated
+// databases, and anything written within stateResidueMinAge are never touched.
+// It returns the removed paths relative to projectRoot so the update summary can
+// list each one. The walk is best-effort: an entry it cannot read or remove is
+// skipped, since a leftover stub is harmless. A second pass finds nothing new.
+func removeStateResidue(projectRoot string) []string {
+	stateDir := filepath.Join(projectRoot, defs.MoAIDir, "state")
+	cutoff := time.Now().Add(-stateResidueMinAge)
+	var removed []string
+	_ = filepath.WalkDir(stateDir, func(path string, d fs.DirEntry, err error) error {
+		if err != nil || d.IsDir() || !d.Type().IsRegular() {
+			return nil
+		}
+		name := d.Name()
+		if name != "backlog.json.lock" && !strings.HasSuffix(name, ".db") {
+			return nil
+		}
+		info, infoErr := d.Info()
+		if infoErr != nil || info.Size() != 0 || info.ModTime().After(cutoff) {
+			return nil
+		}
+		if os.Remove(path) != nil {
+			return nil
+		}
+		if rel, relErr := filepath.Rel(projectRoot, path); relErr == nil {
+			removed = append(removed, filepath.ToSlash(rel))
+		}
+		return nil
+	})
+	return removed
+}
+
+// namespaceBackupRetainCount is how many namespace backups one update run keeps.
+const namespaceBackupRetainCount = 5
+
+// updateProjectRoot resolves the project root the way the update lock does: the
+// discovered project root, falling back to the working directory.
+func updateProjectRoot() string {
+	root, _ := findProjectRoot()
+	if root == "" {
+		root, _ = os.Getwd()
+	}
+	return root
+}
+
+// runUpdateHousekeepingLocked runs the housekeeping for an entry point that
+// returns before the main flow takes the update lock (-c). The marker check comes
+// first, because acquireUpdateLock creates .moai/ in whatever directory it is
+// given. A busy lock means another update is running and will housekeep, so this
+// run skips rather than racing it.
+func runUpdateHousekeepingLocked(projectRoot string) {
+	if checkProjectMarker(projectRoot) != nil {
+		return
+	}
+	release, err := acquireUpdateLock(projectRoot)
+	if err != nil {
+		return
+	}
+	defer release()
+	runUpdateHousekeeping(projectRoot)
+}
+
+// runUpdateHousekeeping removes state residue and caps the namespace backup root
+// for one moai update run. It does nothing outside a genuine MoAI project
+// (checkProjectMarker), and each change is recorded as a terminal reference row.
+func runUpdateHousekeeping(projectRoot string) {
+	if checkProjectMarker(projectRoot) != nil {
+		return
+	}
+	if removed := removeStateResidue(projectRoot); len(removed) > 0 {
+		updateLedger.referencef("removed %d leftover state file(s): %s", len(removed), strings.Join(removed, ", "))
+	}
+	if pruned := backup.CleanupNamespaceBackups(projectRoot, namespaceBackupRetainCount); pruned > 0 {
+		updateLedger.referencef("pruned %d old namespace backup(s), keeping the newest %d", pruned, namespaceBackupRetainCount)
+	}
+	// Skill-folder residue: empty folders of shipped skills, a retired skill name,
+	// and a lowercase skill.md. Each change is reported; see skillresidue.Clean.
+	skillActions, skillErr := skillresidue.Clean(projectRoot, skillresidue.Options{
+		Shipped: embeddedShips,
+		Stamp:   time.Now().UTC().Format("20060102T150405Z"),
+	})
+	if skillErr != nil {
+		updateLedger.requiref(sevWarn, "skill folder cleanup failed: %v", skillErr)
+	}
+	for _, a := range skillActions {
+		updateLedger.referencef("%s", skillActionMessage(a))
+	}
+}
+
+// embeddedShips reports whether the embedded template ships a project-relative
+// path. A template that cannot be opened ships nothing, so nothing is repaired.
+func embeddedShips(rel string) bool {
+	tmpl, err := template.EmbeddedTemplates()
+	if err != nil {
+		return false
+	}
+	_, err = fs.Stat(tmpl, rel)
+	return err == nil
+}
+
+// skillActionMessage renders one skill-folder action as a terminal reference row.
+func skillActionMessage(a skillresidue.Action) string {
+	switch a.Kind {
+	case "removed-empty-dir":
+		return fmt.Sprintf("removed empty skill folder %s (the template ships this skill; the deploy refills it)", a.Path)
+	case "renamed-skill-file":
+		return fmt.Sprintf("renamed %s to SKILL.md (the template ships SKILL.md and none existed)", a.Path)
+	case "reported-both-skill-files":
+		return fmt.Sprintf("%s holds both skill.md and SKILL.md; nothing changed, resolve by hand", a.Path)
+	case "archived-retired-skill":
+		return fmt.Sprintf("archived retired skill %s under .moai/archive/skills/ (its successor ships)", a.Path)
+	case "kept-retired-skill-with-user-files":
+		return fmt.Sprintf("kept retired skill %s: it holds files besides SKILL.md", a.Path)
+	case "removed-stale-link":
+		return fmt.Sprintf("removed link %s (it pointed at the archived skill)", a.Path)
+	}
+	return fmt.Sprintf("%s: %s", a.Kind, a.Path)
+}

@@ -186,6 +186,10 @@ func runUpdate(cmd *cobra.Command, _ []string) error {
 	// Handle --config / -c mode (edit configuration only, no template updates)
 	// This takes priority over all other flags
 	if editConfig {
+		// M6: the configuration path writes project state too, so it runs the
+		// same housekeeping under the update lock (marker-guarded; a busy lock
+		// skips, because the other update housekeeps).
+		runUpdateHousekeepingLocked(updateProjectRoot())
 		return runInitWizard(cmd, true) // true = reconfigure mode
 	}
 
@@ -303,6 +307,13 @@ func runUpdate(cmd *cobra.Command, _ []string) error {
 		defer releaseLock()
 	}
 
+	// M6: a --binary run never re-execs, so it housekeeps here, under the lock it
+	// already holds, and its report reaches the terminal block. Every other entry
+	// point housekeeps after the binary step (see the post-dry-run call below).
+	if binaryOnly {
+		runUpdateHousekeeping(lockRoot)
+	}
+
 	// Step 1: Binary update (unless skipped)
 	if !shouldSkipBinaryUpdate(cmd) {
 		updated, err := runBinaryUpdateStep(cmd)
@@ -374,6 +385,13 @@ func runUpdate(cmd *cobra.Command, _ []string) error {
 		//
 		return emitDryRunReinstallPlan(cmd, cwd, getBoolFlag(cmd, "force"), th)
 	}
+
+	// M6: housekeeping (state residue + namespace backup cap). It runs here, after
+	// the dry-run return and under the update lock, so every project-mutating path
+	// reaches it: --force, --templates-only, the normal flow, and the re-exec'd
+	// child (a parent that re-execs replaces its process and never gets this far,
+	// so no report is lost with a discarded ledger).
+	runUpdateHousekeeping(lockRoot)
 
 	// This is after the dry-run return and under the update lock. It also runs
 	// when template sync is version-matched, so a later update can retry trees
