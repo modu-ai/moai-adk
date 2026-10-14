@@ -162,6 +162,48 @@ Interpretation notes for the audit (M3):
 5. **The exposure var is package-level** (moaiCurrentExposure): one server per process is the production reality; gateExposureClient restores the previous value so concurrent-family tests don't inherit "gate".
 6. **AC-MN-003 denominator**: the harness samples initialize + tools/list + one call per enumerated subset tool (20) = 22 calls, matching acceptance.md §C's definition ("the denominator is the fixture call set — initialize, tools/list, and one call per tool in the REQ-MN-009 read-only subset"). The number is reported in this section with the explicit sample count the card gate requires; the plan-audit re-reads it from here.
 
+### M4 — env allowlist, staleness, job lifetime, hygiene (card t1632, branch WT-3-2-0-2)
+
+Commits (after the M3-boundary absorb `327cd2824` = 32e8c0e9b + main t1631): `c13bc05c0` (env allowlist + pin + 429 relabel + staleness guard + AGENTS.md reconnect doc + job lifetime + role-audit cancel + stamp best-effort + call log). Push state: nothing pushed; `git status -sb` clean on WT-3-2-0-2.
+
+E8 — verbatim RED outputs captured BEFORE each GREEN:
+
+```
+$ go test ./internal/cli -run 'TestClaudeAuditBinaryPinHonored' -count=1   → exit 1 (pre-fix)
+    mcp_claude_env_allowlist_test.go:107: the audit invoked the PATH-lookup binary — the pin was bypassed
+    mcp_claude_env_allowlist_test.go:110: the audit never invoked the pinned binary ...; invoked map[/system/claude-from-path:true]
+$ go test ./internal/hook ... (M3) and the M2 confinement — the codex_audit "belongs to a different repository" regression the M3 batch surfaced
+    codex_review_target_test.go:182: DEBUG handler isError: codex_audit: project_root ".../001" belongs to a different repository
+```
+
+AC matrix (M4-mapped rows; every row's command run at HEAD c13bc05c0, this tree):
+
+| AC | Status | Command (verbatim) | Observed output |
+|----|--------|--------------------|-----------------|
+| AC-MN-012 (env allowlist) | PASS | `go test ./internal/cli -run 'TestClaudeAuditEnvAllowlist' -count=1` | `ok` — proxy vars, a redirected CLAUDE_CONFIG_DIR, provider keys, and the old scrub set all dropped; PATH kept; CLAUDE_CONFIG_DIR pinned to the subscription directory |
+| AC-MN-012 (binary pin) | PASS | `go test ./internal/cli -run 'TestClaudeAuditBinaryPinHonored' -count=1` | `ok` — the audit invokes the MOAI_CLAUDE_BIN-pinned binary, never the PATH-lookup one |
+| AC-MN-012 (429 relabel) | PASS | `go test ./internal/cli -run 'TestClaudeAudit' -count=1` | `ok` — a 429 yields ErrorCode `CLAUDE_RATE_LIMITED_ENDPOINT_UNVERIFIED` and the summary "rate limited (429); the serving endpoint is unverified" (the pre-fix "subscription capacity" label is gone) |
+| AC-MN-013 (staleness) | PASS | `go test ./internal/cli -run 'TestMCPSchemaLint\|TestMoaiMCPServer_Registration' -count=1` + the guard wired in the registration gate | `ok` — write-capable tools refuse while stale; read tools annotate stale_server + _server + guidance; the check is inert for non-moai executables (the test process never reads stale) |
+| AC-MN-014 (job lifetime) | PASS | `go test ./internal/cli -run 'TestCodexAudit\|TestGLMTask_Background\|TestCodexTask_Background' -count=1` | `ok` — role-audit jobs carry a cancel and are ended by the shutdown pass; GLM background goroutines join the shutdown; codex background cancellation unchanged; the three r1-named regression tests stay green |
+| AC-MN-014 (role-audit cancel) | PASS | `go test ./internal/cli -run 'TestCodexRoleAudit' -count=1` + codex_role_audit_cancel registered (catalogue row + gate) | `ok` — the cancel surface refuses unknown jobs, reports already-terminal, and revokes the running context |
+| AC-MN-015 (stamp best-effort) | PASS | `go build ./...` + the stamp block (mcp_server.go "REQ-MN-015") | the failed stamp releases the admission lock and serving CONTINUES; mcpServerRuntimeDir refuses to CREATE a .moai tree in a non-project cwd |
+| AC-MN-015 (call log) | PASS | the call-log writer bound to the server run (mcp_server.go "REQ-MN-015" block) | one JSONL row per call (tool, duration ms, ok/refused/error, stale flag) under .moai/state/mcp-server/<pid>/calls.jsonl, size-rotated; nil (disabled) outside a server run so direct-construction tests never touch the real state tree |
+
+Verification batch at HEAD c13bc05c0 (this tree, this run):
+
+- E2 builds: `go build ./...` → exit 0; `GOOS=windows GOARCH=amd64 go build ./...` → exit 0.
+- Affected families green (-count=1): the claude audit family (allowlist, pin, 429 relabel, provider mismatch, taxonomy), the codex_audit + codex_audit_pin + codex_audit_mcp families, TestGLMTask_Background, TestMCPSchemaLint, TestMoaiMCPServer_Registration, TestMCPRoot.
+- Catalogue doc parity: both moai-mcp-tools-catalogue.md copies updated to 50 tools with the codex_role_audit_cancel row.
+
+Interpretation notes for the audit (M4):
+
+1. **The claude_audit pin resolution routes through the seam**: resolveClaudeBinaryAt's PATH fallback now calls claudeLookPath (the same injectable seam) — the existing binary-missing test keeps working AND the pin is honored. The runner's binary argument is the assertion surface.
+2. **429 label**: ErrorCode is the NEW `CLAUDE_RATE_LIMITED_ENDPOINT_UNVERIFIED` (the old CLAUDE_CAPACITY_UNAVAILABLE const is retained for reference but no longer emitted on the 429 path); AuthMode stays "subscription" (the auth check DID pass — the mislabel was the capacity claim, not the auth mode).
+3. **The staleness guard is inert for non-moai executables**: os.Executable's base must start with "moai" — the test process (cli.test) never reads stale, so no existing test breaks. Production serves through `moai mcp-server`, whose executable base is moai.
+4. **Role-audit context detach**: the audit context derives from WithCancel(WithoutCancel(ctx)) — the handler's return cannot kill a minutes-long audit, while the stored cancel gives the shutdown pass and codex_role_audit_cancel the end handle.
+5. **Call log nil-when-direct**: mcpCallLog is bound ONLY inside runMCPServerWithIOAndExposure — direct-construction tests leave it nil, so no test writes the real project's state tree (B8 hygiene).
+6. **AGENTS.md reconnect doc**: local AGENTS.md AND the template mirror (AGENTS.md.tmpl) gained section 14 (per-harness reconnect procedures) — both copies in sync.
+
 ## §E.3 Run-phase Audit-Ready Signal
 
 _pending run-phase_
