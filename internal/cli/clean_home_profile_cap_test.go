@@ -51,9 +51,13 @@ func snapshotHomeFiles(t *testing.T, root string) map[string]int64 {
 }
 
 // seedProfileFixture writes a fixture HOME whose single profile carries one
-// projects/ entry of sizeBytes (default mtime = now, so no age-based
-// projects candidate can exist) and, when withKey, a HOME-tier state.yaml
-// carrying state.profile_max_bytes: 1048576.
+// projects/ entry of the given LOGICAL size (sparse — multi-GiB sizes stay
+// cheap, so the cap-set arm can exceed the REMOVED loop's compiled 5 GiB
+// threshold: a restored cap-driven deletion loop would then actually select
+// the entry, and the no-candidates assertion genuinely discriminates) and,
+// when withKey, a HOME-tier state.yaml carrying
+// state.profile_max_bytes: 1048576. The entry's mtime stays at creation
+// time, so no age-based projects candidate can exist either.
 func seedProfileFixture(t *testing.T, withKey bool, sizeBytes int64) string {
 	t.Helper()
 	home := t.TempDir()
@@ -62,13 +66,7 @@ func seedProfileFixture(t *testing.T, withKey bool, sizeBytes int64) string {
 	if err := os.MkdirAll(projects, 0o755); err != nil {
 		t.Fatalf("mkdir fixture projects: %v", err)
 	}
-	blob := make([]byte, sizeBytes)
-	for i := range blob {
-		blob[i] = 'p'
-	}
-	if err := os.WriteFile(filepath.Join(projects, "chunk.bin"), blob, 0o644); err != nil {
-		t.Fatalf("seed profile payload: %v", err)
-	}
+	writeHomeFixtureFile(t, filepath.Join(projects, "chunk.bin"), sizeBytes, time.Time{})
 	if withKey {
 		sections := filepath.Join(moai, "config", "sections")
 		if err := os.MkdirAll(sections, 0o755); err != nil {
@@ -98,9 +96,14 @@ func seedProfileFixture(t *testing.T, withKey bool, sizeBytes int64) string {
 func TestProfileCapWarnsWithoutDeleting(t *testing.T) {
 	now := time.Date(2026, 10, 2, 0, 0, 0, 0, time.UTC)
 	miB := int64(1024 * 1024)
+	giB := int64(1024 * 1024 * 1024)
 
 	t.Run("cap set: warning names profile and key; no projects candidate; nothing deleted", func(t *testing.T) {
-		home := seedProfileFixture(t, true, 6*miB)
+		// 6 GiB logical (sparse): above the REMOVED loop's compiled 5 GiB
+		// threshold too, so restoring that loop would produce a candidate
+		// and the no-candidates assertion below would catch it (sync-audit
+		// round 5, Finding 2).
+		home := seedProfileFixture(t, true, 6*giB)
 		moai := filepath.Join(home, ".moai")
 		t.Setenv("HOME", home)
 		t.Setenv("MOAI_HOME", "")

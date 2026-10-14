@@ -22,6 +22,7 @@ import (
 	"bytes"
 	"crypto/sha256"
 	"encoding/json"
+	"fmt"
 	"io"
 	"io/fs"
 	"log/slog"
@@ -87,9 +88,16 @@ func writeSplitFixtureProject(t *testing.T) string {
 
 // writeSplitFixtureHome seeds a fixture HOME whose .moai carries exactly the
 // categories the auto path must never touch: backups/removed-* directories
-// and a non-current release binary. It also seeds the transcript the
-// liveness evaluator reads for the fixture key (old mtime — a negative
-// signal), so the seeded verify target's verdict is measured, not unmeasured.
+// and non-current release binaries. The seeding is rank-strength (sync-audit
+// round 5, Finding 1): three removed-* dirs sit inside keep-3 (the fresh one
+// and two aged fillers) and the fourth ranks 4th aged — beyond the floor AND
+// outside the age window — while two of the five release binaries rank
+// beyond the keep-newest three; a wrongful runCleanHome(--force) would
+// DELETE that content, so the clause-2 byte-identical hash genuinely
+// discriminates instead of guarding an empty delta. The correct pass touches
+// none of it. The fixture also seeds the transcript the liveness evaluator
+// reads for the fixture key (old mtime — a negative signal), so the seeded
+// verify target's verdict is measured, not unmeasured.
 func writeSplitFixtureHome(t *testing.T) string {
 	t.Helper()
 	home := t.TempDir()
@@ -108,19 +116,45 @@ func writeSplitFixtureHome(t *testing.T) string {
 	}
 
 	moai := filepath.Join(home, ".moai")
-	for _, dir := range []string{
-		filepath.Join(moai, "backups", "removed-20260101T000000"),
-		filepath.Join(moai, "releases"),
-	} {
+	now := time.Now()
+	seedRemoved := func(name string, ageDays int) {
+		t.Helper()
+		dir := filepath.Join(moai, "backups", name)
 		if err := os.MkdirAll(dir, 0o755); err != nil {
-			t.Fatalf("mkdir home fixture %s: %v", dir, err)
+			t.Fatalf("mkdir backup %s: %v", name, err)
+		}
+		if err := os.WriteFile(filepath.Join(dir, "notes.txt"), []byte("backup payload"), 0o644); err != nil {
+			t.Fatalf("seed backup %s: %v", name, err)
+		}
+		if ageDays >= 0 {
+			stamp := now.AddDate(0, 0, -ageDays)
+			if err := os.Chtimes(dir, stamp, stamp); err != nil {
+				t.Fatalf("backdate backup %s: %v", name, err)
+			}
 		}
 	}
-	if err := os.WriteFile(filepath.Join(moai, "backups", "removed-20260101T000000", "notes.txt"), []byte("backup payload"), 0o644); err != nil {
-		t.Fatalf("seed backup: %v", err)
+	// Ranks (newest first): fresh, aged-1, aged-2 — inside keep-3; aged-3
+	// ranks 4th and is older than the 30-day window.
+	seedRemoved("removed-fresh", -1)
+	seedRemoved("removed-aged-1", 31)
+	seedRemoved("removed-aged-2", 32)
+	seedRemoved("removed-aged-3", 33)
+
+	if err := os.MkdirAll(filepath.Join(moai, "releases"), 0o755); err != nil {
+		t.Fatalf("mkdir releases: %v", err)
 	}
-	if err := os.WriteFile(filepath.Join(moai, "releases", "moai-v0.0.1"), []byte("old release binary"), 0o755); err != nil {
-		t.Fatalf("seed release: %v", err)
+	// Five non-current binaries (none matches the running version): the
+	// keep-newest three survive a wrongful force-run, v0.0.1 and v0.0.2 —
+	// ranked oldest — would be deleted.
+	for i := 1; i <= 5; i++ {
+		name := fmt.Sprintf("moai-v0.0.%d", i)
+		stamp := now.AddDate(0, 0, -(6 - i))
+		if err := os.WriteFile(filepath.Join(moai, "releases", name), []byte("release binary"), 0o755); err != nil {
+			t.Fatalf("seed release %s: %v", name, err)
+		}
+		if err := os.Chtimes(filepath.Join(moai, "releases", name), stamp, stamp); err != nil {
+			t.Fatalf("backdate release %s: %v", name, err)
+		}
 	}
 	return home
 }
