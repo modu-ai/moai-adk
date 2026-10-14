@@ -168,6 +168,32 @@ func TestRemeasureCleanCheckSeesIgnoredUnderShowUntrackedNo(t *testing.T) {
 	}
 }
 
+// TestRemeasureFailingSweepRecordsFailingNames (card t1677, t1568's
+// undiagnosable failure): a re-measure whose go test -json stream carries a
+// fail event and whose command exits non-zero must record WHICH test failed —
+// in the written record (Failing) and in the returned error — so the failure
+// is diagnosable from the record alone, without re-running the sweep.
+func TestRemeasureFailingSweepRecordsFailingNames(t *testing.T) {
+	root, _ := remeasureFixtureRepo(t)
+	command := "go test -json ./example.com/a/... >/dev/null 2>&1; printf '%s\\n' '{\"Action\":\"fail\",\"Package\":\"example.com/a\",\"Test\":\"TestFlakyUnderLoad\"}'; false"
+	rec, err := RunRemeasure(root, root, "develop", command)
+	if rec == nil {
+		t.Fatalf("the record is still written (observed as observed); got none")
+	}
+	if err == nil {
+		t.Fatalf("a failing sweep must be reported")
+	}
+	if len(rec.Failing) != 1 || rec.Failing[0] != "TestFlakyUnderLoad" {
+		t.Fatalf("the record must name the failing test, got %q", rec.Failing)
+	}
+	if !strings.Contains(err.Error(), "TestFlakyUnderLoad") {
+		t.Fatalf("the returned error must name the failing test: %v", err)
+	}
+	if err := ValidateRemeasureRecord(rec); err == nil {
+		t.Fatalf("a failing-sweep record must be invalid")
+	}
+}
+
 // recTreeOf computes the tree SHA a remeasure record for root would be keyed
 // under — the current HEAD tree.
 func recTreeOf(root string) string {

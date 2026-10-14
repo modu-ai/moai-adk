@@ -350,11 +350,21 @@ func staleErr(cur Card, expected int64) error {
 
 // withCardTx runs fn inside one write transaction (the database's DSN takes
 // the write lock at BEGIN). fn may return a post-commit callback.
+//
+// The transaction is begun with a detached context (card t1696): database/sql
+// rolls a transaction begun with a bounded context back the moment that
+// context expires, so a caller's deadline firing mid-transaction used to kill
+// the tx out from under the code and surface the post-rollback
+// "transaction has already been committed or rolled back" at Commit — wrapped
+// upstream as a busy record. The deadline still binds every statement
+// (each Exec/Query carries ctx), so a slow claim refuses with an honest
+// context error; the transaction itself now closes only through the explicit
+// Commit or the deferred Rollback below.
 func (f *FactoryDB) withCardTx(ctx context.Context, runID string, fn func(tx *sql.Tx) (func(), error)) error {
 	var tx *sql.Tx
 	if err := retryFactoryBusy(ctx, func() error {
 		var err error
-		tx, err = f.DB.BeginTx(ctx, nil)
+		tx, err = f.DB.BeginTx(context.WithoutCancel(ctx), nil)
 		return err
 	}); err != nil {
 		return err
