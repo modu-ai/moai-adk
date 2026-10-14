@@ -2,7 +2,7 @@
 id: SPEC-CAPACITY-RECLAIM-001
 title: "Capacity reclaim: untrack harness state, bound sinks and archives, warning-only profile cap"
 version: "0.2.1"
-status: draft
+status: in-progress
 created: 2026-10-10
 updated: 2026-10-14
 author: manager-spec
