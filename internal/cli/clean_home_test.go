@@ -67,11 +67,25 @@ func seedHomeCleanFixture(t *testing.T) string {
 	writeHomeFixtureFile(t, filepath.Join(root, "logs", "old-run.log"), 30, agedTime(t))
 	writeHomeFixtureFile(t, filepath.Join(root, "logs", "fresh-run.log"), 30, time.Time{})
 
-	// backups/: aged removed-* deleted; fresh removed-* and non-removed survive.
-	// The scanner ages a removed-* dir by the DIR's own mtime, so pin that too.
+	// backups/: aged removed-* deleted; fresh removed-* and non-removed
+	// survive. The keep-3 floor (SPEC-CAPACITY-RECLAIM-001 REQ-CAP-008)
+	// protects the three NEWEST removed-* dirs regardless of age, so the
+	// fixture carries two aged fillers ranked NEWER than removed-old: they
+	// occupy the keep-3 slots and removed-old ranks 4th — beyond the floor
+	// AND older than the window — which is the only combination it deletes
+	// under. The scanner ages a removed-* dir by the DIR's own mtime, so pin
+	// that too.
 	writeHomeFixtureFile(t, filepath.Join(root, "backups", "removed-old", "x.yaml"), 20, agedTime(t))
 	if err := os.Chtimes(filepath.Join(root, "backups", "removed-old"), agedTime(t), agedTime(t)); err != nil {
 		t.Fatalf("chtimes removed-old: %v", err)
+	}
+	for i, keepDays := range []int{9, 8} { // aged (beyond the 30-day window), ranked newer than removed-old
+		name := fmt.Sprintf("removed-keep-%d", i+1)
+		stamp := time.Now().AddDate(0, 0, -(config.DefaultHomeCleanRetentionDays + keepDays))
+		writeHomeFixtureFile(t, filepath.Join(root, "backups", name, "k.yaml"), 20, stamp)
+		if err := os.Chtimes(filepath.Join(root, "backups", name), stamp, stamp); err != nil {
+			t.Fatalf("chtimes %s: %v", name, err)
+		}
 	}
 	writeHomeFixtureFile(t, filepath.Join(root, "backups", "removed-fresh", "y.yaml"), 20, time.Time{})
 	writeHomeFixtureFile(t, filepath.Join(root, "backups", "other", "z.yaml"), 20, agedTime(t))
@@ -121,8 +135,10 @@ func TestCleanHome_DryRunMutatesNothing(t *testing.T) {
 }
 
 // TestCleanHome_ForceDeletesOnlyAllowlistedCategories (AC-MCH-005): --force
-// removes aged debug/, the 2 oldest releases (+ sidecars), aged logs/, aged
-// backups/removed-* — and nothing else.
+// removes aged debug/, the 2 oldest releases (+ sidecars), aged logs/, and
+// aged backups/removed-* BEYOND the keep-3 floor (the two aged
+// removed-keep-* fillers rank inside the newest three and survive although
+// aged) — and nothing else.
 func TestCleanHome_ForceDeletesOnlyAllowlistedCategories(t *testing.T) {
 	root := seedHomeCleanFixture(t)
 
@@ -150,6 +166,8 @@ func TestCleanHome_ForceDeletesOnlyAllowlistedCategories(t *testing.T) {
 		filepath.Join(root, "claude-profiles", "p1", "debug", "fresh.log"),
 		filepath.Join(root, "logs", "fresh-run.log"),
 		filepath.Join(root, "backups", "removed-fresh", "y.yaml"),
+		filepath.Join(root, "backups", "removed-keep-1", "k.yaml"),
+		filepath.Join(root, "backups", "removed-keep-2", "k.yaml"),
 		filepath.Join(root, "backups", "other", "z.yaml"),
 		filepath.Join(root, "releases", "moai-v0.0.3-darwin-arm64"),
 		filepath.Join(root, "releases", "moai-v0.0.4-darwin-arm64"),
