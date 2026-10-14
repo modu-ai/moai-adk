@@ -20,6 +20,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"runtime"
 	"strings"
 	"testing"
 )
@@ -78,6 +79,11 @@ func newUnlinkLinkRoot(t *testing.T) string {
 // whatever the target behind it is, with flags and `--` before the operand.
 // On the pre-change tree every row denies under the target-following
 // judgment — the RED state this repair flips.
+// Repair round 9 branches the EXPECTATION on GOOS: since round 8 windows
+// defers the narrowing entirely, these operands take the target-following
+// judgment there and DENY — the documented windows over-block, whose deny
+// reason carries the same zone sentinel (probe_zone) the dereference cells
+// assert. POSIX keeps the allow.
 func TestProtectedZoneShellUnlinkLinkOwnAllows(t *testing.T) {
 	cells := []struct{ name, command string }{
 		{name: "defect_shape_rm", command: "rm zone_dir/link_x"},
@@ -99,6 +105,13 @@ func TestProtectedZoneShellUnlinkLinkOwnAllows(t *testing.T) {
 			root := newUnlinkLinkRoot(t)
 			h := zoneTestHandler(t, root)
 			d, r := zoneCall(t, h, "Bash", harnessLearnerIdentity, map[string]any{"command": tc.command})
+			if runtime.GOOS == "windows" {
+				// round 8: windows defers the narrowing — the target-
+				// following judgment follows the final link and denies the
+				// zone access the POSIX narrowing allows through
+				wantZoneDeny(t, tc.name, d, r, harnessLearnerIdentity, "category", "probe_zone")
+				return
+			}
 			// the family's allow convention: the control fails only on a deny
 			if d == DecisionDeny {
 				t.Errorf("%s: decision=%q reason=%q, want allow — the shell unlinks only the link, the zone target survives (measured)", tc.command, d, r)
