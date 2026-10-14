@@ -119,19 +119,22 @@ func reviewDiffArgs(root, target string) ([]string, error) {
 	}
 }
 
-// collectReviewDiffAt is collectReviewDiff for a baseBranch review whose base
-// the caller has ALREADY resolved: the diff is measured from exactly that merge
-// base, so the base a result reports and the material the backend saw cannot
-// drift apart (card t1426 — a base ref may move while the model is thinking).
-func collectReviewDiffAt(root string, base reviewBase) (string, error) {
+// collectReviewDiffAtFlagged is the baseBranch collector: the diff is measured
+// from the merge base the caller ALREADY resolved, so the base a result
+// reports and the material the backend saw cannot drift apart (card t1426 — a
+// base ref may move while the model is thinking). The truncation mark rides
+// the return (card t1632 card-review P2-8): a baseBranch review must be able
+// to say its material was tail-cut, exactly as the uncommitted target does.
+func collectReviewDiffAtFlagged(root string, base reviewBase) (string, bool, error) {
 	if strings.TrimSpace(root) == "" {
-		return "", fmt.Errorf("no project root to read the change from")
+		return "", false, fmt.Errorf("no project root to read the change from")
 	}
 	out, err := runReviewGit(root, "diff", base.MergeBase+"...HEAD")
 	if err != nil {
-		return "", fmt.Errorf("cannot read the change from %s: %w", root, err)
+		return "", false, fmt.Errorf("cannot read the change from %s: %w", root, err)
 	}
-	return truncateDiff(out), nil
+	cut, tr := truncateDiffFlagged(out)
+	return cut, tr, nil
 }
 
 // reviewBase is ONE resolution of the base a baseBranch review is measured

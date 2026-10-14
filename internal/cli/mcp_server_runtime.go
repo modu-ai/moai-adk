@@ -113,12 +113,56 @@ func removeMCPServerRuntimeRecord(path string) {
 
 // ─── per-call staleness (SPEC-MCP-NEUTRALITY-001 REQ-MN-013) ──────────────────
 
-// serverStaleness compares the EXECUTABLE SERVING this call against the
-// installed `moai` binary on PATH: a different file (size or mtime moved) is
-// the post-reinstall skew — the serving process keeps running the old build
-// while the host's next spawn would use the new one. The check is INERT when
-// the serving executable is not a moai binary (the test process), so test
-// binaries never read as stale.
+// binaryIdentity is the executable identity captured ONCE at server start:
+// a later in-place reinstall of the same path changes what a fresh os.Stat
+// of that path reads, so the staleness comparison must run against the
+// identity the server STARTED with — the AGENTS.md §14 reconnect contract
+// rests on the stale server being able to recognize itself (card-review
+// P1-3).
+type binaryIdentity struct {
+	Path     string
+	Size     int64
+	ModTime  time.Time
+	Captured bool
+}
+
+// servingBinaryIdentity is captured at process start, before serving begins.
+// Captured is false for a non-moai executable (the test process) or a capture
+// failure — the check is then INERT, exactly as the old same-file reading was
+// for a test binary.
+var servingBinaryIdentity = captureExecutableIdentity()
+
+// moaiLookPath is the installed-binary resolution seam (tests swap it).
+var moaiLookPath = exec.LookPath
+
+func captureExecutableIdentity() binaryIdentity {
+	path, err := os.Executable()
+	if err != nil {
+		return binaryIdentity{}
+	}
+	if base := filepath.Base(path); !strings.HasPrefix(base, "moai") {
+		// The test binary (or any non-moai executable): no identity, inert check.
+		return binaryIdentity{}
+	}
+	if resolved, rerr := filepath.EvalSymlinks(path); rerr == nil {
+		path = resolved
+	}
+	fi, err := os.Stat(path)
+	if err != nil {
+		return binaryIdentity{}
+	}
+	return binaryIdentity{Path: path, Size: fi.Size(), ModTime: fi.ModTime(), Captured: true}
+}
+
+// serverStaleness compares the identity the EXECUTABLE SERVING this call
+// captured AT START against the installed `moai` binary on PATH: a different
+// file (size or mtime moved since start) is the post-reinstall skew — the
+// serving process keeps running the old build while the host's next spawn
+// would use the new one. Comparing against the START-TIME identity (not a
+// fresh stat of the serving path) is what an in-place reinstall cannot fool:
+// both end-of-call stats of the same path read the new file and would call a
+// stale server fresh (card-review P1-3). The check is INERT when no start-time
+// identity was captured.
 type serverStaleness struct {
 	Stale     bool   `json:"stale_server"`
 	Serving   string `json:"serving"`
@@ -129,16 +173,12 @@ type serverStaleness struct {
 
 func serverStalenessInfo() serverStaleness {
 	info := serverStaleness{Version: version.GetVersion(), Commit: version.GetCommit()}
-	serving, err := os.Executable()
-	if err != nil {
+	if !servingBinaryIdentity.Captured {
+		// Non-moai executable (the test process) or a capture failure: inert.
 		return info
 	}
-	if base := filepath.Base(serving); !strings.HasPrefix(base, "moai") {
-		// The test binary (or any non-moai executable) never reads as stale.
-		return info
-	}
-	info.Serving = serving
-	installed, err := exec.LookPath("moai")
+	info.Serving = servingBinaryIdentity.Path
+	installed, err := moaiLookPath("moai")
 	if err != nil {
 		return info
 	}
@@ -146,14 +186,13 @@ func serverStalenessInfo() serverStaleness {
 		installed = resolved
 	}
 	info.Installed = installed
-	servingStat, err1 := os.Stat(serving)
-	installedStat, err2 := os.Stat(installed)
-	if err1 != nil || err2 != nil {
+	installedStat, err := os.Stat(installed)
+	if err != nil {
 		return info
 	}
-	if os.SameFile(servingStat, installedStat) &&
-		servingStat.Size() == installedStat.Size() &&
-		servingStat.ModTime().Equal(installedStat.ModTime()) {
+	if installed == servingBinaryIdentity.Path &&
+		installedStat.Size() == servingBinaryIdentity.Size &&
+		installedStat.ModTime().Equal(servingBinaryIdentity.ModTime) {
 		return info
 	}
 	info.Stale = true

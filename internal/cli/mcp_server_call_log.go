@@ -38,6 +38,7 @@ type mcpCallLogWriter struct {
 	pid  int
 	seq  int
 	size int64
+	cur  string // the CURRENT segment file name (card-review P2-9) — empty until the first row
 }
 
 // mcpCallLog is the per-process call log. nil (tests constructing servers
@@ -47,10 +48,16 @@ type mcpCallLogWriter struct {
 var mcpCallLog *mcpCallLogWriter
 
 // newMCPCallLogWriter resolves the log directory from the server's project
-// dir; an unresolvable dir leaves the logger disabled.
+// dir; an unresolvable dir leaves the logger disabled. Card-review P2-11: a
+// cwd that is not ALREADY a moai project (no .moai directory) disables the
+// logger too — the log must never be the thing that creates a .moai tree in
+// an arbitrary cwd (the REQ-MN-015 runtime-dir discipline).
 func newMCPCallLogWriter() *mcpCallLogWriter {
 	root := resolveProjectDir()
 	if root == "" {
+		return &mcpCallLogWriter{}
+	}
+	if info, err := os.Stat(filepath.Join(root, ".moai")); err != nil || !info.IsDir() {
 		return &mcpCallLogWriter{}
 	}
 	dir := filepath.Join(root, ".moai", "state", "mcp-server", strconv.Itoa(os.Getpid()))
@@ -95,12 +102,20 @@ func (w *mcpCallLogWriter) record(tool string, d time.Duration, res *mcp.CallToo
 	if err := os.MkdirAll(w.dir, 0o755); err != nil {
 		return
 	}
-	path := w.currentPath()
-	info, statErr := os.Stat(path)
-	if statErr == nil && info.Size() > mcpCallLogFileLimit {
-		w.seq++
-		path = w.rotatedPath(w.seq)
+	// Card-review P2-9: rotation reads the CURRENT segment's size, tracked on
+	// the writer — re-statting the initial calls.jsonl on every row made each
+	// post-rotation row rotate again (a segment per row), because the initial
+	// file stayed over the limit forever.
+	if w.cur == "" {
+		w.cur = "calls.jsonl"
+		w.size = fileSizeIfPresent(filepath.Join(w.dir, w.cur))
 	}
+	if w.size > mcpCallLogFileLimit {
+		w.seq++
+		w.cur = "calls." + strconv.Itoa(w.seq) + ".jsonl"
+		w.size = fileSizeIfPresent(filepath.Join(w.dir, w.cur))
+	}
+	path := filepath.Join(w.dir, w.cur)
 	f, err := os.OpenFile(path, os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0o600)
 	if err != nil {
 		return
@@ -110,10 +125,10 @@ func (w *mcpCallLogWriter) record(tool string, d time.Duration, res *mcp.CallToo
 	w.size += int64(len(data)) + 1
 }
 
-func (w *mcpCallLogWriter) currentPath() string {
-	return filepath.Join(w.dir, "calls.jsonl")
-}
-
-func (w *mcpCallLogWriter) rotatedPath(seq int) string {
-	return filepath.Join(w.dir, "calls."+strconv.Itoa(seq)+".jsonl")
+// fileSizeIfPresent stats a segment file, 0 when absent.
+func fileSizeIfPresent(path string) int64 {
+	if info, err := os.Stat(path); err == nil {
+		return info.Size()
+	}
+	return 0
 }

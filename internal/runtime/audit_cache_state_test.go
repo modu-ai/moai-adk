@@ -95,3 +95,24 @@ func TestStateCache_LookupRefusesChangedVerdictFile(t *testing.T) {
 		t.Fatal("a cached entry whose verdict file changed since the store was reused (REQ-MN-020)")
 	}
 }
+
+// TestStateCache_RelativeReportPathAnchoredToRoot pins the P2-7 repair: a
+// RELATIVE verdict report path resolves against the project root the cache is
+// bound to — at store AND at lookup — never against whatever cwd the call
+// happens to run from.
+func TestStateCache_RelativeReportPathAnchoredToRoot(t *testing.T) {
+	root := t.TempDir()
+	writeVerdictFile(t, root, "review-3.md", "# plan review: pass")
+	c := NewStateAuditCache(root)
+	// A relative spelling, as a caller inside the project would hand over.
+	if err := c.StoreVerdict("SPEC-X-004", "hash-4", passResult("review-3.md")); err != nil {
+		t.Fatalf("StoreVerdict with a relative path: %v", err)
+	}
+	entry, ok := c.Lookup("SPEC-X-004", "hash-4", time.Now())
+	if !ok {
+		t.Fatal("a relative-path entry did not survive store+lookup — the path was not anchored to the project root (card-review P2-7)")
+	}
+	if !filepath.IsAbs(entry.ReportPath) {
+		t.Errorf("entry.ReportPath = %q, want the absolute root-anchored path", entry.ReportPath)
+	}
+}

@@ -73,6 +73,18 @@ func (c *StateAuditCache) ComputeHash(specDir string) (string, error) {
 	return (&InMemoryCache{}).ComputeHash(specDir)
 }
 
+// resolveReportPath anchors a verdict report path to the project root when it
+// is RELATIVE (card t1632 card-review P2-7): a path a caller wrote relative to
+// its own working directory must not be re-interpreted against whichever cwd
+// the STORE or the LOOKUP happens to run from — both resolve it against the
+// project root the cache is bound to.
+func (c *StateAuditCache) resolveReportPath(report string) string {
+	if filepath.IsAbs(report) {
+		return report
+	}
+	return filepath.Join(c.root, report)
+}
+
 // StoreVerdict records one PASS verdict whose evidence is an EXISTING verdict
 // file: the file's SHA-256 is computed and stored WITH the entry, and a store
 // whose verdict file does not exist (or cannot be read) writes nothing and
@@ -82,7 +94,7 @@ func (c *StateAuditCache) StoreVerdict(specID, hash string, result *AuditResult)
 	if result == nil || result.Verdict != VerdictPass {
 		return fmt.Errorf("audit cache stores PASS verdicts only")
 	}
-	report := result.ReportPath
+	report := c.resolveReportPath(result.ReportPath)
 	if strings.TrimSpace(report) == "" {
 		return fmt.Errorf("audit cache store requires a verdict report path")
 	}
@@ -121,7 +133,7 @@ func (c *StateAuditCache) Lookup(specID, hash string, _ time.Time) (*CachedEntry
 	if err := json.Unmarshal(data, &e); err != nil || e.PlanArtifactHash != hash {
 		return nil, false
 	}
-	sum, err := fileSHA256(e.ReportPath)
+	sum, err := fileSHA256(c.resolveReportPath(e.ReportPath))
 	if err != nil || sum != e.VerdictFileSHA {
 		// The verdict file changed (or vanished) since the store: the entry is
 		// evidence for a state that no longer exists — a miss, never a hit.

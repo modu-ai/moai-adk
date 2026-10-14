@@ -386,10 +386,12 @@ func registerMoaiMCPToolsWithExposure(s *server.MCPServer, projectDir, exposure 
 		// REQ-MN-015: one row per tool call into the rotated call log — tool,
 		// duration, and the refused/error classification (M1's refused
 		// marking reused). The log write is best-effort and never blocks the
-		// result.
-		started := time.Now()
+		// result. Card-review P2-10: the timer starts INSIDE logged — a
+		// registration-time start would bill every tool the registration-to-
+		// first-call gap as its own duration.
 		wrapped := mcpStalenessGuard(name, handler)
 		logged := func(ctx context.Context, req mcp.CallToolRequest) (*mcp.CallToolResult, error) {
+			started := time.Now()
 			res, err := wrapped(ctx, req)
 			mcpCallLog.record(name, time.Since(started), res, err)
 			return res, err

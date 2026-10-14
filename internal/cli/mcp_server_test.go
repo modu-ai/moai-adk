@@ -384,9 +384,15 @@ func TestMoaiMCPServer_AuditCacheStoreLookup(t *testing.T) {
 		t.Errorf("lookup before store: expected hit=false, got %v", m["hit"])
 	}
 
-	// store a PASS verdict.
+	// store a PASS verdict. The report file MUST exist — REQ-MN-020 requires
+	// an existing verdict file as the entry's evidence, so the store refuses
+	// a missing one.
+	report := filepath.Join(tmp, "r.md")
+	if err := os.WriteFile(report, []byte("# plan review: pass\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
 	resStore, err := c.CallTool(ctx, mcp.CallToolRequest{
-		Params: mcp.CallToolParams{Name: "audit_cache", Arguments: map[string]any{"op": "store", "spec_id": sid, "hash": h, "auditor_version": "plan-auditor", "report_path": "/tmp/r.md"}},
+		Params: mcp.CallToolParams{Name: "audit_cache", Arguments: map[string]any{"op": "store", "spec_id": sid, "hash": h, "auditor_version": "plan-auditor", "report_path": report}},
 	})
 	if err != nil || resStore == nil || resStore.IsError {
 		t.Fatalf("store: err=%v res=%v", err, resStore)

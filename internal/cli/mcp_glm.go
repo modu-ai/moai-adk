@@ -301,7 +301,9 @@ func handleGLMAudit(ctx context.Context, req mcp.CallToolRequest) (*mcp.CallTool
 		var b reviewBase
 		if b, err = resolveReviewBase(root); err == nil {
 			base = &b
-			diff, err = collectReviewDiffAt(root, b)
+			// Card-review P2-8: the baseBranch path carries the truncation
+			// mark too — a tail-cut diff is a tail-cut verdict on this target.
+			diff, truncated, err = collectReviewDiffAtFlagged(root, b)
 		}
 	} else {
 		diff, truncated, err = collectReviewDiffFlagged(root, target)

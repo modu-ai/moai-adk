@@ -169,13 +169,16 @@ type Receipt struct {
 }
 
 // TreeState returns the (head commit, tree digest) of the state a receipt
-// recorded against treeRoot. The digest is deterministic over the state a
-// backend audit actually judged: the head commit plus `git status --porcelain`
-// — the same uncommitted surface the default audit target names. It is a var
-// so tests stub the git reads; the real implementation shells out to the tree's
-// own git. Any failure returns empty values: the receipt is then written
-// WITHOUT the binding (recorded evidence beats a missing field), and the reuse
-// check skips the comparison for a receipt that carries no binding.
+// recorded against treeRoot. The digest covers the CONTENT the backend audit
+// judged (card t1632 card-review P1-1): the head commit, the porcelain rows,
+// the tracked diff's actual bytes (`git diff HEAD` — an in-place re-edit moves
+// the digest even though HEAD and the porcelain rows do not), and the bytes of
+// every untracked file OUTSIDE the runtime-managed prefixes (an untracked
+// file's content change moves the digest even though its row does not).
+// It is a var so tests stub the git reads; the real implementation shells out
+// to the tree's own git. Any failure returns empty values: the receipt is then
+// written WITHOUT the binding (recorded evidence beats a missing field), and
+// the reuse check skips the comparison for a receipt that carries no binding.
 //
 // @MX:ANCHOR: [AUTO] tree-state binding seam; feeds every receipt write and the reuse check
 // @MX:REASON: the binding's honesty rests on this one derivation — a digest that misses the judged state would forge freshness
@@ -191,8 +194,53 @@ var TreeState = func(treeRoot string) (head, digest string, err error) {
 	if err != nil {
 		return "", "", err
 	}
-	sum := sha256.Sum256([]byte("head:" + headOut + "\x00status\x00" + statusOut))
-	return headOut, hex.EncodeToString(sum[:]), nil
+	diffOut, err := gitIn(treeRoot, "diff", "HEAD")
+	if err != nil {
+		return "", "", err
+	}
+	h := sha256.New()
+	_, _ = fmt.Fprintf(h, "head:%s\x00status\x00%s\x00diff\x00%s", headOut, statusOut, diffOut)
+	for _, f := range untrackedContentPaths(treeRoot) {
+		data, rerr := os.ReadFile(filepath.Join(treeRoot, f))
+		if rerr != nil {
+			return "", "", rerr
+		}
+		_, _ = fmt.Fprintf(h, "\x00untracked:%s\x00", f)
+		_, _ = h.Write(data)
+	}
+	return headOut, hex.EncodeToString(h.Sum(nil)), nil
+}
+
+// untrackedContentPaths lists the untracked files OUTSIDE the runtime-managed
+// prefixes, sorted for a deterministic digest — the same exclusion surface the
+// review material applies, so a runtime-config edit between the audit and the
+// citation does not forge a state change that the judged diff never saw.
+func untrackedContentPaths(treeRoot string) []string {
+	out, err := gitIn(treeRoot, "ls-files", "--others", "--exclude-standard")
+	if err != nil || strings.TrimSpace(out) == "" {
+		return nil
+	}
+	var kept []string
+	for _, line := range strings.Split(out, "\n") {
+		line = strings.TrimSpace(line)
+		if line == "" || isRuntimeManagedStatePath(line) {
+			continue
+		}
+		kept = append(kept, line)
+	}
+	sort.Strings(kept)
+	return kept
+}
+
+// isRuntimeManagedStatePath reports whether a path lives under one of the
+// runtime-managed state prefixes the receipt binding excludes.
+func isRuntimeManagedStatePath(path string) bool {
+	for _, p := range []string{".moai/state/", ".moai/cache/", ".moai/reports/", ".moai/logs/", ".moai/harness/"} {
+		if strings.HasPrefix(path, p) {
+			return true
+		}
+	}
+	return false
 }
 
 // StartMarker records that an auditor subagent instance began, so a receipt
@@ -1354,7 +1402,12 @@ func CheckCitedReceiptsSince(treeRoot string, start *StartMarker, endBoundary ti
 			// receipt into a false contradiction, and must equally never
 			// forge freshness. A receipt with NO binding (written before the
 			// binding existed) is unattributable, not contradictory.
-			if head, digest, sErr := TreeState(treeRoot); sErr == nil && (head != "" || digest != "") {
+			// Card-review P1-2: the comparison reads the tree the receipt
+			// JUDGED (r.TreeRoot), never the store root the caller handed
+			// in — a hook in a linked worktree passes the primary checkout
+			// as the store root, and the receipt was recorded against the
+			// worktree.
+			if head, digest, sErr := TreeState(r.TreeRoot); sErr == nil && (head != "" || digest != "") {
 				if r.HeadCommit != head || r.TreeDigest != digest {
 					cause = CauseReceiptTreeStateChanged
 				}
