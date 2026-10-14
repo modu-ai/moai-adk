@@ -35,7 +35,7 @@ related_specs: [SPEC-V3R6-DOCS-POSTREBUILD-CLEANUP-001, SPEC-DOCS-SITE-001]
 
 The v3.2 documentation rewrite (plan stage 5) opens with a cleanup that does not depend on the rewrite itself: stale command references, a stale version badge, a duplicated CG retirement passage, unreferenced and oversized images, Nextra-era residue, dangling redirects, and CI jobs that do not block. The card (t1655) names a completion verdict of "cited-verbs 0" and "CI 3 jobs blocking". This SPEC states what must be true for that verdict and records the RED-now state of each criterion.
 
-As of revision 0.3.0 this SPEC is an index over eleven child SPECs (see § Child SPECs). REQ-PRC-001 to REQ-PRC-014 and AC-PRC-001 to AC-PRC-014 are pointers, and the children carry their text. This index keeps REQ-PRC-015, AC-PRC-015, the evidence ledger, the decision rows Q12, Q20, Q22, and Q24, and the closing measurement (M6). The file-level work moves to the children. The measured-state bullets below are the index's baseline evidence, unchanged from revision 0.1.1.
+As of revision 0.3.0 this SPEC is an index over eleven child SPECs (see § Child SPECs). REQ-PRC-001 to REQ-PRC-014 and AC-PRC-001 to AC-PRC-014 are pointers, and the children carry their text. This index keeps REQ-PRC-015, AC-PRC-015, the evidence ledger, the decision rows Q12, Q20, and Q24, and the closing measurement (M6). The full Q22 row also stays here; Q22 has owner GATE (leader-confirmed). The file-level work moves to the children. The measured-state bullets below are the index's baseline evidence, unchanged from revision 0.1.1.
 
 Measured state on tree f35103480f (full evidence in acceptance.md §C):
 
@@ -108,7 +108,7 @@ Revision 0.3.0 (route 2, operator decision `d-20261014T114834Z-e039`) makes REQ-
 ### Operator-held requirement (not moved; closure is operator-held)
 
 - **REQ-PRC-015** (Ubiquitous): The three jobs named in REQ-PRC-012 through REQ-PRC-014 **shall** be listed as required status checks on the `main` branch protection. This requirement is enforced outside the repository, and its closure is an operator-held action (see Out of Scope and decision Q22).
-  - Owner: parent (this index), operator-held (Q12 and Q22). Its acceptance criterion AC-PRC-015 stays in acceptance.md as a regression-guard.
+  - Owner: parent (this index), operator-held (Q12). Q22 has owner GATE (leader-confirmed). Its acceptance criterion AC-PRC-015 stays in acceptance.md as a regression-guard.
 
 ## Child SPECs
 
@@ -116,7 +116,7 @@ The index's file-level work is split into eleven child SPECs by decision Q20 = (
 
 | TAG | Proposed child ID | Card | REQ | AC | Decision rows | Files | After-relations |
 |-----|-------------------|------|-----|----|---------------|-------|-----------------|
-| GATE | SPEC-V3R6-DOCS-PREREWRITE-GATE-001 | t1717 | REQ-PRC-002, REQ-PRC-012, REQ-PRC-013, REQ-PRC-014 | AC-PRC-002, AC-PRC-012, AC-PRC-013, AC-PRC-014 | Q9, Q10, Q11 (own); Q5 and Q18 (inputs); Q22 (owner GATE, leader-confirmed) | 9 (10 if the link-check tool needs extra configuration) | None; no file overlap. Its citation checker is the M6 input. Before it starts AC-PRC-012, the child corrects that criterion's RED cell (audit defect B01). |
+| GATE | SPEC-V3R6-DOCS-PREREWRITE-GATE-001 | t1717 | REQ-PRC-002, REQ-PRC-012, REQ-PRC-013, REQ-PRC-014 | AC-PRC-002, AC-PRC-012, AC-PRC-013, AC-PRC-014 | Q9, Q10, Q11 (own); Q5 and Q18 (inputs); Q22 with owner GATE (leader-confirmed) | 9 (10 if the link-check tool needs extra configuration) | None; no file overlap. Its citation checker is the M6 input. Before it starts AC-PRC-012, the child corrects that criterion's RED cell (audit defect B01). |
 | REDIR | SPEC-V3R6-DOCS-PREREWRITE-REDIR-001 | t1718 | REQ-PRC-010, REQ-PRC-011 | AC-PRC-010, AC-PRC-011 (AC-PRC-011 extended to the moai-mx pair under Q23) | Q15, Q16, Q21, Q23 | 5 | None. |
 | RESID | SPEC-V3R6-DOCS-PREREWRITE-RESID-001 | t1719 | REQ-PRC-005, REQ-PRC-006, REQ-PRC-007, REQ-PRC-008, REQ-PRC-009 | AC-PRC-005, AC-PRC-006, AC-PRC-007, AC-PRC-008, AC-PRC-009 | Q2, Q3, Q4, Q6, Q7, Q19 | 14 | None. Before any deletion, Q2's basis is corrected for the tracked historical report (audit B05, E-09b2). It splits into 3a (Q2, Q4, Q6, Q19) and 3b (Q3, Q7) if Q3 or Q7 is still open. |
 | README | SPEC-V3R6-DOCS-PREREWRITE-README-001 | t1720 | REQ-PRC-001 (README part), REQ-PRC-003, REQ-PRC-004 | AC-PRC-001 (README part), AC-PRC-003, AC-PRC-004 | Q1, Q8, Q13, Q17 | 13 | Recommended first. It shares ko files with SWEEPB, SWEEPC, SWEEPD, and FLAG, on different lines. |

@@ -6,7 +6,7 @@ plan_status: index-pending-leader-read
 plan_revision: 0.3.0
 plan_complete_at: 2026-10-14T12:04:44Z
 superseded_verdict: FAIL 0.56 at bdb7b764, iteration 3 (.moai/reports/t1655/plan-audit-verdict-iter3.md); route 2 by operator decision d-20261014T114834Z-e039. Earlier verdicts, both superseded: FAIL 0.56 at f35103480f, iteration 2 (.moai/reports/t1655/plan-audit-verdict-iter2.md); FAIL 0.63 at f35103480f, iteration 1 (.moai/reports/t1655/plan-audit-verdict.md).
-open_decisions: see decision-index.md. Q12 and Q22 (owner GATE, leader-confirmed, card:t1655, 2026-10-14) stay open in this index. Q20 and Q24 carry operator verdicts here. Every other row moved to its owning child, which carries its own empty Operator verdict. Planner defaults sit in the child rows and are provisional. Every open row blocks the autonomous Kickoff until an operator answers.
+open_decisions: see decision-index.md. Q12 stays open in this index. Q22 stays open, and has owner GATE (leader-confirmed), recorded for card:t1655 on 2026-10-14. Q20 and Q24 carry operator verdicts here. Every other row moved to its owning child, which carries its own empty Operator verdict. Planner defaults sit in the child rows and are provisional. Every open row blocks the autonomous Kickoff until an operator answers.
 
 The index (revision 0.3.0) is pending the leader's evidence read. No further parent audit round runs (operator decision d-20261014T114834Z-e039). The children carry their own plan audits. Run-phase work does not start on this revision.
 

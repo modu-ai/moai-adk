@@ -1,6 +1,6 @@
 # Decision Index — SPEC-V3R6-DOCS-PREREWRITE-CLEANUP-001
 
-Revision 0.3.0 (2026-10-14), route 2 (operator decision `d-20261014T114834Z-e039`). This index keeps the full rows Q12, Q20, Q22, and Q24. Q22 keeps its full row; its owner is GATE (leader-confirmed for card:t1655, 2026-10-14); the answer is not decided here. Every other row is a stub. A stub keeps the label, the class, and the fixed row shape, and names the child SPEC that owns the decision; the child's decision index carries the full row and its Operator verdict. The source text of every moved row is at commit bdb7b764, path `.moai/specs/SPEC-V3R6-DOCS-PREREWRITE-CLEANUP-001/decision-index.md`. Stub verdict lines are empty here by design: an answer written in this index is not a verdict for the owning child. No Operator verdict was written or changed in this revision.
+Revision 0.3.1 (2026-10-14), route 2 (operator decision `d-20261014T114834Z-e039`). This index keeps the full rows Q12, Q20, and Q24. The full Q22 row also stays here for reference; Q22 has owner GATE (leader-confirmed), recorded for card:t1655 on 2026-10-14; the answer is not decided here. Every other row is a stub. A stub keeps the label, the class, and the fixed row shape, and names the child SPEC that owns the decision; the child's decision index carries the full row and its Operator verdict. The source text of every moved row is at commit bdb7b764, path `.moai/specs/SPEC-V3R6-DOCS-PREREWRITE-CLEANUP-001/decision-index.md`. Stub verdict lines are empty here by design: an answer written in this index is not a verdict for the owning child. No Operator verdict was written or changed in this revision.
 
 Revision 0.2.2 (2026-10-14). Each row states one decision the operator does not settle in the interview. No row carries a recommendation.
 
@@ -10,7 +10,7 @@ Revision 0.2.1 corrects revision 0.2.0 under leader ruling `d-20261014T070143Z-7
 
 Revision 0.2.0 changes five things. It follows the umbrella split (decision Q20 = (c), `d-20261014T055241Z-1bc6`) and two later operator records (`d-20261014T060405Z-0fcd` and `d-20261014T061812Z-f5ca`):
 
-1. Every row carries a `Child:` line that names the child SPEC owning the decision. Q12 and Q22 are parent rows (operator-held). Q20 is the umbrella's own tier row.
+1. Every row carries a `Child:` line that names the child SPEC owning the decision. Q12 is a parent row (operator-held). Q22 has owner GATE (leader-confirmed), so its row names GATE. Q20 is the umbrella's own tier row.
 2. Q20 carries its operator verdict: (c), split into child SPECs with tier M kept.
 3. Q23 is new. It covers the moai-mx redirect pair in `docs-site/vercel.json` (lines 163 and 168), raised by the leader's B04 ruling and owned by the REDIR child.
 4. Q24 is new. It records the operator's verdict on N2: only narrative examples that carry an explicit example marker are exempt from the stale-citation check.
@@ -194,8 +194,8 @@ Label: FOUNDER
 Authority anchor: none in the committed tree
 Why unresolved: REQ-PRC-015 requires the three jobs to be required status checks on `main` (external), while the Out of Scope section excludes changing the branch protection of `main` (spec.md). The requirement and the exclusion conflict, and neither is decided here. Revision 0.2.0 places REQ-PRC-015 under an operator-held heading in spec.md; that placement is not the verdict, and the exclusion stays as written until Q22 is answered. The current required contexts are five (E-21). The options: (a) move the closure out of the requirements into an operator-held section, keeping the exclusion; (b) amend the exclusion to name this change as an operator-held action.
 Class: implementation-level (an external setting; keep-set)
-Child: GATE (SPEC-V3R6-DOCS-PREREWRITE-GATE-001), leader-confirmed (card:t1655, 2026-10-14); child-cards.md (preamble) named the parent before this confirmation (see the owner note below)
-Owner (revision 0.3.0; leader-confirmed for card:t1655 on 2026-10-14; this assignment does not decide the Q22 answer): GATE (SPEC-V3R6-DOCS-PREREWRITE-GATE-001). Reasoning: (1) REQ-PRC-015 requires the three jobs of REQ-PRC-012 to REQ-PRC-014 to be required checks, and GATE writes all three. (2) child-cards.md (GATE entry) and split-proposal §6 close REQ-PRC-015 after GATE's job names exist. (3) child-cards.md §5 names the parent for Q22, which does not satisfy decision e039 (open questions Q22, Q21, and Q7 are decided inside the owning child); so the child-cards.md row gives no child owner. Q12, whether the contexts are added, stays at the parent, as decision 0fcd and child-cards.md put it. The answer to Q22 is decided inside GATE (decision e039).
+Child: GATE (SPEC-V3R6-DOCS-PREREWRITE-GATE-001), owner GATE (leader-confirmed), recorded for card:t1655 on 2026-10-14. The earlier split note named the parent before this confirmation (Appendix A, note 1; see the owner note below)
+Owner (revision 0.3.0; this assignment does not decide the Q22 answer): Q22 has owner GATE (leader-confirmed), recorded for card:t1655 on 2026-10-14 (SPEC-V3R6-DOCS-PREREWRITE-GATE-001). Reasoning: (1) REQ-PRC-015 requires the three jobs of REQ-PRC-012 to REQ-PRC-014 to be required checks, and GATE writes all three. (2) Appendix A (GATE row; note 2) and split-proposal §6 close REQ-PRC-015 after GATE's job names exist. (3) The earlier split note placed Q22 at the parent (Appendix A, note 1), which does not satisfy decision e039: open questions Q22, Q21, and Q7 are decided inside the owning child, so the split note gives no child owner for Q22. Q12, whether the contexts are added, stays at the parent, as decision 0fcd and Appendix A, note 3, put it. The answer to Q22 is decided inside GATE (decision e039).
 Operator verdict:
 
 ### Q23: Are the two moai-mx redirect rules removed, or is REQ-PRC-011 amended to exempt the pair?
@@ -213,3 +213,28 @@ Why unresolved: the E-04 slash family also counts narrative and error examples: 
 Class: implementation-level
 Child: SWEEPE (applies the exemption; the marker definition is SWEEPE's, defect B03). The row stays here in full because its operator verdict is recorded here (decision 0fcd).
 Operator verdict: exempt only narrative examples that carry an explicit example marker; lines without a marker are fixed — operator, d-20261014T060405Z-0fcd (2026-10-14T06:04:05Z)
+
+## Appendix A: child SPEC list
+
+This is the child list of this index. The proposed child IDs and card IDs follow spec.md § Child SPECs, and the leader confirms the final child IDs. The precondition column gives each child's before-start condition in one line; where the split note states none, the cell says so.
+
+| TAG | Proposed child ID | Card | REQ | AC | Decision rows owned | Precondition |
+|-----|-------------------|------|-----|----|---------------------|--------------|
+| GATE | SPEC-V3R6-DOCS-PREREWRITE-GATE-001 | t1717 | REQ-PRC-002, REQ-PRC-012, REQ-PRC-013, REQ-PRC-014 | AC-PRC-002, AC-PRC-012, AC-PRC-013, AC-PRC-014 | Q9, Q10, Q11; Q22 with owner GATE (leader-confirmed); inputs Q5 and Q18 | Before starting, correct the RED cell of AC-PRC-012 (audit B01); the current cell cites E-16d, which is green. |
+| REDIR | SPEC-V3R6-DOCS-PREREWRITE-REDIR-001 | t1718 | REQ-PRC-010, REQ-PRC-011 | AC-PRC-010, AC-PRC-011 (extended to the moai-mx pair under Q23) | Q15, Q16, Q21, Q23 | Record the moai-mx pair decision row and its AC first; per audit B04, lines 163 and 168 of docs-site/vercel.json hide the existing moai-mx.md pages in the four locales. |
+| RESID | SPEC-V3R6-DOCS-PREREWRITE-RESID-001 | t1719 | REQ-PRC-005, REQ-PRC-006, REQ-PRC-007, REQ-PRC-008, REQ-PRC-009 | AC-PRC-005, AC-PRC-006, AC-PRC-007, AC-PRC-008, AC-PRC-009 | Q2, Q3, Q4, Q6, Q7, Q19 | Correct the Q2 basis to match the tracked historical report that references cg-mode-infographic (audit B05); add a REQ and AC for Q19 or exclude it; split into 3a (Q2, Q4, Q6, Q19) and 3b (Q3, Q7) if the Q3 or Q7 decision is late. |
+| README | SPEC-V3R6-DOCS-PREREWRITE-README-001 | t1720 | REQ-PRC-001 (README part), REQ-PRC-003, REQ-PRC-004 | AC-PRC-001 (README part), AC-PRC-003, AC-PRC-004 | Q1, Q8, Q13, Q17 | Set the badge values after decision Q8; the README flag lines are handled by FLAG. |
+| SWEEPA | SPEC-V3R6-DOCS-PREREWRITE-SWEEPA-001 | t1721 | REQ-PRC-001 (page part) | AC-PRC-001 (page part) | Q13, Q17 | None stated; its closing check runs after GATE (child 1). |
+| SWEEPB | SPEC-V3R6-DOCS-PREREWRITE-SWEEPB-001 | t1722 | REQ-PRC-001 (page part) | AC-PRC-001 (page part) | Q13, Q17 | None stated; landing after README (child 4) is recommended. |
+| SWEEPC | SPEC-V3R6-DOCS-PREREWRITE-SWEEPC-001 | t1723 | REQ-PRC-001 (page part) | AC-PRC-001 (page part) | Q13, Q17 | None stated; landing after README (child 4) is recommended. |
+| SWEEPD | SPEC-V3R6-DOCS-PREREWRITE-SWEEPD-001 | t1724 | REQ-PRC-001 (page part) | AC-PRC-001 (page part) | Q13, Q17 | None stated; landing after README (child 4) is recommended. |
+| SWEEPE | SPEC-V3R6-DOCS-PREREWRITE-SWEEPE-001 | t1725 | REQ-PRC-001 (page part) | AC-PRC-001 (page part) | Q13, Q17; Q24 (N2, decision 0fcd) | At start, check whether docs-site/content/en/getting-started/faq.md line 24 and docs-site/content/en/core-concepts/verification-claim-integrity.md line 84 carry an explicit example marker (Q24); lines without one are fixed. |
+| FLAG | SPEC-V3R6-DOCS-PREREWRITE-FLAG-001 | t1726 | new REQ, written by the child | new AC, written by the child | Q18 | Write the REQ and AC first; the add-to-help option of Q18 changes internal/ and cmd/, so choosing it needs a separate SPEC. |
+| SWEEPF | SPEC-V3R6-DOCS-PREREWRITE-SWEEPF-001 | t1727 | REQ-PRC-001 (page part) | AC-PRC-001 (page part) | Q13, Q14, Q17 | Confirm who edits _meta.yaml before starting; the structure curator is its single author. |
+
+Notes:
+
+1. The earlier split note placed Q22 at the parent, together with REQ-PRC-015 and Q12. Decision e039 moved the owner of Q22 to GATE: Q22 has owner GATE (leader-confirmed), and its answer is decided inside GATE.
+2. REQ-PRC-015 is closed by the parent after the three job names created by GATE exist.
+3. Q12 and Q20 have no child and stay at the parent. Q12 stays at the parent under decision 0fcd.
+4. Q13 is applied by README and by SWEEPA to SWEEPF, each to its own files. Q17 is cross-cutting: each child that changes locale files applies it to its own files.

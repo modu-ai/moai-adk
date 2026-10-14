@@ -27,7 +27,7 @@ Revisions 0.1.0 to 0.2.1 measured at f35103480f. Revision 0.2.2 re-measured the 
 | AC | REQ | Gate (decision rows) | Class | Ledger entries | Owner child |
 |----|-----|----------------------|-------|----------------|-------------|
 | AC-PRC-001 | REQ-PRC-001 | Q13, Q14, Q17, Q24; producer (GATE) | release-blocking (gated); closes at this index through the partial criteria | E-01, E-02, E-03, E-04 (E-06, E-07 verification) | README (t1720); SWEEPA (t1721), SWEEPB (t1722), SWEEPC (t1723), SWEEPD (t1724), SWEEPE (t1725), SWEEPF (t1727), through partial criteria; closing: this index |
-| AC-PRC-002 | REQ-PRC-002 | producer inputs (Q5, Q18); Q12, Q22 if required | release-blocking (gated) | E-28 | GATE (t1717) |
+| AC-PRC-002 | REQ-PRC-002 | producer inputs (Q5, Q18); Q12 if required; Q22 if required, with owner GATE (leader-confirmed) | release-blocking (gated) | E-28 | GATE (t1717) |
 | AC-PRC-003 | REQ-PRC-003 | Q8 | regression-guard | E-20a, E-20b, E-20c | README (t1720) |
 | AC-PRC-004 | REQ-PRC-004 | Q1 | release-blocking (gated) | E-08, E-08b | README (t1720) |
 | AC-PRC-005 | REQ-PRC-005 | Q2 | release-blocking (gated) | E-09a (RED-now); E-09b (done state), E-09b2, E-09c (observations) | RESID (t1719) |
@@ -40,7 +40,7 @@ Revisions 0.1.0 to 0.2.1 measured at f35103480f. Revision 0.2.2 re-measured the 
 | AC-PRC-012 | REQ-PRC-012 | Q9 | release-blocking (gated); not counted at this index until the child corrects its RED cell | E-16a, E-16e (RED-now); E-16d (precondition); E-21 (external) | GATE (t1717) |
 | AC-PRC-013 | REQ-PRC-013 | Q10 | release-blocking (gated) | E-19a (RED-now); E-17a, E-17b, E-19b (precondition) | GATE (t1717) |
 | AC-PRC-014 | REQ-PRC-014 | Q11 | release-blocking (gated) | E-18a (RED-now); E-18b (precondition) | GATE (t1717) |
-| AC-PRC-015 | REQ-PRC-015 | Q12, Q22 | regression-guard | E-21 (external) | this index (operator-held) |
+| AC-PRC-015 | REQ-PRC-015 | Q12; Q22, with owner GATE (leader-confirmed) | regression-guard | E-21 (external) | this index (operator-held) |
 
 ## B. Acceptance criteria
 
@@ -108,13 +108,13 @@ Owner: GATE (SPEC-V3R6-DOCS-PREREWRITE-GATE-001), criterion AC-PRC-014. RED-now 
 
 ### AC-PRC-015 — the three jobs are required status checks (REQ-PRC-015) — regression-guard
 
-Owner: parent (SPEC-V3R6-DOCS-PREREWRITE-CLEANUP-001), operator-held (Q12, Q22)
+Owner: parent (SPEC-V3R6-DOCS-PREREWRITE-CLEANUP-001), operator-held (Q12). Q22 has owner GATE (leader-confirmed)
 
 - Given the five required contexts of `main` do not include the three jobs (E-21, external), and enforce_admins is enabled (E-21).
 - When the operator adds the job names as required contexts (Q12, with Q22 deciding the requirement's place), then the external observation lists them.
 - RED-now cell (external): E-21.
-- Class: regression-guard (operator-held, Q22). Reason: branch protection is external and operator-held (keep-set); the repository cannot observe it (verification-completeness §2.1). The observation is recorded with its time, not counted as a pass, and the Out of Scope exclusion conflicts with the requirement until Q22 is answered.
-- Gate: Q12, Q22.
+- Class: regression-guard (operator-held external action). Q22 has owner GATE (leader-confirmed). Reason: branch protection is external and operator-held (keep-set); the repository cannot observe it (verification-completeness §2.1). The observation is recorded with its time, not counted as a pass, and the Out of Scope exclusion conflicts with the requirement until Q22 is answered.
+- Gate: Q12; Q22, with owner GATE (leader-confirmed).
 - Done when (guard): the external observation at closing lists the job names exactly as the workflow job names, recorded with its UTC time.
 
 ## C. Evidence ledger (verbatim)
@@ -1021,7 +1021,7 @@ Completion verdict. This index closes only after every child SPEC has landed and
 | AC-PRC-012 | REQ-PRC-012 | GATE (t1717) | release-blocking (gated) | GATE's AC-PRC-012 at its commit SHA, after the RED-cell correction | not counted until then (defect B01) |
 | AC-PRC-013 | REQ-PRC-013 | GATE (t1717) | release-blocking (gated) | GATE's AC-PRC-013 at its commit SHA | — |
 | AC-PRC-014 | REQ-PRC-014 | GATE (t1717) | release-blocking (gated) | GATE's AC-PRC-014 at its commit SHA | — |
-| AC-PRC-015 | REQ-PRC-015 | this index (operator-held; Q12, Q22) | regression-guard (operator-held) | kept in this index | the external observation lists the job names, recorded with its time; a missing observation is a gap, not a pass |
+| AC-PRC-015 | REQ-PRC-015 | this index (operator-held for Q12); Q22 has owner GATE (leader-confirmed) | regression-guard (operator-held) | kept in this index | the external observation lists the job names, recorded with its time; a missing observation is a gap, not a pass |
 
 ## E. Test named, not run
 
@@ -1053,4 +1053,4 @@ The fixture definitions of revision 0.1.1 (commit d2932a0555, plan.md: the produ
 - G19 — Zero-match exit codes are confirmed with a measurement wrapper outside the cell only where marked `wrapper-confirmed`; the other zero-match entries show `no output`.
 - G20 — The Q7 regenerate branch has no generator in the tree. The verdict's section 5, item 8 reports the same finding; it was not re-measured in revision 0.1.1.
 - G21 — Child SPEC content is written by the lanes that hold the child cards, and it is not observed in revision 0.3.0; no child spec.md, plan.md, or acceptance.md exists yet, so no child criterion is imported at this revision.
-- G22 — The owner of Q22 is GATE, leader-confirmed (card:t1655, 2026-10-14). child-cards.md §5 names the parent for Q22, and operator decision `d-20261014T114834Z-e039` requires an owning child. Q22 stays open and undecided in this index; the owner is GATE (leader-confirmed).
+- G22 — Q22 has owner GATE (leader-confirmed), recorded for card:t1655 on 2026-10-14. The earlier split note placed Q22 at the parent (decision-index.md Appendix A, note 1), and operator decision `d-20261014T114834Z-e039` requires an owning child and moves the owner to GATE. Q22 stays open and undecided; its answer is not decided here.
