@@ -88,15 +88,58 @@ func RenderTierPermissions(projectSettingsPath, userSettingsPath, defaultMode st
 	if err := renderIntoFile(projectSettingsPath, projectBlock); err != nil {
 		return nil, fmt.Errorf("PROJECT scope render: %w", err)
 	}
+	// Record what this render generated BEFORE the next classification reads
+	// it — without this write, an allow entry later removed from the document
+	// would count as user-added and persist forever (revoked permission
+	// resurrection; card t1630 card-review P1).
+	if err := persistManagedAllowRecord(projectSettingsPath, full.Allow); err != nil {
+		return nil, fmt.Errorf("persist managed-allow record: %w", err)
+	}
 
 	return &TierRenderResult{UserPath: userSettingsPath, ProjectPath: projectSettingsPath}, nil
 }
 
-// managedAllowRecord mirrors the optional sidecar record at
+// managedAllowRecordPath derives the sidecar record path from the project
+// settings path: <project>/.claude/settings.json names the project root two
+// levels up, so the record lives at
+// <projectRoot>/.moai/state/tool-policy/managed-allow.json. Read and write
+// sides share this one derivation.
+func managedAllowRecordPath(projectSettingsPath string) string {
+	root := filepath.Dir(filepath.Dir(projectSettingsPath))
+	return filepath.Join(root, ".moai", "state", "tool-policy", "managed-allow.json")
+}
+
+// persistManagedAllowRecord overwrites the sidecar record with the managed
+// allow list a render just generated (creating the directory and file when
+// absent). It runs only after the PROJECT-scope render succeeded — a failed
+// or skipped render never touches the record. A failure here fails the render:
+// a stale record would misclassify entries at the next render.
+func persistManagedAllowRecord(projectSettingsPath string, generated []string) error {
+	entries := generated
+	if entries == nil {
+		entries = []string{}
+	}
+	out, err := json.MarshalIndent(managedAllowRecord{LastGenerated: entries}, "", "  ")
+	if err != nil {
+		return fmt.Errorf("encode managed-allow record: %w", err)
+	}
+	path := managedAllowRecordPath(projectSettingsPath)
+	if err := os.MkdirAll(filepath.Dir(path), 0o755); err != nil {
+		return fmt.Errorf("create managed-allow record dir: %w", err)
+	}
+	if err := atomicfile.Write(path, out, defs.FilePerm); err != nil {
+		return fmt.Errorf("write managed-allow record: %w", err)
+	}
+	return nil
+}
+
+// managedAllowRecord mirrors the sidecar record at
 // <projectRoot>/.moai/state/tool-policy/managed-allow.json, which carries the
 // managed allow list last generated into the project file
 // (SPEC-USER-SETTINGS-PROTECT-001 decision Q5; detection pinned in
-// progress.md §G, G-20).
+// progress.md §G, G-20). RenderTierPermissions rewrites it after every
+// successful PROJECT-scope render (persistManagedAllowRecord); the union
+// classification reads the PREVIOUS render's record before the overwrite.
 type managedAllowRecord struct {
 	LastGenerated []string `json:"last_generated"`
 }
@@ -128,8 +171,7 @@ func mergeProjectAllow(projectSettingsPath string, regenerated []string) []strin
 	}
 
 	lastGenerated := map[string]bool{}
-	root := filepath.Dir(filepath.Dir(projectSettingsPath))
-	if recBody, recErr := os.ReadFile(filepath.Join(root, ".moai", "state", "tool-policy", "managed-allow.json")); recErr == nil {
+	if recBody, recErr := os.ReadFile(managedAllowRecordPath(projectSettingsPath)); recErr == nil {
 		var rec managedAllowRecord
 		if json.Unmarshal(recBody, &rec) == nil {
 			for _, entry := range rec.LastGenerated {
