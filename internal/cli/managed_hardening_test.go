@@ -520,7 +520,7 @@ var hardenResultSchemas = map[string]string{
 // carry only internal "#/definitions" references, so no loader is needed.
 func hardenCompileSchema(t *testing.T, file string) *jsonschema.Schema {
 	t.Helper()
-	raw, err := os.ReadFile(filepath.Join("testdata", "codex-0.161.0", file))
+	raw, err := os.ReadFile(filepath.Join("testdata", "codex-0.162.1", file))
 	if err != nil {
 		t.Fatalf("read vendored schema %s: %v", file, err)
 	}
@@ -530,7 +530,7 @@ func hardenCompileSchema(t *testing.T, file string) *jsonschema.Schema {
 	}
 	compiler := jsonschema.NewCompiler()
 	compiler.DefaultDraft(jsonschema.Draft7)
-	url := "https://moai.invalid/codex-0.161.0/" + file
+	url := "https://moai.invalid/codex-0.162.1/" + file
 	if err := compiler.AddResource(url, doc); err != nil {
 		t.Fatalf("add vendored schema %s: %v", file, err)
 	}

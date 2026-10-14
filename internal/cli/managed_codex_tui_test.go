@@ -78,8 +78,8 @@ const (
 	// tuiQuiet is the "exactly once / nothing happens" window.
 	tuiQuiet = 500 * time.Millisecond
 	// tuiResumeHelpFixture is the vendored `codex resume --help` text of
-	// codex-cli 0.161.0.
-	tuiResumeHelpFixture = "testdata/codex-0.161.0/resume-help.txt"
+	// codex-cli 0.162.1 (byte-identical to the 0.161.0 capture).
+	tuiResumeHelpFixture = "testdata/codex-0.162.1/resume-help.txt"
 )
 
 // ---------------------------------------------------------------- fake codex
