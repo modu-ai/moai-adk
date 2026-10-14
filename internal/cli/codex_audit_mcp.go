@@ -61,6 +61,7 @@ type codexRoleAuditJob struct {
 	result    codexAuditResult
 	output    bytes.Buffer // the role's text when no destination was named
 	diag      bytes.Buffer // launcher diagnostics
+	cancel    context.CancelFunc
 }
 
 // lockedWriter serializes writes from the job goroutine against readers.
@@ -79,6 +80,28 @@ var (
 	codexRoleAuditJobsMu sync.Mutex
 	codexRoleAuditJobs   = map[string]*codexRoleAuditJob{}
 )
+
+// codexRoleAuditJobTTL bounds how long a terminal role-audit record stays in
+// the in-process map (REQ-MN-014: registries prune by TTL). Terminal records
+// past the TTL are dead weight no status/result can serve.
+const codexRoleAuditJobTTL = 24 * time.Hour
+
+// pruneCodexRoleAuditJobs drops terminal records older than the TTL. Called
+// on every new launch — a write-side prune keeps the map bounded without a
+// timer goroutine.
+func pruneCodexRoleAuditJobs(now time.Time) {
+	codexRoleAuditJobsMu.Lock()
+	defer codexRoleAuditJobsMu.Unlock()
+	for id, job := range codexRoleAuditJobs {
+		job.mu.Lock()
+		terminal := job.state == codexRoleAuditCompleted || job.state == codexRoleAuditFailed
+		ended := job.endedAt
+		job.mu.Unlock()
+		if terminal && !ended.IsZero() && now.Sub(ended) > codexRoleAuditJobTTL {
+			delete(codexRoleAuditJobs, id)
+		}
+	}
+}
 
 // handleCodexRoleAudit validates synchronously, then runs the audit in the
 // background and returns its job id.
@@ -106,6 +129,7 @@ func handleCodexRoleAudit(ctx context.Context, req mcp.CallToolRequest) (*mcp.Ca
 	if err != nil {
 		return toolErr(codexRoleAuditToolName, err), nil
 	}
+	pruneCodexRoleAuditJobs(codexAuditNow().UTC())
 	job := &codexRoleAuditJob{id: id, role: role, state: codexRoleAuditRunning, startedAt: codexAuditNow().UTC()}
 	plan := prepareCodexAudit(ctx, codexAuditRequest{
 		Role: role, ProjectRoot: top, Root: root, Out: out,
@@ -119,8 +143,14 @@ func handleCodexRoleAudit(ctx context.Context, req mcp.CallToolRequest) (*mcp.Ca
 	codexRoleAuditJobsMu.Lock()
 	codexRoleAuditJobs[id] = job
 	codexRoleAuditJobsMu.Unlock()
+	// REQ-MN-014: the audit runs under the SERVER's lifetime — the cancelable
+	// context detaches from the request (WithoutCancel) so the handler's
+	// return does not kill a minutes-long audit, while the stored cancel lets
+	// the shutdown pass and codex_role_audit_cancel end it.
+	jobCtx, cancel := context.WithCancel(context.WithoutCancel(ctx))
+	job.cancel = cancel
 	go func() {
-		res := plan.run(context.Background())
+		res := plan.run(jobCtx)
 		job.mu.Lock()
 		defer job.mu.Unlock()
 		job.result = res
@@ -215,5 +245,60 @@ func codexRoleAuditTools() []struct {
 			jobArg,
 			mcp.WithReadOnlyHintAnnotation(true),
 		), handleCodexRoleAuditResult},
+		{mcp.NewTool(codexRoleAuditCancelToolName,
+			mcp.WithDescription("Stop a running codex_role_audit job: cancels the context its launcher runs under, so the read-only codex exec process ends inside the launcher's own bound. An already-terminal job returns its state and cancels nothing; a job this server lifetime did not start is refused rather than cancelled."),
+			jobArg,
+			mcp.WithReadOnlyHintAnnotation(false),
+		), handleCodexRoleAuditCancel},
 	}
+}
+
+// codexRoleAuditCancelToolName is the REQ-MN-014 cancel surface for the
+// role-audit family.
+const codexRoleAuditCancelToolName = "codex_role_audit_cancel"
+
+// stopCodexRoleAuditJobs cancels every RUNNING role-audit job — the
+// server-exit half of REQ-MN-014's job-lifetime contract (a minutes-long
+// audit is bounded by the SERVER's lifetime, so the shutdown pass ends it
+// instead of orphaning the read-only process).
+func stopCodexRoleAuditJobs() {
+	codexRoleAuditJobsMu.Lock()
+	defer codexRoleAuditJobsMu.Unlock()
+	for _, job := range codexRoleAuditJobs {
+		if job.cancel == nil {
+			continue
+		}
+		job.mu.Lock()
+		terminal := job.state == codexRoleAuditCompleted || job.state == codexRoleAuditFailed
+		job.mu.Unlock()
+		if !terminal {
+			job.cancel()
+		}
+	}
+}
+
+// handleCodexRoleAuditCancel stops a running role-audit job by revoking the
+// context its launcher runs under (REQ-MN-014). An already-terminal job
+// reports its state and cancels nothing; an unknown job is refused — jobs
+// live only in the server process that started them.
+func handleCodexRoleAuditCancel(_ context.Context, req mcp.CallToolRequest) (*mcp.CallToolResult, error) {
+	job, errRes := codexRoleAuditLookup(codexRoleAuditCancelToolName, req)
+	if errRes != nil {
+		return errRes, nil
+	}
+	job.mu.Lock()
+	defer job.mu.Unlock()
+	if job.cancel == nil {
+		return toolErr(codexRoleAuditCancelToolName, fmt.Errorf("job %s carries no cancel handle (a previous server lifetime)", job.id)), nil
+	}
+	if job.state == codexRoleAuditCompleted || job.state == codexRoleAuditFailed {
+		return toolJSON(codexRoleAuditCancelToolName, map[string]any{
+			"job_id": job.id, "state": job.state, "cancel_sent": false,
+			"note": "already terminal; nothing to cancel",
+		}), nil
+	}
+	job.cancel()
+	return toolJSON(codexRoleAuditCancelToolName, map[string]any{
+		"job_id": job.id, "state": job.state, "cancel_sent": true,
+	}), nil
 }

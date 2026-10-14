@@ -20,8 +20,10 @@ package cli
 import (
 	"encoding/json"
 	"os"
+	"os/exec"
 	"path/filepath"
 	"strconv"
+	"strings"
 	"time"
 
 	"github.com/modu-ai/moai-adk/pkg/version"
@@ -46,6 +48,11 @@ type mcpServerRuntimeRecord struct {
 // a project. Empty projectDir yields an empty path (caller skips the write).
 func mcpServerRuntimeDir(projectDir string) string {
 	if projectDir == "" {
+		return ""
+	}
+	// REQ-MN-015: the stamp must not CREATE a .moai tree in an arbitrary cwd —
+	// a directory that is not already a moai project has no record to write.
+	if info, err := os.Stat(filepath.Join(projectDir, ".moai")); err != nil || !info.IsDir() {
 		return ""
 	}
 	return filepath.Join(projectDir, ".moai", "state", "mcp-server")
@@ -102,6 +109,55 @@ func removeMCPServerRuntimeRecord(path string) {
 		return
 	}
 	_ = os.Remove(path)
+}
+
+// ─── per-call staleness (SPEC-MCP-NEUTRALITY-001 REQ-MN-013) ──────────────────
+
+// serverStaleness compares the EXECUTABLE SERVING this call against the
+// installed `moai` binary on PATH: a different file (size or mtime moved) is
+// the post-reinstall skew — the serving process keeps running the old build
+// while the host's next spawn would use the new one. The check is INERT when
+// the serving executable is not a moai binary (the test process), so test
+// binaries never read as stale.
+type serverStaleness struct {
+	Stale     bool   `json:"stale_server"`
+	Serving   string `json:"serving"`
+	Installed string `json:"installed"`
+	Version   string `json:"version"`
+	Commit    string `json:"commit"`
+}
+
+func serverStalenessInfo() serverStaleness {
+	info := serverStaleness{Version: version.GetVersion(), Commit: version.GetCommit()}
+	serving, err := os.Executable()
+	if err != nil {
+		return info
+	}
+	if base := filepath.Base(serving); !strings.HasPrefix(base, "moai") {
+		// The test binary (or any non-moai executable) never reads as stale.
+		return info
+	}
+	info.Serving = serving
+	installed, err := exec.LookPath("moai")
+	if err != nil {
+		return info
+	}
+	if resolved, err := filepath.EvalSymlinks(installed); err == nil {
+		installed = resolved
+	}
+	info.Installed = installed
+	servingStat, err1 := os.Stat(serving)
+	installedStat, err2 := os.Stat(installed)
+	if err1 != nil || err2 != nil {
+		return info
+	}
+	if os.SameFile(servingStat, installedStat) &&
+		servingStat.Size() == installedStat.Size() &&
+		servingStat.ModTime().Equal(installedStat.ModTime()) {
+		return info
+	}
+	info.Stale = true
+	return info
 }
 
 // readMCPServerRuntimeRecords returns every parseable record in the project's

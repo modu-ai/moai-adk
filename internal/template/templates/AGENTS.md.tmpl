@@ -369,3 +369,22 @@ project language and runs its standard toolchain, skipping missing tools gracefu
 
 <!-- moai:learned-start -->
 <!-- moai:learned-end -->
+
+## 14. MCP Server Reconnect (staleness)
+
+The self-hosted `moai` MCP server keeps serving the build it started with; a
+reinstall moves the installed binary without restarting the server. Every tool
+result on a stale server carries the reconnect guidance (write-capable tools
+refuse until reconnected; read tools annotate `stale_server: true` and the
+`_server {version, commit}` block).
+
+Reconnect procedure per harness:
+- Claude Code: end the host session (or `/mcp` → reconnect the moai server) so
+  the host respawns `moai mcp-server` from the installed binary; then re-read
+  `tools/list` before using new tools.
+- Codex: end the codex session so its configured `mcp_servers.moai` child
+  respawns; a managed Factory session ends with the lane.
+- Any generic MCP client: close and re-open the stdio transport.
+
+`moai doctor` compares every live server record against the installed binary
+and is the operator-level check for the same skew.

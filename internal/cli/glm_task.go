@@ -66,6 +66,23 @@ const (
 // the case the cancel path refuses rather than acts on.
 var glmLiveJobs sync.Map // job id (string) → context.CancelFunc
 
+// glmBackgroundJobs joins the server's shutdown pass: the server exit waits
+// for the cancelled background goroutines to observe their revocation and
+// write their terminal records (SPEC-MCP-NEUTRALITY-001 REQ-MN-014).
+var glmBackgroundJobs sync.WaitGroup
+
+// stopGLMBackgroundJobs cancels every RUNNING background GLM job and joins
+// the goroutines — the server-exit half of REQ-MN-014's job-lifetime contract
+// (a background job is bounded by the SERVER's lifetime, so the server's
+// shutdown pass cancels it).
+func stopGLMBackgroundJobs() {
+	glmLiveJobs.Range(func(_, value any) bool {
+		value.(context.CancelFunc)()
+		return true
+	})
+	glmBackgroundJobs.Wait()
+}
+
 // glmTaskHTTPClient is the task-path HTTP seam. It deliberately carries NO
 // client Timeout (Timeout 0 = unbounded): DefaultGLMTaskTimeout is the sole
 // wall-clock bound on a glm_task call and is enforced through the request
@@ -243,7 +260,11 @@ func handleGLMTask(ctx context.Context, req mcp.CallToolRequest) (*mcp.CallToolR
 		return toolErr(glmTaskToolName, err), nil
 	}
 
-	go runGLMBackgroundJob(jobCtx, cancel, registry, rec.ID, key, model, prompt, system, maxTokens)
+	glmBackgroundJobs.Add(1)
+	go func() {
+		defer glmBackgroundJobs.Done()
+		runGLMBackgroundJob(jobCtx, cancel, registry, rec.ID, key, model, prompt, system, maxTokens)
+	}()
 
 	result.Status = glmJobStatusRunning
 	result.JobID = rec.ID

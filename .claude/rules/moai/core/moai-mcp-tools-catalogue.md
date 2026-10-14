@@ -1,5 +1,5 @@
 ---
-description: "Detail companion for moai-mcp-tools.md — the full 49-tool moai MCP catalogue with per-family tables, consumers, and CLI equivalents"
+description: "Detail companion for moai-mcp-tools.md — the full 50-tool moai MCP catalogue with per-family tables, consumers, and CLI equivalents"
 paths: "**/moai-mcp-tools.md,**/internal/cli/mcp_server.go,**/.claude/agents/moai/*.md"
 ---
 
@@ -7,11 +7,11 @@ paths: "**/moai-mcp-tools.md,**/internal/cli/mcp_server.go,**/.claude/agents/moa
 
 > Detail companion of `moai-mcp-tools.md` (the always-loaded stub). The stub owns the
 > MCP-over-CLI preference rule, the family index, and the unwired-by-design note. This file owns
-> the per-tool catalogue: purpose, wired consumer, and CLI equivalent for each of the 49 tools.
+> the per-tool catalogue: purpose, wired consumer, and CLI equivalent for each of the 50 tools.
 > Load it when wiring a tool into an agent's `tools:` list, or when choosing between an MCP tool
 > and its Bash equivalent for a specific capability.
 
-## Tool catalogue (49 tools)
+## Tool catalogue (50 tools)
 
 ### SPEC lifecycle
 
@@ -133,6 +133,7 @@ a hard error.
 | `mcp__moai__codex_role_audit` | Start a read-only contract role as one top-level `codex exec` process (read-only sandbox, every MCP server disabled); returns a job id at once | a Codex session | none — a Codex session's shell cannot reach the model from a nested `codex exec` |
 | `mcp__moai__codex_role_audit_status` | Read a role job's state and timestamps | a Codex session | — |
 | `mcp__moai__codex_role_audit_result` | Read a finished role job's exit code, returned text or verdict path, and launch record path | a Codex session | — |
+| `mcp__moai__codex_role_audit_cancel` | Stop a running role-audit job by revoking its launcher context | a Codex session | — |
 
 On Codex, `spawn_agent` gives a subagent the parent session's sandbox, so a
 read-only role started that way could write. This family starts it as its own
@@ -250,7 +251,7 @@ Classification: Lazy companion — catalogue tables and per-family guidance only
 stays in `moai-mcp-tools.md`. Update this file whenever a tool is added, removed, or renamed on the
 `moai mcp-server` (the Go producer lives in `internal/cli/mcp_server.go`).
 
-## Tool families (44 of the 49 tools; the session-messaging family follows below)
+## Tool families (44 of the 50 tools; the session-messaging family follows below)
 
 | Family | Tools | Wired consumers |
 |---|---|---|
@@ -303,7 +304,7 @@ producer lives in `internal/cli/mcp_server.go`).
 ### moai-mcp Tool Catalogue
 
 
-> Single source of truth for the 49 tools exposed by the self-hosted `moai` MCP
+> Single source of truth for the 50 tools exposed by the self-hosted `moai` MCP
 > server (`.mcp.json` → `{command: "moai", args: ["mcp-server"]}`). Each tool is
 > prefixed `mcp__moai__` at the call site. This rule tells agents and the
 > orchestrator WHEN to prefer an MCP tool over its CLI/slash equivalent.
@@ -362,6 +363,6 @@ opinions about the same tree.
 
 
 `moai-mcp-tools-catalogue.md` — the lazy companion. Load it for § Tool catalogue
-(49 tools) · § Tool families (the family-to-consumer map) · § Session messaging
+(50 tools) · § Tool families (the family-to-consumer map) · § Session messaging
 broker (Claude ↔ Codex) · § Unwired-by-design (why `goal_arm` reaches no agent).
 

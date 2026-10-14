@@ -72,6 +72,10 @@ var moaiMCPTools = []ToolDef{
 	{Name: "codex_role_audit", WriteCapable: true},
 	{Name: "codex_role_audit_status", WriteCapable: false},
 	{Name: "codex_role_audit_result", WriteCapable: false},
+	// codex_role_audit_cancel joins with SPEC-MCP-NEUTRALITY-001 REQ-MN-014:
+	// a role-audit job is bounded by the SERVER's lifetime, so the explicit
+	// cancel surface exists (the shutdown pass is its server-exit half).
+	{Name: "codex_role_audit_cancel", WriteCapable: true},
 	{Name: "glm_task", WriteCapable: true},
 	{Name: "glm_job_status", WriteCapable: false},
 	{Name: "glm_job_result", WriteCapable: false},
@@ -156,4 +160,19 @@ func HasTool(name string) bool {
 		}
 	}
 	return false
+}
+
+// IsWriteCapable reports whether name carries a write-capable catalogue row
+// (SPEC-MCP-NEUTRALITY-001 REQ-MN-013): the server's staleness guard refuses
+// write-capable tools while the serving build is stale. A catalogue-absent
+// name reads as write-capable — the fail-closed direction (the registration
+// gate already refuses absent names, so this branch is unreachable through
+// the wired surface).
+func IsWriteCapable(name string) bool {
+	for _, t := range moaiMCPTools {
+		if t.Name == name {
+			return t.WriteCapable
+		}
+	}
+	return true
 }

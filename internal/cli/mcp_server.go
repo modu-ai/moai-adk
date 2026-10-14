@@ -131,18 +131,28 @@ func runMCPServerWithIOAndExposure(stdin io.Reader, stdout io.Writer, exposure s
 		_ = admissionLock.Release()
 		return err
 	}
-	// Stamp this process's build identity so `moai doctor` can detect a host
-	// still talking to a previously-installed build (mcp_server_runtime.go).
-	// Best-effort by contract: a failed stamp never blocks serving.
+	// REQ-MN-015: the runtime stamp is BEST-EFFORT — a failed stamp (a
+	// read-only state dir, a non-project cwd) never blocks serving. The
+	// pre-fix code returned here, which made a read-only project unable to
+	// start the server at all.
 	if recordPath, err := writeMCPServerRuntimeRecord(projectDir); err == nil {
 		defer removeMCPServerRuntimeRecord(recordPath)
 		_ = admissionLock.Release()
 	} else {
 		_ = admissionLock.Release()
-		return fmt.Errorf("register MCP runtime before serving: %w", err)
 	}
 	s := newMoaiMCPServerWithExposure(exposure)
-	defer stopCodexBackgroundJobs()
+	// REQ-MN-015: the call log binds to the serving project — the server run
+	// is the only writer; direct-construction tests leave it nil (disabled).
+	mcpCallLog = newMCPCallLogWriter()
+	// REQ-MN-014: the shutdown pass cancels every background job family —
+	// codex background jobs, GLM jobs, role-audit jobs — so nothing outlives
+	// the server that started it.
+	defer func() {
+		stopCodexBackgroundJobs()
+		stopGLMBackgroundJobs()
+		stopCodexRoleAuditJobs()
+	}()
 	// ServeStdio waits for in-flight tool workers on EOF before cancelling its
 	// internal context. A worker stalled in an app-server handshake would keep
 	// that wait (and our shutdown cleanup) blocked. Cancel on EOF before waiting.
@@ -246,6 +256,41 @@ func moaiMCPServerInstructions() string {
 // (design.md §3). Each tool declares its JSON Schema (REQ-MCP-004) and registers
 // a thin-wrapper handler that calls the verified internal/ integration point
 // (REQ-MCP-005). Read-only tools carry the read-only hint annotation (§G.2).
+// mcpStalenessGuard wraps one handler with the REQ-MN-013 per-call staleness
+// contract: a WRITE-CAPABLE tool refuses while the serving build is stale,
+// and every STALE result carries the reconnect guidance plus the stale_server
+// and _server markers. Fresh results pass through untouched.
+func mcpStalenessGuard(name string, handler server.ToolHandlerFunc) server.ToolHandlerFunc {
+	return func(ctx context.Context, req mcp.CallToolRequest) (*mcp.CallToolResult, error) {
+		info := serverStalenessInfo()
+		if !info.Stale {
+			return handler(ctx, req)
+		}
+		guidance := fmt.Sprintf(
+			"stale_server: the serving moai build (%s) differs from the installed build (%s) — reconnect the moai MCP server (restart the host session) so the installed build serves",
+			info.Serving, info.Installed)
+		if mcpcat.IsWriteCapable(name) {
+			return toolErr(name, fmt.Errorf("the serving moai build is stale — %s", guidance)), nil
+		}
+		res, err := handler(ctx, req)
+		if err != nil || res == nil {
+			return res, err
+		}
+		if res.StructuredContent != nil {
+			if body, mErr := json.Marshal(res.StructuredContent); mErr == nil {
+				var obj map[string]any
+				if uErr := json.Unmarshal(body, &obj); uErr == nil && obj != nil {
+					obj["stale_server"] = true
+					obj["_server"] = map[string]any{"version": info.Version, "commit": info.Commit}
+					res.StructuredContent = obj
+				}
+			}
+		}
+		res.Content = append(res.Content, mcp.TextContent{Type: "text", Text: guidance})
+		return res, nil
+	}
+}
+
 // mcpCatalogueGate is the fail-closed check every registration runs
 // (SPEC-MCP-NEUTRALITY-001 REQ-MN-006): the enablement map is catalogue-seeded,
 // so a registered name absent from the catalogue gets no enablement key and
@@ -338,8 +383,19 @@ func registerMoaiMCPToolsWithExposure(s *server.MCPServer, projectDir, exposure 
 			noDestructive := false
 			tool.Annotations.DestructiveHint = &noDestructive
 		}
+		// REQ-MN-015: one row per tool call into the rotated call log — tool,
+		// duration, and the refused/error classification (M1's refused
+		// marking reused). The log write is best-effort and never blocks the
+		// result.
+		started := time.Now()
+		wrapped := mcpStalenessGuard(name, handler)
+		logged := func(ctx context.Context, req mcp.CallToolRequest) (*mcp.CallToolResult, error) {
+			res, err := wrapped(ctx, req)
+			mcpCallLog.record(name, time.Since(started), res, err)
+			return res, err
+		}
 		if enabled[name] {
-			s.AddTool(tool, handler)
+			s.AddTool(tool, logged)
 		}
 	}
 

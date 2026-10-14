@@ -170,13 +170,25 @@ func TestClaudeAudit_UsesSubscriptionReadOnlyCLIAndLiteralData_AC_CLA_003_004_00
 		t.Errorf("untrusted-diff instruction missing from stdin: %q", string(runner.auditStdin))
 	}
 	for _, env := range [][]string{runner.authEnv, runner.auditEnv} {
-		for _, forbidden := range []string{"ANTHROPIC_BASE_URL", "ANTHROPIC_AUTH_TOKEN", "ANTHROPIC_MODEL", "Z_AI_API_KEY", "MOAI_BACKUP_AUTH_TOKEN", "MOAI_LAUNCH_PROVIDER", "CLAUDECODE", "CLAUDE_CODE_FUTURE_ROUTING", "CLAUDE_CODE_SESSION_ID"} {
+		for _, forbidden := range []string{"ANTHROPIC_BASE_URL", "ANTHROPIC_AUTH_TOKEN", "ANTHROPIC_MODEL", "Z_AI_API_KEY", "MOAI_BACKUP_AUTH_TOKEN", "MOAI_LAUNCH_PROVIDER", "CLAUDECODE", "CLAUDE_CODE_FUTURE_ROUTING", "CLAUDE_CODE_SESSION_ID", "KEEP=value"} {
 			if envHasKey(env, forbidden) {
-				t.Errorf("forbidden env %s survived scrub: %v", forbidden, env)
+				t.Errorf("forbidden env %s survived the allowlist: %v", forbidden, env)
 			}
 		}
-		if !slices.Contains(env, "PATH=/usr/bin:/bin") || !slices.Contains(env, "KEEP=value") {
-			t.Errorf("safe env was not preserved: %v", env)
+		// SPEC-MCP-NEUTRALITY-001 REQ-MN-012: the child env is an ALLOWLIST —
+		// PATH survives, and CLAUDE_CONFIG_DIR is pinned to the subscription
+		// directory rather than inherited.
+		if !slices.Contains(env, "PATH=/usr/bin:/bin") {
+			t.Errorf("PATH dropped from the allowlist: %v", env)
+		}
+		foundPinned := false
+		for _, entry := range env {
+			if key, val, ok := strings.Cut(entry, "="); ok && key == "CLAUDE_CONFIG_DIR" && strings.HasSuffix(filepath.Clean(val), ".claude") {
+				foundPinned = true
+			}
+		}
+		if !foundPinned {
+			t.Errorf("CLAUDE_CONFIG_DIR was not pinned to the subscription directory: %v", env)
 		}
 	}
 }
@@ -273,7 +285,7 @@ func TestClaudeAudit_ProviderMismatchAndExecutionErrorsAreStructured_AC_CLA_007_
 		runner.auditOut = []byte(`{"is_error":true,"api_error_status":429,"result":"private provider message"}`)
 		runner.auditErr = errors.New("exit status 1")
 		out := performClaudeAuditWith(context.Background(), claudeAuditRequest{Target: codexTargetUncommitted, ProjectRoot: root}, "/test/bin/claude", runner, os.Environ())
-		if out.Verdict != VerdictInconclusive || out.Provenance == nil || out.Provenance.ErrorCode != claudeErrCapacityUnavailable {
+		if out.Verdict != VerdictInconclusive || out.Provenance == nil || out.Provenance.ErrorCode != claudeErrRateLimited {
 			t.Fatalf("capacity result = %+v", out)
 		}
 		if out.Provenance.AuthMode != "subscription" {
@@ -288,7 +300,7 @@ func TestClaudeAudit_ProviderMismatchAndExecutionErrorsAreStructured_AC_CLA_007_
 		runner := validClaudeRunner()
 		runner.auditOut = []byte(`{"is_error":true,"api_error_status":429,"result":"private provider message"}`)
 		out := performClaudeAuditWith(context.Background(), claudeAuditRequest{Target: codexTargetUncommitted, ProjectRoot: root}, "/test/bin/claude", runner, os.Environ())
-		if out.Verdict != VerdictInconclusive || out.Provenance == nil || out.Provenance.ErrorCode != claudeErrCapacityUnavailable {
+		if out.Verdict != VerdictInconclusive || out.Provenance == nil || out.Provenance.ErrorCode != claudeErrRateLimited {
 			t.Fatalf("zero-exit capacity result = %+v", out)
 		}
 		if out.Provenance.AuthMode != "subscription" || strings.Contains(out.Summary, "private provider message") {
