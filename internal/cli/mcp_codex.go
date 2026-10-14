@@ -2160,6 +2160,15 @@ func handleCodexAudit(ctx context.Context, req mcp.CallToolRequest) (*mcp.CallTo
 	// inconclusive verdict is still a verdict that must name its binary.
 	buildCommit, buildLag := auditBuildIdentity(ctx, root)
 
+	// Card t1632 sync-audit F5: the receipt binds the tree state captured at
+	// AUDIT START — the state the audit actually judges. A tree edit during a
+	// minutes-long audit must not end up inside the receipt's freshness
+	// binding, or a PASS that judged state A launders through on state B at
+	// reuse time (the binding would read current). Best-effort: a capture
+	// failure leaves the binding empty (recorded evidence beats a missing
+	// field), the same tolerance WriteReceipt applies.
+	bindHead, bindDigest, _ := auditreceipt.TreeState(root)
+
 	notifyMCPProgress(ctx, token, 0, "codex audit start - mode: "+mode+", target: "+target)
 	binaryPath, err := codexLookPath(codexBinaryName)
 	if err != nil {
@@ -2168,7 +2177,7 @@ func handleCodexAudit(ctx context.Context, req mcp.CallToolRequest) (*mcp.CallTo
 		// goes silently unmet (the review never ran at all).
 		out := applyGateUnmet(inconclusiveReview("codex binary not found in PATH"), root)
 		out.BuildCommit, out.BuildLag = buildCommit, buildLag
-		out.AuditReceipt, out.StateNotice = recordAuditReceipt(auditreceipt.ToolCodexAudit, rootArg, out.Verdict, out.GateUnmet)
+		out.AuditReceipt, out.StateNotice = recordAuditReceiptBound(auditreceipt.ToolCodexAudit, rootArg, out.Verdict, out.GateUnmet, bindHead, bindDigest)
 		return codexReviewToolResult(out), nil
 	}
 	notifyMCPProgress(ctx, token, 0.1, "codex binary check - preparing the review request...")
@@ -2207,7 +2216,7 @@ func handleCodexAudit(ctx context.Context, req mcp.CallToolRequest) (*mcp.CallTo
 			if resolveErr != nil {
 				out := applyGateUnmet(inconclusiveReview("target not applied: the base for "+codexTargetBaseBranch+" could not be resolved: "+resolveErr.Error()), root)
 				out.BuildCommit, out.BuildLag = buildCommit, buildLag
-				out.AuditReceipt, out.StateNotice = recordAuditReceipt(auditreceipt.ToolCodexAudit, rootArg, out.Verdict, out.GateUnmet)
+				out.AuditReceipt, out.StateNotice = recordAuditReceiptBound(auditreceipt.ToolCodexAudit, rootArg, out.Verdict, out.GateUnmet, bindHead, bindDigest)
 				return codexReviewToolResult(out), nil
 			}
 			base = &b
@@ -2240,7 +2249,7 @@ func handleCodexAudit(ctx context.Context, req mcp.CallToolRequest) (*mcp.CallTo
 	}
 	out = applyGateUnmet(out, root)
 	out.BuildCommit, out.BuildLag = buildCommit, buildLag
-	out.AuditReceipt, out.StateNotice = recordAuditReceipt(auditreceipt.ToolCodexAudit, rootArg, out.Verdict, out.GateUnmet)
+	out.AuditReceipt, out.StateNotice = recordAuditReceiptBound(auditreceipt.ToolCodexAudit, rootArg, out.Verdict, out.GateUnmet, bindHead, bindDigest)
 	notifyMCPProgress(ctx, token, 0.9, "codex response received - assembling the result...")
 	return codexReviewToolResult(out), nil
 }

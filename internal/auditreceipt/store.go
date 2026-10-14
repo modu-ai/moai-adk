@@ -83,6 +83,7 @@ const (
 	CauseReceiptAuditNotRun        = "receipt records an audit that never produced a verdict"
 	CauseReceiptVerdictFail        = "receipt records a FAIL verdict"
 	CauseReceiptTreeStateChanged   = "receipt judged a different tree state (head or digest moved)"
+	CauseReceiptStateUnreadable    = "the tree state could not be read for the freshness check"
 	CauseInstanceLedgerUnreadable  = "instance ledger unreadable"
 	CauseInstancePendingUnreadable = "instance end record unreadable"
 	CauseInstancePendingUnresolved = "instance end record unresolved"
@@ -190,7 +191,11 @@ var TreeState = func(treeRoot string) (head, digest string, err error) {
 	if err != nil {
 		return "", "", err
 	}
-	statusOut, err := gitIn(treeRoot, "status", "--porcelain")
+	// Card t1632 sync-audit F3: NUL-delimited reads — `git status --porcelain`
+	// C-quotes non-ASCII filenames and the line parser misreads them, so a
+	// Korean filename made the state read FAIL. The -z forms carry the same
+	// rows with no quoting.
+	statusOut, err := gitIn(treeRoot, "status", "--porcelain", "-z")
 	if err != nil {
 		return "", "", err
 	}
@@ -216,12 +221,14 @@ var TreeState = func(treeRoot string) (head, digest string, err error) {
 // review material applies, so a runtime-config edit between the audit and the
 // citation does not forge a state change that the judged diff never saw.
 func untrackedContentPaths(treeRoot string) []string {
-	out, err := gitIn(treeRoot, "ls-files", "--others", "--exclude-standard")
+	// -z (card t1632 sync-audit F3): no C-quoting, NUL-separated — non-ASCII
+	// filenames survive intact.
+	out, err := gitIn(treeRoot, "ls-files", "--others", "--exclude-standard", "-z")
 	if err != nil || strings.TrimSpace(out) == "" {
 		return nil
 	}
 	var kept []string
-	for _, line := range strings.Split(out, "\n") {
+	for _, line := range strings.Split(out, "\x00") {
 		line = strings.TrimSpace(line)
 		if line == "" || isRuntimeManagedStatePath(line) {
 			continue
@@ -1012,6 +1019,11 @@ func NewReceiptID() (string, error) {
 // comparison is skipped rather than invented).
 func gitIn(treeRoot string, args ...string) (string, error) {
 	cmd := exec.Command("git", append([]string{"-C", treeRoot}, args...)...)
+	// Card t1632 sync-audit F4: scrub the inherited git-redirect variables —
+	// the same environment storeroot.go applies to its store-root inspections.
+	// A server process launched with GIT_DIR/GIT_WORK_TREE naming another
+	// repository must not bind the receipt state to that other tree.
+	cmd.Env = scrubbedGitEnv()
 	out, err := cmd.Output()
 	if err != nil {
 		return "", fmt.Errorf("git %s in %s: %w", strings.Join(args, " "), treeRoot, err)
@@ -1350,6 +1362,7 @@ func CheckCitedReceiptsSince(treeRoot string, start *StartMarker, endBoundary ti
 			CauseReceiptAuditNotRun,
 			CauseReceiptVerdictFail,
 			CauseReceiptTreeStateChanged,
+			CauseReceiptStateUnreadable,
 		} {
 			if c == cause {
 				return i
@@ -1407,10 +1420,22 @@ func CheckCitedReceiptsSince(treeRoot string, start *StartMarker, endBoundary ti
 			// in — a hook in a linked worktree passes the primary checkout
 			// as the store root, and the receipt was recorded against the
 			// worktree.
-			if head, digest, sErr := TreeState(r.TreeRoot); sErr == nil && (head != "" || digest != "") {
+			// Card t1632 sync-audit F3: a state read that ERRORS refuses the
+			// reuse (CauseReceiptStateUnreadable) — the freshness check must
+			// not vanish exactly when the tree cannot be judged. The ONE
+			// carve-out is the git command being ABSENT (exec.ErrNotFound):
+			// that cannot be a state change, and refusing every receipt on a
+			// machine without git would be a self-inflicted outage.
+			head, digest, sErr := TreeState(r.TreeRoot)
+			switch {
+			case sErr == nil && (head != "" || digest != ""):
 				if r.HeadCommit != head || r.TreeDigest != digest {
 					cause = CauseReceiptTreeStateChanged
 				}
+			case sErr != nil && errors.Is(sErr, exec.ErrNotFound):
+				// Absent-git carve-out: undecided, the receipt keeps its other arms.
+			case sErr != nil:
+				cause = CauseReceiptStateUnreadable
 			}
 		}
 		if cause == "" {

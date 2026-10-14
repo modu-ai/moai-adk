@@ -997,12 +997,15 @@ func TestSelfReview_SourceReferencesNoAuditMachinery(t *testing.T) {
 	// P11: the self-review milestone added no receipt-writing call site. Before
 	// it the package carried four lines (one definition + three calls). The
 	// audit_multi path later moved to recordAuditReceiptAt, which takes the
-	// call-start codex gate (SPEC-AUDIT-MODEL-CONVERGE-001 M9); the sites are
-	// therefore counted under both spellings: recordAuditReceipt( on its
-	// definition and the codex_audit calls (definition + 2 legacy + the
-	// REQ-MN-019 target-not-applied arm = 4), recordAuditReceiptAt( on its
-	// definition, the delegation inside recordAuditReceipt and the audit_multi
-	// call (3). The self-review file stays at zero (checked above).
+	// call-start codex gate (SPEC-AUDIT-MODEL-CONVERGE-001 M9). The sync-audit
+	// F5 repair renamed the codex_audit surface to recordAuditReceiptBound
+	// (the start-of-audit state binding), so the sites are counted under all
+	// four spellings — measured 2026-10-15 at the repair HEAD:
+	// recordAuditReceiptBound definition + its AtBound delegation (2);
+	// recordAuditReceiptAt definition + its AtBound delegation (2);
+	// recordAuditReceiptAtBound definition (1); the three codex_audit
+	// recordAuditReceiptBound calls (3); the audit_multi recordAuditReceiptAt
+	// call (1) — 9 total. The self-review file stays at zero (checked above).
 	entries, err := os.ReadDir(".")
 	if err != nil {
 		t.Fatal(err)
@@ -1013,13 +1016,15 @@ func TestSelfReview_SourceReferencesNoAuditMachinery(t *testing.T) {
 			continue
 		}
 		for line := range strings.SplitSeq(srReadFile(t, e.Name()), "\n") {
-			if (strings.Contains(line, "recordAuditReceipt(") || strings.Contains(line, "recordAuditReceiptAt(")) && !strings.HasPrefix(strings.TrimSpace(line), "//") {
+			if (strings.Contains(line, "recordAuditReceipt(") || strings.Contains(line, "recordAuditReceiptAt(") ||
+				strings.Contains(line, "recordAuditReceiptBound(") || strings.Contains(line, "recordAuditReceiptAtBound(")) &&
+				!strings.HasPrefix(strings.TrimSpace(line), "//") {
 				sites++
 			}
 		}
 	}
-	if sites != 7 {
-		t.Errorf("recordAuditReceipt( / recordAuditReceiptAt( appear on %d non-comment lines, want the 7 the receipt writers and their callers occupy (the self-review tools add none)", sites)
+	if sites != 9 {
+		t.Errorf("recordAuditReceipt* call sites appear on %d non-comment lines, want the 9 the receipt writers and their callers occupy (the self-review tools add none)", sites)
 	}
 }
 

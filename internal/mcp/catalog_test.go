@@ -18,8 +18,10 @@ import (
 // factory card + queue tools. The two on-demand self-review tools
 // (codex_review, glm_review) are read-only and bring the surface to 47.
 // SPEC-FACTORY-LEASE-RENEW-001 M2 (REQ-FLR-002) adds factory_renew, the lane's
-// write-capable card lease renewal, which brings the surface to 48.
-const wantCatalogSize = 48
+// write-capable card lease renewal, which brings the surface to 48. Card
+// t1632 (SPEC-MCP-NEUTRALITY-001) added todo_claim (REQ-MN-006, M3) and
+// codex_role_audit_cancel (REQ-MN-014, M4), which brings it to 50.
+const wantCatalogSize = 50
 
 // TestMoaiMCPTools_CatalogSize asserts the catalog declares exactly
 // wantCatalogSize tools, matching the registration count in
@@ -51,27 +53,29 @@ func TestMoaiMCPTools_CatalogSize(t *testing.T) {
 // factory_renew (the lane's card lease renewal, REQ-FLR-002).
 func TestMoaiMCPTools_WriteCapableSet(t *testing.T) {
 	want := map[string]bool{
-		"goal_arm":             true,
-		"verify_snapshot":      true,
-		"codex_task":           true,
-		"codex_job_cancel":     true,
-		"codex_role_audit":     true,
-		"glm_task":             true,
-		"glm_job_cancel":       true,
-		"codex_audit":          true,
-		"audit_multi":          true,
-		"session_msg_register": true,
-		"session_msg_send":     true,
-		"session_msg_poll":     true,
-		"factory_msg_send":     true,
-		"factory_msg_list":     true,
-		"factory_msg_receipt":  true,
-		"todo_add":             true,
-		"factory_next":         true,
-		"factory_stage":        true,
-		"factory_complete":     true,
-		"factory_decide":       true,
-		"factory_renew":        true,
+		"goal_arm":                true,
+		"verify_snapshot":         true,
+		"codex_task":              true,
+		"codex_job_cancel":        true,
+		"codex_role_audit":        true,
+		"glm_task":                true,
+		"glm_job_cancel":          true,
+		"codex_audit":             true,
+		"audit_multi":             true,
+		"session_msg_register":    true,
+		"session_msg_send":        true,
+		"session_msg_poll":        true,
+		"factory_msg_send":        true,
+		"factory_msg_list":        true,
+		"factory_msg_receipt":     true,
+		"todo_add":                true,
+		"factory_next":            true,
+		"factory_stage":           true,
+		"factory_complete":        true,
+		"factory_decide":          true,
+		"factory_renew":           true,
+		"todo_claim":              true,
+		"codex_role_audit_cancel": true,
 	}
 	var got []string
 	for _, tool := range MoaiMCPTools() {

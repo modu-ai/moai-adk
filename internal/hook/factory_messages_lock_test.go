@@ -51,7 +51,7 @@ func TestFactoryHookEmptyInboxSkipsWriteLock(t *testing.T) {
 	if _, err := locker.ExecContext(ctx, `BEGIN IMMEDIATE`); err != nil {
 		t.Fatalf("hold the broker write lock: %v", err)
 	}
-	defer locker.ExecContext(ctx, `ROLLBACK`)
+	defer func() { _, _ = locker.ExecContext(ctx, `ROLLBACK`) }()
 
 	msg, surface, state := factoryHookBatchForRun(ctx, &HookInput{SessionID: "s1", ProjectDir: root}, EventStop, "")
 	_ = msg
