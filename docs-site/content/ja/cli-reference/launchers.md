@@ -49,6 +49,7 @@ moai cc [-p profile] [-w [name]] [-- claude-args...]
 
 ```bash
 moai glm setup <api-key>   # API キーを保存 (初回のみ)
+moai glm --key <api-key>   # API キーを保存 (フラグ形式 — setup と同じ保存先)
 moai glm                   # GLM バックエンドで起動
 moai glm -p work           # 'work' プロファイルで起動
 moai glm status            # 資格情報の状態を確認
@@ -59,7 +60,10 @@ moai glm status            # 資格情報の状態を確認
 | サブコマンド | 説明 |
 |--------------|------|
 | `moai glm setup [api-key]` | GLM API キーを保存 |
+| `moai glm --key <api-key>` | GLM API キーを保存 (フラグ形式 — 両形式とも同じファイルに記録し、後から保存した値が残ります) |
 | `moai glm status` | 現在の GLM 資格情報の状態を表示 |
+
+Jev (TypeSafe) 資格情報は `moai jev --key <credential>` で保存します — `~/.moai/.env.typesafe`(モード 0600)に記録され、`moai doctor` と Web コンソールが同じファイルを読み取ります。`--key` を付けずに `moai jev` を実行するとヘルプだけを表示します。
 
 {{< callout type="warning" >}}
 GLM は `auto` 権限モードに対応しません。このモードは利用条件を満たす Claude セッションで選んでください。廃止された CG は並列実行の代替手段ではありません。
