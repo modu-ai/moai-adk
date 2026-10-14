@@ -66,9 +66,20 @@ The numbers below were measured before any tracking change, from the worktree ro
 
 ### M1 — decision-gated tests + template default flip
 
+- M1 commit SHA: `7fe94f712` (`feat(SPEC-CAPACITY-RECLAIM-001): M1 decision-gated tests + hygiene default apply flip (card t1631)`). Known defect: its trailer carries `🗺 MoAI` (U+1F5FA) instead of `🗿 MoAI` (U+1F5FF) — an escape-sequence authoring mistake; B9 forbids amend, so the defect is recorded here for the lane (a pre-integration recommit is the lane's call). All later commits carry the correct literal trailer.
 - Template `workflow.yaml` hygiene mode flipped `report` → `apply` (line 331) with the comment updated to state the new default; `make build` re-embedded the templates (exit 0).
 - `go test ./internal/hook/ -run '^TestSessionStartAutoPathSplit$' -count=1` → `ok github.com/modu-ai/moai-adk/internal/hook 0.897s` (clauses 1-2 PASS: rotator apply rows, seeded verify target's `unit:gc / mode:apply` row, path-scan clause, fixture home byte-identical).
 - `go test ./internal/harness/ -run '^TestRetentionPruneArchivesBeforeRewrite$' -count=1` → `ok` (0.833s).
+
+### M0/B0 — baseline commit landed
+
+- B0 SHA: `7d77361ac` (`docs(SPEC-CAPACITY-RECLAIM-001): M2 pre-change baseline (card t1631)`); `git show --name-only --format= 7d77361ac` → `.moai/specs/SPEC-CAPACITY-RECLAIM-001/progress.md` only.
+
+### M2 — template ignore rules + untracking
+
+- Template `.gitignore` gained the four REQ-CAP-001 rules (`.moai/harness/usage-log.jsonl`, `.moai/lessons-inbox.jsonl`, `.moai/**/*.corrupt*`, `.moai/harness/learning-history/archive/*.jsonl.gz`); `make build` re-embedded (exit 0).
+- `go test ./internal/template/ -run '^TestTemplateGitignoreIgnoresLocalArtifacts$' -count=1` → `ok github.com/modu-ai/moai-adk/internal/template 3.447s` (GREEN; pre-edit RED recorded above).
+- Untracking: `git rm --cached` with local copies kept — B1 untracks `.moai/harness/usage-log.jsonl`, `.moai/lessons-inbox.jsonl`, and the three `.corrupt` archives; B1b untracks the six monthly `.jsonl.gz` per operator decision `d-20261014T033100Z-e411` (REQ-CAP-010 ratified: "untrack the six harness archive files from git and gitignore them (files stay on disk), so completion criterion 1 (harness < 5 MB) is met. Land as the prepared B1b follow-up commit."). Post-B1b `git status --short` re-check and the §C pipeline re-measurement recorded below.
 
 ## §E.3 Run-phase Audit-Ready Signal
 
