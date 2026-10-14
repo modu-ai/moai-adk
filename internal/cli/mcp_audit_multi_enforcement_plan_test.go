@@ -237,6 +237,9 @@ func TestCallStartEnforcement(t *testing.T) {
 // TestRunMultiAudit_CarrylessCallerKeepsTheReReadFallback: a caller that hands
 // runMultiAudit no enforcement gates still gets the post-fan-out re-read of the
 // tree's configuration — the behaviour every direct caller had before M8.
+// REQ-MN-021 revises the enforced verdict: a codex left without a verdict is a
+// could-not-run, so the re-read names it in gate_unmet and the overall stays at
+// the distinct not-converged outcome (never a converged fail, never pass).
 func TestRunMultiAudit_CarrylessCallerKeepsTheReReadFallback(t *testing.T) {
 	root := newAuditMultiBaselineRoot(t, planWorkflowYAML(config.AuditModelMulti, nil))
 	rc := &recordingCallerMulti{verdictBy: map[string]ReviewOutput{BackendCodex: inconclusiveVerdict("codex unavailable")}}
@@ -252,8 +255,8 @@ func TestRunMultiAudit_CarrylessCallerKeepsTheReReadFallback(t *testing.T) {
 		t.Fatal("precondition: a carry-less config has no enforcement gates")
 	}
 	res := runMultiAudit(context.Background(), ReviewOutput{}, "", "", cfg, nil)
-	if res.OverallVerdict != "fail" || res.GateUnmet != BackendCodex {
-		t.Errorf("overall = %q, gate_unmet = %q, want fail / codex from the re-read", res.OverallVerdict, res.GateUnmet)
+	if res.OverallVerdict != VerdictInconclusive || res.GateUnmet != BackendCodex {
+		t.Errorf("overall = %q, gate_unmet = %q, want %q / codex from the re-read (REQ-MN-021 not-converged)", res.OverallVerdict, res.GateUnmet, VerdictInconclusive)
 	}
 }
 

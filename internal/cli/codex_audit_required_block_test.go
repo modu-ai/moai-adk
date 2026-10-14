@@ -10,8 +10,10 @@ import (
 
 // assertRequiredGateBlock checks the blocking result an explicitly required
 // codex gate yields when the audit produced no verdict: a structured result
-// (isError false) whose verdict is fail, whose gate_unmet is set, and whose
-// summary names both the unmet gate and the original no-verdict cause.
+// (isError false) whose could-not-run verdict stays NOT-PERFORMED (REQ-MN-021
+// — never a reviewed `fail`), whose gate_unmet names the unmet gate and the
+// could-not-run state, and whose summary names both the unmet gate and the
+// original no-verdict cause.
 func assertRequiredGateBlock(t *testing.T, root, wantCause string) {
 	t.Helper()
 	res := callToolCodexAudit(t, map[string]any{"project_root": root})
@@ -19,11 +21,18 @@ func assertRequiredGateBlock(t *testing.T, root, wantCause string) {
 		t.Fatalf("isError = true — the block is a structured verdict, not a tool error")
 	}
 	got := structuredMap(t, res)
-	if v, _ := got["verdict"].(string); v != "fail" {
-		t.Errorf("verdict = %q, want fail — an explicitly required gate left without a verdict must block", v)
+	if v, _ := got["verdict"].(string); v != VerdictInconclusive {
+		t.Errorf("verdict = %q, want %q — a could-not-run stays not-performed (REQ-MN-021)", v, VerdictInconclusive)
 	}
-	if g, _ := got["gate_unmet"].(string); g == "" {
-		t.Error("gate_unmet is empty — the block must say it is an unmet gate, not a reviewed failure")
+	if c, _ := got["could_not_run"].(bool); !c {
+		t.Error("could_not_run = false, want true — the leg never produced a verdict")
+	}
+	g, _ := got["gate_unmet"].(string)
+	if g == "" {
+		t.Fatal("gate_unmet is empty — the block must say it is an unmet gate, not a reviewed failure")
+	}
+	if !strings.Contains(g, "could-not-run") {
+		t.Errorf("gate_unmet = %q, want it to carry could-not-run", g)
 	}
 	summary, _ := got["summary"].(string)
 	if !strings.Contains(summary, "required") {

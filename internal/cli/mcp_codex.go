@@ -330,6 +330,24 @@ type ReviewOutput struct {
 	// t1426: the configured integration base now outranks the remote default
 	// head). Set only for target baseBranch; additive + omitempty.
 	ReviewBase string `json:"review_base,omitempty"`
+
+	// CouldNotRun marks a review that never produced a verdict because the
+	// backend could not be PERFORMED at all — transport loss, unparsable
+	// reply, missing binary — as distinct from a review that ran and returned
+	// no usable content (SPEC-MCP-NEUTRALITY-001 REQ-MN-021). The required
+	// gate does not convert a could-not-run into verdict `fail`: a leg that
+	// never ran is a not-performed result, and converting it would misstate a
+	// reviewed failure that never happened. Set by the inconclusive factories;
+	// empty/absent on every verdict a backend actually produced. Additive +
+	// omitempty (the SynthesisNote/GateUnmet precedent).
+	CouldNotRun bool `json:"could_not_run,omitempty"`
+
+	// Stderr preserves the backend process's stderr tail when the leg could
+	// not be performed, for diagnosis (REQ-MN-021) — the stderr the session
+	// runner used to discard with the buffer it captured into. Empty on any
+	// verdict a backend produced, and on a could-not-run whose process never
+	// started (nothing was written). Additive + omitempty.
+	Stderr string `json:"stderr,omitempty"`
 }
 
 // AuditProvenance is backend-supplied evidence about how a review was made.
@@ -366,6 +384,10 @@ type Finding struct {
 // inconclusiveReview is the fail-open ReviewOutput factory: it ALWAYS returns a
 // usable structured result carrying the reason + the claude-fallback next step.
 // The full 3-way fallback plumbing is M3; M2 only guarantees no hard crash.
+//
+// Every inconclusive this factory builds is a could-not-run (REQ-MN-021): the
+// review never produced a verdict, and the flag keeps that not-performed state
+// distinct from a content failure.
 func inconclusiveReview(reason string) ReviewOutput {
 	return inconclusiveReviewWithSummary("codex unavailable: " + reason)
 }
@@ -377,10 +399,11 @@ func inconclusiveReview(reason string) ReviewOutput {
 // indistinguishable — a new silence, not a repair (REQ-CBR-005).
 func inconclusiveReviewWithSummary(summary string) ReviewOutput {
 	return ReviewOutput{
-		Verdict:   VerdictInconclusive,
-		Summary:   summary,
-		Findings:  []Finding{},
-		NextSteps: []string{"fall back to the active auditor (claude)"},
+		Verdict:     VerdictInconclusive,
+		Summary:     summary,
+		Findings:    []Finding{},
+		NextSteps:   []string{"fall back to the active auditor (claude)"},
+		CouldNotRun: true,
 	}
 }
 
@@ -514,6 +537,23 @@ func codexConnPID(conn codexConn) int {
 	return 0
 }
 
+// codexStderrReporter is the OPTIONAL half of codexConn: a connection backed by
+// a real process (or a test double that captured one) reports the backend's
+// stderr. Separate from codexConn so the connections without a stderr surface
+// stay unconstrained — the same shape codexProcessConn uses (REQ-MN-021).
+type codexStderrReporter interface {
+	stderrTail() string
+}
+
+// codexConnStderr returns the backend's stderr tail behind conn, or "" when the
+// connection reports none.
+func codexConnStderr(conn codexConn) string {
+	if r, ok := conn.(codexStderrReporter); ok {
+		return r.stderrTail()
+	}
+	return ""
+}
+
 // codexSessionRunner abstracts spawning the codex app-server subprocess so tests
 // inject a canned line exchange without spawning a process. The production
 // runner (realCodexSessionRunner) pipes stdin/stdout and reads stdout
@@ -538,12 +578,15 @@ func (realCodexSessionRunner) start(ctx context.Context, binaryPath string, args
 	if err != nil {
 		return nil, fmt.Errorf("codex stdout pipe: %w", err)
 	}
-	// Discard stderr so a noisy codex never corrupts the stdout NDJSON parse.
-	cmd.Stderr = &bytes.Buffer{}
+	// Capture stderr into a buffer (not a discard): a noisy codex never
+	// corrupts the stdout NDJSON parse, AND the tail survives for the
+	// could-not-run diagnostic (REQ-MN-021) instead of being lost.
+	stderrBuf := &bytes.Buffer{}
+	cmd.Stderr = stderrBuf
 	if err := cmd.Start(); err != nil {
 		return nil, fmt.Errorf("codex start: %w", err)
 	}
-	c := &realCodexConn{cmd: cmd, stdin: stdin, stdout: stdout, lines: make(chan string, 128)}
+	c := &realCodexConn{cmd: cmd, stdin: stdin, stdout: stdout, stderr: stderrBuf, lines: make(chan string, 128)}
 	go c.readLoop(ctx)
 	return c, nil
 }
@@ -555,8 +598,21 @@ type realCodexConn struct {
 	cmd    *exec.Cmd
 	stdin  io.WriteCloser
 	stdout io.Reader
+	stderr *bytes.Buffer
 	lines  chan string
 	mu     sync.Mutex
+}
+
+// stderrTail satisfies codexStderrReporter: the last 4KiB of what the codex
+// process wrote to stderr, for the could-not-run diagnostic (REQ-MN-021). The
+// tail bound keeps a chatty backend from inflating a structured result.
+func (c *realCodexConn) stderrTail() string {
+	const stderrTailLimit = 4096
+	b := c.stderr.Bytes()
+	if len(b) > stderrTailLimit {
+		b = b[len(b)-stderrTailLimit:]
+	}
+	return string(b)
 }
 
 func (c *realCodexConn) readLoop(ctx context.Context) {
@@ -712,6 +768,11 @@ type codexSessionError struct {
 	// asked to resume on exactly those failures and not on ones that ended
 	// before the request was sent (SPEC-CODEX-RESUME-SCOPE-001 REQ-CRS-001).
 	threadRequestSent bool
+
+	// stderr is the backend's stderr tail captured before the half-open
+	// connection was closed, so a could-not-run result can carry it for
+	// diagnosis (REQ-MN-021). Empty when the process never started.
+	stderr string
 }
 
 func (e *codexSessionError) Error() string { return e.cause.Error() }
@@ -721,7 +782,7 @@ func (e *codexSessionError) Unwrap() error { return e.cause }
 // its fail-open summary.
 func codexHandshakeFailure(conn codexConn, summary string, cause error) error {
 	_ = conn.close()
-	return &codexSessionError{summary: summary, cause: cause}
+	return &codexSessionError{summary: summary, cause: cause, stderr: codexConnStderr(conn)}
 }
 
 // codexThreadRequestFailure is codexHandshakeFailure for a failure after the
@@ -729,7 +790,7 @@ func codexHandshakeFailure(conn codexConn, summary string, cause error) error {
 // request reached codex.
 func codexThreadRequestFailure(conn codexConn, summary string, cause error) error {
 	_ = conn.close()
-	return &codexSessionError{summary: summary, cause: cause, threadRequestSent: true}
+	return &codexSessionError{summary: summary, cause: cause, threadRequestSent: true, stderr: codexConnStderr(conn)}
 }
 
 // codexThreadRequestWasSent reports whether err is a session failure that
@@ -1092,13 +1153,22 @@ func runCodexReviewRPCResolved(ctx context.Context, binaryPath, method string, p
 	if err != nil {
 		var sErr *codexSessionError
 		if errors.As(err, &sErr) {
-			return inconclusiveReview(sErr.summary), sErr.cause
+			out := inconclusiveReview(sErr.summary)
+			out.Stderr = sErr.stderr
+			return out, sErr.cause
 		}
 		return inconclusiveReview(err.Error()), err
 	}
 	defer func() { _ = sess.close() }()
 
-	return sess.runTurn(ctx, method, params)
+	out, turnErr := sess.runTurn(ctx, method, params)
+	if out.CouldNotRun {
+		// REQ-MN-021: the backend's stderr rides a could-not-run result for
+		// diagnosis — the tail the session runner captured while the turn was
+		// failing. A connection without a stderr surface reports "".
+		out.Stderr = codexConnStderr(sess.conn)
+	}
+	return out, turnErr
 }
 
 // writeCodexRequest marshals and sends one JSON-RPC request line.
@@ -2108,6 +2178,13 @@ func handleCodexAudit(ctx context.Context, req mcp.CallToolRequest) (*mcp.CallTo
 
 	notifyMCPProgress(ctx, token, 0.2, "sending the review request to codex... (may take minutes)")
 	out, _ := codexReviewRPC(ctx, binaryPath, method, params) // fail-open inside
+	if out.CouldNotRun {
+		// REQ-MN-021: a leg that could not be performed retries EXACTLY once
+		// before reporting — a transient transport loss gets one more chance,
+		// and the ceiling keeps a wedged backend from looping the audit. The
+		// retry's result (whatever it is) is what gets reported.
+		out, _ = codexReviewRPC(ctx, binaryPath, method, params)
+	}
 	if base != nil {
 		out.ReviewBase = base.String()
 	}
@@ -2118,18 +2195,25 @@ func handleCodexAudit(ctx context.Context, req mcp.CallToolRequest) (*mcp.CallTo
 	return codexReviewToolResult(out), nil
 }
 
-// applyGateUnmet blocks a fail-open inconclusive audit when the audited tree
+// applyGateUnmet records a could-not-perform audit when the audited tree
 // EXPLICITLY declares workflow.audit.gates.codex: required (#1632 axis 3). The
 // audit tree's own workflow.yaml decides — the same project_root the review ran
 // against — so a named tree's gate follows the named tree, not the server's cwd.
 //
-// Operator decision (fail-closed for an explicit `required`, the same rule the
-// convergence engine applies in enforceRequiredGateUnmet): the verdict becomes
-// fail, gate_unmet says the failure is an unmet gate rather than a reviewed
-// failure, and the summary keeps the original no-verdict cause. The result
-// stays a structured result (isError false). The RAW configured value is read,
-// never the engine default, so a project that did not write `required` keeps
-// the fail-open inconclusive byte-for-byte.
+// REQ-MN-021 revises the operator's original fail-closed conversion: a leg that
+// COULD NOT RUN (transport loss, unparsable reply, missing binary — any
+// inconclusive this surface produces) is a not-performed result, not a reviewed
+// failure, so converting it to verdict `fail` would misstate a failure that
+// never happened. The verdict STAYS inconclusive, gate_unmet names the unmet
+// gate AND the could-not-run state, and the backend's stderr rides the result.
+// The not-converged safety net lives at the convergence surface
+// (enforceRequiredGateUnmet + the REQ-MN-022 not-converged outcome), which
+// refuses a pass on the caller's own submitted verdict just the same.
+//
+// The RAW configured value is read, never the engine default, so a project that
+// did not write `required` keeps the fail-open inconclusive byte-for-byte. A
+// gate READ that errors is a config problem, not a could-not-run: it still
+// fails the verdict, naming the cause (SPEC-AUDIT-CEILING-002 REQ-ACR-006).
 //
 // @MX:ANCHOR: [AUTO] single-backend required-gate enforcement; every codex_audit exit passes through here
 // @MX:REASON: flipping the verdict for a non-explicit gate would turn every existing project fail-closed
@@ -2153,15 +2237,14 @@ func applyGateUnmet(out ReviewOutput, projectDir string) ReviewOutput {
 	if gates.Codex != config.AuditGateRequired {
 		return out
 	}
+	// REQ-MN-021: could-not-run stays not-performed — verdict unchanged, the
+	// unmet gate named, stderr preserved.
+	note := "required gate unmet"
 	if assumedNote != "" {
-		out.GateUnmet = assumedNote + ", and this audit returned no verdict (fail-open inconclusive)"
-		out.Verdict = "fail"
-		out.Summary = "required gate unmet (" + assumedNote + "): " + out.Summary
-		return out
+		note += " (" + assumedNote + ")"
 	}
-	out.GateUnmet = "workflow.audit.gates.codex is `required`, but this audit returned no verdict (fail-open inconclusive)"
-	out.Verdict = "fail"
-	out.Summary = "required gate unmet (workflow.audit.gates.codex is `required`, no verdict): " + out.Summary
+	out.GateUnmet = note + ", could-not-run: this audit returned no verdict (the review could not be performed)"
+	out.Summary = out.GateUnmet + ": " + out.Summary
 	return out
 }
 

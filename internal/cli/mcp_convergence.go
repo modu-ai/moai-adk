@@ -242,11 +242,13 @@ func converge(verdicts []PerBackendVerdict) ConvergenceResult {
 		// nothing required, nothing blocks). Either way: overall pass.
 		overall = overallVerdictPass
 	default:
-		// No required FAIL, but not all required PASS — i.e. some required are
-		// inconclusive (missing/erroring optionals). Fail-OPEN to the Claude
-		// participant (AC-AMM-021 / EC-1 / EC-4): either the valid in-session
-		// anchor or the independently acquired Claude subscription verdict.
-		overall = claudeVerdictOrDefault(verdicts, overallVerdictPass)
+		// SPEC-MCP-NEUTRALITY-001 REQ-MN-022: a REQUIRED backend left
+		// inconclusive means the participant-evidence threshold is unmet — the
+		// claude participant's verdict (the caller's own submitted anchor)
+		// cannot rescue the convergence to pass. The overall is the distinct
+		// not-converged outcome; fail_open_backends still names the
+		// inconclusive backends for the orchestrator.
+		overall = VerdictInconclusive
 	}
 
 	// ── Step 2: disagreement_flag derivation ──
@@ -412,17 +414,6 @@ func verdictIn(xs []string, want string) bool {
 		}
 	}
 	return false
-}
-
-// claudeVerdictOrDefault returns the claude backend's verdict from vs, or dflt
-// if claude is absent. Used for the fail-open-to-claude branch.
-func claudeVerdictOrDefault(vs []PerBackendVerdict, dflt string) string {
-	for _, v := range vs {
-		if v.Backend == BackendClaude {
-			return v.Verdict
-		}
-	}
-	return dflt
 }
 
 // collectFailOpen returns the backends whose verdict is VerdictInconclusive
@@ -808,24 +799,16 @@ func runMultiAudit(ctx context.Context, claudeVerdict ReviewOutput, target, focu
 		}
 	}
 
-	result := converge(verdicts)
-	// Set BEFORE persist: persistConvergenceResult marshals this struct
-	// verbatim, so filling the returned result is what makes the state file
-	// carry the same commit the verdict carried (REQ-ABI-002 — no separate
-	// persistence-side code).
-	result.BuildCommit, result.BuildLag = buildCommit, buildLag
-	result.PlanSource = cfg.PlanSource
-
 	// ── explicit-required gate enforcement (GH #1632 item 3) ──
-	// converge above is deliberately fail-open: a required backend that
-	// returned no verdict falls back to the claude anchor, so an unmet gate
-	// rode to an overall pass. The operator decision closes that gap for gates
-	// the project EXPLICITLY configured `required`: such a gate left unmet
-	// fails the overall verdict. The raw workflow.yaml value decides — an
-	// UNSET gate keeps the fail-open behavior byte-for-byte, because the
-	// engine's distributed default (codex required) is not an opt-in. Runs
-	// BEFORE persist so the state file the multi-review-gate Stop hook reads
-	// carries the enforced verdict.
+	// Read the audited tree's raw gates BEFORE converge: REQ-MN-021/022 moved
+	// the could-not-run outcome into converge's required classification, so a
+	// backend the tree explicitly configured `advisory` must not ride the
+	// engine-default `required` into a not-converged overall — the raw
+	// workflow.yaml value re-stamps the per-backend gate first (codex/glm only:
+	// the in-session claude anchor keeps its own default-required gate
+	// hierarchy below). converge ABOVE is still fail-open for an UNSET gate —
+	// the engine's distributed default (codex required) is not an opt-in, so
+	// an unset gate never re-stamps.
 	var (
 		enforcementGates config.AuditGates
 		gateAssumedNote  string
@@ -855,6 +838,31 @@ func runMultiAudit(ctx context.Context, claudeVerdict ReviewOutput, target, focu
 			}
 		}
 	}
+	for i := range verdicts {
+		if verdicts[i].Backend == BackendClaude {
+			continue // the anchor keeps its own gate hierarchy (see claudeGate)
+		}
+		if g := explicitGateFor(enforcementGates, verdicts[i].Backend); g != "" {
+			verdicts[i].Gate = g
+		}
+	}
+
+	result := converge(verdicts)
+	// Set BEFORE persist: persistConvergenceResult marshals this struct
+	// verbatim, so filling the returned result is what makes the state file
+	// carry the same commit the verdict carried (REQ-ABI-002 — no separate
+	// persistence-side code).
+	result.BuildCommit, result.BuildLag = buildCommit, buildLag
+	result.PlanSource = cfg.PlanSource
+
+	// ── explicit-required gate enforcement (GH #1632 item 3) ──
+	// converge above is deliberately fail-open for an UNSET gate: the engine's
+	// distributed default (codex required) is not an opt-in. The raw
+	// workflow.yaml value was read BEFORE converge (above) — the same gates the
+	// enforcement below applies, so the per-backend classification and the
+	// overall enforcement read one configuration. Runs BEFORE persist so the
+	// state file the multi-review-gate Stop hook reads carries the enforced
+	// verdict.
 	// The actual Claude backend is a default-required independent audit. Unlike
 	// the legacy optional backends, an unavailable required Claude review must
 	// not fall through to a caller-supplied or secondary-model verdict.
@@ -957,11 +965,17 @@ func validReviewVerdict(verdict string) bool {
 
 // ─── explicit-required gate enforcement (GH #1632 item 3) ───
 
-// enforceRequiredGateUnmet fails the overall verdict when a backend the
-// project EXPLICITLY configured `required` returned no verdict, instead of
-// letting it ride the claude-anchor fall-through to a pass. Operator decision:
-// fail-closed for an explicit `required`; the annotate-only fail-open behavior
-// is preserved byte-for-byte when `required` is NOT set.
+// enforceRequiredGateUnmet marks the overall verdict as unmet (and REFUSES a
+// pass) when a backend the project EXPLICITLY configured `required` returned no
+// verdict, instead of letting it ride the claude-anchor fall-through to a pass.
+// Operator decision: fail-closed for an explicit `required`; the annotate-only
+// fail-open behavior is preserved byte-for-byte when `required` is NOT set.
+//
+// REQ-MN-021 revises what "fail-closed" means here: a backend that returned no
+// verdict could not be PERFORMED, so the outcome is the distinct NOT-CONVERGED
+// result (overall inconclusive — REQ-MN-022's participant-evidence threshold),
+// never an overall `fail` that would misstate a reviewed failure no backend
+// reported. A pass is equally unreachable, so the gate still blocks.
 //
 // The gates argument is the audited tree's RAW workflow.audit.gates block (zero
 // values where unset) — the same value applyGateUnmet reads at the
@@ -970,10 +984,11 @@ func validReviewVerdict(verdict string) bool {
 // the key is absent) must never count as an opt-in, or every existing project
 // would flip to fail-closed.
 //
-// Only overall_verdict and residual_risk_note move. per_backend_verdicts keeps
-// the backend's true inconclusive verdict and fail_open_backends keeps naming
-// it, so the audit trail still says "this backend never ran" — the enforcement
-// changes what the verdict DECIDES, not what the backends REPORTED.
+// Only overall_verdict, gate_unmet, and residual_risk_note move.
+// per_backend_verdicts keeps the backend's true inconclusive verdict and
+// fail_open_backends keeps naming it, so the audit trail still says "this
+// backend never ran" — the enforcement changes what the verdict DECIDES, not
+// what the backends REPORTED.
 func enforceRequiredGateUnmet(r ConvergenceResult, verdicts []PerBackendVerdict, gates config.AuditGates) ConvergenceResult {
 	var unmet []string
 	for _, v := range verdicts {
@@ -988,9 +1003,12 @@ func enforceRequiredGateUnmet(r ConvergenceResult, verdicts []PerBackendVerdict,
 	if len(unmet) == 0 {
 		return r
 	}
-	r.OverallVerdict = overallVerdictFail
+	// REQ-MN-021: could-not-run stays not-performed — the overall stays at the
+	// distinct not-converged outcome (inconclusive), never a converged fail,
+	// and never the pass the claude-anchor fall-through would have produced.
+	r.OverallVerdict = VerdictInconclusive
 	r.GateUnmet = strings.Join(unmet, ",")
-	note := "required gate unmet (explicitly configured required, no verdict): " + strings.Join(unmet, ", ")
+	note := "required gate unmet (explicitly configured required, could-not-run, no verdict): " + strings.Join(unmet, ", ")
 	if r.ResidualRiskNote != "" {
 		// The verdict now fails, so a disagreement written as advisory is no
 		// longer "not a block" — keep the split, drop the qualifier.

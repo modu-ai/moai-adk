@@ -75,20 +75,22 @@ type fakeCodexSession struct {
 	lines    []string // canned NDJSON lines recv yields, in order
 	startErr error    // if non-nil, start returns this error
 	sent     []string // recorded sent request lines (across the single session)
+	stderr   string   // backend stderr the fake process would have written
 }
 
 func (f *fakeCodexSession) start(context.Context, string, []string) (codexConn, error) {
 	if f.startErr != nil {
 		return nil, f.startErr
 	}
-	return &fakeCodexConn{lines: f.lines, sent: &f.sent}, nil
+	return &fakeCodexConn{lines: f.lines, sent: &f.sent, stderr: f.stderr}, nil
 }
 
 // fakeCodexConn replays canned lines via recv and records sends.
 type fakeCodexConn struct {
-	lines []string
-	idx   int
-	sent  *[]string
+	lines  []string
+	idx    int
+	sent   *[]string
+	stderr string
 }
 
 func (c *fakeCodexConn) send(line string) error { *c.sent = append(*c.sent, line); return nil }
@@ -101,6 +103,19 @@ func (c *fakeCodexConn) recv() (string, bool) {
 	return l, true
 }
 func (c *fakeCodexConn) close() error { return nil }
+
+// stderrTail satisfies codexStderrReporter so a could-not-run result can carry
+// the backend's stderr (REQ-MN-021).
+func (c *fakeCodexConn) stderrTail() string { return c.stderr }
+
+// withCodexSessionStderr is withCodexSession with a canned backend stderr, for
+// tests asserting the stderr-preservation half of REQ-MN-021.
+func withCodexSessionStderr(t *testing.T, lines []string, stderr string) *fakeCodexSession {
+	t.Helper()
+	sess := withCodexSession(t, lines)
+	sess.stderr = stderr
+	return sess
+}
 
 // withCodexSession installs a fake session that replays `lines` and exposes the
 // recorded sent request lines. The single-shot runner + LookPath seams are also

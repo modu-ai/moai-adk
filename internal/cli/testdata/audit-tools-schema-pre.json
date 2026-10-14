@@ -1,6 +1,7 @@
 [
   {
     "inputSchema": {
+      "additionalProperties": false,
       "properties": {
         "card_id": {
           "description": "Optional card id binding this review as the card's second review (writes second-review.jsonl into the card evidence directory). Empty ⇒ no record.",
@@ -25,7 +26,7 @@
           "type": "string"
         },
         "session_id": {
-          "description": "Optional session id for per-session convergence state persistence (.moai/state/audit-multi/<session>.json). Empty ⇒ persistence no-op.",
+          "description": "Optional session id for per-session convergence state persistence (.moai/state/audit-multi/\u003csession\u003e.json). Empty ⇒ persistence no-op.",
           "type": "string"
         },
         "target": {
@@ -41,6 +42,7 @@
   },
   {
     "inputSchema": {
+      "additionalProperties": false,
       "properties": {
         "effort": {
           "description": "Optional Claude Code effort; overrides workflow.audit.claude.effort.",
@@ -93,6 +95,9 @@
         "contradiction": {
           "type": "string"
         },
+        "could_not_run": {
+          "type": "boolean"
+        },
         "findings": {
           "items": {
             "additionalProperties": false,
@@ -228,6 +233,9 @@
         "state_notice": {
           "type": "string"
         },
+        "stderr": {
+          "type": "string"
+        },
         "summary": {
           "type": "string"
         },
@@ -249,6 +257,7 @@
   },
   {
     "inputSchema": {
+      "additionalProperties": false,
       "properties": {
         "focus": {
           "description": "Adversarial-only focus area (e.g. 'concurrency', 'auth').",
@@ -298,6 +307,9 @@
         "contradiction": {
           "type": "string"
         },
+        "could_not_run": {
+          "type": "boolean"
+        },
         "findings": {
           "items": {
             "additionalProperties": false,
@@ -433,6 +445,9 @@
         "state_notice": {
           "type": "string"
         },
+        "stderr": {
+          "type": "string"
+        },
         "summary": {
           "type": "string"
         },
@@ -454,6 +469,7 @@
   },
   {
     "inputSchema": {
+      "additionalProperties": false,
       "properties": {
         "focus": {
           "description": "Optional focus area (e.g. 'concurrency', 'auth', 'secret handling').",
@@ -495,6 +511,9 @@
         "contradiction": {
           "type": "string"
         },
+        "could_not_run": {
+          "type": "boolean"
+        },
         "findings": {
           "items": {
             "additionalProperties": false,
@@ -628,6 +647,9 @@
           "type": "string"
         },
         "state_notice": {
+          "type": "string"
+        },
+        "stderr": {
           "type": "string"
         },
         "summary": {

@@ -390,17 +390,22 @@ func TestCodexAudit_PaddedRequiredGateFailsClosed(t *testing.T) {
 	withCodexLookPath(t, func(string) (string, error) { return "", errFakeLookPath })
 
 	got := structuredMap(t, callToolCodexAudit(t, map[string]any{"project_root": root}))
-	if v, _ := got["verdict"].(string); v != "fail" {
-		t.Errorf("verdict = %q, want fail", v)
+	if v, _ := got["verdict"].(string); v != VerdictInconclusive {
+		t.Errorf("verdict = %q, want %q (REQ-MN-021: the unmet gate records could-not-run, not a reviewed fail)", v, VerdictInconclusive)
 	}
-	if g, _ := got["gate_unmet"].(string); g == "" {
-		t.Error("gate_unmet is empty — a padded required gate with no verdict must be recorded as unmet")
+	g, _ := got["gate_unmet"].(string)
+	if g == "" {
+		t.Fatal("gate_unmet is empty — a padded required gate with no verdict must be recorded as unmet")
+	}
+	if !strings.Contains(g, "could-not-run") {
+		t.Errorf("gate_unmet = %q, want it to carry could-not-run", g)
 	}
 }
 
 // TestCodexAudit_ModelCodexUnmetGateFails (AC-ACV-010): the single-backend
 // codex_audit reads the same plan, so `model: codex` makes a codex that cannot
-// answer an unmet gate.
+// answer an unmet gate. REQ-MN-021: the unmet-gate record is could-not-run —
+// the verdict stays inconclusive (never a reviewed fail).
 func TestCodexAudit_ModelCodexUnmetGateFails(t *testing.T) {
 	root := newProbeProject(t, "SPEC-ACV-MODEL-CODEX")
 	dir := filepath.Join(root, ".moai", "config", "sections")
@@ -417,10 +422,14 @@ func TestCodexAudit_ModelCodexUnmetGateFails(t *testing.T) {
 		t.Fatalf("unexpected IsError — fail-open stays a structured result")
 	}
 	got := structuredMap(t, res)
-	if v, _ := got["verdict"].(string); v != "fail" {
-		t.Errorf("verdict = %q, want fail (model: codex makes codex an explicit required gate)", v)
+	if v, _ := got["verdict"].(string); v != VerdictInconclusive {
+		t.Errorf("verdict = %q, want %q (model: codex makes codex an explicit required gate; REQ-MN-021 keeps the could-not-run verdict)", v, VerdictInconclusive)
 	}
-	if g, _ := got["gate_unmet"].(string); g == "" {
-		t.Error("gate_unmet is empty — a required codex gate that produced no verdict must be recorded as unmet")
+	g, _ := got["gate_unmet"].(string)
+	if g == "" {
+		t.Fatal("gate_unmet is empty — a required codex gate that produced no verdict must be recorded as unmet")
+	}
+	if !strings.Contains(g, "could-not-run") {
+		t.Errorf("gate_unmet = %q, want it to carry could-not-run", g)
 	}
 }
