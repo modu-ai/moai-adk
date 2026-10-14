@@ -108,6 +108,26 @@ func TestUncommittedTemplateNotice(t *testing.T) {
 		}
 	})
 
+	t.Run("untracked_new_directory_fires", func(t *testing.T) {
+		// Default porcelain collapses a wholly-untracked NEW directory to
+		// "?? dir/" — the exact-path intersection would miss every file in
+		// it and silently skip the notice (audit round-1 P2). The query
+		// enumerates untracked files individually.
+		dir := t.TempDir()
+		initTrackedFile(t, dir, ".claude/rules/moai/workflow/factory-dispatch.md", "v1\n")
+		newPath := filepath.Join(dir, ".claude", "rules", "moai", "brand-new", "new-rule.md")
+		if err := os.MkdirAll(filepath.Dir(newPath), 0o755); err != nil {
+			t.Fatalf("mkdir new template dir: %v", err)
+		}
+		if err := os.WriteFile(newPath, []byte("new template file\n"), 0o644); err != nil {
+			t.Fatalf("write new template file: %v", err)
+		}
+		got := notice(t, dir, ".claude/rules/moai/brand-new/new-rule.md")
+		if got == "" {
+			t.Fatal("an untracked NEW directory's template file must fire the notice")
+		}
+	})
+
 	t.Run("not_a_repo_fails_open", func(t *testing.T) {
 		dir := t.TempDir()
 		if got := notice(t, dir, "any/path.md"); got != "" {

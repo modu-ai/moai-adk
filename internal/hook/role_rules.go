@@ -231,6 +231,14 @@ func roleCoreFromContent(content, label string) (string, error) {
 	}
 	regions, marked := config.ExtractRoleCoreRegions(content)
 	if !marked {
+		// Markers PRESENT but unusable (audit round-1 P2, card t1729): a
+		// file carrying only an end marker also reads marked=false, and the
+		// fallback would silently rescue corrupted bytes. The fallback is
+		// for a STALE GENERATION — a file with NEITHER marker. Any marker
+		// presence without a usable region is a named failure.
+		if strings.Contains(content, config.RoleCoreMarkerStart) || strings.Contains(content, config.RoleCoreMarkerEnd) {
+			return "", fmt.Errorf("role rule file has %s markers but no usable region (corrupted marker shape): %s", config.RoleCoreMarkerStart, label)
+		}
 		return "", fmt.Errorf("%w: %s", errRoleRuleUnmarked, label)
 	}
 	// A start marker without its closing pair is a malformed file, not an

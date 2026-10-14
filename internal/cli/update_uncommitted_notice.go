@@ -35,7 +35,10 @@ func uncommittedTemplateNotice(projectRoot string, templatePaths []string) strin
 	if len(templatePaths) == 0 {
 		return ""
 	}
-	out, err := exec.Command("git", "-C", projectRoot, "status", "--porcelain").Output()
+	// --untracked-files=all: default porcelain collapses a wholly-untracked
+	// NEW directory to "?? dir/", which the exact-path intersection below
+	// would never match (audit round-1 P2, card t1729) — enumerate files.
+	out, err := exec.Command("git", "-C", projectRoot, "status", "--porcelain", "--untracked-files=all").Output()
 	if err != nil {
 		return ""
 	}

@@ -171,6 +171,23 @@ func TestRoleRulesUnmarkedWithoutEmbeddedFailsVisible(t *testing.T) {
 	assertFailVisible(t, inj, "unmarked-without-embedded")
 }
 
+// TestRoleRulesEndMarkerOnlyStaysFailVisible pins the audit round-1 P2 fix:
+// a file carrying ONLY an end marker is corruption, not a stale generation —
+// the embedded fallback must NOT rescue it; the REQ-ALB-009 pair fires.
+func TestRoleRulesEndMarkerOnlyStaysFailVisible(t *testing.T) {
+	clearFactoryEnv(t)
+	t.Setenv(config.EnvMoaiFactoryWorkers, "1")
+	stubEmbeddedRule(t, markedEmbeddedRule(), true)
+
+	root := t.TempDir()
+	writeRoleRuleFixture(t, root, roleRuleFiles[0],
+		"<!-- moai:role-core-end -->\n\ncorrupted: an end marker with no start\n")
+	writeRoleRuleFixture(t, root, roleRuleFiles[1], smallMarkedRule("messaging"))
+
+	inj := roleRuleInjectionFor(root, "startup", langEnglish)
+	assertFailVisible(t, inj, "end-marker-only")
+}
+
 // TestRoleRulesRemediationNamesWorktreeCause pins the corrected remediation
 // text (card fix 2): the skew guidance names the worktree cause — an
 // uncommitted `moai update` on the base branch — and the refresh verb
