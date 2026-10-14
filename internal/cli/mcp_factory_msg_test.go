@@ -5,6 +5,7 @@ import (
 	"database/sql"
 	"encoding/json"
 	"os"
+	"path/filepath"
 	"strconv"
 	"strings"
 	"testing"
@@ -304,6 +305,10 @@ func TestFactoryMCPIdentityFallsBackToDirectParent(t *testing.T) {
 func TestFactoryMsgSendRejectsClaudeOnlyRun(t *testing.T) {
 	t.Setenv("MOAI_HOME", t.TempDir())
 	root, run := t.TempDir(), "claude-only-run"
+	initGitRepo(t, root)
+	if err := os.MkdirAll(filepath.Join(root, ".moai"), 0o755); err != nil {
+		t.Fatal(err)
+	}
 	activateManagedRun(t, root, run)
 	t.Setenv(config.EnvClaudeProjectDir, root)
 	// No authoritative session id: this harness's ambient value would route
@@ -312,7 +317,7 @@ func TestFactoryMsgSendRejectsClaudeOnlyRun(t *testing.T) {
 	t.Setenv(config.EnvClaudeCodeSessionID, "")
 
 	arguments := map[string]any{
-		"run_id": run, "to_slot": "leader", "kind": "status_request",
+		"run_id": run, "project_root": root, "to_slot": "leader", "kind": "status_request",
 		"idempotency_key": "claude-only-once", "body": "must never deliver",
 		"task_ref": "t1375", "correlation_id": "claude-only-c1",
 	}
@@ -368,6 +373,10 @@ func TestFactoryMsgSendRejectsClaudeOnlyRun(t *testing.T) {
 func TestFactoryMsgSendOptionalIDsDefault(t *testing.T) {
 	t.Setenv("MOAI_HOME", t.TempDir())
 	root, run := t.TempDir(), "optional-ids-run"
+	initGitRepo(t, root)
+	if err := os.MkdirAll(filepath.Join(root, ".moai"), 0o755); err != nil {
+		t.Fatal(err)
+	}
 	activateManagedRun(t, root, run)
 	t.Setenv(config.EnvClaudeProjectDir, root)
 	t.Setenv(config.EnvClaudeCodeSessionID, "")
@@ -410,7 +419,7 @@ func TestFactoryMsgSendOptionalIDsDefault(t *testing.T) {
 		return env
 	}
 	omitted := func() map[string]any {
-		return map[string]any{"run_id": run, "to_slot": "lane-1", "kind": "status_request",
+		return map[string]any{"run_id": run, "project_root": root, "to_slot": "lane-1", "kind": "status_request",
 			"idempotency_key": "optional-ids-once", "body": "ids omitted"}
 	}
 
@@ -423,14 +432,14 @@ func TestFactoryMsgSendOptionalIDsDefault(t *testing.T) {
 		t.Fatalf("same-key retry returned message %q, want the original %q", retry.ID, first.ID)
 	}
 
-	empty := send(map[string]any{"run_id": run, "to_slot": "lane-1", "kind": "status_request",
+	empty := send(map[string]any{"run_id": run, "project_root": root, "to_slot": "lane-1", "kind": "status_request",
 		"idempotency_key": "optional-ids-empty", "body": "ids empty",
 		"task_ref": "", "correlation_id": ""})
 	if empty.CorrelationID != "optional-ids-empty" || empty.TaskRef != "optional-ids-empty" {
 		t.Fatalf("empty ids = correlation %q task_ref %q, want the idempotency key", empty.CorrelationID, empty.TaskRef)
 	}
 
-	explicit := send(map[string]any{"run_id": run, "to_slot": "lane-1", "kind": "status_request",
+	explicit := send(map[string]any{"run_id": run, "project_root": root, "to_slot": "lane-1", "kind": "status_request",
 		"idempotency_key": "optional-ids-explicit", "body": "ids given",
 		"task_ref": "t1473", "correlation_id": "corr-1"})
 	if explicit.CorrelationID != "corr-1" || explicit.TaskRef != "t1473" {

@@ -54,17 +54,30 @@ func currentFactoryPeer(ctx context.Context, s *factorymsg.Store, actor string) 
 	return s.PeerByOwner(ctx, pid, fp)
 }
 
-// factoryStore opens the broker for the requested run. The two refusal classes
-// the run id carries surface as structured results (SPEC-MCP-NEUTRALITY-001
-// REQ-MN-001): a run that is not the active one refuses stale-run, while a
+// factoryStore opens the broker for the requested run, anchored at the
+// caller's project_root (SPEC-MCP-NEUTRALITY-001 REQ-MN-004). requiredRoot is
+// true for the mutating members (send/list/receipt): an absent argument
+// refuses rather than falling back to the server's spawn tree; the read-only
+// members fall back and the result carries the _root provenance. The two
+// refusal classes the run id carries surface as structured results
+// (REQ-MN-001): a run that is not the active one refuses stale-run, while a
 // malformed id stays an argument error on the error channel. A non-nil store
 // implies a nil refusal and vice versa.
-func factoryStore(req mcp.CallToolRequest, tool string) (*factorymsg.Store, *mcp.CallToolResult) {
+func factoryStore(req mcp.CallToolRequest, tool string, requiredRoot bool) (*factorymsg.Store, *mcp.CallToolResult) {
 	run := req.GetString("run_id", "")
 	if run == "" {
 		return nil, toolErr(tool, errors.New("run_id is required"))
 	}
-	root := resolveProjectDir()
+	var root string
+	var err error
+	if requiredRoot {
+		root, _, err = resolveRequiredToolProjectRoot(req)
+	} else {
+		root, _, err = resolveToolProjectRootWithSource(req)
+	}
+	if err != nil {
+		return nil, toolErr(tool, err)
+	}
 	if err := factorymsg.ValidateActiveRun(context.Background(), root, run); err != nil {
 		if errors.Is(err, factorymsg.ErrRunNotActive) {
 			return nil, toolRefusal(mcpRefusal{
@@ -99,7 +112,7 @@ func mcpFactoryMsgPeer(ctx context.Context, s *factorymsg.Store, req mcp.CallToo
 }
 
 func handleFactoryMsgSend(ctx context.Context, req mcp.CallToolRequest) (*mcp.CallToolResult, error) {
-	s, refusal := factoryStore(req, "factory_msg_send")
+	s, refusal := factoryStore(req, "factory_msg_send", true)
 	if refusal != nil {
 		return refusal, nil
 	}
@@ -124,7 +137,7 @@ func handleFactoryMsgSend(ctx context.Context, req mcp.CallToolRequest) (*mcp.Ca
 	return toolJSON("factory_msg_send", env), nil
 }
 func handleFactoryMsgList(ctx context.Context, req mcp.CallToolRequest) (*mcp.CallToolResult, error) {
-	s, refusal := factoryStore(req, "factory_msg_list")
+	s, refusal := factoryStore(req, "factory_msg_list", true)
 	if refusal != nil {
 		return refusal, nil
 	}
@@ -140,7 +153,7 @@ func handleFactoryMsgList(ctx context.Context, req mcp.CallToolRequest) (*mcp.Ca
 	return toolJSON("factory_msg_list", map[string]any{"messages": claims, "body_lookup": "factory_msg_body"}), nil
 }
 func handleFactoryMsgBody(ctx context.Context, req mcp.CallToolRequest) (*mcp.CallToolResult, error) {
-	s, refusal := factoryStore(req, "factory_msg_body")
+	s, refusal := factoryStore(req, "factory_msg_body", false)
 	if refusal != nil {
 		return refusal, nil
 	}
@@ -156,7 +169,7 @@ func handleFactoryMsgBody(ctx context.Context, req mcp.CallToolRequest) (*mcp.Ca
 	return toolJSON("factory_msg_body", map[string]any{"message_id": req.GetString("message_id", ""), "body": string(body), "trust": "untrusted peer data"}), nil
 }
 func handleFactoryMsgReceipt(ctx context.Context, req mcp.CallToolRequest) (*mcp.CallToolResult, error) {
-	s, refusal := factoryStore(req, "factory_msg_receipt")
+	s, refusal := factoryStore(req, "factory_msg_receipt", true)
 	if refusal != nil {
 		return refusal, nil
 	}
@@ -180,7 +193,12 @@ func handleFactoryMsgStatus(ctx context.Context, req mcp.CallToolRequest) (*mcp.
 	if run == "" {
 		return toolErr("factory_msg_status", errors.New("run_id is required")), nil
 	}
-	root := resolveProjectDir()
+	// The read-only family member keeps the fallback resolution (REQ-MN-004)
+	// and annotates which tree it read.
+	root, source, err := resolveToolProjectRootWithSource(req)
+	if err != nil {
+		return toolErr("factory_msg_status", err), nil
+	}
 	if e := factorymsg.ValidateActiveRun(ctx, root, run); e != nil {
 		if errors.Is(e, factorymsg.ErrRunNotActive) {
 			return toolRefusal(mcpRefusal{
@@ -201,7 +219,7 @@ func handleFactoryMsgStatus(ctx context.Context, req mcp.CallToolRequest) (*mcp.
 	if e != nil {
 		return toolErr("factory_msg_status", e), nil
 	}
-	return toolJSON("factory_msg_status", st), nil
+	return toolJSONWithRoot("factory_msg_status", st, root, source), nil
 }
 
 // closeFactoryToolStore closes a broker handle after a tool call has produced

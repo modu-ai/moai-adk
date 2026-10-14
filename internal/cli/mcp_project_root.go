@@ -22,6 +22,9 @@ package cli
 // directory), and changing it would move them all at once.
 
 import (
+	"context"
+	"encoding/json"
+	"errors"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -80,9 +83,11 @@ const rootSourceParam = "param"
 
 // resolveToolProjectRoot returns the project root a tool call should act on.
 //
-// An absent or empty project_root resolves exactly as the tool resolved it
-// before this parameter existed, so a caller that never learns about it sees no
-// change.
+// A present project_root is validated AND confined (REQ-MN-005): a registered
+// worktree of the server's own repository, never the home directory. An
+// absent project_root resolves exactly as the tool resolved it before this
+// parameter existed, so a caller that never learns about it sees no change
+// (mutating tools refuse instead — resolveRequiredToolProjectRoot).
 //
 // A non-empty project_root that cannot be a project root is REJECTED rather than
 // replaced by the default. The ergonomic alternative — ignore the bad path, use
@@ -102,16 +107,118 @@ func resolveToolProjectRoot(req mcp.CallToolRequest) (string, error) {
 // the source made observable, so catalog responses can carry it as "_root"
 // and warn when resolution did NOT come from the caller.
 func resolveToolProjectRootWithSource(req mcp.CallToolRequest) (string, string, error) {
-	raw := strings.TrimSpace(req.GetString(projectRootArg, ""))
-	if raw == "" {
+	raw, present, err := toolProjectRootArgument(req)
+	if err != nil {
+		return "", "", err
+	}
+	if !present {
 		dir, source := resolveProjectDirWithSource()
 		return dir, source, nil
 	}
-	root, err := validateProjectRoot(raw)
+	root, err := confineToolProjectRoot(raw)
 	if err != nil {
 		return "", "", err
 	}
 	return root, rootSourceParam, nil
+}
+
+// toolProjectRootArgument extracts the raw project_root argument:
+// (trimmed value, present-and-non-empty, error). A present value that is not
+// a string is an INVALID ARGUMENT — the old GetString coercion turned a
+// number into the empty string and fell through to the server's spawn tree,
+// which is exactly the silent-wrong-tree defect REQ-MN-005 closes. A null
+// value reads as absent (the caller omitted it).
+func toolProjectRootArgument(req mcp.CallToolRequest) (string, bool, error) {
+	rawAny, present := req.GetArguments()[projectRootArg]
+	if !present || rawAny == nil {
+		return "", false, nil
+	}
+	s, isString := rawAny.(string)
+	if !isString {
+		return "", false, fmt.Errorf("%s: invalid argument — a string path is required, got %T", projectRootArg, rawAny)
+	}
+	trimmed := strings.TrimSpace(s)
+	return trimmed, trimmed != "", nil
+}
+
+// resolveRequiredToolProjectRoot is the mutating-tools variant (REQ-MN-004):
+// an absent project_root refuses at the tool layer — the caller must name the
+// tree a mutating call acts on. This is argument validation, deliberately
+// OUTSIDE the five policy codes of the structured-refusal contract (design
+// §D3 step 2): the error text is the pinned wire shape
+// "<tool>: project_root is required for mutating calls" once the handler
+// wraps it with toolErr. An accepted root's provenance is always
+// rootSourceParam.
+func resolveRequiredToolProjectRoot(req mcp.CallToolRequest) (string, string, error) {
+	raw, present, err := toolProjectRootArgument(req)
+	if err != nil {
+		return "", "", err
+	}
+	if !present {
+		return "", "", errors.New("project_root is required for mutating calls")
+	}
+	root, err := confineToolProjectRoot(raw)
+	if err != nil {
+		return "", "", err
+	}
+	return root, rootSourceParam, nil
+}
+
+// confineToolProjectRoot turns a caller-supplied path into an accepted
+// project root (REQ-MN-005): canonicalized, EXPLICITLY not the home
+// directory, and a registered worktree of the server's own repository — the
+// confinement codexAuditValidateRoot applies on the audit launch path,
+// generalized to every root-taking tool. The confinement git reads are fast
+// bounded local subprocesses; they run under a background context because
+// this resolver's signature predates handler context threading.
+func confineToolProjectRoot(raw string) (string, error) {
+	canonical, err := validateProjectRoot(raw)
+	if err != nil {
+		return "", err
+	}
+	if home, homeErr := os.UserHomeDir(); homeErr == nil {
+		if homeCanonical, linkErr := filepath.EvalSymlinks(home); linkErr == nil && canonical == homeCanonical {
+			return "", fmt.Errorf("project_root %q is the home directory — name the project or worktree root to act on", raw)
+		}
+	}
+	serverRoot := resolveProjectDir()
+	if serverRoot == "" {
+		return "", fmt.Errorf("project_root %q cannot be confined — the server has no resolvable root", raw)
+	}
+	return confineToServerRepository(context.Background(), serverRoot, canonical, raw)
+}
+
+// confineToServerRepository accepts root only when, after symlink resolution,
+// it is a worktree registered in the same repository as serverRoot — the
+// serving checkout (the codexAuditValidateRoot acceptance set).
+func confineToServerRepository(ctx context.Context, serverRoot, canonical, raw string) (string, error) {
+	rootCommon, err := codexAuditGit(ctx, canonical, "rev-parse", "--path-format=absolute", "--git-common-dir")
+	if err != nil {
+		return "", fmt.Errorf("project_root %q is not a git worktree: %w", raw, err)
+	}
+	serverCommon, err := codexAuditGit(ctx, serverRoot, "rev-parse", "--path-format=absolute", "--git-common-dir")
+	if err != nil {
+		return "", fmt.Errorf("cannot confine project_root: the server root %s is not a git repository: %w", serverRoot, err)
+	}
+	a, errA := codexAuditResolve(rootCommon)
+	b, errB := codexAuditResolve(serverCommon)
+	if errA != nil || errB != nil || a != b {
+		return "", fmt.Errorf("project_root %q belongs to a different repository", raw)
+	}
+	list, err := codexAuditGit(ctx, serverRoot, "worktree", "list", "--porcelain")
+	if err != nil {
+		return "", fmt.Errorf("cannot list the server repository's worktrees: %w", err)
+	}
+	for _, line := range strings.Split(list, "\n") {
+		path, ok := strings.CutPrefix(line, "worktree ")
+		if !ok {
+			continue
+		}
+		if p, err := codexAuditResolve(path); err == nil && p == canonical {
+			return canonical, nil
+		}
+	}
+	return "", fmt.Errorf("project_root %q is not a registered worktree of this repository", raw)
 }
 
 // rootProvenanceMap builds the "_root" block a catalog response carries:
@@ -136,6 +243,23 @@ func rootProvenanceMap(root, source string) map[string]any {
 		prov["worktree_warning"] = worktreeWarning
 	}
 	return prov
+}
+
+// toolJSONWithRoot emits a structured result whose payload carries the "_root"
+// provenance block (SPEC-MCP-NEUTRALITY-001 REQ-MN-004: every tool whose
+// behavior depends on a root annotates which tree it acted on). The payload's
+// own fields are preserved; "_root" joins them at the top level.
+func toolJSONWithRoot(tool string, data any, root, source string) *mcp.CallToolResult {
+	body, err := json.Marshal(data)
+	if err != nil {
+		return toolJSON(tool, map[string]any{"_root": rootProvenanceMap(root, source)})
+	}
+	var obj map[string]any
+	if err := json.Unmarshal(body, &obj); err != nil || obj == nil {
+		obj = map[string]any{}
+	}
+	obj["_root"] = rootProvenanceMap(root, source)
+	return toolJSON(tool, obj)
 }
 
 // resolveOptionalToolProjectRoot is the pass-through variant, for a surface that
