@@ -301,7 +301,14 @@ Interpretation notes for the audit (M6):
 
 ## §E.3 Run-phase Audit-Ready Signal
 
-_pending run-phase_
+run_audit_ready: true
+run_complete_at: 2026-10-15
+run_commit_sha: 73c84c3ed
+run_status: complete (all 6 milestones M1–M6 implemented; branch WT-3-2-0-2, nothing pushed — merged-local landing is the leader's batch)
+run_commit_range: M1 ebba213f0..6199704240 (refusal contract + identity) · M2 6199704240..0d53d09fa (Part A CLI identity absorption + Part B REQ-MN-004~008) · M3 (gate exposure 20-tool, containment, elicitation guard, write mutex, inbox counting, AC-MN-003 22/22 measured) · M4 c13bc05c0 (env allowlist, binary pin, 429 relabel, staleness, job lifetime, stamp, call log) · M5 db9fb0e7b (generation migration, token stability, count-only hook, line-boundary cut, Stop scope) · M6 09e4cd60a→cf3546753 (REQ-MN-021/022 could-not-run split + not-converged + retry, REQ-MN-023 narrow decode, REQ-MN-020 receipt integrity + audit_cache evidence + auditor model, REQ-MN-019/024/025 target honesty + sandbox + material marks + state-root seam)
+ac_status: AC-MN-001..025 all PASS — AC-MN-001..005 (M1/M2 structured refusals, identity, root contract, catalogue, schema, wire), AC-MN-006..008 (M2 root confinement, catalogue hard source, schema lint, wire honesty), AC-MN-009..011 (M3 gate containment, elicitation, mutex/inbox), AC-MN-003 22/22 gates exposed measured at M3 (numerator 22, denominator 22, per §E.2 M3 block), AC-MN-012..015 (M4), AC-MN-016..018 (M5), AC-MN-019..025 (M6, §E.2 M6 matrix)
+gaps_pre_existing_two_classes: (1) TestCodexReviewGatePrimaryCheckoutSkip/_TreeScopeRequestShapeUnchanged/_StaleEnvKeepsTreeScope — macOS /var→/private symlink spelling in three gate pins; (2) TestAuditMulti_CodexLegDeadline_FailsClosedNamed/_UnconfiguredFailsOpen/TestAuditMulti_ModelMulti_CodexUnavailable_FailsClosedNamed — containment listing executes the stubbed binary before the timeout path. BOTH reproduced at HEAD 554053cf9 with the M6 sources temporarily reverted (§E.2 M6 note 7) — they predate this SPEC's run phase; leader disposition requested
+debts_remaining: none open from this SPEC — N3 (serial-slot instance red at M1 RED) was the TDD RED-stage observation itself, resolved by M1 GREEN (AC-MN-001 PASS, §E.2 M1 matrix); N4 (receipt reuse-refusal + restart persistence) was implemented in M6 (head/digest binding + state-move refusal, §E.2 M6 matrix); N5 (AC-MN-012 "without stalling" quantification) was closed at M3 (the automatic decline lands within 50 ms, measured — §E.2 M3 row)
 
 ## §E.4 Sync-phase Audit-Ready Signal
 
