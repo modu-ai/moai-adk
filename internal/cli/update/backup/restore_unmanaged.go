@@ -20,8 +20,10 @@ type UnmanagedRestoreRef struct {
 	// Action is "restored" (the file was missing and was written from the backup),
 	// "side-copy" (the working file was kept and the backup copy was written beside
 	// it), "side-copy-blocked" (a different side copy already exists, so nothing
-	// was written), or "side-copy-refused" (the side-copy name is a symbolic link or
-	// sits under one, so nothing was written).
+	// was written), "side-copy-refused" (the side-copy name is a symbolic link or
+	// sits under one, so nothing was written), or "target-refused" (the target is a
+	// symbolic link, or its parent chain leads outside the config directory or cannot
+	// be resolved, so nothing was written).
 	Action string
 }
 
@@ -55,7 +57,15 @@ func RestoreUnmanagedConfigDirs(projectRoot, backupDir string) ([]UnmanagedResto
 				return err
 			}
 			target := filepath.Join(configDir, dir, rel)
+			rootRel, err := filepath.Rel(projectRoot, target)
+			if err != nil {
+				return err
+			}
+			refPath := filepath.ToSlash(rootRel)
+			// A refused target is recorded, not skipped: the report must name the
+			// file the restore did not write.
 			if !RestoreTargetContained(configDir, target) {
+				refs = append(refs, UnmanagedRestoreRef{Path: refPath, Action: "target-refused"})
 				return nil
 			}
 			backupData, err := os.ReadFile(src)
@@ -66,11 +76,7 @@ func RestoreUnmanagedConfigDirs(projectRoot, backupDir string) ([]UnmanagedResto
 			if err != nil || ref == nil {
 				return err
 			}
-			rootRel, err := filepath.Rel(projectRoot, target)
-			if err != nil {
-				return err
-			}
-			ref.Path = filepath.ToSlash(rootRel)
+			ref.Path = refPath
 			refs = append(refs, *ref)
 			return nil
 		})

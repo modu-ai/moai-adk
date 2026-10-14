@@ -23,6 +23,8 @@ func unmanagedRestoreMessages(refs []backup.UnmanagedRestoreRef, backupDir strin
 			msgs = append(msgs, fmt.Sprintf("%s differs from the backup, but %s.from-%s already holds other content; nothing written", ref.Path, ref.Path, stamp))
 		case "side-copy-refused":
 			msgs = append(msgs, fmt.Sprintf("%s differs from the backup, but its side copy name is a symbolic link or leads outside the config directory; nothing written", ref.Path))
+		case "target-refused":
+			msgs = append(msgs, fmt.Sprintf("%s was not restored: its path is a symbolic link, or leads outside the config directory, or cannot be resolved; nothing written", ref.Path))
 		}
 	}
 	return msgs

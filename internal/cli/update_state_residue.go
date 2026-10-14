@@ -23,10 +23,17 @@ const stateResidueMinAge = 10 * time.Minute
 // backlog.json.lock, the retired lock name that no current reader opens. Rollback
 // snapshots such as backlog.json, live locks such as backlog.lock, populated
 // databases, and anything written within stateResidueMinAge are never touched.
-// It returns the removed paths relative to projectRoot so the update summary can
-// list each one. The walk is best-effort: an entry it cannot read or remove is
-// skipped, since a leftover stub is harmless. A second pass finds nothing new.
+// A stub with a write-ahead log or shared-memory sidecar is kept, and a symbolic
+// .moai refuses the whole pass: isMoAIProject follows links, so the walk would
+// otherwise reach a tree outside the project. It returns the removed paths
+// relative to projectRoot so the update summary can list each one. The walk is
+// best-effort: an entry it cannot read or remove is skipped, since a leftover stub
+// is harmless. A second pass finds nothing new.
 func removeStateResidue(projectRoot string) []string {
+	// Lstat, not Stat: a symbolic .moai is refused, not followed.
+	if info, err := os.Lstat(filepath.Join(projectRoot, defs.MoAIDir)); err != nil || info.Mode()&fs.ModeSymlink != 0 {
+		return nil
+	}
 	stateDir := filepath.Join(projectRoot, defs.MoAIDir, "state")
 	cutoff := time.Now().Add(-stateResidueMinAge)
 	var removed []string
@@ -42,6 +49,9 @@ func removeStateResidue(projectRoot string) []string {
 		if infoErr != nil || info.Size() != 0 || info.ModTime().After(cutoff) {
 			return nil
 		}
+		if strings.HasSuffix(name, ".db") && walSidecarPresent(path) {
+			return nil
+		}
 		if os.Remove(path) != nil {
 			return nil
 		}
@@ -51,6 +61,21 @@ func removeStateResidue(projectRoot string) []string {
 		return nil
 	})
 	return removed
+}
+
+// walSidecarPresent reports whether the SQLite write-ahead log or shared-memory
+// file beside the database at path exists. In WAL mode the committed pages stay in
+// the -wal file until a checkpoint, so a zero-byte main file with a sidecar may
+// hold data. A lookup that fails for any reason other than "does not exist" counts
+// as present, so the stub is kept rather than removed on an unknown answer.
+func walSidecarPresent(path string) bool {
+	for _, suffix := range []string{"-wal", "-shm"} {
+		_, err := os.Lstat(path + suffix)
+		if err == nil || !os.IsNotExist(err) {
+			return true
+		}
+	}
+	return false
 }
 
 // updateProjectRoot resolves the project root the way the update lock does: the
