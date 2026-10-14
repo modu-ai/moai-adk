@@ -49,6 +49,7 @@ moai cc [-p profile] [-w [name]] [-- claude-args...]
 
 ```bash
 moai glm setup <api-key>   # API 키 저장 (최초 1회)
+moai glm --key <api-key>   # API 키 저장 (플래그 형태 — setup과 같은 저장소)
 moai glm                   # GLM 백엔드로 실행
 moai glm -p work           # 'work' 프로필로 실행
 moai glm status            # 자격증명 상태 확인
@@ -59,7 +60,10 @@ moai glm status            # 자격증명 상태 확인
 | 하위 명령어 | 설명 |
 |-------------|------|
 | `moai glm setup [api-key]` | GLM API 키 저장 |
+| `moai glm --key <api-key>` | GLM API 키 저장 (플래그 형태 — 두 형태가 같은 파일에 기록하며 나중에 저장한 값이 남습니다) |
 | `moai glm status` | 현재 GLM 자격증명 상태 표시 |
+
+Jev(TypeSafe) 자격증명은 `moai jev --key <credential>` 로 저장합니다 — `~/.moai/.env.typesafe`(권한 0600)에 기록하며 `moai doctor` 와 웹 콘솔이 같은 파일을 읽습니다. `--key` 없이 `moai jev` 를 실행하면 도움말만 인쇄합니다.
 
 {{< callout type="warning" >}}
 GLM은 `auto` 권한 모드를 지원하지 않습니다. 이 모드는 사용 조건을 충족하는 Claude 세션에서 선택하세요. 폐기된 CG는 동시 실행의 대안이 아닙니다.
