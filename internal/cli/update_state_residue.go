@@ -10,6 +10,7 @@ import (
 
 	"github.com/modu-ai/moai-adk/internal/cli/update/backup"
 	"github.com/modu-ai/moai-adk/internal/cli/update/skillresidue"
+	"github.com/modu-ai/moai-adk/internal/config"
 	"github.com/modu-ai/moai-adk/internal/defs"
 	"github.com/modu-ai/moai-adk/internal/template"
 )
@@ -96,11 +97,8 @@ func runUpdateHousekeeping(projectRoot string) {
 	}
 	if backup.NamespaceBackupRootRefused(projectRoot) {
 		updateLedger.requiref(sevWarn, "namespace backup pruning skipped: the backup root is a symbolic link or leads outside the project")
-	} else if pruned := backup.CleanupNamespaceBackups(projectRoot, namespaceBackupRetainCount); pruned > 0 {
-		updateLedger.referencef("pruned %d old namespace backup(s), keeping the newest %d", pruned, namespaceBackupRetainCount)
-	}
-	if kept, oldest := backup.NamespaceBackupsKept(projectRoot, namespaceBackupRetainCount); kept > 0 {
-		updateLedger.referencef("kept %d older namespace backup(s) that hold content no newer backup has (oldest: %s)", kept, oldest)
+	} else {
+		reportRetention("namespace backup", backup.PruneNamespaceBackups(projectRoot, namespaceBackupRetainCount, backupPastVersionsKeep(projectRoot)))
 	}
 	// Skill-folder residue: empty folders of shipped skills, a retired skill name,
 	// and a lowercase skill.md. Each change is reported; see skillresidue.Clean.
@@ -146,4 +144,48 @@ func skillActionMessage(a skillresidue.Action) string {
 		return fmt.Sprintf("refused to clean skill folders: %s is a symbolic link; nothing under it was changed", a.Path)
 	}
 	return fmt.Sprintf("%s: %s", a.Kind, a.Path)
+}
+
+// backupPastVersionsKeep is the per-file budget of superseded backup versions from
+// state.yaml (backup_past_versions_keep). It falls back to the default when the
+// configuration cannot be loaded or holds a negative value.
+func backupPastVersionsKeep(projectRoot string) int {
+	cfg, err := config.NewLoader().Load(filepath.Join(projectRoot, defs.MoAIDir))
+	if err != nil || cfg.State.BackupPastVersionsKeep < 0 {
+		return config.DefaultBackupPastVersionsKeep
+	}
+	return cfg.State.BackupPastVersionsKeep
+}
+
+// reportRetention writes one ledger row per backup of the given kind that a retention
+// pass removed, named, and one row for the entries it kept, oldest first.
+func reportRetention(kind string, r backup.Retention) {
+	for _, name := range r.Removed {
+		updateLedger.referencef("removed %s %s: it holds no superseded version within the per-file budget", kind, name)
+	}
+	if len(r.Kept) > 0 {
+		updateLedger.referencef("kept %d older %s(s) holding a superseded version within the per-file budget (oldest: %s)", len(r.Kept), kind, r.Kept[0])
+	}
+}
+
+// reportUnmanagedBackupEntries reports the entries under .moai-backups that carry no
+// timestamp. The cap never prunes them, so the update shows their count and size.
+func reportUnmanagedBackupEntries(projectRoot string) {
+	count, size := backup.UnmanagedEntries(projectRoot)
+	if count == 0 {
+		return
+	}
+	updateLedger.referencef("%d entr(ies) under .moai-backups carry no timestamp and are never pruned (%s); review them by hand", count, humanByteCount(size))
+}
+
+// humanByteCount formats a byte count for the update report.
+func humanByteCount(n int64) string {
+	switch {
+	case n >= 1<<20:
+		return fmt.Sprintf("%.1f MB", float64(n)/(1<<20))
+	case n >= 1<<10:
+		return fmt.Sprintf("%.1f KB", float64(n)/(1<<10))
+	default:
+		return fmt.Sprintf("%d B", n)
+	}
 }

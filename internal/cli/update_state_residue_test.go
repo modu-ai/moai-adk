@@ -132,7 +132,7 @@ func TestRunUpdateHousekeeping_ReportsChangesInProject(t *testing.T) {
 	}
 	want := []string{
 		"removed 1 leftover state file(s): .moai/state/todo/backlog.db",
-		"pruned 1 old namespace backup(s), keeping the newest 5",
+		"removed namespace backup update-2026-01-01T00-00-00Z: it holds no superseded version within the per-file budget",
 	}
 	if !reflect.DeepEqual(msgs, want) {
 		t.Fatalf("reference rows = %q, want %q", msgs, want)

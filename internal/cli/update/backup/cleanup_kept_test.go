@@ -7,11 +7,10 @@ import (
 	"github.com/modu-ai/moai-adk/internal/defs"
 )
 
-// After a retention pass, the excess entries still present are the ones it kept
-// because they hold content no retained entry has. OldBackupsKept and
-// NamespaceBackupsKept report them as the count and the oldest name, which is the
-// one ledger row the update prints in place of one stderr line per kept entry.
-func TestBackupsKept_ReportsExcessLeftByTheCap(t *testing.T) {
+// The kept entries of a retention pass are the excess entries it left in place,
+// because they hold a superseded version within the per-file budget. PruneOldBackups
+// and PruneNamespaceBackups report them, oldest first.
+func TestPruneBackups_ReportsKeptExcess(t *testing.T) {
 	root := t.TempDir()
 	seedBackup(t, root, "20260101_000000", map[string]string{"a.yml": "shared", "b.yml": "user-only"})
 	seedBackup(t, root, "20260102_000000", map[string]string{"a.yml": "shared", "b.yml": "user-only-2"})
@@ -32,10 +31,10 @@ func TestBackupsKept_ReportsExcessLeftByTheCap(t *testing.T) {
 		t.Fatalf("CleanupNamespaceBackups deleted %d entr(ies); want 0", got)
 	}
 
-	if kept, oldest := OldBackupsKept(root, 3); kept != 2 || oldest != "20260101_000000" {
-		t.Fatalf("OldBackupsKept = (%d, %q), want (2, %q)", kept, oldest, "20260101_000000")
+	if got := PruneOldBackups(root, 3, DefaultPastVersionsKeep).Kept; len(got) != 2 || got[0] != "20260101_000000" {
+		t.Fatalf("PruneOldBackups kept %v, want two entries with the oldest 20260101_000000", got)
 	}
-	if kept, oldest := NamespaceBackupsKept(root, 3); kept != 1 || oldest != "update-2026-01-01T00-00-00Z" {
-		t.Fatalf("NamespaceBackupsKept = (%d, %q), want (1, %q)", kept, oldest, "update-2026-01-01T00-00-00Z")
+	if got := PruneNamespaceBackups(root, 3, DefaultPastVersionsKeep).Kept; len(got) != 1 || got[0] != "update-2026-01-01T00-00-00Z" {
+		t.Fatalf("PruneNamespaceBackups kept %v, want [update-2026-01-01T00-00-00Z]", got)
 	}
 }

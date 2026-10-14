@@ -67,8 +67,42 @@ func TestRunUpdateHousekeeping_ReportsKeptNamespaceBackupsAsOneRow(t *testing.T)
 			rows = append(rows, row.msg)
 		}
 	}
-	want := "kept 2 older namespace backup(s) that hold content no newer backup has (oldest: update-2026-01-01T00-00-00Z)"
+	want := "kept 2 older namespace backup(s) holding a superseded version within the per-file budget (oldest: update-2026-01-01T00-00-00Z)"
 	if len(rows) != 1 || rows[0] != want {
 		t.Fatalf("namespace backup rows = %q, want exactly one row %q", rows, want)
+	}
+}
+
+// Every namespace backup the pass removes gets its own report row, named, so the
+// update shows what was deleted rather than a count.
+func TestRunUpdateHousekeeping_ReportsEachRemovedNamespaceBackup(t *testing.T) {
+	root := t.TempDir()
+	markProject(t, root)
+	for i := 1; i <= 7; i++ {
+		writeNamespaceBackup(t, root, fmt.Sprintf("update-2026-01-%02dT00-00-00Z", i), map[string]string{"b.yml": "shared"})
+	}
+
+	updateLedger.reset()
+	runUpdateHousekeeping(root)
+
+	var removed []string
+	for _, row := range updateLedger.reference {
+		if strings.HasPrefix(row.msg, "removed namespace backup ") {
+			removed = append(removed, row.msg)
+		}
+	}
+	if len(removed) != 2 {
+		t.Fatalf("removed-namespace-backup rows = %q, want one row for each of the two redundant entries", removed)
+	}
+	for _, name := range []string{"update-2026-01-01T00-00-00Z", "update-2026-01-02T00-00-00Z"} {
+		found := false
+		for _, msg := range removed {
+			if strings.Contains(msg, name) {
+				found = true
+			}
+		}
+		if !found {
+			t.Fatalf("no removal row names %s: %q", name, removed)
+		}
 	}
 }

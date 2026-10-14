@@ -18,7 +18,6 @@ import (
 	"io/fs"
 	"os"
 	"path/filepath"
-	"sort"
 	"strings"
 	"time"
 
@@ -209,117 +208,18 @@ type BackupMetadata struct {
 }
 
 // CleanupOldBackups keeps the newest keepCount timestamped backups under
-// .moai-backups and removes the older excess. An excess backup is removed only
-// when every file in it is also held, at the same path, in a retained backup.
-// keepCount 0 is an explicit wipe and removes every backup. It returns the
-// number of backups removed.
+// .moai-backups and removes the older excess that the retention policy allows (see
+// pruneOldBackups). keepCount 0 is an explicit wipe and removes every backup. It
+// returns the number of backups removed.
 func CleanupOldBackups(projectRoot string, keepCount int) int {
-	backupDir := filepath.Join(projectRoot, defs.BackupsDir)
-	if !backupRootContained(projectRoot, backupDir) {
-		return 0
-	}
-
-	// Check if backup directory exists
-	info, err := os.Stat(backupDir)
-	if err != nil {
-		if os.IsNotExist(err) {
-			return 0 // No backups to clean up
-		}
-		// Return 0 on stat errors (ignore for cleanup)
-		return 0
-	}
-	if !info.IsDir() {
-		return 0
-	}
-
-	// Get all subdirectories in backup directory
-	entries, err := os.ReadDir(backupDir)
-	if err != nil {
-		return 0
-	}
-
-	// Filter for directories matching YYYYMMDD_HHMMSS pattern
-	// Pattern: 8 digits + underscore + 6 digits = 15 characters
-	var backups []string
-	for _, entry := range entries {
-		if entry.IsDir() && isTimestampBackupName(entry.Name()) {
-			backups = append(backups, entry.Name())
-		}
-	}
-
-	// If we have fewer backups than keepCount, no cleanup needed
-	if len(backups) <= keepCount {
-		return 0
-	}
-
-	// Sort backups by name (timestamp) ascending (oldest first)
-	sort.Strings(backups)
-
-	// Delete the OLDEST excess backups so the NEWEST keepCount survive.
-	// The timestamps sort ascending, so the retention window is the tail
-	// backups[len-keepCount:]; everything before it is the oldest excess.
-	// (A prior revision deleted backups[keepCount:] — the newest — which
-	// destroyed the most recent restore points on every rotation.)
-	return pruneBackups(backupDir, backups, keepCount)
+	return len(pruneOldBackups(projectRoot, keepCount, DefaultPastVersionsKeep).Removed)
 }
 
-// pruneBackups removes the oldest excess entries of sorted, keeping the newest
-// keepCount under backupDir, and returns how many it removed. An excess entry is
-// removed only when each of its files appears, at the same path with the same
-// content, in a retained entry. Otherwise it holds the only copy of some version:
-// it stays, and a warning names the file. keepCount 0 removes every entry.
-func pruneBackups(backupDir string, sorted []string, keepCount int) int {
-	retained := make(map[string]bool)
-	for _, backupName := range sorted[len(sorted)-keepCount:] {
-		addRetainedBackupKeys(filepath.Join(backupDir, backupName), retained)
-	}
-
-	deletedCount := 0
-	for _, backupName := range sorted[:len(sorted)-keepCount] {
-		backupPath := filepath.Join(backupDir, backupName)
-		// keepCount 0 is an explicit wipe, not a rotation: nothing is retained to
-		// compare against, so the guard applies only when something is retained.
-		if keepCount > 0 {
-			if backupUniqueFile(backupPath, retained) != "" {
-				// Kept, not warned: the caller reports kept entries as one ledger row.
-				continue
-			}
-		}
-		if err := os.RemoveAll(backupPath); err != nil {
-			// Log error but continue with other backups
-			fmt.Fprintf(os.Stderr, "Warning: failed to delete backup %s: %v\n", backupName, err)
-		} else {
-			deletedCount++
-		}
-	}
-
-	return deletedCount
-}
-
-// CleanupNamespaceBackups applies the same retention to the namespace backup
-// root (.moai/<NamespaceBackupsSubdir>, entries named update-<stamp>), which
-// CleanupOldBackups never reads and which therefore grew without bound. The
-// unique-content guard of pruneBackups governs every removal.
+// CleanupNamespaceBackups applies the same retention to the namespace backup root
+// (.moai/<NamespaceBackupsSubdir>, entries named update-<stamp>), which
+// CleanupOldBackups never reads. It returns the number of entries removed.
 func CleanupNamespaceBackups(projectRoot string, keepCount int) int {
-	root := filepath.Join(projectRoot, defs.MoAIDir, defs.NamespaceBackupsSubdir)
-	if !backupRootContained(projectRoot, root) {
-		return 0
-	}
-	entries, err := os.ReadDir(root)
-	if err != nil {
-		return 0
-	}
-	var backups []string
-	for _, entry := range entries {
-		if entry.IsDir() && strings.HasPrefix(entry.Name(), "update-") {
-			backups = append(backups, entry.Name())
-		}
-	}
-	if len(backups) <= keepCount {
-		return 0
-	}
-	sort.Strings(backups)
-	return pruneBackups(root, backups, keepCount)
+	return len(pruneNamespaceBackups(projectRoot, keepCount, DefaultPastVersionsKeep).Removed)
 }
 
 // backupRootContained reports whether a backup root is a real directory inside
@@ -353,45 +253,6 @@ func OldBackupRootRefused(projectRoot string) bool {
 // that CleanupNamespaceBackups prunes.
 func NamespaceBackupRootRefused(projectRoot string) bool {
 	return !backupRootContained(projectRoot, filepath.Join(projectRoot, defs.MoAIDir, defs.NamespaceBackupsSubdir))
-}
-
-// OldBackupsKept reports the excess entries under .moai-backups that the retention
-// pass left in place: the entries beyond the newest keepCount that still exist. The
-// count and the oldest name are the one ledger row for that pass. A refused root
-// reports nothing.
-func OldBackupsKept(projectRoot string, keepCount int) (int, string) {
-	return keptBackups(projectRoot, filepath.Join(projectRoot, defs.BackupsDir), keepCount, isTimestampBackupName)
-}
-
-// NamespaceBackupsKept is OldBackupsKept for the namespace backup root.
-func NamespaceBackupsKept(projectRoot string, keepCount int) (int, string) {
-	root := filepath.Join(projectRoot, defs.MoAIDir, defs.NamespaceBackupsSubdir)
-	return keptBackups(projectRoot, root, keepCount, func(name string) bool {
-		return strings.HasPrefix(name, "update-")
-	})
-}
-
-// keptBackups lists the entries of root that match, oldest first, and returns how
-// many lie beyond the newest keepCount, with the oldest of them.
-func keptBackups(projectRoot, root string, keepCount int, match func(string) bool) (int, string) {
-	if !backupRootContained(projectRoot, root) {
-		return 0, ""
-	}
-	entries, err := os.ReadDir(root)
-	if err != nil {
-		return 0, ""
-	}
-	var names []string
-	for _, entry := range entries {
-		if entry.IsDir() && match(entry.Name()) {
-			names = append(names, entry.Name())
-		}
-	}
-	if len(names) <= keepCount {
-		return 0, ""
-	}
-	sort.Strings(names)
-	return len(names) - keepCount, names[0]
 }
 
 // isTimestampBackupName reports whether name has the shape of a .moai-backups
@@ -447,34 +308,6 @@ func addRetainedBackupKeys(backupDir string, keys map[string]bool) {
 		}
 		return nil
 	})
-}
-
-// backupUniqueFile returns the path of the first file under backupDir that no
-// retained backup holds, or "" when every file is redundant. An entry that
-// cannot be read or classified cannot be shown redundant, so it counts as unique.
-func backupUniqueFile(backupDir string, retained map[string]bool) string {
-	unique := ""
-	_ = filepath.WalkDir(backupDir, func(path string, d fs.DirEntry, err error) error {
-		switch {
-		case err != nil:
-			unique = path
-		case d.IsDir():
-			return nil
-		case !d.Type().IsRegular():
-			unique = path
-		default:
-			if isBackupBookkeeping(backupDir, path) {
-				return nil
-			}
-			if key, keyErr := backupFileKey(backupDir, path); keyErr != nil || !retained[key] {
-				unique = path
-			} else {
-				return nil
-			}
-		}
-		return fs.SkipAll
-	})
-	return unique
 }
 
 // IsSymlinkEntry reports whether path is a symbolic link (via os.Lstat, which
