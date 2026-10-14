@@ -246,11 +246,16 @@ func TestProtectedZoneShellUnlinkAbsoluteRootDotDot(t *testing.T) {
 // judgment) and a "\child" suffix keeps the link a parent component; on
 // POSIX the backslash is an ORDINARY filename character
 // (SPEC-HOOK-ZONE-BACKSLASH-001) and the same texts stay link-own finals.
-// The windows flag rides in as an argument — the package's pathSegments
-// idiom — so both branches classify identically on every host. Windows shell
-// semantics themselves are not executable on this darwin host: this unit is
-// the measurable surface, and CI's windows matrix owns the end-to-end
-// observation.
+// Repair round 5 adds the Win32 NON-CANONICAL finals: normalization strips
+// trailing dots and spaces from the last component, so `secret.md.` /
+// `secret.md␣` alias `secret.md` — on windows such a final must NOT route
+// to the link-own resolver (which preserves the raw name) and stays on the
+// target-following judgment instead, while POSIX keeps the literal filename
+// link-own. The windows flag rides in as an argument — the package's
+// pathSegments idiom — so both branches classify identically on every host.
+// Windows shell semantics themselves are not executable on this darwin host:
+// this unit is the measurable surface, and CI's windows matrix owns the
+// end-to-end observation.
 func TestZoneUnlinkLinkOwnWindowsSeparators(t *testing.T) {
 	cells := []struct {
 		cand    string
@@ -265,10 +270,21 @@ func TestZoneUnlinkLinkOwnWindowsSeparators(t *testing.T) {
 		{cand: `C:\dir\link`, windows: true, want: true},
 		{cand: `zonelink/child`, windows: true, want: true},
 		{cand: `zonelink/`, windows: true, want: false},
+		// windows: Win32 strips trailing dots/spaces from the final component
+		// — these alias a DIFFERENT real name, so they are not the link's own
+		// entry and keep the fail-closed target-following judgment.
+		{cand: `secret.md.`, windows: true, want: false},
+		{cand: `secret.md `, windows: true, want: false},
+		{cand: `dir\secret.md.`, windows: true, want: false},
 		// POSIX: the backslash is a filename character — the identical texts
 		// stay link-own finals (the backslash-literal SPEC's constraint).
 		{cand: `zonelink\.`, windows: false, want: true},
 		{cand: `zonelink\`, windows: false, want: true},
+		// POSIX: a trailing dot or space is an ORDINARY filename character —
+		// `secret.md.` is a real, distinct entry and stays link-own.
+		{cand: `secret.md.`, windows: false, want: true},
+		{cand: `secret.md `, windows: false, want: true},
+		{cand: `dir/secret.md.`, windows: false, want: true},
 		{cand: `zone_dir/link_x`, windows: false, want: true},
 		{cand: `zone_dir/link_x/`, windows: false, want: false},
 		{cand: `zonelink/.`, windows: false, want: false},

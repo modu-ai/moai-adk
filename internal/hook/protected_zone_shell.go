@@ -79,6 +79,14 @@ var zoneUnlinkVerbs = map[string]bool{
 // `zonelink\.` names the directory through the link there — while on POSIX a
 // backslash is an ordinary filename character
 // (SPEC-HOOK-ZONE-BACKSLASH-001) and the same texts stay link-own finals.
+// On WINDOWS a final component ending in "." or a space is NON-CANONICAL
+// (card t1712 repair round 5): Win32 normalization strips trailing dots and
+// spaces from the last component, so `secret.md.` and `secret.md ` alias the
+// entry `secret.md` — the link-own resolver preserves the RAW final name and
+// would judge an entry the shell never touches, so such a spelling stays on
+// the target-following (full resolver) path, the fail-closed direction. On
+// POSIX a trailing dot or space is an ordinary filename character and the
+// literal entry is the one removed — link-own unchanged.
 // windows rides in as an argument, the package's pathSegments idiom, so both
 // branches classify identically on every host; the single production caller
 // passes runtime.GOOS == "windows".
@@ -99,7 +107,15 @@ func zoneUnlinkLinkOwn(cand string, windows bool) bool {
 		return false
 	}
 	seg := cand[last+1:]
-	return seg != "." && seg != ".."
+	if seg == "." || seg == ".." {
+		return false
+	}
+	if windows && strings.TrimRight(seg, ". ") != seg {
+		// Win32 strips trailing dots/spaces — the name is non-canonical and
+		// aliases a different entry; never judge it as the link's own
+		return false
+	}
+	return true
 }
 
 // zoneGitMutating are the git subcommands of REQ-SIPZ-007.
