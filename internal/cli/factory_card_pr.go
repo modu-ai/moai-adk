@@ -35,6 +35,7 @@ import (
 	"github.com/modu-ai/moai-adk/internal/config"
 	"github.com/modu-ai/moai-adk/internal/factory"
 	"github.com/modu-ai/moai-adk/internal/factorylane"
+	"github.com/modu-ai/moai-adk/internal/gitenv"
 	"github.com/modu-ai/moai-adk/internal/homestate"
 )
 
@@ -136,6 +137,7 @@ func factoryReadPR(dir, branch string) (pr *factoryPR, found bool, err error) {
 // factoryGitRead runs `git -C dir <args>` and returns trimmed stdout.
 func factoryGitRead(dir string, args ...string) (string, error) {
 	cmd := exec.Command("git", append([]string{"-C", dir}, args...)...)
+	cmd.Env = gitenv.Env() // an inherited GIT_DIR would outrank -C
 	out, err := cmd.Output()
 	if err != nil {
 		var ee *exec.ExitError
