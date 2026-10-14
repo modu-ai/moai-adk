@@ -735,10 +735,9 @@ func runLaunchClaude(profileName string, extraArgs []string) error {
 	buildArgs := func(withContinue bool) []string {
 		a := []string{"claude"}
 		// Every non-empty mode is forwarded verbatim, acceptEdits included.
-		// The template settings.json stopped shipping a defaultMode default
-		// (20b4ff0f6), so with CC 2.1.283+ the former acceptEdits omission
-		// let the CC built-in default (auto; Manual under a GLM backend) win
-		// silently (card t1414).
+		// The template stopped shipping a defaultMode default (20b4ff0f6, card
+		// t1414); it ships "default" again since SPEC-USER-SETTINGS-PROTECT-001
+		// (Q2), so a non-empty explicit mode is what overrides the template.
 		if permMode != "" {
 			a = append(a, "--permission-mode", permMode)
 		}
@@ -1118,11 +1117,11 @@ func readSettingsLocalForLaunch() map[string]string {
 // survives across sessions regardless of how Claude Code is launched.
 //
 // Any non-empty mode (acceptEdits included) writes the defaultMode override:
-// the template settings.json stopped shipping a defaultMode default
-// (20b4ff0f6), so with CC 2.1.283+ an absent override falls back to the CC
-// built-in default instead of a project acceptEdits default (card t1414).
-// Only an empty preference removes the override, deferring to whatever the
-// user-edited project settings.json carries.
+// the template stopped shipping a defaultMode default (20b4ff0f6, card t1414)
+// and ships "default" again since SPEC-USER-SETTINGS-PROTECT-001 (Q2), so an
+// explicit override is what selects a non-default mode. Only an empty
+// preference removes the override, deferring to whatever the user-edited
+// project settings.json carries.
 //
 // The persistence of an explicit acceptEdits selection is surfaced to the
 // user: runProfileSetup emits an explicit confirmation line
