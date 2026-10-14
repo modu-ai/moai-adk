@@ -244,6 +244,40 @@ ok      github.com/modu-ai/moai-adk/internal/cli  4.368s
 
 **Post-fix verification** (env-scrubbed): whole `TestRunInit` neighbor family `go test ./internal/cli/ -run 'TestRunInit' -count=1` → `ok github.com/modu-ai/moai-adk/internal/cli 44.113s` (full internal/cli suite still out per the t1542 measurement — only the touched tests + prefixed neighbors run); `go test -count=1 ./internal/config/toolpolicy/ ./internal/core/project/` → both `ok` (0.431s / 2.573s); `go build ./...` → exit 0; `GOOS=windows GOARCH=amd64 go build ./...` → exit 0; `gofmt -l internal/cli/init_autonomy_wiring_test.go` → clean.
 
+### Sync-audit repair (F2 + F3) — record-protocol serialization and failed-render rollback
+
+**Findings** (cold sync-audit verdict `.moai/reports/t1630/sync-audit.md`, FAIL at audited_sha 25df1da08c; both blocking findings probe-verified by the codex required gate):
+
+- **F2 [P1]** — concurrent renders inverted the record: two renders interleaving a stale converge past a newer one left settings carrying one generation while the record carried another; a later policy revocation then read the orphaned entries as never-generated and they persisted (resurrection via race).
+- **F3 [P2]** — a stage-ahead followed by a FAILED settings write upgraded an entry to managed off a write that never landed; when the policy coincidentally generated an entry the user had authored and later revoked it, the next healthy render DELETED the user-authored allow (the deletion-direction twin of the round-2 residual, fixed in-card per the auditor's routing).
+
+**Disposition: fixed** (commit 0468c05c5, both in `internal/config/toolpolicy`):
+
+- **F2**: the whole record-protocol span — record read, Q5 classification (`mergeProjectAllow`), stage-ahead, PROJECT settings write, converge/rollback — is serialized under one package-level protocol mutex (`recordProtocolMu`) shared by `RenderTierPermissions` and `BuildInto` (TargetJSON span only). Chosen over the CAS-converge alternative for simplicity; one coarse mutex rather than a per-project lock registry (record spans are rare file writes; a single primitive avoids a global registry map). Cross-PROCESS renders remain outside this mutex's reach — in-process goroutine concurrency (the auditor's probe class) is fully serialized; the cross-process gap is named below.
+- **F3**: the settings-write failure path (and BuildInto's render/write failure paths) now roll the record back to its pre-render content (`rollbackManagedAllowRecord`); when no record existed before the stage, the rollback removes the staged file (record-absent restored exactly). The rollback runs inside the protocol span, so it cannot race. Converge failures after a successful settings write still leave the staged superset (safe direction — unchanged from round 2).
+- **Round-2 failure-path tests re-pinned**: `..._SettingsWriteFailureAfterRecordStage_...` record-state assertion now wants the rolled-back pre-render record (its protected outcome — the post-recovery classification `[a, c]` — is unchanged and still asserted); `..._FailedProjectRenderLeavesSettingsUntouchedRecordSafe...` now pins rollback-to-prior (sentinel case) and rollback-to-record-absent (fresh case). The tests' protective intent (failed writes never corrupt classification) is preserved; the pinned record state follows the F3 contract.
+
+**RED evidence** (`go test ./internal/config/toolpolicy/ -run 'TestConcurrentRendersKeepRecordConsistentWithSettings|TestFailedSettingsWriteRollsRecordBack_UserAddedEntrySurvivesRevocation' -race -v -count=1`, pre-fix tree 25df1da08c):
+
+```
+=== RUN   TestConcurrentRendersKeepRecordConsistentWithSettings
+    tier_render_test.go:583: round 6: record inverted against settings: record=[Bash(managed-a2:*) Bash(managed-a:*)] allow=[Bash(managed-b2:*) Bash(managed-b:*)]
+--- FAIL: TestConcurrentRendersKeepRecordConsistentWithSettings (0.21s)
+=== RUN   TestFailedSettingsWriteRollsRecordBack_UserAddedEntrySurvivesRevocation
+    tier_render_test.go:629: record after failed settings write = [Bash(managed-m:*) Bash(user-x:*)], want the pre-render [Bash(managed-m:*)] (a failed render must not upgrade entries to managed)
+    tier_render_test.go:653: policy revoked user-x but the user's own entry was deleted: allow = [Bash(managed-m:*)], want [Bash(managed-m:*) Bash(user-x:*)] (user-added survives policy revocation)
+--- FAIL: TestFailedSettingsWriteRollsRecordBack_UserAddedEntrySurvivesRevocation (0.02s)
+FAIL    github.com/modu-ai/moai-adk/internal/config/toolpolicy  0.353s
+```
+
+The F2 cell is the auditor's inversion observed directly (record = A's generation, settings = B's). The F3 cell shows both halves: the ownership upgrade off a failed write, then the user-authored entry deleted by the revocation render.
+
+**GREEN evidence** (post-fix, same command): `--- PASS: TestConcurrentRendersKeepRecordConsistentWithSettings (0.94s)` / `--- PASS: TestFailedSettingsWriteRollsRecordBack_UserAddedEntrySurvivesRevocation (0.01s)` / `PASS ok ... toolpolicy 2.238s` (under `-race`).
+
+**Post-fix verification** (env-scrubbed, this run, this tree, HEAD 0468c05c5): `go test -count=1 ./internal/config/toolpolicy/ ./internal/core/project/` → both `ok` (1.586s / 2.844s); the full record-protocol family (8 tests: F2 burst, F3 rollback, both revised round-2 tests, P1 deciding/writer tests, BuildInto test) under `go test -race -count=1` → all PASS, `ok ... 2.361s`; `go build ./...` → exit 0; `GOOS=windows GOARCH=amd64 go build ./...` → exit 0; `go test -count=1 ./internal/config/toolpolicy/ -cover` → `coverage: 90.3% of statements` (threshold ≥ 85%); `golangci-lint run --timeout=2m ./internal/config/toolpolicy/` → `0 issues.`; `gofmt -l` → clean.
+
+**Named for the leader (not fixed in-card)**: (1) F2's serialization is in-process only — two distinct `moai` PROCESSES rendering the same project concurrently are outside the mutex's reach; the cross-process variant needs a file lock with a stale-holder story (flock is unix-only; Windows parity undecided) and is a follow-up surface. (2) F4 [minor, optional] — `WriteUserDefaultMode` fail-open on a locatable-but-unparseable permissions region — routes with F1's ruling or t1666 per the verdict; not fixed in-card because its disposition rides F1's routing. (3) F5 (comment drift), F6 (`mergeProjectAllow` inline union vs `unionStrings` dedup), F7 (helper rename) — optional-grade, left named. (4) F1 [P1] — the full-bundle USER write vs Q1 — pending the leader's recorded ruling per the verdict; not touched.
+
 ## §E.3 Run-phase Audit-Ready Signal
 
 ```yaml
