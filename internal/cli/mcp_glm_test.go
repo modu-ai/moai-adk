@@ -110,6 +110,12 @@ func newGLMReviewTree(t *testing.T, dirty bool) string {
 			t.Fatalf("modify code.go: %v", err)
 		}
 	}
+	// REQ-MN-005 confinement: the fixture tree is its own repository, so the
+	// server-root seam follows it — the exact shape the production path takes
+	// for a tree the server actually serves.
+	prevProj := projectDirResolver
+	projectDirResolver = func() string { return root }
+	t.Cleanup(func() { projectDirResolver = prevProj })
 	return root
 }
 
