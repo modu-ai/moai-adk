@@ -735,6 +735,11 @@ func TestSD_WorktreeSlugShape(t *testing.T) {
 		// SPEC id slug (card t1713).
 		{"t1200", "[3.2-1-2·P1] 설치 모델 분리 지원", "SPEC-MCP-NEUTRALITY-001", "mcp-neutrality"},
 		{"t1201", "", "SPEC-V3R6-GRAPH-FRESHNESS-001", "v3r6-graph-freshness"},
+		// A SPEC id carrying the card-id shape (t<digits>) must not leak it
+		// into the branch (card t1713 round-1 review finding): SPEC-T1713-001
+		// once derived "t1713" — the very id the branch name must never carry.
+		{"t1713", "", "SPEC-T1713-001", "card"},
+		{"t1202", "", "SPEC-TOTP-1713-001", "totp"},
 	} {
 		got := factoryWorktreeSlug(tc.cardID, tc.title, tc.specID)
 		if got != tc.want {

@@ -642,11 +642,14 @@ func isASCIIDigits(s string) bool {
 // no-ASCII-title fallback (card t1713): the SPEC- prefix and the trailing
 // numeric sequence are dropped and the domain tokens carry
 // (SPEC-MCP-NEUTRALITY-001 → mcp-neutrality), under the same ≤3-token /
-// ≤24-char naming rule. Returns "" when nothing usable remains.
+// ≤24-char naming rule. The metadata filter applies to SPEC tokens too, so
+// a SPEC id carrying the card-id shape never leaks it into the branch
+// (SPEC-T1713-001 → "" → "card"; round-1 review finding). Returns "" when
+// nothing usable remains.
 func factorySpecIDSlug(specID string) string {
 	var out []string
 	for _, part := range strings.Split(strings.ToLower(strings.TrimSpace(specID)), "-") {
-		if part == "" || isASCIIDigits(part) {
+		if part == "" || factorySlugTokenIsMetadata(part) {
 			continue
 		}
 		if len(out) == 0 && part == "spec" {
