@@ -360,6 +360,7 @@ func AcquireIntegrationWindow(projectRoot string, want IntegrationLock, force bo
 	if opts != nil {
 		viaWait = opts.ViaWait
 	}
+	gate := CandidateGrantGate(projectRoot)
 	path := integrationLockPath(projectRoot)
 	if err := os.MkdirAll(filepath.Dir(path), 0o755); err != nil {
 		return nil, fmt.Errorf("integration lock: %w", err)
@@ -385,7 +386,7 @@ func AcquireIntegrationWindow(projectRoot string, want IntegrationLock, force bo
 		// REQ-MWQ-006/007 promotion) — the same serialized mutation the
 		// decision below runs in, which is the ordering REQ-MWQ-002 asks
 		// the enqueue to decide inside.
-		report := RefreshWindow(current, policy, probe, WindowClock(), lease)
+		report := RefreshWindowGated(current, policy, probe, WindowClock(), lease, gate)
 		// P2-9: a stale holder the refresh cleared is recorded ON the
 		// record now — surface it as this acquire's takeover so the
 		// "never silent" promise of the pre-queue takeover holds.
@@ -401,7 +402,7 @@ func AcquireIntegrationWindow(projectRoot string, want IntegrationLock, force bo
 		// conditionally: a record the refresh did NOT change is not
 		// rewritten, and its refusal formats exactly as before.
 		persistRefreshed := func() error {
-			if len(report.Dropped) == 0 && report.Promoted == nil && !report.Displaced {
+			if len(report.Dropped) == 0 && len(report.Refused) == 0 && report.Promoted == nil && !report.Displaced {
 				return nil
 			}
 			return writeIntegrationLock(path, current)
@@ -474,6 +475,18 @@ func AcquireIntegrationWindow(projectRoot string, want IntegrationLock, force bo
 			// REQ-MWQ-008: every acquire stamps the holder's lease.
 			StampLease(&want, WindowClock(), lease)
 		}
+		// The per-card red hold on the direct grant (card t1478 Finding 4,
+		// REQ-CCI-012): the caller's card is granted the window only when its
+		// candidate admits it. The refusal persists what the refresh changed
+		// and writes nothing else, so a refused red card never holds the window.
+		if gate != nil {
+			if holdErr := gate(want.Card); holdErr != nil {
+				if err := persistRefreshed(); err != nil {
+					return err
+				}
+				return holdErr
+			}
+		}
 		if integrationLockMutationTestHook != nil {
 			integrationLockMutationTestHook()
 		}
@@ -525,50 +538,65 @@ func (l *IntegrationLock) releasableBy(sessionID string, callerOwnerPID int) boo
 //
 // force releases a foreign window, for the same wedged-holder reason acquire
 // carries it.
+//
+// @MX:ANCHOR: [AUTO] ReleaseIntegrationLock — the exported release of the integration window, under which the holder check and the force override apply
+// @MX:REASON: eight call sites across five files (internal/cli/factory_card.go, internal/cli/session_worktree_automerge.go, internal/cli/integration.go, internal/cli/factory_merge.go, internal/factory/integration_merge_step.go) release the window through it; a caller that cleared the record by another route would skip the holder check that protects a window another session holds
 func ReleaseIntegrationLock(projectRoot, sessionID string, callerOwnerPID int, force bool) (released *IntegrationLock, err error) {
 	if mutErr := withIntegrationLockMutation(projectRoot, func() error {
-		current, readErr := ReadIntegrationLock(projectRoot)
-		if readErr != nil && !force {
-			return readErr
-		}
-		if current == nil || !current.Held() {
-			return ErrIntegrationLockNotHeld
-		}
-		if !current.releasableBy(sessionID, callerOwnerPID) && !force {
-			return fmt.Errorf("%w: %s (pid %d) holds it", ErrIntegrationLockForeign, current.holderLabel(), current.PID)
-		}
-		// The queue-aware release (card t1479, REQ-MWQ-006/007): with live
-		// tickets queued the record SURVIVES the release — the holder is
-		// cleared first (this IS the release), and then the same mutation
-		// promotes the first live ticket while the policy is open; under
-		// hold the window is left without a holder with the queue intact.
-		// Without a queue the pre-queue shape stands: the record file is
-		// removed, byte-for-byte as before.
-		if len(current.Queue) > 0 {
-			// The caller's answer names the holder it released, not the one
-			// the promotion put in its place.
-			releasedSnapshot := *current
-			policy, policyErr := ReadIntegrationWindowPolicy(projectRoot)
-			if policyErr != nil {
-				return policyErr
-			}
-			clearHolder(current, WindowClock(), "released by holder")
-			RefreshWindow(current, policy, DefaultWindowProcProbe(), WindowClock(), WindowLeaseDuration)
-			if err := writeIntegrationLock(integrationLockPath(projectRoot), current); err != nil {
-				return err
-			}
-			released = &releasedSnapshot
-			return nil
-		}
-		if remErr := os.Remove(integrationLockPath(projectRoot)); remErr != nil && !errors.Is(remErr, os.ErrNotExist) {
-			return fmt.Errorf("integration lock: %w", remErr)
-		}
-		released = current
-		return nil
+		var relErr error
+		released, relErr = releaseIntegrationLockLocked(projectRoot, sessionID, callerOwnerPID, force)
+		return relErr
 	}); mutErr != nil {
 		return nil, mutErr
 	}
 	return released, nil
+}
+
+// releaseIntegrationLockLocked is ReleaseIntegrationLock's body for a caller
+// that already holds the mutation section (REQ-MWQ2-007: the cause-7 pair holds
+// and releases inside one section). It must never take the mutation lock
+// itself: the lock is not reentrant, so a nested acquire would wait out its
+// budget and report busy.
+func releaseIntegrationLockLocked(projectRoot, sessionID string, callerOwnerPID int, force bool) (*IntegrationLock, error) {
+	current, readErr := ReadIntegrationLock(projectRoot)
+	if readErr != nil && !force {
+		return nil, readErr
+	}
+	if current == nil || !current.Held() {
+		return nil, ErrIntegrationLockNotHeld
+	}
+	if !current.releasableBy(sessionID, callerOwnerPID) && !force {
+		return nil, fmt.Errorf("%w: %s (pid %d) holds it", ErrIntegrationLockForeign, current.holderLabel(), current.PID)
+	}
+	// The queue-aware release (card t1479, REQ-MWQ-006/007): with live
+	// tickets queued the record SURVIVES the release — the holder is
+	// cleared first (this IS the release), and then the same mutation
+	// promotes the first live ticket while the policy is open; under
+	// hold the window is left without a holder with the queue intact.
+	// Without a queue the pre-queue shape stands: the record file is
+	// removed, byte-for-byte as before.
+	if len(current.Queue) > 0 {
+		// The caller's answer names the holder it released, not the one
+		// the promotion put in its place.
+		releasedSnapshot := *current
+		policy, policyErr := ReadIntegrationWindowPolicy(projectRoot)
+		if policyErr != nil {
+			return nil, policyErr
+		}
+		clearHolder(current, WindowClock(), "released by holder")
+		// The candidate grant gate (card t1478): the queue promotion judges a red
+		// candidate's hold under this same mutation section, as acquire does.
+		gate := CandidateGrantGate(projectRoot)
+		RefreshWindowGated(current, policy, DefaultWindowProcProbe(), WindowClock(), WindowLeaseDuration, gate)
+		if err := writeIntegrationLock(integrationLockPath(projectRoot), current); err != nil {
+			return nil, err
+		}
+		return &releasedSnapshot, nil
+	}
+	if remErr := os.Remove(integrationLockPath(projectRoot)); remErr != nil && !errors.Is(remErr, os.ErrNotExist) {
+		return nil, fmt.Errorf("integration lock: %w", remErr)
+	}
+	return current, nil
 }
 
 // holderLabel prefers the human-facing session name and falls back to the id.

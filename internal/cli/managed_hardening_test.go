@@ -344,7 +344,7 @@ func hardenWantResult(want string) func(*testing.T, hardenFrame) {
 	}
 }
 
-// hardenWantLegacyDenied pins the legacy approval refusal shape: codex 0.160.0
+// hardenWantLegacyDenied pins the legacy approval refusal shape: codex 0.161.0
 // ReviewDecision carries a denial as {"denied":{"rejection":<string>}}, not as
 // the bare string "denied". The reply is decoded and its shape asserted, with
 // the rejection text compared to the production constant.
@@ -503,7 +503,7 @@ func TestManagedCodexServerRequestPolicy(t *testing.T) {
 }
 
 // hardenResultSchemas maps every server-request kind the owner answers with a
-// result to the vendored codex 0.160.0 response schema that result must satisfy.
+// result to the vendored codex 0.161.0 response schema that result must satisfy.
 // A kind absent here is answered with a JSON-RPC error, validated against
 // JSONRPCError.json instead.
 var hardenResultSchemas = map[string]string{
@@ -520,7 +520,7 @@ var hardenResultSchemas = map[string]string{
 // carry only internal "#/definitions" references, so no loader is needed.
 func hardenCompileSchema(t *testing.T, file string) *jsonschema.Schema {
 	t.Helper()
-	raw, err := os.ReadFile(filepath.Join("testdata", "codex-0.160.0", file))
+	raw, err := os.ReadFile(filepath.Join("testdata", "codex-0.161.0", file))
 	if err != nil {
 		t.Fatalf("read vendored schema %s: %v", file, err)
 	}
@@ -530,7 +530,7 @@ func hardenCompileSchema(t *testing.T, file string) *jsonschema.Schema {
 	}
 	compiler := jsonschema.NewCompiler()
 	compiler.DefaultDraft(jsonschema.Draft7)
-	url := "https://moai.invalid/codex-0.160.0/" + file
+	url := "https://moai.invalid/codex-0.161.0/" + file
 	if err := compiler.AddResource(url, doc); err != nil {
 		t.Fatalf("add vendored schema %s: %v", file, err)
 	}
@@ -597,7 +597,7 @@ func TestManagedSchemaGuardSeesMessagelessErrorFrame(t *testing.T) {
 
 // TestManagedServerRequestPolicyMatchesCodexSchema is the schema-conformance
 // guard for the D-1 response policy: the owner's real wire answer to every kind
-// of server request must validate against the codex 0.160.0 response schema for
+// of server request must validate against the codex 0.161.0 response schema for
 // that kind (or, for the error-answered kinds and the unknown-method fallback,
 // against JSONRPCError). It complements, and does not replace, the exact
 // answers pinned by TestManagedCodexServerRequestPolicy: a schema-valid answer

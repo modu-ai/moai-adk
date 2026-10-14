@@ -1,15 +1,18 @@
 package cli
 
-// codex_review_delay.go — the delayed-block axis of the turn-end review gate
-// (SPEC-GATE-BOTTLENECK-001 REQ-GBN-002 / AC-GBN-004). The Stop gate no
+// codex_review_delay.go — the delayed-verdict axis of the turn-end review gate
+// (SPEC-GATE-BOTTLENECK-001 REQ-GBN-002 / AC-GBN-004; the entry half amended by
+// SPEC-REVIEW-GATE-REPAIR-001 REQ-RG-001 and REQ-RG-002). The Stop gate no
 // longer runs the synchronous codex RPC (the measured bottleneck: 11 of 12
 // Stops blocked, 14m13s): a cache-miss Stop KICKS the same review the receipt
 // producer runs (`moai verify codex-review`) as a detached background process
-// and allows the turn, and the verdict is enforced at the NEXT turn entry by
-// HandleCodexReviewEntry — a fresh FAIL blocks the prompt with the preserved
-// finding detail, every other state allows (fail-open). `async:true` is
-// deliberately not adopted: an async hook can only deliver additionalContext
-// and would surrender the block capability (REQ-GBN-002).
+// and allows the turn. HandleCodexReviewEntry enforces the verdict at the NEXT
+// turn entry, but it never blocks a prompt: a fresh FAIL's finding detail goes
+// to the model as additional context once per review key, and a per-key
+// delivery record keeps later prompts of that key from repeating it. Every
+// other state allows (fail-open). The Stop side keeps its synchronous block (its
+// per-key limit is SPEC-REVIEW-GATE-REPAIR-001 REQ-RG-003, a later milestone);
+// the entry hook's timeout is outside this change (F2).
 //
 // Both halves share the receipt store, the scope resolver, and the receipt
 // producer with the Stop gate (codex_review_gate.go / codex_review_receipt.go)
@@ -17,6 +20,9 @@ package cli
 
 import (
 	"context"
+	"crypto/sha256"
+	"encoding/hex"
+	"encoding/json"
 	"fmt"
 	"os"
 	"os/exec"
@@ -113,12 +119,67 @@ func kickInFlight(dir string, state verify.ReceiptState, now time.Time) (bool, s
 	return false, path // we own the kick
 }
 
-// HandleCodexReviewEntry is the NEXT-TURN-ENTRY enforcement half of the
-// delayed block (REQ-GBN-002). The Stop allowed the previous turn and kicked
-// a background review; this handler reads the receipt that review recorded
-// and enforces it against the CURRENT tree state. ALLOW/BLOCK contract:
-//   - empty HookOutput ({})                            = ALLOW (prompt proceeds)
-//   - {Decision: "block", Reason: "..."}               = BLOCK (prompt held)
+// codexReviewDeliveryRecord is the per-key delivery record: the review key a
+// fail detail was delivered for, and when (SPEC-REVIEW-GATE-REPAIR-001
+// REQ-RG-002). The five receipt fields are kept verbatim, so the record reads
+// back against the receipt it came from.
+type codexReviewDeliveryRecord struct {
+	Head         string    `json:"head"`
+	TreeDigest   string    `json:"tree_digest"`
+	ConfigDigest string    `json:"config_digest"`
+	Command      string    `json:"command"`
+	ToolVersion  string    `json:"tool_version"`
+	DeliveredAt  time.Time `json:"delivered_at"`
+}
+
+// codexReviewDeliveryPath is the delivery record of one review key, in the same
+// runtime-managed state directory as the detail file. The key is the five
+// combined receipt fields. Each field is length-prefixed before hashing, so
+// distinct keys never share a byte sequence, and a change to any one field
+// names a new record: deliveries are per key, never global.
+func codexReviewDeliveryPath(dir string, state verify.ReceiptState) string {
+	h := sha256.New()
+	for _, field := range []string{state.Head, state.TreeDigest, state.ConfigDigest, state.Command, state.ToolVersion} {
+		_, _ = fmt.Fprintf(h, "%d:%s;", len(field), field)
+	}
+	return filepath.Join(dir, ".moai", "state", "verify", "codex-review",
+		"delivered-"+hex.EncodeToString(h.Sum(nil))+".json")
+}
+
+// codexReviewClaimDelivery reports whether the fail detail may be delivered for
+// this review key now, and claims the delivery when it may. The exclusive create
+// of the key's record is the claim: the first prompt of a key wins, and a later
+// prompt finds the record and delivers nothing. Fail-open toward delivering: a
+// record that cannot be written leaves the detail advisory, and it never holds
+// the prompt.
+func codexReviewClaimDelivery(dir string, state verify.ReceiptState, now time.Time) bool {
+	path := codexReviewDeliveryPath(dir, state)
+	if err := os.MkdirAll(filepath.Dir(path), 0o755); err != nil {
+		return true
+	}
+	f, err := os.OpenFile(path, os.O_CREATE|os.O_EXCL|os.O_WRONLY, 0o644)
+	if err != nil {
+		return !os.IsExist(err) // a record already exists ⇒ this key was delivered before
+	}
+	rec := codexReviewDeliveryRecord{
+		Head: state.Head, TreeDigest: state.TreeDigest, ConfigDigest: state.ConfigDigest,
+		Command: state.Command, ToolVersion: state.ToolVersion, DeliveredAt: now.UTC(),
+	}
+	if b, mErr := json.Marshal(rec); mErr == nil {
+		_, _ = f.Write(append(b, '\n'))
+	}
+	_ = f.Close()
+	return true
+}
+
+// HandleCodexReviewEntry is the NEXT-TURN-ENTRY half of the delayed verdict
+// (REQ-GBN-002, amended by REQ-RG-001 and REQ-RG-002). The Stop allowed the
+// previous turn and kicked a background review; this handler reads the receipt
+// that review recorded and reports it against the CURRENT tree state. It never
+// blocks a prompt (REQ-RG-001). Output contract:
+//   - empty HookOutput ({}) = ALLOW: the prompt proceeds with nothing added
+//   - HookSpecificOutput.AdditionalContext = "..." = ALLOW with the fail detail,
+//     delivered once for the review key (REQ-RG-002)
 //
 // Decision order (fail-open on every read path, AC-GBN-004):
 //  1. gate disabled (same flag as the Stop gate) → ALLOW (opt-in default-off)
@@ -129,14 +190,15 @@ func kickInFlight(dir string, state verify.ReceiptState, now time.Time) (bool, s
 //  4. codex missing                              → ALLOW (no reviewer, no
 //     receipt can ever arrive)
 //  5. receipt state unreadable                   → ALLOW (unkeyed verdict)
-//  6. fresh FAIL receipt for the current key     → BLOCK with the preserved
-//     finding detail (the gate's delayed enforcement point)
+//  6. fresh FAIL receipt for the current key     → ALLOW. The finding detail is
+//     added as context on the key's first prompt, and the delivery record makes
+//     later prompts of the same key silent
 //  7. anything else (no receipt yet, stale key, pass, inconclusive) → ALLOW;
 //     the background review is still running or the tree already moved, and
 //     the next Stop re-kicks for the new key
 //
 // The entry hook never kicks: enforcement and kick-start stay on separate
-// hooks so a blocked prompt cannot also be waiting on a review it started.
+// hooks, so the prompt path never starts a review it would then have to wait on.
 func HandleCodexReviewEntry(input *hook.HookInput, enabled bool, projectDir string) (*hook.HookOutput, error) {
 	allow := &hook.HookOutput{}
 	if !enabled {
@@ -168,18 +230,26 @@ func HandleCodexReviewEntry(input *hook.HookInput, enabled bool, projectDir stri
 	}
 	if chk := verify.CheckReceipt(verify.LoadReceipt(scope.Dir, state), state, time.Now(), codexReviewCacheTTL); chk.Run {
 		if isBlockVerdict(chk.Receipt.Verdict) {
-			// (6) the delayed enforcement point: the fresh FAIL the previous
-			// turn's background review recorded. The detail file says WHAT to
-			// fix (preserved by the receipt producer at record time); an
-			// unreadable detail keeps the bare verdict — fail-open, never
-			// invented.
-			reason := "codex review gate (delayed verdict — the background review of the previous turn failed): " + chk.Receipt.Verdict
+			// (6) the fresh FAIL the previous turn's background review recorded.
+			// It never blocks (REQ-RG-001): the detail goes to the model as
+			// additional context, once per review key (REQ-RG-002). The claim is
+			// the delivery record; a key that already has one stays silent. The
+			// detail file says WHAT to fix (preserved by the receipt producer at
+			// record time); an unreadable detail keeps the bare verdict —
+			// fail-open, never invented.
+			if !codexReviewClaimDelivery(scope.Dir, state, time.Now()) {
+				return allow, nil
+			}
+			ctx := "codex review (delayed verdict — the background review of the previous turn failed): " +
+				chk.Receipt.Verdict + ". This prompt is not blocked."
 			if detail := codexReviewCachedDetail(scope.Dir, *chk.Receipt); detail != "" {
-				reason += "\n\n" + detail
+				ctx += "\n\n" + detail
 			}
 			return &hook.HookOutput{
-				Decision: hook.DecisionBlock,
-				Reason:   reason,
+				HookSpecificOutput: &hook.HookSpecificOutput{
+					HookEventName:     string(hook.EventUserPromptSubmit),
+					AdditionalContext: ctx,
+				},
 			}, nil
 		}
 		_, _ = fmt.Fprintf(os.Stderr, "codex review entry: background verdict %s for the unchanged tree — allowing\n", chk.Receipt.Verdict)
@@ -190,13 +260,13 @@ func HandleCodexReviewEntry(input *hook.HookInput, enabled bool, projectDir stri
 }
 
 // runCodexReviewEntry is the cobra RunE for `moai hook codex-review-entry`
-// (SPEC-GATE-BOTTLENECK-001 REQ-GBN-002). It reads the UserPromptSubmit stdin
-// JSON, resolves the project root, reads the same workflow.codex.review_gate.
-// enabled opt-in flag as the Stop gate, and forwards to HandleCodexReviewEntry.
-// The output is emitted as JSON on stdout (the hook contract — the entry hook
-// blocks via the top-level decision field, the same shape the Stop gate uses).
-// Fail-open: any error logs to stderr and exits 0 so the prompt pipeline is
-// never broken.
+// (SPEC-GATE-BOTTLENECK-001 REQ-GBN-002; no-block amendment REQ-RG-001). It
+// reads the UserPromptSubmit stdin JSON, resolves the project root, reads the
+// same workflow.codex.review_gate.enabled opt-in flag as the Stop gate, and
+// forwards to HandleCodexReviewEntry. The output is emitted as JSON on stdout.
+// The entry hook never sets the top-level decision; a fresh FAIL's detail rides
+// hookSpecificOutput.additionalContext (REQ-RG-002). Fail-open: any error logs
+// to stderr and exits 0 so the prompt pipeline is never broken.
 func runCodexReviewEntry(cmd *cobra.Command, _ []string) error {
 	input, err := readHookInput(cmd.InOrStdin())
 	if err != nil {
