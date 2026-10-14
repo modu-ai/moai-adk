@@ -11,13 +11,12 @@
 package backup
 
 import (
-	"crypto/sha256"
-	"encoding/hex"
 	"encoding/json"
 	"fmt"
 	"io/fs"
 	"os"
 	"path/filepath"
+	"sort"
 	"strings"
 	"time"
 
@@ -208,18 +207,109 @@ type BackupMetadata struct {
 }
 
 // CleanupOldBackups keeps the newest keepCount timestamped backups under
-// .moai-backups and removes the older excess that the retention policy allows (see
-// pruneOldBackups). keepCount 0 is an explicit wipe and removes every backup. It
-// returns the number of backups removed.
+// .moai-backups and removes the rest. keepCount 0 removes every backup. It returns
+// the number of backups removed. A backup root that is a symbolic link or leads
+// outside projectRoot is refused and nothing is removed (see OldBackupRootRefused).
 func CleanupOldBackups(projectRoot string, keepCount int) int {
-	return len(pruneOldBackups(projectRoot, keepCount, DefaultPastVersionsKeep).Removed)
+	if OldBackupRootRefused(projectRoot) {
+		return 0
+	}
+	backupDir := filepath.Join(projectRoot, defs.BackupsDir)
+
+	// Check if backup directory exists
+	info, err := os.Stat(backupDir)
+	if err != nil {
+		if os.IsNotExist(err) {
+			return 0 // No backups to clean up
+		}
+		// Return 0 on stat errors (ignore for cleanup)
+		return 0
+	}
+	if !info.IsDir() {
+		return 0
+	}
+
+	// Get all subdirectories in backup directory
+	entries, err := os.ReadDir(backupDir)
+	if err != nil {
+		return 0
+	}
+
+	// Filter for directories matching YYYYMMDD_HHMMSS pattern
+	// Pattern: 8 digits + underscore + 6 digits = 15 characters
+	var backups []string
+	for _, entry := range entries {
+		if entry.IsDir() && len(entry.Name()) == 15 {
+			// Check if it matches the timestamp pattern (digits + underscore + digits)
+			parts := strings.SplitN(entry.Name(), "_", 2)
+			if len(parts) == 2 {
+				if len(parts[0]) == 8 && len(parts[1]) == 6 {
+					backups = append(backups, entry.Name())
+				}
+			}
+		}
+	}
+
+	// If we have fewer backups than keepCount, no cleanup needed
+	if len(backups) <= keepCount {
+		return 0
+	}
+
+	// Sort backups by name (timestamp) ascending (oldest first)
+	sort.Strings(backups)
+
+	// Delete the OLDEST excess backups so the NEWEST keepCount survive.
+	// The timestamps sort ascending, so the retention window is the tail
+	// backups[len-keepCount:]; everything before it is the oldest excess.
+	// (A prior revision deleted backups[keepCount:] — the newest — which
+	// destroyed the most recent restore points on every rotation.)
+	deletedCount := 0
+	for _, backupName := range backups[:len(backups)-keepCount] {
+		backupPath := filepath.Join(backupDir, backupName)
+		if err := os.RemoveAll(backupPath); err != nil {
+			// Log error but continue with other backups
+			fmt.Fprintf(os.Stderr, "Warning: failed to delete backup %s: %v\n", backupName, err)
+		} else {
+			deletedCount++
+		}
+	}
+
+	return deletedCount
 }
 
-// CleanupNamespaceBackups applies the same retention to the namespace backup root
-// (.moai/<NamespaceBackupsSubdir>, entries named update-<stamp>), which
-// CleanupOldBackups never reads. It returns the number of entries removed.
+// CleanupNamespaceBackups keeps the newest keepCount update-<stamp> entries under the
+// namespace backup root (.moai/<NamespaceBackupsSubdir>) and removes the rest: the
+// count rule CleanupOldBackups applies to .moai-backups. keepCount 0 removes every
+// entry. It returns the number of entries removed. A root that is a symbolic link or
+// leads outside projectRoot is refused (see NamespaceBackupRootRefused).
 func CleanupNamespaceBackups(projectRoot string, keepCount int) int {
-	return len(pruneNamespaceBackups(projectRoot, keepCount, DefaultPastVersionsKeep).Removed)
+	if NamespaceBackupRootRefused(projectRoot) {
+		return 0
+	}
+	root := filepath.Join(projectRoot, defs.MoAIDir, defs.NamespaceBackupsSubdir)
+	entries, err := os.ReadDir(root)
+	if err != nil {
+		return 0
+	}
+	var backups []string
+	for _, entry := range entries {
+		if entry.IsDir() && strings.HasPrefix(entry.Name(), "update-") {
+			backups = append(backups, entry.Name())
+		}
+	}
+	if len(backups) <= keepCount {
+		return 0
+	}
+	sort.Strings(backups)
+	deletedCount := 0
+	for _, name := range backups[:len(backups)-keepCount] {
+		if err := os.RemoveAll(filepath.Join(root, name)); err != nil {
+			fmt.Fprintf(os.Stderr, "Warning: failed to delete backup %s: %v\n", name, err)
+			continue
+		}
+		deletedCount++
+	}
+	return deletedCount
 }
 
 // backupRootContained reports whether a backup root is a real directory inside
@@ -253,61 +343,6 @@ func OldBackupRootRefused(projectRoot string) bool {
 // that CleanupNamespaceBackups prunes.
 func NamespaceBackupRootRefused(projectRoot string) bool {
 	return !backupRootContained(projectRoot, filepath.Join(projectRoot, defs.MoAIDir, defs.NamespaceBackupsSubdir))
-}
-
-// isTimestampBackupName reports whether name has the shape of a .moai-backups
-// entry, YYYYMMDD_HHMMSS: 15 characters with an underscore after the eighth.
-func isTimestampBackupName(name string) bool {
-	parts := strings.SplitN(name, "_", 2)
-	return len(name) == 15 && len(parts) == 2 && len(parts[0]) == 8 && len(parts[1]) == 6
-}
-
-// backupBookkeeping names the files a backup writes about itself rather than with
-// content it saved: the config backup's metadata (timestamp and item lists) and the
-// namespace backup's completion marker (stamp, file count, time). Two backups of the
-// same content differ in these, so they are not part of the identity that decides
-// whether an excess entry is redundant. Only files at the entry root count.
-var backupBookkeeping = map[string]bool{
-	BackupMarkerFile: true,
-	".complete":      true,
-}
-
-// isBackupBookkeeping reports whether path is one of backupBookkeeping at the root
-// of backupDir.
-func isBackupBookkeeping(backupDir, path string) bool {
-	rel, err := filepath.Rel(backupDir, path)
-	return err == nil && backupBookkeeping[rel]
-}
-
-// backupFileKey identifies one file inside a backup by its path there and the
-// SHA-256 of its content. A restore resolves a file by that path, so identical
-// bytes at a different path do not make a file redundant.
-func backupFileKey(backupDir, path string) (string, error) {
-	rel, err := filepath.Rel(backupDir, path)
-	if err != nil {
-		return "", err
-	}
-	data, err := os.ReadFile(path)
-	if err != nil {
-		return "", err
-	}
-	sum := sha256.Sum256(data)
-	return rel + "\x00" + hex.EncodeToString(sum[:]), nil
-}
-
-// addRetainedBackupKeys records the backupFileKey of every regular file under
-// backupDir. An entry that cannot be read is left out: that can only make an
-// excess backup look more unique, which keeps it.
-func addRetainedBackupKeys(backupDir string, keys map[string]bool) {
-	_ = filepath.WalkDir(backupDir, func(path string, d fs.DirEntry, err error) error {
-		if err != nil || !d.Type().IsRegular() || isBackupBookkeeping(backupDir, path) {
-			return nil
-		}
-		if key, keyErr := backupFileKey(backupDir, path); keyErr == nil {
-			keys[key] = true
-		}
-		return nil
-	})
 }
 
 // IsSymlinkEntry reports whether path is a symbolic link (via os.Lstat, which

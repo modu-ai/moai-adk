@@ -49,25 +49,8 @@ func TestClean_SkipsRegularFilesInSkillsRoot(t *testing.T) {
 	}
 }
 
-// A retired skill whose folder cannot be archived is an error, and the folder stays.
-func TestClean_ArchiveFailureIsReturnedAndFolderStays(t *testing.T) {
-	root := t.TempDir()
-	dir := filepath.Join(root, ".claude", "skills", "moai-kanban-foreman")
-	mustWriteFile(t, filepath.Join(dir, "SKILL.md"), "old body")
-	// A file where the archive folder belongs makes the archive directory impossible.
-	mustWriteFile(t, filepath.Join(root, ".moai", "archive"), "not a folder")
-	shipped := func(rel string) bool { return rel == ".claude/skills/moai-factory-foreman/SKILL.md" }
-
-	if _, err := Clean(root, Options{Shipped: shipped, Stamp: "20260101T000000Z"}); err == nil {
-		t.Fatal("Clean with an unwritable archive returned no error")
-	}
-	if _, err := os.Stat(filepath.Join(dir, "SKILL.md")); err != nil {
-		t.Fatalf("retired folder moved despite the archive failure: %v", err)
-	}
-}
-
-// A stale-link path that cannot be inspected is an error, not an assumption.
-func TestRemoveStaleLink_UninspectableLinkPathIsAnError(t *testing.T) {
+// A retired-link path that cannot be inspected is an error, not an assumption.
+func TestRetiredLinkPresent_UninspectableLinkPathIsAnError(t *testing.T) {
 	requireUnprivileged(t)
 	root := t.TempDir()
 	dir := filepath.Join(root, ".claude", "skills", "moai-kanban-foreman")
@@ -79,13 +62,13 @@ func TestRemoveStaleLink_UninspectableLinkPathIsAnError(t *testing.T) {
 	restoreMode(t, filepath.Join(root, ".agents"))
 	shipped := func(rel string) bool { return rel == ".claude/skills/moai-factory-foreman/SKILL.md" }
 
-	if _, err := Clean(root, Options{Shipped: shipped, Stamp: "20260101T000000Z"}); err == nil {
+	if _, err := Clean(root, Options{Shipped: shipped}); err == nil {
 		t.Fatal("Clean with an uninspectable link path returned no error")
 	}
 }
 
-// A real folder at the stale-link path is not a link and is left alone.
-func TestRemoveStaleLink_RealFolderAtLinkPathIsKept(t *testing.T) {
+// A real folder at the retired-link path is not a link and is not reported.
+func TestRetiredLinkPresent_RealFolderAtLinkPathIsNotReported(t *testing.T) {
 	root := t.TempDir()
 	dir := filepath.Join(root, ".claude", "skills", "moai-kanban-foreman")
 	mustWriteFile(t, filepath.Join(dir, "SKILL.md"), "old body")
@@ -93,38 +76,15 @@ func TestRemoveStaleLink_RealFolderAtLinkPathIsKept(t *testing.T) {
 	mustWriteFile(t, filepath.Join(realFolder, "SKILL.md"), "agent-side copy")
 	shipped := func(rel string) bool { return rel == ".claude/skills/moai-factory-foreman/SKILL.md" }
 
-	actions, err := Clean(root, Options{Shipped: shipped, Stamp: "20260101T000000Z"})
+	actions, err := Clean(root, Options{Shipped: shipped})
 	if err != nil {
 		t.Fatal(err)
 	}
-	if hasAction(actions, "removed-stale-link", ".agents/skills/moai-kanban-foreman") {
-		t.Fatalf("a real folder was reported as a removed link: %+v", actions)
+	if hasAction(actions, "reported-retired-link", ".agents/skills/moai-kanban-foreman") {
+		t.Fatalf("a real folder was reported as a retired link: %+v", actions)
 	}
 	if got := readOrFail(t, filepath.Join(realFolder, "SKILL.md")); got != "agent-side copy" {
 		t.Fatalf("real folder changed: %q", got)
-	}
-}
-
-// A stale link that cannot be removed is an error from the cleanup.
-func TestRemoveStaleLink_RemoveFailureIsReturned(t *testing.T) {
-	requireUnprivileged(t)
-	root := t.TempDir()
-	dir := filepath.Join(root, ".claude", "skills", "moai-kanban-foreman")
-	mustWriteFile(t, filepath.Join(dir, "SKILL.md"), "old body")
-	agents := filepath.Join(root, ".agents", "skills")
-	mustMkdirAll(t, agents)
-	if err := os.Symlink(filepath.Join("..", "..", ".claude", "skills", "moai-kanban-foreman"),
-		filepath.Join(agents, "moai-kanban-foreman")); err != nil {
-		t.Skip(err)
-	}
-	if err := os.Chmod(agents, 0o555); err != nil {
-		t.Fatal(err)
-	}
-	restoreMode(t, agents)
-	shipped := func(rel string) bool { return rel == ".claude/skills/moai-factory-foreman/SKILL.md" }
-
-	if _, err := Clean(root, Options{Shipped: shipped, Stamp: "20260101T000000Z"}); err == nil {
-		t.Fatal("Clean with an unremovable stale link returned no error")
 	}
 }
 
@@ -145,7 +105,7 @@ func TestClean_EmptyFolderRemovalFailureIsReturned(t *testing.T) {
 	}
 }
 
-// A retired folder whose contents cannot be read is kept, never archived.
+// A retired folder whose contents cannot be read is kept in place.
 func TestClean_UnreadableRetiredFolderIsKept(t *testing.T) {
 	requireUnprivileged(t)
 	root := t.TempDir()
@@ -157,7 +117,7 @@ func TestClean_UnreadableRetiredFolderIsKept(t *testing.T) {
 	restoreMode(t, dir)
 	shipped := func(rel string) bool { return rel == ".claude/skills/moai-factory-foreman/SKILL.md" }
 
-	actions, err := Clean(root, Options{Shipped: shipped, Stamp: "20260101T000000Z"})
+	actions, err := Clean(root, Options{Shipped: shipped})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -192,7 +152,7 @@ func TestClean_RenameFailureIsReturnedAndNothingMoves(t *testing.T) {
 	t.Cleanup(func() { moveFile = orig })
 	moveFile = func(from, to string) error { return errors.New("injected failure on the first move") }
 
-	if _, err := Clean(root, Options{Shipped: shipped, Stamp: "20260101T000000Z"}); err == nil {
+	if _, err := Clean(root, Options{Shipped: shipped}); err == nil {
 		t.Fatal("Clean with a failing rename returned no error")
 	}
 	if got := readOrFail(t, filepath.Join(dir, "skill.md")); got != "lower body" {

@@ -393,7 +393,7 @@ func runUpdate(cmd *cobra.Command, _ []string) error {
 		return emitDryRunReinstallPlan(cmd, cwd, getBoolFlag(cmd, "force"), th)
 	}
 
-	// M6: housekeeping (state residue + namespace backup cap). It runs here, after
+	// M6: housekeeping (state residue + skill-folder residue). It runs here, after
 	// the dry-run return and under the update lock, so every project-mutating path
 	// reaches it: --force, --templates-only, the normal flow, and the re-exec'd
 	// child (a parent that re-execs replaces its process and never gets this far,

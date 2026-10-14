@@ -84,7 +84,7 @@ func TestClean_RemovesEmptyFolderOnlyForMoaiSkillNames(t *testing.T) {
 	mustMkdirAll(t, userEmpty)
 	shipped := func(rel string) bool { return rel == ".claude/skills/moai-lane-watchdog/SKILL.md" }
 
-	actions, err := Clean(root, Options{Shipped: shipped, Stamp: "20260101T000000Z"})
+	actions, err := Clean(root, Options{Shipped: shipped})
 	if err != nil {
 		t.Fatalf("Clean: %v", err)
 	}
@@ -110,7 +110,7 @@ func TestClean_RenamesLowercaseSkillFileWhenCanonicalAbsent(t *testing.T) {
 	mustWriteFile(t, filepath.Join(dir, "skill.md"), "lower body")
 	shipped := func(rel string) bool { return rel == ".claude/skills/moai-ref-owasp-checklist/SKILL.md" }
 
-	actions, err := Clean(root, Options{Shipped: shipped, Stamp: "20260101T000000Z"})
+	actions, err := Clean(root, Options{Shipped: shipped})
 	if err != nil {
 		t.Fatalf("Clean: %v", err)
 	}
@@ -136,7 +136,7 @@ func TestClean_ReportsButKeepsBothSkillFilesPresent(t *testing.T) {
 	mustWriteFile(t, filepath.Join(dir, "SKILL.md"), "canonical body")
 	shipped := func(rel string) bool { return rel == ".claude/skills/moai-ref-owasp-checklist/SKILL.md" }
 
-	actions, err := Clean(root, Options{Shipped: shipped, Stamp: "20260101T000000Z"})
+	actions, err := Clean(root, Options{Shipped: shipped})
 	if err != nil {
 		t.Fatalf("Clean: %v", err)
 	}
@@ -154,9 +154,9 @@ func TestClean_ReportsButKeepsBothSkillFilesPresent(t *testing.T) {
 	}
 }
 
-// Condition 3: the retired folder moves to the archive, and the .agents link
-// that pointed at it is removed in the same pass, so no link dangles.
-func TestClean_ArchivesRetiredFolderAndRemovesItsLinkWhenSuccessorShipped(t *testing.T) {
+// Condition 3: a retired folder whose successor ships is reported and left in place,
+// and so is the .agents link that points at it. Nothing is moved or removed.
+func TestClean_ReportsRetiredFolderAndLeavesFolderAndLinkInPlace(t *testing.T) {
 	root := t.TempDir()
 	old := filepath.Join(root, ".claude", "skills", "moai-kanban-foreman")
 	mustWriteFile(t, filepath.Join(old, "SKILL.md"), "old body")
@@ -167,23 +167,22 @@ func TestClean_ArchivesRetiredFolderAndRemovesItsLinkWhenSuccessorShipped(t *tes
 	}
 	shipped := func(rel string) bool { return rel == ".claude/skills/moai-factory-foreman/SKILL.md" }
 
-	actions, err := Clean(root, Options{Shipped: shipped, Stamp: "20260101T000000Z"})
+	actions, err := Clean(root, Options{Shipped: shipped})
 	if err != nil {
 		t.Fatalf("Clean: %v", err)
 	}
-	if _, err := os.Stat(old); !os.IsNotExist(err) {
-		t.Fatalf("retired folder still in place: err=%v", err)
+	if got := readOrFail(t, filepath.Join(old, "SKILL.md")); got != "old body" {
+		t.Fatalf("retired folder changed: %q", got)
 	}
-	archived := filepath.Join(root, ".moai", "archive", "skills", "retired-20260101T000000Z", "moai-kanban-foreman", "SKILL.md")
-	if got := readOrFail(t, archived); got != "old body" {
-		t.Fatalf("archived copy = %q, want the retired body", got)
+	if _, err := os.Lstat(link); err != nil {
+		t.Fatalf("link to the retired folder removed: %v", err)
 	}
-	if _, err := os.Lstat(link); !os.IsNotExist(err) {
-		t.Fatalf("link to the archived folder still present: err=%v", err)
+	if _, err := os.Stat(filepath.Join(root, ".moai", "archive")); !os.IsNotExist(err) {
+		t.Fatalf("retired folder archived (stat err: %v)", err)
 	}
-	if !hasAction(actions, "archived-retired-skill", ".claude/skills/moai-kanban-foreman") ||
-		!hasAction(actions, "removed-stale-link", ".agents/skills/moai-kanban-foreman") {
-		t.Fatalf("actions = %+v, want the archive and link actions", actions)
+	if !hasAction(actions, "reported-retired-skill", ".claude/skills/moai-kanban-foreman") ||
+		!hasAction(actions, "reported-retired-link", ".agents/skills/moai-kanban-foreman") {
+		t.Fatalf("actions = %+v, want the retired-skill and retired-link reports", actions)
 	}
 }
 
@@ -202,7 +201,7 @@ func TestClean_KeepsRetiredFolderWithUserFilesAndItsLink(t *testing.T) {
 	}
 	shipped := func(rel string) bool { return rel == ".claude/skills/moai-factory-foreman/SKILL.md" }
 
-	actions, err := Clean(root, Options{Shipped: shipped, Stamp: "20260101T000000Z"})
+	actions, err := Clean(root, Options{Shipped: shipped})
 	if err != nil {
 		t.Fatalf("Clean: %v", err)
 	}
@@ -215,8 +214,8 @@ func TestClean_KeepsRetiredFolderWithUserFilesAndItsLink(t *testing.T) {
 	if !hasAction(actions, "kept-retired-skill-with-user-files", ".claude/skills/moai-kanban-foreman") {
 		t.Fatalf("actions = %+v, want kept-retired-skill-with-user-files", actions)
 	}
-	if hasAction(actions, "archived-retired-skill", ".claude/skills/moai-kanban-foreman") {
-		t.Fatalf("folder with user files was archived: %+v", actions)
+	if hasAction(actions, "reported-retired-skill", ".claude/skills/moai-kanban-foreman") {
+		t.Fatalf("folder with user files reported as a plain retired skill: %+v", actions)
 	}
 }
 
@@ -227,7 +226,7 @@ func TestClean_KeepsRetiredSkillWhenSuccessorNotShipped(t *testing.T) {
 	old := filepath.Join(root, ".claude", "skills", "moai-kanban-foreman")
 	mustWriteFile(t, filepath.Join(old, "SKILL.md"), "old body")
 
-	actions, err := Clean(root, Options{Stamp: "20260101T000000Z"})
+	actions, err := Clean(root, Options{})
 	if err != nil {
 		t.Fatalf("Clean: %v", err)
 	}
@@ -239,7 +238,8 @@ func TestClean_KeepsRetiredSkillWhenSuccessorNotShipped(t *testing.T) {
 	}
 }
 
-// A second pass over a repaired tree finds nothing left to do.
+// A second pass over a repaired tree changes nothing on disk. The retired folder
+// stays in place, so the only thing the second pass returns is its report.
 func TestClean_SecondRunIsIdempotent(t *testing.T) {
 	root := t.TempDir()
 	mustMkdirAll(t, filepath.Join(root, ".claude", "skills", "moai-lane-watchdog"))
@@ -250,24 +250,30 @@ func TestClean_SecondRunIsIdempotent(t *testing.T) {
 			rel == ".claude/skills/moai-factory-foreman/SKILL.md" ||
 			rel == ".claude/skills/moai-ref-owasp-checklist/SKILL.md"
 	}
-	opts := Options{Shipped: shipped, Stamp: "20260101T000000Z"}
+	opts := Options{Shipped: shipped}
 
 	if _, err := Clean(root, opts); err != nil {
 		t.Fatalf("first Clean: %v", err)
 	}
+	before := exactNames(t, filepath.Join(root, ".claude", "skills"))
 	actions, err := Clean(root, opts)
 	if err != nil {
 		t.Fatalf("second Clean: %v", err)
 	}
-	if len(actions) != 0 {
-		t.Fatalf("second pass acted again: %+v", actions)
+	if after := exactNames(t, filepath.Join(root, ".claude", "skills")); !slices.Equal(before, after) {
+		t.Fatalf("second pass changed the skills folder: before %v, after %v", before, after)
+	}
+	for _, a := range actions {
+		if a.Kind != "reported-retired-skill" || a.Path != ".claude/skills/moai-kanban-foreman" {
+			t.Fatalf("second pass acted again: %+v", actions)
+		}
 	}
 }
 
 // A project without a skills folder is left exactly as it is.
 func TestClean_NoSkillsFolderIsNoOp(t *testing.T) {
 	root := t.TempDir()
-	actions, err := Clean(root, Options{Stamp: "20260101T000000Z"})
+	actions, err := Clean(root, Options{})
 	if err != nil {
 		t.Fatalf("Clean: %v", err)
 	}

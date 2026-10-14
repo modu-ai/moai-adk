@@ -114,11 +114,11 @@ func TestRunUpdateHousekeeping_ReportsChangesInProject(t *testing.T) {
 	root := t.TempDir()
 	markProject(t, root)
 	writeStateFile(t, root, "todo/backlog.db", "", 48*time.Hour)
-	// Six namespace entries; the oldest holds only content the newest five also hold.
-	writeNamespaceBackup(t, root, "update-2026-01-01T00-00-00Z", map[string]string{"a.yml": "shared"})
+	// Six namespace entries. Housekeeping does not prune the namespace backup root,
+	// so all six must survive.
 	for _, name := range []string{
-		"update-2026-01-02T00-00-00Z", "update-2026-01-03T00-00-00Z", "update-2026-01-04T00-00-00Z",
-		"update-2026-01-05T00-00-00Z", "update-2026-01-06T00-00-00Z",
+		"update-2026-01-01T00-00-00Z", "update-2026-01-02T00-00-00Z", "update-2026-01-03T00-00-00Z",
+		"update-2026-01-04T00-00-00Z", "update-2026-01-05T00-00-00Z", "update-2026-01-06T00-00-00Z",
 	} {
 		writeNamespaceBackup(t, root, name, map[string]string{"a.yml": "shared"})
 	}
@@ -130,12 +130,13 @@ func TestRunUpdateHousekeeping_ReportsChangesInProject(t *testing.T) {
 	for _, row := range updateLedger.reference {
 		msgs = append(msgs, row.msg)
 	}
-	want := []string{
-		"removed 1 leftover state file(s): .moai/state/todo/backlog.db",
-		"removed namespace backup update-2026-01-01T00-00-00Z: it holds no superseded version within the per-file budget",
-	}
+	want := []string{"removed 1 leftover state file(s): .moai/state/todo/backlog.db"}
 	if !reflect.DeepEqual(msgs, want) {
 		t.Fatalf("reference rows = %q, want %q", msgs, want)
+	}
+	entries, err := os.ReadDir(filepath.Join(root, defs.MoAIDir, defs.NamespaceBackupsSubdir))
+	if err != nil || len(entries) != 6 {
+		t.Fatalf("housekeeping changed the namespace backup root: %d entr(ies), err=%v; want all six kept", len(entries), err)
 	}
 }
 
@@ -188,9 +189,9 @@ func TestRunUpdateHousekeepingLocked_NoLockDirOutsideProject(t *testing.T) {
 }
 
 // --restore reads the backup directory it names, so it must never run
-// housekeeping first: the cap would otherwise remove the redundant oldest entry,
-// which here is the very directory being restored from. Excluded by leader
-// decision d-20261014T041814Z-e23a.
+// housekeeping first: residue removal and skill-folder repair would otherwise run
+// before the restore reads its source. Excluded by leader decision
+// d-20261014T041814Z-e23a.
 func TestRunUpdate_RestoreDoesNotRunHousekeeping(t *testing.T) {
 	root := t.TempDir()
 	t.Chdir(root)
@@ -198,12 +199,6 @@ func TestRunUpdate_RestoreDoesNotRunHousekeeping(t *testing.T) {
 	writeStateFile(t, root, "todo/backlog.db", "", 48*time.Hour)
 	restoreSource := "update-2026-01-01T00-00-00Z"
 	writeNamespaceBackup(t, root, restoreSource, map[string]string{"a.yml": "shared"})
-	for _, name := range []string{
-		"update-2026-01-02T00-00-00Z", "update-2026-01-03T00-00-00Z", "update-2026-01-04T00-00-00Z",
-		"update-2026-01-05T00-00-00Z", "update-2026-01-06T00-00-00Z",
-	} {
-		writeNamespaceBackup(t, root, name, map[string]string{"a.yml": "shared"})
-	}
 	restoreDir := filepath.Join(root, defs.MoAIDir, defs.NamespaceBackupsSubdir, restoreSource)
 
 	origDeps := deps
@@ -237,7 +232,7 @@ func TestRunUpdate_RestoreDoesNotRunHousekeeping(t *testing.T) {
 		t.Fatalf("--restore ran housekeeping: residue removed: %v", err)
 	}
 	if _, err := os.Stat(restoreDir); err != nil {
-		t.Fatalf("--restore ran the namespace cap: its source was removed: %v", err)
+		t.Fatalf("--restore removed its source directory: %v", err)
 	}
 }
 

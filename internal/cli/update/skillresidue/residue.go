@@ -1,8 +1,9 @@
 // Package skillresidue repairs the skill-folder leftovers that earlier MoAI
 // versions and interrupted deploys leave under .claude/skills: an empty folder of
 // a skill the template ships, a retired skill name, and a lowercase skill.md. A
-// change is a removal of an empty folder, a move into the archive, or a rename,
-// and each one is returned as an Action so the update can report it.
+// change is a removal of an empty folder or a rename. A retired skill folder and
+// the link to it are reported and left in place. Each action is returned so the
+// update can report it.
 package skillresidue
 
 import (
@@ -13,7 +14,7 @@ import (
 )
 
 // retiredSkills maps a skill folder name MoAI no longer ships to the name that
-// replaced it. The retired folder is archived only when the template ships the
+// replaced it. The retired folder is reported only when the template ships the
 // successor.
 var retiredSkills = map[string]string{
 	"moai-kanban-foreman": "moai-factory-foreman",
@@ -23,10 +24,8 @@ var retiredSkills = map[string]string{
 type Options struct {
 	// Shipped reports whether the embedded template ships a project-relative path
 	// such as ".claude/skills/moai-factory-foreman/SKILL.md". A nil Shipped ships
-	// nothing, so no folder is removed, renamed, or archived on that basis.
+	// nothing, so no folder is removed or renamed on that basis.
 	Shipped func(rel string) bool
-	// Stamp names the archive folder, .moai/archive/skills/retired-<Stamp>/.
-	Stamp string
 }
 
 func (o Options) shipped(rel string) bool {
@@ -38,14 +37,16 @@ type Action struct {
 	// Path is the project-relative, slash-separated path the residue was found at.
 	Path string
 	// Kind is one of removed-empty-dir, renamed-skill-file,
-	// reported-both-skill-files, archived-retired-skill,
-	// kept-retired-skill-with-user-files, removed-stale-link, or
+	// reported-both-skill-files, reported-retired-skill,
+	// kept-retired-skill-with-user-files, reported-retired-link, or
 	// refused-symlinked-root.
 	Kind string
 }
 
 // Clean repairs the skill-folder residue under projectRoot/.claude/skills and
-// returns what it did. A second pass over a repaired tree returns nothing.
+// returns what it did. Retired folders, their links, and residue left in place are
+// reported and not changed, so a second pass changes nothing on disk and returns
+// again only those reports.
 func Clean(projectRoot string, opts Options) ([]Action, error) {
 	if link, found := symlinkedRoot(projectRoot); found {
 		return []Action{{Path: link, Kind: "refused-symlinked-root"}}, nil
@@ -76,16 +77,15 @@ func Clean(projectRoot string, opts Options) ([]Action, error) {
 				actions = append(actions, Action{Path: rel, Kind: "kept-retired-skill-with-user-files"})
 				continue
 			}
-			if err := archiveFolder(projectRoot, opts.Stamp, name, dir); err != nil {
-				return actions, err
-			}
-			actions = append(actions, Action{Path: rel, Kind: "archived-retired-skill"})
-			removed, err := removeStaleLink(projectRoot, name)
+			// The retired folder and the link to it stay where they are. The update
+			// reports both and moves or removes neither.
+			actions = append(actions, Action{Path: rel, Kind: "reported-retired-skill"})
+			linked, err := retiredLinkPresent(projectRoot, name)
 			if err != nil {
 				return actions, err
 			}
-			if removed {
-				actions = append(actions, Action{Path: ".agents/skills/" + name, Kind: "removed-stale-link"})
+			if linked {
+				actions = append(actions, Action{Path: ".agents/skills/" + name, Kind: "reported-retired-link"})
 			}
 			continue
 		}
@@ -152,20 +152,11 @@ func userFile(dir string) string {
 	return ""
 }
 
-// archiveFolder moves a retired skill folder under the archive, keeping its name.
-// It moves the folder rather than deleting it, so nothing is lost.
-func archiveFolder(projectRoot, stamp, name, dir string) error {
-	dest := filepath.Join(projectRoot, ".moai", "archive", "skills", "retired-"+stamp, name)
-	if err := os.MkdirAll(filepath.Dir(dest), 0o755); err != nil {
-		return err
-	}
-	return os.Rename(dir, dest)
-}
-
-// removeStaleLink removes the .agents/skills link that pointed at an archived
-// folder, so no link dangles. A link that points anywhere else, or a real folder
-// in that place, is left alone.
-func removeStaleLink(projectRoot, name string) (bool, error) {
+// retiredLinkPresent reports whether .agents/skills/<name> is a symbolic link to the
+// retired folder .claude/skills/<name>. It only inspects the link and never removes
+// it. A link that points anywhere else, or a real folder in that place, is not
+// reported.
+func retiredLinkPresent(projectRoot, name string) (bool, error) {
 	link := filepath.Join(projectRoot, ".agents", "skills", name)
 	info, err := os.Lstat(link)
 	if os.IsNotExist(err) {
@@ -185,13 +176,7 @@ func removeStaleLink(projectRoot, name string) (bool, error) {
 	if !filepath.IsAbs(resolved) {
 		resolved = filepath.Join(filepath.Dir(link), resolved)
 	}
-	if filepath.Clean(resolved) != filepath.Join(projectRoot, ".claude", "skills", name) {
-		return false, nil
-	}
-	if err := os.Remove(link); err != nil {
-		return false, err
-	}
-	return true, nil
+	return filepath.Clean(resolved) == filepath.Join(projectRoot, ".claude", "skills", name), nil
 }
 
 // moveFile is os.Rename. A test replaces it to make one move fail on any filesystem.

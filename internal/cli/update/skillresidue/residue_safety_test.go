@@ -17,7 +17,7 @@ func TestClean_TempRenameNeverOverwritesUserFile(t *testing.T) {
 	mustWriteFile(t, filepath.Join(dir, "skill.md.tmp-rename"), "user data")
 	shipped := func(rel string) bool { return rel == ".claude/skills/moai-ref-owasp-checklist/SKILL.md" }
 
-	actions, err := Clean(root, Options{Shipped: shipped, Stamp: "20260101T000000Z"})
+	actions, err := Clean(root, Options{Shipped: shipped})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -45,7 +45,7 @@ func TestClean_RefusesSymlinkedSkillsRoot(t *testing.T) {
 	}
 	shipped := func(rel string) bool { return rel == ".claude/skills/moai-factory-foreman/SKILL.md" }
 
-	actions, err := Clean(root, Options{Shipped: shipped, Stamp: "20260101T000000Z"})
+	actions, err := Clean(root, Options{Shipped: shipped})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -61,8 +61,8 @@ func TestClean_RefusesSymlinkedSkillsRoot(t *testing.T) {
 }
 
 // A link under .agents/skills whose target is another project's folder of the
-// same name is not residue of this project. Clean removes only the link to the
-// folder it archived here, and reports nothing about the foreign one.
+// same name is not residue of this project. Clean reports only the link to the
+// retired folder it found here, and reports nothing about the foreign one.
 func TestClean_KeepsLinkToAnotherProjectsFolder(t *testing.T) {
 	root := t.TempDir()
 	other := t.TempDir()
@@ -76,7 +76,7 @@ func TestClean_KeepsLinkToAnotherProjectsFolder(t *testing.T) {
 	}
 	shipped := func(rel string) bool { return rel == ".claude/skills/moai-factory-foreman/SKILL.md" }
 
-	actions, err := Clean(root, Options{Shipped: shipped, Stamp: "20260101T000000Z"})
+	actions, err := Clean(root, Options{Shipped: shipped})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -86,8 +86,8 @@ func TestClean_KeepsLinkToAnotherProjectsFolder(t *testing.T) {
 	if _, err := os.Stat(filepath.Join(foreign, "SKILL.md")); err != nil {
 		t.Fatalf("another project's folder changed: %v", err)
 	}
-	if hasAction(actions, "removed-stale-link", ".agents/skills/moai-kanban-foreman") {
-		t.Fatalf("foreign link reported as removed: %+v", actions)
+	if hasAction(actions, "reported-retired-link", ".agents/skills/moai-kanban-foreman") {
+		t.Fatalf("foreign link reported as this project's retired link: %+v", actions)
 	}
 }
 

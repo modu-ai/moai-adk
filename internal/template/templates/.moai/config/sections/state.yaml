@@ -10,12 +10,4 @@
 # state:
 #   session_record_retention_days: 30
 
-# state.backup_past_versions_keep is how many superseded versions of each user file
-# the update backup cap keeps before a backup that holds only older versions may be
-# pruned. Default: 3 when omitted. Example:
-#
-# state:
-#   backup_past_versions_keep: 3
-
-state:
-  backup_past_versions_keep: 3
+state: {}

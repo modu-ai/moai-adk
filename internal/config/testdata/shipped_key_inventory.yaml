@@ -2178,9 +2178,6 @@
 - path: "security.sandbox.required"
   class: R
   evidence: none
-- path: "state.backup_past_versions_keep"
-  class: R
-  evidence: reader internal/cli/update_state_residue.go (backupPastVersionsKeep)
 - path: "state.state_dir"
   class: W
   evidence: reader

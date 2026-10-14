@@ -879,10 +879,9 @@ func runTemplateSyncWithReporter(cmd *cobra.Command, reporter project.ProgressRe
 				}
 				if backup.OldBackupRootRefused(projectRoot) {
 					emitSeverityLine(errOut, sevWarn, resolveTheme(), "skipped old backup pruning: the backup root is a symbolic link or leads outside the project")
-				} else {
-					reportRetention("config backup", backup.PruneOldBackups(projectRoot, 5, backupPastVersionsKeep(projectRoot)))
+				} else if deletedCount := backup.CleanupOldBackups(projectRoot, 5); deletedCount > 0 {
+					_, _ = fmt.Fprintf(out, "  %s Cleaned up %d old backup(s)\n", uikit.SymSuccess(), deletedCount)
 				}
-				reportUnmanagedBackupEntries(projectRoot)
 			}
 			// Merge .gitignore: preserve user-added patterns via EntryMerge
 			if len(gitignoreBackup) > 0 {

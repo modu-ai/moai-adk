@@ -1129,12 +1129,6 @@ type SecuritySandbox struct {
 type StateConfig struct {
 	RetentionDays int `yaml:"retention_days"` // SPEC-V3R2-RT-004 REQ-031: retention days for the runs/ directory
 
-	// BackupPastVersionsKeep is how many superseded versions of each user file the
-	// update backup cap keeps, newest first, before a backup that holds only older
-	// versions may be pruned. Shipped default 3; an explicit 0 keeps no superseded
-	// version beyond the retained window.
-	BackupPastVersionsKeep int `yaml:"backup_past_versions_keep"`
-
 	// SessionRecordRetentionDays bounds the age of factory session records
 	// (<state-dir>/<session>.json), pruned at SessionStart (card t1312). It
 	// is a pointer so an explicit 0 ("disable retention") stays

@@ -542,10 +542,9 @@ func runCleanReinstall(ctx context.Context, projectRoot string, opts CleanReinst
 		// never touched by this cleanup.
 		if backup.OldBackupRootRefused(projectRoot) {
 			_, _ = fmt.Fprintln(out, "[clean-reinstall] skipped old config backup pruning: the backup root is a symbolic link or leads outside the project")
-		} else {
-			reportRetention("config backup", backup.PruneOldBackups(projectRoot, 5, backupPastVersionsKeep(projectRoot)))
+		} else if deleted := backup.CleanupOldBackups(projectRoot, 5); deleted > 0 {
+			_, _ = fmt.Fprintf(out, "[clean-reinstall] Cleaned up %d old config backup(s)\n", deleted)
 		}
-		reportUnmanagedBackupEntries(projectRoot)
 	}
 	// MergeUserFiles preserves the user's version on any merge failure, so a
 	// warning (not a hard error) matches the normal path's tolerance. The call
