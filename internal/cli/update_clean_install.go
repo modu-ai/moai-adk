@@ -519,6 +519,16 @@ func runCleanReinstall(ctx context.Context, projectRoot string, opts CleanReinst
 		if restoreErr != nil {
 			return result, recovery.fail("step 5.5: restore .moai/config sections", restoreErr)
 		}
+		// M2: evaluator-profiles/ and astgrep-rules/ restore beside the section
+		// merge, as on the template-sync path. A failure warns; the section restore
+		// succeeded.
+		unmanagedRefs, unmanagedErr := backup.RestoreUnmanagedConfigDirs(projectRoot, configBackupPath)
+		if unmanagedErr != nil {
+			_, _ = fmt.Fprintf(out, "[clean-reinstall] unmanaged config restore warning: %v\n", unmanagedErr)
+		}
+		for _, msg := range unmanagedRestoreMessages(unmanagedRefs, configBackupPath) {
+			_, _ = fmt.Fprintf(out, "[clean-reinstall] %s\n", msg)
+		}
 		removedModelKeys, stripErr := stripRetiredModelConfig(out, projectRoot, configBackupPath)
 		if stripErr != nil {
 			_, _ = fmt.Fprintf(out, "[clean-reinstall] retired model key removal warning: %v\n", stripErr)

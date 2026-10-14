@@ -251,6 +251,14 @@ func runTemplateSyncWithReporter(cmd *cobra.Command, reporter project.ProgressRe
 		return nil
 	}
 
+	// M3: a project whose recorded template version is newer than this binary
+	// would have its rules downgraded by the sync below. Warn; do not block.
+	if err == nil {
+		if msg, warn := versionSkewWarning(packageVersion, projectVersion); warn {
+			updateLedger.referencef("%s", msg)
+		}
+	}
+
 	plVersion.Done("Version check complete")
 
 	plLoad := tui.ProgressLine(out, "Loading embedded templates...", nil)
@@ -813,6 +821,16 @@ func runTemplateSyncWithReporter(cmd *cobra.Command, reporter project.ProgressRe
 					return recovery.fail(step.name, restoreErr)
 				}
 				plRestore.Done("User settings restored")
+				// M2: evaluator-profiles/ and astgrep-rules/ restore beside the section
+				// merge. A differing copy is kept as <name>.from-<stamp>, never written
+				// over the new template. A failure warns; the section restore succeeded.
+				unmanagedRefs, unmanagedErr := backup.RestoreUnmanagedConfigDirs(projectRoot, configBackupPath)
+				if unmanagedErr != nil {
+					updateLedger.requiref(sevWarn, "unmanaged config restore failed: %v", unmanagedErr)
+				}
+				for _, msg := range unmanagedRestoreMessages(unmanagedRefs, configBackupPath) {
+					updateLedger.referencef("%s", msg)
+				}
 				// Strip the retired per-agent model/effort keys the merge just
 				// retained (old-only keys are kept), after the backup holds their
 				// originals. Stripped keys leave the retained list so each is

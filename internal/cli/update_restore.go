@@ -74,6 +74,15 @@ func runUpdateRestore(projectRoot, backupDir string, out io.Writer) error {
 		emitSeverityLine(out, sevWarn, resolveTheme(), "manifest retrack (config sections) failed: %v", retrackErr)
 	}
 
+	// M2: evaluator-profiles/ and astgrep-rules/ restore beside the section merge;
+	// the explicit restore reports each file it acted on.
+	unmanagedRefs, err := backup.RestoreUnmanagedConfigDirs(projectRoot, absBackup)
+	if err != nil {
+		return err
+	}
+	for _, msg := range unmanagedRestoreMessages(unmanagedRefs, absBackup) {
+		_, _ = fmt.Fprintln(out, msg)
+	}
 	_, _ = fmt.Fprintf(out, "Restored .moai/config from %s\n", absBackup)
 	return nil
 }
