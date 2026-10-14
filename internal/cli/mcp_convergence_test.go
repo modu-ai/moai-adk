@@ -218,8 +218,14 @@ func TestConverge_AllSecondariesInconclusive_EC1(t *testing.T) {
 		pbvReq(BackendGLM, VerdictInconclusive),
 	}
 	r := converge(verdicts)
-	if r.OverallVerdict != "pass" {
-		t.Errorf("overall = %q, want pass (fail-open to claude pass)", r.OverallVerdict)
+	// SPEC-MCP-NEUTRALITY-001 REQ-MN-022 supersedes the EC-1 fail-open: a
+	// REQUIRED backend left inconclusive means the participant-evidence
+	// threshold is unmet — the claude verdict (the caller's own submitted
+	// anchor) cannot pass convergence. The overall is the distinct
+	// not-converged outcome; fail_open_backends still name the inconclusive
+	// backends for the orchestrator.
+	if r.OverallVerdict != VerdictInconclusive {
+		t.Errorf("overall = %q, want %q (not-converged; the fail-open-to-claude pass is the defect REQ-MN-022 closes)", r.OverallVerdict, VerdictInconclusive)
 	}
 	want := map[string]bool{BackendCodex: true, BackendGLM: true}
 	for _, b := range r.FailOpenBackends {
@@ -229,18 +235,19 @@ func TestConverge_AllSecondariesInconclusive_EC1(t *testing.T) {
 	}
 }
 
-// EC-4: all required backends VerdictInconclusive (both missing) → overall
-// follows the in-session claude verdict. CLAUDE FAILS → overall fail; CLAUDE
-// PASSES → overall pass. Fail-open to claude.
+// EC-4: all required backends VerdictInconclusive (both missing) → the
+// overall is the distinct NOT-CONVERGED outcome under REQ-MN-022 (the
+// fail-open-to-claude pass was the defect). The conservative half is
+// preserved: a required claude FAIL still fails via the requiredFails branch.
 func TestConverge_AllRequiredInconclusive_FailOpenToClaude_EC4(t *testing.T) {
-	t.Run("claude pass → overall pass", func(t *testing.T) {
+	t.Run("claude pass → overall not-converged", func(t *testing.T) {
 		verdicts := []PerBackendVerdict{
 			pbvReq(BackendClaude, "pass"),
 			pbvReq(BackendCodex, VerdictInconclusive),
 			pbvReq(BackendGLM, VerdictInconclusive),
 		}
-		if r := converge(verdicts); r.OverallVerdict != "pass" {
-			t.Errorf("overall = %q, want pass (fail-open to claude pass)", r.OverallVerdict)
+		if r := converge(verdicts); r.OverallVerdict != VerdictInconclusive {
+			t.Errorf("overall = %q, want %q (not-converged; the submitted verdict cannot pass)", r.OverallVerdict, VerdictInconclusive)
 		}
 	})
 	t.Run("claude fail → overall fail", func(t *testing.T) {
@@ -250,7 +257,7 @@ func TestConverge_AllRequiredInconclusive_FailOpenToClaude_EC4(t *testing.T) {
 			pbvReq(BackendGLM, VerdictInconclusive),
 		}
 		if r := converge(verdicts); r.OverallVerdict != "fail" {
-			t.Errorf("overall = %q, want fail (fail-open to claude fail)", r.OverallVerdict)
+			t.Errorf("overall = %q, want fail (a required FAIL still fails)", r.OverallVerdict)
 		}
 	})
 }
