@@ -302,21 +302,18 @@ func handleFactoryComplete(ctx context.Context, req mcp.CallToolRequest) (*mcp.C
 }
 
 // handleFactoryDecide is the MCP form of `moai factory decide` (one card per
-// call). The REQ-MN-003 operator gate requires a POSITIVE operator mark: a
-// lane session keeps the CLI-identical boundary refusal and an unmarked
-// session is unknown attribution — the absence of lane variables confers
-// nothing. Both refuse as structured results (SPEC-MCP-NEUTRALITY-001
-// REQ-MN-001/003).
+// call). The REQ-MN-003 operator gate is the ONE predicate the CLI verb runs
+// (factoryDecideGate, M2 Part A absorb): a positive operator mark admits, a
+// lane keeps the boundary refusal, an unmarked session is unknown
+// attribution. Both identity classes refuse as structured results
+// (SPEC-MCP-NEUTRALITY-001 REQ-MN-001) carrying the CLI-identical text.
 func handleFactoryDecide(ctx context.Context, req mcp.CallToolRequest) (*mcp.CallToolResult, error) {
 	root, err := resolveToolProjectRoot(req)
 	if err != nil {
 		return toolErr("factory_decide", err), nil
 	}
-	if !mcpOperatorAuthority() {
-		if factoryLaneRefusal() {
-			return toolRefusal(mcpIdentityRefusal(factoryDecideLaneRefusal().Error())), nil
-		}
-		return toolRefusal(mcpIdentityRefusal(mcpUnknownAttributionReason("factory_decide"))), nil
+	if gateErr := factoryDecideGate(); gateErr != nil {
+		return toolRefusal(mcpIdentityRefusal(gateErr.Error())), nil
 	}
 	cardID := strings.TrimSpace(req.GetString("card", ""))
 	if cardID == "" {

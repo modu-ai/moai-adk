@@ -156,6 +156,16 @@ func TestResolveFactoryRenewRunRefusalArms(t *testing.T) {
 		{name: "sole active run bound to that run returns it", live: []string{"run-a"}, lane: "lane-1", run: "run-a",
 			setup: func(t *testing.T, root string) { factoryRenewBindLane(t, root, "lane-1", "run-a") }},
 		{name: "no active run refuses with the exact message", lane: "lane-1",
+			setup: func(t *testing.T, root string) {
+				// sdMoaiFixture seeds fcRun active for the MCP stale-run
+				// validation (SPEC-MCP-NEUTRALITY-001 M1); retire it so this
+				// arm's no-active-run premise holds.
+				db := fcOpen(t, root)
+				defer func() { _ = db.Close() }()
+				if _, err := db.DB.Exec(`UPDATE runs SET status='retired' WHERE run_id=?`, fcRun); err != nil {
+					t.Fatal(err)
+				}
+			},
 			exact: "no --run given and no single active factory run (NO_ACTIVE_FACTORY)"},
 	} {
 		t.Run(arm.name, func(t *testing.T) {

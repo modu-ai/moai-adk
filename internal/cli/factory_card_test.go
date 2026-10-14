@@ -15,6 +15,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/modu-ai/moai-adk/internal/config"
 	"github.com/modu-ai/moai-adk/internal/factory"
 	"github.com/modu-ai/moai-adk/internal/homestate"
 )
@@ -529,6 +530,9 @@ func TestFactoryDecidePushChainsApprovalVersion(t *testing.T) {
 		EvidenceHash: merge, Issuer: "lead", IssuerRole: homestate.ApprovalIssuerLeader,
 	})
 
+	// The operator gate (SPEC-MCP-NEUTRALITY-001 REQ-MN-003, M2 Part A): the
+	// deciding session carries the positive mark — env absence grants nothing.
+	t.Setenv(config.EnvFactoryRole, "operator")
 	if _, _, err := runFactory(t, "decide", cardID, "--gate", "push", "--run", fcRun); err != nil {
 		t.Fatalf("decide push: %v", err)
 	}

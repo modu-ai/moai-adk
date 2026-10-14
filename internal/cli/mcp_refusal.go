@@ -23,7 +23,6 @@ import (
 	"github.com/mark3labs/mcp-go/mcp"
 
 	"github.com/modu-ai/moai-adk/internal/config"
-	"github.com/modu-ai/moai-adk/internal/factory"
 	"github.com/modu-ai/moai-adk/internal/factorymsg"
 	"github.com/modu-ai/moai-adk/internal/homestate"
 )
@@ -83,11 +82,10 @@ func mcpIdentityRefusal(reason string) mcpRefusal {
 }
 
 // mcpUnknownAttributionReason renders the unmarked-session refusal reason for
-// one tool surface, naming the positive mark that would attribute it.
+// one tool surface — the ONE wording the CLI verb shares
+// (factoryUnknownAttributionError), so the two surfaces cannot drift.
 func mcpUnknownAttributionReason(tool string) string {
-	return fmt.Sprintf("%s: refused — %s: %s", tool, factoryUnknownAttributionSentinel,
-		fmt.Sprintf("set %s=%s in the operator session (the launcher or the operator environment stamps it); the absence of lane variables confers nothing",
-			config.EnvFactoryRole, config.FactoryRoleOperator))
+	return factoryUnknownAttributionError(tool).Error()
 }
 
 // mcpNominateRefusalPayload maps a nominated-lease refusal onto the closed
@@ -184,19 +182,9 @@ func mcpTodoOperatorGate(tool, surface string) *mcp.CallToolResult {
 }
 
 // mcpRenewActorLabel resolves the renewal actor and refuses legacy spellings
-// through the same rules factoryLaneLabelFromEnv applies to the environment
-// value, so a hand-set legacy label cannot reach the factory record through
-// the actor argument either (AC-SD-021).
+// through the SAME rules the CLI verb runs (factoryLaneLabelValidated, M2
+// Part A's shared validation), so a hand-set legacy label cannot reach the
+// factory record through the actor argument either (AC-SD-021).
 func mcpRenewActorLabel(actor string) (string, error) {
-	lowered := strings.ToLower(actor)
-	if n, ok := factory.SplitFactoryLegacyLabel(lowered); ok {
-		return "", fmt.Errorf("factory renew: %q is the legacy lane label; use %q (rejoin with -l)", actor, factory.FactoryLaneLabel(n))
-	}
-	if factory.IsLegacyFactoryRoleValue(lowered) {
-		return "", fmt.Errorf("factory renew: %q is the legacy role token; lane sessions carry lane-<n> labels (rejoin with -l)", actor)
-	}
-	if factory.IsLegacyLeaderSpelling(lowered) {
-		return "", fmt.Errorf("factory renew: %q is the legacy leader spelling; lane sessions carry lane-<n> labels (the leader launches with -f)", actor)
-	}
-	return actor, nil
+	return factoryLaneLabelValidated("renew", actor)
 }

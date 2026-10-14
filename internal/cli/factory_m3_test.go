@@ -528,10 +528,12 @@ func TestSD_AC014_MCPMatchesCLIWithProjectRoot(t *testing.T) {
 		_ = rootRef
 		// Success twin with no lane variables — under the positive operator
 		// mark (SPEC-MCP-NEUTRALITY-001 REQ-MN-003: env absence grants
-		// nothing). The mark is stamped AFTER the builds: build clears the
-		// lane environment its queue setup must not trip on.
+		// nothing, on the CLI verb since M2 Part A too). The mark is stamped
+		// AFTER each build: build clears the lane environment its queue setup
+		// must not trip on.
 		sdClearLaneEnv(t)
 		rootA := build(t)
+		t.Setenv(config.EnvFactoryRole, "operator")
 		if _, _, err := runFactory(t, "decide", "t1", "--gate", "kickoff", "--choice", "approve", "--run", fcRun); err != nil {
 			t.Fatalf("cli decide: %v", err)
 		}
