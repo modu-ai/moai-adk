@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"os"
 	"path/filepath"
+	"reflect"
 	"testing"
 )
 
@@ -197,5 +198,219 @@ func TestRenderTierPermissions_Idempotent(t *testing.T) {
 	}
 	if string(firstProj) != string(secondProj) {
 		t.Errorf("PROJECT scope not idempotent:\nfirst:  %s\nsecond: %s", firstProj, secondProj)
+	}
+}
+
+// --- SPEC-USER-SETTINGS-PROTECT-001 (card t1630) — repository-authored
+// assertions for AC-001, AC-002, and AC-003 part A. The overlay probes under
+// .moai/reports/t1630/evidence/ carried the RED observation on the pinned
+// tree; these are the same assertions authored in the repository
+// (acceptance.md: "run-phase: the same assertion authored in the repository").
+
+// ac001ReadPerms unmarshals a settings body into the fields AC-001 asserts on.
+func ac001ReadPerms(t *testing.T, body []byte) (allow, ask, deny, additional []string, env map[string]string) {
+	t.Helper()
+	var wrap struct {
+		Permissions struct {
+			Allow                 []string `json:"allow"`
+			Ask                   []string `json:"ask"`
+			Deny                  []string `json:"deny"`
+			AdditionalDirectories []string `json:"additionalDirectories"`
+		} `json:"permissions"`
+		Env map[string]string `json:"env"`
+	}
+	if err := json.Unmarshal(body, &wrap); err != nil {
+		t.Fatalf("after is not valid JSON: %v\n%s", err, body)
+	}
+	return wrap.Permissions.Allow, wrap.Permissions.Ask, wrap.Permissions.Deny, wrap.Permissions.AdditionalDirectories, wrap.Env
+}
+
+// TestAC001PreservesListsAndUnmodelledKeys: the USER-scope writer keeps the
+// user's allow/ask/deny entries, every unmodelled permissions key, and every
+// sibling region (REQ-001). The EC-1..EC-4 edge cases of acceptance.md are
+// bound to this criterion and asserted as subtests.
+func TestAC001PreservesListsAndUnmodelledKeys(t *testing.T) {
+	dir := t.TempDir()
+	userPath := filepath.Join(dir, ".claude", "settings.json")
+	if err := os.MkdirAll(filepath.Dir(userPath), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	before := `{"permissions": {
+      "defaultMode": "plan",
+      "allow": ["Bash(make:*)"],
+      "ask": ["Bash(rm:*)"],
+      "deny": ["Read(./secret)"],
+      "additionalDirectories": ["/tmp/x"]
+    },"env":{"FOO":"1"}}`
+	if err := os.WriteFile(userPath, []byte(before), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	if err := WriteUserDefaultMode(userPath, "acceptEdits"); err != nil {
+		t.Fatalf("WriteUserDefaultMode: %v", err)
+	}
+	after, err := os.ReadFile(userPath)
+	if err != nil {
+		t.Fatal(err)
+	}
+	allow, ask, deny, additional, env := ac001ReadPerms(t, after)
+	if !reflect.DeepEqual(allow, []string{"Bash(make:*)"}) {
+		t.Errorf("permissions.allow was removed; after=%s", after)
+	}
+	if !reflect.DeepEqual(ask, []string{"Bash(rm:*)"}) {
+		t.Errorf("permissions.ask was removed; after=%s", after)
+	}
+	if !reflect.DeepEqual(deny, []string{"Read(./secret)"}) {
+		t.Errorf("permissions.deny was removed; after=%s", after)
+	}
+	if !reflect.DeepEqual(additional, []string{"/tmp/x"}) {
+		t.Errorf("permissions.additionalDirectories (unmodelled key) was removed; after=%s", after)
+	}
+	if !reflect.DeepEqual(env, map[string]string{"FOO": "1"}) {
+		t.Errorf("sibling env region was removed; after=%s", after)
+	}
+
+	t.Run("ec1-absent-file", func(t *testing.T) {
+		// EC-1: a settings file that does not exist yet — the writer creates
+		// the minimal permissions skeleton with the tier default, no lists.
+		absent := filepath.Join(t.TempDir(), ".claude", "settings.json")
+		if err := WriteUserDefaultMode(absent, "acceptEdits"); err != nil {
+			t.Fatalf("WriteUserDefaultMode on absent file: %v", err)
+		}
+		body, err := os.ReadFile(absent)
+		if err != nil {
+			t.Fatal(err)
+		}
+		allow, ask, deny, _, _ := ac001ReadPerms(t, body)
+		if len(allow) != 0 || len(ask) != 0 || len(deny) != 0 {
+			t.Errorf("created file MUST NOT invent lists; body=%s", body)
+		}
+	})
+	t.Run("ec2-no-permissions-key", func(t *testing.T) {
+		// EC-2: no "permissions" key — the writer reports the region error and
+		// leaves the file unchanged.
+		path := filepath.Join(t.TempDir(), "settings.json")
+		body := `{"env":{"FOO":"1"}}`
+		if err := os.WriteFile(path, []byte(body), 0o644); err != nil {
+			t.Fatal(err)
+		}
+		if err := WriteUserDefaultMode(path, "acceptEdits"); err == nil {
+			t.Errorf("missing permissions key MUST return the region error")
+		}
+		afterBody, _ := os.ReadFile(path)
+		if string(afterBody) != body {
+			t.Errorf("file MUST stay unchanged on the error path:\nbefore=%s\nafter=%s", body, afterBody)
+		}
+	})
+	t.Run("ec3-invalid-json", func(t *testing.T) {
+		// EC-3: invalid JSON — the writer reports the region error and leaves
+		// the file unchanged.
+		path := filepath.Join(t.TempDir(), "settings.json")
+		body := `{not json`
+		if err := os.WriteFile(path, []byte(body), 0o644); err != nil {
+			t.Fatal(err)
+		}
+		if err := WriteUserDefaultMode(path, "acceptEdits"); err == nil {
+			t.Errorf("invalid JSON MUST return the region error")
+		}
+		afterBody, _ := os.ReadFile(path)
+		if string(afterBody) != body {
+			t.Errorf("file MUST stay unchanged on the error path:\nbefore=%s\nafter=%s", body, afterBody)
+		}
+	})
+	t.Run("ec4-duplicate-allow-entries", func(t *testing.T) {
+		// EC-4: duplicate allow entries are preserved as written (no
+		// de-duplication, no removal) on the write path.
+		path := filepath.Join(t.TempDir(), "settings.json")
+		before := `{"permissions":{"allow":["Bash(a:*)","Bash(a:*)"]}}`
+		if err := os.WriteFile(path, []byte(before), 0o644); err != nil {
+			t.Fatal(err)
+		}
+		if err := WriteUserDefaultMode(path, "acceptEdits"); err != nil {
+			t.Fatalf("WriteUserDefaultMode: %v", err)
+		}
+		afterBody, _ := os.ReadFile(path)
+		allow, _, _, _, _ := ac001ReadPerms(t, afterBody)
+		if !reflect.DeepEqual(allow, []string{"Bash(a:*)", "Bash(a:*)"}) {
+			t.Errorf("duplicate allow entries MUST be preserved as written; after=%s", afterBody)
+		}
+	})
+}
+
+// TestAC002RegionBytesUnchangedWhenDefaultModeMatches: when the resolved tier
+// default already equals the file's defaultMode, the writer does not rewrite
+// the permissions region — the file bytes are identical (REQ-002).
+func TestAC002RegionBytesUnchangedWhenDefaultModeMatches(t *testing.T) {
+	dir := t.TempDir()
+	userPath := filepath.Join(dir, ".claude", "settings.json")
+	if err := os.MkdirAll(filepath.Dir(userPath), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	// Non-canonical layout: the bytes must survive untouched, not be re-rendered.
+	before := "{\n  \"permissions\": {\n      \"allow\": [\"Bash(make:*)\"],\n      \"defaultMode\":   \"acceptEdits\"\n  },\n  \"env\": {\"FOO\": \"1\"}\n}\n"
+	if err := os.WriteFile(userPath, []byte(before), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	if err := WriteUserDefaultMode(userPath, "acceptEdits"); err != nil {
+		t.Fatalf("WriteUserDefaultMode: %v", err)
+	}
+	after, err := os.ReadFile(userPath)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if string(after) != before {
+		t.Errorf("file bytes changed\nbefore=%q\nafter=%q", before, string(after))
+	}
+}
+
+// TestAC003ListsPreservedUnderEitherDisposition: the lists survive whether
+// the existing defaultMode differs from or matches the resolved tier default
+// (AC-003 part A).
+func TestAC003ListsPreservedUnderEitherDisposition(t *testing.T) {
+	cases := []struct {
+		name     string
+		existing string
+		resolved string
+	}{
+		{"differing", "plan", "acceptEdits"},
+		{"matching", "acceptEdits", "acceptEdits"},
+	}
+	for _, c := range cases {
+		t.Run(c.name, func(t *testing.T) {
+			dir := t.TempDir()
+			userPath := filepath.Join(dir, ".claude", "settings.json")
+			if err := os.MkdirAll(filepath.Dir(userPath), 0o755); err != nil {
+				t.Fatal(err)
+			}
+			before := `{"permissions": {
+      "defaultMode": "` + c.existing + `",
+      "allow": ["Bash(make:*)"],
+      "ask": ["Bash(rm:*)"],
+      "deny": ["Read(./secret)"],
+      "additionalDirectories": ["/tmp/x"]
+    },"env":{"FOO":"1"}}`
+			if err := os.WriteFile(userPath, []byte(before), 0o644); err != nil {
+				t.Fatal(err)
+			}
+			if err := WriteUserDefaultMode(userPath, c.resolved); err != nil {
+				t.Fatalf("WriteUserDefaultMode: %v", err)
+			}
+			after, err := os.ReadFile(userPath)
+			if err != nil {
+				t.Fatal(err)
+			}
+			allow, ask, deny, additional, _ := ac001ReadPerms(t, after)
+			if !reflect.DeepEqual(allow, []string{"Bash(make:*)"}) {
+				t.Errorf("permissions.allow was removed; after=%s", after)
+			}
+			if !reflect.DeepEqual(ask, []string{"Bash(rm:*)"}) {
+				t.Errorf("permissions.ask was removed; after=%s", after)
+			}
+			if !reflect.DeepEqual(deny, []string{"Read(./secret)"}) {
+				t.Errorf("permissions.deny was removed; after=%s", after)
+			}
+			if !reflect.DeepEqual(additional, []string{"/tmp/x"}) {
+				t.Errorf("permissions.additionalDirectories was removed; after=%s", after)
+			}
+		})
 	}
 }

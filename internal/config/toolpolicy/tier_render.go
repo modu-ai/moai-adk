@@ -72,9 +72,11 @@ func RenderTierPermissions(projectSettingsPath, userSettingsPath, defaultMode st
 	}
 
 	// PROJECT scope: deny + ask ONLY. defaultMode is reset to "" so auto/
-	// bypassPermissions never land here (AP-6). Preserve Raw extras.
+	// bypassPermissions never land here (AP-6). Preserve Raw extras. The allow
+	// list is the regenerated managed block unioned with the user-added
+	// entries already in the project file (REQ-005, decided Q5).
 	projectBlock := &PermissionsBlock{
-		Allow: full.Allow, // allow stays with the project allowlist
+		Allow: mergeProjectAllow(projectSettingsPath, full.Allow), // regenerated ∪ user-added
 		Ask:   full.Ask,
 		Deny:  full.Deny,
 		Raw:   map[string]json.RawMessage{},
@@ -90,6 +92,65 @@ func RenderTierPermissions(projectSettingsPath, userSettingsPath, defaultMode st
 	return &TierRenderResult{UserPath: userSettingsPath, ProjectPath: projectSettingsPath}, nil
 }
 
+// managedAllowRecord mirrors the optional sidecar record at
+// <projectRoot>/.moai/state/tool-policy/managed-allow.json, which carries the
+// managed allow list last generated into the project file
+// (SPEC-USER-SETTINGS-PROTECT-001 decision Q5; detection pinned in
+// progress.md §G, G-20).
+type managedAllowRecord struct {
+	LastGenerated []string `json:"last_generated"`
+}
+
+// mergeProjectAllow keeps user-added permissions.allow entries across a
+// PROJECT-scope regeneration (REQ-005, decided Q5). A user-added entry is an
+// existing allow entry absent from the sidecar record's last_generated list;
+// with no record every existing entry counts as user-added, so nothing is
+// removed. The result is the regenerated list with the user-added entries
+// appended in their existing-file order (order-stable set union). A
+// last_generated entry the document no longer generates is dropped — only the
+// user removes a user-added entry.
+//
+// @MX:NOTE: [AUTO] Q5 set-union — user-added allow entries survive the managed-block regeneration; a last_generated entry the doc no longer generates is dropped (SPEC-USER-SETTINGS-PROTECT-001)
+func mergeProjectAllow(projectSettingsPath string, regenerated []string) []string {
+	merged := append([]string{}, regenerated...)
+	seen := make(map[string]bool, len(regenerated))
+	for _, entry := range regenerated {
+		seen[entry] = true
+	}
+
+	body, err := os.ReadFile(projectSettingsPath)
+	if err != nil {
+		return merged
+	}
+	existing, extrErr := extractPermissions(body)
+	if extrErr != nil || existing == nil {
+		return merged
+	}
+
+	lastGenerated := map[string]bool{}
+	root := filepath.Dir(filepath.Dir(projectSettingsPath))
+	if recBody, recErr := os.ReadFile(filepath.Join(root, ".moai", "state", "tool-policy", "managed-allow.json")); recErr == nil {
+		var rec managedAllowRecord
+		if json.Unmarshal(recBody, &rec) == nil {
+			for _, entry := range rec.LastGenerated {
+				lastGenerated[entry] = true
+			}
+		}
+	}
+
+	for _, entry := range existing.Allow {
+		if lastGenerated[entry] {
+			// Managed entry the document no longer generates: dropped.
+			continue
+		}
+		if !seen[entry] {
+			seen[entry] = true
+			merged = append(merged, entry)
+		}
+	}
+	return merged
+}
+
 // WriteUserDefaultMode splices ONLY the defaultMode into the USER-scope
 // settings.json at userPath, preserving every other region (PATH, hooks, env,
 // allow, deny, ask). It is the init-time fallback used when no tool-policy.yaml
@@ -103,9 +164,36 @@ func RenderTierPermissions(projectSettingsPath, userSettingsPath, defaultMode st
 // region matcher has a target (mirrors renderIntoFile's create-on-absent path).
 // The parent directory is created on demand so the init path can write the
 // USER-scope ~/.claude/settings.json even when the directory does not yet exist.
+//
+// SPEC-USER-SETTINGS-PROTECT-001 (decision Q1, DECIDED): an existing USER-scope
+// permissions.defaultMode is KEPT on every path — the tier default is written
+// only when the key is absent. A present value means the user owns the setting,
+// so the writer returns without touching the file (REQ-002: the bytes stay
+// identical when nothing would change). The write path (absent defaultMode)
+// preserves the user's allow/ask/deny entries and every unmodelled permissions
+// key (REQ-001).
+//
+// @MX:NOTE: [AUTO] Q1 keep-rule — an existing USER defaultMode is never overwritten; the tier default is written only when the key is absent, and the write path preserves the user's lists (SPEC-USER-SETTINGS-PROTECT-001)
 func WriteUserDefaultMode(userPath, defaultMode string) error {
 	if err := os.MkdirAll(filepath.Dir(userPath), 0o755); err != nil {
 		return fmt.Errorf("create user settings dir: %w", err)
+	}
+	if body, readErr := os.ReadFile(userPath); readErr == nil {
+		if existing, extrErr := extractPermissions(body); extrErr == nil && existing != nil {
+			if existing.DefaultMode != "" {
+				// Q1 (SPEC-USER-SETTINGS-PROTECT-001): the user's value is
+				// kept; the file is left byte-identical.
+				return nil
+			}
+			// Absent defaultMode: write the tier default while preserving the
+			// user's allow/ask/deny and every unmodelled key (REQ-001).
+			// extractPermissions parsed the lists from the same body that
+			// renderIntoFile re-reads, so the splice keeps them.
+			existing.DefaultMode = defaultMode
+			return renderIntoFile(userPath, existing)
+		}
+	} else if !os.IsNotExist(readErr) {
+		return fmt.Errorf("read %q: %w", userPath, readErr)
 	}
 	block := &PermissionsBlock{
 		DefaultMode: defaultMode,
