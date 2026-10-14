@@ -7,11 +7,11 @@ Card t1630 (backlog 3.2-0-1, priority P0, change class C). Lane lane-18, run tmn
 - plan_status: audit-ready
 - plan_complete_at: 2026-10-10T07:02:43Z (first authoring)
 - plan_tree: revision 2 is written on top of HEAD 5dc6c4530 (short SHA measured in the repair round). The RED observations stay pinned at 3975fe3cc. The lane commits revision 2, and the re-audit runs on that commit.
-- revision: revision 2 is the repair round after the iteration-2 FAIL (aggregate 0.69; audited_sha 5dc6c45307d21e4b0d34c876631e2fa553fde57b). It applies the operator-delegated split under ruling d-20261010T091713Z-10fe (decision board, card t1630). Policy decisions Q1, Q2, and Q5 stay in scope with the text and evidence defects B1, B4, B6 (wording), B8, B9, B11, and B12. Moved to t1666: the test-isolation items, the clean --home run and db items, decision Q3, decision Q7, the ~/.moai/run growth-0 criterion, and the post-t1619 baseline. Audit defects B2 (the AC-009 run path), B3 (AC-007), B5 (the AC-006 cell 1 order), B7 (the REQ-011 and REQ-012 deletion clauses), and B10 (the AC-006 run-time verdict) move with their criteria.
+- revision: revision 2 is the repair round after the revision 1 iteration 2 FAIL (aggregate 0.69; audited_sha 5dc6c45307d21e4b0d34c876631e2fa553fde57b). It applies the operator-delegated split under ruling d-20261010T091713Z-10fe (decision board, card t1630). Policy decisions Q1, Q2, and Q5 stay in scope with the text and evidence defects B1, B4, B6 (wording), B8, B9, B11, and B12. Moved to t1666: the test-isolation items, the clean --home run and db items, decision Q3, decision Q7, the ~/.moai/run growth-0 criterion, and the post-t1619 baseline. Audit defects B2 (the AC-009 run path), B3 (AC-007), B5 (the AC-006 cell 1 order), B7 (the REQ-011 and REQ-012 deletion clauses), and B10 (the AC-006 run-time verdict) move with their criteria.
 - audit-ready signal: granted by the delta plan audit PASS on commit fb672d1723c485ac52d4b21f8e4f3bbceafc78c9 (.moai/reports/t1630/plan-audit-iter3.md). The withdrawal ended with that re-audit. The ceiling count restarts at this revision.
 - counts (revision 2): in-scope normative requirements 4 (REQ-001, REQ-002, REQ-005, and REQ-013; REQ-003 and REQ-004 sit in the spec.md §2 note); in-scope acceptance criteria 6 (AC-001 to AC-005 and AC-013); both within the Tier M ceiling of 16. Moved and retained: REQ-006 to REQ-012 and AC-006 to AC-012 (7 of each).
 - evidence_manifest_sha256: 628c676714fe4b3c040f7a6a14d84618e79d9e3b0bcd3e1f57e7ffca74fd1ba8 (`shasum -a 256 .moai/specs/SPEC-USER-SETTINGS-PROTECT-001/evidence-manifest.json`, observed in revision 2). The last commit that changed the manifest is 5dc6c4530, and revision 2 does not change it. The binding is by manifest hash; the originals stay local under `.moai/reports/t1630/` (plan.md Appendix A). The plan-artifact hash (the ComputeHash subject, internal/runtime/audit_cache.go:92-100) covers acceptance.md, decision-index.md, design.md, plan.md, research.md, spec.md, and tasks.md, and excludes progress.md and evidence-manifest.json.
-- independent plan audit: iteration 2 (.moai/reports/t1630/plan-audit-iter2.md) FAIL at 56bd364f6c821999d0de3a6ecf226454198ab251. The text repair of B1 to B3 under ruling d-20261010T110028Z-358a is commit fb672d1723c485ac52d4b21f8e4f3bbceafc78c9. The delta re-audit (.moai/reports/t1630/plan-audit-iter3.md) returned PASS at fb672d172, score 0.81, blocking 0. Its residual-risk section makes the PASS conditional on operator ratification of the non-normative scope of REQ-003 and REQ-004.
+- independent plan audit: revision 2 iteration 2 (.moai/reports/t1630/plan-audit-iter2.md) FAIL at 56bd364f6c821999d0de3a6ecf226454198ab251. The text repair of B1 to B3 under ruling d-20261010T110028Z-358a is commit fb672d1723c485ac52d4b21f8e4f3bbceafc78c9. The delta re-audit (.moai/reports/t1630/plan-audit-iter3.md) returned PASS at fb672d172, score 0.81, blocking 0. Its residual-risk section makes the PASS conditional on operator ratification of the non-normative scope of REQ-003 and REQ-004.
 - decisions: Q8 DECIDED (anchor SPEC-INIT-WIZARD-REPAIR-001, HISTORY row 0.1.1). Q1, Q2, and Q5 DECIDED by the pinned board record `board:d-20261010T073547Z-07ae#9c93e47809f9` (decided_by 영실이 판단, operator-delegated). Q4 and Q6 EVIDENCE-NEEDED, closed at M2 without blocking run. Q3 and Q7 are Out of Scope - moved to t1666; their rows keep their text.
 - Q7 and the Kickoff: Q7 (FOUNDER, implementation-level) has no subject once the sandbox items move, so it no longer gates this SPEC's Kickoff. The leader confirms this reading at re-audit.
 - no default is applied at plan close.
@@ -25,7 +25,39 @@ Card t1630 (backlog 3.2-0-1, priority P0, change class C). Lane lane-18, run tmn
 
 ## §E.2 Run-phase Evidence
 
-_<pending run-phase>_
+Run phase opened by manager-develop on factory lane-17, card t1630. Run base: HEAD ef206ba8c6 on WT-3-2-0 (the merge commit that absorbed local main ec193e4777 — 689 commits of post-plan mainline work). Toolchain go1.26.8 darwin/arm64. All commands below ran in this run, against this tree, with `unset MOAI_KANBAN_ID MOAI_KANBAN_LEAD_ADDR MOAI_KANBAN_SETTINGS_INJECTED` in the same invocation.
+
+### Plan Audit Gate skip (three conditions, each observed in this run)
+
+1. Verdict PASS: the delta re-audit (.moai/reports/t1630/plan-audit-iter3.md) returned PASS at fb672d1723, score 0.81, blocking 0.
+2. Score 0.81 >= the Tier M threshold 0.80.
+3. Artifact-hash unchanged since the verdict: `git diff cd93616f99..ef206ba8c6 -- .moai/specs/SPEC-USER-SETTINGS-PROTECT-001/` prints nothing (0 lines, re-run by the lane in this run; the ComputeHash subject excludes progress.md and evidence-manifest.json, per plan.md Appendix A). The uncommitted working-tree diffs touch progress.md (leader label corrections + §F) and spec.md (HISTORY label correction + the draft→in-progress frontmatter transition of this commit) only; plan.md and acceptance.md carry no uncommitted diff (`git diff --stat` over both: empty).
+
+### P-3 — RED re-observation on the post-absorb run base (all six in-scope cells re-observed at ef206ba8c6; every cell failed with the same shape as the pinned 3975fe3cc observation)
+
+- AC-001: `go test -overlay .moai/reports/t1630/evidence/overlay-ac001-003.json -count=1 -v -run '^TestAC001PreservesListsAndUnmodelledKeys$' ./internal/config/toolpolicy/` → allow/ask/deny each logged "was removed"; `--- FAIL: TestAC001PreservesListsAndUnmodelledKeys`; exit 1.
+- AC-002: same overlay, `-run '^TestAC002RegionBytesUnchangedWhenDefaultModeMatches$'` → "file bytes changed" with the before/after bodies; `--- FAIL`; exit 1.
+- AC-003 part A: same overlay, `-run '^TestAC003ListsPreservedUnderEitherDisposition$'` → both subtests `differing` and `matching` FAIL with the three "was removed" logs each; exit 1; executed 3.
+- AC-003 part B: `go test -overlay .moai/reports/t1630/evidence/overlay-ac003b.json -count=1 -v -run '^TestAC003DefaultModeKeptOnBothPaths$' ./internal/core/project/` → `default-init`: "plan" overwritten with "acceptEdits"; `automatic`: "plan" overwritten with "auto"; exit 1; executed 3.
+- AC-004: `grep -c '"defaultMode": *"default"' internal/template/templates/.claude/settings.json.tmpl` → `0`, exit 1.
+- AC-005 case (i): `go test -overlay .moai/reports/t1630/evidence/overlay-ac005.json ... '^TestAC005PolicyPathKeepsUserAllowEntry$' ./internal/core/project/` → "user-added permissions.allow entry dropped"; exit 1.
+- AC-005 case (ii): `go test -overlay .moai/reports/t1630/evidence/overlay-ac005b.json ... '^TestAC005WithRecordKeepsUserAddedEntry$' ./internal/core/project/` → "user-added permissions.allow entry dropped with a sidecar record present"; exit 1.
+
+Evidence-manifest integrity at entry: `jq -r '.files[] | "\(.sha256)  \(.path)"' .moai/specs/SPEC-USER-SETTINGS-PROTECT-001/evidence-manifest.json | shasum -a 256 -c -` → 37 lines OK, 0 non-OK.
+
+### AC-013 ordering gate — measured divergence from the dispatch text (named, not worked around)
+
+Measured at ef206ba8c6 with the plan's representative landing SHAs (plan.md E-14):
+
+```
+git merge-base --is-ancestor 8108eb256 HEAD   # t1619 → exit 1 (NOT an ancestor)
+git merge-base --is-ancestor e73a7cbf5 HEAD   # t1578 → exit 0 (ancestor)
+git merge-base --is-ancestor a372a984c HEAD   # t1591 → exit 1 (NOT an ancestor)
+```
+
+Corroborating probes: no commit naming t1619/t1591 or SPEC-UPDATE-REPAIR-RC30-001/SPEC-USERASSET-DEPLOY-GUARD-001 exists in HEAD ancestry or in the absorbed main tip ec193e4777's history; the SPEC directories `.moai/specs/SPEC-UPDATE-REPAIR-RC30-001/` and `.moai/specs/SPEC-USERASSET-DEPLOY-GUARD-001/` are absent from HEAD; t1591's branch lands as PR #1818 (`gh pr view 1818` → state OPEN, mergedAt null). The dispatch statement "predecessor t1619 landed (inside the absorbed mainline)" is therefore not reproducible on this tree for the SPEC-artifact or ancestry identity.
+
+Gate-purpose containment measurement (why the run proceeded): `MB=$(git merge-base 8108eb256 HEAD)` → 32035f28b; `git diff $MB 8108eb256 --stat -- internal/config/toolpolicy internal/core/project internal/template/templates` → only `templates/.moai/config/sections/protected-zone.yaml` (+8), zero overlap with this SPEC's target files (the t1619 branch delta touches internal/cli/init.go +89/-13 and 103 files total, none of them this SPEC's writer/template paths; no in-scope AC measures the init executor — plan.md R-1 carries that level as a Gap). The t1619/t1591 landing is cross-card work the lane cannot land itself; the leader owns its disposition (merge before this card's batch, or re-pin the gate).
 
 ## §E.3 Run-phase Audit-Ready Signal
 
@@ -70,3 +102,18 @@ decision record: decided_by=lane-18 evidence_refs=board:d-20261010T073547Z-07ae;
 - 2026-10-10T11:22:33Z SPEC-USER-SETTINGS-PROTECT-001 ceiling-outcome outcome=pass-through reasons="plan-audit ceiling reached (round count 3 >= tier ceiling 2 + 1 delta rounds); the verdict is admission-clean and admits without a question (REQ-ACE-013)" evidence=.moai/reports/t1630/plan-audit-iter1.md,.moai/reports/t1630/plan-audit-iter2.md,.moai/reports/t1630/plan-audit-iter3.md
 
 decision record: decided_by=lane-18 evidence_refs=.moai/reports/t1630/plan-audit-iter3.md (verdict PASS, audited_sha fb672d1723c485ac52d4b21f8e4f3bbceafc78c9, overall 0.81, blocking 0), the ceiling-outcome record above (pass-through at 11:22:33Z), factory record t1630 version 28 ladder_path=plan to run Kickoff gate row, autonomous form per auto-semantics 9.1: audit-cross PASS plus evidence and a decision record condition=PASS holds only if the operator accepts the non-normative scope of REQ-003 and REQ-004 (verdict section 5), otherwise FAIL
+
+## §F Phase 4 Mode Selection
+
+Input parameters: tier M (frontmatter); scope = 3 module paths (internal/config/toolpolicy, internal/core/project, internal/template/templates) plus tests; domain count = 1 code domain (Go CLI/config) + template mirror; file language mix = Go + YAML template; concurrency benefit = LOW (coding-heavy, sequential TDD milestones); Agent Teams prereqs = not requested (no operator --team).
+
+| Mode | Selected | Rationale |
+|------|----------|-----------|
+| direct | not selected | Multi-file behavioral change, not a one-liner |
+| serial | selected | Coding-heavy TDD work; Anthropic coding-task parallelism caveat; single writer per tree |
+| fanout | not selected | No multi-domain research; coding-heavy work |
+| sweep | not selected | Not mechanical-uniform; new-code work |
+
+Decision: serial
+
+Justification: the SPEC is a coding-heavy Tier M behavioral change across three Go/template paths with TDD milestones; parallel spawns would violate one-writer-per-tree on a single card tree, and there is no mechanical-uniform bulk transform. Serial manager-develop delegation per milestone is the safe default. Kickoff gate met in its autonomous form (§9.1): plan-audit iter3 PASS 0.81 (blocking 0, audited_sha fb672d1723) + committed decision record 947719542 + operator ratification d-20261010T113615Z-6892; recorded before the first run-phase Agent() spawn.
