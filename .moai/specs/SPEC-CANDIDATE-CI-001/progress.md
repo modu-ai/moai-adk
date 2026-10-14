@@ -1,0 +1,964 @@
+# progress.md — SPEC-CANDIDATE-CI-001
+
+status: implemented
+card: t1478
+phase: plan
+
+## §E.1 Plan-phase Audit-Ready Signal
+
+plan_status: audit-ready
+plan_complete_at: 2026-10-09
+artifacts: spec.md, plan.md, acceptance.md, design.md, research.md, progress.md
+tier: L
+req_count: 17
+ac_count: 25
+evidence_tree: db0c514d3 (WT-10-03-tier)
+red_now_measured: AC-CCI-001-1 (live verb help, 2026-10-09), AC-CCI-006-1 (grep, 0 rows), AC-CCI-007-1 (ci.yml:16-25), AC-CCI-011-1 (integration_merge.go:95-99 placeholder), AC-CCI-014-1 (ci.yml:35-37 cancels every ref)
+open_clarifications: none — the operator approval embedded in the card text resolves the §4.1 replacement and the green-gated integration-branch rule
+
+## §E.2 Run-phase Evidence
+
+### M1 — Config gate + candidate record (card t1478)
+
+| Item | What changed |
+|------|--------------|
+| Files | `.moai/config/sections/workflow.yaml`, `internal/template/templates/.moai/config/sections/workflow.yaml` (candidate_ci block, both mirrors); `internal/config/types.go` (CandidateCIConfig + WorkflowConfig field); `internal/config/defaults.go` (Enabled false, GuardBundleRequired true); `internal/factory/candidate_record.go` (new — record type + store, keyed (card, pinned SHA), atomic writes); `internal/cli/integration_merge.go` (candidateCIEnabled reads the real key); tests: `internal/config/workflow_candidate_ci_test.go`, `internal/factory/candidate_record_test.go`, `internal/cli/integration_candidate_gate_test.go` |
+
+- RED (tree a4944fb3f, this run): `go test -list '^TestCandidateRecord$' ./internal/factory/` → `ok  	github.com/modu-ai/moai-adk/internal/factory	0.195s` (zero test names; same shape for `^(TestWorkflowCandidateCIDefaultFalse|TestWorkflowCandidateCILoaderRoundTrip|TestCandidateCIEnabled)$` across config/cli). After writing the tests, pre-implementation RED: `cfg.Workflow.CandidateCI undefined (type WorkflowConfig has no field or method CandidateCI)`, `undefined: ReadCandidateRecord`, and `--- FAIL: TestCandidateCIEnabled/explicit_true_reads_true ... candidateCIEnabled: got false, want true with enabled: true` (the constant-false placeholder refuses the key).
+- GREEN (this run): `go test ./internal/config/ -run '^(TestAuditLoaderCompleteness|TestWorkflowConfigFields|TestNewDefaultWorkflowConfig|TestNewDefaultWorkflowConfigNestedDefaults)$' -count=1` → `ok  ...  0.145s`; `go test ./internal/factory/ -run '^TestCandidateRecord$' -count=1` → `ok  ...  0.155s`; `go vet ./internal/cli/` exit 0; gofmt clean on all touched files.
+
+### M2 edge repairs — tip equality, verdict preservation, caller tree, serialization (card t1478, commit ccddd442e)
+
+| Item | What changed |
+|------|--------------|
+| Files | `internal/cli/integration_candidate.go` (tip-equality refusal; identical-SHA verdict preservation inside the push section; candidateCallerTreeGuard; per-card critical section), `internal/factory/candidate_mutation_lock.go` + unix/windows split (new — WithCandidateMutation over the shared state-lock substrate, ErrCandidateMutationBusy), `internal/cli/integration_candidate_test.go`, `internal/factory/candidate_mutation_lock_test.go`, `internal/config/testdata/shipped_key_inventory.yaml` (the two candidate_ci keys triaged — enabled W/reader, guard_bundle_required R/workflow-layer) |
+
+- RED (this run): `go vet` → `undefined: WithCandidateMutation`, `undefined: factory.ErrCandidateMutationBusy`, `undefined: candidateCallerTreeGuard`.
+- GREEN: `go test ./internal/cli/ -run '^TestIntegrationCandidate$' -count=1` → `ok ... 5.723s`; `go test ./internal/factory/ -run '^TestCandidateMutationLock$|^TestCandidateRecord$' -count=1` → `ok ... 3.510s`; `go test ./internal/config/ -run '^(TestShippedConfigKeysHaveReaders|TestAuditLoaderCompleteness|TestWorkflowConfigFields)$'` → `ok ... 7.288s`; vet exit 0. The inventory repair flipped the M1-introduced `TestShippedConfigKeysHaveReaders` red (`workflow.candidate_ci.enabled`/`guard_bundle_required` not triaged) green.
+
+### M2 path-hygiene + git-env repairs — gitenv scrub, run selection, store confinement (card t1478, commits d027dfe4e / f6523784d)
+
+| Item | What changed |
+|------|--------------|
+| Files | `internal/factorylane/merge.go` (ExecGitRunner.Git carries `cmd.Env = gitenv.Env()` — the shared substrate every candidate-path git child flows through), `internal/cli/integration_candidate.go` (candidateScrubbedGit; --run flag + MOAI_KANBAN_ID selection; candidateCallerTreeGuard runID), `internal/factory/candidate_record.go` (candidateStoreRealPath symlink confinement; openCandidateRecordFile non-blocking regular-verified open), `internal/factory/candidate_record_unix.go`/`_windows.go` (new), `internal/factory/candidate_record_hygiene_unix_test.go` (new), tests |
+
+- GREEN: `go test ./internal/cli/ -run '^(TestIntegrationCandidateIgnoresRepoScopingEnv|TestIntegrationCandidateRunSelection|...)$' -count=1` → `ok ... 23.352s` (7 subtests); `go test ./internal/factory/ -run '^(TestCandidateRecord...|TestLandingCheck...|TestMergeStep)' -count=1` → `ok ... 71.534s`; `go test ./internal/factorylane/ -count=1` → `ok ... 64.472s`; `GOOS=windows GOARCH=amd64 go build ./...` → exit 0; gofmt clean.
+
+### M3 — ci/** trigger + concurrency exception (card t1478, commits 29c81d5fa / 6e968bf93)
+
+| Item | What changed |
+|------|--------------|
+| Files | `.github/workflows/ci.yml` — push.branches gains `ci/**` (no paths: filter, by design); concurrency.cancel-in-progress becomes `$\{\{ github.ref != 'refs/heads/main' && github.ref != 'refs/heads/develop' \}\}` (main's CI IS the integration verdict per AGENTS.local.md §4.1 canon — the follow-up commit added main after the first cut exempted only develop); B6 re-read: both race-job `if:` conditions branch on `startsWith(github.head_ref, 'release/')`, false on push events → candidate pushes RUN the race jobs |
+
+- Baseline→post: `actionlint .github/workflows/ci.yml` exit 0 on BOTH sides of each edit; `git grep -n "ci/\*\*" .github/workflows/ci.yml` → 3 rows (trigger :25, comment :18/:44).
+
+### M4 — landing gate at both call sites + per-card red hold + verdict observation (card t1478, commits 745bfae64 / b02ba30e3)
+
+| Item | What changed |
+|------|--------------|
+| Files | `internal/factory/candidate_landing_check.go` (new — the shared check: record read, branch identity refuses outright, tip equality voids with re-candidate guidance, green-or-refuse, ancestry), `internal/factory/integration_merge_step.go` (fail-closed nil-seam guard at gate 5; in-section landing RECHECK under the candidate mutation lock — the batch TOCTOU repair), `internal/cli/integration_merge.go` (real check wired, placeholder gone), `internal/cli/factory_card.go` (complete call site wires the SAME check), `internal/cli/integration.go` (candidateAcquirePrecondition before any record mutation; root-resolution git child scrubbed), `internal/factory/candidate_record.go` (ObserveCandidateVerdict with the verdict-SHA binding + under-lock re-read; LatestCandidateRecord; Seq; scan opens non-blocking), `internal/cli/integration_candidate.go` (--observe; ghRunStates with the workflow filter; required-check verdict from required-checks.yml over the SHA's cross-workflow check runs; Seq stamping), tests: candidate_landing_check_test.go, candidate_landing_gate_test.go (new) |
+
+- RED (this run): `go vet` → `undefined: CandidateLandingCheck` (factory), `undefined: factory.LatestCandidateRecord` (cli).
+- GREEN: `go test ./internal/factory/ ./internal/cli/ -run '^(TestLandingCheck|TestCandidateVerdict|TestLandingCheckRefusesTargetMismatch|TestCandidateAcquirePrecondition|TestCompleteRefusesRedCandidate|TestCandidateObserveWalk|TestCandidateObserveCommand|TestMergeStepHappyPathCreatesNoFFMergeAndReleases|TestMergeStepPreMergeCausesReleaseWithDistinctCodes|TestIntegrationCandidate)$' -count=1` → `ok internal/factory 68.704s` / `ok internal/cli 16.453s`; `TestLandingCheckRecheckCatchesRedAfterGate` (the gate→observe→merge TOCTOU) → cause 5 at the merge point.
+- Coverage (this run, coverprofile over the candidate families): factory candidate surfaces avg 84.4% over 16 funcs (CandidateLandingCheck 90.5%, WithCandidateMutation 90.9%, candidateStoreRealPath 91.7%); cli runIntegrationCandidate 87.2%, candidateCallerTreeGuard 91.7%. Sub-85 residuals are guard branches: candidateRecordPath 60% (invalid-key error branches), shortSHAFull 66.7% (≤12-char branch), WriteCandidateRecord 70% (error paths), ghRunStates/candidateGhRunner 0% (network shims by design, seams tested instead).
+- KNOWN CONSEQUENCE (reported to coordinator, config-level): required-checks.yml's main contexts include `Release PR Multi-OS Gate` and `Analyze (Go) (go)`, which never publish on ci/** pushes (codeql.yml/release workflows are main-PR-triggered) — the required-check verdict holds every candidate red until the SSoT gains a candidate-scoped set. The verdict names the unpublished contexts in its `why` — honest red, not a false green.
+
+### Mid-run plan amendment observed (absorbed)
+
+While M1 was in flight, the SPEC artifacts gained the landing-check TARGET BINDING amendment, landed by the spawner lane as commit 11c169028 (`docs(spec): M5 pipeline hygiene and the candidate-to-merge-target binding (card t1478)`, applied by manager-spec): design.md D10 (branch identity refuses outright; tip advance voids with re-candidate guidance), spec.md REQ-CCI-010/011 additions, plan.md M4 (+ `TestLandingCheckRefusesTargetMismatch`), acceptance.md AC-CCI-011-2 (target-mismatch class), M5 pipeline hygiene (pipefail + mktemp -d). The same commit carries spec.md's draft → in-progress transition. Coordinator confirmed: applies at M4; no impact on M1/M2 in flight. M4 below implements the amended contract.
+
+## §E.3 Run-phase Audit-Ready Signal
+
+run_status: audit-ready (four review findings and the jobs-view pin; the full AC matrix, CI, live gh, and codex review are not measured here, see Gaps)
+run_complete_at: 2026-10-10
+run_commit_sha: 07323c990 (last run-phase code commit; this §E.3 commit does not cite its own SHA)
+run_branch: WT-10-03-tier
+run_range: 4efb4212e..07323c990 (absorb base 4efb4212e excluded)
+run_commits: fbc48c021 (F1), 47034f5e9 (F2), ad313aaeb (F3), 03061fe21 (F4), 08731c463 (the leader's ci.yml count-comment commit, not lane work), 07323c990 (F5)
+run_diff_stat: 12 files changed, 982 insertions(+), 97 deletions(-) (git diff --stat 4efb4212e HEAD)
+run_spec_body_touched: none in the range (the stat lists Go files and .github/workflows/ci.yml only)
+run_push: none (no push in this close)
+go_files_changed_in_this_close: none (this close changes progress.md only)
+red_green_ordering: a run-record claim, not a commit-graph fact (each finding's RED test and its fix share one commit; verification-claim-integrity.md §2.3)
+ac_matrix: not re-measured in this close (see Gaps)
+
+Attribution. Agent-run is what this agent ran. The RED outputs for F1 to F5 were observed earlier in this run, before each fix, and are quoted from that output. They were not re-executed here, because re-executing RED needs the Go files reverted and this close changes no Go file. The GREEN, build, format, vet, selector, and gh help results were observed again in this close at HEAD 07323c990. Lane-run is the lane's re-run as reported by the coordinator; it is not observed in this record (see Lane-run below). WARN config-notice lines and go-test run-header lines are omitted from the quoted outputs; every other line is verbatim.
+
+### F1 — the first binding run decides the verdict observation (commit fbc48c021)
+
+Files (git log --stat): internal/cli/candidate_landing_gate_test.go (89 insertions), internal/cli/integration_candidate.go (28 changed lines).
+
+RED — Agent-run, earlier in this run, before the fix:
+
+```bash
+go test -count=1 -v -run '^TestObserveCandidateRunsFirstBindingRunDecides$' ./internal/cli/
+```
+
+Exit code 1:
+
+```text
+    candidate_landing_gate_test.go:132: wrote=true, stored verdict "green": the older run 100 must not decide over the newer binding run 200 — want wrote=false, pending
+    candidate_landing_gate_test.go:149: wrote=true, stored verdict "green": the in-progress binding run 200 decides — want wrote=false, pending
+--- FAIL: TestObserveCandidateRunsFirstBindingRunDecides (0.01s)
+    --- FAIL: TestObserveCandidateRunsFirstBindingRunDecides/newest_binding_run_with_an_empty_conclusion_decides:_an_older_success_writes_nothing (0.00s)
+    --- FAIL: TestObserveCandidateRunsFirstBindingRunDecides/newest_binding_run_still_in_progress_decides:_an_older_success_writes_nothing (0.00s)
+    --- PASS: TestObserveCandidateRunsFirstBindingRunDecides/newest_binding_run_failed_decides_red;_a_non-binding_run_is_skipped_without_stopping_the_walk (0.00s)
+FAIL
+FAIL	github.com/modu-ai/moai-adk/internal/cli	1.092s
+FAIL
+```
+
+GREEN — Agent-run, this close, HEAD 07323c990:
+
+```bash
+go test -count=1 -v -run '^TestObserveCandidateRunsFirstBindingRunDecides$' ./internal/cli/ ; echo "CLOSE_F1_GREEN_EXIT=$?"
+```
+
+```text
+--- PASS: TestObserveCandidateRunsFirstBindingRunDecides (0.00s)
+    --- PASS: TestObserveCandidateRunsFirstBindingRunDecides/newest_binding_run_with_an_empty_conclusion_decides:_an_older_success_writes_nothing (0.00s)
+    --- PASS: TestObserveCandidateRunsFirstBindingRunDecides/newest_binding_run_still_in_progress_decides:_an_older_success_writes_nothing (0.00s)
+    --- PASS: TestObserveCandidateRunsFirstBindingRunDecides/newest_binding_run_failed_decides_red;_a_non-binding_run_is_skipped_without_stopping_the_walk (0.00s)
+PASS
+ok  	github.com/modu-ai/moai-adk/internal/cli	0.931s
+CLOSE_F1_GREEN_EXIT=0
+```
+
+### F2 — a stale observation cannot overwrite a newer verdict (commit 47034f5e9)
+
+Files (git log --stat): internal/factory/candidate_record.go (93 changed lines), internal/factory/candidate_record_order_test.go (118 insertions), internal/factory/candidate_landing_check_test.go (14 changed lines), internal/cli/candidate_landing_gate_test.go (33 changed lines), internal/cli/integration_candidate.go (9 changed lines).
+
+Fixture note: the F1 and F2 test fixtures used non-numeric run IDs (r-mine, r-1, r-9, r-red), which the numeric rule refuses. They were changed to numeric IDs (7001, 1, 9, 9). The assertions were kept. The refusal of non-numeric IDs is asserted by the subtest "a non-numeric or empty run id is refused and never green" below.
+
+RED — Agent-run, earlier in this run, before the fix:
+
+```bash
+go test -count=1 -v -run '^TestObserveCandidateRunOrder$' ./internal/factory/
+```
+
+Exit code 1:
+
+```text
+    candidate_record_order_test.go:48: wrote=true, stored verdict "green" run "100": run 100 is older than the recorded run 200 — want wrote=false, red, run 200
+    candidate_record_order_test.go:70: wrote=true, stored verdict "red" attempt 0: attempt 1 arriving after attempt 2 must be refused — want wrote=false, green, attempt 2
+    candidate_record_order_test.go:80: run id "": wrote=true err=<nil> — an unorderable run must be refused with an error
+    candidate_record_order_test.go:87: run id "": stored verdict "green", want pending
+    candidate_record_order_test.go:80: run id "r-9": wrote=true err=<nil> — an unorderable run must be refused with an error
+    candidate_record_order_test.go:87: run id "r-9": stored verdict "green", want pending
+    candidate_record_order_test.go:80: run id " 9": wrote=true err=<nil> — an unorderable run must be refused with an error
+    candidate_record_order_test.go:87: run id " 9": stored verdict "green", want pending
+    candidate_record_order_test.go:80: run id "-9": wrote=true err=<nil> — an unorderable run must be refused with an error
+    candidate_record_order_test.go:87: run id "-9": stored verdict "green", want pending
+    candidate_record_order_test.go:97: first observation: wrote=true err=<nil> verdict "green" run "300" attempt 0, want green from run 300 attempt 1
+    candidate_record_order_test.go:115: run 199 against the legacy run 200: wrote=true err=<nil>, want refused
+--- FAIL: TestObserveCandidateRunOrder (0.04s)
+    --- FAIL: TestObserveCandidateRunOrder/a_stale_successful_run_cannot_overwrite_a_newer_red_verdict (0.01s)
+    --- FAIL: TestObserveCandidateRunOrder/a_re-run_attempt_may_replace_its_earlier_attempt,_never_the_reverse (0.01s)
+    --- FAIL: TestObserveCandidateRunOrder/a_non-numeric_or_empty_run_id_is_refused_and_never_green (0.01s)
+    --- FAIL: TestObserveCandidateRunOrder/the_first_observation_of_a_record_with_no_prior_run_keeps_working (0.00s)
+    --- FAIL: TestObserveCandidateRunOrder/a_record_written_before_attempts_reads_as_attempt_1_of_its_run (0.00s)
+FAIL
+FAIL	github.com/modu-ai/moai-adk/internal/factory	0.462s
+FAIL
+```
+
+```bash
+go test -count=1 -v -run '^TestGhRunStatesMapsRunAttempt$' ./internal/cli/
+```
+
+Exit code 1:
+
+```text
+    candidate_landing_gate_test.go:251: gh args "run list --workflow ci.yml --branch ci/t9001 --limit 20 --json databaseId,headSha,headBranch,status,conclusion": want the run query to ask for the attempt field
+    candidate_landing_gate_test.go:254: runs [{RunID:200 HeadSHA:c1 Ref:ci/t9001 Status:completed Conclusion:success Attempt:0}]: want run 200 at attempt 2
+--- FAIL: TestGhRunStatesMapsRunAttempt (0.00s)
+FAIL
+FAIL	github.com/modu-ai/moai-adk/internal/cli	1.325s
+FAIL
+```
+
+GREEN — Agent-run, this close, HEAD 07323c990:
+
+```bash
+go test -count=1 -v -run '^TestObserveCandidateRunOrder$' ./internal/factory/ ; echo "CLOSE_F2A_GREEN_EXIT=$?"
+```
+
+```text
+--- PASS: TestObserveCandidateRunOrder (0.02s)
+    --- PASS: TestObserveCandidateRunOrder/a_stale_successful_run_cannot_overwrite_a_newer_red_verdict (0.01s)
+    --- PASS: TestObserveCandidateRunOrder/a_re-run_attempt_may_replace_its_earlier_attempt,_never_the_reverse (0.00s)
+    --- PASS: TestObserveCandidateRunOrder/a_non-numeric_or_empty_run_id_is_refused_and_never_green (0.00s)
+    --- PASS: TestObserveCandidateRunOrder/the_first_observation_of_a_record_with_no_prior_run_keeps_working (0.00s)
+    --- PASS: TestObserveCandidateRunOrder/a_record_written_before_attempts_reads_as_attempt_1_of_its_run (0.00s)
+PASS
+ok  	github.com/modu-ai/moai-adk/internal/factory	0.374s
+CLOSE_F2A_GREEN_EXIT=0
+```
+
+```bash
+go test -count=1 -v -run '^TestGhRunStatesMapsRunAttempt$' ./internal/cli/ ; echo "CLOSE_F2B_GREEN_EXIT=$?"
+```
+
+```text
+--- PASS: TestGhRunStatesMapsRunAttempt (0.00s)
+PASS
+ok  	github.com/modu-ai/moai-adk/internal/cli	0.665s
+CLOSE_F2B_GREEN_EXIT=0
+```
+
+### F3 — one guard set in both selectors; the census check runs once (commit ad313aaeb)
+
+Files (git log --stat): .github/workflows/ci.yml (12 insertions, 14 deletions).
+
+RED — Agent-run, earlier in this run, before the fix. This is a probe over the workflow file, not a Go test. Its exit status was not captured.
+
+```bash
+python3 -c '
+import re
+t = open(".github/workflows/ci.yml", encoding="utf-8").read()
+skip = re.search(r"-skip .\^\((.*?)\)\$.", t).group(1)
+run = re.search(r"-run .\^\((.*?)\)\$. \./internal/cli/", t).group(1)
+names = ["TestDestructiveTargetRegistry_CoversAllSites", "TestCodexCommand_GuardFileLiteralsNeutral", "TestProductionStringLiteralsUseLeaderLaneVocabulary"]
+for n in names:
+    in_skip = re.fullmatch(skip, n) is not None
+    in_run = re.fullmatch(run, n) is not None
+    print(n, "| ordinary job skips it:", in_skip, "| guard job runs it:", in_run)
+print("census-check.sh occurrences in ci.yml:", t.count("census-check.sh"))
+'
+```
+
+```text
+TestDestructiveTargetRegistry_CoversAllSites | ordinary job skips it: False | guard job runs it: False
+TestCodexCommand_GuardFileLiteralsNeutral | ordinary job skips it: False | guard job runs it: False
+TestProductionStringLiteralsUseLeaderLaneVocabulary | ordinary job skips it: False | guard job runs it: False
+census-check.sh occurrences in ci.yml: 3
+```
+
+GREEN — Agent-run, this close, HEAD 07323c990. Same probe, with the name-set comparison and the run-invocation count added:
+
+```bash
+python3 -I -c '
+import re
+t = open(".github/workflows/ci.yml", encoding="utf-8").read()
+skip = re.search(r"-skip .\^\((.*?)\)\$.", t).group(1)
+run = re.search(r"-run .\^\((.*?)\)\$. \./internal/cli/", t).group(1)
+names = ["TestDestructiveTargetRegistry_CoversAllSites", "TestCodexCommand_GuardFileLiteralsNeutral", "TestProductionStringLiteralsUseLeaderLaneVocabulary"]
+for n in names:
+    print(n, "| ordinary skips:", re.fullmatch(skip, n) is not None, "| guard runs:", re.fullmatch(run, n) is not None)
+print("same name set:", sorted(skip.split("|")) == sorted(run.split("|")), "| guard names:", len(run.split("|")))
+print("census-check.sh run invocations:", len(re.findall(r"run: bash scripts/ci-census/census-check.sh", t)))
+' ; echo "CLOSE_SELECTOR_PROBE_EXIT=$?"
+```
+
+```text
+TestDestructiveTargetRegistry_CoversAllSites | ordinary skips: True | guard runs: True
+TestCodexCommand_GuardFileLiteralsNeutral | ordinary skips: True | guard runs: True
+TestProductionStringLiteralsUseLeaderLaneVocabulary | ordinary skips: True | guard runs: True
+same name set: True | guard names: 8
+census-check.sh run invocations: 1
+CLOSE_SELECTOR_PROBE_EXIT=0
+```
+
+The two census figures are different measures: the RED line counts every textual occurrence (comments included), and the GREEN line counts `run:` invocations.
+
+```bash
+actionlint .github/workflows/ci.yml ; echo "CLOSE_ACTIONLINT_EXIT=$?"
+```
+
+```text
+CLOSE_ACTIONLINT_EXIT=0
+```
+
+### F4 — the per-card red hold holds at every window grant (commit 03061fe21)
+
+Files (git log --stat): internal/cli/candidate_landing_gate_test.go (140 insertions), internal/cli/factory_card.go (18 insertions), internal/cli/integration_candidate.go (23 changed lines), internal/cli/integration_wait.go (30 changed lines), internal/factory/candidate_window_hold_test.go (169 insertions), internal/factory/integration_lock.go (18 changed lines), internal/factory/integration_merge_step.go (2 changed lines), internal/factory/integration_window_ops.go (162 changed lines).
+
+RED — Agent-run, earlier in this run, before the fix:
+
+```bash
+go test -count=1 -v -run '^TestWindowHold' ./internal/factory/
+```
+
+Exit code 1:
+
+```text
+    candidate_window_hold_test.go:62: no gate under the enabled key
+    candidate_window_hold_test.go:86: no gate under the enabled key
+--- FAIL: TestWindowHoldGate (0.01s)
+    --- PASS: TestWindowHoldGate/the_gate_is_off_unless_workflow.candidate_ci.enabled_is_true (0.00s)
+    --- FAIL: TestWindowHoldGate/with_the_key_on,_a_red_card_is_refused_and_every_other_card_is_admitted (0.00s)
+    --- FAIL: TestWindowHoldGate/an_unreadable_candidate_record_refuses_fail-closed (0.00s)
+    candidate_window_hold_test.go:103: acquire for a red card: err <nil>, want a candidate-hold refusal
+--- FAIL: TestWindowHoldDirectGrant (0.00s)
+    --- FAIL: TestWindowHoldDirectGrant/a_red_card's_direct_acquire_is_refused_before_any_window_record_is_written (0.00s)
+    --- PASS: TestWindowHoldDirectGrant/a_green_card's_direct_acquire_is_granted_as_before (0.00s)
+    candidate_window_hold_test.go:135: holder "sess-red" on card "tRed" after the refresh, want sess-green on tGreen: the red ticket must not take the window
+    candidate_window_hold_test.go:160: holder "sess-red" after the refresh, want the window free: the only queued ticket is refused by the red hold
+--- FAIL: TestWindowHoldQueuePromotion (0.00s)
+    --- FAIL: TestWindowHoldQueuePromotion/a_red_ticket_is_withdrawn_at_promotion_and_the_next_admitted_ticket_takes_the_window (0.00s)
+    --- FAIL: TestWindowHoldQueuePromotion/a_stale_holder_with_only_refused_tickets_queued_leaves_the_window_free (0.00s)
+FAIL
+FAIL	github.com/modu-ai/moai-adk/internal/factory	0.424s
+FAIL
+```
+
+```bash
+go test -count=1 -v -run '^(TestWaitPromotionRefusesCardTurnedRedWhileQueued|TestCompleteAcquisitionRefusesRedCandidate)$' ./internal/cli/
+```
+
+Exit code 1:
+
+```text
+    candidate_landing_gate_test.go:658: tB did not return: the refused waiter blocked the queue behind it
+--- FAIL: TestWaitPromotionRefusesCardTurnedRedWhileQueued (5.07s)
+--- PASS: TestCompleteAcquisitionRefusesRedCandidate (1.24s)
+FAIL
+FAIL	github.com/modu-ai/moai-adk/internal/cli	7.226s
+FAIL
+```
+
+The PASS line above for TestCompleteAcquisitionRefusesRedCandidate is a vacuous pass: the hook seam was declared but not yet called. The seam was then wired before the acquisition, and the run below is the RED that counts.
+
+```bash
+go test -count=1 -v -run '^TestCompleteAcquisitionRefusesRedCandidate$' ./internal/cli/
+```
+
+Exit code 1:
+
+```text
+    candidate_landing_gate_test.go:709: complete attempted the window acquisition 1 time(s) for a red card — the refusal must precede every grant
+--- FAIL: TestCompleteAcquisitionRefusesRedCandidate (0.97s)
+FAIL
+FAIL	github.com/modu-ai/moai-adk/internal/cli	2.176s
+FAIL
+```
+
+GREEN — Agent-run, this close, HEAD 07323c990:
+
+```bash
+go test -count=1 -v -run '^TestWindowHold' ./internal/factory/ ; echo "CLOSE_F4A_GREEN_EXIT=$?"
+```
+
+```text
+--- PASS: TestWindowHoldGate (0.02s)
+    --- PASS: TestWindowHoldGate/the_gate_is_off_unless_workflow.candidate_ci.enabled_is_true (0.01s)
+    --- PASS: TestWindowHoldGate/with_the_key_on,_a_red_card_is_refused_and_every_other_card_is_admitted (0.01s)
+    --- PASS: TestWindowHoldGate/an_unreadable_candidate_record_refuses_fail-closed (0.00s)
+--- PASS: TestWindowHoldDirectGrant (0.00s)
+    --- PASS: TestWindowHoldDirectGrant/a_red_card's_direct_acquire_is_refused_before_any_window_record_is_written (0.00s)
+    --- PASS: TestWindowHoldDirectGrant/a_green_card's_direct_acquire_is_granted_as_before (0.00s)
+--- PASS: TestWindowHoldQueuePromotion (0.00s)
+    --- PASS: TestWindowHoldQueuePromotion/a_red_ticket_is_withdrawn_at_promotion_and_the_next_admitted_ticket_takes_the_window (0.00s)
+    --- PASS: TestWindowHoldQueuePromotion/a_stale_holder_with_only_refused_tickets_queued_leaves_the_window_free (0.00s)
+PASS
+ok  	github.com/modu-ai/moai-adk/internal/factory	0.264s
+CLOSE_F4A_GREEN_EXIT=0
+```
+
+```bash
+go test -count=1 -v -run '^(TestWaitPromotionRefusesCardTurnedRedWhileQueued|TestCompleteAcquisitionRefusesRedCandidate)$' ./internal/cli/ ; echo "CLOSE_F4B_GREEN_EXIT=$?"
+```
+
+```text
+--- PASS: TestWaitPromotionRefusesCardTurnedRedWhileQueued (0.05s)
+--- PASS: TestCompleteAcquisitionRefusesRedCandidate (0.90s)
+PASS
+ok  	github.com/modu-ai/moai-adk/internal/cli	1.692s
+CLOSE_F4B_GREEN_EXIT=0
+```
+
+### F5 — the run jobs view pinned to the observed attempt (commit 07323c990)
+
+Files (git log --stat): internal/cli/candidate_landing_gate_test.go (84 changed lines), internal/cli/integration_candidate.go (23 changed lines).
+
+Caller change, verbatim from the commit diff (observed this run):
+
+```diff
+-			if adjusted := candidateRunVerdict(root, run.RunID, run.Status, run.Conclusion, targetBranch); adjusted.authoritative || adjusted.conclusion == "" {
++			if adjusted := candidateRunVerdict(root, run.RunID, candidateObservedAttempt(run.Attempt), run.Status, run.Conclusion, targetBranch); adjusted.authoritative || adjusted.conclusion == "" {
+```
+
+Jobs read at HEAD 07323c990 (grep, this close): `internal/cli/integration_candidate.go:533: jobsRaw, err := candidateGhRunsListFn(root, "run", "view", runID, "--attempt", fmt.Sprintf("%d", attempt), "--json", "jobs")`
+
+RED — Agent-run, earlier in this run, before the fix:
+
+```bash
+go test -count=1 -v -run '^TestCandidateRunVerdictPinsTheObservedAttempt$' ./internal/cli/ ; echo "RED_EXIT=$?"
+```
+
+```text
+=== RUN   TestCandidateRunVerdictPinsTheObservedAttempt
+    candidate_landing_gate_test.go:313: jobs view argv "run view 200 --json jobs": want --attempt 1, the observed attempt, so the view cannot answer with the rerun
+    candidate_landing_gate_test.go:316: observed: wrote=true verdict "green" attempt 1, want red recorded under the observed attempt 1 — the rerun's green must be neither judged nor recorded under attempt 1
+--- FAIL: TestCandidateRunVerdictPinsTheObservedAttempt (0.00s)
+FAIL
+FAIL	github.com/modu-ai/moai-adk/internal/cli	0.967s
+FAIL
+RED_EXIT=1
+```
+
+GREEN — Agent-run, this close, HEAD 07323c990:
+
+```bash
+go test -count=1 -v -run '^TestCandidateRunVerdictPinsTheObservedAttempt$' ./internal/cli/ ; echo "CLOSE_F5_GREEN_EXIT=$?"
+```
+
+```text
+--- PASS: TestCandidateRunVerdictPinsTheObservedAttempt (0.00s)
+PASS
+ok  	github.com/modu-ai/moai-adk/internal/cli	0.717s
+CLOSE_F5_GREEN_EXIT=0
+```
+
+### Agent-run — build, format, vet, callers, gh help (this close, HEAD 07323c990)
+
+```bash
+go build ./... ; echo "CLOSE_GO_BUILD_EXIT=$?"
+```
+
+```text
+CLOSE_GO_BUILD_EXIT=0
+```
+
+```bash
+GOOS=windows GOARCH=amd64 go build ./... ; echo "CLOSE_WINDOWS_BUILD_EXIT=$?"
+```
+
+```text
+CLOSE_WINDOWS_BUILD_EXIT=0
+```
+
+```bash
+gofmt -l internal/cli/candidate_landing_gate_test.go internal/cli/factory_card.go internal/cli/integration_candidate.go internal/cli/integration_wait.go internal/factory/candidate_landing_check_test.go internal/factory/candidate_record.go internal/factory/candidate_record_order_test.go internal/factory/candidate_window_hold_test.go internal/factory/integration_lock.go internal/factory/integration_merge_step.go internal/factory/integration_window_ops.go ; echo "CLOSE_GOFMT_EXIT=$?"
+```
+
+```text
+CLOSE_GOFMT_EXIT=0
+```
+
+(gofmt -l listed no file; the 11 files are every Go file in 4efb4212e..07323c990.)
+
+```bash
+go vet ./internal/cli/ ./internal/factory/ ; echo "CLOSE_VET_EXIT=$?"
+```
+
+```text
+CLOSE_VET_EXIT=0
+```
+
+```bash
+go test -count=1 -run '^(TestCandidate|TestIntegrationCandidate|TestCompleteRefusesRedCandidate|TestObserveCandidateRuns|TestGhRunStates|TestWaitPromotionRefuses|TestCompleteAcquisitionRefuses)' ./internal/cli/ ; echo "CLOSE_CALLERS_EXIT=$?"
+```
+
+```text
+ok  	github.com/modu-ai/moai-adk/internal/cli	21.508s
+CLOSE_CALLERS_EXIT=0
+```
+
+```bash
+gh run view --help
+```
+
+Local help text, no network call. The relevant lines:
+
+```text
+  -a, --attempt uint      The attempt number of the workflow run
+  # View a specific run with specific attempt number
+  $ gh run view 12345 --attempt 3
+```
+
+The help does not state what an unpinned `gh run view` returns, so the default attempt is not established by this output.
+
+### Lane-run — reported by the coordinator, not observed in this record
+
+- The coordinator reports commit 07323c990 verified in the lane. This agent did not observe the lane's commands or their output, and no lane output is transcribed here.
+- Commands the lane re-ran, as specified by the coordinator: `go build ./...`; `gofmt -l` on internal/cli/integration_candidate.go and internal/cli/candidate_landing_gate_test.go; the new test TestCandidateRunVerdictPinsTheObservedAttempt; the callers' tests.
+
+### Residual risk
+
+- RED-before-GREEN ordering is a run-record claim. Each finding's RED test and its fix share one commit (see the git log --stat figures above), so the commit graph cannot show RED before GREEN (verification-claim-integrity.md §2.3).
+- The pin's premise is stated in code. The comment at internal/cli/integration_candidate.go ("THE PINNED ATTEMPT") says an unpinned jobs view answers with the newest attempt. That premise came from the codex finding and is not observed here (see Gaps). The pin is correct whatever the default is, but the comment's claim is unverified.
+- The known consequence recorded in the M4 entry (required-checks contexts that never publish on ci/** pushes) is carried forward and was not re-measured in this close.
+
+### Gaps
+
+- Full `./...` test suite: not run.
+- CI: no CI run observed for any commit in 4efb4212e..07323c990.
+- Live `gh` call: none made. The `--attempt` behavior against GitHub is not observed, and the default attempt of an unpinned view is unverified.
+- Codex review: not re-run on 07323c990 or on the final tree.
+- Windows runtime tests: not run. Only the cross-build `GOOS=windows GOARCH=amd64 go build ./...` was observed (exit 0).
+- Not re-measured in this close: the 25 acceptance criteria (ac_count 25 in §E.1), test coverage, and golangci-lint.
+- The RED outputs above are quoted from this run's earlier output and were not re-executed here.
+- No compile-stage RED output for F2 and F4 is in the record; only the behavioral RED output is quoted.
+- Lane-run results (above) are not observed in this record.
+
+## §E.4 Sync-phase Audit-Ready Signal
+
+sync_status: audit-ready (3-phase close: spec.md and progress.md status in-progress -> completed; MX validation on the card's Go files; no CHANGELOG entry, see Gaps)
+sync_complete_at: 2026-10-10
+sync_commit_sha: pending-backfill
+sync_baseline_head: ee52fd342 (pre-commit HEAD; the sync commit does not cite its own SHA)
+sync_branch: WT-10-03-tier
+sync_origin_main: 2aab5f797 (moving ref; read by git fetch origin main on 2026-10-10; divergence 0 28 measured against 2aab5f797)
+sync_moai_build_lag: db0c514d3 is an ancestor of ee52fd342, 167 commits behind (git rev-list --count db0c514d3..HEAD = 167)
+sync_push: none (no push in this close)
+sync_spec_body_touched: none (spec.md changed in frontmatter status and updated only)
+sync_go_files: 7 files, comment lines only (13 @MX:ANCHOR tags added; 4 candidates left at the per-file cap; see Agent-run)
+sync_changelog: not emitted (B12 pre-emission grep count 1, a cross-reference only; see Gaps)
+
+### Agent-run
+
+Attribution. Agent-run is what the sync agent ran on HEAD ee52fd342 plus this commit's edits, quoted verbatim. The diff stat and the progress.md greps were captured before this block was appended, so the committed diff adds this block's lines on top of the recorded stat.
+
+Preflight, after the coordinator's amendment (check 2 accepts a clean tree):
+
+```text
+$ git rev-parse --show-toplevel && git rev-parse --short HEAD && git branch --show-current
+/Users/goos/MoAI/moai-adk-go/.moai/worktrees/t1478
+ee52fd342
+WT-10-03-tier
+$ git status --short --untracked-files=no
+(no output, exit 0)
+$ git hash-object -- .moai/config/sections/workflow.yaml
+bf70aae0e86f485de0db390ba512ede969ece368
+$ git rev-parse HEAD:.moai/config/sections/workflow.yaml
+bf70aae0e86f485de0db390ba512ede969ece368
+$ sed -n '300,304p' .moai/config/sections/workflow.yaml
+    codex:
+        review_gate:
+            enabled: true
+        task:
+            allow_write: true
+$ git fetch origin main
+From https://github.com/modu-ai/moai-adk
+ * branch                main       -> FETCH_HEAD
+$ git rev-parse --short origin/main
+2aab5f797
+$ git rev-list --count --left-right origin/main...HEAD
+0	28
+```
+
+Baseline attribution: origin/main is a moving ref. The divergence `0 28` (0 behind, 28 ahead) is measured against origin/main 2aab5f797, read on 2026-10-10 in this run.
+
+Checks after editing:
+
+```text
+$ git diff --stat
+ .moai/specs/SPEC-CANDIDATE-CI-001/progress.md | 14 ++++++++++++--
+ .moai/specs/SPEC-CANDIDATE-CI-001/spec.md     |  4 ++--
+ internal/cli/integration_candidate.go         |  7 +++++++
+ internal/factory/candidate_landing_check.go   |  4 ++++
+ internal/factory/candidate_mutation_lock.go   |  4 ++++
+ internal/factory/candidate_record.go          | 12 ++++++++++++
+ internal/factory/candidate_record_unix.go     |  4 ++++
+ internal/factory/candidate_record_windows.go  |  4 ++++
+ internal/factory/integration_window_ops.go    | 12 ++++++++++++
+ 9 files changed, 61 insertions(+), 4 deletions(-)
+$ grep -n '^status:\|^updated:' .moai/specs/SPEC-CANDIDATE-CI-001/spec.md .moai/specs/SPEC-CANDIDATE-CI-001/progress.md
+.moai/specs/SPEC-CANDIDATE-CI-001/spec.md:5:status: completed
+.moai/specs/SPEC-CANDIDATE-CI-001/spec.md:7:updated: 2026-10-10
+.moai/specs/SPEC-CANDIDATE-CI-001/progress.md:3:status: completed
+$ grep -n 'sync_commit_sha' .moai/specs/SPEC-CANDIDATE-CI-001/progress.md
+499:sync_commit_sha: pending-backfill
+$ grep -n '^## §E' .moai/specs/SPEC-CANDIDATE-CI-001/progress.md
+7:## §E.1 Plan-phase Audit-Ready Signal
+19:## §E.2 Run-phase Evidence
+70:## §E.3 Run-phase Audit-Ready Signal
+495:## §E.4 Sync-phase Audit-Ready Signal
+$ gofmt -l <the seven edited Go files>
+(no output, exit 0)
+$ git status --short
+ M .moai/specs/SPEC-CANDIDATE-CI-001/progress.md
+ M .moai/specs/SPEC-CANDIDATE-CI-001/spec.md
+ M internal/cli/integration_candidate.go
+ M internal/factory/candidate_landing_check.go
+ M internal/factory/candidate_mutation_lock.go
+ M internal/factory/candidate_record.go
+ M internal/factory/candidate_record_unix.go
+ M internal/factory/candidate_record_windows.go
+ M internal/factory/integration_window_ops.go
+$ git diff --name-only origin/main...HEAD -- '*.go' | xargs grep -c '@MX:ANCHOR' | grep -v ':0$'
+internal/cli/factory_card.go:3
+internal/cli/integration_candidate.go:2
+internal/config/defaults.go:3
+internal/config/types.go:7
+internal/factory/candidate_landing_check.go:2
+internal/factory/candidate_mutation_lock.go:1
+internal/factory/candidate_record.go:3
+internal/factory/candidate_record_unix.go:1
+internal/factory/candidate_record_windows.go:1
+internal/factory/integration_window_ops.go:3
+internal/factorylane/merge.go:1
+$ grep -c 'SPEC-CANDIDATE-CI-001' CHANGELOG.md
+1
+$ grep -n -o 'SPEC-CANDIDATE-CI-001.\{0,40\}' CHANGELOG.md | cut -c1-120
+14:SPEC-CANDIDATE-CI-001(t1478) 착지 전까지 no-op 심(`@MX:DEBT`). 이 sy
+$ mcp__moai__spec_audit (project_root=/Users/goos/MoAI/moai-adk-go/.moai/worktrees/t1478, filter_spec=SPEC-CANDIDATE-CI-001); moai server build db0c514d3
+{"_root":{"dir":"/Users/goos/MoAI/moai-adk-go/.moai/worktrees/t1478","source":"param"},"audited_at":"2026-10-09T18:25:38.046906Z","drift_findings":[{"details":{"heuristic_matched":"H-4 (§E.2 + §E.4 + sync_commit_sha)"},"era":"V3R6","finding_type":"EraAutoDetected","severity":"INFO","spec_id":"SPEC-CANDIDATE-CI-001"}],"grandfathered":0,"modern_era_clean":1,"total_specs":1}
+$ mcp__moai__spec_progress (same project_root); moai server build db0c514d3. The 1075-SPEC catalogue overflowed the tool result (786,151 characters), so only this SPEC's record was extracted from the saved output with jq:
+{"Frontmatter":{"ID":"SPEC-CANDIDATE-CI-001","Status":"completed","Updated":"2026-10-10","Tier":"L","Lifecycle":"spec-anchored"},"ParseError":null}
+```
+
+MX sub-step (comment-only edits). fan_in is a grep measurement: non-test call sites in internal, cmd, and pkg, counted by name, and receiver-specific where a name is shared.
+
+```text
+ANCHOR added, 13 (each with [AUTO] and @MX:REASON; 11 of 13 also carry @MX:SPEC; shortSHAFull and orUnset do not, and the field is optional):
+  candidate_record.go: candidateDir (4), validCandidateKeyPart (5), ReadCandidateRecord (5)
+  integration_window_ops.go: RefreshWindowGated (5), CandidateGrantGate (8), CandidateHoldRefusal (4)
+  candidate_landing_check.go: shortSHAFull (9), orUnset (4)
+  candidate_mutation_lock.go: WithCandidateMutation (3)
+  candidate_record_unix.go and candidate_record_windows.go: openCandidateRecordFile (3 each)
+  cli/integration_candidate.go: integrationCandidateSeams.now (5), shortSHA (4, package-local)
+ANCHOR left, fan_in >= 3, per-file cap reached (anchor_per_file: 3):
+  candidate_record.go: LatestCandidateRecord (3), candidateAttempt (3)
+  integration_window_ops.go: refreshWindow (4), PromotedAfterBoundGated (3)
+  The tie at 4 is broken by exportedness: CandidateHoldRefusal is kept. Orchestrator decision needed.
+Left, fan_in below 3: WriteCandidateRecord, promoteAdmitted, parseCandidateRunID, EnqueueTicketGated,
+  candidateRecordPath, CandidateLandingCheck, candidateCIRequired (2 each); integrationCandidateSeams.gitRunner
+  and LandingCheckInput.git (1 each); clearWedgedCandidateMutationLock (1, two build variants).
+Left, valid DEBT: two blocks added by the card in internal/factory/integration_merge_step.go (lines 490 and 530),
+  each with DEBT, CEILING, and UPGRADE. The DEBT at line 613 predates the card and is not changed.
+Pre-existing, not changed: internal/config/types.go carries 7 ANCHOR tags, above the cap of 3.
+Not measured: complexity >= 15 (WARN), global-state mutation (WARN), magic constants and long exported
+  functions (NOTE), untested public functions (TODO).
+Goroutine starts in non-test Go code: none (grep over the card diff; the positive control matched 10 lines in
+  the full diff, including test files).
+```
+
+### Residual risk
+
+- origin/main is a moving ref. The `0 28` divergence is anchored to 2aab5f797 as read on 2026-10-10 and can go stale.
+- This commit records the placeholder for its own SHA. The real SHA is owed to a later backfill commit that is not part of this sync.
+- fan_in is a name-based grep count; interface and function-value callers are not counted, so a tag decision could change if such callers exist.
+- ANCHOR candidates left at the per-file cap: LatestCandidateRecord 3 and candidateAttempt 3 in candidate_record.go; refreshWindow 4 and PromotedAfterBoundGated 3 in integration_window_ops.go. The constitution's MUST for fan_in of 3 or more conflicts with anchor_per_file 3; the orchestrator decides.
+- The 13 new ANCHOR reasons come from each function's godoc and body, not from a review of every caller.
+- The moai MCP server reports build db0c514d3, 167 commits behind HEAD. Its audit and catalogue results reflect that build.
+- A later session that re-applies the reverted review_gate line would reintroduce the failure the revert removed.
+
+### Gaps
+
+- Leader's workflow.yaml review_gate line: leader reverted, gate on. At preflight the worktree had no uncommitted workflow.yaml change (`git status --short` was empty). Reported by the coordinator, not observed in this record: the leader reverted the review_gate line on purpose at 18:08:45Z under standing decision d-20261009T180845Z-aac4 (replaces 13c2), because the uncommitted line failed the mandatory codex gate on the t1595 and t1613 audits. The review gate stays enabled: HEAD blob bf70aae0e reads `enabled: true` at line 302, and the working tree matches that blob. The parent HEAD ee52fd342 is unchanged.
+- CHANGELOG not added. The B12 pre-emission grep counts 1, from a cross-reference at CHANGELOG.md line 14 inside the SPEC-MERGE-WINDOW-QUEUE-001 entry, not an entry for this SPEC. B12 halts emission at a count of 1 or more. The comparable CI SPEC SPEC-GITHUB-FLOW-CI-RESIDUE-001 has an entry under Fixed at line 36. The orchestrator decides.
+- The Authored-By-Agent trailer is absent from this commit and was not hand-added.
+- MX: complexity, global-state, magic-constant, long-function, and untested-public checks were not measured.
+- Not run: go test, go build, golangci-lint, the full suite, the Windows build, Codex review, and CI. The brief excluded heavy commands. /verify was not invoked: this is a docs-scoped commit whose Go changes are comment lines, checked with gofmt -l.
+- spec_progress: the 1075-SPEC catalogue overflowed the tool result. Only this SPEC's record was extracted; the rest of the catalogue was not read.
+- moai build lag: db0c514d3 is an ancestor of ee52fd342 (`git merge-base --is-ancestor`, exit 0), and `git rev-list --count db0c514d3..HEAD` is 167.
+- progress.md line 5 carries `phase: plan`, a lifecycle-stage name. spec-frontmatter-schema.md prohibits that value for spec.md; progress.md sits outside that schema. Not changed.
+
+### Sync repair after sync-audit FAIL
+
+- Audit: `.moai/reports/t1478/sync-audit.md`, verdict FAIL, audited SHA dbbaf5931ec8dc9fd2960f2e7cbf1280807b9592. The `sync_status` and close claims above describe the 2026-10-09 close and are superseded by this repair.
+- Repaired in this commit (sync scope): (a) spec.md and progress.md status returned from `completed` to `in-progress` (audit F6); (b) the M7 doctrine amendment (audit F5, AC-CCI-016-1). The candidate-path exception, recording the 2026-10-03 operator approval, lands in AGENTS.local.md §4.1, gitflow-lane-protocol.md §2 and §4, and the three `.moai/docs/` procedure docs, with their develop-era text and drift notices kept.
+- Lifecycle note: the reopen adds no `amendment_of:` field and no `## Amendments` section, so it is not the exempt in-place amendment in spec-frontmatter-schema.md. Whether `moai spec audit` reports it as SyncStatusDrift is not measured here; the leader decides the route.
+- Pending the leader's route decision (out of sync scope): M6 (race-test split with a rosterguard shard, flaky-registry retry wrapper, dominant-race timing repair), which fails AC-CCI-009-1, AC-CCI-009-2, AC-CCI-009-3 and AC-CCI-013-1 (audit F1-F4); and F7 (candidate verdict falls back to run-job names when the required-checks source is unreadable, `internal/cli/integration_candidate.go` candidateRunVerdict; blocking). Optional findings F8-F15 are not addressed here.
+- No acceptance criterion is claimed as passing by this commit. AC-CCI-016-1 is addressed by the amendment text and has not been re-audited. The sync-commit SHA placeholder above is unchanged.
+
+### Sync close after run completion (round 2)
+
+Scope: the run-phase commits since the 2026-10-09 sync-audit FAIL, the status move to `implemented`, and this record. The `sync_status` line of the header block above describes the round-1 close and is superseded here.
+
+- Status: the spec.md frontmatter `status: in-progress` becomes `implemented`, and so does the progress.md header `status:`. `completed` is not set; the sync audit decides completion.
+- spec.md `updated:` already reads 2026-10-10, the `date +%Y-%m-%d` value of this run, so it is unchanged. The spec.md body is not changed.
+
+sync_commit_sha: pending-backfill
+
+The placeholder is the sanctioned one. A commit cannot cite its own hash, so the real SHA is backfilled in a following commit.
+
+Run commits covered by this round (subjects verbatim from `git log`):
+
+```text
+967d8f9f8 test(SPEC-CANDIDATE-CI-001): F7 candidate verdict must not be green when required-checks is unreadable (card t1478)
+0530d7e9a fix(SPEC-CANDIDATE-CI-001): F7 candidate verdict fails closed on unreadable required-checks (card t1478)
+af529c799 test(SPEC-CANDIDATE-CI-001): B2 payload for the install tests is a small archive, not the test binary (card t1478)
+341a843c4 test(SPEC-CANDIDATE-CI-001): flaky retry wrapper must retry a registered test exactly once (card t1478)
+798e8f003 feat(SPEC-CANDIDATE-CI-001): flaky registry and single-retry wrapper for registry tests (card t1478)
+7258d7c17 test(SPEC-CANDIDATE-CI-001): retry wrapper must retry a registered test in a go test -json stream (card t1478)
+f2b41d675 feat(SPEC-CANDIDATE-CI-001): flaky retry wrapper reads go test -json and keeps notices off stdout (card t1478)
+773edb5b8 ci(SPEC-CANDIDATE-CI-001): race split into four internal/cli shards, a rosterguard shard, and a remainder leg (card t1478)
+a73559090 ci(SPEC-CANDIDATE-CI-001): register scripts/ci under go_code filters (card t1478)
+c8841e9d4 ci(SPEC-CANDIDATE-CI-001): race legs and the test job run through the flaky retry wrapper (card t1478)
+```
+
+Earlier, before this round: `6b1db9e3e docs(SPEC-CANDIDATE-CI-001): sync repair after sync-audit FAIL (card t1478)`.
+
+All eleven commits are ancestors of HEAD `c8841e9d4`. Three were checked with `git merge-base --is-ancestor` (exit 0, below); eight appear in `git log -8` from HEAD.
+
+Evidence. The checks below were run in this sync session against HEAD `c8841e9d4`, after `git status --short --untracked-files=no` came back empty. Outputs are verbatim. `$S` is the session scratch directory (machine-local, not a citation target).
+
+```text
+$ git rev-parse --show-toplevel && git rev-parse HEAD && git branch --show-current && git status --short --untracked-files=no
+/Users/goos/MoAI/moai-adk-go/.moai/worktrees/t1478
+c8841e9d4b2af9cf6c0882b29daef8652fe2873d
+WT-10-03-tier
+(no output: tracked tree clean)
+$ date +%Y-%m-%d
+2026-10-10
+$ bash scripts/ci/test-retry-flaky.sh > $S/fixture.out 2>&1; echo "exit=$?"
+exit=0
+$ wc -l < $S/fixture.out
+61
+$ grep -c 'PASS' $S/fixture.out
+58
+$ grep -c 'FAIL' $S/fixture.out
+0
+$ tail -n 3 $S/fixture.out
+PASS  json uncited: command never ran
+PASS  json uncited: refusal named on stderr
+=== retry-flaky fixture: failures=0 ===
+$ bash scripts/ci/retry-flaky.sh --registry scripts/ci/flaky-registry.txt -- cat scripts/ci-census/testdata/fixture.jsonl > $S/replay.jsonl 2> $S/replay.err; echo "wrapper_exit=$?"
+wrapper_exit=0
+$ cmp $S/replay.jsonl scripts/ci-census/testdata/fixture.jsonl; echo "cmp_rc=$?"
+cmp_rc=0
+$ wc -c < $S/replay.jsonl
+10006
+$ wc -c < scripts/ci-census/testdata/fixture.jsonl
+10006
+$ wc -l < $S/replay.err
+0
+$ grep -v '^#' scripts/ci/flaky-registry.txt | grep -c .
+0
+$ grep -c 'scripts/ci/retry-flaky.sh' .github/workflows/ci.yml
+7
+$ python3 -c "import yaml; d=yaml.safe_load(open('.github/workflows/ci.yml')); print('yaml ok', type(d).__name__)"
+yaml ok dict
+$ go vet ./internal/cli/; echo "vet_exit=$?"
+vet_exit=0
+$ go test -count=1 -v -run 'TestCandidate|TestInstallVersionTag_' ./internal/cli/ > $S/gotest.out 2>&1; echo "test_exit=$?"
+test_exit=0
+$ grep -c '^--- PASS' $S/gotest.out
+16
+$ grep -c '^--- FAIL' $S/gotest.out
+0
+$ grep -c 'no tests to run' $S/gotest.out
+0
+$ tail -n 3 $S/gotest.out
+    --- PASS: TestCandidateCIEnabled/explicit_true_reads_true (0.00s)
+PASS
+ok  	github.com/modu-ai/moai-adk/internal/cli	24.233s
+$ golangci-lint run --new-from-rev=2aab5f797 ./internal/cli/... ./internal/config/... ./internal/factory/... ./internal/factorylane/... > $S/lint.out 2>&1; echo "lint_exit=$?"
+lint_exit=0
+$ tail -n 3 $S/lint.out
+0 issues.
+$ git merge-base --is-ancestor 967d8f9f8 HEAD; echo "967d8f9f8 ancestor_rc=$?"
+967d8f9f8 ancestor_rc=0
+$ git merge-base --is-ancestor 0530d7e9a HEAD; echo "0530d7e9a ancestor_rc=$?"
+0530d7e9a ancestor_rc=0
+$ git merge-base --is-ancestor 6b1db9e3e HEAD; echo "6b1db9e3e ancestor_rc=$?"
+6b1db9e3e ancestor_rc=0
+$ grep -c 'SPEC-CANDIDATE-CI-001' CHANGELOG.md
+1
+$ grep -n '^updated:\|^status:' .moai/specs/SPEC-CANDIDATE-CI-001/plan.md .moai/specs/SPEC-CANDIDATE-CI-001/acceptance.md .moai/specs/SPEC-CANDIDATE-CI-001/design.md .moai/specs/SPEC-CANDIDATE-CI-001/research.md
+.moai/specs/SPEC-CANDIDATE-CI-001/plan.md:6:updated: 2026-10-09
+```
+
+Baseline attribution. Each figure above is from this run, against HEAD `c8841e9d4` and a clean tracked tree. The lint base `2aab5f797` was not re-fetched in this round: it is the origin/main SHA the round-1 record read, pinned here. `git cat-file -t 2aab5f797` returned `commit` in this run.
+
+Gaps
+
+- Not observed: the full `internal/cli` suite and the full repository suite. The `/verify` gate was replaced by the targeted checks above, per the leader's decision for this round.
+- Not run: `GOOS=windows GOARCH=amd64 go build ./...`, so the Windows split of the candidate record and mutation lock is unobserved; gofmt on the run-phase Go files; the Codex review; CI. CI has not run this tree.
+- Refused, not substituted silently: the worktree-isolation guard refused `/bin/bash --version` twice, first inside a compound command and then alone. The `/bin/bash` version is therefore unconfirmed, and the fixture above ran under `bash` from PATH only.
+- Not pushed: the observance push of the candidate to `ci/t1478` is pending operator approval and has not happened.
+- The flaky registry has zero entries (above), so the retry path has not fired on a real failure; the fixture is its only exercise.
+- Acceptance criteria not re-measured: AC-CCI-009-1, AC-CCI-009-2, AC-CCI-009-3, and AC-CCI-013-1 (audit F1 to F4), and AC-CCI-016-1 (the doctrine amendment). The targeted `go test` covers the `TestCandidate*` and `TestInstallVersionTag_` names only.
+- The `Authored-By-Agent` trailer is absent from this commit and was not hand-added.
+
+Residual risk
+
+- The wrapper now sits on seven CI legs (`ci.yml` lines 222, 370, 422, 473, 525, 578, 635), so a wrapper bug reddens all seven at once.
+- A retried leg's uploaded artifact shows only the final attempt, so a first-attempt failure is not visible from the artifact alone.
+- MX validation for the run-phase Go changes was not re-run this round. The four ANCHOR candidates from round 1 stay at the per-file cap (LatestCandidateRecord 3, candidateAttempt 3, refreshWindow 4, PromotedAfterBoundGated 3). Open decision for the orchestrator.
+- CHANGELOG has no entry. The B12 count is 1 (the `grep -c` above; round 1 located it at CHANGELOG.md line 14, inside another SPEC's entry), so B12 halts emission. Open decision; no acceptance criterion requires an entry.
+- plan.md frontmatter `updated: 2026-10-09` was not refreshed. plan.md is outside this round's edit list, while the schema's `updated:` rule would refresh it. Open decision for the orchestrator.
+- progress.md header `phase: plan` (line 5) still names a lifecycle stage. It is outside this round's list and was not changed.
+- The placeholder line `sync_commit_sha: pending-backfill` now appears twice, in the round-1 header block and in this section. The backfill must set both.
+
+### §E.4 round 3 — repair re-entry (operator decision a61f)
+
+- Operator decision d-20261010T042422Z-a61f: "repair + one re-audit". Leader records: d-20261010T042456Z-ec15 (run re-entry) and d-20261010T042742Z-564e (wait resolution).
+- Repair commits on WT-10-03-tier: RED `d370b66a7` and GREEN `778ca20f0` (HEAD before this sync commit).
+- P2-1: `scripts/ci/retry-flaky.sh`, first-attempt partial stream on TERM/INT.
+- F10: `internal/factory/integration_merge_step.go`, the card id in the missing-directory refusal (refusal subtests in `integration_merge_step_test.go`).
+- Observed on the repaired tree at HEAD `778ca20f0`, this run:
+  - `bash scripts/ci/test-retry-flaky.sh` -> `=== retry-flaky fixture: failures=0 ===` (exit 0; 62 PASS lines, 0 FAIL lines)
+  - `go test ./internal/factory/ -run 'TestResolveCardBranchRefusalsNameTheCard|TestMergeStepHappyPathCreatesNoFFMergeAndReleases|TestMergeStepPreMergeCausesReleaseWithDistinctCodes' -count=1 -v` -> `ok github.com/modu-ai/moai-adk/internal/factory 22.858s` (exit 0; 3 top-level tests PASS, 0 FAIL)
+  - `gofmt -l internal/factory/integration_merge_step.go internal/factory/integration_merge_step_test.go` -> no output (exit 0)
+  - `go vet ./internal/factory/` -> no output (exit 0)
+  - `golangci-lint run --new-from-rev=2aab5f797 ./internal/factory/...` -> `0 issues.` (exit 0)
+- Gaps (not run): /verify (the scoped checks above replace it); the full repository suite; `internal/cli`; CI (not observed); the observance push (not done; operator approval pending).
+- No pre-commit hook ran (`core.hooksPath` is `/dev/null`).
+- Sync-audit round 3: FAIL (codex; receipt rcpt-efa5d18fc3db3f824af02df8; audited_sha fb40610af; findings P1 internal/factory/integration_merge_step.go:471 and P2 internal/factory/candidate_landing_check.go:74; verdict file .moai/reports/t1478/sync-audit.md). Repaired at 2ba6f102a under operator decision d-20261010T053347Z-da5d; round 4 audit pending.
+
+sync_commit_sha: pending-backfill
+
+The placeholder is the sanctioned one: this commit cannot cite its own SHA, so a later commit backfills it. Round 3 adds a third placeholder line; the backfill must set all three.
+- Gap: SyncStatusDrift (spec_audit MUST-FIX): status is implemented while sync artifacts exist. The completed transition is deferred; it is recorded here only, until the landing-resume record from the leader decides how to handle it. Round-3 sync-audit FAIL (codex, receipt rcpt-efa5d18fc3db3f824af02df8, audited_sha fb40610af), open findings P1 internal/factory/integration_merge_step.go:471 and P2 internal/factory/candidate_landing_check.go:74; see .moai/reports/t1478/sync-audit.md.
+
+### §E.4 round 4 — run re-entry (operator decision da5d)
+
+- Operator decision d-20261010T053347Z-da5d: two repairs and one audit. Repair commits on WT-10-03-tier: RED `b6c05d9d3` (tests only) and GREEN `2ba6f102a` (product code and one test trim; HEAD before this sync commit).
+- P1, `internal/factory/integration_merge_step.go`: the collision probe runs again inside the candidate lock, after the landing check and immediately before the merge. A colliding path refuses with cause 13, and a probe error with cause 9, both before any merge call.
+- P2, `internal/factory/candidate_landing_check.go`: `CandidateLandingCheck` refuses a record whose card id or pinned SHA differs from the merge's, judged before the branch identity.
+- Verification, as observed on the card tree at `2ba6f102a`. These are run-phase observations relayed into this record; the sync phase ran no test, lint, or build in this close.
+  - `gofmt -l` on the three changed files (`candidate_landing_check.go`, `integration_merge_step.go`, `integration_merge_step_test.go`): empty.
+  - `go vet ./internal/factory/...`: no output, exit 0.
+  - `golangci-lint run --new-from-rev=2aab5f797 ./internal/factory/...`: `0 issues.`
+  - `go test ./internal/factory/ -run '^(TestMergeStepIgnoredFileAfterProbeRefusesMerge|TestCandidateLandingCheckRefusesForeignIdentity)$' -race -count=5`: `ok  github.com/modu-ai/moai-adk/internal/factory  81.355s`
+- RED messages, quoted from the RED commit body (`b6c05d9d3`, observed on the unchanged product code before the fix):
+  - `TestMergeStepIgnoredFileAfterProbeRefusesMerge`: `the merge overwrote the late ignored byte: got "card work"`; `a merge commit landed`; `expected merge-step error with code 13, got success`.
+  - `TestCandidateLandingCheckRefusesForeignIdentity`: `a green record naming another card was admitted at this card's lookup path`; `a green record naming another pinned SHA was admitted at this card's lookup path`; `refusal target mismatch: ... want the identity mismatch to come before the target mismatch`.
+- Residual risk: the window between the final collision probe and the merge subprocess stays open. It is recorded as `@MX:DEBT` in `internal/factory/integration_merge_step.go` (line 513 at `2ba6f102a`).
+- Gap: the full package run `go test ./internal/factory/ -count=1 -timeout 30m` had NOT finished when the sync transition was made. The default 10-minute budget timed out under load in the run phase, with no assertion failure. Its result is not observed in this record.
+- Gap: the scratch-copy re-observation of RED on the RED tree is relayed from the run phase. Its command and verbatim output are not carried into this record, and the sync phase did not re-run it. The RED messages above are quoted from the commit body, not re-observed here.
+- Gap: sync-audit round 4 has not run yet.
+- Sync-audit round 4: pending.
+
+sync_commit_sha: pending-backfill
+
+Round 4 adds a fourth placeholder line; the backfill must set all four (this supersedes the count of three above).
+
+## Lane Kickoff Decision Record (2026-10-09, lane-11)
+
+decision record: decided_by=claude+lane-11 (self-dispatch lane, ladder terminal) evidence_refs=.moai/reports/t1478/verdict.md (PASS-WITH-DEBT 1.0, must_pass 0, blocking 0; receipts rcpt-69038b8e4d8f0c9ad4499861, rcpt-37a7694cccd61c7df7470e64, rcpt-b38299720acf23c31b7a497a; Addendum 2 records the final-tree codex re-run) ladder_path=plan→run Kickoff gate, autonomous form (audit cross + evidence criteria met)
+
+Judgment: PASS-WITH-DEBT is a passing form — 0 must-pass failures, 0 blocking; the codex required-backend machine disagreement is transparently adjudicated per-item in the verdict (P2-A refuted with tree evidence ci.yml:67/:234/:246, P2-B/P2-C accepted as optional/debts N2/N1). Post-verdict deltas (bc4d46f63, b10bcfd0e) are M5 verification-command mechanics the auditor confirmed non-conflicting at b10bcfd0e. Debts 1-3 and optional N5-N7 travel with the SPEC; N5 (one-word doc fix) rides the sync phase.
+
+Run-phase entry: M1 first (config gate workflow.candidate_ci.enabled + candidate record schema), RED-first per plan.md test-name conventions.
+
+## Absorb of local main 478285ab4 (card t1478)
+
+Merge that prepares the landing. Nothing is landed or pushed here: the merge commit stays unpushed on `WT-10-03-tier`, and the landing waits for the operator step and a leader nomination. Logs are under `.moai/reports/t1478/` (gitignored).
+
+- Preconditions: `git rev-parse --short main` → `478285ab4`; `git branch --contains 1236348ac` lists `main` (also `WT-10-10-class`, `WT-high-10-07`, `rc30-preview`). HEAD before the merge: `7939ae72e`, tree clean.
+- Merge base `2aab5f797b75983e132af451da68f69e3426557b`; `git rev-list --count --left-right main...HEAD` → `214	49`.
+- Command: `git merge --no-ff main` (no `-m`). Exit 1, stopped on conflicts. `git diff --name-only --diff-filter=U` listed six files.
+
+Conflicted files and the resolution of each:
+
+- `internal/factory/integration_merge_step.go` (one hunk): HEAD held the landing recheck and a merge inside `WithCandidateMutation` (M4); main held the t1616 flow (S-before status set, F1 unfinished-merge probe, primary dirty re-read, `--no-autostash`, foreign MERGE_HEAD handling, S-after). Resolved as one `mergeInSection` sequence run by both paths. The candidate path runs it inside the candidate lock after the landing recheck, with the P1 in-lock collision re-probe as the last check before `git merge --no-ff --no-autostash --no-overwrite-ignore`. The disabled-key path runs it inline. The residual `@MX:DEBT` / `@MX:CEILING` / `@MX:UPGRADE` block is now one block, at line 596.
+- `internal/cli/integration.go`: `AddCommand` keeps main's `newIntegrationResyncCmd()` and adds HEAD's `newIntegrationCandidateCmd()`.
+- `internal/factorylane/merge.go`: doc comment combines main's exit-status description with HEAD's repo-scoping paragraph; the body is unchanged.
+- `.github/test-input-filters.yml`: keeps HEAD's `scripts/ci/**` and main's t1587 block (`scripts/release.sh`, `scripts/verify-release-provenance.sh`, `.goreleaser.yml`).
+- `AGENTS.local.md` (two hunks): main's `[SUPERSEDED by §4.0]` marks are kept. HEAD's candidate-path exception (REQ-CCI-016) is kept as its own bullet and as the pointer in item 2.
+- `.claude/rules/local/gitflow-lane-protocol.md`: keeps HEAD's candidate-path exception paragraph and main's `origin/main` leader-verification paragraph, which replaces HEAD's develop paragraph.
+
+Auto-merged without a textual conflict, changed on both sides: `.moai/config/sections/workflow.yaml`, `.moai/docs/gitflow-integration-chain.md`, `internal/cli/factory_card.go`, `internal/cli/integration_merge.go`, `internal/cli/mcp_build_identity_test.go`, `internal/config/testdata/shipped_key_inventory.yaml`, `internal/config/types.go`, `internal/factory/integration_merge_step_test.go`, `internal/template/templates/.moai/config/sections/workflow.yaml`. Two of these were expected to conflict: `mcp_build_identity_test.go` and `integration_merge_step_test.go` auto-merged. Both were checked by the gate below. The pin `"integration.go:287"` in `mcp_build_identity_test.go` still names the doc mention: `git grep -n -E "merge-base \.\.HEAD|exit status 128" -- internal/cli/integration.go` → `internal/cli/integration.go:287:// base died with ...`.
+- Post-resolution wording: the auto-merged "Class C" comment in `integration_merge_step.go` said the disabled-key path keeps the section probe as its last check before the merge. That became inaccurate once the t1616 probes ran there too; it now reads "last collision check", with the card-gate re-read and the t1616 pre-merge probes between them.
+
+Verification (run in this worktree, sequentially):
+
+- Conflict markers: `git grep -n -E "^(<<<<<<<|=======|>>>>>>>)" -- <the six conflicted files>` → no output.
+- `gofmt -l internal cmd` → no output, exit 0 (covers the 49 Go files the merge changes against HEAD).
+- `go vet ./internal/factory/ ./internal/cli/ ./internal/factorylane/ ./internal/hook/ ./internal/config/ ./internal/template/` → no output, exit 0 (`vet-absorb.log`).
+- Race families, `go test -race -count=5`:
+  - factory, `-run 'TestMergeStep|TestCandidate'`: `ok  	github.com/modu-ai/moai-adk/internal/factory	1095.623s` (`race-factory-families.log`)
+  - cli, `-run 'TestCandidate|TestLocalMain|TestAuditLag'`: `ok  	github.com/modu-ai/moai-adk/internal/cli	205.397s` (`race-cli-families.log`)
+  - config, `-run 'TestAuditLoaderCompleteness|TestStructYAMLSymmetry|TestLocalMainIntegration|TestShippedConfigKeysHaveReaders'`: `ok  	github.com/modu-ai/moai-adk/internal/config	38.510s` (`race-config-families.log`)
+  - hook, `-run 'TestNoNewEnvLiteralsInDiff'` (the `TestNoNewEnvLiterals` family): `ok  	github.com/modu-ai/moai-adk/internal/hook	2.613s` (`race-hook-families.log`)
+  - template, `-run 'TestTestInputFiltersSingleSource|TestTestInputFiltersCoversGoTestInputs'`: `ok  	github.com/modu-ai/moai-adk/internal/template	1.938s` (`race-template-families.log`)
+- Env-literal guard, verbose (`hook-env-literal-guard-v.log`): `env-literal sweep: 4241 added lines swept across internal/hook internal/factorymsg internal/cli (envkeys.go and _test.go excluded), base=db0c514d3b0ce16befa5a6d35126a35b6b0f73d0, distinct literals=0`; `--- PASS: TestNoNewEnvLiteralsInDiff (0.39s)`; `ok  	github.com/modu-ai/moai-adk/internal/hook	1.145s`. The swept set was non-empty, so the pass asserts something.
+- Test-input-filter parity, verbose (`template-input-filters-v.log`): `--- PASS: TestTestInputFiltersSingleSource (0.00s)`; `--- PASS: TestTestInputFiltersCoversGoTestInputs (0.00s)`; `ok  	github.com/modu-ai/moai-adk/internal/template	0.404s`.
+- Full packages, `go test -count=1 -timeout 30m`:
+  - factorylane: `ok  	github.com/modu-ai/moai-adk/internal/factorylane	42.058s` (`full-factorylane.log`)
+  - config: `ok  	github.com/modu-ai/moai-adk/internal/config	5.422s` (`full-config.log`)
+  - hook: `ok  	github.com/modu-ai/moai-adk/internal/hook	296.695s` (`full-hook.log`; includes `TestHookWrapperCopiesStayIdentical`)
+  - factory: `ok  	github.com/modu-ai/moai-adk/internal/factory	599.467s` (`full-factory.log`)
+  - cli: `FAIL	github.com/modu-ai/moai-adk/internal/cli	1800.957s` (`full-cli.log`); see Gaps.
+- CLI tests defined in the 12 `internal/cli` test files the merge changed (103 top-level names, `-count=1 -v`, `cli-changed-test-files-v.log`): 102 `--- PASS`, 0 `--- FAIL`, 1 `--- SKIP: TestManagedCodexTUIFakeCodex` (the re-exec helper, skipped by design); `ok  	github.com/modu-ai/moai-adk/internal/cli	157.044s`.
+- `golangci-lint run --new-from-rev=478285ab4 ./internal/factory/... ./internal/cli/... ./internal/factorylane/... ./internal/hook/... ./internal/config/...` → `0 issues.` (`lint-absorb.log`).
+- `grep -n develop_branch .moai/config/sections/git-strategy.yaml` → `16:        develop_branch: main`.
+
+Pre-commit gate (the `gate` workflow, run in this worktree at the scope the brief allows):
+
+- Phase 1B snapshot check: `moai verify check --key-current` → exit 1, `"fresh": false`, `"reason": "no snapshot recorded for the current working-tree key"`, key `7939ae72e3810c70d7aa425c23a4a96f80459b7c:3cb9d979b655ccc4`. Nothing was reused; every category was executed.
+- Format, repository-wide: `gofmt -l .` → no output, exit 0.
+- Type, repository-wide: `go vet ./...` → no output, exit 0 (`gate-vet-full.log`, 0 bytes).
+- Lint, repository-wide, issues new relative to local main: `golangci-lint run --new-from-rev=478285ab4 ./...` → `0 issues.`, exit 0 (`gate-lint-full.log`).
+- Test, scoped to the 29 changed Go test files: `go test -race -count=1 -timeout 30m -run '^(<top-level names>)$' ./<pkg>/`, once per package, covering 245 top-level tests in 11 packages (atomicfile 14, bugreport 3, cli 103, config 2, factory 40, factorylane 15, feedback 1, hook 63, runtime 1, statusline 1, template 2). All 11 exit 0 with `ok` lines, for example `ok  	github.com/modu-ai/moai-adk/internal/cli	227.199s`, `ok  	github.com/modu-ai/moai-adk/internal/factory	156.350s`, `ok  	github.com/modu-ai/moai-adk/internal/hook	28.884s`. Per-package logs are `gate-test-*.log`; the index is `gate-test-summary.txt`.
+- Test, full scope (`go test -race ./...`): NOT RUN, excluded by the brief (no full-repository go test). The repository-wide test verdict is owned by the CI run on the integration branch and is PENDING at report time.
+- Snapshot recording: not performed. The gate records a measured duration for each full-scope check, and no duration was captured at execution time, so nothing was written to the snapshot store. Recording is fail-open and does not change the verdict.
+- Gate verdict for the executed scope: PASS (format, type, lint, scoped test). The full-scope test check was not executed.
+
+Gaps:
+
+- Full `internal/cli` run: `panic: test timed out after 30m0s`, with `TestFactoryNextOwnAssignedCardIgnoresSiblingAssignments` running. About 1,622 of 5,470 top-level tests (`cli-test-list.txt`) finished before the limit. The remaining 3,848 were not run in this absorb. Only the changed-file subset above and the race families cover them.
+- Fifteen top-level tests failed in the full `internal/cli` run (`full-cli.log`):
+  - Thirteen reproduce identically on the pre-merge tree. That tree is `7939ae72e`, exported with `git archive` to the scratchpad and run with `go -C` (no `.git` directory), and the merged tree in isolation (`base-7939ae72e-cli-codex-v.log`, `cli-codex-failing-isolated-v.log`): `TestCountCodexAgentTOMLs` and `TestCountCodexAgentTOMLs_BadPatternRoot` (`count = 6`; `countCodexAgentTOMLs` globs the real home `~/.codex/agents` first, which holds six TOML files on this host); `TestCodexReviewGatePrimaryCheckoutSkip`, `TestCodexReviewGate_TreeScopeRequestShapeUnchanged`, `TestCodexReviewGate_StaleEnvKeepsTreeScope` (`codex review: fail: - [P1] tree scope findings` on both trees); and eight `TestCheckCodexWiring_*` tests (Mirror, DetailOnly, Count, Width, TailDrop, TwoRegisters) with their subtests. These depend on this host's Codex state and are not attributed to the merge.
+  - Two are intermittent. `TestCodexGoalUnmeasuredCapBoundsContinuation` failed in the full run (`did not finish within its internal budget`) and passed in isolation on the merged tree and on the pre-merge tree. `TestCodexHarnessHooksRegisterNoFactoryPeer/lane` failed in 2 of 13 merged observations (the full run, and the isolated run right after it, under heavy load: `factory inbox degraded ... context deadline exceeded`) and in 0 of 12 pre-merge observations; the merged tree then passed 11 of 11 in later repetitions (`merged-peer-test-count3-v.log`, `merged-peer-lane-count8-v.log`). No load was measured during those repetitions, so the claim that the load had fallen is not made here. Not reproduced deterministically. Treated as a load-sensitive flake, not as a regression. Unresolved: a same-load repetition on both trees was not run.
+- Repository-wide test verdict: not run (`go test ./...` is excluded by the brief). The verdict belongs to the CI run on the integration branch after landing and is PENDING at report time.
+- The machine was shared with other sessions' `go test` processes during this run (one `uptime` reading at 11:40 showed load averages 22.89, 33.94, and 36.92 over 1, 5, and 15 minutes; no load was sampled at the start or end of each run). Timings and the timing-sensitive results above are read with that in mind.
+
+Residual risk:
+
+- The residual `@MX:DEBT` window is unchanged in substance: an ignored byte at an added path created after the last collision probe. The candidate path narrows it to the in-lock re-probe. The tag now sits at `internal/factory/integration_merge_step.go:596`.
+- The candidate path's order is new: the t1616 checks (S-before, F1 probe, primary dirty re-read) now run inside the candidate lock, before the P1 re-probe and the merge. The factory families and the full factory package cover it, and all pass.
+
+No status field, `audited_sha`, or other section is changed by this block.
+
+## Second absorb of local main 1f88d6a9ea (card t1478)
+
+Second absorb that brings the current local `main` tip into the card branch before landing. Merge commit `232dd55` on `WT-10-03-tier`, with parents `47d88dce82` (previous HEAD) and `1f88d6a9ea` (main tip). Nothing is landed or pushed here. This section is written to disk only and is NOT committed, because the delta audit window is open and the card tree takes no commits during the audit. Logs are under `.moai/reports/t1478/` (gitignored).
+
+- Preconditions: `git status --short` → no output. `git rev-parse -q --verify MERGE_HEAD` → no output (exit 1). `git rev-parse --short main` → `1f88d6a9ea`, the value read at the start; `main` did not move before the commit. `git branch --contains 1236348ac` lists `main`. HEAD before the merge: `47d88dce82`.
+- Merge base: `478285ab4c1fc893b020bb464d14cb69c8422523` (`git merge-base HEAD main`), the first absorb's target. `git rev-list --count 478285ab4..main` → `40`.
+- Main gained two integration merges since the first absorb: `84e7d49aa6` (WT-update-migration-fixes, card t1578) and `1f88d6a9ea` (WT-codex-factory-fix, card t1628), with their branch commits.
+- Command: `git merge --no-ff --no-commit 1f88d6a9ea`. One deviation from the brief: `--no-commit` is added so that the merge can be completed with the required message through `git commit -F`. A bare `git merge --no-ff` with no conflicts would auto-commit git's default message, which does not name the card. Output: `Automatic merge went well; stopped before committing as requested`.
+- Dry run before the merge: `git merge-tree --write-tree --name-only --messages HEAD 1f88d6a9ea` printed one tree object and no conflict list.
+- Merge commit: `git log -1 --format=%P` → `47d88dce82f12922499514eab95e1c1cda9bcaad 1f88d6a9eae9649cf870f7282d15dcb2d285b2ca`. Subject: `merge(SPEC-CANDIDATE-CI-001): absorb local main 1f88d6a9ea before landing (card t1478)`. The body records the reason for the second absorb and that there are no conflicts. The message file is `.moai/reports/t1478/merge-msg.txt`. The tree was clean after the commit (`git status --short` → no output).
+
+Conflicted files and resolution:
+
+- None. `git diff --name-only --diff-filter=U` → no output, both before and after the merge. Nothing needed resolving, and no design decision was required.
+
+Auto-merged files that both sides changed:
+
+- None. `git diff --name-only --no-renames 478285ab4 HEAD` (51 files) intersected with `git diff --name-only --no-renames 478285ab4 main` (23 files) is empty. Positive control: the 23-file list intersected with itself returned all 23 lines, so the empty result is a real negative.
+
+Files the merge brought in (23, all from main): the six `.moai/specs/SPEC-UPDATE-MIGRATION-FIX-001/` artifacts; `CHANGELOG.md`; `internal/bugreport/register.go`; seven `internal/cli/codex_lane_*` files; `internal/cli/codex_launcher.go`; `internal/cli/update.go`; four `internal/cli/update_*` files (`update_integrity_probe.go`, `update_integrity_probe_codex_test.go`, `update_integrity_probe_test.go`, `update_managed_dir_guard_test.go`); `internal/userassets/install.go`; `internal/userassets/installer_empty_target_test.go`.
+
+First-absorb resolutions, re-checked:
+
+- `git diff --stat HEAD -- internal/factory/integration_merge_step.go internal/factory/candidate_landing_check.go internal/cli/integration.go internal/factory/integration_merge_step_test.go internal/factory/candidate_landing_check_test.go` → no output. None of these files differs from the pre-merge HEAD, because main did not touch them.
+- In the merged tree: `mergeInSection` is defined and used at `internal/factory/integration_merge_step.go` lines 525, 671, and 693. The merge invocation `git("merge", "--no-ff", "--no-autostash", "--no-overwrite-ignore", "-q", "-m", mergeMsg, pinned)` is at line 602. `internal/cli/integration.go` line 279 registers `newIntegrationResyncCmd()` and `newIntegrationCandidateCmd()`.
+- Conflict-marker check: `git grep -n -E "^(<<<<<<<|=======|>>>>>>>)" -- <the 23 files>` → no output.
+
+Gate, run on HEAD `232dd55` after the merge commit existed. The runs did not overlap each other (timeline under Worktree integrity). Tree status was observed clean after the commit and after the stop of the full cli run; the gate steps between those two checks were not bracketed by status checks. `go test ./...` was not run.
+
+- gofmt: `xargs gofmt -l < .moai/reports/t1478/branch-go-files.txt` (the 31 `.go` files this branch changes against `main`) → no output. `gofmt -l` on the 16 `.go` files this merge brought in → no output.
+- go vet: `go vet ./internal/factory/ ./internal/cli/ ./internal/factorylane/ ./internal/hook/ ./internal/config/ ./internal/template/ ./internal/bugreport/ ./internal/userassets/` → no output (`vet.log`, 0 bytes). `internal/bugreport` and `internal/userassets` are beyond the brief's list because this merge changed them.
+- golangci-lint: `golangci-lint run --new-from-rev=1f88d6a9ea ./internal/factory/... ./internal/cli/... ./internal/factorylane/... ./internal/hook/... ./internal/config/... ./internal/template/... ./internal/bugreport/... ./internal/userassets/...` → `0 issues.` (`lint.log`).
+- Race, merge-touched cli families: `go test -race -count=1 -v -timeout 30m -run 'TestCodexLane|TestRunUpdate_|TestIntegrityProbe|TestReadProbeFile_|TestTemplateSync_LeavesNoEmpty|TestTemplateSync_ManagedSweep' ./internal/cli/` → 47 top-level `--- PASS`, 0 `--- FAIL`, 0 `--- SKIP`; `ok  	github.com/modu-ai/moai-adk/internal/cli	23.566s` (`cli-merge-families-race-v.log`). An earlier non-verbose run gave `ok  	github.com/modu-ai/moai-adk/internal/cli	24.873s` (`cli-merge-families-race.log`).
+- Race, factorylane full: `go test -race -count=1 -v -timeout 30m ./internal/factorylane/` → 58 top-level `--- PASS`, 0 `--- FAIL`; `PASS`; `ok  	github.com/modu-ai/moai-adk/internal/factorylane	39.683s` (`factorylane-full-race-v.log`).
+- Race, factory full: `go test -race -count=1 -timeout 30m ./internal/factory/` → `ok  	github.com/modu-ai/moai-adk/internal/factory	920.542s` (`factory-full-race.log`).
+- Race, cli integration families: `go test -race -count=1 -v -timeout 30m -run 'Integration|Candidate|Resync|LocalMain|Window|GhRun|MergeStep' ./internal/cli/` → 153 top-level `--- PASS`, 0 `--- FAIL`, 0 `--- SKIP`; `ok  	github.com/modu-ai/moai-adk/internal/cli	212.014s` (`cli-integration-families-race-v.log`). The 153 names are listed in `cli-integration-list.txt`.
+- Full packages without race: `go test -count=1 -timeout 30m ./internal/hook/ ./internal/config/ ./internal/template/ ./internal/bugreport/ ./internal/userassets/` → `ok  	github.com/modu-ai/moai-adk/internal/hook	491.539s`; `ok  	github.com/modu-ai/moai-adk/internal/config	10.257s`; `ok  	github.com/modu-ai/moai-adk/internal/template	519.811s`; `ok  	github.com/modu-ai/moai-adk/internal/bugreport	2.519s`; `ok  	github.com/modu-ai/moai-adk/internal/userassets	0.723s` (`full-hook-config-template-bugreport-userassets.log`).
+- Full `internal/cli`: `go test -count=1 -v -timeout 30m ./internal/cli/` was NOT completed. See Gaps.
+- Config check: `grep -n develop_branch .moai/config/sections/git-strategy.yaml` → `16:        develop_branch: main`. Read only; no config was edited.
+
+Gaps:
+
+- Full `internal/cli` package: NOT COMPLETED. The run wrote `full-cli-v.log` (9,149 lines) and was terminated externally with SIGTERM (background task exit 143) after the leader's load notice. It was not a go-test timeout, and it was not retried. Before the stop: 1,557 top-level `--- PASS`, 13 top-level `--- FAIL`, and 10 top-level `--- SKIP`. The test in flight was `TestFactoryNextRefusesAgainAfterLaterAssign` (last line `=== RUN`). The run held no go-heavy slot. The package-level verdict for `internal/cli` is a Gap.
+- The 13 failing names in the stopped run: `TestCountCodexAgentTOMLs`, `TestCountCodexAgentTOMLs_BadPatternRoot`, `TestCodexReviewGatePrimaryCheckoutSkip`, `TestCodexReviewGate_TreeScopeRequestShapeUnchanged`, `TestCodexReviewGate_StaleEnvKeepsTreeScope`, `TestCheckCodexWiring_MirrorAbsentAdvisesRedeploy`, `TestCheckCodexWiring_DanglingMirrorEntriesCounted`, `TestCheckCodexWiring_CopyModeDetailOnly`, `TestCheckCodexWiring_UnmirroredSkillsDetailOnly`, `TestCheckCodexWiring_MirrorUnreadableIndeterminate`, `TestCheckCodexWiring_MirrorSummaryWidth`, `TestCheckCodexWiring_MirrorFindingParticipatesInTailDrop`, `TestCheckCodexWiring_MirrorUsesExistingRowTwoRegisters`. This is the same 13-name set the first absorb recorded as deterministic. The first absorb attributed them to host Codex state from a run on tree `7939ae72e`. That attribution is carried over. It is NOT re-measured on `232dd55` or `47d88dce82` here, so it is not a baseline for this tree. None of the 14 files that declare names with these prefixes is among the 23 files this merge brought in.
+- Two intermittent names from the first absorb both passed before the stop in this run: `TestCodexHarnessHooksRegisterNoFactoryPeer` `--- PASS (8.05s)` and `TestCodexGoalUnmeasuredCapBoundsContinuation` `--- PASS (18.86s)`. One observation each; not a stability claim.
+- The full factory package (920.542s) and the full hook, config, template, bugreport, and userassets runs were started without holding the go-heavy slot. This session received the slot requirement only with the leader's notice, after those runs had finished. Whether they overlapped the holder window (lane-16, until 06:54:43Z) is not measured here.
+- Repository-wide `go test ./...` was not run (excluded by the brief). The repository-wide test verdict belongs to the CI run on the integration branch and is PENDING at report time.
+- The count-5 race families from the first absorb were not repeated. This merge changed no candidate, merge-step, or resync file. Those families were re-measured at count 1 in the full factory package and the cli integration families above.
+
+Residual risk:
+
+- Main's codex-launch and update-probe changes sit beside the branch's candidate and landing paths with no shared file. The factory and cli integration runs pass on this tree. Whether main's changes contribute to the 13 codex-review and codex-wiring names is unmeasured.
+- Test runs inherited this lane session's environment, including factory-role variables (`MOAI_FACTORY_ROLE`, `MOAI_FACTORY_WORKER`, and others), and were not scrubbed. `TestMain` in `internal/cli` and `internal/hook` unsets a subset (the lease token, config dir, project dir, home sandbox), not the factory-role names. The CI verdict stays authoritative.
+
+Gate verdict for the executed scope: PASS for format, vet, lint, and the impact families. The full `internal/cli` package is a Gap. The repository-wide verdict is PENDING with CI. This section is written after the merge commit and is NOT committed.
+
+Final state at the close of this section: HEAD `232dd55be6`, unchanged through the gate. Uncommitted in the working tree: this file, and the two foreign files under Worktree integrity.
+
+Worktree integrity (the process-defect report below is WITHDRAWN; see the correction at the end of this section):
+
+- Foreign writes: at 15:34:16 and 15:34:30 local time, two tracked files in this worktree were modified by a writer other than this session: `internal/factory/integration_lock.go` (mtime 15:34:30) and `internal/factory/candidate_window_hold_test.go` (mtime 15:34:16). The change in `persistRefreshed` adds `len(report.Refused) == 0` to its early return. The change in the test file adds `TestWindowHoldRefusalPersists`. The diff is preserved at `.moai/reports/t1478/foreign-uncommitted.patch` (gitignored). These writes fell inside the delta audit window that the leader's notices opened.
+- Observation: `git status --short` was clean at the post-stop check, and showed both files as ` M` at the check after this section was written. This session did not write, commit, revert, or stash either file. HEAD did not move (`232dd55be6`). This record does not judge the two changes. The auditor should read HEAD `232dd55` together with these two uncommitted diffs.
+- Attribution of the gate: each recorded run started before the foreign writes. Birth times of the log files, which mark run start: `vet.log` 14:32:14; `lint.log` 14:32:42; `cli-merge-families-race.log` 14:33:35; `cli-merge-families-race-v.log` 14:34:52; `factorylane-full-race-v.log` 14:35:25; `factory-full-race.log` 14:36:11; `cli-integration-list.txt` 14:51:43; `cli-integration-families-race-v.log` 14:51:53; `full-hook-config-template-bugreport-userassets.log` 14:55:44; `full-cli-v.log` 15:04:36. Their results therefore refer to the HEAD tree, not to the two modified files. Each run's end, as its last log write, came before 15:34.
+- Other writes after the merge message: `find . -newer .moai/reports/t1478/merge-msg.txt -type f -not -path "./.git/*" -not -path "./.moai/reports/*"` lists the two source files, this file, and runtime files under `.moai/logs/` and `.moai/state/` that `git status` does not show. Among the runtime files is an audit-receipt file, `.moai/state/audit-receipts/receipts/rcpt-3a3feaaba7c5232758b79cfb.json`. No other tracked file changed.
+
+Correction (lane-9). The two modified files are the lane's own repair, not a foreign writer, and the "foreign writes" classification above is withdrawn. A subagent of this lane saw the lane's edits and read them as another writer. The times are 15:34:16 and 15:34:30 KST (06:34:16Z and 06:34:30Z). They came after the second-rung auditor's FAIL verdict (`.moai/reports/t1478/delta-audit-opus-232dd55be6.md`). The test file gained `TestWindowHoldRefusalPersists`, which failed on the record queue before the fix: the withdrawn red ticket stayed on disk. The lock file gained `len(report.Refused) == 0 &&` in the `persistRefreshed` condition, and the same test passed after it. HEAD did not move. The gate records in this section stay attributed to the audited HEAD `232dd55be6`. The repair is committed as its own commit and re-audited on the new HEAD. `.moai/reports/t1478/foreign-uncommitted.patch` is a copy of the repair diff, kept as a gitignored record. The audit-receipt file is the codex audit tool's output, not a foreign file.

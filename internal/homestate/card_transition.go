@@ -434,11 +434,49 @@ var holderGuards = map[edgeGuard]bool{
 	guardCommit: true, guardLeaseValid: true, guardNone: true, guardMerge: true, guardFail: true,
 }
 
+// RosterRule names the roster binding a lease renewal re-checks inside its write transaction (sync-audit F14,
+// card t1663). RosterUnchecked skips the check: every lease write except the renew verb's, and the explicit
+// --run path. RosterSoleRun admits a lane whose binding is empty or has no roster row, or names the renewal's
+// run. RosterBound admits a lane only when its binding names the renewal's run (the ambiguous-set answer).
+type RosterRule int
+
+const (
+	RosterUnchecked RosterRule = iota
+	RosterSoleRun
+	RosterBound
+)
+
+// ErrRosterBinding reports that a lane's roster binding, re-read inside the lease write, no longer admits the
+// run the renewal resolved. The write is refused with no change.
+var ErrRosterBinding = errors.New("roster binding changed")
+
+// admits reports whether bound, the lane's binding read inside the write transaction ("" when the lane has no
+// roster row or an empty binding), satisfies the rule for a renewal that acts in runID.
+func (r RosterRule) admits(runID, bound string) bool {
+	switch r {
+	case RosterBound:
+		return bound == runID
+	case RosterSoleRun:
+		return bound == "" || bound == runID
+	default:
+		return true
+	}
+}
+
 // RenewLease extends the holder's lease on a lease-holding card and refreshes
 // the roster heartbeat. A renewal by any other label is refused with no
-// change; an already-expired lease is returned first (T27/T28). Renewal does
-// not change the card's state, so it does not advance the version.
+// change. An already-expired lease is refused with ErrLeaseExpired and no write
+// (REQ-FLR-004; decision-index Q3, ruling d-20261010T095731Z-5ddc): the renewal
+// does not reap the lease, so the card keeps its state, holder, and version.
+// Renewal does not change the card's state, so it does not advance the version.
 func (f *FactoryDB) RenewLease(ctx context.Context, runID, cardID, label string, now time.Time) (Card, error) {
+	return f.RenewLeaseUnderRoster(ctx, runID, cardID, label, now, RosterUnchecked)
+}
+
+// RenewLeaseUnderRoster is RenewLease with the roster re-check of rule (sync-audit F14, card t1663). The
+// binding is read inside the same write transaction as the lease update, so a re-registration that lands after
+// the caller resolved its run is seen by the write and refused with ErrRosterBinding, with no change.
+func (f *FactoryDB) RenewLeaseUnderRoster(ctx context.Context, runID, cardID, label string, now time.Time, rule RosterRule) (Card, error) {
 	if now.IsZero() {
 		now = time.Now()
 	}
@@ -450,17 +488,31 @@ func (f *FactoryDB) RenewLease(ctx context.Context, runID, cardID, label string,
 			return nil, err
 		}
 		if cur.LeaseExpired(now) {
-			if err := applyLeaseExpiry(ctx, tx, cur, now); err != nil {
-				return nil, err
-			}
-			return nil, commitThen(fmt.Errorf("%w: card %s lease expired at %s", ErrLeaseExpired, cur.CardID, cur.LeaseExpiresAt))
+			// Refused with no write: a plain error rolls the transaction back, so the
+			// lease-expiry row that applyLeaseExpiry would append is never committed.
+			return nil, fmt.Errorf("%w: card %s lease expired at %s", ErrLeaseExpired, cur.CardID, cur.LeaseExpiresAt)
 		}
 		if !IsLeaseHoldingState(cur.State) || cur.LeaseHolder == "" || strings.TrimSpace(label) != cur.LeaseHolder {
 			return nil, fmt.Errorf("%w: %q does not hold the lease on card %s", ErrLeaseHolder, label, cur.CardID)
 		}
+		if rule != RosterUnchecked {
+			// The roster is re-read inside this transaction, so a re-registration that committed after the
+			// caller resolved its run is seen here and the lease is not written.
+			bound, err := workerRunBinding(ctx, tx, label)
+			if err != nil {
+				return nil, err
+			}
+			if !rule.admits(runID, bound) {
+				shown := "no run"
+				if bound != "" {
+					shown = "run " + bound
+				}
+				return nil, fmt.Errorf("%w: lane %s is bound to %s, not to run %s", ErrRosterBinding, label, shown, runID)
+			}
+		}
 		next := cur
 		next.HeartbeatAt = now.Format(time.RFC3339Nano)
-		next.LeaseExpiresAt = now.Add(FactoryLeaseDuration).Format(time.RFC3339Nano)
+		next.LeaseExpiresAt = now.Add(f.CardLeaseDuration()).Format(time.RFC3339Nano)
 		next.UpdatedAt = next.HeartbeatAt
 		res, err := tx.ExecContext(ctx, `UPDATE cards SET heartbeat_at=?,lease_expires_at=?,updated_at=? WHERE run_id=? AND card_id=? AND version=?`,
 			next.HeartbeatAt, next.LeaseExpiresAt, next.UpdatedAt, cur.RunID, cur.CardID, cur.Version)
@@ -539,7 +591,7 @@ func (f *FactoryDB) planTransition(ctx context.Context, tx *sql.Tx, cur Card, ed
 		}
 		plan.next.LeaseHolder = label
 		plan.next.HeartbeatAt = nowText
-		plan.next.LeaseExpiresAt = now.Add(FactoryLeaseDuration).Format(time.RFC3339Nano)
+		plan.next.LeaseExpiresAt = now.Add(f.CardLeaseDuration()).Format(time.RFC3339Nano)
 		if _, err := tx.ExecContext(ctx, `UPDATE workers SET heartbeat_at=? WHERE label=?`, nowText, label); err != nil {
 			return plan, err
 		}
@@ -598,7 +650,7 @@ func (f *FactoryDB) planTransition(ctx context.Context, tx *sql.Tx, cur Card, ed
 		}
 		plan.next.LeaseHolder = label
 		plan.next.HeartbeatAt = nowText
-		plan.next.LeaseExpiresAt = now.Add(FactoryLeaseDuration).Format(time.RFC3339Nano)
+		plan.next.LeaseExpiresAt = now.Add(f.CardLeaseDuration()).Format(time.RFC3339Nano)
 		if _, err := tx.ExecContext(ctx, `UPDATE workers SET heartbeat_at=? WHERE label=?`, nowText, label); err != nil {
 			return plan, err
 		}

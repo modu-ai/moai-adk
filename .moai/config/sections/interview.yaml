@@ -4,9 +4,10 @@ interview:
   # Dogfood: this repository runs the decision gate (on) so plan phases author
   # the decision index and the kickoff gate reviews it.
   decision_gate: on
-  # Dogfood: this repository runs judgment-first (pull) to exercise the
-  # withholding path and collect the M6 falsifier sample.
-  recommendation_mode: pull
+  # Operator decision 2026-10-10: back to push — the recommended option carries
+  # the (권장) label and sits first. The pull dogfood (M6 falsifier sample) ran
+  # from 2026-09-13 to 2026-10-10; re-enable pull only by operator decision.
+  recommendation_mode: push
   plan:
     max_rounds: 5
     questions_per_round: 3

@@ -59,19 +59,31 @@ is progress, not a stall.
 
 ## 4. The observation snapshot
 
-The N-minute verdict compares TWO observations, so each watchdog awaken
-persists one:
+The N-minute verdict compares the current observation with the last observed
+channel change, so each watchdog awaken persists the observation and the change
+time:
 
 - **path**: `.moai/state/watchdog/<card-id>.json` inside the lane's own
   worktree — gitignored runtime state, tree-local; the lane measures itself,
   so no home-surface visibility is needed
 - **fields**: `observed_at` (RFC3339), `head_sha`, `evidence_mtime_max`, and
-  `window_state` (the integration-status output hash or holder id)
+  `window_state` (the integration-status output hash or holder id); and two
+  fields added with the renewal: `renew_result`,
+  the class the renew verb reported for this pass (`renewed`,
+  `refused-expired`, `refused-not-holder`, or `error`), and `last_change_at`,
+  the RFC3339 `observed_at` of the last pass at which a channel changed
 - **verdict**: stall iff (no channel change vs the previous snapshot) AND
-  the previous observation is at least N minutes old
+  (`observed_at` minus `last_change_at`) is at least N minutes. A pass that
+  moved a channel sets `last_change_at` to its own `observed_at`; a pass that
+  moved none carries the previous value forward. The verdict therefore falls on
+  the first scheduled pass at or after N minutes without a channel change, so a
+  lane with no channel change is reported as stalled no later than N minutes
+  plus one renewal period after that change
 - **single-writer** — the lane itself; no cross-writer discipline applies
 - **fail-open first observation**: a missing or corrupt snapshot means "no
-  previous observation" — record a fresh one, no stall verdict
+  previous observation" — record a fresh one, with `last_change_at` set to its
+  own `observed_at`, and no stall verdict. A snapshot written before
+  `last_change_at` existed takes the same first observation.
 
 ## 5. The awaken rule
 
@@ -105,25 +117,33 @@ A lane that has stopped cannot wake itself, and a turn ended by an API error
 therefore **standing**: armed once at card intake, before the first stage, and
 kept until the completion report.
 
-- **Arm.** `CronCreate` with `cron: "7,27,47 * * * *"` (off-minute, every 20
-  minutes), `recurring: true`, and the canonical awaken prompt above. Never a
-  one-shot at an absolute clock time: a local/UTC slip lands it in the past
-  and it never fires (observed on card t1393), and it covers one wait rather
-  than the stall that follows it. The 20-minute cadence keeps every fire
-  longer than the N-minute stall window after the previous snapshot (§4).
+- **Arm.** `CronCreate` with `cron: "*/N * * * *"`, where N is the value of
+  `workflow.factory_lease.renew_interval` in minutes (`*/5 * * * *` at the
+  default), `recurring: true`, and the canonical awaken prompt above. The minute
+  step starts at minute 0, so
+  no two consecutive scheduled wakes are further apart than one renewal period, including across the hour boundary.
+  Never a one-shot at an absolute clock time: a local/UTC slip lands it in the
+  past and it never fires (observed on card t1393), and it covers one wait
+  rather than the stall that follows it. Each fire runs the watchdog's renewal
+  first (§0a of the watchdog skill), so the renewal period is also the cadence
+  at which the card lease is renewed.
 - **Keep.** `CronList` at card intake and after every `/clear`; re-arm when
-  the entry is missing. A recurring job expires after 7 days — a card that
-  outlives that re-arms it. Delete it (`CronDelete`) when the completion report
-  is sent; the next card arms its own.
+  the entry is missing, or when its expression no longer matches the configured
+  renewal period. A changed renewal period takes effect at the next arm. A
+  recurring job expires after 7 days — a card that outlives that re-arms it.
+  Delete it (`CronDelete`) when the completion report is sent; the next card
+  arms its own.
 - **Read disk, not messages.** Every wake — the cron, a leader message, a
   teammate's idle notice — starts with the watchdog pass, which reads the
   evidence on disk (the three channels of §3, the card's progress record, the
   reports, the commits, a delegate's deliverable). A message says when to
   look; it is never evidence of progress or of its absence.
 - **Cost.** A fire after the cache window re-writes the prefix once. The
-  cadence trades that cost against a stall bounded by about two periods (the
-  first observation after a wake yields no verdict, §4) instead of the 87 to
-  1606 minutes measured on cards t1393 and t1339.
+  renewal period trades that cost against the lease: a fire that runs late by
+  less than the card lease duration minus the period still finds the lease
+  live (the late-pass margin). A stall is reported within N minutes plus one
+  renewal period of the last channel change (§4), against the 87 to 1606
+  minutes measured on cards t1393 and t1339 under the former fixed cadence.
 
 ## 6. The decision ladder
 
@@ -396,5 +416,5 @@ progress resumes only on evidence.
 
 ---
 
-Version: 1.1.0 (the ladder's terminal step is the lane's own judgment; Jev promoted to in-card advisory; the lane closes its own card at completion)
+Version: 1.2.0 (the standing wake is armed at the renewal period, and the stall window counts from the last channel change; the ladder's terminal step is the lane's own judgment; Jev promoted to in-card advisory; the lane closes its own card at completion)
 Classification: Canonical reference — the lane-surface `--auto` SSOT.

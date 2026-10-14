@@ -429,7 +429,22 @@ type RalphConfig struct {
 // yaml:"-" tags so yaml.Unmarshal never binds to them, eliminating the
 // historical path-mismatch unmarshal failure while preserving Go API binary
 // compatibility.
+// FactoryLeaseConfig is the workflow.factory_lease block: the card lease
+// duration and the watchdog renewal period, as written in configuration.
+// Homestate parses and bounds-checks both when the factory opens
+// (SPEC-FACTORY-LEASE-RENEW-001 REQ-FLR-005 to REQ-FLR-009). They are held as
+// strings so that the refusal can name the key and the allowed range for any
+// value that is not a duration.
+type FactoryLeaseConfig struct {
+	// Duration is the card lease duration (workflow.factory_lease.duration).
+	Duration string `yaml:"duration"`
+	// RenewInterval is the watchdog renewal period (workflow.factory_lease.renew_interval).
+	RenewInterval string `yaml:"renew_interval"`
+}
+
 type WorkflowConfig struct {
+	// FactoryLease carries workflow.factory_lease.* (see FactoryLeaseConfig).
+	FactoryLease FactoryLeaseConfig `yaml:"factory_lease"`
 	// Nested canonical fields (yaml-aligned with workflow.yaml top-level keys).
 	AutoClear     AutoClearConfig `yaml:"auto_clear"`
 	DefaultMode   string          `yaml:"default_mode"`
@@ -525,6 +540,14 @@ type WorkflowConfig struct {
 	// meant to turn off.
 	SettingsDriftGate SettingsDriftGateConfig `yaml:"settings_drift_gate"`
 
+	// CandidateCI carries the pre-landing candidate-CI settings
+	// (SPEC-CANDIDATE-CI-001). Enabled gates the `moai integration candidate`
+	// verb and the merge step's shared landing check; default false ships the
+	// whole path inert. GuardBundleRequired (default true) decides whether a
+	// red guard-bundle check reds the candidate verdict — preserving today's
+	// gating where those guards ride the ordinary required suite.
+	CandidateCI CandidateCIConfig `yaml:"candidate_ci"`
+
 	// ServedModelGate gates the ADOPTION-REFUSAL layer of the SubagentStop
 	// served-model observer: when the model that actually answered a gate
 	// auditor (plan-auditor / sync-auditor) differs from the expected one, or
@@ -542,6 +565,13 @@ type WorkflowConfig struct {
 	// the per-resource command patterns. Default OFF; the `moai slot` verbs
 	// work regardless of Enabled. Deliberately separate from IntegrationLock.
 	SlotLease SlotLeaseConfig `yaml:"slot_lease"`
+
+	// LocalMainIntegration carries the local-main integration flag
+	// (SPEC-LOCAL-MAIN-FLOW-001 REQ-LMF-001). Default OFF: an absent key reads as
+	// disabled. Enabled is read by the merge-target resolver integrationMergeWorktree
+	// (internal/cli), which admits the primary checkout as the merge target only
+	// while the gate is on.
+	LocalMainIntegration LocalMainIntegrationConfig `yaml:"local_main_integration"`
 
 	// QuotaGate carries the quota-aware lane gate settings
 	// (SPEC-QUOTA-AWARE-SCHEDULING-001 REQ-QAS-008): whether the gate runs, the
@@ -801,6 +831,24 @@ type SettingsDriftGateConfig struct {
 	Enabled bool `yaml:"enabled"`
 }
 
+// CandidateCIConfig mirrors workflow.candidate_ci.* (SPEC-CANDIDATE-CI-001,
+// card t1478, REQ-CCI-006/008). Enabled gates the candidate-CI path: the
+// `moai integration candidate` verb and the merge step's shared landing
+// check. Default FALSE — the path ships inert (no candidate is built, no
+// landing check runs) and a maintainer opts in via local config, the same
+// default-OFF neutrality as the BranchGuard/SettingsDriftGate siblings.
+//
+// GuardBundleRequired governs whether a red guard-bundle job reds the
+// candidate verdict. Default TRUE — it preserves today's gating, where the
+// three drift-prone guard families ride the ordinary required test suite
+// (design.md D6): bundling changes attribution only, never admission. The
+// operator may flip it after observing guard-drift rates; the flag exists
+// so that decision is data-driven, not structural.
+type CandidateCIConfig struct {
+	Enabled             bool `yaml:"enabled"`
+	GuardBundleRequired bool `yaml:"guard_bundle_required"`
+}
+
 // SlotLeaseConfig mirrors workflow.slot_lease.* (card t607). Enabled gates the
 // PreToolUse guard's deny layer only; DefaultMaxDuration is a duration string
 // parsed at use; Resources maps a resource name to its command patterns.
@@ -838,6 +886,13 @@ type QuotaGateConfig struct {
 type SlotLeaseResourceConfig struct {
 	Commands []string `yaml:"commands"`
 	Invalid  string   `yaml:"-"`
+}
+
+// LocalMainIntegrationConfig mirrors workflow.local_main_integration.*
+// (SPEC-LOCAL-MAIN-FLOW-001 REQ-LMF-001). Enabled is the opt-in flag, shipped
+// OFF.
+type LocalMainIntegrationConfig struct {
+	Enabled bool `yaml:"enabled"`
 }
 
 // ServedModelGateConfig mirrors workflow.served_model_gate.* — the opt-in

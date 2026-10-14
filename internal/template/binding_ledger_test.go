@@ -14,6 +14,7 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"slices"
 	"strings"
 	"sync"
 	"testing"
@@ -457,6 +458,7 @@ func (env *ledgerCheckEnv) runLedgerChecks() []string {
 	env.checkKindMatchesAnchorKind()
 	env.checkEntryPoints()
 	env.checkLocationVocabulary()
+	env.checkRuleBodyRowsScope()
 	env.checkAlwaysRowsInMembers()
 	env.checkCompanionRowsPathsScoped()
 	env.checkAfterTextPresence()
@@ -708,12 +710,50 @@ func (env *ledgerCheckEnv) checkLocationVocabulary() {
 }
 
 func splitLocation(loc string) (prefix, path string, ok bool) {
-	for _, p := range []string{"always:", "role-core:", "companion:"} {
+	for _, p := range []string{"always:", "role-core:", "companion:", "rule-body:"} {
 		if strings.HasPrefix(loc, p) {
 			return strings.TrimSuffix(p, ":"), strings.TrimPrefix(loc, p), true
 		}
 	}
 	return "", "", false
+}
+
+// ruleBodyTargetFaces are the only paths a rule-body: location may name
+// (SPEC-ROLE-INJECTION-BUDGET-001, card t1617): the deployed factory-dispatch
+// rule and its template mirror — the two files the session-start read
+// directive points at.
+var ruleBodyTargetFaces = []string{
+	".claude/rules/moai/workflow/factory-dispatch.md",
+	"internal/template/templates/.claude/rules/moai/workflow/factory-dispatch.md",
+}
+
+// checkRuleBodyRowsScope restricts the rule-body: location vocabulary to the
+// read-directive delivery surface: a rule-body row names one of the
+// read-directive target faces and carries a binding/normative kind. The
+// injection opens with a [HARD] read directive naming exactly that file, so
+// body presence there is the delivery (the leader's Opus adjudication
+// 「읽기 지시가 가리키는 파일 안이면 수용」); any other path or kind has no
+// delivery channel and is a defect, not a location choice.
+func (env *ledgerCheckEnv) checkRuleBodyRowsScope() {
+	checked := 0
+	for i := range env.ledger.Rows {
+		r := &env.ledger.Rows[i]
+		prefix, path, ok := splitLocation(r.Location)
+		if !ok || prefix != "rule-body" {
+			continue
+		}
+		checked++
+		if !slices.Contains(ruleBodyTargetFaces, path) {
+			env.errf("rule-body row %s names %s — rule-body: is scoped to the read-directive target faces (factory-dispatch and its template mirror)", r.ID, path)
+		}
+		if r.Kind != "binding" && r.Kind != "normative" {
+			env.errf("rule-body row %s has kind %s — the read-directive delivery form carries obligations (binding/normative) only", r.ID, r.Kind)
+		}
+	}
+	env.t.Logf("[rule-body scope] swept %d rule-body rows against %d read-directive target faces", checked, len(ruleBodyTargetFaces))
+	if checked == 0 {
+		env.errf("rule-body scope check swept 0 rows — empty sweep is a failure, not a pass")
+	}
 }
 
 // checkAlwaysRowsInMembers fails any always: row whose path is absent from
@@ -810,6 +850,18 @@ func (env *ledgerCheckEnv) checkAfterTextPresence() {
 		case "role-core":
 			target = env.roleCoreContent(path)
 			if target != "" && containsNorm(target, r.AfterText) {
+				direct++
+				continue
+			}
+		case "rule-body":
+			// rule-body: (SPEC-ROLE-INJECTION-BUDGET-001, card t1617 — the
+			// read-directive delivery form): the obligation is preserved in
+			// the role-gated rule file's BODY, outside the marker regions.
+			// The session-start injection carries a [HARD] read directive
+			// naming this file, so body presence is the delivery — the same
+			// acceptance the leader's Opus adjudication set for the OUT rows
+			// ("읽기 지시가 가리키는 파일 안이면 수용").
+			if env.containsDeployedNorm(path, r.AfterText) {
 				direct++
 				continue
 			}
@@ -967,6 +1019,17 @@ func (env *ledgerCheckEnv) checkAC021FragmentRule() {
 			return nil //nolint:nilerr
 		}
 		files = append(files, onDemandFile{rel: slash, lines: trimmedLineSet(stripRoleCoreRegions(string(data)))})
+		// rule-body: rows (SPEC-ROLE-INJECTION-BUDGET-001, card t1617 — the
+		// read-directive delivery form): their after_text lines live in this
+		// file's BODY by the leader's Opus adjudication ("읽기 지시가 가리키는
+		// 파일 안이면 수용") — sanctioned delivery, not on-demand migration.
+		// Drop those lines from the swept set so the fragment sweep does not
+		// flag them.
+		for _, r := range env.ledger.Rows {
+			if r.Location == "rule-body:"+slash && strings.TrimSpace(r.AfterText) != "" {
+				delete(files[len(files)-1].lines, strings.TrimSpace(r.AfterText))
+			}
+		}
 		return nil
 	})
 	// Skill files. The deployer excludes the project .claude/skills/ tree from
