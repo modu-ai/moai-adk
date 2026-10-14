@@ -25,7 +25,6 @@ import (
 	"errors"
 	"fmt"
 	"io"
-	"os"
 	"os/exec"
 	"path/filepath"
 	"strconv"
@@ -55,9 +54,11 @@ var factoryGH = func(ctx context.Context, dir string, args ...string) ([]byte, e
 	return cmd.Output()
 }
 
-// factoryGHEnv is the environment a gh call runs with.
+// factoryGHEnv is the environment a gh call runs with: the caller's, minus the
+// git variables that choose a repository (an inherited GIT_DIR would outrank
+// the directory gh is started in).
 func factoryGHEnv() []string {
-	return append(os.Environ(), "GH_PROMPT_DISABLED=1")
+	return append(gitenv.Env(), "GH_PROMPT_DISABLED=1")
 }
 
 // factoryPRFields is the `gh pr view --json` field list the edge reads.
