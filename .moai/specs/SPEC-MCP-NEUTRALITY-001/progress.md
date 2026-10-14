@@ -121,6 +121,47 @@ Interpretation notes for the audit (M2):
 7. **Pre-existing on the absorbed base, leader disposition**: TestFactoryLeaseQueueLockStallBounded and TestFactoryLeaseDriftLogVerbWorktreeWriteWaits exceed their pinned timing bounds without this diff (attribution run recorded in the Part A commit message).
 8. **Scope note**: codex_role_audit* and codex_setup already carried their own root contracts (the codexAuditValidateRoot path this SPEC generalizes); audit_multi/codex_audit keep their pass-through resolution (resolveOptionalToolProjectRoot) per their REQ-2 semantics, now confinement-checked when a root is supplied.
 
+### M3 — gate containment, elicitation, write mutex, inbox counting path (card t1632, branch WT-3-2-0-2)
+
+Commits (after the M2-boundary absorb `d68d5172d` = eaac2057c + main t1707): `5e468bce1` (gate containment + elicitation guard + write mutex + inbox counting path + AC-MN-003 harness). Push state: nothing pushed; `git status -sb` clean on WT-3-2-0-2.
+
+E8 — verbatim RED outputs captured BEFORE each GREEN:
+
+```
+$ go test ./internal/hook -run 'TestFactoryHookEmptyInboxSkipsWriteLock' -count=1   → exit 1
+    factory_messages_lock_test.go:60: empty inbox under a held write lock: state = "degraded: database is locked (5) (SQLITE_BUSY)", want "empty-or-receipt-only" (the counting path must not take the write lock)
+$ go test ./internal/cli -run 'TestMCPSchemaLint_ServedTools' (M2 tree, pre-exposure) — the gate-exposure and containment tests did not exist (EV-012's instruments are M3 builds; the disposition is regression-guard, not a plan-phase pass)
+$ grep -rn "RequestElicitation\|WithElicitation" internal/ --include="*.go" (pre-guard, production files)   → 0 hits   [the invariant already held; the guard test pins it]
+```
+
+AC matrix (M3-mapped rows; every row's command run at HEAD 5e468bce1, this tree):
+
+| AC | Status | Command (verbatim) | Observed output |
+|----|--------|--------------------|-----------------|
+| AC-MN-009 (gate exposure + containment) | PASS | `go test ./internal/cli -run 'TestMCPGateExposure\|TestCodexGateContainment' -count=1` | `ok` — the served set equals the enumerated 20-tool subset exactly (extra=[] missing=[]); audit_cache op=store refused naming the gate exclusion; containment args disable the foreign server, keep moai with the gate exposure override, and a listing failure refuses |
+| AC-MN-010 (never-initiate + mutex) | PASS | `go test ./internal/cli -run 'TestMCPServer_NeverInitiatesElicitation\|TestMCPStateWriteMutex_ConcurrentWritersSerialize' -count=1 -race` | `ok` — zero RequestElicitation/WithElicitation references under internal/; 30 concurrent goal_arm/verify_snapshot/audit_cache writers serialize through the one mutex, -race clean |
+| AC-MN-011 (inbox counting path) | PASS | `go test ./internal/hook -run 'TestFactoryHookEmptyInboxSkipsWriteLock' -count=1` | `ok` — with the broker write lock held by another connection, the empty inbox answers "empty-or-receipt-only" (the old path degraded with "database is locked (5) (SQLITE_BUSY)" — captured in the E8 block above) |
+| AC-MN-012 + debt N5 (decline quantified) | PASS | `go test ./internal/cli -run 'TestManagedGateElicitationDeclineBounded' -count=1 -v` | `ok` — the automatic decline lands within 50 ms (measured well under), reply echoes the request id verbatim, result is {"action":"decline"}; "without stalling" is now a bounded-clock assertion, not prose |
+| **AC-MN-003 (card gate 3)** | **PASS — measured** | `go test ./internal/cli -run 'TestACMN003_GateCallSuccessRate' -count=1 -v` | **`AC-MN-003 gate call success rate: 22/22 (100%) over 22 sampled calls`** — the fixture call set (initialize + tools/list + one call per enumerated subset tool) against the gate-exposure server with a gate-session-shaped in-process client; success = non-error, non-refused |
+| AC-MN-013 (empty-inbox counting) | PASS | the same lock test + the delivery-path assertions in TestFactoryHookZeroTurnAndCapabilityTruth | `ok` — the counting path claims nothing, settles nothing, writes nothing; the delivery path claims exactly what it renders and settles receipts |
+
+Verification batch at HEAD 5e468bce1 (this tree, this run):
+
+- E2 builds: `go build ./...` → exit 0; `GOOS=windows GOARCH=amd64 go build ./...` → exit 0.
+- E5 lint + format: gofmt clean on internal/cli, internal/hook, internal/factorymsg.
+- Race lane: the guard + mutex tests green under `-race`.
+- Affected families green (-count=1): the gate exposure/containment/harness set, the codex_audit + codex_audit_pin + codex_audit_mcp families (26 tests), the managed hardening family (the pre-existing elicitation-decline policy rows), the hook inbox family, the M2 root/schema/catalogue families.
+- Catalogue doc parity: both moai-mcp-tools-catalogue.md copies updated to 49 tools with the todo_claim row (the registration-catalogue guard asserts the count).
+
+Interpretation notes for the audit (M3):
+
+1. **Gate exposure mechanism**: `MOAI_MCP_EXPOSURE=gate` / `moai mcp-server --exposure gate` intersects the enablement map with plan §F M3's enumerated table (moaiGateExposureTools). A new read-only tool must decide gate visibility in that table — the exposure test asserts served == enumerated, so an undecided tool fails the build's test run.
+2. **Gate child containment is fail-closed**: the codex app-server spawn through the review-gate/audit path appends the foreign-server disable args + the moai gate-exposure args override, and a `codex mcp list` failure REFUSES the spawn (the role-audit precedent). The moai disable pair is dropped — the gate session is the moai server's client.
+3. **codex_audit/review root validation is pre-confinement by scope**: the audit/delegation surface legitimately names ANOTHER repository's tree to audit, so the M2 server-repository confinement would have broken the audit's own fixture family (caught by this milestone's batch — an M2 regression the M3 batch surfaced and fixed via resolveValidatedToolProjectRoot). The wrong-tree hazard stays closed: unusable paths are rejected, never replaced.
+4. **Receipt settling moved to the delivery path**: REQ-MN-011 forbids the counting path to write, so a receipt-only inspection leaves the receipt pending; the terminal acknowledged state arrives on the next non-empty (delivery) inspection or the factory_msg_receipt tool. TestFactoryHookZeroTurnAndCapabilityTruth's receipt arm was rewritten for that ordering.
+5. **The exposure var is package-level** (moaiCurrentExposure): one server per process is the production reality; gateExposureClient restores the previous value so concurrent-family tests don't inherit "gate".
+6. **AC-MN-003 denominator**: the harness samples initialize + tools/list + one call per enumerated subset tool (20) = 22 calls, matching acceptance.md §C's definition ("the denominator is the fixture call set — initialize, tools/list, and one call per tool in the REQ-MN-009 read-only subset"). The number is reported in this section with the explicit sample count the card gate requires; the plan-audit re-reads it from here.
+
 ## §E.3 Run-phase Audit-Ready Signal
 
 _pending run-phase_
