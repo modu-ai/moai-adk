@@ -1,4 +1,4 @@
-# Acceptance Criteria — SPEC-V3R6-DOCS-PREREWRITE-CLEANUP-001 (revision 0.1.1)
+# Acceptance Criteria — SPEC-V3R6-DOCS-PREREWRITE-CLEANUP-001 (revision 0.2.0, umbrella)
 
 ## A. Pin and conventions
 
@@ -13,36 +13,41 @@
 
 ## A.1 Traceability matrix (AC to REQ)
 
-| AC | REQ | Milestone | Gate (decision rows) | Class | Ledger entries |
-|----|-----|-----------|----------------------|-------|----------------|
-| AC-PRC-001 | REQ-PRC-001 | M4; M1 producer | Q13, Q14 | release-blocking (gated) | E-01, E-02, E-03, E-04 (E-06, E-07 verification) |
-| AC-PRC-002 | REQ-PRC-002 | M1, M2, M6 | M1 inputs (Q5, Q18); Q12, Q22 if required | release-blocking (gated) | E-28 |
-| AC-PRC-003 | REQ-PRC-003 | M4 | Q8 | regression-guard | E-20a, E-20b, E-20c |
-| AC-PRC-004 | REQ-PRC-004 | M4 | Q1 | release-blocking (gated) | E-08, E-08b |
-| AC-PRC-005 | REQ-PRC-005 | M5 | Q2 | release-blocking (gated) | E-09a, E-09b, E-09b2, E-09c |
-| AC-PRC-006 | REQ-PRC-006 | M5 | Q3 | release-blocking (gated) | E-10 |
-| AC-PRC-007 | REQ-PRC-007 | M5 | Q4 | release-blocking (gated) | E-11a, E-11b, E-12, E-16b-skill, E-16b-hextra; precondition E-16c |
-| AC-PRC-008 | REQ-PRC-008 | M5 | Q6 | release-blocking (gated) | E-13 |
-| AC-PRC-009 | REQ-PRC-009 | M5 | Q7 | release-blocking (gated) | E-14a, E-14b |
-| AC-PRC-010 | REQ-PRC-010 | M3 | Q15, Q21 | release-blocking (gated) | E-15a (with its derived redirect count), E-15b, E-15d-design, E-15e |
-| AC-PRC-011 | REQ-PRC-011 | M3 | Q16 | release-blocking (gated) | E-15c, E-15d-changelog |
-| AC-PRC-012 | REQ-PRC-012 | M2 | Q9 | release-blocking (gated) | E-16a, E-16d, E-21 |
-| AC-PRC-013 | REQ-PRC-013 | M2 | Q10 | release-blocking (gated) | E-17a, E-17b, E-19a, E-19b |
-| AC-PRC-014 | REQ-PRC-014 | M2 | Q11 | release-blocking (gated) | E-18a, E-18b |
-| AC-PRC-015 | REQ-PRC-015 | M6 (operator-held) | Q12, Q22 | regression-guard | E-21 |
+| AC | REQ | Milestone | Gate (decision rows) | Class | Ledger entries | Owner child |
+|----|-----|-----------|----------------------|-------|----------------|-------------|
+| AC-PRC-001 | REQ-PRC-001 | M4; M1 producer | Q13, Q14 | release-blocking (gated) | E-01, E-02, E-03, E-04 (E-06, E-07 verification) | README (t1720); SWEEPA (t1721), SWEEPB (t1722), SWEEPC (t1723), SWEEPD (t1724), SWEEPE (t1725), SWEEPF (t1727), through partial criteria; closing: parent |
+| AC-PRC-002 | REQ-PRC-002 | M1, M2, M6 | M1 inputs (Q5, Q18); Q12, Q22 if required | release-blocking (gated) | E-28 | GATE (t1717) |
+| AC-PRC-003 | REQ-PRC-003 | M4 | Q8 | regression-guard | E-20a, E-20b, E-20c | README (t1720) |
+| AC-PRC-004 | REQ-PRC-004 | M4 | Q1 | release-blocking (gated) | E-08, E-08b | README (t1720) |
+| AC-PRC-005 | REQ-PRC-005 | M5 | Q2 | release-blocking (gated) | E-09a, E-09b, E-09b2, E-09c | RESID (t1719) |
+| AC-PRC-006 | REQ-PRC-006 | M5 | Q3 | release-blocking (gated) | E-10 | RESID (t1719) |
+| AC-PRC-007 | REQ-PRC-007 | M5 | Q4 | release-blocking (gated) | E-11a, E-11b, E-12, E-16b-skill, E-16b-hextra; precondition E-16c | RESID (t1719) |
+| AC-PRC-008 | REQ-PRC-008 | M5 | Q6 | release-blocking (gated) | E-13 | RESID (t1719) |
+| AC-PRC-009 | REQ-PRC-009 | M5 | Q7 | release-blocking (gated) | E-14a, E-14b | RESID (t1719) |
+| AC-PRC-010 | REQ-PRC-010 | M3 | Q15, Q21 | release-blocking (gated) | E-15a (with its derived redirect count), E-15b, E-15d-design, E-15e | REDIR (t1718) |
+| AC-PRC-011 | REQ-PRC-011 | M3 | Q16; Q23 (moai-mx pair) | release-blocking (gated) | E-15c, E-15d-changelog | REDIR (t1718) |
+| AC-PRC-012 | REQ-PRC-012 | M2 | Q9 | release-blocking (gated) | E-16a, E-16d, E-21 | GATE (t1717) |
+| AC-PRC-013 | REQ-PRC-013 | M2 | Q10 | release-blocking (gated) | E-17a, E-17b, E-19a, E-19b | GATE (t1717) |
+| AC-PRC-014 | REQ-PRC-014 | M2 | Q11 | release-blocking (gated) | E-18a, E-18b | GATE (t1717) |
+| AC-PRC-015 | REQ-PRC-015 | M6 (operator-held) | Q12, Q22 | regression-guard | E-21 | parent (operator-held) |
 
 ## B. Acceptance criteria
 
 ### AC-PRC-001 — stale CLI and slash references are gone (REQ-PRC-001)
+
+Owner: README (SPEC-V3R6-DOCS-PREREWRITE-README-001) for the README files; SWEEPA (SPEC-V3R6-DOCS-PREREWRITE-SWEEPA-001), SWEEPB (SPEC-V3R6-DOCS-PREREWRITE-SWEEPB-001), SWEEPC (SPEC-V3R6-DOCS-PREREWRITE-SWEEPC-001), SWEEPD (SPEC-V3R6-DOCS-PREREWRITE-SWEEPD-001), SWEEPE (SPEC-V3R6-DOCS-PREREWRITE-SWEEPE-001), and SWEEPF (SPEC-V3R6-DOCS-PREREWRITE-SWEEPF-001) for their page files. Closing run: parent (M6).
 
 - Given the tree at f35103480f, four family cells report matches for absent or unregistered forms: E-01 (CLI forms of the absent verbs `cg`, `gpt`, `audit`, `codemaps`, `model`; 60 lines in 48 files, with the retained retirement notice excluded), E-02 (absent sub-verbs `codex job|task|setup` and `todo rename|pick` and `spec list`; 24 lines in 4 files), E-03 (Mermaid labels citing `moai run SPEC-ID` and `moai sync SPEC-ID` as CLI verbs; 8 lines), and E-04 (slash forms the commands surface does not register; 45 lines in 23 files). E-06 and E-07 show the absent forms are absent from the tree build.
 - When the closing tree is measured with the same four cells and the same exclusions, then each cell exits 1 with empty stdout.
 - RED-now cells: E-01, E-02, E-03, E-04. Verification cells: E-06, E-07. The flags `--factory-run` and `--clear-policy` (E-05) are not cells of this criterion (verdict D3; decision Q18).
 - Green path: M4 (content fixes per Q13 and Q14), with the M1 producer as the independent check.
 - Gate: Q13, Q14; the M1 producer (its inputs Q5, Q18).
+- Closure through partial criteria, one per child. A partial criterion means zero matches of that child's family pattern (E-01 to E-04) on that child's own file list, and no change outside that list. This parent AC closes when all partial criteria close and the closing run prints zero. The partial criteria are: README (t1720), on the four README files; SWEEPA (t1721), SWEEPB (t1722), SWEEPC (t1723), SWEEPD (t1724), SWEEPE (t1725), and SWEEPF (t1727), on their page files. FLAG (t1726) has no partial criterion here, because its flag clause is outside this AC and its own REQ and AC are new.
 - Done when: E-01 to E-04 exit 1 with empty stdout on the closing tree, and the producer exits 0 on that tree.
 
 ### AC-PRC-002 — the cited-verbs producer exists, blocks pull requests, and was seen red (REQ-PRC-002)
+
+Owner: GATE (SPEC-V3R6-DOCS-PREREWRITE-GATE-001)
 
 - Given no producer exists in the tracked tree (E-28: no match for any cited-verbs name, and no workflow names the check).
 - When M1 adds the producer and its fixture cases, then case (a) (a fixture citing `moai codex job`) fails, case (b) (a fixture citing `moai spec status`) passes, and case (c) (a fixture citing `moai run SPEC-ID` in a Mermaid label) fails.
@@ -54,6 +59,8 @@
 
 ### AC-PRC-003 — the badge and hugo.toml name the Q8 release (REQ-PRC-003) — regression-guard
 
+Owner: README (SPEC-V3R6-DOCS-PREREWRITE-README-001)
+
 - Given the four README Release badges and the two `hugo.toml` lines name v3.1.3 (E-20a, E-20b), and the public release list marks v3.1.2 Latest and v3.1.3 Draft (E-20c, external).
 - When Q8 is applied, then the tree cells match the Q8 verdict, and `version` and `releaseDate` change in the same commit.
 - RED-now cells: E-20a, E-20b (tree, pinned). E-20c is external and is not tree-attributed.
@@ -62,6 +69,8 @@
 - Done when (guard): at closing, the tree cells match the Q8 verdict, and the external observation is recorded with its UTC time.
 
 ### AC-PRC-004 — the CG retirement passage lives on one Korean page (REQ-PRC-004)
+
+Owner: README (SPEC-V3R6-DOCS-PREREWRITE-README-001)
 
 - Given nine Korean pages carry the exact retirement sentence (E-08), and seven of the eight pages other than the canonical page already link to the CG page (E-08b). `what-is-moai-adk.md` carries the sentence and no link.
 - When the duplicates are replaced by link sentences, then the sentence appears only on the page that Q1 names.
@@ -72,6 +81,8 @@
 
 ### AC-PRC-005 — unreferenced images are removed (REQ-PRC-005)
 
+Owner: RESID (SPEC-V3R6-DOCS-PREREWRITE-RESID-001)
+
 - Given five tracked image files (E-09a) with no reference in `README*.md`, `docs-site`, `assets`, `.moai/docs`, `.claude/skills`, or `internal` (E-09b, scoped). Their sizes total 5,751,702 bytes (E-09c, derived).
 - Given one tracked historical report names them (E-09b2: `.moai/reports/historical/gpt-final-design-20260914-b40ff9f4/inventory.json`). It is a historical artifact, not a display reference, and it is outside the scoped paths above. This is the correction of the verdict's D16 false universal.
 - When Q2 is applied as deletion, then `git ls-tree` on the closing tree returns none of the five paths.
@@ -81,6 +92,8 @@
 
 ### AC-PRC-006 — the OG image is re-encoded under the Q3 budget (REQ-PRC-006)
 
+Owner: RESID (SPEC-V3R6-DOCS-PREREWRITE-RESID-001)
+
 - Given `assets/images/moai-adk-og.png` is 7,837,648 bytes (E-10) and is referenced by the four README files (E-10 refs).
 - When Q3 records a budget and the file is re-encoded to it, then its blob size is at or below that budget.
 - RED-now cell: E-10. The budget is not set in this SPEC; it is recorded here when Q3 has an operator verdict.
@@ -88,6 +101,8 @@
 - Done when: `git cat-file -s <closing>:assets/images/moai-adk-og.png` is at or below the Q3 verdict value, and the four README references still resolve.
 
 ### AC-PRC-007 — Nextra-era scripts and their narrative are removed or corrected (REQ-PRC-007)
+
+Owner: RESID (SPEC-V3R6-DOCS-PREREWRITE-RESID-001)
 
 - Given two Nextra-named scripts are tracked (E-11a, E-11b: `docs-site/scripts/fix-mdx-formatting.js`, `scripts/convert-nextra-to-hextra/main.go`) and no workflow, Makefile, lefthook entry, or build configuration invokes them (E-12).
 - Given the oss-docs skills describe `docs-i18n-check.sh` as absent (E-16b-skill: 3 lines, including the sentence split across `hns-oss-docs-i18n-rules/SKILL.md` lines 115–116), and the i18n rule document names Hextra as the current toolchain (E-16b-hextra: `Markdown/Hextra` on line 35, `Hextra/Goldmark` on line 37).
@@ -98,6 +113,8 @@
 
 ### AC-PRC-008 — the Python-era docs-site README is removed or replaced (REQ-PRC-008)
 
+Owner: RESID (SPEC-V3R6-DOCS-PREREWRITE-RESID-001)
+
 - Given `docs-site/README.md` is tracked at 42,512 bytes (E-13).
 - When Q6 is applied, then the path is absent (deletion), or the replacement carries the Q6 alternate with a current description.
 - RED-now cell: E-13.
@@ -106,6 +123,8 @@
 
 ### AC-PRC-009 — llms.txt is removed or regenerated without EARS wording (REQ-PRC-009)
 
+Owner: RESID (SPEC-V3R6-DOCS-PREREWRITE-RESID-001)
+
 - Given `docs-site/static/llms.txt` was last changed 2026-04-20T06:15:43Z (E-14a) and carries one EARS-style line (E-14b).
 - When Q7 is applied, then the file is absent, or its content contains no EARS wording.
 - RED-now cells: E-14a, E-14b.
@@ -113,6 +132,8 @@
 - Done when: the file is absent, or `git grep -c -i -E "ears|shall|THEN" <closing> -- docs-site/static/llms.txt` exits 1 with no output.
 
 ### AC-PRC-010 — every redirect destination resolves (REQ-PRC-010)
+
+Owner: REDIR (SPEC-V3R6-DOCS-PREREWRITE-REDIR-001)
 
 - Given `docs-site/vercel.json` has 42 `"source"` keys (E-15a; derived in E-15a: 39 redirect objects, one rewrite, two header rules). Three redirects point at `design` destinations (E-15b), and no `design` content path exists in any locale (E-15d-design).
 - Given the two changelog rules point at an external destination (`https://github.com/modu-ai/moai-adk/releases`, lines 113–121). REQ-PRC-010 is not satisfied by them until decision Q21 is answered; this SPEC does not amend REQ-PRC-010.
@@ -123,13 +144,18 @@
 
 ### AC-PRC-011 — no redirect shadows an existing page (REQ-PRC-011)
 
+Owner: REDIR (SPEC-V3R6-DOCS-PREREWRITE-REDIR-001)
+
 - Given the changelog redirect sources at `vercel.json` lines 113 and 118 (E-15c), and four `changelog/_index.md` pages under the same URLs (E-15d-changelog).
 - When Q16 is applied, then no redirect source matches an existing content page.
 - RED-now cells: E-15c, E-15d-changelog.
 - Gate: Q16 (its interaction with Q21 is recorded in decision-index.md).
+- Extension under Q23 (leader ruling B04, `d-20261014T060405Z-0fcd`): the REDIR child (t1718) extends this criterion to the moai-mx redirect pair at `docs-site/vercel.json` lines 163 and 168. Those rules send `/:locale(ko|en|ja|zh)/utility-commands/moai-mx` to `/:locale/utility-commands`, and `/utility-commands/moai-mx` to `/ko/utility-commands`, so they shadow the four existing `utility-commands/moai-mx.md` pages. Q23 decides between removing the two rules and amending REQ-PRC-011 to exempt the pair. The REDIR child writes the pair's done check once Q23 has a verdict.
 - Done when: `git ls-tree -r --name-only <closing> -- docs-site/content/en/changelog docs-site/content/ja/changelog docs-site/content/ko/changelog docs-site/content/zh/changelog` is empty, or the redirect sources are removed under Q16's alternate.
 
 ### AC-PRC-012 — the i18n job blocks pull requests (REQ-PRC-012)
+
+Owner: GATE (SPEC-V3R6-DOCS-PREREWRITE-GATE-001)
 
 - Given the strict run passes on this tree (E-16d: exit 0, 0 errors, 0 warnings). The pull-request path of the job is advisory: its strictness step writes `strict=false` (`docs-i18n-check.yml:77`), the `continue-on-error` expression at line 85 evaluates to true for it (E-16a), and the job is not a required context (E-21).
 - When Q9 is applied and M2 edits the pull-request strictness step (lines 76–77) and the expression at line 85, as plan.md §B M2 states, then an injected drift fails the job on a pull request run.
@@ -139,6 +165,8 @@
 
 ### AC-PRC-013 — a Hugo build job runs on pull requests (REQ-PRC-013)
 
+Owner: GATE (SPEC-V3R6-DOCS-PREREWRITE-GATE-001)
+
 - Given no workflow contains a Hugo build step (E-19a); the Vercel pin is 0.160.1 (E-17b); the local Hugo v0.160.1 builds the site with exit 0 (E-17a, E-19b).
 - When M2 adds the job at the Q10 version, then it runs Hugo on pull requests and fails on an injected template error.
 - RED-now cells: E-19a (absent), E-17b (the pin), E-19b (green local build, so the content does not block the job).
@@ -147,6 +175,8 @@
 
 ### AC-PRC-014 — a link-check job blocks broken internal links (REQ-PRC-014)
 
+Owner: GATE (SPEC-V3R6-DOCS-PREREWRITE-GATE-001)
+
 - Given no workflow contains a link checker or a link-check job (E-18a), and none of lychee, linkinator, htmltest, or markdown-link-check is installed locally (E-18b; `hugo` is installed).
 - When Q11 is applied and M2 adds the job, then it fails on an injected broken internal link and passes on the closing tree.
 - RED-now cells: E-18a, E-18b.
@@ -154,6 +184,8 @@
 - Done when: a `pull_request` job runs the chosen tool, fails on the named fixture, and passes on the closing tree.
 
 ### AC-PRC-015 — the three jobs are required status checks (REQ-PRC-015) — regression-guard
+
+Owner: parent (SPEC-V3R6-DOCS-PREREWRITE-CLEANUP-001), operator-held (Q12, Q22)
 
 - Given the five required contexts of `main` do not include the three jobs (E-21, external), and enforce_admins is enabled (E-21).
 - When the operator adds the job names as required contexts (Q12, with Q22 deciding the requirement's place), then the external observation lists them.
@@ -310,7 +342,7 @@ f35103480f:docs-site/content/zh/worktree/faq.md:121:    E --> F["/moai run SPEC-
 
 - Command: `git grep -c -E "/moai[: ](design|issue|bug|fb|init|brain|relationship)([^[:alnum:]-]|$)" f35103480f -- README.md README.ko.md README.ja.md README.zh.md docs-site/content`
 - Exit code: 0.
-- Stdout (verbatim; 23 lines; derived: 45 matching lines):
+- Stdout (verbatim; 22 lines; derived: 45 matching lines):
 
 ```
 f35103480f:docs-site/content/en/claude-code/foundations/_index.md:1
@@ -980,27 +1012,29 @@ f35103480f:.moai/docs/docs-site-i18n-rules.md:110:- [ ] Vercel Preview URL 수�
 - Exit code: 1 (wrapper-confirmed).
 - Stdout: no output.
 
-## D. Definition of done (every AC is listed; each is release-blocking (gated) or a regression-guard with a reason)
+## D. Definition of done — umbrella closing table (every AC is listed; each is release-blocking (gated) or a regression-guard with a reason)
 
 Completion verdict. The card's verdict counts the release-blocking rows at their gates, and it reports the regression-guard rows separately. A missing external observation is recorded as a gap, not a pass (gap G1). M6 re-runs the same set on the closing tree.
 
-| AC | REQ | Class | Gate (decision rows) | Closing check (re-run at M6) |
-|----|-----|-------|----------------------|------------------------------|
-| AC-PRC-001 | REQ-PRC-001 | release-blocking (gated) | Q13, Q14; M1 producer | E-01, E-02, E-03, E-04 exit 1 with empty stdout; producer exits 0 |
-| AC-PRC-002 | REQ-PRC-002 | release-blocking (gated) | M1 inputs (Q5, Q18); M2 step; Q12, Q22 if required | fixtures (a) red, (b) green, (c) red; pull-request run red on injected token; closing run prints `cited-verbs: 0`, exit 0 |
-| AC-PRC-003 | REQ-PRC-003 | regression-guard | Q8 | E-20a, E-20b match the Q8 verdict; E-20c recorded as an external observation. Reason: the closing comparison needs the external Latest release, which the repository cannot observe (verification-completeness §2.1). |
-| AC-PRC-004 | REQ-PRC-004 | release-blocking (gated) | Q1 | E-08 lists exactly one file (the Q1 page); each of the eight other pages links to it (E-08b pattern, count ≥ 1) |
-| AC-PRC-005 | REQ-PRC-005 | release-blocking (gated) | Q2 | E-09a empty on the closing tree; E-09b exit 1; E-09b2 recorded |
-| AC-PRC-006 | REQ-PRC-006 | release-blocking (gated; open until Q3 has a verdict) | Q3 | blob size at or below the Q3 verdict value; E-10 refs resolve |
-| AC-PRC-007 | REQ-PRC-007 | release-blocking (gated) | Q4 | `ls-tree` of the two scripts empty; E-16b-skill exit 1; E-16b-hextra patterns exit 1 |
-| AC-PRC-008 | REQ-PRC-008 | release-blocking (gated) | Q6 | `cat-file` of `docs-site/README.md` fails, or the replacement passes its check |
-| AC-PRC-009 | REQ-PRC-009 | release-blocking (gated; operator-held) | Q7 | file absent, or the E-14b pattern exits 1 |
-| AC-PRC-010 | REQ-PRC-010 | release-blocking (gated) | Q15, Q21 | E-15b pattern exits 1; each remaining destination maps to a same-locale page in four locales, one cell per path |
-| AC-PRC-011 | REQ-PRC-011 | release-blocking (gated) | Q16 | E-15d-changelog empty, or the redirect sources removed (Q16 alternate) |
-| AC-PRC-012 | REQ-PRC-012 | release-blocking (gated) | Q9 | pull-request run red on injected drift; closing run green; the closing record names the pull-request run |
-| AC-PRC-013 | REQ-PRC-013 | release-blocking (gated) | Q10 | pull-request job runs the Q10 Hugo version; injected template error red |
-| AC-PRC-014 | REQ-PRC-014 | release-blocking (gated) | Q11 | pull-request job red on an injected broken link; green on the closing tree |
-| AC-PRC-015 | REQ-PRC-015 | regression-guard (operator-held) | Q12, Q22 | external observation lists the job names, recorded with its time. Reason: branch protection is external and operator-held (keep-set), so the observation is recorded, not passed. |
+The umbrella closes only after every child SPEC has landed (owner column; spec.md § Child SPECs). M6 then re-runs this table on the closing tree, and the GATE child's citation checker must print `cited-verbs: 0` with exit 0.
+
+| AC | REQ | Owner child | Class | Gate (decision rows) | Closing check (re-run at M6) |
+|----|-----|-------------|-------|----------------------|------------------------------|
+| AC-PRC-001 | REQ-PRC-001 | README (t1720); SWEEPA to SWEEPF (t1721 to t1725, t1727), through partial criteria | release-blocking (gated) | Q13, Q14; M1 producer | E-01, E-02, E-03, E-04 exit 1 with empty stdout; producer exits 0 |
+| AC-PRC-002 | REQ-PRC-002 | GATE (t1717) | release-blocking (gated) | M1 inputs (Q5, Q18); M2 step; Q12, Q22 if required | fixtures (a) red, (b) green, (c) red; pull-request run red on injected token; closing run prints `cited-verbs: 0`, exit 0 |
+| AC-PRC-003 | REQ-PRC-003 | README (t1720) | regression-guard | Q8 | E-20a, E-20b match the Q8 verdict; E-20c recorded as an external observation. Reason: the closing comparison needs the external Latest release, which the repository cannot observe (verification-completeness §2.1). |
+| AC-PRC-004 | REQ-PRC-004 | README (t1720) | release-blocking (gated) | Q1 | E-08 lists exactly one file (the Q1 page); each of the eight other pages links to it (E-08b pattern, count ≥ 1) |
+| AC-PRC-005 | REQ-PRC-005 | RESID (t1719) | release-blocking (gated) | Q2 | E-09a empty on the closing tree; E-09b exit 1; E-09b2 recorded |
+| AC-PRC-006 | REQ-PRC-006 | RESID (t1719) | release-blocking (gated; open until Q3 has a verdict) | Q3 | blob size at or below the Q3 verdict value; E-10 refs resolve |
+| AC-PRC-007 | REQ-PRC-007 | RESID (t1719) | release-blocking (gated) | Q4 | `ls-tree` of the two scripts empty; E-16b-skill exit 1; E-16b-hextra patterns exit 1 |
+| AC-PRC-008 | REQ-PRC-008 | RESID (t1719) | release-blocking (gated) | Q6 | `cat-file` of `docs-site/README.md` fails, or the replacement passes its check |
+| AC-PRC-009 | REQ-PRC-009 | RESID (t1719) | release-blocking (gated; operator-held) | Q7 | file absent, or the E-14b pattern exits 1 |
+| AC-PRC-010 | REQ-PRC-010 | REDIR (t1718) | release-blocking (gated) | Q15, Q21 | E-15b pattern exits 1; each remaining destination maps to a same-locale page in four locales, one cell per path |
+| AC-PRC-011 | REQ-PRC-011 | REDIR (t1718) | release-blocking (gated) | Q16; Q23 for the moai-mx pair | E-15d-changelog empty, or the redirect sources removed (Q16 alternate); the moai-mx pair at lines 163 and 168 resolved per Q23 |
+| AC-PRC-012 | REQ-PRC-012 | GATE (t1717) | release-blocking (gated) | Q9 | pull-request run red on injected drift; closing run green; the closing record names the pull-request run |
+| AC-PRC-013 | REQ-PRC-013 | GATE (t1717) | release-blocking (gated) | Q10 | pull-request job runs the Q10 Hugo version; injected template error red |
+| AC-PRC-014 | REQ-PRC-014 | GATE (t1717) | release-blocking (gated) | Q11 | pull-request job red on an injected broken link; green on the closing tree |
+| AC-PRC-015 | REQ-PRC-015 | parent (operator-held) | regression-guard (operator-held) | Q12, Q22 | external observation lists the job names, recorded with its time. Reason: branch protection is external and operator-held (keep-set), so the observation is recorded, not passed. |
 
 ## E. Test named, not run
 
@@ -1028,3 +1062,4 @@ Named in plan.md §E and not run here: `docs_cited_verbs_test` (three fixture ca
 - G18 — The `build` recipe's prerequisites were not run (plan §A.2). The binary is built from the recipe's `go build` line, with the scratchpad as its output.
 - G19 — Zero-match exit codes are confirmed with a measurement wrapper outside the cell only where marked `wrapper-confirmed`; the other zero-match entries show `no output`.
 - G20 — The Q7 regenerate branch has no generator in the tree. The verdict's section 5, item 8 reports the same finding; it was not re-measured in revision 0.1.1.
+- G21 — Child SPEC content is written by the lanes that hold the child cards (GATE t1717, REDIR t1718, RESID t1719, README t1720, SWEEPA t1721, SWEEPB t1722, SWEEPC t1723, SWEEPD t1724, SWEEPE t1725, FLAG t1726, and SWEEPF t1727), and it is not observed in revision 0.2.0. No child spec.md, plan.md, or acceptance.md exists yet, so no closing check can observe the child content here. This gap is numbered G21 because G3 already names the Vercel installCommand gap, and gap numbers are not reused.
