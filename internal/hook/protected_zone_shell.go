@@ -87,11 +87,32 @@ var zoneUnlinkVerbs = map[string]bool{
 // the target-following (full resolver) path, the fail-closed direction. On
 // POSIX a trailing dot or space is an ordinary filename character and the
 // literal entry is the one removed — link-own unchanged.
+//
+// WINDOWS DEFERS THE NARROWING ENTIRELY (card t1712 repair round 8): the
+// narrowing is disabled outright — this predicate returns false for every
+// windows operand, routing the unlink family to the PRE-CARD target-
+// following full resolution. Rationale: windows filesystem name aliasing
+// (8.3 short names, locale-specific case tables, fold pairs like ı/I that
+// EqualFold-style folds miss but NTFS equates) cannot be enumerated by fold
+// functions, and the stdlib offers no real-entry-name lookup that does not
+// follow the final symlink; the target-following resolver's
+// EvalSymlinks/Lstat canonicalization is the exact defense reviews 6-8 kept
+// citing, so windows defers to it. The rounds-2..7 guards below (separator
+// split, trailing dot/space, ~digit shape) stay as BELT-AND-SUSPENDERS for
+// any future windows re-enable — they gate a path the early return makes
+// unreachable today, not live routing. Residual: the pre-card over-block
+// (a link-own removal through a final-component link is denied on windows
+// where POSIX allows it) persists on windows — a separate card.
 // windows rides in as an argument, the package's pathSegments idiom, so both
 // branches classify identically on every host; the single production caller
 // passes runtime.GOOS == "windows".
 func zoneUnlinkLinkOwn(cand string, windows bool) bool {
 	if cand == "" {
+		return false
+	}
+	if windows {
+		// class closure, not a mechanism patch (card t1712 repair round 8):
+		// every windows operand keeps the pre-card target-following judgment
 		return false
 	}
 	last := strings.LastIndexByte(cand, '/')
@@ -116,7 +137,9 @@ func zoneUnlinkLinkOwn(cand string, windows bool) bool {
 		// name a DIFFERENT entry than the raw text judges, so they never
 		// route to the link-own resolver (which preserves the raw name); the
 		// target-following resolver's EvalSymlinks/Lstat work judges the
-		// REAL entry (card t1712 repair rounds 5-6)
+		// REAL entry (card t1712 repair rounds 5-6). Belt-and-suspenders
+		// since round 8: unreachable while the windows early return above
+		// defers the narrowing, kept for a future windows re-enable.
 		return false
 	}
 	return true

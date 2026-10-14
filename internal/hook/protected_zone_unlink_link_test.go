@@ -329,24 +329,33 @@ func TestZoneCanonicalDirEntryName(t *testing.T) {
 // `secret.md␣` alias `secret.md` — on windows such a final must NOT route
 // to the link-own resolver (which preserves the raw name) and stays on the
 // target-following judgment instead, while POSIX keeps the literal filename
-// link-own. The windows flag rides in as an argument — the package's
-// pathSegments idiom — so both branches classify identically on every host.
-// Windows shell semantics themselves are not executable on this darwin host:
-// this unit is the measurable surface, and CI's windows matrix owns the
-// end-to-end observation.
+// link-own. Repair round 8 closes the aliasing CLASS structurally: the
+// narrowing is DISABLED on windows outright — every windows=true cell below
+// wants false, and the rounds-2..7 guard cells (separator split, trailing
+// dot/space, ~digit shape) stay as BELT-AND-SUSPENDERS documentation of the
+// narrowing's intended semantics for any future windows re-enable, not live
+// routing. POSIX (windows=false) keeps the narrowing and these cells pin it.
+// The windows flag rides in as an argument — the package's pathSegments
+// idiom — so both branches classify identically on every host. Windows shell
+// semantics themselves are not executable on this darwin host: this unit is
+// the measurable surface, and CI's windows matrix owns the end-to-end
+// observation.
 func TestZoneUnlinkLinkOwnWindowsSeparators(t *testing.T) {
 	cells := []struct {
 		cand    string
 		windows bool
 		want    bool
 	}{
-		// windows: the backslash separates — dereference spellings route to
-		// the target-following judgment, a real final name stays link-own.
+		// windows (narrowing disabled, round 8): EVERY operand — plain names
+		// included — routes to the target-following full resolution, whose
+		// EvalSymlinks/Lstat canonicalization restores the real entry name.
+		// The per-mechanism guard cells below document why each spelling was
+		// never link-own-safe and stay green as defense-in-depth.
 		{cand: `zonelink\.`, windows: true, want: false},
 		{cand: `zonelink\`, windows: true, want: false},
-		{cand: `zonelink\child`, windows: true, want: true},
-		{cand: `C:\dir\link`, windows: true, want: true},
-		{cand: `zonelink/child`, windows: true, want: true},
+		{cand: `zonelink\child`, windows: true, want: false},
+		{cand: `C:\dir\link`, windows: true, want: false},
+		{cand: `zonelink/child`, windows: true, want: false},
 		{cand: `zonelink/`, windows: true, want: false},
 		// windows: Win32 strips trailing dots/spaces from the final component
 		// — these alias a DIFFERENT real name, so they are not the link's own
