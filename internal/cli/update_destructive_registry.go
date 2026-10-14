@@ -139,11 +139,14 @@ var destructiveTargetRegistry = []destructiveSite{
 			"a RemovalSchedule.",
 	},
 	{
-		File: "internal/cli/update.go", Function: "ensureGlobalSettingsEnv", Sites: 1,
+		File: "internal/cli/update.go", Function: "ensureSettingsEnvInConfigRoot", Sites: 1,
 		Protection: "Deletion-radius pinning is M4's REQ-UDS-011/014: this site removes a subdirectory " +
-			"of the operator's HOME, outside the project root, so a widened radius — not a missing " +
-			"backup — is the failure mode. A HOME-scoped backup is out of scope because it would " +
-			"itself write outside the project (plan.md §C.1 row 13).",
+			"of a Claude config root under the operator's HOME, outside the project root, so a widened " +
+			"radius — not a missing backup — is the failure mode. A HOME-scoped backup is out of scope " +
+			"because it would itself write outside the project (plan.md §C.1 row 13). Since card t1702 " +
+			"the loop replays the SAME per-root radius (<root>/hooks/moai) across every real Claude " +
+			"config root (~/.claude + each profile dir); the reach widening is enumeration, never a " +
+			"per-root radius widening, and junk dirs under the profile base are never enumerated.",
 	},
 	{
 		File: "internal/cli/update_namespace_protect.go", Function: "backupUserOwnedNamespace", Sites: 3,

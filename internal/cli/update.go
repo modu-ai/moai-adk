@@ -26,6 +26,7 @@ import (
 	"github.com/modu-ai/moai-adk/internal/shell"
 	"github.com/modu-ai/moai-adk/internal/template"
 	"github.com/modu-ai/moai-adk/internal/tui"
+	"github.com/modu-ai/moai-adk/internal/userassets"
 	"github.com/modu-ai/moai-adk/pkg/version"
 	"github.com/spf13/cobra"
 )
@@ -1042,33 +1043,58 @@ func updateSettingsLocalEnv(settingsPath, key, value string) error {
 	})
 }
 
-// globalMoaiHooksDir returns the global moai hooks directory under homeDir.
-// It is the single named removal target for ensureGlobalSettingsEnv, so the
-// deletion-radius guard has one symbol to assert against instead of
-// re-deriving the path independently.
+// globalMoaiHooksDir returns the global moai hooks directory under the
+// default Claude config root (~/.claude). It is the single named removal
+// target for ensureGlobalSettingsEnv, so the deletion-radius guard has one
+// symbol to assert against instead of re-deriving the path independently.
 func globalMoaiHooksDir(homeDir string) string {
-	return filepath.Join(homeDir, defs.ClaudeDir, "hooks", "moai")
+	return configRootMoaiHooksDir(filepath.Join(homeDir, defs.ClaudeDir))
 }
 
-// ensureGlobalSettingsEnv cleans up moai-managed settings from ~/.claude/settings.json.
-// All settings (env, permissions, teammateMode, hooks) are managed at the project level.
-// The global hooks directory (~/.claude/hooks/moai/) is also removed since hooks
-// are only deployed to project-level directories via moai init.
+// configRootMoaiHooksDir returns the moai hooks directory inside one Claude
+// config root. A profile dir carries the same layout as ~/.claude because
+// CLAUDE_CONFIG_DIR points at it (card t1702 gap 2).
+func configRootMoaiHooksDir(configRoot string) string {
+	return filepath.Join(configRoot, "hooks", "moai")
+}
+
+// ensureGlobalSettingsEnv cleans up moai-managed settings from every Claude
+// config root a session can use (card t1702 gap 2): ~/.claude plus each real
+// profile directory under ~/.moai/claude-profiles — a profile-launched
+// session runs with CLAUDE_CONFIG_DIR pointed at its profile dir, so the
+// same cleanup must reach <profile>/settings.json and <profile>/hooks/moai.
+// All settings (env, permissions, teammateMode, hooks) are managed at the
+// project level. The moai hooks directory in each root is also removed since
+// hooks are only deployed to project-level directories via moai init.
 func ensureGlobalSettingsEnv() error {
 	homeDir, err := userHomeDirFn()
 	if err != nil {
 		return fmt.Errorf("get home directory: %w", err)
 	}
 
-	// Remove global hooks/moai directory if it exists.
-	// Hooks are project-level only; the global directory causes "No such file or directory"
-	// errors in non-initialized projects that reference $CLAUDE_PROJECT_DIR paths.
-	globalHooksDir := globalMoaiHooksDir(homeDir)
+	for _, configRoot := range userassets.ClaudeConfigRoots(homeDir) {
+		if err := ensureSettingsEnvInConfigRoot(configRoot); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+// ensureSettingsEnvInConfigRoot applies the moai-managed settings cleanup to
+// one Claude config root: the hooks-dir removal plus the settings.json
+// read-modify-write. A missing settings.json means nothing to clean beyond
+// the hooks directory.
+func ensureSettingsEnvInConfigRoot(configRoot string) error {
+	// Remove the config root's hooks/moai directory if it exists.
+	// Hooks are project-level only; a config-root-level directory causes
+	// "No such file or directory" errors in non-initialized projects that
+	// reference $CLAUDE_PROJECT_DIR paths.
+	globalHooksDir := configRootMoaiHooksDir(configRoot)
 	if _, err := os.Stat(globalHooksDir); err == nil {
 		_ = os.RemoveAll(globalHooksDir)
 	}
 
-	globalSettingsPath := filepath.Join(homeDir, defs.ClaudeDir, defs.SettingsJSON)
+	globalSettingsPath := filepath.Join(configRoot, defs.SettingsJSON)
 
 	// Read existing global settings
 	var existingSettings map[string]any

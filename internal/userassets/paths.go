@@ -10,13 +10,16 @@
 package userassets
 
 import (
+	"os"
 	"path/filepath"
+	"sort"
 	"strings"
 )
 
-// RootSlug names one of the four user-folder roots. The slugs are fixed so
-// the backup home `~/.moai/backups/<root-slug>/<relpath>` (iter4 D33) cannot
-// collide two roots on the same relpath.
+// RootSlug names a user-folder root: one of the four fixed slugs, or a
+// profile-derived slug `<base>@<profile>` (card t1702). The slugs are unique
+// per root so the backup home `~/.moai/backups/<root-slug>/<relpath>`
+// (iter4 D33) cannot collide two roots on the same relpath.
 type RootSlug string
 
 const (
@@ -26,20 +29,124 @@ const (
 	RootCodexAgents  RootSlug = "codex-agents"  // ~/.codex/agents
 )
 
+// reservedProfileDirName is the sentinel directory name that is never a real
+// profile (card t1702): tooling creates it as a placeholder for "a profile
+// that does not exist", so a directory bearing it under the profile base is
+// junk by definition.
+const reservedProfileDirName = "__no_such_profile__"
+
 // Root is one resolved user-folder install root.
 type Root struct {
 	Slug RootSlug
 	Dir  string // absolute path of the user folder
 }
 
-// ResolveRoots returns the four install roots under the given home.
+// RootKind returns a root slug's base kind. The four fixed slugs are their
+// own kind; a profile-derived slug `claude-skills@<profile>` has the kind of
+// its base slug, so per-kind logic (which roots a skill lands in) treats a
+// profile root exactly like its home-level counterpart.
+func RootKind(slug RootSlug) RootSlug {
+	if base, _, found := strings.Cut(string(slug), "@"); found {
+		return RootSlug(base)
+	}
+	return slug
+}
+
+// ProfileRootsBase returns the profile store base dir (~/.moai/claude-profiles).
+//
+// @MX:ANCHOR: [AUTO] profile-store base resolver — the single profile-base seam
+// @MX:REASON: three consumers (ResolveRoots, RealProfileDirNames,
+// ClaudeConfigRoots) derive every profile-root path from this one join;
+// letting any of them re-derive the base independently would let a renamed
+// profile store silently fork the enumeration.
+func ProfileRootsBase(home string) string {
+	return filepath.Join(MoaiHome(home), "claude-profiles")
+}
+
+// ValidProfileDirName reports whether name can name a real profile directory
+// (card t1702): traversal-safe (no separators, no leading dot, not absolute),
+// whitespace-free, and not the reserved sentinel. Profile names carrying
+// spaces or sentinel shapes are junk a directory sweep can leave behind and
+// are never enumerated as install targets.
+func ValidProfileDirName(name string) bool {
+	if name == "" || name == "." || name == ".." {
+		return false
+	}
+	if strings.Contains(name, "/") || strings.Contains(name, "\\") || strings.HasPrefix(name, ".") {
+		return false
+	}
+	if filepath.IsAbs(name) {
+		return false
+	}
+	if strings.ContainsAny(name, " \t\n\r") {
+		return false
+	}
+	return name != reservedProfileDirName
+}
+
+// RealProfileDirNames returns the sorted names of the real profile
+// directories under the profile base. A missing base yields nil; entries
+// that are not directories or whose name fails ValidProfileDirName are
+// ignored.
+//
+// @MX:ANCHOR: [AUTO] real-profile enumeration — the junk-filter SSOT
+// @MX:REASON: the install roots, the settings cleanup, and the doctor's
+// active-root summary all enumerate through this one predicate; a looser
+// copy elsewhere would start installing into (or cleaning) junk directories.
+func RealProfileDirNames(home string) []string {
+	dirEntries, err := os.ReadDir(ProfileRootsBase(home))
+	if err != nil {
+		return nil
+	}
+	var names []string
+	for _, e := range dirEntries {
+		if !e.IsDir() || !ValidProfileDirName(e.Name()) {
+			continue
+		}
+		names = append(names, e.Name())
+	}
+	sort.Strings(names)
+	return names
+}
+
+// ClaudeConfigRoots returns every Claude config directory a session can use
+// (card t1702 gaps 1-2): ~/.claude, plus each real profile directory — a
+// profile-launched session runs with CLAUDE_CONFIG_DIR pointed at its
+// profile dir, so the dir carries the same settings.json/hooks shape as
+// ~/.claude. The result is deterministic: ~/.claude first, then profile dirs
+// sorted by name. Junk directories are never returned and nothing is created.
+func ClaudeConfigRoots(home string) []string {
+	roots := []string{filepath.Join(home, ".claude")}
+	for _, name := range RealProfileDirNames(home) {
+		roots = append(roots, filepath.Join(ProfileRootsBase(home), name))
+	}
+	return roots
+}
+
+// ResolveRoots returns the install roots under the given home: the four
+// fixed roots, plus — for each real profile directory under
+// ~/.moai/claude-profiles — the two Claude-side roots that a
+// profile-launched session can see (card t1702 gap 1). Profile-derived
+// slugs are `claude-skills@<profile>` / `claude-agents@<profile>` so the
+// manifest, journal, and backup home stay collision-free; the home-level
+// roots (.agents, .codex) stay shared across profiles because only
+// CLAUDE_CONFIG_DIR is per-profile.
 func ResolveRoots(home string) []Root {
-	return []Root{
+	roots := []Root{
 		{Slug: RootClaudeSkills, Dir: filepath.Join(home, ".claude", "skills")},
 		{Slug: RootClaudeAgents, Dir: filepath.Join(home, ".claude", "agents")},
 		{Slug: RootAgentsSkills, Dir: filepath.Join(home, ".agents", "skills")},
 		{Slug: RootCodexAgents, Dir: filepath.Join(home, ".codex", "agents")},
 	}
+	base := ProfileRootsBase(home)
+	for _, name := range RealProfileDirNames(home) {
+		pdir := filepath.Join(base, name)
+		roots = append(roots,
+			Root{Slug: RootSlug(string(RootClaudeSkills) + "@" + name), Dir: filepath.Join(pdir, "skills")},
+			Root{Slug: RootSlug(string(RootClaudeAgents) + "@" + name), Dir: filepath.Join(pdir, "agents")},
+		)
+	}
+	return roots
 }
 
 // RootBySlugDir returns the absolute directory for a root slug (the

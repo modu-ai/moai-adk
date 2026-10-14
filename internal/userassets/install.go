@@ -98,7 +98,7 @@ func (in *Installer) Install(selection []string) (*Result, error) {
 	res := &Result{}
 
 	// Resolve the four roots once per run (C2).
-	roots := make(map[RootSlug]resolvedRoot, 4)
+	roots := make(map[RootSlug]resolvedRoot, len(ResolveRoots(in.Home)))
 	for _, r := range ResolveRoots(in.Home) {
 		rr, err := resolveRoot(in.Home, r)
 		if err != nil {
@@ -364,11 +364,30 @@ type installTarget struct {
 	sha         string
 }
 
+// rootSlugsOfKind returns the install roots whose base kind matches one of
+// the given kinds, in ResolveRoots order — base roots first, then
+// profile-derived roots by profile name (card t1702 gap 1).
+func (in *Installer) rootSlugsOfKind(kinds ...RootSlug) []RootSlug {
+	kindSet := make(map[RootSlug]bool, len(kinds))
+	for _, k := range kinds {
+		kindSet[k] = true
+	}
+	var slugs []RootSlug
+	for _, r := range ResolveRoots(in.Home) {
+		if kindSet[RootKind(r.Slug)] {
+			slugs = append(slugs, r.Slug)
+		}
+	}
+	return slugs
+}
+
 // installTargets enumerates the destination files for L0 ∪ selection:
-// skill entries land whole-tree in BOTH skill roots (Claude + Codex); agent
-// entries land flat in both agent roots — the Claude body from
-// .claude/agents/moai/<name>.md, the Codex body from the emitted
-// .codex/agents/moai/<name>.toml (REQ-022).
+// skill entries land whole-tree in EVERY skills-kind root (Claude base +
+// Codex home-level + each profile's Claude-side root); agent entries land
+// flat in every agent-kind root — the Claude body from
+// .claude/agents/moai/<name>.md into the Claude base and profile roots, the
+// Codex body from the emitted .codex/agents/moai/<name>.toml into the
+// home-level Codex root (REQ-022; card t1702 gap 1).
 //
 // REQ-UMF-006 (SPEC-UPDATE-MIGRATION-FIX-001): the second result names every
 // directory entry that yields no file target. The caller reports each one as a
@@ -380,11 +399,11 @@ func (in *Installer) installTargets(selection []string) ([]installTarget, []stri
 	for _, e := range entries {
 		switch {
 		case strings.HasSuffix(e.Path, "/"):
-			// Skill directory — both harness roots. Source paths are
+			// Skill directory — every skills-kind root. Source paths are
 			// catalog paths with the templates/ prefix stripped
 			// (EmbeddedTemplates exposes the stripped FS).
 			before := len(targets)
-			for _, slug := range []RootSlug{RootClaudeSkills, RootAgentsSkills} {
+			for _, slug := range in.rootSlugsOfKind(RootClaudeSkills, RootAgentsSkills) {
 				ts, err := in.dirTargets(slug, e, strings.TrimSuffix(srcPath(e.Path), "/"))
 				if err != nil {
 					return nil, nil, err
@@ -396,18 +415,20 @@ func (in *Installer) installTargets(selection []string) ([]installTarget, []stri
 				emptyTargets = append(emptyTargets, e.Name)
 			}
 		case strings.HasSuffix(e.Path, ".md"):
-			// Claude agent body.
-			t, err := in.fileTarget(RootClaudeAgents, e.Name+".md", srcPath(e.Path), e)
-			if err != nil {
-				return nil, nil, err
+			// Claude agent body — every claude-agents-kind root.
+			for _, slug := range in.rootSlugsOfKind(RootClaudeAgents) {
+				t, err := in.fileTarget(slug, e.Name+".md", srcPath(e.Path), e)
+				if err != nil {
+					return nil, nil, err
+				}
+				targets = append(targets, t)
 			}
-			targets = append(targets, t)
-			// Codex agent body — the emitted TOML (REQ-022).
+			// Codex agent body — the emitted TOML (REQ-022), home-level only.
 			tomlPath := ".codex/agents/moai/" + e.Name + ".toml"
 			if _, err := fs.Stat(in.Source, tomlPath); err != nil {
 				return nil, nil, fmt.Errorf("codex agent TOML for %s: %w", e.Name, err)
 			}
-			t, err = in.fileTarget(RootCodexAgents, e.Name+".toml", tomlPath, e)
+			t, err := in.fileTarget(RootCodexAgents, e.Name+".toml", tomlPath, e)
 			if err != nil {
 				return nil, nil, err
 			}

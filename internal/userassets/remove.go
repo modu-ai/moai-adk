@@ -36,7 +36,7 @@ func (in *Installer) PruneUnselected(manifest *Manifest) (*Result, error) {
 	if err := manifest.CanRemove(); err != nil {
 		return nil, err
 	}
-	roots := make(map[RootSlug]resolvedRoot, 4)
+	roots := make(map[RootSlug]resolvedRoot, len(ResolveRoots(in.Home)))
 	for _, r := range ResolveRoots(in.Home) {
 		rr, err := resolveRoot(in.Home, r)
 		if err != nil {
@@ -229,7 +229,7 @@ func (in *Installer) RemoveBundle(manifest *Manifest, name string, remaining []s
 		return nil, err // REQ-021 refusal against an unknown schema
 	}
 	// Resolve the roots once (same posture as Install).
-	roots := make(map[RootSlug]resolvedRoot, 4)
+	roots := make(map[RootSlug]resolvedRoot, len(ResolveRoots(in.Home)))
 	for _, r := range ResolveRoots(in.Home) {
 		rr, err := resolveRoot(in.Home, r)
 		if err != nil {
@@ -345,7 +345,8 @@ func (in *Installer) preservedEntries(selection []string) []template.Entry {
 	return entries
 }
 
-// entryManifestKeys lists the manifest keys one entry's destinations carry.
+// entryManifestKeys lists the manifest keys one entry's destinations carry —
+// one per skills/agents-kind root, profile roots included (card t1702).
 func (in *Installer) entryManifestKeys(e template.Entry) []string {
 	var keys []string
 	switch {
@@ -356,13 +357,15 @@ func (in *Installer) entryManifestKeys(e template.Entry) []string {
 				return nil
 			}
 			rel := strings.TrimPrefix(p, srcDir+"/")
-			keys = append(keys,
-				string(RootClaudeSkills)+"/"+e.Name+"/"+rel,
-				string(RootAgentsSkills)+"/"+e.Name+"/"+rel)
+			for _, slug := range in.rootSlugsOfKind(RootClaudeSkills, RootAgentsSkills) {
+				keys = append(keys, string(slug)+"/"+e.Name+"/"+rel)
+			}
 			return nil
 		})
 	case strings.HasSuffix(e.Path, ".md"):
-		keys = append(keys, string(RootClaudeAgents)+"/"+e.Name+".md")
+		for _, slug := range in.rootSlugsOfKind(RootClaudeAgents) {
+			keys = append(keys, string(slug)+"/"+e.Name+".md")
+		}
 		if _, err := fs.Stat(in.Source, ".codex/agents/moai/"+e.Name+".toml"); err == nil {
 			keys = append(keys, string(RootCodexAgents)+"/"+e.Name+".toml")
 		}
@@ -384,9 +387,11 @@ func (in *Installer) readShippedForKey(e template.Entry, key string) ([]byte, er
 }
 
 // sourcePathFor maps a (root slug, entry, rel) triple back to the source
-// tree path (stripped FS form).
+// tree path (stripped FS form). Profile-derived slugs judge by their base
+// kind (RootKind), so a profile root shares its home-level counterpart's
+// shipped source (card t1702).
 func (in *Installer) sourcePathFor(slug RootSlug, e template.Entry, rel string) (string, bool) {
-	switch slug {
+	switch RootKind(slug) {
 	case RootClaudeSkills, RootAgentsSkills:
 		// F10 (review-fix round 2): use the entry's ACTUAL catalog path —
 		// published command skills live under .agents/skills, not .claude/

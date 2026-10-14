@@ -14,6 +14,7 @@ import (
 
 	"github.com/modu-ai/moai-adk/internal/cli/uikit"
 	"github.com/modu-ai/moai-adk/internal/manifest"
+	"github.com/modu-ai/moai-adk/internal/template"
 	"github.com/modu-ai/moai-adk/internal/userassets"
 )
 
@@ -121,6 +122,51 @@ func splitManifestKeyUser(key string) (userassets.RootSlug, string, bool) {
 		return "", "", false
 	}
 	return userassets.RootSlug(slug), rest, true
+}
+
+// checkProfileSkillReach verifies that ONE active Claude config root can
+// resolve the core skills a standard install lands: a SKILL.md per
+// embedded-catalog core entry under <root>/skills/<name>/ (card t1702). The
+// caller resolves the active root (CLAUDE_CONFIG_DIR when set, else
+// ~/.claude) and its DISPLAY form — the env value verbatim, or the literal
+// "~/.claude" for the fallback — so the rendered message stays free of
+// machine-specific absolute paths (the doctor golden snapshots require that
+// hermeticity). Report-only: a gap warns with the repair command, it never
+// installs.
+func checkProfileSkillReach(activeRoot, displayRoot string, verbose bool) DiagnosticCheck {
+	check := DiagnosticCheck{Name: "Skill Reach"}
+
+	cat, err := template.LoadEmbeddedCatalog()
+	if err != nil {
+		check.Status = uikit.CheckWarn
+		check.Message = fmt.Sprintf("cannot load embedded catalog: %v", err)
+		return check
+	}
+	core := cat.Catalog.Core.Skills
+	if len(core) == 0 {
+		check.Status = uikit.CheckOK
+		check.Message = "no core skills in the embedded catalog"
+		return check
+	}
+
+	missing := 0
+	for _, e := range core {
+		if _, err := os.Stat(filepath.Join(activeRoot, "skills", e.Name, "SKILL.md")); err == nil {
+			continue
+		}
+		missing++
+		if verbose {
+			check.Detail += fmt.Sprintf("\nmissing: %s", e.Name)
+		}
+	}
+	if missing > 0 {
+		check.Status = uikit.CheckWarn
+		check.Message = fmt.Sprintf("%d of %d core skill(s) NOT resolvable from %s — run 'moai update' to install into the active config root", missing, len(core), displayRoot)
+		return check
+	}
+	check.Status = uikit.CheckOK
+	check.Message = fmt.Sprintf("%d core skill(s) resolvable from %s", len(core), displayRoot)
+	return check
 }
 
 // checkProjectVsLock compares the project tree against the project lock file

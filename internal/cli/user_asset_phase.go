@@ -140,6 +140,7 @@ func runUserAssetUpdatePhase(homeDir string, out io.Writer) error {
 	}
 
 	writeInstallSummary(out, "user-asset update", ensureRes)
+	_, _ = fmt.Fprintln(out, userAssetRootsLine(homeDir))
 	if pruneRes != nil {
 		_, _ = fmt.Fprintf(out, "user-asset prune: %d removed, %d divergence-preserved\n",
 			pruneRes.Removed, pruneRes.DivergencePreserved)
@@ -154,6 +155,19 @@ func runUserAssetUpdatePhase(homeDir string, out io.Writer) error {
 		}
 	}
 	return nil
+}
+
+// userAssetRootsLine renders the update summary's roots-reached line (card
+// t1702): the base root count plus the profile-derived roots the phase
+// reached — count-aware, profile names included so the operator sees which
+// Claude config roots a session can now resolve the core skills from.
+func userAssetRootsLine(homeDir string) string {
+	profiles := userassets.RealProfileDirNames(homeDir)
+	if len(profiles) == 0 {
+		return "user-asset roots reached: 4 base roots (no Claude profile dirs)"
+	}
+	return fmt.Sprintf("user-asset roots reached: 4 base roots + %d profile roots (%s)",
+		2*len(profiles), strings.Join(profiles, ", "))
 }
 
 // userCodexInstallPresent reports whether the per-user Codex dispatcher
