@@ -564,3 +564,54 @@ Boundary cases: none — all four mode criteria resolved unambiguously.
 - 2026-10-09T13:11:28Z SPEC-UPDATE-MIGRATION-FIX-001 ceiling-outcome outcome=pass-through reasons="plan-audit ceiling reached (round count 3 >= tier ceiling 2 + 1 delta rounds); the verdict is admission-clean and admits without a question (REQ-ACE-013)" evidence=/Users/goos/moai/moai-adk-go/.moai/worktrees/t1578/.moai/reports/t1578/plan-audit-iter1.md,/Users/goos/moai/moai-adk-go/.moai/worktrees/t1578/.moai/reports/t1578/plan-audit-iter2.md,/Users/goos/moai/moai-adk-go/.moai/worktrees/t1578/.moai/reports/t1578/plan-audit-iter3.md
 - 2026-10-09T13:12:37Z SPEC-UPDATE-MIGRATION-FIX-001 ceiling-outcome outcome=pass-through reasons="plan-audit ceiling reached (round count 3 >= tier ceiling 2 + 1 delta rounds); the verdict is admission-clean and admits without a question (REQ-ACE-013)" evidence=/Users/goos/moai/moai-adk-go/.moai/worktrees/t1578/.moai/reports/t1578/plan-audit-iter1.md,/Users/goos/moai/moai-adk-go/.moai/worktrees/t1578/.moai/reports/t1578/plan-audit-iter2.md,/Users/goos/moai/moai-adk-go/.moai/worktrees/t1578/.moai/reports/t1578/plan-audit-iter3.md
 - 2026-10-09T16:19:39Z SPEC-UPDATE-MIGRATION-FIX-001 ceiling-outcome outcome=pass-through reasons="plan-audit ceiling reached (round count 3 >= tier ceiling 2 + 1 delta rounds); the verdict is admission-clean and admits without a question (REQ-ACE-013)" evidence=/Users/goos/MoAI/moai-adk-go/.moai/worktrees/t1578/.moai/reports/t1578/plan-audit-iter1.md,/Users/goos/MoAI/moai-adk-go/.moai/worktrees/t1578/.moai/reports/t1578/plan-audit-iter2.md,/Users/goos/MoAI/moai-adk-go/.moai/worktrees/t1578/.moai/reports/t1578/plan-audit-iter3.md
+
+## §J Pre-landing absorb record (card t1578)
+
+Scope: absorb of local main into the card branch before landing, as directed by the leader and board rule d-20261011T010153Z-16ac (step 5: a card absorbs main only after main contains 1236348ac). Landing, `moai integration remeasure`, and `moai factory complete` are NOT part of this record; they wait for the leader's nomination.
+
+Preconditions (measured in this run):
+- `git cat-file -t 1236348ac` -> `commit`
+- `git merge-base --is-ancestor 1236348ac 478285ab4` -> exit 0 (1236348ac is an ancestor of main)
+- `git rev-parse --short main` -> `478285ab4`
+- Card HEAD before the absorb: `62ed0e691efb2567b2226c0407c95fe236e55585` (pushed; origin matched)
+- Merge base of card HEAD and main: `2aab5f797`; commits main has that the card lacks: 214
+
+Absorb:
+- Command: `git merge --no-ff --no-commit 478285ab4`; output: `Auto-merging CHANGELOG.md`, `Automatic merge went well; stopped before committing as requested`
+- Unmerged paths after the merge: 0
+- Absorb commit (merge, card id in subject): `82fe93cc194df56fda340f737148b0c7fc546c17`
+- Its tree: `d05cf24dc4e15fbe399c7970775d0574b4313ccc`, the same tree the verification below ran against (taken with `git write-tree` before the commit and compared after it)
+- Second parent: `478285ab4c1fc893b020bb464d14cb69c8422523` (local main)
+
+Working copy after the absorb (read-only grep, not edited):
+- `.moai/config/sections/git-strategy.yaml` line 16: `        develop_branch: main`
+
+Compile:
+- `go build ./...` -> exit 0, no output
+
+Affected packages, run on the merged tree with `-count=1`, verdict lines verbatim:
+- `go test -count=1 ./internal/bugreport` -> `ok  	github.com/modu-ai/moai-adk/internal/bugreport	5.781s` (exit 0)
+- `go test -count=1 ./internal/userassets` -> `ok  	github.com/modu-ai/moai-adk/internal/userassets	0.998s` (exit 0)
+- `go vet ./internal/bugreport ./internal/userassets` -> exit 0, no output
+- `go test -count=1 -v ./internal/cli -run 'TestRunUpdate_CodexOnly|TestIntegrityProbe|TestRunUpdate_VersionMatch|TestRunUpdate_UserCancelled|TestReadProbeFile_Handle|TestTemplateSync_LeavesNoEmpty|TestTemplateSync_ManagedSweep'` -> exit 0, verdict lines:
+
+```
+--- PASS: TestRunUpdate_CodexOnlyVersionMatch_PrintsNoIntegrityRow (2.17s)
+--- PASS: TestIntegrityProbe_ClaudeOnlyMemberFollowsHarness (0.01s)
+--- PASS: TestRunUpdate_VersionMatch_RunsIntegrityProbe (1.29s)
+--- PASS: TestRunUpdate_UserCancelled_SkipsIntegrityProbe (0.18s)
+--- PASS: TestIntegrityProbe_FailOpen (1.15s)
+--- PASS: TestIntegrityProbeEntry_DamageReasons (0.07s)
+--- PASS: TestReadProbeFile_HandleRecheckRefusesNonRegular (0.00s)
+--- PASS: TestIntegrityProbeSet_EveryMemberObservableOnVersionMatchedPath (0.01s)
+--- PASS: TestTemplateSync_LeavesNoEmptyManagedSkillDirs (0.86s)
+--- PASS: TestTemplateSync_ManagedSweepFlagsPlantedEmptyDir (0.00s)
+PASS
+ok  	github.com/modu-ai/moai-adk/internal/cli	8.272s
+```
+
+Not run in this record:
+- the full `internal/cli` suite (heavy locally; CI carries it) and `go test ./...`
+- `moai integration remeasure`, `moai factory complete`, and any landing step (after the leader's nomination)
+
+Attribution: the tests ran on the staged merge state before the commit. The commit's tree equals that state (`d05cf24d…`), and no tracked file was edited between the verification and the commit.

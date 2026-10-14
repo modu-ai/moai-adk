@@ -152,8 +152,9 @@ func TestInitResumeExplicitLLMClaudeRefusedOverGPTLayout(t *testing.T) {
 	resumeForgetRecord(t, projectDir)
 	llmBefore := readResumeLLMYAML(t, projectDir)
 
+	manifestBefore := readUserManifestForTest(t)
 	err := resumeRun(t, projectDir, "claude")
-	requireResumeRefused(t, err, projectDir, llmBefore, "", "gpt", "claude")
+	requireResumeRefused(t, err, projectDir, llmBefore, manifestBefore, "", "gpt", "claude")
 }
 
 // TestInitResumeChangedWizardAnswerOverRecordedGPTIsRefused — Item A, restated by
@@ -168,8 +169,9 @@ func TestInitResumeChangedWizardAnswerOverRecordedGPTIsRefused(t *testing.T) {
 	llmBefore := readResumeLLMYAML(t, projectDir)
 
 	resumeWizardAnswer(t, func(string) string { return "claude" })
+	manifestBefore := readUserManifestForTest(t)
 	err := resumeRun(t, projectDir, "")
-	requireResumeRefused(t, err, projectDir, llmBefore, "gpt", "gpt", "claude")
+	requireResumeRefused(t, err, projectDir, llmBefore, manifestBefore, "gpt", "gpt", "claude")
 }
 
 // TestInitResumeLegacyFallbackAppliesWithoutRecordOrFlag — a guard on the legacy

@@ -71,15 +71,18 @@ func writeResumeMarker(t *testing.T, projectDir string) {
 	}
 }
 
-// TestInitResumeRecordSurvivesInterruptedEnsure — Finding 1. The run dies inside
-// the user-asset ensure. A panic stands in for the process death, so no error
+// TestInitResumeRecordSurvivesInterruptedEnsure — Finding 1 (re-aimed by card t1619:
+// the record opens after the executor, so the interruption is the post-executor
+// window). The run dies there. A panic stands in for the process death, so no error
 // branch runs. The selection record must already be on disk for the resume to read.
 func TestInitResumeRecordSurvivesInterruptedEnsure(t *testing.T) {
 	isolatedInitHome(t)
 	projectDir := filepath.Join(t.TempDir(), "interrupted-ensure-proj")
-	stubEnsure(t, func(string, []string, io.Writer) error {
-		panic("simulated process death inside the user-asset ensure")
-	})
+	origWindow := initWindowFn
+	t.Cleanup(func() { initWindowFn = origWindow })
+	initWindowFn = func(string) error {
+		panic("simulated process death inside the post-executor window")
+	}
 
 	var interrupted any
 	func() {
@@ -121,16 +124,19 @@ func TestInitResumeWiringFailureIsAnError(t *testing.T) {
 
 // TestInitWiringFailureWarnsOutsideResume — guard. The healthy init path keeps its
 // warn-only Codex wiring: the same path condition produces a named warning and a
-// successful init. The condition is planted inside the ensure seam, because the
-// executor has deployed the project by then, and a fresh init refuses a project
-// whose .moai/ directory already exists.
+// successful init. The condition is planted in the post-executor window (card t1619):
+// the executor has deployed the project by then. A plant before the executor would
+// create .moai/, and a fresh init refuses a project whose .moai/ directory already
+// exists (validator.go:130).
 func TestInitWiringFailureWarnsOutsideResume(t *testing.T) {
 	isolatedInitHome(t)
 	projectDir := filepath.Join(t.TempDir(), "healthy-wiring-fail-proj")
-	stubEnsure(t, func(homeDir string, selection []string, out io.Writer) error {
-		writeCorruptWiringJournal(t, projectDir)
-		return ensureUserAssetsLocked(homeDir, selection, out)
-	})
+	origWindow := initWindowFn
+	t.Cleanup(func() { initWindowFn = origWindow })
+	initWindowFn = func(root string) error {
+		writeCorruptWiringJournal(t, root)
+		return nil
+	}
 
 	cmd := newInitTestCmd()
 	if err := cmd.Flags().Set("llm", "both"); err != nil {
@@ -163,12 +169,14 @@ func TestInitResumeRecordRetirementFollowsMarker(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			isolatedInitHome(t)
 			projectDir := filepath.Join(t.TempDir(), "retirement-proj")
-			stubEnsure(t, func(homeDir string, selection []string, out io.Writer) error {
+			origWindow := initWindowFn
+			t.Cleanup(func() { initWindowFn = origWindow })
+			initWindowFn = func(root string) error {
 				if tc.markerKept {
-					writeResumeMarker(t, projectDir)
+					writeResumeMarker(t, root)
 				}
-				return ensureUserAssetsLocked(homeDir, selection, out)
-			})
+				return nil
+			}
 
 			cmd := newInitTestCmd()
 			if err := cmd.Flags().Set("llm", "both"); err != nil {

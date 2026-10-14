@@ -85,15 +85,6 @@ func TestInitResumeAppliesJevSelection(t *testing.T) {
 	t.Setenv("MOAI_SANDBOX_PROOF", "")
 	t.Setenv("MOAI_DISABLE_BYPASS_PERMISSIONS_MODE", "")
 
-	// The ensure-failure injection: a corrupt USER manifest makes
-	// InstallPreserveSelection fail after the executor finished deploying.
-	if err := os.MkdirAll(filepath.Join(home, ".moai"), 0o755); err != nil {
-		t.Fatal(err)
-	}
-	if err := os.WriteFile(filepath.Join(home, ".moai", "user-assets.json"), []byte("{ corrupt\n"), 0o644); err != nil {
-		t.Fatal(err)
-	}
-
 	seamsForInit(t)
 	// The wizard ANSWERED yes to Jev (gate 47-4: the resume must keep it)
 	// and DECLINED participation (gate 50-3: the resume must record the
@@ -106,13 +97,14 @@ func TestInitResumeAppliesJevSelection(t *testing.T) {
 	t.Cleanup(func() { runWizardFn = origWizard })
 
 	projectDir := filepath.Join(t.TempDir(), "jev-resume-proj")
+	injectInitWindowFailure(t)
 
 	cmd1 := newInitTestCmd()
 	var out1, err1b strings.Builder
 	cmd1.SetOut(&out1)
 	cmd1.SetErr(&err1b)
 	if err := runInit(cmd1, []string{projectDir}); err == nil {
-		t.Skip("the ensure-failure injection did not bite — the corrupt-manifest injection needs re-aiming")
+		t.Fatal("the post-executor injection did not bite: run 1 succeeded")
 	}
 
 	cmd2 := newInitTestCmd()
@@ -172,12 +164,6 @@ func TestJournalClearedAfterResume(t *testing.T) {
 	t.Setenv("MOAI_SANDBOX_PROOF", "")
 	t.Setenv("MOAI_DISABLE_BYPASS_PERMISSIONS_MODE", "")
 
-	if err := os.MkdirAll(filepath.Join(home, ".moai"), 0o755); err != nil {
-		t.Fatal(err)
-	}
-	if err := os.WriteFile(filepath.Join(home, ".moai", "user-assets.json"), []byte("{ corrupt\n"), 0o644); err != nil {
-		t.Fatal(err)
-	}
 	// A stale pending journal from the failed attempt.
 	if err := userassets.WriteJournal(userassets.JournalPath(home), &userassets.PendingJournal{BundlesSelection: []string{"backend"}}); err != nil {
 		t.Fatal(err)
@@ -185,13 +171,14 @@ func TestJournalClearedAfterResume(t *testing.T) {
 
 	seamsForInit(t)
 	projectDir := filepath.Join(t.TempDir(), "journal-clear-proj")
+	injectInitWindowFailure(t)
 
 	cmd1 := newInitTestCmd()
 	var out1, err1b strings.Builder
 	cmd1.SetOut(&out1)
 	cmd1.SetErr(&err1b)
 	if err := runInit(cmd1, []string{projectDir}); err == nil {
-		t.Skip("the ensure-failure injection did not bite")
+		t.Fatal("the post-executor injection did not bite: run 1 succeeded")
 	}
 
 	cmd2 := newInitTestCmd()

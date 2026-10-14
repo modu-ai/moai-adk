@@ -141,12 +141,31 @@ func newFactoryMergeReadyCommand() *cobra.Command {
 				// the run is recorded, and no acquire happens.
 				_, _ = fmt.Fprintf(human, "merge-readiness: REFUSED — failing condition: %s\nno window was taken\n", recorded.FailedCondition)
 				printMergeChecks(human, recorded.Checks)
-				return emitFactoryMergeVerdict(cmd, asJSON, factoryMergeVerdict{
+				refusal := factoryMergeVerdict{
 					Verdict: "refused", Lane: lane, Card: card,
 					FailedCondition: recorded.FailedCondition,
 					Detail:          "the condition triple failed — no window was taken",
 					Checks:          recorded.Checks,
-				})
+				}
+				if err := emitFactoryMergeVerdict(cmd, asJSON, refusal); err != nil {
+					return err
+				}
+				// REQ-MWQ2-006 (card t1582 item ③): a measurement failure — the
+				// re-measure record absent or invalid — must not read as a pass
+				// to a calling script. The verdict above is printed either way;
+				// the exit code carries the failure, under cause 1 (record
+				// invalid), the code the merge verb gives the same record state.
+				// The decision reads every recorded check, not FailedCondition:
+				// that field names only the FIRST failing condition, so a
+				// measurement failure behind an earlier sync-audit,
+				// conflict-free, or tree-identity failure would exit 0 (card
+				// t1582 sync-audit F1). The window-contest refusal (waiting) and
+				// the other refused conditions keep the zero-exit verdict
+				// (REQ-MWQ2-010).
+				if remeasureRecordFailed(recorded.Checks) {
+					return &exitCodeError{code: factory.MergeExitRecordInvalid, msg: "factory merge ready: the measurement failed — the re-measure record for the candidate tree is absent or invalid; run moai integration remeasure, then merge ready again"}
+				}
+				return nil
 			}
 
 			// github-flow delivers by pull request: the integration window is
@@ -323,6 +342,18 @@ func printMergeChecks(w io.Writer, checks []factorylane.MergeCheck) {
 		}
 		_, _ = fmt.Fprintf(w, "  %-14s %s  %s\n", chk.Name, state, strings.ReplaceAll(chk.Detail, "\n", "\n    "))
 	}
+}
+
+// remeasureRecordFailed reports whether the recorded checks carry a failed
+// re-measure-record condition, whichever condition failed first. It reads the
+// full check set because FailedCondition names only the first failing check.
+func remeasureRecordFailed(checks []factorylane.MergeCheck) bool {
+	for _, chk := range checks {
+		if chk.Name == factorylane.CheckRemeasureRecord && !chk.Passed {
+			return true
+		}
+	}
+	return false
 }
 
 // emitFactoryMergeVerdict writes the machine-readable verdict on the JSON

@@ -34,6 +34,13 @@ func ensureUserAssetsLocked(homeDir string, selection []string, out io.Writer) e
 	}
 	defer func() { _ = lock.Release() }()
 
+	// Card t1619 (leader ruling d-20261014T041318Z-dcea, D2): a damaged user manifest is
+	// quarantined here, under the same lock, before the install reads it. The rename keeps
+	// the damaged bytes beside the install (never deleted or rewritten), the same rule the
+	// resume path applies. Without it the re-run promise of card t1587 fails on a damaged
+	// manifest, because the pre-executor ensure runs before any resume route exists.
+	quarantineCorruptUserManifest(homeDir)
+
 	inst, err := newUserAssetInstaller(homeDir)
 	if err != nil {
 		return err

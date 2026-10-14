@@ -26,6 +26,7 @@ import (
 	"github.com/modu-ai/moai-adk/internal/template"
 	"github.com/modu-ai/moai-adk/internal/userassets"
 	"github.com/spf13/cobra"
+	"gopkg.in/yaml.v3"
 )
 
 // userHomeDirOrEmpty resolves the user home for the resume-checkpoint
@@ -528,14 +529,46 @@ func initResumeCheckpoint(homeDir, projectRoot string) bool {
 	// redirect even with the marker standing. The journal and the corrupt manifest
 	// are user-global evidence, so they keep the completeness read above.
 	sections := filepath.Join(projectRoot, ".moai", "config", "sections")
-	llmData, err := os.ReadFile(filepath.Join(sections, "llm.yaml"))
-	if err != nil {
+	llmData, ok := readManifestRecord(filepath.Join(sections, "llm.yaml"))
+	if !ok {
 		return false
 	}
 	if initMarker {
 		return true
 	}
-	return !strings.Contains(string(llmData), "deployment_mode:")
+	return !llmDeployModeRecorded(llmData)
+}
+
+// llmDeployModeRecorded reports whether llm.yaml records a deployment_mode key. The key is read
+// from the parsed document as a mapping key at any depth: ApplyDeployMode matches the line at any
+// indentation, so the record is wherever that writer put it. A comment that names the key does not
+// record it, and a spaced colon does (card t1619, codex review round 3).
+func llmDeployModeRecorded(llm []byte) bool {
+	var doc yaml.Node
+	if err := yaml.Unmarshal(llm, &doc); err != nil {
+		return false
+	}
+	return yamlHasMappingKey(&doc, "deployment_mode")
+}
+
+// yamlHasMappingKey reports whether any mapping in the parsed tree has a key named name.
+func yamlHasMappingKey(n *yaml.Node, name string) bool {
+	if n == nil {
+		return false
+	}
+	if n.Kind == yaml.MappingNode {
+		for i := 0; i+1 < len(n.Content); i += 2 {
+			if n.Content[i].Value == name {
+				return true
+			}
+		}
+	}
+	for _, child := range n.Content {
+		if yamlHasMappingKey(child, name) {
+			return true
+		}
+	}
+	return false
 }
 
 // quarantineCorruptUserManifest renames a CORRUPT user manifest aside with

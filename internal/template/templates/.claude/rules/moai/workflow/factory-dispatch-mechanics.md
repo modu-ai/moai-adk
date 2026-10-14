@@ -23,6 +23,8 @@ The bound is the holder's own declaration: past it another lane may take the res
 
 `moai cc -f` launches the leader and lane sessions join one at a time with `moai cc -l`, labelled `lane-<n>`. No per-stage companions: the leader routes each card WHOLE to a free lane, or a lane receives the card by its own self-promotion of an already-queued card; either way the lane carries it `plan → run → sync` in-session — serial stages, each stage's execution spawned as sub-agents — and owns it end to end. The card class still names which ceremonies are skipped (`plan` for A and B) but no card changes sessions. Queue, evidence-reading, integration, and disposal rules are as stated in the stub. Mechanics: `factory-dispatch-detail.md` § Factory in-lane 3-stage.
 
+A lane renews its own card lease at the start of each watchdog pass with `moai factory renew <card>` (MCP tool `factory_renew`, the same implementation): the renewal extends the lease from the request time by `workflow.factory_lease.duration`, and a renewal of an expired lease is refused with no write.
+
 ## Isolation — launcher, tiers, branch naming, and the traceability carriers
 
 Relocated from the stub (always-loaded diet): the stub keeps each [HARD] clause as a one-liner; this section owns the tables and the measured detail. Trigger affinity: the launcher/tier/naming decisions happen when provisioning or disposing a card worktree — the `manager-lead.md` and `factory-dispatch*` surfaces this file is scoped to.

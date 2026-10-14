@@ -89,7 +89,8 @@ func IsTerminalCardState(s string) bool { return slices.Contains(terminalStates,
 func isResumableStage(s string) bool { return slices.Contains(resumableStages, s) }
 
 // FactoryLeaseDuration is how long a card lease lasts past its last
-// heartbeat (config.DefaultFactoryLeaseDuration; no YAML key in F1).
+// heartbeat (config.DefaultFactoryLeaseDuration). A handle opened through a project
+// root writes workflow.factory_lease.duration instead; see FactoryDB.CardLeaseDuration.
 var FactoryLeaseDuration = config.DefaultFactoryLeaseDuration
 
 // ErrCardNotFound reports that no card record exists for the run and card id.

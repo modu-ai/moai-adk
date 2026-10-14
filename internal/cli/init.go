@@ -449,11 +449,15 @@ func resolveInitDeployMode(cmd *cobra.Command) template.DeployMode {
 }
 
 // ensureUserAssetsLockedFn is ensureUserAssetsLocked behind a package-level
-// variable so a test can interrupt the user-asset ensure (a panic stands in for
-// a process death inside it) and observe the selection record the run wrote
-// before the ensure. It follows the applyAutonomyTierBundleFn pattern
+// variable so a test can fail or interrupt the user-asset ensure, which runs before
+// executor.Execute (card t1587). It follows the applyAutonomyTierBundleFn pattern
 // (update_settings_snapshot.go). Tests that replace it must not call t.Parallel().
 var ensureUserAssetsLockedFn = ensureUserAssetsLocked
+
+// initWindowFn is the post-executor interruption seam (card t1619): it runs once the
+// resume record and the init marker are on disk, before the post-steps. Nil in
+// production. Tests that replace it must not call t.Parallel().
+var initWindowFn func(projectRoot string) error
 
 // @MX:ANCHOR: [AUTO] runInit is the main entry point for project initialization
 // @MX:REASON: [AUTO] fan_in=3, called from init.go init(), coverage_test.go, init_coverage_test.go
@@ -873,6 +877,46 @@ func runInit(cmd *cobra.Command, args []string) (err error) {
 
 	p.Info("Initializing MoAI project...")
 
+	// SPEC-USER-ASSET-INSTALL-001 (REQ-024): the first-install trigger. Init
+	// ensures every L0 and opted-in-bundle asset is present user-side before
+	// the run reports success — the judgment is PER-ASSET-STATE applying the
+	// REQ-023 truth table exactly as update does (a user-edited file's bytes
+	// are never clobbered; an untracked target is a REQ-010 collision; a
+	// partial install's manifest does not suppress the run). Systemic
+	// failures fail the init; per-file failures continue and surface in the
+	// summary (REQ-013).
+	//
+	// Card t1587: this phase runs BEFORE executor.Execute records the project
+	// as initialized. It reads only the embedded catalog and writes only under
+	// the user home — no project dependency (`moai bundle add` runs the same
+	// ensure standalone) — so sequencing it first is safe. Placed after the
+	// deploy it made the failure advice a dead end: a systemic ensure failure
+	// (~/.codex/agents as a regular file — observed twice on the t1561 lane)
+	// aborted a run whose project was ALREADY recorded initialized, so the
+	// error's own "re-run 'moai init'" advice hit the 'project already
+	// initialized' refusal. Failing before the marker keeps the promise
+	// honest: the re-run starts from an uninitialized project and completes
+	// cleanly. Card t1591: the resume record and the init marker are NOT written here.
+	// The marker would create .moai/ before executor.Execute, and validator.go:130 reads
+	// that directory as "already initialized", so the retry of a failed ensure would be
+	// refused. They open after the executor instead (the block below the layout step).
+	// Card t1619 (codex review P2): the resume route is decided before the ensure moves any
+	// state. The ensure reconciles and clears the pending-install journal and fails on a
+	// corrupt user manifest, so a checkpoint read after it would miss the interruption it
+	// exists to detect, and the resume's quarantine would never run. A run with a checkpoint
+	// skips this ensure: the resume runs it under the user lock, after the quarantine.
+	resuming := !getBoolFlag(cmd, "force") && initResumeCheckpoint(userHomeDirOrEmpty(), opts.ProjectRoot)
+	if !resuming {
+		if homeDir, homeErr := userHomeDirFn(); homeErr == nil {
+			selection := parseBundleSelection(getStringFlag(cmd, "bundles"))
+			if err := ensureUserAssetsLockedFn(homeDir, selection, cmd.OutOrStdout()); err != nil {
+				return fmt.Errorf("user-asset install failed: %w\n  Fix the cause and re-run 'moai init' — the ensure is idempotent and completes the shortfall", err)
+			}
+		} else {
+			p.Warn("Could not resolve the user home; the user-folder asset install was skipped: %v", homeErr)
+		}
+	}
+
 	// Deferred binary self-update check (REQ-TUX2-001/004): starts strictly
 	// after wizard completion and after the first phase output; never blocks
 	// phase execution; flushed as a stderr notice at exit. A wizard cancel
@@ -892,7 +936,6 @@ func runInit(cmd *cobra.Command, args []string) (err error) {
 	// interrupted run's own autonomy answer changes it, so a resume skips the judgement
 	// and the copy is promoted by the resume's settle once every post-step completed.
 	// --force reinitializes from scratch and is judged as before.
-	resuming := !getBoolFlag(cmd, "force") && initResumeCheckpoint(userHomeDirOrEmpty(), opts.ProjectRoot)
 	if !resuming {
 		backup.JudgeLeftoverSettingsSnapshot(opts.ProjectRoot, cmd.ErrOrStderr())
 	}
@@ -940,7 +983,7 @@ func runInit(cmd *cobra.Command, args []string) (err error) {
 			// M6: the resume fires only on an interruption checkpoint
 			// (gate round 35-3) — a healthy project's ordinary re-run
 			// keeps the original update redirect below.
-			if initResumeCheckpoint(userHomeDirOrEmpty(), opts.ProjectRoot) {
+			if resuming {
 				if resumeErr := resumeInitializedProject(cmd, &opts, agentWiringSelection, wizardRan, wizardResult, prefs); resumeErr != nil {
 					return fmt.Errorf("initialization resume failed: %w\n  Hint: this directory already contains a MoAI project — 'moai update' refreshes templates in place; --force reinitializes from scratch", resumeErr)
 				}
@@ -978,35 +1021,27 @@ func runInit(cmd *cobra.Command, args []string) (err error) {
 		return fmt.Errorf("initialize private MoAI home layout: %w", err)
 	}
 
-	// SPEC-USER-ASSET-INSTALL-001 (REQ-024): the first-install trigger. Init
-	// ensures every L0 and opted-in-bundle asset is present user-side before
-	// the run reports success — the judgment is PER-ASSET-STATE applying the
-	// REQ-023 truth table exactly as update does (a user-edited file's bytes
-	// are never clobbered; an untracked target is a REQ-010 collision; a
-	// partial install's manifest does not suppress the run). Systemic
-	// failures fail the init; per-file failures continue and surface in the
-	// summary (REQ-013).
-	if homeDir, homeErr := userHomeDirFn(); homeErr == nil {
-		selection := parseBundleSelection(getStringFlag(cmd, "bundles"))
-		// Finding 1 (card t1591): record the harness this run selected BEFORE the
-		// ensure, so a run that dies inside it (a crash or a kill, which no error
-		// branch observes) still leaves the selection the resume restores.
-		// Best-effort: a record that cannot be written is named, never dropped silently.
-		if recErr := persistResumeWiring(opts.ProjectRoot, agentWiringSelection); recErr != nil {
-			emitSeverityLine(cmd.ErrOrStderr(), sevWarn, resolveTheme(), "Could not record the harness selection for the resume: %v", recErr)
+	// Finding 1 (card t1591): record the harness this run selected once the executor has
+	// initialized the project, before the post-steps below. The resume reads the record only
+	// under a checkpoint, so it need not precede the executor (see the ensure above).
+	// Best-effort: a record that cannot be written is named, never dropped silently.
+	if recErr := persistResumeWiring(opts.ProjectRoot, agentWiringSelection); recErr != nil {
+		emitSeverityLine(cmd.ErrOrStderr(), sevWarn, resolveTheme(), "Could not record the harness selection for the resume: %v", recErr)
+	}
+	// Finding B (card t1591): open the post-executor window with the init marker. An
+	// interruption in the post-steps below leaves this marker, and the rerun reads it as the
+	// interruption checkpoint. Cleared at the end of runInit. Best-effort, like the record.
+	if pendErr := persistInitPending(opts.ProjectRoot, parseBundleSelection(getStringFlag(cmd, "bundles"))); pendErr != nil {
+		emitSeverityLine(cmd.ErrOrStderr(), sevWarn, resolveTheme(), "Could not record the init resume marker: %v", pendErr)
+	}
+
+	// Card t1619 (re-adjusted placement): the post-executor interruption seam. Nil in
+	// production; the resume tests inject a failure here, which leaves the state a real
+	// interruption after the executor leaves (project initialized, record and marker on disk).
+	if initWindowFn != nil {
+		if err := initWindowFn(opts.ProjectRoot); err != nil {
+			return fmt.Errorf("initialization interrupted after the executor: %w", err)
 		}
-		// Finding B (card t1591): open the ensure window with its marker. An ensure that
-		// fails before any journal exists (a lock refusal) leaves this marker, and the
-		// rerun reads it as the interruption checkpoint. Best-effort, like the record.
-		if pendErr := persistInitPending(opts.ProjectRoot, selection); pendErr != nil {
-			emitSeverityLine(cmd.ErrOrStderr(), sevWarn, resolveTheme(), "Could not record the init resume marker: %v", pendErr)
-		}
-		if err := ensureUserAssetsLockedFn(homeDir, selection, cmd.OutOrStdout()); err != nil {
-			// The record and the init marker stay: this run is the interrupted one the resume completes.
-			return fmt.Errorf("user-asset install failed: %w\n  Fix the cause and re-run 'moai init' — the ensure is idempotent and completes the shortfall", err)
-		}
-	} else {
-		p.Warn("Could not resolve the user home; the user-folder asset install was skipped: %v", homeErr)
 	}
 
 	// Chain ① consumer link (SPEC-INIT-WIZARD-REPAIR-001 REQ-003): wire the

@@ -4,16 +4,12 @@ package cli
 // codex round-2 finding 1: the bundle selection a failing init run requested must
 // survive into its resume.
 //
-// The failing run requests --bundles and dies at the user-asset ensure before any
-// journal exists (a lock refusal). Neither the user manifest nor the journal records
-// the selection, so a rerun with no --bundles of its own resumed the ensure with an
-// empty selection: the resume completed, the requested bundle was never installed,
-// and the checkpoint was cleared.
+// The failing run requests --bundles and is interrupted in the post-executor window
+// (card t1619). The ensure runs before the executor now and installs the requested
+// selection first, so the init marker is the record that carries the selection into a
+// rerun with no --bundles of its own. The finding is re-aimed at that record.
 
 import (
-	"errors"
-	"io"
-	"os"
 	"path/filepath"
 	"slices"
 	"strings"
@@ -21,20 +17,6 @@ import (
 
 	"github.com/modu-ai/moai-adk/internal/userassets"
 )
-
-// stubFailingFirstEnsure makes the first user-asset ensure fail the way a lock
-// refusal does, before any journal is written. Later ensures run the real install.
-func stubFailingFirstEnsure(t *testing.T) {
-	t.Helper()
-	calls := 0
-	stubEnsure(t, func(homeDir string, selection []string, out io.Writer) error {
-		calls++
-		if calls == 1 {
-			return errors.New("simulated early ensure failure: user lock acquisition refused")
-		}
-		return ensureUserAssetsLocked(homeDir, selection, out)
-	})
-}
 
 // initRunWithBundles runs init on projectDir with the given harness and bundle
 // selections. An empty value names no flag, which is the resume path under test.
@@ -76,17 +58,14 @@ func TestInitResumeRestoresBundleSelectionAfterLockFailure(t *testing.T) {
 	t.Run("rerun_without_flag_installs_the_requested_bundle", func(t *testing.T) {
 		isolatedInitHome(t)
 		projectDir := filepath.Join(t.TempDir(), "bundle-resume-proj")
-		stubFailingFirstEnsure(t)
+		injectInitWindowFailure(t)
 
-		if err := initRunWithBundles(t, projectDir, "both", "frontend"); err == nil || !strings.Contains(err.Error(), "user-asset install failed") {
-			t.Fatalf("run 1 did not fail at the user-asset ensure (the injection did not bite): %v", err)
+		if err := initRunWithBundles(t, projectDir, "both", "frontend"); err == nil || !strings.Contains(err.Error(), "initialization interrupted after the executor") {
+			t.Fatalf("run 1 did not fail at the post-executor window (the injection did not bite): %v", err)
 		}
 		home := userHomeDirOrEmpty()
-		if _, err := os.Stat(userassets.JournalPath(home)); !os.IsNotExist(err) {
-			t.Fatalf("precondition: a pending-install journal exists after an early ensure failure (stat err = %v)", err)
-		}
-		if got := manifestBundles(t, home); len(got) != 0 {
-			t.Fatalf("precondition: the failed run recorded bundles %v before its ensure ran", got)
+		if got := initPendingBundles(projectDir); !slices.Equal(got, []string{"frontend"}) {
+			t.Fatalf("precondition: the interrupted run's init marker records bundles %v, want [frontend]", got)
 		}
 
 		if err := initRunWithBundles(t, projectDir, "", ""); err != nil {
@@ -100,17 +79,17 @@ func TestInitResumeRestoresBundleSelectionAfterLockFailure(t *testing.T) {
 	t.Run("control_explicit_bundle_on_rerun_wins_over_the_recorded_one", func(t *testing.T) {
 		isolatedInitHome(t)
 		projectDir := filepath.Join(t.TempDir(), "bundle-explicit-proj")
-		stubFailingFirstEnsure(t)
+		injectInitWindowFailure(t)
 
-		if err := initRunWithBundles(t, projectDir, "both", "frontend"); err == nil || !strings.Contains(err.Error(), "user-asset install failed") {
-			t.Fatalf("run 1 did not fail at the user-asset ensure (the injection did not bite): %v", err)
+		if err := initRunWithBundles(t, projectDir, "both", "frontend"); err == nil || !strings.Contains(err.Error(), "initialization interrupted after the executor") {
+			t.Fatalf("run 1 did not fail at the post-executor window (the injection did not bite): %v", err)
 		}
 		home := userHomeDirOrEmpty()
 		if err := initRunWithBundles(t, projectDir, "", "devops"); err != nil {
 			t.Fatalf("run 2 (the rerun with an explicit --bundles devops) failed: %v", err)
 		}
-		if got := manifestBundles(t, home); !slices.Contains(got, "devops") || slices.Contains(got, "frontend") {
-			t.Errorf("an explicit --bundles devops on the rerun must install devops and not the recorded frontend: the manifest records bundles %v", got)
+		if got := manifestBundles(t, home); !slices.Contains(got, "devops") {
+			t.Errorf("an explicit --bundles devops on the rerun must install devops: the manifest records bundles %v", got)
 		}
 	})
 }

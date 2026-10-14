@@ -32,10 +32,11 @@ func WriteRunMarker(dir, runID string) error {
 
 // readRunID returns the time of the run id recorded in dir's run marker. ok is
 // false when dir has no readable marker or the marker's first line does not
-// parse as a run id; such a directory is a run of its own.
+// parse as a run id; such a directory is a run of its own. A marker that is not a
+// regular file reads as no marker and never blocks the read (card t1619).
 func readRunID(dir string) (time.Time, bool) {
-	data, err := os.ReadFile(filepath.Join(dir, RunMarkerName))
-	if err != nil {
+	data, ok := readRunMarker(filepath.Join(dir, RunMarkerName))
+	if !ok {
 		return time.Time{}, false
 	}
 	line, _, _ := strings.Cut(string(data), "\n")

@@ -5,7 +5,8 @@ package cli
 // interrupted first run staged, and promote it once the resume completes.
 //
 // The first run stages the template render in .claude/settings.json.pending right after
-// the deploy, then stops at the user-asset ensure. Its autonomy answer rewrites
+// the deploy, then stops at the post-executor window (card t1619 moved the ensure before
+// the executor, so the window is the interruption point the finding describes). Its autonomy answer rewrites
 // settings.json after that staging point, so the live file no longer equals the staged
 // render. The rerun's leftover judgement reads the difference as a revert and discards
 // the copy before the resume runs, so the resume's promotion finds nothing to promote
@@ -52,10 +53,10 @@ func TestInitResumeKeepsSettingsSnapshotForInterruptedInit(t *testing.T) {
 	t.Run("resume_promotes_the_staged_render_after_a_settings_change", func(t *testing.T) {
 		isolatedInitHome(t)
 		projectDir := filepath.Join(t.TempDir(), "snapshot-keep-proj")
-		stubFailingFirstEnsure(t)
+		injectInitWindowFailure(t)
 
-		if err := initRunWithBundles(t, projectDir, "", ""); err == nil || !strings.Contains(err.Error(), "user-asset install failed") {
-			t.Fatalf("run 1 did not fail at the user-asset ensure (the injection did not bite): %v", err)
+		if err := initRunWithBundles(t, projectDir, "", ""); err == nil || !strings.Contains(err.Error(), "initialization interrupted after the executor") {
+			t.Fatalf("run 1 did not fail at the post-executor window (the injection did not bite): %v", err)
 		}
 		render, err := os.ReadFile(backup.SettingsSnapshotPendingPath(projectDir))
 		if err != nil {

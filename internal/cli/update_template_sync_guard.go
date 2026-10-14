@@ -1,6 +1,7 @@
 package cli
 
 import (
+	"encoding/json"
 	"errors"
 	"fmt"
 	"io"
@@ -44,13 +45,15 @@ func recordTemplateTree(mgr manifest.Manager, errOut io.Writer) {
 // run syncs.
 //
 // A manifest that fails to load is judged by whether the sync can rebuild it. A
-// corrupt manifest does not skip: Load moves it aside and the sync rebuilds it.
-// Any other load failure (a directory or an unreadable file where the manifest
+// corrupt manifest does not skip: the sync moves it aside and rebuilds it. The
+// judgement only reads the file (probeManifest), so it can run any number of times
+// and every run reads the same project (card t1619, codex review round 3). Any
+// other load failure (a directory or an unreadable file where the manifest
 // belongs) skips, because the sync's own load would fail the same way. The
 // integrity probe then names the file as a warning, so the update exits 0
 // (REQ-UMF-002).
 func versionMatchSkipsSync(projectRoot string) bool {
-	m, err := manifest.NewManager().Load(projectRoot)
+	m, err := probeManifest(projectRoot)
 	if err != nil {
 		return !errors.Is(err, manifest.ErrManifestCorrupt)
 	}
@@ -62,6 +65,28 @@ func versionMatchSkipsSync(projectRoot string) bool {
 		return false
 	}
 	return m.TemplateTreeHash == current
+}
+
+// probeManifest reads the project manifest without changing it. Load moves a corrupt
+// manifest aside as a side effect, so a second judgement over the moved file read the
+// project as fresh and skipped the rebuild (card t1619, codex review round 3). The
+// judgement reads the bytes and leaves the file to the sync stage, which owns the
+// quarantine. A path that is not a readable regular file is a load failure, as Load's
+// own read of it is.
+func probeManifest(projectRoot string) (*manifest.Manifest, error) {
+	path := filepath.Join(projectRoot, defs.MoAIDir, defs.ManifestJSON)
+	data, ok := readManifestRecord(path)
+	if !ok {
+		if _, err := os.Lstat(path); os.IsNotExist(err) {
+			return manifest.NewManifest(), nil
+		}
+		return nil, fmt.Errorf("manifest probe: %s is not a readable regular file", path)
+	}
+	var mf manifest.Manifest
+	if err := json.Unmarshal(data, &mf); err != nil {
+		return nil, fmt.Errorf("%w: %v", manifest.ErrManifestCorrupt, err)
+	}
+	return &mf, nil
 }
 
 // warnStampSkew prints a visible warning when the template_version stamp in the

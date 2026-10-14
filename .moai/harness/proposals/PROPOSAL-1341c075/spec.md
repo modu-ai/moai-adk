@@ -20,10 +20,10 @@ tags: "proposal, harness-learning-loop, auto-generated"
 This draft was generated automatically by the V3R4 self-evolving harness learning loop from a recurring pattern observed in the local usage history.
 
 - pattern_key: `tool_failure:mcp__moai__factory_stage:UnknownFailure`
-- observation_count: 5
+- observation_count: 10
 - confidence: 1
-- tier: rule
-- source_ts: 2026-10-03T05:28:34Z
+- tier: auto_update
+- source_ts: 2026-10-09T04:03:11Z
 - generated_at: 2026-10-03T05:28:34Z
 - generator_version: 0.1.0
 

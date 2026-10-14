@@ -104,6 +104,15 @@ func acquireGateLockImpl(lockPath string) (gateLockImpl, error) {
 	}
 }
 
+// acquireGateLockNoFollowImpl is the Windows form of the no-follow lock open. The
+// O_CREATE|O_EXCL create is already link-safe: Go maps it to CREATE_NEW with
+// FILE_FLAG_OPEN_REPARSE_POINT, so an existing link at lockPath is never opened
+// and the create reports the path as held. No Lstat refusal is needed, and this
+// calls acquireGateLockImpl unchanged.
+func acquireGateLockNoFollowImpl(lockPath string) (gateLockImpl, error) {
+	return acquireGateLockImpl(lockPath)
+}
+
 // ClearStaleGateLock removes a stale gate-run lock artifact — an explicit,
 // bounded act on the Windows substrate, where a killed holder's artifact
 // blocks every subsequent run until it is cleared.

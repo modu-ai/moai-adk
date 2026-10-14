@@ -20,10 +20,10 @@ tags: "proposal, harness-learning-loop, auto-generated"
 This draft was generated automatically by the V3R4 self-evolving harness learning loop from a recurring pattern observed in the local usage history.
 
 - pattern_key: `tool_failure:Monitor:WorktreeGuardRefusal`
-- observation_count: 5
+- observation_count: 11
 - confidence: 1
-- tier: rule
-- source_ts: 2026-09-28T19:25:20Z
+- tier: auto_update
+- source_ts: 2026-10-13T06:10:40Z
 - generated_at: 2026-09-28T19:25:20Z
 - generator_version: 0.1.0
 

@@ -33,9 +33,9 @@ func requireClaudeSideLayout(t *testing.T, projectDir string) {
 // the harness the resume asked for, and record is the selection record the failing
 // run left ("" when none). The refusal precedes every side effect, so it is checked
 // as an absence: llm.yaml is byte-identical, the resume marker was never written,
-// the corrupt user manifest the ensure would quarantine is still in place, and the
-// selection record is not retired.
-func requireResumeRefused(t *testing.T, err error, projectDir, llmBefore, record, deployed, requested string) {
+// the user manifest is byte-identical to manifestBefore (taken with
+// readUserManifestForTest before the resume), and the selection record is not retired.
+func requireResumeRefused(t *testing.T, err error, projectDir, llmBefore, manifestBefore, record, deployed, requested string) {
 	t.Helper()
 	if err == nil {
 		t.Fatalf("the resume reported success over a harness change (deployed %s, requested %s): no refusal", deployed, requested)
@@ -52,15 +52,25 @@ func requireResumeRefused(t *testing.T, err error, projectDir, llmBefore, record
 	if _, statErr := os.Stat(filepath.Join(projectDir, ".moai", "resume-pending")); !os.IsNotExist(statErr) {
 		t.Errorf("the refused resume wrote the resume marker (stat err = %v)", statErr)
 	}
-	data, readErr := os.ReadFile(userassets.ManifestPath(os.Getenv("HOME")))
-	if readErr != nil || string(data) != "{ corrupt\n" {
-		t.Errorf("the refused resume touched the user manifest the ensure would quarantine (read err = %v, bytes = %q)", readErr, data)
+	if got := readUserManifestForTest(t); got != manifestBefore {
+		t.Errorf("the refused resume touched the user manifest (before %d bytes, after %d bytes)", len(manifestBefore), len(got))
 	}
 	if record != "" {
 		if got, ok := readResumeWiring(projectDir); !ok || string(got) != record {
 			t.Errorf("the refused resume retired the selection record: got %q (ok=%v), want %q", got, ok, record)
 		}
 	}
+}
+
+// readUserManifestForTest returns the user manifest bytes under HOME, or "" when the
+// manifest is absent. A refused resume must leave these bytes unchanged.
+func readUserManifestForTest(t *testing.T) string {
+	t.Helper()
+	data, err := os.ReadFile(userassets.ManifestPath(os.Getenv("HOME")))
+	if err != nil {
+		return ""
+	}
+	return string(data)
 }
 
 // TestInitResumeRefusesHarnessChange — Item C. The resume's requested harness
@@ -93,9 +103,10 @@ func TestInitResumeRefusesHarnessChange(t *testing.T) {
 				resumeForgetRecord(t, projectDir)
 			}
 			llmBefore := readResumeLLMYAML(t, projectDir)
+			manifestBefore := readUserManifestForTest(t)
 
 			err := resumeRun(t, projectDir, tc.resume)
-			requireResumeRefused(t, err, projectDir, llmBefore, tc.record, tc.deployed, tc.resume)
+			requireResumeRefused(t, err, projectDir, llmBefore, manifestBefore, tc.record, tc.deployed, tc.resume)
 		})
 	}
 }

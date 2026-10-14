@@ -17,25 +17,29 @@ import (
 	"testing"
 )
 
-// resumeHome isolates HOME behind the ensure-failure injection (a corrupt user
-// manifest makes the user-asset ensure fail after the deploy) and installs the
-// shared init wizard seams.
+// resumeHome isolates HOME and installs the shared init wizard seams. It no longer
+// corrupts the user manifest: the user-asset ensure runs before the executor (card
+// t1587), so a corrupt manifest would stop the first run before any project state
+// exists. The interrupted first run is injected at the post-executor window instead
+// (card t1619 re-adjusted placement; see injectInitWindowFailure).
 func resumeHome(t *testing.T) {
 	t.Helper()
-	home := corruptUserManifestHome(t)
+	home := t.TempDir()
 	t.Setenv("HOME", home)
 	t.Setenv("MOAI_SANDBOX_PROOF", "")
 	t.Setenv("MOAI_DISABLE_BYPASS_PERMISSIONS_MODE", "")
 	seamsForInit(t)
 }
 
-// resumeSeedRun runs the failing first init. An empty llm names no --llm flag.
-// A run that succeeds means the injection did not bite; that is a tool failure,
-// so the test fails rather than skipping.
+// resumeSeedRun runs the failing first init: the post-executor window fails once, after
+// the project is initialized and the record and marker are on disk. An empty llm names
+// no --llm flag. A run that succeeds means the injection did not bite; that is a tool
+// failure, so the test fails rather than skipping.
 func resumeSeedRun(t *testing.T, projectDir, llm string) {
 	t.Helper()
+	injectInitWindowFailure(t)
 	if err := resumeRun(t, projectDir, llm); err == nil {
-		t.Fatal("the ensure-failure injection did not bite: the seed run succeeded, so there is no interrupted run to resume")
+		t.Fatal("the post-executor injection did not bite: the seed run succeeded, so there is no interrupted run to resume")
 	}
 }
 
@@ -175,6 +179,7 @@ func TestInitResumeExplicitLLMOverRecordedSelectionIsRefused(t *testing.T) {
 	resumeSeedRun(t, projectDir, "both")
 	llmBefore := readResumeLLMYAML(t, projectDir)
 
+	manifestBefore := readUserManifestForTest(t)
 	err := resumeRun(t, projectDir, "claude")
-	requireResumeRefused(t, err, projectDir, llmBefore, "both", "both", "claude")
+	requireResumeRefused(t, err, projectDir, llmBefore, manifestBefore, "both", "both", "claude")
 }

@@ -125,6 +125,36 @@ func injectionMissingBlocks(ctx string, blocks []string) []string {
 // guard: for every registry marker × every injecting source, the assembled
 // injection carries EVERY role-core block of the deployed rule files. Each
 // named PASS line is one marker × source cell.
+// forceOverCapFixture grows the first role-core region of the fixture
+// copy's dispatch rule so the assembled composite exceeds the delivery cap
+// regardless of the deployed core's size.
+func forceOverCapFixture(t *testing.T, root string) {
+	t.Helper()
+	path := filepath.Join(root, filepath.FromSlash(roleRuleFiles[0].Rel))
+	data, err := os.ReadFile(path)
+	if err != nil {
+		t.Fatalf("read fixture rule: %v", err)
+	}
+	content := string(data)
+	filler := "\n" + strings.Repeat("x", roleRulesContextLimit+500)
+	idx := strings.Index(content, config.RoleCoreMarkerEnd)
+	if idx < 0 {
+		t.Fatal("fixture rule carries no role-core end marker")
+	}
+	content = content[:idx] + filler + content[idx:]
+	if err := os.WriteFile(path, []byte(content), 0o644); err != nil {
+		t.Fatalf("grow fixture rule: %v", err)
+	}
+}
+
+// overCapFiller returns deterministic filler that pushes an assembled
+// fixture into the overflow regime regardless of the deployed core's size
+// (the t1617 rewrite shrank the real core under the 10,000 cap; the ladder
+// fixtures must not depend on the core's size).
+func overCapFiller() string {
+	return strings.Repeat("x", roleRulesContextLimit+500) + "\n"
+}
+
 func TestSessionStartRoleRulesInjectionPerMarkerAndSource(t *testing.T) {
 	clearFactoryEnv(t)
 	root := t.TempDir()
@@ -367,7 +397,7 @@ func TestSessionStartRoleRulesSizeGate(t *testing.T) {
 
 		existing := "session attribution line\n"
 		core, _, _ := buildRoleCoreForTest(t, root)
-		assembled := existing + "\n\n" + core
+		assembled := existing + "\n\n" + overCapFiller() + "\n\n" + core
 		before := strings.Count(assembled, blockLabel(blocks[0]))
 		composite, operator := roleRuleSizeGate(assembled, core, root, "factory-leader", langEnglish)
 		after := strings.Count(composite, blockLabel(blocks[0]))
@@ -403,7 +433,7 @@ func TestSessionStartRoleRulesSizeGate(t *testing.T) {
 		blocks := roleCoreBlocksFromDeployed(t, root)
 
 		core, _, _ := buildRoleCoreForTest(t, root)
-		assembled := existing + "\n\n" + core
+		assembled := existing + "\n\n" + overCapFiller() + "\n\n" + core
 		composite, operator := roleRuleSizeGate(assembled, core, root, "factory-leader", langEnglish)
 		if operator == "" {
 			t.Errorf("retreat emitted no operator warning")
@@ -433,7 +463,7 @@ func TestSessionStartRoleRulesSizeGate(t *testing.T) {
 		writeDeployedRoleRules(t, root)
 		blocks := roleCoreBlocksFromDeployed(t, root)
 		core, _, _ := buildRoleCoreForTest(t, root)
-		assembled := "prior context\n\n" + core
+		assembled := "prior context\n\n" + overCapFiller() + "\n\n" + core
 		composite, operator := roleRuleSizeGate(assembled, core, root, "factory-leader", langEnglish)
 		if composite == assembled && operator == "" {
 			t.Fatal("over-cap fixture judged under-cap — gate inert")
@@ -523,6 +553,10 @@ func TestSessionStartRoleRulesHandleIntegration(t *testing.T) {
 		t.Fatalf("mkdir: %v", err)
 	}
 	writeDeployedRoleRules(t, projectDir)
+	// The t1617 rewrite shrank the real core under the delivery cap; force
+	// the over-cap regime by growing the fixture copy's first core region
+	// (the ladder behavior under test is size-independent).
+	forceOverCapFixture(t, projectDir)
 	blocks := roleCoreBlocksFromDeployed(t, projectDir)
 
 	run := func(source string) (context, notice string) {
@@ -598,7 +632,7 @@ func TestSessionStartRoleRulesOperatorLocales(t *testing.T) {
 		t.Run("overflow_"+lang, func(t *testing.T) {
 			root := overCapRoot(t)
 			core, _, _ := buildRoleCoreForTest(t, root)
-			_, operator := roleRuleSizeGate(core, core, root, "factory-leader", lang)
+			_, operator := roleRuleSizeGate(overCapFiller()+"\n\n"+core, core, root, "factory-leader", lang)
 			if operator == "" {
 				t.Fatalf("locale %s: overflow warning empty", lang)
 			}

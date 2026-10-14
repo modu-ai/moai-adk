@@ -172,6 +172,16 @@ func NewLinter(opts LinterOptions) *Linter {
 		// deliberately NOT in eraDemotableCodes (see lint_duplicate_acid.go).
 		&DuplicateAcceptanceIDRule{},
 		&FrontmatterSchemaRule{},
+		// LintSkipFlatFormRule — card t1667. The flat frontmatter form
+		// `lint.skip: [Code]` parses into nothing (SPECFrontmatter binds the
+		// code list only through the nested lint: block), so a skip list
+		// written flat is silently ignored and the codes it lists keep
+		// firing. This rule warns on a top-level `lint.skip:` key in the raw
+		// frontmatter so the drop is visible, and points the author at the
+		// nested form. Warning only, so it never enters eraDemotableCodes
+		// (that map demotes ERRORS; a warning entry would be inert while
+		// reading as intent).
+		&LintSkipFlatFormRule{},
 		&DependencyExistsRule{},
 		&OutOfScopeRule{},
 		&BreakingChangeIDRule{},
@@ -436,6 +446,60 @@ func applylintSkip(findings []Finding, skipCodes []string) []Finding {
 	return result
 }
 
+// LintSkipFlatFormRule warns when a SPEC's raw frontmatter carries the flat
+// `lint.skip:` key (card t1667). The flat form parses into nothing —
+// SPECFrontmatter binds the code list only through the nested
+// `lint:` → `skip:` block — so a skip list written flat is silently ignored
+// and the codes it lists keep firing. The warning makes the drop visible and
+// points the author at the nested form, which is the one that binds.
+//
+// The nested form (`skip:` indented under a `lint:` line) does NOT warn: it
+// is the effective spelling. Any top-level `lint.skip` key is the flat form, the
+// inline `[Code]` form or with `- item` continuations, quoted or spaced before
+// the colon, at whatever indent the mapping uses; the discriminator is the parsed
+// top-level key, never the raw text.
+type LintSkipFlatFormRule struct{}
+
+func (r *LintSkipFlatFormRule) Code() string { return "LintSkipFlatForm" }
+
+func (r *LintSkipFlatFormRule) Check(doc *SPECDoc, _ []*SPECDoc) []Finding {
+	line := lintSkipFlatLine(doc.FrontmatterRaw)
+	if line == 0 {
+		return nil
+	}
+	return []Finding{{
+		File:     doc.Path,
+		Line:     line,
+		Severity: SeverityWarning,
+		Code:     r.Code(),
+		Message: "the flat form `lint.skip: [Code]` is silently ignored — the decoder binds only the nested form " +
+			"(a `lint:` block with an indented `skip:` list); move the codes under a `lint:` block as `skip: [<codes>]`",
+	}}
+}
+
+// lintSkipFlatLine returns the 1-based line of the first top-level `lint.skip`
+// key in raw frontmatter text, or 0 when there is none. The key is read from the
+// parsed YAML, because the decoder reads a quoted key ("lint.skip"), whitespace
+// before the colon, and a fully indented mapping as the same top-level key, and
+// it ignores all of them. The raw text begins at file line 1, which is also the
+// node line numbering. Text that does not parse reads as no key.
+func lintSkipFlatLine(raw string) int {
+	var doc yaml.Node
+	if err := yaml.Unmarshal([]byte(raw), &doc); err != nil || len(doc.Content) == 0 {
+		return 0
+	}
+	top := doc.Content[0]
+	if top.Kind != yaml.MappingNode {
+		return 0
+	}
+	for i := 0; i+1 < len(top.Content); i += 2 {
+		if top.Content[i].Value == "lint.skip" {
+			return top.Content[i].Line
+		}
+	}
+	return 0
+}
+
 // discoverSPECs finds spec.md files matching baseDir/.moai/specs/SPEC-*/spec.md or baseDir/SPEC-*/spec.md pattern
 func discoverSPECs(baseDir string) ([]string, error) {
 	if baseDir == "" {
@@ -560,7 +624,15 @@ type SPECFrontmatter struct {
 	Tags         string   `yaml:"tags"`
 	Breaking     bool     `yaml:"breaking"`
 	RelatedRule  []string `yaml:"related_rule"`
-	// LintConfig is a nested structure containing lint.skip code list.
+	// LintConfig is a nested structure containing lint.skip code list. Only
+	// the nested form binds:
+	//
+	//	lint:
+	//	  skip: [Code]
+	//
+	// The flat form `lint.skip: [Code]` has no struct field, so the decoder
+	// drops it silently — LintSkipFlatFormRule (card t1667) warns on it by
+	// reading the raw frontmatter (SPECDoc.FrontmatterRaw) instead.
 	LintConfig struct {
 		Skip []string `yaml:"skip"`
 	} `yaml:"lint"`
@@ -674,6 +746,12 @@ type SPECDoc struct {
 	REQs        []REQEntry
 	ParseError  error
 	LintSkip    []string
+	// FrontmatterRaw is the verbatim YAML text between the --- markers. The
+	// decoded SPECFrontmatter cannot answer questions about SPELLING — a key
+	// the decoder does not bind (the flat `lint.skip:` form, card t1667) is
+	// indistinguishable from an absent one after decoding — so rules that
+	// judge frontmatter shape read this instead.
+	FrontmatterRaw string
 	// DuplicateACIDs are the inline AC ids declared on more than one line,
 	// kept from the parse for DuplicateAcceptanceIDRule (card t564).
 	DuplicateACIDs []*DuplicateAcceptanceID
@@ -751,6 +829,15 @@ func parseSPECDoc(path string) *SPECDoc {
 	if err != nil {
 		doc.ParseError = fmt.Errorf("frontmatter parsing error: %w", err)
 		return doc
+	}
+
+	// Same span extractFrontmatter just verified and sliced: content[3:]
+	// starts after the opening ---, and the first "\n---" closes the block,
+	// so on this success path the index is well-defined. The raw text begins
+	// at file line 1, making raw line N the file's line N.
+	rest := content[3:]
+	if endIdx := strings.Index(rest, "\n---"); endIdx >= 0 {
+		doc.FrontmatterRaw = content[3 : 3+endIdx]
 	}
 
 	doc.Frontmatter = fm

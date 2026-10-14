@@ -22,22 +22,16 @@ func TestInitResumeCheckpointRetiresOnCompletion(t *testing.T) {
 	t.Setenv("MOAI_SANDBOX_PROOF", "")
 	t.Setenv("MOAI_DISABLE_BYPASS_PERMISSIONS_MODE", "")
 
-	if err := os.MkdirAll(filepath.Join(home, ".moai"), 0o755); err != nil {
-		t.Fatal(err)
-	}
-	if err := os.WriteFile(filepath.Join(home, ".moai", "user-assets.json"), []byte("{ corrupt\n"), 0o644); err != nil {
-		t.Fatal(err)
-	}
-
 	seamsForInit(t)
 	projectDir := filepath.Join(t.TempDir(), "marker-proj")
+	injectInitWindowFailure(t)
 
 	cmd1 := newInitTestCmd()
 	var out1, err1b strings.Builder
 	cmd1.SetOut(&out1)
 	cmd1.SetErr(&err1b)
 	if err := runInit(cmd1, []string{projectDir}); err == nil {
-		t.Skip("the ensure-failure injection did not bite")
+		t.Fatal("the post-executor injection did not bite: run 1 succeeded")
 	}
 
 	// The marker alone routes the half-done resume even after the original
@@ -66,18 +60,12 @@ func TestInitResumeRestoresGPTSelection(t *testing.T) {
 	t.Setenv("MOAI_SANDBOX_PROOF", "")
 	t.Setenv("MOAI_DISABLE_BYPASS_PERMISSIONS_MODE", "")
 
-	if err := os.MkdirAll(filepath.Join(home, ".moai"), 0o755); err != nil {
-		t.Fatal(err)
-	}
-	if err := os.WriteFile(filepath.Join(home, ".moai", "user-assets.json"), []byte("{ corrupt\n"), 0o644); err != nil {
-		t.Fatal(err)
-	}
-
 	seamsForInit(t)
 	projectDir := filepath.Join(t.TempDir(), "gpt-resume-proj")
+	injectInitWindowFailure(t)
 
 	// Run 1 with --llm gpt: the CODEX-only deployer lays out the project
-	// (AGENTS.md, no CLAUDE.md) and dies at the user-asset ensure.
+	// (AGENTS.md, no CLAUDE.md) and dies at the post-executor window (card t1619).
 	cmd1 := newInitTestCmd()
 	if err := cmd1.Flags().Set("llm", "gpt"); err != nil {
 		t.Fatal(err)
@@ -86,10 +74,10 @@ func TestInitResumeRestoresGPTSelection(t *testing.T) {
 	cmd1.SetOut(&out1)
 	cmd1.SetErr(&err1b)
 	if err := runInit(cmd1, []string{projectDir}); err == nil {
-		t.Skip("the ensure-failure injection did not bite")
+		t.Fatal("the post-executor injection did not bite: run 1 succeeded")
 	}
 	if _, err := os.Stat(filepath.Join(projectDir, "AGENTS.md")); err != nil {
-		t.Skipf("run 1 did not deploy the gpt layout (AGENTS.md missing): %v", err)
+		t.Fatalf("run 1 did not deploy the gpt layout (AGENTS.md missing): %v", err)
 	}
 
 	// Run 2 WITHOUT options: the deployed layout restores the gpt wiring —

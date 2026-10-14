@@ -156,30 +156,21 @@ func TestInitResumeAfterUserAssetEnsureFailure(t *testing.T) {
 	t.Setenv("MOAI_SANDBOX_PROOF", "")
 	t.Setenv("MOAI_DISABLE_BYPASS_PERMISSIONS_MODE", "")
 
-	// The ensure-failure injection: a corrupt USER manifest makes
-	// InstallPreserveSelection fail after the executor finished deploying.
-	moai := filepath.Join(home, ".moai")
-	if err := os.MkdirAll(moai, 0o755); err != nil {
-		t.Fatal(err)
-	}
-	if err := os.WriteFile(filepath.Join(moai, "user-assets.json"), []byte("{ corrupt\n"), 0o644); err != nil {
-		t.Fatal(err)
-	}
-
 	seamsForInit(t)
 	projectDir := filepath.Join(t.TempDir(), "resume-proj")
+	injectInitWindowFailure(t)
 
-	// Run 1: fails at the ensure, AFTER the project was initialized.
+	// Run 1: fails at the post-executor window, AFTER the project was initialized (card t1619).
 	cmd1 := newInitTestCmd()
 	var out1, err1b strings.Builder
 	cmd1.SetOut(&out1)
 	cmd1.SetErr(&err1b)
 	err1 := runInit(cmd1, []string{projectDir})
 	if err1 == nil {
-		t.Skipf("the ensure-failure injection did not bite (run 1 succeeded) — the corrupt-manifest injection needs re-aiming; recorded as a probe finding")
+		t.Fatal("the post-executor injection did not bite: run 1 succeeded")
 	}
-	if !strings.Contains(err1.Error(), "user-asset install failed") {
-		t.Fatalf("run 1 failed for the wrong reason (want the user-asset ensure): %v", err1)
+	if !strings.Contains(err1.Error(), "initialization interrupted after the executor") {
+		t.Fatalf("run 1 failed for the wrong reason (want the post-executor window): %v", err1)
 	}
 	// The failure left the project initialized — the state the AC names.
 	if _, err := os.Stat(filepath.Join(projectDir, ".moai", "manifest.json")); err != nil {
