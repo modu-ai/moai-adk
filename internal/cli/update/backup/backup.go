@@ -277,41 +277,6 @@ func CleanupOldBackups(projectRoot string, keepCount int) int {
 	return deletedCount
 }
 
-// CleanupNamespaceBackups keeps the newest keepCount update-<stamp> entries under the
-// namespace backup root (.moai/<NamespaceBackupsSubdir>) and removes the rest: the
-// count rule CleanupOldBackups applies to .moai-backups. keepCount 0 removes every
-// entry. It returns the number of entries removed. A root that is a symbolic link or
-// leads outside projectRoot is refused (see NamespaceBackupRootRefused).
-func CleanupNamespaceBackups(projectRoot string, keepCount int) int {
-	if NamespaceBackupRootRefused(projectRoot) {
-		return 0
-	}
-	root := filepath.Join(projectRoot, defs.MoAIDir, defs.NamespaceBackupsSubdir)
-	entries, err := os.ReadDir(root)
-	if err != nil {
-		return 0
-	}
-	var backups []string
-	for _, entry := range entries {
-		if entry.IsDir() && strings.HasPrefix(entry.Name(), "update-") {
-			backups = append(backups, entry.Name())
-		}
-	}
-	if len(backups) <= keepCount {
-		return 0
-	}
-	sort.Strings(backups)
-	deletedCount := 0
-	for _, name := range backups[:len(backups)-keepCount] {
-		if err := os.RemoveAll(filepath.Join(root, name)); err != nil {
-			fmt.Fprintf(os.Stderr, "Warning: failed to delete backup %s: %v\n", name, err)
-			continue
-		}
-		deletedCount++
-	}
-	return deletedCount
-}
-
 // backupRootContained reports whether a backup root is a real directory inside
 // projectRoot. A root that is a symbolic link, or that sits under one, would make
 // pruning delete entries outside the project, so the root must pass both checks
@@ -340,7 +305,7 @@ func OldBackupRootRefused(projectRoot string) bool {
 }
 
 // NamespaceBackupRootRefused is OldBackupRootRefused for the namespace backup root
-// that CleanupNamespaceBackups prunes.
+// under .moai.
 func NamespaceBackupRootRefused(projectRoot string) bool {
 	return !backupRootContained(projectRoot, filepath.Join(projectRoot, defs.MoAIDir, defs.NamespaceBackupsSubdir))
 }

@@ -9,30 +9,8 @@ import (
 	"github.com/modu-ai/moai-adk/internal/defs"
 )
 
-// A backup root that is a symbolic link leads out of the project. Namespace
-// pruning must not remove an entry that the link resolves to outside it.
-func TestCleanupNamespaceBackups_RefusesSymlinkedBackupRoot(t *testing.T) {
-	project := t.TempDir()
-	outside := filepath.Join(t.TempDir(), "backups")
-	for i := 1; i <= 6; i++ {
-		writeUnmanagedFile(t, filepath.Join(outside, fmt.Sprintf("update-2026-01-%02dT00-00-00Z", i), "a.yml"), "shared")
-	}
-	if err := os.MkdirAll(filepath.Join(project, defs.MoAIDir), 0o755); err != nil {
-		t.Fatal(err)
-	}
-	if err := os.Symlink(outside, filepath.Join(project, defs.MoAIDir, defs.NamespaceBackupsSubdir)); err != nil {
-		t.Skip(err)
-	}
-
-	if n := CleanupNamespaceBackups(project, 5); n != 0 {
-		t.Fatalf("CleanupNamespaceBackups removed %d entries through a symlinked root", n)
-	}
-	if _, err := os.Stat(filepath.Join(outside, "update-2026-01-01T00-00-00Z")); err != nil {
-		t.Fatalf("entry outside the project removed: %v", err)
-	}
-}
-
-// The same holds for the timestamped root .moai-backups.
+// The timestamped root .moai-backups is held to the rule that a symbolic link must
+// not let pruning reach outside the project.
 func TestCleanupOldBackups_RefusesSymlinkedBackupRoot(t *testing.T) {
 	project := t.TempDir()
 	outside := filepath.Join(t.TempDir(), "backups")
