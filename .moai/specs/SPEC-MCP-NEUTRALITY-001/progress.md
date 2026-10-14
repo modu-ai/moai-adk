@@ -375,7 +375,36 @@ Verification batch at HEAD 850307cf4 (this tree, this run):
 - E2 builds: `go build ./...` → exit 0.
 - Affected families green (-count=1): internal/auditreceipt (full), internal/mcp (full), internal/factorymsg (full), internal/closure (full), the hook family TestFactoryMessages*+TestFactoryHook*, and the cli families TestCodexAudit*, TestSelfReview*, TestServerStaleness*, TestGLMAudit*.
 - Lint (full touched set, 8 roots): 4 errcheck, all pre-existing in internal/cli — zero NEW (the corrected measurement).
-- **Pre-existing red observed, NOT a card defect**: internal/hook's full-suite TestNoNewEnvLiteralsInDiff fails on the `"MOAI_FACTORY_WORKER"` literal introduced by card t1617 commit `190f7db5d` and carried into this tree by the card t1619 absorb `cd19e5494` — zero commits in this card's range. Leader disposition requested (the same structural class the t1542 record describes: a card worktree's full absorbed-era suite cannot go green).
+- ~~**Pre-existing red observed, NOT a card defect**: internal/hook's full-suite TestNoNewEnvLiteralsInDiff fails on the `"MOAI_FACTORY_WORKER"` literal introduced by card t1617 commit `190f7db5d` and carried into this tree by the card t1619 absorb `cd19e5494` — zero commits in this card's range.~~ **CORRECTION (sync-audit r3 F12, 2026-10-15) — the lineage claim above was FALSE, and the correction is part of the repair.** The sweep's added-line set (base `966f1b158` → HEAD, non-test) contains exactly TWO lines with the literal, BOTH authored by THIS card: the mcp_refusal.go comment (M1 `ebba213f0`) and the mcp_factory_card.go comment (M2-PartA `9e7a4a9a9`) — `git show e48f3b296:internal/cli/mcp_factory_card.go | grep -c` = 0 (no occurrence at the base) and mcp_refusal.go did not exist at the base. The t1617/t1619-side introductions in the range are all in TEST files, which the sweep excludes. This was a verification-claim-integrity §1.1 surface-3 violation (a defect claim attributed to a lineage that was never traced) — the two comments are REWORDED in the r3 repair commit (`850307cf4`+r3 commit: "the spawn environment's factory-worker key (internal/config/envkeys.go EnvMoaiFactoryWorker)"), the guard is GREEN there, and the misattribution stands recorded here as the artifact of record.
+
+### Sync-audit r3 delta repair round — F12/F13/F14 (card t1632, branch WT-3-2-0-2)
+
+Commits: the r3 repair commit (fix: sync-audit r3 delta repairs — F12/F13/F14) + its evidence commit. Base: the r1-repair head `432c24187`. Verdict file: .moai/reports/t1632/sync-audit-r2.md (F1–F5 core resolved confirmed; the three blocking findings below). Push state: nothing pushed; clean on WT-3-2-0-2.
+
+E8 — verbatim RED outputs captured BEFORE each GREEN:
+
+```
+$ go test ./internal/cli -run 'TestAuditMulti_ReceiptBindsStartOfConvergenceState' -count=1   → exit 1 (F13; first draft had no discriminating power — the scenario was re-scoped to flip the state DURING the fan-out, then:)
+    audit_multi_bind_timing_test.go:58: receipt binds head="post-edit-head" digest="post-edit-digest", want the START state — a write-time bind on the convergence surface is the F13 laundering path
+$ go vet ./internal/cli   → compile-stage RED (F14)
+    codex_audit_capture_failure_test.go:57:10: rec.BindCaptureFailed undefined (type auditreceipt.Receipt has no field or method BindCaptureFailed)
+$ go test ./internal/hook -run 'TestNoNewEnvLiteralsInDiff' -count=1   → FAIL at the r3 round start (F12); GREEN after the two comment rewordings
+```
+
+Repair matrix (every row's command run at the r3 repair head, this tree):
+
+| Finding | Disposition | Command (verbatim) | Observed output |
+|---------|-------------|--------------------|-----------------|
+| F13 audit_multi receipt binds write-time | FIXED | `go test ./internal/cli -run 'TestAuditMulti_ReceiptBindsStartOfConvergenceState' -count=1` | `ok` — runMultiAudit captures TreeState BEFORE the fan-out through the SAME receipt-target contract the write uses, and routes through recordAuditReceiptAtBound; the pin flips the state DURING the fan-out and requires the START state on the receipt |
+| F14 start-capture failure falls back to write-time bind | FIXED | `go test ./internal/cli -run 'TestCodexAudit_CaptureFailureNeverFallsBackToWriteTimeBind\|TestCheckCitedReceipts_CaptureFailedMarkerRefused' -count=1` | `ok` — a failed start capture records the explicit `bind_capture_failed` marker (no binding, NO fallback), and the reuse check refuses a capture-failed receipt (CauseReceiptBindCaptureFailed) — its freshness is unknowable, so it proves nothing |
+| F12 env-literal guard red on this card's own comments + false lineage in this file | FIXED + corrected | `go test ./internal/hook -run 'TestNoNewEnvLiteralsInDiff' -count=1` | `ok` — the two comments (mcp_refusal.go, mcp_factory_card.go) now reference the key through internal/config/envkeys.go instead of spelling the literal; the false lineage claim above is struck through with the measured attribution recorded (VCI §1.1 surface-3 correction) |
+
+Verification batch at the r3 repair head (this tree, this run):
+
+- E2 builds: `go build ./...` → exit 0.
+- Affected families green (-count=1): internal/auditreceipt (full), internal/runtime (full), internal/closure (full), internal/mcp (full), and the cli families TestCodexAudit*, TestAuditMulti*, TestSelfReview*, TestGLMAudit*, TestConverge*, TestRunMultiAudit*.
+- Lint (full 8-root touched set): 4 errcheck, all pre-existing in internal/cli — zero NEW.
+- The absorbed-era pin family TestAuditMulti_CodexLegDeadline_* stays red pending the leader disposition this card already requested (F11 note above) — unchanged by this round.
 
 ## §E.3 Run-phase Audit-Ready Signal
 
