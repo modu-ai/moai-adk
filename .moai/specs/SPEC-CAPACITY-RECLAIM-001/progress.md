@@ -18,6 +18,8 @@ Q3. The clone-measurement gate is satisfied: the per-clone recipe was executed o
 
 Counts. 10 requirements (REQ-CAP-001–010) and 13 acceptance criteria (AC-CAP-001–013), against the Tier M ceilings of 16 and 16. AC renumbering and the v0.1.2→v0.2.0 mapping are recorded in acceptance.md §0.
 
+v0.2.1 — the authorized one-clause D12 repair (operator decision d-20261014T025128Z-0aa1, kind ceiling-exception: repair only D12, then exactly one re-audit; another FAIL returns the card to hold): acceptance.md AC-CAP-012 clause (1) now seeds one `verify` residue-class target in the fixture project and requires its `"unit":"gc"` / `"mode":"apply"` audit row, making the cache/GC apply half observable (D12, `.moai/reports/t1631/plan-audit-final.md`); premise cells EV-015 (no hook fixture seeds the class) and EV-016 (the GC's decision-gated apply-row write, `gc.go:395–404`) were observed on this tree `111493b71`, EV-008 re-observed there unchanged, and the evidence carriers they cite were updated accordingly. Nothing outside the clause changed: REQ-CAP-010 and every other REQ, AC, and milestone are untouched, no `internal/` code changed, and the REQ-CAP-010 ratification remains with the operator. The re-audit is the next act.
+
 ## §E.2 Run-phase Evidence
 
 _<pending run-phase>_

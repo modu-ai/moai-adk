@@ -2,7 +2,7 @@
 
 This file is the verification layer. Each criterion is Given-When-Then with a binary test and the command that measures it. Baselines are the verbatim outputs recorded in `spec.md` §B.
 
-**Tree pin.** The document-level pin is tree `e2658f30127375e75e0c606d09ca97be2c551cf2` (short `e2658f3012`) on branch `WT-capacity-reclaim`, observed in the v0.2.0 revision session after the card worktree absorbed local `main`. Every code observation in §D.0 and every EV entry below was taken on this pin. Of the code paths this SPEC measures, only `internal/config/defaults.go` and `internal/template/templates/.moai/config/sections/workflow.yaml` differ from the iter3-audited tree `ab9f5a6d3` (`git diff --name-only ab9f5a6d3 e2658f3012 -- internal/`; 218 files changed in the absorb, those two are the only measured ones). The commit that carries this revision changes only SPEC artifacts. A criterion that needs a fixture run, or a commit or test that does not exist yet, carries no RED cell of its own and is unadopted until pre-flight observes it; its premise cell is recorded below.
+**Tree pin.** The document-level pin is tree `e2658f30127375e75e0c606d09ca97be2c551cf2` (short `e2658f3012`) on branch `WT-capacity-reclaim`, observed in the v0.2.0 revision session after the card worktree absorbed local `main`. Every code observation in §D.0 and every EV entry below was taken on this pin. EV-015 and EV-016 were observed, and EV-008 re-observed, on tree `111493b71465d475a8d399343aa931df6d628e7d` (short `111493b71`), the HEAD at the v0.2.1 repair session; no `internal/` path differs between `e2658f3012` and the tree this revision commits (`git diff --name-only e2658f3012 HEAD -- internal/` is empty), so the code premises are unchanged. Of the code paths this SPEC measures, only `internal/config/defaults.go` and `internal/template/templates/.moai/config/sections/workflow.yaml` differ from the iter3-audited tree `ab9f5a6d3` (`git diff --name-only ab9f5a6d3 e2658f3012 -- internal/`; 218 files changed in the absorb, those two are the only measured ones). The commit that carries this revision changes only SPEC artifacts. A criterion that needs a fixture run, or a commit or test that does not exist yet, carries no RED cell of its own and is unadopted until pre-flight observes it; its premise cell is recorded below.
 
 ## §0 Classes, adoption, command form, exit capture, and evidence carriers
 
@@ -62,7 +62,9 @@ EV-008 (AC-CAP-012, RB, premise cell)
   stdout:  (empty)
   exit:    1 by grep's no-match convention; the runner showed "(Bash completed
            with no output)" and no status line.
-  tree:    e2658f30127375e75e0c606d09ca97be2c551cf2
+  tree:    111493b71465d475a8d399343aa931df6d628e7d
+           (re-observed 2026-10-14 in the v0.2.1 repair session; identical
+           output at the prior pin e2658f30127375e75e0c606d09ca97be2c551cf2)
 
 EV-009 (AC-CAP-011, RB, premise cell)
   command: grep -rn 'profile_max_bytes' internal/hook
@@ -111,9 +113,37 @@ EV-014 (AC-CAP-013, MS, content of a non-progress-only commit)
            .moai/specs/SPEC-CAPACITY-RECLAIM-001/spec.md
   exit:    0. The run returned its stdout with no error block.
   tree:    e2658f30127375e75e0c606d09ca97be2c551cf2
+
+EV-015 (AC-CAP-012, RB, clause-1 seeding premise)
+  command: grep -rn 'ClassVerifyScratch' internal/hook
+  stdout:  (empty)
+  exit:    1 by grep's no-match convention; the runner showed "(Bash completed
+           with no output)" and no status line. No hook fixture seeds a `verify`
+           residue-class target: the class is enumerated only under
+           `internal/hygiene` (targets.go, gc.go).
+  tree:    111493b71465d475a8d399343aa931df6d628e7d
+
+EV-016 (AC-CAP-012, RB, decision-gate premise)
+  command: sed -n '395,404p' internal/hygiene/gc.go
+  stdout:  		for _, d := range report.Decisions {
+			rows = append(rows, AuditRow{
+				Unit: "gc", Mode: string(ModeApply), Outcome: Outcome(d.Outcome),
+				Path: d.Path, Reason: d.Reason, Signal: d.Signal,
+			})
+		}
+	}
+	if len(rows) == 0 {
+		return
+	}
+  exit:    0. The run returned its stdout with no error block (same runner
+           contract as EV-002). In apply mode the GC writes one `unit: gc` /
+           `mode: apply` row per decision and writes nothing at all when no
+           decision fires (the `len(rows) == 0` gate), which is why clause (1)
+           must seed a target for the GC to decide on.
+  tree:    111493b71465d475a8d399343aa931df6d628e7d
 ```
 
-**Adoption at this revision.** RB with four-element cells: AC-CAP-003 (premise cell EV-001), AC-CAP-004 (EV-002), AC-CAP-008 (approved-branch cell EV-007), AC-CAP-009 (premise cell EV-006), AC-CAP-011 (EV-010, plus premise cell EV-009), and AC-CAP-012 (premise cell EV-008). MS with verbatim output: AC-CAP-001 (the §B pipeline), AC-CAP-002 (fixture run), AC-CAP-010 (fixture test), and AC-CAP-013 (EV-012 to EV-014 on known-bad inputs). RG: AC-CAP-005, AC-CAP-006, AC-CAP-007. A test that a criterion names but that does not exist yet is never a RED cell by itself: `go test -run` with no match prints `[no tests to run]` and exits 0 (`verification-completeness.md` §1.1). For such a criterion the cell observes the premise the test checks (the absence probes EV-006, EV-008, EV-009), the test's mutant observation is recorded at pre-flight, and the test's own failing run against the pre-change tree is the pre-flight record.
+**Adoption at this revision.** RB with four-element cells: AC-CAP-003 (premise cell EV-001), AC-CAP-004 (EV-002), AC-CAP-008 (approved-branch cell EV-007), AC-CAP-009 (premise cell EV-006), AC-CAP-011 (EV-010, plus premise cell EV-009), and AC-CAP-012 (premise cells EV-008, EV-015, EV-016). MS with verbatim output: AC-CAP-001 (the §B pipeline), AC-CAP-002 (fixture run), AC-CAP-010 (fixture test), and AC-CAP-013 (EV-012 to EV-014 on known-bad inputs). RG: AC-CAP-005, AC-CAP-006, AC-CAP-007. A test that a criterion names but that does not exist yet is never a RED cell by itself: `go test -run` with no match prints `[no tests to run]` and exits 0 (`verification-completeness.md` §1.1). For such a criterion the cell observes the premise the test checks (the absence probes EV-006, EV-008, EV-009, EV-015), the test's mutant observation is recorded at pre-flight, and the test's own failing run against the pre-change tree is the pre-flight record.
 
 **Decision outcome branches (all recorded; this revision carries no open decision that gates a criterion).** Q1: approved split (REQ-CAP-006; the approved branch is the one AC-CAP-008 verifies). Q2: rejected — the bulk-run scope moved to card B, so no criterion of this SPEC depends on it. Q3: the measurement recipe was executed on 2026-10-10 (`.moai/reports/t1631/q3-clone-measurement.md`) and the untracking is authorized by the operator's narrowed-scope decision; B1 lands through the card's normal landing path. Q4: default (REQ-CAP-004; AC-CAP-009 verifies the guarantee on the default branch). A11: warning only (REQ-CAP-009; AC-CAP-011).
 
@@ -250,11 +280,11 @@ EV-014 (AC-CAP-013, MS, content of a non-progress-only commit)
 
 ### AC-CAP-012 — The SessionStart auto path applies only the non-destructive categories (RB; maps REQ-CAP-006, REQ-CAP-007)
 
-- **Given** the test `TestSessionStartAutoPathSplit` in `internal/hook`, driving the SessionStart hygiene pass through the `hygieneRunFn` seam (`internal/hook/session_start_hygiene.go:19`) on a fixture project whose template `workflow.yaml` carries `mode: apply`, with a fixture home that sets `state.profile_max_bytes: 1048576` and a profile above it; a second fixture home with the key absent,
+- **Given** the test `TestSessionStartAutoPathSplit` in `internal/hook`, driving the SessionStart hygiene pass through the `hygieneRunFn` seam (`internal/hook/session_start_hygiene.go:19`) on a fixture project whose template `workflow.yaml` carries `mode: apply` and that is seeded with one GC residue-class target of the closed class `verify` (a session-keyed directory under the fixture project's `.moai/state/verify/` holding a datable entry file with an old `recorded_at`, the enumeration shape of `internal/hygiene/targets.go:173–189` with the dating field of `:92`), with a fixture home that sets `state.profile_max_bytes: 1048576` and a profile above it; a second fixture home with the key absent,
 - **When** `go test ./internal/hook/ -run '^TestSessionStartAutoPathSplit$' -count=1` is run,
-- **Then** (1) `.moai/logs/hygiene-audit.jsonl` gains rows with `"mode":"apply"` from the rotator unit and the GC unit reports its pass — apply rows exist for the non-destructive categories (the operator's completion criterion 2, auto path); (2) no row, report entry, or filesystem change names a path outside the fixture project's `.moai/logs` and `.moai/state`: no destructive category (worktrees, databases, run records) is touched, and no backups or releases path is touched — a fixture home seeded with old `backups/removed-*` directories and non-current releases is byte-identical after the pass; and (3) the profile-cap advisory check fires in the pass: in fixture 1 the pass emits the warning naming the profile and the key and deletes nothing; in fixture 2 it emits no profile-cap warning (REQ-CAP-009's hook surface).
-- **Mutant:** a variant of the pass that invokes the home-cleanup path (`runCleanHome`) fails (2) on the fixture home; a registry that gains a home-path class fails (2) on the path scan; a loader with a compiled fallback fails (3) on the absent-key fixture.
-- **RED-now (EV-008, premise cell):** no test by that name exists (`grep -rn 'TestSessionStartAutoPathSplit' internal` prints nothing). The behavior is partly source-verifiable today (the closed class registry `internal/hygiene/targets.go:29–36`; the home path reachable only via `moai clean --home`, `clean.go:107`) and partly new (the apply rows exist only after the M1 flip, which is AC-CAP-008's flip). The test's own failing run is recorded at pre-flight, before the M1 commit that flips the default.
+- **Then** (1) `.moai/logs/hygiene-audit.jsonl` gains rows with `"mode":"apply"` from the rotator unit, and at least one row carries `"unit":"gc"` with `"mode":"apply"` for the seeded `verify` target's path — the GC decided on the seeded target and wrote its apply row (it writes apply rows only per decision and writes nothing when none fires, EV-016), so apply rows exist for the non-destructive categories (the operator's completion criterion 2, auto path); (2) no row, report entry, or filesystem change names a path outside the fixture project's `.moai/logs` and `.moai/state`: no destructive category (worktrees, databases, run records) is touched, and no backups or releases path is touched — a fixture home seeded with old `backups/removed-*` directories and non-current releases is byte-identical after the pass; and (3) the profile-cap advisory check fires in the pass: in fixture 1 the pass emits the warning naming the profile and the key and deletes nothing; in fixture 2 it emits no profile-cap warning (REQ-CAP-009's hook surface).
+- **Mutant:** a variant of the pass that invokes the home-cleanup path (`runCleanHome`) fails (2) on the fixture home; a registry that gains a home-path class fails (2) on the path scan; a loader with a compiled fallback fails (3) on the absent-key fixture; a GC whose apply path emits no row for the seeded `verify` target fails (1).
+- **RED-now (EV-008, premise cell; EV-015, the clause-1 seeding premise; EV-016, the decision-gate premise):** no test by that name exists (`grep -rn 'TestSessionStartAutoPathSplit' internal` prints nothing), and no hook fixture seeds a `verify` scratch target (`grep -rn 'ClassVerifyScratch' internal/hook` prints nothing, EV-015). The behavior is partly source-verifiable today (the closed class registry `internal/hygiene/targets.go:29–36`; the home path reachable only via `moai clean --home`, `clean.go:107`; the GC's decision-gated apply-row write, EV-016) and partly new (the apply rows exist only after the M1 flip, which is AC-CAP-008's flip). The test's own failing run is recorded at pre-flight, before the M1 commit that flips the default.
 - **Green path:** M1 writes the test (clauses 1 and 2) and flips the default; they pass. M3 extends the test with clause 3 once the loader and warning exist; the extended test passes at the M3 commit. The test's failing run against the pre-change tree is the pre-flight record.
 
 ## §D.6 Quality gate and Definition of Done
