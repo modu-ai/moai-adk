@@ -94,11 +94,11 @@ func TestFindResumableRunReportsMultipleCandidates(t *testing.T) {
 	}
 }
 
-// An indeterminate owner still admits adoption: the incident's resuming
-// leader cannot prove the prior process dead — absence of knowledge must not
-// strand the run's records (REQ-003b's residual falls on the adoptable side
-// here, because the alternative is minting over a live run).
-func TestFindResumableRunAdmitsIndeterminateOwner(t *testing.T) {
+// Sync-audit t1707 F2 — a single candidate whose owner is only INDETERMINATE
+// is NOT auto-adopted: live records prove unfinished work, not the owner's
+// death, and the probe-miss path classifies a live owner indeterminate. The
+// candidate is still listed, so the caller's warn-and-offer path names it.
+func TestFindResumableRunWarnsSingleIndeterminateOwner(t *testing.T) {
 	db := openSandboxFactory(t)
 	mustRecordRun(t, db, FactoryRun{RunID: "run-unk", ManifestJSON: "{}", LeadPID: 20, LeadProcessStart: "gone"})
 	mustInsertWorker(t, db, "run-unk", "lane-3")
@@ -107,8 +107,11 @@ func TestFindResumableRunAdmitsIndeterminateOwner(t *testing.T) {
 	if err != nil {
 		t.Fatalf("find resumable run: %v", err)
 	}
-	if adopt.RunID != "run-unk" || len(candidates) != 1 {
-		t.Fatalf("adopt = %+v candidates = %+v, want run-unk", adopt, candidates)
+	if adopt.RunID != "" {
+		t.Fatalf("adopt = %+v, want none (an indeterminate owner is never auto-adopted)", adopt)
+	}
+	if len(candidates) != 1 || candidates[0].RunID != "run-unk" {
+		t.Fatalf("candidates = %+v, want run-unk listed for the warn path", candidates)
 	}
 }
 
@@ -118,7 +121,8 @@ func TestAdoptRunRestampsOwnerAndAppendsResumedEvent(t *testing.T) {
 	db := openSandboxFactory(t)
 	mustRecordRun(t, db, FactoryRun{RunID: "run-old", ManifestJSON: "{}", LeadPID: 20, LeadProcessStart: "gone"})
 
-	if err := db.AdoptRun(context.Background(), "run-old", 4242, "new-start", "leader-resume-adoption"); err != nil {
+	adopt := RunOwner{RunID: "run-old", LeadPID: 20, LeadProcessStart: "gone"}
+	if err := db.AdoptRun(context.Background(), adopt, 4242, "new-start", "leader-resume-adoption"); err != nil {
 		t.Fatalf("adopt: %v", err)
 	}
 	var pid int
@@ -139,6 +143,32 @@ func TestAdoptRunRestampsOwnerAndAppendsResumedEvent(t *testing.T) {
 	}
 }
 
+// Sync-audit t1707 F1 — the restamp is a compare-and-set on the classified
+// owner stamp: once one resume launch has adopted (the stamp now names ITS
+// process), a second launch still carrying the ORIGINAL stamp is refused
+// instead of overwriting the first adopter's live identity.
+func TestAdoptRunRefusesChangedStamp(t *testing.T) {
+	db := openSandboxFactory(t)
+	mustRecordRun(t, db, FactoryRun{RunID: "run-old", ManifestJSON: "{}", LeadPID: 20, LeadProcessStart: "gone"})
+
+	first := RunOwner{RunID: "run-old", LeadPID: 20, LeadProcessStart: "gone"}
+	if err := db.AdoptRun(context.Background(), first, 4242, "first-resume", "leader-resume-adoption"); err != nil {
+		t.Fatalf("first adopt: %v", err)
+	}
+	second := RunOwner{RunID: "run-old", LeadPID: 20, LeadProcessStart: "gone"}
+	if err := db.AdoptRun(context.Background(), second, 5151, "second-resume", "leader-resume-adoption"); err == nil {
+		t.Fatalf("second adopt with the stale stamp succeeded; it must be refused")
+	}
+	var pid int
+	var start string
+	if err := db.DB.QueryRow(`SELECT lead_pid, lead_process_start FROM runs WHERE run_id='run-old'`).Scan(&pid, &start); err != nil {
+		t.Fatalf("read row after refused adopt: %v", err)
+	}
+	if pid != 4242 || start != "first-resume" {
+		t.Fatalf("stamp = (%d, %q), want the FIRST adopter's (4242, \"first-resume\")", pid, start)
+	}
+}
+
 // Adoption refuses a run that does not measure active: re-activating a
 // retired row is the discovery resume path's decision, not this one.
 func TestAdoptRunRefusesNonActiveRun(t *testing.T) {
@@ -147,11 +177,30 @@ func TestAdoptRunRefusesNonActiveRun(t *testing.T) {
 	if _, err := db.ReconcileActiveRuns(context.Background(), ReconcileOptions{Classify: fixedClassifier(OwnerDead)}); err != nil {
 		t.Fatalf("reconcile: %v", err)
 	}
-	if err := db.AdoptRun(context.Background(), "run-gone", 4242, "new-start", "leader-resume-adoption"); err == nil {
+	adopt := RunOwner{RunID: "run-gone", LeadPID: 20, LeadProcessStart: "gone"}
+	if err := db.AdoptRun(context.Background(), adopt, 4242, "new-start", "leader-resume-adoption"); err == nil {
 		t.Fatalf("AdoptRun on a retired run succeeded; it must refuse")
 	}
 	if got := runStatus(t, db, "run-gone"); got != "retired" {
 		t.Fatalf("status = %q, want \"retired\"", got)
+	}
+}
+
+// The live-records predicate's terminal set is spelled as a SQL literal
+// (SQLite cannot bind a list); this test pins the literal to the shared
+// terminalStates definition so the two cannot drift apart.
+func TestLiveRecordsTerminalSetMatchesSharedDefinition(t *testing.T) {
+	var want strings.Builder
+	want.WriteString("(")
+	for i, s := range terminalStates {
+		if i > 0 {
+			want.WriteString(",")
+		}
+		want.WriteString("'" + s + "'")
+	}
+	want.WriteString(")")
+	if sqlTerminalStates != want.String() {
+		t.Fatalf("sqlTerminalStates = %s, want the shared terminalStates set rendered as %s", sqlTerminalStates, want.String())
 	}
 }
 
@@ -198,12 +247,14 @@ func TestReconcilePreservesDeadOwnerWithOnlyWorkers(t *testing.T) {
 	}
 }
 
-// Terminal records are not live records: a dead-owner run whose cards are all
-// done or abandoned retires exactly as before the guard existed.
+// A failed card is a terminal record (shared terminalStates set): a
+// dead-owner run whose cards are all terminal — done, failed, or abandoned —
+// retires exactly as before the guard existed.
 func TestReconcileRetiresDeadOwnerWithTerminalRecordsOnly(t *testing.T) {
 	db := openSandboxFactory(t)
 	mustRecordRun(t, db, FactoryRun{RunID: "run-fin", ManifestJSON: "{}", LeadPID: 20, LeadProcessStart: "gone"})
 	mustInsertCard(t, db, "run-fin", "c-done", "done")
+	mustInsertCard(t, db, "run-fin", "c-failed", "failed")
 	mustInsertCard(t, db, "run-fin", "c-aband", "abandoned")
 
 	rec, err := db.ReconcileActiveRuns(context.Background(), ReconcileOptions{Classify: fixedClassifier(OwnerDead)})

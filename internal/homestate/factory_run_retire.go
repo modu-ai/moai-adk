@@ -346,22 +346,20 @@ func (f *FactoryDB) ReconcileActiveRuns(ctx context.Context, opts ReconcileOptio
 		if !retirable(o.Classification) {
 			continue
 		}
-		live, err := f.runHasLiveRecords(ctx, o.RunID)
+		// The live-records decision is made INSIDE the retirement transaction
+		// (retireRunUnlessLive), so a card transition or worker registration
+		// committing between a check and the UPDATE can no longer be orphaned
+		// by the retirement it races with (sync-audit t1707 F3). The
+		// authoritative preserved/retired outcome is what the transaction
+		// decided, not the pre-read.
+		retired, err := f.retireRunUnlessLive(ctx, o.RunID, o.Classification, o.Basis)
 		if err != nil {
 			return Reconciliation{}, err
 		}
-		if live {
-			// A records-bearing run must not be retired out from under its
-			// work (card t1707): it stays active and surfaces through the
-			// multi-active ambiguity path, which names every candidate and
-			// the re-adoption command, instead of a silent retirement that
-			// orphans the records.
+		if !retired {
 			o.Status = "active"
 			result.Preserved = append(result.Preserved, o)
 			continue
-		}
-		if err := f.retireRun(ctx, o.RunID, o.Classification, o.Basis); err != nil {
-			return Reconciliation{}, err
 		}
 		o.Status = "retired"
 		result.Retired = append(result.Retired, o)
@@ -403,7 +401,9 @@ func (f *FactoryDB) RetireRunIfDead(ctx context.Context, runID string, opts Reco
 // retireRun transitions one active run to 'retired' and appends a run.retired
 // event carrying the classification and the proof basis that established it
 // (REQ-010b). The row is preserved: deleting it would make the retirement
-// itself unobservable.
+// itself unobservable. This is the deliberate path — the operator's
+// RetireRunIfDead and the migration pass — which retires regardless of the
+// records the run carries.
 func (f *FactoryDB) retireRun(ctx context.Context, runID string, c OwnerClassification, basis ProofBasis) error {
 	now := time.Now().UTC().Format(time.RFC3339Nano)
 	tx, err := f.DB.BeginTx(ctx, nil)
@@ -419,6 +419,40 @@ func (f *FactoryDB) retireRun(ctx context.Context, runID string, c OwnerClassifi
 		return err
 	}
 	return tx.Commit()
+}
+
+// retireRunUnlessLive is the automatic reconciliation's retirement write: the
+// live-records recheck and the status flip share one transaction, so the
+// guard's promise — a records-bearing run is never silently retired — holds
+// against a registration or card transition committing mid-reconciliation
+// (sync-audit t1707 F3). It reports whether the run was retired: false means
+// live records were found inside the transaction and the run stays active for
+// the caller's preserved list.
+func (f *FactoryDB) retireRunUnlessLive(ctx context.Context, runID string, c OwnerClassification, basis ProofBasis) (retired bool, err error) {
+	now := time.Now().UTC().Format(time.RFC3339Nano)
+	tx, err := f.DB.BeginTx(ctx, nil)
+	if err != nil {
+		return false, err
+	}
+	defer func() { _ = tx.Rollback() }()
+	live, err := runHasLiveRecords(ctx, tx, runID)
+	if err != nil {
+		return false, err
+	}
+	if live {
+		return false, nil
+	}
+	if _, err := tx.ExecContext(ctx, `UPDATE runs SET status='retired', updated_at=? WHERE run_id=? AND status='active'`, now, runID); err != nil {
+		return false, err
+	}
+	payload := fmt.Sprintf(`{"classification":%q,"basis":%q}`, string(c), string(basis))
+	if _, err := tx.ExecContext(ctx, `INSERT INTO events(run_id,kind,payload_json,created_at) VALUES(?,'run.retired',?,?)`, runID, payload, now); err != nil {
+		return false, err
+	}
+	if err := tx.Commit(); err != nil {
+		return false, err
+	}
+	return true, nil
 }
 
 // StampRunOwner rewrites one run's owner identity. It is the REQ-002b restamp:

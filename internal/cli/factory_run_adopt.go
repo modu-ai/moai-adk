@@ -42,18 +42,23 @@ func leaderRunIDWasMinted(leaderLabel, priorEnvRunID string) bool {
 // adoptResumedLeaderRun re-adopts the prior run on a resume-shaped leader
 // start (card t1707). shouldAdopt is the call site's combined gate: the launch
 // carries a resume carrier AND the published id was freshly minted AND no
-// explicit --factory-run was given. On adoption the launcher's run-id
-// environment is rewritten to the adopted id BEFORE the SessionStart notice
-// and the messaging store open read it, which rebinds leader messaging to the
-// adopted run (the third clause of the card fix).
+// explicit --factory-run was given. On adoption the launcher republishes the
+// adopted id AND its conventional address into the environment BEFORE the
+// SessionStart notice and the messaging store open read them —
+// enterFactoryLeaderMode stamped this launch's minted id into the address
+// variable, and the notice must advertise the adopted run (sync-audit t1707
+// F4) — which rebinds leader messaging to the adopted run (the third clause of
+// the card fix).
 //
 // Zero candidates adopts nothing (a genuinely fresh start mints as before);
-// several candidates adopts nothing and writes one warn line per candidate to
-// warn naming the run, its owner classification, and the deliberate
-// re-adoption command — the card's "refuse or warn and offer re-adoption".
-// adopt "" with a nil error means "mint as before"; an error is a factory
-// database failure and propagates, matching recordFactoryRunStart's own
-// failure contract at the same call site.
+// anything the finder did not return as adoptable — several candidates, or a
+// single candidate whose owner is only indeterminate (sync-audit t1707 F2) —
+// adopts nothing and writes one warn line per candidate to warn naming the
+// run, its owner classification, and the deliberate re-adoption command, the
+// card's "refuse or warn and offer re-adoption". adopt "" with a nil error
+// means "mint as before"; an error is a factory database failure and
+// propagates, matching recordFactoryRunStart's own failure contract at the
+// same call site.
 func adoptResumedLeaderRun(root string, shouldAdopt bool, warn io.Writer) (adopted string, err error) {
 	if !shouldAdopt {
 		return "", nil
@@ -67,19 +72,16 @@ func adoptResumedLeaderRun(root string, shouldAdopt bool, warn io.Writer) (adopt
 	if err != nil {
 		return "", err
 	}
-	switch {
-	case len(candidates) == 1:
-		if err := db.AdoptRun(context.Background(), adopt.RunID, os.Getpid(), homestate.CurrentProcessFingerprint(), leaderResumeAdoptionBasis); err != nil {
-			return "", err
-		}
-		_ = os.Setenv(config.EnvFactoryRunID, adopt.RunID)
-		return adopt.RunID, nil
-	case len(candidates) > 1:
+	if adopt.RunID == "" {
 		for _, c := range candidates {
 			fmt.Fprintf(warn, "factory leader resume: run %s (owner %s) still holds live records — adopting nothing; to adopt one deliberately, relaunch with `moai cc -f --factory-run %s`\n", c.RunID, c.Classification, c.RunID)
 		}
 		return "", nil
-	default:
-		return "", nil
 	}
+	if err := db.AdoptRun(context.Background(), adopt, os.Getpid(), homestate.CurrentProcessFingerprint(), leaderResumeAdoptionBasis); err != nil {
+		return "", err
+	}
+	_ = os.Setenv(config.EnvFactoryRunID, adopt.RunID)
+	_ = os.Setenv(config.EnvFactoryLeadAddr, factory.FactoryLeaderSocketPath(adopt.RunID))
+	return adopt.RunID, nil
 }

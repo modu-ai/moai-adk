@@ -9,6 +9,7 @@ import (
 	"testing"
 
 	"github.com/modu-ai/moai-adk/internal/config"
+	"github.com/modu-ai/moai-adk/internal/factory"
 	"github.com/modu-ai/moai-adk/internal/homestate"
 )
 
@@ -78,6 +79,11 @@ func TestAdoptResumedLeaderRunAdoptsSingleCandidate(t *testing.T) {
 	}
 	if got := os.Getenv(config.EnvFactoryRunID); got != "run-old" {
 		t.Fatalf("env %s = %q, want run-old (messaging must rebind to the adopted run)", config.EnvFactoryRunID, got)
+	}
+	// Sync-audit t1707 F4 — the conventional address is republished from the
+	// adopted id too: the minted id's address must not survive the adoption.
+	if got := os.Getenv(config.EnvFactoryLeadAddr); got != factory.FactoryLeaderSocketPath("run-old") {
+		t.Fatalf("env %s = %q, want the adopted run's address %q", config.EnvFactoryLeadAddr, got, factory.FactoryLeaderSocketPath("run-old"))
 	}
 	if warn.Len() != 0 {
 		t.Fatalf("warn = %q, want empty", warn.String())

@@ -13,14 +13,25 @@ import (
 // start may re-adopt, the adoption write that keeps the prior run id, and the
 // shared live-records predicate both this path and the retirement guard read.
 
+// sqlTerminalStates renders the shared terminalStates set (card_record.go:
+// done, failed, abandoned) as the SQL literal the live-records predicate
+// uses. SQLite cannot bind a list, so the set is spelled here; the alignment
+// test in factory_run_adopt_test.go pins this literal to terminalStates so
+// the two cannot drift apart.
+const sqlTerminalStates = `('done','failed','abandoned')`
+
 // runHasLiveRecords reports whether the run still carries records a lifecycle
-// decision must respect: cards in a non-terminal state (anything but done and
-// abandoned) or registered workers (card t1707). Live records are what
-// separate "the leader died mid-run" from "this run is genuinely over".
-func (f *FactoryDB) runHasLiveRecords(ctx context.Context, runID string) (bool, error) {
+// decision must respect: cards outside the shared terminal set or registered
+// workers (card t1707). Live records are what separate "the leader died
+// mid-run" from "this run is genuinely over".
+//
+// q is the queryer seam (card_record.go queryRower) so the check can run on a
+// caller's transaction: the pool holds a single connection, and a read issued
+// through the pool handle while a transaction holds it would deadlock.
+func runHasLiveRecords(ctx context.Context, q queryRower, runID string) (bool, error) {
 	var live int
-	if err := f.DB.QueryRowContext(ctx, `SELECT EXISTS(
-SELECT 1 FROM cards WHERE run_id=?1 AND state NOT IN ('done','abandoned'))
+	if err := q.QueryRowContext(ctx, `SELECT EXISTS(
+SELECT 1 FROM cards WHERE run_id=?1 AND state NOT IN `+sqlTerminalStates+`)
 OR EXISTS(SELECT 1 FROM workers WHERE run_id=?1)`, runID).Scan(&live); err != nil {
 		return false, err
 	}
@@ -30,20 +41,29 @@ OR EXISTS(SELECT 1 FROM workers WHERE run_id=?1)`, runID).Scan(&live); err != ni
 // FindResumableRun resolves the single run a resume-shaped leader start may
 // re-adopt instead of minting a fresh run id (card t1707).
 //
-// A candidate is an ACTIVE run whose owner classifies dead or indeterminate —
-// the incident shape: the prior leader process died with the machine state
-// intact, and the resuming leader is a NEW process (new pid, new fingerprint),
-// so the recorded stamp classifies dead even though the run's records are
-// alive — and which still carries live records per runHasLiveRecords.
+// A candidate is an ACTIVE run whose owner classifies dead or indeterminate
+// and which still carries live records per runHasLiveRecords — the incident
+// shape: the prior leader process died with the machine state intact, and the
+// resuming leader is a NEW process (new pid, new fingerprint), so the
+// recorded stamp classifies dead even though the run's records are alive.
 //
-// Exactly one candidate → it is returned as adopt with the candidate list.
-// Zero candidates (nothing to adopt — a cold start mints as before) and more
-// than one (ambiguous — the caller warns and offers the deliberate
-// --factory-run path) return a zero adopt with the full candidate list, which
-// the caller distinguishes by length.
+// Adoption is admitted ONLY for a dead owner (sync-audit finding F2): live
+// records prove unfinished work, not the owner's death, and the batch-probe
+// miss path classifies a probe-verified-live owner indeterminate — auto-
+// adopting on indeterminate could overwrite a live leader's stamp. An
+// absent-or-unproven owner therefore routes to the caller's warn-and-offer
+// path instead, the same direction ClassifyOwnerWith gives every other
+// absence of knowledge (REQ-003b).
 //
-// @MX:NOTE: [AUTO] candidate admission is dead-or-indeterminate plus live records; a live owner's run is never adoptable
-// @MX:REASON: adopting a live leader's run would hijack it, and adoption is the alternative to minting over a run's records (card t1707)
+// Exactly one candidate classified dead → it is returned as adopt with the
+// candidate list. Anything else — zero candidates (a cold start mints as
+// before), a single indeterminate candidate, or several candidates (the
+// caller warns and offers the deliberate --factory-run path) — returns a zero
+// adopt with the full candidate list, which the caller distinguishes by
+// length and classification.
+//
+// @MX:NOTE: [AUTO] only a single DEAD-owner candidate is returned as adopt; indeterminate candidates surface through the warn list
+// @MX:REASON: auto-adopting an unproven owner can overwrite a live leader's stamp; the asymmetric risk mirrors REQ-003b (sync-audit t1707 F2)
 func (f *FactoryDB) FindResumableRun(ctx context.Context, opts ReconcileOptions) (RunOwner, []RunOwner, error) {
 	owners, err := f.classifyRuns(ctx, opts, "active")
 	if err != nil {
@@ -56,7 +76,7 @@ func (f *FactoryDB) FindResumableRun(ctx context.Context, opts ReconcileOptions)
 		default:
 			continue
 		}
-		live, err := f.runHasLiveRecords(ctx, o.RunID)
+		live, err := runHasLiveRecords(ctx, f.DB, o.RunID)
 		if err != nil {
 			return RunOwner{}, nil, err
 		}
@@ -64,7 +84,7 @@ func (f *FactoryDB) FindResumableRun(ctx context.Context, opts ReconcileOptions)
 			candidates = append(candidates, o)
 		}
 	}
-	if len(candidates) == 1 {
+	if len(candidates) == 1 && candidates[0].Classification == OwnerDead {
 		return candidates[0], candidates, nil
 	}
 	return RunOwner{}, candidates, nil
@@ -74,11 +94,18 @@ func (f *FactoryDB) FindResumableRun(ctx context.Context, opts ReconcileOptions)
 // restamps the owner identity to the supplied pid and process-start
 // fingerprint and appends one run.resumed event carrying the adoption basis,
 // so the audit trail records why the run id stayed the same across the leader
-// process change (card t1707). The row must measure active: a retired run is
-// refused with an error, because re-activating a retired row is the ResumeRun
-// discovery path's decision, not this one.
-func (f *FactoryDB) AdoptRun(ctx context.Context, runID string, pid int, processStart, basis string) error {
-	if strings.TrimSpace(runID) == "" {
+// process change (card t1707).
+//
+// adopt is the finder's classified candidate, and its recorded owner stamp is
+// part of the write's WHERE clause: the restamp is a compare-and-set on the
+// identity that was classified, so two resume launches racing on the same
+// dead-owner run cannot both adopt — the second finds the stamp already
+// replaced and is refused instead of overwriting the first adopter's live
+// identity (sync-audit finding F1). The row must still measure active under
+// that stamp; anything else is refused with an error, because re-activating a
+// retired row is the ResumeRun discovery path's decision, not this one.
+func (f *FactoryDB) AdoptRun(ctx context.Context, adopt RunOwner, pid int, processStart, basis string) error {
+	if strings.TrimSpace(adopt.RunID) == "" {
 		return errors.New("factory run id is empty")
 	}
 	if pid < 1 || strings.TrimSpace(processStart) == "" {
@@ -93,7 +120,8 @@ func (f *FactoryDB) AdoptRun(ctx context.Context, runID string, pid int, process
 		return err
 	}
 	defer func() { _ = tx.Rollback() }()
-	res, err := tx.ExecContext(ctx, `UPDATE runs SET lead_pid=?, lead_process_start=?, updated_at=? WHERE run_id=? AND status='active'`, pid, processStart, now, runID)
+	res, err := tx.ExecContext(ctx, `UPDATE runs SET lead_pid=?, lead_process_start=?, updated_at=? WHERE run_id=? AND status='active' AND lead_pid=? AND lead_process_start=?`,
+		pid, processStart, now, adopt.RunID, adopt.LeadPID, adopt.LeadProcessStart)
 	if err != nil {
 		return err
 	}
@@ -102,10 +130,10 @@ func (f *FactoryDB) AdoptRun(ctx context.Context, runID string, pid int, process
 		return err
 	}
 	if affected == 0 {
-		return fmt.Errorf("factory run %s is not active; adoption refused", runID)
+		return fmt.Errorf("factory run %s no longer carries the classified owner stamp; adoption refused", adopt.RunID)
 	}
 	payload := fmt.Sprintf(`{"basis":%q,"outcome":"adopted"}`, basis)
-	if _, err := tx.ExecContext(ctx, `INSERT INTO events(run_id,kind,payload_json,created_at) VALUES(?,'run.resumed',?,?)`, runID, payload, now); err != nil {
+	if _, err := tx.ExecContext(ctx, `INSERT INTO events(run_id,kind,payload_json,created_at) VALUES(?,'run.resumed',?,?)`, adopt.RunID, payload, now); err != nil {
 		return err
 	}
 	return tx.Commit()
