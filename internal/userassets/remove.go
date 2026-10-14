@@ -264,22 +264,57 @@ func (in *Installer) RemoveBundle(manifest *Manifest, name string, remaining []s
 	if _, ok := in.Catalog.Catalog.OptionalPacks[name]; !ok {
 		return nil, fmt.Errorf("unknown bundle %q", name)
 	}
-	// RF3 (review fix): enumerate the removal targets from the MANIFEST —
-	// every tracked key whose recorded bundle names the removed bundle.
-	// Files installed by an OLDER deployment are tracked but absent from
-	// the current source tree; walking the tree misses them and both the
-	// file and its record survive the removal.
-	bundleKeys := map[string]bool{}
+	// Gate round 51-5: the removal eligibility is the BEFORE/AFTER
+	// DEPENDENCY-CLOSURE DIFFERENCE, not the bare bundle label. A
+	// parent-only bundle (deployment → backend, no own assets) records its
+	// dependency assets under the DEPENDENCY's label, so a label-only
+	// enumeration left the whole dependency subtree behind. before = the
+	// closure of the manifest's recorded bundles; after = the closure of
+	// the remaining selection (∪ L0, which collectEntries always
+	// includes); the difference is what the removal may prune. The
+	// shared/deferred classifications below still gate each entry.
+	before := in.collectEntries(manifest.Bundles)
+	after := in.collectEntries(remaining)
+	afterNames := map[string]bool{}
+	for _, e := range after {
+		afterNames[e.Name] = true
+	}
+	prunedNames := map[string]bool{}
+	for _, e := range before {
+		if !afterNames[e.Name] {
+			prunedNames[e.Name] = true
+		}
+	}
+	// Codex review P2 (card t1591): a recorded bundle the current catalog no
+	// longer ships has no entries in collectEntries, so the closure difference
+	// above cannot see its files. Attribute the tracked files through the
+	// manifest's own Bundle field instead: a file whose bundle the remaining
+	// selection does not keep is a removal target, unless the remaining closure
+	// still needs its owning entry (afterNames). Core is always kept.
+	keptBundles := map[string]bool{}
+	for _, b := range remaining {
+		keptBundles[b] = true
+	}
 	for k, fe := range manifest.Files {
-		if fe.Bundle == name {
-			bundleKeys[k] = true
+		if fe.Bundle == "" || fe.Bundle == "core" || keptBundles[fe.Bundle] {
+			continue
+		}
+		_, rel, ok := splitManifestKey(k)
+		if !ok {
+			continue
+		}
+		if n, ok := owningEntryName(rel); ok && !afterNames[n] {
+			prunedNames[n] = true
 		}
 	}
 
-	// Group the keys by owning entry name so the E3/R-f-② classification
-	// (shared / deferred) runs per entry as before.
+	// RF3 (review fix): enumerate the removal targets from the MANIFEST —
+	// every tracked key whose OWNING ENTRY is in the prune set (files
+	// installed by an OLDER deployment are tracked but absent from the
+	// current source tree; walking the tree misses them and both the file
+	// and its record survive the removal).
 	nameKeys := map[string][]string{}
-	for k := range bundleKeys {
+	for k := range manifest.Files {
 		_, rel, ok := splitManifestKey(k)
 		if !ok {
 			continue
@@ -288,7 +323,9 @@ func (in *Installer) RemoveBundle(manifest *Manifest, name string, remaining []s
 		if !ok {
 			continue
 		}
-		nameKeys[n] = append(nameKeys[n], k)
+		if prunedNames[n] {
+			nameKeys[n] = append(nameKeys[n], k)
+		}
 	}
 	names := make([]string, 0, len(nameKeys))
 	for n := range nameKeys {
@@ -336,11 +373,31 @@ func (in *Installer) preservedEntries(selection []string) []template.Entry {
 	entries := make([]template.Entry, 0, len(in.Catalog.Catalog.Core.Skills)+len(in.Catalog.Catalog.Core.Agents))
 	entries = append(entries, in.Catalog.Catalog.Core.Skills...)
 	entries = append(entries, in.Catalog.Catalog.Core.Agents...)
-	for _, name := range selection {
-		if pack, ok := in.Catalog.Catalog.OptionalPacks[name]; ok {
-			entries = append(entries, pack.Skills...)
-			entries = append(entries, pack.Agents...)
+	// M6 (REQ-SRF-005, gate round 35-2): the retention set is expanded
+	// through the SAME DependsOn closure the install uses — a dependency
+	// bundle installed alongside its selected parent is not pruned as
+	// unselected the next time the recorded selection is judged (the
+	// extras→extras2 repro). Cycle-safe: the walked set doubles as the
+	// guard.
+	gathered := map[string]bool{}
+	var walk func(name string)
+	walk = func(name string) {
+		if gathered[name] {
+			return
 		}
+		gathered[name] = true
+		pack, ok := in.Catalog.Catalog.OptionalPacks[name]
+		if !ok {
+			return
+		}
+		entries = append(entries, pack.Skills...)
+		entries = append(entries, pack.Agents...)
+		for _, dep := range pack.DependsOn {
+			walk(dep)
+		}
+	}
+	for _, name := range selection {
+		walk(name)
 	}
 	return entries
 }
@@ -380,7 +437,17 @@ func (in *Installer) readShippedForKey(e template.Entry, key string) ([]byte, er
 	if !ok {
 		return nil, fmt.Errorf("no shipped source for %s", key)
 	}
-	return fs.ReadFile(in.Source, sourcePath)
+	data, err := fs.ReadFile(in.Source, sourcePath)
+	if err != nil {
+		return nil, err
+	}
+	// M3 (REQ-CNV-001): the divergence BACKUP references the bytes moai
+	// would write — for the Codex faces those are the deploy-path
+	// converted bytes, same as the install writes.
+	if slug == RootCodexAgents || slug == RootAgentsSkills {
+		data = template.NormalizeCodexRoleForDeploy(data)
+	}
+	return data, nil
 }
 
 // sourcePathFor maps a (root slug, entry, rel) triple back to the source

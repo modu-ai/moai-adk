@@ -1171,4 +1171,48 @@ func TestLinter_LintSkipFlatForm(t *testing.T) {
 			t.Fatalf("flat continuation form: findings = %+v, want exactly 1", got)
 		}
 	})
+
+	t.Run("quoted flat key warns", func(t *testing.T) {
+		// A quoted key is the same flat key: YAML decodes "lint.skip" to lint.skip.
+		path := writeSpec(t, lintSkipFixture("\"lint.skip\": [DanglingRuleReference]\n"))
+		if got := lint(t, path); len(got) != 1 {
+			t.Fatalf("quoted flat key: findings = %+v, want exactly 1", got)
+		}
+	})
+
+	t.Run("spaced flat key warns", func(t *testing.T) {
+		// Whitespace before the colon does not change the key.
+		path := writeSpec(t, lintSkipFixture("lint.skip : [DanglingRuleReference]\n"))
+		if got := lint(t, path); len(got) != 1 {
+			t.Fatalf("spaced flat key: findings = %+v, want exactly 1", got)
+		}
+	})
+
+	t.Run("indented top-level key warns", func(t *testing.T) {
+		// When the whole mapping shares one indent, lint.skip is still a top-level
+		// key, and the decoder still ignores it.
+		indented := "---\n" +
+			"  id: SPEC-LINTSKIP-001\n" +
+			"  title: \"Fixture\"\n" +
+			"  version: \"0.1.0\"\n" +
+			"  status: draft\n" +
+			"  created: 2026-05-01\n" +
+			"  updated: 2026-05-01\n" +
+			"  author: Fixture\n" +
+			"  priority: P1\n" +
+			"  phase: \"v3.0.0\"\n" +
+			"  module: \"internal/spec\"\n" +
+			"  lifecycle: spec-anchored\n" +
+			"  tags: \"fixture\"\n" +
+			"  lint.skip: [DanglingRuleReference]\n" +
+			"---\n\n# Fixture\n"
+		path := writeSpec(t, indented)
+		got := lint(t, path)
+		if len(got) != 1 {
+			t.Fatalf("indented flat key: findings = %+v, want exactly 1", got)
+		}
+		if got[0].Line != 14 {
+			t.Errorf("line = %d, want 14 (the flat key's own line)", got[0].Line)
+		}
+	})
 }
