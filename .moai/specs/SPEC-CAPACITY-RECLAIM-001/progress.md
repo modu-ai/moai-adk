@@ -102,6 +102,62 @@ The numbers below were measured before any tracking change, from the worktree ro
 - Mutant (AC-CAP-011, compiled-fallback loader): `LoadProfileCapMaxBytes` temporarily returning `(config.DefaultProfileMaxBytes, true, nil)` on key-absent → FAIL verbatim: `key-absent state.yaml resolved to (5368709120, true); the loader must carry no compiled fallback`. Reverted → `ok` again. Note: the mutant only bites the key-absent-file-present arm; the first fixture version (no state.yaml at all) returned early at file-absence and the mutant was unreachable — fixture 2 now writes a state.yaml without the key, and the file-absent case is asserted separately (also no fallback).
 - Known Gaps for AC-CAP-011: the acceptance's second mutant direction ("a cap that selects a candidate fails fixture 1") is not observable with the AC's 6 MiB fixture — the compiled cap it would have to exceed is 5 GiB, so a reverted scan (cap-driven selection restored) would still select nothing on this fixture. The scan-side conversion is instead evidenced by: EV-010 (the `:243` comparison existed) + the post-change grep printing nothing + fixture-1 asserting zero projects candidates with a young entry.
 
+### M3 commit + CLI-path fixture runs (AC-CAP-002 / AC-CAP-007; tool provenance per VCI §2.2)
+
+- M3 commit SHA: `9a6fd4906`. Binary rebuilt from the clean committed tree (`make build`, BuildID `...-860-g9a6fd49065`), so the fixture verdicts below are attributed to build `9a6fd49065` judging tree `9a6fd4906` — same commit, no lag.
+- Fixture: `/tmp/t1631-hygiene-fixture-37517` with `workflow.hygiene.audit_log_max_bytes: 1024`, one registered sink `rule-load-audit.jsonl` at 4096 bytes, and `.moai/lessons-inbox.jsonl` (39 bytes, SHA-256 `41ee8b8d76731005728537425a25a2939da914d0d479a34916744abc91ade358`).
+- AC-CAP-002: `(cd fixture) <tree>/bin/moai clean --audit-logs --apply` → printer reported `rotated: .../rule-load-audit.jsonl` plus per-sink skips; `grep -n '"mode":"apply"' .moai/logs/hygiene-audit.jsonl` → 21 rows, row 1 verbatim: `{"ts":"2026-10-14T05:00:57Z","unit":"rotator","mode":"apply","outcome":"rotated","path":".../rule-load-audit.jsonl"}`. PASS.
+- AC-CAP-007: post-run `wc -c` → `39` (unchanged); `shasum -a 256` → `41ee8b8d76731005728537425a25a2939da914d0d479a34916744abc91ade358` (unchanged); `grep -c 'lessons-inbox' .moai/logs/hygiene-audit.jsonl` → `0` (no audit row names it). PASS (held guard).
+- AC-CAP-006: `grep -n -E 'usage-log' internal/hygiene/sinks.go` → single match `91: "usage-log.jsonl": "internal/harness/retention.go (30-day prune to monthly gz)"` (owner exception; `sinkRegistry` at `sinks.go:25-50` names it nowhere). HELD.
+
+### E3 coverage (changed packages, this run, this tree `9a6fd4906`)
+
+- `go test -cover ./internal/harness/ -count=1` → `coverage: 86.4% of statements` (≥85 target).
+- `go test -cover ./internal/hygiene/ -count=1` → `coverage: 79.9% of statements` (package-wide, below the 85 target — reported honestly; the new `profile_cap.go` is exercised mainly from the cross-package tests measured next).
+- Cross-package coverage of the new file: `go test -coverprofile -coverpkg=./internal/hygiene -run '^TestProfileCapWarnsWithoutDeleting$' ./internal/cli/` → `LoadProfileCapMaxBytes 75.0%`, `ProfileCapAdvisories 60.9%`, `profileSizeWithDeadline 78.6%` (uncovered arms: the error-degradation paths — unreadable config dir, parse failure, mid-walk deadline, unreadable entries).
+- `go test -cover ./internal/config/ -count=1` → `coverage: 84.9% of statements` (the change is one additive const + one inventory row; no new branch).
+- `go test -cover -run '^TestHomeClean|^TestProfileCap' ./internal/cli/` → `coverage: 5.0% of statements` — scoped-run number only: the full cli suite is structurally red in card worktrees (dispatch Section C; CI is the verdict surface), so no full-package cli coverage figure is claimable locally.
+- `go test -cover ./internal/hook/ -count=1` → `coverage: 87.7% of statements` (511.850s; the full hook suite passed again in the same run).
+
+### M4 — final gates (this run, tree `9a6fd4906` + §E.2/M4 progress edits uncommitted)
+
+- `go vet ./internal/cli/ ./internal/hygiene/ ./internal/hook/ ./internal/config/ ./internal/harness/ ./internal/template/` → clean (no output).
+- `go build ./...` → exit 0 (`BUILD-MAIN-OK`); `GOOS=windows GOARCH=amd64 go build ./...` → exit 0 (`BUILD-WINDOWS-OK`).
+- `golangci-lint run --timeout=2m ./internal/cli/... ./internal/hygiene/... ./internal/hook/... ./internal/config/... ./internal/harness/... ./internal/template/...` → `0 issues.` (no NEW lint findings; the pre-existing baseline red `TestRuleDateProvenance` is a test failure, not a lint issue, and is recorded above).
+- Subagent-boundary grep (E4; no new agent surfaces added by this SPEC): `grep -rn 'AskUserQuestion\|mcp__askuser'` over every touched file (`internal/hygiene/profile_cap.go`, `internal/hook/session_start_hygiene.go`, `internal/cli/clean_home.go`, and the four new/extended test files) → no match (exit 1 by convention, runner showed no output).
+
+## §E.3 Run-phase Audit-Ready Signal
+
+run_status: complete
+run_complete_at: 2026-10-14T05:05:00Z
+run_tree: 9a6fd49065 (M3/M4 verification baseline; final commits listed below)
+
+AC matrix (AC-CAP-001..013; full command + verbatim output records above and in acceptance.md §D.0):
+
+| AC | Class | Verdict | Evidence anchor |
+|---|---|---|---|
+| AC-CAP-001 | MS | PASS | `300746 total` (< 5,000,000) — §E.2 M2 green runs |
+| AC-CAP-002 | MS | PASS | 21 `"mode":"apply"` rows, outcome `rotated` on the seeded sink — §E.2 CLI-path fixture runs |
+| AC-CAP-003 | RB | PASS | extended test RED pre-edit (4 positive cases) → `ok` post-edit — §E.2 RED + M2 |
+| AC-CAP-004 | RB | PASS | `git ls-files` of the eleven paths → empty — §E.2 M2 green runs |
+| AC-CAP-005 | RG | HELD | eleven local copies exist; nine archive digests byte-identical to B0 — §E.2 M2 green runs |
+| AC-CAP-006 | RG | HELD | `sinks.go:91` owner exception only; no registry entry — §E.2 CLI-path fixture runs |
+| AC-CAP-007 | RG | HELD | inbox 39 B + SHA unchanged; 0 audit rows name it — §E.2 CLI-path fixture runs |
+| AC-CAP-008 | RB | PASS | template `workflow.yaml:331` now `mode: apply` (EV-007 was the RED) — §E.2 M1 |
+| AC-CAP-009 | RB | PASS | test green vs unchanged prune; mutant (rewrite-before-archive) FAIL recorded, reverted — §E.2 RED |
+| AC-CAP-010 | MS | PASS | `TestHomeCleanKeepFloors` RED pre-change (both fixtures) → `ok` — §E.2 RED + M3 |
+| AC-CAP-011 | RB | PASS | `DefaultProfileMaxBytes` gone from clean_home.go (grep empty); `TestProfileCapWarnsWithoutDeleting` green; compiled-fallback mutant FAIL recorded — §E.2 M3 (one mutant direction unobservable, recorded as Gap) |
+| AC-CAP-012 | RB | PASS | behavioral RED pre-flip (report-mode summary rows) → clauses 1-3 green (gc apply row for the seeded verify target; path-scan; home byte-identical; advisory arms) — §E.2 RED + M1 + M3 |
+| AC-CAP-013 | MS | PASS | `git merge-base B0 B1` = B0 full SHA; `git show --name-only B0` = progress.md only — §E.2 M2 green runs |
+
+Residual risks / Gaps for the sync phase:
+
+1. AC-CAP-011's second mutant direction is not observable with the AC's 6 MiB fixture (details in §E.2 M3); scan-side conversion rests on EV-010 + post-change grep-empty + fixture-1 zero-candidates.
+2. The M1 commit `7fe94f712` carries a `🗺 MoAI` trailer (U+1F5FA) instead of `🗿 MoAI` (U+1F5FF) — escape-sequence authoring mistake, amend forbidden by B9; the lane may recommit the branch tip before integration if it wants the trailer byte-exact. All later commits carry the literal correct trailer.
+3. Pre-existing baseline red `TestRuleDateProvenance` (template package, `.claude/rules/moai/core/hooks-system.md:368` date leak) is untouched — out of this SPEC's scope; CI surface owner should triage it separately.
+4. Full cli package suite was not run locally (structurally red in card worktrees); `internal/cli` verdict rides CI, as the dispatch's Section C anticipated.
+5. Apply-by-default (AC-CAP-008) changes every new project's SessionStart auto path from report to apply for the non-destructive categories — this is the operator's approved Q1 verdict (8a62); existing projects keep their local workflow.yaml (mode: report) until they adopt the new template.
+
 ## §E.3 Run-phase Audit-Ready Signal
 
 _<pending run-phase>_
