@@ -560,6 +560,19 @@ func (s *Store) RegisterPeer(ctx context.Context, p Peer) (Peer, error) {
 	if err != nil {
 		return Peer{}, err
 	}
+	// SPEC-MCP-NEUTRALITY-001 REQ-MN-016: when the SAME session's generation
+	// advances, PENDING messages addressed to the previous generation migrate
+	// to the new one — inside this transaction, so a same-session relaunch
+	// can never orphan an undelivered message (the orphan defect is "a
+	// generation change ALONE"). A SLOT REBIND to a different session UUID
+	// keeps the REQ-DHR-020 superseded semantics: those messages are addressed
+	// to a specific endpoint identity that no longer exists, and silently
+	// retargeting them would violate the fencing contract that test pins.
+	if oldSession != "" && oldSession == p.SessionUUID && oldGen < p.Generation {
+		if _, err := tx.ExecContext(ctx, `UPDATE messages SET recipient_generation=? WHERE recipient_session=? AND recipient_generation=? AND state='pending'`, p.Generation, p.SessionUUID, oldGen); err != nil {
+			return Peer{}, err
+		}
+	}
 	if launcher {
 		if err := s.finalizeHandoffOnLauncherRegistration(ctx, tx, p.Slot); err != nil {
 			return Peer{}, err
@@ -777,6 +790,38 @@ func (s *Store) PendingCount(ctx context.Context, p Peer) (int, error) {
 	return n, err
 }
 
+// PendingListEntry is one read-only pending row the counting path renders.
+type PendingListEntry struct {
+	ID   string
+	Kind string
+}
+
+// PendingList returns up to limit pending message ids and kinds for p WITHOUT
+// claiming them — the read-only observation the hook's inbox inspection uses
+// (SPEC-MCP-NEUTRALITY-001 REQ-MN-017: the hook observes counts; the MCP
+// factory_msg_list tool is the only claim surface). Decision-required kinds
+// (blocker, status_request) sort FIRST, so a rendered batch always carries
+// them when any exist — the Stop-side block decision reads the rendered list.
+func (s *Store) PendingList(ctx context.Context, p Peer, limit int) ([]PendingListEntry, error) {
+	if limit < 1 || limit > MaxBatch {
+		limit = MaxBatch
+	}
+	rows, err := s.db.QueryContext(ctx, `SELECT id,kind FROM messages WHERE recipient_session=? AND recipient_generation=? AND state='pending' AND kind<>? ORDER BY CASE WHEN kind IN ('blocker','status_request') THEN 0 ELSE 1 END, created_at LIMIT ?`, p.SessionUUID, p.Generation, KindReceipt, limit)
+	if err != nil {
+		return nil, err
+	}
+	defer closeInto(&err, rows, "broker rows")
+	var out []PendingListEntry
+	for rows.Next() {
+		var e PendingListEntry
+		if err := rows.Scan(&e.ID, &e.Kind); err != nil {
+			return nil, err
+		}
+		out = append(out, e)
+	}
+	return out, rows.Err()
+}
+
 func validKind(k string) bool {
 	switch k {
 	case KindDispatchNotice, KindStatusRequest, KindStatusReport, KindBlocker, KindReceipt:
@@ -949,8 +994,14 @@ func (s *Store) Claim(ctx context.Context, p Peer, limit int, lease time.Duratio
 		limit = MaxBatch
 	}
 	now := s.now().UTC()
+	// SPEC-MCP-NEUTRALITY-001 REQ-MN-017: the eligibility now INCLUDES rows
+	// this endpoint still holds a live claim on — a re-claim inside the lease
+	// keeps the claim token and extends the lease instead of letting the old
+	// token die (the "claim identity mismatch" defect family). The
+	// per-recipient scoping means every claimed row IS this endpoint's claim.
+	// EXPIRED rows stay eligible too: the dead-letter step below ends them.
 	var eligible int
-	if err := s.db.QueryRowContext(ctx, `SELECT count(*) FROM messages WHERE recipient_session=? AND recipient_generation=? AND (state='pending' OR (state='claimed' AND (claim_expires_at<=? OR expires_at<=?)))`, p.SessionUUID, p.Generation, now.Format(time.RFC3339Nano), now.Format(time.RFC3339Nano)).Scan(&eligible); err != nil {
+	if err := s.db.QueryRowContext(ctx, `SELECT count(*) FROM messages WHERE recipient_session=? AND recipient_generation=? AND state IN ('pending','claimed')`, p.SessionUUID, p.Generation).Scan(&eligible); err != nil {
 		return nil, err
 	}
 	if eligible == 0 {
@@ -973,7 +1024,7 @@ func (s *Store) Claim(ctx context.Context, p Peer, limit int, lease time.Duratio
 	if _, err := tx.ExecContext(ctx, `UPDATE messages SET state='dead' WHERE recipient_session=? AND recipient_generation=? AND state IN ('pending','claimed') AND expires_at<=?`, p.SessionUUID, p.Generation, now.Format(time.RFC3339Nano)); err != nil {
 		return nil, err
 	}
-	rows, err := tx.QueryContext(ctx, `SELECT id,schema_version,project_key,run_id,kind,sender_session,sender_slot,sender_generation,recipient_session,recipient_generation,task_ref,correlation_id,created_at,expires_at FROM messages WHERE recipient_session=? AND recipient_generation=? AND (state='pending' OR (state='claimed' AND claim_expires_at<=?)) ORDER BY created_at LIMIT ?`, p.SessionUUID, p.Generation, now.Format(time.RFC3339Nano), limit)
+	rows, err := tx.QueryContext(ctx, `SELECT id,schema_version,project_key,run_id,kind,sender_session,sender_slot,sender_generation,recipient_session,recipient_generation,task_ref,correlation_id,created_at,expires_at,claim_token,claim_expires_at,state FROM messages WHERE recipient_session=? AND recipient_generation=? AND state IN ('pending','claimed') ORDER BY created_at LIMIT ?`, p.SessionUUID, p.Generation, limit)
 	if err != nil {
 		return nil, err
 	}
@@ -982,12 +1033,32 @@ func (s *Store) Claim(ctx context.Context, p Peer, limit int, lease time.Duratio
 	for rows.Next() {
 		var c Claim
 		var created, expires string
-		if err := rows.Scan(&c.ID, &c.SchemaVersion, &c.ProjectKey, &c.RunID, &c.Kind, &c.SenderSession, &c.SenderSlot, &c.SenderGeneration, &c.RecipientSession, &c.RecipientGeneration, &c.TaskRef, &c.CorrelationID, &created, &expires); err != nil {
+		var existingToken, existingExpiry, state string
+		var nullExpiry sql.NullString
+		if err := rows.Scan(&c.ID, &c.SchemaVersion, &c.ProjectKey, &c.RunID, &c.Kind, &c.SenderSession, &c.SenderSlot, &c.SenderGeneration, &c.RecipientSession, &c.RecipientGeneration, &c.TaskRef, &c.CorrelationID, &created, &expires, &existingToken, &nullExpiry, &state); err != nil {
 			return nil, err
 		}
 		c.CreatedAt, _ = time.Parse(time.RFC3339Nano, created)
 		c.ExpiresAt, _ = time.Parse(time.RFC3339Nano, expires)
-		c.ClaimToken = newID()
+		existingExpiry = nullExpiry.String
+		// REQ-MN-017 token stability: a LIVE claim (lease not yet expired)
+		// keeps its token — the identity the endpoint already holds stays
+		// valid, and the lease extends below. An EXPIRED claim mints a new
+		// token: the fencing contract requires the old holder's identity to
+		// die with its lease (the dispatch-result exactly-once flow).
+		live := state == "claimed" && existingToken != ""
+		if live {
+			if exp, pErr := time.Parse(time.RFC3339Nano, existingExpiry); pErr != nil || !exp.After(now) {
+				live = false
+			}
+		} else {
+			existingToken = "" // pending rows carry no token
+		}
+		if live {
+			c.ClaimToken = existingToken
+		} else {
+			c.ClaimToken = newID()
+		}
 		if _, err := tx.ExecContext(ctx, `UPDATE messages SET state='claimed',claim_token=?,claim_expires_at=?,disposition='' WHERE id=?`, c.ClaimToken, now.Add(lease).Format(time.RFC3339Nano), c.ID); err != nil {
 			return nil, err
 		}

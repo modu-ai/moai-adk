@@ -681,7 +681,9 @@ func TestFactoryHookContextAndContinuationSafety(t *testing.T) {
 		}
 	}
 	ctx, cont, state := factoryHookBatch(context.Background(), in, EventStop)
-	if !cont || state != "pending-at-turn-boundary" {
+	// REQ-MN-018 Stop scoping: a dispatch_notice is a count-deliverable kind —
+	// it does NOT force the leader's turn; only blocker/status_request do.
+	if cont || state != "pending-at-turn-boundary" {
 		t.Fatalf("continue=%v state=%s", cont, state)
 	}
 	if len(ctx) > factoryHookContextLimit {
@@ -701,11 +703,16 @@ func TestFactoryHookContextAndContinuationSafety(t *testing.T) {
 	if e != nil {
 		t.Fatal(e)
 	}
+	probeCtx, probeCont, probeState := factoryHookBatch(context.Background(), in, EventStop)
+	t.Logf("PROBE: ctxLen=%d cont=%v state=%s", len(probeCtx), probeCont, probeState)
 	out, e = NewStopHandler().Handle(context.Background(), in)
 	if e != nil || out.Decision != DecisionBlock {
 		t.Fatalf("first stop continuation=%+v err=%v", out, e)
 	}
-	if ctx, cont, state := factoryHookBatch(context.Background(), in, EventUserPromptSubmit); ctx != "" || cont || state != "empty-or-receipt-only" {
+	// REQ-MN-017: a count does not consume — the UserPromptSubmit inspection
+	// re-renders the SAME pending rows (idempotent count), so the old
+	// "Stop consumed the batch, UserPrompt finds empty" pin is superseded.
+	if ctx, cont, state := factoryHookBatch(context.Background(), in, EventUserPromptSubmit); ctx == "" || state != "pending-at-turn-boundary" {
 		t.Fatalf("Stop→UserPrompt duplicated batch: %q %v %s", ctx, cont, state)
 	}
 	active := *in
@@ -738,12 +745,13 @@ func TestFactoryHookZeroTurnAndCapabilityTruth(t *testing.T) {
 	if status0.Pending != 1 || status0.Acknowledged != 0 {
 		t.Fatalf("counting path wrote on a receipt-only inbox: %+v", status0)
 	}
-	// The receipt reaches its terminal acknowledged state on the DELIVERY
-	// path: a real message makes the inspection non-empty, and that
-	// inspection settles the receipt while claiming the real message.
+	// The receipt reaches its terminal acknowledged state via the MCP
+	// factory_msg_receipt tool (REQ-MN-017: the hook OBSERVES — the count-only
+	// inspection leaves both the receipt and the real message pending).
 	if _, e := s.Send(context.Background(), factorymsg.SendRequest{From: from, To: to, Kind: factorymsg.KindStatusRequest, IdempotencyKey: "real", TaskRef: "t1074", CorrelationID: "c-real", TTL: time.Hour, Payload: []byte("real")}); e != nil {
 		t.Fatal(e)
 	}
+	// status_request IS decision-required: the Stop inspection blocks.
 	if ctx, cont, state := factoryHookBatch(context.Background(), in, EventStop); ctx == "" || !cont || state != "pending-at-turn-boundary" {
 		t.Fatalf("delivery=%q %v %s", ctx, cont, state)
 	}
@@ -751,11 +759,16 @@ func TestFactoryHookZeroTurnAndCapabilityTruth(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if status.Acknowledged != 1 || status.Claimed != 1 {
-		t.Fatalf("receipt control not terminal after the delivery path: %+v", status)
+	// The hook claims nothing and settles nothing — both rows stay pending
+	// until the MCP receipt tool answers them.
+	if status.Pending != 2 || status.Claimed != 0 || status.Acknowledged != 0 {
+		t.Fatalf("count-only hook mutated the broker: %+v", status)
 	}
-	if ctx, cont, state := factoryHookBatch(context.Background(), in, EventStop); ctx != "" || cont || state != "empty-or-receipt-only" {
-		t.Fatalf("settled receipt redelivered: %q %v %s", ctx, cont, state)
+	// REQ-MN-017: a repeated count-only observation is IDEMPOTENT — the same
+	// pending rows render again (a count does not consume), and the broker is
+	// byte-identical between observations.
+	if ctx2, cont2, state2 := factoryHookBatch(context.Background(), in, EventStop); ctx2 == "" || state2 != "pending-at-turn-boundary" {
+		t.Fatalf("re-observation=%q %v %s", ctx2, cont2, state2)
 	}
 	t.Setenv("MOAI_PERMISSION_WAITING", "1")
 	if _, cont, state := factoryHookBatch(context.Background(), in, EventStop); cont || state != "permission-or-interrupt" {
@@ -794,7 +807,10 @@ func TestFactoryHookZeroTurnAndCapabilityTruth(t *testing.T) {
 		t.Fatal(err)
 	}
 	started := time.Now()
-	if _, cont, state := factoryHookBatch(context.Background(), in, EventStop); cont || !strings.HasPrefix(state, "degraded:") {
+	// REQ-MN-011 + REQ-MN-017: the COUNTING path is a read — it succeeds
+	// UNDER a held write lock (no write probe, no claim). The status_request
+	// in the inbox is decision-required, so the Stop inspection blocks.
+	if _, cont, state := factoryHookBatch(context.Background(), in, EventStop); !cont || state != "pending-at-turn-boundary" {
 		t.Fatalf("lock timeout=%v %s", cont, state)
 	}
 	if elapsed := time.Since(started); elapsed > 250*time.Millisecond {

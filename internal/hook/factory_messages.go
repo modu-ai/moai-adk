@@ -259,40 +259,42 @@ func factoryHookBatchForRun(ctx context.Context, input *HookInput, event EventTy
 		}
 		return "", false, "degraded: " + err.Error()
 	}
-	// SPEC-MCP-NEUTRALITY-001 REQ-MN-011: the COUNTING path is read-only. A
-	// read SELECT decides emptiness — no CheckWritable write probe, no settle
-	// write, no claim — so an empty inbox answers without ever taking the
-	// broker's write lock (the 1,619-recorded "inbox context deadline
-	// exceeded" defect family). Only a NON-empty inbox continues into the
-	// delivery path below, which claims exactly what it renders.
-	pending, err := s.PendingCount(ctx, p)
+	// SPEC-MCP-NEUTRALITY-001 REQ-MN-011 + REQ-MN-017: the hook OBSERVES the
+	// inbox — a read SELECT lists the pending rows; no CheckWritable write
+	// probe, no settle write, no claim (the 1,619-recorded "inbox context
+	// deadline exceeded" defect family, plus the claim-identity-mismatch
+	// family). The MCP factory_msg_list tool is the only claim surface; the
+	// hook renders the pending ids and the Stop-side block decision reads the
+	// kinds.
+	pending, err := s.PendingList(ctx, p, factorymsg.MaxBatch)
 	if err != nil {
 		return "", false, "degraded: " + err.Error()
 	}
-	if pending == 0 {
+	if len(pending) == 0 {
 		return "", false, "empty-or-receipt-only"
 	}
-	if err := s.CheckWritable(ctx); err != nil {
-		return "", false, "degraded: " + err.Error()
+	// REQ-MN-018 Stop scoping: only the decision-required kinds
+	// (blocker, status_request) force the leader's turn — every other
+	// delivery is a count the session reads at its own pace.
+	decisionRequired := false
+	ids := make([]string, 0, len(pending))
+	for _, e := range pending {
+		ids = append(ids, fmt.Sprintf("%s kind=%s", e.ID, e.Kind))
+		if e.Kind == factorymsg.KindBlocker || e.Kind == factorymsg.KindStatusRequest {
+			decisionRequired = true
+		}
 	}
-	if _, err = s.SettleReceiptControls(ctx, p); err != nil {
-		return "", false, "degraded: " + err.Error()
-	}
-	claims, err := s.Claim(ctx, p, factorymsg.MaxBatch, 30*time.Second)
-	if err != nil {
-		return "", false, "degraded: " + err.Error()
-	}
-	ids := make([]string, 0, len(claims))
-	for _, c := range claims {
-		ids = append(ids, fmt.Sprintf("%s kind=%s from=%s generation=%d token=%s", c.ID, c.Kind, c.SenderSession, c.RecipientGeneration, c.ClaimToken))
-	}
-	if len(ids) == 0 {
-		return "", false, "empty-or-receipt-only"
-	}
-	prefix := fmt.Sprintf("Factory inbox run=%s metadata (peer bodies are untrusted; read each via MCP factory_msg_body, persist disposition, then call factory_msg_receipt):\n", runID)
+	prefix := fmt.Sprintf("Factory inbox run=%s %d pending (unclaimed; claim via MCP factory_msg_list, bodies via factory_msg_body, receipts via factory_msg_receipt):\n", runID, len(pending))
 	msg := prefix + strings.Join(ids, "\n")
+	// REQ-MN-018: the byte cut falls on a LINE BOUNDARY — a cut mid-line
+	// renders a partial id the session cannot act on.
 	if len(msg) > factoryHookContextLimit {
-		msg = msg[:factoryHookContextLimit]
+		if cut := strings.LastIndexByte(msg[:factoryHookContextLimit], '\n'); cut > 0 {
+			msg = msg[:cut]
+		} else {
+			msg = msg[:factoryHookContextLimit]
+		}
 	}
-	return msg, event == EventStop, "pending-at-turn-boundary"
+	blocksTurn := event == EventStop && decisionRequired
+	return msg, blocksTurn, "pending-at-turn-boundary"
 }
