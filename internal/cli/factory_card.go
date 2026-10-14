@@ -2807,11 +2807,11 @@ func newFactoryAssignCommand() *cobra.Command {
 						return fmt.Errorf("factory assign: --reassign takes --to only; --%s changes no other field", name)
 					}
 				}
-				prevOwner, err := factoryAssignReassign(ctx, queueStore, db, runID, cardID, to, now)
+				prevOwner, reassigned, err := factoryAssignReassign(ctx, queueStore, db, runID, cardID, to, now)
 				if err != nil {
 					return fmt.Errorf("factory assign: %w", err)
 				}
-				_, _ = fmt.Fprintf(cmd.OutOrStdout(), "%s assigned owner=%s (reassigned from %s)\n", cardID, to, dash(prevOwner))
+				_, _ = fmt.Fprintf(cmd.OutOrStdout(), "%s %s owner=%s (reassigned from %s)\n", cardID, reassigned.State, to, dash(prevOwner))
 				return nil
 			}
 			var card homestate.Card
@@ -2896,24 +2896,25 @@ func newFactoryAssignCommand() *cobra.Command {
 }
 
 // factoryAssignReassign is the write half of `factory assign --reassign`
-// (card t1696, defect D2): under the queue lock, it moves an `assigned` card
-// whose owner lane is gone to another registered lane, refreshing the queue's
+// (card t1696, defect D2): under the queue lock, it moves a card whose owner
+// lane is gone to another registered lane of this run, refreshing the queue's
 // current-dispatch mirror inside the same transaction. The caller has already
 // refused lanes and a missing --to.
-func factoryAssignReassign(ctx context.Context, queueStore *factory.BacklogStore, db *homestate.FactoryDB, runID, cardID, to string, now time.Time) (string, error) {
+func factoryAssignReassign(ctx context.Context, queueStore *factory.BacklogStore, db *homestate.FactoryDB, runID, cardID, to string, now time.Time) (string, homestate.Card, error) {
 	var prevOwner string
+	var next homestate.Card
 	err := queueStore.WithLock(func(l *factory.LockedBacklog) error {
 		cur, err := db.LoadCard(ctx, runID, cardID)
 		if err != nil {
 			return err
 		}
 		prevOwner = cur.OwnerLabel
-		_, err = db.ReassignCard(ctx, runID, cardID, to, "assign --reassign", now, func(homestate.Card) error {
+		next, err = db.ReassignCard(ctx, runID, cardID, to, "assign --reassign", now, func(homestate.Card) error {
 			return l.RefreshDispatchCurrent(cardID, runID, to)
 		})
 		return err
 	})
-	return prevOwner, err
+	return prevOwner, next, err
 }
 
 // factoryCardView is one card as `status` reports it.
