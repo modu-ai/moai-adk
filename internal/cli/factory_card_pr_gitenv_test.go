@@ -7,6 +7,17 @@ import (
 	"testing"
 )
 
+// t1589 — the gh call of the github-flow delivery edge must not hand an
+// inherited GIT_DIR to gh: gh resolves the repository through it.
+func TestFactoryGHIgnoresInheritedGitEnv(t *testing.T) {
+	t.Setenv("GIT_DIR", "/some/other/repository/.git")
+	for _, kv := range factoryGHEnv() {
+		if strings.HasPrefix(kv, "GIT_DIR=") {
+			t.Errorf("gh environment carries %q; an inherited GIT_DIR would point gh at another repository", kv)
+		}
+	}
+}
+
 // t1589 — the delivery edge's git reads answer about the repository named by an
 // inherited GIT_DIR instead of the card worktree passed as -C. factoryGitRead
 // and factoryBranchOfWorktree must both read the worktree they were given, even

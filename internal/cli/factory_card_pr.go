@@ -49,10 +49,15 @@ var factoryGHTimeout = 10 * time.Second
 var factoryGH = func(ctx context.Context, dir string, args ...string) ([]byte, error) {
 	cmd := exec.CommandContext(ctx, "gh", args...)
 	cmd.Dir = dir
-	cmd.Env = append(os.Environ(), "GH_PROMPT_DISABLED=1")
+	cmd.Env = factoryGHEnv()
 	// A gh that ignores the kill must not hold the call past its bound.
 	cmd.WaitDelay = 2 * time.Second
 	return cmd.Output()
+}
+
+// factoryGHEnv is the environment a gh call runs with.
+func factoryGHEnv() []string {
+	return append(os.Environ(), "GH_PROMPT_DISABLED=1")
 }
 
 // factoryPRFields is the `gh pr view --json` field list the edge reads.
