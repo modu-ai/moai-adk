@@ -6,6 +6,8 @@ Stateless on the status axis: the SPEC lifecycle lives in `spec.md` alone. One r
 
 Label: EVIDENCE-NEEDED
 
+Class: implementation-level
+
 Authority anchor: none — the current values live in `internal/cli/mcp_glm.go`; no committed artifact settles replacement values, and the truncation-rate measurement that would justify new ones does not exist yet.
 
 Why unresolved: lens-3 #22 flags the ceilings as truncation suspects, but no measured truncation rate or latency distribution exists in any committed artifact; picking new numbers now would be an unmeasured claim.

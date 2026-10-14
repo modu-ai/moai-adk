@@ -2,9 +2,16 @@
 
 ## §E.1 Plan-phase Audit-Ready Signal
 
+audit_ready: true
 plan_status: audit-ready
 plan_complete_at: 2026-10-14
 artifacts: spec.md, plan.md, acceptance.md, design.md, research.md (Tier L) + decision-index.md (decision_gate: on)
+plan_audit_verdict: PASS-WITH-DEBT (r3, overall_score 0.91; trajectory 0.625 → 0.825 → 0.91)
+plan_audit_sha: 9be172fce7
+plan_artifact_hash: 61225de45bf1ed864b5af169632dca8db6499c1c4ba6216aaaee3937f599270c
+plan_audit_receipt: rcpt-7323ca7bef2c885633529458 (codex required-gate pass, 0 findings)
+plan_audit_verdict_file: .moai/reports/t1632/plan-audit-r3.md
+debts: N3 (serial-slot instance red at M1 RED), N4 (AC-MN-023 reuse-refusal + restart-persistence depth, M6), N5 (AC-MN-012 "without stalling" quantification, M3)
 
 ## §E.2 Run-phase Evidence
 
