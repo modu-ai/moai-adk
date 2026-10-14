@@ -113,3 +113,34 @@ func TestRestoreUnmanagedConfigDirs_SecondRunIsIdempotent(t *testing.T) {
 		t.Fatalf("side copy changed on second run: %q", got)
 	}
 }
+
+// A target whose parent is a symbolic link out of the config directory is refused.
+// The refusal is reported as an entry rather than dropped, so an explicit --restore
+// cannot read as a success for a file it did not write.
+func TestRestoreUnmanagedConfigDirs_RefusedTargetIsReported(t *testing.T) {
+	root := t.TempDir()
+	outside := t.TempDir()
+	backupDir := filepath.Join(t.TempDir(), "20260101_000000")
+	writeUnmanagedFile(t, filepath.Join(backupDir, "evaluator-profiles", "sub", "x.md"), "backup body")
+	profiles := filepath.Join(root, ".moai", "config", "evaluator-profiles")
+	if err := os.MkdirAll(profiles, 0o755); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.Symlink(outside, filepath.Join(profiles, "sub")); err != nil {
+		t.Skip(err)
+	}
+
+	refs, err := RestoreUnmanagedConfigDirs(root, backupDir)
+	if err != nil {
+		t.Fatalf("restore: %v", err)
+	}
+	if _, err := os.Stat(filepath.Join(outside, "x.md")); !os.IsNotExist(err) {
+		t.Fatalf("file written through a symbolic link out of the config directory: err=%v", err)
+	}
+	if len(refs) != 1 || refs[0].Action != "target-refused" {
+		t.Fatalf("refs = %+v, want one target-refused entry", refs)
+	}
+	if want := ".moai/config/evaluator-profiles/sub/x.md"; refs[0].Path != want {
+		t.Fatalf("refused path = %q, want %q", refs[0].Path, want)
+	}
+}

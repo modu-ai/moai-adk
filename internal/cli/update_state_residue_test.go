@@ -82,6 +82,71 @@ func TestRemoveStateResidue_KeepsRecentStub(t *testing.T) {
 	}
 }
 
+// A zero-byte database with a write-ahead log or shared-memory sidecar is not
+// empty: in WAL mode the committed pages stay in the sidecar until a checkpoint.
+// The stub beside it must survive, while a plain stub in the same pass is removed.
+func TestRemoveStateResidue_KeepsStubWithSQLiteSidecar(t *testing.T) {
+	for _, sidecar := range []string{"-wal", "-shm"} {
+		t.Run(sidecar, func(t *testing.T) {
+			root := t.TempDir()
+			const old = 48 * time.Hour
+			writeStateFile(t, root, "todo/x.db", "", old)
+			writeStateFile(t, root, "todo/x.db"+sidecar, "committed-pages", old)
+			writeStateFile(t, root, "todo/plain.db", "", old)
+
+			got := removeStateResidue(root)
+			sort.Strings(got)
+			want := []string{".moai/state/todo/plain.db"}
+			if !reflect.DeepEqual(got, want) {
+				t.Fatalf("removed %v, want %v", got, want)
+			}
+			for _, kept := range []string{"todo/x.db", "todo/x.db" + sidecar} {
+				if _, err := os.Stat(filepath.Join(root, ".moai", "state", kept)); err != nil {
+					t.Fatalf("%s must survive: %v", kept, err)
+				}
+			}
+		})
+	}
+}
+
+// .moai is a symbolic link out of the project. isMoAIProject follows it, so the
+// marker passes for the external tree; the state pass must refuse rather than
+// delete the stub that the link reaches.
+func TestRemoveStateResidue_RefusesSymlinkedMoAIDir(t *testing.T) {
+	external := t.TempDir()
+	marker := filepath.Join(external, "config", "sections", "system.yaml")
+	stub := filepath.Join(external, "state", "zero.db")
+	for _, p := range []string{marker, stub} {
+		if err := os.MkdirAll(filepath.Dir(p), 0o755); err != nil {
+			t.Fatal(err)
+		}
+	}
+	if err := os.WriteFile(marker, []byte("{}"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(stub, nil, 0o644); err != nil {
+		t.Fatal(err)
+	}
+	past := time.Now().Add(-48 * time.Hour)
+	if err := os.Chtimes(stub, past, past); err != nil {
+		t.Fatal(err)
+	}
+	root := t.TempDir()
+	if err := os.Symlink(external, filepath.Join(root, defs.MoAIDir)); err != nil {
+		t.Skip(err)
+	}
+	if !isMoAIProject(root) {
+		t.Fatal("precondition: the project marker must pass through the symbolic link")
+	}
+
+	if got := removeStateResidue(root); len(got) != 0 {
+		t.Fatalf("removed %v through a symbolic .moai; want none", got)
+	}
+	if _, err := os.Stat(stub); err != nil {
+		t.Fatalf("external stub removed through a symbolic .moai: %v", err)
+	}
+}
+
 // writeNamespaceBackup creates one update-* entry under .moai/backups.
 func writeNamespaceBackup(t *testing.T, root, name string, files map[string]string) {
 	t.Helper()
