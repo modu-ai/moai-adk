@@ -996,16 +996,14 @@ func TestSelfReview_SourceReferencesNoAuditMachinery(t *testing.T) {
 	}
 	// P11: the self-review milestone added no receipt-writing call site. Before
 	// it the package carried four lines (one definition + three calls). The
-	// audit_multi path later moved to recordAuditReceiptAt, which takes the
-	// call-start codex gate (SPEC-AUDIT-MODEL-CONVERGE-001 M9). The sync-audit
-	// F5 repair renamed the codex_audit surface to recordAuditReceiptBound
-	// (the start-of-audit state binding), so the sites are counted under all
-	// four spellings — measured 2026-10-15 at the repair HEAD:
+	// sync-audit r3 F13/F14 repairs collapsed the surface onto the BOUND
+	// writers (the start-of-audit state binding), so the sites are counted
+	// under all four spellings — measured 2026-10-15 at the r3 repair HEAD:
 	// recordAuditReceiptBound definition + its AtBound delegation (2);
-	// recordAuditReceiptAt definition + its AtBound delegation (2);
 	// recordAuditReceiptAtBound definition (1); the three codex_audit
-	// recordAuditReceiptBound calls (3); the audit_multi recordAuditReceiptAt
-	// call (1) — 9 total. The self-review file stays at zero (checked above).
+	// recordAuditReceiptBound calls (3); the audit_multi
+	// recordAuditReceiptAtBound call (1) — 7 total. The self-review file
+	// stays at zero (checked above).
 	entries, err := os.ReadDir(".")
 	if err != nil {
 		t.Fatal(err)
@@ -1023,8 +1021,8 @@ func TestSelfReview_SourceReferencesNoAuditMachinery(t *testing.T) {
 			}
 		}
 	}
-	if sites != 9 {
-		t.Errorf("recordAuditReceipt* call sites appear on %d non-comment lines, want the 9 the receipt writers and their callers occupy (the self-review tools add none)", sites)
+	if sites != 7 {
+		t.Errorf("recordAuditReceipt* call sites appear on %d non-comment lines, want the 7 the receipt writers and their callers occupy (the self-review tools add none)", sites)
 	}
 }
 

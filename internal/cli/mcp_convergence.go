@@ -714,6 +714,23 @@ func runMultiAudit(ctx context.Context, claudeVerdict ReviewOutput, target, focu
 	// project_root).
 	buildCommit, buildLag := auditBuildIdentity(ctx, cfg.ProjectRoot)
 
+	// Card t1632 sync-audit r3 F13: the convergence receipt binds the tree
+	// state captured BEFORE the fan-out — the state the backends actually
+	// judged. A write-time bind records the post-edit state when a tree edit
+	// lands during the fan-out, laundering a PASS through the freshness check
+	// (the same defect the codex_audit surface's F5 repair removed). The
+	// capture root follows the SAME receipt-target contract the write uses,
+	// so the capture and the receipt describe one tree. r3 F14: a failed
+	// capture is an explicit marker, never a write-time fallback.
+	var bindHead, bindDigest string
+	captureFailed := false
+	if captureRoot, _ := receiptTarget(cfg.ProjectRoot); captureRoot != "" {
+		bindHead, bindDigest, captureFailed = func() (string, string, bool) {
+			h, d, err := auditreceipt.TreeState(captureRoot)
+			return h, d, err != nil
+		}()
+	}
+
 	// ── resolve Claude source ──
 	claudeGate := cfg.Gates.Claude
 	if claudeGate == "" {
@@ -903,7 +920,12 @@ func runMultiAudit(ctx context.Context, claudeVerdict ReviewOutput, target, focu
 	var notices []string
 	if codexVerdict, participated := codexParticipation(verdicts); participated {
 		var notice string
-		result.AuditReceipt, notice = recordAuditReceiptAt(auditreceipt.ToolAuditMulti, cfg.ProjectRoot, codexVerdict, result.GateUnmet, receiptCodexRequired)
+		// F13: the receipt carries the START state captured before the fan-out.
+		// The fan-out-time capture failure stays honest the same way (F14's
+		// marker): a failed start bind records bind_capture_failed instead of
+		// a write-time fallback.
+		bindFailed := bindHead == "" && bindDigest == "" && captureFailed
+		result.AuditReceipt, notice = recordAuditReceiptAtBound(auditreceipt.ToolAuditMulti, cfg.ProjectRoot, codexVerdict, result.GateUnmet, receiptCodexRequired, bindHead, bindDigest, bindFailed)
 		if notice != "" {
 			notices = append(notices, notice)
 		}

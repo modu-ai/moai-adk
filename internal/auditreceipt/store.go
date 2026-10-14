@@ -84,6 +84,7 @@ const (
 	CauseReceiptVerdictFail        = "receipt records a FAIL verdict"
 	CauseReceiptTreeStateChanged   = "receipt judged a different tree state (head or digest moved)"
 	CauseReceiptStateUnreadable    = "the tree state could not be read for the freshness check"
+	CauseReceiptBindCaptureFailed  = "receipt's state binding capture failed — its freshness is unknowable"
 	CauseInstanceLedgerUnreadable  = "instance ledger unreadable"
 	CauseInstancePendingUnreadable = "instance end record unreadable"
 	CauseInstancePendingUnresolved = "instance end record unresolved"
@@ -167,6 +168,13 @@ type Receipt struct {
 	// inventing a difference).
 	HeadCommit string `json:"head_commit,omitempty"`
 	TreeDigest string `json:"tree_digest,omitempty"`
+
+	// BindCaptureFailed marks a receipt whose start-of-audit state capture
+	// FAILED (card t1632 sync-audit r3 F14): the freshness of this receipt is
+	// UNKNOWABLE, so the reuse check refuses it — never silent, never a
+	// write-time fallback. A receipt without the marker and without a binding
+	// is a pre-binding record and stays permissive.
+	BindCaptureFailed bool `json:"bind_capture_failed,omitempty"`
 }
 
 // TreeState returns the (head commit, tree digest) of the state a receipt
@@ -1047,7 +1055,11 @@ func WriteReceipt(treeRoot string, r *Receipt) (string, error) {
 	if r.CreatedAt.IsZero() {
 		r.CreatedAt = Now()
 	}
-	if r.HeadCommit == "" && r.TreeDigest == "" {
+	if r.HeadCommit == "" && r.TreeDigest == "" && !r.BindCaptureFailed {
+		// The write-time bind is the FALLBACK for a receipt whose caller did
+		// not capture the state itself (card t1632 sync-audit F5/F14): a
+		// capture-failed receipt carries the marker INSTEAD of a fallback
+		// binding, because a binding written after the audit judged nothing.
 		if head, digest, sErr := TreeState(r.TreeRoot); sErr == nil {
 			r.HeadCommit, r.TreeDigest = head, digest
 		}
@@ -1363,6 +1375,7 @@ func CheckCitedReceiptsSince(treeRoot string, start *StartMarker, endBoundary ti
 			CauseReceiptVerdictFail,
 			CauseReceiptTreeStateChanged,
 			CauseReceiptStateUnreadable,
+			CauseReceiptBindCaptureFailed,
 		} {
 			if c == cause {
 				return i
@@ -1406,7 +1419,7 @@ func CheckCitedReceiptsSince(treeRoot string, start *StartMarker, endBoundary ti
 			// citing this receipt contradicts the evidence it cites, so the
 			// corroboration is refused rather than reinforced.
 			cause = CauseReceiptVerdictFail
-		case r.HeadCommit != "" || r.TreeDigest != "":
+		case r.HeadCommit != "" || r.TreeDigest != "" || r.BindCaptureFailed:
 			// REQ-MN-020: the receipt binds the tree state it judged. A
 			// binding whose state differs from the tree's CURRENT state is
 			// evidence for a state that no longer exists — not reusable. A
@@ -1426,6 +1439,13 @@ func CheckCitedReceiptsSince(treeRoot string, start *StartMarker, endBoundary ti
 			// carve-out is the git command being ABSENT (exec.ErrNotFound):
 			// that cannot be a state change, and refusing every receipt on a
 			// machine without git would be a self-inflicted outage.
+			// Card t1632 sync-audit r3 F14: a capture-failed binding has NO
+			// judged state — the marker alone refuses the reuse, because a
+			// binding whose freshness is unknowable proves nothing.
+			if r.BindCaptureFailed {
+				cause = CauseReceiptBindCaptureFailed
+				break
+			}
 			head, digest, sErr := TreeState(r.TreeRoot)
 			switch {
 			case sErr == nil && (head != "" || digest != ""):

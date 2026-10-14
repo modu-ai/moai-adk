@@ -129,9 +129,10 @@ func mcpStaleRunCheck(ctx context.Context, root, run, tool string) *mcp.CallTool
 }
 
 // mcpFactoryActor resolves the caller's actor label (REQ-MN-003): the
-// explicit actor argument wins; the spawn environment (MOAI_FACTORY_WORKER)
-// is the default only. Empty when neither carries a label — the caller
-// refuses that as unknown attribution.
+// explicit actor argument wins; the spawn environment's factory-worker key
+// (internal/config/envkeys.go EnvMoaiFactoryWorker) is the default only.
+// Empty when neither carries a label — the caller refuses that as unknown
+// attribution.
 func mcpFactoryActor(req mcp.CallToolRequest) string {
 	if actor := strings.TrimSpace(req.GetString("actor", "")); actor != "" {
 		return actor

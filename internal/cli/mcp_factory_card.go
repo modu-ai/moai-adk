@@ -96,9 +96,10 @@ func registerFactoryCardMCPTools(add func(name string, tool mcp.Tool, handler se
 }
 
 // optionalFactoryActorOption declares the actor argument (SPEC-MCP-NEUTRALITY-001
-// REQ-MN-003): the lane label the call acts as, with the spawn environment
-// (MOAI_FACTORY_WORKER) as the default only. An explicit actor lets a caller
-// name its lane when the environment does not carry it.
+// REQ-MN-003): the lane label the call acts as, with the spawn environment's
+// factory-worker key (internal/config/envkeys.go EnvMoaiFactoryWorker) as the
+// default only. An explicit actor lets a caller name its lane when the
+// environment does not carry it.
 func optionalFactoryActorOption() mcp.ToolOption {
 	return mcp.WithString("actor", mcp.Description(
 		"Optional: the lane label this call acts as. Default: the spawn environment's "+config.EnvMoaiFactoryWorker+". An empty value with no environment label refuses as unknown attribution."))

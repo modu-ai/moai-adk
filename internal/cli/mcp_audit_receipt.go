@@ -66,10 +66,12 @@ func receiptTarget(projectRoot string) (root, source string) {
 // binding SUPPLIED by the caller (card t1632 sync-audit F5): the caller
 // captured the tree state at AUDIT START, and the receipt must attest THAT
 // state — a post-audit bind would let a tree edit during the audit launder a
-// PASS through the freshness check. A capture failure (both empty) keeps the
-// write-time bind as the fallback.
-func recordAuditReceiptBound(tool, projectRoot, codexVerdict, gateUnmet, bindHead, bindDigest string) (id, notice string) {
-	return recordAuditReceiptAtBound(tool, projectRoot, codexVerdict, gateUnmet, nil, bindHead, bindDigest)
+// PASS through the freshness check. Card t1632 sync-audit r3 F14: a capture
+// FAILURE (bindFailed) records the explicit bind_capture_failed marker
+// instead — the write-time fallback is forbidden, because a binding written
+// after the audit judged nothing.
+func recordAuditReceiptBound(tool, projectRoot, codexVerdict, gateUnmet, bindHead, bindDigest string, bindFailed bool) (id, notice string) {
+	return recordAuditReceiptAtBound(tool, projectRoot, codexVerdict, gateUnmet, nil, bindHead, bindDigest, bindFailed)
 }
 
 // recordAuditReceiptAt is recordAuditReceipt with the codex gate the exposure
@@ -80,15 +82,14 @@ func recordAuditReceiptBound(tool, projectRoot, codexVerdict, gateUnmet, bindHea
 // REQ-ACV-009). A nil codexRequired keeps the read of the tree's configuration
 // that every caller carrying no call-start plan has always had. The receipt is
 // recorded either way; only its exposure follows the gate.
-func recordAuditReceiptAt(tool, projectRoot, codexVerdict, gateUnmet string, codexRequired *bool) (id, notice string) {
-	return recordAuditReceiptAtBound(tool, projectRoot, codexVerdict, gateUnmet, codexRequired, "", "")
-}
-
 // recordAuditReceiptAtBound is recordAuditReceiptAt with the caller-supplied
 // state binding (card t1632 sync-audit F5): non-empty bindHead/bindDigest are
 // written into the receipt verbatim, so the receipt attests the state the
-// audit STARTED with. Empty values keep the write-time bind.
-func recordAuditReceiptAtBound(tool, projectRoot, codexVerdict, gateUnmet string, codexRequired *bool, bindHead, bindDigest string) (id, notice string) {
+// audit STARTED with. bindFailed records the explicit capture-failed marker
+// (sync-audit r3 F14) — the receipt then carries NO binding and the reuse
+// check refuses it. Empty values without the marker keep the write-time bind
+// (the pre-F5 callers).
+func recordAuditReceiptAtBound(tool, projectRoot, codexVerdict, gateUnmet string, codexRequired *bool, bindHead, bindDigest string, bindFailed bool) (id, notice string) {
 	root, source := receiptTarget(projectRoot)
 	if root == "" {
 		return "", ""
@@ -98,13 +99,14 @@ func recordAuditReceiptAtBound(tool, projectRoot, codexVerdict, gateUnmet string
 		return "", "audit receipt not recorded: " + err.Error()
 	}
 	r := auditreceipt.Receipt{
-		Tool:         tool,
-		TreeRoot:     root,
-		RootSource:   source,
-		CodexVerdict: codexVerdict,
-		GateUnmet:    gateUnmet,
-		HeadCommit:   bindHead,
-		TreeDigest:   bindDigest,
+		Tool:              tool,
+		TreeRoot:          root,
+		RootSource:        source,
+		CodexVerdict:      codexVerdict,
+		GateUnmet:         gateUnmet,
+		HeadCommit:        bindHead,
+		TreeDigest:        bindDigest,
+		BindCaptureFailed: bindFailed,
 	}
 	id, err = auditreceipt.WriteReceipt(store, &r)
 	if err != nil {
