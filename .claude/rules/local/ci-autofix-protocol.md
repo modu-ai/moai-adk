@@ -43,9 +43,9 @@ iteration 4+ → MANDATORY BLOCKING AskUserQuestion (no patch attempt, no timer)
 
 After 3 failed iterations, the orchestrator MUST present a mandatory blocking
 AskUserQuestion with three options:
-1. (권장) 직접 수동 수정 — Investigate and fix manually, then push
-2. SPEC 수정 — Revise the SPEC and restart the implementation
-3. PR 포기 — Close the PR and abandon this approach
+1. (권장) Manual fix — Investigate and fix manually, then push
+2. Revise SPEC — Revise the SPEC and restart the implementation
+3. Abandon PR — Close the PR and abandon this approach
 
 [ZONE:Frozen] [HARD] The AskUserQuestion at iteration > 3 MUST be a blocking call with no
 silent timeout. The orchestrator waits indefinitely for user response before

@@ -6,41 +6,48 @@
 
 ---
 
-## 0. [HARD] 이 파일의 정본은 어느 사본인가
+## Language rule for new artifacts
+- New memory topic files and new backlog card text are written in English.
+- User-facing chat and reports use the conversation language (conversation_language, from .moai/config/sections/language.yaml).
+- Code, identifiers, commands, paths, and literal tokens keep their original form.
 
-이 절을 나머지보다 먼저 읽는다. 2026-09-07 에 이 파일의 틀린 사본이 레인 12곳에 배포됐고, 그 사고를 되풀이하지 않기 위한 판별식이 여기에 있다.
+---
 
-### 0.1 [HARD] 정본은 레인이 분기하는 트리의 사본이다
+## 0. [HARD] Which copy of this file is canonical
 
-**판별식은 「레인이 분기하는 트리가 지배한다」이고, 현재 그 트리는 `main` 이다(2026-10-05 GitHub Flow 전환 — §4.1).** 카드 워크트리가 `main` 에서 나오므로 `main` 의 커밋 사본이 레인이 실제로 읽는 문서이며, 그것이 정본이다.
+Read this section before the rest. On 2026-09-07, an incorrect copy of this file was distributed to 12 lanes; the discriminator that prevents a repeat of that incident is here.
 
-**날짜나 「나중에 전달된 쪽」을 판별식으로 쓰지 않는다.** 2026-09-07 에 나중에 전달된 텍스트가 틀린 쪽이었다 — 최신성 규칙이었다면 그 사고를 막지 못했을 것이다. 분기 트리는 push-model 이 바뀌어도 같은 방식으로 답을 낸다.
+### 0.1 [HARD] The canonical copy is the copy in the tree that lanes branch from
 
-### 0.2 [HARD] 미커밋 워킹 사본은 정본으로 인용할 수 없다
+**The discriminator is "the tree lanes branch from governs," and that tree is currently `main` (GitHub Flow transition on 2026-10-05 — §4.1).** Because card worktrees branch from `main`, the committed copy on `main` is the document lanes actually read, and that is the canonical copy.
 
-**어느 브랜치에도 커밋된 적 없는 미커밋 워킹 사본은 정본이 아니며, 정본으로 인용될 수 없다.** 이것은 이 파일에 한정된 규칙이 아니라 인용 일반의 규칙이다 — 이력에 없는 텍스트는 다른 사람이 같은 것을 읽었는지 확인할 방법이 없고, 저자도 시점도 복구되지 않는다.
+**Do not use the date or "whichever side was delivered later" as the discriminator.** On 2026-09-07, the text delivered later was the wrong one; a recency rule would not have prevented that incident. The branch-point tree gives the same answer even if the push model changes.
 
-2026-09-07 의 가해자는 스테일한 브랜치가 아니라 **git 이 추적하지만 어느 브랜치에도 커밋된 적 없는 primary 체크아웃의 워킹 사본**이었다. 인용하기 전에 그 텍스트가 어느 커밋에 있는지 확인한다 — `git show <ref>:<path>` 로 읽히지 않으면 정본이 아니다.
+### 0.2 [HARD] An uncommitted working copy cannot be cited as canonical
 
-### 0.3 [HARD] `main` 의 커밋본은 폐기된 제3의 모델이다
+**An uncommitted working copy that has never been committed on any branch is not canonical, and it cannot be cited as canonical.** This is not a rule limited to this file; it is a general rule for citation — text that is absent from history gives no way to confirm that someone else read the same thing, and neither its author nor its point in time can be recovered.
 
-**전환 이전 `main`에 커밋된 옛 `CLAUDE.local.md`는 폐기된 모델이며 인용 대상이 아니다.** 그 판은 「`develop`을 원격에 올리지 않고 카드마다 `main`으로 PR을 낸다」는 체제를 서술하는데, 그 체제는 2026-08-29 develop GitFlow 체인에 밀려났고 2026-10-05 GitHub Flow 전환이 다시 `main` 기반으로 돌아왔다(§4.1) — 지금 정본은 전환을 거친 현재 `main` 커밋 사본(§0.1)이지 전환 이전의 옛 커밋이 아니다. 옛 판을 정본으로 집는 것이 2026-09-07 실패의 재현이다.
+The culprit on 2026-09-07 was not a stale branch but **a working copy in the primary checkout that git tracks but that was never committed on any branch**. Before citing, confirm which commit contains the text — if it cannot be read with `git show <ref>:<path>`, it is not canonical.
 
-### 0.4 [HARD] primary `main` 의 구형 로컬 파일은 정본이 아니다
+### 0.3 [HARD] The committed copy on `main` is a discarded third model
 
-이 이관은 develop을 거쳐 2026-10-05 전환과 함께 `main`에 도달했고, 그 이후 `main`에 병합된 커밋의 `AGENTS.local.md`가 정본이다. primary 체크아웃에서 보이는 `M CLAUDE.local.md`는 커밋되지 않은 공유 워킹 사본이다(§0.2). 그 상태를 새 워크트리의 수신 증거로 인용하지 않는다.
+**The old `CLAUDE.local.md` committed to `main` before the transition is a discarded model and is not a citation target.** That version describes a regime in which "`develop` is not pushed to the remote and each card gets a PR to `main`". That regime was superseded by the develop GitFlow chain of 2026-08-29, and the GitHub Flow transition of 2026-10-05 returned it to a `main` base (§4.1). The canonical copy now is the current committed copy on `main` after the transition (§0.1), not the pre-transition old commit. Taking the old version as canonical reproduces the 2026-09-07 failure.
 
-> **[HARD] 이 표식은 정리 대상이 아니다.**
+### 0.4 [HARD] The outdated local file in primary `main` is not canonical
+
+This migration passed through develop and reached `main` with the 2026-10-05 transition; after that, the `AGENTS.local.md` in the commit merged into `main` is canonical. The `M CLAUDE.local.md` visible in the primary checkout is an uncommitted shared working copy (§0.2). Do not cite that state as receipt evidence for a new worktree.
+
+> **[HARD] This marker is not a cleanup target.**
 >
-> **primary에서 `git restore CLAUDE.local.md`를 실행하지 마라** — 공유 워킹 사본을 §0.3의 폐기 모델로 되돌리는 회귀다.
+> **Do not run `git restore CLAUDE.local.md` in the primary checkout** — that regression would revert the shared working copy to the discarded model of §0.3.
 >
-> 이 파일을 고칠 때는 카드 워크트리에서 고쳐 `main`으로 병합한다(§4.1). primary의 구형 파일은 별도 전환을 마쳤다(card t1317, 2026-09-29 — 보존 사본은 primary의 `.moai/state/retired/`).
+> When editing this file, edit it in a card worktree and merge into `main` (§4.1). The outdated file in the primary checkout has already gone through a separate transition (card t1317, 2026-09-29 — the preserved copy is in `.moai/state/retired/` in the primary checkout).
 
 ---
 
 ## 1. Quick Start
 
-See: `.moai/docs/local-dev-guide.md` § 1 — work locations, the edit→`make build`→test→commit cycle, and the [CRITICAL] `moai` CLI vs `/moai` slash-command distinction table. 핵심 한 줄: 템플릿은 `internal/template/templates/` 에서 고치고 `make build` 로 재생성하며, 커밋은 카드 워크트리에서 한다(primary 체크아웃 금지 — AGENTS.md §2·§3).
+See: `.moai/docs/local-dev-guide.md` § 1 — work locations, the edit→`make build`→test→commit cycle, and the [CRITICAL] `moai` CLI vs `/moai` slash-command distinction table. The core in one line: edit templates in `internal/template/templates/` and regenerate them with `make build`; commit in a card worktree (the primary checkout is prohibited — AGENTS.md §2·§3).
 
 ---
 
@@ -59,7 +66,7 @@ See: `.moai/docs/local-dev-guide.md` § 1 — work locations, the edit→`make b
 # All template changes MUST be made here
 internal/template/templates/.claude/
 internal/template/templates/.moai/
-# (.agency/ 템플릿 뿌리는 제거됨 — legacy archive; [2026-08-27 감사 정정])
+# (The .agency/ template root has been removed — legacy archive; [2026-08-27 audit correction])
 internal/template/templates/CLAUDE.md
 ```
 
@@ -81,31 +88,31 @@ Never add files directly to the local project directories without also adding th
 
 **Verification**: Before committing, check that every new file under `.claude/`, `.moai/`, or `.agency/` has a corresponding file in `internal/template/templates/`.
 
-### [HARD] §2.0 에이전트 정의는 사본이 셋이고, 셋째는 손으로 고치지 않는다
+### [HARD] §2.0 There are three copies of the agent definitions, and the third is not edited by hand
 
-에이전트 정의는 세 벌 있는데 **하나만 손편집 대상이 아니다.**
+Agent definitions exist in three copies, but **only one of them is not a hand-edit target.**
 
-| 사본 | 경로 | 성격 |
+| Copy | Path | Nature |
 |---|---|---|
-| C1 | `.claude/agents/moai/*.md` | 로컬 도그푸드, 손편집 |
-| C2 | `internal/template/templates/.claude/agents/moai/*.md` | 배포 미러, 손편집 — **중립 원본 층** |
-| C3 | `internal/template/templates/.codex/agents/moai/*.toml` | **C2 로부터 기계 방출** (`internal/template/agentemit`) |
+| C1 | `.claude/agents/moai/*.md` | Local dogfooding, hand-edited |
+| C2 | `internal/template/templates/.claude/agents/moai/*.md` | Distribution mirror, hand-edited — **the neutral source layer** |
+| C3 | `internal/template/templates/.codex/agents/moai/*.toml` | **Machine-emitted from C2** (`internal/template/agentemit`) |
 
-[HARD] **`internal/template/templates/.claude/agents/moai/*.md` 를 고쳤으면 `make agents-emit` 을 돌린다.** 그러지 않으면 `internal/template/templates/.codex/agents/moai/*.toml` 이 스테일한 채로 남고, 그 상태로 만든 바이너리가 옛 정의를 임베드한 채 돌아간다. C1↔C2 는 바이트 동일 관계가 **아니다**(의도된 분기) — 생성 관계는 C2 → C3 한 방향뿐이다.
+[HARD] **If you have edited `internal/template/templates/.claude/agents/moai/*.md`, run `make agents-emit`.** Otherwise `internal/template/templates/.codex/agents/moai/*.toml` stays stale, and a binary built in that state runs with the old definitions embedded. C1 ↔ C2 is **not** a byte-identical relationship (an intentional divergence); the generation relationship runs in one direction only, C2 → C3.
 
-[HARD] **C3 를 손으로 고치지 않는다.** 손편집은 다음 방출에서 말없이 덮인다. 고칠 것이 있으면 C2 를 고치고 재생성한다.
+[HARD] **Do not hand-edit C3.** A hand edit is silently overwritten at the next emission. If something needs fixing, fix C2 and regenerate.
 
-빠뜨렸을 때 어디서 잡히는가 — 세 지점이 각각 다른 축을 본다:
+Where a miss gets caught — three checkpoints each look at a different axis:
 
-| 검사 | 무엇을 보는가 | 언제 |
+| Check | What it examines | When |
 |---|---|---|
-| `make build` (선행 `agents-emit-check`) | 소스 층: 커밋된 `.toml` vs `.md` 방출 결과 | 로컬 빌드마다. **읽기전용 — 재생성하지 않는다** |
-| `go test ./internal/template/agentemit/...` | 같은 축 | CI 매 실행 |
-| `make embed-check` / `moai doctor --check "Agent Emit Embed"` | **임베드 축**: 이미 빌드된 바이너리가 실은 바이트 vs 커밋본 | 수동. `BIN=<path>` 로 설치본도 겨눌 수 있다 |
+| `make build` (preceded by `agents-emit-check`) | Source layer: committed `.toml` vs the output emitted from `.md` | Every local build. **Read-only — does not regenerate** |
+| `go test ./internal/template/agentemit/...` | The same axis | Every CI run |
+| `make embed-check` / `moai doctor --check "Agent Emit Embed"` | **Embed axis**: the bytes actually embedded in an already-built binary vs. the committed copy | Manual. `BIN=<path>` can also target the installed binary |
 
-셋째가 따로 있는 이유: `go test` 는 테스트 바이너리를 매번 새로 컴파일하고 `//go:embed` 가 그 시점 커밋본을 읽으므로, 소스↔소스 비교로는 **노후한 바이너리를 원리상 볼 수 없다**. 그래서 `make embed-check` 는 `build` 를 선행으로 갖지 않는다 — 갓 빌드한 바이너리는 정의상 일치하므로 build 직후에만 도는 검사는 동어반복이다. 같은 이유로 CI 빌드 잡에도 붙이지 않는다(CI 는 자신이 검사하는 커밋에서 빌드한다).
+The reason the third checkpoint exists separately: `go test` recompiles the test binary every time, and `//go:embed` reads the committed copy as of that moment, so a source-to-source comparison **cannot, in principle, see a stale binary**. That is why `make embed-check` does not have `build` as a prerequisite — a freshly built binary matches by definition, so a check that runs only right after a build is a tautology. For the same reason, it is not attached to the CI build job either (CI builds from the commit it checks).
 
-재생성은 **`make agents-emit` 이라는 명시적 동사로만** 일어난다. build 가 조용히 덮으면 손편집이 있었다는 사실 자체가 사라진다.
+Regeneration happens **only through the explicit verb `make agents-emit`**. If the build silently overwrote, the very fact that a hand edit existed would disappear.
 
 **§2.1 Template Content Neutrality — Acceptable Content Range for Templates**: When editing template source files in `internal/template/templates/`, ensure content adheres to the **acceptable** kept-classes (C1/C2/C4/C5/C6/C8) and excludes the FORBIDDEN content classes (SPEC IDs, REQ tokens, Audit citations, internal dates, commit SHAs, macOS-bias paths, CLAUDE.local references), enforced by CI guard (`.github/workflows/template-neutrality-check.yaml` trigger on path change). The canonical C1-C8 acceptable-vs-forbidden content-class catalogue lives in `.moai/docs/template-internal-isolation-doctrine.md §25.1` (cross-referenced by **§25 (Template Internal-Content Isolation)** of this file, now a stub). This keeps the template neutral across the 16 supported **programming languages** (§15) and free of moai-adk internal development state. Distinct axis: user-facing locales (ko/en/ja/zh) are governed by the §8 Localization Contract in the active output style — see §15's disambiguation note.
 
@@ -113,11 +120,11 @@ Never add files directly to the local project directories without also adding th
 
 ### Local-Only Files (Never in Templates)
 
-전체 레지스트리(30+ 항목, 경로·사유·이력 포함): `.moai/docs/local-dev-guide.md` § 2a. 핵심만: `settings.local.json`(런타임 관리) · `.claude/rules/local/*`(dev-only 룰) · `scripts/{ci-watch,ci-autofix,jev,ac-baseline}/` · `.moai/{cache,logs,state,specs,plans,reports,docs} 내용물` · `.moai/docs/*.md` dev-only 문서 전체 — **전부 템플릿 미러가 없어야 하는 파일이며, §2.3의 관리 대상 뿌리 밖에 두거나 뿌리 안에서도 삭제되지 않는 위치에 둔다.**
+The full registry (30+ entries, including paths, reasons, and history): `.moai/docs/local-dev-guide.md` § 2a. The essentials: `settings.local.json` (runtime-managed) · `.claude/rules/local/*` (dev-only rules) · `scripts/{ci-watch,ci-autofix,jev,ac-baseline}/` · `.moai/{cache,logs,state,specs,plans,reports,docs}` contents · every dev-only document under `.moai/docs/*.md` — **all of these must have no template mirror, and they are kept either outside the managed roots of §2.3 or in locations that are not deleted even inside those roots.**
 
-### [HARD] §2.3 moai update의 생존 규칙 — 코드 강제 + 잔여 주의 (card t750 → card t1547 개정)
+### [HARD] §2.3 Survival rules of moai update — code-enforced, plus residual cautions (card t750 → revised by card t1547)
 
-**요지 — 본문 전량은 `.moai/docs/update-local-file-survival.md` 로 이관됐다(card t750; 2026-10-07 card t1547 에서 코드 강제로 개정).** 기존 프로젝트 update는 더 이상 관리 대상 뿌리를 통째로 삭제하지 않는다 — 분류(4부류: template-owned/user-modified/user-owned/stale) 후 새로 고침·병합·보존·아카이브 후 삭제로 갈리고, 로컬 전용 파일과 operator-set `git-strategy.yaml` 값(`worktree_base_branch: main` 등)은 코드로 생존한다(SPEC-UPDATE-MIGRATION-001). `Updated N files` 요약도 관리 대상 파일을 세고 삭제를 전부 나열한다. **그래도 [HARD]가 남는다**: ① 새 로컬 전용 파일은 여전히 관리 대상 뿌리 **밖**이 기본이다(보존은 보장이지 면제가 아님 — 용도별 배치 표는 이관 문서에); ② update 후 검증(`git status --porcelain | grep '^ D'` — 0이어야 정상)은 유지한다; ③ **레거시 fresh-install 경로**(config 비호환)만 wholesale 제거가 남는데, 그때도 user-owned·미해결 user-modified는 가드가 건너뛴다; ④ 충돌은 `<경로>.moai-new` 사이드카로 보고되며 자동 해결 없음 — 쌓이면 사용자가 정리한다; ⑤ `worktree_base_branch` 값은 전환 후 기저 `main`을 유지한다(이 키를 develop 으로 두면 `moai worktree new` 가 스테일 develop 에서 카드 트리를 판다; 2026-09-24 역방향 사고 6건, card t1159) — 매번 재적용은 불필요해졌지만 확인 grep은 유용하다. 명령·실측 근거·부류 표는 이관 문서에.
+**Summary — the full text has been moved to `.moai/docs/update-local-file-survival.md` (card t750; revised to code enforcement by card t1547 on 2026-10-07).** An update of an existing project no longer deletes the managed root wholesale. After classification (four classes: template-owned / user-modified / user-owned / stale), files are refreshed, merged, preserved, or archived and then deleted; local-only files and operator-set `git-strategy.yaml` values (such as `worktree_base_branch: main`) survive by code (SPEC-UPDATE-MIGRATION-001). The `Updated N files` summary also counts the managed files and lists every deletion. **Even so, [HARD] rules remain:** ① a new local-only file still defaults to being **outside** the managed root (preservation is a guarantee, not an exemption — the placement table by purpose is in the migration document); ② the post-update check (`git status --porcelain | grep '^ D'` — 0 is the expected result) stays in place; ③ only the **legacy fresh-install path** (config-incompatible) still retains wholesale removal, and even then the guard skips user-owned files and unresolved user-modified files; ④ conflicts are reported as `<path>.moai-new` sidecar files with no automatic resolution — when they pile up, the user cleans them up; ⑤ the `worktree_base_branch` value keeps the base `main` after the transition (if this key is left as develop, `moai worktree new` cuts card trees from a stale develop; 6 reverse-direction incidents on 2026-09-24, card t1159) — re-applying it each time is no longer necessary, but the confirmation grep is still useful. Commands, measured evidence, and the class table are in the migration document.
 
 ### [HARD] settings.local.json Separation
 
@@ -139,18 +146,18 @@ Do NOT use `t.Setenv` with OTEL environment variables (`OTEL_EXPORTER_*`, `OTEL_
 
 ### Embedded Template System · Command-to-Skill Publication
 
-본문은 `.moai/docs/local-dev-guide.md` § 2b·2c 로 이관됐다(card t1303). 요지: `internal/template/embed.go` 가 `//go:embed all:templates` + `catalog.yaml` 를 바이너리에 컴파일하므로 템플릿 편집 후 `make build` 필수; 16개 `/moai` 커맨드의 codex skill 방출은 `make commands-emit`(명시적 동사)으로만 재생성하고 방출본(`.agents/skills/moai-*/SKILL.md`)은 손으로 고치지 않는다.
+The full text has been moved to `.moai/docs/local-dev-guide.md` § 2b·2c (card t1303). Summary: `internal/template/embed.go` compiles `//go:embed all:templates` + `catalog.yaml` into the binary, so `make build` is required after editing a template; the codex skill emission of the 16 `/moai` commands is regenerated only through the explicit verb `make commands-emit`, and the emitted copies (`.agents/skills/moai-*/SKILL.md`) are not hand-edited.
 
 ---
 
 ## 3. Code Standards
 
-Language policy는 `.claude/rules/moai/development/coding-standards.md`에 정의 (auto-loaded).
+The language policy is defined in `.claude/rules/moai/development/coding-standards.md` (auto-loaded).
 
-### Go-Specific (이 프로젝트 전용)
+### Go-Specific (this project only)
 
 - File naming: `snake_case.go`, `snake_case_test.go`
-- Error wrapping: `fmt.Errorf("operation: %w", err)` (string concatenation 금지)
+- Error wrapping: `fmt.Errorf("operation: %w", err)` (string concatenation prohibited)
 - All code, comments, godoc in English
 
 ---
@@ -159,7 +166,7 @@ Language policy는 `.claude/rules/moai/development/coding-standards.md`에 정�
 
 ### Before Commit
 - [ ] Code in English
-- [ ] 변경 대상 패키지 테스트 통과 (`go test -timeout 30m ./internal/<pkg>/...`; `-timeout 30m` = D2 derivation — 로컬 단일 패키지 최악 1118.093s 실측 대비 1.61x 여유, baseline `.moai/reports/t1253/measure-meta.txt`, SPEC-CLI-TEST-TIMEOUT-001) — **전체 스위트(`go test ./...`)를 로컬에서 돌리지 않는다**. 레인 여러 개가 동시에 돌려 load 413까지 치솟고 다른 워크스페이스를 마비시킨 사고(2026-08-15)가 있다. 전 패키지 판정은 CI 몫이며, 깨끗한 환경에서 PR head를 돌리므로 근거로도 더 강하다. 예외는 §4.1의 통합 검증 — 그때는 **직렬로 1건씩**
+- [ ] Tests pass for the packages affected by the change (`go test -timeout 30m ./internal/<pkg>/...`; `-timeout 30m` = the D2 derivation — 1.61x headroom over the measured worst case of 1118.093s for a single local package; baseline `.moai/reports/t1253/measure-meta.txt`, SPEC-CLI-TEST-TIMEOUT-001) — **do not run the full suite (`go test ./...`) locally**. An incident occurred in which several lanes ran it at once, pushing load up to 413 and paralyzing other workspaces (2026-08-15). Verdicts for all packages belong to CI, which runs the PR head in a clean environment and is therefore stronger evidence. The exception is the integration verification of §4.1 — then, **one at a time, serially**
 - [ ] Linting passing (`golangci-lint run`)
 - [ ] Templates regenerated (`make build`)
 
@@ -170,116 +177,116 @@ Language policy는 `.claude/rules/moai/development/coding-standards.md`에 정�
 
 ### Commit Message Format
 
-Conventional Commits — `<type>(<scope>): <description>` + 선택 본문/푸터. Types: feat, fix, docs, style, refactor, perf, test, chore, revert. 예시와 서식 전문: `.moai/docs/local-dev-guide.md` § 4a.
+Conventional Commits — `<type>(<scope>): <description>` + an optional body/footer. Types: feat, fix, docs, style, refactor, perf, test, chore, revert. For examples and the full format, see `.moai/docs/local-dev-guide.md` § 4a.
 
 ### §4.0 Default development flow (local-main integration)
 
-카드 작업은 primary 체크아웃의 로컬 `main`으로 착지하고, 원격 `origin/main`은 릴리스 PR로만 전진한다. §4.1에서 표식이 붙은 조항은 이 절이 대체하며, 표식이 없는 조항은 그대로 유효하다.
+Card work lands on local `main` in the primary checkout, and the remote `origin/main` advances only through release PRs. Clauses marked in §4.1 are superseded by this section; clauses without a marker remain in force as written.
 
-**[HARD] 1. 분기 기준**
+**[HARD] 1. Branch base**
 
-카드 워크트리는 로컬 `main`에서 분기한다. origin/main은 로컬 `main`보다 뒤처질 수 있으므로 분기 기준으로 쓰지 않는다. 이 저장소는 템플릿의 "Create the fresh tree from the remote default branch." 문장을 이 절로 대체한다. 배포 템플릿은 바뀌지 않는다.
+Card worktrees branch from local `main`. Because origin/main can fall behind local `main`, it is not used as the branch base. In this repository, this section replaces the template sentence "Create the fresh tree from the remote default branch." The distributed template does not change.
 
-**[HARD] 2. 병합 착지**
+**[HARD] 2. Merge landing**
 
-- 착지 면은 `workflow.local_main_integration.enabled`가 `true`이고, primary 체크아웃의 HEAD가 `main`을 가리키며, 별도 통합 워크트리가 `main`을 잡고 있지 않을 때다. 조건이 맞지 않으면 도구는 병합하지 않고 이유를 안내한다.
-- 병합은 `moai integration merge --card <id>`만 수행한다. `moai factory complete`가 레인 세션에서 이 명령을 호출한다. 에이전트가 Bash에 `git merge`를 직접 쓰는 것은 여전히 거부된다. 이 경로는 설계된 예외다.
-- 도구는 (1) 통합 창을 잡고, (2) HEAD를 심볼릭으로 읽어 `main`을 가리키는지 확인하며, (3) primary가 깨끗한지 확인하고(3항), (4) 카드 브랜치의 끝 커밋(tip)을 고정한 뒤 병합이 쓸 경로와 그 상위·하위 경로에 무시 파일이나 미추적 파일이 있으면 거부한다. 도구는 파일을 지우거나 stash하지 않는다. 이어서 (5) autostash를 끈 no-fast-forward 병합을 수행하고, (6) 첫 부모, HEAD, 상태 집합을 병합 전과 비교하며, (7) 병합 SHA와 트리를 기록하고 통합 창을 놓는다(`moai integration release`).
+- The landing surface is in effect when `workflow.local_main_integration.enabled` is `true`, the HEAD of the primary checkout points at `main`, and no separate integration worktree holds `main`. If the conditions are not met, the tool does not merge and explains why.
+- Merging is performed only by `moai integration merge --card <id>`. `moai factory complete` calls this command from lane sessions. Agents writing `git merge` directly in Bash is still refused. This path is a designed exception.
+- The tool (1) takes the integration window, (2) reads HEAD symbolically and confirms that it points at `main`, (3) confirms that the primary checkout is clean (item 3), and (4) pins the tip commit of the card branch; then it refuses if any ignored or untracked file sits on the paths the merge will write or on their ancestor or descendant paths. The tool does not delete or stash files. It then (5) performs a no-fast-forward merge with autostash turned off, (6) compares the first parent, HEAD, and the status set against their pre-merge values, and (7) records the merge SHA and tree and releases the integration window (`moai integration release`).
 
-**[HARD] 3. 깨끗한 primary 규칙**
+**[HARD] 3. Clean-primary rule**
 
-primary 체크아웃에서 착지하려면 `git status --porcelain=v1 -z --untracked-files=all`의 결과가 비어 있어야 한다. primary는 여러 세션이 함께 쓰므로 미커밋 변경의 소유자를 가릴 수 없다. 변경이 있으면 병합을 거부하고, 변경을 카드 워크트리로 옮기거나 소유 세션에 맡긴다. stash는 저장소 전체에 걸리므로 쓰지 않는다. 별도 통합 워크트리에는 겹침 규칙(REQ-LMF-005)이 적용된다.
+To land from the primary checkout, the output of `git status --porcelain=v1 -z --untracked-files=all` must be empty. Because several sessions write to the primary, the owner of an uncommitted change cannot be identified. If there are changes, the merge is refused, and the changes are moved to a card worktree or left to the session that owns them. Do not use stash, because it spans the entire repository. The overlap rule (REQ-LMF-005) applies to a separate integration worktree.
 
-**[HARD] 4. 재동기화**
+**[HARD] 4. Resynchronization**
 
-릴리스 배치가 `origin/main`에 착지하면 로컬 `main`을 따라간다. 도구가 통합 창 안에서 fast-forward 전용으로 수행하며, 운영자 터미널에서는 하지 않는다.
+When a release batch lands on `origin/main`, local `main` follows it. The tool performs this as a fast-forward-only update inside the integration window; it is not done from the operator's terminal.
 
-- (1) 창을 잡고 HEAD가 `main`을 가리키는지, primary가 깨끗한지 확인한다.
-- (2) `git fetch origin main`을 실행하고 exit 상태를 확인한다. 얻은 `origin/main` 값을 기준선으로 고정하고, 이후의 원격 비교는 모두 이 값으로 한다.
-- (3) HEAD와 기준선의 조상 관계를 읽는다. HEAD가 기준선보다 뒤처져 있으면 무시 파일 덮어쓰기를 검사한 뒤 fast-forward한다. 기준선이 HEAD의 조상이거나 두 값이 같으면 갱신이 필요 없다고 보고하고 HEAD는 둔다. 둘 중 어느 쪽도 조상이 아니면 갈라진 것이므로 거부하고 HEAD는 움직이지 않는다.
-- (4) 이동 뒤 HEAD가 기준선과 같고 여전히 `main`을 가리키는지 다시 읽은 뒤, 옛 SHA와 새 SHA를 보고하고 창을 놓는다.
+- (1) Take the window, and confirm that HEAD points at `main` and that the primary checkout is clean.
+- (2) Run `git fetch origin main` and check its exit status. Pin the `origin/main` value obtained as the baseline, and make every later remote comparison against this value.
+- (3) Read the ancestry relation between HEAD and the baseline. If HEAD is behind the baseline, check for ignored-file overwrites, then fast-forward. If the baseline is an ancestor of HEAD, or the two values are the same, report that no update is needed and leave HEAD where it is. If neither is an ancestor of the other, the histories have diverged: refuse, and HEAD does not move.
+- (4) After the move, re-read HEAD to confirm that it equals the baseline and still points at `main`; then report the old and new SHAs and release the window.
 
-갈라진 경우의 처리 방법은 운영자 결정 Q2가 정한다(`.moai/specs/SPEC-LOCAL-MAIN-FLOW-001/decision-index.md`).
+The handling of the diverged case is set by operator decision Q2 (`.moai/specs/SPEC-LOCAL-MAIN-FLOW-001/decision-index.md`).
 
-**[HARD] 5. 마감과 워크트리 폐기**
+**[HARD] 5. Closing and worktree disposal**
 
-- 로컬 `main` 면에서 병합된 카드를 마감하는 일은 push하지 않으며, 릴리스 배치를 기다리지 않는다.
-- 카드 워크트리를 폐기하는 일은 그 병합을 실은 배치가 origin에 착지할 때까지 기다린다. 그전까지 카드 브랜치에는 원격 사본이 없으므로 워크트리가 작업의 유일한 사본이다.
-- 마감 조건은 다음과 같다. 병합 커밋이 두 부모를 가지고 그 트리가 두 번째 부모의 트리와 같으며 통합 브랜치에서 도달 가능해야 한다. 그 트리를 키로 한 재측정 기록이 검증을 통과해야 한다. 결정자는 사람이고 리더 승인 영수증이 검증되어야 한다. 레인이 낸 증거 파일은 재측정 기록을 대신하지 못한다.
-- 이 규칙의 구현은 후속 카드 t1621이 맡는다. t1621이 done 전이를 열기 전에는 병합된 카드가 done에 닿지 못한다.
+- Closing a card merged on the local `main` surface does not push, and does not wait for a release batch.
+- Disposing of a card worktree waits until the batch carrying that merge has landed on origin. Until then the card branch has no remote copy, so the worktree is the only copy of the work.
+- The closing conditions are as follows. The merge commit must have two parents, its tree must equal the tree of the second parent, and it must be reachable from the integration branch. A re-measurement record keyed by that tree must pass verification. The decider is a human, and the leader's approval receipt must be verified. An evidence file produced by a lane cannot substitute for the re-measurement record.
+- Implementation of this rule is owned by the follow-up card t1621. Until t1621 opens the done transition, merged cards cannot reach done.
 
-**[HARD] 6. 배치 릴리스 절차**
+**[HARD] 6. Batch release procedure**
 
-`origin/main`은 릴리스 PR로만 전진하며, 직접 push하지 않는다.
+`origin/main` advances only through release PRs and is never pushed to directly.
 
-- (1) 로컬 `main`을 origin의 `release/main-batch-YYYYMMDD` 브랜치로 push한다. `YYYYMMDD`는 배치의 날짜다. 명령은 `git push origin main:refs/heads/release/main-batch-YYYYMMDD`이다.
-- (2) 그 브랜치에서 `main`으로 가는 pull request를 연다.
-- (3) 병합 커밋(merge commit)으로 병합한다.
-- (4) 병합이 끝나면 4항의 재동기화로 로컬 `main`을 `origin/main`에 fast-forward한다.
-- 병합 방식은 squash를 쓰지 않는다(no squash).
+- (1) Push local `main` to the `release/main-batch-YYYYMMDD` branch on origin. `YYYYMMDD` is the date of the batch. The command is `git push origin main:refs/heads/release/main-batch-YYYYMMDD`.
+- (2) Open a pull request from that branch to `main`.
+- (3) Merge it with a merge commit.
+- (4) When the merge is complete, fast-forward local `main` to `origin/main` through the resynchronization of item 4.
+- The merge method does not use squash (no squash).
 
-`main:release/*` 푸시에 대한 pre-push 훅의 판정은 아직 측정되지 않았다(OQ-10).
+The pre-push hook's verdict on pushes of `main:release/*` has not yet been measured (OQ-10).
 
-**[HARD] 7. 배치 닫기 규칙**
+**[HARD] 7. Batch-closing rule**
 
-- 배치를 닫는 시점은 계수 트리거가 정한다. `git rev-list --count origin/main..main`이 `git_strategy.manual.lead_push_threshold`에 닿으면 리더가 배치를 닫고 6항의 절차를 시작한다. 임계값의 원천은 `.moai/config/sections/git-strategy.yaml`이다.
-- 트리거는 통합 창이 닫힌 뒤에만 평가한다.
-- 초록 조건부가 계수 트리거보다 우선한다. 카드 병합마다 통합 창의 병합 트리 재측정을 통과해야 하며, 마지막으로 착지한 배치의 `origin/main` CI가 red인 동안 다음 배치는 보류한다. 그 CI 판정이 아직 없으면 보류 사유가 아니다.
-- 임계값이 0이거나 키가 없으면 트리거는 꺼진 것이며, 배치를 닫는 시점은 리더가 판단한다. 이것은 오류 조건이 아니다.
+- The timing of closing a batch is set by the count trigger. When `git rev-list --count origin/main..main` reaches `git_strategy.manual.lead_push_threshold`, the leader closes the batch and starts the procedure of item 6. The source of the threshold is `.moai/config/sections/git-strategy.yaml`.
+- The trigger is evaluated only after the integration window has closed.
+- The green condition takes precedence over the count trigger. Every card merge must pass the merge-tree re-measurement in the integration window, and while the `origin/main` CI of the most recently landed batch is red, the next batch is held. If that CI verdict does not yet exist, it is not a reason to hold.
+- If the threshold is 0 or the key is absent, the trigger is off, and the leader decides when to close a batch. This is not an error condition.
 
-근거: SPEC-LOCAL-MAIN-FLOW-001 (spec REQ-LMF-010·REQ-LMF-011·§G; plan §B2·§B3·§B3a·§B4·§B7·§B9·§G.1).
+Basis: SPEC-LOCAL-MAIN-FLOW-001 (spec REQ-LMF-010·REQ-LMF-011·§G; plan §B2·§B3·§B3a·§B4·§B7·§B9·§G.1).
 
-### §4.1 통합 체인 (main)
+### §4.1 Integration chain (main)
 
-카드별로 각각 검증해 머지했는데 **합쳐진 상태는 아무도 보지 않는** 구멍을 막는다. 2026-08-15에 PR 12개가 각각 초록불로 main에 들어갔고, 합류 후에야 `moai update`가 로컬 전용 파일을 지운다는 사실이 드러났다. 2026-10-05 GitHub Flow 전환(M2)으로 통합 기저는 `main`이다 — 아래 체인은 전환 후 기준이고, develop 체인은 아래 [SUPERSEDED] 표식과 함께 역사로 남는다.
+This closes the gap where each card is verified and merged on its own, but **no one checks the combined state**. On 2026-08-15, 12 PRs each entered main with a green check, and only after they converged did it come to light that `moai update` deletes local-only files. With the 2026-10-05 GitHub Flow transition (M2), the integration base is `main` — the chain below is the post-transition standard, and the develop chain remains as history, marked [SUPERSEDED] below.
 
-**[SUPERSEDED by §4.0]** **[HARD] 표준 체인 — GitHub Flow 전환(운영자 지시, 2026-10-05 M2 착지)**
+**[SUPERSEDED by §4.0]** **[HARD] Standard chain — GitHub Flow transition (operator instruction, M2 landed 2026-10-05)**
 
 ```
 origin/main
    ↓ fetch
-local/main  ← 기본 브랜치. 카드 브랜치의 기저
-   ↓ 분기
-worktree (카드별 WT-<slug>)
-   ↓ PR (base: main)  ← 카드 완료 시 — 통합 창(직렬) 경유, 병합은 리더가
-origin/main  ← CI가 통합 판정
+local/main  ← default branch. Base of card branches
+   ↓ branch
+worktree (per card, WT-<slug>)
+   ↓ PR (base: main)  ← on card completion — through the integration window (serial); the leader merges
+origin/main  ← CI issues the integration verdict
    ↓ fetch
 local/main
 ```
 
-**[HARD] 규율**
+**[HARD] Rules**
 
-1. **[SUPERSEDED by §4.0]** **카드 브랜치는 `main`에서 판다.** 카드가 끝나면 카드 PR(base `main`)로 `main`에 반영한다. `develop`은 legacy다 — 새 카드의 기저로 쓰지 않는다.
-2. **[SUPERSEDED by §4.0]** **`main`은 원격 기본 브랜치다.** 그 head의 CI가 통합 판정을 만든다. 병합·push는 **리더가 일괄**로 수행한다(2026-09-02 — 레인은 push하지 않는다. 단, 후보 경로(`ci/<card-id>`)만은 아래 '후보 경로 예외'가 이 금지를 대체한다).
-3. **통합 창은 직렬이다.** `moai integration acquire --card <card-id>` → 병합 → `release` — push는 창 밖이다(리더 일괄, 2026-09-02). 락은 병합을 직렬화하는 장치이지 수리를 직렬화하는 장치가 아니므로, 수리가 남았으면 준비된 뒤에 잡는다.
-4. **판정은 CI.** 로컬 통과는 조기 신호일 뿐이다 — 깨끗한 환경도, darwin/windows 매트릭스도 아니다. 병합 전 검증을 병합 후 근거로 재사용하지 않는다: 병합 트리에서 다시 재거나, 병합 커밋의 `git rev-parse <merge>^{tree}`가 재측정한 트리와 동일함을 보인다.
-5. **[SUPERSEDED by §4.0]** **로컬 `main`은 commit-dead다 (SPEC-MAIN-COMMIT-BAN-001, 카드 t1337).** 어느 세션도 primary 체크아웃의 `main` 안에서 커밋하지 않는다 — `git commit` / `git revert` / `git cherry-pick`은 BranchGuard(`workflow.branch_guard.deny_commits_on: [main]`)가 거부하고, 커밋은 `main`에서 분기한 카드 워크트리에서만 만든다. 리더의 `main` push는 배치 트리거로 닫는다 — `git rev-list --count origin/main..main`이 `git_strategy.manual.lead_push_threshold`에 닿으면 배치를 닫는다(설정 파일의 계수 주석은 아직 `origin/develop..develop`을 가리킨다 — drift). 현재값의 원천은 설정 파일이고 이 규율은 키와 계수 명령을 명명할 뿐이다. push는 초록 조건부를 따른다 — 카드 병합마다 통합 창의 병합 트리 재측정이 사전 게이트이고, 마지막 push의 `origin/main` CI가 red인 동안 다음 push는 보류된다. 상세는 `.claude/rules/local/gitflow-lane-protocol.md` §4(해당 룰은 아직 develop 서술 — drift).
+1. **[SUPERSEDED by §4.0]** **Card branches are cut from `main`.** When a card finishes, it is applied to `main` through a card PR (base `main`). `develop` is legacy — do not use it as the base of a new card.
+2. **[SUPERSEDED by §4.0]** **`main` is the remote default branch.** The CI on its head produces the integration verdict. Merges and pushes are performed **in bulk by the leader** (2026-09-02 — lanes do not push; the only exception is the candidate path (`ci/<card-id>`), which the 'candidate-path exception' below substitutes for this prohibition).
+3. **The integration window is serial.** `moai integration acquire --card <card-id>` → merge → `release` — the push is outside the window (leader bulk, 2026-09-02). A lock is a device for serializing merges, not for serializing repairs, so if repairs remain, take the window only once they are ready.
+4. **The verdict is CI.** A local pass is only an early signal — it is neither a clean environment nor the darwin/windows matrix. Do not reuse pre-merge verification as post-merge evidence: either measure again on the merge tree, or show that `git rev-parse <merge>^{tree}` of the merge commit equals the tree that was re-measured.
+5. **[SUPERSEDED by §4.0]** **Local `main` is commit-dead (SPEC-MAIN-COMMIT-BAN-001, card t1337).** No session commits inside `main` in the primary checkout — `git commit` / `git revert` / `git cherry-pick` are refused by the BranchGuard (`workflow.branch_guard.deny_commits_on: [main]`), and commits are made only in card worktrees branched from `main`. The leader's push to `main` is closed by the batch trigger — when `git rev-list --count origin/main..main` reaches `git_strategy.manual.lead_push_threshold`, the batch is closed (the count comment in the configuration file still points at `origin/develop..develop` — drift). The source of the current value is the configuration file, and this rule only names the key and the count command. Pushes follow the green condition — per-card re-measurement of the merge tree in the integration window is the pre-gate for each card merge, and while the `origin/main` CI of the last push is red, the next push is held. Details: `.claude/rules/local/gitflow-lane-protocol.md` §4 (that rule still describes develop — drift).
 
-**[SUPERSEDED by 위 체인 — 2026-10-05]** 2026-08-29~2026-10-05의 develop GitFlow 체인(카드는 develop에서 분기해 develop으로 `--no-ff` 병합, main에는 release PR만)과 그 이전 규위(develop 원격 미푸시 · 카드별 main PR · 일회용 develop)은 모두 폐기됐다 — 폐기 사실과 사유의 보존은 두 문서가 반대 지시를 하지 않게 하기 위함이며, develop 체인의 전문은 `.moai/docs/gitflow-integration-chain.md` 에 있다.
+**[SUPERSEDED by the chain above — 2026-10-05]** The develop GitFlow chain of 2026-08-29 to 2026-10-05 (cards branched from develop and merged back to develop with `--no-ff`, with only release PRs to main), and the regime before it (develop not pushed to the remote · a main PR per card · a disposable develop), were all discarded. The record of the discard and its reasons exists so that two documents do not issue contradictory instructions; the full text of the develop chain is in `.moai/docs/gitflow-integration-chain.md`.
 
-**[HARD] 전환 후 drift — 절차 문서군.** `.moai/docs/git-workflow-doctrine.md`·`.moai/docs/git-local-workflow-doctrine.md`·`.moai/docs/gitflow-integration-chain.md`·`.claude/rules/local/gitflow-lane-protocol.md`은 아직 develop 체인을 서술한다. 전환 후 규범의 정본은 이 §4.1과 전환 규칙(`.claude/rules/moai/**`, card t1522)이며, 그 문서들을 열 때는 이 고지 아래에서 읽는다.
+**[HARD] Post-transition drift — the procedure document set.** `.moai/docs/git-workflow-doctrine.md`·`.moai/docs/git-local-workflow-doctrine.md`·`.moai/docs/gitflow-integration-chain.md`·`.claude/rules/local/gitflow-lane-protocol.md` still describe the develop chain. The canonical source of post-transition norms is this §4.1 together with the transition rules (`.claude/rules/moai/**`, card t1522), and when you open those documents, read them under this notice.
 
-**관련 문서 포인터 (SPEC-RC-TESTBED-001)** — 절차 본문은 두지 않는다(위 규율 4의 delivery.md 위임과 마찬가지로, 두 벌이 되는 순간 갈라진다):
+**Related document pointers (SPEC-RC-TESTBED-001)** — the procedure text is not kept here (as with the delivery.md delegation in rule 4 above, two copies diverge the moment they exist):
 
-- 로컬 rc 빌드의 `rc.N` 번호 정책·무태그 원칙·`BUILD_ID` 빌드 식별: `.moai/docs/version-management.md` — **Local RC Numbering** 절
-- 병합 후 로컬 `main` 갱신(판정 기준·BranchGuard 안전 경로): `.claude/rules/local/gitflow-lane-protocol.md` — **develop 갱신** 절 (해당 절은 아직 develop 서술 — drift; 그 절이 §9 rc 런북을 교차참조한다)
+- The `rc.N` numbering policy, the untagged principle, and `BUILD_ID` build identification for local rc builds: `.moai/docs/version-management.md` — the **Local RC Numbering** section
+- Updating local `main` after a merge (criterion and the BranchGuard-safe path): `.claude/rules/local/gitflow-lane-protocol.md` — the **develop update** section (that section still describes develop — drift; it cross-references the §9 rc runbook)
 
-**[HARD] -f / -l 모드 레인 의무**
+**[HARD] Lane obligations in -f / -l mode**
 
-Factory(리더 `moai cc -f` · 레인 `moai cc -l`) 모드에서 레인은 카드 작업이 끝나면 **반드시 리더에게 `main` 반영을 요청한다.** 레인이 스스로 병합 창을 잡지 않는다.
+In Factory mode (leader `moai cc -f` · lane `moai cc -l`), when a lane finishes its card work it **must request that the leader apply the change to `main`.** A lane does not take the merge window on its own.
 
-- **self-dispatch lane 예외 — 병합 창.** Claude self-dispatch 팩토리 run의 레인은 위 요청을 하지 않는다 — `moai integration merge --card`를 부르는 `moai factory complete`의 통합 절차로 스스로 통합 창을 잡고 자기 카드를 `main`에 반영한다(OD-2). Codex 레인은 예외가 아니다 — merge-ready에서 정지한다(REQ-SD-025). 이 예외도 위의 다른 큐 변경(`add`, `drop`, `done`, `edit` 등) 금지와 `moai contract sign` 금지는 바꾸지 않는다(카드 임대만 `moai factory next`로 허용 — OD-1; `.claude/rules/local/gitflow-lane-protocol.md` §6).
-- 완료 보고에 담을 것: 카드 id · 브랜치와 HEAD · 로컬 병합 SHA · 미푸시 커밋 수 · 증거 경로(primary 반출 여부) · 재측정 범위
-- **[SUPERSEDED by §4.0]** `moai integration status`가 `free`인 것은 **승인이 아니다.** open 정책에서 대기열 맨 앞으로 승격되어 창을 쥔 레인은 리더 지명 없이 병합한다.
-- **레인은 `main`에 손으로 git merge 하지 않고 moai integration merge --card 또는 그것을 부르는 moai factory complete 로만 병합한다.** 창은 대기열이 스케줄하고, 리더는 `moai integration policy open|hold`로 정책만 잡는다(창을 받으면 acquire --wait로 대기열에 선다 — 재측정은 대기 전, 창 안은 병합뿐이다).
-- **[SUPERSEDED by §4.0]** 창을 받으면: `moai integration acquire --name <lane> --card <card-id>` → 본인 워크트리에서 `git merge main` 흡수(대상은 **로컬** `main` — 원격이 아니다. 흡수 **전에** 그 로컬 main 이 최신인지부터 본다 — 판정식과 갱신 경로는 `.claude/rules/local/gitflow-lane-protocol.md` §11, 아직 develop 서술 — drift) → **병합 트리에서 재측정** → 통합 워크트리 진입 → `main` 반영(카드 PR base `main` 병합 또는 `--no-ff` 병합 — 세부 형태는 이관 문서가 정한다) → `moai integration release` → `ExitWorktree keep` → 완료 보고(반영 SHA를 리더에게 보고 — push·병합은 리더가 일괄로 한다)
-- **[SUPERSEDED by §4.0]** **[HARD] 카드 PR(base `main`)이 유일한 공개 경로다 (2026-10-05 전환 개정).** 카드가 마감되면 레인은 카드 브랜치를 push해 PR(base `main`)을 열되 **직접 병합하지 않는다** — 병합·push는 리더가 일괄로 수행하고 레인은 그 주체가 아니다. 레인은 `gh run rerun`/`workflow dispatch` 등 CI를 직접 요청·재요청하지도 않는다 — CI 판정은 `main` 반영이 일으키는 실행에 맡기고, 판독은 리더 몫이다. (종전 금지 — 운영자 지시 2026-09-01, WT 브랜치 push 금지·develop 일괄 push 체제 — 는 develop 체인과 함께 역사가 됐다; 당일 lane-2가 `WT-version-stamp-predicate`를 origin에 push한 전례로 추가됐던 조항이다)
-- **[HARD] 후보 경로 예외 — 운영자 승인 2026-10-03 (SPEC-CANDIDATE-CI-001, REQ-CCI-016).** `moai integration candidate --card <card-id>`는 후보 커밋을 `ci/<card-id>`로 push해 착지 전 CI 판정을 받는 경로다. 이 한 경로에 한해 `WT push · CI 요청 금지`를 대체한다. 착지 게이트는 그 후보의 녹색 판정을 요구한다. 통합 브랜치 push와 병합은 여전히 리더의 일괄 행위이며, 후보 verb는 통합 창을 잡지 않는다. 같은 취지가 `.claude/rules/local/gitflow-lane-protocol.md` §2·§4와 `.moai/docs/` 세 문서에 적히며, 그 문서들의 develop 서술과 drift 고지는 그대로 남는다.
-- **[HARD] `acquire`는 창을 기록하기 전에 호출자 트리를 먼저 단정한다.** tracked `.claude/settings.json`의 워킹 사본이 수정돼 있는지 `git --no-optional-locks status --porcelain -- .claude/settings.json`으로 재고, 적중이면 그 사본을 primary 체크아웃의 `.moai/state/settings-drift/` 아래로 보존한 뒤 같은 자리 `ledger.jsonl`에 한 줄을 남기고 보존 경로·sha256을 출력한다. **검출·보존·원장은 설정과 무관하게 매번 돈다**(9일 동안 아무도 보지 않아서 놓친 것이 문제였지 막지 않아서가 아니다). 거절만 opt-in이며(`workflow.settings_drift_gate.enabled`, 이 저장소는 켠다) 우회는 `--allow-settings-drift`다 — `--force`는 "살아 있는 보유자에게서 창을 빼앗는다"는 다른 축이라 우회로 쓰지 않는다. 창과 무관하게 손으로 확인할 때는 `moai integration preflight [경로]`. **어떤 경우에도 자동 복원하지 않는다** — 그 파일은 런타임이 쓰고 토큰·절대경로·tmux pane id를 담을 수 있어 자동 복원 자체가 데이터 파괴다. 적중 보고를 받으면 리더가 처분을 정한다.
-- **워크트리는 원격 머지가 확인되기 전까지 폐기하지 않는다.** 미푸시 브랜치의 워크트리는 그 작업의 유일본이다.
-- sync는 병합 **전에** 워크트리 안에서 끝낸다. run만 닫고 병합하면 SPEC이 `in-progress`로 `main`에 올라가 창을 다시 받아야 한다(2026-08-29 t342 실사례).
+- **Self-dispatch lane exception — merge window.** A lane of a Claude self-dispatch factory run does not make the request above — through the integration procedure of `moai factory complete`, which calls `moai integration merge --card`, it takes the integration window itself and applies its own card to `main` (OD-2). Codex lanes are not covered by this exception: they stop at merge-ready (REQ-SD-025). This exception also does not change the prohibitions above on other queue changes (`add`, `drop`, `done`, `edit`, etc.) and on `moai contract sign` (only card leasing with `moai factory next` is allowed — OD-1; `.claude/rules/local/gitflow-lane-protocol.md` §6).
+- Contents of the completion report: card id · branch and HEAD · local merge SHA · number of unpushed commits · evidence path (whether it was moved out of the primary) · re-measurement scope
+- **[SUPERSEDED by §4.0]** `moai integration status` showing `free` is **not an approval.** Under the open policy, a lane promoted to the front of the queue that holds the window merges without a leader nomination.
+- **Lanes do not git-merge into `main` by hand; they merge only with moai integration merge --card, or with moai factory complete, which calls it.** The queue schedules the window, and the leader sets only the policy with `moai integration policy open|hold` (when handed the window, the lane queues via acquire --wait — re-measurement happens before waiting; inside the window, only the merge).
+- **[SUPERSEDED by §4.0]** When the window is granted: `moai integration acquire --name <lane> --card <card-id>` → absorb `git merge main` in your own worktree (the target is the **local** `main` — not the remote; before absorbing, first check whether that local main is up to date — the criterion and update path are in `.claude/rules/local/gitflow-lane-protocol.md` §11, which still describes develop — drift) → **re-measure on the merge tree** → enter the integration worktree → apply to `main` (merge the card PR with base `main`, or a `--no-ff` merge — the migration document sets the detailed form) → `moai integration release` → `ExitWorktree keep` → completion report (report the applied SHA to the leader — the push and the merge are done in bulk by the leader)
+- **[SUPERSEDED by §4.0]** **[HARD] The card PR (base `main`) is the only public path (revised with the 2026-10-05 transition).** When a card closes, the lane pushes the card branch and opens a PR (base `main`), but **does not merge it directly** — the merge and push are performed in bulk by the leader, and the lane is not the party that does so. A lane also does not directly request or re-request CI, such as `gh run rerun` or `workflow dispatch` — it leaves the CI verdict to the run triggered by the application to `main`, and reading the verdict is the leader's job. (The former prohibition — operator instruction 2026-09-01, the WT-branch push ban and the develop batch-push regime — became history together with the develop chain; this clause was added in response to a precedent: lane-2 pushed `WT-version-stamp-predicate` to origin that same day.)
+- **[HARD] Candidate-path exception — operator approval 2026-10-03 (SPEC-CANDIDATE-CI-001, REQ-CCI-016).** `moai integration candidate --card <card-id>` is the path that pushes a candidate commit to `ci/<card-id>` to receive a CI verdict before landing. For this one path only, it replaces `WT push · CI request prohibited`. The landing gate requires a green verdict for that candidate. Pushing the integration branch and merging remain a bulk action by the leader, and the candidate verb does not take the integration window. The same intent is recorded in `.claude/rules/local/gitflow-lane-protocol.md` §2·§4 and in three documents under `.moai/docs/`, and the develop descriptions and drift notices in those documents remain as they are.
+- **[HARD] `acquire` pins the caller's tree before it records the window.** It checks whether the working copy of the tracked `.claude/settings.json` has been modified, using `git --no-optional-locks status --porcelain -- .claude/settings.json`. On a hit, it preserves that copy under `.moai/state/settings-drift/` in the primary checkout, appends one line to `ledger.jsonl` in the same place, and prints the preserved path and sha256. **Detection, preservation, and the ledger run every time regardless of configuration** (the problem was that nobody looked for 9 days, not that nothing blocked it). Only refusal is opt-in (`workflow.settings_drift_gate.enabled`; this repository turns it on), and the bypass is `--allow-settings-drift` — `--force` belongs to a different axis, taking the window away from a live holder, so it is not used as a bypass. To check by hand regardless of the window, use `moai integration preflight [path]`. **Never restore automatically under any circumstances** — the file is written by the runtime and can contain tokens, absolute paths, and tmux pane ids, so automatic restoration would itself destroy data. When a hit is reported, the leader decides the disposition.
+- Do not dispose of a worktree until its remote merge has been confirmed. The worktree of an unpushed branch is the only copy of its work.
+- sync is finished **before** merging, inside the worktree. If you close only run and merge, the SPEC reaches `main` as `in-progress`, and the window must be taken again (a real case on 2026-08-29, t342).
 
-**운영 절차 이하는 `.moai/docs/gitflow-integration-chain.md` 로 이관됐다(card t750) — 창 집행 bash(통합 워크트리 진입·흡수·재측정·병합), 리더 일괄 push 절차, 로컬 CI 기각 기록, BranchGuard 조회 과다 매칭 마찰, docs-site Vercel 바인딩 주의. 해당 문서의 절차 본문은 아직 develop 체인을 서술한다 — 실행할 때는 위 전환 고지 아래에서 읽는다.** 위 [HARD] 규율과 레인 의무가 변하지 않는 한 이 요지로 충분하고, 절차를 실행할 때 이관 문서를 연다.
+**The operating procedures below have been moved to `.moai/docs/gitflow-integration-chain.md` (card t750) — the bash that executes the window (entering the integration worktree, absorbing, re-measuring, merging), the leader's bulk push procedure, the record of rejecting local CI, the friction from over-matching BranchGuard queries, and a caution about the docs-site Vercel binding. The procedure text in that document still describes the develop chain — when executing, read it under the transition notice above.** As long as the [HARD] rules above and the lane obligations stay unchanged, this summary is sufficient; when you execute a procedure, open the migration document.
 
 ---
 
@@ -299,11 +306,11 @@ When running tests, **always check if they modify project files**.
 
 **[HARD] All test temp directories MUST be created under `/tmp` and cleaned up automatically** — `t.TempDir()` for every temporary directory (auto-cleanup registered).
 
-**[HARD] 함정 — `filepath.Join(cwd, absPath)`는 두 번째 인수의 선행 `/`를 벗기지 않는다**: `filepath.Join("/a/b", "/var/folders/x") = "/a/b/var/folders/x"` (오동작). 사용자 제공 경로 해석엔 `filepath.Abs()` 를 쓴다. 실측 예시와 코드 전문: `.moai/docs/local-dev-guide.md` § 6a.
+**[HARD] Pitfall — `filepath.Join(cwd, absPath)` does not strip the leading `/` of the second argument**: `filepath.Join("/a/b", "/var/folders/x") = "/a/b/var/folders/x"` (wrong behavior). To resolve user-supplied paths, use `filepath.Abs()`. For measured examples and the full code, see `.moai/docs/local-dev-guide.md` § 6a.
 
 ### Coverage Targets
 
-본문은 `.moai/docs/local-dev-guide.md` § 6a 로 이관됐다 — 패키지 85%(`quality.yaml` `test_coverage_target`), critical(cli·template·hook) 90%+는 목표치이며 기계적 근거는 strict 프로필의 전역 게이트뿐이다.
+The full text has been moved to `.moai/docs/local-dev-guide.md` § 6a — 85% per package (`quality.yaml` `test_coverage_target`) and 90%+ for critical packages (cli·template·hook) are targets, and the only mechanical basis is the global gate of the strict profile.
 
 ### Go Test Execution Rules
 
@@ -323,152 +330,152 @@ See: `.moai/docs/hook-development.md` — shell-script-only hook pattern, hook w
 
 ## 8. Template Variable Strategy
 
-본문은 `.moai/docs/local-dev-guide.md` § 8 로 이관됐다(card t1303). 요지: 템플릿(`*.tmpl`)은 `{{.GoBinPath}}`류 Go 템플릿 변수(`moai init` 시 렌더링), 로컬 설정은 `$CLAUDE_PROJECT_DIR`(Claude Code가 실행 시 해석) — 경로 변수 전략이 둘 다 필요한 이유와 `TemplateContext`·`Deploy` 서명은 이관 문서에. **[HARD] `.sh.tmpl` 폴백엔 `.HomeDir` 금지 — `$HOME` 사용(§14와 동일 축).**
+The full text has been moved to `.moai/docs/local-dev-guide.md` § 8 (card t1303). Summary: templates (`*.tmpl`) use Go template variables such as `{{.GoBinPath}}` (rendered at `moai init` time), while local settings use `$CLAUDE_PROJECT_DIR` (resolved by Claude Code at run time) — the reasons both path-variable strategies are needed, and the `TemplateContext` and `Deploy` signatures, are in the migration document. **[HARD] `.HomeDir` is prohibited in the `.sh.tmpl` fallback — use `$HOME` (same axis as §14).**
 
 ---
 
 ## 9. Configuration System
 
-본문은 `.moai/docs/local-dev-guide.md` § 9 로 이관됐다(card t1303). 요지: 단일 `config.yaml`은 없다 — 설정은 `.moai/config/sections/*.yaml` 32개 파일로만 존재한다. 우선순위: env var(`MOAI_DEVELOPMENT_MODE`·`MOAI_LOG_LEVEL`·`MOAI_LOG_FORMAT`·`MOAI_NO_COLOR` — 상수는 `internal/config/envkeys.go`) > sections/*.yaml > 템플릿 기본값. `MOAI_USER_NAME`/`MOAI_CONVERSATION_LANG`은 미구현이다.
+The full text has been moved to `.moai/docs/local-dev-guide.md` § 9 (card t1303). Summary: there is no single `config.yaml` — settings exist only as 32 files under `.moai/config/sections/*.yaml`. Precedence: env vars (`MOAI_DEVELOPMENT_MODE`·`MOAI_LOG_LEVEL`·`MOAI_LOG_FORMAT`·`MOAI_NO_COLOR` — the constants are in `internal/config/envkeys.go`) > sections/*.yaml > template defaults. `MOAI_USER_NAME`/`MOAI_CONVERSATION_LANG` are not implemented.
 
 ---
 
 ## 10. Build and Development Commands
 
-빌드/테스트/린트 타깃은 `Makefile`에 `##` 도움말과 함께 정의돼 있다 — `make help` 로 조회. 템플릿 편집 → `make build` → 테스트 → 커밋 순서는 §2 [HARD] Template-First Rule 참조.
+Build, test, and lint targets are defined in the `Makefile` with `##` help text — list them with `make help`. For the order template edit → `make build` → test → commit, see §2 [HARD] Template-First Rule.
 
 ---
 
 ## 11. Frequent Issues and Solutions
 
-자주 발생 4건 — 한 줄 요지와 상세는 `.moai/docs/local-dev-guide.md` § 11a: 템플릿 미갱신(`make build` 필수) · 테스트가 실설정 오염(`t.TempDir()` 격리) · 훅 타임아웃(`{"timeout": 60}`) · **exit 137 재설치 잔재**(반드시 `rm -f ~/go/bin/moai && cp bin/moai ~/go/bin/moai` clean 재설치 + `sh scripts/verify-local-install.sh` 검증; 맨손 `go install` 금지 — `LDFLAGS` 누락이 provenance 검증을 무력화한다).
+Four frequently occurring issues — one-line summaries and details are in `.moai/docs/local-dev-guide.md` § 11a: templates not updated (`make build` required) · tests contaminating the real configuration (isolate with `t.TempDir()`) · hook timeouts (`{"timeout": 60}`) · **exit 137 leftovers from a reinstall** (you must do a clean reinstall with `rm -f ~/go/bin/moai && cp bin/moai ~/go/bin/moai` plus verify with `sh scripts/verify-local-install.sh`; bare `go install` is prohibited — a missing `LDFLAGS` disables provenance verification).
 
-### [HARD] 사용 중 버그·개선 발견 → 즉시 `/moai:feedback`
+### [HARD] Bug or improvement found during use → `/moai:feedback` immediately
 
-MoAI-ADK를 사용하다 버그나 개선이 필요한 부분을 발견하는 족족 `/moai:feedback`으로 피드백을 제출한다 — 세션을 마친 뒤 몰아서 남기지 않는다. 대상: `moai` CLI 동작, 훅, 템플릿, 스킬, 에이전트, 팩토리 운영 결함 전반. 재현 명령과 관측된 출력을 함께 남긴다. 구분: 유지자에게 보고할 사안은 `/moai:feedback`, 작업으로 예정할 사안은 `/moai todo add`.
+Whenever you find a bug or an area needing improvement while using MoAI-ADK, submit feedback immediately with `/moai:feedback` — do not batch it up for after the session ends. Scope: `moai` CLI behavior, hooks, templates, skills, agents, and factory operations defects in general. Record the reproduction command together with the observed output. Distinction: items to report to the maintainers go to `/moai:feedback`; items to schedule as work go to `/moai todo add`.
 
 ---
 
-## 12. YAML Frontmatter 빠른 참조
+## 12. YAML frontmatter quick reference
 
-범용 형식 규칙은 `.claude/rules/moai/development/` 내 `skill-authoring.md`, `agent-authoring.md`에 정의. 로컬 개발 체크리스트(CSV 금지·`skills:` 배열 예외·`metadata.*` 인용·`make build`·로컬 동기화)와 탐지 스크립트 위치는 `.moai/docs/local-dev-guide.md` § 12 로 이관됐다(card t1303).
+The general format rules are defined in `skill-authoring.md` and `agent-authoring.md` under `.claude/rules/moai/development/`. The local development checklist (CSV prohibited · the `skills:` array exception · quoting of `metadata.*` · `make build` · local sync) and the location of detection scripts have been moved to `.moai/docs/local-dev-guide.md` § 12 (card t1303).
 
 ---
 
 ## 13. GLM Integration Testing
 
-### [HARD] Dev 프로젝트에서 GLM 통합 테스트 실행 금지
+### [HARD] Do not run GLM integration tests in the dev project
 
-`moai cc`/`moai glm` 커맨드 플로우는 실제 settings 파일을 수정하므로 dev project에서 절대 실행 금지.
+The `moai cc`/`moai glm` command flows modify the real settings files, so never run them in the dev project.
 
-- Unit tests: dev project, 변경 패키지만(`go test ./internal/<pkg>/...` — 로컬 전체 스위트 금지, §4), `t.TempDir()` 내 파일만
-- Integration tests: `/tmp/test-project`에서 `claude -p`로 실행
-- Auth token: `loadGLMKey()` (reads `~/.moai/.env.glm`), 없으면 `t.Skip()`
-- 금지: `t.Setenv("HOME", tmpDir)` (병렬 테스트 오염), 하드코딩 fake key
+- Unit tests: in the dev project, only the changed packages (`go test ./internal/<pkg>/...` — no local full suite, §4), and only files inside `t.TempDir()`
+- Integration tests: run with `claude -p` in `/tmp/test-project`
+- Auth token: `loadGLMKey()` (reads `~/.moai/.env.glm`); if absent, `t.Skip()`
+- Prohibited: `t.Setenv("HOME", tmpDir)` (contaminates parallel tests), and hardcoded fake keys
 
 ---
 
-## 14. 하드코딩 방지
+## 14. Preventing hardcoding
 
-### [HARD] Go 코드 (internal/, pkg/) 하드코딩 금지
+### [HARD] No hardcoding in Go code (internal/, pkg/)
 
-- URL, 모델명, 조직명, API 헤더 → `const`로 추출
-- 환경변수명 → `internal/config/envkeys.go`에 상수 정의 후 참조
-- 임계값 → `config/defaults.go`에 단일 원천 정의, 중복 금지
-- 크로스 플랫폼 → `$HOME`, `HOMEBREW_PREFIX` 등 환경변수 우선
+- Extract URLs, model names, organization names, and API headers into `const`
+- Define environment variable names as constants in `internal/config/envkeys.go` and reference them from there
+- Define thresholds once, as a single source, in `config/defaults.go`; duplication is prohibited
+- For cross-platform code, prefer environment variables such as `$HOME` and `HOMEBREW_PREFIX`
 
-### [HARD] .sh.tmpl 폴백 경로에 `.HomeDir` 금지
+### [HARD] `.HomeDir` is prohibited in .sh.tmpl fallback paths
 
-`.HomeDir`/`.GoBinPath`는 `moai init` 시점의 절대 경로로 굳어짐. 폴백에는 `$HOME` 사용:
+`.HomeDir`/`.GoBinPath` get frozen as absolute paths at `moai init` time. Use `$HOME` for the fallback:
 - Primary: `{{posixPath .GoBinPath}}/moai` (OK, init-time)
 - Fallback: `$HOME/go/bin/moai` (MUST use `$HOME`)
-- `renderer.go`: `$HOME`은 `claudeCodePassthroughTokens`에 이미 등록
+- `renderer.go`: `$HOME` is already registered in `claudeCodePassthroughTokens`
 
-### 하드코딩 허용 영역
+### Areas where hardcoding is allowed
 
-`AGENTS.local.md`, `settings.local.json`, `_test.go` (t.TempDir() 내).
+`AGENTS.local.md`, `settings.local.json`, and `_test.go` (within t.TempDir()).
 
 ---
 
-## 15. 템플릿 프로그래밍-언어 중립성
+## 15. Programming-language neutrality of templates
 
-> **[HARD] 용어 — "언어"는 두 축을 가리킨다. 수식어 없이 쓰지 않는다.**
+> **[HARD] Terminology — "language" refers to two axes. Do not use it without a qualifier.**
 >
-> | 축 | 값 | 요구되는 것 | 지배 규칙 |
+> | Axis | Values | Requirement | Governing rule |
 > |---|---|---|---|
-> | **프로그래밍 언어** (16) | go, python, typescript, … swift | **중립** — 어느 하나를 PRIMARY로 두지 않음 | 이 §15 |
-> | **사용자 대화 로케일** (4) | ko, en, ja, zh | **번역** — 로케일마다 자연스러운 원어 | 활성 output style §8 Localization Contract |
+> | **Programming language** (16) | go, python, typescript, … swift | **Neutral** — no single language is treated as PRIMARY | this §15 |
+> | **User conversation locale** (4) | ko, en, ja, zh | **Translation** — natural native prose for each locale | §8 Localization Contract of the active output style |
 >
-> 이 둘은 서로 독립이다. 템플릿은 16개 프로그래밍 언어에 중립이면서, 동시에 4개 로케일로 번역된다.
-> "16개 언어"를 배포 로케일 수로 읽는 것이 반복 관측된 오독이므로, 문서에서는 항상
-> **"프로그래밍 언어"** 또는 **"로케일"** 로 수식해 쓴다.
+> The two are independent of each other. Templates are neutral across the 16 programming languages and, at the same time, translated into 4 locales.
+> Because reading "16 languages" as the number of distribution locales is a misreading that has been observed repeatedly, this document always qualifies the term as
+> **"programming language"** or **"locale"** when writing it.
 
-### [HARD] `internal/template/templates/` 하위는 16개 프로그래밍 언어를 동등 취급
+### [HARD] Everything under `internal/template/templates/` treats the 16 programming languages equally
 
-도구의 구현 언어(Go)와 사용자 프로젝트의 프로그래밍 언어는 별개. 템플릿은 모든 사용자를 위한 것.
+The tool's implementation language (Go) and the programming language of a user's project are separate matters. Templates are for all users.
 
-- 프로그래밍-언어 편향 허용: `AGENTS.local.md`, `settings.local.json`, 로컬 `.moai/config/`
-- 프로그래밍-언어 편향 금지: `internal/template/templates/**` 전체
+- Programming-language bias is allowed in: `AGENTS.local.md`, `settings.local.json`, and the local `.moai/config/`
+- Programming-language bias is prohibited in: all of `internal/template/templates/**`
 
-### 16개 지원 프로그래밍 언어 (모두 동등)
+### The 16 supported programming languages (all equal)
 
 ```
 go, python, typescript, javascript, rust, java, kotlin, csharp,
 ruby, php, elixir, cpp, scala, r, flutter, swift
 ```
 
-Dart/Flutter 캐논 이름: **"flutter"** (not "dart").
+Canonical name for Dart/Flutter: **"flutter"** (not "dart").
 
-### 체크리스트 (템플릿 수정 시)
+### Checklist (when editing templates)
 
-- [ ] 특정 언어를 "PRIMARY"로 배치하지 않았는가?
-- [ ] 16개 프로그래밍 언어가 동등 수준으로 나열되어 있는가?
-- [ ] 특정 언어만 "enabled", 나머지 "planned"로 격하하지 않았는가?
-- [ ] project_markers 기반 자동 감지 로직이 포함되어 있는가?
-- [ ] 로컬 config와 템플릿이 달라도 정상 (같으면 오히려 의심)
+- [ ] Did you avoid placing any specific language as "PRIMARY"?
+- [ ] Are the 16 programming languages listed at equal level?
+- [ ] Did you avoid downgrading the rest to "planned" while only one specific language is "enabled"?
+- [ ] Is project_markers-based automatic detection logic included?
+- [ ] A difference between the local config and the template is normal (identical contents are, if anything, suspicious)
 
-상세 교훈: 전역 프로젝트 메모리의 `lessons.md` #5 — 읽는 법: 그 저장소(`~/.claude/projects/-Users-goos-MoAI-moai-adk-go/memory/`)는 **휴면**이라 세션이 로드하지 않는다. 직접 열어 읽고, 두 저장소 확인은 `moai memory doctor`.
-
----
-
-## 16. 오케스트레이터 자가 점검
-
-### [HARD] 자가 점검 4 질문 (복잡 작업 시작 전 필수)
-
-1. 이 작업은 전문 에이전트의 고유 도메인인가?
-2. 해당 전문 에이전트가 카탈로그에 존재하는가? (CLAUDE.md Section 4)
-3. 직접 수행보다 위임이 품질/독립성/편향 방지에 유리한가?
-4. 이 작업의 일부를 read-only sub-agent 병렬 spawn으로 분해할 수 있는가? (Anthropic "Exploration-First Pattern": WebFetch + Explore subagent로 분석 → main agent로 종합)
-
-**3개 이상 YES → 직접 수행 금지**. 4번째 질문도 YES인 경우 Exploration-First Pattern (read-only sub-agent 병렬 spawn) 우선 적용. AskUserQuestion으로 위임 방식 확인 후 실행.
-
-### 수량 기반 트리거
-
-- 같은 종류 파일 **5+** 생성 → `manager-develop` 또는 `builder-harness` 위임 강제
-- Go 코드 **500+ LOC** 신규 → `manager-develop` (cycle_type=tdd, domain context: backend) 강제 — 과거 `expert-backend`는 archived per SPEC-V3R6-AGENT-TEAM-REBUILD-001
-- 에이전트/스킬 **3+** 생성 → `builder-harness` 강제
-
-### 허용되는 직접 수행
-
-Typo/포맷 수정, 설정 1개 편집, 사용자 명시 요청, 위임 대상 부재, 오케스트레이션 자체, git 작업, `/tmp` 작업.
-
-### 순서: Rule 5 → §16 → Rule 1
-
-Rule 5(WHAT) → §16(WHO) → Rule 1(HOW) → 실행
-
-상세 교훈 및 5 Whys: 전역 프로젝트 메모리의 `lessons.md` #4 — **휴면 저장소**라 세션이 로드하지 않는다(§15의 읽는 법과 동일: 직접 열어 읽고, `moai memory doctor` 로 두 저장소 확인).
+Detailed lessons: `lessons.md` #5 in the global project memory — how to read it: that store (`~/.claude/projects/-Users-goos-MoAI-moai-adk-go/memory/`) is **dormant** and is not loaded by sessions. Open and read it directly; to check both stores, use `moai memory doctor`.
 
 ---
 
-## 17. docs-site 4개국어 문서 동기화 규칙
+## 16. Orchestrator self-check
 
-docs-site는 `adk.mo.ai.kr` 공식 사용자 문서. URL 표준, 4-locale 동기화 의무, Mermaid TD-only, Vercel 프로젝트 바인딩, 빌드/배포 체크리스트 등 전체 doctrine은 외부 파일 참조.
+### [HARD] Four self-check questions (required before starting a complex task)
+
+1. Is this task the exclusive domain of a specialist agent?
+2. Does that specialist agent exist in the catalogue? (CLAUDE.md Section 4)
+3. Is delegation more advantageous than direct execution for quality, independence, and bias prevention?
+4. Can part of this task be decomposed into a parallel spawn of read-only sub-agents? (Anthropic "Exploration-First Pattern": analyze with WebFetch + Explore subagent → synthesize in the main agent)
+
+**If three or more answers are YES → direct execution is prohibited**. If the fourth question is also YES, apply the Exploration-First Pattern (parallel spawn of read-only sub-agents) first. Confirm the delegation method with AskUserQuestion before executing.
+
+### Volume-based triggers
+
+- Creating **5+** files of the same kind → delegation to `manager-develop` or `builder-harness` is mandatory
+- New Go code of **500+ LOC** → `manager-develop` (cycle_type=tdd, domain context: backend) is mandatory — the former `expert-backend` is archived per SPEC-V3R6-AGENT-TEAM-REBUILD-001
+- Creating **3+** agents/skills → `builder-harness` is mandatory
+
+### Permitted direct execution
+
+Typo/format fixes, editing one config setting, explicit user requests, absence of a delegation target, orchestration itself, git operations, and `/tmp` work.
+
+### Order: Rule 5 → §16 → Rule 1
+
+Rule 5 (WHAT) → §16 (WHO) → Rule 1 (HOW) → execute
+
+Detailed lessons and 5 Whys: `lessons.md` #4 in the global project memory — a **dormant store** that sessions do not load (the same reading method as §15: open and read it directly, and check both stores with `moai memory doctor`).
+
+---
+
+## 17. Four-language document synchronization rules for the docs-site
+
+The docs-site is the official user documentation at `adk.mo.ai.kr`. The full doctrine — URL standards, the 4-locale synchronization obligation, Mermaid TD-only, the Vercel project binding, and the build/deploy checklist — is in an external file.
 
 See: `.moai/docs/docs-site-i18n-rules.md`
 
-### §17.1 디자인 컴포넌트 + 아이콘 규약 → See `.moai/docs/docs-site-design-components.md`
+### §17.1 Design components and icon conventions → See `.moai/docs/docs-site-design-components.md`
 
-docs-site Claude Warm Editorial [HARD] 세부(아이콘 shortcode·코드블록·Mermaid·푸터·CSS 캐시 버스팅·라이트 단일 테마)는 외부 파일로 이관. 핵심만: 본문 장식 이모지 금지→`{{</* icon */>}}` shortcode; 사이드바 `icon:` 값은 `menu.html` SVG case 필수; CSS 수정 후 dev 반영 안 되면 hugo 재시작.
+The details of the docs-site Claude Warm Editorial [HARD] rules (icon shortcode · code blocks · Mermaid · footer · CSS cache busting · single light theme) have been moved to an external file. The essentials: decorative emoji in body text is prohibited → use the `{{</* icon */>}}` shortcode; the sidebar `icon:` value requires a matching `menu.html` SVG case; if a CSS change does not appear in dev, restart hugo.
 
 ---
 
@@ -478,33 +485,33 @@ Sections §18-27 were consolidated into external `.moai/docs/` files to reduce l
 
 - **§5 Version Management** (SemVer pre-release, ldflags injection, release process): `.moai/docs/version-management.md`
 - **§7 Hook Development** (shell-script-only pattern, settings.json format, quoting rules): `.moai/docs/hook-development.md`
-- **§18 Git Workflow** (Enhanced GitHub Flow 본문 + [2026-08-27] git-flow 전환 상위모델 노트 — 정본은 §4.1(`main` 기반, 2026-10-05 전환), 해당 문서는 아직 develop 서술·drift, branch protection `enforce_admins: true`, Hybrid Trunk RETIRED): `.moai/docs/git-workflow-doctrine.md`
-- **§19 AskUserQuestion Enforcement + §19.1 Implementation Kickoff Approval** (REQ-ATR-015, 기본 자율 전이로 개정): canonical SSOT at `.claude/rules/moai/core/askuser-protocol.md` + `.claude/rules/moai/workflow/auto-semantics.md` §9.1 (plan→run 진입의 기본형은 감사 교차 증거 — plan-auditor PASS + audit-ready + 해시 무결성 + 무차단 — + 결정 기록; keep-set 3범주 [environment-impossible / operator-held / irreversible external-shared]는 운영자 직답 유지)
+- **§18 Git Workflow** (the Enhanced GitHub Flow body, plus the parent-model note for the [2026-08-27] git-flow transition — the canonical source is §4.1 (`main`-based, 2026-10-05 transition); this document still describes develop — drift; branch protection `enforce_admins: true`; Hybrid Trunk RETIRED): `.moai/docs/git-workflow-doctrine.md`
+- **§19 AskUserQuestion Enforcement + §19.1 Implementation Kickoff Approval** (REQ-ATR-015, revised to the default autonomous transition): canonical SSOT at `.claude/rules/moai/core/askuser-protocol.md` + `.claude/rules/moai/workflow/auto-semantics.md` §9.1 (the default form of plan→run entry is audit-cross evidence — plan-auditor PASS + audit-ready + hash integrity + no blocking issues — plus a decision record; the three keep-set categories [environment-impossible / operator-held / irreversible external-shared] keep the operator's direct answer)
 - **§20 Vercel Build Cost Guard** [HARD]: all Vercel projects MUST use Elastic build machine ($0.0035/CPU min vs Turbo $0.126/min); check Build Machine setting first on cost anomalies
 - **§21 Dev-Only Commands Isolation** (split harnesses, `SPLIT_HARNESS_NAMESPACE_LEAK` sentinel): `.moai/docs/dev-only-commands-isolation.md`
 - **§22 Dev Settings Intent** (settings.json key semantics): `.moai/docs/local-dev-settings-intent.md`
-- **§23 Local Git Workflows** (PR-mandatory 1-person OSS, all tiers via PR — 릴리스 PR 경로; [2026-08-27] git-flow `develop` 전환 → [2026-10-05] GitHub Flow 전환으로 `main` 기반 복귀 — 정본은 §4.1, 해당 문서는 아직 develop 서술·drift): `.moai/docs/git-local-workflow-doctrine.md`
+- **§23 Local Git Workflows** (PR-mandatory, 1-person OSS, all tiers via PR — the release-PR path; [2026-08-27] transition to git-flow `develop`, then [2026-10-05] GitHub Flow transition returning to a `main` base — the canonical source is §4.1; this document still describes develop · drift): `.moai/docs/git-local-workflow-doctrine.md`
 - **§24 Harness Namespace** (template-managed vs user-owned separation): `.moai/docs/harness-namespace-doctrine.md`
 - **§25 Template Internal-Content Isolation** (neutrality catalogue, CI guard): `.moai/docs/template-internal-isolation-doctrine.md`
-- **§26 Linear 연동** (local-only): `.moai/docs/local-linear-integration.md`
+- **§26 Linear integration** (local-only): `.moai/docs/local-linear-integration.md`
 - **§27 Agent-Skill Architecture** [HARD]: every agent gets ≥1 skill set (4 elements: workflow skill + knowhow reference + scripts + trigger); all skill bodies in English; `/moai:<sub>` slash-wrapping maintained; `/moai:harness` meta-harness (v4 Builder); Analyze-First execution plan before any work
 
 ---
 
-## 28. LSEL 드레인 운영 (지역 자가진화 루프)
+## 28. LSEL drain operations (local self-evolution loop)
 
-[HARD] `.claude/settings.local.json`의 SessionStart 배선이 `session_drain.sh`와 `backlog_check.sh`를 실행한다. `drain.sh`를 직접 호출하지 말고 보존 래퍼 `session_drain.sh --inbox .moai/lessons-inbox.jsonl --state-dir .moai/state/lsel`만 쓴다. 후보 제안은 휘발성 live 파일이 아닌 `clusters-history/` 보존본에서 읽는다. 인박스는 도구·테스트 실패 스텁에 한정된다. 배선·검증·학습 경계는 `.moai/docs/lsel-drain-operations.md`와 `.moai/docs/learning-channel-scope.md`에 있다.
+[HARD] The SessionStart wiring in `.claude/settings.local.json` runs `session_drain.sh` and `backlog_check.sh`. Do not call `drain.sh` directly; use only the preservation wrapper `session_drain.sh --inbox .moai/lessons-inbox.jsonl --state-dir .moai/state/lsel`. Candidate proposals are read from the preserved copies in `clusters-history/`, not from the volatile live file. The inbox is limited to tool and test-failure stubs. The wiring, verification, and learning boundaries are in `.moai/docs/lsel-drain-operations.md` and `.moai/docs/learning-channel-scope.md`.
 
 ---
 
-## 29. Jev (TypeSafe System One) — 로컬 전용
+## 29. Jev (TypeSafe System One) — local only
 
-[HARD] `scripts/jev/`는 이 저장소의 로컬 도구이며 제품에 배선되지 않았다. **Jev는 카드 내 의사결정 자문이다(카드 t1542, 2026-10-07 개정):** 레인은 `workflow.jev.enabled`면 `jev_ask`를, 아니면 로컬 스크립트(`scripts/jev/route.sh` 등)를 리더 왕복 없이 직접 호출한다. 출력은 레인이 저울질할 **자문 입력**이지 판정이 아니므로, 레인은 그 입력으로 스스로 판단하고 결정 기록(auto-semantics.md §10)을 진행 기록에 남긴다. **완료·병합·큐 변경·운영자 keep-set 게이트는 여전히 Jev 단독 판정 금지다** — 그 경계는 자문 입력 + 레인 판단으로 재정의됐을 뿐 없어지지 않았고, keep-set 3범주는 운영자 직답을 유지한다. 키는 `~/.moai/.env.typesafe`에만 두고, 외부 전송 전에 카드의 비밀·고객 데이터를 확인한다. 키나 네트워크가 없으면 독트린과 직접 읽은 증거로 판단한다. 0.50 신뢰도 문턱은 잠정값이다. 등급·명령·측정 한계는 `.moai/docs/jev-local-operations.md`에 있다.
+[HARD] `scripts/jev/` is a local tool of this repository and is not wired into the product. **Jev is decision advisory within a card (card t1542, revised 2026-10-07):** when `workflow.jev.enabled` is set, a lane calls `jev_ask` directly, and otherwise it calls the local scripts (such as `scripts/jev/route.sh`) directly, without a round trip to the leader. The output is **자문 입력** (advisory input) that the lane weighs, not a verdict; the lane therefore decides on its own from that input and records the decision record (auto-semantics.md §10) in its progress record. **Completion, merges, queue changes, and the operator keep-set gates still prohibit a Jev-only verdict (단독 판정 금지)** — that boundary has been redefined as advisory input plus the lane's judgment, not removed; the keep-set three categories keep the operator's direct answer. Keep the key only in `~/.moai/.env.typesafe`, and check the card's secrets and customer data before any external transmission. If there is no key or no network, judge from the doctrine and the evidence you have read directly. The 0.50 confidence threshold is provisional. The grades, commands, and measurement limits are in `.moai/docs/jev-local-operations.md`.
 
-## 30. 배차 전 전제 판정 (며칠 지난 카드)
+## 30. Premise check before dispatch (cards that are several days old)
 
-[HARD] 묵은 카드의 전제를 배차 전에 `git log --all -S` 심볼 교차, `git merge-base --is-ancestor` 귀속, 수리 이전 커밋의 양성 대조로 순서대로 잰다. 양성 대조 없는 무출력은 부재가 아니라 미측정이다. 모델 신뢰도 점수로 카드를 자동 취소하거나 전제 소멸을 확정하지 않는다. 소멸 근거는 판정서에 남기고 큐 변경은 운영자 판정을 따른다. 측정법과 기각 실험은 `.moai/docs/stale-card-premise-check.md`에 있다.
+[HARD] Before dispatch, measure the premises of an old card in order: symbol cross-check with `git log --all -S`, attribution with `git merge-base --is-ancestor`, and a positive control on commits from before the repair. Output that is empty without a positive control is not an absence but an unmeasured result. Do not automatically cancel a card based on a model confidence score, and do not confirm that a premise has lapsed on that basis. Record the grounds for lapse in the verdict document, and follow the operator's ruling for queue changes. The measurement method and the rejected experiments are in `.moai/docs/stale-card-premise-check.md`.
 
-## 31. 킥오프 자율·의사결정 위임 (운영자 정책)
+## 31. Kickoff autonomy and delegation of decisions (operator policy)
 
-[HARD] 킥오프는 카드가 운영자 게이트를 명시하지 않는 한 자율로 진행한다 — 게이트 재고 + keep-set 모델(`.claude/rules/moai/workflow/auto-semantics.md` §9: 기본 자율 전이는 감사 교차 증거 + 결정 기록이고, environment-impossible / operator-held / irreversible external-shared 3범주만 운영자 직답을 유지한다)을 따른다. 레인 창에서 운영자가 이미 고른 모드는 덮지 않는다. 레인은 선택을 운영자에게 되묻지 않고 리더에게 올린다. 리더는 Jev를 쓰더라도 완료·병합·큐 변경·운영자 게이트를 모델 답으로 판정하지 않는다. 근거와 적용 범위는 `.moai/docs/kickoff-autonomy.md`에 있다.
+[HARD] Kickoff proceeds autonomously unless the card explicitly specifies an operator gate — it follows the gate re-examination plus the keep-set model (`.claude/rules/moai/workflow/auto-semantics.md` §9: the default autonomous transition is audit-cross evidence plus a decision record, and only the three categories environment-impossible / operator-held / irreversible external-shared keep the operator's direct answer). Do not override a mode that the operator has already chosen in the lane window. A lane does not ask the operator again about a choice; it escalates to the leader. Even when the leader uses Jev, it does not judge completion, merges, queue changes, or operator gates by a model's answer. The basis and scope of application are in `.moai/docs/kickoff-autonomy.md`.
