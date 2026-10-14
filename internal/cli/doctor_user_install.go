@@ -128,12 +128,14 @@ func splitManifestKeyUser(key string) (userassets.RootSlug, string, bool) {
 // resolve the core skills a standard install lands: a SKILL.md per
 // embedded-catalog core entry under <root>/skills/<name>/ (card t1702). The
 // caller resolves the active root (CLAUDE_CONFIG_DIR when set, else
-// ~/.claude) and its DISPLAY form — the env value verbatim, or the literal
+// ~/.claude) plus its DISPLAY form — the env value verbatim, or the literal
 // "~/.claude" for the fallback — so the rendered message stays free of
 // machine-specific absolute paths (the doctor golden snapshots require that
-// hermeticity). Report-only: a gap warns with the repair command, it never
-// installs.
-func checkProfileSkillReach(activeRoot, displayRoot string, verbose bool) DiagnosticCheck {
+// hermeticity). Repair 3 (card t1702 audit P2): when the active root is
+// OUTSIDE moai's install roots (a user's own config dir), the warning names
+// what would actually fix it instead of advising 'moai update', which
+// cannot reach that root. Report-only: it never installs.
+func checkProfileSkillReach(activeRoot, displayRoot, homeDir string, verbose bool) DiagnosticCheck {
 	check := DiagnosticCheck{Name: "Skill Reach"}
 
 	cat, err := template.LoadEmbeddedCatalog()
@@ -161,12 +163,33 @@ func checkProfileSkillReach(activeRoot, displayRoot string, verbose bool) Diagno
 	}
 	if missing > 0 {
 		check.Status = uikit.CheckWarn
-		check.Message = fmt.Sprintf("%d of %d core skill(s) NOT resolvable from %s — run 'moai update' to install into the active config root", missing, len(core), displayRoot)
+		if activeRootIsInstallable(homeDir, activeRoot) {
+			check.Message = fmt.Sprintf("%d of %d core skill(s) NOT resolvable from %s — run 'moai update' to install into the active config root", missing, len(core), displayRoot)
+		} else {
+			check.Message = fmt.Sprintf("%d of %d core skill(s) NOT resolvable from %s — this config dir is outside moai's install roots (~/.claude and the profile dirs under ~/.moai/claude-profiles); point CLAUDE_CONFIG_DIR at a managed root or copy the core skills in manually", missing, len(core), displayRoot)
+		}
 		return check
 	}
 	check.Status = uikit.CheckOK
 	check.Message = fmt.Sprintf("%d core skill(s) resolvable from %s", len(core), displayRoot)
 	return check
+}
+
+// activeRootIsInstallable reports whether 'moai update' can install into
+// the active root: the root must be ~/.claude or exactly one of the real
+// profile dirs under the profile base — the two families ResolveRoots
+// enumerates (repair 3, card t1702 audit P2).
+func activeRootIsInstallable(homeDir, activeRoot string) bool {
+	if activeRoot == filepath.Join(homeDir, ".claude") {
+		return true
+	}
+	base := userassets.ProfileRootsBase(homeDir)
+	for _, name := range userassets.RealProfileDirNames(homeDir) {
+		if activeRoot == filepath.Join(base, name) {
+			return true
+		}
+	}
+	return false
 }
 
 // checkProjectVsLock compares the project tree against the project lock file

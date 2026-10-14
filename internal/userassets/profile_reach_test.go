@@ -12,6 +12,7 @@ package userassets
 import (
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 	"testing/fstest"
 	"time"
@@ -307,5 +308,144 @@ func TestValidProfileDirNameAndRootKind(t *testing.T) {
 	}
 	if got := RootKind(RootCodexAgents); got != RootCodexAgents {
 		t.Errorf("RootKind(codex-agents) = %q, want codex-agents", got)
+	}
+}
+
+// validatedSnapshot resolves the current roots into the validated snapshot
+// shape Install carries through its run.
+func validatedSnapshot(t *testing.T, home string) map[RootSlug]resolvedRoot {
+	t.Helper()
+	snapshot := make(map[RootSlug]resolvedRoot)
+	for _, r := range ResolveRoots(home) {
+		rr, err := resolveRoot(home, r)
+		if err != nil {
+			t.Fatalf("resolve root %s: %v", r.Slug, err)
+		}
+		snapshot[r.Slug] = rr
+	}
+	return snapshot
+}
+
+// TestInstallTargetsStayInsideValidatedRoots pins repair 1 (card t1702
+// audit P1): install targets are enumerated from the root snapshot
+// validated at the top of Install. A profile dir appearing mid-install
+// (another session's profile.EnsureDir) must never mint targets for a slug
+// outside that snapshot.
+func TestInstallTargetsStayInsideValidatedRoots(t *testing.T) {
+	t.Parallel()
+	f := newProfileFixture(t)
+	inst := f.installer(t)
+
+	snapshot := validatedSnapshot(t, f.home)
+
+	// The profile appears AFTER validation.
+	f.makeProfileDir(t, "late")
+
+	// Post-fix the enumeration takes the validated snapshot and stays
+	// inside it — the late profile never mints targets.
+	for _, slug := range inst.rootSlugsOfKind(snapshot, RootClaudeSkills, RootAgentsSkills) {
+		if _, ok := snapshot[slug]; !ok {
+			t.Errorf("target slug %q is outside the validated root snapshot", slug)
+		}
+	}
+}
+
+// TestApplyTargetRefusesRootOutsideSnapshot pins repair 1's write guard:
+// a target naming a root absent from the validated snapshot is refused
+// with an error NAMING the root, and nothing is written anywhere. The test
+// chdirs into a temp dir so a buggy CWD-relative write would be observable
+// and contained (restored via cleanup; test is not parallel).
+func TestApplyTargetRefusesRootOutsideSnapshot(t *testing.T) {
+	f := newProfileFixture(t)
+	inst := f.installer(t)
+	snapshot := validatedSnapshot(t, f.home)
+
+	origWd, err := os.Getwd()
+	if err != nil {
+		t.Fatalf("getwd: %v", err)
+	}
+	tmpWd := t.TempDir()
+	if err := os.Chdir(tmpWd); err != nil {
+		t.Fatalf("chdir: %v", err)
+	}
+	t.Cleanup(func() { _ = os.Chdir(origWd) })
+
+	tgt := installTarget{
+		manifestKey: "claude-skills@late/moai/SKILL.md",
+		root:        RootSlug("claude-skills@late"),
+		rel:         "moai/SKILL.md",
+		sourcePath:  ".claude/skills/moai/SKILL.md",
+		bundle:      "core",
+		sha:         sha256Hex(f.skillV1),
+	}
+	manifest, err := Load(ManifestPath(f.home))
+	if err != nil {
+		t.Fatalf("load manifest: %v", err)
+	}
+	res := &Result{}
+	err = inst.applyTarget(tgt, manifest, snapshot, res)
+	if err == nil {
+		t.Fatal("applyTarget must refuse a root outside the validated snapshot")
+	}
+	if !strings.Contains(err.Error(), "claude-skills@late") || !strings.Contains(err.Error(), "snapshot") {
+		t.Errorf("refusal must name the root and the snapshot; got %v", err)
+	}
+	entries, err := os.ReadDir(tmpWd)
+	if err != nil {
+		t.Fatalf("read cwd: %v", err)
+	}
+	if len(entries) != 0 {
+		t.Errorf("a CWD-relative write escaped: %v", entries)
+	}
+}
+
+// TestPruneConvergesAfterProfileDeletion pins repair 2 (card t1702 audit
+// P2): after a profile dir is deleted, the stale manifest records must drop
+// (the missing-file arm of the one removal rule) and the prune must
+// converge — the second pass is clean, never a repeating "unknown root
+// slug" error loop.
+func TestPruneConvergesAfterProfileDeletion(t *testing.T) {
+	f := newProfileFixture(t)
+	profDir := f.makeProfileDir(t, "gone")
+	inst := f.installer(t)
+	if _, err := inst.Install(nil); err != nil {
+		t.Fatalf("Install: %v", err)
+	}
+	if err := os.RemoveAll(profDir); err != nil {
+		t.Fatalf("delete profile dir: %v", err)
+	}
+
+	pruneOnce := func() *Result {
+		t.Helper()
+		saved, err := Load(ManifestPath(f.home))
+		if err != nil {
+			t.Fatalf("load manifest: %v", err)
+		}
+		res, err := inst.PruneUnselected(saved)
+		if err != nil {
+			t.Fatalf("PruneUnselected: %v", err)
+		}
+		if err := saved.Save(ManifestPath(f.home)); err != nil {
+			t.Fatalf("save manifest: %v", err)
+		}
+		return res
+	}
+
+	res := pruneOnce()
+	if len(res.Failures) != 0 {
+		t.Fatalf("prune must converge after profile deletion; failures: %v", res.Failures)
+	}
+	saved, err := Load(ManifestPath(f.home))
+	if err != nil {
+		t.Fatalf("reload manifest: %v", err)
+	}
+	for key := range saved.Files {
+		if strings.Contains(key, "@gone") {
+			t.Errorf("stale record survived the prune: %s", key)
+		}
+	}
+	// The second pass is clean (convergence, not a loop).
+	if res2 := pruneOnce(); len(res2.Failures) != 0 {
+		t.Errorf("second prune pass must stay clean; failures: %v", res2.Failures)
 	}
 }

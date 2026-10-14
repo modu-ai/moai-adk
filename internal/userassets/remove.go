@@ -76,7 +76,7 @@ func (in *Installer) PruneUnselected(manifest *Manifest) (*Result, error) {
 	allowedKeys := map[string]bool{}
 	for _, e := range preserved {
 		if allowed[e.Name] {
-			for _, k := range in.entryManifestKeys(e) {
+			for _, k := range in.entryManifestKeys(roots, e) {
 				allowedKeys[k] = true
 			}
 		}
@@ -91,6 +91,13 @@ func (in *Installer) PruneUnselected(manifest *Manifest) (*Result, error) {
 	for _, k := range keys {
 		slug, rel, ok := splitManifestKey(k)
 		if !ok {
+			continue
+		}
+		// Repair 2 (card t1702 audit P2): a key naming a profile root whose
+		// directory vanished is stale — its files are gone with the dir, so
+		// the record drops (missing-file arm) and the prune converges
+		// instead of erroring "unknown root slug" on every later run.
+		if roots[slug].dir == "" && in.dropStaleProfileRecord(slug, k, manifest, res) {
 			continue
 		}
 		name, ok := owningEntryName(rel)
@@ -324,6 +331,12 @@ func (in *Installer) removeKeys(entry template.Entry, keys []string, manifest *M
 		if !ok {
 			continue
 		}
+		// Repair 2 (card t1702 audit P2): same stale-profile convergence as
+		// PruneUnselected — a bundle key whose profile dir vanished drops
+		// its record instead of erroring forever.
+		if roots[slug].dir == "" && in.dropStaleProfileRecord(slug, k, manifest, res) {
+			continue
+		}
 		if err := in.removeManifestKey(entry, k, slug, rel, roots[slug], manifest, res); err != nil {
 			res.Failures = append(res.Failures, FileOutcome{Path: k, Reason: err.Error()})
 		}
@@ -346,8 +359,9 @@ func (in *Installer) preservedEntries(selection []string) []template.Entry {
 }
 
 // entryManifestKeys lists the manifest keys one entry's destinations carry —
-// one per skills/agents-kind root, profile roots included (card t1702).
-func (in *Installer) entryManifestKeys(e template.Entry) []string {
+// one per skills/agents-kind root taken from the caller's validated root
+// snapshot (repair 1, card t1702 audit P1), profile roots included.
+func (in *Installer) entryManifestKeys(roots map[RootSlug]resolvedRoot, e template.Entry) []string {
 	var keys []string
 	switch {
 	case strings.HasSuffix(e.Path, "/"):
@@ -357,13 +371,13 @@ func (in *Installer) entryManifestKeys(e template.Entry) []string {
 				return nil
 			}
 			rel := strings.TrimPrefix(p, srcDir+"/")
-			for _, slug := range in.rootSlugsOfKind(RootClaudeSkills, RootAgentsSkills) {
+			for _, slug := range in.rootSlugsOfKind(roots, RootClaudeSkills, RootAgentsSkills) {
 				keys = append(keys, string(slug)+"/"+e.Name+"/"+rel)
 			}
 			return nil
 		})
 	case strings.HasSuffix(e.Path, ".md"):
-		for _, slug := range in.rootSlugsOfKind(RootClaudeAgents) {
+		for _, slug := range in.rootSlugsOfKind(roots, RootClaudeAgents) {
 			keys = append(keys, string(slug)+"/"+e.Name+".md")
 		}
 		if _, err := fs.Stat(in.Source, ".codex/agents/moai/"+e.Name+".toml"); err == nil {
@@ -371,6 +385,27 @@ func (in *Installer) entryManifestKeys(e template.Entry) []string {
 		}
 	}
 	return keys
+}
+
+// dropStaleProfileRecord applies repair 2 (card t1702 audit P2) to one
+// manifest key: a key naming a PROFILE root whose directory has vanished
+// tracks files that lived inside that dir and are gone with it. Confirming
+// the profile dir's absence, the stale record drops under the one removal
+// rule's missing-file arm (counted removed) so the prune CONVERGES instead
+// of erroring "unknown root slug" on every later run. Reports whether the
+// record was dropped; a still-existing profile, a non-profile slug, or a
+// corrupt slug shape returns false and the caller's refusal path applies.
+func (in *Installer) dropStaleProfileRecord(slug RootSlug, key string, manifest *Manifest, res *Result) bool {
+	base, profile, found := strings.Cut(string(slug), "@")
+	if !found || (base != string(RootClaudeSkills) && base != string(RootClaudeAgents)) {
+		return false
+	}
+	if _, err := os.Stat(filepath.Join(ProfileRootsBase(in.Home), profile)); err == nil {
+		return false // the profile still exists — not stale
+	}
+	delete(manifest.Files, key)
+	res.Removed++
+	return true
 }
 
 // readShippedForKey reads the shipped bytes for one destination key.

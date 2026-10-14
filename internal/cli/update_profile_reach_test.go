@@ -157,7 +157,7 @@ func TestCheckProfileSkillReach(t *testing.T) {
 	home := t.TempDir()
 	active := filepath.Join(home, ".moai", "claude-profiles", "work")
 
-	check := checkProfileSkillReach(active, "claude-profiles/work", false)
+	check := checkProfileSkillReach(active, "claude-profiles/work", home, false)
 	if check.Status != uikit.CheckWarn {
 		t.Fatalf("with nothing installed: status = %v, want warn (message = %q)", check.Status, check.Message)
 	}
@@ -181,11 +181,32 @@ func TestCheckProfileSkillReach(t *testing.T) {
 			t.Fatalf("write SKILL.md for %s: %v", e.Name, err)
 		}
 	}
-	check = checkProfileSkillReach(active, "claude-profiles/work", false)
+	check = checkProfileSkillReach(active, "claude-profiles/work", home, false)
 	if check.Status != uikit.CheckOK {
 		t.Errorf("with every core skill installed: status = %v, want ok (message = %q)", check.Status, check.Message)
 	}
 	if !strings.Contains(check.Message, "core skill(s) resolvable from claude-profiles/work") {
 		t.Errorf("ok message should name the display root; got %q", check.Message)
+	}
+}
+
+// TestDoctorSkillReachCustomConfigDirGuidance pins repair 3 (card t1702
+// audit P2): when the ACTIVE CLAUDE_CONFIG_DIR is a user's own config dir
+// — neither ~/.claude nor a MoAI profile dir — the warning must NOT advise
+// 'moai update' (which cannot reach that root); it must name what WOULD
+// fix it. Pre-fix this fails behaviorally: every warning advises
+// 'moai update' regardless of reachability.
+func TestDoctorSkillReachCustomConfigDirGuidance(t *testing.T) {
+	// A temp home whose profile base holds no such dir: the active root is
+	// the user's OWN config dir — outside moai's install families.
+	check := checkProfileSkillReach("/home/someone/own-claude", "my-own-claude", t.TempDir(), false)
+	if check.Status != uikit.CheckWarn {
+		t.Fatalf("status = %v, want warn (message = %q)", check.Status, check.Message)
+	}
+	if strings.Contains(check.Message, "run 'moai update'") {
+		t.Errorf("advice is not actionable for a config dir outside moai's install roots: %q", check.Message)
+	}
+	if !strings.Contains(check.Message, "claude-profiles") || !strings.Contains(check.Message, "~/.claude") {
+		t.Errorf("guidance must name moai's managed root families: %q", check.Message)
 	}
 }
