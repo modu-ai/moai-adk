@@ -129,7 +129,12 @@ func withCodexLaunchCapture(t *testing.T) *codexLaunchCapture {
 	prevCheck, prevLock := codexWorktreeWriterCheck, codexWorktreeAnchorLock
 	codexWorktreeWriterCheck = func(string) error { return nil }
 	codexWorktreeAnchorLock = func(string, int, string) error { return nil }
+	// The --add-dir pair depends on the host's moai home; the exact-argv cells
+	// pin it off and codex_moai_home_add_dir_test.go measures it directly.
+	prevAddDir := codexMoaiHomeAddDirArgs
+	codexMoaiHomeAddDirArgs = func() []string { return nil }
 	t.Cleanup(func() {
+		codexMoaiHomeAddDirArgs = prevAddDir
 		codexDirectLaunchFn, codexSpawnLaunchFn, codexLookPath = prevDirect, prevSpawn, prevLook
 		codexWorktreeWriterCheck, codexWorktreeAnchorLock = prevCheck, prevLock
 	})
@@ -852,6 +857,9 @@ func checkCodexSpawnRealAssembly(t *testing.T) {
 	withCodexGateOpen(t)
 
 	prevLook, prevSpawn, prevTmux, prevInTmux := codexLookPath, codexSpawnLaunchFn, tmuxSpawnFn, inTmuxFn
+	prevAddDir := codexMoaiHomeAddDirArgs
+	codexMoaiHomeAddDirArgs = func() []string { return nil }
+	t.Cleanup(func() { codexMoaiHomeAddDirArgs = prevAddDir })
 	codexLookPath = func(string) (string, error) { return fixture, nil }
 	// Keep the REAL spawn implementation; stub only the tmux primitive.
 	codexSpawnLaunchFn = defaultCodexSpawnLaunch
