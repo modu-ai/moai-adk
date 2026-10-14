@@ -299,6 +299,46 @@ Interpretation notes for the audit (M6):
 6. **REQ-MN-025 scope**: the Stop chain's receipt readers (members using verify.LoadReceipt) now resolve codexReviewStateRoot — the same git-toplevel anchoring the producer applies via reviewExclusionRoot. The full cross-harness state unification stays out of scope (§5 Non-Goal).
 7. **Pre-existing failures observed during M6 verification (NOT introduced here)**: TestCodexReviewGatePrimaryCheckoutSkip / _TreeScopeRequestShapeUnchanged / _StaleEnvKeepsTreeScope (macOS /var→/private symlink spelling in three gate pins — reproduced at HEAD 554053cf9 with the M6 sources reverted, so they predate this milestone) and TestAuditMulti_CodexLegDeadline_FailsClosedNamed / _UnconfiguredFailsOpen / TestAuditMulti_ModelMulti_CodexUnavailable_FailsClosedNamed (same reproduction method — the containment listing executes the stubbed binary before the timeout path). Leader disposition requested: both classes reproduce on the M5 HEAD tree.
 
+### Card-review repair round — P1 3 + P2 5 (card t1632, branch WT-3-2-0-2)
+
+Commit: `c292a7a8d` (fix: card-review repairs — P1 3 + P2 5). Base: sync commit `8864f9f56` (+backfill `873255f1e`); review base was e48f3b296 → head 226c387e3. Verdict file: .moai/reports/t1632/card-review.md (codex, scope=card, advisory fail — 3 P1 + 8 P2). Push state: nothing pushed; clean on WT-3-2-0-2.
+
+E8 — verbatim RED outputs captured BEFORE each GREEN:
+
+```
+$ go test ./internal/auditreceipt -run 'TestTreeState_ReeditMovesDigest|TestTreeState_UntrackedContentMovesDigest' -count=1   → exit 1
+    (P1-1) both FAILED — digest unchanged after an in-place re-edit / after an untracked file's content changed
+$ go test ./internal/auditreceipt -run 'TestCheckCitedReceipts_StateComparesTheJudgedTree' -count=1   → exit 1
+    receipt_state_root_test.go:34: WriteReceipt: audit-receipt dir: mkdir /primary-store: read-only file system
+    (fixture fix: the store root is a real temp dir; the judged tree stays virtual — then the assertion readFor != judged fired, the P1-2 defect)
+$ go vet ./internal/cli   → compile-stage RED (P1-3)
+    mcp_server_staleness_test.go:15:48: undefined: binaryIdentity
+    mcp_server_staleness_test.go:17:23: undefined: servingBinaryIdentity
+$ go test ./internal/runtime -run 'TestStateCache_RelativeReportPathAnchoredToRoot' -count=1   → compile-stage RED (P2-7), then GREEN after resolveReportPath
+```
+
+Repair matrix (every row's command run at HEAD c292a7a8d, this tree):
+
+| Finding | Disposition | Command (verbatim) | Observed output |
+|---------|-------------|--------------------|-----------------|
+| P1-1 digest misses file content | FIXED | `go test ./internal/auditreceipt -run 'TestTreeState_ReeditMovesDigest\|TestTreeState_UntrackedContentMovesDigest' -count=1` | `ok` — an in-place re-edit (same HEAD, same porcelain rows) and an untracked file's content change both MOVE the digest (tracked diff bytes + non-runtime untracked bytes, sorted, folded in) |
+| P1-2 state compared at the store root | FIXED | `go test ./internal/auditreceipt -count=1` | `ok` — the freshness comparison reads TreeState(r.TreeRoot), the judged tree, never the caller's store root (TestCheckCitedReceipts_StateComparesTheJudgedTree pins the seam read) |
+| P1-3 start-time binary identity | FIXED | `go test ./internal/cli -run 'TestServerStaleness' -count=1` | `ok` — an in-place reinstall (start identity 2048B/T1 vs installed 4096B/T2) reads STALE against the start-time capture; an unchanged install reads fresh |
+| P2-7 relative report_path | FIXED | `go test ./internal/runtime -run 'TestStateCache' -count=1` | `ok` — a relative report path resolves against the project root at store AND at lookup; the entry carries the absolute anchored path |
+| P2-8 baseBranch truncated | FIXED | `go test ./internal/cli -run 'TestGLMAudit' -count=1` | `ok` — the baseBranch collector (collectReviewDiffAtFlagged) carries the truncation mark; the GLM family stays green |
+| P2-9 rotation per row | FIXED | `go build ./...` + the call-log rewrite | `ok` — the writer tracks the CURRENT segment's size (w.cur/w.size); no re-stat of the initial calls.jsonl, so post-rotation rows append to one segment instead of minting a segment per row |
+| P2-10 duration from registration | FIXED | `go build ./...` + the add-wrapper rewrite | `ok` — the timer starts INSIDE logged, so the registration-to-first-call gap is never billed to a tool |
+| P2-11 logger creates .moai | FIXED | `go test ./internal/cli -run 'TestMCPServerRuntimeDir_ProjectScoped\|TestMoaiMCPServer_AuditCacheStoreLookup\|TestServerStaleness' -count=1` | `ok` — newMCPCallLogWriter activates only for a cwd that already has .moai (the REQ-MN-015 discipline); the two fixtures updated (the runtime-dir fixture carries .moai; the audit_cache store fixture creates its verdict file — REQ-MN-020's existing-file requirement) |
+| P2-4 expired-claim hook redelivery | HELD (leader disposition) | — | crosses the M5 DHR-020 exactly-once fencing contract; a follow-up card owns the design (redelivery vs fence) |
+| P2-5 audit_cache per-op write classification | HELD (leader disposition) | — | the catalogue WriteCapable reclassification is a design change, not a mechanical fix; follow-up card |
+| P2-6 stderr buffer synchronization | HELD (leader disposition) | — | deep mcp_codex change (mutex-guarded buffer or post-close read); risk/benefit judged by the leader with the real-usage evidence |
+
+Verification batch at HEAD c292a7a8d (this tree, this run):
+
+- E2 builds: `go build ./...` → exit 0.
+- Affected families green (-count=1): internal/auditreceipt (full), internal/runtime (full), internal/closure (full), and the cli families TestCodexAudit*, TestCodexReview*, TestSelfReview*, TestGLMAudit*, TestAuditCache*, TestMoaiMCPServer*, TestServerStaleness*, TestMCPServerRuntimeDir*, TestRunMultiAudit*, TestConverge*.
+- Lint: 4 errcheck, ALL pre-existing (factory_run_adopt.go ×3, mcp_server_call_log.go ×1 — the same finding the M6 round measured before this repair round touched the file); zero NEW.
+
 ## §E.3 Run-phase Audit-Ready Signal
 
 run_audit_ready: true
