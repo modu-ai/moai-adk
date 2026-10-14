@@ -5,7 +5,10 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"strconv"
+	"strings"
 	"sync"
+	"time"
 
 	"github.com/modu-ai/moai-adk/internal/config/atomicfile"
 	"github.com/modu-ai/moai-adk/internal/defs"
@@ -88,6 +91,17 @@ func RenderTierPermissions(projectSettingsPath, userSettingsPath, defaultMode st
 	recordProtocolMu.Lock()
 	defer recordProtocolMu.Unlock()
 
+	// Inter-process lock (card t1630 sync-audit F2'): two concurrent moai OS
+	// processes interleave outside recordProtocolMu, so the same span is also
+	// guarded by the project-scoped lockfile. Mutex first, file lock second —
+	// intra-process callers queue on the mutex and only one touches the
+	// lockfile.
+	releaseRecordLock, err := acquireProjectRecordLock(projectSettingsPath)
+	if err != nil {
+		return nil, fmt.Errorf("acquire record lock: %w", err)
+	}
+	defer releaseRecordLock()
+
 	// The Q5 classification reads the PREVIOUS render's record and the
 	// current project file — inside the protocol span, per F2.
 	prior := readManagedAllowRecordList(projectSettingsPath)
@@ -135,6 +149,118 @@ func RenderTierPermissions(projectSettingsPath, userSettingsPath, defaultMode st
 // registry map. BuildInto holds it only for the TargetJSON (project settings)
 // target.
 var recordProtocolMu sync.Mutex
+
+// Inter-process record-lock parameters (card t1630 sync-audit F2'): the
+// lockfile is retried at this interval for at most this budget; on budget
+// exhaustion the holder is probed, and a holder that is provably dead — or a
+// lockfile whose mtime age exceeds the stale bound (windows has no portable
+// liveness probe, so the age bound is its takeover test) — is taken over.
+// A LIVE holder beyond the budget surfaces an error: bounded retry, never an
+// infinite wedge.
+const (
+	recordLockRetryInterval = 50 * time.Millisecond
+	recordLockRetryBudget   = 5 * time.Second
+	recordLockStaleAge      = 30 * time.Second
+)
+
+// managedAllowLockPath derives the inter-process lockfile path: beside the
+// sidecar record, `<projectRoot>/.moai/state/tool-policy/managed-allow.lock`.
+func managedAllowLockPath(projectSettingsPath string) string {
+	return filepath.Join(filepath.Dir(managedAllowRecordPath(projectSettingsPath)), "managed-allow.lock")
+}
+
+// acquireProjectRecordLock acquires the project-scoped inter-process record
+// lock (card t1630 sync-audit F2'): an O_CREATE|O_EXCL create of the lockfile
+// is atomic on darwin/linux/windows. On EEXIST the acquire retries at
+// recordLockRetryInterval for up to recordLockRetryBudget; at budget
+// exhaustion the lockfile's recorded pid and mtime age decide between
+// takeover (holder provably dead, or lockfile older than recordLockStaleAge)
+// and an error. The lockfile records the holder pid + creation timestamp;
+// release removes the file. Callers must hold recordProtocolMu first — the
+// mutex queues intra-process callers so only one touches the lockfile; the
+// file lock arbitrates across processes.
+func acquireProjectRecordLock(projectSettingsPath string) (func(), error) {
+	lockPath := managedAllowLockPath(projectSettingsPath)
+	if err := os.MkdirAll(filepath.Dir(lockPath), 0o755); err != nil {
+		return nil, fmt.Errorf("create record lock dir: %w", err)
+	}
+	deadline := time.Now().Add(recordLockRetryBudget)
+	for {
+		f, err := os.OpenFile(lockPath, os.O_CREATE|os.O_EXCL|os.O_WRONLY, 0o600)
+		if err == nil {
+			// A lockfile we could not stamp (or close) is released at once: an
+			// empty/unparseable lockfile would be takeover-judged by age
+			// alone, and a failed remove still resolves via the stale bound.
+			if _, wErr := fmt.Fprintf(f, "pid=%d created=%s\n", os.Getpid(), time.Now().UTC().Format(time.RFC3339Nano)); wErr != nil {
+				_ = f.Close()
+				_ = os.Remove(lockPath)
+				return nil, fmt.Errorf("stamp record lock %s: %w", lockPath, wErr)
+			}
+			if cErr := f.Close(); cErr != nil {
+				_ = os.Remove(lockPath)
+				return nil, fmt.Errorf("close record lock %s: %w", lockPath, cErr)
+			}
+			var released bool
+			return func() {
+				if released {
+					return
+				}
+				released = true
+				_ = os.Remove(lockPath)
+			}, nil
+		}
+		if !os.IsExist(err) {
+			return nil, fmt.Errorf("create record lock %s: %w", lockPath, err)
+		}
+		if time.Now().After(deadline) {
+			if takeoverErr := takeoverStaleRecordLock(lockPath); takeoverErr == nil {
+				continue // lockfile removed — retry the exclusive create at once
+			}
+			return nil, fmt.Errorf("record lock %s held by another process (retry budget exhausted; holder alive, lock fresh)", lockPath)
+		}
+		time.Sleep(recordLockRetryInterval)
+	}
+}
+
+// takeoverStaleRecordLock removes the lockfile when its holder is provably
+// dead or its mtime age exceeds recordLockStaleAge, and records the takeover
+// by simply removing the file (the next exclusive create re-stamps a new
+// holder). Any error leaves the decision to the caller: the acquire loop
+// surfaces its bounded-retry error rather than forcing through a lock it
+// could not judge.
+func takeoverStaleRecordLock(lockPath string) error {
+	info, err := os.Stat(lockPath)
+	if err != nil {
+		return err // gone — the holder released; the caller's retry will win
+	}
+	if time.Since(info.ModTime()) < recordLockStaleAge {
+		if body, readErr := os.ReadFile(lockPath); readErr == nil {
+			if pid, ok := parseRecordLockPid(body); ok && pidProvablyDead(pid) {
+				return os.Remove(lockPath)
+			}
+		}
+		return fmt.Errorf("lockfile holder not provably dead and lockfile age under the stale bound")
+	}
+	return os.Remove(lockPath)
+}
+
+// parseRecordLockPid extracts the recorded holder pid from a lockfile body.
+// ok is false for an unparseable body (the age bound then governs takeover).
+func parseRecordLockPid(body []byte) (int, bool) {
+	for _, line := range strings.Split(string(body), "\n") {
+		for _, field := range strings.Fields(line) {
+			if !strings.HasPrefix(field, "pid=") {
+				continue
+			}
+			pid, err := strconv.Atoi(strings.TrimPrefix(field, "pid="))
+			if err != nil {
+				return 0, false
+			}
+			return pid, true
+		}
+	}
+	return 0, false
+}
 
 // managedAllowRecordPath derives the sidecar record path from the project
 // settings path: <project>/.claude/settings.json names the project root two
@@ -252,7 +378,8 @@ func rollbackManagedAllowRecord(projectSettingsPath string, prior []string) erro
 // mutation and converges to the exact generation once the write lands
 // (stageManagedAllowRecord / persistManagedAllowRecord); BuildInto does the
 // same for the TargetJSON project-settings target. Across a failed settings
-// write the record holds the staged superset — the safe direction. The union
+// write the record is rolled back to its pre-render content
+// (rollbackManagedAllowRecord) — a failed render leaves no trace. The union
 // classification reads the PREVIOUS render's record before the overwrite.
 type managedAllowRecord struct {
 	LastGenerated []string `json:"last_generated"`

@@ -2,14 +2,93 @@ package toolpolicy
 
 import (
 	"encoding/json"
+	"fmt"
 	"os"
+	"os/exec"
 	"path/filepath"
 	"reflect"
 	"sort"
+	"strconv"
 	"strings"
 	"sync"
 	"testing"
+	"time"
 )
+
+// TestMain dispatches the two-process record-lock child helper (sync-audit
+// F2' regression). When MOAI_TOOLPOLICY_LOCK_CHILD is set the test binary was
+// re-exec'd as the child side of the inter-process lock test: it never runs
+// the suite, performs its helper role, and exits directly.
+func TestMain(m *testing.M) {
+	if os.Getenv("MOAI_TOOLPOLICY_LOCK_CHILD") != "" {
+		runRecordLockChildHelper()
+	}
+	os.Exit(m.Run())
+}
+
+// testRecordLockPath derives the inter-process lockfile path for a project
+// settings path — beside the sidecar record (the same file the production
+// lock guards; the test writes it directly so the RED run compiles against a
+// tree where the production lock does not exist yet).
+func testRecordLockPath(t *testing.T, projectSettingsPath string) string {
+	t.Helper()
+	recordPath := managedAllowRecordPath(projectSettingsPath)
+	return filepath.Join(filepath.Dir(recordPath), "managed-allow.lock")
+}
+
+// seedDeadPidLock spawns a short-lived child process, waits for it (so its pid
+// is provably dead), and seeds a lockfile naming that pid — the takeover
+// test's input.
+func seedDeadPidLock(t *testing.T, lockPath string) {
+	t.Helper()
+	cmd := exec.Command(os.Args[0], "-test.run=^$")
+	cmd.Env = append(os.Environ(), "MOAI_TOOLPOLICY_LOCK_CHILD=exit")
+	if err := cmd.Run(); err != nil {
+		t.Fatalf("spawn dead-pid source: %v", err)
+	}
+	if err := os.MkdirAll(filepath.Dir(lockPath), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	body := fmt.Sprintf("pid=%d created=%s\n", cmd.Process.Pid, time.Now().UTC().Format(time.RFC3339Nano))
+	if err := os.WriteFile(lockPath, []byte(body), 0o600); err != nil {
+		t.Fatal(err)
+	}
+}
+
+// runRecordLockChildHelper is the child side of the inter-process lock test.
+// It never returns.
+func runRecordLockChildHelper() {
+	switch os.Getenv("MOAI_TOOLPOLICY_LOCK_CHILD") {
+	case "exit":
+		os.Exit(0)
+	case "hold-release":
+		settingsPath := os.Getenv("MOAI_TOOLPOLICY_LOCK_CHILD_SETTINGS")
+		signalPath := os.Getenv("MOAI_TOOLPOLICY_LOCK_CHILD_SIGNAL")
+		holdMs := 1500
+		if v, err := strconv.Atoi(os.Getenv("MOAI_TOOLPOLICY_LOCK_CHILD_HOLD_MS")); err == nil {
+			holdMs = v
+		}
+		lockPath := filepath.Join(filepath.Dir(managedAllowRecordPath(settingsPath)), "managed-allow.lock")
+		if mkErr := os.MkdirAll(filepath.Dir(lockPath), 0o755); mkErr != nil {
+			os.Exit(4)
+		}
+		f, err := os.OpenFile(lockPath, os.O_CREATE|os.O_EXCL|os.O_WRONLY, 0o600)
+		if err != nil {
+			os.Exit(3)
+		}
+		_, _ = fmt.Fprintf(f, "pid=%d created=%s\n", os.Getpid(), time.Now().UTC().Format(time.RFC3339Nano))
+		_ = f.Close()
+		// The child holds the lock while writing a known record state.
+		_ = writeManagedAllowRecord(settingsPath, []string{"Bash(child-holds:*)"})
+		if signalPath != "" {
+			_ = os.WriteFile(signalPath, []byte("acquired"), 0o644)
+		}
+		time.Sleep(time.Duration(holdMs) * time.Millisecond)
+		_ = os.Remove(lockPath)
+		os.Exit(0)
+	}
+	os.Exit(2)
+}
 
 // SPEC-AUTONOMY-TIERS-001 M3 — tier → permission-bundle renderer (USER vs PROJECT scope).
 // AC-003: defaultMode → USER scope; deny/ask → PROJECT scope.
@@ -650,6 +729,126 @@ func TestFailedSettingsWriteRollsRecordBack_UserAddedEntrySurvivesRevocation(t *
 	if !reflect.DeepEqual(allow, want) {
 		t.Errorf("policy revoked user-x but the user's own entry was deleted: allow = %v, want %v (user-added survives policy revocation)\nbody=%s", allow, want, afterBody)
 	}
+}
+
+// --- card t1630 sync-audit repair F2' — project-scoped inter-process record
+// lock. The in-process recordProtocolMu does not cover two concurrent moai OS
+// processes: a child process holding the record lock while it writes a known
+// record state must block a concurrent parent render until release (and a
+// dead holder must be taken over, never wedged).
+
+func TestInterProcessRecordLock_TwoProcessRepro(t *testing.T) {
+	t.Run("blocks-until-child-releases-and-converges", func(t *testing.T) {
+		dir := t.TempDir()
+		userPath := filepath.Join(dir, "user", ".claude", "settings.json")
+		projectPath := filepath.Join(dir, "proj", ".claude", "settings.json")
+		writeSettings(t, userPath, "default")
+		writeSettings(t, projectPath, "default")
+		lockPath := testRecordLockPath(t, projectPath)
+		signalPath := filepath.Join(dir, "child-acquired")
+
+		// Child: acquires the lock, writes its sentinel record, signals
+		// readiness, holds, then releases and exits.
+		cmd := exec.Command(os.Args[0], "-test.run=^$")
+		cmd.Env = append(os.Environ(),
+			"MOAI_TOOLPOLICY_LOCK_CHILD=hold-release",
+			"MOAI_TOOLPOLICY_LOCK_CHILD_SETTINGS="+projectPath,
+			"MOAI_TOOLPOLICY_LOCK_CHILD_SIGNAL="+signalPath,
+			"MOAI_TOOLPOLICY_LOCK_CHILD_HOLD_MS=1500",
+		)
+		if err := cmd.Start(); err != nil {
+			t.Fatalf("reexec child: %v", err)
+		}
+		waited := false
+		t.Cleanup(func() {
+			if !waited {
+				_ = cmd.Process.Kill()
+				_, _ = cmd.Process.Wait()
+			}
+		})
+
+		// Wait until the child provably holds the lock.
+		deadline := time.Now().Add(10 * time.Second)
+		for {
+			if _, err := os.Stat(signalPath); err == nil {
+				break
+			}
+			if time.Now().After(deadline) {
+				t.Fatal("child never acquired the record lock")
+			}
+			time.Sleep(20 * time.Millisecond)
+		}
+
+		// The parent render must BLOCK until the child releases — the render
+		// may not return (or mutate the record) while the lock is held.
+		doc := helperAllowDoc("Bash(managed-a:*)")
+		if _, err := RenderTierPermissions(projectPath, userPath, "default", doc); err != nil {
+			t.Fatalf("render must proceed after the child releases: %v", err)
+		}
+		if _, err := os.Stat(lockPath); !os.IsNotExist(err) {
+			t.Errorf("render returned while the inter-process lock was still held: lockfile present (err=%v) — the render did not respect the cross-process lock", err)
+		}
+		if err := cmd.Wait(); err != nil {
+			t.Fatalf("child: %v", err)
+		}
+		waited = true
+
+		// The parent's converge replaced the child's sentinel record.
+		rec := readManagedAllowRecord(t, projectPath)
+		if !reflect.DeepEqual(rec.LastGenerated, []string{"Bash(managed-a:*)"}) {
+			t.Errorf("record after contended render = %v, want the parent's converged [Bash(managed-a:*)]", rec.LastGenerated)
+		}
+	})
+
+	t.Run("takes-over-a-dead-pid-lockfile", func(t *testing.T) {
+		dir := t.TempDir()
+		userPath := filepath.Join(dir, "user", ".claude", "settings.json")
+		projectPath := filepath.Join(dir, "proj", ".claude", "settings.json")
+		writeSettings(t, userPath, "default")
+		writeSettings(t, projectPath, "default")
+		lockPath := testRecordLockPath(t, projectPath)
+		seedDeadPidLock(t, lockPath)
+
+		// A dead holder must never wedge a render: after the bounded retry
+		// budget the lock is taken over, the render proceeds, and the
+		// lockfile is released.
+		doc := helperAllowDoc("Bash(managed-a:*)")
+		if _, err := RenderTierPermissions(projectPath, userPath, "default", doc); err != nil {
+			t.Fatalf("render must take over a dead-pid lock: %v", err)
+		}
+		if _, err := os.Stat(lockPath); !os.IsNotExist(err) {
+			t.Errorf("dead-pid lockfile was not taken over and released; stat err=%v", err)
+		}
+		rec := readManagedAllowRecord(t, projectPath)
+		if !reflect.DeepEqual(rec.LastGenerated, []string{"Bash(managed-a:*)"}) {
+			t.Errorf("record after takeover render = %v, want [Bash(managed-a:*)]", rec.LastGenerated)
+		}
+	})
+
+	t.Run("errors-after-budget-on-a-live-holder", func(t *testing.T) {
+		// A LIVE holder beyond the retry budget must surface an error, never
+		// an infinite wait (bounded retry then error) — and never a takeover
+		// of a provably-live pid while the lockfile is fresh.
+		dir := t.TempDir()
+		userPath := filepath.Join(dir, "user", ".claude", "settings.json")
+		projectPath := filepath.Join(dir, "proj", ".claude", "settings.json")
+		writeSettings(t, userPath, "default")
+		writeSettings(t, projectPath, "default")
+		lockPath := testRecordLockPath(t, projectPath)
+
+		// Seed a lockfile naming THIS (live) process, freshly created.
+		if err := os.MkdirAll(filepath.Dir(lockPath), 0o755); err != nil {
+			t.Fatal(err)
+		}
+		body := fmt.Sprintf("pid=%d created=%s\n", os.Getpid(), time.Now().UTC().Format(time.RFC3339Nano))
+		if err := os.WriteFile(lockPath, []byte(body), 0o600); err != nil {
+			t.Fatal(err)
+		}
+
+		if _, err := RenderTierPermissions(projectPath, userPath, "default", helperAllowDoc("Bash(managed-a:*)")); err == nil {
+			t.Fatalf("render must error when a live holder keeps the lock beyond the retry budget")
+		}
+	})
 }
 
 // --- SPEC-USER-SETTINGS-PROTECT-001 (card t1630) — repository-authored

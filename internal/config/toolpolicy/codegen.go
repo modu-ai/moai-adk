@@ -245,6 +245,13 @@ func BuildInto(path string, doc *PolicyDocument, targetKind TargetKind, defaultM
 	if isProjectTarget {
 		recordProtocolMu.Lock()
 		defer recordProtocolMu.Unlock()
+		// Inter-process lock (sync-audit F2'): mutex first, file lock second —
+		// same ordering as RenderTierPermissions.
+		releaseRecordLock, lockErr := acquireProjectRecordLock(path)
+		if lockErr != nil {
+			return nil, fmt.Errorf("acquire record lock: %w", lockErr)
+		}
+		defer releaseRecordLock()
 		prior = readManagedAllowRecordList(path)
 		if err := stageManagedAllowRecord(path, block.Allow); err != nil {
 			return nil, fmt.Errorf("stage managed-allow record: %w", err)
