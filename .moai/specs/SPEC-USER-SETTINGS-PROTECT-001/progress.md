@@ -266,7 +266,7 @@ m1_to_mN_commit_strategy: "M1 entry (057db17c41) + single M2+M3 implementation c
 
 ```yaml
 sync_complete_at: "2026-10-14T03:59:35Z"
-sync_commit_sha: "pending-backfill-sync"   # placeholder — a commit cannot cite its own SHA; backfilled with the real SHA in the following commit (D3)
+sync_commit_sha: "cb4b0b6233"   # the sync commit — placeholder pending-backfill-sync backfilled in this commit (D3)
 sync_status: complete
 ac_source: ".moai/specs/SPEC-USER-SETTINGS-PROTECT-001/acceptance.md"   # Tier M: acceptance.md is the AC source; spec.md ACs are inline-NA
 b12_self_test_a: pass   # pre-emission grep: grep -c 'SPEC-USER-SETTINGS-PROTECT-001' CHANGELOG.md → 0 (exit 1, no prior entry)
