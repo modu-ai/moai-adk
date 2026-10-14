@@ -15,6 +15,7 @@ package hook
 
 import (
 	"fmt"
+	"reflect"
 	"testing"
 )
 
@@ -64,5 +65,51 @@ func TestProtectedZoneShellCdChainNeutralBoundary(t *testing.T) {
 				t.Errorf("%s: decision=%q reason=%q, want allow", cmd, d, r)
 			}
 		})
+	}
+}
+
+// TestZoneMergeGensCollapsesBothGenerationEntries pins the fold itself: a
+// directory reached in BOTH generations collapses into the ONE neutral
+// entry, a directory only one generation reached keeps its tag, a neutral
+// entry passes through unchanged, and order is stable. The growth property
+// the boundary depends on: a fully paired set merges to exactly one entry
+// per distinct directory — the per-generation pair the unmerged walk kept
+// is what doubled the count the K8 bound reads (card t1574 K8).
+func TestZoneMergeGensCollapsesBothGenerationEntries(t *testing.T) {
+	got := zoneMergeGens([]zoneCwd{
+		{dir: "a", gen: 0},
+		{dir: "a", gen: 1}, // both generations: the pair folds to one neutral
+		{dir: "b", gen: 0}, // one generation only: tag kept
+		{dir: ".", gen: -1},
+		{dir: "c", gen: 1}, // one generation only: tag kept
+		{dir: "d", gen: 0},
+		{dir: "d", gen: 1},
+	})
+	want := []zoneCwd{
+		{dir: "a", gen: -1},
+		{dir: "b", gen: 0},
+		{dir: ".", gen: -1},
+		{dir: "c", gen: 1},
+		{dir: "d", gen: -1},
+	}
+	if !reflect.DeepEqual(got, want) {
+		t.Errorf("zoneMergeGens() = %v, want %v", got, want)
+	}
+
+	// the growth property: every directory reached in both generations
+	// merges to ONE entry per distinct directory
+	paired := []zoneCwd{
+		{dir: "x", gen: 0}, {dir: "x", gen: 1},
+		{dir: "y", gen: 0}, {dir: "y", gen: 1},
+		{dir: "z", gen: 0}, {dir: "z", gen: 1},
+	}
+	merged := zoneMergeGens(paired)
+	if len(merged) != 3 {
+		t.Errorf("fully paired set merged to %d entries (%v), want 3 — one per distinct directory", len(merged), merged)
+	}
+	for _, c := range merged {
+		if c.gen != -1 {
+			t.Errorf("fully paired set merged entry %v carries gen %d, want -1", c, c.gen)
+		}
 	}
 }
