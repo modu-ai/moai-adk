@@ -429,6 +429,37 @@ func TestVacuousAssertionRule_LintSkip(t *testing.T) {
 	}
 }
 
+// TestVacuousAssertionRule_PossessiveSubtestName — card t1667. A real subtest
+// name legally carries a mid-word apostrophe: t.Run("window naming the card's
+// own branch: refused", …) prints
+// TestSD_…/window_naming_the_card's_own_branch:_refused (the raw acceptance.md
+// line carries the whole name followed by " (1.61s)"). The grammar used to cut
+// the component at the apostrophe, judge the truncated prefix
+// window_naming_the_card under-delimited, and demand a trailing space — a
+// false positive on a correctly printed real name. The possessive must be read
+// whole (negative contrast), while a genuinely unterminated possessive name
+// stays detected.
+func TestVacuousAssertionRule_PossessiveSubtestName(t *testing.T) {
+	t.Run("conform/possessive subtest name read whole", func(t *testing.T) {
+		// The exact defect shape recorded at
+		// .moai/specs/SPEC-LOCAL-MAIN-FLOW-001/acceptance.md:975: a stdout log
+		// line whose name ends in a possessive and is followed by a space.
+		got := vtaCheckLine(t, "stdout:     --- PASS: "+
+			"TestSD_AC013_ClaudeCompleteViaIntegrationWorktree/"+
+			"window_naming_the_card's_own_branch:_refused (1.61s)")
+		if len(got) != 0 {
+			t.Errorf("findings = %+v, want none (a mid-word apostrophe belongs to the component)", got)
+		}
+	})
+
+	t.Run("detect/undelimited possessive name still fires", func(t *testing.T) {
+		got := vtaCheckLine(t, `grep -E -- '--- PASS: TestX/the_card's_own'`)
+		if n := vtaAxisCount(got, "outcome-assertion"); n != 1 || len(got) != 1 {
+			t.Errorf("findings = %+v (outcome-assertion = %d), want exactly 1", got, n)
+		}
+	})
+}
+
 // TestVacuousAssertionRule_Registered — AC-VTA-008.
 func TestVacuousAssertionRule_Registered(t *testing.T) {
 	n := 0

@@ -852,7 +852,7 @@ func (w *zoneWalker) zoneCall(cmd *syntax.CallExpr) {
 	// safe direction (spec D3). The strip is STRUCTURAL — generation-
 	// agnostic AST surgery, the wrapper heads are plain literals — while
 	// the stripped head's NAME judges per world in the loop below.
-	args, stripped := zoneStripWrapperPrefix(cmd.Args)
+	args, wclass := zoneStripWrapperPrefix(cmd.Args)
 	var pathCands [2][]string
 	if len(args) > 0 {
 		// the strip may consume EVERY word (`env FOO=1` with no command
@@ -908,14 +908,22 @@ func (w *zoneWalker) zoneCall(cmd *syntax.CallExpr) {
 			name = path.Base(name)
 		}
 		switch {
-		case name == "cd" && !stripped:
-			// BARE cd only (card t1574): a wrapper-stripped cd resolves as
-			// an EXTERNAL execution — `env cd` is not a working cd at all
-			// and `nohup cd` runs in a child process — so its directory
-			// argument cannot move the parent shell and must not be
-			// tracked. Wrapped-cd shapes stay the documented under-matches
-			// they were before the strip existed.
-			w.zoneCdMove(world, cmd)
+		case name == "cd" && !strings.Contains(headReadings[world], "/") &&
+			(wclass == zoneWrapperNone || wclass == zoneWrapperShell):
+			// A BARE cd, and a bare-named cd under the shell-builtin-
+			// preserving wrappers (card t1685, REQ-ZSCD-004): `command cd`
+			// and `builtin cd` execute the builtin IN THE CURRENT SHELL, so
+			// the directory argument really moves the parent shell and must
+			// be tracked — the move is judged on the STRIPPED operand list,
+			// so the wrapper words never read as cd operands. Two cd shapes
+			// stay untracked (card t1574; card-review P2-c): a cd under the
+			// external wrappers — `env cd` is not a working cd at all and
+			// `nohup cd` runs in a child process — and a PATH-FORM cd
+			// (`command /usr/bin/cd`, `./cd`): the K4 rule above folds the
+			// path to the verb name for the judgment, but a path form never
+			// resolves to a shell builtin — it execs as an external child
+			// whose cwd cannot move the parent shell.
+			w.zoneCdMove(world, args)
 		case zoneMutationVerbs[name]:
 			// the verb's world binds its own argument readings (gate
 			// rounds 23/25)
@@ -952,12 +960,15 @@ func (w *zoneWalker) zoneCandsWorld(world int, cands []string) {
 // already past the bound stops growing — the verdict is already fail-
 // closed, and a loop's remaining passes must not square the set further —
 // and a move that pushes the set past the bound flags the walk incomplete.
-func (w *zoneWalker) zoneCdMove(world int, cmd *syntax.CallExpr) {
+// args is the cd's OWN operand list — args[0] is the cd word itself, the
+// wrapper words already stripped away (card t1685: a wrapped cd is judged on
+// the stripped list, never with the wrapper as an operand).
+func (w *zoneWalker) zoneCdMove(world int, args []*syntax.Word) {
 	if len(w.cwds) > zoneCwdsBound {
 		w.unbounded = true
 		return
 	}
-	multi := len(cmd.Args) != 2
+	multi := len(args) != 2
 	var pooled []string
 	var reading string
 	dual := false
@@ -970,11 +981,11 @@ func (w *zoneWalker) zoneCdMove(world int, cmd *syntax.CallExpr) {
 	haveFirst := false
 	optionFirst := false
 	if !multi {
-		if r, lit := zoneWordWorldReadings(cmd.Args[1]); !lit {
+		if r, lit := zoneWordWorldReadings(args[1]); !lit {
 			dynamic = true
 		} else {
 			reading = r[world]
-			dual = zoneWordDual(cmd.Args[1])
+			dual = zoneWordDual(args[1])
 		}
 	} else {
 		// SPEC-ZONE-SHELL-CD-TRACKING-001 K1 (REQ-ZSCD-001): the first bare `--`
@@ -985,7 +996,7 @@ func (w *zoneWalker) zoneCdMove(world int, cmd *syntax.CallExpr) {
 		// 3.2.57 moves into the first operand and ignores the rest (F1/F2). An
 		// option word before that operand keeps the reset alone (a known limitation, not tracked).
 		sepSeen := false
-		for _, a := range cmd.Args[1:] {
+		for _, a := range args[1:] {
 			t, lit := zoneWordText(a)
 			if !lit {
 				pooled = append(pooled, "?dynamic")
@@ -1135,54 +1146,128 @@ func (w *zoneWalker) walkFunctionBodies(world int, name string) {
 	}
 }
 
+// zoneWrapperClass reports how the stripped head executes under the wrapper
+// chain zoneStripWrapperPrefix consumed. The distinction decides cd tracking
+// (card t1685, REQ-ZSCD-004): `command` and `builtin` execute their argument
+// as a SHELL BUILTIN in the CURRENT shell — a wrapped `cd` really moves the
+// parent shell — while `env` and `nohup` are external binaries that exec
+// their argument in a child process whose cd cannot move the parent.
+// EXTERNAL DOMINATES (card-review P2-b): once an external wrapper is in the
+// chain the head runs in (or under) a child process regardless of any inner
+// shell-preserving wrapper — `env command cd zone_dir` still cannot move the
+// parent shell.
+type zoneWrapperClass int
+
+const (
+	// zoneWrapperNone — no wrapper was stripped (a bare command head).
+	zoneWrapperNone zoneWrapperClass = iota
+	// zoneWrapperShell — the last stripped wrapper was `command` or
+	// `builtin`; the stripped head still resolves in this shell.
+	zoneWrapperShell
+	// zoneWrapperExternal — the last stripped wrapper was `env` or `nohup`;
+	// the stripped head execs in a child process.
+	zoneWrapperExternal
+)
+
 // zoneStripWrapperPrefix strips the static wrapper set from a command's
-// argument list — `command` (with its optional `-p`), `env` (with the
-// NAME=VALUE assignment words a real env consumes), `nohup`, and `builtin`
-// (card t1574 K3, REQ-ZSP-003). The enumerated set is what the Claude Code
-// permission layer strips (command/builtin) plus the card matrix (env,
-// nohup); wrapper forms outside it (exec, nice, timeout, xargs, sudo, ...)
-// stay the documented under-matches (spec D2). The loop is bounded by the
-// argument list itself and handles nested forms (`env command rm x`); an
-// empty stripped head under-matches exactly as today. The second result
-// reports whether ANY wrapper was stripped — a stripped head resolves as an
-// external execution, so the cd-tracking branch must not process it (gate
+// argument list — `command` (with its optional `-p` and its `--` separator),
+// `env` (with the NAME=VALUE assignment words a real env consumes and its
+// `-`-prefixed option words — a variable name can never start with `-`, so
+// the two consumers are disjoint), `nohup`, and `builtin` (card t1574 K3,
+// REQ-ZSP-003; card t1685 for the flag/separator spellings). The enumerated
+// set is what the Claude Code permission layer strips (command/builtin) plus
+// the card matrix (env, nohup); wrapper forms outside it (exec, nice,
+// timeout, xargs, sudo, ...) stay the documented under-matches (spec D2).
+// The loop is bounded by the argument list itself and handles nested forms
+// (`env command rm x`); an empty stripped head under-matches exactly as
+// today. The second result is the wrapper class governing how the stripped
+// head executes, with EXTERNAL DOMINATING: the outermost external wrapper in
+// the chain decides, and an inner `command`/`builtin` never demotes it (gate
 // round: `env cd zone_dir` runs a child process whose cd cannot move the
-// parent shell).
-func zoneStripWrapperPrefix(args []*syntax.Word) ([]*syntax.Word, bool) {
-	stripped := false
+// parent shell, while `command cd zone_dir` runs the builtin in this shell).
+func zoneStripWrapperPrefix(args []*syntax.Word) ([]*syntax.Word, zoneWrapperClass) {
+	class := zoneWrapperNone
 	for len(args) > 0 {
 		head, literal := zoneWordText(args[0])
 		if !literal {
-			return args, stripped
+			return args, class
 		}
 		switch head {
 		case "command":
-			stripped = true
-			if len(args) > 1 {
-				if t, lit := zoneWordText(args[1]); lit && t == "-p" {
-					args = args[2:]
-					continue
-				}
+			// card-review P2-b: an external wrapper already consumed stays
+			// decisive — the inner shell-preserving wrapper itself runs in
+			// that external child process.
+			if class != zoneWrapperExternal {
+				class = zoneWrapperShell
 			}
 			args = args[1:]
+			if len(args) > 0 {
+				if t, lit := zoneWordText(args[0]); lit && t == "-p" {
+					args = args[1:]
+				}
+			}
+			// card t1685 bypass 1a: the bare `--` ends `command`'s own option
+			// parsing — the next word is the command head, never an option —
+			// so it is consumed here and the real verb resolves after it.
+			if len(args) > 0 {
+				if t, lit := zoneWordText(args[0]); lit && t == "--" {
+					args = args[1:]
+				}
+			}
 		case "env":
-			stripped = true
+			class = zoneWrapperExternal
 			args = args[1:]
 			for len(args) > 0 {
 				t, lit := zoneWordText(args[0])
-				if !lit || !zoneEnvAssignment(t) {
+				if !lit {
+					break
+				}
+				// card t1685 bypass 1b: env's option words (`-i`, `--`,
+				// long forms) are `-`-prefixed and a NAME=VALUE assignment
+				// can never start with `-`, so the two consumers are
+				// disjoint and the loop order is irrelevant.
+				if strings.HasPrefix(t, "-") {
+					args = args[1:]
+					// card-review P2-a/P2-d: the SPLIT forms of the unset
+					// option (`-u NAME`, `--unset NAME`) consume one
+					// following word — their NAME argument — so `env -u rm
+					// echo …` resolves the read-only echo, never a phantom
+					// rm verb. The glued forms (`-uNAME`, `--unset=NAME`)
+					// carry the name inside the token; getopt takes a
+					// required option argument from the next argv even when
+					// it starts with a hyphen.
+					if (t == "-u" || t == "--unset") && len(args) > 0 {
+						args = args[1:]
+					}
+					// card-review P2-e: GNU env's info-only options print
+					// and EXIT WITHOUT running the command — the trailing
+					// words never execute. The strip returns an empty list,
+					// and zoneCall's empty-stripped-head path performs no
+					// verb judgment, no cd tracking, and collects no
+					// candidates for this call.
+					if t == "--help" || t == "--version" {
+						return nil, class
+					}
+					continue
+				}
+				if !zoneEnvAssignment(t) {
 					break
 				}
 				args = args[1:]
 			}
-		case "nohup", "builtin":
-			stripped = true
+		case "nohup":
+			class = zoneWrapperExternal
+			args = args[1:]
+		case "builtin":
+			if class != zoneWrapperExternal {
+				class = zoneWrapperShell
+			}
 			args = args[1:]
 		default:
-			return args, stripped
+			return args, class
 		}
 	}
-	return args, stripped
+	return args, class
 }
 
 // zoneEnvAssignment reports whether t is a NAME=VALUE assignment word — the

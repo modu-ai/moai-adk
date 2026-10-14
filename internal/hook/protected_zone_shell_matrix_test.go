@@ -126,6 +126,63 @@ func zoneParsingMatrixCells() []zoneMatrixCell {
 	add("wrapped_cd_nohup_not_tracked", "nohup cd zone_dir; rm harmless", zoneMatrixAllow)
 	add("bare_cd_tracking_control", "cd zone_dir; rm harmless", zoneMatrixDenyProbe)
 
+	// -- card t1685 bypass 1 — wrapper flag/separator spellings (REQ-ZSP-003
+	// lineage): the strip must consume `command`'s `--` separator and env's
+	// `-`-prefixed option words, so the real verb after them resolves and the
+	// zone-covered target denies. Pre-fix the stripped head stopped at `--` /
+	// `-i` / `--`-for-env, matched no verb, and the deletion went through.
+	add("wrapper_command_dashdash_rm", "command -- rm zone_dir/x", zoneMatrixDenyProbe)
+	add("wrapper_command_p_dashdash_rm", "command -p -- rm zone_dir/x", zoneMatrixDenyProbe)
+	add("wrapper_env_option_i_rm", "env -i rm zone_dir/x", zoneMatrixDenyProbe)
+	add("wrapper_env_dashdash_rm", "env -- rm zone_dir/x", zoneMatrixDenyProbe)
+
+	// -- card t1685 bypass 2 — wrapped-cd tracking (REQ-ZSCD-004): `command cd`
+	// and `builtin cd` execute the SHELL BUILTIN cd in the CURRENT shell — the
+	// parent shell really moves — so the move must be tracked and the
+	// following covered rm denies. The external wrappers keep their
+	// not-tracked dispositions above (wrapped_cd_env_not_tracked,
+	// wrapped_cd_nohup_not_tracked).
+	add("wrapped_cd_command_tracked", "command cd zone_dir && rm a.log", zoneMatrixDenyProbe)
+	add("wrapped_cd_builtin_tracked", "builtin cd zone_dir && rm a.log", zoneMatrixDenyProbe)
+
+	// -- card t1685 card-review round-1 P2 contrasts: each locks an OVER-DENY
+	// the bypass repair would otherwise introduce, paired with the guard cell
+	// that must NOT regress in the same fix. Allow dispositions follow the
+	// family convention (the control fails only on a deny).
+	// P2-a: `env -u rm` unsets the variable NAMED rm — the real command is
+	// read-only echo, never a deletion.
+	add("env_opt_u_split_consumes_name", "env -u rm echo zone_dir/x", zoneMatrixAllow)
+	// P2-a guard: the split form still disappears into the option, and the
+	// real rm after it resolves to the verb.
+	add("env_opt_u_guard_still_denies", "env -u HOME rm zone_dir/x", zoneMatrixDenyProbe)
+	// P2-b: the outer env is an external binary that execs `command` in a
+	// CHILD process — the inner shell-preserving wrapper cannot move the
+	// parent shell, so the cd stays untracked.
+	add("wrapped_cd_env_command_not_tracked", "env command cd zone_dir; rm a.log", zoneMatrixAllow)
+	// P2-c: a path-form cd is an external executable — the K4 rule (a path
+	// form never resolves to a shell builtin) excludes it from tracking even
+	// under a shell-preserving wrapper.
+	add("wrapped_cd_path_form_not_tracked", "command /usr/bin/cd zone_dir; rm harmless", zoneMatrixAllow)
+	// P2-c guard: the path fold still names the verb for a mutating path
+	// form — the exclusion is cd-tracking-only.
+	add("wrapper_command_path_verb", "command /bin/rm zone_dir/x", zoneMatrixDenyProbe)
+
+	// -- card t1685 card-review round-3 P2 contrasts (leader ruling, limited
+	// scope: P2-d/e only).
+	// P2-d: the split long-form `--unset` consumes its NAME argument exactly
+	// like `-u` — `env --unset rm echo …` unsets the variable NAMED rm and
+	// runs the read-only echo. The glued `--unset=NAME` already carries the
+	// name in-token.
+	add("env_opt_unset_split_consumes_name", "env --unset rm echo zone_dir/x", zoneMatrixAllow)
+	// P2-d guard: the split form disappears into the option and the real rm
+	// after it resolves to the verb (the `-u` guard's long-form twin).
+	add("env_opt_unset_guard_still_denies", "env --unset HOME rm zone_dir/x", zoneMatrixDenyProbe)
+	// P2-e: GNU env's info-only options print and EXIT WITHOUT running the
+	// command — the trailing rm never executes, so this call earns no verb
+	// analysis at all (no tracking, no candidates).
+	add("env_opt_help_info_only_no_verb_analysis", "env --help rm zone_dir/x", zoneMatrixAllow)
+	add("env_opt_version_info_only_no_verb_analysis", "env --version rm zone_dir/x", zoneMatrixAllow)
+
 	// -- the audit-D1 cross: a declared function shadowing a mutation verb,
 	// invoked through EACH enumerated wrapper — the stripped head never
 	// re-enters the funcs table, so every cell denies, never walking the

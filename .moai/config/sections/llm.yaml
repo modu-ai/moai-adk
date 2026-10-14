@@ -1,12 +1,35 @@
 llm:
     mode: ""
     team_mode: glm
+    harness: ""
     glm_env_var: GLM_API_KEY
-    performance_tier: ""
     profile: ""
-    profiles: {}
-    harness_agents: {}
-    agent_overrides: {}
+    agent_overrides:
+        builder-harness:
+            model: opus
+            effort: low
+        e2e-tester:
+            model: sonnet
+            effort: low
+        manager-design:
+            model: opus
+            effort: medium
+        manager-docs:
+            model: haiku
+            effort: low
+        manager-lead:
+            model: opus
+            effort: medium
+        manager-todo:
+            model: sonnet
+            effort: low
+        plan-auditor:
+            model: opus
+            effort: medium
+        sync-auditor:
+            model: opus
+            effort: medium
+    agent_overrides_consume: false
     claude_models:
         high: ""
         medium: ""
@@ -18,9 +41,6 @@ llm:
             medium: glm-5.3-flash
             low: glm-5.3-flash
             fable: glm-5.3
-            opus: glm-5.3-flash
-            sonnet: glm-5.3-flash
-            haiku: glm-5.3-flash
         effort:
             high: max
             medium: max

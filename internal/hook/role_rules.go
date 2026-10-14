@@ -33,6 +33,7 @@ import (
 	"strings"
 
 	"github.com/modu-ai/moai-adk/internal/config"
+	"github.com/modu-ai/moai-adk/pkg/version"
 )
 
 // roleRulesContextLimit is the documented delivery cap per
@@ -261,7 +262,7 @@ type roleRuleLocaleTable struct {
 var roleRuleLocales = map[string]roleRuleLocaleTable{
 	"ko": {
 		InjectionFailed: func(session, detail string) string {
-			return fmt.Sprintf("역할 규칙 주입이 %s 세션에서 실패했습니다: %s. 에이전트에는 두 규칙 파일을 경로로 읽으라는 지시가 전달됐습니다.", session, detail)
+			return fmt.Sprintf("역할 규칙 주입이 %s 세션에서 실패했습니다: %s. 에이전트에는 두 규칙 파일을 경로로 읽으라는 지시가 전달됐습니다. 규칙 파일이 바이너리보다 낡은 버전 불일치라면 `moai update` 로 규칙 파일을 갱신한 뒤 세션을 다시 시작하세요.", session, detail)
 		},
 		OverflowUnavailable: func(session string, total, limit int) string {
 			return fmt.Sprintf("역할 규칙 주입 초과(%s 세션): 조립된 맥락(%d자)이 %d자 전달 한도를 넘는데 넘침 파일 전달을 쓸 수 없어, 역할 core 대신 읽기 지시를 보냈습니다.", session, total, limit)
@@ -272,7 +273,7 @@ var roleRuleLocales = map[string]roleRuleLocaleTable{
 	},
 	"ja": {
 		InjectionFailed: func(session, detail string) string {
-			return fmt.Sprintf("ロールルールの注入が %s セッションで失敗しました: %s。エージェントには両ルールファイルをパスで読むよう指示を送りました。", session, detail)
+			return fmt.Sprintf("ロールルールの注入が %s セッションで失敗しました: %s。エージェントには両ルールファイルをパスで読むよう指示を送りました。ルールファイルがバイナリより古いバージョン不整合なら、`moai update` でルールファイルを更新してセッションを再起動してください。", session, detail)
 		},
 		OverflowUnavailable: func(session string, total, limit int) string {
 			return fmt.Sprintf("ロールルール注入のオーバーフロー(%s セッション): 組み立てたコンテキスト(%d文字)が %d文字の配信上限を超えていますが、オーバーフローファイル配信が使えないため、ロール core の代わりに読み取り指示を送りました。", session, total, limit)
@@ -283,7 +284,7 @@ var roleRuleLocales = map[string]roleRuleLocaleTable{
 	},
 	"zh": {
 		InjectionFailed: func(session, detail string) string {
-			return fmt.Sprintf("角色规则注入在 %s 会话中失败:%s。已指示代理按路径完整读取两个规则文件。", session, detail)
+			return fmt.Sprintf("角色规则注入在 %s 会话中失败:%s。已指示代理按路径完整读取两个规则文件。若规则文件比二进制旧(版本不匹配),请运行 `moai update` 更新规则文件后重启会话。", session, detail)
 		},
 		OverflowUnavailable: func(session string, total, limit int) string {
 			return fmt.Sprintf("角色规则注入溢出(%s 会话):组装后的上下文(%d 字符)超出 %d 字符的传递上限,且溢出文件传递不可用,因此以读取指示代替角色 core。", session, total, limit)
@@ -295,7 +296,7 @@ var roleRuleLocales = map[string]roleRuleLocaleTable{
 	langEnglish: {
 		InjectionFailed: func(session, detail string) string {
 			return fmt.Sprintf(
-				"Role-rule injection failed for the %s session: %s. The agent was directed to read both rule files by path.",
+				"Role-rule injection failed for the %s session: %s. The agent was directed to read both rule files by path. If the rule files are older than the binary (version skew), run `moai update` to refresh them and restart the session.",
 				session, detail)
 		},
 		OverflowUnavailable: func(session string, total, limit int) string {
@@ -309,6 +310,47 @@ var roleRuleLocales = map[string]roleRuleLocaleTable{
 				session, total, limit)
 		},
 	},
+}
+
+// roleRuleSystemYAMLRel is the deployed config file carrying the template
+// generation stamp (rendered from system.yaml.tmpl's {{.Version}}) — the
+// readable record of which binary last deployed these rule files.
+const roleRuleSystemYAMLRel = ".moai/config/sections/system.yaml"
+
+// detectRoleRuleVersionSkew compares the deployed system.yaml
+// template_version stamp against the running binary version. ok=false means
+// the rule-side stamp is absent or unreadable — the caller skips silently
+// (fail-open: the skew notice is advisory, never a new failure path). The
+// comparison is pure string work over the parsed stamp — unit-tested with
+// fixtures only (REQ-RIB-007; a live-repo self-assertion would be
+// permanently red on a skewed installation).
+func detectRoleRuleVersionSkew(systemYAML, binaryVersion string) (skewed bool, ruleVersion string, ok bool) {
+	_, rest, found := strings.Cut(systemYAML, "template_version:")
+	if !found {
+		return false, "", false
+	}
+	stamp := strings.TrimSpace(strings.SplitN(rest, "\n", 2)[0])
+	stamp = strings.Trim(stamp, ` "'`)
+	if stamp == "" || binaryVersion == "" {
+		return false, "", false
+	}
+	return stamp != binaryVersion, stamp, true
+}
+
+// roleRuleSkewDetail reads the deployed system.yaml under root and, when the
+// stamp differs from the running binary, returns the one-line skew naming
+// both versions and the remediation. Any read failure returns "" — the
+// missing-markers failure path stays the sole error surface.
+func roleRuleSkewDetail(root string) string {
+	data, err := os.ReadFile(filepath.Join(root, filepath.FromSlash(roleRuleSystemYAMLRel)))
+	if err != nil {
+		return ""
+	}
+	skewed, stamp, ok := detectRoleRuleVersionSkew(string(data), version.GetVersion())
+	if !ok || !skewed {
+		return ""
+	}
+	return fmt.Sprintf("version skew: rule files stamped %s, running binary %s — run `moai update` to refresh the rule files", stamp, version.GetVersion())
 }
 
 // roleRuleLocaleFor resolves the operator-locale table, failing open to
@@ -363,10 +405,14 @@ func roleRuleInjectionFor(root, source, lang string) roleRuleInjection {
 		parts = append(parts, core)
 	}
 	if len(failures) > 0 {
+		detail := strings.Join(failures, "; ")
+		if skew := roleRuleSkewDetail(root); skew != "" {
+			detail += "; " + skew
+		}
 		loc := roleRuleLocaleFor(lang)
 		return roleRuleInjection{
 			RecoveryHead:   roleRulesReadDirective(root, ""),
-			OperatorNotice: loc.InjectionFailed(role.Name, strings.Join(failures, "; ")),
+			OperatorNotice: loc.InjectionFailed(role.Name, detail),
 		}
 	}
 
@@ -387,11 +433,13 @@ func roleRuleInjectionFor(root, source, lang string) roleRuleInjection {
 // roleRuleSizeGate applies the REQ-ALB-010 ladder to the FINAL merged
 // additionalContext with the role core pending delivery. The unit is the
 // runtime's string-length unit — UTF-16 code units (Q4), not Go bytes. It
-// returns the composite to install and the operator warning to append (""
-// when the composite fits the cap and no warning is owed):
+// judges the ALREADY-ASSEMBLED context — assembled carries the earlier
+// producers' text AND the role core exactly once (the session-start producer
+// appended it) — and only decides shrink/warn/directive; it never re-appends
+// the core. It returns the composite to install and the operator warning to
+// append ("" when the composite fits the cap and no warning is owed):
 //
-//   - at or under the cap: the core appends after the earlier producers'
-//     text, no warning.
+//   - at or under the cap: the composite is returned unchanged, no warning.
 //   - over the cap with overflow delivery available: the overflow read
 //     directive OPENS the composite (the runtime's save-failure cut keeps
 //     the head), the earlier producers' text and the intact core follow,
@@ -400,17 +448,8 @@ func roleRuleInjectionFor(root, source, lang string) roleRuleInjection {
 //     read directive opens the composite, the core is removed (zero
 //     truncated units), and the operator warning rides systemMessage.
 //
-// roleRuleSizeGate judges the ALREADY-ASSEMBLED context — assembled carries
-// the earlier producers' text AND the role core exactly once (the session-start
-// producer appended it) — and only decides shrink/warn/directive. It never
-// re-appends the core: under the cap the composite is returned unchanged; over
-// the cap with overflow delivery the overflow read directive OPENS the
-// composite (the runtime's save-failure cut keeps the head) and the intact
-// core follows inside; over the cap without overflow delivery the core is
-// REMOVED (REQ-ALB-009 retreat — zero truncated units) and the read directive
-// opens the composite. The operator warning rides systemMessage in both
-// over-cap branches. The core parameter is the exact string the producer
-// appended — used only for the retreat removal.
+// The core parameter is the exact string the producer appended — used only
+// for the retreat removal.
 func roleRuleSizeGate(assembled, core, root, roleName, lang string) (composite, operator string) {
 	total := utf16Len(assembled)
 	if total <= roleRulesContextLimit {
@@ -536,9 +575,10 @@ func roleRulesReadDirective(root, reason string) string {
 // channel, and the rule files are the fallback read — named root-joined for
 // the same reason the read directive's paths are.
 func roleRulesOverflowDirective(root string) string {
+	// The cap is rendered with a thousands separator (10,000) to match the
+	// locale warnings; roleRulesContextLimit stays the numeric source.
 	return fmt.Sprintf(
-		"NOTE: the output above exceeds the session-start delivery cap (%d characters). The runtime saves the intact output to a file in the session directory and passes its path with a preview of the first 2,000 characters — read the role core from that file, or read the rule files by path: `%s`, `%s`.",
-		roleRulesContextLimit,
+		"NOTE: the output above exceeds the session-start delivery cap (10,000 characters). The runtime saved it to a file in the session directory — its path and a 2,000-character preview follow — read the role core from that file, or read the rule files by path: `%s`, `%s`.",
 		filepath.Join(root, filepath.FromSlash(roleRuleDeployRel(root, roleRuleFiles[0]))),
 		filepath.Join(root, filepath.FromSlash(roleRuleDeployRel(root, roleRuleFiles[1]))))
 }
