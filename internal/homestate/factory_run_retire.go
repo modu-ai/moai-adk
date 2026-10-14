@@ -69,6 +69,13 @@ type RunOwner struct {
 type Reconciliation struct {
 	Retired   []RunOwner
 	Remaining []RunOwner
+	// Preserved carries active runs whose owner classified dead but which
+	// still hold live records (non-terminal cards, registered workers):
+	// retiring them would orphan that work, so the reconciler leaves them
+	// active and reports them here — the multi-active resolution surfaces
+	// them through the ambiguity path with the re-adoption commands instead
+	// of a silent retirement (card t1707).
+	Preserved []RunOwner
 }
 
 // ReconcileOptions carries the seams every retirement path shares: the
