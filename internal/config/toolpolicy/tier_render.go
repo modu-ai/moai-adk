@@ -85,13 +85,22 @@ func RenderTierPermissions(projectSettingsPath, userSettingsPath, defaultMode st
 	if err := renderIntoFile(userSettingsPath, userBlock); err != nil {
 		return nil, fmt.Errorf("USER scope render: %w", err)
 	}
+	// Record-ahead (card t1630 card-review round 2, P2-1): stage the record
+	// BEFORE the PROJECT settings mutation. If the project write later fails,
+	// the record already carries the new generation's entries AND retains the
+	// managed entries the un-updated project file still holds (union with the
+	// prior record) — so no settings entry can ever lose its managed
+	// classification to a failed write. The staging read is the same fail-open
+	// read the classification uses.
+	if err := stageManagedAllowRecord(projectSettingsPath, full.Allow); err != nil {
+		return nil, fmt.Errorf("stage managed-allow record: %w", err)
+	}
 	if err := renderIntoFile(projectSettingsPath, projectBlock); err != nil {
 		return nil, fmt.Errorf("PROJECT scope render: %w", err)
 	}
-	// Record what this render generated BEFORE the next classification reads
-	// it — without this write, an allow entry later removed from the document
-	// would count as user-added and persist forever (revoked permission
-	// resurrection; card t1630 card-review P1).
+	// Converge the record to exactly this render's generation now that the
+	// project file actually carries it — the closing half of the
+	// stage/converge pair (card t1630 card-review P1).
 	if err := persistManagedAllowRecord(projectSettingsPath, full.Allow); err != nil {
 		return nil, fmt.Errorf("persist managed-allow record: %w", err)
 	}
@@ -109,13 +118,25 @@ func managedAllowRecordPath(projectSettingsPath string) string {
 	return filepath.Join(root, ".moai", "state", "tool-policy", "managed-allow.json")
 }
 
-// persistManagedAllowRecord overwrites the sidecar record with the managed
-// allow list a render just generated (creating the directory and file when
-// absent). It runs only after the PROJECT-scope render succeeded — a failed
-// or skipped render never touches the record. A failure here fails the render:
-// a stale record would misclassify entries at the next render.
-func persistManagedAllowRecord(projectSettingsPath string, generated []string) error {
-	entries := generated
+// readManagedAllowRecordList returns the sidecar record's last_generated list,
+// or nil when the record is absent or unreadable — the same fail-open stance
+// the classification takes (an unreadable record classifies every existing
+// entry as user-added, which never removes anything).
+func readManagedAllowRecordList(projectSettingsPath string) []string {
+	body, err := os.ReadFile(managedAllowRecordPath(projectSettingsPath))
+	if err != nil {
+		return nil
+	}
+	var rec managedAllowRecord
+	if json.Unmarshal(body, &rec) != nil {
+		return nil
+	}
+	return rec.LastGenerated
+}
+
+// writeManagedAllowRecord overwrites the sidecar record with entries,
+// creating the directory and file when absent (mode-preserving atomic write).
+func writeManagedAllowRecord(projectSettingsPath string, entries []string) error {
 	if entries == nil {
 		entries = []string{}
 	}
@@ -133,12 +154,58 @@ func persistManagedAllowRecord(projectSettingsPath string, generated []string) e
 	return nil
 }
 
+// unionStrings merges b into a order-stably, dropping duplicates.
+func unionStrings(a, b []string) []string {
+	seen := make(map[string]bool, len(a)+len(b))
+	out := make([]string, 0, len(a)+len(b))
+	for _, s := range a {
+		if !seen[s] {
+			seen[s] = true
+			out = append(out, s)
+		}
+	}
+	for _, s := range b {
+		if !seen[s] {
+			seen[s] = true
+			out = append(out, s)
+		}
+	}
+	return out
+}
+
+// stageManagedAllowRecord records the union of the record's prior content and
+// the list a render is about to generate, written BEFORE the project settings
+// are mutated. Staging ahead means: new managed entries are known to the
+// record before the settings file can gain them, and an entry the settings
+// file still holds keeps its managed classification even when this render's
+// settings write fails — the next successful render then either re-adds the
+// still-generated entries as managed or drops the revoked one. A staging
+// failure fails the render before any settings mutation.
+func stageManagedAllowRecord(projectSettingsPath string, generated []string) error {
+	return writeManagedAllowRecord(projectSettingsPath,
+		unionStrings(readManagedAllowRecordList(projectSettingsPath), generated))
+}
+
+// persistManagedAllowRecord converges the sidecar record to exactly the
+// generation that landed in the project file — the closing half of the
+// stage/converge pair. After a fully successful render the record reads
+// exactly "the managed allow list last generated"; a converge failure leaves
+// the staged superset, which is the safe direction (it can only mark more
+// entries as managed).
+func persistManagedAllowRecord(projectSettingsPath string, generated []string) error {
+	return writeManagedAllowRecord(projectSettingsPath, generated)
+}
+
 // managedAllowRecord mirrors the sidecar record at
 // <projectRoot>/.moai/state/tool-policy/managed-allow.json, which carries the
 // managed allow list last generated into the project file
 // (SPEC-USER-SETTINGS-PROTECT-001 decision Q5; detection pinned in
-// progress.md §G, G-20). RenderTierPermissions rewrites it after every
-// successful PROJECT-scope render (persistManagedAllowRecord); the union
+// progress.md §G, G-20). Every policy-generation path maintains it:
+// RenderTierPermissions stages prior ∪ generated before the PROJECT settings
+// mutation and converges to the exact generation once the write lands
+// (stageManagedAllowRecord / persistManagedAllowRecord); BuildInto does the
+// same for the TargetJSON project-settings target. Across a failed settings
+// write the record holds the staged superset — the safe direction. The union
 // classification reads the PREVIOUS render's record before the overwrite.
 type managedAllowRecord struct {
 	LastGenerated []string `json:"last_generated"`
@@ -171,13 +238,8 @@ func mergeProjectAllow(projectSettingsPath string, regenerated []string) []strin
 	}
 
 	lastGenerated := map[string]bool{}
-	if recBody, recErr := os.ReadFile(managedAllowRecordPath(projectSettingsPath)); recErr == nil {
-		var rec managedAllowRecord
-		if json.Unmarshal(recBody, &rec) == nil {
-			for _, entry := range rec.LastGenerated {
-				lastGenerated[entry] = true
-			}
-		}
+	for _, entry := range readManagedAllowRecordList(projectSettingsPath) {
+		lastGenerated[entry] = true
 	}
 
 	for _, entry := range existing.Allow {

@@ -209,8 +209,9 @@ func TestRenderTierPermissions_Idempotent(t *testing.T) {
 // an allow entry later removed from the policy document persisted forever
 // (revoked permission resurrection). These tests pin the writer: a successful
 // PROJECT-scope render persists full.Allow as last_generated; a removed
-// generated entry is then dropped at the next render; a failed render leaves
-// the record untouched.
+// generated entry is then dropped at the next render. (Review round 2 revised
+// the failure-path contract — a failed render may advance the record to the
+// staged union, which is the safe direction; the round-2 tests below pin that.)
 
 // helperAllowDoc returns a PolicyDocument whose entries generate exactly the
 // given allow specifiers ("Bash(x:*)" form) plus one deny and one ask entry so
@@ -303,9 +304,12 @@ func TestRenderTierPermissions_RemovedGeneratedEntryIsDropped(t *testing.T) {
 	}
 }
 
-func TestRenderTierPermissions_FailedRenderLeavesRecordUntouched(t *testing.T) {
-	// (d) when the PROJECT-scope render fails, the record must stay exactly as
-	// it was (no partial refresh, no creation on a failed path).
+func TestRenderTierPermissions_FailedProjectRenderLeavesSettingsUntouchedRecordSafe(t *testing.T) {
+	// (d, revised by review round 2) when the PROJECT-scope render fails AFTER
+	// the record stage, the PROJECT settings stay byte-identical and the
+	// record is left in a SAFE state: the staged union of its prior content
+	// and this render's generation (a superset can only mark more entries as
+	// managed, which is the safe direction for the Q5 classification).
 	dir := t.TempDir()
 	userPath := filepath.Join(dir, "user", ".claude", "settings.json")
 	projectPath := filepath.Join(dir, "proj", ".claude", "settings.json")
@@ -315,7 +319,8 @@ func TestRenderTierPermissions_FailedRenderLeavesRecordUntouched(t *testing.T) {
 		t.Fatal(err)
 	}
 	// Valid JSON without a permissions key — the region matcher fails.
-	if err := os.WriteFile(projectPath, []byte(`{"env":{"FOO":"1"}}`), 0o644); err != nil {
+	brokenBody := `{"env":{"FOO":"1"}}`
+	if err := os.WriteFile(projectPath, []byte(brokenBody), 0o644); err != nil {
 		t.Fatal(err)
 	}
 	if err := os.MkdirAll(filepath.Dir(recordPath), 0o755); err != nil {
@@ -329,27 +334,203 @@ func TestRenderTierPermissions_FailedRenderLeavesRecordUntouched(t *testing.T) {
 	if _, err := RenderTierPermissions(projectPath, userPath, "default", helperAllowDoc("Bash(managed-a:*)")); err == nil {
 		t.Fatalf("render over a permissions-less file must fail")
 	}
-	after, err := os.ReadFile(recordPath)
+	afterBody, err := os.ReadFile(projectPath)
 	if err != nil {
-		t.Fatalf("record must survive a failed render: %v", err)
+		t.Fatal(err)
 	}
-	if string(after) != sentinel {
-		t.Errorf("record changed on failed render:\nbefore=%s\nafter=%s", sentinel, after)
+	if string(afterBody) != brokenBody {
+		t.Errorf("PROJECT settings changed on failed render:\nbefore=%s\nafter=%s", brokenBody, afterBody)
+	}
+	rec := readManagedAllowRecord(t, projectPath)
+	got := append([]string{}, rec.LastGenerated...)
+	sort.Strings(got)
+	want := []string{"Bash(managed-a:*)", "Bash(sentinel:*)"}
+	if !reflect.DeepEqual(got, want) {
+		t.Errorf("record after failed render = %v, want the safe staged union %v", got, want)
 	}
 
-	// Failed render with no record yet must not create one.
+	// Failed render with no record yet: the staged record carries exactly this
+	// render's generation (nothing prior to union with).
 	freshProject := filepath.Join(dir, "fresh", ".claude", "settings.json")
 	if err := os.MkdirAll(filepath.Dir(freshProject), 0o755); err != nil {
 		t.Fatal(err)
 	}
-	if err := os.WriteFile(freshProject, []byte(`{"env":{"FOO":"1"}}`), 0o644); err != nil {
+	if err := os.WriteFile(freshProject, []byte(brokenBody), 0o644); err != nil {
 		t.Fatal(err)
 	}
 	if _, err := RenderTierPermissions(freshProject, userPath, "default", helperAllowDoc("Bash(managed-a:*)")); err == nil {
 		t.Fatalf("render over a permissions-less file must fail")
 	}
-	if _, err := os.Stat(filepath.Join(dir, "fresh", ".moai", "state", "tool-policy", "managed-allow.json")); !os.IsNotExist(err) {
-		t.Errorf("failed render must not create the record; stat err=%v", err)
+	freshAfter, err := os.ReadFile(freshProject)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if string(freshAfter) != brokenBody {
+		t.Errorf("fresh PROJECT settings changed on failed render:\nbefore=%s\nafter=%s", brokenBody, freshAfter)
+	}
+	rec = readManagedAllowRecord(t, filepath.Join(dir, "fresh", ".claude", "settings.json"))
+	if !reflect.DeepEqual(rec.LastGenerated, []string{"Bash(managed-a:*)"}) {
+		t.Errorf("staged record on fresh failed render = %v, want [Bash(managed-a:*)]", rec.LastGenerated)
+	}
+}
+
+// --- card t1630 card-review round 2 (P2-1, P2-2) — failure-ordering and the
+// BuildInto generation path. P2-1: the record must be staged BEFORE the
+// PROJECT settings mutation, so a settings write can never land entries the
+// record does not know about, and a failed settings write cannot corrupt the
+// next classification. P2-2: the `moai tool-policy build` path (BuildInto /
+// BuildIntoAuto, the TargetJSON project-settings target) is a
+// policy-generation path too and must maintain the same record.
+
+func TestRenderTierPermissions_RecordStageFailureLeavesProjectSettingsUntouched(t *testing.T) {
+	// (P2-1a) when the record cannot be staged, the render errors out BEFORE
+	// any PROJECT settings mutation — settings entries must never exist
+	// without the record knowing they are managed.
+	dir := t.TempDir()
+	userPath := filepath.Join(dir, "user", ".claude", "settings.json")
+	projectPath := filepath.Join(dir, "proj", ".claude", "settings.json")
+	writeSettings(t, userPath, "default")
+	writeSettings(t, projectPath, "default")
+	before, err := os.ReadFile(projectPath)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	// Block the record path: a regular file where the record's directory must
+	// be, so the stage's MkdirAll fails.
+	if err := os.MkdirAll(filepath.Join(dir, "proj", ".moai", "state"), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(dir, "proj", ".moai", "state", "tool-policy"), []byte("blocker"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+
+	if _, err := RenderTierPermissions(projectPath, userPath, "default", helperAllowDoc("Bash(managed-a:*)")); err == nil {
+		t.Fatalf("render must error when the record cannot be staged")
+	}
+	after, err := os.ReadFile(projectPath)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if string(before) != string(after) {
+		t.Errorf("PROJECT settings mutated although the record stage failed:\nbefore=%s\nafter=%s", before, after)
+	}
+}
+
+func TestRenderTierPermissions_SettingsWriteFailureAfterRecordStage_ClassifiesCorrectlyNextRender(t *testing.T) {
+	// (P2-1b) a failed PROJECT settings write after a successful record stage
+	// must leave the record carrying the new generation's entries (and the
+	// managed entries the un-updated project file still holds), so the next
+	// successful render classifies correctly: still-generated entries are
+	// re-added as managed, and an entry the policy revoked is dropped rather
+	// than resurrected as "user-added".
+	dir := t.TempDir()
+	userPath := filepath.Join(dir, "user", ".claude", "settings.json")
+	projectPath := filepath.Join(dir, "proj", ".claude", "settings.json")
+	writeSettings(t, userPath, "default")
+	writeSettings(t, projectPath, "default")
+
+	docAB := helperAllowDoc("Bash(managed-a:*)", "Bash(managed-b:*)")
+	if _, err := RenderTierPermissions(projectPath, userPath, "default", docAB); err != nil {
+		t.Fatalf("render 1: %v", err)
+	}
+
+	// The policy changes between renders: drops managed-b, adds managed-c.
+	docAC := helperAllowDoc("Bash(managed-a:*)", "Bash(managed-c:*)")
+
+	// Break the PROJECT settings write: a directory where the settings file
+	// must be makes renderIntoFile's read fail before any write.
+	if err := os.Remove(projectPath); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.MkdirAll(projectPath, 0o755); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := RenderTierPermissions(projectPath, userPath, "default", docAC); err == nil {
+		t.Fatalf("render 2 must fail: the settings path is a directory")
+	}
+	// Record-ahead: the failed render must still have advanced the record to
+	// the staged union — new generation's entries in, managed entries the
+	// project file still holds retained.
+	rec := readManagedAllowRecord(t, projectPath)
+	got := append([]string{}, rec.LastGenerated...)
+	sort.Strings(got)
+	want := []string{"Bash(managed-a:*)", "Bash(managed-b:*)", "Bash(managed-c:*)"}
+	if !reflect.DeepEqual(got, want) {
+		t.Errorf("record after failed settings write = %v, want staged union %v", got, want)
+	}
+
+	// Recovery: restore the settings file to its pre-failure content (render
+	// 1's output: managed-a + managed-b).
+	if err := os.RemoveAll(projectPath); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.MkdirAll(filepath.Dir(projectPath), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	recovered := `{"permissions":{"allow":["Bash(managed-a:*)","Bash(managed-b:*)"]}}`
+	if err := os.WriteFile(projectPath, []byte(recovered), 0o644); err != nil {
+		t.Fatal(err)
+	}
+
+	if _, err := RenderTierPermissions(projectPath, userPath, "default", docAC); err != nil {
+		t.Fatalf("render 3: %v", err)
+	}
+	afterBody, err := os.ReadFile(projectPath)
+	if err != nil {
+		t.Fatal(err)
+	}
+	allow, _, _, _, _ := ac001ReadPerms(t, afterBody)
+	wantAllow := []string{"Bash(managed-a:*)", "Bash(managed-c:*)"}
+	if !reflect.DeepEqual(allow, wantAllow) {
+		t.Errorf("post-recovery classification: allow = %v, want %v (managed-b dropped, managed-c re-added as managed)\nbody=%s", allow, wantAllow, afterBody)
+	}
+}
+
+func TestBuildIntoPersistsManagedAllowRecord_RemovedEntryNotKeptAsUserAdded(t *testing.T) {
+	// (P2-2) the `moai tool-policy build` path (BuildInto, TargetJSON — the
+	// project settings target) is a policy-generation path: it must maintain
+	// the same sidecar record, so an entry it generated that the policy later
+	// drops is DROPPED by the next render, not kept as user-added.
+	dir := t.TempDir()
+	projectPath := filepath.Join(dir, ".claude", "settings.json")
+	userPath := filepath.Join(dir, "user", ".claude", "settings.json")
+	writeSettings(t, userPath, "default")
+	writeSettings(t, projectPath, "default")
+
+	docAB := helperAllowDoc("Bash(managed-a:*)", "Bash(managed-b:*)")
+	if _, err := BuildInto(projectPath, docAB, TargetJSON, ""); err != nil {
+		t.Fatalf("BuildInto: %v", err)
+	}
+	// BuildInto must have maintained the record.
+	recBody, recErr := os.ReadFile(managedAllowRecordPath(projectPath))
+	if recErr != nil {
+		t.Errorf("BuildInto did not maintain the managed-allow record: %v", recErr)
+	} else {
+		var rec managedAllowRecord
+		if err := json.Unmarshal(recBody, &rec); err != nil {
+			t.Fatalf("record is not valid JSON: %v", err)
+		}
+		got := append([]string{}, rec.LastGenerated...)
+		sort.Strings(got)
+		if !reflect.DeepEqual(got, []string{"Bash(managed-a:*)", "Bash(managed-b:*)"}) {
+			t.Errorf("record after BuildInto = %v, want [Bash(managed-a:*) Bash(managed-b:*)]", got)
+		}
+	}
+
+	// The policy document drops managed-b; the next render must drop it
+	// (managed), not keep it (user-added).
+	docA := helperAllowDoc("Bash(managed-a:*)")
+	if _, err := RenderTierPermissions(projectPath, userPath, "default", docA); err != nil {
+		t.Fatalf("render after build: %v", err)
+	}
+	body, err := os.ReadFile(projectPath)
+	if err != nil {
+		t.Fatal(err)
+	}
+	allow, _, _, _, _ := ac001ReadPerms(t, body)
+	if !reflect.DeepEqual(allow, []string{"Bash(managed-a:*)"}) {
+		t.Errorf("entry built by BuildInto then removed from the policy was kept as user-added: allow = %v, want [Bash(managed-a:*)]\nbody=%s", allow, body)
 	}
 }
 
