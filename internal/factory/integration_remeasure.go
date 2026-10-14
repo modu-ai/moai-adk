@@ -32,6 +32,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/modu-ai/moai-adk/internal/gitenv"
 	"github.com/modu-ai/moai-adk/pkg/version"
 )
 
@@ -539,6 +540,7 @@ func IsIntegrationWorktreeCleanError(err error) bool {
 func gitIntegrationWorktreeClean(dir string) (bool, string, error) {
 	cmd := exec.Command("git", "status", "--porcelain", "--untracked-files=all")
 	cmd.Dir = dir
+	cmd.Env = gitenv.Env() // an inherited GIT_DIR would outrank cmd.Dir
 	out, err := cmd.Output()
 	if err != nil {
 		return false, "", fmt.Errorf("git status in %s: %v: %s", dir, err, out)
