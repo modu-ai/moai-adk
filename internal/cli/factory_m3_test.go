@@ -740,6 +740,11 @@ func TestSD_WorktreeSlugShape(t *testing.T) {
 		// once derived "t1713" — the very id the branch name must never carry.
 		{"t1713", "", "SPEC-T1713-001", "card"},
 		{"t1202", "", "SPEC-TOTP-1713-001", "totp"},
+		// The card id must not survive as a SUBSTRING of a SPEC-derived
+		// token either (card t1713 round-2 review finding): the title path
+		// already filters Contains(tok, id); the SPEC path must match.
+		{"t1713", "", "SPEC-FOOT1713-001", "card"},
+		{"t5", "", "SPEC-FIXT5-GATE-001", "gate"},
 	} {
 		got := factoryWorktreeSlug(tc.cardID, tc.title, tc.specID)
 		if got != tc.want {

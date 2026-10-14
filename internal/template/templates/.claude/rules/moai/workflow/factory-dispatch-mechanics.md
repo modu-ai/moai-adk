@@ -56,6 +56,8 @@ The slug says what the card **does**, so a reader of `git branch` or a pull-requ
 | Alphabet | Lowercase `a-z`, `0-9`, and `-` |
 | Card id | MUST NOT appear — not as a prefix, a suffix, or a token |
 
+The derivation is automated (`factoryWorktreeSlug`): leading `[...]` metadata groups in the queue title are skipped, metadata tokens (bare numbers, `class`, card-id and priority shapes) are dropped, and a title body with nothing left takes the linked SPEC id's slug (the SPEC prefix and numeric sequence dropped) before the `card` fallback — a bare-numeric slug is never derivable.
+
 The **worktree directory keeps the card id** (`.moai/worktrees/<card-id>` for new MoAI trees; `.claude/worktrees/<card-id>` for existing Claude-native trees) — only the branch takes the slug, and the tree path is what the disposal tooling and the evidence path key on.
 
 [HARD] **Dropping the id from the branch moves traceability onto three other carriers, and all three are mandatory.** The branch name no longer answers "which card was this?", so nothing may rely on reading it back:

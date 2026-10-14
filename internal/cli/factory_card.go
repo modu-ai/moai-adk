@@ -589,7 +589,7 @@ func factoryWorktreeSlug(cardID, title, specID string) string {
 		slug = slug[:24]
 	}
 	if slug == "" {
-		if slug = factorySpecIDSlug(specID); slug != "" {
+		if slug = factorySpecIDSlug(specID, id); slug != "" {
 			return slug
 		}
 		return "card"
@@ -644,12 +644,18 @@ func isASCIIDigits(s string) bool {
 // (SPEC-MCP-NEUTRALITY-001 → mcp-neutrality), under the same ≤3-token /
 // ≤24-char naming rule. The metadata filter applies to SPEC tokens too, so
 // a SPEC id carrying the card-id shape never leaks it into the branch
-// (SPEC-T1713-001 → "" → "card"; round-1 review finding). Returns "" when
-// nothing usable remains.
-func factorySpecIDSlug(specID string) string {
+// (SPEC-T1713-001 → "" → "card"; round-1 review finding), and so does the
+// card-id containment filter the title path already applies — an id inside
+// a larger token (SPEC-FOOT1713-001 → foot1713) is dropped as well
+// (round-2 review finding). Returns "" when nothing usable remains.
+func factorySpecIDSlug(specID, cardID string) string {
+	id := strings.ToLower(strings.TrimSpace(cardID))
 	var out []string
 	for _, part := range strings.Split(strings.ToLower(strings.TrimSpace(specID)), "-") {
 		if part == "" || factorySlugTokenIsMetadata(part) {
+			continue
+		}
+		if id != "" && strings.Contains(part, id) {
 			continue
 		}
 		if len(out) == 0 && part == "spec" {
