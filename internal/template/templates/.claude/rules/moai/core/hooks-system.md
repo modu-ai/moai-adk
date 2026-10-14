@@ -365,7 +365,7 @@ MoAI-ADK uses shorter independent timeout policies for operational efficiency. T
 | PostToolUse (status-transition-ownership.sh) | 5s | 600s | Advisory governance gate |
 | Stop (handle-stop) | 5s | 600s | Turn-end wrapper |
 | Stop (sync-phase-quality-gate.sh) | 60s | 600s | Runs fast structural checks (`go vet` + `go build` etc.) — needs headroom beyond the 5s wrapper default |
-| UserPromptSubmit | 15s | 30s | Blocks user interaction; reduced max. Raised from 5s (2026-10-09): the factory-messaging drain in handle-user-prompt-submit can exceed 5s under multi-lane load, and the hard-timeout error surfaced to the user |
+| UserPromptSubmit | 15s | 30s | Blocks user interaction; reduced max. Raised from 5s: the factory-messaging drain in handle-user-prompt-submit can exceed 5s under multi-lane load, and the hard-timeout error surfaced to the user |
 | All other registered events (PreCompact, PreToolUse, PostToolUseFailure, SubagentStart, SubagentStop, TeammateIdle, TaskCompleted, ConfigChange, StopFailure, PostCompact, InstructionsLoaded, CwdChanged, FileChanged, PermissionDenied, PermissionRequest) and the opt-in harness-observe entries | 5s | 600s | Synchronous fast lifecycle hooks (blocking default; PostToolUse harness-observe is `async: true`) |
 | prompt, agent hooks | 30s-60s | 600s | Evaluation/verification hooks |
 
