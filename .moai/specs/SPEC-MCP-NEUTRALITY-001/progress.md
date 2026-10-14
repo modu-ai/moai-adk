@@ -314,7 +314,7 @@ debts_remaining: none open from this SPEC — N3 (serial-slot instance red at M1
 
 sync_audit_ready: true
 sync_complete_at: 2026-10-15
-sync_commit_sha: "pending-backfill-sync"
+sync_commit_sha: "8864f9f56"
 sync_status: complete (3-phase close — spec.md frontmatter in-progress → completed on this commit; the placeholder is backfilled with the real SHA in the follow-up commit, since a commit cannot cite its own hash)
 sync_commit_range: HEAD 226c387e3 (run close) → the sync commit (CHANGELOG entry, §E.4 signal, frontmatter terminal transition, MX anchors ×3)
 sync_artifacts: CHANGELOG.md [Unreleased]/Added first bullet · spec.md frontmatter (status+updated only) · progress.md §E.4 (this section) · MX tag changes: @MX:ANCHOR added ×3 — toolRefusal (18 callers, internal/cli/mcp_refusal.go), resolveRequiredToolProjectRoot (8 callers, internal/cli/mcp_project_root.go), resolveValidatedToolProjectRoot (3 callers, same file); zero tags removed; pre-existing tags in internal/auditreceipt/store.go, internal/factorymsg/store.go, internal/cli/codex_review_gate.go verified intact
