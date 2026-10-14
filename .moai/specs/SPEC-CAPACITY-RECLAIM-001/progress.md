@@ -168,7 +168,7 @@ _<pending run-phase>_
 Recorded by manager-docs in the single sync commit (3-phase close, plan→run→sync). The commit cannot cite its own hash, so `sync_commit_sha` holds the placeholder and the real SHA is backfilled in a following commit. This section records what was observed at commit time; the sync-audit verdict belongs to the auditor.
 
 sync_complete_at: 2026-10-14T05:26:04Z
-sync_commit_sha: "pending-backfill-sync"
+sync_commit_sha: "2a805d76b57dbfea8d3b3375336dd29f97169957"
 sync_status: complete
 audit_ready: true
 b12_self_test_a: duplicate-entry guard before emission — `grep -c 'SPEC-CAPACITY-RECLAIM-001' CHANGELOG.md` printed `0` (grep exit 1, no-match), so the emission proceeded with no existing entry to duplicate
