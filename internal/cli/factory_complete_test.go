@@ -58,6 +58,10 @@ func sdMergeFixture(t *testing.T, withConfig, provisioned, onParent bool, n int)
 	sdClearLaneEnv(t)
 	root, store := fcFixture(t)
 	t.Setenv("CLAUDE_PROJECT_DIR", root)
+	// The MCP stale-run validation (SPEC-MCP-NEUTRALITY-001 REQ-MN-003)
+	// checks an explicit run id against the active run, so the fixture seeds
+	// fcRun active.
+	sdSeedRun(t, root, fcRun, "active")
 	states := make([]factory.BacklogState, n)
 	for i := range states {
 		states[i] = factory.BacklogStatePicked

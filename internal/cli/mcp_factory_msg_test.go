@@ -41,12 +41,12 @@ func TestFactoryMCPIdentityAttribution(t *testing.T) {
 	}
 	t.Setenv(config.EnvMoaiSessionPID, strconv.Itoa(pid))
 	t.Setenv(config.EnvClaudeCodeSessionID, "foreign-authoritative-session")
-	if got, err := currentFactoryPeer(context.Background(), s); err == nil {
+	if got, err := currentFactoryPeer(context.Background(), s, ""); err == nil {
 		t.Fatalf("authoritative lookup failure fell back to PID peer: %+v", got)
 	}
 	t.Setenv(config.EnvClaudeCodeSessionID, "")
 	t.Setenv(config.EnvClaudeProjectDir, t.TempDir()) // no shared side-channel attribution
-	got, err := currentFactoryPeer(context.Background(), s)
+	got, err := currentFactoryPeer(context.Background(), s, "")
 	if err != nil || got.SessionUUID != peer.SessionUUID || got.Generation != peer.Generation {
 		t.Fatalf("owner attribution=%+v err=%v", got, err)
 	}
@@ -189,8 +189,20 @@ func TestFactoryMsgStatusReadOnlyRoster(t *testing.T) {
 	}
 	request.Params.Arguments = map[string]any{"run_id": "not-active"}
 	res, err = c.CallTool(context.Background(), request)
-	if err != nil || !res.IsError {
-		t.Fatalf("inactive run accepted: %v", err)
+	// SPEC-MCP-NEUTRALITY-001 REQ-MN-001: the stale-run refusal is a
+	// structured result (is_error false), never the error channel.
+	if err != nil {
+		t.Fatalf("inactive run: %v", err)
+	}
+	if res.IsError {
+		t.Fatalf("inactive-run refusal rode the error channel: %s", mcpTextOf(res))
+	}
+	var refusal struct {
+		Refused bool   `json:"refused"`
+		Code    string `json:"code"`
+	}
+	if body, jerr := json.Marshal(res.StructuredContent); jerr != nil || json.Unmarshal(body, &refusal) != nil || !refusal.Refused || refusal.Code != "stale-run" {
+		t.Fatalf("inactive run refusal = %s, want refused true with code stale-run", string(body))
 	}
 }
 
@@ -277,7 +289,7 @@ func TestFactoryMCPIdentityFallsBackToDirectParent(t *testing.T) {
 	t.Setenv(config.EnvMoaiSessionPID, "")
 	t.Setenv(config.EnvClaudeCodeSessionID, "")
 	t.Setenv(config.EnvClaudeProjectDir, t.TempDir())
-	got, err := currentFactoryPeer(context.Background(), s)
+	got, err := currentFactoryPeer(context.Background(), s, "")
 	if err != nil || got.SessionUUID != peer.SessionUUID {
 		t.Fatalf("parent attribution=%+v err=%v", got, err)
 	}

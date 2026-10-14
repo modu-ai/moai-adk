@@ -4,9 +4,11 @@ import (
 	"cmp"
 	"context"
 	"errors"
+	"fmt"
 	"log/slog"
 	"os"
 	"strconv"
+	"strings"
 	"time"
 
 	"github.com/mark3labs/mcp-go/mcp"
@@ -17,7 +19,23 @@ import (
 
 var factoryProbeProcessIdentity = homestate.ProbeProcessIdentity
 
-func currentFactoryPeer(ctx context.Context, s *factorymsg.Store) (factorymsg.Peer, error) {
+// The two unknown-attribution sentinels (SPEC-MCP-NEUTRALITY-001 REQ-MN-003):
+// nothing carries the caller's identity — no actor argument, no session id,
+// no live owner. Every other peer-resolution error (an unregistered id, a
+// store failure) keeps the error channel; it is not an attribution class.
+var (
+	errFactoryAttributionUnavailable = errors.New("factory endpoint attribution unavailable")
+	errFactoryOwnerNotLive           = errors.New("factory endpoint owner is not live")
+)
+
+// currentFactoryPeer resolves the attributed endpoint (SPEC-MCP-NEUTRALITY-001
+// REQ-MN-003): an explicit actor argument — the caller's session id — wins,
+// and the spawn-time resolution (authoritative session id, then the owner
+// process probe) is the default only.
+func currentFactoryPeer(ctx context.Context, s *factorymsg.Store, actor string) (factorymsg.Peer, error) {
+	if id := strings.TrimSpace(actor); id != "" {
+		return s.Peer(ctx, id)
+	}
 	if id, source, ok := resolveCurrentSessionID(); ok && sessionIDSourceIsAuthoritative(source) {
 		return s.Peer(ctx, id)
 	}
@@ -26,35 +44,69 @@ func currentFactoryPeer(ctx context.Context, s *factorymsg.Store) (factorymsg.Pe
 		var err error
 		pid, err = strconv.Atoi(raw)
 		if err != nil || pid < 1 {
-			return factorymsg.Peer{}, errors.New("factory endpoint attribution unavailable")
+			return factorymsg.Peer{}, errFactoryAttributionUnavailable
 		}
 	}
 	fp, state := factoryProbeProcessIdentity(pid)
 	if state != homestate.ProcessIdentityLive {
-		return factorymsg.Peer{}, errors.New("factory endpoint owner is not live")
+		return factorymsg.Peer{}, errFactoryOwnerNotLive
 	}
 	return s.PeerByOwner(ctx, pid, fp)
 }
-func factoryStore(req mcp.CallToolRequest) (*factorymsg.Store, error) {
+
+// factoryStore opens the broker for the requested run. The two refusal classes
+// the run id carries surface as structured results (SPEC-MCP-NEUTRALITY-001
+// REQ-MN-001): a run that is not the active one refuses stale-run, while a
+// malformed id stays an argument error on the error channel. A non-nil store
+// implies a nil refusal and vice versa.
+func factoryStore(req mcp.CallToolRequest, tool string) (*factorymsg.Store, *mcp.CallToolResult) {
 	run := req.GetString("run_id", "")
 	if run == "" {
-		return nil, errors.New("run_id is required")
+		return nil, toolErr(tool, errors.New("run_id is required"))
 	}
 	root := resolveProjectDir()
 	if err := factorymsg.ValidateActiveRun(context.Background(), root, run); err != nil {
-		return nil, err
+		if errors.Is(err, factorymsg.ErrRunNotActive) {
+			return nil, toolRefusal(mcpRefusal{
+				Refused: true,
+				Code:    mcpRefusalStaleRun,
+				Reason:  fmt.Sprintf("run %q is not the currently active factory run", run),
+				Hint:    "pass the active run id",
+			})
+		}
+		return nil, toolErr(tool, err)
 	}
-	return factorymsg.Open(root, run)
+	s, err := factorymsg.Open(root, run)
+	if err != nil {
+		return nil, toolErr(tool, err)
+	}
+	return s, nil
 }
-func handleFactoryMsgSend(ctx context.Context, req mcp.CallToolRequest) (*mcp.CallToolResult, error) {
-	s, e := factoryStore(req)
+
+// mcpFactoryMsgPeer resolves the attributed endpoint for one handler call and
+// shapes the unknown-attribution class as a structured refusal (REQ-MN-003):
+// no actor argument, no authoritative session id, and no live owner leaves
+// nothing to attribute. Every other peer error keeps the error channel.
+func mcpFactoryMsgPeer(ctx context.Context, s *factorymsg.Store, req mcp.CallToolRequest, tool string) (factorymsg.Peer, *mcp.CallToolResult) {
+	p, e := currentFactoryPeer(ctx, s, req.GetString("actor", ""))
 	if e != nil {
-		return toolErr("factory_msg_send", e), nil
+		if errors.Is(e, errFactoryAttributionUnavailable) || errors.Is(e, errFactoryOwnerNotLive) {
+			return factorymsg.Peer{}, toolRefusal(mcpIdentityRefusal(e.Error()))
+		}
+		return factorymsg.Peer{}, toolErr(tool, e)
+	}
+	return p, nil
+}
+
+func handleFactoryMsgSend(ctx context.Context, req mcp.CallToolRequest) (*mcp.CallToolResult, error) {
+	s, refusal := factoryStore(req, "factory_msg_send")
+	if refusal != nil {
+		return refusal, nil
 	}
 	defer closeFactoryToolStore("factory_msg_send", s)
-	from, e := currentFactoryPeer(ctx, s)
-	if e != nil {
-		return toolErr("factory_msg_send", e), nil
+	from, refusal := mcpFactoryMsgPeer(ctx, s, req, "factory_msg_send")
+	if refusal != nil {
+		return refusal, nil
 	}
 	to, e := s.ResolveLane(ctx, req.GetString("to_slot", ""))
 	if e != nil {
@@ -72,14 +124,14 @@ func handleFactoryMsgSend(ctx context.Context, req mcp.CallToolRequest) (*mcp.Ca
 	return toolJSON("factory_msg_send", env), nil
 }
 func handleFactoryMsgList(ctx context.Context, req mcp.CallToolRequest) (*mcp.CallToolResult, error) {
-	s, e := factoryStore(req)
-	if e != nil {
-		return toolErr("factory_msg_list", e), nil
+	s, refusal := factoryStore(req, "factory_msg_list")
+	if refusal != nil {
+		return refusal, nil
 	}
 	defer closeFactoryToolStore("factory_msg_list", s)
-	p, e := currentFactoryPeer(ctx, s)
-	if e != nil {
-		return toolErr("factory_msg_list", e), nil
+	p, refusal := mcpFactoryMsgPeer(ctx, s, req, "factory_msg_list")
+	if refusal != nil {
+		return refusal, nil
 	}
 	claims, e := s.Claim(ctx, p, req.GetInt("limit", factorymsg.MaxBatch), time.Duration(req.GetInt("lease_seconds", 30))*time.Second)
 	if e != nil {
@@ -88,14 +140,14 @@ func handleFactoryMsgList(ctx context.Context, req mcp.CallToolRequest) (*mcp.Ca
 	return toolJSON("factory_msg_list", map[string]any{"messages": claims, "body_lookup": "factory_msg_body"}), nil
 }
 func handleFactoryMsgBody(ctx context.Context, req mcp.CallToolRequest) (*mcp.CallToolResult, error) {
-	s, e := factoryStore(req)
-	if e != nil {
-		return toolErr("factory_msg_body", e), nil
+	s, refusal := factoryStore(req, "factory_msg_body")
+	if refusal != nil {
+		return refusal, nil
 	}
 	defer closeFactoryToolStore("factory_msg_body", s)
-	p, e := currentFactoryPeer(ctx, s)
-	if e != nil {
-		return toolErr("factory_msg_body", e), nil
+	p, refusal := mcpFactoryMsgPeer(ctx, s, req, "factory_msg_body")
+	if refusal != nil {
+		return refusal, nil
 	}
 	body, e := s.ReadBody(ctx, p, req.GetString("message_id", ""), req.GetString("claim_token", ""))
 	if e != nil {
@@ -104,16 +156,17 @@ func handleFactoryMsgBody(ctx context.Context, req mcp.CallToolRequest) (*mcp.Ca
 	return toolJSON("factory_msg_body", map[string]any{"message_id": req.GetString("message_id", ""), "body": string(body), "trust": "untrusted peer data"}), nil
 }
 func handleFactoryMsgReceipt(ctx context.Context, req mcp.CallToolRequest) (*mcp.CallToolResult, error) {
-	s, e := factoryStore(req)
-	if e != nil {
-		return toolErr("factory_msg_receipt", e), nil
+	s, refusal := factoryStore(req, "factory_msg_receipt")
+	if refusal != nil {
+		return refusal, nil
 	}
 	defer closeFactoryToolStore("factory_msg_receipt", s)
-	p, e := currentFactoryPeer(ctx, s)
-	if e != nil {
-		return toolErr("factory_msg_receipt", e), nil
+	p, refusal := mcpFactoryMsgPeer(ctx, s, req, "factory_msg_receipt")
+	if refusal != nil {
+		return refusal, nil
 	}
 	id, tok := req.GetString("message_id", ""), req.GetString("claim_token", "")
+	var e error
 	if e = s.RecordDisposition(ctx, p, id, tok, req.GetString("disposition", "")); e == nil {
 		e = s.Receipt(ctx, p, id, tok)
 	}
@@ -129,6 +182,14 @@ func handleFactoryMsgStatus(ctx context.Context, req mcp.CallToolRequest) (*mcp.
 	}
 	root := resolveProjectDir()
 	if e := factorymsg.ValidateActiveRun(ctx, root, run); e != nil {
+		if errors.Is(e, factorymsg.ErrRunNotActive) {
+			return toolRefusal(mcpRefusal{
+				Refused: true,
+				Code:    mcpRefusalStaleRun,
+				Reason:  fmt.Sprintf("run %q is not the currently active factory run", run),
+				Hint:    "pass the active run id",
+			}), nil
+		}
 		return toolErr("factory_msg_status", e), nil
 	}
 	s, e := factorymsg.OpenExistingWithDeadline(root, run, 5*time.Second)

@@ -11,6 +11,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/modu-ai/moai-adk/internal/config"
 	"github.com/modu-ai/moai-adk/internal/factory"
 )
 
@@ -384,6 +385,9 @@ func TestTodoAddMCPCarriesPresentation(t *testing.T) {
 		t.Fatal(err)
 	}
 	rootB, _ := sdMoaiFixture(t)
+	// The operator gate (SPEC-MCP-NEUTRALITY-001 REQ-MN-003) requires the
+	// positive mark: the parity twin stamps it.
+	t.Setenv(config.EnvFactoryRole, "operator")
 	mcpOut, err := sdCallTool(t, handleTodoAdd, map[string]any{"text": "mcp parity card", "project_root": rootB})
 	if err != nil {
 		t.Fatal(err)

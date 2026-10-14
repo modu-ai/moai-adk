@@ -388,6 +388,12 @@ func storeAdd(t *testing.T, store *factory.BacklogStore, text string) (*factory.
 // CLI verb and refuses with the SAME text: a lane session is refused in the
 // bare and the --lane form alike, an allowed claim goes through the shared
 // runTodoClaimRoot body anchored at the caller's project_root.
+//
+// SPEC-MCP-NEUTRALITY-001 REQ-MN-001 (card t1632) flips the refusal's
+// channel: the refusal is a structured result (is_error FALSE, refused true,
+// the CLI-identical text in the reason), never the MCP error channel — the
+// EV-001 red's passing error-channel assertion is inverted into the
+// structured-shape assertion.
 func TestTodoClaimMCP_Mirror(t *testing.T) {
 	root, store := todoFixture(t)
 	if _, _, err := storeAdd(t, store, "mcp mirror card"); err != nil {
@@ -395,21 +401,19 @@ func TestTodoClaimMCP_Mirror(t *testing.T) {
 	}
 	wantRefusal := todoLaneMutationRefusalText("claim")
 
-	// Refusal arm — lane session, --lane form: the identical text.
+	// Refusal arm — lane session, --lane form: the identical text in the
+	// structured reason, is_error false.
+	t.Setenv(config.EnvFactoryRole, config.FactoryRoleLane)
 	t.Setenv(config.EnvMoaiFactoryWorker, "lane-1")
 	before := claimFileHash(t, store)
-	_, err := sdCallTool(t, handleTodoClaim, map[string]any{"project_root": root, "lane": "lane-9"})
-	if err == nil {
-		t.Fatal("mcp todo_claim in a lane session: err = nil, want refusal")
-	}
-	if !strings.Contains(err.Error(), wantRefusal) {
-		t.Errorf("mcp refusal = %q, want it to carry the CLI-identical text %q (the todo_claim: prefix is the MCP surface convention, matching the todo_add parity guard)", err.Error(), wantRefusal)
-	}
+	res := mcpCallRaw(t, handleTodoClaim, map[string]any{"project_root": root, "lane": "lane-9"})
+	assertStructuredRefusal(t, res, "", wantRefusal)
 	if after := claimFileHash(t, store); after != before {
 		t.Error("mcp refusal modified the queue file")
 	}
 
 	// Allowed arm — operator session: claims through the same body.
+	t.Setenv(config.EnvFactoryRole, "operator")
 	t.Setenv(config.EnvMoaiFactoryWorker, "")
 	out, err := sdCallTool(t, handleTodoClaim, map[string]any{"project_root": root})
 	if err != nil {
