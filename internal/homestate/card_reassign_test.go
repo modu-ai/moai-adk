@@ -19,6 +19,14 @@ func raRegisterWorker(t *testing.T, db *FactoryDB, label string) {
 	raRegisterWorkerBound(t, db, label, "")
 }
 
+// The IN-list skeleton of the cross-run live-lease check must match
+// leaseHoldingStates one-to-one — both move together when a state is added.
+func TestLeaseHoldingMarksMatchTheStates(t *testing.T) {
+	if got := strings.Count(leaseHoldingMarks, "?"); got != len(leaseHoldingStates) {
+		t.Fatalf("leaseHoldingMarks carries %d placeholders for %d lease-holding states; update both together", got, len(leaseHoldingStates))
+	}
+}
+
 // raRegisterWorkerBound inserts the worker row with an explicit run binding
 // ("" = joined without a run binding).
 func raRegisterWorkerBound(t *testing.T, db *FactoryDB, label, runID string) {
@@ -172,6 +180,50 @@ func TestReassignCardLandsAnExpiredMergingCardBlocked(t *testing.T) {
 	}
 	if !strings.Contains(payload, `"interrupted":"merge"`) || !strings.Contains(payload, `"merge_sha":"abc123def"`) {
 		t.Fatalf("the reassign event lost the merge interruption: %s", payload)
+	}
+}
+
+// The one-live-lease invariant, record-layer form (sync-audit F7 of card
+// t1696): stale-run rows persist, so a LIVE lease in any other run's row
+// refuses the reassign even with no dispatch mirror row — the exact shape
+// codex double-leased through. An expired cross-run lease admits; residue on
+// a non-holding state does not count.
+func TestReassignCardRefusesACrossRunLiveLease(t *testing.T) {
+	db := frOpen(t)
+	frPlace(t, db, Card{RunID: frRun, CardID: "ra11", State: CardAssigned, OwnerLabel: "lane-9", Version: 1})
+	frPlace(t, db, Card{RunID: "run-old", CardID: "ra11", State: CardRun, OwnerLabel: "lane-2", Version: 7, LeaseHolder: "lane-2", LeaseExpiresAt: frNow.Add(24 * time.Hour).Format(time.RFC3339Nano)})
+	raRegisterWorker(t, db, "lane-15")
+	_, err := db.ReassignCard(context.Background(), frRun, "ra11", "lane-15", "assign --reassign", frNow, nil)
+	if !errors.Is(err, ErrLeaseHolder) || !strings.Contains(err.Error(), "run run-old") {
+		t.Fatalf("err = %v, want the cross-run live-lease refusal naming run-old", err)
+	}
+}
+
+func TestReassignCardAdmitsAnExpiredCrossRunLease(t *testing.T) {
+	db := frOpen(t)
+	frPlace(t, db, Card{RunID: frRun, CardID: "ra12", State: CardAssigned, OwnerLabel: "lane-9", Version: 1})
+	frPlace(t, db, Card{RunID: "run-old", CardID: "ra12", State: CardRun, OwnerLabel: "lane-2", Version: 7, LeaseHolder: "lane-2", LeaseExpiresAt: frNow.Add(-24 * time.Hour).Format(time.RFC3339Nano)})
+	raRegisterWorker(t, db, "lane-15")
+	card, err := db.ReassignCard(context.Background(), frRun, "ra12", "lane-15", "assign --reassign", frNow, nil)
+	if err != nil {
+		t.Fatalf("reassign: %v", err)
+	}
+	if card.OwnerLabel != "lane-15" {
+		t.Fatalf("owner = %q, want lane-15", card.OwnerLabel)
+	}
+}
+
+func TestReassignCardIgnoresCrossRunResidueOnNonHoldingState(t *testing.T) {
+	db := frOpen(t)
+	frPlace(t, db, Card{RunID: frRun, CardID: "ra13", State: CardAssigned, OwnerLabel: "lane-9", Version: 1})
+	frPlace(t, db, Card{RunID: "run-old", CardID: "ra13", State: CardAssigned, OwnerLabel: "lane-2", Version: 7, LeaseHolder: "lane-2", LeaseExpiresAt: frNow.Add(24 * time.Hour).Format(time.RFC3339Nano)})
+	raRegisterWorker(t, db, "lane-15")
+	card, err := db.ReassignCard(context.Background(), frRun, "ra13", "lane-15", "assign --reassign", frNow, nil)
+	if err != nil {
+		t.Fatalf("reassign: %v", err)
+	}
+	if card.OwnerLabel != "lane-15" {
+		t.Fatalf("owner = %q, want lane-15", card.OwnerLabel)
 	}
 }
 

@@ -9,6 +9,19 @@ import (
 	"time"
 )
 
+// leaseHoldingMarks is the IN-list placeholder skeleton matching
+// leaseHoldingStates one-to-one — a compile-time constant, so no SQL fragment
+// is built at runtime (the updateCardRow rule: concatenated fragments are
+// constants, every value rides a ? placeholder). The count test below pins
+// the pairing; adding a lease-holding state updates both.
+const leaseHoldingMarks = "?,?,?,?,?,?,?,?"
+
+// liveLeaseCrossRunQuery selects every OTHER run's lease-holding row for one
+// card id that carries a holder string — the cross-run shape of the
+// one-live-lease invariant (sync-audit F7, card t1696). Whole constant; the
+// IN-list skeleton is leaseHoldingMarks; every value rides a ? placeholder.
+const liveLeaseCrossRunQuery = `SELECT run_id, lease_holder, lease_expires_at FROM cards WHERE card_id=? AND run_id<>? AND state IN (?,?,?,?,?,?,?,?) AND lease_holder<>''`
+
 // ReassignCard moves a card to another registered lane (card t1696): lanes
 // that relaunch come back under fresh labels and never reuse the old one, so
 // a card owned by a dead label had no path back into a lease — the holder
@@ -64,6 +77,39 @@ func (f *FactoryDB) ReassignCard(ctx context.Context, runID, cardID, newOwner, a
 		case newOwner == cur.OwnerLabel:
 			return nil, fmt.Errorf("%w: card %s is already assigned to %q", ErrInvalidCardInput, cur.CardID, newOwner)
 		}
+		// The one-live-lease invariant, record-layer form (sync-audit F7 of
+		// card t1696): stale-run rows persist, so the reassign refuses while
+		// ANY run's lease-holding row for this card id holds an unexpired
+		// lease — the row in hand is not the only place a lease can live.
+		// Expiry is parsed in Go: RFC3339Nano text does not compare
+		// lexicographically. An unparseable expiry counts live (the same
+		// fail-closed reading LeaseExpired applies).
+		args := make([]any, 0, len(leaseHoldingStates)+2)
+		args = append(args, cardID, runID)
+		for _, s := range leaseHoldingStates {
+			args = append(args, s)
+		}
+		liveRows, err := tx.QueryContext(ctx, liveLeaseCrossRunQuery, args...)
+		if err != nil {
+			return nil, err
+		}
+		for liveRows.Next() {
+			var otherRun, holder, expires string
+			if err := liveRows.Scan(&otherRun, &holder, &expires); err != nil {
+				_ = liveRows.Close()
+				return nil, err
+			}
+			at, perr := time.Parse(time.RFC3339Nano, expires)
+			if perr != nil || at.After(now) {
+				_ = liveRows.Close()
+				return nil, fmt.Errorf("%w: card %s holds a live lease in run %s (holder %q, expires %s); reassignment waits it out or follows its expiry", ErrLeaseHolder, cardID, otherRun, holder, expires)
+			}
+		}
+		if err := liveRows.Err(); err != nil {
+			_ = liveRows.Close()
+			return nil, err
+		}
+		_ = liveRows.Close()
 		var bound string
 		if err := tx.QueryRowContext(ctx, `SELECT run_id FROM workers WHERE label=?`, newOwner).Scan(&bound); err != nil {
 			if errors.Is(err, sql.ErrNoRows) {
