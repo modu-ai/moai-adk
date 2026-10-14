@@ -213,6 +213,37 @@ PASS    ok      github.com/modu-ai/moai-adk/internal/config/toolpolicy  0.297s
 
 **Residual corner (named, not worked around)**: the two-file update (settings + record) is not atomic, so a settings-write failure that coincides with a policy REVOCATION in the same render cannot keep the revoked entry's managed status under exact-generation converge — after recovery the entry is reclassified user-added and persists. The stage-ahead union narrows this to that single coincidence window (new entries are always recorded before settings can gain them; the record-ahead protocol removed the lag hazard P2-1 named). Closing the window fully would need a compensating record restore on the settings-write failure path — un-decided surface, named for the leader to disposition if wanted.
 
+### Card-review repair round 3 (finding A) — init wiring test aligned with the preserved-defaultMode contract
+
+**Finding** (round-3 finding A, CONFIRMED RED by lane measurement): the M1 keep-rule (Q1 — an existing USER `permissions.defaultMode` is preserved; the tier default is written only when the key is absent) regressed the pre-existing wizard wiring test `internal/cli/init_autonomy_wiring_test.go` `TestRunInit_WizardAutonomyTierAppliesBundle`, which asserted the tier OVERWRITES a seeded `defaultMode: "default"`. CI-blocking against a pre-existing test. RED (lane-captured): `go test -run TestRunInit_WizardAutonomyTierAppliesBundle ./internal/cli/` → `--- FAIL: TestRunInit_WizardAutonomyTierAppliesBundle` / `init_autonomy_wiring_test.go:157: USER permissions.defaultMode = "default", want "auto" (tier automatic)`.
+
+**Disposition: fixed** (commit db70a4266) — test-only, no production change:
+
+- `TestRunInit_WizardAutonomyTierAppliesBundle` re-scoped to the new contract as two subtests: **`existing-defaultMode-preserved`** — the seeded `defaultMode: "default"` survives the wizard's tier application (expect `"default"`; the teammateMode/env verbatim-preservation assertions are kept unchanged); **`absent-defaultMode-applies-tier`** — USER settings with a permissions block carrying NO defaultMode (only an allow list) receive `defaultMode: "auto"` from the tier, with the allow entry and teammateMode preserved (REQ-001). Both subtests reuse the file's existing seam helper (`runInitForAutonomyAtHomeCapturingOut`), so the isolated-HOME + wizard-seam mechanism is unchanged.
+
+**Class sweep** (`grep -rn "WizardAutonomyTier\|defaultMode.*auto\|want.*auto" internal/cli/*_test.go internal/core/project/*_test.go`) — every hit read, dispositions:
+
+- `init_autonomy_wiring_test.go:157` — the stale overwrite expectation → FIXED (this repair).
+- `init_autonomy_wiring_test.go:182` (`FlagAutonomyTierNonInteractive`) and `:248` (`FlagFullyAutonomousWithoutProofDowngrades`) — both run against a FRESH temp HOME (no pre-seeded USER defaultMode) → absent-key path → expecting `"auto"` is CORRECT under Q1. No touch; they double as the flag-path absent-key confirmations.
+- `launcher_test.go` `TestSyncPermissionModeToSettingsLocal` (incl. "mode overwrites existing defaultMode") — a DIFFERENT mechanism: the explicit launcher mode sync into `settings.local.json` (user-invoked mode flag, card t1414 lineage), not autonomy-tier application. Deliberate overwrite contract. No touch.
+- `cg_mode_hardening_test.go`, `clifix_concurrency_repro_test.go` — concurrent-write preservation of `bypassPermissions` in `settings.local.json`; assert PRESERVATION, different mechanism. No touch.
+- `doctor_settings_defaultmode_test.go` — the doctor dead-value check; reads/flags, applies nothing. No touch.
+- Remaining regex hits (`factory_*`, `codex_*`, `coverage_fixes`, `doctor_hook`, `glm_flash_default`, `hook_*`, `init_quiet_wizard`, `init_workflow_*`, `lane_entry_m2`, launcher `--auto` directives) — matched "auto" in unrelated identifiers (auto-merge, --auto, auto-dispatch, auto-compact), not defaultMode-overwrite tests. No touch.
+- `internal/core/project` test files — zero defaultMode hits. Clean.
+
+**GREEN evidence** (post-fix, this run, this tree, HEAD db70a4266):
+
+```
+$ go test ./internal/cli/ -run 'TestRunInit_WizardAutonomyTierAppliesBundle' -v -count=1
+--- PASS: TestRunInit_WizardAutonomyTierAppliesBundle (3.10s)
+    --- PASS: TestRunInit_WizardAutonomyTierAppliesBundle/existing-defaultMode-preserved (1.28s)
+    --- PASS: TestRunInit_WizardAutonomyTierAppliesBundle/absent-defaultMode-applies-tier (1.79s)
+PASS
+ok      github.com/modu-ai/moai-adk/internal/cli  4.368s
+```
+
+**Post-fix verification** (env-scrubbed): whole `TestRunInit` neighbor family `go test ./internal/cli/ -run 'TestRunInit' -count=1` → `ok github.com/modu-ai/moai-adk/internal/cli 44.113s` (full internal/cli suite still out per the t1542 measurement — only the touched tests + prefixed neighbors run); `go test -count=1 ./internal/config/toolpolicy/ ./internal/core/project/` → both `ok` (0.431s / 2.573s); `go build ./...` → exit 0; `GOOS=windows GOARCH=amd64 go build ./...` → exit 0; `gofmt -l internal/cli/init_autonomy_wiring_test.go` → clean.
+
 ## §E.3 Run-phase Audit-Ready Signal
 
 ```yaml
