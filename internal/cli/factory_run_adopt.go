@@ -1,6 +1,16 @@
 package cli
 
-import "io"
+import (
+	"context"
+	"fmt"
+	"io"
+	"os"
+
+	"github.com/modu-ai/moai-adk/internal/config"
+	"github.com/modu-ai/moai-adk/internal/factory"
+	"github.com/modu-ai/moai-adk/internal/factorymsg"
+	"github.com/modu-ai/moai-adk/internal/homestate"
+)
 
 // factory_run_adopt.go — the launcher-side half of the leader-resume run
 // re-adoption (card t1707): when a RESUME-shaped leader start would mint a
@@ -9,6 +19,10 @@ import "io"
 // registration, and lane binding the run carries survives the leader process
 // change.
 
+// leaderResumeAdoptionBasis is the basis the adoption records in the run's
+// run.resumed event, so the audit trail names why the run id survived.
+const leaderResumeAdoptionBasis = "leader-resume-adoption"
+
 // leaderRunIDWasMinted reports whether the run id the leader entry published
 // was freshly minted — the condition under which resume re-adoption may
 // replace it. An id the operator supplied explicitly (a pasted
@@ -16,7 +30,13 @@ import "io"
 // is deliberate and is never overridden; only the NewRunID() fallback step of
 // leaderRunID mints.
 func leaderRunIDWasMinted(leaderLabel, priorEnvRunID string) bool {
-	return false
+	if priorEnvRunID != "" {
+		return false
+	}
+	if suffix, ok := factory.SplitLeaderLabel(leaderLabel); ok && suffix != "" && !allDigits(suffix) {
+		return false
+	}
+	return true
 }
 
 // adoptResumedLeaderRun re-adopts the prior run on a resume-shaped leader
@@ -34,6 +54,32 @@ func leaderRunIDWasMinted(leaderLabel, priorEnvRunID string) bool {
 // adopt "" with a nil error means "mint as before"; an error is a factory
 // database failure and propagates, matching recordFactoryRunStart's own
 // failure contract at the same call site.
-func adoptResumedLeaderRun(root string, shouldAdopt bool, warn io.Writer) (string, error) {
-	return "", nil
+func adoptResumedLeaderRun(root string, shouldAdopt bool, warn io.Writer) (adopted string, err error) {
+	if !shouldAdopt {
+		return "", nil
+	}
+	db, openErr := homestate.OpenFactory(root)
+	if openErr != nil {
+		return "", openErr
+	}
+	defer closeFactoryInto(&err, db, "factory state")
+	adopt, candidates, err := db.FindResumableRun(context.Background(), factorymsg.ReconcileOptionsFor(root))
+	if err != nil {
+		return "", err
+	}
+	switch {
+	case len(candidates) == 1:
+		if err := db.AdoptRun(context.Background(), adopt.RunID, os.Getpid(), homestate.CurrentProcessFingerprint(), leaderResumeAdoptionBasis); err != nil {
+			return "", err
+		}
+		_ = os.Setenv(config.EnvFactoryRunID, adopt.RunID)
+		return adopt.RunID, nil
+	case len(candidates) > 1:
+		for _, c := range candidates {
+			fmt.Fprintf(warn, "factory leader resume: run %s (owner %s) still holds live records — adopting nothing; to adopt one deliberately, relaunch with `moai cc -f --factory-run %s`\n", c.RunID, c.Classification, c.RunID)
+		}
+		return "", nil
+	default:
+		return "", nil
+	}
 }

@@ -346,6 +346,20 @@ func (f *FactoryDB) ReconcileActiveRuns(ctx context.Context, opts ReconcileOptio
 		if !retirable(o.Classification) {
 			continue
 		}
+		live, err := f.runHasLiveRecords(ctx, o.RunID)
+		if err != nil {
+			return Reconciliation{}, err
+		}
+		if live {
+			// A records-bearing run must not be retired out from under its
+			// work (card t1707): it stays active and surfaces through the
+			// multi-active ambiguity path, which names every candidate and
+			// the re-adoption command, instead of a silent retirement that
+			// orphans the records.
+			o.Status = "active"
+			result.Preserved = append(result.Preserved, o)
+			continue
+		}
 		if err := f.retireRun(ctx, o.RunID, o.Classification, o.Basis); err != nil {
 			return Reconciliation{}, err
 		}
