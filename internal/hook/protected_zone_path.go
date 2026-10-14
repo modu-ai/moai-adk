@@ -143,6 +143,7 @@ func zoneResolveWalk(p string, depth int) (string, bool) {
 	parts := pathSegments(strings.TrimPrefix(p, volume), runtime.GOOS == "windows")
 	resolved := filepath.ToSlash(volume) + "/"
 	skipped := 0
+	absolute := volume != "" || strings.HasPrefix(p, "/")
 	for i := 1; i < len(parts); i++ {
 		part := parts[i]
 		switch part {
@@ -150,6 +151,17 @@ func zoneResolveWalk(p string, depth int) (string, bool) {
 			// repeated or trailing separators, and the dot itself
 		case "..":
 			if skipped == 0 {
+				if absolute {
+					// POSIX root semantics (card t1712 repair round): ".." at
+					// the filesystem root stays at the root — the shell
+					// resolves /../r/alias as r/alias and deletes through it.
+					// The walk continues from the root instead of failing
+					// closed, matching the EvalSymlinks fast path and the
+					// lexical arm's Clean on the same spelling. A RELATIVE
+					// walk keeps the fail-closed answer: nothing vouches for
+					// a ".." above its base.
+					continue
+				}
 				// ".." over a prefix that never resolved: the path walks
 				// outside anything this function can vouch for
 				return "", false

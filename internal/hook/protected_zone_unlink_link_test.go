@@ -195,3 +195,46 @@ func TestResolveZoneLinkTargetFinalComponentForms(t *testing.T) {
 	}
 	t.Logf("swept=%d", swept)
 }
+
+// TestProtectedZoneShellUnlinkAbsoluteRootDotDot — the repair round: an
+// ABSOLUTE operand with a LEADING "/.." walks at the filesystem root (POSIX
+// root semantics: ".." at the root stays at the root), so /../<root>/alias IS
+// <root>/alias and the deletion lands inside the zone — the guard must deny.
+// The forced physical walk failed closed at that first ".." (skipped==0),
+// losing the parent resolution, and the lexical arm cannot carry the deny
+// either: its Clean collapses the leading "/.." into alias/secret.md, which
+// matches no zone entry. The old EvalSymlinks fast path normalized the same
+// spelling and denied. The trailing-slash row and the plain-absolute control
+// pin the shapes that already denied.
+func TestProtectedZoneShellUnlinkAbsoluteRootDotDot(t *testing.T) {
+	cells := []struct {
+		name    string
+		command func(root string) string
+	}{
+		{name: "dotdot_root_dirslink_child", command: func(root string) string {
+			return "rm /../" + root + "/zonelink/secret.md"
+		}},
+		{name: "dotdot_root_dirslink_interior_dotdot", command: func(root string) string {
+			return "rm /../" + root + "/sublink/../zone-file.md"
+		}},
+		{name: "dotdot_root_dirslink_trailing_slash_stays_deny", command: func(root string) string {
+			return "rm /../" + root + "/zonelink/"
+		}},
+		{name: "absolute_plain_stays_deny_control", command: func(root string) string {
+			return "rm " + root + "/zonelink/secret.md"
+		}},
+	}
+	if len(cells) == 0 {
+		t.Fatal("empty absolute-root-dotdot cell list — the sweep would assert nothing")
+	}
+	t.Logf("absolute root-dotdot sweep: %d cells", len(cells))
+	for _, tc := range cells {
+		tc := tc
+		t.Run(tc.name, func(t *testing.T) {
+			root := newUnlinkLinkRoot(t)
+			h := zoneTestHandler(t, root)
+			d, r := zoneCall(t, h, "Bash", harnessLearnerIdentity, map[string]any{"command": tc.command(root)})
+			wantZoneDeny(t, tc.name, d, r, harnessLearnerIdentity, "category", "probe_zone")
+		})
+	}
+}
