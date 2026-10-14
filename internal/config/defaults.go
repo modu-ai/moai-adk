@@ -45,6 +45,10 @@ const (
 	// measured cost before a warning fires. A hypothesis until measured on
 	// this repository (never a foreign figure); overrun warns, never blocks.
 	DefaultGraphFreshnessUpdateBudgetMS = 2000
+	// DefaultBackupPastVersionsKeep is the per-file budget of superseded backup
+	// versions the update cap keeps when state.yaml does not set one. The shipped
+	// state.yaml template declares the same value.
+	DefaultBackupPastVersionsKeep = 3
 	// DefaultSlotLeaseMaxDuration is the declared maximum duration a slot
 	// lease takes when the caller omits --max-duration. A chosen value, not a
 	// measured one (plan.md §B3, OQ-3); this is the one place it is defined.
@@ -1699,7 +1703,7 @@ func NewDefaultWorkflowConfig() WorkflowConfig {
 // literal in internal/cli/state.go and internal/worktree/state_guard.go is the SSOT.
 func NewDefaultStateConfig() StateConfig {
 	days := DefaultSessionRecordRetentionDays
-	return StateConfig{SessionRecordRetentionDays: &days}
+	return StateConfig{SessionRecordRetentionDays: &days, BackupPastVersionsKeep: DefaultBackupPastVersionsKeep}
 }
 
 // NewDefaultSessionConfig returns a SessionConfig with default values.
