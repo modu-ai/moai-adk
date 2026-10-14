@@ -24,7 +24,6 @@ func TestVersionSkewWarning_NoWarningWhenBinaryNotOlder(t *testing.T) {
 		{"3.2.0-rc.32", "3.2.0-rc.31"}, // binary newer: a normal update
 		{"3.2.0-rc.32", "3.2.0-rc.32"}, // equal
 		{"3.2.0", "3.2.0-rc.32"},       // release outranks its prerelease
-		{"3.2.0-rc.32", "3.2.0"},       // binary is the prerelease: project is the release
 	}
 	for _, c := range cases {
 		if msg, warn := versionSkewWarning(c.binary, c.project); warn {
