@@ -221,13 +221,28 @@ func TestAdoptResumedLeaderRunWarnsCodexLedCandidate(t *testing.T) {
 	}
 }
 
-// Card-review round 2 — the carrier scan uses the guard polarity, which
-// matches Claude's option model: `--debug --resume <id>` reads as a resume
-// carrier, not as --debug consuming --resume as its value.
-func TestResumeCarrierSeenGuardPolarity(t *testing.T) {
-	seen, _ := scanResumeArgs([]string{"--debug", "--resume", "sess-1"}, true)
-	if !seen {
-		t.Fatalf("guard polarity missed the resume carrier behind --debug; the launcher would mint a new run instead of adopting")
+// Card-review round 2 + codex_audit round 3 — the adoption adjudication
+// judges only EXPLICIT resume spellings: `--debug --resume <id>` carries one
+// (a flag-shaped token is its own option), while `-derror` — an 'r' inside a
+// short cluster's attached value — does not, and must never hand a
+// brand-new session an existing run.
+func TestStrictResumeCarrierSeen(t *testing.T) {
+	cases := []struct {
+		args []string
+		want bool
+	}{
+		{[]string{"--debug", "--resume", "sess-1"}, true},
+		{[]string{"-derror"}, false}, // codex_audit round 3: an 'r' inside a cluster value is not a resume
+		{[]string{"--resume=sess-1"}, true},
+		{[]string{"-rsess-1"}, true}, // the attached-value short form
+		{[]string{"-r"}, true},
+		{[]string{"--session", "sess-1", "--resume"}, true},    // a required-value option's value is never judged
+		{[]string{"--", "resume the work", "--", "-r"}, false}, // prompt text after the second separator
+	}
+	for _, tc := range cases {
+		if got := strictResumeCarrierSeen(tc.args); got != tc.want {
+			t.Fatalf("strictResumeCarrierSeen(%q) = %v, want %v", tc.args, got, tc.want)
+		}
 	}
 }
 

@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"io"
 	"os"
+	"strings"
 
 	"github.com/modu-ai/moai-adk/internal/config"
 	"github.com/modu-ai/moai-adk/internal/factory"
@@ -110,13 +111,57 @@ func adoptResumedLeaderRun(root string, shouldAdopt bool, warn io.Writer) (adopt
 	return adopt.RunID, nil
 }
 
+// strictResumeCarrierSeen reports whether the args carry an EXPLICIT resume
+// option — the auto-adoption adjudication, deliberately narrower than
+// scanResumeArgs's refusal-side detection (codex_audit t1707 round 3): the
+// guard's isShortClusterCarryingR fires on an `r` anywhere inside a short
+// cluster (`-derror`), which is the safe side for a REFUSAL but the wrong
+// side for adoption — a false fire would hand a brand-new session an
+// existing run's ownership and messaging. Adoption therefore judges only the
+// unambiguous spellings of the same vocabulary: the standalone
+// `--resume`/`-r` options, the equals form, and the attached `-r<value>`
+// cluster whose first option IS the resume flag. A missed adoption is
+// fail-safe since the live-records guard: the minted run simply joins the
+// prior one in the AMBIGUOUS_FACTORY refusal instead of taking it over.
+func strictResumeCarrierSeen(args []string) bool {
+	separators := 0
+	for i := 0; i < len(args); i++ {
+		arg := args[i]
+		if arg == argSeparator {
+			separators++
+			if separators >= 2 {
+				return false // prompt text: nothing after the second separator is an option
+			}
+			continue
+		}
+		if arg == resumeFlag || arg == resumeFlagShort {
+			return true
+		}
+		if _, isEquals := resumeEqualsValue(arg); isEquals {
+			return true
+		}
+		if strings.HasPrefix(arg, "-r") && arg != resumeFlagShort {
+			return true // the attached-value short form `-r<session-id>`
+		}
+		// A required-value option consumes the next token, so a value that
+		// merely looks like a resume option is never judged as one.
+		if segmentClass(arg, separators == 0) == claudeOptionRequiredValue {
+			if i+1 < len(args) && args[i+1] != argSeparator {
+				i++
+			}
+		}
+	}
+	return false
+}
+
 // leaderEntryRunAdoption is the leader branch's resume re-adoption entry
 // (card t1707), shared by the cc and glm leader branches — glm mirrors cc
 // exactly except for the backend constant. It computes the call site's
-// combined gate — a resume carrier at guard polarity AND a freshly minted id
-// AND no explicit --factory-run — and re-adopts the prior run when it holds.
+// combined gate — an EXPLICIT resume carrier (strictResumeCarrierSeen) AND a
+// freshly minted id AND no explicit --factory-run — and re-adopts the prior
+// run when it holds.
 func leaderEntryRunAdoption(root string, args []string, leaderLabel, priorRunID, explicitRun string, warn io.Writer) (string, error) {
-	resumeSeen, _ := scanResumeArgs(args, true)
+	resumeSeen := strictResumeCarrierSeen(args)
 	return adoptResumedLeaderRun(root, resumeSeen && explicitRun == "" && leaderRunIDWasMinted(leaderLabel, priorRunID), warn)
 }
 
