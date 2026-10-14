@@ -55,18 +55,50 @@ const reviewDiffTruncationNote = "\n\n[diff truncated: the change exceeds the re
 // genuinely clean. Callers MUST treat both as "nothing to review" — never as a
 // reason to ask for a verdict anyway.
 func collectReviewDiff(root, target string) (string, error) {
+	diff, _, err := collectReviewDiffFlagged(root, target)
+	return diff, err
+}
+
+// collectReviewDiffFlagged is collectReviewDiff with the truncation mark
+// (SPEC-MCP-NEUTRALITY-001 REQ-MN-024): a diff-carrying review must be able
+// to say its material was tail-cut, so the caller learns whether the raw
+// change exceeded the review size limit.
+func collectReviewDiffFlagged(root, target string) (string, bool, error) {
 	if strings.TrimSpace(root) == "" {
-		return "", fmt.Errorf("no project root to read the change from")
+		return "", false, fmt.Errorf("no project root to read the change from")
 	}
 	args, err := reviewDiffArgs(root, target)
 	if err != nil {
-		return "", err
+		return "", false, err
 	}
 	out, err := runReviewGit(root, args...)
 	if err != nil {
-		return "", fmt.Errorf("cannot read the change from %s: %w", root, err)
+		return "", false, fmt.Errorf("cannot read the change from %s: %w", root, err)
 	}
-	return truncateDiff(out), nil
+	cut, tr := truncateDiffFlagged(out)
+	return cut, tr, nil
+}
+
+// listReviewUntracked returns the untracked files of the tree at root, OUTSIDE
+// the runtime-managed prefixes — the files a diff cannot carry and a
+// diff-reviewing backend does not see (REQ-MN-024's excluded_untracked).
+func listReviewUntracked(root string) []string {
+	out, err := runReviewGit(root, "ls-files", "--others", "--exclude-standard")
+	if err != nil || strings.TrimSpace(out) == "" {
+		return nil
+	}
+	var kept []string
+	for _, line := range strings.Split(out, "\n") {
+		line = strings.TrimSpace(line)
+		if line == "" {
+			continue
+		}
+		if isRuntimeManagedPath(line) {
+			continue
+		}
+		kept = append(kept, line)
+	}
+	return kept
 }
 
 // reviewDiffArgs maps a review target onto the git arguments that produce it.
@@ -215,12 +247,20 @@ func runReviewGit(root string, args ...string) (string, error) {
 // truncateDiff bounds a diff to reviewDiffMaxBytes, cutting at a line boundary
 // so the tail of the material is not a half-written hunk header.
 func truncateDiff(diff string) string {
+	cut, _ := truncateDiffFlagged(diff)
+	return cut
+}
+
+// truncateDiffFlagged is truncateDiff with the truncation mark (REQ-MN-024):
+// the bool says whether the material was cut, so a result can carry the
+// truncated mark instead of a silent tail loss.
+func truncateDiffFlagged(diff string) (string, bool) {
 	if len(diff) <= reviewDiffMaxBytes {
-		return diff
+		return diff, false
 	}
 	cut := diff[:reviewDiffMaxBytes]
 	if nl := strings.LastIndexByte(cut, '\n'); nl > 0 {
 		cut = cut[:nl]
 	}
-	return cut + reviewDiffTruncationNote
+	return cut + reviewDiffTruncationNote, true
 }

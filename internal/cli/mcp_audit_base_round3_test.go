@@ -70,6 +70,14 @@ func TestCodexAudit_SendsTheCapturedMergeBaseNotABranchName(t *testing.T) {
 	}
 }
 
+// TestCodexAudit_AdversarialBaseBranchClaimsNoReviewBase is superseded by
+// REQ-MN-019 (SPEC-MCP-NEUTRALITY-001): an adversarial audit asked for
+// baseBranch now APPLIES the resolved target — the base SHA and the diff
+// instruction ride the turn/start prompt, and review_base names the base it
+// judged. TestCodexAudit_AdversarialBaseBranchAppliesTheTarget pins the new
+// contract; this test keeps the one shape the original pin guarded that stays
+// true: turn/start itself still carries no target OBJECT (the prompt is the
+// carrier).
 func TestCodexAudit_AdversarialBaseBranchClaimsNoReviewBase(t *testing.T) {
 	repo, _ := newIntegrationBaseRepo(t, "develop")
 	sess := withCodexSession(t, codexSessionScript("clean change, no findings"))
@@ -91,9 +99,10 @@ func TestCodexAudit_AdversarialBaseBranchClaimsNoReviewBase(t *testing.T) {
 		t.Fatalf("no turn/start was sent; sent=%v", sess.sent)
 	}
 	if _, has := turnStart["target"]; has {
-		t.Errorf("turn/start must carry no target; params=%v", turnStart)
+		t.Errorf("turn/start must carry no target object; params=%v", turnStart)
 	}
-	if base := reviewOutputField(res, "review_base"); base != "" {
-		t.Errorf("review_base = %q on an adversarial audit whose turn/start names no base; want it omitted", base)
+	// REQ-MN-019: the result names the base the prompt carried.
+	if base := reviewOutputField(res, "review_base"); base == "" {
+		t.Errorf("review_base is empty on an adversarial audit whose prompt carried a resolved base; want the base named (REQ-MN-019)")
 	}
 }

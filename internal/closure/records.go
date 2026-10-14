@@ -29,6 +29,13 @@ type SecondReviewBackend struct {
 	Backend string `json:"backend"`
 	Gate    string `json:"gate"`
 	Verdict string `json:"verdict"`
+	// EffectiveScope states what the backend's leg ACTUALLY judged
+	// (SPEC-MCP-NEUTRALITY-001 REQ-MN-019): "baseBranch (<base>)" when the leg
+	// carried the resolved base, "working-tree (target not applied)" when a
+	// baseBranch target was requested but the leg judged something else, and
+	// "working-tree" for an ordinary whole-tree review. Empty on records
+	// written before the field existed.
+	EffectiveScope string `json:"effective_scope,omitempty"`
 }
 
 // SecondReviewRecord is one line of the card evidence directory's

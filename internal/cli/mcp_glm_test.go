@@ -31,9 +31,11 @@ type stubGLMDoer struct {
 	err     error
 	gotBody string
 	gotURL  string
+	calls   int
 }
 
 func (s *stubGLMDoer) Do(req *http.Request) (*http.Response, error) {
+	s.calls++
 	if s.err != nil {
 		return nil, s.err
 	}

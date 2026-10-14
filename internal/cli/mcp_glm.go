@@ -295,6 +295,7 @@ func handleGLMAudit(ctx context.Context, req mcp.CallToolRequest) (*mcp.CallTool
 	// a base ref moving while z.ai answers cannot make the two disagree (t1426).
 	var base *reviewBase
 	var diff string
+	var truncated bool
 	var err error
 	if target == codexTargetBaseBranch {
 		var b reviewBase
@@ -303,12 +304,22 @@ func handleGLMAudit(ctx context.Context, req mcp.CallToolRequest) (*mcp.CallTool
 			diff, err = collectReviewDiffAt(root, b)
 		}
 	} else {
-		diff, err = collectReviewDiff(root, target)
+		diff, truncated, err = collectReviewDiffFlagged(root, target)
 	}
 	if err != nil {
 		return review(glmInconclusive("no reviewable change: " + err.Error())), nil
 	}
+	// REQ-MN-024: the result marks material the review could not see — a
+	// tail-cut diff (truncated) and the untracked files a diff cannot carry.
+	excluded := listReviewUntracked(root)
 	if strings.TrimSpace(diff) == "" {
+		if len(excluded) > 0 {
+			// Changes exist; a diff just cannot carry them. Do not read as a
+			// clean tree.
+			out := glmInconclusive("no reviewable change: the only changes at " + target + " are untracked files a diff cannot carry")
+			out.ExcludedUntracked = excluded
+			return review(out), nil
+		}
 		return review(glmInconclusive("no reviewable change: target " + target + " produced an empty diff")), nil
 	}
 
@@ -320,6 +331,10 @@ func handleGLMAudit(ctx context.Context, req mcp.CallToolRequest) (*mcp.CallTool
 	// REQ-MN-020: the auditor model rides the verdict's provenance, exactly as
 	// the claude_audit verdict records it.
 	out.Provenance = auditProvenanceFor("glm", req.GetString("model", ""), me.Model, me.Effort)
+	// REQ-MN-024: the material marks ride the verdict — the tail-cut flag and
+	// the untracked files the diff could not carry.
+	out.Truncated = truncated
+	out.ExcludedUntracked = excluded
 	return review(out), nil
 }
 

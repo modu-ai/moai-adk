@@ -101,6 +101,11 @@ type PerBackendVerdict struct {
 	// this backend's own verdict signals disagreed. It is forwarded rather than
 	// re-derived because converge sees only verdicts, never review bodies.
 	SynthesisNote string `json:"synthesis_note,omitempty"`
+	// ReviewBase carries forward ReviewOutput.ReviewBase (SPEC-MCP-NEUTRALITY-
+	// 001 REQ-MN-019): the base the backend leg actually judged, empty when the
+	// leg judged no declared base — the fact the second-review record's
+	// effective scope states instead of claiming baseBranch coverage.
+	ReviewBase string `json:"review_base,omitempty"`
 	// Source distinguishes a Claude verdict produced by the subscription-backed
 	// MCP subprocess from the backwards-compatible in-session anchor.
 	Source string `json:"source,omitempty"`
@@ -794,6 +799,7 @@ func runMultiAudit(ctx context.Context, claudeVerdict ReviewOutput, target, focu
 					SynthesisNote: p.out.SynthesisNote,
 					Source:        source,
 					Provenance:    p.out.Provenance,
+					ReviewBase:    p.out.ReviewBase,
 				})
 			}
 		}

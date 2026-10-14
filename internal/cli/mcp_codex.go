@@ -348,6 +348,15 @@ type ReviewOutput struct {
 	// verdict a backend produced, and on a could-not-run whose process never
 	// started (nothing was written). Additive + omitempty.
 	Stderr string `json:"stderr,omitempty"`
+
+	// Truncated marks a diff-carrying review whose material exceeded the
+	// review size limit (REQ-MN-024): the verdict judged a TAIL-CUT change,
+	// and the reader must be able to see that. Additive + omitempty.
+	Truncated bool `json:"truncated,omitempty"`
+
+	// ExcludedUntracked names the untracked files a diff cannot carry and the
+	// review therefore did not see (REQ-MN-024). Additive + omitempty.
+	ExcludedUntracked []string `json:"excluded_untracked,omitempty"`
 }
 
 // AuditProvenance is backend-supplied evidence about how a review was made.
@@ -583,6 +592,10 @@ func (realCodexSessionRunner) start(ctx context.Context, binaryPath string, args
 	// could-not-run diagnostic (REQ-MN-021) instead of being lost.
 	stderrBuf := &bytes.Buffer{}
 	cmd.Stderr = stderrBuf
+	// REQ-MN-024: the child runs on the SCRUBBED environment — the session's
+	// identity keys and the lane's launch keys never reach the reviewer
+	// process (the same scrub the codex exec role path applies).
+	cmd.Env = codexChildEnv()
 	if err := cmd.Start(); err != nil {
 		return nil, fmt.Errorf("codex start: %w", err)
 	}
@@ -869,7 +882,10 @@ func openCodexSessionResolved(ctx context.Context, binaryPath string, params map
 	// at the reviewed tree (params["cwd"]). An uncontainable spawn is
 	// refused — the containment failure must not degrade into an uncontained
 	// child silently.
-	argv := []string{codexAppServerSubcmd}
+	// REQ-MN-024: the session also runs under a READ-ONLY sandbox policy — a
+	// reviewer never needs to write, and the config override is the app-server
+	// surface's spelling of the `-s read-only` the codex exec role path uses.
+	argv := []string{codexAppServerSubcmd, "-c", "sandbox_mode=read-only"}
 	if root, ok := params["cwd"].(string); ok && root != "" {
 		containment, err := codexGateContainmentArgs(ctx, binaryPath, root)
 		if err != nil {
@@ -2083,6 +2099,16 @@ func codexAdversarialReviewPrompt(focus string) string {
 	return prompt
 }
 
+// codexAdversarialBaseBranchPrompt is the adversarial prompt for a declared
+// baseBranch target (SPEC-MCP-NEUTRALITY-001 REQ-MN-019): the resolved base
+// SHA and the diff instruction are IN the prompt, so the review judges the
+// change against that base instead of silently reviewing something else.
+func codexAdversarialBaseBranchPrompt(mergeBase, focus string) string {
+	return "The change under review is the diff `git diff " + mergeBase + "..HEAD` — " +
+		"review exactly that diff, nothing else. " +
+		codexAdversarialReviewPrompt(focus)
+}
+
 // ─── codex_audit handler (AC-MCP-007) ───
 
 // handleCodexAudit is the thin-wrapper handler for the `codex_audit` MCP tool.
@@ -2170,7 +2196,25 @@ func handleCodexAudit(ctx context.Context, req mcp.CallToolRequest) (*mcp.CallTo
 	}
 	if mode == codexModeAdversarial {
 		method = codexMethodTurnStart
-		params["prompt"] = codexAdversarialReviewPrompt(focus)
+		// REQ-MN-019: an adversarial audit asked for baseBranch APPLIES the
+		// resolved target — the base SHA and the diff instruction ride the
+		// turn/start prompt, and review_base names what was judged. A base
+		// that cannot be resolved is not silently downgraded to a
+		// working-tree review: the result is inconclusive stating the target
+		// was not applied.
+		if target == codexTargetBaseBranch {
+			b, resolveErr := resolveReviewBase(root)
+			if resolveErr != nil {
+				out := applyGateUnmet(inconclusiveReview("target not applied: the base for "+codexTargetBaseBranch+" could not be resolved: "+resolveErr.Error()), root)
+				out.BuildCommit, out.BuildLag = buildCommit, buildLag
+				out.AuditReceipt, out.StateNotice = recordAuditReceipt(auditreceipt.ToolCodexAudit, rootArg, out.Verdict, out.GateUnmet)
+				return codexReviewToolResult(out), nil
+			}
+			base = &b
+			params["prompt"] = codexAdversarialBaseBranchPrompt(b.MergeBase, focus)
+		} else {
+			params["prompt"] = codexAdversarialReviewPrompt(focus)
+		}
 		if focus != "" {
 			params["focus"] = focus
 		}

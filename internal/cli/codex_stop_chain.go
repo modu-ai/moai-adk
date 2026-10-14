@@ -583,7 +583,10 @@ func (c *codexStopChain) syncGateMember(ctx context.Context) stopMemberOutcome {
 			Reason: fmt.Sprintf("sync-phase quality gate: the tree state could not be read (%v). Run `%s`, then end the turn again.", err, codexwiring.SyncGateReceiptCommand)}
 	}
 	state, checks := syncGateReceiptState(key, langs)
-	chk := verify.CheckReceipt(verify.LoadReceipt(c.root, state), state, time.Now(), 0)
+	// REQ-MN-025: the receipts are read from the SAME root their producers
+	// wrote them under — the git toplevel of the session tree — so a session
+	// started in a subdirectory does not read a false "receipt absent".
+	chk := verify.CheckReceipt(verify.LoadReceipt(codexReviewStateRoot(c.root), state), state, time.Now(), 0)
 	if !chk.Run {
 		o := c.unmeasured(ctx, 2, stopCapGateSync, key, codexwiring.SyncGateReceiptCommand, chk.Reason)
 		o.ReceiptRead = true
@@ -657,7 +660,10 @@ func (c *codexStopChain) codexReviewMember(ctx context.Context) stopMemberOutcom
 		return stopMemberOutcome{Decision: codexadapter.DecisionDeny, Class: reasonUnmeasured,
 			Reason: fmt.Sprintf("codex review gate: the tree state could not be read (%v). Run `%s`, then end the turn again.", err, codexwiring.CodexReviewReceiptCommand)}
 	}
-	chk := verify.CheckReceipt(verify.LoadReceipt(c.root, state), state, time.Now(), 0)
+	// REQ-MN-025: the receipts are read from the SAME root their producers
+	// wrote them under — the git toplevel of the session tree — so a session
+	// started in a subdirectory does not read a false "receipt absent".
+	chk := verify.CheckReceipt(verify.LoadReceipt(codexReviewStateRoot(c.root), state), state, time.Now(), 0)
 	if !chk.Run {
 		// Step 7: codex installed, receipt missing or stale → continue. The cap
 		// counter keys on the scope's binding ("<head>:<digest>") — for card

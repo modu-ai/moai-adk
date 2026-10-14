@@ -708,6 +708,15 @@ func reviewExclusionRoot(dir string) string {
 	return dir
 }
 
+// codexReviewStateRoot is the ONE root the receipt producer and the Stop
+// chain's receipt reader share (SPEC-MCP-NEUTRALITY-001 REQ-MN-025): the git
+// toplevel of the session tree, falling back to the tree itself when git
+// cannot resolve one. A session started in a subdirectory reads the receipt
+// the producer wrote for the same state instead of a false "receipt absent".
+func codexReviewStateRoot(dir string) string {
+	return reviewExclusionRoot(dir)
+}
+
 // runtimeConfigOnlyFindings reports whether EVERY finding of a review targets
 // only the runtime-managed configuration surfaces, and returns the distinct
 // targets when so (REQ-CGSC-008). A review with no findings at all is NOT

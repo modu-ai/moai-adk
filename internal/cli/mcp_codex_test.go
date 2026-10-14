@@ -72,13 +72,15 @@ func withCodexLookPath(t *testing.T, fn func(string) (string, error)) {
 // fakeCodexSession is the session-spawning double: start returns a fakeConn that
 // replays the canned NDJSON lines in order and records every sent request line.
 type fakeCodexSession struct {
-	lines    []string // canned NDJSON lines recv yields, in order
-	startErr error    // if non-nil, start returns this error
-	sent     []string // recorded sent request lines (across the single session)
-	stderr   string   // backend stderr the fake process would have written
+	lines     []string // canned NDJSON lines recv yields, in order
+	startErr  error    // if non-nil, start returns this error
+	sent      []string // recorded sent request lines (across the single session)
+	stderr    string   // backend stderr the fake process would have written
+	startArgs []string // the argv the session start received (REQ-MN-024)
 }
 
-func (f *fakeCodexSession) start(context.Context, string, []string) (codexConn, error) {
+func (f *fakeCodexSession) start(_ context.Context, _ string, args []string) (codexConn, error) {
+	f.startArgs = append([]string(nil), args...)
 	if f.startErr != nil {
 		return nil, f.startErr
 	}

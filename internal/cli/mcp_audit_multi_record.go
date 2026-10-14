@@ -16,6 +16,7 @@ import (
 	"os"
 	"path/filepath"
 	"regexp"
+	"strings"
 	"time"
 
 	"github.com/modu-ai/moai-adk/internal/closure"
@@ -29,6 +30,21 @@ import (
 // trust-boundary input (the MCP caller supplies it) that is joined into
 // filesystem paths below.
 var secondReviewCardRe = regexp.MustCompile(contract.CardPattern)
+
+// effectiveScopeFor states what a backend leg ACTUALLY judged
+// (SPEC-MCP-NEUTRALITY-001 REQ-MN-019): a baseBranch target the leg carried
+// names the base it judged; a baseBranch target whose leg reports no review
+// base was NOT applied — the record says so instead of claiming baseBranch
+// coverage; anything else is an ordinary whole-tree review.
+func effectiveScopeFor(target, reviewBase string) string {
+	if target != codexTargetBaseBranch {
+		return "working-tree"
+	}
+	if strings.TrimSpace(reviewBase) != "" {
+		return "baseBranch (" + reviewBase + ")"
+	}
+	return "working-tree (target not applied)"
+}
 
 // appendSecondReviewRecord builds and appends the record (design.md §A.1).
 // target is the review target the caller REQUESTED, recorded verbatim —
@@ -108,7 +124,10 @@ func appendSecondReviewRecord(cfg MultiAuditConfig, result ConvergenceResult, ta
 			verdict = "inconclusive"
 		}
 		rec.Backends = append(rec.Backends, closure.SecondReviewBackend{
-			Backend: v.Backend, Gate: v.Gate, Verdict: verdict,
+			Backend:        v.Backend,
+			Gate:           v.Gate,
+			Verdict:        verdict,
+			EffectiveScope: effectiveScopeFor(target, v.ReviewBase),
 		})
 	}
 	rec.ParticipantCount = result.ParticipantCount
