@@ -213,16 +213,19 @@ func TestProtectedZoneShellUnlinkAbsoluteRootDotDot(t *testing.T) {
 		command func(root string) string
 	}{
 		{name: "dotdot_root_dirslink_child", command: func(root string) string {
-			return "rm /../" + root + "/zonelink/secret.md"
+			return "rm " + zoneAbsOperand(root, "/zonelink/secret.md")
 		}},
 		{name: "dotdot_root_dirslink_interior_dotdot", command: func(root string) string {
-			return "rm /../" + root + "/sublink/../zone-file.md"
+			return "rm " + zoneAbsOperand(root, "/sublink/../zone-file.md")
 		}},
 		{name: "dotdot_root_dirslink_trailing_slash_stays_deny", command: func(root string) string {
-			return "rm /../" + root + "/zonelink/"
+			return "rm " + zoneAbsOperand(root, "/zonelink/")
 		}},
 		{name: "absolute_plain_stays_deny_control", command: func(root string) string {
-			return "rm " + root + "/zonelink/secret.md"
+			// the plain control carries no "/.." — the same QUOTING applies
+			// (a windows-origin backslash path must not reach the bash
+			// parser unquoted), the volume stays untouched
+			return `rm "` + root + `/zonelink/secret.md"`
 		}},
 	}
 	if len(cells) == 0 {
@@ -237,6 +240,81 @@ func TestProtectedZoneShellUnlinkAbsoluteRootDotDot(t *testing.T) {
 			d, r := zoneCall(t, h, "Bash", harnessLearnerIdentity, map[string]any{"command": tc.command(root)})
 			wantZoneDeny(t, tc.name, d, r, harnessLearnerIdentity, "category", "probe_zone")
 		})
+	}
+}
+
+// zoneAbsOperand composes the QUOTED rooted ".." operand for a shell-command
+// fixture (repair round 7 P2): the path rides zoneRootedDotDotPath (volume
+// split, round 6) and the double quotes keep a windows-origin path's
+// backslashes out of the bash parser's escape handling.
+func zoneAbsOperand(root, final string) string {
+	return `"` + zoneRootedDotDotPath(root, final, false) + `"`
+}
+
+// TestZoneAbsOperandQuotedAndVolumeFree — repair round 7 P2: the absolute
+// shell-command fixture composes through the round-6 helper (volume split
+// BEFORE the ".." prefix) and QUOTES the operand — on a Windows host the raw
+// composition embeds the drive letter mid-path ("\..\C:\...") and the
+// unquoted backslashes would be eaten by the bash parser. The volume is a
+// property of the root string, so the property runs on every OS.
+func TestZoneAbsOperandQuotedAndVolumeFree(t *testing.T) {
+	const syntheticRoot = `C:\Users\goos\T\root001`
+	got := zoneAbsOperand(syntheticRoot, "/zonelink/secret.md")
+	// the operand stays a BASH string: POSIX "/.." separators with the
+	// volume-split remainder's own backslashes preserved, QUOTED so the
+	// bash parser cannot eat them
+	if want := `"/../Users\goos\T\root001/zonelink/secret.md"`; got != want {
+		t.Errorf("zoneAbsOperand(%q, ...) = %q, want %q — the operand must ride the volume-split composition and be double-quoted", syntheticRoot, got, want)
+	}
+}
+
+// TestZoneCanonicalDirEntryName — repair round 7 P1: on a case-insensitive
+// NTFS the directory entry's REAL name is the one the zone manifest pins
+// (`docs/Ä.txt`), while the operand may spell any case (`ä.txt`); the
+// link-own resolver preserves the RAW final name, so the exact-entry zone
+// form missed the alias. The matcher folds UNICODE case (strings.EqualFold —
+// FoldZoneText folds ASCII only) over the parent's real listing and
+// substitutes the entry's real spelling; no listing hit keeps the raw name.
+// Host-portable: the matcher is pure over a names slice, and the ReadDir-
+// backed cell harvests names exactly the way the resolver does.
+func TestZoneCanonicalDirEntryName(t *testing.T) {
+	cells := []struct {
+		names []string
+		final string
+		want  string
+	}{
+		{names: []string{"Ä.txt", "zz.md"}, final: "ä.txt", want: "Ä.txt"},
+		{names: []string{"Ä.txt", "zz.md"}, final: "ZZ.MD", want: "zz.md"},
+		{names: []string{"Ä.txt", "zz.md"}, final: "Ä.txt", want: "Ä.txt"},
+		{names: []string{"Ä.txt", "zz.md"}, final: "missing.txt", want: "missing.txt"},
+		{names: nil, final: "ä.txt", want: "ä.txt"},
+		{names: []string{"report~1.txt"}, final: "REPORT~1.TXT", want: "report~1.txt"},
+	}
+	if len(cells) == 0 {
+		t.Fatal("empty canonical-name cell list — the sweep would assert nothing")
+	}
+	t.Logf("canonical final-name sweep: %d cells", len(cells))
+	for _, tc := range cells {
+		if got := zoneCanonicalDirEntryName(tc.names, tc.final); got != tc.want {
+			t.Errorf("zoneCanonicalDirEntryName(%q, %q) = %q, want %q", tc.names, tc.final, got, tc.want)
+		}
+	}
+	// a real listing harvested the way the resolver does — os.ReadDir on the
+	// resolved parent — feeding the same matcher
+	dir := t.TempDir()
+	if err := os.WriteFile(filepath.Join(dir, "Ä.txt"), []byte("x"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	entries, err := os.ReadDir(dir)
+	if err != nil {
+		t.Fatal(err)
+	}
+	names := make([]string, 0, len(entries))
+	for _, e := range entries {
+		names = append(names, e.Name())
+	}
+	if got := zoneCanonicalDirEntryName(names, "ä.txt"); got != "Ä.txt" {
+		t.Errorf("ReadDir-backed match: zoneCanonicalDirEntryName(%q, %q) = %q, want Ä.txt", names, "ä.txt", got)
 	}
 }
 

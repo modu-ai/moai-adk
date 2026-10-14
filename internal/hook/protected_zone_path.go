@@ -395,20 +395,54 @@ func resolveZoneLinkTarget(root, raw string) []zoneForm {
 }
 
 // zoneResolveParent resolves everything before the FINAL component of p and
-// rejoins that component unresolved (card t1712): the parent prefix goes
-// through the physical walk — never the EvalSymlinks fast path, whose ".."
-// handling is lexical — and the final name lands on the resolved parent as
-// itself, the link's own path. A "." or ".." final segment is not a name the
-// shell unlinks as itself; the caller routes those spellings to the
-// target-following judgment and this function refuses them.
+// rejoins that component as the link's own path (card t1712): the parent
+// prefix goes through the physical walk — never the EvalSymlinks fast path,
+// whose ".." handling is lexical — and the final name lands on the resolved
+// parent. On WINDOWS the final NAME is canonicalized first from the parent's
+// real directory listing (card t1712 repair round 7): a case-insensitive
+// NTFS answers an operand spelled `ä.txt` with the entry `Ä.txt` the zone
+// manifest pins, and FoldZoneText folds ASCII only, so the raw name missed
+// the exact-entry zone form. The match is Unicode case-insensitive
+// (strings.EqualFold) and NAME-only — the entry is never opened or followed;
+// a listing failure keeps the raw name. This also absorbs the 8.3 short-name
+// case for entries that exist, superseding the classifier's "~" guard for
+// real listings (which stays as a harmless extra gate). A "." or ".." final
+// segment is not a name the shell unlinks as itself; the caller routes those
+// spellings to the target-following judgment and this function refuses them.
 func zoneResolveParent(p string) (string, bool) {
 	dir, final := path.Split(filepath.ToSlash(p))
 	if dir == "" || final == "" || final == "." || final == ".." {
 		return "", false
 	}
-	resolved, ok := zoneResolveWalk(filepath.FromSlash(dir), 0, runtime.GOOS == "windows")
+	windows := runtime.GOOS == "windows"
+	resolved, ok := zoneResolveWalk(filepath.FromSlash(dir), 0, windows)
 	if !ok {
 		return "", false
 	}
+	if windows {
+		if entries, err := os.ReadDir(resolved); err == nil {
+			names := make([]string, 0, len(entries))
+			for _, e := range entries {
+				names = append(names, e.Name())
+			}
+			final = zoneCanonicalDirEntryName(names, final)
+		}
+	}
 	return filepath.Join(resolved, filepath.FromSlash(final)), true
+}
+
+// zoneCanonicalDirEntryName returns the real spelling of final among the
+// parent directory's entry names — Unicode case-insensitive match
+// (strings.EqualFold; FoldZoneText folds ASCII only, so a manifest entry
+// like docs/Ä.txt would miss an ä.txt operand on a case-insensitive NTFS) —
+// keeping final itself when no entry matches. The caller harvests names via
+// os.ReadDir on the resolved parent and NEVER opens or follows the entry:
+// this canonicalizes the NAME only.
+func zoneCanonicalDirEntryName(names []string, final string) string {
+	for _, name := range names {
+		if strings.EqualFold(name, final) {
+			return name
+		}
+	}
+	return final
 }
