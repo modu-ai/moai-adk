@@ -333,6 +333,8 @@ Repair matrix (every row's command run at HEAD c292a7a8d, this tree):
 | P2-5 audit_cache per-op write classification | HELD (leader disposition) | — | the catalogue WriteCapable reclassification is a design change, not a mechanical fix; follow-up card |
 | P2-6 stderr buffer synchronization | HELD (leader disposition) | — | deep mcp_codex change (mutex-guarded buffer or post-close read); risk/benefit judged by the leader with the real-usage evidence |
 
+**Follow-up card ids (leader, 2026-10-14T21:4xZ)**: F6 + DHR-020 dead-letter half → **t1747**; the two pre-existing flaky classes (symlink 3 + deadline pins 3, F11) → **t1746**. The P2-4/5/6 held findings ride t1747's scope per the sync-audit-r4 §Debt record. TestNoNewEnvLiteralsInDiff is main-origin (t1617 190f7db5d) — deliberately not this card's.
+
 Verification batch at HEAD c292a7a8d (this tree, this run):
 
 - E2 builds: `go build ./...` → exit 0.
