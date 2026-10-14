@@ -2012,7 +2012,7 @@ func handleCodexAudit(ctx context.Context, req mcp.CallToolRequest) (*mcp.CallTo
 	// inconclusive verdict is still a verdict that must name its binary.
 	buildCommit, buildLag := auditBuildIdentity(ctx, root)
 
-	notifyMCPProgress(ctx, token, 0, "codex 감사 시작 — 모드: "+mode+", target: "+target)
+	notifyMCPProgress(ctx, token, 0, "codex audit start - mode: "+mode+", target: "+target)
 	binaryPath, err := codexLookPath(codexBinaryName)
 	if err != nil {
 		// The gate annotation rides EVERY fail-open exit, including this early
@@ -2023,7 +2023,7 @@ func handleCodexAudit(ctx context.Context, req mcp.CallToolRequest) (*mcp.CallTo
 		out.AuditReceipt, out.StateNotice = recordAuditReceipt(auditreceipt.ToolCodexAudit, rootArg, out.Verdict, out.GateUnmet)
 		return codexReviewToolResult(out), nil
 	}
-	notifyMCPProgress(ctx, token, 0.1, "codex 바이너리 확인 — 리뷰 요청 준비 중...")
+	notifyMCPProgress(ctx, token, 0.1, "codex binary check - preparing the review request...")
 
 	method := codexMethodReviewStart
 	params := map[string]any{
@@ -2054,7 +2054,7 @@ func handleCodexAudit(ctx context.Context, req mcp.CallToolRequest) (*mcp.CallTo
 		}
 	}
 
-	notifyMCPProgress(ctx, token, 0.2, "codex에 리뷰 요청 전송 중... (수분 소요 가능)")
+	notifyMCPProgress(ctx, token, 0.2, "sending the review request to codex... (may take minutes)")
 	out, _ := codexReviewRPC(ctx, binaryPath, method, params) // fail-open inside
 	if base != nil {
 		out.ReviewBase = base.String()
@@ -2062,7 +2062,7 @@ func handleCodexAudit(ctx context.Context, req mcp.CallToolRequest) (*mcp.CallTo
 	out = applyGateUnmet(out, root)
 	out.BuildCommit, out.BuildLag = buildCommit, buildLag
 	out.AuditReceipt, out.StateNotice = recordAuditReceipt(auditreceipt.ToolCodexAudit, rootArg, out.Verdict, out.GateUnmet)
-	notifyMCPProgress(ctx, token, 0.9, "codex 응답 수신 — 결과 조립 중...")
+	notifyMCPProgress(ctx, token, 0.9, "codex response received - assembling the result...")
 	return codexReviewToolResult(out), nil
 }
 

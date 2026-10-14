@@ -146,11 +146,15 @@ type CodexJobCancelOutput struct {
 // broke" (AC-CX2-012). A record file that is present but malformed is reported
 // the same way rather than decoded into an empty record.
 func handleCodexJobStatus(_ context.Context, req mcp.CallToolRequest) (*mcp.CallToolResult, error) {
+	root, source, rootErr := resolveToolProjectRootWithSource(req)
+	if rootErr != nil {
+		return toolErr(codexJobStatusToolName, rootErr), nil
+	}
 	rec, errResult := loadCodexJobFor(codexJobStatusToolName, req)
 	if errResult != nil {
 		return errResult, nil
 	}
-	return toolJSON(codexJobStatusToolName, rec), nil
+	return toolJSONWithRoot(codexJobStatusToolName, rec, root, source), nil
 }
 
 // ─── codex_job_result (REQ-CX2-010) ───
@@ -159,6 +163,10 @@ func handleCodexJobStatus(_ context.Context, req mcp.CallToolRequest) (*mcp.Call
 // current status of a non-terminal one. It never waits for the turn: a running
 // job is reported as running and the caller decides whether to ask again.
 func handleCodexJobResult(_ context.Context, req mcp.CallToolRequest) (*mcp.CallToolResult, error) {
+	root, source, rootErr := resolveToolProjectRootWithSource(req)
+	if rootErr != nil {
+		return toolErr(codexJobResultToolName, rootErr), nil
+	}
 	rec, errResult := loadCodexJobFor(codexJobResultToolName, req)
 	if errResult != nil {
 		return errResult, nil
@@ -175,7 +183,7 @@ func handleCodexJobResult(_ context.Context, req mcp.CallToolRequest) (*mcp.Call
 	} else {
 		out.Note = codexJobResultPendingNote
 	}
-	return toolJSON(codexJobResultToolName, out), nil
+	return toolJSONWithRoot(codexJobResultToolName, out, root, source), nil
 }
 
 // ─── codex_job_cancel (REQ-CX2-011, REQ-CX2-012) ───
@@ -189,6 +197,10 @@ func handleCodexJobResult(_ context.Context, req mcp.CallToolRequest) (*mcp.Call
 // session map is the record of what this server lifetime actually started, so a
 // job absent from it is refused rather than signalled.
 func handleCodexJobCancel(_ context.Context, req mcp.CallToolRequest) (*mcp.CallToolResult, error) {
+	root, source, rootErr := resolveRequiredToolProjectRoot(req)
+	if rootErr != nil {
+		return toolErr(codexJobCancelToolName, rootErr), nil
+	}
 	rec, errResult := loadCodexJobFor(codexJobCancelToolName, req)
 	if errResult != nil {
 		return errResult, nil
@@ -200,7 +212,7 @@ func handleCodexJobCancel(_ context.Context, req mcp.CallToolRequest) (*mcp.Call
 	// (acceptance.md §B).
 	if codexJobTerminal(rec.Status) {
 		out.Note = codexJobCancelTerminalNote
-		return toolJSON(codexJobCancelToolName, out), nil
+		return toolJSONWithRoot(codexJobCancelToolName, out, root, source), nil
 	}
 
 	// Ownership (REQ-CX2-012). An entry exists only for a job this server
@@ -243,7 +255,7 @@ func handleCodexJobCancel(_ context.Context, req mcp.CallToolRequest) (*mcp.Call
 	// Grace window: give the interrupted turn a bounded chance to end on its own.
 	if codexAwaitJobExit(rec.ID, codexJobCancelGrace) {
 		out.Note = appendCodexNote(out.Note, codexJobCancelExitedNote)
-		return toolJSON(codexJobCancelToolName, out), nil
+		return toolJSONWithRoot(codexJobCancelToolName, out, root, source), nil
 	}
 
 	// Termination targets the pid of the connection THIS server's live session
@@ -252,7 +264,7 @@ func handleCodexJobCancel(_ context.Context, req mcp.CallToolRequest) (*mcp.Call
 	pid := session.pid()
 	if pid <= 0 {
 		out.Note = appendCodexNote(out.Note, codexJobCancelNoProcessNote)
-		return toolJSON(codexJobCancelToolName, out), nil
+		return toolJSONWithRoot(codexJobCancelToolName, out, root, source), nil
 	}
 	out.PID = pid
 	if err := codexTerminateProcess(pid); err != nil {
@@ -260,7 +272,7 @@ func handleCodexJobCancel(_ context.Context, req mcp.CallToolRequest) (*mcp.Call
 	} else {
 		out.ProcessTerminated = true
 	}
-	return toolJSON(codexJobCancelToolName, out), nil
+	return toolJSONWithRoot(codexJobCancelToolName, out, root, source), nil
 }
 
 // ─── shared helpers ───

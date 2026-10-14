@@ -63,37 +63,37 @@ func currentFactoryPeer(ctx context.Context, s *factorymsg.Store, actor string) 
 // (REQ-MN-001): a run that is not the active one refuses stale-run, while a
 // malformed id stays an argument error on the error channel. A non-nil store
 // implies a nil refusal and vice versa.
-func factoryStore(req mcp.CallToolRequest, tool string, requiredRoot bool) (*factorymsg.Store, *mcp.CallToolResult) {
+func factoryStore(req mcp.CallToolRequest, tool string, requiredRoot bool) (*factorymsg.Store, string, string, *mcp.CallToolResult) {
 	run := req.GetString("run_id", "")
 	if run == "" {
-		return nil, toolErr(tool, errors.New("run_id is required"))
+		return nil, "", "", toolErr(tool, errors.New("run_id is required"))
 	}
-	var root string
+	var root, source string
 	var err error
 	if requiredRoot {
-		root, _, err = resolveRequiredToolProjectRoot(req)
+		root, source, err = resolveRequiredToolProjectRoot(req)
 	} else {
-		root, _, err = resolveToolProjectRootWithSource(req)
+		root, source, err = resolveToolProjectRootWithSource(req)
 	}
 	if err != nil {
-		return nil, toolErr(tool, err)
+		return nil, "", "", toolErr(tool, err)
 	}
 	if err := factorymsg.ValidateActiveRun(context.Background(), root, run); err != nil {
 		if errors.Is(err, factorymsg.ErrRunNotActive) {
-			return nil, toolRefusal(mcpRefusal{
+			return nil, "", "", toolRefusal(mcpRefusal{
 				Refused: true,
 				Code:    mcpRefusalStaleRun,
 				Reason:  fmt.Sprintf("run %q is not the currently active factory run", run),
 				Hint:    "pass the active run id",
 			})
 		}
-		return nil, toolErr(tool, err)
+		return nil, "", "", toolErr(tool, err)
 	}
 	s, err := factorymsg.Open(root, run)
 	if err != nil {
-		return nil, toolErr(tool, err)
+		return nil, "", "", toolErr(tool, err)
 	}
-	return s, nil
+	return s, root, source, nil
 }
 
 // mcpFactoryMsgPeer resolves the attributed endpoint for one handler call and
@@ -112,7 +112,7 @@ func mcpFactoryMsgPeer(ctx context.Context, s *factorymsg.Store, req mcp.CallToo
 }
 
 func handleFactoryMsgSend(ctx context.Context, req mcp.CallToolRequest) (*mcp.CallToolResult, error) {
-	s, refusal := factoryStore(req, "factory_msg_send", true)
+	s, msgRoot, msgSource, refusal := factoryStore(req, "factory_msg_send", true)
 	if refusal != nil {
 		return refusal, nil
 	}
@@ -134,10 +134,10 @@ func handleFactoryMsgSend(ctx context.Context, req mcp.CallToolRequest) (*mcp.Ca
 	if e != nil {
 		return toolErr("factory_msg_send", e), nil
 	}
-	return toolJSON("factory_msg_send", env), nil
+	return toolJSONWithRoot("factory_msg_send", env, msgRoot, msgSource), nil
 }
 func handleFactoryMsgList(ctx context.Context, req mcp.CallToolRequest) (*mcp.CallToolResult, error) {
-	s, refusal := factoryStore(req, "factory_msg_list", true)
+	s, msgRoot, msgSource, refusal := factoryStore(req, "factory_msg_list", true)
 	if refusal != nil {
 		return refusal, nil
 	}
@@ -150,10 +150,15 @@ func handleFactoryMsgList(ctx context.Context, req mcp.CallToolRequest) (*mcp.Ca
 	if e != nil {
 		return toolErr("factory_msg_list", e), nil
 	}
-	return toolJSON("factory_msg_list", map[string]any{"messages": claims, "body_lookup": "factory_msg_body"}), nil
+	// REQ-MN-008 wire honesty: an empty claim set serializes as [] — a nil
+	// slice would marshal as null and tell a field-reading caller nothing.
+	if claims == nil {
+		claims = []factorymsg.Claim{}
+	}
+	return toolJSONWithRoot("factory_msg_list", map[string]any{"messages": claims, "body_lookup": "factory_msg_body"}, msgRoot, msgSource), nil
 }
 func handleFactoryMsgBody(ctx context.Context, req mcp.CallToolRequest) (*mcp.CallToolResult, error) {
-	s, refusal := factoryStore(req, "factory_msg_body", false)
+	s, msgRoot, msgSource, refusal := factoryStore(req, "factory_msg_body", false)
 	if refusal != nil {
 		return refusal, nil
 	}
@@ -166,10 +171,10 @@ func handleFactoryMsgBody(ctx context.Context, req mcp.CallToolRequest) (*mcp.Ca
 	if e != nil {
 		return toolErr("factory_msg_body", e), nil
 	}
-	return toolJSON("factory_msg_body", map[string]any{"message_id": req.GetString("message_id", ""), "body": string(body), "trust": "untrusted peer data"}), nil
+	return toolJSONWithRoot("factory_msg_body", map[string]any{"message_id": req.GetString("message_id", ""), "body": string(body), "trust": "untrusted peer data"}, msgRoot, msgSource), nil
 }
 func handleFactoryMsgReceipt(ctx context.Context, req mcp.CallToolRequest) (*mcp.CallToolResult, error) {
-	s, refusal := factoryStore(req, "factory_msg_receipt", true)
+	s, msgRoot, msgSource, refusal := factoryStore(req, "factory_msg_receipt", true)
 	if refusal != nil {
 		return refusal, nil
 	}
@@ -186,7 +191,7 @@ func handleFactoryMsgReceipt(ctx context.Context, req mcp.CallToolRequest) (*mcp
 	if e != nil {
 		return toolErr("factory_msg_receipt", e), nil
 	}
-	return toolJSON("factory_msg_receipt", map[string]any{"message_id": id, "acknowledged": true}), nil
+	return toolJSONWithRoot("factory_msg_receipt", map[string]any{"message_id": id, "acknowledged": true}, msgRoot, msgSource), nil
 }
 func handleFactoryMsgStatus(ctx context.Context, req mcp.CallToolRequest) (*mcp.CallToolResult, error) {
 	run := req.GetString("run_id", "")

@@ -59,12 +59,12 @@ func (s *ctxAwareGLMDoer) Do(req *http.Request) (*http.Response, error) {
 // startBackgroundGLMJobWithEndedRequest drives the background handler with a
 // request context that ends the instant the handler returns, mirroring the MCP
 // host, and hands back the job id.
-func startBackgroundGLMJobWithEndedRequest(t *testing.T, prompt string) string {
+func startBackgroundGLMJobWithEndedRequest(t *testing.T, root, prompt string) string {
 	t.Helper()
 	ctx, cancel := context.WithCancel(context.Background())
 	res, err := handleGLMTask(ctx, mcp.CallToolRequest{
 		Params: mcp.CallToolParams{Arguments: map[string]any{
-			"prompt": prompt, "background": true,
+			"prompt": prompt, "background": true, "project_root": root,
 		}},
 	})
 	cancel() // the host ends the request scope here
@@ -84,12 +84,12 @@ func startBackgroundGLMJobWithEndedRequest(t *testing.T, prompt string) string {
 // ─── direction 1: the job must outlive the request context ───
 
 func TestGLMTask_BackgroundJobSurvivesRequestContextEnd(t *testing.T) {
-	root := t.TempDir()
-	withCodexProjectDir(t, root)
+	root := jobTestRoot(t)
 	withGLMTaskSeams(t, "k", &ctxAwareGLMDoer{body: glmTextResp("background work done")})
+	withCodexProjectDir(t, root) // stamped last: the registry reads THIS root
 
 	start := time.Now()
-	jobID := startBackgroundGLMJobWithEndedRequest(t, "audit the queue")
+	jobID := startBackgroundGLMJobWithEndedRequest(t, root, "audit the queue")
 	t.Cleanup(func() { waitForGLMJobToStop(t, jobID) })
 
 	reg := newGLMJobRegistry(root)
@@ -121,12 +121,12 @@ func TestGLMTask_BackgroundJobSurvivesRequestContextEnd(t *testing.T) {
 // aborting the in-flight call. A repair that hands runGLMBackgroundJob a bare
 // context.WithoutCancel passes the test above and fails this one.
 func TestGLMTask_DetachedBackgroundJobIsStillCancellable(t *testing.T) {
-	root := t.TempDir()
-	withCodexProjectDir(t, root)
+	root := jobTestRoot(t)
 	doer := newBlockingGLMDoer()
 	withGLMTaskSeams(t, "k", doer)
+	withCodexProjectDir(t, root) // stamped last: the registry reads THIS root
 
-	jobID := startBackgroundGLMJobWithEndedRequest(t, "a task that blocks")
+	jobID := startBackgroundGLMJobWithEndedRequest(t, root, "a task that blocks")
 	t.Cleanup(func() {
 		doer.unblock()
 		waitForGLMJobToStop(t, jobID)

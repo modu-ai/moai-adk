@@ -412,9 +412,15 @@ func TestFactoryMsgSendOptionalIDsDefault(t *testing.T) {
 		if result.IsError {
 			t.Fatalf("factory_msg_send(%v) = %+v, want delivery", arguments, result.Content)
 		}
-		env, ok := result.StructuredContent.(factorymsg.Envelope)
-		if !ok {
-			t.Fatalf("structured content = %T, want factorymsg.Envelope", result.StructuredContent)
+		// The M2 _root provenance normalizes the payload to a map; decode the
+		// envelope back out of it.
+		raw, mErr := json.Marshal(result.StructuredContent)
+		if mErr != nil {
+			t.Fatalf("marshal structured content: %v", mErr)
+		}
+		var env factorymsg.Envelope
+		if jErr := json.Unmarshal(raw, &env); jErr != nil {
+			t.Fatalf("decode envelope from %s: %v", raw, jErr)
 		}
 		return env
 	}

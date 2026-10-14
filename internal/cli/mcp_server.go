@@ -17,6 +17,7 @@ package cli
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"io"
@@ -175,6 +176,10 @@ func newMoaiMCPServer() *server.MCPServer {
 		moaiMCPServerName,
 		version.GetFullVersion(),
 		server.WithToolCapabilities(true),
+		// REQ-MN-008 wire honesty: the long-running tools emit
+		// notifications/message progress logs, so the server declares the
+		// logging capability that emission implies.
+		server.WithLogging(),
 		server.WithInstructions(moaiMCPServerInstructions()),
 	)
 	registerMoaiMCPTools(s, resolveProjectDir())
@@ -201,6 +206,17 @@ func moaiMCPServerInstructions() string {
 // (design.md §3). Each tool declares its JSON Schema (REQ-MCP-004) and registers
 // a thin-wrapper handler that calls the verified internal/ integration point
 // (REQ-MCP-005). Read-only tools carry the read-only hint annotation (§G.2).
+// mcpCatalogueGate is the fail-closed check every registration runs
+// (SPEC-MCP-NEUTRALITY-001 REQ-MN-006): the enablement map is catalogue-seeded,
+// so a registered name absent from the catalogue gets no enablement key and
+// silently never serves — that silence is how todo_claim died (plan B4). A
+// catalogue-absent registration fails the construction loudly instead.
+func mcpCatalogueGate(name string) {
+	if !mcpcat.HasTool(name) {
+		panic("moai mcp: tool " + name + " is registered but absent from the internal/mcp catalogue; add the ToolDef — a catalogue-absent registration never serves")
+	}
+}
+
 func registerMoaiMCPTools(s *server.MCPServer, projectDir string) {
 	// SPEC-MCP-CONSOLE-001 M1 (REQ-C-2): per-tool enablement consulted at
 	// registration time. A disabled tool is NOT registered and does NOT appear
@@ -210,8 +226,20 @@ func registerMoaiMCPTools(s *server.MCPServer, projectDir string) {
 	// add gates one tool registration on the per-tool enablement map. The name
 	// argument MUST match both the mcp.NewTool name and the catalog
 	// (internal/mcp MoaiMCPTools) — the guard test
-	// TestMoaiMCPServer_RegistrationMatchesCatalog enforces set equality.
+	// TestMoaiMCPServer_RegistrationMatchesCatalog enforces set equality, and
+	// mcpCatalogueGate fails the construction on a catalogue-absent name.
+	//
+	// The gate also applies the two surface-wide schema policies of
+	// SPEC-MCP-NEUTRALITY-001 REQ-MN-007: every served input schema declares
+	// its additional-properties policy (strict), and a read-only tool never
+	// carries the SDK's default destructive hint.
 	add := func(name string, tool mcp.Tool, handler server.ToolHandlerFunc) {
+		mcpCatalogueGate(name)
+		tool.InputSchema.AdditionalProperties = false
+		if tool.Annotations.ReadOnlyHint != nil && *tool.Annotations.ReadOnlyHint {
+			noDestructive := false
+			tool.Annotations.DestructiveHint = &noDestructive
+		}
 		if enabled[name] {
 			s.AddTool(tool, handler)
 		}
@@ -222,6 +250,7 @@ func registerMoaiMCPTools(s *server.MCPServer, projectDir string) {
 		"session_list",
 		mcp.WithDescription("List active moai sessions (optional spec_id filter). Wraps session.QueryActiveWork."),
 		mcp.WithString("spec_id", mcp.Description("Optional SPEC-ID filter; empty lists all active sessions.")),
+		projectRootOption(),
 		mcp.WithReadOnlyHintAnnotation(true),
 	), handleSessionList)
 
@@ -229,7 +258,11 @@ func registerMoaiMCPTools(s *server.MCPServer, projectDir string) {
 	add("goal_status", mcp.NewTool(
 		"goal_status",
 		mcp.WithDescription("Read the armed-goal state for a session. Wraps goal.LoadGoal."),
-		mcp.WithString("session_id", mcp.Required(), mcp.Description("Session id whose goal state is read.")),
+		// session_id is OPTIONAL here by enforcement (goal.LoadGoal reads it
+		// optionally), so the schema no longer declares it required — the
+		// required-consistency half of REQ-MN-007.
+		mcp.WithString("session_id", mcp.Description("Session id whose goal state is read.")),
+		projectRootOption(),
 		mcp.WithReadOnlyHintAnnotation(true),
 	), handleGoalStatus)
 
@@ -241,6 +274,7 @@ func registerMoaiMCPTools(s *server.MCPServer, projectDir string) {
 		mcp.WithString("session_id", mcp.Description("Session id to arm under; defaults to the resolved current session.")),
 		mcp.WithInteger("max_turns", mcp.Description("Turn ceiling (0 = infinite, requires max_duration > 0). Default 30 when omitted.")),
 		mcp.WithInteger("max_duration", mcp.Description("Wall-clock bound in seconds since arm time (required when max_turns = 0).")),
+		requiredProjectRootOption(),
 	), handleGoalArm)
 
 	// --- spec_progress → spec.ListDocs (listdocs.go:36) — the SPEC scanner ---
@@ -299,6 +333,7 @@ func registerMoaiMCPTools(s *server.MCPServer, projectDir string) {
 		mcp.WithString("hash", mcp.Description("Plan-artifact hash (for op=lookup, op=store).")),
 		mcp.WithString("auditor_version", mcp.Description("Auditor identifier (for op=store).")),
 		mcp.WithString("report_path", mcp.Description("Audit report path (for op=store).")),
+		projectRootOption(),
 		// SPEC-CODEX-WIRING-001 (REQ-CW-011 / spec §A.4): audit_cache is a
 		// catalog-READ tool; declaring read-only keeps its effective annotation
 		// equal to the catalog classification so the capability-based `writes`
@@ -387,6 +422,7 @@ func registerMoaiMCPTools(s *server.MCPServer, projectDir string) {
 		mcp.WithBoolean("resume_last", mcp.Description("Continue a recorded codex thread instead of opening a new one. With work_key, only records carrying that work_key are considered. Without a selector, the call resumes the thread only when exactly one thread is recorded; when more than one thread is recorded it is refused (error_code resume_ambiguous) with candidates to pass back as thread_id or work_key. When no thread is recorded, a new one is opened and the result says so.")),
 		mcp.WithString("thread_id", mcp.Description("Resume exactly this codex thread. Limited to threads recorded in this project's codex job registry; any other id is refused (error_code thread_not_recorded) without starting codex. Takes precedence over resume_last and work_key.")),
 		mcp.WithString("work_key", mcp.Description("Caller-chosen work-item key (for example a card id), up to 128 bytes. Recorded on background jobs, and scopes resume_last to records carrying this work_key, so parallel work items do not resume each other's threads.")),
+		mcp.WithString("model", mcp.Description("Optional model override; omitted means codex's own configured default. The handler reads this argument whether or not codex honors it.")),
 		mcp.WithReadOnlyHintAnnotation(false),
 	), handleCodexTask)
 
@@ -395,6 +431,7 @@ func registerMoaiMCPTools(s *server.MCPServer, projectDir string) {
 		"codex_job_status",
 		mcp.WithDescription("Read a codex job's record (status, timestamps, thread id, turn id, pid, mode, request summary). An unknown or unreadable job is a structured result, not a failed call."),
 		mcp.WithString(codexJobIDArg, mcp.Required(), mcp.Description("The job id returned by a background codex_task.")),
+		projectRootOption(),
 		mcp.WithReadOnlyHintAnnotation(true),
 	), handleCodexJobStatus)
 
@@ -404,6 +441,7 @@ func registerMoaiMCPTools(s *server.MCPServer, projectDir string) {
 		"codex_job_result",
 		mcp.WithDescription("Read a codex job's output. A job in a terminal status returns its recorded output; a job still running returns its current status without blocking the caller."),
 		mcp.WithString(codexJobIDArg, mcp.Required(), mcp.Description("The job id returned by a background codex_task.")),
+		projectRootOption(),
 		mcp.WithReadOnlyHintAnnotation(true),
 	), handleCodexJobResult)
 
@@ -415,6 +453,7 @@ func registerMoaiMCPTools(s *server.MCPServer, projectDir string) {
 		"codex_job_cancel",
 		mcp.WithDescription("Stop a running codex job: sends turn/interrupt on that job's own session and, if the turn does not end within a bounded grace window, terminates the codex process this server spawned for it. A job this server lifetime did not start is refused rather than signalled; an already-terminal job returns its status and sends nothing."),
 		mcp.WithString(codexJobIDArg, mcp.Required(), mcp.Description("The job id returned by a background codex_task.")),
+		requiredProjectRootOption(),
 		mcp.WithReadOnlyHintAnnotation(false),
 	), handleCodexJobCancel)
 
@@ -446,6 +485,7 @@ func registerMoaiMCPTools(s *server.MCPServer, projectDir string) {
 	add("glm_task", mcp.NewTool(
 		"glm_task",
 		mcp.WithDescription("Delegate a task (arbitrary prompt) to GLM (z.ai). Returns the completed text output when background is false, or a job id (observable via glm_job_status / glm_job_result, stoppable via glm_job_cancel) when background is true. Background jobs live inside this server process and do not survive its exit. GLM is OPTIONAL; a missing key or an unavailable z.ai yields a structured fail-open result, never a tool error."),
+		requiredProjectRootOption(),
 		mcp.WithString("prompt", mcp.Required(), mcp.Description("The task to give GLM.")),
 		mcp.WithBoolean("background", mcp.Description("Run the task in the background and return a job id immediately. Background jobs live inside this server process and do not survive its exit.")),
 		mcp.WithString("model", mcp.Description("Optional GLM model override; omitted ⇒ the backend default GLM model (glm_audit reads the workflow.audit.glm pin first).")),
@@ -459,6 +499,7 @@ func registerMoaiMCPTools(s *server.MCPServer, projectDir string) {
 		"glm_job_status",
 		mcp.WithDescription("Read a GLM job's record (status, timestamps, model, request summary). An unknown or unreadable job is a structured result, not a failed call."),
 		mcp.WithString(glmJobIDArg, mcp.Required(), mcp.Description("The job id returned by a background glm_task.")),
+		projectRootOption(),
 		mcp.WithReadOnlyHintAnnotation(true),
 	), handleGLMJobStatus)
 
@@ -468,6 +509,7 @@ func registerMoaiMCPTools(s *server.MCPServer, projectDir string) {
 		"glm_job_result",
 		mcp.WithDescription("Read a GLM job's output. A job in a terminal status returns its recorded output; a job still running returns its current status without blocking the caller."),
 		mcp.WithString(glmJobIDArg, mcp.Required(), mcp.Description("The job id returned by a background glm_task.")),
+		projectRootOption(),
 		mcp.WithReadOnlyHintAnnotation(true),
 	), handleGLMJobResult)
 
@@ -478,6 +520,7 @@ func registerMoaiMCPTools(s *server.MCPServer, projectDir string) {
 		"glm_job_cancel",
 		mcp.WithDescription("Stop a running GLM job: records the cancellation and revokes the context its in-flight z.ai request runs under, then waits a bounded grace window for the job to end. A job this server lifetime did not start is refused rather than cancelled; an already-terminal job returns its status and sends nothing."),
 		mcp.WithString(glmJobIDArg, mcp.Required(), mcp.Description("The job id returned by a background glm_task.")),
+		requiredProjectRootOption(),
 		mcp.WithReadOnlyHintAnnotation(false),
 	), handleGLMJobCancel)
 
@@ -580,6 +623,7 @@ func registerMoaiMCPTools(s *server.MCPServer, projectDir string) {
 		mcp.WithString("kind", mcp.Required(), mcp.Enum(sessionmsg.KindClaude, sessionmsg.KindCodex), mcp.Description("Session kind: 'claude' or 'codex'.")),
 		mcp.WithString("name", mcp.Required(), mcp.Description("Short stable name identifying this session to peers (same kind+name re-registers idempotently).")),
 		mcp.WithString("description", mcp.Description("Optional human-readable description stored on the agent record.")),
+		requiredProjectRootOption(),
 		mcp.WithReadOnlyHintAnnotation(false),
 	), handleSessionMsgRegister)
 
@@ -587,6 +631,7 @@ func registerMoaiMCPTools(s *server.MCPServer, projectDir string) {
 	add("session_msg_list", mcp.NewTool(
 		"session_msg_list",
 		mcp.WithDescription("List registered message-broker agents (agentId, name, kind, online flag, pending count). "+sessionMsgDisciplineShortForm),
+		projectRootOption(),
 		mcp.WithReadOnlyHintAnnotation(true),
 	), handleSessionMsgList)
 
@@ -601,6 +646,7 @@ func registerMoaiMCPTools(s *server.MCPServer, projectDir string) {
 		mcp.WithObject("data", mcp.Description("Optional structured JSON payload appended as a data part.")),
 		mcp.WithString("context_id", mcp.Description("Optional A2A contextId carried on the message envelope.")),
 		mcp.WithString("task_id", mcp.Description("Optional A2A taskId carried on the message envelope.")),
+		requiredProjectRootOption(),
 		mcp.WithReadOnlyHintAnnotation(false),
 	), handleSessionMsgSend)
 
@@ -612,6 +658,7 @@ func registerMoaiMCPTools(s *server.MCPServer, projectDir string) {
 		mcp.WithDescription("Claim pending messages from this agent's mailbox (at-least-once; unacked claims return after the claim TTL) and optionally ack processed message ids. "+sessionMsgDisciplineShortForm),
 		mcp.WithString("agent_id", mcp.Required(), mcp.Description("Polling agent's agentId (from session_msg_register).")),
 		mcp.WithArray("ack_ids", mcp.Items(map[string]any{"type": "string"}), mcp.Description("Optional messageIds to acknowledge (delete from the claimed set).")),
+		requiredProjectRootOption(),
 		mcp.WithReadOnlyHintAnnotation(false),
 	), handleSessionMsgPoll)
 
@@ -620,15 +667,15 @@ func registerMoaiMCPTools(s *server.MCPServer, projectDir string) {
 	// actor (SPEC-MCP-NEUTRALITY-001 REQ-MN-003): the caller's session id, with
 	// the spawn-time attribution as the default only.
 	factoryMsgActorOpt := mcp.WithString("actor", mcp.Description("Optional: the session id this call is attributed to. Default: the server's spawn-time attribution (authoritative session id, then the owner process)."))
-	sendOpts := []mcp.ToolOption{mcp.WithDescription("Send from this MCP server's attributed endpoint to the current endpoint of a stable logical lane."), mcp.WithString("run_id", mcp.Required()), mcp.WithString("to_slot", mcp.Required()), mcp.WithString("kind", mcp.Required(), mcp.Enum(factorymsg.KindDispatchNotice, factorymsg.KindStatusRequest, factorymsg.KindStatusReport, factorymsg.KindBlocker, factorymsg.KindReceipt)), mcp.WithString("idempotency_key", mcp.Required()), mcp.WithString("body", mcp.Required()), mcp.WithString("task_ref", mcp.Description("Optional task reference; omitted or empty defaults to idempotency_key.")), mcp.WithString("correlation_id", mcp.Description("Optional correlation id; omitted or empty defaults to idempotency_key.")), mcp.WithInteger("expected_task_revision"), mcp.WithInteger("current_task_revision"), mcp.WithInteger("ttl_seconds"), factoryMsgActorOpt, requiredProjectRootOption(), mcp.WithReadOnlyHintAnnotation(false)}
+	sendOpts := []mcp.ToolOption{mcp.WithDescription("Send from this MCP server's attributed endpoint to the current endpoint of a stable logical lane."), mcp.WithString("run_id", mcp.Required(), mcp.Description("The active factory run the broker store lives in.")), mcp.WithString("to_slot", mcp.Required(), mcp.Description("The destination lane slot (e.g. leader, lane-3).")), mcp.WithString("kind", mcp.Required(), mcp.Description("The message kind: dispatch_notice, status_request, status_report, blocker, or receipt."), mcp.Enum(factorymsg.KindDispatchNotice, factorymsg.KindStatusRequest, factorymsg.KindStatusReport, factorymsg.KindBlocker, factorymsg.KindReceipt)), mcp.WithString("idempotency_key", mcp.Required(), mcp.Description("The sender-chosen key that makes a retry idempotent.")), mcp.WithString("body", mcp.Required(), mcp.Description("The message body (bounded by the broker's text ceiling).")), mcp.WithString("task_ref", mcp.Description("Optional task reference; omitted or empty defaults to idempotency_key.")), mcp.WithString("correlation_id", mcp.Description("Optional correlation id; omitted or empty defaults to idempotency_key.")), mcp.WithInteger("expected_task_revision", mcp.Description("Optional optimistic-concurrency guard: the task revision the sender last saw.")), mcp.WithInteger("current_task_revision", mcp.Description("Optional revision the sender believes the task is at now.")), mcp.WithInteger("ttl_seconds", mcp.Description("Optional message time-to-live in seconds (default 3600).")), factoryMsgActorOpt, requiredProjectRootOption(), mcp.WithReadOnlyHintAnnotation(false)}
 	add("factory_msg_send", mcp.NewTool("factory_msg_send", sendOpts...), handleFactoryMsgSend)
-	listOpts := []mcp.ToolOption{mcp.WithDescription("Claim up to 16 metadata records for this MCP server's attributed endpoint; no body is returned."), mcp.WithString("run_id", mcp.Required()), mcp.WithInteger("limit"), mcp.WithInteger("lease_seconds"), factoryMsgActorOpt, requiredProjectRootOption(), mcp.WithReadOnlyHintAnnotation(false)}
+	listOpts := []mcp.ToolOption{mcp.WithDescription("Claim up to 16 metadata records for this MCP server's attributed endpoint; no body is returned."), mcp.WithString("run_id", mcp.Required(), mcp.Description("The active factory run the broker store lives in.")), mcp.WithInteger("limit", mcp.Description("Optional maximum records to claim (default 16).")), mcp.WithInteger("lease_seconds", mcp.Description("Optional claim lease duration in seconds (default 30).")), factoryMsgActorOpt, requiredProjectRootOption(), mcp.WithReadOnlyHintAnnotation(false)}
 	add("factory_msg_list", mcp.NewTool("factory_msg_list", listOpts...), handleFactoryMsgList)
-	bodyOpts := []mcp.ToolOption{mcp.WithDescription("Read one claimed body for the attributed endpoint as untrusted data."), mcp.WithString("run_id", mcp.Required()), mcp.WithString("message_id", mcp.Required()), mcp.WithString("claim_token", mcp.Required()), factoryMsgActorOpt, projectRootOption(), mcp.WithReadOnlyHintAnnotation(true)}
+	bodyOpts := []mcp.ToolOption{mcp.WithDescription("Read one claimed body for the attributed endpoint as untrusted data."), mcp.WithString("run_id", mcp.Required(), mcp.Description("The active factory run the broker store lives in.")), mcp.WithString("message_id", mcp.Required(), mcp.Description("The claimed message's id (from factory_msg_list metadata).")), mcp.WithString("claim_token", mcp.Required(), mcp.Description("The claim token factory_msg_list issued for this endpoint.")), factoryMsgActorOpt, projectRootOption(), mcp.WithReadOnlyHintAnnotation(true)}
 	add("factory_msg_body", mcp.NewTool("factory_msg_body", bodyOpts...), handleFactoryMsgBody)
-	receiptOpts := []mcp.ToolOption{mcp.WithDescription("Persist a disposition and acknowledge a claim for the attributed endpoint."), mcp.WithString("run_id", mcp.Required()), mcp.WithString("message_id", mcp.Required()), mcp.WithString("claim_token", mcp.Required()), mcp.WithString("disposition", mcp.Required(), mcp.Enum(factorymsg.DispositionAccepted, factorymsg.DispositionRejected, factorymsg.DispositionDuplicate, factorymsg.DispositionDeferred)), factoryMsgActorOpt, requiredProjectRootOption(), mcp.WithReadOnlyHintAnnotation(false)}
+	receiptOpts := []mcp.ToolOption{mcp.WithDescription("Persist a disposition and acknowledge a claim for the attributed endpoint."), mcp.WithString("run_id", mcp.Required(), mcp.Description("The active factory run the broker store lives in.")), mcp.WithString("message_id", mcp.Required(), mcp.Description("The claimed message's id.")), mcp.WithString("claim_token", mcp.Required(), mcp.Description("The claim token factory_msg_list issued for this endpoint.")), mcp.WithString("disposition", mcp.Required(), mcp.Description("How the claim was handled."), mcp.Enum(factorymsg.DispositionAccepted, factorymsg.DispositionRejected, factorymsg.DispositionDuplicate, factorymsg.DispositionDeferred)), factoryMsgActorOpt, requiredProjectRootOption(), mcp.WithReadOnlyHintAnnotation(false)}
 	add("factory_msg_receipt", mcp.NewTool("factory_msg_receipt", receiptOpts...), handleFactoryMsgReceipt)
-	add("factory_msg_status", mcp.NewTool("factory_msg_status", mcp.WithDescription("Read payload-free broker counts and operational lanes for the active run. Endpoint identity is probed; task activity without evidence remains unknown. Does not claim messages."), mcp.WithString("run_id", mcp.Required()), projectRootOption(), mcp.WithReadOnlyHintAnnotation(true)), handleFactoryMsgStatus)
+	add("factory_msg_status", mcp.NewTool("factory_msg_status", mcp.WithDescription("Read payload-free broker counts and operational lanes for the active run. Endpoint identity is probed; task activity without evidence remains unknown. Does not claim messages."), mcp.WithString("run_id", mcp.Required(), mcp.Description("The active factory run the broker store lives in.")), projectRootOption(), mcp.WithReadOnlyHintAnnotation(true)), handleFactoryMsgStatus)
 	// --- M5 code-query tools (SPEC-V3R6-GRAPH-FRESHNESS-001 REQ-GF-017..019).
 	// Signature-level answers from the code-derived layer; every response
 	// carries tree+commit provenance. Read-only hints per the audit-family
@@ -758,15 +805,19 @@ func readMCPToolEnablement(projectDir string) map[string]bool {
 // handleSessionList wraps session.QueryActiveWork (registry.go:254).
 func handleSessionList(_ context.Context, req mcp.CallToolRequest) (*mcp.CallToolResult, error) {
 	specID := req.GetString("spec_id", "")
+	root, source, err := resolveToolProjectRootWithSource(req)
+	if err != nil {
+		return toolErr("session_list", err), nil
+	}
 	entries, err := session.QueryActiveWork(specID)
 	if err != nil {
 		return toolErr("session_list", err), nil
 	}
-	return toolJSON("session_list", map[string]any{
+	return toolJSONWithRoot("session_list", map[string]any{
 		"spec_id":  specID,
 		"count":    len(entries),
 		"sessions": entries,
-	}), nil
+	}, root, source), nil
 }
 
 // handleGoalStatus wraps goal.LoadGoal (state.go:57).
@@ -775,14 +826,18 @@ func handleGoalStatus(_ context.Context, req mcp.CallToolRequest) (*mcp.CallTool
 	if sessionID == "" {
 		sessionID = statusSessionID("") // inherit the CLI's read-path resolver
 	}
-	g, err := goal.LoadGoal(resolveProjectDir(), sessionID)
+	root, source, err := resolveToolProjectRootWithSource(req)
+	if err != nil {
+		return toolErr("goal_status", err), nil
+	}
+	g, err := goal.LoadGoal(root, sessionID)
 	if err != nil {
 		return toolErr("goal_status", err), nil
 	}
 	if g == nil {
-		return toolJSON("goal_status", map[string]any{"session_id": sessionID, "armed": false}), nil
+		return toolJSONWithRoot("goal_status", map[string]any{"session_id": sessionID, "armed": false}, root, source), nil
 	}
-	return toolJSON("goal_status", map[string]any{"session_id": sessionID, "armed": true, "goal": g}), nil
+	return toolJSONWithRoot("goal_status", map[string]any{"session_id": sessionID, "armed": true, "goal": g}, root, source), nil
 }
 
 // handleGoalArm wraps the goal.NewGoal (schema.go:115) + goal.SaveGoal
@@ -792,9 +847,11 @@ func handleGoalStatus(_ context.Context, req mcp.CallToolRequest) (*mcp.CallTool
 // requires max_duration > 0) WITHOUT re-implementing internal/goal logic. The
 // CLI-only stderr warnings / flag UX are presentation, not core.
 func handleGoalArm(ctx context.Context, req mcp.CallToolRequest) (*mcp.CallToolResult, error) {
-	root := resolveProjectDir()
-	if root == "" {
-		return toolErr("goal_arm", fmt.Errorf("cannot resolve project root (set CLAUDE_PROJECT_DIR or run from the project directory)")), nil
+	// REQ-MN-004: a mutating tool names its tree — the caller's project_root
+	// is required, confined, and anchors the goal state the arm writes.
+	root, source, err := resolveRequiredToolProjectRoot(req)
+	if err != nil {
+		return toolErr("goal_arm", err), nil
 	}
 	conditionText := req.GetString("condition", "")
 	if conditionText == "" {
@@ -833,12 +890,12 @@ func handleGoalArm(ctx context.Context, req mcp.CallToolRequest) (*mcp.CallToolR
 	if err := goal.SaveGoal(root, g); err != nil {
 		return toolErr("goal_arm", err), nil
 	}
-	return toolJSON("goal_arm", map[string]any{
+	return toolJSONWithRoot("goal_arm", map[string]any{
 		"action":           "arm",
 		"session_id":       sessionID,
 		"condition_type":   string(cond.Type),
 		"ceiling_maxturns": g.Ceiling.MaxTurns,
-	}), nil
+	}, root, source), nil
 }
 
 // handleSpecProgress wraps spec.ListDocs (listdocs.go:36) — the SPEC scanner.
@@ -1018,6 +1075,12 @@ var moaiAuditCache = runtime.NewInMemoryCache()
 // process-shared moaiAuditCache. The store op lets a caller record a PASS
 // verdict that a later lookup (same moai mcp-server process) returns as a hit.
 func handleAuditCache(_ context.Context, req mcp.CallToolRequest) (*mcp.CallToolResult, error) {
+	root, source, rootErr := resolveToolProjectRootWithSource(req)
+	if rootErr != nil {
+		return toolErr("audit_cache", rootErr), nil
+	}
+	_ = root
+	_ = source
 	op := req.GetString("op", "")
 	switch op {
 	case "compute_hash":
@@ -1029,12 +1092,12 @@ func handleAuditCache(_ context.Context, req mcp.CallToolRequest) (*mcp.CallTool
 		if err != nil {
 			return toolErr("audit_cache", err), nil
 		}
-		return toolJSON("audit_cache", map[string]any{"op": op, "hash": hash}), nil
+		return toolJSONWithRoot("audit_cache", map[string]any{"op": op, "hash": hash}, root, source), nil
 	case "lookup":
 		specID := req.GetString("spec_id", "")
 		hash := req.GetString("hash", "")
 		entry, ok := moaiAuditCache.Lookup(specID, hash, time.Now())
-		return toolJSON("audit_cache", map[string]any{"op": op, "hit": ok, "entry": entry}), nil
+		return toolJSONWithRoot("audit_cache", map[string]any{"op": op, "hit": ok, "entry": entry}, root, source), nil
 	case "store":
 		// Record a PASS verdict so a later lookup (same process) returns a hit.
 		// Only PASS verdicts are cached (audit_cache.go Store guards on VerdictPass).
@@ -1049,7 +1112,7 @@ func handleAuditCache(_ context.Context, req mcp.CallToolRequest) (*mcp.CallTool
 			AuditorVersion: req.GetString("auditor_version", ""),
 			ReportPath:     req.GetString("report_path", ""),
 		})
-		return toolJSON("audit_cache", map[string]any{"op": op, "stored": true, "spec_id": specID, "hash": hash}), nil
+		return toolJSONWithRoot("audit_cache", map[string]any{"op": op, "stored": true, "spec_id": specID, "hash": hash}, root, source), nil
 	default:
 		return toolErr("audit_cache", fmt.Errorf("unknown op %q (want compute_hash|lookup|store)", op)), nil
 	}
@@ -1105,9 +1168,18 @@ func provisionMoaiMCPServerEntryAt(configPath string) error {
 
 // ─── result-shaping helpers (structured results, never AskUserQuestion) ───────
 
-// toolJSON shapes a successful structured result with a text fallback.
+// toolJSON shapes a successful structured result whose TEXT block carries the
+// same JSON as the structured content (SPEC-MCP-NEUTRALITY-001 REQ-MN-008
+// wire honesty): the old "<tool>: ok" fallback told a text-reading caller
+// nothing while the payload sat in the other block.
 func toolJSON(tool string, data any) *mcp.CallToolResult {
-	return mcp.NewToolResultStructured(data, tool+": ok")
+	body, err := json.Marshal(data)
+	if err != nil {
+		// The payload is not marshalable — the text block degrades to the
+		// old fallback rather than lying with a JSON-looking string.
+		return mcp.NewToolResultStructured(data, tool+": ok")
+	}
+	return mcp.NewToolResultStructured(data, string(body))
 }
 
 // toolErr shapes a domain error as a structured IsError result (NOT a Go error),

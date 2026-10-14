@@ -76,6 +76,19 @@ func integrationLockRoot() string {
 	return resolveProjectDir()
 }
 
+// integrationLockRootFor resolves the integration lock root for a NAMED tree
+// through the SAME git-common-dir interpretation the CLI verb applies
+// (SPEC-MCP-NEUTRALITY-001 REQ-MN-004, design §D8): the caller's project_root
+// becomes the lock root via git's own top-level spelling, so the MCP verb and
+// the CLI verb cannot disagree about which tree the lock belongs to. An empty
+// dir keeps the environment-driven resolution.
+func integrationLockRootFor(dir string) string {
+	if strings.TrimSpace(dir) == "" {
+		return integrationLockRoot()
+	}
+	return canonicalTreeSpelling(dir)
+}
+
 // canonicalTreeSpelling returns git's own spelling of dir's top level, and dir
 // verbatim whenever git cannot answer for it (card t766).
 //

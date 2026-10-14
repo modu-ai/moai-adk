@@ -5,6 +5,7 @@ import (
 	"errors"
 	"os"
 	"os/exec"
+	"path/filepath"
 	"strings"
 	"sync"
 	"testing"
@@ -180,8 +181,25 @@ func writeFileForTest(t *testing.T, path, body string) {
 }
 
 // callCodexJobTool invokes one of the three job-control handlers.
+func jobTestRoot(t *testing.T) string {
+	t.Helper()
+	root := t.TempDir()
+	initGitRepo(t, root)
+	if err := os.MkdirAll(filepath.Join(root, ".moai"), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	return root
+}
+
 func callCodexJobTool(t *testing.T, fn func(context.Context, mcp.CallToolRequest) (*mcp.CallToolResult, error), args map[string]any) *mcp.CallToolResult {
 	t.Helper()
+	// REQ-MN-004: the mutating member requires the caller's root; the
+	// fixtures stamp it into the environment.
+	if _, has := args["project_root"]; !has {
+		if root := projectDirResolver(); root != "" {
+			args["project_root"] = root
+		}
+	}
 	res, err := fn(context.Background(), mcp.CallToolRequest{Params: mcp.CallToolParams{Arguments: args}})
 	if err != nil {
 		t.Fatalf("job-control handler returned a Go error (the tool must return structured results only): %v", err)
@@ -268,7 +286,7 @@ func sentInterrupt(lines []string) (string, bool) {
 // the job's record for a known id and a structured not-found result — IsError
 // set, not a Go error that aborts the call — for an unknown one.
 func TestCodexJobStatus_ReturnsRecordAndNotFound(t *testing.T) {
-	root := t.TempDir()
+	root := jobTestRoot(t)
 	withCodexProjectDir(t, root)
 	reg := newCodexJobRegistry(root)
 
@@ -321,7 +339,7 @@ func TestCodexJobStatus_ReturnsRecordAndNotFound(t *testing.T) {
 // file that is present but malformed is reported as unreadable rather than
 // crashing the server.
 func TestCodexJobStatus_MalformedRecordIsReported(t *testing.T) {
-	root := t.TempDir()
+	root := jobTestRoot(t)
 	withCodexProjectDir(t, root)
 	reg := newCodexJobRegistry(root)
 	rec, err := reg.create(codexJobSpec{ThreadID: "tid-fake", Mode: codexTaskMode, RequestSummary: "x"})
@@ -342,7 +360,7 @@ func TestCodexJobStatus_MalformedRecordIsReported(t *testing.T) {
 // codex_job_result returns the recorded output for a terminal job and the
 // current status — without waiting for the turn — for a running one.
 func TestCodexJobResult_TerminalReturnsOutputRunningReturnsStatus(t *testing.T) {
-	root := t.TempDir()
+	root := jobTestRoot(t)
 	withCodexProjectDir(t, root)
 	reg := newCodexJobRegistry(root)
 
@@ -407,7 +425,7 @@ func TestCodexJobResult_TerminalReturnsOutputRunningReturnsStatus(t *testing.T) 
 // this server spawned when the turn does not end within the grace window, all
 // within a bounded time.
 func TestCodexJobCancel_SendsInterruptAndTerminates(t *testing.T) {
-	root := t.TempDir()
+	root := jobTestRoot(t)
 	jobID, reg := startHangingBackgroundJob(t, root, "trn-cancel")
 	sess, _ := codexSession.(*hangingCodexSession)
 	if sess == nil {
@@ -486,7 +504,7 @@ func TestCodexJobCancel_SendsInterruptAndTerminates(t *testing.T) {
 // cancel must degrade to process termination rather than sending a malformed
 // interrupt or failing.
 func TestCodexJobCancel_EmptyTurnIDDegradesToTermination(t *testing.T) {
-	root := t.TempDir()
+	root := jobTestRoot(t)
 	jobID, reg := startHangingBackgroundJob(t, root, "")
 	sess, _ := codexSession.(*hangingCodexSession)
 	if sess == nil {
@@ -541,7 +559,7 @@ func TestCodexJobCancel_EmptyTurnIDDegradesToTermination(t *testing.T) {
 // updated_at is the witness: it is refreshed on EVERY registry write, so an
 // unchanged value after the turn returns is proof no write occurred.
 func TestCodexJobCancel_NoRecordWriteAfterCancel(t *testing.T) {
-	root := t.TempDir()
+	root := jobTestRoot(t)
 	jobID, reg := startHangingBackgroundJob(t, root, "trn-nowrite")
 	sess, _ := codexSession.(*hangingCodexSession)
 	if sess == nil {
@@ -586,7 +604,7 @@ func TestCodexJobCancel_NoRecordWriteAfterCancel(t *testing.T) {
 // rather than signalled. The absence of a signal is asserted by recording
 // termination attempts, never by observing a live process.
 func TestCodexJobCancel_RefusesRecordThisServerDidNotSpawn(t *testing.T) {
-	root := t.TempDir()
+	root := jobTestRoot(t)
 	withCodexProjectDir(t, root)
 	reg := newCodexJobRegistry(root)
 	terminated := withRecordedCodexTerminator(t)
@@ -625,7 +643,7 @@ func TestCodexJobCancel_RefusesRecordThisServerDidNotSpawn(t *testing.T) {
 // TestCodexJobCancel_TerminalJobSendsNothing covers acceptance.md §B: cancel on
 // an already-terminal job returns the terminal status and sends nothing.
 func TestCodexJobCancel_TerminalJobSendsNothing(t *testing.T) {
-	root := t.TempDir()
+	root := jobTestRoot(t)
 	withCodexProjectDir(t, root)
 	reg := newCodexJobRegistry(root)
 	terminated := withRecordedCodexTerminator(t)

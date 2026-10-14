@@ -44,16 +44,17 @@ func sessionMsgStoreRoot(projectDir string) (string, error) {
 	return filepath.Join(projectDir, sessionmsg.DefaultStateRoot), nil
 }
 
-// newSessionMsgStore resolves the broker file store bound to the project the
-// same way every other moai MCP tool resolves state (resolveProjectDir →
-// $CLAUDE_PROJECT_DIR or CWD). The session_msg tools take NO project_root
-// argument (design.md §6).
-func newSessionMsgStore() (*sessionmsg.Store, error) {
-	root, err := sessionMsgStoreRoot(resolveProjectDir())
+// newSessionMsgStoreFor resolves the broker file store bound to the CALLER's
+// project root (SPEC-MCP-NEUTRALITY-001 REQ-MN-004): the session_msg tools
+// take project_root, and the broker anchors at the named tree instead of the
+// server's spawn resolution. A caller-supplied root is confined and validated
+// by the resolver before it reaches here.
+func newSessionMsgStoreFor(root string) (*sessionmsg.Store, error) {
+	storeRoot, err := sessionMsgStoreRoot(root)
 	if err != nil {
 		return nil, err
 	}
-	return sessionmsg.NewStore(root, nil), nil
+	return sessionmsg.NewStore(storeRoot, nil), nil
 }
 
 // handleSessionMsgRegister wraps sessionmsg.Store.Register (REQ-CSM-003):
@@ -61,7 +62,11 @@ func newSessionMsgStore() (*sessionmsg.Store, error) {
 //
 // @MX:NOTE: [AUTO] thin wrapper — parse args → sessionmsg core → toolJSON/toolErr; no broker semantics in the handler layer
 func handleSessionMsgRegister(_ context.Context, req mcp.CallToolRequest) (*mcp.CallToolResult, error) {
-	store, err := newSessionMsgStore()
+	root, source, rootErr := resolveRequiredToolProjectRoot(req)
+	if rootErr != nil {
+		return toolErr("session_msg_register", rootErr), nil
+	}
+	store, err := newSessionMsgStoreFor(root)
 	if err != nil {
 		return toolErr("session_msg_register", err), nil
 	}
@@ -73,13 +78,17 @@ func handleSessionMsgRegister(_ context.Context, req mcp.CallToolRequest) (*mcp.
 	if err != nil {
 		return toolErr("session_msg_register", err), nil
 	}
-	return toolJSON("session_msg_register", rec), nil
+	return toolJSONWithRoot("session_msg_register", rec, root, source), nil
 }
 
 // handleSessionMsgList wraps sessionmsg.Store.ListAgents (REQ-CSM-004):
 // every registered agent with its online flag and pending count.
-func handleSessionMsgList(_ context.Context, _ mcp.CallToolRequest) (*mcp.CallToolResult, error) {
-	store, err := newSessionMsgStore()
+func handleSessionMsgList(_ context.Context, req mcp.CallToolRequest) (*mcp.CallToolResult, error) {
+	root, source, rootErr := resolveToolProjectRootWithSource(req)
+	if rootErr != nil {
+		return toolErr("session_msg_list", rootErr), nil
+	}
+	store, err := newSessionMsgStoreFor(root)
 	if err != nil {
 		return toolErr("session_msg_list", err), nil
 	}
@@ -87,10 +96,10 @@ func handleSessionMsgList(_ context.Context, _ mcp.CallToolRequest) (*mcp.CallTo
 	if err != nil {
 		return toolErr("session_msg_list", err), nil
 	}
-	return toolJSON("session_msg_list", map[string]any{
+	return toolJSONWithRoot("session_msg_list", map[string]any{
 		"count":  len(agents),
 		"agents": agents,
-	}), nil
+	}, root, source), nil
 }
 
 // handleSessionMsgSend wraps sessionmsg.Store.Send (REQ-CSM-005). An unknown
@@ -101,7 +110,11 @@ func handleSessionMsgSend(_ context.Context, req mcp.CallToolRequest) (*mcp.Call
 	if !ok {
 		return toolErr("session_msg_send", errors.New("data argument must be a JSON value")), nil
 	}
-	store, err := newSessionMsgStore()
+	root, source, rootErr := resolveRequiredToolProjectRoot(req)
+	if rootErr != nil {
+		return toolErr("session_msg_send", rootErr), nil
+	}
+	store, err := newSessionMsgStoreFor(root)
 	if err != nil {
 		return toolErr("session_msg_send", err), nil
 	}
@@ -116,17 +129,21 @@ func handleSessionMsgSend(_ context.Context, req mcp.CallToolRequest) (*mcp.Call
 	if err != nil {
 		return sessionMsgToolErr("session_msg_send", err), nil
 	}
-	return toolJSON("session_msg_send", map[string]any{
+	return toolJSONWithRoot("session_msg_send", map[string]any{
 		"messageId": msgID,
 		"from":      req.GetString("from_agent_id", ""),
 		"to":        req.GetString("to_agent_id", ""),
-	}), nil
+	}, root, source), nil
 }
 
 // handleSessionMsgPoll wraps sessionmsg.Store.Poll (REQ-CSM-006): claim a
 // batch, apply ack_ids deletions, report remaining + expired counts.
 func handleSessionMsgPoll(_ context.Context, req mcp.CallToolRequest) (*mcp.CallToolResult, error) {
-	store, err := newSessionMsgStore()
+	root, source, rootErr := resolveRequiredToolProjectRoot(req)
+	if rootErr != nil {
+		return toolErr("session_msg_poll", rootErr), nil
+	}
+	store, err := newSessionMsgStoreFor(root)
 	if err != nil {
 		return toolErr("session_msg_poll", err), nil
 	}
@@ -137,12 +154,12 @@ func handleSessionMsgPoll(_ context.Context, req mcp.CallToolRequest) (*mcp.Call
 	if err != nil {
 		return sessionMsgToolErr("session_msg_poll", err), nil
 	}
-	return toolJSON("session_msg_poll", map[string]any{
+	return toolJSONWithRoot("session_msg_poll", map[string]any{
 		"messages":     res.Messages,
 		"remaining":    res.Remaining,
 		"expiredCount": res.ExpiredCount,
 		"ackedCount":   res.AckedCount,
-	}), nil
+	}, root, source), nil
 }
 
 // sessionMsgToolErr shapes a broker error as a structured tool result: an

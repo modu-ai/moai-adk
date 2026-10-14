@@ -64,6 +64,7 @@ func registerJevAskTool(add func(name string, tool mcp.Tool, handler server.Tool
 			"required": []string{"question_id", "question"},
 		}), mcp.Description("Typed questions to ask over the state (kind: noul = yes/no, choice = one of choices, score = bounded numeric).")),
 		mcp.WithBoolean("repeatable", mcp.Description("Declare this exact call provably side-effect-free to permit pre-delivery retry. Defaults false — an undeclared request is never retried.")),
+		projectRootOption(),
 		mcp.WithReadOnlyHintAnnotation(true),
 	), handleJevAsk)
 }
@@ -71,21 +72,27 @@ func registerJevAskTool(add func(name string, tool mcp.Tool, handler server.Tool
 // @MX:WARN: [AUTO] gate-read path — handleJevAsk reads workflow.jev.enabled on every call and must keep it first and short-circuiting
 // @MX:REASON: [AUTO] a reordered or degraded gate read would make an opt-in capability reachable from any agent session while a project that never opted in could still be charged for a call; the gate-off branch constructs no client, so the zero-request property depends on this ordering.
 func handleJevAsk(ctx context.Context, req mcp.CallToolRequest) (*mcp.CallToolResult, error) {
+	// REQ-MN-004: the gate reads the workflow config under a root — the
+	// caller's project_root when named, the server's resolution otherwise.
+	root, source, rootErr := resolveToolProjectRootWithSource(req)
+	if rootErr != nil {
+		return toolErr(jevAskToolName, rootErr), nil
+	}
 	// The gate is read FIRST and short-circuits: while the capability is
 	// disabled no client is constructed, so no request can exist (the doctor
 	// check shares this ordering under the same constraint family).
-	enabled, readErr := jevEnabled(resolveProjectDir())
+	enabled, readErr := jevEnabled(root)
 	if readErr != nil || !enabled {
 		reason := "workflow.jev.enabled is false (shipped default); no request constructed, no network call"
 		if readErr != nil {
 			reason = "workflow.jev gate unreadable; treated as disabled; no request constructed, no network call"
 		}
-		return toolJSON(jevAskToolName, map[string]any{
+		return toolJSONWithRoot(jevAskToolName, map[string]any{
 			"status":    "gated_unavailable",
 			"available": false,
 			"reason":    reason,
 			"opt_in":    "set workflow.jev.enabled: true in .moai/config/sections/workflow.yaml; a TypeSafe credential at ~/.moai/.env.typesafe is then also required",
-		}), nil
+		}, root, source), nil
 	}
 
 	state, err := req.RequireString("state")
@@ -118,7 +125,7 @@ func handleJevAsk(ctx context.Context, req mcp.CallToolRequest) (*mcp.CallToolRe
 		out["answers"] = res.Answers
 		out["usage"] = res.Usage
 	}
-	return toolJSON(jevAskToolName, out), nil
+	return toolJSONWithRoot(jevAskToolName, out, root, source), nil
 }
 
 // decodeJevAskQuestions maps the tool's questions argument onto the jev

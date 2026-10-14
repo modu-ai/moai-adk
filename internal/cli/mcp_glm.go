@@ -269,7 +269,7 @@ func handleGLMAudit(ctx context.Context, req mcp.CallToolRequest) (*mcp.CallTool
 	target := req.GetString("target", codexTargetUncommitted)
 	token := extractProgressToken(req)
 
-	notifyMCPProgress(ctx, token, 0, "glm 감사 시작 — 리뷰 대상 diff 수집 중...")
+	notifyMCPProgress(ctx, token, 0, "glm audit start - collecting the review diff...")
 	// GLM cannot read the tree, so the change has to be collected here and
 	// carried in the request. No diff ⇒ no review: fail open to inconclusive
 	// rather than ask z.ai for a verdict on code it will never see (card t178).
@@ -309,7 +309,7 @@ func handleGLMAudit(ctx context.Context, req mcp.CallToolRequest) (*mcp.CallTool
 		return review(glmInconclusive("no reviewable change: target " + target + " produced an empty diff")), nil
 	}
 
-	notifyMCPProgress(ctx, token, 0.05, "glm 감사 — z.ai 요청 준비 중...")
+	notifyMCPProgress(ctx, token, 0.05, "glm audit - preparing the z.ai request...")
 	out := callGLMAudit(ctx, key, me.Model, me.Effort, focus, diff, token)
 	if base != nil {
 		out.ReviewBase = base.String()
@@ -346,7 +346,7 @@ func callGLMAudit(ctx context.Context, key, model, effort, focus, diff string, t
 	httpReq.Header.Set("x-api-key", key)
 	httpReq.Header.Set("anthropic-version", glmAnthropicVersion)
 
-	notifyMCPProgress(ctx, token, 0.1, "z.ai에 감사 요청 전송 중...")
+	notifyMCPProgress(ctx, token, 0.1, "sending the audit request to z.ai...")
 	resp, err := glmHTTPClient.Do(httpReq)
 	if err != nil {
 		return glmInconclusive("z.ai request failed: " + err.Error())
@@ -363,7 +363,7 @@ func callGLMAudit(ctx context.Context, key, model, effort, focus, diff string, t
 	if err != nil {
 		return glmInconclusive("cannot read z.ai response: " + err.Error())
 	}
-	notifyMCPProgress(ctx, token, 0.8, "z.ai 응답 수신 — ReviewOutput 파싱 중...")
+	notifyMCPProgress(ctx, token, 0.8, "z.ai response received - parsing ReviewOutput...")
 	return parseGLMReview(raw)
 }
 

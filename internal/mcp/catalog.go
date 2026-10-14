@@ -113,6 +113,12 @@ var moaiMCPTools = []ToolDef{
 	// render (on the lane read-only allowlist, like its CLI verb).
 	{Name: "todo_add", WriteCapable: true},
 	{Name: "todo_list", WriteCapable: false},
+	// todo_claim joins the catalogue with SPEC-MCP-NEUTRALITY-001 REQ-MN-006:
+	// the tool was registered (internal/cli/mcp_todo.go) but catalogue-absent,
+	// and the catalogue-seeded enablement map silently dropped it — a dead
+	// registration no guard saw (plan B4). Write-capable: a claim leases and
+	// mutates the queue.
+	{Name: "todo_claim", WriteCapable: true},
 	{Name: "factory_next", WriteCapable: true},
 	{Name: "factory_stage", WriteCapable: true},
 	{Name: "factory_complete", WriteCapable: true},
@@ -138,4 +144,16 @@ func MoaiMCPToolNames() []string {
 		names[i] = t.Name
 	}
 	return names
+}
+
+// HasTool reports whether name carries a catalogue row (SPEC-MCP-NEUTRALITY-001
+// REQ-MN-006): the registration gate consults it so a registered name absent
+// from the catalogue fails the construction instead of serving silence.
+func HasTool(name string) bool {
+	for _, t := range moaiMCPTools {
+		if t.Name == name {
+			return true
+		}
+	}
+	return false
 }

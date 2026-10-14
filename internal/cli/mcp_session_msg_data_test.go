@@ -6,6 +6,7 @@ package cli
 
 import (
 	"context"
+	"os"
 	"path/filepath"
 	"strings"
 	"testing"
@@ -63,6 +64,7 @@ func TestSessionMsgSendHandlerCarriesDataArgument(t *testing.T) {
 	sendReq := mcp.CallToolRequest{}
 	sendReq.Params.Name = "session_msg_send"
 	sendReq.Params.Arguments = map[string]any{
+		"project_root":  os.Getenv("CLAUDE_PROJECT_DIR"),
 		"from_agent_id": senderID,
 		"to_agent_id":   receiverID,
 		"text":          "payload attached",
@@ -82,7 +84,7 @@ func TestSessionMsgSendHandlerCarriesDataArgument(t *testing.T) {
 
 	pollReq := mcp.CallToolRequest{}
 	pollReq.Params.Name = "session_msg_poll"
-	pollReq.Params.Arguments = map[string]any{"agent_id": receiverID}
+	pollReq.Params.Arguments = map[string]any{"agent_id": receiverID, "project_root": os.Getenv("CLAUDE_PROJECT_DIR")}
 	pollRes, err := handleSessionMsgPoll(context.Background(), pollReq)
 	if err != nil {
 		t.Fatalf("poll handler Go error: %v", err)
@@ -152,6 +154,7 @@ func TestSessionMsgSendHandlerRejectsUnencodableData(t *testing.T) {
 	req := mcp.CallToolRequest{}
 	req.Params.Name = "session_msg_send"
 	req.Params.Arguments = map[string]any{
+		"project_root":  os.Getenv("CLAUDE_PROJECT_DIR"),
 		"from_agent_id": senderID,
 		"to_agent_id":   receiverID,
 		"text":          "x",

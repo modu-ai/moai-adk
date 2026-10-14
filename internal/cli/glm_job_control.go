@@ -104,11 +104,15 @@ type GLMJobCancelOutput struct {
 // "the server broke". A record file that is present but malformed is reported
 // the same way rather than decoded into an empty record.
 func handleGLMJobStatus(_ context.Context, req mcp.CallToolRequest) (*mcp.CallToolResult, error) {
+	root, source, rootErr := resolveToolProjectRootWithSource(req)
+	if rootErr != nil {
+		return toolErr(glmJobStatusToolName, rootErr), nil
+	}
 	rec, errResult := loadGLMJobFor(glmJobStatusToolName, req)
 	if errResult != nil {
 		return errResult, nil
 	}
-	return toolJSON(glmJobStatusToolName, rec), nil
+	return toolJSONWithRoot(glmJobStatusToolName, rec, root, source), nil
 }
 
 // ─── glm_job_result ───
@@ -117,6 +121,10 @@ func handleGLMJobStatus(_ context.Context, req mcp.CallToolRequest) (*mcp.CallTo
 // current status of a non-terminal one. It never waits for the call: a running
 // job is reported as running and the caller decides whether to ask again.
 func handleGLMJobResult(_ context.Context, req mcp.CallToolRequest) (*mcp.CallToolResult, error) {
+	root, source, rootErr := resolveToolProjectRootWithSource(req)
+	if rootErr != nil {
+		return toolErr(glmJobResultToolName, rootErr), nil
+	}
 	rec, errResult := loadGLMJobFor(glmJobResultToolName, req)
 	if errResult != nil {
 		return errResult, nil
@@ -133,7 +141,7 @@ func handleGLMJobResult(_ context.Context, req mcp.CallToolRequest) (*mcp.CallTo
 	} else {
 		out.Note = glmJobResultPendingNote
 	}
-	return toolJSON(glmJobResultToolName, out), nil
+	return toolJSONWithRoot(glmJobResultToolName, out, root, source), nil
 }
 
 // ─── glm_job_cancel ───
@@ -145,6 +153,10 @@ func handleGLMJobResult(_ context.Context, req mcp.CallToolRequest) (*mcp.CallTo
 // record of what this server lifetime actually started, so a job absent from
 // it is refused rather than cancelled.
 func handleGLMJobCancel(_ context.Context, req mcp.CallToolRequest) (*mcp.CallToolResult, error) {
+	root, source, rootErr := resolveRequiredToolProjectRoot(req)
+	if rootErr != nil {
+		return toolErr(glmJobCancelToolName, rootErr), nil
+	}
 	rec, errResult := loadGLMJobFor(glmJobCancelToolName, req)
 	if errResult != nil {
 		return errResult, nil
@@ -155,7 +167,7 @@ func handleGLMJobCancel(_ context.Context, req mcp.CallToolRequest) (*mcp.CallTo
 	// Already finished: report the terminal status and send nothing.
 	if glmJobTerminal(rec.Status) {
 		out.Note = glmJobCancelTerminalNote
-		return toolJSON(glmJobCancelToolName, out), nil
+		return toolJSONWithRoot(glmJobCancelToolName, out, root, source), nil
 	}
 
 	// Ownership. An entry exists only for a job this server lifetime started
@@ -193,10 +205,10 @@ func handleGLMJobCancel(_ context.Context, req mcp.CallToolRequest) (*mcp.CallTo
 	// Grace window: give the revoked call a bounded chance to end on its own.
 	if glmAwaitJobExit(rec.ID, glmJobCancelGrace) {
 		out.Note = glmJobCancelExitedNote
-		return toolJSON(glmJobCancelToolName, out), nil
+		return toolJSONWithRoot(glmJobCancelToolName, out, root, source), nil
 	}
 	out.Note = glmJobCancelGraceNote
-	return toolJSON(glmJobCancelToolName, out), nil
+	return toolJSONWithRoot(glmJobCancelToolName, out, root, source), nil
 }
 
 // ─── shared helpers ───

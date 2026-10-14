@@ -181,7 +181,11 @@ func confineToolProjectRoot(raw string) (string, error) {
 			return "", fmt.Errorf("project_root %q is the home directory — name the project or worktree root to act on", raw)
 		}
 	}
-	serverRoot := resolveProjectDir()
+	// The server root resolves through the SAME seam the codex/glm handlers
+	// use (projectDirResolver): the confinement must compare against the root
+	// the serving machinery actually resolves, or the codex/glm fixtures'
+	// server-root substitution would not reach it.
+	serverRoot := projectDirResolver()
 	if serverRoot == "" {
 		return "", fmt.Errorf("project_root %q cannot be confined — the server has no resolvable root", raw)
 	}

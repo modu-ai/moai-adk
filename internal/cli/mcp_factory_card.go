@@ -101,7 +101,7 @@ func registerFactoryCardMCPTools(add func(name string, tool mcp.Tool, handler se
 // name its lane when the environment does not carry it.
 func optionalFactoryActorOption() mcp.ToolOption {
 	return mcp.WithString("actor", mcp.Description(
-		"Optional: the lane label this call acts as. Default: the spawn environment's " + config.EnvMoaiFactoryWorker + ". An empty value with no environment label refuses as unknown attribution."))
+		"Optional: the lane label this call acts as. Default: the spawn environment's "+config.EnvMoaiFactoryWorker+". An empty value with no environment label refuses as unknown attribution."))
 }
 
 // requiredProjectRootOption declares project_root on a tool where the
@@ -290,9 +290,10 @@ func handleFactoryComplete(ctx context.Context, req mcp.CallToolRequest) (*mcp.C
 	}
 	out := &bytes.Buffer{}
 	// The record and the git-flow config come from the factory root of the caller's tree (sync-audit N2).
-	// The integration window stays at the caller's own tree, as before: the verb's window root is
-	// integrationLockRoot(), a separate rule that this repair does not change.
-	if err := factoryCompleteCard(ctx, out, root, launch, cardID, "", explicitRun, lane); err != nil {
+	// The integration window resolves the lock root from the caller's own
+	// project_root through the SAME git-common-dir interpretation the CLI
+	// verb applies (SPEC-MCP-NEUTRALITY-001 REQ-MN-004, design §D8).
+	if err := factoryCompleteCard(ctx, out, root, integrationLockRootFor(launch), cardID, "", explicitRun, lane); err != nil {
 		if res, ok := mcpLeaseHolderRefusal(err); ok {
 			return res, nil
 		}

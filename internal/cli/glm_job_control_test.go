@@ -17,6 +17,13 @@ import (
 // callGLMJobTool invokes one of the three glm job-control handlers.
 func callGLMJobTool(t *testing.T, fn func(context.Context, mcp.CallToolRequest) (*mcp.CallToolResult, error), args map[string]any) *mcp.CallToolResult {
 	t.Helper()
+	// REQ-MN-004: the mutating member requires the caller's root; the
+	// fixtures stamp it into the environment.
+	if _, has := args["project_root"]; !has {
+		if root := projectDirResolver(); root != "" {
+			args["project_root"] = root
+		}
+	}
 	res, err := fn(context.Background(), mcp.CallToolRequest{Params: mcp.CallToolParams{Arguments: args}})
 	if err != nil {
 		t.Fatalf("glm job-control handler returned a Go error (the tool must return structured results only): %v", err)
@@ -42,7 +49,7 @@ func withShortGLMCancelGrace(t *testing.T, d time.Duration) {
 // job's record for a known id and a structured not-found result — IsError set,
 // not a Go error — for an unknown one, plus the missing-argument case.
 func TestGLMJobStatus_ReturnsRecordAndNotFound(t *testing.T) {
-	root := t.TempDir()
+	root := jobTestRoot(t)
 	withCodexProjectDir(t, root)
 	reg := newGLMJobRegistry(root)
 
@@ -85,7 +92,7 @@ func TestGLMJobStatus_ReturnsRecordAndNotFound(t *testing.T) {
 // file that is present but malformed is reported as unreadable rather than
 // crashing the server.
 func TestGLMJobStatus_MalformedRecordIsReported(t *testing.T) {
-	root := t.TempDir()
+	root := jobTestRoot(t)
 	withCodexProjectDir(t, root)
 	reg := newGLMJobRegistry(root)
 	rec, err := reg.create(glmJobSpec{Model: "glm-5.3", RequestSummary: "x"})
@@ -106,7 +113,7 @@ func TestGLMJobStatus_MalformedRecordIsReported(t *testing.T) {
 // glm_job_result returns the recorded output for a terminal job and the
 // current status — without waiting for the call — for a running one.
 func TestGLMJobResult_TerminalReturnsOutputRunningReturnsStatus(t *testing.T) {
-	root := t.TempDir()
+	root := jobTestRoot(t)
 	withCodexProjectDir(t, root)
 	reg := newGLMJobRegistry(root)
 
@@ -171,7 +178,7 @@ func TestGLMJobResult_TerminalReturnsOutputRunningReturnsStatus(t *testing.T) {
 // revoking the context ends the in-flight request, so the goroutine observes
 // the cancellation and ends inside the grace window.
 func TestGLMJobCancel_CancelsRunningJob(t *testing.T) {
-	root := t.TempDir()
+	root := jobTestRoot(t)
 	jobID, reg := startHangingGLMJob(t, root)
 	withShortGLMCancelGrace(t, 5*time.Second) // ample: the revoked context ends the call promptly
 
@@ -209,7 +216,7 @@ func TestGLMJobCancel_CancelsRunningJob(t *testing.T) {
 // record. updated_at is the witness — it is refreshed on EVERY registry write,
 // so an unchanged value after the goroutine stops is proof no write occurred.
 func TestGLMJobCancel_NoRecordWriteAfterCancel(t *testing.T) {
-	root := t.TempDir()
+	root := jobTestRoot(t)
 	jobID, reg := startHangingGLMJob(t, root)
 	withShortGLMCancelGrace(t, 60*time.Millisecond)
 
@@ -244,7 +251,7 @@ func TestGLMJobCancel_NoRecordWriteAfterCancel(t *testing.T) {
 // running server did not start — the shape a record left behind by a previous
 // server lifetime takes — is refused rather than cancelled.
 func TestGLMJobCancel_RefusesStaleRecord(t *testing.T) {
-	root := t.TempDir()
+	root := jobTestRoot(t)
 	withCodexProjectDir(t, root)
 	reg := newGLMJobRegistry(root)
 
@@ -276,7 +283,7 @@ func TestGLMJobCancel_RefusesStaleRecord(t *testing.T) {
 // TestGLMJobCancel_TerminalJobSendsNothing covers the §B edge case: cancel on
 // an already-terminal job returns the terminal status and sends nothing.
 func TestGLMJobCancel_TerminalJobSendsNothing(t *testing.T) {
-	root := t.TempDir()
+	root := jobTestRoot(t)
 	withCodexProjectDir(t, root)
 	reg := newGLMJobRegistry(root)
 

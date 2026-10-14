@@ -19,10 +19,16 @@ import (
 
 // sessionMsgTestEnv isolates the broker store into a per-test temp dir via
 // the SAME resolution path production uses (resolveProjectDir reads
-// CLAUDE_PROJECT_DIR first). No test touches the real .moai/state tree.
+// CLAUDE_PROJECT_DIR first). No test touches the real .moai/state tree. The
+// dir is a git repository with .moai so the REQ-MN-005 confinement accepts it
+// as the server's own project root.
 func sessionMsgTestEnv(t *testing.T) string {
 	t.Helper()
 	dir := t.TempDir()
+	initGitRepo(t, dir)
+	if err := os.MkdirAll(filepath.Join(dir, ".moai"), 0o755); err != nil {
+		t.Fatal(err)
+	}
 	t.Setenv("CLAUDE_PROJECT_DIR", dir)
 	return dir
 }
@@ -49,7 +55,7 @@ func sessionMsgRegisterCall(t *testing.T, kind, name string) *mcp.CallToolResult
 	t.Helper()
 	req := mcp.CallToolRequest{}
 	req.Params.Name = "session_msg_register"
-	req.Params.Arguments = map[string]any{"kind": kind, "name": name}
+	req.Params.Arguments = map[string]any{"kind": kind, "name": name, "project_root": os.Getenv("CLAUDE_PROJECT_DIR")}
 	res, err := handleSessionMsgRegister(context.Background(), req)
 	if err != nil {
 		t.Fatalf("session_msg_register returned Go error: %v", err)
@@ -144,6 +150,8 @@ func TestSessionMsgSendPollAckHandlers(t *testing.T) {
 		t.Helper()
 		req := mcp.CallToolRequest{}
 		req.Params.Name = name
+		// REQ-MN-004: the mutating members require the argument.
+		args["project_root"] = os.Getenv("CLAUDE_PROJECT_DIR")
 		req.Params.Arguments = args
 		var (
 			res *mcp.CallToolResult

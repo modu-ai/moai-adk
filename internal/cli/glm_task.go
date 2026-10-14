@@ -137,10 +137,17 @@ func resolveGLMTaskModel() string {
 // caller-actionable faults — a missing prompt, and a state directory that
 // cannot be written.
 func handleGLMTask(ctx context.Context, req mcp.CallToolRequest) (*mcp.CallToolResult, error) {
+	// REQ-MN-004: the glm_task job record writes under the caller's tree —
+	// the argument is required and confined (mutating family member).
+	glmRoot, _, glmErr := resolveRequiredToolProjectRoot(req)
+	if glmErr != nil {
+		return toolErr(glmTaskToolName, glmErr), nil
+	}
+	_ = glmRoot
 	prompt := req.GetString("prompt", "")
 	background := req.GetBool("background", false)
 	token := extractProgressToken(req)
-	notifyMCPProgress(ctx, token, 0, "glm 태스크 시작 — 프롬프트 접수")
+	notifyMCPProgress(ctx, token, 0, "glm task start - prompt accepted")
 
 	if prompt == "" {
 		return toolErr(glmTaskToolName, errors.New("prompt is required")), nil
@@ -323,7 +330,7 @@ func callGLMTask(ctx context.Context, key, model, prompt, system string, maxToke
 	httpReq.Header.Set("x-api-key", key)
 	httpReq.Header.Set("anthropic-version", glmAnthropicVersion)
 
-	notifyMCPProgress(ctx, token, 0.1, "z.ai에 태스크 요청 전송 중...")
+	notifyMCPProgress(ctx, token, 0.1, "sending the task request to z.ai...")
 	resp, err := glmTaskHTTPClient.Do(httpReq)
 	if err != nil {
 		// The task bound firing is a named, structured failure — never a raw
@@ -344,7 +351,7 @@ func callGLMTask(ctx context.Context, key, model, prompt, system string, maxToke
 	if err != nil {
 		return "", "", fmt.Errorf("cannot read z.ai response: %w", err)
 	}
-	notifyMCPProgress(ctx, token, 0.8, "z.ai 응답 수신 — 텍스트 추출 중...")
+	notifyMCPProgress(ctx, token, 0.8, "z.ai response received - extracting text...")
 
 	var env glmMessagesResponse
 	if err := json.Unmarshal(raw, &env); err != nil {

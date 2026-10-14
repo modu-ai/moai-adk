@@ -315,7 +315,7 @@ func handleCodexTask(ctx context.Context, req mcp.CallToolRequest) (*mcp.CallToo
 	workKey := req.GetString("work_key", "")
 	_, workKeySupplied := req.GetArguments()["work_key"]
 	token := extractProgressToken(req)
-	notifyMCPProgress(ctx, token, 0, "codex task 시작 — 프롬프트 접수")
+	notifyMCPProgress(ctx, token, 0, "codex task start - prompt accepted")
 
 	if prompt == "" {
 		return toolErr(codexTaskToolName, errors.New("prompt is required")), nil
@@ -368,7 +368,7 @@ func handleCodexTask(ctx context.Context, req mcp.CallToolRequest) (*mcp.CallToo
 		result.Note = codexTaskWriteRefusedNote
 	}
 
-	notifyMCPProgress(ctx, token, 0.1, "codex 바이너리 확인 — 세션 준비 중...")
+	notifyMCPProgress(ctx, token, 0.1, "codex binary check - preparing the session...")
 	binaryPath, err := codexLookPath(codexBinaryName)
 	if err != nil {
 		result.Status = codexJobStatusFailed
@@ -462,7 +462,7 @@ func handleCodexTask(ctx context.Context, req mcp.CallToolRequest) (*mcp.CallToo
 		untieRequest = context.AfterFunc(ctx, cancelSession)
 	}
 
-	notifyMCPProgress(ctx, token, 0.2, "codex 세션 오픈 중...")
+	notifyMCPProgress(ctx, token, 0.2, "opening the codex session...")
 	session, err := openCodexSessionOn(sessionCtx, binaryPath, turnParams, resumeThreadID)
 	// Report the resume once its request was written, including when codex then
 	// rejected it; a failure before the write reports none (REQ-CRS-001).
