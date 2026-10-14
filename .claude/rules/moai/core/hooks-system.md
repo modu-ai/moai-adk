@@ -128,8 +128,7 @@ Default hook type. Executes a shell command, communicates via stdin/stdout JSON.
 - stdout: JSON with response (optional `systemMessage`, `additionalContext`, `reason`)
 - Exit codes: 0 = success, 1 = error (shown to user), 2 = block/reject (honored only by events marked "Can Block: Yes" in the event reference above)
 - PreToolUse permission decisions: `allow`, `deny`, `ask`, `defer` (defer pauses headless sessions for --resume, v2.1.89+)
-- Hook stdout over 50K characters is saved to disk; only a file path + preview is injected into context (v2.1.89+) — this 50K cap is on a hook's TOTAL stdout.
-- A second, distinct cap applies per `additionalContext` string: a single string over 10,000 characters (UTF-16 code units) is not delivered inline — the runtime saves the full output to a session-directory file and passes its path with a 2,000-character preview (decision-index Q4; observed live by a factory lane session's session-start overflow notice — a 23,166-character assembled context)
+- Hook stdout over 50K characters is saved to disk; only a file path + preview is injected into context (v2.1.89+)
 - Exec form (shell-bypass): supply `"args": []` alongside `"command"` to run the program directly without a shell, avoiding shell-quoting and word-splitting issues. When a hook script DOES depend on a shell and must not run under a non-interactive invocation, guard the shell-only branch with an interactive-shell check — `if [[ $- == *i* ]]; then ... fi` — so the body is skipped when the script is sourced non-interactively by the hook runner.
 
 ### Prompt Hooks (type: "prompt")
@@ -366,7 +365,7 @@ MoAI-ADK uses shorter independent timeout policies for operational efficiency. T
 | PostToolUse (status-transition-ownership.sh) | 5s | 600s | Advisory governance gate |
 | Stop (handle-stop) | 5s | 600s | Turn-end wrapper |
 | Stop (sync-phase-quality-gate.sh) | 60s | 600s | Runs fast structural checks (`go vet` + `go build` etc.) — needs headroom beyond the 5s wrapper default |
-| UserPromptSubmit | 5s | 30s | Blocks user interaction; reduced max |
+| UserPromptSubmit | 15s | 30s | Blocks user interaction; reduced max. Raised from 5s (2026-10-09): the factory-messaging drain in handle-user-prompt-submit can exceed 5s under multi-lane load, and the hard-timeout error surfaced to the user |
 | All other registered events (PreCompact, PreToolUse, PostToolUseFailure, SubagentStart, SubagentStop, TeammateIdle, TaskCompleted, ConfigChange, StopFailure, PostCompact, InstructionsLoaded, CwdChanged, FileChanged, PermissionDenied, PermissionRequest) and the opt-in harness-observe entries | 5s | 600s | Synchronous fast lifecycle hooks (blocking default; PostToolUse harness-observe is `async: true`) |
 | prompt, agent hooks | 30s-60s | 600s | Evaluation/verification hooks |
 
