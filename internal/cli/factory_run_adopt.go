@@ -90,10 +90,50 @@ func adoptResumedLeaderRun(root string, shouldAdopt bool, warn io.Writer) (adopt
 		fmt.Fprintf(warn, "factory leader resume: run %s is led by codex — a claude leader does not adopt it; retire it first or relaunch the codex leader deliberately\n", adopt.RunID)
 		return "", nil
 	}
+	// REQ-RNC-022 parity with the explicit path (codex_audit round 2): a run
+	// holding a LIVE legacy peer record — a worker registered by a binary
+	// before the leader/lane rename — is not adoptable, because the messaging
+	// layer refuses to address that peer alongside this leader. The same
+	// refusal enterSelectedFactoryRun applies, warned here rather than
+	// failing the launch.
+	if value, live, err := factorymsg.LiveLegacyPeer(context.Background(), root, adopt.RunID); err != nil {
+		return "", err
+	} else if live {
+		fmt.Fprintf(warn, "factory leader resume: run %s holds live legacy record %q from a binary before the leader/lane rename — adopting nothing; end its sessions and retire with 'moai factory runs --retire %s' first\n", adopt.RunID, value, adopt.RunID)
+		return "", nil
+	}
 	if err := db.AdoptRun(context.Background(), adopt, os.Getpid(), homestate.CurrentProcessFingerprint(), leaderResumeAdoptionBasis); err != nil {
 		return "", err
 	}
 	_ = os.Setenv(config.EnvFactoryRunID, adopt.RunID)
 	_ = os.Setenv(config.EnvFactoryLeadAddr, factory.FactoryLeaderSocketPath(adopt.RunID))
 	return adopt.RunID, nil
+}
+
+// leaderEntryRunAdoption is the leader branch's resume re-adoption entry
+// (card t1707), shared by the cc and glm leader branches — glm mirrors cc
+// exactly except for the backend constant. It computes the call site's
+// combined gate — a resume carrier at guard polarity AND a freshly minted id
+// AND no explicit --factory-run — and re-adopts the prior run when it holds.
+func leaderEntryRunAdoption(root string, args []string, leaderLabel, priorRunID, explicitRun string, warn io.Writer) (string, error) {
+	resumeSeen, _ := scanResumeArgs(args, true)
+	return adoptResumedLeaderRun(root, resumeSeen && explicitRun == "" && leaderRunIDWasMinted(leaderLabel, priorRunID), warn)
+}
+
+// recordLeaderRunStart records the leader entry's run start: on the adopted
+// path only the runtime facts are re-recorded under the adopted id — the
+// adopted run keeps its row and its run.resumed event, so no second
+// run.started lands on it — otherwise the full recordFactoryRunStart runs and
+// records the start under the published (minted) id.
+func recordLeaderRunStart(root, adopted, backend, specID string, declaredLanes int) error {
+	if adopted != "" {
+		if err := factory.RecordFactoryRunStart(root, adopted, backend, specID); err != nil {
+			return fmt.Errorf("record factory run: %w", err)
+		}
+		return nil
+	}
+	if err := recordFactoryRunStart(root, os.Getenv(config.EnvFactoryRunID), backend, specID, declaredLanes); err != nil {
+		return fmt.Errorf("record factory run: %w", err)
+	}
+	return nil
 }

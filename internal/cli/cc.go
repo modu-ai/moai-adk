@@ -209,25 +209,14 @@ func runClaudeEntry(cmd *cobra.Command, args []string, commandName, mode, backen
 		// the prior run instead (card t1707): the run id survives only in the
 		// launch environment, so the resume launch would otherwise mint a new
 		// run over the live one and the dead-owner reconciliation would retire
-		// the prior run's records behind it. The carrier scan uses the guard
-		// polarity because that is what matches Claude's option model: a
-		// flag-shaped token is its own option, so `--debug --resume <id>`
-		// must read as a resume carrier, not as --debug consuming --resume as
-		// its value (card-review round 2).
-		resumeSeen, _ := scanResumeArgs(filteredArgs, true)
-		adopted, adoptErr := adoptResumedLeaderRun(launchProjectRoot(), resumeSeen && entry.FactoryRun == "" && leaderRunIDWasMinted(leaderLabel, priorRunID), cmd.ErrOrStderr())
+		// the prior run's records behind it. Shared with the glm leader, which
+		// mirrors this entry exactly.
+		adopted, adoptErr := leaderEntryRunAdoption(launchProjectRoot(), filteredArgs, leaderLabel, priorRunID, entry.FactoryRun, cmd.ErrOrStderr())
 		if adoptErr != nil {
 			return fmt.Errorf("re-adopt factory run: %w", adoptErr)
 		}
-		if adopted != "" {
-			// The adopted run keeps its row and its run.resumed event; only
-			// the runtime facts are re-recorded, so no second run.started
-			// lands on the adopted run.
-			if err := factory.RecordFactoryRunStart(launchProjectRoot(), adopted, backend, entry.Spec); err != nil {
-				return fmt.Errorf("record factory run: %w", err)
-			}
-		} else if err := recordFactoryRunStart(launchProjectRoot(), os.Getenv(config.EnvFactoryRunID), backend, entry.Spec, factoryDeclaredLanes(entry)); err != nil {
-			return fmt.Errorf("record factory run: %w", err)
+		if err := recordLeaderRunStart(launchProjectRoot(), adopted, backend, entry.Spec, factoryDeclaredLanes(entry)); err != nil {
+			return err
 		}
 		defer exportFactoryLaunchFacts(entry.Spec, backend)()
 		var leaderName string
