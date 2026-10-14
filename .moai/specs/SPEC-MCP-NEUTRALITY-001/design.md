@@ -38,8 +38,10 @@ The full 36-row defect map with per-defect anchors lives in `plan.md` §B. Requi
 One resolver serves every tool:
 
 1. If the caller supplied `project_root` (string): validate — reject non-strings as invalid arguments; reject the home directory; confine to a registered worktree of the server's own repository (the `codexAuditValidateRoot` pattern generalized).
-2. Else if the tool is mutating: refuse (missing-required), with `hint` naming the parameter.
+2. Else if the tool is mutating: return the JSON-RPC invalid-params argument error (`is_error` true) with a hint naming the parameter — argument validation, deliberately OUTSIDE the five policy codes of §D1 (a malformed call is a caller error, not a queue decision); AC-MN-006 states the exact shape.
 3. Else: fall back to the resolved server root (existing precedence), and set `_root.warning`.
+
+The factory card verbs resolve the integration lock root the same way: the caller's `project_root` becomes the lock root through the same git-common-dir resolver the CLI uses (§D8), and all three verbs document the parent-checkout requirement.
 
 Every root-dependent result carries `_root {dir, source, warning}` where `source` ∈ {`param`, `server-cwd`, `fallback`}; `warning` is set for anything other than `param`.
 
@@ -51,23 +53,36 @@ Every root-dependent result carries `_root {dir, source, warning}` where `source
 
 ## §D5 Job lifecycle model (REQ-MN-014)
 
-Every background job record carries: `owner_server {pid, commit}`, `created_at`, `ttl`. On server exit, a shutdown pass cancels all live job contexts (codex, GLM, role-audit). `*_job_status` checks the owner's liveness and reports `stale` when dead. Foreground `codex_task` records its thread id at start so a timeout returns partial output plus a resumable thread. Registries prune by TTL.
+Two regimes, never conflated:
+
+- **Background jobs** (codex background sessions, GLM jobs, role-audit jobs) run under the SERVER's lifetime: they survive their originating request's context end — the existing contract the regression tests `TestCodexTask_BackgroundJobSurvivesRequestContextEnd`, `TestGLMTask_BackgroundJobSurvivesRequestContextEnd`, and `TestGLMTask_DetachedBackgroundJobIsStillCancellable` pin and this design preserves — each bound by its own job deadline, cancellable through an explicit cancel surface, and cancelled by the server's shutdown pass.
+- **Foreground codex tasks** run under the REQUEST's context: the bound ending the call also ends the child.
+
+Every background job record carries: `owner_server {pid, commit}`, `created_at`, `ttl`. On server exit, the shutdown pass cancels all live job contexts (codex, GLM, role-audit). `*_job_status` checks the owner's liveness and reports `stale` when dead. Foreground `codex_task` records its thread id at start so a timeout returns partial output plus a resumable thread. Registries prune by TTL.
 
 ## §D6 Broker claim model (REQ-MN-016/017/018)
 
 - Claim identity: `(endpoint, generation)`. Re-claim by the same endpoint while its lease is live extends `claim_expires_at` and keeps `claim_token`. A NEW token is minted only when the previous lease genuinely expired.
 - Generation advance: pending messages for the old generation migrate to the new one when the receiver re-registers; messages whose sender requested TTL expiry dead-letter with a sender notification. Zero permanently-unclaimable rows is the invariant.
-- Rendering: the hook renders N visible lines within its byte cap, cutting on a line boundary, and claims exactly the rendered set.
+- Rendering: the hook renders N visible lines within its byte cap, cutting on a line boundary, and claims exactly the rendered set. Two hook operations are distinct paths and named as such: the **counting path** (read-only count observation — no lock, no probe deadline, no claim; REQ-MN-011) and the **delivery path** (render the visible set, claim exactly it; REQ-MN-016).
 - Stop: block only for kinds in the decision-required set (blocker, status_request); all other deliveries are counts. Degraded broker state logs on the Stop side.
 - Peer attribution resolves the live session identity at call time; a stale spawn-time id refuses with guidance rather than silently addressing a dead endpoint.
 
 ## §D7 Audit evidence contract (REQ-MN-019..024)
 
 - One scope object travels through every backend leg, result, receipt, and gate record: `{tree, head, base_ref, base_sha, digest, truncated, excluded_untracked}`. A receipt without a matching digest never corroborates.
+- The `audit_cache` store joins the same evidence discipline: entries persist to disk under the project's state root (not process memory), each entry's evidence is the hash of an existing verdict file, and the store validates the verdict file's existence and SHA-256 match before storing or reusing — a non-SPEC directory is refused, never answered with the empty-input hash.
 - Verdict vocabulary: `pass | fail | inconclusive` for content; "could not run" is `inconclusive` + `gate_unmet` + preserved stderr, never `fail`. Exactly one retry on transport failure.
 - Convergence requires participant evidence: a required-inconclusive or below-threshold result is a distinct not-converged outcome, never pass.
 - Gate state is keyed by tree digest, written atomically, with validated session ids; could-not-run receipts are never reused as passes regardless of TTL.
 
 ## §D8 State-root seam contract (REQ-MN-025)
 
-For each artifact class (receipts, review/gate state, broker store), exactly one resolution rule: the caller-named project root (REQ-MN-004 contract), falling back to the repository toplevel. Producers and consumers MUST resolve through the same rule — no consumer reads a path computed from a different root (server cwd, git common dir, or spawn env). This is the seam only; layout unification stays with card 3.2-2-1.
+For each artifact class (receipts, review/gate state, broker store), exactly one resolution rule: the caller-named project root (REQ-MN-004 contract), falling back to the repository toplevel. Producers and consumers MUST resolve through the same rule — no consumer reads a path computed from a different root (server cwd, git common dir, or spawn env). This is the seam only; layout unification stays with card 3.2-2-1. The integration lock root joins the same rule: `factory_complete` passes the caller's `project_root` as lockRoot through the ONE git-common-dir resolver the CLI uses, so the CLI and the MCP verb cannot disagree about which tree the lock belongs to; `factory_next`, `factory_stage`, and `factory_complete` all document the parent-checkout requirement (the `parent-checkout` refusal code of §D1 is the enforcement arm).
+
+## §D9 Gate-client transport contract (REQ-MN-010)
+
+Direction, re-derived from the SDK: mcp-go v1.1.1 implements elicitation as server→client (the SERVER asks, the client answers), and `internal/` carries zero elicitation-initiation call sites — moai's server never asks. Two obligations follow:
+
+1. **Never-initiate guard** — the server keeps the elicitation API uncalled; a guard test holds the invariant so it cannot regress.
+2. **Gate-client auto-decline** — inside a Codex gate session, moai wires client connections toward nested MCP servers; an elicitation request arriving on such a connection receives an automatic decline response immediately, so the gate session cannot stall on an unanswered request or corrupt the shared stdin stream with interleaved writes. The 38/38 gate-session call failures of the audit era are the defect class this closes.
