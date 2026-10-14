@@ -129,6 +129,16 @@ func zoneResolveDepth(p string, depth int) (string, bool) {
 	if real, err := filepath.EvalSymlinks(p); err == nil {
 		return real, true
 	}
+	return zoneResolveWalk(p, depth)
+}
+
+// zoneResolveWalk is the physical component walk behind zoneResolveDepth,
+// split out so a caller that must NOT take the EvalSymlinks fast path can
+// force it (card t1712): the fast path collapses a ".." that follows a
+// symlink against the LEXICAL parent, which a parent-only resolution cannot
+// afford — a fully-existing `dirlink/..` would rejoin the final name against
+// the lexical parent while the shell walks it physically.
+func zoneResolveWalk(p string, depth int) (string, bool) {
 	volume := filepath.VolumeName(p)
 	parts := pathSegments(strings.TrimPrefix(p, volume), runtime.GOOS == "windows")
 	resolved := filepath.ToSlash(volume) + "/"
@@ -230,13 +240,7 @@ func resolveZoneTarget(root, raw string) []zoneForm {
 	}
 	var forms []zoneForm
 	add := func(rel string) {
-		f := zoneForm{Display: rel, Folded: config.FoldZoneText(rel)}
-		for _, have := range forms {
-			if have.Folded == f.Folded {
-				return
-			}
-		}
-		forms = append(forms, f)
+		forms = appendZoneForm(forms, rel)
 	}
 	if rel, inside := zoneLexicalRel(root, abs); inside {
 		add(rel)
@@ -280,4 +284,106 @@ func resolveZoneTarget(root, raw string) []zoneForm {
 		}
 	}
 	return forms
+}
+
+// appendZoneForm adds one relative spelling to forms unless its folded form
+// is already present; the dedup keeps the first spelling's Display text.
+// Shared by both zone target resolvers.
+func appendZoneForm(forms []zoneForm, rel string) []zoneForm {
+	f := zoneForm{Display: rel, Folded: config.FoldZoneText(rel)}
+	for _, have := range forms {
+		if have.Folded == f.Folded {
+			return forms
+		}
+	}
+	return append(forms, f)
+}
+
+// resolveZoneLinkTarget returns the relative forms of raw under root for an
+// unlink-family operand judged by its FINAL component itself (card t1712):
+// rm/unlink remove the link an operand names, never the target behind it, so
+// the final component is NOT followed. Parent components resolve through
+// symlinks exactly as before — through the physical walk, never the
+// EvalSymlinks fast path, whose lexical ".." collapse would rejoin the final
+// name outside the zone while the shell deletes inside it (zoneResolveWalk).
+// The lexical arm is shared with resolveZoneTarget; only the filesystem arms
+// differ (parent-only resolution).
+func resolveZoneLinkTarget(root, raw string) []zoneForm {
+	abs := zoneSlash(raw)
+	walk := zoneNativeSlash(raw)
+	if !zoneIsAbs(abs) {
+		if cwd, err := zoneGetwd(); err == nil && cwd != "" {
+			abs = zoneSlash(cwd) + "/" + abs
+			walk = zoneNativeSlash(cwd) + "/" + walk
+		}
+	}
+	if walk != abs && !filepath.IsAbs(walk) {
+		if cwd, err := zoneGetwd(); err == nil && cwd != "" {
+			walk = zoneNativeSlash(cwd) + "/" + walk
+		}
+	}
+	var forms []zoneForm
+	add := func(rel string) {
+		forms = appendZoneForm(forms, rel)
+	}
+	if rel, inside := zoneLexicalRel(root, abs); inside {
+		add(rel)
+	}
+	native := filepath.FromSlash(walk)
+	if root != "" && filepath.IsAbs(native) {
+		realRoot, ok := zoneResolve(filepath.FromSlash(zoneNativeSlash(root)))
+		if !ok {
+			realRoot = filepath.FromSlash(zoneNativeSlash(root))
+		}
+		if realTarget, ok := zoneResolveParent(native); ok {
+			if rel, inside := zoneLexicalRel(filepath.ToSlash(realRoot), filepath.ToSlash(realTarget)); inside {
+				add(rel)
+			}
+		}
+	}
+	// Backslash-literal arm (card t1570), the parent-only reading: the raw
+	// candidate resolves with every backslash intact, split at the slash the
+	// candidate's final component starts after. On POSIX a "\" inside the
+	// final component is an ordinary filename character and rides through;
+	// on Windows the native arm above already carried the raw separators, so
+	// the slash split finds no component here and the arm is skipped.
+	if root != "" {
+		absRaw := raw
+		if !zoneIsAbs(zoneSlash(raw)) {
+			if cwd, err := zoneGetwd(); err == nil && cwd != "" {
+				absRaw = zoneSlash(cwd) + "/" + raw
+			}
+		}
+		if zoneIsAbs(zoneSlash(absRaw)) {
+			realRoot, ok := zoneResolve(filepath.FromSlash(zoneSlash(root)))
+			if !ok {
+				realRoot = filepath.FromSlash(zoneSlash(root))
+			}
+			if realTarget, ok := zoneResolveParent(absRaw); ok {
+				if rel, inside := zoneLexicalRel(filepath.ToSlash(realRoot), filepath.ToSlash(realTarget)); inside {
+					add(rel)
+				}
+			}
+		}
+	}
+	return forms
+}
+
+// zoneResolveParent resolves everything before the FINAL component of p and
+// rejoins that component unresolved (card t1712): the parent prefix goes
+// through the physical walk — never the EvalSymlinks fast path, whose ".."
+// handling is lexical — and the final name lands on the resolved parent as
+// itself, the link's own path. A "." or ".." final segment is not a name the
+// shell unlinks as itself; the caller routes those spellings to the
+// target-following judgment and this function refuses them.
+func zoneResolveParent(p string) (string, bool) {
+	dir, final := path.Split(filepath.ToSlash(p))
+	if dir == "" || final == "" || final == "." || final == ".." {
+		return "", false
+	}
+	resolved, ok := zoneResolveWalk(filepath.FromSlash(dir), 0)
+	if !ok {
+		return "", false
+	}
+	return filepath.Join(resolved, filepath.FromSlash(final)), true
 }

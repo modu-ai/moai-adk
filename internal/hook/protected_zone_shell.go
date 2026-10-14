@@ -58,6 +58,30 @@ var zoneMutationVerbs = map[string]bool{
 	"rm": true, "unlink": true, "mv": true, "cp": true, "tee": true, "truncate": true,
 }
 
+// zoneUnlinkVerbs are the unlink-family members of zoneMutationVerbs whose
+// slash-less final component the shell removes AS ITSELF (card t1712): the
+// unlink call takes the link's own directory entry and never the target
+// behind it. mv, cp, tee and truncate are excluded on purpose — they follow
+// a final-component symlink and write the target, so they keep the
+// fail-closed follow.
+var zoneUnlinkVerbs = map[string]bool{
+	"rm": true, "unlink": true,
+}
+
+// zoneUnlinkLinkOwn reports whether an rm/unlink operand names its final
+// component AS ITSELF: no trailing separator (the "/" spelling names the
+// directory THROUGH the link) and no "." or ".." final segment (those spell
+// the directory too). A child path after the link keeps the link a PARENT
+// component — the parent resolves as today and the final name rejoins onto
+// the resolved parent.
+func zoneUnlinkLinkOwn(cand string) bool {
+	if cand == "" || strings.HasSuffix(cand, "/") {
+		return false
+	}
+	seg := cand[strings.LastIndexByte(cand, '/')+1:]
+	return seg != "." && seg != ".."
+}
+
 // zoneGitMutating are the git subcommands of REQ-SIPZ-007.
 var zoneGitMutating = map[string]bool{
 	"rm": true, "checkout": true, "restore": true, "apply": true,
@@ -502,6 +526,12 @@ type zoneWalker struct {
 	// total work, not per-generation work.
 	unbounded bool
 	cands     []string
+	// linkCands holds the rm/unlink operands judged by the LINK'S OWN path
+	// (card t1712): a slash-less final component is resolved only up to its
+	// parent, the final component itself never followed. Every other
+	// candidate — target-following spellings, the other verbs, redirection
+	// targets — lands in cands as before.
+	linkCands []string
 	funcs     [2]map[string]*zoneFuncBodies
 	calling   [2]map[string]bool
 	calls     [2]map[string]int
@@ -928,7 +958,26 @@ func (w *zoneWalker) zoneCall(cmd *syntax.CallExpr) {
 			// the verb's world binds its own argument readings (gate
 			// rounds 23/25)
 			w.mutating = true
-			w.zoneCandsWorld(world, pathCands[world])
+			if zoneUnlinkVerbs[name] {
+				// card t1712: an rm/unlink operand whose link is its last
+				// component with nothing after it is judged by the LINK'S
+				// OWN path — the unlink removes the link, never the target.
+				// Every other spelling keeps the target-following judgment,
+				// and so does every reading of a DUAL word: the two bash
+				// generations render \u/\U differently, and the preserved
+				// t1585 family freezes the full-follow judgment for those
+				// candidates (gate rounds 13/14).
+				zonePathCandidatesWorld(args[1:], world, func(cand string, dual bool) {
+					joined := zoneRelativeToSet(w.cwds, cand, world)
+					if !dual && zoneUnlinkLinkOwn(cand) {
+						w.linkCands = append(w.linkCands, joined...)
+						return
+					}
+					w.cands = append(w.cands, joined...)
+				})
+			} else {
+				w.zoneCandsWorld(world, pathCands[world])
+			}
 		case name == "sed":
 			if zoneSedInPlace(world, args) {
 				// in-place is decided by THIS command's options alone — an
@@ -1308,40 +1357,53 @@ func zoneEnvAssignment(t string) bool {
 // the existing under-match.
 func zonePathCandidates(args []*syntax.Word) [2][]string {
 	out := [2][]string{}
-	var seenDashDash [2]bool
+	for world := 0; world < 2; world++ {
+		world := world
+		zonePathCandidatesWorld(args, world, func(cand string, _ bool) {
+			out[world] = append(out[world], cand)
+		})
+	}
+	return out
+}
+
+// zonePathCandidatesWorld runs the shared option-word classification for ONE
+// bash generation, handing each literal reading to add together with the
+// word's dual-generation flag (whether the word carries \u/\U, the one
+// escape family whose rendering differs across bash generations). The
+// classification — the bare `--` separator, a long option's attached value,
+// skipped short flags — is the per-world half of zonePathCandidates, split
+// out so the unlink-family caller can decide each reading's disposition at
+// the word it came from (card t1712: a dual word's readings keep the
+// fail-closed target-following judgment and are never narrowed).
+func zonePathCandidatesWorld(args []*syntax.Word, world int, add func(cand string, dual bool)) {
+	var seenDashDash bool
 	for _, a := range args {
 		readings, literal := zoneWordWorldReadings(a)
 		if !literal {
 			continue
 		}
-		// per-world classification and emptiness filtering: the modern
-		// reading may truncate to "" at a leading code-point NUL while the
-		// pre-4.2 reading still names a real path, and each world's flag
-		// spelling classifies independently (gate rounds 15/19)
-		for world := 0; world < 2; world++ {
-			t := readings[world]
-			if t == "" {
+		t := readings[world]
+		if t == "" {
+			continue
+		}
+		dual := zoneWordDual(a)
+		if !seenDashDash {
+			if t == "--" {
+				seenDashDash = true
 				continue
 			}
-			if !seenDashDash[world] {
-				if t == "--" {
-					seenDashDash[world] = true
-					continue
+			if strings.HasPrefix(t, "--") {
+				if idx := strings.Index(t, "="); idx >= 0 && idx+1 < len(t) {
+					add(t[idx+1:], dual)
 				}
-				if strings.HasPrefix(t, "--") {
-					if idx := strings.Index(t, "="); idx >= 0 && idx+1 < len(t) {
-						out[world] = append(out[world], t[idx+1:])
-					}
-					continue
-				}
-				if strings.HasPrefix(t, "-") {
-					continue
-				}
+				continue
 			}
-			out[world] = append(out[world], t)
+			if strings.HasPrefix(t, "-") {
+				continue
+			}
 		}
+		add(t, dual)
 	}
-	return out
 }
 
 // zoneSedInPlace reports whether the argument list makes sed in-place for
@@ -2089,6 +2151,27 @@ func (w *zoneWalker) walkIfChain(clause *syntax.IfClause) {
 	w.setCwds(w.cwds)
 }
 
+// zoneDenyIfCovered judges one candidate's resolved forms against the zone
+// and, when covered, records the audit row and returns the deny reason; ""
+// continues the walk. Shared by the target-following and link-own candidate
+// lists (card t1712).
+func (h *preToolHandler) zoneDenyIfCovered(agentID, root string, load config.ProtectedZoneLoad, cand string, forms []zoneForm) string {
+	category, covered := zoneShellCovered(forms, load, root)
+	if !covered {
+		return ""
+	}
+	display := cand
+	if len(forms) > 0 {
+		display = forms[0].Display
+	}
+	reason := zoneDenyReason(agentID, "category", category, display)
+	h.recordZoneAudit(root, zoneAuditRow{
+		Identity: agentID, Tool: "Bash", Path: display,
+		Category: category, Decision: "deny", ManifestState: load.State,
+	})
+	return reason
+}
+
 // checkProtectedZoneShell decides one identity Bash call against the zone and
 // returns a deny reason, or "" to let the call through. A command with no
 // mutating form never reaches the manifest (REQ-SIPZ-008); a mutating command
@@ -2146,9 +2229,13 @@ func (h *preToolHandler) checkProtectedZoneShell(agentID string, toolInput json.
 
 	// dedup BEFORE the cap: a unicode-free command contributes the same
 	// path from both worlds, and capping before dedup would false-deny a
-	// plain command whose deduped set fits (gate round 19 P2)
+	// plain command whose deduped set fits (gate round 19 P2). The link-own
+	// list dedups the same way, and both lists count against the one cap —
+	// the split partitions one candidate set, so the total is unchanged
+	// (card t1712).
 	w.cands = zoneDedupStrings(w.cands)
-	overCap := len(w.cands) > zoneCandidateCap
+	w.linkCands = zoneDedupStrings(w.linkCands)
+	overCap := len(w.cands)+len(w.linkCands) > zoneCandidateCap
 	if overCap {
 		// a candidate set beyond the cap cannot be judged soundly at this
 		// scale — denied fail-closed REGARDLESS of manifest state: a set
@@ -2165,21 +2252,17 @@ func (h *preToolHandler) checkProtectedZoneShell(agentID string, toolInput json.
 		return reason
 	}
 	for _, cand := range w.cands {
-		forms := resolveZoneTarget(root, cand)
-		category, covered := zoneShellCovered(forms, load, root)
-		if !covered {
-			continue
+		if reason := h.zoneDenyIfCovered(agentID, root, load, cand, resolveZoneTarget(root, cand)); reason != "" {
+			return reason
 		}
-		display := cand
-		if len(forms) > 0 {
-			display = forms[0].Display
+	}
+	for _, cand := range w.linkCands {
+		// card t1712: the link-own candidates resolve with the final
+		// component unfollowed — the link's own path is all the judgment
+		// sees, so a link outside the zone pointing at a zone file passes.
+		if reason := h.zoneDenyIfCovered(agentID, root, load, cand, resolveZoneLinkTarget(root, cand)); reason != "" {
+			return reason
 		}
-		reason := zoneDenyReason(agentID, "category", category, display)
-		h.recordZoneAudit(root, zoneAuditRow{
-			Identity: agentID, Tool: "Bash", Path: display,
-			Category: category, Decision: "deny", ManifestState: load.State,
-		})
-		return reason
 	}
 
 	if w.unbounded {
@@ -2220,6 +2303,8 @@ func (h *preToolHandler) checkProtectedZoneShell(agentID string, toolInput json.
 		target := ""
 		if len(w.cands) > 0 {
 			target = w.cands[0]
+		} else if len(w.linkCands) > 0 {
+			target = w.linkCands[0]
 		}
 		h.recordZoneAudit(root, zoneAuditRow{
 			Identity: agentID, Tool: "Bash", Path: target,
