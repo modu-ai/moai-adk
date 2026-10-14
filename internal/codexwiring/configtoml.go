@@ -18,7 +18,10 @@ const (
 	// mcpServerEnvVarsValue is the fixed allowlist of launcher/session facts
 	// inherited by the MoAI MCP subprocess. Codex otherwise starts the server
 	// without the factory attribution needed to resolve the active broker.
-	mcpServerEnvVarsValue = `["MOAI_HOME", "MOAI_KANBAN_ID", "MOAI_SESSION_PID", "MOAI_KANBAN_BACKEND", "MOAI_FACTORY_WORKER", "MOAI_FACTORY_WORKERS", "CLAUDE_PROJECT_DIR", "CLAUDE_CODE_SESSION_ID"]`
+	// MOAI_FACTORY_ROLE joined with SPEC-MCP-NEUTRALITY-001 REQ-MN-003: the
+	// positive role mark is the identity default the MCP layer reads, so a
+	// Codex lane can carry it the same way a Claude lane does.
+	mcpServerEnvVarsValue = `["MOAI_HOME", "MOAI_KANBAN_ID", "MOAI_SESSION_PID", "MOAI_KANBAN_BACKEND", "MOAI_FACTORY_ROLE", "MOAI_FACTORY_WORKER", "MOAI_FACTORY_WORKERS", "CLAUDE_PROJECT_DIR", "CLAUDE_CODE_SESSION_ID"]`
 	// mcpApprovalMode is the capability-based approval mode: `writes` prompts
 	// for tools NOT marked read-only (MCP ReadOnlyHint annotation) — the
 	// approval set therefore rides on server annotations, never on tool-name
