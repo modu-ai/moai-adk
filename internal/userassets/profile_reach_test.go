@@ -384,7 +384,7 @@ func TestApplyTargetRefusesRootOutsideSnapshot(t *testing.T) {
 		t.Fatalf("load manifest: %v", err)
 	}
 	res := &Result{}
-	err = inst.applyTarget(tgt, manifest, snapshot, res)
+	_, _, err = inst.applyTarget(tgt, manifest, snapshot, res)
 	if err == nil {
 		t.Fatal("applyTarget must refuse a root outside the validated snapshot")
 	}
