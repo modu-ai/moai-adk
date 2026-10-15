@@ -223,12 +223,8 @@ func runTemplateSyncWithReporter(cmd *cobra.Command, reporter project.ProgressRe
 	// Use current directory as project root
 	projectRoot := "."
 
-	currentVersion := version.GetVersion()
-	// Identity header band (REQ-TUXIU-015): "◆ MoAI-ADK <version> <go-runtime>
-	// · claude" with the version as a solid brand pill. Card t1527 D1: the band
-	// is THE single version surface of a sync — the former duplicate
-	// "Current version" KV beside it is gone.
-	_, _ = fmt.Fprintln(out, renderIdentityBand(currentVersion, th))
+	// The identity band is printed by runUpdate, the run's single version banner
+	// (REQ-RC30-013), so the sync header starts at its progress line.
 	_, _ = fmt.Fprintln(out, tui.CheckLine("run", "Syncing templates", "from embedded filesystem", "", &th))
 
 	// Card t1527 D2: the three pre-deploy phases render on the SAME stdout
@@ -244,7 +240,7 @@ func runTemplateSyncWithReporter(cmd *cobra.Command, reporter project.ProgressRe
 	// If versions match, skip sync for performance (70-80% faster)
 	packageVersion := version.GetVersion()
 	projectVersion, err := plan.GetProjectConfigVersion(projectRoot)
-	if err == nil && packageVersion == projectVersion && !forceBackup {
+	if err == nil && packageVersion == projectVersion && !forceBackup && versionMatchSkipsSync(projectRoot) {
 		plVersion.Done("Already up-to-date")
 		_, _ = fmt.Fprintln(out)
 		_, _ = fmt.Fprintln(out, tui.Pill(tui.PillOpts{Kind: tui.PillOk, Solid: false, Label: report.RenderOutcome(report.OutcomeAlreadyUpToDate, 0, ""), Theme: &th}))
@@ -333,7 +329,7 @@ func runTemplateSyncWithReporter(cmd *cobra.Command, reporter project.ProgressRe
 		_, _ = fmt.Fprintln(out, tui.CheckLine("info", "Auto-confirm", "CI/CD mode", "", &th))
 	} else {
 		var err error
-		proceed, err = confirmViaPreview(analysis, projectRoot)
+		proceed, err = confirmViaPreviewFn(analysis, projectRoot)
 		if err != nil {
 			if reporter != nil {
 				reporter.StepError(err)
@@ -653,6 +649,7 @@ func runTemplateSyncWithReporter(cmd *cobra.Command, reporter project.ProgressRe
 				// reclassified every content-changed file user_modified. Persist
 				// the deploy's tracking here, before the merge/restore steps
 				// rewrite their files (those retrack separately below).
+				recordTemplateTree(mgr, errOut)
 				if saveErr := mgr.Save(); saveErr != nil {
 					_, _ = fmt.Fprintf(errOut, "  manifest save after deploy: %v\n", saveErr)
 				}
@@ -696,6 +693,10 @@ func runTemplateSyncWithReporter(cmd *cobra.Command, reporter project.ProgressRe
 			// the legacy CR-plus-format pair (REQ-UPR-004).
 			plBackup := tui.ProgressLine(out, "Backing up .moai/config...", nil)
 			var backupErr error
+			// SPEC-UPDATE-REPAIR-RC30-001 D9: one run id per run, written into
+			// every backup directory this run creates, so retention prunes the
+			// run as a whole rather than each directory.
+			runID := backup.NewRunID()
 			configBackupPath, backupErr = backup.BackupMoaiConfig(projectRoot)
 			if backupErr != nil {
 				plBackup.Fail(fmt.Sprintf("Backup failed: %v", backupErr))
@@ -705,6 +706,11 @@ func runTemplateSyncWithReporter(cmd *cobra.Command, reporter project.ProgressRe
 				return backupErr
 			}
 			if configBackupPath != "" {
+				// A failed marker write is not fatal: this directory then counts as
+				// a run of its own, and the failure surfaces as a terminal warning.
+				if err := backup.WriteRunMarker(configBackupPath, runID); err != nil {
+					updateLedger.requiref(sevWarn, "%s", runMarkerWarning(projectRoot, err))
+				}
 				plBackup.Done(".moai/config backed up")
 			} else {
 				plBackup.Done("No config to backup")
@@ -727,6 +733,11 @@ func runTemplateSyncWithReporter(cmd *cobra.Command, reporter project.ProgressRe
 				return nsBackupErr
 			}
 			if nsBackupPath != "" {
+				// Same run id as the config backup: the namespace directory is the
+				// second directory of this run (failure handling as above).
+				if err := backup.WriteRunMarker(nsBackupPath, runID); err != nil {
+					updateLedger.requiref(sevWarn, "%s", runMarkerWarning(projectRoot, err))
+				}
 				// Derive display-friendly project-root-relative path
 				displayNs := nsBackupPath
 				if rel, relErr := filepath.Rel(projectRoot, nsBackupPath); relErr == nil {
@@ -1079,6 +1090,18 @@ func runTemplateSyncWithReporter(cmd *cobra.Command, reporter project.ProgressRe
 	// (the AC-WBG-009 wording travels with it verbatim).
 	updateLedger.referencef("%s", worktreeAdvisoryText(projectRoot))
 
+	// t1729: template files this sync changed but the tree has not committed
+	// are invisible to worktrees branched from the committed base — the
+	// SessionStart role-rule injection in such a worktree serves a stale
+	// deployed copy. One Reference line names the commit-then-sync path
+	// (rides the same Reference section as the advisory above). The query
+	// set carries the reconcile's ArchivedRemoved paths too (audit round-4):
+	// a cleanup-only update leaves uncommitted DELETIONS analysis.Files
+	// never lists.
+	if notice := uncommittedTemplateNotice(projectRoot, append(mergeAnalysisPaths(analysis.Files), reconSummary.ArchivedRemoved...)); notice != "" {
+		updateLedger.referencef("%s", notice)
+	}
+
 	// SPEC-INIT-SHRINK-001 (REQ-015, design §3 step 5): a completed
 	// migration run writes the record — plugin after a confirmed install,
 	// local under every other arm. A record-bearing project is unchanged:
@@ -1086,17 +1109,12 @@ func runTemplateSyncWithReporter(cmd *cobra.Command, reporter project.ProgressRe
 	// (the error paths above return first), so the record is written only
 	// over a completed sync.
 	if migration != nil {
-		switch migration.outcome {
-		case migrateConfirmed:
-			if err := template.ApplyDeployMode(projectRoot, "plugin"); err != nil {
-				_, _ = fmt.Fprintf(errOut, "  %s deployment_mode write warning: %v\n", uikit.SymWarning(), err)
-			}
-		case migrateNotDemonstrated, migrateOptedOut:
-			if err := template.ApplyDeployMode(projectRoot, "local"); err != nil {
-				_, _ = fmt.Fprintf(errOut, "  %s deployment_mode write warning: %v\n", uikit.SymWarning(), err)
-			}
-		}
+		stampMigrationDeployMode(projectRoot, migration.outcome, errOut)
 	}
+
+	// REQ-RC30-023: the stamp written by this run must match what the deploy left
+	// on disk; a disagreement is reported, never silently accepted.
+	warnStampSkew(out, projectRoot, version.GetVersion())
 
 	return nil
 }
@@ -1140,7 +1158,7 @@ func runTemplateSyncWithProgress(cmd *cobra.Command, userAssetsInstalled bool) (
 	// Check for version match before proceeding
 	packageVersion := version.GetVersion()
 	projectVersion, verr := plan.GetProjectConfigVersion(projectRoot)
-	if verr == nil && packageVersion == projectVersion && !forceUpdate {
+	if verr == nil && packageVersion == projectVersion && !forceUpdate && versionMatchSkipsSync(projectRoot) {
 		_, _ = fmt.Fprintln(out)
 		_, _ = fmt.Fprintln(out, tui.Pill(tui.PillOpts{Kind: tui.PillOk, Solid: false, Label: report.RenderOutcome(report.OutcomeAlreadyUpToDate, 0, ""), Theme: &th}))
 		return true, nil
@@ -1153,7 +1171,13 @@ func runTemplateSyncWithProgress(cmd *cobra.Command, userAssetsInstalled bool) (
 			return false, fmt.Errorf("load embedded templates: %w", eerr)
 		}
 
-		deployer := template.NewDeployerWithForceUpdate(embedded, true)
+		// The preview builds the run's deployer (REQ-RC30-011, U-18), so both
+		// count the same files for the same fixture.
+		updateNoPlugin := getBoolFlag(cmd, "no-plugin") || updatePluginOptedOut()
+		deployer, derr := newTemplateSyncDeployer(embedded, resolveUpdateDeployMode(projectRoot, updateNoPlugin))
+		if derr != nil {
+			return false, fmt.Errorf("construct harness deployer: %w", derr)
+		}
 		analysis := updatemerge.AnalyzeMergeChanges(deployer, projectRoot)
 
 		_, _ = fmt.Fprintln(out)

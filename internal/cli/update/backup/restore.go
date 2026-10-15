@@ -125,6 +125,11 @@ func RestoreMoaiConfigRetained(projectRoot, backupDir string, recordFallback Mer
 			return nil
 		}
 
+		// The run marker is backup bookkeeping, never a user file.
+		if filepath.Base(backupPath) == RunMarkerName {
+			return nil
+		}
+
 		// Skip non-YAML files (e.g., backup_metadata.json)
 		if filepath.Ext(backupPath) != ".yaml" && filepath.Ext(backupPath) != ".yml" {
 			return nil
@@ -251,6 +256,12 @@ func RestoreMoaiConfigLegacy(projectRoot, backupDir, configDir string) error {
 		// Skip metadata and template defaults
 		if filepath.Base(relPath) == "backup_metadata.json" ||
 			strings.HasPrefix(relPath, ".template-defaults") {
+			return nil
+		}
+
+		// The run marker is backup bookkeeping, never a user file: it must not
+		// land in the project (SPEC-UPDATE-REPAIR-RC30-001 D9).
+		if filepath.Base(relPath) == RunMarkerName {
 			return nil
 		}
 

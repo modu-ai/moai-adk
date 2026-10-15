@@ -70,6 +70,12 @@ type ConfigManager struct {
 	languageDirty bool
 	qualityDirty  bool
 	llmDirty      bool
+
+	// llmBaseline is the llm section as loaded or last saved, rendered by
+	// llmBaselineOf. Save diffs a dirty llm section against it, so only the
+	// scalars the caller changed are patched into an existing llm.yaml (U-05).
+	// Changed only under m.mu.
+	llmBaseline []byte
 }
 
 // NewConfigManager creates a new ConfigManager instance in uninitialized state.
@@ -84,6 +90,7 @@ func NewConfigManager() *ConfigManager {
 // replacement (Load/LoadRaw/Reload) or a successful Save() resets the
 // mutation tracking — the EC-3 reset contract the git-strategy precedent
 // established, extended to all six sections (SPEC-WEB-SAVE-LOSSLESS-001).
+// It also re-takes the llm baseline that Save diffs against (llmBaseline).
 // Caller must hold m.mu (write).
 func (m *ConfigManager) resetSectionDirtyLocked() {
 	m.gitStrategyDirty = false
@@ -92,6 +99,9 @@ func (m *ConfigManager) resetSectionDirtyLocked() {
 	m.languageDirty = false
 	m.qualityDirty = false
 	m.llmDirty = false
+	if m.config != nil {
+		m.llmBaseline = llmBaselineOf(m.config.LLM)
+	}
 }
 
 // @MX:NOTE: [AUTO] Merges file values, compiled defaults, and environment variable priorities. MOAI_CONFIG_DIR env var can override config directory. Uses disk cache (SPEC-HOOK-PRETOOL-PERF-001) to skip ~20 per-section reads on cache hit.
@@ -288,8 +298,9 @@ func (m *ConfigManager) Save() error {
 		}
 	}
 
-	// Save LLM section — same dirty-or-absent gate.
-	if err := m.saveGated(sectionsDir, "llm.yaml", m.llmDirty, llmFileWrapper{LLM: m.config.LLM}); err != nil {
+	// Save LLM section — the dirty-or-absent gate; a dirty section over an
+	// existing llm.yaml is patched scalar by scalar (saveLLM, U-05).
+	if err := m.saveLLM(sectionsDir); err != nil {
 		return fmt.Errorf("save LLM config: %w", err)
 	}
 

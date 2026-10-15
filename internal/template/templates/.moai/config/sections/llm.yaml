@@ -54,6 +54,32 @@ llm:
   # entitlement — the closed alias set on the overrides is what keeps pins
   # spawnable.
   agent_overrides_consume: false
+
+  # defaults.sessions: the model + effort each factory session launches with.
+  # `mode: default` uses the shipped table (the values below
+  # restate it); `mode: custom` applies the cells below from the next launch,
+  # an empty cell falling back to the shipped value. Every value is a launch
+  # DEFAULT that stays changeable mid-session: Claude takes --model plus the
+  # transient --settings effort (never CLAUDE_CODE_EFFORT_LEVEL, which locks
+  # /effort); Codex takes -m and -c model_reasoning_effort (lane only — a plain
+  # `moai codex` keeps .codex/config.toml; the leader pair is reserved for a
+  # future `moai codex -f`); GLM takes the slot alias (opus ->
+  # llm.glm.models.high, sonnet -> medium) and translates its effort through
+  # llm.glm.effort (high -> max, medium -> high). Every effort is Claude
+  # vocabulary {low, medium, high, xhigh}; max and ultra are never a default.
+  # An explicit --model / --effort / -m on the command line still wins.
+  defaults:
+    sessions:
+      mode: "default"
+      cc:
+        leader: { model: "opus", effort: "high" }     # moai cc -f
+        lane: { model: "sonnet", effort: "medium" }   # moai cc -l
+      glm:
+        leader: { model: "opus", effort: "high" }     # moai glm -f (glm-5.3 opus slot; z.ai max)
+        lane: { model: "sonnet", effort: "medium" }   # moai glm -l (glm-5.3 sonnet slot; z.ai high)
+      codex:
+        leader: { model: "gpt-6.1-sol", effort: "high" }    # reserved: future moai codex -f
+        lane: { model: "gpt-6.1-sol", effort: "medium" }    # moai codex -l
   # Main-session reasoning effort comes from the preference profile
   # (`moai profile setup`), never from this file.
   #
@@ -75,8 +101,8 @@ llm:
   glm:
     base_url: "https://api.z.ai/api/anthropic"
     models:
-      high: "glm-5.3-flash"   # 1M context — Opus slot (main session + inherit agents)
-      medium: "glm-5.3-flash" # 1M context — Sonnet slot (balanced)
+      high: "glm-5.3"         # 1M context — Opus slot (main session + inherit agents)
+      medium: "glm-5.3"       # 1M context — Sonnet slot (balanced)
       low: "glm-5.3-flash"    # 1M context — Haiku slot (lightweight)
       fable: "glm-5.3"        # 1M context — Fable tier (ANTHROPIC_DEFAULT_FABLE_MODEL)
 
@@ -87,8 +113,8 @@ llm:
     # default; glm-5.3-flash accepts max only.
     effort:
       high: "max"
-      medium: "max"
-      low: "max"
+      medium: "high"
+      low: "low"
       fable: "max"
 
     # ── GLM reasoning-effort mapping (documentation-only — the Go overlay at

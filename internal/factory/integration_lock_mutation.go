@@ -87,6 +87,15 @@ func withIntegrationLockMutation(projectRoot string, fn func() error) error {
 	return fn()
 }
 
+// RunIntegrationMutation runs fn inside the window's mutation section for projectRoot,
+// the critical section the merge step and the window verbs share (card t1619, codex
+// review P1: the primary's fast-forward re-sync runs its ownership re-check and the
+// move inside it). The section is not reentrant: fn must not call a verb that takes
+// it again, so the failure classification and any window release run after it.
+func RunIntegrationMutation(projectRoot string, fn func() error) error {
+	return withIntegrationLockMutation(projectRoot, fn)
+}
+
 // acquireIntegrationMutationLock takes the mutation lock, retrying contention
 // within the shared elapsed budget (state_lock_wait.go: 10 supported writers ×
 // 33ms CI mutation cost × 5 headroom = 1.65s) using the same jittered backoff.

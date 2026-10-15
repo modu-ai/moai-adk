@@ -61,6 +61,7 @@ func Validate(cfg *Config, loadedSections map[string]bool) error {
 	// entry's agent/model/effort enums join the same atomic-reject flow.
 	errs = append(errs, validateProfile(cfg)...)
 	errs = append(errs, validateAgentOverrides(cfg)...)
+	errs = append(errs, validateSessionDefaults(cfg)...)
 
 	if len(errs) > 0 {
 		return &ValidationErrors{Errors: errs}

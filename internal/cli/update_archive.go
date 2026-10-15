@@ -279,7 +279,7 @@ func copyDirAll(srcDir, dstDir string) error {
 // Output format:
 //
 //	archive: <id> → .moai/archive/skills/v2.16/<id>
-//	total: N skills archived, 0 user customizations modified
+//	total: N skills archived
 //
 // @MX:ANCHOR: [AUTO] archiveLegacySkills is the entry point for legacy skill archival in the update flow
 // @MX:REASON: [AUTO] called from runUpdate, dry-run, and idempotency tests; fan_in >= 3
@@ -364,7 +364,7 @@ func archiveLegacySkills(projectRoot string, out io.Writer, force bool) (int, er
 
 	// The summary is emitted unconditionally — reaching it no longer depends on
 	// every entry having succeeded. `archived` counts successes only.
-	_, _ = fmt.Fprintln(out, tui.Pill(tui.PillOpts{Kind: tui.PillOk, Solid: false, Label: fmt.Sprintf("total: %d skills archived, 0 user customizations modified", archived), Theme: &th}))
+	_, _ = fmt.Fprintln(out, tui.Pill(tui.PillOpts{Kind: tui.PillOk, Solid: false, Label: fmt.Sprintf("total: %d skills archived", archived), Theme: &th}))
 	// errors.Join returns nil for an empty slice, so the success path is
 	// unchanged; otherwise the caller receives one error naming every failed ID.
 	return archived, errors.Join(failures...)

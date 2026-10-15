@@ -63,7 +63,7 @@ Wire classify → reconcile → deploy in the update orchestration: per-class di
 Files: `internal/cli/update/reconcile.go` (new), `internal/cli/update.go` (wiring), `internal/cli/update/deploy/deploy.go` (guard + target plumbing only).
 
 ### M5 — Summary + counting (Priority Medium)
-Outcome categories (refreshed/merged/conflicted/preserved/archived-removed) with per-path lists; remove the `plan.go:73` managed-count exclusion; deletions reported (REQ-UPM-031); keep output on existing report structures (t1527 boundary). `--dry-run` previews the reconciliation plan using the read-only classifier.
+Outcome categories (refreshed/merged/conflicted/preserved/archived-removed) with per-path lists for refreshed, merged, conflicted, and archived-removed, and a count for preserved (its per-path list only under `--verbose`); remove the `plan.go:73` managed-count exclusion; deletions reported (REQ-UPM-031); keep output on existing report structures (t1527 boundary). `--dry-run` previews the reconciliation plan using the read-only classifier.
 Files: `internal/cli/update/report/outcome.go`, `report.go`, `internal/cli/update/plan/plan.go`, preview files as needed.
 
 ### M6 — Green + docs (Priority Medium)

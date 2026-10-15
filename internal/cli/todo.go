@@ -208,7 +208,8 @@ func withResolvedLandedRef(cmd *cobra.Command, apply func(ref string)) {
 // newTodoCmd creates the `moai todo` parent command.
 //
 // Construction is serialized behind a mutex: the flag registrations below
-// bind package-level variables (`todoAutoFlag` · `todoAutoWait`), so pflag
+// bind package-level variables (`todoAutoFlag` · `todoAutoLaneFlag` ·
+// `todoAutoLeaderFlag` · `todoAutoWait`), so pflag
 // writes those globals at REGISTRATION time — and concurrent constructors
 // (the landed-verb concurrency test builds one command per goroutine) race
 // on them. The per-call command instances themselves share nothing.
@@ -274,9 +275,10 @@ mentions an id later in the sentence still falls through, and
 			return cobra.NoArgs(cmd, args)
 		},
 		RunE: func(cmd *cobra.Command, args []string) error {
-			if todoAutoFlag {
+			if todoAutoFlag || todoAutoLaneFlag || todoAutoLeaderFlag {
+				mode := todoAutoModeFlag()
 				if len(args) > 0 {
-					return fmt.Errorf("--auto takes no card arguments; the invocation is the operator's batch approval of the queue, never an admission")
+					return fmt.Errorf("%s takes no card arguments; the invocation is the operator's batch approval of the queue, never an admission", mode)
 				}
 				opts := autoOptions{
 					wait:     todoAutoWait,
@@ -284,6 +286,23 @@ mentions an id later in the sentence still falls through, and
 					landed:   todoAutoLandedLookup,
 					jevRank:  todoAutoJevRanker,
 					quota:    todoAutoQuotaLine,
+				}
+				// Card t1814: the two explicit modes. --auto-lane is the lane
+				// cycle without the evidence wait; --auto-leader is the
+				// leader's serial cycle. Each refuses the other session kind
+				// before any queue read; --auto keeps the session-kind dispatch.
+				switch {
+				case todoAutoLaneFlag:
+					if !todoLaneSession() {
+						return fmt.Errorf("--auto-lane: refused — not a lane session (the lane role marker and label are unset); the leader's cycle is --auto-leader")
+					}
+					opts.noWait = true
+					return runAutoLaneCycle(cmd.Context(), resolveTodoQueueRoot(), cmd.OutOrStdout(), cmd.ErrOrStderr(), opts)
+				case todoAutoLeaderFlag:
+					if todoLaneSession() {
+						return fmt.Errorf("--auto-leader: refused — this is a lane session; a lane takes its card with --auto-lane")
+					}
+					return runAutoCycle(cmd.OutOrStdout(), newTodoStore(), resolveTodoQueueRoot(), opts)
 				}
 				if todoLaneSession() {
 					// Card t1554: a lane session's --auto invocation IS the
@@ -327,9 +346,26 @@ mentions an id later in the sentence still falls through, and
 		newTodoShowCmd(), newTodoTriageCmd())
 	cmd.Flags().BoolVar(&todoAutoFlag, "auto", false,
 		"process the queue serially: pick one card, dispatch one isolated worker, judge completion on disk evidence, then accept the next; the invocation is the operator's batch approval of the queue and nothing else; the queued candidates are ranked first (a Jev signal when available, else recorded priority and readiness), and only a card whose text begins with the [보류 marker is demoted — a hold stated in prose without the marker is not (the structural hold is moai todo hold); a lane session runs the same cycle through the lease edges — its only queue write is the nominated lease, and completion stays with the existing completion path")
+	cmd.Flags().BoolVar(&todoAutoLaneFlag, "auto-lane", false,
+		"lane sessions only: lease the ranked next card (the --auto lane path), print its dispatch directive, and exit 0 without waiting for the worker evidence; completion stays with the existing factory stage/complete path; refused outside a lane session")
+	cmd.Flags().BoolVar(&todoAutoLeaderFlag, "auto-leader", false,
+		"the leader's --auto serial cycle under its explicit name: the invocation is the operator's batch approval of the queue; refused in a lane session")
+	cmd.MarkFlagsMutuallyExclusive("auto", "auto-lane", "auto-leader")
 	cmd.Flags().DurationVar(&todoAutoWait, "auto-wait", 30*time.Minute,
 		"per-card deadline for the worker evidence file before the card is unpicked with a labelled non-finding")
 	return cmd
+}
+
+// todoAutoModeFlag names the cycle flag this invocation set, for messages.
+func todoAutoModeFlag() string {
+	switch {
+	case todoAutoLaneFlag:
+		return "--auto-lane"
+	case todoAutoLeaderFlag:
+		return "--auto-leader"
+	default:
+		return "--auto"
+	}
 }
 
 // todoAutoFlag / todoAutoWait back the `--auto` serial-processing cycle. They
@@ -339,6 +375,10 @@ mentions an id later in the sentence still falls through, and
 var (
 	todoAutoFlag bool
 	todoAutoWait time.Duration
+	// todoAutoLaneFlag / todoAutoLeaderFlag back the two explicit cycle modes
+	// (card t1814), mutually exclusive with --auto and with each other.
+	todoAutoLaneFlag   bool
+	todoAutoLeaderFlag bool
 )
 
 // The live seams of the `--auto` ranking stage (SPEC-TODO-AUTO-PRIORITY-001

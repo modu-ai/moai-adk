@@ -6,6 +6,8 @@ description: |
   Match user intent language-independently — do not require literal keyword matches.
   NOT for: code implementation, testing, architecture design, documentation content, security audits
 tools: Read, Write, Edit, Grep, Glob, Bash, TaskCreate, TaskUpdate, TaskList, TaskGet, Skill
+model: haiku
+effort: medium
 color: orange
 permissionMode: bypassPermissions
 memory: project
@@ -188,4 +190,4 @@ Static `skills:` preload is kept to a minimum (token diet — progressive disclo
 
 ## Model/effort escalation
 
-> **Model/effort escalation**: this agent declares no `model` or `effort` and inherits the main session's, so deeper reasoning means a session run at that level — an ORCHESTRATOR decision (this agent cannot spawn sub-agents — no `Agent` tool). See `.claude/rules/moai/development/model-policy.md`.
+> **Model/effort escalation**: this agent's default `model` and `effort` are declared in its frontmatter, so reasoning deeper than that default means a spawn-time override or a session run at that level — an ORCHESTRATOR decision (this agent cannot spawn sub-agents — no `Agent` tool). See `.claude/rules/moai/development/model-policy.md`.

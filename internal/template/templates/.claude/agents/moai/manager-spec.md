@@ -7,6 +7,8 @@ description: |
   Match user intent language-independently — do not require literal keyword matches.
   NOT for: run-phase code implementation (manager-develop), testing execution, deployment, code review, documentation sync (manager-docs)
 tools: Read, Write, Edit, Bash, Glob, Grep, TaskCreate, TaskUpdate, TaskList, TaskGet, WebFetch, Skill, mcp__moai__spec_progress, mcp__moai__spec_audit, mcp__moai__spec_drift
+model: opus
+effort: medium
 color: blue
 permissionMode: bypassPermissions
 memory: project
@@ -251,4 +253,4 @@ Static `skills:` preload is kept to a minimum (token diet — progressive disclo
 
 ## Model/effort escalation
 
-> **Model/effort escalation**: this agent declares no `model` or `effort` and inherits the main session's, so deeper reasoning means a session run at that level — an ORCHESTRATOR decision (this agent cannot spawn sub-agents — no `Agent` tool). See `.claude/rules/moai/development/model-policy.md`.
+> **Model/effort escalation**: this agent's default `model` and `effort` are declared in its frontmatter, so reasoning deeper than that default means a spawn-time override or a session run at that level — an ORCHESTRATOR decision (this agent cannot spawn sub-agents — no `Agent` tool). See `.claude/rules/moai/development/model-policy.md`.

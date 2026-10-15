@@ -129,19 +129,54 @@ func zoneResolveDepth(p string, depth int) (string, bool) {
 	if real, err := filepath.EvalSymlinks(p); err == nil {
 		return real, true
 	}
+	return zoneResolveWalk(p, depth, runtime.GOOS == "windows")
+}
+
+// zoneResolveWalk is the physical component walk behind zoneResolveDepth,
+// split out so a caller that must NOT take the EvalSymlinks fast path can
+// force it (card t1712): the fast path collapses a ".." that follows a
+// symlink against the LEXICAL parent, which a parent-only resolution cannot
+// afford — a fully-existing `dirlink/..` would rejoin the final name against
+// the lexical parent while the shell walks it physically.
+func zoneResolveWalk(p string, depth int, windows bool) (string, bool) {
 	volume := filepath.VolumeName(p)
-	parts := pathSegments(strings.TrimPrefix(p, volume), runtime.GOOS == "windows")
+	parts := pathSegments(strings.TrimPrefix(p, volume), windows)
 	resolved := filepath.ToSlash(volume) + "/"
 	skipped := 0
+	absolute := volume != "" || strings.HasPrefix(p, "/") ||
+		(windows && strings.HasPrefix(p, "\\"))
 	for i := 1; i < len(parts); i++ {
 		part := parts[i]
 		switch part {
 		case "", ".":
 			// repeated or trailing separators, and the dot itself
 		case "..":
+			if absolute {
+				// POSIX root semantics (card t1712 repair round): ".." at the
+				// filesystem root stays at the root — the shell resolves
+				// /../r/alias as r/alias and deletes through it. The walk
+				// continues from the root instead of failing closed, matching
+				// the EvalSymlinks fast path and the lexical arm's Clean on
+				// the same spelling.
+				// Root-reach is decided from the RESOLVED PREFIX STRING, never
+				// the skipped counter (card t1712 repair round 6): one
+				// resolved dir symlink adds many real components but a single
+				// counter unit, so a counter-driven root rule runs out
+				// mid-walk and ignores the remaining ".." while real bash is
+				// still climbing INSIDE the zone. ".." is a no-op only when
+				// the resolved prefix IS the filesystem root; otherwise it
+				// pops one real component — the same climb the shell performs.
+				if resolved != filepath.ToSlash(volume)+"/" {
+					trimmed := strings.TrimSuffix(resolved, "/")
+					if idx := strings.LastIndex(trimmed, "/"); idx >= 0 {
+						resolved = trimmed[:idx+1]
+					}
+				}
+				continue
+			}
 			if skipped == 0 {
-				// ".." over a prefix that never resolved: the path walks
-				// outside anything this function can vouch for
+				// RELATIVE walk keeps the fail-closed answer: nothing vouches
+				// for a ".." above its base
 				return "", false
 			}
 			trimmed := strings.TrimSuffix(resolved, "/")
@@ -195,7 +230,7 @@ func zoneResolveDepth(p string, depth int) (string, bool) {
 // resolveZoneTarget returns the relative forms of raw under root: the lexical form
 // first, then the symlink-resolved form when it differs. An empty result means the
 // target is outside the project root on every reading.
-func resolveZoneTarget(root, raw string) []zoneForm {
+func resolveZoneTarget(root, raw string, listings ...map[string]*zoneNameIndex) []zoneForm {
 	abs := zoneSlash(raw)
 	// walk carries the same input with its POSIX component identity preserved
 	// for the symlink arm: the filesystem steps must follow the components the
@@ -230,13 +265,7 @@ func resolveZoneTarget(root, raw string) []zoneForm {
 	}
 	var forms []zoneForm
 	add := func(rel string) {
-		f := zoneForm{Display: rel, Folded: config.FoldZoneText(rel)}
-		for _, have := range forms {
-			if have.Folded == f.Folded {
-				return
-			}
-		}
-		forms = append(forms, f)
+		forms = appendZoneForm(forms, rel)
 	}
 	if rel, inside := zoneLexicalRel(root, abs); inside {
 		add(rel)
@@ -279,5 +308,220 @@ func resolveZoneTarget(root, raw string) []zoneForm {
 			}
 		}
 	}
+	// Gate round 26 #3: the user-root forms live in their OWN stream — the
+	// project/baseline matching above must never see them (a basename entry
+	// like **/AGENTS.md would otherwise deny an untracked user file on name
+	// alone). resolveZoneTarget stays project-only; the deny sites call
+	// userRootZoneForms separately and route the results exclusively to
+	// ZoneUserRoot entries.
 	return forms
+}
+
+// appendZoneForm adds one relative spelling to forms unless its folded form
+// is already present; the dedup keeps the first spelling's Display text.
+// Shared by both zone target resolvers.
+func appendZoneForm(forms []zoneForm, rel string) []zoneForm {
+	f := zoneForm{Display: rel, Folded: config.FoldZoneText(rel)}
+	for _, have := range forms {
+		if have.Folded == f.Folded {
+			return forms
+		}
+	}
+	return append(forms, f)
+}
+
+// resolveZoneLinkTarget returns the relative forms of raw under root for an
+// unlink-family operand judged by its FINAL component itself (card t1712):
+// rm/unlink remove the link an operand names, never the target behind it, so
+// the final component is NOT followed. Parent components resolve through
+// symlinks exactly as before — through the physical walk, never the
+// EvalSymlinks fast path, whose lexical ".." collapse would rejoin the final
+// name outside the zone while the shell deletes inside it (zoneResolveWalk).
+// The lexical arm is shared with resolveZoneTarget; only the filesystem arms
+// differ (parent-only resolution).
+//
+// REPAIR ROUND 14 — the narrowing is EXACT-MATCH-ONLY: it applies only when
+// the operand's final component is byte-equal to an entry of the resolved
+// parent's real listing (the precondition probe below). EVERYTHING else —
+// fold/normalization/short-name variants, nonexistent finals, LISTING
+// FAILURES — defers WHOLESALE to the FULL resolver (resolveZoneTarget for
+// the same operand): the two semantics never mix for one operand, and the
+// full resolver's EvalSymlinks canonicalization judges the real target.
+func resolveZoneLinkTarget(root, raw string, listings ...map[string]*zoneNameIndex) []zoneForm {
+	cache := listingCache(listings)
+	abs := zoneSlash(raw)
+	walk := zoneNativeSlash(raw)
+	if !zoneIsAbs(abs) {
+		if cwd, err := zoneGetwd(); err == nil && cwd != "" {
+			abs = zoneSlash(cwd) + "/" + abs
+			walk = zoneNativeSlash(cwd) + "/" + walk
+		}
+	}
+	if walk != abs && !filepath.IsAbs(walk) {
+		if cwd, err := zoneGetwd(); err == nil && cwd != "" {
+			walk = zoneNativeSlash(cwd) + "/" + walk
+		}
+	}
+	native := filepath.FromSlash(walk)
+	// the EXACT-MATCH precondition gates the whole narrowing: no exact entry
+	// (or an unresolvable parent) means no link-own judgment at all
+	if root != "" && filepath.IsAbs(native) {
+		_, exact, ok := zoneResolveParent(native, cache)
+		if !ok {
+			return nil
+		}
+		if !exact {
+			return resolveZoneTarget(root, raw, cache)
+		}
+	} else {
+		return resolveZoneTarget(root, raw, cache)
+	}
+	var forms []zoneForm
+	add := func(rel string) {
+		forms = appendZoneForm(forms, rel)
+	}
+	if rel, inside := zoneLexicalRel(root, abs); inside {
+		add(rel)
+	}
+	if root != "" && filepath.IsAbs(native) {
+		realRoot, ok := zoneResolve(filepath.FromSlash(zoneNativeSlash(root)))
+		if !ok {
+			realRoot = filepath.FromSlash(zoneNativeSlash(root))
+		}
+		if realTarget, _, ok := zoneResolveParent(native, cache); ok {
+			if rel, inside := zoneLexicalRel(filepath.ToSlash(realRoot), filepath.ToSlash(realTarget)); inside {
+				add(rel)
+			}
+		}
+	}
+	// Backslash-literal arm (card t1570), the parent-only reading: the raw
+	// candidate resolves with every backslash intact, split at the slash the
+	// candidate's final component starts after. On POSIX a "\" inside the
+	// final component is an ordinary filename character and rides through;
+	// on Windows the native arm above already carried the raw separators, so
+	// the slash split finds no component here and the arm is skipped.
+	if root != "" {
+		absRaw := raw
+		if !zoneIsAbs(zoneSlash(raw)) {
+			if cwd, err := zoneGetwd(); err == nil && cwd != "" {
+				absRaw = zoneSlash(cwd) + "/" + raw
+			}
+		}
+		if zoneIsAbs(zoneSlash(absRaw)) {
+			realRoot, ok := zoneResolve(filepath.FromSlash(zoneSlash(root)))
+			if !ok {
+				realRoot = filepath.FromSlash(zoneSlash(root))
+			}
+			realTarget, exact, ok2 := zoneResolveParent(absRaw, cache)
+			if ok2 && !exact {
+				// the backslash-literal reading names no real entry either —
+				// defer the operand wholesale (never mix semantics)
+				return resolveZoneTarget(root, raw, cache)
+			}
+			if ok2 {
+				if rel, inside := zoneLexicalRel(filepath.ToSlash(realRoot), filepath.ToSlash(realTarget)); inside {
+					add(rel)
+				}
+			}
+		}
+	}
+	return forms
+}
+
+// zoneParentLister reads a resolved parent's directory entries — a package
+// var so tests can count listings (repair round 12 P2) and inject synthetic
+// listings a case-sensitive-shape darwin host cannot host (repair round 12
+// P1).
+var zoneParentLister = func(dir string) ([]os.DirEntry, error) {
+	return os.ReadDir(dir)
+}
+
+// listingCache unwraps the resolvers' optional listing-cache argument: the
+// guard's candidate loop threads ONE per-call map through every resolution
+// (repair round 12 P2), while direct callers (tests, the single-shot guard
+// path) omit it and run uncached.
+func listingCache(listings []map[string]*zoneNameIndex) map[string]*zoneNameIndex {
+	if len(listings) > 0 {
+		return listings[0]
+	}
+	return nil
+}
+
+// zoneResolveParent resolves everything before the FINAL component of p and
+// rejoins that component (card t1712): the parent prefix goes through the
+// physical walk — never the EvalSymlinks fast path, whose ".." handling is
+// lexical — and the final name lands on the resolved parent.
+//
+// REPAIR ROUND 14 — EXACT-MATCH-ONLY narrowing, the generalization of the
+// round-8 windows answer to every aliasing mechanism at once (fold pairs,
+// NFC/NFD, 8.3 short names, locale case tables): the rejoined link-own
+// judgment is COMPLETE only when the final component is byte-equal to an
+// entry of the resolved parent's real listing — then the shell really
+// removes that entry and nothing behind it, and `exact` is true. EVERYTHING
+// else — no exact entry, a LISTING FAILURE (a readable=no writable=yes
+// parent must never keep a raw judgment), any listing error — reports
+// exact=false and the CALLER defers the operand to the FULL resolver
+// (resolveZoneTarget), whose EvalSymlinks canonicalization judges the real
+// target; the rounds-11..13 fold/normalization canonicalization machinery
+// is deleted. The rejoined path is still returned when exact=false because
+// the full resolver's own parent-resolution arm shares this helper (it
+// ignores the flag). A "." or ".." final segment is not a name the shell
+// unlinks as itself; the caller routes those spellings to the
+// target-following judgment and this function refuses them.
+//
+// The caller threads a per-guard-call LISTING CACHE (keyed by the resolved
+// parent path; nil disables caching) so N candidates sharing one parent read
+// the listing once (repair round 12 P2) — never carried across guard calls.
+func zoneResolveParent(p string, listings map[string]*zoneNameIndex) (string, bool, bool) {
+	dir, final := path.Split(filepath.ToSlash(p))
+	if dir == "" || final == "" || final == "." || final == ".." {
+		return "", false, false
+	}
+	windows := runtime.GOOS == "windows"
+	resolved, ok := zoneResolveWalk(filepath.FromSlash(dir), 0, windows)
+	if !ok {
+		return "", false, false
+	}
+	var idx *zoneNameIndex
+	if cached, hit := listings[resolved]; hit {
+		idx = cached
+	} else if entries, err := zoneParentLister(resolved); err == nil {
+		names := make([]string, 0, len(entries))
+		for _, e := range entries {
+			names = append(names, e.Name())
+		}
+		idx = newZoneNameIndex(names)
+		if listings != nil {
+			listings[resolved] = idx
+		}
+	}
+	exact := idx != nil && idx.has(final)
+	return filepath.Join(resolved, filepath.FromSlash(final)), exact, true
+}
+
+// zoneNameIndex is the per-parent O(1) EXACT-membership index over a
+// directory listing (repair round 13 P2, narrowed by repair round 14): the
+// link-own narrowing applies only when the operand's final component is
+// byte-equal to an entry of the resolved parent — the index answers that
+// membership in O(1), built once per resolved parent on first listing in
+// the same zoneParentLister seam as the listing cache. Every non-exact
+// spelling defers to the full resolver; no fold, normalization, or
+// short-name machinery exists here anymore (rounds 11-13 deleted).
+type zoneNameIndex struct {
+	exact map[string]bool
+}
+
+// newZoneNameIndex builds the exact-membership set over one parent's entry
+// names.
+func newZoneNameIndex(names []string) *zoneNameIndex {
+	idx := &zoneNameIndex{exact: make(map[string]bool, len(names))}
+	for _, name := range names {
+		idx.exact[name] = true
+	}
+	return idx
+}
+
+// has reports whether name is byte-equal to a real directory entry.
+func (idx *zoneNameIndex) has(name string) bool {
+	return idx.exact[name]
 }

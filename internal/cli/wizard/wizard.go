@@ -34,10 +34,17 @@ func Run(questions []Question, styles *Styles) (*WizardResult, error) {
 // retired (SPEC-CLI-WIZARD-RESTRUCTURE-001 REQ-WIZ-018), because every user now
 // sees the same three pages and no flag changes what is asked.
 func RunWithDefaults(projectRoot, locale, userName string) (*WizardResult, error) {
+	return RunWithAgentWiringDefault(projectRoot, locale, userName, "")
+}
+
+// RunWithAgentWiringDefault is RunWithDefaults with the agent_wiring question's
+// default pre-filled from agentWiring — the harness a resumed init recorded (card
+// t1591). An empty agentWiring keeps the shipped claude default.
+func RunWithAgentWiringDefault(projectRoot, locale, userName, agentWiring string) (*WizardResult, error) {
 	// The full 2-page init set (Basic / Agents & Autonomy), the Q5 regroup.
 	// Both pages are unconditional — every user sees them
 	// (SPEC-CLI-WIZARD-RESTRUCTURE-001 REQ-WIZ-001/002).
-	questions := InitQuestions(projectRoot)
+	questions := InitQuestionsWithAgentWiring(projectRoot, agentWiring)
 
 	// Pre-fill the identity/locale defaults from the caller (profile values).
 	prefillIdentityDefaults(questions, userName)
@@ -77,6 +84,18 @@ func prefillIdentityDefaults(questions []Question, userName string) {
 	if userName != "" {
 		if q := QuestionByID(questions, "user_name"); q != nil {
 			q.Default = userName
+		}
+	}
+}
+
+// prefillAgentWiringDefault seeds the agent_wiring question default from the
+// harness a resumed init recorded (card t1591). The caller passes a closed-set
+// value or "": an empty value leaves the shipped claude default in place, and the
+// operator's answer still overwrites the default on submit.
+func prefillAgentWiringDefault(questions []Question, agentWiring string) {
+	if agentWiring != "" {
+		if q := QuestionByID(questions, "agent_wiring"); q != nil {
+			q.Default = agentWiring
 		}
 	}
 }

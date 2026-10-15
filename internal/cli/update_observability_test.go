@@ -250,8 +250,13 @@ func TestPreviewReconciliation(t *testing.T) {
 	if !strings.Contains(got, "preserved") {
 		t.Errorf("preview must report the preserved disposition, got:\n%s", got)
 	}
-	if !strings.Contains(got, "skills/"+legacySkillIDs[0]) {
-		t.Errorf("preview must name the preserved local-only skill path, got:\n%s", got)
+	// Default (no --verbose): the preserved skill is counted, not listed by path.
+	// TestPreviewReconciliation_VerboseListsPreservedSkill keeps the path check.
+	if !strings.Contains(got, "[dry-run] preserved: 1 file(s)") {
+		t.Errorf("preview must count the preserved local-only skill by default, got:\n%s", got)
+	}
+	if strings.Contains(got, "[dry-run] preserved: .claude/skills/"+legacySkillIDs[0]+"/SKILL.md") {
+		t.Errorf("default preview lists the preserved skill path; the count is the default, got:\n%s", got)
 	}
 	if !strings.Contains(got, "refreshed") {
 		t.Errorf("preview must count the refresh set, got:\n%s", got)
@@ -262,6 +267,40 @@ func TestPreviewReconciliation(t *testing.T) {
 		if _, err := os.Stat(path); err != nil {
 			t.Errorf("preview must not remove %s: %v", path, err)
 		}
+	}
+}
+
+// TestPreviewReconciliation_VerboseListsPreservedSkill is the --verbose twin of
+// TestPreviewReconciliation: the same fixture, with the preserved local-only
+// skill listed by path. It is serial because it sets updateVerboseMode.
+func TestPreviewReconciliation_VerboseListsPreservedSkill(t *testing.T) {
+	withVerboseMode(t)
+	root := t.TempDir()
+
+	restored := filepath.Join(root, ".claude", "rules", "moai", "core", "zone-registry.md")
+	if err := os.MkdirAll(filepath.Dir(restored), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(restored, []byte("stale copy"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	makeSkillDir(t, root, legacySkillIDs[0], "# local-only customization")
+	cfg := filepath.Join(root, ".moai", "config", "sections", "user.yaml")
+	if err := os.MkdirAll(filepath.Dir(cfg), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(cfg, []byte("user: {}\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+
+	var out bytes.Buffer
+	if err := previewReconciliation(root, template.DeployModeLocal, &out); err != nil {
+		t.Fatalf("previewReconciliation (verbose): %v", err)
+	}
+	got := out.String()
+
+	if !strings.Contains(got, "[dry-run] preserved: .claude/skills/"+legacySkillIDs[0]+"/SKILL.md") {
+		t.Errorf("verbose preview must list the preserved local-only skill by path, got:\n%s", got)
 	}
 }
 
@@ -315,8 +354,45 @@ func TestPreviewReconciliation_ReadOnlyOnCorruptManifest(t *testing.T) {
 	if _, err := os.Stat(manifestPath + ".corrupt"); !os.IsNotExist(err) {
 		t.Errorf(".corrupt file created by a dry run: %v", err)
 	}
-	if !strings.Contains(out.String(), "local.md") {
-		t.Errorf("preview must still classify (conservative no-record route), got:\n%s", out.String())
+	// Default: the local rule is still classified and counted, not listed by path.
+	// TestPreviewReconciliation_ReadOnlyOnCorruptManifest_VerboseListsLocalRule
+	// keeps the path check.
+	if !strings.Contains(out.String(), "[dry-run] preserved: 1 file(s)") {
+		t.Errorf("preview must still classify (conservative no-record route) and count the local rule, got:\n%s", out.String())
+	}
+	if strings.Contains(out.String(), "[dry-run] preserved: .claude/rules/moai/local.md") {
+		t.Errorf("default preview lists the local rule by path; the count is the default, got:\n%s", out.String())
+	}
+}
+
+// TestPreviewReconciliation_ReadOnlyOnCorruptManifest_VerboseListsLocalRule is
+// the --verbose twin of TestPreviewReconciliation_ReadOnlyOnCorruptManifest: the
+// same corrupt-manifest fixture, with the local rule listed by path. It is
+// serial because it sets updateVerboseMode.
+func TestPreviewReconciliation_ReadOnlyOnCorruptManifest_VerboseListsLocalRule(t *testing.T) {
+	withVerboseMode(t)
+	root := t.TempDir()
+	const corrupt = "{ this is not valid json"
+	if err := os.MkdirAll(filepath.Join(root, ".moai"), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(root, ".moai", "manifest.json"), []byte(corrupt), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	localRule := filepath.Join(root, ".claude", "rules", "moai", "local.md")
+	if err := os.MkdirAll(filepath.Dir(localRule), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(localRule, []byte("local\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+
+	var out bytes.Buffer
+	if err := previewReconciliation(root, template.DeployModeLocal, &out); err != nil {
+		t.Fatalf("previewReconciliation (verbose): %v", err)
+	}
+	if !strings.Contains(out.String(), "[dry-run] preserved: .claude/rules/moai/local.md") {
+		t.Errorf("verbose preview must list the local rule by path, got:\n%s", out.String())
 	}
 }
 
@@ -346,7 +422,38 @@ func TestPreviewReconciliation_ModeScoped(t *testing.T) {
 	if err := previewReconciliation(root, template.DeployModeLocal, &localOut); err != nil {
 		t.Fatalf("previewReconciliation (local): %v", err)
 	}
-	if !strings.Contains(localOut.String(), "moai-custom") {
-		t.Errorf("local-mode preview lost the preserved skill listing:\n%s", localOut.String())
+	// Default: the preserved skill is counted, not listed by path.
+	// TestPreviewReconciliation_ModeScoped_VerboseListsSkill keeps the path check.
+	if !strings.Contains(localOut.String(), "[dry-run] preserved: 1 file(s)") {
+		t.Errorf("local-mode preview lost the preserved skill from its count:\n%s", localOut.String())
+	}
+	if strings.Contains(localOut.String(), "[dry-run] preserved: .claude/skills/moai-custom/SKILL.md") {
+		t.Errorf("default preview lists the preserved skill by path; the count is the default:\n%s", localOut.String())
+	}
+}
+
+// TestPreviewReconciliation_ModeScoped_VerboseListsSkill is the --verbose twin of
+// TestPreviewReconciliation_ModeScoped: the same local-mode fixture, with the
+// preserved unknown skill listed by path. It is serial because it sets
+// updateVerboseMode.
+func TestPreviewReconciliation_ModeScoped_VerboseListsSkill(t *testing.T) {
+	withVerboseMode(t)
+	root := t.TempDir()
+	writeTestFile(t, root, ".moai/config/sections/llm.yaml",
+		"llm:\n  harness: claude\n  deployment_mode: plugin\n")
+	skill := filepath.Join(root, ".claude", "skills", "moai-custom", "SKILL.md")
+	if err := os.MkdirAll(filepath.Dir(skill), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(skill, []byte("# the user's own skill\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+
+	var out bytes.Buffer
+	if err := previewReconciliation(root, template.DeployModeLocal, &out); err != nil {
+		t.Fatalf("previewReconciliation (verbose, local): %v", err)
+	}
+	if !strings.Contains(out.String(), "[dry-run] preserved: .claude/skills/moai-custom/SKILL.md") {
+		t.Errorf("verbose local-mode preview must list the preserved skill by path, got:\n%s", out.String())
 	}
 }

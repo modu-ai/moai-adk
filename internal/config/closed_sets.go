@@ -95,6 +95,32 @@ func ValidAuditModels() []string {
 // constant the resolver writes instead of restating the literal.
 const DefaultCodexAuditModel = "gpt-6.1-sol"
 
+// Codex model ids the agent dual-publication emitter and the `moai codex`
+// launcher use (card t1808, operator per-role defaults). CodexModelSol is the
+// same id as the audit pin; luna and astra are the lighter and Fable-tier ids.
+const (
+	CodexModelSol   = DefaultCodexAuditModel
+	CodexModelLuna  = "gpt-6-luna"
+	CodexModelAstra = "gpt-6-astra"
+)
+
+// CodexAgentModel maps a Claude model alias from an agent definition's
+// frontmatter to the Codex model id its emitted role file pins: opus and
+// sonnet -> sol, haiku -> luna, fable -> astra. ok is false for any other
+// alias — the emitter refuses rather than guesses, because codex accepts an
+// arbitrary model string at parse time.
+func CodexAgentModel(alias string) (id string, ok bool) {
+	switch alias {
+	case "opus", "sonnet":
+		return CodexModelSol, true
+	case "haiku":
+		return CodexModelLuna, true
+	case "fable":
+		return CodexModelAstra, true
+	}
+	return "", false
+}
+
 // DefaultClaudeAuditModel / DefaultClaudeAuditEffort are the claude audit pin
 // default — {claude-opus-5-5, high} (SPEC-AGENT-TIER-001 REQ-TIER-004,
 // operator directive: SUPERSEDES the t1368 {claude-opus-5-5, medium} pin).
@@ -109,9 +135,10 @@ const (
 
 // DefaultGLMAuditModel / DefaultGLMAuditEffort are the GLM audit pin default —
 // {glm-5.3, max} (SPEC-AGENT-TIER-001 REQ-TIER-004/006). The model is the FULL
-// glm-5.3 (DefaultGLM53), deliberately NOT the flash slot default
-// (DefaultGLMHigh): the audit pin targets full glm-5.3 while the glm_task
-// delegation default stays on the flash variant (REQ-AMP-008). The effort
+// glm-5.3 (DefaultGLM53), declared independently of the High slot default
+// (DefaultGLMHigh): the glm_task delegation default tracks DefaultGLMHigh
+// (REQ-AMP-008), which card t1808 moved from glm-5.3-flash to glm-5.3, so the
+// two now coincide in value without sharing a source. The effort
 // value is a z.ai reasoning-state name — the {low, high, max} vocabulary,
 // stored and transmitted verbatim (REQ-AMP-006). internal/template owns the
 // GLMState* name constants and internal/config cannot import it, so the state

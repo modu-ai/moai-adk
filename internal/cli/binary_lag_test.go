@@ -194,6 +194,7 @@ var doctorCheckNameContract = map[string]bool{
 	`"Slash Commands"`:               true,
 	`"Telemetry Config"`:             true,
 	`"User Install"`:                 true,
+	`"User Lock"`:                    true,
 	`"Worktree Base Branch"`:         true,
 	`"Worktree State"`:               true,
 	`"ast-grep CLI"`:                 true,

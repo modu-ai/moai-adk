@@ -439,6 +439,13 @@ func deepMergeMap(base, current, updated map[string]any, prefix string) (map[str
 			case !baseChanged && updChanged:
 				// Only template changed.
 				result[key] = updVal
+				if keyPath == permissionsKey {
+					// The template's object drops user arrays under permissions.*
+					// that it no longer carries; keep them (REQ-RC30-024).
+					var kept []string
+					result[key], kept = keepRetiredArrays(updVal, curVal, keyPath)
+					retained = append(retained, kept...)
+				}
 
 			default:
 				// Both changed.
@@ -474,6 +481,39 @@ func deepMergeMap(base, current, updated map[string]any, prefix string) (map[str
 
 	sort.Strings(retained)
 	return result, conflicts, retained
+}
+
+// permissionsKey is the top-level settings.json object whose user arrays the
+// merge keeps when the template retires them (REQ-RC30-024). Hook arrays sit
+// outside it and keep the template's value.
+const permissionsKey = "permissions"
+
+// keepRetiredArrays takes the template's value for a key the user left
+// unchanged, and puts back the user's array entries that the template no
+// longer carries. It returns the merged value and the dotted paths it kept.
+// Objects the template retired are not restored: they keep the template's
+// value, as before.
+func keepRetiredArrays(updated, current any, keyPath string) (any, []string) {
+	updMap, updIsMap := toMapInterface(updated)
+	curMap, curIsMap := toMapInterface(current)
+	if !updIsMap || !curIsMap {
+		return updated, nil
+	}
+	merged := make(map[string]any, len(updMap))
+	for k, v := range updMap {
+		merged[k] = v
+	}
+	var kept []string
+	for k, v := range curMap {
+		if _, inUpdated := updMap[k]; inUpdated {
+			continue
+		}
+		if _, isArray := v.([]any); isArray {
+			merged[k] = v
+			kept = append(kept, keyPath+"."+k)
+		}
+	}
+	return merged, kept
 }
 
 // managedSectionHeadings is the explicit allow-list of curator-managed

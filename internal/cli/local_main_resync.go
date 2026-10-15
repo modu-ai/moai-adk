@@ -51,6 +51,12 @@ var localMainResyncFetch = func(repoRoot string) error {
 // production default does nothing.
 var localMainResyncAfterFastForward = func(repoRoot string) {}
 
+// localMainResyncBeforeFastForward is the pre-fast-forward test seam (card t1619,
+// codex review P1). It runs after the ownership re-check and immediately before the
+// fast-forward, so a test can present a rival takeover in the gap. The production
+// default does nothing.
+var localMainResyncBeforeFastForward = func(repoRoot string) {}
+
 // newIntegrationResyncCmd registers `moai integration resync`. It takes no
 // flags: the session is the one the window verbs resolve from the environment.
 func newIntegrationResyncCmd() *cobra.Command {
@@ -223,15 +229,30 @@ func localMainResyncInWindow(repoRoot, sessionID string) (string, error) {
 	if overlap := localMainResyncOverlap(changedOut, ignoredOut); len(overlap) > 0 {
 		return "", localMainResyncRefusal(factory.MergeExitCollision, "integration resync: refused — the primary checkout holds ignored bytes at paths this fast-forward would write: %s. The fast-forward would overwrite them. Move or rename them from your own terminal, then re-run. The tool does not remove or stash files.", strings.Join(overlap, ", "))
 	}
-	// The re-validation (card t1616, F2 and F5), immediately before the move. The
-	// holder check and the clean check ran earlier, and the fetch ran in between.
-	if err := localMainResyncRevalidate(git, repoRoot, sessionID, ref, head); err != nil {
-		return "", err
+	// The re-validation (card t1616, F2 and F5) and the fast-forward it guards run in
+	// ONE mutation section (card t1619, codex review P1), the shape RunMergeStep uses.
+	// The holder check and the clean check ran earlier, and the fetch ran in between.
+	// A rival --force takeover needs the same mutation lock, so it cannot land between the ownership
+	// check and the move. The failure classification runs after the section: the
+	// mutation lock is not reentrant, and the failure path can release the window.
+	var revalidateErr, moveErr error
+	if lockErr := factory.RunIntegrationMutation(repoRoot, func() error {
+		if revalidateErr = localMainResyncRevalidate(git, repoRoot, sessionID, ref, head); revalidateErr != nil {
+			return nil
+		}
+		// The --no-overwrite-ignore flag is the second guard (plan §B4). Autostash is
+		// disabled so the verb never stashes another session's changes (plan §B5).
+		localMainResyncBeforeFastForward(repoRoot)
+		_, moveErr = git("-c", "merge.autoStash=false", "merge", "--ff-only", "--no-overwrite-ignore", "-q", baseline)
+		return nil
+	}); lockErr != nil {
+		return "", localMainResyncRefusal(factory.MergeExitOther, "integration resync: take the mutation lock before the move: %v", lockErr)
 	}
-	// The --no-overwrite-ignore flag is the second guard (plan §B4). Autostash is
-	// disabled so the verb never stashes another session's changes (plan §B5).
-	if _, err := git("-c", "merge.autoStash=false", "merge", "--ff-only", "--no-overwrite-ignore", "-q", baseline); err != nil {
-		return "", localMainResyncFailed(git, repoRoot, head, baseline, err)
+	if revalidateErr != nil {
+		return "", revalidateErr
+	}
+	if moveErr != nil {
+		return "", localMainResyncFailed(git, repoRoot, head, baseline, moveErr)
 	}
 	// F3 test seam (card t1616): see localMainResyncAfterFastForward.
 	localMainResyncAfterFastForward(repoRoot)

@@ -25,7 +25,7 @@ orchestration layer holds it and passes dispositions down):
 |---|---|---|
 | `template-owned` | template carries path AND manifest record healthy (`template_managed`, hash matches) AND content == render | refresh in place |
 | `user-modified` | template carries path AND (record absent/stale OR content != render) | 3-way merge → merged write, or conflict → preserve + `.moai-new` sidecar + report |
-| `user-owned` | template does NOT carry path (covers `IsUserOwnedNamespace` by construction) | preserve untouched, list in summary |
+| `user-owned` | template does NOT carry path (covers `IsUserOwnedNamespace` by construction) | preserve untouched, count in summary (path list under `--verbose`) |
 | `stale` | manifest (or prior template) carried path AND current template does not | archive-then-remove, list in summary |
 
 Notes:
@@ -48,7 +48,7 @@ Notes:
   `<path>.moai-new` (occupied name → first unused numbered sibling `.moai-new.2`, `.moai-new.3`,
   … — the existing sibling is never overwritten, REQ-UPM-012); conflict listed in summary with
   both paths including the collision. No auto-resolution (R-2).
-- **preserve**: no write, no backup, no archive; listed in summary. Includes every file under
+- **preserve**: no write, no backup, no archive; counted in summary (per-path list under `--verbose`). Includes every file under
   `.moai/config/sections/` the template does not carry and all local-only files under managed
   roots.
 - **archive-remove**: `stale` files copied to the migration archive root
@@ -84,9 +84,7 @@ check applies per section FILE, not per key.
 
 Extend `internal/cli/update/report/outcome.go` with reconciliation outcome categories:
 `refreshed`, `merged`, `conflicted`, `preserved`, `archived-removed`. Managed files join the
-counted set (the `plan.go:73` exclusion is removed with the wipe). Output stays plain counts +
-path lists on the existing report structures — no new banner/progress vocabulary (t1527
-boundary, C-4).
+counted set (the `plan.go:73` exclusion is removed with the wipe). By default the preserved files are reported as plain counts on the existing report structures; the per-item path list of preserved files appears only under `--verbose`. No new banner or progress vocabulary (t1527 boundary, C-4).
 
 ## 6. Ordering and abort semantics (NFR-UPM-002)
 

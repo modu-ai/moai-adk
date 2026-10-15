@@ -25,39 +25,41 @@ layout:
 # Optional-field emission switches. A false switch means the field is omitted
 # from every emitted TOML (Codex default inheritance).
 fields:
-  # model: omitted on all 12 agents in v1 (R-011). P-03 MEASURED (codex-cli
-  # 0.147.0): an omitted model key registers and delegates (inherits the
-  # subagent default); an arbitrary bogus model string is silently accepted
-  # at parse — emitting a Claude alias would be accepted-but-wrong, so
-  # omission is the only safe choice. Re-confirmed and strengthened on
-  # codex-cli 0.153.4: the agent-file model is precedence-winning over BOTH
-  # the parent default and the [agents] table default (tag-pinned docs;
-  # agent_role_config.rs flattens ConfigToml per-role), so an emitted pin
-  # becomes a dual-source hazard; valid model ids are never enumerated and
-  # churn per release (0.153.4 adds "Astra", #42874); and open-bug #32587
-  # shows the documented precedence is itself unstable (desktop app ignores
-  # the agent-file model). Flipping fields.model.emit today is inert:
-  # renderTOML (writer.go:87-155) has no model branch and the validator
-  # (manifest.go:126-137) ignores unknown fields keys — a real flip = a new
-  # writer branch + validator work + the AC-009 no-model golden inversion.
-  # manager-git's "sonnet" pin is a documented drop below.
+  # model: EMITTED (card t1808, operator per-role defaults). The agent
+  # frontmatter Claude alias is mapped to a Codex model id by
+  # config.CodexAgentModel (the Go single source — model ids are not restated
+  # here): opus and sonnet -> the sol id, haiku -> luna, fable -> astra. An
+  # absent or `inherit` alias omits the key (the role inherits the parent
+  # session's model); any other alias fails emission — codex accepts an
+  # arbitrary model string at parse (P-03), so a guess would be
+  # accepted-but-wrong. This reverses the R-011 omission: the operator chose
+  # explicit per-role pins over parent inheritance, accepting the
+  # precedence-winning agent-file model (codex-cli 0.153.4) as the intended
+  # effect. The ids luna and astra are NOT probe-measured against a codex
+  # binary in this change.
   model:
-    emit: false
-  # model_reasoning_effort: NOT emitted. The source agents declare no effort —
-  # a subagent inherits the parent session's model and effort — so there is no
-  # value to map, and inheriting is exactly what an absent key does on Codex
-  # too. The map below is the P-02 MEASURED identity enumeration (codex-cli
-  # 0.147.0: all four values register and belong to the binary's
-  # reasoning-effort enum {minimal, low, medium, high, xhigh}); it stays for a
-  # re-enable, where an unmapped source effort fails emission (never a silent
-  # downgrade).
+    emit: true
+  # model_reasoning_effort: EMITTED from the agent frontmatter effort through
+  # the P-02 MEASURED identity map (codex-cli 0.147.0: all four values register
+  # and belong to the binary's reasoning-effort enum {minimal, low, medium,
+  # high, xhigh}); an unmapped source effort fails emission (never a silent
+  # downgrade). max and ultra are refused outright — never a Codex role
+  # effort. Overrides (card t1808): a role mapped to the luna model runs at
+  # high (model_values, keyed by mapped model id); manager-develop is fixed at
+  # medium on Codex (role_values, which win). The effort key IS applied to a
+  # spawned role (measured, codex-cli 0.156.1 — permission contract sandbox
+  # evidence).
   model_reasoning_effort:
-    emit: false
+    emit: true
     map:
       low: low
       medium: medium
       high: high
       xhigh: xhigh
+    model_values:
+      gpt-6-luna: high
+    role_values:
+      manager-develop: medium
   # sandbox_mode: P-01 MEASURED (codex-cli 0.147.0): the runtime names the
   # accepted set verbatim on a bad value — "expected one of `read-only`,
   # `workspace-write`, `danger-full-access`" — and a bad value makes codex
@@ -74,10 +76,11 @@ fields:
   # MEASURED (codex-cli 0.156.1): the value states the role's intended mode
   # but is NOT applied to a role spawned as a subagent — the subagent inherits
   # the parent session's sandbox (permission_contract sandbox row). It is
-  # still emitted: the field is accepted, harmless, and keeps the stated
-  # contract visible in each role file.
+  # therefore NOT written (card t1808): a line Codex ignores states nothing
+  # the runtime applies. The value set and per-role modes stay here as the
+  # stated contract the emitter checks against permission_contract.
   sandbox_mode:
-    emit: true
+    emit: false
     value: workspace-write
     role_values:
       manager-todo: read-only
@@ -229,21 +232,23 @@ classes:
       unavailable — documented drop; the body prose already names which
       tools each agent uses.
   - class: effort
-    disposition: omit
+    disposition: emit-field
+    field: model_reasoning_effort
     rationale: >-
-      Omitted — inherit the parent. The source agents declare no effort
-      frontmatter: a subagent takes the parent session's model and effort,
-      which is also what an absent model_reasoning_effort key means to Codex.
+      Emitted from the agent frontmatter effort (card t1808) through the
+      measured identity map, with the luna-model and manager-develop
+      overrides; max and ultra are refused. An agent declaring no effort
+      omits the key and inherits the parent.
   - class: model
-    disposition: omit
+    disposition: emit-field
+    field: model
     rationale: >-
-      The model field is omitted for all 12 agents in v1 (R-011): a Claude
-      alias is not a Codex model id, so emitting it would be a guess.
-      codex-cli 0.153.4 strengthens the judgment: the agent-file model is
-      precedence-winning over both the parent and [agents] defaults, valid
-      model ids churn per release (#42874), and open-bug #32587 leaves the
-      documented semantics unstable — see the fields.model comment above
-      for the full evidence set.
+      Emitted from the agent frontmatter alias through config.CodexAgentModel
+      (card t1808): opus/sonnet -> sol, haiku -> luna, fable -> astra; an
+      unmapped alias fails emission and an absent or inherit alias omits the
+      key. The R-011 omission is reversed by operator decision; the
+      precedence-winning agent-file model (codex-cli 0.153.4) is the intended
+      effect, and per-release id churn (#42874) is the accepted cost.
   - class: frontmatter-hooks
     disposition: documented-drop
     rationale: >-
@@ -263,14 +268,6 @@ classes:
 
 # Explicit documented drops with their owning rationale.
 documented_drops:
-  - id: model-pin-manager-git
-    rationale: >-
-      manager-git pins the Claude alias "sonnet"; a Claude alias is not a
-      Codex model id. Its cost intent already travels via effort: low, so the
-      TOML omits model entirely. codex-cli 0.153.4: a Codex-side pin would
-      additionally be precedence-winning over both the parent and [agents]
-      defaults (dual-source hazard) against per-release model-id churn
-      (#42874) — see the fields.model comment above.
   - id: per-tool-mcp-filtering
     rationale: >-
       Codex exposes an MCP server's tools as a unit; restricting which of the

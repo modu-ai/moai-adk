@@ -348,10 +348,21 @@ const (
 	// different model grants.
 	DefaultGLM53Flash = "glm-5.3-flash"
 	DefaultGLM53      = "glm-5.3"
-	DefaultGLMHigh    = DefaultGLM53Flash
-	DefaultGLMMedium  = DefaultGLM53Flash
+	DefaultGLMHigh    = DefaultGLM53
+	DefaultGLMMedium  = DefaultGLM53
 	DefaultGLMLow     = DefaultGLM53Flash
 	DefaultGLMFable   = DefaultGLM53
+
+	// Per-tier GLM reasoning-state defaults (card t1808): the z.ai state names
+	// max | high | low, keyed by tier slot. The distributed llm.yaml carries
+	// these values and the web console preselects them. They are not filled
+	// into an absent llm.glm.effort key at runtime — an unset slot keeps the
+	// pre-existing fallback to the session effort chain. glm-5.3-flash stays
+	// pinned to max on the wire by the effort overlay whatever the slot says.
+	DefaultGLMEffortHigh   = "max"
+	DefaultGLMEffortMedium = "high"
+	DefaultGLMEffortLow    = "low"
+	DefaultGLMEffortFable  = "max"
 	// DefaultGLM53Flash is the sparse-attention GLM-5.3-Flash variant (1M
 	// context). Unlike glm-5.3 it accepts reasoning_effort "max" only — the
 	// web console locks the tier effort select to max when a tier slot holds
@@ -369,8 +380,8 @@ const (
 	// llm.glm.context_windows is the user override path that keeps working.
 	// Legacy GLM model names (map to tiers)
 	DefaultGLMHaiku  = DefaultGLM53Flash
-	DefaultGLMSonnet = DefaultGLM53Flash
-	DefaultGLMOpus   = DefaultGLM53Flash
+	DefaultGLMSonnet = DefaultGLM53
+	DefaultGLMOpus   = DefaultGLM53
 
 	// Claude agent-tier pair components (SPEC-AGENT-TIER-001 REQ-TIER-002).
 	// The tier tokens max/medium/low are CONFIGURATION-KEY names, not effort
@@ -912,6 +923,15 @@ var DefaultCodexAuditTimeout = 20 * time.Minute
 // DefaultCodexReviewGateTimeout (a Stop hook) so tuning one cannot move another.
 // Not a const so a test can shorten it.
 var DefaultCodexAuditLegTimeout = DefaultCodexAuditTimeout
+
+// DefaultCodexAuditWaitLoadThreshold is the one-minute load average at or above
+// which a codex audit's wait bound doubles (card t1781): at load 200 the
+// machine runs several compile/test suites at once — the observed stall that
+// motivated the card happened at load 357/364/352 — so a bound tuned on a
+// quiet machine no longer fits, and the audit reads as hung when it is only
+// waiting in line. A var (not a const) so a test can retune it, matching the
+// neighboring timeout vars.
+var DefaultCodexAuditWaitLoadThreshold = 200.0
 
 // DefaultCodexAuditListTimeout bounds the `codex mcp list --json` lookup the
 // audit launcher runs before the audit to learn which MCP servers to disable.

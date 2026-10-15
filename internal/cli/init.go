@@ -201,14 +201,23 @@ func resolveAgentWiring(cmd *cobra.Command) agentWiring {
 // put a second resolution behind the resolution point, which is exactly how a
 // wizard answer reaches one consumer and not the other.
 func wireCodexUnlessClaude(cmd *cobra.Command, wiring agentWiring, projectRoot string) {
-	if wiring == agentWiringClaude {
-		return
-	}
-	if _, err := codexwiring.Wire(projectRoot, cmd.OutOrStdout(), cmd.ErrOrStderr()); err != nil {
+	if err := wireCodex(cmd, wiring, projectRoot); err != nil {
 		// Card t1527 D4 (repair round): ! severity line replaces the raw
 		// "warning:" prefix.
 		emitSeverityLine(cmd.ErrOrStderr(), sevWarn, resolveTheme(), "Codex wiring failed: %v", err)
 	}
+}
+
+// wireCodex is the Codex wiring step that wireCodexUnlessClaude and the resume
+// share. It returns the failure instead of printing it: the healthy init tail
+// warns on it, and the resume returns it as an error (card t1591, repair round).
+// A claude selection is a no-op.
+func wireCodex(cmd *cobra.Command, wiring agentWiring, projectRoot string) error {
+	if wiring == agentWiringClaude {
+		return nil
+	}
+	_, err := codexwiring.Wire(projectRoot, cmd.OutOrStdout(), cmd.ErrOrStderr())
+	return err
 }
 
 // addCodexReinitGuidance is the redirect note printed when init runs
@@ -439,6 +448,17 @@ func resolveInitDeployMode(cmd *cobra.Command) template.DeployMode {
 	return template.DeployModeLocal
 }
 
+// ensureUserAssetsLockedFn is ensureUserAssetsLocked behind a package-level
+// variable so a test can fail or interrupt the user-asset ensure, which runs before
+// executor.Execute (card t1587). It follows the applyAutonomyTierBundleFn pattern
+// (update_settings_snapshot.go). Tests that replace it must not call t.Parallel().
+var ensureUserAssetsLockedFn = ensureUserAssetsLocked
+
+// initWindowFn is the post-executor interruption seam (card t1619): it runs once the
+// resume record and the init marker are on disk, before the post-steps. Nil in
+// production. Tests that replace it must not call t.Parallel().
+var initWindowFn func(projectRoot string) error
+
 // @MX:ANCHOR: [AUTO] runInit is the main entry point for project initialization
 // @MX:REASON: [AUTO] fan_in=3, called from init.go init(), coverage_test.go, init_coverage_test.go
 // runInit executes the project initialization workflow.
@@ -650,17 +670,16 @@ func runInit(cmd *cobra.Command, args []string) (err error) {
 		wizardRan = true
 
 		// Conversation language + user name: the wizard answer wins over the
-		// profile value. Update both opts (drives template deployment of
-		// language.yaml/user.yaml) AND prefs (SyncToProjectConfig runs after
-		// deployment and would otherwise re-apply the stale profile value over
-		// the wizard choice). Empty answers leave the profile fallback intact.
+		// profile value. Update opts (drives template deployment of
+		// language.yaml/user.yaml). The profile sync after deployment takes the same
+		// answers from wizardResult (syncInitProfile), so the healthy tail and the
+		// resume dispatch cannot disagree about them. Empty answers leave the profile
+		// fallback intact.
 		if result.ConversationLang != "" {
 			opts.ConvLang = result.ConversationLang
-			prefs.ConversationLang = result.ConversationLang
 		}
 		if result.UserName != "" {
 			opts.UserName = result.UserName
-			prefs.UserName = result.UserName
 		}
 
 		// Apply wizard results to opts (wizard values override empty flags).
@@ -877,14 +896,25 @@ func runInit(cmd *cobra.Command, args []string) (err error) {
 	// error's own "re-run 'moai init'" advice hit the 'project already
 	// initialized' refusal. Failing before the marker keeps the promise
 	// honest: the re-run starts from an uninitialized project and completes
-	// cleanly.
-	if homeDir, homeErr := userHomeDirFn(); homeErr == nil {
-		selection := parseBundleSelection(getStringFlag(cmd, "bundles"))
-		if err := ensureUserAssetsLocked(homeDir, selection, cmd.OutOrStdout()); err != nil {
-			return fmt.Errorf("user-asset install failed: %w\n  Fix the cause and re-run 'moai init' — the ensure is idempotent and completes the shortfall", err)
+	// cleanly. Card t1591: the resume record and the init marker are NOT written here.
+	// The marker would create .moai/ before executor.Execute, and validator.go:130 reads
+	// that directory as "already initialized", so the retry of a failed ensure would be
+	// refused. They open after the executor instead (the block below the layout step).
+	// Card t1619 (codex review P2): the resume route is decided before the ensure moves any
+	// state. The ensure reconciles and clears the pending-install journal and fails on a
+	// corrupt user manifest, so a checkpoint read after it would miss the interruption it
+	// exists to detect, and the resume's quarantine would never run. A run with a checkpoint
+	// skips this ensure: the resume runs it under the user lock, after the quarantine.
+	resuming := !getBoolFlag(cmd, "force") && initResumeCheckpoint(userHomeDirOrEmpty(), opts.ProjectRoot)
+	if !resuming {
+		if homeDir, homeErr := userHomeDirFn(); homeErr == nil {
+			selection := parseBundleSelection(getStringFlag(cmd, "bundles"))
+			if err := ensureUserAssetsLockedFn(homeDir, selection, cmd.OutOrStdout()); err != nil {
+				return fmt.Errorf("user-asset install failed: %w\n  Fix the cause and re-run 'moai init' — the ensure is idempotent and completes the shortfall", err)
+			}
+		} else {
+			p.Warn("Could not resolve the user home; the user-folder asset install was skipped: %v", homeErr)
 		}
-	} else {
-		p.Warn("Could not resolve the user home; the user-folder asset install was skipped: %v", homeErr)
 	}
 
 	// Deferred binary self-update check (REQ-TUX2-001/004): starts strictly
@@ -901,7 +931,14 @@ func runInit(cmd *cobra.Command, args []string) (err error) {
 	// @MX:WARN: [AUTO] leftover judgement placement — keep above executor.Execute
 	// @MX:REASON: after the deploy the live file is the new render, so an abort with no revert
 	// would be discarded instead of promoted (plan.md B8)
-	backup.JudgeLeftoverSettingsSnapshot(opts.ProjectRoot, cmd.ErrOrStderr())
+	// Finding 3 (card t1591): a resumed init keeps the staging copy its interrupted first
+	// run took. The judgement discards a copy whose live file has changed since, and the
+	// interrupted run's own autonomy answer changes it, so a resume skips the judgement
+	// and the copy is promoted by the resume's settle once every post-step completed.
+	// --force reinitializes from scratch and is judged as before.
+	if !resuming {
+		backup.JudgeLeftoverSettingsSnapshot(opts.ProjectRoot, cmd.ErrOrStderr())
+	}
 	// Card t1029: same judgement for the .mcp.json staging copy.
 	backup.JudgeLeftoverMCPSnapshot(opts.ProjectRoot, cmd.ErrOrStderr())
 
@@ -931,7 +968,29 @@ func runInit(cmd *cobra.Command, args []string) (err error) {
 		// REQ-TUX2-015: re-running init on an initialized project without
 		// --force is usually a template-refresh intent — redirect to
 		// `moai update` alongside the existing --force guidance.
+		// M6 (SPEC: init resume, REQ-SRF-007 + audit DEBT R4): when the
+		// PRIOR attempt died at the user-asset ensure (initialized but
+		// incomplete), the re-run RESUMES instead of refusing: the ensure
+		// shortfall completes, and the setup steps the failed attempt never
+		// reached (ApplyHarness, the MCP entry, the Codex wiring) run now.
+		// DEBT R4: the resume is judged by CONTENT — the harness config the
+		// resume writes is asserted, not merely the directory's existence.
+		// Gate round 35-3: the resume is GATED on an explicit interruption
+		// checkpoint — a pending-install journal (interrupted mid-install)
+		// or a corrupt user manifest (failed before/at the ensure). A
+		// healthy project's ordinary re-run keeps the update redirect.
 		if !getBoolFlag(cmd, "force") && strings.Contains(err.Error(), "already initialized") {
+			// M6: the resume fires only on an interruption checkpoint
+			// (gate round 35-3) — a healthy project's ordinary re-run
+			// keeps the original update redirect below.
+			if resuming {
+				if resumeErr := resumeInitializedProject(cmd, &opts, agentWiringSelection, wizardRan, wizardResult, prefs); resumeErr != nil {
+					return fmt.Errorf("initialization resume failed: %w\n  Hint: this directory already contains a MoAI project — 'moai update' refreshes templates in place; --force reinitializes from scratch", resumeErr)
+				}
+				p.Info("Initialized MoAI project (resumed: user-asset shortfall completed, setup steps finished).")
+				flushUpdateNotice(p)
+				return nil
+			}
 			return fmt.Errorf("initialization failed: %w\n  Hint: this directory already contains a MoAI project — did you mean 'moai update' (refresh templates in place)? Re-run with --force only to reinitialize from scratch", err)
 		}
 		// SPEC-INIT-DEPLOY-EXIT-001 (REQ-IDE-003): a deployment failure aborts
@@ -960,6 +1019,29 @@ func runInit(cmd *cobra.Command, args []string) (err error) {
 
 	if err := homestate.EnsureProjectLayout(opts.ProjectRoot); err != nil {
 		return fmt.Errorf("initialize private MoAI home layout: %w", err)
+	}
+
+	// Finding 1 (card t1591): record the harness this run selected once the executor has
+	// initialized the project, before the post-steps below. The resume reads the record only
+	// under a checkpoint, so it need not precede the executor (see the ensure above).
+	// Best-effort: a record that cannot be written is named, never dropped silently.
+	if recErr := persistResumeWiring(opts.ProjectRoot, agentWiringSelection); recErr != nil {
+		emitSeverityLine(cmd.ErrOrStderr(), sevWarn, resolveTheme(), "Could not record the harness selection for the resume: %v", recErr)
+	}
+	// Finding B (card t1591): open the post-executor window with the init marker. An
+	// interruption in the post-steps below leaves this marker, and the rerun reads it as the
+	// interruption checkpoint. Cleared at the end of runInit. Best-effort, like the record.
+	if pendErr := persistInitPending(opts.ProjectRoot, parseBundleSelection(getStringFlag(cmd, "bundles"))); pendErr != nil {
+		emitSeverityLine(cmd.ErrOrStderr(), sevWarn, resolveTheme(), "Could not record the init resume marker: %v", pendErr)
+	}
+
+	// Card t1619 (re-adjusted placement): the post-executor interruption seam. Nil in
+	// production; the resume tests inject a failure here, which leaves the state a real
+	// interruption after the executor leaves (project initialized, record and marker on disk).
+	if initWindowFn != nil {
+		if err := initWindowFn(opts.ProjectRoot); err != nil {
+			return fmt.Errorf("initialization interrupted after the executor: %w", err)
+		}
 	}
 
 	// Chain ① consumer link (SPEC-INIT-WIZARD-REPAIR-001 REQ-003): wire the
@@ -1007,8 +1089,9 @@ func runInit(cmd *cobra.Command, args []string) (err error) {
 	for _, w := range result.Warnings {
 		p.Collect(w)
 	}
-	// Sync profile preferences to project config (after template deployment)
-	if err := profile.SyncToProjectConfig(opts.ProjectRoot, prefs); err != nil {
+	// Sync profile preferences to project config (after template deployment). The
+	// helper is shared with the resume dispatch, so the two paths cannot drift (t1591 Item D).
+	if err := syncInitProfile(opts.ProjectRoot, prefs, wizardResult); err != nil {
 		p.Warn("Failed to sync profile to project config: %v", err)
 	}
 
@@ -1200,6 +1283,17 @@ func runInit(cmd *cobra.Command, args []string) (err error) {
 	// The template snapshot is written by opts.AfterTemplateDeploy (set before
 	// executor.Execute), not here: by this point the section files carry the
 	// wizard answers, and a snapshot of them is not a template render (t1139).
+
+	// Finding B (card t1591): every post-ensure step above is warn-only, so reaching
+	// this point means the ensure window closed with its steps complete. The init
+	// marker retires here.
+	clearInitPending(opts.ProjectRoot)
+	// Finding 1 (card t1591): the selection record retires on normal completion,
+	// with the checkpoint marker and only once the marker is gone. A marker that
+	// still stands needs its selection for the resume it names.
+	if _, statErr := os.Stat(filepath.Join(opts.ProjectRoot, ".moai", "resume-pending")); os.IsNotExist(statErr) {
+		clearResumeWiring(opts.ProjectRoot)
+	}
 
 	return nil
 }

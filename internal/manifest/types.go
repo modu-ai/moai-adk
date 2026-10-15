@@ -94,6 +94,9 @@ type Manifest struct {
 	Version    string               `json:"version"`
 	DeployedAt string               `json:"deployed_at"`
 	Files      map[string]FileEntry `json:"files"`
+	// TemplateTreeHash is the hash of the embedded template tree the last deploy
+	// wrote (REQ-RC30-022). Empty until a deploy records one.
+	TemplateTreeHash string `json:"template_tree_hash,omitempty"`
 }
 
 // FileEntry represents a single tracked file in the manifest.
@@ -104,7 +107,14 @@ type FileEntry struct {
 	CurrentHash  string     `json:"current_hash"`
 	// Parts is the per-part ownership of a GeneratedManaged file.
 	Parts []Part `json:"parts,omitempty"`
+	// KeptBy records why a shipped copy stays project-side instead of being
+	// removed. Empty when the copy was not kept. See KeptByProfileReach.
+	KeptBy string `json:"kept_by,omitempty"`
 }
+
+// KeptByProfileReach is the FileEntry.KeptBy value for a shipped copy kept
+// because its project is mapped to a profile (U-01, option (c)).
+const KeptByProfileReach = "profile-reach"
 
 // ChangedFile represents a file whose content has changed since last tracking.
 type ChangedFile struct {

@@ -1,0 +1,130 @@
+# SPEC-FACTORY-LANE-NO-CLEAR-001 — Progress
+
+## §E.1 Plan-phase Audit-Ready Signal
+
+plan_status: audit-ready
+plan_complete_at: 2026-10-15T09:01:33Z
+tier: M
+artifacts: spec.md, plan.md, acceptance.md, progress.md, decision-index.md
+req_count: 16 (REQ-LNC-001 through REQ-LNC-016; tier ceiling 16)
+ac_count: 16 (AC-LNC-001 through AC-LNC-016; tier ceiling 16)
+spec_id_regex_check: PASS (verbatim, Bash-run at plan phase; expression `^SPEC(-[A-Z][A-Z0-9]*)+-[0-9]{3}$`)
+id_uniqueness: no existing SPEC-FACTORY-LANE-NO-CLEAR-* directory at authoring time
+decision_rows: 8 (Q1 through Q8 in decision-index.md); every Operator verdict line is empty
+plan_audit: pending (not run by the authoring agent; the plan gate runs the auditor)
+
+## §E.2 Run-phase Evidence
+
+Tree: HEAD 957967601 (M1 35463bf52, M2 e138b8f9f, M3 957967601), measured in this run on 2026-10-15. Machine load average was about 277 during the run, so timing-bound tests may flake.
+
+| AC | Status | Command | Actual Output |
+|----|--------|---------|---------------|
+| AC-LNC-001 | PASS | `grep -c -F` of the four step phrases in the template `factory-dispatch.md` | 3 / 1 / 4 / 2 |
+| AC-LNC-002 | PASS | `grep -n -F '/clear'` over the template family + lane protocol | 4 lines: full body L38, L40, L162; stub L58 (leader-session sentences); 0 elsewhere |
+| AC-LNC-003 | PASS (lane-observed) | runtime observation by the lane session, recorded in `.moai/reports/t1793/progress.md` line 180 | The implementer subagent had no `ExitWorktree`/`EnterWorktree` tool, so the lane session ran the sequence itself: `ExitWorktree(keep)` returned to `/Users/goos/MoAI/moai-adk-go`, `EnterWorktree` of the leased tree reported `Entered worktree ... on branch WT-lane-no-clear`, and `git rev-parse --show-toplevel` printed `/Users/goos/MoAI/moai-adk-go/.moai/worktrees/t1793` (HEAD `ef72f18b2` at that observation). One lane observation, cited here from the card record; the sync auditor could not re-observe it (§E.4 gaps). |
+| AC-LNC-004 | PASS | `go test ./internal/cli -run '^TestSD_AC020_ClearPolicies$' -count=1 -v` | all 13 subtests PASS, `ok ... 52.774s` |
+| AC-LNC-005 | PASS | `go test ./internal/cli -run '^TestAutoLaneCycle[A-Za-z0-9_]*$' -count=1 -v` | 14 PASS incl. `TestAutoLaneCycleNoClearAssertion`, `ok ... 427.828s` |
+| AC-LNC-006 | PASS | `go test ./internal/cli -run '^(TestSD_AC020_ClearPolicies\|TestSD_M6_ClearPolicyCarrierConstantOnly)$' -count=1 -v` | all PASS, `ok ... 70.844s` |
+| AC-LNC-007 | PASS-WITH-DEBT | the long hook selector from acceptance.md, plus two greps | `TestSD_AC019_NextCardRuleInjection/takeover_trigger_four_locales` PASS; both greps print 0; four unrelated timing tests (`TestFactoryUserPromptSubmitRebindsLaunchPendingPeer`, `TestFactoryBoundUserPromptSubmitDoesNotRewritePeer`, `TestFactoryHookContextAndContinuationSafety`, `TestFactoryHookZeroTurnAndCapabilityTruth`) failed with `context deadline exceeded` under load 277; on a four-test re-run the first two passed, ContextAndContinuation and ZeroTurn failed again with the same deadline error (ZeroTurn had passed once when run alone); baseline on the pre-change tree not re-measured, so the cause is attributed to load, not proven |
+| AC-LNC-008 | PASS | `go test ./internal/hook -run '^TestInjectedCoreCarriesObligationElements$' -count=1 -v` | both surfaces PASS |
+| AC-LNC-009 | PASS | the two greps | both print nothing, exit 1 |
+| AC-LNC-010 | PASS | `go test ./internal/cli -run '^TestTodoAutoClearGuidancePerCard$'`; two `grep -c` | PASS; gtd.md 3, manager-todo.md 1 |
+| AC-LNC-011 | PASS | the three greps | first two print nothing (exit 1); third prints 2 |
+| AC-LNC-012 | PASS | nine `cmp` pairs | all exit 0 |
+| AC-LNC-013 | PASS | grep counts, cards `cmp`, detail `diff` hunk headers, `make agents-emit-check` | counts 2 / 1 / 2; cards cmp exit 0; hunk headers `135c135` and `157c157` unchanged; emit check `ok` |
+| AC-LNC-014 | PASS | `make build` | exit 0 |
+| AC-LNC-015 | PASS | the `./internal/template/...` selector from acceptance.md | `ok` for internal/template (192.907s), agentemit, commandemit, embedemit; no FAIL line |
+| AC-LNC-016 | PASS | `grep -c -F '/clear'` per scoped file | matches the table: 3, 1, 0, 0, 0, 0, 0, manager-lead 2, manager-todo 1, gtd 2, policy factory-dispatch 2, policy detail/cards/mechanics 0, TOML 2 and 1, Go files 0 |
+
+RED evidence: the rewritten `TestSD_AC020_ClearPolicies` failed on the intended assertion before the printer change (output `... ask the operator to /clear, then take the next card on the fresh session` carried a clear instruction); `TestSD_AC019_NextCardRuleInjection/takeover_trigger_four_locales` and `TestInjectedCoreCarriesObligationElements` failed on missing phrases before the text change. `TestAutoLaneCycleNoClearAssertion` passed on first run (the lane cycle already printed no clear text), so it has no RED output.
+
+Lint: `gofmt -l` on the touched Go files prints nothing; `go vet ./internal/config ./internal/hook` exit 0. `golangci-lint` and coverage were not run.
+
+### §E.2 addendum (M5): three gates the AC-LNC-015 selector never named were RED after M1-M4
+
+1. `TestRoleInjectionAssemblyBudget` (internal/hook), both trees, both factory roles: role core 4725 UTF-16 against a 4092 ceiling. Cause: the new in-session transition [HARD] clause (about 736 units) sat inside the role-core markers. Repair: the marker now holds one 108-unit clause (`ExitWorktree(keep)`, lease, `EnterWorktree(path)`, conversation context); the sequence detail and refusal path moved to an unmarked paragraph of the same file. Core measured 4083 by script; test GREEN.
+2. `TestRoleCoreStubGate` (internal/template): `factory-dispatch-core.md` 10334 against a 10000 cap (baseline 9983). Repair: the stub's transition section shrank to a pointer sentence and the isolation line was shortened; measured 9999 on the template and deployed copies; test GREEN.
+3. `TestBindingLedgerIntegrity` (internal/template): 7 rows reported after-text absent (ALB-0244, 0286, 0287, 0288, 0289, 0294, 0308). Repair: `after_text` of those rows in `internal/template/testdata/binding_ledger.json` updated to the delivered text (locations and entry_points unchanged; the obligations stayed where they were). A first re-run then failed the AC-ALB-021(2) fragment sweep for ALB-0288 and ALB-0289, because the full body repeated the stub's lines verbatim; the full-body wording was changed so the lines are no longer duplicates. Final run GREEN.
+
+Commands (this run, tree after M5): `go test ./internal/hook -run '^(TestRoleInjectionAssemblyBudget|TestInjectedCoreCarriesObligationElements)$'` ok; `go test ./internal/template -run '^(TestRoleCoreStubGate|TestBindingLedgerIntegrity)$' -count=1 -v` both PASS (ledger 489.98s); `go test ./internal/hook -run '^(TestSessionStartRoleRules...|TestRoleInjectionBudget...)$'` ok; mirror/embed tests `TestRuleTemplateMirrorDrift|TestDeclaredRuleMirrorForks|TestEmbedFSPresenceAndByteEquality|TestGoldenCommittedArtifactsMatchEmission|TestEmbeddedSetEqualsManifest` ok; `make build` exit 0; `make agents-emit-check` ok; template/local `cmp` of `factory-dispatch.md` and `-core.md` exit 0; detail `diff` hunks still `135c135` and `157c157`. The AC-LNC-015 and 007 sets were not re-run after M5 (only the files named above changed). Not re-run: the 14 `TestAutoLaneCycle*` and the clear-policy tests (no Go change in M5).
+
+### §E.2 addendum (M6): two review findings repaired
+
+A. `factoryPrintClearPolicyLine` told a manual-dispatch lane to run `moai factory next`. When `MOAI_FACTORY_AUTO_DISPATCH` is `manual`, clear-each and at-threshold clear-when-full now print an exit-and-wait line (`ExitWorktree(keep)`, wait for the leader's next dispatch, earlier context non-authoritative; no lease, no clear). Auto mode and relaunch lines are unchanged. New test `TestFactoryClearPolicyManualDispatch` (RED first: both manual subtests failed with the lease line printed; GREEN after).
+B. The injected `laneNextCardRule` (en, ko, ja, zh) contradicted the relaunch completion line. Each locale now adds: when the completion output tells you to end the session (the relaunch policy), end the session instead. New subtest `TestSD_AC019_NextCardRuleInjection/relaunch_exception_four_locales` (RED first in all four locales; GREEN after). The first GREEN attempt broke `takeover_trigger_four_locales` because the new wording contained the retired phrases `clear 정책` / `clear ポリシー` / `clear 策略`; reworded to `relaunch 정책` etc.
+
+Measured this run: `TestFactoryClearPolicyManualDispatch`, `TestSD_AC020_ClearPolicies`, `TestSD_M6_ClearPolicyCarrierConstantOnly` ok; `TestSD_AC019_NextCardRuleInjection` (all subtests), `TestLaneRuleCarriesStandingRecheckCron`, `TestRoleInjectionAssemblyBudget`, `TestInjectedCoreCarriesObligationElements` pass; `TestRoleCoreStubGate` ok; both AC-LNC-007 greps print 0; `gofmt -l` empty; `go vet ./internal/hook ./internal/cli` exit 0. Not run: `TestAutoLaneCycle*` (inputs untouched) and the four load-timing hook tests (load average 182, above the 100 cut-off).
+
+### §E.2 addendum (M7): exception sentence in the transition doctrine
+
+The unmarked "Transition detail" paragraph of `factory-dispatch.md` named `moai factory next` with no exception. One sentence was added there (template, then the byte-identical local copy) and to the matching policy-copy passage: under manual dispatch the lane leaves with `ExitWorktree(keep)` and waits for the leader; under the relaunch clear policy it ends the session. The role-core marker and the stub were not touched. Measured this run: `cmp` template/local exit 0; cards `cmp` exit 0; detail `diff` hunks still `135c135` and `157c157`; `TestRoleInjectionAssemblyBudget`, `TestInjectedCoreCarriesObligationElements`, `TestRoleCoreStubGate`, `TestRuleTemplateMirrorDrift`, `TestDeclaredRuleMirrorForks` ok; `TestBindingLedgerIntegrity` PASS (134.849s); `make agents-emit-check` ok. `make build` not re-run (no generated artifact depends on this file's body beyond catalog hashes; not measured).
+
+## §E.3 Run-phase Audit-Ready Signal
+
+run_complete_at: 2026-10-15
+run_commit_sha: see the M5 commit (M3 957967601 held the last doctrine change before the repair)
+run_status: complete-with-gaps
+ac_pass_count: measured PASS for AC-LNC-001, 002, 004, 005, 006, 008 to 016 at their M4 measurement (AC-LNC-001, 002, 011, 012, 013 re-checked by cmp and count after M5); AC-LNC-007 PASS-WITH-DEBT
+ac_fail_count: 0 at measurement; three extra gates (above) were RED at M4 and are GREEN after M5
+ac_gap: AC-LNC-003 (runtime observation not possible in the implementer subagent)
+preserve_list_post_run_count: not measured
+l44_pre_commit_fetch: not run (no push; lane-local)
+l44_post_push_fetch: not applicable (no push)
+new_warnings_or_lints_introduced: gofmt clean, go vet clean on config and hook; golangci-lint not run
+cross_platform_build.go_build: `make build` exit 0; windows build not run
+total_run_phase_files: 36
+m1_to_mN_commit_strategy: M1 Go outputs and tests, M2 template doctrine, M3 local parity and policy copies, M4 evidence
+
+## §E.4 Sync-phase Audit-Ready Signal
+
+```yaml
+sync_status: complete (3-phase close — plan → run → sync, this commit)
+sync_complete_at: 2026-10-15
+sync_commit_sha: "pending-backfill"
+sync_audit:
+  report: .moai/reports/t1793/sync-audit-iter1.md   # disk-only, not committed
+  verdict: PASS-WITH-DEBT
+  audited_sha: 91667f2f64f16915d9b96884b4f54ccd2783bc8e
+  required_backend: codex
+  codex_required_receipt: rcpt-817aa54f8830bd4ead194895   # audit_multi overall_verdict pass, gate_unmet none
+  blocking_defects: 0
+changelog_entry_position: CHANGELOG.md [Unreleased] § Added, first entry
+frontmatter_status_transitions:
+  - "spec.md status: in-progress -> completed (this single sync commit; the intermediate implemented step consolidated per the Status Transition Ownership Matrix close row)"
+updated_field_refresh: "2026-10-15 (already 2026-10-15 in spec.md — no byte change); no other frontmatter field touched; spec/plan/acceptance body untouched"
+b12_self_test_a: >-
+  pre-emission grep -c 'SPEC-FACTORY-LANE-NO-CLEAR-001' CHANGELOG.md -> 0
+  (halt condition not triggered)
+b12_self_test_b: >-
+  AC count match — moai-ac counter over acceptance.md (tier M, ac_source
+  .moai/specs/SPEC-FACTORY-LANE-NO-CLEAR-001/acceptance.md, resolved and
+  non-empty): live=16 excluded=0 ambiguous=0, exit 0; the CHANGELOG entry
+  cites 16 (AC-LNC-001..016)
+b12_self_test_c: >-
+  file path verification — every path cited in the CHANGELOG entry confirmed
+  present in this tree by ls (factory_card.go, factory_relaunch.go,
+  todo_auto_lane_test.go, factory_m6_test.go, session_start_factory_i18n.go,
+  the template and policy factory-dispatch.md)
+```
+
+### Accepted debts — follow-up card candidates
+
+The sync audit reported five optional defects and no blocking one. F4 is repaired in this commit (the AC-LNC-003 row of §E.2 now cites the lane observation). F1, F2, F3, and F5 are accepted as debt and recorded as follow-up card candidates; none is created here.
+
+- F1 [medium] — the manual-dispatch rule in `internal/hook/session_start_factory_i18n.go:151-153` (four locales, same position) says to work the dispatched card in the current worktree and carries no `EnterWorktree` step. After `ExitWorktree(keep)` the current location is the primary checkout, so a literal reading works the card there (the shape REQ-LNC-004 forbids). Lower risk because auto is the default and the dispatch block's `wt:` field names the tree. Fix candidate: add "`EnterWorktree` the dispatched `wt:` tree, then verify the toplevel" to the manual rule in four locales; the role-core and stub are at their budget (4083/4092, 9999/10000) and stay untouched.
+- F2 [low] — the policy copy `.moai/policies/workflow/factory-dispatch.md` (lines 141, 157) keeps the pre-M5 transition paragraph (one full [HARD] block), while the rule file splits it into a role-core line, an unmarked "Transition detail" paragraph, and a shortened Isolation line. The M7 sentence is byte-identical in both and AC-LNC-013 passes; the literal reading of REQ-LNC-014 ("same transition paragraph") still shows a difference. Fix candidate: align the policy copy to the rule's three-paragraph shape, or record "same meaning, different shape" in the Q5 decision.
+- F3 [low] — `TestAutoLaneCycleNoClearAssertion` (`internal/cli/todo_auto_lane_test.go:625`) checks only the literal `/clear`; a mutation that says "clear the session" without the slash passes. The literal mutation was observed RED by the auditor. Fix candidate: a shared forbidden-phrase helper used with the AC-LNC-004 test.
+- F5 [low] — `TestFactoryClearPolicyManualDispatch` (added in M6) is named in no AC selector (`acceptance.md` lines 70 and 98). The auditor ran it by name and it passed. Fix candidate: add it to the AC-LNC-006 selector at the next SPEC revision.
+
+### Known gaps carried to the close
+
+- AC-LNC-013 When/Then lines 206-207 of `acceptance.md` still use the old count wording ("each phrase appears ..."); the effective expectation is line 218 (counts, cards `cmp` exit 0, two detail hunk headers, `make agents-emit-check` exit 0), which the sync audit re-measured as met. The leader decided to leave the body unchanged to keep the plan artifact hash stable (card record, `.moai/reports/t1793/progress.md`, card-review section).
+- Coverage, `golangci-lint`, and the Windows cross-build were not measured.
+- Lint was judged by the installed rc.33 binary (stated in the sync handoff to this commit; not independently re-observed here). The sync audit report separately records that its `moai` CLI measurements used a binary built from this tree (HEAD `91667f2f6`), while the MCP `audit_multi` server ran build `69c1ffc1f4`, an ancestor of the tree HEAD.
+- AC-LNC-003 rests on one lane observation; the sync auditor had no `ExitWorktree`/`EnterWorktree` tool and cited it without re-observing.
+- The full 60-name AC-LNC-015 selector and the full long AC-LNC-007 hook selector were not re-run at audit; a relevant subset and the four load-timing hook tests (load average about 55, all PASS) were.
+- `make build` was not re-run after M7 (rule-file-only change; `go build ./cmd/moai` exit 0 and the emit/embed parity tests passed at audit).
+
+## §G Override and Refusal Record
+
+- 2026-10-15T10:57:03Z SPEC-FACTORY-LANE-NO-CLEAR-001 ceiling-outcome outcome=pass-through reasons="plan-audit ceiling reached (round count 2 >= tier ceiling 2 + 1 delta rounds); the verdict is admission-clean and admits without a question (REQ-ACE-013)" evidence=/Users/goos/MoAI/moai-adk-go/.moai/worktrees/t1793/.moai/reports/t1793/plan-audit-iter3.md,/Users/goos/MoAI/moai-adk-go/.moai/worktrees/t1793/.moai/reports/t1793/plan-audit.md

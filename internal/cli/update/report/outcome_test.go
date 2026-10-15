@@ -24,7 +24,7 @@ func TestRenderOutcome_AlreadyUpToDate(t *testing.T) {
 // only (REQ-UPM-032).
 func TestRenderReconciliation(t *testing.T) {
 	// Zero boundary: nothing reconciled → empty (the caller prints no rows).
-	assert.Empty(t, RenderReconciliation(ReconciliationCounts{}, nil, nil, nil))
+	assert.Empty(t, RenderReconciliation(ReconciliationCounts{}, nil, nil, nil, false))
 
 	counts := ReconciliationCounts{
 		Refreshed:       3,
@@ -36,7 +36,7 @@ func TestRenderReconciliation(t *testing.T) {
 	result := RenderReconciliation(counts,
 		[]string{".claude/rules/moai/policy.json (sidecar: .claude/rules/moai/policy.json.moai-new)"},
 		[]string{".claude/rules/moai/local-note.md"},
-		[]string{".claude/rules/moai/old-rule.md", ".claude/rules/moai/older-rule.md"})
+		[]string{".claude/rules/moai/old-rule.md", ".claude/rules/moai/older-rule.md"}, true)
 
 	assert.Contains(t, result, "3 refreshed")
 	assert.Contains(t, result, "2 merged")

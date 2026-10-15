@@ -79,7 +79,16 @@ func prepareFactorySettings(profileName string, args []string) (flag []string, c
 	// CLAUDE_CODE_EFFORT_LEVEL for the reason launch_effort_settings.go gives:
 	// the env var refuses an in-session /effort or /model change, so a lane
 	// could never raise its own effort mid-card.
-	payload, effortArgs := applyLaunchEffort(crossSessionSettingsPayload(crossSessionConfigRootFn()), profileName)
+	root := crossSessionConfigRootFn()
+	var payload map[string]any
+	var effortArgs []string
+	if effort, ok := factorySessionClaudeEffort(os.Environ(), root); ok {
+		// card t1808: a cc factory leader/lane launches with its session
+		// default effort (llm.defaults.sessions) instead of the profile's.
+		payload, effortArgs = applyLaunchEffortValue(crossSessionSettingsPayload(root), effort)
+	} else {
+		payload, effortArgs = applyLaunchEffort(crossSessionSettingsPayload(root), profileName)
+	}
 	effortArgs = launchEffortArgs(effortArgs, args)
 	if payload == nil {
 		payload = map[string]any{}

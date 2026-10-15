@@ -183,6 +183,14 @@ func NormalizeCodexRoleForDeploy(data []byte) []byte {
 
 func normalizeHarnessReferences(data []byte) []byte {
 	text := string(data)
+	// Gate round 49 NEW-1: the HOME-ANCHORED workflow references ride the
+	// user install roots — the converted copies live under
+	// ~/.agents/skills/moai/workflows/ — while the PROJECT-relative form
+	// deploys to .moai/workflows. The former unconditional rewrite sent
+	// both to ~/.moai/workflows/, a target that exists on neither side
+	// (the converted sync.md referenced a missing file while the real one
+	// sat in the .agents root).
+	text = strings.ReplaceAll(text, "~/.claude/skills/moai/workflows/", "~/.agents/skills/moai/workflows/")
 	text = strings.ReplaceAll(text, ".claude/skills/moai/workflows/", ".moai/workflows/")
 	text = strings.ReplaceAll(text, ".claude/rules/moai/", ".moai/policies/")
 	text = strings.ReplaceAll(text, ".claude/skills/", ".agents/skills/")

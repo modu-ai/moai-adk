@@ -293,12 +293,20 @@ type StatusData struct {
 	Directory         string         // Project directory name (e.g., "modu-saju")
 	OutputStyle       string         // Output style name (e.g., "Mr.Alfred", "R2-D2")
 	Task              TaskData       // Current active task (rendering enabled in Phase 4)
-	Usage             *UsageResult   // API usage (nil when unavailable)
 	RateLimits        *RateLimitInfo // Rate limit info from Claude Code (nil when unavailable)
-	Worktree          string         // Active git worktree path (empty string if none, REQ-CC297-003)
-	Effort            *EffortInfo    // Effort level from Claude Code v2.1.139+ (nil when unavailable, REQ-CC2122-001)
-	Thinking          *ThinkingInfo  // Thinking flag from Claude Code v2.1.139+ (nil when unavailable, REQ-CC2122-002)
-	PR                *PRInfo        // Active GitHub PR from Claude Code v2.1.145+ (nil when no PR detected, REQ-SLV-010)
+
+	// UsageSnapshot carries the account-level quota aggregate read from the
+	// local context-usage records (SPEC-STATUSLINE-OFFICIAL-USAGE-001 M2) —
+	// the fallback for the 5H/7D bars while the stdin payload carries no
+	// rate_limits. Nil when rate_limits are present (REQ-SOU-002: the fallback
+	// is not read), when the session anchors no project, or when the read came
+	// back empty or was abandoned (REQ-SOU-006) — the segments then render
+	// n/a, never a 0% bar or a stale percentage (REQ-SOU-004).
+	UsageSnapshot *QuotaAggregate
+	Worktree      string        // Active git worktree path (empty string if none, REQ-CC297-003)
+	Effort        *EffortInfo   // Effort level from Claude Code v2.1.139+ (nil when unavailable, REQ-CC2122-001)
+	Thinking      *ThinkingInfo // Thinking flag from Claude Code v2.1.139+ (nil when unavailable, REQ-CC2122-002)
+	PR            *PRInfo       // Active GitHub PR from Claude Code v2.1.145+ (nil when no PR detected, REQ-SLV-010)
 
 	// CacheUsage mirrors context_window.current_usage (SPEC-TOKEN-EFFICIENCY-001
 	// P0-2). Nil when current_usage is absent — before the first API call, or
@@ -425,20 +433,6 @@ const (
 	// shouldShowHandoffGuide() preserved as helper — its output is now integrated
 	// into the CW bar as a " (/clear)" suffix at the model-class threshold.
 )
-
-// UsageData represents API usage information.
-type UsageData struct {
-	UsedTokens  int64   `json:"used_tokens"`
-	LimitTokens int64   `json:"limit_tokens"`
-	Percentage  float64 `json:"percentage"`          // 0-100
-	ResetsAt    string  `json:"resets_at,omitempty"` // ISO 8601 reset timestamp
-}
-
-// UsageResult represents 5-hour/7-day usage results.
-type UsageResult struct {
-	Usage5H *UsageData // 5-hour usage
-	Usage7D *UsageData // 7-day usage
-}
 
 // contextLevel represents the severity level for context window usage coloring.
 type contextLevel int

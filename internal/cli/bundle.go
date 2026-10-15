@@ -54,9 +54,18 @@ var bundleRemoveCmd = &cobra.Command{
 	RunE:  runBundleRemove,
 }
 
+var bundleListCmd = &cobra.Command{
+	Use:   "list",
+	Short: "List the opt-in bundles with their skill and agent counts",
+	Args:  cobra.NoArgs,
+	RunE:  runBundleList,
+}
+
 func init() {
+	bundleAddCmd.SetHelpFunc(renderBundleAddHelp)
 	bundleCmd.AddCommand(bundleAddCmd)
 	bundleCmd.AddCommand(bundleRemoveCmd)
+	bundleCmd.AddCommand(bundleListCmd)
 	rootCmd.AddCommand(bundleCmd)
 }
 
@@ -149,6 +158,26 @@ func runBundleRemove(cmd *cobra.Command, args []string) error {
 	return nil
 }
 
+func runBundleList(cmd *cobra.Command, _ []string) error {
+	cat, err := template.LoadEmbeddedCatalog()
+	if err != nil {
+		return fmt.Errorf("load catalog: %w", err)
+	}
+	out := cmd.OutOrStdout()
+	for _, name := range sortedPackNames(cat.Catalog.OptionalPacks) {
+		pack := cat.Catalog.OptionalPacks[name]
+		_, _ = fmt.Fprintf(out, "%-10s %3d skills %3d agents\n", name, len(pack.Skills), len(pack.Agents))
+	}
+	return nil
+}
+
+// renderBundleAddHelp names the valid bundles when help is shown. The catalog is
+// read here rather than in init, so no other invocation pays for the parse.
+func renderBundleAddHelp(cmd *cobra.Command, args []string) {
+	cmd.Long = cmd.Short + "\n\nValid bundles: " + strings.Join(bundleNames(), ", ")
+	renderRootHelp(cmd, args)
+}
+
 func addSelection(sel []string, name string) []string {
 	for _, s := range sel {
 		if s == name {
@@ -175,7 +204,10 @@ func bundleExists(name string) bool {
 }
 
 func bundleNames() []string {
-	packs := loadCatalogForBundle().Catalog.OptionalPacks
+	return sortedPackNames(loadCatalogForBundle().Catalog.OptionalPacks)
+}
+
+func sortedPackNames(packs map[string]*template.Pack) []string {
 	names := make([]string, 0, len(packs))
 	for n := range packs {
 		names = append(names, n)

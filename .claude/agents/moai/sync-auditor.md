@@ -7,6 +7,8 @@ description: |
   Match user intent language-independently — do not require literal keyword matches.
   NOT for: SPEC plan-phase audit (that is plan-auditor's domain; sync-auditor is post-implementation only), code implementation, architecture design, documentation writing, git operations
 tools: Read, Grep, Glob, Bash, TaskCreate, TaskUpdate, TaskList, TaskGet, Skill, mcp__moai__audit_multi, mcp__moai__verify_trend, mcp__moai__audit_cache, mcp__moai__claude_audit, mcp__moai__glm_audit, mcp__moai__codex_audit
+model: opus
+effort: high
 color: red
 permissionMode: plan
 memory: project
@@ -229,4 +231,4 @@ The Skill tool is for read-only reference loading only; auditor independence mea
 
 ## Model/effort escalation
 
-> **Model/effort escalation**: this agent declares no `model` or `effort` and inherits the main session's, so deeper reasoning means a session run at that level — an ORCHESTRATOR decision (this agent cannot spawn sub-agents — no `Agent` tool). See `.claude/rules/moai/development/model-policy.md`.
+> **Model/effort escalation**: this agent's default `model` and `effort` are declared in its frontmatter, so reasoning deeper than that default means a spawn-time override or a session run at that level — an ORCHESTRATOR decision (this agent cannot spawn sub-agents — no `Agent` tool). See `.claude/rules/moai/development/model-policy.md`.

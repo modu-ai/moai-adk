@@ -278,7 +278,7 @@ func qasAutoRun(t *testing.T, root string, store *factory.BacklogStore) string {
 		wait:      5 * time.Minute,
 		liveness:  autoTestLiveness(root, "t1", true, true, nil),
 		sessionID: "operator-session-fixture",
-		jev:       func(string) string { return "jev: stubbed (qas baseline fixture)" },
+		jev:       func(autoJevDisplay) string { return "jev: stubbed (qas baseline fixture)" },
 		quota:     todoAutoQuotaLine,
 		sleep: func(time.Duration) {
 			tick++

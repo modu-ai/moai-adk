@@ -347,60 +347,66 @@ func TestNewDefaultLLMConfig(t *testing.T) {
 	}
 }
 
-// TestNewDefaultLLMConfig_GLMTierMapping verifies the GLM model tier mapping.
-// The High slot (Opus equivalent) maps to glm-5.3-flash (the z.ai-accepted
-// flash id, the default coding model); 1M context activation is driven by the
-// resolved context window, not a model-id suffix. Every Claude slot defaults
-// to the same model so auto-compact window sizing stays coherent. The legacy
+// TestNewDefaultLLMConfig_GLMTierMapping verifies the GLM model tier mapping
+// (card t1808 per-role defaults): the High (Opus), Medium (Sonnet) and Fable
+// slots default to the full glm-5.3, the Low (Haiku) slot to glm-5.3-flash.
+// Both models carry a 1M context window, so the auto-compact window Claude
+// Code sizes from the High slot stays valid for every slot. The legacy
 // Opus/Sonnet/Haiku alias fields are DELETED (SPEC-MODEL-MATRIX-UPDATE-001
 // REQ-MMU-004, DR-2) — only the four real tier fields exist now.
 func TestNewDefaultLLMConfig_GLMTierMapping(t *testing.T) {
 	t.Parallel()
 
 	cfg := NewDefaultLLMConfig()
-
-	if cfg.GLM.Models.High != "glm-5.3-flash" {
-		t.Errorf("GLM.Models.High: got %q, want %q", cfg.GLM.Models.High, "glm-5.3-flash")
+	want := map[string][2]string{
+		"High":   {cfg.GLM.Models.High, "glm-5.3"},
+		"Medium": {cfg.GLM.Models.Medium, "glm-5.3"},
+		"Low":    {cfg.GLM.Models.Low, "glm-5.3-flash"},
+		"Fable":  {cfg.GLM.Models.Fable, "glm-5.3"},
 	}
-	// Every slot resolves to the same model. Claude Code sizes the auto-compact
-	// window once from the High slot; a smaller model in any other slot would
-	// inherit a window larger than it can hold. Tier differentiation lives on
-	// the effort axis (glm_effort_overlay.go), not here.
-	if cfg.GLM.Models.Medium != "glm-5.3-flash" {
-		t.Errorf("GLM.Models.Medium: got %q, want %q (unified)", cfg.GLM.Models.Medium, "glm-5.3-flash")
-	}
-	if cfg.GLM.Models.Low != "glm-5.3-flash" {
-		t.Errorf("GLM.Models.Low: got %q, want %q (unified)", cfg.GLM.Models.Low, "glm-5.3-flash")
-	}
-	if cfg.GLM.Models.Fable != "glm-5.3" {
-		t.Errorf("GLM.Models.Fable: got %q, want %q (Fable slot is the one non-flash slot)", cfg.GLM.Models.Fable, "glm-5.3")
+	for slot, gw := range want {
+		if gw[0] != gw[1] {
+			t.Errorf("GLM.Models.%s: got %q, want %q", slot, gw[0], gw[1])
+		}
 	}
 }
 
-// TestDefaultGLMConstants verifies the GLM model tier constants and the
-// 1M context token constant used by the AUTO_COMPACT_WINDOW wiring. The
-// old-model name constants ("glm-4.5" through "glm-5-turbo") are DELETED
-// (SPEC-MODEL-MATRIX-UPDATE-001 REQ-MMU-004, DR-2): referencing any of them
-// here would no longer compile — that is the deletion proof.
+// TestDefaultGLMConstants verifies the GLM model tier constants, the per-tier
+// reasoning-state defaults, and the 1M context token constant used by the
+// AUTO_COMPACT_WINDOW wiring. The old-model name constants ("glm-4.5" through
+// "glm-5-turbo") are DELETED (SPEC-MODEL-MATRIX-UPDATE-001 REQ-MMU-004, DR-2):
+// referencing any of them here would no longer compile — that is the deletion
+// proof.
 func TestDefaultGLMConstants(t *testing.T) {
 	t.Parallel()
 
-	if DefaultGLMHigh != "glm-5.3-flash" {
-		t.Errorf("DefaultGLMHigh: got %q, want %q", DefaultGLMHigh, "glm-5.3-flash")
+	models := map[string][2]string{
+		"DefaultGLMHigh":   {DefaultGLMHigh, "glm-5.3"},
+		"DefaultGLMMedium": {DefaultGLMMedium, "glm-5.3"},
+		"DefaultGLMLow":    {DefaultGLMLow, "glm-5.3-flash"},
+		"DefaultGLMFable":  {DefaultGLMFable, "glm-5.3"},
+		"DefaultGLMOpus":   {DefaultGLMOpus, "glm-5.3"},
+		"DefaultGLMSonnet": {DefaultGLMSonnet, "glm-5.3"},
+		"DefaultGLMHaiku":  {DefaultGLMHaiku, "glm-5.3-flash"},
 	}
-	if DefaultGLMOpus != "glm-5.3-flash" {
-		t.Errorf("DefaultGLMOpus: got %q, want %q", DefaultGLMOpus, "glm-5.3-flash")
+	for name, gw := range models {
+		if gw[0] != gw[1] {
+			t.Errorf("%s: got %q, want %q", name, gw[0], gw[1])
+		}
 	}
-	if DefaultGLMMedium != "glm-5.3-flash" {
-		t.Errorf("DefaultGLMMedium: got %q, want %q (unified)", DefaultGLMMedium, "glm-5.3-flash")
+	// Per-tier reasoning-state defaults: high->max, medium->high, low->low,
+	// fable->max (glm-5.3-flash stays pinned to max on the wire by the overlay).
+	efforts := map[string][2]string{
+		"DefaultGLMEffortHigh":   {DefaultGLMEffortHigh, "max"},
+		"DefaultGLMEffortMedium": {DefaultGLMEffortMedium, "high"},
+		"DefaultGLMEffortLow":    {DefaultGLMEffortLow, "low"},
+		"DefaultGLMEffortFable":  {DefaultGLMEffortFable, "max"},
 	}
-	if DefaultGLMLow != "glm-5.3-flash" {
-		t.Errorf("DefaultGLMLow: got %q, want %q (unified)", DefaultGLMLow, "glm-5.3-flash")
+	for name, gw := range efforts {
+		if gw[0] != gw[1] {
+			t.Errorf("%s: got %q, want %q", name, gw[0], gw[1])
+		}
 	}
-	// glm-5.3 preserved as a still-selectable model: it keeps its own named
-	// constant and its ValidGLMModels() membership even though no slot
-	// defaults to it anymore (the set is derived from constants; a bare
-	// retarget of the defaults would silently drop it from the offered set).
 	if DefaultGLM53 != "glm-5.3" {
 		t.Errorf("DefaultGLM53: got %q, want %q", DefaultGLM53, "glm-5.3")
 	}

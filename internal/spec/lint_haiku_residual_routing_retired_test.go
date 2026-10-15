@@ -19,7 +19,7 @@ func TestHaikuResidualRule_RoutingSurfacesRetired(t *testing.T) {
 	}
 
 	// Positive control: an agent definition surface still fires.
-	writeHaikuFixtureFile(t, root, ".claude/agents/moai/some-agent.md", "---\nname: some-agent\nmodel: haiku\n---\n")
+	writeHaikuFixtureFile(t, root, ".claude/agents/moai/some-agent.md", "---\nname: some-agent\n---\nbody routes work to haiku\n")
 	if findings := (&HaikuResidualRule{baseDir: root}).CheckAll(nil); len(findings) != 1 {
 		t.Errorf("agent-definition surface: got %d findings, want 1: %+v", len(findings), findings)
 	}

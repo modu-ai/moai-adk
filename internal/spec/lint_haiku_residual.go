@@ -21,6 +21,9 @@ package spec
 //     valid by design (research.md §E.1); its prose removal is AC-AA2-014 (M4).
 //   - X4: internal/spec/ own source — THIS file references "haiku" to detect
 //     it; surface 1 scans .claude/agents/, not internal/spec/.
+//   - X5: the agent frontmatter `model:` field — the operator's per-role
+//     defaults (card t1808) declare `model: haiku` for the git/todo roles.
+//     Only that field is exempt; body prose and other keys stay scanned.
 //
 // NOT skip-able: CheckAll findings are never passed through applylintSkip
 // (only per-SPEC Check findings are). This makes the rule a HARD gate
@@ -126,7 +129,7 @@ func scanFilesForHaiku(dirs []string, suffix string, excludeTest bool) []Finding
 			if err != nil {
 				continue
 			}
-			if strings.Contains(string(data), "haiku") {
+			if strings.Contains(withoutFrontmatterModelLine(string(data)), "haiku") {
 				findings = append(findings, Finding{
 					File:     path,
 					Line:     1,
@@ -138,6 +141,28 @@ func scanFilesForHaiku(dirs []string, suffix string, excludeTest bool) []Finding
 		}
 	}
 	return findings
+}
+
+// withoutFrontmatterModelLine returns the agent file with its frontmatter
+// `model:` line removed. The No-Haiku policy is superseded for the
+// git/todo/Explore roles by the operator's per-role defaults (card t1808,
+// 2026-10-15), so a declared `model: haiku` is not a residual. The exemption is
+// that one field only: any other frontmatter key and every body line are
+// scanned unchanged. A file without a frontmatter block is returned as-is.
+func withoutFrontmatterModelLine(content string) string {
+	lines := strings.Split(content, "\n")
+	if len(lines) == 0 || lines[0] != "---" {
+		return content
+	}
+	for i := 1; i < len(lines); i++ {
+		if lines[i] == "---" {
+			return content // frontmatter closed without a model line
+		}
+		if strings.HasPrefix(lines[i], "model:") {
+			return strings.Join(append(lines[:i:i], lines[i+1:]...), "\n")
+		}
+	}
+	return content
 }
 
 // claudeModelsHasHaiku implements the awk state-machine from AC-AA2-012

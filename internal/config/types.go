@@ -312,6 +312,9 @@ type LLMConfig struct {
 	// validated by validateProfile. This is NOT the retired
 	// llm.performance_tier — that key stays retired and stripped.
 	Profile string `yaml:"profile"`
+	// Defaults carries llm.defaults — today the factory session launch
+	// defaults (llm.defaults.sessions, card t1808). Zero value = default mode.
+	Defaults LLMDefaults `yaml:"defaults,omitempty"`
 	// AgentOverrides is an optional per-agent {model, effort} override keyed
 	// by canonical agent name, applied on top of the active profile's cell
 	// (REQ-AFR-004; restored under SPEC-WEB-AGENTFM-RESTORE-001 M1).

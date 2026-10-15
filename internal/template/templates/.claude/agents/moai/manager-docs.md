@@ -7,6 +7,8 @@ description: |
   Match user intent language-independently — do not require literal keyword matches.
   NOT for: SPEC body authoring (spec.md / plan.md / acceptance.md body — manager-spec only per Status Transition Ownership Matrix; manager-docs limited to the spec.md frontmatter `status` + `updated` transitions and an `updated` refresh in the stateless plan.md / acceptance.md), code implementation, testing, git branch management, security audits
 tools: Read, Write, Edit, Grep, Glob, Bash, WebFetch, WebSearch, TaskCreate, TaskUpdate, TaskList, TaskGet, Skill, mcp__moai__spec_progress, mcp__moai__spec_audit, mcp__moai__codex_review, mcp__moai__glm_review
+model: sonnet
+effort: medium
 color: cyan
 permissionMode: bypassPermissions
 memory: project
@@ -225,4 +227,4 @@ Static `skills:` preload is kept to a minimum (token diet — progressive disclo
 
 ## Model/effort escalation
 
-> **Model/effort escalation**: this agent declares no `model` or `effort` and inherits the main session's, so deeper reasoning means a session run at that level — an ORCHESTRATOR decision (this agent cannot spawn sub-agents — no `Agent` tool). See `.claude/rules/moai/development/model-policy.md`.
+> **Model/effort escalation**: this agent's default `model` and `effort` are declared in its frontmatter, so reasoning deeper than that default means a spawn-time override or a session run at that level — an ORCHESTRATOR decision (this agent cannot spawn sub-agents — no `Agent` tool). See `.claude/rules/moai/development/model-policy.md`.

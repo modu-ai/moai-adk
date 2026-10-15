@@ -156,7 +156,7 @@ func TestHaikuResidualRule_CLIShapedBaseDir(t *testing.T) {
 		t.Fatal(err)
 	}
 	writeHaikuFixtureFile(t, root, ".claude/agents/moai/bad-agent.md",
-		"---\nname: bad\nmodel: haiku\n---\nbody\n")
+		"---\nname: bad\nmodel: sonnet\n---\nbody routes work to haiku\n")
 
 	findings := haikuFindings(t, root)
 	if len(findings) == 0 {

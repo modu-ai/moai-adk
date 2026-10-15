@@ -59,19 +59,23 @@ func sdClearPolicyOutput(t *testing.T, root string) string {
 	return buf.String()
 }
 
-// sdWantOneClearLine asserts the output is exactly one line asking the
-// operator to /clear, naming the policy.
-func sdWantOneClearLine(t *testing.T, out, policy string) {
+// sdWantTransitionLine asserts the output is exactly one line naming the
+// in-session card transition (SPEC-FACTORY-LANE-NO-CLEAR-001 REQ-LNC-007,
+// REQ-LNC-009) and the policy, with no clear instruction.
+func sdWantTransitionLine(t *testing.T, out, policy string) {
 	t.Helper()
 	trimmed := strings.TrimRight(out, "\n")
 	if trimmed == "" {
-		t.Fatalf("policy %s: no line printed, want one /clear request", policy)
+		t.Fatalf("policy %s: no line printed, want one in-session transition line", policy)
 	}
 	if strings.Contains(trimmed, "\n") {
 		t.Fatalf("policy %s: printed more than one line:\n%s", policy, out)
 	}
-	if strings.Count(out, "/clear") != 1 {
-		t.Fatalf("policy %s: output %q does not carry exactly one /clear request", policy, out)
+	if strings.Contains(out, "/clear") {
+		t.Fatalf("policy %s: output %q carries a clear instruction", policy, out)
+	}
+	if !strings.Contains(out, "ExitWorktree(keep)") {
+		t.Fatalf("policy %s: output %q does not name the in-session transition step", policy, out)
 	}
 	if !strings.Contains(out, policy) {
 		t.Fatalf("policy %s: output %q does not name the policy", policy, out)
@@ -83,11 +87,11 @@ func sdWantOneClearLine(t *testing.T, out, policy string) {
 func TestSD_AC020_ClearPolicies(t *testing.T) {
 	const sessionID = "sess-m6-clear"
 
-	t.Run("clear-each prints exactly one /clear request", func(t *testing.T) {
+	t.Run("clear-each prints the in-session transition line", func(t *testing.T) {
 		root := t.TempDir()
 		t.Setenv(config.EnvClaudeCodeSessionID, sessionID)
 		t.Setenv(config.EnvFactoryClearPolicy, config.FactoryClearPolicyEach)
-		sdWantOneClearLine(t, sdClearPolicyOutput(t, root), config.FactoryClearPolicyEach)
+		sdWantTransitionLine(t, sdClearPolicyOutput(t, root), config.FactoryClearPolicyEach)
 	})
 
 	t.Run("absent policy equals clear-each", func(t *testing.T) {
@@ -95,9 +99,7 @@ func TestSD_AC020_ClearPolicies(t *testing.T) {
 		t.Setenv(config.EnvClaudeCodeSessionID, sessionID)
 		t.Setenv(config.EnvFactoryClearPolicy, "")
 		out := sdClearPolicyOutput(t, root)
-		if out == "" || strings.Count(out, "/clear") != 1 {
-			t.Fatalf("absent policy output = %q, want the clear-each /clear request", out)
-		}
+		sdWantTransitionLine(t, out, config.FactoryClearPolicyEach)
 	})
 
 	t.Run("clear-when-full below threshold prints none", func(t *testing.T) {
@@ -110,20 +112,20 @@ func TestSD_AC020_ClearPolicies(t *testing.T) {
 		}
 	})
 
-	t.Run("clear-when-full at threshold prints one", func(t *testing.T) {
+	t.Run("clear-when-full at threshold prints the transition line", func(t *testing.T) {
 		root := t.TempDir()
 		t.Setenv(config.EnvClaudeCodeSessionID, sessionID)
 		t.Setenv(config.EnvFactoryClearPolicy, config.FactoryClearPolicyWhenFull)
 		sdWriteContextRecord(t, root, sessionID, 200_000, 90.0)
-		sdWantOneClearLine(t, sdClearPolicyOutput(t, root), config.FactoryClearPolicyWhenFull)
+		sdWantTransitionLine(t, sdClearPolicyOutput(t, root), config.FactoryClearPolicyWhenFull)
 	})
 
-	t.Run("clear-when-full large window at threshold prints one", func(t *testing.T) {
+	t.Run("clear-when-full large window at threshold prints the transition line", func(t *testing.T) {
 		root := t.TempDir()
 		t.Setenv(config.EnvClaudeCodeSessionID, sessionID)
 		t.Setenv(config.EnvFactoryClearPolicy, config.FactoryClearPolicyWhenFull)
 		sdWriteContextRecord(t, root, sessionID, 1_000_000, 50.0)
-		sdWantOneClearLine(t, sdClearPolicyOutput(t, root), config.FactoryClearPolicyWhenFull)
+		sdWantTransitionLine(t, sdClearPolicyOutput(t, root), config.FactoryClearPolicyWhenFull)
 	})
 
 	t.Run("clear-when-full missing record prints none", func(t *testing.T) {
@@ -224,8 +226,11 @@ func TestSD_AC020_ClearPolicies(t *testing.T) {
 		if err != nil {
 			t.Fatalf("cli complete: %v", err)
 		}
-		if n := strings.Count(out, "/clear"); n != 1 {
-			t.Fatalf("complete output carries %d /clear requests, want 1:\n%s", n, out)
+		if n := strings.Count(out, "/clear"); n != 0 {
+			t.Fatalf("complete output carries %d /clear requests, want 0:\n%s", n, out)
+		}
+		if !strings.Contains(out, "ExitWorktree(keep)") {
+			t.Errorf("complete output does not name the in-session transition step:\n%s", out)
 		}
 		if !strings.Contains(out, config.FactoryClearPolicyEach) {
 			t.Errorf("complete output does not name the policy:\n%s", out)
@@ -311,4 +316,46 @@ func TestSD_M6_ClearPolicyCarrierConstantOnly(t *testing.T) {
 			}
 		}
 	}
+}
+
+// TestFactoryClearPolicyManualDispatch — SPEC-FACTORY-LANE-NO-CLEAR-001: a
+// lane launched with --no-auto-dispatch must not be told to lease its next
+// card (the operator's dispatch mode stands); clear-each and clear-when-full
+// at threshold print an exit-and-wait line that names no lease and no clear,
+// and auto dispatch keeps the lease line.
+func TestFactoryClearPolicyManualDispatch(t *testing.T) {
+	const sessionID = "sess-m6-manual"
+	for _, policy := range []string{config.FactoryClearPolicyEach, config.FactoryClearPolicyWhenFull} {
+		t.Run("manual "+policy, func(t *testing.T) {
+			root := t.TempDir()
+			t.Setenv(config.EnvClaudeCodeSessionID, sessionID)
+			t.Setenv(config.EnvFactoryClearPolicy, policy)
+			t.Setenv(config.EnvFactoryAutoDispatch, config.FactoryDispatchManual)
+			if policy == config.FactoryClearPolicyWhenFull {
+				sdWriteContextRecord(t, root, sessionID, 200_000, 90.0)
+			}
+			out := sdClearPolicyOutput(t, root)
+			if !strings.Contains(out, "ExitWorktree(keep)") {
+				t.Fatalf("manual %s: output %q does not name the exit step", policy, out)
+			}
+			if !strings.Contains(out, "wait for the leader") {
+				t.Errorf("manual %s: output %q does not tell the lane to wait for the leader's dispatch", policy, out)
+			}
+			if strings.Contains(out, "factory next") {
+				t.Errorf("manual %s: output %q tells a manual-dispatch lane to lease a card", policy, out)
+			}
+			if strings.Contains(out, "/clear") {
+				t.Errorf("manual %s: output %q carries a clear instruction", policy, out)
+			}
+		})
+	}
+	t.Run("auto dispatch keeps the lease line", func(t *testing.T) {
+		root := t.TempDir()
+		t.Setenv(config.EnvClaudeCodeSessionID, sessionID)
+		t.Setenv(config.EnvFactoryClearPolicy, config.FactoryClearPolicyEach)
+		t.Setenv(config.EnvFactoryAutoDispatch, config.FactoryDispatchAuto)
+		if out := sdClearPolicyOutput(t, root); !strings.Contains(out, "factory next") {
+			t.Fatalf("auto dispatch output %q lost the lease step", out)
+		}
+	})
 }

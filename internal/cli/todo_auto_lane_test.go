@@ -589,3 +589,43 @@ func TestAutoLaneCycleNoteNamesNextCandidate(t *testing.T) {
 		t.Errorf("the next-ranked candidate was not leased:\n%s", out.String())
 	}
 }
+
+// TestAutoLaneCycleNoClearAssertion — SPEC-FACTORY-LANE-NO-CLEAR-001
+// REQ-LNC-002/008: neither the completion path output nor the stderr
+// guidance of the lane cycle instructs a session clear, on the evidence
+// collected path or the deadline-miss path.
+func TestAutoLaneCycleNoClearAssertion(t *testing.T) {
+	for _, tc := range []struct {
+		name     string
+		seed     bool
+		wait     time.Duration
+		wantLine string
+	}{
+		{"evidence collected", true, 5 * time.Minute, "complete t1"},
+		{"deadline miss", false, time.Millisecond, "non-finding: t1"},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			root, _ := nmBase(t, factory.BacklogStateQueued)
+			nmLaneEnv(t, "lane-1", "")
+			nmIsolatedWorktrees(t, "t1")
+			laneAutoSeams(t)
+			if tc.seed {
+				laneAutoSeedEvidence(t, root, "t1")
+			}
+			tick := 0
+			sleep, now := laneAutoTickClock(&tick)
+			var out, errOut bytes.Buffer
+			if err := runAutoLaneCycle(context.Background(), root, &out, &errOut, laneAutoOpts(t, tc.wait, sleep, now)); err != nil {
+				t.Fatalf("lane cycle: %v (stderr %q)", err, errOut.String())
+			}
+			if !strings.Contains(out.String(), tc.wantLine) {
+				t.Fatalf("expected line %q missing:\n%s", tc.wantLine, out.String())
+			}
+			for name, text := range map[string]string{"stdout": out.String(), "stderr": errOut.String()} {
+				if strings.Contains(text, "/clear") {
+					t.Errorf("lane cycle %s carries a clear instruction:\n%s", name, text)
+				}
+			}
+		})
+	}
+}

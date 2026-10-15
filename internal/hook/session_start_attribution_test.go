@@ -1,83 +1,238 @@
+//go:build unix
+
 package hook
 
+// session_start_attribution_test.go — card t1776: when the current-session
+// side-channel already records a DIFFERENT session id, the source_session_id
+// attribution injection carries a one-line NOTE. The note's overwrite claim
+// must match the WRITE OUTCOME (audit round-2 P2): a read-only environment
+// leaves the foreign id in place, and the notice must say so instead of
+// claiming an overwrite that never happened.
+
 import (
-	"bytes"
-	"context"
 	"os"
 	"path/filepath"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/modu-ai/moai-adk/internal/session"
 )
 
-// TestSessionStartEmptySessionIDEmitsWarning is the M1 characterization test
-// for REQ-WPR-003 (SPEC-V3R6-SESSION-ID-ATTRIBUTION-REPAIR-001).
-//
-// When the SessionStart hook handler receives input.SessionID == "", the
-// multi-session protocol is bypassed (the gate at session_start.go:66). This
-// is a leading hypothesis for K6 (empty registry): some Claude Code
-// activation paths may emit an empty session_id. The handler MUST emit a
-// non-blocking stderr warning so the orchestrator can observe that the write
-// path was bypassed (AC-WPR-003).
-//
-// RED phase: before the fix, no warning is emitted; after GREEN the warning
-// is present on stderr and the hook still exits 0 (non-blocking).
-func TestSessionStartEmptySessionIDEmitsWarning(t *testing.T) {
-	projectDir := t.TempDir()
-	if err := os.MkdirAll(filepath.Join(projectDir, ".moai", "state"), 0o755); err != nil {
+func TestSessionStartAttributionMismatchNotice(t *testing.T) {
+	root := t.TempDir()
+	sideDir := filepath.Join(root, filepath.Dir(session.CurrentSideChannelFile))
+	if err := os.MkdirAll(sideDir, 0o755); err != nil {
 		t.Fatalf("mkdir: %v", err)
 	}
-
-	// Capture stderr — the warning is non-blocking and goes to stderr.
-	oldStderr := os.Stderr
-	rErr, wErr, err := os.Pipe()
-	if err != nil {
-		t.Fatalf("pipe: %v", err)
+	this := "11111111-1111-4111-8111-111111111111"
+	other := "22222222-2222-4222-8222-222222222222"
+	if err := os.WriteFile(filepath.Join(root, session.CurrentSideChannelFile), []byte(other), 0o600); err != nil {
+		t.Fatalf("seed side channel: %v", err)
 	}
-	os.Stderr = wErr
 
 	h := NewSessionStartHandler(nil)
-	input := &HookInput{
-		SessionID:  "", // empty — the K3 gate bypass scenario
-		CWD:        projectDir,
-		ProjectDir: projectDir,
+	out, err := h.Handle(t.Context(), &HookInput{
+		SessionID:  this,
+		ProjectDir: root,
+		CWD:        root,
+		Source:     "startup",
+	})
+	if err != nil {
+		t.Fatalf("Handle: %v", err)
+	}
+	ctx := ""
+	if out.HookSpecificOutput != nil {
+		ctx = out.HookSpecificOutput.AdditionalContext
+	}
+	if !strings.Contains(ctx, "source_session_id="+this) {
+		t.Fatalf("attribution line missing this session's id:\n%s", ctx)
+	}
+	if !strings.Contains(ctx, "before this session started") {
+		t.Fatalf("mismatch notice missing the truthful pre-state phrasing (recorded id %s, this %s):\n%s", other, this, ctx)
+	}
+	if strings.Contains(ctx, "returns the recorded one") {
+		t.Fatalf("mismatch notice makes the false will-return claim (the write below already replaces the side channel):\n%s", ctx)
+	}
+	if !strings.Contains(ctx, "has overwritten it") {
+		t.Fatalf("successful write must say the record was overwritten:\n%s", ctx)
 	}
 
-	out, handleErr := h.Handle(context.Background(), input)
-	// Close writer and restore stderr before reading so the pipe drains.
-	_ = wErr.Close()
-	os.Stderr = oldStderr
-
-	if handleErr != nil {
-		t.Fatalf("Handle returned error (must be non-blocking): %v", handleErr)
-	}
-	if out == nil {
-		t.Fatal("Handle returned nil output")
-	}
-
-	// Read captured stderr.
-	var stderrBuf bytes.Buffer
-	if _, copyErr := stderrBuf.ReadFrom(rErr); copyErr != nil {
-		t.Fatalf("read stderr pipe: %v", copyErr)
-	}
-	_ = rErr.Close()
-
-	stderrText := stderrBuf.String()
-	// AC-WPR-003: a warning MUST be emitted to stderr when SessionID is empty.
-	if !strings.Contains(strings.ToLower(stderrText), "session_id") {
-		t.Errorf("REQ-WPR-003: expected stderr warning mentioning session_id when input.SessionID is empty.\nstderr: %q", stderrText)
-	}
-	if !strings.Contains(strings.ToLower(stderrText), "empty") && !strings.Contains(strings.ToLower(stderrText), "missing") {
-		t.Errorf("REQ-WPR-003: stderr warning should describe the empty/missing session_id condition.\nstderr: %q", stderrText)
-	}
-
-	// The registry MUST NOT be polluted with an empty-session_id entry.
-	registryPath := filepath.Join(projectDir, session.DefaultRegistryPath)
-	if data, statErr := os.ReadFile(registryPath); statErr == nil {
-		trimmed := strings.TrimSpace(string(data))
-		if trimmed != "" && trimmed != "[]" && trimmed != "null" {
-			t.Errorf("registry should not contain entries for empty session_id; got %q", trimmed)
+	t.Run("side_channel_symlinked_to_dev_zero_does_not_hang", func(t *testing.T) {
+		// The prev-id read goes through the non-blocking regular-file guard:
+		// a side channel symlinked to /dev/zero is refused instead of
+		// reading forever (audit round-5 P2 — os.ReadFile on /dev/zero never
+		// sees EOF and allocates until the session start dies).
+		root4 := t.TempDir()
+		sideDir4 := filepath.Join(root4, filepath.Dir(session.CurrentSideChannelFile))
+		if err := os.MkdirAll(sideDir4, 0o755); err != nil {
+			t.Fatalf("mkdir: %v", err)
 		}
-	}
+		if err := os.Symlink("/dev/zero", filepath.Join(root4, session.CurrentSideChannelFile)); err != nil {
+			t.Fatalf("symlink: %v", err)
+		}
+		done := make(chan struct{}, 1)
+		var ctx4 string
+		go func() {
+			out4, err := h.Handle(t.Context(), &HookInput{
+				SessionID:  this,
+				ProjectDir: root4,
+				CWD:        root4,
+				Source:     "startup",
+			})
+			if err == nil && out4.HookSpecificOutput != nil {
+				ctx4 = out4.HookSpecificOutput.AdditionalContext
+			}
+			done <- struct{}{}
+		}()
+		select {
+		case <-done:
+			if strings.Contains(ctx4, "before this session started") {
+				t.Fatalf("a /dev/zero side channel must be refused, not narrated:\n%s", ctx4)
+			}
+		case <-time.After(5 * time.Second):
+			t.Fatal("Handle blocked on a /dev/zero side channel: the prev-id read must refuse non-regular files")
+		}
+	})
+
+	t.Run("oversized_side_channel_refused", func(t *testing.T) {
+		// A LARGE regular side channel is refused outright — the read is
+		// BOUNDED (audit round-6 P2: the cap must apply to the read itself,
+		// not after a full io.ReadAll), so a huge file never lands in
+		// memory and no mismatch notice is composed from it.
+		root5 := t.TempDir()
+		sideDir5 := filepath.Join(root5, filepath.Dir(session.CurrentSideChannelFile))
+		if err := os.MkdirAll(sideDir5, 0o755); err != nil {
+			t.Fatalf("mkdir: %v", err)
+		}
+		big := strings.Repeat("x", 200*1024)
+		if err := os.WriteFile(filepath.Join(root5, session.CurrentSideChannelFile), []byte(big), 0o600); err != nil {
+			t.Fatalf("seed big side channel: %v", err)
+		}
+		out5, err := h.Handle(t.Context(), &HookInput{
+			SessionID:  this,
+			ProjectDir: root5,
+			CWD:        root5,
+			Source:     "startup",
+		})
+		if err != nil {
+			t.Fatalf("Handle: %v", err)
+		}
+		ctx5 := ""
+		if out5.HookSpecificOutput != nil {
+			ctx5 = out5.HookSpecificOutput.AdditionalContext
+		}
+		if strings.Contains(ctx5, "before this session started") {
+			t.Fatalf("an oversized side channel must be refused, not narrated:\n%s", ctx5)
+		}
+		if !strings.Contains(ctx5, "source_session_id="+this) {
+			t.Fatalf("attribution line missing:\n%s", ctx5)
+		}
+	})
+
+	t.Run("symlink_to_foreign_file_refused_not_narrated", func(t *testing.T) {
+		// A side channel symlinked to a SMALL foreign file passes the size
+		// cap — only O_NOFOLLOW and the id-shape check keep its bytes out of
+		// the session context (audit round-12 first P2).
+		root6 := t.TempDir()
+		secret := t.TempDir()
+		secretPath := filepath.Join(secret, "token.txt")
+		if err := os.WriteFile(secretPath, []byte("SECRET-TOKEN-ABC"), 0o600); err != nil {
+			t.Fatalf("seed secret: %v", err)
+		}
+		sideDir6 := filepath.Join(root6, filepath.Dir(session.CurrentSideChannelFile))
+		if err := os.MkdirAll(sideDir6, 0o755); err != nil {
+			t.Fatalf("mkdir: %v", err)
+		}
+		if err := os.Symlink(secretPath, filepath.Join(root6, session.CurrentSideChannelFile)); err != nil {
+			t.Fatalf("symlink: %v", err)
+		}
+		out6, err := h.Handle(t.Context(), &HookInput{
+			SessionID:  this,
+			ProjectDir: root6,
+			CWD:        root6,
+			Source:     "startup",
+		})
+		if err != nil {
+			t.Fatalf("Handle: %v", err)
+		}
+		ctx6 := ""
+		if out6.HookSpecificOutput != nil {
+			ctx6 = out6.HookSpecificOutput.AdditionalContext
+		}
+		if strings.Contains(ctx6, "SECRET-TOKEN-ABC") {
+			t.Fatalf("a symlinked foreign file's bytes leaked into the session context:\n%s", ctx6)
+		}
+	})
+
+	t.Run("matching_side_channel_no_notice", func(t *testing.T) {
+		root2 := t.TempDir()
+		sideDir2 := filepath.Join(root2, filepath.Dir(session.CurrentSideChannelFile))
+		if err := os.MkdirAll(sideDir2, 0o755); err != nil {
+			t.Fatalf("mkdir: %v", err)
+		}
+		if err := os.WriteFile(filepath.Join(root2, session.CurrentSideChannelFile), []byte(this), 0o600); err != nil {
+			t.Fatalf("seed side channel: %v", err)
+		}
+		out2, err := h.Handle(t.Context(), &HookInput{
+			SessionID:  this,
+			ProjectDir: root2,
+			CWD:        root2,
+			Source:     "startup",
+		})
+		if err != nil {
+			t.Fatalf("Handle: %v", err)
+		}
+		ctx2 := ""
+		if out2.HookSpecificOutput != nil {
+			ctx2 = out2.HookSpecificOutput.AdditionalContext
+		}
+		if strings.Contains(ctx2, "before this session started") {
+			t.Fatalf("matching side channel must not carry the mismatch notice:\n%s", ctx2)
+		}
+	})
+
+	t.Run("failed_write_reports_the_surviving_record", func(t *testing.T) {
+		// A read-only state dir makes the overwrite fail — the notice must
+		// then say the foreign record SURVIVED, not claim an overwrite
+		// (audit round-2 P2).
+		root3 := t.TempDir()
+		sideDir3 := filepath.Join(root3, filepath.Dir(session.CurrentSideChannelFile))
+		if err := os.MkdirAll(sideDir3, 0o755); err != nil {
+			t.Fatalf("mkdir: %v", err)
+		}
+		// An existing file truncates with FILE write permission only — the
+		// directory mode is irrelevant to the write, so the failure is
+		// forced on the file itself (owner-read, no write).
+		if err := os.WriteFile(filepath.Join(root3, session.CurrentSideChannelFile), []byte(other), 0o600); err != nil {
+			t.Fatalf("seed side channel: %v", err)
+		}
+		if os.Geteuid() == 0 {
+			t.Skip("root bypasses file write permissions — the failure cannot be forced (audit round-3 P2)")
+		}
+		if err := os.Chmod(filepath.Join(root3, session.CurrentSideChannelFile), 0o400); err != nil {
+			t.Fatalf("chmod: %v", err)
+		}
+		t.Cleanup(func() { _ = os.Chmod(filepath.Join(root3, session.CurrentSideChannelFile), 0o644) })
+
+		out3, err := h.Handle(t.Context(), &HookInput{
+			SessionID:  this,
+			ProjectDir: root3,
+			CWD:        root3,
+			Source:     "startup",
+		})
+		if err != nil {
+			t.Fatalf("Handle: %v", err)
+		}
+		ctx3 := ""
+		if out3.HookSpecificOutput != nil {
+			ctx3 = out3.HookSpecificOutput.AdditionalContext
+		}
+		if strings.Contains(ctx3, "has overwritten it") {
+			t.Fatalf("a failed write must not claim the overwrite:\n%s", ctx3)
+		}
+		if !strings.Contains(ctx3, "still holds") {
+			t.Fatalf("a failed write must name the surviving foreign record:\n%s", ctx3)
+		}
+	})
 }

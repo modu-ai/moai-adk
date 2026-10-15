@@ -93,8 +93,10 @@ func TestRolePermissionContractNoSilentDrop(t *testing.T) {
 		t.Errorf("mcp-server must be mapped once per restriction kind (grant and deny); have %v", kinds["mcp-server"])
 	}
 
-	// Real set: every requirement of every role is mapped, and the emitted
-	// sandbox_mode equals the contract's value for that role.
+	// Real set: every requirement of every role is mapped. sandbox_mode is
+	// not emitted (card t1808 — Codex ignores it for a spawned role); the
+	// manifest's stated mode is still checked against the contract (the
+	// broad mutant below).
 	pub := emitRealSet(t)
 	report, err := agentemit.BuildPermissionReport(os.DirFS(templatesDir), agentMDRoot, man)
 	if err != nil {
@@ -116,8 +118,8 @@ func TestRolePermissionContractNoSilentDrop(t *testing.T) {
 			t.Fatalf("decode %s: %v", path, err)
 		}
 		name, _ := doc["name"].(string)
-		if got, want := doc["sandbox_mode"], contractSandbox(man, name); got != want {
-			t.Errorf("%s: emitted sandbox_mode %v, contract says %q", name, got, want)
+		if got, has := doc["sandbox_mode"]; has {
+			t.Errorf("%s: sandbox_mode = %v emitted, want the key omitted (contract states %q)", name, got, contractSandbox(man, name))
 		}
 		if roles[name] == 0 {
 			t.Errorf("%s: no contract verdicts in the report", name)

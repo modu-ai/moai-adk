@@ -95,10 +95,11 @@ type ReconciliationCounts struct {
 // per-path lists (SPEC-UPDATE-MIGRATION-001 REQ-UPM-030/031/032): every
 // category is named with its count, deletions are always visible (each
 // archived removal listed by path), conflicts name their sidecar paths, and
-// preserved files are listed so the summary can never claim a deletion-free
-// run over what it actually kept. No banners, no severity prefixes — the
+// preserved files are counted, and listed by path only under --verbose
+// (REQ-RC30-015), so the count still keeps the summary from claiming a
+// deletion-free run over what it kept. No banners, no severity prefixes — the
 // existing plain-text outcome structure only.
-func RenderReconciliation(counts ReconciliationCounts, conflicted, preserved, archivedRemoved []string) string {
+func RenderReconciliation(counts ReconciliationCounts, conflicted, preserved, archivedRemoved []string, verbose bool) string {
 	total := counts.Refreshed + counts.Merged + counts.Conflicts + counts.Preserved + counts.ArchivedRemoved
 	if total == 0 {
 		return ""
@@ -111,8 +112,14 @@ func RenderReconciliation(counts ReconciliationCounts, conflicted, preserved, ar
 	for _, p := range archivedRemoved {
 		result += "\n  archived-removed: " + p
 	}
-	for _, p := range preserved {
-		result += "\n  preserved: " + p
+	switch {
+	case verbose:
+		for _, p := range preserved {
+			result += "\n  preserved: " + p
+		}
+	case len(preserved) > 0:
+		// REQ-RC30-015: by default the preserved list collapses to one count line.
+		result += fmt.Sprintf("\n  preserved: %d file(s) (run with --verbose to list)", len(preserved))
 	}
 	return result
 }

@@ -550,8 +550,12 @@ func codexAuditLoadRole(role string) (codexAuditRole, error) {
 	if err != nil {
 		return codexAuditRole{}, fmt.Errorf("role %q file: %w", role, err)
 	}
-	if fields["sandbox_mode"] != codexAuditSandbox {
-		return codexAuditRole{}, fmt.Errorf("role %q file declares sandbox_mode %q, not %s", role, fields["sandbox_mode"], codexAuditSandbox)
+	// The permission contract decides eligibility and the process runs with
+	// -s read-only. The emitter no longer writes sandbox_mode (card t1808 —
+	// Codex ignores it for a spawned role), so an absent line is expected; a
+	// file that still states a different mode is refused as inconsistent.
+	if mode, stated := fields["sandbox_mode"]; stated && mode != codexAuditSandbox {
+		return codexAuditRole{}, fmt.Errorf("role %q file declares sandbox_mode %q, not %s", role, mode, codexAuditSandbox)
 	}
 	instr, ok := fields["developer_instructions"]
 	if !ok || instr == "" {
@@ -692,7 +696,7 @@ func codexAuditReserveRecord(root, role string, at time.Time) (string, *os.File,
 // @MX:REASON: an audit that outlives its bound must not leave codex or its children running
 func codexAuditExec(ctx context.Context, program string, argv []string, root string, task io.Reader, stderr io.Writer, timeout time.Duration) (string, error) {
 	if timeout <= 0 {
-		timeout = config.DefaultCodexAuditTimeout
+		timeout = codexAuditWaitTimeout(config.DefaultCodexAuditTimeout)
 	}
 	if task == nil {
 		task = strings.NewReader("")

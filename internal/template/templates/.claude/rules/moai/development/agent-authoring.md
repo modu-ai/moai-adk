@@ -54,7 +54,7 @@ All agent definitions use YAML frontmatter. The following fields are available:
 | model | No | inherit | Model selection: sonnet, opus, haiku, or inherit |
 | permissionMode | No | default | Permission behavior for the agent |
 | maxTurns | No | Unlimited | Maximum agentic turns before stopping (current optional field). Since Claude Code 2.1.246 a subagent stopping at its `maxTurns` limit returns its output marked as partial with a hint to continue it via `SendMessage`, instead of appearing finished |
-| skills | No | None | Skills injected into agent context at startup |
+| skills | No | None | Skills injected into agent context at startup (upstream honors only the first 32 distinct names in the list) |
 | mcpServers | No | None | MCP servers available to this agent |
 | hooks | No | None | Lifecycle hooks scoped to this agent |
 | memory | No | None | Persistent memory scope for cross-session learning |
@@ -63,6 +63,7 @@ All agent definitions use YAML frontmatter. The following fields are available:
 | effort | No | inherit | Session effort override: low, medium, high, xhigh, max (xhigh/max require Opus 4.7+) |
 | initialPrompt | No | None | Auto-submitted first user turn when agent runs as main session agent via --agent flag (v2.1.83+) |
 | isolation | No | none | Isolation mode: "worktree" creates isolated git worktree (v2.1.49+) |
+| autoCompactWindow | No | Session default | Per-agent auto-compact window in tokens (v2.1.296+). Write a plain integer (e.g. `300000`), never a `"200k"`-style value — the suffix is dropped and the leading number is read, so `"200k"` parses as `200`. Accepted range: 100000–1000000 |
 
 ### Field Details
 

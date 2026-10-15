@@ -243,7 +243,8 @@ func TestRender_EmptyMemory(t *testing.T) {
 	if strings.Contains(got, "CW:") {
 		t.Errorf("should not contain CW bar when memory unavailable, got %q", got)
 	}
-	// 5H/7D always display at 0%
+	// 5H/7D always display (n/a without any window source,
+	// SPEC-STATUSLINE-OFFICIAL-USAGE-001 M3)
 	if !strings.Contains(got, "5H:") || !strings.Contains(got, "7D:") {
 		t.Errorf("should always contain 5H/7D bars, got %q", got)
 	}
@@ -261,12 +262,13 @@ func TestRender_AllEmpty(t *testing.T) {
 	r := newTestRenderer()
 	data := &StatusData{}
 	got := r.Render(data, ModeDefault)
-	// 5H/7D bars always display at 0%, so output exists even with empty data
+	// 5H/7D bars always display (n/a with no window source), so output exists
+	// even with empty data
 	if got == "" {
 		t.Errorf("empty data should still produce output (5H/7D bars), got empty")
 	}
 	if !strings.Contains(got, "5H:") || !strings.Contains(got, "7D:") {
-		t.Errorf("empty data should contain 5H/7D 0%% bars, got %q", got)
+		t.Errorf("empty data should contain 5H/7D bars, got %q", got)
 	}
 }
 
@@ -753,10 +755,6 @@ func TestRenderDefaultV3_ThreeLines(t *testing.T) {
 		},
 		OutputStyle: "MoAI",
 		Task:        TaskData{Active: true, Command: "run", SpecID: "SPEC-SLV3-001", Stage: "improve"},
-		Usage: &UsageResult{
-			Usage5H: &UsageData{UsedTokens: 45000, LimitTokens: 100000, Percentage: 45},
-			Usage7D: &UsageData{UsedTokens: 82000, LimitTokens: 100000, Percentage: 82},
-		},
 	}
 
 	got := r.Render(data, ModeDefault)
@@ -813,10 +811,6 @@ func TestRenderDefaultV3_Line2_BarsInline(t *testing.T) {
 		Memory:    MemoryData{TokensUsed: 176000, TokenBudget: 200000, Available: true},
 		Directory: "moai-adk-go",
 		Git:       GitStatusData{Branch: "main", Available: true},
-		Usage: &UsageResult{
-			Usage5H: &UsageData{UsedTokens: 45000, LimitTokens: 100000, Percentage: 45},
-			Usage7D: &UsageData{UsedTokens: 82000, LimitTokens: 100000, Percentage: 82},
-		},
 	}
 
 	got := r.Render(data, ModeDefault)
@@ -833,15 +827,19 @@ func TestRenderDefaultV3_Line2_BarsInline(t *testing.T) {
 	if !strings.Contains(l2, "7D:") {
 		t.Errorf("default L2 must contain '7D:' label, got: %q", l2)
 	}
-	// Verify percentage values
+	// Verify percentage values. CW renders from the stdin-shaped Memory
+	// fixture; 5H/7D have no window source here and render n/a — the
+	// network-era collector fixture behind the old 45%/82% assertions is
+	// removed (SPEC-STATUSLINE-OFFICIAL-USAGE-001 M1), and n/a replaced the
+	// 0% default (M3, REQ-SOU-004).
 	if !strings.Contains(l2, "88%") {
 		t.Errorf("default L2 must contain CW 88%%, got: %q", l2)
 	}
-	if !strings.Contains(l2, "45%") {
-		t.Errorf("default L2 must contain 5H 45%%, got: %q", l2)
+	if !strings.Contains(l2, "5H: n/a") || !strings.Contains(l2, "7D: n/a") {
+		t.Errorf("default L2 must render 5H/7D n/a with no window source, got: %q", l2)
 	}
-	if !strings.Contains(l2, "82%") {
-		t.Errorf("default L2 must contain 7D 82%%, got: %q", l2)
+	if strings.Contains(l2, "0%") {
+		t.Errorf("no-data 5H/7D must not render a 0%% bar, got: %q", l2)
 	}
 }
 
@@ -943,10 +941,6 @@ func TestRenderFullV3_Line1_WithPrefixes(t *testing.T) {
 		Version:           VersionData{Current: "2.8.0", Available: true},
 		Directory:         "moai-adk-go",
 		Git:               GitStatusData{Branch: "main", Available: true},
-		Usage: &UsageResult{
-			Usage5H: &UsageData{UsedTokens: 45000, LimitTokens: 100000, Percentage: 45},
-			Usage7D: &UsageData{UsedTokens: 82000, LimitTokens: 100000, Percentage: 82},
-		},
 	}
 
 	got := r.Render(data, ModeFull)

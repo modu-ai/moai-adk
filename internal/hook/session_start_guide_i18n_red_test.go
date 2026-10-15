@@ -29,10 +29,12 @@ const factoryMatrixPath = ".claude/rules/moai/development/spec-frontmatter-schem
 // verified against the body, not a renameable prefix alone.
 const authorityBodyFragment = "you are the lane session and therefore the orchestrator for your card"
 
-// designSurfaceMarker is the locale-independent design-surface literal the
-// 2-mode guidance block must carry verbatim (D12-b): a bare "t1600" card
-// number elsewhere in the notice does not satisfy it.
-const designSurfaceMarker = "designed surface — t1600, not yet shipped"
+// designSurfaceMarker is the locale-independent truthfulness literal the
+// 2-mode guidance block must carry verbatim (D12-b). It named the flags as a
+// designed, not-yet-shipped surface until card t1814 shipped them; it now names
+// that shipping card, and a bare card number elsewhere in the notice does not
+// satisfy it.
+const designSurfaceMarker = "shipped — t1814"
 
 // TestRedAgentChannelFollowsConversationLanguage — AC-001 (REQ-001): with
 // conversation_language=ko, the agent-facing additionalContext channel of the

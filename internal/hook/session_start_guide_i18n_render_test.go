@@ -268,3 +268,49 @@ func TestFactoryGuideNewFieldsLayoutInvariants(t *testing.T) {
 		}
 	}
 }
+
+// TestFactoryGuideAutoLeaderDescribesInSessionWorker — card t1814 audit F1:
+// the --auto-leader cycle processes the queue serially in the invoking
+// session, one isolated in-session Agent() worker per card, judged on
+// evidence; it does not route cards to lanes. Every locale's leader and lane
+// guidance carries the Agent() worker token and none claims a free-lane
+// dispatch.
+func TestFactoryGuideAutoLeaderDescribesInSessionWorker(t *testing.T) {
+	freeLane := []string{"free lane", "빈 레인", "空きレーン", "空闲泳道"}
+	for _, lang := range []string{"en", "ko", "ja", "zh"} {
+		m := factoryMessagesFor(lang)
+		for name, text := range map[string]string{"leader": m.autoModeGuideLeader, "lane": m.autoModeGuideLane} {
+			if !strings.Contains(text, "Agent()") {
+				t.Errorf("%s %s guidance does not describe the in-session Agent() worker:\n%s", lang, name, text)
+			}
+			for _, claim := range freeLane {
+				if strings.Contains(text, claim) {
+					t.Errorf("%s %s guidance still claims --auto-leader dispatches to a free lane (%q):\n%s", lang, name, claim, text)
+				}
+			}
+		}
+	}
+}
+
+// TestCodexLaneBootNoteNamesAutoLane — card t1814 audit F5: the card-less
+// Codex boot precedence note names the command the lane boot prompt runs.
+func TestCodexLaneBootNoteNamesAutoLane(t *testing.T) {
+	if !strings.Contains(codexLaneBootPrecedenceNote, "`moai todo --auto-lane`") {
+		t.Errorf("boot precedence note does not name `moai todo --auto-lane`: %s", codexLaneBootPrecedenceNote)
+	}
+}
+
+// TestFactoryGuideLaneAudienceLeaderModeNoSelfReference — card t1814 audit
+// F9: a lane is refused --auto-leader, so the lane-audience guidance must name
+// the leader, never "this session", as that mode's actor.
+func TestFactoryGuideLaneAudienceLeaderModeNoSelfReference(t *testing.T) {
+	self := []string{"this session", "이 세션", "このセッション", "本会话"}
+	for _, lang := range []string{"en", "ko", "ja", "zh"} {
+		text := factoryMessagesFor(lang).autoModeGuideLane
+		for _, s := range self {
+			if strings.Contains(text, s) {
+				t.Errorf("%s lane guidance names %q as the --auto-leader actor; a lane is refused that mode:\n%s", lang, s, text)
+			}
+		}
+	}
+}

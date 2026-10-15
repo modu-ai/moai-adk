@@ -25,16 +25,17 @@ func TestLoadGLMConfig_FallbackDefaults(t *testing.T) {
 	if cfg.BaseURL != "https://api.z.ai/api/anthropic" {
 		t.Errorf("BaseURL = %q, want %q", cfg.BaseURL, "https://api.z.ai/api/anthropic")
 	}
-	// All slots share one model — the auto-compact window is sized once from the
-	// high slot and inherited by agents spawned into the others.
+	// Default slots (card t1808): glm-5.3 for high/medium, glm-5.3-flash for
+	// low. Both models are 1M, so the auto-compact window sized from the high
+	// slot holds for agents spawned into the others.
 	if cfg.Models.Low != "glm-5.3-flash" {
 		t.Errorf("Models.Low = %q, want %q", cfg.Models.Low, "glm-5.3-flash")
 	}
-	if cfg.Models.Medium != "glm-5.3-flash" {
-		t.Errorf("Models.Medium = %q, want %q", cfg.Models.Medium, "glm-5.3-flash")
+	if cfg.Models.Medium != "glm-5.3" {
+		t.Errorf("Models.Medium = %q, want %q", cfg.Models.Medium, "glm-5.3")
 	}
-	if cfg.Models.High != "glm-5.3-flash" {
-		t.Errorf("Models.High = %q, want %q", cfg.Models.High, "glm-5.3-flash")
+	if cfg.Models.High != "glm-5.3" {
+		t.Errorf("Models.High = %q, want %q", cfg.Models.High, "glm-5.3")
 	}
 	if cfg.EnvVar != "GLM_API_KEY" {
 		t.Errorf("EnvVar = %q, want %q", cfg.EnvVar, "GLM_API_KEY")
@@ -98,8 +99,8 @@ func writeProjectLLMYAML(t *testing.T, llmYAML string) string {
 func TestLoadGLMConfig_ReadsDiskModelsWhenConfigUnloaded(t *testing.T) {
 	// Custom models, NO base_url set (the issue #1065 scenario): base_url
 	// should default but models must still be honored. The probe ids are
-	// offered-set values (glm-5.3 differs from the flash default) so the
-	// honor-disk assertion is distinguishable from a default fallback — an
+	// offered-set values (medium glm-5.3-flash differs from the glm-5.3
+	// default) so the honor-disk assertion is distinguishable from a default fallback — an
 	// out-of-set value would fall back per REQ-MMU-004, which this test is
 	// not the home of.
 	root := writeProjectLLMYAML(t, `
@@ -143,7 +144,7 @@ func TestLoadGLMConfig_ReadsDiskModelsWithNilDeps(t *testing.T) {
 llm:
   glm:
     models:
-      high: "glm-5.3"
+      high: "glm-5.3-flash"
 `)
 
 	origDeps := deps
@@ -154,12 +155,14 @@ llm:
 	if err != nil {
 		t.Fatalf("loadGLMConfig should not error, got: %v", err)
 	}
-	if cfg.Models.High != "glm-5.3" {
-		t.Errorf("Models.High = %q, want %q (disk models ignored with nil deps)", cfg.Models.High, "glm-5.3")
+	// The disk value differs from the glm-5.3 default, so a pass proves the
+	// disk read rather than a default fill.
+	if cfg.Models.High != "glm-5.3-flash" {
+		t.Errorf("Models.High = %q, want %q (disk models ignored with nil deps)", cfg.Models.High, "glm-5.3-flash")
 	}
 	// medium/low omitted → defaults fill in.
-	if cfg.Models.Medium != "glm-5.3-flash" {
-		t.Errorf("Models.Medium = %q, want default %q", cfg.Models.Medium, "glm-5.3-flash")
+	if cfg.Models.Medium != "glm-5.3" {
+		t.Errorf("Models.Medium = %q, want default %q", cfg.Models.Medium, "glm-5.3")
 	}
 }
 
@@ -203,8 +206,8 @@ func TestLoadGLMConfig_AbsentLLMYAMLFallsToDefaults(t *testing.T) {
 	if err != nil {
 		t.Fatalf("loadGLMConfig should not error on absent llm.yaml, got: %v", err)
 	}
-	if cfg.Models.High != "glm-5.3-flash" {
-		t.Errorf("Models.High = %q, want default %q", cfg.Models.High, "glm-5.3-flash")
+	if cfg.Models.High != "glm-5.3" {
+		t.Errorf("Models.High = %q, want default %q", cfg.Models.High, "glm-5.3")
 	}
 	if cfg.BaseURL != "https://api.z.ai/api/anthropic" {
 		t.Errorf("BaseURL = %q, want default", cfg.BaseURL)

@@ -17,6 +17,7 @@ import (
 	"testing"
 	"testing/fstest"
 
+	"github.com/modu-ai/moai-adk/internal/config"
 	"github.com/modu-ai/moai-adk/internal/template/agentemit"
 )
 
@@ -235,11 +236,93 @@ func TestEmitAllMCPServerMapping(t *testing.T) {
 	}
 }
 
-// TestEmitAllOmitsReasoningEffort is AC-008 as inverted by
-// SPEC-AGENT-MODEL-INHERIT-001 D2: the shipped manifest does not emit
-// model_reasoning_effort, so no role file pins one — even when a source .md
-// still declares an effort — and every role inherits the parent's effort.
-func TestEmitAllOmitsReasoningEffort(t *testing.T) {
+// TestEmitAllModelAndEffortFromFrontmatter is AC-008/AC-009 as reversed by
+// card t1808: a role file carries model and model_reasoning_effort derived
+// from the agent frontmatter. An absent or inherit model omits the model key;
+// an absent effort omits the effort key.
+func TestEmitAllModelAndEffortFromFrontmatter(t *testing.T) {
+	man := mustManifest(t)
+	pub, err := agentemit.EmitAll(fullFixtureSet(), "agents", man)
+	if err != nil {
+		t.Fatalf("EmitAll: %v", err)
+	}
+	want := map[string][2]string{ // path -> {model, effort}; "" = key omitted
+		".codex/agents/moai/mdcarrier.toml":  {"", "high"},
+		".codex/agents/moai/plainagent.toml": {"", "medium"},
+		".codex/agents/moai/twoskills.toml":  {config.CodexModelSol, "low"},
+	}
+	for path, w := range want {
+		doc := mustDecoded(t, pub, path)
+		model, hasModel := doc["model"].(string)
+		effort, hasEffort := doc["model_reasoning_effort"].(string)
+		if (w[0] == "") == hasModel || model != w[0] {
+			t.Errorf("%s: model = %q (present %v), want %q", path, model, hasModel, w[0])
+		}
+		if (w[1] == "") == hasEffort || effort != w[1] {
+			t.Errorf("%s: model_reasoning_effort = %q (present %v), want %q", path, effort, hasEffort, w[1])
+		}
+	}
+}
+
+// TestEmitAllCodexModelEffortRules locks the card t1808 mapping: opus and
+// sonnet -> sol, haiku -> luna, fable -> astra; a luna role runs at high
+// effort whatever its frontmatter says, and manager-develop is fixed at
+// medium on Codex.
+func TestEmitAllCodexModelEffortRules(t *testing.T) {
+	set := fstest.MapFS{
+		"agents/opusrole.md":        &fstest.MapFile{Data: []byte(fixtureMD("opusrole", "d.\n", "Read", "opus", "high", nil, "b\n"))},
+		"agents/haikurole.md":       &fstest.MapFile{Data: []byte(fixtureMD("haikurole", "d.\n", "Read", "haiku", "low", nil, "b\n"))},
+		"agents/fablerole.md":       &fstest.MapFile{Data: []byte(fixtureMD("fablerole", "d.\n", "Read", "fable", "xhigh", nil, "b\n"))},
+		"agents/manager-develop.md": &fstest.MapFile{Data: []byte(fixtureMD("manager-develop", "d.\n", "Read", "sonnet", "high", nil, "b\n"))},
+	}
+	man := mustManifest(t)
+	man.PermissionContract = nil // fixture roles carry no contract rows
+	pub, err := agentemit.EmitAll(set, "agents", man)
+	if err != nil {
+		t.Fatalf("EmitAll: %v", err)
+	}
+	want := map[string][2]string{
+		"opusrole":        {config.CodexModelSol, "high"},
+		"haikurole":       {config.CodexModelLuna, "high"},
+		"fablerole":       {config.CodexModelAstra, "xhigh"},
+		"manager-develop": {config.CodexModelSol, "medium"},
+	}
+	for name, w := range want {
+		doc := mustDecoded(t, pub, ".codex/agents/moai/"+name+".toml")
+		if doc["model"] != w[0] || doc["model_reasoning_effort"] != w[1] {
+			t.Errorf("%s: model/effort = %v/%v, want %s/%s", name, doc["model"], doc["model_reasoning_effort"], w[0], w[1])
+		}
+	}
+}
+
+// TestEmitAllRejectsMaxUltraAndUnmappedModel: max and ultra are never a
+// Codex role effort, and a model alias with no Codex mapping is refused
+// rather than guessed — emission fails closed, naming the file and value.
+func TestEmitAllRejectsMaxUltraAndUnmappedModel(t *testing.T) {
+	cases := map[string]struct{ model, effort, want string }{
+		"effort max":     {"opus", "max", "max"},
+		"effort ultra":   {"sonnet", "ultra", "ultra"},
+		"unmapped model": {"gpt-x", "medium", "gpt-x"},
+	}
+	for label, tc := range cases {
+		set := fstest.MapFS{
+			"agents/solo.md": &fstest.MapFile{Data: []byte(fixtureMD("solo", "d.\n", "Read", tc.model, tc.effort, nil, "b\n"))},
+		}
+		man := mustManifest(t)
+		man.PermissionContract = nil
+		_, err := agentemit.EmitAll(set, "agents", man)
+		if err == nil || !strings.Contains(err.Error(), tc.want) || !strings.Contains(err.Error(), "solo.md") {
+			t.Errorf("%s: want a refusal naming solo.md and %q, got %v", label, tc.want, err)
+		}
+	}
+}
+
+// TestEmitAllOmitsSandboxMode: the shipped manifest no longer writes
+// sandbox_mode — a spawned Codex role inherits the parent session's sandbox
+// (measured, codex-cli 0.156.1), so the field states nothing the runtime
+// applies. The contract's sandbox is still checked against the manifest's
+// stated mode (TestRoleSandboxRejectsWriteToolsAndInvalidModes).
+func TestEmitAllOmitsSandboxMode(t *testing.T) {
 	man := mustManifest(t)
 	pub, err := agentemit.EmitAll(fullFixtureSet(), "agents", man)
 	if err != nil {
@@ -250,66 +333,8 @@ func TestEmitAllOmitsReasoningEffort(t *testing.T) {
 	}
 	for path := range pub.CodexTOML {
 		doc := mustDecoded(t, pub, path)
-		if v, has := doc["model_reasoning_effort"]; has {
-			t.Errorf("%s: model_reasoning_effort = %v, want the key omitted", path, v)
-		}
-	}
-}
-
-// TestEmitAllOmitsModel is AC-009: zero emitted files carry a model key, even
-// when the source .md pins a Claude alias (sonnet) — the pin is a documented
-// drop in the manifest, never an emitted value.
-func TestEmitAllOmitsModel(t *testing.T) {
-	man := mustManifest(t)
-	pub, err := agentemit.EmitAll(fullFixtureSet(), "agents", man)
-	if err != nil {
-		t.Fatalf("EmitAll: %v", err)
-	}
-	for path := range pub.CodexTOML {
-		doc := mustDecoded(t, pub, path)
-		if _, has := doc["model"]; has {
-			t.Errorf("%s: model key must be omitted (R-011)", path)
-		}
-	}
-}
-
-// TestEmitAllSandboxPerMeasuredSet locks the P-01 probe outcome: the
-// manifest emits sandbox_mode = "workspace-write" (a member of the
-// runtime-measured value set {read-only, workspace-write, danger-full-access},
-// codex-cli 0.147.0) on every agent; and a manifest variant whose value set
-// is unconfirmed (emit: false) omits the key entirely — the ship-omitted
-// fallback, never a guess.
-func TestEmitAllSandboxPerMeasuredSet(t *testing.T) {
-	man := mustManifest(t)
-	pub, err := agentemit.EmitAll(fullFixtureSet(), "agents", man)
-	if err != nil {
-		t.Fatalf("EmitAll: %v", err)
-	}
-	for path := range pub.CodexTOML {
-		doc := mustDecoded(t, pub, path)
-		if got := doc["sandbox_mode"]; got != "workspace-write" {
-			t.Errorf("%s: sandbox_mode = %#v, want workspace-write (P-01 measured set member)", path, doc["sandbox_mode"])
-		}
-	}
-
-	// Ship-omitted fallback face: an unconfirmed manifest variant omits the key.
-	// While a permission contract is present, the sandbox restriction is
-	// enforced through this very field, so omitting it must fail emission
-	// rather than drop the restriction silently.
-	man.Fields["sandbox_mode"].Emit = false
-	if _, err := agentemit.EmitAll(fullFixtureSet(), "agents", man); err == nil || !strings.Contains(err.Error(), "permission contract") {
-		t.Fatalf("omitting sandbox_mode under a permission contract must fail, got %v", err)
-	}
-	// An unconfirmed variant carries no contract either; then the key is omitted.
-	man.PermissionContract = nil
-	pub, err = agentemit.EmitAll(fullFixtureSet(), "agents", man)
-	if err != nil {
-		t.Fatalf("EmitAll (omit variant): %v", err)
-	}
-	for path := range pub.CodexTOML {
-		doc := mustDecoded(t, pub, path)
-		if _, has := doc["sandbox_mode"]; has {
-			t.Errorf("%s: sandbox_mode emitted from an unconfirmed manifest variant (ship-omitted rule)", path)
+		if v, has := doc["sandbox_mode"]; has {
+			t.Errorf("%s: sandbox_mode = %v, want the key omitted", path, v)
 		}
 	}
 }
@@ -481,15 +506,17 @@ func TestLoadManifestSelfValidates(t *testing.T) {
 			t.Errorf("class %s: disposition %q carries no rationale (AC-013: no silent discard)", c.Class, c.Disposition)
 		}
 	}
-	// manager-git sonnet pin must be a documented drop (AC-009).
-	found := false
+	// card t1808 reverses AC-009: model and effort are emitted fields, so no
+	// documented drop for a model pin may linger, and both class rows say so.
 	for _, d := range man.DocumentedDrops {
-		if strings.Contains(d.ID, "manager-git") && d.Rationale != "" {
-			found = true
+		if strings.Contains(d.ID, "model-pin") {
+			t.Errorf("documented drop %q survives, but the model field is emitted now", d.ID)
 		}
 	}
-	if !found {
-		t.Error("manager-git model pin documented drop missing or rationale-less")
+	for _, c := range man.Classes {
+		if (c.Class == "model" || c.Class == "effort") && c.Disposition != "emit-field" {
+			t.Errorf("class %s disposition = %q, want emit-field", c.Class, c.Disposition)
+		}
 	}
 	// Every token class referenced by ToolClasses must have a disposition row.
 	rows := map[string]bool{}

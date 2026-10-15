@@ -98,6 +98,15 @@ func TestUpdateCmd_TemplatesOnlyAndBinaryMutuallyExclusive(t *testing.T) {
 	updateCmd.SetOut(buf)
 	updateCmd.SetErr(buf)
 
+	// updateCmd is a package-level command shared by every update test. Restore the
+	// flags this test sets: a later run that inherits binary and templates-only
+	// returns the mutual-exclusion error before its banner and its sync (card t1619).
+	for _, name := range []string{"templates-only", "binary", "yes"} {
+		name := name
+		prev := updateCmd.Flags().Lookup(name).Value.String()
+		t.Cleanup(func() { _ = updateCmd.Flags().Set(name, prev) })
+	}
+
 	_ = updateCmd.Flags().Set("templates-only", "true")
 	_ = updateCmd.Flags().Set("binary", "true")
 	_ = updateCmd.Flags().Set("yes", "true")

@@ -286,7 +286,7 @@ func factoryRenewWriteLeaseDuration(t *testing.T, root, duration string) {
 }
 
 // AC-FLR-002 (REQ-FLR-002), legacy-label parity — sync-audit F1, card t1663. A lane whose
-// MOAI_FACTORY_WORKER carries a legacy spelling is refused by the renew verb before any work
+// worker-label stamp (config.EnvMoaiFactoryWorker) carries a legacy spelling is refused by the renew verb before any work
 // (factoryLaneLabelFromEnv). The factory_renew tool must refuse it the same way: a tool error
 // that names the legacy label, and a lease left exactly as it was.
 func TestFactoryRenewRefusesLegacyLaneLabelOnBothSurfaces(t *testing.T) {

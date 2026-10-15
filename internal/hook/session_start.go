@@ -480,22 +480,78 @@ func (h *sessionStartHandler) Handle(ctx context.Context, input *HookInput) (*Ho
 	}
 
 	if input.SessionID != "" && input.ProjectDir != "" {
-		out.HookSpecificOutput = &HookSpecificOutput{
-			HookEventName: string(EventSessionStart),
-			AdditionalContext: fmt.Sprintf(
-				"moai session attribution: source_session_id=%s\n"+
-					"Use 'moai session current' to re-read this UUID after /clear or compaction.\n"+
-					"If unavailable, emit the canonical fallback via 'moai session current --show-fallback'.",
-				input.SessionID,
-			),
-		}
-		// Side-channel file write (best-effort, non-blocking).
 		sidecar := filepath.Join(input.ProjectDir, session.CurrentSideChannelFile)
-		if writeErr := os.WriteFile(sidecar, []byte(input.SessionID), 0o600); writeErr != nil {
+		// t1776: a side channel recording a DIFFERENT session id means an
+		// agent attributing its work through `moai session current` may
+		// credit the foreign session. The overwrite claim follows the WRITE
+		// OUTCOME (audit round-2): a failed write (read-only environment)
+		// leaves the foreign id in place, and the notice then says so
+		// instead of claiming an overwrite that never happened.
+		prevID := ""
+		// The prev-id read goes through the non-blocking regular-file guard
+		// (audit round-5, card t1776: os.ReadFile on a side channel symlinked
+		// to /dev/zero never sees EOF and allocates until the session start
+		// dies) with the bound applied TO THE READ (audit round-6) and the
+		// symlink refused (audit round-12: a link to a small foreign file
+		// would otherwise have its bytes narrated into the context).
+		if data, readErr := readRuleFileBytesBounded(sidecar, 4097); readErr == nil && len(data) <= 4096 {
+			if candidate := strings.TrimSpace(string(data)); isValidSessionIDShape(candidate) {
+				prevID = candidate
+			}
+		}
+		writeErr := os.WriteFile(sidecar, []byte(input.SessionID), 0o600)
+		if writeErr != nil {
 			slog.Warn("session start: failed to write current-session-id side-channel file (non-blocking)",
 				"path", sidecar,
 				"error", writeErr.Error(),
 			)
+		}
+		attribution := fmt.Sprintf(
+			"moai session attribution: source_session_id=%s\n"+
+				"Use 'moai session current' to re-read this UUID after /clear or compaction.\n"+
+				"If unavailable, emit the canonical fallback via 'moai session current --show-fallback'.",
+			input.SessionID,
+		)
+		if prevID != "" && prevID != input.SessionID {
+			// Truthful phrasing (card t1776 audit round-1/2): the notice
+			// describes the PRE-state, never what `moai session current`
+			// will return — and the overwrite claim follows the write.
+			if writeErr == nil {
+				attribution += fmt.Sprintf(
+					"\nNOTE: before this session started, the current-session record held %s; "+
+						"this session has overwritten it. If any earlier tool output still names %s, "+
+						"attribute to the source_session_id above instead.",
+					prevID, prevID)
+			} else {
+				// A WriteFile failure does not guarantee the old bytes
+				// survived (the open may have truncated before the I/O
+				// error) — re-read and phrase by what is actually there
+				// (card t1776 audit round-3 P3). The re-read goes through
+				// the bounded non-blocking reader too (audit round-6 P2:
+				// the path may have been swapped to a FIFO or /dev/zero
+				// link between the write and this re-read).
+				survived := ""
+				if again, rerr := readRuleFileBytesBounded(sidecar, 4097); rerr == nil && len(again) <= 4096 {
+					survived = strings.TrimSpace(string(again))
+				}
+				if survived == prevID {
+					attribution += fmt.Sprintf(
+						"\nNOTE: before this session started, the current-session record held %s and it still holds it "+
+							"(this session's write failed) — 'moai session current' may return %s, not this session; "+
+							"attribute this session's work to the source_session_id above.",
+						prevID, prevID)
+				} else {
+					attribution += fmt.Sprintf(
+						"\nNOTE: the current-session record held %s before this session started; this session's write to it failed, "+
+							"so the record may be truncated or empty — re-run 'moai session current' before trusting it and "+
+							"attribute this session's work to the source_session_id above.",
+						prevID)
+				}
+			}
+		}
+		out.HookSpecificOutput = &HookSpecificOutput{
+			HookEventName:     string(EventSessionStart),
+			AdditionalContext: attribution,
 		}
 	}
 
@@ -592,16 +648,33 @@ func (h *sessionStartHandler) Handle(ctx context.Context, input *HookInput) (*Ho
 	// nothing. It rides additionalContext alone — the lane session's
 	// orchestrator is the reader that executes it.
 	clock.lap("factory_rule")
-	if rule := factoryLaneRuleForSource(input.Source, operatorLang(h.cfg)); rule != "" {
+	// t1776: a codex session carrying the factory backend stamp without its
+	// lane stamps is a broken launch — the one-line stop rides the context
+	// and the lane rule is withheld (the model must not infer lane behavior).
+	failFast := codexLaneEnvFailFast()
+	if failFast == "" {
+		if rule := factoryLaneRuleForSourceInDir(input.Source, operatorLang(h.cfg), input.CWD); rule != "" {
+			if out.HookSpecificOutput == nil {
+				out.HookSpecificOutput = &HookSpecificOutput{
+					HookEventName: string(EventSessionStart),
+				}
+			}
+			if out.HookSpecificOutput.AdditionalContext == "" {
+				out.HookSpecificOutput.AdditionalContext = rule
+			} else {
+				out.HookSpecificOutput.AdditionalContext += "\n\n" + rule
+			}
+		}
+	} else {
 		if out.HookSpecificOutput == nil {
 			out.HookSpecificOutput = &HookSpecificOutput{
 				HookEventName: string(EventSessionStart),
 			}
 		}
 		if out.HookSpecificOutput.AdditionalContext == "" {
-			out.HookSpecificOutput.AdditionalContext = rule
+			out.HookSpecificOutput.AdditionalContext = failFast
 		} else {
-			out.HookSpecificOutput.AdditionalContext += "\n\n" + rule
+			out.HookSpecificOutput.AdditionalContext += "\n\n" + failFast
 		}
 	}
 
@@ -704,7 +777,14 @@ func (h *sessionStartHandler) Handle(ctx context.Context, input *HookInput) (*Ho
 	if roleRulesRoot == "" {
 		roleRulesRoot = input.ProjectDir
 	}
-	inj := roleRuleInjectionFor(roleRulesRoot, input.Source, operatorLang(h.cfg))
+	// t1776 audit round-3: on a broken codex lane launch (fail-fast active)
+	// the stop line is the session's LAST word — the role-rule injection is
+	// suppressed behind it, so the role core's read-the-full-rule directive
+	// never rides behind a stop it contradicts.
+	var inj roleRuleInjection
+	if codexLaneEnvFailFast() == "" {
+		inj = roleRuleInjectionFor(roleRulesRoot, input.Source, operatorLang(h.cfg))
+	}
 	if inj.RecoveryHead != "" {
 		// The recovery directive opens the FINAL composite — ahead of every
 		// earlier producer's text — so a runtime side-channel cut (save
@@ -1859,3 +1939,29 @@ func snapshotDeferredScanCompleted() chan struct{} {
 //
 // Reviving it would mean putting the compute back in band, which is the decision
 // SPEC-DRIFT-CACHE-FILL-001 reversed; this removal changes no behaviour.
+
+// isValidSessionIDShape reports whether s looks like the session UUID the
+// attribution writes (36 chars, 8-4-4-4-12 hex groups). The mismatch notice
+// narrates prevID back into the session context, so only a value that
+// parses as a session id may ride it — a side channel pointing at a small
+// foreign file (credentials, notes) is refused, not echoed (card t1776
+// audit round-12).
+func isValidSessionIDShape(s string) bool {
+	if len(s) != 36 {
+		return false
+	}
+	for i, r := range s {
+		switch i {
+		case 8, 13, 18, 23:
+			if r != '-' {
+				return false
+			}
+		default:
+			isHex := (r >= '0' && r <= '9') || (r >= 'a' && r <= 'f') || (r >= 'A' && r <= 'F')
+			if !isHex {
+				return false
+			}
+		}
+	}
+	return true
+}
