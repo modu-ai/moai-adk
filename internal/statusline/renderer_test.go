@@ -240,9 +240,10 @@ func TestRender_EmptyMemory(t *testing.T) {
 	if !strings.Contains(got, "main") {
 		t.Errorf("should contain git info, got %q", got)
 	}
-	// CW bar should not display when memory is unavailable
-	if strings.Contains(got, "CW:") {
-		t.Errorf("should not contain CW bar when memory unavailable, got %q", got)
+	// Unavailable memory keeps an empty placeholder bar plus n/a
+	// (operator decision 2026-10-16, card t1822 — previously omitted).
+	if !regexp.MustCompile(`CW: ░+ n/a`).MatchString(got) {
+		t.Errorf("should contain CW placeholder bar + n/a when memory unavailable, got %q", got)
 	}
 	// 5H/7D always display (n/a without any window source,
 	// SPEC-STATUSLINE-OFFICIAL-USAGE-001 M3)

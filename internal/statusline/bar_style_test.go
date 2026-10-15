@@ -122,3 +122,29 @@ func TestRender_QuotaUnknown_KeepsPlaceholderBar(t *testing.T) {
 		})
 	}
 }
+
+// Operator decision 2026-10-16 (card t1822): CW behaves like 5H/7D — missing
+// context-window data keeps an empty placeholder bar plus "n/a" instead of
+// dropping the segment.
+func TestRender_ContextUnknown_KeepsPlaceholderBar(t *testing.T) {
+	for _, noColor := range []bool{true, false} {
+		t.Run("noColor="+strconv.FormatBool(noColor), func(t *testing.T) {
+			t.Setenv("COLORTERM", "truecolor")
+			got := NewRenderer("catppuccin-mocha", noColor, nil).Render(&StatusData{}, ModeDefault)
+			plain := stripSGR(got)
+			m := regexp.MustCompile(`(?:^|\n)CW: (░+) n/a \| 5H: (░+) n/a`).FindStringSubmatch(plain)
+			if m == nil {
+				t.Fatalf("CW must render a placeholder bar before n/a, got %q", plain)
+			}
+			if len([]rune(m[1])) != len([]rune(m[2])) {
+				t.Errorf("CW placeholder width %d, want the 5H width %d", len([]rune(m[1])), len([]rune(m[2])))
+			}
+			if !noColor {
+				muted := foregroundSequence(newForcedColorRenderer("truecolor"), NewTheme("catppuccin-mocha").Muted())
+				if !strings.Contains(got, "CW: "+muted+m[1]) {
+					t.Errorf("CW placeholder must be muted-colored, got %q", got)
+				}
+			}
+		})
+	}
+}

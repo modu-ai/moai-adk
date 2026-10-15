@@ -517,6 +517,11 @@ func (r *Renderer) renderBarsInline(data *StatusData, width int) string {
 			}
 		}
 		segs = append(segs, bar)
+	} else if r.isSegmentEnabled(SegmentContext) {
+		// Unknown context window: keep the bar's footprint with an empty muted
+		// placeholder and "n/a", like 5H/7D — never a percentage (operator
+		// decision 2026-10-16, card t1822).
+		segs = append(segs, renderUnknownBar("CW:", width, r.bars))
 	}
 
 	// 5H bar — official stdin rate_limits first (Claude Code 2.1.80+,
@@ -945,6 +950,15 @@ func renderUsageBarWithReset(label string, pct int, width int, bs *barStyle, res
 	return fmt.Sprintf("%s (%s)", base, resetStr)
 }
 
+// renderUnknownBar renders a usage segment whose value is unknown: the label,
+// an empty muted placeholder bar, and "n/a" — no fill, no percentage.
+func renderUnknownBar(label string, width int, bs *barStyle) string {
+	if bar := placeholderBar(width, bs); bar != "" {
+		return fmt.Sprintf("%s %s n/a", label, bar)
+	}
+	return fmt.Sprintf("%s n/a", label)
+}
+
 // renderQuotaSegment renders one 5H/7D segment from a quota aggregate reading
 // (SPEC-STATUSLINE-OFFICIAL-USAGE-001 M3). Fresh renders the percentage bar,
 // the reset time (relativeReset selects the 5H-style relative formatter; 7D
@@ -956,10 +970,7 @@ func renderQuotaSegment(label string, reading QuotaReading, width int, bs *barSt
 	if reading.State != QuotaFresh {
 		// Keep the bar's footprint with an empty muted placeholder so the
 		// line does not collapse; still no fill and no percentage (card t1822).
-		if bar := placeholderBar(width, bs); bar != "" {
-			return fmt.Sprintf("%s %s n/a", label, bar)
-		}
-		return fmt.Sprintf("%s n/a", label)
+		return renderUnknownBar(label, width, bs)
 	}
 	reset := formatResetTimeAbsolute(reading.ResetsAt)
 	if relativeReset {
