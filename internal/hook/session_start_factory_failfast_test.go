@@ -112,13 +112,13 @@ func TestSessionStartCodexLaneFailFastSuppressesRoleRules(t *testing.T) {
 	}
 }
 
-// TestRoleCoreCarveOutCarriesNoQueueStart pins the round-5 fix: the role
-// core is injected into CARD-ASSIGNED codex sessions too (startup, clear,
-// compact) — a queue-start command inside it would send a card worktree
-// session at `moai todo --auto`, which the parent-checkout precondition
-// refuses. Queue start lives in the card-less boot only; the carve-out
-// resolves the read-first conflict without naming the queue verb.
-func TestRoleCoreCarveOutCarriesNoQueueStart(t *testing.T) {
+// TestRoleCoreCarriesNoQueueStart pins the round-4/6 shape: the role core
+// carries NO queue-start verb (it reaches card-assigned sessions via
+// startup/clear/compact), and it carries NO carve-out either — the
+// TestRoleInjectionAssemblyBudget cap leaves the core 7 UTF-16 units of
+// headroom (audit round-6 P1), so the Codex precedence resolution lives in
+// the hook context (codexLanePrecedenceNote), not in the core text.
+func TestRoleCoreCarriesNoQueueStart(t *testing.T) {
 	for _, rel := range []string{
 		filepath.Join("..", "..", "internal", "template", "templates", ".claude", "rules", "moai", "workflow", "factory-dispatch.md"),
 		filepath.Join("..", "..", ".claude", "rules", "moai", "workflow", "factory-dispatch.md"),
@@ -137,8 +137,8 @@ func TestRoleCoreCarveOutCarriesNoQueueStart(t *testing.T) {
 		if strings.Contains(core, "todo --auto") {
 			t.Errorf("%s: the role core carries a queue-start command that reaches card-assigned sessions:\n%s", rel, core)
 		}
-		if !strings.Contains(core, "carve-out is a Codex") {
-			t.Errorf("%s: the Codex --auto carve-out is missing from the role core", rel)
+		if strings.Contains(core, "Codex") {
+			t.Errorf("%s: the role core grew a Codex carve-out past the injection budget — the precedence lives in codexLanePrecedenceNote", rel)
 		}
 	}
 }

@@ -524,9 +524,12 @@ func (h *sessionStartHandler) Handle(ctx context.Context, input *HookInput) (*Ho
 				// A WriteFile failure does not guarantee the old bytes
 				// survived (the open may have truncated before the I/O
 				// error) — re-read and phrase by what is actually there
-				// (card t1776 audit round-3 P3).
+				// (card t1776 audit round-3 P3). The re-read goes through
+				// the bounded non-blocking reader too (audit round-6 P2:
+				// the path may have been swapped to a FIFO or /dev/zero
+				// link between the write and this re-read).
 				survived := ""
-				if again, rerr := os.ReadFile(sidecar); rerr == nil {
+				if again, rerr := readRuleFileBytesBounded(sidecar, 4097); rerr == nil && len(again) <= 4096 {
 					survived = strings.TrimSpace(string(again))
 				}
 				if survived == prevID {
