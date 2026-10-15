@@ -1,6 +1,14 @@
 // red_now_cell_test.go — repository-local verifier for the RED-now cell
 // adoption gate (card t343).
 //
+// Card t1781 rewrote the MP-8 doctrine from re-execution to reading the
+// recorded verbatim stdout: the audit executes no verification commands, the
+// audit-time timeout branch is gone, and with it the forbidden-metacharacter
+// form contract and the fixture tests that exercised it (AC-RNT-008, -009's
+// form half, and mutants M-4/M-5 lost their subject). The element checks, the
+// executed-count verdict keying, the mirror parity, and the liveness/mutant
+// anchors carry on under the read-based doctrine.
+//
 // The MP-8 form contract itself lives inside a sentinel pair in
 // .claude/agents/moai/plan-auditor.md and its template mirror. This test
 // EXTRACTS that contract rather than restating it: a copy kept here would keep
@@ -154,86 +162,6 @@ func redNowMustExtractSection(t *testing.T, content, heading string) string {
 }
 
 // ---------------------------------------------------------------------------
-// the extracted form contract
-// ---------------------------------------------------------------------------
-
-// redNowForbiddenMetachars reads the machine-readable half of the MP-8 span.
-// The tokens are EXTRACTED, never restated here: changing the contract in the
-// agent file changes what this test enforces.
-func redNowForbiddenMetachars(t *testing.T, span string) []string {
-	t.Helper()
-	var out []string
-	for _, ln := range strings.Split(span, "\n") {
-		ln = strings.TrimSpace(ln)
-		const key = "forbidden-metacharacter:"
-		if !strings.HasPrefix(ln, key) {
-			continue
-		}
-		tok := strings.TrimSpace(strings.TrimPrefix(ln, key))
-		tok = strings.Trim(tok, "`")
-		if tok != "" {
-			out = append(out, tok)
-		}
-	}
-	if len(out) < 5 {
-		t.Fatalf("MP-8 span yielded %d forbidden metacharacters (%v); a near-empty contract "+
-			"would make every form check vacuous", len(out), out)
-	}
-	return out
-}
-
-// redNowUnquotedMask marks the byte positions of a command that sit outside any
-// quoted span. A GFM table cell and a fenced ledger entry both routinely carry
-// a literal `|` inside a quoted regex; treating that as a shell pipe would
-// refuse commands that are in fact single invocations.
-func redNowUnquotedMask(cmd string) []bool {
-	mask := make([]bool, len(cmd))
-	var inSingle, inDouble, escaped bool
-	for i := 0; i < len(cmd); i++ {
-		c := cmd[i]
-		switch {
-		case escaped:
-			escaped = false
-		case c == '\\' && !inSingle:
-			escaped = true
-		case c == '\'' && !inDouble:
-			inSingle = !inSingle
-		case c == '"' && !inSingle:
-			inDouble = !inDouble
-		}
-		mask[i] = !inSingle && !inDouble
-	}
-	return mask
-}
-
-// redNowFormViolations returns the forbidden metacharacters that appear
-// UNQUOTED in the command, i.e. the ones that would actually make it more than
-// one shell invocation.
-func redNowFormViolations(cmd string, forbidden []string) []string {
-	mask := redNowUnquotedMask(cmd)
-	var hits []string
-	for _, tok := range forbidden {
-		for i := 0; i+len(tok) <= len(cmd); i++ {
-			if !strings.HasPrefix(cmd[i:], tok) {
-				continue
-			}
-			allBare := true
-			for j := i; j < i+len(tok); j++ {
-				if !mask[j] {
-					allBare = false
-					break
-				}
-			}
-			if allBare {
-				hits = append(hits, tok)
-				break
-			}
-		}
-	}
-	return hits
-}
-
-// ---------------------------------------------------------------------------
 // carrier-independent command collection
 // ---------------------------------------------------------------------------
 
@@ -284,20 +212,6 @@ func redNowCollectCommands(content string) []redNowCommand {
 		}
 		if m := redNowDollarRe.FindStringSubmatch(ln); m != nil {
 			out = append(out, redNowCommand{Carrier: "fenced-block", Command: m[1], Line: i + 1})
-		}
-	}
-	return out
-}
-
-// redNowCollectCellCommandsOnly is the DELIBERATELY narrowed predicate the
-// carrier-relocation mutant (M-5) walks through. It exists so the mutant can be
-// observed surviving it while the real predicate catches it — rule §5: observe
-// the two forms diverge, do not grep for the fixed form.
-func redNowCollectCellCommandsOnly(content string) []redNowCommand {
-	var out []redNowCommand
-	for _, c := range redNowCollectCommands(content) {
-		if c.Carrier == "table-cell" {
-			out = append(out, c)
 		}
 	}
 	return out
@@ -420,18 +334,6 @@ func redNowElementFindings(content string) []string {
 	return out
 }
 
-// redNowFormFindings reports every command in the file — any carrier, any
-// class — that is not a single shell invocation.
-func redNowFormFindings(content string, forbidden []string) []string {
-	var out []string
-	for _, c := range redNowCollectCommands(content) {
-		if hits := redNowFormViolations(c.Command, forbidden); len(hits) > 0 {
-			out = append(out, fmt.Sprintf("line %d (%s): %q carries unquoted %v", c.Line, c.Carrier, c.Command, hits))
-		}
-	}
-	return out
-}
-
 func redNowFixture(t *testing.T, name string) string {
 	t.Helper()
 	rel := filepath.Join("internal/spec", redNowFixtureDir, name, "acceptance.md")
@@ -499,14 +401,19 @@ func redNowMP8Span(t *testing.T) string {
 	return redNowMustExtractSpan(t, redNowAuditorPath)
 }
 
-// TestMP8SpanNamesReexecution covers AC-RNT-004.
-func TestMP8SpanNamesReexecution(t *testing.T) {
+// TestMP8SpanNamesReadTheRecord covers AC-RNT-004 under the card-t1781 read
+// doctrine: the span names what the audit does — read the cell's recorded
+// verbatim stdout — and names what it no longer does.
+func TestMP8SpanNamesReadTheRecord(t *testing.T) {
 	content := redNowRead(t, redNowAuditorPath)
 	span := redNowMP8Span(t)
-	for _, want := range []string{"re-execute", "current tree", "RED reproduces"} {
+	for _, want := range []string{"Do not execute the cited command", "recorded verbatim stdout", "the RED from what the lane recorded"} {
 		if !strings.Contains(span, want) {
 			t.Errorf("MP-8 span does not name %q", want)
 		}
+	}
+	if strings.Contains(span, "Re-execute") || strings.Contains(span, "re-executes the cited command") {
+		t.Errorf("MP-8 span still instructs re-execution — card t1781 retired it")
 	}
 	m5 := redNowMustExtractSection(t, content, redNowM5Heading)
 	if !strings.Contains(m5, span) {
@@ -556,17 +463,24 @@ func TestGroup4AndReportRowExist(t *testing.T) {
 	}
 }
 
-// TestMP8SpanCarriesExecutionDiscipline covers AC-RNT-013.
-func TestMP8SpanCarriesExecutionDiscipline(t *testing.T) {
+// TestMP8SpanCarriesReadDiscipline covers AC-RNT-013 under the card-t1781
+// read doctrine: the discipline now FORBIDS audit-time execution and the
+// timeout branch is gone — asserted in both directions (the new sentences
+// present, the old self-abort machinery absent).
+func TestMP8SpanCarriesReadDiscipline(t *testing.T) {
 	span := redNowMP8Span(t)
 	for _, want := range []string{
-		"shall not execute it further",
-		"shall not record the criterion as a pass",
-		"Repository execution discipline takes precedence",
-		"timeout",
+		"You execute no verification commands at audit time",
+		"There is no audit-time timeout branch",
+		"the only timeout that applies",
 	} {
 		if !strings.Contains(span, want) {
-			t.Errorf("MP-8 span does not carry the execution-discipline branch %q", want)
+			t.Errorf("MP-8 span does not carry the read-discipline branch %q", want)
+		}
+	}
+	for _, retired := range []string{"shall not execute it further", "forbidden-metacharacter", "Repository execution discipline takes precedence"} {
+		if strings.Contains(span, retired) {
+			t.Errorf("MP-8 span still carries the retired re-execution machinery %q", retired)
 		}
 	}
 }
@@ -657,138 +571,31 @@ func TestMP8SentinelMutantsAreDetected(t *testing.T) {
 }
 
 // ===========================================================================
-// L1 — the form check over fixtures (AC-RNT-008, -009a, -009b)
+// L1 — the element check over fixtures (AC-RNT-009a, -009b; form half retired
+// by card t1781)
 // ===========================================================================
 
-// TestRedNowViolatingFixtureIsReported covers AC-RNT-009a.
+// TestRedNowViolatingFixtureIsReported covers AC-RNT-009a's element half.
 func TestRedNowViolatingFixtureIsReported(t *testing.T) {
-	forbidden := redNowForbiddenMetachars(t, redNowMP8Span(t))
 	content := redNowFixture(t, "violating")
 
 	elements := redNowElementFindings(content)
 	if len(elements) == 0 {
 		t.Errorf("violating fixture: the prose-only release-blocking RED cell was not reported")
 	}
-	form := redNowFormFindings(content, forbidden)
-	if len(form) == 0 {
-		t.Errorf("violating fixture: the piped command was not reported")
-	}
-	t.Logf("violating fixture findings: elements=%v form=%v", elements, form)
+	t.Logf("violating fixture findings: elements=%v", elements)
 }
 
 // TestRedNowLegitimateFixtureIsClean covers AC-RNT-009b. Confirming only the
 // fail direction is indistinguishable from a check that reports everything.
 func TestRedNowLegitimateFixtureIsClean(t *testing.T) {
-	forbidden := redNowForbiddenMetachars(t, redNowMP8Span(t))
 	content := redNowFixture(t, "legitimate")
 
 	if got := redNowElementFindings(content); len(got) != 0 {
 		t.Errorf("legitimate fixture reported element findings: %v", got)
 	}
-	if got := redNowFormFindings(content, forbidden); len(got) != 0 {
-		t.Errorf("legitimate fixture reported form findings: %v", got)
-	}
 	if n := len(redNowCollectCommands(content)); n == 0 {
 		t.Errorf("legitimate fixture yielded zero commands — a clean report over an empty set asserts nothing")
-	}
-}
-
-// TestCommandScopeIsCarrierIndependent covers AC-RNT-008 and observes mutant
-// M-5. The ledger fixture carries its malformed command in NO table cell, so
-// the deliberately narrowed cell-scoped predicate finds nothing to check. The
-// two predicates are run against the same input and observed to diverge.
-func TestCommandScopeIsCarrierIndependent(t *testing.T) {
-	forbidden := redNowForbiddenMetachars(t, redNowMP8Span(t))
-	content := redNowFixture(t, "ledger")
-
-	carrierIndependent := redNowFormFindings(content, forbidden)
-	if len(carrierIndependent) == 0 {
-		t.Fatalf("carrier-independent scope missed the malformed ledger command")
-	}
-
-	var cellScoped []string
-	for _, c := range redNowCollectCellCommandsOnly(content) {
-		if hits := redNowFormViolations(c.Command, forbidden); len(hits) > 0 {
-			cellScoped = append(cellScoped, c.Command)
-		}
-	}
-	if len(cellScoped) != 0 {
-		t.Fatalf("fixture no longer isolates the mutant: the cell-scoped predicate found %v", cellScoped)
-	}
-	t.Logf("M-5 observed: cell-scoped=0 findings, carrier-independent=%d findings %v",
-		len(carrierIndependent), carrierIndependent)
-
-	// The carriers themselves are asserted so a scan that silently stopped
-	// recognising one of them would surface here.
-	seen := map[string]int{}
-	for _, c := range redNowCollectCommands(content) {
-		seen[c.Carrier]++
-	}
-	if seen["ledger-entry"] == 0 {
-		t.Errorf("ledger carrier not recognised at all: %v", seen)
-	}
-}
-
-// TestClassLaunderingMutantIsDetected observes mutant M-4: a malformed command
-// moved into a regression-guard criterion. The class-scoped predicate misses it
-// by construction; the class-independent one — the one this SPEC adopts —
-// reports it. Both are run on the same input.
-func TestClassLaunderingMutantIsDetected(t *testing.T) {
-	forbidden := redNowForbiddenMetachars(t, redNowMP8Span(t))
-	content := redNowFixture(t, "violating")
-
-	classIndependent := redNowFormFindings(content, forbidden)
-	if len(classIndependent) == 0 {
-		t.Fatalf("class-independent scope missed the laundered command")
-	}
-
-	// The narrowed predicate: only commands cited by a release-blocking row.
-	ledger := redNowParseLedger(content)
-	var classScoped []string
-	for _, row := range redNowParseRows(content) {
-		if !redNowIsReleaseBlocking(row.Class) {
-			continue
-		}
-		for _, ref := range redNowLedgerRefRe.FindAllString(row.RedCell, -1) {
-			e, ok := ledger[ref]
-			if !ok {
-				continue
-			}
-			if hits := redNowFormViolations(e.Command, forbidden); len(hits) > 0 {
-				classScoped = append(classScoped, e.Command)
-			}
-		}
-	}
-	if len(classScoped) != 0 {
-		t.Fatalf("fixture no longer isolates the mutant: the class-scoped predicate found %v", classScoped)
-	}
-	t.Logf("M-4 observed: class-scoped=0 findings, class-independent=%d findings %v",
-		len(classIndependent), classIndependent)
-}
-
-// TestRedNowFormCheckDivergesOnQuoting is the rule §5 audit-verification form:
-// a quoted `|` is a literal and must NOT be refused, while an unquoted one must
-// be. Without observing both directions, a checker that refuses everything and
-// a checker that refuses nothing are indistinguishable.
-func TestRedNowFormCheckDivergesOnQuoting(t *testing.T) {
-	forbidden := redNowForbiddenMetachars(t, redNowMP8Span(t))
-	cases := []struct {
-		cmd  string
-		want bool
-	}{
-		{`grep -c "^| \*\*AC-RNT-" acceptance.md`, false},
-		{`grep -c 'a|b' file.md`, false},
-		{`grep -c alpha file.md | wc -l`, true},
-		{`ls target.txt && echo ok`, true},
-		{`ls target.txt ; echo done`, true},
-		{`grep -c alpha file.md > out.txt`, true},
-		{`ls internal/spec/red_now_cell_test.go`, false},
-	}
-	for _, tc := range cases {
-		got := len(redNowFormViolations(tc.cmd, forbidden)) > 0
-		if got != tc.want {
-			t.Errorf("form check on %q = %v, want %v (forbidden=%v)", tc.cmd, got, tc.want, forbidden)
-		}
 	}
 }
 

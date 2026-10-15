@@ -638,7 +638,7 @@ func performCodexAudit(ctx context.Context, target, focus, projectRoot string) R
 	// is killed at the deadline, its stream closes, and the turn reader returns
 	// the inconclusive review. Only this leg is bounded; codex_audit keeps the
 	// request context.
-	legCtx, cancel := context.WithTimeout(ctx, config.DefaultCodexAuditLegTimeout)
+	legCtx, cancel := context.WithTimeout(ctx, codexAuditWaitTimeout(config.DefaultCodexAuditLegTimeout))
 	defer cancel()
 	out, _ := codexReviewRPC(legCtx, binaryPath, codexMethodTurnStart, params) // fail-open inside
 	// Reword the summary only when the leg's OWN deadline ended an inconclusive
