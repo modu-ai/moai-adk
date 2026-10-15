@@ -127,4 +127,12 @@ FAIL	github.com/modu-ai/moai-adk/internal/cli	1.362s
 
 `TestRunWeb_AutoEntryOn_SuppressesAdvisory` and `TestWorktreeNew_WiresTheSharedMaterializer` are added to the one regex at the leader's instruction: the leader states they write to the real `~/.gitconfig` (confirmed on the leader's side; cause count not computed). This lane did NOT run them and did NOT verify that claim — they are skipped on the leader's word, as a Gap, not as a measured fact. Both names exist (`go test ./internal/cli -list` printed both). Final skip regex = 43 SessionWorktree names + 7 carried + these 2 = 52 names (51 `|` separators in the saved pattern file).
 
+### First remeasure result and the two names added after it
+
+First remeasure (started 21:05Z, ended about 22:05Z; skip = 52 names) exited 1: the remeasure's own record message named one failing test, `TestCountCodexAgentTOMLs_BadPatternRoot`, and said the record is invalid until a green re-measure. Evidence for the cause, observed this run: run alone it fails with `codex_readiness_test.go:545: count = 6, want 0`; `countCodexAgentTOMLs` (`internal/cli/codex_readiness.go:219`) counts the real HOME's `~/.codex/agents/*.toml` before the project root, and `ls ~/.codex/agents/*.toml | wc -l` printed 6. No A/B by this lane; the mechanism was read from the source and the HOME count.
+
+Leader ruling (cross-session message): known family, card t1817 owns the cause, proven by A/B on t1768; the cause count stays within the db7d cap of 3 (units: Mirror/HOME state, hook parity via t1775, real-HOME codex agents), so an exact-match skip of `TestCountCodexAgentTOMLs` and `TestCountCodexAgentTOMLs_BadPatternRoot` is approved, plus one more remeasure with the `-json` output kept in a file and the failing-test count taken with jq. Final skip regex = 54 names.
+
+`~/.gitconfig` around the first remeasure: before sha b68571080eb1d2cf67a10e381bfd5d94cb3d1e7b3967470ffba896b2bc628e14 (486 lines, snapshot about a minute after the run started); after sha 3596c79456fdf394c7a670f1820dcf8c82adc1612f96405ebd52de5a74ee2581 (489 lines). The three added lines are `directory = …/.moai/worktrees/t1757`, `…/t1800`, `…/t1822` (the leader confirms these are other cards' tree registrations).
+
 Both sides show the same 7 top-level failures with the same messages (the A side prints each message before its `--- FAIL` header because it came from a `-v` run; the B side from a plain run).
