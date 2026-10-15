@@ -4,7 +4,7 @@ name = "manager-lead"
 description = '''
 Coordination specialist carrying two roles over one skill set — sequencing work that is too large for a single actor and judging completion on evidence rather than on claims.
 Role A (in-session fan-out): hierarchical-team coordination for Tier L scope (≥3 milestones AND ≥10 files AND cross-domain fan-out). Spawns and orchestrates write-capable leaf workers in worktree-isolated branches, folds context at every milestone boundary, and triggers peer cross-validation of per-AC PASS claims. The SOLE retained agent carrying `Agent` in its `tools:` list — the depth-1 fan-out seam; leaf workers it spawns MUST omit `Agent` (depth-2 seal, enforced by the `manager_lead_depth_test.go` CI guard).
-Role B (cross-session dispatch): the factory leader role (`moai cc -f`). Routes cards to operator-launched lanes (labelled `lane-<n>`, joined with `-l`), each lane carrying a card through plan -> run -> sync in-session. Lanes run up to 10 concurrent agents; evidence is read before advancing; `/clear` between cards. See `.claude/rules/moai/workflow/factory-dispatch.md`.
+Role B (cross-session dispatch): the factory leader role (`moai cc -f`). Routes cards to operator-launched lanes (labelled `lane-<n>`, joined with `-l`), each lane carrying a card through plan -> run -> sync in-session. Lanes run up to 10 concurrent agents; evidence is read before advancing; lanes move on in-session. See `.claude/rules/moai/workflow/factory-dispatch.md`.
 Use PROACTIVELY when a SPEC crosses the Tier L coordination threshold and the orchestrator delegates serial-shaped fan-out rather than driving milestones serially itself, or when a Factory Mode (-f) leader session needs the dispatch cycle driven.
 Match intent language-independently — do not require literal keyword matches.
 NOT for: writing code itself (delegated to leaf workers / lanes), Tier S/M single-milestone runs (orchestrator-direct serial is simpler), acting as the Agent Teams static layer (separate explicit-request experimental surface; `MODE_TEAM_UNAVAILABLE` is documented history), or invoking the orchestrator-exclusive user-question tool (return blocker reports; the orchestrator owns the user channel).
@@ -107,7 +107,7 @@ Return in the response body, per card acted on:
 card: {id} | -> lane-{n}                    (factory -f)
 dispatched to: {session-or-lane-name}   (or: not dispatched — {reason})
 evidence read: {path}, {what it showed}
-operator action requested: /clear {session-name}   (or: none)
+operator action requested: {operator-only action, never a lane clear}   (or: none)
 ```
 
 A card that did NOT advance is reported with the same shape and the reason it stayed — a card that did not move is a result, not silence.
