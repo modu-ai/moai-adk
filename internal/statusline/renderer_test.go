@@ -1065,7 +1065,7 @@ func TestRenderUsageBar(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			got := renderUsageBar(tt.label, tt.pct, tt.width, tt.noColor)
+			got := renderUsageBar(tt.label, tt.pct, tt.width, testBarRenderer(tt.noColor))
 			if !strings.HasPrefix(got, tt.wantPfx) {
 				t.Errorf("renderUsageBar() = %q, wantPfx %q", got, tt.wantPfx)
 			}
@@ -1156,13 +1156,13 @@ func TestRenderUsageBarWithReset(t *testing.T) {
 	t.Parallel()
 
 	// Without reset
-	got := renderUsageBarWithReset("5H:", 25, 10, true, "")
+	got := renderUsageBarWithReset("5H:", 25, 10, nil, "")
 	if strings.Contains(got, "(") {
 		t.Errorf("should not contain parentheses when empty, got %q", got)
 	}
 
 	// With reset
-	got = renderUsageBarWithReset("5H:", 25, 10, true, "2h 15m")
+	got = renderUsageBarWithReset("5H:", 25, 10, nil, "2h 15m")
 	if !strings.Contains(got, "(2h 15m)") {
 		t.Errorf("should contain '(2h 15m)', got %q", got)
 	}

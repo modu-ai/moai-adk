@@ -49,6 +49,16 @@ func interpolateGradientColor(blockPct float64) (r, g, b int) {
 // @MX:ANCHOR: [AUTO] Core function for all usage bar (CW/5H/7D) rendering - called from renderer.go
 // @MX:REASON: [AUTO] fan_in >= 3 (renderUsageBar → called from 3 bar rendering paths)
 func BuildGradientBar(pct int, width int, noColor bool) string {
+	if noColor {
+		return buildGradientBar(pct, width, nil)
+	}
+	return buildGradientBar(pct, width, lipgloss.DefaultRenderer())
+}
+
+// buildGradientBar renders the bar with lg's color profile; a nil lg renders
+// plain blocks. The statusline passes its own forced-profile renderer so the
+// bar stays colored on a piped stdout (card t1822).
+func buildGradientBar(pct int, width int, lg *lipgloss.Renderer) string {
 	if width <= 0 {
 		return ""
 	}
@@ -61,7 +71,7 @@ func BuildGradientBar(pct int, width int, noColor bool) string {
 	emptyChar := "░"  // Remaining block
 
 	// Return plain string in noColor mode or when no filled blocks
-	if noColor || filled == 0 {
+	if lg == nil || filled == 0 {
 		return strings.Repeat(filledChar, filled) + strings.Repeat(emptyChar, empty)
 	}
 
@@ -75,7 +85,7 @@ func BuildGradientBar(pct int, width int, noColor bool) string {
 		}
 		r, g, b := interpolateGradientColor(blockPct)
 		hex := fmt.Sprintf("#%02X%02X%02X", r, g, b)
-		sb.WriteString(lipgloss.NewStyle().Foreground(lipgloss.Color(hex)).Render(filledChar))
+		sb.WriteString(lg.NewStyle().Foreground(lipgloss.Color(hex)).Render(filledChar))
 	}
 	sb.WriteString(strings.Repeat(emptyChar, empty))
 

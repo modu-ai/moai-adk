@@ -3,6 +3,7 @@ package statusline
 import (
 	"encoding/json"
 	"fmt"
+	"os"
 	"strings"
 	"time"
 
@@ -15,8 +16,14 @@ import (
 // the 5-line "Full" layout was retired and every mode collapses to it (see
 // Render / NormalizeMode).
 type Renderer struct {
-	separator     string
-	noColor       bool
+	separator string
+	noColor   bool
+	// lg is the statusline-owned lipgloss renderer with a forced color
+	// profile; nil when color is disabled (card t1822).
+	lg *lipgloss.Renderer
+	// baseSeq is the SGR foreground for plain text (theme Text color);
+	// empty when color is disabled.
+	baseSeq       string
 	mutedStyle    lipgloss.Style
 	segmentConfig map[string]bool
 	theme         Theme
@@ -49,8 +56,14 @@ func NewRenderer(themeName string, noColor bool, segmentConfig map[string]bool) 
 		return r
 	}
 
+	// Claude Code reads the statusline through a pipe, so TTY detection would
+	// fall back to Ascii and drop every color; force the profile instead
+	// (card t1822).
+	r.lg = newForcedColorRenderer(os.Getenv("COLORTERM"))
+	r.baseSeq = foregroundSequence(r.lg, theme.Text())
+
 	// Set muted style from theme color (REQ-SLE-017)
-	r.mutedStyle = lipgloss.NewStyle().Foreground(theme.Muted())
+	r.mutedStyle = r.lg.NewStyle().Foreground(theme.Muted())
 
 	return r
 }
@@ -65,15 +78,17 @@ func NewRenderer(themeName string, noColor bool, segmentConfig map[string]bool) 
 // @MX:REASON: [AUTO] Public API boundary; keeps the mode parameter so external
 // callers compile unchanged while the layout is fixed to default.
 func (r *Renderer) Render(data *StatusData, mode StatuslineMode) string {
-	if data == nil {
-		return "MoAI"
+	result := "MoAI"
+	if data != nil {
+		_ = NormalizeMode(mode) // legacy-name collapse, kept for symmetry
+		if rendered := r.renderDefaultV3(data); rendered != "" {
+			result = rendered
+		}
 	}
-	_ = NormalizeMode(mode) // legacy-name collapse, kept for symmetry
-	result := r.renderDefaultV3(data)
-	if result == "" {
-		return "MoAI"
+	if r.noColor {
+		return result
 	}
-	return result
+	return applyBaseColor(result, r.baseSeq)
 }
 
 // filterEmpty removes empty strings from a slice.
@@ -484,7 +499,7 @@ func (r *Renderer) renderBarsInline(data *StatusData, width int) string {
 	// guide config never gates it (M1 no-regression invariant, REQ-THRESHOLD-006).
 	if r.isSegmentEnabled(SegmentContext) && data.Memory.Available && data.Memory.TokenBudget > 0 {
 		pct := usagePercent(data.Memory.TokensUsed, data.Memory.TokenBudget)
-		bar := renderUsageBar("CW:", pct, width, r.noColor)
+		bar := renderUsageBar("CW:", pct, width, r.lg)
 		// SPEC-INFINITE-GOAL-001 REQ-3: when a goal is armed, suppress the /clear
 		// directive markers (the stage still computes for informational use; only
 		// the directive text is omitted). Auto-compact handles context pressure
@@ -508,10 +523,10 @@ func (r *Renderer) renderBarsInline(data *StatusData, width int) string {
 	if r.isSegmentEnabled(SegmentUsage5H) {
 		var seg5H string
 		if data.RateLimits != nil && data.RateLimits.FiveHour != nil {
-			seg5H = renderUsageBarWithReset("5H:", int(data.RateLimits.FiveHour.UsedPercentage), width, r.noColor,
+			seg5H = renderUsageBarWithReset("5H:", int(data.RateLimits.FiveHour.UsedPercentage), width, r.lg,
 				formatResetTimeRelative(data.RateLimits.FiveHour.ResetsAt))
 		} else {
-			seg5H = renderQuotaSegment("5H:", quotaWindowReading(data.UsageSnapshot, false), width, r.noColor, true)
+			seg5H = renderQuotaSegment("5H:", quotaWindowReading(data.UsageSnapshot, false), width, r.lg, true)
 		}
 		segs = append(segs, seg5H)
 	}
@@ -521,10 +536,10 @@ func (r *Renderer) renderBarsInline(data *StatusData, width int) string {
 	if r.isSegmentEnabled(SegmentUsage7D) {
 		var seg7D string
 		if data.RateLimits != nil && data.RateLimits.SevenDay != nil {
-			seg7D = renderUsageBarWithReset("7D:", int(data.RateLimits.SevenDay.UsedPercentage), width, r.noColor,
+			seg7D = renderUsageBarWithReset("7D:", int(data.RateLimits.SevenDay.UsedPercentage), width, r.lg,
 				formatResetTimeAbsolute(data.RateLimits.SevenDay.ResetsAt))
 		} else {
-			seg7D = renderQuotaSegment("7D:", quotaWindowReading(data.UsageSnapshot, true), width, r.noColor, false)
+			seg7D = renderQuotaSegment("7D:", quotaWindowReading(data.UsageSnapshot, true), width, r.lg, false)
 		}
 		segs = append(segs, seg7D)
 	}
@@ -650,7 +665,7 @@ func (r *Renderer) renderPRSegment(data *StatusData) string {
 	// Apply color to the review-state suffix only (number stays uncolored)
 	if !r.noColor {
 		if color, ok := r.prReviewStateColor(state); ok {
-			stateText = lipgloss.NewStyle().Foreground(color).Render(stateText)
+			stateText = r.lg.NewStyle().Foreground(color).Render(stateText)
 		}
 	}
 
@@ -906,19 +921,20 @@ func (r *Renderer) prReviewStateColor(state string) (lipgloss.Color, bool) {
 // ─────────────────────────────────────────────────────────────────────────────
 
 // renderUsageBar renders battery icon + label + gradient bar + percentage.
-// Format: {BatteryIcon(pct)} {label} {BuildGradientBar(pct, width, noColor)} {pct}%
+// Format: {BatteryIcon(pct)} {label} {gradient bar} {pct}%
+// lg colors the bar; nil renders it plain (no color).
 // Example: 🪫 CW: ████████████████████████████████████░░░░ 88%
 // Layout v3 CH6: icon position moved before label for visual prominence.
-func renderUsageBar(label string, pct int, width int, noColor bool) string {
+func renderUsageBar(label string, pct int, width int, lg *lipgloss.Renderer) string {
 	icon := BatteryIcon(pct)
-	bar := BuildGradientBar(pct, width, noColor)
+	bar := buildGradientBar(pct, width, lg)
 	return fmt.Sprintf("%s %s %s %d%%", icon, label, bar, pct)
 }
 
 // renderUsageBarWithReset renders a usage bar with optional reset time suffix.
 // Format: {label} {icon} {bar} {pct}% ({resetStr})
-func renderUsageBarWithReset(label string, pct int, width int, noColor bool, resetStr string) string {
-	base := renderUsageBar(label, pct, width, noColor)
+func renderUsageBarWithReset(label string, pct int, width int, lg *lipgloss.Renderer, resetStr string) string {
+	base := renderUsageBar(label, pct, width, lg)
 	if resetStr == "" {
 		return base
 	}
@@ -931,7 +947,7 @@ func renderUsageBarWithReset(label string, pct int, width int, noColor bool, res
 // keeps the absolute one), and the source record's captured-at age marker
 // (REQ-SOU-003). Unknown / reset / absent renders "n/a" — never a 0% bar,
 // never a stale percentage (REQ-SOU-004).
-func renderQuotaSegment(label string, reading QuotaReading, width int, noColor bool, relativeReset bool) string {
+func renderQuotaSegment(label string, reading QuotaReading, width int, lg *lipgloss.Renderer, relativeReset bool) string {
 	if reading.State != QuotaFresh {
 		return fmt.Sprintf("%s n/a", label)
 	}
@@ -939,7 +955,7 @@ func renderQuotaSegment(label string, reading QuotaReading, width int, noColor b
 	if relativeReset {
 		reset = formatResetTimeRelative(reading.ResetsAt)
 	}
-	seg := renderUsageBarWithReset(label, int(reading.UsedPercentage), width, noColor, reset)
+	seg := renderUsageBarWithReset(label, int(reading.UsedPercentage), width, lg, reset)
 	return fmt.Sprintf("%s (captured %s ago)", seg, formatCapturedAge(reading.CapturedAt))
 }
 
