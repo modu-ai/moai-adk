@@ -4,13 +4,16 @@ package cli
 //
 // Every MoAI hook in the settings template is exec form: "command": "bash"
 // with args ["-c", ...]. On a Windows machine without Git for Windows, `bash`
-// is not on PATH. Claude Code 2.1.299 changed PreToolUse and PermissionRequest
-// hooks that set no shell: a guard that fails now BLOCKS the call instead of
-// failing open. The combination can therefore block every tool call.
+// is not on PATH, so those hooks cannot launch. That is the firm part of the
+// warning: a missing dependency.
 //
-// The check REPORTS and never repairs, and never fails the doctor run. The
-// effect on a real Windows machine was not measured (the author had no Windows
-// host); the warning rests on the changelog entry and the template's shape.
+// The consequence is hedged. The Claude Code 2.1.299 changelog says PreToolUse
+// and PermissionRequest hooks "that set no shell" no longer fail open when Git
+// for Windows is missing. Whether that applies to exec-form hooks (which
+// bypass shell selection) is an inference from that wording: not confirmed,
+// and not measured on Windows. The message says "may" and "inferred".
+//
+// The check REPORTS and never repairs, and never fails the doctor run.
 
 import (
 	"encoding/json"
@@ -19,7 +22,7 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
-	"runtime"
+	"strings"
 
 	"github.com/modu-ai/moai-adk/internal/cli/uikit"
 )
@@ -29,7 +32,7 @@ const hookShellWindowsCheckName = "Hook Shell (Windows)"
 
 // checkHookShellWindows warns when the project's settings.json registers
 // exec-form hooks with command "bash" on a Windows host where bash is not
-// resolvable. goos and lookPath are seams (production passes runtime.GOOS and
+// resolvable. goos and lookPath are seams (production passes the GoosArch OS and
 // exec.LookPath) so tests exercise every branch on any OS. It returns CheckOK
 // or CheckWarn — never CheckFail, and never a write.
 func checkHookShellWindows(projectRoot, goos string, lookPath func(string) (string, error), verbose bool) DiagnosticCheck {
@@ -37,8 +40,7 @@ func checkHookShellWindows(projectRoot, goos string, lookPath func(string) (stri
 
 	if goos != "windows" {
 		check.Status = uikit.CheckOK
-		// No GOOS in the message: the doctor golden snapshots must read the same
-		// on every CI platform.
+		// No GOOS in the message: the golden row stays identical across overrides.
 		check.Message = "not applicable: host is not Windows"
 		return check
 	}
@@ -79,10 +81,10 @@ func checkHookShellWindows(projectRoot, goos string, lookPath func(string) (stri
 
 	check.Status = uikit.CheckWarn
 	check.Message = fmt.Sprintf(
-		"%d hooks run through bash but bash is not on PATH; PreToolUse/PermissionRequest guards may block tool calls under Claude Code >= 2.1.299 — install Git for Windows or put a bash on PATH",
+		"%d hooks invoke `bash`, bash not found on PATH, hook launch will fail; Claude Code >= 2.1.299 may block tool calls when a guard fails (inferred from the changelog wording \"hooks that set no shell\"; not confirmed for exec-form hooks, not measured on Windows) — install Git for Windows or put bash on PATH",
 		bashHooks)
 	if verbose {
-		check.Detail = "effect not measured on Windows: derived from the Claude Code 2.1.299 changelog (a failing guard now blocks the call) and the template's exec form; source: " + settingsPath
+		check.Detail = "the block consequence is not measured on Windows and not confirmed for exec-form hooks; source: " + settingsPath
 	}
 	return check
 }
@@ -114,5 +116,8 @@ func countBashExecHooks(settings []byte) (int, error) {
 
 // hookShellWindowsDefault runs the check with the production seams.
 func hookShellWindowsDefault(projectRoot string, verbose bool) DiagnosticCheck {
-	return checkHookShellWindows(projectRoot, runtime.GOOS, exec.LookPath, verbose)
+	// The OS comes from uikit.GoosArch() so the doctor goldens, which pin it
+	// through MOAI_GOOS_OVERRIDE, read the same on every CI platform.
+	goos, _, _ := strings.Cut(uikit.GoosArch(), "/")
+	return checkHookShellWindows(projectRoot, goos, exec.LookPath, verbose)
 }

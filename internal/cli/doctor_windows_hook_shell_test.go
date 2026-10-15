@@ -58,7 +58,7 @@ func TestHookShellWindows_BashMissing_Warns(t *testing.T) {
 	if c.Status != uikit.CheckWarn {
 		t.Fatalf("Status = %v, want CheckWarn (msg=%q)", c.Status, c.Message)
 	}
-	for _, want := range []string{"2 ", "PreToolUse", "PermissionRequest", "2.1.299", "Git for Windows"} {
+	for _, want := range []string{"2 hooks invoke `bash`", "hook launch will fail", "2.1.299", "may block", "inferred", "not confirmed for exec-form", "not measured on Windows", "Git for Windows", "PATH"} {
 		if !strings.Contains(c.Message, want) {
 			t.Errorf("Message %q lacks %q", c.Message, want)
 		}
@@ -103,6 +103,26 @@ func TestHookShellWindows_MissingSettings_Warns(t *testing.T) {
 	if !strings.HasPrefix(c.Message, "not checked:") {
 		t.Errorf("Message = %q, want 'not checked:' prefix", c.Message)
 	}
+}
+
+func TestHookShellWindows_DefaultHonorsGoosOverride(t *testing.T) {
+	t.Setenv("MOAI_GOARCH_OVERRIDE", "testarch")
+
+	t.Run("non-windows override is not applicable", func(t *testing.T) {
+		t.Setenv("MOAI_GOOS_OVERRIDE", "testos")
+		c := hookShellWindowsDefault(t.TempDir(), false)
+		if c.Status != uikit.CheckOK || !strings.Contains(c.Message, "not applicable") {
+			t.Errorf("got status=%v msg=%q, want OK 'not applicable'", c.Status, c.Message)
+		}
+	})
+
+	t.Run("windows override follows the windows branch", func(t *testing.T) {
+		t.Setenv("MOAI_GOOS_OVERRIDE", "windows")
+		c := hookShellWindowsDefault(t.TempDir(), false) // no settings.json
+		if c.Status != uikit.CheckWarn || !strings.HasPrefix(c.Message, "not checked:") {
+			t.Errorf("got status=%v msg=%q, want Warn 'not checked:'", c.Status, c.Message)
+		}
+	})
 }
 
 func TestHookShellWindows_RegisteredAsClaudeSurface(t *testing.T) {
