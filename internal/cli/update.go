@@ -1079,7 +1079,15 @@ func ensureGlobalSettingsEnv() error {
 		return fmt.Errorf("get home directory: %w", err)
 	}
 
-	for _, configRoot := range userassets.ClaudeConfigRoots(homeDir) {
+	configRoots, err := userassets.ClaudeConfigRoots(homeDir)
+	if err != nil {
+		// Cleanup is best-effort per root, but a profile store that exists
+		// and cannot be read is not "no profiles": propagate so the skipped
+		// profile-root cleanups are visible instead of silent (card t1702
+		// audit round 4).
+		return fmt.Errorf("enumerate Claude config roots: %w", err)
+	}
+	for _, configRoot := range configRoots {
 		if err := ensureSettingsEnvInConfigRoot(configRoot); err != nil {
 			return err
 		}

@@ -10,6 +10,7 @@ import (
 	"encoding/json"
 	"os"
 	"path/filepath"
+	"runtime"
 	"strings"
 	"testing"
 
@@ -187,6 +188,78 @@ func TestCheckProfileSkillReach(t *testing.T) {
 	}
 	if !strings.Contains(check.Message, "core skill(s) resolvable from claude-profiles/work") {
 		t.Errorf("ok message should name the display root; got %q", check.Message)
+	}
+}
+
+// TestDoctorSkillReachUnreadableProfileStoreWarns pins the round-4 decision
+// (card t1702): when the active root's installability cannot be judged
+// because the profile store is unreadable, the Skill Reach check warns with
+// the enumeration failure — it must not claim the root is "outside moai's
+// install roots" on unobserved evidence. Skips on Windows and under
+// effective root (0o000 unobservable).
+func TestDoctorSkillReachUnreadableProfileStoreWarns(t *testing.T) {
+	if runtime.GOOS == "windows" {
+		t.Skip("POSIX permission bits are not enforceable on windows")
+	}
+	if os.Geteuid() == 0 {
+		t.Skip("effective root reads through 0o000 modes; the permission arm is unobservable")
+	}
+	home := t.TempDir()
+	active := filepath.Join(home, ".moai", "claude-profiles", "work")
+	if err := os.MkdirAll(active, 0o755); err != nil {
+		t.Fatalf("create profile dir: %v", err)
+	}
+	store := filepath.Join(home, ".moai", "claude-profiles")
+	if err := os.Chmod(store, 0o000); err != nil {
+		t.Fatalf("chmod store: %v", err)
+	}
+	t.Cleanup(func() { _ = os.Chmod(store, 0o755) })
+
+	check := checkProfileSkillReach(active, "claude-profiles/work", home, false)
+	if check.Status != uikit.CheckWarn {
+		t.Fatalf("status = %v, want warn (message = %q)", check.Status, check.Message)
+	}
+	if !strings.Contains(check.Message, "cannot confirm") || !strings.Contains(check.Message, "unreadable") {
+		t.Errorf("warn should name the enumeration failure: %q", check.Message)
+	}
+	if strings.Contains(check.Message, "outside moai's install roots") {
+		t.Errorf("an unjudgeable root must not be claimed outside the install roots: %q", check.Message)
+	}
+}
+
+// TestUpdateGlobalSettingsEnv_UnreadableProfileStoreErrors pins the
+// round-4 update-side decision (card t1702): the settings cleanup
+// propagates a profile-store enumeration failure instead of silently
+// cleaning ~/.claude only — the skipped profile-root cleanups stay visible.
+// Reassigns a package-level seam, so it MUST NOT call t.Parallel(). Skips
+// on Windows and under effective root (0o000 unobservable).
+func TestUpdateGlobalSettingsEnv_UnreadableProfileStoreErrors(t *testing.T) {
+	if runtime.GOOS == "windows" {
+		t.Skip("POSIX permission bits are not enforceable on windows")
+	}
+	if os.Geteuid() == 0 {
+		t.Skip("effective root reads through 0o000 modes; the permission arm is unobservable")
+	}
+	tmp := t.TempDir()
+	origFn := userHomeDirFn
+	userHomeDirFn = func() (string, error) { return tmp, nil }
+	t.Cleanup(func() { userHomeDirFn = origFn })
+
+	store := filepath.Join(tmp, ".moai", "claude-profiles")
+	if err := os.MkdirAll(filepath.Join(store, "work"), 0o755); err != nil {
+		t.Fatalf("create profile dir: %v", err)
+	}
+	if err := os.Chmod(store, 0o000); err != nil {
+		t.Fatalf("chmod store: %v", err)
+	}
+	t.Cleanup(func() { _ = os.Chmod(store, 0o755) })
+
+	err := ensureGlobalSettingsEnv()
+	if err == nil {
+		t.Fatal("ensureGlobalSettingsEnv must propagate an unreadable profile store, not clean ~/.claude only")
+	}
+	if !strings.Contains(err.Error(), store) {
+		t.Errorf("error must name the store path %s; got %v", store, err)
 	}
 }
 

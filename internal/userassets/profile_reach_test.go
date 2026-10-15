@@ -157,7 +157,11 @@ func TestProfileJunkDirsIgnored(t *testing.T) {
 		t.Fatalf("Install: %v", err)
 	}
 
-	for _, r := range ResolveRoots(f.home) {
+	junkRoots, err := ResolveRoots(f.home)
+	if err != nil {
+		t.Fatalf("ResolveRoots: %v", err)
+	}
+	for _, r := range junkRoots {
 		slug := string(r.Slug)
 		if i := indexByte(slug, '@'); i >= 0 && !ValidProfileDirName(slug[i+1:]) {
 			t.Errorf("root %q derived from an invalid profile name", r.Slug)
@@ -171,7 +175,11 @@ func TestProfileJunkDirsIgnored(t *testing.T) {
 			}
 		}
 	}
-	if got := RealProfileDirNames(f.home); len(got) != 1 || got[0] != "work" {
+	got, gotErr := RealProfileDirNames(f.home)
+	if gotErr != nil {
+		t.Fatalf("RealProfileDirNames: %v", gotErr)
+	}
+	if len(got) != 1 || got[0] != "work" {
 		t.Errorf("RealProfileDirNames = %v, want [work]", got)
 	}
 }
@@ -274,7 +282,10 @@ func TestClaudeConfigRoots(t *testing.T) {
 		t.Fatalf("create junk dir: %v", err)
 	}
 
-	got := ClaudeConfigRoots(f.home)
+	got, err := ClaudeConfigRoots(f.home)
+	if err != nil {
+		t.Fatalf("ClaudeConfigRoots: %v", err)
+	}
 	want := []string{
 		filepath.Join(f.home, ".claude"),
 		filepath.Join(f.profileBase(), "alpha"),
@@ -317,7 +328,11 @@ func TestValidProfileDirNameAndRootKind(t *testing.T) {
 func validatedSnapshot(t *testing.T, home string) map[RootSlug]resolvedRoot {
 	t.Helper()
 	snapshot := make(map[RootSlug]resolvedRoot)
-	for _, r := range ResolveRoots(home) {
+	rootList, err := ResolveRoots(home)
+	if err != nil {
+		t.Fatalf("ResolveRoots: %v", err)
+	}
+	for _, r := range rootList {
 		rr, err := resolveRoot(home, r)
 		if err != nil {
 			t.Fatalf("resolve root %s: %v", r.Slug, err)
@@ -495,5 +510,154 @@ func TestStaleDropRequiresConfirmedAbsence(t *testing.T) {
 	}
 	if err := saved.Save(ManifestPath(f.home)); err != nil {
 		t.Fatalf("save manifest: %v", err)
+	}
+}
+
+// TestRealProfileDirNamesMissingBase pins the legitimate-empty arm (card
+// t1702 audit round 4): a home with NO profile store enumerates as empty —
+// (nil, nil), no error — through every enumeration function.
+func TestRealProfileDirNamesMissingBase(t *testing.T) {
+	t.Parallel()
+	f := newProfileFixture(t) // fresh temp home; the base is never created
+
+	if names, err := RealProfileDirNames(f.home); err != nil || names != nil {
+		t.Errorf("RealProfileDirNames(missing base) = (%v, %v), want (nil, nil)", names, err)
+	}
+	roots, err := ResolveRoots(f.home)
+	if err != nil {
+		t.Fatalf("ResolveRoots(missing base): %v", err)
+	}
+	if len(roots) != 4 {
+		t.Errorf("ResolveRoots(missing base) = %d roots, want the 4 fixed roots", len(roots))
+	}
+	configRoots, err := ClaudeConfigRoots(f.home)
+	if err != nil {
+		t.Fatalf("ClaudeConfigRoots(missing base): %v", err)
+	}
+	if len(configRoots) != 1 || configRoots[0] != filepath.Join(f.home, ".claude") {
+		t.Errorf("ClaudeConfigRoots(missing base) = %v, want [%s]", configRoots, filepath.Join(f.home, ".claude"))
+	}
+}
+
+// TestRealProfileDirNamesUnreadableBase pins the defect arm (card t1702
+// audit round 4): a profile store that exists but cannot be read yields an
+// error naming the store path — never the (nil, nil) that "no profiles
+// exist" produces. Skips on Windows (POSIX bits unenforceable) and under
+// effective root (reads through 0o000).
+func TestRealProfileDirNamesUnreadableBase(t *testing.T) {
+	if runtime.GOOS == "windows" {
+		t.Skip("POSIX permission bits are not enforceable on windows")
+	}
+	if os.Geteuid() == 0 {
+		t.Skip("effective root reads through 0o000 modes; the permission arm is unobservable")
+	}
+	f := newProfileFixture(t)
+	f.makeProfileDir(t, "work")
+
+	store := ProfileRootsBase(f.home)
+	if err := os.Chmod(store, 0o000); err != nil {
+		t.Fatalf("chmod store: %v", err)
+	}
+	t.Cleanup(func() { _ = os.Chmod(store, 0o755) })
+
+	if _, err := ResolveRoots(f.home); err == nil {
+		t.Error("ResolveRoots must error on an unreadable store, not return the fixed roots as if no profiles existed")
+	} else if !strings.Contains(err.Error(), store) {
+		t.Errorf("ResolveRoots error must name the store path %s; got %v", store, err)
+	}
+	if _, err := ClaudeConfigRoots(f.home); err == nil {
+		t.Error("ClaudeConfigRoots must error on an unreadable store, not return the bare ~/.claude")
+	}
+	names, err := RealProfileDirNames(f.home)
+	if err == nil {
+		t.Errorf("RealProfileDirNames must error on an unreadable store; got names %v", names)
+	} else if !strings.Contains(err.Error(), store) {
+		t.Errorf("RealProfileDirNames error must name the store path %s; got %v", store, err)
+	}
+}
+
+// TestInstallRefusesUnreadableProfileStore is the consumer-level proof (card
+// t1702 audit round 4): Install must NOT finish "successfully" while the
+// profile store is unreadable — the run returns an error naming the store,
+// and the profile dir holds no install once the store is readable again.
+func TestInstallRefusesUnreadableProfileStore(t *testing.T) {
+	if runtime.GOOS == "windows" {
+		t.Skip("POSIX permission bits are not enforceable on windows")
+	}
+	if os.Geteuid() == 0 {
+		t.Skip("effective root reads through 0o000 modes; the permission arm is unobservable")
+	}
+	f := newProfileFixture(t)
+	profDir := f.makeProfileDir(t, "work")
+
+	store := ProfileRootsBase(f.home)
+	if err := os.Chmod(store, 0o000); err != nil {
+		t.Fatalf("chmod store: %v", err)
+	}
+	t.Cleanup(func() { _ = os.Chmod(store, 0o755) })
+
+	_, err := f.installer(t).Install(nil)
+	if err == nil {
+		t.Fatal("Install succeeded vacuously while the profile store was unreadable")
+	}
+	if !strings.Contains(err.Error(), store) {
+		t.Errorf("Install error must name the unreadable store %s; got %v", store, err)
+	}
+
+	// Once the store is readable again, the profile dir is untouched.
+	if err := os.Chmod(store, 0o755); err != nil {
+		t.Fatalf("restore store perms: %v", err)
+	}
+	if _, statErr := os.Stat(filepath.Join(profDir, "skills")); !os.IsNotExist(statErr) {
+		t.Errorf("the refused install must leave the profile dir untouched (skills stat err = %v)", statErr)
+	}
+}
+
+// TestPruneReportsUnreadableProfileStore pins the prune-side decision (card
+// t1702 audit round 4): PruneUnselected keeps the round-2 contract — nil
+// error, records preserved, per-key refusals — and now ALSO records the
+// store error itself as a failure row, so an unreadable store never reads
+// as a clean "no profiles exist" prune.
+func TestPruneReportsUnreadableProfileStore(t *testing.T) {
+	if runtime.GOOS == "windows" {
+		t.Skip("POSIX permission bits are not enforceable on windows")
+	}
+	if os.Geteuid() == 0 {
+		t.Skip("effective root reads through 0o000 modes; the permission arm is unobservable")
+	}
+	f := newProfileFixture(t)
+	f.makeProfileDir(t, "locked")
+	inst := f.installer(t)
+	if _, err := inst.Install(nil); err != nil {
+		t.Fatalf("Install: %v", err)
+	}
+
+	store := ProfileRootsBase(f.home)
+	if err := os.Chmod(store, 0o000); err != nil {
+		t.Fatalf("chmod store: %v", err)
+	}
+	t.Cleanup(func() { _ = os.Chmod(store, 0o755) })
+
+	saved, err := Load(ManifestPath(f.home))
+	if err != nil {
+		t.Fatalf("load manifest: %v", err)
+	}
+	res, err := inst.PruneUnselected(saved)
+	if err != nil {
+		t.Fatalf("PruneUnselected must keep the round-2 nil-error contract; got %v", err)
+	}
+	namedStore := false
+	for _, fo := range res.Failures {
+		if fo.Path == store && strings.Contains(fo.Reason, "unreadable") {
+			namedStore = true
+		}
+	}
+	if !namedStore {
+		t.Errorf("the prune failures must name the unreadable store; failures = %v", res.Failures)
+	}
+	for _, key := range []string{"claude-skills@locked/moai/SKILL.md", "claude-agents@locked/manager-x.md"} {
+		if _, ok := saved.Files[key]; !ok {
+			t.Errorf("record %q was dropped while the store was unreadable", key)
+		}
 	}
 }

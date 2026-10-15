@@ -6,6 +6,7 @@ package cli
 import (
 	"os"
 	"path/filepath"
+	"runtime"
 	"strings"
 	"testing"
 
@@ -52,6 +53,42 @@ func TestDoctorUserInstallDetectsDrift(t *testing.T) {
 	check = checkUserInstallIntegrity(home, false)
 	if check.Status != uikit.CheckWarn {
 		t.Errorf("missing tracked file must WARN, got %v", check.Status)
+	}
+}
+
+// TestDoctorUserInstallWarnsOnUnreadableProfileStore pins the round-4 doctor
+// decision (card t1702): the User Install check surfaces a profile-store
+// enumeration failure as a WARN naming the store — never the disguise of
+// "no profiles exist", which would silently skip every profile-root file in
+// the comparison. Skips on Windows and under effective root (0o000
+// unobservable).
+func TestDoctorUserInstallWarnsOnUnreadableProfileStore(t *testing.T) {
+	if runtime.GOOS == "windows" {
+		t.Skip("POSIX permission bits are not enforceable on windows")
+	}
+	if os.Geteuid() == 0 {
+		t.Skip("effective root reads through 0o000 modes; the permission arm is unobservable")
+	}
+	home := t.TempDir()
+	if err := ensureUserAssetsLocked(home, nil, &strings.Builder{}); err != nil {
+		t.Fatalf("ensure: %v", err)
+	}
+	// A profile store that exists but cannot be read.
+	store := filepath.Join(home, ".moai", "claude-profiles")
+	if err := os.MkdirAll(filepath.Join(store, "work"), 0o755); err != nil {
+		t.Fatalf("create profile dir: %v", err)
+	}
+	if err := os.Chmod(store, 0o000); err != nil {
+		t.Fatalf("chmod store: %v", err)
+	}
+	t.Cleanup(func() { _ = os.Chmod(store, 0o755) })
+
+	check := checkUserInstallIntegrity(home, false)
+	if check.Status != uikit.CheckWarn {
+		t.Fatalf("unreadable profile store must WARN, got %v: %s", check.Status, check.Message)
+	}
+	if !strings.Contains(check.Message, "cannot enumerate") || !strings.Contains(check.Message, store) {
+		t.Errorf("warn should name the enumeration failure and the store path: %q", check.Message)
 	}
 }
 

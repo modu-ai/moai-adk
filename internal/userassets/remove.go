@@ -36,8 +36,22 @@ func (in *Installer) PruneUnselected(manifest *Manifest) (*Result, error) {
 	if err := manifest.CanRemove(); err != nil {
 		return nil, err
 	}
-	roots := make(map[RootSlug]resolvedRoot, len(ResolveRoots(in.Home)))
-	for _, r := range ResolveRoots(in.Home) {
+	// Resolve the roots once per run. A profile store that exists but cannot
+	// be read keeps the round-2 contract (card t1702 audit round 2): the run
+	// continues over the FIXED roots and profile-side keys surface through
+	// the per-key refusal arm (records preserved + reported) instead of
+	// aborting. The store error itself is recorded as a failure so the prune
+	// never reads as a clean "no profiles exist" (card t1702 audit round 4).
+	rootList, enumErr := ResolveRoots(in.Home)
+	if enumErr != nil {
+		rootList = fixedRoots(in.Home)
+		res.Failures = append(res.Failures, FileOutcome{
+			Path:   ProfileRootsBase(in.Home),
+			Reason: "profile store unreadable — profile-root records preserved and reported per key: " + enumErr.Error(),
+		})
+	}
+	roots := make(map[RootSlug]resolvedRoot, len(rootList))
+	for _, r := range rootList {
 		rr, err := resolveRoot(in.Home, r)
 		if err != nil {
 			return nil, fmt.Errorf("resolve root %s: %w", r.Slug, err)
@@ -236,9 +250,21 @@ func (in *Installer) RemoveBundle(manifest *Manifest, name string, remaining []s
 	if err := manifest.CanRemove(); err != nil {
 		return nil, err // REQ-021 refusal against an unknown schema
 	}
-	// Resolve the roots once (same posture as Install).
-	roots := make(map[RootSlug]resolvedRoot, len(ResolveRoots(in.Home)))
-	for _, r := range ResolveRoots(in.Home) {
+	// Resolve the roots once (same posture as Install). Enumeration failure
+	// keeps the round-2 contract as in PruneUnselected: continue over the
+	// fixed roots, record the store error as a failure, let the per-key
+	// refusal arm preserve + report profile-side keys (card t1702 audit
+	// rounds 2 and 4).
+	rootList, enumErr := ResolveRoots(in.Home)
+	if enumErr != nil {
+		rootList = fixedRoots(in.Home)
+		res.Failures = append(res.Failures, FileOutcome{
+			Path:   ProfileRootsBase(in.Home),
+			Reason: "profile store unreadable — profile-root records preserved and reported per key: " + enumErr.Error(),
+		})
+	}
+	roots := make(map[RootSlug]resolvedRoot, len(rootList))
+	for _, r := range rootList {
 		rr, err := resolveRoot(in.Home, r)
 		if err != nil {
 			return nil, fmt.Errorf("resolve root %s: %w", r.Slug, err)

@@ -16,7 +16,10 @@ import (
 
 func TestUserRootSlugDirsMatchUserassetsRoots(t *testing.T) {
 	home := t.TempDir()
-	roots := userassets.ResolveRoots(home)
+	roots, err := userassets.ResolveRoots(home)
+	if err != nil {
+		t.Fatalf("ResolveRoots: %v", err)
+	}
 	if len(roots) != len(userRootSlugDirs) {
 		t.Fatalf("root count drifted: userassets has %d, the hook table has %d", len(roots), len(userRootSlugDirs))
 	}

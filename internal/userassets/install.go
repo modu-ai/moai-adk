@@ -80,7 +80,7 @@ type Result struct {
 	// summaries consume it instead of re-scanning the disk, so a profile
 	// dir appearing after the snapshot is never reported as reached.
 	RootsReached []string
-	Unconverted         []string // M3 REQ-CNV-002: Codex-face files whose CONVERTED bytes still carry a harness-specific reference with no conversion mapping — named per file, never silently shipped
+	Unconverted  []string // M3 REQ-CNV-002: Codex-face files whose CONVERTED bytes still carry a harness-specific reference with no conversion mapping — named per file, never silently shipped
 }
 
 // FileOutcome is one file-level failure (REQ-013: path + reason).
@@ -112,9 +112,16 @@ func (in *Installer) Install(selection []string) (*Result, error) {
 	now := in.now()
 	res := &Result{}
 
-	// Resolve the four roots once per run (C2).
-	roots := make(map[RootSlug]resolvedRoot, len(ResolveRoots(in.Home)))
-	for _, r := range ResolveRoots(in.Home) {
+	// Resolve the four roots once per run (C2). A profile store that exists
+	// but cannot be read is an error, never "no profiles exist" (card t1702
+	// audit round 4): finishing "successfully" while nothing lands in the
+	// real profiles is precisely the defect.
+	rootList, err := ResolveRoots(in.Home)
+	if err != nil {
+		return nil, fmt.Errorf("enumerate install roots: %w", err)
+	}
+	roots := make(map[RootSlug]resolvedRoot, len(rootList))
+	for _, r := range rootList {
 		rr, err := resolveRoot(in.Home, r)
 		if err != nil {
 			return nil, fmt.Errorf("resolve root %s: %w", r.Slug, err)
