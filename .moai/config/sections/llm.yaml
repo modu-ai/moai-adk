@@ -5,27 +5,9 @@ llm:
     glm_env_var: GLM_API_KEY
     profile: ""
     agent_overrides:
-        builder-harness:
-            model: opus
-            effort: low
-        e2e-tester:
-            model: sonnet
-            effort: low
-        manager-design:
-            model: opus
-            effort: medium
-        manager-docs:
-            model: haiku
-            effort: low
         manager-lead:
             model: opus
             effort: medium
-        manager-spec:
-            model: opus
-            effort: high
-        manager-todo:
-            model: sonnet
-            effort: low
         plan-auditor:
             model: opus
             effort: high
