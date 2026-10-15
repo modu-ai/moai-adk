@@ -250,6 +250,10 @@ type ReviewOutput struct {
 	Findings  []Finding `json:"findings"`
 	NextSteps []string  `json:"next_steps"`
 
+	// StderrTail is the bounded stderr tail of the codex child that produced this
+	// review. It feeds the receipt's codex_error and never reaches the JSON output.
+	StderrTail string `json:"-"`
+
 	// Provenance identifies the backend transport that actually produced the
 	// review. It is optional so the existing Codex/GLM output remains byte-for-
 	// byte compatible until those backends opt into the common metadata.
@@ -538,12 +542,17 @@ func (realCodexSessionRunner) start(ctx context.Context, binaryPath string, args
 	if err != nil {
 		return nil, fmt.Errorf("codex stdout pipe: %w", err)
 	}
-	// Discard stderr so a noisy codex never corrupts the stdout NDJSON parse.
-	cmd.Stderr = &bytes.Buffer{}
+	// Keep stderr for the receipt's tail. stdout stays the NDJSON channel, so the
+	// stream is never parsed from stderr and a noisy codex cannot corrupt it.
+	stderr := &codexStderrBuffer{}
+	cmd.Stderr = stderr
+	// A grandchild that inherits stderr can hold the pipe open after the child exits;
+	// WaitDelay bounds how long Wait (and close) waits on it (t1788).
+	cmd.WaitDelay = codexStderrWaitDelay
 	if err := cmd.Start(); err != nil {
 		return nil, fmt.Errorf("codex start: %w", err)
 	}
-	c := &realCodexConn{cmd: cmd, stdin: stdin, stdout: stdout, lines: make(chan string, 128)}
+	c := &realCodexConn{cmd: cmd, stdin: stdin, stdout: stdout, lines: make(chan string, 128), stderr: stderr}
 	go c.readLoop(ctx)
 	return c, nil
 }
@@ -557,6 +566,7 @@ type realCodexConn struct {
 	stdout io.Reader
 	lines  chan string
 	mu     sync.Mutex
+	stderr *codexStderrBuffer
 }
 
 func (c *realCodexConn) readLoop(ctx context.Context) {
@@ -1055,7 +1065,13 @@ func runCodexReviewRPCResolved(ctx context.Context, binaryPath, method string, p
 	}
 	defer func() { _ = sess.close() }()
 
-	return sess.runTurn(ctx, method, params)
+	out, err := sess.runTurn(ctx, method, params)
+	// The tail is read before close: the child's stderr is what says why a turn
+	// ended early. An unavailable buffer leaves the tail empty (t1788).
+	if c, ok := sess.conn.(*realCodexConn); ok && c.stderr != nil {
+		out.StderrTail = c.stderr.tail(codexErrorTailBytes)
+	}
+	return out, err
 }
 
 // writeCodexRequest marshals and sends one JSON-RPC request line.
@@ -2020,7 +2036,7 @@ func handleCodexAudit(ctx context.Context, req mcp.CallToolRequest) (*mcp.CallTo
 		// goes silently unmet (the review never ran at all).
 		out := applyGateUnmet(inconclusiveReview("codex binary not found in PATH"), root)
 		out.BuildCommit, out.BuildLag = buildCommit, buildLag
-		out.AuditReceipt, out.StateNotice = recordAuditReceipt(auditreceipt.ToolCodexAudit, rootArg, out.Verdict, out.GateUnmet)
+		out.AuditReceipt, out.StateNotice = recordAuditReceipt(auditreceipt.ToolCodexAudit, rootArg, out.Verdict, codexErrorDetail(out.Verdict, out.Summary, out.StderrTail), out.GateUnmet)
 		return codexReviewToolResult(out), nil
 	}
 	notifyMCPProgress(ctx, token, 0.1, "codex 바이너리 확인 — 리뷰 요청 준비 중...")
@@ -2061,7 +2077,7 @@ func handleCodexAudit(ctx context.Context, req mcp.CallToolRequest) (*mcp.CallTo
 	}
 	out = applyGateUnmet(out, root)
 	out.BuildCommit, out.BuildLag = buildCommit, buildLag
-	out.AuditReceipt, out.StateNotice = recordAuditReceipt(auditreceipt.ToolCodexAudit, rootArg, out.Verdict, out.GateUnmet)
+	out.AuditReceipt, out.StateNotice = recordAuditReceipt(auditreceipt.ToolCodexAudit, rootArg, out.Verdict, codexErrorDetail(out.Verdict, out.Summary, out.StderrTail), out.GateUnmet)
 	notifyMCPProgress(ctx, token, 0.9, "codex 응답 수신 — 결과 조립 중...")
 	return codexReviewToolResult(out), nil
 }
