@@ -961,11 +961,11 @@
   class: W
   evidence: reader
 - path: "llm.defaults.sessions.codex.leader.effort"
-  class: W
-  evidence: reader
+  class: R
+  evidence: none
 - path: "llm.defaults.sessions.codex.leader.model"
-  class: W
-  evidence: reader
+  class: R
+  evidence: none
 - path: "llm.defaults.sessions.glm.lane.effort"
   class: W
   evidence: reader

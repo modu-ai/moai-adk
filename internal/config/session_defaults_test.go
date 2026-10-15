@@ -249,3 +249,40 @@ func TestSessionDefaultsResolveRejectsInvalid(t *testing.T) {
 		}
 	}
 }
+
+// TestSessionDefaultsModelSurroundingWhitespace: a session model carrying
+// leading or trailing whitespace or control characters is normalized, not
+// rejected — config.Validate accepts it and the resolver uses the trimmed
+// value while reporting exactly one entry naming the key and the raw value,
+// so the launcher can warn. Interior control characters stay rejected on both
+// paths with the shipped fallback.
+func TestSessionDefaultsModelSurroundingWhitespace(t *testing.T) {
+	t.Parallel()
+	const key = "llm.defaults.sessions.codex.lane.model"
+	for name, tc := range map[string]struct {
+		raw, want string
+		accepted  bool
+	}{
+		"surrounding newline and tab": {"\ngpt-custom\t", "gpt-custom", true},
+		"surrounding control char":    {"\x01gpt-custom ", "gpt-custom", true},
+		"interior newline":            {" gpt\nx ", CodexModelSol, false},
+	} {
+		cfg := NewDefaultConfig()
+		cfg.LLM.Defaults.Sessions.Mode = SessionDefaultsModeCustom
+		cfg.LLM.Defaults.Sessions.Codex.Lane.Model = tc.raw
+		errs := validateSessionDefaults(cfg)
+		if tc.accepted && len(errs) != 0 {
+			t.Errorf("%s: Validate = %+v, want accepted", name, errs)
+		}
+		if !tc.accepted && (len(errs) != 1 || errs[0].Field != key) {
+			t.Errorf("%s: Validate = %+v, want one error on %s", name, errs, key)
+		}
+		got, notes, ok := cfg.LLM.ResolveSessionDefaultChecked(SessionBackendCodex, SessionRoleLane)
+		if !ok || got.Model != tc.want {
+			t.Errorf("%s: resolved model = %q (ok %v), want %q", name, got.Model, ok, tc.want)
+		}
+		if len(notes) != 1 || notes[0].Key != key || notes[0].Value != tc.raw || notes[0].Fallback != tc.want {
+			t.Errorf("%s: resolver notes = %+v, want one entry {Key %s, Value %q, Fallback %q}", name, notes, key, tc.raw, tc.want)
+		}
+	}
+}

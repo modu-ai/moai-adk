@@ -432,6 +432,33 @@ func assertNeverCarried(t *testing.T, carried []string, bad string) {
 	}
 }
 
+// TestCodexLaneModelSurroundingWhitespace pins the normalization rule: a
+// codex lane model carrying leading/trailing whitespace or control characters
+// is trimmed, the trimmed value reaches argv, and the launcher writes exactly
+// one warning line naming the key and the raw value. The launch proceeds.
+func TestCodexLaneModelSurroundingWhitespace(t *testing.T) {
+	root := t.TempDir()
+	writeSessionLLM(t, root, "      mode: custom\n      codex:\n        lane: {model: \"\\ngpt-custom\\t\"}\n")
+	var buf strings.Builder
+	origErr := launcherStderr
+	t.Cleanup(func() { launcherStderr = origErr })
+	launcherStderr = &buf
+	got := codexSessionDefaultArgs(root, config.SessionRoleLane, nil)
+	if want := []string{"-m", "gpt-custom", "-c", `model_reasoning_effort="medium"`}; !slices.Equal(got, want) {
+		t.Errorf("codex lane args = %q, want %q", got, want)
+	}
+	var warnings []string
+	for _, line := range strings.Split(buf.String(), "\n") {
+		if strings.Contains(line, "Warning:") {
+			warnings = append(warnings, line)
+		}
+	}
+	if len(warnings) != 1 {
+		t.Fatalf("warning lines = %d, want exactly 1:\n%s", len(warnings), buf.String())
+	}
+	assertSessionWarning(t, buf.String(), "llm.defaults.sessions.codex.lane.model", "\ngpt-custom\t")
+}
+
 // TestCodexLaneLaunchCarriesSessionDefaults drives the real `moai codex -l`
 // launch and pins the lane argv wiring (codex_launcher.go): the lane child
 // carries -m <sol> and -c model_reasoning_effort="medium".

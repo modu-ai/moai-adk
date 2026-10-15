@@ -111,19 +111,24 @@ func (c LLMConfig) ResolveSessionDefault(backend, role string) (ModelEffort, boo
 }
 
 // SessionDefaultRejection names one custom llm.yaml session cell the resolver
-// refused because it fails the validateSessionDefaults rules, and the shipped
-// value used in its place.
+// did not use verbatim: either refused because it fails the
+// validateSessionDefaults rules (the shipped value is used in its place), or,
+// with Normalized set, a model accepted after stripping surrounding whitespace
+// and control characters (the trimmed value is used).
 type SessionDefaultRejection struct {
-	Key      string // llm.defaults.sessions.<backend>.<role>.<field>
-	Field    string // "model" or "effort"
-	Value    string // the rejected value
-	Fallback string // the shipped value used instead
+	Key        string // llm.defaults.sessions.<backend>.<role>.<field>
+	Field      string // "model" or "effort"
+	Value      string // the raw configured value
+	Fallback   string // the value used instead: the shipped value, or the trimmed one when Normalized
+	Normalized bool   // true when the value was accepted after trimming
 }
 
 // ResolveSessionDefaultChecked is ResolveSessionDefault plus the cells it
 // rejected. A custom cell that config.Validate would refuse never reaches a
 // launch: the shipped value for that field is used and the rejection is
 // reported so the launcher can warn (fail-open — a launch never blocks on it).
+// A model with surrounding whitespace or control characters is used trimmed
+// and reported with Normalized set, so the launcher warns about it too.
 func (c LLMConfig) ResolveSessionDefaultChecked(backend, role string) (ModelEffort, []SessionDefaultRejection, bool) {
 	defPair, ok := defaultSessionDefaults().pair(backend)
 	if !ok {
@@ -140,11 +145,15 @@ func (c LLMConfig) ResolveSessionDefaultChecked(backend, role string) (ModelEffo
 	cell, _ := cfgPair.role(role)
 	prefix := "llm.defaults.sessions." + backend + "." + role
 	var rejected []SessionDefaultRejection
-	if m := strings.TrimSpace(cell.Model); m != "" {
-		if sessionModelValid(backend, m) {
+	if m := trimSessionModel(cell.Model); m != "" {
+		switch {
+		case !sessionModelValid(backend, m):
+			rejected = append(rejected, SessionDefaultRejection{Key: prefix + ".model", Field: "model", Value: cell.Model, Fallback: out.Model})
+		case m != cell.Model:
 			out.Model = m
-		} else {
-			rejected = append(rejected, SessionDefaultRejection{Key: prefix + ".model", Field: "model", Value: m, Fallback: out.Model})
+			rejected = append(rejected, SessionDefaultRejection{Key: prefix + ".model", Field: "model", Value: cell.Model, Fallback: m, Normalized: true})
+		default:
+			out.Model = m
 		}
 	}
 	if e := strings.TrimSpace(cell.Effort); e != "" {
@@ -161,6 +170,14 @@ var (
 	sessionClaudeModels  = map[string]bool{"opus": true, "sonnet": true, "haiku": true, "fable": true}
 	sessionClaudeEfforts = map[string]bool{"low": true, "medium": true, "high": true, "xhigh": true}
 )
+
+// trimSessionModel strips leading and trailing whitespace and control
+// characters from a session model. config.Validate and the resolver both judge
+// the trimmed value, so they accept and refuse the same cells; interior
+// whitespace or control characters survive the trim and are refused.
+func trimSessionModel(m string) string {
+	return strings.TrimFunc(m, func(r rune) bool { return unicode.IsSpace(r) || unicode.IsControl(r) })
+}
 
 // sessionModelValid reports whether m is an acceptable session model for
 // backend: a Claude alias (cc) or slot alias (glm) from the closed set, or a
@@ -197,7 +214,7 @@ func validateSessionDefaults(cfg *Config) []ValidationError {
 		for _, role := range []string{SessionRoleLeader, SessionRoleLane} {
 			cell, _ := pair.role(role)
 			prefix := "llm.defaults.sessions." + backend + "." + role
-			m, e := strings.TrimSpace(cell.Model), strings.TrimSpace(cell.Effort)
+			m, e := trimSessionModel(cell.Model), strings.TrimSpace(cell.Effort)
 			if m != "" && !sessionModelValid(backend, m) {
 				switch backend {
 				case SessionBackendCodex:

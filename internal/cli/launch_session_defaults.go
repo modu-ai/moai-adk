@@ -57,11 +57,17 @@ func sessionLLMConfig(root string) config.LLMConfig {
 
 // warnSessionRejections writes one launcher warning per rejected llm.yaml
 // session cell of the given field ("" = every field): the key, the rejected
-// value, and the built-in default the launch uses instead. The launch
-// proceeds — an invalid cell never blocks it and never reaches argv or env.
+// value, and the built-in default the launch uses instead (or, for a model
+// normalized by trimming, the trimmed value it uses). The launch proceeds —
+// an invalid cell never blocks it and never reaches argv or env.
 func warnSessionRejections(rejected []config.SessionDefaultRejection, field string) {
 	for _, r := range rejected {
 		if field != "" && r.Field != field {
+			continue
+		}
+		if r.Normalized {
+			_, _ = fmt.Fprintf(launcherStderr, "Warning: %s %q has surrounding whitespace or control characters; using %q\n",
+				r.Key, r.Value, r.Fallback)
 			continue
 		}
 		_, _ = fmt.Fprintf(launcherStderr, "Warning: %s %q is not a valid session %s; using the built-in default %q\n",
