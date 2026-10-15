@@ -63,7 +63,7 @@ Leader ruling (cross-session message to lane-38): the 7 failures may go into the
 1. `TestCheckCodexWiring_Mirror*` x6 — card t1813; appears to depend on the real HOME `.agents`/`.codex` state (the leader's reading; not diagnosed by this lane).
 2. `TestHookEntryParity_NoDivergenceEitherDirection` — resolves with the t1775 landing.
 
-The skip is ONE anchored regex `^(…)$` carrying the 7 names plus the SessionWorktree exact-match names (41, from `go test ./internal/cli -list SessionWorktree`, which includes `TestEnterSessionWorktree_ProfileSubcommand`), as the dispatch required. Remeasure scope `./internal/cli`, `-timeout=150m`, output tee'd, `wc -l ~/.gitconfig` read immediately before and after.
+The skip is ONE anchored regex `^(…)$` carrying the 7 names plus the SessionWorktree exact-match names (43 — counted with `go test ./internal/cli -list SessionWorktree | grep -c '^Test'`; an earlier draft of this paragraph said 41 without counting, which was wrong — from `go test ./internal/cli -list SessionWorktree`, which includes `TestEnterSessionWorktree_ProfileSubcommand`), as the dispatch required. Remeasure scope `./internal/cli`, `-timeout=150m`, output tee'd, `wc -l ~/.gitconfig` read immediately before and after.
 
 ### A side — this card tree WITH the fix (HEAD `3ac641fc2`), `go test ./internal/cli -run 'Mirror|Parity|Doc' -v`, failure lines verbatim
 
@@ -122,5 +122,9 @@ The skip is ONE anchored regex `^(…)$` carrying the 7 names plus the SessionWo
 FAIL
 FAIL	github.com/modu-ai/moai-adk/internal/cli	1.362s
 ```
+
+### Two more names in the same `-skip` (leader message, no A/B run by this lane)
+
+`TestRunWeb_AutoEntryOn_SuppressesAdvisory` and `TestWorktreeNew_WiresTheSharedMaterializer` are added to the one regex at the leader's instruction: the leader states they write to the real `~/.gitconfig` (confirmed on the leader's side; cause count not computed). This lane did NOT run them and did NOT verify that claim — they are skipped on the leader's word, as a Gap, not as a measured fact. Both names exist (`go test ./internal/cli -list` printed both). Final skip regex = 43 SessionWorktree names + 7 carried + these 2 = 52 names (51 `|` separators in the saved pattern file).
 
 Both sides show the same 7 top-level failures with the same messages (the A side prints each message before its `--- FAIL` header because it came from a `-v` run; the B side from a plain run).
