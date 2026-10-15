@@ -480,17 +480,32 @@ func (h *sessionStartHandler) Handle(ctx context.Context, input *HookInput) (*Ho
 	}
 
 	if input.SessionID != "" && input.ProjectDir != "" {
+		sidecar := filepath.Join(input.ProjectDir, session.CurrentSideChannelFile)
+		// t1776: a side channel recording a DIFFERENT session id means
+		// `moai session current` will return the recorded (other) session —
+		// an agent attributing its work through it would credit the wrong
+		// session. The mismatch rides one NOTE line; the file is still
+		// overwritten below (last writer wins, unchanged contract).
+		attribution := fmt.Sprintf(
+			"moai session attribution: source_session_id=%s\n"+
+				"Use 'moai session current' to re-read this UUID after /clear or compaction.\n"+
+				"If unavailable, emit the canonical fallback via 'moai session current --show-fallback'.",
+			input.SessionID,
+		)
+		if prev, readErr := os.ReadFile(sidecar); readErr == nil {
+			if prevID := strings.TrimSpace(string(prev)); prevID != "" && prevID != input.SessionID {
+				attribution += fmt.Sprintf(
+					"\nNOTE: the recorded current session id (%s) differs from this session — "+
+						"'moai session current' returns the recorded one until this session writes it; "+
+						"attribute to source_session_id above only while it is current.",
+					prevID)
+			}
+		}
 		out.HookSpecificOutput = &HookSpecificOutput{
-			HookEventName: string(EventSessionStart),
-			AdditionalContext: fmt.Sprintf(
-				"moai session attribution: source_session_id=%s\n"+
-					"Use 'moai session current' to re-read this UUID after /clear or compaction.\n"+
-					"If unavailable, emit the canonical fallback via 'moai session current --show-fallback'.",
-				input.SessionID,
-			),
+			HookEventName:     string(EventSessionStart),
+			AdditionalContext: attribution,
 		}
 		// Side-channel file write (best-effort, non-blocking).
-		sidecar := filepath.Join(input.ProjectDir, session.CurrentSideChannelFile)
 		if writeErr := os.WriteFile(sidecar, []byte(input.SessionID), 0o600); writeErr != nil {
 			slog.Warn("session start: failed to write current-session-id side-channel file (non-blocking)",
 				"path", sidecar,
@@ -592,16 +607,33 @@ func (h *sessionStartHandler) Handle(ctx context.Context, input *HookInput) (*Ho
 	// nothing. It rides additionalContext alone — the lane session's
 	// orchestrator is the reader that executes it.
 	clock.lap("factory_rule")
-	if rule := factoryLaneRuleForSource(input.Source, operatorLang(h.cfg)); rule != "" {
+	// t1776: a codex session carrying the factory backend stamp without its
+	// lane stamps is a broken launch — the one-line stop rides the context
+	// and the lane rule is withheld (the model must not infer lane behavior).
+	failFast := codexLaneEnvFailFast()
+	if failFast == "" {
+		if rule := factoryLaneRuleForSource(input.Source, operatorLang(h.cfg)); rule != "" {
+			if out.HookSpecificOutput == nil {
+				out.HookSpecificOutput = &HookSpecificOutput{
+					HookEventName: string(EventSessionStart),
+				}
+			}
+			if out.HookSpecificOutput.AdditionalContext == "" {
+				out.HookSpecificOutput.AdditionalContext = rule
+			} else {
+				out.HookSpecificOutput.AdditionalContext += "\n\n" + rule
+			}
+		}
+	} else {
 		if out.HookSpecificOutput == nil {
 			out.HookSpecificOutput = &HookSpecificOutput{
 				HookEventName: string(EventSessionStart),
 			}
 		}
 		if out.HookSpecificOutput.AdditionalContext == "" {
-			out.HookSpecificOutput.AdditionalContext = rule
+			out.HookSpecificOutput.AdditionalContext = failFast
 		} else {
-			out.HookSpecificOutput.AdditionalContext += "\n\n" + rule
+			out.HookSpecificOutput.AdditionalContext += "\n\n" + failFast
 		}
 	}
 

@@ -192,6 +192,35 @@ func factoryLanesEnv() int {
 	return n
 }
 
+// codexLaneEnvFailFast is the t1776 one-line stop for a broken lane launch:
+// a session stamped with the Codex factory backend but missing its lane
+// stamps — the launcher writes the worker-label stamp and the run-id stamp
+// together with the backend stamp (codex_launcher.go), so a
+// missing one means the launch did not go through the lane door — gets ONE
+// agent-facing stop line instead of silence. The operator-measured failure:
+// an unstamped session inferred lane behavior by reading todo_auto*.go and
+// factory-dispatch*.md in full, burning the dispatch context before any
+// autonomous progress; the line forbids exactly that. Fully stamped lanes and
+// non-codex backends receive nothing.
+func codexLaneEnvFailFast() string {
+	if os.Getenv(config.EnvFactoryBackend) != factory.BackendGPT {
+		return ""
+	}
+	if os.Getenv(config.EnvMoaiFactoryWorker) != "" && os.Getenv(config.EnvFactoryRunID) != "" {
+		return ""
+	}
+	missing := config.EnvMoaiFactoryWorker
+	if os.Getenv(config.EnvMoaiFactoryWorker) != "" {
+		missing = config.EnvFactoryRunID
+	}
+	// REQ-SRL-009: the env names ride the config constants, never literals.
+	return fmt.Sprintf(
+		"MOAI factory lane launch is incomplete: %s=gpt but the lane stamps are not both set (%s, %s; empty: %s) — stop. "+
+			"Do not read the engine or the rule sources and do not infer lane behavior; "+
+			"report this line and relaunch through `moai codex -l`.",
+		config.EnvFactoryBackend, config.EnvMoaiFactoryWorker, config.EnvFactoryRunID, missing)
+}
+
 // factoryLeaderNotice is the factory leader branch. It carries, in order:
 // (a) the run id and the session name that must accompany it; (b) the one
 // lane-start sentence — to start a lane, enter `moai cc -l` (or `moai glm -l`,
