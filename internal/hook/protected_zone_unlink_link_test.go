@@ -203,11 +203,37 @@ func TestResolveZoneLinkTargetFinalComponentForms(t *testing.T) {
 	if forms := resolveZoneLinkTarget(root, filepath.Join("protected", "secret.md")); !inZone(forms) {
 		t.Errorf("regular zone file: no form resolves inside the zone, want protected/secret.md covered: %+v", forms)
 	}
-
 	if swept != 5 {
 		t.Fatalf("swept %d rows, want exactly 5", swept)
 	}
 	t.Logf("swept=%d", swept)
+}
+
+// TestZoneLinkTargetDefersToFullResolverWithoutExactEntry — repair round 14:
+// EXACT-MATCH-ONLY narrowing. The link's own judgment is complete only when
+// the operand's final component is byte-equal to an entry of the resolved
+// parent; every other spelling (fold/normalization/short-name variants,
+// nonexistent finals, listing failures) defers WHOLESALE to the full
+// resolver — the two semantics never mix for one operand, so
+// resolveZoneLinkTarget returns EXACTLY what resolveZoneTarget returns for
+// such an operand.
+func TestZoneLinkTargetDefersToFullResolverWithoutExactEntry(t *testing.T) {
+	root := newUnlinkLinkRoot(t)
+	prev := zoneGetwd
+	zoneGetwd = func() (string, error) { return root, nil }
+	t.Cleanup(func() { zoneGetwd = prev })
+
+	for _, raw := range []string{
+		filepath.Join("zonelink", "missing.md"), // nonexistent final
+		filepath.Join("zonelink", "SECRET.md"),  // case variant of a real entry
+		filepath.Join("zone_dir", "LINK_X"),     // case variant on the link name
+	} {
+		linkOwn := resolveZoneLinkTarget(root, raw)
+		full := resolveZoneTarget(root, raw)
+		if fmt.Sprint(linkOwn) != fmt.Sprint(full) {
+			t.Errorf("deferral: resolveZoneLinkTarget(%q) = %+v, resolveZoneTarget = %+v — no exact entry match must defer to the full resolver wholesale", raw, linkOwn, full)
+		}
+	}
 }
 
 // TestProtectedZoneShellUnlinkAbsoluteRootDotDot — the repair round: an
@@ -281,53 +307,47 @@ func TestZoneAbsOperandQuotedAndVolumeFree(t *testing.T) {
 	}
 }
 
-// TestZoneCanonicalDirEntryName — repair round 7 P1: on a case-insensitive
-// volume (NTFS, macOS default APFS) the directory entry's REAL name is the
-// one the zone manifest pins (`docs/Ä.txt`), while the operand may spell any
-// case (`ä.txt`); the link-own resolver preserves the RAW final name, so the
-// exact-entry zone form missed the alias. The lookup index folds UNICODE
-// case (simple-fold orbits — FoldZoneText folds ASCII only) over the
-// parent's real listing and substitutes the entry's real spelling; no
-// listing hit keeps the raw name. Repair round 13 ports the sweep from the
-// round-12 linear matcher to the O(1) index — same cells, same semantics.
-// Host-portable: the cells are pure over a names slice, and the ReadDir-
-// backed cell harvests names exactly the way the resolver does.
-func TestZoneCanonicalDirEntryName(t *testing.T) {
+// TestZoneNameIndexExactMembership — repair round 14: the narrowing is
+// EXACT-MATCH-ONLY. The index answers ONE question — is the operand's final
+// component byte-equal to a real entry of the resolved parent? — and every
+// non-exact spelling (fold/normalization/short-name variants, nonexistent
+// finals) defers to the full resolver; the rounds-11..13 fold/normalization
+// matcher cells are deleted with the machinery. Host-portable: the cells are
+// pure over a names slice, and the ReadDir-backed cell harvests names
+// exactly the way the resolver does.
+func TestZoneNameIndexExactMembership(t *testing.T) {
 	cells := []struct {
 		names []string
 		final string
-		want  string
+		want  bool
 	}{
-		{names: []string{"Ä.txt", "zz.md"}, final: "ä.txt", want: "Ä.txt"},
-		{names: []string{"Ä.txt", "zz.md"}, final: "ZZ.MD", want: "zz.md"},
-		{names: []string{"Ä.txt", "zz.md"}, final: "Ä.txt", want: "Ä.txt"},
-		{names: []string{"Ä.txt", "zz.md"}, final: "missing.txt", want: "missing.txt"},
-		{names: nil, final: "ä.txt", want: "ä.txt"},
-		{names: []string{"report~1.txt"}, final: "REPORT~1.TXT", want: "report~1.txt"},
-		// repair round 12 P1: the EXACT match wins before any fold — on a
-		// case-sensitive volume both spellings can exist, and a fold-first
-		// scan would canonicalize to whichever sibling the listing order hit
-		// first (the sibling is listed FIRST here to force the old defect:
-		// judging the unprotected spelling deletes the protected file)
-		{names: []string{"Ä.txt", "ä.txt"}, final: "ä.txt", want: "ä.txt"},
-		// the EqualFold boundary: locale fold pairs (ı/I — NTFS locale case
-		// tables equate them) are Unicode SIMPLE-fold misses, so the raw name
-		// is kept; windows closes that class structurally by deferring the
-		// narrowing (repair round 8), and the landing repair documents the
-		// same residual on POSIX case-insensitive volumes
-		{names: []string{"I.txt"}, final: "ı.txt", want: "ı.txt"},
+		// byte-equal entries match — including when a differently-cased
+		// sibling shares the listing (a case-sensitive volume can hold both)
+		{names: []string{"Ä.txt", "ä.txt"}, final: "ä.txt", want: true},
+		{names: []string{"Ä.txt", "ä.txt"}, final: "Ä.txt", want: true},
+		{names: []string{"secret.md", "zz.md"}, final: "secret.md", want: true},
+		// every variant spelling is NOT an exact match — those operands defer
+		// to the full resolver (round 14); the deleted fold matcher used to
+		// answer true for this one
+		{names: []string{"Ä.txt"}, final: "ä.txt", want: false},
+		{names: []string{"report~1.txt"}, final: "REPORT~1.TXT", want: false},
+		// locale fold pairs (ı/I — NTFS locale case tables equate them) are
+		// byte-inequal like any other variant: deferred, never link-own
+		{names: []string{"I.txt"}, final: "ı.txt", want: false},
+		{names: []string{"secret.md", "zz.md"}, final: "missing.txt", want: false},
+		{names: nil, final: "ä.txt", want: false},
 	}
 	if len(cells) == 0 {
-		t.Fatal("empty canonical-name cell list — the sweep would assert nothing")
+		t.Fatal("empty exact-membership cell list — the sweep would assert nothing")
 	}
-	t.Logf("canonical final-name sweep: %d cells", len(cells))
+	t.Logf("exact-membership sweep: %d cells", len(cells))
 	for _, tc := range cells {
-		if got := newZoneNameIndex(tc.names).lookup(tc.final); got != tc.want {
-			t.Errorf("canonical lookup(%q, %q) = %q, want %q", tc.names, tc.final, got, tc.want)
+		if got := newZoneNameIndex(tc.names).has(tc.final); got != tc.want {
+			t.Errorf("exact membership(%q, %q) = %v, want %v", tc.names, tc.final, got, tc.want)
 		}
 	}
 	// a real listing harvested the way the resolver does — os.ReadDir on the
-	// resolved parent — feeding the same matcher
+	// resolved parent — feeding the same index
 	dir := t.TempDir()
 	if err := os.WriteFile(filepath.Join(dir, "Ä.txt"), []byte("x"), 0o644); err != nil {
 		t.Fatal(err)
@@ -340,53 +360,12 @@ func TestZoneCanonicalDirEntryName(t *testing.T) {
 	for _, e := range entries {
 		names = append(names, e.Name())
 	}
-	if got := newZoneNameIndex(names).lookup("ä.txt"); got != "Ä.txt" {
-		t.Errorf("ReadDir-backed match: canonical lookup(%q, %q) = %q, want Ä.txt", names, "ä.txt", got)
+	idx := newZoneNameIndex(names)
+	if !idx.has("Ä.txt") {
+		t.Errorf("ReadDir-backed membership(%q, %q) = false, want true", names, "Ä.txt")
 	}
-}
-
-// zoneFakeDirEntry — a synthetic os.DirEntry for listings injected through
-// the zoneParentLister swap (both-case listings cannot coexist on darwin's
-// default APFS).
-type zoneFakeDirEntry struct{ name string }
-
-func (e zoneFakeDirEntry) Name() string               { return e.name }
-func (e zoneFakeDirEntry) IsDir() bool                { return false }
-func (e zoneFakeDirEntry) Type() os.FileMode          { return 0 }
-func (e zoneFakeDirEntry) Info() (os.FileInfo, error) { return nil, os.ErrNotExist }
-
-// TestZoneResolveParentKeepsRawAlongsideCanonical — repair round 12 P1: on
-// a case-sensitive volume both spellings can exist, so judging only the
-// canonicalized spelling would let `ä.txt` ride its sibling's verdict; the
-// resolver keeps the RAW final name as a form alongside the canonicalized
-// one and the zone-form dedup absorbs the identity. The synthetic listing
-// rides the zoneParentLister injection.
-func TestZoneResolveParentKeepsRawAlongsideCanonical(t *testing.T) {
-	root := newUnlinkLinkRoot(t)
-	prev := zoneParentLister
-	zoneParentLister = func(dir string) ([]os.DirEntry, error) {
-		return []os.DirEntry{
-			zoneFakeDirEntry{name: "secret.md"},
-			zoneFakeDirEntry{name: "zone-file.md"},
-			zoneFakeDirEntry{name: "Ä.txt"},
-		}, nil
-	}
-	t.Cleanup(func() { zoneParentLister = prev })
-	prevGetwd := zoneGetwd
-	zoneGetwd = func() (string, error) { return root, nil }
-	t.Cleanup(func() { zoneGetwd = prevGetwd })
-
-	forms := resolveZoneLinkTarget(root, filepath.Join("zonelink", "ä.txt"))
-	want := map[string]bool{"protected/Ä.txt": false, "protected/ä.txt": false}
-	for _, f := range forms {
-		if _, ok := want[f.Folded]; ok {
-			want[f.Folded] = true
-		}
-	}
-	for folded, seen := range want {
-		if !seen {
-			t.Errorf("raw-alongside: forms %+v miss %q — both spellings must judge", forms, folded)
-		}
+	if idx.has("ä.txt") {
+		t.Errorf("ReadDir-backed membership(%q, %q) = true, want false — a fold variant is not an exact match and defers to the full resolver", names, "ä.txt")
 	}
 }
 

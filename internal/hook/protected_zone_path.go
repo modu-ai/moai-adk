@@ -15,7 +15,6 @@ import (
 	"path/filepath"
 	"runtime"
 	"strings"
-	"unicode"
 
 	"github.com/modu-ai/moai-adk/internal/config"
 	"golang.org/x/text/unicode/norm"
@@ -334,7 +333,16 @@ func appendZoneForm(forms []zoneForm, rel string) []zoneForm {
 // name outside the zone while the shell deletes inside it (zoneResolveWalk).
 // The lexical arm is shared with resolveZoneTarget; only the filesystem arms
 // differ (parent-only resolution).
+//
+// REPAIR ROUND 14 — the narrowing is EXACT-MATCH-ONLY: it applies only when
+// the operand's final component is byte-equal to an entry of the resolved
+// parent's real listing (the precondition probe below). EVERYTHING else —
+// fold/normalization/short-name variants, nonexistent finals, LISTING
+// FAILURES — defers WHOLESALE to the FULL resolver (resolveZoneTarget for
+// the same operand): the two semantics never mix for one operand, and the
+// full resolver's EvalSymlinks canonicalization judges the real target.
 func resolveZoneLinkTarget(root, raw string, listings ...map[string]*zoneNameIndex) []zoneForm {
+	cache := listingCache(listings)
 	abs := zoneSlash(raw)
 	walk := zoneNativeSlash(raw)
 	if !zoneIsAbs(abs) {
@@ -348,6 +356,20 @@ func resolveZoneLinkTarget(root, raw string, listings ...map[string]*zoneNameInd
 			walk = zoneNativeSlash(cwd) + "/" + walk
 		}
 	}
+	native := filepath.FromSlash(walk)
+	// the EXACT-MATCH precondition gates the whole narrowing: no exact entry
+	// (or an unresolvable parent) means no link-own judgment at all
+	if root != "" && filepath.IsAbs(native) {
+		_, exact, ok := zoneResolveParent(native, cache)
+		if !ok {
+			return nil
+		}
+		if !exact {
+			return resolveZoneTarget(root, raw, cache)
+		}
+	} else {
+		return resolveZoneTarget(root, raw, cache)
+	}
 	var forms []zoneForm
 	add := func(rel string) {
 		forms = appendZoneForm(forms, rel)
@@ -355,17 +377,14 @@ func resolveZoneLinkTarget(root, raw string, listings ...map[string]*zoneNameInd
 	if rel, inside := zoneLexicalRel(root, abs); inside {
 		add(rel)
 	}
-	native := filepath.FromSlash(walk)
 	if root != "" && filepath.IsAbs(native) {
 		realRoot, ok := zoneResolve(filepath.FromSlash(zoneNativeSlash(root)))
 		if !ok {
 			realRoot = filepath.FromSlash(zoneNativeSlash(root))
 		}
-		if rejoined, ok := zoneResolveParent(native, listingCache(listings)); ok {
-			for _, realTarget := range rejoined {
-				if rel, inside := zoneLexicalRel(filepath.ToSlash(realRoot), filepath.ToSlash(realTarget)); inside {
-					add(rel)
-				}
+		if realTarget, _, ok := zoneResolveParent(native, cache); ok {
+			if rel, inside := zoneLexicalRel(filepath.ToSlash(realRoot), filepath.ToSlash(realTarget)); inside {
+				add(rel)
 			}
 		}
 	}
@@ -387,11 +406,15 @@ func resolveZoneLinkTarget(root, raw string, listings ...map[string]*zoneNameInd
 			if !ok {
 				realRoot = filepath.FromSlash(zoneSlash(root))
 			}
-			if rejoined, ok := zoneResolveParent(absRaw, listingCache(listings)); ok {
-				for _, realTarget := range rejoined {
-					if rel, inside := zoneLexicalRel(filepath.ToSlash(realRoot), filepath.ToSlash(realTarget)); inside {
-						add(rel)
-					}
+			realTarget, exact, ok2 := zoneResolveParent(absRaw, cache)
+			if ok2 && !exact {
+				// the backslash-literal reading names no real entry either —
+				// defer the operand wholesale (never mix semantics)
+				return resolveZoneTarget(root, raw, cache)
+			}
+			if ok2 {
+				if rel, inside := zoneLexicalRel(filepath.ToSlash(realRoot), filepath.ToSlash(realTarget)); inside {
+					add(rel)
 				}
 			}
 		}
@@ -399,23 +422,6 @@ func resolveZoneLinkTarget(root, raw string, listings ...map[string]*zoneNameInd
 	return forms
 }
 
-// zoneResolveParent resolves everything before the FINAL component of p and
-// rejoins that component as the link's own path (card t1712): the parent
-// prefix goes through the physical walk — never the EvalSymlinks fast path,
-// whose ".." handling is lexical — and the final name lands on the resolved
-// parent. The final NAME is canonicalized first from the parent's real
-// directory listing on ALL platforms (repair round 7 introduced it on
-// windows; the landing repair removed the gate — case-insensitive aliasing
-// is not a windows property: macOS default APFS behaves the same): an
-// operand spelled `ä.txt` meets the entry `Ä.txt` the zone manifest pins,
-// and FoldZoneText folds ASCII only, so the raw name missed the exact-entry
-// zone form. The match is Unicode case-insensitive (strings.EqualFold) and
-// NAME-only — the entry is never opened or followed; a listing failure
-// keeps the raw name. This also absorbs the 8.3 short-name case for entries
-// that exist, superseding the classifier's "~" guard for real listings
-// (which stays as a harmless extra gate). A "." or ".." final segment is not
-// a name the shell unlinks as itself; the caller routes those spellings to
-// the target-following judgment and this function refuses them.
 // zoneParentLister reads a resolved parent's directory entries — a package
 // var so tests can count listings (repair round 12 P2) and inject synthetic
 // listings a case-sensitive-shape darwin host cannot host (repair round 12
@@ -436,52 +442,40 @@ func listingCache(listings []map[string]*zoneNameIndex) map[string]*zoneNameInde
 }
 
 // zoneResolveParent resolves everything before the FINAL component of p and
-// rejoins that component as the link's own path (card t1712): the parent
-// prefix goes through the physical walk — never the EvalSymlinks fast path,
-// whose ".." handling is lexical — and the final name lands on the resolved
-// parent. The final NAME is canonicalized first from the parent's real
-// directory listing on ALL platforms (repair round 7 introduced it on
-// windows; the landing repair removed the gate — case-insensitive aliasing
-// is not a windows property: macOS default APFS behaves the same): an
-// operand spelled `ä.txt` meets the entry `Ä.txt` the zone manifest pins,
-// and FoldZoneText folds ASCII only, so the raw name missed the exact-entry
-// zone form. The match is Unicode case-insensitive (strings.EqualFold) and
-// NAME-only — the entry is never opened or followed; a listing failure
-// keeps the raw name. This also absorbs the 8.3 short-name case for entries
-// that exist, superseding the classifier's "~" guard for real listings
-// (which stays as a harmless extra gate). A "." or ".." final segment is not
-// a name the shell unlinks as itself; the caller routes those spellings to
-// the target-following judgment and this function refuses them.
+// rejoins that component (card t1712): the parent prefix goes through the
+// physical walk — never the EvalSymlinks fast path, whose ".." handling is
+// lexical — and the final name lands on the resolved parent.
+//
+// REPAIR ROUND 14 — EXACT-MATCH-ONLY narrowing, the generalization of the
+// round-8 windows answer to every aliasing mechanism at once (fold pairs,
+// NFC/NFD, 8.3 short names, locale case tables): the rejoined link-own
+// judgment is COMPLETE only when the final component is byte-equal to an
+// entry of the resolved parent's real listing — then the shell really
+// removes that entry and nothing behind it, and `exact` is true. EVERYTHING
+// else — no exact entry, a LISTING FAILURE (a readable=no writable=yes
+// parent must never keep a raw judgment), any listing error — reports
+// exact=false and the CALLER defers the operand to the FULL resolver
+// (resolveZoneTarget), whose EvalSymlinks canonicalization judges the real
+// target; the rounds-11..13 fold/normalization canonicalization machinery
+// is deleted. The rejoined path is still returned when exact=false because
+// the full resolver's own parent-resolution arm shares this helper (it
+// ignores the flag). A "." or ".." final segment is not a name the shell
+// unlinks as itself; the caller routes those spellings to the
+// target-following judgment and this function refuses them.
 //
 // The caller threads a per-guard-call LISTING CACHE (keyed by the resolved
 // parent path; nil disables caching) so N candidates sharing one parent read
 // the listing once (repair round 12 P2) — never carried across guard calls.
-// The returned rejoined paths carry the CANONICALIZED spelling FIRST and the
-// RAW spelling alongside when the two differ (repair round 12 P1): both
-// spellings judge, and the zone-form dedup absorbs the identity.
-func zoneResolveParent(p string, listings map[string]*zoneNameIndex) ([]string, bool) {
+func zoneResolveParent(p string, listings map[string]*zoneNameIndex) (string, bool, bool) {
 	dir, final := path.Split(filepath.ToSlash(p))
 	if dir == "" || final == "" || final == "." || final == ".." {
-		return nil, false
+		return "", false, false
 	}
 	windows := runtime.GOOS == "windows"
 	resolved, ok := zoneResolveWalk(filepath.FromSlash(dir), 0, windows)
 	if !ok {
-		return nil, false
+		return "", false, false
 	}
-	// Canonicalize the final NAME from the resolved parent's real listing on
-	// ALL platforms (card t1712 landing repair): the windows-only round-7
-	// gate missed the POSIX sibling of the same aliasing — a case-insensitive
-	// volume (macOS default APFS among them) answers an operand spelled
-	// `ä.txt` with the entry `Ä.txt` the manifest pins, and FoldZoneText
-	// folds ASCII only, so the exact-entry zone form missed the alias and
-	// the removal read allow. (1) On a CASE-SENSITIVE volume a fold-pair
-	// query may canonicalize to its existing differently-cased sibling — a
-	// deny-side over-block, accepted and documented (the safe direction);
-	// exact-only matches resolve to themselves and change nothing. (2) This
-	// subsumes the windows round-7 gate — 8.3-in-listing absorption now
-	// applies on windows through the same path. (3) A listing failure keeps
-	// the raw judgment, today's pre-canonicalization behavior.
 	var idx *zoneNameIndex
 	if cached, hit := listings[resolved]; hit {
 		idx = cached
@@ -495,83 +489,33 @@ func zoneResolveParent(p string, listings map[string]*zoneNameIndex) ([]string, 
 			listings[resolved] = idx
 		}
 	}
-	canonical := final
-	if idx != nil {
-		canonical = idx.lookup(final)
-	}
-	rejoined := []string{filepath.Join(resolved, filepath.FromSlash(canonical))}
-	if canonical != final {
-		// both spellings judge (repair round 12 P1): the raw spelling stays
-		// a form alongside the canonicalized one — the zone-form dedup
-		// absorbs the identity when the two coincide
-		rejoined = append(rejoined, filepath.Join(resolved, filepath.FromSlash(final)))
-	}
-	return rejoined, true
+	exact := idx != nil && idx.has(final)
+	return filepath.Join(resolved, filepath.FromSlash(final)), exact, true
 }
 
-// zoneNameIndex is the per-parent O(1) lookup index over a directory
-// listing (repair round 13 P2): a PreToolUse hook cannot afford 4,096
-// candidates × a 100,000-entry linear scan, so the canonical-name match is
-// indexed — the EXACT entry name and its Unicode simple-fold orbit key both
-// point at the entry — built once per resolved parent on first listing, in
-// the same zoneParentLister seam as the listing cache. Semantics are the
-// round-12 matcher's, exactly: the exact match wins before any fold (a
-// case-sensitive volume can hold both spellings, and a fold-first lookup
-// would judge whichever sibling inserted first); a fold-orbit match
-// canonicalizes; no match keeps the raw name.
+// zoneNameIndex is the per-parent O(1) EXACT-membership index over a
+// directory listing (repair round 13 P2, narrowed by repair round 14): the
+// link-own narrowing applies only when the operand's final component is
+// byte-equal to an entry of the resolved parent — the index answers that
+// membership in O(1), built once per resolved parent on first listing in
+// the same zoneParentLister seam as the listing cache. Every non-exact
+// spelling defers to the full resolver; no fold, normalization, or
+// short-name machinery exists here anymore (rounds 11-13 deleted).
 type zoneNameIndex struct {
-	exact  map[string]string
-	folded map[string]string
+	exact map[string]bool
 }
 
-// newZoneNameIndex builds the index over one parent's entry names. The
-// folded map keeps the FIRST entry per orbit key — the same first-hit
-// semantics the round-12 listing-order scan had.
+// newZoneNameIndex builds the exact-membership set over one parent's entry
+// names.
 func newZoneNameIndex(names []string) *zoneNameIndex {
-	idx := &zoneNameIndex{
-		exact:  make(map[string]string, len(names)),
-		folded: make(map[string]string, len(names)),
-	}
+	idx := &zoneNameIndex{exact: make(map[string]bool, len(names))}
 	for _, name := range names {
-		idx.exact[name] = name
-		key := zoneFoldKey(name)
-		if _, ok := idx.folded[key]; !ok {
-			idx.folded[key] = name
-		}
+		idx.exact[name] = true
 	}
 	return idx
 }
 
-// lookup returns the canonical entry spelling for final: the exact entry
-// when one exists, the first fold-orbit match otherwise, and final itself
-// when nothing matches. NAME-only — the entry is never opened or followed.
-func (idx *zoneNameIndex) lookup(final string) string {
-	if name, ok := idx.exact[final]; ok {
-		return name
-	}
-	if name, ok := idx.folded[zoneFoldKey(final)]; ok {
-		return name
-	}
-	return final
-}
-
-// zoneFoldKey maps every rune to the minimum rune of its Unicode
-// simple-fold orbit — exactly the relation strings.EqualFold accepts, so
-// index lookups match the reference scan without walking the listing.
-// Boundary kept from the matcher: locale case tables are not simple folds
-// (an ı/I pair NTFS equates stays unmatched here), the gap the windows
-// narrowing deferral (repair round 8) closes structurally on that platform.
-func zoneFoldKey(s string) string {
-	var b strings.Builder
-	b.Grow(len(s))
-	for _, r := range s {
-		min := r
-		for f := unicode.SimpleFold(r); f != r; f = unicode.SimpleFold(f) {
-			if f < min {
-				min = f
-			}
-		}
-		b.WriteRune(min)
-	}
-	return b.String()
+// has reports whether name is byte-equal to a real directory entry.
+func (idx *zoneNameIndex) has(name string) bool {
+	return idx.exact[name]
 }
