@@ -40,14 +40,14 @@ llm:
     glm:
         base_url: https://api.z.ai/api/anthropic
         models:
-            high: glm-5.3-flash
-            medium: glm-5.3-flash
+            high: glm-5.3
+            medium: glm-5.3
             low: glm-5.3-flash
             fable: glm-5.3
         effort:
             high: max
-            medium: max
-            low: max
+            medium: high
+            low: low
             fable: max
     default_model: ""
     quality_model: ""
