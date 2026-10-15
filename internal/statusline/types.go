@@ -293,7 +293,6 @@ type StatusData struct {
 	Directory         string         // Project directory name (e.g., "modu-saju")
 	OutputStyle       string         // Output style name (e.g., "Mr.Alfred", "R2-D2")
 	Task              TaskData       // Current active task (rendering enabled in Phase 4)
-	Usage             *UsageResult   // API usage (nil when unavailable)
 	RateLimits        *RateLimitInfo // Rate limit info from Claude Code (nil when unavailable)
 	Worktree          string         // Active git worktree path (empty string if none, REQ-CC297-003)
 	Effort            *EffortInfo    // Effort level from Claude Code v2.1.139+ (nil when unavailable, REQ-CC2122-001)
@@ -425,20 +424,6 @@ const (
 	// shouldShowHandoffGuide() preserved as helper — its output is now integrated
 	// into the CW bar as a " (/clear)" suffix at the model-class threshold.
 )
-
-// UsageData represents API usage information.
-type UsageData struct {
-	UsedTokens  int64   `json:"used_tokens"`
-	LimitTokens int64   `json:"limit_tokens"`
-	Percentage  float64 `json:"percentage"`          // 0-100
-	ResetsAt    string  `json:"resets_at,omitempty"` // ISO 8601 reset timestamp
-}
-
-// UsageResult represents 5-hour/7-day usage results.
-type UsageResult struct {
-	Usage5H *UsageData // 5-hour usage
-	Usage7D *UsageData // 7-day usage
-}
 
 // contextLevel represents the severity level for context window usage coloring.
 type contextLevel int

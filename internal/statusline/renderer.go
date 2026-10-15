@@ -500,32 +500,30 @@ func (r *Renderer) renderBarsInline(data *StatusData, width int) string {
 		segs = append(segs, bar)
 	}
 
-	// 5H bar - always shown, defaults to 0% when no data.
-	// Prefer RateLimits (from Claude Code v2.1.80+ statusline JSON) over Usage (MoAI API call).
+	// 5H bar - always shown; renders from the official stdin rate_limits
+	// (Claude Code 2.1.80+). With no stdin window the segment stays at the 0%
+	// default until the snapshot fallback lands (SPEC-STATUSLINE-OFFICIAL-
+	// USAGE-001 M3) — the network-era collector is removed (M1).
 	if r.isSegmentEnabled(SegmentUsage5H) {
 		pct5H := 0
 		var reset5H string
 		if data.RateLimits != nil && data.RateLimits.FiveHour != nil {
 			pct5H = int(data.RateLimits.FiveHour.UsedPercentage)
 			reset5H = formatResetTimeRelative(data.RateLimits.FiveHour.ResetsAt)
-		} else if data.Usage != nil && data.Usage.Usage5H != nil {
-			pct5H = int(data.Usage.Usage5H.Percentage)
-			reset5H = formatResetTimeRelative(data.Usage.Usage5H.ResetsAt)
 		}
 		segs = append(segs, renderUsageBarWithReset("5H:", pct5H, width, r.noColor, reset5H))
 	}
 
-	// 7D bar - always shown, defaults to 0% when no data.
-	// Prefer RateLimits (from Claude Code v2.1.80+ statusline JSON) over Usage (MoAI API call).
+	// 7D bar - always shown; renders from the official stdin rate_limits
+	// (Claude Code 2.1.80+). With no stdin window the segment stays at the 0%
+	// default until the snapshot fallback lands (SPEC-STATUSLINE-OFFICIAL-
+	// USAGE-001 M3) — the network-era collector is removed (M1).
 	if r.isSegmentEnabled(SegmentUsage7D) {
 		pct7D := 0
 		var reset7D string
 		if data.RateLimits != nil && data.RateLimits.SevenDay != nil {
 			pct7D = int(data.RateLimits.SevenDay.UsedPercentage)
 			reset7D = formatResetTimeAbsolute(data.RateLimits.SevenDay.ResetsAt)
-		} else if data.Usage != nil && data.Usage.Usage7D != nil {
-			pct7D = int(data.Usage.Usage7D.Percentage)
-			reset7D = formatResetTimeAbsolute(data.Usage.Usage7D.ResetsAt)
 		}
 		segs = append(segs, renderUsageBarWithReset("7D:", pct7D, width, r.noColor, reset7D))
 	}
@@ -928,7 +926,7 @@ func renderUsageBarWithReset(label string, pct int, width int, noColor bool, res
 
 // formatResetTimeRelative formats a reset time as "4h 30m", "1D, 4h 30m", or "30m".
 // Returns "rolling" if the reset time is zero, in the past, or unparseable.
-// Accepts either an ISO 8601 string (from UsageData) or Unix epoch int64 (from RateLimitWindow).
+// Accepts either an ISO 8601 string or Unix epoch int64 (from RateLimitWindow).
 func formatResetTimeRelative(resetTime interface{}) string {
 	t := parseResetTime(resetTime)
 	if t.IsZero() {
@@ -965,7 +963,7 @@ func formatResetTimeRelative(resetTime interface{}) string {
 
 // formatResetTimeAbsolute formats a reset time as "Jan 21" or "rolling".
 // Returns "rolling" (sliding window) if the reset time is zero or unparseable.
-// Accepts either an ISO 8601 string (from UsageData) or Unix epoch int64 (from RateLimitWindow).
+// Accepts either an ISO 8601 string or Unix epoch int64 (from RateLimitWindow).
 func formatResetTimeAbsolute(resetTime interface{}) string {
 	t := parseResetTime(resetTime)
 	if t.IsZero() {
@@ -979,7 +977,7 @@ func formatResetTimeAbsolute(resetTime interface{}) string {
 // parseResetTime converts a reset time value to time.Time.
 // Accepts:
 //   - int64: Unix epoch seconds (from Claude Code official statusline schema)
-//   - string: ISO 8601 / RFC 3339 timestamp (from MoAI API UsageData)
+//   - string: ISO 8601 / RFC 3339 timestamp
 //
 // Returns zero time on failure.
 func parseResetTime(resetTime interface{}) time.Time {

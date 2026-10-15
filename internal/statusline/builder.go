@@ -20,7 +20,6 @@ import (
 type defaultBuilder struct {
 	gitProvider    GitDataProvider
 	updateProvider UpdateProvider
-	usageProvider  UsageProvider // @MX:NOTE: [AUTO] API usage collection (Phase 5, REQ-V3-API-001)
 	renderer       *Renderer
 	mode           StatuslineMode
 	homeDir        string // Home directory for model cache (M2, AC-SF-002/003/004/005)
@@ -37,15 +36,11 @@ type Options struct {
 	// If nil, version will be read from config file automatically.
 	UpdateProvider UpdateProvider
 
-	// UsageProvider collects API usage (5H/7D). May be nil to skip.
-	// If nil, usage collection is disabled.
-	UsageProvider UsageProvider
-
 	// RootDir is the project root directory for auto-detecting git repo.
 	// If empty, current directory is used.
 	RootDir string
 
-	// HomeDir is the user's home directory for usage cache.
+	// HomeDir is the user's home directory for the model cache.
 	// If empty, os.UserHomeDir() is used.
 	HomeDir string
 
@@ -75,10 +70,9 @@ type Options struct {
 // If Mode is empty, defaults to ModeDefault.
 // If GitProvider is nil, attempts to open a git repository at RootDir (or ".") automatically.
 // If UpdateProvider is nil, attempts to read version from config file automatically.
-// If UsageProvider is nil, attempts to create usage collector automatically (Phase 5).
 //
 // @MX:ANCHOR: [AUTO] Public constructor for statusline package - all external callers create Builder through this function
-// @MX:REASON: [AUTO] Public API boundary; contains auto-detection logic (git/update/usage provider)
+// @MX:REASON: [AUTO] Public API boundary; contains auto-detection logic (git/update provider)
 func New(opts Options) Builder {
 	mode := opts.Mode
 	if mode == "" {
@@ -89,7 +83,6 @@ func New(opts Options) Builder {
 
 	gitProvider := opts.GitProvider
 	updateProvider := opts.UpdateProvider
-	usageProvider := opts.UsageProvider
 
 	// Auto-create git provider if not provided
 	if gitProvider == nil {
@@ -110,20 +103,12 @@ func New(opts Options) Builder {
 		slog.Debug("auto-created version collector for statusline")
 	}
 
-	// Auto-create usage provider if not provided (Phase 5, REQ-V3-API-001)
 	homeDir := opts.HomeDir
-	if usageProvider == nil {
-		if homeDir == "" {
-			// Auto-detect home directory (HOME-first via internal/paths)
-			if h, err := paths.Home(); err == nil {
-				homeDir = h
-			}
+	if homeDir == "" {
+		// Auto-detect home directory (HOME-first via internal/paths)
+		if h, err := paths.Home(); err == nil {
+			homeDir = h
 		}
-		if homeDir != "" {
-			usageProvider = NewUsageCollector(homeDir)
-			slog.Debug("auto-created usage collector for statusline")
-		}
-		// If home dir not found, continue without usage provider
 	}
 
 	renderer := NewRenderer(opts.ThemeName, opts.NoColor, opts.SegmentConfig)
@@ -132,7 +117,6 @@ func New(opts Options) Builder {
 	return &defaultBuilder{
 		gitProvider:    gitProvider,
 		updateProvider: updateProvider,
-		usageProvider:  usageProvider,
 		renderer:       renderer,
 		mode:           mode,
 		homeDir:        homeDir, // Store homeDir for model cache (M2)
@@ -157,7 +141,7 @@ func (b *defaultBuilder) Build(ctx context.Context, r io.Reader) (string, error)
 	// subagentStatusLine tasks[] array, the output contract is one JSON line
 	// per row — {"id","content"} — not the multi-line bar. Branch BEFORE
 	// collection: a row refresh needs none of the bar's collectors (git,
-	// usage, version), the 800ms render budget belongs to the row paint, and
+	// version), the 800ms render budget belongs to the row paint, and
 	// the context-usage snapshot is the main session's record, not a
 	// subagent's. Presence is the discriminator: an absent key decodes nil
 	// (ordinary payload → bar); a present `[]` decodes non-nil and takes the
@@ -178,8 +162,8 @@ func (b *defaultBuilder) Build(ctx context.Context, r io.Reader) (string, error)
 	// (REQ-THRESHOLD-009).
 	var sessionID string
 	// The record carries the windows the stdin itself supplied (SPEC-QUOTA-
-	// AWARE-SCHEDULING-001 REQ-QAS-001) — never data.RateLimits, which the
-	// usage provider may fill from a home-level cache fed by a network probe.
+	// AWARE-SCHEDULING-001 REQ-QAS-001) — the only official input, since the
+	// network-era usage collector is gone (SPEC-STATUSLINE-OFFICIAL-USAGE-001).
 	var limits *RateLimitInfo
 	if input != nil {
 		sessionID = input.SessionID
@@ -375,7 +359,6 @@ func (b *defaultBuilder) collectAll(ctx context.Context, input *StdinData) *Stat
 	var wg sync.WaitGroup
 	var gitResult *GitStatusData
 	var versionResult *VersionData
-	var usageResult *UsageResult // @MX:NOTE: [AUTO] Parallel API usage collection (Phase 5)
 
 	if b.gitProvider != nil {
 		wg.Go(func() {
@@ -399,21 +382,6 @@ func (b *defaultBuilder) collectAll(ctx context.Context, input *StdinData) *Stat
 		})
 	}
 
-	// API usage collection (Phase 5, REQ-V3-API-001).
-	// Skip when Claude Code (2.1.80+) already provided rate_limits via stdin:
-	// the blocking Anthropic OAuth API call (5s timeout) caused the statusline to
-	// intermittently exceed Claude Code's render budget and disappear. See issue #646.
-	if b.usageProvider != nil && (input == nil || input.RateLimits == nil) {
-		wg.Go(func() {
-			result, err := b.usageProvider.CollectUsage(ctx)
-			if err != nil {
-				slog.Debug("usage collection failed", "error", err)
-				return
-			}
-			usageResult = result
-		})
-	}
-
 	wg.Wait()
 
 	if gitResult != nil {
@@ -421,9 +389,6 @@ func (b *defaultBuilder) collectAll(ctx context.Context, input *StdinData) *Stat
 	}
 	if versionResult != nil {
 		data.Version = *versionResult
-	}
-	if usageResult != nil {
-		data.Usage = usageResult // @MX:NOTE: [AUTO] Usage data assignment (Phase 5)
 	}
 
 	return data
