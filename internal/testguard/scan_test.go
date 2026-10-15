@@ -225,8 +225,12 @@ func TestScanTree_ScansTestFilesAndSkipsTestdataAndNonTestFiles(t *testing.T) {
 	if res.Files != 2 {
 		t.Fatalf("ScanTree parsed %d test files; want 2 (a_test.go and c_test.go)", res.Files)
 	}
-	want := filepath.Join("internal", "a", "a_test.go")
+	// ScanTree returns slash paths on every OS, so the expectation is a literal.
+	want := "internal/a/a_test.go"
 	if len(res.Violations) != 1 || res.Violations[0].File != want {
 		t.Fatalf("ScanTree violations = %+v; want exactly one in %s", res.Violations, want)
+	}
+	if strings.Contains(res.Violations[0].File, `\`) {
+		t.Fatalf("ScanTree returned a backslash path %q; seed keys use slash paths", res.Violations[0].File)
 	}
 }

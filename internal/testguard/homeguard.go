@@ -171,11 +171,12 @@ func judgeSandbox(realHome, root string, seams []string) error {
 	tmp := resolveForGuard(os.TempDir())
 	rootR := resolveForGuard(root)
 	homeR := resolveForGuard(realHome)
-	if !filepath.IsAbs(root) || !within(rootR, tmp) || within(homeR, tmp) {
+	homeUnderTmp := within(homeR, tmp) || sameFileAncestor(realHome, os.TempDir())
+	if !filepath.IsAbs(root) || !within(rootR, tmp) || homeUnderTmp {
 		return base
 	}
 	for _, s := range seams {
-		if filepath.IsAbs(s) && within(resolveForGuard(s), rootR) && !within(homeR, resolveForGuard(s)) {
+		if !hasDotDotElement(s) && filepath.IsAbs(s) && within(resolveForGuard(s), rootR) && !within(homeR, resolveForGuard(s)) {
 			continue
 		}
 		if err := CheckSeamHomes(realHome, []string{s}); err != nil {
@@ -189,7 +190,11 @@ func judgeSandbox(realHome, root string, seams []string) error {
 // is unknown, or when any seam path is empty, relative, equal to realHome, or
 // located under realHome. A path is judged both as written and after its
 // symlinks are resolved, so a link into the real home is refused too. A path on
-// another volume is treated as outside.
+// another volume is treated as outside. A path element that is exactly ".." is
+// refused outright. Judgment also compares file identity (os.SameFile), so a
+// case alias on a case-insensitive filesystem is caught. A path that does not
+// exist yet is judged by its nearest existing ancestor, and where no ancestor
+// can be stat'ed only the string checks decide.
 func CheckSeamHomes(realHome string, seamPaths []string) error {
 	if strings.TrimSpace(realHome) == "" {
 		return errors.New("home guard: real home is empty; refusing to judge seam paths")
@@ -200,18 +205,56 @@ func CheckSeamHomes(realHome string, seamPaths []string) error {
 		if strings.TrimSpace(p) == "" {
 			return errors.New("home guard: a seam path is empty and would fall back to the real home")
 		}
+		if hasDotDotElement(p) {
+			return fmt.Errorf("home guard: seam path %q contains a \"..\" element; Clean would collapse it before symlinks resolve", p)
+		}
 		clean := filepath.Clean(p)
 		if !filepath.IsAbs(clean) {
 			return fmt.Errorf("home guard: seam path %q is relative and cannot be judged", p)
 		}
-		if within(clean, home) || within(resolveForGuard(clean), resolvedHome) {
+		if within(clean, home) || within(resolveForGuard(clean), resolvedHome) || sameFileAncestor(clean, home) {
 			return fmt.Errorf("home guard: seam path %q resolves inside the real home %q", p, realHome)
 		}
-		if within(home, clean) || within(resolvedHome, resolveForGuard(clean)) {
+		if within(home, clean) || within(resolvedHome, resolveForGuard(clean)) || sameFileAncestor(home, clean) {
 			return fmt.Errorf("home guard: seam path %q is above the real home %q", p, realHome)
 		}
 	}
 	return nil
+}
+
+// hasDotDotElement reports whether p has a path element that is exactly "..",
+// splitting on both '/' and the OS separator. Names that merely contain two dots
+// ("..moai", "a..b") are not matched.
+func hasDotDotElement(p string) bool {
+	for _, el := range strings.FieldsFunc(p, func(r rune) bool { return r == '/' || r == filepath.Separator }) {
+		if el == ".." {
+			return true
+		}
+	}
+	return false
+}
+
+// sameFileAncestor reports whether p, or any ancestor of p, is the same file
+// (os.SameFile) as ref. p need not exist: the walk starts at p and goes up with
+// filepath.Dir, so a missing path is judged by its nearest existing ancestor
+// (os.Stat fails on the missing parts and the walk continues). It stops at the
+// root. When ref itself cannot be stat'ed there is nothing to compare, and the
+// answer is false, leaving the decision to the string checks.
+func sameFileAncestor(p, ref string) bool {
+	refInfo, err := os.Stat(ref)
+	if err != nil {
+		return false
+	}
+	for cur := filepath.Clean(p); ; {
+		if info, err := os.Stat(cur); err == nil && os.SameFile(info, refInfo) {
+			return true
+		}
+		parent := filepath.Dir(cur)
+		if parent == cur {
+			return false
+		}
+		cur = parent
+	}
 }
 
 // within reports whether p equals home or lies beneath it. Both arguments are
