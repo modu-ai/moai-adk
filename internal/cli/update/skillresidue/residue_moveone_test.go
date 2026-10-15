@@ -10,16 +10,19 @@ import (
 )
 
 // TestMoveFileReferencesArePinned parses the package's non-test sources and counts
-// references to the moveFile seam by enclosing declaration. The registry row for
-// moveOne (internal/cli/update_destructive_registry.go) counts the single os.Rename
-// behind that seam; a new reference to moveFile is a new route to a rename, so it
-// must fail here and force the row to be reviewed.
+// every reference to the rename seam (moveFile) and to the single rename site
+// (moveOne), by enclosing declaration. The registry row for moveOne
+// (internal/cli/update_destructive_registry.go) counts the one os.Rename behind
+// them. A new reference to either name is a new route to a rename: the test fails
+// and forces that row to be reviewed. The declaration name of moveOne itself is not
+// a reference, so it is not counted.
 func TestMoveFileReferencesArePinned(t *testing.T) {
 	entries, err := os.ReadDir(".")
 	if err != nil {
 		t.Fatal(err)
 	}
 	fset := token.NewFileSet()
+	// got maps "name@owner" to a count, e.g. "moveFile@renameSkillFile".
 	got := map[string]int{}
 	for _, entry := range entries {
 		name := entry.Name()
@@ -32,27 +35,46 @@ func TestMoveFileReferencesArePinned(t *testing.T) {
 		}
 		for _, decl := range file.Decls {
 			owner := "package-level"
+			// Walk the function's signature and body, never its name: the name of
+			// moveOne is its declaration, not a reference to it.
+			nodes := []ast.Node{decl}
 			if fn, ok := decl.(*ast.FuncDecl); ok {
 				owner = fn.Name.Name
-			}
-			ast.Inspect(decl, func(n ast.Node) bool {
-				if id, ok := n.(*ast.Ident); ok && id.Name == "moveFile" {
-					got[owner]++
+				nodes = []ast.Node{fn.Type, fn.Body}
+				if fn.Recv != nil {
+					nodes = append(nodes, fn.Recv)
 				}
-				return true
-			})
+			}
+			for _, root := range nodes {
+				if root == nil {
+					continue
+				}
+				ast.Inspect(root, func(n ast.Node) bool {
+					if id, ok := n.(*ast.Ident); ok && (id.Name == "moveFile" || id.Name == "moveOne") {
+						got[id.Name+"@"+owner]++
+					}
+					return true
+				})
+			}
 		}
 	}
 
-	want := map[string]int{"package-level": 1, "renameSkillFile": 3}
-	for owner, n := range want {
-		if got[owner] != n {
-			t.Errorf("moveFile references in %s = %d, want %d", owner, got[owner], n)
+	// The only allowed references: moveFile is declared at package level (its name is
+	// the declaration, counted once) and renameSkillFile makes its three moves through
+	// it; moveOne is referenced once, as the value of the package-level declaration.
+	want := map[string]int{
+		"moveFile@package-level":   1,
+		"moveFile@renameSkillFile": 3,
+		"moveOne@package-level":    1,
+	}
+	for key, n := range want {
+		if got[key] != n {
+			t.Errorf("%s references = %d, want %d", key, got[key], n)
 		}
 	}
-	for owner, n := range got {
-		if _, ok := want[owner]; !ok {
-			t.Errorf("new moveFile reference in %s (%d): review the moveOne registry row", owner, n)
+	for key, n := range got {
+		if _, ok := want[key]; !ok {
+			t.Errorf("new reference %s (%d): review the moveOne registry row", key, n)
 		}
 	}
 }

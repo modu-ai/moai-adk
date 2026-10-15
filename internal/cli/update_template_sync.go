@@ -824,7 +824,17 @@ func runTemplateSyncWithReporter(cmd *cobra.Command, reporter project.ProgressRe
 				// M2: evaluator-profiles/ and astgrep-rules/ restore beside the section
 				// merge. A differing copy is kept as <name>.from-<stamp>, never written
 				// over the new template. A failure warns; the section restore succeeded.
-				unmanagedRefs, unmanagedErr := backup.RestoreUnmanagedConfigDirs(projectRoot, configBackupPath)
+				// F33: the same exclusion as the section restore above. A profile or
+				// astgrep rule the reconciliation archived and removed, or preserved,
+				// is not written back from the backup in this run.
+				unmanagedSkip := make(map[string]bool, len(reconSummary.ArchivedRemoved)+len(reconSummary.Preserved))
+				for _, a := range reconSummary.ArchivedRemoved {
+					unmanagedSkip[a] = true
+				}
+				for _, p := range reconSummary.Preserved {
+					unmanagedSkip[p] = true
+				}
+				unmanagedRefs, unmanagedErr := backup.RestoreUnmanagedConfigDirsSkipping(projectRoot, configBackupPath, func(refPath string) bool { return unmanagedSkip[refPath] })
 				if unmanagedErr != nil {
 					updateLedger.requiref(sevWarn, "unmanaged config restore failed: %v", unmanagedErr)
 				}

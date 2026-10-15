@@ -35,6 +35,15 @@ type UnmanagedRestoreRef struct {
 // stamp>. A missing file is restored outright, identical content is a no-op, and
 // a repeated run changes nothing.
 func RestoreUnmanagedConfigDirs(projectRoot, backupDir string) ([]UnmanagedRestoreRef, error) {
+	return RestoreUnmanagedConfigDirsSkipping(projectRoot, backupDir, nil)
+}
+
+// RestoreUnmanagedConfigDirsSkipping is RestoreUnmanagedConfigDirs with a skip
+// filter. skip receives the project-relative slash path of each backup file and
+// reports true for a file this run already archived, removed, or preserved; such a
+// file is not written back, so the restore cannot undo the reconciliation report
+// (the same exclusion the section restore applies). A nil skip restores everything.
+func RestoreUnmanagedConfigDirsSkipping(projectRoot, backupDir string, skip func(refPath string) bool) ([]UnmanagedRestoreRef, error) {
 	configDir := filepath.Join(projectRoot, defs.MoAIDir, defs.ConfigSubdir)
 	stamp := filepath.Base(filepath.Clean(backupDir))
 	var refs []UnmanagedRestoreRef
@@ -62,6 +71,9 @@ func RestoreUnmanagedConfigDirs(projectRoot, backupDir string) ([]UnmanagedResto
 				return err
 			}
 			refPath := filepath.ToSlash(rootRel)
+			if skip != nil && skip(refPath) {
+				return nil
+			}
 			// A refused target is recorded, not skipped: the report must name the
 			// file the restore did not write.
 			if !RestoreTargetContained(configDir, target) {
