@@ -60,7 +60,7 @@ func checkUserInstallIntegrity(homeDir string, verbose bool) DiagnosticCheck {
 		rootDirs[r.Slug] = r.Dir
 	}
 
-	missing, modified := 0, 0
+	verified, missing, modified, unverifiable := 0, 0, 0, 0
 	for key, fe := range m.Files {
 		slug, rel, ok := splitManifestKeyUser(key)
 		if !ok {
@@ -68,6 +68,14 @@ func checkUserInstallIntegrity(homeDir string, verbose bool) DiagnosticCheck {
 		}
 		dir, known := rootDirs[slug]
 		if !known {
+			// F3 (card t1702 audit iter4): a record under a root that is not
+			// currently enumerated (a deleted profile, say) was skipped
+			// while the summary still counted len(m.Files) as verified.
+			// Count it separately — never as verified.
+			unverifiable++
+			if verbose {
+				check.Detail += fmt.Sprintf("\nunverifiable (root not enumerated): %s", key)
+			}
 			continue
 		}
 		abs := filepath.Join(dir, filepath.FromSlash(rel))
@@ -85,7 +93,9 @@ func checkUserInstallIntegrity(homeDir string, verbose bool) DiagnosticCheck {
 			if verbose {
 				check.Detail += fmt.Sprintf("\nmodified: %s", key)
 			}
+			continue
 		}
+		verified++
 	}
 
 	untracked := countUntrackedUserFiles(rootList, m)
@@ -93,12 +103,18 @@ func checkUserInstallIntegrity(homeDir string, verbose bool) DiagnosticCheck {
 	case missing > 0 || modified > 0:
 		check.Status = uikit.CheckWarn
 		check.Message = fmt.Sprintf("%d manifest-tracked file(s) missing, %d modified — 'moai update' repairs manifest-hash matches; edits stay preserved", missing, modified)
+		if unverifiable > 0 {
+			check.Message += fmt.Sprintf("; %d record(s) under roots not currently enumerated — not counted as verified", unverifiable)
+		}
+	case unverifiable > 0:
+		check.Status = uikit.CheckWarn
+		check.Message = fmt.Sprintf("%d file(s) verified; %d record(s) under roots not currently enumerated (stale profile or unreadable store) — not counted as verified; 'moai update' reconciles", verified, unverifiable)
 	case untracked > 0:
 		check.Status = uikit.CheckOK
-		check.Message = fmt.Sprintf("%d file(s) verified; %d untracked file(s) in the user roots (informational, never removed)", len(m.Files)-missing, untracked)
+		check.Message = fmt.Sprintf("%d file(s) verified; %d untracked file(s) in the user roots (informational, never removed)", verified, untracked)
 	default:
 		check.Status = uikit.CheckOK
-		check.Message = fmt.Sprintf("%d file(s) verified", len(m.Files))
+		check.Message = fmt.Sprintf("%d file(s) verified", verified)
 	}
 	return check
 }

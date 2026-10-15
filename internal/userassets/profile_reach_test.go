@@ -18,6 +18,7 @@ import (
 	"testing/fstest"
 	"time"
 
+	"github.com/modu-ai/moai-adk/internal/config"
 	"github.com/modu-ai/moai-adk/internal/template"
 )
 
@@ -320,6 +321,25 @@ func TestValidProfileDirNameAndRootKind(t *testing.T) {
 	}
 	if got := RootKind(RootCodexAgents); got != RootCodexAgents {
 		t.Errorf("RootKind(codex-agents) = %q, want codex-agents", got)
+	}
+}
+
+// TestRootSlugConstantsMatchSharedTable pins the typed slug constants to
+// the shared fixed-root table in config (card t1702 audit iter4 F2): the
+// constants are typed aliases, the config table is the derivation source
+// both userassets and the hook derive from, and a value drift between the
+// two must turn this red.
+func TestRootSlugConstantsMatchSharedTable(t *testing.T) {
+	t.Parallel()
+	for slug, wantRel := range map[RootSlug]string{
+		RootClaudeSkills: ".claude/skills",
+		RootClaudeAgents: ".claude/agents",
+		RootAgentsSkills: ".agents/skills",
+		RootCodexAgents:  ".codex/agents",
+	} {
+		if rel, ok := config.UserRootSlugRel(string(slug)); !ok || rel != wantRel {
+			t.Errorf("slug %q derives to (%q, %v), want (%q, true)", slug, rel, ok, wantRel)
+		}
 	}
 }
 

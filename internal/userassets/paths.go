@@ -10,13 +10,10 @@
 package userassets
 
 import (
-	"errors"
-	"fmt"
-	"io/fs"
-	"os"
 	"path/filepath"
-	"sort"
 	"strings"
+
+	"github.com/modu-ai/moai-adk/internal/config"
 )
 
 // RootSlug names a user-folder root: one of the four fixed slugs, or a
@@ -31,12 +28,6 @@ const (
 	RootAgentsSkills RootSlug = "agents-skills" // $HOME/.agents/skills
 	RootCodexAgents  RootSlug = "codex-agents"  // ~/.codex/agents
 )
-
-// reservedProfileDirName is the sentinel directory name that is never a real
-// profile (card t1702): tooling creates it as a placeholder for "a profile
-// that does not exist", so a directory bearing it under the profile base is
-// junk by definition.
-const reservedProfileDirName = "__no_such_profile__"
 
 // Root is one resolved user-folder install root.
 type Root struct {
@@ -56,6 +47,8 @@ func RootKind(slug RootSlug) RootSlug {
 }
 
 // ProfileRootsBase returns the profile store base dir (~/.moai/claude-profiles).
+// The store path's single definition is config.UserProfileStoreRel — this
+// join is the typed seam over it (card t1702 audit iter4 F2).
 //
 // @MX:ANCHOR: [AUTO] profile-store base resolver — the single profile-base seam
 // @MX:REASON: three consumers (ResolveRoots, RealProfileDirNames,
@@ -63,60 +56,26 @@ func RootKind(slug RootSlug) RootSlug {
 // letting any of them re-derive the base independently would let a renamed
 // profile store silently fork the enumeration.
 func ProfileRootsBase(home string) string {
-	return filepath.Join(MoaiHome(home), "claude-profiles")
+	return filepath.Join(home, filepath.FromSlash(config.UserProfileStoreRel))
 }
 
-// ValidProfileDirName reports whether name can name a real profile directory
-// (card t1702): traversal-safe (no separators, no leading dot, not absolute),
-// whitespace-free, and not the reserved sentinel. Profile names carrying
-// spaces or sentinel shapes are junk a directory sweep can leave behind and
-// are never enumerated as install targets.
+// ValidProfileDirName reports whether name can name a real profile
+// directory (card t1702). The rule's single definition lives in config
+// (the shared derivation — card t1702 audit iter4 F2) so the hook's zone
+// guard applies the SAME junk filter; this wrapper keeps the userassets
+// API.
 func ValidProfileDirName(name string) bool {
-	if name == "" || name == "." || name == ".." {
-		return false
-	}
-	if strings.Contains(name, "/") || strings.Contains(name, "\\") || strings.HasPrefix(name, ".") {
-		return false
-	}
-	if filepath.IsAbs(name) {
-		return false
-	}
-	if strings.ContainsAny(name, " \t\n\r") {
-		return false
-	}
-	return name != reservedProfileDirName
+	return config.ValidProfileDirName(name)
 }
 
 // RealProfileDirNames returns the sorted names of the real profile
-// directories under the profile base. A missing base is the legitimate
-// empty store and yields (nil, nil); any OTHER ReadDir error (permissions,
-// I/O) yields a wrapped error naming the store path — swallowing it made
-// Install and prune finish "successfully" while nothing landed in the
-// actual profiles (card t1702 audit round 4). Entries that are not
-// directories or whose name fails ValidProfileDirName are ignored.
-//
-// @MX:ANCHOR: [AUTO] real-profile enumeration — the junk-filter SSOT
-// @MX:REASON: the install roots, the settings cleanup, and the doctor's
-// active-root summary all enumerate through this one predicate; a looser
-// copy elsewhere would start installing into (or cleaning) junk directories.
+// directories under the profile base: (nil, nil) when the base is missing
+// (the legitimate empty store), a wrapped error naming the store path for
+// any other read failure (card t1702 audit round 4). The enumeration and
+// its junk filter live in config — the single derivation shared with the
+// hook's zone guard (card t1702 audit iter4 F2).
 func RealProfileDirNames(home string) ([]string, error) {
-	base := ProfileRootsBase(home)
-	dirEntries, err := os.ReadDir(base)
-	if err != nil {
-		if errors.Is(err, fs.ErrNotExist) {
-			return nil, nil
-		}
-		return nil, fmt.Errorf("userassets: read profile store %s: %w", base, err)
-	}
-	var names []string
-	for _, e := range dirEntries {
-		if !e.IsDir() || !ValidProfileDirName(e.Name()) {
-			continue
-		}
-		names = append(names, e.Name())
-	}
-	sort.Strings(names)
-	return names, nil
+	return config.UserProfileDirNames(home)
 }
 
 // ClaudeConfigRoots returns every Claude config directory a session can use
@@ -142,14 +101,14 @@ func ClaudeConfigRoots(home string) ([]string, error) {
 }
 
 // fixedRoots returns the four home-level install roots — the roots that
-// resolve regardless of the profile store's state.
+// resolve regardless of the profile store's state. Derived from the shared
+// fixed-root table in config (card t1702 audit iter4 F2).
 func fixedRoots(home string) []Root {
-	return []Root{
-		{Slug: RootClaudeSkills, Dir: filepath.Join(home, ".claude", "skills")},
-		{Slug: RootClaudeAgents, Dir: filepath.Join(home, ".claude", "agents")},
-		{Slug: RootAgentsSkills, Dir: filepath.Join(home, ".agents", "skills")},
-		{Slug: RootCodexAgents, Dir: filepath.Join(home, ".codex", "agents")},
+	var roots []Root
+	for _, r := range config.UserRootFixedDirs() {
+		roots = append(roots, Root{Slug: RootSlug(r.Slug), Dir: filepath.Join(home, filepath.FromSlash(r.Rel))})
 	}
+	return roots
 }
 
 // ResolveRoots returns the install roots under the given home: the four
@@ -164,17 +123,21 @@ func fixedRoots(home string) []Root {
 // exist" would produce (card t1702 audit round 4).
 func ResolveRoots(home string) ([]Root, error) {
 	roots := fixedRoots(home)
-	base := ProfileRootsBase(home)
 	names, err := RealProfileDirNames(home)
 	if err != nil {
 		return nil, err
 	}
 	for _, name := range names {
-		pdir := filepath.Join(base, name)
-		roots = append(roots,
-			Root{Slug: RootSlug(string(RootClaudeSkills) + "@" + name), Dir: filepath.Join(pdir, "skills")},
-			Root{Slug: RootSlug(string(RootClaudeAgents) + "@" + name), Dir: filepath.Join(pdir, "agents")},
-		)
+		// The slug→directory derivation is config.UserRootSlugRel — the one
+		// rule the hook's zone guard applies too (card t1702 audit iter4 F2).
+		for _, b := range config.UserRootProfileBases() {
+			slug := RootSlug(b.Slug + "@" + name)
+			rel, ok := config.UserRootSlugRel(string(slug))
+			if !ok {
+				continue // unreachable: name passed the same filter upstream
+			}
+			roots = append(roots, Root{Slug: slug, Dir: filepath.Join(home, filepath.FromSlash(rel))})
+		}
 	}
 	return roots, nil
 }
@@ -189,33 +152,31 @@ func RootBySlugDir(home string, slug RootSlug) string {
 	return r.Dir
 }
 
-// RootBySlug returns the root with the given slug. The four fixed roots
-// resolve without touching the profile store; a profile-derived slug
-// resolves only through a successful enumeration — an unreadable store
+// RootBySlug returns the root with the given slug. The slug→directory rule
+// is config.UserRootSlugRel — the one shared derivation; a fixed slug
+// resolves without touching the profile store, a profile-derived slug
+// resolves only through a successful enumeration. An unreadable store
 // reports the slug as not-found, which every caller treats as the
 // conservative refusal (the cli migration gate keeps the project file),
 // never as a license to re-derive the directory independently (card t1702
-// audit round 4).
+// audit rounds 4 and iter4 F2).
 func RootBySlug(home string, slug RootSlug) (Root, bool) {
-	for _, r := range fixedRoots(home) {
-		if r.Slug == slug {
-			return r, true
-		}
-	}
-	if _, _, found := strings.Cut(string(slug), "@"); !found {
+	rel, ok := config.UserRootSlugRel(string(slug))
+	if !ok {
 		return Root{}, false
+	}
+	dir := filepath.Join(home, filepath.FromSlash(rel))
+	if _, _, found := strings.Cut(string(slug), "@"); !found {
+		return Root{Slug: slug, Dir: dir}, true
 	}
 	names, err := RealProfileDirNames(home)
 	if err != nil {
 		return Root{}, false
 	}
-	base := ProfileRootsBase(home)
-	for _, name := range names {
-		switch slug {
-		case RootSlug(string(RootClaudeSkills) + "@" + name):
-			return Root{Slug: slug, Dir: filepath.Join(base, name, "skills")}, true
-		case RootSlug(string(RootClaudeAgents) + "@" + name):
-			return Root{Slug: slug, Dir: filepath.Join(base, name, "agents")}, true
+	_, profile, _ := strings.Cut(string(slug), "@")
+	for _, n := range names {
+		if n == profile {
+			return Root{Slug: slug, Dir: dir}, true
 		}
 	}
 	return Root{}, false

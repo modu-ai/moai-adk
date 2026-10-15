@@ -4,6 +4,7 @@
 package cli
 
 import (
+	"fmt"
 	"os"
 	"path/filepath"
 	"runtime"
@@ -12,6 +13,7 @@ import (
 
 	"github.com/modu-ai/moai-adk/internal/cli/uikit"
 	"github.com/modu-ai/moai-adk/internal/manifest"
+	"github.com/modu-ai/moai-adk/internal/userassets"
 )
 
 // TestDoctorUserInstallDetectsDrift covers REQ-014's three detection arms:
@@ -89,6 +91,39 @@ func TestDoctorUserInstallWarnsOnUnreadableProfileStore(t *testing.T) {
 	}
 	if !strings.Contains(check.Message, "cannot enumerate") || !strings.Contains(check.Message, store) {
 		t.Errorf("warn should name the enumeration failure and the store path: %q", check.Message)
+	}
+}
+
+// TestDoctorUserInstallUnenumeratedRootNotCountedVerified pins F3 (card
+// t1702 audit iter4): manifest records under a root that is not currently
+// enumerated (a deleted profile) are reported as unverifiable — never
+// counted inside the "file(s) verified" total.
+func TestDoctorUserInstallUnenumeratedRootNotCountedVerified(t *testing.T) {
+	home := t.TempDir()
+	if err := ensureUserAssetsLocked(home, nil, &strings.Builder{}); err != nil {
+		t.Fatalf("ensure: %v", err)
+	}
+	// A record under a profile slug that no longer enumerates ("ghost" has
+	// no directory under the profile store).
+	m, err := userassets.Load(userassets.ManifestPath(home))
+	if err != nil {
+		t.Fatalf("load manifest: %v", err)
+	}
+	installed := len(m.Files)
+	m.Files["claude-skills@ghost/moai/SKILL.md"] = userassets.FileEntry{SHA256: "deadbeef", Bundle: "core"}
+	if err := m.Save(userassets.ManifestPath(home)); err != nil {
+		t.Fatalf("save manifest: %v", err)
+	}
+
+	check := checkUserInstallIntegrity(home, false)
+	if check.Status != uikit.CheckWarn {
+		t.Fatalf("a record under an unenumerated root must WARN, got %v: %s", check.Status, check.Message)
+	}
+	if !strings.Contains(check.Message, "not currently enumerated") || !strings.Contains(check.Message, "1 record") {
+		t.Errorf("warn should name the unverifiable record separately: %q", check.Message)
+	}
+	if !strings.Contains(check.Message, fmt.Sprintf("%d file(s) verified", installed)) {
+		t.Errorf("verified count must cover only the enumerated records (%d): %q", installed, check.Message)
 	}
 }
 
