@@ -52,6 +52,12 @@ entries:
     measure: fired-at-all
 
   - kind: github-workflow
+    locator: .github/workflows/claude-code-review.yml
+    events: [pull_request]
+    window: 30d
+    measure: fired-at-all
+
+  - kind: github-workflow
     locator: .github/workflows/codeql.yml
     events: [push, pull_request, schedule]
     window: 14d
