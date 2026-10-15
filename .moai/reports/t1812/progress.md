@@ -55,3 +55,72 @@ Failing: `TestCheckCodexWiring_{DanglingMirrorEntriesCounted,MirrorAbsentAdvises
 A/B: with my two test files stashed (tracked edits only), the same 7 tests, run by name, fail with identical messages. So they are independent of this card's change. Not diagnosed further: cause (Codex mirror = host `~/.codex` state is a candidate; hook parity = project settings vs template drift) — a separate card, not t1812.
 
 Gaps: the full `./internal/cli` suite (SessionWorktree skip) was not run — the go-test-heavy slot turn is lane-38's last; the change is test-only in 2 files covered by the targeted runs above. The subset's remaining tests other than the 7 passed in the same run (only the 7 `--- FAIL` top-level names appear).
+
+## §5 Landing record: carried-failure `-skip` (leader ruling, d8 cause units)
+
+Leader ruling (cross-session message to lane-38): the 7 failures may go into the remeasure `-skip`; brain interpretation d8 (cause unit proven by A/B, cap 3) fits. Two cause units, both already carded, no new card:
+
+1. `TestCheckCodexWiring_Mirror*` x6 — card t1813; appears to depend on the real HOME `.agents`/`.codex` state (the leader's reading; not diagnosed by this lane).
+2. `TestHookEntryParity_NoDivergenceEitherDirection` — resolves with the t1775 landing.
+
+The skip is ONE anchored regex `^(…)$` carrying the 7 names plus the SessionWorktree exact-match names (41, from `go test ./internal/cli -list SessionWorktree`, which includes `TestEnterSessionWorktree_ProfileSubcommand`), as the dispatch required. Remeasure scope `./internal/cli`, `-timeout=150m`, output tee'd, `wc -l ~/.gitconfig` read immediately before and after.
+
+### A side — this card tree WITH the fix (HEAD `3ac641fc2`), `go test ./internal/cli -run 'Mirror|Parity|Doc' -v`, failure lines verbatim
+
+```
+    doctor_codex_test.go:1267: absent mirror on a wired project status = ok, want Warn: {Name:Codex Wiring Status:ok Message:wired and consistent (hooks valid, sidecar matches, moai on PATH, config canonical) Detail:}
+--- FAIL: TestCheckCodexWiring_MirrorAbsentAdvisesRedeploy (0.01s)
+    doctor_codex_test.go:1292: dangling entries status = ok, want Warn: {Name:Codex Wiring Status:ok Message:wired and consistent (hooks valid, sidecar matches, moai on PATH, config canonical) Detail:}
+--- FAIL: TestCheckCodexWiring_DanglingMirrorEntriesCounted (0.01s)
+    doctor_codex_test.go:1437: Detail does not record the indeterminate condition: ""
+--- FAIL: TestCheckCodexWiring_MirrorUnreadableIndeterminate (0.01s)
+    doctor_codex_test.go:1467: premise broken — expected exactly one mirror finding: {Name:Codex Wiring Status:ok Message:wired and consistent (hooks valid, sidecar matches, moai on PATH, config canonical) Detail:}
+    doctor_codex_test.go:1467: premise broken — expected exactly one mirror finding: {Name:Codex Wiring Status:ok Message:wired and consistent (hooks valid, sidecar matches, moai on PATH, config canonical) Detail:}
+--- FAIL: TestCheckCodexWiring_MirrorSummaryWidth (0.02s)
+    --- FAIL: TestCheckCodexWiring_MirrorSummaryWidth/absent (0.01s)
+    --- FAIL: TestCheckCodexWiring_MirrorSummaryWidth/dangling (0.01s)
+    doctor_codex_test.go:1523: premise broken — the joined summaries did not exceed 113 runes, so no tail-drop occurred: "~/.codex/config.toml: 1 stale skill entry"
+    doctor_codex_test.go:1553: premise broken — expected the lone mirror finding: {Name:Codex Wiring Status:ok Message:wired and consistent (hooks valid, sidecar matches, moai on PATH, config canonical) Detail:}
+--- FAIL: TestCheckCodexWiring_MirrorFindingParticipatesInTailDrop (0.02s)
+    --- FAIL: TestCheckCodexWiring_MirrorFindingParticipatesInTailDrop/tail_drop_keeps_the_lead_and_detail_keeps_everything (0.01s)
+    --- FAIL: TestCheckCodexWiring_MirrorFindingParticipatesInTailDrop/lead_summary_exception_stays_unreachable_for_mirror_summaries (0.01s)
+    doctor_codex_test.go:1578: summary register empty of the mirror observation: "wired and consistent (hooks valid, sidecar matches, moai on PATH, config canonical)"
+    doctor_codex_test.go:1581: detail register carries no fuller mirror text: ""
+--- FAIL: TestCheckCodexWiring_MirrorUsesExistingRowTwoRegisters (0.01s)
+    hook_entry_parity_test.go:172: template-only (registered in the template, missing from this project): UserPromptSubmit/handle-user-prompt-submit.sh timeout=5 async=false
+    hook_entry_parity_test.go:175: project-only (registered in this project, absent from the template): UserPromptSubmit/handle-user-prompt-submit.sh timeout=15 async=false
+    hook_entry_parity_test.go:178: hook-entry parity: 1 template-only, 1 project-only
+--- FAIL: TestHookEntryParity_NoDivergenceEitherDirection (0.00s)
+```
+
+### B side — base test files (the two t1812 test edits stashed; production identical), the 7 names run by `-run`, verbatim
+
+```
+--- FAIL: TestCheckCodexWiring_MirrorAbsentAdvisesRedeploy (0.01s)
+    doctor_codex_test.go:1267: absent mirror on a wired project status = ok, want Warn: {Name:Codex Wiring Status:ok Message:wired and consistent (hooks valid, sidecar matches, moai on PATH, config canonical) Detail:}
+--- FAIL: TestCheckCodexWiring_DanglingMirrorEntriesCounted (0.01s)
+    doctor_codex_test.go:1292: dangling entries status = ok, want Warn: {Name:Codex Wiring Status:ok Message:wired and consistent (hooks valid, sidecar matches, moai on PATH, config canonical) Detail:}
+--- FAIL: TestCheckCodexWiring_MirrorUnreadableIndeterminate (0.01s)
+    doctor_codex_test.go:1437: Detail does not record the indeterminate condition: ""
+--- FAIL: TestCheckCodexWiring_MirrorSummaryWidth (0.02s)
+    --- FAIL: TestCheckCodexWiring_MirrorSummaryWidth/absent (0.01s)
+        doctor_codex_test.go:1467: premise broken — expected exactly one mirror finding: {Name:Codex Wiring Status:ok Message:wired and consistent (hooks valid, sidecar matches, moai on PATH, config canonical) Detail:}
+    --- FAIL: TestCheckCodexWiring_MirrorSummaryWidth/dangling (0.01s)
+        doctor_codex_test.go:1467: premise broken — expected exactly one mirror finding: {Name:Codex Wiring Status:ok Message:wired and consistent (hooks valid, sidecar matches, moai on PATH, config canonical) Detail:}
+--- FAIL: TestCheckCodexWiring_MirrorFindingParticipatesInTailDrop (0.02s)
+    --- FAIL: TestCheckCodexWiring_MirrorFindingParticipatesInTailDrop/tail_drop_keeps_the_lead_and_detail_keeps_everything (0.01s)
+        doctor_codex_test.go:1523: premise broken — the joined summaries did not exceed 113 runes, so no tail-drop occurred: "~/.codex/config.toml: 1 stale skill entry"
+    --- FAIL: TestCheckCodexWiring_MirrorFindingParticipatesInTailDrop/lead_summary_exception_stays_unreachable_for_mirror_summaries (0.01s)
+        doctor_codex_test.go:1553: premise broken — expected the lone mirror finding: {Name:Codex Wiring Status:ok Message:wired and consistent (hooks valid, sidecar matches, moai on PATH, config canonical) Detail:}
+--- FAIL: TestCheckCodexWiring_MirrorUsesExistingRowTwoRegisters (0.01s)
+    doctor_codex_test.go:1578: summary register empty of the mirror observation: "wired and consistent (hooks valid, sidecar matches, moai on PATH, config canonical)"
+    doctor_codex_test.go:1581: detail register carries no fuller mirror text: ""
+--- FAIL: TestHookEntryParity_NoDivergenceEitherDirection (0.01s)
+    hook_entry_parity_test.go:172: template-only (registered in the template, missing from this project): UserPromptSubmit/handle-user-prompt-submit.sh timeout=5 async=false
+    hook_entry_parity_test.go:175: project-only (registered in this project, absent from the template): UserPromptSubmit/handle-user-prompt-submit.sh timeout=15 async=false
+    hook_entry_parity_test.go:178: hook-entry parity: 1 template-only, 1 project-only
+FAIL
+FAIL	github.com/modu-ai/moai-adk/internal/cli	1.362s
+```
+
+Both sides show the same 7 top-level failures with the same messages (the A side prints each message before its `--- FAIL` header because it came from a `-v` run; the B side from a plain run).
