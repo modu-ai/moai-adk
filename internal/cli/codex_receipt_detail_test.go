@@ -6,6 +6,9 @@ import (
 	"strings"
 	"testing"
 	"time"
+
+	"github.com/modu-ai/moai-adk/internal/auditreceipt"
+	"github.com/modu-ai/moai-adk/internal/config"
 )
 
 // The detail names the cause of an inconclusive codex verdict and carries the
@@ -104,5 +107,57 @@ func TestCodexConnCloseDoesNotWaitForOrphanedStderr(t *testing.T) {
 	}
 	if tail := c.stderr.tail(codexErrorTailBytes); !strings.Contains(tail, "ready") {
 		t.Fatalf("the capture lost the child's stderr: %q", tail)
+	}
+}
+
+// A required codex gate turns an inconclusive verdict into fail before the receipt is
+// written (applyGateUnmet). The receipt must still carry the no-verdict cause and the
+// stderr tail: they are why the verdict was empty (t1788, review P2).
+func TestCodexAudit_RequiredGateReceiptKeepsCauseAndStderrTail(t *testing.T) {
+	root := newProbeProject(t, "SPEC-CAGRECEIPT-005")
+	writeCodexAuditGate(t, root, config.AuditGateRequired)
+	prevLook, prevRPC := codexLookPath, codexReviewRPC
+	codexLookPath = func(string) (string, error) { return "/fake/codex", nil }
+	codexReviewRPC = func(context.Context, string, string, map[string]any) (ReviewOutput, error) {
+		out := inconclusiveReview("codex stdout closed before response to id=1")
+		out.StderrTail = "approval request failed"
+		return out, nil
+	}
+	t.Cleanup(func() { codexLookPath, codexReviewRPC = prevLook, prevRPC })
+
+	got := structuredMap(t, callToolCodexAudit(t, map[string]any{"project_root": root}))
+	id, _ := got["audit_receipt"].(string)
+	if id == "" {
+		t.Fatalf("a required-gate block must expose its receipt id, got result %v", got)
+	}
+	r, err := auditreceipt.ReadReceipt(root, id)
+	if err != nil {
+		t.Fatalf("ReadReceipt %s: %v", id, err)
+	}
+	if !strings.Contains(r.CodexError, "codex stdout closed before response to id=1") {
+		t.Errorf("receipt codex_error = %q, want the no-verdict cause kept under the required gate", r.CodexError)
+	}
+	if !strings.Contains(r.CodexError, "approval request failed") {
+		t.Errorf("receipt codex_error = %q, want the stderr tail kept under the required gate", r.CodexError)
+	}
+}
+
+// A codex child that exits before the handshake answers leaves its reason on stderr.
+// The failed-open path closes the child first, so the tail is read after the close and
+// carried on the review output (t1788, review P2).
+func TestCodexReviewStderrTailSurvivesFailedOpen(t *testing.T) {
+	if runtime.GOOS == "windows" {
+		t.Skip("the failing-child shape needs a POSIX shell")
+	}
+	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+	defer cancel()
+	// /bin/sh runs with the app-server subcommand as its script name, so it fails before
+	// it can answer the handshake and names that subcommand on stderr.
+	out, _ := runCodexReviewRPCResolved(ctx, "/bin/sh", codexMethodReviewStart, map[string]any{}, nil)
+	if out.Verdict != VerdictInconclusive {
+		t.Fatalf("verdict = %q, want inconclusive when the session never opens", out.Verdict)
+	}
+	if !strings.Contains(out.StderrTail, codexAppServerSubcmd) {
+		t.Fatalf("stderr tail = %q, want the child's stderr to name %q", out.StderrTail, codexAppServerSubcmd)
 	}
 }
