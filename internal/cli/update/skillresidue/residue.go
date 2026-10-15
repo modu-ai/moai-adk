@@ -179,8 +179,12 @@ func retiredLinkPresent(projectRoot, name string) (bool, error) {
 	return filepath.Clean(resolved) == filepath.Join(projectRoot, ".claude", "skills", name), nil
 }
 
-// moveFile is os.Rename. A test replaces it to make one move fail on any filesystem.
-var moveFile = os.Rename
+// moveOne is the only os.Rename call in this package. Every move goes through it,
+// so the registry's destructive-target scan sees one site, not an aliased name.
+func moveOne(from, to string) error { return os.Rename(from, to) }
+
+// moveFile is moveOne. A test replaces it to make one move fail on any filesystem.
+var moveFile = moveOne
 
 // renameSkillFile renames skill.md to SKILL.md through a temporary name, so the
 // change also holds on a case-insensitive filesystem.
