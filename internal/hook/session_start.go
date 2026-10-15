@@ -494,11 +494,15 @@ func (h *sessionStartHandler) Handle(ctx context.Context, input *HookInput) (*Ho
 		)
 		if prev, readErr := os.ReadFile(sidecar); readErr == nil {
 			if prevID := strings.TrimSpace(string(prev)); prevID != "" && prevID != input.SessionID {
+				// Truthful phrasing (card t1776 audit round-1): the write
+				// below replaces the side channel, and the resolver prefers
+				// the per-process env var anyway — the notice describes the
+				// PRE-state, never what `moai session current` will return.
 				attribution += fmt.Sprintf(
-					"\nNOTE: the recorded current session id (%s) differs from this session — "+
-						"'moai session current' returns the recorded one until this session writes it; "+
-						"attribute to source_session_id above only while it is current.",
-					prevID)
+					"\nNOTE: before this session started, the current-session record held %s; "+
+						"this session has overwritten it. If any earlier tool output still names %s, "+
+						"attribute to the source_session_id above instead.",
+					prevID, prevID)
 			}
 		}
 		out.HookSpecificOutput = &HookSpecificOutput{

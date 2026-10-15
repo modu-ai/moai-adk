@@ -44,8 +44,11 @@ func TestSessionStartAttributionMismatchNotice(t *testing.T) {
 	if !strings.Contains(ctx, "source_session_id="+this) {
 		t.Fatalf("attribution line missing this session's id:\n%s", ctx)
 	}
-	if !strings.Contains(ctx, "differs from this session") {
-		t.Fatalf("mismatch notice missing (recorded id %s, this %s):\n%s", other, this, ctx)
+	if !strings.Contains(ctx, "before this session started") {
+		t.Fatalf("mismatch notice missing the truthful pre-state phrasing (recorded id %s, this %s):\n%s", other, this, ctx)
+	}
+	if strings.Contains(ctx, "returns the recorded one") {
+		t.Fatalf("mismatch notice makes the false will-return claim (the write below already replaces the side channel):\n%s", ctx)
 	}
 	if !strings.Contains(ctx, other) {
 		t.Fatalf("mismatch notice does not name the recorded id:\n%s", ctx)
@@ -73,7 +76,7 @@ func TestSessionStartAttributionMismatchNotice(t *testing.T) {
 		if out2.HookSpecificOutput != nil {
 			ctx2 = out2.HookSpecificOutput.AdditionalContext
 		}
-		if strings.Contains(ctx2, "differs from this session") {
+		if strings.Contains(ctx2, "before this session started") {
 			t.Fatalf("matching side channel must not carry the mismatch notice:\n%s", ctx2)
 		}
 	})

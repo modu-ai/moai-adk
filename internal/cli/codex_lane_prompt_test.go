@@ -26,8 +26,14 @@ func TestCodexLaneAutoPromptImperative(t *testing.T) {
 			t.Errorf("prompt does not pin the output-line contract token %q: %s", token, p)
 		}
 	}
-	if !strings.Contains(p, "report that one line and stop") {
-		t.Errorf("prompt lacks the refusal-stop directive: %s", p)
+	if !strings.Contains(p, "next candidate") {
+		t.Errorf("prompt must carve out the normal candidate-skip line (a skip is not a stop): %s", p)
+	}
+	if !strings.Contains(p, "report that one refusal and stop") {
+		t.Errorf("prompt lacks the final-refusal stop directive: %s", p)
+	}
+	if strings.Contains(p, "report that one line and stop") {
+		t.Errorf("prompt still stops on ANY refusal line — a candidate skip would strand a leased card: %s", p)
 	}
 	if strings.Contains(p, "the cycle ranks") {
 		t.Errorf("prompt still carries the descriptive mechanism explainer that invited source reading: %s", p)

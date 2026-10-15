@@ -975,7 +975,8 @@ func enterCodexRelaunchJoin(root string, entry factoryFlagParse, timing *factory
 const codexLaneAutoPrompt = "Run `moai todo --auto` now. " +
 	"Do not read the engine or the rule sources first — act on the output directly: " +
 	"follow its selection:/accept/dispatch lines verbatim. " +
-	"If a refusal line appears, report that one line and stop."
+	"A `refused (...) — next candidate` line is a normal skip: keep going with the next card. " +
+	"If the run ends in a refusal line with no dispatch directive after it, report that one refusal and stop."
 
 // @MX:NOTE: card t1554 removed the boot auto-lease loop — lane boot is not
 // queue consumption. The launcher stamps the lane environment (the shared
