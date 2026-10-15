@@ -640,6 +640,8 @@ func performCodexAudit(ctx context.Context, target, focus, projectRoot string) R
 	// request context.
 	legCtx, cancel := context.WithTimeout(ctx, config.DefaultCodexAuditLegTimeout)
 	defer cancel()
+	// The leg's codex child carries the audit marker, so its Stop chain skips the verify members (t1788).
+	legCtx = withCodexAuditLeg(legCtx)
 	out, _ := codexReviewRPC(legCtx, binaryPath, codexMethodTurnStart, params) // fail-open inside
 	// Reword the summary only when the leg's OWN deadline ended an inconclusive
 	// turn: a verdict that arrived is never replaced, and a caller that gave up

@@ -529,7 +529,7 @@ var codexSession codexSessionRunner = realCodexSessionRunner{}
 type realCodexSessionRunner struct{}
 
 func (realCodexSessionRunner) start(ctx context.Context, binaryPath string, args []string) (codexConn, error) {
-	cmd := exec.CommandContext(ctx, binaryPath, args...)
+	cmd := codexChildCmd(ctx, binaryPath, args)
 	stdin, err := cmd.StdinPipe()
 	if err != nil {
 		return nil, fmt.Errorf("codex stdin pipe: %w", err)
