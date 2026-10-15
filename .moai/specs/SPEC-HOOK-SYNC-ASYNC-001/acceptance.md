@@ -26,8 +26,8 @@ the evidence ledger in §E; the ledger id is cited from the AC row.
 | AC-HSA-003 | Given both settings surfaces, When the SubagentStop chain-event entry is inspected, Then it carries `"async": true` | REQ-HSA-002 | release-blocking | E-L03 | M5 |
 | AC-HSA-004 | Given both settings surfaces, When the PostToolUseFailure entry is inspected, Then it carries `"async": true` | REQ-HSA-003 | release-blocking | E-L04 | M4 |
 | AC-HSA-005 | Given the Go handler, When a PostToolUseFailure event is handled, Then the output carries `additionalContext` and no `systemMessage` | REQ-HSA-003 | release-blocking | E-L05 | M4 |
-| AC-HSA-006 | Given the gate enabled and tree scope, When the wrapper runs, Then the shell receipt probe exists in BOTH wrapper surfaces and resolves ALLOW states without the binary | REQ-HSA-006 | release-blocking | E-L06 | M3 |
-| AC-HSA-007 | Given the gate enabled, tree scope, no skip policy, and NO receipt (an ALLOW state), When the wrapper runs, Then it completes with exit 0 WITHOUT any moai-binary invocation (stub-probe marker absent); given a fresh-FAIL receipt or any probe failure, When the wrapper runs, Then the synchronous handler is reached (preservation clause — probed in the M3 matrix; see E-L16's classification note) | REQ-HSA-006, REQ-HSA-007 | release-blocking | E-L07 | M3 |
+| AC-HSA-006 | Given the gate enabled and tree scope, When the wrapper runs, Then the shell receipt probe exists in BOTH wrapper surfaces and resolves ALLOW states without the synchronous handler invocation | REQ-HSA-006 | release-blocking | E-L06 | M3 |
+| AC-HSA-007 | Given the gate enabled, tree scope, no skip policy, and NO receipt on a reviewable tree (an ALLOW state), When the wrapper runs, Then it completes with exit 0 WITHOUT a synchronous `hook codex-review-entry` invocation (argv-probe count 0 for that argv; the cache-miss background kick `verify codex-review` is allowed and expected on this state); given a fresh-FAIL receipt or any probe failure, When the wrapper runs, Then the synchronous handler is reached (preservation clause — probed in the M3 matrix; see E-L16's classification note) | REQ-HSA-006, REQ-HSA-007 | release-blocking | E-L07 | M3 |
 | AC-HSA-008 | Given a fixture tree, When the shell key computation is compared with Go `verify.Key`, Then the outputs are byte-equal (parity test green on `shasum` and `openssl` paths) | REQ-HSA-008 | release-blocking | E-L08 | M3 |
 | AC-HSA-009 | Given the keep-sync table, When the settings are re-inventoried after M7, Then the async-true count is exactly baseline 11 + 3 = 14 and no keep-sync registration changed sync state or decision semantics | REQ-HSA-009 | release-blocking | E-L09 | M7 |
 | AC-HSA-010 | Given the live `hooks-system.md`, When the timeout section is read, Then 30s is documented as the official DEFAULT with no documented per-event maximum, and the ceiling bullet no longer states a 30s cap | REQ-HSA-010 | release-blocking | E-L10 | M6 |
@@ -35,7 +35,7 @@ the evidence ledger in §E; the ledger id is cited from the AC row.
 | AC-HSA-012 | Given both settings surfaces, When the two UserPromptSubmit entries are inspected, Then each carries `timeout: 30` | REQ-HSA-011 | release-blocking | E-L12 | M6 |
 | AC-HSA-013 | Given M1 executed, When `.moai/reports/t1780/hook-sync-timings.md` is read, Then it carries 10 per-run timings for every synchronous registration and the fixed prescription-order statement | REQ-HSA-012 | release-blocking | E-L13 | M1 |
 | AC-HSA-014 | Given real multi-lane load, When UserPromptSubmit hooks run, Then the hard-timeout count observed in the run log is 0 | REQ-HSA-012 | **regression-guard** | E-L14 | M7 observation |
-| AC-HSA-015 | Given the wrapper runs on a cache-MISS state (no receipt or stale receipt), When the Stop arm later runs for the same tree state, Then exactly one background review was kicked (shared kick marker honored); and Given a fresh pass receipt, When the wrapper runs, Then NO kick occurs | REQ-HSA-006(a), REQ-HSA-006(b) | release-blocking | E-L15 | M3 |
+| AC-HSA-015 | Given the wrapper runs on a cache-MISS state (no receipt or stale receipt), When the Stop arm later runs for the same tree state, Then exactly one background review was kicked (shared kick marker honored; observed via the argv-recording stub's `verify codex-review` line count across entry+Stop for the same tree state); and Given a fresh pass receipt, When the wrapper runs, Then NO kick occurs | REQ-HSA-006(a), REQ-HSA-006(b) | release-blocking | E-L15 | M3 |
 | AC-HSA-016 | Given a card-scope session (`WT-` branch), When the wrapper runs with the gate ON, Then it retains today's behavior — the shell probe is not consulted (no key computation, no snapshot read, no kick) and the Go handler is reached exactly once per prompt | REQ-HSA-007, plan D5 | regression-guard | E-L16 | M3 probe matrix |
 | AC-HSA-017 | Given the review gate OFF (or unreadable), When the wrapper runs, Then it exits 0 with no binary resolution | REQ-HSA-005 | regression-guard | E-L18 | M3 probe matrix |
 
@@ -88,14 +88,21 @@ round-0 REQ/AC id is unchanged (delta re-audit eligibility).
 
 ## §D.6 Edge cases
 
-- Snapshot file present but truncated/unparseable → treated as receipt-absent (ALLOW arm), never
-  an error exit.
-- `RecordedAt` exactly at the 24h boundary → stale (CheckReceipt uses `>` ttl; mirror the same
-  comparison).
+- Snapshot file present but truncated/unparseable → receipt-ABSENT by the shared store's own
+  reading (`verify.LoadReceipt`, `receipt.go:113-117` — every read failure is absence, never an
+  error or a valid/failing verdict) → the REQ-HSA-006(a) MISS arm (ALLOW + kick, kick-region
+  preconditions permitting) — aligned with REQ-HSA-007 at audit r2-D2.
+- `RecordedAt` exactly at the 24h boundary → stale → MISS arm (CheckReceipt uses `>` ttl; mirror
+  the same comparison).
+- Clean tree or config-only-only tree (nothing-reviewable precondition) → exit 0 WITHOUT the
+  early kick; the Stop gate's Go path owns the kick decision (REQ-GBN-002 preserved).
+- Binary decably behind the tree HEAD (binary-age precondition) → exit 0 WITHOUT the early kick;
+  undecidable age (no commit metadata, non-ancestor) → the early kick proceeds per binlag's
+  leniency contract.
 - Both sha256 tools absent → probe fails → fall through (REQ-HSA-007); no new shared failure mode.
 - Gate enabled but `workflow.yaml` moves → the existing gate-OFF parse yields OFF → exit 0
   (unchanged behavior).
-- Empty `codex-review` entry verdict → not "fail" → ALLOW arm.
+- Empty `codex-review` entry verdict on a fresh receipt → not "fail" → arm (b) (exit 0, no kick).
 
 ## §D.7 Quality gates
 
@@ -176,29 +183,37 @@ exit=1
 ```
 
 **E-L07** (AC-HSA-007, RED for the genuinely-red post-M3 delta: an ALLOW state completes WITHOUT
-a binary invocation. Fixture `/tmp/t1780-fp-red/`: `proj-on/` carries
-`.moai/config/sections/workflow.yaml` with `workflow.codex.review_gate.enabled: true` and no
-snapshot store; `bin/moai` is a stub that touches `bin/moai.invoked` then exits 0 with empty
-stdout. Prep: `chmod +x` the stub, marker cleared. Cited command — single invocation, literal
-PATH, stdin is the runner's closed stdin):
+a synchronous handler invocation. Fixture `/tmp/t1780-fp-red/` (reworked at audit r2-D1):
+`proj-on/` is a git repo (branch `main` @ 7d70f69 — non-`WT-`, so the M3 key computation can
+succeed and the fixture is a reviewable non-card tree) carrying
+`.moai/config/sections/workflow.yaml` with `workflow.codex.review_gate.enabled: true` AND
+`primary_scope: review` (REQ-CGSC-004 — an explicit review restores reviewability on a
+primary-checkout tree, so the post-M3 fast path is eligible here) and no snapshot store (miss
+state); `bin/moai` is an ARGV-RECORDING stub — it appends `"$*"` to `bin/moai.argv` and exits 0
+— so the probe distinguishes the synchronous handler call (`hook codex-review-entry`, forbidden
+on ALLOW states post-M3) from the background kick (`verify codex-review`, allowed and expected
+there). Prep: `chmod +x` the stub, `moai.argv` cleared. Cited commands — single invocations,
+literal PATH, stdin is the runner's closed stdin):
 
 ```
 $ env CLAUDE_PROJECT_DIR=/tmp/t1780-fp-red/proj-on PATH="/tmp/t1780-fp-red/bin:/usr/bin:/bin:/usr/sbin:/sbin" bash .claude/hooks/moai/handle-codex-review-entry.sh
 (no stdout)
 exit=0
-$ ls /tmp/t1780-fp-red/bin/moai.invoked
--rw-r--r-- 1 goos wheel 0 Oct 15 15:08 /tmp/t1780-fp-red/bin/moai.invoked
+$ cat /tmp/t1780-fp-red/bin/moai.argv
+hook codex-review-entry
+exit=0
+$ grep -c "hook codex-review-entry" /tmp/t1780-fp-red/bin/moai.argv
+1
 exit=0
 ```
 
-Red because the marker EXISTS: on a gate-ON no-receipt (ALLOW) state the wrapper resolved and
-invoked a moai binary today — the line-84 unconditional forward. Post-M3 the same probe must
-show the marker ABSENT (stub-probe count 0). Provenance: the first R1 attempt was REFUSED by the
-worktree guard (`env` with runtime-expanded `$PATH` — recorded under Gaps per claim-integrity
-§3.1); the refused compound's `chmod +x` had not run, so the first literal-PATH retry resolved
-the tier-3 real `~/go/bin/moai`, which ALSO ran on this ALLOW state (printing the real handler's
-invalid-stdin message) — independently confirming the red before the controlled stub run above,
-which is the observation of record.
+Red because the argv record shows the synchronous handler call on the reviewable no-receipt
+(ALLOW) state — today's line-84 unconditional forward. Post-M3 the same probe must show ZERO
+`hook codex-review-entry` lines on this state (at most one `verify codex-review` kick line,
+which AC-HSA-015 counts). The r1 marker-based form of this entry is superseded: an
+all-invocations marker could not distinguish the permitted kick from the forbidden handler call,
+and its git-less fixture could not compute the M3 key (both r2-D1 defects — the replacement
+cures both). Provenance of the superseded r1 observation retained under Gaps.
 
 **E-L08** (AC-HSA-008, no key-parity test exists — the fixture and test are M3 deliverables):
 
@@ -279,22 +294,24 @@ the plan-phase script read showing no `WT-` branch check. Green path: the M3 pro
 `WT-` branch case asserts the preserved behavior on the rewritten wrapper.
 
 **E-L18** (AC-HSA-017, four-element BASELINE cell — regression-guard classification, added at
-audit r1 per D6). The criterion preserves the existing gate-OFF fast path: green by design
-pre-M3, and the M3 rewrite must keep it green, so the cell pins the baseline the rewrite is
-guarded against (not recorded as a pass for the implementation). Fixture: same
-`/tmp/t1780-fp-red/` tree, `proj-off/` carrying `enabled: false`; marker cleared first.
+audit r1 per D6; re-observed at r2 with the argv-recording stub). The criterion preserves the
+existing gate-OFF fast path: green by design pre-M3, and the M3 rewrite must keep it green, so
+the cell pins the baseline the rewrite is guarded against (not recorded as a pass for the
+implementation). Fixture: same `/tmp/t1780-fp-red/` tree, `proj-off/` carrying `enabled: false`
+(no git repo needed — the gate parse exits before any git or binary work); `moai.argv` cleared
+first.
 
 ```
 $ env CLAUDE_PROJECT_DIR=/tmp/t1780-fp-red/proj-off PATH="/tmp/t1780-fp-red/bin:/usr/bin:/bin:/usr/sbin:/sbin" bash .claude/hooks/moai/handle-codex-review-entry.sh
 (no stdout)
 exit=0
-$ ls /tmp/t1780-fp-red/bin/moai.invoked
-ls: /tmp/t1780-fp-red/bin/moai.invoked: No such file or directory
+$ ls /tmp/t1780-fp-red/bin/moai.argv
+ls: /tmp/t1780-fp-red/bin/moai.argv: No such file or directory
 exit=1
 ```
 
 Elements: command (single invocation, literal PATH) / stdout (empty) / exit 0 (wrapper run) with
-the marker-absence observation (`ls` exit 1) proving no binary resolution / tree
+the argv-file-absence observation (`ls` exit 1) proving no binary resolution / tree
 `e04ebd5ca6bc441b380c1072d5a1dff8431459ba` (document pin). The M3 probe matrix re-asserts this
 behavior on the rewritten wrapper.
 
@@ -303,6 +320,10 @@ behavior on the rewritten wrapper.
 - Probe R1 attempt 1 was REFUSED by the worktree-isolation guard (`env` with runtime-expanded
   `$PATH`); the observation of record is the literal-PATH retry in E-L07 (refusal recorded per
   `verification-claim-integrity.md` §3.1).
+- The r1-form E-L07/E-L18 observations (marker stub `moai.invoked`, git-less fixture) are
+  SUPERSEDED by the r2 fixture rework (argv stub, git-init'd reviewable fixture, explicit
+  `primary_scope: review`) per audit r2-D1; their outputs are retained in the r1-authored
+  version of this file in git history, not re-cited.
 - The local primary checkout's settings (leader-raised 30) was taken from the card directive, not
   re-measured from the primary checkout (this session is worktree-isolated). M2 re-observes all
   three surfaces on the absorbed tree.

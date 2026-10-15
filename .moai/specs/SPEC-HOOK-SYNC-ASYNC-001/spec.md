@@ -23,6 +23,7 @@ related_specs: [SPEC-GATE-BOTTLENECK-001, SPEC-REVIEW-GATE-REPAIR-001, SPEC-HARN
 |------|---------|--------|
 | 2026-10-15 | 1.0.0 | Initial draft. Authored at plan phase for card t1780 (operator directive 2026-10-15, Class C, Template-First, P1). Carries board decisions d-20261015T030xx (codex-review-entry stays synchronous) and d-20261015T024551Z-78aa (measure every synchronous hook 10x, table under .moai/reports/t1780/). |
 | 2026-10-15 | 1.0.1 | Plan-audit r1 repairs (verdict `.moai/reports/t1780/plan-audit.md`, FAIL 0.8125 on D1-D4 blocking): REQ-HSA-006 kick narrowed to cache-miss states only — fresh pass/inconclusive exits 0 WITHOUT kicking, mirroring `codex_review_gate.go:234-244` (D1); tree-scope/primary-scope skip policy added to the REQ-HSA-006 Where-clause (D2); REQ-HSA-003 gains the `hooks-system.md` PostToolUseFailure stdout-row refresh (D7). AC-HSA-017 added per audit D6 (only AC-set addition; every existing REQ/AC id unchanged). |
+| 2026-10-15 | 1.0.2 | Plan-audit r2 repairs (delta FAIL, r1 fixes verified resolved): REQ-HSA-006(a) early kick now carries the two kick-region preconditions — binary-age (decidable-behind suppresses, binlag leniency) and nothing-reviewable (change presence + config-only narrowing), shell-carried where judgeable, ALLOW-without-early-kick otherwise (R2-D3); REQ-HSA-007 corrected — an unreadable/unparseable snapshot is receipt-ABSENT (the shared `verify.LoadReceipt` reading) and takes the REQ-HSA-006(a) miss arm, removed from the fall-through enumeration (R2-D2, Go authority read). Id sets unchanged. |
 
 ## 1. Overview
 
@@ -115,7 +116,18 @@ handler that exists, not toward a block the handler deliberately does not perfor
     (`.moai/state/verify/codex-review/<head>-<digest>.kick-<bucket>`, bucket = epoch /
     `DefaultCodexReviewGateTimeout` = 900s) the Stop gate uses on the same miss states
     (`codex_review_gate.go:249-270` — only miss states reach the kick), so the kick arm of
-    REQ-GBN-002 is preserved without double-kicking against the Stop side;
+    REQ-GBN-002 is preserved without double-kicking against the Stop side. The early kick
+    additionally carries the two preconditions that kick region sits behind
+    (`codex_review_delay.go:214-225`), each carried in shell where judgeable and taking the
+    ALLOW-without-early-kick disposition otherwise (the kick is accelerated, never widened):
+    the binary-age policy — only a DECIDABLE behind verdict suppresses the early kick, judged
+    in shell via the resolved binary's version provenance plus
+    `git merge-base --is-ancestor <bin-commit> HEAD`, mirroring binlag's leniency contract
+    (fresh / divergent / ahead / not-applicable all proceed — `codex_review_binary_age.go:33-37`);
+    and the nothing-reviewable detector (tree-scope form) — change presence plus the
+    config-only narrowing, the latter mirrored from the Go-owned runtime-config prefix list
+    under a golden test so the shell probe only narrows, never widens, the detector's answer
+    (`codex_review_scope.go:268`);
   - (b) **When** a fresh pass or inconclusive verdict is observed (five bound fields equal +
     within TTL, verdict not fail), the wrapper shall exit 0 immediately WITHOUT kicking —
     mirroring the Stop gate's clear-and-reuse disposition (`codex_review_gate.go:234-244`: a
@@ -125,10 +137,14 @@ handler that exists, not toward a block the handler deliberately does not perfor
     the Go handler owns the verdict delivery.
 
 - **REQ-HSA-007** — **When** any shell-probe dependency is absent or any probe step fails
-  (missing `git` or sha256 tool, unreadable or unparseable snapshot, card-scope session on a
-  `WT-` branch, unresolvable moai binary), the wrapper shall fall through to the current
-  behavior — the synchronous Go handler where the binary resolves, else exit 0 — never a block
-  and never a synthetic verdict. The fast path may skip the binary only on positive evidence of
+  (missing `git` or sha256 tool, card-scope session on a `WT-` branch, an unapplied skip policy
+  per the REQ-HSA-006 Where-clause, unresolvable moai binary), the wrapper shall fall through to
+  the current behavior — the synchronous Go handler where the binary resolves, else exit 0 —
+  never a block and never a synthetic verdict. An unreadable or unparseable snapshot file is NOT
+  a failure of this kind: it is receipt-ABSENT by the shared store's own reading
+  (`verify.LoadReceipt`, `internal/verify/receipt.go:113-117` — every read failure is absence,
+  so a partially written receipt can never be read as valid or failing) and takes the
+  REQ-HSA-006(a) miss arm. The fast path may skip the binary only on positive evidence of
   an ALLOW state; uncertainty always falls through.
 
 - **REQ-HSA-008** — The shell fast path shall introduce no new shared failure mode per

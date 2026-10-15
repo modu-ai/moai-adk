@@ -29,6 +29,9 @@ Code facts verified at plan phase (all on tree `e04ebd5ca6bc441b380c1072d5a1dff8
 | Entry semantics | `HandleCodexReviewEntry` NEVER blocks (REQ-RG-001); fresh FAIL → `additionalContext` once per key (delivery record `delivered-<sha>.json`) |
 | Scope discriminator | `WT-` branch prefix → card scope; everything else → tree scope, fail-open (`codex_review_scope.go`) |
 | Entry-side skip policies | `workflow.codex.review_gate.tree_scope` (unreadable → `review`) and `primary_scope` (unreadable → `skip` — primary-checkout default); both applied at one shared spot `codex_review_delay.go:217` (`treeScopeSkipApplies`) so "the two halves skip together"; a `WT-` card session is never skipped (`codex_review_tree_scope.go:55-135`, REQ-CRO-004) |
+| Binary-age policy | `staleBinarySkipApplies` (`codex_review_binary_age.go`) — `binlag.Evaluate` is a pure git-ancestry judge (binary build commit vs tree HEAD, `binlag.go:102-132`), no state cache; leniency contract: only a DECIDABLE behind verdict skips — fresh / divergent / ahead / not-applicable (incl. no commit metadata) review as before; the explicit producer `moai verify codex-review` never calls it; the entry path (:214-216) returns ALLOW on behind |
+| Nothing-reviewable detector | `reviewGateScopedChangeDetector` (`codex_review_scope.go:269-277`, tree-scope form): change presence AND not config-only; the docstring's own rule (:268): "The probe can only narrow the detector's answer, never widen it"; the config-only narrowing reads a Go-owned runtime-config prefix list |
+| Receipt-absence semantics | `verify.LoadReceipt` (`receipt.go:113-117`): every read failure — no snapshot, unreadable, truncated, unparseable, no entry — is ABSENCE, never an error and never a valid/failing verdict |
 | Go SystemMessage emission | `internal/hook/post_tool_failure.go:109` `SystemMessage: message` |
 | Template UPS timeouts | `settings.json.tmpl` lines 266/272: `timeout: 5` (both UPS entries) |
 | This worktree live UPS | `settings.json` line 266: `timeout: 15` (primary checkout live already raised to 30 by the leader) |
@@ -135,18 +138,40 @@ unblocked and its evidence feeds everything downstream.
   REQ-HSA-006 Where-clause; mirrors "the two halves skip together", `codex_review_delay.go:
   188/:217`); (2) compute head + tree key in shell (D4); (3) read the snapshot JSON with the
   existing awk tooling (no jq); locate the `codex-review` entry, compare verdict + RecordedAt vs
-  the 24h TTL; (4) cache-MISS states (no receipt / stale receipt) → kick (marker-guarded,
+  the 24h TTL — an unreadable or unparseable snapshot is receipt-ABSENT (the shared
+  `verify.LoadReceipt` reading, `receipt.go:113-117`) and takes step (4)'s miss arm;
+  (4) cache-MISS states (no receipt / stale receipt) → kick, gated on the two kick-region
+  preconditions (`codex_review_delay.go:214-225`), each shell-carried where judgeable:
+  (4a) nothing-reviewable — change presence (porcelain/diff non-empty) AND the config-only
+  narrowing (all changed paths within the runtime-config prefix list, mirrored from the Go
+  constants and pinned by a golden test so the probe only narrows, never widens —
+  `codex_review_scope.go:268`); clean tree or config-only-only tree → exit 0 WITHOUT the early
+  kick (the Stop gate's Go path owns the decision, REQ-GBN-002 preserved);
+  (4b) binary-age — resolve MOAI_BIN, read its version provenance (build commit), then
+  `git merge-base --is-ancestor <bin-commit> HEAD`: a DECIDABLE ancestor-hit (behind) → exit 0
+  WITHOUT the early kick (mirrors the entry path's :214-216 allow); undecidable (no commit
+  metadata, non-ancestor) → proceed per binlag's leniency (`codex_review_binary_age.go:33-37`);
+  (4c) both preconditions satisfied → kick (marker-guarded,
   `set -o noclobber` exclusive create of the `.kick-<bucket>` marker, bucket = epoch/900) then
-  exit 0; (5) fresh pass/inconclusive → exit 0 WITHOUT kicking (mirror
+  exit 0. Cost note: the (4b) age judgment pays one `version` invocation on miss states before
+  the kick (+1 process start vs today on miss states only — the price of the accelerated kick);
+  fresh pass/inconclusive remain 0-start and fresh-FAIL remains 1-start (unchanged);
+  (5) fresh pass/inconclusive → exit 0 WITHOUT kicking (mirror
   `codex_review_gate.go:234-244` — a fresh passing review is never re-kicked); (6) fresh-FAIL →
   fall through to the binary (the existing line 84 forwarding); (7) every failure → fall through
   (REQ-HSA-007). Mirror the
   script to `internal/template/templates/.claude/hooks/moai/handle-codex-review-entry.sh`.
-  Tests: key-parity test (D4); behavioral probe matrix — gate off / no receipt / stale receipt /
-  fresh pass (no kick) / fresh inconclusive (no kick) / fresh FAIL (fall-through) / missing git /
-  missing shasum / `WT-` branch / `tree_scope: skip` / primary-checkout session — each asserting
+  Tests: key-parity test (D4) plus a golden test pinning the shell's runtime-config prefix list
+  to the Go constants it mirrors (4a); behavioral probe matrix — gate off / no receipt /
+  stale receipt / unparseable snapshot (miss arm) / fresh pass (no kick) / fresh inconclusive
+  (no kick) / fresh FAIL (fall-through) / clean tree (no kick) / config-only-only tree (no kick) /
+  behind binary (no early kick) / binary with no commit metadata (kick proceeds per leniency) /
+  missing git / missing shasum / `WT-` branch / `tree_scope: skip` / primary-checkout session —
+  each asserting
   exit 0 and the expected kick-or-fall-through observation (kicks observed via the shared marker
-  path); registration tests untouched (timeout change is M6). Acceptance: AC-HSA-006, AC-HSA-007,
+  path; binary invocations observed via an argv-recording stub distinguishing
+  `hook codex-review-entry` from `verify codex-review`); registration tests untouched (timeout
+  change is M6). Acceptance: AC-HSA-006, AC-HSA-007,
   AC-HSA-008, AC-HSA-015, AC-HSA-016, AC-HSA-017.
 - **M4 — PostToolUseFailure async conversion (P1).** One atomic change set: Go handler emits
   `hookSpecificOutput.additionalContext` (event name `PostToolUseFailure`) instead of
