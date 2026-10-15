@@ -84,6 +84,9 @@ func TestUncommittedTemplateNotice(t *testing.T) {
 		if !strings.Contains(got, "git merge") {
 			t.Errorf("notice does not name the working refresh (merge the base branch into the worktree): %s", got)
 		}
+		if strings.Contains(got, "commit on the base branch") {
+			t.Errorf("notice still prescribes a base-branch commit that commit-protected repos refuse (audit round-4 P2): %s", got)
+		}
 		if !strings.Contains(got, "1 template file") {
 			t.Errorf("notice does not carry the changed-file count: %s", got)
 		}
@@ -191,6 +194,20 @@ func TestUncommittedTemplateNotice(t *testing.T) {
 		}
 		if !strings.Contains(got, "git merge develop") {
 			t.Errorf("notice does not name the configured base branch: %s", got)
+		}
+	})
+
+	t.Run("deleted_template_file_fires", func(t *testing.T) {
+		// A cleanup-only update DELETES stale managed files; the deletion is
+		// uncommitted work the same as a modification (audit round-4 P2) —
+		// porcelain " D path" must fire the notice.
+		dir := t.TempDir()
+		path := initTrackedFile(t, dir, ".claude/rules/moai/workflow/retired-rule.md", "v1\n")
+		if err := os.Remove(path); err != nil {
+			t.Fatalf("remove: %v", err)
+		}
+		if got := notice(t, dir, ".claude/rules/moai/workflow/retired-rule.md"); got == "" {
+			t.Fatal("an uncommitted template DELETION must fire the notice")
 		}
 	})
 

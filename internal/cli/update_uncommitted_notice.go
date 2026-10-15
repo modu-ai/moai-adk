@@ -104,7 +104,7 @@ func uncommittedTemplateNotice(projectRoot string, templatePaths []string) strin
 	if b := config.LoadWorktreeBaseBranch(projectRoot); b != "" {
 		base = b
 	}
-	return fmt.Sprintf("update left %d template file(s) uncommitted — worktrees branched from the committed base will not see them until committed: commit on the base branch, then merge the base branch into each worktree (`git merge %s` inside the worktree)", n, base)
+	return fmt.Sprintf("update left %d template file(s) uncommitted — worktrees branched from the committed base will not see them until committed: land the commit through your project's base-branch flow, then merge the base branch into each worktree (`git merge %s` inside the worktree)", n, base)
 }
 
 // mergeAnalysisPaths extracts the deployment-relative paths one template

@@ -1094,8 +1094,11 @@ func runTemplateSyncWithReporter(cmd *cobra.Command, reporter project.ProgressRe
 	// are invisible to worktrees branched from the committed base — the
 	// SessionStart role-rule injection in such a worktree serves a stale
 	// deployed copy. One Reference line names the commit-then-sync path
-	// (rides the same Reference section as the advisory above).
-	if notice := uncommittedTemplateNotice(projectRoot, mergeAnalysisPaths(analysis.Files)); notice != "" {
+	// (rides the same Reference section as the advisory above). The query
+	// set carries the reconcile's ArchivedRemoved paths too (audit round-4):
+	// a cleanup-only update leaves uncommitted DELETIONS analysis.Files
+	// never lists.
+	if notice := uncommittedTemplateNotice(projectRoot, append(mergeAnalysisPaths(analysis.Files), reconSummary.ArchivedRemoved...)); notice != "" {
 		updateLedger.referencef("%s", notice)
 	}
 

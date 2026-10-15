@@ -204,6 +204,37 @@ func TestRoleRulesNewerOrUnparseableStampKeepsDeployed(t *testing.T) {
 	}
 }
 
+// TestRoleRulesCodexOnlyFallbackErrorsNameDeployedPath pins the round-4
+// path-normalization fix: on a Codex-only install the rule deploys under
+// .moai/policies — every operator-facing error from the embedded fallback
+// names THAT path, never the Claude-layout template path the embed carries.
+func TestRoleRulesCodexOnlyFallbackErrorsNameDeployedPath(t *testing.T) {
+	clearFactoryEnv(t)
+	t.Setenv(config.EnvMoaiFactoryWorkers, "1")
+	// The embedded copy itself is unusable, so the fallback fails and the
+	// REQ-ALB-009 detail renders the label.
+	stubEmbeddedRule(t, "# embedded copy with no markers\n", true)
+
+	root := t.TempDir()
+	altDispatch := ".moai/policies/workflow/factory-dispatch.md"
+	altMessaging := ".moai/policies/workflow/cross-session-messaging.md"
+	writeRoleRuleFixture(t, root, roleRuleFile{Rel: altDispatch, Name: "factory-dispatch.md"},
+		"# stale codex-only dispatch rule\n\nno role-core markers here\n")
+	writeRoleRuleFixture(t, root, roleRuleFile{Rel: altMessaging, Name: "cross-session-messaging.md"},
+		smallMarkedRule("messaging"))
+
+	inj := roleRuleInjectionFor(root, "startup", langEnglish)
+	if inj.OperatorNotice == "" {
+		t.Fatal("unusable embedded copy must keep the failure path")
+	}
+	if !strings.Contains(inj.OperatorNotice, altDispatch) {
+		t.Fatalf("failure detail does not name the deployed Codex-only path: %s", inj.OperatorNotice)
+	}
+	if strings.Contains(inj.OperatorNotice, roleRuleFiles[0].Rel) {
+		t.Fatalf("failure detail leaked the Claude-layout template path on a Codex-only install: %s", inj.OperatorNotice)
+	}
+}
+
 // TestRoleRulesEndMarkerOnlyStaysFailVisible pins the audit round-1 P2 fix:
 // a file carrying ONLY an end marker is corruption, not a stale generation —
 // the embedded fallback must NOT rescue it; the REQ-ALB-009 pair fires.
@@ -238,6 +269,9 @@ func TestRoleRulesRemediationNamesWorktreeCause(t *testing.T) {
 	}
 	if !strings.Contains(detail, "uncommitted") {
 		t.Errorf("skew detail does not name the uncommitted-update cause: %s", detail)
+	}
+	if strings.Contains(detail, "commit it there") {
+		t.Errorf("skew detail still prescribes a base-branch commit that commit-protected repos refuse (audit round-4 P2): %s", detail)
 	}
 
 	for _, lang := range []string{"ko", "ja", "zh", "en"} {
