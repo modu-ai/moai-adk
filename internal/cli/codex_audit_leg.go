@@ -6,6 +6,7 @@ import (
 	"os/exec"
 
 	"github.com/modu-ai/moai-adk/internal/codexadapter"
+	"github.com/modu-ai/moai-adk/internal/config"
 	"github.com/modu-ai/moai-adk/internal/hook"
 )
 
@@ -13,7 +14,7 @@ import (
 // of that child skips every member that asks the model to run a verification
 // command: the model is already reviewing inside the leg, and a nested
 // verification command is the defect that stalled the leg (t1754).
-const codexAuditLegEnv = "MOAI_CODEX_AUDIT_LEG"
+const codexAuditLegEnv = config.EnvCodexAuditLeg
 
 // codexAuditLegSkipped names the Stop-chain members whose deny or continuation
 // text asks the model to run a verification command: sync-gate (2), goal (3),
