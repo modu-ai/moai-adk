@@ -171,12 +171,28 @@ func TestSD_AC019_NextCardRuleInjection(t *testing.T) {
 		}
 	})
 
-	t.Run("gpt lane without a card id: no rule", func(t *testing.T) {
+	t.Run("gpt lane without a card id: boot-form precedence (card t1776 audit round-8)", func(t *testing.T) {
 		sdScrubRuleEnv(t)
 		t.Setenv(config.EnvMoaiFactoryWorker, "lane-1")
 		t.Setenv(config.EnvFactoryBackend, factory.BackendGPT)
-		if rule := factoryLaneRuleForSource("startup", "en"); rule != "" {
-			t.Errorf("backend gpt without a card id: rule injected, want none (got %q)", rule)
+		// Card t1776 reworked this edge: the card-less `moai codex -l` boot
+		// owns the queue verb, and the gpt scrub bypass re-enabled the role
+		// core's read-first directive — so the boot now carries the
+		// BOOT-form precedence note resolving the two (no owned-card rule:
+		// no card id exists to name).
+		rule := factoryLaneRuleForSource("startup", "en")
+		if rule == "" {
+			t.Fatal("backend gpt without a card id: the boot-form precedence note is missing")
+		}
+		if !strings.Contains(rule, "Codex auto-lane precedence") {
+			t.Errorf("backend gpt without a card id: note does not carry the precedence marker: %q", rule)
+		}
+		if !strings.Contains(rule, "moai todo --auto") {
+			t.Errorf("backend gpt without a card id: boot precedence does not name the queue verb this boot owns: %q", rule)
+		}
+		// The boot note is NOT the owned-card rule — it names no card.
+		if strings.Contains(rule, "moai factory stage") || strings.Contains(rule, "moai factory complete") {
+			t.Errorf("backend gpt without a card id: boot note carries owned-card verbs: %q", rule)
 		}
 	})
 
