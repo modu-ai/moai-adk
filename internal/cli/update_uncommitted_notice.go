@@ -5,6 +5,7 @@ import (
 	"os/exec"
 	"strings"
 
+	"github.com/modu-ai/moai-adk/internal/config"
 	"github.com/modu-ai/moai-adk/internal/gitenv"
 	"github.com/modu-ai/moai-adk/internal/merge"
 )
@@ -96,7 +97,14 @@ func uncommittedTemplateNotice(projectRoot string, templatePaths []string) strin
 	if n == 0 {
 		return ""
 	}
-	return fmt.Sprintf("update left %d template file(s) uncommitted — worktrees branched from the committed base will not see them until committed: commit on the base branch, then merge the base branch into each worktree (`git merge main` inside the worktree)", n)
+	// The refresh advice names the project's ACTUAL base branch (audit
+	// round-3 P2, card t1729): a project running worktree_base_branch
+	// develop/trunk would get a failing or stale merge on a hardcoded main.
+	base := "main"
+	if b := config.LoadWorktreeBaseBranch(projectRoot); b != "" {
+		base = b
+	}
+	return fmt.Sprintf("update left %d template file(s) uncommitted — worktrees branched from the committed base will not see them until committed: commit on the base branch, then merge the base branch into each worktree (`git merge %s` inside the worktree)", n, base)
 }
 
 // mergeAnalysisPaths extracts the deployment-relative paths one template

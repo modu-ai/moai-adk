@@ -94,36 +94,35 @@ func TestRoleRulesUnmarkedDeploysEmbeddedFallback(t *testing.T) {
 	t.Logf("PASS: unmarked deployed file served the embedded core with the fallback notice")
 }
 
-// TestRoleRulesVersionSkewSwapsToEmbedded pins the skew arm: marked deployed
-// files under a system.yaml stamp differing from the running binary are STALE
-// by definition — the injection serves the binary's embedded copy, not the
-// stale deployed core.
-func TestRoleRulesVersionSkewSwapsToEmbedded(t *testing.T) {
+// TestRoleRulesSkewedTreeKeepsDeployedCoreWithNotice pins the post-round-3
+// shape: version stamps cannot establish build order (an explicit rc
+// VERSION reads HIGHER — version-management.md:97), so a skewed tree whose
+// deployed files still parse KEEPS the deployed core; the skew is surfaced
+// as a one-line notice naming both versions instead of a swap.
+func TestRoleRulesSkewedTreeKeepsDeployedCoreWithNotice(t *testing.T) {
 	clearFactoryEnv(t)
 	t.Setenv(config.EnvMoaiFactoryWorkers, "1")
 	stubEmbeddedRule(t, markedEmbeddedRule(), true)
 
 	root := t.TempDir()
-	writeRoleRuleFixture(t, root, roleRuleFiles[0], smallMarkedRule("STALE-DEPLOYED-CORE"))
+	writeRoleRuleFixture(t, root, roleRuleFiles[0], smallMarkedRule("STALE-OR-NEWER-DEPLOYED"))
 	writeRoleRuleFixture(t, root, roleRuleFiles[1], smallMarkedRule("messaging"))
-	// The stamp differs from pkg/version's build default (v3.1.3), the same
-	// skew shape TestRoleRulesVersionSkewFailureDetailNamesRemedy uses.
 	writeSystemYAMLFixture(t, root, "moai:\n  template_version: v0.0.0-fixture-stamp\n")
 
 	inj := roleRuleInjectionFor(root, "startup", langEnglish)
 	if inj.OperatorNotice != "" {
 		t.Fatalf("skew alone must not fail the session; notice: %s", inj.OperatorNotice)
 	}
-	if !strings.Contains(inj.Context, embeddedFallbackCoreText) {
-		t.Fatalf("skewed tree does not serve the embedded copy's core:\n%s", inj.Context)
+	if !strings.Contains(inj.Context, "STALE-OR-NEWER-DEPLOYED") {
+		t.Fatalf("deployed core was replaced on an unprovable-premise skew:\n%s", inj.Context)
 	}
-	if strings.Contains(inj.Context, "STALE-DEPLOYED-CORE") {
-		t.Fatalf("skewed tree served the stale deployed core:\n%s", inj.Context)
+	if strings.Contains(inj.Context, embeddedFallbackCoreText) {
+		t.Fatalf("embedded copy replaced a parseable deployment:\n%s", inj.Context)
 	}
-	if !strings.Contains(inj.Context, "embedded template copy") {
-		t.Fatalf("skewed-tree injection does not say the core came from the embedded copy:\n%s", inj.Context)
+	if !strings.Contains(inj.Context, "v0.0.0-fixture-stamp") || !strings.Contains(inj.Context, "v3.1.3") {
+		t.Fatalf("skew notice does not name both versions:\n%s", inj.Context)
 	}
-	t.Logf("PASS: version skew swapped the injection source to the embedded copy")
+	t.Logf("PASS: skewed tree keeps the deployed core and surfaces the skew in one line")
 }
 
 // TestRoleRulesFallbackIsPerRule pins the mixed shape: one unmarked rule
@@ -242,12 +241,36 @@ func TestRoleRulesRemediationNamesWorktreeCause(t *testing.T) {
 	}
 
 	for _, lang := range []string{"ko", "ja", "zh", "en"} {
-		warn := roleRuleLocaleFor(lang).InjectionFailed("factory-lane", "role rule file absent: x")
+		warn := roleRuleLocaleFor(lang).InjectionFailed("factory-lane", "role rule file absent: x", "main")
 		if !strings.Contains(warn, "git merge") {
 			t.Errorf("locale %q InjectionFailed does not name the worktree refresh (merge the base branch): %s", lang, warn)
 		}
 		if !strings.Contains(warn, "moai update") {
 			t.Errorf("locale %q InjectionFailed lost the primary-checkout update guidance: %s", lang, warn)
 		}
+	}
+}
+
+// TestRoleRulesRemediationNamesConfiguredBaseBranch pins the round-3 base
+// fix: a project running a non-main base (git_strategy.worktree_base_branch)
+// gets refresh advice naming ITS branch, not a hardcoded main.
+func TestRoleRulesRemediationNamesConfiguredBaseBranch(t *testing.T) {
+	root := t.TempDir()
+	writeSystemYAMLFixture(t, root, "moai:\n  template_version: v0.0.0-fixture-stamp\n")
+	cfgDir := filepath.Join(root, ".moai", "config", "sections")
+	if err := os.MkdirAll(cfgDir, 0o755); err != nil {
+		t.Fatalf("mkdir config: %v", err)
+	}
+	if err := os.WriteFile(filepath.Join(cfgDir, "git-strategy.yaml"), []byte("git_strategy:\n  worktree_base_branch: develop\n"), 0o644); err != nil {
+		t.Fatalf("write git-strategy fixture: %v", err)
+	}
+
+	detail := roleRuleSkewDetail(root)
+	if !strings.Contains(detail, "git merge develop") {
+		t.Errorf("skew detail does not name the configured base branch: %s", detail)
+	}
+	warn := roleRuleLocaleFor("en").InjectionFailed("factory-lane", "detail", "develop")
+	if !strings.Contains(warn, "git merge develop") {
+		t.Errorf("locale guidance does not render the configured base branch: %s", warn)
 	}
 }

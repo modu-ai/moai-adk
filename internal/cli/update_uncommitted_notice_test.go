@@ -171,6 +171,29 @@ func TestUncommittedTemplateNotice(t *testing.T) {
 		}
 	})
 
+	t.Run("configured_base_branch_named_in_notice", func(t *testing.T) {
+		// A project running a non-main base gets advice naming ITS branch,
+		// not a hardcoded main (audit round-3 P2).
+		dir := t.TempDir()
+		path := initTrackedFile(t, dir, ".claude/rules/moai/workflow/factory-dispatch.md", "v1\n")
+		if err := os.MkdirAll(filepath.Join(dir, ".moai", "config", "sections"), 0o755); err != nil {
+			t.Fatalf("mkdir config: %v", err)
+		}
+		if err := os.WriteFile(filepath.Join(dir, ".moai", "config", "sections", "git-strategy.yaml"), []byte("git_strategy:\n  worktree_base_branch: develop\n"), 0o644); err != nil {
+			t.Fatalf("write git-strategy fixture: %v", err)
+		}
+		if err := os.WriteFile(path, []byte("v2\n"), 0o644); err != nil {
+			t.Fatalf("rewrite: %v", err)
+		}
+		got := uncommittedTemplateNotice(dir, []string{".claude/rules/moai/workflow/factory-dispatch.md"})
+		if got == "" {
+			t.Fatal("uncommitted change must fire the notice")
+		}
+		if !strings.Contains(got, "git merge develop") {
+			t.Errorf("notice does not name the configured base branch: %s", got)
+		}
+	})
+
 	t.Run("not_a_repo_fails_open", func(t *testing.T) {
 		dir := t.TempDir()
 		if got := notice(t, dir, "any/path.md"); got != "" {

@@ -48,7 +48,7 @@ func skewFixtureRoot(t *testing.T, systemYAML string) string {
 func TestRoleRulesVersionSkewUpdateGuidance(t *testing.T) {
 	for _, lang := range []string{"ko", "ja", "zh", "en"} {
 		t.Run(lang, func(t *testing.T) {
-			warn := roleRuleLocaleFor(lang).InjectionFailed("factory-lane", "role rule file carries no markers: x")
+			warn := roleRuleLocaleFor(lang).InjectionFailed("factory-lane", "role rule file carries no markers: x", "main")
 			if !strings.Contains(warn, "moai update") {
 				t.Errorf("locale %q InjectionFailed carries no moai update guidance: %s", lang, warn)
 			}

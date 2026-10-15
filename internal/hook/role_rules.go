@@ -37,7 +37,6 @@ import (
 	"io/fs"
 	"os"
 	"path/filepath"
-	"strconv"
 	"strings"
 
 	"github.com/modu-ai/moai-adk/internal/config"
@@ -307,51 +306,26 @@ func embeddedRoleCore(rule roleRuleFile) (string, error) {
 	return roleCoreFromContent(content, rule.Rel)
 }
 
-// stampStrictlyOlder reports whether deployedStamp parses as a dotted
-// numeric version strictly older than binaryStamp (leading "v" optional; a
-// pre-release suffix is dropped, so equal cores order as not-older). Any
-// non-numeric segment — a free-form stamp like a cutover tag — makes the
-// pair unorderable, which reads as not-older: the conservative direction,
-// because the caller uses this to decide whether the embedded copy may
-// replace the deployed one (audit round-2 P2, card t1729).
-func stampStrictlyOlder(deployedStamp, binaryStamp string) bool {
-	core := func(s string) ([]int, bool) {
-		s = strings.TrimPrefix(strings.TrimSpace(s), "v")
-		if i := strings.IndexByte(s, '-'); i >= 0 {
-			s = s[:i]
-		}
-		if s == "" {
-			return nil, false
-		}
-		parts := strings.Split(s, ".")
-		nums := make([]int, 0, len(parts))
-		for _, p := range parts {
-			n, err := strconv.Atoi(p)
-			if err != nil || n < 0 {
-				return nil, false
-			}
-			nums = append(nums, n)
-		}
-		return nums, true
+// worktreeBaseBranchFor resolves the base branch the project's git-strategy
+// names (audit round-3 P2, card t1729: a project may run develop or trunk —
+// the refresh advice must name the branch it actually has). Falls back to
+// main, the default base.
+func worktreeBaseBranchFor(root string) string {
+	if b := config.LoadWorktreeBaseBranch(root); b != "" {
+		return b
 	}
-	a, okA := core(deployedStamp)
-	b, okB := core(binaryStamp)
-	if !okA || !okB {
-		return false
-	}
-	for i := 0; i < len(a) || i < len(b); i++ {
-		av, bv := 0, 0
-		if i < len(a) {
-			av = a[i]
-		}
-		if i < len(b) {
-			bv = b[i]
-		}
-		if av != bv {
-			return av < bv
-		}
-	}
-	return false
+	return "main"
+}
+
+// skewKeptNotice is the one-line notice a skewed tree carries when its
+// parseable deployed core was KEPT (audit round-3, card t1729): version
+// stamps cannot establish build order, so the skew is surfaced by name —
+// both versions plus the refresh path — instead of acted on with a swap.
+func skewKeptNotice(root string) string {
+	_, stamp := roleRuleSkewInfo(root)
+	return fmt.Sprintf(
+		"NOTE: the deployed rule files are stamped %s while this binary is %s — version strings cannot prove which is newer, so the deployed core was kept. If this session's tree is a worktree, the usual cause is an uncommitted `moai update` on the base branch; commit it there and merge the base branch into this worktree (`git merge %s` inside the worktree).",
+		stamp, version.GetVersion(), worktreeBaseBranchFor(root))
 }
 
 // embeddedFallbackNotice is the one-line notice the injected context carries
@@ -360,10 +334,10 @@ func stampStrictlyOlder(deployedStamp, binaryStamp string) bool {
 // deployed-file core, and the operator-visible remediation names the real
 // cause in a worktree — an uncommitted `moai update` on the base branch —
 // not a bare "run `moai update` here".
-func embeddedFallbackNotice(names []string) string {
+func embeddedFallbackNotice(names []string, base string) string {
 	return fmt.Sprintf(
-		"NOTE: the deployed copy of %s predates this binary or carries no role-core markers — the core below was injected from the binary's embedded template copy. Usual cause in a worktree: an uncommitted `moai update` on the base branch; commit it there and merge the base branch into this worktree (`git merge main` inside the worktree), or run `moai update` in the primary checkout.",
-		strings.Join(names, ", "))
+		"NOTE: the deployed copy of %s predates this binary or carries no role-core markers — the core below was injected from the binary's embedded template copy. Usual cause in a worktree: an uncommitted `moai update` on the base branch; commit it there and merge the base branch into this worktree (`git merge %s` inside the worktree), or run `moai update` in the primary checkout.",
+		strings.Join(names, ", "), base)
 }
 
 // roleRuleLocaleTable carries the operator-facing warnings by locale. The
@@ -372,8 +346,10 @@ func embeddedFallbackNotice(names []string) string {
 // resolves to English (fail-open, per the shared locale-helper contract).
 type roleRuleLocaleTable struct {
 	// InjectionFailed renders the REQ-ALB-009 failure warning: the session
-	// role name and the joined failure causes.
-	InjectionFailed func(session, detail string) string
+	// role name, the joined failure causes, and the project's base branch
+	// the refresh advice names (audit round-3 P2: the branch is the
+	// project's configured worktree base, not a hardcoded main).
+	InjectionFailed func(session, detail, base string) string
 	// OverflowUnavailable renders the overflow-delivery-unavailable retreat
 	// warning: the session role name, the measured total, and the cap.
 	OverflowUnavailable func(session string, total, limit int) string
@@ -383,8 +359,8 @@ type roleRuleLocaleTable struct {
 
 var roleRuleLocales = map[string]roleRuleLocaleTable{
 	"ko": {
-		InjectionFailed: func(session, detail string) string {
-			return fmt.Sprintf("역할 규칙 주입이 %s 세션에서 실패했습니다: %s. 에이전트에는 두 규칙 파일을 경로로 읽으라는 지시가 전달됐습니다. 규칙 파일이 바이너리보다 낡은 버전 불일치라면, 워크트리에서는 보통 베이스 브랜치에 커밋되지 않은 `moai update` 가 원인입니다 — 베이스 브랜치에서 커밋한 뒤 워크트리 안에서 `git merge main` 으로 베이스 브랜치를 병합하고, 기본 체크아웃에서는 `moai update` 를 실행한 뒤 세션을 다시 시작하세요.", session, detail)
+		InjectionFailed: func(session, detail, base string) string {
+			return fmt.Sprintf("역할 규칙 주입이 %s 세션에서 실패했습니다: %s. 에이전트에는 두 규칙 파일을 경로로 읽으라는 지시가 전달됐습니다. 규칙 파일이 바이너리보다 낡은 버전 불일치라면, 워크트리에서는 보통 베이스 브랜치에 커밋되지 않은 `moai update` 가 원인입니다 — 베이스 브랜치에서 커밋한 뒤 워크트리 안에서 `git merge %s` 로 베이스 브랜치를 병합하고, 기본 체크아웃에서는 `moai update` 를 실행한 뒤 세션을 다시 시작하세요.", session, detail, base)
 		},
 		OverflowUnavailable: func(session string, total, limit int) string {
 			return fmt.Sprintf("역할 규칙 주입 초과(%s 세션): 조립된 맥락(%d자)이 %d자 전달 한도를 넘는데 넘침 파일 전달을 쓸 수 없어, 역할 core 대신 읽기 지시를 보냈습니다.", session, total, limit)
@@ -394,8 +370,8 @@ var roleRuleLocales = map[string]roleRuleLocaleTable{
 		},
 	},
 	"ja": {
-		InjectionFailed: func(session, detail string) string {
-			return fmt.Sprintf("ロールルールの注入が %s セッションで失敗しました: %s。エージェントには両ルールファイルをパスで読むよう指示を送りました。ルールファイルがバイナリより古い場合(バージョン不整合)は、ワークツリーでは通常ベースブランチに未コミットの `moai update` が原因です。ベースブランチでコミットしてから、ワークツリー内で `git merge main` によりベースブランチをマージし、プライマリチェックアウトでは `moai update` を実行してセッションを再起動してください。", session, detail)
+		InjectionFailed: func(session, detail, base string) string {
+			return fmt.Sprintf("ロールルールの注入が %s セッションで失敗しました: %s。エージェントには両ルールファイルをパスで読むよう指示を送りました。ルールファイルがバイナリより古い場合(バージョン不整合)は、ワークツリーでは通常ベースブランチに未コミットの `moai update` が原因です。ベースブランチでコミットしてから、ワークツリー内で `git merge %s` によりベースブランチをマージし、プライマリチェックアウトでは `moai update` を実行してセッションを再起動してください。", session, detail, base)
 		},
 		OverflowUnavailable: func(session string, total, limit int) string {
 			return fmt.Sprintf("ロールルール注入のオーバーフロー(%s セッション): 組み立てたコンテキスト(%d文字)が %d文字の配信上限を超えていますが、オーバーフローファイル配信が使えないため、ロール core の代わりに読み取り指示を送りました。", session, total, limit)
@@ -405,8 +381,8 @@ var roleRuleLocales = map[string]roleRuleLocaleTable{
 		},
 	},
 	"zh": {
-		InjectionFailed: func(session, detail string) string {
-			return fmt.Sprintf("角色规则注入在 %s 会话中失败:%s。已指示代理按路径完整读取两个规则文件。若规则文件比二进制旧(版本不匹配),工作树中的常见原因是基分支上有未提交的 `moai update` — 请在基分支提交后在工作树内用 `git merge main` 合并基分支;在主检出中运行 `moai update` 并重启会话。", session, detail)
+		InjectionFailed: func(session, detail, base string) string {
+			return fmt.Sprintf("角色规则注入在 %s 会话中失败:%s。已指示代理按路径完整读取两个规则文件。若规则文件比二进制旧(版本不匹配),工作树中的常见原因是基分支上有未提交的 `moai update` — 请在基分支提交后在工作树内用 `git merge %s` 合并基分支;在主检出中运行 `moai update` 并重启会话。", session, detail, base)
 		},
 		OverflowUnavailable: func(session string, total, limit int) string {
 			return fmt.Sprintf("角色规则注入溢出(%s 会话):组装后的上下文(%d 字符)超出 %d 字符的传递上限,且溢出文件传递不可用,因此以读取指示代替角色 core。", session, total, limit)
@@ -416,10 +392,10 @@ var roleRuleLocales = map[string]roleRuleLocaleTable{
 		},
 	},
 	langEnglish: {
-		InjectionFailed: func(session, detail string) string {
+		InjectionFailed: func(session, detail, base string) string {
 			return fmt.Sprintf(
-				"Role-rule injection failed for the %s session: %s. The agent was directed to read both rule files by path. If the rule files are older than the binary (version skew), the usual cause in a worktree is an uncommitted `moai update` on the base branch — commit it there and merge the base branch into this worktree (`git merge main` inside the worktree); in the primary checkout, run `moai update` and restart the session.",
-				session, detail)
+				"Role-rule injection failed for the %s session: %s. The agent was directed to read both rule files by path. If the rule files are older than the binary (version skew), the usual cause in a worktree is an uncommitted `moai update` on the base branch — commit it there and merge the base branch into this worktree (`git merge %s` inside the worktree); in the primary checkout, run `moai update` and restart the session.",
+				session, detail, base)
 		},
 		OverflowUnavailable: func(session string, total, limit int) string {
 			return fmt.Sprintf(
@@ -500,7 +476,7 @@ func roleRuleSkewDetail(root string) string {
 	if !skewed {
 		return ""
 	}
-	return fmt.Sprintf("version skew: rule files stamped %s, running binary %s — in a worktree the usual cause is an uncommitted `moai update` on the base branch: commit it there and merge the base branch into this worktree (`git merge main` inside the worktree); in the primary checkout, run `moai update` to refresh the rule files", stamp, version.GetVersion())
+	return fmt.Sprintf("version skew: rule files stamped %s, running binary %s — in a worktree the usual cause is an uncommitted `moai update` on the base branch: commit it there and merge the base branch into this worktree (`git merge %s` inside the worktree); in the primary checkout, run `moai update` to refresh the rule files", stamp, version.GetVersion(), worktreeBaseBranchFor(root))
 }
 
 // roleRuleLocaleFor resolves the operator-locale table, failing open to
@@ -537,13 +513,7 @@ func roleRuleInjectionFor(root, source, lang string) roleRuleInjection {
 
 	// Build every core first; any failure the embedded fallback cannot cover
 	// takes the REQ-ALB-009 path.
-	skewed, stamp := roleRuleSkewInfo(root)
-	// The skew swap fires only on a genuinely OLDER deployment (audit
-	// round-2 P2, card t1729): a NEWER stamp (a newer binary deployed the
-	// project; an older binary runs now) or a free-form unorderable stamp
-	// keeps the deployed core — the embedded swap must never regress a
-	// newer deployment.
-	staleSwap := skewed && stampStrictlyOlder(stamp, version.GetVersion())
+	skewed, _ := roleRuleSkewInfo(root)
 	var parts []string
 	var failures []string
 	var fallbackNames []string
@@ -562,22 +532,20 @@ func roleRuleInjectionFor(root, source, lang string) roleRuleInjection {
 			// unreadable, empty, malformed markers) keep the REQ-ALB-009
 			// path: the binary cannot reconstruct a file it did not
 			// deploy.
+			//
+			// Audit rounds 2-3 (card t1729): the skew-swap arm the card
+			// sketched — replacing a parseable deployed copy under a
+			// differing system.yaml stamp — was removed twice-confirmed:
+			// version stamps cannot establish build order (an explicit rc
+			// VERSION reads HIGHER — version-management.md:97), so a swap
+			// can regress a NEWER deployment. A parseable deployed core is
+			// kept; the skew is surfaced by name instead (the note below,
+			// the failure-detail line).
 			if errors.Is(err, errRoleRuleUnmarked) {
 				if fb, ferr := embeddedRoleCore(rule); ferr == nil {
 					core, err = fb, nil
 					fromEmbedded = true
 				}
-			}
-		} else if staleSwap {
-			// t1729: a detected version skew makes the deployed copy stale
-			// by definition — the binary's embedded copy is authoritative
-			// even when the deployed file still parses. When the embedded
-			// read fails (a packaging bug), keep the deployed core rather
-			// than manufacturing a new failure; the skew line still rides
-			// any failure detail.
-			if fb, ferr := embeddedRoleCore(rule); ferr == nil {
-				core = fb
-				fromEmbedded = true
 			}
 		}
 		if err != nil {
@@ -604,7 +572,7 @@ func roleRuleInjectionFor(root, source, lang string) roleRuleInjection {
 		loc := roleRuleLocaleFor(lang)
 		return roleRuleInjection{
 			RecoveryHead:   roleRulesReadDirective(root, ""),
-			OperatorNotice: loc.InjectionFailed(role.Name, detail),
+			OperatorNotice: loc.InjectionFailed(role.Name, detail, worktreeBaseBranchFor(root)),
 		}
 	}
 
@@ -612,7 +580,13 @@ func roleRuleInjectionFor(root, source, lang string) roleRuleInjection {
 	if len(fallbackNames) > 0 {
 		// t1729: the one-line notice — the session must be able to tell an
 		// embedded-copy core from a deployed-file core.
-		sb.WriteString(embeddedFallbackNotice(fallbackNames))
+		sb.WriteString(embeddedFallbackNotice(fallbackNames, worktreeBaseBranchFor(root)))
+		sb.WriteString("\n\n")
+	} else if skewed {
+		// Skew WITHOUT a swap (audit round-3): the deployed copy is kept,
+		// and the skew rides one line naming both versions so the state is
+		// visible without replacing rules on an unprovable premise.
+		sb.WriteString(skewKeptNotice(root))
 		sb.WriteString("\n\n")
 	}
 	fmt.Fprintf(&sb, "Role-gated rules (factory %s session — injected at session start; the always-loaded surface carries the stubs):\n\n", role.Name)
