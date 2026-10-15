@@ -49,7 +49,7 @@ Execution order (dependency-driven, distinct from the priority order above): M1 
 - **Policy copies (surgical, Q5 default).** In `.moai/policies/workflow/factory-dispatch.md`, edit the migrated description line, the section "The `/clear` handoff between cards" (its lane passages), and the isolation clause. In `factory-dispatch-detail.md` and `factory-dispatch-cards.md`, edit the same passages as their rule counterparts. `factory-dispatch-mechanics.md` in the policy tree carries no `/clear` line and needs no edit. The policy copies are edited to the same transition text as the rule files; no other passage is touched.
 - **Local-only lane protocol.** `.claude/rules/local/gitflow-lane-protocol.md` has no template mirror. Its § 1 sentence that runs `/clear` once after a move is aligned to the in-session sequence.
 - **Local parity.** After the template edits and `make build`, copy each changed template artifact to its local counterpart so the two are byte-identical. Exceptions: the root dogfood codex TOML (Q4 default: untouched), the policy copies (surgical edit, not a copy), and the kanban policy-only copies (Q8 default: untouched).
-- **Tests to update (targeted).** `factory_m6_test.go`: clear-each and absent policy print no `/clear`; clear-when-full prints nothing at or above the threshold; the complete output carries zero `/clear`; relaunch keeps its end-session line and names no clear. `role_core_elements_test.go` (`TestInjectedCoreCarriesObligationElements`): replace the `never before` row with the new transition phrases asserted in the injected core. `session_start_factory_rule_test.go`: confirm the rule still fires on source clear and startup.
+- **Tests to update (targeted).** `factory_m6_test.go`: clear-each and absent policy print no `/clear`; clear-when-full prints the in-session transition line at or above the threshold, with no clear instruction; the complete output carries zero `/clear`; relaunch keeps its end-session line and names no clear. `role_core_elements_test.go` (`TestInjectedCoreCarriesObligationElements`): replace the `never before` row with the new transition phrases asserted in the injected core. `session_start_factory_rule_test.go`: confirm the rule still fires on source clear and startup.
 
 ## §F Location Ledger
 
@@ -57,7 +57,7 @@ Each row names a location, its current text in short form, its disposition, its 
 
 | ID | Path | Location | Current text (short) | Disposition | Kind | REQ |
 |----|------|----------|----------------------|-------------|------|-----|
-| L01 | `.claude/rules/moai/workflow/factory-dispatch.md` (template mirrored) | L31 | "After a `/clear`, the leader presents the queued cards" | KEEP | leader session's own clear | 011, 016 |
+| L01 | `.claude/rules/moai/workflow/factory-dispatch.md` (template mirrored) | L38 | "After a `/clear`, the leader presents the queued cards" | KEEP | leader session's own clear | 011, 016 |
 | L02 | same | L40 | "after `/clear` present the queue" | KEEP | leader session's own clear | 011, 016 |
 | L03 | same | L152 | heading "The `/clear` handoff between cards" | EDIT | lane transition | 013 |
 | L04 | same | L154 | "No card context crosses ... asks the operator to `/clear` that lane session" | EDIT | lane transition | 001, 006 |
@@ -111,7 +111,7 @@ Each row names a location, its current text in short form, its disposition, its 
 | L52 | same | Korean recheck text (L216), Japanese (L276), Chinese (L335) | stall-recheck text, each with `/clear` after takeover | EDIT (card takeover named as trigger; four locales carry the same meaning) | lane stall-recheck | 010 |
 | L53 | `internal/hook/session_start_factory.go` | comment near L108-L110 ("keeps the clear-each loop going") | comment | EDIT (comment) | lane transition | 010 |
 | L54 | `internal/hook/role_core_elements_test.go` | row "ALB-0294 (/clear after, never before)" at L53 | asserts `never before` in the rule body | EDIT (row replaced by the new transition phrases; the injected-core check asserts them in the role-core region) | lane transition test | 015 |
-| L55 | `internal/hook/session_start_factory_rule_test.go` | L13-L14 (comments), L59-L75 (rule matrix), L122 (source clear) | rule injection matrix | KEEP (review; assertions still hold) | not text | 015 |
+| L55 | `internal/hook/session_start_factory_rule_test.go` | L13-L14 (comments), L59-L75 (rule matrix), L122 (source clear) | rule injection matrix | EDIT (add the four-locale takeover-trigger assertion as a subtest of `TestSD_AC019_NextCardRuleInjection`; existing assertions still hold) | not text | 015 |
 | L56 | `.moai/policies/workflow/factory-dispatch.md` (policy copy, Q5 default) | L3 (migrated description) | "when the operator is asked to `/clear`" | EDIT (surgical) | lane transition | 014 |
 | L57 | same | L31 | leader "After a `/clear`" | KEEP | leader session's own clear | 011, 016 |
 | L58 | same | L137-L145 (section "The `/clear` handoff between cards") | the section's lane passages (L139, L141) | EDIT (surgical: the same transition passage as the rule file) | lane transition | 013, 014 |
