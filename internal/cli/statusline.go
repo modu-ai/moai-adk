@@ -81,10 +81,8 @@ func runStatusline(cmd *cobra.Command, _ []string) error {
 	out := cmd.OutOrStdout()
 
 	// Render-budget guard (issue #646): Claude Code allots a statusline render only a
-	// few hundred milliseconds. The usage collector's OAuth 429 retry honors Retry-After,
-	// which can stall the render for minutes when the endpoint is rate limited. Every
-	// collector swallows its own error, so an expired context drops just that segment
-	// rather than failing the whole render.
+	// few hundred milliseconds. Every collector swallows its own error, so an
+	// expired context drops just that segment rather than failing the whole render.
 	ctx, cancel := context.WithTimeout(context.Background(), statuslineRenderBudget)
 	defer cancel()
 
