@@ -130,6 +130,41 @@ func TestSessionStartAttributionMismatchNotice(t *testing.T) {
 		}
 	})
 
+	t.Run("symlink_to_foreign_file_refused_not_narrated", func(t *testing.T) {
+		// A side channel symlinked to a SMALL foreign file passes the size
+		// cap — only O_NOFOLLOW and the id-shape check keep its bytes out of
+		// the session context (audit round-12 first P2).
+		root6 := t.TempDir()
+		secret := t.TempDir()
+		secretPath := filepath.Join(secret, "token.txt")
+		if err := os.WriteFile(secretPath, []byte("SECRET-TOKEN-ABC"), 0o600); err != nil {
+			t.Fatalf("seed secret: %v", err)
+		}
+		sideDir6 := filepath.Join(root6, filepath.Dir(session.CurrentSideChannelFile))
+		if err := os.MkdirAll(sideDir6, 0o755); err != nil {
+			t.Fatalf("mkdir: %v", err)
+		}
+		if err := os.Symlink(secretPath, filepath.Join(root6, session.CurrentSideChannelFile)); err != nil {
+			t.Fatalf("symlink: %v", err)
+		}
+		out6, err := h.Handle(t.Context(), &HookInput{
+			SessionID:  this,
+			ProjectDir: root6,
+			CWD:        root6,
+			Source:     "startup",
+		})
+		if err != nil {
+			t.Fatalf("Handle: %v", err)
+		}
+		ctx6 := ""
+		if out6.HookSpecificOutput != nil {
+			ctx6 = out6.HookSpecificOutput.AdditionalContext
+		}
+		if strings.Contains(ctx6, "SECRET-TOKEN-ABC") {
+			t.Fatalf("a symlinked foreign file's bytes leaked into the session context:\n%s", ctx6)
+		}
+	})
+
 	t.Run("matching_side_channel_no_notice", func(t *testing.T) {
 		root2 := t.TempDir()
 		sideDir2 := filepath.Join(root2, filepath.Dir(session.CurrentSideChannelFile))

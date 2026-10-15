@@ -491,11 +491,13 @@ func (h *sessionStartHandler) Handle(ctx context.Context, input *HookInput) (*Ho
 		// The prev-id read goes through the non-blocking regular-file guard
 		// (audit round-5, card t1776: os.ReadFile on a side channel symlinked
 		// to /dev/zero never sees EOF and allocates until the session start
-		// dies) with the bound applied TO THE READ (audit round-6: a
-		// post-read length check still allocates the whole file first) — a
-		// session id is tens of bytes, so 4097 bytes cap it.
+		// dies) with the bound applied TO THE READ (audit round-6) and the
+		// symlink refused (audit round-12: a link to a small foreign file
+		// would otherwise have its bytes narrated into the context).
 		if data, readErr := readRuleFileBytesBounded(sidecar, 4097); readErr == nil && len(data) <= 4096 {
-			prevID = strings.TrimSpace(string(data))
+			if candidate := strings.TrimSpace(string(data)); isValidSessionIDShape(candidate) {
+				prevID = candidate
+			}
 		}
 		writeErr := os.WriteFile(sidecar, []byte(input.SessionID), 0o600)
 		if writeErr != nil {
@@ -651,7 +653,7 @@ func (h *sessionStartHandler) Handle(ctx context.Context, input *HookInput) (*Ho
 	// and the lane rule is withheld (the model must not infer lane behavior).
 	failFast := codexLaneEnvFailFast()
 	if failFast == "" {
-		if rule := factoryLaneRuleForSource(input.Source, operatorLang(h.cfg)); rule != "" {
+		if rule := factoryLaneRuleForSourceInDir(input.Source, operatorLang(h.cfg), input.CWD); rule != "" {
 			if out.HookSpecificOutput == nil {
 				out.HookSpecificOutput = &HookSpecificOutput{
 					HookEventName: string(EventSessionStart),
@@ -1937,3 +1939,29 @@ func snapshotDeferredScanCompleted() chan struct{} {
 //
 // Reviving it would mean putting the compute back in band, which is the decision
 // SPEC-DRIFT-CACHE-FILL-001 reversed; this removal changes no behaviour.
+
+// isValidSessionIDShape reports whether s looks like the session UUID the
+// attribution writes (36 chars, 8-4-4-4-12 hex groups). The mismatch notice
+// narrates prevID back into the session context, so only a value that
+// parses as a session id may ride it — a side channel pointing at a small
+// foreign file (credentials, notes) is refused, not echoed (card t1776
+// audit round-12).
+func isValidSessionIDShape(s string) bool {
+	if len(s) != 36 {
+		return false
+	}
+	for i, r := range s {
+		switch i {
+		case 8, 13, 18, 23:
+			if r != '-' {
+				return false
+			}
+		default:
+			isHex := (r >= '0' && r <= '9') || (r >= 'a' && r <= 'f') || (r >= 'A' && r <= 'F')
+			if !isHex {
+				return false
+			}
+		}
+	}
+	return true
+}

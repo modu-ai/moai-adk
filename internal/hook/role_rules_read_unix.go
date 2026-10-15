@@ -43,9 +43,12 @@ func readRuleFileBytes(path string) ([]byte, error) {
 // readRuleFileBytesBounded is readRuleFileBytes with the read itself
 // bounded: at most max bytes leave the file into memory (card t1776 audit
 // round-6 — a post-read length check still allocates the whole file first;
-// the side-channel read needs the guard AND the bound together).
+// the side-channel read needs the guard AND the bound together). The open
+// carries O_NOFOLLOW (audit round-12: the side channel may be a symlink to
+// a small foreign file whose bytes would otherwise be narrated back into
+// the session context) — a linked side channel is refused, not followed.
 func readRuleFileBytesBounded(path string, max int64) ([]byte, error) {
-	f, err := os.OpenFile(path, os.O_RDONLY|unix.O_NONBLOCK, 0)
+	f, err := os.OpenFile(path, os.O_RDONLY|unix.O_NONBLOCK|unix.O_NOFOLLOW, 0)
 	if err != nil {
 		return nil, err
 	}

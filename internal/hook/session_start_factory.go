@@ -115,6 +115,16 @@ func factoryBootstrapNoticeForSource(source, root, sessionID, lang string) strin
 // without a card id, and an unknown backend value all receive no rule.
 // lang is the session's conversation language (REQ-SD-019).
 func factoryLaneRuleForSource(source, lang string) string {
+	return factoryLaneRuleForSourceInDir(source, lang, "")
+}
+
+// factoryLaneRuleForSourceInDir is factoryLaneRuleForSource with the session
+// directory the card id may be derived from (card t1776 audit round-12: a
+// gpt lane standing in its card worktree without MOAI_KANBAN_CARD stamped
+// still carries a card — resolving it from the path keeps such a session on
+// the owned-card rule instead of misdirecting it at the parent-checkout
+// queue verb). dir may be empty; an empty dir resolves env-only.
+func factoryLaneRuleForSourceInDir(source, lang, dir string) string {
 	if source != "" && source != "startup" && source != "clear" {
 		return ""
 	}
@@ -145,7 +155,7 @@ func factoryLaneRuleForSource(source, lang string) string {
 		}
 		return m.laneNextCardRule + "\n\n" + recheck
 	case factory.BackendGPT:
-		cardID := os.Getenv(config.EnvFactoryCard)
+		cardID := resolveSessionCardID(dir)
 		if cardID == "" {
 			// The card-less queue boot (moai codex -l before its first
 			// lease): the role core's read-first duty conflicts with the
