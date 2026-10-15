@@ -361,11 +361,21 @@ func TestZoneNameIndexExactMembership(t *testing.T) {
 		names = append(names, e.Name())
 	}
 	idx := newZoneNameIndex(names)
-	if !idx.has("Ä.txt") {
-		t.Errorf("ReadDir-backed membership(%q, %q) = false, want true", names, "Ä.txt")
+	// repair round 15 P2-b: the fixture name is queried AS THE FILESYSTEM
+	// RETURNED it — HFS+-style volumes hand back the DECOMPOSED (NFD)
+	// spelling of the NFC source literal, and the byte-exact index (correct
+	// by design) must be probed with the returned spelling, not the source
+	// literal; the cell then passes on NFC-storage and NFD-storage volumes
+	// alike. The negative probe uses a byte-different fold variant, false on
+	// both storage forms.
+	if len(names) == 0 {
+		t.Fatal("ReadDir-backed fixture produced no entries — the probes would assert nothing")
+	}
+	if !idx.has(names[0]) {
+		t.Errorf("ReadDir-backed membership(%q, %q) = false, want true — the exact index must accept the spelling the filesystem returned", names, names[0])
 	}
 	if idx.has("ä.txt") {
-		t.Errorf("ReadDir-backed membership(%q, %q) = true, want false — a fold variant is not an exact match and defers to the full resolver", names, "ä.txt")
+		t.Errorf("ReadDir-backed fold-variant membership(%q, %q) = true, want false — a fold variant is not an exact match and defers to the full resolver", names, "ä.txt")
 	}
 }
 
@@ -387,10 +397,21 @@ func TestZoneParentListingReadOncePerGuardCall(t *testing.T) {
 		"command": "rm zone_dir/link_x zone_dir/broken zone_dir/innermissing",
 	})
 	if runtime.GOOS == "windows" {
-		// round 8: windows defers the narrowing — these operands take the
-		// target-following judgment and deny (the documented over-block);
-		// the listing-count assertion below is decision-independent
+		// round 8: windows defers the narrowing — every operand takes the
+		// target-following judgment and denies (the documented over-block);
+		// the link-own candidate loop never runs there, so no link-own
+		// listing is taken at all (repair round 15 P2-a)
 		wantZoneDeny(t, "listing cache", d, r, harnessLearnerIdentity, "category", "probe_zone")
+		listedWindows := 0
+		for dir := range counts {
+			if strings.HasSuffix(filepath.ToSlash(dir), "/zone_dir") {
+				listedWindows++
+			}
+		}
+		if listedWindows != 0 {
+			t.Errorf("windows link-own listing: %d /zone_dir keyed entries observed, want 0 — windows never routes link-own", listedWindows)
+		}
+		return
 	} else if d == DecisionDeny {
 		t.Fatalf("listing cache: decision=%q reason=%q, want the operands judged (links outside the zone)", d, r)
 	}
