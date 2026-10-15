@@ -15,6 +15,7 @@ import (
 	"path/filepath"
 	"runtime"
 	"strings"
+	"unicode"
 
 	"github.com/modu-ai/moai-adk/internal/config"
 	"golang.org/x/text/unicode/norm"
@@ -230,7 +231,7 @@ func zoneResolveWalk(p string, depth int, windows bool) (string, bool) {
 // resolveZoneTarget returns the relative forms of raw under root: the lexical form
 // first, then the symlink-resolved form when it differs. An empty result means the
 // target is outside the project root on every reading.
-func resolveZoneTarget(root, raw string, listings ...map[string][]string) []zoneForm {
+func resolveZoneTarget(root, raw string, listings ...map[string]*zoneNameIndex) []zoneForm {
 	abs := zoneSlash(raw)
 	// walk carries the same input with its POSIX component identity preserved
 	// for the symlink arm: the filesystem steps must follow the components the
@@ -333,7 +334,7 @@ func appendZoneForm(forms []zoneForm, rel string) []zoneForm {
 // name outside the zone while the shell deletes inside it (zoneResolveWalk).
 // The lexical arm is shared with resolveZoneTarget; only the filesystem arms
 // differ (parent-only resolution).
-func resolveZoneLinkTarget(root, raw string, listings ...map[string][]string) []zoneForm {
+func resolveZoneLinkTarget(root, raw string, listings ...map[string]*zoneNameIndex) []zoneForm {
 	abs := zoneSlash(raw)
 	walk := zoneNativeSlash(raw)
 	if !zoneIsAbs(abs) {
@@ -427,7 +428,7 @@ var zoneParentLister = func(dir string) ([]os.DirEntry, error) {
 // guard's candidate loop threads ONE per-call map through every resolution
 // (repair round 12 P2), while direct callers (tests, the single-shot guard
 // path) omit it and run uncached.
-func listingCache(listings []map[string][]string) map[string][]string {
+func listingCache(listings []map[string]*zoneNameIndex) map[string]*zoneNameIndex {
 	if len(listings) > 0 {
 		return listings[0]
 	}
@@ -458,7 +459,7 @@ func listingCache(listings []map[string][]string) map[string][]string {
 // The returned rejoined paths carry the CANONICALIZED spelling FIRST and the
 // RAW spelling alongside when the two differ (repair round 12 P1): both
 // spellings judge, and the zone-form dedup absorbs the identity.
-func zoneResolveParent(p string, listings map[string][]string) ([]string, bool) {
+func zoneResolveParent(p string, listings map[string]*zoneNameIndex) ([]string, bool) {
 	dir, final := path.Split(filepath.ToSlash(p))
 	if dir == "" || final == "" || final == "." || final == ".." {
 		return nil, false
@@ -481,21 +482,22 @@ func zoneResolveParent(p string, listings map[string][]string) ([]string, bool) 
 	// subsumes the windows round-7 gate — 8.3-in-listing absorption now
 	// applies on windows through the same path. (3) A listing failure keeps
 	// the raw judgment, today's pre-canonicalization behavior.
-	var names []string
+	var idx *zoneNameIndex
 	if cached, hit := listings[resolved]; hit {
-		names = cached
+		idx = cached
 	} else if entries, err := zoneParentLister(resolved); err == nil {
-		names = make([]string, 0, len(entries))
+		names := make([]string, 0, len(entries))
 		for _, e := range entries {
 			names = append(names, e.Name())
 		}
+		idx = newZoneNameIndex(names)
 		if listings != nil {
-			listings[resolved] = names
+			listings[resolved] = idx
 		}
 	}
 	canonical := final
-	if names != nil {
-		canonical = zoneCanonicalDirEntryName(names, final)
+	if idx != nil {
+		canonical = idx.lookup(final)
 	}
 	rejoined := []string{filepath.Join(resolved, filepath.FromSlash(canonical))}
 	if canonical != final {
@@ -507,30 +509,69 @@ func zoneResolveParent(p string, listings map[string][]string) ([]string, bool) 
 	return rejoined, true
 }
 
-// zoneCanonicalDirEntryName returns the real spelling of final among the
-// parent directory's entry names — the EXACT match wins before any fold
-// (repair round 12 P1: on a case-sensitive volume both spellings can exist,
-// and a fold-first scan would canonicalize a query to whichever sibling the
-// listing order hit first, judging the unprotected spelling while the
-// protected one is what the shell removes), then a Unicode case-insensitive
-// match (strings.EqualFold; FoldZoneText folds ASCII only, so a manifest
-// entry like docs/Ä.txt would miss an ä.txt operand on a case-insensitive
-// volume, NTFS or macOS APFS alike) — keeping final itself when no entry
-// matches. Boundary: EqualFold covers Unicode SIMPLE folding, not locale
-// case tables — an ı/I pair NTFS equates stays unmatched here, the gap the
-// windows narrowing deferral (repair round 8) closes structurally on that
-// platform. The caller harvests names via os.ReadDir on the resolved parent
-// and NEVER opens or follows the entry: this canonicalizes the NAME only.
-func zoneCanonicalDirEntryName(names []string, final string) string {
-	for _, name := range names {
-		if name == final {
-			return name
-		}
+// zoneNameIndex is the per-parent O(1) lookup index over a directory
+// listing (repair round 13 P2): a PreToolUse hook cannot afford 4,096
+// candidates × a 100,000-entry linear scan, so the canonical-name match is
+// indexed — the EXACT entry name and its Unicode simple-fold orbit key both
+// point at the entry — built once per resolved parent on first listing, in
+// the same zoneParentLister seam as the listing cache. Semantics are the
+// round-12 matcher's, exactly: the exact match wins before any fold (a
+// case-sensitive volume can hold both spellings, and a fold-first lookup
+// would judge whichever sibling inserted first); a fold-orbit match
+// canonicalizes; no match keeps the raw name.
+type zoneNameIndex struct {
+	exact  map[string]string
+	folded map[string]string
+}
+
+// newZoneNameIndex builds the index over one parent's entry names. The
+// folded map keeps the FIRST entry per orbit key — the same first-hit
+// semantics the round-12 listing-order scan had.
+func newZoneNameIndex(names []string) *zoneNameIndex {
+	idx := &zoneNameIndex{
+		exact:  make(map[string]string, len(names)),
+		folded: make(map[string]string, len(names)),
 	}
 	for _, name := range names {
-		if strings.EqualFold(name, final) {
-			return name
+		idx.exact[name] = name
+		key := zoneFoldKey(name)
+		if _, ok := idx.folded[key]; !ok {
+			idx.folded[key] = name
 		}
+	}
+	return idx
+}
+
+// lookup returns the canonical entry spelling for final: the exact entry
+// when one exists, the first fold-orbit match otherwise, and final itself
+// when nothing matches. NAME-only — the entry is never opened or followed.
+func (idx *zoneNameIndex) lookup(final string) string {
+	if name, ok := idx.exact[final]; ok {
+		return name
+	}
+	if name, ok := idx.folded[zoneFoldKey(final)]; ok {
+		return name
 	}
 	return final
+}
+
+// zoneFoldKey maps every rune to the minimum rune of its Unicode
+// simple-fold orbit — exactly the relation strings.EqualFold accepts, so
+// index lookups match the reference scan without walking the listing.
+// Boundary kept from the matcher: locale case tables are not simple folds
+// (an ı/I pair NTFS equates stays unmatched here), the gap the windows
+// narrowing deferral (repair round 8) closes structurally on that platform.
+func zoneFoldKey(s string) string {
+	var b strings.Builder
+	b.Grow(len(s))
+	for _, r := range s {
+		min := r
+		for f := unicode.SimpleFold(r); f != r; f = unicode.SimpleFold(f) {
+			if f < min {
+				min = f
+			}
+		}
+		b.WriteRune(min)
+	}
+	return b.String()
 }

@@ -282,13 +282,15 @@ func TestZoneAbsOperandQuotedAndVolumeFree(t *testing.T) {
 }
 
 // TestZoneCanonicalDirEntryName — repair round 7 P1: on a case-insensitive
-// NTFS the directory entry's REAL name is the one the zone manifest pins
-// (`docs/Ä.txt`), while the operand may spell any case (`ä.txt`); the
-// link-own resolver preserves the RAW final name, so the exact-entry zone
-// form missed the alias. The matcher folds UNICODE case (strings.EqualFold —
-// FoldZoneText folds ASCII only) over the parent's real listing and
-// substitutes the entry's real spelling; no listing hit keeps the raw name.
-// Host-portable: the matcher is pure over a names slice, and the ReadDir-
+// volume (NTFS, macOS default APFS) the directory entry's REAL name is the
+// one the zone manifest pins (`docs/Ä.txt`), while the operand may spell any
+// case (`ä.txt`); the link-own resolver preserves the RAW final name, so the
+// exact-entry zone form missed the alias. The lookup index folds UNICODE
+// case (simple-fold orbits — FoldZoneText folds ASCII only) over the
+// parent's real listing and substitutes the entry's real spelling; no
+// listing hit keeps the raw name. Repair round 13 ports the sweep from the
+// round-12 linear matcher to the O(1) index — same cells, same semantics.
+// Host-portable: the cells are pure over a names slice, and the ReadDir-
 // backed cell harvests names exactly the way the resolver does.
 func TestZoneCanonicalDirEntryName(t *testing.T) {
 	cells := []struct {
@@ -320,8 +322,8 @@ func TestZoneCanonicalDirEntryName(t *testing.T) {
 	}
 	t.Logf("canonical final-name sweep: %d cells", len(cells))
 	for _, tc := range cells {
-		if got := zoneCanonicalDirEntryName(tc.names, tc.final); got != tc.want {
-			t.Errorf("zoneCanonicalDirEntryName(%q, %q) = %q, want %q", tc.names, tc.final, got, tc.want)
+		if got := newZoneNameIndex(tc.names).lookup(tc.final); got != tc.want {
+			t.Errorf("canonical lookup(%q, %q) = %q, want %q", tc.names, tc.final, got, tc.want)
 		}
 	}
 	// a real listing harvested the way the resolver does — os.ReadDir on the
@@ -338,8 +340,8 @@ func TestZoneCanonicalDirEntryName(t *testing.T) {
 	for _, e := range entries {
 		names = append(names, e.Name())
 	}
-	if got := zoneCanonicalDirEntryName(names, "ä.txt"); got != "Ä.txt" {
-		t.Errorf("ReadDir-backed match: zoneCanonicalDirEntryName(%q, %q) = %q, want Ä.txt", names, "ä.txt", got)
+	if got := newZoneNameIndex(names).lookup("ä.txt"); got != "Ä.txt" {
+		t.Errorf("ReadDir-backed match: canonical lookup(%q, %q) = %q, want Ä.txt", names, "ä.txt", got)
 	}
 }
 
@@ -405,7 +407,12 @@ func TestZoneParentListingReadOncePerGuardCall(t *testing.T) {
 	d, r := zoneCall(t, h, "Bash", harnessLearnerIdentity, map[string]any{
 		"command": "rm zone_dir/link_x zone_dir/broken zone_dir/innermissing",
 	})
-	if d == DecisionDeny {
+	if runtime.GOOS == "windows" {
+		// round 8: windows defers the narrowing — these operands take the
+		// target-following judgment and deny (the documented over-block);
+		// the listing-count assertion below is decision-independent
+		wantZoneDeny(t, "listing cache", d, r, harnessLearnerIdentity, "category", "probe_zone")
+	} else if d == DecisionDeny {
 		t.Fatalf("listing cache: decision=%q reason=%q, want the operands judged (links outside the zone)", d, r)
 	}
 	listed := 0
