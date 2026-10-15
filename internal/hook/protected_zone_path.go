@@ -360,27 +360,12 @@ func resolveZoneLinkTarget(root, raw string, listings ...map[string]*zoneNameInd
 	// the EXACT-MATCH precondition gates the whole narrowing: no exact entry
 	// (or an unresolvable parent) means no link-own judgment at all
 	if root != "" && filepath.IsAbs(native) {
-		if _, _, ok := zoneResolveParent(native, cache); !ok {
+		_, exact, ok := zoneResolveParent(native, cache)
+		if !ok {
 			return nil
 		}
-		// repair round 16 (leader-ruled): the FINAL component alone is not
-		// enough — every component of the operand's PARENT spelling must
-		// also be byte-exact at its own level. An aliased ancestor (case,
-		// NFC/NFD, short name) means the operand names the entry through an
-		// alias, and the link-own forms' folded spellings would miss the
-		// zone prefix. The operand defers to the full resolver judged on the
-		// CANONICAL path rebuilt from the real entry spellings: the walk's
-		// resolution preserves the operand's spelling (measured — Go's
-		// EvalSymlinks does not case-normalize plain components), so the
-		// canonical parent is what lets the full resolver judge the real
-		// spelling the manifest pins.
-		canonical, operandExact := zoneOperandParentCanonical(walk, cache)
-		if !operandExact {
-			deferRaw := raw
-			if canonical != "" {
-				deferRaw = canonical
-			}
-			return resolveZoneTarget(root, deferRaw, cache)
+		if !exact {
+			return resolveZoneTarget(root, raw, cache)
 		}
 	} else {
 		return resolveZoneTarget(root, raw, cache)
@@ -425,7 +410,7 @@ func resolveZoneLinkTarget(root, raw string, listings ...map[string]*zoneNameInd
 			if ok2 && !exact {
 				// the backslash-literal reading names no real entry either —
 				// defer the operand wholesale (never mix semantics)
-				return resolveZoneTarget(root, realTarget, cache)
+				return resolveZoneTarget(root, raw, cache)
 			}
 			if ok2 {
 				if rel, inside := zoneLexicalRel(filepath.ToSlash(realRoot), filepath.ToSlash(realTarget)); inside {
@@ -533,83 +518,4 @@ func newZoneNameIndex(names []string) *zoneNameIndex {
 // has reports whether name is byte-equal to a real directory entry.
 func (idx *zoneNameIndex) has(name string) bool {
 	return idx.exact[name]
-}
-
-// zoneOperandParentCanonical walks the operand's spelling level by level and
-// returns the path rebuilt from the REAL entry spellings, plus whether every
-// component was byte-exact (repair round 16, leader-ruled): the narrowing is
-// only complete when the operand spells the whole path exactly as the
-// filesystem lists it — an aliased ancestor (case, NFC/NFD, short name)
-// means the operand names the entry through an alias, and the link-own
-// forms' folded spellings would miss the zone prefix. The aliased component
-// is replaced by the REAL entry name (Unicode simple-fold match, the same
-// relation the deleted fold machinery accepted; locale pairs like ı/I stay
-// unmatched) and the caller defers onto the canonical path, letting the
-// full resolver judge the real spelling the manifest pins. "." segments
-// skip; ".." segments pop one level (POSIX root semantics at the filesystem
-// root); real symlink components pass through (ReadDir follows them, so the
-// next level's listing is the link target's). Listings ride the same
-// per-call cache seam (each level listed once per guard call); an unmatched
-// component appends the raw segment and marks the path inexact, and a
-// listing failure defers on the raw spelling.
-func zoneOperandParentCanonical(walkAbs string, listings map[string]*zoneNameIndex) (string, bool) {
-	slash := strings.LastIndex(walkAbs, "/")
-	parent := "/"
-	if slash > 0 {
-		parent = walkAbs[:slash]
-	}
-	canonical := "/"
-	operandExact := true
-	for _, seg := range strings.Split(parent, "/") {
-		switch {
-		case seg == "" || seg == ".":
-			continue
-		case seg == "..":
-			// POSIX root semantics: ".." at the filesystem root stays there
-			canonical = path.Dir(canonical)
-			continue
-		}
-		var level *zoneNameIndex
-		if cached, hit := listings[canonical]; hit {
-			level = cached
-		} else if entries, err := zoneParentLister(canonical); err == nil {
-			names := make([]string, 0, len(entries))
-			for _, e := range entries {
-				names = append(names, e.Name())
-			}
-			level = newZoneNameIndex(names)
-			if listings != nil {
-				listings[canonical] = level
-			}
-		}
-		if level == nil {
-			// listing failure: the component cannot be vouched for — the
-			// operand stays inexact and the raw segment rides the canonical
-			// path (the full resolver judges the aliased spelling)
-			operandExact = false
-			canonical = path.Join(canonical, seg)
-			continue
-		}
-		if level.has(seg) {
-			canonical = path.Join(canonical, seg)
-			continue
-		}
-		// aliased (or bogus): the Unicode simple-fold match finds the real
-		// entry the OS would resolve on a case-insensitive volume; no match
-		// means the component does not exist even aliased — the raw segment
-		// rides the canonical path and the operand stays inexact
-		real := ""
-		for name := range level.exact {
-			if strings.EqualFold(name, seg) {
-				real = name
-				break
-			}
-		}
-		operandExact = false
-		canonical = path.Join(canonical, seg)
-		if real != "" {
-			canonical = path.Join(path.Dir(canonical), real)
-		}
-	}
-	return canonical, operandExact
 }
