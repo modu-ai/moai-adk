@@ -491,9 +491,10 @@ func (h *sessionStartHandler) Handle(ctx context.Context, input *HookInput) (*Ho
 		// The prev-id read goes through the non-blocking regular-file guard
 		// (audit round-5, card t1776: os.ReadFile on a side channel symlinked
 		// to /dev/zero never sees EOF and allocates until the session start
-		// dies) and is size-capped — a session id is tens of bytes, so an
-		// oversized read is refused rather than trusted.
-		if data, readErr := readRuleFileBytes(sidecar); readErr == nil && len(data) <= 4096 {
+		// dies) with the bound applied TO THE READ (audit round-6: a
+		// post-read length check still allocates the whole file first) — a
+		// session id is tens of bytes, so 4097 bytes cap it.
+		if data, readErr := readRuleFileBytesBounded(sidecar, 4097); readErr == nil && len(data) <= 4096 {
 			prevID = strings.TrimSpace(string(data))
 		}
 		writeErr := os.WriteFile(sidecar, []byte(input.SessionID), 0o600)

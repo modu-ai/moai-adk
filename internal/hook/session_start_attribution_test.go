@@ -95,6 +95,41 @@ func TestSessionStartAttributionMismatchNotice(t *testing.T) {
 		}
 	})
 
+	t.Run("oversized_side_channel_refused", func(t *testing.T) {
+		// A LARGE regular side channel is refused outright — the read is
+		// BOUNDED (audit round-6 P2: the cap must apply to the read itself,
+		// not after a full io.ReadAll), so a huge file never lands in
+		// memory and no mismatch notice is composed from it.
+		root5 := t.TempDir()
+		sideDir5 := filepath.Join(root5, filepath.Dir(session.CurrentSideChannelFile))
+		if err := os.MkdirAll(sideDir5, 0o755); err != nil {
+			t.Fatalf("mkdir: %v", err)
+		}
+		big := strings.Repeat("x", 200*1024)
+		if err := os.WriteFile(filepath.Join(root5, session.CurrentSideChannelFile), []byte(big), 0o600); err != nil {
+			t.Fatalf("seed big side channel: %v", err)
+		}
+		out5, err := h.Handle(t.Context(), &HookInput{
+			SessionID:  this,
+			ProjectDir: root5,
+			CWD:        root5,
+			Source:     "startup",
+		})
+		if err != nil {
+			t.Fatalf("Handle: %v", err)
+		}
+		ctx5 := ""
+		if out5.HookSpecificOutput != nil {
+			ctx5 = out5.HookSpecificOutput.AdditionalContext
+		}
+		if strings.Contains(ctx5, "before this session started") {
+			t.Fatalf("an oversized side channel must be refused, not narrated:\n%s", ctx5)
+		}
+		if !strings.Contains(ctx5, "source_session_id="+this) {
+			t.Fatalf("attribution line missing:\n%s", ctx5)
+		}
+	})
+
 	t.Run("matching_side_channel_no_notice", func(t *testing.T) {
 		root2 := t.TempDir()
 		sideDir2 := filepath.Join(root2, filepath.Dir(session.CurrentSideChannelFile))

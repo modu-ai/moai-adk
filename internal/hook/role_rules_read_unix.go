@@ -39,3 +39,26 @@ func readRuleFileBytes(path string) ([]byte, error) {
 	}
 	return io.ReadAll(f)
 }
+
+// readRuleFileBytesBounded is readRuleFileBytes with the read itself
+// bounded: at most max bytes leave the file into memory (card t1776 audit
+// round-6 — a post-read length check still allocates the whole file first;
+// the side-channel read needs the guard AND the bound together).
+func readRuleFileBytesBounded(path string, max int64) ([]byte, error) {
+	f, err := os.OpenFile(path, os.O_RDONLY|unix.O_NONBLOCK, 0)
+	if err != nil {
+		return nil, err
+	}
+	defer func() { _ = f.Close() }()
+	fi, err := f.Stat()
+	if err != nil {
+		return nil, fmt.Errorf("opened-handle stat failed: %w", err)
+	}
+	if !fi.Mode().IsRegular() {
+		return nil, errNotRegularFile
+	}
+	if err := unix.SetNonblock(int(f.Fd()), false); err != nil {
+		return nil, fmt.Errorf("clear non-blocking mode: %w", err)
+	}
+	return io.ReadAll(io.LimitReader(f, max))
+}

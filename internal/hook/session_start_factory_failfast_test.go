@@ -112,10 +112,41 @@ func TestSessionStartCodexLaneFailFastSuppressesRoleRules(t *testing.T) {
 	}
 }
 
+// TestRoleCoreCarveOutCarriesNoQueueStart pins the round-5 fix: the role
+// core is injected into CARD-ASSIGNED codex sessions too (startup, clear,
+// compact) — a queue-start command inside it would send a card worktree
+// session at `moai todo --auto`, which the parent-checkout precondition
+// refuses. Queue start lives in the card-less boot only; the carve-out
+// resolves the read-first conflict without naming the queue verb.
+func TestRoleCoreCarveOutCarriesNoQueueStart(t *testing.T) {
+	for _, rel := range []string{
+		filepath.Join("..", "..", "internal", "template", "templates", ".claude", "rules", "moai", "workflow", "factory-dispatch.md"),
+		filepath.Join("..", "..", ".claude", "rules", "moai", "workflow", "factory-dispatch.md"),
+	} {
+		data, err := os.ReadFile(rel)
+		if err != nil {
+			t.Fatalf("read %s: %v", rel, err)
+		}
+		content := string(data)
+		start := strings.Index(content, config.RoleCoreMarkerStart)
+		end := strings.Index(content, config.RoleCoreMarkerEnd)
+		if start < 0 || end < 0 || end < start {
+			t.Fatalf("%s: role-core region not found", rel)
+		}
+		core := content[start:end]
+		if strings.Contains(core, "todo --auto") {
+			t.Errorf("%s: the role core carries a queue-start command that reaches card-assigned sessions:\n%s", rel, core)
+		}
+		if !strings.Contains(core, "carve-out is a Codex") {
+			t.Errorf("%s: the Codex --auto carve-out is missing from the role core", rel)
+		}
+	}
+}
+
 // TestFactoryLaneRuleGptCarriesPrecedence pins the healthy codex lane's
-// precedence note: the owned-card rule names the boot directive's priority
-// over the role core's read-first duty (audit round-3 — the two texts
-// conflicted once the gpt lane env survived the harness scrub).
+// precedence note: the owned-card rule resolves the role core's read-first
+// duty toward the leased card's work (audit round-3), with no queue-start
+// directive (audit round-4 — an assigned session stays in its card worktree).
 func TestFactoryLaneRuleGptCarriesPrecedence(t *testing.T) {
 	clearFactoryEnv(t)
 	t.Setenv(config.EnvFactoryBackend, "gpt")
@@ -129,9 +160,6 @@ func TestFactoryLaneRuleGptCarriesPrecedence(t *testing.T) {
 	if !strings.Contains(rule, "Codex auto-lane precedence") {
 		t.Fatalf("owned-card rule does not carry the boot-directive precedence note:\n%s", rule)
 	}
-	// An already-card-assigned session works its card worktree — no
-	// queue-start directive rides the owned-card rule (audit round-4: the
-	// parent-checkout precondition would refuse it here).
 	if strings.Contains(rule, "moai todo --auto") {
 		t.Fatalf("owned-card rule must not direct a card-assigned session at the queue:\n%s", rule)
 	}
