@@ -656,6 +656,7 @@ func runLaunchClaude(profileName string, extraArgs []string) error {
 	// from attaching in every launched session (card t1110). DO_CLAUDE_CHROME is
 	// no longer read; a stale value in settings.local.json is harmless.
 	var passThrough []string
+	explicitModel := false
 	for i := 0; i < len(extraArgs); i++ {
 		arg := extraArgs[i]
 		if arg == "--" {
@@ -677,12 +678,14 @@ func runLaunchClaude(profileName string, extraArgs []string) error {
 		case "--model", "-m":
 			if i+1 < len(extraArgs) {
 				model = extraArgs[i+1]
+				explicitModel = true
 				i++
 			}
 		default:
 			// Handle --permission-mode=value form
 			if strings.HasPrefix(arg, "--model=") {
 				model = strings.TrimPrefix(arg, "--model=")
+				explicitModel = true
 			} else if strings.HasPrefix(arg, "--permission-mode=") {
 				permMode = strings.TrimPrefix(arg, "--permission-mode=")
 			} else {
@@ -712,9 +715,15 @@ func runLaunchClaude(profileName string, extraArgs []string) error {
 	glmBackend := false
 	var glmModels config.GLMModels
 	var glmTierEffort config.GLMTierEffort
+	sessionRoot := ""
 	if root, err := findProjectRoot(); err == nil {
 		glmBackend, glmModels, glmTierEffort = resolveGLMBackendForLaunch(root)
+		sessionRoot = root
 	}
+	// card t1808: a factory leader/lane launches with its session default
+	// model (llm.defaults.sessions) unless the operator passed --model; under
+	// GLM the value is a slot alias, which resolveMainSessionModel keeps.
+	model = factorySessionModel(os.Environ(), sessionRoot, explicitModel, model)
 	model = resolveMainSessionModel(model, glmBackend)
 
 	// 6a. Neither --model nor the profile chose a model: apply the remaining
@@ -786,8 +795,11 @@ func runLaunchClaude(profileName string, extraArgs []string) error {
 		// prefs/model_policy chain. Empty stored slot ⇒ the chain, unchanged.
 		// The collapse overlay downstream stays governing for the wire value
 		// (stored high and max both wire as max; flash pins everything to max).
+		// card t1808: a glm factory leader/lane feeds its session default
+		// reasoning state (llm.defaults.sessions) into the z.ai mapping.
 		launchEnv = buildEnvForGLMLaunch(glmModels, model,
-			resolveGLMMainSessionEffort(model, glmTierEffort, effectiveEffort), os.Environ())
+			factorySessionGLMEffort(os.Environ(), sessionRoot,
+				resolveGLMMainSessionEffort(model, glmTierEffort, effectiveEffort)), os.Environ())
 	} else {
 		// Plain Claude launches: the effort travels in the injected --settings
 		// payload (launch_effort_settings.go), NEVER in CLAUDE_CODE_EFFORT_LEVEL.

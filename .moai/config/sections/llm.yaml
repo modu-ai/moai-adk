@@ -15,6 +15,18 @@ llm:
             model: opus
             effort: high
     agent_overrides_consume: true
+    defaults:
+        sessions:
+            mode: default
+            cc:
+                leader: {model: opus, effort: high}
+                lane: {model: sonnet, effort: medium}
+            glm:
+                leader: {model: opus, effort: max}
+                lane: {model: sonnet, effort: high}
+            codex:
+                leader: {model: gpt-6.1-sol, effort: high}
+                lane: {model: gpt-6.1-sol, effort: medium}
     claude_models:
         high: ""
         medium: ""
