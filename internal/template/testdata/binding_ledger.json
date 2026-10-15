@@ -4648,7 +4648,7 @@
     "start_line": 3
    },
    "before_text": "How the **leader** session of Factory Mode moves a card through the queue: what admits work, who is told to do it, how completion is judged, and when the operator is asked to `/clear`.",
-   "after_text": "How the **leader** session of Factory Mode moves a card through the queue: what admits work, who is told to do it, how completion is judged, and when the operator is asked to `/clear`.",
+   "after_text": "How the **leader** session of Factory Mode moves a card through the queue: what admits work, who is told to do it, how completion is judged, and when the lane moves to its next card.",
    "location": "companion:.claude/rules/moai/workflow/factory-dispatch-mechanics.md",
    "processing": "relocated",
    "reason": "intro description"
@@ -5503,7 +5503,7 @@
     "start_line": 98
    },
    "before_text": "[HARD] Between run-exit verification and integration every lane runs a `card-review` stage: a card-scope self-review through `codex_review` (`glm_review` optional) whose result is written to `.moai/reports/<card-id>/card-review.md` — advisory only, never a replacement for the leader's evidence read or an independent audit. With `tree_scope: skip` configured for the leader's checkout, the leader session carries no turn-end codex review gate and reviews its own internal output directly with the same tools. Stage order, evidence fields, and the re-review ceiling: `factory-dispatch-detail.md` § The card-review stage.",
-   "after_text": "[HARD] Between run-exit verification and integration every lane runs `card-review`: `codex_review` (`glm_review` optional) into `.moai/reports/<card-id>/card-review.md`, advisory, never replacing the leader evidence read or an independent audit; under `tree_scope: skip` on its checkout the leader has no turn-end codex gate and self-reviews with the same tools.",
+   "after_text": "[HARD] Between run-exit verification and integration every lane runs `card-review`: `codex_review` (`glm_review` optional) into `.moai/reports/<card-id>/card-review.md`, advisory, never replacing the leader evidence read or an independent audit; under `tree_scope: skip` the leader self-reviews with the same tools.",
    "location": "role-core:workflow/factory-dispatch.md",
    "processing": "rewrite",
    "entry_points": [
@@ -5540,7 +5540,7 @@
     "start_line": 102
    },
    "before_text": "[HARD] A lane that cannot proceed records an explicit wait on disk — reason, whom, recheck point — and ends its turn; it never idles open-ended on a reply. On its next awaken the lane runs the stall watchdog first — invoke Skill(\"moai-lane-watchdog\") and follow it — which measures progress, classifies the stall cause, and resolves the judgment through the decision ladder (doctrine: `.claude/rules/moai/workflow/auto-semantics.md` §6). The ladder's terminal step is the lane's own judgment + decision record — the lane never asks the leader and waits on a judgment; reaching the leader is a gate boundary (a keep-set category or a cross-card conflict), not a ladder step. The lead's decision board carries leader-level rulings only — cross-card conflicts, serial-slot policy calls, keep-set gate relays — never a lane's in-card judgment. A lane also arms a standing recheck cron (`CronCreate`, recurring, every 20 minutes) before its first stage and keeps it until its completion report: a lane stopped by an API error (429) or by a delegate's report that never comes wakes without outside help only if something armed before it stopped fires, and every wake reads the disk evidence (progress record, reports, commits, the delegate's deliverable) before it replies (`.claude/rules/moai/workflow/auto-semantics.md` §5.1).",
-   "after_text": "[HARD] A stuck lane writes a disk wait (reason, whom, recheck point), ends its turn, never idles on a reply; on wake: `moai-lane-watchdog` first, then the `auto-semantics.md` §6 ladder ending in its own judgment + decision record, never ask-and-wait; the leader only at a gate boundary (keep-set, cross-card conflict), its board for leader-level rulings only; a recurring `CronCreate` recheck armed before the first stage, kept to the completion report; each wake reads disk evidence (progress, reports, commits, delegate output) before replying.",
+   "after_text": "[HARD] A stuck lane writes a disk wait (reason, whom, recheck point), ends its turn, never idles on a reply; on wake: `moai-lane-watchdog` first, then the `auto-semantics.md` §6 ladder ending in its own judgment + decision record, never ask-and-wait; the leader only at a gate boundary (keep-set, cross-card conflict); a recurring `CronCreate` recheck armed before the first stage, kept to the completion report; each wake reads disk evidence before replying.",
    "location": "role-core:workflow/factory-dispatch.md",
    "processing": "rewrite",
    "entry_points": [
@@ -5688,7 +5688,7 @@
     "start_line": 114
    },
    "before_text": "[HARD] The leader advances a card on **evidence it read**, not on a lane's reply. Before moving a card out of a working stage, the leader reads the card's `progress.md` and the verification evidence path the phase declares; a missing, unreadable, or stale evidence file is a **gap** — the card stays put and the leader reports why. Absence of a failure signal is not a pass.",
-   "after_text": "[HARD] The leader advances a card only on evidence it read, never a lane reply: before it leaves a working stage, `progress.md` + the declared verification path; missing, unreadable, or stale evidence is a gap: the card stays, the leader says why; no failure signal is not a pass.",
+   "after_text": "[HARD] The leader advances a card only on evidence it read, never a lane reply: `progress.md` + the declared verification path; missing, unreadable, or stale evidence is a gap: the card stays, the leader says why; no failure signal is not a pass.",
    "location": "role-core:workflow/factory-dispatch.md",
    "processing": "rewrite",
    "entry_points": [
@@ -5846,7 +5846,7 @@
     "start_line": 139
    },
    "before_text": "[HARD] A lane session does not carry one card's context into the next card. When a card reaches `done` and the leader has read its evidence, the leader **asks the operator to `/clear` that lane session** — `/clear` is a user-typed command and cannot be sent as an instruction. The leader's message states, in order: what closed (card, evidence read), which session to `/clear` (by name), and what happens next.",
-   "after_text": "[HARD] No card context crosses to the next: at `done`, evidence read, the leader asks the operator to `/clear` that lane session (user-typed, never sendable), stating in order: what closed (card, evidence read), which session (name), what next.",
+   "after_text": "[HARD] No card context crosses to the next: a lane treats the conversation context of earlier cards as non-authoritative and works each newly leased card only from that card's body, its SPEC artifacts, and its progress record. At `done`, evidence read, the leader does not ask the operator to clear the lane session; the leader names what closed (card, evidence read) and the lane moves on by the transition below.",
    "location": "rule-body:.claude/rules/moai/workflow/factory-dispatch.md",
    "processing": "relocated",
    "entry_points": [
@@ -5883,7 +5883,7 @@
     "start_line": 141
    },
    "before_text": "[HARD] On a card transition inside a lane session, `/clear` happens exactly once, **after** the session has moved into the next card's worktree — not before the move. The count is not reduced: one card transition, one `/clear`.",
-   "after_text": "[HARD] `/clear` exactly once per transition, after moving into the next worktree — never before.",
+   "after_text": "[HARD] `ExitWorktree(keep)`, lease, `EnterWorktree(path)`; conversation context never carries.",
    "location": "role-core:workflow/factory-dispatch.md",
    "processing": "rewrite",
    "entry_points": [
@@ -5920,7 +5920,7 @@
     "start_line": 143
    },
    "before_text": "Where the next card reuses a just-cleared lane, the leader re-sends the full pointer instruction rather than assuming the session remembers.",
-   "after_text": "Where the next card reuses a just-cleared lane, the leader re-sends the full pointer instruction rather than assuming the session remembers.",
+   "after_text": "Where the next card reuses a lane, the leader re-sends the full pointer instruction rather than assuming the session remembers.",
    "location": "always:.claude/rules/moai/workflow/factory-dispatch-core.md",
    "processing": "verbatim",
    "entry_points": [
@@ -5941,7 +5941,7 @@
     "start_line": 145
    },
    "before_text": "The leader's own session is cleared the same way, between cards: once a card reaches `done`, the operator is asked to `/clear` the leader session, and the next turn presents the queue again.",
-   "after_text": "The leader's own session is cleared the same way, between cards: once a card reaches `done`, the operator is asked to `/clear` the leader session, and the next turn presents the queue again.",
+   "after_text": "The leader's own session is cleared between cards: once a card reaches `done`, the operator is asked to `/clear` the leader session, and the next turn presents the queue again.",
    "location": "always:.claude/rules/moai/workflow/factory-dispatch-core.md",
    "processing": "verbatim",
    "entry_points": [
@@ -6110,7 +6110,7 @@
     "start_line": 157
    },
    "before_text": "[HARD] **A card session starts inside its worktree and stays there.** The standard is a lane session launched inside the card's worktree through the launcher (`moai cc -w`); it starts with that tree's project skill set. Moving a running card session from one card worktree into another card worktree is prohibited — that transition attaches a second skill listing on top of the session's first, and that duplication is what this rule exists to prevent. Two composition rules bound the prohibition rather than leaving it implicit: (a) the \"A new card starts in a new worktree\" clause below composes with it — its exit-first requirement is satisfied by ending the lane session and launching the next session inside the new tree, never by moving the running session; (b) the brief entry into the release/integration worktree that the same files mandate for merging a card branch is NOT covered by the prohibition — it keeps its own re-entry rule (return to the card worktree before continuing card work). Where a worktree move is unavoidable anyway, `/clear` is issued exactly once, after the move — never before it.",
-   "after_text": "[HARD] A card session starts in its worktree (`moai cc -w`) and stays; moving into another card worktree is prohibited (exit-and-relaunch serves the new-card rule); an integration-tree merge entry is exempt but returns to the card worktree before card work; an unavoidable move takes `/clear` once, after, never before.",
+   "after_text": "[HARD] A card session starts in its worktree (`moai cc -w`) and stays while it carries the card; between cards it moves by the in-session transition (`ExitWorktree(keep)`, lease, `EnterWorktree` of the leased tree); an integration-tree merge entry is exempt but returns to the card worktree before card work.",
    "location": "rule-body:.claude/rules/moai/workflow/factory-dispatch.md",
    "processing": "relocated",
    "entry_points": [
@@ -6399,7 +6399,7 @@
     "start_line": 185
    },
    "before_text": "[HARD] A lane whose card has passed verification does not wait for the leader to integrate it: the lane merges its own branch into the batch's release branch (`release/vX.Y.Z`) itself. The window is taken with `moai integration acquire --name <lane> --card <card-id>` BEFORE entering the release worktree, released after the completion report is sent; the lane enters the release worktree with `EnterWorktree` (a cross-tree `git -C` is refused), merges `--no-ff`, re-reads `HEAD` before the commit and again before the push, pushes `release/vX.Y.Z` (never force), and leaves the batch pull request with the leader. The full window procedure: `factory-dispatch-mechanics.md` § Integration into the release branch is self-served · the `acquire` settings-drift assertion: `factory-dispatch-gates.md` § The pre-merge settings-drift assertion.",
-   "after_text": "[HARD] git-flow only (github-flow default: `moai factory complete` PR edge, mechanics § standard landing): a verified lane merges its branch into `release/vX.Y.Z` itself, no leader wait: `moai integration acquire --name <lane> --card <card-id>` before entry, release after the completion report; `EnterWorktree` in (cross-tree `git -C` refused; Codex: `git -C <absolute release worktree path>`); `--no-ff`; re-read `HEAD` before the commit and again before the push; push, never force; the batch PR stays with the leader.",
+   "after_text": "[HARD] git-flow only: a verified lane merges its branch into `release/vX.Y.Z` itself: `moai integration acquire --name <lane> --card <card-id>` before entry, release after the completion report; `EnterWorktree` in (cross-tree `git -C` refused; Codex: `git -C <absolute release worktree path>`); `--no-ff`; re-read `HEAD` before the commit and again before the push; push, never force; the batch PR stays with the leader.",
    "location": "role-core:workflow/factory-dispatch.md",
    "processing": "rewrite",
    "entry_points": [
@@ -6514,7 +6514,7 @@
     "start_line": 202
    },
    "before_text": "- `.claude/rules/moai/core/askuser-protocol.md` — the question channel the leader uses for card selection and `/clear` prompts\n- `.claude/rules/moai/core/verification-claim-integrity.md` — why completion is read rather than trusted\n- The remaining four (blocker-report format, worktree tiers, the queue surface, `manager-lead`): `factory-dispatch-mechanics.md` § Cross-references",
-   "after_text": "- `.claude/rules/moai/core/askuser-protocol.md` — the question channel the leader uses for card selection and `/clear` prompts\n- `.claude/rules/moai/core/verification-claim-integrity.md` — why completion is read rather than trusted\n- The remaining four (blocker-report format, worktree tiers, the queue surface, `manager-lead`): `factory-dispatch-mechanics.md` § Cross-references",
+   "after_text": "- `.claude/rules/moai/core/askuser-protocol.md` — the question channel the leader uses for card selection and queue prompts\n- `.claude/rules/moai/core/verification-claim-integrity.md` — why completion is read rather than trusted\n- The remaining four (blocker-report format, worktree tiers, the queue surface, `manager-lead`): `factory-dispatch-mechanics.md` § Cross-references",
    "location": "companion:.claude/rules/moai/workflow/factory-dispatch-mechanics.md",
    "processing": "relocated",
    "reason": "cross-reference list"
