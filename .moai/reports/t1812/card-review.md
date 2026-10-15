@@ -30,3 +30,10 @@ Commands above were run in this tree at `6738cf9fb` (tests at base+edits before 
 
 - `~/.gitconfig` stood at 484 lines before and after every run here (baseline cited by the leader: 482). The +2 predates this card's runs; cause unknown to this lane.
 - The 7 pre-existing failures would turn a naive "internal/cli green" claim false on this base; the leader should not read this card as restoring that.
+
+## Card-scope self-review (`codex_review`, scope=card — the stage the doctrine names)
+
+Call: `mcp__moai__codex_review` scope=card, project_root = this tree, run against HEAD `fba1b65ac`.
+Result (verbatim fields): `verdict: pass`, `findings: []`, `advisory: true`, `backend: codex`, `base: 3a8689d6b48a4e7ad1f33f9081878473a153cbe8`, `truncated: false`, `excluded_untracked: []`.
+Summary: static review found no defect; the change normalizes the tests' expected path to the real path and keeps the existing assertions; no tests, builds, or repro commands were executed by the reviewer.
+Disposition of findings: none to disposition. This result is advisory and carries no receipt id; the binding evidence for the required codex gate is the `codex_audit` receipt `rcpt-88a18cfb542ac23cb1d660c1` above.
