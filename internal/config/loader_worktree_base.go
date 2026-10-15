@@ -11,6 +11,8 @@ package config
 import (
 	"path/filepath"
 	"strings"
+
+	"gopkg.in/yaml.v3"
 )
 
 // LoadWorktreeBaseBranch returns the configured card-worktree base branch for
@@ -26,10 +28,17 @@ import (
 // Callers that already hold a loaded *Config should read
 // cfg.GitStrategy.WorktreeBaseBranch directly instead of re-reading the file.
 func LoadWorktreeBaseBranch(projectRoot string) string {
-	dir := filepath.Join(projectRoot, ".moai", "config", "sections")
-	wrapper := &gitStrategyFileWrapper{}
-	loaded, err := loadYAMLFile(dir, "git-strategy.yaml", wrapper)
-	if err != nil || !loaded {
+	// Card t1729 audit round-5: this read runs on the SessionStart path (the
+	// role-rules refresh guidance resolves the project's base branch), so it
+	// goes through the non-blocking regular-file read — a FIFO at
+	// git-strategy.yaml in a POSIX-linked worktree would otherwise block the
+	// session start on os.ReadFile. Every failure yields the same neutral "".
+	data, err := readNonBlockingRegularFile(filepath.Join(projectRoot, ".moai", "config", "sections", "git-strategy.yaml"))
+	if err != nil {
+		return ""
+	}
+	var wrapper gitStrategyFileWrapper
+	if err := yaml.Unmarshal(data, &wrapper); err != nil {
 		return ""
 	}
 	return strings.TrimSpace(wrapper.GitStrategy.WorktreeBaseBranch)

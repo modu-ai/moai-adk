@@ -199,7 +199,7 @@ itself.
 > **Loading scope**: Intentionally always-loaded. A session learns it is the factory leader from the SessionStart context, not from a file path, so a `paths:`-restricted rule would never reach it. Cost to a session that never dispatches: the stub below, restated once per turn; every procedure body lives in the lazy companions.
 
 
-How the **leader** session of Factory Mode moves a card through the queue: what admits work, who is told to do it, how completion is judged, and when the operator is asked to `/clear`.
+How the **leader** session of Factory Mode moves a card through the queue: what admits work, who is told to do it, how completion is judged, and when the lane moves to its next card.
 
 
 > **Mechanics companion**: `factory-dispatch-mechanics.md` owns the lane-and-lens bodies relocated from this file — § Review lens selection · § Serializing a heavy run across lanes (`moai slot` lease) · § Factory Mode mechanics · § Isolation (launcher table, worktree tiers, `WT-` branch naming, the traceability carriers) · § Verification-load detail · § Integration into the release branch (the self-serve window procedure) · § Boundaries · § Cross-references. Load it when classifying a card, provisioning or disposing a card worktree, running lane-local verification, or entering the integration window.
@@ -244,7 +244,7 @@ The two remaining boundaries — no session spawning, and a lane with no live se
 ### Cross-references
 
 
-- `.claude/rules/moai/core/askuser-protocol.md` — the question channel the leader uses for card selection and `/clear` prompts
+- `.claude/rules/moai/core/askuser-protocol.md` — the question channel the leader uses for card selection and queue prompts
 - `.claude/rules/moai/core/verification-claim-integrity.md` — why completion is read rather than trusted
 - The remaining four (blocker-report format, worktree tiers, the queue surface, `manager-lead`): `factory-dispatch-mechanics.md` § Cross-references
 
