@@ -55,6 +55,10 @@ B. The injected `laneNextCardRule` (en, ko, ja, zh) contradicted the relaunch co
 
 Measured this run: `TestFactoryClearPolicyManualDispatch`, `TestSD_AC020_ClearPolicies`, `TestSD_M6_ClearPolicyCarrierConstantOnly` ok; `TestSD_AC019_NextCardRuleInjection` (all subtests), `TestLaneRuleCarriesStandingRecheckCron`, `TestRoleInjectionAssemblyBudget`, `TestInjectedCoreCarriesObligationElements` pass; `TestRoleCoreStubGate` ok; both AC-LNC-007 greps print 0; `gofmt -l` empty; `go vet ./internal/hook ./internal/cli` exit 0. Not run: `TestAutoLaneCycle*` (inputs untouched) and the four load-timing hook tests (load average 182, above the 100 cut-off).
 
+### §E.2 addendum (M7): exception sentence in the transition doctrine
+
+The unmarked "Transition detail" paragraph of `factory-dispatch.md` named `moai factory next` with no exception. One sentence was added there (template, then the byte-identical local copy) and to the matching policy-copy passage: under manual dispatch the lane leaves with `ExitWorktree(keep)` and waits for the leader; under the relaunch clear policy it ends the session. The role-core marker and the stub were not touched. Measured this run: `cmp` template/local exit 0; cards `cmp` exit 0; detail `diff` hunks still `135c135` and `157c157`; `TestRoleInjectionAssemblyBudget`, `TestInjectedCoreCarriesObligationElements`, `TestRoleCoreStubGate`, `TestRuleTemplateMirrorDrift`, `TestDeclaredRuleMirrorForks` ok; `TestBindingLedgerIntegrity` PASS (134.849s); `make agents-emit-check` ok. `make build` not re-run (no generated artifact depends on this file's body beyond catalog hashes; not measured).
+
 ## §E.3 Run-phase Audit-Ready Signal
 
 run_complete_at: 2026-10-15
