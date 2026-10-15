@@ -128,7 +128,7 @@ run_audit: self-verified 10/10 AC PASS (matrix in §E.2), coverage 94.0%, packag
 
 sync_status: audit-ready
 sync_complete_at: 2026-10-15T05:31:19Z
-sync_commit_sha: pending-backfill-sync
+sync_commit_sha: 39489015f
 
 **Binding-conditions disposition (sync re-read):** sou-debt-1 → **AC-SOU-010** (acceptance.md §D; REQ-SOU-006 mid-read abandonment pin) and sou-debt-2 → **AC-SOU-009** (acceptance.md §D, release-blocking; relative `gitdir:` pointer case) — both absorbed into plan.md M4 scope at `f87f31dfd` (header 갱신 note above) and **both disposed in run**: AC-SOU-010 PASS via `TestBuild_QuotaFallbackAbandonsMidRead` (context cancelled AFTER the read starts; 3s deadline excludes an entry-check-only mutant), AC-SOU-009 PASS via `TestBuild_QuotaFallbackWorktreeRelativeGitdir` + `TestBuild_QuotaFallbackDegradedMalformedGitdir` (§E.2 AC matrix, HEAD `65e04f664`). No unprocessed binding condition remains; the binding sync verdict is sync-auditor's.
 
