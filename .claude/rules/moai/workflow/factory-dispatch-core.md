@@ -49,15 +49,17 @@ For a lane card the declared evidence list also carries `.moai/reports/<card-id>
 
 Anything else is a gap, not a pass. `Review rate limited` means the review never started, and a card carrying it does not leave `sync`. (Endpoint choice: `factory-dispatch-gates.md` § CodeRabbit endpoint measurement.)
 
-## The `/clear` handoff between cards
+## Lane card transition — in-session, no clear
 
-Where the next card reuses a just-cleared lane, the leader re-sends the full pointer instruction rather than assuming the session remembers.
+[HARD] A Claude Code lane moves between cards inside its session: `ExitWorktree(keep)`, `moai factory next` from the primary checkout, `EnterWorktree(<leased worktree absolute path>)`, verify the toplevel; earlier cards' conversation context is non-authoritative, and the leader never asks the operator to clear a lane (full sequence and refusal path: the role core of `factory-dispatch.md`).
 
-The leader's own session is cleared the same way, between cards: once a card reaches `done`, the operator is asked to `/clear` the leader session, and the next turn presents the queue again.
+Where the next card reuses a lane, the leader re-sends the full pointer instruction rather than assuming the session remembers.
+
+The leader's own session is cleared between cards: once a card reaches `done`, the operator is asked to `/clear` the leader session, and the next turn presents the queue again.
 
 ## Isolation and integration
 
-[HARD] A card session stays in its worktree (`moai cc -w`); moving it into another card worktree is prohibited — exit-and-relaunch satisfies the new-card rule; the integration-tree merge entry keeps its own re-entry rule; an unavoidable move takes `/clear` once, after.
+[HARD] A card session stays in its worktree (`moai cc -w`); between cards it moves by the in-session transition above (`ExitWorktree(keep)`, then `EnterWorktree` of the leased tree); the integration-tree merge entry keeps its own re-entry rule.
 
 [HARD] A verified lane merges its own branch into the batch release branch (`release/vX.Y.Z`) — git-flow variant; github-flow default: `moai factory complete`'s PR edge (mechanics § standard landing). Where it applies: `moai integration acquire` first, `EnterWorktree` in, `--no-ff`, `HEAD` re-read before commit/push, never force; batch PR with the leader.
 

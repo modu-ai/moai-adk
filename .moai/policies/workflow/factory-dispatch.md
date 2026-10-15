@@ -1,6 +1,6 @@
 # Factory Dispatch Protocol
 
-How the **leader** session of Factory Mode moves a card through the queue: what admits work, who is told to do it, how completion is judged, and when the operator is asked to `/clear`.
+How the **leader** session of Factory Mode moves a card through the queue: what admits work, who is told to do it, how completion is judged, and when the lane moves to its next card.
 
 > **Loading scope**: Intentionally always-loaded. A session learns it is the factory leader from the SessionStart context, not from a file path, so a `paths:`-restricted rule would never reach it. Cost to a session that never dispatches: the stub below, restated once per turn; every procedure body lives in the lazy companions.
 
@@ -134,15 +134,15 @@ For a lane card the declared evidence list also carries `.moai/reports/<card-id>
 
 Anything else is a gap, not a pass. `Review rate limited` means the review never started, and a card carrying it does not leave `sync`. (Endpoint choice: `factory-dispatch-gates.md` § CodeRabbit endpoint measurement.)
 
-## The `/clear` handoff between cards
+## Lane card transition — in-session, no clear
 
-[HARD] A lane session does not carry one card's context into the next card. When a card reaches `done` and the leader has read its evidence, the leader **asks the operator to `/clear` that lane session** — `/clear` is a user-typed command and cannot be sent as an instruction. The leader's message states, in order: what closed (card, evidence read), which session to `/clear` (by name), and what happens next.
+[HARD] No card context crosses to the next: a lane treats the conversation context of earlier cards as non-authoritative and works each newly leased card only from that card's body, its SPEC artifacts, and its progress record. At `done`, evidence read, the leader does not ask the operator to clear the lane session; the leader names what closed (card, evidence read) and the lane moves on by the transition below.
 
-[HARD] On a card transition inside a lane session, `/clear` happens exactly once, **after** the session has moved into the next card's worktree — not before the move. The count is not reduced: one card transition, one `/clear`.
+[HARD] In-session transition (Claude Code lanes): at a terminal card state the lane runs `ExitWorktree(keep)`, requests its next card from the primary checkout with `moai factory next` (a contended claim is waited out with the verb's wait option), then `EnterWorktree(<leased worktree absolute path>)` and verifies `git rev-parse --show-toplevel` equals that path before any card work; earlier cards' conversation context is non-authoritative. A refused entry is recorded verbatim in the card's progress record and reported as a blocker — never a session clear, a second lease, or card work in the primary checkout; the only fallback is an operator relaunch inside the leased worktree. Codex lanes keep their own session-end transition.
 
-Where the next card reuses a just-cleared lane, the leader re-sends the full pointer instruction rather than assuming the session remembers.
+Where the next card reuses a lane, the leader re-sends the full pointer instruction rather than assuming the session remembers.
 
-The leader's own session is cleared the same way, between cards: once a card reaches `done`, the operator is asked to `/clear` the leader session, and the next turn presents the queue again.
+The leader's own session is cleared between cards: once a card reaches `done`, the operator is asked to `/clear` the leader session, and the next turn presents the queue again.
 
 ## Isolation is provisioned by MoAI, then entered through a launcher
 
@@ -154,7 +154,7 @@ The leader's own session is cleared the same way, between cards: once a card rea
 
 [HARD] **The card's branch is unpushed, so its worktree is the work's only instance.** Dispose of no worktree — L1 or L2 — until the leader has integrated the branch and the remote merge has landed.
 
-[HARD] **A card session starts inside its worktree and stays there.** The standard is a lane session launched inside the card's worktree through the launcher (`moai cc -w`); it starts with that tree's project skill set. Moving a running card session from one card worktree into another card worktree is prohibited — that transition attaches a second skill listing on top of the session's first, and that duplication is what this rule exists to prevent. Two composition rules bound the prohibition rather than leaving it implicit: (a) the "A new card starts in a new worktree" clause below composes with it — its exit-first requirement is satisfied by ending the lane session and launching the next session inside the new tree, never by moving the running session; (b) the brief entry into the release/integration worktree that the same files mandate for merging a card branch is NOT covered by the prohibition — it keeps its own re-entry rule (return to the card worktree before continuing card work). Where a worktree move is unavoidable anyway, `/clear` is issued exactly once, after the move — never before it.
+[HARD] **A card session starts inside its worktree and stays there.** The standard is a lane session launched inside the card's worktree through the launcher (`moai cc -w`); it starts with that tree's project skill set. While it carries a card it stays there; between cards it moves only by the in-session transition (`ExitWorktree(keep)`, then `EnterWorktree` of the leased tree). Two composition rules bound the clause rather than leaving it implicit: (a) the "A new card starts in a new worktree" clause below composes with it — its exit-first requirement is satisfied by `ExitWorktree(keep)` before the lane enters the leased tree, and a relaunch inside the leased worktree is the operator's fallback when the entry is refused; (b) the brief entry into the release/integration worktree that the same files mandate for merging a card branch is exempt — it keeps its own re-entry rule (return to the card worktree before continuing card work).
 
 [HARD] **A new card starts in a new worktree** — a lane anchored in the previous card's tree MUST `ExitWorktree` before entering the next one; the fresh tree is created from the configured base, never reused. Where the new card depends on a prior card's unmerged code, merge that branch inside the new worktree.
 
@@ -199,7 +199,7 @@ The two remaining boundaries — no session spawning, and a lane with no live se
 
 ## Cross-references
 
-- `.claude/rules/moai/core/askuser-protocol.md` — the question channel the leader uses for card selection and `/clear` prompts
+- `.claude/rules/moai/core/askuser-protocol.md` — the question channel the leader uses for card selection and queue prompts
 - `.claude/rules/moai/core/verification-claim-integrity.md` — why completion is read rather than trusted
 - The remaining four (blocker-report format, worktree tiers, the queue surface, `manager-lead`): `factory-dispatch-mechanics.md` § Cross-references
 
