@@ -913,6 +913,15 @@ var DefaultCodexAuditTimeout = 20 * time.Minute
 // Not a const so a test can shorten it.
 var DefaultCodexAuditLegTimeout = DefaultCodexAuditTimeout
 
+// DefaultCodexAuditWaitLoadThreshold is the one-minute load average at or above
+// which a codex audit's wait bound doubles (card t1781): at load 200 the
+// machine runs several compile/test suites at once — the observed stall that
+// motivated the card happened at load 357/364/352 — so a bound tuned on a
+// quiet machine no longer fits, and the audit reads as hung when it is only
+// waiting in line. A var (not a const) so a test can retune it, matching the
+// neighboring timeout vars.
+var DefaultCodexAuditWaitLoadThreshold = 200.0
+
 // DefaultCodexAuditListTimeout bounds the `codex mcp list --json` lookup the
 // audit launcher runs before the audit to learn which MCP servers to disable.
 // The lookup makes no model call, so its bound is short.

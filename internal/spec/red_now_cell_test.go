@@ -470,9 +470,10 @@ func TestGroup4AndReportRowExist(t *testing.T) {
 func TestMP8SpanCarriesReadDiscipline(t *testing.T) {
 	span := redNowMP8Span(t)
 	for _, want := range []string{
-		"You execute no verification commands at audit time",
+		"You execute none of the commands cited in RED-now cells at audit time",
 		"There is no audit-time timeout branch",
 		"the only timeout that applies",
+		"this prohibition does not reach them",
 	} {
 		if !strings.Contains(span, want) {
 			t.Errorf("MP-8 span does not carry the read-discipline branch %q", want)

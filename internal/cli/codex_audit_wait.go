@@ -3,15 +3,9 @@ package cli
 import (
 	"errors"
 	"time"
-)
 
-// codexAuditWaitLoadThreshold is the one-minute load average at or above which
-// a codex audit's wait bound doubles (card t1781). At load 200 the machine is
-// running several compile/test suites at once — the observed stall that
-// motivated the card happened at load 357/364/352 — so a bound tuned on a
-// quiet machine no longer fits, and the audit reads as hung when it is only
-// waiting in line.
-const codexAuditWaitLoadThreshold = 200.0
+	"github.com/modu-ai/moai-adk/internal/config"
+)
 
 // errShortLoadAvg reports a load-average payload too short to decode; the
 // callers treat it as "no reader" and keep the base bound.
@@ -21,7 +15,7 @@ var errShortLoadAvg = errors.New("load-average payload too short")
 // given one-minute load average. It is the testable core; the live path is
 // codexAuditWaitTimeout.
 func codexAuditWaitTimeoutForLoad(base time.Duration, load1 float64) time.Duration {
-	if load1 >= codexAuditWaitLoadThreshold {
+	if load1 >= config.DefaultCodexAuditWaitLoadThreshold {
 		return 2 * base
 	}
 	return base

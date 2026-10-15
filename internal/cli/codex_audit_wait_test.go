@@ -4,17 +4,19 @@ import (
 	"math"
 	"testing"
 	"time"
+
+	"github.com/modu-ai/moai-adk/internal/config"
 )
 
 func TestCodexAuditWaitTimeoutForLoadBelowThreshold(t *testing.T) {
-	if got := codexAuditWaitTimeoutForLoad(20*time.Minute, 199.9); got != 20*time.Minute {
-		t.Errorf("load 199.9: got %v, want the base bound unchanged", got)
+	if got := codexAuditWaitTimeoutForLoad(20*time.Minute, config.DefaultCodexAuditWaitLoadThreshold-0.1); got != 20*time.Minute {
+		t.Errorf("load just below the threshold: got %v, want the base bound unchanged", got)
 	}
 }
 
 func TestCodexAuditWaitTimeoutForLoadAtAndAboveThreshold(t *testing.T) {
-	if got := codexAuditWaitTimeoutForLoad(20*time.Minute, 200); got != 40*time.Minute {
-		t.Errorf("load 200: got %v, want 40m (2x)", got)
+	if got := codexAuditWaitTimeoutForLoad(20*time.Minute, config.DefaultCodexAuditWaitLoadThreshold); got != 40*time.Minute {
+		t.Errorf("load at the threshold: got %v, want 40m (2x)", got)
 	}
 	if got := codexAuditWaitTimeoutForLoad(20*time.Minute, 357); got != 40*time.Minute {
 		t.Errorf("load 357 (the t1781 incident load): got %v, want 40m (2x)", got)
