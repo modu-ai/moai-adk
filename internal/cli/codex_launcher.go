@@ -1056,6 +1056,8 @@ func runCodexFactoryLane(cmd *cobra.Command, entry factoryFlagParse, debug bool)
 	}
 	args := append([]string{"-C", root}, localArgs...)
 	args = append(args, codexMoaiHomeAddDirArgs()...)
+	// card t1808: the lane session's default model and effort.
+	args = append(args, codexSessionDefaultArgsFn(root, config.SessionRoleLane, nil)...)
 	args = append(args, codexLaneAutoPrompt)
 	env := append(codexChildEnv(),
 		config.EnvFactoryRole+"="+config.FactoryRoleLane,
@@ -1191,6 +1193,9 @@ func runCodexLaunch(cmd *cobra.Command, kind codexVerb, tail []string, spawn boo
 		// The desktop app is not the sandboxed CLI session; only the CLI
 		// session needs the moai home writable.
 		childArgs = append(childArgs, codexMoaiHomeAddDirArgs()...)
+		// card t1808: a plain `moai codex` is the operator's ordinary session
+		// and adds no model args — .codex/config.toml decides. The leader
+		// session default is reserved for a future `moai codex -f` (t1645).
 	}
 	childArgs = append(childArgs, codexChildArgs(kind, tail)...)
 	req := codexLaunchRequest{Program: binaryPath, Args: childArgs, Dir: dir, Debug: debug, timing: launchTiming}
