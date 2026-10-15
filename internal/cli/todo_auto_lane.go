@@ -115,6 +115,10 @@ func runAutoLaneCycle(ctx context.Context, root string, out, errOut io.Writer, o
 			return fmt.Errorf("todo --auto: %w", err)
 		}
 		_, _ = fmt.Fprintf(out, "%s stage=%s worktree=%s\n", card.CardID, dash(card.Stage), filepath.Base(wt))
+		if opts.noWait {
+			autoLaneDispatchOnly(out, item, root)
+			return nil
+		}
 		autoLaneWorkCard(out, item, root, opts)
 	}
 }
@@ -204,6 +208,16 @@ func autoAssignedItem(store *factory.BacklogStore, cardID string) factory.Backlo
 		}
 	}
 	return factory.BacklogItem{ID: cardID}
+}
+
+// autoLaneDispatchOnly is the `--auto-lane` foreman contract for one leased
+// card (card t1814): the dispatch directive and a handoff line, then the
+// command exits. It waits for nothing and writes no queue byte — the session
+// that ran the command works the card, and the existing factory stage/complete
+// path judges completion from its evidence.
+func autoLaneDispatchOnly(out io.Writer, card factory.BacklogItem, root string) {
+	writeAutoDirective(out, card, autoEvidencePath(root, card.ID))
+	_, _ = fmt.Fprintf(out, "handoff %s: --auto-lane exits now without waiting for the evidence — work the card in this session; the existing completion path (moai factory stage / moai factory complete) closes it\n", card.ID)
 }
 
 // autoLaneWorkCard is the foreman contract for one leased card: the dispatch
