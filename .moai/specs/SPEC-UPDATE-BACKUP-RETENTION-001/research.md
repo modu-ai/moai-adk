@@ -59,7 +59,7 @@ Items named in the audits but not carried by the operator decision (F8-F12, F27-
 
 All entries: tree SHA `e669da81b3f865488dd40f840623bed69839f459` (code identical at `3b133bedf`, which adds only this SPEC directory). Every command runs from the tree root exactly as written; no placeholder remains.
 
-**Placing the probe files (self-contained recreation).** The directory `.moai/reports/t1733/probes/` is gitignored local evidence (`.gitignore:235` `.moai/reports/*`), so a fresh clone does not carry it. A reader recreates it in three steps, all from Appendix A: (1) write `backup_probe_test.go` from A.1 and `residue_probe_test.go` from A.2 into `.moai/reports/t1733/probes/`; (2) write the two overlay files from A.3 beside them; (3) for the real-data entry E6, make a modification-time-preserving copy of a project's `.moai-backups` and `.moai/backups` into `/private/tmp/t1733-real/moaikr` (macOS APFS: `cp -Rcp <source> /private/tmp/t1733-real/moaikr`; elsewhere `cp -a`). The overlay maps (relative paths, resolved from the tree root) put the probe source in the target package without creating a file in the tree. Re-execution on this machine in this run printed the same output as each entry below (E1 to E6; E6 14.31 s).
+**Placing the probe files (self-contained recreation).** The directory `.moai/reports/t1733/probes/` is gitignored local evidence (`.gitignore:235` `.moai/reports/*`), so a fresh clone does not carry it. A reader recreates it in three steps, all from Appendix A: (1) write `backup_probe_test.go` from A.1, `residue_probe_test.go` from A.2 and `backup_probe_p5_test.go` from A.4 into `.moai/reports/t1733/probes/`; (2) write the three overlay files from A.3 beside them; (3) for the real-data entry E6 and the fixed-mtime probe P5 of AC-UBR-06(d), make a modification-time-preserving copy of a project's `.moai-backups` and `.moai/backups` into `/private/tmp/t1733-real/moaikr` (macOS APFS: `cp -Rcp <source> /private/tmp/t1733-real/moaikr`; elsewhere `cp -a`). The overlay maps (relative paths, resolved from the tree root) put the probe source in the target package without creating a file in the tree. Re-execution on this machine in this run printed the same output as each entry below (E1 to E6; E6 14.31 s).
 
 Baseline on main: the probes were run against main `ec5a4f392` extracted with `git archive` by the reproduction report (`/private/tmp/t1687-repro-report.md`), output identical to E1-E3 and E6 (table at the head of this file). On main the `skillresidue` package and `update_state_residue.go` do not exist (E4/E5 have no main cell). The probe log line in E1 labelled `pre-clean-dirs-before` is a misnomer of the probe: it is evaluated after the prune and lists the five newer directories that remain; the old pre-clean directory is absent from it.
 
@@ -521,7 +521,134 @@ func TestT1733ProbeP4b(t *testing.T) {
 {"Replace": {"internal/cli/update/skillresidue/zz_t1733_probe_test.go": ".moai/reports/t1733/probes/residue_probe_test.go"}}
 ```
 
-Note (audit D9): these probes only `t.Logf`; they assert nothing, so they exit 0 and show the measurement rather than a pass or fail. The RED/GREEN judgment is made on the logged values by the acceptance cells; the run-phase tests (AC-UBR-24) add assertions that fail on this tree.
+`.moai/reports/t1733/probes/overlay_backup_p5.rel.json` (the probe P5 of A.4 uses helpers of A.1, so this overlay maps both files):
+
+```json
+{"Replace": {"internal/cli/update/backup/zz_t1733_probe_test.go": ".moai/reports/t1733/probes/backup_probe_test.go", "internal/cli/update/backup/zz_t1733_probe_p5_test.go": ".moai/reports/t1733/probes/backup_probe_p5_test.go"}}
+```
+
+Note (audit D9): the probes of A.1 and A.2 only `t.Logf`; they assert nothing, so they exit 0 and show the measurement rather than a pass or fail. The RED/GREEN judgment is made on the logged values by the acceptance cells; the run-phase tests (AC-UBR-24) add assertions that fail on this tree. The probe P5 of A.4 is the exception: it asserts the clause it measures, so its RED is exit 1 (audit iteration 2, B2).
+
+### A.4 `backup_probe_p5_test.go` — fixed-mtime real-data prune (AC-UBR-06(d))
+
+Placed at `.moai/reports/t1733/probes/backup_probe_p5_test.go`; run with `-overlay=.moai/reports/t1733/probes/overlay_backup_p5.rel.json`. It stamps every run directory of the clone with the timestamp its directory name encodes (distinct, explicit, set after the copy), prunes at `T1733_KEEP` (default 4), and asserts that at least one file under the config root's `pre-clean/` copy remains. Line numbers in the acceptance cell's output refer to this text as executed.
+
+```go
+package backup_test
+
+import (
+	"io/fs"
+	"os"
+	"path/filepath"
+	"regexp"
+	"strconv"
+	"strings"
+	"testing"
+	"time"
+
+	"github.com/modu-ai/moai-adk/internal/cli/update/backup"
+)
+
+// P5: real-data prune on a clone whose run directories all carry a DISTINCT, explicitly fixed
+// modification time derived from the directory name, so ordering never falls back to the
+// path-ascending tie-break. Reports whether the files under the config root's pre-clean/ copy
+// survive a prune at T1733_KEEP (default 4).
+func TestT1733ProbeRealDataFixedMtime(t *testing.T) {
+	clone := os.Getenv("T1733_CLONE")
+	if clone == "" {
+		t.Skip("T1733_CLONE not set")
+	}
+	keep := 4
+	if v := os.Getenv("T1733_KEEP"); v != "" {
+		n, err := strconv.Atoi(v)
+		if err != nil {
+			t.Fatal(err)
+		}
+		keep = n
+	}
+	cfgRoot := filepath.Join(clone, ".moai-backups")
+	nsRoot := filepath.Join(clone, ".moai", "backups")
+	cfgName := regexp.MustCompile(`^[0-9]{8}_[0-9]{6}$`)
+	nsName := regexp.MustCompile(`^(update|v2-to-v3)-([0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}-[0-9]{2}-[0-9]{2})Z(-[0-9]+)?$`)
+
+	stamps := map[string]time.Time{}
+	for _, name := range remaining(t, cfgRoot) {
+		if cfgName.MatchString(name) {
+			ts, err := time.Parse("20060102_150405", name)
+			if err != nil {
+				t.Fatal(err)
+			}
+			stamps[filepath.Join(cfgRoot, name)] = ts
+		}
+	}
+	for _, name := range remaining(t, nsRoot) {
+		m := nsName.FindStringSubmatch(name)
+		if m == nil {
+			continue
+		}
+		ts, err := time.Parse("2006-01-02T15-04-05", m[2])
+		if err != nil {
+			t.Fatal(err)
+		}
+		if m[3] != "" {
+			n, _ := strconv.Atoi(strings.TrimPrefix(m[3], "-"))
+			ts = ts.Add(time.Duration(n) * time.Second)
+		}
+		stamps[filepath.Join(nsRoot, name)] = ts
+	}
+	seen := map[time.Time]string{}
+	for p, ts := range stamps {
+		if prev, dup := seen[ts]; dup {
+			t.Fatalf("mtime collision %s vs %s at %s", prev, p, ts)
+		}
+		seen[ts] = p
+		if err := os.Chtimes(p, ts, ts); err != nil {
+			t.Fatal(err)
+		}
+	}
+
+	var preCleanRun string
+	for _, name := range remaining(t, cfgRoot) {
+		if _, err := os.Stat(filepath.Join(cfgRoot, name, "pre-clean")); err == nil {
+			preCleanRun = filepath.Join(cfgRoot, name)
+		}
+	}
+	if preCleanRun == "" {
+		t.Fatal("no pre-clean run in the clone")
+	}
+	rank := 1
+	for p, ts := range stamps {
+		if p != preCleanRun && ts.After(stamps[preCleanRun]) {
+			rank++
+		}
+	}
+	oldestConfig := true
+	for p, ts := range stamps {
+		if strings.HasPrefix(p, cfgRoot+string(filepath.Separator)) && ts.Before(stamps[preCleanRun]) {
+			oldestConfig = false
+		}
+	}
+	preCleanFiles := func() int {
+		n := 0
+		_ = filepath.WalkDir(cfgRoot, func(p string, d fs.DirEntry, err error) error {
+			if err == nil && d.Type().IsRegular() && strings.Contains(p, string(filepath.Separator)+"pre-clean"+string(filepath.Separator)) {
+				n++
+			}
+			return nil
+		})
+		return n
+	}
+	before := preCleanFiles()
+	deleted := backup.CleanupOldBackups(clone, keep)
+	_, statErr := os.Stat(preCleanRun)
+	t.Logf("P5 keepCount=%d runs=%d distinct-run-mtimes=true pre-clean-run=%s pre-clean-run-rank=%d pre-clean-run-is-oldest-config-run=%v", keep, len(stamps), filepath.Base(preCleanRun), rank, oldestConfig)
+	after := preCleanFiles()
+	t.Logf("P5 pre-clean-files before=%d after=%d deleted=%d pre-clean-run-exists-after=%v", before, after, deleted, statErr == nil)
+	if before == 0 || after < 1 {
+		t.Errorf("AC-UBR-06(d): pre-clean files before=%d after=%d, want before>0 and after>=1", before, after)
+	}
+}
+```
 
 ## Principle check (operator principle for 3.2: add no data-deleting behavior)
 

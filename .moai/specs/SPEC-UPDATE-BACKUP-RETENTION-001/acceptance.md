@@ -4,14 +4,16 @@ This file is the verification layer: Given / When / Then, binary-testable. The r
 
 ## Conventions
 
-- Class `release-blocking` criteria (AC-UBR-01 to AC-UBR-06, the card's completion criteria) are main-versus-tree comparison tests. Each carries a RED-now cell for main and for the starting tree and a GREEN cell for the tree the repair is measured on, authored as a pair per `.claude/rules/moai/development/verification-completeness.md` §2. The RED-now cell names a ledger entry in `research.md` § Evidence ledger; each entry holds the four elements (single-invocation command, verbatim stdout, exit code, tree SHA).
-- Tree pins. **main** = `ec5a4f392` (measured by the reproduction report `/private/tmp/t1687-repro-report.md`, which extracted main with `git archive` and ran the same probe sources). **start** = `e669da81b3f865488dd40f840623bed69839f459` (the card tree before the repair; code identical at `3b133bedf`; ledger E1-E6 re-run on it). **repaired** = the card branch HEAD at run-phase close, whose full SHA the run phase writes into progress.md §E.3 and cites in each GREEN observation (a branch name is never the pin).
-- The RED-now commands are self-contained: run from the tree root exactly as written. They need the probe files recreated under `.moai/reports/t1733/probes/` (a gitignored local directory) from `research.md` Appendix A; the placement steps are in `research.md` § Evidence ledger (three steps: write the two probe sources, write the two overlay files of A.3, make the real-data clone). No placeholder remains in any command.
-- The probes only log (`t.Logf`); the verdict is read from the logged values named in each cell. The run-phase tests add assertions that fail on the start tree (AC-UBR-24).
-- Class `standard` criteria carry a green path and, where cheap, a RED-now observation; they are not release-blocking.
+- Class `release-blocking` criteria (AC-UBR-01, AC-UBR-02, AC-UBR-03 and AC-UBR-06) are main-versus-tree comparison tests. Each carries a RED-now cell for main and for the starting tree and a GREEN cell for the tree the repair is measured on, authored as a pair per `.claude/rules/moai/development/verification-completeness.md` §2. The RED-now cell names a ledger entry in `research.md` § Evidence ledger, or carries the four elements inline (AC-UBR-06(d)); each holds a single-invocation command, verbatim stdout, exit code and tree SHA. AC-UBR-04 and AC-UBR-05, though among the card's six completion criteria, are class `standard` regression guards: their starting observation is green by design (operator ruling Q3), so no RED can be reproduced, and a criterion whose RED cannot be reproduced loses release-blocking eligibility (`verification-completeness.md` §2.1).
+- Tree pins. **main** = `ec5a4f392` (full SHA `ec5a4f39202f3c8b404301864b90596e6af2e16f`; measured by the reproduction report `/private/tmp/t1687-repro-report.md`, which extracted main with `git archive` and ran the same probe sources; for the pruner path the main code equals the start tree's apart from an added refusal early return, `git diff --stat ec5a4f392 e669da81b -- internal/cli/update/backup/backup.go` = 40 insertions, 0 deletions). **start** = `e669da81b3f865488dd40f840623bed69839f459` (the card tree before the repair; code identical at `3b133bedf` and at the plan-revision HEAD `8fe4aea6c1a99a5302ae12552b3deefe3bba76c2`, `git diff --stat e669da81b HEAD -- . ':!.moai/specs'` prints nothing; ledger E1-E6 re-run on it). **repaired** = the card branch HEAD at run-phase close, whose full SHA the run phase writes into progress.md §E.3 and cites in each GREEN observation (a branch name is never the pin).
+- The test commands are run from the tree root exactly as written and carry no placeholder. They need the probe files recreated under `.moai/reports/t1733/probes/` (a gitignored local directory) from `research.md` Appendix A (A.1 and A.2 probe sources, A.3 overlay files, A.4 the fixed-mtime probe P5); the placement steps are in `research.md` § Evidence ledger. The one input a reader supplies is a project's two backup roots, copied with `cp -Rcp` (AC-UBR-06).
+- The probes P1-P4b and the real-data probe only log (`t.Logf`); the verdict is read from the logged values named in each cell. The probe P5 of AC-UBR-06(d) also asserts, so its RED is a failing exit code. The run-phase tests add assertions that fail on the start tree (AC-UBR-24).
+- Class `standard` criteria carry a green path and, where cheap, a RED-now observation; they are not release-blocking. A `standard` criterion marked regression guard (AC-UBR-04, AC-UBR-05) has no RED-now cell by design: it records a guard value that must stay as observed, and its mutant is the defect it keeps out.
 - "Budget" is `state.backup_past_versions_keep` (default 3). "Window", "excess" and "exempt run" are as in REQ-UBR-001 and REQ-UBR-008.
 
-## Release-blocking criteria
+## Release-blocking criteria and the card's regression guards
+
+AC-UBR-01, AC-UBR-02, AC-UBR-03 and AC-UBR-06 are release-blocking. AC-UBR-04 and AC-UBR-05 sit between them by number and are class `standard` regression guards.
 
 ### AC-UBR-01 (P1) — a pre-clean user file survives rotation
 
@@ -48,40 +50,57 @@ Mutant probe: keep-everything fails (ten remain); remove-everything fails (zero 
 
 ### AC-UBR-04 (P4a) — content behind a symbolic `.agents/skills` is untouched (regression guard)
 
-Class: release-blocking as a regression guard (the starting observation is green by design; operator ruling Q3). Covers: REQ-UBR-015, REQ-UBR-016.
+Class: standard (regression guard; the starting observation is green by design, operator ruling Q3; not release-blocking). Covers: REQ-UBR-015, REQ-UBR-016.
 Given project A whose `.agents/skills` is a symbolic link to project B's `.agents/skills`, B holding a live link `moai-kanban-foreman`, and A holding the retired folder with only `SKILL.md`,
 When the skill-residue cleanup runs on A with the successor shipped,
 Then nothing in B changes (B's link survives), A's retired folder stays in `.claude/skills`, and the result carries only report rows.
-Main `ec5a4f392`: not measurable, the `skillresidue` package and `update_state_residue.go` do not exist on main (`git diff --stat ec5a4f392 e669da81b` shows both as insertions). Start `e669da81b`: ledger E4 — `actions=[... reported-retired-skill ... reported-retired-link] b-link-survives=true a-folder-in-place=true`; green, and it stays green after the repair.
-Command (start): `go test -count=1 -v -overlay=.moai/reports/t1733/probes/overlay_residue.rel.json -run '^TestT1733ProbeP4a$' ./internal/cli/update/skillresidue/`
-GREEN, repaired: the same log line (`b-link-survives=true a-folder-in-place=true`, no action other than the two report rows).
-Mutant probe: a cleanup that removes the link through `.agents/skills` (the reintroduced F16 path) makes `b-link-survives=false` and fails; the run-phase test asserts it. A cleanup that refuses every pass is not rejected by this criterion (a refusal is outside scope, decision-index Q6).
+Command: `go test -count=1 -v -overlay=.moai/reports/t1733/probes/overlay_residue.rel.json -run '^TestT1733ProbeP4a$' ./internal/cli/update/skillresidue/`
+Guard value (start `e669da81b`, observed in this revision on `8fe4aea6c`, code identical; ledger E4): exit 0, and the log line `P4a err=<nil> actions=[{.claude/skills/moai-kanban-foreman reported-retired-skill} {.agents/skills/moai-kanban-foreman reported-retired-link}] b-link-survives=true a-folder-in-place=true`. The same line is the expected value on the repaired tree (no action other than the two report rows).
+Main `ec5a4f392`: no guard value, the `skillresidue` package and `update_state_residue.go` do not exist on main (`git diff --stat ec5a4f392 e669da81b` shows both as insertions); the guard is adopted on the start tree.
+Mutant probe: a cleanup that removes the link through `.agents/skills` (the reintroduced F16 path) makes `b-link-survives=false` and fails; the run-phase test asserts it (no such code exists on this tree, so the mutant is not executed in the plan phase). A cleanup that refuses every pass is not rejected by this criterion (a refusal is outside scope, decision-index Q6).
 
 ### AC-UBR-05 (P4b) — nothing is written outside the project through `.moai/archive` (regression guard)
 
-Class: release-blocking as a regression guard (operator ruling Q3). Covers: REQ-UBR-015, REQ-UBR-016.
+Class: standard (regression guard; the starting observation is green by design, operator ruling Q3; not release-blocking). Covers: REQ-UBR-015, REQ-UBR-016.
 Given project A whose `.moai/archive` is a symbolic link to a directory outside the project, and a retired folder in A,
 When the cleanup runs on A,
 Then nothing is written outside the project and the retired folder stays in `.claude/skills`.
-Main `ec5a4f392`: not measurable (package absent). Start `e669da81b`: ledger E5 — `actions=[... reported-retired-skill] content-now-outside-project=false a-folder-in-place=true`; green, stays green.
-Command (start): `go test -count=1 -v -overlay=.moai/reports/t1733/probes/overlay_residue.rel.json -run '^TestT1733ProbeP4b$' ./internal/cli/update/skillresidue/`
-GREEN, repaired: the same log line.
-Mutant probe: a cleanup that reintroduces the archive move makes `content-now-outside-project=true` and fails; the run-phase test asserts it.
+Command: `go test -count=1 -v -overlay=.moai/reports/t1733/probes/overlay_residue.rel.json -run '^TestT1733ProbeP4b$' ./internal/cli/update/skillresidue/`
+Guard value (start `e669da81b`, observed in this revision on `8fe4aea6c`, code identical; ledger E5): exit 0, and the log line `P4b err=<nil> actions=[{.claude/skills/moai-kanban-foreman reported-retired-skill}] content-now-outside-project=false a-folder-in-place=true`. The same line is the expected value on the repaired tree.
+Main `ec5a4f392`: no guard value (package absent, as AC-UBR-04).
+Mutant probe: a cleanup that reintroduces the archive move makes `content-now-outside-project=true` and fails; the run-phase test asserts it (no such code exists on this tree, so the mutant is not executed in the plan phase).
 
 ### AC-UBR-06 — real-data remeasure on the mo.ai.kr backup roots
 
 Class: release-blocking. Covers: REQ-UBR-001, REQ-UBR-003 to REQ-UBR-006, REQ-UBR-010, REQ-UBR-011.
-Given a modification-time-preserving copy of the mo.ai.kr project's `.moai-backups` and `.moai/backups` (copied read-only from the live project or its snapshot; no `moai update` run; the copy command recorded),
-When the harness runs the pruner on a fresh copy twice: with the production keepCount 5, and with keepCount 4 so that the oldest config run (the one holding `pre-clean/`) becomes an excess run,
+Given a copy of the mo.ai.kr project's `.moai-backups` and `.moai/backups` (made with `cp -Rcp` from the live project or its snapshot; no `moai update` run; the copy command recorded) in which the harness has stamped every run directory with a distinct, explicitly fixed modification time after the copy and before the prune (`os.Chtimes`; the stamp is the timestamp the directory name encodes, so a copy that does not preserve times cannot change the ordering, and no two runs tie, so the path-ascending tie-break is never reached),
+When the harness runs the pruner on a fresh copy twice: with the production keepCount 5, and with keepCount 4,
 Then
-(a) the number of run directories present after the prune equals keepCount plus R, where R is the retained-excess count the report states, and the R directories are exactly those the report names;
+(a) the counted set is the backup runs and only those: a run is what `collectBackupRuns` defines (the directories that share one run marker, or an unmarked directory whose name has a writer shape: `YYYYMMDD_HHMMSS` under `.moai-backups`, `update-` or `v2-to-v3-` plus a `2006-01-02T15-04-05Z` stamp under `.moai/backups`; REQ-UBR-001, REQ-UBR-008). Unmanaged entries (directories of any other name, and loose files) are report-only: they are named in the report as a count and total size (REQ-UBR-012), take no part in the keepCount arithmetic, and are not removed. The number of runs present after the prune equals keepCount plus R, where R is the retained-excess run count the report states, and the report names each of those R runs with every directory it spans. Observed on the 10-14 snapshot (read-only `find` over both roots, and the P5 log): config root 20 directories = 5 timestamp-shaped runs + 15 unmanaged directories (13 `sync-*`, `backup`, `settings-backup`), plus 1 loose file; namespace root 79 directories = 47 `update-*` + 32 `v2-to-v3-*`, every one a run, plus 8 loose files; no `.moai-run` marker, so each run is one directory; runs before the prune = 84. After the prune the 15 unmanaged directories, the 1 loose file and the 8 loose files are all still present, and the run count is keepCount plus R with R measured, not a target;
 (b) over the pre-prune census, computed independently by a brute-force oracle: every protected version has a retained holder; removing any retained non-exempt excess run would uncover a protected version (irredundancy); and the number of retained non-exempt excess runs is at most the number of distinct protected versions. The criterion does not require equality with any particular cover (irredundant covers of one key set differ in size; design D2);
 (c) no path loses a version that is among its N most recent non-window versions;
-(d) under keepCount 4, at least one file under the retained `pre-clean/` copy remains;
+(d) under the fixed-mtime stamps above, at keepCount 4, at least one file under the config root's `pre-clean/` copy remains. On the snapshot the run `20261008_203921` holds 48 regular files under `pre-clean/`, each a (path relative to the run, SHA-256) key that no other run in either root holds (read-only scratch computation, bookkeeping files excluded), and by the stamps the run is the oldest of the five config runs and ranks 9th of 84, so it is an excess run at keepCount 4 and at keepCount 5;
 (e) the report states the number of runs removed and the number retained, and every retained excess run is named with its reason.
-RED-now, main `ec5a4f392` (reproduction report) and start `e669da81b` (ledger E6), keepCount 5: `REAL cfg-root dirs 20->20 ns-root dirs 79->0 deleted=79 pre-clean-dirs 1->1` and `REAL distinct-file-versions-before=1951 lost=1700 paths-with-lost-versions=996`. Red against (b) and (c) by construction: nothing is protected, 1700 versions (996 paths) are lost, including versions inside their budget. The keepCount 4 form of (d) was not measured on main or on the start tree (the probe hard-codes keepCount 5); it is red by construction (main keeps only the window, so a run outside it is removed) and the run phase measures it. Pre-revert reference `8e43f064a^`: `ns-root dirs 79->79 deleted=0`, `lost=0`.
-Command (start): `env T1733_CLONE=/private/tmp/t1733-real/moaikr go test -count=1 -v -overlay=.moai/reports/t1733/probes/overlay_backup.rel.json -run '^TestT1733ProbeRealData$' ./internal/cli/update/backup/` after `cp -Rcp <snapshot> /private/tmp/t1733-real/moaikr` (placement: `research.md` § Evidence ledger).
-GREEN, repaired: (a)-(e) hold; `lost` counts only versions older than their path's budget (zero versions inside the budget); the retained-excess count R and the number of namespace-root directories remaining are recorded in progress.md §E.2 as measured figures, not as targets.
+RED-now for (b) and (c), main `ec5a4f392` (reproduction report) and start `e669da81b` (ledger E6), keepCount 5: `REAL cfg-root dirs 20->20 ns-root dirs 79->0 deleted=79 pre-clean-dirs 1->1` and `REAL distinct-file-versions-before=1951 lost=1700 paths-with-lost-versions=996`. Red because nothing outside the window is protected: 1700 versions (996 paths) are lost, including versions inside their budget. Pre-revert reference `8e43f064a^`: `ns-root dirs 79->79 deleted=0`, `lost=0`. The ledger line `pre-clean-dirs 1->1` is not evidence that the pruner keeps the pre-clean run: the snapshot's directories all carry one copy time, so the path-ascending tie-break ranked `20261008_203921` first and kept it; (d) below is the cell that measures it with ordering fixed.
+Command, (a)-(c) and (e) (start): `env T1733_CLONE=/private/tmp/t1733-real/moaikr go test -count=1 -v -overlay=.moai/reports/t1733/probes/overlay_backup.rel.json -run '^TestT1733ProbeRealData$' ./internal/cli/update/backup/` after `cp -Rcp <snapshot> /private/tmp/t1733-real/moaikr` (placement: `research.md` § Evidence ledger).
+RED-now for (d), observed once in this revision (fresh copy made with `cp -Rcp` from the snapshot; tree `8fe4aea6c1a99a5302ae12552b3deefe3bba76c2`, code identical to start `e669da81b`; main `ec5a4f392` by code identity, the pruner's ordering and removal code being unchanged between them):
+```
+cp -Rcp <snapshot> /private/tmp/t1733-real-p5-k4b/moaikr
+env T1733_CLONE=/private/tmp/t1733-real-p5-k4b/moaikr go test -count=1 -v -overlay=.moai/reports/t1733/probes/overlay_backup_p5.rel.json -run '^TestT1733ProbeRealDataFixedMtime$' ./internal/cli/update/backup/
+```
+Stdout (the second command):
+```
+=== RUN   TestT1733ProbeRealDataFixedMtime
+    zz_t1733_probe_p5_test.go:108: P5 keepCount=4 runs=84 distinct-run-mtimes=true pre-clean-run=20261008_203921 pre-clean-run-rank=9 pre-clean-run-is-oldest-config-run=true
+    zz_t1733_probe_p5_test.go:110: P5 pre-clean-files before=48 after=0 deleted=80 pre-clean-run-exists-after=false
+    zz_t1733_probe_p5_test.go:112: AC-UBR-06(d): pre-clean files before=48 after=0, want before>0 and after>=1
+--- FAIL: TestT1733ProbeRealDataFixedMtime (11.76s)
+FAIL
+FAIL	github.com/modu-ai/moai-adk/internal/cli/update/backup	12.262s
+FAIL
+```
+Exit code: 1. Red because the pruner keeps only the newest keepCount runs and the pre-clean run ranks 9th of 84, so its directory and all 48 files under it are removed. The probe source and overlay are `research.md` Appendix A.3 and A.4. The same fixture at the production keepCount (`T1733_KEEP=5`, another fresh copy) printed `pre-clean-run-rank=9`, `after=0 deleted=79` and exit 1.
+GREEN, repaired: the same command prints `after>=1` for `pre-clean-files`, `--- PASS` and exit 0. REQ-UBR-003 gives a stronger expectation, `after=48` (each of the 48 paths has a single version, outside the window, so each is protected); that figure is derived from the snapshot, not observed, and the run phase records the measured value in progress.md §E.2. For (a)-(c) and (e): they hold; `lost` counts only versions older than their path's budget (zero versions inside the budget); R and the number of namespace-root directories remaining are recorded in progress.md §E.2 as measured figures, not as targets.
 Mutant probe: keep-everything passes (c) and (d) trivially and fails (b) irredundancy (removing a retained run uncovers nothing); remove-everything passes (a) and fails (b) coverage, (c) and (d). The oracle in (b) is a brute-force check of coverage, irredundancy and the bound, not a re-run of the production selection.
 Note: R feeds no open decision (Q2 is ruled, Q4 closed); it is recorded for the operator's post-landing comparison (design D11).
 
@@ -101,7 +120,7 @@ Class: standard. Covers: REQ-UBR-009.
 Given a config backup that holds a user file named `.complete` with content `user A` in an excess run, whose newer copy in the window reads `user B`, and a second excess run that differs from a retained run only by the writer's `backup_metadata.json`,
 When the pruner runs,
 Then the run holding `user A` is retained as unique content, and the run differing only by writer-produced bookkeeping is removed.
-Residual (audit D8, deferred): a user file that imitates the writer's shape is read as bookkeeping; recorded in design D4 and risk 7, not asserted here.
+Residual (audit D8, deferred): a user file that imitates the writer's shape is read as bookkeeping. Closing it needs provenance (the backup kind and location of each file), a design choice larger than this card; it is recorded as an accepted residual in design D4 and spec.md risk 7, and not asserted here.
 
 ### AC-UBR-09 — the template render is exempt
 
