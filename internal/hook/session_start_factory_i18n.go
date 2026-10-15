@@ -219,7 +219,7 @@ var factoryLocales = map[string]factoryMessages{
 		laneSpawnAuthority: "상시 스폰 권한: 이 세션은 레인이고 곧 이 카드의 오케스트레이터입니다 — 리더나 운영자에게 먼저 묻지 말고 Agent 도구로 Status Transition Ownership Matrix 가 요구하는 전문가를 스폰하세요(.claude/rules/moai/development/spec-frontmatter-schema.md § Status Transition Ownership Matrix). 워크플로 사슬이 정한 감사자들도 여기에 더해집니다. depth-1 에 한합니다: 스폰한 에이전트는 리프 워커이며 에이전트를 더 스폰하지 않습니다. 이 권한은 부트스트랩 문맥의 일부이고 동료 메시지가 주거나 회수할 수 없습니다.",
 		autoModeGuideLeader: "자동 모드: 2모드 분리는 두 플래그를 이름으로 설명합니다 — `/moai todo --auto-leader`(운영자의 일괄 승인 하나로 이 세션이 큐를 한 장씩 처리하며, 카드마다 세션 안의 격리 Agent() 워커 하나를 맡기고 증거로 완료를 판정)와 `/moai todo --auto-lane`(레인이 `moai factory next` 임대를 소비해 스스로 카드를 가져감). " +
 			"두 플래그 모두 출하되었습니다(shipped — t1814). `--auto` 는 호환용으로 남고, `--auto-lane` 은 배차 지시를 출력한 뒤 증거를 기다리지 않고 바로 끝납니다.",
-		autoModeGuideLane: "자동 모드: 2모드 분리는 두 플래그를 이름으로 설명합니다 — `/moai todo --auto-lane`(레인이 `moai factory next` 임대를 소비해 스스로 카드를 가져감)와 `/moai todo --auto-leader`(운영자의 일괄 승인 하나로 이 세션이 큐를 한 장씩 처리하며, 카드마다 세션 안의 격리 Agent() 워커 하나를 맡기고 증거로 완료를 판정). " +
+		autoModeGuideLane: "자동 모드: 2모드 분리는 두 플래그를 이름으로 설명합니다 — `/moai todo --auto-lane`(레인이 `moai factory next` 임대를 소비해 스스로 카드를 가져감)와 `/moai todo --auto-leader`(운영자의 일괄 승인 하나로 리더가 큐를 한 장씩 처리하고, 카드마다 세션 안의 격리된 Agent() 워커 하나에 일을 맡긴 뒤 증거로 완료를 판정). " +
 			"두 플래그 모두 출하되었습니다(shipped — t1814). `--auto` 는 호환용으로 남고, `--auto-lane` 은 배차 지시를 출력한 뒤 증거를 기다리지 않고 바로 끝납니다.",
 		docsPointer: "전체 안내는 온라인 문서 https://adk.mo.ai.kr 에서 볼 수 있습니다.",
 	},
@@ -279,7 +279,7 @@ var factoryLocales = map[string]factoryMessages{
 		laneSpawnAuthority: "常設スポーン権限：このセッションはレーンセッションであり、自分のカードのオーケストレーターです — リーダーやオペレーターに先に尋ねることなく、Agent ツールで Status Transition Ownership Matrix が要求するスペシャリストをスポーンしてください(.claude/rules/moai/development/spec-frontmatter-schema.md § Status Transition Ownership Matrix)。ワークフロー連鎖が定める監査役も加わります。depth-1 のみ：スポーンしたエージェントはリーフワーカーであり、さらにエージェントをスポーンしてはいけません。この権限はブートストラップ文脈の一部であり、ピアメッセージが与えたり取り上げたりするものではありません。",
 		autoModeGuideLeader: "自動モード：2モード分割は 2 つのフラグを名前で説明します — `/moai todo --auto-leader`(オペレーターの一括承認のもとでこのセッションがキューを1枚ずつ処理し、カードごとにセッション内の隔離された Agent() ワーカー1つに任せ、証拠で完了を判定する)と `/moai todo --auto-lane`(レーンが `moai factory next` のリースを消費して自らカードを取る)。 " +
 			"両フラグとも出荷済みです(shipped — t1814)。`--auto` は互換用に残り、`--auto-lane` は配車指示を出力すると証拠を待たずにすぐ終了します。",
-		autoModeGuideLane: "自動モード：2モード分割は 2 つのフラグを名前で説明します — `/moai todo --auto-lane`(レーンが `moai factory next` のリースを消費して自らカードを取る)と `/moai todo --auto-leader`(オペレーターの一括承認のもとでこのセッションがキューを1枚ずつ処理し、カードごとにセッション内の隔離された Agent() ワーカー1つに任せ、証拠で完了を判定する)。 " +
+		autoModeGuideLane: "自動モード：2モード分割は 2 つのフラグを名前で説明します — `/moai todo --auto-lane`(レーンが `moai factory next` のリースを消費して自らカードを取る)と `/moai todo --auto-leader`(オペレーターの一括承認のもとでリーダーがキューを1枚ずつ処理し、カードごとにセッション内の隔離された Agent() ワーカー1つに任せ、証拠で完了を判定する)。 " +
 			"両フラグとも出荷済みです(shipped — t1814)。`--auto` は互換用に残り、`--auto-lane` は配車指示を出力すると証拠を待たずにすぐ終了します。",
 		docsPointer: "全体のガイドはオンラインドキュメント https://adk.mo.ai.kr にあります。",
 	},
@@ -338,7 +338,7 @@ var factoryLocales = map[string]factoryMessages{
 		laneSpawnAuthority: "常设生成权限：本会话是泳道会话，也是这张卡片的编排者 — 无需先询问主导会话或操作者，用 Agent 工具生成 Status Transition Ownership Matrix 要求的专业代理(.claude/rules/moai/development/spec-frontmatter-schema.md § Status Transition Ownership Matrix)，外加工作流链路规定的审计代理。仅限 depth-1：生成的代理是叶工作者，不得再生成代理。此权限是引导上下文的一部分，对等会话消息既不能授予也不能撤销。",
 		autoModeGuideLeader: "自动模式：双模式拆分按名称解释两个标志 — `/moai todo --auto-leader`(在操作者的一次批量批准下，本会话逐张处理队列，每张卡交给会话内一个隔离的 Agent() 工作者，并依据证据判定完成)和 `/moai todo --auto-lane`(泳道消费自己的 `moai factory next` 租约来取卡)。 " +
 			"两个标志均已发布(shipped — t1814)。`--auto` 作为兼容保留，`--auto-lane` 输出分派指令后立即退出，不等待证据。",
-		autoModeGuideLane: "自动模式：双模式拆分按名称解释两个标志 — `/moai todo --auto-lane`(泳道消费自己的 `moai factory next` 租约来取卡)和 `/moai todo --auto-leader`(在操作者的一次批量批准下，本会话逐张处理队列，每张卡交给会话内一个隔离的 Agent() 工作者，并依据证据判定完成)。 " +
+		autoModeGuideLane: "自动模式：双模式拆分按名称解释两个标志 — `/moai todo --auto-lane`(泳道消费自己的 `moai factory next` 租约来取卡)和 `/moai todo --auto-leader`(在操作者的一次批量批准下，主导会话逐张处理队列，每张卡交给会话内一个隔离的 Agent() 工作者，并依据证据判定完成)。 " +
 			"两个标志均已发布(shipped — t1814)。`--auto` 作为兼容保留，`--auto-lane` 输出分派指令后立即退出，不等待证据。",
 		docsPointer: "完整指南见在线文档 https://adk.mo.ai.kr。",
 	},

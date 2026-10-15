@@ -299,3 +299,18 @@ func TestCodexLaneBootNoteNamesAutoLane(t *testing.T) {
 		t.Errorf("boot precedence note does not name `moai todo --auto-lane`: %s", codexLaneBootPrecedenceNote)
 	}
 }
+
+// TestFactoryGuideLaneAudienceLeaderModeNoSelfReference — card t1814 audit
+// F9: a lane is refused --auto-leader, so the lane-audience guidance must name
+// the leader, never "this session", as that mode's actor.
+func TestFactoryGuideLaneAudienceLeaderModeNoSelfReference(t *testing.T) {
+	self := []string{"this session", "이 세션", "このセッション", "本会话"}
+	for _, lang := range []string{"en", "ko", "ja", "zh"} {
+		text := factoryMessagesFor(lang).autoModeGuideLane
+		for _, s := range self {
+			if strings.Contains(text, s) {
+				t.Errorf("%s lane guidance names %q as the --auto-leader actor; a lane is refused that mode:\n%s", lang, s, text)
+			}
+		}
+	}
+}
