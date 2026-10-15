@@ -21,7 +21,7 @@ Tree: HEAD 957967601 (M1 35463bf52, M2 e138b8f9f, M3 957967601), measured in thi
 |----|--------|---------|---------------|
 | AC-LNC-001 | PASS | `grep -c -F` of the four step phrases in the template `factory-dispatch.md` | 3 / 1 / 4 / 2 |
 | AC-LNC-002 | PASS | `grep -n -F '/clear'` over the template family + lane protocol | 4 lines: full body L38, L40, L162; stub L58 (leader-session sentences); 0 elsewhere |
-| AC-LNC-003 | GAP | runtime observation | The implementer subagent has no `ExitWorktree`/`EnterWorktree` tool; the in-session switch was not observed. Decision Q7 stays open. |
+| AC-LNC-003 | PASS (lane-observed) | runtime observation by the lane session, recorded in `.moai/reports/t1793/progress.md` line 180 | The implementer subagent had no `ExitWorktree`/`EnterWorktree` tool, so the lane session ran the sequence itself: `ExitWorktree(keep)` returned to `/Users/goos/MoAI/moai-adk-go`, `EnterWorktree` of the leased tree reported `Entered worktree ... on branch WT-lane-no-clear`, and `git rev-parse --show-toplevel` printed `/Users/goos/MoAI/moai-adk-go/.moai/worktrees/t1793` (HEAD `ef72f18b2` at that observation). One lane observation, cited here from the card record; the sync auditor could not re-observe it (§E.4 gaps). |
 | AC-LNC-004 | PASS | `go test ./internal/cli -run '^TestSD_AC020_ClearPolicies$' -count=1 -v` | all 13 subtests PASS, `ok ... 52.774s` |
 | AC-LNC-005 | PASS | `go test ./internal/cli -run '^TestAutoLaneCycle[A-Za-z0-9_]*$' -count=1 -v` | 14 PASS incl. `TestAutoLaneCycleNoClearAssertion`, `ok ... 427.828s` |
 | AC-LNC-006 | PASS | `go test ./internal/cli -run '^(TestSD_AC020_ClearPolicies\|TestSD_M6_ClearPolicyCarrierConstantOnly)$' -count=1 -v` | all PASS, `ok ... 70.844s` |
@@ -77,7 +77,53 @@ m1_to_mN_commit_strategy: M1 Go outputs and tests, M2 template doctrine, M3 loca
 
 ## §E.4 Sync-phase Audit-Ready Signal
 
-_<pending sync-phase, owned by manager-docs>_
+```yaml
+sync_status: complete (3-phase close — plan → run → sync, this commit)
+sync_complete_at: 2026-10-15
+sync_commit_sha: "pending-backfill"
+sync_audit:
+  report: .moai/reports/t1793/sync-audit-iter1.md   # disk-only, not committed
+  verdict: PASS-WITH-DEBT
+  audited_sha: 91667f2f64f16915d9b96884b4f54ccd2783bc8e
+  required_backend: codex
+  codex_required_receipt: rcpt-817aa54f8830bd4ead194895   # audit_multi overall_verdict pass, gate_unmet none
+  blocking_defects: 0
+changelog_entry_position: CHANGELOG.md [Unreleased] § Added, first entry
+frontmatter_status_transitions:
+  - "spec.md status: in-progress -> completed (this single sync commit; the intermediate implemented step consolidated per the Status Transition Ownership Matrix close row)"
+updated_field_refresh: "2026-10-15 (already 2026-10-15 in spec.md — no byte change); no other frontmatter field touched; spec/plan/acceptance body untouched"
+b12_self_test_a: >-
+  pre-emission grep -c 'SPEC-FACTORY-LANE-NO-CLEAR-001' CHANGELOG.md -> 0
+  (halt condition not triggered)
+b12_self_test_b: >-
+  AC count match — moai-ac counter over acceptance.md (tier M, ac_source
+  .moai/specs/SPEC-FACTORY-LANE-NO-CLEAR-001/acceptance.md, resolved and
+  non-empty): live=16 excluded=0 ambiguous=0, exit 0; the CHANGELOG entry
+  cites 16 (AC-LNC-001..016)
+b12_self_test_c: >-
+  file path verification — every path cited in the CHANGELOG entry confirmed
+  present in this tree by ls (factory_card.go, factory_relaunch.go,
+  todo_auto_lane_test.go, factory_m6_test.go, session_start_factory_i18n.go,
+  the template and policy factory-dispatch.md)
+```
+
+### Accepted debts — follow-up card candidates
+
+The sync audit reported five optional defects and no blocking one. F4 is repaired in this commit (the AC-LNC-003 row of §E.2 now cites the lane observation). F1, F2, F3, and F5 are accepted as debt and recorded as follow-up card candidates; none is created here.
+
+- F1 [medium] — the manual-dispatch rule in `internal/hook/session_start_factory_i18n.go:151-153` (four locales, same position) says to work the dispatched card in the current worktree and carries no `EnterWorktree` step. After `ExitWorktree(keep)` the current location is the primary checkout, so a literal reading works the card there (the shape REQ-LNC-004 forbids). Lower risk because auto is the default and the dispatch block's `wt:` field names the tree. Fix candidate: add "`EnterWorktree` the dispatched `wt:` tree, then verify the toplevel" to the manual rule in four locales; the role-core and stub are at their budget (4083/4092, 9999/10000) and stay untouched.
+- F2 [low] — the policy copy `.moai/policies/workflow/factory-dispatch.md` (lines 141, 157) keeps the pre-M5 transition paragraph (one full [HARD] block), while the rule file splits it into a role-core line, an unmarked "Transition detail" paragraph, and a shortened Isolation line. The M7 sentence is byte-identical in both and AC-LNC-013 passes; the literal reading of REQ-LNC-014 ("same transition paragraph") still shows a difference. Fix candidate: align the policy copy to the rule's three-paragraph shape, or record "same meaning, different shape" in the Q5 decision.
+- F3 [low] — `TestAutoLaneCycleNoClearAssertion` (`internal/cli/todo_auto_lane_test.go:625`) checks only the literal `/clear`; a mutation that says "clear the session" without the slash passes. The literal mutation was observed RED by the auditor. Fix candidate: a shared forbidden-phrase helper used with the AC-LNC-004 test.
+- F5 [low] — `TestFactoryClearPolicyManualDispatch` (added in M6) is named in no AC selector (`acceptance.md` lines 70 and 98). The auditor ran it by name and it passed. Fix candidate: add it to the AC-LNC-006 selector at the next SPEC revision.
+
+### Known gaps carried to the close
+
+- AC-LNC-013 When/Then lines 206-207 of `acceptance.md` still use the old count wording ("each phrase appears ..."); the effective expectation is line 218 (counts, cards `cmp` exit 0, two detail hunk headers, `make agents-emit-check` exit 0), which the sync audit re-measured as met. The leader decided to leave the body unchanged to keep the plan artifact hash stable (card record, `.moai/reports/t1793/progress.md`, card-review section).
+- Coverage, `golangci-lint`, and the Windows cross-build were not measured.
+- Lint was judged by the installed rc.33 binary (stated in the sync handoff to this commit; not independently re-observed here). The sync audit report separately records that its `moai` CLI measurements used a binary built from this tree (HEAD `91667f2f6`), while the MCP `audit_multi` server ran build `69c1ffc1f4`, an ancestor of the tree HEAD.
+- AC-LNC-003 rests on one lane observation; the sync auditor had no `ExitWorktree`/`EnterWorktree` tool and cited it without re-observing.
+- The full 60-name AC-LNC-015 selector and the full long AC-LNC-007 hook selector were not re-run at audit; a relevant subset and the four load-timing hook tests (load average about 55, all PASS) were.
+- `make build` was not re-run after M7 (rule-file-only change; `go build ./cmd/moai` exit 0 and the emit/embed parity tests passed at audit).
 
 ## §G Override and Refusal Record
 
