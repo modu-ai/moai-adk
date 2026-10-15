@@ -15,11 +15,46 @@ plan_audit: pending (not run by the authoring agent; the plan gate runs the audi
 
 ## §E.2 Run-phase Evidence
 
-_<pending run-phase, owned by manager-develop>_
+Tree: HEAD 957967601 (M1 35463bf52, M2 e138b8f9f, M3 957967601), measured in this run on 2026-10-15. Machine load average was about 277 during the run, so timing-bound tests may flake.
+
+| AC | Status | Command | Actual Output |
+|----|--------|---------|---------------|
+| AC-LNC-001 | PASS | `grep -c -F` of the four step phrases in the template `factory-dispatch.md` | 3 / 1 / 4 / 2 |
+| AC-LNC-002 | PASS | `grep -n -F '/clear'` over the template family + lane protocol | 4 lines: full body L38, L40, L162; stub L58 (leader-session sentences); 0 elsewhere |
+| AC-LNC-003 | GAP | runtime observation | The implementer subagent has no `ExitWorktree`/`EnterWorktree` tool; the in-session switch was not observed. Decision Q7 stays open. |
+| AC-LNC-004 | PASS | `go test ./internal/cli -run '^TestSD_AC020_ClearPolicies$' -count=1 -v` | all 13 subtests PASS, `ok ... 52.774s` |
+| AC-LNC-005 | PASS | `go test ./internal/cli -run '^TestAutoLaneCycle[A-Za-z0-9_]*$' -count=1 -v` | 14 PASS incl. `TestAutoLaneCycleNoClearAssertion`, `ok ... 427.828s` |
+| AC-LNC-006 | PASS | `go test ./internal/cli -run '^(TestSD_AC020_ClearPolicies\|TestSD_M6_ClearPolicyCarrierConstantOnly)$' -count=1 -v` | all PASS, `ok ... 70.844s` |
+| AC-LNC-007 | PASS-WITH-DEBT | the long hook selector from acceptance.md, plus two greps | `TestSD_AC019_NextCardRuleInjection/takeover_trigger_four_locales` PASS; both greps print 0; four unrelated timing tests (`TestFactoryUserPromptSubmitRebindsLaunchPendingPeer`, `TestFactoryBoundUserPromptSubmitDoesNotRewritePeer`, `TestFactoryHookContextAndContinuationSafety`, `TestFactoryHookZeroTurnAndCapabilityTruth`) failed with `context deadline exceeded` under load 277; on a four-test re-run the first two passed, ContextAndContinuation and ZeroTurn failed again with the same deadline error (ZeroTurn had passed once when run alone); baseline on the pre-change tree not re-measured, so the cause is attributed to load, not proven |
+| AC-LNC-008 | PASS | `go test ./internal/hook -run '^TestInjectedCoreCarriesObligationElements$' -count=1 -v` | both surfaces PASS |
+| AC-LNC-009 | PASS | the two greps | both print nothing, exit 1 |
+| AC-LNC-010 | PASS | `go test ./internal/cli -run '^TestTodoAutoClearGuidancePerCard$'`; two `grep -c` | PASS; gtd.md 3, manager-todo.md 1 |
+| AC-LNC-011 | PASS | the three greps | first two print nothing (exit 1); third prints 2 |
+| AC-LNC-012 | PASS | nine `cmp` pairs | all exit 0 |
+| AC-LNC-013 | PASS | grep counts, cards `cmp`, detail `diff` hunk headers, `make agents-emit-check` | counts 2 / 1 / 2; cards cmp exit 0; hunk headers `135c135` and `157c157` unchanged; emit check `ok` |
+| AC-LNC-014 | PASS | `make build` | exit 0 |
+| AC-LNC-015 | PASS | the `./internal/template/...` selector from acceptance.md | `ok` for internal/template (192.907s), agentemit, commandemit, embedemit; no FAIL line |
+| AC-LNC-016 | PASS | `grep -c -F '/clear'` per scoped file | matches the table: 3, 1, 0, 0, 0, 0, 0, manager-lead 2, manager-todo 1, gtd 2, policy factory-dispatch 2, policy detail/cards/mechanics 0, TOML 2 and 1, Go files 0 |
+
+RED evidence: the rewritten `TestSD_AC020_ClearPolicies` failed on the intended assertion before the printer change (output `... ask the operator to /clear, then take the next card on the fresh session` carried a clear instruction); `TestSD_AC019_NextCardRuleInjection/takeover_trigger_four_locales` and `TestInjectedCoreCarriesObligationElements` failed on missing phrases before the text change. `TestAutoLaneCycleNoClearAssertion` passed on first run (the lane cycle already printed no clear text), so it has no RED output.
+
+Lint: `gofmt -l` on the touched Go files prints nothing; `go vet ./internal/config ./internal/hook` exit 0. `golangci-lint` and coverage were not run.
 
 ## §E.3 Run-phase Audit-Ready Signal
 
-_<pending run-phase, owned by manager-develop>_
+run_complete_at: 2026-10-15
+run_commit_sha: 957967601 (M3; this evidence commit follows it)
+run_status: complete-with-gaps
+ac_pass_count: 14 PASS + 1 PASS-WITH-DEBT (AC-LNC-007)
+ac_fail_count: 0
+ac_gap: AC-LNC-003 (runtime observation not possible in the implementer subagent)
+preserve_list_post_run_count: not measured
+l44_pre_commit_fetch: not run (no push; lane-local)
+l44_post_push_fetch: not applicable (no push)
+new_warnings_or_lints_introduced: gofmt clean, go vet clean on config and hook; golangci-lint not run
+cross_platform_build.go_build: `make build` exit 0; windows build not run
+total_run_phase_files: 36
+m1_to_mN_commit_strategy: M1 Go outputs and tests, M2 template doctrine, M3 local parity and policy copies, M4 evidence
 
 ## §E.4 Sync-phase Audit-Ready Signal
 
