@@ -4,8 +4,6 @@ import (
 	"regexp"
 	"strings"
 	"testing"
-
-	"github.com/charmbracelet/lipgloss"
 )
 
 // Card t1822: Claude Code captures the statusline command's stdout through a
@@ -30,13 +28,13 @@ func colorProfileFixture() *StatusData {
 
 func stripSGR(s string) string { return sgrPattern.ReplaceAllString(s, "") }
 
-// testBarRenderer maps a legacy noColor flag onto the usage-bar helpers'
-// renderer argument: nil renders plain, otherwise a forced-profile renderer.
-func testBarRenderer(noColor bool) *lipgloss.Renderer {
+// testBarStyle maps a legacy noColor flag onto the usage-bar helpers' style
+// argument: nil renders plain, otherwise a forced-profile Mocha style.
+func testBarStyle(noColor bool) *barStyle {
 	if noColor {
 		return nil
 	}
-	return newForcedColorRenderer("")
+	return newBarStyle(newForcedColorRenderer(""), NewTheme(""))
 }
 
 func TestRender_ColorEnabled_ForcesProfileOnNonTTY(t *testing.T) {

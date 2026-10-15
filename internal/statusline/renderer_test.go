@@ -2,6 +2,7 @@ package statusline
 
 import (
 	"fmt"
+	"regexp"
 	"strings"
 	"testing"
 	"time"
@@ -835,7 +836,8 @@ func TestRenderDefaultV3_Line2_BarsInline(t *testing.T) {
 	if !strings.Contains(l2, "88%") {
 		t.Errorf("default L2 must contain CW 88%%, got: %q", l2)
 	}
-	if !strings.Contains(l2, "5H: n/a") || !strings.Contains(l2, "7D: n/a") {
+	// n/a keeps an empty placeholder bar in place (card t1822).
+	if !regexp.MustCompile(`5H: ░+ n/a`).MatchString(l2) || !regexp.MustCompile(`7D: ░+ n/a`).MatchString(l2) {
 		t.Errorf("default L2 must render 5H/7D n/a with no window source, got: %q", l2)
 	}
 	if strings.Contains(l2, "0%") {
@@ -1065,7 +1067,7 @@ func TestRenderUsageBar(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			got := renderUsageBar(tt.label, tt.pct, tt.width, testBarRenderer(tt.noColor))
+			got := renderUsageBar(tt.label, tt.pct, tt.width, testBarStyle(tt.noColor))
 			if !strings.HasPrefix(got, tt.wantPfx) {
 				t.Errorf("renderUsageBar() = %q, wantPfx %q", got, tt.wantPfx)
 			}

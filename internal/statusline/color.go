@@ -57,3 +57,30 @@ func applyBaseColor(s, baseSeq string) string {
 	}
 	return strings.Join(lines, "\n")
 }
+
+// barStyle carries the color inputs of the usage bars; a nil *barStyle
+// renders them plain (NO_COLOR).
+type barStyle struct {
+	lg    *lipgloss.Renderer
+	stops []string
+	muted lipgloss.Color
+}
+
+// newBarStyle binds a renderer to the theme's gradient stops and muted color.
+func newBarStyle(lg *lipgloss.Renderer, theme Theme) *barStyle {
+	return &barStyle{lg: lg, stops: barGradientStops(theme), muted: theme.Muted()}
+}
+
+// placeholderBar renders an all-empty bar of width blocks in the muted color,
+// standing in for a usage window whose reading is n/a (card t1822). It never
+// carries a fill or a percentage (REQ-SOU-004).
+func placeholderBar(width int, bs *barStyle) string {
+	if width <= 0 {
+		return ""
+	}
+	blocks := strings.Repeat("░", width)
+	if bs == nil {
+		return blocks
+	}
+	return bs.lg.NewStyle().Foreground(bs.muted).Render(blocks)
+}
