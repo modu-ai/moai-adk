@@ -55,7 +55,9 @@ Serial-cycle contract (when running `/moai:todo --auto`):
   evidence is absent at collection, the card is unpicked back to `queued`
   with a labelled non-finding — never silently `done`, never left picked.
 - After each completed card, emit the /clear guidance naming the completed
-  card and the next step, before accepting the next card.
+  card and the next step, before accepting the next card. This applies to the
+  operator session only; factory lanes follow the lane card transition rule
+  (in-session exit, lease, enter) and receive no clear guidance.
 
 ## Jev Decision Boundary
 
