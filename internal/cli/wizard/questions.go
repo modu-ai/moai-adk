@@ -295,20 +295,29 @@ func userParticipationDefault() string {
 
 // InitQuestions returns the `moai init` question set: conversation_language
 // and user_name picked by ID from DefaultQuestions, followed by Page3Questions
-// (agent_wiring, autonomy_tier, jev_enabled). It is the single assembly point
-// consumed by the wizard entry point, so the init set cannot drift from what
-// the tests exercise.
+// (agent_wiring, autonomy_tier, jev_enabled). It is InitQuestionsWithAgentWiring
+// with no pre-fill, so the init set cannot drift from what the tests exercise.
 //
 // ReconfigureQuestions deliberately does NOT build on this: the page-3
 // questions must not leak into `moai update --reconfigure` (AC-WIZ-012a).
 // SPEC-JEV-OPTIN-MEASURE-001 REQ-JEVO-006 depends on that exclusion rather
 // than working around it.
+func InitQuestions(projectRoot string) []Question {
+	return InitQuestionsWithAgentWiring(projectRoot, "")
+}
+
+// InitQuestionsWithAgentWiring is the single assembly point of the init set,
+// consumed by the wizard entry point. It is InitQuestions with the agent_wiring
+// question's default pre-filled from agentWiring — the harness a resumed init
+// recorded (card t1591). An empty agentWiring keeps the shipped claude default.
+// Only the default moves: the question stays unconditional and its answer stays
+// authoritative.
 //
 // @MX:NOTE: [AUTO] The init set is five questions assembled by ID; the
 // reconfigure path keeps using DefaultQuestions unchanged (D1). Removed keys
 // resolve to their shipped defaults.
 // @MX:SPEC: SPEC-INIT-QUIET-WIZARD-001
-func InitQuestions(projectRoot string) []Question {
+func InitQuestionsWithAgentWiring(projectRoot, agentWiring string) []Question {
 	base := DefaultQuestions(projectRoot)
 	page3 := Page3Questions(projectRoot)
 	all := make([]Question, 0, len(initSharedQuestionIDs)+len(page3))
@@ -318,6 +327,7 @@ func InitQuestions(projectRoot string) []Question {
 		}
 	}
 	all = append(all, page3...)
+	prefillAgentWiringDefault(all, agentWiring)
 	return all
 }
 

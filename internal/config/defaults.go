@@ -459,6 +459,13 @@ const (
 	DefaultProfileUnusedDays            = 90
 	DefaultProfileMaxBytes              = 5 * 1024 * 1024 * 1024
 
+	// ProfileCapAdvisoryTimeout bounds the SessionStart profile-cap advisory
+	// check (SPEC-CAPACITY-RECLAIM-001 REQ-CAP-009): the check walks the
+	// claude-profiles tree to size profiles, so the time-box keeps it off
+	// the launch critical path (Advisory-Check Discipline) — on deadline it
+	// degrades to a skip notice and never blocks the session start.
+	ProfileCapAdvisoryTimeout = 2 * time.Second
+
 	// Reports-archive defaults (SPEC-REPORTS-LIFECYCLE-001 REQ-RLC-007) for
 	// `moai clean --reports-archive`. Age-based, not volume-based: machine-
 	// local accumulation under .moai/reports/ differs per checkout, so the
@@ -905,6 +912,15 @@ var DefaultCodexAuditTimeout = 20 * time.Minute
 // DefaultCodexReviewGateTimeout (a Stop hook) so tuning one cannot move another.
 // Not a const so a test can shorten it.
 var DefaultCodexAuditLegTimeout = DefaultCodexAuditTimeout
+
+// DefaultCodexAuditWaitLoadThreshold is the one-minute load average at or above
+// which a codex audit's wait bound doubles (card t1781): at load 200 the
+// machine runs several compile/test suites at once — the observed stall that
+// motivated the card happened at load 357/364/352 — so a bound tuned on a
+// quiet machine no longer fits, and the audit reads as hung when it is only
+// waiting in line. A var (not a const) so a test can retune it, matching the
+// neighboring timeout vars.
+var DefaultCodexAuditWaitLoadThreshold = 200.0
 
 // DefaultCodexAuditListTimeout bounds the `codex mcp list --json` lookup the
 // audit launcher runs before the audit to learn which MCP servers to disable.

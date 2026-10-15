@@ -3,10 +3,13 @@ package cli
 import (
 	"fmt"
 	"io"
+	"os"
 	"path/filepath"
 
 	"github.com/modu-ai/moai-adk/internal/cli/update/backup"
+	"github.com/modu-ai/moai-adk/internal/config"
 	"github.com/modu-ai/moai-adk/internal/defs"
+	"github.com/modu-ai/moai-adk/internal/tui"
 )
 
 // checkProjectMarker refuses a directory that is not a moai project.
@@ -40,6 +43,10 @@ func checkProjectMarker(dir string) error {
 // The backup directory is validated before anything is written: a directory
 // without the backup marker file is refused rather than copied into the project
 // (REQ-UDS-024). Applying the same backup twice is safe (REQ-UDS-023).
+//
+// The live .claude/settings.json is never written by this path (SPEC-UPDATE-REPAIR-RC30-001
+// D9). The restore names it as not restored and prints the manual copy
+// instruction (reportUncoveredRestorePaths).
 func runUpdateRestore(projectRoot, backupDir string, out io.Writer) error {
 	if out == nil {
 		out = io.Discard
@@ -84,5 +91,56 @@ func runUpdateRestore(projectRoot, backupDir string, out io.Writer) error {
 		_, _ = fmt.Fprintln(out, msg)
 	}
 	_, _ = fmt.Fprintf(out, "Restored .moai/config from %s\n", absBackup)
+	reportUncoveredRestorePaths(out, projectRoot, absBackup)
 	return nil
+}
+
+// restoreSettingsRel is the live settings file this restore never writes.
+// SPEC-UPDATE-REPAIR-RC30-001 D9 (operator verdict d-20261010T053033Z-7012): the
+// restore names it as not restored and leaves the copy to the user.
+const restoreSettingsRel = ".claude/settings.json"
+
+// reportUncoveredRestorePaths prints what this restore leaves alone, so the user
+// can finish the recovery by hand. It writes no file.
+//
+// The live .claude/settings.json is always named as not restored. When the run
+// backup holds a copy, the line also carries the manual copy instruction with
+// the backup path and the target path. The other run-backup copies outside the
+// config tree are listed as backed up but not restored; inMemoryOnlyBackupTargets
+// is their single source of truth.
+func reportUncoveredRestorePaths(out io.Writer, projectRoot, absBackup string) {
+	// Read after the restore, so a restored language.yaml sets the language.
+	lang := config.LoadUpdateRenderValues(projectRoot).ConversationLanguage
+	if lang == "" {
+		lang = "en"
+	}
+	copyRoot := filepath.Join(absBackup, diskBackupSubdir)
+
+	_, _ = fmt.Fprintln(out, fmt.Sprintf(tui.Translate("update.restore.settings_not_restored", lang), restoreSettingsRel))
+	settingsCopy := filepath.Join(copyRoot, filepath.FromSlash(restoreSettingsRel))
+	if _, err := os.Stat(settingsCopy); err == nil {
+		target := filepath.Join(projectRoot, filepath.FromSlash(restoreSettingsRel))
+		_, _ = fmt.Fprintln(out, fmt.Sprintf(tui.Translate("update.restore.copy_by_hand", lang), settingsCopy, target))
+	}
+
+	var items []string
+	for _, rel := range inMemoryOnlyBackupTargets() {
+		// The run marker is backup bookkeeping, not a backed-up user file: it is
+		// never listed as uncovered.
+		if rel == restoreSettingsRel || rel == backup.RunMarkerName {
+			continue
+		}
+		copyPath := filepath.Join(copyRoot, filepath.FromSlash(rel))
+		if _, err := os.Stat(copyPath); err != nil {
+			continue
+		}
+		items = append(items, fmt.Sprintf(tui.Translate("update.restore.not_covered_item", lang), rel, copyPath))
+	}
+	if len(items) == 0 {
+		return
+	}
+	_, _ = fmt.Fprintln(out, tui.Translate("update.restore.not_covered_heading", lang))
+	for _, item := range items {
+		_, _ = fmt.Fprintln(out, item)
+	}
 }

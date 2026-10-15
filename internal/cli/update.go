@@ -86,7 +86,7 @@ func init() {
 	updateCmd.Flags().Bool("no-hooks", false, "Skip git hook installation (REQ-CIAUT-002)")
 	updateCmd.Flags().Bool("no-plugin", false, "Skip the moai plugin install step during a record-less project's migration and record deployment_mode: local (also MOAI_SKIP_PLUGIN_INSTALL=1; SPEC-INIT-SHRINK-001 REQ-015)")
 	updateCmd.Flags().String("restore", "", "Restore .moai/config from a backup directory left by a previous update (works on a tree whose .moai/config/sections/system.yaml was destroyed)")
-	updateCmd.Flags().Bool("verbose", false, "Show all warnings including acknowledged reserved-name and 3-way merge fallback notices (diagnostic mode; SPEC-V3R6-UPDATE-NOISE-001 REQ-UN-005/010)")
+	updateCmd.Flags().Bool("verbose", false, "Show all warnings including acknowledged reserved-name and 3-way merge fallback notices, and list each preserved file by path in the update summary (diagnostic mode; the default summary shows a count; SPEC-V3R6-UPDATE-NOISE-001 REQ-UN-005/010; SPEC-UPDATE-REPAIR-RC30-001 REQ-RC30-015)")
 
 	// Retired --profile (SPEC-AGENT-MODEL-INHERIT-001 D10): accepted for script
 	// compatibility, warns, and has no effect.
@@ -161,7 +161,8 @@ func runUpdate(cmd *cobra.Command, _ []string) error {
 	// 3-strike suppression. `moai update` is single-process sequential — no
 	// synchronization needed. The flag is reset on function exit so subsequent
 	// in-process invocations (CLI tests, helpers) start with the default
-	// suppression-on behavior.
+	// suppression-on behavior. The reconciliation summary reads the same flag
+	// for its preserved list (SPEC-UPDATE-REPAIR-RC30-001 REQ-RC30-015).
 	updateVerboseMode = getBoolFlag(cmd, "verbose")
 	defer func() { updateVerboseMode = false }()
 
@@ -201,14 +202,15 @@ func runUpdate(cmd *cobra.Command, _ []string) error {
 	}
 
 	currentVersion := version.GetVersion()
-	// Card t1527 D1: on the re-executed pass the version identity is carried by
-	// the template-sync band (renderIdentityBand) alone — repeating the KV here
-	// printed the same version twice per install (three times counting the
-	// pre-exec pass). The marker rides ARGV (hidden flag inserted by
-	// reexecNewBinary), not the environment — an inherited env var cannot
-	// fake the pass (card review round 2).
+	// REQ-RC30-013 / REQ-TUXIU-015: the identity band is the run's single
+	// version banner. It prints here, ahead of every mode branch below, so each
+	// run shows it exactly once (AC-RC30-18). The re-executed pass skips it,
+	// because the pre-exec pass already printed the band before the binary was
+	// replaced. The marker rides ARGV (hidden flag inserted by reexecNewBinary),
+	// not the environment — an inherited env var cannot fake the pass (card
+	// review round 2).
 	if !reexecPassActive(cmd) {
-		_, _ = fmt.Fprintln(out, tui.KV("Current version", "moai-adk "+currentVersion, tui.KVOpts{Theme: &th, KeyWidth: 16}))
+		_, _ = fmt.Fprintln(out, renderIdentityBand(currentVersion, th))
 	}
 
 	// Handle shell-env mode
@@ -684,8 +686,11 @@ func runUpdate(cmd *cobra.Command, _ []string) error {
 		updateLedger.requiref(sevWarn, "evolution directory scaffold failed: %v", err)
 	}
 
-	// Sync profile preferences to project config (after template deployment)
-	profileName := profile.GetCurrentName()
+	// Sync profile preferences to project config (after template deployment).
+	// The profile is the project's mapping in the launch ledger (AC-RC30-21), not
+	// the environment alone: GetCurrentName() never reads the ledger.
+	profileRoot, _ := filepath.Abs(".")
+	profileName := profile.GetCurrentNameForProject(profileRoot)
 	prefs, err := profile.ReadPreferences(profileName)
 	if err != nil {
 		updateLedger.requiref(sevWarn, "profile preferences read failed: %v", err)
@@ -1077,6 +1082,8 @@ func globalMoaiHooksDir(homeDir string) string {
 	return filepath.Join(homeDir, defs.ClaudeDir, "hooks", "moai")
 }
 
+// @MX:ANCHOR: [AUTO] ensureGlobalSettingsEnv is the global settings and hooks cleanup shared by the init, update, and init-resume paths; it removes ~/.claude/hooks/moai
+// @MX:REASON: [AUTO] fan_in=3 non-test call sites: runInit (init.go), runTemplateSyncWithReporter (update_template_sync.go), resumeInitializedProject (init_resume.go)
 // ensureGlobalSettingsEnv cleans up moai-managed settings from ~/.claude/settings.json.
 // All settings (env, permissions, teammateMode, hooks) are managed at the project level.
 // The global hooks directory (~/.claude/hooks/moai/) is also removed since hooks

@@ -39,6 +39,8 @@ import (
 	"runtime"
 	"strings"
 	"testing"
+	"unicode"
+	"unicode/utf8"
 )
 
 // relupWatchNormSentence is the whole watch-norm literal pinned by
@@ -410,6 +412,22 @@ func relupClosingFence(line string, fenceChar byte, fenceLen int) (byte, int, bo
 	return fenceChar, n, true
 }
 
+// relupLineStartsWith reports whether line begins with prefix and the prefix ends at a
+// token boundary: the line ends there, or the next rune is neither a letter nor a digit.
+// A bare prefix match would count "### Phase 30" as "### Phase 3" (card t1619, codex
+// review round 2).
+func relupLineStartsWith(line, prefix string) bool {
+	if !strings.HasPrefix(line, prefix) {
+		return false
+	}
+	rest := line[len(prefix):]
+	if rest == "" {
+		return true
+	}
+	r, _ := utf8.DecodeRuneInString(rest)
+	return !unicode.IsLetter(r) && !unicode.IsDigit(r)
+}
+
 // relupExactlyOnceLineStart implements the class E contract (D8): the named
 // line-start boundary marker must occur EXACTLY once; zero or 2+ occurrences
 // are an error (never silently resolved to a first occurrence).
@@ -417,7 +435,7 @@ func relupExactlyOnceLineStart(lines []string, prefix string) (int, error) {
 	hits := 0
 	at := -1
 	for i, line := range lines {
-		if strings.HasPrefix(line, prefix) {
+		if relupLineStartsWith(line, prefix) {
 			hits++
 			at = i
 		}
@@ -433,7 +451,7 @@ func relupExactlyOnceLineStart(lines []string, prefix string) (int, error) {
 // re-select. Returns -1 when absent.
 func relupFirstLineStart(lines []string, prefix string) int {
 	for i, line := range lines {
-		if strings.HasPrefix(line, prefix) {
+		if relupLineStartsWith(line, prefix) {
 			return i
 		}
 	}

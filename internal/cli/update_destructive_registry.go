@@ -103,12 +103,16 @@ var destructiveTargetRegistry = []destructiveSite{
 	},
 	{
 		File: "internal/cli/update/backup/backup.go", Function: "CleanupOldBackups", Sites: 1,
-		Exemption: "Retention pruning of moai-authored backup directories — NOT a same-call rewind. " +
-			"It deletes the oldest excess backups of PREVIOUS runs, filtered to the YYYYMMDD_HHMMSS " +
-			"name pattern under the backup root, so every directory it removes was authored by moai " +
-			"itself under a declared retention policy. Exempt from the user-data protection set; not " +
-			"harmless to the recovery contract, since a sufficiently old restore point can be rotated " +
-			"out by a later run.",
+		Exemption: "Retention pruning of moai-authored backup runs — NOT a same-call rewind. It " +
+			"removes every directory of the runs older than the newest keepCount, across the config " +
+			"root (.moai-backups/) and the namespace root (.moai/backups/). A run is the set of " +
+			"directories that share a run marker. An unmarked directory counts as a run of its own " +
+			"only when its name has a shape a moai backup writer produces; any other unmarked name is " +
+			"neither counted nor deleted, so every directory it removes was authored by moai itself " +
+			"under a declared retention policy. The namespace root was not pruned before this rule, " +
+			"so user-owned namespace backups and clean-reinstall snapshots now rotate too. Exempt from " +
+			"the user-data protection set; not harmless to the recovery contract, since a sufficiently " +
+			"old restore point can be rotated out by a later run.",
 	},
 	{
 		File: "internal/cli/update/backup/file_snapshot.go", Function: "promote", Sites: 1,

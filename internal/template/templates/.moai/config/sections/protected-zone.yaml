@@ -65,3 +65,11 @@ categories:
       - "**/CLAUDE.md"
       - "**/AGENTS.md"
       - "**/AGENTS.local.md"
+      # The USER install roots — files moai init/update installs under the
+      # user's home. Protection is scoped to MANIFEST-TRACKED files (the
+      # guard cross-checks the user-assets manifest; a user's own file in
+      # these directories stays editable).
+      - user-root:claude-skills/
+      - user-root:claude-agents/
+      - user-root:agents-skills/
+      - user-root:codex-agents/

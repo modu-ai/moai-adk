@@ -196,6 +196,7 @@ func runClaudeEntry(cmd *cobra.Command, args []string, commandName, mode, backen
 		// The operator-supplied `leader-<run-id>` name is adopted (see
 		// factory_launch_helpers.go leaderRunID) — the run id, the session name, and the lane
 		// commands the notice prints stay on one run.
+		priorRunID := os.Getenv(config.EnvFactoryRunID)
 		leaderLabel, _ := parseLeaderLabel(filteredArgs)
 		restoreFactory := enterFactoryLeaderMode(entry.FactoryLanes, leaderLabel)
 		defer restoreFactory()
@@ -204,8 +205,18 @@ func runClaudeEntry(cmd *cobra.Command, args []string, commandName, mode, backen
 			return runErr
 		}
 		defer restoreRun()
-		if err := recordFactoryRunStart(launchProjectRoot(), os.Getenv(config.EnvFactoryRunID), backend, entry.Spec, factoryDeclaredLanes(entry)); err != nil {
-			return fmt.Errorf("record factory run: %w", err)
+		// A resume-shaped leader start whose id was freshly minted re-adopts
+		// the prior run instead (card t1707): the run id survives only in the
+		// launch environment, so the resume launch would otherwise mint a new
+		// run over the live one and the dead-owner reconciliation would retire
+		// the prior run's records behind it. Shared with the glm leader, which
+		// mirrors this entry exactly.
+		adopted, adoptErr := leaderEntryRunAdoption(launchProjectRoot(), filteredArgs, leaderLabel, priorRunID, entry.FactoryRun, cmd.ErrOrStderr())
+		if adoptErr != nil {
+			return fmt.Errorf("re-adopt factory run: %w", adoptErr)
+		}
+		if err := recordLeaderRunStart(launchProjectRoot(), adopted, backend, entry.Spec, factoryDeclaredLanes(entry)); err != nil {
+			return err
 		}
 		defer exportFactoryLaunchFacts(entry.Spec, backend)()
 		var leaderName string
