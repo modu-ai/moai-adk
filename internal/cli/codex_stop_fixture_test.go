@@ -152,6 +152,10 @@ func syncGateEnv(path, root string, extra ...string) []string {
 	return append(env, extra...)
 }
 
+// syncGateOutput runs the sync-gate child; a test swaps it to observe the
+// command (and so its Env) that runClaudeSyncGate built.
+var syncGateOutput = func(cmd *exec.Cmd) ([]byte, error) { return cmd.Output() }
+
 // runClaudeSyncGate runs the distributed Claude sync-gate script, unmodified,
 // on the fixture and returns its normalized decision.
 func (f *stopFixture) runClaudeSyncGate(t *testing.T, payload string, env ...string) codexadapter.Decision {
@@ -164,7 +168,7 @@ func (f *stopFixture) runClaudeSyncGate(t *testing.T, payload string, env ...str
 	cmd.Dir = f.root
 	cmd.Env = syncGateEnv(f.path, f.root, env...)
 	cmd.Stdin = strings.NewReader(payload)
-	out, err := cmd.Output()
+	out, err := syncGateOutput(cmd)
 	if err != nil {
 		t.Fatalf("claude sync gate: %v\n%s", err, out)
 	}

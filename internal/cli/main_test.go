@@ -466,6 +466,19 @@ func TestMain(m *testing.M) {
 // created by this package's TestMain; its value is the pinned file (card t1801).
 const gitConfigSandboxEnv = "MOAI_CLI_TEST_GIT_CONFIG_SANDBOX"
 
+// reusablePin reports whether an inherited GIT_CONFIG_GLOBAL may be reused as
+// this process's pin: it must be the very file the marker names, a regular file,
+// and acceptable to the home guard for realHome. Anything else is not trusted.
+func reusablePin(marker, global, realHome string) bool {
+	if marker == "" || marker != global {
+		return false
+	}
+	if fi, err := os.Stat(global); err != nil || !fi.Mode().IsRegular() {
+		return false
+	}
+	return testguard.CheckGlobalConfigPin(realHome, global) == nil
+}
+
 // sandboxGitConfigGlobal points GIT_CONFIG_GLOBAL at a temp file owned by this
 // test binary and returns the cleanup that removes it. The file carries a
 // minimal [user] identity so tests that commit do not depend on a global one.
@@ -473,10 +486,9 @@ const gitConfigSandboxEnv = "MOAI_CLI_TEST_GIT_CONFIG_SANDBOX"
 func sandboxGitConfigGlobal() (func(), error) {
 	// A re-executed helper inherits the parent's pin and reuses its file, so the
 	// helper (which exits before any cleanup) leaves nothing behind.
-	if pinned := os.Getenv(gitConfigSandboxEnv); pinned != "" && os.Getenv("GIT_CONFIG_GLOBAL") != "" {
-		if _, err := os.Stat(os.Getenv("GIT_CONFIG_GLOBAL")); err == nil {
-			return func() {}, nil
-		}
+	realHome, _ := testguard.RealHome() // empty on failure: reusablePin then refuses
+	if reusablePin(os.Getenv(gitConfigSandboxEnv), os.Getenv("GIT_CONFIG_GLOBAL"), realHome) {
+		return func() {}, nil
 	}
 	f, err := os.CreateTemp("", "moai-cli-gitconfig-")
 	if err != nil {
