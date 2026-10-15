@@ -23,6 +23,8 @@ import (
 	"path/filepath"
 	"strings"
 	"testing"
+
+	"github.com/modu-ai/moai-adk/internal/config"
 )
 
 // skewFixtureRoot builds a fixture project whose deployed dispatch rule is
@@ -69,7 +71,7 @@ func TestRoleRulesVersionSkewFailureDetailNamesRemedy(t *testing.T) {
 	// (card t1619, codex review P2: the stamp is read as YAML, not searched).
 	t.Run("unmarked_skewed_tree_falls_back", func(t *testing.T) {
 		root := skewFixtureRoot(t, "moai:\n  template_version: v0.0.0-fixture-stamp\n")
-		t.Setenv("MOAI_FACTORY_WORKER", "lane-1")
+		t.Setenv(config.EnvMoaiFactoryWorker, "lane-1")
 
 		inj := roleRuleInjectionFor(root, "startup", "en")
 		if inj.OperatorNotice != "" {
@@ -82,7 +84,7 @@ func TestRoleRulesVersionSkewFailureDetailNamesRemedy(t *testing.T) {
 
 	t.Run("absent_rule_keeps_failure_naming_skew", func(t *testing.T) {
 		root := skewFixtureRoot(t, "moai:\n  template_version: v0.0.0-fixture-stamp\n")
-		t.Setenv("MOAI_FACTORY_WORKER", "lane-1")
+		t.Setenv(config.EnvMoaiFactoryWorker, "lane-1")
 		removeRoleRule(t, root, roleRuleFiles[0])
 
 		inj := roleRuleInjectionFor(root, "startup", "en")
