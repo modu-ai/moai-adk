@@ -210,3 +210,42 @@ func TestDoctorSkillReachCustomConfigDirGuidance(t *testing.T) {
 		t.Errorf("guidance must name moai's managed root families: %q", check.Message)
 	}
 }
+
+// TestUserAssetRootsLineConsumesInstallSnapshot pins the final-round repair
+// (card t1702 audit round 2): the roots-reached line describes the INSTALL's
+// validated snapshot, not a post-hoc disk re-enumeration — a profile dir
+// created after the snapshot must never be reported as reached.
+// Pre-fix the line re-enumerates at render time and claims "late"; the RED
+// assertion below fails on that. Post-fix the line renders from the
+// install result's root list and "late" never appears.
+func TestUserAssetRootsLineConsumesInstallSnapshot(t *testing.T) {
+	home := t.TempDir()
+	base := filepath.Join(home, ".moai", "claude-profiles")
+	if err := os.MkdirAll(filepath.Join(base, "early"), 0o755); err != nil {
+		t.Fatalf("create early profile: %v", err)
+	}
+
+	inst, err := newUserAssetInstaller(home)
+	if err != nil {
+		t.Fatalf("installer: %v", err)
+	}
+	res, err := inst.Install(nil)
+	if err != nil {
+		t.Fatalf("Install: %v", err)
+	}
+
+	// The profile appears after the snapshot, before the summary render.
+	if err := os.MkdirAll(filepath.Join(base, "late"), 0o755); err != nil {
+		t.Fatalf("create late profile: %v", err)
+	}
+
+	// Post-fix the line renders from the install result's snapshot; the
+	// late profile is absent from it and never claimed as reached.
+	line := userAssetRootsLine(res)
+	if !strings.Contains(line, "early") {
+		t.Errorf("line must name the snapshot-reached profile; got %q", line)
+	}
+	if strings.Contains(line, "late") {
+		t.Errorf("line must not claim a profile created after the snapshot was reached; got %q", line)
+	}
+}

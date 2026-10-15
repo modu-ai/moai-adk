@@ -44,6 +44,7 @@ func (in *Installer) PruneUnselected(manifest *Manifest) (*Result, error) {
 		}
 		roots[r.Slug] = rr
 	}
+	res.RootsReached = sortedRootSlugs(roots)
 	allowed := map[string]bool{}
 	preserved := []template.Entry{}
 	for _, e := range in.preservedEntries(manifest.Bundles) {
@@ -244,6 +245,7 @@ func (in *Installer) RemoveBundle(manifest *Manifest, name string, remaining []s
 		}
 		roots[r.Slug] = rr
 	}
+	res.RootsReached = sortedRootSlugs(roots)
 
 	// Preserved = L0 ∪ remaining selections. Their declared dependencies are
 	// the R-f-② deferral set — EXCLUDING the dispatcher's own dep list (its
@@ -389,19 +391,20 @@ func (in *Installer) entryManifestKeys(roots map[RootSlug]resolvedRoot, e templa
 
 // dropStaleProfileRecord applies repair 2 (card t1702 audit P2) to one
 // manifest key: a key naming a PROFILE root whose directory has vanished
-// tracks files that lived inside that dir and are gone with it. Confirming
-// the profile dir's absence, the stale record drops under the one removal
-// rule's missing-file arm (counted removed) so the prune CONVERGES instead
-// of erroring "unknown root slug" on every later run. Reports whether the
-// record was dropped; a still-existing profile, a non-profile slug, or a
+// tracks files that lived inside that dir and are gone with it. The drop
+// fires ONLY on confirmed absence — os.IsNotExist (final-round repair):
+// any other Stat error (an unreadable store, say) means the files may
+// still exist, so the record stays and the caller's unknown-root refusal
+// reports the key instead. Reports whether the record was dropped; a
+// still-existing profile, an unconfirmed store, a non-profile slug, or a
 // corrupt slug shape returns false and the caller's refusal path applies.
 func (in *Installer) dropStaleProfileRecord(slug RootSlug, key string, manifest *Manifest, res *Result) bool {
 	base, profile, found := strings.Cut(string(slug), "@")
 	if !found || (base != string(RootClaudeSkills) && base != string(RootClaudeAgents)) {
 		return false
 	}
-	if _, err := os.Stat(filepath.Join(ProfileRootsBase(in.Home), profile)); err == nil {
-		return false // the profile still exists — not stale
+	if _, err := os.Stat(filepath.Join(ProfileRootsBase(in.Home), profile)); !os.IsNotExist(err) {
+		return false // present, or absence unconfirmed — never drop
 	}
 	delete(manifest.Files, key)
 	res.Removed++

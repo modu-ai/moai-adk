@@ -66,6 +66,11 @@ type Result struct {
 	Divergences         []string
 	SharedSurvivors     []string // E3: entries kept because a remaining selection or L0 shares them
 	DeferredDeps        []string // R-f-②: deletions deferred — the entry is a declared dependency of a preserved asset
+	// RootsReached lists the sorted root slugs of the validated snapshot
+	// this result was produced over (final-round repair, card t1702):
+	// summaries consume it instead of re-scanning the disk, so a profile
+	// dir appearing after the snapshot is never reported as reached.
+	RootsReached []string
 }
 
 // FileOutcome is one file-level failure (REQ-013: path + reason).
@@ -106,6 +111,7 @@ func (in *Installer) Install(selection []string) (*Result, error) {
 		}
 		roots[r.Slug] = rr
 	}
+	res.RootsReached = sortedRootSlugs(roots)
 
 	manifestPath := ManifestPath(in.Home)
 	manifest, err := Load(manifestPath)
@@ -345,6 +351,20 @@ func (in *Installer) now() time.Time {
 type resolvedRoot struct {
 	slug RootSlug
 	dir  string // absolute, symlink-resolved
+}
+
+// sortedRootSlugs lists a validated snapshot's live slugs, sorted
+// (final-round repair, card t1702 — summaries consume this list instead of
+// re-scanning the disk after the run).
+func sortedRootSlugs(roots map[RootSlug]resolvedRoot) []string {
+	slugs := make([]string, 0, len(roots))
+	for slug, rr := range roots {
+		if rr.dir != "" {
+			slugs = append(slugs, string(slug))
+		}
+	}
+	sort.Strings(slugs)
+	return slugs
 }
 
 // resolveRoot creates the root directory if needed and resolves symlinks —

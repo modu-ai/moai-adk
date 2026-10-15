@@ -12,6 +12,7 @@ package userassets
 import (
 	"os"
 	"path/filepath"
+	"runtime"
 	"strings"
 	"testing"
 	"testing/fstest"
@@ -447,5 +448,52 @@ func TestPruneConvergesAfterProfileDeletion(t *testing.T) {
 	// The second pass is clean (convergence, not a loop).
 	if res2 := pruneOnce(); len(res2.Failures) != 0 {
 		t.Errorf("second prune pass must stay clean; failures: %v", res2.Failures)
+	}
+}
+
+// TestStaleDropRequiresConfirmedAbsence pins the final-round repair (card
+// t1702 audit round 2): the stale-profile record drop fires only on
+// CONFIRMED absence (os.IsNotExist). A profile store that cannot be
+// inspected (unreadable, 0o000) must NOT have its records silently dropped
+// — the refusal path reports the key instead. Skips on Windows (POSIX
+// permission bits unenforceable) and effective root (reads through 0o000).
+func TestStaleDropRequiresConfirmedAbsence(t *testing.T) {
+	if runtime.GOOS == "windows" {
+		t.Skip("POSIX permission bits are not enforceable on windows")
+	}
+	if os.Geteuid() == 0 {
+		t.Skip("effective root reads through 0o000 modes; the permission arm is unobservable")
+	}
+	f := newProfileFixture(t)
+	f.makeProfileDir(t, "locked")
+	inst := f.installer(t)
+	if _, err := inst.Install(nil); err != nil {
+		t.Fatalf("Install: %v", err)
+	}
+
+	store := ProfileRootsBase(f.home)
+	if err := os.Chmod(store, 0o000); err != nil {
+		t.Fatalf("chmod store: %v", err)
+	}
+	t.Cleanup(func() { _ = os.Chmod(store, 0o755) })
+
+	saved, err := Load(ManifestPath(f.home))
+	if err != nil {
+		t.Fatalf("load manifest: %v", err)
+	}
+	res, err := inst.PruneUnselected(saved)
+	if err != nil {
+		t.Fatalf("PruneUnselected: %v", err)
+	}
+	if len(res.Failures) == 0 {
+		t.Errorf("an unreadable profile store must surface as a reported refusal, not a silent record drop; failures = %v", res.Failures)
+	}
+	for _, key := range []string{"claude-skills@locked/moai/SKILL.md", "claude-agents@locked/manager-x.md"} {
+		if _, ok := saved.Files[key]; !ok {
+			t.Errorf("record %q was dropped while the store was unreadable", key)
+		}
+	}
+	if err := saved.Save(ManifestPath(f.home)); err != nil {
+		t.Fatalf("save manifest: %v", err)
 	}
 }
