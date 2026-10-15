@@ -334,7 +334,8 @@ Once picked:
 the queue serially: pick one card, dispatch one isolated in-session worker
 for it, judge completion only by reading the worker's disk evidence, record
 the done transition on that evidence, emit the /clear guidance for the
-completed card, and only then accept the next. In the operator session's cycle
+completed card (operator session only; lanes follow the lane card transition
+rule and receive no clear guidance), and only then accept the next. In the operator session's cycle
 exactly one card is in flight at any time; the pickup order is the dead-owner
 `picked` cards first, then the ranked queued candidates, with owner liveness
 judged on two channels — the session registry and an `lsof` working-directory

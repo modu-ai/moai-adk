@@ -110,13 +110,13 @@ The leader classifies each card as it leaves `backlog` and names the entry stage
 With `tree_scope: skip` configured for the leader's checkout, the leader session carries no turn-end codex review gate and reviews its own internal output directly with the same tools. Stage order, evidence fields, and the re-review ceiling: `factory-dispatch-detail.md` § The card-review stage.
 
 <!-- moai:role-core-start -->
-[HARD] Between run-exit verification and integration every lane runs `card-review`: `codex_review` (`glm_review` optional) into `.moai/reports/<card-id>/card-review.md`, advisory, never replacing the leader evidence read or an independent audit; under `tree_scope: skip` on its checkout the leader has no turn-end codex gate and self-reviews with the same tools.
+[HARD] Between run-exit verification and integration every lane runs `card-review`: `codex_review` (`glm_review` optional) into `.moai/reports/<card-id>/card-review.md`, advisory, never replacing the leader evidence read or an independent audit; under `tree_scope: skip` the leader self-reviews with the same tools.
 <!-- moai:role-core-end -->
 
 ### Lane waits are explicit, and stalls are watched
 
 <!-- moai:role-core-start -->
-[HARD] A stuck lane writes a disk wait (reason, whom, recheck point), ends its turn, never idles on a reply; on wake: `moai-lane-watchdog` first, then the `auto-semantics.md` §6 ladder ending in its own judgment + decision record, never ask-and-wait; the leader only at a gate boundary (keep-set, cross-card conflict), its board for leader-level rulings only; a recurring `CronCreate` recheck armed before the first stage, kept to the completion report; each wake reads disk evidence (progress, reports, commits, delegate output) before replying.
+[HARD] A stuck lane writes a disk wait (reason, whom, recheck point), ends its turn, never idles on a reply; on wake: `moai-lane-watchdog` first, then the `auto-semantics.md` §6 ladder ending in its own judgment + decision record, never ask-and-wait; the leader only at a gate boundary (keep-set, cross-card conflict); a recurring `CronCreate` recheck armed before the first stage, kept to the completion report; each wake reads disk evidence before replying.
 <!-- moai:role-core-end -->
 
 [HARD] A lane that cannot proceed records an explicit wait on disk — reason, whom, recheck point — and ends its turn; it never idles open-ended on a reply. On its next awaken the lane runs the stall watchdog first — invoke Skill("moai-lane-watchdog") and follow it — which measures progress, classifies the stall cause, and resolves the judgment through the decision ladder (doctrine: `.claude/rules/moai/workflow/auto-semantics.md` §6). The ladder's terminal step is the lane's own judgment + decision record — the lane never asks the leader and waits on a judgment; reaching the leader is a gate boundary (a keep-set category or a cross-card conflict), not a ladder step. The lead's decision board carries leader-level rulings only — cross-card conflicts, serial-slot policy calls, keep-set gate relays — never a lane's in-card judgment. A lane also arms a standing recheck cron (`CronCreate`, recurring, every renewal period of `workflow.factory_lease.renew_interval`) before its first stage and keeps it until its completion report: a lane stopped by an API error (429) or by a delegate's report that never comes wakes without outside help only if something armed before it stopped fires, and every wake reads the disk evidence (progress record, reports, commits, the delegate's deliverable) before it replies (`.claude/rules/moai/workflow/auto-semantics.md` §5.1).
@@ -134,7 +134,7 @@ With `tree_scope: skip` configured for the leader's checkout, the leader session
 ## Completion is read, never trusted
 
 <!-- moai:role-core-start -->
-[HARD] The leader advances a card only on evidence it read, never a lane reply: before it leaves a working stage, `progress.md` + the declared verification path; missing, unreadable, or stale evidence is a gap: the card stays, the leader says why; no failure signal is not a pass.
+[HARD] The leader advances a card only on evidence it read, never a lane reply: `progress.md` + the declared verification path; missing, unreadable, or stale evidence is a gap: the card stays, the leader says why; no failure signal is not a pass.
 <!-- moai:role-core-end -->
 
 Where the phase's declared evidence includes an audit verdict, the leader reads the verdict **file** under `.moai/reports/<card-id>/` per `.moai/docs/audit-artifact-convention.md`; an absent, unreadable, or uncommitted verdict file is a gap exactly like a missing progress record.
@@ -149,26 +149,28 @@ For a lane card the declared evidence list also carries `.moai/reports/<card-id>
 
 Anything else is a gap, not a pass. `Review rate limited` means the review never started, and a card carrying it does not leave `sync`. (Endpoint choice: `factory-dispatch-gates.md` § CodeRabbit endpoint measurement.)
 
-## The `/clear` handoff between cards
+## Lane card transition — in-session, no clear
 
-[HARD] No card context crosses to the next: at `done`, evidence read, the leader asks the operator to `/clear` that lane session (user-typed, never sendable), stating in order: what closed (card, evidence read), which session (name), what next.
+[HARD] No card context crosses to the next: a lane treats the conversation context of earlier cards as non-authoritative and works each newly leased card only from that card's body, its SPEC artifacts, and its progress record. At `done`, evidence read, the leader does not ask the operator to clear the lane session; the leader names what closed (card, evidence read) and the lane moves on by the transition below.
 
 <!-- moai:role-core-start -->
-[HARD] `/clear` exactly once per transition, after moving into the next worktree — never before.
+[HARD] `ExitWorktree(keep)`, lease, `EnterWorktree(path)`; conversation context never carries.
 <!-- moai:role-core-end -->
 
-Where the next card reuses a just-cleared lane, the leader re-sends the full pointer instruction rather than assuming the session remembers.
+Transition detail (Claude Code lanes): the lane requests its next card from the primary checkout with `moai factory next` (a contended claim is waited out with the verb's wait option), enters the leased worktree by absolute path, and verifies `git rev-parse --show-toplevel` equals that path before any card work. A refused entry is recorded verbatim in the card's progress record and reported as a blocker — never a session clear, a second lease, or card work in the primary checkout; the only fallback is an operator relaunch inside the leased worktree. Under manual dispatch (`--no-auto-dispatch`, `MOAI_FACTORY_AUTO_DISPATCH=manual`) the lane leaves with `ExitWorktree(keep)` and waits for the leader's dispatch instead of leasing, and under the relaunch clear policy (the completion output tells it to end the session) it ends the session. Codex lanes keep their own session-end transition.
 
-The leader's own session is cleared the same way, between cards: once a card reaches `done`, the operator is asked to `/clear` the leader session, and the next turn presents the queue again.
+When the next card reuses a lane, the leader re-sends the full pointer instruction instead of assuming the session remembers.
+
+The leader session itself is cleared between cards: at `done` the operator is asked to `/clear` it, and the next turn presents the queue again.
 
 ## Isolation is provisioned by MoAI, then entered through a launcher
 
-[HARD] **A card session starts inside its worktree and stays there — moving a running card session into another card worktree is prohibited**; end the session and launch inside the new tree instead (the full clause lives on the always-loaded stub; measured detail: `factory-dispatch-mechanics.md` § Isolation).
+[HARD] **A card session starts inside its worktree and stays there — between cards it moves only by the in-session transition (`ExitWorktree(keep)`, then `EnterWorktree` of the leased tree)**; a relaunch inside the leased worktree is the operator's fallback when the entry is refused (the full clause lives on the always-loaded stub; measured detail: `factory-dispatch-mechanics.md` § Isolation).
 <!-- moai:role-core-start -->
 [HARD] Card work happens in a launcher-entered worktree — never a bare `git worktree add` (mechanics § Isolation).
 <!-- moai:role-core-end -->
 
-[HARD] A card session starts in its worktree (`moai cc -w`) and stays; moving into another card worktree is prohibited (exit-and-relaunch serves the new-card rule); an integration-tree merge entry is exempt but returns to the card worktree before card work; an unavoidable move takes `/clear` once, after, never before.
+[HARD] A card session starts in its worktree (`moai cc -w`) and stays while it carries the card; between cards it moves by the in-session transition (`ExitWorktree(keep)`, lease, `EnterWorktree` of the leased tree); an integration-tree merge entry is exempt but returns to the card worktree before card work.
 
 <!-- moai:role-core-start -->
 [HARD] A Codex factory agent never calls `moai cc -w`, `EnterWorktree`, or `ExitWorktree`.
@@ -214,10 +216,10 @@ The leader's own session is cleared the same way, between cards: once a card rea
 > Moved to the detail companion: `factory-dispatch-mechanics.md` ("Integration into the release branch is self-served").
 
 <!-- moai:role-core-start -->
-[HARD] git-flow only (github-flow default: `moai factory complete` PR edge, mechanics § standard landing): a verified lane merges its branch into `release/vX.Y.Z` itself, no leader wait: `moai integration acquire --name <lane> --card <card-id>` before entry, release after the completion report; `EnterWorktree` in (cross-tree `git -C` refused; Codex: `git -C <absolute release worktree path>`); `--no-ff`; re-read `HEAD` before the commit and again before the push; push, never force; the batch PR stays with the leader.
+[HARD] git-flow only: a verified lane merges its branch into `release/vX.Y.Z` itself: `moai integration acquire --name <lane> --card <card-id>` before entry, release after the completion report; `EnterWorktree` in (cross-tree `git -C` refused; Codex: `git -C <absolute release worktree path>`); `--no-ff`; re-read `HEAD` before the commit and again before the push; push, never force; the batch PR stays with the leader.
 <!-- moai:role-core-end -->
 
-[HARD] A lane whose card has passed verification does not wait for the leader to integrate it: the lane merges its own branch into the batch's release branch (`release/vX.Y.Z`) itself. This is the **git-flow variant** — it applies only where the project's git strategy names git-flow; under github-flow (the distributed default) the delivery is `moai factory complete`'s pull-request edge and the full sequence is `factory-dispatch-mechanics.md` § The lane's standard landing. Where it applies, the window is taken with `moai integration acquire --name <lane> --card <card-id>` BEFORE entering the release worktree, released after the completion report is sent; the lane enters the release worktree with `EnterWorktree` (a cross-tree `git -C` is refused), merges `--no-ff`, re-reads `HEAD` before the commit and again before the push, pushes `release/vX.Y.Z` (never force), and leaves the batch pull request with the leader. The full window procedure: `factory-dispatch-mechanics.md` § Integration into the release branch is self-served · the `acquire` settings-drift assertion: `factory-dispatch-gates.md` § The pre-merge settings-drift assertion.
+[HARD] A lane whose card has passed verification does not wait for the leader to integrate it: the lane merges its own branch into the batch's release branch (`release/vX.Y.Z`) itself. This is the **git-flow variant** — it applies only where the project's git strategy names git-flow; under github-flow (the distributed default) the delivery is `moai factory complete`'s pull-request edge and the full sequence is `factory-dispatch-mechanics.md` § The lane's standard landing. Where it applies, the window is taken with `moai integration acquire --name <lane> --card <card-id>` BEFORE entering the release worktree, released after the completion report is sent; the lane enters the release worktree with `EnterWorktree` (a cross-tree `git -C` is refused), merges `--no-ff`, re-reads `HEAD` before the commit and again before the push, pushes `release/vX.Y.Z` (never force), and leaves the batch pull request with the leader. The full window procedure: `factory-dispatch-mechanics.md` § Integration into the release branch is self-served · the `acquire` settings-drift assertion: `factory-dispatch-gates.md` § The pre-merge settings-drift assertion. Once the card's work is confirmed landed on the remote integration branch, disposing the card's worktree is the sweep's step: `moai worktree sweep` disposes remote-landing-confirmed trees across both tiers, hoisting evidence before every removal (`worktree-integration.md` § Hoist a tree's evidence before disposing it).
 
 
 ## Factory Mode — the card travels whole
