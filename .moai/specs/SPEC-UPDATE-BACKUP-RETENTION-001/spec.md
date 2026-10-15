@@ -2,7 +2,7 @@
 id: SPEC-UPDATE-BACKUP-RETENTION-001
 title: "moai update — backup retention that protects unique content inside a per-file budget, and report-only skill-folder and database residue"
 version: "0.2.0"
-status: draft
+status: in-progress
 created: 2026-10-16
 updated: 2026-10-16
 author: manager-spec
