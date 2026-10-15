@@ -382,6 +382,22 @@ func (b *defaultBuilder) collectAll(ctx context.Context, input *StdinData) *Stat
 		})
 	}
 
+	// Snapshot fallback (SPEC-STATUSLINE-OFFICIAL-USAGE-001 M2): while the
+	// stdin payload carries no rate_limits, read the account-level quota
+	// aggregate from the context-usage records of the primary checkout and
+	// every linked worktree (REQ-SOU-003). The read is local-only and runs
+	// under the render context — an over-deadline read abandons the fallback
+	// and the segments degrade to n/a (REQ-SOU-006, plan D8). No anchor (no
+	// project) or present rate_limits (REQ-SOU-002) reads nothing.
+	var usageSnapshot *QuotaAggregate
+	if input == nil || input.RateLimits == nil {
+		if projDir := resolveStateAnchor(input); projDir != "" {
+			wg.Go(func() {
+				usageSnapshot = collectQuotaSnapshot(ctx, projDir, time.Now())
+			})
+		}
+	}
+
 	wg.Wait()
 
 	if gitResult != nil {
@@ -390,6 +406,7 @@ func (b *defaultBuilder) collectAll(ctx context.Context, input *StdinData) *Stat
 	if versionResult != nil {
 		data.Version = *versionResult
 	}
+	data.UsageSnapshot = usageSnapshot
 
 	return data
 }

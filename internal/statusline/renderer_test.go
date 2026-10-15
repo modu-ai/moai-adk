@@ -243,7 +243,8 @@ func TestRender_EmptyMemory(t *testing.T) {
 	if strings.Contains(got, "CW:") {
 		t.Errorf("should not contain CW bar when memory unavailable, got %q", got)
 	}
-	// 5H/7D always display at 0%
+	// 5H/7D always display (n/a without any window source,
+	// SPEC-STATUSLINE-OFFICIAL-USAGE-001 M3)
 	if !strings.Contains(got, "5H:") || !strings.Contains(got, "7D:") {
 		t.Errorf("should always contain 5H/7D bars, got %q", got)
 	}
@@ -261,12 +262,13 @@ func TestRender_AllEmpty(t *testing.T) {
 	r := newTestRenderer()
 	data := &StatusData{}
 	got := r.Render(data, ModeDefault)
-	// 5H/7D bars always display at 0%, so output exists even with empty data
+	// 5H/7D bars always display (n/a with no window source), so output exists
+	// even with empty data
 	if got == "" {
 		t.Errorf("empty data should still produce output (5H/7D bars), got empty")
 	}
 	if !strings.Contains(got, "5H:") || !strings.Contains(got, "7D:") {
-		t.Errorf("empty data should contain 5H/7D 0%% bars, got %q", got)
+		t.Errorf("empty data should contain 5H/7D bars, got %q", got)
 	}
 }
 
@@ -826,14 +828,18 @@ func TestRenderDefaultV3_Line2_BarsInline(t *testing.T) {
 		t.Errorf("default L2 must contain '7D:' label, got: %q", l2)
 	}
 	// Verify percentage values. CW renders from the stdin-shaped Memory
-	// fixture; 5H/7D carry the no-stdin default — the network-era collector
-	// fixture behind the old 45%/82% assertions is removed
-	// (SPEC-STATUSLINE-OFFICIAL-USAGE-001 M1).
+	// fixture; 5H/7D have no window source here and render n/a — the
+	// network-era collector fixture behind the old 45%/82% assertions is
+	// removed (SPEC-STATUSLINE-OFFICIAL-USAGE-001 M1), and n/a replaced the
+	// 0% default (M3, REQ-SOU-004).
 	if !strings.Contains(l2, "88%") {
 		t.Errorf("default L2 must contain CW 88%%, got: %q", l2)
 	}
-	if !strings.Contains(l2, "0%") {
-		t.Errorf("default L2 must contain the 5H/7D no-data default, got: %q", l2)
+	if !strings.Contains(l2, "5H: n/a") || !strings.Contains(l2, "7D: n/a") {
+		t.Errorf("default L2 must render 5H/7D n/a with no window source, got: %q", l2)
+	}
+	if strings.Contains(l2, "0%") {
+		t.Errorf("no-data 5H/7D must not render a 0%% bar, got: %q", l2)
 	}
 }
 

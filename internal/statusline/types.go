@@ -294,10 +294,19 @@ type StatusData struct {
 	OutputStyle       string         // Output style name (e.g., "Mr.Alfred", "R2-D2")
 	Task              TaskData       // Current active task (rendering enabled in Phase 4)
 	RateLimits        *RateLimitInfo // Rate limit info from Claude Code (nil when unavailable)
-	Worktree          string         // Active git worktree path (empty string if none, REQ-CC297-003)
-	Effort            *EffortInfo    // Effort level from Claude Code v2.1.139+ (nil when unavailable, REQ-CC2122-001)
-	Thinking          *ThinkingInfo  // Thinking flag from Claude Code v2.1.139+ (nil when unavailable, REQ-CC2122-002)
-	PR                *PRInfo        // Active GitHub PR from Claude Code v2.1.145+ (nil when no PR detected, REQ-SLV-010)
+
+	// UsageSnapshot carries the account-level quota aggregate read from the
+	// local context-usage records (SPEC-STATUSLINE-OFFICIAL-USAGE-001 M2) —
+	// the fallback for the 5H/7D bars while the stdin payload carries no
+	// rate_limits. Nil when rate_limits are present (REQ-SOU-002: the fallback
+	// is not read), when the session anchors no project, or when the read came
+	// back empty or was abandoned (REQ-SOU-006) — the segments then render
+	// n/a, never a 0% bar or a stale percentage (REQ-SOU-004).
+	UsageSnapshot *QuotaAggregate
+	Worktree      string        // Active git worktree path (empty string if none, REQ-CC297-003)
+	Effort        *EffortInfo   // Effort level from Claude Code v2.1.139+ (nil when unavailable, REQ-CC2122-001)
+	Thinking      *ThinkingInfo // Thinking flag from Claude Code v2.1.139+ (nil when unavailable, REQ-CC2122-002)
+	PR            *PRInfo       // Active GitHub PR from Claude Code v2.1.145+ (nil when no PR detected, REQ-SLV-010)
 
 	// CacheUsage mirrors context_window.current_usage (SPEC-TOKEN-EFFICIENCY-001
 	// P0-2). Nil when current_usage is absent — before the first API call, or

@@ -357,7 +357,7 @@ func TestBuilder_Build_MissingContextWindow(t *testing.T) {
 	if strings.Contains(got, "CW:") {
 		t.Errorf("should not contain CW bar when context window missing, got %q", got)
 	}
-	// 5H/7D always shown at 0% (with 🔋 icon)
+	// 5H/7D always shown (n/a with no window source)
 	if !strings.Contains(got, "5H:") || !strings.Contains(got, "7D:") {
 		t.Errorf("should always contain 5H/7D bars, got %q", got)
 	}
@@ -643,8 +643,8 @@ func TestIntegration_ModeLineCount(t *testing.T) {
 // Retired AC-V3-06 (full + no usage → 5 lines) deleted per
 // SPEC-V3R5-STATUSLINE-FULL-MODE-CLEANUP-001 — full mode 5-line layout
 // no longer exists (NormalizeMode collapse). AC-V3-06b preserved as it
-// verifies the layout-independent contract: 5H/7D always shown at 0% when
-// usage data is absent.
+// verifies the layout-independent contract: 5H/7D always shown (n/a) when
+// no window source is present.
 func TestIntegration_NoUsageLineCount(t *testing.T) {
 	// AC-V3-06b: mode="default" + no usage → CW + 5H(0%) + 7D(0%) all shown in L2
 	t.Run("AC-V3-06b: default + no usage → L2 CW+5H+7D", func(t *testing.T) {
@@ -664,7 +664,7 @@ func TestIntegration_NoUsageLineCount(t *testing.T) {
 		if !strings.Contains(got, "CW:") {
 			t.Errorf("AC-V3-06b: default + no usage should contain CW bar\noutput:\n%s", got)
 		}
-		// 5H/7D always shown at 0%
+		// 5H/7D always shown (n/a with no window source)
 		if !strings.Contains(got, "5H:") || !strings.Contains(got, "7D:") {
 			t.Errorf("AC-V3-06b: 5H/7D bars must always be shown\noutput:\n%s", got)
 		}
@@ -698,7 +698,8 @@ func TestIntegration_GradientBar(t *testing.T) {
 			t.Fatalf("Build error: %v", err)
 		}
 
-		// default L2: "CW: 🔋 ██████░░░░ 60% | 5H: 🔋 ░░░░░░░░░░ 0% | 7D: 🔋 ░░░░░░░░░░ 0%"
+		// default L2: "CW: 🔋 ██████░░░░ 60% | 5H: n/a | 7D: n/a" (5H/7D have no
+		// window source in this fixture; SPEC-STATUSLINE-OFFICIAL-USAGE-001 M3)
 		// Extract the CW segment only (substring between "CW:" and "|") for verification.
 		lines := strings.Split(got, "\n")
 		var cwLine string
