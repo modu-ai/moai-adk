@@ -63,12 +63,95 @@ The warning is pre-existing: the plan audit's iteration-1 verdict reports the sa
 
 ## §E.2 Run-phase Evidence
 
-_<pending run-phase>_
+Record format: Claim / Evidence / Baseline-attribution / Gaps / Residual-risk (`verification-claim-integrity.md` §3). The measurements below were taken by a read-only gates agent on tree `810ae985c5bd105b4245c22389904e05017cce9a` (M6). This section records only what that agent observed; nothing here is carried over from another tree.
+
+### Claim
+
+The run phase of SPEC-JEV-RESOLVED-MODEL-001 (card t1768) is complete at milestones M1 through M7: the build, format, vet, test, lint, audit, and AC sweeps listed under Evidence passed on the M6 tree, AC-JRM-001 through AC-JRM-015 are observed PASS, and AC-JRM-016 is a sync-phase criterion that was not observed.
+
+### Evidence
+
+Milestone commits (parent chain from `c985b6414`; full SHAs from `git -C <worktree> log --format=%H%x20%s -7`):
+
+| Milestone | Commit | Scope |
+|---|---|---|
+| M1 | `da1a2e379e5507c78753697212dbf787419f04c8` | internal/jev data model and attribution |
+| M2 | `2d86b88328ef60da587613970a3ec6e470717b48` | internal/jevmeasure measurement attribution |
+| M3 | `09140cc18e697bad9eb497361a330ee63fd53579` | change notice (MCP notice test) |
+| M4 | `d6cea20407a03dffba0fd871467ff6e3169abc5f` | model-policy.md Jev Model Attribution section and template mirror |
+| M5 | `67e4c3d39518af59b8edd36647f47b66077d3053` | doctor, kickoff, auto-rank surfaces |
+| M6 | `810ae985c5bd105b4245c22389904e05017cce9a` | comment sweep (pinned-model wording) |
+| M7 | this commit | run-phase evidence and audit-ready signal (progress.md only) |
+
+Gates, all exit 0 on tree `810ae985c`:
+
+| Command | Observed result |
+|---|---|
+| `gofmt -l` on the plan §F file list | printed nothing |
+| `go vet` of internal/jev, internal/jevmeasure, internal/contract/kickoff, internal/cli | printed nothing |
+| `go test -count=1 -timeout=45m` internal/jev | `ok` 0.799s |
+| `go test -count=1 -timeout=45m` internal/jevmeasure | `ok` 5.588s |
+| `go test -count=1 -timeout=45m` internal/contract/kickoff | `ok` 254.525s |
+| `go test -count=1 -timeout=45m` internal/contract/receipt | `ok` 9.078s |
+| `go test -count=1 -timeout=45m` the plan §F anchored internal/cli selector (no session_worktree tests, per board f661) | `ok` 1344.263s |
+| `TestRuleTemplateMirrorDrift` | `ok` 1.031s |
+| `make build` | exit 0; `git status` unchanged afterwards |
+| `GOOS=windows GOARCH=amd64 go build ./...` | exit 0 |
+
+The same internal/cli selector hit the default 10-minute timeout once at M5 under machine load (~377); its green rests on the longer-timeout runs recorded above.
+
+Lint and audit with a tree-built binary:
+
+| Command | Observed result |
+|---|---|
+| `spec lint` on SPEC-JEV-RESOLVED-MODEL-001, SPEC-JEV-CORE-001, SPEC-JEV-OPTIN-MEASURE-001 | 0 errors, 1 warning (`StatusGitConsistency` on SPEC-JEV-OPTIN-MEASURE-001; pre-existing, an in-progress amendment, same row as the plan-phase record above) |
+| `spec audit --filter-spec` for SPEC-JEV-CORE-001 and SPEC-JEV-OPTIN-MEASURE-001 | no drift finding except INFO `EraAutoDetected` |
+
+AC sweep:
+
+| AC | Status | Evidence |
+|---|---|---|
+| AC-JRM-001 through AC-JRM-015 | PASS | The evidence lines named in the acceptance.md green-path cells were observed |
+| AC-JRM-005 | PASS | allow-list: 2 lines for `jev.ModelID` outside internal/jev (`measure.go:320`, `doctor_jev.go:114`); 4 lines inside `jev.go` (60, 72, 477, 595) |
+| AC-JRM-011 | PASS | anchored greps print 1 on both copies; `does not ship` prints 0; `cmp` exit 0; mirror test PASS |
+| AC-JRM-016 | not observed | sync-phase criterion; stays pending |
+
+Clarification-marker check over the SPEC directory printed nothing (exit 1, as expected for a zero-hit grep).
+
+### Baseline-attribution
+
+Every row above was measured in this run, against tree `810ae985c5bd105b4245c22389904e05017cce9a`, by the commands named in its row. Lint and audit rows used a binary built from the tree and invoked by path; its VCS stamp is recorded under Gap 3.
+
+### Gaps
+
+1. The AC-JRM-011 positive control (a copy with the Version change bullet removed, expecting count 0) was refused by the worktree guard and was not run.
+2. The swept test count of the plan §F internal/cli selector was not observed (the selector ran without `-v`); the AC-JRM-008 and AC-JRM-010 cli tests were run separately with `-v`.
+3. The tree-built binary's VCS stamp (`478285ab4c`, `vcs.modified=true`) is a strict ancestor of HEAD, so the binary's stamp lags the tree (`go build` compiled the on-disk files).
+4. The plan-audit iteration-3 verdict's Claude leg ran on `claude-haiku-5-5`, and the implementation agents inherited the lane session model (Sonnet 5.5 for the later milestones). This deviates from the lane rule; the leader accepted it (board d-20261015T092351Z-3721).
+5. Coverage: internal/jev 96.0% and internal/jevmeasure 95.9% are subagent reports and were not re-measured.
+6. Whole-package `./internal/cli` and session_worktree tests were not run (board f661, 14a2). The repository-wide test verdict belongs to CI on the integration branch and is PENDING at report time.
+7. The T7 stage verb printed an error while applying the transition (command output and the recorded state disagree); the cause is unknown and was reported to the leader.
+
+### Residual-risk
+
+The live alias behaviour (`jev-latest` answered as `jev-1.13.0`) is the leader's observation of 2026-10-15; no endpoint call was made in this card. The green of the internal/cli selector depends on the 45-minute timeout runs, and its swept count was not observed (Gap 2).
 
 ## §E.3 Run-phase Audit-Ready Signal
 
-_<pending run-phase>_
+```yaml
+run_status: audit-ready
+run_complete_at: 2026-10-15
+run_head_sha: 810ae985c5bd105b4245c22389904e05017cce9a
+milestones_complete: M1-M7
+ac_observed_pass: AC-JRM-001..AC-JRM-015
+ac_pending_sync: AC-JRM-016
+gaps: [1, 2, 3, 4, 5, 6, 7]   # numbered as in §E.2 Gaps
+```
 
 ## §E.4 Sync-phase Audit-Ready Signal
 
 _<pending sync-phase>_
+
+## §G Override and Refusal Record
+
+- 2026-10-15T09:33:28Z SPEC-JEV-RESOLVED-MODEL-001 ceiling-outcome outcome=pass-through reasons="plan-audit ceiling reached (round count 3 >= tier ceiling 2 + 1 delta rounds); the verdict is admission-clean and admits without a question (REQ-ACE-013)" evidence=/Users/goos/MoAI/moai-adk-go/.moai/worktrees/t1768/.moai/reports/t1768/plan-audit-iter1.md,/Users/goos/MoAI/moai-adk-go/.moai/worktrees/t1768/.moai/reports/t1768/plan-audit-iter2.md,/Users/goos/MoAI/moai-adk-go/.moai/worktrees/t1768/.moai/reports/t1768/plan-audit-iter3.md
