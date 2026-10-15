@@ -128,6 +128,26 @@ func TestSD_AC019_NextCardRuleInjection(t *testing.T) {
 		}
 	})
 
+	// The relaunch clear policy ends the session instead of switching in
+	// session; the injected rule must carry that exception in every locale.
+	t.Run("relaunch exception four locales", func(t *testing.T) {
+		exception := map[string]string{
+			"en": "tells you to end the session",
+			"ko": "세션을 종료하라고 알려 주면",
+			"ja": "セッションを終了するよう示した場合",
+			"zh": "指示结束会话",
+		}
+		for _, lang := range []string{"en", "ko", "ja", "zh"} {
+			sdScrubRuleEnv(t)
+			t.Setenv(config.EnvMoaiFactoryWorker, "lane-2")
+			t.Setenv(config.EnvFactoryBackend, factory.BackendClaude)
+			rule := factoryLaneRuleForSource("startup", lang)
+			if !strings.Contains(rule, exception[lang]) {
+				t.Errorf("locale %s: rule lacks the relaunch exception (want %q)", lang, exception[lang])
+			}
+		}
+	})
+
 	t.Run("glm lane: source startup carries the rule", func(t *testing.T) {
 		sdScrubRuleEnv(t)
 		t.Setenv(config.EnvMoaiFactoryWorker, "lane-3")

@@ -317,3 +317,45 @@ func TestSD_M6_ClearPolicyCarrierConstantOnly(t *testing.T) {
 		}
 	}
 }
+
+// TestFactoryClearPolicyManualDispatch — SPEC-FACTORY-LANE-NO-CLEAR-001: a
+// lane launched with --no-auto-dispatch must not be told to lease its next
+// card (the operator's dispatch mode stands); clear-each and clear-when-full
+// at threshold print an exit-and-wait line that names no lease and no clear,
+// and auto dispatch keeps the lease line.
+func TestFactoryClearPolicyManualDispatch(t *testing.T) {
+	const sessionID = "sess-m6-manual"
+	for _, policy := range []string{config.FactoryClearPolicyEach, config.FactoryClearPolicyWhenFull} {
+		t.Run("manual "+policy, func(t *testing.T) {
+			root := t.TempDir()
+			t.Setenv(config.EnvClaudeCodeSessionID, sessionID)
+			t.Setenv(config.EnvFactoryClearPolicy, policy)
+			t.Setenv(config.EnvFactoryAutoDispatch, config.FactoryDispatchManual)
+			if policy == config.FactoryClearPolicyWhenFull {
+				sdWriteContextRecord(t, root, sessionID, 200_000, 90.0)
+			}
+			out := sdClearPolicyOutput(t, root)
+			if !strings.Contains(out, "ExitWorktree(keep)") {
+				t.Fatalf("manual %s: output %q does not name the exit step", policy, out)
+			}
+			if !strings.Contains(out, "wait for the leader") {
+				t.Errorf("manual %s: output %q does not tell the lane to wait for the leader's dispatch", policy, out)
+			}
+			if strings.Contains(out, "factory next") {
+				t.Errorf("manual %s: output %q tells a manual-dispatch lane to lease a card", policy, out)
+			}
+			if strings.Contains(out, "/clear") {
+				t.Errorf("manual %s: output %q carries a clear instruction", policy, out)
+			}
+		})
+	}
+	t.Run("auto dispatch keeps the lease line", func(t *testing.T) {
+		root := t.TempDir()
+		t.Setenv(config.EnvClaudeCodeSessionID, sessionID)
+		t.Setenv(config.EnvFactoryClearPolicy, config.FactoryClearPolicyEach)
+		t.Setenv(config.EnvFactoryAutoDispatch, config.FactoryDispatchAuto)
+		if out := sdClearPolicyOutput(t, root); !strings.Contains(out, "factory next") {
+			t.Fatalf("auto dispatch output %q lost the lease step", out)
+		}
+	})
+}

@@ -2445,6 +2445,12 @@ func factoryPrintClearPolicyLine(out io.Writer, root string) {
 	if policy == config.FactoryClearPolicyWhenFull && !factoryContextAtHandoffThreshold(root) {
 		return // below the handoff threshold: continue with the next card, no line
 	}
+	if os.Getenv(config.EnvFactoryAutoDispatch) == config.FactoryDispatchManual {
+		// Manual dispatch: the operator chose to route cards to this lane, so
+		// the line must not tell it to lease one (REQ-LNC-007, manual mode).
+		_, _ = fmt.Fprintf(out, "  card transition (policy %s, manual dispatch): ExitWorktree(keep), then wait for the leader's next dispatch; earlier cards' conversation context is non-authoritative\n", policy)
+		return
+	}
 	_, _ = fmt.Fprintf(out, "  card transition (policy %s): ExitWorktree(keep), then `moai factory next` from the primary checkout, then EnterWorktree(<leased worktree path>) and verify the toplevel; earlier cards' conversation context is non-authoritative\n", policy)
 }
 

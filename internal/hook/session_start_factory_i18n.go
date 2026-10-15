@@ -135,7 +135,7 @@ var factoryLocales = map[string]factoryMessages{
 		laneNextCardRule: "Factory lane next-card rule: this session is a self-dispatch lane. " +
 			"Never remove a card worktree; leave kept ones as they are. " +
 			"From the parent checkout run `moai factory next` (operator-authorized queue promotion); for a card assigned to you, `moai factory next --card <id>` even while sibling assignments sit (t1542). " +
-			"In its worktree carry plan, run, sync; integrate; keep the worktree; record completion with `moai factory complete`; then make the in-session card transition: `ExitWorktree(keep)`, request the next card with `moai factory next` from the primary checkout, `EnterWorktree(<leased worktree path>)`, verify the toplevel, and treat earlier cards' conversation context as non-authoritative. " +
+			"In its worktree carry plan, run, sync; integrate; keep the worktree; record completion with `moai factory complete`; then make the in-session card transition: `ExitWorktree(keep)`, request the next card with `moai factory next` from the primary checkout, `EnterWorktree(<leased worktree path>)`, verify the toplevel, and treat earlier cards' conversation context as non-authoritative; when the completion output tells you to end the session (the relaunch clear policy), end the session instead. " +
 			"Judgments are yours (t1542): `jev_ask` when workflow.jev.enabled is true, else judge from disk evidence and record the decision in the card's progress record — never ask the leader and wait (ladder: .claude/rules/moai/workflow/auto-semantics.md §6). " +
 			"Landing is yours (auto-semantics.md §13, mechanics § The lane's standard landing): verify lane-locally, card-review via `codex_review` scope=card, `moai factory complete` (push, PR, merge observation), " +
 			"CodeRabbit via the commit-status API plus the Merge Risk line, `moai worktree sweep` once remote landing is confirmed; merged-pr closes your queue card. " +
@@ -193,7 +193,7 @@ var factoryLocales = map[string]factoryMessages{
 			"자기에게 배정된 카드는 형제 배정이 남아 있어도 `moai factory next --card <id>` 로 임대합니다(카드 t1542). " +
 			"카드의 워크트리에 진입해 plan, run, sync 로 카드를 끝까지 수행하고, 통합한 뒤에도 워크트리는 kept 로 남기고, " +
 			"`moai factory complete`(MCP 도구 `factory_complete`)로 완료를 기록합니다. " +
-			"그다음에는 세션 안에서 카드를 전환합니다: `ExitWorktree(keep)` 로 워크트리를 유지한 채 나오고, 부모 체크아웃에서 `moai factory next` 로 다음 카드를 받고, `EnterWorktree(<임대된 워크트리 경로>)` 로 들어가 toplevel 을 확인하며, 이전 카드의 대화 맥락은 근거로 삼지 않습니다. " +
+			"그다음에는 세션 안에서 카드를 전환합니다: `ExitWorktree(keep)` 로 워크트리를 유지한 채 나오고, 부모 체크아웃에서 `moai factory next` 로 다음 카드를 받고, `EnterWorktree(<임대된 워크트리 경로>)` 로 들어가 toplevel 을 확인하며, 이전 카드의 대화 맥락은 근거로 삼지 않습니다. 단 완료 출력이 세션을 종료하라고 알려 주면(relaunch 정책) 전환하지 말고 세션을 종료합니다. " +
 			"판단은 레인의 몫입니다(카드 t1542) — workflow.jev.enabled 가 참이면 `jev_ask` 를 직접 부르고, 아니면 디스크 증거로 스스로 판단해 " +
 			"카드 진행 기록에 결정 기록을 남깁니다. 리더에게 묻고 기다리지 않습니다. 사다리는 .claude/rules/moai/workflow/auto-semantics.md §6 에 있습니다. " +
 			"착지도 레인이 실행합니다(auto-semantics.md §13, mechanics § The lane's standard landing): " +
@@ -253,7 +253,7 @@ var factoryLocales = map[string]factoryMessages{
 			"自分に割り当てられたカードは兄弟の割り当てが残っていても `moai factory next --card <id>` でリースします(カード t1542)。 " +
 			"カードのワークツリーに入り、plan・run・sync を通してカードを完遂し、統合したうえでワークツリーを kept のまま残し、 " +
 			"`moai factory complete`(MCP ツール `factory_complete`)で完了を記録します。 " +
-			"その後はセッション内でカードを切り替えます：`ExitWorktree(keep)` でワークツリーを残したまま出て、親チェックアウトから `moai factory next` で次のカードを取得し、`EnterWorktree(<リースされたワークツリーのパス>)` で入って toplevel を確認し、前のカードの会話コンテキストは根拠にしません。 " +
+			"その後はセッション内でカードを切り替えます：`ExitWorktree(keep)` でワークツリーを残したまま出て、親チェックアウトから `moai factory next` で次のカードを取得し、`EnterWorktree(<リースされたワークツリーのパス>)` で入って toplevel を確認し、前のカードの会話コンテキストは根拠にしません。 ただし完了出力がセッションを終了するよう示した場合（relaunch ポリシー）は、切り替えずにセッションを終了します。 " +
 			"判断はレーンのものです(カード t1542) — workflow.jev.enabled が true なら `jev_ask` を直接呼び、そうでなければディスクの証拠から自ら判断し、 " +
 			"カードの進捗記録に決定記録を書きます。リーダーに尋ねて待つことはしません。 ラダーは .claude/rules/moai/workflow/auto-semantics.md §6 にあります。 " +
 			"ランディングもレーンが実行します(auto-semantics.md §13、mechanics § The lane's standard landing): " +
@@ -312,7 +312,7 @@ var factoryLocales = map[string]factoryMessages{
 			"分配给自己的卡即使兄弟分配仍在，也用 `moai factory next --card <id>` 租用（卡片 t1542）。 " +
 			"进入卡片的工作树，带着卡片走完 plan、run、sync，完成集成后工作树保持 kept， " +
 			"并用 `moai factory complete`（MCP 工具 `factory_complete`）记录完成。 " +
-			"之后在会话内切换卡片：用 `ExitWorktree(keep)` 保留工作树并退出，在父检出运行 `moai factory next` 获取下一张卡，用 `EnterWorktree(<被租用的工作树路径>)` 进入并核对 toplevel，不再以此前卡片的对话上下文为依据。 " +
+			"之后在会话内切换卡片：用 `ExitWorktree(keep)` 保留工作树并退出，在父检出运行 `moai factory next` 获取下一张卡，用 `EnterWorktree(<被租用的工作树路径>)` 进入并核对 toplevel，不再以此前卡片的对话上下文为依据；但若完成输出指示结束会话（relaunch 策略），则改为结束会话。 " +
 			"判断属于泳道（卡片 t1542） — workflow.jev.enabled 为 true 时直接调用 `jev_ask`，否则依据磁盘证据自行判断， " +
 			"并把决定记录写入卡片进度记录；绝不询问主导会话并等待。 阶梯见 .claude/rules/moai/workflow/auto-semantics.md §6。 " +
 			"落地也由泳道执行（auto-semantics.md §13、mechanics § The lane's standard landing）： " +

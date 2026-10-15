@@ -48,6 +48,13 @@ Lint: `gofmt -l` on the touched Go files prints nothing; `go vet ./internal/conf
 
 Commands (this run, tree after M5): `go test ./internal/hook -run '^(TestRoleInjectionAssemblyBudget|TestInjectedCoreCarriesObligationElements)$'` ok; `go test ./internal/template -run '^(TestRoleCoreStubGate|TestBindingLedgerIntegrity)$' -count=1 -v` both PASS (ledger 489.98s); `go test ./internal/hook -run '^(TestSessionStartRoleRules...|TestRoleInjectionBudget...)$'` ok; mirror/embed tests `TestRuleTemplateMirrorDrift|TestDeclaredRuleMirrorForks|TestEmbedFSPresenceAndByteEquality|TestGoldenCommittedArtifactsMatchEmission|TestEmbeddedSetEqualsManifest` ok; `make build` exit 0; `make agents-emit-check` ok; template/local `cmp` of `factory-dispatch.md` and `-core.md` exit 0; detail `diff` hunks still `135c135` and `157c157`. The AC-LNC-015 and 007 sets were not re-run after M5 (only the files named above changed). Not re-run: the 14 `TestAutoLaneCycle*` and the clear-policy tests (no Go change in M5).
 
+### §E.2 addendum (M6): two review findings repaired
+
+A. `factoryPrintClearPolicyLine` told a manual-dispatch lane to run `moai factory next`. When `MOAI_FACTORY_AUTO_DISPATCH` is `manual`, clear-each and at-threshold clear-when-full now print an exit-and-wait line (`ExitWorktree(keep)`, wait for the leader's next dispatch, earlier context non-authoritative; no lease, no clear). Auto mode and relaunch lines are unchanged. New test `TestFactoryClearPolicyManualDispatch` (RED first: both manual subtests failed with the lease line printed; GREEN after).
+B. The injected `laneNextCardRule` (en, ko, ja, zh) contradicted the relaunch completion line. Each locale now adds: when the completion output tells you to end the session (the relaunch policy), end the session instead. New subtest `TestSD_AC019_NextCardRuleInjection/relaunch_exception_four_locales` (RED first in all four locales; GREEN after). The first GREEN attempt broke `takeover_trigger_four_locales` because the new wording contained the retired phrases `clear 정책` / `clear ポリシー` / `clear 策略`; reworded to `relaunch 정책` etc.
+
+Measured this run: `TestFactoryClearPolicyManualDispatch`, `TestSD_AC020_ClearPolicies`, `TestSD_M6_ClearPolicyCarrierConstantOnly` ok; `TestSD_AC019_NextCardRuleInjection` (all subtests), `TestLaneRuleCarriesStandingRecheckCron`, `TestRoleInjectionAssemblyBudget`, `TestInjectedCoreCarriesObligationElements` pass; `TestRoleCoreStubGate` ok; both AC-LNC-007 greps print 0; `gofmt -l` empty; `go vet ./internal/hook ./internal/cli` exit 0. Not run: `TestAutoLaneCycle*` (inputs untouched) and the four load-timing hook tests (load average 182, above the 100 cut-off).
+
 ## §E.3 Run-phase Audit-Ready Signal
 
 run_complete_at: 2026-10-15
