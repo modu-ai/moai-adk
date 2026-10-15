@@ -230,6 +230,78 @@ func TestRun_RefusesAStraddledMeasurement(t *testing.T) {
 	if _, err := Run(context.Background(), uniform, set, trialBuild); err != nil {
 		t.Errorf("positive control failed: a run with one model id was refused: %v", err)
 	}
+
+	// An OK call with zero answers still reports an interpreted model, and that
+	// model counts toward the straddle (REQ-JRM-006): the run mixes jev-9.8.8
+	// (answered) with jev-9.8.7 (OK, no answers) and must be refused.
+	t.Run("ok call with no answers counts toward the straddle", func(t *testing.T) {
+		mixed := answerlessAnswerer{
+			inner: modelAnswerer{
+				inner: stubAnswerer{answers: map[string]bool{}, probs: map[string]float64{}},
+				modelOf: func(req jev.Request) string {
+					if extractStubID(req.State) == "b" {
+						return "jev-9.8.7"
+					}
+					return "jev-9.8.8"
+				},
+			},
+			empty: func(req jev.Request) bool { return extractStubID(req.State) == "b" },
+		}
+		rep, err := Run(context.Background(), mixed, set, trialBuild)
+		if err == nil {
+			t.Fatalf("Run returned an artifact citing %q for a run that also saw an OK call on another model", rep.ModelID)
+		}
+		if !reflect.DeepEqual(rep, Report{}) {
+			t.Errorf("a refused run returned a non-empty artifact: %+v", rep)
+		}
+		first := strings.Index(err.Error(), "jev-9.8.7")
+		second := strings.Index(err.Error(), "jev-9.8.8")
+		if first < 0 || second < 0 {
+			t.Fatalf("the error does not name both interpreted model ids: %v", err)
+		}
+		if first > second {
+			t.Errorf("the error names the model ids out of sorted order: %v", err)
+		}
+	})
+
+	// Control: an OK call with no answers whose interpreted id is not valid
+	// (empty) never enters the model set, so the run is measured on one id.
+	t.Run("ok call with no answers and an empty id stays out of the model set", func(t *testing.T) {
+		control := answerlessAnswerer{
+			inner: modelAnswerer{
+				inner: stubAnswerer{answers: map[string]bool{}, probs: map[string]float64{}},
+				modelOf: func(req jev.Request) string {
+					if extractStubID(req.State) == "b" {
+						return ""
+					}
+					return "jev-9.8.7"
+				},
+			},
+			empty: func(req jev.Request) bool { return extractStubID(req.State) == "b" },
+		}
+		rep, err := Run(context.Background(), control, set, trialBuild)
+		if err != nil {
+			t.Fatalf("a run with answered calls on one id was refused: %v", err)
+		}
+		if rep.ModelID != "jev-9.8.7" {
+			t.Errorf("ModelID = %q, want %q", rep.ModelID, "jev-9.8.7")
+		}
+	})
+}
+
+// answerlessAnswerer wraps an answerer and strips the answers from the OK
+// results of the requests selected by empty: an OK call with zero answers.
+type answerlessAnswerer struct {
+	inner modelAnswerer
+	empty func(req jev.Request) bool
+}
+
+func (a answerlessAnswerer) Ask(ctx context.Context, req jev.Request) jev.Result {
+	res := a.inner.Ask(ctx, req)
+	if res.OK() && a.empty(req) {
+		res.Answers = nil
+	}
+	return res
 }
 
 // TestRun_CitesTheInterpretedModelAcrossArms: the interpreted model is taken from

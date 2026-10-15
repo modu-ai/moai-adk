@@ -335,6 +335,11 @@ func Run(ctx context.Context, answerer Answerer, set Set, build BuildFunc) (Repo
 				return Report{}, fmt.Errorf("jevmeasure: build request for sample %q arm %s: %w", s.ID, arm, err)
 			}
 			result := answerer.Ask(ctx, req)
+			// REQ-JRM-006: an OK response that reports a valid interpreted model
+			// counts toward the straddle even when it carries no answers.
+			if result.OK() && len(result.Answers) == 0 && jev.ValidInterpretedModel(result.Usage.Model) {
+				models[result.Usage.Model] = true
+			}
 			if !result.OK() || len(result.Answers) == 0 {
 				res.Unavailable++
 				cond := result.NoticeLine()
