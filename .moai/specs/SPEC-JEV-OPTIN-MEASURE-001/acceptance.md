@@ -28,7 +28,7 @@ Given-When-Then is the verification layer's format; the GEARS requirement wordin
 
 **AC-JEVO-010** — Given each consumer's measurement artifact, When it is read, Then it names the interpreted model id, both language arms with per-arm results and the delta, and the constant-answer baseline for that question shape.
 
-**AC-JEVO-011** (amended 2026-10-15, v0.2.0 — see spec.md HISTORY) — Given a measurement artifact, When its model field is read, Then it cites the interpreted model id the endpoint returned, the request alias `jev-latest` appears only in its separately labelled request-model field, and a run whose answered calls report two interpreted model ids produces no artifact. Positive control: the same check fires on an artifact whose model field carries the alias.
+**AC-JEVO-011** (amended 2026-10-15, v0.2.0 — see spec.md HISTORY) — Given a measurement artifact, When its model field is read, Then it cites the interpreted model id the endpoint returned, and the request alias `jev-latest` appears only in its separately labelled request-model field. Positive control: the same check fires on an artifact whose model field carries the alias.
 
 **AC-JEVO-012** — Given a consumer whose measured accuracy does not exceed its constant-answer baseline, When the shipped build is inspected, Then that consumer's call path is absent, and the record states it was withheld on measurement.
 

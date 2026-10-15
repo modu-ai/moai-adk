@@ -1,7 +1,7 @@
 ---
 id: SPEC-JEV-RESOLVED-MODEL-001
 title: "Jev request alias jev-latest with the interpreted model recorded per answer"
-version: "0.1.0"
+version: "0.1.1"
 status: draft
 created: 2026-10-15
 updated: 2026-10-15
@@ -22,6 +22,7 @@ related_specs: [SPEC-JEV-CORE-001, SPEC-JEV-OPTIN-MEASURE-001]
 | Date | Version | Change | Author |
 |---|---|---|---|
 | 2026-10-15 | 0.1.0 | Plan-phase artifacts for card t1768 (Class C, Template-First, P1). Tier M. Amends two completed SPECs in place, in the same commit: `SPEC-JEV-CORE-001` to 0.5.0 (REQ-JEVC-003, REQ-JEVC-004, Q2 wording) and `SPEC-JEV-OPTIN-MEASURE-001` to 0.2.0 (§B goal phrase, REQ-JEVO-014, AC-JEVO-010, AC-JEVO-011). Both move `completed → in-progress (amendment)`. Neither SPEC's `sync_commit_sha` changes. | manager-spec |
+| 2026-10-15 | 0.1.1 | Plan repair round 1 after plan-audit iteration 1 (FAIL, overall 0.65, audited commit `cfb5517962088b09936dfbb8a2ff5b80e63a8893`). The three open decisions are settled (card t1768, board, brain): OQ-1 option A (a verified-id constant, one notice per client, no file write); OQ-2 behavioural terms, no configuration key; OQ-3 the verified id is the reference, and the shipping-prohibition clause is dropped. REQ-JRM-001, 005, 010, 011, and 013 reworded; REQ-JRM-014 added; AC-JRM-005, 010, 011, and 014 reworked; AC-JRM-016 added; fixture ids are `jev-9.8.7`. The amended text of the two amended SPECs is unchanged in this round, except AC-JEVO-011 in SPEC-JEV-OPTIN-MEASURE-001. | manager-spec |
 
 ## Position in the chain
 
@@ -31,7 +32,9 @@ Definitions used throughout this SPEC:
 
 - **Request alias**: `jev-latest`, the model value the package sends.
 - **Interpreted model id**: the `model` value the endpoint returns in its response, which names the version that answered. It is in the versioned shape `jev-<major>.<minor>.<patch>`.
-- **Measurement regression set**: the labelled answer sets that `internal/jevmeasure` runs for each consumer. No such set is committed yet (see plan.md OQ-3).
+- **Answered call**: a call whose response is OK and reports a valid interpreted model id. An OK response without one is `unattributed`, and it is not an answered call.
+- **Verified id**: the interpreted model id held in code as `VerifiedInterpretedModel` (`internal/jev/jev.go`). It is the reference that REQ-JRM-010 compares each answered call against (plan.md §G, OQ-1 and OQ-3).
+- **Measurement regression set**: the labelled answer sets that `internal/jevmeasure` runs for each consumer. No such set is committed yet.
 
 ---
 
@@ -53,7 +56,7 @@ Send the request alias. Record the interpreted model id in every answered call's
 
 ### C.1 — Request and attribution
 
-**REQ-JRM-001** (Ubiquitous) The `internal/jev` package shall send the request alias `jev-latest` as the model of every request it constructs, and no request it constructs shall carry a versioned model identifier.
+**REQ-JRM-001** (Ubiquitous) The `internal/jev` package shall send the request alias `jev-latest` as the `model` of every request it constructs, never a versioned model identifier.
 
 **REQ-JRM-002** (Event-driven) **When** an answered call returns, the `internal/jev` package shall record the interpreted model id that the response reports in that call's result and in its usage record.
 
@@ -61,7 +64,7 @@ Send the request alias. Record the interpreted model id in every answered call's
 
 **REQ-JRM-004** (Ubiquitous) The usage record shall hold the request alias and the interpreted model id in separate fields, so that a reader cannot take the alias for the version that answered.
 
-**REQ-JRM-005** (Ubiquitous) The model field of every usage record, every measurement artifact, and every rendered Jev answer label shall carry the interpreted model id, and shall never carry the request alias.
+**REQ-JRM-005** (Ubiquitous) The `model` field of every usage record, measurement artifact, and rendered Jev answer label shall never carry the request alias, and shall carry the interpreted model id wherever it records an answered call.
 
 ### C.2 — Measurement and surfaces
 
@@ -75,15 +78,17 @@ Send the request alias. Record the interpreted model id in every answered call's
 
 ### C.3 — Version change and rule
 
-**REQ-JRM-010** (Event-driven) **When** the interpreted model id of an answered call differs from the interpreted model id that the measurement regression set was last run against, the `internal/jev` package shall report one notice line for the client, naming both ids and the shadow-return obligation of REQ-JRM-011.
+**REQ-JRM-010** (Event-driven) **When** an answered call reports an interpreted model id that differs from the verified id, the `internal/jev` package shall report one notice line for the client, on the first such call only, naming both ids, the location `internal/jev/jev.go:VerifiedInterpretedModel`, and the shadow-return obligation of REQ-JRM-011.
 
-**REQ-JRM-011** (Ubiquitous) `.claude/rules/moai/development/model-policy.md` and its template copy shall carry one identical section, titled `Jev model attribution`. The section shall state the attribution rules of this SPEC and the shadow-return obligation: until the measurement regression set has been re-run against a new interpreted model id, every consumer that shows a Jev answer to a person, or selects on one, returns to shadow, where its answer is recorded and neither shown nor selected on.
+**REQ-JRM-011** (Ubiquitous) `.claude/rules/moai/development/model-policy.md` and its template copy shall carry one identical section, titled `Jev Model Attribution`. The section shall state the attribution rules of this SPEC and the shadow-return obligation: until the measurement regression set has been re-run against a new interpreted model id and the verified id has been changed to that id, every consumer that shows a Jev answer to a person, or selects on one, returns to shadow, where its answer is recorded and neither shown nor selected on. The two terms are defined by behaviour and introduce no configuration key: *advise-or-above* is a consumer behaviour that shows a Jev answer to a person or selects on one, and *shadow* is the state in which a Jev answer is recorded and neither shown nor selected on.
 
 ### C.4 — Gate and amendment discipline
 
 **REQ-JRM-012** (State-driven) **While** `workflow.jev.enabled` is false, the `internal/jev` package shall construct no request and make no network call, as REQ-JEVC-017 requires. This SPEC shall not alter that property.
 
-**REQ-JRM-013** (Unwanted) An amendment of a completed SPEC shall not change that SPEC's `sync_commit_sha`. The amended SPEC returns to `completed` with only its frontmatter `status` changed, and the sync record of the amendment is kept in this SPEC's progress record.
+**REQ-JRM-013** (Ubiquitous) The amendment shall leave each amended SPEC's `sync_commit_sha` unchanged, set its frontmatter `amendment_of` to its own ID, and record the prior completed value as `prior_completed_sha` in its `## Amendments` section.
+
+**REQ-JRM-014** (Event-driven) **When** the sync phase of this SPEC closes, each amended SPEC shall return to `completed` by a change confined to its YAML frontmatter.
 
 ---
 
@@ -96,7 +101,7 @@ This SPEC carries two in-place amendments. Each amendment is recorded in the ame
 | `SPEC-JEV-CORE-001` | 0.4.0 → 0.5.0 | REQ-JEVC-003 (an alias request plus a mandatory recording of the response model), REQ-JEVC-004 (the interpreted model and the request alias in separate fields), §E Q2 wording | `completed → in-progress (amendment)`; `amendment_of: SPEC-JEV-CORE-001` | `c8731f965` |
 | `SPEC-JEV-OPTIN-MEASURE-001` | 0.1.0 → 0.2.0 | §B goal phrase, REQ-JEVO-014 (cite the interpreted model id), AC-JEVO-010 wording, AC-JEVO-011 (outputs cite the interpreted version; the alias only in its own field) | `completed → in-progress (amendment)`; `amendment_of: SPEC-JEV-OPTIN-MEASURE-001` | `52c460d30` |
 
-**Sync rule (REQ-JRM-013).** Neither amended SPEC's `sync_commit_sha` changes in this commit or in this SPEC's sync phase. At the sync phase of this SPEC, the two amended SPECs return to `completed` by a frontmatter-only status change. The sync record of the amendment is the §E.4 of this SPEC's `progress.md`.
+**Sync rule (REQ-JRM-013, REQ-JRM-014).** Neither amended SPEC's `sync_commit_sha` changes in this commit or in this SPEC's sync phase. At the sync phase of this SPEC, the two amended SPECs return to `completed` by a frontmatter-only change. The sync record of the amendment is the §E.4 of this SPEC's `progress.md`.
 
 **Vision.** Not revised. The vision section of `.moai/project/product.md` carries no statement of the model pin or of the alias, and the file contains no occurrence of `jev` or `pinned`. The card's conditional vision revision therefore does not apply.
 
@@ -116,7 +121,7 @@ This SPEC carries two in-place amendments. Each amendment is recorded in the ame
 
 ### Out of Scope — persisted model history
 
-- A persisted record of interpreted model ids on disk. REQ-JRM-010 is met by comparing each answered call against the interpreted model id recorded in code, and no state file is written. If the lead chooses a persisted record instead (plan.md OQ-1), this exclusion and REQ-JRM-010 change together.
+- A persisted record of interpreted model ids on disk. REQ-JRM-010 is met by comparing each answered call against the verified id held in code (`internal/jev/jev.go:VerifiedInterpretedModel`), and no state file is written. That mechanism is decided (plan.md §G, OQ-1, card t1768).
 
 ### Out of Scope — documentation and changelog
 
@@ -125,10 +130,16 @@ This SPEC carries two in-place amendments. Each amendment is recorded in the ame
 
 ### Out of Scope — consumer mode vocabulary
 
-- A configuration key for consumer modes. The terms the rule uses (shadow, the decision of a consumer that shows or selects on an answer) describe existing consumer behaviour. They are not introduced as settings.
+- A configuration key for consumer modes. The terms the rule uses (*advise-or-above* and *shadow*) describe existing consumer behaviour. They are not introduced as settings (plan.md §G, OQ-2).
 
 ---
 
 ## §F. Open decisions
 
-Open decisions are recorded in plan.md §G with `[NEEDS CLARIFICATION]` markers, as the marker convention requires. None of them changes the wording of a requirement in this file. OQ-1 decides the mechanism behind REQ-JRM-010, and it must be settled before the run phase enters that requirement.
+The three open decisions of plan-audit iteration 1 are settled (card t1768, board, brain, 2026-10-15). Each decision and its reference is recorded in plan.md §G.
+
+- **OQ-1, the change-notice mechanism.** Decided: option A. It changes REQ-JRM-010 and AC-JRM-010, which is adopted. It does not change the §E exclusion "persisted model history", because option A writes no file.
+- **OQ-2, the shadow-return terms.** Decided: behavioural definitions with no configuration key. It fixes the wording of REQ-JRM-011 and the terms of plan.md §D.4.
+- **OQ-3, the regression-set reference.** Decided: REQ-JRM-010 compares against the verified id, and the shipping-prohibition clause is not part of this SPEC. It fixes the reference of REQ-JRM-010 and the re-run procedure of REQ-JRM-011, which is to re-run the regression set against the new id and then change the verified id.
+
+Non-blocking items still open (plan.md §G): OQ-4 (the path scope of the rule file), OQ-5 (the amendment transition precedent), OQ-6 (sync-phase documentation), and OQ-7 (the dispatch of card t1762). None of them changes the wording of a requirement in this file.
