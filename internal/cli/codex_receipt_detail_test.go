@@ -2,7 +2,9 @@ package cli
 
 import (
 	"context"
+	"os"
 	"runtime"
+	"strconv"
 	"strings"
 	"testing"
 	"time"
@@ -95,11 +97,23 @@ func TestCodexConnCloseDoesNotWaitForOrphanedStderr(t *testing.T) {
 	if runtime.GOOS == "windows" {
 		t.Skip("the orphaned-grandchild shape needs a POSIX shell")
 	}
-	conn, err := realCodexSessionRunner{}.start(context.Background(), "/bin/sh", []string{"-c", "sleep 8 & echo ready >&2; read line"})
+	conn, err := realCodexSessionRunner{}.start(context.Background(), "/bin/sh", []string{"-c", "sleep 8 & echo gc=$! >&2; echo ready >&2; read line"})
 	if err != nil {
 		t.Fatal(err)
 	}
 	c := conn.(*realCodexConn)
+	// The backgrounded sleep outlives the shell; stop it by the pid it reported, on
+	// every path, so the test leaves no process behind.
+	t.Cleanup(func() {
+		tail := c.stderr.tail(codexErrorTailBytes)
+		if _, after, ok := strings.Cut(tail, "gc="); ok && len(strings.Fields(after)) > 0 {
+			if pid, convErr := strconv.Atoi(strings.Fields(after)[0]); convErr == nil {
+				if p, findErr := os.FindProcess(pid); findErr == nil {
+					_ = p.Kill()
+				}
+			}
+		}
+	})
 	began := time.Now()
 	_ = c.close()
 	if took := time.Since(began); took > 5*time.Second {

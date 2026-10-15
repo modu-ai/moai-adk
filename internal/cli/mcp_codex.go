@@ -1085,8 +1085,11 @@ func runCodexReviewRPCResolved(ctx context.Context, binaryPath, method string, p
 	defer func() { _ = sess.close() }()
 
 	out, err := sess.runTurn(ctx, method, params)
-	// The tail is read before close: the child's stderr is what says why a turn
-	// ended early. An unavailable buffer leaves the tail empty (t1788).
+	// The tail is read after close: close waits for the child and for its stderr copy,
+	// so the last error a child wrote just before exiting is in the capture. The
+	// deferred close above stays as the panic path and is harmless a second time.
+	// An unavailable buffer leaves the tail empty (t1788).
+	_ = sess.close()
 	if c, ok := sess.conn.(*realCodexConn); ok && c.stderr != nil {
 		out.StderrTail = c.stderr.tail(codexErrorTailBytes)
 	}
