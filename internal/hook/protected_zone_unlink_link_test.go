@@ -213,10 +213,12 @@ func TestResolveZoneLinkTargetFinalComponentForms(t *testing.T) {
 // EXACT-MATCH-ONLY narrowing. The link's own judgment is complete only when
 // the operand's final component is byte-equal to an entry of the resolved
 // parent; every other spelling (fold/normalization/short-name variants,
-// nonexistent finals, listing failures) defers WHOLESALE to the full
-// resolver — the two semantics never mix for one operand, so
-// resolveZoneLinkTarget returns EXACTLY what resolveZoneTarget returns for
-// such an operand.
+// nonexistent finals, listing failures) defers to the full resolver — the
+// two semantics never mix for one operand. Repair round 16 refined the
+// defer: it judges the operand on its RESOLVED parent path (the walk's
+// resolution is the normalization for aliased ancestors), so the assertion
+// is a SUBSET check — the link-own output for a non-exact operand carries
+// only forms the full resolver also produces, never a link-own-only form.
 func TestZoneLinkTargetDefersToFullResolverWithoutExactEntry(t *testing.T) {
 	root := newUnlinkLinkRoot(t)
 	prev := zoneGetwd
@@ -230,8 +232,14 @@ func TestZoneLinkTargetDefersToFullResolverWithoutExactEntry(t *testing.T) {
 	} {
 		linkOwn := resolveZoneLinkTarget(root, raw)
 		full := resolveZoneTarget(root, raw)
-		if fmt.Sprint(linkOwn) != fmt.Sprint(full) {
-			t.Errorf("deferral: resolveZoneLinkTarget(%q) = %+v, resolveZoneTarget = %+v — no exact entry match must defer to the full resolver wholesale", raw, linkOwn, full)
+		fullFolded := map[string]bool{}
+		for _, f := range full {
+			fullFolded[f.Folded] = true
+		}
+		for _, f := range linkOwn {
+			if !fullFolded[f.Folded] {
+				t.Errorf("deferral: resolveZoneLinkTarget(%q) produced form %+v absent from the full resolver's forms %+v — no exact entry match must defer to the full resolver without mixing link-own-only forms", raw, f, full)
+			}
 		}
 	}
 }
@@ -428,6 +436,38 @@ func TestZoneParentListingReadOncePerGuardCall(t *testing.T) {
 	if listed != 1 {
 		t.Errorf("parent listing re-read: %d /zone_dir keyed entries observed, want exactly one", listed)
 	}
+}
+
+// TestProtectedZoneShellDefersOnCaseVariantParent — repair round 16
+// (leader-ruled): the narrowing requires EVERY component of the resolved
+// parent to be byte-exact. The fixture protects the non-ASCII dir
+// protected/Ä/ and links secret.md into it; the operand spells the parent
+// as the case variant `ä` — APFS resolves it to the real entry, but the
+// byte-exact parent check must refuse the narrowing and defer to the full
+// resolver, whose normalization judges the real spelling (the manifest
+// entry protected/Ä/ folded is byte-stable — ASCII folding never touches
+// Ä — so the case-variant link-own forms miss the zone prefix and would
+// read allow). Expected: DENY.
+func TestProtectedZoneShellDefersOnCaseVariantParent(t *testing.T) {
+	manifest := "  probe_zone:\n    paths: [\"protected/Ä/\"]\n"
+	root := newZoneRoot(t, zoneShippedDoc(manifest), "")
+	if err := os.MkdirAll(filepath.Join(root, "protected", "Ä"), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(root, "protected", "Ä", "real.md"), []byte("s"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	// the link inside the non-ASCII dir pointing INTO it: the full resolver
+	// follows it to the real-spelling location protected/Ä/real.md, whose
+	// folded form prefix-matches the manifest entry protected/Ä/
+	if err := os.Symlink(filepath.Join("real.md"), filepath.Join(root, "protected", "Ä", "link")); err != nil {
+		t.Skipf("symlinks unavailable: %v", err)
+	}
+	h := zoneTestHandler(t, root)
+	d, r := zoneCall(t, h, "Bash", harnessLearnerIdentity, map[string]any{
+		"command": "rm protected/ä/link",
+	})
+	wantZoneDeny(t, "case-variant parent", d, r, harnessLearnerIdentity, "category", "probe_zone")
 }
 
 // TestZoneUnlinkLinkOwnWindowsSeparators — the classifier-level repair
