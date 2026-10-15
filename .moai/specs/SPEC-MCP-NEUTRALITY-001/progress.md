@@ -479,6 +479,23 @@ Verification batch at HEAD fcfad897e (this tree, this run):
 - Affected families green (-count=1): `^TestCodexTask` full family (2× runs at different stages), internal/auditreceipt full.
 - Lint (cli + auditreceipt): 4 errcheck, all pre-existing — zero NEW.
 
+### Sync-audit r8 delta repair round — F24 absent-registry read (card t1632, branch WT-3-2-0-2)
+
+Commit: `433c09af2` (fix: sync-audit r8 delta repair — F24 absent-registry read). Base: the r7 evidence head `100522d53`. Verdict file: .moai/reports/t1632/sync-audit-r7.md (F22/F23 isolation resolved; F24 blocking, F25 optional). Push state: nothing pushed; clean on WT-3-2-0-2.
+
+| Finding | Disposition | Command (verbatim) | Observed output |
+|---------|-------------|--------------------|-----------------|
+| F24 absent serving registry reads as fatal ENOENT | FIXED + no-registry probe | `rm -rf .moai/state/codex-jobs && go test ./internal/cli -run 'TestCodexTask_BackgroundJobNeverTouchesTheServingState' -count=1 -v` | `--- PASS: TestCodexTask_BackgroundJobNeverTouchesTheServingState (0.46s)` — the before/after reads treat IsNotExist as an empty listing (a clean checkout has no .moai/state) and only an unexpected read error is fatal; the probe ran with the registry directory removed and stayed green, and the serving registry remained record-free after the run (0 entries) |
+| F25 comparison scope (new-records-only) | HELD per the leader — rides t1747 | — | noted here: the structural isolation is the primary protection this round; widening the pre-existing-record comparison rides t1747 with the other held findings |
+
+Verification batch at HEAD 433c09af2 (this tree, this run):
+
+- E2 builds: `go build ./...` → exit 0.
+- Affected families green (-count=1): `^TestCodexTask` full family.
+- Lint: no new findings (the 4 errcheck stay pre-existing).
+
+Authored-By-Agent: manager-develop
+
 ## §E.3 Run-phase Audit-Ready Signal
 
 run_audit_ready: true
