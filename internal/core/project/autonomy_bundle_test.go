@@ -278,3 +278,169 @@ func indexOf(s, sub string) int {
 	}
 	return -1
 }
+
+// --- SPEC-USER-SETTINGS-PROTECT-001 (card t1630) — repository-authored
+// assertions for AC-003 part B and AC-005. The overlay probes under
+// .moai/reports/t1630/evidence/ carried the RED observation on the pinned
+// tree; these are the same assertions authored in the repository
+// (acceptance.md: "run-phase: the same assertion authored in the repository").
+
+// TestAC003DefaultModeKeptOnBothPaths: an existing USER-scope defaultMode that
+// differs from the resolved tier default is kept on the default init path
+// (empty persisted tier resolves to semi-auto) and on the automatic path
+// (decided Q1). Both calls take the user settings path; the value is compared
+// in place. HOME and MOAI_HOME are set inside the test process to t.TempDir
+// paths, so no read or write reaches the operator's home.
+func TestAC003DefaultModeKeptOnBothPaths(t *testing.T) {
+	root := t.TempDir()
+	t.Setenv("HOME", filepath.Join(root, "home"))
+	t.Setenv("MOAI_HOME", filepath.Join(root, "moai"))
+	cases := []struct {
+		name string
+		tier string
+	}{
+		{"default-init", ""},
+		{"automatic", string(config.AutonomyTierAutomatic)},
+	}
+	for _, c := range cases {
+		t.Run(c.name, func(t *testing.T) {
+			dir := t.TempDir()
+			userPath := filepath.Join(dir, "home", ".claude", "settings.json")
+			if err := os.MkdirAll(filepath.Dir(userPath), 0o755); err != nil {
+				t.Fatal(err)
+			}
+			before := `{"permissions":{"defaultMode":"plan"}}`
+			if err := os.WriteFile(userPath, []byte(before), 0o644); err != nil {
+				t.Fatal(err)
+			}
+			if err := ApplyAutonomyTierBundle(dir, userPath, "", c.tier); err != nil {
+				t.Fatalf("ApplyAutonomyTierBundle: %v", err)
+			}
+			raw, err := os.ReadFile(userPath)
+			if err != nil {
+				t.Fatal(err)
+			}
+			var doc struct {
+				Permissions struct {
+					DefaultMode string `json:"defaultMode"`
+				} `json:"permissions"`
+			}
+			if err := json.Unmarshal(raw, &doc); err != nil {
+				t.Fatalf("after is not valid JSON: %v", err)
+			}
+			if doc.Permissions.DefaultMode != "plan" {
+				t.Errorf("existing defaultMode \"plan\" was overwritten with %q; after=%s", doc.Permissions.DefaultMode, raw)
+			}
+		})
+	}
+}
+
+// ac005DeployPolicy writes the minimal tool-policy.yaml the full-bundle path
+// loads (one deny + one ask entry; no allow entries are generated from it).
+func ac005DeployPolicy(t *testing.T, projectRoot string) {
+	t.Helper()
+	policyDir := filepath.Join(projectRoot, ".moai", "config", "sections")
+	if err := os.MkdirAll(policyDir, 0o755); err != nil {
+		t.Fatal(err)
+	}
+	policyBody := "entries:\n" +
+		"  - tool: Bash\n" +
+		"    args_pattern: \"git push --force:*\"\n" +
+		"    decision: deny\n" +
+		"    risk_tier: irreversible\n" +
+		"    owner_agent: manager-git\n" +
+		"    audit: commit-log\n" +
+		"  - tool: Bash\n" +
+		"    args_pattern: \"git push:*\"\n" +
+		"    decision: ask\n" +
+		"    risk_tier: write\n" +
+		"    owner_agent: manager-git\n" +
+		"    audit: commit-log\n"
+	if err := os.WriteFile(filepath.Join(policyDir, "tool-policy.yaml"), []byte(policyBody), 0o644); err != nil {
+		t.Fatal(err)
+	}
+}
+
+// TestAC005PolicyPathKeepsUserAllowEntry: with a tool-policy document present
+// and NO sidecar record, every existing allow entry is kept by set union with
+// the regenerated managed block, so the user-added entry survives (REQ-005,
+// decided Q5, case i).
+func TestAC005PolicyPathKeepsUserAllowEntry(t *testing.T) {
+	t.Setenv("MOAI_SANDBOX_PROOF", "")
+	t.Setenv("MOAI_DISABLE_BYPASS_PERMISSIONS_MODE", "")
+	dir := t.TempDir()
+	projectRoot := filepath.Join(dir, "proj")
+	userPath := filepath.Join(dir, "home", ".claude", "settings.json")
+	projectPath := filepath.Join(projectRoot, ".claude", "settings.json")
+	if err := os.MkdirAll(filepath.Dir(projectPath), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	ac005DeployPolicy(t, projectRoot)
+	before := `{"permissions":{"allow":["Bash(user-added:*)"]}}`
+	if err := os.WriteFile(projectPath, []byte(before), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	if err := ApplyAutonomyTierBundle(projectRoot, userPath, projectPath, config.AutonomyTierAutomatic); err != nil {
+		t.Fatalf("ApplyAutonomyTierBundle: %v", err)
+	}
+	after, err := os.ReadFile(projectPath)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !contains(after, "Bash(user-added:*)") {
+		t.Errorf("user-added permissions.allow entry dropped; before=%s after=%s", before, after)
+	}
+}
+
+// TestAC005WithRecordKeepsUserAddedEntry: with a sidecar record carrying
+// last_generated, user_added = existing allow entries minus last_generated;
+// the result is the regenerated list union user_added. The user-added entry
+// survives and the last_generated entry the document no longer generates is
+// absent (REQ-005, decided Q5, case ii; diff-based detection per progress.md
+// §G, G-20).
+func TestAC005WithRecordKeepsUserAddedEntry(t *testing.T) {
+	root := t.TempDir()
+	t.Setenv("HOME", filepath.Join(root, "home"))
+	t.Setenv("MOAI_HOME", filepath.Join(root, "moai"))
+	t.Setenv("MOAI_SANDBOX_PROOF", "")
+	t.Setenv("MOAI_DISABLE_BYPASS_PERMISSIONS_MODE", "")
+	dir := t.TempDir()
+	projectRoot := filepath.Join(dir, "proj")
+	userPath := filepath.Join(dir, "home", ".claude", "settings.json")
+	projectPath := filepath.Join(projectRoot, ".claude", "settings.json")
+	statePath := filepath.Join(projectRoot, ".moai", "state", "tool-policy", "managed-allow.json")
+	for _, p := range []string{filepath.Dir(projectPath), filepath.Dir(statePath)} {
+		if err := os.MkdirAll(p, 0o755); err != nil {
+			t.Fatal(err)
+		}
+	}
+	ac005DeployPolicy(t, projectRoot)
+	if err := os.WriteFile(statePath, []byte(`{"last_generated":["Bash(old-managed:*)"]}`), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	before := `{"permissions":{"allow":["Bash(old-managed:*)","Bash(user-added:*)"]}}`
+	if err := os.WriteFile(projectPath, []byte(before), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	if err := ApplyAutonomyTierBundle(projectRoot, userPath, projectPath, config.AutonomyTierAutomatic); err != nil {
+		t.Fatalf("ApplyAutonomyTierBundle: %v", err)
+	}
+	raw, err := os.ReadFile(projectPath)
+	if err != nil {
+		t.Fatal(err)
+	}
+	var doc struct {
+		Permissions struct {
+			Allow []string `json:"allow"`
+		} `json:"permissions"`
+	}
+	if err := json.Unmarshal(raw, &doc); err != nil {
+		t.Fatalf("after is not valid JSON: %v", err)
+	}
+	if !contains(raw, "Bash(user-added:*)") {
+		t.Errorf("user-added permissions.allow entry dropped with a sidecar record present; before=%s after=%s", before, raw)
+	}
+	if contains(raw, "Bash(old-managed:*)") {
+		t.Errorf("managed entry Bash(old-managed:*) kept although the policy no longer generates it; after=%s", raw)
+	}
+}

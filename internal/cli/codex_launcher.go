@@ -965,9 +965,18 @@ func enterCodexRelaunchJoin(root string, entry factoryFlagParse, timing *factory
 // loop's removal. The positional prompt is the Codex CLI's own channel for an
 // initial directive (`codex [OPTIONS] [PROMPT]`), and `-l` takes no operator
 // tail, so the prompt is always ours.
-const codexLaneAutoPrompt = "Run `moai todo --auto` to consume the backlog queue: " +
-	"the cycle ranks the queued candidates, leases the top card through the factory lease edge, " +
-	"dispatches one isolated lane per card, judges completion on the disk evidence, and continues to the next card."
+//
+// Card t1776 made the directive IMPERATIVE: the previous descriptive prompt
+// ("the cycle ranks…, dispatches…, judges…") sent the session reading
+// todo_auto*.go and factory-dispatch*.md in full before it established the
+// command's existence — 72% of the dispatch context burned before any
+// autonomous progress. The prompt now commands the run, forbids the source
+// reading, pins the output-line contract, and stops on a refusal.
+const codexLaneAutoPrompt = "Run `moai todo --auto` now. " +
+	"Do not read the engine or the rule sources first — act on the output directly: " +
+	"follow its selection:/accept/dispatch lines verbatim. " +
+	"A `refused (...) — next candidate` line is a normal skip: keep going with the next card. " +
+	"If the run ends in a refusal line with no dispatch directive after it, report that one refusal and stop."
 
 // @MX:NOTE: card t1554 removed the boot auto-lease loop — lane boot is not
 // queue consumption. The launcher stamps the lane environment (the shared

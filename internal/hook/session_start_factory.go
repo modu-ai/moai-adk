@@ -29,6 +29,7 @@ import (
 	"context"
 	"fmt"
 	"os"
+	"path/filepath"
 	"strconv"
 	"strings"
 	"time"
@@ -115,6 +116,16 @@ func factoryBootstrapNoticeForSource(source, root, sessionID, lang string) strin
 // without a card id, and an unknown backend value all receive no rule.
 // lang is the session's conversation language (REQ-SD-019).
 func factoryLaneRuleForSource(source, lang string) string {
+	return factoryLaneRuleForSourceInDir(source, lang, "")
+}
+
+// factoryLaneRuleForSourceInDir is factoryLaneRuleForSource with the session
+// directory the card id may be derived from (card t1776 audit round-12: a
+// gpt lane standing in its card worktree without MOAI_KANBAN_CARD stamped
+// still carries a card — resolving it from the path keeps such a session on
+// the owned-card rule instead of misdirecting it at the parent-checkout
+// queue verb). dir may be empty; an empty dir resolves env-only.
+func factoryLaneRuleForSourceInDir(source, lang, dir string) string {
 	if source != "" && source != "startup" && source != "clear" {
 		return ""
 	}
@@ -145,14 +156,30 @@ func factoryLaneRuleForSource(source, lang string) string {
 		}
 		return m.laneNextCardRule + "\n\n" + recheck
 	case factory.BackendGPT:
-		cardID := os.Getenv(config.EnvFactoryCard)
+		// Env override first (the launcher's stamp), else the REGISTERED
+		// card worktree this session stands in (card t1776 audit rounds
+		// 12+14: the path fallback must not mint a card from a coincidental
+		// `worktrees/` parent — only the MoAI tiers count).
+		cardID := strings.TrimSpace(os.Getenv(config.EnvFactoryCard))
 		if cardID == "" {
-			// An owned-card rule without a card id names nothing the lane
-			// could carry; the M5 launcher always stamps the id, so this is
-			// the degraded edge, not the expected shape.
-			return ""
+			cardID = cardIDFromRegisteredWorktree(dir)
 		}
-		return fmt.Sprintf(factoryMessagesFor(lang).laneOwnedCardRule, cardID)
+		if cardID == "" {
+			// The card-less queue boot (moai codex -l before its first
+			// lease): the role core's read-first duty conflicts with the
+			// boot prompt exactly as it does for a leased card — the
+			// BOOT-form precedence note names the queue verb this boot
+			// owns (audit round-8: the empty return left the conflict
+			// unresolved on the boot path).
+			return codexLaneBootPrecedenceNote
+		}
+		// t1776 audit round-3: the role core's read-the-full-rule duty
+		// conflicts with the lane's boot directive (run `moai todo --auto`
+		// now; the operator-measured session burned 72% of its context on
+		// exactly that reading). The owned-card rule carries the precedence
+		// note so the two texts resolve instead of contradicting.
+		return fmt.Sprintf(factoryMessagesFor(lang).laneOwnedCardRule, cardID) +
+			"\n\n" + codexLanePrecedenceNote
 	default:
 		return ""
 	}
@@ -190,6 +217,90 @@ func factoryLanesEnv() int {
 		return 0
 	}
 	return n
+}
+
+// cardIDFromRegisteredWorktree resolves the card id from dir ONLY when dir
+// stands inside a MoAI-MANAGED card worktree — a directory whose ancestry
+// carries a `worktrees` segment whose parent is `.moai` or `.claude` (the
+// two MoAI worktree tiers). A checkout that merely happens to live under a
+// plain `worktrees/` parent (e.g. ~/worktrees/myrepo) resolves no card:
+// minting an owned-card rule from a coincidental directory name would hand
+// a card-less boot both the queue-start directive and its contradiction
+// (card t1776 audit round-14). Empty when dir is not a registered-tier
+// card worktree.
+func cardIDFromRegisteredWorktree(dir string) string {
+	if strings.TrimSpace(dir) == "" {
+		return ""
+	}
+	d := filepath.Clean(dir)
+	for {
+		parent := filepath.Dir(d)
+		if parent == d {
+			return ""
+		}
+		if filepath.Base(parent) == "worktrees" {
+			gp := filepath.Base(filepath.Dir(parent))
+			if gp == ".moai" || gp == ".claude" {
+				return filepath.Base(d)
+			}
+			// A worktrees parent outside the MoAI tiers: not a card tree AT
+			// THIS LEVEL — the walk CONTINUES (card t1776 audit round-16: a
+			// session deep inside a card worktree whose own subtree carries
+			// an inner `worktrees` directory still resolves the card above;
+			// an early return minted the boot directive for a card session).
+		}
+		d = parent
+	}
+}
+
+// codexLanePrecedenceNote resolves the role core's read-first duty against
+// the lane boot directive for a Codex auto lane (card t1776 audit round-3).
+// The precedence lives HERE, not in the role core: the dispatch core sits
+// within 7 UTF-16 units of TestRoleInjectionAssemblyBudget's cap (audit
+// round-6 P1 — any core addition breaches it), so the hook context carries
+// the resolution. No queue-start verb rides it either: this branch is an
+// already-card-assigned session working its card worktree, and `moai todo
+// --auto` belongs to the card-less queue boot only (audit round-4).
+const codexLanePrecedenceNote = "Codex auto-lane precedence: the boot directive governs your first action — " +
+	"proceed with the leased card's work; " +
+	"open the rule files when that work needs them, not before."
+
+// codexLaneBootPrecedenceNote is the card-less queue boot's precedence
+// note (card t1776 audit round-8): `moai codex -l` boots WITHOUT a card id,
+// and this boot owns the queue verb — the note names it so the role core's
+// read-first duty resolves against the boot directive instead of
+// contradicting it.
+const codexLaneBootPrecedenceNote = "Codex auto-lane precedence: the boot directive governs your first action — " +
+	"run `moai todo --auto` before any rule-file reading; " +
+	"open the rule files when the cards' work needs them, not before."
+
+// codexLaneEnvFailFast is the t1776 one-line stop for a broken lane launch:
+// a session stamped with the Codex factory backend but missing its lane
+// stamps — the launcher writes the worker-label stamp and the run-id stamp
+// together with the backend stamp (codex_launcher.go), so a
+// missing one means the launch did not go through the lane door — gets ONE
+// agent-facing stop line instead of silence. The operator-measured failure:
+// an unstamped session inferred lane behavior by reading todo_auto*.go and
+// factory-dispatch*.md in full, burning the dispatch context before any
+// autonomous progress; the line forbids exactly that. Fully stamped lanes and
+// non-codex backends receive nothing.
+func codexLaneEnvFailFast() string {
+	if os.Getenv(config.EnvFactoryBackend) != factory.BackendGPT {
+		return ""
+	}
+	if os.Getenv(config.EnvMoaiFactoryWorker) != "" && os.Getenv(config.EnvFactoryRunID) != "" {
+		return ""
+	}
+	missing := config.EnvMoaiFactoryWorker
+	if os.Getenv(config.EnvMoaiFactoryWorker) != "" {
+		missing = config.EnvFactoryRunID
+	}
+	// REQ-SRL-009: the env names ride the config constants, never literals.
+	return fmt.Sprintf(
+		"MOAI factory lane launch is incomplete: %s=gpt but the lane stamps are not both set (%s, %s; empty: %s) — stop. "+
+			"Do not read the engine or the rule sources and do not infer lane behavior; "+
+			"report this line and relaunch through `moai codex -l`.",
+		config.EnvFactoryBackend, config.EnvMoaiFactoryWorker, config.EnvFactoryRunID, missing)
 }
 
 // factoryLeaderNotice is the factory leader branch. It carries, in order:

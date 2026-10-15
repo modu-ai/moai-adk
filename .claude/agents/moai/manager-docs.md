@@ -7,6 +7,8 @@ description: |
   Match user intent language-independently — do not require literal keyword matches.
   NOT for: SPEC body authoring (spec.md / plan.md / acceptance.md body — manager-spec only per Status Transition Ownership Matrix; manager-docs limited to the spec.md frontmatter `status` + `updated` transitions and an `updated` refresh in the stateless plan.md / acceptance.md), code implementation, testing, git branch management, security audits
 tools: Read, Write, Edit, Grep, Glob, Bash, WebFetch, WebSearch, TaskCreate, TaskUpdate, TaskList, TaskGet, Skill, mcp__moai__spec_progress, mcp__moai__spec_audit, mcp__moai__codex_review, mcp__moai__glm_review
+model: sonnet
+effort: medium
 color: cyan
 permissionMode: bypassPermissions
 memory: project
