@@ -235,6 +235,41 @@ func TestRoleRulesCodexOnlyFallbackErrorsNameDeployedPath(t *testing.T) {
 	}
 }
 
+// TestRoleRulesCodexOnlyFallbackProjectsBodyPaths pins the round-5 body
+// normalization: the embed is the Claude-layout text — on a Codex-only
+// install the fallback core's PATH REFERENCES are projected onto the
+// deployed .moai/policies layout, the same way the deployer's harness
+// normalization rewrites them at deploy time. A core pointing agents at
+// `.claude/rules/...` on an install that never deploys that layout is a
+// broken required read.
+func TestRoleRulesCodexOnlyFallbackProjectsBodyPaths(t *testing.T) {
+	clearFactoryEnv(t)
+	t.Setenv(config.EnvMoaiFactoryWorkers, "1")
+	stubEmbeddedRule(t,
+		"# Fixture rule (embedded copy)\n\n"+
+			config.RoleCoreMarkerStart+"\n"+embeddedFallbackCoreText+"\n"+
+			"Read the full body at `.claude/rules/moai/workflow/cross-session-messaging.md` before acting.\n"+
+			config.RoleCoreMarkerEnd+"\n\nplain tail\n",
+		true)
+
+	root := t.TempDir()
+	writeRoleRuleFixture(t, root, roleRuleFile{Rel: ".moai/policies/workflow/factory-dispatch.md", Name: "factory-dispatch.md"},
+		"# stale codex-only dispatch rule\n\nno role-core markers here\n")
+	writeRoleRuleFixture(t, root, roleRuleFile{Rel: ".moai/policies/workflow/cross-session-messaging.md", Name: "cross-session-messaging.md"},
+		smallMarkedRule("messaging"))
+
+	inj := roleRuleInjectionFor(root, "startup", langEnglish)
+	if inj.OperatorNotice != "" {
+		t.Fatalf("fallback must succeed; notice: %s", inj.OperatorNotice)
+	}
+	if !strings.Contains(inj.Context, ".moai/policies/workflow/cross-session-messaging.md") {
+		t.Fatalf("fallback core body was not projected onto the deployed Codex-only layout:\n%s", inj.Context)
+	}
+	if strings.Contains(inj.Context, ".claude/rules/moai/") {
+		t.Fatalf("fallback core body carries a Claude-layout path the install never deploys:\n%s", inj.Context)
+	}
+}
+
 // TestRoleRulesEndMarkerOnlyStaysFailVisible pins the audit round-1 P2 fix:
 // a file carrying ONLY an end marker is corruption, not a stale generation —
 // the embedded fallback must NOT rescue it; the REQ-ALB-009 pair fires.

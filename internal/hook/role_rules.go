@@ -307,6 +307,15 @@ func embeddedRoleCore(root string, rule roleRuleFile) (string, error) {
 	if !ok {
 		return "", fmt.Errorf("embedded template copy absent: %s", roleRuleDeployRel(root, rule))
 	}
+	// Audit round-5 (card t1729): the embed is the Claude-layout TEXT — on a
+	// Codex-only install the deployed rule (and every path reference inside
+	// it) lives under .moai/policies. Project the body the same way the
+	// deployer's harness normalization rewrites references at deploy time,
+	// or the injected core points agents at a layout the project never
+	// deployed.
+	if roleRuleDeployRel(root, rule) != rule.Rel {
+		content = strings.ReplaceAll(content, ".claude/rules/moai/", ".moai/policies/")
+	}
 	return roleCoreFromContent(content, roleRuleDeployRel(root, rule))
 }
 
