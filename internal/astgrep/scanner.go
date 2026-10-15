@@ -162,6 +162,50 @@ func firstNonBlankLine(s string) string {
 	return ""
 }
 
+// ScanExecError reports that sg exited non-zero with no findings on stdout for a
+// reason other than a ruleset load failure: a usage error, a crash, or a killed
+// child. It fails loud and is never a clean scan. Detail is sg's first non-blank
+// stderr line and may be empty; Err is the exit error from os/exec.
+type ScanExecError struct {
+	Detail string
+	Err    error
+}
+
+// Error renders the failure with sg's first stderr line when there is one.
+func (e *ScanExecError) Error() string {
+	if e.Detail != "" {
+		return "ast-grep scan failed: " + e.Detail
+	}
+	if e.Err != nil {
+		return "ast-grep scan failed: " + e.Err.Error()
+	}
+	return "ast-grep scan failed"
+}
+
+// Unwrap exposes the exit error from os/exec.
+func (e *ScanExecError) Unwrap() error { return e.Err }
+
+// rulesetLoadDiagnostics are the first stderr lines sg prints when it cannot load
+// a ruleset (measured on sg 0.40.5). Any other diagnostic is an execution error,
+// so an unrecognized wording still fails loud.
+var rulesetLoadDiagnostics = []string{
+	"Error: Cannot parse rule",
+	"Error: Cannot read rule directory",
+	"Error: Cannot parse configuration",
+	"Error: Cannot read configuration",
+}
+
+// isRulesetLoadDiagnostic reports whether detail is one of sg's ruleset-load
+// diagnostics.
+func isRulesetLoadDiagnostic(detail string) bool {
+	for _, prefix := range rulesetLoadDiagnostics {
+		if strings.HasPrefix(detail, prefix) {
+			return true
+		}
+	}
+	return false
+}
+
 // InstallURL is the canonical ast-grep install page. The scanner's unavailable
 // error, the `moai ast-grep` CLI guidance, the commit quality gate's skip
 // reason, and the `moai doctor` check all cite it from here so the four cannot
@@ -285,6 +329,8 @@ func (s *Scanner) isSGAvailable() bool {
 // because callers cannot tell the two apart.
 // Returns a *RulesetLoadError (matching ErrRulesetLoad) when sg refuses to load the
 // ruleset: a load failure is never reported as an empty, clean scan.
+// Returns a *ScanExecError when sg exits non-zero with no findings for any other
+// reason, and an error when the scan target does not exist. Neither is a clean scan.
 // Returns ([]Finding{}, nil) when the rules directory is empty or does not exist (REQ-ASTG-UPG-012).
 // Returns an error when SGBinary is an untrusted path (F2 security check).
 func (s *Scanner) Scan(ctx context.Context, path string) ([]Finding, error) {
@@ -306,6 +352,13 @@ func (s *Scanner) Scan(ctx context.Context, path string) ([]Finding, error) {
 			"binary", binary,
 			"hint", "install from "+InstallURL)
 		return []Finding{}, fmt.Errorf("%q not found in PATH; install from %s: %w", binary, InstallURL, ErrScannerUnavailable)
+	}
+
+	// The target must exist before sg is asked to scan it. Behind `--`, a missing
+	// path is an empty scan that exits 0 (measured on sg 0.40.5), so this check is
+	// what keeps a missing target loud.
+	if _, err := os.Stat(path); err != nil {
+		return []Finding{}, fmt.Errorf("ast-grep scan target: %w", err)
 	}
 
 	// Return empty results when the rules directory does not exist
@@ -347,7 +400,8 @@ func (s *Scanner) scanWithConfig(ctx context.Context, configPath, path string) (
 		binary = "sg"
 	}
 
-	cmd := exec.CommandContext(scanCtx, binary, "scan", "--config", configPath, "--json", path)
+	// `--` keeps a target whose name starts with "-" from being read as a flag.
+	cmd := exec.CommandContext(scanCtx, binary, "scan", "--config", configPath, "--json", "--", path)
 	var stdout, stderr bytes.Buffer
 	cmd.Stdout = &stdout
 	cmd.Stderr = &stderr
@@ -359,13 +413,18 @@ func (s *Scanner) scanWithConfig(ctx context.Context, configPath, path string) (
 		slog.Debug("sg scan stderr (config-based)", "config", configPath, "stderr", stderr.String())
 	}
 
-	// sg exits non-zero in two situations that must not be conflated. With
+	// sg exits non-zero in three situations that must not be conflated. With
 	// error-severity matches it exits non-zero WITH the JSON on stdout: a normal
-	// scan. With a ruleset it cannot load it exits non-zero with NOTHING on stdout
-	// and the diagnostic on stderr. Returning an empty clean scan for the second
-	// case is the swallow of GH #1824.
-	if detail := firstNonBlankLine(stderr.String()); runErr != nil && stdout.Len() == 0 && detail != "" {
-		return nil, &RulesetLoadError{Detail: detail}
+	// scan, parsed below. With a ruleset it cannot load it exits non-zero with
+	// NOTHING on stdout and a load diagnostic on stderr: RulesetLoadError. Any
+	// other non-zero exit with nothing on stdout (a usage error, a crash, a killed
+	// child) is a ScanExecError. Neither is ever a clean scan (GH #1824).
+	if runErr != nil && stdout.Len() == 0 {
+		detail := firstNonBlankLine(stderr.String())
+		if isRulesetLoadDiagnostic(detail) {
+			return nil, &RulesetLoadError{Detail: detail}
+		}
+		return nil, &ScanExecError{Detail: detail, Err: runErr}
 	}
 
 	if stdout.Len() == 0 {

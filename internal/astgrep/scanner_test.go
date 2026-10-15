@@ -544,6 +544,13 @@ func TestScanner_RulesetLoadFailureIsAnError(t *testing.T) {
 	if err == nil {
 		t.Fatalf("Scan() error = nil with %d finding(s); an unloadable ruleset must be reported, not returned as a clean scan", len(findings))
 	}
+	if !errors.Is(err, astgrep.ErrRulesetLoad) {
+		t.Errorf("errors.Is(err, ErrRulesetLoad) = false for %q; the load failure must match the sentinel through Unwrap", err)
+	}
+	var loadErr *astgrep.RulesetLoadError
+	if !errors.As(err, &loadErr) || loadErr.Detail == "" {
+		t.Errorf("errors.As(err, *RulesetLoadError) with a non-empty Detail = false for %q", err)
+	}
 	if !strings.Contains(err.Error(), "Cannot parse rule") {
 		t.Errorf("Scan() error = %q; want the first line of sg's stderr (\"Error: Cannot parse rule ...\") in it", err.Error())
 	}
