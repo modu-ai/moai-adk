@@ -49,9 +49,9 @@ For a lane card the declared evidence list also carries `.moai/reports/<card-id>
 
 Anything else is a gap, not a pass. `Review rate limited` means the review never started, and a card carrying it does not leave `sync`. (Endpoint choice: `factory-dispatch-gates.md` § CodeRabbit endpoint measurement.)
 
-## Lane card transition — in-session, no clear
+## Lane card transition
 
-[HARD] A Claude Code lane moves between cards inside its session: `ExitWorktree(keep)`, `moai factory next` from the primary checkout, `EnterWorktree(<leased worktree absolute path>)`, verify the toplevel; earlier cards' conversation context is non-authoritative, and the leader never asks the operator to clear a lane (full sequence and refusal path: the role core of `factory-dispatch.md`).
+The leader never asks the operator to clear a lane; the in-session sequence is in the role core of `factory-dispatch.md`.
 
 Where the next card reuses a lane, the leader re-sends the full pointer instruction rather than assuming the session remembers.
 
@@ -59,7 +59,7 @@ The leader's own session is cleared between cards: once a card reaches `done`, t
 
 ## Isolation and integration
 
-[HARD] A card session stays in its worktree (`moai cc -w`); between cards it moves by the in-session transition above (`ExitWorktree(keep)`, then `EnterWorktree` of the leased tree); the integration-tree merge entry keeps its own re-entry rule.
+[HARD] A card session stays in its worktree (`moai cc -w`); between cards it moves in-session (`ExitWorktree(keep)`, lease, `EnterWorktree`); the integration-tree merge entry keeps its own re-entry rule.
 
 [HARD] A verified lane merges its own branch into the batch release branch (`release/vX.Y.Z`) — git-flow variant; github-flow default: `moai factory complete`'s PR edge (mechanics § standard landing). Where it applies: `moai integration acquire` first, `EnterWorktree` in, `--no-ff`, `HEAD` re-read before commit/push, never force; batch PR with the leader.
 

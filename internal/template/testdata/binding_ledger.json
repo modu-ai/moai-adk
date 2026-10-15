@@ -4648,7 +4648,7 @@
     "start_line": 3
    },
    "before_text": "How the **leader** session of Factory Mode moves a card through the queue: what admits work, who is told to do it, how completion is judged, and when the operator is asked to `/clear`.",
-   "after_text": "How the **leader** session of Factory Mode moves a card through the queue: what admits work, who is told to do it, how completion is judged, and when the operator is asked to `/clear`.",
+   "after_text": "How the **leader** session of Factory Mode moves a card through the queue: what admits work, who is told to do it, how completion is judged, and when the lane moves to its next card.",
    "location": "companion:.claude/rules/moai/workflow/factory-dispatch-mechanics.md",
    "processing": "relocated",
    "reason": "intro description"
@@ -5846,7 +5846,7 @@
     "start_line": 139
    },
    "before_text": "[HARD] A lane session does not carry one card's context into the next card. When a card reaches `done` and the leader has read its evidence, the leader **asks the operator to `/clear` that lane session** — `/clear` is a user-typed command and cannot be sent as an instruction. The leader's message states, in order: what closed (card, evidence read), which session to `/clear` (by name), and what happens next.",
-   "after_text": "[HARD] No card context crosses to the next: at `done`, evidence read, the leader asks the operator to `/clear` that lane session (user-typed, never sendable), stating in order: what closed (card, evidence read), which session (name), what next.",
+   "after_text": "[HARD] No card context crosses to the next: a lane treats the conversation context of earlier cards as non-authoritative and works each newly leased card only from that card's body, its SPEC artifacts, and its progress record. At `done`, evidence read, the leader does not ask the operator to clear the lane session; the leader names what closed (card, evidence read) and the lane moves on by the transition below.",
    "location": "rule-body:.claude/rules/moai/workflow/factory-dispatch.md",
    "processing": "relocated",
    "entry_points": [
@@ -5883,7 +5883,7 @@
     "start_line": 141
    },
    "before_text": "[HARD] On a card transition inside a lane session, `/clear` happens exactly once, **after** the session has moved into the next card's worktree — not before the move. The count is not reduced: one card transition, one `/clear`.",
-   "after_text": "[HARD] `/clear` exactly once per transition, after moving into the next worktree — never before.",
+   "after_text": "[HARD] `ExitWorktree(keep)`, lease, `EnterWorktree(path)`; conversation context never carries.",
    "location": "role-core:workflow/factory-dispatch.md",
    "processing": "rewrite",
    "entry_points": [
@@ -5920,7 +5920,7 @@
     "start_line": 143
    },
    "before_text": "Where the next card reuses a just-cleared lane, the leader re-sends the full pointer instruction rather than assuming the session remembers.",
-   "after_text": "Where the next card reuses a just-cleared lane, the leader re-sends the full pointer instruction rather than assuming the session remembers.",
+   "after_text": "Where the next card reuses a lane, the leader re-sends the full pointer instruction rather than assuming the session remembers.",
    "location": "always:.claude/rules/moai/workflow/factory-dispatch-core.md",
    "processing": "verbatim",
    "entry_points": [
@@ -5941,7 +5941,7 @@
     "start_line": 145
    },
    "before_text": "The leader's own session is cleared the same way, between cards: once a card reaches `done`, the operator is asked to `/clear` the leader session, and the next turn presents the queue again.",
-   "after_text": "The leader's own session is cleared the same way, between cards: once a card reaches `done`, the operator is asked to `/clear` the leader session, and the next turn presents the queue again.",
+   "after_text": "The leader's own session is cleared between cards: once a card reaches `done`, the operator is asked to `/clear` the leader session, and the next turn presents the queue again.",
    "location": "always:.claude/rules/moai/workflow/factory-dispatch-core.md",
    "processing": "verbatim",
    "entry_points": [
@@ -6110,7 +6110,7 @@
     "start_line": 157
    },
    "before_text": "[HARD] **A card session starts inside its worktree and stays there.** The standard is a lane session launched inside the card's worktree through the launcher (`moai cc -w`); it starts with that tree's project skill set. Moving a running card session from one card worktree into another card worktree is prohibited — that transition attaches a second skill listing on top of the session's first, and that duplication is what this rule exists to prevent. Two composition rules bound the prohibition rather than leaving it implicit: (a) the \"A new card starts in a new worktree\" clause below composes with it — its exit-first requirement is satisfied by ending the lane session and launching the next session inside the new tree, never by moving the running session; (b) the brief entry into the release/integration worktree that the same files mandate for merging a card branch is NOT covered by the prohibition — it keeps its own re-entry rule (return to the card worktree before continuing card work). Where a worktree move is unavoidable anyway, `/clear` is issued exactly once, after the move — never before it.",
-   "after_text": "[HARD] A card session starts in its worktree (`moai cc -w`) and stays; moving into another card worktree is prohibited (exit-and-relaunch serves the new-card rule); an integration-tree merge entry is exempt but returns to the card worktree before card work; an unavoidable move takes `/clear` once, after, never before.",
+   "after_text": "[HARD] A card session starts in its worktree (`moai cc -w`) and stays while it carries the card; between cards it moves by the in-session transition (`ExitWorktree(keep)`, lease, `EnterWorktree` of the leased tree); an integration-tree merge entry is exempt but returns to the card worktree before card work.",
    "location": "rule-body:.claude/rules/moai/workflow/factory-dispatch.md",
    "processing": "relocated",
    "entry_points": [
@@ -6514,7 +6514,7 @@
     "start_line": 202
    },
    "before_text": "- `.claude/rules/moai/core/askuser-protocol.md` — the question channel the leader uses for card selection and `/clear` prompts\n- `.claude/rules/moai/core/verification-claim-integrity.md` — why completion is read rather than trusted\n- The remaining four (blocker-report format, worktree tiers, the queue surface, `manager-lead`): `factory-dispatch-mechanics.md` § Cross-references",
-   "after_text": "- `.claude/rules/moai/core/askuser-protocol.md` — the question channel the leader uses for card selection and `/clear` prompts\n- `.claude/rules/moai/core/verification-claim-integrity.md` — why completion is read rather than trusted\n- The remaining four (blocker-report format, worktree tiers, the queue surface, `manager-lead`): `factory-dispatch-mechanics.md` § Cross-references",
+   "after_text": "- `.claude/rules/moai/core/askuser-protocol.md` — the question channel the leader uses for card selection and queue prompts\n- `.claude/rules/moai/core/verification-claim-integrity.md` — why completion is read rather than trusted\n- The remaining four (blocker-report format, worktree tiers, the queue surface, `manager-lead`): `factory-dispatch-mechanics.md` § Cross-references",
    "location": "companion:.claude/rules/moai/workflow/factory-dispatch-mechanics.md",
    "processing": "relocated",
    "reason": "cross-reference list"

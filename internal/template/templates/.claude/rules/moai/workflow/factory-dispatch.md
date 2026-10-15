@@ -154,12 +154,14 @@ Anything else is a gap, not a pass. `Review rate limited` means the review never
 [HARD] No card context crosses to the next: a lane treats the conversation context of earlier cards as non-authoritative and works each newly leased card only from that card's body, its SPEC artifacts, and its progress record. At `done`, evidence read, the leader does not ask the operator to clear the lane session; the leader names what closed (card, evidence read) and the lane moves on by the transition below.
 
 <!-- moai:role-core-start -->
-[HARD] In-session transition (Claude Code lanes): at a terminal card state the lane runs `ExitWorktree(keep)`, requests its next card from the primary checkout with `moai factory next` (a contended claim is waited out with the verb's wait option), then `EnterWorktree(<leased worktree absolute path>)` and verifies `git rev-parse --show-toplevel` equals that path before any card work; earlier cards' conversation context is non-authoritative. A refused entry is recorded verbatim in the card's progress record and reported as a blocker — never a session clear, a second lease, or card work in the primary checkout; the only fallback is an operator relaunch inside the leased worktree. Codex lanes keep their own session-end transition.
+[HARD] `ExitWorktree(keep)`, lease, `EnterWorktree(path)`; conversation context never carries.
 <!-- moai:role-core-end -->
 
-Where the next card reuses a lane, the leader re-sends the full pointer instruction rather than assuming the session remembers.
+Transition detail (Claude Code lanes): the lane requests its next card from the primary checkout with `moai factory next` (a contended claim is waited out with the verb's wait option), enters the leased worktree by absolute path, and verifies `git rev-parse --show-toplevel` equals that path before any card work. A refused entry is recorded verbatim in the card's progress record and reported as a blocker — never a session clear, a second lease, or card work in the primary checkout; the only fallback is an operator relaunch inside the leased worktree. Codex lanes keep their own session-end transition.
 
-The leader's own session is cleared between cards: once a card reaches `done`, the operator is asked to `/clear` the leader session, and the next turn presents the queue again.
+When the next card reuses a lane, the leader re-sends the full pointer instruction instead of assuming the session remembers.
+
+The leader session itself is cleared between cards: at `done` the operator is asked to `/clear` it, and the next turn presents the queue again.
 
 ## Isolation is provisioned by MoAI, then entered through a launcher
 

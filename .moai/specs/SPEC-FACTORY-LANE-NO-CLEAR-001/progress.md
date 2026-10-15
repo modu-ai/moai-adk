@@ -40,13 +40,21 @@ RED evidence: the rewritten `TestSD_AC020_ClearPolicies` failed on the intended 
 
 Lint: `gofmt -l` on the touched Go files prints nothing; `go vet ./internal/config ./internal/hook` exit 0. `golangci-lint` and coverage were not run.
 
+### §E.2 addendum (M5): three gates the AC-LNC-015 selector never named were RED after M1-M4
+
+1. `TestRoleInjectionAssemblyBudget` (internal/hook), both trees, both factory roles: role core 4725 UTF-16 against a 4092 ceiling. Cause: the new in-session transition [HARD] clause (about 736 units) sat inside the role-core markers. Repair: the marker now holds one 108-unit clause (`ExitWorktree(keep)`, lease, `EnterWorktree(path)`, conversation context); the sequence detail and refusal path moved to an unmarked paragraph of the same file. Core measured 4083 by script; test GREEN.
+2. `TestRoleCoreStubGate` (internal/template): `factory-dispatch-core.md` 10334 against a 10000 cap (baseline 9983). Repair: the stub's transition section shrank to a pointer sentence and the isolation line was shortened; measured 9999 on the template and deployed copies; test GREEN.
+3. `TestBindingLedgerIntegrity` (internal/template): 7 rows reported after-text absent (ALB-0244, 0286, 0287, 0288, 0289, 0294, 0308). Repair: `after_text` of those rows in `internal/template/testdata/binding_ledger.json` updated to the delivered text (locations and entry_points unchanged; the obligations stayed where they were). A first re-run then failed the AC-ALB-021(2) fragment sweep for ALB-0288 and ALB-0289, because the full body repeated the stub's lines verbatim; the full-body wording was changed so the lines are no longer duplicates. Final run GREEN.
+
+Commands (this run, tree after M5): `go test ./internal/hook -run '^(TestRoleInjectionAssemblyBudget|TestInjectedCoreCarriesObligationElements)$'` ok; `go test ./internal/template -run '^(TestRoleCoreStubGate|TestBindingLedgerIntegrity)$' -count=1 -v` both PASS (ledger 489.98s); `go test ./internal/hook -run '^(TestSessionStartRoleRules...|TestRoleInjectionBudget...)$'` ok; mirror/embed tests `TestRuleTemplateMirrorDrift|TestDeclaredRuleMirrorForks|TestEmbedFSPresenceAndByteEquality|TestGoldenCommittedArtifactsMatchEmission|TestEmbeddedSetEqualsManifest` ok; `make build` exit 0; `make agents-emit-check` ok; template/local `cmp` of `factory-dispatch.md` and `-core.md` exit 0; detail `diff` hunks still `135c135` and `157c157`. The AC-LNC-015 and 007 sets were not re-run after M5 (only the files named above changed). Not re-run: the 14 `TestAutoLaneCycle*` and the clear-policy tests (no Go change in M5).
+
 ## §E.3 Run-phase Audit-Ready Signal
 
 run_complete_at: 2026-10-15
-run_commit_sha: 957967601 (M3; this evidence commit follows it)
+run_commit_sha: see the M5 commit (M3 957967601 held the last doctrine change before the repair)
 run_status: complete-with-gaps
-ac_pass_count: 14 PASS + 1 PASS-WITH-DEBT (AC-LNC-007)
-ac_fail_count: 0
+ac_pass_count: measured PASS for AC-LNC-001, 002, 004, 005, 006, 008 to 016 at their M4 measurement (AC-LNC-001, 002, 011, 012, 013 re-checked by cmp and count after M5); AC-LNC-007 PASS-WITH-DEBT
+ac_fail_count: 0 at measurement; three extra gates (above) were RED at M4 and are GREEN after M5
 ac_gap: AC-LNC-003 (runtime observation not possible in the implementer subagent)
 preserve_list_post_run_count: not measured
 l44_pre_commit_fetch: not run (no push; lane-local)
