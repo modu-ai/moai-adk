@@ -430,7 +430,7 @@ func TestUpdateNeverFlipsModeRecord(t *testing.T) {
 // the user-asset install surface (M4), never the sync's removal targets.
 // The joint t1547×t1509 contract a force run must hold: the record never
 // flips (REQ-018), every common-root file survives byte-for-byte, and the
-// summary lists the user's own skill as preserved.
+// summary counts the user's own skill among the preserved files.
 func TestForceUpdatePreservesUserCommonAssets(t *testing.T) {
 	root := buildMigrationFixture(t)
 	runUpdateCobraCmd(t, root, map[string]string{"yes": "true"})
@@ -449,8 +449,13 @@ func TestForceUpdatePreservesUserCommonAssets(t *testing.T) {
 		t.Errorf("force update absorbed the user-modified skill:\n%s", got)
 	}
 	assertFilePresent(t, root, migIdenticalSkill)
-	if !strings.Contains(out, "moai-custom") {
-		t.Errorf("force-run summary did not list the preserved foreign skill:\n%s", out)
+	// REQ-RC30-015 (U-16): the default summary counts the preserved files and
+	// names no preserved path; the path list is --verbose only.
+	if !strings.Contains(out, "file(s) (run with --verbose to list)") {
+		t.Errorf("force-run summary did not count the preserved foreign skill:\n%s", out)
+	}
+	if strings.Contains(out, "preserved: "+migForeignSkill) {
+		t.Errorf("force-run summary listed the preserved foreign skill by path by default:\n%s", out)
 	}
 }
 
@@ -461,7 +466,7 @@ func TestForceUpdatePreservesUserCommonAssets(t *testing.T) {
 // behavior this test previously pinned. The next recorded-local update
 // RECONCILES the managed roots: a foreign file under the moai* managed glob
 // (template-carriage gate — not carried, no manifest record) classifies
-// user-owned and survives byte-for-byte, listed in the reconciliation
+// user-owned and survives byte-for-byte, counted in the reconciliation
 // summary (REQ-UPM-002/013; AC-UPM-001's flow-level form). The old
 // managed-glob removal-with-backup was exactly the D-15 loss path
 // REQ-UPM-002 exists to close (leader-approved test-contract update,
@@ -481,13 +486,16 @@ func TestNotDemonstratedPreservationHoldsAtNextLocalUpdate(t *testing.T) {
 
 	// Run 2 — the recorded-local update reconciles the managed roots: the
 	// foreign skill is user-owned (never removal-eligible) and survives
-	// byte-for-byte, and the summary lists it as preserved.
+	// byte-for-byte, and the summary counts it as preserved.
 	out, _ := runUpdateCobraCmd(t, root, map[string]string{"yes": "true", "no-plugin": "true", "force": "true"})
 	if got := readFixtureFile(t, root, migForeignSkill); got != foreignBefore {
 		t.Errorf("run 2 altered the foreign skill:\n%s", got)
 	}
-	if !strings.Contains(out, "moai-custom") {
-		t.Errorf("run 2 summary did not list the preserved foreign skill:\n%s", out)
+	if !strings.Contains(out, "file(s) (run with --verbose to list)") {
+		t.Errorf("run 2 summary did not count the preserved foreign skill:\n%s", out)
+	}
+	if strings.Contains(out, "preserved: "+migForeignSkill) {
+		t.Errorf("run 2 summary listed the preserved foreign skill by path by default:\n%s", out)
 	}
 }
 
@@ -516,8 +524,11 @@ func TestPreservedSectionSurvivesRestoreUntouched(t *testing.T) {
 	}
 
 	out, _ := runUpdateCobraCmd(t, root, map[string]string{"yes": "true"})
-	if !strings.Contains(out, "local-only.yaml") {
-		t.Errorf("summary did not report the local-only section as preserved:\n%s", out)
+	if !strings.Contains(out, "file(s) (run with --verbose to list)") {
+		t.Errorf("summary did not count the local-only section among the preserved files:\n%s", out)
+	}
+	if strings.Contains(out, "preserved: "+localOnly) {
+		t.Errorf("default summary listed the local-only section by path:\n%s", out)
 	}
 	if got := readFixtureFile(t, root, localOnly); got != content {
 		t.Errorf("the update rewrote the preserved local-only section file:\n--- before ---\n%s\n--- after ---\n%s", content, got)
@@ -677,6 +688,7 @@ func TestUnknownSkillPreservedAcrossLocalUpdates(t *testing.T) {
 // ---------------------------------------------------------------------------
 // Card t1438 card-review findings 1 and 2
 func TestMigrationPreservesExistingMirrorEntries(t *testing.T) {
+	enableRemovalForTest(t)
 	root := buildMigrationFixture(t)
 	mirrorEntry := filepath.Join(root, ".agents", "skills", "moai-foundation-core")
 	if err := os.MkdirAll(filepath.Dir(mirrorEntry), 0o755); err != nil {
@@ -1048,7 +1060,11 @@ func TestAgentsSkillsCounterpartMapsToClaudeSource(t *testing.T) {
 	if err != nil {
 		t.Fatalf("embedded source: %v", err)
 	}
-	sum := sha256.Sum256(current)
+	// The agents-skills root is a Codex face: the installer writes the converted
+	// bytes (targetBytes → NormalizeCodexRoleForDeploy) and records their hash,
+	// so the healthy counterpart is the converted source, not the raw one.
+	installed := template.NormalizeCodexRoleForDeploy(current)
+	sum := sha256.Sum256(installed)
 	um := &userassets.Manifest{Files: map[string]userassets.FileEntry{
 		"agents-skills/moai-foundation-core/SKILL.md": {
 			SHA256: hex.EncodeToString(sum[:]), Bundle: "core",
@@ -1063,7 +1079,7 @@ func TestAgentsSkillsCounterpartMapsToClaudeSource(t *testing.T) {
 		t.Fatal(err)
 	}
 	userCopy := filepath.Join(dir, "moai-foundation-core", "SKILL.md")
-	if err := os.WriteFile(userCopy, current, 0o644); err != nil {
+	if err := os.WriteFile(userCopy, installed, 0o644); err != nil {
 		t.Fatal(err)
 	}
 
@@ -1124,8 +1140,11 @@ func TestPostRemovalUserFileSurvivesNextUpdate(t *testing.T) {
 	} else if string(data) != userBytes {
 		t.Errorf("the next update rewrote the user's post-removal local file: %q", data)
 	}
-	if !strings.Contains(out, "zzz-stale-never-in-template") {
-		t.Errorf("the preserved post-removal file never reached the summary:\n%s", out)
+	if !strings.Contains(out, "file(s) (run with --verbose to list)") {
+		t.Errorf("the preserved post-removal file was not counted in the summary:\n%s", out)
+	}
+	if strings.Contains(out, "preserved: "+staleRel) {
+		t.Errorf("default summary listed the preserved post-removal file by path:\n%s", out)
 	}
 }
 
@@ -1196,6 +1215,7 @@ func TestAgentsOriginSkillMapsToItsOwnCatalogSource(t *testing.T) {
 // confirms — the preview must state that conditional removal as its own
 // disposition, never fold it into "user-owned — left untouched".
 func TestPreviewFlagsMigrationRemovalCandidates(t *testing.T) {
+	enableRemovalForTest(t)
 	root := t.TempDir()
 	embedded, err := template.EmbeddedTemplates()
 	if err != nil {
@@ -1234,8 +1254,148 @@ func TestPreviewFlagsMigrationRemovalCandidates(t *testing.T) {
 	if strings.Contains(got, "preserved: "+migIdenticalSkill) {
 		t.Errorf("the migration candidate was also listed as user-owned — the dispositions must not overlap:\n%s", got)
 	}
-	if !strings.Contains(got, "preserved: "+migForeignSkill) {
-		t.Errorf("the control (untracked local-only skill) must stay plain preserved:\n%s", got)
+	// Default (no --verbose): the control is counted, not listed by path, and the
+	// count line says the migration candidate sits outside the count.
+	// TestPreviewFlagsMigrationRemovalCandidates_VerboseListsControl keeps the
+	// path check.
+	if !strings.Contains(got, "[dry-run] preserved: 1 file(s)") {
+		t.Errorf("the control (untracked local-only skill) must stay plain preserved in the count:\n%s", got)
+	}
+	if strings.Contains(got, "preserved: "+migForeignSkill) {
+		t.Errorf("default preview lists the control path by name; the count is the default:\n%s", got)
+	}
+	if !strings.Contains(got, "migration candidates are not counted here (listed above)") {
+		t.Errorf("the count line must say the migration candidate is outside the count:\n%s", got)
+	}
+}
+
+// TestPreviewFlagsMigrationRemovalCandidates_VerboseListsControl is the --verbose
+// twin of TestPreviewFlagsMigrationRemovalCandidates: the same fixture, with the
+// control listed by path and the migration candidate kept out of the preserved
+// listing. It is serial because it sets updateVerboseMode.
+func TestPreviewFlagsMigrationRemovalCandidates_VerboseListsControl(t *testing.T) {
+	enableRemovalForTest(t)
+	withVerboseMode(t)
+	root := t.TempDir()
+	embedded, err := template.EmbeddedTemplates()
+	if err != nil {
+		t.Fatal(err)
+	}
+	identical, err := fs.ReadFile(embedded, migIdenticalSkill)
+	if err != nil {
+		t.Fatalf("embedded read: %v", err)
+	}
+	writeFixtureFile(t, root, migIdenticalSkill, string(identical))
+	mgr := manifest.NewManager()
+	if _, err := mgr.Load(root); err != nil {
+		t.Fatal(err)
+	}
+	if err := mgr.Track(migIdenticalSkill, manifest.TemplateManaged, manifest.HashBytes(identical)); err != nil {
+		t.Fatal(err)
+	}
+	if err := mgr.Save(); err != nil {
+		t.Fatal(err)
+	}
+	writeFixtureFile(t, root, migForeignSkill, "# moai-custom: the user's own skill\n")
+
+	var out bytes.Buffer
+	if err := previewReconciliation(root, template.DeployModeLocal, &out); err != nil {
+		t.Fatalf("previewReconciliation (verbose): %v", err)
+	}
+	got := out.String()
+
+	if !strings.Contains(got, "[dry-run] preserved: "+migForeignSkill) {
+		t.Errorf("verbose preview must list the control (untracked local-only skill) by path:\n%s", got)
+	}
+	if strings.Contains(got, "[dry-run] preserved: "+migIdenticalSkill) {
+		t.Errorf("the migration candidate was listed as user-owned under --verbose:\n%s", got)
+	}
+}
+
+// TestPreviewOmitsRemovalCandidateWhileSwitchOff: with the removal switch at its
+// default (off) the migration keeps the copy, so the dry-run preview must not
+// announce its removal as a candidate. The copy is still counted, not dropped;
+// TestPreviewOmitsRemovalCandidateWhileSwitchOff_VerboseNamesCopy names it.
+func TestPreviewOmitsRemovalCandidateWhileSwitchOff(t *testing.T) {
+	root := t.TempDir()
+	embedded, err := template.EmbeddedTemplates()
+	if err != nil {
+		t.Fatal(err)
+	}
+	identical, err := fs.ReadFile(embedded, migIdenticalSkill)
+	if err != nil {
+		t.Fatalf("embedded read: %v", err)
+	}
+	writeFixtureFile(t, root, migIdenticalSkill, string(identical))
+	mgr := manifest.NewManager()
+	if _, err := mgr.Load(root); err != nil {
+		t.Fatal(err)
+	}
+	if err := mgr.Track(migIdenticalSkill, manifest.TemplateManaged, manifest.HashBytes(identical)); err != nil {
+		t.Fatal(err)
+	}
+	if err := mgr.Save(); err != nil {
+		t.Fatal(err)
+	}
+
+	var out bytes.Buffer
+	if err := previewReconciliation(root, template.DeployModeLocal, &out); err != nil {
+		t.Fatalf("previewReconciliation: %v", err)
+	}
+	got := out.String()
+
+	if strings.Contains(got, "migration candidate: "+migIdenticalSkill) {
+		t.Errorf("the preview announces a removal the switched-off migration will not make:\n%s", got)
+	}
+	// Default (no --verbose): the copy is counted as preserved, not dropped.
+	// TestPreviewOmitsRemovalCandidateWhileSwitchOff_VerboseNamesCopy keeps the
+	// path check.
+	if !strings.Contains(got, "[dry-run] preserved: 1 file(s)") {
+		t.Errorf("the preview dropped the copy instead of counting it as preserved:\n%s", got)
+	}
+	if strings.Contains(got, "[dry-run] preserved: "+migIdenticalSkill) {
+		t.Errorf("default preview lists the copy by path; the count is the default:\n%s", got)
+	}
+}
+
+// TestPreviewOmitsRemovalCandidateWhileSwitchOff_VerboseNamesCopy is the
+// --verbose twin of TestPreviewOmitsRemovalCandidateWhileSwitchOff: with the
+// switch off, the copy is listed by path as preserved and is not announced as a
+// migration candidate. It is serial because it sets updateVerboseMode.
+func TestPreviewOmitsRemovalCandidateWhileSwitchOff_VerboseNamesCopy(t *testing.T) {
+	withVerboseMode(t)
+	root := t.TempDir()
+	embedded, err := template.EmbeddedTemplates()
+	if err != nil {
+		t.Fatal(err)
+	}
+	identical, err := fs.ReadFile(embedded, migIdenticalSkill)
+	if err != nil {
+		t.Fatalf("embedded read: %v", err)
+	}
+	writeFixtureFile(t, root, migIdenticalSkill, string(identical))
+	mgr := manifest.NewManager()
+	if _, err := mgr.Load(root); err != nil {
+		t.Fatal(err)
+	}
+	if err := mgr.Track(migIdenticalSkill, manifest.TemplateManaged, manifest.HashBytes(identical)); err != nil {
+		t.Fatal(err)
+	}
+	if err := mgr.Save(); err != nil {
+		t.Fatal(err)
+	}
+
+	var out bytes.Buffer
+	if err := previewReconciliation(root, template.DeployModeLocal, &out); err != nil {
+		t.Fatalf("previewReconciliation (verbose): %v", err)
+	}
+	got := out.String()
+
+	if strings.Contains(got, "migration candidate: "+migIdenticalSkill) {
+		t.Errorf("the preview announces a removal the switched-off migration will not make:\n%s", got)
+	}
+	if !strings.Contains(got, "[dry-run] preserved: "+migIdenticalSkill) {
+		t.Errorf("verbose preview must name the copy by path as preserved, got:\n%s", got)
 	}
 }
 
@@ -1246,6 +1406,7 @@ func TestPreviewFlagsMigrationRemovalCandidates(t *testing.T) {
 // no longer see an already-removed file, so the deletion vanished from
 // every list.
 func TestTallyCountsMigrationRemovals(t *testing.T) {
+	enableRemovalForTest(t)
 	root := buildMigrationFixture(t)
 	home := installMigrationUserCounterparts(t)
 	t.Setenv("HOME", home)

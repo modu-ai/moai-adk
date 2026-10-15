@@ -5,6 +5,10 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"strconv"
+	"strings"
+	"sync"
+	"time"
 
 	"github.com/modu-ai/moai-adk/internal/config/atomicfile"
 	"github.com/modu-ai/moai-adk/internal/defs"
@@ -71,23 +75,358 @@ func RenderTierPermissions(projectSettingsPath, userSettingsPath, defaultMode st
 		Raw:         map[string]json.RawMessage{},
 	}
 
-	// PROJECT scope: deny + ask ONLY. defaultMode is reset to "" so auto/
-	// bypassPermissions never land here (AP-6). Preserve Raw extras.
+	if err := renderIntoFile(userSettingsPath, userBlock); err != nil {
+		return nil, fmt.Errorf("USER scope render: %w", err)
+	}
+
+	// Record-protocol serialization (card t1630 sync-audit F2): the whole
+	// span — record read, Q5 classification, stage-ahead, PROJECT settings
+	// write, converge/rollback — is serialized so a concurrent render cannot
+	// interleave a stale converge past a newer one and invert the record
+	// against the settings file (which resurrects revoked entries). One
+	// package-level mutex is deliberately coarser than a per-project lock
+	// registry: record spans are rare file writes, and a single primitive
+	// avoids a global registry map. BuildInto holds the same mutex for its
+	// TargetJSON (project settings) span.
+	recordProtocolMu.Lock()
+	defer recordProtocolMu.Unlock()
+
+	// Inter-process lock (card t1630 sync-audit F2'): two concurrent moai OS
+	// processes interleave outside recordProtocolMu, so the same span is also
+	// guarded by the project-scoped lockfile. Mutex first, file lock second —
+	// intra-process callers queue on the mutex and only one touches the
+	// lockfile.
+	releaseRecordLock, err := acquireProjectRecordLock(projectSettingsPath)
+	if err != nil {
+		return nil, fmt.Errorf("acquire record lock: %w", err)
+	}
+	defer releaseRecordLock()
+
+	// The Q5 classification reads the PREVIOUS render's record and the
+	// current project file — inside the protocol span, per F2.
+	prior := readManagedAllowRecordList(projectSettingsPath)
 	projectBlock := &PermissionsBlock{
-		Allow: full.Allow, // allow stays with the project allowlist
+		Allow: mergeProjectAllow(projectSettingsPath, full.Allow), // regenerated ∪ user-added
 		Ask:   full.Ask,
 		Deny:  full.Deny,
 		Raw:   map[string]json.RawMessage{},
 	}
 
-	if err := renderIntoFile(userSettingsPath, userBlock); err != nil {
-		return nil, fmt.Errorf("USER scope render: %w", err)
+	// Record-ahead (card t1630 card-review round 2, P2-1): stage the record
+	// BEFORE the PROJECT settings mutation. If the project write later fails,
+	// the record is rolled back to prior (F3) — see the failure path below.
+	if err := stageManagedAllowRecord(projectSettingsPath, full.Allow); err != nil {
+		return nil, fmt.Errorf("stage managed-allow record: %w", err)
 	}
 	if err := renderIntoFile(projectSettingsPath, projectBlock); err != nil {
+		// Rollback (card t1630 sync-audit F3): a failed settings write must
+		// not leave the staged union behind — an entry it upgraded to managed
+		// (because the policy coincidentally generates it) would be dropped
+		// by a later policy revision, deleting a user-authored allow entry.
+		if rbErr := rollbackManagedAllowRecord(projectSettingsPath, prior); rbErr != nil {
+			return nil, fmt.Errorf("PROJECT scope render: %w (record rollback failed: %v)", err, rbErr)
+		}
 		return nil, fmt.Errorf("PROJECT scope render: %w", err)
+	}
+	// Converge the record to exactly this render's generation now that the
+	// project file actually carries it — the closing half of the
+	// stage/converge pair (card t1630 card-review P1).
+	if err := persistManagedAllowRecord(projectSettingsPath, full.Allow); err != nil {
+		return nil, fmt.Errorf("persist managed-allow record: %w", err)
 	}
 
 	return &TierRenderResult{UserPath: userSettingsPath, ProjectPath: projectSettingsPath}, nil
+}
+
+// recordProtocolMu serializes the sidecar record protocol — record read, Q5
+// classification, stage-ahead, project settings write, converge/rollback —
+// across RenderTierPermissions and BuildInto (card t1630 sync-audit F2).
+// Concurrent renders that interleave a stale converge past a newer one invert
+// the record against the settings file: an entry the policy has since revoked
+// then reads as never-generated and persists as user-added. One package-level
+// mutex is deliberately coarser than a per-project lock registry — record
+// spans are rare file writes, and a single primitive avoids a global
+// registry map. BuildInto holds it only for the TargetJSON (project settings)
+// target.
+var recordProtocolMu sync.Mutex
+
+// Inter-process record-lock parameters (card t1630 sync-audit F2'): the
+// lockfile is retried at this interval for at most this budget; on budget
+// exhaustion the holder is probed, and a holder that is provably dead — or a
+// lockfile whose mtime age exceeds the stale bound (windows has no portable
+// liveness probe, so the age bound is its takeover test) — is taken over.
+// A LIVE holder beyond the budget surfaces an error: bounded retry, never an
+// infinite wedge.
+const (
+	recordLockRetryInterval = 50 * time.Millisecond
+	recordLockRetryBudget   = 5 * time.Second
+	recordLockStaleAge      = 30 * time.Second
+)
+
+// managedAllowLockPath derives the inter-process lockfile path: beside the
+// sidecar record, `<projectRoot>/.moai/state/tool-policy/managed-allow.lock`.
+func managedAllowLockPath(projectSettingsPath string) string {
+	return filepath.Join(filepath.Dir(managedAllowRecordPath(projectSettingsPath)), "managed-allow.lock")
+}
+
+// acquireProjectRecordLock acquires the project-scoped inter-process record
+// lock (card t1630 sync-audit F2'): an O_CREATE|O_EXCL create of the lockfile
+// is atomic on darwin/linux/windows. On EEXIST the acquire retries at
+// recordLockRetryInterval for up to recordLockRetryBudget; at budget
+// exhaustion the lockfile's recorded pid and mtime age decide between
+// takeover (holder provably dead, or lockfile older than recordLockStaleAge)
+// and an error. The lockfile records the holder pid + creation timestamp;
+// release removes the file. Callers must hold recordProtocolMu first — the
+// mutex queues intra-process callers so only one touches the lockfile; the
+// file lock arbitrates across processes.
+func acquireProjectRecordLock(projectSettingsPath string) (func(), error) {
+	lockPath := managedAllowLockPath(projectSettingsPath)
+	if err := os.MkdirAll(filepath.Dir(lockPath), 0o755); err != nil {
+		return nil, fmt.Errorf("create record lock dir: %w", err)
+	}
+	deadline := time.Now().Add(recordLockRetryBudget)
+	for {
+		f, err := os.OpenFile(lockPath, os.O_CREATE|os.O_EXCL|os.O_WRONLY, 0o600)
+		if err == nil {
+			// A lockfile we could not stamp (or close) is released at once: an
+			// empty/unparseable lockfile would be takeover-judged by age
+			// alone, and a failed remove still resolves via the stale bound.
+			if _, wErr := fmt.Fprintf(f, "pid=%d created=%s\n", os.Getpid(), time.Now().UTC().Format(time.RFC3339Nano)); wErr != nil {
+				_ = f.Close()
+				_ = os.Remove(lockPath)
+				return nil, fmt.Errorf("stamp record lock %s: %w", lockPath, wErr)
+			}
+			if cErr := f.Close(); cErr != nil {
+				_ = os.Remove(lockPath)
+				return nil, fmt.Errorf("close record lock %s: %w", lockPath, cErr)
+			}
+			var released bool
+			return func() {
+				if released {
+					return
+				}
+				released = true
+				_ = os.Remove(lockPath)
+			}, nil
+		}
+		if !os.IsExist(err) {
+			return nil, fmt.Errorf("create record lock %s: %w", lockPath, err)
+		}
+		if time.Now().After(deadline) {
+			if takeoverErr := takeoverStaleRecordLock(lockPath); takeoverErr == nil {
+				continue // lockfile removed — retry the exclusive create at once
+			}
+			return nil, fmt.Errorf("record lock %s held by another process (retry budget exhausted; holder alive, lock fresh)", lockPath)
+		}
+		time.Sleep(recordLockRetryInterval)
+	}
+}
+
+// takeoverStaleRecordLock removes the lockfile when its holder is provably
+// dead or its mtime age exceeds recordLockStaleAge, and records the takeover
+// by simply removing the file (the next exclusive create re-stamps a new
+// holder). Any error leaves the decision to the caller: the acquire loop
+// surfaces its bounded-retry error rather than forcing through a lock it
+// could not judge.
+func takeoverStaleRecordLock(lockPath string) error {
+	info, err := os.Stat(lockPath)
+	if err != nil {
+		return err // gone — the holder released; the caller's retry will win
+	}
+	if time.Since(info.ModTime()) < recordLockStaleAge {
+		if body, readErr := os.ReadFile(lockPath); readErr == nil {
+			if pid, ok := parseRecordLockPid(body); ok && pidProvablyDead(pid) {
+				return os.Remove(lockPath)
+			}
+		}
+		return fmt.Errorf("lockfile holder not provably dead and lockfile age under the stale bound")
+	}
+	return os.Remove(lockPath)
+}
+
+// parseRecordLockPid extracts the recorded holder pid from a lockfile body.
+// ok is false for an unparseable body (the age bound then governs takeover).
+func parseRecordLockPid(body []byte) (int, bool) {
+	for _, line := range strings.Split(string(body), "\n") {
+		for _, field := range strings.Fields(line) {
+			if !strings.HasPrefix(field, "pid=") {
+				continue
+			}
+			pid, err := strconv.Atoi(strings.TrimPrefix(field, "pid="))
+			if err != nil {
+				return 0, false
+			}
+			return pid, true
+		}
+	}
+	return 0, false
+}
+
+// managedAllowRecordPath derives the sidecar record path from the project
+// settings path: <project>/.claude/settings.json names the project root two
+// levels up, so the record lives at
+// <projectRoot>/.moai/state/tool-policy/managed-allow.json. Read and write
+// sides share this one derivation.
+func managedAllowRecordPath(projectSettingsPath string) string {
+	root := filepath.Dir(filepath.Dir(projectSettingsPath))
+	return filepath.Join(root, ".moai", "state", "tool-policy", "managed-allow.json")
+}
+
+// readManagedAllowRecordList returns the sidecar record's last_generated list,
+// or nil when the record is absent or unreadable — the same fail-open stance
+// the classification takes (an unreadable record classifies every existing
+// entry as user-added, which never removes anything).
+func readManagedAllowRecordList(projectSettingsPath string) []string {
+	body, err := os.ReadFile(managedAllowRecordPath(projectSettingsPath))
+	if err != nil {
+		return nil
+	}
+	var rec managedAllowRecord
+	if json.Unmarshal(body, &rec) != nil {
+		return nil
+	}
+	return rec.LastGenerated
+}
+
+// writeManagedAllowRecord overwrites the sidecar record with entries,
+// creating the directory and file when absent (mode-preserving atomic write).
+func writeManagedAllowRecord(projectSettingsPath string, entries []string) error {
+	if entries == nil {
+		entries = []string{}
+	}
+	out, err := json.MarshalIndent(managedAllowRecord{LastGenerated: entries}, "", "  ")
+	if err != nil {
+		return fmt.Errorf("encode managed-allow record: %w", err)
+	}
+	path := managedAllowRecordPath(projectSettingsPath)
+	if err := os.MkdirAll(filepath.Dir(path), 0o755); err != nil {
+		return fmt.Errorf("create managed-allow record dir: %w", err)
+	}
+	if err := atomicfile.Write(path, out, defs.FilePerm); err != nil {
+		return fmt.Errorf("write managed-allow record: %w", err)
+	}
+	return nil
+}
+
+// unionStrings merges b into a order-stably, dropping duplicates.
+func unionStrings(a, b []string) []string {
+	seen := make(map[string]bool, len(a)+len(b))
+	out := make([]string, 0, len(a)+len(b))
+	for _, s := range a {
+		if !seen[s] {
+			seen[s] = true
+			out = append(out, s)
+		}
+	}
+	for _, s := range b {
+		if !seen[s] {
+			seen[s] = true
+			out = append(out, s)
+		}
+	}
+	return out
+}
+
+// stageManagedAllowRecord records the union of the record's prior content and
+// the list a render is about to generate, written BEFORE the project settings
+// are mutated. Staging ahead means: new managed entries are known to the
+// record before the settings file can gain them, and an entry the settings
+// file still holds keeps its managed classification even when this render's
+// settings write fails — the next successful render then either re-adds the
+// still-generated entries as managed or drops the revoked one. A staging
+// failure fails the render before any settings mutation.
+func stageManagedAllowRecord(projectSettingsPath string, generated []string) error {
+	return writeManagedAllowRecord(projectSettingsPath,
+		unionStrings(readManagedAllowRecordList(projectSettingsPath), generated))
+}
+
+// persistManagedAllowRecord converges the sidecar record to exactly the
+// generation that landed in the project file — the closing half of the
+// stage/converge pair. After a fully successful render the record reads
+// exactly "the managed allow list last generated"; a converge failure leaves
+// the staged superset, which is the safe direction (it can only mark more
+// entries as managed).
+func persistManagedAllowRecord(projectSettingsPath string, generated []string) error {
+	return writeManagedAllowRecord(projectSettingsPath, generated)
+}
+
+// rollbackManagedAllowRecord restores the sidecar record to its pre-render
+// content after a FAILED settings write (card t1630 sync-audit F3): the
+// stage-ahead must not upgrade entries to managed unless the settings write
+// that would land them succeeds — otherwise a later policy revision dropping
+// the entry deletes a user-authored allow (a tool-initiated removal of a
+// user-owned entry, against the decided Q5 rule). A nil prior (no record
+// existed before the stage) rolls back to record-absent by removing the
+// staged file. It runs inside the record-protocol span, so the restore cannot
+// race a concurrent render.
+func rollbackManagedAllowRecord(projectSettingsPath string, prior []string) error {
+	if prior == nil {
+		if err := os.Remove(managedAllowRecordPath(projectSettingsPath)); err != nil && !os.IsNotExist(err) {
+			return err
+		}
+		return nil
+	}
+	return writeManagedAllowRecord(projectSettingsPath, prior)
+}
+
+// managedAllowRecord mirrors the sidecar record at
+// <projectRoot>/.moai/state/tool-policy/managed-allow.json, which carries the
+// managed allow list last generated into the project file
+// (SPEC-USER-SETTINGS-PROTECT-001 decision Q5; detection pinned in
+// progress.md §G, G-20). Every policy-generation path maintains it:
+// RenderTierPermissions stages prior ∪ generated before the PROJECT settings
+// mutation and converges to the exact generation once the write lands
+// (stageManagedAllowRecord / persistManagedAllowRecord); BuildInto does the
+// same for the TargetJSON project-settings target. Across a failed settings
+// write the record is rolled back to its pre-render content
+// (rollbackManagedAllowRecord) — a failed render leaves no trace. The union
+// classification reads the PREVIOUS render's record before the overwrite.
+type managedAllowRecord struct {
+	LastGenerated []string `json:"last_generated"`
+}
+
+// mergeProjectAllow keeps user-added permissions.allow entries across a
+// PROJECT-scope regeneration (REQ-005, decided Q5). A user-added entry is an
+// existing allow entry absent from the sidecar record's last_generated list;
+// with no record every existing entry counts as user-added, so nothing is
+// removed. The result is the regenerated list with the user-added entries
+// appended in their existing-file order (order-stable set union). A
+// last_generated entry the document no longer generates is dropped — only the
+// user removes a user-added entry.
+//
+// @MX:NOTE: [AUTO] Q5 set-union — user-added allow entries survive the managed-block regeneration; a last_generated entry the doc no longer generates is dropped (SPEC-USER-SETTINGS-PROTECT-001)
+func mergeProjectAllow(projectSettingsPath string, regenerated []string) []string {
+	merged := append([]string{}, regenerated...)
+	seen := make(map[string]bool, len(regenerated))
+	for _, entry := range regenerated {
+		seen[entry] = true
+	}
+
+	body, err := os.ReadFile(projectSettingsPath)
+	if err != nil {
+		return merged
+	}
+	existing, extrErr := extractPermissions(body)
+	if extrErr != nil || existing == nil {
+		return merged
+	}
+
+	lastGenerated := map[string]bool{}
+	for _, entry := range readManagedAllowRecordList(projectSettingsPath) {
+		lastGenerated[entry] = true
+	}
+
+	for _, entry := range existing.Allow {
+		if lastGenerated[entry] {
+			// Managed entry the document no longer generates: dropped.
+			continue
+		}
+		if !seen[entry] {
+			seen[entry] = true
+			merged = append(merged, entry)
+		}
+	}
+	return merged
 }
 
 // WriteUserDefaultMode splices ONLY the defaultMode into the USER-scope
@@ -103,9 +442,36 @@ func RenderTierPermissions(projectSettingsPath, userSettingsPath, defaultMode st
 // region matcher has a target (mirrors renderIntoFile's create-on-absent path).
 // The parent directory is created on demand so the init path can write the
 // USER-scope ~/.claude/settings.json even when the directory does not yet exist.
+//
+// SPEC-USER-SETTINGS-PROTECT-001 (decision Q1, DECIDED): an existing USER-scope
+// permissions.defaultMode is KEPT on every path — the tier default is written
+// only when the key is absent. A present value means the user owns the setting,
+// so the writer returns without touching the file (REQ-002: the bytes stay
+// identical when nothing would change). The write path (absent defaultMode)
+// preserves the user's allow/ask/deny entries and every unmodelled permissions
+// key (REQ-001).
+//
+// @MX:NOTE: [AUTO] Q1 keep-rule — an existing USER defaultMode is never overwritten; the tier default is written only when the key is absent, and the write path preserves the user's lists (SPEC-USER-SETTINGS-PROTECT-001)
 func WriteUserDefaultMode(userPath, defaultMode string) error {
 	if err := os.MkdirAll(filepath.Dir(userPath), 0o755); err != nil {
 		return fmt.Errorf("create user settings dir: %w", err)
+	}
+	if body, readErr := os.ReadFile(userPath); readErr == nil {
+		if existing, extrErr := extractPermissions(body); extrErr == nil && existing != nil {
+			if existing.DefaultMode != "" {
+				// Q1 (SPEC-USER-SETTINGS-PROTECT-001): the user's value is
+				// kept; the file is left byte-identical.
+				return nil
+			}
+			// Absent defaultMode: write the tier default while preserving the
+			// user's allow/ask/deny and every unmodelled key (REQ-001).
+			// extractPermissions parsed the lists from the same body that
+			// renderIntoFile re-reads, so the splice keeps them.
+			existing.DefaultMode = defaultMode
+			return renderIntoFile(userPath, existing)
+		}
+	} else if !os.IsNotExist(readErr) {
+		return fmt.Errorf("read %q: %w", userPath, readErr)
 	}
 	block := &PermissionsBlock{
 		DefaultMode: defaultMode,

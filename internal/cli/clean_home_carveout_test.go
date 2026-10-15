@@ -21,6 +21,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/modu-ai/moai-adk/internal/config"
 	"github.com/modu-ai/moai-adk/pkg/version"
 )
 
@@ -105,14 +106,27 @@ func TestCleanHomeCarveOut_ForcePreservesCarvedSegments(t *testing.T) {
 	// Carved dir name nested inside the allowlisted debug/ container.
 	writeHomeFixtureFile(t, filepath.Join(root, "claude-profiles", "p1", "debug", "bin", "inner.log"), 10, agedTime(t))
 	// R1: credentials* inside an aged removed-* — the WHOLE dir must survive.
-	writeHomeFixtureFile(t, filepath.Join(root, "backups", "removed-mixed", "credentials.yaml"), 10, agedTime(t))
-	writeHomeFixtureFile(t, filepath.Join(root, "backups", "removed-mixed", "plain-sibling.yaml"), 10, agedTime(t))
-	if err := os.Chtimes(filepath.Join(root, "backups", "removed-mixed"), agedTime(t), agedTime(t)); err != nil {
+	// The keep-3 floor (SPEC-CAPACITY-RECLAIM-001 REQ-CAP-008) ranks by
+	// mtime, so the fixture carries three aged fillers ranked NEWER than
+	// removed-mixed: mixed ranks 4th — beyond the floor, so the whole-dir
+	// carve-out skip (not the rank floor) is the deciding protector — and
+	// removed-plain ranks 5th and is deleted, proving --force ran.
+	writeHomeFixtureFile(t, filepath.Join(root, "backups", "removed-mixed", "credentials.yaml"), 10, agedTime(t).Add(-1*time.Hour))
+	writeHomeFixtureFile(t, filepath.Join(root, "backups", "removed-mixed", "plain-sibling.yaml"), 10, agedTime(t).Add(-1*time.Hour))
+	if err := os.Chtimes(filepath.Join(root, "backups", "removed-mixed"), agedTime(t).Add(-1*time.Hour), agedTime(t).Add(-1*time.Hour)); err != nil {
 		t.Fatalf("chtimes removed-mixed: %v", err)
 	}
+	for i, keepDays := range []int{8, 9, 10} { // aged, ranked newer than removed-mixed
+		name := fmt.Sprintf("removed-keep-%d", i+1)
+		stamp := time.Now().AddDate(0, 0, -(config.DefaultHomeCleanRetentionDays + keepDays))
+		writeHomeFixtureFile(t, filepath.Join(root, "backups", name, "k.yaml"), 10, stamp)
+		if err := os.Chtimes(filepath.Join(root, "backups", name), stamp, stamp); err != nil {
+			t.Fatalf("chtimes %s: %v", name, err)
+		}
+	}
 	// A plain aged removed-* proves --force actually ran and deleted.
-	writeHomeFixtureFile(t, filepath.Join(root, "backups", "removed-plain", "x.yaml"), 10, agedTime(t))
-	if err := os.Chtimes(filepath.Join(root, "backups", "removed-plain"), agedTime(t), agedTime(t)); err != nil {
+	writeHomeFixtureFile(t, filepath.Join(root, "backups", "removed-plain", "x.yaml"), 10, agedTime(t).Add(-2*time.Hour))
+	if err := os.Chtimes(filepath.Join(root, "backups", "removed-plain"), agedTime(t).Add(-2*time.Hour), agedTime(t).Add(-2*time.Hour)); err != nil {
 		t.Fatalf("chtimes removed-plain: %v", err)
 	}
 
@@ -138,6 +152,9 @@ func TestCleanHomeCarveOut_ForcePreservesCarvedSegments(t *testing.T) {
 	}
 	mustExist = append(mustExist,
 		filepath.Join(root, "claude-profiles", "p1", "debug", "bin", "inner.log"),
+		filepath.Join(root, "backups", "removed-keep-1", "k.yaml"),
+		filepath.Join(root, "backups", "removed-keep-2", "k.yaml"),
+		filepath.Join(root, "backups", "removed-keep-3", "k.yaml"),
 		filepath.Join(root, "backups", "removed-mixed", "credentials.yaml"),
 		filepath.Join(root, "backups", "removed-mixed", "plain-sibling.yaml"),
 	)

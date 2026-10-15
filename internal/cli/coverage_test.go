@@ -467,8 +467,8 @@ func TestRunUpdate_DefaultIsTemplateSync(t *testing.T) {
 	}
 
 	output := buf.String()
-	if !strings.Contains(output, "Current version") {
-		t.Errorf("output should contain version info, got %q", output)
+	if !strings.Contains(stripSGR(output), "◆ MoAI-ADK") {
+		t.Errorf("output should carry the identity band, got %q", output)
 	}
 }
 

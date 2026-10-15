@@ -216,5 +216,49 @@ func (h *preToolHandler) checkProtectedZone(agentID, toolName, rawPath string) (
 			}
 		}
 	}
+	// M4 (SPEC-USERASSET-DEPLOY-GUARD-001): the user-root arm — its OWN
+	// branch (gate round 26 #3): user-root forms match only ZoneUserRoot
+	// entries, filtered by the manifest-tracked containment check; the
+	// baseline and project rules above never see them.
+	if load.State == config.ZoneStateOK {
+		// Gate round 43-1: the manifest protection arms BOTH tool paths —
+		// a Write/Edit replacing user-assets.json ({"files":{}}) unregisters
+		// every managed asset exactly as a destructive Bash command would,
+		// so the same no-tracked-ness denial applies here (category from
+		// the declared ZoneUserRoot entry when one exists, the compiled-in
+		// user_manifest category otherwise — mirroring the shell arm).
+		if mf := userManifestProtectForms(rawPath); len(mf) > 0 {
+			category := "user_manifest"
+			for i := range load.Zone.Entries {
+				if load.Zone.Entries[i].Kind == config.ZoneUserRoot {
+					category = load.Zone.Entries[i].Category
+					break
+				}
+			}
+			reason := zoneDenyReason(agentID, "category", category, mf[0].Display)
+			h.recordZoneAudit(root, zoneAuditRow{
+				Identity: agentID, Tool: toolName, Path: mf[0].Display,
+				Category: category, Decision: "deny", ManifestState: config.ZoneStateOK,
+			})
+			return SentinelHarnessFrozenProtectedZone, reason
+		}
+		for _, uf := range userRootZoneForms(rawPath) {
+			for i := range load.Zone.Entries {
+				entry := &load.Zone.Entries[i]
+				if entry.Kind != config.ZoneUserRoot || !entry.Match(uf.Folded) {
+					continue
+				}
+				if !userRootTracksAny("", uf.Display) {
+					continue
+				}
+				reason := zoneDenyReason(agentID, "category", entry.Category, uf.Display)
+				h.recordZoneAudit(root, zoneAuditRow{
+					Identity: agentID, Tool: toolName, Path: uf.Display,
+					Category: entry.Category, Decision: "deny", ManifestState: config.ZoneStateOK,
+				})
+				return SentinelHarnessFrozenProtectedZone, reason
+			}
+		}
+	}
 	return "", ""
 }

@@ -41,6 +41,11 @@ type Manager interface {
 
 	// Remove deletes a file entry from the manifest.
 	Remove(path string) error
+
+	// SetKeptBy records why a tracked entry stays project-side (FileEntry.KeptBy).
+	// Only that field changes, so the provenance and hashes stay as they are.
+	// It returns ErrEntryNotFound when path has no entry.
+	SetKeptBy(path, by string) error
 }
 
 // manifestManager is the concrete implementation of Manager.
@@ -209,6 +214,22 @@ func (m *manifestManager) Remove(path string) error {
 	}
 
 	delete(m.manifest.Files, path)
+	return nil
+}
+
+// SetKeptBy records why a tracked entry stays project-side. It rewrites the
+// one field: Track would replace the whole entry and drop the mark.
+func (m *manifestManager) SetKeptBy(path, by string) error {
+	if m.manifest == nil {
+		return fmt.Errorf("manifest set kept by: %w", ErrManifestNotFound)
+	}
+
+	entry, ok := m.manifest.Files[path]
+	if !ok {
+		return fmt.Errorf("manifest set kept by %s: %w", path, ErrEntryNotFound)
+	}
+	entry.KeptBy = by
+	m.manifest.Files[path] = entry
 	return nil
 }
 

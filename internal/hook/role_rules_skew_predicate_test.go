@@ -13,7 +13,7 @@ import "testing"
 // REQ-RIB-007 fixture-only, no live-repo self-assertion).
 func TestRoleRulesVersionSkewPredicate(t *testing.T) {
 	t.Run("equal stamps are not skewed", func(t *testing.T) {
-		skewed, _, ok := detectRoleRuleVersionSkew("template_version: v3.2.0\n", "v3.2.0")
+		skewed, _, ok := detectRoleRuleVersionSkew("moai:\n  template_version: v3.2.0\n", "v3.2.0")
 		if !ok {
 			t.Fatal("equal readable stamps must resolve (ok=true)")
 		}
@@ -22,7 +22,7 @@ func TestRoleRulesVersionSkewPredicate(t *testing.T) {
 		}
 	})
 	t.Run("differing stamps are skewed", func(t *testing.T) {
-		skewed, ruleVersion, ok := detectRoleRuleVersionSkew("template_version: v3.1.3\n", "v3.2.0-rc.29")
+		skewed, ruleVersion, ok := detectRoleRuleVersionSkew("moai:\n  template_version: v3.1.3\n", "v3.2.0-rc.29")
 		if !ok {
 			t.Fatal("both stamps readable must resolve (ok=true)")
 		}
