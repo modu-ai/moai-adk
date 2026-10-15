@@ -130,7 +130,7 @@ func TestRedirectHome_RefusesEmptyRealHome(t *testing.T) {
 }
 
 // TestRedirectHome_AcceptsUnrelatedRealHome: a real home beside the sandbox,
-// not above it, lets the redirect proceed and sets all nine variables.
+// not above it, lets the redirect proceed and sets all ten variables.
 func TestRedirectHome_AcceptsUnrelatedRealHome(t *testing.T) {
 	root := t.TempDir()
 	withRealHome(t, t.TempDir())
@@ -149,15 +149,15 @@ func TestRedirectHome_AcceptsUnrelatedRealHome(t *testing.T) {
 	}
 }
 
-// TestRedirectHome_SetsNineVariablesUnderTempDir runs the real helper and
-// checks the nine variables name paths under one sandbox root, with HOME
+// TestRedirectHome_SetsTenVariablesUnderTempDir runs the real helper and
+// checks the ten variables name paths under one sandbox root, with HOME
 // first and returned.
-func TestRedirectHome_SetsNineVariablesUnderTempDir(t *testing.T) {
+func TestRedirectHome_SetsTenVariablesUnderTempDir(t *testing.T) {
 	home := RedirectHome(t)
 	root := filepath.Dir(home)
 
-	if n := len(sandboxTargets(root)); n != 9 {
-		t.Fatalf("sandbox layout has %d variables; the guard covers exactly nine", n)
+	if n := len(sandboxTargets(root)); n != 10 {
+		t.Fatalf("sandbox layout has %d variables; the guard covers exactly ten", n)
 	}
 	for _, tg := range sandboxTargets(root) {
 		got := os.Getenv(tg.name)
@@ -167,6 +167,13 @@ func TestRedirectHome_SetsNineVariablesUnderTempDir(t *testing.T) {
 		if !strings.HasPrefix(got, root+string(filepath.Separator)) {
 			t.Errorf("%s = %q; want a path under the sandbox root %q", tg.name, got, root)
 		}
+	}
+	if got := os.Getenv("USERPROFILE"); got != home {
+		t.Fatalf("USERPROFILE = %q; want the sandbox HOME %q (os.UserHomeDir reads it on Windows)", got, home)
+	}
+	// home-guard:allow reads the sandbox HOME that RedirectHome just set, to prove os.UserHomeDir resolves inside it
+	if got, err := os.UserHomeDir(); err != nil || got != home {
+		t.Fatalf("os.UserHomeDir() = %q, %v; want the sandbox HOME %q", got, err, home)
 	}
 	if os.Getenv("HOME") != home {
 		t.Fatalf("HOME = %q; RedirectHome returned %q", os.Getenv("HOME"), home)

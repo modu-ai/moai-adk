@@ -2,7 +2,7 @@
 // packages of this repository. It has two halves that share no dependency on
 // the packages they guard:
 //
-//   - RedirectHome sandboxes the nine environment variables that resolve a home
+//   - RedirectHome sandboxes the ten environment variables that resolve a home
 //     directory or git's global config under t.TempDir, and refuses to continue when a redirected path
 //     would resolve under the operator's real home.
 //   - ScanTree is a light source scanner. It fails on a test file that reads the
@@ -70,7 +70,7 @@ type envTarget struct {
 	value string
 }
 
-// sandboxTargets lays the nine sandbox paths out under root. Each variable that
+// sandboxTargets lays the ten sandbox paths out under root. Each variable that
 // defaults to a directory under HOME points at the same directory under the
 // sandbox HOME, so a test that redirects HOME alone and a test that calls
 // RedirectHome observe the same layout. HOME comes first because RedirectHome
@@ -79,6 +79,8 @@ func sandboxTargets(root string) []envTarget {
 	home := filepath.Join(root, "home")
 	return []envTarget{
 		{"HOME", home},
+		// Same path as HOME: os.UserHomeDir reads USERPROFILE on Windows.
+		{"USERPROFILE", home},
 		{"CODEX_HOME", filepath.Join(home, ".codex")},
 		{"XDG_CONFIG_HOME", filepath.Join(home, ".config")},
 		{"XDG_DATA_HOME", filepath.Join(home, ".local", "share")},
@@ -93,7 +95,7 @@ func sandboxTargets(root string) []envTarget {
 	}
 }
 
-// RedirectHome forces the nine home-resolving variables under a fresh
+// RedirectHome forces the ten home-resolving variables under a fresh
 // t.TempDir and returns the sandbox HOME. Call it before the test touches any
 // file. t.Setenv restores every variable when the test ends, so the call must
 // not be combined with t.Parallel.
