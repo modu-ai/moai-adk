@@ -212,7 +212,8 @@ func CheckSeamHomes(realHome string, seamPaths []string) error {
 		if !filepath.IsAbs(clean) {
 			return fmt.Errorf("home guard: seam path %q is relative and cannot be judged", p)
 		}
-		if within(clean, home) || within(resolveForGuard(clean), resolvedHome) || sameFileAncestor(clean, home) {
+		if within(clean, home) || within(resolveForGuard(clean), resolvedHome) || sameFileAncestor(clean, home) ||
+			sameFileAncestor(resolveForGuard(clean), home) {
 			return fmt.Errorf("home guard: seam path %q resolves inside the real home %q", p, realHome)
 		}
 		if within(home, clean) || within(resolvedHome, resolveForGuard(clean)) || sameFileAncestor(home, clean) {
