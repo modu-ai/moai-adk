@@ -184,7 +184,7 @@ The status, diff, anchor, count, and grep rows were produced by the commands nam
 ### Gaps
 
 1. The tree-built binary's VCS stamp lags HEAD (see Baseline-attribution); the stamp was not corrected by a rebuild with ldflags.
-2. `sync_commit_sha` is the placeholder `pending-backfill` (a commit cannot cite its own hash); the real SHA is backfilled in a following commit. Until then the value is not a commit SHA.
+2. `sync_commit_sha` was the placeholder `pending-backfill` in the sync commit itself (a commit cannot cite its own hash); the real SHA has been backfilled in a following commit.
 3. The run-phase Gaps 1 to 7 in §E.2 were not re-observed in the sync phase and are carried by reference. In particular the repository-wide test verdict belongs to CI on the integration branch and was not observed here; no `go test` was run in the sync phase.
 4. The MCP audit and sync-audit tools were not run; the sync-auditor verdict is owned by the orchestrator.
 5. The CHANGELOG's description of the `notice` key on the MCP output rests on the SPEC's HISTORY row 0.1.2 (D21, `mcp_jev.go:114–116`); the sync phase did not re-run the MCP notice test.
@@ -195,7 +195,7 @@ The `completed` status of the two amended SPECs depends on the sync commit landi
 
 ```yaml
 sync_complete_at: 2026-10-15
-sync_commit_sha: pending-backfill
+sync_commit_sha: f009522d162ea5ce72905a54ccd22a1f2fbe47a4
 sync_status: complete
 b12_self_test_a: pass   # pre-emission grep: 0 before the edit
 b12_self_test_b: pass   # AC count 16, requirement count 14
