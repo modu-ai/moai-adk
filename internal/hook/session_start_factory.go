@@ -200,11 +200,14 @@ func factoryLanesEnv() int {
 
 // codexLanePrecedenceNote resolves the role core's read-first duty against
 // the lane boot directive for a Codex auto lane (card t1776 audit round-3):
-// the boot command governs the FIRST action; the rule files open when the
-// leased card's work needs them, not before.
+// the boot directive governs the FIRST action, and the rule files open when
+// the card's work needs them. No queue-start directive rides here — this
+// branch is an already-card-assigned session working its card worktree, and
+// `moai todo --auto` belongs to the card-less queue boot only (audit
+// round-4: the parent-checkout precondition would refuse it here).
 const codexLanePrecedenceNote = "Codex auto-lane precedence: the boot directive governs your first action — " +
-	"run `moai todo --auto` before any rule-file reading; " +
-	"open the rule files only when the leased card's work needs them."
+	"proceed with the leased card's work; " +
+	"open the rule files when that work needs them, not before."
 
 // codexLaneEnvFailFast is the t1776 one-line stop for a broken lane launch:
 // a session stamped with the Codex factory backend but missing its lane

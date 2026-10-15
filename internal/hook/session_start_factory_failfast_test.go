@@ -129,7 +129,10 @@ func TestFactoryLaneRuleGptCarriesPrecedence(t *testing.T) {
 	if !strings.Contains(rule, "Codex auto-lane precedence") {
 		t.Fatalf("owned-card rule does not carry the boot-directive precedence note:\n%s", rule)
 	}
-	if !strings.Contains(rule, "moai todo --auto") {
-		t.Fatalf("precedence note does not name the boot command:\n%s", rule)
+	// An already-card-assigned session works its card worktree — no
+	// queue-start directive rides the owned-card rule (audit round-4: the
+	// parent-checkout precondition would refuse it here).
+	if strings.Contains(rule, "moai todo --auto") {
+		t.Fatalf("owned-card rule must not direct a card-assigned session at the queue:\n%s", rule)
 	}
 }
