@@ -21,9 +21,10 @@ type UnmanagedRestoreRef struct {
 	// "side-copy" (the working file was kept and the backup copy was written beside
 	// it), "side-copy-blocked" (a different side copy already exists, so nothing
 	// was written), "side-copy-refused" (the side-copy name is a symbolic link or
-	// sits under one, so nothing was written), or "target-refused" (the target is a
-	// symbolic link, or its parent chain leads outside the config directory or cannot
-	// be resolved, so nothing was written).
+	// sits under one, or is not a regular file, so nothing was written or read), or
+	// "target-refused" (the target is a symbolic link or another non-regular file, or
+	// its parent chain leads outside the config directory or cannot be resolved, so
+	// nothing was written or read).
 	Action string
 }
 
@@ -102,6 +103,11 @@ func RestoreUnmanagedConfigDirsSkipping(projectRoot, backupDir string, skip func
 // restoreUnmanagedFile applies the restore rule to one target file. It returns
 // nil when there is nothing to report.
 func restoreUnmanagedFile(configDir, target string, backupData []byte, stamp string) (*UnmanagedRestoreRef, error) {
+	// A non-regular target (FIFO, device, socket) is never read: reading a FIFO blocks
+	// until a writer appears. It is refused and reported, as a symbolic link is.
+	if info, lerr := os.Lstat(target); lerr == nil && !info.Mode().IsRegular() {
+		return &UnmanagedRestoreRef{Action: "target-refused"}, nil
+	}
 	working, err := os.ReadFile(target)
 	switch {
 	case os.IsNotExist(err):
@@ -122,6 +128,10 @@ func restoreUnmanagedFile(configDir, target string, backupData []byte, stamp str
 	// The side copy is a write target like the working file: a symbolic link at its
 	// name, or a parent chain that leads out of configDir, refuses the write.
 	if !RestoreTargetContained(configDir, side) {
+		return &UnmanagedRestoreRef{Action: "side-copy-refused"}, nil
+	}
+	// A non-regular side copy is never read, for the same blocking reason as the target.
+	if info, lerr := os.Lstat(side); lerr == nil && !info.Mode().IsRegular() {
 		return &UnmanagedRestoreRef{Action: "side-copy-refused"}, nil
 	}
 	existing, err := os.ReadFile(side)
