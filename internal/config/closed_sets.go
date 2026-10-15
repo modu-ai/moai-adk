@@ -109,9 +109,10 @@ const (
 
 // DefaultGLMAuditModel / DefaultGLMAuditEffort are the GLM audit pin default —
 // {glm-5.3, max} (SPEC-AGENT-TIER-001 REQ-TIER-004/006). The model is the FULL
-// glm-5.3 (DefaultGLM53), deliberately NOT the flash slot default
-// (DefaultGLMHigh): the audit pin targets full glm-5.3 while the glm_task
-// delegation default stays on the flash variant (REQ-AMP-008). The effort
+// glm-5.3 (DefaultGLM53), declared independently of the High slot default
+// (DefaultGLMHigh): the glm_task delegation default tracks DefaultGLMHigh
+// (REQ-AMP-008), which card t1808 moved from glm-5.3-flash to glm-5.3, so the
+// two now coincide in value without sharing a source. The effort
 // value is a z.ai reasoning-state name — the {low, high, max} vocabulary,
 // stored and transmitted verbatim (REQ-AMP-006). internal/template owns the
 // GLMState* name constants and internal/config cannot import it, so the state
