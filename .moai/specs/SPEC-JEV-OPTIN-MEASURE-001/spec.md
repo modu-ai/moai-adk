@@ -2,7 +2,7 @@
 id: SPEC-JEV-OPTIN-MEASURE-001
 title: "Jev opt-in surfaces and the measurement gate"
 version: "0.2.0"
-status: in-progress
+status: completed
 created: 2026-09-20
 updated: 2026-10-15
 author: manager-spec

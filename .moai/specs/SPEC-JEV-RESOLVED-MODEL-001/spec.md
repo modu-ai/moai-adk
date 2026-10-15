@@ -2,7 +2,7 @@
 id: SPEC-JEV-RESOLVED-MODEL-001
 title: "Jev request alias jev-latest with the interpreted model recorded per answer"
 version: "0.1.2"
-status: in-progress
+status: completed
 created: 2026-10-15
 updated: 2026-10-15
 author: manager-spec

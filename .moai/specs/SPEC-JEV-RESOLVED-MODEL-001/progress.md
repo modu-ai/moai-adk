@@ -150,7 +150,63 @@ gaps: [1, 2, 3, 4, 5, 6, 7]   # numbered as in §E.2 Gaps
 
 ## §E.4 Sync-phase Audit-Ready Signal
 
-_<pending sync-phase>_
+Record format: Claim / Evidence / Baseline-attribution / Gaps / Residual-risk (`verification-claim-integrity.md` §3). Every observation below was made in the sync run, against the tree at HEAD `47fd09bb12c4801a17b52f84ac56af9d10b3e0ec` plus the uncommitted sync edits listed under Claim.
+
+### Claim
+
+The sync phase of SPEC-JEV-RESOLVED-MODEL-001 (card t1768) carries the single sync commit. That commit moves this SPEC's `spec.md` `status:` from `in-progress` to `completed` (the merged in-progress → implemented → completed transition) and returns SPEC-JEV-CORE-001 and SPEC-JEV-OPTIN-MEASURE-001 to `completed` by frontmatter-only changes (REQ-JRM-013, REQ-JRM-014). AC-JRM-016 is observed PASS. The CHANGELOG entry is added, and no `.moai/docs` file or README states the pinned model id or the alias as current behaviour.
+
+### Evidence
+
+| Check | Command | Observed result |
+|---|---|---|
+| Status of the three SPECs | `grep -n '^status: completed$'` on the three `spec.md` files | one line each: `SPEC-JEV-RESOLVED-MODEL-001/spec.md:5`, `SPEC-JEV-CORE-001/spec.md:5`, `SPEC-JEV-OPTIN-MEASURE-001/spec.md:5` |
+| AC-JRM-016, CORE diff | `git diff --unified=0 HEAD -- .moai/specs/SPEC-JEV-CORE-001/spec.md` (and the same against plan commit `cfb551796`) | one hunk, `@@ -5 +5 @@`, inside the frontmatter: `-status: in-progress` / `+status: completed`. The `updated:` line was already `2026-10-15` and is unchanged |
+| AC-JRM-016, OPTIN diff | the same two commands for `SPEC-JEV-OPTIN-MEASURE-001/spec.md` | one hunk, `@@ -5 +5 @@`, inside the frontmatter: `-status: in-progress` / `+status: completed`; `updated:` already `2026-10-15` |
+| AC-JRM-014 guard | `grep -n '^amendment_of: \|^- prior_completed_sha: '` on both amended SPECs | CORE line 15 `amendment_of: SPEC-JEV-CORE-001`, line 34 `- prior_completed_sha: c8731f965`; OPTIN line 16 `amendment_of: SPEC-JEV-OPTIN-MEASURE-001`, line 32 `- prior_completed_sha: 52c460d30` |
+| Lint (AC-JRM-015) | `<tree-built binary> spec lint` on the three SPEC directories | `No findings — all SPEC documents are valid` (the `StatusGitConsistency` warning on SPEC-JEV-OPTIN-MEASURE-001 recorded in §E.1 and §E.2 no longer appears) |
+| Audit (AC-JRM-015) | `<tree-built binary> spec audit --base-dir <worktree> --filter-spec <ID>` for each of the three SPECs | one finding each, `[INFO] <ID> (V3R6) — EraAutoDetected`; no `SyncStatusDrift` and no other drift finding |
+| CHANGELOG duplicate guard (B12) | `grep -c 'SPEC-JEV-RESOLVED-MODEL-001' CHANGELOG.md` | `0` before the edit, `1` after |
+| AC count (B12) | the MOAI-AC-COUNTER awk over `acceptance.md` (Tier M) | `16` (`live=16 excluded=0 ambiguous=0`); requirement lines `^\*\*REQ-JRM-` count `14` |
+| CHANGELOG file paths | `ls` of the six implementation paths and both `model-policy.md` copies | all exist |
+
+### Documentation review (plan OQ-6)
+
+| Surface | Command | Result |
+|---|---|---|
+| `.moai/docs/jev-local-operations.md`, `.moai/docs/kickoff-autonomy.md`, `.moai/docs/stale-card-premise-check.md` | `grep -rn -i 'jev-1.13.0\|jev-latest'` over the three files | no hit (exit 1); none states a pinned model id or the alias; none edited |
+| README, docs-site, `.moai/docs` | `grep -rln -i 'jev-1.13.0' README.md docs-site .moai/docs` | no hit (exit 1); nothing to edit or report |
+
+### Baseline-attribution
+
+The status, diff, anchor, count, and grep rows were produced by the commands named in their rows, in this run. The lint and audit rows used a binary built from the tree by `go -C <worktree> build -o <scratchpad>/moai-tree-sync ./cmd/moai` and invoked by absolute path (`verification-claim-integrity.md` §2.2). Its VCS stamp is `vcs.revision=478285ab4c1fc893b020bb464d14cb69c8422523`, `vcs.modified=true`; `git merge-base --is-ancestor` of that revision against HEAD `47fd09bb1` exits 0, so the stamp is a strict ancestor and lags the tree. `go build` compiled the on-disk files, so the judging code is the tree's.
+
+### Gaps
+
+1. The tree-built binary's VCS stamp lags HEAD (see Baseline-attribution); the stamp was not corrected by a rebuild with ldflags.
+2. `sync_commit_sha` is the placeholder `pending-backfill` (a commit cannot cite its own hash); the real SHA is backfilled in a following commit. Until then the value is not a commit SHA.
+3. The run-phase Gaps 1 to 7 in §E.2 were not re-observed in the sync phase and are carried by reference. In particular the repository-wide test verdict belongs to CI on the integration branch and was not observed here; no `go test` was run in the sync phase.
+4. The MCP audit and sync-audit tools were not run; the sync-auditor verdict is owned by the orchestrator.
+5. The CHANGELOG's description of the `notice` key on the MCP output rests on the SPEC's HISTORY row 0.1.2 (D21, `mcp_jev.go:114–116`); the sync phase did not re-run the MCP notice test.
+
+### Residual-risk
+
+The `completed` status of the two amended SPECs depends on the sync commit landing as one commit: a partial landing would leave an amended SPEC `completed` while its HISTORY row still reads as an amendment in flight. Until the backfill commit lands, `moai spec lint` may warn on the placeholder slot-format of `sync_commit_sha` in this SPEC's progress record, which the schema doctrine admits as a sanctioned intermediate state.
+
+```yaml
+sync_complete_at: 2026-10-15
+sync_commit_sha: pending-backfill
+sync_status: complete
+b12_self_test_a: pass   # pre-emission grep: 0 before the edit
+b12_self_test_b: pass   # AC count 16, requirement count 14
+b12_self_test_c: pass   # all CHANGELOG paths exist
+changelog_entry_position: "[Unreleased] > Added, first entry"
+frontmatter_status_transitions:
+  SPEC-JEV-RESOLVED-MODEL-001: in-progress -> completed
+  SPEC-JEV-CORE-001: in-progress -> completed
+  SPEC-JEV-OPTIN-MEASURE-001: in-progress -> completed
+ac_observed_pass_sync: AC-JRM-016
+```
 
 ## §G Override and Refusal Record
 
