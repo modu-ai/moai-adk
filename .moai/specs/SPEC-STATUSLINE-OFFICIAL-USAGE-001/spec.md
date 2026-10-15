@@ -2,7 +2,7 @@
 id: SPEC-STATUSLINE-OFFICIAL-USAGE-001
 title: "Statusline usage lookup: official input only (stdin rate_limits + local snapshot)"
 version: "0.3.0"
-status: in-progress
+status: completed
 created: 2026-10-15
 updated: 2026-10-15
 author: manager-spec

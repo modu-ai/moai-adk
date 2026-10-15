@@ -123,3 +123,17 @@ run_status: audit-ready
 run_complete_at: 2026-10-15T05:20:00Z
 run_commits: 180cecfd5 (M1), 65e04f664 (M2+M3)
 run_audit: self-verified 10/10 AC PASS (matrix in §E.2), coverage 94.0%, package lint 0 issues, suite + race + windows green on HEAD 65e04f664; evidence per command above. Awaiting sync-phase audit (sync-auditor owns the binding verdict).
+
+## §E.4 Sync-phase Audit-Ready Signal
+
+sync_status: audit-ready
+sync_complete_at: 2026-10-15T05:31:19Z
+sync_commit_sha: pending-backfill-sync
+
+**Binding-conditions disposition (sync re-read):** sou-debt-1 → **AC-SOU-010** (acceptance.md §D; REQ-SOU-006 mid-read abandonment pin) and sou-debt-2 → **AC-SOU-009** (acceptance.md §D, release-blocking; relative `gitdir:` pointer case) — both absorbed into plan.md M4 scope at `f87f31dfd` (header 갱신 note above) and **both disposed in run**: AC-SOU-010 PASS via `TestBuild_QuotaFallbackAbandonsMidRead` (context cancelled AFTER the read starts; 3s deadline excludes an entry-check-only mutant), AC-SOU-009 PASS via `TestBuild_QuotaFallbackWorktreeRelativeGitdir` + `TestBuild_QuotaFallbackDegradedMalformedGitdir` (§E.2 AC matrix, HEAD `65e04f664`). No unprocessed binding condition remains; the binding sync verdict is sync-auditor's.
+
+**Sync scope (this commit):** spec.md frontmatter `in-progress → implemented → completed` (status + updated only; `updated:` already 2026-10-15, unchanged), this §E.4, and the CHANGELOG `[Unreleased]` entry — zero code changes (run phase owns code).
+
+**Docs sweep (sync):** README 4-locale + docs-site statusline surfaces describe display semantics only — the 5H/7D rows ("요금제 사용률 + 초기화 시각" and the per-page rolling-window bullets) stay accurate under the new precedence (stdin `rate_limits` → local snapshot → n/a). Grep for the removed collection mechanism (haiku probe / api.anthropic usage / oauth usage / keychain / credentials) across `README*.md` + `docs-site/content/`: 0 mechanism hits — the only "Haiku" occurrences are context-window-class text (unrelated), and the only `api.*anthropic` occurrences are `api.z.ai/api/anthropic` GLM base URLs. No docs edit needed.
+
+**Card-review:** recorded not-performed — codex 401 on both surfaces (`.moai/reports/t1732/card-review.md`); the sync-phase audit path is unchanged (sync-auditor owns the binding verdict).
