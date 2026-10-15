@@ -357,7 +357,7 @@ func TestBuilder_Build_MissingContextWindow(t *testing.T) {
 	if strings.Contains(got, "CW:") {
 		t.Errorf("should not contain CW bar when context window missing, got %q", got)
 	}
-	// 5H/7D always shown at 0% (with 🔋 icon)
+	// 5H/7D always shown (n/a with no window source)
 	if !strings.Contains(got, "5H:") || !strings.Contains(got, "7D:") {
 		t.Errorf("should always contain 5H/7D bars, got %q", got)
 	}
@@ -417,32 +417,30 @@ func TestBuilderNormalizesMode(t *testing.T) {
 	input := &StdinData{
 		Model:         &ModelInfo{Name: "claude-sonnet-4-20250514"},
 		ContextWindow: &ContextWindowInfo{Used: 50000, Total: 200000},
+		// Anchor the state reads at an isolated dir: this test compares two
+		// builds for byte equality, and the live board's backlog/landed counts
+		// legitimately move between the builds on a busy machine — an
+		// environment race, not a mode-normalization difference.
+		Workspace: &WorkspaceInfo{ProjectDir: t.TempDir()},
 	}
-
-	// Inject a no-usage stub: without it New() auto-creates a usage collector
-	// pointed at the real home directory, which reads the host's keychain and
-	// issues a live OAuth API call with a deadline-less context — the hang in
-	// issue #1467 (readOAuthToken tries the macOS keychain first, so a temp
-	// HomeDir does not isolate it).
-	noUsage := &mockUsageProvider{data: nil}
 
 	// Builder created with "minimal" should behave as ModeDefault
 	builderMinimal := New(Options{
-		Mode:          "minimal",
-		NoColor:       true,
-		UsageProvider: noUsage,
+		GitProvider: &mockGitProvider{},
+		Mode:        "minimal",
+		NoColor:     true,
 	})
 	// Builder created with "compact" should also behave as ModeDefault
 	builderCompact := New(Options{
-		Mode:          ModeCompact,
-		NoColor:       true,
-		UsageProvider: noUsage,
+		GitProvider: &mockGitProvider{},
+		Mode:        ModeCompact,
+		NoColor:     true,
 	})
 	// Builder created with "default"
 	builderDefault := New(Options{
-		Mode:          ModeDefault,
-		NoColor:       true,
-		UsageProvider: noUsage,
+		GitProvider: &mockGitProvider{},
+		Mode:        ModeDefault,
+		NoColor:     true,
 	})
 
 	gotMinimal, err := builderMinimal.Build(context.Background(), makeStdinJSON(input))
@@ -470,15 +468,15 @@ func TestBuilderNormalizesMode(t *testing.T) {
 
 	// Builder created with "verbose" should behave as ModeFull("full")
 	builderVerbose := New(Options{
-		Mode:          "verbose",
-		NoColor:       true,
-		UsageProvider: noUsage,
+		GitProvider: &mockGitProvider{},
+		Mode:        "verbose",
+		NoColor:     true,
 	})
 	// Builder created with "full"
 	builderFull := New(Options{
-		Mode:          ModeFull,
-		NoColor:       true,
-		UsageProvider: noUsage,
+		GitProvider: &mockGitProvider{},
+		Mode:        ModeFull,
+		NoColor:     true,
 	})
 
 	gotVerbose, err := builderVerbose.Build(context.Background(), makeStdinJSON(input))
@@ -523,27 +521,14 @@ func TestBuilderCollectsTask(t *testing.T) {
 // TestBuilderCollectsTask_FieldExists verifies Task field exists on StatusData at compile time.
 func TestBuilderCollectsTask_FieldExists(t *testing.T) {
 	data := &StatusData{}
-	// Task and Usage fields must exist (compile-time verification)
+	// Task field must exist (compile-time verification)
 	_ = data.Task
-	_ = data.Usage
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Phase 6: Full pipeline integration tests (AC-V3-01 ~ AC-V3-13)
 // builder → renderer E2E verification
 // ─────────────────────────────────────────────────────────────────────────────
-
-// mockUsageProvider implements UsageProvider for testing.
-type mockUsageProvider struct {
-	data  *UsageResult
-	err   error
-	calls int
-}
-
-func (m *mockUsageProvider) CollectUsage(_ context.Context) (*UsageResult, error) {
-	m.calls++
-	return m.data, m.err
-}
 
 // realisticInput creates realistic test input data.
 func realisticInput() *StdinData {
@@ -572,25 +557,6 @@ func realisticGit() *mockGitProvider {
 	}
 }
 
-// realisticUsage creates a mockUsageProvider with realistic API usage data.
-// Based on 60% usage (for AC-V3-07 verification)
-func realisticUsage(pct5H, pct7D float64) *mockUsageProvider {
-	return &mockUsageProvider{
-		data: &UsageResult{
-			Usage5H: &UsageData{
-				UsedTokens:  int64(pct5H * 1000),
-				LimitTokens: 100000,
-				Percentage:  pct5H,
-			},
-			Usage7D: &UsageData{
-				UsedTokens:  int64(pct7D * 1000),
-				LimitTokens: 100000,
-				Percentage:  pct7D,
-			},
-		},
-	}
-}
-
 // countLines counts the number of lines in a string (empty string returns 0).
 func countLines(s string) int {
 	if s == "" {
@@ -614,57 +580,46 @@ func TestIntegration_ModeLineCount(t *testing.T) {
 	tests := []struct {
 		name        string
 		mode        StatuslineMode
-		withUsage   bool
 		description string
 	}{
 		// AC-V3-01: mode="minimal" → default 3-line output (backward compat)
 		{
 			name:        "AC-V3-01: minimal→default 3 lines",
 			mode:        "minimal",
-			withUsage:   true,
 			description: "minimal mode collapses to default 3-line",
 		},
 		// AC-V3-02 (retired→unified): mode="verbose" → default 3-line output
 		{
 			name:        "AC-V3-02: verbose→default 3 lines",
 			mode:        "verbose",
-			withUsage:   true,
 			description: "verbose mode collapses to default 3-line (full retired)",
 		},
 		// AC-V3-03: mode="compact" → default 3-line output (backward compat)
 		{
 			name:        "AC-V3-03: compact→default 3 lines",
 			mode:        ModeCompact,
-			withUsage:   true,
 			description: "compact mode collapses to default 3-line",
 		},
 		// AC-V3-04: mode="default" → exactly 3 lines
 		{
 			name:        "AC-V3-04: default exactly 3 lines",
 			mode:        ModeDefault,
-			withUsage:   true,
 			description: "default mode produces 3-line layout",
 		},
 		// AC-V3-05 (retired→unified): mode="full" → default 3-line output
 		{
 			name:        "AC-V3-05: full→default 3 lines",
 			mode:        ModeFull,
-			withUsage:   true,
 			description: "full mode collapses to default 3-line (NormalizeMode)",
 		},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			var usageProv *mockUsageProvider
-			if tt.withUsage {
-				usageProv = realisticUsage(45.0, 82.0)
-			}
 
 			builder := New(Options{
 				GitProvider:    realisticGit(),
 				UpdateProvider: &mockUpdateProvider{data: &VersionData{Current: "2.8.0", Available: true}},
-				UsageProvider:  usageProv,
 				Mode:           tt.mode,
 				NoColor:        true,
 			})
@@ -688,15 +643,14 @@ func TestIntegration_ModeLineCount(t *testing.T) {
 // Retired AC-V3-06 (full + no usage → 5 lines) deleted per
 // SPEC-V3R5-STATUSLINE-FULL-MODE-CLEANUP-001 — full mode 5-line layout
 // no longer exists (NormalizeMode collapse). AC-V3-06b preserved as it
-// verifies the layout-independent contract: 5H/7D always shown at 0% when
-// usage data is absent.
+// verifies the layout-independent contract: 5H/7D always shown (n/a) when
+// no window source is present.
 func TestIntegration_NoUsageLineCount(t *testing.T) {
 	// AC-V3-06b: mode="default" + no usage → CW + 5H(0%) + 7D(0%) all shown in L2
 	t.Run("AC-V3-06b: default + no usage → L2 CW+5H+7D", func(t *testing.T) {
 		builder := New(Options{
 			GitProvider:    realisticGit(),
 			UpdateProvider: &mockUpdateProvider{data: &VersionData{Current: "2.8.0", Available: true}},
-			UsageProvider:  &mockUsageProvider{data: nil}, // no usage
 			Mode:           ModeDefault,
 			NoColor:        true,
 		})
@@ -710,7 +664,7 @@ func TestIntegration_NoUsageLineCount(t *testing.T) {
 		if !strings.Contains(got, "CW:") {
 			t.Errorf("AC-V3-06b: default + no usage should contain CW bar\noutput:\n%s", got)
 		}
-		// 5H/7D always shown at 0%
+		// 5H/7D always shown (n/a with no window source)
 		if !strings.Contains(got, "5H:") || !strings.Contains(got, "7D:") {
 			t.Errorf("AC-V3-06b: 5H/7D bars must always be shown\noutput:\n%s", got)
 		}
@@ -735,9 +689,8 @@ func TestIntegration_GradientBar(t *testing.T) {
 		}
 
 		builder := New(Options{
-			UsageProvider: &mockUsageProvider{data: nil},
-			Mode:          ModeDefault,
-			NoColor:       true,
+			Mode:    ModeDefault,
+			NoColor: true,
 		})
 
 		got, err := builder.Build(context.Background(), makeStdinJSON(input))
@@ -745,7 +698,8 @@ func TestIntegration_GradientBar(t *testing.T) {
 			t.Fatalf("Build error: %v", err)
 		}
 
-		// default L2: "CW: 🔋 ██████░░░░ 60% | 5H: 🔋 ░░░░░░░░░░ 0% | 7D: 🔋 ░░░░░░░░░░ 0%"
+		// default L2: "CW: 🔋 ██████░░░░ 60% | 5H: n/a | 7D: n/a" (5H/7D have no
+		// window source in this fixture; SPEC-STATUSLINE-OFFICIAL-USAGE-001 M3)
 		// Extract the CW segment only (substring between "CW:" and "|") for verification.
 		lines := strings.Split(got, "\n")
 		var cwLine string
@@ -789,9 +743,8 @@ func TestIntegration_SessionTime(t *testing.T) {
 		}
 
 		builder := New(Options{
-			UsageProvider: &mockUsageProvider{data: nil},
-			Mode:          ModeDefault,
-			NoColor:       true,
+			Mode:    ModeDefault,
+			NoColor: true,
 		})
 
 		got, err := builder.Build(context.Background(), makeStdinJSON(input))
@@ -816,9 +769,8 @@ func TestIntegration_NoCost(t *testing.T) {
 			}
 
 			builder := New(Options{
-				UsageProvider: &mockUsageProvider{data: nil},
-				Mode:          mode,
-				NoColor:       true,
+				Mode:    mode,
+				NoColor: true,
 			})
 
 			got, err := builder.Build(context.Background(), makeStdinJSON(input))
@@ -851,9 +803,8 @@ func TestIntegration_GitDirtyCount(t *testing.T) {
 					Available: true,
 				},
 			},
-			UsageProvider: &mockUsageProvider{data: nil},
-			Mode:          ModeDefault,
-			NoColor:       true,
+			Mode:    ModeDefault,
+			NoColor: true,
 		})
 
 		got, err := builder.Build(context.Background(), makeStdinJSON(&StdinData{
@@ -875,10 +826,9 @@ func TestIntegration_NoColor(t *testing.T) {
 	for _, mode := range modes {
 		t.Run(string(mode), func(t *testing.T) {
 			builder := New(Options{
-				GitProvider:   realisticGit(),
-				UsageProvider: realisticUsage(60.0, 75.0),
-				Mode:          mode,
-				NoColor:       true, // ANSI disabled
+				GitProvider: realisticGit(),
+				Mode:        mode,
+				NoColor:     true, // ANSI disabled
 			})
 
 			got, err := builder.Build(context.Background(), makeStdinJSON(realisticInput()))
@@ -906,9 +856,8 @@ func TestIntegration_BatteryIcon(t *testing.T) {
 		}
 
 		builder := New(Options{
-			UsageProvider: &mockUsageProvider{data: nil},
-			Mode:          ModeDefault,
-			NoColor:       true,
+			Mode:    ModeDefault,
+			NoColor: true,
 		})
 
 		got, err := builder.Build(context.Background(), makeStdinJSON(input))
@@ -950,9 +899,8 @@ func TestIntegration_BatteryIcon(t *testing.T) {
 		}
 
 		builder := New(Options{
-			UsageProvider: &mockUsageProvider{data: nil},
-			Mode:          ModeDefault,
-			NoColor:       true,
+			Mode:    ModeDefault,
+			NoColor: true,
 		})
 
 		got, err := builder.Build(context.Background(), makeStdinJSON(input))
@@ -972,22 +920,19 @@ func TestIntegration_BackwardCompat(t *testing.T) {
 	input := realisticInput()
 
 	builderMinimal := New(Options{
-		GitProvider:   realisticGit(),
-		UsageProvider: realisticUsage(45.0, 60.0),
-		Mode:          "minimal",
-		NoColor:       true,
+		GitProvider: realisticGit(),
+		Mode:        "minimal",
+		NoColor:     true,
 	})
 	builderCompact := New(Options{
-		GitProvider:   realisticGit(),
-		UsageProvider: realisticUsage(45.0, 60.0),
-		Mode:          ModeCompact,
-		NoColor:       true,
+		GitProvider: realisticGit(),
+		Mode:        ModeCompact,
+		NoColor:     true,
 	})
 	builderDefault := New(Options{
-		GitProvider:   realisticGit(),
-		UsageProvider: realisticUsage(45.0, 60.0),
-		Mode:          ModeDefault,
-		NoColor:       true,
+		GitProvider: realisticGit(),
+		Mode:        ModeDefault,
+		NoColor:     true,
 	})
 
 	gotMinimal, err := builderMinimal.Build(context.Background(), makeStdinJSON(input))
@@ -1014,16 +959,14 @@ func TestIntegration_BackwardCompat(t *testing.T) {
 	}
 
 	builderVerbose := New(Options{
-		GitProvider:   realisticGit(),
-		UsageProvider: realisticUsage(45.0, 60.0),
-		Mode:          "verbose",
-		NoColor:       true,
+		GitProvider: realisticGit(),
+		Mode:        "verbose",
+		NoColor:     true,
 	})
 	builderFull := New(Options{
-		GitProvider:   realisticGit(),
-		UsageProvider: realisticUsage(45.0, 60.0),
-		Mode:          ModeFull,
-		NoColor:       true,
+		GitProvider: realisticGit(),
+		Mode:        ModeFull,
+		NoColor:     true,
 	})
 
 	gotVerbose, err := builderVerbose.Build(context.Background(), makeStdinJSON(input))
@@ -1055,7 +998,6 @@ func BenchmarkBuilder_Build(b *testing.B) {
 			builder := New(Options{
 				GitProvider:    realisticGit(),
 				UpdateProvider: &mockUpdateProvider{data: &VersionData{Current: "2.8.0", Available: true}},
-				UsageProvider:  realisticUsage(60.0, 75.0),
 				Mode:           mode,
 				NoColor:        true,
 			})
@@ -1131,126 +1073,21 @@ func TestBuild_OfficialSchema(t *testing.T) {
 	}
 }
 
-// TestBuild_RateLimitsPreferredOverUsage verifies that in default mode,
-// data.RateLimits (from Claude Code stdin JSON) is preferred over data.Usage
-// (from MoAI API call) for the 5H/7D bars.
-//
-// See Issue #549 Bug 3.
-func TestBuild_RateLimitsPreferredOverUsage(t *testing.T) {
-	t.Setenv("CLAUDE_AUTOCOMPACT_PCT_OVERRIDE", "100")
-
-	// Mock usage provider returns 99% (should be ignored when RateLimits present)
-	mockUsage := &mockUsageProvider{
-		data: &UsageResult{
-			Usage5H: &UsageData{Percentage: 99},
-			Usage7D: &UsageData{Percentage: 88},
-		},
-	}
-
-	builder := New(Options{
-		Mode:          ModeDefault,
-		NoColor:       true,
-		UsageProvider: mockUsage,
-	})
-
-	// JSON with rate_limits at 23% - should take priority over the 99% from UsageProvider
-	inputJSON := `{
-		"rate_limits": {
-			"five_hour": {"used_percentage": 23.5, "resets_at": 1738425600},
-			"seven_day": {"used_percentage": 41.2, "resets_at": 1738857600}
-		}
-	}`
-
-	got, err := builder.Build(context.Background(), strings.NewReader(inputJSON))
-	if err != nil {
-		t.Fatalf("unexpected error: %v", err)
-	}
-
-	// 23% should appear (from RateLimits), not 99% (from Usage)
-	if !strings.Contains(got, "23%") {
-		t.Errorf("output should contain 5H rate limit '23%%' from RateLimits (not 99%% from Usage), got:\n%s", got)
-	}
-	if strings.Contains(got, "99%") {
-		t.Errorf("output should NOT contain '99%%' from Usage when RateLimits is present, got:\n%s", got)
-	}
-}
-
-// TestBuild_SkipsUsageProviderWhenRateLimitsPresent verifies that when stdin
-// provides rate_limits (Claude Code 2.1.80+), the usage provider (which would
-// perform blocking Anthropic OAuth API calls) is not invoked at all.
-//
-// See Issue #646 — statusline intermittent disappearance caused by 5s HTTP
-// timeout on every usage collector cache miss.
-func TestBuild_SkipsUsageProviderWhenRateLimitsPresent(t *testing.T) {
-	mockUsage := &mockUsageProvider{
-		data: &UsageResult{
-			Usage5H: &UsageData{Percentage: 50},
-			Usage7D: &UsageData{Percentage: 50},
-		},
-	}
-
-	builder := New(Options{
-		Mode:          ModeDefault,
-		NoColor:       true,
-		UsageProvider: mockUsage,
-	})
-
-	inputJSON := `{
-		"rate_limits": {
-			"five_hour": {"used_percentage": 23.5, "resets_at": 1738425600},
-			"seven_day": {"used_percentage": 41.2, "resets_at": 1738857600}
-		}
-	}`
-
-	if _, err := builder.Build(context.Background(), strings.NewReader(inputJSON)); err != nil {
-		t.Fatalf("unexpected error: %v", err)
-	}
-
-	if mockUsage.calls != 0 {
-		t.Errorf("usage provider should not be called when stdin rate_limits is present, got %d calls", mockUsage.calls)
-	}
-}
-
-// TestBuild_CallsUsageProviderWhenRateLimitsAbsent verifies the usage provider
-// is still invoked when stdin does not contain rate_limits (legacy Claude Code
-// or non-Claude-Code harness).
-func TestBuild_CallsUsageProviderWhenRateLimitsAbsent(t *testing.T) {
-	mockUsage := &mockUsageProvider{
-		data: &UsageResult{
-			Usage5H: &UsageData{Percentage: 50},
-			Usage7D: &UsageData{Percentage: 50},
-		},
-	}
-
-	builder := New(Options{
-		Mode:          ModeDefault,
-		NoColor:       true,
-		UsageProvider: mockUsage,
-	})
-
-	// Stdin without rate_limits
-	inputJSON := `{"model": {"id": "claude-opus-4-6"}}`
-
-	if _, err := builder.Build(context.Background(), strings.NewReader(inputJSON)); err != nil {
-		t.Fatalf("unexpected error: %v", err)
-	}
-
-	if mockUsage.calls != 1 {
-		t.Errorf("usage provider should be called exactly once when stdin lacks rate_limits, got %d calls", mockUsage.calls)
-	}
-}
-
 // TestBuilderSetModeNormalizes verifies SetMode normalizes deprecated mode names.
 // REQ-V3-MODE-004: system always uses ModeDefault, ModeFull constants.
 func TestBuilderSetModeNormalizes(t *testing.T) {
 	input := &StdinData{
 		Model:         &ModelInfo{Name: "claude-sonnet-4-20250514"},
 		ContextWindow: &ContextWindowInfo{Used: 50000, Total: 200000},
+		// Isolated anchor: byte-equality across two builds must not depend on
+		// the live board's counts (see TestBuilderNormalizesMode).
+		Workspace: &WorkspaceInfo{ProjectDir: t.TempDir()},
 	}
 
 	builder := New(Options{
-		Mode:    ModeFull,
-		NoColor: true,
+		GitProvider: &mockGitProvider{},
+		Mode:        ModeFull,
+		NoColor:     true,
 	})
 
 	// After SetMode("minimal"), should behave same as ModeDefault
@@ -1261,8 +1098,9 @@ func TestBuilderSetModeNormalizes(t *testing.T) {
 	}
 
 	builderDefault := New(Options{
-		Mode:    ModeDefault,
-		NoColor: true,
+		GitProvider: &mockGitProvider{},
+		Mode:        ModeDefault,
+		NoColor:     true,
 	})
 	gotDefault, err := builderDefault.Build(context.Background(), makeStdinJSON(input))
 	if err != nil {

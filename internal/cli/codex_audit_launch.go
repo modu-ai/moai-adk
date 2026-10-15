@@ -692,7 +692,7 @@ func codexAuditReserveRecord(root, role string, at time.Time) (string, *os.File,
 // @MX:REASON: an audit that outlives its bound must not leave codex or its children running
 func codexAuditExec(ctx context.Context, program string, argv []string, root string, task io.Reader, stderr io.Writer, timeout time.Duration) (string, error) {
 	if timeout <= 0 {
-		timeout = config.DefaultCodexAuditTimeout
+		timeout = codexAuditWaitTimeout(config.DefaultCodexAuditTimeout)
 	}
 	if task == nil {
 		task = strings.NewReader("")

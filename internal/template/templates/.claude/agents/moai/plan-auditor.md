@@ -5,6 +5,8 @@ description: |
   Match user intent language-independently — do not require literal keyword matches.
   NOT for: post-implementation code audit (sync-auditor), code implementation, code review, documentation writing, git operations, running tests
 tools: Read, Grep, Glob, Bash, Write, Edit, TaskCreate, TaskUpdate, TaskList, TaskGet, Skill, mcp__moai__audit_multi, mcp__moai__spec_audit, mcp__moai__spec_drift, mcp__moai__claude_audit, mcp__moai__codex_audit, mcp__moai__glm_audit
+model: opus
+effort: high
 color: red
 permissionMode: default
 memory: project
@@ -145,32 +147,20 @@ Nine criteria cannot be compensated by high scores in other dimensions. ANY sing
 
 **(MP-6) No unresolved D8 BLOCKING finding**: A BLOCKING finding emitted (unresolved) by Group 8 (D8 Cross-Platform Discipline) is **must-pass-equivalent**: it forces `Verdict: FAIL` regardless of aggregate score, and the finding MUST be folded into `## Defects Found` at severity=critical. A D8 BLOCKING finding can never be silently absorbed into the aggregate score. If the D8 verification verb is not executable, mark N/A following the MP-4 precedent (N/A auto-passes) and state the reason.
 
-**(MP-7) No unresolved [NEEDS CLARIFICATION] markers**: The SPEC's `plan.md` and `research.md` MUST NOT contain unresolved `[NEEDS CLARIFICATION: <topic>]` markers at audit time (marker convention: `~/.claude/skills/moai-workflow-spec/SKILL.md` § [NEEDS CLARIFICATION] Marker Convention; plan.md § [NEEDS CLARIFICATION] Marker Usage). Verification: `grep -rn '\[NEEDS CLARIFICATION' plan.md research.md` — any match is a must-pass failure that MUST be folded into `## Defects Found` at severity=critical and flagged as a "clarification gate" finding in the report. The orchestrator MUST resolve each marked topic via `AskUserQuestion` (preload `ToolSearch(query: "select:AskUserQuestion")`) before Implementation Kickoff Approval (plan→run HUMAN GATE). This gate is score-independent: a high aggregate score never auto-resolves an open clarification marker. When neither `plan.md` nor `research.md` exists (e.g., Tier S without `research.md`), mark N/A following the MP-4 precedent (N/A auto-passes) and state the reason.
+**(MP-7) No unresolved [NEEDS CLARIFICATION] markers**: The SPEC's `plan.md` and `research.md` MUST NOT contain unresolved `[NEEDS CLARIFICATION: <topic>]` markers at audit time (marker convention: `~/.claude/skills/moai-workflow-spec/SKILL.md` § [NEEDS CLARIFICATION] Marker Convention; plan.md § [NEEDS CLARIFICATION] Marker Usage). Verification: read `plan.md` and `research.md` directly and check them for unresolved markers — a direct two-file read replaces the grep — any match is a must-pass failure that MUST be folded into `## Defects Found` at severity=critical and flagged as a "clarification gate" finding in the report. The orchestrator MUST resolve each marked topic via `AskUserQuestion` (preload `ToolSearch(query: "select:AskUserQuestion")`) before Implementation Kickoff Approval (plan→run HUMAN GATE). This gate is score-independent: a high aggregate score never auto-resolves an open clarification marker. When neither `plan.md` nor `research.md` exists (e.g., Tier S without `research.md`), mark N/A following the MP-4 precedent (N/A auto-passes) and state the reason.
 
 <!-- MOAI-REDNOW-BEGIN -->
-**(MP-8) RED-now cell re-execution**: For every acceptance criterion classified **release-blocking**, the RED-now cell must carry the four elements `.claude/rules/moai/development/verification-completeness.md` §2.1 requires — the command, that command's verbatim stdout, that command's exit code, and the tree SHA (a document-level pin is inherited by any criterion carrying no pin of its own). **Re-execute** the cited command against the **current tree** and confirm the **RED reproduces**. This check is possible at plan-phase and nowhere else: the cell pins the pre-implementation tree, and at plan-phase that tree is the working tree.
+**(MP-8) RED-now cell completeness**: For every acceptance criterion classified **release-blocking**, the RED-now cell must carry the four elements `.claude/rules/moai/development/verification-completeness.md` §2.1 requires — the command, that command's verbatim stdout, that command's exit code, and the tree SHA (a document-level pin is inherited by any criterion carrying no pin of its own). **Do not execute the cited command**: read the cell's recorded verbatim stdout and exit code and judge the RED from what the lane recorded — the lane that authored the plan is the actor that ran the command under its own measurement conditions.
 
-A cited command whose RED does not reproduce is an unresolved MP-8 violation. Fold it into `## Defects Found` at `severity=critical` and set `Verdict: FAIL` **regardless of the aggregate score** — an aggregate never absorbs this finding.
+A cell that carries no recorded output at all is an unresolved MP-8 violation, and so is a cell whose recorded evidence — stdout, exit code, and the command's meaning read together — does not show a reproducing RED. An explicitly recorded EMPTY stdout with a non-zero exit code is a complete and common RED record: judge it from the exit code and the command's meaning, never from stdout alone. Fold it into `## Defects Found` at `severity=critical` and set `Verdict: FAIL` **regardless of the aggregate score** — an aggregate never absorbs this finding.
 
 Where no acceptance criterion is classified release-blocking, or where `acceptance.md` is absent, mark MP-8 `N/A` and **state the reason**, following the **MP-4 precedent** (N/A auto-passes).
 
-**Execution discipline.** The commands re-executed here are strings a SPEC author typed, not strings you composed, so the form is constrained and the refusal branch is explicit. A conforming command is a read-only shell invocation completing in a single invocation; the machine-checkable half of that form is the metacharacter list below, and read-only-ness stays your judgment. When a cited command fails to run, is refused for not matching the form, names an operation this repository's execution discipline prohibits — a local full test suite being the standing example — or does not return within your existing Bash **timeout**, you **shall not execute it further**, **shall not record the criterion as a pass**, and shall apply the §2.1 demotion instead. **Repository execution discipline takes precedence** over a criterion's citation. The timeout branch adds no new machinery: your Bash tool already bounds every invocation, so a conforming-but-expensive command is refused on the same terms as a prohibited one rather than stalling the audit.
+**Execution discipline.** You execute none of the commands cited in RED-now cells at audit time: re-running the SPEC author's command re-measures the tree under the audit's own machine load, which is slower than the authoring run and invites a self-interrupt. There is no audit-time timeout branch and no demotion for a command that "did not finish" — the launcher's process bound is the caller's, not the auditor's, and it is the only timeout that applies to this reading. The audit-time question is only whether the cell's four elements are present and internally consistent: a recorded exit code that contradicts the recorded stdout is a completeness defect. Other must-pass verifications (the MP-5 and MP-6 verbs, for example) keep running under their own sections; this prohibition does not reach them.
 
-**Verdict rule for a test-runner citation.** Where the cited command is a test runner, key the verdict on the **count of tests actually executed**, and **not treat the presence of an `ok` token** as evidence that the RED failed to reproduce. A selector matching zero tests exits 0 and prints `ok` alongside `no tests to run`: that run executed nothing and therefore reproduces nothing. Reading it as a pass inverts exactly what this criterion exists to detect.
+**Verdict rule for a test-runner citation.** Where the recorded command is a test runner, key the verdict on the **count of tests actually executed** as the recorded stdout shows it, and **do not treat the presence of an `ok` token** as evidence that the RED failed to reproduce. A selector matching zero tests exits 0 and prints `ok` alongside `no tests to run`: that run executed nothing and therefore reproduces nothing. Reading it as a pass inverts exactly what this criterion exists to detect.
 
-**Boundary, stated rather than implied.** Re-execution confirms a command's output. It does not confirm that the command measures the premise its author claims for it, and MP-8 makes no such claim.
-
-```
-forbidden-metacharacter: |
-forbidden-metacharacter: &&
-forbidden-metacharacter: ;
-forbidden-metacharacter: >
-forbidden-metacharacter: <
-forbidden-metacharacter: $(
-forbidden-metacharacter: (
-```
-
-Each token above is a violation only when it appears **outside** quotes: a quoted `|` inside a regex is a literal, and refusing it would reject commands that are in fact single invocations.
+**Boundary, stated rather than implied.** Reading the recorded output confirms what the cell records. It does not confirm that the command measures the premise its author claims for it, and MP-8 makes no such claim.
 <!-- MOAI-REDNOW-END -->
 
 **(MP-9) No unresolved cross-artifact ordering conflict**: A pair of obligations that cannot both be followed — the plan's milestone order on one side, an ordering clause in the acceptance criteria or the Definition of Done on the other — is **must-pass-equivalent**: it forces `Verdict: FAIL` regardless of aggregate score, and the finding MUST be folded into `## Defects Found` at severity=critical with both texts quoted side by side. The pair is invisible when either document is read alone, which is why no per-artifact check catches it.
@@ -387,7 +377,7 @@ Execute each check in order against the full document — every REQ entry and ev
 - AC-3: No AC contains weasel words: "appropriate", "adequate", "reasonable", "good", "proper"
 - AC-4: Each AC references a valid REQ-XXX that exists in the document (Traceability) — decided from the verb below: every `ORPHAN:` line is a candidate failure, read against the AC text
 - AC-5: Each REQ-XXX has at least one corresponding AC (Traceability) — decided from the verb below: every `UNCOVERED:` line is a candidate failure, and the `COLLECTED:` count is the measurement both AC-4 and AC-5 rest on
-- AC-6: Each release-blocking AC carries a RED-now cell with the command, its verbatim stdout, its exit code, and a pinned tree SHA, and that command re-executes to a reproducing RED on the current tree (MP-8)
+- AC-6: Each release-blocking AC carries a RED-now cell with the command, its verbatim stdout, its exit code, and a pinned tree SHA, and the recorded stdout shows a reproducing RED — the audit reads the cell and re-executes nothing (MP-8)
 
 Verification verb (executed inside this agent during audit):
 
@@ -669,8 +659,8 @@ Auditor Version: plan-auditor/v{version}
 - [PASS/FAIL/N/A] MP-4 Section 22 language neutrality: {evidence or "N/A: single-language SPEC"}
 - [PASS/FAIL/N/A] MP-5 D7 cross-SPEC reconciliation: {D7 verification evidence or "no BLOCKING finding"; N/A only when the D7 verb is not executable}
 - [PASS/FAIL/N/A] MP-6 D8 cross-platform discipline: {D8 verification evidence or "no BLOCKING finding"; N/A only when the D8 verb is not executable}
-- [PASS/FAIL/N/A] MP-7 clarification gate: {`grep -rn '\[NEEDS CLARIFICATION' plan.md research.md` evidence or "no [NEEDS CLARIFICATION] markers"; N/A only when neither plan.md nor research.md exists}
-- [PASS/FAIL/N/A] MP-8 RED-now cell re-execution: {per release-blocking AC, the re-executed command and its observed output; N/A only when no AC is release-blocking or acceptance.md is absent, with the reason stated}
+- [PASS/FAIL/N/A] MP-7 clarification gate: {no [NEEDS CLARIFICATION] markers — the recorded grep output or the audit's own two-file read; N/A only when neither plan.md nor research.md exists}
+- [PASS/FAIL/N/A] MP-8 RED-now cell completeness: {per release-blocking AC, the cell's recorded command, verbatim stdout, exit code, and tree SHA as read — no re-execution; N/A only when no AC is release-blocking or acceptance.md is absent, with the reason stated}
 - [PASS/FAIL/N/A] MP-9 cross-artifact ordering consistency: {the CN-4 verb's `COLLECTED:` line, then each `CONFLICT:` line or confirmed candidate with both texts quoted, or the `NONE:` line; N/A only when the SPEC has no plan, with the reason stated}
 
 ## Category Scores (0.0-1.0, rubric-anchored)
