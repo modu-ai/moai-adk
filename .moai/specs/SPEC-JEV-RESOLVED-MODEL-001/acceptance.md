@@ -26,7 +26,7 @@ Verification: `go test -count=1 -v -run '^TestResult_CarriesInterpretedModelFrom
 Expected green line: `--- PASS: TestResult_CarriesInterpretedModelFromResponse (<n>s)`
 RED-now: EV-RED-03 (the record names the constant before the response is read). Green path: M1.
 
-**AC-JRM-003** (REQ-JRM-003) — Given an OK response whose `model` is absent, is `jev-latest`, or is `jev-1.13`, When it is decoded, Then the result's availability is `unattributed`, no answer is returned, and the usage record carries an empty interpreted model with `request_model` set to `jev-latest`.
+**AC-JRM-003** (REQ-JRM-003) — Given an OK response whose `model` is absent, is `jev-latest`, or is `jev-1.13`, When it is decoded, Then the result's availability is `unattributed`, no answer is returned, and both `Result.Usage` and the client's `UsageLog()` carry the call's record, with an empty interpreted model and `request_model` set to `jev-latest`.
 Verification: `go test -count=1 -v -run '^TestResponse_WithoutInterpretedModelIsUnattributed$' ./internal/jev/`
 Expected green line: `--- PASS: TestResponse_WithoutInterpretedModelIsUnattributed (<n>s)`
 RED-now: EV-RED-04 (no `unattributed` availability exists). Green path: M1.
@@ -70,10 +70,10 @@ RED-now: EV-RED-10 (the reason cites the constant). Green path: M5.
 
 ## §C. Version change and rule
 
-**AC-JRM-010** (REQ-JRM-010) — Given the verified id `jev-1.13.0` (`internal/jev/jev.go:VerifiedInterpretedModel`) and an answered call that reports `jev-9.8.7`, When the first such call completes in a client, Then its result carries exactly one notice line, which names both ids, the location `internal/jev/jev.go:VerifiedInterpretedModel`, and the shadow-return obligation. A second answered call in the same client carries no notice. A client whose answered calls report `jev-1.13.0` carries no notice.
-Verification: `go test -count=1 -v -run '^TestChangedInterpretedModel_NoticeOncePerClient$' ./internal/jev/`
-Expected green line: `--- PASS: TestChangedInterpretedModel_NoticeOncePerClient (<n>s)`
-Status: **adopted** (OQ-1 option A, card t1768, board). RED-now: EV-RED-12 (the verified-id constant is absent on the base tree). Green path: M3.
+**AC-JRM-010** (REQ-JRM-010) — Given the verified id `jev-1.13.0` (`internal/jev/jev.go:VerifiedInterpretedModel`) and an answered call that reports `jev-9.8.7`, When the first such call completes in a client, Then its result carries exactly one notice line, which names both ids, the location `internal/jev/jev.go:VerifiedInterpretedModel`, and the shadow-return obligation. A second answered call in the same client carries no notice. A client whose answered calls report `jev-1.13.0` carries no notice. On the MCP surface, a `jev_ask` call answered `jev-9.8.7` returns a `notice` key, and a `jev_ask` call answered `jev-1.13.0` returns no `notice` key.
+Verification: `go test -count=1 -v -run '^TestChangedInterpretedModel_NoticeOncePerClient$' ./internal/jev/`, and `go test -count=1 -v -run '^TestJevAsk_NoticeKeyFollowsTheChangeNotice$' ./internal/cli/`
+Expected green lines: `--- PASS: TestChangedInterpretedModel_NoticeOncePerClient (<n>s)` and `--- PASS: TestJevAsk_NoticeKeyFollowsTheChangeNotice (<n>s)`
+Status: **adopted** (OQ-1 option A, card t1768, board). RED-now: EV-RED-12 (the verified-id constant is absent on the base tree) and EV-RED-17 (the MCP test is absent on the base tree). Green path: M3, both lines.
 
 **AC-JRM-011** (REQ-JRM-011) — Given `.claude/rules/moai/development/model-policy.md` and its template copy, When each is checked, Then each carries exactly one heading line `## Jev Model Attribution`, each carries the anchored content lines below, the two files are byte-identical, and the mirror test passes.
 Anchored content checks (each prints `1` in each file, unless stated):
@@ -223,6 +223,12 @@ EV-RED-16 (AC-JRM-016; the pre-sync state)
   stdout:  (none)
   exit:    1
   tree:    cfb551796
+
+EV-RED-17 (AC-JRM-010, the MCP sub-assertion; the test is absent on the base tree)
+  command: command git grep -c 'func TestJevAsk_NoticeKeyFollowsTheChangeNotice' 53a8c5764 -- internal/cli/mcp_jev_test.go
+  stdout:  (none)
+  exit:    1
+  tree:    53a8c5764
 ```
 
 ### GRN cells (guards)
@@ -318,7 +324,7 @@ AC-JRM-006  M2  --- PASS: TestRun_RefusesAStraddledMeasurement (<n>s)
 AC-JRM-007  M2  --- PASS: TestReport_RenderCitesInterpretedModelAndAliasOnlyInRequestField (<n>s)
 AC-JRM-008  M5  --- PASS: TestDoctorJev_VerboseNamesAliasAndNoInterpretedVersion (<n>s)
 AC-JRM-009  M5  --- PASS: TestDecide_JevCrossCheckReasonNamesInterpretedModel (<n>s)
-AC-JRM-010  M3  --- PASS: TestChangedInterpretedModel_NoticeOncePerClient (<n>s)
+AC-JRM-010  M3  --- PASS: TestChangedInterpretedModel_NoticeOncePerClient (<n>s); --- PASS: TestJevAsk_NoticeKeyFollowsTheChangeNotice (<n>s)
 AC-JRM-011  M4  --- PASS: TestRuleTemplateMirrorDrift/model-policy.md (<n>s); anchored checks print 1
 AC-JRM-016  sync-phase commit (not an M milestone)  status: completed in both amended spec.md files; diff inside the frontmatter
 ```
@@ -330,23 +336,23 @@ Green-path cells are specified, not observed. Each is re-observed at its milesto
 ## Gaps (not observed by this plan stage)
 
 - The alias behaviour (`jev-latest` answered as `jev-1.13.0`, with the same answer and tokens) is the leader's observation of 2026-10-15. This stage made no call to the endpoint, and no credential is present in the tree. Every run-stage test uses fixtures or a local server. A live observation is a separate record, with its own command and output.
-- AC-JRM-010 is adopted, and its green line is not yet observed (M3). AC-JRM-016 is a sync-phase criterion, so it is not observed at plan stage.
+- AC-JRM-010 is adopted, and its green lines are not yet observed (M3). AC-JRM-016 is a sync-phase criterion, so it is not observed at plan stage.
 - The rule's content checks in AC-JRM-011 are specified; they are observed at M4.
 - The installed build lags the tree (`69c1ffc1f4` is a strict ancestor of `53a8c5764`). The tree-built lint and audit are the evidence for AC-JRM-015.
 - The `command` prefix makes a no-match exit status visible. The earlier plan-stage cells (plain `grep` on the working tree, with the installed build) are superseded by the cells above.
-- The MCP surface does not print the change notice (plan §H). AC-JRM-010 is tested on the Go result, not on the MCP output.
+- The change notice reaches the MCP output (`mcp_jev.go:114–116`, read at plan stage), and AC-JRM-010 asserts its `notice` key there; that assertion is not observed before M3. The CLI consumers, the `--auto` ranking and the Kickoff cross-check, do not surface the notice on success: a gap for follow-up card t1803, not designed or closed in this SPEC (plan §H).
 
 ## Residual risk (could be wrong despite the observations above)
 
-- A vendor change to the `model` field's shape makes every consumer unavailable (`unattributed`) until the shape is accepted. That is the fail-closed design, and it is visible to users.
-- The alias can move to a new version at any time. The notice reaches Go callers on their first answered call. Until the constant is bumped, the notice repeats in each new process; the rule (REQ-JRM-011) describes the shadow return that follows.
+- A vendor change to the `model` field's shape makes every consumer unavailable (`unattributed`) until the shape is accepted. Consumers that show or select on a Jev answer then show or select nothing, and the Kickoff path falls to the LLM-alone decision of rule R2 (plan §G), not to a closed gate. That is the designed behaviour, and it is visible to users.
+- The alias can move to a new version at any time. The notice is carried on the result of the first answered call in each client: a new process repeats it, and so does each `jev_ask` call, because each builds its own client. Until the constant is bumped it keeps repeating, and the rule (REQ-JRM-011) describes the shadow return that follows. The CLI consumers do not surface it on success (Gaps).
 - `model-policy.md` is path-scoped to agent files (OQ-4), so its Jev section will not load for `internal/jev` work unless the lead widens the scope.
 - AC-JRM-005's allow-list is a line-count check over `grep`. A new site that adds the same word on a permitted line would be caught only by the line count and by review.
 
 ## Definition of Done (run stage)
 
 - AC-JRM-001 through AC-JRM-011: each verification command exits 0 and prints its expected `--- PASS: <TestName>` line. AC-JRM-011 also prints `1` for each anchored check, `cmp` exits 0, and the `TestRuleTemplateMirrorDrift/model-policy.md` PASS line is printed. Each RED-now cell has a recorded green counterpart in the run-stage record (§E.3 of progress.md).
-- AC-JRM-010 is adopted (OQ-1 option A, card t1768). Its green line `--- PASS: TestChangedInterpretedModel_NoticeOncePerClient (<n>s)` is required at M3. Exit 0 alone does not satisfy it.
+- AC-JRM-010 is adopted (OQ-1 option A, card t1768). Its green lines `--- PASS: TestChangedInterpretedModel_NoticeOncePerClient (<n>s)` and `--- PASS: TestJevAsk_NoticeKeyFollowsTheChangeNotice (<n>s)` are required at M3. Exit 0 alone does not satisfy them.
 - AC-JRM-012 through AC-JRM-015: each guard prints its stated output. The GRN cells are re-observed after the lane's commit.
 - AC-JRM-016: at the sync phase, the two `status: completed` greps and the frontmatter-only diff check hold.
 - The §F gates of plan.md pass: gofmt prints nothing, vet is clean, each package gate prints `ok`, the named `internal/cli` selector prints `ok`, the receipt gate prints `ok`, `make build` exits 0, and the Windows build exits 0.

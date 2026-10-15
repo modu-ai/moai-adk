@@ -1,7 +1,7 @@
 ---
 id: SPEC-JEV-RESOLVED-MODEL-001
 title: "Jev request alias jev-latest with the interpreted model recorded per answer"
-version: "0.1.1"
+version: "0.1.2"
 status: draft
 created: 2026-10-15
 updated: 2026-10-15
@@ -23,6 +23,7 @@ related_specs: [SPEC-JEV-CORE-001, SPEC-JEV-OPTIN-MEASURE-001]
 |---|---|---|---|
 | 2026-10-15 | 0.1.0 | Plan-phase artifacts for card t1768 (Class C, Template-First, P1). Tier M. Amends two completed SPECs in place, in the same commit: `SPEC-JEV-CORE-001` to 0.5.0 (REQ-JEVC-003, REQ-JEVC-004, Q2 wording) and `SPEC-JEV-OPTIN-MEASURE-001` to 0.2.0 (§B goal phrase, REQ-JEVO-014, AC-JEVO-010, AC-JEVO-011). Both move `completed → in-progress (amendment)`. Neither SPEC's `sync_commit_sha` changes. | manager-spec |
 | 2026-10-15 | 0.1.1 | Plan repair round 1 after plan-audit iteration 1 (FAIL, overall 0.65, audited commit `cfb5517962088b09936dfbb8a2ff5b80e63a8893`). The three open decisions are settled (card t1768, board, brain): OQ-1 option A (a verified-id constant, one notice per client, no file write); OQ-2 behavioural terms, no configuration key; OQ-3 the verified id is the reference, and the shipping-prohibition clause is dropped. REQ-JRM-001, 005, 010, 011, and 013 reworded; REQ-JRM-014 added; AC-JRM-005, 010, 011, and 014 reworked; AC-JRM-016 added; fixture ids are `jev-9.8.7`. The amended text of the two amended SPECs is unchanged in this round, except AC-JEVO-011 in SPEC-JEV-OPTIN-MEASURE-001. | manager-spec |
+| 2026-10-15 | 0.1.2 | Plan repair round 2 after plan-audit iteration 2 (FAIL, overall 0.81, audited commit `a9406fd614d159fd520f839c6ef8ba35e3dcaa2b`; blocking findings D21 to D25; board record d-20261015T075953Z-63b9, which corrects d-20261015T052851Z-42ed). D21: the MCP output carries the change notice in the `notice` key (mcp_jev.go:114–116), so AC-JRM-010 asserts that key on the MCP surface, and the CLI-consumer gap is recorded for card t1803. D22: the unattributed Kickoff path is stated as rule R2 with the LLM's answer, not as fail-closed. D23: the `Ask` order records the usage before the result is returned, and AC-JRM-003 asserts `Result.Usage` and `UsageLog()`. D24: the fixture rule covers positive attributions only, with three named exceptions. D25: the OQ-5 precedent alternative is dropped, and §F matches the open items. The requirement count (14) and the acceptance count (16) are unchanged. | manager-spec |
 
 ## Position in the chain
 
@@ -142,4 +143,4 @@ The three open decisions of plan-audit iteration 1 are settled (card t1768, boar
 - **OQ-2, the shadow-return terms.** Decided: behavioural definitions with no configuration key. It fixes the wording of REQ-JRM-011 and the terms of plan.md §D.4.
 - **OQ-3, the regression-set reference.** Decided: REQ-JRM-010 compares against the verified id, and the shipping-prohibition clause is not part of this SPEC. It fixes the reference of REQ-JRM-010 and the re-run procedure of REQ-JRM-011, which is to re-run the regression set against the new id and then change the verified id.
 
-Non-blocking items still open (plan.md §G): OQ-4 (the path scope of the rule file), OQ-5 (the amendment transition precedent), OQ-6 (sync-phase documentation), and OQ-7 (the dispatch of card t1762). None of them changes the wording of a requirement in this file.
+Non-blocking items still open (plan.md §G): OQ-4 (the path scope of the rule file), OQ-6 (sync-phase documentation), and OQ-7 (the dispatch of card t1762). None of them changes the wording of a requirement in this file. OQ-5 (the amendment transition precedent) is not open: this SPEC follows the card's instruction, and the precedent is not an option (plan.md §G).
