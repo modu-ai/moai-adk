@@ -749,7 +749,11 @@ func (s *Store) rebindDeadLeader(ctx context.Context, dead Peer) (Peer, error) {
 	if err != nil {
 		return Peer{}, err
 	}
-	if lead.SessionUUID == dead.SessionUUID || !s.ownerCurrent(lead.PID, lead.ProcessStart) {
+	// A resume keeps the session the previous leader left on the run row, so a
+	// live pid does not prove that the row's session is that process's session.
+	// Refuse an unknown session and the dead one; the leader's own turn
+	// registration re-binds the slot once its live session is known (t1772 review).
+	if lead.SessionUUID == "" || lead.SessionUUID == dead.SessionUUID || !s.ownerCurrent(lead.PID, lead.ProcessStart) {
 		return Peer{}, ErrLeaderOwnerDead
 	}
 	bound := dead

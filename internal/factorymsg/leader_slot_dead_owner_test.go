@@ -85,6 +85,44 @@ func TestResolveLeaderSlotKeepsLiveOwner(t *testing.T) {
 	}
 }
 
+// A run row with no session cannot prove which process the owner pid belongs
+// to, so the slot is refused rather than bound to an empty session (t1772 review P1).
+func TestResolveLeaderSlotRefusesWhenRunSessionUnknown(t *testing.T) {
+	s := openTestStore(t)
+	ctx := context.Background()
+
+	dead := testPeer(s.runID, "sess-dead-leader", 1)
+	dead.Role, dead.Slot = "leader", "leader"
+	dead.PID, dead.ProcessStart = 15140, "dead-leader-start"
+	if _, err := s.RegisterPeer(ctx, dead); err != nil {
+		t.Fatal(err)
+	}
+	recordRunOwner(t, s.root, s.runID, "", os.Getpid(), testPeer(s.runID, "x", 1).ProcessStart)
+
+	if _, err := s.ResolveLane(ctx, "leader"); !errors.Is(err, ErrLeaderOwnerDead) {
+		t.Fatalf("ResolveLane(leader) with an unknown run session err=%v, want ErrLeaderOwnerDead", err)
+	}
+}
+
+// A run row that still names the dead session is not a rebind target, even when
+// its pid is live: a resume can keep the old session on the row (t1772 review P2).
+func TestResolveLeaderSlotRefusesStaleRunSession(t *testing.T) {
+	s := openTestStore(t)
+	ctx := context.Background()
+
+	dead := testPeer(s.runID, "sess-dead-leader", 1)
+	dead.Role, dead.Slot = "leader", "leader"
+	dead.PID, dead.ProcessStart = 15140, "dead-leader-start"
+	if _, err := s.RegisterPeer(ctx, dead); err != nil {
+		t.Fatal(err)
+	}
+	recordRunOwner(t, s.root, s.runID, "sess-dead-leader", os.Getpid(), testPeer(s.runID, "x", 1).ProcessStart)
+
+	if _, err := s.ResolveLane(ctx, "leader"); !errors.Is(err, ErrLeaderOwnerDead) {
+		t.Fatalf("ResolveLane(leader) with the dead session still on the run err=%v, want ErrLeaderOwnerDead", err)
+	}
+}
+
 // recordRunOwner writes the run row the way the leader's start does, so the
 // run's current owner is the given session.
 func recordRunOwner(t *testing.T, root, runID, sessionUUID string, pid int, processStart string) {
