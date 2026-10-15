@@ -147,10 +147,13 @@ func factoryLaneRuleForSource(source, lang string) string {
 	case factory.BackendGPT:
 		cardID := os.Getenv(config.EnvFactoryCard)
 		if cardID == "" {
-			// An owned-card rule without a card id names nothing the lane
-			// could carry; the M5 launcher always stamps the id, so this is
-			// the degraded edge, not the expected shape.
-			return ""
+			// The card-less queue boot (moai codex -l before its first
+			// lease): the role core's read-first duty conflicts with the
+			// boot prompt exactly as it does for a leased card — the
+			// BOOT-form precedence note names the queue verb this boot
+			// owns (audit round-8: the empty return left the conflict
+			// unresolved on the boot path).
+			return codexLaneBootPrecedenceNote
 		}
 		// t1776 audit round-3: the role core's read-the-full-rule duty
 		// conflicts with the lane's boot directive (run `moai todo --auto`
@@ -209,6 +212,15 @@ func factoryLanesEnv() int {
 const codexLanePrecedenceNote = "Codex auto-lane precedence: the boot directive governs your first action — " +
 	"proceed with the leased card's work; " +
 	"open the rule files when that work needs them, not before."
+
+// codexLaneBootPrecedenceNote is the card-less queue boot's precedence
+// note (card t1776 audit round-8): `moai codex -l` boots WITHOUT a card id,
+// and this boot owns the queue verb — the note names it so the role core's
+// read-first duty resolves against the boot directive instead of
+// contradicting it.
+const codexLaneBootPrecedenceNote = "Codex auto-lane precedence: the boot directive governs your first action — " +
+	"run `moai todo --auto` before any rule-file reading; " +
+	"open the rule files when the cards' work needs them, not before."
 
 // codexLaneEnvFailFast is the t1776 one-line stop for a broken lane launch:
 // a session stamped with the Codex factory backend but missing its lane

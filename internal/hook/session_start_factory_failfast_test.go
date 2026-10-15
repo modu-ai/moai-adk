@@ -143,6 +143,30 @@ func TestRoleCoreCarriesNoQueueStart(t *testing.T) {
 	}
 }
 
+// TestFactoryLaneRuleGptCardLessBootCarriesBootPrecedence pins the round-8
+// fix: `moai codex -l` boots WITHOUT EnvFactoryCard, so the owned-card
+// branch returned "" and the boot session got no precedence note — while
+// the gpt scrub bypass re-enabled the role core's read-first directive,
+// conflicting with the boot prompt's "Do not read ... first". The card-less
+// boot carries the BOOT-form precedence (naming the queue verb it owns).
+func TestFactoryLaneRuleGptCardLessBootCarriesBootPrecedence(t *testing.T) {
+	clearFactoryEnv(t)
+	t.Setenv(config.EnvFactoryBackend, "gpt")
+	t.Setenv(config.EnvMoaiFactoryWorker, "lane-7")
+	t.Setenv(config.EnvFactoryCard, "")
+
+	rule := factoryLaneRuleForSource("startup", "en")
+	if rule == "" {
+		t.Fatal("the card-less queue boot receives the boot-form precedence note")
+	}
+	if !strings.Contains(rule, "Codex auto-lane precedence") {
+		t.Fatalf("card-less boot carries no precedence note:\n%s", rule)
+	}
+	if !strings.Contains(rule, "todo --auto") {
+		t.Fatalf("the BOOT-form precedence names the queue verb this boot owns:\n%s", rule)
+	}
+}
+
 // TestFactoryLaneRuleGptCarriesPrecedence pins the healthy codex lane's
 // precedence note: the owned-card rule resolves the role core's read-first
 // duty toward the leased card's work (audit round-3), with no queue-start
