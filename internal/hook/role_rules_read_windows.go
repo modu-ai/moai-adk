@@ -19,8 +19,19 @@ func readRuleFileBytes(path string) ([]byte, error) {
 
 // readRuleFileBytesBounded is readRuleFileBytes with the read itself
 // bounded: at most max bytes leave the file into memory (card t1776 audit
-// round-6 — the cap must apply to the read, not after it).
+// round-6 — the cap must apply to the read, not after it). Lstat refuses a
+// SYMLINK side channel before the open follows it (card t1776 audit
+// round-14 — Windows has no O_NOFOLLOW; a linked foreign file whose bytes
+// happen to parse as a session id would otherwise be narrated into the
+// session context).
 func readRuleFileBytesBounded(path string, max int64) ([]byte, error) {
+	fi, err := os.Lstat(path)
+	if err != nil {
+		return nil, err
+	}
+	if !fi.Mode().IsRegular() {
+		return nil, errNotRegularFile
+	}
 	f, err := os.Open(path)
 	if err != nil {
 		return nil, err

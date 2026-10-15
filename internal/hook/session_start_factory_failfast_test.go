@@ -144,9 +144,10 @@ func TestRoleCoreCarriesNoQueueStart(t *testing.T) {
 }
 
 // TestFactoryLaneRuleGptCardWorktreeDirResolvesCard pins the round-12 fix:
-// a gpt lane standing in its card worktree WITHOUT MOAI_KANBAN_CARD stamped
-// still resolves the card from the path — the owned-card rule carries the
-// card id and the WORK-form precedence, never the queue verb.
+// a gpt lane standing in its REGISTERED card worktree (a .moai/.claude-tier
+// `worktrees` parent) WITHOUT MOAI_KANBAN_CARD stamped still resolves the
+// card from the path — the owned-card rule carries the card id and the
+// WORK-form precedence, never the queue verb.
 func TestFactoryLaneRuleGptCardWorktreeDirResolvesCard(t *testing.T) {
 	clearFactoryEnv(t)
 	t.Setenv(config.EnvFactoryBackend, "gpt")
@@ -154,7 +155,7 @@ func TestFactoryLaneRuleGptCardWorktreeDirResolvesCard(t *testing.T) {
 	t.Setenv(config.EnvFactoryCard, "")
 
 	root := t.TempDir()
-	dir := filepath.Join(root, "worktrees", "t1776")
+	dir := filepath.Join(root, ".moai", "worktrees", "t1776")
 	if err := os.MkdirAll(dir, 0o755); err != nil {
 		t.Fatalf("mkdir worktree dir: %v", err)
 	}
@@ -168,6 +169,32 @@ func TestFactoryLaneRuleGptCardWorktreeDirResolvesCard(t *testing.T) {
 	}
 	if strings.Contains(rule, "todo --auto") {
 		t.Fatalf("a card-resolved session must not be directed at the queue:\n%s", rule)
+	}
+}
+
+// TestFactoryLaneRuleGptCoincidentalWorktreesDirStaysBoot pins the round-14
+// fix: a checkout that HAPPENS to live under a plain `worktrees/` parent
+// (e.g. ~/worktrees/myrepo) is not a MoAI card tree — the path-derived name
+// must not mint an owned-card rule for a card-less boot (the queue verb and
+// the owned-card rule would contradict).
+func TestFactoryLaneRuleGptCoincidentalWorktreesDirStaysBoot(t *testing.T) {
+	clearFactoryEnv(t)
+	t.Setenv(config.EnvFactoryBackend, "gpt")
+	t.Setenv(config.EnvMoaiFactoryWorker, "lane-7")
+	t.Setenv(config.EnvFactoryCard, "")
+
+	root := t.TempDir()
+	dir := filepath.Join(root, "worktrees", "myrepo")
+	if err := os.MkdirAll(dir, 0o755); err != nil {
+		t.Fatalf("mkdir coincidental dir: %v", err)
+	}
+
+	rule := factoryLaneRuleForSourceInDir("startup", "en", dir)
+	if !strings.Contains(rule, "todo --auto") {
+		t.Fatalf("a coincidental worktrees path must keep the card-less boot precedence:\n%s", rule)
+	}
+	if strings.Contains(rule, "myrepo") {
+		t.Fatalf("a coincidental directory name must not mint an owned-card rule:\n%s", rule)
 	}
 }
 

@@ -29,6 +29,7 @@ import (
 	"context"
 	"fmt"
 	"os"
+	"path/filepath"
 	"strconv"
 	"strings"
 	"time"
@@ -155,7 +156,14 @@ func factoryLaneRuleForSourceInDir(source, lang, dir string) string {
 		}
 		return m.laneNextCardRule + "\n\n" + recheck
 	case factory.BackendGPT:
-		cardID := resolveSessionCardID(dir)
+		// Env override first (the launcher's stamp), else the REGISTERED
+		// card worktree this session stands in (card t1776 audit rounds
+		// 12+14: the path fallback must not mint a card from a coincidental
+		// `worktrees/` parent — only the MoAI tiers count).
+		cardID := strings.TrimSpace(os.Getenv(config.EnvFactoryCard))
+		if cardID == "" {
+			cardID = cardIDFromRegisteredWorktree(dir)
+		}
 		if cardID == "" {
 			// The card-less queue boot (moai codex -l before its first
 			// lease): the role core's read-first duty conflicts with the
@@ -209,6 +217,38 @@ func factoryLanesEnv() int {
 		return 0
 	}
 	return n
+}
+
+// cardIDFromRegisteredWorktree resolves the card id from dir ONLY when dir
+// stands inside a MoAI-MANAGED card worktree — a directory whose ancestry
+// carries a `worktrees` segment whose parent is `.moai` or `.claude` (the
+// two MoAI worktree tiers). A checkout that merely happens to live under a
+// plain `worktrees/` parent (e.g. ~/worktrees/myrepo) resolves no card:
+// minting an owned-card rule from a coincidental directory name would hand
+// a card-less boot both the queue-start directive and its contradiction
+// (card t1776 audit round-14). Empty when dir is not a registered-tier
+// card worktree.
+func cardIDFromRegisteredWorktree(dir string) string {
+	if strings.TrimSpace(dir) == "" {
+		return ""
+	}
+	d := filepath.Clean(dir)
+	for {
+		parent := filepath.Dir(d)
+		if parent == d {
+			return ""
+		}
+		if filepath.Base(parent) == "worktrees" {
+			gp := filepath.Base(filepath.Dir(parent))
+			if gp == ".moai" || gp == ".claude" {
+				return filepath.Base(d)
+			}
+			// A worktrees parent outside the MoAI tiers: not a card tree —
+			// the walk stops rather than minting a card from the name.
+			return ""
+		}
+		d = parent
+	}
 }
 
 // codexLanePrecedenceNote resolves the role core's read-first duty against
