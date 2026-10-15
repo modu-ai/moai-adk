@@ -26,6 +26,9 @@ type Options struct {
 	// such as ".claude/skills/moai-factory-foreman/SKILL.md". A nil Shipped ships
 	// nothing, so no folder is removed or renamed on that basis.
 	Shipped func(rel string) bool
+	// SkipRenames holds back the lowercase skill.md rename. A caller whose update the
+	// user may still cancel runs ApplyDeferredRenames after the confirmation instead.
+	SkipRenames bool
 }
 
 func (o Options) shipped(rel string) bool {
@@ -111,6 +114,15 @@ func Clean(projectRoot string, opts Options) ([]Action, error) {
 				actions = append(actions, Action{Path: rel, Kind: "reported-both-skill-files"})
 				continue
 			}
+			// A directory named skill.md belongs to the user, and its contents are not a
+			// skill file. Keep it, and report it.
+			if !regularFileAt(filepath.Join(dir, "skill.md")) {
+				actions = append(actions, Action{Path: rel + "/skill.md", Kind: "kept-non-file-skill-md"})
+				continue
+			}
+			if opts.SkipRenames {
+				continue
+			}
 			if opts.shipped(rel + "/SKILL.md") {
 				if err := renameSkillFile(dir); err != nil {
 					return actions, err
@@ -186,10 +198,65 @@ func moveOne(from, to string) error { return os.Rename(from, to) }
 // moveFile is moveOne. A test replaces it to make one move fail on any filesystem.
 var moveFile = moveOne
 
+// ApplyDeferredRenames performs the lowercase skill.md renames that Clean holds back
+// under SkipRenames. It touches only shipped skill folders whose skill.md is a regular
+// file, and it skips retired folders, as Clean does. It runs after the update is
+// confirmed, so a cancelled update leaves the names as they were.
+func ApplyDeferredRenames(projectRoot string, opts Options) ([]Action, error) {
+	if link, found := symlinkedRoot(projectRoot); found {
+		return []Action{{Path: link, Kind: "refused-symlinked-root"}}, nil
+	}
+	skillsDir := filepath.Join(projectRoot, ".claude", "skills")
+	entries, err := os.ReadDir(skillsDir)
+	if os.IsNotExist(err) {
+		return nil, nil
+	}
+	if err != nil {
+		return nil, err
+	}
+	var actions []Action
+	for _, e := range entries {
+		if !e.IsDir() {
+			continue
+		}
+		name := e.Name()
+		if _, retired := retiredSkills[name]; retired {
+			continue
+		}
+		dir := filepath.Join(skillsDir, name)
+		rel := ".claude/skills/" + name
+		names, err := entryNames(dir)
+		if err != nil {
+			return actions, err
+		}
+		if slices.Contains(names, "SKILL.md") || !slices.Contains(names, "skill.md") {
+			continue
+		}
+		if !regularFileAt(filepath.Join(dir, "skill.md")) || !opts.shipped(rel+"/SKILL.md") {
+			continue
+		}
+		if err := renameSkillFile(dir); err != nil {
+			return actions, err
+		}
+		actions = append(actions, Action{Path: rel + "/skill.md", Kind: "renamed-skill-file"})
+	}
+	return actions, nil
+}
+
+// regularFileAt reports whether path is a regular file. A symbolic link, a directory,
+// or a FIFO at the path is not.
+func regularFileAt(path string) bool {
+	info, err := os.Lstat(path)
+	return err == nil && info.Mode().IsRegular()
+}
+
 // renameSkillFile renames skill.md to SKILL.md through a temporary name, so the
 // change also holds on a case-insensitive filesystem.
 func renameSkillFile(dir string) error {
 	lower := filepath.Join(dir, "skill.md")
+	if !regularFileAt(lower) {
+		return fmt.Errorf("%s is not a regular file; nothing renamed", lower)
+	}
 	tmp, err := freeName(dir, "skill.md.tmp-rename")
 	if err != nil {
 		return err

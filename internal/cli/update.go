@@ -397,8 +397,10 @@ func runUpdate(cmd *cobra.Command, _ []string) error {
 	// the dry-run return and under the update lock, so every project-mutating path
 	// reaches it: --force, --templates-only, the normal flow, and the re-exec'd
 	// child (a parent that re-execs replaces its process and never gets this far,
-	// so no report is lost with a discarded ledger).
-	runUpdateHousekeeping(lockRoot)
+	// so no report is lost with a discarded ledger). The lowercase skill.md rename is
+	// held back: the template sync that follows may still be cancelled at its
+	// confirmation, and applyDeferredSkillRenames runs only once that is settled.
+	runUpdateHousekeepingDeferRenames(lockRoot)
 
 	// This is after the dry-run return and under the update lock. It also runs
 	// when template sync is version-matched, so a later update can retry trees

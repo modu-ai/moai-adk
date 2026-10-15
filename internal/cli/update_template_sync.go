@@ -248,6 +248,8 @@ func runTemplateSyncWithReporter(cmd *cobra.Command, reporter project.ProgressRe
 		plVersion.Done("Already up-to-date")
 		_, _ = fmt.Fprintln(out)
 		_, _ = fmt.Fprintln(out, tui.Pill(tui.PillOpts{Kind: tui.PillOk, Solid: false, Label: report.RenderOutcome(report.OutcomeAlreadyUpToDate, 0, ""), Theme: &th}))
+		// No confirmation applies on this path, so the held-back skill.md renames run here.
+		applyDeferredSkillRenames(projectRoot)
 		return nil
 	}
 
@@ -359,6 +361,10 @@ func runTemplateSyncWithReporter(cmd *cobra.Command, reporter project.ProgressRe
 		}
 		return nil
 	}
+
+	// The user confirmed (or no confirmation applies), so the held-back skill.md renames
+	// run now. A cancelled update returned above and leaves every skill file as it was.
+	applyDeferredSkillRenames(projectRoot)
 
 	// SPEC-INIT-SHRINK-001 (REQ-015, OD-4 settled (a, amended)): on a
 	// record-less project the migration trigger runs AFTER the user

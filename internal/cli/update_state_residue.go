@@ -105,26 +105,56 @@ func runUpdateHousekeepingLocked(projectRoot string) {
 	runUpdateHousekeeping(projectRoot)
 }
 
-// runUpdateHousekeeping removes state residue and repairs skill-folder residue for
-// one moai update run. It does nothing outside a genuine MoAI project
-// (checkProjectMarker), and each change is recorded as a terminal reference row.
+// runUpdateHousekeeping removes state residue, repairs skill-folder residue, and
+// applies the held-back skill.md rename, for one moai update run that has no template
+// sync to confirm (the binary-only run and the config-edit path). It does nothing
+// outside a genuine MoAI project (checkProjectMarker), and each change is recorded as
+// a terminal reference row.
 func runUpdateHousekeeping(projectRoot string) {
+	runUpdateHousekeepingDeferRenames(projectRoot)
+	applyDeferredSkillRenames(projectRoot)
+}
+
+// runUpdateHousekeepingDeferRenames is runUpdateHousekeeping for the normal update flow,
+// which can still be cancelled at the template-sync confirmation. The lowercase skill.md
+// rename is held back here and applied by applyDeferredSkillRenames after the user
+// confirms, so a cancelled update leaves every skill file where it was.
+func runUpdateHousekeepingDeferRenames(projectRoot string) {
 	if checkProjectMarker(projectRoot) != nil {
 		return
 	}
 	if removed := removeStateResidue(projectRoot); len(removed) > 0 {
 		updateLedger.referencef("removed %d leftover state file(s): %s", len(removed), strings.Join(removed, ", "))
 	}
-	// Skill-folder residue: empty folders of shipped skills, a lowercase skill.md,
-	// and retired skill folders, which are reported and left in place. Each action
-	// is reported; see skillresidue.Clean.
+	// Skill-folder residue: empty folders of shipped skills, a lowercase skill.md
+	// (held back, see above), and retired skill folders, which are reported and left in
+	// place. Each action is reported; see skillresidue.Clean.
 	skillActions, skillErr := skillresidue.Clean(projectRoot, skillresidue.Options{
-		Shipped: embeddedShips,
+		Shipped:     embeddedShips,
+		SkipRenames: true,
 	})
 	if skillErr != nil {
 		updateLedger.requiref(sevWarn, "skill folder cleanup failed: %v", skillErr)
 	}
 	for _, a := range skillActions {
+		updateLedger.referencef("%s", skillActionMessage(a))
+	}
+}
+
+// applyDeferredSkillRenames performs the lowercase skill.md renames that
+// runUpdateHousekeepingDeferRenames held back. Call it only once the update is
+// confirmed or needs no confirmation.
+func applyDeferredSkillRenames(projectRoot string) {
+	if checkProjectMarker(projectRoot) != nil {
+		return
+	}
+	actions, err := skillresidue.ApplyDeferredRenames(projectRoot, skillresidue.Options{
+		Shipped: embeddedShips,
+	})
+	if err != nil {
+		updateLedger.requiref(sevWarn, "skill folder rename failed: %v", err)
+	}
+	for _, a := range actions {
 		updateLedger.referencef("%s", skillActionMessage(a))
 	}
 }
@@ -155,6 +185,8 @@ func skillActionMessage(a skillresidue.Action) string {
 		return fmt.Sprintf("kept retired skill %s: it holds files besides SKILL.md", a.Path)
 	case "reported-retired-link":
 		return fmt.Sprintf("left link %s in place: it points at a retired skill folder that this update does not remove", a.Path)
+	case "kept-non-file-skill-md":
+		return fmt.Sprintf("kept %s: it is not a regular file, so it is left as the user's and not renamed", a.Path)
 	case "refused-symlinked-root":
 		return fmt.Sprintf("refused to clean skill folders: %s is a symbolic link; nothing under it was changed", a.Path)
 	}
