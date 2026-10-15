@@ -110,13 +110,13 @@ The leader classifies each card as it leaves `backlog` and names the entry stage
 With `tree_scope: skip` configured for the leader's checkout, the leader session carries no turn-end codex review gate and reviews its own internal output directly with the same tools. Stage order, evidence fields, and the re-review ceiling: `factory-dispatch-detail.md` § The card-review stage.
 
 <!-- moai:role-core-start -->
-[HARD] Between run-exit verification and integration every lane runs `card-review`: `codex_review` (`glm_review` optional) into `.moai/reports/<card-id>/card-review.md`, advisory, never replacing the leader evidence read or an independent audit; under `tree_scope: skip` on its checkout the leader has no turn-end codex gate and self-reviews with the same tools.
+[HARD] Between run-exit verification and integration every lane runs `card-review`: `codex_review` (`glm_review` optional) into `.moai/reports/<card-id>/card-review.md`, advisory, never replacing the leader evidence read or an independent audit; under `tree_scope: skip` the leader self-reviews with the same tools.
 <!-- moai:role-core-end -->
 
 ### Lane waits are explicit, and stalls are watched
 
 <!-- moai:role-core-start -->
-[HARD] A stuck lane writes a disk wait (reason, whom, recheck point), ends its turn, never idles on a reply; on wake: `moai-lane-watchdog` first, then the `auto-semantics.md` §6 ladder ending in its own judgment + decision record, never ask-and-wait; the leader only at a gate boundary (keep-set, cross-card conflict), its board for leader-level rulings only; a recurring `CronCreate` recheck armed before the first stage, kept to the completion report; each wake reads disk evidence (progress, reports, commits, delegate output) before replying.
+[HARD] A stuck lane writes a disk wait (reason, whom, recheck point), ends its turn, never idles on a reply; on wake: `moai-lane-watchdog` first, then the `auto-semantics.md` §6 ladder ending in its own judgment + decision record, never ask-and-wait; the leader only at a gate boundary; a recurring `CronCreate` recheck armed before the first stage, kept to the completion report; each wake reads disk evidence before replying.
 <!-- moai:role-core-end -->
 
 [HARD] A lane that cannot proceed records an explicit wait on disk — reason, whom, recheck point — and ends its turn; it never idles open-ended on a reply. On its next awaken the lane runs the stall watchdog first — invoke Skill("moai-lane-watchdog") and follow it — which measures progress, classifies the stall cause, and resolves the judgment through the decision ladder (doctrine: `.claude/rules/moai/workflow/auto-semantics.md` §6). The ladder's terminal step is the lane's own judgment + decision record — the lane never asks the leader and waits on a judgment; reaching the leader is a gate boundary (a keep-set category or a cross-card conflict), not a ladder step. The lead's decision board carries leader-level rulings only — cross-card conflicts, serial-slot policy calls, keep-set gate relays — never a lane's in-card judgment. A lane also arms a standing recheck cron (`CronCreate`, recurring, every renewal period of `workflow.factory_lease.renew_interval`) before its first stage and keeps it until its completion report: a lane stopped by an API error (429) or by a delegate's report that never comes wakes without outside help only if something armed before it stopped fires, and every wake reads the disk evidence (progress record, reports, commits, the delegate's deliverable) before it replies (`.claude/rules/moai/workflow/auto-semantics.md` §5.1).
@@ -229,8 +229,10 @@ The leader session itself is cleared between cards: at `done` the operator is as
 **Lane spawn authority (standing).** A lane is an orchestrator for its card: it spawns, with the Agent tool and WITHOUT asking, the specialist the Status Transition Ownership Matrix names for the stage at hand — plan-phase artifacts to `manager-spec`, implementation to `manager-develop`, sync-phase docs to `manager-docs`, plus the chain's prescribed auditors. Depth-1 only: agents a lane spawns are leaf workers and never spawn further agents. This authority is part of the lane's bootstrap context (the SessionStart join notice carries it — the canonical English sentence for the `en` locale and localized per `conversation_language` for the others, with the Status Transition Ownership Matrix pointer path (.claude/rules/moai/development/spec-frontmatter-schema.md) verbatim in every locale), and it is deliberately NOT a per-dispatch grant: the runtime's default "don't spawn unless the user asks" guidance does not bind a lane, and a leader's approval can neither grant nor revoke what the bootstrap already grants — the leader is not the lane's user.
 
 <!-- moai:role-core-start -->
-[HARD] A lane spawning its implementer (`manager-develop`) passes `effort` on the Agent call by card class: C `high`, B `medium`, A `low` — the per-class value overrides the agent's frontmatter default for that spawn only.
+[HARD] A lane spawning `manager-develop` passes `effort` by card class: C `high`, B `medium`, A `low` (that spawn only).
 <!-- moai:role-core-end -->
+
+The per-class value overrides the agent's frontmatter default for that spawn only.
 
 ## Boundaries — what this protocol does not do
 
