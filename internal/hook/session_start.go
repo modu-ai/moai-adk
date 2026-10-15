@@ -481,40 +481,50 @@ func (h *sessionStartHandler) Handle(ctx context.Context, input *HookInput) (*Ho
 
 	if input.SessionID != "" && input.ProjectDir != "" {
 		sidecar := filepath.Join(input.ProjectDir, session.CurrentSideChannelFile)
-		// t1776: a side channel recording a DIFFERENT session id means
-		// `moai session current` will return the recorded (other) session —
-		// an agent attributing its work through it would credit the wrong
-		// session. The mismatch rides one NOTE line; the file is still
-		// overwritten below (last writer wins, unchanged contract).
+		// t1776: a side channel recording a DIFFERENT session id means an
+		// agent attributing its work through `moai session current` may
+		// credit the foreign session. The overwrite claim follows the WRITE
+		// OUTCOME (audit round-2): a failed write (read-only environment)
+		// leaves the foreign id in place, and the notice then says so
+		// instead of claiming an overwrite that never happened.
+		prevID := ""
+		if prev, readErr := os.ReadFile(sidecar); readErr == nil {
+			prevID = strings.TrimSpace(string(prev))
+		}
+		writeErr := os.WriteFile(sidecar, []byte(input.SessionID), 0o600)
+		if writeErr != nil {
+			slog.Warn("session start: failed to write current-session-id side-channel file (non-blocking)",
+				"path", sidecar,
+				"error", writeErr.Error(),
+			)
+		}
 		attribution := fmt.Sprintf(
 			"moai session attribution: source_session_id=%s\n"+
 				"Use 'moai session current' to re-read this UUID after /clear or compaction.\n"+
 				"If unavailable, emit the canonical fallback via 'moai session current --show-fallback'.",
 			input.SessionID,
 		)
-		if prev, readErr := os.ReadFile(sidecar); readErr == nil {
-			if prevID := strings.TrimSpace(string(prev)); prevID != "" && prevID != input.SessionID {
-				// Truthful phrasing (card t1776 audit round-1): the write
-				// below replaces the side channel, and the resolver prefers
-				// the per-process env var anyway — the notice describes the
-				// PRE-state, never what `moai session current` will return.
+		if prevID != "" && prevID != input.SessionID {
+			// Truthful phrasing (card t1776 audit round-1/2): the notice
+			// describes the PRE-state, never what `moai session current`
+			// will return — and the overwrite claim follows the write.
+			if writeErr == nil {
 				attribution += fmt.Sprintf(
 					"\nNOTE: before this session started, the current-session record held %s; "+
 						"this session has overwritten it. If any earlier tool output still names %s, "+
 						"attribute to the source_session_id above instead.",
+					prevID, prevID)
+			} else {
+				attribution += fmt.Sprintf(
+					"\nNOTE: before this session started, the current-session record held %s and it still holds it "+
+						"(this session's write failed) — 'moai session current' may return %s, not this session; "+
+						"attribute this session's work to the source_session_id above.",
 					prevID, prevID)
 			}
 		}
 		out.HookSpecificOutput = &HookSpecificOutput{
 			HookEventName:     string(EventSessionStart),
 			AdditionalContext: attribution,
-		}
-		// Side-channel file write (best-effort, non-blocking).
-		if writeErr := os.WriteFile(sidecar, []byte(input.SessionID), 0o600); writeErr != nil {
-			slog.Warn("session start: failed to write current-session-id side-channel file (non-blocking)",
-				"path", sidecar,
-				"error", writeErr.Error(),
-			)
 		}
 	}
 

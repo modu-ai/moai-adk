@@ -1,10 +1,13 @@
+//go:build unix
+
 package hook
 
 // session_start_attribution_test.go — card t1776: when the current-session
 // side-channel already records a DIFFERENT session id, the source_session_id
-// attribution injection carries a one-line NOTE — an agent that attributes
-// its work through `moai session current` would otherwise credit the
-// recorded (other) session.
+// attribution injection carries a one-line NOTE. The note's overwrite claim
+// must match the WRITE OUTCOME (audit round-2 P2): a read-only environment
+// leaves the foreign id in place, and the notice must say so instead of
+// claiming an overwrite that never happened.
 
 import (
 	"os"
@@ -50,8 +53,8 @@ func TestSessionStartAttributionMismatchNotice(t *testing.T) {
 	if strings.Contains(ctx, "returns the recorded one") {
 		t.Fatalf("mismatch notice makes the false will-return claim (the write below already replaces the side channel):\n%s", ctx)
 	}
-	if !strings.Contains(ctx, other) {
-		t.Fatalf("mismatch notice does not name the recorded id:\n%s", ctx)
+	if !strings.Contains(ctx, "has overwritten it") {
+		t.Fatalf("successful write must say the record was overwritten:\n%s", ctx)
 	}
 
 	t.Run("matching_side_channel_no_notice", func(t *testing.T) {
@@ -78,6 +81,47 @@ func TestSessionStartAttributionMismatchNotice(t *testing.T) {
 		}
 		if strings.Contains(ctx2, "before this session started") {
 			t.Fatalf("matching side channel must not carry the mismatch notice:\n%s", ctx2)
+		}
+	})
+
+	t.Run("failed_write_reports_the_surviving_record", func(t *testing.T) {
+		// A read-only state dir makes the overwrite fail — the notice must
+		// then say the foreign record SURVIVED, not claim an overwrite
+		// (audit round-2 P2).
+		root3 := t.TempDir()
+		sideDir3 := filepath.Join(root3, filepath.Dir(session.CurrentSideChannelFile))
+		if err := os.MkdirAll(sideDir3, 0o755); err != nil {
+			t.Fatalf("mkdir: %v", err)
+		}
+		if err := os.WriteFile(filepath.Join(root3, session.CurrentSideChannelFile), []byte(other), 0o600); err != nil {
+			t.Fatalf("seed side channel: %v", err)
+		}
+		// An existing file truncates with FILE write permission only — the
+		// directory mode is irrelevant to the write, so the failure is
+		// forced on the file itself (owner-read, no write).
+		if err := os.Chmod(filepath.Join(root3, session.CurrentSideChannelFile), 0o400); err != nil {
+			t.Fatalf("chmod: %v", err)
+		}
+		t.Cleanup(func() { _ = os.Chmod(filepath.Join(root3, session.CurrentSideChannelFile), 0o644) })
+
+		out3, err := h.Handle(t.Context(), &HookInput{
+			SessionID:  this,
+			ProjectDir: root3,
+			CWD:        root3,
+			Source:     "startup",
+		})
+		if err != nil {
+			t.Fatalf("Handle: %v", err)
+		}
+		ctx3 := ""
+		if out3.HookSpecificOutput != nil {
+			ctx3 = out3.HookSpecificOutput.AdditionalContext
+		}
+		if strings.Contains(ctx3, "has overwritten it") {
+			t.Fatalf("a failed write must not claim the overwrite:\n%s", ctx3)
+		}
+		if !strings.Contains(ctx3, "still holds") {
+			t.Fatalf("a failed write must name the surviving foreign record:\n%s", ctx3)
 		}
 	})
 }
