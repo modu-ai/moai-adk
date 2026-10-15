@@ -211,17 +211,11 @@ Targeted test packages only: `./internal/cli`, `./internal/hook`, and `./interna
     grep -c -F 'ExitWorktree(keep)' .moai/policies/workflow/factory-dispatch.md
     grep -c -F 'EnterWorktree(' .moai/policies/workflow/factory-dispatch.md
     grep -c -F 'conversation context' .moai/policies/workflow/factory-dispatch.md
-    grep -c -F 'lane' .moai/policies/workflow/factory-dispatch-detail.md
-    grep -c -F 'lane' internal/template/templates/.claude/rules/moai/workflow/factory-dispatch-detail.md
-    grep -c -F 'worktree' .moai/policies/workflow/factory-dispatch-detail.md
-    grep -c -F 'worktree' internal/template/templates/.claude/rules/moai/workflow/factory-dispatch-detail.md
-    grep -c -F 'lane' .moai/policies/workflow/factory-dispatch-cards.md
-    grep -c -F 'lane' internal/template/templates/.claude/rules/moai/workflow/factory-dispatch-cards.md
-    grep -c -F 'worktree' .moai/policies/workflow/factory-dispatch-cards.md
-    grep -c -F 'worktree' internal/template/templates/.claude/rules/moai/workflow/factory-dispatch-cards.md
+    cmp .moai/policies/workflow/factory-dispatch-cards.md internal/template/templates/.claude/rules/moai/workflow/factory-dispatch-cards.md
+    diff .moai/policies/workflow/factory-dispatch-detail.md internal/template/templates/.claude/rules/moai/workflow/factory-dispatch-detail.md | grep -E '^[0-9]'
     make agents-emit-check
 
-**Expected observable result:** each policy-copy grep count is 1 or more. For `factory-dispatch-detail.md` and `factory-dispatch-cards.md`, each policy-copy count equals the count of the same phrase in the matching template rule file under `internal/template/templates/.claude/rules/moai/workflow/`. The phrases `lane` and `worktree` are terms of the transition passage named in plan.md § E (Transition doctrine; Policy copies), and each occurs at least once in both matching template rule files (verified at authoring). `make agents-emit-check` exits 0.
+**Expected observable result:** each `factory-dispatch.md` grep count is 1 or more. The cards `cmp` exits 0 with no output. The detail `diff`, filtered to hunk headers, prints exactly two lines, `135c135` and `157c157`, and nothing else. `make agents-emit-check` exits 0.
 
 **Traces to:** REQ-LNC-014.
 
