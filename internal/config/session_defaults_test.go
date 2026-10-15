@@ -80,6 +80,8 @@ func TestSessionDefaultsValidation(t *testing.T) {
 		"glm effort max":          {func(s *SessionDefaults) { s.GLM.Leader.Effort = "max" }, "llm.defaults.sessions.glm.leader.effort"},
 		"glm effort Claude vocab": {func(s *SessionDefaults) { s.GLM.Lane.Effort = "medium" }, ""},
 		"cc xhigh":                {func(s *SessionDefaults) { s.CC.Leader.Effort = "xhigh" }, ""},
+		"codex model newline":     {func(s *SessionDefaults) { s.Codex.Lane.Model = "gpt\nx" }, "llm.defaults.sessions.codex.lane.model"},
+		"codex model id":          {func(s *SessionDefaults) { s.Codex.Lane.Model = "gpt-6.1-sol" }, ""},
 	}
 	for name, tc := range cases {
 		cfg := NewDefaultConfig()
@@ -222,4 +224,28 @@ func sessionYAMLTags(t reflect.Type) []string {
 	}
 	sort.Strings(out)
 	return out
+}
+
+// TestSessionDefaultsResolveRejectsInvalid: a custom cell that
+// validateSessionDefaults refuses never leaves the resolver — the shipped
+// value for that field is returned instead (fail-open for the launchers).
+func TestSessionDefaultsResolveRejectsInvalid(t *testing.T) {
+	t.Parallel()
+	llm := NewDefaultLLMConfig()
+	llm.Defaults.Sessions.Mode = SessionDefaultsModeCustom
+	llm.Defaults.Sessions.CC.Lane = ModelEffort{Model: "opus; x", Effort: "ultra"}
+	llm.Defaults.Sessions.Codex.Lane = ModelEffort{Model: "gpt\nx", Effort: `high" model="evil`}
+	llm.Defaults.Sessions.GLM.Leader = ModelEffort{Model: "opus", Effort: "max"}
+	for _, tc := range []struct {
+		backend, role string
+		want          ModelEffort
+	}{
+		{SessionBackendCC, SessionRoleLane, ModelEffort{"sonnet", "medium"}},
+		{SessionBackendCodex, SessionRoleLane, ModelEffort{CodexModelSol, "medium"}},
+		{SessionBackendGLM, SessionRoleLeader, ModelEffort{"opus", "high"}},
+	} {
+		if got, ok := llm.ResolveSessionDefault(tc.backend, tc.role); !ok || got != tc.want {
+			t.Errorf("%s %s = %+v (ok %v), want the shipped %+v", tc.backend, tc.role, got, ok, tc.want)
+		}
+	}
 }

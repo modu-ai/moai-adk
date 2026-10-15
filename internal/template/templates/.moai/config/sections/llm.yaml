@@ -55,8 +55,8 @@ llm:
   # spawnable.
   agent_overrides_consume: false
 
-  # defaults.sessions: the model + effort each factory session launches with
-  # (card t1808). `mode: default` uses the shipped table (the values below
+  # defaults.sessions: the model + effort each factory session launches with.
+  # `mode: default` uses the shipped table (the values below
   # restate it); `mode: custom` applies the cells below from the next launch,
   # an empty cell falling back to the shipped value. Every value is a launch
   # DEFAULT that stays changeable mid-session: Claude takes --model plus the

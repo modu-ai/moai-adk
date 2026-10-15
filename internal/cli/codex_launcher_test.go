@@ -134,8 +134,10 @@ func withCodexLaunchCapture(t *testing.T) *codexLaunchCapture {
 	prevAddDir := codexMoaiHomeAddDirArgs
 	codexMoaiHomeAddDirArgs = func() []string { return nil }
 	// The session-default -m / -c pair (card t1808) depends on the project's
-	// llm.yaml; the exact-argv cells pin it off and
-	// TestCodexLaunchCarriesSessionDefaults measures it directly.
+	// llm.yaml; the exact-argv cells pin it off, and
+	// TestCodexPlainLaunchCarriesNoModelArgs (plain launch) and
+	// TestCodexLaneLaunchCarriesSessionDefaults (lane launch) restore the
+	// real body to measure it.
 	prevSession := codexSessionDefaultArgsFn
 	codexSessionDefaultArgsFn = func(string, string, []string) []string { return nil }
 	t.Cleanup(func() {

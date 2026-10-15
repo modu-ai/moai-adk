@@ -20,6 +20,7 @@ package cli
 // An explicit operator --model / --effort / -m / -c effort wins.
 
 import (
+	"fmt"
 	"path/filepath"
 	"strings"
 
@@ -54,12 +55,33 @@ func sessionLLMConfig(root string) config.LLMConfig {
 	return config.NewDefaultLLMConfig()
 }
 
+// warnSessionRejections writes one launcher warning per rejected llm.yaml
+// session cell of the given field ("" = every field): the key, the rejected
+// value, and the built-in default the launch uses instead. The launch
+// proceeds — an invalid cell never blocks it and never reaches argv or env.
+func warnSessionRejections(rejected []config.SessionDefaultRejection, field string) {
+	for _, r := range rejected {
+		if field != "" && r.Field != field {
+			continue
+		}
+		_, _ = fmt.Fprintf(launcherStderr, "Warning: %s %q is not a valid session %s; using the built-in default %q\n",
+			r.Key, r.Value, r.Field, r.Fallback)
+	}
+}
+
 // factorySessionDefault resolves the session default for a Claude-hosted
 // factory launch (cc or glm backend). ok is false outside a factory session.
 func factorySessionDefault(env []string, root string) (backend string, me config.ModelEffort, ok bool) {
+	backend, me, _, ok = factorySessionDefaultChecked(env, root)
+	return backend, me, ok
+}
+
+// factorySessionDefaultChecked is factorySessionDefault plus the llm.yaml
+// cells the resolver rejected and replaced with the built-in default.
+func factorySessionDefaultChecked(env []string, root string) (backend string, me config.ModelEffort, rejected []config.SessionDefaultRejection, ok bool) {
 	role := factorySessionRole(env)
 	if role == "" {
-		return "", config.ModelEffort{}, false
+		return "", config.ModelEffort{}, nil, false
 	}
 	switch launchEnvValue(env, config.EnvFactoryBackend) {
 	case factory.BackendGLM:
@@ -67,20 +89,22 @@ func factorySessionDefault(env []string, root string) (backend string, me config
 	case factory.BackendClaude, "":
 		backend = config.SessionBackendCC
 	default:
-		return "", config.ModelEffort{}, false
+		return "", config.ModelEffort{}, nil, false
 	}
-	me, ok = sessionLLMConfig(root).ResolveSessionDefault(backend, role)
-	return backend, me, ok
+	me, rejected, ok = sessionLLMConfig(root).ResolveSessionDefaultChecked(backend, role)
+	return backend, me, rejected, ok
 }
 
 // factorySessionModel returns the launch model: an explicit --model wins;
 // inside a factory session the session default replaces the stored/profile
-// model; otherwise current is kept.
+// model; otherwise current is kept. A rejected llm.yaml model is warned about
+// here (the model half's single consumer) and replaced by the built-in default.
 func factorySessionModel(env []string, root string, explicit bool, current string) string {
 	if explicit {
 		return current
 	}
-	if _, me, ok := factorySessionDefault(env, root); ok && me.Model != "" {
+	if _, me, rejected, ok := factorySessionDefaultChecked(env, root); ok && me.Model != "" {
+		warnSessionRejections(rejected, "model")
 		return me.Model
 	}
 	return current
@@ -93,10 +117,11 @@ func factorySessionModel(env []string, root string, explicit bool, current strin
 // to the shipped config.DefaultGLMEffort* value. ok is false for any launch
 // that is not a glm factory session.
 func factorySessionGLMState(env []string, root string, tier config.GLMTierEffort) (string, bool) {
-	backend, me, ok := factorySessionDefault(env, root)
+	backend, me, rejected, ok := factorySessionDefaultChecked(env, root)
 	if !ok || backend != config.SessionBackendGLM || me.Effort == "" {
 		return "", false
 	}
+	warnSessionRejections(rejected, "effort")
 	pick := func(stored, def string) string {
 		if s := strings.TrimSpace(stored); s != "" {
 			return s
@@ -116,26 +141,30 @@ func factorySessionGLMState(env []string, root string, tier config.GLMTierEffort
 // factorySessionClaudeEffort returns the Claude effort a cc factory launch
 // injects; ok is false when the profile effort applies instead.
 func factorySessionClaudeEffort(env []string, root string) (string, bool) {
-	if backend, me, ok := factorySessionDefault(env, root); ok && backend == config.SessionBackendCC && me.Effort != "" {
+	if backend, me, rejected, ok := factorySessionDefaultChecked(env, root); ok && backend == config.SessionBackendCC && me.Effort != "" {
+		warnSessionRejections(rejected, "effort")
 		return me.Effort, true
 	}
 	return "", false
 }
 
-// codexSessionDefaultArgsFn is the seam the codex launch paths call; the
+// codexSessionDefaultArgsFn is the seam the codex lane launch calls; the
 // launch-mechanics tests that pin an exact argv neutralize it the way they
-// neutralize codexMoaiHomeAddDirArgs, and TestCodexLaunchCarriesSessionDefaults
-// restores the real body.
+// neutralize codexMoaiHomeAddDirArgs, and TestCodexPlainLaunchCarriesNoModelArgs
+// and TestCodexLaneLaunchCarriesSessionDefaults restore the real body.
 var codexSessionDefaultArgsFn = codexSessionDefaultArgs
 
 // codexSessionDefaultArgs returns the -m / -c model_reasoning_effort argv a
-// `moai codex` launch prepends for role (leader = the CLI session, lane =
-// `moai codex -l`), skipping each half the operator already supplied in tail.
+// `moai codex` launch prepends for role (lane = `moai codex -l`; the leader
+// pair is reserved for a future `moai codex -f`), skipping each half the
+// operator already supplied in tail. A rejected llm.yaml cell is warned about
+// and replaced by the built-in default.
 func codexSessionDefaultArgs(root, role string, tail []string) []string {
-	me, ok := sessionLLMConfig(root).ResolveSessionDefault(config.SessionBackendCodex, role)
+	me, rejected, ok := sessionLLMConfig(root).ResolveSessionDefaultChecked(config.SessionBackendCodex, role)
 	if !ok {
 		return nil
 	}
+	warnSessionRejections(rejected, "")
 	var out []string
 	if me.Model != "" && !codexTailHasModel(tail) {
 		out = append(out, "-m", me.Model)

@@ -2,8 +2,10 @@ package cli
 
 import (
 	"os"
+	"os/exec"
 	"path/filepath"
 	"slices"
+	"strconv"
 	"strings"
 	"testing"
 
@@ -185,9 +187,11 @@ func TestFactorySessionGLMWire(t *testing.T) {
 	})
 }
 
-// TestCodexSessionDefaultArgs: `moai codex` (leader) and `moai codex -l`
-// (lane) carry -m and -c model_reasoning_effort; an operator -m / -c effort
-// suppresses the injection.
+// TestCodexSessionDefaultArgs: the session-default argv builder yields -m and
+// -c model_reasoning_effort for both roles (the lane pair rides `moai codex
+// -l`; the leader pair is reserved for a future `moai codex -f` — a plain
+// `moai codex` carries neither); an operator -m / -c effort suppresses the
+// injection.
 func TestCodexSessionDefaultArgs(t *testing.T) {
 	root := t.TempDir()
 	if got := codexSessionDefaultArgs(root, config.SessionRoleLeader, nil); !slices.Equal(got,
@@ -233,5 +237,231 @@ func TestCodexPlainLaunchCarriesNoModelArgs(t *testing.T) {
 	}
 	if want := []string{"--sandbox", "workspace-write"}; !slices.Equal(got, want) {
 		t.Errorf("argv tail = %q, want %q", got, want)
+	}
+}
+
+// glmSessionLLMBody is an llm.yaml body selecting the GLM backend with the
+// shipped tier tables, followed by a defaults.sessions block.
+const glmSessionLLMBody = "llm:\n  mode: glm\n  glm:\n    models: {high: glm-5.3, medium: glm-5.3, low: glm-5.3-flash, fable: glm-5.3}\n" +
+	"    effort: {high: max, medium: high, low: low, fable: max}\n  defaults:\n    sessions:\n"
+
+// sessionLaunchCapture drives the real runLaunchClaude for a factory session
+// stamped by role/backend, with claude stubbed, and returns the argv and env
+// the launch handed over plus the launcher notices. llmBody is the full
+// llm.yaml content ("" = none). The profile model is haiku so a launch that
+// lost the session-default wiring is visible as --model haiku.
+//
+// NOTE: callers must not use t.Parallel() — the helper chdirs and overrides
+// package-level seams and environment variables.
+func sessionLaunchCapture(t *testing.T, role, backend, llmBody string) (args, env []string, stderr string) {
+	t.Helper()
+	root := t.TempDir()
+	if resolved, err := filepath.EvalSymlinks(root); err == nil {
+		root = resolved
+	}
+	for _, d := range []string{filepath.Join(".moai", "config", "sections"), ".claude"} {
+		if err := os.MkdirAll(filepath.Join(root, d), 0o755); err != nil {
+			t.Fatal(err)
+		}
+	}
+	if llmBody != "" {
+		if err := os.WriteFile(filepath.Join(root, ".moai", "config", "sections", "llm.yaml"), []byte(llmBody), 0o644); err != nil {
+			t.Fatal(err)
+		}
+	}
+	profileBase := t.TempDir()
+	origBase := profile.BaseDirOverride
+	t.Cleanup(func() { profile.BaseDirOverride = origBase })
+	profile.BaseDirOverride = profileBase
+	if err := os.WriteFile(filepath.Join(profileBase, "preferences.yaml"), []byte("user_name: tester\nmodel: haiku\neffort_level: low\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	t.Setenv(config.EnvClaudeConfigDir, profileBase)
+	t.Setenv(config.EnvAnthropicModel, "")
+	t.Setenv(config.EnvMoaiFactoryManaged, "")
+	t.Setenv(config.EnvAnthropicReasoningEffort, "")
+	factorySessionEnv(t, role, backend)
+	t.Chdir(root)
+	t.Setenv(config.EnvClaudeBin, writeExecutable(t, filepath.Join(t.TempDir(), "claude-stub")))
+
+	origExec := execOrSpawnClaudeFunc
+	t.Cleanup(func() { execOrSpawnClaudeFunc = origExec })
+	execOrSpawnClaudeFunc = func(_ string, a, e []string) error {
+		args, env = a, e
+		return nil
+	}
+	var buf strings.Builder
+	origErr := launcherStderr
+	t.Cleanup(func() { launcherStderr = origErr })
+	launcherStderr = &buf
+
+	if err := runLaunchClaude("", nil); err != nil {
+		t.Fatalf("runLaunchClaude: %v (a session-default problem must never block the launch)", err)
+	}
+	return args, env, buf.String()
+}
+
+// argAfter returns the value following flag in args ("" when absent).
+func argAfter(args []string, flag string) string {
+	for i := 0; i+1 < len(args); i++ {
+		if args[i] == flag {
+			return args[i+1]
+		}
+	}
+	return ""
+}
+
+// TestFactoryLaunchWiresSessionDefaults drives the real Claude launch path
+// (runLaunchClaude) for cc and glm factory sessions and pins the two wirings
+// the helper-level tests cannot see: the session model replacing the profile
+// model (launcher.go factorySessionModel call) and, under GLM, the session
+// effort reaching ANTHROPIC_REASONING_EFFORT (launcher.go
+// factorySessionGLMState branch). The glm lane cell is custom low so its
+// z.ai state (tier.low = low) differs from what the non-factory slot path
+// wires for the sonnet slot.
+func TestFactoryLaunchWiresSessionDefaults(t *testing.T) {
+	t.Run("cc lane", func(t *testing.T) {
+		args, _, _ := sessionLaunchCapture(t, config.SessionRoleLane, factory.BackendClaude, "")
+		if got := argAfter(args, "--model"); got != "sonnet" {
+			t.Errorf("cc lane --model = %q, want sonnet (args %q)", got, args)
+		}
+	})
+	t.Run("cc leader", func(t *testing.T) {
+		args, _, _ := sessionLaunchCapture(t, config.SessionRoleLeader, factory.BackendClaude, "")
+		if got := argAfter(args, "--model"); got != "opus" {
+			t.Errorf("cc leader --model = %q, want opus (args %q)", got, args)
+		}
+	})
+	t.Run("glm lane", func(t *testing.T) {
+		body := glmSessionLLMBody + "      mode: custom\n      glm:\n        lane: {model: sonnet, effort: low}\n"
+		args, env, _ := sessionLaunchCapture(t, config.SessionRoleLane, factory.BackendGLM, body)
+		if got := argAfter(args, "--model"); got != "sonnet" {
+			t.Errorf("glm lane --model = %q, want the sonnet slot alias (args %q)", got, args)
+		}
+		if got := launchEnvValue(env, config.EnvAnthropicReasoningEffort); got != "low" {
+			t.Errorf("glm lane %s = %q, want low (session effort low through llm.glm.effort.low)", config.EnvAnthropicReasoningEffort, got)
+		}
+	})
+	t.Run("glm leader", func(t *testing.T) {
+		args, env, _ := sessionLaunchCapture(t, config.SessionRoleLeader, factory.BackendGLM, glmSessionLLMBody+"      mode: default\n")
+		if got := argAfter(args, "--model"); got != "opus" {
+			t.Errorf("glm leader --model = %q, want the opus slot alias (args %q)", got, args)
+		}
+		if got := launchEnvValue(env, config.EnvAnthropicReasoningEffort); got != "max" {
+			t.Errorf("glm leader %s = %q, want max", config.EnvAnthropicReasoningEffort, got)
+		}
+	})
+}
+
+// TestFactoryLaunchRejectsInvalidSessionDefaults pins the fail-open rule for
+// a custom llm.yaml cell that config.Validate refuses: the launch proceeds,
+// the launcher warns naming the key and the bad value, the built-in default
+// for that cell is used, and the bad value never reaches argv or env.
+func TestFactoryLaunchRejectsInvalidSessionDefaults(t *testing.T) {
+	t.Run("cc lane model", func(t *testing.T) {
+		writeBody := "llm:\n  defaults:\n    sessions:\n      mode: custom\n      cc:\n        lane: {model: \"opus; x\"}\n"
+		args, env, stderr := sessionLaunchCapture(t, config.SessionRoleLane, factory.BackendClaude, writeBody)
+		if got := argAfter(args, "--model"); got != "sonnet" {
+			t.Errorf("--model = %q, want the built-in sonnet", got)
+		}
+		assertSessionWarning(t, stderr, "llm.defaults.sessions.cc.lane.model", "opus; x")
+		assertNeverCarried(t, append(args, env...), "opus; x")
+	})
+	t.Run("cc lane effort", func(t *testing.T) {
+		root := withCrossSessionConfig(t, "")
+		writeSessionLLM(t, root, "      mode: custom\n      cc:\n        lane: {effort: ultra}\n")
+		withLaunchEffortPrefs(t, profile.ProfilePreferences{EffortLevel: "low"}, nil)
+		factorySessionEnv(t, config.SessionRoleLane, factory.BackendClaude)
+		var buf strings.Builder
+		origErr := launcherStderr
+		t.Cleanup(func() { launcherStderr = origErr })
+		launcherStderr = &buf
+
+		flag, cleanup := prepareFactorySettings("dev", nil)
+		t.Cleanup(cleanup)
+		if effort, _ := injectedSettingsEffort(t, flag); effort != "medium" {
+			t.Errorf("injected effortLevel = %v, want the built-in medium", effort)
+		}
+		if n, v := countEffortFlags(flag); n != 0 {
+			t.Errorf("flag = %v carries --effort %s; the bad value must not reach argv", flag, v)
+		}
+		assertSessionWarning(t, buf.String(), "llm.defaults.sessions.cc.lane.effort", "ultra")
+	})
+	t.Run("glm lane effort", func(t *testing.T) {
+		body := glmSessionLLMBody + "      mode: custom\n      glm:\n        lane: {effort: ultra}\n"
+		args, env, stderr := sessionLaunchCapture(t, config.SessionRoleLane, factory.BackendGLM, body)
+		if got := launchEnvValue(env, config.EnvAnthropicReasoningEffort); got != "high" {
+			t.Errorf("%s = %q, want high (built-in medium through llm.glm.effort.medium)", config.EnvAnthropicReasoningEffort, got)
+		}
+		assertSessionWarning(t, stderr, "llm.defaults.sessions.glm.lane.effort", "ultra")
+		assertNeverCarried(t, append(args, env...), "ultra")
+	})
+	t.Run("codex lane effort and model", func(t *testing.T) {
+		root := t.TempDir()
+		writeSessionLLM(t, root, "      mode: custom\n      codex:\n        lane: {model: \"gpt\\nx\", effort: 'high\" model=\"evil'}\n")
+		var buf strings.Builder
+		origErr := launcherStderr
+		t.Cleanup(func() { launcherStderr = origErr })
+		launcherStderr = &buf
+		got := codexSessionDefaultArgs(root, config.SessionRoleLane, nil)
+		if want := []string{"-m", config.CodexModelSol, "-c", `model_reasoning_effort="medium"`}; !slices.Equal(got, want) {
+			t.Errorf("codex lane args = %q, want the built-in %q", got, want)
+		}
+		assertSessionWarning(t, buf.String(), "llm.defaults.sessions.codex.lane.effort", `high" model="evil`)
+		assertSessionWarning(t, buf.String(), "llm.defaults.sessions.codex.lane.model", "gpt\nx")
+		assertNeverCarried(t, got, "evil")
+	})
+}
+
+func assertSessionWarning(t *testing.T, stderr, key, value string) {
+	t.Helper()
+	for _, line := range strings.Split(stderr, "\n") {
+		if strings.Contains(line, "Warning:") && strings.Contains(line, key) && strings.Contains(line, strconv.Quote(value)) {
+			return
+		}
+	}
+	t.Errorf("stderr carries no warning naming %s and %q:\n%s", key, value, stderr)
+}
+
+func assertNeverCarried(t *testing.T, carried []string, bad string) {
+	t.Helper()
+	for _, a := range carried {
+		if strings.Contains(a, bad) {
+			t.Errorf("the rejected value %q reached the launch: %q", bad, a)
+		}
+	}
+}
+
+// TestCodexLaneLaunchCarriesSessionDefaults drives the real `moai codex -l`
+// launch and pins the lane argv wiring (codex_launcher.go): the lane child
+// carries -m <sol> and -c model_reasoning_effort="medium".
+func TestCodexLaneLaunchCarriesSessionDefaults(t *testing.T) {
+	root, store := fcFixture(t)
+	fcQueue(t, store, factory.BacklogStatePicked)
+	sdRecordLeaderRun(t, root, fcRun, factory.BackendClaude)
+	t.Chdir(root)
+	netScrubLaneEnv(t)
+	prevAdd := codexMoaiHomeAddDirArgs
+	codexMoaiHomeAddDirArgs = func() []string { return nil }
+	var argv []string
+	prevLook, prevDirect := codexLookPath, codexDirectLaunchFn
+	codexLookPath = func(string) (string, error) { return "/sentinel/codex", nil }
+	codexDirectLaunchFn = func(c *exec.Cmd) error {
+		if argv == nil {
+			argv = c.Args
+		}
+		return nil
+	}
+	t.Cleanup(func() {
+		codexLookPath, codexDirectLaunchFn, codexMoaiHomeAddDirArgs = prevLook, prevDirect, prevAdd
+	})
+	if _, _, err := runCodexCmd(t, "-l"); err != nil {
+		t.Fatalf("codex -l: %v", err)
+	}
+	if got := argAfter(argv, "-m"); got != config.CodexModelSol {
+		t.Errorf("lane argv -m = %q, want %s (argv %q)", got, config.CodexModelSol, argv)
+	}
+	if !slices.Contains(argv, `model_reasoning_effort="medium"`) {
+		t.Errorf("lane argv lacks -c model_reasoning_effort=\"medium\" (argv %q)", argv)
 	}
 }

@@ -1,6 +1,9 @@
 package config
 
-import "strings"
+import (
+	"strings"
+	"unicode"
+)
 
 // session_defaults.go — launch defaults for factory sessions (card t1808,
 // operator per-role defaults).
@@ -103,32 +106,75 @@ func (p SessionRolePair) role(role string) (ModelEffort, bool) {
 // @MX:ANCHOR: [AUTO] single resolver of factory session launch defaults
 // @MX:REASON: the cc/glm settings injection, the Claude launch model, and the codex launcher argv all read it; a divergent copy would let the launchers disagree
 func (c LLMConfig) ResolveSessionDefault(backend, role string) (ModelEffort, bool) {
+	out, _, ok := c.ResolveSessionDefaultChecked(backend, role)
+	return out, ok
+}
+
+// SessionDefaultRejection names one custom llm.yaml session cell the resolver
+// refused because it fails the validateSessionDefaults rules, and the shipped
+// value used in its place.
+type SessionDefaultRejection struct {
+	Key      string // llm.defaults.sessions.<backend>.<role>.<field>
+	Field    string // "model" or "effort"
+	Value    string // the rejected value
+	Fallback string // the shipped value used instead
+}
+
+// ResolveSessionDefaultChecked is ResolveSessionDefault plus the cells it
+// rejected. A custom cell that config.Validate would refuse never reaches a
+// launch: the shipped value for that field is used and the rejection is
+// reported so the launcher can warn (fail-open — a launch never blocks on it).
+func (c LLMConfig) ResolveSessionDefaultChecked(backend, role string) (ModelEffort, []SessionDefaultRejection, bool) {
 	defPair, ok := defaultSessionDefaults().pair(backend)
 	if !ok {
-		return ModelEffort{}, false
+		return ModelEffort{}, nil, false
 	}
 	out, ok := defPair.role(role)
 	if !ok {
-		return ModelEffort{}, false
+		return ModelEffort{}, nil, false
 	}
 	if strings.TrimSpace(c.Defaults.Sessions.Mode) != SessionDefaultsModeCustom {
-		return out, true
+		return out, nil, true
 	}
 	cfgPair, _ := c.Defaults.Sessions.pair(backend)
 	cell, _ := cfgPair.role(role)
+	prefix := "llm.defaults.sessions." + backend + "." + role
+	var rejected []SessionDefaultRejection
 	if m := strings.TrimSpace(cell.Model); m != "" {
-		out.Model = m
+		if sessionModelValid(backend, m) {
+			out.Model = m
+		} else {
+			rejected = append(rejected, SessionDefaultRejection{Key: prefix + ".model", Field: "model", Value: m, Fallback: out.Model})
+		}
 	}
 	if e := strings.TrimSpace(cell.Effort); e != "" {
-		out.Effort = e
+		if sessionClaudeEfforts[e] {
+			out.Effort = e
+		} else {
+			rejected = append(rejected, SessionDefaultRejection{Key: prefix + ".effort", Field: "effort", Value: e, Fallback: out.Effort})
+		}
 	}
-	return out, true
+	return out, rejected, true
 }
 
 var (
 	sessionClaudeModels  = map[string]bool{"opus": true, "sonnet": true, "haiku": true, "fable": true}
 	sessionClaudeEfforts = map[string]bool{"low": true, "medium": true, "high": true, "xhigh": true}
 )
+
+// sessionModelValid reports whether m is an acceptable session model for
+// backend: a Claude alias (cc) or slot alias (glm) from the closed set, or a
+// Codex model id carrying no whitespace, control character, quote, or
+// backslash (the value travels as one argv element and must not cross a
+// TOML value boundary).
+func sessionModelValid(backend, m string) bool {
+	if backend != SessionBackendCodex {
+		return sessionClaudeModels[m]
+	}
+	return !strings.ContainsAny(m, "\"'\\") && strings.IndexFunc(m, func(r rune) bool {
+		return unicode.IsSpace(r) || unicode.IsControl(r)
+	}) < 0
+}
 
 // validateSessionDefaults checks llm.defaults.sessions: the mode closed set,
 // and per cell a model and effort. Every effort is Claude vocabulary
@@ -152,28 +198,18 @@ func validateSessionDefaults(cfg *Config) []ValidationError {
 			cell, _ := pair.role(role)
 			prefix := "llm.defaults.sessions." + backend + "." + role
 			m, e := strings.TrimSpace(cell.Model), strings.TrimSpace(cell.Effort)
-			switch backend {
-			case SessionBackendCodex:
-				if m != "" && strings.ContainsAny(m, " \t\"'\\") {
+			if m != "" && !sessionModelValid(backend, m) {
+				switch backend {
+				case SessionBackendCodex:
 					add(prefix+".model", "model "+m+" is not a Codex model id", m)
-				}
-				if e != "" && !sessionClaudeEfforts[e] {
-					add(prefix+".effort", "effort "+e+" is not in {low, medium, high, xhigh} (max/ultra are never a default)", e)
-				}
-			case SessionBackendGLM:
-				if m != "" && !sessionClaudeModels[m] {
+				case SessionBackendGLM:
 					add(prefix+".model", "model "+m+" is not a GLM slot alias {opus, sonnet, haiku, fable}", m)
-				}
-				if e != "" && !sessionClaudeEfforts[e] {
-					add(prefix+".effort", "effort "+e+" is not in {low, medium, high, xhigh} (max/ultra are never a default)", e)
-				}
-			default:
-				if m != "" && !sessionClaudeModels[m] {
+				default:
 					add(prefix+".model", "model "+m+" is not in {opus, sonnet, haiku, fable}", m)
 				}
-				if e != "" && !sessionClaudeEfforts[e] {
-					add(prefix+".effort", "effort "+e+" is not in {low, medium, high, xhigh} (max/ultra are never a default)", e)
-				}
+			}
+			if e != "" && !sessionClaudeEfforts[e] {
+				add(prefix+".effort", "effort "+e+" is not in {low, medium, high, xhigh} (max/ultra are never a default)", e)
 			}
 		}
 	}
