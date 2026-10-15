@@ -257,10 +257,10 @@ Clarification-marker check (plan-close and run-close): `command grep -rnie 'need
 - **OQ-2 — the shadow-return terms.** Decided: option (a). *advise-or-above* and *shadow* are defined by behaviour, with no configuration key (§D.4; REQ-JRM-011). Reference: card:t1768 (board).
 - **OQ-3 — the regression-set reference.** Decided: option (b). The reference that REQ-JRM-010 compares against is the verified id. The REQ-JRM-011 re-run procedure compares against it: re-run the regression set against the new id, then change the verified id. The shipping-prohibition clause is dropped from §D.4 and from REQ-JRM-011. Reference: card:t1768 (board).
 
-### Decided by the author in this repair round (for the leader to confirm)
+### Decided (card:t1768, board d-20261015T052851Z-42ed; brain, Jev, and leader agree)
 
-- **D11 — the fallback reason for an unattributed answer.** `TestAutoFallbackReasonMapping` requires that no two conditions share a fallback reason. Mapping `unattributed` through the default branch to `jev-unreachable` would make it share the reason of `Unreachable`, so the plan adds `jev-unattributed` (file 17). That adds one operator-visible reason value. If the leader prefers the collapse, the invariant test must change first.
-- **Kickoff — the unattributed result.** It takes the existing fail-closed fallback `jev_call_failed` through the default branch (decide.go:490). No closed-vocabulary invariant in that package forces a new reason.
+- **D11 — the fallback reason for an unattributed answer.** Decided: the new reason token `jev-unattributed` (file 17). It is not merged into `jev-unreachable`, and the invariant of `TestAutoFallbackReasonMapping` (no two conditions share a fallback reason) stays; §D.6 adds one case row to that test. The reason is operator-visible. Reference: board d-20261015T052851Z-42ed.
+- **Kickoff — the unattributed result.** Decided: keep the fail-closed fallback. An unattributed result takes `jev_call_failed` through the default branch (decide.go:490). Reference: board d-20261015T052851Z-42ed.
 
 ### Non-blocking items (recorded, not gating)
 
@@ -268,6 +268,7 @@ Clarification-marker check (plan-close and run-close): `command grep -rnie 'need
 - **OQ-5 — amendment transition precedent.** CORE 0.2.0–0.4.0 kept `status: completed` as a non-transition correction. This card follows its instruction (`completed → in-progress (amendment)`). If the lead prefers the precedent, the change is limited to the status line and `amendment_of`, and REQ-JRM-013 still holds.
 - **OQ-6 — sync-phase documentation.** `.moai/docs/jev-local-operations.md`, `kickoff-autonomy.md`, and `stale-card-premise-check.md` mention Jev. None states the pin or the alias. manager-docs reviews them at sync, and writes the CHANGELOG entry.
 - **OQ-7 — dispatch.** Card t1762 depends on this card's attribution fields. Its plan must cite them and must be planned after this card lands.
+- **D18 — pin wording in the other SPEC bodies.** The pin wording of SPEC-JEV-CONSUMERS-001 and SPEC-JEV-GOAL-DIST-001 is deferred to card t1803. Reference: board d-20261015T052851Z-42ed.
 
 ---
 
@@ -275,7 +276,7 @@ Clarification-marker check (plan-close and run-close): `command grep -rnie 'need
 
 - **Live confirmation is a gap.** The alias-to-version behaviour (`jev-latest` → `jev-1.13.0`, same answer and tokens) is the leader's observation of 2026-10-15. This stage made no call to the endpoint, and no credential is present in this tree. The run-stage tests use fixtures and a local server. Live confirmation is a separate observation, recorded by the run stage with its own command and output, or it stays a gap.
 - **Fail-closed on a shape change.** If the vendor changes the `model` field's shape, every consumer becomes unavailable (`unattributed`) until the shape is accepted. That is the designed behaviour, and it is visible to the service.
-- **Version changes are noticed on Go callers, not on every surface.** The change notice is carried on `Result.Notice` and read through `NoticeLine()`. The MCP output marshals the whole `Usage` but not the notice, and no other surface changes in this SPEC (the file count stays at 17). A caller that reads only the MCP output sees the changed `usage.model` but not the notice line. This is recorded here, not closed.
+- **Version changes are noticed on Go callers, not on every surface.** The change notice is carried on `Result.Notice` and read through `NoticeLine()`. The MCP output marshals the whole `Usage` but not the notice, and no other surface changes in this SPEC (the file count stays at 17). A caller that reads only the MCP output sees the changed `usage.model` but not the notice line. This is recorded here, not closed. The closure is handed to follow-up card t1803 (board d-20261015T052851Z-42ed); the Tier M basis stays as recorded in §A.
 - **Consumer breakage outside the named families is possible.** The consumer sweep (§D.1) read every fixture that carries an `answers` body. Injected `jev.Result` fixtures whose empty `Usage.Model` changes a rendered reason remain possible in the importers that §F runs by name.
 - **The CLI suite is not a gate.** The card-worktree CLI suite is structurally red, so §F runs anchored families only. A family-level pass does not prove the rest of `internal/cli`.
 
