@@ -459,6 +459,26 @@ Verification batch at HEAD 807db1c8c (this tree, this run):
 
 Authored-By-Agent: manager-develop
 
+### Sync-audit r7 delta repair round — F22/F23 structural isolation (card t1632, branch WT-3-2-0-2)
+
+Commit: `fcfad897e` (fix: sync-audit r7 delta repairs — F22/F23 structural isolation). Base: the r6 evidence head `5bdc1c212`. Verdict file: .moai/reports/t1632/sync-audit-r6.md (F18/F20/F21 resolved; F22 canary overwrite+symlink, F23 self-removal-before-check ordering). Push state: nothing pushed; clean on WT-3-2-0-2.
+
+Adopted disposition: the auditor's recommended STRUCTURAL ISOLATION over the minimal canary patch — startCtxBoundBackgroundJob now isolates the job registry in a TEMPORARY git repository (the serving-project resolver, the job's project_root, AND the serving anchor codexServingDir all name it), so the job's records never touch the serving tree's real state at all. With the isolation in place the canary's fixed-name/non-exclusive write and its self-removal-before-check ordering are structurally gone; the mutation tripwire STAYS as the regression proof:
+
+| Check | Command (verbatim) | Observed output |
+|-------|--------------------|-----------------|
+| F23 mutation detection (the guard fires on exactly the removal it guards) | `go test ./internal/cli -run 'TestCodexTask_CanaryGuardCatchesRegistryRemoval' -count=1` | `ok` — canaryLost reports the loss after the RemoveAll mutation and is silent while the canary is present (the r6 device failed this mutation: its own self-removal ran before the check) |
+| F22/F23 structural isolation (zero contact with the serving state) | `go test ./internal/cli -run 'TestCodexTask_BackgroundJobNeverTouchesTheServingState' -count=1` | `ok` — a background job run leaves ZERO new records under the serving tree's job registry (before/after directory snapshot compared) |
+| The repaired family | `go test ./internal/cli -run '^TestCodexTask' -count=1` | `ok` — the whole family green, including the three background tests re-anchored on the isolated registry |
+
+r6 F18 follow-through (same round): the stack-observed hold point (handleCodexTask → codexAuditValidateRoot → codexAuditGit) was an UNBOUNDED background git read — it now carries its own context bound (DefaultCodexAuditListTimeout), and the bound test's watchdog margin is 10s with the reason recorded (git queries under concurrent load are seconds, and the pinned contract is the 100ms bound ending the handshake — visible in the "timed out after 100ms" error — not a wall clock).
+
+Verification batch at HEAD fcfad897e (this tree, this run):
+
+- E2 builds: `go build ./...` → exit 0.
+- Affected families green (-count=1): `^TestCodexTask` full family (2× runs at different stages), internal/auditreceipt full.
+- Lint (cli + auditreceipt): 4 errcheck, all pre-existing — zero NEW.
+
 ## §E.3 Run-phase Audit-Ready Signal
 
 run_audit_ready: true
