@@ -1178,6 +1178,9 @@ func runTemplateSyncWithProgress(cmd *cobra.Command, userAssetsInstalled bool) (
 	if verr == nil && packageVersion == projectVersion && !forceUpdate {
 		_, _ = fmt.Fprintln(out)
 		_, _ = fmt.Fprintln(out, tui.Pill(tui.PillOpts{Kind: tui.PillOk, Solid: false, Label: report.RenderOutcome(report.OutcomeAlreadyUpToDate, 0, ""), Theme: &th}))
+		// No confirmation applies on a same-version run, so the held-back skill.md renames
+		// run here. A run cancelled at the confirmation below does not reach this point.
+		applyDeferredSkillRenames(projectRoot)
 		return true, nil
 	}
 
