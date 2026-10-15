@@ -78,7 +78,7 @@ tier: M
 
 ### AC-LA-013 — 단일 해석 보장 (REQ-LA-001)
 
-- **Given** 기동 경로 호출 클로저 파일 집합(cc.go, glm.go, launcher.go, codex_hooks_seed.go, session_worktree.go, worktree_branch_flag.go, launch_chain.go — cc/glm 진입 → launch → runLaunchClaude가 도달하는 파일)이 있고 **When** 소스 스캔 시험이 해석기와 그 산책 헬퍼 바깥의 worktree 값 재유도 패턴(`worktreeFlagValue` 호출 포함)을 클로저 전체에서 세면 **Then** 0건이다 — worktree 선택의 판독은 해석기 한 곳뿐이며, 헬퍼 파일 뒤에 숨은 판독도 집합 안에서 센다(plan-repair 1: 스캔 집합을 호출 클로저로 고정 — 파일 역할 나열만으로는 codex_hooks_seed.go 뒤의 판독이 스캔을 통과했다).
+- **Given** 기동 경로 호출 클로저 파일 집합(cc.go, glm.go, launcher.go, codex_hooks_seed.go, session_worktree.go, worktree_branch_flag.go, launch_chain.go, lane_resume.go — cc/glm 진입 → launch → runLaunchClaude가 도달하는 파일; lane_resume.go는 레인 케이스가 반환 없이 공용 꼬리로 낙하하는 경로 위다 — `laneJoinChildArgv` 호출 cc.go:273, plan-repair 2 실측)이 있고 **When** 소스 스캔 시험이 해석기와 그 산책 헬퍼 바깥의 worktree 값 재유도 패턴(`worktreeFlagValue` 호출 포함)을 클로저 전체에서 세면 **Then** 0건이다 — worktree 선택의 판독은 해석기 한 곳뿐이며, 헬퍼 파일 뒤에 숨은 판독도 집합 안에서 센다(plan-repair 1: 스캔 집합을 호출 클로저로 고정 — 파일 역할 나열만으로는 codex_hooks_seed.go 뒤의 판독이 스캔을 통과했다). lane_resume.go 안의 레인 조인 조립(argv 변이 — 세션 이름 쌍 삽입·settings 부착)은 집합 안에서 허용되는 유일한 argv 변이며(`TestLaneJoinChildArgv`가 그 행동을 묶는다), 그 파일 안에서의 worktree 값 판독·재유도는 금지이고 스캔이 집계한다(plan-repair 2).
 - 검증: `go test ./internal/cli/ -run '^TestLaunchViewSingleParse$/no_rederivation_on_launch_path$' -v -count=1` → `--- PASS: TestLaunchViewSingleParse/no_rederivation_on_launch_path` 1행 + 실행 시험 수 1 (bare exit 0은 불충분).
 
 ### AC-LA-014 — 비리더 경로 행동 보존 (§2 제약)
@@ -149,8 +149,9 @@ tier: M
 | 10 | `--worktree=WT-card -- <꼬리>` | 값 `WT-card`, 같은 트리, `WT-card`; 구분자 뒤 꼬리는 프롬프트 텍스트 | 거부 |
 | 11 | `-w plain -- "<-w WT-card 토큰이 본문에 섞인 프롬프트>"` | 프롬프트 값 경계 — 구분자 뒤 본문은 옵션이 아니라 프롬프트 텍스트 → 값 `plain`, 일반 트리, 비카드 브랜치 | 허용 |
 | 12 | `-w plain -- <p1> -- --worktree WT-card` | 두 번째 `--` 경계 — 런처는 첫 구분자만 소비하고, 꼬리의 두 번째 `--`는 백엔드 모형의 옵션 종결자(그 뒤 토큰은 값 아님) → 값 `plain` | 허용 |
+| 13 | `-- --worktree plain <프롬프트>`(cc·glm 양 팔) | 구분자 뒤 비카드 값 — 백엔드 모형이 꼬리에서 읽는 선택, 값 `plain`, 일반 트리, 비카드 브랜치; 다섯 비가드 판독자의 구분자 앞 도메인에는 선택 없음 → 꼬리는 오늘과 같이 무변형 통과 | 허용 |
 
-11열은 프롬프트 본문을 스캔에 넣는 판독기가, 12열은 꼬리의 `--`를 구분자로 오해하는 판독기가 각각 죽는 경계다. 12열의 백엔드 측 `--` 규약은 C-1 재측정으로 확정하며 어긋나면 REQ-LA-003 경유로 정정한다(모형 추측 고정 금지).
+11열은 프롬프트 본문을 스캔에 넣는 판독기가, 12열은 꼬리의 `--`를 구분자로 오해하는 판독기가 각각 죽는 경계다. 12열의 백엔드 측 `--` 규약은 C-1 재측정으로 확정하며 어긋나면 REQ-LA-003 경유로 정정한다(모형 추측 고정 금지). 13열은 호환 셀이다(plan-audit D7, plan-repair 2): 9열이 가드가 구분자 뒤 카드 트리 값을 거부하는 반면, 비카드 꼬리 값은 오늘의 무검증 통과 그대로 유지됨을 양 팔에서 단언한다 — 비가드 판독자의 구분자 앞 도메인 보존(plan §F-M1 provenance 노트)과 한 쌍이며, 꼬리 안 백엔드 모형 값 판독에 관한 재측정은 12열과 같은 C-1 원문 하나로 함께 확정한다(중복 측정 아님).
 
 ## §D.5 폐쇄 게이트
 
