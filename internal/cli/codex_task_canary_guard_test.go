@@ -42,6 +42,10 @@ func TestCodexTask_CanaryGuardCatchesRegistryRemoval(t *testing.T) {
 // isolation (r7): a background job run through the session-context harness
 // leaves ZERO records under the serving tree's real job registry — the
 // registry lives in the isolated temp repository only.
+// Card t1632 sync-audit r8 F24: the serving registry ABSENT is a normal empty
+// state (a clean checkout has no .moai/state at all) — the before/after
+// reads treat IsNotExist as an empty listing and only an unexpected read
+// error is fatal.
 func TestCodexTask_BackgroundJobNeverTouchesTheServingState(t *testing.T) {
 	serving := thisRepoRoot(t)
 	jobsDir := filepath.Join(serving, ".moai", "state", codexJobsSubdir)
@@ -50,6 +54,8 @@ func TestCodexTask_BackgroundJobNeverTouchesTheServingState(t *testing.T) {
 		for _, e := range entries {
 			before[e.Name()] = true
 		}
+	} else if !os.IsNotExist(err) {
+		t.Fatalf("read the serving registry (before): %v", err)
 	}
 
 	// A fake session with a COMPLETING turn: this test's subject is the
@@ -60,10 +66,10 @@ func TestCodexTask_BackgroundJobNeverTouchesTheServingState(t *testing.T) {
 	waitForJobToStop(t, jobID)
 
 	// No NEW record may appear under the serving tree's registry (and nothing
-	// pre-existing may vanish).
+	// pre-existing may vanish). An ABSENT registry reads as empty (F24).
 	entries, err := os.ReadDir(jobsDir)
-	if err != nil {
-		t.Fatalf("read the serving registry: %v", err)
+	if err != nil && !os.IsNotExist(err) {
+		t.Fatalf("read the serving registry (after): %v", err)
 	}
 	for _, e := range entries {
 		if !before[e.Name()] {
