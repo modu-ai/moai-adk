@@ -21,6 +21,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/modu-ai/moai-adk/internal/config"
 	"github.com/modu-ai/moai-adk/internal/factory"
 	"github.com/modu-ai/moai-adk/internal/jev"
 )
@@ -201,5 +202,87 @@ func TestTodoAutoJevDisabledOneLine(t *testing.T) {
 	}
 	if !strings.Contains(got[0], "disabled") {
 		t.Errorf("jev display line = %q, want it to say disabled", got[0])
+	}
+}
+
+// autoLaneHeadWorktree returns the worktree value of the first lease head line
+// ("<card> stage=<s> worktree=<path>") in out, or "".
+func autoLaneHeadWorktree(out, cardID string) string {
+	for _, line := range strings.Split(out, "\n") {
+		if strings.HasPrefix(line, cardID+" stage=") {
+			if i := strings.Index(line, " worktree="); i >= 0 {
+				return line[i+len(" worktree="):]
+			}
+		}
+	}
+	return ""
+}
+
+// TestAutoLaneHandoffClaudeBackend — (F2/F3) a non-Codex lane's --auto-lane
+// handoff names the existing completion path (the leader's evidence read or
+// moai factory complete), and the lease head line carries the card worktree as
+// an absolute path.
+func TestAutoLaneHandoffClaudeBackend(t *testing.T) {
+	nmBase(t, factory.BacklogStateQueued)
+	nmLaneEnv(t, "lane-1", "")
+	nmIsolatedWorktrees(t, "t1")
+	laneAutoSeams(t)
+
+	out, errOut, err := autoModeRun(t, 30*time.Second, "--auto-lane")
+	if err != nil {
+		t.Fatalf("--auto-lane: %v (stderr %q)", err, errOut)
+	}
+	if wt := autoLaneHeadWorktree(out, "t1"); !filepath.IsAbs(wt) {
+		t.Errorf("lease head worktree = %q, want an absolute path:\n%s", wt, out)
+	}
+	for _, want := range []string{"leader reads the evidence", "moai factory complete"} {
+		if !strings.Contains(out, want) {
+			t.Errorf("non-Codex handoff lacks %q:\n%s", want, out)
+		}
+	}
+	if strings.Contains(out, "merge-ready") {
+		t.Errorf("non-Codex handoff carries the Codex merge-ready instruction:\n%s", out)
+	}
+}
+
+// TestAutoLaneHandoffCodexBackend — (F2) a Codex lane is refused at
+// `moai factory complete` (REQ-SD-025), so its handoff stops at merge-ready
+// and hands integration to the leader instead of naming complete.
+func TestAutoLaneHandoffCodexBackend(t *testing.T) {
+	nmBase(t, factory.BacklogStateQueued)
+	nmLaneEnv(t, "lane-1", factory.BackendGPT)
+	nmIsolatedWorktrees(t, "t1")
+	laneAutoSeams(t)
+
+	out, errOut, err := autoModeRun(t, 30*time.Second, "--auto-lane")
+	if err != nil {
+		t.Fatalf("--auto-lane: %v (stderr %q)", err, errOut)
+	}
+	for _, want := range []string{"handoff t1", "merge-ready", "leader reads the evidence"} {
+		if !strings.Contains(out, want) {
+			t.Errorf("Codex handoff lacks %q:\n%s", want, out)
+		}
+	}
+	if strings.Contains(out, "moai factory complete") {
+		t.Errorf("Codex handoff names moai factory complete, which refuses a Codex lane:\n%s", out)
+	}
+	if wt := autoLaneHeadWorktree(out, "t1"); !filepath.IsAbs(wt) {
+		t.Errorf("lease head worktree = %q, want an absolute path:\n%s", wt, out)
+	}
+}
+
+// TestAutoLaneErrorsNameTheFlag — (F6) a label-only session (lane label set,
+// role marker unset) passes the --auto-lane session check but is refused by
+// the lane admission; the refusal names the flag that was used.
+func TestAutoLaneErrorsNameTheFlag(t *testing.T) {
+	nmBase(t, factory.BacklogStateQueued)
+	t.Setenv(config.EnvMoaiFactoryWorker, "lane-1")
+	laneAutoSeams(t)
+	_, _, err := autoModeRun(t, 30*time.Second, "--auto-lane")
+	if err == nil {
+		t.Fatal("a label-only session must be refused by the lane admission")
+	}
+	if !strings.Contains(err.Error(), "todo --auto-lane") {
+		t.Errorf("refusal must name --auto-lane, got %q", err.Error())
 	}
 }

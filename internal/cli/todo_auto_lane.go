@@ -77,19 +77,22 @@ func runAutoLaneCycle(ctx context.Context, root string, out, errOut io.Writer, o
 	// never wider than the lane verbs it replaces, so a label-only session
 	// that `factory next` refuses is refused here too) and the parent
 	// checkout (REQ-SD-010).
+	// verb names the flag the operator actually used (card t1814 F6), so a
+	// refusal reached through --auto-lane does not report --auto.
+	verb := autoLaneVerb(opts)
 	if !factoryLaneAdmission() {
-		return factoryNotALaneError("todo --auto")
+		return factoryNotALaneError(verb)
 	}
 	if err := factoryAssertParentCheckout(resolveProjectDir()); err != nil {
 		return err
 	}
-	lane, err := factoryLaneLabelFromEnv("todo --auto")
+	lane, err := factoryLaneLabelFromEnv(verb)
 	if err != nil {
 		return err
 	}
 	runID, err := autoLaneRunResolveFn(ctx, root)
 	if err != nil {
-		return fmt.Errorf("todo --auto: %w", err)
+		return fmt.Errorf("%s: %w", verb, err)
 	}
 	store := todoStoreAt(root)
 	if opts.sleep == nil {
@@ -105,22 +108,36 @@ func runAutoLaneCycle(ctx context.Context, root string, out, errOut io.Writer, o
 		held, holdLine := latch.evaluate(root)
 		card, item, leased, err := autoLeaseRanked(ctx, store, root, runID, lane, held, holdLine, out, errOut, opts)
 		if err != nil {
-			return fmt.Errorf("todo --auto: %w", err)
+			return fmt.Errorf("%s: %w", verb, err)
 		}
 		if !leased {
 			return nil // no card available: the loop's stop condition (REQ-SD-003)
 		}
 		wt, _, err := factoryEnsureCardWorktree(ctx, root, runID, card, lane, errOut)
 		if err != nil {
-			return fmt.Errorf("todo --auto: %w", err)
+			return fmt.Errorf("%s: %w", verb, err)
 		}
-		_, _ = fmt.Fprintf(out, "%s stage=%s worktree=%s\n", card.CardID, dash(card.Stage), filepath.Base(wt))
+		// The absolute path (card t1814 F3): a Codex lane session starts in
+		// the parent checkout, so a bare tree name does not locate the work.
+		if abs, absErr := filepath.Abs(wt); absErr == nil {
+			wt = abs
+		}
+		_, _ = fmt.Fprintf(out, "%s stage=%s worktree=%s\n", card.CardID, dash(card.Stage), wt)
 		if opts.noWait {
 			autoLaneDispatchOnly(out, item, root)
 			return nil
 		}
 		autoLaneWorkCard(out, item, root, opts)
 	}
+}
+
+// autoLaneVerb names the flag the operator used for messages: --auto-lane
+// runs with noWait, the unified --auto lane path without.
+func autoLaneVerb(opts autoOptions) string {
+	if opts.noWait {
+		return "todo --auto-lane"
+	}
+	return "todo --auto"
 }
 
 // autoLeaseRanked is the unified selection engine: under a quota hold it
@@ -179,15 +196,15 @@ func autoLeaseRanked(ctx context.Context, store *factory.BacklogStore, root, run
 				// raced / serial-slot / quota-hold: re-ranking past the gate
 				// would spin on the same ineligible candidate, so the pass
 				// ends here; the caller's next invocation re-selects.
-				_, _ = fmt.Fprintf(errOut, "todo --auto: %s refused (%s): %s — the pass ends here\n",
-					it.ID, refusal.Token, refusal.Detail)
+				_, _ = fmt.Fprintf(errOut, "%s: %s refused (%s): %s — the pass ends here\n",
+					autoLaneVerb(opts), it.ID, refusal.Token, refusal.Detail)
 				return homestate.Card{}, factory.BacklogItem{}, false, nil
 			}
 			// A permanent keep-set refusal: the gate the old dedicated
 			// --auto refusal became. Fall through to the next-ranked
 			// candidate, narrating the skip (one line per fall-through).
-			_, _ = fmt.Fprintf(errOut, "todo --auto: %s refused (%s): %s — next candidate\n",
-				it.ID, refusal.Token, refusal.Detail)
+			_, _ = fmt.Fprintf(errOut, "%s: %s refused (%s): %s — next candidate\n",
+				autoLaneVerb(opts), it.ID, refusal.Token, refusal.Detail)
 			continue
 		default:
 			return homestate.Card{}, factory.BacklogItem{}, false, err
@@ -217,7 +234,19 @@ func autoAssignedItem(store *factory.BacklogStore, cardID string) factory.Backlo
 // path judges completion from its evidence.
 func autoLaneDispatchOnly(out io.Writer, card factory.BacklogItem, root string) {
 	writeAutoDirective(out, card, autoEvidencePath(root, card.ID))
-	_, _ = fmt.Fprintf(out, "handoff %s: --auto-lane exits now without waiting for the evidence — work the card in this session; the existing completion path (moai factory stage / moai factory complete) closes it\n", card.ID)
+	_, _ = fmt.Fprintln(out, autoLaneHandoffLine(card.ID))
+}
+
+// autoLaneHandoffLine names the completion path for the lane's backend (card
+// t1814 F2). A Codex lane is refused at `moai factory complete` (REQ-SD-025:
+// it stops at merge-ready), so its handoff stops there and hands integration
+// to the leader; every other lane keeps the existing completion path.
+func autoLaneHandoffLine(cardID string) string {
+	const head = "handoff %s: --auto-lane exits now without waiting for the evidence — work the card in this session; "
+	if os.Getenv(config.EnvFactoryBackend) == factory.BackendGPT {
+		return fmt.Sprintf(head+"stage it to merge-ready (moai factory stage) and hand integration to the leader; the leader reads the evidence and closes the card", cardID)
+	}
+	return fmt.Sprintf(head+"the existing completion path closes it: the leader reads the evidence, or moai factory complete", cardID)
 }
 
 // autoLaneWorkCard is the foreman contract for one leased card: the dispatch

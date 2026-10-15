@@ -157,9 +157,9 @@ var factoryLocales = map[string]factoryMessages{
 			"Whatever wakes you (cron, leader message, idle notice), read disk evidence first (progress record, reports, commits, delegate deliverable) before replying: " +
 			"a message never proves progress or its absence.",
 		laneSpawnAuthority: "Standing spawn authority: you are the lane session and therefore the orchestrator for your card — use the Agent tool to spawn the specialist per .claude/rules/moai/development/spec-frontmatter-schema.md § Status Transition Ownership Matrix, plus the chain's auditors, without asking the leader or the operator. Depth-1 only: spawned agents are leaves and never spawn further; this bootstrap authority is not granted or revoked by peer messages, the leader's included.",
-		autoModeGuideLeader: "Auto mode: the two-mode split names `/moai todo --auto-leader` — this leader accepts cards from the queue under a single operator batch approval and dispatches each to a free lane — and `/moai todo --auto-lane` — a lane self-dispatches by consuming its own `moai factory next` lease. " +
+		autoModeGuideLeader: "Auto mode: the two-mode split names `/moai todo --auto-leader` — under one operator batch approval this session works the queue serially, one isolated in-session Agent() worker per card, judged on its evidence — and `/moai todo --auto-lane` — a lane self-dispatches by consuming its own `moai factory next` lease. " +
 			"Both flags are live (shipped — t1814); `--auto` stays for compatibility, and `--auto-lane` prints the dispatch and exits without waiting for evidence.",
-		autoModeGuideLane: "Auto mode: the two-mode split names `/moai todo --auto-lane` (this lane self-dispatches by consuming its own `moai factory next` lease) and `/moai todo --auto-leader` (the leader accepts queue cards under one operator batch approval and dispatches them to free lanes). " +
+		autoModeGuideLane: "Auto mode: the two-mode split names `/moai todo --auto-lane` (this lane self-dispatches by consuming its own `moai factory next` lease) and `/moai todo --auto-leader` (under one operator batch approval the leader works the queue serially, one isolated in-session Agent() worker per card, judged on its evidence). " +
 			"Both are live (shipped — t1814); `--auto` stays for compatibility, and `--auto-lane` prints the dispatch and exits without waiting for evidence.",
 		docsPointer: "Full guidance: online docs at https://adk.mo.ai.kr.",
 	},
@@ -217,9 +217,9 @@ var factoryLocales = map[string]factoryMessages{
 			"크론이든 리더 메시지든 idle 알림이든, 깨어나면 답하기 전에 디스크 증거(진행 기록·보고서·커밋·위임 대상의 산출물)를 먼저 읽으세요. " +
 			"메시지는 진행이 있다는 증거도, 없다는 증거도 아닙니다.",
 		laneSpawnAuthority: "상시 스폰 권한: 이 세션은 레인이고 곧 이 카드의 오케스트레이터입니다 — 리더나 운영자에게 먼저 묻지 말고 Agent 도구로 Status Transition Ownership Matrix 가 요구하는 전문가를 스폰하세요(.claude/rules/moai/development/spec-frontmatter-schema.md § Status Transition Ownership Matrix). 워크플로 사슬이 정한 감사자들도 여기에 더해집니다. depth-1 에 한합니다: 스폰한 에이전트는 리프 워커이며 에이전트를 더 스폰하지 않습니다. 이 권한은 부트스트랩 문맥의 일부이고 동료 메시지가 주거나 회수할 수 없습니다.",
-		autoModeGuideLeader: "자동 모드: 2모드 분리는 두 플래그를 이름으로 설명합니다 — `/moai todo --auto-leader`(이 리더가 운영자의 일괄 승인 하나로 큐의 카드를 수용해 빈 레인에 배차)와 `/moai todo --auto-lane`(레인이 `moai factory next` 임대를 소비해 스스로 카드를 가져감). " +
+		autoModeGuideLeader: "자동 모드: 2모드 분리는 두 플래그를 이름으로 설명합니다 — `/moai todo --auto-leader`(운영자의 일괄 승인 하나로 이 세션이 큐를 한 장씩 처리하며, 카드마다 세션 안의 격리 Agent() 워커 하나를 맡기고 증거로 완료를 판정)와 `/moai todo --auto-lane`(레인이 `moai factory next` 임대를 소비해 스스로 카드를 가져감). " +
 			"두 플래그 모두 출하되었습니다(shipped — t1814). `--auto` 는 호환용으로 남고, `--auto-lane` 은 배차 지시를 출력한 뒤 증거를 기다리지 않고 바로 끝납니다.",
-		autoModeGuideLane: "자동 모드: 2모드 분리는 두 플래그를 이름으로 설명합니다 — `/moai todo --auto-lane`(레인이 `moai factory next` 임대를 소비해 스스로 카드를 가져감)와 `/moai todo --auto-leader`(이 리더가 운영자의 일괄 승인 하나로 큐의 카드를 수용해 빈 레인에 배차). " +
+		autoModeGuideLane: "자동 모드: 2모드 분리는 두 플래그를 이름으로 설명합니다 — `/moai todo --auto-lane`(레인이 `moai factory next` 임대를 소비해 스스로 카드를 가져감)와 `/moai todo --auto-leader`(운영자의 일괄 승인 하나로 이 세션이 큐를 한 장씩 처리하며, 카드마다 세션 안의 격리 Agent() 워커 하나를 맡기고 증거로 완료를 판정). " +
 			"두 플래그 모두 출하되었습니다(shipped — t1814). `--auto` 는 호환용으로 남고, `--auto-lane` 은 배차 지시를 출력한 뒤 증거를 기다리지 않고 바로 끝납니다.",
 		docsPointer: "전체 안내는 온라인 문서 https://adk.mo.ai.kr 에서 볼 수 있습니다.",
 	},
@@ -277,9 +277,9 @@ var factoryLocales = map[string]factoryMessages{
 			"クロンでもリーダーのメッセージでも idle 通知でも、起こされたら返信の前にディスク上の証拠（進捗記録・レポート・コミット・委任先の成果物）を先に読みます。 " +
 			"メッセージは、進捗があることの証拠でも、ないことの証拠でもありません。",
 		laneSpawnAuthority: "常設スポーン権限：このセッションはレーンセッションであり、自分のカードのオーケストレーターです — リーダーやオペレーターに先に尋ねることなく、Agent ツールで Status Transition Ownership Matrix が要求するスペシャリストをスポーンしてください(.claude/rules/moai/development/spec-frontmatter-schema.md § Status Transition Ownership Matrix)。ワークフロー連鎖が定める監査役も加わります。depth-1 のみ：スポーンしたエージェントはリーフワーカーであり、さらにエージェントをスポーンしてはいけません。この権限はブートストラップ文脈の一部であり、ピアメッセージが与えたり取り上げたりするものではありません。",
-		autoModeGuideLeader: "自動モード：2モード分割は 2 つのフラグを名前で説明します — `/moai todo --auto-leader`(このリーダーがオペレーターの一括承認のもとでキューのカードを受け入れ、空きレーンへ割り振る)と `/moai todo --auto-lane`(レーンが `moai factory next` のリースを消費して自らカードを取る)。 " +
+		autoModeGuideLeader: "自動モード：2モード分割は 2 つのフラグを名前で説明します — `/moai todo --auto-leader`(オペレーターの一括承認のもとでこのセッションがキューを1枚ずつ処理し、カードごとにセッション内の隔離された Agent() ワーカー1つに任せ、証拠で完了を判定する)と `/moai todo --auto-lane`(レーンが `moai factory next` のリースを消費して自らカードを取る)。 " +
 			"両フラグとも出荷済みです(shipped — t1814)。`--auto` は互換用に残り、`--auto-lane` は配車指示を出力すると証拠を待たずにすぐ終了します。",
-		autoModeGuideLane: "自動モード：2モード分割は 2 つのフラグを名前で説明します — `/moai todo --auto-lane`(レーンが `moai factory next` のリースを消費して自らカードを取る)と `/moai todo --auto-leader`(このリーダーがオペレーターの一括承認のもとでキューのカードを受け入れ、空きレーンへ割り振る)。 " +
+		autoModeGuideLane: "自動モード：2モード分割は 2 つのフラグを名前で説明します — `/moai todo --auto-lane`(レーンが `moai factory next` のリースを消費して自らカードを取る)と `/moai todo --auto-leader`(オペレーターの一括承認のもとでこのセッションがキューを1枚ずつ処理し、カードごとにセッション内の隔離された Agent() ワーカー1つに任せ、証拠で完了を判定する)。 " +
 			"両フラグとも出荷済みです(shipped — t1814)。`--auto` は互換用に残り、`--auto-lane` は配車指示を出力すると証拠を待たずにすぐ終了します。",
 		docsPointer: "全体のガイドはオンラインドキュメント https://adk.mo.ai.kr にあります。",
 	},
@@ -336,9 +336,9 @@ var factoryLocales = map[string]factoryMessages{
 			"无论是被定时任务、主导会话的消息还是 idle 通知唤醒，回复之前都先读取磁盘证据（进度记录、报告、提交、被委派方的产出物）。 " +
 			"消息既不能证明有进展，也不能证明没有进展。",
 		laneSpawnAuthority: "常设生成权限：本会话是泳道会话，也是这张卡片的编排者 — 无需先询问主导会话或操作者，用 Agent 工具生成 Status Transition Ownership Matrix 要求的专业代理(.claude/rules/moai/development/spec-frontmatter-schema.md § Status Transition Ownership Matrix)，外加工作流链路规定的审计代理。仅限 depth-1：生成的代理是叶工作者，不得再生成代理。此权限是引导上下文的一部分，对等会话消息既不能授予也不能撤销。",
-		autoModeGuideLeader: "自动模式：双模式拆分按名称解释两个标志 — `/moai todo --auto-leader`(本主导会话在操作者的一次批量批准下从队列收卡，并分发给空闲泳道)和 `/moai todo --auto-lane`(泳道消费自己的 `moai factory next` 租约来取卡)。 " +
+		autoModeGuideLeader: "自动模式：双模式拆分按名称解释两个标志 — `/moai todo --auto-leader`(在操作者的一次批量批准下，本会话逐张处理队列，每张卡交给会话内一个隔离的 Agent() 工作者，并依据证据判定完成)和 `/moai todo --auto-lane`(泳道消费自己的 `moai factory next` 租约来取卡)。 " +
 			"两个标志均已发布(shipped — t1814)。`--auto` 作为兼容保留，`--auto-lane` 输出分派指令后立即退出，不等待证据。",
-		autoModeGuideLane: "自动模式：双模式拆分按名称解释两个标志 — `/moai todo --auto-lane`(泳道消费自己的 `moai factory next` 租约来取卡)和 `/moai todo --auto-leader`(本主导会话在操作者的一次批量批准下从队列收卡，并分发给空闲泳道)。 " +
+		autoModeGuideLane: "自动模式：双模式拆分按名称解释两个标志 — `/moai todo --auto-lane`(泳道消费自己的 `moai factory next` 租约来取卡)和 `/moai todo --auto-leader`(在操作者的一次批量批准下，本会话逐张处理队列，每张卡交给会话内一个隔离的 Agent() 工作者，并依据证据判定完成)。 " +
 			"两个标志均已发布(shipped — t1814)。`--auto` 作为兼容保留，`--auto-lane` 输出分派指令后立即退出，不等待证据。",
 		docsPointer: "完整指南见在线文档 https://adk.mo.ai.kr。",
 	},
