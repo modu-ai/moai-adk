@@ -35,7 +35,7 @@ the evidence ledger in §E; the ledger id is cited from the AC row.
 | AC-HSA-012 | Given both settings surfaces, When the two UserPromptSubmit entries are inspected, Then each carries `timeout: 30` | REQ-HSA-011 | release-blocking | E-L12 | M6 |
 | AC-HSA-013 | Given M1 executed, When `.moai/reports/t1780/hook-sync-timings.md` is read, Then it carries 10 per-run timings for every synchronous registration and the fixed prescription-order statement | REQ-HSA-012 | release-blocking | E-L13 | M1 |
 | AC-HSA-014 | Given real multi-lane load, When UserPromptSubmit hooks run, Then the hard-timeout count observed in the run log is 0 | REQ-HSA-012 | **regression-guard** | E-L14 | M7 observation |
-| AC-HSA-015 | Given the wrapper runs on a cache-MISS state (no receipt or stale receipt), When the Stop arm later runs for the same tree state, Then exactly one background review was kicked (shared kick marker honored; observed via the argv-recording stub's `verify codex-review` line count across entry+Stop for the same tree state); and Given a fresh pass receipt, When the wrapper runs, Then NO kick occurs | REQ-HSA-006(a), REQ-HSA-006(b) | release-blocking | E-L15 | M3 |
+| AC-HSA-015 | Given the wrapper runs on a cache-MISS state (no receipt or stale receipt), When the Stop arm later runs for the same tree state within the SAME kick bucket (marker bucket = epoch/900), Then exactly one background review was kicked (shared kick marker honored; observed via the argv-recording stub's `verify codex-review` line count across entry+Stop for the same tree state and bucket); and Given a fresh pass receipt, When the wrapper runs, Then NO kick occurs | REQ-HSA-006(a), REQ-HSA-006(b) | release-blocking | E-L15 | M3 |
 | AC-HSA-016 | Given a card-scope session (`WT-` branch), When the wrapper runs with the gate ON, Then it retains today's behavior — the shell probe is not consulted (no key computation, no snapshot read, no kick) and the Go handler is reached exactly once per prompt | REQ-HSA-007, plan D5 | regression-guard | E-L16 | M3 probe matrix |
 | AC-HSA-017 | Given the review gate OFF (or unreadable), When the wrapper runs, Then it exits 0 with no binary resolution | REQ-HSA-005 | regression-guard | E-L18 | M3 probe matrix |
 
@@ -92,8 +92,13 @@ round-0 REQ/AC id is unchanged (delta re-audit eligibility).
   reading (`verify.LoadReceipt`, `receipt.go:113-117` — every read failure is absence, never an
   error or a valid/failing verdict) → the REQ-HSA-006(a) MISS arm (ALLOW + kick, kick-region
   preconditions permitting) — aligned with REQ-HSA-007 at audit r2-D2.
-- `RecordedAt` exactly at the 24h boundary → stale → MISS arm (CheckReceipt uses `>` ttl; mirror
-  the same comparison).
+- `RecordedAt` exactly at the 24h boundary → FRESH (CheckReceipt's comparison is strict `>`,
+  `receipt.go:92-94` — measure-zero, wording corrected at audit r3-O3) → arm (b)/(c) by verdict;
+  beyond 24h → stale → MISS arm.
+- Kick-marker bucket roll between entry and Stop (the epoch/900 boundary crossed) → a second
+  review for the same tree state is DESIGNED behavior: the bucket path changes, the exclusive
+  create succeeds, and the dead-review re-kick within one budget is the marker's own r7 remedy
+  (`codex_review_delay.go:82-86`). AC-HSA-015's exactly-one bound is scoped to one bucket.
 - Clean tree or config-only-only tree (nothing-reviewable precondition) → exit 0 WITHOUT the
   early kick; the Stop gate's Go path owns the kick decision (REQ-GBN-002 preserved).
 - Binary decably behind the tree HEAD (binary-age precondition) → exit 0 WITHOUT the early kick;

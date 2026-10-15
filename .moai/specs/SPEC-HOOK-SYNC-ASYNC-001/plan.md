@@ -147,7 +147,10 @@ unblocked and its evidence feeds everything downstream.
   constants and pinned by a golden test so the probe only narrows, never widens —
   `codex_review_scope.go:268`); clean tree or config-only-only tree → exit 0 WITHOUT the early
   kick (the Stop gate's Go path owns the decision, REQ-GBN-002 preserved);
-  (4b) binary-age — resolve MOAI_BIN, read its version provenance (build commit), then
+  (4b) binary-age — resolve MOAI_BIN, read its version provenance (build commit), then the
+  HEAD-match pre-check FIRST (HEAD starting with the bin commit → NOT behind — StatusFresh,
+  `binlag.go:139-141` — and the early kick proceeds; the ancestry probe alone would mis-class
+  an exactly-current binary, since `merge-base --is-ancestor` succeeds on equality); else
   `git merge-base --is-ancestor <bin-commit> HEAD`: a DECIDABLE ancestor-hit (behind) → exit 0
   WITHOUT the early kick (mirrors the entry path's :214-216 allow); undecidable (no commit
   metadata, non-ancestor) → proceed per binlag's leniency (`codex_review_binary_age.go:33-37`);
@@ -165,7 +168,8 @@ unblocked and its evidence feeds everything downstream.
   to the Go constants it mirrors (4a); behavioral probe matrix — gate off / no receipt /
   stale receipt / unparseable snapshot (miss arm) / fresh pass (no kick) / fresh inconclusive
   (no kick) / fresh FAIL (fall-through) / clean tree (no kick) / config-only-only tree (no kick) /
-  behind binary (no early kick) / binary with no commit metadata (kick proceeds per leniency) /
+  behind binary (no early kick) / HEAD-match binary (StatusFresh — kick proceeds) / binary with
+  no commit metadata (kick proceeds per leniency) /
   missing git / missing shasum / `WT-` branch / `tree_scope: skip` / primary-checkout session —
   each asserting
   exit 0 and the expected kick-or-fall-through observation (kicks observed via the shared marker
