@@ -170,6 +170,18 @@ func TestFactoryLaneRuleGptCardWorktreeDirResolvesCard(t *testing.T) {
 	if strings.Contains(rule, "todo --auto") {
 		t.Fatalf("a card-resolved session must not be directed at the queue:\n%s", rule)
 	}
+	// Round-16: a session DEEP inside a card worktree whose own subtree
+	// carries an inner `worktrees` directory still resolves the card — a
+	// non-matching worktrees segment continues the walk, it does not stop
+	// it (the early return minted the boot directive for a card session).
+	deep := filepath.Join(root, ".moai", "worktrees", "t1776", "src", "worktrees", "cache")
+	if err := os.MkdirAll(deep, 0o755); err != nil {
+		t.Fatalf("mkdir deep dir: %v", err)
+	}
+	ruleDeep := factoryLaneRuleForSourceInDir("startup", "en", deep)
+	if !strings.Contains(ruleDeep, "t1776") {
+		t.Fatalf("a deep inner-worktrees path lost the card tree:\n%s", ruleDeep)
+	}
 }
 
 // TestFactoryLaneRuleGptCoincidentalWorktreesDirStaysBoot pins the round-14

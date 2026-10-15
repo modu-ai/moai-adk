@@ -243,9 +243,11 @@ func cardIDFromRegisteredWorktree(dir string) string {
 			if gp == ".moai" || gp == ".claude" {
 				return filepath.Base(d)
 			}
-			// A worktrees parent outside the MoAI tiers: not a card tree —
-			// the walk stops rather than minting a card from the name.
-			return ""
+			// A worktrees parent outside the MoAI tiers: not a card tree AT
+			// THIS LEVEL — the walk CONTINUES (card t1776 audit round-16: a
+			// session deep inside a card worktree whose own subtree carries
+			// an inner `worktrees` directory still resolves the card above;
+			// an early return minted the boot directive for a card session).
 		}
 		d = parent
 	}
