@@ -488,8 +488,13 @@ func (h *sessionStartHandler) Handle(ctx context.Context, input *HookInput) (*Ho
 		// leaves the foreign id in place, and the notice then says so
 		// instead of claiming an overwrite that never happened.
 		prevID := ""
-		if prev, readErr := os.ReadFile(sidecar); readErr == nil {
-			prevID = strings.TrimSpace(string(prev))
+		// The prev-id read goes through the non-blocking regular-file guard
+		// (audit round-5, card t1776: os.ReadFile on a side channel symlinked
+		// to /dev/zero never sees EOF and allocates until the session start
+		// dies) and is size-capped — a session id is tens of bytes, so an
+		// oversized read is refused rather than trusted.
+		if data, readErr := readRuleFileBytes(sidecar); readErr == nil && len(data) <= 4096 {
+			prevID = strings.TrimSpace(string(data))
 		}
 		writeErr := os.WriteFile(sidecar, []byte(input.SessionID), 0o600)
 		if writeErr != nil {

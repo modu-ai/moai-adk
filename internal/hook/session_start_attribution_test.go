@@ -14,6 +14,7 @@ import (
 	"path/filepath"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/modu-ai/moai-adk/internal/session"
 )
@@ -56,6 +57,43 @@ func TestSessionStartAttributionMismatchNotice(t *testing.T) {
 	if !strings.Contains(ctx, "has overwritten it") {
 		t.Fatalf("successful write must say the record was overwritten:\n%s", ctx)
 	}
+
+	t.Run("side_channel_symlinked_to_dev_zero_does_not_hang", func(t *testing.T) {
+		// The prev-id read goes through the non-blocking regular-file guard:
+		// a side channel symlinked to /dev/zero is refused instead of
+		// reading forever (audit round-5 P2 — os.ReadFile on /dev/zero never
+		// sees EOF and allocates until the session start dies).
+		root4 := t.TempDir()
+		sideDir4 := filepath.Join(root4, filepath.Dir(session.CurrentSideChannelFile))
+		if err := os.MkdirAll(sideDir4, 0o755); err != nil {
+			t.Fatalf("mkdir: %v", err)
+		}
+		if err := os.Symlink("/dev/zero", filepath.Join(root4, session.CurrentSideChannelFile)); err != nil {
+			t.Fatalf("symlink: %v", err)
+		}
+		done := make(chan struct{}, 1)
+		var ctx4 string
+		go func() {
+			out4, err := h.Handle(t.Context(), &HookInput{
+				SessionID:  this,
+				ProjectDir: root4,
+				CWD:        root4,
+				Source:     "startup",
+			})
+			if err == nil && out4.HookSpecificOutput != nil {
+				ctx4 = out4.HookSpecificOutput.AdditionalContext
+			}
+			done <- struct{}{}
+		}()
+		select {
+		case <-done:
+			if strings.Contains(ctx4, "before this session started") {
+				t.Fatalf("a /dev/zero side channel must be refused, not narrated:\n%s", ctx4)
+			}
+		case <-time.After(5 * time.Second):
+			t.Fatal("Handle blocked on a /dev/zero side channel: the prev-id read must refuse non-regular files")
+		}
+	})
 
 	t.Run("matching_side_channel_no_notice", func(t *testing.T) {
 		root2 := t.TempDir()
