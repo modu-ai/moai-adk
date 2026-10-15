@@ -351,8 +351,14 @@ func handleCodexTask(ctx context.Context, req mcp.CallToolRequest) (*mcp.CallToo
 	// The gate is a precondition decided BEFORE any session work starts, so it
 	// answers deterministically even for an already-cancelled request: the
 	// git verification runs on the background context, and the cancellation
-	// surfaces later, at the session, where it belongs.
-	workRoot, err := codexAuditValidateRoot(context.Background(), servingTop, raw)
+	// surfaces later, at the session, where it belongs. Card t1632 sync-audit
+	// r6 F18 follow-up: the background read is BOUNDED (the listing timeout —
+	// the same bound every other git preflight runs under) — under concurrent
+	// git load the unbounded read held the result past the session bound by
+	// seconds (stack-observed in codexAuditValidateRoot).
+	vctx, vcancel := context.WithTimeout(context.Background(), config.DefaultCodexAuditListTimeout)
+	workRoot, err := codexAuditValidateRoot(vctx, servingTop, raw)
+	vcancel()
 	if err != nil {
 		return toolErr(codexTaskToolName, err), nil
 	}

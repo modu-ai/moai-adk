@@ -148,67 +148,100 @@ func withCtxBoundCodexSession(t *testing.T, lines []string, gateAt int) *ctxBoun
 }
 
 // startCtxBoundBackgroundJob drives handleCodexTask with background=true and a
-// request context the caller ends; it returns the job id and the cancel func.
-// project_root and the serving-project resolver BOTH name THIS repository (the
-// worktree the test process runs in): the REQ-MN-005 confine and the job
-// registry must describe one tree, and this worktree is the only registered
-// worktree a test process can legally name.
+// request context the caller ends; it returns the job id, the job's registry
+// root, and the cancel func.
 //
-// Card t1632 sync-audit r6 F19: the cleanup removes ONLY this test's own job
-// record file — never the registry directory, which holds REAL job records and
-// resume information of actual work. The canary file planted before the job
-// is the protection measurement: if the cleanup ever widens into a directory
-// removal again, the canary survives-check fails loudly.
-func startCtxBoundBackgroundJob(t *testing.T) (string, context.CancelFunc) {
+// Card t1632 sync-audit r7 F22/F23 — STRUCTURAL ISOLATION (the auditor's
+// recommended form): the serving-project resolver and the job's project_root
+// are a TEMPORARY git repository, so the job registry lives in the temp tree
+// and NEVER touches the serving tree's real state (real job records and
+// resume information). The canary device stays as the mutation tripwire: the
+// record is removed FIRST and the canary check runs LAST, so a cleanup that
+// widens back into registry-directory removal wipes the canary with the
+// record and is caught by the check (canaryLost).
+func startCtxBoundBackgroundJob(t *testing.T) (jobID, registryRoot string, cancel context.CancelFunc) {
 	t.Helper()
-	root := thisRepoRoot(t)
-	jobsDir := filepath.Join(root, ".moai", "state", codexJobsSubdir)
+	registryRoot = t.TempDir()
+	cardScopeGit(t, registryRoot, "init", "-q", "-b", "main")
+	withCodexProjectDir(t, registryRoot)
+	// r7 F22/F23 isolation: the SERVING anchor is the temp repository too —
+	// codex_task's root verification compares project_root against the server's
+	// own repository, so without this the temp registry would be refused as
+	// "a different repository" and the isolation would be unreachable.
+	prevServing := codexServingDir
+	codexServingDir = func() (string, error) { return registryRoot, nil }
+	t.Cleanup(func() { codexServingDir = prevServing })
+	stubCodexContainmentListing(t)
+	jobsDir := filepath.Join(registryRoot, ".moai", "state", codexJobsSubdir)
 	if err := os.MkdirAll(jobsDir, 0o755); err != nil {
 		t.Fatal(err)
 	}
-	canary := filepath.Join(jobsDir, "canary-pre-existing-record.json")
-	if err := os.WriteFile(canary, []byte(`{"status":"running","note":"a REAL record the test must not delete"}`), 0o644); err != nil {
+	// F22: the canary is created with an EXCLUSIVE unique name — a fixed name
+	// with a non-exclusive write could overwrite a REAL record of the same
+	// name and could follow a planted symlink.
+	f, err := os.CreateTemp(jobsDir, "canary-*.json")
+	if err != nil {
 		t.Fatal(err)
+	}
+	canary := f.Name()
+	if _, werr := f.WriteString(`{"status":"running","note":"the canary the cleanup must never delete"}`); werr != nil {
+		_ = f.Close()
+		t.Fatal(werr)
+	}
+	if cerr := f.Close(); cerr != nil {
+		t.Fatal(cerr)
 	}
 	ctx, cancel := context.WithCancel(context.Background())
 	t.Cleanup(cancel)
 	res, err := handleCodexTask(ctx, mcp.CallToolRequest{
-		Params: mcp.CallToolParams{Arguments: map[string]any{"prompt": "audit the module", "background": true, "project_root": root}},
+		Params: mcp.CallToolParams{Arguments: map[string]any{"prompt": "audit the module", "background": true, "project_root": registryRoot}},
 	})
 	if err != nil {
 		t.Fatalf("handleCodexTask returned a Go error: %v", err)
 	}
-	jobID, _ := structuredMap(t, res)["job_id"].(string)
+	jobID, _ = structuredMap(t, res)["job_id"].(string)
 	if jobID == "" {
 		t.Fatalf("background result must carry a job id: %+v", structuredMap(t, res))
 	}
-	t.Cleanup(func() {
-		if _, err := os.Stat(canary); err != nil {
-			t.Errorf("the canary (a pre-existing record) was removed by test cleanup — real job data must survive test cleanup (sync-audit r6 F19)")
-		} else {
-			_ = os.Remove(canary) // the test's own planting, removed after the check
-		}
-		if _, err := os.Stat(filepath.Join(jobsDir, jobID+".json")); err == nil {
-			_ = os.Remove(filepath.Join(jobsDir, jobID+".json"))
-		}
-	})
 	t.Cleanup(func() { waitForJobToStop(t, jobID) })
-	return jobID, cancel
+	t.Cleanup(func() {
+		// F23 ordering: the record goes FIRST, the canary check LAST — a
+		// cleanup that widens into directory removal wipes the canary with
+		// the record, and the check below reports the loss.
+		_ = os.Remove(filepath.Join(jobsDir, jobID+".json"))
+		canaryGuard(t, canary)
+		_ = os.Remove(canary)
+	})
+	return jobID, registryRoot, cancel
+}
+
+// canaryLost reports whether the canary record is GONE — the mutation signal
+// the canary device exists to catch (a cleanup that widened into
+// registry-directory removal). Extracted as a pure check so the mutation test
+// can prove the guard detects the loss.
+func canaryLost(canary string) (bool, error) {
+	if _, err := os.Stat(canary); err != nil {
+		return true, err
+	}
+	return false, nil
+}
+
+// canaryGuard fails the test when the canary record is gone.
+func canaryGuard(t *testing.T, canary string) {
+	t.Helper()
+	if lost, err := canaryLost(canary); lost {
+		t.Errorf("the canary record was removed — a cleanup widened into registry-directory removal; real job data would not have survived (sync-audit r7 F22/F23): %v", err)
+	}
 }
 
 // ─── RED reproduction ───
 
 func TestCodexTask_BackgroundSessionOutlivesRequestContext(t *testing.T) {
-	root := thisRepoRoot(t)
-	withCodexProjectDir(t, root)
-	// F19: the job records under the serving tree's registry are protected —
-	// this test's own record is removed by the helper's canary-guarded
-	// cleanup, never by a directory-wide removal.
 	// Handshake (ids 1, 2) flows freely; everything from the turn/start ack on
 	// waits until the request context has already ended.
 	sess := withCtxBoundCodexSession(t, codexTaskScript("trn-bg-t1186", "background work done"), 2)
 
-	jobID, cancel := startCtxBoundBackgroundJob(t)
+	jobID, registryRoot, cancel := startCtxBoundBackgroundJob(t)
 
 	// What the MCP host does once the handler has returned.
 	cancel()
@@ -216,7 +249,7 @@ func TestCodexTask_BackgroundSessionOutlivesRequestContext(t *testing.T) {
 	conn.waitKilled(200 * time.Millisecond) // a request-bound session dies here
 	sess.release()
 
-	rec := awaitTerminalJob(t, newCodexJobRegistry(root), jobID)
+	rec := awaitTerminalJob(t, newCodexJobRegistry(registryRoot), jobID)
 	if rec.Status != codexJobStatusCompleted {
 		t.Fatalf("background job ended %q with error %q; ending the request must not kill the session",
 			rec.Status, rec.Error)
@@ -285,9 +318,9 @@ func TestCodexTask_BackgroundDetachedSessionIsCancellable(t *testing.T) {
 	}
 	t.Cleanup(func() { codexTerminateProcess = prevTerm })
 
-	jobID, cancel := startCtxBoundBackgroundJob(t)
+	jobID, registryRoot, cancel := startCtxBoundBackgroundJob(t)
 	cancel() // the host ends the request; the job must still be running
-	reg := newCodexJobRegistry(root)
+	reg := newCodexJobRegistry(registryRoot)
 	awaitRunningJob(t, reg, jobID, "trn-bg-cancel")
 	if c, _ := sess.current(); c.isKilled() {
 		t.Fatal("the session died with the request context; nothing is left to cancel")
@@ -318,18 +351,13 @@ func TestCodexTask_BackgroundDetachedSessionIsCancellable(t *testing.T) {
 // (b) the codex_task turn bound still ends a hung background job.
 func TestCodexTask_BackgroundDetachedSessionHonorsTurnBound(t *testing.T) {
 	withCodexTaskTimeout(t, 120*time.Millisecond)
-	root := thisRepoRoot(t)
-	withCodexProjectDir(t, root)
-	// F19: the job records under the serving tree's registry are protected —
-	// this test's own record is removed by the helper's canary-guarded
-	// cleanup, never by a directory-wide removal.
 	lines := hangingTaskScript("trn-bg-bound")
 	sess := withCtxBoundCodexSession(t, lines, len(lines))
 
-	jobID, cancel := startCtxBoundBackgroundJob(t)
+	jobID, registryRoot, cancel := startCtxBoundBackgroundJob(t)
 	cancel()
 
-	rec := awaitTerminalJob(t, newCodexJobRegistry(root), jobID)
+	rec := awaitTerminalJob(t, newCodexJobRegistry(registryRoot), jobID)
 	if rec.Status != codexJobStatusFailed || !strings.Contains(rec.Error, "timed out after") {
 		t.Fatalf("a hung background job must end at the bound; got %q / %q", rec.Status, rec.Error)
 	}
@@ -338,11 +366,6 @@ func TestCodexTask_BackgroundDetachedSessionHonorsTurnBound(t *testing.T) {
 
 // (c) foreground stays tied to the request: cancelling it ends the child.
 func TestCodexTask_ForegroundSessionStillBoundToRequest(t *testing.T) {
-	root := thisRepoRoot(t)
-	withCodexProjectDir(t, root)
-	// F19: the job records under the serving tree's registry are protected —
-	// this test's own record is removed by the helper's canary-guarded
-	// cleanup, never by a directory-wide removal.
 	sess := withCtxBoundCodexSession(t, codexTaskScript("trn-fg-cancel", "never"), 2)
 
 	ctx, cancel := context.WithCancel(context.Background())

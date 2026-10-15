@@ -462,16 +462,16 @@ func TestCodexTaskBackgroundHandshakeHonorsTaskBound(t *testing.T) {
 			}
 			time.Sleep(5 * time.Millisecond)
 		}
-	case <-time.After(2 * time.Second):
-		// Card t1632 sync-audit r6 F18: the watchdog margin is 2s, not 700ms —
-		// the result still has to arrive, but the handler's path to it crosses
+	case <-time.After(10 * time.Second):
+		// Card t1632 sync-audit r6 F18: the margin is 10s, not 700ms — the
+		// result still has to arrive, but the handler's path to it crosses
 		// real git queries (root validation, worktree listing) whose latency
 		// under concurrent git load (other sessions' status/clone runs) is
-		// hundreds of ms; measured hang reproduced at the 700ms margin while
-		// the task bound itself (100ms) had long fired. The CONTRACT the test
+		// seconds; measured hang reproduced at the 700ms margin while the
+		// task bound itself (100ms) had long fired. The CONTRACT the test
 		// pins is the 100ms bound ending the handshake — visible in the
-		// structured "timed out after 100ms" error — not a 700ms end-to-end
-		// wall clock under machine load.
+		// structured "timed out after 100ms" error — not a wall clock under
+		// machine load.
 		cancel()
 		select {
 		case <-done:

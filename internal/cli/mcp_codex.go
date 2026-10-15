@@ -894,9 +894,11 @@ func openCodexSessionResolved(ctx context.Context, binaryPath string, params map
 	// and the session never opened at all.
 	// Card t1632 sync-audit r6 F20: the detached read is still BOUNDED — a
 	// listing that hangs on a wedged child must not outlive the request by
-	// minutes; the bound is the containment's own, generous next to the
-	// session's task bound.
-	listCtx, cancelList := context.WithTimeout(context.Background(), config.DefaultCodexTaskTimeout)
+	// minutes. The bound is the listing's OWN (DefaultCodexAuditListTimeout,
+	// the same bound codexAuditMCPList applies internally): keying it on the
+	// TASK bound would make a 100ms-bound request abort the containment and
+	// then sit out the listing's own WaitDelay anyway (r6 follow-through).
+	listCtx, cancelList := context.WithTimeout(context.Background(), config.DefaultCodexAuditListTimeout)
 	argv := []string{codexAppServerSubcmd, "-c", "sandbox_mode=read-only"}
 	if root, ok := params["cwd"].(string); ok && root != "" {
 		containment, err := codexGateContainmentArgs(listCtx, binaryPath, root)
