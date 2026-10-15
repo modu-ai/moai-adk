@@ -2,7 +2,7 @@
 id: SPEC-FACTORY-LANE-NO-CLEAR-001
 title: "Lane card transition without /clear — in-session exit, lease, and enter"
 version: "0.1.0"
-status: draft
+status: in-progress
 created: 2026-10-15
 updated: 2026-10-15
 author: manager-spec

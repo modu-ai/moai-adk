@@ -106,8 +106,8 @@ func factoryBootstrapNoticeForSource(source, root, sessionID, lang string) strin
 // (SPEC-FACTORY-SELF-DISPATCH-001 REQ-SD-019) for this session, or "" when
 // the session receives none. The rule fires on source startup — under every
 // clear policy, which is why the policy value is never read here — and on
-// clear, where it re-enters the fresh session and keeps the clear-each loop
-// going; resume and compact receive nothing, matching the bootstrap gate's
+// clear, where it re-enters a freshly reset session so the lane still holds
+// the in-session card transition; resume and compact receive nothing, matching the bootstrap gate's
 // re-entry discipline. The rule is chosen by the backend variable: a
 // Claude-harness lane (claude or glm) gets the next-card rule, a
 // Codex-harness lane (gpt) the owned-card rule naming its leased card. A

@@ -24,3 +24,7 @@ _<pending run-phase, owned by manager-develop>_
 ## §E.4 Sync-phase Audit-Ready Signal
 
 _<pending sync-phase, owned by manager-docs>_
+
+## §G Override and Refusal Record
+
+- 2026-10-15T10:57:03Z SPEC-FACTORY-LANE-NO-CLEAR-001 ceiling-outcome outcome=pass-through reasons="plan-audit ceiling reached (round count 2 >= tier ceiling 2 + 1 delta rounds); the verdict is admission-clean and admits without a question (REQ-ACE-013)" evidence=/Users/goos/MoAI/moai-adk-go/.moai/worktrees/t1793/.moai/reports/t1793/plan-audit-iter3.md,/Users/goos/MoAI/moai-adk-go/.moai/worktrees/t1793/.moai/reports/t1793/plan-audit.md

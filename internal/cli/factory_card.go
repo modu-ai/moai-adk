@@ -2429,11 +2429,13 @@ func factoryContextAtHandoffThreshold(root string) bool {
 }
 
 // factoryPrintClearPolicyLine prints the one line the lane follows after a
-// completion (REQ-SD-020): clear-each — the default, absence included —
-// asks the operator to /clear; clear-when-full asks only once the session's
-// context-usage record is at or above the handoff threshold and prints
-// nothing below it; relaunch asks the operator to end the session so the
-// supervising launcher starts the next card's session.
+// completion (REQ-SD-020, reshaped by SPEC-FACTORY-LANE-NO-CLEAR-001
+// REQ-LNC-007/009): clear-each — the default, absence included — prints the
+// in-session card transition; clear-when-full prints the same line only once
+// the session's context-usage record is at or above the handoff threshold and
+// prints nothing below it; relaunch asks the operator to end the session so
+// the supervising launcher starts the next card's session. No value
+// instructs a session clear.
 func factoryPrintClearPolicyLine(out io.Writer, root string) {
 	policy := factoryClearPolicySelected()
 	if policy == config.FactoryClearPolicyRelaunch {
@@ -2443,7 +2445,7 @@ func factoryPrintClearPolicyLine(out io.Writer, root string) {
 	if policy == config.FactoryClearPolicyWhenFull && !factoryContextAtHandoffThreshold(root) {
 		return // below the handoff threshold: continue with the next card, no line
 	}
-	_, _ = fmt.Fprintf(out, "  clear policy %s: ask the operator to /clear, then take the next card on the fresh session\n", policy)
+	_, _ = fmt.Fprintf(out, "  card transition (policy %s): ExitWorktree(keep), then `moai factory next` from the primary checkout, then EnterWorktree(<leased worktree path>) and verify the toplevel; earlier cards' conversation context is non-authoritative\n", policy)
 }
 
 // factoryResolveIntegrationBranch mirrors acquire's branch resolution

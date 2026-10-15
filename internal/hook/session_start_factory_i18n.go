@@ -135,7 +135,7 @@ var factoryLocales = map[string]factoryMessages{
 		laneNextCardRule: "Factory lane next-card rule: this session is a self-dispatch lane. " +
 			"Never remove a card worktree; leave kept ones as they are. " +
 			"From the parent checkout run `moai factory next` (operator-authorized queue promotion); for a card assigned to you, `moai factory next --card <id>` even while sibling assignments sit (t1542). " +
-			"In its worktree carry plan, run, sync; integrate; keep the worktree; record completion with `moai factory complete`; then follow the clear policy it prints. " +
+			"In its worktree carry plan, run, sync; integrate; keep the worktree; record completion with `moai factory complete`; then make the in-session card transition: `ExitWorktree(keep)`, request the next card with `moai factory next` from the primary checkout, `EnterWorktree(<leased worktree path>)`, verify the toplevel, and treat earlier cards' conversation context as non-authoritative. " +
 			"Judgments are yours (t1542): `jev_ask` when workflow.jev.enabled is true, else judge from disk evidence and record the decision in the card's progress record — never ask the leader and wait (ladder: .claude/rules/moai/workflow/auto-semantics.md §6). " +
 			"Landing is yours (auto-semantics.md §13, mechanics § The lane's standard landing): verify lane-locally, card-review via `codex_review` scope=card, `moai factory complete` (push, PR, merge observation), " +
 			"CodeRabbit via the commit-status API plus the Merge Risk line, `moai worktree sweep` once remote landing is confirmed; merged-pr closes your queue card. " +
@@ -153,7 +153,7 @@ var factoryLocales = map[string]factoryMessages{
 			"When a card is routed to you, work it in the current worktree and record its stages with `moai factory stage`.",
 		laneRecheckRule: "Stall recovery: before a card's first stage, arm ONE recurring `CronCreate` recheck (cron `%[1]s`, recurring) " +
 			"whose prompt runs the stall watchdog first — Skill(\"moai-lane-watchdog\") — then resumes the card from its progress record; " +
-			"check it with `CronList` at intake and after every clear (re-arm if missing or expired); `CronDelete` it when you send the completion report. " +
+			"check it with `CronList` at card takeover (intake, or the in-session transition to a newly leased card) and after any session reset (re-arm if missing or expired); `CronDelete` it when you send the completion report. " +
 			"It wakes a lane stalled on an API error (e.g. 429) or a delegate report that never comes — an ended turn cannot arm anything. " +
 			"Whatever wakes you (cron, leader message, idle notice), read disk evidence first (progress record, reports, commits, delegate deliverable) before replying: " +
 			"a message never proves progress or its absence.",
@@ -193,7 +193,7 @@ var factoryLocales = map[string]factoryMessages{
 			"자기에게 배정된 카드는 형제 배정이 남아 있어도 `moai factory next --card <id>` 로 임대합니다(카드 t1542). " +
 			"카드의 워크트리에 진입해 plan, run, sync 로 카드를 끝까지 수행하고, 통합한 뒤에도 워크트리는 kept 로 남기고, " +
 			"`moai factory complete`(MCP 도구 `factory_complete`)로 완료를 기록합니다. " +
-			"그다음에는 완료 출력이 알려 주는 clear 정책을 따릅니다. " +
+			"그다음에는 세션 안에서 카드를 전환합니다: `ExitWorktree(keep)` 로 워크트리를 유지한 채 나오고, 부모 체크아웃에서 `moai factory next` 로 다음 카드를 받고, `EnterWorktree(<임대된 워크트리 경로>)` 로 들어가 toplevel 을 확인하며, 이전 카드의 대화 맥락은 근거로 삼지 않습니다. " +
 			"판단은 레인의 몫입니다(카드 t1542) — workflow.jev.enabled 가 참이면 `jev_ask` 를 직접 부르고, 아니면 디스크 증거로 스스로 판단해 " +
 			"카드 진행 기록에 결정 기록을 남깁니다. 리더에게 묻고 기다리지 않습니다. 사다리는 .claude/rules/moai/workflow/auto-semantics.md §6 에 있습니다. " +
 			"착지도 레인이 실행합니다(auto-semantics.md §13, mechanics § The lane's standard landing): " +
@@ -213,7 +213,7 @@ var factoryLocales = map[string]factoryMessages{
 			"배분받은 카드는 현재 워크트리에서 작업하고 각 단계를 `moai factory stage` 로 기록합니다.",
 		laneRecheckRule: "정지 복구: 카드의 첫 단계를 시작하기 전에 `CronCreate` 로 반복 재점검 크론 하나를 겁니다(cron `%[1]s`, recurring). " +
 			"프롬프트는 먼저 레인 스톨 워치독을 실행하고 — Skill(\"moai-lane-watchdog\") 를 호출해 따릅니다 — 그다음 카드의 진행 기록에서 작업을 재개하도록 씁니다. " +
-			"카드를 넘겨받을 때와 `/clear` 뒤마다 `CronList` 로 확인하고, 없거나 만료됐으면 다시 걸고, 완료 보고를 보낼 때 `CronDelete` 로 지웁니다. " +
+			"카드를 넘겨받을 때(세션 안 카드 전환 포함)와 세션이 초기화된 뒤에 `CronList` 로 확인하고, 없거나 만료됐으면 다시 걸고, 완료 보고를 보낼 때 `CronDelete` 로 지웁니다. " +
 			"API 오류(429 등)로 멈췄거나 끝내 오지 않을 위임 대상의 보고를 기다리다 멈춘 레인은 이 크론이 깨웁니다 — 이미 끝난 턴은 아무것도 걸 수 없기 때문입니다. " +
 			"크론이든 리더 메시지든 idle 알림이든, 깨어나면 답하기 전에 디스크 증거(진행 기록·보고서·커밋·위임 대상의 산출물)를 먼저 읽으세요. " +
 			"메시지는 진행이 있다는 증거도, 없다는 증거도 아닙니다.",
@@ -253,7 +253,7 @@ var factoryLocales = map[string]factoryMessages{
 			"自分に割り当てられたカードは兄弟の割り当てが残っていても `moai factory next --card <id>` でリースします(カード t1542)。 " +
 			"カードのワークツリーに入り、plan・run・sync を通してカードを完遂し、統合したうえでワークツリーを kept のまま残し、 " +
 			"`moai factory complete`(MCP ツール `factory_complete`)で完了を記録します。 " +
-			"その後は、完了出力が示す clear ポリシーに従います。 " +
+			"その後はセッション内でカードを切り替えます：`ExitWorktree(keep)` でワークツリーを残したまま出て、親チェックアウトから `moai factory next` で次のカードを取得し、`EnterWorktree(<リースされたワークツリーのパス>)` で入って toplevel を確認し、前のカードの会話コンテキストは根拠にしません。 " +
 			"判断はレーンのものです(カード t1542) — workflow.jev.enabled が true なら `jev_ask` を直接呼び、そうでなければディスクの証拠から自ら判断し、 " +
 			"カードの進捗記録に決定記録を書きます。リーダーに尋ねて待つことはしません。 ラダーは .claude/rules/moai/workflow/auto-semantics.md §6 にあります。 " +
 			"ランディングもレーンが実行します(auto-semantics.md §13、mechanics § The lane's standard landing): " +
@@ -273,7 +273,7 @@ var factoryLocales = map[string]factoryMessages{
 			"割り当てられたカードは現在のワークツリーで作業し、各段階を `moai factory stage` で記録します。",
 		laneRecheckRule: "停止からの復旧：カードの最初の段階を始める前に、`CronCreate` で繰り返しの再点検用 cron を1つ設定します（cron `%[1]s`、recurring）。 " +
 			"プロンプトは、まずレーン停滞ウォッチドッグを実行し — Skill(\"moai-lane-watchdog\") を呼び出して従います — そのあとカードの進捗記録から作業を再開する内容にします。 " +
-			"カードを引き継ぐときと `/clear` のたびに `CronList` で確認し、なければ、または期限切れなら設定し直し、完了報告を送るときに `CronDelete` で削除します。 " +
+			"カードを引き継ぐとき（セッション内のカード遷移を含む）と、セッションがリセットされたあとに `CronList` で確認し、なければ、または期限切れなら設定し直し、完了報告を送るときに `CronDelete` で削除します。 " +
 			"API エラー（429 など）で止まったレーンや、永久に届かない委任先の報告を待って止まったレーンは、この cron が起こします — すでに終わったターンは何も設定できないためです。 " +
 			"クロンでもリーダーのメッセージでも idle 通知でも、起こされたら返信の前にディスク上の証拠（進捗記録・レポート・コミット・委任先の成果物）を先に読みます。 " +
 			"メッセージは、進捗があることの証拠でも、ないことの証拠でもありません。",
@@ -312,7 +312,7 @@ var factoryLocales = map[string]factoryMessages{
 			"分配给自己的卡即使兄弟分配仍在，也用 `moai factory next --card <id>` 租用（卡片 t1542）。 " +
 			"进入卡片的工作树，带着卡片走完 plan、run、sync，完成集成后工作树保持 kept， " +
 			"并用 `moai factory complete`（MCP 工具 `factory_complete`）记录完成。 " +
-			"之后遵循完成输出给出的 clear 策略。 " +
+			"之后在会话内切换卡片：用 `ExitWorktree(keep)` 保留工作树并退出，在父检出运行 `moai factory next` 获取下一张卡，用 `EnterWorktree(<被租用的工作树路径>)` 进入并核对 toplevel，不再以此前卡片的对话上下文为依据。 " +
 			"判断属于泳道（卡片 t1542） — workflow.jev.enabled 为 true 时直接调用 `jev_ask`，否则依据磁盘证据自行判断， " +
 			"并把决定记录写入卡片进度记录；绝不询问主导会话并等待。 阶梯见 .claude/rules/moai/workflow/auto-semantics.md §6。 " +
 			"落地也由泳道执行（auto-semantics.md §13、mechanics § The lane's standard landing）： " +
@@ -332,7 +332,7 @@ var factoryLocales = map[string]factoryMessages{
 			"被分配的卡片在当前工作树中处理，各阶段用 `moai factory stage` 记录。",
 		laneRecheckRule: "停滞恢复：在开始卡片的第一个阶段之前，用 `CronCreate` 设置一个循环复查定时任务（cron `%[1]s`，recurring）。 " +
 			"其提示词先运行泳道停滞看门狗 — 调用 Skill(\"moai-lane-watchdog\") 并按其执行 — 再依据卡片的进度记录继续工作。 " +
-			"接手卡片时以及每次 `/clear` 之后，用 `CronList` 确认；若缺失或已过期则重新设置，发送完成报告时用 `CronDelete` 删除它。 " +
+			"接手卡片时（包括会话内的卡片切换）以及会话被重置之后，用 `CronList` 确认；若缺失或已过期则重新设置，发送完成报告时用 `CronDelete` 删除它。 " +
 			"因 API 错误（如 429）而停下、或在等一个永远不会到来的被委派方报告而停下的泳道，由这个定时任务唤醒 — 因为已经结束的回合无法再设置任何东西。 " +
 			"无论是被定时任务、主导会话的消息还是 idle 通知唤醒，回复之前都先读取磁盘证据（进度记录、报告、提交、被委派方的产出物）。 " +
 			"消息既不能证明有进展，也不能证明没有进展。",

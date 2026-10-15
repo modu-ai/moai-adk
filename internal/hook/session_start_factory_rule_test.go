@@ -99,6 +99,35 @@ func TestSD_AC019_NextCardRuleInjection(t *testing.T) {
 		}
 	})
 
+	// SPEC-FACTORY-LANE-NO-CLEAR-001 REQ-LNC-010: card takeover is the
+	// recheck trigger and the in-session transition is the only transition,
+	// in every locale; no clear instruction rides the rule.
+	t.Run("takeover trigger four locales", func(t *testing.T) {
+		takeover := map[string]string{
+			"en": "at card takeover",
+			"ko": "카드를 넘겨받을 때",
+			"ja": "カードを引き継ぐとき",
+			"zh": "接手卡片时",
+		}
+		for _, lang := range []string{"en", "ko", "ja", "zh"} {
+			sdScrubRuleEnv(t)
+			t.Setenv(config.EnvMoaiFactoryWorker, "lane-2")
+			t.Setenv(config.EnvFactoryBackend, factory.BackendClaude)
+			rule := factoryLaneRuleForSource("startup", lang)
+			if !strings.Contains(rule, takeover[lang]) {
+				t.Errorf("locale %s: rule does not name card takeover as the recheck trigger (want %q)", lang, takeover[lang])
+			}
+			if !strings.Contains(rule, "ExitWorktree(keep)") {
+				t.Errorf("locale %s: rule does not name the in-session transition", lang)
+			}
+			for _, old := range []string{"/clear", "after every clear", "follow the clear policy", "clear 정책", "clear ポリシー", "clear 策略"} {
+				if strings.Contains(rule, old) {
+					t.Errorf("locale %s: rule still carries the retired phrase %q", lang, old)
+				}
+			}
+		}
+	})
+
 	t.Run("glm lane: source startup carries the rule", func(t *testing.T) {
 		sdScrubRuleEnv(t)
 		t.Setenv(config.EnvMoaiFactoryWorker, "lane-3")
