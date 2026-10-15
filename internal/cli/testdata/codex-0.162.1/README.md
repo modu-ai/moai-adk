@@ -15,7 +15,7 @@ npx -y @openai/codex@0.162.1 app-server generate-json-schema --out <dir>
 Refresh check (2026-10-15, card t1754): the eight files below were compared byte-for-byte
 against a local `codex app-server generate-json-schema` run of codex-cli 0.162.1, and all
 eight are identical to the 0.161.0 generation this directory carried before the refresh.
-The generator emits 39 top-level files (request-side Params companions, JSON-RPC
+The generator emits 37 top-level files (request-side Params companions, JSON-RPC
 envelope types, and two consolidated bundles) plus `v1/`/`v2/` split layouts —
 only the eight consumed Response schemas are vendored here. Re-vendor the rest
 per the discipline below if a consumer for them appears.
