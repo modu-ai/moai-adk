@@ -1062,7 +1062,7 @@ func TestManagedCodexRemoteSupportProbe(t *testing.T) {
 			t.Fatal(err)
 		}
 		if !managedCodexRemoteSupport(string(b)) {
-			t.Errorf("the vendored codex-cli 0.161.0 resume help must be read as supporting --remote and --remote-auth-token-env")
+			t.Errorf("the vendored codex-cli 0.162.1 resume help must be read as supporting --remote and --remote-auth-token-env")
 		}
 	})
 	t.Run("no_options_unsupported", func(t *testing.T) {
