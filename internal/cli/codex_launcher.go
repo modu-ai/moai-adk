@@ -971,8 +971,10 @@ func enterCodexRelaunchJoin(root string, entry factoryFlagParse, timing *factory
 // todo_auto*.go and factory-dispatch*.md in full before it established the
 // command's existence — 72% of the dispatch context burned before any
 // autonomous progress. The prompt now commands the run, forbids the source
-// reading, pins the output-line contract, and stops on a refusal.
-const codexLaneAutoPrompt = "Run `moai todo --auto` now. " +
+// reading, pins the output-line contract, and stops on a refusal. Card t1814
+// moved it to `--auto-lane`: `--auto` waits for the worker evidence, and a
+// Codex session acts only after the command exits.
+const codexLaneAutoPrompt = "Run `moai todo --auto-lane` now. " +
 	"Do not read the engine or the rule sources first — act on the output directly: " +
 	"follow its selection:/accept/dispatch lines verbatim. " +
 	"A `refused (...) — next candidate` line is a normal skip: keep going with the next card. " +

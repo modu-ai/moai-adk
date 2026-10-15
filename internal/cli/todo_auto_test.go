@@ -479,7 +479,7 @@ func TestTodoAutoJevPoisonedValueCausesNoMutation(t *testing.T) {
 		wait:      time.Minute,
 		liveness:  autoTestLiveness(root, rec.Items[0].ID, false, false, nil), // owner alive → zero targets
 		sessionID: "s",
-		jev: func(string) string {
+		jev: func(autoJevDisplay) string {
 			return "jev signal (display-only): MUTATE " + rec.Items[0].ID
 		},
 	}
@@ -498,31 +498,29 @@ func TestTodoAutoJevPoisonedValueCausesNoMutation(t *testing.T) {
 	}
 }
 
-// AC-MT-018 degraded mode — scripts absent: the consultation degrades to a
+// AC-MT-018 degraded mode: an unavailable or disabled capability degrades to a
 // labelled non-finding (no error exit) and the cycle proceeds on lead
-// judgment.
+// judgment. Card t1814 builds the line from the ranking stage's own Jev result,
+// so no local script is consulted (todo_auto_mode_split_test.go carries the
+// no-exec and root-independence checks).
 func TestTodoAutoJevDegradedNonFinding(t *testing.T) {
-	got := consultJev(t.TempDir()) // no scripts/jev under the fixture root
-	if !strings.Contains(got, "jev: unavailable") || !strings.Contains(got, "non-finding") {
-		t.Errorf("degraded consultation = %q, want a labelled non-finding", got)
+	for _, d := range []autoJevDisplay{
+		{Consulted: false},
+		{Consulted: true, Source: autoRankSourceFallback, Reason: autoRankReasonDisabled},
+		{Consulted: true, Source: autoRankSourceFallback, Reason: autoRankReasonUnreachable},
+	} {
+		got := consultJev(d)
+		if !strings.HasPrefix(got, "jev: ") || !strings.Contains(got, "non-finding") {
+			t.Errorf("degraded display %+v = %q, want a labelled non-finding", d, got)
+		}
 	}
 }
 
-// The production consultation reads a present script's stdout verbatim as a
-// display-only signal.
-func TestTodoAutoJevScriptPresentSignal(t *testing.T) {
-	root := t.TempDir()
-	script := filepath.Join(root, "scripts", "jev", "route.sh")
-	if err := os.MkdirAll(filepath.Dir(script), 0o700); err != nil {
-		t.Fatal(err)
-	}
-	body := "#!/bin/sh\necho LOCAL-SIGNAL\n"
-	if err := os.WriteFile(script, []byte(body), 0o700); err != nil {
-		t.Fatal(err)
-	}
-	got := consultJev(root)
-	if !strings.Contains(got, "display-only") || !strings.Contains(got, "LOCAL-SIGNAL") {
-		t.Errorf("script consultation = %q, want the labelled verbatim signal", got)
+// A Jev-sourced ranking renders as the display-only signal line.
+func TestTodoAutoJevSignalLine(t *testing.T) {
+	got := consultJev(autoJevDisplay{Consulted: true, Source: autoRankSourceJev})
+	if !strings.Contains(got, "display-only") || strings.Contains(got, "non-finding") {
+		t.Errorf("jev-sourced display = %q, want the labelled display-only signal", got)
 	}
 }
 
