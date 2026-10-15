@@ -178,7 +178,9 @@ func judgeSandbox(realHome, root string, seams []string) error {
 		if filepath.IsAbs(s) && within(resolveForGuard(s), rootR) && !within(homeR, resolveForGuard(s)) {
 			continue
 		}
-		return CheckSeamHomes(realHome, []string{s})
+		if err := CheckSeamHomes(realHome, []string{s}); err != nil {
+			return err
+		}
 	}
 	return nil
 }

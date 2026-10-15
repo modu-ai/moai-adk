@@ -84,6 +84,32 @@ func TestJudgeSandbox_StillRefusesSeamsInTheRealHome(t *testing.T) {
 	}
 }
 
+// TestJudgeSandbox_JudgesEverySeamInEitherOrder: a passing seam outside the
+// sandbox root must not end the judgment; a bad seam later (or earlier) in the
+// list is still refused.
+func TestJudgeSandbox_JudgesEverySeamInEitherOrder(t *testing.T) {
+	home, tmp := fakeHomeWithTemp(t)
+	root := filepath.Join(tmp, "sandbox-root")
+	inside := filepath.Join(root, "home")
+	outsideOK := filepath.Join(filepath.Dir(home), "elsewhere")
+	bad := filepath.Join(home, ".codex")
+
+	if err := CheckSeamHomes(home, []string{outsideOK}); err != nil {
+		t.Fatalf("premise: the outside seam must pass on its own: %v", err)
+	}
+	orders := map[string][]string{
+		"bad_last":  {inside, outsideOK, bad},
+		"bad_first": {bad, inside, outsideOK},
+	}
+	for name, seams := range orders {
+		t.Run(name, func(t *testing.T) {
+			if err := judgeSandbox(home, root, seams); err == nil {
+				t.Fatalf("judgeSandbox(%q) = nil; want a refusal of %s", seams, bad)
+			}
+		})
+	}
+}
+
 // TestJudgeSandbox_NoExemptionWhenRealHomeIsUnderTempDir: the existing refusal
 // tests inject fake homes under t.TempDir; the exemption must not apply to them.
 func TestJudgeSandbox_NoExemptionWhenRealHomeIsUnderTempDir(t *testing.T) {
