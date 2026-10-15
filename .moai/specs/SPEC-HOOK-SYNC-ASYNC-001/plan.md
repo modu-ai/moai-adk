@@ -28,6 +28,7 @@ Code facts verified at plan phase (all on tree `e04ebd5ca6bc441b380c1072d5a1dff8
 | Kick marker | `.moai/state/verify/codex-review/<head>-<digest>.kick-<epoch/900>`; exclusive create = dedup; `DefaultCodexReviewGateTimeout = 900s` (`internal/config/defaults.go:819`) |
 | Entry semantics | `HandleCodexReviewEntry` NEVER blocks (REQ-RG-001); fresh FAIL → `additionalContext` once per key (delivery record `delivered-<sha>.json`) |
 | Scope discriminator | `WT-` branch prefix → card scope; everything else → tree scope, fail-open (`codex_review_scope.go`) |
+| Entry-side skip policies | `workflow.codex.review_gate.tree_scope` (unreadable → `review`) and `primary_scope` (unreadable → `skip` — primary-checkout default); both applied at one shared spot `codex_review_delay.go:217` (`treeScopeSkipApplies`) so "the two halves skip together"; a `WT-` card session is never skipped (`codex_review_tree_scope.go:55-135`, REQ-CRO-004) |
 | Go SystemMessage emission | `internal/hook/post_tool_failure.go:109` `SystemMessage: message` |
 | Template UPS timeouts | `settings.json.tmpl` lines 266/272: `timeout: 5` (both UPS entries) |
 | This worktree live UPS | `settings.json` line 266: `timeout: 15` (primary checkout live already raised to 30 by the leader) |
@@ -102,7 +103,16 @@ unblocked and its evidence feeds everything downstream.
   under current machine load; record per-run timings + summary (min/median/max) into
   `.moai/reports/t1780/hook-sync-timings.md`. Method: pipe a representative stdin JSON per event
   to the wrapper script with `bash` + `time` (or `perl -MTime::HiRes`), 10 runs each, no
-  artificial load; record gate ON/OFF state per measurement. Prescriptions from the table follow
+  artificial load; record gate ON/OFF state per measurement.
+  **Environment (HARD — audit r1 D3):** measurements run in an ISOLATED environment — a temp
+  project dir (fixture `.moai/` tree) plus a temp `HOME` — OR a dry-run allowlist restricted to
+  side-effect-free wrappers; the table records, per wrapper, which environment it ran under.
+  Rationale: the live-tree SessionEnd handler is stateful and destructive
+  (`internal/hook/session_end.go` releases profile leases :72-73, ClearAgentStops :111,
+  `os.RemoveAll` on team/task dirs :406-633) — it, and any wrapper reaching a stateful handler,
+  MUST be exercised under isolation only, never 10x against the live tree. The zero-side-effect
+  wrappers (the pure-shell gate-OFF fast paths) may run live and are marked as such in the table.
+  Prescriptions from the table follow
   the fixed order (fast-path → timeout raise → async); only the three decided conversions and
   the codex-review-entry fast path are IN scope — other findings become follow-up cards.
   Acceptance: AC-HSA-013.
@@ -114,22 +124,38 @@ unblocked and its evidence feeds everything downstream.
   progress record; probes re-pinned.
 - **M3 — codex-review-entry gate-ON shell fast path (P1, highest design reversibility).**
   Extend `.claude/hooks/moai/handle-codex-review-entry.sh` after the existing gate-OFF block:
-  (1) scope pre-check — a `WT-` branch falls through to the binary (D5); (2) compute head +
-  tree key in shell (D4); (3) read the snapshot JSON with the existing awk tooling (no jq);
-  locate the `codex-review` entry, compare verdict + RecordedAt vs the 24h TTL; (4) ALLOW
-  states → kick (marker-guarded, `set -o noclobber` exclusive create of the `.kick-<bucket>`
-  marker, bucket = epoch/900) then exit 0; (5) fresh-FAIL → fall through to the binary (the
-  existing line 84 forwarding); (6) every failure → fall through (REQ-HSA-007). Mirror the
+  (1) eligibility pre-check — a `WT-` branch (card scope) falls through to the binary, and so
+  does a session under either entry-side skip policy: the `workflow.codex.review_gate.tree_scope:
+  skip` config (read from the same workflow.yaml the gate-OFF awk parse already reads; the
+  SHELL fail direction is toward falling through — misreading `skip` as `review` would kick
+  where the Go design suppresses, while misreading `review` as `skip` only costs the cold start
+  the Go handler then applies correctly) and the primary-checkout `primary_scope: skip` default,
+  detected in shell via `git rev-parse --git-common-dir` resolving inside `$CLAUDE_PROJECT_DIR`
+  (the session tree IS the primary working tree); any detection ambiguity falls through (D2;
+  REQ-HSA-006 Where-clause; mirrors "the two halves skip together", `codex_review_delay.go:
+  188/:217`); (2) compute head + tree key in shell (D4); (3) read the snapshot JSON with the
+  existing awk tooling (no jq); locate the `codex-review` entry, compare verdict + RecordedAt vs
+  the 24h TTL; (4) cache-MISS states (no receipt / stale receipt) → kick (marker-guarded,
+  `set -o noclobber` exclusive create of the `.kick-<bucket>` marker, bucket = epoch/900) then
+  exit 0; (5) fresh pass/inconclusive → exit 0 WITHOUT kicking (mirror
+  `codex_review_gate.go:234-244` — a fresh passing review is never re-kicked); (6) fresh-FAIL →
+  fall through to the binary (the existing line 84 forwarding); (7) every failure → fall through
+  (REQ-HSA-007). Mirror the
   script to `internal/template/templates/.claude/hooks/moai/handle-codex-review-entry.sh`.
   Tests: key-parity test (D4); behavioral probe matrix — gate off / no receipt / stale receipt /
-  fresh pass / fresh FAIL / missing git / missing shasum / WT- branch — each asserting exit 0
-  and the expected fall-through-or-not observation; registration tests untouched (timeout change
-  is M6). Acceptance: AC-HSA-006, AC-HSA-007, AC-HSA-008.
+  fresh pass (no kick) / fresh inconclusive (no kick) / fresh FAIL (fall-through) / missing git /
+  missing shasum / `WT-` branch / `tree_scope: skip` / primary-checkout session — each asserting
+  exit 0 and the expected kick-or-fall-through observation (kicks observed via the shared marker
+  path); registration tests untouched (timeout change is M6). Acceptance: AC-HSA-006, AC-HSA-007,
+  AC-HSA-008, AC-HSA-015, AC-HSA-016, AC-HSA-017.
 - **M4 — PostToolUseFailure async conversion (P1).** One atomic change set: Go handler emits
   `hookSpecificOutput.additionalContext` (event name `PostToolUseFailure`) instead of
   `SystemMessage` at `post_tool_failure.go:108-110`; `async: true` on the entry in live
   `.claude/settings.json` AND `settings.json.tmpl`; update the handler's Go tests to the new
-  output shape; add a template-registration test asserting the flag. The flag and the Go change
+  output shape; add a template-registration test asserting the flag. The edit set also carries
+  the `hooks-system.md` PostToolUseFailure stdout row (systemMessage →
+  hookSpecificOutput.additionalContext), live + template mirrors (audit r1 D7), so the doctrine
+  does not go stale against the converted handler. The flag and the Go change
   land in the same commit pair — flag without the Go change silently drops the message, and vice
   versa on the sync path. Acceptance: AC-HSA-004, AC-HSA-005.
 - **M5 — ConfigChange + SubagentStop chain-event async flags (P2, mechanical).** `async: true` on
@@ -155,6 +181,9 @@ unblocked and its evidence feeds everything downstream.
 - Do NOT implement the shell key with a different but "equivalent" hash chaining — D4 requires
   byte parity with `key.go`; a near-miss key reads as receipt-absent and silently disables the
   fast path's kick arm (fail-open but functionally dead).
+- Do NOT kick on a fresh pass/inconclusive receipt — the Stop gate never does
+  (`codex_review_gate.go:234-244`); an idle passing tree would burn a ~900s review per bucket
+  for nothing.
 - Do NOT let any probe failure block the prompt — the only acceptable degradation is the current
   behavior (fall through to the binary; exit 0 when it cannot resolve).
 - Do NOT raise timeouts without the M1 table row justifying them (spec.md Out of Scope).

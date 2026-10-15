@@ -27,7 +27,7 @@ the evidence ledger in §E; the ledger id is cited from the AC row.
 | AC-HSA-004 | Given both settings surfaces, When the PostToolUseFailure entry is inspected, Then it carries `"async": true` | REQ-HSA-003 | release-blocking | E-L04 | M4 |
 | AC-HSA-005 | Given the Go handler, When a PostToolUseFailure event is handled, Then the output carries `additionalContext` and no `systemMessage` | REQ-HSA-003 | release-blocking | E-L05 | M4 |
 | AC-HSA-006 | Given the gate enabled and tree scope, When the wrapper runs, Then the shell receipt probe exists in BOTH wrapper surfaces and resolves ALLOW states without the binary | REQ-HSA-006 | release-blocking | E-L06 | M3 |
-| AC-HSA-007 | Given a fresh-FAIL receipt, When the wrapper runs, Then it falls through to `moai hook codex-review-entry`; given any probe failure, When the wrapper runs, Then it degrades to the current behavior (fall-through or exit 0), never a block | REQ-HSA-006, REQ-HSA-007 | release-blocking | E-L07 | M3 |
+| AC-HSA-007 | Given the gate enabled, tree scope, no skip policy, and NO receipt (an ALLOW state), When the wrapper runs, Then it completes with exit 0 WITHOUT any moai-binary invocation (stub-probe marker absent); given a fresh-FAIL receipt or any probe failure, When the wrapper runs, Then the synchronous handler is reached (preservation clause — probed in the M3 matrix; see E-L16's classification note) | REQ-HSA-006, REQ-HSA-007 | release-blocking | E-L07 | M3 |
 | AC-HSA-008 | Given a fixture tree, When the shell key computation is compared with Go `verify.Key`, Then the outputs are byte-equal (parity test green on `shasum` and `openssl` paths) | REQ-HSA-008 | release-blocking | E-L08 | M3 |
 | AC-HSA-009 | Given the keep-sync table, When the settings are re-inventoried after M7, Then the async-true count is exactly baseline 11 + 3 = 14 and no keep-sync registration changed sync state or decision semantics | REQ-HSA-009 | release-blocking | E-L09 | M7 |
 | AC-HSA-010 | Given the live `hooks-system.md`, When the timeout section is read, Then 30s is documented as the official DEFAULT with no documented per-event maximum, and the ceiling bullet no longer states a 30s cap | REQ-HSA-010 | release-blocking | E-L10 | M6 |
@@ -35,27 +35,35 @@ the evidence ledger in §E; the ledger id is cited from the AC row.
 | AC-HSA-012 | Given both settings surfaces, When the two UserPromptSubmit entries are inspected, Then each carries `timeout: 30` | REQ-HSA-011 | release-blocking | E-L12 | M6 |
 | AC-HSA-013 | Given M1 executed, When `.moai/reports/t1780/hook-sync-timings.md` is read, Then it carries 10 per-run timings for every synchronous registration and the fixed prescription-order statement | REQ-HSA-012 | release-blocking | E-L13 | M1 |
 | AC-HSA-014 | Given real multi-lane load, When UserPromptSubmit hooks run, Then the hard-timeout count observed in the run log is 0 | REQ-HSA-012 | **regression-guard** | E-L14 | M7 observation |
-| AC-HSA-015 | Given the wrapper runs on an ALLOW state, When the Stop arm later runs for the same tree state, Then exactly one background review was kicked (shared kick marker honored) | REQ-HSA-006(a) | release-blocking | E-L15 | M3 |
-| AC-HSA-016 | Given a card-scope session (`WT-` branch), When the wrapper runs with the gate ON, Then it falls through to the Go handler (no shell probe result is trusted for card scope) | REQ-HSA-007, D5 | release-blocking | E-L16 | M3 |
+| AC-HSA-015 | Given the wrapper runs on a cache-MISS state (no receipt or stale receipt), When the Stop arm later runs for the same tree state, Then exactly one background review was kicked (shared kick marker honored); and Given a fresh pass receipt, When the wrapper runs, Then NO kick occurs | REQ-HSA-006(a), REQ-HSA-006(b) | release-blocking | E-L15 | M3 |
+| AC-HSA-016 | Given a card-scope session (`WT-` branch), When the wrapper runs with the gate ON, Then it retains today's behavior — the shell probe is not consulted (no key computation, no snapshot read, no kick) and the Go handler is reached exactly once per prompt | REQ-HSA-007, plan D5 | regression-guard | E-L16 | M3 probe matrix |
+| AC-HSA-017 | Given the review gate OFF (or unreadable), When the wrapper runs, Then it exits 0 with no binary resolution | REQ-HSA-005 | regression-guard | E-L18 | M3 probe matrix |
 
 ## §D.1 Severity classification
 
 - **S1 (release-blocking, fail the sync gate)**: AC-HSA-005, AC-HSA-006, AC-HSA-007, AC-HSA-008,
-  AC-HSA-014's underlying evidence, AC-HSA-015. Rationale: a wrong output shape silently drops
+  AC-HSA-015. Rationale: a wrong output shape silently drops
   the failure message (async delivers only additionalContext); a wrong probe direction either
-  loses REQ-GBN-002's enforcement (ALLOW on a fresh FAIL) or pays the cold start anyway; a
-  near-miss key silently kills the kick arm; a double-kick wastes a 900s review budget; a prompt
-  block regression is user-facing.
-- **S2 (release-blocking, functional)**: AC-HSA-001..004, AC-HSA-009..013, AC-HSA-016.
+  loses REQ-GBN-002's enforcement (ALLOW on a fresh FAIL), kicks where the Go design suppresses
+  (fresh pass / skip-policy states), or pays the cold start anyway; a
+  near-miss key silently kills the kick arm; a double-kick wastes a 900s review budget.
+- **S2 (release-blocking, functional)**: AC-HSA-001..004, AC-HSA-009..013.
+- **Regression-guard (per §2.1)**: AC-HSA-014 (RED not re-executable — historical incident);
+  AC-HSA-016 (preservation: the criterion pins behavior M3 must not change, so no red delta can
+  exist pre-M3 — audit r1 D4's vacuous-red route); AC-HSA-017 (added at audit r1 per D6, same
+  preservation shape — its four-element BASELINE cell is pinned green-now and the M3 rewrite
+  must keep it green).
 - **S3 (advisory)**: none.
 
 ## §D.2 Traceability
 
-REQ-HSA-001→AC-001/002; REQ-HSA-002→AC-003; REQ-HSA-003→AC-004/005; REQ-HSA-004→kept by
-construction (AC-009 sweep asserts the entry's sync state unchanged); REQ-HSA-005→covered by the
-existing gate-OFF tests, re-asserted in the M3 probe matrix; REQ-HSA-006→AC-006/007/015;
-REQ-HSA-007→AC-007/016; REQ-HSA-008→AC-008; REQ-HSA-009→AC-009; REQ-HSA-010→AC-010/011;
-REQ-HSA-011→AC-012; REQ-HSA-012→AC-013/014. Every REQ has at least one AC; no AC lacks a REQ.
+REQ-HSA-001→AC-HSA-001/002; REQ-HSA-002→AC-HSA-003; REQ-HSA-003→AC-HSA-004/005;
+REQ-HSA-004→AC-HSA-009 (the count sweep asserts the entry's sync state unchanged);
+REQ-HSA-005→AC-HSA-017 (dedicated AC, added at audit r1 per D6); REQ-HSA-006→AC-HSA-006/007/015;
+REQ-HSA-007→AC-HSA-007/016; REQ-HSA-008→AC-HSA-008; REQ-HSA-009→AC-HSA-009;
+REQ-HSA-010→AC-HSA-010/011; REQ-HSA-011→AC-HSA-012; REQ-HSA-012→AC-HSA-013/014. Every REQ has at
+least one AC; no AC lacks a REQ. AC-HSA-017 is the only id-set addition (audit r1 D6); every
+round-0 REQ/AC id is unchanged (delta re-audit eligibility).
 
 ## §D.3 Indirect verification
 
@@ -101,6 +109,9 @@ REQ-HSA-011→AC-012; REQ-HSA-012→AC-013/014. Every REQ has at least one AC; n
 
 Each entry: command (single-invocation read-only form), verbatim stdout, exit code. The document
 tree SHA above binds every entry; a criterion-level re-pin re-measures rather than re-cites.
+The two fixture probes (E-L07, E-L18) exercise the wrapper against a `/tmp` fixture project and
+a stub binary — they touch no repo-tree state; the fixture build steps are stated inside the
+entries so each command is re-executable as cited.
 
 **E-L01** (AC-HSA-001, template ConfigChange lacks async — red because the printed entry's fields
 end at `timeout`/`type` with no `async` key):
@@ -121,19 +132,20 @@ exit=0
 
 ```
 $ grep -n -A 8 "chain-event" .claude/settings.json
-229:            "args": [...same -c wrapper... , "${CLAUDE_PROJECT_DIR}/.claude/hooks/moai/chain-event.sh"],
+229:            "args": ["-c", "[ -f \"$0\" ] && exec bash \"$0\"; d=\"${0%/.claude/hooks/moai/*}\"; mkdir -p \"$d/.moai/logs\" 2>/dev/null; printf \"%s %s\\n\" \"$(date -u +%FT%TZ 2>/dev/null || /bin/date -u +%FT%TZ 2>/dev/null || printf unknown-time)\" \"hook missing: $0\" >> \"$d/.moai/logs/hook-missing.log\" 2>/dev/null; exit 0", "${CLAUDE_PROJECT_DIR}/.claude/hooks/moai/chain-event.sh"],
 230-            "timeout": 5,
 231-            "type": "command"
 exit=0
 ```
 The template mirror (same command on `settings.json.tmpl`) returned byte-identical lines 229-231,
-`exit=0`.
+`exit=0` (the `-c` wrapper args line is byte-identical to E-L01's — only the script basename
+differs).
 
 **E-L04** (AC-HSA-004, PostToolUseFailure lacks async in both surfaces):
 
 ```
 $ grep -n -A 8 "handle-post-tool-failure" .claude/settings.json
-241:            "args": [...same -c wrapper..., "${CLAUDE_PROJECT_DIR}/.claude/hooks/moai/handle-post-tool-failure.sh"],
+241:            "args": ["-c", "[ -f \"$0\" ] && exec bash \"$0\"; d=\"${0%/.claude/hooks/moai/*}\"; mkdir -p \"$d/.moai/logs\" 2>/dev/null; printf \"%s %s\\n\" \"$(date -u +%FT%TZ 2>/dev/null || /bin/date -u +%FT%TZ 2>/dev/null || printf unknown-time)\" \"hook missing: $0\" >> \"$d/.moai/logs/hook-missing.log\" 2>/dev/null; exit 0", "${CLAUDE_PROJECT_DIR}/.claude/hooks/moai/handle-post-tool-failure.sh"],
 242-            "timeout": 5,
 243-            "type": "command"
 exit=0
@@ -163,10 +175,30 @@ $ grep -n "snapshots" internal/template/templates/.claude/hooks/moai/handle-code
 exit=1
 ```
 
-**E-L07** (AC-HSA-007, the wrapper forwards unconditionally today — every gate-ON prompt pays the
-binary; no probe, no fall-through logic): E-L06's absence plus the wrapper's line 84
-(`printf '%s' "$INPUT" | "$MOAI_BIN" hook codex-review-entry` being the only gate-ON path,
-observed in the script read at plan phase).
+**E-L07** (AC-HSA-007, RED for the genuinely-red post-M3 delta: an ALLOW state completes WITHOUT
+a binary invocation. Fixture `/tmp/t1780-fp-red/`: `proj-on/` carries
+`.moai/config/sections/workflow.yaml` with `workflow.codex.review_gate.enabled: true` and no
+snapshot store; `bin/moai` is a stub that touches `bin/moai.invoked` then exits 0 with empty
+stdout. Prep: `chmod +x` the stub, marker cleared. Cited command — single invocation, literal
+PATH, stdin is the runner's closed stdin):
+
+```
+$ env CLAUDE_PROJECT_DIR=/tmp/t1780-fp-red/proj-on PATH="/tmp/t1780-fp-red/bin:/usr/bin:/bin:/usr/sbin:/sbin" bash .claude/hooks/moai/handle-codex-review-entry.sh
+(no stdout)
+exit=0
+$ ls /tmp/t1780-fp-red/bin/moai.invoked
+-rw-r--r-- 1 goos wheel 0 Oct 15 15:08 /tmp/t1780-fp-red/bin/moai.invoked
+exit=0
+```
+
+Red because the marker EXISTS: on a gate-ON no-receipt (ALLOW) state the wrapper resolved and
+invoked a moai binary today — the line-84 unconditional forward. Post-M3 the same probe must
+show the marker ABSENT (stub-probe count 0). Provenance: the first R1 attempt was REFUSED by the
+worktree guard (`env` with runtime-expanded `$PATH` — recorded under Gaps per claim-integrity
+§3.1); the refused compound's `chmod +x` had not run, so the first literal-PATH retry resolved
+the tier-3 real `~/go/bin/moai`, which ALSO ran on this ALLOW state (printing the real handler's
+invalid-stdin message) — independently confirming the red before the controlled stub run above,
+which is the observation of record.
 
 **E-L08** (AC-HSA-008, no key-parity test exists — the fixture and test are M3 deliverables):
 
@@ -237,12 +269,40 @@ $ grep -n "kick" .claude/hooks/moai/handle-codex-review-entry.sh
 exit=0
 ```
 
-**E-L16** (AC-HSA-016, no scope pre-check exists in the wrapper — the fall-through-for-card-scope
-behavior is new; RED evidenced by E-L06's probe absence plus the script read showing no `WT-`
-branch check).
+**E-L16** (AC-HSA-016, regression-guard per §2.1 — audit r1 D4's required disposition). The
+criterion is a preservation guard: it pins behavior M3 must NOT change (card-scope sessions
+reach the Go handler exactly once per prompt and consult no shell probe state). No red delta can
+exist pre-M3 — today the wrapper probes nothing (E-L06) and forwards unconditionally (line 84),
+which is precisely the behavior to preserve; a "falls through" RED would be vacuous (D4),
+because the fall-through is already true. Baseline evidence: E-L06 + E-L07's invocation probe +
+the plan-phase script read showing no `WT-` branch check. Green path: the M3 probe matrix's
+`WT-` branch case asserts the preserved behavior on the rewritten wrapper.
+
+**E-L18** (AC-HSA-017, four-element BASELINE cell — regression-guard classification, added at
+audit r1 per D6). The criterion preserves the existing gate-OFF fast path: green by design
+pre-M3, and the M3 rewrite must keep it green, so the cell pins the baseline the rewrite is
+guarded against (not recorded as a pass for the implementation). Fixture: same
+`/tmp/t1780-fp-red/` tree, `proj-off/` carrying `enabled: false`; marker cleared first.
+
+```
+$ env CLAUDE_PROJECT_DIR=/tmp/t1780-fp-red/proj-off PATH="/tmp/t1780-fp-red/bin:/usr/bin:/bin:/usr/sbin:/sbin" bash .claude/hooks/moai/handle-codex-review-entry.sh
+(no stdout)
+exit=0
+$ ls /tmp/t1780-fp-red/bin/moai.invoked
+ls: /tmp/t1780-fp-red/bin/moai.invoked: No such file or directory
+exit=1
+```
+
+Elements: command (single invocation, literal PATH) / stdout (empty) / exit 0 (wrapper run) with
+the marker-absence observation (`ls` exit 1) proving no binary resolution / tree
+`e04ebd5ca6bc441b380c1072d5a1dff8431459ba` (document pin). The M3 probe matrix re-asserts this
+behavior on the rewritten wrapper.
 
 ## Gaps (plan-phase observations NOT made)
 
+- Probe R1 attempt 1 was REFUSED by the worktree-isolation guard (`env` with runtime-expanded
+  `$PATH`); the observation of record is the literal-PATH retry in E-L07 (refusal recorded per
+  `verification-claim-integrity.md` §3.1).
 - The local primary checkout's settings (leader-raised 30) was taken from the card directive, not
   re-measured from the primary checkout (this session is worktree-isolated). M2 re-observes all
   three surfaces on the absorbed tree.

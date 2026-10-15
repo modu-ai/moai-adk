@@ -1,7 +1,7 @@
 ---
 id: SPEC-HOOK-SYNC-ASYNC-001
 title: "Hook sync/async cleanup: three async conversions, codex-review-entry gate-ON shell fast path, timeout doctrine correction, and the sync-hook measurement protocol"
-version: "1.0.0"
+version: "1.0.1"
 status: draft
 created: 2026-10-15
 updated: 2026-10-15
@@ -12,7 +12,7 @@ module: ".claude/hooks/moai, internal/hook, internal/template/templates/.claude"
 lifecycle: spec-anchored
 tags: "hooks, async, timeout, template-first, performance, measurement"
 tier: M
-related_specs: [SPEC-GATE-BOTTLENECK-001, SPEC-REVIEW-GATE-REPAIR-001, SPEC-HARNESS-RATCHET-REWIRE-001, SPEC-CODEX-GATE-SCOPE-001]
+related_specs: [SPEC-GATE-BOTTLENECK-001, SPEC-REVIEW-GATE-REPAIR-001, SPEC-HARNESS-RATCHET-REWIRE-001, SPEC-CODEX-GATE-SCOPE-001, SPEC-CODEX-REVIEW-OWNERSHIP-001, SPEC-CODEX-GATE-SCOPING-001]
 ---
 
 # SPEC-HOOK-SYNC-ASYNC-001
@@ -22,6 +22,7 @@ related_specs: [SPEC-GATE-BOTTLENECK-001, SPEC-REVIEW-GATE-REPAIR-001, SPEC-HARN
 | Date | Version | Change |
 |------|---------|--------|
 | 2026-10-15 | 1.0.0 | Initial draft. Authored at plan phase for card t1780 (operator directive 2026-10-15, Class C, Template-First, P1). Carries board decisions d-20261015T030xx (codex-review-entry stays synchronous) and d-20261015T024551Z-78aa (measure every synchronous hook 10x, table under .moai/reports/t1780/). |
+| 2026-10-15 | 1.0.1 | Plan-audit r1 repairs (verdict `.moai/reports/t1780/plan-audit.md`, FAIL 0.8125 on D1-D4 blocking): REQ-HSA-006 kick narrowed to cache-miss states only — fresh pass/inconclusive exits 0 WITHOUT kicking, mirroring `codex_review_gate.go:234-244` (D1); tree-scope/primary-scope skip policy added to the REQ-HSA-006 Where-clause (D2); REQ-HSA-003 gains the `hooks-system.md` PostToolUseFailure stdout-row refresh (D7). AC-HSA-017 added per audit D6 (only AC-set addition; every existing REQ/AC id unchanged). |
 
 ## 1. Overview
 
@@ -84,7 +85,9 @@ handler that exists, not toward a block the handler deliberately does not perfor
   `additionalContext` (via `hookSpecificOutput.additionalContext`) instead of `systemMessage`,
   because an async hook delivers only `additionalContext`. The REQ-HRR-001
   `tool_failure:<tool>:<category>` usage-log recording and the contract-mode escalation
-  observation shall remain unchanged.
+  observation shall remain unchanged, and the `hooks-system.md` stdin/stdout reference row for
+  PostToolUseFailure (live and template mirrors) shall be updated to the new output field in the
+  same change set, so the doctrine does not go stale against the converted handler.
 
 ### Decision item ④ — codex-review-entry (DECIDED, not reopened)
 
@@ -95,20 +98,29 @@ handler that exists, not toward a block the handler deliberately does not perfor
 - **REQ-HSA-005** — While the review gate is disabled or unreadable, the entry wrapper shall exit
   0 before any binary resolution (the existing gate-OFF shell fast path, unchanged).
 
-- **REQ-HSA-006** — Where the review gate is enabled and the session resolves to tree scope, the
-  entry wrapper shall probe the codex-review receipt store in pure shell — snapshot path
+- **REQ-HSA-006** — Where the review gate is enabled, the session resolves to tree scope, AND
+  neither entry-side skip policy applies — the `tree_scope: skip` config and the
+  primary-checkout `primary_scope: skip` default, the two sibling policies the Go entry handler
+  applies at `internal/cli/codex_review_delay.go:217` so "the two halves skip together" (a
+  `WT-` card session is never skipped — REQ-CRO-004) — the entry wrapper shall probe the
+  codex-review receipt store in pure shell — snapshot path
   `.moai/state/verify/snapshots/<head12>-<digest>.json` (head truncated to 12 chars, `:` → `-`),
   key = `sha256(porcelain-v2 status || 0x00 || git diff HEAD || per-untracked-file digests)` per
   `internal/verify/key.go`, entry `check_id == "codex-review"`, freshness TTL 24h
   (`codexReviewCacheTTL`) — and:
-  - (a) **When** no receipt, a stale receipt, or a pass/inconclusive verdict is observed, the
-    wrapper shall exit 0 immediately (ALLOW) without a synchronous handler invocation, and shall
-    fire the detached background review kick (`moai verify codex-review --project-root <dir>`,
-    output appended to `.moai/logs/codex-review-bg.log`) guarded by the same kick marker
+  - (a) **When** a cache-MISS state is observed (no receipt, or a stale receipt past the TTL),
+    the wrapper shall exit 0 immediately (ALLOW) without a synchronous handler invocation, and
+    shall fire the detached background review kick (`moai verify codex-review --project-root
+    <dir>`, output appended to `.moai/logs/codex-review-bg.log`) guarded by the same kick marker
     (`.moai/state/verify/codex-review/<head>-<digest>.kick-<bucket>`, bucket = epoch /
-    `DefaultCodexReviewGateTimeout` = 900s) the Stop gate uses, so the kick arm of REQ-GBN-002 is
-    preserved without double-kicking against the Stop side;
-  - (b) **When** a fresh-FAIL receipt is observed (five bound fields equal + within TTL + verdict
+    `DefaultCodexReviewGateTimeout` = 900s) the Stop gate uses on the same miss states
+    (`codex_review_gate.go:249-270` — only miss states reach the kick), so the kick arm of
+    REQ-GBN-002 is preserved without double-kicking against the Stop side;
+  - (b) **When** a fresh pass or inconclusive verdict is observed (five bound fields equal +
+    within TTL, verdict not fail), the wrapper shall exit 0 immediately WITHOUT kicking —
+    mirroring the Stop gate's clear-and-reuse disposition (`codex_review_gate.go:234-244`: a
+    fresh passing review is never re-kicked, so an idle passing tree spends no review budget);
+  - (c) **When** a fresh-FAIL receipt is observed (five bound fields equal + within TTL + verdict
     fail), the wrapper shall fall through to the synchronous `moai hook codex-review-entry` so
     the Go handler owns the verdict delivery.
 
