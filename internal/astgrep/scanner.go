@@ -129,6 +129,39 @@ var ErrUntrustedBinary = errors.New("astgrep: untrusted binary path")
 // code that was never scanned.
 var ErrScannerUnavailable = errors.New("astgrep: sg scanner binary unavailable")
 
+// ErrRulesetLoad identifies "sg ran but refused to load the ruleset". It is the
+// condition behind a non-zero sg exit with no JSON on stdout and a diagnostic on
+// stderr. It is distinct from a clean scan (no findings) and from
+// ErrScannerUnavailable (no sg binary at all).
+var ErrRulesetLoad = errors.New("astgrep: ruleset failed to load")
+
+// RulesetLoadError reports that sg refused to load a ruleset, so no rule ran.
+// Detail is the first non-blank line of sg's stderr, which names the failing
+// rule file (for example "Error: Cannot parse rule <path>"). errors.Is matches
+// ErrRulesetLoad through Unwrap, and errors.As recovers Detail.
+type RulesetLoadError struct {
+	Detail string
+}
+
+// Error renders the load failure with sg's first stderr line.
+func (e *RulesetLoadError) Error() string {
+	return "ast-grep ruleset failed to load: " + e.Detail
+}
+
+// Unwrap lets errors.Is match the ErrRulesetLoad sentinel.
+func (e *RulesetLoadError) Unwrap() error { return ErrRulesetLoad }
+
+// firstNonBlankLine returns the first line of s that has non-space content,
+// trimmed of surrounding whitespace, or "" when s has none.
+func firstNonBlankLine(s string) string {
+	for _, line := range strings.Split(s, "\n") {
+		if trimmed := strings.TrimSpace(line); trimmed != "" {
+			return trimmed
+		}
+	}
+	return ""
+}
+
 // InstallURL is the canonical ast-grep install page. The scanner's unavailable
 // error, the `moai ast-grep` CLI guidance, the commit quality gate's skip
 // reason, and the `moai doctor` check all cite it from here so the four cannot
@@ -250,6 +283,8 @@ func (s *Scanner) isSGAvailable() bool {
 // Returns an error wrapping ErrScannerUnavailable when the sg CLI cannot be
 // resolved — that condition is NOT reported as an empty successful scan,
 // because callers cannot tell the two apart.
+// Returns a *RulesetLoadError (matching ErrRulesetLoad) when sg refuses to load the
+// ruleset: a load failure is never reported as an empty, clean scan.
 // Returns ([]Finding{}, nil) when the rules directory is empty or does not exist (REQ-ASTG-UPG-012).
 // Returns an error when SGBinary is an untrusted path (F2 security check).
 func (s *Scanner) Scan(ctx context.Context, path string) ([]Finding, error) {
@@ -317,12 +352,20 @@ func (s *Scanner) scanWithConfig(ctx context.Context, configPath, path string) (
 	cmd.Stdout = &stdout
 	cmd.Stderr = &stderr
 
-	// Ignore the error: sg may return a non-zero exit code when matches are found.
-	_ = cmd.Run()
+	runErr := cmd.Run()
 
-	// F4: debug-log any stderr content (language is unknown in config-based scans, so skip error propagation).
+	// F4: debug-log any stderr content (language is unknown in config-based scans).
 	if stderr.Len() > 0 {
 		slog.Debug("sg scan stderr (config-based)", "config", configPath, "stderr", stderr.String())
+	}
+
+	// sg exits non-zero in two situations that must not be conflated. With
+	// error-severity matches it exits non-zero WITH the JSON on stdout: a normal
+	// scan. With a ruleset it cannot load it exits non-zero with NOTHING on stdout
+	// and the diagnostic on stderr. Returning an empty clean scan for the second
+	// case is the swallow of GH #1824.
+	if detail := firstNonBlankLine(stderr.String()); runErr != nil && stdout.Len() == 0 && detail != "" {
+		return nil, &RulesetLoadError{Detail: detail}
 	}
 
 	if stdout.Len() == 0 {
