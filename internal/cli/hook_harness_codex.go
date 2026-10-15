@@ -18,6 +18,7 @@ import (
 	"github.com/spf13/cobra"
 
 	"github.com/modu-ai/moai-adk/internal/codexadapter"
+	"github.com/modu-ai/moai-adk/internal/factory"
 	"github.com/modu-ai/moai-adk/internal/hook"
 )
 
@@ -38,6 +39,18 @@ func harnessModeIsCodex(cmd *cobra.Command) (bool, error) {
 	default:
 		return false, fmt.Errorf("invalid --harness value %q: must be one of: claude, codex", v)
 	}
+}
+
+// codexHarnessScrubsLaneEnv reports whether a --harness codex hook process
+// scrubs the inherited lane launch keys. A CLAUDE lane's factory identity
+// must never reach a Codex session's hook (REQ-CFR-022) — the scrub is the
+// boundary. The EXPLICIT Codex factory launches bypass it: backend=codex
+// (managed dispatch) and backend=gpt (the moai codex -l launcher stamp —
+// card t1776 audit round-1: a bypass recognizing only backend=codex scrubbed
+// the launcher's own lane env before the SessionStart factory checks could
+// read it). The hook package has no harness field; this boundary knows it.
+func codexHarnessScrubsLaneEnv(backend string) bool {
+	return backend != BackendCodex && backend != factory.BackendGPT
 }
 
 // unsetLaneEnvForCodexHook removes the eleven lane launch keys from this hook

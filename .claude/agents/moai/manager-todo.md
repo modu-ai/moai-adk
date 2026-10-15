@@ -10,6 +10,8 @@ description: |
   Match user intent language-independently — do not require literal keyword matches.
   NOT for: merge approval, PASS/FAIL audit verdicts, plan-phase SPEC authoring, or any decision the operator gate owns
 tools: Read, Write, Edit, Grep, Glob, Bash, Skill
+model: haiku
+effort: medium
 color: purple
 permissionMode: acceptEdits
 memory: project

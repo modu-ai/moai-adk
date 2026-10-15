@@ -257,3 +257,4 @@ _<pending run-phase — the bounded DIAGONSE-PATCH-VERIFY loop record (mechanica
 | Version | Date | Author | Change |
 |---------|------|--------|--------|
 | 0.1.0 | 2026-07-09 | manager-spec | Initial progress.md. §E.1 populated with plan-phase audit-ready signal (6 artifacts authored, 2 supersede targets flipped, design authority cited, 3 open decisions + 1 known gap recorded). §E.2-§E.4 + §F + §H placeholder headings emitted per the canonical progress.md Section Map. |
+| note | 2026-10-15 | card t1808 | Superseded note: the No-Haiku policy (REQ-AA2-012) is superseded for the git/todo/Explore roles by the operator's per-role defaults report (card t1808, 2026-10-15); the HaikuResidual rule now exempts the agent frontmatter `model:` field only — prose mentions in agent bodies stay flagged. |
