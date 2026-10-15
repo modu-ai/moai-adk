@@ -9,6 +9,12 @@
 //     home directory through os.UserHomeDir or expands a "~/" literal, unless the
 //     line carries a `home-guard:allow <reason>` comment.
 //
+// Windows layout: the default temp dir lies under the real home, so the sandbox
+// root would be refused as "inside the real home". The refusal is skipped for a
+// seam inside the sandbox root only when the root is under os.TempDir and the
+// real home is not; seams equal to, above, empty, relative, or outside the
+// sandbox keep the full judgment.
+//
 // Only the standard library is imported, so the scanner never compiles the
 // packages it scans. Import this package only from _test.go files.
 package testguard
@@ -124,7 +130,7 @@ func redirectHomeAt(t testing.TB, root string) string {
 	for _, tg := range targets {
 		seams = append(seams, tg.value)
 	}
-	if err := CheckSeamHomes(realHome, seams); err != nil {
+	if err := judgeSandbox(realHome, root, seams); err != nil {
 		t.Fatalf("testguard: %v; refusing to redirect the home directory", err)
 		return ""
 	}
@@ -152,6 +158,31 @@ func redirectHomeAt(t testing.TB, root string) string {
 // gitGlobalConfigEnv names the variable that moves git's global config.
 const gitGlobalConfigEnv = "GIT_CONFIG_GLOBAL"
 
+// judgeSandbox is the refusal decision for a redirect whose sandbox lives at
+// root. It applies CheckSeamHomes, with one exemption for platforms whose
+// default temp dir lies under the real home (Windows): a seam inside the sandbox
+// root is accepted when the root is under os.TempDir and the real home is not.
+// Every other seam keeps the full judgment, and so does an unknown real home.
+func judgeSandbox(realHome, root string, seams []string) error {
+	base := CheckSeamHomes(realHome, seams)
+	if base == nil || strings.TrimSpace(realHome) == "" {
+		return base
+	}
+	tmp := resolveForGuard(os.TempDir())
+	rootR := resolveForGuard(root)
+	homeR := resolveForGuard(realHome)
+	if !filepath.IsAbs(root) || !within(rootR, tmp) || within(homeR, tmp) {
+		return base
+	}
+	for _, s := range seams {
+		if filepath.IsAbs(s) && within(resolveForGuard(s), rootR) && !within(homeR, resolveForGuard(s)) {
+			continue
+		}
+		return CheckSeamHomes(realHome, []string{s})
+	}
+	return nil
+}
+
 // CheckSeamHomes is the pure guard decision. It returns an error when realHome
 // is unknown, or when any seam path is empty, relative, equal to realHome, or
 // located under realHome. A path is judged both as written and after its
@@ -173,6 +204,9 @@ func CheckSeamHomes(realHome string, seamPaths []string) error {
 		}
 		if within(clean, home) || within(resolveForGuard(clean), resolvedHome) {
 			return fmt.Errorf("home guard: seam path %q resolves inside the real home %q", p, realHome)
+		}
+		if within(home, clean) || within(resolvedHome, resolveForGuard(clean)) {
+			return fmt.Errorf("home guard: seam path %q is above the real home %q", p, realHome)
 		}
 	}
 	return nil

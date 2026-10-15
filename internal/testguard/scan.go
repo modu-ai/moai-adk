@@ -54,7 +54,7 @@ func Keys(vs []Violation) []string {
 	seen := map[string]int{}
 	keys := make([]string, 0, len(vs))
 	for _, v := range vs {
-		base := v.File + "\t" + v.Kind + "\t" + strings.Join(strings.Fields(v.Text), " ")
+		base := strings.ReplaceAll(v.File, `\`, "/") + "\t" + v.Kind + "\t" + strings.Join(strings.Fields(v.Text), " ")
 		keys = append(keys, fmt.Sprintf("%s\t%d", base, seen[base]))
 		seen[base]++
 	}
@@ -71,9 +71,20 @@ func Keys(vs []Violation) []string {
 // that shadows the name is not.
 func ScanSource(filename string, src []byte) ([]Violation, error) {
 	fset := token.NewFileSet()
-	file, err := parser.ParseFile(fset, filename, src, 0)
+	file, err := parser.ParseFile(fset, filename, src, parser.ParseComments)
 	if err != nil {
 		return nil, fmt.Errorf("parse %s: %w", filename, err)
+	}
+
+	// Only real comment tokens carry the marker; a string literal that contains
+	// the same text is not a comment.
+	markerLines := map[int]bool{}
+	for _, cg := range file.Comments {
+		for _, c := range cg.List {
+			if allowComment.MatchString(c.Text) {
+				markerLines[fset.Position(c.Slash).Line] = true
+			}
+		}
 	}
 
 	lines := strings.Split(string(src), "\n")
@@ -82,7 +93,7 @@ func ScanSource(filename string, src []byte) ([]Violation, error) {
 	seen := map[string]bool{}
 	report := func(line int, kind string) {
 		key := fmt.Sprintf("%d:%s", line, kind)
-		if seen[key] || allowedAt(lines, line) {
+		if seen[key] || markerLines[line] || markerLines[line-1] {
 			return
 		}
 		seen[key] = true
@@ -154,12 +165,6 @@ func lineAt(lines []string, n int) string {
 	return lines[n-1]
 }
 
-// allowedAt reports whether line (1-based) or the line directly above it carries
-// a `home-guard:allow <reason>` comment.
-func allowedAt(lines []string, line int) bool {
-	return allowComment.MatchString(lineAt(lines, line)) || allowComment.MatchString(lineAt(lines, line-1))
-}
-
 // ScanTree scans every *_test.go file below root/<dir> for each dir. The go tool
 // skips testdata and vendor, and so does this walk. Symbolic links are not
 // followed. Violations carry paths relative to root and are sorted for stable
@@ -189,7 +194,7 @@ func ScanTree(root string, dirs []string) (Result, error) {
 			if err != nil {
 				return err
 			}
-			vs, err := ScanSource(rel, src)
+			vs, err := ScanSource(filepath.ToSlash(rel), src)
 			if err != nil {
 				return err
 			}

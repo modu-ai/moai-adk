@@ -88,7 +88,10 @@ func TestRedirectHome_RefusesRealHomeAsWriteTarget(t *testing.T) {
 	fake := &fakeTB{TB: t, tmp: root}
 	redirectHomeAt(fake, root)
 
-	assertRefusedBeforeWriting(t, fake, root, "inside the real home")
+	// The sandbox HOME is the parent of the injected real home, so the seam list
+	// is refused as "above the real home"; a path equal to or inside it would be
+	// refused as "inside". Either way nothing is written.
+	assertRefusedBeforeWriting(t, fake, root, "the real home")
 	t.Logf("captured t.Fatalf output: %s", fake.fatals[0])
 }
 
