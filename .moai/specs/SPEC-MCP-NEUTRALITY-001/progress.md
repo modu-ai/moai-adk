@@ -496,6 +496,25 @@ Verification batch at HEAD 433c09af2 (this tree, this run):
 
 Authored-By-Agent: manager-develop
 
+### Sync-audit r9 delta repair round — remeasure regressions (card t1632, branch WT-3-2-0-2)
+
+Commit: `8f22e6401` (fix: sync-audit r9 delta repairs — remeasure regressions). Base: the r8 evidence head `486c9a6b1`. Baseline evidence: /tmp/t1632-remeasure-out3.jsonl (full capture), /tmp/t1632-baseline-out.txt (main-baseline-t1632 @ e04ebd5ca — all 5 PASS there). Push state: nothing pushed; clean on WT-3-2-0-2.
+
+| Failure | Disposition | Command (verbatim) | Observed output |
+|---------|-------------|--------------------|-----------------|
+| TestCommittedWorkflowYamlAuditAlignment (claude effort high vs want medium) | FIXED — the test file was a PARTIAL MERGE of card t1520's alignment commit `602701d94`: its doc comment described the operator-role-table posture (effort at the Go default, high) while its two effort assertions still expected D8's medium. Restored to the baseline file (`e04ebd5ca`), which asserts high consistently; the committed yaml is unchanged (main's `842160157` already carried effort: high) | `go test ./internal/config -run 'TestCommittedWorkflowYamlAuditAlignment' -count=1` | `ok` |
+| TestCodexContractByteCeiling (AGENTS.md 24724/24728 > ceiling 24576) | FIXED — this card's M4 added AGENTS.md §14 (the MCP reconnect procedure, ~+800B) to both copies; §14 condensed to the contract-level facts (the per-harness bullet list folds into one sentence) | `go test ./internal/config -run 'TestCodexContractByteCeiling\|TestCodexNestedTemplateDiscoveryBudget\|TestCommittedWorkflowYamlAuditAlignment' -count=1` | `ok` — both copies back under the ceiling |
+| TestCodexNestedTemplateDiscoveryBudget (same ceiling, discovery chain) | FIXED — same §14 condensation | the same run | `ok` |
+| TestBrokerOpenContextGitFailuresDoNotFallbackIdentity (+pipe) | NOT REPRODUCIBLE — no code change | `go test ./internal/factorymsg -run 'TestBrokerOpenContextGitFailuresDoNotFallbackIdentity' -count=1` and `go test ./internal/factorymsg -count=1` | both `ok` — isolated AND full-package runs green on the card tree; the remeasure failure was load/environment contention in the remeasure harness (recorded) |
+| hook TestFactoryHookContextAndContinuationSafety + TestFactoryHookZeroTurnAndCapabilityTruth | VERIFIED GREEN on the card tree — no change | `go test ./internal/hook -run 'TestFactoryHookContextAndContinuationSafety\|TestFactoryHookZeroTurnAndCapabilityTruth' -count=1` | `ok` — the M5 repair surface (`5e468bce1` + `db9fb0e7b`) is intact; the main-side failures are the expected absence of those repairs on main (main PASS in the leader's matrix refers to the t1632-absent tree) |
+
+Verification batch at HEAD 8f22e6401 (this tree, this run):
+
+- E2 builds: `go build ./...` → exit 0.
+- Affected families green (-count=1): internal/config (the three named tests), internal/factorymsg (full package, 233s), internal/hook (the two named + the family run earlier this round).
+
+Authored-By-Agent: manager-develop
+
 ## §E.3 Run-phase Audit-Ready Signal
 
 run_audit_ready: true
