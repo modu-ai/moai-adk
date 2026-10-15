@@ -71,6 +71,13 @@ import (
 // value is asserted by TestRequestModel_IsTheAliasNotAVersion.
 const ModelID = "jev-latest"
 
+// VerifiedInterpretedModel is the interpreted model id the measurement
+// regression set was last run against. Measured 2026-10-15: the request alias
+// resolved to this version at that time. It changes only by a code change made
+// after the regression set has been re-run against the new id. An answered call
+// reporting any other id earns the client one change notice.
+const VerifiedInterpretedModel = "jev-1.13.0"
+
 // interpretedModelShape is the vendor's versioned model id: the family name and
 // three dot-separated numbers, as in jev-1.13.0. The bare family name (jev-1.13)
 // and the request alias (jev-latest) do not match, because neither names the
@@ -272,14 +279,21 @@ type Result struct {
 	Condition string
 	Answers   []Answer
 	Usage     Usage
+	// Notice is set only on the change notice: the first answered call of a
+	// client whose interpreted model id differs from VerifiedInterpretedModel.
+	Notice string
 }
 
 // OK reports whether the call produced answers.
 func (r Result) OK() bool { return r.Availability == Available }
 
 // NoticeLine renders the at-most-one notice line a consumer may emit
-// (REQ-JEVC-007). An available result has nothing to notice and returns empty.
+// (REQ-JEVC-007). It returns the change notice when one is set. Otherwise an
+// available result has nothing to notice and returns empty.
 func (r Result) NoticeLine() string {
+	if r.Notice != "" {
+		return r.Notice
+	}
 	if r.Availability == Available {
 		return ""
 	}
@@ -317,6 +331,9 @@ type Client struct {
 
 	mu    sync.Mutex
 	usage []Usage
+	// changeNoticed records that this client already issued the change notice.
+	// Guarded by mu.
+	changeNoticed bool
 }
 
 // New returns a client for the given gate state, wired to the compiled endpoint.
@@ -562,6 +579,7 @@ func (c *Client) Ask(ctx context.Context, req Request) Result {
 	if res.OK() {
 		if ValidInterpretedModel(model) {
 			res.Answers = fromWire(req.Questions, answers, model)
+			res.Notice = c.changeNotice(model)
 		} else {
 			res = Result{
 				Availability: Unattributed,
@@ -581,6 +599,24 @@ func (c *Client) Ask(ctx context.Context, req Request) Result {
 	c.record(usage)
 	res.Usage = usage
 	return res
+}
+
+// changeNotice returns the one-line change notice when model differs from
+// VerifiedInterpretedModel and this client has not yet issued it, and marks the
+// client as noticed. Otherwise it returns empty.
+func (c *Client) changeNotice(model string) string {
+	if model == VerifiedInterpretedModel {
+		return ""
+	}
+	c.mu.Lock()
+	defer c.mu.Unlock()
+	if c.changeNoticed {
+		return ""
+	}
+	c.changeNoticed = true
+	return fmt.Sprintf("jev interpreted model changed: answered by %s, verified %s (internal/jev/jev.go:VerifiedInterpretedModel); "+
+		"until the measurement regression set is re-run against the new id and the verified id is changed, "+
+		"consumers that show or select on a Jev answer return to shadow", model, VerifiedInterpretedModel)
 }
 
 // send performs the round trip with the retry policy applied. It returns the

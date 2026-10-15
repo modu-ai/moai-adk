@@ -539,6 +539,62 @@ func TestResult_CarriesInterpretedModelFromResponse(t *testing.T) {
 	})
 }
 
+// TestChangedInterpretedModel_NoticeOncePerClient asserts the change notice
+// (AC-JRM-010). A client whose first answered call reports an interpreted id
+// other than the verified one gets exactly one notice line on that result; a
+// second answered call in the same client carries none; a client answered with
+// the verified id carries none. The jev-1.13.0 fixture below is the control, the
+// one permitted use of that id as an answered model.
+func TestChangedInterpretedModel_NoticeOncePerClient(t *testing.T) {
+	bodyFor := func(model string) string {
+		return `{"model":"` + model + `","usage":{"input_tokens":123,"output_tokens":0},"answers":{"q1":{"type":"noul","noul":0.62}}}`
+	}
+	clientFor := func(model string) *Client {
+		d := &countingDoer{Response: func(int) (*http.Response, error) { return jsonResponse(200, bodyFor(model)), nil }}
+		return testClient(d)
+	}
+
+	t.Run("changed id notices once", func(t *testing.T) {
+		c := clientFor("jev-9.8.7")
+		first := c.Ask(context.Background(), oneQuestion())
+		if !first.OK() {
+			t.Fatalf("Availability = %q (%s), want available", first.Availability, first.Condition)
+		}
+		line := first.NoticeLine()
+		if line == "" {
+			t.Fatal("NoticeLine() is empty on the first answered call with a changed interpreted id")
+		}
+		if strings.Contains(line, "\n") {
+			t.Errorf("NoticeLine() = %q, want a single line", line)
+		}
+		for _, want := range []string{"jev-1.13.0", "jev-9.8.7", "internal/jev/jev.go:VerifiedInterpretedModel", "shadow"} {
+			if !strings.Contains(line, want) {
+				t.Errorf("NoticeLine() = %q, want it to contain %q", line, want)
+			}
+		}
+		second := c.Ask(context.Background(), oneQuestion())
+		if !second.OK() {
+			t.Fatalf("second Availability = %q (%s), want available", second.Availability, second.Condition)
+		}
+		if got := second.NoticeLine(); got != "" {
+			t.Errorf("second answered call NoticeLine() = %q, want none: the notice is once per client", got)
+		}
+	})
+
+	t.Run("verified id carries no notice", func(t *testing.T) {
+		c := clientFor("jev-1.13.0")
+		for i := 0; i < 2; i++ {
+			got := c.Ask(context.Background(), oneQuestion())
+			if !got.OK() {
+				t.Fatalf("call %d Availability = %q (%s), want available", i, got.Availability, got.Condition)
+			}
+			if line := got.NoticeLine(); line != "" {
+				t.Errorf("call %d NoticeLine() = %q, want none for the verified id", i, line)
+			}
+		}
+	})
+}
+
 // TestResponse_WithoutInterpretedModelIsUnattributed covers an OK response that
 // names no interpreted model in the versioned shape (AC-JRM-003). The result is
 // unattributed and returns no answer, and the sent call is still recorded: with
