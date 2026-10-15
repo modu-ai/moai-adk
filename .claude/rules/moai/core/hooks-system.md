@@ -365,13 +365,13 @@ MoAI-ADK uses shorter independent timeout policies for operational efficiency. T
 | PostToolUse (status-transition-ownership.sh) | 5s | 600s | Advisory governance gate |
 | Stop (handle-stop) | 5s | 600s | Turn-end wrapper |
 | Stop (sync-phase-quality-gate.sh) | 60s | 600s | Runs fast structural checks (`go vet` + `go build` etc.) — needs headroom beyond the 5s wrapper default |
-| UserPromptSubmit | 15s | 30s | Blocks user interaction; reduced max. Raised from 5s: the factory-messaging drain in handle-user-prompt-submit can exceed 5s under multi-lane load, and the hard-timeout error surfaced to the user |
+| UserPromptSubmit | 30s | not documented | Blocks user interaction. Default 30s for this event (Claude Code's default; the official hooks reference documents no separate maximum). Raised from 5s: the factory-messaging drain in handle-user-prompt-submit can exceed 5s under multi-lane load, and the hard-timeout error surfaced to the user |
 | All other registered events (PreCompact, PreToolUse, PostToolUseFailure, SubagentStart, SubagentStop, TeammateIdle, TaskCompleted, ConfigChange, StopFailure, PostCompact, InstructionsLoaded, CwdChanged, FileChanged, PermissionDenied, PermissionRequest) and the opt-in harness-observe entries | 5s | 600s | Synchronous fast lifecycle hooks (blocking default; PostToolUse harness-observe is `async: true`) |
 | prompt, agent hooks | 30s-60s | 600s | Evaluation/verification hooks |
 
-Two runtime ceilings are lower than the 600s maximum and are not overridable upward by the same rule:
+Two events have a shorter timeout than the 600s maximum. For `MessageDisplay` that value is a runtime ceiling and is not overridable upward; for `UserPromptSubmit` 30s is the Claude Code default, not a ceiling:
 
-- **`UserPromptSubmit`** lowers `command` / `http` / `mcp_tool` hooks to **30s**, because the hook blocks the user's own input.
+- **`UserPromptSubmit`** command, `http`, and `mcp_tool` hooks default to **30s**, because the hook blocks the user's own input.
 - **`MessageDisplay`** lowers them to **10s**, because it runs while assistant text is being displayed.
 - **`SessionEnd`** hooks of any type share a single **1.5s budget across all of them**, not 1.5s each. When a per-hook `timeout` in settings is longer, the runtime raises the shared budget to match, up to 60s. MoAI registers one SessionEnd hook at 10s, so the effective budget is 10s; adding a second SessionEnd hook would share that same budget rather than getting its own.
 
