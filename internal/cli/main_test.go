@@ -462,11 +462,22 @@ func TestMain(m *testing.M) {
 	os.Exit(code)
 }
 
+// gitConfigSandboxEnv marks a process whose GIT_CONFIG_GLOBAL pin was already
+// created by this package's TestMain; its value is the pinned file (card t1801).
+const gitConfigSandboxEnv = "MOAI_CLI_TEST_GIT_CONFIG_SANDBOX"
+
 // sandboxGitConfigGlobal points GIT_CONFIG_GLOBAL at a temp file owned by this
 // test binary and returns the cleanup that removes it. The file carries a
 // minimal [user] identity so tests that commit do not depend on a global one.
 // Tests that set GIT_CONFIG_GLOBAL via t.Setenv get this value back afterwards.
 func sandboxGitConfigGlobal() (func(), error) {
+	// A re-executed helper inherits the parent's pin and reuses its file, so the
+	// helper (which exits before any cleanup) leaves nothing behind.
+	if pinned := os.Getenv(gitConfigSandboxEnv); pinned != "" && os.Getenv("GIT_CONFIG_GLOBAL") != "" {
+		if _, err := os.Stat(os.Getenv("GIT_CONFIG_GLOBAL")); err == nil {
+			return func() {}, nil
+		}
+	}
 	f, err := os.CreateTemp("", "moai-cli-gitconfig-")
 	if err != nil {
 		return nil, fmt.Errorf("create GIT_CONFIG_GLOBAL sandbox: %w", err)
@@ -480,6 +491,9 @@ func sandboxGitConfigGlobal() (func(), error) {
 	}
 	if werr == nil {
 		werr = os.Setenv("GIT_CONFIG_GLOBAL", path)
+	}
+	if werr == nil {
+		werr = os.Setenv(gitConfigSandboxEnv, path)
 	}
 	if werr != nil {
 		remove()
@@ -733,11 +747,10 @@ func TestMain_PinsGitConfigGlobal(t *testing.T) {
 	if err != nil {
 		t.Fatalf("resolve real home: %v", err)
 	}
-	if got == filepath.Join(realHome, ".gitconfig") {
-		t.Fatalf("GIT_CONFIG_GLOBAL=%q is the real global git config", got)
-	}
-	if rel, err := filepath.Rel(realHome, got); err == nil && !strings.HasPrefix(rel, "..") {
-		t.Fatalf("GIT_CONFIG_GLOBAL=%q is under the real home %q", got, realHome)
+	// One criterion with the sandbox judgment: a file under os.TempDir passes
+	// even when the temp dir lies under the home (Windows).
+	if err := testguard.CheckGlobalConfigPin(realHome, got); err != nil {
+		t.Fatalf("GIT_CONFIG_GLOBAL=%q: %v", got, err)
 	}
 }
 

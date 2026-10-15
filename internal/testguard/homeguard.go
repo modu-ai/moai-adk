@@ -168,13 +168,11 @@ func judgeSandbox(realHome, root string, seams []string) error {
 	if base == nil || strings.TrimSpace(realHome) == "" {
 		return base
 	}
-	tmp := resolveForGuard(os.TempDir())
-	rootR := resolveForGuard(root)
-	homeR := resolveForGuard(realHome)
-	homeUnderTmp := within(homeR, tmp) || sameFileAncestor(realHome, os.TempDir())
-	if !filepath.IsAbs(root) || !within(rootR, tmp) || homeUnderTmp {
+	if !TempDirExemption(realHome, root) {
 		return base
 	}
+	rootR := resolveForGuard(root)
+	homeR := resolveForGuard(realHome)
 	for _, s := range seams {
 		if !hasDotDotElement(s) && filepath.IsAbs(s) && within(resolveForGuard(s), rootR) && !within(homeR, resolveForGuard(s)) {
 			continue
@@ -182,6 +180,49 @@ func judgeSandbox(realHome, root string, seams []string) error {
 		if err := CheckSeamHomes(realHome, []string{s}); err != nil {
 			return err
 		}
+	}
+	return nil
+}
+
+// TempDirExemption is the one temp-under-home decision of this guard: path is
+// exempt from the "inside the real home" refusal when it is absolute and lies
+// under os.TempDir while the real home does not. It is what lets a sandbox under
+// the default Windows temp dir (which lies under the home) pass.
+func TempDirExemption(realHome, path string) bool {
+	return tempExempt(realHome, os.TempDir(), path)
+}
+
+// tempExempt is TempDirExemption with the temp dir supplied by the caller.
+func tempExempt(realHome, tmpDir, path string) bool {
+	if !filepath.IsAbs(path) {
+		return false
+	}
+	tmp := resolveForGuard(tmpDir)
+	homeUnderTmp := within(resolveForGuard(realHome), tmp) || sameFileAncestor(realHome, tmpDir)
+	return within(resolveForGuard(path), tmp) && !homeUnderTmp
+}
+
+// CheckGlobalConfigPin judges a GIT_CONFIG_GLOBAL pin: it returns an error when
+// file is not absolute, is the real home's .gitconfig, or lies under the real
+// home outside the temp-dir exemption (TempDirExemption).
+func CheckGlobalConfigPin(realHome, file string) error {
+	return checkGlobalConfigPin(realHome, os.TempDir(), file)
+}
+
+func checkGlobalConfigPin(realHome, tmpDir, file string) error {
+	if strings.TrimSpace(realHome) == "" {
+		return errors.New("home guard: real home is empty; refusing to judge the pinned git config")
+	}
+	if !filepath.IsAbs(file) {
+		return fmt.Errorf("home guard: pinned git config %q is not an absolute path", file)
+	}
+	realCfg := filepath.Join(realHome, ".gitconfig")
+	if filepath.Clean(file) == realCfg || resolveForGuard(file) == resolveForGuard(realCfg) {
+		return fmt.Errorf("home guard: pinned git config %q is the real global git config", file)
+	}
+	if (within(filepath.Clean(file), filepath.Clean(realHome)) || within(resolveForGuard(file), resolveForGuard(realHome))) &&
+		!tempExempt(realHome, tmpDir, file) {
+		return fmt.Errorf("home guard: pinned git config %q is under the real home %q", file, realHome)
 	}
 	return nil
 }
