@@ -231,7 +231,7 @@ PRESERVE (do not touch): `context_usage.go`, `quota.go`, `quota_dirs.go`, `quota
   D4 decision is revisited only if the AC-SOU-004 test shows the default rejects a
   just-written fixture.
 - **R5 — Primary-root derivation edge cases (audit B1 follow-through)**: a `.git` file
-  whose `gitdir:` line is malformed, relative, or does not match the
+  whose `gitdir:` line is malformed or does not match the
   `/.git/worktrees/<name>` shape (e.g. a submodule or a moved worktree) degrades via D7's
   fail-open path to today's single-root scan — the worst case is `n/a`, never wrong
   data. The M4 degradation tests pin each case.

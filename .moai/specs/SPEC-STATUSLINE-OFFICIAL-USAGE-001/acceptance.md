@@ -201,7 +201,7 @@ meets the project quality gate's coverage threshold.
 | E5 | `grep -rn "AggregateQuotaDirs" internal/statusline/builder.go` | (no output) | 1 | `0d057bd1e` |
 | E6 | `grep -rn "readOAuthToken\|readTokenFromKeychain" internal/statusline --include='*.go' --exclude='*_test.go'` | 6 lines: usage.go 114, 118, 357, 362, 402, 404 | 0 | `0d057bd1e` |
 | E7 | `grep -n "IsDir" internal/statusline/quota_dirs.go` | `43:	if info, err := os.Stat(gitDir); err != nil || !info.IsDir() {` | 0 | `0d057bd1e` |
-| E8 | `grep -rn "credentials.json" internal/statusline --include='*.go' --exclude='*_test.go'` | 4 lines, all `usage.go` (358, 359, 360, 371) | 0 | `0d057bd1e` |
+| E8 | `grep -rn "credentials.json" internal/statusline --include='*.go' --exclude='*_test.go'` | 6 lines, all `usage.go` (358, 359, 360, 371, 372, 373) | 0 | `0d057bd1e` |
 | E9 | `grep -n "IsAbs" internal/statusline/quota_dirs.go` | `77:	if !filepath.IsAbs(gitFile) {` | 0 | `17c3e8f72` |
 
 Note on ledger-cell pattern spelling: the cells escape `|` as `\|` because the table is
