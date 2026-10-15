@@ -5,14 +5,19 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"runtime"
 	"strings"
 	"testing"
 )
 
 // requireUnprivileged skips a permission test when the process can read and write
-// any file regardless of mode bits, which is the case for root.
+// any file regardless of mode bits, which is the case for root. Windows does not
+// enforce POSIX mode bits at all, so the permission-denied paths are covered on unix.
 func requireUnprivileged(t *testing.T) {
 	t.Helper()
+	if runtime.GOOS == "windows" {
+		t.Skip("POSIX permission bits are not enforced on Windows; permission-denied path covered on unix")
+	}
 	if os.Geteuid() == 0 {
 		t.Skip("permission-denied paths need a non-root user")
 	}
