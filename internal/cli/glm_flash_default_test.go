@@ -9,8 +9,8 @@ import (
 
 // TestGLMFlashDefaultEnvInjection is the boot smoke for the GLM slot defaults:
 // with NO llm.yaml on disk (the default configuration), a `moai glm` launch
-// resolves glm-5.3-flash into the Opus/Sonnet/Haiku ANTHROPIC_DEFAULT_*_MODEL
-// slots, glm-5.3 into the Fable slot, and sizes the statusline/auto-compact
+// resolves glm-5.3 into the Opus/Sonnet/Fable ANTHROPIC_DEFAULT_*_MODEL slots,
+// glm-5.3-flash into the Haiku slot, and sizes the statusline/auto-compact
 // windows at 1,000,000 — the window figure is shared because BOTH models are
 // 1M, which is the invariant the mixed slot set rests on. The observation is
 // env-level ONLY — the injection maps the launcher builds — with NO live z.ai
@@ -35,13 +35,15 @@ func TestGLMFlashDefaultEnvInjection(t *testing.T) {
 		t.Fatalf("loadGLMConfig on an absent llm.yaml should fall to defaults, got: %v", err)
 	}
 
-	// Per-slot expectation: the Fable slot is the one non-flash slot, so a
-	// single shared `want` would stop distinguishing a wrong slot value.
+	// Per-slot expectation (card t1808): glm-5.3 serves the Opus, Sonnet and
+	// Fable slots, glm-5.3-flash the Haiku slot. The literals are deliberate —
+	// the assertion states the wire value a session receives, not whatever
+	// the default constants happen to hold.
 	want := map[string]string{
-		config.EnvAnthropicDefaultOpusModel:   config.DefaultGLM53Flash,
-		config.EnvAnthropicDefaultSonnetModel: config.DefaultGLM53Flash,
-		config.EnvAnthropicDefaultHaikuModel:  config.DefaultGLM53Flash,
-		config.EnvAnthropicDefaultFableModel:  config.DefaultGLM53,
+		config.EnvAnthropicDefaultOpusModel:   "glm-5.3",
+		config.EnvAnthropicDefaultSonnetModel: "glm-5.3",
+		config.EnvAnthropicDefaultHaikuModel:  "glm-5.3-flash",
+		config.EnvAnthropicDefaultFableModel:  "glm-5.3",
 	}
 	slotEnvs := []string{
 		config.EnvAnthropicDefaultOpusModel,

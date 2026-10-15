@@ -40,8 +40,9 @@ const repoRoot = "../../.."
 func TestCodexAuditRolesReadOnlyScopedException(t *testing.T) {
 	pub := emitRealSet(t)
 
-	// Emitted + committed artifacts: read-only sandbox_mode and the return-text
-	// instruction on exactly the two audit roles.
+	// Emitted + committed artifacts: the return-text instruction on exactly the
+	// two audit roles. sandbox_mode is no longer written (card t1808); the
+	// read-only statement lives in the permission contract.
 	withMarker := map[string]bool{}
 	for path, data := range pub.CodexTOML {
 		doc, err := decodeTOML(string(data))
@@ -54,15 +55,15 @@ func TestCodexAuditRolesReadOnlyScopedException(t *testing.T) {
 			withMarker[name] = true
 		}
 		if codexAuditRoles[name] {
-			if got, _ := doc["sandbox_mode"].(string); got != "read-only" {
-				t.Errorf("%s: emitted sandbox_mode = %q, want read-only", name, got)
+			if _, has := doc["sandbox_mode"]; has {
+				t.Errorf("%s: emitted sandbox_mode, want the key omitted", name)
 			}
 			committed, err := os.ReadFile(committedTOMLPath(path))
 			if err != nil {
 				t.Fatalf("read committed %s: %v", path, err)
 			}
-			if !strings.Contains(string(committed), "sandbox_mode = \"read-only\"") {
-				t.Errorf("%s: committed artifact does not carry sandbox_mode = \"read-only\"", path)
+			if strings.Contains(string(committed), "sandbox_mode") {
+				t.Errorf("%s: committed artifact still carries sandbox_mode", path)
 			}
 			if !strings.Contains(string(committed), auditReturnMarker) {
 				t.Errorf("%s: committed artifact does not carry the return-text instruction", path)
