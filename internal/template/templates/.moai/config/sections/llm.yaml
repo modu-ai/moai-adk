@@ -61,9 +61,12 @@ llm:
   # an empty cell falling back to the shipped value. Every value is a launch
   # DEFAULT that stays changeable mid-session: Claude takes --model plus the
   # transient --settings effort (never CLAUDE_CODE_EFFORT_LEVEL, which locks
-  # /effort); Codex takes -m and -c model_reasoning_effort; GLM takes the slot
-  # alias (opus -> llm.glm.models.high, sonnet -> medium) and a z.ai reasoning
-  # state. cc/codex efforts exclude max and ultra; glm effort is low|high|max.
+  # /effort); Codex takes -m and -c model_reasoning_effort (lane only — a plain
+  # `moai codex` keeps .codex/config.toml; the leader pair is reserved for a
+  # future `moai codex -f`); GLM takes the slot alias (opus ->
+  # llm.glm.models.high, sonnet -> medium) and translates its effort through
+  # llm.glm.effort (high -> max, medium -> high). Every effort is Claude
+  # vocabulary {low, medium, high, xhigh}; max and ultra are never a default.
   # An explicit --model / --effort / -m on the command line still wins.
   defaults:
     sessions:
@@ -72,10 +75,10 @@ llm:
         leader: { model: "opus", effort: "high" }     # moai cc -f
         lane: { model: "sonnet", effort: "medium" }   # moai cc -l
       glm:
-        leader: { model: "opus", effort: "max" }      # moai glm -f (glm-5.3 opus slot)
-        lane: { model: "sonnet", effort: "high" }     # moai glm -l (glm-5.3 sonnet slot)
+        leader: { model: "opus", effort: "high" }     # moai glm -f (glm-5.3 opus slot; z.ai max)
+        lane: { model: "sonnet", effort: "medium" }   # moai glm -l (glm-5.3 sonnet slot; z.ai high)
       codex:
-        leader: { model: "gpt-6.1-sol", effort: "high" }    # moai codex (CLI)
+        leader: { model: "gpt-6.1-sol", effort: "high" }    # reserved: future moai codex -f
         lane: { model: "gpt-6.1-sol", effort: "medium" }    # moai codex -l
   # Main-session reasoning effort comes from the preference profile
   # (`moai profile setup`), never from this file.

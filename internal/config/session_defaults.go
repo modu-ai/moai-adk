@@ -49,10 +49,11 @@ type SessionRolePair struct {
 	Lane   ModelEffort `yaml:"lane"`
 }
 
-// defaultSessionDefaults is the shipped table. The GLM model is the Claude
-// slot alias (opus serves llm.glm.models.high, sonnet medium); its effort is a
-// z.ai reasoning state. The glm leader's max is a launch mapping, not a
-// shipped Claude/Codex default effort (TestNoShippedDefaultEffortIsMaxOrUltra).
+// defaultSessionDefaults is the shipped table. Every effort is Claude
+// vocabulary. The GLM model is the Claude slot alias (opus serves
+// llm.glm.models.high, sonnet medium) and its effort is translated to a z.ai
+// reasoning state at launch through the llm.glm.effort table (high -> max,
+// medium -> high), so `glm -f` reaches z.ai at max and `glm -l` at high.
 func defaultSessionDefaults() SessionDefaults {
 	return SessionDefaults{
 		Mode: SessionDefaultsModeDefault,
@@ -61,8 +62,8 @@ func defaultSessionDefaults() SessionDefaults {
 			Lane:   ModelEffort{Model: "sonnet", Effort: "medium"},
 		},
 		GLM: SessionRolePair{
-			Leader: ModelEffort{Model: "opus", Effort: "max"},
-			Lane:   ModelEffort{Model: "sonnet", Effort: "high"},
+			Leader: ModelEffort{Model: "opus", Effort: "high"},
+			Lane:   ModelEffort{Model: "sonnet", Effort: "medium"},
 		},
 		Codex: SessionRolePair{
 			Leader: ModelEffort{Model: CodexModelSol, Effort: "high"},
@@ -127,13 +128,13 @@ func (c LLMConfig) ResolveSessionDefault(backend, role string) (ModelEffort, boo
 var (
 	sessionClaudeModels  = map[string]bool{"opus": true, "sonnet": true, "haiku": true, "fable": true}
 	sessionClaudeEfforts = map[string]bool{"low": true, "medium": true, "high": true, "xhigh": true}
-	sessionGLMEfforts    = map[string]bool{"low": true, "high": true, "max": true}
 )
 
 // validateSessionDefaults checks llm.defaults.sessions: the mode closed set,
-// and per cell a model and effort in the launcher's vocabulary. cc and codex
-// efforts exclude max and ultra (never a default); the glm effort is a z.ai
-// reasoning state {low, high, max}. Empty cells are valid (they fall back).
+// and per cell a model and effort. Every effort is Claude vocabulary
+// {low, medium, high, xhigh} — max and ultra are never a default; the glm
+// effort is translated to a z.ai reasoning state at launch. Empty cells are
+// valid (they fall back).
 func validateSessionDefaults(cfg *Config) []ValidationError {
 	s := cfg.LLM.Defaults.Sessions
 	var errs []ValidationError
@@ -163,8 +164,8 @@ func validateSessionDefaults(cfg *Config) []ValidationError {
 				if m != "" && !sessionClaudeModels[m] {
 					add(prefix+".model", "model "+m+" is not a GLM slot alias {opus, sonnet, haiku, fable}", m)
 				}
-				if e != "" && !sessionGLMEfforts[e] {
-					add(prefix+".effort", "effort "+e+" is not a z.ai reasoning state {low, high, max}", e)
+				if e != "" && !sessionClaudeEfforts[e] {
+					add(prefix+".effort", "effort "+e+" is not in {low, medium, high, xhigh} (max/ultra are never a default)", e)
 				}
 			default:
 				if m != "" && !sessionClaudeModels[m] {

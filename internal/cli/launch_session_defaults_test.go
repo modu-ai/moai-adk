@@ -4,6 +4,7 @@ import (
 	"os"
 	"path/filepath"
 	"slices"
+	"strings"
 	"testing"
 
 	"github.com/modu-ai/moai-adk/internal/config"
@@ -55,8 +56,8 @@ func TestFactorySessionDefaultResolution(t *testing.T) {
 	}{
 		{config.SessionRoleLeader, factory.BackendClaude, config.SessionBackendCC, config.ModelEffort{Model: "opus", Effort: "high"}},
 		{config.SessionRoleLane, factory.BackendClaude, config.SessionBackendCC, config.ModelEffort{Model: "sonnet", Effort: "medium"}},
-		{config.SessionRoleLeader, factory.BackendGLM, config.SessionBackendGLM, config.ModelEffort{Model: "opus", Effort: "max"}},
-		{config.SessionRoleLane, factory.BackendGLM, config.SessionBackendGLM, config.ModelEffort{Model: "sonnet", Effort: "high"}},
+		{config.SessionRoleLeader, factory.BackendGLM, config.SessionBackendGLM, config.ModelEffort{Model: "opus", Effort: "high"}},
+		{config.SessionRoleLane, factory.BackendGLM, config.SessionBackendGLM, config.ModelEffort{Model: "sonnet", Effort: "medium"}},
 	}
 	for _, tc := range cases {
 		t.Run(tc.role+"/"+tc.backend, func(t *testing.T) {
@@ -144,17 +145,44 @@ func TestFactorySessionModelArgs(t *testing.T) {
 	}
 }
 
-// TestFactorySessionGLMEffort: a glm factory launch feeds the session default
-// reasoning state into the z.ai mapping, overriding the slot/profile chain.
-func TestFactorySessionGLMEffort(t *testing.T) {
-	factorySessionEnv(t, config.SessionRoleLane, factory.BackendGLM)
-	if got := factorySessionGLMEffort(os.Environ(), t.TempDir(), "max"); got != "high" {
-		t.Errorf("glm lane effort = %q, want high", got)
+// TestFactorySessionGLMWire pins what a glm factory launch puts on the wire:
+// the session default is Claude vocabulary, translated through the
+// llm.glm.effort tier table (medium -> high, high -> max) and wired verbatim,
+// so `glm -l` reaches z.ai at high and `glm -f` at max. A flash slot stays max.
+func TestFactorySessionGLMWire(t *testing.T) {
+	models := config.GLMModels{High: config.DefaultGLM53, Medium: config.DefaultGLM53, Low: config.DefaultGLM53Flash, Fable: config.DefaultGLM53}
+	tier := config.GLMTierEffort{High: "max", Medium: "high", Low: "low", Fable: "max"}
+	for _, tc := range []struct{ role, model, want string }{
+		{config.SessionRoleLane, "sonnet", "high"},
+		{config.SessionRoleLeader, "opus", "max"},
+	} {
+		t.Run(tc.role, func(t *testing.T) {
+			factorySessionEnv(t, tc.role, factory.BackendGLM)
+			state, ok := factorySessionGLMState(os.Environ(), t.TempDir(), tier)
+			if !ok || state != tc.want {
+				t.Fatalf("factorySessionGLMState = %q (ok %v), want %q", state, ok, tc.want)
+			}
+			env := buildEnvForGLMLaunchState(models, tc.model, state, []string{config.EnvAnthropicReasoningEffort + "=stale"})
+			if got := launchEnvValue(env, config.EnvAnthropicReasoningEffort); got != tc.want {
+				t.Errorf("%s=%q, want %q", config.EnvAnthropicReasoningEffort, got, tc.want)
+			}
+			if n := slices.IndexFunc(env, func(e string) bool { return e == config.EnvAnthropicReasoningEffort+"=stale" }); n >= 0 {
+				t.Error("the inherited reasoning effort must be replaced")
+			}
+		})
 	}
-	factorySessionEnv(t, config.SessionRoleLane, factory.BackendClaude)
-	if got := factorySessionGLMEffort(os.Environ(), t.TempDir(), "max"); got != "max" {
-		t.Errorf("a cc launch keeps the chain value, got %q", got)
-	}
+	t.Run("flash slot pins max", func(t *testing.T) {
+		env := buildEnvForGLMLaunchState(models, "haiku", "low", nil)
+		if got := launchEnvValue(env, config.EnvAnthropicReasoningEffort); got != "max" {
+			t.Errorf("flash slot effort = %q, want max", got)
+		}
+	})
+	t.Run("cc launch has no glm state", func(t *testing.T) {
+		factorySessionEnv(t, config.SessionRoleLane, factory.BackendClaude)
+		if _, ok := factorySessionGLMState(os.Environ(), t.TempDir(), tier); ok {
+			t.Error("a cc launch must not resolve a glm state")
+		}
+	})
 }
 
 // TestCodexSessionDefaultArgs: `moai codex` (leader) and `moai codex -l`
@@ -185,17 +213,25 @@ func TestCodexSessionDefaultArgs(t *testing.T) {
 	}
 }
 
-// TestCodexLaunchCarriesSessionDefaults: the real launch argv of a bare
-// `moai codex` carries the leader pair before the operator tail.
-func TestCodexLaunchCarriesSessionDefaults(t *testing.T) {
+// TestCodexPlainLaunchCarriesNoModelArgs: a plain `moai codex` is the
+// operator's ordinary session — its argv carries no -m and no
+// model_reasoning_effort (the project .codex/config.toml decides), even with
+// the real session-default seam in place. The leader pair is reserved for a
+// future `moai codex -f`.
+func TestCodexPlainLaunchCarriesNoModelArgs(t *testing.T) {
 	cap := withCodexLaunchCapture(t)
 	codexSessionDefaultArgsFn = codexSessionDefaultArgs // restore the real body
 	withCodexProjectRoot(t, t.TempDir())
 	if _, _, err := runCodexCmd(t, "--", "--sandbox", "workspace-write"); err != nil {
 		t.Fatal(err)
 	}
-	want := []string{"-m", config.CodexModelSol, "-c", `model_reasoning_effort="high"`, "--sandbox", "workspace-write"}
-	if got := codexArgvTail(t, cap); !slices.Equal(got, want) {
+	got := codexArgvTail(t, cap)
+	for _, a := range got {
+		if a == "-m" || strings.Contains(a, "model_reasoning_effort") {
+			t.Errorf("plain moai codex argv carries %q: %q", a, got)
+		}
+	}
+	if want := []string{"--sandbox", "workspace-write"}; !slices.Equal(got, want) {
 		t.Errorf("argv tail = %q, want %q", got, want)
 	}
 }

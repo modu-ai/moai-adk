@@ -21,7 +21,7 @@ func TestSessionDefaultsShippedTable(t *testing.T) {
 	llm := NewDefaultLLMConfig()
 	want := map[string]map[string]ModelEffort{
 		SessionBackendCC:    {SessionRoleLeader: {"opus", "high"}, SessionRoleLane: {"sonnet", "medium"}},
-		SessionBackendGLM:   {SessionRoleLeader: {"opus", "max"}, SessionRoleLane: {"sonnet", "high"}},
+		SessionBackendGLM:   {SessionRoleLeader: {"opus", "high"}, SessionRoleLane: {"sonnet", "medium"}},
 		SessionBackendCodex: {SessionRoleLeader: {CodexModelSol, "high"}, SessionRoleLane: {CodexModelSol, "medium"}},
 	}
 	for backend, roles := range want {
@@ -77,8 +77,8 @@ func TestSessionDefaultsValidation(t *testing.T) {
 		"cc lane effort max":      {func(s *SessionDefaults) { s.CC.Lane.Effort = "max" }, "llm.defaults.sessions.cc.lane.effort"},
 		"codex leader ultra":      {func(s *SessionDefaults) { s.Codex.Leader.Effort = "ultra" }, "llm.defaults.sessions.codex.leader.effort"},
 		"cc model off the set":    {func(s *SessionDefaults) { s.CC.Leader.Model = "gpt-x" }, "llm.defaults.sessions.cc.leader.model"},
-		"glm effort off the set":  {func(s *SessionDefaults) { s.GLM.Lane.Effort = "medium" }, "llm.defaults.sessions.glm.lane.effort"},
-		"glm leader max (exempt)": {func(s *SessionDefaults) { s.GLM.Leader.Effort = "max" }, ""},
+		"glm effort max":          {func(s *SessionDefaults) { s.GLM.Leader.Effort = "max" }, "llm.defaults.sessions.glm.leader.effort"},
+		"glm effort Claude vocab": {func(s *SessionDefaults) { s.GLM.Lane.Effort = "medium" }, ""},
 		"cc xhigh":                {func(s *SessionDefaults) { s.CC.Leader.Effort = "xhigh" }, ""},
 	}
 	for name, tc := range cases {
@@ -96,12 +96,12 @@ func TestSessionDefaultsValidation(t *testing.T) {
 }
 
 // TestNoShippedDefaultEffortIsMaxOrUltra proves no default effort the config
-// package ships carries max or ultra, and pins the exemption explicitly: the
-// GLM surfaces speak the z.ai reasoning-state vocabulary, where max is the
-// reasoning depth z.ai defaults to, and the `moai glm -f` launch maps to it.
-// A GLM value is a launch/reasoning mapping, not a Claude or Codex effort
-// default, so exactly these cells may carry max — and the test fails if the
-// exempt set grows or a non-exempt default reaches max/ultra.
+// package ships carries max or ultra — every session default (glm included:
+// llm.defaults.sessions stores Claude vocabulary) and the Claude/Codex audit
+// pins — and pins the exemption explicitly: the GLM reasoning-state
+// vocabulary (z.ai low|high|max), where max is the depth z.ai defaults to.
+// Exactly these GLM cells may carry max; the test fails if the exempt set
+// grows or a non-exempt default reaches max/ultra.
 func TestNoShippedDefaultEffortIsMaxOrUltra(t *testing.T) {
 	t.Parallel()
 	llm := NewDefaultLLMConfig()
@@ -111,7 +111,7 @@ func TestNoShippedDefaultEffortIsMaxOrUltra(t *testing.T) {
 		"claude audit pin effort": audit.Claude.Effort,
 		"codex audit pin effort":  audit.Codex.Effort,
 	}
-	for _, backend := range []string{SessionBackendCC, SessionBackendCodex} {
+	for _, backend := range []string{SessionBackendCC, SessionBackendGLM, SessionBackendCodex} {
 		for _, role := range []string{SessionRoleLeader, SessionRoleLane} {
 			me, _ := llm.ResolveSessionDefault(backend, role)
 			shipped["session "+backend+" "+role] = me.Effort
@@ -123,12 +123,10 @@ func TestNoShippedDefaultEffortIsMaxOrUltra(t *testing.T) {
 		}
 	}
 
-	glmLeader, _ := llm.ResolveSessionDefault(SessionBackendGLM, SessionRoleLeader)
 	exempt := map[string]string{
-		"session glm leader (launch mapping)": glmLeader.Effort,
-		"glm tier effort high":                DefaultGLMEffortHigh,
-		"glm tier effort fable":               DefaultGLMEffortFable,
-		"glm audit pin effort":                DefaultGLMAuditEffort,
+		"glm tier effort high":  DefaultGLMEffortHigh,
+		"glm tier effort fable": DefaultGLMEffortFable,
+		"glm audit pin effort":  DefaultGLMAuditEffort,
 	}
 	var maxCells []string
 	for name, v := range exempt {
@@ -140,9 +138,7 @@ func TestNoShippedDefaultEffortIsMaxOrUltra(t *testing.T) {
 	if len(maxCells) != len(exempt) {
 		t.Errorf("exempt GLM cells carrying max = %v, want all %d (the exemption is scoped to exactly these)", maxCells, len(exempt))
 	}
-	glmLane, _ := llm.ResolveSessionDefault(SessionBackendGLM, SessionRoleLane)
 	for name, v := range map[string]string{
-		"session glm lane":       glmLane.Effort,
 		"glm tier effort medium": DefaultGLMEffortMedium,
 		"glm tier effort low":    DefaultGLMEffortLow,
 	} {

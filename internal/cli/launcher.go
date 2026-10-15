@@ -795,11 +795,14 @@ func runLaunchClaude(profileName string, extraArgs []string) error {
 		// prefs/model_policy chain. Empty stored slot ⇒ the chain, unchanged.
 		// The collapse overlay downstream stays governing for the wire value
 		// (stored high and max both wire as max; flash pins everything to max).
-		// card t1808: a glm factory leader/lane feeds its session default
-		// reasoning state (llm.defaults.sessions) into the z.ai mapping.
-		launchEnv = buildEnvForGLMLaunch(glmModels, model,
-			factorySessionGLMEffort(os.Environ(), sessionRoot,
-				resolveGLMMainSessionEffort(model, glmTierEffort, effectiveEffort)), os.Environ())
+		// card t1808: a glm factory leader/lane wires its session default,
+		// translated through llm.glm.effort, as the z.ai reasoning state.
+		if state, ok := factorySessionGLMState(os.Environ(), sessionRoot, glmTierEffort); ok {
+			launchEnv = buildEnvForGLMLaunchState(glmModels, model, state, os.Environ())
+		} else {
+			launchEnv = buildEnvForGLMLaunch(glmModels, model,
+				resolveGLMMainSessionEffort(model, glmTierEffort, effectiveEffort), os.Environ())
+		}
 	} else {
 		// Plain Claude launches: the effort travels in the injected --settings
 		// payload (launch_effort_settings.go), NEVER in CLAUDE_CODE_EFFORT_LEVEL.
@@ -1235,6 +1238,33 @@ func buildEnvForGLMLaunch(glmModels config.GLMModels, sessionModel, effort strin
 		result = append(result, k+"="+v)
 	}
 	return result
+}
+
+// buildEnvForGLMLaunchState is buildEnvForGLMLaunch for a caller that already
+// holds a z.ai reasoning state (low | high | max) rather than a Claude effort:
+// the state is wired verbatim instead of passing through the Claude-effort
+// collapse (which sends every effort above low to max). A glm-5.3-flash slot
+// still pins max, the only value flash accepts; an unknown state wires max.
+// The inherited CLAUDE_CODE_EFFORT_LEVEL and ANTHROPIC_REASONING_EFFORT are
+// stripped exactly as buildEnvForGLMLaunch strips them.
+func buildEnvForGLMLaunchState(glmModels config.GLMModels, sessionModel, state string, base []string) []string {
+	result := make([]string, 0, len(base)+1)
+	for _, e := range base {
+		if strings.HasPrefix(e, config.EnvClaudeCodeEffortLevel+"=") ||
+			strings.HasPrefix(e, config.EnvAnthropicReasoningEffort+"=") {
+			continue
+		}
+		result = append(result, e)
+	}
+	switch state {
+	case template.GLMStateLow, template.GLMStateHigh, template.GLMStateMax:
+	default:
+		state = template.GLMStateMax
+	}
+	if template.IsGLMFlashModel(template.GLMSlotModelOrHigh(glmModels, sessionModel)) {
+		state = template.GLMStateMax
+	}
+	return append(result, config.EnvAnthropicReasoningEffort+"="+state)
 }
 
 // resolveMainSessionModel resolves the --model flag value for the main session,

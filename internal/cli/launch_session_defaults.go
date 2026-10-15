@@ -11,9 +11,11 @@ package cli
 //     --settings payload (launch_effort_settings.go) — never
 //     CLAUDE_CODE_EFFORT_LEVEL, which refuses an in-session change.
 //   - GLM: the slot alias as --model (routing through the
-//     ANTHROPIC_DEFAULT_*_MODEL slot env) and the reasoning state fed to the
-//     z.ai mapping (buildEnvForGLMLaunch).
-//   - Codex: -m <model> and -c model_reasoning_effort="<effort>".
+//     ANTHROPIC_DEFAULT_*_MODEL slot env); the Claude-vocabulary effort is
+//     translated through llm.glm.effort (high -> max, medium -> high) and the
+//     resulting z.ai state is wired verbatim (buildEnvForGLMLaunchState).
+//   - Codex: -m <model> and -c model_reasoning_effort="<effort>" on the lane
+//     (`moai codex -l`) only; a plain `moai codex` keeps .codex/config.toml.
 //
 // An explicit operator --model / --effort / -m / -c effort wins.
 
@@ -84,13 +86,31 @@ func factorySessionModel(env []string, root string, explicit bool, current strin
 	return current
 }
 
-// factorySessionGLMEffort returns the reasoning state a glm factory launch
-// feeds to the z.ai mapping; any other launch keeps chain.
-func factorySessionGLMEffort(env []string, root, chain string) string {
-	if backend, me, ok := factorySessionDefault(env, root); ok && backend == config.SessionBackendGLM && me.Effort != "" {
-		return me.Effort
+// factorySessionGLMState returns the z.ai reasoning state a glm factory
+// launch wires: the session default's Claude-vocabulary effort translated
+// through the llm.glm.effort tier table (low -> tier.low, medium ->
+// tier.medium, high and xhigh -> tier.high), an empty tier cell falling back
+// to the shipped config.DefaultGLMEffort* value. ok is false for any launch
+// that is not a glm factory session.
+func factorySessionGLMState(env []string, root string, tier config.GLMTierEffort) (string, bool) {
+	backend, me, ok := factorySessionDefault(env, root)
+	if !ok || backend != config.SessionBackendGLM || me.Effort == "" {
+		return "", false
 	}
-	return chain
+	pick := func(stored, def string) string {
+		if s := strings.TrimSpace(stored); s != "" {
+			return s
+		}
+		return def
+	}
+	switch me.Effort {
+	case "low":
+		return pick(tier.Low, config.DefaultGLMEffortLow), true
+	case "medium":
+		return pick(tier.Medium, config.DefaultGLMEffortMedium), true
+	default: // high, xhigh
+		return pick(tier.High, config.DefaultGLMEffortHigh), true
+	}
 }
 
 // factorySessionClaudeEffort returns the Claude effort a cc factory launch
