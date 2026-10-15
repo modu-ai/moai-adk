@@ -68,23 +68,31 @@ func TestCodexLaneEnvFailFast(t *testing.T) {
 	})
 }
 
-// TestSessionStartCodexLaneFailFastRidesContext wires the stop line through
-// the SessionStart handler: the broken-launch codex session reads it in
-// additionalContext, and the owned-card rule is withheld.
-func TestSessionStartCodexLaneFailFastRidesContext(t *testing.T) {
+// TestSessionStartCodexLaneFailFastSuppressesRoleRules wires the round-3
+// precedence fix: on a broken codex lane launch the fail-fast line is the
+// session's LAST word — the role-rule injection (whose core carries the
+// read-the-full-rule directive that conflicts with the boot directive) is
+// suppressed behind it.
+func TestSessionStartCodexLaneFailFastSuppressesRoleRules(t *testing.T) {
 	clearFactoryEnv(t)
 	t.Setenv(config.EnvFactoryBackend, "gpt")
-	t.Setenv(config.EnvMoaiFactoryWorker, "")
+	// The worker stamp is PRESENT and the run id missing — the fail-fast
+	// arm that leaves the worker in place, so the role-marker registry
+	// (EnvMoaiFactoryWorker) still detects the role and the role-rule
+	// injection WOULD fire without the suppression. A worker-empty fixture
+	// would pass vacuously (no role detected, nothing to suppress).
+	t.Setenv(config.EnvMoaiFactoryWorker, "lane-7")
 	t.Setenv(config.EnvFactoryRunID, "")
 	t.Setenv(config.EnvFactoryCard, "t1776")
 
 	root := t.TempDir()
+	writeDeployedRoleRules(t, root)
 	if err := os.MkdirAll(filepath.Join(root, ".moai", "state"), 0o755); err != nil {
 		t.Fatalf("mkdir: %v", err)
 	}
 	h := NewSessionStartHandler(nil)
 	out, err := h.Handle(t.Context(), &HookInput{
-		SessionID:  "codex-failfast",
+		SessionID:  "codex-failfast-role-rules",
 		ProjectDir: root,
 		CWD:        root,
 		Source:     "startup",
@@ -96,10 +104,32 @@ func TestSessionStartCodexLaneFailFastRidesContext(t *testing.T) {
 	if out.HookSpecificOutput != nil {
 		ctx = out.HookSpecificOutput.AdditionalContext
 	}
-	if !strings.Contains(ctx, "MOAI_FACTORY_WORKER") {
-		t.Fatalf("broken-launch session got no fail-fast line in additionalContext:\n%s", ctx)
+	if !strings.Contains(ctx, "MOAI factory lane launch is incomplete") {
+		t.Fatalf("fail-fast line missing:\n%s", ctx)
 	}
-	if strings.Contains(ctx, "owned card") {
-		t.Fatalf("the owned-card rule must be withheld on an incomplete launch:\n%s", ctx)
+	if strings.Contains(ctx, "Before any work, read") {
+		t.Fatalf("the role core's read-first directive must not ride behind the fail-fast:\n%s", ctx)
+	}
+}
+
+// TestFactoryLaneRuleGptCarriesPrecedence pins the healthy codex lane's
+// precedence note: the owned-card rule names the boot directive's priority
+// over the role core's read-first duty (audit round-3 — the two texts
+// conflicted once the gpt lane env survived the harness scrub).
+func TestFactoryLaneRuleGptCarriesPrecedence(t *testing.T) {
+	clearFactoryEnv(t)
+	t.Setenv(config.EnvFactoryBackend, "gpt")
+	t.Setenv(config.EnvMoaiFactoryWorker, "lane-7")
+	t.Setenv(config.EnvFactoryCard, "t1776")
+
+	rule := factoryLaneRuleForSource("startup", "en")
+	if rule == "" {
+		t.Fatal("a stamped gpt lane receives the owned-card rule")
+	}
+	if !strings.Contains(rule, "Codex auto-lane precedence") {
+		t.Fatalf("owned-card rule does not carry the boot-directive precedence note:\n%s", rule)
+	}
+	if !strings.Contains(rule, "moai todo --auto") {
+		t.Fatalf("precedence note does not name the boot command:\n%s", rule)
 	}
 }

@@ -152,7 +152,13 @@ func factoryLaneRuleForSource(source, lang string) string {
 			// the degraded edge, not the expected shape.
 			return ""
 		}
-		return fmt.Sprintf(factoryMessagesFor(lang).laneOwnedCardRule, cardID)
+		// t1776 audit round-3: the role core's read-the-full-rule duty
+		// conflicts with the lane's boot directive (run `moai todo --auto`
+		// now; the operator-measured session burned 72% of its context on
+		// exactly that reading). The owned-card rule carries the precedence
+		// note so the two texts resolve instead of contradicting.
+		return fmt.Sprintf(factoryMessagesFor(lang).laneOwnedCardRule, cardID) +
+			"\n\n" + codexLanePrecedenceNote
 	default:
 		return ""
 	}
@@ -191,6 +197,14 @@ func factoryLanesEnv() int {
 	}
 	return n
 }
+
+// codexLanePrecedenceNote resolves the role core's read-first duty against
+// the lane boot directive for a Codex auto lane (card t1776 audit round-3):
+// the boot command governs the FIRST action; the rule files open when the
+// leased card's work needs them, not before.
+const codexLanePrecedenceNote = "Codex auto-lane precedence: the boot directive governs your first action — " +
+	"run `moai todo --auto` before any rule-file reading; " +
+	"open the rule files only when the leased card's work needs them."
 
 // codexLaneEnvFailFast is the t1776 one-line stop for a broken lane launch:
 // a session stamped with the Codex factory backend but missing its lane

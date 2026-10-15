@@ -515,11 +515,27 @@ func (h *sessionStartHandler) Handle(ctx context.Context, input *HookInput) (*Ho
 						"attribute to the source_session_id above instead.",
 					prevID, prevID)
 			} else {
-				attribution += fmt.Sprintf(
-					"\nNOTE: before this session started, the current-session record held %s and it still holds it "+
-						"(this session's write failed) — 'moai session current' may return %s, not this session; "+
-						"attribute this session's work to the source_session_id above.",
-					prevID, prevID)
+				// A WriteFile failure does not guarantee the old bytes
+				// survived (the open may have truncated before the I/O
+				// error) — re-read and phrase by what is actually there
+				// (card t1776 audit round-3 P3).
+				survived := ""
+				if again, rerr := os.ReadFile(sidecar); rerr == nil {
+					survived = strings.TrimSpace(string(again))
+				}
+				if survived == prevID {
+					attribution += fmt.Sprintf(
+						"\nNOTE: before this session started, the current-session record held %s and it still holds it "+
+							"(this session's write failed) — 'moai session current' may return %s, not this session; "+
+							"attribute this session's work to the source_session_id above.",
+						prevID, prevID)
+				} else {
+					attribution += fmt.Sprintf(
+						"\nNOTE: the current-session record held %s before this session started; this session's write to it failed, "+
+							"so the record may be truncated or empty — re-run 'moai session current' before trusting it and "+
+							"attribute this session's work to the source_session_id above.",
+						prevID)
+				}
 			}
 		}
 		out.HookSpecificOutput = &HookSpecificOutput{
@@ -750,7 +766,14 @@ func (h *sessionStartHandler) Handle(ctx context.Context, input *HookInput) (*Ho
 	if roleRulesRoot == "" {
 		roleRulesRoot = input.ProjectDir
 	}
-	inj := roleRuleInjectionFor(roleRulesRoot, input.Source, operatorLang(h.cfg))
+	// t1776 audit round-3: on a broken codex lane launch (fail-fast active)
+	// the stop line is the session's LAST word — the role-rule injection is
+	// suppressed behind it, so the role core's read-the-full-rule directive
+	// never rides behind a stop it contradicts.
+	var inj roleRuleInjection
+	if codexLaneEnvFailFast() == "" {
+		inj = roleRuleInjectionFor(roleRulesRoot, input.Source, operatorLang(h.cfg))
+	}
 	if inj.RecoveryHead != "" {
 		// The recovery directive opens the FINAL composite — ahead of every
 		// earlier producer's text — so a runtime side-channel cut (save

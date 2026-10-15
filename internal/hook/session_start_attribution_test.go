@@ -93,12 +93,15 @@ func TestSessionStartAttributionMismatchNotice(t *testing.T) {
 		if err := os.MkdirAll(sideDir3, 0o755); err != nil {
 			t.Fatalf("mkdir: %v", err)
 		}
-		if err := os.WriteFile(filepath.Join(root3, session.CurrentSideChannelFile), []byte(other), 0o600); err != nil {
-			t.Fatalf("seed side channel: %v", err)
-		}
 		// An existing file truncates with FILE write permission only — the
 		// directory mode is irrelevant to the write, so the failure is
 		// forced on the file itself (owner-read, no write).
+		if err := os.WriteFile(filepath.Join(root3, session.CurrentSideChannelFile), []byte(other), 0o600); err != nil {
+			t.Fatalf("seed side channel: %v", err)
+		}
+		if os.Geteuid() == 0 {
+			t.Skip("root bypasses file write permissions — the failure cannot be forced (audit round-3 P2)")
+		}
 		if err := os.Chmod(filepath.Join(root3, session.CurrentSideChannelFile), 0o400); err != nil {
 			t.Fatalf("chmod: %v", err)
 		}
