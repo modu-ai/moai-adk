@@ -700,3 +700,92 @@ Known P3 carried to a follow-up (not repaired here): F2, `putBack` does `root.Ls
 Verification (env: GIT_CONFIG_GLOBAL temp file holding only [user]; TMPDIR/GOTMPDIR under /private/tmp/t1733r2; no HOME override): `go build ./...` exit 0; `gofmt -l internal/cli internal/cli/update internal/template` empty; `go vet ./internal/cli/update/...` exit 0; `go test -count=1 ./internal/cli/update/...` all 7 packages ok; `go test -count=1 ./internal/cli/ -run 'Backup|Retention|Destructive|Housekeeping|UBR|Unmanaged|TemplateSync|CleanReinstall'` ok 16.812s; `go test -count=1 ./internal/template/...` ok (template 130.604s); `GOOS=windows GOARCH=amd64 go build ./...` exit 0.
 
 Gaps: repository-wide test verdict PENDING (CI on the integration branch); `make build` not run; no guard refused any command in this round; re-audit of the F7 delta is the auditor's.
+
+## §E.7 Repair-round-3 evidence (card t1733, sync-audit iteration 3 finding F11 + F12 test + F2; owner manager-develop)
+
+Source: `.moai/reports/t1733/sync-audit-iter3.md` (local-only). Start HEAD `1828fb4f3`. Why a systematic pass: three audit rounds in a row found a new narrow data-loss branch in `renameSkillFile` (F1 overwrite, F7 atomic save replaced the original name, F11 staged name replaced). This round replaces the pair comparison by a per-name identity rule: the identity (`Lstat`) of `skill.md` is captured before the link and of the staging folder when it is claimed; a name is removed only while `Lstat` still reports that identity (`dropOurs`); anything unproven is left in place and reported.
+
+### State table (mirrored from the code comment above `renameSkillFile`)
+
+L = `skill.md`, T = staged name, S = staging folder; "ours" = same file as the original captured before the link.
+
+| State after the first link | Action | User data | Test |
+|---|---|---|---|
+| L ours, T ours | continue: drop L, link SKILL.md, drop T (if ours), drop S (if ours) | none lost | `TestRenameSkillFile_*`, `TestClean_*`, whole package |
+| L replaced (atomic save), T ours | keep L; drop T (our link) and S; error | L is the user's new file; the old inode loses only the extra name the editor's save already unlinked | `TestAC_UBR_17_RenameDoesNotDropASkillFileThatWasAtomicallyReplaced` |
+| T replaced, L ours (F11) | keep L, T, S; error names both | foreign T and original L kept | `TestAC_UBR_17_RenameLeavesAForeignFileThatReplacedTheStagedName` |
+| L replaced, T replaced | keep L, T, S; error names both | both foreign files kept | `TestAC_UBR_17_RenameLeavesEverythingWhenBothNamesWereReplaced` |
+| L gone (F12) | keep T, S; error names T | content kept at T | `TestAC_UBR_17_RenameKeepsTheContentStagedWhenSkillMdIsGone` |
+| T gone | keep L, S; error names both | content kept at L | `TestAC_UBR_17_RenameLeavesSkillMdWhenTheStagedNameIsGone` |
+| T unreadable (S loses search permission) | keep L, T, S; error names both | nothing removed | `TestAC_UBR_17_RenameLeavesEverythingWhenTheStagedNameIsUnreadable` |
+| L unreadable, T readable | unreachable: T lies under S inside L's folder, so any permission that blocks the lookup of L blocks T too; "L and T unreadable" takes the same branch as "T unreadable" (`err != nil` on either lookup) | n/a | covered by the T-unreadable row |
+| drop of L fails | keep L; drop T only if ours, then S; error | none lost | `TestAC_UBR_17_RenameTakesBackItsLinkWhenTheDropOfSkillMdFails` |
+| undo of T fails (drop of L and drop of T both refused) | keep L, T, S; error | content kept at L and T | `TestAC_UBR_17_RenameReportsWhenTheUndoOfTheStagedLinkFails` |
+| SKILL.md link refused, restore link works, T replaced before its drop | keep foreign T; skill.md is back; error | foreign T kept | `TestAC_UBR_17_RenameLeavesAForeignFileThatReplacedTheStagedNameBeforeTheRestoreDrop` |
+| SKILL.md link refused, restore link refused, skill.md free (F2) | keep T, S; error names T; no fallback move | content kept at T | `TestAC_UBR_17_RenameLeavesTheContentStagedWhenTheRestoreLinkIsRefused` |
+| SKILL.md link refused, user created skill.md before the restore | restore link fails on the taken name; keep user's skill.md and T; error names T | user's file kept, content kept at T | `TestAC_UBR_17_RenameKeepsAFileTheUserCreatedAtSkillMdDuringTheRestore` |
+| SKILL.md linked, T replaced before its drop | keep foreign T; SKILL.md holds the content; error | foreign T kept | `TestAC_UBR_17_RenameLeavesAForeignFileThatReplacedTheStagedNameBeforeTheFinalDrop` |
+
+### RED / GREEN / mutant
+
+| Step | Commit | Command and result |
+|---|---|---|
+| RED | `99f752bfda52d87d932bb43aaf15215aba069699` | `go test -count=1 ./internal/cli/update/skillresidue/ -run 'AC_UBR_17_Rename(Leaves\|Keeps\|Takes\|Reports)'`, exit 1, 7 of 12 new tests FAIL on the unchanged code (verbatim below) |
+| GREEN | `b5b7f3714e913b2e4d84c66f9295ca9db867eac0` | same command, all 12 new tests and the 3 older `AC_UBR_17` tests PASS; whole package `ok` |
+| Mutant (old pair comparison restored, drops unconditional) | overlay JSON `/private/tmp/t1733r3/mutant/overlay.json`, mutated copy `/private/tmp/t1733r3/mutant/residue.go` | `go test -count=1 -overlay=/private/tmp/t1733r3/mutant/overlay.json ./internal/cli/update/skillresidue/ -run 'AC_UBR_17'` -> FAIL `TestAC_UBR_17_RenameLeavesAForeignFileThatReplacedTheStagedName` and `TestAC_UBR_17_RenameLeavesEverythingWhenBothNamesWereReplaced` ("read .../skill.md.tmp-rename/skill.md: no such file or directory": the foreign staged file was deleted), exit non-zero |
+
+RED output, verbatim (tmp path prefix `/private/tmp/t1733r3/gotmp/` shortened on three lines):
+
+```
+--- FAIL: TestAC_UBR_17_RenameLeavesAForeignFileThatReplacedTheStagedName (0.00s)
+    residue_identity_test.go:90: read .../skill.md.tmp-rename/skill.md: open .../skill.md.tmp-rename/skill.md: no such file or directory
+--- FAIL: TestAC_UBR_17_RenameLeavesEverythingWhenBothNamesWereReplaced (0.00s)
+    residue_identity_test.go:116: read .../skill.md.tmp-rename/skill.md: open .../skill.md.tmp-rename/skill.md: no such file or directory
+--- FAIL: TestAC_UBR_17_RenameLeavesSkillMdWhenTheStagedNameIsGone (0.00s)
+    residue_identity_test.go:163: error = statat skill.md.tmp-rename/skill.md: no such file or directory (the content is at skill.md.tmp-rename/skill.md); want one naming both names
+--- FAIL: TestAC_UBR_17_RenameLeavesEverythingWhenTheStagedNameIsUnreadable (0.00s)
+    residue_identity_test.go:188: error = statat skill.md.tmp-rename/skill.md: permission denied (the content is at skill.md.tmp-rename/skill.md); want one naming both names
+--- FAIL: TestAC_UBR_17_RenameLeavesAForeignFileThatReplacedTheStagedNameBeforeTheFinalDrop (0.00s)
+    residue_identity_test.go:261: the rename reported success although the staged name was replaced before its drop
+--- FAIL: TestAC_UBR_17_RenameLeavesAForeignFileThatReplacedTheStagedNameBeforeTheRestoreDrop (0.00s)
+    residue_identity_test.go:291: read .../skill.md.tmp-rename/skill.md: open .../skill.md.tmp-rename/skill.md: no such file or directory
+--- FAIL: TestAC_UBR_17_RenameLeavesTheContentStagedWhenTheRestoreLinkIsRefused (0.00s)
+    residue_identity_test.go:314: error = injected link refusal; want one naming skill.md.tmp-rename/skill.md
+FAIL
+FAIL	github.com/modu-ai/moai-adk/internal/cli/update/skillresidue	0.080s
+FAIL
+```
+
+Reading the RED: four tests fail on real data loss (F11 staged name replaced; both replaced; staged name replaced before the final drop; staged name replaced before the restore drop: the foreign file was deleted, or success was reported). Two fail on the error wording only (staged gone, staged unreadable: the old error named the staged path but not `skill.md`, the requirement is both). One fails on F2 (the old fallback Rename put the file back by a move that can replace a name). The F12 test (`...KeepsTheContentStagedWhenSkillMdIsGone`) already passed on the old code, as the audit said: it is added as a regression pin, not as a RED. The tests for "drop of L fails", "undo of T fails" and "user created skill.md before the restore" also passed already (their branches were data-safe); they are pins.
+
+### F2 (deleted, not carried)
+
+`putBack`, `moveFile`, `moveOne` and the `moveOne` registry row are deleted. `grep -rn "moveOne\|moveFile\|putBack" internal/` after the change finds only the registry-test tripwire names in `residue_moveone_test.go` (`"moveFile": true, "moveOne": true` kept in the pinned set so that any reappearance of a Rename seam fails the pin test) and the unrelated `moveFile` in `internal/cli/migrate_profiles.go` (a different package, its own function). The restore is now an inline `linkFile(staged, lower)` that cannot replace a name; a refused restore leaves the content staged and the error names it. The registry has one row fewer (`moveOne`), `dropOne` row rewritten for the identity rule.
+
+### Existing tests edited (no assertion weakened)
+
+| Test / file | Edit | Reason |
+|---|---|---|
+| `TestRenameSkillFile_RestoreFailureIsReported` (`residue_coverage_test.go`) | removed the `moveFile` seam replacement and the comment words "and the fallback move" | `moveFile` no longer exists; every assertion (error contains "restoring" and the staging folder, content at the staged path) unchanged and still passing |
+| `TestMoveFileReferencesArePinned` (`residue_moveone_test.go`) | counts: `linkFile@renameSkillFile` 2 -> 3, `dropFile@renameSkillFile` 9 -> 1, new `dropFile@dropOurs` 1, removed `linkFile@putBack`, `dropFile@putBack`, `moveFile@putBack`, `moveFile@package-level`, `moveOne@package-level`; `moveFile` and `moveOne` stay in the pinned set so any reference now fails as a "new reference" | the drops moved into `dropOurs`, `putBack` and the Rename seam were deleted; the test still fails on any new reference to a seam |
+| registry (`update_destructive_registry.go`) | `moveOne` row removed, `dropOne` row rewritten | `TestDestructiveTargetRegistry_CoversAllSites` reports a stale row otherwise; the one remaining destructive site is `dropOne` |
+
+### Honest residual
+
+A window of microseconds remains between each identity check and the unlink it guards (the second look before the drop of `skill.md`, and the `Lstat` inside `dropOurs` before each other drop): a replacement landing exactly there is removed with the name. Go's `os.Root` offers no rename or remove that refuses to replace or that compares identity, so look and unlink cannot be made one atomic step. A recycled inode number (a foreign writer removes our empty staging folder and creates another entry that reuses its inode) would also read as "ours" on filesystems that recycle inodes immediately; that needs two foreign operations inside the same microsecond window. The old inode in the "L replaced" row loses its extra name by design (the editor's save already unlinked it from `skill.md`).
+
+### Verification
+
+Env: `GIT_CONFIG_GLOBAL=/private/tmp/t1733r3/gitconfig` (only `[user]`), `TMPDIR=/private/tmp/t1733r3/tmp`, `GOTMPDIR=/private/tmp/t1733r3/gotmp`, no HOME override. Each command run in this round, results as observed:
+
+```
+go build ./...                                   -> exit 0
+gofmt -l internal/cli internal/cli/update internal/template -> (empty), exit 0
+go vet ./internal/cli/update/...                 -> exit 0
+go test -count=1 ./internal/cli/update/...      -> ok update 1.039s, backup 1.023s, deploy 0.533s, merge 0.994s, plan 0.251s, report 0.256s, skillresidue 0.187s
+go test -count=1 ./internal/cli/ -run 'Backup|Retention|Destructive|Housekeeping|UBR|Unmanaged|TemplateSync|CleanReinstall' -> ok internal/cli 20.074s
+go test -count=1 ./internal/template/...         -> ok template 138.560s, agentemit 0.400s, commandemit 0.244s, embedemit 0.259s, scripts [no test files]
+GOOS=windows GOARCH=amd64 go build ./...         -> exit 0
+```
+
+Gaps: repository-wide test verdict PENDING (CI on the integration branch); `make build` not run; no guard refused any command in this round; the T-unreadable test skips under root and on Windows (`requireUnprivileged`); re-audit of the F11 delta is the auditor's.
