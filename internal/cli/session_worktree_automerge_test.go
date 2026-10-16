@@ -24,6 +24,7 @@ import (
 
 	"github.com/modu-ai/moai-adk/internal/config"
 	"github.com/modu-ai/moai-adk/internal/factory"
+	"github.com/modu-ai/moai-adk/internal/testguard"
 )
 
 // amSeams snapshots the auto-merge seams so a test can swap them and restore
@@ -250,6 +251,7 @@ func swapCleanStatusSeams(t *testing.T) {
 // merge invocation, no window record write, and emits no notice — observable
 // output is exactly what the pre-SPEC flow produced (nothing merge-related).
 func TestAutoMergeOffBaseline(t *testing.T) {
+	testguard.RedirectHome(t)
 	rec := &amRecorder{}
 	swapAutoMergeSeams(t, baseAMSeams(rec))
 	out := &bytes.Buffer{}
@@ -342,6 +344,7 @@ func autoMergeGitFixture(t *testing.T, conflicted bool) (root, swt string) {
 // commit whose second parent is the session branch tip, the window is
 // released, and the notice names the merge commit.
 func TestAutoMergeHappyPath(t *testing.T) {
+	testguard.RedirectHome(t)
 	root, swt := autoMergeGitFixture(t, false)
 	gitOut := func(args ...string) string {
 		out, err := exec.Command("git", args...).Output()
@@ -408,6 +411,7 @@ func TestAutoMergeHappyPath(t *testing.T) {
 // non-zero session exit, no merge and no window mutation occur
 // (clean-exit-only, mirroring REQ-SW-009).
 func TestAutoMergeNonCleanExit(t *testing.T) {
+	testguard.RedirectHome(t)
 	rec := &amRecorder{}
 	swapAutoMergeSeams(t, baseAMSeams(rec))
 	out := &bytes.Buffer{}
@@ -431,6 +435,7 @@ func TestAutoMergeNonCleanExit(t *testing.T) {
 // or an unreadable config — no merge runs and a non-blocking notice naming
 // the config key is emitted.
 func TestAutoMergeUnconfiguredTarget(t *testing.T) {
+	testguard.RedirectHome(t)
 	cases := []struct {
 		name string
 		gfc  config.GitFlowIntegrationConfig
@@ -477,6 +482,7 @@ func TestAutoMergeUnconfiguredTarget(t *testing.T) {
 // staleness: REQ-WKW-004 forbids displacing a stale hold as much as a live
 // one.)
 func TestAutoMergeBusyWindow(t *testing.T) {
+	testguard.RedirectHome(t)
 	cases := []struct {
 		name   string
 		held   factory.IntegrationLock
@@ -547,6 +553,7 @@ func TestAutoMergeBusyWindow(t *testing.T) {
 // git invocation on the path contains no push, fetch, pull, or
 // remote-mutating subcommand — exactly one merge, and it carries --no-ff.
 func TestAutoMergeZeroPush(t *testing.T) {
+	testguard.RedirectHome(t)
 	rec := &amRecorder{}
 	swapAutoMergeSeams(t, baseAMSeams(rec))
 	swapCleanStatusSeams(t)
@@ -602,6 +609,7 @@ func TestAutoMergeZeroPush(t *testing.T) {
 // notice), and a real-git conflicted merge proving MERGE_HEAD does not remain
 // and the session worktree is untouched.
 func TestAutoMergeConflict(t *testing.T) {
+	testguard.RedirectHome(t)
 	t.Run("seam_abort_path", func(t *testing.T) {
 		rec := &amRecorder{}
 		seams := baseAMSeams(rec)
@@ -679,6 +687,7 @@ func (*execExitErr) Error() string { return "exit status 1" }
 // worktree skip the merge with the notice; the worktree is untouched; and
 // with auto_cleanup also on, disposal follows its own dirty guard.
 func TestAutoMergeSourceDirty(t *testing.T) {
+	testguard.RedirectHome(t)
 	rec := &amRecorder{}
 	swapAutoMergeSeams(t, baseAMSeams(rec))
 	// The session worktree reports uncommitted changes; the target is clean.
@@ -738,6 +747,7 @@ func TestAutoMergeSourceDirty(t *testing.T) {
 // develop worktree and a dirty develop worktree each skip the merge with
 // their own notice.
 func TestAutoMergeTargetGuards(t *testing.T) {
+	testguard.RedirectHome(t)
 	t.Run("no_worktree_holds_develop", func(t *testing.T) {
 		rec := &amRecorder{}
 		seams := baseAMSeams(rec)
@@ -792,6 +802,7 @@ func TestAutoMergeTargetGuards(t *testing.T) {
 // contained in develop, the entire ceremony is skipped — no window record, no
 // merge invocation, no notice (byte-identical to the OFF baseline).
 func TestAutoMergeNoOpSilent(t *testing.T) {
+	testguard.RedirectHome(t)
 	rec := &amRecorder{}
 	seams := baseAMSeams(rec)
 	seams.aheadCount = func(_, _, _ string) (int, error) { return 0, nil }
@@ -822,6 +833,7 @@ func TestAutoMergeNoOpSilent(t *testing.T) {
 // every failure path emits carries the prefix, and a forced merge failure
 // leaves the caller unaffected (no error return to propagate).
 func TestAutoMergeNoticePrefixDistinct(t *testing.T) {
+	testguard.RedirectHome(t)
 	if AutoMergeNoticePrefix == SessionExitCleanupNoticePrefix {
 		t.Errorf("AutoMergeNoticePrefix collides with SessionExitCleanupNoticePrefix: %q", AutoMergeNoticePrefix)
 	}
@@ -871,6 +883,7 @@ func TestAutoMergeNoticePrefixDistinct(t *testing.T) {
 // iff auto_cleanup is on, and — in the both-on case — the merge is observed
 // BEFORE the removal (merge-then-dispose).
 func TestAutoMergeToggleIndependence(t *testing.T) {
+	testguard.RedirectHome(t)
 	for _, tc := range []struct {
 		merge, cleanup bool
 	}{
@@ -957,6 +970,7 @@ func boolWord(b bool) string {
 // never aborts the caller. Together with the AC tests above this covers the
 // engine's decision tree end to end.
 func TestAutoMergeFailurePaths(t *testing.T) {
+	testguard.RedirectHome(t)
 	cases := []struct {
 		name       string
 		mutate     func(seams *amSeams) // seam overrides for the failure state
@@ -1083,6 +1097,7 @@ func TestAutoMergeFailurePaths(t *testing.T) {
 // directly (the seam-based tests above exercise the decision tree, not these
 // wrappers' failure arms).
 func TestAutoMergeRealImplErrorPaths(t *testing.T) {
+	testguard.RedirectHome(t)
 	if _, err := gitBranchOfWorktreeReal(filepath.Join(t.TempDir(), "nope")); err == nil {
 		t.Errorf("branch probe of a nonexistent tree must error")
 	}

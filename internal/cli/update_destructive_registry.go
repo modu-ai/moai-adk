@@ -42,8 +42,8 @@ type destructiveSite struct {
 // key identifies a registry row independently of its count and assignment.
 func (s destructiveSite) key() string { return s.File + " " + s.Function }
 
-// destructiveTargetRegistry is the registry itself: 15 (file, function) rows
-// covering 25 call sites, matching the source scan the drift guard performs.
+// destructiveTargetRegistry is the registry itself: 16 (file, function) rows
+// covering 26 call sites, matching the source scan the drift guard performs.
 //
 // Rows carry either a Protection or an Exemption, never both and never neither.
 // The exempt rows rest on three materially different grounds — same-call rewind
@@ -181,5 +181,14 @@ var destructiveTargetRegistry = []destructiveSite{
 			"verbatim while the template render goes to a separately claimed .moai-new sidecar. " +
 			"A conflicted file is never auto-rewritten (the conflictDisposition path), so the " +
 			"only replacements are ones the operator's content survives inside.",
+	},
+	{
+		File: "internal/cli/update/skillresidue/residue.go", Function: "moveOne", Sites: 1,
+		Protection: "The single os.Rename in the skillresidue package. All three moves in " +
+			"renameSkillFile reach this site through the moveFile seam (skill.md to a temporary " +
+			"name, the temporary name to SKILL.md, and the restore after a failed second move). " +
+			"The temporary name comes from freeName, so no user file is replaced, and a failed " +
+			"second move puts the content back under its own name. TestMoveFileReferencesArePinned " +
+			"fails on any new reference to moveFile, which forces this row to be reviewed.",
 	},
 }

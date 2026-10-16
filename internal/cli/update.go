@@ -180,6 +180,13 @@ func runUpdate(cmd *cobra.Command, _ []string) error {
 		return fmt.Errorf("--binary and --templates-only are mutually exclusive")
 	}
 
+	// --dry-run promises no filesystem change. The --config and --binary paths
+	// housekeep (and --binary installs) before the dry-run branch, and the config
+	// wizard writes on confirm, so the combinations are refused up front.
+	if getBoolFlag(cmd, "dry-run") && (editConfig || binaryOnly) {
+		return fmt.Errorf("--dry-run cannot be combined with --config or --binary: those paths change the filesystem before any preview")
+	}
+
 	// REQ-ITI-001: `moai update` carries NO profile entry — no confirmation, no
 	// profile wizard, whatever stdin and the flags are. The profile wizard
 	// starts only from `moai profile setup` / `--setup`.
@@ -187,6 +194,10 @@ func runUpdate(cmd *cobra.Command, _ []string) error {
 	// Handle --config / -c mode (edit configuration only, no template updates)
 	// This takes priority over all other flags
 	if editConfig {
+		// M6: the configuration path writes project state too, so it runs the
+		// same housekeeping under the update lock (marker-guarded; a busy lock
+		// skips, because the other update housekeeps).
+		runUpdateHousekeepingLocked(updateProjectRoot())
 		return runInitWizard(cmd, true) // true = reconfigure mode
 	}
 
@@ -305,6 +316,13 @@ func runUpdate(cmd *cobra.Command, _ []string) error {
 		defer releaseLock()
 	}
 
+	// M6: a --binary run never re-execs, so it housekeeps here, under the lock it
+	// already holds, and its report reaches the terminal block. Every other entry
+	// point housekeeps after the binary step (see the post-dry-run call below).
+	if binaryOnly {
+		runUpdateHousekeeping(lockRoot)
+	}
+
 	// Step 1: Binary update (unless skipped)
 	if !shouldSkipBinaryUpdate(cmd) {
 		updated, err := runBinaryUpdateStep(cmd)
@@ -376,6 +394,15 @@ func runUpdate(cmd *cobra.Command, _ []string) error {
 		//
 		return emitDryRunReinstallPlan(cmd, cwd, getBoolFlag(cmd, "force"), th)
 	}
+
+	// M6: housekeeping (state residue + skill-folder residue). It runs here, after
+	// the dry-run return and under the update lock, so every project-mutating path
+	// reaches it: --force, --templates-only, the normal flow, and the re-exec'd
+	// child (a parent that re-execs replaces its process and never gets this far,
+	// so no report is lost with a discarded ledger). The lowercase skill.md rename is
+	// held back: the template sync that follows may still be cancelled at its
+	// confirmation, and applyDeferredSkillRenames runs only once that is settled.
+	runUpdateHousekeepingDeferRenames(lockRoot)
 
 	// This is after the dry-run return and under the update lock. It also runs
 	// when template sync is version-matched, so a later update can retry trees
