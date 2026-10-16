@@ -534,6 +534,25 @@ func TestX(t *testing.T) {
 	}
 }
 
+// TestBudget_OverrunReportedWhenScanFinishesFirst pins that an overrun is
+// reported even when the scan goroutine wins the select against the timer:
+// an empty directory scans almost instantly, so the done arm often wins
+// against a 1ns budget, yet the elapsed time still exceeds the budget.
+func TestBudget_OverrunReportedWhenScanFinishesFirst(t *testing.T) {
+	dir := t.TempDir()
+	const iterations = 20000
+	exitZero := 0
+	for range iterations {
+		result := runWithBudget(dir, 1*time.Nanosecond)
+		if result.ExitCode != 4 || !strings.Contains(result.Stderr, "budget") {
+			exitZero++
+		}
+	}
+	if exitZero > 0 {
+		t.Errorf("%d/%d iterations did not report the budget overrun (want exit 4 + 'budget' in stderr)", exitZero, iterations)
+	}
+}
+
 // --- Helpers ---
 
 func writeTempGoFile(t *testing.T, src string) string {
