@@ -11,6 +11,8 @@ import (
 	"fmt"
 	"sort"
 	"strings"
+
+	"github.com/modu-ai/moai-adk/internal/config"
 )
 
 // tomlHeader is the fixed regeneration notice emitted above every artifact.
@@ -85,10 +87,13 @@ func classifyToken(man Manifest, token string) (class string, ok bool) {
 }
 
 // renderTOML renders one agent's Codex TOML. Key order is fixed:
-// name, description, developer_instructions, mcp_servers (conditional),
-// model_reasoning_effort (conditional), sandbox_mode (conditional).
+// name, description, developer_instructions, model (conditional),
+// model_reasoning_effort (conditional), sandbox_mode (conditional),
+// mcp_servers table (conditional).
 // Every validation error names the source .md file and the offending value.
-// The second return value is the emitted sandbox_mode ("" when not emitted).
+// The second return value is the role's STATED sandbox mode — the manifest
+// value checked against the permission contract — whether or not the
+// manifest writes it into the file ("" when the manifest states none).
 //
 // A role with a Codex-only addendum in the manifest gets that text appended
 // after its verbatim body; the neutral .md is never touched.
@@ -120,19 +125,53 @@ func renderTOML(doc AgentDoc, man Manifest, hasMCP bool) ([]byte, string, error)
 	b.WriteString("description = " + desc + "\n")
 	b.WriteString("developer_instructions = " + body + "\n")
 
-	if fc, ok := man.Fields["model_reasoning_effort"]; ok && fc.Emit {
-		mapped, found := fc.Map[doc.Effort]
-		if !found {
-			return nil, "", fmt.Errorf("%s: effort value %q is not in the manifest's measured model_reasoning_effort enumeration — refusing to guess (silent-ignore hazard)", doc.File, doc.Effort)
+	// model: the frontmatter Claude alias mapped to a Codex model id
+	// (config.CodexAgentModel). An absent or inherit alias omits the key —
+	// the role inherits the parent session's model.
+	codexModel := ""
+	if fc, ok := man.Fields["model"]; ok && fc.Emit && doc.Model != "" && doc.Model != "inherit" {
+		id, known := config.CodexAgentModel(doc.Model)
+		if !known {
+			return nil, "", fmt.Errorf("%s: model %q has no Codex mapping — refusing to guess (codex accepts any model string at parse)", doc.File, doc.Model)
 		}
-		if !basicStringSafe(mapped) {
-			return nil, "", fmt.Errorf("%s: mapped effort %q is not representable as a TOML basic string", doc.File, mapped)
+		if !basicStringSafe(id) {
+			return nil, "", fmt.Errorf("%s: mapped model %q is not representable as a TOML basic string", doc.File, id)
 		}
-		fmt.Fprintf(&b, "model_reasoning_effort = %q\n", mapped)
+		codexModel = id
+		fmt.Fprintf(&b, "model = %q\n", id)
 	}
 
-	emittedSandbox := ""
-	if fc, ok := man.Fields["sandbox_mode"]; ok && fc.Emit {
+	// model_reasoning_effort: the frontmatter effort through the measured map,
+	// then overridden by the mapped model (model_values) and by the role
+	// (role_values, which wins). max and ultra are refused outright.
+	if fc, ok := man.Fields["model_reasoning_effort"]; ok && fc.Emit {
+		if rejectedEffort(doc.Effort) {
+			return nil, "", fmt.Errorf("%s: effort %q is never a Codex role effort (max/ultra are not shipped defaults) — emission refused", doc.File, doc.Effort)
+		}
+		mapped := ""
+		if doc.Effort != "" {
+			m, found := fc.Map[doc.Effort]
+			if !found {
+				return nil, "", fmt.Errorf("%s: effort value %q is not in the manifest's measured model_reasoning_effort enumeration — refusing to guess (silent-ignore hazard)", doc.File, doc.Effort)
+			}
+			mapped = m
+		}
+		if over, ok := fc.ModelValues[codexModel]; ok && codexModel != "" {
+			mapped = over
+		}
+		if over, ok := fc.RoleValues[doc.Name]; ok {
+			mapped = over
+		}
+		if mapped != "" {
+			if !basicStringSafe(mapped) {
+				return nil, "", fmt.Errorf("%s: mapped effort %q is not representable as a TOML basic string", doc.File, mapped)
+			}
+			fmt.Fprintf(&b, "model_reasoning_effort = %q\n", mapped)
+		}
+	}
+
+	statedSandbox := ""
+	if fc, ok := man.Fields["sandbox_mode"]; ok && (fc.Emit || fc.Value != "") {
 		mode := fc.Value
 		if override, ok := fc.RoleValues[doc.Name]; ok {
 			mode = override
@@ -160,8 +199,10 @@ func renderTOML(doc AgentDoc, man Manifest, hasMCP bool) ([]byte, string, error)
 				}
 			}
 		}
-		fmt.Fprintf(&b, "sandbox_mode = %q\n", mode)
-		emittedSandbox = mode
+		if fc.Emit {
+			fmt.Fprintf(&b, "sandbox_mode = %q\n", mode)
+		}
+		statedSandbox = mode
 	}
 
 	// MCP server grant LAST, as a TOML table: sections must follow all root
@@ -189,5 +230,5 @@ func renderTOML(doc AgentDoc, man Manifest, hasMCP bool) ([]byte, string, error)
 		b.WriteString("]\n")
 	}
 
-	return []byte(b.String()), emittedSandbox, nil
+	return []byte(b.String()), statedSandbox, nil
 }

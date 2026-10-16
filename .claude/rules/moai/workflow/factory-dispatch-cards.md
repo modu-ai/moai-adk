@@ -1,11 +1,11 @@
 ---
-description: "Card-lifecycle companion for factory-dispatch.md — report milestones ↔ queue cards, card classes, the /clear handoff message structure, isolation rationale, the pre-dispatch cross-check rationale, and the PR-title carrier measurements"
+description: "Card-lifecycle companion for factory-dispatch.md — report milestones ↔ queue cards, card classes, the lane card transition statement, isolation rationale, the pre-dispatch cross-check rationale, and the PR-title carrier measurements"
 paths: "**/factory-dispatch*.md,**/.claude/agents/moai/manager-lead.md,**/.claude/skills/moai/workflows/gtd.md"
 ---
 
 # Factory Dispatch — Card Lifecycle and Traceability
 
-> Companion of `factory-dispatch.md` (the always-loaded stub), split from `factory-dispatch-detail.md` by its per-file budget. The stub keeps every [HARD] rule; this file owns the card-lifecycle rationale: why reports carry Card Cross-Check tables, how cards are classified, the `/clear` message structure, the isolation rationale, the pre-dispatch cross-check wording, and the PR-title carrier measurements. Load when classifying a card, issuing or admitting one, or tracing a pull request back to its card. Siblings: `factory-dispatch-detail.md` (dispatch cycle and coordination) and `factory-dispatch-gates.md` (sync-gate review lenses and the integration-gate measurements). A bare `§` section reference that does not resolve in this file resolves in `factory-dispatch-detail.md`.
+> Companion of `factory-dispatch.md` (the always-loaded stub), split from `factory-dispatch-detail.md` by its per-file budget. The stub keeps every [HARD] rule; this file owns the card-lifecycle rationale: why reports carry Card Cross-Check tables, how cards are classified, the lane card transition statement, the isolation rationale, the pre-dispatch cross-check wording, and the PR-title carrier measurements. Load when classifying a card, issuing or admitting one, or tracing a pull request back to its card. Siblings: `factory-dispatch-detail.md` (dispatch cycle and coordination) and `factory-dispatch-gates.md` (sync-gate review lenses and the integration-gate measurements). A bare `§` section reference that does not resolve in this file resolves in `factory-dispatch-detail.md`.
 
 ## Report milestones ↔ queue cards
 
@@ -33,13 +33,13 @@ The Class-A evidence rule is the same shape as the CodeRabbit section of the stu
 
 The parallelism comes from the across-cards axis: each lane carries a whole card, so three lanes put three cards in flight (§ Sub-agent execution within a lane for the within-card axis; § Factory in-lane 3-stage for the stages). Research fan-out during `plan` is Class-C-only.
 
-## The `/clear` handoff between cards — message structure
+## Lane card transition — statement structure
 
-The leader's message to the operator states three things, in this order:
+The leader's statement at `done` names three things, in this order, and asks the operator to clear nothing:
 
 1. **What closed** — the card and the evidence that was read.
-2. **Which session to `/clear`** — by name, so the operator clears the right terminal.
-3. **What happens next** — the next card the lane is routed, and which lane will be instructed once the clear is done.
+2. **Which session moves on** — the lane, by name.
+3. **What happens next** — the lane runs the in-session transition (`ExitWorktree(keep)`, lease, `EnterWorktree`), and the next card it is routed.
 
 ## Isolation rationale
 

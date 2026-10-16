@@ -220,8 +220,15 @@ type BackupMetadata struct {
 // an unmarked run by its directory's modification time, and ties by path
 // ascending. The newest keepCount runs are kept, and every directory of every
 // older run is removed. A missing root contributes no runs and is not an error.
+//
+// A backup root that is a symbolic link or leads outside projectRoot is refused,
+// and nothing is removed from either root (see OldBackupRootRefused and
+// NamespaceBackupRootRefused).
 func CleanupOldBackups(projectRoot string, keepCount int) int {
 	if keepCount < 0 {
+		return 0
+	}
+	if OldBackupRootRefused(projectRoot) || NamespaceBackupRootRefused(projectRoot) {
 		return 0
 	}
 	runs := collectBackupRuns(projectRoot)
@@ -352,6 +359,39 @@ func listBackupDirs(root string) []backupDirEntry {
 		dirs = append(dirs, backupDirEntry{name: entry.Name(), path: filepath.Join(root, entry.Name()), modTime: fi.ModTime()})
 	}
 	return dirs
+}
+
+// backupRootContained reports whether a backup root is a real directory inside
+// projectRoot. A root that is a symbolic link, or that sits under one, would make
+// pruning delete entries outside the project, so the root must pass both checks
+// that the restore path already applies to its targets.
+func backupRootContained(projectRoot, root string) bool {
+	if IsSymlinkEntry(root) {
+		return false
+	}
+	absProject, err := filepath.Abs(projectRoot)
+	if err != nil {
+		return false
+	}
+	absRoot, err := filepath.Abs(root)
+	if err != nil {
+		return false
+	}
+	return ParentChainContained(absProject, absRoot)
+}
+
+// OldBackupRootRefused reports whether CleanupOldBackups refuses the timestamped
+// backup root because it is a symbolic link or leads outside projectRoot. A missing
+// root is not refused. The cleanup returns only a count, so the caller reports the
+// refusal itself.
+func OldBackupRootRefused(projectRoot string) bool {
+	return !backupRootContained(projectRoot, filepath.Join(projectRoot, defs.BackupsDir))
+}
+
+// NamespaceBackupRootRefused is OldBackupRootRefused for the namespace backup root
+// under .moai.
+func NamespaceBackupRootRefused(projectRoot string) bool {
+	return !backupRootContained(projectRoot, filepath.Join(projectRoot, defs.MoAIDir, defs.NamespaceBackupsSubdir))
 }
 
 // IsSymlinkEntry reports whether path is a symbolic link (via os.Lstat, which

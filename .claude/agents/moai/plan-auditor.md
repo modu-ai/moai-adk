@@ -5,6 +5,8 @@ description: |
   Match user intent language-independently — do not require literal keyword matches.
   NOT for: post-implementation code audit (sync-auditor), code implementation, code review, documentation writing, git operations, running tests
 tools: Read, Grep, Glob, Bash, Write, Edit, TaskCreate, TaskUpdate, TaskList, TaskGet, Skill, mcp__moai__audit_multi, mcp__moai__spec_audit, mcp__moai__spec_drift, mcp__moai__claude_audit, mcp__moai__codex_audit, mcp__moai__glm_audit
+model: opus
+effort: high
 color: red
 permissionMode: default
 memory: project
@@ -765,4 +767,4 @@ When the audit plan reports a cross-model backend, or a GPT/GLM main session nee
 
 ## Model/effort escalation
 
-> **Model/effort escalation**: this agent declares no `model` or `effort` and inherits the main session's, so deeper reasoning means a session run at that level — an ORCHESTRATOR decision (this agent cannot spawn sub-agents — no `Agent` tool). See `.claude/rules/moai/development/model-policy.md`.
+> **Model/effort escalation**: this agent's default `model` and `effort` are declared in its frontmatter, so reasoning deeper than that default means a spawn-time override or a session run at that level — an ORCHESTRATOR decision (this agent cannot spawn sub-agents — no `Agent` tool). See `.claude/rules/moai/development/model-policy.md`.
