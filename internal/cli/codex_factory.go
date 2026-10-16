@@ -2,6 +2,7 @@ package cli
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"os"
@@ -196,6 +197,29 @@ func codexFactoryEnv(entry factoryFlagParse) []string {
 		env = append(env, config.EnvFactoryRole+"="+config.FactoryRoleLane)
 	}
 	return env
+}
+
+// codexShellEnvSetArgs mirrors KEY=VALUE entries into Codex config overrides
+// `-c shell_environment_policy.set.KEY="VALUE"` (card t1819). A Codex session
+// hands its shell commands only what shell_environment_policy allows; under
+// the operator's `inherit = "core"` (or "none") the keys on the Codex process
+// never reach a shell, and `moai todo --auto-lane` there reads as no lane. A
+// `set` entry reaches the shell whatever `inherit` says, and a dotted -c
+// override merges into the operator's own [shell_environment_policy.set]
+// table rather than replacing it (measured with `codex sandbox`, 0.162.1).
+// The value is JSON-encoded, which is a valid TOML basic string — the same
+// encoding developer_instructions uses. An entry without "=" is skipped.
+func codexShellEnvSetArgs(env []string) []string {
+	args := make([]string, 0, 2*len(env))
+	for _, entry := range env {
+		key, value, ok := strings.Cut(entry, "=")
+		if !ok || key == "" {
+			continue
+		}
+		encoded, _ := json.Marshal(value) // A string is always JSON-encodable.
+		args = append(args, "-c", "shell_environment_policy.set."+key+"="+string(encoded))
+	}
+	return args
 }
 
 func codexExplicitFactoryEnv(env []string) bool {

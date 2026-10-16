@@ -9,7 +9,8 @@
 //
 // 한계 (design.md §A.4): yaml.v3 Encoder는 재직렬화 시 일부 포매팅(빈 줄, 긴 스칼라
 // 줄바꿈)을 정규화할 수 있다. byte-stability는 보증이 아니라 검증 대상이며, 섹션별
-// golden round-trip 테스트가 그 범위를 고정한다. 노드 삭제는 지원하지 않는다.
+// golden round-trip 테스트가 그 범위를 고정한다. 노드 삭제는 KeyEdit.Remove 하나만
+// 지원한다 (키-값 쌍과 그 키에 붙은 주석을 함께 제거).
 package yamlpatch
 
 import (
@@ -25,7 +26,7 @@ import (
 	"gopkg.in/yaml.v3"
 )
 
-// KeyEdit은 yaml 문서 내 단일 스칼라 교체/생성을 기술한다 (design.md §A.2).
+// KeyEdit은 yaml 문서 내 단일 스칼라 교체/생성 또는 키 삭제를 기술한다 (design.md §A.2).
 type KeyEdit struct {
 	// Path는 문서 루트 매핑부터의 키 경로다.
 	// 예: ["workflow", "team", "role_profiles", "implementer", "model"].
@@ -33,12 +34,18 @@ type KeyEdit struct {
 	// Value는 기록할 스칼라 값이다. 기존 노드의 인용 스타일(Style)은 보존을
 	// 시도하고, plain 스칼라의 타입 태그는 인코더가 값에서 재해석한다.
 	Value string
+	// Quoted는 Value를 큰따옴표 스칼라로 기록하게 한다. 0값이면 위 규칙을 따른다.
+	// "" 같은 값은 plain으로 쓰면 null로 읽히므로 호출자가 Quoted를 세워야 한다.
+	Quoted bool
+	// Remove는 Path의 키를 값 및 그 키에 붙은 주석과 함께 삭제한다. Value와
+	// Quoted는 무시된다. 경로가 없으면 아무것도 하지 않는다.
+	Remove bool
 }
 
 // PatchFile은 path의 YAML 파일을 yaml.Node 문서로 로드해 edits의 각 스칼라를
 // 교체하고, 경로가 없으면 mapping 노드를 생성(upsert)한 뒤 원자적으로 재기록한다.
 // 주석(Head/Line/FootComment)·키 순서·미모델링 키는 보존된다. upsert는 명시적으로
-// 편집된 경로에만 적용되며(EC-3), 노드 삭제는 지원하지 않는다 (design.md §A.2).
+// 편집된 경로에만 적용되며(EC-3), 노드 삭제는 KeyEdit.Remove만 지원한다 (design.md §A.2).
 // edits가 비어 있으면 파일을 건드리지 않고 nil을 반환한다.
 //
 // REQ-WWS-005 (SPEC-WEB-WRITE-SAFETY-001): when every edit targets an EXISTING
@@ -60,6 +67,24 @@ type KeyEdit struct {
 // TestPatchFileValueInvariantPreservesBytes가 RED로 잡는다 — 이 분기 구조를
 // 단순화하려는 시도는 이 테스트부터 읽는다.
 func PatchFile(path string, edits []KeyEdit) error {
+	return patchFile(path, edits, 0, false)
+}
+
+// PatchFileWithMode는 PatchFile과 같은 편집을 하되, 기록되는 파일의 모드를 perm으로
+// 고정한다 — 새로 만들 때와 재기록할 때 모두. 모드가 계약인 섹션 파일(llm.yaml 0600)의
+// 쓰기 경로가 쓴다. 더해서 내용이 없는 파일(빈 파일, 주석만 있는 파일)을 거부하지
+// 않고 섹션을 채운다. PatchFile은 빈 문서를 계속 거부한다(TestYAMLPatchErrors).
+func PatchFileWithMode(path string, edits []KeyEdit, perm os.FileMode) error {
+	return patchFile(path, edits, perm, true)
+}
+
+// patchFile은 PatchFile과 PatchFileWithMode의 공통 본체다. perm이 0이면 기존
+// 모드(없으면 defaultFilePerm)를 보존하고, lenient가 참이면 노드가 없는 문서를
+// 파일 본문 뒤에 섹션으로 덧붙인다.
+//
+// @MX:NOTE: [AUTO] lenient 분기는 PatchFileWithMode만 탄다. PatchFile의 빈 문서 거부는
+// 기존 계약이고 TestYAMLPatchErrors가 고정하므로 이 분기를 PatchFile로 넓히지 않는다.
+func patchFile(path string, edits []KeyEdit, perm os.FileMode, lenient bool) error {
 	if len(edits) == 0 {
 		return nil
 	}
@@ -95,12 +120,17 @@ func PatchFile(path string, edits []KeyEdit) error {
 	if out, ok, serr := lineSplice(data, edits); serr != nil {
 		return fmt.Errorf("yamlpatch: %s: %w", path, serr)
 	} else if ok {
-		return atomicWrite(path, out)
+		return atomicWriteMode(path, out, perm)
 	}
 
 	var doc yaml.Node
 	if err := yaml.Unmarshal(data, &doc); err != nil {
 		return fmt.Errorf("yamlpatch: parse %s: %w", path, err)
+	}
+	// A blank or comment-only file parses to no node at all, so its comments
+	// cannot be re-encoded. The section is appended after the file's own bytes.
+	if lenient && doc.Kind == 0 {
+		return appendSection(path, data, edits, perm)
 	}
 	if doc.Kind != yaml.DocumentNode || len(doc.Content) == 0 {
 		return fmt.Errorf("yamlpatch: %s: empty or non-document YAML", path)
@@ -132,7 +162,31 @@ func PatchFile(path string, edits []KeyEdit) error {
 	if err != nil {
 		return fmt.Errorf("yamlpatch: encode %s: %w", path, err)
 	}
-	return atomicWrite(path, out)
+	return atomicWriteMode(path, out, perm)
+}
+
+// appendSection은 노드가 없는 문서(빈 파일, 주석만 있는 파일)에 edits를 적용한 섹션을
+// 파일 본문 뒤에 덧붙인다. 원본 바이트(주석과 공백)는 그대로 남는다. 편집으로 채워진
+// 매핑이 없으면 파일을 건드리지 않는다.
+func appendSection(path string, data []byte, edits []KeyEdit, perm os.FileMode) error {
+	section := &yaml.Node{Kind: yaml.MappingNode, Tag: "!!map"}
+	for _, e := range edits {
+		if err := applyEdit(section, e); err != nil {
+			return fmt.Errorf("yamlpatch: %s: %w", path, err)
+		}
+	}
+	if len(section.Content) == 0 {
+		return nil
+	}
+	body, err := encode(&yaml.Node{Kind: yaml.DocumentNode, Content: []*yaml.Node{section}}, detectIndent(data))
+	if err != nil {
+		return fmt.Errorf("yamlpatch: encode %s: %w", path, err)
+	}
+	out := append([]byte{}, data...)
+	if len(out) > 0 && out[len(out)-1] != '\n' {
+		out = append(out, '\n')
+	}
+	return atomicWriteMode(path, append(out, body...), perm)
 }
 
 // lineSplice applies edits by rewriting only the source lines of the targeted
@@ -159,11 +213,20 @@ func lineSplice(data []byte, edits []KeyEdit) ([]byte, bool, error) {
 		lineIdx int
 		node    *yaml.Node
 		value   string
+		quoted  bool
 		desc    string
 	}
 	var splices []splice
 	seenLines := map[int]bool{}
 	for _, e := range edits {
+		if e.Remove {
+			// Removing an absent key changes nothing, so the splice skips it. A
+			// present key has to leave its line, which only the re-encode path does.
+			if lookupNode(root, e.Path) != nil {
+				return nil, false, nil
+			}
+			continue
+		}
 		cur := root
 		resolved := false
 		for i, key := range e.Path {
@@ -187,7 +250,7 @@ func lineSplice(data []byte, edits []KeyEdit) ([]byte, bool, error) {
 					return nil, false, nil // two edits on one line — ambiguous splice
 				}
 				seenLines[lineIdx] = true
-				splices = append(splices, splice{lineIdx: lineIdx, node: val, value: e.Value, desc: strings.Join(e.Path, ".")})
+				splices = append(splices, splice{lineIdx: lineIdx, node: val, value: e.Value, quoted: e.Quoted, desc: strings.Join(e.Path, ".")})
 				resolved = true
 				break
 			}
@@ -200,7 +263,7 @@ func lineSplice(data []byte, edits []KeyEdit) ([]byte, bool, error) {
 
 	lines := strings.Split(string(data), "\n")
 	for _, sp := range splices {
-		spliced, ok := replaceScalarInLine(lines[sp.lineIdx], sp.node, sp.value)
+		spliced, ok := replaceScalarInLine(lines[sp.lineIdx], sp.node, sp.value, sp.quoted)
 		if !ok {
 			return nil, false, nil
 		}
@@ -240,10 +303,10 @@ func lineSplice(data []byte, edits []KeyEdit) ([]byte, bool, error) {
 
 // replaceScalarInLine rewrites the value token of a `key: value` line in place,
 // keeping the key, indentation, and any trailing comment untouched. The new
-// value is rendered in the original node's quoting style; the caller verifies
-// the result by re-parsing, so a style that cannot render safely falls back
-// (ok=false) rather than writing a corrupted line.
-func replaceScalarInLine(line string, node *yaml.Node, value string) (string, bool) {
+// value is rendered in the original node's quoting style, or double-quoted when
+// quoted is set; the caller verifies the result by re-parsing, so a style that
+// cannot render safely falls back (ok=false) rather than writing a corrupted line.
+func replaceScalarInLine(line string, node *yaml.Node, value string, quoted bool) (string, bool) {
 	if !strings.Contains(line, ":") {
 		return "", false
 	}
@@ -259,7 +322,11 @@ func replaceScalarInLine(line string, node *yaml.Node, value string) (string, bo
 	if pos < 0 {
 		return "", false
 	}
-	newRendered := renderScalar(&yaml.Node{Style: node.Style, Value: value}, value)
+	style := node.Style
+	if quoted {
+		style = yaml.DoubleQuotedStyle
+	}
+	newRendered := renderScalar(&yaml.Node{Style: style, Value: value}, value)
 	if newRendered == "" {
 		return "", false
 	}
@@ -287,6 +354,10 @@ func applyEdit(root *yaml.Node, e KeyEdit) error {
 	if len(e.Path) == 0 {
 		return errors.New("empty edit path")
 	}
+	if e.Remove {
+		removeKey(root, e.Path)
+		return nil
+	}
 	pathDesc := strings.Join(e.Path, ".")
 
 	cur := root
@@ -303,6 +374,9 @@ func applyEdit(root *yaml.Node, e KeyEdit) error {
 			var valNode *yaml.Node
 			if last {
 				valNode = &yaml.Node{Kind: yaml.ScalarNode, Value: e.Value}
+				if e.Quoted {
+					valNode.Tag, valNode.Style = "!!str", yaml.DoubleQuotedStyle
+				}
 			} else {
 				valNode = &yaml.Node{Kind: yaml.MappingNode, Tag: "!!map"}
 			}
@@ -316,7 +390,7 @@ func applyEdit(root *yaml.Node, e KeyEdit) error {
 
 		val := cur.Content[idx+1]
 		if last {
-			return setScalar(val, e.Value, pathDesc)
+			return setScalar(val, e.Value, e.Quoted, pathDesc)
 		}
 		cur = val
 	}
@@ -334,14 +408,49 @@ func findKey(mapping *yaml.Node, key string) int {
 	return -1
 }
 
+// lookupNode는 root 매핑에서 path를 따라 내려간 노드를 돌려준다. 경로가 없으면 nil이다.
+func lookupNode(root *yaml.Node, path []string) *yaml.Node {
+	cur := root
+	for _, key := range path {
+		if cur.Kind != yaml.MappingNode {
+			return nil
+		}
+		idx := findKey(cur, key)
+		if idx < 0 {
+			return nil
+		}
+		cur = cur.Content[idx+1]
+	}
+	return cur
+}
+
+// removeKey는 path의 키-값 쌍을 부모 매핑에서 뗀다. 키 노드와 값 노드에 붙은 주석은
+// 함께 사라진다. 경로가 없거나 부모가 매핑이 아니면 아무것도 하지 않는다.
+func removeKey(root *yaml.Node, path []string) {
+	parent := lookupNode(root, path[:len(path)-1])
+	if parent == nil || parent.Kind != yaml.MappingNode {
+		return
+	}
+	idx := findKey(parent, path[len(path)-1])
+	if idx < 0 {
+		return
+	}
+	parent.Content = append(parent.Content[:idx:idx], parent.Content[idx+2:]...)
+}
+
 // setScalar는 기존 스칼라 노드의 값을 교체한다. double/single-quoted 스타일은
 // 문자열 태그와 함께 보존하고, plain 스칼라는 태그를 비워 인코더가 새 값에서
-// 타입(!!bool/!!int/!!float/!!str)을 재해석하게 한다.
-func setScalar(n *yaml.Node, value, pathDesc string) error {
+// 타입(!!bool/!!int/!!float/!!str)을 재해석하게 한다. quoted가 참이면 큰따옴표
+// 스칼라로 고정한다.
+func setScalar(n *yaml.Node, value string, quoted bool, pathDesc string) error {
 	if n.Kind != yaml.ScalarNode {
 		return fmt.Errorf("path %q: target is not a scalar", pathDesc)
 	}
 	n.Value = value
+	if quoted {
+		n.Tag, n.Style = "!!str", yaml.DoubleQuotedStyle // plain이면 ""가 null로 읽힌다.
+		return nil
+	}
 	switch n.Style {
 	case yaml.DoubleQuotedStyle, yaml.SingleQuotedStyle:
 		n.Tag = "!!str" // 인용 형상 유지 — 문자열로 고정.
@@ -401,6 +510,12 @@ const defaultFilePerm os.FileMode = 0o644
 // temp+rename을 유지한다 (REQ-4).
 // @MX:SPEC: SPEC-SEAM-GREENFIELD-001
 func atomicWrite(path string, data []byte) error {
+	return atomicWriteMode(path, data, 0)
+}
+
+// atomicWriteMode는 atomicWrite와 같되 perm이 0이 아니면 기록되는 파일의 모드를
+// 기존 모드 대신 perm으로 고정한다 — 새로 만들 때와 재기록할 때 모두.
+func atomicWriteMode(path string, data []byte, perm os.FileMode) error {
 	mode := defaultFilePerm
 	info, err := os.Stat(path)
 	if err != nil {
@@ -413,6 +528,9 @@ func atomicWrite(path string, data []byte) error {
 		}
 	} else {
 		mode = info.Mode().Perm()
+	}
+	if perm != 0 {
+		mode = perm
 	}
 	dir := filepath.Dir(path)
 	tmp, err := os.CreateTemp(dir, ".yamlpatch-*.tmp")

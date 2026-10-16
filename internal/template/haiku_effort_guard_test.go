@@ -3,14 +3,9 @@ package template
 import (
 	"os"
 	"path/filepath"
-	"regexp"
 	"strings"
 	"testing"
 )
-
-// agentModelEffortLineRegex matches a model: or effort: key at the start of a
-// frontmatter line.
-var agentModelEffortLineRegex = regexp.MustCompile(`(?m)^(model|effort):`)
 
 // findProjectRootForHaikuGuard walks up from the test's working directory
 // (the package dir internal/template) until it finds go.mod, returning the
@@ -52,28 +47,35 @@ func extractAgentFrontmatter(content string) string {
 	return rest[:closingIdx]
 }
 
-// TestAgentsDeclareNoModelOrEffort enforces the inheritance invariant
-// (SPEC-AGENT-MODEL-INHERIT-001 REQ-AMI-003, AC-AMI-003): no MoAI agent
-// definition declares a model: or effort: frontmatter key, so every subagent
-// inherits the main session's model and effort (Claude Code resolves an absent
-// model to the main conversation's model and an absent effort to the session's).
-// It scans the template source, the local mirror, and the local harness
-// agents. It supersedes the former `model: haiku ⇒ no effort` guard, which this
-// invariant implies.
+// agentFrontmatterValue returns the value of a top-level frontmatter key, or ""
+// when the key is absent.
+func agentFrontmatterValue(fm, key string) string {
+	for _, line := range strings.Split(fm, "\n") {
+		if v, ok := strings.CutPrefix(line, key+":"); ok {
+			return strings.TrimSpace(v)
+		}
+	}
+	return ""
+}
+
+// TestAgentRoleModelEffortDefaults pins the per-role defaults (card t1808):
+// the judging roles declare model opus, and no agent definition — live,
+// harness, or template mirror — declares effort max or ultra (those levels are
+// never a shipped default).
 //
-// Sentinel on failure: AGENT_MODEL_EFFORT_DECLARED.
-func TestAgentsDeclareNoModelOrEffort(t *testing.T) {
+// Sentinel on failure: AGENT_ROLE_DEFAULT_VIOLATION.
+func TestAgentRoleModelEffortDefaults(t *testing.T) {
 	t.Parallel()
 
 	projectRoot := findProjectRootForHaikuGuard(t)
-
 	agentDirs := []string{
 		filepath.Join(projectRoot, ".claude", "agents", "moai"),
 		filepath.Join(projectRoot, ".claude", "agents", "harness"),
 		filepath.Join(projectRoot, "internal", "template", "templates", ".claude", "agents", "moai"),
 	}
+	judging := map[string]bool{"plan-auditor": true, "sync-auditor": true, "super-advisor": true}
 
-	scanned := 0
+	scanned, judgedSeen := 0, 0
 	for _, dir := range agentDirs {
 		entries, err := os.ReadDir(dir)
 		if err != nil {
@@ -96,12 +98,21 @@ func TestAgentsDeclareNoModelOrEffort(t *testing.T) {
 				continue
 			}
 			scanned++
-			if m := agentModelEffortLineRegex.FindAllString(fm, -1); len(m) > 0 {
-				t.Errorf("AGENT_MODEL_EFFORT_DECLARED: agent %q declares %v; subagents inherit the main session's model and effort — remove the key(s)", path, m)
+			if effort := agentFrontmatterValue(fm, "effort"); effort == "max" || effort == "ultra" {
+				t.Errorf("AGENT_ROLE_DEFAULT_VIOLATION: %q declares effort %q; max/ultra are never a shipped default", path, effort)
+			}
+			if judging[strings.TrimSuffix(entry.Name(), ".md")] {
+				judgedSeen++
+				if model := agentFrontmatterValue(fm, "model"); model != "opus" {
+					t.Errorf("AGENT_ROLE_DEFAULT_VIOLATION: judging role %q declares model %q, want opus", path, model)
+				}
 			}
 		}
 	}
 	if scanned == 0 {
 		t.Fatal("scanned no agent frontmatter — the guard read nothing")
+	}
+	if judgedSeen != 2*len(judging) {
+		t.Errorf("saw %d judging-role files, want %d (live + template for each of %d roles)", judgedSeen, 2*len(judging), len(judging))
 	}
 }

@@ -100,22 +100,27 @@ func userSettingsDefaultMode(t *testing.T, homeDir string) string {
 	return mode
 }
 
-// TestRunInit_WizardAutonomyTierAppliesBundle asserts AC-001: an interactive
-// init whose injected wizard result carries AutonomyTier=automatic (flag
-// absent) deploys the tier bundle — the USER-scope settings.json receives
-// permissions.defaultMode=auto through a KEY-SCOPED splice that preserves an
-// unrelated pre-existing key verbatim (spec.md §4).
+// TestRunInit_WizardAutonomyTierAppliesBundle asserts AC-001 (re-scoped by
+// SPEC-USER-SETTINGS-PROTECT-001, decision Q1): an interactive init whose
+// injected wizard result carries AutonomyTier=automatic (flag absent) deploys
+// the tier bundle through the USER-scope writer — which PRESERVES an existing
+// permissions.defaultMode (a present value means the user owns the setting;
+// REQ-002) and writes the tier default only when the key is absent (REQ-001).
+// Both dispositions are KEY-SCOPED splices that preserve unrelated
+// pre-existing keys verbatim (spec.md §4).
 func TestRunInit_WizardAutonomyTierAppliesBundle(t *testing.T) {
 	wiz := &wizard.WizardResult{AutonomyTier: config.AutonomyTierAutomatic}
 
-	homeDir := t.TempDir()
-	t.Setenv("HOME", homeDir)
-	t.Setenv("MOAI_SANDBOX_PROOF", "")
-	t.Setenv("MOAI_DISABLE_BYPASS_PERMISSIONS_MODE", "")
+	t.Run("existing-defaultMode-preserved", func(t *testing.T) {
+		homeDir := t.TempDir()
+		t.Setenv("HOME", homeDir)
+		t.Setenv("MOAI_SANDBOX_PROOF", "")
+		t.Setenv("MOAI_DISABLE_BYPASS_PERMISSIONS_MODE", "")
 
-	// Pre-existing USER settings carrying an unrelated key plus an env block:
-	// the bundle's splice MUST preserve both regions verbatim.
-	userSettings := `{
+		// Pre-existing USER settings carrying an unrelated key, an env block,
+		// and the user's own defaultMode: the Q1 keep-rule preserves the
+		// user's value — the tier default is NOT written over it.
+		userSettings := `{
   "teammateMode": "glm",
   "env": {
     "MOAI_FLAG": "keep-me"
@@ -125,50 +130,78 @@ func TestRunInit_WizardAutonomyTierAppliesBundle(t *testing.T) {
   }
 }
 `
-	if err := os.MkdirAll(filepath.Join(homeDir, ".claude"), 0o755); err != nil {
-		t.Fatal(err)
-	}
-	userPath := filepath.Join(homeDir, ".claude", "settings.json")
-	if err := os.WriteFile(userPath, []byte(userSettings), 0o644); err != nil {
-		t.Fatal(err)
-	}
+		if err := os.MkdirAll(filepath.Join(homeDir, ".claude"), 0o755); err != nil {
+			t.Fatal(err)
+		}
+		userPath := filepath.Join(homeDir, ".claude", "settings.json")
+		if err := os.WriteFile(userPath, []byte(userSettings), 0o644); err != nil {
+			t.Fatal(err)
+		}
 
-	origInteractive := isInteractiveStdin
-	isInteractiveStdin = func() bool { return true }
-	t.Cleanup(func() { isInteractiveStdin = origInteractive })
-	origDeps := deps
-	deps = nil
-	t.Cleanup(func() { deps = origDeps })
-	origWizard := runWizardFn
-	runWizardFn = func(_, _, _ string) (*wizard.WizardResult, error) { return wiz, nil }
-	t.Cleanup(func() { runWizardFn = origWizard })
+		runInitForAutonomyAtHomeCapturingOut(t, homeDir, wiz, nil)
 
-	projectDir := filepath.Join(t.TempDir(), "tier-proj")
-	cmd := newInitTestCmd()
-	var out, errBuf bytes.Buffer
-	cmd.SetOut(&out)
-	cmd.SetErr(&errBuf)
-	if err := runInit(cmd, []string{projectDir}); err != nil {
-		t.Fatalf("runInit: %v (stderr: %s)", err, errBuf.String())
-	}
+		// Q1 keep-rule: the user's defaultMode survives the tier application.
+		if mode := userSettingsDefaultMode(t, homeDir); mode != "default" {
+			t.Errorf("USER permissions.defaultMode = %q, want %q preserved (Q1 keep-rule: the user owns an existing defaultMode; SPEC-USER-SETTINGS-PROTECT-001)", mode, "default")
+		}
 
-	// The tier bundle wrote defaultMode=auto into the USER scope.
-	if mode := userSettingsDefaultMode(t, homeDir); mode != "auto" {
-		t.Errorf("USER permissions.defaultMode = %q, want %q (tier automatic)", mode, "auto")
-	}
+		// Key-scoped splice (spec.md §4): the unrelated pre-existing key and
+		// the env block survive the write verbatim — whole-file overwrite is
+		// prohibited.
+		data, err := os.ReadFile(userPath)
+		if err != nil {
+			t.Fatalf("read USER settings.json: %v", err)
+		}
+		if !bytes.Contains(data, []byte(`"teammateMode": "glm"`)) {
+			t.Errorf("unrelated pre-existing key teammateMode was not preserved verbatim; got:\n%s", data)
+		}
+		if !bytes.Contains(data, []byte(`"MOAI_FLAG": "keep-me"`)) {
+			t.Errorf("unrelated env block was not preserved verbatim; got:\n%s", data)
+		}
+	})
 
-	// Key-scoped splice (spec.md §4): the unrelated pre-existing key and the
-	// env block survive the write verbatim — whole-file overwrite is prohibited.
-	data, err := os.ReadFile(userPath)
-	if err != nil {
-		t.Fatalf("read USER settings.json: %v", err)
-	}
-	if !bytes.Contains(data, []byte(`"teammateMode": "glm"`)) {
-		t.Errorf("unrelated pre-existing key teammateMode was not preserved verbatim; got:\n%s", data)
-	}
-	if !bytes.Contains(data, []byte(`"MOAI_FLAG": "keep-me"`)) {
-		t.Errorf("unrelated env block was not preserved verbatim; got:\n%s", data)
-	}
+	t.Run("absent-defaultMode-applies-tier", func(t *testing.T) {
+		homeDir := t.TempDir()
+		t.Setenv("HOME", homeDir)
+		t.Setenv("MOAI_SANDBOX_PROOF", "")
+		t.Setenv("MOAI_DISABLE_BYPASS_PERMISSIONS_MODE", "")
+
+		// USER settings WITHOUT a defaultMode key (the permissions block has
+		// only an allow list): the tier default IS written here, and the
+		// user's allow entries survive the write (REQ-001).
+		userSettings := `{
+  "teammateMode": "glm",
+  "permissions": {
+    "allow": ["Bash(make:*)"]
+  }
+}
+`
+		if err := os.MkdirAll(filepath.Join(homeDir, ".claude"), 0o755); err != nil {
+			t.Fatal(err)
+		}
+		userPath := filepath.Join(homeDir, ".claude", "settings.json")
+		if err := os.WriteFile(userPath, []byte(userSettings), 0o644); err != nil {
+			t.Fatal(err)
+		}
+
+		runInitForAutonomyAtHomeCapturingOut(t, homeDir, wiz, nil)
+
+		// The tier bundle wrote defaultMode=auto into the USER scope (the
+		// key was absent — the tier default applies).
+		if mode := userSettingsDefaultMode(t, homeDir); mode != "auto" {
+			t.Errorf("USER permissions.defaultMode = %q, want %q (tier automatic applied on the absent-key path)", mode, "auto")
+		}
+		data, err := os.ReadFile(userPath)
+		if err != nil {
+			t.Fatalf("read USER settings.json: %v", err)
+		}
+		if !bytes.Contains(data, []byte(`"Bash(make:*)"`)) {
+			t.Errorf("the user's allow entry was not preserved across the tier write; got:\n%s", data)
+		}
+		if !bytes.Contains(data, []byte(`"teammateMode": "glm"`)) {
+			t.Errorf("unrelated pre-existing key teammateMode was not preserved verbatim; got:\n%s", data)
+		}
+	})
 }
 
 // TestRunInit_FlagAutonomyTierNonInteractive asserts AC-003: a non-interactive

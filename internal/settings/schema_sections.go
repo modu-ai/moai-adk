@@ -172,14 +172,21 @@ func glmTiers() []string {
 // 없음. RC3(glm-settings-persist)부터 메인 세션이 해당 슬롯을 쓰면 런타임에
 // 적용된다 (llmFields 주석 참조).
 //
-// SPEC-MODEL-MATRIX-UPDATE-001 REQ-MMU-003부터 전 티어 기본값이 max다 —
-// glm-5.3과 glm-5.3-flash 양쪽 모두 max와 양립하고(flash는 max 전용),
-// 세션 기본값도 이미 max다(SessionGLMReasoningState). high/low는 여전히
-// 유효한 저장 상태 선택지다(GLMReasoningStateNames 유지) — 바뀌는 것은
-// 기본 선택값뿐이다. (주의: collapse 오버레이에 따라 저장된 high도 wire에서는
-// max로 수렴한다.)
+// card t1808부터 티어별 기본값은 config.DefaultGLMEffort* 상수를 따른다 —
+// high max, medium high, low low, fable max. glm-5.3-flash 슬롯은 무엇을
+// 저장하든 effort 오버레이가 wire에서 max로 고정한다. (주의: collapse
+// 오버레이에 따라 저장된 high도 wire에서는 max로 수렴할 수 있다.)
 func glmDefaultTierEffort(tier string) string {
-	return template.GLMStateMax
+	switch tier {
+	case "medium":
+		return config.DefaultGLMEffortMedium
+	case "low":
+		return config.DefaultGLMEffortLow
+	case "fable":
+		return config.DefaultGLMEffortFable
+	default:
+		return config.DefaultGLMEffortHigh
+	}
 }
 
 // glmDefaultTierModel는 티어별 모델 기본 선택값이다. config.NewDefaultLLMConfig()

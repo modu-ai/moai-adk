@@ -545,7 +545,7 @@ func TestIntegrationCandidateIgnoresRepoScopingEnv(t *testing.T) {
 
 // TestIntegrationCandidateRunSelection pins the run-selection contract
 // (card t1478 M2 repair): with TWO active runs, a bare discovery refuses
-// ambiguous — but the launcher-selected run (MOAI_KANBAN_ID, the
+// ambiguous — but the launcher-selected run (the run-id stamp, the
 // autoLaneRunResolveFn precedent) and the explicit --run flag both name
 // the run whose card record the tree guard verifies against, so the
 // candidate records for the right card.
@@ -571,7 +571,7 @@ func TestIntegrationCandidateRunSelection(t *testing.T) {
 		t.Setenv(config.EnvFactoryRunID, "run-a")
 		runID, err := candidateRunSelection(root, "")
 		if err != nil {
-			t.Fatalf("candidateRunSelection with MOAI_KANBAN_ID=run-a: %v", err)
+			t.Fatalf("candidateRunSelection with %s=run-a: %v", config.EnvFactoryRunID, err)
 		}
 		if runID != "run-a" {
 			t.Errorf("run selection: got %q, want run-a", runID)

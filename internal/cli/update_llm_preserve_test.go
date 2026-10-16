@@ -43,16 +43,16 @@ import (
 
 const (
 	// llmUserPinnedHigh is the user's replacement for the template default
-	// glm.models.high value ("glm-5.3-flash"). Divergent from base AND from
+	// glm.models.high value ("glm-5.3"). Divergent from base AND from
 	// the default so the preservation assertion cannot pass by accident.
 	llmUserPinnedHigh = "glm-user-pinned-model"
 
-	// llmMarkerComment is the user's marker comment line. Placement is
-	// load-bearing: the merge walks the NEW template's key nodes, so a comment
-	// attached to a key the template carries is dropped with the template's
-	// own key comment (measured 2026-09-02, backup node merge). The marker
-	// therefore rides a USER-ADDED key, whose key node is carried through the
-	// merge's old-only retention pass.
+	// llmMarkerComment is the user's marker comment line. It rides a USER-ADDED
+	// key because that is the placement this fixture measures: a user-added key
+	// is absent from the template, so both merge paths carry it from the user's
+	// file unchanged, comment included. The rules for a comment above a
+	// template-carried key are pinned in node_merge_comments_test.go (3-way) and
+	// node_merge_twoway_comments_test.go (2-way).
 	llmMarkerComment = "# T239-LLM-PRESERVE-MARKER: user note pinned above a user-added key"
 
 	// llmUserMarkerKey is the user-added key under llmMarkerComment. It is
@@ -110,7 +110,7 @@ func buildLLMUserYAML(t *testing.T, base []byte, dropPerformanceTier bool) []byt
 	t.Helper()
 	s := string(base)
 
-	s = replaceOnce(t, s, `high: "glm-5.3-flash"`, `high: "`+llmUserPinnedHigh+`"`)
+	s = replaceOnce(t, s, `high: "glm-5.3"`, `high: "`+llmUserPinnedHigh+`"`)
 	s = replaceOnce(t, s, "  claude_bin: \"\"",
 		"  claude_bin: \"\"\n"+
 			llmMarkerComment+"\n"+

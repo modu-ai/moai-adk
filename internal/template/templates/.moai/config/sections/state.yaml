@@ -10,4 +10,12 @@
 # state:
 #   session_record_retention_days: 30
 
-state: {}
+state:
+    # state.profile_max_bytes is the advisory per-profile size cap the
+    # SessionStart hygiene pass warns about: when a profile under
+    # ~/.moai/claude-profiles grows above this many bytes, the session start
+    # logs an advisory naming the profile and this key. Warning only —
+    # nothing is ever deleted by the advisory; reclaim space with
+    # `moai clean --home --force`. Remove the key to silence the check
+    # entirely (an absent key yields no warning).
+    profile_max_bytes: 8589934592

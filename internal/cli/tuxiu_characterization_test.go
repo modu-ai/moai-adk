@@ -198,7 +198,7 @@ func TestTUXDataValuesPreserved(t *testing.T) {
 		}
 		// update: outcome count + found count + skills-archived summary.
 		uOut := tuxStripANSI(tuxReadGolden(t, filepath.Join(set, "update.notty.stdout.golden")))
-		for _, want := range []string{"Updated 26 files", "3 skills archived, 0 user customizations modified"} {
+		for _, want := range []string{"Updated 26 files", "3 skills archived"} {
 			if !strings.Contains(uOut, want) {
 				t.Errorf("[%s] update stdout missing data token %q", label, want)
 			}

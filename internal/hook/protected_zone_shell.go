@@ -46,6 +46,7 @@ import (
 	"io/fs"
 	"path"
 	"path/filepath"
+	"runtime"
 	"strings"
 
 	"mvdan.cc/sh/v3/syntax"
@@ -55,7 +56,108 @@ import (
 
 // zoneMutationVerbs are the single-word mutating forms of REQ-SIPZ-007.
 var zoneMutationVerbs = map[string]bool{
-	"rm": true, "unlink": true, "mv": true, "cp": true, "tee": true, "truncate": true,
+	"rm": true, "unlink": true, "mv": true, "rename": true, "cp": true, "tee": true, "truncate": true,
+}
+
+// zoneUnlinkVerbs are the unlink-family members of zoneMutationVerbs whose
+// slash-less final component the shell removes AS ITSELF (card t1712): the
+// unlink call takes the link's own directory entry and never the target
+// behind it. mv, cp, tee and truncate are excluded on purpose — they follow
+// a final-component symlink and write the target, so they keep the
+// fail-closed follow.
+var zoneUnlinkVerbs = map[string]bool{
+	"rm": true, "unlink": true,
+}
+
+// zoneUnlinkLinkOwn reports whether an rm/unlink operand names its final
+// component AS ITSELF: no trailing separator (a separator spelling names the
+// directory THROUGH the link) and no "." or ".." final segment (those spell
+// the directory too). A child path after the link keeps the link a PARENT
+// component — the parent resolves as today and the final name rejoins onto
+// the resolved parent. The separator set is platform-aware (card t1712
+// repair round 2): "/" separates everywhere, "\" additionally on windows —
+// `zonelink\.` names the directory through the link there — while on POSIX a
+// backslash is an ordinary filename character
+// (SPEC-HOOK-ZONE-BACKSLASH-001) and the same texts stay link-own finals.
+// On WINDOWS a final component ending in "." or a space is NON-CANONICAL
+// (card t1712 repair round 5): Win32 normalization strips trailing dots and
+// spaces from the last component, so `secret.md.` and `secret.md ` alias the
+// entry `secret.md` — the link-own resolver preserves the RAW final name and
+// would judge an entry the shell never touches, so such a spelling stays on
+// the target-following (full resolver) path, the fail-closed direction. On
+// POSIX a trailing dot or space is an ordinary filename character and the
+// literal entry is the one removed — link-own unchanged.
+//
+// WINDOWS DEFERS THE NARROWING ENTIRELY (card t1712 repair round 8): the
+// narrowing is disabled outright — this predicate returns false for every
+// windows operand, routing the unlink family to the PRE-CARD target-
+// following full resolution. Rationale: windows filesystem name aliasing
+// (8.3 short names, locale-specific case tables, fold pairs like ı/I that
+// EqualFold-style folds miss but NTFS equates) cannot be enumerated by fold
+// functions, and the stdlib offers no real-entry-name lookup that does not
+// follow the final symlink; the target-following resolver's
+// EvalSymlinks/Lstat canonicalization is the exact defense reviews 6-8 kept
+// citing, so windows defers to it. The rounds-2..7 guards below (separator
+// split, trailing dot/space, ~digit shape) stay as BELT-AND-SUSPENDERS for
+// any future windows re-enable — they gate a path the early return makes
+// unreachable today, not live routing. Residual: the pre-card over-block
+// (a link-own removal through a final-component link is denied on windows
+// where POSIX allows it) persists on windows — a separate card.
+// windows rides in as an argument, the package's pathSegments idiom, so both
+// branches classify identically on every host; the single production caller
+// passes runtime.GOOS == "windows".
+func zoneUnlinkLinkOwn(cand string, windows bool) bool {
+	if cand == "" {
+		return false
+	}
+	if windows {
+		// class closure, not a mechanism patch (card t1712 repair round 8):
+		// every windows operand keeps the pre-card target-following judgment
+		return false
+	}
+	last := strings.LastIndexByte(cand, '/')
+	if windows {
+		if idx := strings.LastIndexByte(cand, '\\'); idx > last {
+			last = idx
+		}
+		if strings.HasSuffix(cand, "\\") {
+			return false
+		}
+	}
+	if strings.HasSuffix(cand, "/") {
+		return false
+	}
+	seg := cand[last+1:]
+	if seg == "." || seg == ".." {
+		return false
+	}
+	if windows && (strings.TrimRight(seg, ". ") != seg || hasShortNameShape(seg)) {
+		// Win32 strips trailing dots/spaces from the final component and NTFS
+		// 8.3 aliases a long name onto its "~N" short name — both spellings
+		// name a DIFFERENT entry than the raw text judges, so they never
+		// route to the link-own resolver (which preserves the raw name); the
+		// target-following resolver's EvalSymlinks/Lstat work judges the
+		// REAL entry (card t1712 repair rounds 5-6). Belt-and-suspenders
+		// since round 8: unreachable while the windows early return above
+		// defers the narrowing, kept for a future windows re-enable.
+		return false
+	}
+	return true
+}
+
+// hasShortNameShape reports the NTFS 8.3 short-name shape — a "~" followed
+// by a digit anywhere in the final component (SECRET~1.MD, REPORT~2.TXT):
+// with 8.3 name generation enabled that spelling removes the long name it
+// aliases, and the Go stdlib offers no short-name expansion, so the raw name
+// cannot be canonicalized here. The classifier only detects the shape.
+// Ceiling: 8.3 aliases outside the "~digit" shape are not covered.
+func hasShortNameShape(seg string) bool {
+	for i := 0; i+1 < len(seg); i++ {
+		if seg[i] == '~' && seg[i+1] >= '0' && seg[i+1] <= '9' {
+			return true
+		}
+	}
+	return false
 }
 
 // zoneGitMutating are the git subcommands of REQ-SIPZ-007.
@@ -502,6 +604,12 @@ type zoneWalker struct {
 	// total work, not per-generation work.
 	unbounded bool
 	cands     []string
+	// linkCands holds the rm/unlink operands judged by the LINK'S OWN path
+	// (card t1712): a slash-less final component is resolved only up to its
+	// parent, the final component itself never followed. Every other
+	// candidate — target-following spellings, the other verbs, redirection
+	// targets — lands in cands as before.
+	linkCands []string
 	funcs     [2]map[string]*zoneFuncBodies
 	calling   [2]map[string]bool
 	calls     [2]map[string]int
@@ -847,6 +955,11 @@ func zoneShellCovered(forms []zoneForm, load config.ProtectedZoneLoad, root stri
 		if load.State == config.ZoneStateOK {
 			for i := range load.Zone.Entries {
 				entry := load.Zone.Entries[i]
+				if entry.Kind == config.ZoneUserRoot {
+					// a user-root Pattern is root-relative ("claude-skills/moai-demo/"), so it
+					// cannot name a project parent; user-root targets are judged by zoneUserRootCovered
+					continue
+				}
 				if entry.Kind == config.ZoneBaseGlob {
 					// no path prefix to contain, but removing the directory
 					// removes every file the glob matches there. The walk
@@ -968,7 +1081,26 @@ func (w *zoneWalker) zoneCall(cmd *syntax.CallExpr) {
 			// the verb's world binds its own argument readings (gate
 			// rounds 23/25)
 			w.mutating = true
-			w.zoneCandsWorld(world, pathCands[world])
+			if zoneUnlinkVerbs[name] {
+				// card t1712: an rm/unlink operand whose link is its last
+				// component with nothing after it is judged by the LINK'S
+				// OWN path — the unlink removes the link, never the target.
+				// Every other spelling keeps the target-following judgment,
+				// and so does every reading of a DUAL word: the two bash
+				// generations render \u/\U differently, and the preserved
+				// t1585 family freezes the full-follow judgment for those
+				// candidates (gate rounds 13/14).
+				zonePathCandidatesWorld(args[1:], world, func(cand string, dual bool) {
+					joined := zoneRelativeToSet(w.cwds, cand, world)
+					if !dual && zoneUnlinkLinkOwn(cand, runtime.GOOS == "windows") {
+						w.linkCands = append(w.linkCands, joined...)
+						return
+					}
+					w.cands = append(w.cands, joined...)
+				})
+			} else {
+				w.zoneCandsWorld(world, pathCands[world])
+			}
 		case name == "sed":
 			if zoneSedInPlace(world, args) {
 				// in-place is decided by THIS command's options alone — an
@@ -1349,40 +1481,53 @@ func zoneEnvAssignment(t string) bool {
 // the existing under-match.
 func zonePathCandidates(args []*syntax.Word) [2][]string {
 	out := [2][]string{}
-	var seenDashDash [2]bool
+	for world := 0; world < 2; world++ {
+		world := world
+		zonePathCandidatesWorld(args, world, func(cand string, _ bool) {
+			out[world] = append(out[world], cand)
+		})
+	}
+	return out
+}
+
+// zonePathCandidatesWorld runs the shared option-word classification for ONE
+// bash generation, handing each literal reading to add together with the
+// word's dual-generation flag (whether the word carries \u/\U, the one
+// escape family whose rendering differs across bash generations). The
+// classification — the bare `--` separator, a long option's attached value,
+// skipped short flags — is the per-world half of zonePathCandidates, split
+// out so the unlink-family caller can decide each reading's disposition at
+// the word it came from (card t1712: a dual word's readings keep the
+// fail-closed target-following judgment and are never narrowed).
+func zonePathCandidatesWorld(args []*syntax.Word, world int, add func(cand string, dual bool)) {
+	var seenDashDash bool
 	for _, a := range args {
 		readings, literal := zoneWordWorldReadings(a)
 		if !literal {
 			continue
 		}
-		// per-world classification and emptiness filtering: the modern
-		// reading may truncate to "" at a leading code-point NUL while the
-		// pre-4.2 reading still names a real path, and each world's flag
-		// spelling classifies independently (gate rounds 15/19)
-		for world := 0; world < 2; world++ {
-			t := readings[world]
-			if t == "" {
+		t := readings[world]
+		if t == "" {
+			continue
+		}
+		dual := zoneWordDual(a)
+		if !seenDashDash {
+			if t == "--" {
+				seenDashDash = true
 				continue
 			}
-			if !seenDashDash[world] {
-				if t == "--" {
-					seenDashDash[world] = true
-					continue
+			if strings.HasPrefix(t, "--") {
+				if idx := strings.Index(t, "="); idx >= 0 && idx+1 < len(t) {
+					add(t[idx+1:], dual)
 				}
-				if strings.HasPrefix(t, "--") {
-					if idx := strings.Index(t, "="); idx >= 0 && idx+1 < len(t) {
-						out[world] = append(out[world], t[idx+1:])
-					}
-					continue
-				}
-				if strings.HasPrefix(t, "-") {
-					continue
-				}
+				continue
 			}
-			out[world] = append(out[world], t)
+			if strings.HasPrefix(t, "-") {
+				continue
+			}
 		}
+		add(t, dual)
 	}
-	return out
 }
 
 // zoneSedInPlace reports whether the argument list makes sed in-place for
@@ -2130,6 +2275,39 @@ func (w *zoneWalker) walkIfChain(clause *syntax.IfClause) {
 	w.setCwds(w.cwds)
 }
 
+// zoneDenyIfCovered judges one candidate's resolved forms against the zone
+// and, when covered, records the audit row and returns the deny reason; ""
+// continues the walk. Shared by the target-following and link-own candidate
+// lists (card t1712).
+func (h *preToolHandler) zoneDenyIfCovered(agentID, root string, load config.ProtectedZoneLoad, cand string, forms []zoneForm) string {
+	category, covered := zoneShellCovered(forms, load, root)
+	display := cand
+	if len(forms) > 0 {
+		display = forms[0].Display
+	}
+	// M4 (SPEC-USERASSET-DEPLOY-GUARD-001): the user-root arm — its OWN
+	// branch (gate round 26 #3): user-root forms match only ZoneUserRoot
+	// entries, filtered by the manifest-tracked containment check (the
+	// manifest records files; a directory mutation is covered when any
+	// tracked key lives under it). The project/baseline rules above
+	// never see the user-root forms. Absorbed into this seam at the
+	// t1712 absorb of a9a4d6ea0521 so both candidate lists inherit it.
+	if !covered && load.State == config.ZoneStateOK {
+		if uCat, uDisplay, uCovered := zoneUserRootCovered(cand, load); uCovered {
+			category, covered, display = uCat, true, uDisplay
+		}
+	}
+	if !covered {
+		return ""
+	}
+	reason := zoneDenyReason(agentID, "category", category, display)
+	h.recordZoneAudit(root, zoneAuditRow{
+		Identity: agentID, Tool: "Bash", Path: display,
+		Category: category, Decision: "deny", ManifestState: load.State,
+	})
+	return reason
+}
+
 // checkProtectedZoneShell decides one identity Bash call against the zone and
 // returns a deny reason, or "" to let the call through. A command with no
 // mutating form never reaches the manifest (REQ-SIPZ-008); a mutating command
@@ -2187,9 +2365,29 @@ func (h *preToolHandler) checkProtectedZoneShell(agentID string, toolInput json.
 
 	// dedup BEFORE the cap: a unicode-free command contributes the same
 	// path from both worlds, and capping before dedup would false-deny a
-	// plain command whose deduped set fits (gate round 19 P2)
+	// plain command whose deduped set fits (gate round 19 P2). The link-own
+	// list dedups the same way, and the cap counts the DEDUPLICATED UNION of
+	// both lists by EXACT candidate string (card t1712 repair round 3): one
+	// command naming the same path under rm (link-own) and tee
+	// (target-following) lands the SAME STRING in BOTH lists, and counting
+	// the memberships additively denied a set whose unique population is
+	// within the cap. The key stays exact — never folded: on a
+	// case-sensitive filesystem paths differing only by case are DISTINCT
+	// paths (card t1712 repair round 4), so a folded key would collapse an
+	// over-cap case-variant flood under the cap and let it reach
+	// per-candidate resolution. Over-counting case variants on a
+	// case-insensitive host is the fail-closed direction. Each membership
+	// still judges under its own semantics below — a path present in both
+	// lists stays deny when either reading hits the zone.
 	w.cands = zoneDedupStrings(w.cands)
-	overCap := len(w.cands) > zoneCandidateCap
+	w.linkCands = zoneDedupStrings(w.linkCands)
+	unique := make(map[string]bool, len(w.cands)+len(w.linkCands))
+	for _, list := range [2][]string{w.cands, w.linkCands} {
+		for _, cand := range list {
+			unique[cand] = true
+		}
+	}
+	overCap := len(unique) > zoneCandidateCap
 	if overCap {
 		// a candidate set beyond the cap cannot be judged soundly at this
 		// scale — denied fail-closed REGARDLESS of manifest state: a set
@@ -2205,22 +2403,22 @@ func (h *preToolHandler) checkProtectedZoneShell(agentID string, toolInput json.
 		})
 		return reason
 	}
+	// one LISTING CACHE per guard call (repair round 12 P2): N candidates
+	// sharing a resolved parent read that parent's directory listing once —
+	// never carried across guard calls.
+	listings := make(map[string]*zoneNameIndex)
 	for _, cand := range w.cands {
-		forms := resolveZoneTarget(root, cand)
-		category, covered := zoneShellCovered(forms, load, root)
-		if !covered {
-			continue
+		if reason := h.zoneDenyIfCovered(agentID, root, load, cand, resolveZoneTarget(root, cand, listings)); reason != "" {
+			return reason
 		}
-		display := cand
-		if len(forms) > 0 {
-			display = forms[0].Display
+	}
+	for _, cand := range w.linkCands {
+		// card t1712: the link-own candidates resolve with the final
+		// component unfollowed — the link's own path is all the judgment
+		// sees, so a link outside the zone pointing at a zone file passes.
+		if reason := h.zoneDenyIfCovered(agentID, root, load, cand, resolveZoneLinkTarget(root, cand, listings)); reason != "" {
+			return reason
 		}
-		reason := zoneDenyReason(agentID, "category", category, display)
-		h.recordZoneAudit(root, zoneAuditRow{
-			Identity: agentID, Tool: "Bash", Path: display,
-			Category: category, Decision: "deny", ManifestState: load.State,
-		})
-		return reason
 	}
 
 	if w.unbounded {
@@ -2261,6 +2459,8 @@ func (h *preToolHandler) checkProtectedZoneShell(agentID string, toolInput json.
 		target := ""
 		if len(w.cands) > 0 {
 			target = w.cands[0]
+		} else if len(w.linkCands) > 0 {
+			target = w.linkCands[0]
 		}
 		h.recordZoneAudit(root, zoneAuditRow{
 			Identity: agentID, Tool: "Bash", Path: target,

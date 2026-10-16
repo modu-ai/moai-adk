@@ -65,7 +65,15 @@ func applyLaunchEffort(payload map[string]any, profileName string) (map[string]a
 	if err != nil {
 		return payload, nil
 	}
-	effort := resolveLaunchEffort(prefs.EffortLevel, prefs.ModelPolicy)
+	return applyLaunchEffortValue(payload, resolveLaunchEffort(prefs.EffortLevel, prefs.ModelPolicy))
+}
+
+// applyLaunchEffortValue merges one resolved effort level into an injected
+// settings payload, with the same max handling as applyLaunchEffort: an empty
+// effort injects nothing, and max leaves the payload for the `--effort max`
+// launch argument. The factory session defaults (launch_session_defaults.go)
+// enter here with their own value instead of the profile's.
+func applyLaunchEffortValue(payload map[string]any, effort string) (map[string]any, []string) {
 	if effort == "" {
 		return payload, nil
 	}

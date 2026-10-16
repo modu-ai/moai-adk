@@ -128,16 +128,19 @@ Caveat (Issue #653): Claude Code reports `context_window_size` based on the Clau
 
 `/clear` is the heaviest reduction available: it discards the whole window, including the warm prompt cache, and forces the next turn to re-pay the entire always-loaded prefix. That cost is not incidental — it scales with the always-loaded footprint, so `/clear` gets more expensive as the rule tree grows. Reach for it when a full reset is genuinely what is wanted, not as the reflexive answer to a full window.
 
-Four cheaper moves come first. Each targets a different cause of context growth, so pick by cause rather than working down the list:
+Five cheaper moves come first. Each targets a different cause of context growth, so pick by cause rather than working down the list:
 
 | Move | Use when | Effect |
 |------|----------|--------|
+| Clear a tool result | The growth is mostly re-fetchable tool output (a large read, a log dump, a web fetch) | Removes that output from the message list — a mechanical edit with no inference cost, lossless when the output can be re-fetched; conversation and reasoning stay untouched |
 | `/btw <question>` | A side question would otherwise land in the transcript | Answer renders in a dismissible overlay and never enters conversation history — context does not grow at all |
 | `/compact <instructions>` | The window is full but the *current* task must continue | Summarizes in place; the instructions steer what survives |
 | `Esc Esc` / `/rewind` → **Summarize up to here** | Early exploration is spent but recent turns must stay verbatim | Compacts the old prefix, keeps the tail intact |
 | `Esc Esc` / `/rewind` → restore a checkpoint | A line of attempts polluted the context, or the tree needs reverting | Restores conversation, files, or both, from a per-prompt snapshot |
 
 Checkpoints are automatic (one per prompt) and persist across sessions, so an approach can be tried and abandoned rather than deliberated over. They track only Claude's own edits — external processes are invisible to them, and they are not a substitute for git.
+
+Decision rule between clearing and compaction: re-fetchable tool output is the case for clearing — it is the cheapest of the reduction primitives (no inference cost, just a mechanical edit to the message list) and lossless whenever the output can be re-fetched; conversation and reasoning are what compaction is for. (Source: the Anthropic Cookbook's "Context engineering: memory, compaction, and tool clearing" guidance.)
 
 `/clear` remains correct for a genuine task switch, and remains **mandatory** at the thresholds below. The ladder shortens how often those thresholds are reached; it does not move them.
 
@@ -197,7 +200,7 @@ All MoAI workflows: `/moai plan|run|sync`, multi-SPEC Epics, iterative loops (`/
 
 - `.claude/rules/moai/workflow/cache-aware-execution.md` — prompt-cache-aware `/clear` timing (its directive 4 permits an earlier `/clear` before a large multi-spawn batch, below the thresholds above) + gate placement and stagger-spawn ordering.
 - `.claude/rules/moai/workflow/session-handoff.md` — paste-ready resume format + auto-memory integration. Trigger #1 consumes the model-specific threshold table from this file (1M = 50%, 200K = 90%); `/clear` recommendation and paste-ready emission both fire at the same boundary.
-- `context-window-management-detail.md` — the lazy companion. Load it for § Why This Matters · § Claude Code's Graduated-Compaction Layers · § Reduction Ladder — cheaper moves before `/clear` (the four cheaper rungs and the checkpoint mechanics) · § GLM-5.3 context window · § Multi-session work — resume rather than re-establish · § Detection Heuristics · § Snapshot confidence
+- `context-window-management-detail.md` — the lazy companion. Load it for § Why This Matters · § Claude Code's Graduated-Compaction Layers · § Reduction Ladder — cheaper moves before `/clear` (the five cheaper rungs and the checkpoint mechanics) · § GLM-5.3 context window · § Multi-session work — resume rather than re-establish · § Detection Heuristics · § Snapshot confidence
 
 
 Status: HARD operational rule, applies to all sessions

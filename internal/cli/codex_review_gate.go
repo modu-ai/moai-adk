@@ -471,12 +471,16 @@ func codexReviewBlockPath(dir string, state verify.ReceiptState) string {
 // codexReviewBlockCount reports how many turn-end blocks the key has taken. A
 // missing record is zero. An unreadable or malformed record reports ok=false: the
 // gate cannot prove the count is below C, so the caller allows rather than block.
+// The read is non-blocking and regular-file only (readManifestRecord), so a FIFO at
+// the record path reads as unreadable instead of stalling the Stop hook (card t1619,
+// codex review round 2).
 func codexReviewBlockCount(dir string, state verify.ReceiptState) (int, bool) {
-	raw, err := os.ReadFile(codexReviewBlockPath(dir, state))
-	if os.IsNotExist(err) {
-		return 0, true
-	}
-	if err != nil {
+	path := codexReviewBlockPath(dir, state)
+	raw, ok := readManifestRecord(path)
+	if !ok {
+		if _, err := os.Lstat(path); os.IsNotExist(err) {
+			return 0, true
+		}
 		return 0, false
 	}
 	var rec codexReviewBlockRecord
