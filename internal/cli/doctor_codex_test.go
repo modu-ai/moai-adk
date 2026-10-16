@@ -22,6 +22,7 @@ import (
 
 	"github.com/modu-ai/moai-adk/internal/cli/uikit"
 	"github.com/modu-ai/moai-adk/internal/codexwiring"
+	"github.com/modu-ai/moai-adk/internal/testguard"
 )
 
 // wireProjectForDoctor wires a fresh temp project doctor should find HEALTHY,
@@ -1257,6 +1258,7 @@ func TestCheckCodexWiring_ClaudeOnlyMachineNoMirrorRow(t *testing.T) {
 // skills at all, and a routine `moai update` was measured not to restore it
 // (root-cause.md Claim 2) — so the summary carries the FORCED re-deploy.
 func TestCheckCodexWiring_MirrorAbsentAdvisesRedeploy(t *testing.T) {
+	testguard.RedirectHome(t)
 	stubCodexLookup(t, true, true)
 	stubCodexHome(t, t.TempDir())
 
@@ -1277,6 +1279,7 @@ func TestCheckCodexWiring_MirrorAbsentAdvisesRedeploy(t *testing.T) {
 // (REQ-CMD-005): an entry claiming a skill that is not there. Nothing repairs
 // it between deploys, so it is a finding and the COUNT rides in the summary.
 func TestCheckCodexWiring_DanglingMirrorEntriesCounted(t *testing.T) {
+	testguard.RedirectHome(t)
 	stubCodexLookup(t, true, true)
 	stubCodexHome(t, t.TempDir())
 
@@ -1305,6 +1308,7 @@ func TestCheckCodexWiring_DanglingMirrorEntriesCounted(t *testing.T) {
 // on it would hand every such user a permanent row for a working mirror — the
 // un-nagging invariant failing by a different door.
 func TestCheckCodexWiring_CopyModeDetailOnly(t *testing.T) {
+	testguard.RedirectHome(t)
 	stubCodexLookup(t, true, true)
 	stubCodexHome(t, t.TempDir())
 
@@ -1332,6 +1336,7 @@ func TestCheckCodexWiring_CopyModeDetailOnly(t *testing.T) {
 // from doctor, and a project may legitimately carry locally-authored skills no
 // deploy ever mirrored. Counted, reported, never warned.
 func TestCheckCodexWiring_UnmirroredSkillsDetailOnly(t *testing.T) {
+	testguard.RedirectHome(t)
 	stubCodexLookup(t, true, true)
 	stubCodexHome(t, t.TempDir())
 
@@ -1402,6 +1407,7 @@ func TestCheckCodexWiring_UnwiredNoMirrorNag(t *testing.T) {
 // fixture is this file's existing symlink-loop idiom rather than a chmod 0o000
 // directory, which was measured to break t.TempDir() cleanup.
 func TestCheckCodexWiring_MirrorUnreadableIndeterminate(t *testing.T) {
+	testguard.RedirectHome(t)
 	if runtime.GOOS == "windows" {
 		t.Skip("symlink creation needs privileges on windows")
 	}
@@ -1443,6 +1449,7 @@ func TestCheckCodexWiring_MirrorUnreadableIndeterminate(t *testing.T) {
 // the panel on its own. Each fixture raises exactly one mirror finding and no
 // other, which is what makes the measurement standalone by construction.
 func TestCheckCodexWiring_MirrorSummaryWidth(t *testing.T) {
+	testguard.RedirectHome(t)
 	cases := []struct {
 		name  string
 		build func(t *testing.T, root string)
@@ -1506,6 +1513,7 @@ func TestCheckCodexWiring_MirrorCheckIsReadOnly(t *testing.T) {
 // participates in the existing tail-drop UNCHANGED — the bound is a shared
 // resource, and a new finding must not be exempted from it.
 func TestCheckCodexWiring_MirrorFindingParticipatesInTailDrop(t *testing.T) {
+	testguard.RedirectHome(t)
 	t.Run("tail_drop_keeps_the_lead_and_detail_keeps_everything", func(t *testing.T) {
 		stubCodexLookup(t, true, true)
 		stubCodexHome(t, writeCodexHomeConfig(t, []codexSkillEntrySpec{
@@ -1567,6 +1575,7 @@ func TestCheckCodexWiring_MirrorFindingParticipatesInTailDrop(t *testing.T) {
 // check.Detail: the verbose gate lives at the render layer
 // (doctor_render.go:134-137), while the Detail field is assigned regardless.
 func TestCheckCodexWiring_MirrorUsesExistingRowTwoRegisters(t *testing.T) {
+	testguard.RedirectHome(t)
 	stubCodexLookup(t, true, true)
 	stubCodexHome(t, t.TempDir())
 

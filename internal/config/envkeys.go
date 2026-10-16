@@ -40,6 +40,12 @@ const (
 	// optimization is bypassed (SPEC-HOOK-PRETOOL-PERF-001).
 	EnvConfigCacheDisabled = "MOAI_CONFIG_CACHE_DISABLED"
 
+	// EnvCodexAuditLeg marks the codex child of an audit leg with "1" (t1788). The
+	// child's Stop chain skips every member that asks the model to run a
+	// verification command, which would otherwise nest a verification inside the
+	// leg's own review.
+	EnvCodexAuditLeg = "MOAI_CODEX_AUDIT_LEG"
+
 	// EnvDevelopmentMode overrides the development methodology (ddd or tdd).
 	EnvDevelopmentMode = "MOAI_DEVELOPMENT_MODE"
 

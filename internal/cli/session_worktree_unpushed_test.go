@@ -29,6 +29,8 @@ import (
 	"path/filepath"
 	"strings"
 	"testing"
+
+	"github.com/modu-ai/moai-adk/internal/testguard"
 )
 
 // canonicalTempDir returns t.TempDir() with symlinks resolved. On macOS the
@@ -102,6 +104,7 @@ func realWTRepo(t *testing.T, commitInWorktree bool, detached bool) (repoDir, wt
 // test FAILS — the tree is removed with exit-code silence — which is the
 // defect.
 func TestCleanupSessionWorktree_UnpushedCleanTreePreserved(t *testing.T) {
+	testguard.RedirectHome(t)
 	_, wtPath := realWTRepo(t, true, false)
 
 	var out bytes.Buffer
@@ -121,6 +124,7 @@ func TestCleanupSessionWorktree_UnpushedCleanTreePreserved(t *testing.T) {
 // reachable only through reflogs until GC. Preservation is the only safe
 // answer.
 func TestCleanupSessionWorktree_DetachedHeadPreserved(t *testing.T) {
+	testguard.RedirectHome(t)
 	_, wtPath := realWTRepo(t, true, true)
 
 	var out bytes.Buffer
@@ -145,6 +149,7 @@ func TestCleanupSessionWorktree_DetachedHeadPreserved(t *testing.T) {
 // the merge. Pre-fix the merged verdict + clean porcelain reached the removal;
 // post-fix the unpushed predicate preserves.
 func TestPRMergeCleanup_GhMergedWithUnpushedCommitsPreserved(t *testing.T) {
+	testguard.RedirectHome(t)
 	// Real repo; the gh seams are the ONLY overrides (deterministic MERGED
 	// verdict — a real `gh` cannot answer in a temp repo).
 	repoDir, wtPath := realWTRepo(t, true, false)
