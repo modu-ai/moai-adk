@@ -15,7 +15,10 @@ import (
 
 func TestCodexLaneAutoPromptImperative(t *testing.T) {
 	p := codexLaneAutoPrompt
-	if !strings.HasPrefix(p, "Run `moai todo --auto` now.") {
+	// Card t1814: the lane boot runs the no-wait lane mode — `--auto` waits
+	// for worker evidence, and a Codex session acts only after the command
+	// exits, so the two would wait on each other.
+	if !strings.HasPrefix(p, "Run `moai todo --auto-lane` now.") {
 		t.Errorf("prompt must open with the immediate command, got: %s", p)
 	}
 	if !strings.Contains(p, "Do not read") {

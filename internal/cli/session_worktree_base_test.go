@@ -17,6 +17,7 @@ import (
 	"testing"
 
 	"github.com/modu-ai/moai-adk/internal/hook"
+	"github.com/modu-ai/moai-adk/internal/testguard"
 )
 
 // swapHookResolvableForTest replaces the SHARED resolvability helper that
@@ -62,6 +63,7 @@ func swapWorktreeBaseResolvable(t *testing.T, result bool, args *[]string) {
 // extra trailing empty-string operand FAILS: `git worktree add -b b dest ""`
 // is not the same command as `git worktree add -b b dest`.
 func TestSessionWorktreeNoBaseOperandArgvIsUnchanged(t *testing.T) {
+	testguard.RedirectHome(t)
 	got := gitWorktreeAddArgs("/tmp/dest", "WT-x", "")
 	want := []string{"git", "worktree", "add", "-b", "WT-x", "/tmp/dest"}
 	if len(got) != len(want) {
@@ -77,6 +79,7 @@ func TestSessionWorktreeNoBaseOperandArgvIsUnchanged(t *testing.T) {
 // TestSessionWorktreeBaseOperandAppendedWhenSet is the positive half: a
 // non-empty base is appended as the FINAL operand.
 func TestSessionWorktreeBaseOperandAppendedWhenSet(t *testing.T) {
+	testguard.RedirectHome(t)
 	got := gitWorktreeAddArgs("/tmp/dest", "WT-x", "develop")
 	want := []string{"git", "worktree", "add", "-b", "WT-x", "/tmp/dest", "develop"}
 	for i := range want {
@@ -92,6 +95,7 @@ func TestSessionWorktreeBaseOperandAppendedWhenSet(t *testing.T) {
 // TestSessionWorktreeNoBaseWhenConfigEmpty: an empty configured value reaches
 // the add seam as an empty base.
 func TestSessionWorktreeNoBaseWhenConfigEmpty(t *testing.T) {
+	testguard.RedirectHome(t)
 	root := t.TempDir()
 	writeWorktreeBaseConfig(t, root, "")
 
@@ -120,6 +124,7 @@ func TestSessionWorktreeNoBaseWhenConfigEmpty(t *testing.T) {
 // the wrong base is recoverable; a worktree that failed to materialize blocks
 // the lane.
 func TestSessionWorktreeUnresolvableBaseFallsBackToNoOperand(t *testing.T) {
+	testguard.RedirectHome(t)
 	root := t.TempDir()
 	writeWorktreeBaseConfig(t, root, "no-such-branch")
 
@@ -146,6 +151,7 @@ func TestSessionWorktreeUnresolvableBaseFallsBackToNoOperand(t *testing.T) {
 // second rule that happens to agree. A behavioural-equivalence check would pass
 // for a divergent second rule, which is the defect this asserts against.
 func TestSessionWorktreeSharedPredicateResolverInvokedOnce(t *testing.T) {
+	testguard.RedirectHome(t)
 	root := t.TempDir()
 	writeWorktreeBaseConfig(t, root, "develop")
 
@@ -173,6 +179,7 @@ func TestSessionWorktreeSharedPredicateResolverInvokedOnce(t *testing.T) {
 // REQ-WBR-011. A second, independent rule in this package would make this
 // delegation unnecessary, which is exactly what must not happen.
 func TestSessionWorktreeSharedPredicateDefaultsToConsumerOnesHelper(t *testing.T) {
+	testguard.RedirectHome(t)
 	// The default seam delegates to hook.WorktreeBaseBranchResolvable at call
 	// time; swapping the hook-side variable must therefore be observable here.
 	var seen []string
@@ -196,6 +203,7 @@ func TestSessionWorktreeSharedPredicateDefaultsToConsumerOnesHelper(t *testing.T
 // `git worktree add` against a throwaway repository, so the assertion is on git's
 // own reflog rather than on a fake.
 func TestSessionWorktreeConfiguredBaseCutsFromThatBranch(t *testing.T) {
+	testguard.RedirectHome(t)
 	repo := t.TempDir()
 	git := func(args ...string) string {
 		t.Helper()

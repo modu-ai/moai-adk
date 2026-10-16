@@ -550,8 +550,12 @@ func codexAuditLoadRole(role string) (codexAuditRole, error) {
 	if err != nil {
 		return codexAuditRole{}, fmt.Errorf("role %q file: %w", role, err)
 	}
-	if fields["sandbox_mode"] != codexAuditSandbox {
-		return codexAuditRole{}, fmt.Errorf("role %q file declares sandbox_mode %q, not %s", role, fields["sandbox_mode"], codexAuditSandbox)
+	// The permission contract decides eligibility and the process runs with
+	// -s read-only. The emitter no longer writes sandbox_mode (card t1808 —
+	// Codex ignores it for a spawned role), so an absent line is expected; a
+	// file that still states a different mode is refused as inconsistent.
+	if mode, stated := fields["sandbox_mode"]; stated && mode != codexAuditSandbox {
+		return codexAuditRole{}, fmt.Errorf("role %q file declares sandbox_mode %q, not %s", role, mode, codexAuditSandbox)
 	}
 	instr, ok := fields["developer_instructions"]
 	if !ok || instr == "" {

@@ -167,12 +167,12 @@ func TestSaveLLMSection_PopulatesDefaultGLMModels(t *testing.T) {
 	// Verify that default values were populated, not empty strings. Every slot
 	// carries a 1M model: Claude Code sizes the auto-compact window once from the
 	// high slot, so a smaller model elsewhere would inherit a window it cannot
-	// hold. The Fable slot holds glm-5.3 rather than glm-5.3-flash — both are 1M,
-	// so the window invariant survives the split. Tier differentiation lives on
+	// hold. The Haiku slot holds glm-5.3-flash, the others glm-5.3 — both are 1M,
+	// so the window invariant survives the split (card t1808). Tier differentiation lives on
 	// the effort axis instead.
 	for slot, wantModel := range map[string]string{
-		"high":   "glm-5.3-flash",
-		"medium": "glm-5.3-flash",
+		"high":   "glm-5.3",
+		"medium": "glm-5.3",
 		"low":    "glm-5.3-flash",
 		"fable":  "glm-5.3",
 	} {

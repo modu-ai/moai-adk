@@ -271,7 +271,7 @@ const codexLanePrecedenceNote = "Codex auto-lane precedence: the boot directive 
 // read-first duty resolves against the boot directive instead of
 // contradicting it.
 const codexLaneBootPrecedenceNote = "Codex auto-lane precedence: the boot directive governs your first action — " +
-	"run `moai todo --auto` before any rule-file reading; " +
+	"run `moai todo --auto-lane` before any rule-file reading; " +
 	"open the rule files when the cards' work needs them, not before."
 
 // codexLaneEnvFailFast is the t1776 one-line stop for a broken lane launch:
