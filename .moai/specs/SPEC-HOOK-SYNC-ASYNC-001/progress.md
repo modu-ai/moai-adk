@@ -2,9 +2,10 @@
 
 ## §E.1 Plan-phase Audit-Ready Signal
 
-_Artifact set complete at plan phase (spec.md, plan.md, acceptance.md, progress.md — Tier M).
-Awaiting plan-audit cross; status `draft` in spec.md frontmatter. Baseline probes pinned to tree
-`e04ebd5ca6bc441b380c1072d5a1dff8431459ba` in acceptance.md §E._
+audit_ready: true
+plan_status: audit-ready
+plan_complete_at: 2026-10-16T22:30:39+09:00
+plan_audit: .moai/reports/t1780/plan-audit.md, PASS, overall_score 0.9375, must_pass_failed 0, blocking_count 0, audited_sha 7ec170cca15d3a2976b41f915cf38ff96a4e2581
 
 ## §E.2 Run-phase Evidence
 
