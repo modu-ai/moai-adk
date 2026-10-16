@@ -215,8 +215,10 @@ func TestAuditMulti_ModelMulti_CodexUnavailable_FailsClosedNamed(t *testing.T) {
 			if res.IsError {
 				t.Fatalf("unexpected error result: %s", toolResultText(res))
 			}
-			if m["overall_verdict"] != "fail" {
-				t.Errorf("overall_verdict = %v, want fail", m["overall_verdict"])
+			// REQ-MN-021 / AC-MN-021: could-not-run is the distinct not-converged
+			// outcome, never a converged fail — and still never a pass.
+			if m["overall_verdict"] != VerdictInconclusive {
+				t.Errorf("overall_verdict = %v, want %q (not-converged, REQ-MN-021)", m["overall_verdict"], VerdictInconclusive)
 			}
 			if m["gate_unmet"] != BackendCodex {
 				t.Errorf("gate_unmet = %v, want %q", m["gate_unmet"], BackendCodex)
@@ -249,8 +251,11 @@ func TestAuditMulti_ModelMulti_CodexUnavailable_FailsClosedNamed(t *testing.T) {
 	t.Run("unconfigured sibling root still passes", func(t *testing.T) {
 		root := newAuditMultiBaselineRoot(t, "")
 		_, _, m := planCall(t, root, nil, map[string]ReviewOutput{BackendCodex: inconclusiveVerdict("codex unavailable")})
-		if m["overall_verdict"] != "pass" {
-			t.Errorf("overall_verdict = %v, want pass", m["overall_verdict"])
+		// REQ-MN-022: an unset gate is never an opt-in (so no gate_unmet), and a
+		// required-by-default backend left inconclusive can no longer ride the
+		// claude anchor to a pass — the outcome is the not-converged one.
+		if m["overall_verdict"] != VerdictInconclusive {
+			t.Errorf("overall_verdict = %v, want %q (REQ-MN-022)", m["overall_verdict"], VerdictInconclusive)
 		}
 		if _, present := m["gate_unmet"]; present {
 			t.Errorf("gate_unmet = %v, want absent", m["gate_unmet"])
