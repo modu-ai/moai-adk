@@ -640,7 +640,7 @@ repository_wide_test_verdict: PENDING   # owned by the CI run on the integration
 
 ```yaml
 sync_complete_at: 2026-10-16
-sync_commit_sha: pending-backfill   # a commit cannot cite its own hash; backfilled in a following commit
+sync_commit_sha: 524c581fe6db94dc9de452e34ef6c79d73fead11
 sync_status: complete-pending-sync-audit
 sync_base_head: ecc040ccfa1064aee2ec34c31770a69830275ff8   # tree HEAD the sync commit sits on (main f13fed1c4 already absorbed)
 ac_source: .moai/specs/SPEC-UPDATE-BACKUP-RETENTION-001/acceptance.md   # tier L
