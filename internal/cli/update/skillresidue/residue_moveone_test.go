@@ -9,14 +9,20 @@ import (
 	"testing"
 )
 
-// TestMoveFileReferencesArePinned parses the package's non-test sources and counts
-// every reference to the rename seam (moveFile) and to the single rename site
-// (moveOne), by enclosing declaration. The registry row for moveOne
-// (internal/cli/update_destructive_registry.go) counts the one os.Rename behind
-// them. A new reference to either name is a new route to a rename: the test fails
-// and forces that row to be reviewed. The declaration name of moveOne itself is not
-// a reference, so it is not counted.
+// TestMoveFileReferencesArePinned parses the package's non-test sources and counts every
+// reference to the root-bound steps of the held-back rename and to their seams, by
+// enclosing declaration. The registry rows for moveOne and dropOne
+// (internal/cli/update_destructive_registry.go) cover the one Rename and the one Remove
+// behind them. A new reference to any of these names is a new route to a move or a
+// removal: the test fails and forces those rows to be reviewed. The declaration name of a
+// function itself is not a reference, so it is not counted.
 func TestMoveFileReferencesArePinned(t *testing.T) {
+	pinned := map[string]bool{
+		"mkdirFile": true, "mkdirOne": true,
+		"moveFile": true, "moveOne": true,
+		"linkFile": true, "linkOne": true,
+		"dropFile": true, "dropOne": true,
+	}
 	entries, err := os.ReadDir(".")
 	if err != nil {
 		t.Fatal(err)
@@ -50,7 +56,7 @@ func TestMoveFileReferencesArePinned(t *testing.T) {
 					continue
 				}
 				ast.Inspect(root, func(n ast.Node) bool {
-					if id, ok := n.(*ast.Ident); ok && (id.Name == "moveFile" || id.Name == "moveOne") {
+					if id, ok := n.(*ast.Ident); ok && pinned[id.Name] {
 						got[id.Name+"@"+owner]++
 					}
 					return true
@@ -59,13 +65,23 @@ func TestMoveFileReferencesArePinned(t *testing.T) {
 		}
 	}
 
-	// The only allowed references: moveFile is declared at package level (its name is
-	// the declaration, counted once) and renameSkillFile makes its three moves through
-	// it; moveOne is referenced once, as the value of the package-level declaration.
+	// The only allowed references. At package level each seam variable is declared once
+	// and bound to its function once. renameSkillFile makes the move, the final link and
+	// the drops of the staging names; claimStage claims the staging folder; putBack returns
+	// the file to its own name.
 	want := map[string]int{
-		"moveFile@package-level":   1,
-		"moveFile@renameSkillFile": 3,
-		"moveOne@package-level":    1,
+		"mkdirFile@package-level": 1, "mkdirOne@package-level": 1,
+		"moveFile@package-level": 1, "moveOne@package-level": 1,
+		"linkFile@package-level": 1, "linkOne@package-level": 1,
+		"dropFile@package-level": 1, "dropOne@package-level": 1,
+
+		"mkdirFile@claimStage":     1,
+		"moveFile@renameSkillFile": 1,
+		"linkFile@renameSkillFile": 1,
+		"dropFile@renameSkillFile": 4,
+		"linkFile@putBack":         1,
+		"dropFile@putBack":         1,
+		"moveFile@putBack":         1,
 	}
 	for key, n := range want {
 		if got[key] != n {
@@ -74,7 +90,7 @@ func TestMoveFileReferencesArePinned(t *testing.T) {
 	}
 	for key, n := range got {
 		if _, ok := want[key]; !ok {
-			t.Errorf("new reference %s (%d): review the moveOne registry row", key, n)
+			t.Errorf("new reference %s (%d): review the moveOne and dropOne registry rows", key, n)
 		}
 	}
 }

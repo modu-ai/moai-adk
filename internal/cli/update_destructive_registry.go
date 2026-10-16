@@ -42,8 +42,11 @@ type destructiveSite struct {
 // key identifies a registry row independently of its count and assignment.
 func (s destructiveSite) key() string { return s.File + " " + s.Function }
 
-// destructiveTargetRegistry is the registry itself: 16 (file, function) rows
-// covering 26 call sites, matching the source scan the drift guard performs.
+// destructiveTargetRegistry is the registry itself: 17 (file, function) rows
+// covering 27 call sites, matching the source scan the drift guard performs.
+// The scan counts os.RemoveAll and os.Rename, and also Rename, RemoveAll and
+// Remove called on an os.Root handle (a parameter typed *os.Root, or the result
+// of os.OpenRoot), which the root-bound rename in skillresidue uses.
 //
 // Rows carry either a Protection or an Exemption, never both and never neither.
 // The exempt rows rest on three materially different grounds — same-call rewind
@@ -189,11 +192,26 @@ var destructiveTargetRegistry = []destructiveSite{
 	},
 	{
 		File: "internal/cli/update/skillresidue/residue.go", Function: "moveOne", Sites: 1,
-		Protection: "The single os.Rename in the skillresidue package. All three moves in " +
-			"renameSkillFile reach this site through the moveFile seam (skill.md to a temporary " +
-			"name, the temporary name to SKILL.md, and the restore after a failed second move). " +
-			"The temporary name comes from freeName, so no user file is replaced, and a failed " +
-			"second move puts the content back under its own name. TestMoveFileReferencesArePinned " +
-			"fails on any new reference to moveFile, which forces this row to be reviewed.",
+		Protection: "SPEC-UPDATE-BACKUP-RETENTION-001 REQ-UBR-017 (findings F24, F25). The " +
+			"package's one root-bound Rename. renameSkillFile reaches it through the moveFile " +
+			"seam to move the lowercase skill.md into a staging folder it created exclusively " +
+			"(Mkdir fails when the name exists, so no existing name is replaced), through a " +
+			"handle bound to the project root (os.Root), so a path component swapped for a " +
+			"symbolic link after the caller's checks cannot lead the move outside the project. " +
+			"The file is then linked to SKILL.md (a link fails when SKILL.md exists) before the " +
+			"staging names are dropped; a refused link puts the file back under its own name " +
+			"through this same site (putBack, only while that name is free). " +
+			"TestMoveFileReferencesArePinned fails on any new reference to the seams, which " +
+			"forces this row and the dropOne row to be reviewed.",
+	},
+	{
+		File: "internal/cli/update/skillresidue/residue.go", Function: "dropOne", Sites: 1,
+		Protection: "SPEC-UPDATE-BACKUP-RETENTION-001 REQ-UBR-017. The package's one root-bound " +
+			"Remove, reached through the dropFile seam. renameSkillFile calls it only on the " +
+			"empty staging folder it created, and on a name of the file after another name for " +
+			"the same file exists (the link to SKILL.md, or the link back to skill.md), so the " +
+			"content is never left without a name. A restore that cannot happen leaves the " +
+			"staged copy in place and the error names it. Remove, unlike RemoveAll, cannot " +
+			"remove a non-empty folder.",
 	},
 }

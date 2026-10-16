@@ -80,32 +80,34 @@ func TestAC_UBR_16_SwappedSkillFolderCannotRedirectTheRename(t *testing.T) {
 	}
 }
 
-// AC-UBR-17 (F25): a user file that appears at the temporary name just before the first
-// move of the rename must keep its bytes. The step may finish under another temporary name
-// or put the content back under its own name and report; it may not overwrite.
+// AC-UBR-17 (F25): a user file that appears at the temporary name just before the rename's
+// first step must keep its bytes. The step may finish under another temporary name or put
+// the content back under its own name and report; it may not overwrite. (On the starting
+// tree the same hook sat on the first move, whose Rename replaced the user file; the
+// rename now claims its temporary name with an exclusive Mkdir, so the hook moved to it.)
 func TestAC_UBR_17_RenameDoesNotOverwriteAFileThatAppearsAtTheTemporaryName(t *testing.T) {
 	root := t.TempDir()
 	dir := filepath.Join(root, ".claude", "skills", raceSkill)
 	mustWriteFile(t, filepath.Join(dir, "skill.md"), "lower body")
 
-	orig := moveFile
-	t.Cleanup(func() { moveFile = orig })
+	orig := mkdirFile
+	t.Cleanup(func() { mkdirFile = orig })
 	calls := 0
-	moveFile = func(from, to string) error {
+	mkdirFile = func(r *os.Root, name string) error {
 		calls++
 		if calls == 1 {
-			// The user's file lands at the destination name of the first move.
-			if err := os.WriteFile(to, []byte("user data"), 0o644); err != nil {
+			// The user's file lands at the temporary name the rename is about to take.
+			if err := os.WriteFile(filepath.Join(root, filepath.FromSlash(name)), []byte("user data"), 0o644); err != nil {
 				t.Fatalf("create the user file: %v", err)
 			}
 		}
-		return orig(from, to)
+		return orig(r, name)
 	}
 
 	_, err := Clean(root, Options{Shipped: raceShipped})
 
 	if calls == 0 {
-		t.Fatal("no move ran: the pass did not reach the rename")
+		t.Fatal("no temporary name was claimed: the pass did not reach the rename")
 	}
 	if got := namesHolding(t, dir, "user data"); len(got) == 0 {
 		t.Fatalf("the user file's bytes are gone; names now %v (Clean err: %v)", exactNames(t, dir), err)
@@ -113,4 +115,59 @@ func TestAC_UBR_17_RenameDoesNotOverwriteAFileThatAppearsAtTheTemporaryName(t *t
 	if got := namesHolding(t, dir, "lower body"); len(got) == 0 {
 		t.Fatalf("the skill file's content is gone; names now %v (Clean err: %v)", exactNames(t, dir), err)
 	}
+}
+
+// AC-UBR-17 (F25, destination): a SKILL.md that appears after the check, before the final
+// step, keeps its bytes, and the step reports the refusal.
+func TestAC_UBR_17_RenameDoesNotOverwriteASkillFileThatAppearsAtTheDestination(t *testing.T) {
+	root := t.TempDir()
+	dir := filepath.Join(root, ".claude", "skills", raceSkill)
+	mustWriteFile(t, filepath.Join(dir, "skill.md"), "lower body")
+
+	orig := moveFile
+	t.Cleanup(func() { moveFile = orig })
+	moveFile = func(r *os.Root, from, to string) error {
+		err := orig(r, from, to)
+		if err == nil && filepath.Base(to) == "skill.md" && filepath.Base(filepath.Dir(to)) != raceSkill {
+			// The staged move is done; the user now creates SKILL.md.
+			if werr := os.WriteFile(filepath.Join(dir, "SKILL.md"), []byte("user data"), 0o644); werr != nil {
+				t.Fatalf("create SKILL.md: %v", werr)
+			}
+		}
+		return err
+	}
+
+	_, err := Clean(root, Options{Shipped: raceShipped})
+
+	if err == nil {
+		t.Fatal("the rename reported success although SKILL.md appeared at its destination")
+	}
+	if got := readOrFail(t, filepath.Join(dir, "SKILL.md")); got != "user data" {
+		t.Fatalf("SKILL.md = %q, want the user's bytes", got)
+	}
+	// Where the filesystem keeps skill.md and SKILL.md apart, the lowercase file is back
+	// under its own name; where it folds case the name is taken by the user's file and the
+	// content stays in the staging folder. Either way no byte is lost.
+	if !fileWithBodyUnder(t, dir, "lower body") {
+		t.Fatalf("the skill file's content is gone; tree now %v", treeSnapshot(t, dir))
+	}
+}
+
+// fileWithBodyUnder reports whether any regular file under dir holds body.
+func fileWithBodyUnder(t *testing.T, dir, body string) bool {
+	t.Helper()
+	found := false
+	err := filepath.WalkDir(dir, func(p string, d os.DirEntry, err error) error {
+		if err != nil || d.IsDir() {
+			return err
+		}
+		if data, readErr := os.ReadFile(p); readErr == nil && string(data) == body {
+			found = true
+		}
+		return nil
+	})
+	if err != nil {
+		t.Fatalf("walk %s: %v", dir, err)
+	}
+	return found
 }

@@ -7,8 +7,11 @@
 package skillresidue
 
 import (
+	"errors"
 	"fmt"
+	"io/fs"
 	"os"
+	"path"
 	"path/filepath"
 	"slices"
 )
@@ -62,6 +65,14 @@ func Clean(projectRoot string, opts Options) ([]Action, error) {
 	if err != nil {
 		return nil, err
 	}
+	// The one move this pass can make runs through a handle bound to the project
+	// root, so a folder swapped for a symbolic link after the checks below cannot
+	// lead it outside the project.
+	root, err := os.OpenRoot(projectRoot)
+	if err != nil {
+		return nil, err
+	}
+	defer func() { _ = root.Close() }()
 
 	var actions []Action
 	for _, e := range entries {
@@ -124,7 +135,7 @@ func Clean(projectRoot string, opts Options) ([]Action, error) {
 				continue
 			}
 			if opts.shipped(rel + "/SKILL.md") {
-				if err := renameSkillFile(dir); err != nil {
+				if err := renameSkillFile(root, rel); err != nil {
 					return actions, err
 				}
 				actions = append(actions, Action{Path: rel + "/skill.md", Kind: "renamed-skill-file"})
@@ -191,12 +202,34 @@ func retiredLinkPresent(projectRoot, name string) (bool, error) {
 	return filepath.Clean(resolved) == filepath.Join(projectRoot, ".claude", "skills", name), nil
 }
 
-// moveOne is the only os.Rename call in this package. Every move goes through it,
-// so the registry's destructive-target scan sees one site, not an aliased name.
-func moveOne(from, to string) error { return os.Rename(from, to) }
+// The held-back rename is a few root-bound steps, each behind a named function and a
+// package variable. The functions are the only places the package calls the handle's
+// Rename or Remove, so the registry's destructive-target scan sees named sites, and the
+// pin test counts every reference to them so an alias is visible. A test replaces a
+// variable to make one step fail, or to run a second actor between two steps.
 
-// moveFile is moveOne. A test replaces it to make one move fail on any filesystem.
-var moveFile = moveOne
+// mkdirOne creates a folder inside root and fails when the name exists. That failure is
+// what makes a temporary name a claim and not a guess.
+func mkdirOne(root *os.Root, name string) error { return root.Mkdir(name, 0o755) }
+
+// moveOne is the package's one root-bound Rename. The registry's destructive-target
+// scan counts it.
+func moveOne(root *os.Root, from, to string) error { return root.Rename(from, to) }
+
+// linkOne makes to a second name for the file at from. It fails when to exists, so it
+// can place a name where Rename could only replace one.
+func linkOne(root *os.Root, from, to string) error { return root.Link(from, to) }
+
+// dropOne removes one empty folder or one name of a file that has another name. It
+// never removes the last name of content (see renameSkillFile).
+func dropOne(root *os.Root, name string) error { return root.Remove(name) }
+
+var (
+	mkdirFile = mkdirOne
+	moveFile  = moveOne
+	linkFile  = linkOne
+	dropFile  = dropOne
+)
 
 // ApplyDeferredRenames performs the lowercase skill.md renames that Clean holds back
 // under SkipRenames. It touches only shipped skill folders whose skill.md is a regular
@@ -214,6 +247,11 @@ func ApplyDeferredRenames(projectRoot string, opts Options) ([]Action, error) {
 	if err != nil {
 		return nil, err
 	}
+	root, err := os.OpenRoot(projectRoot)
+	if err != nil {
+		return nil, err
+	}
+	defer func() { _ = root.Close() }()
 	var actions []Action
 	for _, e := range entries {
 		if !e.IsDir() {
@@ -235,7 +273,7 @@ func ApplyDeferredRenames(projectRoot string, opts Options) ([]Action, error) {
 		if !regularFileAt(filepath.Join(dir, "skill.md")) || !opts.shipped(rel+"/SKILL.md") {
 			continue
 		}
-		if err := renameSkillFile(dir); err != nil {
+		if err := renameSkillFile(root, rel); err != nil {
 			return actions, err
 		}
 		actions = append(actions, Action{Path: rel + "/skill.md", Kind: "renamed-skill-file"})
@@ -243,57 +281,93 @@ func ApplyDeferredRenames(projectRoot string, opts Options) ([]Action, error) {
 	return actions, nil
 }
 
-// regularFileAt reports whether path is a regular file. A symbolic link, a directory,
+// regularFileAt reports whether name is a regular file. A symbolic link, a directory,
 // or a FIFO at the path is not.
-func regularFileAt(path string) bool {
-	info, err := os.Lstat(path)
+func regularFileAt(name string) bool {
+	info, err := os.Lstat(name)
 	return err == nil && info.Mode().IsRegular()
 }
 
-// renameSkillFile renames skill.md to SKILL.md through a temporary name, so the
-// change also holds on a case-insensitive filesystem.
-func renameSkillFile(dir string) error {
-	lower := filepath.Join(dir, "skill.md")
-	if !regularFileAt(lower) {
-		return fmt.Errorf("%s is not a regular file; nothing renamed", lower)
-	}
-	tmp, err := freeName(dir, "skill.md.tmp-rename")
+// renameSkillFile renames <dirRel>/skill.md to <dirRel>/SKILL.md through root, a handle
+// bound to the project root, where dirRel is the skill folder's slash-separated path
+// relative to that root. A component swapped for a symbolic link after the caller's
+// checks cannot lead the move outside the project: the handle refuses a path that
+// leaves it.
+//
+// The change never replaces a name. The file is moved into a staging folder the step
+// creates exclusively, which also keeps the change correct on a case-insensitive
+// filesystem; SKILL.md is then linked to it, which fails when SKILL.md exists; and only
+// then are the staging names dropped. Every drop removes a name of a file that has
+// another name at that moment, or an empty folder. A refused link puts the file back
+// under its own name; if that is impossible, the content stays in the staging folder
+// and the error names it.
+//
+// @MX:WARN: [AUTO] filesystem moves and removals inside a user's skill folder
+// @MX:REASON: a path swapped between a check and a move is the F24/F25 hazard; every
+// step goes through root, and no step replaces an existing name.
+func renameSkillFile(root *os.Root, dirRel string) error {
+	lower := path.Join(dirRel, "skill.md")
+	canonical := path.Join(dirRel, "SKILL.md")
+	info, err := root.Lstat(lower)
 	if err != nil {
 		return err
 	}
-	if err := moveFile(lower, tmp); err != nil {
+	if !info.Mode().IsRegular() {
+		return fmt.Errorf("%s is not a regular file; nothing renamed", lower)
+	}
+
+	stage, err := claimStage(root, dirRel)
+	if err != nil {
 		return err
 	}
-	if err := moveFile(tmp, filepath.Join(dir, "SKILL.md")); err != nil {
-		// The content is still under tmp. Put it back under its own name, so no
-		// content is left where nothing reads it.
-		if restoreErr := moveFile(tmp, lower); restoreErr != nil {
-			return fmt.Errorf("%w (restoring %s also failed: %v)", err, lower, restoreErr)
+	staged := path.Join(stage, "skill.md")
+	if err := moveFile(root, lower, staged); err != nil {
+		// Nothing moved: the stage folder is empty and ours to remove.
+		return errors.Join(err, dropFile(root, stage))
+	}
+	if err := linkFile(root, staged, canonical); err != nil {
+		if backErr := putBack(root, staged, lower); backErr != nil {
+			return fmt.Errorf("%w (restoring %s also failed: %v; the content is at %s)", err, lower, backErr, staged)
 		}
-		return err
+		return errors.Join(err, dropFile(root, stage))
 	}
-	return nil
+	return errors.Join(dropFile(root, staged), dropFile(root, stage))
 }
 
-// freeName returns dir/base, or dir/base-N for the first N that names nothing in
-// dir. A rename onto an existing name replaces it, so a temporary name must never
-// be one a user file already holds.
-func freeName(dir, base string) (string, error) {
+// claimStage creates the staging folder for a rename beside the skill file. Mkdir
+// fails when the name exists, so a file or folder that is there, or that appears first,
+// is never replaced: the next name is tried.
+func claimStage(root *os.Root, dirRel string) (string, error) {
+	const base = "skill.md.tmp-rename"
 	for n := range 100 {
 		name := base
 		if n > 0 {
 			name = fmt.Sprintf("%s-%d", base, n)
 		}
-		p := filepath.Join(dir, name)
-		_, err := os.Lstat(p)
-		if os.IsNotExist(err) {
-			return p, nil
+		stage := path.Join(dirRel, name)
+		err := mkdirFile(root, stage)
+		if err == nil {
+			return stage, nil
 		}
-		if err != nil {
+		if !errors.Is(err, fs.ErrExist) {
 			return "", err
 		}
 	}
-	return "", fmt.Errorf("no free temporary name beside %s", filepath.Join(dir, base))
+	return "", fmt.Errorf("no free temporary name beside %s", path.Join(dirRel, "skill.md"))
+}
+
+// putBack returns the staged file to its own name. A hard link cannot replace a name, so
+// it is tried first. Where the filesystem has no hard links the file is moved back, and
+// only while the name is still free. A taken name leaves the content staged.
+func putBack(root *os.Root, staged, lower string) error {
+	err := linkFile(root, staged, lower)
+	if err == nil {
+		return dropFile(root, staged)
+	}
+	if _, statErr := root.Lstat(lower); statErr == nil {
+		return err
+	}
+	return moveFile(root, staged, lower)
 }
 
 // symlinkedRoot reports the first of .moai, .claude, or .claude/skills under

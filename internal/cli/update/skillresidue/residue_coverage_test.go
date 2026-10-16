@@ -23,6 +23,19 @@ func requireUnprivileged(t *testing.T) {
 	}
 }
 
+// openRootT opens dir as the handle the rename runs through, closed at cleanup. The rename
+// takes the project-root handle and the skill folder's path relative to it; tests that
+// exercise the rename alone pass "." for a root that is the skill folder.
+func openRootT(t *testing.T, dir string) *os.Root {
+	t.Helper()
+	root, err := os.OpenRoot(dir)
+	if err != nil {
+		t.Fatalf("open root %s: %v", dir, err)
+	}
+	t.Cleanup(func() { _ = root.Close() })
+	return root
+}
+
 // restoreMode sets path back to a usable mode at cleanup, so the temporary directory
 // can be removed after a test made it unreadable or unwritable.
 func restoreMode(t *testing.T, path string) {
@@ -147,7 +160,8 @@ func TestClean_UnreadableFolderIsAnError(t *testing.T) {
 	}
 }
 
-// A failed first move leaves the lowercase file where it was and returns the error.
+// A failed first move leaves the lowercase file where it was, returns the error, and
+// leaves no staging folder behind.
 func TestClean_RenameFailureIsReturnedAndNothingMoves(t *testing.T) {
 	root := t.TempDir()
 	dir := filepath.Join(root, ".claude", "skills", "moai-ref-owasp-checklist")
@@ -155,13 +169,16 @@ func TestClean_RenameFailureIsReturnedAndNothingMoves(t *testing.T) {
 	shipped := func(rel string) bool { return rel == ".claude/skills/moai-ref-owasp-checklist/SKILL.md" }
 	orig := moveFile
 	t.Cleanup(func() { moveFile = orig })
-	moveFile = func(from, to string) error { return errors.New("injected failure on the first move") }
+	moveFile = func(_ *os.Root, from, to string) error { return errors.New("injected failure on the first move") }
 
 	if _, err := Clean(root, Options{Shipped: shipped}); err == nil {
 		t.Fatal("Clean with a failing rename returned no error")
 	}
 	if got := readOrFail(t, filepath.Join(dir, "skill.md")); got != "lower body" {
 		t.Fatalf("skill.md changed by a failed rename: %q", got)
+	}
+	if names := exactNames(t, dir); len(names) != 1 {
+		t.Fatalf("a failed first move left extra entries behind: %v", names)
 	}
 }
 
@@ -177,7 +194,7 @@ func TestRenameSkillFile_NoFreeTemporaryNameIsRefused(t *testing.T) {
 		mustWriteFile(t, filepath.Join(dir, name), "user data")
 	}
 
-	if err := renameSkillFile(dir); err == nil {
+	if err := renameSkillFile(openRootT(t, dir), "."); err == nil {
 		t.Fatal("renameSkillFile succeeded with no free temporary name")
 	}
 	if got := readOrFail(t, filepath.Join(dir, "skill.md")); got != "lower body" {
@@ -185,31 +202,35 @@ func TestRenameSkillFile_NoFreeTemporaryNameIsRefused(t *testing.T) {
 	}
 }
 
-// When the second move and the restore both fail, the error names both, so a person
-// knows where the content went.
+// When the link to SKILL.md and the restore both fail, the error names both and the
+// staging folder, so a person knows where the content went.
 func TestRenameSkillFile_RestoreFailureIsReported(t *testing.T) {
 	dir := t.TempDir()
 	mustWriteFile(t, filepath.Join(dir, "skill.md"), "lower body")
-	orig := moveFile
-	t.Cleanup(func() { moveFile = orig })
+	origMove, origLink := moveFile, linkFile
+	t.Cleanup(func() { moveFile, linkFile = origMove, origLink })
 	calls := 0
-	moveFile = func(from, to string) error {
+	moveFile = func(root *os.Root, from, to string) error {
 		calls++
 		if calls >= 2 {
 			return errors.New("injected failure")
 		}
-		return orig(from, to)
+		return origMove(root, from, to)
 	}
+	linkFile = func(*os.Root, string, string) error { return errors.New("injected link refusal") }
 
-	err := renameSkillFile(dir)
-	if err == nil || !strings.Contains(err.Error(), "restoring") {
-		t.Fatalf("renameSkillFile error = %v; want one that reports the failed restore", err)
+	err := renameSkillFile(openRootT(t, dir), ".")
+	if err == nil || !strings.Contains(err.Error(), "restoring") || !strings.Contains(err.Error(), "skill.md.tmp-rename") {
+		t.Fatalf("renameSkillFile error = %v; want one that reports the failed restore and where the content is", err)
+	}
+	if got := readOrFail(t, filepath.Join(dir, "skill.md.tmp-rename", "skill.md")); got != "lower body" {
+		t.Fatalf("the content is not where the error says: %q", got)
 	}
 }
 
-// A folder with no search permission cannot be inspected, so the temporary-name check
-// fails with that error and the rename does not start.
-func TestFreeName_UninspectableDirectoryIsAnError(t *testing.T) {
+// A folder with no search permission cannot be inspected, so the rename fails with that
+// error before it moves anything.
+func TestRenameSkillFile_UninspectableDirectoryIsAnError(t *testing.T) {
 	requireUnprivileged(t)
 	dir := t.TempDir()
 	mustWriteFile(t, filepath.Join(dir, "skill.md"), "lower body")
@@ -218,7 +239,7 @@ func TestFreeName_UninspectableDirectoryIsAnError(t *testing.T) {
 	}
 	restoreMode(t, dir)
 
-	if err := renameSkillFile(dir); err == nil {
+	if err := renameSkillFile(openRootT(t, dir), "."); err == nil {
 		t.Fatal("renameSkillFile succeeded in an uninspectable folder")
 	}
 }
