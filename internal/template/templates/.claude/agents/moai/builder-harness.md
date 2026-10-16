@@ -5,6 +5,8 @@ description: |
   Match user intent language-independently — do not require literal keyword matches.
   NOT for: SPEC body authoring (spec.md / plan.md / acceptance.md content — manager-spec only), code implementation, testing, documentation writing, git operations, production deployment
 tools: Read, Write, Edit, Grep, Glob, WebFetch, WebSearch, Bash, TaskCreate, TaskUpdate, TaskList, TaskGet, Skill
+model: sonnet
+effort: medium
 color: purple
 permissionMode: bypassPermissions
 memory: user
@@ -137,7 +139,7 @@ Static `skills:` preload is kept to a minimum (token diet — progressive disclo
 
 ## Model/effort escalation
 
-> **Model/effort escalation**: this agent declares no `model` or `effort` and inherits the main session's, so deeper reasoning means a session run at that level — an ORCHESTRATOR decision (this agent cannot spawn sub-agents — no `Agent` tool). See `.claude/rules/moai/development/model-policy.md`.
+> **Model/effort escalation**: this agent's default `model` and `effort` are declared in its frontmatter, so reasoning deeper than that default means a spawn-time override or a session run at that level — an ORCHESTRATOR decision (this agent cannot spawn sub-agents — no `Agent` tool). See `.claude/rules/moai/development/model-policy.md`.
 
 ## Harness Generation Model Policy
 
@@ -155,6 +157,6 @@ one-line "Model/effort escalation" cross-reference at body tail — see
 ```text
 ## Model/effort escalation
 
-> **Model/effort escalation**: this agent declares no `model` or `effort` and inherits the main session's, so deeper reasoning means a session run at that level — an ORCHESTRATOR decision (this agent cannot spawn sub-agents — no `Agent` tool). See `.claude/rules/moai/development/model-policy.md`.
+> **Model/effort escalation**: this agent's default `model` and `effort` are declared in its frontmatter, so reasoning deeper than that default means a spawn-time override or a session run at that level — an ORCHESTRATOR decision (this agent cannot spawn sub-agents — no `Agent` tool). See `.claude/rules/moai/development/model-policy.md`.
 ```
 

@@ -41,6 +41,7 @@
 │    warn    Hooks Config           .claude/hooks/ not found — hook handlers unavailable                                                                       │
 │    warn    Hook Wiring            not checked: .claude/settings.json not found                                                                               │
 │    ok      Hook Delivery          skipped — no .claude/settings.json in this project                                                                         │
+│    ok      Hook Shell (Windows)   not applicable: host is not Windows                                                                                        │
 │    ok      Hook opt-in:           disabled                                                                                                                   │
 │    warn    Slash Commands         .claude/commands/ not found — slash commands unavailable                                                                   │
 │    ok      Settings DefaultMode   no ignored defaultMode override in project/local settings                                                                  │
@@ -56,8 +57,8 @@
 │    warn    Glamour Cache          glamour not integrated                                                                                                     │
 │    ok      Codex Wiring           not wired (claude-only project) — skipped                                                                                  │
 │    ok      Jev                    disabled (workflow.jev.enabled: false) — no request constructed, no network call                                           │
-│    8 ok, 9 warn, 0 fail                                                                                                                                      │
+│    9 ok, 9 warn, 0 fail                                                                                                                                      │
 │                                                                                                                                                              │
-│   Pass 31    Warn 12    Fail 0                                                                                                                               │
+│   Pass 32    Warn 12    Fail 0                                                                                                                               │
 │                                                                                                                                                              │
 ╰──────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────╯
