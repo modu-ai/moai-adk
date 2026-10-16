@@ -638,4 +638,25 @@ repository_wide_test_verdict: PENDING   # owned by the CI run on the integration
 
 ## §E.4 Sync-phase Audit-Ready Signal
 
-_<pending sync-phase>_
+```yaml
+sync_complete_at: 2026-10-16
+sync_commit_sha: pending-backfill   # a commit cannot cite its own hash; backfilled in a following commit
+sync_status: complete-pending-sync-audit
+sync_base_head: ecc040ccfa1064aee2ec34c31770a69830275ff8   # tree HEAD the sync commit sits on (main f13fed1c4 already absorbed)
+ac_source: .moai/specs/SPEC-UPDATE-BACKUP-RETENTION-001/acceptance.md   # tier L
+b12_self_test_a: "pass   # grep -c 'SPEC-UPDATE-BACKUP-RETENTION-001' CHANGELOG.md printed 0 before emission, 1 after"
+b12_self_test_b: "pass   # AC counter on acceptance.md: stdout 24, stderr live=24 excluded=0 ambiguous=0; CHANGELOG states AC-UBR-01..24 (24)"
+b12_self_test_c: "pass   # ls verified: spec.md, internal/cli/update_destructive_registry.go, internal/cli/update/backup/retention_realdata_test.go, internal/template/templates/.moai/config/sections/state.yaml, docs-site/content/{en,ko,ja,zh}/cli-reference/update.md"
+changelog_entry_position: "[Unreleased] > ### Fixed, first bullet"
+docs_site: unchanged   # cli-reference/update.md x 4 locales describes only the pre-clean backup; no retention statement to correct
+readme: unchanged      # README.md backup lines concern moai clean --home, not moai update retention
+frontmatter_status_transitions:
+  spec_md: "in-progress -> completed (single sync commit; status + updated only; updated was already 2026-10-16)"
+  plan_md: n/a   # no frontmatter status field
+  acceptance_md: n/a
+canary_compliance_check: n/a   # this SPEC defines no forward-looking policy that its own sync tests
+build_after_edit:
+  go_build: "exit 0 (go build ./...)"
+  go_build_windows_amd64: "exit 0 (GOOS=windows GOARCH=amd64 go build ./...)"
+observation_for_leader: "E.3 records ac_pass_count 22; the M6 matrix has 21 PASS rows, AC-UBR-24 PASS-WITH-DEBT, and AC-UBR-18 / AC-UBR-23 carried from M4 / M5 (NOT-OBSERVED in M6). E.3 left untouched (manager-develop owned)."
+```
