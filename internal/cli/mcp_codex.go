@@ -250,6 +250,10 @@ type ReviewOutput struct {
 	Findings  []Finding `json:"findings"`
 	NextSteps []string  `json:"next_steps"`
 
+	// StderrTail is the bounded stderr tail of the codex child that produced this
+	// review. It feeds the receipt's codex_error and never reaches the JSON output.
+	StderrTail string `json:"-"`
+
 	// Provenance identifies the backend transport that actually produced the
 	// review. It is optional so the existing Codex/GLM output remains byte-for-
 	// byte compatible until those backends opt into the common metadata.
@@ -529,7 +533,7 @@ var codexSession codexSessionRunner = realCodexSessionRunner{}
 type realCodexSessionRunner struct{}
 
 func (realCodexSessionRunner) start(ctx context.Context, binaryPath string, args []string) (codexConn, error) {
-	cmd := exec.CommandContext(ctx, binaryPath, args...)
+	cmd := codexChildCmd(ctx, binaryPath, args)
 	stdin, err := cmd.StdinPipe()
 	if err != nil {
 		return nil, fmt.Errorf("codex stdin pipe: %w", err)
@@ -538,12 +542,17 @@ func (realCodexSessionRunner) start(ctx context.Context, binaryPath string, args
 	if err != nil {
 		return nil, fmt.Errorf("codex stdout pipe: %w", err)
 	}
-	// Discard stderr so a noisy codex never corrupts the stdout NDJSON parse.
-	cmd.Stderr = &bytes.Buffer{}
+	// Keep stderr for the receipt's tail. stdout stays the NDJSON channel, so the
+	// stream is never parsed from stderr and a noisy codex cannot corrupt it.
+	stderr := &codexStderrBuffer{}
+	cmd.Stderr = stderr
+	// A grandchild that inherits stderr can hold the pipe open after the child exits;
+	// WaitDelay bounds how long Wait (and close) waits on it (t1788).
+	cmd.WaitDelay = codexStderrWaitDelay
 	if err := cmd.Start(); err != nil {
 		return nil, fmt.Errorf("codex start: %w", err)
 	}
-	c := &realCodexConn{cmd: cmd, stdin: stdin, stdout: stdout, lines: make(chan string, 128)}
+	c := &realCodexConn{cmd: cmd, stdin: stdin, stdout: stdout, lines: make(chan string, 128), stderr: stderr}
 	go c.readLoop(ctx)
 	return c, nil
 }
@@ -557,6 +566,7 @@ type realCodexConn struct {
 	stdout io.Reader
 	lines  chan string
 	mu     sync.Mutex
+	stderr *codexStderrBuffer
 }
 
 func (c *realCodexConn) readLoop(ctx context.Context) {
@@ -706,6 +716,11 @@ type codexSessionError struct {
 	summary string
 	cause   error
 
+	// stderrTail is the bounded stderr tail of the codex child, read after the
+	// failed open closed it. It says why the handshake failed and feeds the
+	// receipt's codex_error (t1788).
+	stderrTail string
+
 	// threadRequestSent is true when the failure happened AFTER the thread
 	// request (thread/start or thread/resume) was written — the thread ack was
 	// rejected or carried no id. codex_task reads it to report the thread it
@@ -721,7 +736,17 @@ func (e *codexSessionError) Unwrap() error { return e.cause }
 // its fail-open summary.
 func codexHandshakeFailure(conn codexConn, summary string, cause error) error {
 	_ = conn.close()
-	return &codexSessionError{summary: summary, cause: cause}
+	return &codexSessionError{summary: summary, cause: cause, stderrTail: codexConnStderrTail(conn)}
+}
+
+// codexConnStderrTail reads the bounded stderr tail of a real codex child. It is
+// called after the child was closed, so the stream is final; a canned test
+// connection has none (t1788).
+func codexConnStderrTail(conn codexConn) string {
+	if c, ok := conn.(*realCodexConn); ok && c.stderr != nil {
+		return c.stderr.tail(codexErrorTailBytes)
+	}
+	return ""
 }
 
 // codexThreadRequestFailure is codexHandshakeFailure for a failure after the
@@ -729,7 +754,7 @@ func codexHandshakeFailure(conn codexConn, summary string, cause error) error {
 // request reached codex.
 func codexThreadRequestFailure(conn codexConn, summary string, cause error) error {
 	_ = conn.close()
-	return &codexSessionError{summary: summary, cause: cause, threadRequestSent: true}
+	return &codexSessionError{summary: summary, cause: cause, threadRequestSent: true, stderrTail: codexConnStderrTail(conn)}
 }
 
 // codexThreadRequestWasSent reports whether err is a session failure that
@@ -1049,13 +1074,26 @@ func runCodexReviewRPCResolved(ctx context.Context, binaryPath, method string, p
 	if err != nil {
 		var sErr *codexSessionError
 		if errors.As(err, &sErr) {
-			return inconclusiveReview(sErr.summary), sErr.cause
+			// The failed open closed the child, so its stderr is final: it says why
+			// the handshake failed, and the receipt carries it (t1788).
+			failed := inconclusiveReview(sErr.summary)
+			failed.StderrTail = sErr.stderrTail
+			return failed, sErr.cause
 		}
 		return inconclusiveReview(err.Error()), err
 	}
 	defer func() { _ = sess.close() }()
 
-	return sess.runTurn(ctx, method, params)
+	out, err := sess.runTurn(ctx, method, params)
+	// The tail is read after close: close waits for the child and for its stderr copy,
+	// so the last error a child wrote just before exiting is in the capture. The
+	// deferred close above stays as the panic path and is harmless a second time.
+	// An unavailable buffer leaves the tail empty (t1788).
+	_ = sess.close()
+	if c, ok := sess.conn.(*realCodexConn); ok && c.stderr != nil {
+		out.StderrTail = c.stderr.tail(codexErrorTailBytes)
+	}
+	return out, err
 }
 
 // writeCodexRequest marshals and sends one JSON-RPC request line.
@@ -2018,9 +2056,13 @@ func handleCodexAudit(ctx context.Context, req mcp.CallToolRequest) (*mcp.CallTo
 		// The gate annotation rides EVERY fail-open exit, including this early
 		// one — a missing binary is exactly the state where a required gate
 		// goes silently unmet (the review never ran at all).
-		out := applyGateUnmet(inconclusiveReview("codex binary not found in PATH"), root)
+		out := inconclusiveReview("codex binary not found in PATH")
+		// The receipt's cause is read before applyGateUnmet rewrites an inconclusive
+		// verdict to fail under a required gate; after that it would read as empty (t1788).
+		receiptErr := codexErrorDetail(out.Verdict, out.Summary, out.StderrTail)
+		out = applyGateUnmet(out, root)
 		out.BuildCommit, out.BuildLag = buildCommit, buildLag
-		out.AuditReceipt, out.StateNotice = recordAuditReceipt(auditreceipt.ToolCodexAudit, rootArg, out.Verdict, out.GateUnmet)
+		out.AuditReceipt, out.StateNotice = recordAuditReceipt(auditreceipt.ToolCodexAudit, rootArg, out.Verdict, receiptErr, out.GateUnmet)
 		return codexReviewToolResult(out), nil
 	}
 	notifyMCPProgress(ctx, token, 0.1, "codex 바이너리 확인 — 리뷰 요청 준비 중...")
@@ -2059,9 +2101,12 @@ func handleCodexAudit(ctx context.Context, req mcp.CallToolRequest) (*mcp.CallTo
 	if base != nil {
 		out.ReviewBase = base.String()
 	}
+	// Read the receipt's cause before applyGateUnmet rewrites an inconclusive verdict to
+	// fail under a required gate (t1788).
+	receiptErr := codexErrorDetail(out.Verdict, out.Summary, out.StderrTail)
 	out = applyGateUnmet(out, root)
 	out.BuildCommit, out.BuildLag = buildCommit, buildLag
-	out.AuditReceipt, out.StateNotice = recordAuditReceipt(auditreceipt.ToolCodexAudit, rootArg, out.Verdict, out.GateUnmet)
+	out.AuditReceipt, out.StateNotice = recordAuditReceipt(auditreceipt.ToolCodexAudit, rootArg, out.Verdict, receiptErr, out.GateUnmet)
 	notifyMCPProgress(ctx, token, 0.9, "codex 응답 수신 — 결과 조립 중...")
 	return codexReviewToolResult(out), nil
 }
