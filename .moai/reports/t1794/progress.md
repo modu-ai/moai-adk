@@ -28,7 +28,7 @@
 4. `moai verify audit-plan` (1차) → `model: claude (config)`, backends claude=required(explicit)/codex=off(explicit)/glm=off, `cross_model_active: false`, `enforced_required: ["claude"]`.
 5. 가드 소스(1차 HEAD): `internal/hook/audit_receipt_guard.go` `auditReceiptScope` → `CodexGateRequired(store)`가 false면 가드 무의견(해제·차단 모두 없음). `ClearRejectionsForRoleInTreeKind`(store.go:1155)는 파일 삭제 — 잔여 파일 6건 = 미해제 상태 그 자체.
 6. **수용 관측**: 1차 체크아웃 세션(cwd=1차)에서 `Agent(manager-git)` 무기명 스폰 — PreToolUse 거부 없이 정상 발사, 에이전트가 읽기전용 보고 완료: `WT-main-integration-20261015` @ 76106777f 존재·main 비조상(미통합·미push, 카드 전제와 일치), main–origin/main 차이 1,179 커밋, main 선두 `9334f79cf`(t1800).
-7. F1 수리 확인: `git show main:.claude/rules/moai/core/hooks-system.md | grep -c '10,000'` → 1; 템플릿 동일 → 1; `git log main -- hooks-system.md` → `d1481b321 docs(rules): restore the per-additionalContext 10,000-char cap row and the 50K total-stdout clause (card t1800)`.
+7. F1 수리 확인: `git show main:.claude/rules/moai/core/hooks-system.md | grep -c '10,000'` → 1; 템플릿 동일 → 1; `git log main --oneline -1 -- .claude/rules/moai/core/hooks-system.md` → `d1481b321 docs(rules): restore the per-additionalContext 10,000-char cap row and the 50K total-stdout clause in hooks-system (card t1800)`.
 8. F3 잔존 확인: `git show main:internal/factory/integration_merge_step_test.go` L367 — `exec.Command("git","rev-parse","HEAD^{tree}")` 에 `cmd.Dir` 없음(미수리, 선택).
 9. codex 헬스: `codex_task` 프로브(본 워크트리) → `PROBE-OK` (10-16 기준 codex 응답 정상 — 10-15 no-verdict는 일시적).
 
@@ -47,7 +47,7 @@
 
 ## Residual-risk
 
-- **게이트 전환의 내구성**: 1차 workflow.yaml 변경이 미커밋 dirt 상태. 커밋 전에 revert되면 영수증 가드가 재개되고 거부 6건이 다시 manager-git 스폰을 차단 — 그때의 해법은 본 파일의 lane-34 runbook(감사관 2스폰, K4)이 그대로 유효.
+- **게이트 전환의 내구성**: 1차 workflow.yaml 변경이 미커밋 dirt 상태. 커밋 전에 revert되면 영수증 가드가 재개되고 거부 6건이 다시 manager-git 스폰을 차단. 그때의 해법(K4 해제 절차, 인라인): ① `gates.codex: required` 상태의 1차 체크아웃 세션에서 ② sync-auditor·plan-auditor 각 1회 무기명 스폰 — 각 감사관은 스스로 `codex_audit`/`audit_multi`(project_root=1차 체크아웃)를 호출해 1차 저장소에 영수증(gate_unmet 없고 inconclusive 아닌 판정)을 발급받은 뒤 ③ 마지막 줄을 `AUDIT-VERDICT: PASS spec=<ID> receipts=<rcpt-…>`로 끝낸다. 같은 역할의 증명 PASS 1회가 그 트리·역할의 영수증류 거부를 전부 해제한다(`internal/hook/audit_receipt_guard.go` checkAuditorStop, 운영자 결정 K4).
 - **F2[Medium·프로세스]**: 1차 체크아웃이 낡은 미커밋 변경(workflow.yaml·llm.yaml·harness 등)을 계속 보유 — ec193e477류 "pending 커밋" 재발 시도 F1류 회귀 재발 위험. 리더 정리 소관(감사 지적 그대로).
 - **F3[Low·선택]**(t1479 소관)·**F4[Low·선택]**(F-11 grep 표류) 미수리 — 선택 등급이라 본 카드 범위에서 제외.
 - 영수증 가드 off 상태에서 신규 감사 PASS의 영수증 증명은 1차 트리에서 강제되지 않음(claude 단일 백엔드 체제의 설계된 결과).
@@ -57,4 +57,6 @@
 - `.moai/reports/t1794/progress.md` (본 파일)
 - `.moai/reports/t1794/plan-reaudit-primary.md` (lane-34, 10-15 13:01 — 1차 트리 호이스트)
 - `.moai/reports/t1794/sync-reaudit-primary.md` (lane-34, 10-15 13:26 — 1차 트리 호이스트)
+- `.moai/reports/t1794/sync-audit.md` (lane-13 sync 감사 r1: FAIL — codex 필수 레그 fail, F1 금단 포인터·F2 증거 명령 정밀도, r2 파일에서 회차 이력)
 - 커밋 `1fa732ef9` (lane-34, plan 재감사 D1 수리 — 본 카드 브랜치 유일 소스 커밋)
+- sync 감사 r1 수리: F1(K4 절차 인라인 추가)·F2(증거 명령 전체 경로 수정) — r1 보고서 fix_scope 그대로
