@@ -23,6 +23,8 @@ The bound is the holder's own declaration: past it another lane may take the res
 
 `moai cc -f` launches the leader and lane sessions join one at a time with `moai cc -l`, labelled `lane-<n>`. No per-stage companions: the leader routes each card WHOLE to a free lane, or a lane receives the card by its own self-promotion of an already-queued card; either way the lane carries it `plan → run → sync` in-session — serial stages, each stage's execution spawned as sub-agents — and owns it end to end. The card class still names which ceremonies are skipped (`plan` for A and B) but no card changes sessions. Queue, evidence-reading, integration, and disposal rules are as stated in the stub. Mechanics: `factory-dispatch-detail.md` § Factory in-lane 3-stage.
 
+A lane renews its own card lease at the start of each watchdog pass with `moai factory renew <card>` (MCP tool `factory_renew`, the same implementation): the renewal extends the lease from the request time by `workflow.factory_lease.duration`, and a renewal of an expired lease is refused with no write.
+
 ## Isolation — launcher, tiers, branch naming, and the traceability carriers
 
 Relocated from the stub (always-loaded diet): the stub keeps each [HARD] clause as a one-liner; this section owns the tables and the measured detail. Trigger affinity: the launcher/tier/naming decisions happen when provisioning or disposing a card worktree — the `manager-lead.md` and `factory-dispatch*` surfaces this file is scoped to.
@@ -197,7 +199,7 @@ itself.
 > **Loading scope**: Intentionally always-loaded. A session learns it is the factory leader from the SessionStart context, not from a file path, so a `paths:`-restricted rule would never reach it. Cost to a session that never dispatches: the stub below, restated once per turn; every procedure body lives in the lazy companions.
 
 
-How the **leader** session of Factory Mode moves a card through the queue: what admits work, who is told to do it, how completion is judged, and when the operator is asked to `/clear`.
+How the **leader** session of Factory Mode moves a card through the queue: what admits work, who is told to do it, how completion is judged, and when the lane moves to its next card.
 
 
 > **Mechanics companion**: `factory-dispatch-mechanics.md` owns the lane-and-lens bodies relocated from this file — § Review lens selection · § Serializing a heavy run across lanes (`moai slot` lease) · § Factory Mode mechanics · § Isolation (launcher table, worktree tiers, `WT-` branch naming, the traceability carriers) · § Verification-load detail · § Integration into the release branch (the self-serve window procedure) · § Boundaries · § Cross-references. Load it when classifying a card, provisioning or disposing a card worktree, running lane-local verification, or entering the integration window.
@@ -242,7 +244,7 @@ The two remaining boundaries — no session spawning, and a lane with no live se
 ### Cross-references
 
 
-- `.claude/rules/moai/core/askuser-protocol.md` — the question channel the leader uses for card selection and `/clear` prompts
+- `.claude/rules/moai/core/askuser-protocol.md` — the question channel the leader uses for card selection and queue prompts
 - `.claude/rules/moai/core/verification-claim-integrity.md` — why completion is read rather than trusted
 - The remaining four (blocker-report format, worktree tiers, the queue surface, `manager-lead`): `factory-dispatch-mechanics.md` § Cross-references
 

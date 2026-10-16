@@ -19,6 +19,7 @@ import (
 	"github.com/modu-ai/moai-adk/internal/defs"
 	"github.com/modu-ai/moai-adk/internal/factory"
 	"github.com/modu-ai/moai-adk/internal/glmcred"
+	"github.com/modu-ai/moai-adk/internal/settings/yamlpatch"
 	"github.com/modu-ai/moai-adk/internal/statusline"
 	"github.com/modu-ai/moai-adk/internal/template"
 	"github.com/modu-ai/moai-adk/internal/tmux"
@@ -53,6 +54,8 @@ Use 'moai glm setup <key>' to save your API key first.
 
 Flags:
   -p, --profile <name>          Use a named Claude profile (~/.moai/claude-profiles/<name>/)
+  --key <api-key>               Store the GLM API key and exit (same storage
+                                as 'moai glm setup <key>')
   --permission-mode <mode>      Set permission mode (default, acceptEdits, plan, bypassPermissions, dontAsk)
   -b, --bypass                  Shorthand for --permission-mode bypassPermissions
   -w, --worktree [name]         Launch in an isolated git worktree (.claude/worktrees/<name>/);
@@ -105,6 +108,7 @@ of stacking concurrent lanes.
 
 Examples:
   moai glm setup sk-xxx    # Save API key (one-time)
+  moai glm --key sk-xxx    # Save API key via flag (one-time, same storage)
   moai glm                 # Launch with GLM backend
   moai glm -p work         # Use 'work' profile with GLM
   moai glm -f             # Factory leader on GLM: one lane (lane-1)
@@ -144,6 +148,18 @@ func init() {
 	// We register setup and status as subcommands for discoverability (help output).
 	glmCmd.AddCommand(glmSetupCmd, glmStatusCmd)
 	rootCmd.AddCommand(glmCmd)
+
+	// SPEC-GLM-JEV-KEY-001: --key is registered only so it renders in help
+	// output — DisableFlagParsing makes the manual scan in runGLM the only
+	// mechanism that actually reads it.
+	glmCmd.Flags().String("key", "", "Store the GLM API key and exit (same storage as 'moai glm setup <key>')")
+	// cobra's stripFlags treats a following token as the flag's value and
+	// routes `glm --key K status` straight to the status subcommand before
+	// runGLM's scan can see it; NoOptDefVal makes stripFlags leave the token
+	// in place. Parsing itself stays manual (DisableFlagParsing).
+	if keyFlag := glmCmd.Flags().Lookup("key"); keyFlag != nil {
+		keyFlag.NoOptDefVal = " "
+	}
 }
 
 // SettingsLocal represents .claude/settings.local.json structure.
@@ -199,6 +215,15 @@ func runGLM(cmd *cobra.Command, args []string) error {
 		}
 	}
 
+	// SPEC-GLM-JEV-KEY-001: the `--key` save form. Placed AFTER the
+	// subcommand switch so a routed subcommand is never intercepted
+	// (REQ-GJK-006, same ordering rationale as the --spawn strip below) and
+	// BEFORE launch parsing so a --key invocation stores and exits without
+	// reaching the launch path (REQ-GJK-002).
+	if handled, err := handleGLMKeyFlag(cmd, args); handled {
+		return err
+	}
+
 	endEntry := debugTiming.beginDebug(launchStepEntryParse, "")
 	if err := guardCGLaunchMode("glm"); err != nil {
 		endEntry()
@@ -234,6 +259,7 @@ func runGLM(cmd *cobra.Command, args []string) error {
 	factoryLabel, isFactoryLane := parseFactoryLaneLabel(filteredArgs)
 	switch resolveFactoryBranch(entry.FactoryEnabled, isFactoryLane) {
 	case factoryBranchLeader:
+		priorRunID := os.Getenv(config.EnvFactoryRunID)
 		leaderLabel, _ := parseLeaderLabel(filteredArgs)
 		restoreFactory := enterFactoryLeaderMode(entry.FactoryLanes, leaderLabel)
 		defer restoreFactory()
@@ -242,11 +268,18 @@ func runGLM(cmd *cobra.Command, args []string) error {
 			return runErr
 		}
 		defer restoreRun()
+		// Same resume re-adoption as the cc leader (card t1707): the run id
+		// survives only in the launch environment, so a resumed GLM leader
+		// would otherwise mint a new run over the live one.
+		adopted, adoptErr := leaderEntryRunAdoption(launchProjectRoot(), filteredArgs, leaderLabel, priorRunID, entry.FactoryRun, cmd.ErrOrStderr())
+		if adoptErr != nil {
+			return fmt.Errorf("re-adopt factory run: %w", adoptErr)
+		}
 		// Same recording as the cc leader: the factory run state a lane's -l join
 		// resolves. Without it every GLM-led run is unjoinable
 		// (NO_ACTIVE_FACTORY).
-		if err := recordFactoryRunStart(launchProjectRoot(), os.Getenv(config.EnvFactoryRunID), factory.BackendGLM, entry.Spec, factoryDeclaredLanes(entry)); err != nil {
-			return fmt.Errorf("record factory run: %w", err)
+		if err := recordLeaderRunStart(launchProjectRoot(), adopted, factory.BackendGLM, entry.Spec, factoryDeclaredLanes(entry)); err != nil {
+			return err
 		}
 		defer exportFactoryLaunchFacts(entry.Spec, factory.BackendGLM)()
 		var leaderName string
@@ -476,6 +509,131 @@ func glmReasoningEnvVarsForModel(model, effort string) map[string]string {
 	return out
 }
 
+// handleGLMKeyFlag implements the `moai glm --key <api-key>` save form
+// (SPEC-GLM-JEV-KEY-001 REQ-GJK-001..006, 012). It scans args for --key,
+// stopping at the first bare "--" (post--- tokens are child passthrough,
+// AC-GJK-016). When the flag is found it validates the value and stores it
+// through saveGLMKey — the same writer `moai glm setup <key>` uses
+// (REQ-GJK-001) — and prints the setup path's masked confirmation. It reports
+// handled=true with a non-nil error for the usage/validation refusals, which
+// store nothing (REQ-GJK-003/004/005/012). handled=false means no --key in the
+// scanned region and the launch path must proceed.
+func handleGLMKeyFlag(cmd *cobra.Command, args []string) (bool, error) {
+	value, rest, flagIdx, present, hasValue := scanGLMKeyValue(args)
+	if !present {
+		return false, nil
+	}
+	if !hasValue {
+		return true, fmt.Errorf("--key requires a value; usage: moai glm --key <api-key>")
+	}
+	// REQ-GJK-003: any other token in the scanned region — before the flag
+	// as well as after the value — refuses the mixed invocation. The token
+	// named in the error is redacted: REQ-GJK-010 forbids a second
+	// --key=<value> spelling from leaking its value into the refusal text.
+	extra := make([]string, 0, flagIdx+len(rest))
+	extra = append(extra, args[:flagIdx]...)
+	extra = append(extra, rest...)
+	if len(extra) > 0 {
+		return true, fmt.Errorf("--key cannot be combined with other arguments (found %q); run 'moai glm --key <api-key>' by itself", redactArg(extra[0], strings.TrimSpace(value)))
+	}
+	trimmed := strings.TrimSpace(value)
+	if trimmed == "" {
+		return true, fmt.Errorf("empty API key")
+	}
+	// REQ-GJK-012: reject-before-write. glmcred cannot round-trip a newline
+	// (EscapeValue deliberately does not escape it; Load reads line-by-line),
+	// so a line-bearing value must never reach the writer — the existing
+	// credential file stays byte-for-byte unchanged.
+	if strings.ContainsAny(trimmed, "\r\n") {
+		return true, fmt.Errorf("GLM API key must not contain line breaks")
+	}
+	if err := saveGLMKey(trimmed); err != nil {
+		return true, fmt.Errorf("save GLM API key: %w", err)
+	}
+	_, _ = fmt.Fprintf(cmd.OutOrStdout(), "GLM API key stored (%s)\n", maskAPIKey(trimmed))
+	return true, nil
+}
+
+// scanGLMKeyValue walks the argument region for --key, mirroring the --help
+// scan's stop-at-the-first-bare-"--" precedent. It reports whether the flag
+// was present (and at which index, so the caller can sweep the whole region
+// for conflicting tokens), whether a value token followed it, the value
+// itself (from either the `--key <value>` or `--key=<value>` spelling), and
+// the tokens following the value.
+func scanGLMKeyValue(args []string) (value string, rest []string, flagIdx int, present bool, hasValue bool) {
+	for i := 0; i < len(args); i++ {
+		switch arg := args[i]; {
+		case arg == "--":
+			return "", nil, -1, false, false
+		case arg == "--key":
+			if i+1 < len(args) {
+				next := args[i+1]
+				// A flag-shaped token cannot be the value (REQ-GJK-004):
+				// `moai glm --key -f` would otherwise store the flag
+				// itself. The shape is judged on the trimmed token, the value that
+				// handleGLMKeyFlag stores, so a padded " -f" and a bare "-" are both
+				// refused. The '=' spelling stays accepted — unambiguous.
+				if strings.HasPrefix(strings.TrimSpace(next), "-") {
+					return "", nil, i, true, false
+				}
+				return next, args[i+2:], i, true, true
+			}
+			return "", nil, i, true, false
+		case strings.HasPrefix(arg, "--key="):
+			return strings.TrimPrefix(arg, "--key="), args[i+1:], i, true, true
+		}
+	}
+	return "", nil, -1, false, false
+}
+
+// glmFlagNames is the closed list of flag spellings the glm launch path
+// actually parses (profile, permission, worktree, factory-entry and help
+// flags — enumerated from launcher.go / factory.go / spawn.go /
+// worktree_branch_flag.go plus the help flag cobra registers). It is the
+// redaction allowlist: a conflicting token may pass into the usage error
+// verbatim only when it IS one of these names — a key value can look like
+// anything ('='-bearing, dash-leading, flag-shaped), so shape heuristics
+// leak it (card-review r2) and only the name whitelist is the safe pass.
+var glmFlagNames = map[string]bool{
+	"-p": true, "--profile": true,
+	"-b": true, "--bypass": true,
+	"--permission-mode": true,
+	"-w":                true, "--worktree": true,
+	"--branch": true,
+	"--spawn":  true,
+	"-f":       true, "--factory": true,
+	"-l": true, "--lane": true,
+	"--leader":      true,
+	"--factory-run": true,
+	"--key":         true,
+	"--help":        true, "-h": true,
+}
+
+// redactArg renders a conflicting token for a usage error without
+// disclosing any key value the token may carry (REQ-GJK-010): a token equal
+// to the key is the key itself and is masked first; the
+// `--key=<value>` spelling keeps only the flag name plus a marker, a token
+// that is exactly one of glm's parsed flag names keeps its name, and
+// everything else is masked outright — a key value is a positional token
+// here, and it can look like anything.
+func redactArg(arg, key string) string {
+	// A token equal to the key is the key itself. Mask it before any allowlist
+	// lookup, so a key spelled like a flag name ("-f") is not passed through.
+	if key != "" && arg == key {
+		return "****"
+	}
+	if arg == "--key" {
+		return arg
+	}
+	if strings.HasPrefix(arg, "--key=") {
+		return "--key=****"
+	}
+	if glmFlagNames[arg] {
+		return arg
+	}
+	return "****"
+}
+
 // runGLMSetup saves a GLM API key.
 func runGLMSetup(cmd *cobra.Command, args []string) error {
 	apiKey := ""
@@ -695,8 +853,27 @@ func disableTeamMode(projectRoot string) error {
 	return persistTeamMode(projectRoot, "")
 }
 
-// saveLLMSection saves only the LLM section to llm.yaml.
-// Empty GLM model values are populated with defaults to avoid confusion.
+// legacyLLMAliasKeys are the GLM model alias keys that DR-2 of
+// SPEC-MODEL-MATRIX-UPDATE-001 deleted from the typed model (the GLMModels fields
+// Opus, Sonnet, and Haiku). A real write removes them from llm.glm.models and
+// nowhere else. This is the named exception to REQ-RC30-007
+// (SPEC-UPDATE-REPAIR-RC30-001). Nothing writes to the slice.
+var legacyLLMAliasKeys = []string{"opus", "sonnet", "haiku"}
+
+// legacyLLMAliasEdits returns the removals a real write applies: one per legacy
+// alias key, each at llm.glm.models.<key>.
+func legacyLLMAliasEdits() []yamlpatch.KeyEdit {
+	edits := make([]yamlpatch.KeyEdit, 0, len(legacyLLMAliasKeys))
+	for _, alias := range legacyLLMAliasKeys {
+		edits = append(edits, yamlpatch.KeyEdit{Path: []string{"llm", "glm", "models", alias}, Remove: true})
+	}
+	return edits
+}
+
+// saveLLMSection saves only the LLM section to llm.yaml. A real write patches the
+// file through the yamlpatch seam, so every key and comment the section does not
+// own survives (REQ-RC30-007). Empty GLM model values are populated with defaults
+// to avoid confusion.
 //
 // @MX:NOTE: [AUTO] RC1 change-detection gate (glm-settings-persist): the write
 // is SKIPPED when the persisted llm.yaml already equals the desired section
@@ -735,20 +912,32 @@ func saveLLMSection(sectionsDir string, llm config.LLMConfig) error {
 	}{LLM: llm}
 
 	// RC1 change-detection gate: skip the write when the persisted file already
-	// carries this exact section state. A read error leaves the gate undecided
-	// and falls through to the write (the write itself then surfaces the error).
-	if persisted, ok, err := readPersistedLLMSection(sectionsDir); err == nil && ok &&
-		llmSectionSemanticallyEqual(persisted, wrapper.LLM) {
+	// carries this exact section state. The diff below needs the persisted
+	// section, so an unreadable or unparseable file is an error, not an overwrite.
+	persisted, ok, err := readPersistedLLMSection(sectionsDir)
+	if err != nil {
+		return err
+	}
+	if ok && llmSectionSemanticallyEqual(persisted, wrapper.LLM) {
 		return nil
 	}
 
-	data, err := yaml.Marshal(wrapper)
-	if err != nil {
-		return fmt.Errorf("marshal llm config: %w", err)
+	// An absent file has no persisted section, so every scalar is written.
+	var base *config.LLMConfig
+	if ok {
+		base = &persisted
 	}
+	edits, err := config.LLMSectionEdits(base, wrapper.LLM)
+	if err != nil {
+		return fmt.Errorf("llm.yaml: %w", err)
+	}
+	// A real write removes the legacy alias keys (see legacyLLMAliasKeys).
+	edits = append(edits, legacyLLMAliasEdits()...)
 
-	path := filepath.Join(sectionsDir, "llm.yaml")
-	return writeFileAtomic(path, data, 0o600)
+	if err := os.MkdirAll(sectionsDir, 0o755); err != nil {
+		return fmt.Errorf("create config directory: %w", err)
+	}
+	return yamlpatch.PatchFileWithMode(filepath.Join(sectionsDir, "llm.yaml"), edits, 0o600)
 }
 
 // readPersistedLLMSection reads the current llm.yaml into a config.LLMConfig.

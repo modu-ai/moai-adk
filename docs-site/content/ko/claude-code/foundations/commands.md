@@ -91,7 +91,8 @@ description: "Claude Code의 슬래시 명령어 — 내장 명령, 커스텀 �
 | Fable 5 (`claude-fable-5`) | 현재 최상위(Mythos-tier). 가장 깊은 추론 |
 | Opus 5.5 | 차상위. 복잡한 코딩과 설계 |
 | Sonnet 5.5 | 균형형. 일상 작업 |
-| Haiku 4.5 | 가볍고 빠른 경량 작업 |
+| Haiku 5.5 | 가볍고 빠른 경량 작업 (CC v2.1.293+ 기본 Haiku) |
+| Haiku 4.5 | 가볍고 빠른 경량 작업 (AWS 계열 별칭 대상) |
 
 모델마다 추론 깊이·속도·비용이 다릅니다. 무거운 설계 작업은 Fable이나 Opus에, 빠르고 반복적인 일은 Sonnet이나 Haiku에 맡기는 식으로 작업 무게에 맞춰 고릅니다. 단축키 `Option+P`(macOS) 또는 `Alt+P`로도 빠르게 전환할 수 있습니다.
 

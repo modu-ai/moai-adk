@@ -1,12 +1,32 @@
 llm:
     mode: ""
     team_mode: glm
+    harness: ""
     glm_env_var: GLM_API_KEY
-    performance_tier: ""
     profile: ""
-    profiles: {}
-    harness_agents: {}
-    agent_overrides: {}
+    agent_overrides:
+        manager-lead:
+            model: opus
+            effort: medium
+        plan-auditor:
+            model: opus
+            effort: high
+        sync-auditor:
+            model: opus
+            effort: high
+    agent_overrides_consume: true
+    defaults:
+        sessions:
+            mode: default
+            cc:
+                leader: {model: opus, effort: high}
+                lane: {model: sonnet, effort: medium}
+            glm:
+                leader: {model: opus, effort: high}
+                lane: {model: sonnet, effort: medium}
+            codex:
+                leader: {model: gpt-6.1-sol, effort: high}
+                lane: {model: gpt-6.1-sol, effort: medium}
     claude_models:
         high: ""
         medium: ""
@@ -14,17 +34,14 @@ llm:
     glm:
         base_url: https://api.z.ai/api/anthropic
         models:
-            high: glm-5.3-flash
-            medium: glm-5.3-flash
+            high: glm-5.3
+            medium: glm-5.3
             low: glm-5.3-flash
             fable: glm-5.3
-            opus: glm-5.3-flash
-            sonnet: glm-5.3-flash
-            haiku: glm-5.3-flash
         effort:
             high: max
-            medium: max
-            low: max
+            medium: high
+            low: low
             fable: max
     default_model: ""
     quality_model: ""

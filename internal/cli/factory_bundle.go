@@ -73,6 +73,20 @@ func runFactoryBundle(cmd *cobra.Command, lane string, cards []string, run strin
 
 // runFactoryBundleLocked is the verify→record body with the queue lock held.
 func runFactoryBundleLocked(cmd *cobra.Command, l *factory.LockedBacklog, root, lane string, cards []string, run string) error {
+	// REQ-DISPATCH-003 (SPEC-DISPATCH-INTEGRITY-001, card t1595): a member
+	// list naming the same card id twice is refused HERE, before anything is
+	// read or recorded. Without this check the duplicate reached the record
+	// transaction: the second member's insert failed on a version conflict,
+	// so the load's only refusal was a database side effect — no
+	// duplicate-member refusal named the id, and the recorded shape depended
+	// on the insert order instead of the input check.
+	seen := make(map[string]bool, len(cards))
+	for _, id := range cards {
+		if seen[id] {
+			return fmt.Errorf("duplicate member %s in the bundle member list", id)
+		}
+		seen[id] = true
+	}
 	rec, err := l.LoadPure()
 	if err != nil {
 		return fmt.Errorf("read the queue: %w", err)

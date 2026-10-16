@@ -337,9 +337,11 @@ func runHookEvent(cmd *cobra.Command, event hook.EventType) error {
 	if herr != nil {
 		return herr
 	}
-	if harnessCodex && os.Getenv(config.EnvFactoryBackend) != BackendCodex {
+	if harnessCodex && codexHarnessScrubsLaneEnv(os.Getenv(config.EnvFactoryBackend)) {
 		// A Codex session's hook never acts as a Claude lane's factory peer
-		// (SPEC-CODEX-FACTORY-RETIRE-001 REQ-CFR-022).
+		// (SPEC-CODEX-FACTORY-RETIRE-001 REQ-CFR-022). Explicit Codex
+		// factory launches (backend=codex, and the moai codex -l stamp
+		// backend=gpt) bypass — card t1776 audit round-1.
 		defer unsetLaneEnvForCodexHook()()
 	}
 

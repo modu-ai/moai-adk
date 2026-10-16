@@ -26,7 +26,7 @@ workflow:
         model: codex
         claude:
             model: opus[1m]
-            effort: medium
+            effort: high
         codex:
             model: gpt-6.1-sol
             effort: high
@@ -39,6 +39,14 @@ workflow:
             glm: off
     default_mode: ""
     execution_mode: auto
+    # factory_lease: the card lease duration (duration, default 15m) and the
+    # watchdog renewal period (renew_interval, default 5m; a whole number of
+    # minutes from 1 to 59, and at most half of duration). Both are checked when
+    # the factory opens; a value outside its bound refuses to open the factory
+    # and is never clamped.
+    factory_lease:
+        duration: 15m
+        renew_interval: 5m
     # context_folding: manager-lead's per-milestone Context-Folding trigger policy
     # (SPEC-HIERARCHICAL-TEAM-001 REQ-FOLD-001 OQ-1 decision). The fold procedure
     # itself reuses existing primitives (/compact + .moai/state/verify/ redirect +
@@ -150,7 +158,11 @@ workflow:
     worktree:
         # 2026-05-22: auto_create false (user policy feedback_worktree_autonomous 정렬).
         # L1 worktree는 Claude Code runtime autonomous — MoAI orchestrator는 자동 생성 안함.
-        # auto_merge 유지 (사용자 수동 worktree 생성 시에만 자동 머지).
+        # auto_merge: false. Session-exit auto-merge merges into
+        # git_strategy.manual.develop_branch (main in this repository). The only
+        # tree holding main is the primary checkout, and the auto path has no
+        # primary-checkout refusal (internal/cli/session_worktree_automerge.go).
+        # Re-enable only after a SPEC gives that path a primary-aware refusal.
         #
         # auto_cleanup: true → false (SPEC-WORKTREE-REAPER-001 M1 착지 조건).
         # M1이 gh no-answer 경로에서 git fallback을 되살리면서, 이 저장소의
@@ -161,7 +173,7 @@ workflow:
         # (acceptance.md AC-WR-023(b)).
         auto_cleanup: true
         auto_create: true
-        auto_merge: true
+        auto_merge: false
         session_name_pattern: moai-{ProjectName}-{SPEC-ID}
         tmux_preferred: true
     # branch_guard: primary checkout protection against branch-state mutations
@@ -176,6 +188,11 @@ workflow:
         # commit/revert/cherry-pick in the primary checkout while HEAD is on a
         # listed branch are denied. Doctrine: .moai/docs/gitflow-integration-chain.md
         deny_commits_on: [main]
+    # local_main_integration: lets the integration verbs use the primary checkout
+    # as the tree that holds the integration branch (local-main flow). Shipped
+    # default false, which keeps the primary-refusal behavior unchanged.
+    local_main_integration:
+        enabled: true
     # commit_identity_guard: refuse a shell command that would create a commit
     # under a known test-fixture identity (SPEC-COMMIT-IDENTITY-GUARD-001
     # root cause: a fixture identity written into the shared .git/config
@@ -302,3 +319,14 @@ workflow:
             enabled: true
         task:
             allow_write: true
+    # candidate_ci (SPEC-CANDIDATE-CI-001, card t1478): the pre-landing
+    # candidate-CI path. enabled gates `moai integration candidate` and the
+    # merge step's shared landing check — default false ships the whole
+    # path inert. guard_bundle_required decides whether a red guard-bundle
+    # CI check reds the candidate verdict; default true preserves today's
+    # gating, where the drift-prone guard families ride the ordinary
+    # required test suite. Flip enabled after the operator reviews the
+    # candidate-path rollout.
+    candidate_ci:
+        enabled: false
+        guard_bundle_required: true

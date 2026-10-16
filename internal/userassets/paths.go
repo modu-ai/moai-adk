@@ -83,6 +83,15 @@ func LockPath(home string) string {
 	return filepath.Join(MoaiHome(home), "user-assets.lock")
 }
 
+// GuardMarkerPath returns the acquire-guard marker's path — the marker both
+// platform guards create under the same derivation (strings.TrimSuffix of
+// the lock path + ".acquire-guard", then the guard suffix). M2
+// (REQ-LOCK-001) makes it the ownership record the doctor's visible-
+// recovery row reports on.
+func GuardMarkerPath(home string) string {
+	return strings.TrimSuffix(LockPath(home), ".lock") + ".acquire-guard.guard"
+}
+
 // BackupHome returns the REQ-023 backup home root (C2's sole out-of-root
 // write carve-out for user-folder asset writes, iter4 D33).
 func BackupHome(home string) string {

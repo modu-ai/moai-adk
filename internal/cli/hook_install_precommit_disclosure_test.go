@@ -124,6 +124,25 @@ func TestPreCommitWarningWriterWiring(t *testing.T) {
 		assertAssignedFromCmdCall(t, enclosing, "out", "OutOrStdout")
 	})
 
+	// spec.md §C.4 (v0.6.0) pins both writers of this call to cmd.ErrOrStderr().
+	t.Run("resume_binds_writers_to_command_stderr", func(t *testing.T) {
+		path := filepath.Join(root, "internal", "cli", "init_resume.go")
+		calls := installOptionalCallsIn(t, parseCallerSource(t, path))
+		if len(calls) != 1 {
+			t.Fatalf("%s: expected exactly one installPreCommitHookOptional call, found %d", filepath.Base(path), len(calls))
+		}
+		call := calls[0]
+		if len(call.Args) != 4 {
+			t.Fatalf("%s: expected 4 arguments (root, skip, progress writer, warning writer), got %d", filepath.Base(path), len(call.Args))
+		}
+		if !isCmdCall(call.Args[3], "cmd", "ErrOrStderr") {
+			t.Errorf("resume: warning-writer argument must be cmd.ErrOrStderr(), got %s", types.ExprString(call.Args[3]))
+		}
+		if !isCmdCall(call.Args[2], "cmd", "ErrOrStderr") {
+			t.Errorf("resume: progress-writer argument must be cmd.ErrOrStderr(), got %s", types.ExprString(call.Args[2]))
+		}
+	})
+
 	t.Run("no_other_call_sites", func(t *testing.T) {
 		cliDir := filepath.Join(root, "internal", "cli")
 		entries, err := os.ReadDir(cliDir)
@@ -133,6 +152,7 @@ func TestPreCommitWarningWriterWiring(t *testing.T) {
 		want := map[string]bool{
 			"init.go":                 false,
 			"update_template_sync.go": false,
+			"init_resume.go":          false,
 		}
 		for _, entry := range entries {
 			name := entry.Name()
@@ -150,7 +170,7 @@ func TestPreCommitWarningWriterWiring(t *testing.T) {
 				continue
 			}
 			if _, known := want[name]; !known {
-				t.Errorf("unexpected installPreCommitHookOptional call site in %s (spec.md §C.4 permits exactly init.go and update_template_sync.go)", name)
+				t.Errorf("unexpected installPreCommitHookOptional call site in %s (spec.md §C.4 as amended at v0.6.0 permits exactly init.go, update_template_sync.go, and init_resume.go)", name)
 				continue
 			}
 			want[name] = true

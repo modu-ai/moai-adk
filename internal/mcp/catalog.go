@@ -117,6 +117,10 @@ var moaiMCPTools = []ToolDef{
 	{Name: "factory_stage", WriteCapable: true},
 	{Name: "factory_complete", WriteCapable: true},
 	{Name: "factory_decide", WriteCapable: true},
+	// factory_renew extends the lane's own card lease (SPEC-FACTORY-LEASE-RENEW-001
+	// REQ-FLR-002). It writes the lease expiry and the heartbeat, so it is
+	// write-capable; a refused renewal writes nothing.
+	{Name: "factory_renew", WriteCapable: true},
 }
 
 // MoaiMCPTools returns the single shared declaration of the moai MCP server's

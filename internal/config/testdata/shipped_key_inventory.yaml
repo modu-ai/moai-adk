@@ -1,6 +1,6 @@
 # Shipped key inventory for SPEC-CONFIG-KEY-HONESTY-001 M1
 # Code baseline: ed70e4354
-# Total entries: 817
+# Total entries: 841
 # Classification: W=wire, P=prose-consumed, R=reserved, D=delete
 # Evidence: 'reader' = Go production reader; prose file path = P consumer; 'none' = R/D
 
@@ -940,6 +940,45 @@
   class: W
   evidence: "reader: template.ResolveAgentOverrideConsumption (v0.3.0 spawn-consumption gate) + hook advise compare + web console contract-state chip and save-path strict reject + cli doctor served-model switch state"
 - path: "llm.claude_bin"
+  class: W
+  evidence: reader
+- path: "llm.defaults.sessions.cc.lane.effort"
+  class: W
+  evidence: reader
+- path: "llm.defaults.sessions.cc.lane.model"
+  class: W
+  evidence: reader
+- path: "llm.defaults.sessions.cc.leader.effort"
+  class: W
+  evidence: reader
+- path: "llm.defaults.sessions.cc.leader.model"
+  class: W
+  evidence: reader
+- path: "llm.defaults.sessions.codex.lane.effort"
+  class: W
+  evidence: reader
+- path: "llm.defaults.sessions.codex.lane.model"
+  class: W
+  evidence: reader
+- path: "llm.defaults.sessions.codex.leader.effort"
+  class: R
+  evidence: none
+- path: "llm.defaults.sessions.codex.leader.model"
+  class: R
+  evidence: none
+- path: "llm.defaults.sessions.glm.lane.effort"
+  class: W
+  evidence: reader
+- path: "llm.defaults.sessions.glm.lane.model"
+  class: W
+  evidence: reader
+- path: "llm.defaults.sessions.glm.leader.effort"
+  class: W
+  evidence: reader
+- path: "llm.defaults.sessions.glm.leader.model"
+  class: W
+  evidence: reader
+- path: "llm.defaults.sessions.mode"
   class: W
   evidence: reader
 - path: "llm.harness"
@@ -2178,6 +2217,9 @@
 - path: "security.sandbox.required"
   class: R
   evidence: none
+- path: "state.profile_max_bytes"
+  class: W
+  evidence: reader
 - path: "state.state_dir"
   class: W
   evidence: reader
@@ -2427,6 +2469,12 @@
 - path: "workflow.branch_guard.enabled"
   class: W
   evidence: "reader: internal/hook preToolHandler.branchGuardEnabled (SPEC-WORKTREE-BRANCH-GUARD-OPTIN-001); gates both BranchGuard deny classes since SPEC-MAIN-COMMIT-BAN-001"
+- path: "workflow.candidate_ci.enabled"
+  class: W
+  evidence: "reader: internal/cli candidateCIEnabled (SPEC-CANDIDATE-CI-001); gates the candidate verb and the merge step's LandingCheck seam"
+- path: "workflow.candidate_ci.guard_bundle_required"
+  class: R
+  evidence: "reserved: the guard-bundle verdict admission is wired at the workflow layer (SPEC-CANDIDATE-CI-001 M5); no Go reader by design"
 - path: "workflow.commit_identity_guard.deny_emails"
   class: W
   evidence: reader
@@ -2445,9 +2493,18 @@
 - path: "workflow.execution_mode"
   class: W
   evidence: reader
+- path: "workflow.factory_lease.duration"
+  class: W
+  evidence: reader
+- path: "workflow.factory_lease.renew_interval"
+  class: W
+  evidence: reader
 - path: "workflow.jev.enabled"
   class: W
   evidence: reader
+- path: "workflow.local_main_integration.enabled"
+  class: W
+  evidence: "reader: internal/cli localMainIntegrationEnabled, called by integrationMergeWorktree (SPEC-LOCAL-MAIN-FLOW-001 M1 step 4)"
 - path: "workflow.loop_prevention.failure_pattern_detection"
   class: W
   evidence: reader

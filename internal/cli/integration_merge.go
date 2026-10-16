@@ -10,9 +10,11 @@ package cli
 import (
 	"context"
 	"fmt"
+	"path/filepath"
 	"strings"
 	"time"
 
+	"github.com/modu-ai/moai-adk/internal/config"
 	"github.com/modu-ai/moai-adk/internal/factory"
 	"github.com/modu-ai/moai-adk/internal/homestate"
 	"github.com/spf13/cobra"
@@ -88,13 +90,20 @@ func newIntegrationMergeCmd() *cobra.Command {
 				},
 			}
 			// The landing check rides the candidate-CI key (spec.md §F):
-			// absent/false is the absent no-op seam. While t1478 is
-			// unlanded the key cannot read true — but if a future
-			// configuration flips it early, the step refuses LOUDLY rather
-			// than silently skipping a gate the project asked for.
+			// absent/false is the absent no-op seam. Enabled, BOTH call
+			// sites wire the SAME shared check (REQ-CCI-011, design.md
+			// D2/D10) — and the step itself fail-closes on an unwired
+			// seam, so omitting this wiring refuses rather than merges
+			// unchecked.
 			if candidateCIEnabled(root) {
-				seams.LandingCheck = func(string, string) error {
-					return fmt.Errorf("the shared landing check is not wired until SPEC-CANDIDATE-CI-001 lands")
+				seams.LandingCheck = func(cardID, sha string) error {
+					return factory.CandidateLandingCheck(factory.LandingCheckInput{
+						Root:                root,
+						CardID:              cardID,
+						PinnedSHA:           sha,
+						TargetBranch:        integBranch,
+						IntegrationWorktree: integ,
+					})
 				}
 			}
 			mergeSHA, err := factory.RunMergeStep(factory.MergeStepInput{
@@ -107,7 +116,7 @@ func newIntegrationMergeCmd() *cobra.Command {
 			if err != nil {
 				return err
 			}
-			_, _ = fmt.Fprintf(cmd.OutOrStdout(), "integration merge: card %s merged as %s into %s (window released; the next queued ticket holds it)\n", cardFlag, mergeSHA[:12], integBranch)
+			_, _ = fmt.Fprintf(cmd.OutOrStdout(), "integration merge: card %s merged as %s into %s (window released; the next queued ticket holds it)\n", cardFlag, factory.ShortSHA(mergeSHA), integBranch)
 			return nil
 		},
 	}
@@ -117,27 +126,47 @@ func newIntegrationMergeCmd() *cobra.Command {
 	return cmd
 }
 
-// integrationMergeWorktree resolves the worktree the merge step merges INTO,
-// and refuses the PRIMARY checkout (card t1479 r3 F3): the resolver below
-// returns ANY tree holding the branch — the primary included, with no
-// primary exclusion on the path — and a merge whose target is the shared
-// primary checkout is exactly what the branch-guard doctrine forbids (the
-// primary never changes branch for anyone). complete's own resolution
-// refuses the same shape; the verb owns the identical test, by the same
-// identity helper factorySameTree.
+// integrationMergeWorktree resolves the worktree the merge step merges INTO
+// (SPEC-LOCAL-MAIN-FLOW-001 plan §B2). It has four answers:
+//
+//   - a separate worktree holds the integration branch: that worktree,
+//     whatever the local-main gate says (case 2);
+//   - the primary checkout holds it and workflow.local_main_integration.enabled
+//     is on: the primary checkout, the designed local-main path (case 4);
+//   - the primary checkout holds it and the gate is off: refused, as before
+//     (case 3; card t1479 r3 F3). The primary never changes branch for anyone;
+//   - no tree holds it, because the primary checkout is on another branch or
+//     detached: refused with the operator guidance, which states that this
+//     tool never switches a branch (case 5).
+//
+// The merge verb and factory complete both resolve the surface here. Complete
+// asks this resolver for the primary checkout's verdict and keeps its own
+// refusal wording (factory_card.go, step 3).
 func integrationMergeWorktree(root, integBranch string) (string, error) {
 	integ := factoryWorktreeForBranchIn(root, integBranch)
 	if integ == "" {
-		return "", fmt.Errorf("integration merge: no worktree holds the integration branch %q — the leader provisions the integration worktree", integBranch)
+		return "", fmt.Errorf("integration merge: no worktree holds the integration branch %s. Provision its worktree (the leader does this at batch start), or check %s out in the primary checkout from your own terminal. The tool does not switch branches", integBranch, integBranch)
 	}
 	primary, _, err := identifyPrimaryCheckout(root)
 	if err != nil {
 		return "", fmt.Errorf("integration merge: cannot identify the primary checkout of %s: %w", root, err)
 	}
-	if factorySameTree(integ, primary) {
+	if factorySameTree(integ, primary) && !localMainIntegrationEnabled(root) {
 		return "", fmt.Errorf("integration merge: refused — the only tree holding %q is the primary checkout %s (the primary never changes branch; the leader provisions the integration worktree)", integBranch, primary)
 	}
 	return integ, nil
+}
+
+// localMainIntegrationEnabled reads workflow.local_main_integration.enabled
+// (SPEC-LOCAL-MAIN-FLOW-001 REQ-LMF-001). Every read failure, an absent config
+// included, answers false: the shipped default, so an unreadable config never
+// admits the primary checkout as a merge target.
+func localMainIntegrationEnabled(root string) bool {
+	cfg, err := config.NewLoader().Load(filepath.Join(root, ".moai"))
+	if err != nil || cfg == nil {
+		return false
+	}
+	return cfg.Workflow.LocalMainIntegration.Enabled
 }
 
 // integrationReadMergeCardForRun is the card-gate read O4 pins: one
@@ -172,18 +201,16 @@ func integrationReadMergeCardForRun(ctx context.Context, root, runID, cardID, la
 	}, nil
 }
 
-// candidateCIEnabled reports whether the shared landing check is wired.
-// SPEC-CANDIDATE-CI-001 (card t1478) owns the workflow.candidate_ci.enabled
-// key and has not landed: absent reads FALSE, so the landing check is the
-// absent no-op seam (spec.md §F), and whichever card lands second wires
-// this read to the real key and assigns the LandingCheck seam its real
-// implementation.
-//
-// @MX:DEBT: constant-false placeholder for the landing-check gate
-// @MX:CEILING: only until SPEC-CANDIDATE-CI-001 lands its key
-// @MX:UPGRADE: t1478's landing — replace with the real config read and
-// wire factory.MergeStepSeams.LandingCheck
+// candidateCIEnabled reports whether the candidate-CI path is enabled:
+// the config key workflow.candidate_ci.enabled (SPEC-CANDIDATE-CI-001,
+// REQ-CCI-006). An absent key and an unreadable config both read FALSE —
+// the path never enables itself on uncertainty — so the landing check
+// stays the absent no-op seam and the candidate verb refuses until a
+// maintainer opts in.
 func candidateCIEnabled(root string) bool {
-	_ = root // the key arrives with t1478; absent reads false today
-	return false
+	cfg, err := config.NewLoader().Load(filepath.Join(root, ".moai"))
+	if err != nil || cfg == nil {
+		return false
+	}
+	return cfg.Workflow.CandidateCI.Enabled
 }

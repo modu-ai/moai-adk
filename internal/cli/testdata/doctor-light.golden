@@ -30,16 +30,18 @@
 │    ok      Harness 5-Layer          .moai/harness/ not present (no harness configured)                                                                       │
 │    ok      Migration                current version 0                                                                                                        │
 │    ok      User Install             no per-user install recorded (run 'moai init')                                                                           │
-│    ok      Project Lock             project tree matches the lock file                                                                                       │
+│    ok      Project Lock             no project manifest (nothing to compare)                                                                                 │
+│    ok      User Lock                no user lock marker present                                                                                              │
 │    ok      Plugin Migration         plugin carrier retired — if a prior release installed the moai plugin, remove it manually: claude plugin uninstall moai  │
 │    ok      Home Disk Usage          no ~/.moai home found — nothing to report                                                                                │
-│    16 ok, 3 warn, 0 fail                                                                                                                                     │
+│    17 ok, 3 warn, 0 fail                                                                                                                                     │
 │                                                                                                                                                              │
 │  Workspace ---                                                                                                                                               │
 │    STATUS  CHECK                  MESSAGE                                                                                                                    │
 │    warn    Hooks Config           .claude/hooks/ not found — hook handlers unavailable                                                                       │
 │    warn    Hook Wiring            not checked: .claude/settings.json not found                                                                               │
 │    ok      Hook Delivery          skipped — no .claude/settings.json in this project                                                                         │
+│    ok      Hook Shell (Windows)   not applicable: host is not Windows                                                                                        │
 │    ok      Hook opt-in:           disabled                                                                                                                   │
 │    warn    Slash Commands         .claude/commands/ not found — slash commands unavailable                                                                   │
 │    ok      Settings DefaultMode   no ignored defaultMode override in project/local settings                                                                  │
@@ -55,8 +57,8 @@
 │    warn    Glamour Cache          glamour not integrated                                                                                                     │
 │    ok      Codex Wiring           not wired (claude-only project) — skipped                                                                                  │
 │    ok      Jev                    disabled (workflow.jev.enabled: false) — no request constructed, no network call                                           │
-│    8 ok, 9 warn, 0 fail                                                                                                                                      │
+│    9 ok, 9 warn, 0 fail                                                                                                                                      │
 │                                                                                                                                                              │
-│   Pass 30    Warn 12    Fail 0                                                                                                                               │
+│   Pass 32    Warn 12    Fail 0                                                                                                                               │
 │                                                                                                                                                              │
 ╰──────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────╯

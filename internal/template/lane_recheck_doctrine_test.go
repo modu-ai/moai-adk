@@ -58,7 +58,7 @@ func TestLaneRecheckDoctrine(t *testing.T) {
 		{
 			file:    auto,
 			heading: "## 5. The awaken rule",
-			need:    []string{"standing", "CronCreate", "recurring", "7,27,47 * * * *", "before the first stage", "CronList", "CronDelete"},
+			need:    []string{"standing", "CronCreate", "recurring", "renew_interval", "before the first stage", "CronList", "CronDelete"},
 		},
 		{
 			file:    auto,

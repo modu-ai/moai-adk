@@ -1,0 +1,61 @@
+// Deferred finding — TestReviewFindingLaneProbe (card t1595 → owner card t1596).
+//
+// Extracted verbatim from the t1498 overlay suite (cli_all_test.go), trimmed
+// to the imports this test uses. Intake (t1596): copy into internal/cli/ as a
+// *_test.go file; rename the reviewGit helper if it collides with an existing
+// helper on the then-current tree; re-verify RED on the intake tree before
+// fixing (a RED observed on a different tree/date is not a baseline).
+package cli
+
+import (
+	"os"
+	"os/exec"
+	"path/filepath"
+	"reflect"
+	"testing"
+)
+
+func reviewGit(t *testing.T, root string, args ...string) string {
+	t.Helper()
+	cmd := exec.Command("git", args...)
+	cmd.Dir = root
+	out, err := cmd.CombinedOutput()
+	if err != nil {
+		t.Fatalf("git %v: %v: %s", args, err, out)
+	}
+	return string(out)
+}
+
+func TestReviewFindingLaneProbe(t *testing.T) {
+	for _, row := range []struct {
+		name    string
+		file    string
+		develop bool
+	}{{"github-flow", "f.go", false}, {"space-path", "two words.go", true}, {"unicode-path", "한글.go", true}} {
+		t.Run(row.name, func(t *testing.T) {
+			root := t.TempDir()
+			t.Setenv("CLAUDE_PROJECT_DIR", root)
+			t.Setenv("MOAI_HOME", "")
+			reviewGit(t, root, "init", "-q", "-b", "main")
+			reviewGit(t, root, "config", "user.email", "review@example.invalid")
+			reviewGit(t, root, "config", "user.name", "Review")
+			reviewGit(t, root, "config", "commit.gpgsign", "false")
+			reviewGit(t, root, "commit", "-q", "--allow-empty", "-m", "seed")
+			if row.develop {
+				reviewGit(t, root, "branch", "develop")
+			}
+			wt := filepath.Join(root, ".moai", "worktrees", "t1")
+			reviewGit(t, root, "worktree", "add", "-q", "-b", "WT-probe", wt)
+			if err := os.WriteFile(filepath.Join(wt, row.file), []byte("code"), 0644); err != nil {
+				t.Fatal(err)
+			}
+			reviewGit(t, wt, "add", "--", row.file)
+			reviewGit(t, wt, "commit", "-q", "-m", "t1 code")
+			got, ok := productionLaneFilesProbe("t1", "lane-1")
+			t.Logf("probe files=%q ok=%v want=%q", got, ok, []string{row.file})
+			if !ok || !reflect.DeepEqual(got, []string{row.file}) {
+				t.Errorf("lane changed files not measured accurately")
+			}
+		})
+	}
+}

@@ -330,7 +330,15 @@ func delimiterAt(s string, i int) bool {
 // testNameEnd returns the end of the test name starting at s[i]: a Go
 // identifier, then `/`-separated subtest components. A component stops at
 // whitespace, a quote, a backtick, `(`, or a delimiter; a backslash escape
-// other than \s (e.g. `\.`) belongs to the component.
+// other than \s (e.g. `\.`) belongs to the component. A subtest component
+// keeps a mid-word apostrophe — one preceded AND followed by a word rune
+// (letter, digit, underscore), the possessive `the_card's` — so a real
+// subtest name like window_naming_the_card's_own_branch:_refused is read
+// whole (card t1667); every other apostrophe ends the component exactly as
+// before: at a component start, after a non-word rune such as the regex
+// anchor `$` of `-run '^TestA$'`, or with no word rune left after it (the
+// closing quote of `TestX'`). The FIRST component stays a strict Go
+// identifier, where an apostrophe is illegal.
 func testNameEnd(s string, i int) int {
 	rs := []rune(s[i:])
 	n := 0
@@ -360,6 +368,8 @@ func componentRune(rs []rune, n int) int {
 		return 0
 	}
 	switch r := rs[n]; {
+	case r == '\'' && possessiveApostrophe(rs, n):
+		return 1
 	case unicode.IsSpace(r), r == '\'', r == '"', r == '`', r == '(':
 		return 0
 	case r == '\\':
@@ -371,4 +381,21 @@ func componentRune(rs []rune, n int) int {
 		return 0
 	}
 	return 1
+}
+
+// possessiveApostrophe reports an apostrophe that belongs to a subtest
+// component: preceded by a word rune (letter, digit, underscore) and followed
+// by one — the mid-word possessive `the_card's` / `card's_own`. An apostrophe
+// anywhere else terminates the component: at a component start, after a
+// non-word rune (the `$` anchor in `-run '^TestA$'`), or with no word rune
+// left after it (the closing quote of `TestX'`), which is what keeps the
+// shell-quoted `-run` and grep positives firing.
+func possessiveApostrophe(rs []rune, n int) bool {
+	return n > 0 && n+1 < len(rs) &&
+		isWordRune(rs[n-1]) && isWordRune(rs[n+1])
+}
+
+// isWordRune reports a Go identifier rune: letter, digit, or underscore.
+func isWordRune(r rune) bool {
+	return unicode.IsLetter(r) || unicode.IsDigit(r) || r == '_'
 }

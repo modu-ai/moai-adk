@@ -27,7 +27,7 @@ Then the end state equals the current wipe-and-redeploy end state (directory-dif
 ### AC-UPM-020 — HAZARD: local-only file survives (REQ-UPM-013/015) — RELEASE-BLOCKING
 Given a fixture project with a tracked local-only file under a managed root (e.g. `.claude/rules/moai/dev-only-rule.md`, `.moai/config/sections/custom.yaml`).
 When update runs over the fixture.
-Then the file exists after the run with byte-identical content, appears in the summary's preserved list, and no backup-restore step was needed.
+Then the file exists after the run with byte-identical content, is counted in the summary's preserved count (its path is listed only under `--verbose`), and no backup-restore step was needed.
 RED measurement protocol (bound to plan.md M2; the plan phase writes no code, so the RED is taken at M2 landing, not now): the M2 hazard test **`TestUpdate_LocalOnlyFileSurvives`** (`internal/cli/update/reconcile_test.go`) runs against the current wipe-first flow, and its RED capture lands in progress.md §E.2 with ALL FOUR verification-completeness §2.1 elements BEFORE M4 — (1) the command `go test -run TestUpdate_LocalOnlyFileSurvives -count=1 ./internal/cli/update/`; (2) that run's verbatim stdout, which must show the test EXECUTING (a run whose executed-test count is zero — `ok ... [no tests to run]` — is not a RED and is not admissible evidence); (3) the exit code as its own field (non-zero for RED); (4) baseline attribution naming the tree SHA the measurement ran on plus `(this run, this tree)`. If M2 cannot produce all four elements, this criterion auto-demotes to regression-guard and loses release-blocking eligibility (§2.1 undecidable disposition). Historical context only — NOT this criterion's baseline: the same hazard measured 2026-08-15 (12 files) and `.moai/reports/t1159/measurement.md`.
 
 ### AC-UPM-021 — git-strategy operator values survive (REQ-UPM-020/021) — RELEASE-BLOCKING
@@ -49,7 +49,7 @@ Then the file is copied into the migration archive root (layout preserved) and r
 ### AC-UPM-032 — Summary honesty (REQ-UPM-030/031/032)
 Given a fixture run that refreshes, merges, conflicts, preserves, and archive-removes at least one file each.
 When the summary is emitted.
-Then it reports counts and per-path lists for all five categories, includes every deletion, and the counted total includes managed-root files (the `plan.go:73` exclusion is gone). Structure assertions only — no output-format vocabulary that pre-commits t1527.
+Then it reports counts for all five categories, per-path lists for refreshed, merged, conflicted, and archived-removed, and for preserved a count only (its per-path list appears only under `--verbose`); it includes every deletion, and the counted total includes managed-root files (the `plan.go:73` exclusion is gone). Structure assertions only — no output-format vocabulary that pre-commits t1527.
 
 ### AC-UPM-033 — Wholesale-path guard (REQ-UPM-015/040)
 Given the retained legacy wholesale path invoked (directly in a test) over a fixture containing a `user-owned` file and an unresolved user-modified file.
