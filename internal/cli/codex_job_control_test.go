@@ -104,6 +104,7 @@ func withHangingCodexSession(t *testing.T, lines []string) *hangingCodexSession 
 	codexLookPath = func(string) (string, error) { return "/fake/codex", nil }
 	sess := newHangingCodexSession(lines)
 	codexSession = sess
+	stubCodexContainmentListing(t) // REQ-MN-009: the pre-open listing needs a stub binary
 	t.Cleanup(func() {
 		sess.unblock()
 		codexRunner, codexLookPath, codexSession = prevRunner, prevLook, prevSess

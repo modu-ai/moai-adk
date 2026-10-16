@@ -306,6 +306,8 @@ func TestFR_AC014_AssignHints(t *testing.T) {
 // decider is refused outright.
 func TestFR_AC015_DecideKickoffBatch(t *testing.T) {
 	root, _ := fcFixture(t)
+	// The operator gate (REQ-MN-003): the deciding session carries the positive mark.
+	t.Setenv(config.EnvFactoryRole, "operator")
 	fcPlace(t, root,
 		homestate.Card{CardID: "k1", State: homestate.CardKickoff, OwnerLabel: "worker-1", Stage: homestate.CardPlanAudit, DecisionGate: homestate.DecisionGateKickoff},
 		homestate.Card{CardID: "k2", State: homestate.CardKickoff, OwnerLabel: "worker-1", Stage: homestate.CardPlanAudit, DecisionGate: homestate.DecisionGateKickoff},
@@ -345,6 +347,8 @@ func TestFR_AC015_DecideKickoffBatch(t *testing.T) {
 // block, and abandon move the card as the table says.
 func TestFR_AC016_DecideQuestionChoices(t *testing.T) {
 	root, _ := fcFixture(t)
+	// The operator gate (REQ-MN-003): the deciding session carries the positive mark.
+	t.Setenv(config.EnvFactoryRole, "operator")
 	fcPlace(t, root,
 		homestate.Card{CardID: "q1", State: homestate.CardRun, OwnerLabel: "worker-1", Stage: homestate.CardRun, LeaseHolder: "worker-1", LeaseExpiresAt: fcNow.Add(time.Hour).Format(time.RFC3339Nano)},
 		homestate.Card{CardID: "q2", State: homestate.CardNeedsDecision, OwnerLabel: "worker-1", DecisionGate: homestate.DecisionGateQuestion, DecisionQuestion: "push now?", DecisionResume: homestate.CardMergedLocal},
@@ -395,6 +399,8 @@ func TestFR_AC016_DecideQuestionChoices(t *testing.T) {
 // AC-002 (command half) — a legacy row is abandoned through decide.
 func TestFR_AC002_LegacyAbandonViaDecide(t *testing.T) {
 	root, _ := fcFixture(t)
+	// The operator gate (REQ-MN-003): the deciding session carries the positive mark.
+	t.Setenv(config.EnvFactoryRole, "operator")
 	fcPlace(t, root, homestate.Card{CardID: "legacy", State: "in_progress", Version: 2, OwnerLabel: "worker-1"})
 	if _, _, err := runFactory(t, "decide", "legacy", "--choice", "resume", "--run", fcRun); err == nil {
 		t.Fatal("resume on a legacy row was accepted")

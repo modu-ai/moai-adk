@@ -14,6 +14,10 @@ import (
 // writeRuntimeRecord is a test helper stamping an arbitrary record for a project.
 func writeRuntimeRecord(t *testing.T, projectDir string, rec mcpServerRuntimeRecord) string {
 	t.Helper()
+	// REQ-MN-015: the record dir is scoped to a tree that already is a moai project.
+	if err := os.MkdirAll(filepath.Join(projectDir, ".moai"), 0o755); err != nil {
+		t.Fatalf("MkdirAll .moai: %v", err)
+	}
 	dir := mcpServerRuntimeDir(projectDir)
 	if err := os.MkdirAll(dir, 0o755); err != nil {
 		t.Fatalf("MkdirAll: %v", err)

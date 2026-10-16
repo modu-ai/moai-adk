@@ -407,11 +407,12 @@ func nmNextFlagNames(t *testing.T) []string {
 }
 
 // TestFactoryNextFlagSet — the CLI interface is exactly the baseline plus
-// --card: nothing else was added.
+// --card and the --actor identity argument (SPEC-MCP-NEUTRALITY-001
+// REQ-MN-003): nothing else was added.
 func TestFactoryNextFlagSet(t *testing.T) {
-	want := []string{"card", "run", "wait", "wait-bound"}
+	want := []string{"actor", "card", "run", "wait", "wait-bound"}
 	if got := nmNextFlagNames(t); strings.Join(got, ",") != strings.Join(want, ",") {
-		t.Errorf("factory next flags = %v, want %v (the baseline --run/--wait/--wait-bound plus --card)", got, want)
+		t.Errorf("factory next flags = %v, want %v (the baseline --run/--wait/--wait-bound plus --card and --actor)", got, want)
 	}
 }
 
