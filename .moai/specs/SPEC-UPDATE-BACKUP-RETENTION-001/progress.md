@@ -312,9 +312,43 @@ Measured, not claimed: `go build ./...` and `GOOS=windows GOARCH=amd64 go build 
 Environment brackets around the `internal/cli` runs: `~/.gitconfig` 503 lines, sha256 `376c6febc88ba234321078fa8e8c4ec922b458192d1199a31a4eb03b55660548`, two `/var/folders|/repo|Test` lines (the same two lines as at the start), unchanged by the runs; backlog.db `PRAGMA quick_check` `ok`, header `SQLite format 3`. At the start of M3 the file read 502 lines with sha256 `b3f9680a...965b`; it had changed by the time of the first `internal/cli` run (modification time 09:31) without any `internal/cli` test of this card having run, so a concurrent session is the writer.
 Not run (Gaps): the behavior of `os.Root` `Mkdir`, `Rename`, `Link` and `Remove` on Windows (cross-build and vet only; a filesystem without hard links makes the rename fail closed with the content back under its own name, by `putBack`, and that path is exercised only through an injected link refusal); the case-sensitive-filesystem variants of the rename tests on this machine (its temporary directory folds case, so `TestClean_ReportsButKeepsBothSkillFilesPresent` skips, and the destination test of AC-UBR-17 asserts that no byte is lost rather than that `skill.md` is back under its name); the full `internal/cli` suite; `make build`; the template tests (no template file changed in M3).
 
+### M4 — An empty database file is reported, not removed (card tree `WT-10-14-class-3`, RED `471dbc55b`, GREEN `9d7f1823c`)
+
+Operator ruling Q1 (report only). The state-residue pass no longer deletes a zero-byte `*.db`; the only file `removeStateResidue` still removes is the zero-byte `backlog.json.lock`. A new `emptyStateDBs` lists zero-byte `*.db` files older than the minimum age with no `-wal` / `-shm` sidecar, and the housekeeping pass appends one reference row per file: `empty DB file present: <path> (zero bytes, left in place; nothing was removed)`. Both share `walkStateResidue`, which keeps the symbolic-`.moai` refusal, the regular-file test, the size test and the minimum-age test. No registry row existed for the removed call (the destructive registry counts `os.RemoveAll` / `os.Rename` and root-handle calls, not a plain `os.Remove`), and `TestDestructiveTargetRegistry_CoversAllSites` stays green. No data-deleting behavior was added; one was removed.
+
+RED (committed at `471dbc55b`, captured before the implementation; start tree `9f4f34b3b`), verbatim from `go test -count=1 -run 'TestRemoveStateResidue|TestRunUpdateHousekeeping|TestRunUpdate_RestoreDoesNotRunHousekeeping' ./internal/cli/`:
+
+```
+--- FAIL: TestRemoveStateResidue_RemovesRetiredLockOnly (0.01s)
+    update_state_residue_test.go:58: removed [.moai/state/factory.db .moai/state/factory/factory.db .moai/state/todo/backlog.db .moai/state/todo/backlog.json.lock], want [.moai/state/todo/backlog.json.lock]
+--- FAIL: TestRemoveStateResidue_KeepsStubWithSQLiteSidecar (0.02s)
+    --- FAIL: TestRemoveStateResidue_KeepsStubWithSQLiteSidecar/-wal (0.00s)
+        update_state_residue_test.go:102: removed [.moai/state/todo/plain.db], want none
+    --- FAIL: TestRemoveStateResidue_KeepsStubWithSQLiteSidecar/-shm (0.01s)
+        update_state_residue_test.go:102: removed [.moai/state/todo/plain.db], want none
+--- FAIL: TestRunUpdateHousekeeping_EmptyDBReportedNotRemoved_ACUBR18 (0.00s)
+    update_state_residue_test.go:152: empty database removed: stat .../.moai/state/todo/backlog.db: no such file or directory
+--- FAIL: TestRunUpdateHousekeeping_ReportsChangesInProject (0.01s)
+    update_state_residue_test.go:276: reference rows = ["removed 1 leftover state file(s): .moai/state/todo/backlog.db"], want ["empty DB file present: .moai/state/todo/backlog.db (zero bytes, left in place; nothing was removed)"]
+FAIL
+FAIL	github.com/modu-ai/moai-adk/internal/cli	1.441s
+```
+
+M4 acceptance matrix (Exit: AC-UBR-18 green):
+
+| AC | Status | Evidence |
+|---|---|---|
+| AC-UBR-18 | PASS | `TestRunUpdateHousekeeping_EmptyDBReportedNotRemoved_ACUBR18`: a handle opened on the zero-byte database before the pass writes successfully after it and the bytes land at the path; the row names the path; the zero-byte `backlog.json.lock` of the same age is removed; `go test -count=1 -run 'TestRemoveStateResidue|TestRunUpdateHousekeeping|TestRunUpdate_RestoreDoesNotRunHousekeeping|TestDestructiveTargetRegistry' ./internal/cli/` → `ok` |
+
+Adapted existing tests (requirement REQ-UBR-018 reverses the expected behavior; assertion intent kept, the file is still expected present and is now reported): `TestRemoveStateResidue_RemovesStubsAndRetiredLockOnly` renamed `TestRemoveStateResidue_RemovesRetiredLockOnly` (the three zero-byte databases move from the removed list to the must-survive list); `TestRemoveStateResidue_KeepsStubWithSQLiteSidecar` (the plain stub is now kept and is the only one reported; the sidecar stub is neither removed nor reported); `TestRunUpdateHousekeeping_ReportsChangesInProject` (the expected reference row is the empty-DB row, not a removal row); `TestRemoveStateResidue_RefusesSymlinkedMoAIDir` gained a report-side check (no empty-DB row through a symbolic `.moai`). Unchanged and still passing: `TestRemoveStateResidue_KeepsRecentStub`, `TestRunUpdateHousekeeping_NoOpOutsideProject`, `TestRunUpdateHousekeepingLocked_*`, `TestRunUpdate_RestoreDoesNotRunHousekeeping`, `TestRunUpdateHousekeeping_RepairsSkillResidue`.
+
+Measured, not claimed: `go build ./...` and `GOOS=windows GOARCH=amd64 go build ./...` exit 0; `go vet ./internal/cli/` exit 0; `gofmt -l` on the two touched files empty; `go test -count=1 -cover ./internal/cli/update/...` all `ok` (update 85.2%, backup 88.4%, deploy 85.9%, merge 93.1%, plan 95.2%, report 95.1%, skillresidue 88.4%); `golangci-lint run ./internal/cli/` reports exactly the three pre-existing errcheck findings in `internal/cli/factory_run_adopt.go` and nothing else (a fourth finding, `holder.Close` unchecked in the new test, appeared and was fixed with `defer func() { _ = holder.Close() }()` before the GREEN commit); `grep -n AskUserQuestion internal/cli/update_state_residue.go` empty (exit 1).
+Environment brackets around the `internal/cli` runs: `~/.gitconfig` 503 lines, sha256 `376c6febc88ba234321078fa8e8c4ec922b458192d1199a31a4eb03b55660548`, two `/var/folders|/repo|Test` lines, unchanged before and after; backlog.db header `SQLite format 3`, `PRAGMA quick_check` `ok`.
+Not run (Gaps): the full `internal/cli` suite (named `-run` tests only; the package coverage figure of 5.0% in that bounded run is not the package's coverage); coverage of `internal/cli` as a whole; `make build`; the template tests (no template file changed); whether `moai doctor` lists the same finding (optional, not required by REQ-UBR-018); Windows behavior of the pass (cross-build only).
+
 ## §E.3 Run-phase Audit-Ready Signal
 
-_<pending run-phase>_ — M3 of M6 is complete; the signal is written at run close.
+_<pending run-phase>_ — M4 of M6 is complete; the signal is written at run close.
 
 ## §E.4 Sync-phase Audit-Ready Signal
 
