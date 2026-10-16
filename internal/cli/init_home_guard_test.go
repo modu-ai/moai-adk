@@ -12,6 +12,10 @@ package cli
 // continue when any redirected home still resolves inside the real home, and
 // compares an 8-item real-home fingerprint before and after the test.
 //
+// The real-home resolver and the containment judgment (testguard.CheckSeamHomes)
+// are shared with every other home guard in the repository; they live in
+// internal/testguard and are not duplicated here.
+//
 // Tests using this helper must not call t.Parallel: the helper calls t.Setenv,
 // so Go testing panics if they do.
 
@@ -33,6 +37,7 @@ import (
 	"github.com/modu-ai/moai-adk/internal/core/project"
 	"github.com/modu-ai/moai-adk/internal/profile"
 	"github.com/modu-ai/moai-adk/internal/shell"
+	"github.com/modu-ai/moai-adk/internal/testguard"
 )
 
 // initialShellConfigSeam is the shell-config seam value captured when the test
@@ -51,35 +56,6 @@ type shellSeamSpy struct {
 // Calls reports how many times the seam was invoked.
 func (s *shellSeamSpy) Calls() int {
 	return int(s.calls.Load())
-}
-
-// checkSeamHomes is the pure guard decision: it returns an error when realHome
-// is unknown, or when any seam path is empty, relative, equal to realHome, or
-// located under realHome. Paths on another volume are treated as outside.
-func checkSeamHomes(realHome string, seamPaths []string) error {
-	if strings.TrimSpace(realHome) == "" {
-		return errors.New("home guard: real home is empty; refusing to judge seam paths")
-	}
-	home := filepath.Clean(realHome)
-	for _, p := range seamPaths {
-		if strings.TrimSpace(p) == "" {
-			return errors.New("home guard: a seam path is empty and would fall back to the real home")
-		}
-		clean := filepath.Clean(p)
-		if !filepath.IsAbs(clean) {
-			return fmt.Errorf("home guard: seam path %q is relative and cannot be judged", p)
-		}
-		rel, err := filepath.Rel(home, clean)
-		if err != nil {
-			// No relative path exists (e.g. a different Windows volume).
-			continue
-		}
-		if rel == ".." || strings.HasPrefix(rel, ".."+string(filepath.Separator)) {
-			continue
-		}
-		return fmt.Errorf("home guard: seam path %q resolves inside the real home %q", p, realHome)
-	}
-	return nil
 }
 
 // captureRealHomeFingerprint reads the 8 guarded real-home items, one line
@@ -145,7 +121,7 @@ func homeGuardFileSHA256(path string) (string, error) {
 func prepareSafeInitHome(t *testing.T) (fakeHome string, spy *shellSeamSpy) {
 	t.Helper()
 
-	realHome, err := os.UserHomeDir()
+	realHome, err := testguard.RealHome()
 	if err != nil {
 		t.Fatalf("home guard: resolve real home: %v", err)
 	}
@@ -207,78 +183,9 @@ func prepareSafeInitHome(t *testing.T) (fakeHome string, spy *shellSeamSpy) {
 	if err != nil {
 		t.Fatalf("home guard: resolve seam home: %v", err)
 	}
-	if err := checkSeamHomes(realHome, []string{seamHome, profile.GetBaseDir(), os.Getenv("MOAI_HOME")}); err != nil {
+	if err := testguard.CheckSeamHomes(realHome, []string{seamHome, profile.GetBaseDir(), os.Getenv("MOAI_HOME")}); err != nil {
 		t.Fatalf("%v; refusing to run init", err)
 	}
 
 	return fakeHome, spy
-}
-
-// TestHomeGuard_RejectsPathInsideRealHome is the negative case for the guard
-// decision: a seam path equal to or under the real home is refused, and so is
-// an unjudgeable input.
-func TestHomeGuard_RejectsPathInsideRealHome(t *testing.T) {
-	realHome := filepath.Join(t.TempDir(), "home")
-	outside := t.TempDir()
-
-	cases := []struct {
-		name      string
-		realHome  string
-		seamPaths []string
-	}{
-		{name: "equal_to_real_home", realHome: realHome, seamPaths: []string{realHome}},
-		{name: "equal_with_trailing_separator", realHome: realHome, seamPaths: []string{realHome + string(filepath.Separator)}},
-		{name: "direct_child", realHome: realHome, seamPaths: []string{filepath.Join(realHome, ".moai")}},
-		{name: "deep_child", realHome: realHome, seamPaths: []string{filepath.Join(realHome, ".moai", "claude-profiles")}},
-		{name: "child_named_with_leading_dots", realHome: realHome, seamPaths: []string{filepath.Join(realHome, "..moai")}},
-		{name: "one_inside_among_outside", realHome: realHome, seamPaths: []string{outside, filepath.Join(realHome, ".claude"), outside}},
-		{name: "empty_seam_path", realHome: realHome, seamPaths: []string{""}},
-		{name: "relative_seam_path", realHome: realHome, seamPaths: []string{filepath.Join(".moai", "home")}},
-		{name: "empty_real_home", realHome: "", seamPaths: []string{outside}},
-	}
-	if home, err := os.UserHomeDir(); err == nil && home != "" {
-		cases = append(cases, struct {
-			name      string
-			realHome  string
-			seamPaths []string
-		}{name: "actual_real_home_child", realHome: home, seamPaths: []string{filepath.Join(home, ".moai")}})
-	}
-
-	for _, tc := range cases {
-		t.Run(tc.name, func(t *testing.T) {
-			if err := checkSeamHomes(tc.realHome, tc.seamPaths); err == nil {
-				t.Errorf("checkSeamHomes(%q, %q) = nil, want an error", tc.realHome, tc.seamPaths)
-			}
-		})
-	}
-}
-
-// TestHomeGuard_AcceptsTempDir is the positive case: t.TempDir() paths are
-// accepted against the actual real home, and a sibling that only shares a
-// name prefix with the real home is not mistaken for a child.
-func TestHomeGuard_AcceptsTempDir(t *testing.T) {
-	t.Run("temp_dirs_against_actual_real_home", func(t *testing.T) {
-		realHome, err := os.UserHomeDir()
-		if err != nil {
-			t.Fatalf("resolve real home: %v", err)
-		}
-		fakeHome := t.TempDir()
-		seamPaths := []string{
-			fakeHome,
-			filepath.Join(fakeHome, ".moai", "claude-profiles"),
-			filepath.Join(fakeHome, ".moai"),
-		}
-		if err := checkSeamHomes(realHome, seamPaths); err != nil {
-			t.Errorf("checkSeamHomes(real home, temp dirs) = %v, want nil", err)
-		}
-	})
-
-	t.Run("sibling_sharing_name_prefix", func(t *testing.T) {
-		base := t.TempDir()
-		realHome := filepath.Join(base, "home")
-		sibling := filepath.Join(base, "home2", ".moai")
-		if err := checkSeamHomes(realHome, []string{sibling}); err != nil {
-			t.Errorf("checkSeamHomes(%q, [%q]) = %v, want nil", realHome, sibling, err)
-		}
-	})
 }
