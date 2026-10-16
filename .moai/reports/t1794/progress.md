@@ -47,7 +47,7 @@
 
 ## Residual-risk
 
-- **게이트 전환의 내구성**: 1차 workflow.yaml 변경이 미커밋 dirt 상태. 커밋 전에 revert되면 영수증 가드가 재개되고 거부 6건이 다시 manager-git 스폰을 차단. 그때의 해법(K4 해제 절차, 인라인): ① `gates.codex: required` 상태의 1차 체크아웃 세션에서 ② sync-auditor·plan-auditor 각 1회 무기명 스폰 — 각 감사관은 스스로 `codex_audit`/`audit_multi`(project_root=1차 체크아웃)를 호출해 1차 저장소에 영수증(gate_unmet 없고 inconclusive 아닌 판정)을 발급받은 뒤 ③ 마지막 줄을 `AUDIT-VERDICT: PASS spec=<ID> receipts=<rcpt-…>`로 끝낸다. 같은 역할의 증명 PASS 1회가 그 트리·역할의 영수증류 거부를 전부 해제한다(`internal/hook/audit_receipt_guard.go` checkAuditorStop, 운영자 결정 K4).
+- **게이트 전환의 내구성**: 1차 workflow.yaml 변경이 미커밋 dirt 상태. 커밋 전에 revert되면 영수증 가드가 재개되고 거부 6건이 다시 manager-git 스폰을 차단. 그때의 해법(K4 해제 절차, 인라인): ① `gates.codex: required` 상태의 1차 체크아웃 세션에서 ② sync-auditor·plan-auditor 각 1회 무기명 스폰 — 각 감사관은 스스로 `codex_audit`/`audit_multi`(project_root=1차 체크아웃)를 호출해 1차 저장소에 영수증(gate_unmet 없고 inconclusive 아닌 판정)을 발급받은 뒤 ③ 감사 결과가 실제로 PASS일 때만 마지막 줄을 `AUDIT-VERDICT: PASS spec=<SPEC-ID> receipts=<rcpt-…>`로 끝낸다 — 영수증이 gate_unmet 없고 inconclusive 아닌 것만으로는 부족하다(주의: `CheckCitedReceiptsSince`는 fail 판정 영수증도 기계적으로 인용을 허용하므로, 실제 판정이 fail이면 PASS 줄을 써서는 안 된다). FAIL이면 `AUDIT-VERDICT: FAIL …`로 끝낸다(FAIL은 영수증 불요) — 결함 수리·재감사가 PASS를 증명하기 전까지 해당 역할의 거부는 해제를 유지한다. 같은 역할의 증명 PASS 1회가 그 트리·역할의 영수증류 거부를 전부 해제한다(`internal/hook/audit_receipt_guard.go` checkAuditorStop, 운영자 결정 K4).
 - **F2[Medium·프로세스]**: 1차 체크아웃이 낡은 미커밋 변경(workflow.yaml·llm.yaml·harness 등)을 계속 보유 — ec193e477류 "pending 커밋" 재발 시도 F1류 회귀 재발 위험. 리더 정리 소관(감사 지적 그대로).
 - **F3[Low·선택]**(t1479 소관)·**F4[Low·선택]**(F-11 grep 표류) 미수리 — 선택 등급이라 본 카드 범위에서 제외.
 - 영수증 가드 off 상태에서 신규 감사 PASS의 영수증 증명은 1차 트리에서 강제되지 않음(claude 단일 백엔드 체제의 설계된 결과).
