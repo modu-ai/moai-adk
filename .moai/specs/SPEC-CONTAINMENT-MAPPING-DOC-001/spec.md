@@ -19,6 +19,7 @@ tier: M
 ## HISTORY
 
 - 0.1.0: Initial draft. Plan-phase artifacts (Tier M: spec, plan, acceptance, plus the progress skeleton).
+- 0.1.0 (plan-audit fix round 1): REQ-CMM-007 scoped to eight distinct paths so that it matches the revised acceptance command; the acceptance commands for the source register, the mapping table, the path check, the forbidden-token check, and the scope guard were rebuilt (see `plan.md` § I).
 
 ## 1. Purpose
 
@@ -66,7 +67,7 @@ Notation: GEARS. The mapping table, source register, and flag tokens are fixed E
 - **REQ-CMM-004** (Event-driven): When the author assigns `VERIFIED` to a source, the author shall have fetched that URL during the authoring run and observed the quoted fragment on the fetched page; where either condition is not met, the author shall assign `UNVERIFIED`.
 - **REQ-CMM-005** (State-driven): While a source's flag is `UNVERIFIED`, the document shall present every mapping row that cites that source as a lead awaiting confirmation and shall not present its claim as established.
 - **REQ-CMM-006** (Ubiquitous): The document shall contain one mapping table with the columns Theme, Source, Source claim, MoAI defense, and Fit, covering the themes `correlated-failure`, `isolation-first`, and `merge-queue-alternative` with at least one row per theme; the Fit cell shall be the last cell of its row and shall be exactly one of `aligned`, `differs`, or `gap`.
-- **REQ-CMM-007** (Ubiquitous): The MoAI-defense cell of every non-gap row shall name a repository path and a section of that file in the form `path § section`, for a file the author opened during the authoring run; every cited path shall resolve in the tree, and the document shall cite at least eight paths in total.
+- **REQ-CMM-007** (Ubiquitous): The MoAI-defense cell of every non-gap row shall name a repository path and a section of that file in the form `path § section`, for a file the author opened during the authoring run; every cited path shall resolve in the tree, and the document shall cite at least eight distinct paths in total.
 - **REQ-CMM-008** (Event-driven): When no MoAI defense matching a source claim is found among the files the author opened, the document shall record a row whose Fit is `gap` and shall not synthesize a match; a gap row states that no defense was located, which is not a statement that none exists.
 - **REQ-CMM-009** (Ubiquitous): The document shall attribute the source's volume figures and its post-merge-testing conclusion to the source, shall frame the `merge-queue-alternative` comparison as one across differing scales, and shall not assert that the factory should adopt the source's approach.
 - **REQ-CMM-010** (Unwanted): The document shall not contain card identifiers, SPEC identifiers, calendar years or dates, the rule-marker tokens `[HARD]` or `[ZONE`, or the word `develop`; defense cells shall paraphrase and point to repository text and shall not restate it.
