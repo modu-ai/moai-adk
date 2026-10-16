@@ -92,3 +92,12 @@ Gaps: the full `./internal/cli` package and `go test ./...` not run (heavy slot,
 Residual-risk: the unit test pins the add-dir seam to a temp dir, not the real `MOAI_HOME` derivation (that derivation stays covered by the existing `TestCodexLaunch_CliAddsMoaiHomeWritableDir`).
 
 The §2 evidence block above describes the lane's own reverted first version and is superseded by this section for the production fix.
+
+## §7 Remeasure composition (set before the run; the tree takes no commit after this one)
+
+Command shape (leader instruction, cross-session): `moai integration remeasure -- go test -json -count=1 -timeout=150m -skip '<pattern>' ./internal/cli/`, TMPDIR/GOTMPDIR/HOME not set, `~/.gitconfig` line count, `backlog.db` hash and `~/.moai/db` count recorded before (immediately before the run) and after.
+
+`-skip` = ONE anchored regex of 64 exact names: 43 `*SessionWorktree*` names (from `go test ./internal/cli -list SessionWorktree`, incl. `TestEnterSessionWorktree_ProfileSubcommand`); the 7 approved base failures (Codex wiring mirror x6, `TestHookEntryParity_NoDivergenceEitherDirection`); `TestRunWeb_AutoEntryOn_SuppressesAdvisory` and `TestWorktreeNew_WiresTheSharedMaterializer` (write the real `~/.gitconfig`, per the leader); `TestCountCodexAgentTOMLs` and `TestCountCodexAgentTOMLs_BadPatternRoot` (read the real `~/.codex/agents`, leader-approved); and the 10 `TestAC_CLOSURE_*` tests that use the `closuretest` fixture and dirty `~/.moai/db` (`contract_closure_test.go`: 001, 019, 020, 024; `mcp_audit_multi_record_test.go`: 012, 012_UnknownCard, 012_AppendFailure, 012_NoCardID, 012_TargetRecorded, 012_PathTraversalCardID — the two files are the only ones in `internal/cli` that mention `closuretest`, checked with `grep -rl`).
+NOT skipped, by the leader's rule: this card's own fixed tests, `TestManagedTUINeverReachedWithoutOptIn` and `TestAuditLagUsesBinlagSeam`.
+`internal/hook` is not in scope of this remeasure, so `TestNoNewEnvLiteralsInDiff` is not in the pattern.
+Order: after the t1812 remeasure on the same lane; the slot is held by `leader-t1822` at the time of writing.
