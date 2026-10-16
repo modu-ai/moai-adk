@@ -152,7 +152,7 @@ func newPreviewModel(in []FilePreviewInput, isUserOwned UserOwnedPredicate, opts
 		paths = append(paths, c.RelPath)
 		// The class label carries its semantic colour role (REQ-TUIM-014); the
 		// label STRING stays byte-identical to ChangeClass.String().
-		rows = append(rows, table.Row{paint(classRoleToken(th, c.Class), c.Class.String()), c.RelPath})
+		rows = append(rows, table.Row{paint(classRoleToken(th, c.Class), c.Class.String()), elidePath(c.RelPath, previewFileColumnWidth(opts.Width))})
 	}
 
 	width := opts.Width
@@ -166,7 +166,7 @@ func newPreviewModel(in []FilePreviewInput, isUserOwned UserOwnedPredicate, opts
 
 	columns := []table.Column{
 		{Title: "Class", Width: 24},
-		{Title: "File", Width: width - 24 - 4},
+		{Title: "File", Width: previewFileColumnWidth(opts.Width)},
 	}
 
 	// WithStyles precedes WithHeight deliberately: table options are applied in

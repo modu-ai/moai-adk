@@ -744,9 +744,13 @@ func TestSettingsTemplateNewHookStructure(t *testing.T) {
 			// Verify timeout. SPEC-HOOK-OFFICIAL-COMPLIANCE-001 M4 (REQ-HOC-010)
 			// raised TeammateIdle/TaskCompleted from 5s to 60s toward the sync-gate
 			// 60s precedent; the remaining events stay at the 5s default.
+			// UserPromptSubmit is pinned at 30s, the Claude Code default for its command hooks
+			// (card t1775; https://code.claude.com/docs/en/hooks, checked 2026-10-15, a default rather than a maximum).
+			// bash startup alone exceeded 5s under multi-lane load.
 			expectedTimeout := map[string]float64{
-				"TeammateIdle":  60,
-				"TaskCompleted": 60,
+				"TeammateIdle":     60,
+				"TaskCompleted":    60,
+				"UserPromptSubmit": 30,
 			}
 			want, hasCustom := expectedTimeout[ne.event]
 			if !hasCustom {
