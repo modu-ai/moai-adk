@@ -49,6 +49,12 @@ var factoryLeaseBeforeClaim = func(arm, cardID string) error { return nil }
 // or the queue. The default is inert.
 var factoryLeaseAtPassEntry = func() {}
 
+// factoryLeaseWaitStart is the test seam of a lease call's first queue-lock wait
+// (SPEC-FACTORY-ATOMIC-LEASE-001 AC-FAL-007 (c)). factoryLeaseSection calls it once
+// per lease call with the clock read taken immediately before that wait. It is
+// inert: it writes no log and no record, and only tests consume the value.
+var factoryLeaseWaitStart = func(time.Time) {}
+
 // The lease path's claim bound and the worktree step's lock wait
 // (SPEC-FACTORY-ATOMIC-LEASE-001 plan D2, D3; deadline resized by card
 // t1696). The claim wait cap is the sum of the claim's context deadline and
@@ -393,7 +399,8 @@ func factoryNextLeaseOnceGated(ctx context.Context, root, runID, lane string, no
 			leased, raced bool
 			passErr       error
 		)
-		ran, lockErr := factoryLeaseSection(store, func(l *factory.LockedBacklog) {
+		// Only the first attempt is the lease call's queue-lock wait; a retry adds no clock read.
+		ran, lockErr := factoryLeaseSection(store, attempt == 0, func(l *factory.LockedBacklog) {
 			card, leased, raced, passErr = factoryNextSelectAndLease(ctx, l, db, root, runID, lane, skip, noNewCards)
 		})
 		if !ran {
@@ -428,10 +435,19 @@ func factoryNextLeaseOnceGated(ctx context.Context, root, runID, lane string, no
 // it is false err is the lock's acquisition failure, and when it is true err is
 // at most the lock's release failure.
 //
+// leaseWait marks the section that opens a lease call's first queue-lock wait:
+// the nominated lease passes true, the bare form passes true on its first attempt
+// only, and the bundle load (not a lease call) passes false. A marked wait reads
+// the clock once for the factoryLeaseWaitStart seam, so each lease call reads it
+// exactly once, immediately before the wait.
+//
 // @MX:WARN: [AUTO] the lease section holds the queue lock across a factory-record write, so its worst hold is the claim wait cap plus one promotion and one restore
 // @MX:REASON: inside fn the queue is read and written only through the handle (a public Mutate waits out the whole budget on the section's own descriptor), and nothing here may start a git process or create a worktree (REQ-FAL-007)
 // @MX:SPEC: SPEC-FACTORY-ATOMIC-LEASE-001
-func factoryLeaseSection(store *factory.BacklogStore, fn func(*factory.LockedBacklog)) (ran bool, err error) {
+func factoryLeaseSection(store *factory.BacklogStore, leaseWait bool, fn func(*factory.LockedBacklog)) (ran bool, err error) {
+	if leaseWait {
+		factoryLeaseWaitStart(factoryCardNow())
+	}
 	err = store.WithLock(func(l *factory.LockedBacklog) error {
 		ran = true
 		fn(l)
@@ -1407,7 +1423,7 @@ func factoryNextNominate(ctx context.Context, root, runID, lane, cardID, quotaHo
 		card    homestate.Card
 		outcome error
 	)
-	ran, lockErr := factoryLeaseSection(todoStoreAt(root), func(l *factory.LockedBacklog) {
+	ran, lockErr := factoryLeaseSection(todoStoreAt(root), true, func(l *factory.LockedBacklog) {
 		card, outcome = factoryNominateInSection(ctx, l, db, root, runID, lane, cardID, quotaHold)
 	})
 	switch {
@@ -1627,6 +1643,11 @@ func newFactoryNextCommand() *cobra.Command {
 			if cmd.Flags().Changed("card") && nominee == "" {
 				return errors.New("factory next: --card needs a card id")
 			}
+			// The open-PR query runs before the factory record opens and before the queue
+			// lock is taken, so no network call runs inside the lease section or after its
+			// release (SPEC-FACTORY-ATOMIC-LEASE-001 AC-FAL-015 (vii)). The output path
+			// prints this outcome and issues no query of its own.
+			openPRs := prefetchOpenPRs()
 			deadline := factoryCardNow().Add(waitBound)
 			// The quota gate (SPEC-QUOTA-AWARE-SCHEDULING-001): evaluated once per
 			// pass, outside the selection arms, and carried across the --wait
@@ -1673,7 +1694,7 @@ func newFactoryNextCommand() *cobra.Command {
 						return fmt.Errorf("factory next: %s was leased (the lease stands in the record; do not re-run next for it — settle the worktree step instead): %w", card.CardID, err)
 					}
 					card.WorktreePath = wt
-					return factoryNextPrint(cmd, card)
+					return factoryNextPrint(cmd, card, openPRs)
 				}
 				if !wait || !factoryCardNow().Before(deadline) {
 					if held {
@@ -1702,17 +1723,20 @@ func newFactoryNextCommand() *cobra.Command {
 
 // factoryNextPrint reports the leased card (REQ-SD-008, plan B9) on the
 // command's streams; the writer form is what the MCP factory_next handler
-// shares (design.md §3 — one implementation per verb).
-func factoryNextPrint(cmd *cobra.Command, card homestate.Card) error {
-	return factoryNextWriteOutput(cmd.OutOrStdout(), cmd.ErrOrStderr(), factoryCardRoot(), card)
+// shares (design.md §3 — one implementation per verb). openPRs is the open-PR
+// query the verb ran before its lease (prefetchOpenPRs).
+func factoryNextPrint(cmd *cobra.Command, card homestate.Card, openPRs openPRQuery) error {
+	return factoryNextWriteOutput(cmd.OutOrStdout(), cmd.ErrOrStderr(), factoryCardRoot(), card, openPRs)
 }
 
 // factoryNextWriteOutput reports the leased card: its id, its stage, its
 // worktree name, and its pull-request and landed state exactly as
 // `moai todo pr` prints them — the pre-dispatch cross-check the leader
 // performs, reported by the lane itself for a self-dispatched card. The
-// queue read is anchored at root, the tree the verb resolved.
-func factoryNextWriteOutput(out, errOut io.Writer, root string, card homestate.Card) error {
+// queue read is anchored at root, the tree the verb resolved. openPRs was taken
+// before the lease, so this output issues no open-PR query of its own
+// (SPEC-FACTORY-ATOMIC-LEASE-001 AC-FAL-015 (vii)).
+func factoryNextWriteOutput(out, errOut io.Writer, root string, card homestate.Card, openPRs openPRQuery) error {
 	wtName := dash("")
 	if p := strings.TrimSpace(card.WorktreePath); p != "" {
 		wtName = filepath.Base(p)
@@ -1722,7 +1746,7 @@ func factoryNextWriteOutput(out, errOut io.Writer, root string, card homestate.C
 	if err != nil {
 		return fmt.Errorf("factory next: read the queue for the pr line: %w", err)
 	}
-	rows := computeTodoPRRows(errOut, rec, card.CardID)
+	rows := computeTodoPRRowsFrom(errOut, rec, card.CardID, openPRs)
 	writeTodoPRRows(out, rec, rows)
 	return nil
 }

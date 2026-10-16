@@ -152,6 +152,9 @@ func handleFactoryNext(ctx context.Context, req mcp.CallToolRequest) (*mcp.CallT
 	if _, present := req.GetArguments()["card"]; present && nominee == "" {
 		return toolErr("factory_next", errors.New("factory next: card needs a card id")), nil
 	}
+	// The open-PR query runs before the lease, as in the CLI verb, so the output
+	// below issues no query after the queue lock is released (AC-FAL-015 (vii)).
+	openPRs := prefetchOpenPRs()
 	// The same quota gate as the CLI verb, through the same shared evaluation.
 	held, holdLine := (&factoryQuotaLatch{}).evaluate(root)
 	var card homestate.Card
@@ -194,7 +197,7 @@ func handleFactoryNext(ctx context.Context, req mcp.CallToolRequest) (*mcp.CallT
 	}
 	card.WorktreePath = wt
 	out, errOut := &bytes.Buffer{}, &bytes.Buffer{}
-	if err := factoryNextWriteOutput(out, errOut, root, card); err != nil {
+	if err := factoryNextWriteOutput(out, errOut, root, card, openPRs); err != nil {
 		return toolErr("factory_next", err), nil
 	}
 	return mcp.NewToolResultText(strings.TrimRight(out.String(), "\n")), nil

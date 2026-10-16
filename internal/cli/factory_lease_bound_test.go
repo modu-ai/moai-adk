@@ -312,26 +312,87 @@ func TestFactoryLeaseMidClaimStallBounded(t *testing.T) {
 	}
 }
 
+// flWaitStartSeam installs the lease's queue-lock wait seam (factoryLeaseWaitStart,
+// AC-FAL-007 (c)) for the test, restored at cleanup, and returns the getter of the
+// instant the seam fired. The getter fails the test unless the seam fired exactly
+// once: each lease call reads the clock once, immediately before its first
+// queue-lock wait. The instant is read from the real clock inside the seam, not
+// taken from its argument: the argument is factoryCardNow's read, and fcFixture
+// pins factoryCardNow to a fixed 2026-09-26 date, so the argument cannot serve as a
+// wall-clock start. The seam fires immediately before the wait, so the two reads
+// differ only by the call itself.
+//
+// At that first firing the helper also starts a timer that calls release after
+// holdFor. The caller's holder keeps the queue lock from before the verb starts;
+// starting its release timer at the wait, rather than before the verb, keeps the
+// lock held for longer than B during the wait whatever the pre-lock latency, which
+// varies with the host's load. The timer is stopped at cleanup.
+func flWaitStartSeam(t *testing.T, holdFor time.Duration, release func()) func() time.Time {
+	t.Helper()
+	var (
+		mu    sync.Mutex
+		at    time.Time
+		fired int
+		hold  *time.Timer
+	)
+	prev := factoryLeaseWaitStart
+	factoryLeaseWaitStart = func(time.Time) {
+		mu.Lock()
+		defer mu.Unlock()
+		if fired == 0 {
+			at = time.Now()
+			hold = time.AfterFunc(holdFor, release)
+		}
+		fired++
+	}
+	t.Cleanup(func() {
+		factoryLeaseWaitStart = prev
+		mu.Lock()
+		defer mu.Unlock()
+		if hold != nil {
+			hold.Stop()
+		}
+	})
+	return func() time.Time {
+		t.Helper()
+		mu.Lock()
+		defer mu.Unlock()
+		switch {
+		case fired == 0:
+			t.Fatal("factoryLeaseWaitStart never fired: the lease reached no queue-lock wait, so the measured interval has no start (AC-FAL-007 (c))")
+		case fired != 1:
+			t.Fatalf("factoryLeaseWaitStart fired %d times, want exactly 1: the lease reads the clock once, immediately before its queue-lock wait (AC-FAL-007 (c))", fired)
+		}
+		return at
+	}
+}
+
 // TestFactoryLeaseQueueLockStallBounded — AC-FAL-007 (c): the queue lock held by
 // the test for longer than the budget B. The nominated lease returns within B +
 // 500 ms with exit 4 and a detail naming the queue lock; the bare form returns
 // within B + 500 ms — one attempt, not five — with exit 1, the lock's timeout
 // error on standard error, nothing on standard output (in particular not `no
-// card is available`), and no record row written.
+// card is available`), and no record row written. The measured interval of both
+// forms starts at the lease's queue-lock wait seam (factoryLeaseWaitStart): the
+// clock read taken after the factory-record open and immediately before the
+// wait, so the record open and the verb's pre-lock work sit outside it. The holder
+// keeps the queue lock from before the verb starts, and its B + 2 s release timer
+// starts at the first queue-lock wait (flWaitStartSeam), so the lock is held for
+// longer than B during the wait.
 func TestFactoryLeaseQueueLockStallBounded(t *testing.T) {
 	t.Run("nominated", func(t *testing.T) {
 		budget := flBudget(t)
 		root, _ := nmQueuedNominee(t)
 		nmIsolatedWorktrees(t, "t1")
 		end := flHoldQueue(t, root)
-		time.AfterFunc(budget+2*time.Second, end)
-		start := time.Now()
+		waitStart := flWaitStartSeam(t, budget+2*time.Second, end)
 		out, stderr, err := qasRunNext(t, "--run", fcRun, "--card", "t1")
-		elapsed := time.Since(start)
+		returned := time.Now()
 		end()
-		t.Logf("nominated under a held queue lock: elapsed=%s exit=%d err=%v stderr=%q", elapsed, nmExit(err), err, stderr)
+		elapsed := returned.Sub(waitStart())
+		t.Logf("nominated under a held queue lock: elapsed from the queue-lock wait=%s exit=%d err=%v stderr=%q", elapsed, nmExit(err), err, stderr)
 		if limit := budget + flMargin; elapsed > limit {
-			t.Errorf("the nominated lease returned after %s, want within %s (B + 500 ms)", elapsed, limit)
+			t.Errorf("the nominated lease returned %s after its queue-lock wait began, want within %s (B + 500 ms)", elapsed, limit)
 		}
 		nmAssertRefused(t, out, stderr, err, "raced")
 		if !strings.Contains(stderr, "queue lock") {
@@ -347,14 +408,14 @@ func TestFactoryLeaseQueueLockStallBounded(t *testing.T) {
 		nmLaneEnv(t, "lane-1", "")
 		nmIsolatedWorktrees(t, "t1", "t2")
 		end := flHoldQueue(t, root)
-		time.AfterFunc(budget+2*time.Second, end)
-		start := time.Now()
+		waitStart := flWaitStartSeam(t, budget+2*time.Second, end)
 		out, stderr, err := qasRunNext(t, "--run", fcRun)
-		elapsed := time.Since(start)
+		returned := time.Now()
 		end()
-		t.Logf("bare under a held queue lock: elapsed=%s exit=%d err=%v stdout=%q stderr=%q", elapsed, nmExit(err), err, out, stderr)
+		elapsed := returned.Sub(waitStart())
+		t.Logf("bare under a held queue lock: elapsed from the queue-lock wait=%s exit=%d err=%v stdout=%q stderr=%q", elapsed, nmExit(err), err, out, stderr)
 		if limit := budget + flMargin; elapsed > limit {
-			t.Errorf("the bare lease returned after %s, want within %s (B + 500 ms, one attempt)", elapsed, limit)
+			t.Errorf("the bare lease returned %s after its queue-lock wait began, want within %s (B + 500 ms, one attempt)", elapsed, limit)
 		}
 		if err == nil || nmExit(err) == 3 || nmExit(err) == 0 {
 			t.Errorf("the bare lease returned %v (exit %d), want an error with exit 1", err, nmExit(err))

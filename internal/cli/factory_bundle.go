@@ -59,7 +59,7 @@ func runFactoryBundle(cmd *cobra.Command, lane string, cards []string, run strin
 	root := factoryCardRoot()
 	store := newTodoStore()
 	var loadErr error
-	ran, err := factoryLeaseSection(store, func(l *factory.LockedBacklog) {
+	ran, err := factoryLeaseSection(store, false, func(l *factory.LockedBacklog) {
 		loadErr = runFactoryBundleLocked(cmd, l, root, lane, cards, run)
 	})
 	if err != nil {
