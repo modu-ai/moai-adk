@@ -560,7 +560,15 @@ func TestQAS_AC018_LaneInventoryCandidates(t *testing.T) {
 	})
 
 	t.Run("absent_registry_no_candidates_no_create", func(t *testing.T) {
-		root := newRoot(t)
+		// Not newRoot: sdMoaiFixture seeds an active run row (the stale-run
+		// check needs one), which would create the very registry this subtest
+		// asserts is absent.
+		sdClearLaneEnv(t)
+		qasLaneSeam(t)
+		root, _ := fcFixture(t)
+		if err := os.MkdirAll(filepath.Join(root, ".moai"), 0o755); err != nil {
+			t.Fatal(err)
+		}
 		path, err := homestate.FactoryDBPath(root)
 		if err != nil {
 			t.Fatal(err)
