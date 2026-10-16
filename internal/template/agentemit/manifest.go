@@ -25,7 +25,10 @@ type FieldConfig struct {
 	Emit       bool              `yaml:"emit"`
 	Value      string            `yaml:"value"`       // emitted value (sandbox_mode)
 	Map        map[string]string `yaml:"map"`         // source->target map (model_reasoning_effort)
-	RoleValues map[string]string `yaml:"role_values"` // per-role sandbox overrides
+	RoleValues map[string]string `yaml:"role_values"` // per-role overrides (sandbox mode; reasoning effort)
+	// ModelValues overrides the reasoning effort by the Codex model id a role
+	// is mapped to (model_reasoning_effort only). RoleValues wins over it.
+	ModelValues map[string]string `yaml:"model_values"`
 	// AcceptedValues is the probe-measured value set for scalar fields
 	// (sandbox_mode). When non-empty and Emit is true, Value must belong to
 	// it — the emitter's own enforcement of the measured enumeration.
@@ -83,6 +86,12 @@ type Manifest struct {
 	CodexRoleAddenda map[string]string `yaml:"codex_role_addenda"`
 }
 
+// rejectedEffort reports an effort level that is never a Codex role effort:
+// max and ultra are not shipped defaults on any surface (card t1808).
+func rejectedEffort(v string) bool {
+	return v == "max" || v == "ultra"
+}
+
 // LoadManifest parses and self-validates the embedded default manifest.
 // Self-validation is fail-closed (AC-013's mechanical face): every class row
 // must carry a known disposition and a non-empty rationale, and every
@@ -131,21 +140,41 @@ func ParseManifest(data []byte) (Manifest, error) {
 			return Manifest{}, fmt.Errorf("agentemit: manifest tool %s maps to class %s with no disposition row", token, class)
 		}
 	}
-	if fc, ok := m.Fields["model_reasoning_effort"]; ok && fc.Emit && len(fc.Map) == 0 {
-		return Manifest{}, fmt.Errorf("agentemit: manifest emits model_reasoning_effort with an empty map")
+	if fc, ok := m.Fields["model_reasoning_effort"]; ok {
+		if fc.Emit && len(fc.Map) == 0 {
+			return Manifest{}, fmt.Errorf("agentemit: manifest emits model_reasoning_effort with an empty map")
+		}
+		// Every override must be a measured target value, and never a level
+		// that is not a shipped default (max/ultra).
+		targets := map[string]bool{}
+		for _, v := range fc.Map {
+			targets[v] = true
+		}
+		for _, over := range []map[string]string{fc.RoleValues, fc.ModelValues} {
+			for key, v := range over {
+				if key == "" || !targets[v] || rejectedEffort(v) {
+					return Manifest{}, fmt.Errorf("agentemit: model_reasoning_effort override %q -> %q is not a measured, permitted effort value", key, v)
+				}
+			}
+		}
+		for src, v := range fc.Map {
+			if rejectedEffort(src) || rejectedEffort(v) {
+				return Manifest{}, fmt.Errorf("agentemit: model_reasoning_effort map carries %q -> %q; max and ultra are never a Codex role effort", src, v)
+			}
+		}
 	}
 	if fc, ok := m.Fields["sandbox_mode"]; ok {
-		if !fc.Emit && len(fc.RoleValues) > 0 {
-			return Manifest{}, fmt.Errorf("agentemit: sandbox_mode role_values require emit: true")
-		}
-		if fc.Emit && len(fc.AcceptedValues) == 0 {
+		// The sandbox mode is stated (and checked against the permission
+		// contract) whether or not it is written into the role file.
+		stated := fc.Emit || fc.Value != "" || len(fc.RoleValues) > 0
+		if stated && len(fc.AcceptedValues) == 0 {
 			return Manifest{}, fmt.Errorf("agentemit: sandbox_mode requires a measured accepted_values set")
 		}
 		accepted := make(map[string]bool, len(fc.AcceptedValues))
 		for _, v := range fc.AcceptedValues {
 			accepted[v] = true
 		}
-		if fc.Emit && !accepted[fc.Value] {
+		if stated && !accepted[fc.Value] {
 			return Manifest{}, fmt.Errorf("agentemit: manifest sandbox_mode value %q is outside the measured value set %v — never emit an unconfirmed value", fc.Value, fc.AcceptedValues)
 		}
 		for role, value := range fc.RoleValues {
@@ -161,8 +190,8 @@ func ParseManifest(data []byte) (Manifest, error) {
 	}
 	if m.PermissionContract != nil {
 		fc, ok := m.Fields["sandbox_mode"]
-		if !ok || !fc.Emit {
-			return Manifest{}, fmt.Errorf("agentemit: permission contract requires sandbox_mode emission (role files state the contract sandbox through it)")
+		if !ok || fc.Value == "" {
+			return Manifest{}, fmt.Errorf("agentemit: permission contract requires a stated sandbox_mode (value + accepted_values) to check the contract sandbox against")
 		}
 		accepted := make(map[string]bool, len(fc.AcceptedValues))
 		for _, v := range fc.AcceptedValues {

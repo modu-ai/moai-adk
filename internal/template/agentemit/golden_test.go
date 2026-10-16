@@ -23,6 +23,7 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/modu-ai/moai-adk/internal/config"
 	"github.com/modu-ai/moai-adk/internal/template"
 	"github.com/modu-ai/moai-adk/internal/template/agentemit"
 )
@@ -157,11 +158,29 @@ func hashMDTree(t *testing.T) map[string]string {
 	return out
 }
 
-// TestRealSetCodexShape pins the AC-007/AC-008/AC-009 (+ sandbox) shape over
-// the real 12: exactly the 7 inventory carriers declare mcp_servers, zero
-// carry a model_reasoning_effort or a model key (subagents inherit the parent
-// session's model and effort), and role-specific sandbox modes match the
-// manifest.
+// realSetCodexModelEffort is the per-role Codex model and reasoning effort the
+// emitter derives from the agent frontmatter (card t1808): opus and sonnet map
+// to the sol model, haiku to luna; luna roles run at high effort, and
+// manager-develop is fixed at medium on Codex. manager-lead declares neither,
+// so both keys stay omitted (inherit the parent).
+var realSetCodexModelEffort = map[string][2]string{
+	"manager-spec":    {config.CodexModelSol, "medium"},
+	"plan-auditor":    {config.CodexModelSol, "high"},
+	"sync-auditor":    {config.CodexModelSol, "high"},
+	"super-advisor":   {config.CodexModelSol, "high"},
+	"manager-develop": {config.CodexModelSol, "medium"},
+	"manager-docs":    {config.CodexModelSol, "medium"},
+	"e2e-tester":      {config.CodexModelSol, "medium"},
+	"builder-harness": {config.CodexModelSol, "medium"},
+	"manager-design":  {config.CodexModelSol, "medium"},
+	"manager-git":     {config.CodexModelLuna, "high"},
+	"manager-todo":    {config.CodexModelLuna, "high"},
+}
+
+// TestRealSetCodexShape pins the AC-007 shape over the real 12 — exactly the 7
+// inventory carriers declare mcp_servers — plus the card t1808 model/effort
+// table, and that no role file carries sandbox_mode (Codex ignores the field
+// for a spawned role, which inherits the parent session's sandbox).
 func TestRealSetCodexShape(t *testing.T) {
 	pub := emitRealSet(t)
 	for path, data := range pub.CodexTOML {
@@ -190,27 +209,22 @@ func TestRealSetCodexShape(t *testing.T) {
 			}
 		}
 
-		// AC-008 (inverted by SPEC-AGENT-MODEL-INHERIT-001 D2): no
-		// model_reasoning_effort — the role inherits the parent's effort.
-		if v, has := doc["model_reasoning_effort"]; has {
-			t.Errorf("%s (%s): model_reasoning_effort = %v, want the key omitted", path, name, v)
+		// card t1808: model and model_reasoning_effort follow the role table;
+		// a role absent from the table declares neither key.
+		want, inTable := realSetCodexModelEffort[name]
+		model, hasModel := doc["model"].(string)
+		effort, hasEffort := doc["model_reasoning_effort"].(string)
+		switch {
+		case inTable && (model != want[0] || effort != want[1]):
+			t.Errorf("%s (%s): model/effort = %q/%q, want %q/%q", path, name, model, effort, want[0], want[1])
+		case !inTable && (hasModel || hasEffort):
+			t.Errorf("%s (%s): model/effort = %q/%q, want both keys omitted (no frontmatter values)", path, name, model, effort)
 		}
 
-		// AC-009: model omitted everywhere (manager-git sonnet = documented drop).
-		if _, has := doc["model"]; has {
-			t.Errorf("%s (%s): model key must be omitted", path, name)
-		}
-
-		// Read-only roles must be constrained by the runtime sandbox, not body prose.
-		// The read-only roles are started by the audit launcher on Codex; it
-		// writes their verdict file from the returned text.
-		wantSandbox := "workspace-write"
-		switch name {
-		case "manager-todo", "super-advisor", "plan-auditor", "sync-auditor":
-			wantSandbox = "read-only"
-		}
-		if got, _ := doc["sandbox_mode"].(string); got != wantSandbox {
-			t.Errorf("%s (%s): sandbox_mode = %q, want %s", path, name, got, wantSandbox)
+		// sandbox_mode is not emitted: Codex does not apply it to a spawned
+		// role (measured, codex-cli 0.156.1 — permission contract sandbox row).
+		if v, has := doc["sandbox_mode"]; has {
+			t.Errorf("%s (%s): sandbox_mode = %v, want the key omitted", path, name, v)
 		}
 
 		// R-005: developer_instructions decodes non-empty (byte-equality to
