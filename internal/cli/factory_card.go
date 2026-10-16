@@ -546,10 +546,17 @@ func factoryCarryPreviousWorktree(ctx context.Context, db *homestate.FactoryDB, 
 // factoryWorktreeSlug derives the card worktree's WT- branch slug from the
 // card's queue title (the Factory Dispatch Protocol branch-naming rule): lowercase
 // [a-z0-9-], at most three tokens, at most 24 characters, and never
-// containing the card id — a token carrying the id is dropped. A title with
-// no usable token falls back to "card".
-func factoryWorktreeSlug(cardID, title string) string {
+// containing the card id — a token carrying the id is dropped. A leading
+// [...] metadata group and metadata tokens (bare numbers and dates, p0/p1
+// priorities, the Class label, single letters, card-id-shaped t<digits>
+// tokens) are skipped first (card t1713): "[3.2-2-5·P1·Class C·운영자 승인
+// 10-10] …" once derived the numeric slug 3-2-2. When the title body has no
+// usable token, the linked SPEC id supplies the slug (SPEC-MCP-NEUTRALITY-001
+// → mcp-neutrality); with neither, the slug falls back to "card" — never a
+// bare number.
+func factoryWorktreeSlug(cardID, title, specID string) string {
 	id := strings.ToLower(strings.TrimSpace(cardID))
+	title = factoryStripMetadataPrefix(strings.TrimSpace(title))
 	var tokens []string
 	cur := &strings.Builder{}
 	flush := func() {
@@ -559,6 +566,9 @@ func factoryWorktreeSlug(cardID, title string) string {
 		tok := cur.String()
 		cur.Reset()
 		if id != "" && strings.Contains(tok, id) {
+			return
+		}
+		if factorySlugTokenIsMetadata(tok) {
 			return
 		}
 		tokens = append(tokens, tok)
@@ -579,7 +589,86 @@ func factoryWorktreeSlug(cardID, title string) string {
 		slug = slug[:24]
 	}
 	if slug == "" {
+		if slug = factorySpecIDSlug(specID, id); slug != "" {
+			return slug
+		}
 		return "card"
+	}
+	return slug
+}
+
+// factoryStripMetadataPrefix removes leading bracketed metadata groups — the
+// "[3.2-2-5·P1·Class C·…]" / "[Class B·P0·operator-reported 10-14]" wave,
+// priority, and date prefixes queue titles carry (card t1713). An
+// unterminated "[" is left alone.
+func factoryStripMetadataPrefix(title string) string {
+	for strings.HasPrefix(title, "[") {
+		end := strings.IndexByte(title, ']')
+		if end < 0 {
+			break
+		}
+		title = strings.TrimSpace(title[end+1:])
+	}
+	return title
+}
+
+// factorySlugTokenIsMetadata reports whether a slug token is queue metadata
+// rather than a descriptive word (card t1713): single letters, bare numbers
+// (wave numbers and dates), the Class label, and t<digits>/p<digits> shapes —
+// a card id or priority never belongs in a branch name.
+func factorySlugTokenIsMetadata(tok string) bool {
+	if len(tok) <= 1 || isASCIIDigits(tok) || tok == "class" {
+		return true
+	}
+	if (tok[0] == 't' || tok[0] == 'p') && isASCIIDigits(tok[1:]) {
+		return true
+	}
+	return false
+}
+
+func isASCIIDigits(s string) bool {
+	if s == "" {
+		return false
+	}
+	for i := 0; i < len(s); i++ {
+		if s[i] < '0' || s[i] > '9' {
+			return false
+		}
+	}
+	return true
+}
+
+// factorySpecIDSlug derives a branch slug from a linked SPEC id — the
+// no-ASCII-title fallback (card t1713): the SPEC- prefix and the trailing
+// numeric sequence are dropped and the domain tokens carry
+// (SPEC-MCP-NEUTRALITY-001 → mcp-neutrality), under the same ≤3-token /
+// ≤24-char naming rule. The metadata filter applies to SPEC tokens too, so
+// a SPEC id carrying the card-id shape never leaks it into the branch
+// (SPEC-T1713-001 → "" → "card"; round-1 review finding), and so does the
+// card-id containment filter the title path already applies — an id inside
+// a larger token (SPEC-FOOT1713-001 → foot1713) is dropped as well
+// (round-2 review finding). Returns "" when nothing usable remains.
+func factorySpecIDSlug(specID, cardID string) string {
+	id := strings.ToLower(strings.TrimSpace(cardID))
+	var out []string
+	for _, part := range strings.Split(strings.ToLower(strings.TrimSpace(specID)), "-") {
+		if part == "" || factorySlugTokenIsMetadata(part) {
+			continue
+		}
+		if id != "" && strings.Contains(part, id) {
+			continue
+		}
+		if len(out) == 0 && part == "spec" {
+			continue
+		}
+		out = append(out, part)
+	}
+	if len(out) > 3 {
+		out = out[:3]
+	}
+	slug := strings.Join(out, "-")
+	if len(slug) > 24 {
+		slug = slug[:24]
 	}
 	return slug
 }
@@ -624,7 +713,7 @@ func factoryEnsureCardWorktree(ctx context.Context, root, runID string, card hom
 	if worktree.WorktreeCreator == nil {
 		return "", false, errors.New("worktree creator is not initialized")
 	}
-	slug := factoryWorktreeSlug(card.CardID, factoryCardQueueTitle(root, card.CardID))
+	slug := factoryWorktreeSlug(card.CardID, factoryCardQueueTitle(root, card.CardID), card.SpecID)
 	wt, err := factoryCreateAndRenameWorktree(root, card.CardID, slug, out)
 	if err != nil {
 		return "", false, err

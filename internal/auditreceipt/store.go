@@ -148,6 +148,9 @@ type Receipt struct {
 	CreatedAt    time.Time `json:"created_at"`
 	CodexVerdict string    `json:"codex_verdict,omitempty"`
 	GateUnmet    string    `json:"gate_unmet,omitempty"`
+	// CodexError names the cause of an inconclusive codex verdict, with a bounded
+	// tail of the codex child's stderr. Absent when codex gave a verdict (t1788).
+	CodexError string `json:"codex_error,omitempty"`
 }
 
 // StartMarker records that an auditor subagent instance began, so a receipt

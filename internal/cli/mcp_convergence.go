@@ -107,6 +107,9 @@ type PerBackendVerdict struct {
 	// Provenance is forwarded from a real backend call. In-session anchors do
 	// not invent transport or usage evidence.
 	Provenance *AuditProvenance `json:"provenance,omitempty"`
+	// StderrTail is the bounded stderr tail of the codex child behind this verdict.
+	// It feeds the audit receipt's codex_error and never reaches the JSON output (t1788).
+	StderrTail string `json:"-"`
 }
 
 // ConvergenceResult is the synthesis output of converge(...) — the single
@@ -641,12 +644,16 @@ func performCodexAudit(ctx context.Context, target, focus, projectRoot string) R
 	legBound := codexAuditWaitTimeout(config.DefaultCodexAuditLegTimeout)
 	legCtx, cancel := context.WithTimeout(ctx, legBound)
 	defer cancel()
+	// The leg's codex child carries the audit marker, so its Stop chain skips the verify members (t1788).
+	legCtx = withCodexAuditLeg(legCtx)
 	out, _ := codexReviewRPC(legCtx, binaryPath, codexMethodTurnStart, params) // fail-open inside
 	// Reword the summary only when the leg's OWN deadline ended an inconclusive
 	// turn: a verdict that arrived is never replaced, and a caller that gave up
 	// first keeps the reader's cause.
 	if out.Verdict == VerdictInconclusive && errors.Is(legCtx.Err(), context.DeadlineExceeded) && ctx.Err() == nil {
-		return inconclusiveReviewWithSummary("codex leg timed out after " + legBound.String())
+		timedOut := inconclusiveReviewWithSummary("codex leg timed out after " + legBound.String())
+		timedOut.StderrTail = out.StderrTail // the deadline is the cause; the tail says what the child printed before the kill
+		return timedOut
 	}
 	return out
 }
@@ -804,6 +811,7 @@ func runMultiAudit(ctx context.Context, claudeVerdict ReviewOutput, target, focu
 					SynthesisNote: p.out.SynthesisNote,
 					Source:        source,
 					Provenance:    p.out.Provenance,
+					StderrTail:    p.out.StderrTail,
 				})
 			}
 		}
@@ -890,7 +898,7 @@ func runMultiAudit(ctx context.Context, claudeVerdict ReviewOutput, target, focu
 	var notices []string
 	if codexVerdict, participated := codexParticipation(verdicts); participated {
 		var notice string
-		result.AuditReceipt, notice = recordAuditReceiptAt(auditreceipt.ToolAuditMulti, cfg.ProjectRoot, codexVerdict, result.GateUnmet, receiptCodexRequired)
+		result.AuditReceipt, notice = recordAuditReceiptAt(auditreceipt.ToolAuditMulti, cfg.ProjectRoot, codexVerdict, codexReceiptErrorFromVerdicts(verdicts), result.GateUnmet, receiptCodexRequired)
 		if notice != "" {
 			notices = append(notices, notice)
 		}
