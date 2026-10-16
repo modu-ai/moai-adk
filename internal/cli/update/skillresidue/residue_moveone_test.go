@@ -66,7 +66,7 @@ func TestMoveFileReferencesArePinned(t *testing.T) {
 	}
 
 	// The only allowed references. At package level each seam variable is declared once
-	// and bound to its function once. renameSkillFile makes the move, the final link and
+	// and bound to its function once. renameSkillFile makes the first link, the final link and
 	// the drops of the staging names; claimStage claims the staging folder; putBack returns
 	// the file to its own name.
 	want := map[string]int{
@@ -76,9 +76,8 @@ func TestMoveFileReferencesArePinned(t *testing.T) {
 		"dropFile@package-level": 1, "dropOne@package-level": 1,
 
 		"mkdirFile@claimStage":     1,
-		"moveFile@renameSkillFile": 1,
-		"linkFile@renameSkillFile": 1,
-		"dropFile@renameSkillFile": 4,
+		"linkFile@renameSkillFile": 2,
+		"dropFile@renameSkillFile": 7,
 		"linkFile@putBack":         1,
 		"dropFile@putBack":         1,
 		"moveFile@putBack":         1,

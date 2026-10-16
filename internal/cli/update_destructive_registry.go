@@ -193,16 +193,19 @@ var destructiveTargetRegistry = []destructiveSite{
 	{
 		File: "internal/cli/update/skillresidue/residue.go", Function: "moveOne", Sites: 1,
 		Protection: "SPEC-UPDATE-BACKUP-RETENTION-001 REQ-UBR-017 (findings F24, F25). The " +
-			"package's one root-bound Rename. renameSkillFile reaches it through the moveFile " +
-			"seam to move the lowercase skill.md into a staging folder it created exclusively " +
-			"(Mkdir fails when the name exists, so no existing name is replaced), through a " +
-			"handle bound to the project root (os.Root), so a path component swapped for a " +
-			"symbolic link after the caller's checks cannot lead the move outside the project. " +
-			"The file is then linked to SKILL.md (a link fails when SKILL.md exists) before the " +
-			"staging names are dropped; a refused link puts the file back under its own name " +
-			"through this same site (putBack, only while that name is free). " +
-			"TestMoveFileReferencesArePinned fails on any new reference to the seams, which " +
-			"forces this row and the dropOne row to be reviewed.",
+			"package's one root-bound Rename, and the only call here that can replace an " +
+			"existing name. renameSkillFile no longer reaches it: it creates a staging folder " +
+			"exclusively (Mkdir fails when the name exists), links skill.md into it (a link " +
+			"fails when the staged name exists), drops the original name, then links SKILL.md " +
+			"(a link fails when SKILL.md exists), all through a handle bound to the project " +
+			"root (os.Root), so no step replaces a name and a component swapped for a " +
+			"symbolic link after the caller's checks cannot lead a step outside the project. " +
+			"The one remaining caller is putBack, the restore after a refused SKILL.md link: " +
+			"it links first, and falls back to this Rename only where hard links are " +
+			"unavailable and only after seeing the name free (check-then-act, in a " +
+			"failure-recovery path); a taken name leaves the content staged and the error " +
+			"names it. TestMoveFileReferencesArePinned fails on any new reference to the " +
+			"seams, which forces this row and the dropOne row to be reviewed.",
 	},
 	{
 		File: "internal/cli/update/skillresidue/residue.go", Function: "dropOne", Sites: 1,

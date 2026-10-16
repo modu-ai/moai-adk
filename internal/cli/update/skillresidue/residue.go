@@ -212,8 +212,9 @@ func retiredLinkPresent(projectRoot, name string) (bool, error) {
 // what makes a temporary name a claim and not a guess.
 func mkdirOne(root *os.Root, name string) error { return root.Mkdir(name, 0o755) }
 
-// moveOne is the package's one root-bound Rename. The registry's destructive-target
-// scan counts it.
+// moveOne is the package's one root-bound Rename. It replaces an existing destination, so
+// the only caller is putBack, which uses it after seeing the name free and only where
+// hard links are unavailable. The registry's destructive-target scan counts it.
 func moveOne(root *os.Root, from, to string) error { return root.Rename(from, to) }
 
 // linkOne makes to a second name for the file at from. It fails when to exists, so it
@@ -294,10 +295,11 @@ func regularFileAt(name string) bool {
 // checks cannot lead the move outside the project: the handle refuses a path that
 // leaves it.
 //
-// The change never replaces a name. The file is moved into a staging folder the step
-// creates exclusively, which also keeps the change correct on a case-insensitive
-// filesystem; SKILL.md is then linked to it, which fails when SKILL.md exists; and only
-// then are the staging names dropped. Every drop removes a name of a file that has
+// The change never replaces a name. The file is linked into a staging folder the step
+// creates exclusively (the link fails when the staged name exists) and its own name is
+// dropped, which also keeps the change correct on a case-insensitive filesystem;
+// SKILL.md is then linked to it, which fails when SKILL.md exists; and only then are the
+// staging names dropped. Every drop removes a name of a file that has
 // another name at that moment, or an empty folder. A refused link puts the file back
 // under its own name; if that is impossible, the content stays in the staging folder
 // and the error names it.
@@ -321,9 +323,19 @@ func renameSkillFile(root *os.Root, dirRel string) error {
 		return err
 	}
 	staged := path.Join(stage, "skill.md")
-	if err := moveFile(root, lower, staged); err != nil {
-		// Nothing moved: the stage folder is empty and ours to remove.
+	// Link first: a link fails when staged exists, so a file that appeared inside the
+	// stage folder after it was claimed is never replaced. A filesystem without hard
+	// links refuses here and nothing changes; the final step below needs them too.
+	if err := linkFile(root, lower, staged); err != nil {
+		// Nothing linked: skill.md is untouched and the stage folder is ours to remove,
+		// unless a foreign file made it non-empty, in which case the removal fails and
+		// the error says so.
 		return errors.Join(err, dropFile(root, stage))
+	}
+	if err := dropFile(root, lower); err != nil {
+		// skill.md still has its own name; undo the extra one (it has another name, so
+		// this never drops the last name of the content).
+		return errors.Join(err, dropFile(root, staged), dropFile(root, stage))
 	}
 	if err := linkFile(root, staged, canonical); err != nil {
 		if backErr := putBack(root, staged, lower); backErr != nil {

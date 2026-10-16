@@ -167,9 +167,9 @@ func TestClean_RenameFailureIsReturnedAndNothingMoves(t *testing.T) {
 	dir := filepath.Join(root, ".claude", "skills", "moai-ref-owasp-checklist")
 	mustWriteFile(t, filepath.Join(dir, "skill.md"), "lower body")
 	shipped := func(rel string) bool { return rel == ".claude/skills/moai-ref-owasp-checklist/SKILL.md" }
-	orig := moveFile
-	t.Cleanup(func() { moveFile = orig })
-	moveFile = func(_ *os.Root, from, to string) error { return errors.New("injected failure on the first move") }
+	orig := linkFile
+	t.Cleanup(func() { linkFile = orig })
+	linkFile = func(_ *os.Root, from, to string) error { return errors.New("injected failure on the first move") }
 
 	if _, err := Clean(root, Options{Shipped: shipped}); err == nil {
 		t.Fatal("Clean with a failing rename returned no error")
@@ -210,14 +210,16 @@ func TestRenameSkillFile_RestoreFailureIsReported(t *testing.T) {
 	origMove, origLink := moveFile, linkFile
 	t.Cleanup(func() { moveFile, linkFile = origMove, origLink })
 	calls := 0
-	moveFile = func(root *os.Root, from, to string) error {
+	// The first link (into the staging folder) works; every later link and the
+	// fallback move fail, so the restore has no way back.
+	linkFile = func(root *os.Root, from, to string) error {
 		calls++
-		if calls >= 2 {
-			return errors.New("injected failure")
+		if calls == 1 {
+			return origLink(root, from, to)
 		}
-		return origMove(root, from, to)
+		return errors.New("injected link refusal")
 	}
-	linkFile = func(*os.Root, string, string) error { return errors.New("injected link refusal") }
+	moveFile = func(*os.Root, string, string) error { return errors.New("injected failure") }
 
 	err := renameSkillFile(openRootT(t, dir), ".")
 	if err == nil || !strings.Contains(err.Error(), "restoring") || !strings.Contains(err.Error(), "skill.md.tmp-rename") {

@@ -3,7 +3,6 @@ package skillresidue
 import (
 	"os"
 	"path/filepath"
-	"strings"
 	"testing"
 )
 
@@ -159,9 +158,6 @@ func TestAC_UBR_17_RenameDoesNotOverwriteAFileThatAppearsInsideTheStagingFolder(
 	if got := readOrFail(t, filepath.Join(dir, "skill.md")); got != "lower body" {
 		t.Fatalf("skill.md = %q, want it untouched under its own name", got)
 	}
-	if _, statErr := os.Lstat(filepath.Join(dir, "SKILL.md")); statErr == nil && !strings.EqualFold("skill.md", "SKILL.md") {
-		t.Fatal("SKILL.md was created although the first move was refused")
-	}
 }
 
 // AC-UBR-17 (F25, destination): a SKILL.md that appears after the check, before the final
@@ -171,17 +167,17 @@ func TestAC_UBR_17_RenameDoesNotOverwriteASkillFileThatAppearsAtTheDestination(t
 	dir := filepath.Join(root, ".claude", "skills", raceSkill)
 	mustWriteFile(t, filepath.Join(dir, "skill.md"), "lower body")
 
-	orig := moveFile
-	t.Cleanup(func() { moveFile = orig })
-	moveFile = func(r *os.Root, from, to string) error {
-		err := orig(r, from, to)
-		if err == nil && filepath.Base(to) == "skill.md" && filepath.Base(filepath.Dir(to)) != raceSkill {
-			// The staged move is done; the user now creates SKILL.md.
+	orig := linkFile
+	t.Cleanup(func() { linkFile = orig })
+	linkFile = func(r *os.Root, from, to string) error {
+		if filepath.Base(to) == "SKILL.md" {
+			// The staged link and the drop of skill.md are done; the user now creates
+			// SKILL.md just before the final link.
 			if werr := os.WriteFile(filepath.Join(dir, "SKILL.md"), []byte("user data"), 0o644); werr != nil {
 				t.Fatalf("create SKILL.md: %v", werr)
 			}
 		}
-		return err
+		return orig(r, from, to)
 	}
 
 	_, err := Clean(root, Options{Shipped: raceShipped})
