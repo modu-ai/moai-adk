@@ -416,6 +416,8 @@ func TestFR_AC002_LegacyAbandonViaDecide(t *testing.T) {
 // AC-013 (command half) — a kickoff decision made long after the lease
 // duration is accepted with no lease expiry.
 func TestFR_AC013_DecideAfterClockAdvance(t *testing.T) {
+	// The operator gate (REQ-MN-003): the deciding session carries the positive mark.
+	t.Setenv(config.EnvFactoryRole, "operator")
 	root, _ := fcFixture(t)
 	fcPlace(t, root, homestate.Card{CardID: "kick", State: homestate.CardKickoff, OwnerLabel: "worker-1", Stage: homestate.CardPlanAudit, DecisionGate: homestate.DecisionGateKickoff})
 	factoryCardNow = func() time.Time { return fcNow.Add(2 * homestate.FactoryLeaseDuration) }
@@ -438,6 +440,8 @@ func TestFR_AC013_DecideAfterClockAdvance(t *testing.T) {
 // AC-017 (command half) — unblock keeps the stage and refuses a card that is
 // not blocked.
 func TestFR_AC017_DecideUnblock(t *testing.T) {
+	// The operator gate (REQ-MN-003): the deciding session carries the positive mark.
+	t.Setenv(config.EnvFactoryRole, "operator")
 	root, _ := fcFixture(t)
 	fcPlace(t, root,
 		homestate.Card{CardID: "b1", State: homestate.CardBlocked, OwnerLabel: "worker-1", Stage: homestate.CardSync},
@@ -461,6 +465,8 @@ func TestFR_AC017_DecideUnblock(t *testing.T) {
 // AC-018 (command half) — the push gate reads the remote-tracking ref and
 // never fetches; a repository with no remote goes straight to done.
 func TestFR_AC018_DecidePushGate(t *testing.T) {
+	// The operator gate (REQ-MN-003): the deciding session carries the positive mark.
+	t.Setenv(config.EnvFactoryRole, "operator")
 	root, store := fcFixture(t)
 	fcGitFlowConfig(t, root)
 	dir, merge := fcRepo(t, true)
@@ -562,6 +568,8 @@ func TestFactoryDecidePushChainsApprovalVersion(t *testing.T) {
 // AC-021 — assign, status, and decide never alter the queue schema or write a
 // queue item row.
 func TestFR_AC021_QueueSchemaUntouched(t *testing.T) {
+	// The operator gate (REQ-MN-003): the deciding session carries the positive mark.
+	t.Setenv(config.EnvFactoryRole, "operator")
 	root, store := fcFixture(t)
 	fcQueue(t, store, factory.BacklogStatePicked, factory.BacklogStatePicked)
 	dbPath := filepath.Join(filepath.Dir(todoBacklogPath(root)), "backlog.db")
