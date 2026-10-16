@@ -143,7 +143,7 @@ func TestRunUpdateHousekeeping_EmptyDBReportedNotRemoved_ACUBR18(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	defer holder.Close()
+	defer func() { _ = holder.Close() }()
 
 	updateLedger.reset()
 	runUpdateHousekeeping(root)
