@@ -334,7 +334,8 @@ Once picked:
 the queue serially: pick one card, dispatch one isolated in-session worker
 for it, judge completion only by reading the worker's disk evidence, record
 the done transition on that evidence, emit the /clear guidance for the
-completed card, and only then accept the next. In the operator session's cycle
+completed card (operator session only; lanes follow the lane card transition
+rule and receive no clear guidance), and only then accept the next. In the operator session's cycle
 exactly one card is in flight at any time; the pickup order is the dead-owner
 `picked` cards first, then the ranked queued candidates, with owner liveness
 judged on two channels — the session registry and an `lsof` working-directory
@@ -377,6 +378,17 @@ The authorization reaches a lane through the lease, not the cycle above: a lane
 session exercises the --auto authorization through moai factory next — bare for
 the CLI's priority-order choice, or `moai factory next --card <id>` for the card
 it judged — and the serial cycle is refused to a lane session.
+
+Two explicit mode flags name the cycles, mutually exclusive with `--auto` and
+with each other; `--auto` itself stays for compatibility. `moai todo
+--auto-lane` is for lane sessions only and is refused elsewhere: it leases the
+ranked next card through the lane path above, prints that card's dispatch
+directive, and exits 0 without waiting for the worker evidence — the session
+that ran it works the card, and the existing factory stage/complete path judges
+completion. `moai todo --auto-leader` is the operator session's serial cycle
+under its explicit name and is refused in a lane session. The `jev:` line is
+built from the ranking stage's own Jev answer; no local script runs, and with
+the gate off it is one `disabled` line.
 
 The keep-set is what the session never takes: a card the operator holds
 (`moai todo hold`) or marks with the [보류 marker (the lease refuses a marker

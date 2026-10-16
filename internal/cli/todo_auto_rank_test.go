@@ -680,7 +680,7 @@ func rankCycleOpts(root string) autoOptions {
 		wait:      time.Minute,
 		liveness:  autoTestLiveness(root, "t1", true, true, nil),
 		sessionID: "operator-session-fixture",
-		jev:       func(string) string { return "jev: stub display line" },
+		jev:       func(autoJevDisplay) string { return "jev: stub display line" },
 		now:       func() time.Time { return clock },
 		sleep:     func(time.Duration) { clock = clock.Add(time.Minute) },
 	}

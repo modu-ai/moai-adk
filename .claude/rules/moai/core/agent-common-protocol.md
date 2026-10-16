@@ -95,9 +95,18 @@ fetch, and image read route to the z.ai MCP tools instead of the built-ins. HARD
 
 ### Subagent Model and Effort
 
-Subagents inherit the main session's model and effort: pass neither `model` nor `effort` when spawning a subagent, and MoAI agent definitions declare neither. A PreToolUse hook records each Agent spawn to `.moai/logs/agent-model-audit.jsonl` as an observation log; it never blocks a spawn.
+Phase owners declare model and effort explicitly: each MoAI agent definition carries its role's default `model:` and `effort:` in its frontmatter, and a spawn passes neither unless a rule names an override. `manager-lead` declares neither and inherits the session. max and ultra are never a declared default effort.
 
-Opt-in consumption exception — `llm.agent_overrides_consume` (boolean, default `false`): a session that sets the key `true` opts its spawns into consuming the stored `llm.agent_overrides`; the orchestrator consults the resolved override before spawning and passes the configured model on the Agent() call — the one sanctioned override surface. A stored model override wins on the model axis, an agent without an entry resolves to plain session inheritance (not a profile-matrix cell), and an override value of `inherit` is an explicit no-op. Effort remains doctrine-level: since CC 2.1.292 the Agent tool does accept an `effort` parameter, and MoAI deliberately leaves it unset — subagents inherit the session effort, and a per-spawn effort value would split the spawn onto a cold model-scoped cache (composing with the model-override cost in `cache-aware-execution.md` directive 5). Key-less sessions keep the inherit default above; the spawn-audit JSONL gains an `override_consumption` field ∈ {hit, miss, inherit, off} and stays observe-never-blocks; a closed config gate reads as `off`.
+| Role | Agents | `model` | `effort` |
+|---|---|---|---|
+| Plan owner | `manager-spec` | opus | medium |
+| Judging roles | `plan-auditor`, `sync-auditor`, `super-advisor` | opus | high |
+| Run, sync, and build owners | `manager-develop`, `manager-docs`, `e2e-tester`, `builder-harness`, `manager-design` | sonnet | medium |
+| Mechanical roles | `manager-git`, `manager-todo` | haiku | medium |
+
+A factory lane spawning its implementer passes `effort` by card class (C high, B medium, A low — `factory-dispatch.md` § Lane spawn authority). On a GLM or Codex lane the judging roles keep a Claude leg: their verdict also carries an independent Claude-backed review. That expectation is documented only; nothing enforces it. A PreToolUse hook records each Agent spawn to `.moai/logs/agent-model-audit.jsonl` as an observation log; it never blocks a spawn.
+
+Opt-in consumption exception — `llm.agent_overrides_consume` (boolean, default `false`): a session that sets the key `true` opts its spawns into consuming the stored `llm.agent_overrides`; the orchestrator consults the resolved override before spawning and passes the configured model on the Agent() call — the one sanctioned override surface. A stored model override wins on the model axis, an agent without an entry resolves to its frontmatter default (not a profile-matrix cell), and an override value of `inherit` is an explicit no-op. Effort: the frontmatter carries each role's default; the Agent tool's `effort` parameter (accepted since CC 2.1.292) is passed only where a rule names it — the lane's card-class implementer effort — and every spawn whose model differs from the session's runs on its own model-scoped cache (`cache-aware-execution.md` directive 5). Key-less sessions spawn on the frontmatter defaults above; the spawn-audit JSONL gains an `override_consumption` field ∈ {hit, miss, inherit, off} and stays observe-never-blocks; a closed config gate reads as `off`.
 
 ## Background Agent Execution
 
