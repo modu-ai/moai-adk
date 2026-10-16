@@ -678,3 +678,25 @@ Existing tests adapted, not weakened: three tests hooked the `moveFile` seam for
 Verification (env: GIT_CONFIG_GLOBAL temp file, TMPDIR/GOTMPDIR under /private/tmp/t1733-repair): `go build ./...` exit 0; `gofmt -l internal/cli internal/cli/update internal/template` empty; `go vet ./internal/cli/update/...` exit 0; `go test -count=1 ./internal/cli/update/...` all 7 packages ok; `go test -count=1 ./internal/cli/ -run 'Backup|Retention|Destructive|Housekeeping|UBR|Unmanaged|TemplateSync|CleanReinstall'` ok 19.446s; `go test -count=1 ./internal/template/...` ok (template 137.003s); `GOOS=windows GOARCH=amd64 go build ./...` exit 0.
 
 Gaps: repository-wide test verdict PENDING (CI on the integration branch); `make build` not run; re-audit of the F1 delta is the auditor's.
+
+## §E.6 Repair-round-2 evidence (card t1733, sync-audit iteration 2 finding F7 + F8 text; owner manager-develop)
+
+Source: `.moai/reports/t1733/sync-audit-iter2.md` (local-only). Repaired: F7 (P2, blocking; REQ-UBR-017 source name: an atomic save over `skill.md` between the link and the drop was deleted while the step returned success), F8 (P3; registry `moveOne` row and the `moveOne` comment). Tree `WT-10-14-class-3`, start HEAD `c0f8edbb4`.
+
+| Step | Commit | Evidence |
+|---|---|---|
+| RED | `3ee61a4dd` | `go test -count=1 ./internal/cli/update/skillresidue/ -run AtomicallyReplaced` -> `--- FAIL: TestAC_UBR_17_RenameDoesNotDropASkillFileThatWasAtomicallyReplaced`: "the rename reported success although skill.md was replaced mid-step; tree now [. dir SKILL.md file]" (the user's file gone, old content promoted; same outcome as the audit overlay repro) |
+| GREEN | `6d2c46b87` | `go test -count=1 ./internal/cli/update/skillresidue/` -> `ok ... 0.289s` (whole package); `go test -count=1 ./internal/cli/ -run DestructiveTargetRegistry` -> `ok ... 0.882s` |
+| Mutant (SameFile result forced to true in `sameFileAt`) | overlay JSON and mutated copy under `/private/tmp/t1733r2/mutant/` | `go test -count=1 -overlay=/private/tmp/t1733r2/mutant/overlay.json ./internal/cli/update/skillresidue/ -run AtomicallyReplaced` -> `--- FAIL: TestAC_UBR_17_RenameDoesNotDropASkillFileThatWasAtomicallyReplaced`: "the rename reported success although skill.md was replaced mid-step", exit non-zero |
+
+The repair: `renameSkillFile` re-reads `skill.md` and the staged link with `Lstat` through the root handle and requires `os.SameFile` before dropping `skill.md`. When they differ, `skill.md` (the user's new file) is left in place, our extra staged link and the empty stage folder are removed, and the step returns an error naming the situation. When `skill.md` cannot be inspected (gone or unreadable), nothing is dropped, because the staged name may be the only one left; the error names where the content is. The existing rollback for a failed drop is unchanged. `TestMoveFileReferencesArePinned`: `dropFile@renameSkillFile` 7 -> 9 (the two drops on the replaced path); no new seam.
+
+Residual window, stated plainly: a window of microseconds remains between the `Lstat` pair and the unlink of `skill.md`. Go's `os.Root` offers no rename that refuses to replace a name, so the look and the unlink cannot be made one atomic step; an atomic save landing exactly in that instant is still lost. The same statement sits in the `renameSkillFile` doc comment and the `dropOne` registry row. This narrows the F7 window; it does not close it.
+
+F8: the registry `moveOne` row and the `moveOne` comment now say the fallback Rename runs whenever the restore link fails and the name is seen free (any failure reason), not "only where hard links are unavailable". No behavior changed.
+
+Known P3 carried to a follow-up (not repaired here): F2, `putBack` does `root.Lstat(lower)` then a real `Rename`; a file created between the two is replaced. Reachability is very low (the first link already proved hard links work, so the restore link normally fails with EEXIST and the fallback is skipped). The audit's one-step fix (delete `moveFile`, `moveOne`, and the registry row, leaving a failed restore staged and named in the error) is the follow-up candidate; accepted debt for this card.
+
+Verification (env: GIT_CONFIG_GLOBAL temp file holding only [user]; TMPDIR/GOTMPDIR under /private/tmp/t1733r2; no HOME override): `go build ./...` exit 0; `gofmt -l internal/cli internal/cli/update internal/template` empty; `go vet ./internal/cli/update/...` exit 0; `go test -count=1 ./internal/cli/update/...` all 7 packages ok; `go test -count=1 ./internal/cli/ -run 'Backup|Retention|Destructive|Housekeeping|UBR|Unmanaged|TemplateSync|CleanReinstall'` ok 16.812s; `go test -count=1 ./internal/template/...` ok (template 130.604s); `GOOS=windows GOARCH=amd64 go build ./...` exit 0.
+
+Gaps: repository-wide test verdict PENDING (CI on the integration branch); `make build` not run; no guard refused any command in this round; re-audit of the F7 delta is the auditor's.
