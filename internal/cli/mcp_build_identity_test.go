@@ -673,7 +673,10 @@ func TestAuditLagUsesBinlagSeam(t *testing.T) {
 		// rev-parse closure), moving it 277→287. The line is the same doc mention
 		// of the primitive, and no line added above it is a comparison — same
 		// count, only the coordinate moved.
-		"integration.go:287": true,
+		// Re-measured at card t1823: card t1589 (a310ff444) added one line above
+		// this doc comment (the gitenv.Env() assignment in canonicalTreeSpelling),
+		// moving it 287→288. Same doc mention, no added line is a comparison.
+		"integration.go:288": true,
 		// Re-measured at card t948: the coverage-budget constant and its
 		// deadline attribution were added above these two comparisons, moving
 		// them from 245/253. Same two comparisons, same count — only the
@@ -781,8 +784,14 @@ func TestAuditLagUsesBinlagSeam(t *testing.T) {
 		// the call itself. Both are branch-ancestry questions about two
 		// revisions, not a comparison of the running binary against its
 		// source, so binlag.Evaluate does not own them.
-		"local_main_resync.go:414": true,
-		"local_main_resync.go:417": true,
+		// Re-measured at card t1823: card t1619 (first seen in merge cd19e5494)
+		// added 21 lines above the helper — the localMainResyncBeforeFastForward
+		// test seam (+6) and the one-mutation-section rewrite of the
+		// revalidate-and-fast-forward step (+15) — moving the doc mention
+		// 414→435 and the call 417→438. Same two hits, same count; no added line
+		// is an ancestry comparison.
+		"local_main_resync.go:435": true,
+		"local_main_resync.go:438": true,
 	}
 	got := map[string]bool{}
 	entries, err := os.ReadDir(".")
