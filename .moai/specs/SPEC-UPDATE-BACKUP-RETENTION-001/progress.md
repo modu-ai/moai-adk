@@ -619,7 +619,7 @@ run_commit_sha: pending-backfill   # the M6 evidence commit cannot cite its own 
 run_status: complete-pending-sync-audit
 harness_commit_sha: 6eaf221c172947792884b5352118cb5f69cce0df
 measurement_tree_sha: 6eaf221c172947792884b5352118cb5f69cce0df
-ac_pass_count: 22
+ac_pass_count: 23   # corrected 2026-10-16 from 22: the sync audit (.moai/reports/t1733/sync-audit.md, finding F3) re-derived 23 PASS + AC-UBR-24 PASS-WITH-DEBT = 24 AC
 ac_fail_count: 0
 ac_pass_with_debt: [AC-UBR-24]   # AC-UBR-10, 19 and 20 share a commit between test and implementation
 ac_not_observed_in_m6: [AC-UBR-18 by name, AC-UBR-23]   # evidence carried from M4 and M5 blocks
@@ -660,3 +660,21 @@ build_after_edit:
   go_build_windows_amd64: "exit 0 (GOOS=windows GOARCH=amd64 go build ./...)"
 observation_for_leader: "E.3 records ac_pass_count 22; the M6 matrix has 21 PASS rows, AC-UBR-24 PASS-WITH-DEBT, and AC-UBR-18 / AC-UBR-23 carried from M4 / M5 (NOT-OBSERVED in M6). E.3 left untouched (manager-develop owned)."
 ```
+
+## §E.5 Repair-phase evidence (card t1733, sync-audit finding F1; owner manager-develop)
+
+Source: `.moai/reports/t1733/sync-audit.md` (local-only). Repaired: F1 (REQ-UBR-017, held-back rename overwrote a file created inside the staging folder), F2 (registry text, with F1), F3 (E.3 counter), F4 (CHANGELOG sentence). Tree `WT-10-14-class-3`, start HEAD `69da9c172`.
+
+| Step | Commit | Evidence |
+|---|---|---|
+| RED | `4db47ed51` | `go test -count=1 ./internal/cli/update/skillresidue/ -run AC_UBR_17` -> `--- FAIL: TestAC_UBR_17_RenameDoesNotOverwriteAFileThatAppearsInsideTheStagingFolder`: "the user's file inside the staging folder was overwritten; tree now [. dir SKILL.md file] (Clean err: <nil>)" (same result as the audit overlay repro) |
+| GREEN | `42ab64100` | `go test -count=1 ./internal/cli/update/skillresidue/` -> `ok ... 0.345s` (the whole package) |
+| Mutant (plain Rename restored in the first step) | overlay, scratch `/private/tmp/t1733-repair/ov/` | `go test -count=1 -overlay=/private/tmp/t1733-repair/ov/overlay.json ./internal/cli/update/skillresidue/ -run AC_UBR_17` -> `--- FAIL: TestAC_UBR_17_RenameDoesNotOverwriteAFileThatAppearsInsideTheStagingFolder`, exit non-zero |
+
+Choice for filesystems without hard links: none added. The rename's final step (link to SKILL.md) already requires hard links, so a refused first link leaves `skill.md` untouched, removes the empty staging folder, and returns the error. No fallback path can replace an existing destination.
+
+Existing tests adapted, not weakened: three tests hooked the `moveFile` seam for the first move and now hook `linkFile` at the same point (`TestClean_RenameFailureIsReturnedAndNothingMoves`, `TestRenameSkillFile_RestoreFailureIsReported`, `TestAC_UBR_17_...AtTheDestination`, which now plants SKILL.md just before the final link because on a case-insensitive filesystem a SKILL.md written while `skill.md` still exists is the same file); `TestMoveFileReferencesArePinned` counts updated (`linkFile@renameSkillFile` 2, `dropFile@renameSkillFile` 7, `moveFile@renameSkillFile` removed).
+
+Verification (env: GIT_CONFIG_GLOBAL temp file, TMPDIR/GOTMPDIR under /private/tmp/t1733-repair): `go build ./...` exit 0; `gofmt -l internal/cli internal/cli/update internal/template` empty; `go vet ./internal/cli/update/...` exit 0; `go test -count=1 ./internal/cli/update/...` all 7 packages ok; `go test -count=1 ./internal/cli/ -run 'Backup|Retention|Destructive|Housekeeping|UBR|Unmanaged|TemplateSync|CleanReinstall'` ok 19.446s; `go test -count=1 ./internal/template/...` ok (template 137.003s); `GOOS=windows GOARCH=amd64 go build ./...` exit 0.
+
+Gaps: repository-wide test verdict PENDING (CI on the integration branch); `make build` not run; re-audit of the F1 delta is the auditor's.
