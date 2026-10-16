@@ -213,8 +213,8 @@ func retiredLinkPresent(projectRoot, name string) (bool, error) {
 func mkdirOne(root *os.Root, name string) error { return root.Mkdir(name, 0o755) }
 
 // moveOne is the package's one root-bound Rename. It replaces an existing destination, so
-// the only caller is putBack, which uses it after seeing the name free and only where
-// hard links are unavailable. The registry's destructive-target scan counts it.
+// the only caller is putBack, which uses it when the restore link has failed and the name
+// was seen free just before. The registry's destructive-target scan counts it.
 func moveOne(root *os.Root, from, to string) error { return root.Rename(from, to) }
 
 // linkOne makes to a second name for the file at from. It fails when to exists, so it
@@ -304,6 +304,12 @@ func regularFileAt(name string) bool {
 // under its own name; if that is impossible, the content stays in the staging folder
 // and the error names it.
 //
+// Before skill.md is dropped, both names are looked at again and must still identify the
+// same file; if skill.md was replaced (an editor's atomic save), it is left in place and
+// the step reports an error. A window of microseconds remains between that look and the
+// unlink: no rename that refuses to replace a name exists (os.Root has none), so the two
+// cannot be made one atomic step, and a replacement landing exactly there is still lost.
+//
 // @MX:WARN: [AUTO] filesystem moves and removals inside a user's skill folder
 // @MX:REASON: a path swapped between a check and a move is the F24/F25 hazard; every
 // step goes through root, and no step replaces an existing name.
@@ -332,6 +338,22 @@ func renameSkillFile(root *os.Root, dirRel string) error {
 		// the error says so.
 		return errors.Join(err, dropFile(root, stage))
 	}
+	// The name skill.md is dropped only while it still identifies the file that was linked.
+	// A user's editor that atomic-saves (renames a temporary file over skill.md) in the gap
+	// gives the name a new inode, and dropping it would delete the user's new file.
+	same, err := sameFileAt(root, lower, staged)
+	if err != nil {
+		// skill.md cannot be inspected (gone or unreadable): the staged name may be the
+		// only one left, so nothing is dropped and the error says where the content is.
+		return fmt.Errorf("%w (the content is at %s)", err, staged)
+	}
+	if !same {
+		// skill.md now holds the user's replacement and is left as it is. The staged name
+		// is our extra link to the file the user replaced; take it back.
+		return errors.Join(
+			fmt.Errorf("%s was replaced while it was being renamed; the new file is left in place and nothing was renamed", lower),
+			dropFile(root, staged), dropFile(root, stage))
+	}
 	if err := dropFile(root, lower); err != nil {
 		// skill.md still has its own name; undo the extra one (it has another name, so
 		// this never drops the last name of the content).
@@ -344,6 +366,20 @@ func renameSkillFile(root *os.Root, dirRel string) error {
 		return errors.Join(err, dropFile(root, stage))
 	}
 	return errors.Join(dropFile(root, staged), dropFile(root, stage))
+}
+
+// sameFileAt reports whether the names a and b, looked at without following links,
+// identify the same file.
+func sameFileAt(root *os.Root, a, b string) (bool, error) {
+	ai, err := root.Lstat(a)
+	if err != nil {
+		return false, err
+	}
+	bi, err := root.Lstat(b)
+	if err != nil {
+		return false, err
+	}
+	return os.SameFile(ai, bi), nil
 }
 
 // claimStage creates the staging folder for a rename beside the skill file. Mkdir

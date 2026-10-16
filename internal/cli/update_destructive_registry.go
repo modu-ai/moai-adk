@@ -201,8 +201,8 @@ var destructiveTargetRegistry = []destructiveSite{
 			"root (os.Root), so no step replaces a name and a component swapped for a " +
 			"symbolic link after the caller's checks cannot lead a step outside the project. " +
 			"The one remaining caller is putBack, the restore after a refused SKILL.md link: " +
-			"it links first, and falls back to this Rename only where hard links are " +
-			"unavailable and only after seeing the name free (check-then-act, in a " +
+			"it links first, and falls back to this Rename whenever that restore link " +
+			"fails and the name is seen free (any failure reason; check-then-act, in a " +
 			"failure-recovery path); a taken name leaves the content staged and the error " +
 			"names it. TestMoveFileReferencesArePinned fails on any new reference to the " +
 			"seams, which forces this row and the dropOne row to be reviewed.",
@@ -213,7 +213,10 @@ var destructiveTargetRegistry = []destructiveSite{
 			"Remove, reached through the dropFile seam. renameSkillFile calls it only on the " +
 			"empty staging folder it created, and on a name of the file after another name for " +
 			"the same file exists (the link to SKILL.md, or the link back to skill.md), so the " +
-			"content is never left without a name. A restore that cannot happen leaves the " +
+			"content is never left without a name; before dropping skill.md it re-reads both " +
+			"names and drops only while they still identify the same file (an atomic save " +
+			"over skill.md is left in place), and a microsecond window between that look and " +
+			"the unlink remains because no no-replace rename exists. A restore that cannot happen leaves the " +
 			"staged copy in place and the error names it. Remove, unlike RemoveAll, cannot " +
 			"remove a non-empty folder.",
 	},

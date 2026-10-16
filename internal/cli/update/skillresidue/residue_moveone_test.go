@@ -77,7 +77,7 @@ func TestMoveFileReferencesArePinned(t *testing.T) {
 
 		"mkdirFile@claimStage":     1,
 		"linkFile@renameSkillFile": 2,
-		"dropFile@renameSkillFile": 7,
+		"dropFile@renameSkillFile": 9,
 		"linkFile@putBack":         1,
 		"dropFile@putBack":         1,
 		"moveFile@putBack":         1,
