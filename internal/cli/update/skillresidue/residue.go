@@ -203,19 +203,14 @@ func retiredLinkPresent(projectRoot, name string) (bool, error) {
 }
 
 // The held-back rename is a few root-bound steps, each behind a named function and a
-// package variable. The functions are the only places the package calls the handle's
-// Rename or Remove, so the registry's destructive-target scan sees named sites, and the
-// pin test counts every reference to them so an alias is visible. A test replaces a
-// variable to make one step fail, or to run a second actor between two steps.
+// package variable. The package never calls the handle's Rename; the only place it calls
+// the handle's Remove is dropOne, so the registry's destructive-target scan sees one named
+// site, and the pin test counts every reference to the seams so an alias is visible. A test
+// replaces a variable to make one step fail, or to run a second actor between two steps.
 
 // mkdirOne creates a folder inside root and fails when the name exists. That failure is
 // what makes a temporary name a claim and not a guess.
 func mkdirOne(root *os.Root, name string) error { return root.Mkdir(name, 0o755) }
-
-// moveOne is the package's one root-bound Rename. It replaces an existing destination, so
-// the only caller is putBack, which uses it when the restore link has failed and the name
-// was seen free just before. The registry's destructive-target scan counts it.
-func moveOne(root *os.Root, from, to string) error { return root.Rename(from, to) }
 
 // linkOne makes to a second name for the file at from. It fails when to exists, so it
 // can place a name where Rename could only replace one.
@@ -227,7 +222,6 @@ func dropOne(root *os.Root, name string) error { return root.Remove(name) }
 
 var (
 	mkdirFile = mkdirOne
-	moveFile  = moveOne
 	linkFile  = linkOne
 	dropFile  = dropOne
 )
@@ -299,32 +293,68 @@ func regularFileAt(name string) bool {
 // creates exclusively (the link fails when the staged name exists) and its own name is
 // dropped, which also keeps the change correct on a case-insensitive filesystem;
 // SKILL.md is then linked to it, which fails when SKILL.md exists; and only then are the
-// staging names dropped. Every drop removes a name of a file that has
-// another name at that moment, or an empty folder. A refused link puts the file back
-// under its own name; if that is impossible, the content stays in the staging folder
-// and the error names it.
+// staging names dropped. A refused SKILL.md link puts the file back under its own name by
+// another link; if that is refused too, the content stays in the staging folder and the
+// error names it. No step moves a file with a rename that could replace a name.
 //
-// Before skill.md is dropped, both names are looked at again and must still identify the
-// same file; if skill.md was replaced (an editor's atomic save), it is left in place and
-// the step reports an error. A window of microseconds remains between that look and the
-// unlink: no rename that refuses to replace a name exists (os.Root has none), so the two
-// cannot be made one atomic step, and a replacement landing exactly there is still lost.
+// Identity rule. The step captures the identity (Lstat) of skill.md before it links, and of
+// the staging folder when it claims it. A name is removed only while Lstat still reports
+// that identity for it (dropOurs): a name that is not proven to be our own link or our own
+// folder is left in place and reported. skill.md itself is dropped only after both names
+// were looked at again and both still match.
+//
+// States after the first link (L = skill.md, T = the staged name, S = the staging folder;
+// "ours" = same file as the original captured before the link):
+//
+//	state                                 action                                  user data
+//	L ours, T ours                        continue (drop L, link SKILL.md,        none lost
+//	                                      drop T, drop S)
+//	L replaced, T ours                    keep L; drop T (our link) and S; error L is the user's new file; the old
+//	                                                                              inode only loses the extra name the
+//	                                                                              editor's save already unlinked
+//	T replaced, L ours                    keep L, T, S; error names both         foreign T and original L kept
+//	L replaced, T replaced                keep L, T, S; error names both         both foreign files kept
+//	L gone                                keep T, S; error names T               content kept at T
+//	T gone                                keep L, S; error names both            content kept at L
+//	L or T cannot be inspected            keep L, T, S; error names both         nothing removed. The two are not
+//	                                                                              separable by permissions (T lies under
+//	                                                                              S, and L's folder is searched for both),
+//	                                                                              so "L unreadable, T readable" cannot
+//	                                                                              occur; "T unreadable" (S loses search
+//	                                                                              permission) is tested
+//	drop of L fails                       keep L; drop T only if ours, then S    none lost
+//	undo of T fails (drop of L failed     keep L, T, S; error                    content kept at L and T
+//	and the drop of T fails or T is
+//	no longer ours)
+//	link of SKILL.md refused, restore     drop T only if ours, then S; error     skill.md back, nothing lost
+//	link works
+//	link of SKILL.md refused, restore     keep T, S; error names T               content kept at T; a file the user
+//	link refused                                                                  created at skill.md is never replaced
+//	SKILL.md linked                       drop T only if ours, then S            none lost; a foreign T is kept and
+//	                                                                              reported
+//
+// A window of microseconds remains between the second look and the unlink of skill.md:
+// no rename that refuses to replace a name exists (os.Root has none), so the two cannot
+// be made one atomic step, and a replacement landing exactly there is still lost. The same
+// holds for the look before each other drop (dropOurs): the identity is read, then the
+// name is removed, and a replacement landing between the two is removed with it.
 //
 // @MX:WARN: [AUTO] filesystem moves and removals inside a user's skill folder
 // @MX:REASON: a path swapped between a check and a move is the F24/F25 hazard; every
-// step goes through root, and no step replaces an existing name.
+// step goes through root, no step replaces an existing name, and every drop checks that
+// the name is still ours.
 func renameSkillFile(root *os.Root, dirRel string) error {
 	lower := path.Join(dirRel, "skill.md")
 	canonical := path.Join(dirRel, "SKILL.md")
-	info, err := root.Lstat(lower)
+	orig, err := root.Lstat(lower)
 	if err != nil {
 		return err
 	}
-	if !info.Mode().IsRegular() {
+	if !orig.Mode().IsRegular() {
 		return fmt.Errorf("%s is not a regular file; nothing renamed", lower)
 	}
 
-	stage, err := claimStage(root, dirRel)
+	stage, stageInfo, err := claimStage(root, dirRel)
 	if err != nil {
 		return err
 	}
@@ -336,56 +366,70 @@ func renameSkillFile(root *os.Root, dirRel string) error {
 		// Nothing linked: skill.md is untouched and the stage folder is ours to remove,
 		// unless a foreign file made it non-empty, in which case the removal fails and
 		// the error says so.
-		return errors.Join(err, dropFile(root, stage))
+		return errors.Join(err, dropOurs(root, stage, stageInfo))
 	}
-	// The name skill.md is dropped only while it still identifies the file that was linked.
-	// A user's editor that atomic-saves (renames a temporary file over skill.md) in the gap
-	// gives the name a new inode, and dropping it would delete the user's new file.
-	same, err := sameFileAt(root, lower, staged)
-	if err != nil {
-		// skill.md cannot be inspected (gone or unreadable): the staged name may be the
-		// only one left, so nothing is dropped and the error says where the content is.
-		return fmt.Errorf("%w (the content is at %s)", err, staged)
-	}
-	if !same {
+	// Each name is compared with the original identity; see the state table above.
+	lowerOurs, lowerErr := ours(root, lower, orig)
+	stagedOurs, stagedErr := ours(root, staged, orig)
+	switch {
+	case lowerErr != nil || stagedErr != nil:
+		// A name cannot be inspected (gone or unreadable): the other may be the only one
+		// left, so nothing is dropped and the error says where the content is.
+		return errors.Join(fmt.Errorf("cannot confirm %s and %s; nothing was removed (the content is at %s)", lower, staged, staged), lowerErr, stagedErr)
+	case !stagedOurs:
+		// The staged name was replaced by someone else (or both were): nothing here is
+		// proven ours, so both files and the folder stay.
+		return fmt.Errorf("%s and %s no longer both identify the file being renamed; both are left in place with the staging folder, and nothing was renamed", lower, staged)
+	case !lowerOurs:
 		// skill.md now holds the user's replacement and is left as it is. The staged name
 		// is our extra link to the file the user replaced; take it back.
 		return errors.Join(
 			fmt.Errorf("%s was replaced while it was being renamed; the new file is left in place and nothing was renamed", lower),
-			dropFile(root, staged), dropFile(root, stage))
+			dropOurs(root, staged, orig), dropOurs(root, stage, stageInfo))
 	}
 	if err := dropFile(root, lower); err != nil {
 		// skill.md still has its own name; undo the extra one (it has another name, so
 		// this never drops the last name of the content).
-		return errors.Join(err, dropFile(root, staged), dropFile(root, stage))
+		return errors.Join(err, dropOurs(root, staged, orig), dropOurs(root, stage, stageInfo))
 	}
 	if err := linkFile(root, staged, canonical); err != nil {
-		if backErr := putBack(root, staged, lower); backErr != nil {
+		// Put the file back under its own name by a link, which cannot replace a name: a
+		// refused restore leaves the content staged, and the error says where.
+		if backErr := linkFile(root, staged, lower); backErr != nil {
 			return fmt.Errorf("%w (restoring %s also failed: %v; the content is at %s)", err, lower, backErr, staged)
 		}
-		return errors.Join(err, dropFile(root, stage))
+		return errors.Join(err, dropOurs(root, staged, orig), dropOurs(root, stage, stageInfo))
 	}
-	return errors.Join(dropFile(root, staged), dropFile(root, stage))
+	return errors.Join(dropOurs(root, staged, orig), dropOurs(root, stage, stageInfo))
 }
 
-// sameFileAt reports whether the names a and b, looked at without following links,
-// identify the same file.
-func sameFileAt(root *os.Root, a, b string) (bool, error) {
-	ai, err := root.Lstat(a)
+// ours reports whether name, looked at without following links, still identifies the file
+// captured in orig.
+func ours(root *os.Root, name string, orig os.FileInfo) (bool, error) {
+	info, err := root.Lstat(name)
 	if err != nil {
 		return false, err
 	}
-	bi, err := root.Lstat(b)
-	if err != nil {
-		return false, err
-	}
-	return os.SameFile(ai, bi), nil
+	return os.SameFile(orig, info), nil
 }
 
-// claimStage creates the staging folder for a rename beside the skill file. Mkdir
-// fails when the name exists, so a file or folder that is there, or that appears first,
-// is never replaced: the next name is tried.
-func claimStage(root *os.Root, dirRel string) (string, error) {
+// dropOurs removes name only while it still identifies the file captured in orig; a name
+// that cannot be looked at or has changed is left in place and the error says so.
+func dropOurs(root *os.Root, name string, orig os.FileInfo) error {
+	ok, err := ours(root, name, orig)
+	if err != nil {
+		return fmt.Errorf("%s not removed: %w", name, err)
+	}
+	if !ok {
+		return fmt.Errorf("%s is no longer the file this step created; left in place", name)
+	}
+	return dropFile(root, name)
+}
+
+// claimStage creates the staging folder for a rename beside the skill file and returns
+// its identity. Mkdir fails when the name exists, so a file or folder that is there, or
+// that appears first, is never replaced: the next name is tried.
+func claimStage(root *os.Root, dirRel string) (string, os.FileInfo, error) {
 	const base = "skill.md.tmp-rename"
 	for n := range 100 {
 		name := base
@@ -395,27 +439,17 @@ func claimStage(root *os.Root, dirRel string) (string, error) {
 		stage := path.Join(dirRel, name)
 		err := mkdirFile(root, stage)
 		if err == nil {
-			return stage, nil
+			info, statErr := root.Lstat(stage)
+			if statErr != nil {
+				return "", nil, fmt.Errorf("%w (the empty folder %s is left in place)", statErr, stage)
+			}
+			return stage, info, nil
 		}
 		if !errors.Is(err, fs.ErrExist) {
-			return "", err
+			return "", nil, err
 		}
 	}
-	return "", fmt.Errorf("no free temporary name beside %s", path.Join(dirRel, "skill.md"))
-}
-
-// putBack returns the staged file to its own name. A hard link cannot replace a name, so
-// it is tried first. Where the filesystem has no hard links the file is moved back, and
-// only while the name is still free. A taken name leaves the content staged.
-func putBack(root *os.Root, staged, lower string) error {
-	err := linkFile(root, staged, lower)
-	if err == nil {
-		return dropFile(root, staged)
-	}
-	if _, statErr := root.Lstat(lower); statErr == nil {
-		return err
-	}
-	return moveFile(root, staged, lower)
+	return "", nil, fmt.Errorf("no free temporary name beside %s", path.Join(dirRel, "skill.md"))
 }
 
 // symlinkedRoot reports the first of .moai, .claude, or .claude/skills under

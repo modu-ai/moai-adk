@@ -207,11 +207,11 @@ func TestRenameSkillFile_NoFreeTemporaryNameIsRefused(t *testing.T) {
 func TestRenameSkillFile_RestoreFailureIsReported(t *testing.T) {
 	dir := t.TempDir()
 	mustWriteFile(t, filepath.Join(dir, "skill.md"), "lower body")
-	origMove, origLink := moveFile, linkFile
-	t.Cleanup(func() { moveFile, linkFile = origMove, origLink })
+	origLink := linkFile
+	t.Cleanup(func() { linkFile = origLink })
 	calls := 0
-	// The first link (into the staging folder) works; every later link and the
-	// fallback move fail, so the restore has no way back.
+	// The first link (into the staging folder) works; every later link fails, so the
+	// restore has no way back.
 	linkFile = func(root *os.Root, from, to string) error {
 		calls++
 		if calls == 1 {
@@ -219,7 +219,6 @@ func TestRenameSkillFile_RestoreFailureIsReported(t *testing.T) {
 		}
 		return errors.New("injected link refusal")
 	}
-	moveFile = func(*os.Root, string, string) error { return errors.New("injected failure") }
 
 	err := renameSkillFile(openRootT(t, dir), ".")
 	if err == nil || !strings.Contains(err.Error(), "restoring") || !strings.Contains(err.Error(), "skill.md.tmp-rename") {

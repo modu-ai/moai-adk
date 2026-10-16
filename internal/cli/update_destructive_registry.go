@@ -191,33 +191,22 @@ var destructiveTargetRegistry = []destructiveSite{
 			"only replacements are ones the operator's content survives inside.",
 	},
 	{
-		File: "internal/cli/update/skillresidue/residue.go", Function: "moveOne", Sites: 1,
-		Protection: "SPEC-UPDATE-BACKUP-RETENTION-001 REQ-UBR-017 (findings F24, F25). The " +
-			"package's one root-bound Rename, and the only call here that can replace an " +
-			"existing name. renameSkillFile no longer reaches it: it creates a staging folder " +
-			"exclusively (Mkdir fails when the name exists), links skill.md into it (a link " +
-			"fails when the staged name exists), drops the original name, then links SKILL.md " +
-			"(a link fails when SKILL.md exists), all through a handle bound to the project " +
-			"root (os.Root), so no step replaces a name and a component swapped for a " +
-			"symbolic link after the caller's checks cannot lead a step outside the project. " +
-			"The one remaining caller is putBack, the restore after a refused SKILL.md link: " +
-			"it links first, and falls back to this Rename whenever that restore link " +
-			"fails and the name is seen free (any failure reason; check-then-act, in a " +
-			"failure-recovery path); a taken name leaves the content staged and the error " +
-			"names it. TestMoveFileReferencesArePinned fails on any new reference to the " +
-			"seams, which forces this row and the dropOne row to be reviewed.",
-	},
-	{
 		File: "internal/cli/update/skillresidue/residue.go", Function: "dropOne", Sites: 1,
-		Protection: "SPEC-UPDATE-BACKUP-RETENTION-001 REQ-UBR-017. The package's one root-bound " +
-			"Remove, reached through the dropFile seam. renameSkillFile calls it only on the " +
-			"empty staging folder it created, and on a name of the file after another name for " +
-			"the same file exists (the link to SKILL.md, or the link back to skill.md), so the " +
-			"content is never left without a name; before dropping skill.md it re-reads both " +
-			"names and drops only while they still identify the same file (an atomic save " +
-			"over skill.md is left in place), and a microsecond window between that look and " +
-			"the unlink remains because no no-replace rename exists. A restore that cannot happen leaves the " +
-			"staged copy in place and the error names it. Remove, unlike RemoveAll, cannot " +
-			"remove a non-empty folder.",
+		Protection: "SPEC-UPDATE-BACKUP-RETENTION-001 REQ-UBR-017 (findings F24, F25, F7, F11, F2). " +
+			"The package's one root-bound Remove, reached through the dropFile seam; the package " +
+			"has no Rename (the moveOne row and the fallback Rename were removed). The held-back " +
+			"rename creates a staging folder exclusively, links skill.md into it (a link fails " +
+			"when the name exists), drops skill.md, then links SKILL.md (fails when it exists), " +
+			"all through a handle bound to the project root. It captures the identity of " +
+			"skill.md and of the staging folder, and removes a name only while Lstat still " +
+			"reports that identity (dropOurs); skill.md itself is dropped only after both " +
+			"names were looked at again and both still matched. A name that is gone, " +
+			"unreadable or replaced (an atomic save over skill.md, a foreign writer in the " +
+			"staging folder) is left in place and the error names it; the state table above " +
+			"renameSkillFile lists every state. A microsecond window between each look and " +
+			"its unlink remains because no no-replace rename exists. A restore that cannot " +
+			"happen leaves the staged copy in place and the error names it. Remove, unlike " +
+			"RemoveAll, cannot remove a non-empty folder. TestMoveFileReferencesArePinned fails " +
+			"on any new reference to the seams, which forces this row to be reviewed.",
 	},
 }
