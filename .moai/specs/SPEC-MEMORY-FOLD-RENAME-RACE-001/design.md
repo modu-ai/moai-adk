@@ -7,7 +7,7 @@ Mechanism rationale for the fold store lock. This file records WHY the chosen me
 A per-store advisory lock file, held for the whole `applyFold` span:
 
 - **File**: `<store-dir>/.moai-fold.lock`, mode 0644, created on first acquire, never removed on release.
-- **POSIX**: `unix.Open(path, O_CREAT|O_RDWR|O_CLOEXEC, 0o644)` then `unix.Flock(fd, unix.LOCK_EX|unix.LOCK_NB)` with a bounded retry loop (plan.md D-2). Pattern copied from `internal/sessionmsg/lock_unix.go` — including the `unacquiredFD = -1` sentinel lesson (fd 0 is a valid descriptor; a 0 sentinel turns `release()` into a silent no-op and leaks the lock for the process lifetime).
+- **POSIX**: `unix.Open(path, O_CREAT|O_RDWR|O_CLOEXEC, 0o644)` (as designed at `f30bb9088`; `f518deac8` later added `O_NOFOLLOW` — see Limits) then `unix.Flock(fd, unix.LOCK_EX|unix.LOCK_NB)` with a bounded retry loop (plan.md D-2). Pattern copied from `internal/sessionmsg/lock_unix.go` — including the `unacquiredFD = -1` sentinel lesson (fd 0 is a valid descriptor; a 0 sentinel turns `release()` into a silent no-op and leaks the lock for the process lifetime).
 - **Windows**: `LockFileEx` with `LOCKFILE_EXCLUSIVE_LOCK|LOCKFILE_FAIL_IMMEDIATELY` on a byte-range of the lock file; pattern from `internal/sessionmsg/lock_windows.go`.
 - **Span**: acquired at the top of `applyFold` (before the first `checkFoldUnchanged`), released by `defer`. One acquisition covers both renames (archive append; MEMORY.md rewrite) — premise P2: `applyFold` is the single write chokepoint.
 - **One-line rationale**: an advisory flock is released by the kernel on process death, so the design needs no stale-lock sweep, no PID-file liveness probe, and no cleanup path — the two failure modes an O_EXCL claim file adds are absent by construction.
@@ -35,7 +35,7 @@ The lock is strictly additive: acquisition precedes the first `checkFoldUnchange
 
 - Non-cooperating writers (editors) keep the byte-comparison narrowing; the lock cannot protect what never acquires it (spec.md Out of Scope).
 - Other memory verbs adopt the lock in a follow-up (decision-index Q5); today only fold applies cooperate, which is exactly the observed defect class.
-- The lock file's identity is not defended. The POSIX open above follows symbolic links and makes no descriptor-versus-path identity check, so the mechanism assumes the lock path names a regular file the fold never replaces. A link planted at the lock path is out of scope by operator decision `d-20261010T042423Z-722b` (spec.md §4); the residual risk is spec.md §5 R-1.
+- The lock file's identity is only partly defended. As designed here, the POSIX open above followed symbolic links and made no descriptor-versus-path identity check, so the mechanism assumes the lock path names a regular file the fold never replaces. A link planted at the lock path is out of scope by operator decision `d-20261010T042423Z-722b` (spec.md §4). Drift note (v0.1.6): the integration merge `f518deac8` (2026-10-11, card t1595) added `O_NOFOLLOW` and an `Fstat` regular-file check on POSIX — a link at the lock path is refused by the open itself — and an `os.Lstat` symbolic-link pre-check before `CreateFile` on Windows, which is check-then-open and leaves a window between the check and the open. Neither platform has a descriptor-versus-path identity check. That hardening is owned by t1595, not by this design; the narrowed residual risk is spec.md §5 R-1.
 
 ## Promotion path
 
