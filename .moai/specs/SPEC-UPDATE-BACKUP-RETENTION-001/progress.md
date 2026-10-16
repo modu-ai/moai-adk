@@ -346,9 +346,64 @@ Measured, not claimed: `go build ./...` and `GOOS=windows GOARCH=amd64 go build 
 Environment brackets around the `internal/cli` runs: `~/.gitconfig` 503 lines, sha256 `376c6febc88ba234321078fa8e8c4ec922b458192d1199a31a4eb03b55660548`, two `/var/folders|/repo|Test` lines, unchanged before and after; backlog.db header `SQLite format 3`, `PRAGMA quick_check` `ok`.
 Not run (Gaps): the full `internal/cli` suite (named `-run` tests only; the package coverage figure of 5.0% in that bounded run is not the package's coverage); coverage of `internal/cli` as a whole; `make build`; the template tests (no template file changed); whether `moai doctor` lists the same finding (optional, not required by REQ-UBR-018); Windows behavior of the pass (cross-build only).
 
+### M5 — Mechanical closure (card tree `WT-10-14-class-3`, tests `96b2a17d5`, start tree `56ca7f30c`)
+
+M5 adds tests only. No production file changed, and no data-deleting behavior was added. The AC-UBR-21 premise from M1 (StateConfig cannot join `symmetryCases`) was resolved inside the AC's wording: `checkSymmetry` is a whole-section bijection, and the shipped `state:` block carries `profile_max_bytes` (no struct field) while the struct carries `retention_days` (not shipped), so joining the section would fail on keys this SPEC does not own and would need a production change (a struct field or a shipped key) the SPEC does not ask for. `internal/config/state_symmetry_key_test.go` applies the same two-direction check to the one key the SPEC ships, and decodes the shipped bytes through a `state:` section wrapper to `DefaultBackupPastVersionsKeep`. `internal/cli/update_backup_retention_paths_test.go` runs the real full-reinstall path (`runCleanReinstall`) and the real template-sync path (`runTemplateSyncAt`, which drives `runTemplateSyncWithReporter`) over seven seeded stale config-backup runs and asserts the per-run removal row and the retention summary row on each path's own surface (stdout for the reinstall, the update ledger's reference rows for the sync).
+
+Kind of check: both are closure guards over behavior that already exists (M1 shipped the key, M2 wired the rows), so they are green on the start tree and have no RED against it. Their failing state was observed by mutation of the start tree, each reverted and not committed (`git status --short` showed only the two new test files afterwards):
+
+```
+# mutant 1+2: `for _, line := range backupRetentionReportLines(rep, projectRoot)[:0] {` at update_clean_install.go and update_template_sync.go
+$ go test -count=1 -run 'TestCleanReinstall_PrintsBackupRetentionRows|TestTemplateSync_RecordsBackupRetentionRows' ./internal/cli/
+--- FAIL: TestCleanReinstall_PrintsBackupRetentionRows (0.05s)
+    update_backup_retention_paths_test.go:64: AC-UBR-21: the full-reinstall output has no per-run removal row "[clean-reinstall] old backup run removed: .moai-backups/20250101_000000":
+        ... [clean-reinstall] Cleaned up 3 old config backup(s) ...
+    update_backup_retention_paths_test.go:67: AC-UBR-21: the full-reinstall output has no retention summary row:
+--- FAIL: TestTemplateSync_RecordsBackupRetentionRows (0.39s)
+    update_backup_retention_paths_test.go:98: AC-UBR-21: the template-sync ledger has no per-run removal row "old backup run removed: .moai-backups/20250101_000000":
+    update_backup_retention_paths_test.go:101: AC-UBR-21: the template-sync ledger has no retention summary row:
+FAIL
+# mutant 3: `yaml:"backup_past_keep"` on StateConfig.BackupPastVersionsKeep in internal/config/types.go
+$ go test -count=1 -run 'TestStructYAMLSymmetry_StateBackupPastVersionsKeep' ./internal/config/
+--- FAIL: TestStructYAMLSymmetry_StateBackupPastVersionsKeep (0.00s)
+    state_symmetry_key_test.go:60: CONFIG_STRUCT_YAML_MISMATCH: field=StateConfig.backup_past_versions_keep, side=yaml-only (key exists in shipped state.yaml but not in struct)
+    state_symmetry_key_test.go:72: shipped state.backup_past_versions_keep decodes to 0, want DefaultBackupPastVersionsKeep (3)
+FAIL
+```
+
+GREEN on the restored tree (this run, HEAD `96b2a17d5`):
+
+```
+$ go test -count=1 -v -run 'TestCleanReinstall_PrintsBackupRetentionRows|TestTemplateSync_RecordsBackupRetentionRows|TestBackupRetentionReportLines|TestDestructiveTargetRegistry' ./internal/cli/
+--- PASS: TestCleanReinstall_PrintsBackupRetentionRows (0.04s)
+--- PASS: TestTemplateSync_RecordsBackupRetentionRows (0.26s)
+--- PASS: TestBackupRetentionReportLines_NamesEveryDecision (0.00s)
+--- PASS: TestBackupRetentionReportLines_QuietWhenNothingHappened (0.00s)
+--- PASS: TestDestructiveTargetRegistry_CoversAllSites (0.03s)
+ok  	github.com/modu-ai/moai-adk/internal/cli	1.752s
+$ go test -count=1 -cover ./internal/cli/update/backup/... ./internal/cli/update/skillresidue/... ./internal/config/
+ok  	github.com/modu-ai/moai-adk/internal/cli/update/backup	1.709s	coverage: 88.4% of statements
+ok  	github.com/modu-ai/moai-adk/internal/cli/update/skillresidue	0.597s	coverage: 88.4% of statements
+ok  	github.com/modu-ai/moai-adk/internal/config	12.405s	coverage: 85.6% of statements
+```
+
+M5 acceptance matrix (Exit: AC-UBR-21, 22, 23 green):
+
+| AC | Status | Evidence |
+|---|---|---|
+| AC-UBR-21 | PASS | the symmetry test above (key-scoped, both directions, plus the struct-backed read) and one rows test per path; each observed failing under the mutants above |
+| AC-UBR-22 | PASS | `gofmt -l` on the touched files and on `internal/cli/update internal/config` empty; `go vet ./internal/cli/update/... ./internal/config/ ./internal/cli/` exit 0 (and `GOOS=windows GOARCH=amd64 go vet` on the same packages exit 0, which also compiles their test files for Windows); `golangci-lint run --timeout=5m ./internal/cli/update/... ./internal/config/... ./internal/cli/` reports exactly the three pre-existing errcheck findings in `internal/cli/factory_run_adopt.go` (lines 79, 91, 103) and nothing else; coverage 88.4% / 88.4% (backup / skillresidue). Platform guards: the FIFO test file carries `//go:build unix`; the permission-bit tests in `skillresidue/residue_coverage_test.go` skip on `runtime.GOOS == "windows"` and for root; every symlink test skips when the link cannot be made |
+| AC-UBR-23 | PASS | `make build` exit 0 (its `agents-emit-check`, `commands-emit-check`, `tool-policy-drift-check`, `embed-manifest-check`, `templ-generate` and `gen-catalog-hashes.go --all` steps all ran) and `git status --short` afterwards showed no tracked change; `go test -count=1 ./internal/template/` (the whole package) `ok 289.211s`; the tracked-change set is compared with the expected set below |
+
+Tracked changes of the card, `git diff --name-only 7357f0c22 HEAD` taken before the M5 test commit: SPEC `spec.md` (the `status: draft` to `in-progress` line only, M1) and `progress.md`; the template `internal/template/templates/.moai/config/sections/state.yaml` (its embedded counterpart is the same file, the templates are `go:embed`ded from that tree, and `make build` regenerated no tracked file); `internal/config/` (`defaults.go`, `types.go`, `loader_backup_budget.go`, three test files, `testdata/shipped_key_inventory.yaml`); and the touched Go packages `internal/cli/update/backup`, `internal/cli/update/skillresidue` and the update files of `internal/cli`. M5 adds `internal/config/state_symmetry_key_test.go` and `internal/cli/update_backup_retention_paths_test.go` to that set. Nothing outside the expected set appears.
+
+Measured, not claimed: `go build ./...` and `GOOS=windows GOARCH=amd64 go build ./...` exit 0 at the start tree; `grep -rn AskUserQuestion` over the touched non-test files empty (exit 1).
+Environment brackets around the whole-template run and the `internal/cli` runs: `~/.gitconfig` 503 lines, sha256 `376c6febc88ba234321078fa8e8c4ec922b458192d1199a31a4eb03b55660548`, the two pre-existing `/var/folders|/repo|Test` lines (479, 480), unchanged before and after; backlog.db header `SQLite format 3`, `PRAGMA quick_check` `ok`. No test added a trace line.
+Not run (Gaps): the full `internal/cli` suite (named `-run` tests only) and whole-package `internal/cli` coverage; the key-scoped symmetry check is not a whole-section bijection (`profile_max_bytes` has no struct field and `retention_days` is not shipped, left as found); a retained-with-reason row on either path was not seeded (the seeded runs are empty and removable; the retained-row rendering is covered at the renderer in `update_backup_retention_report_test.go`); Windows runtime behavior (cross-build and vet only); real-data remeasure (M6).
+
 ## §E.3 Run-phase Audit-Ready Signal
 
-_<pending run-phase>_ — M4 of M6 is complete; the signal is written at run close.
+_<pending run-phase>_ — M5 of M6 is complete; the signal is written at run close.
 
 ## §E.4 Sync-phase Audit-Ready Signal
 
