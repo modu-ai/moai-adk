@@ -146,6 +146,38 @@ func TestCodexGateContainment_ArgsDisableForeignServers(t *testing.T) {
 	}
 }
 
+// TestCodexGateContainment_NoMoaiServerNoOverride (card t1632): the gate
+// exposure override addresses the moai server, so it is appended ONLY when the
+// listing carries one. Appended alone it makes a table with no transport, which
+// codex rejects at config load ("invalid transport in mcp_servers.moai") — the
+// child never starts.
+func TestCodexGateContainment_NoMoaiServerNoOverride(t *testing.T) {
+	root := t.TempDir()
+	prevList := codexAuditMCPList
+	codexAuditMCPList = func(context.Context, string, string) (string, error) {
+		return `[{"name":"context7","transport":{"type":"streamable_http","url":"https://mcp.context7.example"}}]`, nil
+	}
+	t.Cleanup(func() { codexAuditMCPList = prevList })
+
+	args, err := codexGateContainmentArgs(context.Background(), "codex", root)
+	if err != nil {
+		t.Fatalf("containment args: %v", err)
+	}
+	joined := strings.Join(args, " ")
+	if strings.Contains(joined, "mcp_servers.moai") {
+		t.Errorf("no moai server is listed, yet the args address it: %v", args)
+	}
+	if !strings.Contains(joined, "mcp_servers.context7") {
+		t.Errorf("the foreign server was not disabled: %v", args)
+	}
+
+	codexAuditMCPList = func(context.Context, string, string) (string, error) { return "[]", nil }
+	args, err = codexGateContainmentArgs(context.Background(), "codex", root)
+	if err != nil || len(args) != 0 {
+		t.Errorf("an empty listing = %v, %v; want no args and no error", args, err)
+	}
+}
+
 // ─── AC-MN-003 measurement harness ───
 
 // TestACMN003_GateCallSuccessRate is the card gate 3 measurement (AC-MN-003):

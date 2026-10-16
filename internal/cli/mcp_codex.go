@@ -863,12 +863,20 @@ func codexGateContainmentArgs(ctx context.Context, binaryPath, root string) ([]s
 	// and the moai server is the one the gate session keeps — its gate
 	// exposure rides the appended args override instead.
 	kept := make([]string, 0, len(disable)+2)
+	moaiListed := false
 	for i := 0; i < len(disable); i++ {
 		if disable[i] == "-c" && i+1 < len(disable) && strings.Contains(disable[i+1], "mcp_servers.moai.") {
+			moaiListed = true
 			i++ // skip the value too
 			continue
 		}
 		kept = append(kept, disable[i])
+	}
+	// The override addresses the moai server, so it needs one to address: with no
+	// moai entry in the child's config it would create a transport-less table
+	// that codex rejects at load, and the child would never start.
+	if !moaiListed {
+		return kept, nil
 	}
 	return append(kept, "-c", moaiGateExposureArg), nil
 }
