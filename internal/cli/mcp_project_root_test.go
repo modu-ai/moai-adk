@@ -31,6 +31,21 @@ var projectRootSpecTools = []string{"spec_audit", "spec_drift", "spec_progress"}
 // (CLAUDE_PROJECT_DIR): the REQ-MN-005 confinement accepts a validated
 // project_root only as a registered worktree of the server's own repository,
 // so an in-process probe must be that repository, not an unregistered tree.
+// confineTestRoot makes root a valid project_root under the REQ-MN-005
+// confinement: a git worktree of the server's own repository. It initialises a
+// repository when the directory is not one yet and points the server root
+// (CLAUDE_PROJECT_DIR) at it. Not for parallel tests (it sets an env var).
+func confineTestRoot(t *testing.T, root string) {
+	t.Helper()
+	if err := os.MkdirAll(filepath.Join(root, ".moai"), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := os.Stat(filepath.Join(root, ".git")); err != nil {
+		initGitRepo(t, root)
+	}
+	t.Setenv("CLAUDE_PROJECT_DIR", root)
+}
+
 func newProbeProject(t *testing.T, specID string) string {
 	t.Helper()
 	root := t.TempDir()
@@ -112,6 +127,9 @@ func TestSpecAudit_ProjectRootRedirectsTheCatalogue(t *testing.T) {
 func TestSpecAudit_WithoutProjectRootDoesNotSeeTheProbe(t *testing.T) {
 	root := newProbeProject(t, "SPEC-PROBETWO-902")
 	_ = root // deliberately NOT passed
+	// newProbeProject points the server root at the probe tree; the default root
+	// this test measures must be a DIFFERENT tree, or the fallback would find it.
+	t.Setenv("CLAUDE_PROJECT_DIR", t.TempDir())
 	got := callSpecAuditJSON(t, map[string]any{})
 	if strings.Contains(got, "SPEC-PROBETWO-902") {
 		t.Errorf("audit without project_root saw a SPEC that exists only in the probe tree; got=%s", got)

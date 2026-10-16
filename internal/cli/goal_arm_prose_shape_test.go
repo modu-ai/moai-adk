@@ -105,7 +105,7 @@ func TestGoalArm_ProseShapeExemptions(t *testing.T) {
 // wrapper still arms what it should.
 func TestMCPGoalArm_ProseShapedConditionRefused(t *testing.T) {
 	tmp := t.TempDir()
-	t.Setenv("CLAUDE_PROJECT_DIR", tmp)
+	confineTestRoot(t, tmp) // REQ-MN-005: goal_arm is a mutating call and names its tree
 
 	ctx := context.Background()
 	c, err := client.NewInProcessClient(newMoaiMCPServer())
@@ -120,7 +120,7 @@ func TestMCPGoalArm_ProseShapedConditionRefused(t *testing.T) {
 		t.Helper()
 		res, callErr := c.CallTool(ctx, mcp.CallToolRequest{Params: mcp.CallToolParams{
 			Name:      "goal_arm",
-			Arguments: map[string]any{"session_id": "T556MCP", "condition": condition},
+			Arguments: map[string]any{"session_id": "T556MCP", "condition": condition, "project_root": tmp},
 		}})
 		if callErr != nil {
 			t.Fatalf("tools/call goal_arm: %v", callErr)

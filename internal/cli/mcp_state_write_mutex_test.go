@@ -18,6 +18,11 @@ import (
 
 func TestMCPStateWriteMutex_ConcurrentWritersSerialize(t *testing.T) {
 	root := sdServerFixture(t)
+	// REQ-MN-020: a store carries an existing verdict file as its evidence.
+	verdict := filepath.Join(root, "verdict.md")
+	if err := os.WriteFile(verdict, []byte("# verdict\n\nPASS\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
 
 	var wg sync.WaitGroup
 	errs := make(chan error, 30)
@@ -60,6 +65,7 @@ func TestMCPStateWriteMutex_ConcurrentWritersSerialize(t *testing.T) {
 				"op":           "store",
 				"spec_id":      fmt.Sprintf("SPEC-MUTEX-%03d", i),
 				"hash":         fmt.Sprintf("hash-%d", i),
+				"report_path":  verdict,
 				"project_root": root,
 			})
 			res, err := handleAuditCache(context.Background(), req)
