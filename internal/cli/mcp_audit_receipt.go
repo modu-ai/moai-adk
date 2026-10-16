@@ -45,8 +45,8 @@ func receiptTarget(projectRoot string) (root, source string) {
 // (SPEC-WORKTREE-STATE-ROOT-001 REQ-WSR-002/003). Where that primary cannot be
 // identified there is no store: the write is skipped, never redirected, and
 // notice says so (REQ-WSR-004).
-func recordAuditReceipt(tool, projectRoot, codexVerdict, gateUnmet string) (id, notice string) {
-	return recordAuditReceiptAt(tool, projectRoot, codexVerdict, gateUnmet, nil)
+func recordAuditReceipt(tool, projectRoot, codexVerdict, codexError, gateUnmet string) (id, notice string) {
+	return recordAuditReceiptAt(tool, projectRoot, codexVerdict, codexError, gateUnmet, nil)
 }
 
 // recordAuditReceiptAt is recordAuditReceipt with the codex gate the exposure
@@ -57,7 +57,7 @@ func recordAuditReceipt(tool, projectRoot, codexVerdict, gateUnmet string) (id, 
 // REQ-ACV-009). A nil codexRequired keeps the read of the tree's configuration
 // that every caller carrying no call-start plan has always had. The receipt is
 // recorded either way; only its exposure follows the gate.
-func recordAuditReceiptAt(tool, projectRoot, codexVerdict, gateUnmet string, codexRequired *bool) (id, notice string) {
+func recordAuditReceiptAt(tool, projectRoot, codexVerdict, codexError, gateUnmet string, codexRequired *bool) (id, notice string) {
 	root, source := receiptTarget(projectRoot)
 	if root == "" {
 		return "", ""
@@ -71,6 +71,7 @@ func recordAuditReceiptAt(tool, projectRoot, codexVerdict, gateUnmet string, cod
 		TreeRoot:     root,
 		RootSource:   source,
 		CodexVerdict: codexVerdict,
+		CodexError:   codexError,
 		GateUnmet:    gateUnmet,
 	}
 	id, err = auditreceipt.WriteReceipt(store, &r)
