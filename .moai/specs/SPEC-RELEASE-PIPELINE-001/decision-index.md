@@ -35,6 +35,8 @@ Default: queue, never cancel, on the destructive side — cleanup is never cance
 Alternate: shared group with cancel-on-arrival (incoming run cancels whatever is in flight)
 Operator verdict: DEFAULT-APPLIED 2026-10-16T19:17:57Z manager-spec/plan-phase
 
+> Audit repair note (plan-audit iter1 D3, 2026-10-17): the applied default is extended, not reversed — queue-never-cancel holds, but the guarantee requires `cancel-in-progress: false` on BOTH workflows in the shared group (the incoming run's own flag governs; release-drafter.yml:21 reads `true` today, so a cleanup-side-only pin would fail while its test passed green). M5 flips the drafter side; `TestDrafterCleanupConcurrency` pins both files. Label/Class/default direction unchanged; recorded per the cross-layer revision sweep (`verification-completeness.md` §3).
+
 ### Q4: When the cost jobs are input-gated, do their per-job required check names get replaced by the single aggregate, or retained alongside an extended intentional-skip marker?
 
 Label: FOUNDER

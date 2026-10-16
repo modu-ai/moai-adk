@@ -20,7 +20,7 @@ Card t1536 (operator instruction 10-06, Class C). Worktree `/Users/goos/MoAI/moa
 | 2. Doc-only PRs run lint/build/constitution/browser | ci.yml:523/:570/:640/:701 | `lint` :772, `build` ×5 :819, `constitution-check` :889, `test-browser` :950 — all carry no `needs:`/`if:` (EV-5) | **OPEN** — M2 |
 | 3. Stale prior-HEAD verification + freshness slots | release-pr-multi-os.yml:18; graph-freshness.yml:23 | release-pr-multi-os.yml:20 `cancel-in-progress: false` (EV-2); graph-freshness split LANDED (:24-26 event-kind+PR group, :130-132 guard group, card t1298) | **HALF LANDED** — M3 (release workflow flip + guard) |
 | 4. Browser 17m/20m + mutation; release single long race | ci.yml:769; release-pr-multi-os.yml:217 | test-browser job budget 20m with green `-timeout 17m` + mutation cycle in-job; release race step `-timeout 35m` inside `timeout-minutes: 40` (:94/:217, EV-6); retry wrapper wired only at ci.yml:222/:578 | **OPEN** — M4 |
-| 5. jq `now\|floor as $now` never executes | release-drafter-cleanup.yml:65 | :65 broken form present, reproduced RED (EV-3/EV-4); no re-query in delete loop (:82-98); no concurrency block; release-drafter.yml:19-21 group exists | **OPEN** — M5 |
+| 5. jq `now\|floor as $now` never executes | release-drafter-cleanup.yml:65 | :65 broken form present, reproduced RED (EV-3/EV-4); no re-query in delete loop (:82-98, EV-7); no concurrency block (EV-8); release-drafter.yml:19-21 group exists with `cancel-in-progress: true` (flip required, D3) | **OPEN** — M5 |
 
 ### §A.2 Overlap boundaries (sibling SPECs)
 
@@ -41,7 +41,7 @@ Card t1536 (operator instruction 10-06, Class C). Worktree `/Users/goos/MoAI/moa
 - **B3 — workflow YAML is repo input**: any guard test parsing workflow YAML must read the file from the module root relative path (`../../.github/workflows/...` from `internal/template/`), as the parity test does; a copied fixture would drift.
 - **B4 — cancel flip vs required gate**: flipping release-pr-multi-os.yml to `cancel-in-progress: true` cancels superseded-SHA runs; `release-pr-gate`'s AC-CI-001 logic already treats `cancelled` as failure for THAT run, and branch protection reads the newest SHA's run — no gate-semantic change is needed, but M3's guard test must pin this reasoning next to the flip.
 - **B5 — jq availability**: guard tests executing jq programs require the `jq` binary (present on ubuntu runners; used by graph-freshness.yml). Skip-with-loud-message is not acceptable for the filter-semantics test; if jq is absent locally the test must fail, not skip.
-- **B6 — shared group side effects (REQ-RPC-012)**: joining cleanup into a group with the push-triggered drafter can queue a Monday cleanup behind a draft-update burst; the cleanup job budget (15m) and schedule tolerance absorb this — record the queuing behavior in the workflow comment.
+- **B6 — shared group side effects (REQ-RPC-012)**: joining cleanup into a group with the push-triggered drafter can queue a Monday cleanup behind a draft-update burst; the cleanup job budget (15m) and schedule tolerance absorb this. With both sides `cancel-in-progress: false` (D3), the reverse also holds — rapid main pushes queue drafter updates serially (each a minutes-scale draft update converging on the final state) instead of cancelling superseded ones. Record the queuing behavior in BOTH workflow comments.
 
 ## §C Pre-flight (baseline commands, run at plan phase)
 
@@ -57,9 +57,18 @@ jq: error (at .moai/reports/t1536/red-drafter-fixture.json:6): Cannot iterate ov
 
 $ jq -r --arg threshold_days 30 '(now|floor) as $now | ...' .moai/reports/t1536/red-drafter-fixture.json
 stale-draft                                                     # EV-4, exit 0
+
+$ grep -n "gh release view" .github/workflows/release-drafter-cleanup.yml
+(no output)                                                    # EV-7, exit 1
+
+$ grep -n "concurrency" .github/workflows/release-drafter-cleanup.yml
+(no output)                                                    # EV-8, exit 1
+
+$ grep -n "attempt1" .github/workflows/ci.yml
+(no output)                                                    # EV-9, exit 1
 ```
 
-All four executed at tree `0bd1da4973d1d9539172f90587ca1ee84c8d9426` (acceptance.md §B carries full verbatim text). Run-phase pre-flight re-runs EV-1 and `git rev-parse HEAD` before the first M-commit.
+EV-1..EV-4 executed at tree `0bd1da4973d1d9539172f90587ca1ee84c8d9426`; EV-7..EV-9 (iter-1 repair) at `c8ede48f90fbfe4c6873f300c91243f03928d254` — the plan-artifacts commit changed no workflow file (`git diff --name-only` between the two trees lists only SPEC artifacts), so all seven are interchangeable across both trees. acceptance.md §B carries full verbatim text. Run-phase pre-flight re-runs EV-1 and `git rev-parse HEAD` before the first M-commit.
 
 ## §D Constraints — PRESERVE list (normative)
 
@@ -73,7 +82,7 @@ All four executed at tree `0bd1da4973d1d9539172f90587ca1ee84c8d9426` (acceptance
 8. SPEC-APPJS-FIRE-GUARD-001 invariants: pinned Chrome-for-Testing + sha256, AppArmor profile step, probe manifest lint, mutation restore `RESTORED_BYTE_IDENTICAL` assertion, `0 → 1 → 0` cycle.
 9. `release.yml` deploy path concurrency (no-cancel) — untouched.
 10. graph-freshness landed split (event-kind + PR-number groups; separate guard group) — M3 adds a guard test, changes nothing.
-11. Branch protection SSoT (`.github/branch-protection.json.gtmpl` contexts) — any required-name change lands as a coordinated SSoT update in the same milestone, never as a workflow-only edit.
+11. Required-name SSoT surfaces (BOTH) — `.github/branch-protection.json.gtmpl` (the contexts `internal/cli/branch_protection.go` renders into the GitHub branch-protection PUT) AND `.github/required-checks.yml` (the SSoT read by `scripts/ci-watch/run.sh`, `scripts/ci-mirror/validate-required-checks.sh`, `scripts/ci-mirror/run.sh`, and `scripts/cutover-protection-compare.sh` for required-vs-auxiliary verdicts) — any required-name change lands as a coordinated update of BOTH files in the same milestone, never as a workflow-only edit and never as a one-file SSoT edit: a name present in one surface and stale in the other leaves the candidate/ci-watch verdict tooling judging an outdated required set (D1).
 
 Forbidden: modifying workflow files during plan phase (done — this phase writes SPEC artifacts only); `git add -A` (stage by explicit pathspec); force-push; touching `.moai/state/**`, `.moai/logs/**`, other SPEC directories.
 
@@ -94,10 +103,10 @@ E1 AC matrix from acceptance.md §D (command + verbatim output per AC). E2 `go b
 
 ### M2 — Item 2: input classes + single aggregate gate (Priority High)
 
-1. RED: author `internal/template/ci_cost_gating_test.go` — `TestCICostJobsInputGated` (asserts lint/build/constitution-check/test-browser each carry an input-class gate sourced from the shared filter), `TestCIAggregateGateSemantics` (asserts exactly one fail-propagating aggregate for the family; detect hard-failure propagates; intentional-skip passes with named exclusion), `TestCIRequiredNamesSatisfied` (asserts the branch-protection SSoT contexts remain satisfied for every classification outcome). Observe RED (EV-5 is the pin).
+1. RED: author `internal/template/ci_cost_gating_test.go` — `TestCICostJobsInputGated` (asserts lint/build/constitution-check/test-browser each carry an input-class gate sourced from the shared filter), `TestCIAggregateGateSemantics` (asserts exactly one fail-propagating aggregate for the family; detect hard-failure propagates; intentional-skip passes with named exclusion), `TestCIRequiredNamesSatisfied` (asserts BOTH required-name surfaces — `.github/branch-protection.json.gtmpl` contexts and `.github/required-checks.yml` `branches.main.contexts` — remain satisfied AND mutually consistent for every classification outcome). Observe RED (EV-5 is the pin).
 2. Add the input classes (`binary_inputs`, `browser_inputs`, `harness_inputs`) to `.github/test-input-filters.yml` beside `go_code` — same file, single source; each root carries its evidence comment (which job's verdict reads it).
 3. Gate the four cost jobs on their classes (fail-open: unevaluable classification runs the job).
-4. Add the aggregate job; update `.github/branch-protection.json.gtmpl` contexts per decision-index Q4's applied default (single aggregate required name for the gated family) in the SAME milestone.
+4. Add the aggregate job; update BOTH required-name SSoT surfaces per decision-index Q4's applied default (single aggregate required name for the gated family) in the SAME milestone — `.github/branch-protection.json.gtmpl` contexts AND `.github/required-checks.yml` (`branches.main.contexts`, plus `branches."ci/**"` wherever the aggregate publishes on candidates) — the ci-watch/ci-mirror tooling reads the latter, so a gtmpl-only update leaves the verdict tooling on a stale required set (D1).
 5. Preserve REQ-RPC-004: harness roots stay inside `go_code` (release 3-OS coverage unchanged); add one guard-test assertion for that containment.
 GREEN: the three tests pass; `go test ./internal/template/ -run '^(TestCICostJobsInputGated|TestCIAggregateGateSemantics|TestCIRequiredNamesSatisfied)$' -count=1`.
 
@@ -109,20 +118,20 @@ GREEN: the three tests pass; `go test ./internal/template/ -run '^(TestCICostJob
 
 ### M4 — Item 4: stage budgets, browser phase split, retry discipline (Priority Medium)
 
-1. RED: author `internal/template/verification_budget_test.go` — `TestStageCeilingBelowJobBudget` (per-stage ceilings strictly below job `timeout-minutes` with declared headroom for the `always()` evidence steps; covers the release race step and both browser phases), `TestBrowserPhaseSplit` (green and mutation phases carry independent stage bounds; a max-duration green phase leaves the mutation phase its declared budget), `TestRetryPolicyPreservesFirstFailure` (retry invocation only through the registry wrapper; first-failure stream uploaded before any retry). Observe RED.
+1. RED: author `internal/template/verification_budget_test.go` — `TestStageCeilingBelowJobBudget` (per-stage ceilings strictly below job `timeout-minutes` with declared headroom for the `always()` evidence steps; covers the release race step and both browser phases), `TestBrowserPhaseSplit` (green and mutation phases carry independent stage bounds; a max-duration green phase leaves the mutation phase its declared budget), `TestRetryPolicyPreservesFirstFailure` (three assertions: retry invocation appears only through the flaky-registry wrapper — green today; `scripts/ci/retry-flaky.sh` writes the attempt1 record before the re-run — green today, script :166 before :169; every ci.yml job that invokes the wrapper carries the attempt1 record in its evidence-upload path — RED today, EV-9). Observe RED (EV-9 is the pin; the third assertion fails while the first two hold).
 2. Re-budget the release race step/job relationship so census+compress+upload have explicit headroom (stage ceiling strictly < job ceiling; document the arithmetic in the workflow comment).
 3. Split the browser job's phases into separately bounded stages per decision-index Q5's applied default (one job preserved; internal stage ceilings + upload headroom; the SPEC-APPJS-FIRE-GUARD-001 phase order `0 → 1 → 0` and restore assertions unchanged).
-4. Keep the existing registry-gated retries as-is; do NOT extend retries to the macOS/Windows release legs (decision-index Q6, EVIDENCE-NEEDED).
+4. Keep the registry-gated retry semantics as-is (wrapper behavior unchanged — `retry-flaky.sh` already preserves attempt1 locally before the re-run); ADD the missing evidence half — extend each retry-wrapped job's `Upload test event stream` step path (test job, rosterguard leg, and every other leg invoking `retry-flaky.sh`) to include `.moai/logs/ci-flaky-retry.attempt1.json` (uploads stay `if: always()` with `if-no-files-found: warn`, so a no-retry run stays green). Do NOT extend retries to the macOS/Windows release legs (decision-index Q6, EVIDENCE-NEEDED).
 GREEN: the three tests pass.
 
 ### M5 — Item 5: drafter-cleanup repair (Priority High — live silent no-op)
 
-1. RED: author `internal/template/release_drafter_cleanup_test.go` — `TestCleanupFilterSelectsStaleDrafts` executes the workflow's extracted jq program against a committed testdata fixture (`internal/template/testdata/release-drafter-cleanup.json`; the plan-phase evidence copy at `.moai/reports/t1536/red-drafter-fixture.json` is gitignored and dies with the worktree — M5 commits the fixture into testdata) and asserts exactly `stale-draft` is selected; `TestCleanupRequeriesBeforeDelete` (delete loop re-queries each tag's draft state before `gh release delete`); `TestDrafterCleanupConcurrency` (shared group with release-drafter.yml; no-cancel on the destructive side). Observe RED (EV-3 is the pin; the pre-fix program errors).
+1. RED: author `internal/template/release_drafter_cleanup_test.go` — `TestCleanupFilterSelectsStaleDrafts` executes the workflow's extracted jq program against a committed testdata fixture (`internal/template/testdata/release-drafter-cleanup.json`; the plan-phase evidence copy at `.moai/reports/t1536/red-drafter-fixture.json` is gitignored and dies with the worktree — M5 commits the fixture into testdata) and asserts exactly `stale-draft` is selected; `TestCleanupRequeriesBeforeDelete` (delete loop re-queries each tag's draft state before `gh release delete`; EV-7 is the RED pin — zero occurrences today); `TestDrafterCleanupConcurrency` (both draft-mutating workflows share one group with `cancel-in-progress: false` on BOTH sides — the cleanup's new block AND release-drafter.yml:21 after the flip — including the drafter-arrives-while-cleanup-in-flight case: an incoming drafter run queues, never cancels; EV-8 is the RED pin); `TestCleanupDryRunDispatchReachable` (the workflow declares `workflow_dispatch.inputs.dry_run` wired into the env that sets `MOAI_CLEANUP_DRY_RUN` — unreachable today, D2). Observe RED (EV-3/EV-7/EV-8 pin the first three; the fourth fails on the absent input).
 2. Fix release-drafter-cleanup.yml:65 to `(now|floor) as $now`.
 3. Add the per-tag re-query guard to the delete step (skip + log on state change).
-4. Join both draft-mutating workflows to the shared concurrency group per decision-index Q3's applied default (queue, never cancel, on the cleanup side).
-5. Optional validation: `workflow_dispatch` with `MOAI_CLEANUP_DRY_RUN=1` after merge.
-GREEN: the three tests pass; EV-3/EV-4 divergence preserved inside `TestCleanupFilterSelectsStaleDrafts`.
+4. Join both draft-mutating workflows to the shared concurrency group (`release-drafter-${{ github.ref }}`) with `cancel-in-progress: false` on BOTH sides: add the cleanup's concurrency block AND flip release-drafter.yml:21 to `false` — in a shared group the INCOMING workflow's own flag governs, so a cleanup-side-only `false` leaves an incoming drafter run cancelling the in-flight cleanup (D3); per decision-index Q3's applied default (queue, never cancel), extended to both sides by the iter-1 repair. Record the queuing trade-off in both workflow comments (B6).
+5. Make the dry-run path reachable (D2): add `workflow_dispatch.inputs.dry_run` (boolean) to release-drafter-cleanup.yml and wire it into the env step that sets `MOAI_CLEANUP_DRY_RUN` — the delete step's dry-run branch (:92-93) already exists, but a dispatch cannot set runner env, so the pre-repair instruction (`MOAI_CLEANUP_DRY_RUN=1`) left DRY_RUN=0 and would have performed REAL deletions; `TestCleanupDryRunDispatchReachable` guards the wiring. Post-merge validation per acceptance.md §D.2: dispatch with dry-run enabled and observe NO `gh release delete` executes.
+GREEN: the four tests pass; EV-3/EV-4 divergence preserved inside `TestCleanupFilterSelectsStaleDrafts`.
 
 ## §G Anti-Patterns
 
@@ -137,7 +146,7 @@ GREEN: the three tests pass; EV-3/EV-4 divergence preserved inside `TestCleanupF
 
 ## §H Cross-References
 
-- spec.md §C REQ-RPC-001..012; acceptance.md §D AC-RPC-001..012 + §B evidence ledger EV-1..EV-6.
+- spec.md §C REQ-RPC-001..012; acceptance.md §D AC-RPC-001..012 + §B evidence ledger EV-1..EV-9.
 - decision-index.md Q1-Q6 (interview.yaml `decision_gate: on`; defaults applied per the Default rule, operator-overridable at Kickoff).
 - `.moai/reports/t1536/progress.md` — card progress record (§E.1 audit-ready signal).
 - Sibling SPECs: §A.2 above.
