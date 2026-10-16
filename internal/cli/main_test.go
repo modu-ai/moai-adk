@@ -65,6 +65,7 @@ import (
 	"github.com/modu-ai/moai-adk/internal/gitenv"
 	"github.com/modu-ai/moai-adk/internal/paths"
 	"github.com/modu-ai/moai-adk/internal/profile"
+	"github.com/modu-ai/moai-adk/internal/testguard"
 )
 
 // warmUpDone records that warmUpCommandTree actually ran. It is the reachability
@@ -386,6 +387,15 @@ func TestMain(m *testing.M) {
 		fmt.Fprintf(os.Stderr, "TestMain: %v\n", err)
 		os.Exit(1)
 	}
+	// git --global writes issued by production code under test (safe.directory
+	// registration) must not reach the operator's ~/.gitconfig (card t1801).
+	// Set after the scrub: it leaves GIT_CONFIG_GLOBAL alone.
+	restoreGitConfigGlobal, err := sandboxGitConfigGlobal()
+	if err != nil {
+		restoreMoaiHome()
+		fmt.Fprintf(os.Stderr, "TestMain: %v\n", err)
+		os.Exit(1)
+	}
 	restoreProfileBaseDir := sandboxProfileBaseDir()
 	restoreUserHomeDir := sandboxUserHomeDir()
 	restoreReceiptRoot := sandboxAuditReceiptFallbackRoot()
@@ -447,8 +457,61 @@ func TestMain(m *testing.M) {
 	restoreReceiptRoot()
 	restoreUserHomeDir()
 	restoreProfileBaseDir()
+	restoreGitConfigGlobal()
 	restoreMoaiHome()
 	os.Exit(code)
+}
+
+// gitConfigSandboxEnv marks a process whose GIT_CONFIG_GLOBAL pin was already
+// created by this package's TestMain; its value is the pinned file (card t1801).
+const gitConfigSandboxEnv = "MOAI_CLI_TEST_GIT_CONFIG_SANDBOX"
+
+// reusablePin reports whether an inherited GIT_CONFIG_GLOBAL may be reused as
+// this process's pin: it must be the very file the marker names, a regular file,
+// and acceptable to the home guard for realHome. Anything else is not trusted.
+func reusablePin(marker, global, realHome string) bool {
+	if marker == "" || marker != global {
+		return false
+	}
+	if fi, err := os.Stat(global); err != nil || !fi.Mode().IsRegular() {
+		return false
+	}
+	return testguard.CheckGlobalConfigPin(realHome, global) == nil
+}
+
+// sandboxGitConfigGlobal points GIT_CONFIG_GLOBAL at a temp file owned by this
+// test binary and returns the cleanup that removes it. The file carries a
+// minimal [user] identity so tests that commit do not depend on a global one.
+// Tests that set GIT_CONFIG_GLOBAL via t.Setenv get this value back afterwards.
+func sandboxGitConfigGlobal() (func(), error) {
+	// A re-executed helper inherits the parent's pin and reuses its file, so the
+	// helper (which exits before any cleanup) leaves nothing behind.
+	realHome, _ := testguard.RealHome() // empty on failure: reusablePin then refuses
+	if reusablePin(os.Getenv(gitConfigSandboxEnv), os.Getenv("GIT_CONFIG_GLOBAL"), realHome) {
+		return func() {}, nil
+	}
+	f, err := os.CreateTemp("", "moai-cli-gitconfig-")
+	if err != nil {
+		return nil, fmt.Errorf("create GIT_CONFIG_GLOBAL sandbox: %w", err)
+	}
+	path := f.Name()
+	remove := func() { _ = os.Remove(path) }
+	const body = "[user]\n\tname = moai-cli-test\n\temail = moai-cli-test@example.invalid\n"
+	_, werr := f.WriteString(body)
+	if cerr := f.Close(); werr == nil {
+		werr = cerr
+	}
+	if werr == nil {
+		werr = os.Setenv("GIT_CONFIG_GLOBAL", path)
+	}
+	if werr == nil {
+		werr = os.Setenv(gitConfigSandboxEnv, path)
+	}
+	if werr != nil {
+		remove()
+		return nil, fmt.Errorf("set up GIT_CONFIG_GLOBAL sandbox: %w", werr)
+	}
+	return remove, nil
 }
 
 // moaiHomeSandboxEnv marks a process whose MOAI_HOME was already sandboxed by
@@ -672,6 +735,34 @@ func TestMain_ScrubsClaudeProjectDir(t *testing.T) {
 			"before m.Run(). Left set, any test that names no project root "+
 			"resolves the tree it runs in and reads that tree's committed "+
 			"workflow.yaml.", config.EnvClaudeProjectDir, got)
+	}
+}
+
+// TestMain_PinsGitConfigGlobal is the guard for the GIT_CONFIG_GLOBAL pin in
+// TestMain (card t1801). Production code run by a test (`git config --global
+// --add safe.directory ...`) writes wherever git resolves --global; without the
+// pin that is the operator's real ~/.gitconfig. It must not call t.Parallel() or
+// t.Setenv — either would hide the process-level value it exists to observe.
+func TestMain_PinsGitConfigGlobal(t *testing.T) {
+	got := os.Getenv("GIT_CONFIG_GLOBAL")
+	if got == "" {
+		t.Fatal("GIT_CONFIG_GLOBAL is unset: TestMain must pin it to a package " +
+			"temp file, or git --global writes reach the real global git config")
+	}
+	if !filepath.IsAbs(got) {
+		t.Fatalf("GIT_CONFIG_GLOBAL=%q is not an absolute path", got)
+	}
+	if _, err := os.Stat(got); err != nil {
+		t.Fatalf("GIT_CONFIG_GLOBAL=%q: pinned file is not readable: %v", got, err)
+	}
+	realHome, err := testguard.RealHome()
+	if err != nil {
+		t.Fatalf("resolve real home: %v", err)
+	}
+	// One criterion with the sandbox judgment: a file under os.TempDir passes
+	// even when the temp dir lies under the home (Windows).
+	if err := testguard.CheckGlobalConfigPin(realHome, got); err != nil {
+		t.Fatalf("GIT_CONFIG_GLOBAL=%q: %v", got, err)
 	}
 }
 

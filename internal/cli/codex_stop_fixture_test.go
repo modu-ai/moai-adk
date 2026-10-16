@@ -141,6 +141,21 @@ func (f *stopFixture) dirty(t *testing.T, content string) {
 	f.write(t, "extra.go", "package main\n\n// "+content+"\n")
 }
 
+// syncGateEnv is the from-scratch environment of the sync-gate child. The
+// pinned GIT_CONFIG_GLOBAL passes through when the process has one, so the child
+// never reads the operator's real global git config (card t1801).
+func syncGateEnv(path, root string, extra ...string) []string {
+	env := []string{"PATH=" + path, "HOME=" + os.Getenv("HOME"), "CLAUDE_PROJECT_DIR=" + root}
+	if v, ok := os.LookupEnv("GIT_CONFIG_GLOBAL"); ok {
+		env = append(env, "GIT_CONFIG_GLOBAL="+v)
+	}
+	return append(env, extra...)
+}
+
+// syncGateOutput runs the sync-gate child; a test swaps it to observe the
+// command (and so its Env) that runClaudeSyncGate built.
+var syncGateOutput = func(cmd *exec.Cmd) ([]byte, error) { return cmd.Output() }
+
 // runClaudeSyncGate runs the distributed Claude sync-gate script, unmodified,
 // on the fixture and returns its normalized decision.
 func (f *stopFixture) runClaudeSyncGate(t *testing.T, payload string, env ...string) codexadapter.Decision {
@@ -151,9 +166,9 @@ func (f *stopFixture) runClaudeSyncGate(t *testing.T, payload string, env ...str
 	}
 	cmd := exec.Command("bash", script)
 	cmd.Dir = f.root
-	cmd.Env = append([]string{"PATH=" + f.path, "HOME=" + os.Getenv("HOME"), "CLAUDE_PROJECT_DIR=" + f.root}, env...)
+	cmd.Env = syncGateEnv(f.path, f.root, env...)
 	cmd.Stdin = strings.NewReader(payload)
-	out, err := cmd.Output()
+	out, err := syncGateOutput(cmd)
 	if err != nil {
 		t.Fatalf("claude sync gate: %v\n%s", err, out)
 	}

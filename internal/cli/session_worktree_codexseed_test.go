@@ -15,6 +15,8 @@ import (
 	"path/filepath"
 	"strings"
 	"testing"
+
+	"github.com/modu-ai/moai-adk/internal/testguard"
 )
 
 // seedTestSeams installs the materializer seams over a temp project root with
@@ -54,6 +56,7 @@ func seedTestSeams(t *testing.T, root string, addOverride func(destDir string) e
 // .codex/hooks.json carrying the MoAI-owned handlers (generation logic reused
 // from internal/codexwiring, not duplicated here).
 func TestNew_SeedsCodexHooksJson(t *testing.T) {
+	testguard.RedirectHome(t)
 	root := t.TempDir()
 	seedTestSeams(t, root, nil)
 
@@ -99,6 +102,7 @@ func admittedEntrySeed(t *testing.T, args []string, warn *bytes.Buffer) {
 // tree through the launcher resolution path backfills a missing hooks.json,
 // and an existing file stays byte-identical (user-owned entries preserved).
 func TestEnterWorktree_SeedsMissingCodexHooks(t *testing.T) {
+	testguard.RedirectHome(t)
 	root := t.TempDir()
 	origFind := findProjectRootFn
 	findProjectRootFn = func() (string, error) { return root, nil }
@@ -146,6 +150,7 @@ func TestEnterWorktree_SeedsMissingCodexHooks(t *testing.T) {
 // pollution — .codex occupied by a regular file) neither blocks worktree
 // creation nor stays silent; a stderr diagnostic names the failure.
 func TestNew_SeedFailureFailOpen(t *testing.T) {
+	testguard.RedirectHome(t)
 	root := t.TempDir()
 	seedTestSeams(t, root, func(destDir string) error {
 		// Path pollution: after the tree directory exists, occupy the .codex
