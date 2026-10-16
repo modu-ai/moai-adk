@@ -251,7 +251,7 @@ Classification: Lazy companion — catalogue tables and per-family guidance only
 stays in `moai-mcp-tools.md`. Update this file whenever a tool is added, removed, or renamed on the
 `moai mcp-server` (the Go producer lives in `internal/cli/mcp_server.go`).
 
-## Tool families (44 of the 50 tools; the session-messaging family follows below)
+## Tool families (46 of the 50 tools; the session-messaging family follows below)
 
 | Family | Tools | Wired consumers |
 |---|---|---|
@@ -261,11 +261,11 @@ stays in `moai-mcp-tools.md`. Update this file whenever a tool is added, removed
 | Cross-model audit | `audit_multi`, `claude_audit`, `codex_audit`, `glm_audit`, `audit_cache` | plan-auditor, sync-auditor |
 | Self-review (advisory) | `codex_review`, `glm_review` | the main session; any agent whose `tools:` list names them — never an audit verdict, no receipt |
 | Codex delegation | `codex_task`, `codex_setup`, `codex_job_{status,result,cancel}` | super-advisor (all five), manager-develop (all but codex_setup) |
-| Codex read-only roles | `codex_role_audit`, `codex_role_audit_status`, `codex_role_audit_result` | a Codex session — starts `plan-auditor`, `sync-auditor`, `manager-todo`, `super-advisor` as a top-level read-only process instead of through `spawn_agent` |
+| Codex read-only roles | `codex_role_audit`, `codex_role_audit_status`, `codex_role_audit_result`, `codex_role_audit_cancel` | a Codex session — starts `plan-auditor`, `sync-auditor`, `manager-todo`, `super-advisor` as a top-level read-only process instead of through `spawn_agent` |
 | GLM delegation | `glm_task`, `glm_job_{status,result,cancel}` | super-advisor, manager-develop |
 | Code queries | `graph_file_api`, `graph_find_code`, `graph_trace_calls`, `graph_shortest_path` | any agent (signature-level code navigation from the code-derived edge layer; every answer carries tree+commit provenance) |
 | Judgment (gated) | `jev_ask` | gated-unavailable at the shipped default (`workflow.jev.enabled: false`) — no request constructed, no network call; while the chain's fitness gate stands unrun it is not presented as available. Display-only: a labelled model signal a person reads, never a completion predicate, merge approval, queue mutation, or gate input, except as the second signal of the contract-mode Kickoff `llm+jev` cross-check, where it can only confirm an LLM approval or route the Kickoff to a human and never decides alone, and except as the ordering key of the `todo --auto` cycle's own candidate ranking (the auto-scoped ranking exception — selection order only, in-process, never through this tool) |
-| Factory card verbs | `factory_next`, `factory_stage`, `factory_complete`, `factory_decide`, `factory_renew`, `todo_add`, `todo_list` | factory lane sessions (lane verbs, `project_root` required on next/stage/complete/renew); `factory_decide` inverts the gate; `todo_list` is the family's read-only surface |
+| Factory card verbs | `factory_next`, `factory_stage`, `factory_complete`, `factory_decide`, `factory_renew`, `todo_claim`, `todo_add`, `todo_list` | factory lane sessions (lane verbs, `project_root` required on next/stage/complete/renew); `factory_decide` inverts the gate; `todo_list` is the family's read-only surface |
 | Factory messaging | `factory_msg_send`, `factory_msg_list`, `factory_msg_body`, `factory_msg_receipt`, `factory_msg_status` | attributed factory lead/worker sessions; `status` is the read-only operational roster/count surface |
 
 Per-tool purpose, consumer, and CLI equivalent: `moai-mcp-tools-catalogue.md`. Claude, codex, and
@@ -316,12 +316,18 @@ producer lives in `internal/cli/mcp_server.go`).
 ### The `project_root` input — name your own tree
 
 
-Twenty-three tools accept an optional `project_root` string: `spec_progress`,
+Forty-five tools accept an optional `project_root` string: `spec_progress`,
 `spec_audit`, `spec_drift`, `verify_snapshot`, `verify_trend`, `codex_audit`,
 `codex_review`, `codex_task`, `glm_audit`, `glm_review`, `claude_audit`,
 `audit_multi`, `graph_file_api`, `graph_find_code`, `graph_shortest_path`,
 `graph_trace_calls`, `factory_decide`, `todo_add`, `todo_list`, `factory_next`,
-`factory_stage`, `factory_complete`, and `factory_renew`. It names the tree the call should act
+`factory_stage`, `factory_complete`, `factory_renew`, `audit_cache`,
+`codex_job_cancel`, `codex_job_result`, `codex_job_status`, `factory_msg_body`,
+`factory_msg_list`, `factory_msg_receipt`, `factory_msg_send`,
+`factory_msg_status`, `glm_job_cancel`, `glm_job_result`, `glm_job_status`,
+`glm_task`, `goal_arm`, `goal_status`, `jev_ask`, `session_list`,
+`session_msg_list`, `session_msg_poll`, `session_msg_register`,
+`session_msg_send`, and `todo_claim`. It names the tree the call should act
 on. Five of the twenty-three
 REQUIRE it rather than accept it: the lane verbs `factory_next`, `factory_stage`,
 `factory_complete`, and `factory_renew` reject a call without it naming the argument, and

@@ -39,10 +39,10 @@ var docsSiteProjectRootLine = regexp.MustCompile(`(?m)^## [^\n]*project_root[^\n
 func TestDocsSiteProjectRootMatchesServer(t *testing.T) {
 	declared := toolsDeclaringProjectRoot(t)
 	locales := map[string]string{
-		"en": "Twenty-three tools",
-		"ko": "23개 도구",
-		"ja": "23個のツール",
-		"zh": "23 个工具",
+		"en": "Forty-five tools",
+		"ko": "45개 도구",
+		"ja": "45個のツール",
+		"zh": "45 个工具",
 	}
 	for locale, countPhrase := range locales {
 		t.Run(locale, func(t *testing.T) {
@@ -94,7 +94,7 @@ var docCountWords = map[string]int{
 	"Three": 3, "Four": 4, "Five": 5, "Six": 6, "Seven": 7, "Eight": 8, "Nine": 9, "Ten": 10,
 	"Eleven": 11, "Twelve": 12, "Thirteen": 13, "Fourteen": 14,
 	"Fifteen": 15, "Sixteen": 16, "Seventeen": 17, "Eighteen": 18, "Nineteen": 19, "Twenty": 20,
-	"Twenty-one": 21, "Twenty-two": 22, "Twenty-three": 23,
+	"Twenty-one": 21, "Twenty-two": 22, "Twenty-three": 23, "Forty-five": 45,
 }
 
 // TestProjectRootDocMatchesServer asserts the rule file names exactly the tools
