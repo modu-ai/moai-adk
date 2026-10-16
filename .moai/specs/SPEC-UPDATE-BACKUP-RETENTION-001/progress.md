@@ -401,9 +401,240 @@ Measured, not claimed: `go build ./...` and `GOOS=windows GOARCH=amd64 go build 
 Environment brackets around the whole-template run and the `internal/cli` runs: `~/.gitconfig` 503 lines, sha256 `376c6febc88ba234321078fa8e8c4ec922b458192d1199a31a4eb03b55660548`, the two pre-existing `/var/folders|/repo|Test` lines (479, 480), unchanged before and after; backlog.db header `SQLite format 3`, `PRAGMA quick_check` `ok`. No test added a trace line.
 Not run (Gaps): the full `internal/cli` suite (named `-run` tests only) and whole-package `internal/cli` coverage; the key-scoped symmetry check is not a whole-section bijection (`profile_max_bytes` has no struct field and `retention_days` is not shipped, left as found); a retained-with-reason row on either path was not seeded (the seeded runs are empty and removable; the retained-row rendering is covered at the renderer in `update_backup_retention_report_test.go`); Windows runtime behavior (cross-build and vet only); real-data remeasure (M6).
 
+### M6 — Real-data remeasure and close evidence (card tree `WT-10-14-class-3`; production code identical to `5f4b35a64`; harness commit `6eaf221c172947792884b5352118cb5f69cce0df`)
+
+M6 changed no production file. The one file it adds is the env-gated test `internal/cli/update/backup/retention_realdata_test.go` (committed on its own at `6eaf221c1`, before this evidence block), because the gitignored probe A.1 only logs and carries no oracle for AC-UBR-06(b). It is skipped unless `T1733_CLONE` is set. It stamps every run directory with the time its name encodes, prunes through the exported `backup.PruneBackups`, and judges the result from a disk census taken before and after (SHA-256 per regular file, `.template-defaults/` and writer bookkeeping excluded, a non-regular or unreadable entry marks the run exempt); it does not call or re-run the selection.
+
+**Input provenance.** Read-only source: the 10-14 t1687 audit snapshot `/private/tmp/claude-501/-Users-goos-MoAI-moai-adk-go/dfd2478c-11e3-4ea8-a787-c06d8bb4ade9/scratchpad/rc1/moaikr` (533 MB, a clone of the live mo.ai.kr project). Every run used a fresh copy, `cp -Rcp <source> /private/tmp/t1733-m6-<label>/moaikr`, exit 0. Each copy was checked: `.moai-backups` 888 files, `.moai/backups` 29797 files (equal to the source: 888 and 29797), and `stat` on run directory `20261008_203921` read `2026-10-14T16:21:43` in source and copy (modification time preserved; every snapshot directory carries that one copy time, which is why the harness stamps explicit times). The source was never pruned; no `moai update` was run; no binary was installed.
+
+Pre-flight on `5f4b35a64`: `go build ./...` exit 0; `GOOS=windows GOARCH=amd64 go build ./...` exit 0; `go test -count=1 ./internal/cli/update/backup/ ./internal/config/` `ok 0.983s` and `ok 8.134s`.
+
+#### AC-UBR-06 (a)-(e), harness on a fresh copy, tree `6eaf221c1`
+
+```
+$ env T1733_CLONE=/private/tmp/t1733-m6-h5/moaikr T1733_KEEP=5 go test -count=1 -v -run TestRetentionRealData_AC_UBR06 ./internal/cli/update/backup/     (exit 0)
+    retention_realdata_test.go:275: AC06a keepCount=5 runs-before=84 runs-after=43 window-present=5 R(retained-excess)=38 R-non-exempt=38 exempt-runs-before=0
+    retention_realdata_test.go:277: AC06a unmanaged-dirs before=15 after=15 loose-files before=9 after=9 report-unmanaged-count=16 report-unmanaged-bytes=10613047
+    retention_realdata_test.go:312: AC06b protected-versions=1399 paths-over-budget=56 uncovered=0 redundant-retained-non-exempt=0 retained-non-exempt=38 bound-ok=true
+    retention_realdata_test.go:340: AC06c distinct-file-versions-before=1814 after=1754 lost=60 paths-with-lost-versions=22 lost-inside-budget=0 lost-in-window=0
+    retention_realdata_test.go:359: AC06d pre-clean-files before=48 after=48
+    retention_realdata_test.go:374: AC06e report runs=84 window=5 items=79 removed-items=41 retained-items=38 removed-dirs=41 protected=1399
+    retention_realdata_test.go:385: AC06e retained-reasons=map[protects-versions:38]
+--- PASS: TestRetentionRealData_AC_UBR06 (11.98s)
+
+$ env T1733_CLONE=/private/tmp/t1733-m6-h4/moaikr T1733_KEEP=4 go test -count=1 -v -run TestRetentionRealData_AC_UBR06 ./internal/cli/update/backup/     (exit 0)
+    retention_realdata_test.go:275: AC06a keepCount=4 runs-before=84 runs-after=43 window-present=4 R(retained-excess)=39 R-non-exempt=39 exempt-runs-before=0
+    retention_realdata_test.go:277: AC06a unmanaged-dirs before=15 after=15 loose-files before=9 after=9 report-unmanaged-count=16 report-unmanaged-bytes=10613047
+    retention_realdata_test.go:312: AC06b protected-versions=1400 paths-over-budget=56 uncovered=0 redundant-retained-non-exempt=0 retained-non-exempt=39 bound-ok=true
+    retention_realdata_test.go:340: AC06c distinct-file-versions-before=1814 after=1754 lost=60 paths-with-lost-versions=22 lost-inside-budget=0 lost-in-window=0
+    retention_realdata_test.go:359: AC06d pre-clean-files before=48 after=48
+    retention_realdata_test.go:374: AC06e report runs=84 window=4 items=80 removed-items=41 retained-items=39 removed-dirs=41 protected=1400
+    retention_realdata_test.go:385: AC06e retained-reasons=map[protects-versions:39]
+--- PASS: TestRetentionRealData_AC_UBR06 (14.89s)
+```
+
+Measured figures (R is measured, not a target; Q2 soft cap):
+
+| Figure | keepCount 5 (production) | keepCount 4 |
+|---|---|---|
+| runs before / after | 84 / 43 | 84 / 43 |
+| R, retained excess runs (all non-exempt; no exempt run on this input) | **38** | **39** |
+| runs after = keepCount + R | 5 + 38 | 4 + 39 |
+| distinct protected versions (bound on R) | 1399 | 1400 |
+| namespace-root directories after (main: 79 to 0) | not separately counted: 43 runs remain across both roots | same |
+| unmanaged config-root dirs before / after; loose files before / after (both roots) | 15 / 15; 9 / 9 | 15 / 15; 9 / 9 |
+| report unmanaged count / bytes (config root: 15 dirs + 1 loose file) | 16 / 10613047 | 16 / 10613047 |
+| lost versions (all older than their budget; 0 inside budget, 0 in window) | 60 over 22 paths | 60 over 22 paths |
+| pre-clean files before / after | 48 / 48 | 48 / 48 |
+
+The 48-file expectation of REQ-UBR-003 (derived in AC-UBR-06(d)) is now observed: `after=48`.
+
+#### AC-UBR-06(d) fixed-mtime probe P5 (the probe of the AC, unmodified), tree `6eaf221c1`
+
+```
+$ env T1733_CLONE=/private/tmp/t1733-m6-p4/moaikr go test -count=1 -v -overlay=.moai/reports/t1733/probes/overlay_backup_p5.rel.json -run TestT1733ProbeRealDataFixedMtime ./internal/cli/update/backup/     (exit 0)
+    zz_t1733_probe_p5_test.go:108: P5 keepCount=4 runs=84 distinct-run-mtimes=true pre-clean-run=20261008_203921 pre-clean-run-rank=9 pre-clean-run-is-oldest-config-run=true
+    zz_t1733_probe_p5_test.go:110: P5 pre-clean-files before=48 after=48 deleted=41 pre-clean-run-exists-after=true
+--- PASS: TestT1733ProbeRealDataFixedMtime (12.35s)
+$ env T1733_CLONE=/private/tmp/t1733-m6-p5/moaikr T1733_KEEP=5 go test -count=1 -v -overlay=.moai/reports/t1733/probes/overlay_backup_p5.rel.json -run TestT1733ProbeRealDataFixedMtime ./internal/cli/update/backup/     (exit 0)
+    zz_t1733_probe_p5_test.go:108: P5 keepCount=5 runs=84 distinct-run-mtimes=true pre-clean-run=20261008_203921 pre-clean-run-rank=9 pre-clean-run-is-oldest-config-run=true
+    zz_t1733_probe_p5_test.go:110: P5 pre-clean-files before=48 after=48 deleted=41 pre-clean-run-exists-after=true
+--- PASS: TestT1733ProbeRealDataFixedMtime (9.30s)
+```
+
+RED reference (AC cell, start tree): `before=48 after=0 deleted=80 pre-clean-run-exists-after=false`, exit 1. GREEN now: `after=48`, exit 0.
+
+#### The AC's own (a)-(c) probe A.1 (no mtime stamping), same overlay command as the RED cell
+
+```
+$ env T1733_CLONE=/private/tmp/t1733-m6-a1/moaikr go test -count=1 -v -overlay=.moai/reports/t1733/probes/overlay_backup.rel.json -run TestT1733ProbeRealData ./internal/cli/update/backup/     (exit 0)
+    zz_t1733_probe_test.go:217: REAL cfg-root dirs 20->20 ns-root dirs 79->31 deleted=48 pre-clean-dirs 1->1
+    zz_t1733_probe_test.go:218: REAL distinct-file-versions-before=1951 lost=93 paths-with-lost-versions=30
+    zz_t1733_probe_test.go:220: REAL lost-top path=.moai/harness/usage-log.jsonl versions-lost=30
+    zz_t1733_probe_test.go:220: REAL lost-top path=.claude/agents/moai/manager-lead.md versions-lost=6
+    zz_t1733_probe_test.go:220: REAL lost-top path=.claude/agents/moai/plan-auditor.md versions-lost=6
+--- PASS: TestT1733ProbeRealData (22.94s)
+```
+
+RED reference (start `e669da81b`, ledger E6): `ns-root dirs 79->0 deleted=79`, `lost=1700 paths-with-lost-versions=996`. Now `79->31`, `lost=93` over 30 paths. This probe leaves the snapshot's single copy time in place, so run order falls to the path-ascending tie-break (config root first), a different window from the stamped runs above; its census also counts differently (1951 distinct versions against the harness's 1814), so the two `lost` figures (93 and 60) are not comparable with each other, only each with its own RED reference. This probe does not judge inside-budget loss; the harness above does, under stamped ordering.
+
+#### P1-P4b main-versus-tree cells, pruner level, tree `6eaf221c1`
+
+```
+$ go test -count=1 -v -overlay=.moai/reports/t1733/probes/overlay_backup.rel.json -run TestT1733ProbeP1 ./internal/cli/update/backup/     (exit 0)
+    P1 pre-clean-dirs-before=[20261011_000000 20261012_000000 20261013_000000 20261014_000000 20261015_000000 20261016_105403] user-file-copies-before=1 deleted=0 user-file-copies-after=1
+$ ... -run TestT1733ProbeP2 ...     (exit 0)
+    P2 deleted=1 remaining=[update-2026-10-01T00-00-00Z update-2026-10-02T00-00-00Z update-2026-10-03T00-00-00Z update-2026-10-05T00-00-00Z] v1-entry-survives=true v2-entry-survives=true v3-entry-survives=true
+$ ... -run TestT1733ProbeP3 ...     (exit 0)
+    P3 deleted=9 remaining=[update-2026-10-10T00-00-00Z update-2026-10-11T00-00-00Z] v1-holding-entries-remaining=1
+$ go test -count=1 -v -overlay=.moai/reports/t1733/probes/overlay_residue.rel.json -run TestT1733ProbeP4a ./internal/cli/update/skillresidue/     (exit 0)
+    P4a err=<nil> actions=[{.claude/skills/moai-kanban-foreman reported-retired-skill} {.agents/skills/moai-kanban-foreman reported-retired-link}] b-link-survives=true a-folder-in-place=true
+$ ... -run TestT1733ProbeP4b ...     (exit 0)
+    P4b err=<nil> actions=[{.claude/skills/moai-kanban-foreman reported-retired-skill}] content-now-outside-project=false a-folder-in-place=true
+```
+
+Against the AC cells: P1 `user-file-copies-after` 0 to 1 (pre-revert reference 1); P2 `deleted=4 ... all false` to `deleted=1 ... all true`; P3 `deleted=10 ... remaining=0` to `deleted=9 ... remaining=1` and the remaining v1 holder is `update-2026-10-10T00-00-00Z`, the newest of the ten; P4a and P4b equal their guard values.
+
+#### AC-UBR-24 — ordering in the commit graph (`git log --reverse 7357f0c22..HEAD`, `git show --stat`)
+
+RED re-observed on the base production code in this run: the committed probe tests run against `backup.go` as of `7357f0c22` (overlay hiding every file this card added to the package):
+
+```
+$ go test -count=1 -v -overlay=/private/tmp/t1733-m6-red/overlay.json -run 'TestAC_UBR_01_...|TestAC_UBR_02_...|TestAC_UBR_03_...' ./internal/cli/update/backup/     (exit 1)
+    retention_probe_p1_test.go:74: AC-UBR-01 user-file-copies-before=1 deleted=1 user-file-copies-after=0
+--- FAIL: TestAC_UBR_01_PreCleanUserFileSurvivesRotation (0.01s)
+    retention_probe_p2_test.go:22: AC-UBR-02 deleted=4 remaining=[update-2026-10-05T00-00-00Z]
+--- FAIL: TestAC_UBR_02_CurrentVersionDoesNotTakeABudgetSlot (0.01s)
+    retention_probe_p3_test.go:22: AC-UBR-03 deleted=10 remaining=[update-2026-10-11T00-00-00Z]
+--- FAIL: TestAC_UBR_03_RedundantCopiesAreNotAllKept (0.01s)
+FAIL
+```
+
+| AC | RED commit (test added, with assertions) | GREEN commit | Order |
+|---|---|---|---|
+| AC-UBR-01 | `8c7c4cdb5` (probe P1) | `312c303a0` (`backup.go` calls the budgeted pruner) | RED first |
+| AC-UBR-02 | `f3d4ad42d` (probe P2); selection tests `716d81b53` | `312c303a0` at pruner level; `815223b5b` at selection level | RED first |
+| AC-UBR-03 | `750a8a7fe` (probe P3); selection tests `716d81b53` | `312c303a0`; `815223b5b` | RED first |
+| AC-UBR-07 | `716d81b53` | `815223b5b` | RED first |
+| AC-UBR-08, 09, 11, 13, 14 | `396484c7f` (tests plus API stubs) | `312c303a0` | RED first |
+| AC-UBR-12 | pruner report `396484c7f`; update output `73b390a05` | `312c303a0`; `ab1e48138` | RED first |
+| AC-UBR-16, 17 | `f2e692588` | `75d97ab02` | RED first |
+| AC-UBR-18 | `471dbc55b` | `9d7f1823c` | RED first |
+| AC-UBR-04, 05 (guards) | `3935b4434` | residue change `75d97ab02` | guard precedes the residue change |
+| AC-UBR-15 (guard) | `3935b4434` | n/a (green on start by design) | no RED |
+| AC-UBR-10 | `d774ab272` carries tests and implementation together | same commit | **shared commit** |
+| AC-UBR-19 | registry test existed; the row for the pruner site moves in `312c303a0` with the pruner | same commit | **shared commit** (the M2 registry-row move) |
+| AC-UBR-20 | `75d97ab02` carries the pin test, the registry rows and `residue.go` | same commit | **shared commit**; the failure on a deliberately added alias was observed once in M3 (see the M3 block) |
+| AC-UBR-21 | `96b2a17d5` | no GREEN commit: closure guards, green on the start tree; failing state observed by mutation (M5 block) | no RED commit |
+| AC-UBR-22, 23 | n/a | gates, no test commit | not applicable |
+
+The probe tests of AC-UBR-01 to AC-UBR-03 each precede the commit that makes them pass, and §E.2 above (M1 block) holds the verbatim RED output for each. AC-UBR-10, 19 and 20 cannot be re-witnessed by the commit graph for ordering; their RED observations rest on the M1 and M3 session records only.
+
+#### Quality gates and brackets, tree `6eaf221c1`
+
+```
+$ gofmt -l internal/cli/update internal/config internal/cli/update_*.go               (empty, exit 0)
+$ go vet ./internal/cli/update/... ./internal/config/ ./internal/cli/                  (exit 0)
+$ go build ./...                                                                        (exit 0)
+$ GOOS=windows GOARCH=amd64 go build ./...                                              (exit 0)
+$ golangci-lint run --timeout=5m ./internal/cli/update/backup/... ./internal/cli/update/skillresidue/... ./internal/config/...   0 issues (exit 0)
+$ go test -count=1 -cover ./internal/cli/update/backup/... ./internal/cli/update/skillresidue/... ./internal/config/
+ok  github.com/modu-ai/moai-adk/internal/cli/update/backup        1.007s  coverage: 88.4% of statements
+ok  github.com/modu-ai/moai-adk/internal/cli/update/skillresidue  0.359s  coverage: 88.4% of statements
+ok  github.com/modu-ai/moai-adk/internal/config                   51.035s coverage: 85.6% of statements
+$ go test -count=1 -v -run 'TestDestructiveTargetRegistry|TestCleanReinstall_PrintsBackupRetentionRows|TestTemplateSync_RecordsBackupRetentionRows|TestBackupRetentionReportLines|TestRemoveStateResidue|TestBackupSubsystem_DestructiveSurfaces' ./internal/cli/
+--- PASS for all nine named tests, ok github.com/modu-ai/moai-adk/internal/cli 1.681s
+```
+
+Environment brackets around the `internal/cli` run (before and after identical): `~/.gitconfig` 503 lines, sha256 `376c6febc88ba234321078fa8e8c4ec922b458192d1199a31a4eb03b55660548`, two pre-existing `/var/folders|Test` lines (479, 480); backlog.db header `SQLite format 3`, `PRAGMA quick_check` `ok`. `TMPDIR`, `GOTMPDIR` and `HOME` were not set.
+
+#### AC matrix (24 ACs, this run, tree `6eaf221c1`)
+
+| AC | Proof | Status |
+|---|---|---|
+| 01 | `TestAC_UBR_01_PreCleanUserFileSurvivesRotation`; probe P1 `after=1` | PASS |
+| 02 | `TestAC_UBR_02_CurrentVersionDoesNotTakeABudgetSlot`; `TestAC_UBR_02_SelectionKeepsPastVersionsOutsideTheWindow`; probe P2 | PASS |
+| 03 | `TestAC_UBR_03_RedundantCopiesAreNotAllKept`; `TestAC_UBR_03_SelectionRetainsOneCopyOfRepeatedVersion`; probe P3 | PASS |
+| 04 | `TestAC_UBR_04_ContentBehindSymbolicAgentsSkillsIsUntouched`; probe P4a | PASS |
+| 05 | `TestAC_UBR_05_NothingIsWrittenOutsideTheProjectThroughArchiveLink`; probe P4b | PASS |
+| 06 | (a) (b) (c) (e) `TestRetentionRealData_AC_UBR06` at keepCount 5 and 4; (d) probe P5 at 4 and 5 | PASS (R = 38 at 5, 39 at 4) |
+| 07 | `TestAC_UBR_07_BudgetBoundsProtection` (4 subtests) | PASS |
+| 08 | `TestAC_UBR_08_BookkeepingIsRecognizedByWhatTheWriterWrote` | PASS |
+| 09 | `TestAC_UBR_09_TemplateDefaultsRenderIsExempt` | PASS |
+| 10 | `TestAC_UBR_10_BudgetKeyShipsOnce`; `TestLoadBackupPastVersionsKeep` | PASS |
+| 11 | `TestAC_UBR_11_UnclassifiableContentFailsClosedAndNeverBlocks` | PASS |
+| 12 | `TestAC_UBR_12_EachDecisionIsReported`; `TestBackupRetentionReportLines_NamesEveryDecision` | PASS |
+| 13 | `TestAC_UBR_13_RootContainmentStillRefuses` (3 subtests) | PASS |
+| 14 | `TestAC_UBR_14_ExplicitWipeAndNegativeKeepCount` | PASS |
+| 15 | `TestAC_UBR_15_RetiredFoldersAndLinksAreReportedNeverMovedOrRemoved` | PASS |
+| 16 | `TestAC_UBR_16_SwappedSkillFolderCannotRedirectTheRename` | PASS |
+| 17 | `TestAC_UBR_17_RenameDoesNotOverwriteAFileThatAppearsAtTheTemporaryName`; `..._AtTheDestination` | PASS |
+| 18 | `TestRunUpdateHousekeeping_EmptyDBReportedNotRemoved_ACUBR18` (inside the `TestRemoveStateResidue` / housekeeping `-run` set; named tests of the file listed above passed) | NOT-OBSERVED by name in this run; see Gaps |
+| 19 | `TestDestructiveTargetRegistry_CoversAllSites` | PASS |
+| 20 | `TestDestructiveTargetRegistry_CoversAllSites`; `TestMoveFileReferencesArePinned` | PASS |
+| 21 | `TestCleanReinstall_PrintsBackupRetentionRows`; `TestTemplateSync_RecordsBackupRetentionRows`; `TestStructYAMLSymmetry_StateBackupPastVersionsKeep` | PASS |
+| 22 | gofmt, vet, golangci-lint above; coverage 88.4 / 88.4 / 85.6 | PASS |
+| 23 | not re-run in M6; M5 block holds `make build` and `internal/template` evidence at `96b2a17d5`; no production or template file changed since | NOT-OBSERVED in this run (carried from M5, attributed there) |
+| 24 | commit graph table above | PASS-WITH-DEBT (AC-UBR-10, 19, 20 share a commit) |
+
+#### Files for the sync auditor
+
+`git diff --name-only 7357f0c22 HEAD` is the list in the M5 block plus `internal/cli/update/backup/retention_realdata_test.go` (this commit) and this file. Pre-existing tests edited across M1-M5 (status `M`, from `git diff --name-status 7357f0c22 HEAD -- '*_test.go'`):
+
+| File | Reason |
+|---|---|
+| `internal/cli/update/skillresidue/residue_coverage_test.go` | the `moveFile` seam is replaced by the project-root-bound rename (REQ-UBR-017); tests re-targeted to the new seam |
+| `internal/cli/update/skillresidue/residue_moveone_test.go` | the pin test counted references to `moveFile` / `moveOne`; it now counts the root-handle move calls (REQ-UBR-019, AC-UBR-20) |
+| `internal/cli/update/skillresidue/residue_safety_test.go` | a test injected a failing `moveFile`; re-expressed against the root-bound rename (AC-UBR-16, 17) |
+| `internal/cli/update_destructive_registry_test.go` | the scan counted only `os.RemoveAll` / `os.Rename`; extended to the root-handle operations so a changed move site cannot be missed (F22, AC-UBR-20) |
+| `internal/cli/update_preserve_reach_test.go` | the rotation subtest wrote a distinct body per backup; with budgeted protection each would be a last holder, so every backup now holds the same bytes and survivors are identified by directory name (REQ-UBR-003) |
+| `internal/cli/update_state_residue_test.go` | zero-byte database files were expected removed; now expected present and reported (REQ-UBR-018, operator ruling Q1); the `backlog.json.lock` removal is unchanged |
+
+Also modified, not a test: `internal/config/testdata/shipped_key_inventory.yaml` (the shipped state key inventory gained `backup_past_versions_keep`).
+
+#### Post-landing operator procedure (design D11), close evidence for the operator — NOT executed by this run
+
+1. Before anything else, copy `.moai-backups` and `.moai/backups` of the real project with modification times preserved (macOS APFS `cp -Rcp`; elsewhere `cp -a`) to a directory outside the project, and note the directory count and the recursive file count of each root.
+2. Make a second copy of the whole project (a throwaway) and run `moai update` there, never in the original.
+3. In the copy, list both backup roots again and compare with this block: the config root keeps its window of five runs plus any reported retained excess; the namespace root is no longer emptied (main empties it, 79 to 0); the update summary names every removed run and every retained excess run with its reason. Reference figures on the 10-14 snapshot at keepCount 5: 84 runs before, 43 after, R = 38, 1399 protected versions, 48 pre-clean files kept.
+4. Confirm at least one pre-clean user-file copy remains (a file under a `pre-clean/` directory whose bytes match a user file the template does not ship).
+5. Confirm the retained-excess count the update reports equals the number of run directories present beyond the window in the copy, and does not exceed the number of distinct protected versions.
+6. If any step fails, keep the original project and the step-1 backup untouched and report the numbers to card t1733.
+
+#### Gaps (not observed in M6)
+
+- The command-refusal record: the worktree-isolation guard refused three shell shapes this run (a `find` over a path held in a shell variable; `go test -run '^Name$'` with anchors; a `go test ... > file; grep` pipeline). Each was re-issued as plain separate commands with literal paths and unanchored `-run` names; no measurement rests on a refused call.
+- AC-UBR-23 (`make build`, `internal/template` suite) was not re-run in M6; its evidence is the M5 block at `96b2a17d5`, and no template or production file changed afterwards (`git diff --stat 5f4b35a64 HEAD` lists only the new test file).
+- AC-UBR-18's test is `TestRunUpdateHousekeeping_EmptyDBReportedNotRemoved_ACUBR18`; the `-run` set used here named `TestRemoveStateResidue` and `TestBackupSubsystem_DestructiveSurfaces` and did not name it, so it was not observed by name in this run; its GREEN at `9d7f1823c` is in the M4 block.
+- The full `internal/cli` suite and the whole-repository suite were not run; the repository-wide test verdict belongs to the CI run on the integration branch and is PENDING at report time.
+- Windows and Linux runtime behavior of the new tests: build and vet only for Windows; the harness and the probes ran on darwin.
+- The oracle uses the spec's recency definition (newest excess holder, ties broken on the digest); a different tie rule could change which of two equally recent versions is protected, and would not change the counts above on this input unless a boundary tie occurs. Boundary ties were not enumerated.
+- `moai update` end to end on a real project (design D11) is the operator's act and was not run.
+
 ## §E.3 Run-phase Audit-Ready Signal
 
-_<pending run-phase>_ — M5 of M6 is complete; the signal is written at run close.
+```yaml
+run_complete_at: 2026-10-16
+run_commit_sha: pending-backfill   # the M6 evidence commit cannot cite its own hash
+run_status: complete-pending-sync-audit
+harness_commit_sha: 6eaf221c172947792884b5352118cb5f69cce0df
+measurement_tree_sha: 6eaf221c172947792884b5352118cb5f69cce0df
+ac_pass_count: 22
+ac_fail_count: 0
+ac_pass_with_debt: [AC-UBR-24]   # AC-UBR-10, 19 and 20 share a commit between test and implementation
+ac_not_observed_in_m6: [AC-UBR-18 by name, AC-UBR-23]   # evidence carried from M4 and M5 blocks
+preserve_list_post_run_count: 0
+l44_pre_commit_fetch: not-run   # card branch unpushed; no remote contact
+l44_post_push_fetch: not-run    # no push
+new_warnings_or_lints_introduced: 0
+cross_platform_build:
+  linux_darwin: pass
+  windows_amd64: pass
+total_run_phase_files: 59       # git diff --name-only 7357f0c22 HEAD, plus this file already counted
+m1_to_mN_commit_strategy: RED test commit before each GREEN commit; evidence commit per milestone; unpushed
+retained_excess_R: {keepCount_5: 38, keepCount_4: 39}
+repository_wide_test_verdict: PENDING   # owned by the CI run on the integration branch
+```
 
 ## §E.4 Sync-phase Audit-Ready Signal
 
