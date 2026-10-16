@@ -7,6 +7,7 @@ import (
 	"errors"
 	"os"
 	"path/filepath"
+	"regexp"
 	"strings"
 	"testing"
 	"time"
@@ -353,9 +354,10 @@ func TestBuilder_Build_MissingContextWindow(t *testing.T) {
 		t.Fatalf("unexpected error: %v", err)
 	}
 
-	// CW bar should not be shown when context window is missing
-	if strings.Contains(got, "CW:") {
-		t.Errorf("should not contain CW bar when context window missing, got %q", got)
+	// Missing context window keeps an empty placeholder bar plus n/a
+	// (operator decision 2026-10-16, card t1822 — previously omitted).
+	if !regexp.MustCompile(`CW: ░+ n/a`).MatchString(got) {
+		t.Errorf("should contain CW placeholder bar + n/a when context window missing, got %q", got)
 	}
 	// 5H/7D always shown (n/a with no window source)
 	if !strings.Contains(got, "5H:") || !strings.Contains(got, "7D:") {
