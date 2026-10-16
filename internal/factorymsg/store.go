@@ -986,7 +986,23 @@ func (s *Store) DeadLetters(ctx context.Context) (_ []DeadLetter, err error) {
 	return out, rows.Err()
 }
 
-func (s *Store) Claim(ctx context.Context, p Peer, limit int, lease time.Duration) (_ []Claim, err error) {
+// Claim claims up to limit messages for the endpoint p. A re-claim inside a
+// live lease keeps the claim token and extends the lease (REQ-MN-017), so the
+// rows the endpoint already holds are delivered again.
+func (s *Store) Claim(ctx context.Context, p Peer, limit int, lease time.Duration) ([]Claim, error) {
+	return s.claim(ctx, p, limit, lease, false)
+}
+
+// ClaimFresh claims only what the endpoint does not already hold: pending rows
+// and rows whose lease has expired. A claim the endpoint still holds is NOT
+// delivered again, so a consumer that drives one model turn per delivery (the
+// managed session driver) never retries a failed turn by itself — the held
+// row waits for its lease, which is the broker's redelivery policy.
+func (s *Store) ClaimFresh(ctx context.Context, p Peer, limit int, lease time.Duration) ([]Claim, error) {
+	return s.claim(ctx, p, limit, lease, true)
+}
+
+func (s *Store) claim(ctx context.Context, p Peer, limit int, lease time.Duration, fresh bool) (_ []Claim, err error) {
 	if err := s.verifyPeer(ctx, p); err != nil {
 		return nil, err
 	}
@@ -1000,8 +1016,13 @@ func (s *Store) Claim(ctx context.Context, p Peer, limit int, lease time.Duratio
 	// token die (the "claim identity mismatch" defect family). The
 	// per-recipient scoping means every claimed row IS this endpoint's claim.
 	// EXPIRED rows stay eligible too: the dead-letter step below ends them.
+	stateClause, stateArgs := `state IN ('pending','claimed')`, []any(nil)
+	if fresh {
+		stateClause = `(state='pending' OR (state='claimed' AND claim_expires_at<=?))`
+		stateArgs = []any{now.Format(time.RFC3339Nano)}
+	}
 	var eligible int
-	if err := s.db.QueryRowContext(ctx, `SELECT count(*) FROM messages WHERE recipient_session=? AND recipient_generation=? AND state IN ('pending','claimed')`, p.SessionUUID, p.Generation).Scan(&eligible); err != nil {
+	if err := s.db.QueryRowContext(ctx, `SELECT count(*) FROM messages WHERE recipient_session=? AND recipient_generation=? AND `+stateClause, append([]any{p.SessionUUID, p.Generation}, stateArgs...)...).Scan(&eligible); err != nil {
 		return nil, err
 	}
 	if eligible == 0 {
@@ -1024,7 +1045,7 @@ func (s *Store) Claim(ctx context.Context, p Peer, limit int, lease time.Duratio
 	if _, err := tx.ExecContext(ctx, `UPDATE messages SET state='dead' WHERE recipient_session=? AND recipient_generation=? AND state IN ('pending','claimed') AND expires_at<=?`, p.SessionUUID, p.Generation, now.Format(time.RFC3339Nano)); err != nil {
 		return nil, err
 	}
-	rows, err := tx.QueryContext(ctx, `SELECT id,schema_version,project_key,run_id,kind,sender_session,sender_slot,sender_generation,recipient_session,recipient_generation,task_ref,correlation_id,created_at,expires_at,claim_token,claim_expires_at,state FROM messages WHERE recipient_session=? AND recipient_generation=? AND state IN ('pending','claimed') ORDER BY created_at LIMIT ?`, p.SessionUUID, p.Generation, limit)
+	rows, err := tx.QueryContext(ctx, `SELECT id,schema_version,project_key,run_id,kind,sender_session,sender_slot,sender_generation,recipient_session,recipient_generation,task_ref,correlation_id,created_at,expires_at,claim_token,claim_expires_at,state FROM messages WHERE recipient_session=? AND recipient_generation=? AND `+stateClause+` ORDER BY created_at LIMIT ?`, append(append([]any{p.SessionUUID, p.Generation}, stateArgs...), limit)...)
 	if err != nil {
 		return nil, err
 	}
