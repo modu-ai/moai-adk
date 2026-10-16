@@ -56,3 +56,10 @@ All with `TMPDIR=/private/tmp/lxv GOTMPDIR=/private/tmp/lxv`, darwin, on this tr
 ## Residual risk
 
 - The RED test is probabilistic against the old code (roughly 0.005-0.08% of iterations per run); against the fixed code it is deterministic, since a 1ns budget is always exceeded by `time.Since(start)`.
+
+## Blocker — 2026-10-16 ~21:45Z (lane-17)
+
+- Sync audit FAIL (F1): the RED test TestBudget_OverrunReportedWhenScanFinishesFirst is probabilistic (pre-fix main.go, GOMAXPROCS=1: 3/5 PASS). Required codex fail rcpt-56d38345ae2e668229271b84; native codex_audit pass rcpt-16bce58f88a1c681e7689d6b. Production fix 0cb764823 judged correct.
+- Planned repair (not applied): seam runWithBudgetAfter(root, budget, after func(time.Duration) <-chan time.Time); test injects a never-firing timer so only the done arm can win → deterministic RED on pre-fix code, GREEN after.
+- Repair spawn refused by the audit-receipt guard: `AUDIT_RECEIPT_VIOLATION: manager-develop cannot be spawned while an audit PASS stands unproven ... Outstanding: sync-auditor / unknown-spec / verdict line missing` (record .moai/state/audit-receipts/rejections/sync-auditor--unknown-spec.json in this tree). Cause: card has no SPEC, so `spec=t1599` does not match the verdict-line SPEC regex (known gap, cf. t1705/t1687 where the operator approved removing the stale record).
+- decision record: decided_by=lane-17(acting leader) evidence_refs=guard-refusal;sync-audit.md ladder_path=keep-set (guard is operator-held) → hold; not bypassed (no direct edit, no alternate agent type, no fabricated SPEC id).
