@@ -3,6 +3,7 @@ package skillresidue
 import (
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 )
 
@@ -114,6 +115,52 @@ func TestAC_UBR_17_RenameDoesNotOverwriteAFileThatAppearsAtTheTemporaryName(t *t
 	}
 	if got := namesHolding(t, dir, "lower body"); len(got) == 0 {
 		t.Fatalf("the skill file's content is gone; names now %v (Clean err: %v)", exactNames(t, dir), err)
+	}
+}
+
+// AC-UBR-17 (F25, inner name; audit finding F1 of card t1733): a file that appears INSIDE
+// the freshly claimed staging folder, at the name the first move is about to take, keeps
+// its bytes. The step reports the refusal and the skill file stays under its own name.
+// The claim of the folder (Mkdir) does not protect this inner name; only a move that
+// cannot replace does.
+func TestAC_UBR_17_RenameDoesNotOverwriteAFileThatAppearsInsideTheStagingFolder(t *testing.T) {
+	root := t.TempDir()
+	dir := filepath.Join(root, ".claude", "skills", raceSkill)
+	mustWriteFile(t, filepath.Join(dir, "skill.md"), "lower body")
+
+	orig := mkdirFile
+	t.Cleanup(func() { mkdirFile = orig })
+	var stageFile string
+	mkdirFile = func(r *os.Root, name string) error {
+		if err := orig(r, name); err != nil {
+			return err
+		}
+		// The stage folder is ours now; the user's file lands inside it before the move.
+		if stageFile == "" {
+			stageFile = filepath.Join(root, filepath.FromSlash(name), "skill.md")
+			if err := os.WriteFile(stageFile, []byte("user data"), 0o644); err != nil {
+				t.Fatalf("create the user file inside the stage: %v", err)
+			}
+		}
+		return nil
+	}
+
+	_, err := Clean(root, Options{Shipped: raceShipped})
+
+	if stageFile == "" {
+		t.Fatal("no staging folder was claimed: the pass did not reach the rename")
+	}
+	if !fileWithBodyUnder(t, dir, "user data") {
+		t.Fatalf("the user's file inside the staging folder was overwritten; tree now %v (Clean err: %v)", treeSnapshot(t, dir), err)
+	}
+	if err == nil {
+		t.Fatal("the rename reported success although its first move was refused")
+	}
+	if got := readOrFail(t, filepath.Join(dir, "skill.md")); got != "lower body" {
+		t.Fatalf("skill.md = %q, want it untouched under its own name", got)
+	}
+	if _, statErr := os.Lstat(filepath.Join(dir, "SKILL.md")); statErr == nil && !strings.EqualFold("skill.md", "SKILL.md") {
+		t.Fatal("SKILL.md was created although the first move was refused")
 	}
 }
 
