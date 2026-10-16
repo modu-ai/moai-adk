@@ -2218,8 +2218,8 @@
   class: R
   evidence: none
 - path: "state.backup_past_versions_keep"
-  class: R
-  evidence: none
+  class: W
+  evidence: reader
 - path: "state.profile_max_bytes"
   class: W
   evidence: reader
