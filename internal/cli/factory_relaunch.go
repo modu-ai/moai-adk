@@ -23,7 +23,7 @@ import (
 
 // factoryRelaunchExecFn runs the launcher child the verb re-executes. It is a
 // package var so tests substitute the launch the way factoryLaneCardLaunchFn
-// is substituted for the clear-policy loop.
+// is substituted for the retired supervising lease loop.
 var factoryRelaunchExecFn = func(c *exec.Cmd) error { return c.Run() }
 
 // buildRelaunchCommand validates the verb's arguments and returns the shared

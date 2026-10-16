@@ -43,7 +43,7 @@ import (
 
 const (
 	// llmUserPinnedHigh is the user's replacement for the template default
-	// glm.models.high value ("glm-5.3-flash"). Divergent from base AND from
+	// glm.models.high value ("glm-5.3"). Divergent from base AND from
 	// the default so the preservation assertion cannot pass by accident.
 	llmUserPinnedHigh = "glm-user-pinned-model"
 
@@ -110,7 +110,7 @@ func buildLLMUserYAML(t *testing.T, base []byte, dropPerformanceTier bool) []byt
 	t.Helper()
 	s := string(base)
 
-	s = replaceOnce(t, s, `high: "glm-5.3-flash"`, `high: "`+llmUserPinnedHigh+`"`)
+	s = replaceOnce(t, s, `high: "glm-5.3"`, `high: "`+llmUserPinnedHigh+`"`)
 	s = replaceOnce(t, s, "  claude_bin: \"\"",
 		"  claude_bin: \"\"\n"+
 			llmMarkerComment+"\n"+

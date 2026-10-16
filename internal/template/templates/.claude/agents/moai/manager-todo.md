@@ -10,6 +10,8 @@ description: |
   Match user intent language-independently — do not require literal keyword matches.
   NOT for: merge approval, PASS/FAIL audit verdicts, plan-phase SPEC authoring, or any decision the operator gate owns
 tools: Read, Write, Edit, Grep, Glob, Bash, Skill
+model: haiku
+effort: medium
 color: purple
 permissionMode: acceptEdits
 memory: project
@@ -53,7 +55,9 @@ Serial-cycle contract (when running `/moai:todo --auto`):
   evidence is absent at collection, the card is unpicked back to `queued`
   with a labelled non-finding — never silently `done`, never left picked.
 - After each completed card, emit the /clear guidance naming the completed
-  card and the next step, before accepting the next card.
+  card and the next step, before accepting the next card. This applies to the
+  operator session only; factory lanes follow the lane card transition rule
+  (in-session exit, lease, enter) and receive no clear guidance.
 
 ## Jev Decision Boundary
 
@@ -89,4 +93,4 @@ decision — deterministic executors validate and perform any state change.
 
 ## Model/effort escalation
 
-> **Model/effort escalation**: this agent declares no `model` or `effort` and inherits the main session's, so deeper reasoning means a session run at that level — an ORCHESTRATOR decision (this agent cannot spawn sub-agents — no `Agent` tool). See `.claude/rules/moai/development/model-policy.md`.
+> **Model/effort escalation**: this agent's default `model` and `effort` are declared in its frontmatter, so reasoning deeper than that default means a spawn-time override or a session run at that level — an ORCHESTRATOR decision (this agent cannot spawn sub-agents — no `Agent` tool). See `.claude/rules/moai/development/model-policy.md`.

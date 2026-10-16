@@ -58,7 +58,7 @@ func TestConstantBaseline_TieIsDeterministic(t *testing.T) {
 // TestVerdict_NoBaselineWithholds: a report carrying no baseline has no number
 // to beat, and must withhold rather than treat the absence as a clear pass.
 func TestVerdict_NoBaselineWithholds(t *testing.T) {
-	rep := Report{Consumer: "trial", ModelID: jev.ModelID, Source: SourceLive}
+	rep := Report{Consumer: "trial", ModelID: "jev-9.8.7", Source: SourceLive}
 	v, reason := rep.Verdict()
 	if v != VerdictWithhold {
 		t.Errorf("Verdict = %q with no baseline, want %q", v, VerdictWithhold)
@@ -74,11 +74,17 @@ func TestValidate_RejectsMissingModelAndMismatchedThreshold(t *testing.T) {
 		t.Error("Validate accepted a report citing no model id")
 	}
 
+	// The request alias is a request, never an attribution: a report that cites
+	// it as its model is refused, whatever else it carries.
+	if err := (Report{Consumer: "trial", ModelID: jev.ModelID}).Validate(); err == nil {
+		t.Error("Validate accepted a report citing the request alias as its model")
+	}
+
 	th, err := NewThreshold("other-consumer", jev.KindNoul, 0.62, 20, "fitted here")
 	if err != nil {
 		t.Fatalf("NewThreshold: %v", err)
 	}
-	rep := Report{Consumer: "trial", ModelID: jev.ModelID, Shape: jev.KindNoul, Threshold: &th}
+	rep := Report{Consumer: "trial", ModelID: "jev-9.8.7", Shape: jev.KindNoul, Threshold: &th}
 	if err := rep.Validate(); err == nil {
 		t.Error("Validate accepted a threshold fitted for a different consumer")
 	}
@@ -104,7 +110,7 @@ func TestRender_CarriesThresholdAbsenceAndConditions(t *testing.T) {
 		t.Fatalf("NewThreshold: %v", err)
 	}
 	rep := Report{
-		Consumer: "trial", ModelID: jev.ModelID, Shape: jev.KindNoul, Source: SourceLive,
+		Consumer: "trial", ModelID: "jev-9.8.7", Shape: jev.KindNoul, Source: SourceLive,
 		Baseline: Baseline{Label: "alive", Correct: 15, N: 20, Accuracy: 0.75},
 		Arms: []ArmResult{
 			{Arm: ArmKoreanOriginal, N: 20, Answered: 18, Unavailable: 2, Correct: 16, Accuracy: 0.8,

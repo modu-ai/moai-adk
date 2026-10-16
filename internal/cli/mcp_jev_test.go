@@ -137,6 +137,63 @@ func TestJevAskGateOnDelegatesToJevClientAndMapsAnswers(t *testing.T) {
 	}
 }
 
+// TestJevAsk_NoticeKeyFollowsTheChangeNotice — AC-JRM-010, the MCP surface: a
+// call answered with an interpreted id other than the verified one returns the
+// `notice` key, and a call answered with the verified id returns none. Each
+// call builds its own client (newJevAskClient), so the key appears on every
+// changed-version call. The jev-1.13.0 fixture is the control.
+func TestJevAsk_NoticeKeyFollowsTheChangeNotice(t *testing.T) {
+	root := jevProject(t, true)
+	t.Setenv("CLAUDE_PROJECT_DIR", root)
+
+	callWith := func(t *testing.T, model string) map[string]any {
+		t.Helper()
+		server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			w.Header().Set("Content-Type", "application/json")
+			_, _ = w.Write([]byte(`{"model":"` + model + `","answers":{"premise-alive":{"type":"noul","noul":0.62}},"usage":{"input_tokens":42}}`))
+		}))
+		t.Cleanup(server.Close)
+
+		orig := newJevAskClient
+		newJevAskClient = func() *jev.Client {
+			c := jev.New(true)
+			c.Endpoint = server.URL
+			c.LoadCredential = func() string { return "NOT-A-REAL-KEY-0123456789wxyz" }
+			return c
+		}
+		t.Cleanup(func() { newJevAskClient = orig })
+
+		res, err := handleJevAsk(context.Background(), mcp.CallToolRequest{
+			Params: mcp.CallToolParams{Arguments: jevAskArgs("card t-1 premise may be gone", jevAskNoulQuestion())},
+		})
+		if err != nil {
+			t.Fatalf("handler error: %v", err)
+		}
+		doc, ok := res.StructuredContent.(map[string]any)
+		if !ok {
+			t.Fatalf("structured content = %#v, want an object", res.StructuredContent)
+		}
+		if available, _ := doc["available"].(bool); !available {
+			t.Fatalf("available = false, want true; doc=%v", doc)
+		}
+		return doc
+	}
+
+	changed := callWith(t, "jev-9.8.7")
+	notice, present := changed["notice"]
+	if !present {
+		t.Fatalf("a call answered jev-9.8.7 returned no notice key; doc=%v", changed)
+	}
+	if s, _ := notice.(string); s == "" {
+		t.Errorf("notice = %#v, want the change notice line", notice)
+	}
+
+	verified := callWith(t, "jev-1.13.0")
+	if n, present := verified["notice"]; present {
+		t.Errorf("a call answered jev-1.13.0 returned notice %#v, want none", n)
+	}
+}
+
 // TestJevAskGateOnWithoutCredentialStaysTypedUnavailable — the wrapper never
 // converts a typed absence into an error: no credential is the client's
 // no-credential availability, mapped through as a notice.
