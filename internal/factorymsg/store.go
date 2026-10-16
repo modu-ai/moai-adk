@@ -733,9 +733,9 @@ func (s *Store) ResolveLane(ctx context.Context, slot string) (Peer, error) {
 const leaderSlot = "leader"
 
 // ErrLeaderOwnerDead reports that the leader slot's owner is not live and the
-// run has no other live lead to rebind it to. The send is refused rather than
+// run has no other live leader to rebind it to. The send is refused rather than
 // queued for a session that cannot read it (t1772).
-var ErrLeaderOwnerDead = errors.New("leader slot owner is not live and the run has no live lead")
+var ErrLeaderOwnerDead = errors.New("leader slot owner is not live and the run has no live leader")
 
 // errLeaderSlotMoved reports that another writer re-pointed the leader slot
 // between the read and the rebind; the send is retried by the caller.
