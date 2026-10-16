@@ -140,9 +140,89 @@ Measured, not claimed: `go test -cover` backup package 88.5% (with the three pro
 `go run ./internal/template/scripts/gen-catalog-hashes.go --all` (the catalog step of `make build`) left no tracked change (`git status --short` empty).
 Not run (Gaps): `make build` in full (the catalog-hash step above was run on its own); `go test -run TestDestructiveTargetRegistry_CoversAllSites ./internal/cli/` (an attempt with an isolated `GIT_CONFIG_GLOBAL` was refused by the worktree-session guard; M1 adds no `os.Remove*` / `os.Rename` / syscall call site, shown by a grep of the M1 diff, and the registry row for `CleanupOldBackups` is M2's AC-UBR-19).
 
+### M2 — Pruner integration and reporting (card tree `WT-10-14-class-3`, code HEAD `ab1e48138`)
+
+Commit order:
+
+| Commit | Content |
+|---|---|
+| `396484c7f` | RED: pruner-level tests for AC-UBR-08/09/11/12/13/14 and the budget reader, against decide-nothing stubs |
+| `312c303a0` | `PruneBackups` (census, selection, whole-run removal, report), `CleanupOldBackups` forwards to it, `LoadBackupPastVersionsKeep`, registry row moved to the new function, one fixture adapted (see Gaps) |
+| `73b390a05` | RED: update-output renderer test against a render-nothing stub |
+| `ab1e48138` | renderer, both callers read the key and print the rows, inventory entry R to W reader |
+
+Verbatim RED before the pruner (command `go test -count=1 -v -run 'TestAC_UBR_(08|09|11|12|13|14)|TestPrune_' ./internal/cli/update/backup/` at `396484c7f`, exit 1):
+
+```
+--- FAIL: TestAC_UBR_08_BookkeepingIsRecognizedByWhatTheWriterWrote (0.01s)
+    retention_prune_test.go:85: AC-UBR-08: run holding the user .complete file = {Run: Dirs:[] Action: Reason: Protects:0 Detail:} (found=false), want retained for protects-versions
+--- FAIL: TestAC_UBR_09_TemplateDefaultsRenderIsExempt (0.02s)
+--- FAIL: TestAC_UBR_12_EachDecisionIsReported (0.01s)
+    retention_prune_test.go:133: AC-UBR-12: window=0 runs=0, want 1 and 4
+--- FAIL: TestAC_UBR_13_RootContainmentStillRefuses (0.06s)
+    retention_prune_test.go:196: AC-UBR-13: RootRefused=false, want true
+--- FAIL: TestAC_UBR_14_ExplicitWipeAndNegativeKeepCount (0.01s)
+    retention_prune_test.go:231: AC-UBR-14: Removed=0, want 3
+--- FAIL: TestPrune_RunSpansBothRootsAsOneUnit (0.00s)
+--- FAIL: TestAC_UBR_11_UnclassifiableContentFailsClosedAndNeverBlocks (0.01s)
+FAIL	github.com/modu-ai/moai-adk/internal/cli/update/backup	0.529s
+```
+
+Verbatim RED of the registry criterion (AC-UBR-19; command `go test -count=1 -v -run '^TestDestructiveTargetRegistry_CoversAllSites$' ./internal/cli/`, with the pruner moved and the row not yet moved, exit 1):
+
+```
+update_destructive_registry_test.go:57: unregistered destructive site: internal/cli/update/backup/retention_prune.go PruneBackups has 1 os.RemoveAll/os.Rename call site(s) but no registry row
+update_destructive_registry_test.go:68: stale registry row: internal/cli/update/backup/backup.go PruneBackups is registered but the source has no destructive call site there
+--- FAIL: TestDestructiveTargetRegistry_CoversAllSites (0.03s)
+```
+
+Verbatim RED of the update-output renderer (at `73b390a05`, exit 1): `--- FAIL: TestBackupRetentionReportLines_NamesEveryDecision` with 14 lines of the form `AC-UBR-12: the report lines do not contain "removed":` and `--- PASS: TestBackupRetentionReportLines_QuietWhenNothingHappened`.
+
+Verbatim RED of the budget reader (`go test -count=1 -v -run TestLoadBackupPastVersionsKeep ./internal/config/`, exit 1): `LoadBackupPastVersionsKeep = 0, want 3` and `= 0, want 5` for the six subtests.
+
+GREEN at `ab1e48138` (this run, this tree):
+
+```
+$ go test -count=1 -v -run '^TestAC_UBR_(01|02|03|08|09|11|12|13|14)_' ./internal/cli/update/backup/
+--- PASS: TestAC_UBR_01_PreCleanUserFileSurvivesRotation (0.01s)
+--- PASS: TestAC_UBR_02_CurrentVersionDoesNotTakeABudgetSlot (0.01s)
+--- PASS: TestAC_UBR_03_RedundantCopiesAreNotAllKept (0.01s)
+--- PASS: TestAC_UBR_08_BookkeepingIsRecognizedByWhatTheWriterWrote (0.00s)
+--- PASS: TestAC_UBR_09_TemplateDefaultsRenderIsExempt (0.00s)
+--- PASS: TestAC_UBR_12_EachDecisionIsReported (0.00s)
+--- PASS: TestAC_UBR_13_RootContainmentStillRefuses (0.01s)
+--- PASS: TestAC_UBR_14_ExplicitWipeAndNegativeKeepCount (0.00s)
+--- PASS: TestAC_UBR_11_UnclassifiableContentFailsClosedAndNeverBlocks (0.00s)
+ok  	github.com/modu-ai/moai-adk/internal/cli/update/backup	0.417s
+$ go test -count=1 -v -run '^(TestBackupRetentionReportLines_|TestDestructiveTargetRegistry_CoversAllSites|TestCleanReinstall_PrunesOldConfigBackups)' ./internal/cli/
+--- PASS: TestBackupRetentionReportLines_NamesEveryDecision (0.00s)
+--- PASS: TestBackupRetentionReportLines_QuietWhenNothingHappened (0.00s)
+--- PASS: TestCleanReinstall_PrunesOldConfigBackups (0.06s)
+--- PASS: TestDestructiveTargetRegistry_CoversAllSites (0.07s)
+ok  	github.com/modu-ai/moai-adk/internal/cli	1.191s
+```
+
+M2 acceptance matrix (Exit: AC-UBR-01, 08, 09, 11, 12, 13, 14, 19 green):
+
+| AC | Status | Evidence |
+|---|---|---|
+| AC-UBR-01 (pruner level) | PASS | `TestAC_UBR_01_PreCleanUserFileSurvivesRotation` (red at M1, green here) |
+| AC-UBR-02, AC-UBR-03 (pruner level) | PASS | `TestAC_UBR_02_CurrentVersionDoesNotTakeABudgetSlot`, `TestAC_UBR_03_RedundantCopiesAreNotAllKept` |
+| AC-UBR-08 | PASS | `TestAC_UBR_08_BookkeepingIsRecognizedByWhatTheWriterWrote` |
+| AC-UBR-09 | PASS | `TestAC_UBR_09_TemplateDefaultsRenderIsExempt` |
+| AC-UBR-11 | PASS | `TestAC_UBR_11_UnclassifiableContentFailsClosedAndNeverBlocks` (unix; FIFO and chmod 0) |
+| AC-UBR-12 | PASS | `TestAC_UBR_12_EachDecisionIsReported` (pruner report), `TestBackupRetentionReportLines_NamesEveryDecision` (update output) |
+| AC-UBR-13 | PASS | `TestAC_UBR_13_RootContainmentStillRefuses` (three root shapes) plus the existing containment tests |
+| AC-UBR-14 | PASS | `TestAC_UBR_14_ExplicitWipeAndNegativeKeepCount` |
+| AC-UBR-19 | PASS | `TestDestructiveTargetRegistry_CoversAllSites`; the row names `PruneBackups` in `retention_prune.go`; no removal or rename call site was added |
+
+Measured, not claimed: `go build ./...` and `GOOS=windows GOARCH=amd64 go build ./...` exit 0; `go test -count=1 -cover` backup package 88.4%, config package 85.6%; `go test -count=1 ./internal/cli/update/...` all `ok` (skillresidue 76.3%, unchanged, M3's package); `go vet` clean; `gofmt -l` empty; `golangci-lint run ./internal/cli/update/backup/... ./internal/config/... ./internal/cli/` reports 3 errcheck findings, all in `internal/cli/factory_run_adopt.go` (not touched by this card).
+Not run (Gaps): the full `internal/cli` suite (named tests only: the 12 `CleanupOldBackups`-bearing tests, the update-flow test files that touch backup roots, the registry test, the renderer tests); `make build` (no template file changed in M2); a mutant probe of the cover step beyond the M1 oracle tests; real-data remeasure (M6).
+Adapted existing test: the rotation subtest of `TestBackupSubsystem_DestructiveSurfaces` (`internal/cli/update_preserve_reach_test.go`) wrote a distinct body into each backup, which budgeted retention (REQ-UBR-003) keeps by design; the fixture now writes one body so the subtest still asserts which backups survive by name. Flagged for the audit.
+
 ## §E.3 Run-phase Audit-Ready Signal
 
-_<pending run-phase>_ — M1 of M6 is complete; the signal is written at run close.
+_<pending run-phase>_ — M2 of M6 is complete; the signal is written at run close.
 
 ## §E.4 Sync-phase Audit-Ready Signal
 
