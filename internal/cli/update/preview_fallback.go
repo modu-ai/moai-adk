@@ -126,7 +126,7 @@ func renderFallback(classes []FileClassification, noColor bool) string {
 	}
 	if len(conflicts) > 0 {
 		b.WriteString("\n")
-		b.WriteString("Conflicts (resolve before proceeding — see the recover hint in the run output)\n")
+		b.WriteString("Conflicts (listed for review; this non-interactive run does not pause to resolve them)\n")
 		for _, c := range conflicts {
 			fmt.Fprintf(&b, "  %s  %s\n", padRight(c.Class.String(), classWidth), c.RelPath)
 		}
