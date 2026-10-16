@@ -48,7 +48,7 @@ func (s destructiveSite) key() string { return s.File + " " + s.Function }
 // Rows carry either a Protection or an Exemption, never both and never neither.
 // The exempt rows rest on three materially different grounds — same-call rewind
 // (BackupMoaiConfig, backupUserOwnedNamespace), retention pruning of
-// moai-authored backup directories (CleanupOldBackups), and cache-base
+// moai-authored backup directories (PruneBackups, reached through CleanupOldBackups), and cache-base
 // replacement (fileSnapshot.promote) — and must not be collapsed into one
 // reason: the pruning row destroys restore points from PREVIOUS runs, so it is
 // exempt from the user-data protection set without being harmless to the
@@ -102,10 +102,15 @@ var destructiveTargetRegistry = []destructiveSite{
 			"created, on its own error paths, so nothing that predates the run can be reached.",
 	},
 	{
-		File: "internal/cli/update/backup/backup.go", Function: "CleanupOldBackups", Sites: 1,
+		File: "internal/cli/update/backup/retention_prune.go", Function: "PruneBackups", Sites: 1,
 		Exemption: "Retention pruning of moai-authored backup runs — NOT a same-call rewind. It " +
 			"removes every directory of the runs older than the newest keepCount, across the config " +
-			"root (.moai-backups/) and the namespace root (.moai/backups/). A run is the set of " +
+			"root (.moai-backups/) and the namespace root (.moai/backups/), except an older run that " +
+			"is the only retained holder of a past version of a file within the per-file budget " +
+			"(state.backup_past_versions_keep, SPEC-UPDATE-BACKUP-RETENTION-001) or that holds an " +
+			"entry the pruner cannot classify; each removed and each retained run is reported. " +
+			"The one os.RemoveAll site sits in PruneBackups; CleanupOldBackups only forwards to it. " +
+			"A run is the set of " +
 			"directories that share a run marker. An unmarked directory counts as a run of its own " +
 			"only when its name has a shape a moai backup writer produces; any other unmarked name is " +
 			"neither counted nor deleted, so every directory it removes was authored by moai itself " +
@@ -129,7 +134,7 @@ var destructiveTargetRegistry = []destructiveSite{
 			"back to the derived base when it is absent, without failing the update. Exempt on the " +
 			"ground that the bytes replaced are moai-authored cache, which is materially distinct from " +
 			"the same-call rewind rows (BackupMoaiConfig, backupUserOwnedNamespace) and from retention " +
-			"pruning of restore points (CleanupOldBackups).",
+			"pruning of restore points (PruneBackups).",
 	},
 	{
 		File: "internal/cli/update_clean_install.go", Function: "runCleanReinstall", Sites: 1,

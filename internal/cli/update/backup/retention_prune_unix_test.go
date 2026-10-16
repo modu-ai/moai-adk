@@ -29,6 +29,12 @@ func TestAC_UBR_11_UnclassifiableContentFailsClosedAndNeverBlocks(t *testing.T) 
 	if err := syscall.Mkfifo(filepath.Join(fifoRun, "pipe"), 0o644); err != nil {
 		t.Fatalf("mkfifo: %v", err)
 	}
+	// Removing and creating entries moved the directory's modification time, which
+	// orders unmarked runs; put it back on the day its name encodes.
+	stamp := time.Date(2026, 10, 2, 0, 0, 0, 0, time.UTC)
+	if err := os.Chtimes(fifoRun, stamp, stamp); err != nil {
+		t.Fatal(err)
+	}
 	// Unreadable file.
 	unreadable := t1733RunWith(t, root, 1, map[string]string{"secret.txt": "s\n"})
 	secret := filepath.Join(unreadable, "secret.txt")
