@@ -201,6 +201,7 @@ var doctorCheckNameContract = map[string]bool{
 	"factoryRunCheckName":            true,
 	"flagSlotCheckName":              true,
 	"hookMissingLogCheckName":        true,
+	"hookShellWindowsCheckName":      true,
 	"hookWiringCheckName":            true,
 	"jevCheckName":                   true,
 	"mcpProviderDuplicatesCheckName": true,

@@ -1060,13 +1060,17 @@ func runCodexFactoryLane(cmd *cobra.Command, entry factoryFlagParse, debug bool)
 	args = append(args, codexMoaiHomeAddDirArgs()...)
 	// card t1808: the lane session's default model and effort.
 	args = append(args, codexSessionDefaultArgsFn(root, config.SessionRoleLane, nil)...)
+	laneEnv := []string{
+		config.EnvFactoryRole + "=" + config.FactoryRoleLane,
+		config.EnvMoaiFactoryWorker + "=" + label,
+		config.EnvFactoryBackend + "=" + factory.BackendGPT,
+		config.EnvFactoryRunID + "=" + runID,
+	}
+	// card t1819: the same keys as shell_environment_policy.set overrides, so
+	// they reach the session's shell commands under any inherit setting.
+	args = append(args, codexShellEnvSetArgs(laneEnv)...)
 	args = append(args, codexLaneAutoPrompt)
-	env := append(codexChildEnv(),
-		config.EnvFactoryRole+"="+config.FactoryRoleLane,
-		config.EnvMoaiFactoryWorker+"="+label,
-		config.EnvFactoryBackend+"="+factory.BackendGPT,
-		config.EnvFactoryRunID+"="+runID,
-	)
+	env := append(codexChildEnv(), laneEnv...)
 	env = codexLaneChildEnv(env, root)
 	if debug {
 		env = codexApplyDebugEnv(env)
@@ -1199,6 +1203,9 @@ func runCodexLaunch(cmd *cobra.Command, kind codexVerb, tail []string, spawn boo
 		// and adds no model args — .codex/config.toml decides. The leader
 		// session default is reserved for a future `moai codex -f` (t1645).
 	}
+	// The factory overrides below are spliced here, ahead of the verb and the
+	// operator tail.
+	overrideAt := len(childArgs)
 	childArgs = append(childArgs, codexChildArgs(kind, tail)...)
 	req := codexLaunchRequest{Program: binaryPath, Args: childArgs, Dir: dir, Debug: debug, timing: launchTiming}
 	// SPEC-FACTORY-MANAGED-SESSION-001 M3 (design.md D-7): the divert engages
@@ -1233,6 +1240,8 @@ func runCodexLaunch(cmd *cobra.Command, kind codexVerb, tail []string, spawn boo
 		}
 		defer restore()
 		req.FactoryEnv = codexFactoryEnv(factoryEntry)
+		// card t1819: mirror the factory keys into the shell environment too.
+		req.Args = slices.Insert(req.Args, overrideAt, codexShellEnvSetArgs(req.FactoryEnv)...)
 	}
 	// The child-env assembly is a traced pre-exec step (REQ-005), performed
 	// HERE — ahead of the pre-seam reports — so the assembly line precedes
