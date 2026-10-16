@@ -14,12 +14,15 @@ package cli
 import (
 	"reflect"
 	"testing"
+
+	"github.com/modu-ai/moai-adk/internal/testguard"
 )
 
 // TestParseGitBranchMergedOutput binds the real parser against realistic
 // stdout: the current-branch marker, the linked-worktree marker, plain
 // entries, and the two non-branch lines git emits for detached checkouts.
 func TestParseGitBranchMergedOutput(t *testing.T) {
+	testguard.RedirectHome(t)
 	tests := []struct {
 		name string
 		out  string
@@ -66,6 +69,7 @@ func TestParseGitBranchMergedOutput(t *testing.T) {
 // fallback is consulted (REQ-WR-002), and the branch it must recognise is one
 // checked out in a linked worktree — the `+`-prefixed form.
 func TestBranchMergedForCleanup_LinkedWorktreeMarker(t *testing.T) {
+	testguard.RedirectHome(t)
 	orig := sessionWorktreeGitBranchMerged
 	t.Cleanup(func() { sessionWorktreeGitBranchMerged = orig })
 	// Route the seam through the REAL parser so the fixture cannot bypass it.
