@@ -83,8 +83,8 @@ tier: M
 
 ### AC-LA-014 — 비리더 경로 행동 보존 (§2 제약)
 
-- **Given** 기존 런처 워크트리 규약 시험(`normalizeWorktreeFlag` 철자표, L2 접두 검증, `--branch` materialize, 작성자 사전 점검, lane 재개 어셈블러)이 있고 **When** 단일 해석기 리팩터 뒤 그 패밀리를 실행하면 **Then** 전부 GREEN이다 — 비리더 기동의 관측 행동은 바뀌지 않는다.
-- 검증: `go test ./internal/cli/ -run 'Worktree|TestLaneJoinChildArgv' -v -count=1` → `--- PASS: TestLaneJoinChildArgv` 존재 + `Worktree` 매칭 패밀리 최상위 `--- PASS:` ≥ 1행, 실행 시험 수 ≥ 2 (bare exit 0·`[no tests to run]`은 불충분). 선택자는 lane 재개 어셈블러 시험 `TestLaneJoinChildArgv`(lane_resume_test.go:19 — 본 트리 실측, plan-repair 1)를 명시적으로 닿게 한다; 세부 선택은 run 증거에 기록.
+- **Given** 기존 런처 워크트리 규약 시험(`normalizeWorktreeFlag` 철자표, L2 접두 검증, `--branch` materialize, 작성자 사전 점검, lane 재개 어셈블러)이 있고 **When** 단일 해석기 리팩터 뒤 그 패밀리를 실행하면 **Then** 전부 GREEN이다 — 비리더 기동의 관측 행동은 바뀌지 않는다. 그 패밀리에는 중복 worktree 옵션 첫 값 회귀 셀 `TestLauncherWorktreeDuplicateOptionFirstValue`(plan-audit D8)가 든다 — 비리더 `-w plain --worktree <허용 접두 밖 경로>`(§D.4 14열, cc·glm 양 팔)에서 다섯 비가드 판독자가 `plain`(소비자 범위 첫 값 필드)을 받고 launch 결과가 오늘과 같이 허용임을 단언하는 보존 셀이며, M1 착수 전 현행 트리에서 GREEN으로 관측한다. 판독자가 뷰의 최후 우선 선택을 소비하는 변이는 이 셀을 적색으로 만든다. 이름이 `Worktree`를 포함하므로 아래 선택자에 닿는다.
+- 검증: `go test ./internal/cli/ -run 'Worktree|TestLaneJoinChildArgv' -v -count=1` → `--- PASS: TestLaneJoinChildArgv` 존재 + `--- PASS: TestLauncherWorktreeDuplicateOptionFirstValue` 존재 + `Worktree` 매칭 패밀리 최상위 `--- PASS:` ≥ 1행, 실행 시험 수 ≥ 3 (bare exit 0·`[no tests to run]`은 불충분). 선택자는 lane 재개 어셈블러 시험 `TestLaneJoinChildArgv`(lane_resume_test.go:19 — 본 트리 실측, plan-repair 1)를 명시적으로 닿게 한다; 세부 선택은 run 증거에 기록.
 
 ### AC-LA-015 — RED 관측 기록 (§D.3 폐쇄 게이트)
 
@@ -150,8 +150,9 @@ tier: M
 | 11 | `-w plain -- "<-w WT-card 토큰이 본문에 섞인 프롬프트>"` | 프롬프트 값 경계 — 구분자 뒤 본문은 옵션이 아니라 프롬프트 텍스트 → 값 `plain`, 일반 트리, 비카드 브랜치 | 허용 |
 | 12 | `-w plain -- <p1> -- --worktree WT-card` | 두 번째 `--` 경계 — 런처는 첫 구분자만 소비하고, 꼬리의 두 번째 `--`는 백엔드 모형의 옵션 종결자(그 뒤 토큰은 값 아님) → 값 `plain` | 허용 |
 | 13 | `-- --worktree plain <프롬프트>`(cc·glm 양 팔) | 구분자 뒤 비카드 값 — 백엔드 모형이 꼬리에서 읽는 선택, 값 `plain`, 일반 트리, 비카드 브랜치; 다섯 비가드 판독자의 구분자 앞 도메인에는 선택 없음 → 꼬리는 오늘과 같이 무변형 통과 | 허용 |
+| 14 | `-w plain --worktree <허용 접두 밖 경로>`(비리더 — 레인·비팩토리, cc·glm 양 팔) | 중복 옵션 — 뷰의 백엔드 모형 선택은 최후 우선 → 값 `<경로>`(M2 가드 전용이며 비리더는 가드 면제); 소비자 범위 첫 값 필드는 `plain`, 일반 트리 → 다섯 비가드 판독자(L2 검증·`--branch` 소비·작성자 사전 점검·훅 시드·체인 노드 판독)는 `plain`을 본다 | 허용 (오늘과 동일 — 판독자는 첫 값만 읽으므로 `<경로>`가 L2 접두 밖이어도 거부되지 않는다) |
 
-11열은 프롬프트 본문을 스캔에 넣는 판독기가, 12열은 꼬리의 `--`를 구분자로 오해하는 판독기가 각각 죽는 경계다. 12열의 백엔드 측 `--` 규약은 C-1 재측정으로 확정하며 어긋나면 REQ-LA-003 경유로 정정한다(모형 추측 고정 금지). 13열은 호환 셀이다(plan-audit D7, plan-repair 2): 9열이 가드가 구분자 뒤 카드 트리 값을 거부하는 반면, 비카드 꼬리 값은 오늘의 무검증 통과 그대로 유지됨을 양 팔에서 단언한다 — 비가드 판독자의 구분자 앞 도메인 보존(plan §F-M1 provenance 노트)과 한 쌍이며, 꼬리 안 백엔드 모형 값 판독에 관한 재측정은 12열과 같은 C-1 원문 하나로 함께 확정한다(중복 측정 아님).
+11열은 프롬프트 본문을 스캔에 넣는 판독기가, 12열은 꼬리의 `--`를 구분자로 오해하는 판독기가 각각 죽는 경계다. 12열의 백엔드 측 `--` 규약은 C-1 재측정으로 확정하며 어긋나면 REQ-LA-003 경유로 정정한다(모형 추측 고정 금지). 13열은 호환 셀이다(plan-audit D7, plan-repair 2): 9열이 가드가 구분자 뒤 카드 트리 값을 거부하는 반면, 비카드 꼬리 값은 오늘의 무검증 통과 그대로 유지됨을 양 팔에서 단언한다 — 비가드 판독자의 구분자 앞 도메인 보존(plan §F-M1 provenance 노트)과 한 쌍이며, 꼬리 안 백엔드 모형 값 판독에 관한 재측정은 12열과 같은 C-1 원문 하나로 함께 확정한다(중복 측정 아님). 14열도 호환 셀이다(plan-audit D8, plan-repair 3): 6열이 리더 가드의 최후 우선 거부를 묶는 반면 14열은 비리더 판독자의 첫 값 해상도를 묶는다 — 한 입력(중복 worktree 옵션)의 다른 두 팔이며 모순이 아니다(가드는 최후 우선 값 `<경로>`를 판정하고, 비가드 판독자는 소비자 범위 첫 값 필드 `plain`을 읽는다). 판독자가 최후 우선 선택을 소비하는 변이는 14열의 기대 선택·판정 단언에서 죽는다.
 
 ## §D.5 폐쇄 게이트
 
