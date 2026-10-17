@@ -4,7 +4,7 @@
 
 Every release-blocking criterion below carries a **RED-now cell** (`.claude/rules/moai/development/verification-completeness.md` §2): the command (single invocation, no pipes, no chaining), its verbatim stdout, its exit code as its own field, and the tree SHA the measurement was taken on. Criteria whose red form cannot be observed on the pre-implementation tree — because the code they constrain does not exist yet, making a red observation vacuous — are authored as **regression-guard** with the reason stated, per the same rule's undecidable disposition.
 
-**Document-level pin:** every RED-now cell in this file was measured on tree `7faf75fdfbe27e442ea2c17a1a90caf5792d09e6` (branch `WT-10-17-g1`, worktree of card t1838), 2026-10-17. Commands are repo-root-relative. The probes are absence observations: each is red **for the right stated reason** — the symbol, key, or surface the criterion requires does not exist on this tree, and the milestone named in the green path is what creates it. None is a wrong-reason red (nothing pre-existing blocks it) and none is vacuous (the green path flips exactly this observation).
+**Document-level pin:** every RED-now cell in this file was measured on tree `7faf75fdfbe27e442ea2c17a1a90caf5792d09e6` (branch `WT-10-17-g1`, worktree of card t1838), 2026-10-17 — except E-004 and E-006, whose criteria the plan-audit iteration 1 repairs touched (D1/D2 green-path additions; D3 retarget) and which were re-measured on tree `1cac5de4fa4c0f45942c8e2e037de1bd7f2fac2d` (the audited commit; criterion-level pins win where present). Commands are repo-root-relative. The probes are absence observations: each is red **for the right stated reason** — the symbol, key, or surface the criterion requires does not exist on this tree, and the milestone named in the green path is what creates it. None is a wrong-reason red (nothing pre-existing blocks it) and none is vacuous (the green path flips exactly this observation — for E-006 the flip is plan-entailed by the M3 marker pin, plan.md M3 (2)).
 
 **Load-rule note (10-17):** the RED cells are read-only greps precisely because heavy verification (builds, package-wide tests) was load-ruled out at authoring time; no RED cell below depends on a deferred heavy run.
 
@@ -59,11 +59,11 @@ Red because: no gate-age derivation exists in the store package on this tree.
 - Command: `grep -rln "CardAgeSignals" internal/homestate/`
 - Verbatim stdout: (empty)
 - Exit code: `1`
-- Tree SHA: `7faf75fdfbe27e442ea2c17a1a90caf5792d09e6`
+- Tree SHA: `1cac5de4fa4c0f45942c8e2e037de1bd7f2fac2d` (re-measured at the iter1 repair; observation identical to the authoring pin `7faf75fdf`)
 
 Red because: the three-signal view does not exist; today no code distinguishes stage-checkpoint, commit, and heartbeat ages anywhere in the store package.
 
-**Green path:** M2 — `go test -run TestCardAgeSignals ./internal/homestate` observes the three signal ages computed from their three distinct sources (events / git head commit of `WorktreePath` / `cards.heartbeat_at`), `unknown` rendered for an empty worktree path and an empty heartbeat, and the conflation mutant failing: a fresh heartbeat renewal does NOT advance the no-progress age. `go test -run TestNoProgressAge ./internal/homestate` observes the both-unknown fallback to the last transition timestamp.
+**Green path:** M2 — `go test -run TestCardAgeSignals ./internal/homestate` observes the three signal ages computed from their three distinct sources (events / git head commit of `WorktreePath` / `cards.heartbeat_at`), `unknown` rendered for an empty worktree path and an empty heartbeat, and the conflation mutant failing: a fresh heartbeat renewal does NOT advance the no-progress age. `go test -run TestNoProgressAge ./internal/homestate` observes the both-unknown fallback to the last transition timestamp. `go test -run TestStageCheckpointSameStageReEntry ./internal/homestate` observes the D1 stage-change rule: an expiry → re-acquire → T4 same-stage re-entry does not refresh the stage checkpoint or the no-progress age, while stage changes in both directions (a forward advance; a backward T6 `plan-audit` → `plan` after an audit FAIL) do. `go test -run TestFactoryStatusAgeAlarmFutureCommit ./internal/cli` (M3) observes the D2 validity rule: a future-dated head commit renders the commit signal `unknown`, excluded from the newest-of, with no alarm band suppressed.
 
 ## AC-CAA-005 — Additive `age_alarms` JSON block (REQ-CAA-006) — release-blocking
 
@@ -82,12 +82,12 @@ Red because: the JSON report type (`factoryStatusReport`, `internal/cli/factory_
 
 **RED-now** (`E-006`):
 
-- Command: `grep -c "age-alarm" internal/cli/factory_card.go`
-- Verbatim stdout: `0`
+- Command: `grep -rln "age-alarm" internal/cli/`
+- Verbatim stdout: (empty)
 - Exit code: `1`
-- Tree SHA: `7faf75fdfbe27e442ea2c17a1a90caf5792d09e6`
+- Tree SHA: `1cac5de4fa4c0f45942c8e2e037de1bd7f2fac2d` (re-measured at the iter1 repair)
 
-Red because: the text renderer (`writeFactoryStatusText`, `internal/cli/factory_card.go:3180-3215`) emits no alarm section on this tree.
+Red because: no file under `internal/cli/` carries the `age-alarm` token on this tree — the alarm renderer (`internal/cli/factory_age_alarm.go`, plan §C) does not exist yet, and the plan's three additive touches to `factory_card.go` (the `AgeAlarms` field, one compute call, one render call) carry no alarm string. The green flip is plan-entailed: plan.md M3 (2) pins the text alarm section's tag-prefixed lines to the literal token `age-alarm`, rendered by the new file (iter1 D3 — the prior grep pointed at `factory_card.go` for a token the plan never placed there, so a compliant M3 could have left it at zero).
 
 **Green path:** M3 — `go test -run TestFactoryStatusAgeAlarmText ./internal/cli` observes, over a seeded DB with one warn-band and one alert-band card, one alarm line per card carrying card id, run, state, class, band, class age, and the three signal ages, sorted oldest-first, with no other output line changed.
 

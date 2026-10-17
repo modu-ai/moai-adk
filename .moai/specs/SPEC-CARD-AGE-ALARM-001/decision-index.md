@@ -1,6 +1,6 @@
 # Decision index: SPEC-CARD-AGE-ALARM-001
 
-Revision 0.1.0, authored at plan phase for card t1838 (Tier M). The decision gate is on (`.moai/config/sections/interview.yaml:6`, `interview.decision_gate: on`), so this index is owed alongside the Tier artifacts. It carries no status field: the lifecycle lives in `spec.md` alone.
+Revision 0.1.1 — rows Q1-Q5 authored at plan phase (0.1.0); rows Q6-Q8 record the plan-audit iteration 1 repairs (verdict `.moai/reports/t1838/plan-audit-iter1.md`), for card t1838 (Tier M). The decision gate is on (`.moai/config/sections/interview.yaml:6`, `interview.decision_gate: on`), so this index is owed alongside the Tier artifacts. It carries no status field: the lifecycle lives in `spec.md` alone.
 
 The card is an operator delegation ("운영자 위임 10-17") whose design input is the leader-authored redesign doc at `.moai/reports/card-policy-redesign-20261017/design.md`. That doc is **not committed in this branch's tree** (measured: absent from the worktree at base `7faf75fdf`; it exists in the primary checkout only). It is therefore cited below as the card's normative input, never as a committed authority anchor — every DECIDED row below is anchored instead on a measurement of committed code at `7faf75fdf`, which the row names.
 
@@ -12,7 +12,7 @@ The card is an operator delegation ("운영자 위임 10-17") whose design input
 - **Why unresolved** states what the operator must settle.
 - **Default** and **Alternate** appear only where a ranking exists.
 
-An open FOUNDER row blocks the autonomous Kickoff until its `Operator verdict:` line is written. No row below is an open FOUNDER: Q1-Q4 are settled by committed evidence or policy, and Q5 records the values question with its confirmation surface named (the OFF-by-default enable flag) rather than leaving it open — see the row for the exact residual that remains the operator's to override.
+An open FOUNDER row blocks the autonomous Kickoff until its `Operator verdict:` line is written. No row below is an open FOUNDER: Q1-Q4 are settled by committed evidence or policy, Q5 records the values question with its confirmation surface named (the OFF-by-default enable flag) rather than leaving it open — see the row for the exact residual that remains the operator's to override — and Q6-Q8 (added at the iter1 repair) are settled by measured substrate or committed precedent.
 
 ## Summary
 
@@ -23,13 +23,16 @@ An open FOUNDER row blocks the autonomous Kickoff until its `Operator verdict:` 
 | Q3 | Invalid alarm key: degrade the section, or refuse the status command | POLICY-COVERED | implementation-level | not required (POLICY-COVERED) |
 | Q4 | Alarm surfaces: which outputs render the alarm | DECIDED | implementation-level | not required (DECIDED by committed surface measurement) |
 | Q5 | Default band values and the OFF flag | DECIDED | product-level | not required at plan close — see row (values become binding only at enablement; a config edit overrides them with no code change) |
+| Q6 | Does a same-stage re-entry (expiry → re-acquire → T4) refresh the stage-checkpoint anchor | DECIDED | implementation-level | not required (DECIDED by audit finding + committed transition-table measurement) |
+| Q7 | How a future-dated signal timestamp is handled | DECIDED | implementation-level | not required (DECIDED by committed precedent `QuotaClockSkewTolerance`) |
+| Q8 | Where AC-CAA-006's RED observation points | DECIDED | implementation-level | not required (repair of an acceptance-wording defect; DECIDED by audit finding + plan pin) |
 
 ## Routing
 
 1. **FOUNDER rows with recorded operator verdicts:** none.
 2. **DEFAULT-APPLIED at plan close:** none.
 3. **POLICY-COVERED, no verdict needed:** Q3.
-4. **DECIDED:** Q1, Q2, Q4 (committed-evidence anchors) and Q5 (see the row's own residual statement).
+4. **DECIDED:** Q1, Q2, Q4 (committed-evidence anchors), Q5 (see the row's own residual statement), and Q6-Q8 (plan-audit iteration 1 repairs, each anchored on a measured substrate or a committed precedent).
 
 ## Rows
 
@@ -78,3 +81,30 @@ Why resolved (shape): the flag ships OFF, so the values are inert until the oper
 Residual left to the operator: if the operator prefers different bands before first enablement, editing `workflow.card_age_alarm.*` in the project config changes them with no code change; a preference recorded any time up to enablement overrides this row at zero cost. Surfaced to the leader in the plan-phase report.
 Default: none recorded (no ranking rule applies to unmeasured calibration values).
 Operator verdict: not required at plan close — see row (values become binding only at enablement; a config edit overrides them with no code change)
+
+### Q6: Does a same-stage re-entry — the expiry → re-acquire → T4 cycle — refresh the stage-checkpoint anchor (and with it the no-progress age)?
+
+Label: DECIDED
+Class: implementation-level
+Authority anchor: plan-audit iteration 1 finding D1 (`.moai/reports/t1838/plan-audit-iter1.md`; the codex required-backend leg reproduced expiry → re-acquire → `plan` re-entry through the real transition API on `1cac5de4f`, observing the anchor age drop 9h1m → 1m) and the committed transition table: `internal/homestate/card_transition.go:418-421` (`applyLeaseExpiry` returns an expired card to `assigned` with its stage kept), `:137-142` (the T4 edges), `:811-818` (`stageAdmits` admits only a resume into the stage the card last reached).
+Why resolved: under the 0.1.0 predicate ("most recent `card.transition` whose `to` is a pipeline state") every cycle of the crash-loop pattern reset the no-progress age, masking precisely the stuck work the SPEC exists to surface — activity was counting as progress. REQ-CAA-004 (0.1.1) counts stage changes only: an event qualifies when its `to` is a pipeline stage and differs from the `to` of the card's most recent prior pipeline-stage event, so the T4 re-entry (which by construction re-enters the kept stage) never qualifies, while stage changes in both directions — including the backward T6/T12 audit-FAIL returns — still do. The prior-stage comparison is deliberately against the prior stage event, not the prior row state: the intermediate T3 (`to: leased`) would otherwise defeat the exclusion. Regression-pinned by plan.md M2 (f), `TestStageCheckpointSameStageReEntry`, covering both directions.
+Default: none needed (the transition table admits exactly one sound predicate).
+Operator verdict: not required (DECIDED by audit finding + committed transition-table measurement)
+
+### Q7: How is a future-dated signal timestamp handled?
+
+Label: DECIDED
+Class: implementation-level
+Authority anchor: `internal/config/defaults.go:82-87` — `QuotaClockSkewTolerance` (REQ-QAS-005): a record whose capture time lies in the future beyond the tolerance is treated as unknown, because "a record from another machine or a skewed clock must not win by being 'newest'". The house already guards this exact hazard class on the quota surface; the omission at 0.1.0 was an inconsistency with precedent (plan-audit iteration 1 finding D2).
+Why resolved: REQ-CAA-004 (0.1.1) adds the validity rule — a signal timestamp in the future beyond a compiled clock-skew tolerance renders that signal `unknown`, never an age of zero or negative — and REQ-CAA-005 excludes unknown signals from the newest-of, so a skewed commit can neither yield a negative age nor suppress a band. The tolerance ships as the compiled constant `CardAgeAlarmClockSkewTolerance` in `internal/config/defaults.go`, mirroring the precedent's shape. It is deliberately NOT a `workflow.card_age_alarm.*` key: the quota precedent is a compiled non-key value, the tolerance is not an operator-relevant band, and REQ-CAA-002's no-literal rule is satisfied because the constant is the one sanctioned home of the number. Named test: plan.md M3 (f), `TestFactoryStatusAgeAlarmFutureCommit` (the commit read is the realistic future-dated source, being the one signal that crosses machine boundaries; store-written timestamps are stamped by the reading machine's own clock, and the M2 seeds go through the real transition API, which stamps now).
+Default: none needed (precedent decides shape and placement).
+Operator verdict: not required (DECIDED by committed precedent `QuotaClockSkewTolerance`)
+
+### Q8: Where does AC-CAA-006's RED observation point?
+
+Label: DECIDED
+Class: implementation-level
+Authority anchor: plan-audit iteration 1 finding D3 — the 0.1.0 E-006 cell grepped `internal/cli/factory_card.go` for the hyphenated token `age-alarm`, but the plan's three additive touches to that file (the `AgeAlarms` field with its underscore JSON tag, one compute call, one render call) do not entail that token ever appearing there, so a compliant M3 could leave the grep at zero and falsify the document-level flip-exactness claim.
+Why resolved: E-006 is retargeted to `grep -rln "age-alarm" internal/cli/` — empty, exit 1, re-measured on tree `1cac5de4fa4c0f45942c8e2e037de1bd7f2fac2d` — and the flip is made plan-entailed in both directions: plan.md M3 (2) pins the text alarm section's tag-prefixed lines to the literal token `age-alarm`, and plan §C places the renderer in the new file `internal/cli/factory_age_alarm.go`. Nothing else under `internal/cli/` carries the token today (measured), so only M3's own renderer flips the cell.
+Default: none needed (one observation is plan-entailed).
+Operator verdict: not required (repair of an acceptance-wording defect; DECIDED by audit finding + plan pin)
