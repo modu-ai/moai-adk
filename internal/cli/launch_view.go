@@ -248,13 +248,16 @@ func consumeAllowCardAnchor(args []string) (rest []string, allowed bool) {
 // selection uses — so one argv has one interpretation.
 //
 // A following `--` is decided by the launcher's own consumption, not by the
-// backend model: consumeLaunchArgs eats it as the VALUE of --model /
-// --permission-mode / -m, and for every other option it is the launcher's
-// separator. Asking consumeLaunchArgs keeps that knowledge in one place.
+// backend model: consumeLaunchArgs eats it as the VALUE of the exact
+// separate-token --model / -m / --permission-mode, and for every other option
+// (including --model=v, --permission-mode=v, -b, --bypass, which set the same
+// fields without taking the next token) it is the launcher's separator. Asking
+// consumeLaunchArgs what it did with the `--` keeps that knowledge in one place.
 func optionValueSpan(args []string, i int) int {
 	arg := args[i]
 	if i+1 < len(args) && args[i+1] == argSeparator {
-		if c := consumeLaunchArgs([]string{arg, argSeparator}); c.ModelSet || c.PermissionModeSet {
+		c := consumeLaunchArgs([]string{arg, argSeparator})
+		if (c.ModelSet && c.Model == argSeparator) || (c.PermissionModeSet && c.PermissionMode == argSeparator) {
 			return 1
 		}
 		return 0
