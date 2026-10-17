@@ -410,11 +410,18 @@ func TestFactoryCompleteAdoptionNotRefusedByBaseFreshness(t *testing.T) {
 	adopted := func(t *testing.T) (root, integ string, cardWT sdCardTree, merge string) {
 		root, integ, cardWT = mwq19Fixture(t)
 		bfcWriteWorkflow(t, root, bfcGateYAML(true, 0))
+		// The merge verb's end state: a --no-ff merge commit whose second parent
+		// is the card tip. The card had absorbed develop, so the merged tree IS
+		// the candidate's tree and the record keyed to it — still naming the
+		// pre-merge tip as its base — is the adoption's evidence.
 		fcGit(t, integ, "merge", "-q", "--no-ff", "-m", "M t1", cardWT.branch)
 		merge = fcGit(t, integ, "rev-parse", "HEAD")
-		// the lane re-measured on the merged tree after its verb merge
-		if _, err := factory.RunRemeasure(root, integ, "develop", "true"); err != nil {
-			t.Fatalf("remeasure on the merged tree: %v", err)
+		rec, err := factory.ReadRemeasureRecord(root, fcGit(t, integ, "rev-parse", "HEAD^{tree}"))
+		if err != nil || factory.ValidateRemeasureRecord(rec) != nil {
+			t.Fatalf("fixture sanity: a valid record must key the merged tree: %v", err)
+		}
+		if rec.Base == merge {
+			t.Fatalf("fixture sanity: the record's base must be the pre-merge tip, not the merge commit — otherwise the gate admits with no exemption at all")
 		}
 		return root, integ, cardWT, merge
 	}
