@@ -1,7 +1,7 @@
 ---
 id: SPEC-TRUNK-BACKUP-SYNC-001
 title: "Implementation plan — trunk backup sync verb + workflow-exclusion regression guard"
-version: "0.3.0"
+version: "0.3.1"
 created: 2026-10-17
 updated: 2026-10-18
 author: manager-spec

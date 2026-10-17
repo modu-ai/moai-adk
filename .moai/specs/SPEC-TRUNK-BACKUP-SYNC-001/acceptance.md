@@ -1,7 +1,7 @@
 ---
 id: SPEC-TRUNK-BACKUP-SYNC-001
 title: "Acceptance criteria — trunk backup sync verb + workflow-exclusion regression guard"
-version: "0.3.0"
+version: "0.3.1"
 created: 2026-10-17
 updated: 2026-10-18
 author: manager-spec
@@ -27,7 +27,7 @@ tags: "trunk-backup, sync-ref, git-push, workflow-triggers, regression-guard"
 | AC-TBS-005 | REQ-TBS-003 | M2 | Must | release-blocking |
 | AC-TBS-006 | REQ-TBS-006, REQ-TBS-008 | M2/M3 | Must | release-blocking |
 | AC-TBS-007 | REQ-TBS-001 | M2 | Must | release-blocking |
-| AC-TBS-008 | REQ-TBS-007, REQ-TBS-009 | M3 | Should | release-blocking |
+| AC-TBS-008 | REQ-TBS-007, REQ-TBS-009 | M3 | Must | release-blocking |
 | AC-TBS-009 | REQ-TBS-004 | M2 | Must | release-blocking |
 | AC-TBS-010 | REQ-TBS-005 | M1 | Must | release-blocking |
 
