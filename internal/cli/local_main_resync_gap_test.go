@@ -61,15 +61,22 @@ func TestLocalMainResyncRivalTakeoverBeforeFastForwardCannotLand(t *testing.T) {
 // ownership read hoisted out of the section (mutant D), the move run after the section
 // (mutant E), the mutation lock dropped altogether (mutant F), and the ownership read run
 // in a section of its own with the cached record checked and moved on in a second section
-// (mutant H, sync-audit F1 of iteration 4).
+// (mutant H, sync-audit F1 of iteration 4), and the section split with the
+// pre-fast-forward hook left in section 1 and only the merge moved to section 2 (mutant
+// S, sync-audit F1 of iteration 5).
 //
 // It is one half of a pair: TestLocalMainResyncRivalTakeoverBeforeFastForwardCannotLand
 // attempts the same synchronous takeover right before the fast-forward and is the
-// deterministic catch for mutant E. This test is the deterministic catch for A to D and H.
+// deterministic catch for mutant E. This test is the deterministic catch for A to D, H
+// and S.
 // TestLocalMainResyncRivalTakeoverSeenByOwnershipReadRefuses pins that the holder decision
 // rests on the record this read returns.
 //
-// Three signals, two of them deterministic.
+// Four signals, three of them deterministic. Every deterministic one is taken either at
+// the ownership read or at the fast-forward itself (the localMainResyncFastForward seam,
+// which wraps the real merge), never at a no-op hook that merely sits beside the move in
+// the source: a hook can stay behind in one section while the move it stands for is
+// carried into another (mutant S).
 //
 //  1. The read probe. From the localMainResyncReadWindow seam, which wraps the real
 //     ownership read, a rival --force takeover attempted synchronously right after the read
@@ -90,16 +97,23 @@ func TestLocalMainResyncRivalTakeoverBeforeFastForwardCannotLand(t *testing.T) {
 //     Windows); a contender that loses the lock writes nothing. The read seam plants a
 //     record no acquisition can produce (created_at 1970-01-01) into the artifact right
 //     after the read probe (which lost the lock and wrote nothing), and the
-//     pre-fast-forward seam reads it back. Still intact means nobody acquired the lock
+//     fast-forward seam reads it back right before it delegates to the real merge. Still
+//     intact means nobody acquired the lock
 //     between the ownership read and the move: one section from the read to the move.
 //     Gone means the lock was taken in between, which is exactly mutant A (the section is
-//     entered after the read), mutant B (section 2 is entered after section 1), and mutant
-//     H (the move's section is entered after the read's own section). The tripwire is
+//     entered after the read), mutant B (section 2 is entered after section 1), mutant H
+//     (the move's section is entered after the read's own section), and mutant S (the
+//     merge's section is entered after the section that ran the hook). The tripwire is
 //     planted at the read, not at the end of the re-validation, so a section boundary
 //     between the read and the rest of the re-validation falls inside the observed span.
 //     The positive control is the end of the re-sync: the window release acquires the lock
 //     again, so the tripwire must be gone by then, or the artifact no longer records
 //     acquisitions and the tripwire cannot see a split.
+//  4. The move probe. From the same fast-forward seam, after the tripwire is read back, a
+//     synchronous rival --force takeover must be refused as lock-busy: the merge itself
+//     runs while the mutation lock is held. A merge moved after the section (mutant E) or
+//     out from under the lock (mutant F) lets it land. The seam must run at all: a move
+//     that bypasses it leaves the in-lock invariant unobserved and fails the test.
 //
 // A rival that lands after the move but before the re-sync releases the window is the
 // legitimate post-merge race: the re-sync then reports that releasing the window failed
@@ -154,6 +168,7 @@ func TestLocalMainResyncRivalTakeoverDuringRevalidateCannotLand(t *testing.T) {
 	t.Cleanup(halt)
 
 	attempted, moveSeen, intactAtMove := false, false, false
+	var moveProbeErr error
 	var plantErr error
 	readProbed := false
 	var readProbeErr error
@@ -194,22 +209,29 @@ func TestLocalMainResyncRivalTakeoverDuringRevalidateCannotLand(t *testing.T) {
 			}
 		}()
 	}
-	prevBefore := localMainResyncBeforeFastForward
-	localMainResyncBeforeFastForward = func(string) {
-		moveSeen = true
-		intactAtMove = tripwireIntact()
+	// The observation sits on the move itself: the tripwire is read back, then the
+	// synchronous takeover is attempted (a contender that loses writes nothing, so the
+	// order cannot disturb the tripwire), and only then does the real merge run.
+	prevMove := localMainResyncFastForward
+	localMainResyncFastForward = func(git func(args ...string) (string, error), baseline string) (string, error) {
+		if !moveSeen {
+			moveSeen = true
+			intactAtMove = tripwireIntact()
+			moveProbeErr = probeSection(root)
+		}
+		return prevMove(git, baseline)
 	}
 	t.Cleanup(func() {
 		localMainResyncReadWindow = prevRead
 		localMainResyncAfterRevalidate = prevAfter
-		localMainResyncBeforeFastForward = prevBefore
+		localMainResyncFastForward = prevMove
 	})
 
 	_, err := runLocalMainResync(root)
 	halt()
 
 	if !attempted || !moveSeen {
-		t.Fatalf("the re-validation seam ran = %v and the pre-fast-forward seam ran = %v (re-sync err = %v): both must run for the section to be observed", attempted, moveSeen, err)
+		t.Fatalf("the re-validation seam ran = %v and the fast-forward seam localMainResyncFastForward ran = %v (re-sync err = %v): both must run for the section to be observed, and a move that bypasses the fast-forward seam is unobserved", attempted, moveSeen, err)
 	}
 	if plantErr != nil {
 		t.Fatalf("plant the tripwire in %s: %v", lockPath, plantErr)
@@ -225,6 +247,9 @@ func TestLocalMainResyncRivalTakeoverDuringRevalidateCannotLand(t *testing.T) {
 	}
 	if !intactAtMove {
 		t.Errorf("the mutation lock was acquired between the ownership read and the fast-forward (re-sync err = %v): the read, the rest of the re-validation, and the move do not share one unbroken mutation section", err)
+	}
+	if !factory.IsIntegrationLockBusy(moveProbeErr) {
+		t.Errorf("a rival --force takeover right before the merge, from the fast-forward seam itself, was not refused as lock-busy (got %v; re-sync err = %v): the move runs outside the mutation section", moveProbeErr, err)
 	}
 	mu.Lock()
 	got := append([]landing(nil), landings...)
