@@ -127,6 +127,15 @@ func TestBranchFilterMatcherMutants(t *testing.T) {
 		{name: "negation then positive also last-match-wins", yaml: push("    branches:\n      - '!sync/main'\n      - '**'\n"), wantPush: true, wantAdmits: true},
 		{name: "character class matches", yaml: push("    branches:\n      - 'sync/m[a-z]in'\n"), wantPush: true, wantAdmits: true},
 		{name: "character class range that excludes", yaml: push("    branches:\n      - 'sync/m[x-z]in'\n"), wantPush: true, wantAdmits: false},
+
+		// `**/` in segment position (including a leading `**/` prefix)
+		// matches ZERO or more path segments (amended REQ-TBS-005,
+		// sync-audit round 1 S2): `**/sync/main` and `sync/**/main` both
+		// admit sync/main, while the anchor segment still has to match.
+		{name: "leading globstar slash matches zero segments", yaml: push("    branches:\n      - '**/sync/main'\n"), wantPush: true, wantAdmits: true},
+		{name: "mid globstar slash matches zero segments", yaml: push("    branches:\n      - 'sync/**/main'\n"), wantPush: true, wantAdmits: true},
+		{name: "globstar slash still requires its anchor segment", yaml: push("    branches:\n      - 'x/**/main'\n"), wantPush: true, wantAdmits: false},
+		{name: "globstar slash consumes one segment", yaml: push("    branches:\n      - '**/main'\n"), wantPush: true, wantAdmits: true},
 		{name: "main does not admit sync", yaml: push("    branches:\n      - main\n"), wantPush: true, wantAdmits: false},
 		{name: "ci style filter does not admit", yaml: push("    branches:\n      - main\n      - 'ci/**'\n"), wantPush: true, wantAdmits: false},
 
@@ -265,6 +274,7 @@ const (
 	globLiteral  globTokKind = iota
 	globStar                 // '*' — zero or more characters, no '/'
 	globStarStar             // '**' — zero or more characters, '/' included
+	globSeg                  // '**/' in segment position — zero or more whole segments
 	globClass                // '[...]' — exactly one character
 )
 
@@ -288,6 +298,17 @@ func lexBranchGlob(p string) ([]globTok, error) {
 			}
 			if n > 2 {
 				return nil, fmt.Errorf("run of %d consecutive '*' is outside the supported grammar (*, **, [...] classes only)", n)
+			}
+			// A `**/` in SEGMENT position — preceded by the pattern start
+			// or a '/', followed by '/' — is one token (amended
+			// REQ-TBS-005, sync-audit round 1 S2): it matches zero or more
+			// whole path segments, so `**/sync/main` and `sync/**/main`
+			// both match sync/main. A `**` in any other position keeps the
+			// zero-or-more-characters-including-'/' reading.
+			if n == 2 && i+2 < len(p) && p[i+2] == '/' && (i == 0 || p[i-1] == '/') {
+				toks = append(toks, globTok{kind: globSeg})
+				i += 3 // the trailing '/' is part of the token
+				continue
 			}
 			if n == 2 {
 				toks = append(toks, globTok{kind: globStarStar})
@@ -372,6 +393,19 @@ func globMatchToks(toks []globTok, s string) bool {
 	case globStarStar:
 		for k := 0; k <= len(s); k++ {
 			if globMatchToks(toks[1:], s[k:]) {
+				return true
+			}
+		}
+		return false
+	case globSeg:
+		// "**/" — zero or more complete segments, each WITH its trailing
+		// '/'. Zero segments matches the empty string; one or more matches
+		// any prefix that ends at a '/' boundary.
+		if globMatchToks(toks[1:], s) {
+			return true
+		}
+		for k := 0; k < len(s); k++ {
+			if s[k] == '/' && globMatchToks(toks[1:], s[k+1:]) {
 				return true
 			}
 		}
