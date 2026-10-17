@@ -127,7 +127,7 @@ kept until the completion report.
   rather than the stall that follows it. Each fire runs the watchdog's renewal
   first (§0a of the watchdog skill), so the renewal period is also the cadence
   at which the card lease is renewed.
-- **Keep.** `CronList` at card intake and after every `/clear`; re-arm when
+- **Keep.** `CronList` at card takeover (intake or the in-session transition to a newly leased card) and after any session reset; re-arm when
   the entry is missing, or when its expression no longer matches the configured
   renewal period. A changed renewal period takes effect at the next arm. A
   recurring job expires after 7 days — a card that outlives that re-arms it.

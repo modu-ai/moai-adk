@@ -9,6 +9,7 @@ import (
 	"testing"
 
 	"github.com/modu-ai/moai-adk/internal/config"
+	"github.com/modu-ai/moai-adk/internal/testguard"
 )
 
 // SPEC-SESSION-WORKTREE-001 M2 — session-worktree auto-entry wrapper tests.
@@ -134,6 +135,7 @@ func swapSessionWorktreeSeams(t *testing.T, s swSeams) {
 // byte-identical baseline: when the feature is OFF the wrapper short-circuits
 // before any side effect (no git invocation, no notice).
 func TestEnterSessionWorktree_DefaultOffReturnsEmpty(t *testing.T) {
+	testguard.RedirectHome(t)
 	called := false
 	swapSessionWorktreeSeams(t, swSeams{
 		add: func(string, string, string) (string, error) { called = true; return "", nil },
@@ -154,6 +156,7 @@ func TestEnterSessionWorktree_DefaultOffReturnsEmpty(t *testing.T) {
 // TestEnterSessionWorktree_DefaultOffWithConfigFalse mirrors the above with an
 // explicit config carrying Enabled=false (no env override).
 func TestEnterSessionWorktree_DefaultOffWithConfigFalse(t *testing.T) {
+	testguard.RedirectHome(t)
 	t.Setenv("MOAI_SESSION_WORKTREE", "")
 	swapSessionWorktreeSeams(t, swSeams{
 		add: func(string, string, string) (string, error) { t.Fatal("add must not run"); return "", nil },
@@ -169,6 +172,7 @@ func TestEnterSessionWorktree_DefaultOffWithConfigFalse(t *testing.T) {
 // forces ON even when config says false. (M1 owns the helper; this confirms the
 // wrapper routes through it.)
 func TestEnterSessionWorktree_EnvForcesOn(t *testing.T) {
+	testguard.RedirectHome(t)
 	t.Setenv("MOAI_SESSION_WORKTREE", "1")
 	swapSessionWorktreeSeams(t, swSeams{
 		inWt:      func() bool { return false },
@@ -198,6 +202,7 @@ func TestEnterSessionWorktree_EnvForcesOn(t *testing.T) {
 // TestEnterSessionWorktree_AlreadyInWorktreeSkips is REQ-SW-012: when cwd is
 // already inside a worktree, auto-entry is skipped with an info notice.
 func TestEnterSessionWorktree_AlreadyInWorktreeSkips(t *testing.T) {
+	testguard.RedirectHome(t)
 	t.Setenv("MOAI_SESSION_WORKTREE", "1")
 	addCalled := false
 	swapSessionWorktreeSeams(t, swSeams{
@@ -221,6 +226,7 @@ func TestEnterSessionWorktree_AlreadyInWorktreeSkips(t *testing.T) {
 // materialization failure MUST NOT abort; the wrapper returns "" and emits a
 // notice naming the failure reason.
 func TestEnterSessionWorktree_MaterializeFailFallsBack(t *testing.T) {
+	testguard.RedirectHome(t)
 	t.Setenv("MOAI_SESSION_WORKTREE", "1")
 	swapSessionWorktreeSeams(t, swSeams{
 		inWt:      func() bool { return false },
@@ -245,6 +251,7 @@ func TestEnterSessionWorktree_MaterializeFailFallsBack(t *testing.T) {
 // successful materialization applies init.defaultBranch=main to the worktree's
 // local config.
 func TestEnterSessionWorktree_SuccessAppliesDefaultBranch(t *testing.T) {
+	testguard.RedirectHome(t)
 	t.Setenv("MOAI_SESSION_WORKTREE", "1")
 	var setCalls []struct{ dir, key, val string }
 	swapSessionWorktreeSeams(t, swSeams{
@@ -276,6 +283,7 @@ func TestEnterSessionWorktree_SuccessAppliesDefaultBranch(t *testing.T) {
 // TestSessionWorktreeBranchName_Shape verifies the WT-<8hex>-<subcommand>
 // shape (Q2: brackets rejected → WT- prefix fallback).
 func TestSessionWorktreeBranchName_Shape(t *testing.T) {
+	testguard.RedirectHome(t)
 	swapSessionWorktreeSeams(t, swSeams{
 		short: func() string { return "abcdef12" },
 	})
@@ -287,6 +295,7 @@ func TestSessionWorktreeBranchName_Shape(t *testing.T) {
 // TestSessionWorktreeBranchName_RandomFallback verifies the 6-byte random hex
 // fallback when no session id is available (REQ-SW-007 EC-4).
 func TestSessionWorktreeBranchName_RandomFallback(t *testing.T) {
+	testguard.RedirectHome(t)
 	scrubSessionIDEnv(t) // the runtime stamps a real id into this process; this case is the no-id path
 	swapSessionWorktreeSeams(t, swSeams{
 		short: func() string { return resolveSessionShortReal() },
@@ -318,6 +327,7 @@ func TestSessionWorktreeBranchName_RandomFallback(t *testing.T) {
 // this test's signature (no error return) would no longer compile, surfacing
 // the regression at build time.
 func TestEnterSessionWorktree_FailBackFalsification(t *testing.T) {
+	testguard.RedirectHome(t)
 	t.Setenv("MOAI_SESSION_WORKTREE", "1")
 	// Simulate a non-git directory: commonDir resolution fails (BI-3 path).
 	swapSessionWorktreeSeams(t, swSeams{
@@ -361,6 +371,7 @@ func worktreeCfg(autoCleanup bool) *config.Config {
 // TestCleanupSessionWorktree_EmptyPathNoOp is the trivial guard: an empty
 // worktree path (feature OFF / fail-back / already-in-worktree) is a no-op.
 func TestCleanupSessionWorktree_EmptyPathNoOp(t *testing.T) {
+	testguard.RedirectHome(t)
 	removeCalled := false
 	swapSessionWorktreeSeams(t, swSeams{
 		remove: func(string) error { removeCalled = true; return nil },
@@ -379,6 +390,7 @@ func TestCleanupSessionWorktree_EmptyPathNoOp(t *testing.T) {
 // auto_cleanup is false (the distributed default), the worktree PERSISTS after
 // exit — no removal, no removal notice.
 func TestCleanupSessionWorktree_DefaultManualPersists(t *testing.T) {
+	testguard.RedirectHome(t)
 	removeCalled := false
 	swapSessionWorktreeSeams(t, swSeams{
 		remove: func(string) error { removeCalled = true; return nil },
@@ -398,6 +410,7 @@ func TestCleanupSessionWorktree_DefaultManualPersists(t *testing.T) {
 // worktree remove runs and a stderr notice carrying the session-exit prefix is
 // emitted.
 func TestCleanupSessionWorktree_CleanExitRemoves(t *testing.T) {
+	testguard.RedirectHome(t)
 	var removedPath string
 	swapSessionWorktreeSeams(t, swSeams{
 		remove:     func(p string) error { removedPath = p; return nil },
@@ -421,6 +434,7 @@ func TestCleanupSessionWorktree_CleanExitRemoves(t *testing.T) {
 // clean-exit-only: a non-zero exit PRESERVES the worktree for post-mortem even
 // when auto_cleanup is ON.
 func TestCleanupSessionWorktree_NonCleanExitPreserves(t *testing.T) {
+	testguard.RedirectHome(t)
 	removeCalled := false
 	swapSessionWorktreeSeams(t, swSeams{
 		remove:     func(string) error { removeCalled = true; return nil },
@@ -444,6 +458,7 @@ func TestCleanupSessionWorktree_NonCleanExitPreserves(t *testing.T) {
 // exit with auto_cleanup ON, uncommitted changes (non-empty porcelain) SKIP
 // removal — the worktree is NEVER deleted with local changes.
 func TestCleanupSessionWorktree_DirtyPreserves(t *testing.T) {
+	testguard.RedirectHome(t)
 	removeCalled := false
 	swapSessionWorktreeSeams(t, swSeams{
 		remove: func(string) error { removeCalled = true; return nil },
@@ -469,6 +484,7 @@ func TestCleanupSessionWorktree_DirtyPreserves(t *testing.T) {
 // is fail-open: a status-check error preserves the worktree (no risky
 // deletion) and emits a notice naming the failure.
 func TestCleanupSessionWorktree_DirtyCheckErrorPreserves(t *testing.T) {
+	testguard.RedirectHome(t)
 	removeCalled := false
 	swapSessionWorktreeSeams(t, swSeams{
 		remove:     func(string) error { removeCalled = true; return nil },
@@ -490,6 +506,7 @@ func TestCleanupSessionWorktree_DirtyCheckErrorPreserves(t *testing.T) {
 // unambiguously distinguishable from the M8 PR-merge notice (AC-SW-022) in
 // combined output.
 func TestCleanupSessionWorktree_NoticeDistinguishableFromPRMerge(t *testing.T) {
+	testguard.RedirectHome(t)
 	if strings.Contains(SessionExitCleanupNoticePrefix, "PR-merge") {
 		t.Fatalf("session-exit prefix MUST NOT contain 'PR-merge': %q", SessionExitCleanupNoticePrefix)
 	}
@@ -512,6 +529,7 @@ func TestCleanupSessionWorktree_NoticeDistinguishableFromPRMerge(t *testing.T) {
 // project dir pointed at by $CLAUDE_PROJECT_DIR and asserts the first-8 chars
 // of the session UUID are returned.
 func TestResolveSessionShortReal_SideChannelAvailable(t *testing.T) {
+	testguard.RedirectHome(t)
 	scrubSessionIDEnv(t) // the runtime stamps a real id into this process; the fixture is the sidecar
 	tmp := t.TempDir()
 	t.Setenv("CLAUDE_PROJECT_DIR", tmp)
@@ -533,6 +551,7 @@ func TestResolveSessionShortReal_SideChannelAvailable(t *testing.T) {
 // TestResolveSessionShortReal_ShortSessionID covers the <8-char branch: a
 // session id shorter than 8 chars is returned verbatim (not truncated).
 func TestResolveSessionShortReal_ShortSessionID(t *testing.T) {
+	testguard.RedirectHome(t)
 	scrubSessionIDEnv(t) // the runtime stamps a real id into this process; the fixture is the sidecar
 	tmp := t.TempDir()
 	t.Setenv("CLAUDE_PROJECT_DIR", tmp)
@@ -552,6 +571,7 @@ func TestResolveSessionShortReal_ShortSessionID(t *testing.T) {
 // fallback: when no side-channel file exists, resolveSessionShortReal returns a
 // 12-hex-char (6-byte) random segment.
 func TestResolveSessionShortReal_NoSideChannelFallsBack(t *testing.T) {
+	testguard.RedirectHome(t)
 	scrubSessionIDEnv(t) // the runtime stamps a real id into this process; this case is the no-id path
 	tmp := t.TempDir()
 	t.Setenv("CLAUDE_PROJECT_DIR", tmp) // no sidecar file present
@@ -576,6 +596,7 @@ func TestResolveSessionShortReal_NoSideChannelFallsBack(t *testing.T) {
 // the web subcommand path specifically — asserting add is NOT invoked and the
 // skip notice names "web".
 func TestEnterSessionWorktree_WebCoexistenceNoNested(t *testing.T) {
+	testguard.RedirectHome(t)
 	t.Setenv("MOAI_SESSION_WORKTREE", "1")
 	addCalled := false
 	swapSessionWorktreeSeams(t, swSeams{
@@ -604,6 +625,7 @@ func TestEnterSessionWorktree_WebCoexistenceNoNested(t *testing.T) {
 // init) holds for web too. The wrapper is shared; this test asserts the notice
 // content is subcommand-specific and that materialize is NOT invoked.
 func TestEnterSessionWorktree_AlreadyInWorktreeWebNoticeContent(t *testing.T) {
+	testguard.RedirectHome(t)
 	t.Setenv("MOAI_SESSION_WORKTREE", "1")
 	materializeCalled := false
 	swapSessionWorktreeSeams(t, swSeams{
@@ -635,6 +657,7 @@ func TestEnterSessionWorktree_AlreadyInWorktreeWebNoticeContent(t *testing.T) {
 // the deterministic part — distinct session-shorts ⇒ distinct branch names +
 // distinct landing paths — holds.
 func TestSessionWorktreeBranchName_ParallelDistinctSessions(t *testing.T) {
+	testguard.RedirectHome(t)
 	// Session A: session-short aabbcc11
 	swapSessionWorktreeSeams(t, swSeams{
 		short: func() string { return "aabbcc11" },
@@ -671,6 +694,7 @@ func TestSessionWorktreeBranchName_ParallelDistinctSessions(t *testing.T) {
 // the init and web subcommands. M2/M3 have partial coverage; this test makes
 // the byte-identical baseline explicit for both paths in one place.
 func TestEnterSessionWorktree_OffByteIdentical_InitAndWeb(t *testing.T) {
+	testguard.RedirectHome(t)
 	t.Setenv("MOAI_SESSION_WORKTREE", "") // feature OFF (no env force)
 	for _, sub := range []string{"init", "web"} {
 		addCalled := false
@@ -699,6 +723,7 @@ func TestEnterSessionWorktree_OffByteIdentical_InitAndWeb(t *testing.T) {
 // inGitWorktree guard — if a future edit removed that guard, the inWt=true case
 // would also call add and this test would FAIL.
 func TestEnterSessionWorktree_AlreadyInWorktreeSkip_Falsification(t *testing.T) {
+	testguard.RedirectHome(t)
 	t.Setenv("MOAI_SESSION_WORKTREE", "1")
 
 	// Case A: inWt=true → skip. add MUST NOT run.

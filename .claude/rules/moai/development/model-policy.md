@@ -8,7 +8,7 @@ Rules for agent model field values and multi-model architecture.
 
 ## Valid Model Field Values
 
-Catalog agents under `.claude/agents/moai/` declare neither `model:` nor `effort:`: every subagent inherits the main session's model and effort, and a spawn passes neither. Harness specialists (`.claude/agents/harness/`) are the sanctioned exception — they pin `model`/`effort` to their purpose (§ Harness-Agent Model Policy). The values below remain the accepted set for an agent file a user authors.
+Catalog phase owners under `.claude/agents/moai/` declare their role's `model:` and `effort:` explicitly (role table: `.claude/rules/moai/core/agent-common-protocol.md` § Subagent Model and Effort); `manager-lead` declares neither and inherits the session. Harness specialists (`.claude/agents/harness/`) are the sanctioned exception — they pin `model`/`effort` to their purpose (§ Harness-Agent Model Policy). The values below remain the accepted set for an agent file a user authors.
 
 Agent definition `model` field accepts only these values:
 - inherit: Uses parent session's model (default)
@@ -35,7 +35,7 @@ Invalid values (NEVER use):
 
 ## Inherit-by-Default Convention
 
-[ZONE:Evolvable] [HARD] Catalog agents (`.claude/agents/moai/`) declare no `model:` and no `effort:` frontmatter key; harness specialists are exempt (§ Harness-Agent Model Policy). Claude Code resolves a subagent's model as spawn-time `model` → frontmatter `model` → `CLAUDE_CODE_SUBAGENT_MODEL` → the main conversation's model, and an absent `effort` inherits the session's, so an agent with neither field runs on the main session's model and effort. MoAI never sets `CLAUDE_CODE_SUBAGENT_MODEL`; a user who exports it still pins every subagent (a documented user-environment residual).
+[ZONE:Evolvable] [HARD] Catalog phase owners (`.claude/agents/moai/`) declare their role's `model:` and `effort:` in frontmatter (role table: `agent-common-protocol.md` § Subagent Model and Effort); an agent without the keys (`manager-lead`) inherits the session, max and ultra are never a declared default effort, and harness specialists keep their own pins (§ Harness-Agent Model Policy). Claude Code resolves a subagent's model as spawn-time `model` → frontmatter `model` → `CLAUDE_CODE_SUBAGENT_MODEL` → the main conversation's model, and an absent `effort` inherits the session's, so an agent with neither field runs on the main session's model and effort. MoAI never sets `CLAUDE_CODE_SUBAGENT_MODEL`; a user who exports it still pins every subagent (a documented user-environment residual). Two further user-environment residuals exist upstream and MoAI sets neither: `CLAUDE_CODE_SUBAGENT_MODEL_FORCE` (v2.1.257+; forces the subagent model over every other resolution source) and `CLAUDE_CODE_WORKFLOW_SUBAGENT_MODEL` (fixes the model of every agent a dynamic workflow runs).
 
 Consumption exception (opt-in only): a session that sets `llm.agent_overrides_consume: true` may have the orchestrator pass a stored `llm.agent_overrides` model on the Agent() call — the spawn-time `model` slot of the resolution order above is the delivery channel, so the override touches no frontmatter, no env var, and no agent definition. Stored values are restricted to the closed alias set {inherit, haiku, sonnet, opus, fable} (full model-ID strings stay intentionally disallowed), and the `[1m]` residual above applies to any non-`inherit` value exactly as it does to an alias pin — which is why `inherit` remains the sanctioned no-op and `false` (the default) keeps storage-only behaviour.
 
@@ -51,7 +51,7 @@ Upstream tracking (Anthropic claude-code repository):
 
 Workaround pattern (no `model:` field, equivalent to `model: inherit`):
 - The subagent fully inherits the parent's model + context entitlement, eliminating the mismatch.
-- No agent definition under `.claude/agents/moai/` declares `model:` or `effort:`, and no spawn passes either. The No-Haiku policy retired the former `model: haiku` exception.
+- This workaround now covers only the agents that declare no `model:` (`manager-lead`). The per-role pins accept the `[1m]` residual above for their spawns, and the No-Haiku policy is superseded for the git and todo roles, which pin `haiku`.
 
 Exceptions (do NOT migrate to inherit):
 - Documentation/example YAML inside skill bodies (`.claude/skills/moai-foundation-cc/reference/**/*.md`) — these mirror official Claude Code documentation and MUST show all valid values (`sonnet`, `opus`, `haiku`, `inherit`) for educational purposes.
@@ -172,6 +172,20 @@ Effort is a session setting: subagents inherit the main session's effort. Under 
 
 Note: `ultrathink` is a Claude Code one-turn keyword that requests deeper reasoning for that prompt; MoAI standardizes it to `effort: xhigh` (the coding/agentic level above) for that turn.
 
+## Jev Model Attribution
+
+[ZONE:Evolvable] [HARD] A Jev answer names the model that produced it. The request alias is what the package asks for, and it is never the name of the model that answered.
+
+- **Request.** The `internal/jev` package sends the request alias `jev-latest`. The alias is a request, not an attribution.
+- **Attribution.** The `model` field of the response is the interpreted model id, for example `jev-1.13.0`. Every model field a consumer reads carries the interpreted model id: the usage record's `model`, a measurement artifact's `model`, a rendered answer label, and a kickoff cross-check reason. The request alias appears only in its own field: `request_model` in a usage record, and `request model` in a measurement artifact.
+- **Unattributed answers are not answers.** A response with no interpreted model id in the shape `jev-<major>.<minor>.<patch>` is an unavailable result (`unattributed`). No consumer reads an answer from it.
+- **No straddled measurement.** A measurement run whose answered calls report more than one interpreted model id is refused. Re-run it under one id.
+- **Version change.** When the interpreted model id of an answered call differs from the verified id held in code (`internal/jev/jev.go:VerifiedInterpretedModel`), the first such call in each client reports one notice line naming both ids and that location. Until the measurement regression set has been re-run against the new id and the verified id has been changed to it, every consumer that shows a Jev answer to a person, or selects on one (an advise-or-above consumer), returns to shadow: its answer is recorded, and it is neither shown nor selected on.
+- **Regression set.** The regression set is the labelled answer set that `internal/jevmeasure` runs for each consumer.
+- **Terms.** Both terms describe behaviour and introduce no configuration key. *advise-or-above* names a consumer behaviour that shows a Jev answer to a person, or selects on one. *shadow* names the state in which a Jev answer is recorded and neither shown nor selected on.
+
+Why: the prohibition on the alias rested on the risk that the answering model could not be attributed. Recording the response's `model` field removes that risk. The vendor can move the version behind the alias at any time, and the notice and the shadow return make such a move visible rather than silent.
+
 ## Rules
 
 - Agent `model` field must be one of: inherit, opus, sonnet, fable, haiku
@@ -181,3 +195,4 @@ Note: `ultrathink` is a Claude Code one-turn keyword that requests deeper reason
 - The model policy (high/medium/low) is a main-session preference set with `moai profile setup`, not an agent definition concern
 - Legacy CG configuration never selects a runtime provider or bypasses independent review
 - Old model versions are auto-migrated: do not pin to specific version IDs
+- Jev answers name the interpreted model the endpoint returns; the request alias `jev-latest` is never an attribution (§ Jev Model Attribution)
