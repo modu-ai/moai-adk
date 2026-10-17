@@ -195,7 +195,7 @@ Card worktrees branch from local `main`. Because origin/main can fall behind loc
 
 **[HARD] 3. Clean-tree rule**
 
-A landing tree must be clean: `git status --porcelain=v1 -z --untracked-files=all` must be empty, or the merge is refused. A separate integration worktree gets the overlap rule (REQ-LMF-005). Diagnose each untracked or modified file in the primary checkout (commit it in its owning card worktree, move it there, or ignore it); no stash. Read `main` source through `git show main:<path>` or in the integration worktree, not from the primary's working tree; it does not cover a smudge or clean filter, end-of-line conversion, uncommitted changes, or a later move of `main`.
+A landing tree must be clean: `git status --porcelain=v1 -z --untracked-files=all` must be empty, or the merge is refused. A separate integration worktree gets the overlap rule (REQ-LMF-005). Diagnose each untracked or modified file in the primary checkout (commit it in its owning card worktree, move it there, or ignore it); never stash. Read `main` source through `git show main:<path>` or in the integration worktree, not from the primary's working tree; it does not cover a smudge or clean filter, end-of-line conversion, uncommitted changes, or a later move of `main`.
 
 **[HARD] 4. Resynchronization**
 
