@@ -22,6 +22,7 @@ related_specs: [SPEC-FACTORY-DISCIPLINE-001]
 | 날짜 | 변경 | 근거 |
 |---|---|---|
 | 2026-10-15 | plan-phase 최초 작성 (lane-22 카드 t1748, Class C). 선행 카드 t1604(SPEC-FACTORY-DISCIPLINE-001)의 iter8 감사 FAIL 뒤 운영자 결정 `d-20261014T143613Z-4764`로 큐된 재설계 카드다. 판정면 방향을 두 기록 방향의 종합으로 확정하고, 기록된 실패 계열 (a)–(d)를 명명된 회귀 기준으로 편입했다 | 카드 본문 + 보존 트리 `.moai/worktrees/t1604/`의 `sync-audit-iter8.md` (영수증 `rcpt-649bc5e11cf68dfd88d64c14`)·`operator-brief.md`·`internal/cli/factory.go` 가드부 판독 + 본 트리 실측 |
+| 2026-10-18 | run/sync 중 REQ 정정: REQ-LA-003의 `--` 구분자 문장을 백엔드 실측에 맞게 정정했다. plan 감사 상한 소진으로 plan-auditor 델타 없이 sync 감사 2회차가 판정한다. REQ/AC id 집합은 불변이다(REQ-LA-001..013, AC-LA-001..015) | 실측 원문(claude 2.1.302): 명령 `timeout 25 claude --append-system-prompt -- --version </dev/null` → 출력 `2.1.302 (Claude Code)`, exit code 0 — 값 필수 옵션 뒤의 `--`가 그 옵션의 값으로 소비되고 파싱이 이어진다. 발단은 sync 감사 1회차(`.moai/reports/t1748/sync-audit-iter1.md`) 결함 F1 |
 
 ## §0 배경 (측정된 사실)
 
@@ -64,7 +65,7 @@ related_specs: [SPEC-FACTORY-DISCIPLINE-001]
 
 - **REQ-LA-001 (단일 정준 해석기)** the launcher entry paths (`moai cc`, `moai glm`) shall 기동당 정확히 하나의 정준 런치 뷰(launch view)를 하나의 해석기(resolver)로 생산해야 한다 — 그 해석기는 ① 런처 소비 모형(런처가 스스로 소비해 제거하는 옵션: `-b`/`--bypass`, `-c`/`--continue`, `--model`/`-m`, `--permission-mode`, `--branch`, 진입 플래그), ② `--` 구분자 의미(첫 구분자는 런처가 소비하고 꼬리는 그대로 통과), ③ 백엔드 옵션 모형(worktree 옵션 철자들과 최후 우선)을 하나로 엮는다. 기동 경로상 그 밖의 어떤 구성요소도 원시 진입 인수에서 worktree 선택을 재유도하지 아니한다.
 - **REQ-LA-002 (뷰의 계약)** the launch view shall 백엔드에 넘겨지는 최종 argv(뷰의 `finalArgv`), 그 argv에서 백엔드 옵션 모형으로 읽은 worktree 선택, `--branch` 생성 주석(짧은 이름 `-w`와 `--branch`가 함께 있고 대상 트리가 아직 없을 때 그 트리가 materialize될 브랜치 값), 재정의 플래그 존재 여부를 함께 실어야 한다. **When** 기동이 실행(exec)되는 때, the exec path shall 가드가 판정한 그 뷰를 소비해야 하며 같은 인수를 두 번 해석하지 아니한다 — 단일 해석 보장.
-- **REQ-LA-003 (백엔드 옵션 모형 준수)** the worktree selection read from the final argv shall 백엔드(claude)의 옵션 모형을 따라야 한다 — worktree 옵션 여러 개일 때 최후 것이 이기고, 네 철자(`--worktree 값`, `--worktree=값`, `-w 값`, 붙여 쓴 `-w<값>`)와 값 옵션을 묶은 짧은 클러스터(예: `-pwcard-tree` — 불리언 `p` 뒤 값 옵션 `w`가 나머지를 값으로 가짐)는 모형이 규정하는 대로 분해되며, `--` 구분자는 결코 값으로 읽히지 아니한다. 백엔드 모형의 선언은 구현 전 측정으로 고정한다(plan §C-1).
+- **REQ-LA-003 (백엔드 옵션 모형 준수)** the worktree selection read from the final argv shall 백엔드(claude)의 옵션 모형을 따라야 한다 — worktree 옵션 여러 개일 때 최후 것이 이기고, 네 철자(`--worktree 값`, `--worktree=값`, `-w 값`, 붙여 쓴 `-w<값>`)와 값 옵션을 묶은 짧은 클러스터(예: `-pwcard-tree` — 불리언 `p` 뒤 값 옵션 `w`가 나머지를 값으로 가짐)는 모형이 규정하는 대로 분해되며, 값을 반드시 취하는 옵션(긴 철자, 마지막 글자가 값 옵션인 짧은 클러스터, 런처 소유 값 플래그) 바로 뒤에 선 `--`는 그 옵션의 값이고 옵션 파싱은 그 뒤에서 계속되며, 그 밖의 `--`는 옵션 파싱을 끝낸다(실측: claude 2.1.302 — `timeout 25 claude --append-system-prompt -- --version </dev/null` → `2.1.302 (Claude Code)`, exit 0). 선택적 값을 취하는 worktree 옵션(`-w`/`--worktree [이름]`) 바로 뒤의 `--` 처리는 바꾸지 않으며 본 요구사항에서 측정하지 않았다(미측정 잔여). 백엔드 모형의 선언은 구현 전 측정으로 고정한다(plan §C-1).
 
 ### §1.2 판정면 — 보존 의미
 
