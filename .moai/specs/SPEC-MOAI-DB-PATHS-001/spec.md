@@ -1,7 +1,7 @@
 ---
 id: SPEC-MOAI-DB-PATHS-001
 title: "Confirmed database paths — a read-only path-reporting command, guess-proof instruction surfaces, and a ghost-file doctor check"
-version: "0.1.1"
+version: "0.1.2"
 status: draft
 created: 2026-10-17
 updated: 2026-10-17
@@ -21,6 +21,7 @@ related_specs: [SPEC-HOME-STATE-ROLLOUT-001, SPEC-TODO-QUEUE-HOME-CANON-001, SPE
 
 - 2026-10-17 v0.1.0 — manager-spec, plan-phase authoring (card t1827, Class C). Measurement tree: `93f4fc75c8dafc1c436458940efa8957fd25ae12` (branch `WT-db-paths-where`). Every file and line reference below was read in that tree; each is a moving coordinate and the run phase re-reads it before editing.
 - 2026-10-17 v0.1.1 — manager-spec, plan-audit iteration 1 revision (verdict FAIL 0.69, defects D1-D13). Queue-path contract unified on the canonical directory with a disclosed pre-adoption state (D1, D8, D12); closure gate rewritten as an explicit allow-list (D2, D11); generated Codex TOML moved to the `make agents-emit` path and catalog-hash regeneration recorded (D3); five statements required on README and docs-site, codemaps deferral recorded (D4); `--field` set and JSON directory key defined (D5); the 36-file grep command pinned in acceptance.md with the root `reports/` exclusion classified (D6); wording, count, and coverage repairs (D7, D9, D10, D13). Requirement count stays 16, acceptance-criterion count stays 16.
+- 2026-10-17 v0.1.2 — manager-spec, plan-audit iteration 2 revision (verdict FAIL 0.75; D2 unresolved as a criterion). N1: the foreman watch rewrite breaks the existing foreman script tests in `internal/factory`; both test files are now deliverables, edited to provision a `moai` stub on the fixture PATH. N2: the SPEC artifacts are `A` (added) entries on the change-set diff, not `M`; AC-DBP-016 re-checked against the real diff letters. O1: REQ-DBP-007 first clause reworded. O2: the swept count of AC-DBP-011 states the determinism condition. Counts unchanged (16/16).
 
 ## A. Background and problem
 
@@ -77,7 +78,7 @@ Measured with a repository grep (the exact command, the stdout, and the exit cod
 - **REQ-DBP-004**: For each reported database the command shall state whether it exists, its size in bytes, and whether its `-wal` and `-shm` companions exist, with their sizes.
 - **REQ-DBP-005**: Where `--json` is given, the command shall write exactly one JSON object to stdout and nothing else, carrying a key for every `--field` name below, the `todo-dir` value being the directory part of the queue database path; where `--field <name>` is given with a name among `project-key`, `project-dir`, `todo-dir`, `todo-db`, and `factory-db`, it shall write only that field's bare value followed by a newline, and for any other or unresolved name it shall exit non-zero with empty stdout; otherwise it shall write a human-readable listing.
 - **REQ-DBP-006**: While launched inside a linked worktree, the command shall report the same project key and the same paths it reports from the primary checkout.
-- **REQ-DBP-007**: When the project resolves to the project-local layout, the command shall report the project-local paths and name the queue layout; when a todo queue exists only in a legacy directory, it shall report the canonical queue location with the state `pre-adoption` and name the legacy directory without reading or moving it; when a path cannot be resolved, it shall report that field as unresolved, exit non-zero, and not substitute a guessed or fallback path.
+- **REQ-DBP-007**: When the queue resolves to the project-local layout, the command shall report the project-local paths and name the queue layout; when a todo queue exists only in a legacy directory, it shall report the canonical queue location with the state `pre-adoption` and name the legacy directory without reading or moving it; when a path cannot be resolved, it shall report that field as unresolved, exit non-zero, and not substitute a guessed or fallback path.
 - **REQ-DBP-008**: When `--run <run-id>` is given, the command shall report that run's broker path, and when the run id is not valid it shall exit non-zero without reporting a path; without `--run` it shall report the broker path template and the count of run directories found under the factory `messages/` directory.
 - **REQ-DBP-009**: The `moai todo` and `moai factory` help texts and the `moai handoff` help text that names a database path shall point to `moai paths` as the source of the confirmed path, and the `moai todo` long help shall keep the canonical-store string that `internal/cli/todo_help_store_test.go` pins.
 
@@ -140,7 +141,7 @@ Row count check: agent and skill files 8, Codex TOML 1, storage doc 2, local leg
 
 ### Out of Scope — changing where state lives
 
-- Any change to `ProjectKey`, `CanonicalProjectRoot`, `StateDirForRoot`, `resolveStateDir`, the temp-origin guard, or the adoption policy. This SPEC reports locations; it does not move them. The one addition to `internal/factory` is a new file holding a pure read-only wrapper over the existing resolvers.
+- Any change to `ProjectKey`, `CanonicalProjectRoot`, `StateDirForRoot`, `resolveStateDir`, the temp-origin guard, or the adoption policy. This SPEC reports locations; it does not move them. The `internal/factory` package gains one new source file holding a pure read-only wrapper over the existing resolvers, its test, and edits to two existing foreman-script test files that provision a `moai` stub (plan § B M3 step 7); no existing non-test file of the package changes.
 
 ### Out of Scope — removing ghost files
 
