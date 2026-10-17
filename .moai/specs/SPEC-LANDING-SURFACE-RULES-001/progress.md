@@ -21,10 +21,13 @@ plan_artifact_hash: 1c0ff82567b85349cda46a4861630e66d5c766b70c90e914809e3499a0d8
 Copied verbatim from the `- debt:` lines of `.moai/reports/t1846/plan-audit-iter3.md` (PASS-WITH-DEBT Kickoff, auto-semantics.md section 9.1).
 
 - debt: N2 dispose_in=run stale ledger-id ranges: spec.md:L22 "G0-G8, L1-L5" and plan.md:L3 "G1-G9 and L1-L7" versus ledger G0-G11, L1-L7 (cosmetic)
+  Status: Disposed (sync-confirmed): E.2 "N2 disposed", commit 72a6d8796.
   Disposed in M1, when the ledger is re-pinned. spec.md and plan.md ARE in the plan-artifact hash, so editing them changes plan_artifact_hash; the lane must re-record the new hash in the sync-phase evidence (progress.md section E.4). They are not edited now.
 - debt: N3 dispose_in=run AC-LSR-015 / ledger L7 reads `git diff --name-only <pin> HEAD`, which misses uncommitted tracked edits at the M5 fence moment
+  Status: Disposed (sync-confirmed): E.2 "N3 disposed", fence re-run at HEAD 499701907.
   Disposed in M5: the fence runs the working-tree form `git diff --name-only <pin>` (with the same exclusions) as well as the HEAD form.
 - debt: N4 dispose_in=run M1 records no green baseline for `make agents-emit-check`, `make embed-manifest-check`, and `gen-catalog-hashes.go --all --dry-run` that AC-LSR-008 later reads as RED
+  Status: Disposed (sync-confirmed): E.2 "N4 disposed", baselines H b1-b3 and RED H c1.
   Disposed in M1: record the green baselines of those three commands before any edit, run under a go-test-heavy slot.
 
 ## §E.2 Run-phase Evidence
@@ -86,7 +89,20 @@ plan_artifact_hash_runtime: 7b648f6230fb71cd9dfd46fc1b85c0d03d1d03a96130c7a20013
 
 ## §E.4 Sync-phase Audit-Ready Signal
 
-_<pending sync-phase>_
+sync_status: audit-ready
+audit_ready: true
+sync_complete_at: 2026-10-18
+sync_commit_sha: pending-backfill
+sync_commit_note: a commit cannot cite its own hash; the lane backfills the real SHA in a following commit (spec-frontmatter-schema.md, SHA placeholder backfill exemption D3)
+frontmatter_status_transitions: draft -> implemented -> completed via `moai spec status` on the single sync commit; `updated: 2026-10-18`
+run_commits: 5ccf12db8, a67623ebd, 6dcb45586, 72a6d8796, 499701907, 5beb170e0 (run evidence)
+binding_run_conditions: N2, N3, N4 disposed (E.2); Disposed markers added beside the debt lines, verbatim `- debt:` lines unchanged
+plan_artifact_hash_bound_by_verdict: 1c0ff82567b85349cda46a4861630e66d5c766b70c90e914809e3499a0d8319d
+plan_artifact_hash_after_n2: 7b648f6230fb71cd9dfd46fc1b85c0d03d1d03a96130c7a200133d8bc909a4d2 (commit 72a6d8796)
+plan_artifact_hash_after_sync: pending-lane-measure
+plan_artifact_hash_note: spec.md changed after the plan-audit verdict (N2 disposal; sync close status/updated), so the hash differs from the verdict-bound value; the lane measures it with audit_cache and replaces the placeholder in the backfill commit
+docs_scope: CHANGELOG.md, README and docs-site not edited (guidance-only SPEC, no user-visible feature; plan.md B.5)
+close_tool: `moai spec close` not used (legacy 4-phase preconditions); 3-phase close per spec-workflow.md Sync (close)
 
 ## §G Override and Refusal Record
 

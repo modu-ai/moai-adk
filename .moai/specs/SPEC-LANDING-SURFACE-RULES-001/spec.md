@@ -2,9 +2,9 @@
 id: SPEC-LANDING-SURFACE-RULES-001
 title: "Landing-surface guidance: main lives only in one dedicated integration worktree, the primary checkout is the human and leader workspace, and card worktrees branch from the named ref main"
 version: "0.2.0"
-status: draft
+status: completed
 created: 2026-10-17
-updated: 2026-10-17
+updated: 2026-10-18
 author: manager-spec (card t1846)
 priority: P1
 phase: "v3.2.0 target"
