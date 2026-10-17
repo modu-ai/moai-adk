@@ -15,6 +15,7 @@ import (
 	"time"
 
 	"github.com/modu-ai/moai-adk/internal/session"
+	"github.com/modu-ai/moai-adk/internal/testguard"
 )
 
 // writePRMergeAnchorRegistry writes a live-lane entry (stale heartbeat, live
@@ -50,6 +51,7 @@ func writePRMergeAnchorRegistry(t *testing.T, tree string) {
 // gh primary path confirms MERGED and the dirty guard passes, yet the
 // removal must be skipped because a live session is anchored in the tree.
 func TestPRMergeCleanup_AnchoredSessionSkipsRemoval(t *testing.T) {
+	testguard.RedirectHome(t)
 	tree := t.TempDir()
 	writePRMergeAnchorRegistry(t, tree)
 	wtBranch := "WT-t73anchor"

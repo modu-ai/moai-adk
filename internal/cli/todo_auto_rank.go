@@ -62,6 +62,7 @@ const (
 	autoRankReasonOversize         = "jev-oversize"
 	autoRankReasonSecretDetected   = "jev-secret-detected"
 	autoRankReasonMalformed        = "jev-malformed"
+	autoRankReasonUnattributed     = "jev-unattributed"
 	autoRankReasonIncompleteAnswer = "jev-incomplete-answer"
 )
 
@@ -319,8 +320,11 @@ func autoRank(rec *factory.BacklogRecord, queued []factory.BacklogItem, landed a
 // and prints the selection record. The dead-owner rescue targets keep their
 // place at the head, untouched and unsent; only the queued suffix is ranked.
 // The record is skipped when no queued candidate survived the relation filter.
-// It writes nothing to the queue.
-func autoRankTargets(out io.Writer, rec *factory.BacklogRecord, targets []factory.BacklogItem, opts autoOptions) []factory.BacklogItem {
+// It writes nothing to the queue. The stage result is returned with ranked
+// true so the caller's Jev display line reads the same single Jev result the
+// selection used (card t1814: one call, never two); ranked false means the
+// stage did not run and Jev was not consulted.
+func autoRankTargets(out io.Writer, rec *factory.BacklogRecord, targets []factory.BacklogItem, opts autoOptions) ([]factory.BacklogItem, autoRankResult, bool) {
 	var rescue, queued []factory.BacklogItem
 	for _, it := range targets {
 		if it.State == factory.BacklogStateQueued {
@@ -330,13 +334,13 @@ func autoRankTargets(out io.Writer, rec *factory.BacklogRecord, targets []factor
 		}
 	}
 	if len(queued) == 0 {
-		return targets
+		return targets, autoRankResult{}, false
 	}
 	res := autoRank(rec, queued, opts.landed, opts.jevRank)
 	for _, line := range renderAutoSelectionRecord(res) {
 		_, _ = fmt.Fprintln(out, line)
 	}
-	return append(rescue, res.Ranked...)
+	return append(rescue, res.Ranked...), res, true
 }
 
 // autoRankJevOrder asks Jev to order the candidates, which arrive in fallback
@@ -552,6 +556,8 @@ func autoFallbackReason(a jev.Availability) string {
 		return autoRankReasonSecretDetected
 	case jev.Malformed:
 		return autoRankReasonMalformed
+	case jev.Unattributed:
+		return autoRankReasonUnattributed
 	default:
 		return autoRankReasonUnreachable
 	}

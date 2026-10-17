@@ -942,6 +942,45 @@
 - path: "llm.claude_bin"
   class: W
   evidence: reader
+- path: "llm.defaults.sessions.cc.lane.effort"
+  class: W
+  evidence: reader
+- path: "llm.defaults.sessions.cc.lane.model"
+  class: W
+  evidence: reader
+- path: "llm.defaults.sessions.cc.leader.effort"
+  class: W
+  evidence: reader
+- path: "llm.defaults.sessions.cc.leader.model"
+  class: W
+  evidence: reader
+- path: "llm.defaults.sessions.codex.lane.effort"
+  class: W
+  evidence: reader
+- path: "llm.defaults.sessions.codex.lane.model"
+  class: W
+  evidence: reader
+- path: "llm.defaults.sessions.codex.leader.effort"
+  class: R
+  evidence: none
+- path: "llm.defaults.sessions.codex.leader.model"
+  class: R
+  evidence: none
+- path: "llm.defaults.sessions.glm.lane.effort"
+  class: W
+  evidence: reader
+- path: "llm.defaults.sessions.glm.lane.model"
+  class: W
+  evidence: reader
+- path: "llm.defaults.sessions.glm.leader.effort"
+  class: W
+  evidence: reader
+- path: "llm.defaults.sessions.glm.leader.model"
+  class: W
+  evidence: reader
+- path: "llm.defaults.sessions.mode"
+  class: W
+  evidence: reader
 - path: "llm.harness"
   class: W
   evidence: reader
@@ -2178,6 +2217,9 @@
 - path: "security.sandbox.required"
   class: R
   evidence: none
+- path: "state.backup_past_versions_keep"
+  class: W
+  evidence: reader
 - path: "state.profile_max_bytes"
   class: W
   evidence: reader
