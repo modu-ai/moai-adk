@@ -3,6 +3,7 @@
 ## §E.1 Plan-phase Audit-Ready Signal
 
 plan_status: audit-ready
+audit_ready: true
 plan_complete_at: 2026-10-17
 plan_tree_sha: 93f4fc75c8dafc1c436458940efa8957fd25ae12
 tier: M (spec.md + plan.md + acceptance.md)
@@ -21,6 +22,7 @@ Verdict FAIL 0.75 (D2 unresolved). N1: the two existing foreman-script tests in 
 ### Plan-audit iteration 3 revision (v0.1.3)
 
 N3: foreman watch family description corrected (five top-level tests, subtests only under FiresOnMutation). O3: home-guard escape is the allow comment, seed file untouched. Counts 16/16, status draft.
+plan_audit: PASS 0.92 iteration 4 audited_sha 598362ff325d34d507ab7da6e7a09999cb8f50c1 plan_artifact_hash 7446b8ac2c430a4041604b1b206f4a609cb1a7a9ce5343832ed3f4ed29fe77db
 
 ## §E.2 Run-phase Evidence
 
@@ -33,3 +35,9 @@ _pending run-phase_
 ## §E.4 Sync-phase Audit-Ready Signal
 
 _pending sync-phase_
+
+## §G Override and Refusal Record
+
+- 2026-10-17T12:25:39Z SPEC-MOAI-DB-PATHS-001 ceiling-outcome outcome=pass-through reasons="plan-audit ceiling reached (round count 5 >= tier ceiling 2 + 1 delta rounds); the verdict is admission-clean and admits without a question (REQ-ACE-013)" evidence=/Users/goos/MoAI/moai-adk-go/.moai/worktrees/t1827/.moai/reports/t1827/plan-audit-iter1.md,/Users/goos/MoAI/moai-adk-go/.moai/worktrees/t1827/.moai/reports/t1827/plan-audit-iter2.md,/Users/goos/MoAI/moai-adk-go/.moai/worktrees/t1827/.moai/reports/t1827/plan-audit-iter3.md,/Users/goos/MoAI/moai-adk-go/.moai/worktrees/t1827/.moai/reports/t1827/plan-audit-iter4.md,/Users/goos/MoAI/moai-adk-go/.moai/worktrees/t1827/.moai/reports/t1827/plan-audit.md
+- 2026-10-17T12:25:47Z SPEC-MOAI-DB-PATHS-001 ceiling-outcome outcome=pass-through reasons="plan-audit ceiling reached (round count 5 >= tier ceiling 2 + 1 delta rounds); the verdict is admission-clean and admits without a question (REQ-ACE-013)" evidence=/Users/goos/MoAI/moai-adk-go/.moai/worktrees/t1827/.moai/reports/t1827/plan-audit-iter1.md,/Users/goos/MoAI/moai-adk-go/.moai/worktrees/t1827/.moai/reports/t1827/plan-audit-iter2.md,/Users/goos/MoAI/moai-adk-go/.moai/worktrees/t1827/.moai/reports/t1827/plan-audit-iter3.md,/Users/goos/MoAI/moai-adk-go/.moai/worktrees/t1827/.moai/reports/t1827/plan-audit-iter4.md,/Users/goos/MoAI/moai-adk-go/.moai/worktrees/t1827/.moai/reports/t1827/plan-audit.md
+- 2026-10-17T12:25:54Z SPEC-MOAI-DB-PATHS-001 ceiling-outcome outcome=pass-through reasons="plan-audit ceiling reached (round count 5 >= tier ceiling 2 + 1 delta rounds); the verdict is admission-clean and admits without a question (REQ-ACE-013)" evidence=/Users/goos/MoAI/moai-adk-go/.moai/worktrees/t1827/.moai/reports/t1827/plan-audit-iter1.md,/Users/goos/MoAI/moai-adk-go/.moai/worktrees/t1827/.moai/reports/t1827/plan-audit-iter2.md,/Users/goos/MoAI/moai-adk-go/.moai/worktrees/t1827/.moai/reports/t1827/plan-audit-iter3.md,/Users/goos/MoAI/moai-adk-go/.moai/worktrees/t1827/.moai/reports/t1827/plan-audit-iter4.md,/Users/goos/MoAI/moai-adk-go/.moai/worktrees/t1827/.moai/reports/t1827/plan-audit.md
