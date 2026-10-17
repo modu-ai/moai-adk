@@ -6,7 +6,7 @@ Tier **M** (justification in §A.1). Pinned plan tree: `fb749d372e61a6b10c530913
 
 ### A.1 Tier M, and why not S or L
 
-- **Not S** (ceiling 8 requirements, fewer than 5 files): 16 requirements, and 12 to 14 files change (§C allow-list: 5 Go source files incl. 1 new factory file and 1 new cli file, 3 config registration files, 2 yaml files, 2 guidance mirrors, plus tests).
+- **Not S** (ceiling 8 requirements, fewer than 5 files): 16 requirements, and the §C allow-list names 15 paths (6 Go files of which 4 are non-test and 2 are new non-test, 5 config files, 2 yaml files, 2 guidance mirrors), 16 if `make build` regenerates the generated `internal/template/catalog.yaml`; 15 is the top of the Tier M band and the generated file is not authored, so the SPEC stays Tier M on the 300 to 600 line estimate.
 - **Not L** (more than 15 files or constitutional): the gate is one function plus two call sites; no new subsystem, no schema migration, no constitutional change. Estimated 300 to 600 lines including tests, inside the Tier M band of 300 to 1000.
 - Budget: 16 of 16 requirements, 16 of 16 acceptance criteria (both at the ceiling; any addition requires a tier change). Any addition requires a tier change, not a relaxed budget.
 
@@ -60,8 +60,8 @@ New block under `workflow:` in `.moai/config/sections/workflow.yaml` and, identi
 
 Input: `{Root, Dir (candidate tree), CardID, IntegrationBranch, K, Enabled}` plus a git-runner seam (the `MergeStepSeams.Git` shape, `integration_merge_step.go:129-135`). Output: `{Applicable, Admit, Behind, Tip, Tree, Cause}` plus the rendered refusal text.
 
-1. Applicability: `Applicable` only with a non-empty `CardID`, a resolvable integration branch, and `Dir` on a branch other than the integration branch and not detached. Otherwise the gate admits **silently** (REQ-ISB-001: not applicable is not uncertainty, and a leader acquiring for a batch must stay quiet). Uncertainty inside an applicable call (steps 2-3) admits with exactly one line naming the cause (REQ-ISB-009).
-2. `tip = git rev-parse --verify refs/heads/<branch>`; `tree = git rev-parse HEAD^{tree}` (as `headTreeSHA`); any git failure admits with the line `base-freshness: not measured — git: <err>`.
+1. Applicability: `Applicable` only with a non-empty `CardID` and `Dir` on a branch other than the integration branch and not detached. Otherwise the gate admits **silently** (REQ-ISB-001: not applicable is not uncertainty, and a leader acquiring for a batch must stay quiet). An unresolvable or missing integration branch is **uncertain, not inapplicable**: with an applicable call it admits with exactly one line naming the cause, like any other step 2-3 failure (REQ-ISB-009, AC-ISB-009).
+2. `tip = git rev-parse --verify refs/heads/<branch>` (an empty or unresolvable `<branch>` takes the same uncertain path); `tree = git rev-parse HEAD^{tree}` (as `headTreeSHA`); any git failure admits with the line `base-freshness: not measured — git: <err>`.
 3. `rec, err = ReadRemeasureRecord(Root, tree)`; `err == nil` then `ValidateRemeasureRecord(rec)`. A failure here is the record refusal (message 2) and ends the evaluation (L cannot be measured without a stored base).
    With a valid record: `git merge-base --is-ancestor <rec.Base> <tip>`; non-ancestor is stale (message 1 with L reported as `unrelated`). Otherwise `L = git rev-list --count --first-parent <rec.Base>..<branch>`.
 4. Verdict: refuse when the record step failed (message 2) or when `L > K` / non-ancestor (message 1).
@@ -71,8 +71,8 @@ Input: `{Root, Dir (candidate tree), CardID, IntegrationBranch, K, Enabled}` plu
 
 ### B.3 Call sites (REQ-ISB-001, REQ-ISB-002)
 
-- `moai integration acquire`: one call in `internal/cli/integration.go` immediately after the `candidateAcquirePrecondition` block (`:449-458`) and before `config.LoadGitFlowIntegrationConfig` (`:465`); the branch is resolved by the same `resolveIntegrationTarget` the verb uses, so the call sits after that resolution if the run phase finds the branch is needed earlier (the pure move of one resolution line is the only permitted adjustment, flagged in M3). A refusal returns before `AcquireIntegrationWindow` (`:476`) and before `integrationWaitInQueue` (`:517`), so no record and no ticket is written.
-- `moai factory complete`: one call inside `if !heldByUs {` (`factory_card.go:2183-2200`) between the candidate-CI hold (`:2193-2199`) and `factoryCompleteAcquireHook`/`AcquireIntegrationWindow` (`:2201`); candidate tree is `card.WorktreePath`. A lane that already holds the window (`heldByUs`) skips the gate: it entered through `acquire`, where the gate already ran. **Adoption exemption (REQ-ISB-016):** the adoption predicate of REQ-MWQ-019 step 2 (`factory_card.go:2229-2240`: `factoryCommitParents(integTree, tip)` has the tip plus two parents, `parents[2] == cardTip`, and a valid record keys the tip's tree) is extracted unchanged into one helper called by both the gate site and the adoption site, so the two cannot drift; when it holds the gate is skipped. Without the exemption a card already merged through the merge verb has its own merge commit as a first-parent landing and `record.Base != tip`, so K = 0 would refuse a legitimate adoption. This is the only edit to existing lines of `factory_card.go` (a behavior-preserving extraction, pinned by AC-ISB-016).
+- `moai integration acquire`: one call in `internal/cli/integration.go` immediately after the `candidateAcquirePrecondition` block (`:449-458`) and before `config.LoadGitFlowIntegrationConfig` (`:465`); the call sits immediately after the verb's existing `resolveIntegrationTarget` line so it receives the same branch the verb records, and no existing line is moved. A refusal returns before `AcquireIntegrationWindow` (`:476`) and before `integrationWaitInQueue` (`:517`), so no record and no ticket is written.
+- `moai factory complete`: one call inside `if !heldByUs {` (`factory_card.go:2183-2200`) between the candidate-CI hold (`:2193-2199`) and `factoryCompleteAcquireHook`/`AcquireIntegrationWindow` (`:2201`); candidate tree is `card.WorktreePath`. A lane that already holds the window (`heldByUs`) skips the gate: it entered through `acquire`, where the gate already ran. **Adoption exemption (REQ-ISB-016):** the adoption predicate of REQ-MWQ-019 step 2 (`factory_card.go:2229-2240`: `factoryCommitParents(integTree, tip)` has the tip plus two parents, `parents[2] == cardTip`, and a valid record keys the tip's tree) is extracted unchanged into one helper called by both the gate site and the adoption site, so the two cannot drift; when it holds the gate is skipped. Without the exemption a card already merged through the merge verb has its own merge commit as a first-parent landing and `record.Base != tip`, so K = 0 would refuse a legitimate adoption. This is the only edit to existing lines of either verb file (a behavior-preserving extraction, pinned by AC-ISB-016).
 - New file `internal/cli/integration_base_freshness.go` holds the thin CLI adapters (config read, `exitCodeError` mapping, advisory printing) so that `integration.go` and `factory_card.go` gain one call each.
 
 ### B.4 K greater than zero (what it means, and what it does not)
@@ -102,11 +102,21 @@ The run-phase file allow-list (REQ-ISB-015), pinned to the plan tree:
 
 Milestones:
 
-- **M1 (Priority High) — config surface and RED tests.** Struct, default, cache schema bump, inventory entries, both yaml blocks, the config test, and the failing gate tests (RED recorded before M2). Highest-change-likelihood decisions (key names, defaults, message text) are fixed here first.
-- **M2 (Priority High) — the pure gate function.** `base_freshness.go` with a git-runner seam: landing count, record judgment, verdict, advisory rendering. Fixture repositories prove first-parent counting, the K boundary, the record cases, and every fail-open cause.
-- **M3 (Priority High) — the two call sites and the CLI adapter.** One call each in `acquire` and `complete`; refusal leaves lock bytes, queue, and card state unchanged; sentinel and exit code.
-- **M4 (Priority Medium) — guidance pair and parity.** Gates-companion section, template mirror, `diff -q`, `make build` embed regeneration.
-- **M5 (Priority Medium) — boundary and scope-fence evidence.** The allow-list diff, the no-verdict-read grep with its positive control, the merge-step regression run.
+### M1 (Priority High) — config surface and RED tests
+
+Struct, default, cache schema bump, inventory entries, both yaml blocks, the config test, and the failing gate tests (RED recorded before M2). Highest-change-likelihood decisions (key names, defaults, message text) are fixed here first.
+### M2 (Priority High) — the pure gate function
+
+`base_freshness.go` with a git-runner seam: landing count, record judgment, verdict, advisory rendering. Fixture repositories prove first-parent counting, the K boundary, the record cases, and every fail-open cause.
+### M3 (Priority High) — the two call sites and the CLI adapter
+
+One call each in `acquire` and `complete`; refusal leaves lock bytes, queue, and card state unchanged; sentinel and exit code.
+### M4 (Priority Medium) — guidance pair and parity
+
+Gates-companion section, template mirror, `diff -q`, `make build` embed regeneration.
+### M5 (Priority Medium) — boundary and scope-fence evidence
+
+The allow-list diff, the no-verdict-read grep with its positive control, the merge-step regression run.
 
 Mechanical steps (docs mirror, inventory entries, cache bump) are last by reversibility; the decisions most likely to be reopened (names, defaults, K semantics, fail-open posture) are in B.1, B.4, B.5 and are exercised first by M1/M2.
 
@@ -133,4 +143,4 @@ Mechanical steps (docs mirror, inventory entries, cache bump) are last by revers
 - **G12** — The adoption exemption relies on extracting the predicate at `factory_card.go:2229-2240` into a shared helper; the extraction edits existing lines, and no test pins today's adoption behaviour with the helper absent (AC-ISB-016 adds one).
 - **G13** — The behavior of `git rev-list --count --first-parent <Base>..<branch>` when `Base` sits on a merged side branch rather than the first-parent chain was not measured; the metric then over-counts (conservative direction).
 - **G14** — The CLI-level fixtures (a repository with a window record, a queue, and a card record) do not exist yet; AC-ISB-001, 002, 009, 016 depend on building them in M3, and the existing `factory_complete_mwq19_test.go` fixtures were not read for reuse.
-- **G11** — `moai spec lint <spec.md> --json --strict` printed `[]` (exit 0) at authoring, run with the installed binary `moai-adk v3.2.0-rc.36-t1822c`, not a binary built from this tree (judging-build commit not compared with HEAD `fb749d372`); `plan-auditor` has not run. A first lint pass reported three `VacuousTestAssertion` warnings for unanchored `-run` patterns, which were anchored before the clean run.
+- **G11** — `moai spec lint <spec.md> --json --strict` was re-run after the iter2 revision with the installed binary `moai-adk v3.2.0-rc.36-t1822c` (not a binary built from this tree); the result is stated in the final message. Plan audits: iter1 FAIL 0.72, iter2 FAIL 0.74; iter3 is the last allowed.

@@ -2,11 +2,11 @@
 
 ## §E.1 Plan-phase Audit-Ready Signal
 
-- plan_complete_at: 2026-10-17T14:50:00Z
-- plan_status: draft-authored, awaiting plan audit (not yet audit-ready: `moai spec lint` and the plan audit have not run on these artifacts)
+- plan_complete_at: 2026-10-18T00:00:00Z
+- plan_status: revised after plan-audit iter2 (FAIL 0.74, MP-8); awaiting iter3 (last allowed)
 - plan_pin: fb749d372e61a6b10c53091362c76b4412827427
-- open_decisions: decision-index Q3 (operator, product-level) and Q4 (leader); Q1 and Q2 carry DEFAULT-APPLIED
-- gaps: plan.md §G (G1-G11)
+- open_decisions: none blocks Kickoff; Q3 (deferred scope) and Q4 (scheduling) are non-blocking; Q1 and Q2 carry DEFAULT-APPLIED
+- gaps: plan.md §G (G1-G14)
 
 ## §E.2 Run-phase Evidence
 

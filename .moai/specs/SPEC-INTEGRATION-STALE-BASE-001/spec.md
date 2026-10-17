@@ -82,7 +82,7 @@ No check at window entry asks "is this candidate close enough to local main, and
 
 - REQ-ISB-009: When the gate is applicable but cannot determine its verdict (configuration unreadable or K negative, integration branch unresolvable, or a git read fails), the gate shall admit the entry and print exactly one line naming the cause, and shall refuse only on positive evidence of staleness or of a missing or invalid record.
 - REQ-ISB-010: The gate shall leave the merge step's cause 1 and cause 2 checks, their exit codes 1 and 2, and every exit code in 1-15 and 20 unchanged, and a K above 0 shall never relax them.
-- REQ-ISB-011: Every gate refusal shall begin with the sentinel `BASE_FRESHNESS_VIOLATION:` and shall exit with a code distinct from 1-15 and 20 (proposed 16).
+- REQ-ISB-011: Every gate refusal shall begin with the sentinel `BASE_FRESHNESS_VIOLATION:` and shall exit with code 16, which is distinct from 1-15 and 20.
 
 ### B.5 Registration and guidance
 
@@ -135,6 +135,6 @@ No check at window entry asks "is this candidate close enough to local main, and
 1. **Authority stays in the merge step.** The gate is an early refusal whose fail-open posture is safe because `RunMergeStep` re-enforces the strict form (REQ-ISB-009, REQ-ISB-010).
 2. **Default-off shipping posture.** The repository's guard family ships its refusal layer off and neutral in the template (`internal/config/defaults.go:1541-1550` for the two nearest siblings); this gate follows it. Whether this repository's live configuration opts in is decision-index Q2.
 3. **K=0 default.** Because L is measured from the record's stored `Base` (REQ-ISB-003), K = 0 makes the gate test the same predicate as cause 2 (`record.Base != tip`), so at K = 0 enabling the gate refuses at entry what the merge step would refuse inside the window for that reason; causes 3 to 13 stay the merge step's alone (decision-index Q1).
-4. **Placement keeps the seam with t1847.** The gate is one function in a new file under `internal/factory` plus one new CLI file; `integration.go` and `factory_card.go` each gain one call placed beside the existing candidate-hold precondition, with no reordering or editing of any existing line.
+4. **Placement keeps the seam with t1847.** The gate is one function in a new file under `internal/factory` plus one new CLI file; `integration.go` and `factory_card.go` each gain exactly one added call placed beside the existing candidate-hold precondition (in `acquire`, immediately after the existing target resolution), with no reordering of any existing line; the only edit to existing lines is one behaviour-preserving extraction in `factory_card.go` (the adoption predicate into a shared helper, REQ-ISB-016), pinned by AC-ISB-016.
 5. **Template-first.** The template configuration and the gates guidance are edited in `internal/template/templates/` and the repository copies follow; the guidance pair is byte-identical today (`diff -q` printed nothing for `factory-dispatch-gates.md` and `factory-dispatch-mechanics.md`).
 6. **No time estimates** appear in any artifact.

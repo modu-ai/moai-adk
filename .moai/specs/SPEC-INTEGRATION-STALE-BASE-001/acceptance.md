@@ -5,30 +5,30 @@ Document-level tree pin (binds every criterion that carries no pin of its own): 
 ## §A — Authoring rules applied
 
 1. **Plain commands.** Every command is one plain pipeline, one `git` per line, no `$()`, no process substitution, no shell variables.
-2. **Classification.** Every criterion is **release-blocking**: each carries a RED-now cell observed on the pinned tree (§E) with command, verbatim stdout, exit code, and pin, plus a green-path cell naming the milestone that flips it. The Definition of Done gates all 16. No criterion is a regression-guard, because every RED below was re-executed.
-3. **What a RED is here.** Where the artifact under test does not exist at the pin, the observed RED is the **structural RED**: a throwaway probe test naming the planned symbol was written, run, and deleted, and the verbatim compile failure is recorded (E-00a, E-00b, E-00c). A zero-test sweep is not used as a RED (`[no tests to run]`, exit 0, is a vacuous pass).
+2. **Classification.** Every criterion is **release-blocking**: each carries its own RED-now cell (§E) with command, verbatim stdout, exit code, and pin, re-executed in this revision, plus a green-path cell naming the milestone that flips it. The Definition of Done gates all 16. No criterion is a regression-guard.
+3. **What the plan-phase RED is.** At the pin no gate code and no gate test exists, so a `go test` run cannot be a RED (it sweeps nothing and exits 0). Each criterion's plan-phase RED cell is instead its own read-only command that fails today on the committed tree and reproduces: a search for the criterion's own planned test (empty output, exit 1), or a search or count over the artifact the work must create or change. The behavioural RED (the test exists and fails against a gate that lacks the behaviour) is established in the run phase by the committed RED commit that precedes the GREEN commit in the commit graph (verification-claim-integrity §2.3); the plan-phase cell says only "not yet observable: the test is absent".
 4. **Swept count.** Every Go-test command in §D names its tests; a green counts only when `-v` shows each named test `--- PASS`.
 
 ## §B — Criteria matrix
 
 | ID | Requirement | Class | RED-now (ledger id, §E) | Green path (§D command, milestone) |
 |----|-------------|-------|--------------------------|--------------------------------------|
-| AC-ISB-001 | REQ-ISB-001 | release-blocking | E-00b | G-01, M3 |
-| AC-ISB-002 | REQ-ISB-002 | release-blocking | E-00b | G-02, M3 |
-| AC-ISB-003 | REQ-ISB-003 | release-blocking | E-00a | G-03, M2 |
-| AC-ISB-004 | REQ-ISB-004 | release-blocking | E-00a | G-04, M2 |
-| AC-ISB-005 | REQ-ISB-005 | release-blocking | E-00a | G-05, M2 |
+| AC-ISB-001 | REQ-ISB-001 | release-blocking | E-12a | G-01, M3 |
+| AC-ISB-002 | REQ-ISB-002 | release-blocking | E-12b | G-02, M3 |
+| AC-ISB-003 | REQ-ISB-003 | release-blocking | E-12c | G-03, M2 |
+| AC-ISB-004 | REQ-ISB-004 | release-blocking | E-12d | G-04, M2 |
+| AC-ISB-005 | REQ-ISB-005 | release-blocking | E-12e | G-05, M2 |
 | AC-ISB-006 | REQ-ISB-006 | release-blocking | E-09 | G-06, G-06b, G-06c, M2 |
-| AC-ISB-007 | REQ-ISB-007 | release-blocking | E-00c, E-01, E-02 | G-07, M1 |
-| AC-ISB-008 | REQ-ISB-008 | release-blocking | E-00b | G-08, M3 |
-| AC-ISB-009 | REQ-ISB-009 | release-blocking | E-00a, E-00b | G-09, G-09b, M3 |
-| AC-ISB-010 | REQ-ISB-010 | release-blocking | E-00a, E-00b | G-10, G-10b, G-10c, M3 |
-| AC-ISB-011 | REQ-ISB-011 | release-blocking | E-00b, E-05 | G-11, M3 |
+| AC-ISB-007 | REQ-ISB-007 | release-blocking | E-12f, E-01, E-02 | G-07, M1 |
+| AC-ISB-008 | REQ-ISB-008 | release-blocking | E-12g | G-08, M3 |
+| AC-ISB-009 | REQ-ISB-009 | release-blocking | E-12h | G-09, G-09b, M2, M3 |
+| AC-ISB-010 | REQ-ISB-010 | release-blocking | E-12i | G-10, G-10b, G-10c, M2, M3 |
+| AC-ISB-011 | REQ-ISB-011 | release-blocking | E-12j, E-05 | G-11, M3 |
 | AC-ISB-012 | REQ-ISB-012 | release-blocking | E-02, E-04, E-08 | G-12, G-12b, M1, M4 |
 | AC-ISB-013 | REQ-ISB-013 | release-blocking | E-03, E-06 | G-13, G-13b, M1 |
-| AC-ISB-014 | REQ-ISB-014 | release-blocking | E-00a, E-10 | G-14, G-14b, M2 |
+| AC-ISB-014 | REQ-ISB-014 | release-blocking | E-10, E-12k | G-14, G-14b, M3 |
 | AC-ISB-015 | REQ-ISB-015 | release-blocking | E-11 | G-15, G-15b, G-15c, M5 |
-| AC-ISB-016 | REQ-ISB-016 | release-blocking | E-00b | G-16, M3 |
+| AC-ISB-016 | REQ-ISB-016 | release-blocking | E-12l | G-16, M3 |
 
 Coverage declarations: AC-ISB-001 maps REQ-ISB-001; AC-ISB-002 maps REQ-ISB-002; AC-ISB-003 maps REQ-ISB-003; AC-ISB-004 maps REQ-ISB-004; AC-ISB-005 maps REQ-ISB-005; AC-ISB-006 maps REQ-ISB-006; AC-ISB-007 maps REQ-ISB-007; AC-ISB-008 maps REQ-ISB-008; AC-ISB-009 maps REQ-ISB-009; AC-ISB-010 maps REQ-ISB-010; AC-ISB-011 maps REQ-ISB-011; AC-ISB-012 maps REQ-ISB-012; AC-ISB-013 maps REQ-ISB-013; AC-ISB-014 maps REQ-ISB-014; AC-ISB-015 maps REQ-ISB-015; AC-ISB-016 maps REQ-ISB-016.
 
@@ -90,7 +90,7 @@ Coverage declarations: AC-ISB-001 maps REQ-ISB-001; AC-ISB-002 maps REQ-ISB-002;
 
 ### AC-ISB-009 — uncertainty admits with one cause line; not-applicable admits silently
 
-**Given** the gate enabled and the tree otherwise stale, in two groups. Uncertain (applicable call): unreadable configuration; K = -1; integration branch missing; a git failure injected through the runner seam. Not applicable: no `--card`; cwd on the integration branch; detached HEAD.
+**Given** the gate enabled and the tree otherwise stale, in two groups. Uncertain (applicable call): unreadable configuration; K = -1; integration branch missing or unresolvable; a git failure injected through the runner seam. Not applicable: no `--card`; cwd on the integration branch; detached HEAD.
 **When** the pure gate evaluates each (G-09) and the CLI path runs `acquire` for each in a fixture repository (G-09b).
 **Then** every uncertain case exits 0, records the window, and writes exactly one stderr line naming its cause (the line count is asserted equal to 1); every not-applicable case exits 0, records the window, and writes no gate line; none prints the sentinel.
 **Mutant probe.** A gate treating a git failure as stale refuses the injected case; a gate printing for not-applicable fails the silent clause; a pure-package test alone would pass a CLI that drops the line, which G-09b catches.
@@ -125,7 +125,7 @@ Coverage declarations: AC-ISB-001 maps REQ-ISB-001; AC-ISB-002 maps REQ-ISB-002;
 **Given** the gate source files.
 **When** the import greps and the writes-nothing test run (G-14, G-14b).
 **Then** neither gate file references `homestate` or `card_evidence`; `TestBaseFreshnessGateWritesNothing` shows the record directory, the window record, and the factory database file bytes unchanged across a refusing run.
-**Positive control.** G-06b prints at least 1, so the greps target the right files.
+**Milestone.** G-14 names `internal/cli/integration_base_freshness.go`, which M3 creates, so AC-ISB-014 flips at M3 (before M3 the grep exits 2, files absent). **Positive control.** G-06b prints at least 1, so the greps target the right files.
 
 ### AC-ISB-015 — scope fence
 
@@ -173,35 +173,75 @@ G-16  go test ./internal/cli/ -run '^TestFactoryCompleteAdoptionNotRefusedByBase
 
 Expected green: every Go-test command prints `--- PASS: <name>` for each named test and `ok`; G-06 one line; G-06b at least 1; G-06c nothing (exit 1); G-12 at least 1; G-12b nothing (exit 0); G-13 prints 2; G-14 nothing (exit 1); G-15 only allow-listed paths; G-15b nothing; G-15c prints the path.
 
-## §E — Evidence ledger (RED-now, tree `fb749d372e61a6b10c53091362c76b4412827427`, this authoring run)
+## §E — Evidence ledger (RED-now, re-executed at HEAD `da051947fc792072e90c53834807400e9ad8ca9a`; no `internal/` file differs from the plan pin `fb749d372e61a6b10c53091362c76b4412827427`)
+
+Every cell below was run in this revision; stdout is verbatim. The probe-file cells of the previous revision (E-00a/b/c) are withdrawn: they did not reproduce on a committed tree.
 
 ```
-E-00a cmd:    go test ./internal/factory/ -run '^TestBaseFreshnessKBoundary$' -count=1
-      probe:  a throwaway internal/factory/zz_probe_test.go containing
-              func TestBaseFreshnessKBoundary(t *testing.T) { _ = EvaluateBaseFreshness }
-              (written, run, and deleted; git status shows no leftover)
-      stdout: # github.com/modu-ai/moai-adk/internal/factory [github.com/modu-ai/moai-adk/internal/factory.test]
-              internal/factory/zz_probe_test.go:5:53: undefined: EvaluateBaseFreshness
-              FAIL	github.com/modu-ai/moai-adk/internal/factory [build failed]
-              FAIL
+E-12a cmd:    grep -rl 'func TestIntegrationAcquireRefusesStaleBase(' internal --include='*_test.go'
+      stdout: (empty)
       exit:   1
-      why:    structural RED: the planned gate symbol does not exist. It is red for the right reason (the
-              work defines the symbol) and flips only when M2 defines it and the real tests pass.
-
-E-00b cmd:    go test ./internal/cli/ -run '^TestIntegrationAcquireRefusesStaleBase$' -count=1
-      probe:  throwaway internal/cli/zz_probe_test.go referencing acquireBaseFreshnessPrecondition
-      stdout: internal/cli/zz_probe_test.go:5:...: undefined: acquireBaseFreshnessPrecondition
-              FAIL	github.com/modu-ai/moai-adk/internal/cli [build failed]   (same shape; one probe line recorded)
+      why:    not yet observable: the criterion's own planned test is absent. The behavioural RED is the
+              run-phase RED commit that precedes the GREEN commit (verification-claim-integrity §2.3).
+E-12b cmd:    grep -rl 'func TestFactoryCompleteRefusesStaleBaseBeforeAcquire(' internal --include='*_test.go'
+      stdout: (empty)
       exit:   1
-      why:    structural RED for the CLI adapter symbol; AC-ISB-016's own guard behaviour is green today
-              (no gate exists), so its observed RED is the missing test and adapter, and its failing
-              direction is the mutant of §C (a gate without the exemption).
-
-E-00c cmd:    go test ./internal/config/ -run '^TestWorkflowBaseFreshnessGateDefaults$' -count=1
-      probe:  throwaway internal/config/zz_probe_test.go referencing NewDefaultConfig().Workflow.BaseFreshnessGate
-      stdout: ... undefined (type WorkflowConfig has no field or method BaseFreshnessGate)
-              FAIL	github.com/modu-ai/moai-adk/internal/config [build failed]
+      why:    not yet observable: the criterion's own planned test is absent. The behavioural RED is the
+              run-phase RED commit that precedes the GREEN commit (verification-claim-integrity §2.3).
+E-12c cmd:    grep -rl 'func TestLandingsBehindCountsFirstParent(' internal --include='*_test.go'
+      stdout: (empty)
       exit:   1
+      why:    not yet observable: the criterion's own planned test is absent. The behavioural RED is the
+              run-phase RED commit that precedes the GREEN commit (verification-claim-integrity §2.3).
+E-12d cmd:    grep -rl 'func TestBaseFreshnessKBoundary(' internal --include='*_test.go'
+      stdout: (empty)
+      exit:   1
+      why:    not yet observable: the criterion's own planned test is absent. The behavioural RED is the
+              run-phase RED commit that precedes the GREEN commit (verification-claim-integrity §2.3).
+E-12e cmd:    grep -rl 'func TestBaseFreshnessRequiresValidRecordForCurrentTree(' internal --include='*_test.go'
+      stdout: (empty)
+      exit:   1
+      why:    not yet observable: the criterion's own planned test is absent. The behavioural RED is the
+              run-phase RED commit that precedes the GREEN commit (verification-claim-integrity §2.3).
+E-12f cmd:    grep -rl 'func TestWorkflowBaseFreshnessGateDefaults(' internal --include='*_test.go'
+      stdout: (empty)
+      exit:   1
+      why:    not yet observable: the criterion's own planned test is absent. The behavioural RED is the
+              run-phase RED commit that precedes the GREEN commit (verification-claim-integrity §2.3).
+E-12g cmd:    grep -rl 'func TestBaseFreshnessGateOffAdvisesOnly(' internal --include='*_test.go'
+      stdout: (empty)
+      exit:   1
+      why:    not yet observable: the criterion's own planned test is absent. The behavioural RED is the
+              run-phase RED commit that precedes the GREEN commit (verification-claim-integrity §2.3).
+E-12h cmd:    grep -rl 'func TestBaseFreshnessCLIUncertaintyAdmitsWithCauseLine(' internal --include='*_test.go'
+      stdout: (empty)
+      exit:   1
+      why:    not yet observable: the criterion's own planned test is absent. The behavioural RED is the
+              run-phase RED commit that precedes the GREEN commit (verification-claim-integrity §2.3).
+E-12i cmd:    grep -rl 'func TestBaseFreshnessK0MatchesMergeCause2(' internal --include='*_test.go'
+      stdout: (empty)
+      exit:   1
+      why:    not yet observable: the criterion's own planned test is absent. The behavioural RED is the
+              run-phase RED commit that precedes the GREEN commit (verification-claim-integrity §2.3).
+E-12j cmd:    grep -rl 'func TestBaseFreshnessRefusalSentinelAndExitCode(' internal --include='*_test.go'
+      stdout: (empty)
+      exit:   1
+      why:    not yet observable: the criterion's own planned test is absent. The behavioural RED is the
+              run-phase RED commit that precedes the GREEN commit (verification-claim-integrity §2.3).
+E-12k cmd:    grep -rl 'func TestBaseFreshnessGateWritesNothing(' internal --include='*_test.go'
+      stdout: (empty)
+      exit:   1
+      why:    not yet observable: the criterion's own planned test is absent. The behavioural RED is the
+              run-phase RED commit that precedes the GREEN commit (verification-claim-integrity §2.3).
+E-12l cmd:    grep -rl 'func TestFactoryCompleteAdoptionNotRefusedByBaseFreshness(' internal --include='*_test.go'
+      stdout: (empty)
+      exit:   1
+      why:    not yet observable: the criterion's own planned test is absent. The behavioural RED is the
+              run-phase RED commit that precedes the GREEN commit (verification-claim-integrity §2.3).
+E-13  cmd:    go doc ./internal/factory EvaluateBaseFreshness
+      stdout: doc: no symbol EvaluateBaseFreshness in package ./internal/factory
+      exit:   1
+      why:    the gate symbol the factory-package criteria need does not exist yet (corroborates E-12c to E-12e, E-12i, E-12k).
 
 E-01  cmd:    grep -c 'base_freshness_gate' internal/config/types.go
       stdout: 0
