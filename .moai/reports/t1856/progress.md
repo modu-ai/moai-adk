@@ -415,3 +415,28 @@ file gained or lost an `origin/develop` hit. The survey file itself is untouched
 - The repair changes only test code in `internal/hook`; no non-test file changed this round.
 - The sync audit has not been re-run on this delta; the required codex backend still owes a verdict.
 - Mutant B was not run (see above).
+
+## 12. Sync audit round 2 FAIL and the second explicit wait (lane-22, 2026-10-17)
+
+Round 2 (audited_sha `edbf85602`, file `.moai/reports/t1856/sync-audit.md`, preserved in commit
+`5e8c07915`): FAIL 0.72; required backend codex returned fail on the adversarial run (receipt
+`rcpt-470c5dc94cad67d7817db6a9`) and pass on a static native run (`rcpt-a36e96ddd71532fd458f2af6`).
+Round 1 findings F1-F5 closed; the lane itself executed mutants C and D against the repaired tests
+and observed each fail exactly the intended test. One blocking finding remains: N1, mutant
+`{"main","origin/main","develop","origin/develop"}` survives all four tests (observed by the
+auditor and by codex), so the card's "remove the develop path" is not pinned. Optional: N2
+(`commit.gpgSign` in the caller's git config breaks the fixtures), N3 (self-referential recount),
+N4 (record the scrub form that worked under the worktree guard).
+
+Wait record `w-t1856-20261017T1935Z-c305b` (explicit wait, no idle-spin):
+- reason: the repair spawn is expected to be refused again. The refusal record
+  `.moai/state/audit-receipts/rejections/sync-auditor--unknown-spec.json` was recreated by the
+  round 2 audit (agent_id ac3dece6c7d975bb5, rejected_at 2026-10-17T19:32:32Z, cause "verdict line
+  missing"); the lane observed `starts/` empty and this the only file in `rejections/`.
+- whom: the leader (standing rule `d-20261017T152443Z-c305`; the lane compared its five conditions
+  and sent the facts at 19:35Z). The same record was handled for round 1 at 18:59Z.
+- recheck point: every standing recheck cron fire; the lane renews both leases in each pass and does
+  not delete the record, bypass the guard, or re-send the request.
+- on resolution: spawn the N1 repair (a fixture with only develop-family refs expecting HEAD, a stale
+  origin/develop versus origin/main case, `-c commit.gpgSign=false`, observe mutant F fail), re-run
+  the targeted selector, then audit round 3 with the required codex backend.
