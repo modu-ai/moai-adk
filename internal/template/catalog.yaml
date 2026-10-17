@@ -175,7 +175,7 @@ catalog:
             - name: manager-spec
               tier: core
               path: templates/.claude/agents/moai/manager-spec.md
-              hash: fc83794430fea2e2625f99bbea9332d2c2066cbcd4925faa2b131ca3e9ebcd77
+              hash: 332974b6913e2a6e778f4b90882ba5896712274cb3d76d9b1f00e48488c9739f
               version: 1.0.0
               depends_skills:
                 - moai-foundation-core

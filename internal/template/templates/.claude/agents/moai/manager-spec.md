@@ -135,7 +135,7 @@ Keep the skeleton minimal: each section is a heading plus a one-line placeholder
 
 [HARD] The skeleton emission is **placeholder headings only**. This instruction does NOT authorize this agent to populate `§E.2`-`§E.4` evidence content at plan-phase: `§E.2`/`§E.3` content belongs to manager-develop (run-phase) and `§E.4` content belongs to manager-docs (sync-phase) per the existing Forbidden-modifications matrix below. This agent populates only `§E.1` (the plan-phase audit-ready signal) and leaves `§E.2`-`§E.4` as empty placeholder headings.
 
-[HARD] Write the `§E.1` readiness signal as a bare `audit_ready: true` line (no `- ` or `* ` bullet marker, no look-alike key such as `audit-ready`); the kickoff gate reads only that form and names any look-alike it ignored.
+[HARD] Write the `§E.1` readiness signal as a bare `audit_ready: true` line (the canonical form; the kickoff gate also tolerates one leading `- ` or `* ` bullet marker, but ignores any other spelling such as `audit-ready` and names it in the refusal).
 
 #### [HARD] SPEC ID Pre-Write Self-Check Protocol
 
