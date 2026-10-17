@@ -132,7 +132,22 @@ _<pending run-phase>_
 
 ## §E.4 Sync-phase Audit-Ready Signal
 
-_<pending sync-phase>_
+```yaml
+sync_complete_at: 2026-10-18
+sync_commit_sha: pending-backfill-sync   # D3 placeholder — a commit cannot cite its own hash; backfilled by the immediately following chore commit
+sync_status: complete
+ac_source: .moai/specs/SPEC-TRUNK-BACKUP-SYNC-001/acceptance.md   # tier M → acceptance.md is the AC source (resolved, non-empty)
+b12_self_test_a: "pass — grep -c 'SPEC-TRUNK-BACKUP-SYNC-001' CHANGELOG.md returned 0 before emission (no duplicate entry)"
+b12_self_test_b: "pass — MOAI-AC-COUNTER on acceptance.md: live=10 excluded=0 ambiguous=0; CHANGELOG entry cites AC-TBS-001..010 (10)"
+b12_self_test_c: "pass — ls verified internal/cli/integration_backup.go, internal/cli/workflow_sync_ref_guard_test.go, .moai/docs/trunk-backup-runbook.md, .github/test-input-filters.yml"
+changelog_entry_position: "[Unreleased] → Added, first entry (newest card first)"
+frontmatter_status_transitions:
+  spec_md: "in-progress → implemented → completed on the single sync commit (frontmatter status: + updated: only; body untouched)"
+  plan_md: "no status field (stateless on the status axis); updated: already 2026-10-18 — no change required"
+  acceptance_md: "no status field (stateless on the status axis); updated: already 2026-10-18 — no change required"
+docs_scope: "CHANGELOG entry + this §E.4 signal; no README/docs-site 4-locale sync — the SPEC's runbook is local-only by REQ-TBS-009 and no distributed user-facing surface changed"
+repository_wide_ci: "PENDING — deferred to batch CI (carried Gap from §E.3, leader rule 35e9)"
+```
 
 ## §G Override and Refusal Record
 
