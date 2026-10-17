@@ -1,7 +1,7 @@
 ---
 id: SPEC-TRUNK-BACKUP-SYNC-001
 title: "Implementation plan — trunk backup sync verb + workflow-exclusion regression guard"
-version: "0.1.0"
+version: "0.2.0"
 created: 2026-10-17
 updated: 2026-10-17
 author: manager-spec
@@ -61,6 +61,7 @@ One small cobra verb in the existing `integration` group, one Go regression test
 
 - `internal/cli/integration_backup.go` (+ test files) — the verb.
 - One regression-test file for the workflow guard (colocated in `internal/cli` or a sibling package; manager-develop picks the exact filename).
+- `.github/test-input-filters.yml` — **edited, not created**: the `go_code` path filter gains `.github/workflows/**` (run-phase deliverable, D4 of plan-audit iteration 1). Without it, a diff touching only workflow files — a new file, or any of the currently unmapped 18 — classifies as not-Go and skips the Go suite, so the guard would not run exactly when its guarded surface changes (verification-completeness §1.3 continued firing). The file lives under `.github/`, NOT under `.github/workflows/`, so this edit is outside REQ-TBS-008's prohibition — that prohibition binds workflow files only. RED-now cell: acceptance.md §E E-TBS-R5 (at tree `8bff29c5f` the filter maps only the three named files at lines 54-56).
 - `.moai/docs/trunk-backup-runbook.md` — the runbook.
 
 ## §B — Known Issues (filtered)
@@ -85,7 +86,7 @@ grep -rn "superseded\|Retired" internal/cli/integration*.go | head  # cross-SPEC
 
 ## §D — Constraints
 
-- No push to any real remote, no pull request, no `.github/workflows` edit in the run phase (REQ-TBS-008).
+- No push to any real remote, no pull request, no `.github/workflows` edit in the run phase (REQ-TBS-008). The `.github/test-input-filters.yml` edit (§A.5, D4) is not such an edit: the file lives under `.github/`, outside the prohibition's `.github/workflows/` scope.
 - Refspec and force flag are source constants (REQ-TBS-002); no flag parsing, no config reads.
 - Provisional values (verb surface, ref name, `--force`) hold until Q1–Q3 verdicts; a verdict flip is one commit amending the constant, the tests, and the runbook together.
 - Conventional Commits with the card id: `feat(SPEC-TRUNK-BACKUP-SYNC-001): M<N> ... (card t1832)`.
@@ -93,7 +94,7 @@ grep -rn "superseded\|Retired" internal/cli/integration*.go | head  # cross-SPEC
 
 ## §E — Self-Verification (per verification-claim-integrity 5-section format)
 
-- E1 AC binary PASS/FAIL matrix (AC-TBS-001..008) with command + verbatim output.
+- E1 AC binary PASS/FAIL matrix (AC-TBS-001..010) with command + verbatim output.
 - E2 Cross-platform build outputs.
 - E3 Coverage for the new verb code (`go test -cover ./internal/cli/...` or the scoped run).
 - E4 Subagent-boundary grep on the new files.
@@ -105,8 +106,8 @@ grep -rn "superseded\|Retired" internal/cli/integration*.go | head  # cross-SPEC
 
 Ordering by decision-reversibility: M1 lands the regression guard (the invariant that pins the ref name Q2 and the matcher semantics — the highest-change-likelihood decision surface), M2 lands the verb (the Q1/Q3 surface), M3 lands the runbook (pure documentation). A Q1/Q2/Q3 verdict flip after landing is a single follow-up commit crossing all three; the milestones are ordered so that flip rewrites constants, never structure.
 
-- **M1 — Workflow-exclusion regression guard (REQ-TBS-005; AC-TBS-001, AC-TBS-002) — Priority High**
-  RED: write the test with its mutant fixture cases (bare `on: push`; `branches: ['sync/**']`; `branches-ignore`-only misuse) and the empty-sweep guard; it fails to compile / fails until the matcher exists. GREEN: implement the branch-filter matcher (`*`/`**` glob semantics; `branches` allowlist; `tags`-only; bare push) and the live sweep over `.github/workflows/*.{yml,yaml}`. The live sweep is a regression guard by classification (the current tree passes it by design); the mutant fixtures are its observed-failure evidence (verification-completeness §1.1, §2.1).
+- **M1 — Workflow-exclusion regression guard (REQ-TBS-005; AC-TBS-001, AC-TBS-002, AC-TBS-010) — Priority High**
+  RED: write the test with its mutant fixture cases — bare `on: push`; `branches: ['sync/**']`; `branches-ignore`-only misuse; and the bidirectional set `['**']` (admits), `['*']` (does not), `['**', '!sync/main']` (does not, last-match negation), `['sync/m[a-i]n']` (admits, character class) — plus the empty-sweep guard; it fails to compile / fails until the matcher exists. GREEN: implement the branch-filter matcher with the REQ-TBS-005 grammar (`*` never crosses `/`; `**` crosses `/`; `[...]` character classes; leading-`!` negation, last match wins; fail-loud on unparseable or out-of-subset patterns — never silent non-match), the `branches` allowlist, `tags`-only, and bare-push rules, and the live sweep over `.github/workflows/*.{yml,yaml}`. M1 also lands the continued-firing deliverable: extend `.github/test-input-filters.yml`'s `go_code` filter with `.github/workflows/**` (§A.5, D4) so a workflow-only diff runs the Go suite carrying this guard. The live sweep is a regression guard by classification (the current tree passes it by design); the mutant fixtures are its observed-failure evidence (verification-completeness §1.1, §2.1).
 - **M2 — The verb (REQ-TBS-001..004; AC-TBS-003..005, AC-TBS-007, AC-TBS-009) — Priority High**
   RED: verb tests against a `t.TempDir()` bare origin (first push; non-FF rewound-main force update; missing `refs/heads/main` refusal; pre-receive rejection with both-streams reporting; captured-command assertions that `--force` appears only with the constant refspec; inherited `GIT_DIR` scrub case) fail while `newIntegrationBackupCmd` does not exist. GREEN: implement the verb in `internal/cli/integration_backup.go` with the scrubbed runner and constant refspec; register at `integration.go:280`. Report pushed SHA + target ref on success.
 - **M3 — Runbook + isolation audit (REQ-TBS-006, REQ-TBS-007; AC-TBS-006, AC-TBS-008) — Priority Medium**
@@ -123,6 +124,6 @@ Ordering by decision-reversibility: M1 lands the regression guard (the invariant
 ## §H — Cross-References and Open Questions
 
 - SPEC: `.moai/specs/SPEC-TRUNK-BACKUP-SYNC-001/spec.md` (§D requirements, §E constraints).
-- Acceptance: `.moai/specs/SPEC-TRUNK-BACKUP-SYNC-001/acceptance.md` (AC-TBS-001..008, adoption classification).
+- Acceptance: `.moai/specs/SPEC-TRUNK-BACKUP-SYNC-001/acceptance.md` (AC-TBS-001..010, adoption classification + RED-now evidence ledger pinned to `8bff29c5f`).
 - Open questions: all four live in `decision-index.md` (Q1–Q4) — none blocks a milestone; provisional values carry (spec §E).
 - Delegation template: `.claude/rules/moai/development/manager-develop-prompt-template.md` (Tier M: full Section A–E form).
