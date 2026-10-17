@@ -3,6 +3,10 @@
 ## §E.1 Plan-phase Audit-Ready Signal
 
 plan_status: audit-ready
+audit_ready: true
+
+Basis for the explicit signal: independent plan-audit round 6 PASS 0.96 at audited_sha 5ea162734398a6e4d537e29e79101a99de9a1293, verdict file .moai/reports/t1760/plan-audit-r6.md.
+
 plan_complete_at: 2026-10-16
 tier: M (spec.md, plan.md, acceptance.md)
 
