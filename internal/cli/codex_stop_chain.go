@@ -315,6 +315,10 @@ func (c *codexStopChain) merge(out1 *hook.HookOutput, members []stopMemberOutcom
 // their budget had expired (card t1293, CI run 36361758033); the send time
 // carried beside the verdict closes that.
 func (c *codexStopChain) budgeted(ctx context.Context, n int, fn func(context.Context) stopMemberOutcome, cutOff func(context.Context) stopMemberOutcome) stopMemberOutcome {
+	// Inside an audit leg a verify-demanding member is skipped before it runs (t1788).
+	if auditLegSkipsMember(n) {
+		return auditLegSkipOutcome(n)
+	}
 	spec := stopMemberSpec(n)
 	budget := c.budgetFor(n)
 	mctx, cancel := context.WithTimeout(ctx, budget)

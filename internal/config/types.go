@@ -616,8 +616,8 @@ type WorkflowConfig struct {
 	// package constructs no request and makes no network call at all
 	// (REQ-JEVC-015 / REQ-JEVC-017). Sibling of the opt-in switch family
 	// around it — BranchGuard, SlotLease, Codex.ReviewGate — and a bare
-	// `enabled` flag rather than a block: the pinned model id and the endpoint
-	// are compiled constants, not operator-visible configuration
+	// `enabled` flag rather than a block: the request model alias (jev-latest)
+	// and the endpoint are compiled constants, not operator-visible configuration
 	// (CLAUDE.local.md §14 — model names and URLs live in Go consts).
 	// Template neutrality: no `enabled: true` under
 	// internal/template/templates/.
@@ -958,9 +958,10 @@ type CommitIdentityGuardConfig struct {
 
 // WorkflowJevConfig mirrors workflow.jev.* — the opt-in gate for the TypeSafe
 // System One judgment capability (REQ-JEVC-015). It carries a bare Enabled flag
-// and nothing else: the pinned model id and the endpoint URL are compiled
-// constants in internal/jev, so there is no operator-visible knob that could
-// move the pin without a release, and no configuration path by which a request
+// and nothing else: the request model alias (jev-latest) and the endpoint URL
+// are compiled constants in internal/jev (the interpreted model id is recorded
+// from each response), so there is no operator-visible knob that could change
+// the alias without a release, and no configuration path by which a request
 // could be aimed somewhere else.
 type WorkflowJevConfig struct {
 	Enabled bool `yaml:"enabled"`
@@ -1141,6 +1142,12 @@ type StateConfig struct {
 	// Consumed by the SessionStart prune path via a targeted state.yaml read
 	// (the clean.go precedent), not through the full config load.
 	SessionRecordRetentionDays *int `yaml:"session_record_retention_days"`
+
+	// BackupPastVersionsKeep is the per-file budget of past versions the update's
+	// backup pruning protects (SPEC-UPDATE-BACKUP-RETENTION-001 REQ-UBR-007).
+	// A value below 1 is read as DefaultBackupPastVersionsKeep by the pruner, so
+	// an explicit 0 or a negative number cannot disable the protection.
+	BackupPastVersionsKeep int `yaml:"backup_past_versions_keep"`
 }
 
 // SessionConfig holds session state management configuration.

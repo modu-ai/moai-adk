@@ -62,7 +62,16 @@ func receiptTarget(projectRoot string) (root, source string) {
 	return auditreceipt.Canonical(auditReceiptFallbackRoot()), auditreceipt.RootSourceFallback
 }
 
-// recordAuditReceiptBound is recordAuditReceipt with the receipt's state
+// recordAuditReceiptBound writes one receipt for an audit call and returns the id
+// to EXPOSE on the result — empty unless the audited tree explicitly declared the
+// codex gate required. A write failure is logged and returns an empty id: the
+// receipt is evidence, and failing the audit because the evidence could not be
+// filed would turn a disk problem into a verdict. The receipt carries the audited
+// tree's identity and is kept in that tree's store root — the primary checkout
+// for a config-orphaned worktree (SPEC-WORKTREE-STATE-ROOT-001 REQ-WSR-002/003);
+// where that primary cannot be identified there is no store: the write is
+// skipped, never redirected, and notice says so (REQ-WSR-004). It is the plain
+// receipt writer with the receipt's state
 // binding SUPPLIED by the caller (card t1632 sync-audit F5): the caller
 // captured the tree state at AUDIT START, and the receipt must attest THAT
 // state — a post-audit bind would let a tree edit during the audit launder a
@@ -70,8 +79,8 @@ func receiptTarget(projectRoot string) (root, source string) {
 // FAILURE (bindFailed) records the explicit bind_capture_failed marker
 // instead — the write-time fallback is forbidden, because a binding written
 // after the audit judged nothing.
-func recordAuditReceiptBound(tool, projectRoot, codexVerdict, gateUnmet, bindHead, bindDigest string, bindFailed bool) (id, notice string) {
-	return recordAuditReceiptAtBound(tool, projectRoot, codexVerdict, gateUnmet, nil, bindHead, bindDigest, bindFailed)
+func recordAuditReceiptBound(tool, projectRoot, codexVerdict, codexError, gateUnmet, bindHead, bindDigest string, bindFailed bool) (id, notice string) {
+	return recordAuditReceiptAtBound(tool, projectRoot, codexVerdict, codexError, gateUnmet, nil, bindHead, bindDigest, bindFailed)
 }
 
 // recordAuditReceiptAtBound records one receipt with the codex gate the
@@ -89,7 +98,7 @@ func recordAuditReceiptBound(tool, projectRoot, codexVerdict, gateUnmet, bindHea
 // bindFailed records the explicit capture-failed marker — the receipt then
 // carries NO binding and the reuse check refuses it; the write-time fallback
 // is forbidden, because a binding written after the audit judged nothing.
-func recordAuditReceiptAtBound(tool, projectRoot, codexVerdict, gateUnmet string, codexRequired *bool, bindHead, bindDigest string, bindFailed bool) (id, notice string) {
+func recordAuditReceiptAtBound(tool, projectRoot, codexVerdict, codexError, gateUnmet string, codexRequired *bool, bindHead, bindDigest string, bindFailed bool) (id, notice string) {
 	root, source := receiptTarget(projectRoot)
 	if root == "" {
 		return "", ""
@@ -103,6 +112,7 @@ func recordAuditReceiptAtBound(tool, projectRoot, codexVerdict, gateUnmet string
 		TreeRoot:          root,
 		RootSource:        source,
 		CodexVerdict:      codexVerdict,
+		CodexError:        codexError,
 		GateUnmet:         gateUnmet,
 		HeadCommit:        bindHead,
 		TreeDigest:        bindDigest,

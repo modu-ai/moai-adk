@@ -158,6 +158,10 @@ type Receipt struct {
 	CreatedAt    time.Time `json:"created_at"`
 	CodexVerdict string    `json:"codex_verdict,omitempty"`
 	GateUnmet    string    `json:"gate_unmet,omitempty"`
+	// CodexError names the cause of an inconclusive codex verdict, with a bounded
+	// tail of the codex child's stderr. Absent when codex gave a verdict (t1788).
+	CodexError string `json:"codex_error,omitempty"`
+
 	// HeadCommit and TreeDigest bind the receipt to the tree state it judged
 	// (SPEC-MCP-NEUTRALITY-001 REQ-MN-020): the head commit and a deterministic
 	// digest of the working-tree state at audit time. A reuse check compares
