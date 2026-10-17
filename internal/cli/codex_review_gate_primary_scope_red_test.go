@@ -29,6 +29,7 @@ import (
 	"context"
 	"io"
 	"os"
+	"path/filepath"
 	"strings"
 	"testing"
 
@@ -80,11 +81,17 @@ func TestCodexReviewGatePrimaryCheckoutSkip(t *testing.T) {
 	// policy axis, and REQ-CGSC-002 requires a basis distinguishable from a
 	// plain tree_scope row (whose basis reads "no card branch: …").
 	row := (*skips)[0]
-	if row.Dir != root {
-		t.Errorf("the primary-skip row must carry the resolved tree, got dir %q want %q", row.Dir, root)
+	// The gate anchors on the git toplevel, which git reports symlink-resolved —
+	// resolve the expected side before comparing (macOS /var symlink).
+	resolvedRoot, rerr := filepath.EvalSymlinks(root)
+	if rerr != nil {
+		t.Fatalf("eval fixture root: %v", rerr)
 	}
-	if !strings.Contains(row.Basis, "primary") || !strings.Contains(row.Basis, root) {
-		t.Errorf("the primary-skip basis must name the primary reason and the tree path (%s), not a plain tree_scope basis; got %q", root, row.Basis)
+	if row.Dir != resolvedRoot {
+		t.Errorf("the primary-skip row must carry the resolved tree, got dir %q want %q", row.Dir, resolvedRoot)
+	}
+	if !strings.Contains(row.Basis, "primary") || !strings.Contains(row.Basis, resolvedRoot) {
+		t.Errorf("the primary-skip basis must name the primary reason and the tree path (%s), not a plain tree_scope basis; got %q", resolvedRoot, row.Basis)
 	}
 }
 
