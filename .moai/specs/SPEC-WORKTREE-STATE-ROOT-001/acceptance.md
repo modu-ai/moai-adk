@@ -139,12 +139,12 @@ the detector (fail-open) without a real review.
   Given the foreign legs — S_T with `P`, S_F with `WT`, and S_F and S_T each with
   fixture B —
   When the tools run in run **git**,
-  Then each call returns a successful MCP result with `refused: true` and a reason
-  naming the root confinement, and a recursive listing of the whole `t.TempDir()` tree
+  Then each call returns a tool error result whose text names `project_root` and the
+  confinement reason (a different repository, or not a git worktree), and a recursive listing of the whole `t.TempDir()` tree
   taken before the call is identical to the one taken after it.
   Given every leg above —
   When the tools run in run **no-git**,
-  Then each call returns the same structured refusal and the before/after listing is
+  Then each call returns the same kind of tool error result and the before/after listing is
   identical (fail closed).
   **Group B — audit surface** (`codex_audit` with seam verdict `pass`, `audit_multi`
   with session `S` and stub backends):
@@ -166,7 +166,7 @@ the detector (fail-open) without a real review.
   Discriminating mutants (derived, not executed at amendment time; the run phase
   executes each once and records the failing predicate in progress.md §E.2):
   (i) the confined set accepts a foreign root and writes under it — fails Group A's
-  refusal and listing predicates; (ii) the confined set refuses but creates the state
+  error-result and listing predicates; (ii) the confined set refuses but creates the state
   directory first — fails only the listing predicate; (iii) the confined set falls back
   to the root as given when git is missing — fails Group A's no-git run; (iv) the
   store-root mapping is applied to every linked worktree — moves `WT`'s files to T's

@@ -26,7 +26,7 @@ tags: "worktree, untracked-moai, state-root, audit-receipt, review-gate, catalog
 | 0.1.0 | 2026-09-26 | manager-spec (t1213) | Initial plan-phase draft. Takes over the configuration/catalogue/state items SPEC-MCP-WORKTREE-UNTRACKED-001 §6 deferred to card t1213, grounded in the re-measurement of t1202 plan-audit-iter2 D18 and D25. |
 | 0.2.0 | 2026-09-26 | manager-spec (t1213) | Plan-audit iter-1 revision (FAIL 0.71). Closes D1 (rejection records carry and are filtered by tree identity — REQ-WSR-003 widened to every record routed into a shared store), D2 (predecessor tests that break named; plan R4 corrected), D3 (change-detector seam in the review-gate criterion), D4 (`spec_drift` / `spec_audit` union predicates with a non-empty-findings premise), D5 (guard behaviour with an unresolved store: no marker or rejection, re-entrant stop, spawn denial — REQ-WSR-010), D6 (convergence results carry tree identity, never replace another tree's, and the gate blocks on any fail — REQ-WSR-003, REQ-WSR-007), D7 (`audit_multi` skip cell), D8 (decision-1 rationale narrowed to store reachability), D9 (`moai verify record`, rejection path, drift/audit, tool descriptions observed), D10 (criterion selector), and optional D11–D14 (unattributed observation removed, review-gate activation risk, `_root` tool list enumerated, REQ-WSR-001 stated as behaviour). Adds the review-gate root measurement matrix requested by the lead (acceptance AC-WSR-006) and the shared `project_root` parameter description to REQ-WSR-016. REQ and AC counts unchanged (16 / 16); AC-WSR-006 and the former AC-WSR-007 were merged into the matrix, and AC-WSR-007 now carries the rejection tree-identity criterion. |
 | 0.2.1 | 2026-09-26 | manager-spec (t1213) | Plan-audit iter-2 (FAIL 0.78) accepted by the operator as PASS-with-debt; conditions applied. N1: AC-WSR-002 cell 2 gains cell 2b (gate input `cwd = P` must block on the `fail` `audit_multi` wrote for `W`) and the named mutant "P gate reads only `S.json`". N2: plan.md decision 2 and new risk R9 state the fail-closed spawn denial's blast radius (repositories without the receipt gate, permanent under separate-git-dir layouts, broader than the MCP side) and the release path (`workflow.yaml` in `W`). N3: `[REF]` markers on the two predecessor AC citations. N4: AC-WSR-007 mutant derivation corrected. No REQ change; REQ and AC counts unchanged (16 / 16). |
-| 0.3.0 | 2026-10-17 | manager-spec (card t1632) | In-place amendment of the completed 0.2.1 (`prior_completed_sha: b105bc1a8`), operator decision 2026-10-17 (`decided_by: operator`): REQ-WSR-005 and AC-WSR-004 brought in line with SPEC-MCP-NEUTRALITY-001 REQ-MN-005 root confinement. A `project_root` that is not a registered worktree of the server's repository is refused with a structured refusal and nothing is written; a git-less `PATH` fails closed; confinement itself runs git. See `## Amendments
+| 0.3.0 | 2026-10-17 | manager-spec (card t1632) | In-place amendment of the completed 0.2.1 (`prior_completed_sha: b105bc1a8`), operator decision 2026-10-17 (`decided_by: operator`): REQ-WSR-005 and AC-WSR-004 brought in line with SPEC-MCP-NEUTRALITY-001 REQ-MN-005 root confinement. A `project_root` that is not a registered worktree of the server's repository gets a tool error result naming `project_root` and nothing is written; a git-less `PATH` fails closed; confinement itself runs git. See `## Amendments
 
 ### Amendment 1 — REQ-WSR-005 / AC-WSR-004 aligned with REQ-MN-005 (v0.3.0)
 
@@ -71,13 +71,23 @@ tags: "worktree, untracked-moai, state-root, audit-receipt, review-gate, catalog
   `.moai`, and writes receipts and convergence results under that root's own
   `.moai/state`. The current scope is kept and documented: SPEC-MCP-NEUTRALITY-001
   AC-MN-007 and REQ-MN-005 now carry an explicit exception naming the audit/delegation
-  surface as validated but not confined. Documentation only, no code change.
+  surface as validated but not confined. Documentation only, no code change. The
+  exception text was corrected afterwards (sync-audit r9 delta F3): it now states what
+  the audit surface actually validates and records two known gaps instead of claiming
+  home-directory and non-string rejection for the whole surface.
+- **Refusal channel (sync-audit r9 delta F2)**: the first wording of REQ-WSR-005(b)(c)
+  and AC-WSR-004 Group A required a successful MCP result carrying `refused: true`. The
+  code answers with a tool error result, REQ-MN-001's closed code set has no
+  root-confinement code, and AC-MN-006 classes root problems as argument validation, so
+  the text was corrected to the error-result channel; the before/after listing
+  predicate, the git-less fail-closed leg, the mutants and the two-cell discipline are
+  unchanged.
 - **Reading rule for the untouched criteria** (stated here instead of editing them):
   (i) AC-WSR-014 keeps its fixture B legs: B's MCP writer is `codex_audit`, an audit
   tool, so B stays accepted; (ii) F-noid variant (a), a `PATH` from which git cannot be
   found, makes the confined set fail closed, so in AC-WSR-003 the `verify_snapshot` and
-  `verify_trend` legs and in AC-WSR-012 the `spec_*` legs yield the AC-WSR-004 refusal
-  there, while the audit legs and the hook-side AC-WSR-009 keep their contracts; (iii)
+  `verify_trend` legs and in AC-WSR-012 the `spec_*` legs yield the AC-WSR-004 error
+  result there, while the audit legs and the hook-side AC-WSR-009 keep their contracts; (iii)
   variant (b) keeps its contracts where the confinement inspection still registers `W`,
   and the run phase measures and records whether it does.
 
@@ -247,13 +257,13 @@ Two record kinds then lose their meaning without a tree identity:
   root is governed by REQ-WSR-001 through REQ-WSR-004.
   (b) When the `project_root` of a confined-set tool is not a registered worktree of
   the server's own repository — a different repository, or a directory that is not a
-  git worktree — the tool shall answer with the structured refusal of REQ-MN-001 (a
-  successful MCP result whose structured content carries `refused: true` and a reason
-  naming the root confinement of REQ-MN-005), and shall write nothing anywhere: no
-  snapshot and no state directory.
+  git worktree — the tool shall answer with a tool error result (the argument-validation
+  channel, not a REQ-MN-001 policy refusal) whose text names `project_root` and the
+  confinement reason of REQ-MN-005 — a different repository, or not a git worktree —
+  and shall write nothing anywhere: no snapshot and no state directory.
   (c) When confinement cannot be established because git cannot be found, a
-  confined-set call shall fail closed with the same structured refusal and the same
-  absence of writes, for every root; it shall not behave as in case (a) or fall back to
+  confined-set call shall fail closed with the same kind of tool error result and the
+  same absence of writes, for every root; it shall not behave as in case (a) or fall back to
   the root as given. A confined-set call runs the confinement inspection, an accepted
   git subprocess beyond what it ran before this amendment.
   (d) For an audit-surface tool, any validated `project_root` that is not
