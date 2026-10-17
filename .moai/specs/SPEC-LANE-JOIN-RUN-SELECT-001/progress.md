@@ -163,9 +163,87 @@ Mutant probes executed against the GREEN tree (applied to a copy, the targeted t
 - AC-LJR-008 mutant (a named leader reaches the chooser): `named-leader join: FACTORY_JOIN_CANCELLED` and `err = FACTORY_JOIN_CANCELLED, want the ambiguity refusal to stand`. Killed.
 - AC-LJR-003 mutant (raw UTC start passed to the row builder): `row 1 = {... Start:2026-10-18T02:11:00Z ...}, want {... Start:2026-10-18 11:11:00 KST ...}`. Killed.
 
+### Run-phase closure - per-AC matrix, whole-change checks, gaps, residual risk
+
+Judging build and tree for every number below: tree `.moai/worktrees/t1853` at HEAD `080caba72` (the last code-bearing commit; the one commit after it changes this file only). The spec lint binary was built from this tree with `go build -ldflags "-X github.com/modu-ai/moai-adk/pkg/version.Version=v0.0.0-t1853 -X github.com/modu-ai/moai-adk/pkg/version.Commit=080caba72" -o <scratchpad>/bin/moai ./cmd/moai` and invoked by path; `moai version` prints `v0.0.0-t1853   080caba72`. The installed build `ee981a932` is an ancestor of HEAD (`git merge-base --is-ancestor ee981a932 HEAD` exit 0) and was not used for any cited result.
+
+**Per-AC result (one invocation per package, factory environment unscrubbed per the eleven variables above, swept-count rule: one `--- PASS` line per named test).**
+
+| AC | Command | Observed |
+|---|---|---|
+| AC-LJR-001 | `go test ./internal/homestate -run '^(TestActiveRunFactsCountsNonTerminalCards\|TestActiveRunFactsLastActivityUsesParsedTimes\|TestActiveRunFactsIsReadOnly)$' -count=1 -v` | 3 `--- PASS` lines, `ok  github.com/modu-ai/moai-adk/internal/homestate 2.922s`, exit 0. PASS |
+| AC-LJR-002 | `go test ./internal/factorymsg -run '^(TestFormatKST\|TestAmbiguousRunsErrorRendersStartInKST)$' -count=1 -v` | 2 `--- PASS` lines, `ok  .../internal/factorymsg 0.738s`, exit 0. PASS |
+| AC-LJR-003 | the nine-name `internal/cli` command below (`TestLaneJoinTTYAmbiguityInvokesChooserWithFacts`, `TestLaneJoinChooserRendersFacts`) | both `--- PASS`. PASS |
+| AC-LJR-004 | same command (`TestLaneJoinChooserOptionEligibility`, `TestRunChooserParsesInMemoryStreams`) | both `--- PASS`. PASS |
+| AC-LJR-005 | same command (`TestLaneJoinChooserJoinAndCancel`) | `--- PASS`. PASS |
+| AC-LJR-006 | same command (`TestLaneJoinChooserRetireThenJoin`) | `--- PASS`. PASS |
+| AC-LJR-007 | same command (`TestLaneJoinRefusedRetirePresentsSurvivorWithoutJoining`) | `--- PASS` (3 subtests). PASS |
+| AC-LJR-008 | same command (`TestLaneJoinNonTTYKeepsGuidedRefusalInKST`, `TestLaneJoinInteractiveSkipsChooserForExplicitSelectors`) plus the E4 guards in the existing-suite run below | both `--- PASS`; E4: `--- PASS: TestAmbiguousLeaderJoinSelectsNamedLeaderRun (1.49s)`, `--- PASS: TestAmbiguousRefusalCarriesResolutionGuidance (0.86s)`, `--- PASS: TestExplicitFactoryRunJoinsNamedRunAmongTwoLive (0.82s)`. PASS |
+
+```text
+$ go test ./internal/cli -run '^(TestLaneJoinTTYAmbiguityInvokesChooserWithFacts|TestLaneJoinChooserRendersFacts|TestLaneJoinChooserOptionEligibility|TestRunChooserParsesInMemoryStreams|TestLaneJoinChooserJoinAndCancel|TestLaneJoinChooserRetireThenJoin|TestLaneJoinRefusedRetirePresentsSurvivorWithoutJoining|TestLaneJoinNonTTYKeepsGuidedRefusalInKST|TestLaneJoinInteractiveSkipsChooserForExplicitSelectors)$' -count=1 -v
+--- PASS: TestLaneJoinTTYAmbiguityInvokesChooserWithFacts (3.22s)
+--- PASS: TestLaneJoinChooserJoinAndCancel (10.38s)
+--- PASS: TestLaneJoinChooserRetireThenJoin (18.07s)
+--- PASS: TestLaneJoinRefusedRetirePresentsSurvivorWithoutJoining (13.34s)
+--- PASS: TestLaneJoinNonTTYKeepsGuidedRefusalInKST (2.54s)
+--- PASS: TestLaneJoinInteractiveSkipsChooserForExplicitSelectors (6.65s)
+--- PASS: TestLaneJoinChooserRendersFacts (0.00s)
+--- PASS: TestLaneJoinChooserOptionEligibility (0.00s)
+--- PASS: TestRunChooserParsesInMemoryStreams (0.00s)
+ok  	github.com/modu-ai/moai-adk/internal/cli	55.392s
+```
+
+Nine of nine swept. Eight of eight criteria satisfy the swept-count rule at the final tree. AC-LJR-007 is one test name carrying three subtests (join after the refusal, cancel after the refusal, the re-read does not reconcile); a failure inside it reports as one name plus the subtest line.
+
+**Whole-change checks.**
+
+- Existing PRESERVE suites, one invocation (all test functions of `factory_ambiguous_join_test.go`, `factory_join_discovery_test.go`, `codex_factory_retire_test.go`, `factory_run_adopt_test.go`; 44 names): 44 `--- PASS` lines, `ok  github.com/modu-ai/moai-adk/internal/cli 45.663s`, `exit=0`. Plus all 12 tests of `internal/homestate/factory_run_retire_test.go` (`ok ... homestate 7.295s`) and all 6 of `internal/factorymsg/factory_run_retire_test.go` (`ok ... factorymsg 9.226s`), run at M1.
+- `gofmt -l` over the ten touched Go files: no output, exit 0. `go vet ./internal/homestate ./internal/factorymsg ./internal/cli`: exit 0.
+- `golangci-lint run --timeout=10m ./internal/homestate/... ./internal/factorymsg/... ./internal/cli/...`: 3 issues, all `errcheck` in `internal/cli/factory_run_adopt.go` (unchecked `fmt.Fprintf` return values), a file this change does not touch (absent from `git diff --name-only 8d7b16f01..HEAD`); baseline, not introduced here. `golangci-lint run --timeout=10m --new-from-rev=8d7b16f01 <same three packages>`: `0 issues.`, exit 0. (An earlier full run had also reported one `ST1008` in a test helper of this change; it was repaired and the later run no longer lists it.)
+- `GOOS=windows GOARCH=amd64 go build ./...`: exit 0.
+- Coverage of the new files by the named and added tests (`go test -coverprofile`, statements summed from the profile): `internal/cli/factory_run_select.go` 100/111 = 90.1%, `internal/homestate/factory_run_select.go` 28/31 = 90.3%, `internal/factorymsg/factory_run_select.go` 4/4 = 100.0%.
+- Call-site inventory (`grep -rn "enterFactoryLaneRun(" internal --include='*.go'` without test files): `glm.go:299`, `cc.go:240`, `codex_launcher.go:959`, `codex_factory.go:103` plus the definition in `factory.go`; the same four callers plan.md A names.
+- Disjointness with SPEC-FACTORY-RETIRE-GUARD-001 (card t1852): that tree's changed non-`.moai` files (HEAD `05253e87a`; against its merge-base with `main`, plus its uncommitted tracked changes) are `internal/cli/factory_handoff_recover.go`, `factory_relaunch.go`, `factory_retire_guard_text.go`, `factory_runs_retire_guard_test.go`, `internal/homestate/factory_run_cards.go`, `factory_run_retire_guard_test.go`, `factory_run_retire.go`; `comm -12` against this change's non-`.moai` files printed nothing. `RetireRunIfDead` is called unchanged and no t1852 identifier is defined here.
+- No file under `internal/template/templates/` is touched, so no `make build` was required (plan.md F).
+- `moai spec lint .moai/specs/SPEC-LANE-JOIN-RUN-SELECT-001` (tree-built binary above): `✓ No findings - all SPEC documents are valid`, exit 0. `moai spec lint --strict` on the same directory: the same line, exit 0. The `OwnershipTransitionUnmeasured` INFO the plan audit saw is absent now that the `draft -> in-progress` commit carries `Authored-By-Agent: manager-develop`.
+
+**Gaps (not observed in this run).**
+
+- No package-wide or repo-wide `go test`, `make build`, or `make test` ran (the single-slot rule); the full `internal/cli`, `internal/homestate` and `internal/factorymsg` suites are CI's and the lane's landing remeasure's. Only the named tests and the PRESERVE suites above ran.
+- No real terminal was driven: the default `runSelectionInteractive` (stdin terminal and stderr terminal) and the `cc.go` / `glm.go` call sites are not exercised by any test; the gate function, the codex relaunch door and the text chooser over in-memory streams are. A terminal-supervising codex launcher with piped stdio would fail the interactivity gate and take the refusal path; untested.
+- The Korean strings were authored by this run and have not been read by a native reviewer.
+- The write-free claim of the read path is scoped to the `runs` and `events` tables, as spec.md H says; the legacy-peer fallback of `ReconcileOptionsFor` (which opens an existing broker database) is exercised only with no broker present in the fixtures.
+- Whether a dead leader's name survives in the leader-name registry was not observed; the name column renders `-` for an unmapped pid, which the tests pin.
+- The docs-site `advanced/factory-mode.md` pages (en, ko, ja, zh) were not edited: plan.md I assigns that edit to the sync phase, which also reads all four pages first.
+- The production factory database and the `tmvgvn` evidence case were not read.
+- The mutant probes above are single-edit mutants chosen from the mutants acceptance.md names plus the N2 variants; they are not an exhaustive mutation run.
+- A background timeout once moved a mutant-loop command to the background mid-run (no SIGTERM landed; the loop finished and `cmp` confirmed both mutated files byte-identical to their saved copies).
+
+**Residual notes for the orchestrator (not run-phase work).**
+
+1. DEBT-3 (plan audit): `acceptance.md` AC-LJR-003 says the fixture dates contain no digit 7, but the seeded `created_at` `2026-10-18T01:31:00.123456789Z` contains one. Run-phase code could not and did not edit `acceptance.md`; this run's own fixtures sidestep it (live-row start `2026-10-18T02:11:00Z`, run ids carrying neither a `7` nor `x9`; the dead row's stored time keeps its `7` and is asserted by cell equality against `2026-10-18 10:31:00 KST`). Needs a manager-spec re-delegation to reword to "the rendered cells contain no 7 outside the count column".
+2. The `draft -> in-progress` edit to `spec.md` (`status:` and `updated:` only) changed the plan-artifact bytes, so the plan audit's `plan_artifact_hash` no longer matches those files; skip-eligibility of the earlier plan verdict does not carry past this commit. This is the transition the run phase owns; it is stated so no one reads the stale hash as current.
+3. If this change lands before SPEC-FACTORY-RETIRE-GUARD-001, the chooser's only card check is the read-time count (plan.md G): a card landing between render and cleanup is not stopped, and a dead-owner run with registered worker rows and no non-terminal card is offered cleanup, and the table shows no worker count. After that SPEC lands, `RetireRunIfDead` closes the window and the loop prints its typed refusal as ordinary error text.
+4. A cleanup that leaves exactly one run joins it without a second look at that run's facts (plan audit residual risk; REQ-LJR-005 states it).
+
 ## §E.3 Run-phase Audit-Ready Signal
 
-_<pending run-phase>_
+run_complete_at: 2026-10-18
+run_commit_sha: 080caba72
+run_status: complete
+ac_pass_count: 8
+ac_fail_count: 0
+preserve_list_post_run_count: 44
+l44_pre_commit_fetch: not-run (card tree; no push, no PR)
+l44_post_push_fetch: not-applicable (nothing pushed)
+new_warnings_or_lints_introduced: 0 (golangci-lint --new-from-rev=8d7b16f01 reported 0 issues; 3 errcheck issues in untouched factory_run_adopt.go are baseline)
+cross_platform_build:
+  windows_amd64: exit 0 (GOOS=windows GOARCH=amd64 go build ./...)
+total_run_phase_files: 12
+m1_to_mN_commit_strategy: three milestone commits on WT-10-17-class-9 (M1 6d4db8e31, M2 068535cf1, M3 080caba72) plus one closing commit carrying this file only; not pushed
+
+audit_ready: true
 
 ## §E.4 Sync-phase Audit-Ready Signal
 
