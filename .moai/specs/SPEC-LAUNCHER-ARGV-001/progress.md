@@ -7,6 +7,7 @@
 ```yaml
 plan_status: audit-ready
 plan_complete_at: 2026-10-15
+audit_ready: true
 tier: M
 artifacts: [spec.md, plan.md, acceptance.md]
 requirements: 13
@@ -26,3 +27,9 @@ _<pending run-phase>_
 ## §E.4 Sync-phase Audit-Ready Signal
 
 _<pending sync-phase>_
+
+## §G Override and Refusal Record
+
+- 2026-10-17T14:48:03Z SPEC-LAUNCHER-ARGV-001 ceiling-refusal outcome=hold reasons="plan-audit ceiling reached (round count 4 >= tier ceiling 2); the verdict matches no admitting arm and holds, entry blocked (REQ-ACE-006) — release path: the split/new-SPEC route of REQ-ACE-005 or an operator decision recorded in progress.md §G" evidence=/Users/goos/MoAI/moai-adk-go/.moai/worktrees/t1748/.moai/reports/t1748/plan-audit-iter2.md,/Users/goos/MoAI/moai-adk-go/.moai/worktrees/t1748/.moai/reports/t1748/plan-audit-iter3.md,/Users/goos/MoAI/moai-adk-go/.moai/worktrees/t1748/.moai/reports/t1748/plan-audit-iter4.md,/Users/goos/MoAI/moai-adk-go/.moai/worktrees/t1748/.moai/reports/t1748/plan-audit.md
+- 2026-10-17T14:50:06Z SPEC-LAUNCHER-ARGV-001 ceiling-outcome outcome=pass-through reasons="plan-audit ceiling reached (round count 4 >= tier ceiling 2 + 1 delta rounds); the verdict is admission-clean and admits without a question (REQ-ACE-013)" evidence=/Users/goos/MoAI/moai-adk-go/.moai/worktrees/t1748/.moai/reports/t1748/plan-audit-iter2.md,/Users/goos/MoAI/moai-adk-go/.moai/worktrees/t1748/.moai/reports/t1748/plan-audit-iter3.md,/Users/goos/MoAI/moai-adk-go/.moai/worktrees/t1748/.moai/reports/t1748/plan-audit-iter4.md,/Users/goos/MoAI/moai-adk-go/.moai/worktrees/t1748/.moai/reports/t1748/plan-audit.md
+- 2026-10-17T14:50:23Z SPEC-LAUNCHER-ARGV-001 ceiling-outcome outcome=pass-through reasons="plan-audit ceiling reached (round count 4 >= tier ceiling 2 + 1 delta rounds); the verdict is admission-clean and admits without a question (REQ-ACE-013)" evidence=/Users/goos/MoAI/moai-adk-go/.moai/worktrees/t1748/.moai/reports/t1748/plan-audit-iter2.md,/Users/goos/MoAI/moai-adk-go/.moai/worktrees/t1748/.moai/reports/t1748/plan-audit-iter3.md,/Users/goos/MoAI/moai-adk-go/.moai/worktrees/t1748/.moai/reports/t1748/plan-audit-iter4.md,/Users/goos/MoAI/moai-adk-go/.moai/worktrees/t1748/.moai/reports/t1748/plan-audit.md
