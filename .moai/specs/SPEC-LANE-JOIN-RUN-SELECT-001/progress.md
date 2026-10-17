@@ -109,6 +109,60 @@ Mutant probes executed against the GREEN tree (applied to a copy, test run, file
 - AC-LJR-004 over-reading buffered reader (`bufio.NewReader(r).ReadString('\n')`): `source reader left "" unread, want "TYPEAHEAD" (the chooser over-read)`. Killed.
 - AC-LJR-003 renderer dropping the count column: `line 1 has 6 cells, want 7: "1 | runa-live | live (생존) | lane-x9 | 2026-10-18 11:11:00 KST | -"`. Killed.
 
+### M3 - gate wiring and the selection loop (AC-LJR-003 gate half, AC-LJR-005, 006, 007, 008)
+
+RED, behavioral (the gate hook-up, the `FACTORY_JOIN_CANCELLED` sentinel, the interactive seam and a stub `chooseLaneRun`/`retireChosenRun` returning a fixed error; tests written first):
+
+```text
+$ go test ./internal/cli -run '^(TestLaneJoinTTYAmbiguityInvokesChooserWithFacts|TestLaneJoinChooserJoinAndCancel|TestLaneJoinChooserRetireThenJoin|TestLaneJoinRefusedRetirePresentsSurvivorWithoutJoining|TestLaneJoinNonTTYKeepsGuidedRefusalInKST|TestLaneJoinInteractiveSkipsChooserForExplicitSelectors)$' -count=1 -v
+--- FAIL: TestLaneJoinTTYAmbiguityInvokesChooserWithFacts (1.72s)
+    factory_run_select_gate_test.go:293: enterFactoryLaneRun: spy entered 0 times, want exactly once
+--- FAIL: TestLaneJoinChooserJoinAndCancel (4.04s)
+    factory_run_select_gate_test.go:322: join: stub chooseLaneRun
+    factory_run_select_gate_test.go:353: err = stub chooseLaneRun, want FACTORY_JOIN_CANCELLED
+--- FAIL: TestLaneJoinChooserRetireThenJoin (4.27s)
+    factory_run_select_gate_test.go:435: gate: stub chooseLaneRun
+    factory_run_select_gate_test.go:499: retireChosenRun(live) = stub retireChosenRun, want it to wrap ErrRunOwnerNotDead
+--- FAIL: TestLaneJoinRefusedRetirePresentsSurvivorWithoutJoining (2.16s)
+--- PASS: TestLaneJoinNonTTYKeepsGuidedRefusalInKST (1.06s)
+--- PASS: TestLaneJoinInteractiveSkipsChooserForExplicitSelectors (2.65s)
+FAIL	github.com/modu-ai/moai-adk/internal/cli	17.048s
+```
+
+The two AC-LJR-008 tests are GREEN at this RED point and the table above says so rather than hiding it: M1 already landed the KST rendering, and the non-interactive path is unchanged by design, so those two are regression guards at this step (acceptance.md labels the E4 half of AC-LJR-008 a regression guard; the KST and spy half was RED on the pre-implementation tree, ledger E3). Their grip is shown by the mutants below, not by a red arrival.
+
+GREEN:
+
+```text
+$ go test ./internal/cli -run '^(TestLaneJoinTTYAmbiguityInvokesChooserWithFacts|TestLaneJoinChooserRendersFacts|TestLaneJoinChooserOptionEligibility|TestRunChooserParsesInMemoryStreams|TestLaneJoinChooserJoinAndCancel|TestLaneJoinChooserRetireThenJoin|TestLaneJoinRefusedRetirePresentsSurvivorWithoutJoining|TestLaneJoinNonTTYKeepsGuidedRefusalInKST|TestLaneJoinInteractiveSkipsChooserForExplicitSelectors)$' -count=1 -v
+--- PASS: TestLaneJoinTTYAmbiguityInvokesChooserWithFacts (2.85s)
+--- PASS: TestLaneJoinChooserJoinAndCancel (9.15s)
+--- PASS: TestLaneJoinChooserRetireThenJoin (16.25s)
+--- PASS: TestLaneJoinRefusedRetirePresentsSurvivorWithoutJoining (9.48s)
+--- PASS: TestLaneJoinNonTTYKeepsGuidedRefusalInKST (1.47s)
+--- PASS: TestLaneJoinInteractiveSkipsChooserForExplicitSelectors (4.89s)
+--- PASS: TestLaneJoinChooserRendersFacts (0.00s)
+--- PASS: TestLaneJoinChooserOptionEligibility (0.00s)
+--- PASS: TestRunChooserParsesInMemoryStreams (0.00s)
+ok  	github.com/modu-ai/moai-adk/internal/cli	45.593s
+```
+
+Nine of nine named tests swept (nine `--- PASS` lines).
+
+DEBT-2 (plan audit) disposed here: the REQ-LJR-005 clause "when none remain, fail with NO_ACTIVE_FACTORY" is pinned by the subtest `cleanup-leaving-no-run-fails-no-active-factory` of `TestLaneJoinChooserRetireThenJoin` (a callback retires the only other run after the chooser opened, then the operator chooses cleanup-then-join: the gate returns exactly `NO_ACTIVE_FACTORY`, the cleaned run is `retired`, nothing is joined, the variable stays empty). The edge case that a chosen join whose run vanished returns the explicit-join error with no re-presentation is pinned by `TestLaneJoinChooserJoinAndCancel/join-of-a-vanished-run-returns-the-explicit-join-error`.
+
+Mutant probes executed against the GREEN tree (applied to a copy, the targeted test run, the file restored byte-identical, checked with `cmp`):
+
+- AC-LJR-007 N2 mutant (after a cleanup attempt, `enterSelectedFactoryRun(root, "", true, timing)` re-resolves with an empty selector): `--- FAIL: TestLaneJoinRefusedRetirePresentsSurvivorWithoutJoining`, `spy entered 1 times, want 2 (the gate must present again, not join)` and `err = <nil>, want FACTORY_JOIN_CANCELLED` on both the join and cancel subtests. Killed.
+- AC-LJR-007 N1 mutant (auto-join the sole survivor even after a refused cleanup, `case len(facts) == 1 && (afterCleanup || true)`): `spy entered 1 times, want 2` and `err = <nil>, want FACTORY_JOIN_CANCELLED`. Killed.
+- AC-LJR-007 sub-scenario (e) mutant (the read path runs `ReconcileActiveRuns` first): `--- FAIL: TestLaneJoinRefusedRetirePresentsSurvivorWithoutJoining/the-reread-does-not-reconcile`. Killed.
+- AC-LJR-005 mutant (the variable set before the choice): `variable was "rx-live" at the presentation entry, want empty (set before the choice)` and `MOAI_KANBAN_ID = "rx-live", want ""` on the cancel variants. Killed.
+- AC-LJR-006 mutant (a chooser-side `UPDATE runs SET status='retired'` instead of `RetireRunIfDead`): `ra-dead has 0 run.retired events, want exactly 1`, `rc-dead has 0 run.retired events, want exactly 1`. Killed.
+- AC-LJR-008 mutant (chooser consulted before the interactive seam is checked): `the chooser was consulted on a non-interactive session` and `refusal "FACTORY_JOIN_CANCELLED" does not begin with AMBIGUOUS_FACTORY:`. Killed.
+- AC-LJR-008 mutant (the guidance suffix dropped): `refusal "AMBIGUOUS_FACTORY: ambigruna (owner live, ... started 2026-10-17 18:31:00 KST), ..." misses "--factory-run"` (and `--leader`). Killed.
+- AC-LJR-008 mutant (a named leader reaches the chooser): `named-leader join: FACTORY_JOIN_CANCELLED` and `err = FACTORY_JOIN_CANCELLED, want the ambiguity refusal to stand`. Killed.
+- AC-LJR-003 mutant (raw UTC start passed to the row builder): `row 1 = {... Start:2026-10-18T02:11:00Z ...}, want {... Start:2026-10-18 11:11:00 KST ...}`. Killed.
+
 ## §E.3 Run-phase Audit-Ready Signal
 
 _<pending run-phase>_

@@ -1,8 +1,11 @@
 package cli
 
 import (
+	"context"
+	"errors"
 	"fmt"
 	"io"
+	"os"
 	"strconv"
 	"strings"
 
@@ -233,4 +236,113 @@ func parseRowNumber(s string, rows int) (int, bool) {
 		return 0, false
 	}
 	return n, true
+}
+
+// runSelectionInteractive reports whether the session can answer the chooser:
+// stdin is a terminal and the prompt stream is a terminal-backed file.
+// TestMain pins it false so no test ever reads a real terminal.
+var runSelectionInteractive = func() bool { return isInteractiveStdin() && writerIsTerminal(os.Stderr) }
+
+// activeRunChooser is the chooser the gate uses; tests swap it for a scripted
+// double.
+var activeRunChooser runChooser = textRunChooser{in: os.Stdin, out: os.Stderr}
+
+// laneRunNotices receives the loop's own one-line notices (a refused cleanup,
+// the cancel confirmation); tests capture it.
+var laneRunNotices io.Writer = os.Stderr
+
+// chooseLaneRun is the interactive answer to a lane join that two or more
+// active runs make ambiguous (SPEC-LANE-JOIN-RUN-SELECT-001). It is a loop of
+// presentations, and it never joins by side effect:
+//
+//   - every presentation reads the store through the read path
+//     (readLaneRunFacts): no reconciler, no write, and neither ResolveActiveRun
+//     nor enterSelectedFactoryRun is called to obtain facts, so the
+//     factory-run variable is unset at every presentation entry;
+//   - enterSelectedFactoryRun is called at exactly two places, both with an
+//     explicit run id: the operator's join choice, and the join half of a
+//     successful cleanup-then-join once exactly one run remains.
+//
+// @MX:WARN: [AUTO] this loop decides which run a lane joins and whether a run is retired; the factory-run variable must stay unset until the operator names the run
+// @MX:REASON: re-resolving with an empty selector (the predecessor's defect N2) joins the lone survivor by side effect, so a refused cleanup would silently join a run the operator never chose
+//
+// The loop ends at the operator's cancel, at a join, at a successful cleanup
+// that leaves one run, or when no run is active: every pass after the first
+// needs a fresh operator entry (end of input cancels), a successful
+// retirement strictly shrinks the active set, and a refused attempt writes
+// nothing.
+func chooseLaneRun(root string, timing *factoryLaunchTiming) (func(), error) {
+	afterCleanup := false
+	for {
+		facts, names, err := readLaneRunFacts(root)
+		if err != nil {
+			return func() {}, err
+		}
+		switch {
+		case len(facts) == 0:
+			return func() {}, errors.New(noActiveFactorySentinel)
+		case len(facts) == 1 && afterCleanup:
+			// The join half of the operator's cleanup-then-join choice.
+			return enterSelectedFactoryRun(root, facts[0].RunID, true, timing)
+		}
+		choice, err := activeRunChooser.ChooseLaneRun(buildLaneRows(facts, names))
+		if err != nil {
+			return func() {}, err
+		}
+		switch choice.Kind {
+		case choiceJoin:
+			return enterSelectedFactoryRun(root, choice.RunID, true, timing)
+		case choiceCleanupThenJoin:
+			// Any non-nil error is a refusal: print it and present again from
+			// facts re-read, even when one run remains (REQ-LJR-006).
+			rerr := retireChosenRun(root, choice.RunID)
+			afterCleanup = rerr == nil
+			if rerr != nil {
+				laneNotice(laneMsgCleanupFailFmt, choice.RunID, rerr)
+			}
+		default:
+			laneNotice("%s", laneMsgCancelled)
+			return func() {}, errors.New(joinCancelledSentinel)
+		}
+	}
+}
+
+// laneNotice prints one line to the loop's notice stream. A notice that cannot
+// be written changes nothing the operator chose, so the failure is dropped.
+func laneNotice(format string, args ...any) {
+	if _, err := fmt.Fprintf(laneRunNotices, format+"\n", args...); err != nil {
+		return
+	}
+}
+
+// readLaneRunFacts reads the active runs through the read path of
+// REQ-LJR-001 together with the leader-name registry, and closes the factory
+// handle before the chooser runs.
+func readLaneRunFacts(root string) (_ []homestate.RunFacts, _ map[int]string, err error) {
+	db, err := homestate.OpenFactory(root)
+	if err != nil {
+		return nil, nil, err
+	}
+	defer closeFactoryInto(&err, db, "factory state")
+	facts, err := db.ActiveRunFacts(context.Background(), factorymsg.ReconcileOptionsFor(root))
+	if err != nil {
+		return nil, nil, err
+	}
+	return facts, leaderNamesByPID(root), nil
+}
+
+// retireChosenRun is the chooser's ONE retirement call. It goes through
+// RetireRunIfDead with the production options — no injected classifier — so
+// `retirable` stays the only retirement predicate and a live or
+// indeterminate owner is refused whatever a chooser returned.
+func retireChosenRun(root, runID string) (err error) {
+	db, err := homestate.OpenFactory(root)
+	if err != nil {
+		return err
+	}
+	defer closeFactoryInto(&err, db, "factory state")
+	if _, rerr := db.RetireRunIfDead(context.Background(), runID, factorymsg.ReconcileOptionsFor(root)); rerr != nil {
+		return rerr
+	}
+	return nil
 }
