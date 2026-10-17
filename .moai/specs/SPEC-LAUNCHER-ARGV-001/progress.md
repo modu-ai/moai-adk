@@ -121,7 +121,7 @@ Consequence for the design (SPEC §2 outranks the one-field wording of plan §F-
 | `87abe2ef7` | M2: guard (`factory_anchor_guard.go`), audit-log hygiene + nofollow build-tag split, cc/glm leader placement, five M2 test families, existing leader-fixture cwd adaptation |
 | `f4676475b` | M3: `TestLaunchViewSingleParse` (source scan, parallel-reader absence, appended-flag neutrality) |
 | `f08294446` | this M1-M3 evidence record |
-| lint fix (next commit) | dropped the unused `requireShortWorktreeName` wrapper from `launch_view.go` (zero callers in the module, test or non-test; `golangci-lint --new-from-rev=6e729ba21` -> `unused`, now 0 issues, exit 0); `AC-LA-014` selector re-run exit 0 (180 top-level PASS, 0 FAIL), `TestLaunchViewSingleParse` exit 0 |
+| `c14b127a2` | dropped the unused `requireShortWorktreeName` wrapper from `launch_view.go` (zero callers in the module, test or non-test; `golangci-lint --new-from-rev=6e729ba21` -> `unused`, now 0 issues, exit 0); `AC-LA-014` selector re-run exit 0 (180 top-level PASS, 0 FAIL), `TestLaunchViewSingleParse` exit 0 |
 
 ### Design decisions taken inside the plan's latitude (named, not hidden)
 
@@ -245,6 +245,34 @@ Further regression runs at `f4676475b` (all `-count=1`, scoped by test name): th
 - E4: `grep -n 'AskUserQuestion' <launch_view.go factory_anchor_guard.go factory_audit_nofollow_{unix,other}.go cc.go glm.go launcher.go launch_chain.go session_worktree.go worktree_branch_flag.go codex_hooks_seed.go lane_resume_model.go internal/config/defaults.go>` -> no output, exit 1 (no hits). `grep -c syscall` on the four new non-test files -> 0 each (the Unix flags come from `golang.org/x/sys/unix` behind `//go:build unix`, the repo's existing pattern; `//go:build !unix` carries a zero constant).
 - E5: `gofmt -l internal/cli internal/config` -> no output; `go vet ./internal/cli/ ./internal/config/` -> exit 0. New versus baseline: no vet or gofmt finding exists before or after. Whole-tree and package `golangci-lint` were not run (excluded from this delegation).
 - E6: new commits `538af8d7c`, `a022ada95`, `87abe2ef7`, `f4676475b` (listed above); nothing pushed; `git status --short` after `f4676475b`: only ` M .moai/harness/usage-log.jsonl.prune-state` (runtime-managed, never staged).
+
+### Card-review finding: the override flag as the value of a bundled-cluster option (REQ-LA-005)
+
+Finding (codex card-review, static, P2): `consumeAllowCardAnchor` decided "is the next token this option's value?" with a whole-token table lookup, so in `moai cc -f -cn --allow-card-anchor hello` (`-c` boolean, `-n` takes a value) the value `--allow-card-anchor` was consumed as the launcher override. The file then held two interpretations of one argv (`scanShortCluster` already decomposed clusters for the backend selection).
+
+**RED (reproduced first, tree `c14b127a2`, before any fix).** Command: `go test ./internal/cli/ -run '^TestLauncherAnchorOverrideFlagPlacement$' -v -count=1`. Exit code: **1**. Red from assertions (the package compiled and ran), verbatim failing lines (the backend-argv line is truncated by the `cut -c1-330` filter I used):
+
+```
+factory_anchor_override_placement_test.go:45: consumeAllowCardAnchor(["-cn" "--allow-card-anchor" "hello"]) = (["-cn" "hello"], true), want (["-cn" "--allow-card-anchor" "hello"], false)
+factory_anchor_override_placement_test.go:58: cc: the anchored leader launch was not refused (launched=true)
+factory_anchor_override_placement_test.go:61: cc: an audit row exists, so the value was recorded as an override
+factory_anchor_override_placement_test.go:75: cc: backend argv ["claude" "--model" "opus" "-cn" "hello" "--worktree" "plain" "--name" "leader" "--settings" "/var/folders/kt/...
+factory_anchor_override_placement_test.go:58: glm: the anchored leader launch was not refused (launched=true)
+factory_anchor_override_placement_test.go:61: glm: an audit row exists, so the value was recorded as an override
+--- FAIL: TestLauncherAnchorOverrideFlagPlacement (2.75s)
+    --- FAIL: TestLauncherAnchorOverrideFlagPlacement/consumption_by_placement/value_of_a_bundled_cluster_ending_in_a_value_option (0.00s)
+    --- FAIL: TestLauncherAnchorOverrideFlagPlacement/cc/value_of_a_cluster_option_is_not_an_override (0.93s)
+    --- FAIL: TestLauncherAnchorOverrideFlagPlacement/glm/value_of_a_cluster_option_is_not_an_override (0.90s)
+FAIL	github.com/modu-ai/moai-adk/internal/cli	3.751s
+```
+
+Why red: the value token was stripped from the backend argv and treated as the override, so an anchored leader launch (`-w WT-card`) proceeded and wrote an audit row, and the plain-tree launch lost the token from the argv the backend receives. Controls that passed on the old code and must keep passing: the same flag standing alone after a boolean (`-c --allow-card-anchor hello` -> override honored), the attached form `-cnNAME --allow-card-anchor` (no next-token value -> override honored, audit row written), the lone `-n` and long `--name` value cases, the separator case.
+
+**Fix.** `optionValueSpan` in `launch_view.go` replaces the whole-token `takesNextTokenAsValue`: whole tokens still use the launcher-owned value flags and the claude option model; a single-dash cluster is decomposed by the existing `scanShortCluster`. No new option table, no new reader; `TestLaunchViewSingleParse` (including the source scan) stays green.
+
+**GREEN pair** (same command, tree `c14b127a2` + the fix): exit **0**, `--- PASS: TestLauncherAnchorOverrideFlagPlacement (2.85s)` with all 8 `consumption_by_placement` rows and `cc|glm/value_of_a_cluster_option_is_not_an_override`, `cc|glm/attached_cluster_value_leaves_the_flag_standing` PASS. The six bound families plus `TestLaunchViewSingleParse` run together: exit 0, 93 subtest PASS, 0 FAIL, `ok ... 36.819s`; the AC-LA-014 selector: exit 0, 180 top-level PASS, 0 FAIL, `ok ... 129.545s`. `golangci-lint run --timeout=8m --new-from-rev=6e729ba21 ./internal/cli/... ./internal/config/...` -> `0 issues.` exit 0; gofmt, `go vet ./internal/cli/ ./internal/config/`, native and `GOOS=windows GOARCH=amd64` `go build ./...` and windows `go vet` all exit 0.
+
+Note on the "control" the task named (`-c --allow-card-anchor hello`): `-c` is consumed by the launcher as `--continue`, which sends the real launch down the resume path (it execs the claude binary and skips the exec seam), so that control is pinned on the consumption function (`consumption_by_placement/alone`), not through the leader entry; the leader-entry control uses the attached cluster instead.
 
 ### Gaps (not observed) and refusals
 
