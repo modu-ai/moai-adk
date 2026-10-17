@@ -333,13 +333,13 @@ audit_ready: true
 ```yaml
 run_status: m1-m3-complete   # M4 (package coverage, whole-package lint, full-package run) is outside the lane delegation and carried to batch CI
 run_complete_at: 2026-10-18
-run_commit_sha: 951e09cab    # last code commit; the commit carrying this block follows it
+run_commit_sha: 2c5b25d37    # last code commit (sync-audit F1/F2/F3 fix); the commit carrying this block's update follows it
 ac_pass_count: 15            # AC-LA-001..015, see the E1 pointer below
 ac_fail_count: 0
 m1_to_mN_commit_strategy: one baseline commit, then one commit per milestone, then evidence / lint / card-review fixes
 ```
 
-**Final commit list** (branch `WT-launcher-argv-redesign`, nothing pushed): `538af8d7c` baseline characterization + pre-flight + status flip; `a022ada95` M1 resolver; `87abe2ef7` M2 guard; `f4676475b` M3 source scan; `f08294446` M1-M3 evidence record; `c14b127a2` unused wrapper dropped (lint); `951e09cab` card-review P2 fix (override flag as the value of a bundled-cluster option); then the commit carrying this section.
+**Final commit list** (branch `WT-launcher-argv-redesign`, nothing pushed): `538af8d7c` baseline characterization + pre-flight + status flip; `a022ada95` M1 resolver; `87abe2ef7` M2 guard; `f4676475b` M3 source scan; `f08294446` M1-M3 evidence record; `c14b127a2` unused wrapper dropped (lint); `951e09cab` card-review P2 fix (override flag as the value of a bundled-cluster option); `ecbe42094` this section; `2c5b25d37` sync-audit iteration 1 F1 (a required-value option takes a following `--` as its value; rows 15-17), F3 (`optionValueSpan` aligned with `consumeLaunchArgs`) and the F2 `@MX:DEBT` note; then the commit carrying the update of this section.
 
 **E1-E8 summary** (every record is in §E.2 above; this block repeats no output):
 
@@ -361,6 +361,9 @@ m1_to_mN_commit_strategy: one baseline commit, then one commit per milestone, th
 - One load-dependent timing test failed once in an AC-LA-014 run: `TestFactoryLeaseDriftLogVerbWorktreeWriteWaits/nominated` (`returned 633.191541ms after the release ... within 500ms`, load average ~31); it passed alone three times and the selector passed whole at `a022ada95`, `c14b127a2` and `951e09cab`. Not caused by this change.
 - The `/verify` gate was not run before the commits (it runs the full suite); substituted by gofmt, vet, both builds, lint and the scoped families.
 - `appendCrossSessionSettings` is not exercised by the exec-seam cells (covered as a class by `appended_flags_are_worktree_neutral`).
+- **F1 was observed in-process, not by running the installed binary.** Rows 15-17 and their controls drive the real cc / glm leader entries with the exec seam stubbed; no session was started and no live leader launch was run. The backend fact they rest on (a required-value option takes a following `--` as its value) is the orchestrator's measurement on claude 2.1.302, recorded in the SPEC HISTORY row; this run did not repeat it.
+- **The optional-value case stays unmeasured**: what `-w` / `--worktree [name]` does with a `--` right after it is unchanged by the fix and unmeasured (`TestLaunchViewBackendSelection` keeps the previous reading: the `--` is not its value and ends parsing).
+- **F2 is a recorded limit, not a repair**: the `.moai/logs` parent-directory swap between the path check and the by-path open is documented as `@MX:DEBT` on `openLeaderAnchorAuditLog` (ceiling: REQ-LA-009's three repairs; upgrade: no-follow directory open plus an openat-style relative open). No behaviour changed.
 - The card-review finding (the override flag consumed as the value of an option bundled in a short cluster, e.g. `-cn --allow-card-anchor hello`) **was fixed in `951e09cab`** with its RED/GREEN pair in §E.2; it is closed, not a gap. The leader-entry control for "flag standing alone after a boolean" uses the attached cluster `-cnNAME`, because a bare `-c` is consumed by the launcher as `--continue` and would take the resume path (pinned instead on the consumption function).
 
 
