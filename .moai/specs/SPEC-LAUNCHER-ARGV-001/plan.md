@@ -3,7 +3,7 @@ id: SPEC-LAUNCHER-ARGV-001
 title: "Implementation plan — launcher worktree-guard argv judgment redesign"
 version: "0.1.0"
 created: 2026-10-15
-updated: 2026-10-15
+updated: 2026-10-18
 author: manager-spec (MoAI factory, card t1748)
 tier: M
 ---
