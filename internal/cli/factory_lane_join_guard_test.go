@@ -41,7 +41,7 @@ func TestFactorySerialSlotHeldRequiresADriver(t *testing.T) {
 	}
 	for _, tc := range cases {
 		asked := ""
-		holderAlive := func(label string) bool { asked = label; return tc.alive }
+		holderAlive := func(c homestate.Card) bool { asked = c.OwnerLabel; return tc.alive }
 		if got := factorySerialSlotHeld(tc.card, now, holderAlive); got != tc.want {
 			t.Errorf("%s: held=%v, want %v", tc.name, got, tc.want)
 		}

@@ -1,12 +1,13 @@
 // factory_serial_slot_liveness_test.go — card t1828: an expired lease no
 // longer frees the serial slot by itself. The slot frees when the lease
 // holder's roster process is gone, and keeps holding while the roster binds
-// the owner to a live pid — for a first lease and a re-lease after the
-// nominee's own expiry collection alike, and the refusal names the blocking
-// card. Measured 2026-10-17 (run tn1p4e): t1825's lease expired at
-// 10:57:43Z while its worker (pid 21334) stayed alive and committed at
-// 11:22:39Z, and t1697 leased the slot at 10:59:37Z — two serial cards
-// genuinely worked at once.
+// the owner to a live pid of the SAME incarnation that last heartbeated the
+// card (a label re-registered by a new process frees — card-review r1 P2) —
+// for a first lease and a re-lease after the nominee's own expiry collection
+// alike, and the refusal names the blocking card. Measured 2026-10-17 (run
+// tn1p4e): t1825's lease expired at 10:57:43Z while its worker (pid 21334)
+// stayed alive and committed at 11:22:39Z, and t1697 leased the slot at
+// 10:59:37Z — two serial cards genuinely worked at once.
 package cli
 
 import (
@@ -21,11 +22,20 @@ import (
 	"github.com/modu-ai/moai-adk/internal/homestate"
 )
 
+// The two roster registration stamps the liveness arms play with, against
+// t1's heartbeat (fcNow-90s, frozen before its lease expired — the measured
+// shape). A registration BEFORE the heartbeat is the same incarnation that
+// wrote it; one AFTER is a re-registered NEW process holding the label.
+const (
+	serialSlotIncarnationEarly = "2026-09-26T08:00:00Z"
+	serialSlotIncarnationLater = "2026-09-26T09:00:30Z"
+)
+
 // expiredLeaseFixture builds the two-serial-card run the liveness arms read:
-// t1 leased to lane-2 with its lease expired under the fixture clock, t2
-// assigned to lane-1 with its queue item operator-picked (the shape the
-// nominated lease of the lane's own assigned card takes), both worktrees
-// isolated, lane-1 stamped.
+// t1 leased to lane-2 with its lease expired under the fixture clock and its
+// heartbeat frozen before the expiry, t2 assigned to lane-1 with its queue
+// item operator-picked (the shape the nominated lease of the lane's own
+// assigned card takes), both worktrees isolated, lane-1 stamped.
 func expiredLeaseFixture(t *testing.T) (string, *factory.BacklogStore) {
 	t.Helper()
 	root, store := flSerialPair(t)
@@ -33,21 +43,23 @@ func expiredLeaseFixture(t *testing.T) (string, *factory.BacklogStore) {
 	nmIsolatedWorktrees(t, "t1", "t2")
 	fcPlace(t, root,
 		homestate.Card{CardID: "t1", State: homestate.CardLeased, OwnerLabel: "lane-2", LeaseHolder: "lane-2",
-			LeaseExpiresAt: fcNow.Add(-time.Minute).Format(time.RFC3339Nano), Stage: homestate.CardRun},
+			LeaseExpiresAt: fcNow.Add(-time.Minute).Format(time.RFC3339Nano),
+			HeartbeatAt:    fcNow.Add(-90 * time.Second).Format(time.RFC3339Nano), Stage: homestate.CardRun},
 		homestate.Card{CardID: "t2", State: homestate.CardAssigned, OwnerLabel: "lane-1", Stage: homestate.CardRun},
 	)
 	nmLaneEnv(t, "lane-1", "")
 	return root, store
 }
 
-// serialSlotWorkerPID points the roster row of label at pid, so the
-// holder-liveness read sees a chosen process without spawning one. pid <= 0
-// reads as a dead holder; os.Getpid() as a genuinely live one.
-func serialSlotWorkerPID(t *testing.T, root, label string, pid int) {
+// serialSlotWorkerPID points the roster row of label at pid and stamps its
+// registration, so the holder-liveness read sees a chosen process without
+// spawning one. pid <= 0 reads as a dead holder; os.Getpid() as a genuinely
+// live one; registeredAt decides which incarnation holds the label.
+func serialSlotWorkerPID(t *testing.T, root, label string, pid int, registeredAt string) {
 	t.Helper()
 	db := fcOpen(t, root)
 	defer func() { _ = db.Close() }()
-	if _, err := db.DB.Exec(`UPDATE workers SET pid=? WHERE label=?`, pid, label); err != nil {
+	if _, err := db.DB.Exec(`UPDATE workers SET pid=?, registered_at=? WHERE label=?`, pid, registeredAt, label); err != nil {
 		t.Fatalf("set %s pid: %v", label, err)
 	}
 }
@@ -71,7 +83,7 @@ func serialSlotWorkerRowDropped(t *testing.T, root, label string) {
 // measured 10-17 double-lease.
 func TestFactoryNextRefusedBehindExpiredLeaseWithLiveHolder(t *testing.T) {
 	root, _ := expiredLeaseFixture(t)
-	serialSlotWorkerPID(t, root, "lane-2", os.Getpid())
+	serialSlotWorkerPID(t, root, "lane-2", os.Getpid(), serialSlotIncarnationEarly)
 	_, stderr, err := qasRunNext(t, "--run", fcRun, "--card", "t2")
 	if err == nil {
 		t.Fatalf("factory next leased a second serial card behind an expired lease whose holder is alive: stderr=%q", stderr)
@@ -99,11 +111,12 @@ func TestFactoryNextReNominationAfterOwnExpiryStillRefused(t *testing.T) {
 	nmIsolatedWorktrees(t, "t1", "t2")
 	fcPlace(t, root,
 		homestate.Card{CardID: "t1", State: homestate.CardLeased, OwnerLabel: "lane-2", LeaseHolder: "lane-2",
-			LeaseExpiresAt: fcNow.Add(-time.Minute).Format(time.RFC3339Nano), Stage: homestate.CardRun},
+			LeaseExpiresAt: fcNow.Add(-time.Minute).Format(time.RFC3339Nano),
+			HeartbeatAt:    fcNow.Add(-90 * time.Second).Format(time.RFC3339Nano), Stage: homestate.CardRun},
 		homestate.Card{CardID: "t2", State: homestate.CardLeased, OwnerLabel: "lane-1", LeaseHolder: "lane-1",
 			LeaseExpiresAt: fcNow.Add(-time.Minute).Format(time.RFC3339Nano), Stage: homestate.CardRun},
 	)
-	serialSlotWorkerPID(t, root, "lane-2", os.Getpid())
+	serialSlotWorkerPID(t, root, "lane-2", os.Getpid(), serialSlotIncarnationEarly)
 
 	// The nominee's own lease expired too; any transition attempt collects
 	// it back to `assigned` — owner kept, lease cleared (T27/T28).
@@ -137,10 +150,28 @@ func TestFactoryNextReNominationAfterOwnExpiryStillRefused(t *testing.T) {
 	}
 }
 
+// TestFactoryNextLeasesBehindExpiredLeaseOfReRegisteredHolder — the
+// card-review r1 P2 repair of card t1828: factory_slots deletes a dead
+// worker's roster row and REASSIGNS the same label to a new process (a lane
+// relaunch after reboot is routine), so a live pid behind the label is not
+// the process that held the lease. The liveness read is generation-aware —
+// the roster row counts only when its registration precedes the card's last
+// heartbeat (the incarnation that wrote the heartbeat is the one
+// registered). A re-registered label (registered_at AFTER the card's
+// heartbeat, pid genuinely alive) must free the slot and the nomination must
+// SUCCEED; before the repair the new process's liveness was read as the old
+// row's and the slot stayed blocked indefinitely.
+func TestFactoryNextLeasesBehindExpiredLeaseOfReRegisteredHolder(t *testing.T) {
+	root, _ := expiredLeaseFixture(t)
+	serialSlotWorkerPID(t, root, "lane-2", os.Getpid(), serialSlotIncarnationLater)
+	serialSlotDeadHolderLeases(t, root)
+}
+
 // TestFactoryNextLeasesBehindExpiredLeaseWithDeadHolder — the t1407 no-wedge
 // property, pinned on the far side of the t1828 refinement: an expired lease
-// whose holder is GONE (no roster row; a non-positive pid) releases the slot,
-// so the fleet never wedges behind a dead lane's lazily-collected row.
+// whose holder is GONE (no roster row; a non-positive pid; an empty
+// heartbeat; a re-registered label) releases the slot, so the fleet never
+// wedges behind a dead lane's lazily-collected row.
 func TestFactoryNextLeasesBehindExpiredLeaseWithDeadHolder(t *testing.T) {
 	t.Run("no roster row", func(t *testing.T) {
 		root, _ := expiredLeaseFixture(t)
@@ -149,7 +180,19 @@ func TestFactoryNextLeasesBehindExpiredLeaseWithDeadHolder(t *testing.T) {
 	})
 	t.Run("non-positive pid", func(t *testing.T) {
 		root, _ := expiredLeaseFixture(t)
-		serialSlotWorkerPID(t, root, "lane-2", -1)
+		serialSlotWorkerPID(t, root, "lane-2", -1, serialSlotIncarnationEarly)
+		serialSlotDeadHolderLeases(t, root)
+	})
+	t.Run("empty heartbeat", func(t *testing.T) {
+		// A lease-holding row that never carried a heartbeat cannot name its
+		// incarnation; leased cards always carry one, so empty frees.
+		root, _ := expiredLeaseFixture(t)
+		db := fcOpen(t, root)
+		if _, err := db.DB.Exec(`UPDATE cards SET heartbeat_at='' WHERE card_id='t1'`); err != nil {
+			t.Fatalf("clear t1 heartbeat: %v", err)
+		}
+		_ = db.Close()
+		serialSlotWorkerPID(t, root, "lane-2", os.Getpid(), serialSlotIncarnationEarly)
 		serialSlotDeadHolderLeases(t, root)
 	})
 }
