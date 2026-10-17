@@ -18,6 +18,14 @@ plan_audit: PASS-WITH-DEBT — iteration 3/3, overall_score 0.9375 (Tier M thres
 
 _pending run-phase (manager-develop)_
 
+## §F Phase 4 Mode Selection
+
+- 입력 매개변수: tier=M, 스코프=~6 파일(internal/cli 소스 3·테스트 파일 3 예상), 도메인 수=1(Go CLI 내부), 언어 혼합=Go+테스트, 동시성 이득=LOW(코딩 중심 작업), agent-team 전제=해당 없음.
+- 모드 평가: direct(아님 — 다중 파일·설계 변화) / serial(**선택** — 코딩 중심, 마일스톤 순차 의존 M1<M2<M3) / fanout(아님 — 코딩 중심 병렬화 경고) / sweep(아님 — ≥30파일 기계 변환 아님) / agent-team(명시 요청 없음).
+- Decision: serial
+- 근거: Anthropic 코딩 과제 병렬성 주의 — 구현 단위가 순차 의존(M1 백업·재배치 → M2 정리 → M3 합성 단언)이라 순차 위임이 안전한 기본. kickf-off 자율 형식 통과(T7 판정 PASS-WITH-DEBT + T8a audit decider, 2026-10-18) 후 첫 run 스폰 전 기록.
+- 구현 위임: manager-develop 단일 순차(Tier M → 섹션 A-E 템플릿, 카드 클래스 C → effort high, cycle_type=tdd).
+
 ## §E.3 Run-phase Audit-Ready Signal
 
 _pending run-phase (manager-develop)_
@@ -31,3 +39,4 @@ _pending sync-phase (manager-docs)_
 - 2026-10-17T16:04:09Z SPEC-UPDATE-REMOVAL-FAMILY-001 ceiling-outcome outcome=pass-through reasons="plan-audit ceiling reached (round count 3 >= tier ceiling 2 + 1 delta rounds); the verdict is admission-clean and admits without a question (REQ-ACE-013)" evidence=/Users/goos/MoAI/moai-adk-go/.moai/worktrees/t1668/.moai/reports/t1668/plan-audit-iter1.md,/Users/goos/MoAI/moai-adk-go/.moai/worktrees/t1668/.moai/reports/t1668/plan-audit-iter2.md,/Users/goos/MoAI/moai-adk-go/.moai/worktrees/t1668/.moai/reports/t1668/plan-audit-iter3.md
 - 2026-10-17T16:04:10Z SPEC-UPDATE-REMOVAL-FAMILY-001 ceiling-outcome outcome=pass-through reasons="plan-audit ceiling reached (round count 3 >= tier ceiling 2 + 1 delta rounds); the verdict is admission-clean and admits without a question (REQ-ACE-013)" evidence=/Users/goos/MoAI/moai-adk-go/.moai/worktrees/t1668/.moai/reports/t1668/plan-audit-iter1.md,/Users/goos/MoAI/moai-adk-go/.moai/worktrees/t1668/.moai/reports/t1668/plan-audit-iter2.md,/Users/goos/MoAI/moai-adk-go/.moai/worktrees/t1668/.moai/reports/t1668/plan-audit-iter3.md
 - 2026-10-17T16:07:39Z SPEC-UPDATE-REMOVAL-FAMILY-001 ceiling-outcome outcome=pass-through reasons="plan-audit ceiling reached (round count 3 >= tier ceiling 2 + 1 delta rounds); the verdict is admission-clean and admits without a question (REQ-ACE-013)" evidence=/Users/goos/MoAI/moai-adk-go/.moai/worktrees/t1668/.moai/reports/t1668/plan-audit-iter1.md,/Users/goos/MoAI/moai-adk-go/.moai/worktrees/t1668/.moai/reports/t1668/plan-audit-iter2.md,/Users/goos/MoAI/moai-adk-go/.moai/worktrees/t1668/.moai/reports/t1668/plan-audit-iter3.md
+- 2026-10-17T16:10:59Z SPEC-UPDATE-REMOVAL-FAMILY-001 ceiling-outcome outcome=pass-through reasons="plan-audit ceiling reached (round count 3 >= tier ceiling 2 + 1 delta rounds); the verdict is admission-clean and admits without a question (REQ-ACE-013)" evidence=/Users/goos/MoAI/moai-adk-go/.moai/worktrees/t1668/.moai/reports/t1668/plan-audit-iter1.md,/Users/goos/MoAI/moai-adk-go/.moai/worktrees/t1668/.moai/reports/t1668/plan-audit-iter2.md,/Users/goos/MoAI/moai-adk-go/.moai/worktrees/t1668/.moai/reports/t1668/plan-audit-iter3.md
