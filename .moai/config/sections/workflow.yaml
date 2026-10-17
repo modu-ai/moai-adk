@@ -23,10 +23,10 @@ workflow:
     # cross-model convergence: codex required, GLM advisory, Claude as the anchor.
     # Relax it per backend with an audit.gates block if needed.
     audit:
-        model: claude
+        model: codex
         claude:
             model: opus[1m]
-            effort: medium
+            effort: high
         codex:
             model: gpt-6.1-sol
             effort: high
@@ -34,8 +34,8 @@ workflow:
             model: glm-5.3
             effort: max
         gates:
-            claude: required
-            codex: off
+            claude: off
+            codex: required
             glm: off
     default_mode: ""
     execution_mode: auto
@@ -316,7 +316,7 @@ workflow:
             budget_default: {turns: 60, operations: 40, audit_retries: 2}
     codex:
         review_gate:
-            enabled: false
+            enabled: true
         task:
             allow_write: true
     # candidate_ci (SPEC-CANDIDATE-CI-001, card t1478): the pre-landing
