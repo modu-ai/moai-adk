@@ -120,10 +120,14 @@ func netLaneFixture(t *testing.T, leaderBackend string) string {
 }
 
 // netLeaderFixture builds a bare project for a leader launch, which records
-// its own run.
+// its own run. The working directory enters the project too: a leader launch
+// runs from its project, and the anchor guard reads the working directory
+// (SPEC-LAUNCHER-ARGV-001), so the test process must not stand in whichever
+// checkout runs the suite — a lane runs it from a card worktree.
 func netLeaderFixture(t *testing.T) string {
 	t.Helper()
 	root := t.TempDir()
+	t.Chdir(root)
 	t.Setenv(config.EnvClaudeProjectDir, root)
 	t.Setenv("MOAI_HOME", t.TempDir())
 	netScrubLaneEnv(t)

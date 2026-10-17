@@ -193,6 +193,17 @@ func runClaudeEntry(cmd *cobra.Command, args []string, commandName, mode, backen
 	factoryLabel, isFactoryLane := parseFactoryLaneLabel(filteredArgs)
 	switch resolveFactoryBranch(entry.FactoryEnabled, isFactoryLane) {
 	case factoryBranchLeader:
+		// SPEC-LAUNCHER-ARGV-001 REQ-LA-004: the anchor guard judges the launch
+		// view BEFORE any session mutation — the role marker, the run record, the
+		// settings preparation and the worktree materialization all wait behind
+		// it. The override flag is the launcher's own option, consumed here; the
+		// assignment (never :=) keeps the function-level filteredArgs the one the
+		// rest of the entry sees.
+		var anchorOverride bool
+		filteredArgs, anchorOverride = consumeAllowCardAnchor(filteredArgs)
+		if err := enforceLeaderAnchorGuard(backend, leaderLaunchDir(), launchProjectRoot(), resolveLaunchView(filteredArgs), anchorOverride, cmd.ErrOrStderr()); err != nil {
+			return err
+		}
 		// The operator-supplied `leader-<run-id>` name is adopted (see
 		// factory_launch_helpers.go leaderRunID) — the run id, the session name, and the lane
 		// commands the notice prints stay on one run.

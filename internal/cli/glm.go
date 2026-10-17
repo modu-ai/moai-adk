@@ -259,6 +259,13 @@ func runGLM(cmd *cobra.Command, args []string) error {
 	factoryLabel, isFactoryLane := parseFactoryLaneLabel(filteredArgs)
 	switch resolveFactoryBranch(entry.FactoryEnabled, isFactoryLane) {
 	case factoryBranchLeader:
+		// SPEC-LAUNCHER-ARGV-001 REQ-LA-004: see cc.go — the anchor guard judges
+		// the launch view before any session mutation.
+		var anchorOverride bool
+		filteredArgs, anchorOverride = consumeAllowCardAnchor(filteredArgs)
+		if err := enforceLeaderAnchorGuard(factory.BackendGLM, leaderLaunchDir(), launchProjectRoot(), resolveLaunchView(filteredArgs), anchorOverride, cmd.ErrOrStderr()); err != nil {
+			return err
+		}
 		priorRunID := os.Getenv(config.EnvFactoryRunID)
 		leaderLabel, _ := parseLeaderLabel(filteredArgs)
 		restoreFactory := enterFactoryLeaderMode(entry.FactoryLanes, leaderLabel)
