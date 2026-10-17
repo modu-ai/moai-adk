@@ -124,53 +124,56 @@ the detector (fail-open) without a real review.
   `mcp_convergence.go:768-770`).
   Command: `go test ./internal/cli/ -run TestWSR003 -count=1`.
 
-- **AC-WSR-004 (confined roots unchanged, foreign roots refused; REQ-WSR-005; amended
-  at 0.3.0 to sit under SPEC-MCP-NEUTRALITY-001 REQ-MN-005).**
+- **AC-WSR-004 (confined set refuses foreign roots, audit surface accepts validated
+  roots; REQ-WSR-005; amended at 0.3.0 and narrowed).**
   Two server configurations: **S_F**, a server whose own repository is fixture F's `P`,
-  and **S_T**, a server whose own repository is fixture T's primary checkout. Every leg
-  calls `codex_audit` (seam verdict `pass`), `audit_multi` (session `S`, stub backends),
-  and `verify_snapshot` record with the leg's `project_root`, once with the ordinary
-  `PATH` (run **git**) and once with a `PATH` from which git cannot be found (run
-  **no-git**).
+  and **S_T**, a server whose own repository is fixture T's primary checkout. Each leg
+  runs once with the ordinary `PATH` (run **git**) and once with a `PATH` from which git
+  cannot be found (run **no-git**).
+  **Group A — confined set** (`verify_snapshot` record, `verify_trend`, `spec_progress`,
+  `spec_audit`, `spec_drift`):
   Given the registered legs — S_F with `P`; S_T with T's primary; S_T with `WT` —
-  When the three tools run in run **git**,
-  Then the receipt, the convergence result for `S`, and the snapshot land under that
-  root's own `.moai/state` at the path the base tree uses, and the only git
-  inspection run is the confinement inspection (no primary identification is
-  attempted for these non-orphaned roots).
-  Given the foreign legs — S_T with `P` (a different repository), S_F with `WT` (a
-  different repository), and S_F and S_T each with fixture B (a directory that is not a
-  git worktree) —
-  When the three tools run, in run **git** and in run **no-git**,
-  Then each call returns a successful MCP result whose structured content carries
-  `refused: true` and whose reason names the root confinement; and a recursive listing
-  of the whole `t.TempDir()` tree taken before the call is identical to the one taken
-  after it (no receipt, no convergence result, no snapshot, no `.moai/state`
-  directory, anywhere).
-  Given the registered legs again —
-  When the three tools run in run **no-git**,
+  When the tools run in run **git**,
+  Then the snapshot (and the catalogue answer) is served from that root's own
+  `.moai/state` / `.moai/specs` at the path the base tree uses.
+  Given the foreign legs — S_T with `P`, S_F with `WT`, and S_F and S_T each with
+  fixture B —
+  When the tools run in run **git**,
+  Then each call returns a successful MCP result with `refused: true` and a reason
+  naming the root confinement, and a recursive listing of the whole `t.TempDir()` tree
+  taken before the call is identical to the one taken after it.
+  Given every leg above —
+  When the tools run in run **no-git**,
   Then each call returns the same structured refusal and the before/after listing is
-  identical: confinement cannot be established, so the call fails closed.
-  RED-now: the prior AC-WSR-004 pinned the opposite predicates — foreign and non-git
-  roots accepted, state written under the root's own `.moai/state`, and the no-git run
-  identical to the git run — so any tree that still satisfies the prior predicates is
-  red here: the "refused: true" predicate fails on the foreign legs in both runs, and the
-  "identical listing" predicate fails because state was written. This is derived from the
-  prior criterion's text and was not executed at amendment time; the run phase records
-  the observed per-leg result on the tree it starts from in progress.md §E.2.
-  Green path: the card t1632 lane's rewrite of `TestWSR004` together with the root
-  confinement call on the tool path flips it; the passing output reports `--- PASS:
-  TestWSR004` with every leg's subtest named, and the swept count is non-zero (a run
-  reporting `[no tests to run]` is not a pass).
-  Discriminating mutants (derived from the cited requirement text, not executed at
-  amendment time; the run phase executes each once and records the failing predicate in
-  progress.md §E.2): (i) accepts a foreign root and writes under its own `.moai/state`
-  — fails the "refused: true" and "identical listing" predicates on the foreign legs;
-  (ii) refuses a foreign root but creates the state directory first — fails only the
-  "identical listing" predicate; (iii) falls back to the root as given when git is
-  missing — fails the no-git run on every registered and foreign leg; (iv) applies the
-  store-root mapping to every linked worktree (the prior criterion's mutant) — moves
-  `WT`'s files to T's primary checkout and fails the `WT` leg of run **git**.
+  identical (fail closed).
+  **Group B — audit surface** (`codex_audit` with seam verdict `pass`, `audit_multi`
+  with session `S` and stub backends):
+  Given every leg above, foreign and non-git included (fixture B carrying `.moai`),
+  When the tools run in run **git** and in run **no-git**,
+  Then the receipt and the convergence result for `S` land under that root's own
+  `.moai/state` at the path the base tree uses, in every run; no call returns a
+  confinement refusal; and no primary identification is attempted. Bare fixture B needs
+  no git at all.
+  RED-now: derived from the prior criterion's text and the narrowed requirement, not
+  executed at amendment time; the run phase records the observed per-leg result on the
+  tree it starts from in progress.md §E.2. Group A is red on any tree that still
+  accepts a foreign root (the prior criterion pinned acceptance), and Group B is red on
+  any tree that confines the audit surface.
+  Green path: the card t1632 lane's `TestWSR004`, with the confinement call on the
+  confined set only, flips it; the passing output reports TestWSR004 as passed with a
+  subtest named per group and leg, and the swept count is non-zero (`[no tests to run]`
+  is not a pass).
+  Discriminating mutants (derived, not executed at amendment time; the run phase
+  executes each once and records the failing predicate in progress.md §E.2):
+  (i) the confined set accepts a foreign root and writes under it — fails Group A's
+  refusal and listing predicates; (ii) the confined set refuses but creates the state
+  directory first — fails only the listing predicate; (iii) the confined set falls back
+  to the root as given when git is missing — fails Group A's no-git run; (iv) the
+  store-root mapping is applied to every linked worktree — moves `WT`'s files to T's
+  primary checkout and fails the `WT` leg of run **git**; (v) the audit surface wrongly
+  refuses a validated foreign root — fails Group B's foreign and fixture-B legs;
+  (vi) the confined set wrongly accepts one — the same predicate as (i), recorded as
+  the mirror of (v) so the two directions are asserted together.
   Predecessor tests: `go test ./internal/cli/ ./internal/hook/ ./internal/auditreceipt/ ./internal/verify/ -count=1`
   passes with exactly two existing tests edited, both named here —
   (i) `TestConfigOrphanedWorktree_PrimaryGateEnforced`
