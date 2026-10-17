@@ -9,6 +9,7 @@ package cli
 import (
 	"encoding/json"
 	"fmt"
+	"io/fs"
 	"os"
 	"path/filepath"
 	"slices"
@@ -18,6 +19,7 @@ import (
 	"github.com/modu-ai/moai-adk/internal/config"
 	"github.com/modu-ai/moai-adk/internal/manifest"
 	"github.com/modu-ai/moai-adk/internal/profile"
+	"github.com/modu-ai/moai-adk/internal/template"
 )
 
 // profileReachSandbox confines HOME and the launch ledger to test-owned
@@ -97,6 +99,55 @@ func TestMigrationKeepsSharedCopyUnderProfileReach(t *testing.T) {
 	}
 	if after.TemplateHash != before.TemplateHash {
 		t.Errorf("TemplateHash changed from %q to %q; a kept copy keeps its shipped hash", before.TemplateHash, after.TemplateHash)
+	}
+}
+
+// TestMigrationRemovesSharedCopyWithoutProfileReach — AC-RC30-27 removal half
+// (card t1668, SPEC-UPDATE-REMOVAL-FAMILY-001 M3): the mirror of the keep
+// half above. A project the launch ledger does NOT map to a profile has no
+// profile reach, so with the removal switch on in the test fixture its
+// shipped copy (template-identical bytes, confirmed user counterpart) is
+// removed — behind the removal gate (REQ-RC30-003), in the backup-first
+// order (REQ-RC30-004, AC-RC30-03), and pruning the emptied skill directory
+// with its last file (AC-RC30-11). The user-modified copy beside it survives.
+func TestMigrationRemovesSharedCopyWithoutProfileReach(t *testing.T) {
+	profileReachSandbox(t)
+	enableRemovalForTest(t)
+	root := buildMigrationFixture(t)
+	home := installMigrationUserCounterparts(t)
+
+	removed, err := migrateProjectCommonAssets(root, home, true, nil, func(string, ...interface{}) {})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !slices.Contains(removed, migIdenticalSkill) {
+		t.Errorf("the unmapped project's shipped copy was not removed (removed=%v)", removed)
+	}
+	assertFileAbsent(t, root, migIdenticalSkill)
+	// The user-modified copy survives the same run.
+	assertFilePresent(t, root, migModifiedSkill)
+
+	// Backup-first composition (M1): a byte-identical run-backup copy of the
+	// removed file exists.
+	_, copyPath := removalBackupCopy(t, root, migIdenticalSkill)
+	embedded, err := template.EmbeddedTemplates()
+	if err != nil {
+		t.Fatalf("load embedded templates: %v", err)
+	}
+	wantBytes, err := fs.ReadFile(embedded, migIdenticalSkill)
+	if err != nil {
+		t.Fatalf("embedded read: %v", err)
+	}
+	if data, rErr := os.ReadFile(copyPath); rErr != nil {
+		t.Fatalf("read removal backup copy: %v", rErr)
+	} else if string(data) != string(wantBytes) {
+		t.Errorf("the run-backup copy of %s is not byte-identical to the removed file", migIdenticalSkill)
+	}
+
+	// Emptied-directory composition (M2): the skill directory went with its
+	// last file.
+	if _, err := os.Stat(filepath.Join(root, ".claude", "skills", "moai-foundation-core")); !os.IsNotExist(err) {
+		t.Errorf("the emptied skill directory survived its last file's removal (stat err: %v)", err)
 	}
 }
 
