@@ -17,7 +17,48 @@ notes: 플랜 페이스 종결 — 플랜 페이스는 문서만 작성·갱신(
 
 ## §E.2 Run-phase Evidence
 
-_<pending run-phase>_
+**Base pin (plan §C.1, recomputed at run-phase entry)**: branch `WT-10-17-c`, HEAD `51b6ffc98` (2026-10-18). Delegation-time HEAD was `e43b3eea2`; the two commits between them (`e43b3eea2`, `51b6ffc98`) are the coordinator's kickoff-gate docs commits (§E.1 audit_ready token + plan-audit-iter2 convention copy) — code-untouched, outside this SPEC's file scope. Kickoff confirmed by coordinator message: factory gate approved `t1839: run (v11)`, lease restored to lane-17. Plan-audit skip-eligibility for the Phase-1 gate: verdict PASS (rule-C delta audit, receipt `rcpt-d75ece55c14bd82d83f5ec47e`), Tier M threshold met, plan_artifact_hash `4ac6eca4…f3c1` unchanged since the verdict — skip taken per the three-condition contract.
+
+**Run-phase interpretation I-1 (recorded for operator/auditor review, not a SPEC edit)**: REQ-CEP-003 condition 2 names "유효 분류(EffectiveCardClassification)가 Class C인 카드" — the queue classification (`internal/factory/classification.go` `CardClassification`) carries priority/blocked/mode and NO dispatch class letter (A/B/C). Implemented surrogate: `Priority == ClassPriorityHigh` is treated as the heavyweight class that must carry a spec id (fail-safe direction; AC-CEP-003's "Class C 아님 + 무spec ⇒ 통과" cell forces a discriminating predicate, and priority is the only mechanical axis). Flagged for the sync audit; reversible in one predicate line.
+
+### Pre-flight (plan §C.2/C.3)
+
+- **P1 — M1-ENTRY observation (AC-CEP-003 regression-guard pin, pre-implementation tree `51b6ffc98` clean)** — command: `go test ./internal/cli/ -run '^TestSD_AC008_NextSelectionOrderAndOutput$' -count=1 -v` — exit 0. Verbatim output (tail):
+  ```
+  --- PASS: TestSD_AC008_NextSelectionOrderAndOutput (10.00s)
+      --- PASS: TestSD_AC008_NextSelectionOrderAndOutput/assigned-to-this-lane_wins_over_unowned_picked (2.30s)
+      --- PASS: TestSD_AC008_NextSelectionOrderAndOutput/unowned_picked_wins_over_older_queued (2.04s)
+      --- PASS: TestSD_AC008_NextSelectionOrderAndOutput/card_assigned_to_another_lane_is_never_taken;_exit_3 (1.37s)
+      --- PASS: TestSD_AC008_NextSelectionOrderAndOutput/oldest_queued_promoted_and_leased;_newer_stays_queued (2.18s)
+      --- PASS: TestSD_AC008_NextSelectionOrderAndOutput/empty_queue_prints_no-card_and_exits_3 (0.77s)
+      --- PASS: TestSD_AC008_NextSelectionOrderAndOutput/two_lanes_concurrently:_exactly_one_leases_the_picked_card (1.34s)
+  PASS
+  ok  	github.com/modu-ai/moai-adk/internal/cli	11.241s
+  ```
+  Pins the current GREEN of ungated (b) leasing (subtests 2 and 6 lease an unowned picked card through the generic arms) — observable only before the gate exists (plan §F M1 entry).
+- **P2 — vet baseline**: `go vet ./internal/cli/ ./internal/config/` — exit 0, no output.
+- **P3 — lint baseline**: `golangci-lint run ./internal/cli/... ./internal/config/...` — 3 issues, all pre-existing errcheck in `internal/cli/factory_run_adopt.go` (outside this SPEC's file scope): `3 issues: * errcheck: 3`. NEW-issue gate for E4 = 0 new findings relative to this baseline.
+- **P4 — test-file list (plan §C.3)**: (a) update-target (pins ungated (b)/(b2) leasing): `internal/cli/factory_self_dispatch_test.go` — subtests `TestSD_AC008_NextSelectionOrderAndOutput/unowned_picked_wins_over_older_queued` and `.../two_lanes_concurrently:_exactly_one_leases_the_picked_card`. (b) untouched-arm tests: every other subtest of `TestSD_AC008_NextSelectionOrderAndOutput` (arms (a)/(c)), `TestSD_AC009_NextWaitLeasesOrTimesOut`, `factory_classify_test.go` serial/mutual-exclusivity family, `factory_serial_slot_stale_test.go` slot family — all unmodified (E5 proves by scoped diff).
+
+### M1 — config key plumbing (RED-first) + AC-CEP-007 closed in-milestone
+
+- **RED (key-absent tree)** — command: `go test ./internal/config/ -run '^TestWorkflowFactorySelfDispatchDefault$' -count=1 -v` — tree `51b6ffc98` + defaults_test.go only. Verbatim output:
+  ```
+  internal/config/defaults_test.go:705:32: NewDefaultWorkflowConfig().Factory undefined (type WorkflowConfig has no field or method Factory)
+  FAIL	github.com/modu-ai/moai-adk/internal/config [build failed]
+  FAIL
+  ```
+- **Implementation**: `internal/config/types.go` (`FactoryConfig` + `WorkflowConfig.Factory` yaml `factory`), `internal/config/defaults.go` (`Factory: FactoryConfig{SelfDispatch: false}`), repo + template workflow.yaml (`factory.self_dispatch: false` with comment), `internal/config/defaults_test.go` (`TestWorkflowFactorySelfDispatchDefault`, \*bool yaml probe so key-absence fails).
+- **Cascade follow-up (golden-file regeneration, attributable to REQ-CEP-007)**: `internal/config/testdata/shipped_key_inventory.yaml` +1 row (`workflow.factory.self_dispatch`, class W) — `TestShippedConfigKeysHaveReaders` (REQ-CKH-008 anti-rot) failed without it; outside the literal plan §D file list but inside the scope envelope per the test-fixture cascade precedent.
+- **GREEN** — command: `go test ./internal/config/ -run '^TestWorkflowFactorySelfDispatchDefault$' -count=1 -v` — exit 0:
+  ```
+  --- PASS: TestWorkflowFactorySelfDispatchDefault (0.01s)
+  PASS
+  ok  	github.com/modu-ai/moai-adk/internal/config	0.383s
+  ```
+- **Package-wide**: `go test ./internal/config/ -count=1` — exit 0: `ok github.com/modu-ai/moai-adk/internal/config 4.375s`.
+
+_<M2-M5 evidence appended below as milestones land>_
 
 ## §E.3 Run-phase Audit-Ready Signal
 
@@ -31,3 +72,4 @@ _<pending sync-phase>_
 
 - 2026-10-17T16:07:12Z SPEC-CARD-ELIGIBLE-PULL-001 ceiling-outcome outcome=pass-through reasons="plan-audit ceiling reached (round count 2 >= tier ceiling 2 + 1 delta rounds); the verdict is admission-clean and admits without a question (REQ-ACE-013)" evidence=/Users/goos/MoAI/moai-adk-go/.moai/worktrees/t1839/.moai/reports/t1839/plan-audit-iter2.md,/Users/goos/MoAI/moai-adk-go/.moai/worktrees/t1839/.moai/reports/t1839/plan-audit.md
 - 2026-10-17T16:07:34Z SPEC-CARD-ELIGIBLE-PULL-001 ceiling-outcome outcome=pass-through reasons="plan-audit ceiling reached (round count 2 >= tier ceiling 2 + 1 delta rounds); the verdict is admission-clean and admits without a question (REQ-ACE-013)" evidence=/Users/goos/MoAI/moai-adk-go/.moai/worktrees/t1839/.moai/reports/t1839/plan-audit-iter2.md,/Users/goos/MoAI/moai-adk-go/.moai/worktrees/t1839/.moai/reports/t1839/plan-audit.md
+- 2026-10-17T16:10:02Z SPEC-CARD-ELIGIBLE-PULL-001 ceiling-outcome outcome=pass-through reasons="plan-audit ceiling reached (round count 2 >= tier ceiling 2 + 1 delta rounds); the verdict is admission-clean and admits without a question (REQ-ACE-013)" evidence=/Users/goos/MoAI/moai-adk-go/.moai/worktrees/t1839/.moai/reports/t1839/plan-audit-iter2.md,/Users/goos/MoAI/moai-adk-go/.moai/worktrees/t1839/.moai/reports/t1839/plan-audit.md

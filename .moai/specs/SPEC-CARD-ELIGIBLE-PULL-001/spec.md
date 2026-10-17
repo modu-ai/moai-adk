@@ -2,7 +2,7 @@
 id: SPEC-CARD-ELIGIBLE-PULL-001
 title: "카드 자격 임대 — bare `factory next` 제네릭 암 (b)/(b2)에 자격 게이트·self-dispatch 플래그·구조화 거부 도입"
 version: "0.2.2"
-status: draft
+status: in-progress
 created: 2026-10-17
 updated: 2026-10-18
 author: manager-spec
