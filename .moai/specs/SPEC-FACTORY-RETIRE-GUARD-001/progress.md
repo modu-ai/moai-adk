@@ -57,7 +57,18 @@ gaps: sync-phase docs (8 files) not edited by design; new-code function coverage
 
 ## §E.4 Sync-phase Audit-Ready Signal
 
-_<pending sync-phase>_
+audit_ready: false
+sync_status: blocked-changelog-b12
+docs_commit_sha: c77e723c1
+sync_commit_sha: not-yet-written (status stays in-progress; the implemented -> completed transition and the pending-backfill slot ride the single sync commit, which this record does not claim)
+
+Docs obligation (spec §F/plan §F, 8 files) is done and verified; the CHANGELOG entry and the status transition are held by a B12 self-test blocker.
+
+- Docs edits (commit c77e723c1, tree base 05253e87a): the `--retire` sentence in README.ko.md (canonical), README.md, README.ja.md, README.zh.md and docs-site/content/{ko,en,ja,zh}/advanced/factory-mode.md. Each states, checked against `internal/cli/factory_retire_guard_text.go`, `factory_handoff_recover.go`, `factory_relaunch.go` and `internal/homestate/factory_run_retire.go`: refusal on non-terminal cards (not done/failed/abandoned) with the card list and the exits (`moai cc -l --factory-run`, `moai cc -f --factory-run`, `moai factory decide <card> --choice abandon --run`), join/adopt only while the run is active, abandon irreversible, no force flag, an already-retired run reported without a second write with its stranded cards listed, `relaunch --from-run` leaves such a run active.
+- Verify recipe (this tree, after the edits): URL blacklist grep over docs-site/content and README*.md exit 1 (no match); Mermaid LR/RL grep exit 1 (no match); README `grep -c '^## '` 12/12/12/12; factory-mode.md heading count `^#{2,} ` 10/10/10/10 (ko/en/ja/zh); file-existence loop printed no MISSING; locale-parity ratchet `comm -23` printed no NEW divergence; emoji scan limited to the added lines printed no hit and no `\u` escape in the added lines; `hugo --minify --gc` run with `--destination` in the scratchpad exit 0, 0 lines matching warn/error, sitemap.xml present. `moai slot status --resource go-test-heavy` read first: held by lane-6, not acquired (hugo is not a go-test-heavy workload).
+- `moai spec lint --strict` on spec.md: `No findings — all SPEC documents are valid`.
+- B12 CHANGELOG blocker: precheck `grep -c 'SPEC-FACTORY-RETIRE-GUARD-001' CHANGELOG.md` printed 0 (no duplicate). The AC count self-test (tier M, ac_source=.moai/specs/SPEC-FACTORY-RETIRE-GUARD-001/acceptance.md, file non-empty) printed `16` with `live=16 excluded=0 ambiguous=0`, against 8 declared criteria AC-RRG-001..008. The extra 8 are the shorthand ids `AC-001..AC-008` on the single line "Requirement-to-criterion map" (acceptance.md line 104), which the grammar counts as separate identifiers. A CHANGELOG count of 8 would not equal the counter, and writing 16 would be a false figure, so no CHANGELOG entry was written. Resolution: manager-spec adds `[REF]` immediately after each of the eight shorthand occurrences on that line (acceptance.md body, outside manager-docs' ownership), after which the counter prints 8 and the entry can be emitted with the status transition.
+- Gaps: CHANGELOG entry not written; spec.md `status:` not transitioned (still `in-progress`) and `updated:` not refreshed; ja/zh/ko prose not read by a native human reviewer (no humanize skill pass; the optional pack was not invoked); installed `moai` build not re-compared with the tree HEAD for this lint run (spec.md unchanged since the plan-phase lint); the docs claims about exits are read from code, `decide`/`cc` were not run.
 
 ## §G Override and Refusal Record
 
