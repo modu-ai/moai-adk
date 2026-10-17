@@ -24,15 +24,19 @@ import (
 
 // @MX:NOTE: [AUTO] The backup push is this constant argv, nothing else.
 // @MX:SPEC: SPEC-TRUNK-BACKUP-SYNC-001
-// REQ-TBS-002: the refspec, the force flag, and --no-follow-tags are source
-// constants — never computed from flags, configuration, or the environment.
-// --force is scoped by construction to exactly this refspec, and
-// --no-follow-tags holds even under a caller's push.followTags=true, so no
-// annotated tag reachable from main rides the push (a tag ref would update a
-// second remote ref and can fire release.yml). Provisional while operator
-// decisions Q1-Q3 are open: a verdict selecting another surface, ref name, or
-// force semantics is a one-commit amendment of these constants, the tests,
-// and the runbook together.
+// REQ-TBS-002: the refspec, the force flag, --no-follow-tags, and
+// --no-recurse-submodules are source constants — never computed from flags,
+// configuration, or the environment. --force is scoped by construction to
+// exactly this refspec; --no-follow-tags holds even under a caller's
+// push.followTags=true, so no annotated tag reachable from main rides the
+// push (a tag ref would update a second remote ref and can fire release.yml);
+// --no-recurse-submodules holds even under a caller's push.recurseSubmodules
+// — under `only` the argv without it exits 0 as a silent no-op while the
+// remote gains no refs/heads/sync/main, and under `on-demand` the push
+// reaches submodule remotes, a second remote surface (sync-audit round 1,
+// S1). Provisional while operator decisions Q1-Q3 are open: a verdict
+// selecting another surface, ref name, or force semantics is a one-commit
+// amendment of these constants, the tests, and the runbook together.
 const (
 	backupTargetRef = "refs/heads/sync/main"
 	backupSourceRef = "refs/heads/main"
@@ -74,7 +78,7 @@ func runIntegrationBackup(dir string, seams integrationBackupSeams, out io.Write
 	}
 	sha = strings.TrimSpace(sha)
 
-	if _, err := git(dir, "push", "--force", "--no-follow-tags", backupRemote, backupRefspec); err != nil {
+	if _, err := git(dir, "push", "--force", "--no-follow-tags", "--no-recurse-submodules", backupRemote, backupRefspec); err != nil {
 		var exitErr *factorylane.GitExitError
 		if errors.As(err, &exitErr) {
 			return fmt.Errorf("integration backup: push to %s failed (git exit %d) — no further git command was issued\npush stdout:\n%s\npush stderr:\n%s", backupTargetRef, exitErr.ExitCode, exitErr.Stdout, exitErr.Stderr)
@@ -96,9 +100,9 @@ Between release batches, local main is the only copy of landed work. This
 verb mirrors it onto refs/heads/sync/main — a ref no workflow under
 .github/workflows reacts to (the exclusion is regression-guarded by the Go
 test suite) — so a second copy exists at origin. The push is the constant
-argv ` + "`push --force --no-follow-tags origin refs/heads/main:refs/heads/sync/main`" + `:
-force is scoped by construction to exactly that refspec, and no tag rides
-the push.
+argv ` + "`push --force --no-follow-tags --no-recurse-submodules origin refs/heads/main:refs/heads/sync/main`" + `:
+force is scoped by construction to exactly that refspec, no tag rides the
+push, and no submodule remote is reached.
 
 sync/main is a redundancy copy only: it never lands, is never merged into
 any branch, and never substitutes for the release/main-batch-YYYYMMDD

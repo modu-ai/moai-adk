@@ -110,7 +110,7 @@ func backupRemoteRefs(origin string) map[string]string {
 // every push's remote operand resolves under the test's temporary root.
 func assertBackupCapture(t *testing.T, base string, rec *backupRecorder) {
 	t.Helper()
-	constantPush := []string{"push", "--force", "--no-follow-tags", "origin", backupRefspec}
+	constantPush := []string{"push", "--force", "--no-follow-tags", "--no-recurse-submodules", "origin", backupRefspec}
 	for _, call := range rec.calls {
 		if len(call.Args) > 0 && call.Args[0] == "push" {
 			if !reflect.DeepEqual(call.Args, constantPush) {
@@ -336,6 +336,31 @@ func TestIntegrationBackupFollowTagsNoLeak(t *testing.T) {
 	refs := backupRemoteRefs(origin)
 	if len(refs) != 1 || refs["refs/heads/sync/main"] != want {
 		t.Errorf("remote refs = %v, want exactly {refs/heads/sync/main: %s} — no tag ref may ride the push despite push.followTags=true (the --no-follow-tags constant holds)", refs, want)
+	}
+	assertBackupCapture(t, base, rec)
+}
+
+// TestIntegrationBackupRecursionHazard — S1 (sync-audit round 1, P1): under a
+// caller's push.recurseSubmodules=only the argv without the constant
+// --no-recurse-submodules exits 0 as a silent no-op false success — the verb
+// prints success while the remote gains NO refs/heads/sync/main. The constant
+// holds even where the gitconfig sets push.recurseSubmodules (amended
+// REQ-TBS-001/002), so the push must land sync/main regardless.
+func TestIntegrationBackupRecursionHazard(t *testing.T) {
+	t.Parallel()
+
+	base, origin, clone := backupFixture(t)
+	backupGit(t, clone, "config", "push.recurseSubmodules", "only")
+
+	rec := &backupRecorder{}
+	var out strings.Builder
+	if err := runIntegrationBackup(clone, rec.seam(), &out); err != nil {
+		t.Fatalf("verb: %v", err)
+	}
+	want := backupGit(t, clone, "rev-parse", "refs/heads/main")
+	refs := backupRemoteRefs(origin)
+	if refs["refs/heads/sync/main"] != want {
+		t.Errorf("remote refs = %v — push.recurseSubmodules=only swallowed the push as a silent no-op (exit 0, success printed: %q); want refs/heads/sync/main at %s", refs, out.String(), want)
 	}
 	assertBackupCapture(t, base, rec)
 }

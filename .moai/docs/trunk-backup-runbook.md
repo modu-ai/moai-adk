@@ -13,11 +13,12 @@ moai integration backup
 로컬 `refs/heads/main`을 origin의 `refs/heads/sync/main`에 밀어넣는다 — `.github/workflows/`의 그 어떤 workflow도 반응하지 않는 ref(동일성은 Go 회귀 테스트 `internal/cli/workflow_sync_ref_guard_test.go`가 지킨다). push argv는 소스 상수다:
 
 ```
-push --force --no-follow-tags origin refs/heads/main:refs/heads/sync/main
+push --force --no-follow-tags --no-recurse-submodules origin refs/heads/main:refs/heads/sync/main
 ```
 
 - `--force`는 이 refspec에만, 구성으로 스코프된다(REQ-TBS-002). 다른 어떤 remote ref도 갱신하지 않는다.
 - `--no-follow-tags`는 호출자의 `push.followTags=true` 설정에도 항상 유지된다 — 어노테이션 태그가 push에 실려 `release.yml`을 켜는 일이 없다.
+- `--no-recurse-submodules`는 호출자의 `push.recurseSubmodules` 설정에도 항상 유지된다(sync-audit round 1 S1) — `only` 설정에서 이 flag가 없으면 push가 종료 코드 0으로 조용한 no-op가 되고 remote에는 아무 ref도 생기지 않으며, `on-demand`에서는 서브모듈 remote라는 두 번째 remote 면이 열린다.
 - `refs/heads/main`이 해석되지 않으면 push 시도 이전에 거부하고(비영구 종료 + 안내), push 실패 시 양쪽 스트림을 출력하고 추가 git 명령을 내리지 않는다(REQ-TBS-003/004).
 - verb는 인수·플래그를 받지 않는다. 호출한 작업 디렉터리 기준으로 저장소를 해석하므로 primary 체크아웃이든 연결 worktree든 같은 공유 ref를 읽는다.
 
