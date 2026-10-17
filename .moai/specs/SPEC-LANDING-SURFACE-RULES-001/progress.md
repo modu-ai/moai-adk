@@ -95,7 +95,7 @@ sync_complete_at: 2026-10-18
 sync_commit_sha: a2e6fa11777b57fbdc6af0d6063dba385977a46e
 sync_commit_note: a commit cannot cite its own hash; the lane backfills the real SHA in a following commit (spec-frontmatter-schema.md, SHA placeholder backfill exemption D3)
 frontmatter_status_transitions: draft -> implemented -> completed via `moai spec status` on the single sync commit; `updated: 2026-10-18`
-run_commits: 5ccf12db8, a67623ebd, 6dcb45586, 72a6d8796, 499701907, 5beb170e0 (run evidence)
+run_commits: 5ccf12db8, a67623ebd, 6dcb45586, 72a6d8796, 499701907, 5beb170e0 (run evidence), f4495b1c1 (backfill of the sync SHA and final plan hash), 2dec5dc4f (sync audit F1/F3 repair), 2de661b1f (restore "never stash")
 binding_run_conditions: N2, N3, N4 disposed (E.2); Disposed markers added beside the debt lines, verbatim `- debt:` lines unchanged
 plan_artifact_hash_bound_by_verdict: 1c0ff82567b85349cda46a4861630e66d5c766b70c90e914809e3499a0d8319d
 plan_artifact_hash_after_n2: 7b648f6230fb71cd9dfd46fc1b85c0d03d1d03a96130c7a200133d8bc909a4d2 (commit 72a6d8796)
@@ -106,6 +106,17 @@ new_warnings_or_lints_introduced: 1 (StatusTransitionInvalid, see Recorded devia
   `WARNING   StatusTransitionInvalid  .moai/specs/SPEC-LANDING-SURFACE-RULES-001/spec.md  1     SPEC SPEC-LANDING-SURFACE-RULES-001 status transition "draft" → "completed" is not a canonical lifecycle edge (commit a2e6fa11777b57fbdc6af0d6063dba385977a46e)`
 docs_scope: CHANGELOG.md, README and docs-site not edited (guidance-only SPEC, no user-visible feature; plan.md B.5)
 close_tool: `moai spec close` not used (legacy 4-phase preconditions); 3-phase close per spec-workflow.md Sync (close)
+
+### Sync audit round 1
+
+verdict: FAIL 0.84
+audited_commit: f4495b1c16ecf705208e00716a5969d786f895e7
+verdict_file: .moai/reports/t1846/sync-audit.md (local, gitignored)
+F1 (blocking): the rc-build clause in AGENTS.local.md section 4.0 needed alignment; repaired in 2dec5dc4f.
+F3 (optional): gitflow-lane-protocol.md section 9 gained a non-guarantee sentence for the rc build outputs in 2dec5dc4f.
+note: all 15 AC reproduced, N2-N4 confirmed disposed, the StatusTransitionInvalid warning judged an acceptable recorded deviation.
+repair_commits: 2dec5dc4f (F1 and F3), 2de661b1f (restore "never stash"; AGENTS.local.md growth 998 bytes)
+sync_audit_round_2: pending (re-entry at the repair HEAD)
 
 ## §G Override and Refusal Record
 
