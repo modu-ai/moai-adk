@@ -278,10 +278,12 @@ func factorySerialSlotFree(state string) bool {
 // factorySerialSlotHeld reports whether a recorded card holds the serial slot
 // at now. Three conditions hold together: the state is not one of the
 // releasing states; — for a card in a lease-holding state — its lease has not
-// expired; and a driver is recorded. An expired lease is only collected
-// lazily, by the next transition on that same card, so the row keeps its
-// lease-holding state after the lane that held it is gone; reading the state
-// alone would hold the slot for that lane indefinitely (card t1407).
+// expired, or its holder's worker process is still alive; and a driver is
+// recorded. An expired lease is only collected lazily, by the next transition
+// on that same card, so the row keeps its lease-holding state after the lane
+// that held it is gone; reading the state alone would hold the slot for that
+// lane indefinitely (card t1407) — the holder-liveness clause below is what
+// keeps a DEAD holder's row from holding forever.
 //
 // The driver condition (card t1513): a row whose OwnerLabel is empty holds
 // nothing. A picked row recorded without a lane (`factory assign` with no
@@ -292,8 +294,40 @@ func factorySerialSlotFree(state string) bool {
 // lease in the run was refused `serial-slot`. A later `factory assign
 // --lane` or the nominate arm sets the owner and the row holds again, so
 // only genuinely driverless rows release.
-func factorySerialSlotHeld(c homestate.Card, now time.Time) bool {
-	return !factorySerialSlotFree(c.State) && !c.LeaseExpired(now) && c.OwnerLabel != ""
+//
+// The liveness refinement (card t1828): expiry alone no longer frees the
+// slot. An expired lease keeps holding while the roster binds its owner to a
+// live pid and frees only when the holder's worker row is absent, dead, or
+// non-positive — measured 2026-10-17 (run tn1p4e), t1825's lease expired at
+// 10:57:43Z while its worker (pid 21334) stayed alive and committed at
+// 11:22:39Z, and t1697 leased the slot at 10:59:37Z: two serial cards worked
+// concurrently. holderAlive is threaded in from the db-owning callers (the
+// workers-table pid read by OwnerLabel); a nil reader frees on expiry, the
+// pre-t1828 read.
+func factorySerialSlotHeld(c homestate.Card, now time.Time, holderAlive func(string) bool) bool {
+	if factorySerialSlotFree(c.State) || c.OwnerLabel == "" {
+		return false
+	}
+	if !c.LeaseExpired(now) {
+		return true
+	}
+	// An expired lease holds only while its holder's process is alive (card
+	// t1828); a dead or absent holder releases — the t1407 no-wedge.
+	return holderAlive != nil && holderAlive(c.OwnerLabel)
+}
+
+// factoryWorkerPidAlive reports whether the roster binds label to a live
+// process: the workers row's pid probed with signal 0 through
+// factory.FactoryProcessAlive (the waiterDropReason precedent). A label with
+// no roster row, an unreadable row, and a non-positive or dead pid all read
+// as not alive — freeing, never holding.
+func factoryWorkerPidAlive(ctx context.Context, db *homestate.FactoryDB, label string) bool {
+	var pid int
+	err := db.DB.QueryRowContext(ctx, `SELECT pid FROM workers WHERE label=?`, label).Scan(&pid)
+	if err != nil {
+		return false
+	}
+	return factory.FactoryProcessAlive(pid)
 }
 
 // factorySerialInFlightExcluding reports whether a serial card OTHER than
@@ -320,8 +354,14 @@ func factorySerialSlotHeld(c homestate.Card, now time.Time) bool {
 // driven picked row (no bundle identity, no hint) keeps holding the slot
 // exactly as the t1407 ruling's tests pin.
 //
+// holderAlive (card t1828) is the holder-liveness reader the expired-lease
+// clause of factorySerialSlotHeld consults, threaded in from the db-owning
+// callers; the slot read itself stays the one function. The id return names
+// the blocking card so the serial-slot refusal detail can say who holds the
+// slot (card t1828) — the unnominated arms' silent skips discard it.
+//
 // @MX:NOTE: [AUTO] The one serial-slot read of selection — fan-in 3 (both selection closures and the nominated validation); an ANCHOR is owed but factory_card.go is at its 3-anchor limit, and a queue-mutation path bypassing this read would break REQ-TCD-008.
-func factorySerialInFlightExcluding(cards []homestate.Card, classOf func(string) factory.CardClassification, cardID string, now time.Time, ignoreAssigned bool) bool {
+func factorySerialInFlightExcluding(cards []homestate.Card, classOf func(string) factory.CardClassification, cardID string, now time.Time, ignoreAssigned bool, holderAlive func(string) bool) (string, bool) {
 	for _, c := range cards {
 		if c.CardID == cardID {
 			continue
@@ -332,11 +372,11 @@ func factorySerialInFlightExcluding(cards []homestate.Card, classOf func(string)
 		if c.State == homestate.CardPicked && (c.BundleID != "" || c.HintAfter != "") {
 			continue
 		}
-		if factorySerialSlotHeld(c, now) && classOf(c.CardID).Mode == factory.ClassModeSerial {
-			return true
+		if factorySerialSlotHeld(c, now, holderAlive) && classOf(c.CardID).Mode == factory.ClassModeSerial {
+			return c.CardID, true
 		}
 	}
-	return false
+	return "", false
 }
 
 // factoryQueueClassification reads one card's classification from a queue
@@ -842,8 +882,13 @@ func factoryNextSelectAndLease(ctx context.Context, l *factory.LockedBacklog, db
 	// ignoreAssigned is arm (a)'s read (operator ruling 2026-10-03, card
 	// t1407); see factorySerialInFlightExcluding. Every arm that takes a NEW
 	// card passes false.
+	// holderAlive (card t1828) reads the roster pid of a sibling row's owner,
+	// so an expired lease of a LIVE holder keeps holding the slot while a
+	// dead or absent holder releases it.
+	holderAlive := func(label string) bool { return factoryWorkerPidAlive(ctx, db, label) }
 	serialInFlightExcluding := func(cardID string, ignoreAssigned bool) bool {
-		return factorySerialInFlightExcluding(cards, classOf, cardID, now, ignoreAssigned)
+		_, held := factorySerialInFlightExcluding(cards, classOf, cardID, now, ignoreAssigned, holderAlive)
+		return held
 	}
 	modeEligible := func(cardID string) bool {
 		if classOf(cardID).Mode != factory.ClassModeSerial {
@@ -929,7 +974,7 @@ func factoryNextSelectAndLease(ctx context.Context, l *factory.LockedBacklog, db
 		// clause is arm (a)'s own check below (a self-excluding read the
 		// predicate's shared form does not carry).
 		if it, inQueue := queueItemIn(queueRec, c.CardID); inQueue {
-			if r := factoryKeepSetRefusal(it, &c, lane, false); r != nil {
+			if r := factoryKeepSetRefusal(it, &c, lane, false, ""); r != nil {
 				continue
 			}
 		}
@@ -1307,11 +1352,12 @@ func factoryRowHolder(row homestate.Card) string {
 // and the serial slot — never a relation store (REQ-TAU-013). The same
 // function runs at validation and again inside the queue lock at promotion.
 // The unnominated promotion arm applies only its marker clause, through
-// factoryQueuedHoldMarked.
+// factoryQueuedHoldMarked. serialHolder, when non-empty, names the blocking
+// card in the serial-slot refusal detail (card t1828).
 //
 // @MX:NOTE: [AUTO] The shared keep-set predicate of the nominated lease; positive enumeration of the leasable queue states, so a state added later is refused, never leased. Fan-in 2 (validation and the in-lock re-validation) — a NOTE because factory_card.go is at its 3-anchor limit.
 // @MX:SPEC: SPEC-TODO-AUTO-PICK-001
-func factoryKeepSetRefusal(it factory.BacklogItem, row *homestate.Card, lane string, serialHeld bool) *factoryNominateRefusal {
+func factoryKeepSetRefusal(it factory.BacklogItem, row *homestate.Card, lane string, serialHeld bool, serialHolder string) *factoryNominateRefusal {
 	switch it.State {
 	case factory.BacklogStateQueued, factory.BacklogStatePicked:
 	case factory.BacklogStateDropped:
@@ -1342,7 +1388,11 @@ func factoryKeepSetRefusal(it factory.BacklogItem, row *homestate.Card, lane str
 		return factoryRefusal(factoryRefuseBlocked, "the card's classification is blocked; the nominated lease refuses it, the operator decides it")
 	}
 	if serialHeld {
-		return factoryRefusal(factoryRefuseSerialSlot, "another serial card is in flight and holds the serial slot")
+		detail := "another serial card is in flight and holds the serial slot"
+		if serialHolder != "" {
+			detail += ": " + serialHolder
+		}
+		return factoryRefusal(factoryRefuseSerialSlot, "%s", detail)
 	}
 	return nil
 }
@@ -1396,8 +1446,23 @@ func factoryNextValidate(ctx context.Context, l *factory.LockedBacklog, db *home
 	// refused the one lease a lane was dispatched to run). A nomination of a
 	// card NOT assigned to this lane is a NEW card and still passes false.
 	assignedHere := nom.row != nil && nom.row.State == homestate.CardAssigned && nom.row.OwnerLabel == lane
-	nom.serialHeld = classOf(cardID).Mode == factory.ClassModeSerial && factorySerialInFlightExcluding(cards, classOf, cardID, now, assignedHere)
-	if r := factoryKeepSetRefusal(nom.item, nom.row, lane, nom.serialHeld); r != nil {
+	// holderAlive (card t1828): the same holder-liveness read the selection
+	// arms take — an expired lease of a live holder still holds the slot.
+	holderAlive := func(label string) bool { return factoryWorkerPidAlive(ctx, db, label) }
+	blocking, held := factorySerialInFlightExcluding(cards, classOf, cardID, now, assignedHere, holderAlive)
+	nom.serialHeld = classOf(cardID).Mode == factory.ClassModeSerial && held
+	// The refusal names who holds the slot (card t1828): the blocking card id
+	// plus its holder — the live 10-17 incident left the leader guessing.
+	serialHolder := ""
+	if nom.serialHeld {
+		for i := range cards {
+			if cards[i].CardID == blocking {
+				serialHolder = fmt.Sprintf("%s (holder %s)", blocking, factoryRowHolder(cards[i]))
+				break
+			}
+		}
+	}
+	if r := factoryKeepSetRefusal(nom.item, nom.row, lane, nom.serialHeld, serialHolder); r != nil {
 		return nom, r, nil
 	}
 	// Another lane's bundle member is never a nominee (card t1454

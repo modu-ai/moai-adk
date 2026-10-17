@@ -19,26 +19,39 @@ import (
 // TestFactorySerialSlotHeldRequiresADriver — the slot predicate matrix. A row
 // without an owner holds nothing (the t1453 wedge: picked, ownerless,
 // lease-less, refusing every lease for a day); every driven row keeps the
-// pre-existing behavior.
+// pre-existing behavior; an expired lease holds or frees by its holder's
+// liveness (card t1828).
 func TestFactorySerialSlotHeldRequiresADriver(t *testing.T) {
 	now := time.Now()
 	live := now.Add(time.Hour).Format(time.RFC3339Nano)
 	expired := now.Add(-time.Minute).Format(time.RFC3339Nano)
 	cases := []struct {
-		name string
-		card homestate.Card
-		want bool
+		name  string
+		card  homestate.Card
+		alive bool // what the holder-liveness reader answers
+		want  bool
 	}{
-		{"picked without owner or lease holds nothing", homestate.Card{CardID: "t1453", State: homestate.CardPicked}, false},
-		{"picked with an owner holds", homestate.Card{CardID: "t1", State: homestate.CardPicked, OwnerLabel: "lane-5"}, true},
-		{"assigned with an owner holds", homestate.Card{CardID: "t2", State: homestate.CardAssigned, OwnerLabel: "lane-2"}, true},
-		{"leased with a live lease holds", homestate.Card{CardID: "t3", State: homestate.CardLeased, OwnerLabel: "lane-1", LeaseHolder: "lane-1", LeaseExpiresAt: live}, true},
-		{"an expired lease frees", homestate.Card{CardID: "t4", State: homestate.CardLeased, OwnerLabel: "lane-1", LeaseHolder: "lane-1", LeaseExpiresAt: expired}, false},
-		{"merge-ready frees", homestate.Card{CardID: "t5", State: homestate.CardMergeReady, OwnerLabel: "lane-1"}, false},
+		{"picked without owner or lease holds nothing", homestate.Card{CardID: "t1453", State: homestate.CardPicked}, false, false},
+		{"picked with an owner holds", homestate.Card{CardID: "t1", State: homestate.CardPicked, OwnerLabel: "lane-5"}, true, true},
+		{"assigned with an owner holds", homestate.Card{CardID: "t2", State: homestate.CardAssigned, OwnerLabel: "lane-2"}, true, true},
+		{"leased with a live lease holds", homestate.Card{CardID: "t3", State: homestate.CardLeased, OwnerLabel: "lane-1", LeaseHolder: "lane-1", LeaseExpiresAt: live}, true, true},
+		{"an expired lease with a dead holder frees", homestate.Card{CardID: "t4", State: homestate.CardLeased, OwnerLabel: "lane-1", LeaseHolder: "lane-1", LeaseExpiresAt: expired}, false, false},
+		{"an expired lease with a live holder holds", homestate.Card{CardID: "t6", State: homestate.CardLeased, OwnerLabel: "lane-1", LeaseHolder: "lane-1", LeaseExpiresAt: expired}, true, true},
+		{"merge-ready frees", homestate.Card{CardID: "t5", State: homestate.CardMergeReady, OwnerLabel: "lane-1"}, true, false},
 	}
 	for _, tc := range cases {
-		if got := factorySerialSlotHeld(tc.card, now); got != tc.want {
+		asked := ""
+		holderAlive := func(label string) bool { asked = label; return tc.alive }
+		if got := factorySerialSlotHeld(tc.card, now, holderAlive); got != tc.want {
 			t.Errorf("%s: held=%v, want %v", tc.name, got, tc.want)
+		}
+		// The roster is consulted only for an expired lease of a driven row.
+		wantAsked := tc.card.OwnerLabel != "" && tc.card.LeaseExpired(now)
+		if wantAsked && asked == "" {
+			t.Errorf("%s: holder liveness never consulted", tc.name)
+		}
+		if !wantAsked && asked != "" {
+			t.Errorf("%s: holder liveness consulted for %q without an expired lease", tc.name, asked)
 		}
 	}
 }
