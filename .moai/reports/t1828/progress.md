@@ -107,3 +107,5 @@ ack/accepted 를 착수·완료로 승격하지 않음: dispatch `started` 전�
 - card-review: `.moai/reports/t1828/card-review.md` (진행 예정)
 - 레인 독립 검증(Trust-but-verify): TestFactorySerialSlotHeldRequiresADriver PASS 0.00s(ok 1.012s), TestFactoryNextReNominationAfterOwnExpiryStillRefused PASS 2.10s(ok 3.162s), gofmt 3파일 0행 — 12:47Z.
 - 정지 지점: merge-ready (factory complete 호출 금지, main 병합·push 금지 — 리더 지시 10-17)
+- 20:4xZ(10-18 05:4x KST) — **카드 종결**: T13 증거 매듭 해소(iter2 FAIL@4576923e7 재발행 → T12 v16 → T11 v17 증거 d208d9e37 재기록 → iter3 PASS-WITH-DEBT@d208d9e37 → **T13 merge-ready v18 착지**). 최종 docs 커밋 `564f57022`. 리더 완료 보고 발송(msg 8af8223e), 재점검 크론 삭제.
+- **세션 대기 기록**: 이유=다음 카드 배정 대기(리더 무중단 규칙: 배정분만 next --card), 대상=리더, 재점검점=리더 메시지 도착(세션 웨이크). t1828 merge-ready 정지·워크트리 보존·complete 미호출.
