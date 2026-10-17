@@ -152,6 +152,10 @@ file the completion report names:
    `state == "success"` with description `Review completed`, AND a
    `Merge Risk:` line whose commit prefix matches the current
    `headRefOid`. Anything else is a gap.
+5b. **Workflow-file check** — a branch changing `.github/workflows/**` is
+   "operator review required before landing": stop before the PR edge and
+   report (`factory-dispatch-cards.md` § Workflow-file changes need operator
+   review).
 6. **Sweep** — once the remote landing is confirmed, `moai worktree sweep`
    disposes the card tree (owner check, dirty trees skipped — the
    `worktree-integration.md` disposal contract).
@@ -174,6 +178,7 @@ a duty not listed is a lane's:
 | Cross-lane conflict coordination | semantic clashes a lane cannot resolve alone; dispute coordination |
 | Serial-slot policy | the ordering gate on new leases, and its recorded wedge repairs |
 | Keep-set gate relay | environment-impossible, operator-held, and irreversible external-shared decisions reach the operator through the leader |
+| Workflow-file review checklist | cards marked "operator review required before landing" (`factory-dispatch-cards.md` § Workflow-file changes need operator review) wait on the operator; the leader lists them |
 
 Everything that used to sit with the leader per card — the completion
 verdict, the merge approval, the `todo done`, the stage advancement — is
