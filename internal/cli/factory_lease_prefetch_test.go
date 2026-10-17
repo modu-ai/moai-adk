@@ -214,4 +214,28 @@ func TestFactoryNextIssuesNoOpenPRQueryWhenEveryCandidateIsSkipped(t *testing.T)
 			t.Errorf("a bare attempt whose every candidate is blocked issued the open-PR query (gh pr list); want zero gh calls")
 		}
 	})
+	t.Run("picked blocked candidate still leases and queries", func(t *testing.T) {
+		// iter4 N4 regression: the blocked skip mirrors the queued promotion
+		// arm alone. The operator-picked arms — (b2) here, a queue-picked
+		// card with no record row — lease a picked blocked card with no
+		// blocked check, so the peek must still take the query for it;
+		// skipping it forced the leased card's PR column to unknown.
+		root, store := fcFixture(t)
+		fcQueue(t, store, factory.BacklogStatePicked)
+		fcClassify(t, store, "t1", factory.ClassPriorityHigh, true, factory.ClassModeParallelizable)
+		sdRegisterLane(t, root, "lane-1")
+		sdLaneEnv(t, "lane-1", "")
+		nmIsolatedWorktrees(t, "t1")
+		gh := flFirstGhCall(t, func() (string, error) { return "[]", nil })
+		out, _, err := qasRunNext(t, "--run", fcRun)
+		if err != nil {
+			t.Fatalf("bare next over a queue-picked blocked card: %v", err)
+		}
+		if !strings.HasPrefix(out, "t1 stage=") {
+			t.Fatalf("output = %q, want the leased t1 line (the (b2) arm leases a picked blocked card)", out)
+		}
+		if at := gh(); at.IsZero() {
+			t.Errorf("the peek skipped the open-PR query for a picked blocked candidate the (b2) arm leases; want the query taken (fail-closed regression, iter4 N4)")
+		}
+	})
 }

@@ -1894,17 +1894,20 @@ func factoryNextMayLease(ctx context.Context, root, runID, lane, nominee string,
 		return false
 	}
 	// The bare path takes a NEW card, so sibling rows hold against it
-	// (ignoreAssigned=false). A candidate the selector itself skips — a
-	// hold-marked card, a blocked classification — is no candidate here
-	// either (the same predicates the in-section promotion loop applies);
-	// with the serial slot held, only a parallelizable candidate can lease
-	// this attempt.
+	// (ignoreAssigned=false). A candidate the selector itself skips is no
+	// candidate here either — but each skip mirrors the arm that applies it:
+	// the hold marker and the blocked classification park only a QUEUED
+	// candidate (the promotion arm's predicates, and factoryQueuedHoldMarked's
+	// own state check), while the operator-picked arms (b-priority)/(b)/(b2)
+	// lease a picked card with no blocked check, so a picked candidate stays
+	// leasable here. With the serial slot held, only a parallelizable
+	// candidate can lease this attempt.
 	serialBusy := factorySerialInFlightExcluding(rows, classOf, "", now, false)
 	for _, it := range rec.Items {
 		if it.State != factory.BacklogStateQueued && it.State != factory.BacklogStatePicked {
 			continue
 		}
-		if factoryQueuedHoldMarked(it) || factory.EffectiveCardClassification(it).Blocked {
+		if it.State == factory.BacklogStateQueued && (factoryQueuedHoldMarked(it) || factory.EffectiveCardClassification(it).Blocked) {
 			continue
 		}
 		if !serialBusy || classOf(it.ID).Mode != factory.ClassModeSerial {
