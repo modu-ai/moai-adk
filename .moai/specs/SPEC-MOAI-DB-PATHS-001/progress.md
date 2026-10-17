@@ -76,7 +76,7 @@ Coverage: `go test ./internal/cli -run '^TestPaths_' -coverprofile` on paths.go:
 
 ### Allow-list diff (AC-DBP-016 (5)) at 0242d5ef7
 
-`git diff --name-status main...HEAD`: 49 entries. Modified: the ten S12 twin files, `.moai/workflows/gtd.md`, `manager-todo.toml`, `catalog.yaml`, four READMEs, eight docs-site pages, `root.go`, `todo.go`, `handoff.go`, `factory_handoff_recover.go`, `doctor.go`, `binary_lag_test.go`, three doctor goldens, `foreman_queue_statement_test.go`, `foreman_queue_watch_test.go`. Added: the four SPEC artifacts, `paths.go`, `paths_test.go`, `queue_location.go`, `queue_location_test.go`, `db_paths_surfaces_test.go`, `doctor_db_ghosts.go`, `doctor_db_ghosts_test.go`. Every path is on the allow-list with the expected letter; no not-in-the-change-set path appears (no other internal/factory or internal/homestate file, no embed_manifest_gen.go, no codemaps, no CHANGELOG, no .agents/skills).
+`git diff --name-status main...HEAD`: 47 entries (11 A + 36 M; an earlier "49" in this file was a miscount). Modified: the ten S12 twin files, `.moai/workflows/gtd.md`, `manager-todo.toml`, `catalog.yaml`, four READMEs, eight docs-site pages, `root.go`, `todo.go`, `handoff.go`, `factory_handoff_recover.go`, `doctor.go`, `binary_lag_test.go`, three doctor goldens, `foreman_queue_statement_test.go`, `foreman_queue_watch_test.go`. Added: the four SPEC artifacts, `paths.go`, `paths_test.go`, `queue_location.go`, `queue_location_test.go`, `db_paths_surfaces_test.go`, `doctor_db_ghosts.go`, `doctor_db_ghosts_test.go`. Every path is on the allow-list with the expected letter; no not-in-the-change-set path appears (no other internal/factory or internal/homestate file, no embed_manifest_gen.go, no codemaps, no CHANGELOG, no .agents/skills).
 
 ### A.4 grep for legitimate `*.db` writers in the doctor directories
 
@@ -99,10 +99,19 @@ Batch (leader-run, /private/tmp/dbp-t1/v/): build-linux, build-windows, vet, mak
 
 AC-DBP-016 (1) builds, vet and (3) emit/manifest checks: exit 0 in the leader-run batch.
 
+### AC-DBP-012 docs evidence (tree HEAD 69950a037, hugo v0.160.1+extended+withdeploy)
+
+- Hugo build (run by the orchestrator, no slot): `cd docs-site && nice -n 10 hugo --destination /private/tmp/dbp-hugo --logLevel info`, exit 0, 0 lines matching `warn|error`, `Total in 7323 ms`, pages KO 187 / EN 185 / JA 185 / ZH 185 (the KO surplus of 2 is not measured against main; nothing is claimed about it), tree status afterwards 0 lines. Verbatim output was scratch (`…/scratchpad/hugo.out`); the deciding lines are the ones quoted here.
+- Recipe checks, grep/find only (this lane): 4-locale existence for factory-mode.md and moai-todo.md: 8/8 files exist; heading counts equal across locales (`^#`: 13/13/13/13 and 29/29/29/29; READMEs 81/81/81/81). Heading lines added or removed by the change in the 12 pages: `git diff main...HEAD -U0 -- README*.md docs-site/content | grep -E '^[+-]#' | wc -l` = 0. URL blacklist hits = 0; Mermaid LR/RL hits = 0; emoji in added lines = 0.
+
+### Final AC status against acceptance.md
+
+All of AC-DBP-001..015 PASS as written. AC-DBP-016: (1) go build ./..., GOOS=windows go build ./..., go vet: exit 0 (leader batch); (2) "the change-scoped go test runs of M1-M5 pass with the stated swept counts": met by the anchored runs above (scoped, not whole-package), so a whole-package internal/cli run is NOT required as written; (3) emit/manifest checks exit 0 (leader batch); (4) spec lint 0 errors; (5) allow-list: 11 A + 36 M, all on the list, no excluded path. Explicit Gap: the whole-package internal/cli run was not observed; decision: left to CI, scope per AGENTS.md §4, not observed here.
+
 ### Gaps (final)
 
 - The whole `internal/cli` package run was not observed: it hit the 40m timeout on a loaded machine (a load symptom in TestMain/TestOutputText_NoFindings, not a failure of this change); left to CI. Only the scoped anchored set above was observed.
-- The `hns-oss-docs-verify` hugo build and README/docs heading parity for AC-DBP-012 were not run; only the anchor test (pages=12 anchors=5) was observed.
+- (hugo build and heading parity are now observed; see the AC-DBP-012 docs evidence above.)
 - test-factory and test-testguard whole-package results were observed only as the repaired anchored sets above, not as whole-package passes.
 - Authored-By-Agent trailer absent on commits (lint INFO).
 
@@ -131,14 +140,14 @@ AC-DBP-016 (1) builds, vet and (3) emit/manifest checks: exit 0 in the leader-ru
 
 ## §E.3 Run-phase Audit-Ready Signal
 
-run_status: complete-with-gaps
-audit_ready: false
-audit_ready_reason: AC-DBP-012 hugo build / heading parity and the whole-package internal/cli run are not observed (Gaps in §E.2); every other AC is observed PASS
-ac_pass_count: 15 of 16 observed PASS; AC-DBP-012 PASS on the anchor test, hugo recipe unobserved
+run_status: complete
+audit_ready: true
+ac_pass_count: 16
 ac_fail_count: 0
 run_commit_sha: pending-backfill
 M5: kept
-total_run_phase_files: 49 entries in git diff --name-status main...HEAD
+total_run_phase_files: 47 entries in git diff --name-status main...HEAD (11 A, 36 M)
+note: whole-package internal/cli run not observed (Gap, left to CI); AC-DBP-016 (2) is change-scoped and does not require it
 
 ## §E.4 Sync-phase Audit-Ready Signal
 
