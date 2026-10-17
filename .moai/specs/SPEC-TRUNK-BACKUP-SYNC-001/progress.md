@@ -134,7 +134,7 @@ _<pending run-phase>_
 
 ```yaml
 sync_complete_at: 2026-10-18
-sync_commit_sha: pending-backfill-sync   # D3 placeholder — a commit cannot cite its own hash; backfilled by the immediately following chore commit
+sync_commit_sha: af478d813   # backfilled from the D3 placeholder — the sync commit cannot cite its own hash
 sync_status: complete
 ac_source: .moai/specs/SPEC-TRUNK-BACKUP-SYNC-001/acceptance.md   # tier M → acceptance.md is the AC source (resolved, non-empty)
 b12_self_test_a: "pass — grep -c 'SPEC-TRUNK-BACKUP-SYNC-001' CHANGELOG.md returned 0 before emission (no duplicate entry)"
