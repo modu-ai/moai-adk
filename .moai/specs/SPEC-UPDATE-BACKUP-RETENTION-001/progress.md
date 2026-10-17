@@ -922,3 +922,130 @@ go test -count=1 -cover ./internal/cli/update/skillresidue/ -> ok 0.193s coverag
 ```
 
 Gaps: repository-wide test verdict PENDING (CI on the integration branch); `make build` not run; the `verify` skill delegates to the full MoAI gate, which was not run before the GREEN commit (a whole-repository run is excluded locally by the load rule; the scoped commands above were run instead and the pre-commit hook owns the blocking decision); no guard refused any command in this round; `-race` not run; Linux and Windows runtime behavior of the new primitives not observed; re-audit is the auditor's.
+
+## §E.9 Repair-round-5 evidence (card t1733, sync-audit iteration 5: codex P1 residue.go:408, codex P2 residue.go:389, F15-F19; owner manager-develop)
+
+Source: `.moai/reports/t1733/sync-audit-iter5.md` (local-only). Start HEAD `3f9d25c70`. Round 4 replaced link+identity+unlink by path-based no-replace renames; iteration 5 found two regressions of that move: a stage folder swapped for a link to an outside folder made the first rename carry the user's file out of the project (at `f542d166d` `os.Root` refused the same swap), and a staged file replaced between the renames was moved and reported as success. This round makes the renames descriptor-bound where the platform allows it and adds the identity check.
+
+### Design
+
+- `holdDir(root, rel)` opens a folder through the project root (`root.OpenRoot(rel)`, then `Open(".")`) and keeps both handles open for the whole rename. The root refuses a path that leaves the project; both handles name the folder's inode.
+- `renameSkillFile` holds the skill folder before `claimStage`, and the stage folder right after `Mkdir`. Seam `renameNoReplace(srcDir, src, dstDir, dst *os.File ...)` replaced the absolute-path form; linux `unix.Renameat2(sfd, src, dfd, dst, RENAME_NOREPLACE)`, darwin `unix.RenameatxNp(sfd, src, dfd, dst, RENAME_EXCL)`. `RenameatxNp` exists in `golang.org/x/sys v0.49.0` (`unix/syscall_darwin.go:414`; confirmed by compiling and by the darwin test run), so darwin is fully descriptor-bound and the fallback "root-bound Lstat plus path-based RenamexNp" the brief offered was not needed. `go.mod`/`go.sum` untouched.
+- The stage folder is removed by `unlinkat(AT_REMOVEDIR)` relative to the held skill folder (`removeDirAt`; `syscall.Rmdir` on windows and on platforms with no rename primitive).
+- Identity (F16): the step takes `moving = skill.root.Lstat("skill.md")` from the skill folder's descriptor right before the first rename, requires `stageDir.root.Lstat("skill.md")` to be that file before the second rename (mismatch: second rename NOT run, nothing put back, foreign file and stage left, error names T), and requires `skill.root.Lstat("SKILL.md")` to be that file after it (mismatch: error names SKILL.md, the foreign file is left there). Deviation from the brief, on purpose: the brief said to record the identity right after the first rename. A record taken after the rename cannot see a replacement that lands between the rename and the record (the in-tree test replaces the staged name inside the seam, after the real rename), so the identity is taken before the rename; the cost is that a user edit landing between that record and the rename is refused instead of renamed (row below), which is the conservative side.
+- The root-bound `Lstat` of the source stays in `moveNoReplace` (F17). With descriptors it is no longer the containment on linux and darwin; it makes the step refuse when the path no longer leads to the folder it holds, and on windows it is the containment.
+- F18: the comment now says what was measured: on APFS a direct no-replace rename `skill.md -> SKILL.md` succeeded (iteration 5 row 6), so the staging hop is not shown necessary there; it stays as the designed route and other case-folding filesystems were not measured. A direct hop would also remove the single-private-name interval of the B-C row; that is a design choice for the leader, not taken here.
+- F19: `TestMoveFileReferencesArePinned` now pins the platform calls by owner (`Renameat2`, `RenameatxNp`, `MoveFileEx`, `Unlinkat`, `Rmdir`, `removeDirAt`, `renameatNoReplace`), so a new reference to them inside the package fails a test. A caller in another package is still invisible to it and to the registry scan (the scan counts `os.Remove*`/`os.Rename` and the `os.Root` forms only). No new registry mechanism was added; the `dropOne` row text was updated.
+
+### State table (mirrored from the code comment above `renameSkillFile`)
+
+L = skill.md, S = staging folder, T = S/skill.md. Rows marked * changed or are new in this round.
+
+| Step | State | Action | User data | Test |
+|---|---|---|---|---|
+| A | name taken | try another name; 100 taken: error | nothing changed | unchanged |
+| A | Mkdir fails | error | nothing changed | unchanged |
+| A/B | S swapped for a regular file | opening S fails (ENOTDIR); rmdir S fails; L stays; error names S | foreign file kept | `...LeavesAFileThatReplacedTheStageFolderBeforeTheFirstMove` (unchanged assertions) |
+| A/B* | S swapped for a link to a folder outside the project | the root refuses the open, nothing moves, the link stays (rmdir fails on a link), error names S | outside untouched; L stays | `TestAC_UBR_16_RenameRefusesAStageFolderSwappedForALinkOutsideTheProject` |
+| A/B | S swapped for a foreign folder | B lands T in it; C completes; D fails if the folder holds anything else, error names it | content not lost; foreign files kept | `...KeepsTheContentsOfAFolderThatReplacedTheStageFolder` (unchanged) |
+| A/B | skill folder swapped for a link out of the project before it was opened | the root refuses the open; nothing moves | outside untouched | `TestAC_UBR_16_SwappedSkillFolderCannotRedirectTheRename` (unchanged) |
+| B* | S (or the skill folder) swapped after it was opened | the rename uses the open folder and lands in the original inode (now moved aside, inside the project); the look before C refuses (the path now leads out); error | outside untouched; the file stays in the project | `TestAC_UBR_16_RenameIsBoundToTheOpenedStageFolderNotToItsPath` |
+| B | a foreign file sits at T | B refused; L untouched; D fails (S not empty); error names T | foreign file and L kept | unchanged |
+| B | L replaced before the identity is taken | B moves whatever is at L | the user's newest file becomes SKILL.md | `...MovesTheUsersNewFileWhenSkillMdWasSavedBeforeTheFirstRename` (unchanged) |
+| B* | L replaced between the identity and B | the file at T is not the identity: C not run, error names T, nothing put back | the moved file stays at T | covered by the same check as the next row; not separately injectable (no seam between the record and the rename) |
+| B | B fails for another reason | L untouched; rmdir S; error | none lost | unchanged |
+| B | B reports `errNoReplaceUnsupported` | nothing moved; `renameByLinks` takes over | see fallback table | unchanged |
+| B-C* | T replaced by a foreign file | C NOT run, nothing put back, S kept; error names T | the foreign file stays at T; the content of L was overwritten by the foreign write, not by this step | `TestAC_UBR_17_RenameRefusesAStagedFileThatWasReplacedBetweenTheRenames` (replaces the round-4 test that required success) |
+| B-C | a file appears at SKILL.md (case-folding FS: at skill.md) | C refused; D puts T back to L; error names SKILL.md; if D is refused too the error names T | user's file kept; content back at L, or staged at T | unchanged |
+| C* | T replaced inside the step itself | the foreign file moves to SKILL.md; the file at SKILL.md is not the identity: error names SKILL.md | the foreign file is kept at SKILL.md; the content of L was overwritten by the foreign write | `TestAC_UBR_17_RenameReportsAFileThatReplacedTheStagedNameDuringTheSecondRename` |
+| C | C fails for another reason | D puts T back; error | none lost | unchanged |
+| C-D | S swapped for a file / non-empty folder after C | D fails; error names S | foreign entries kept | unchanged |
+| all | no user-visible name is unlinked | `dropFile` never called on this path | no check-to-unlink window | unchanged |
+
+### RED / GREEN / mutant
+
+| Step | Commit | Command and result |
+|---|---|---|
+| RED | `6f142dc1f0979aaccf9a9950eda5f856918239dd` | `go test -count=1 -v -run 'AC_UBR_16_Rename(Refuses\|IsBound)\|AC_UBR_17_Rename(Refuses\|Reports)' ./internal/cli/update/skillresidue/`: 4 FAIL, 2 PASS; whole package: 4 FAIL |
+| GREEN | `cd3c69aa9ac83e470f7778a892f8af55803c12ea` | same command: 6 PASS; `go test -count=1 -race ./internal/cli/update/skillresidue/` -> `ok ... 1.318s`; coverage 89.4% |
+
+No stub file was needed this time: the new tests use only the existing `renameSkillFile`, `mkdirFile`, `afterNthRename` and `renameNoReplace` names, so RED compiles on the unchanged code. Verbatim RED (temporary path prefix removed):
+
+```
+=== RUN   TestAC_UBR_16_RenameRefusesAStageFolderSwappedForALinkOutsideTheProject
+    residue_handle_test.go:65: the folder outside the project received 1 entr(ies): [. dir skill.md file]
+--- FAIL: TestAC_UBR_16_RenameRefusesAStageFolderSwappedForALinkOutsideTheProject (0.00s)
+=== RUN   TestAC_UBR_16_RenameIsBoundToTheOpenedStageFolderNotToItsPath
+    residue_handle_test.go:96: the folder outside the project received 1 entr(ies): [. dir skill.md file]
+--- FAIL: TestAC_UBR_16_RenameIsBoundToTheOpenedStageFolderNotToItsPath (0.00s)
+=== RUN   TestAC_UBR_16_RenameRefusesWhenTheSkillFolderIsSwappedBetweenTheTwoRenames
+--- PASS: TestAC_UBR_16_RenameRefusesWhenTheSkillFolderIsSwappedBetweenTheTwoRenames (0.00s)
+=== RUN   TestAC_UBR_17_RenameRefusesAStagedFileThatWasReplacedBetweenTheRenames
+    residue_handle_test.go:148: error = <nil>; want one naming the staged path
+--- FAIL: TestAC_UBR_17_RenameRefusesAStagedFileThatWasReplacedBetweenTheRenames (0.00s)
+=== RUN   TestAC_UBR_17_RenameReportsAFileThatReplacedTheStagedNameDuringTheSecondRename
+    residue_handle_test.go:181: error = <nil>; want one naming SKILL.md
+--- FAIL: TestAC_UBR_17_RenameReportsAFileThatReplacedTheStagedNameDuringTheSecondRename (0.00s)
+=== RUN   TestAC_UBR_17_RenameReportsWhenTheUndoOfTheStagedLinkFails
+--- PASS: TestAC_UBR_17_RenameReportsWhenTheUndoOfTheStagedLinkFails (0.00s)
+FAIL
+FAIL	github.com/modu-ai/moai-adk/internal/cli/update/skillresidue	0.088s
+```
+
+Reading the RED. The two P1 tests fail for the right reason: the user's `skill.md` was carried into the outside folder (the first through a stage folder swapped for a link right after `Mkdir`, the second through a stage path swapped after the step had chosen it). The two P2 tests fail because the step returned success after a foreign file was moved. The skill-folder-swap test (F17) already passed on the unchanged code: it is a pin of the root-bound look, killed by mutant 3 below. `...ReportsWhenTheUndoOfTheStagedLinkFails` is a round-3 test matched by the `-run` pattern and passes before and after.
+
+Mutants (`go test -count=1 -overlay=<json> ./internal/cli/update/skillresidue/` against GREEN; overlay JSON and mutated copies under `/private/tmp/t1733r5/ov/<name>/`):
+
+| Mutant | Edit | Result |
+|---|---|---|
+| 1 path-based rename | `noReplaceRenameAt` in `rename_noreplace_unix.go` calls `unix.RenamexNp(filepath.Join(srcDir.Name(), src), filepath.Join(dstDir.Name(), dst), RENAME_EXCL)` instead of the descriptor form | exit 1, 1 FAIL: `TestAC_UBR_16_RenameIsBoundToTheOpenedStageFolderNotToItsPath` (`the folder outside the project received 1 entr(ies): [. dir skill.md file]`) |
+| 2a identity before C removed | the `stageDir.root.Lstat` check before the second rename deleted | exit 1, 1 FAIL: `TestAC_UBR_17_RenameRefusesAStagedFileThatWasReplacedBetweenTheRenames` (`error = SKILL.md does not hold the file that was staged (<nil>) ...; want one naming the staged path`; the post-check still reports, the test wants the refusal before the move) |
+| 2b identity after C removed | the `skill.root.Lstat("SKILL.md")` check deleted | exit 1, 1 FAIL: `TestAC_UBR_17_RenameReportsAFileThatReplacedTheStagedNameDuringTheSecondRename` (`error = <nil>; want one naming SKILL.md`) |
+| 3 root-bound look removed | the `root.Lstat(from.rel)` in `moveNoReplace` deleted | exit 1, 1 FAIL: `TestAC_UBR_16_RenameRefusesWhenTheSkillFolderIsSwappedBetweenTheTwoRenames` (`the rename reported success although the skill folder path was swapped for an outside link`) |
+
+A fourth mutant removing both identity checks did not compile (an unused variable) and was not run; 2a and 2b each fail on their own.
+
+### Existing tests edited (assertions untouched except the one flipped row; one line of reason each)
+
+| Test / file | Edit | Reason |
+|---|---|---|
+| `requireNoReplace`, the two `TestNoReplaceRename_*` primitive tests, `forceFallback`, `afterNthRename`, `TestAC_UBR_17_RenameFallsBackToLinksWhenNoReplaceRenameIsUnsupported` (`residue_noreplace_test.go`) | re-pointed from the absolute-path seam/primitive to the folder-relative one (new helper `renameInDir`; seam closures take `(*os.File, string, *os.File, string)`) | the primitive and seam changed signature; the hooks `act(n)`/`fail(n)` and every assertion are unchanged |
+| `TestAC_UBR_17_RenameMovesWhateverHoldsTheStagedNameAndRemovesNothing` | **replaced** by `...RefusesAStagedFileThatWasReplacedBetweenTheRenames` with the opposite assertion (error, foreign file left at T, SKILL.md not published) | this is the audit's required flip (F16): the old test demanded the success the auditor reproduced as a defect; the state-table row changed with it |
+| `TestMoveFileReferencesArePinned` | pinned set and counts extended to the platform calls and `removeDirAt` | F19; stricter, no count weakened |
+| registry `dropOne` row (`internal/cli/update_destructive_registry.go`) | text rewritten, `Sites: 1` unchanged | the row described the path-based design |
+
+### F15: SPEC wording item for the leader (spec.md not edited)
+
+`spec.md` REQ-UBR-017 still reads "shall perform the rename through a handle bound to the project root". After this round: on linux and darwin the folders the rename is relative to are opened through the project root (`os.Root`) and held, so the statement is true in substance (the handles are root-bound, a path leaving the project is refused when opened). On windows and on platforms that take the link fallback it holds as follows: windows renames by path behind a root-bound look (not a handle), the fallback renames through `os.Root` links. The text is therefore not wrong for the primary platforms and is stricter than the code on windows. Item for the leader: either accept the deviation knowingly or ask manager-spec to qualify REQ-UBR-017 for windows. AC-UBR-16 and AC-UBR-17 as written hold.
+
+### Honest residual (per platform)
+
+- linux, darwin: no path swap can redirect a rename (descriptor-relative). A microsecond window remains between the identity check before C and the call of C itself: a foreign atomic overwrite landing exactly there moves the foreign file to SKILL.md; the step cannot prevent it and reports it (error names SKILL.md) but does not move it back. Between B and C the content has one private name; the overwrite of that name destroys the content (the foreign writer's overwrite, not this step's), and it is now reported at the next check instead of succeeding. Reaching either needs the 48-bit stage name.
+- linux: runtime unobserved. `Renameat2`, `Unlinkat` and the `SyscallConn` use compile and vet for linux/amd64; they ran only on darwin. A seccomp profile answering `renameat2` with EPERM still takes no fallback (unchanged from iteration 5).
+- windows: the rename is still path-based (`MoveFileEx` with the held folders' `Name()`); `golang.org/x/sys/windows` has no folder-relative no-replace rename. The root-bound look before each rename is the containment, and a microsecond window remains between the look and the call: a stage folder replaced by a junction or symlink inside that window carries the file out of the project (a move, not a deletion; the next look then refuses, the put-back is refused, the error names the staged path). The windows build is cross-compiled and vetted only. I kept the path-based call over the round-3 `os.Root` link route for windows because the link route reintroduces the unlink-after-check data-loss windows (F13/F14) that the primary design removed.
+- platforms with no primitive (`rename_noreplace_other.go`) and filesystems answering EINVAL/ENOSYS/ENOTSUP: the round-3 link fallback with its look-to-unlink windows (E.7), unchanged.
+- The error text of a refused put-back after a swapped stage path names `<stage>/skill.md`, which in the "stage swapped after it was opened" row is the swapped path; the file is in the original folder, moved aside next to it (the test finds it inside the project). Not changed.
+- A user edit landing between the identity record and the first rename is refused (the moved file stays at T, error names it) instead of renamed; one microsecond window, retried by the next update run only if skill.md exists again (it does not, until the user restores the file from T).
+
+### Verification
+
+Env: `GIT_CONFIG_GLOBAL=/private/tmp/t1733r5/gitconfig` (only `[user]`), `TMPDIR=/private/tmp/t1733r5/tmp`, `GOTMPDIR=/private/tmp/t1733r5/gotmp`, no HOME override, no `-mod=mod`. Run at GREEN `cd3c69aa9`:
+
+```
+go build ./...                                          -> build=0
+gofmt -l internal/cli internal/cli/update internal/template -> (empty), gofmt=0
+go vet ./internal/cli/update/...                        -> vet=0
+GOOS=linux go vet ./internal/cli/update/skillresidue/   -> vet-linux=0
+GOOS=windows go vet ./internal/cli/update/skillresidue/ -> vet-windows=0
+GOOS=freebsd go build ./internal/cli/update/skillresidue/ -> build-freebsd=0
+GOOS=linux GOARCH=amd64 go build ./...                  -> linuxbuild=0
+GOOS=windows GOARCH=amd64 go build ./...                -> winbuild=0
+go test -count=1 -race ./internal/cli/update/skillresidue/ -> ok ... 1.318s
+go test -count=1 -cover ./internal/cli/update/...       -> ok update 0.622s 85.2%, backup 0.724s 88.4%, deploy 0.463s 85.9%, merge 0.828s 93.1%, plan 0.589s 95.2%, report 0.595s 95.1%, skillresidue 0.370s 89.4%
+go test -count=1 ./internal/cli/ -run 'Backup|Retention|Destructive|Housekeeping|UBR|Unmanaged|TemplateSync|CleanReinstall' -> ok internal/cli 23.260s
+go test -count=1 ./internal/template/...                -> ok template 150.029s, agentemit 0.362s, commandemit 0.254s, embedemit 0.268s, scripts [no test files]
+```
+
+Extra cross-builds of the package (amd64 unless noted): darwin, linux, windows, freebsd, openbsd, js/wasm -> all exit 0.
+
+Gaps: repository-wide test verdict PENDING (CI on the integration branch owns it); `make build` not run; Linux and Windows runtime behavior of the descriptor-relative renames, `Unlinkat` and `MoveFileEx` not observed (cross-build and vet only); the real-filesystem tests ran on case-insensitive APFS (darwin/arm64) only; a hostile-writer race stress with real syscalls (iteration 5 row 12) was not re-run this round; the row "L replaced between the identity and B" has no injection point and is covered only by reading the check; no tool call was refused this round; the `verify` skill delegation of the pre-commit gate was not separately run (scoped commands above were); re-audit is the auditor's.
