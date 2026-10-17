@@ -15,7 +15,7 @@ Observed (command `git log --first-parent --format='%P|%s' main -n N`, classifie
 
 Examples, two parents + card id: `fb749d372 d2d9ac08f c3d2a5d4c | Merge WT-10-15-release-3 into main (card t1760, integration merge)`; `7faf75fdf e806cdd6c e6ca1d560 | Merge WT-audit-gate-revert into main (card t1845, integration merge)`.
 Two parents, no card id: `ad002d3a0 ... | Merge WT-codex-moai-home-add-dir into main (codex --add-dir moai home, integration merge)`; `2aab5f797 ... | Merge pull request #1816 from modu-ai/WT-always-loaded-char-budget`.
-One parent: `842160157 763193861 | chore(config): auditor and planner models per operator role table (opus high)` (3 such chore commits); `db0c514d3 d3f51d0d9 | fix(factorymsg): set synchronous(NORMAL) on broker open paths (t1592) (#1815)` (PR-era single-parent commits, 28 of the 32 carry a `tNNNN` token).
+One parent: `842160157 763193861 | chore(config): auditor and planner models per operator role table (opus high)` (3 one-parent `chore` commits: 2 `chore(config)` and 1 `chore: commit the primary checkout's pending changes onto main`); `db0c514d3 d3f51d0d9 | fix(factorymsg): set synchronous(NORMAL) on broker open paths (t1592) (#1815)` (PR-era single-parent commits, 28 of the 32 carry a `tNNNN` token).
 First-parent positions 1-42 (2026-10-14 .. 2026-10-17) are all card merges. Older than the 100 window: 0 further card merges (`awk` over the rest of first-parent history; 138 of 3738 first-parent commits are two-parent).
 
 Batch shape (origin/main, read-only local ref): `M=6dde1c1c1` "Merge pull request #1826 from modu-ai/WT-batch-landing-1017": `git merge-base --is-ancestor M^1 M^2` true; `M^{tree}` equals `M^2^{tree}`; `git log --first-parent M^1..M^2` yields 63 units, including two non-card units (`merge: absorb origin/main into the batch landing branch`, `fix: repair three main-side CI failures blocking the batch landing PR`). So origin/main first-parent = one step per batch; card granularity lives on the `M^2` chain.
@@ -76,3 +76,70 @@ A strict all-check-runs gate can block a release over an auxiliary failing check
 - Who is waited on: the leader (operator-delegated), who decides how to proceed; the lane asked by message.
 - Resume condition: a decision that lets the fix round run. Then: fix round 1 as scoped above -> commit -> `moai factory stage t1833 sync <sha>` is not needed (stage is already sync) -> sync-audit iteration 2 on the new HEAD with the codex gate -> T11 `sync-audit` with `<audited_sha>:<tracked file>` -> T13 `merge-ready` -> slot, re-measure, window, `factory complete`.
 - State now: factory record t1833 = sync v6 (run tn1p4e), lease kept alive by the session-local renew cron; card branch WT-10-17-class-7 tip is this record's commit on top of 2ca38cdcf.
+
+## Fix round 1 (after sync-audit iteration 1 FAIL, lane-3, 2026-10-17/18)
+
+Tree `.moai/worktrees/t1833`, branch `WT-10-17-class-7`, start HEAD `1a1f42b23`. Commits: `e86799369` (F1-F4 + F7 error text: `integration_bisect.go` and its tests), `315fc6dc9` (F5, F6: `scripts/release.sh`, `release_ci_gate_test.go`), then the docs/evidence commit that carries this section. Nothing pushed, no tag created or moved, `scripts/release.sh` never run against the real repository (every release run was in a scratch clone with a stub `gh` and a `git` shim that blocks the push). All go commands: `env -u MOAI_FACTORY_WORKER -u CLAUDE_PROJECT_DIR TMPDIR=/private/tmp/lane3-fix GOTMPDIR=/private/tmp/lane3-fix go ...`, no `-race`, one package per invocation.
+
+### Red then green, per defect (tests written first, observed red on the unchanged code)
+
+| Defect | Test | RED (before the fix) | GREEN (after the fix) |
+|---|---|---|---|
+| F1 culprit from test output | `TestBisectIgnoresACulpritClaimPrintedByTheJudgedCommand` | exit 1: `integration_bisect_test.go:193: a decoy line printed by the judged command must not change the culprit; want card t1003` (verb printed `card: t1001`) | exit 0 |
+| F2 GIT_DIR split | `TestBisectActsOnTheCheckedTreeWhenGitDirIsSet` | exit 1: `:223: bisect with GIT_DIR set: integration bisect: the search did not converge` | exit 0 |
+| F3 reset failure swallowed | `TestBisectFailsWhenTheResetFails` | exit 1: `:247: a failed git bisect reset must be an error that names the reset, got <nil>` (output carried `WARNING git bisect reset failed (exit status 1)`) | exit 0 |
+| F4 failed start leaves HEAD moved | `TestBisectRestoresHeadWhenStartFailsPartway` | exit 1: `:269: a failed start must leave HEAD at c0171b68..., is 6ea47b46...` | exit 0 |
+| F5 tag names no commit | `TestReleaseScriptTagsTheVerifiedCommit` | exit 1: `tag v9.9.9-rc.1 names 000c51b7..., but the CI gate verified 1bcab3f7... (HEAD had moved to 000c51b7...)` | exit 0 |
+| F6 unrelated green check run | `TestReleaseScriptCIGate/unrelated_green_check_run_alone_is_refused`, `/expected_workflow_missing_one_check_is_refused` | exit 1: `exit code = 0, want 1` (both rows), `output lacks "CI gate: expected check run(s) not reported"` | exit 0 |
+
+Commands (RED, run on the unchanged code with the new tests):
+- `go test ./internal/cli -run '^(TestBisectIgnoresACulpritClaimPrintedByTheJudgedCommand|TestBisectActsOnTheCheckedTreeWhenGitDirIsSet|TestBisectFailsWhenTheResetFails|TestBisectRestoresHeadWhenStartFailsPartway)$' -count=1` -> exit 1, `--- FAIL` for all four, `FAIL github.com/modu-ai/moai-adk/internal/cli 9.657s`.
+- `go test ./internal/template -run '^(TestReleaseScriptCIGate|TestReleaseScriptTagsTheVerifiedCommit)$' -count=1 -v` -> exit 1; `--- FAIL: TestReleaseScriptCIGate` with the two F6 rows FAIL and the other 5 PASS; `--- FAIL: TestReleaseScriptTagsTheVerifiedCommit` (the first RED attempt of the F5 test was invalid: it died at the harness-provenance check, then at a PATH that reached the real `gh`; both test-harness errors were fixed before the RED above was recorded, see Gaps).
+
+Commands (GREEN, after the fixes):
+- `go test ./internal/cli -run '^TestBisect' -count=1` -> exit 0, `ok github.com/modu-ai/moai-adk/internal/cli 15.989s` (12 tests: the 8 old plus the 4 new).
+- `go test ./internal/template -run '^(TestReleaseScriptCIGate|TestReleaseScriptCIGateWithoutGh|TestReleaseScriptTagsTheVerifiedCommit)$' -count=1 -v` -> exit 0, `--- PASS` for all 11 `TestReleaseScriptCIGate` rows, 2 `WithoutGh` rows and `TestReleaseScriptTagsTheVerifiedCommit`; `ok ... 9.789s`.
+- `go test ./internal/template -run '^(TestReleaseScriptCharacterization|TestReleaseScriptMatrixGate|TestReleaseScriptHeadAdmission|TestReleaseScriptRcChangelogSkip|TestGitHubFlowSweepGuard)$' -count=1` -> exit 0, `ok ... 22.656s`.
+- `bash -n scripts/release.sh` -> exit 0. `gofmt -l` on the four Go files -> exit 0, no output. `go vet ./internal/cli` -> exit 0. `go vet ./internal/template` -> exit 0 (separate invocations).
+
+### What changed, by defect
+
+- F1: the culprit is the `# first bad commit: [<sha>]` line in `git bisect log`, read after `git bisect run` returns 0 and before the reset removes it. The log is git's state; the judged command cannot write to it. `git bisect run` output now goes straight to the caller (no longer captured for matching).
+- F2: `bisectGit` drops `GIT_DIR`, `GIT_WORK_TREE`, `GIT_COMMON_DIR`, `GIT_INDEX_FILE`, `GIT_CEILING_DIRECTORIES` (the set `internal/auditreceipt` scrubs for the pre-checks) and keeps the rest of the environment, which the judged command inherits through `git bisect run`.
+- F3, F4: the starting HEAD and branch are recorded before `git bisect start`. `bisectRestore` runs on every path (failed start, failed run, converged, not converged): `git bisect reset` when `BISECT_LOG` exists, a `git checkout` of the starting branch/commit when HEAD differs, then verifies HEAD sha, branch and absence of `BISECT_LOG`. Any reset error or failed verification returns an error that names it and the manual recovery; the command exits 1. When a culprit was found the report lines are still printed before the error. The claim "always resets" in the CHANGELOG and runbook was reworded to what is now true (reset on every path, verified, failure exits 1) rather than left as "always".
+- F5: `git tag -a "$VERSION" -F "$TMP_NOTES" "$LOCAL_SHA"`; the HEAD re-check is kept as an early refusal. The test moves HEAD with a `git` shim at the moment `git tag -a` runs and blocks `git push`; the tag must name the verified commit.
+- F6: `CI_REQUIRED_CHECKS=("Lint" "Test (ubuntu-latest)" "Build (linux/amd64)")` at the top of validation 9; the gate reads one `name<TAB>status<TAB>conclusion` line per check run, applies the old rules (none / failed / pending refuse first), then refuses unless each expected name is present. `--skip-ci-check` remains the only override and is still recorded.
+- F7: runbook section 2.2 exit-code sentence corrected (126, 127 and 128+ abort the search; only 1-124 mark bad; observed `error: bogus exit code 127 for good revision`), and the verb's error text no longer says "exited >127". F8: `동사` -> `하위 명령`, `끝점` -> `양 끝 ref` (a rewording of 11 occurrences, no change of meaning). F9: see below.
+
+### F6 decision: how the workflow name was determined
+
+- `.github/workflows/ci.yml` line 1 is `name: CI`; it is the workflow that gates main (triggers: push to `main` and `ci/**`, pull_request to `main`, workflow_dispatch). A check run is named after its JOB, not the workflow. Job names read from the file: `Detect (paths-filter)` (line 62), `Test (${{ matrix.os }})` (103, matrix `[ubuntu-latest]`), its docs-only complement `test-skip-marker` with the identical name (667), `Guard Bundle`, `Race Test (...)` x6, `Integration Tests (...)`, `Lint` (773), `Build (${{ matrix.goos }}/${{ matrix.goarch }})` (820, matrix linux/darwin/windows x amd64/arm64), `Constitution Check`, `Test (browser fire guard)`.
+- `.github/required-checks.yml` (the SSoT for branch protection, loaded by `internal/config/required_checks.go`) lists for `main`: Lint, `Test (ubuntu-latest)`, five `Build (...)` names, `Analyze (Go) (go)`, `Release PR Multi-OS Gate`, `Guard Bundle`; the `ci/**` key lists "the contexts a ci/** push ACTUALLY publishes": Lint, `Test (ubuntu-latest)`, the five Build names. A tag is cut from a commit already on main, so the check runs on that commit come from the push event; `Analyze` and `Release PR Multi-OS Gate` are pull-request names.
+- Chosen: the three names that `ci.yml` itself publishes on a push and that are also in main's required set: `Lint`, `Test (ubuntu-latest)`, `Build (linux/amd64)`. Not required by name (but still blocking if red, because every check run must be green): `Guard Bundle`, the other four Build legs, `Analyze (Go) (go)`, `Release PR Multi-OS Gate`. Reason: a smaller name list has fewer ways to be wrong against GitHub's real naming; if any of the three names is wrong the gate refuses (fail closed) instead of passing falsely.
+- NOT verified against live GitHub: that GitHub reports these three exact names on a push-to-main commit, that the `Test (ubuntu-latest)` skip-marker path publishes the same name on a docs-only commit (stated in `ci.yml` comments, not observed), that `gh api ... --jq '.check_runs[] | ...'` behaves under real `--paginate` as it does on the stub (jq runs once per page; the output lines are concatenated), and that `filter=latest` (the endpoint default) hides re-run duplicates. The first real `release.sh <tag> --dry-run` is the measurement; a wrong name makes it refuse with `expected check run(s) not reported`, naming what is missing.
+
+### F9 recount
+
+`git log --first-parent --format='%P|%s' main -n 100`, main = `fb749d372` (local main did not advance), classified by parent count: 32 one-parent, 68 two-parent, 64 of the two-parent carry `(card tNNNN`. One-parent subjects starting with `chore`: 3 (`chore(config): auditor and planner models ...`, `chore(config): consume auditor model overrides ...`, `chore: commit the primary checkout's pending changes onto main`); of those, `chore(config)`: 2. Section 1 of this file now says "3 one-parent `chore` commits: 2 `chore(config)` and 1 `chore: commit ...`"; the runbook sentence that said "`chore(config)` ... 3" was corrected the same way.
+
+### Mutation checks (apply the revert, run the matching test, restore with `git checkout -- <file>`, compare sha256)
+
+| Fix reverted | Test | Result | File after restore |
+|---|---|---|---|
+| F1: culprit by regex `is the first bad commit` over the mixed output | `TestBisectIgnoresACulpritClaimPrintedByTheJudgedCommand` | exit 1, FAIL (`want card t1003`) | sha256 `f0363c4d...7660ff` = committed |
+| F2: `bisectGit` keeps GIT_* | `TestBisectActsOnTheCheckedTreeWhenGitDirIsSet` | exit 1, FAIL (`did not converge`) | same hash |
+| F3: restore error swallowed (`_ = restoreErr; return nil`) | `TestBisectFailsWhenTheResetFails` | exit 1, FAIL (`got <nil>`) | same hash |
+| F4: no restore after a failed start | `TestBisectRestoresHeadWhenStartFailsPartway` | exit 1, FAIL (`is 1ae8ac73...`) | same hash |
+| F5: `git tag -a` without `"$LOCAL_SHA"` | `TestReleaseScriptTagsTheVerifiedCommit` | exit 1, FAIL (tag on the moved HEAD) | sha256 `da57cda6...199974` = committed |
+| F6: expected-name check disabled (`if false`) | `TestReleaseScriptCIGate` | exit 1, the two F6 rows FAIL | same hash |
+
+`git status --short` was empty after each restore.
+
+### Gaps
+
+- Live GitHub was never read on purpose. One unintended read-only call happened: my first run of `TestReleaseScriptTagsTheVerifiedCommit` replaced the PATH that held the `gh` stub, so the script ran the real `gh api repos/modu-ai/moai-adk/commits/<scratch sha>/check-runs` once and got `gh: No commit found for SHA ... (HTTP 422)` (a GET for a sha that exists only in a scratch repo; nothing was written, no tag or push). The test now builds the PATH from the stub's PATH and cannot reach the real `gh`; the invalid run is not counted as evidence.
+- The real `gh --paginate` page boundaries, the check-run names GitHub reports, and the skip-marker name on a docs-only commit were not observed (see F6 decision).
+- Whole-package test runs, `golangci-lint`, and `make build` were not run (leader's load rule). The CHANGELOG sentences changed because they would otherwise be false; the markdown edits were not linted.
+- `git bisect log`'s `# first bad commit:` line was observed on git 2.54.0 (Apple Git-157) only. On a git that does not write it the verb reports "did not converge" (safe failure), not a wrong card.
+- The F3 test forces the reset failure with a post-checkout hook; a failure of another kind (a locked index) takes the same code path but was not separately exercised.
+- Residual risk: a judged command that itself runs `git bisect` commands in the tree could alter the log; not guarded. The strict all-check-runs gate can still block a tag over an auxiliary failing check; a hand-made tag skips `release.sh` entirely.
