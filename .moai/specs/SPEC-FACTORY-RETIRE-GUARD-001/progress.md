@@ -62,7 +62,7 @@ audit_ready: true
 sync_status: complete
 sync_complete_at: 2026-10-18
 docs_commit_sha: c77e723c1
-sync_commit_sha: pending-backfill
+sync_commit_sha: 6029b3e9ae68c0762158bf28ff8398190b9f7819
 ac_source: .moai/specs/SPEC-FACTORY-RETIRE-GUARD-001/acceptance.md
 tier: M
 ac_count: 8
