@@ -274,6 +274,41 @@ Why red: the value token was stripped from the backend argv and treated as the o
 
 Note on the "control" the task named (`-c --allow-card-anchor hello`): `-c` is consumed by the launcher as `--continue`, which sends the real launch down the resume path (it execs the claude binary and skips the exec seam), so that control is pinned on the consumption function (`consumption_by_placement/alone`), not through the leader entry; the leader-entry control uses the attached cluster instead.
 
+### Sync-audit iteration 1 findings F1 / F2 / F3 (REQ-LA-003 corrected by manager-spec in `b6f8697da`)
+
+**Observation method (dry, in-process).** Every observation below drives the REAL `runCC` / `runGLM` leader entry in a fixture git repository with the exec seam, the claude binary and the `--branch` materializer stubbed; no session is started and the installed `claude` binary is never run by these cells. The backend fact itself (`claude --append-system-prompt -- --version </dev/null` prints the version, so a required-value option takes a following `--` as its value) is the orchestrator's measurement recorded in SPEC HISTORY; this run did not repeat it.
+
+**F1 RED (reproduced first, tree `b6f8697da`, no code change yet).** Cells added: rows 15-17 of acceptance.md §D.4 in the table behind `TestLauncherAnchorFinalArgv/view_exec_byte_equality` (now 17 rows x cc/glm = 34 subtests), the single-separator controls `TestLauncherAnchorFinalArgv/required_value_separator_controls`, rows in `TestLaunchViewBackendSelection`, and F3 rows in `TestLauncherAnchorOverrideFlagPlacement/consumption_by_placement`. Command: `go test ./internal/cli/ -run '^(TestLauncherAnchorFinalArgv|TestLaunchViewBackendSelection|TestLauncherAnchorOverrideFlagPlacement)$' -v -count=1`. Exit code: **1**. Red from assertions (everything compiled and ran). Verbatim failing lines (one arm shown; the glm arm repeats them; the output was filtered to `FAIL` and `_test.go:` lines):
+
+```
+    factory_anchor_guard_cells_test.go:149: selection = {Present:false Spelling: Value: HasValue:false Index:0}, want spelling "--worktree" value "WT-card" hasValue true
+    factory_anchor_guard_cells_test.go:170: resolved tree "" branch "main", want tree ".claude/worktrees/WT-card" branch "WT-card"
+    factory_anchor_guard_cells_test.go:173: 15 --append-system-prompt -- -- --worktree WT-card (separator as a long option's value): the anchored leader launch was not refused (launched=true)
+    factory_anchor_guard_cells_test.go:149: selection = {Present:false Spelling: Value: HasValue:false Index:0}, want spelling "-w" value "WT-card" hasValue true
+    factory_anchor_guard_cells_test.go:173: 16 -n -- -- -w WT-card (separator as a short option's value): the anchored leader launch was not refused (launched=true)
+    factory_anchor_guard_cells_test.go:173: 17 -cn -- -- -w WT-card (separator as a cluster tail's value): the anchored leader launch was not refused (launched=true)
+    launch_view_test.go:64: selectBackendWorktree(["--append-system-prompt" "--" "--worktree" "WT-card"]) = {Present:false ...}, want {Present:true Spelling:--worktree Value:WT-card HasValue:true Index:2}
+    launch_view_test.go:64: selectBackendWorktree(["-n" "--" "-w" "WT-card"]) = {Present:false ...}, want {Present:true Spelling:-w Value:WT-card HasValue:true Index:2}
+    launch_view_test.go:64: selectBackendWorktree(["-cn" "--" "-w" "WT-card"]) = {Present:false ...}, want {Present:true Spelling:-w Value:WT-card HasValue:true Index:2}
+    factory_anchor_override_placement_test.go:51: consumeAllowCardAnchor(["--model" "--" "--allow-card-anchor"]) = (["--model" "--" "--allow-card-anchor"], false), want (["--model" "--"], true)
+    factory_anchor_override_placement_test.go:51: consumeAllowCardAnchor(["-m" "--" "--allow-card-anchor"]) = (["-m" "--" "--allow-card-anchor"], false), want (["-m" "--"], true)
+--- FAIL: TestLauncherAnchorFinalArgv (24.30s)
+    --- FAIL: TestLauncherAnchorFinalArgv/view_exec_byte_equality (16.25s)
+        --- FAIL: .../view_exec_byte_equality/cc/15_--append-system-prompt_--_--_--worktree_WT-card_(separator_as_a_long_option's_value) (0.49s)   [likewise cc/16, cc/17, glm/15, glm/16, glm/17]
+--- FAIL: TestLauncherAnchorOverrideFlagPlacement (4.00s)
+--- FAIL: TestLaunchViewBackendSelection (0.00s)
+```
+
+Why red: a required-value option followed by `--` was treated as having no value, so the `--` ended parsing and the worktree option after it was invisible to the guard — an anchored leader launch was not refused. The single-separator controls (`-n -- -w WT-card`, `-cn -- -w WT-card`, `--append-system-prompt -- --worktree WT-card`: the launcher eats that `--`, the backend sees `-n -w WT-card`, no selection, allowed) and row 12 passed on the old code and stay green; they guard against a "stop honouring `--`" resolver.
+
+**Fix.** `launch_view.go`: `longOptionValueSpan` and the required-value branch of `scanShortCluster` consume the next token even when it is `--`, then scanning continues (the `--` break in `selectBackendWorktree` is reached only when the `--` is not a required-value option's value). The optional-value worktree option's behaviour before a `--` is unchanged (still unmeasured). No new option table: `activeClaudeOptionModel` and `launcherSegmentValueFlags` only.
+
+**F3.** `optionValueSpan` (launcher segment, used by `consumeAllowCardAnchor`) now asks `consumeLaunchArgs` what a following `--` means: it is the VALUE of `--model` / `--permission-mode` / `-m` (consumed), and the launcher's own separator after any other option. One argv, one interpretation; cells: `consumption_by_placement/the_separator_is_the_value_of_a_launcher-consumed_option`, `.../the_separator_is_the_value_of_-m`, `.../the_separator_after_another_value_option_is_the_launcher_separator`.
+
+**F2 (not adopted as a behaviour change).** REQ-LA-009 enumerates three repairs (a symlink at the final path, a FIFO, the descriptor re-read) and all three are kept. The remaining limit is recorded as an `@MX:DEBT` with `@MX:CEILING` and `@MX:UPGRADE` sub-lines on `openLeaderAnchorAuditLog` in `factory_anchor_guard.go`: the parent directories are verified by path and the file is then opened by path, so a swap of `.moai/logs` inside that window can redirect the append; the upgrade is a single no-follow open of the directory plus an openat-style relative open. Comment only.
+
+**GREEN pair** (same command, tree `b6f8697da` + the fix): exit **0**; `--- PASS: TestLauncherAnchorFinalArgv (20.97s)`, `--- PASS: TestLauncherAnchorOverrideFlagPlacement (2.65s)`, `--- PASS: TestLaunchViewBackendSelection (0.00s)`, `ok ... 24.527s`. The seven bound families together: exit 0, 109 subtest PASS, 0 FAIL, `ok ... 41.127s`, `view_exec_byte_equality` now 17 rows x 2 arms; AC-LA-014 selector: exit 0, 180 top-level PASS, 0 FAIL, both named tests present, `ok ... 121.675s`; the 183-test leader-entry sweep: exit 0, `ok ... 164.066s`. `golangci-lint run --timeout=8m --new-from-rev=6e729ba21 ./internal/cli/... ./internal/config/...` -> `0 issues.` exit 0; gofmt empty; `go vet ./internal/cli/ ./internal/config/` exit 0; native and `GOOS=windows GOARCH=amd64` `go build ./...` and windows `go vet` exit 0.
+
 ### Gaps (not observed) and refusals
 
 - **Package coverage (85%) and whole-package lint are not measured** — M4, excluded from this delegation. No coverage figure is claimed.

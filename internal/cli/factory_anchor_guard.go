@@ -181,6 +181,10 @@ var leaderAnchorAuditOpenRace = func(path string) {}
 // there. A reader-attached FIFO swapped into the window passes the Lstat and
 // survives O_NOFOLLOW|O_NONBLOCK, so the open re-reads the type of the
 // descriptor it would write through and refuses a non-regular file.
+//
+// @MX:DEBT: [AUTO] the parent directories (.moai and .moai/logs) are verified by path in appendLeaderAnchorAuditRow and the log file is then opened by path, so a swap of .moai/logs between that check and this open can redirect the append
+// @MX:CEILING: REQ-LA-009's three repairs only — a link or FIFO at the final path component and the descriptor's file type; a directory component swapped inside the check-to-open window is not covered
+// @MX:UPGRADE: open .moai/logs once with no-follow and use an openat-style relative open of the log file, when the audit log is judged to need protection against a local attacker who can write the project's .moai directory
 func openLeaderAnchorAuditLog(path string) (*os.File, error) {
 	fi, err := os.Lstat(path)
 	switch {

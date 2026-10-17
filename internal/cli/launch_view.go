@@ -246,10 +246,21 @@ func consumeAllowCardAnchor(args []string) (rest []string, allowed bool) {
 // model; a bundled short cluster (`-cn <name>`: `c` boolean, `n` takes the next
 // token) is decomposed by scanShortCluster — the same walk the backend
 // selection uses — so one argv has one interpretation.
+//
+// A following `--` is decided by the launcher's own consumption, not by the
+// backend model: consumeLaunchArgs eats it as the VALUE of --model /
+// --permission-mode / -m, and for every other option it is the launcher's
+// separator. Asking consumeLaunchArgs keeps that knowledge in one place.
 func optionValueSpan(args []string, i int) int {
 	arg := args[i]
+	if i+1 < len(args) && args[i+1] == argSeparator {
+		if c := consumeLaunchArgs([]string{arg, argSeparator}); c.ModelSet || c.PermissionModeSet {
+			return 1
+		}
+		return 0
+	}
 	if launcherSegmentValueFlags[arg] || activeClaudeOptionModel[arg] == claudeOptionRequiredValue {
-		if i+1 < len(args) && args[i+1] != argSeparator {
+		if i+1 < len(args) {
 			return 1
 		}
 		return 0
@@ -267,12 +278,16 @@ func optionValueSpan(args []string, i int) int {
 // LAST worktree option wins. It reads the four spellings (`--worktree v`,
 // `--worktree=v`, `-w v`, attached `-wv`) and a short-option cluster in which a
 // boolean precedes the value option (`-pwv`: `p` is a boolean, `w` takes the
-// rest as its value). An option's value is the next token unless that token
-// starts with `-` or is `--`; `--` is never a value, and it ends option
-// parsing (everything after it is positional). A token that is the VALUE of
-// another option — a required-value option takes the next token even when it is
-// flag-shaped — is not an option. The knowledge of which options take values
-// is activeClaudeOptionModel, the repo's one measured claude option surface.
+// rest as its value). An optional-value option's value is the next token unless
+// that token starts with `-` or is `--`; a `--` ends option parsing (everything
+// after it is positional) unless it is the VALUE of a required-value option —
+// a required-value option takes the next token even when it is flag-shaped or
+// `--` (measured on claude 2.1.302: `claude --append-system-prompt -- --version`
+// prints the version), and parsing continues after it. A token that is the
+// value of another option is not an option. The knowledge of which options take
+// values is activeClaudeOptionModel, the repo's one measured claude option
+// surface. What follows an optional-value worktree option's `--` is unmeasured
+// and unchanged.
 func selectBackendWorktree(argv []string) worktreeSelection {
 	var sel worktreeSelection
 	for i := 0; i < len(argv); i++ {
@@ -324,7 +339,9 @@ func longOptionValueSpan(argv []string, i int) int {
 	}
 	switch activeClaudeOptionModel[argv[i]] {
 	case claudeOptionRequiredValue:
-		if i+1 < len(argv) && argv[i+1] != argSeparator {
+		// A required-value option takes the next token as its value even when it
+		// is `--` (measured on claude 2.1.302), and parsing continues after it.
+		if i+1 < len(argv) {
 			return 1
 		}
 	case claudeOptionOptionalValue:
@@ -371,8 +388,8 @@ func scanShortCluster(argv []string, i int, cur worktreeSelection) (worktreeSele
 		case claudeOptionBoolean:
 			continue
 		case claudeOptionRequiredValue:
-			if attached == "" && i+1 < len(argv) && argv[i+1] != argSeparator {
-				return cur, 1
+			if attached == "" && i+1 < len(argv) {
+				return cur, 1 // the next token, `--` included, is the value
 			}
 			return cur, 0
 		case claudeOptionOptionalValue:

@@ -47,6 +47,11 @@ func TestLaunchViewBackendSelection(t *testing.T) {
 		{"a later bare option wins over an earlier value", []string{"--worktree", "WT-card", "--worktree"}, worktreeSelection{Present: true, Spelling: "--worktree", Index: 2}},
 		{"separator ends option parsing", []string{"--worktree", "plain", "--", "--worktree", "WT-card"}, worktreeSelection{Present: true, Spelling: "--worktree", Value: "plain", HasValue: true}},
 		{"separator is never a value", []string{"--worktree", "--", "WT-card"}, worktreeSelection{Present: true, Spelling: "--worktree"}},
+		{"a required-value long option takes the separator as its value", []string{"--append-system-prompt", "--", "--worktree", "WT-card"}, worktreeSelection{Present: true, Spelling: "--worktree", Value: "WT-card", HasValue: true, Index: 2}},
+		{"a required-value short option takes the separator as its value", []string{"-n", "--", "-w", "WT-card"}, worktreeSelection{Present: true, Spelling: "-w", Value: "WT-card", HasValue: true, Index: 2}},
+		{"a cluster whose last letter takes a value takes the separator as its value", []string{"-cn", "--", "-w", "WT-card"}, worktreeSelection{Present: true, Spelling: "-w", Value: "WT-card", HasValue: true, Index: 2}},
+		{"a separator after a positional still ends option parsing", []string{"P1", "--", "--worktree", "WT-card"}, worktreeSelection{}},
+		{"a separator after a boolean still ends option parsing", []string{"-p", "--", "--worktree", "WT-card"}, worktreeSelection{}},
 		{"a required-value option takes a flag-shaped token as its value", []string{"--name", "--worktree", "WT-card"}, worktreeSelection{}},
 		{"a required-value option takes the next token", []string{"--model", "-wWT-card"}, worktreeSelection{}},
 		{"an optional-value option leaves a flag-shaped token alone", []string{"--debug", "-wWT-card"}, worktreeSelection{Present: true, Spelling: "-w<value>", Value: "WT-card", HasValue: true, Index: 1}},
@@ -174,5 +179,11 @@ func viewEqualityRows(elsewhere string) []viewEqualityRow {
 		{"12 -w plain -- P1 -- --worktree WT-card (second separator)", []string{"-w", "plain", "--", "P1", "--", "--worktree", "WT-card"}, "--worktree", "plain", true, ".claude/worktrees/plain", "plain-branch", false, true},
 		{"13 -- --worktree plain PROMPT", []string{"--", "--worktree", "plain", "PROMPT"}, "--worktree", "plain", true, ".claude/worktrees/plain", "plain-branch", false, true},
 		{"14 -w plain --worktree <elsewhere> (duplicate options)", []string{"-w", "plain", "--worktree", elsewhere}, "--worktree", elsewhere, true, "", "", false, false},
+		// Rows 15-17 (measured on claude 2.1.302: a required-value option takes a
+		// following `--` as its value and parsing continues). The launcher eats the
+		// FIRST `--` as its separator; the second reaches the backend as the value.
+		{"15 --append-system-prompt -- -- --worktree WT-card (separator as a long option's value)", []string{"--append-system-prompt", "--", "--", "--worktree", "WT-card"}, "--worktree", "WT-card", true, card, "WT-card", true, true},
+		{"16 -n -- -- -w WT-card (separator as a short option's value)", []string{"-n", "--", "--", "-w", "WT-card"}, "-w", "WT-card", true, card, "WT-card", true, true},
+		{"17 -cn -- -- -w WT-card (separator as a cluster tail's value)", []string{"-cn", "--", "--", "-w", "WT-card"}, "-w", "WT-card", true, card, "WT-card", true, true},
 	}
 }
