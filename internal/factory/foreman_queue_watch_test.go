@@ -9,9 +9,10 @@
 //
 // These tests take the watch script VERBATIM from the skill file — the
 // local copy and the template mirror both — and run it. The rebinding is the
-// process working directory PLUS the environment: since
-// SPEC-TODO-QUEUE-HOME-CANON-001 the script resolves the queue directory the
-// way StateDirForRoot does (a project-keyed directory under the moai home),
+// process working directory PLUS the environment: the script takes the queue
+// directory from `moai paths --field todo-dir` (SPEC-MOAI-DB-PATHS-001), which
+// the fixture answers with a `moai` stub printing the StateDirForRoot value (a
+// project-keyed directory under the moai home),
 // so the fixture pins MOAI_HOME to a fixture-local absolute path, builds the
 // store at the resolver's answer, and lets the script re-derive the same
 // directory from the same environment without sharing a byte of text with
@@ -167,6 +168,11 @@ func armWatch(t *testing.T, root, script string, mutate func()) bool {
 	defer cancel()
 	cmd := exec.CommandContext(ctx, "sh", scriptPath)
 	cmd.Dir = root
+	// The script asks `moai paths --field todo-dir` (SPEC-MOAI-DB-PATHS-001): a
+	// stub on the PATH answers with the fixture's resolver directory. The
+	// original PATH stays behind it so sh, git, and cksum still resolve.
+	binDir, _ := foremanMoaiStub(t, StateDirForRoot(root))
+	cmd.Env = append(os.Environ(), "PATH="+binDir+string(os.PathListSeparator)+os.Getenv("PATH"))
 	stdout, err := cmd.StdoutPipe()
 	if err != nil {
 		t.Fatalf("stdout pipe: %v", err)

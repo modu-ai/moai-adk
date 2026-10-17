@@ -177,6 +177,12 @@ Verbs — slash surface: `/moai todo "<description>"` (append), bare `/moai todo
 GTD stages: `capture`, `clarify`, `organize`, `reflect`, `engage`, plus `answer` for a gate-blocked card. Captured items stay separate from the established development queue until an explicitly approved Engage publishes one.
 Compatibility: `/moai gtd` and `moai gtd` are the compat alias of the canonical `/moai todo` and `moai todo` — same database, same card identities, same ordering, archive, and restore path.
 State: `~/.moai/db/<project-key>/todo/backlog.db` — home-scoped, project-keyed, not committed, a SQLite database every mutation takes a cross-process lock over. A `backlog.json` beside an existing database is an export or a legacy leftover; the read verbs report that distinction. Before migration, a legacy JSON-only queue remains readable.
+Database paths — never guess:
+Find the database files with `moai paths`; never guess them.
+Forbidden guessed paths: `~/.moai/todo.db`, `~/.moai/backlog.db`, `~/.moai/db/todo.db`, `~/.moai/db/factory.db`, `~/.moai/db/<key>/backlog.db`, `<root>/.moai/state/backlog.db`, `<root>/.moai/state/factory.db`, `<root>/.moai/state/factory/factory.db`.
+Never `sqlite3`-open a guessed path: opening a missing file creates an empty one.
+Direct reads only on a snapshot copy of `.db`, `.db-wal`, and `.db-shm` together.
+Prefer the CLI: `moai todo list --json`, `moai factory status`.
 The pick is the operator's: never preselect, never reorder by inferred priority (the `--auto` cycle's own candidate ranking is the one auto-scoped ranking exception — selection order only), never auto-populate from TODO comments or issues.
 Enablement: when `workflow.todo.enabled` is `false` in `.moai/config/sections/workflow.yaml`, do NOT route to this workflow by inference — a backlog-shaped phrase the operator did not name a subcommand for is answered directly instead of being queued. The gate binds AUTOMATIC routing only: an explicit `/moai todo` or `/moai todo "<description>"` still runs normally, exactly as it does when the key is absent or `true`. The flag suppresses guidance, not the feature — the queue verbs stay registered and every one of them keeps working, so refusing or silently ignoring a named invocation is a defect, not the intended behavior.
 For detailed orchestration: Read workflows/gtd.md
