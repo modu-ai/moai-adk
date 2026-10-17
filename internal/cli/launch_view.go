@@ -131,6 +131,20 @@ type launchView struct {
 // @MX:REASON: [AUTO] fan_in 4 (cc.go x2, glm.go x2); the guard and every worktree reader must judge the same view, so a change to the view shape or its walk rules moves all four sites together
 // @MX:SPEC: SPEC-LAUNCHER-ARGV-001
 func resolveLaunchView(entry []string) launchView {
+	v, _ := resolveOwning(entry, "")
+	return v
+}
+
+// resolveOwning is the one walk behind resolveLaunchView. With ownFlag set, the
+// same walk also takes that launcher-owned flag where it stands (see
+// walkLaunchArgs): the returned view is the view of the argv the backend
+// receives — the flag already gone from FinalArgv when it was an override — and
+// the returned ordinals say which occurrences of the flag in entry were
+// overrides (the k-th flag token in entry, counting from the start). The branch
+// split and the worktree normalization both leave every ownFlag token in place
+// and in order, so an ordinal counted over LaunchArgs addresses the same token
+// in entry.
+func resolveOwning(entry []string, ownFlag string) (launchView, []int) {
 	v := launchView{Entry: entry}
 	v.StageA = readFirstWorktree(entry)
 
@@ -143,10 +157,17 @@ func resolveLaunchView(entry []string) launchView {
 	v.StageB = readFirstWorktree(v.Stripped)
 	v.LaunchArgs = normalizeWorktreeFlag(v.Stripped)
 
-	v.Consumed = consumeLaunchArgs(v.LaunchArgs)
+	if err != nil {
+		// A malformed --branch is refused when the launch materializes it, so there
+		// is nothing to override: removing the flag must not turn an argv the launch
+		// refuses into one it accepts.
+		ownFlag = ""
+	}
+	var ordinals []int
+	v.Consumed, ordinals = walkLaunchArgs(v.LaunchArgs, ownFlag)
 	v.FinalArgv = v.Consumed.PassThrough
 	v.Selection = selectBackendWorktree(v.FinalArgv)
-	return v
+	return v, ordinals
 }
 
 // materializeBranch runs the card-t295 --branch materialization the view
@@ -168,16 +189,37 @@ func readFirstWorktree(args []string) worktreeRead {
 	return worktreeRead{Value: value, Has: ok}
 }
 
-// consumeLaunchArgs is runLaunchClaude's consumption loop, extracted unchanged:
-// the launcher eats -b/--bypass, --permission-mode, -c/--continue, --model/-m
-// (and the = forms) and drops the first `--`; everything else, and the whole
-// tail after that separator, passes through verbatim. A second separator in the
-// tail belongs to the backend and stays byte-for-byte intact.
+// consumeLaunchArgs is runLaunchClaude's consumption loop: the launcher eats
+// -b/--bypass, --permission-mode, -c/--continue, --model/-m (and the = forms)
+// and drops the first `--` it does not eat as a value; everything else, and the
+// whole tail after that separator, passes through verbatim. A second separator in
+// the tail belongs to the backend and stays byte-for-byte intact.
 func consumeLaunchArgs(extraArgs []string) launchConsumption {
+	c, _ := walkLaunchArgs(extraArgs, "")
+	return c
+}
+
+// walkLaunchArgs is the consumption walk. consumeLaunchArgs runs it as is; the
+// leader entry runs it with ownFlag, the launcher's own override flag
+// (REQ-LA-005), so the override decision and the argv the backend receives are
+// two outputs of ONE walk.
+//
+// The flag counts only where it stands: in the launcher segment (before the
+// first separator the walk did not eat as an option value) and not as the value
+// of a backend option. Both are read on what is left once the walk has dropped
+// the launcher's own options — the sequence the backend reads — never on the
+// typed argv, where a token's neighbour may be one the backend never sees. The
+// flag is then dropped from PassThrough, and the returned ordinals name its
+// occurrences among the flag tokens of extraArgs (the k-th, counting from the
+// start).
+func walkLaunchArgs(extraArgs []string, ownFlag string) (launchConsumption, []int) {
 	var c launchConsumption
+	var origin []int // origin[k]: the index in extraArgs of the launcher-segment token PassThrough[k]
+	segment := -1    // len(PassThrough) at the first separator the walk did not eat
 	for i := 0; i < len(extraArgs); i++ {
 		arg := extraArgs[i]
 		if arg == "--" {
+			segment = len(c.PassThrough)
 			c.PassThrough = append(c.PassThrough, extraArgs[i+1:]...)
 			break
 		}
@@ -204,75 +246,93 @@ func consumeLaunchArgs(extraArgs []string) launchConsumption {
 				c.PermissionMode, c.PermissionModeSet = strings.TrimPrefix(arg, "--permission-mode="), true
 			default:
 				c.PassThrough = append(c.PassThrough, arg)
+				origin = append(origin, i)
 			}
 		}
 	}
+	if segment < 0 {
+		segment = len(c.PassThrough)
+	}
+
+	var ordinals []int
+	if ownFlag != "" {
+		if standing := standingOwnFlags(c.PassThrough[:segment], ownFlag); len(standing) > 0 {
+			drop := make(map[int]bool, len(standing))
+			for _, k := range standing {
+				drop[k] = true
+				ordinals = append(ordinals, ownFlagOrdinal(extraArgs, origin[k], ownFlag))
+			}
+			kept := make([]string, 0, len(c.PassThrough)-len(standing))
+			for k, tok := range c.PassThrough {
+				if !drop[k] {
+					kept = append(kept, tok)
+				}
+			}
+			c.PassThrough = kept
+		}
+	}
 	c.ChainTarget = extractWorktreeLaunchTarget(c.PassThrough)
-	return c
+	return c, ordinals
 }
 
-// consumeAllowCardAnchor is the launcher's consumption of its own override
-// flag (REQ-LA-005): it removes --allow-card-anchor from the launcher segment of
-// args (before the first `--`; tokens after it are the backend's own) and
-// reports whether it stood there. The flag counts only where it stands: the
-// token after a required-value option is that option's VALUE — never the
-// override — and stays in the argv the backend receives. Which options take the
-// next token as a value is the repo's one option knowledge: the launcher-owned
-// value flags plus the measured claude option model.
-func consumeAllowCardAnchor(args []string) (rest []string, allowed bool) {
-	rest = make([]string, 0, len(args))
-	for i := 0; i < len(args); i++ {
-		arg := args[i]
-		if arg == argSeparator {
-			return append(rest, args[i:]...), allowed
-		}
-		if arg == allowCardAnchorFlag {
-			allowed = true
+// standingOwnFlags returns the positions in segment — the launcher segment as the
+// backend reads it — where flag stands as an option of its own: the positions the
+// backend option model does not take as another option's value.
+func standingOwnFlags(segment []string, flag string) []int {
+	var at []int
+	for i := 0; i < len(segment); i++ {
+		tok := segment[i]
+		if tok == flag {
+			at = append(at, i)
 			continue
 		}
-		rest = append(rest, arg)
-		if optionValueSpan(args, i) > 0 {
-			rest = append(rest, args[i+1])
-			i++
+		if len(tok) < 2 || tok[0] != '-' {
+			continue // a positional: no option to read
 		}
+		_, span := backendOptionStep(segment, i, worktreeSelection{})
+		i += span
 	}
-	return rest, allowed
+	return at
 }
 
-// optionValueSpan reports how many following tokens args[i] consumes as its
-// value in the launcher segment: 1 when the token is an option whose next token
-// is its value even when that token is flag-shaped, else 0. A whole-token
-// option is looked up in the launcher-owned value flags and the claude option
-// model; a bundled short cluster (`-cn <name>`: `c` boolean, `n` takes the next
-// token) is decomposed by scanShortCluster — the same walk the backend
-// selection uses — so one argv has one interpretation.
-//
-// A following `--` is decided by the launcher's own consumption, not by the
-// backend model: consumeLaunchArgs eats it as the VALUE of the exact
-// separate-token --model / -m / --permission-mode, and for every other option
-// (including --model=v, --permission-mode=v, -b, --bypass, which set the same
-// fields without taking the next token) it is the launcher's separator. Asking
-// consumeLaunchArgs what it did with the `--` keeps that knowledge in one place.
-func optionValueSpan(args []string, i int) int {
-	arg := args[i]
-	if i+1 < len(args) && args[i+1] == argSeparator {
-		c := consumeLaunchArgs([]string{arg, argSeparator})
-		if (c.ModelSet && c.Model == argSeparator) || (c.PermissionModeSet && c.PermissionMode == argSeparator) {
-			return 1
+// ownFlagOrdinal counts the flag tokens of args before index upTo: the ordinal of
+// the flag token standing at upTo.
+func ownFlagOrdinal(args []string, upTo int, flag string) int {
+	n := 0
+	for _, a := range args[:upTo] {
+		if a == flag {
+			n++
 		}
-		return 0
 	}
-	if launcherSegmentValueFlags[arg] || activeClaudeOptionModel[arg] == claudeOptionRequiredValue {
-		if i+1 < len(args) {
-			return 1
+	return n
+}
+
+// consumeAllowCardAnchor is the launcher's consumption of its own override flag
+// (REQ-LA-005): it removes --allow-card-anchor from args where it stands and
+// reports whether it stood anywhere. The decision is made by the walk that
+// produces the exec argv (walkLaunchArgs inside resolveOwning), so it follows
+// what the backend will actually read: a flag after the launcher's separator is
+// the backend's, and a flag that is a backend option's value — after the
+// launcher has dropped its own options — is that option's value. Both stay in
+// the argv.
+func consumeAllowCardAnchor(args []string) (rest []string, allowed bool) {
+	_, ordinals := resolveOwning(args, allowCardAnchorFlag)
+	drop := make(map[int]bool, len(ordinals))
+	for _, k := range ordinals {
+		drop[k] = true
+	}
+	rest = make([]string, 0, len(args))
+	seen := 0
+	for _, a := range args {
+		if a == allowCardAnchorFlag {
+			seen++
+			if drop[seen-1] {
+				continue
+			}
 		}
-		return 0
+		rest = append(rest, a)
 	}
-	if len(arg) >= 2 && arg[0] == '-' && arg[1] != '-' {
-		_, consumed := scanShortCluster(args, i, worktreeSelection{})
-		return consumed
-	}
-	return 0
+	return rest, len(ordinals) > 0
 }
 
 // --- backend option model: the worktree selection ----------------------------
@@ -301,28 +361,39 @@ func selectBackendWorktree(argv []string) worktreeSelection {
 		if len(tok) < 2 || tok[0] != '-' {
 			continue // a positional (a prompt, or a value already consumed)
 		}
-		switch {
-		case tok == spellingLong || tok == spellingShort:
-			sel = worktreeSelection{Present: true, Spelling: tok, Index: i}
-			if v, ok := optionalValueAfter(argv, i); ok {
-				sel.Value, sel.HasValue = v, true
-				i++
-			}
-		case strings.HasPrefix(tok, spellingLongEquals):
-			v := strings.TrimPrefix(tok, spellingLongEquals)
-			sel = worktreeSelection{Present: true, Spelling: spellingLongEquals, Value: v, HasValue: v != "", Index: i}
-		case strings.HasPrefix(tok, spellingShortEqual):
-			v := strings.TrimPrefix(tok, spellingShortEqual)
-			sel = worktreeSelection{Present: true, Spelling: spellingShortEqual, Value: v, HasValue: v != "", Index: i}
-		case strings.HasPrefix(tok, "--"):
-			i += longOptionValueSpan(argv, i)
-		default:
-			var consumed int
-			sel, consumed = scanShortCluster(argv, i, sel)
-			i += consumed
-		}
+		var span int
+		sel, span = backendOptionStep(argv, i, sel)
+		i += span
 	}
 	return sel
+}
+
+// backendOptionStep reads the single option the flag-shaped token argv[i] starts,
+// by the backend's option model: the worktree selection after it (cur unless the
+// token is a worktree option) and how many following tokens it takes as its value.
+// It is the one step both the worktree selection and the override-flag position
+// walk, so a token is a value to one exactly when it is to the other.
+func backendOptionStep(argv []string, i int, cur worktreeSelection) (worktreeSelection, int) {
+	tok := argv[i]
+	switch {
+	case tok == spellingLong || tok == spellingShort:
+		sel := worktreeSelection{Present: true, Spelling: tok, Index: i}
+		if v, ok := optionalValueAfter(argv, i); ok {
+			sel.Value, sel.HasValue = v, true
+			return sel, 1
+		}
+		return sel, 0
+	case strings.HasPrefix(tok, spellingLongEquals):
+		v := strings.TrimPrefix(tok, spellingLongEquals)
+		return worktreeSelection{Present: true, Spelling: spellingLongEquals, Value: v, HasValue: v != "", Index: i}, 0
+	case strings.HasPrefix(tok, spellingShortEqual):
+		v := strings.TrimPrefix(tok, spellingShortEqual)
+		return worktreeSelection{Present: true, Spelling: spellingShortEqual, Value: v, HasValue: v != "", Index: i}, 0
+	case strings.HasPrefix(tok, "--"):
+		return cur, longOptionValueSpan(argv, i)
+	default:
+		return scanShortCluster(argv, i, cur)
+	}
 }
 
 // optionalValueAfter returns the token after argv[i] when it can be an
