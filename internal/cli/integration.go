@@ -464,6 +464,15 @@ func newIntegrationAcquireCmd() *cobra.Command {
 			// git-flow at all — the latter only decides the warning below.
 			gitFlow := config.LoadGitFlowIntegrationConfig(root)
 			branch, wt, source := resolveIntegrationTarget(branchFlag, gitFlow.DevelopBranch)
+			// The base-freshness gate (SPEC-INTEGRATION-STALE-BASE-001): a
+			// candidate too far behind the integration branch, or carrying no
+			// re-measure record for its current tree, is refused BEFORE the
+			// window record is written and before any --wait ticket is
+			// enqueued. Its refusal layer is gated on
+			// workflow.base_freshness_gate.enabled; an uncertain verdict admits.
+			if freshErr := acquireBaseFreshnessPrecondition(cmd, root, cardFlag, branch); freshErr != nil {
+				return freshErr
+			}
 			// The pid recorded is the OWNING SESSION's, never this process's.
 			// This command exits the moment it returns, so its own pid is dead
 			// before any reader probes it — recording it made every window read

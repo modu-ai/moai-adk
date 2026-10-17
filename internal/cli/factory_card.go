@@ -2195,6 +2195,13 @@ func factoryCompleteCard(ctx context.Context, out io.Writer, root, lockRoot, car
 				return &exitCodeError{code: factory.MergeExitLandingRefused, msg: fmt.Sprintf("factory complete: refused — %v", holdErr)}
 			}
 		}
+		// The base-freshness gate (SPEC-INTEGRATION-STALE-BASE-001): complete's
+		// own acquisition is a window entry like acquire's, so the same check
+		// runs before the window record is touched. A tip that is an adoption
+		// is exempt (REQ-ISB-016).
+		if freshErr := completeBaseFreshnessPrecondition(out, lockRoot, integTree, branch, card.WorktreePath, cardBranch, card.CardID); freshErr != nil {
+			return freshErr
+		}
 		if factoryCompleteAcquireHook != nil {
 			factoryCompleteAcquireHook()
 		}
@@ -2226,16 +2233,7 @@ func factoryCompleteCard(ctx context.Context, out io.Writer, root, lockRoot, car
 	// from that commit without calling the merge step and without a fresh
 	// re-measure. A card branch that gained commits after that merge is NOT
 	// adopted and falls through to step 3.
-	tip := factoryBranchTip(integTree, branch)
-	cardTip := factoryBranchTip(card.WorktreePath, cardBranch)
-	adopted := ""
-	if parents := factoryCommitParents(integTree, tip); len(parents) == 3 && parents[2] == cardTip {
-		if tipTree := factoryTreeOf(integTree, branch); tipTree != "" {
-			if record, recErr := factory.ReadRemeasureRecord(lockRoot, tipTree); recErr == nil && factory.ValidateRemeasureRecord(record) == nil {
-				adopted = tip
-			}
-		}
-	}
+	adopted := factoryAdoptedTip(lockRoot, integTree, branch, card.WorktreePath, cardBranch)
 	if adopted != "" {
 		done, err := completeTransitions(ctx, db, out, lockRoot, runID, card, cardID, lane, adopted, remeasure, branch, integTree)
 		if err != nil {
@@ -2428,6 +2426,25 @@ func cliGitIn(dir string, args ...string) (string, error) {
 	cmd.Env = gitenv.Env() // an inherited GIT_DIR would outrank cmd.Dir
 	out, err := cmd.Output()
 	return string(out), err
+}
+
+// factoryAdoptedTip returns the integration tip when it is an adoption in the
+// sense of REQ-MWQ-019 step 2 — a merge commit whose second parent is the card
+// branch's CURRENT tip and whose tree a VALID re-measure record keys — and ""
+// otherwise. complete's adoption path and the base-freshness gate's exemption
+// (SPEC-INTEGRATION-STALE-BASE-001, REQ-ISB-016) both ask this one question, so
+// the two cannot drift.
+func factoryAdoptedTip(lockRoot, integTree, branch, cardTree, cardBranch string) string {
+	tip := factoryBranchTip(integTree, branch)
+	cardTip := factoryBranchTip(cardTree, cardBranch)
+	if parents := factoryCommitParents(integTree, tip); len(parents) == 3 && parents[2] == cardTip {
+		if tipTree := factoryTreeOf(integTree, branch); tipTree != "" {
+			if record, recErr := factory.ReadRemeasureRecord(lockRoot, tipTree); recErr == nil && factory.ValidateRemeasureRecord(record) == nil {
+				return tip
+			}
+		}
+	}
+	return ""
 }
 
 // factoryBranchTip reads dir's tip for branch (empty dir falls back to the
