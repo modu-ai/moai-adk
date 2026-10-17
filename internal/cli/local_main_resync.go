@@ -57,6 +57,14 @@ var localMainResyncAfterFastForward = func(repoRoot string) {}
 // default does nothing.
 var localMainResyncBeforeFastForward = func(repoRoot string) {}
 
+// localMainResyncAfterRevalidate is the end-of-re-validation test seam (card t1670,
+// sync-audit F1). It runs once localMainResyncRevalidate has passed every check and
+// before it returns, so a test can present a rival takeover right after the ownership
+// re-check. The production default does nothing.
+// @MX:NOTE: [AUTO] exists only to pin the in-lock placement of the re-validation: a rival takeover from here must be refused while the mutation section is held.
+// @MX:SPEC: SPEC-LOCAL-MAIN-FLOW-001
+var localMainResyncAfterRevalidate = func(repoRoot string) {}
+
 // newIntegrationResyncCmd registers `moai integration resync`. It takes no
 // flags: the session is the one the window verbs resolve from the environment.
 func newIntegrationResyncCmd() *cobra.Command {
@@ -324,6 +332,7 @@ func localMainResyncRevalidate(git func(args ...string) (string, error), repoRoo
 	if status != "" {
 		return localMainResyncRefusal(factory.MergeExitWorktreeDirty, "integration resync: refused — the primary checkout became dirty while the fetch ran (%d uncommitted or untracked change(s)). The primary is unchanged. Move or commit those changes from your own terminal, then re-run. Do not stash: the stash is repository-wide.", strings.Count(status, "\x00"))
 	}
+	localMainResyncAfterRevalidate(repoRoot)
 	return nil
 }
 
