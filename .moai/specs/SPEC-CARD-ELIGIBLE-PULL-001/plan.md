@@ -1,9 +1,9 @@
 ---
 id: SPEC-CARD-ELIGIBLE-PULL-001
 title: "구현 계획 — 설정 키 배관, RED 우선 휴면·게이트 테스트, 자격 술어 적용, 구조화 거부 표면, 회귀 수호 배치"
-version: "0.2.1"
+version: "0.2.2"
 created: 2026-10-17
-updated: 2026-10-17
+updated: 2026-10-18
 author: manager-spec
 tier: M
 ---
@@ -41,7 +41,7 @@ tier: M
 - **롤아웃 주의(D6).** t1240 self-dispatch 런 중 레인의 bare-next 무소유 임대에 의존하는 기존 배포는 이 변경이 반영되는 시점에 `workflow.factory.self_dispatch: true`로 설정해야 그 면이 유지된다(기본 false는 제네릭 암 휴면). 활성화 주체·시점: 해당 배포의 운영자(팩토리 리더)가 변경 반영 시 설정한다 — 기본값 전환은 이 SPEC이 수행하지 않는다.
 - **플래그 OFF = 제네릭 암 휴면(킬스위치, Q1 판정).** OFF(기본)에서 암 (b)/(b2)는 무소유 카드에 대해 어떤 임대도 하지 않는다. 스킵은 **조용한 스킵**이다 — 암 (c)의 hold-skip 패턴과 동일하게: 임대 없음, 기록 없음, 사유 라인 없음. 사유 라인은 플래그 ON에서 게이트가 후보를 **평가하고 실격시켰을 때만** 존재한다(평가가 없으면 사유도 없다). 배정 경로(암 (a))·자기 번들(암 (b-priority))·암 (c) 승격은 플래그와 무관하게 기존 조건 그대로다.
 - **테스트 갱신 정책(RED-first).** 기존 (b)/(b2)의 무게이트 임대를 고정하던 테스트는 **의도적으로 갱신**한다: 기대를 뒤집은 직후 현 코드에서 RED를 관찰하고(이 관찰이 TDD의 RED 증거가 된다), 구현이 GREEN으로 만든다. 관측 없는 뒤집기(수정 후 바로 맞아들어가는 test-after)는 무효다. 무관 경로(암 (a)/(b-priority)/(c))의 기존 테스트는 무수정이며, 신규 시나리오는 신규 테스트 파일에 든다.
-- **플래그 ON = 자격 게이트.** 5조건 술어(REQ-CEP-003)를 (b)/(b2) 평가에 적용하고 실격 사유(토큰+카드 id)를 수집해 넘긴다. hold **마커** 검사의 운반체는 상태 독립 함수 `autoRankHoldMarked`(`internal/cli/todo_auto_rank.go:150`)다 — `factoryQueuedHoldMarked`(`factory_card.go:1259-1266`)는 `it.State == Queued &&` 조건부라 picked 후보에는 절대 발화하지 않으므로 게이트의 마커 검사로 쓸 수 없다(D1). hold **상태** 검사는 큐 picked 검사(조건 1)가 담당한다. 선행/hub 대기 술어는 기존 함수(`selectionSkips`/`hubWaitUnmerged`)를 재사용해 적용 지점만 명시적으로 바꾼다. 직렬 슬롯은 기존 판정을 읽기만 한다(D5).
+- **플래그 ON = 자격 게이트.** 5조건 술어(REQ-CEP-003)를 (b)/(b2) 평가에 적용하고 실격 사유(토큰+카드 id)를 수집해 넘긴다. hold **마커** 검사의 운반체는 상태 독립 함수 `autoRankHoldMarked`(`internal/cli/todo_auto_rank.go:150`)다 — `factoryQueuedHoldMarked`(`factory_card.go:1259-1266`)는 `it.State == Queued &&` 조건부라 picked 후보에는 절대 발화하지 않으므로 게이트의 마커 검사로 쓸 수 없다(D1). hold **상태** 검사는 큐 picked 검사(조건 1)가 담당한다 — hold 상태 후보는 입장에서 이미 실격하므로 항상 `not-admitted`로 발현한다(`held` 토큰은 없다, D9). 선행/hub 대기 술어는 기존 함수(`selectionSkips`/`hubWaitUnmerged`)를 재사용해 적용 지점만 명시적으로 바꾼다. 직렬 슬롯은 기존 판정을 읽기만 한다(D5).
 - **공유 거부 결과 경로(D2).** 수집된 사유 라인은 선택 패스가 반환하는 결과에 실려 양 표면으로 흐른다 — cobra verb(`factory_card.go`)와 MCP 핸들러(`mcp_factory_card.go:187`가 자체 고정 텍스트를 갖는 지점)가 **하나의 공유 소스에서 같은 텍스트를 렌더**한다. 두 표면이 각자 문자열을 조립하면 AC-CEP-006(5)의 동일 텍스트 요구가 지켜질 수 없다.
 - **Row-preserving·무마이그레이션.** 큐 스키마·레코드 row 구조 변경 없음, 행 삭제 없음.
 - **그림자 측정 불필요(스테이지 C) 선언.** 이 SPEC(스테이지 C — 선택 거부·휴면)은 소유권을 바꾸지 않는다: OFF 스킵과 ON 게이트 실격 모두 row 생성·claim·상태 전이를 전혀 일으키지 않으므로(REQ-CEP-006) 임대·기록 경로의 기존 판정이 그대로 증언하고, 신규 동작을 그림자 실행으로 비교 측정할 측도가 없다. 그림자 측정은 상태를 바꾸는 스테이지(A/B/D)의 도구다.
@@ -53,9 +53,9 @@ tier: M
   ```
 
   - 첫 줄: 기존 no-card 줄(또는 기존 hold 안내 줄)을 그대로 유지 — 기존 소비자의 파서를 깨지 않는다.
-  - 둘째 줄부터: 게이트 실격 후보 **마다 최대 한 줄**, 후보당 **첫 실격 사유 하나**(사유 판정 순서는 조건 1→5 순: not-admitted > spec-missing > held/hold-marker > predecessor-unmerged > serial-slot — 결정론적 출력을 위한 고정 순서).
-  - `<token>` ∈ 닫힌 집합 `{not-admitted, spec-missing, held, hold-marker, predecessor-unmerged, serial-slot}`(기존 토큰 재사용 — spec §C D3). `<detail>`는 카드 id를 포함한 한 줄(개행 없음).
-  - 기계 판독 문법: `^refused (not-admitted|spec-missing|held|hold-marker|predecessor-unmerged|serial-slot): ` — 이 정규식이 표면의 계약이고, AC-CEP-006의 파서 셀은 이 문법으로 0줄 아님을 증명한다.
+  - 둘째 줄부터: 게이트 실격 후보 **마다 최대 한 줄**, 후보당 **첫 실격 사유 하나**(사유 판정 순서는 조건 1→5 순: not-admitted > spec-missing > hold-marker > predecessor-unmerged > serial-slot — 결정론적 출력을 위한 고정 순서. hold **상태** 후보는 조건 1(입장 = 큐 picked)에서 이미 실격하므로 항상 `not-admitted`로 발현한다 — `held` 토큰은 존재하지 않는다(D9); `hold-marker`는 picked+마커 조합에서 `autoRankHoldMarked` 경유로 발현한다).
+  - `<token>` ∈ 닫힌 집합 `{not-admitted, spec-missing, hold-marker, predecessor-unmerged, serial-slot}`(기존 토큰 재사용 — spec §C D3; hold 상태는 `not-admitted`에 흡수 발현된다 — D9). `<detail>`는 카드 id를 포함한 한 줄(개행 없음).
+  - 기계 판독 문법: `^refused (not-admitted|spec-missing|hold-marker|predecessor-unmerged|serial-slot): ` — 이 정규식이 표면의 계약이고, AC-CEP-006의 파서 셀은 이 문법으로 0줄 아님을 증명한다.
   - exit code는 **3**(no-card)을 유지한다 — 지명 거부의 4와 오류의 1이 아니다(REQ-CEP-006). cobra verb 출력과 MCP 도구 출력은 같은 텍스트를 낸다(`factoryNominateRefusal`의 양면 계약 준용).
   - 플래그 OFF의 스킵은 이 표면에 아무 라인도 추가하지 않는다(조용한 스킵).
 - **주석 언어.** 영어(`language.yaml` 기본 — 주석 밀도는 주변 코드에 맞춘다).
@@ -70,7 +70,7 @@ run phase 완료 보고는 다음을 verbatim으로 싣는다(귀속 3요소 —
 - **E4** `golangci-lint run ./internal/cli/... ./internal/config/...` — 신규 이슈 0(기저 대비).
 - **E5** 갱신 범위 검증: `git diff <pre-implementation SHA>..HEAD --stat -- <테스트 파일>` — 수정은 §C.3의 갱신 대상(a)에만, 무관 경로(b)는 변경 0. 갱신된 각 테스트는 RED 관찰 기록(§E.2)과 쌍이다.
 - **E6** OFF 휴면 확인: AC-CEP-001 재실행 GREEN(무소유 무임대 + 배정·번들·승격 대조 셀 GREEN).
-- **E7** RED 증거 사슬(기준별 RED→GREEN 순서 — D3): (i) AC-CEP-007 — M1 안의 RED-first 주기(defaults 테스트 RED를 키 부재 트리에서 관찰 → 구현 → GREEN); (ii) AC-CEP-003 — M1 **진입 시점**(구현 전 트리) 관찰로 기저 커밋에 핀 — 무게이트 암이 적격 후보를 임대하는 현행 사실(회귀 수호 핀을 겸함); (iii) 나머지 전부(AC-CEP-001/002/004/005/006 + 갱신 테스트의 뒤집힌 기대) — M2에서 관찰. 각 관찰의 명령·출력·종료 코드·트리 SHA를 §E.2에 verbatim으로 기록한다.
+- **E7** RED 증거 사슬(기준별 RED→GREEN 순서 — D3/D7/D8): (i) AC-CEP-007 — M1 안의 RED-first 주기(defaults 테스트 RED를 키 부재 트리에서 관찰 → 구현 → GREEN); (ii) AC-CEP-003 — M1 **진입 시점**(구현 전 트리) 관찰로 기저 커밋에 핀 — 무게이트 암이 적격 후보를 임대하는 현행 사실(회귀 수호 핀을 겸함); (iii) 나머지 RED 전부(AC-CEP-001/002/005/006 + 갱신 테스트의 뒤집힌 기대) — M2에서 관찰; (iv) AC-CEP-004 — regression-guard(모든 셀이 현행 GREEN preserved, 도달 시 green-at-arrival): RED 관찰을 요구하지 않는다 — 증거는 M1 진입 현행 GREEN 핀 + E5 갱신 범위 scoped-diff(무관 경로 무수정) + M5의 E6 preserved 재실행(D7). 각 관찰의 명령·출력·종료 코드·트리 SHA를 §E.2에 verbatim으로 기록한다.
 
 ## §F Milestones
 
@@ -82,7 +82,7 @@ run phase 완료 보고는 다음을 verbatim으로 싣는다(귀속 3요소 —
 
 ### M2 (High) — RED 테스트 우선 랜딩(신규 + 기존 기대 뒤집기)
 
-신규 게이트 시나리오 RED 테스트(신규 파일 `factory_card_eligible_pull_test.go`): AC-CEP-001의 OFF 휴면(무임대 + 배정·번들·승격 대조 셀), AC-CEP-002의 실격 사유별 5셀((iii)은 picked+hold-marker 픽스처 포함 — 상태 독립 `autoRankHoldMarked` 경유, no-lease + `refused hold-marker:` 라인), AC-CEP-004 무관성, AC-CEP-005 무흔적·exit 3, AC-CEP-006 문법 파서 셀. AC-CEP-003(ON 적격 임대)의 픽스처도 여기서 짓되 **룰-페어링**(verification-completeness §2)으로 — 같은 픽스처 안에 적격 후보(임대 주장)와 실격 형제(거부 라인 주장)를 함께 두어 과차단·과통과 양방향 뮤턴트에 저항하게 한다; 이 기준의 RED-now 관찰은 M1 진입에서 이미 끝났으므로 M2가 관찰을 반복하지 않는다(AC-CEP-007도 M1에서 닫혀 이 목록에 없다 — D3). 동시에 기존 (b)/(b2) 무게이트 임대 고정 테스트를 갱신 정책(§D)대로 기대 뒤집기 — 뒤집은 직후 현 코드에서 RED 관찰. **이 시점에 관찰 가능한 RED**(위 전부)를 verbatim으로 §E.2에 기록한 뒤에만 M3로 진입한다.
+신규 게이트 시나리오 RED 테스트(신규 파일 `factory_card_eligible_pull_test.go`): AC-CEP-001의 OFF 휴면(무임대 + 배정·번들·승격 대조 셀), AC-CEP-002의 실격 사유별 5셀((iii)은 hold 상태(`not-admitted` 흡수 발현)와 picked+hold-marker(`hold-marker` — 상태 독립 `autoRankHoldMarked` 경유, no-lease + `refused hold-marker:` 라인) 픽스처 포함), AC-CEP-005 무흔적·exit 3, AC-CEP-006 문법 파서 셀(AC-CEP-004는 regression-guard이므로 이 RED 목록에 없다 — D7). AC-CEP-003(ON 적격 임대)의 픽스처도 여기서 짓되 **룰-페어링**(verification-completeness §2)으로 — 같은 픽스처 안에 적격 후보(임대 주장)와 실격 형제(거부 라인 주장)를 함께 두어 과차단·과통과 양방향 뮤턴트에 저항하게 한다; 이 기준의 RED-now 관찰은 M1 진입에서 이미 끝났으므로 M2가 관찰을 반복하지 않는다(AC-CEP-007도 M1에서 닫혀 이 목록에 없다 — D3). 동시에 기존 (b)/(b2) 무게이트 임대 고정 테스트를 갱신 정책(§D)대로 기대 뒤집기 — 뒤집은 직후 현 코드에서 RED 관찰. **이 시점에 관찰 가능한 RED**(위 전부)를 verbatim으로 §E.2에 기록한 뒤에만 M3로 진입한다.
 
 ### M3 (High) — 플래그 판정·휴면 분기·자격 술어 적용(암 (b)/(b2))
 
@@ -90,7 +90,7 @@ run phase 완료 보고는 다음을 verbatim으로 싣는다(귀속 3요소 —
 
 ### M4 (Medium) — no-card 응답의 구조화 거부 라인
 
-수집된 사유를 §D 계약 문법으로 no-card 응답에 렌더(첫 줄 유지, 후보당 한 줄, exit 3, cobra·MCP 양면 동일, OFF는 라인 없음). AC-CEP-006의 green path.
+수집된 사유를 §D 계약 문법으로 no-card 응답에 렌더(첫 줄 유지, 후보당 한 줄, exit 3, cobra·MCP 양면 동일, OFF는 라인 없음). AC-CEP-006의 green path이자 AC-CEP-003의 green path — 룰-페어링 픽스처의 **양 주장**(적격 임대와 실격 형제의 거부 라인)이 모두 이 마일스톤에서 닫힌다(D8; 픽스처를 분리하지 않는다).
 
 ### M5 (Medium) — 회귀 수호 배치
 

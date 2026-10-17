@@ -1,9 +1,9 @@
 ---
 id: SPEC-CARD-ELIGIBLE-PULL-001
 title: "인수 기준 — 플래그 OFF 휴면, 자격 게이트 5조건, 구조화 거부"
-version: "0.2.1"
+version: "0.2.2"
 created: 2026-10-17
-updated: 2026-10-17
+updated: 2026-10-18
 author: manager-spec
 tier: M
 ---
@@ -14,7 +14,7 @@ tier: M
 
 모든 기준은 두 셀(verification-completeness §2)으로 채택한다. 이 SPEC은 플랜 페이스 문서만 작성하므로(카드 t1839: 코드·테스트·설정 변경 금지) 이 문서는 **관찰이 아니라 셀 계획**을 기록한다 — 관찰되지 않은 출력을 적지 않는다.
 
-- **신규 계층**(AC-CEP-001..007): RED-now 셀은 run phase가 **먼저** 작성하는 RED 테스트가 된다(카드 배달 제약: RED first). AC-CEP-001(플래그 OFF 휴면)도 이제 정당한 RED 기준이다 — 현 트리는 게이트 없이 (b)/(b2)가 무소유 카드를 임대하므로 무임대 주장이 현 코드에서 빨갛다. 단 AC-CEP-001의 배정·자기 번들·암 (c) 대조 셀과 AC-CEP-004의 대조 셀은 preserved(무변경 경로 — 현행 GREEN 유지)로 취급한다. 각 RED 셀은 "현 트리에서 왜 빨간가"를 서술하며, RED 관찰(명령·출력·종료 코드·트리 SHA)은 run phase가 verbatim으로 `progress.md` §E.2에 기록한다. 기준별 RED→GREEN 순서(D3): AC-CEP-007은 M1 안의 RED-first 주기(키 부재 트리에서 defaults RED 관찰 → 구현 → GREEN); AC-CEP-003의 RED-now 관찰은 M1 진입 시점(구현 전, 기저 커밋 핀) — 게이트 도입 뒤에는 그 전제를 RED로 관찰할 수 없다(회귀 수호 핀을 겸함); 나머지(001/002/004/005/006)의 RED는 M2에서 관찰한다.
+- **신규 계층**(AC-CEP-001..007): RED-now 셀은 run phase가 **먼저** 작성하는 RED 테스트가 된다(카드 배달 제약: RED first). AC-CEP-001(플래그 OFF 휴면)도 이제 정당한 RED 기준이다 — 현 트리는 게이트 없이 (b)/(b2)가 무소유 카드를 임대하므로 무임대 주장이 현 코드에서 빨갛다. 단 AC-CEP-001의 배정·자기 번들·암 (c) 대조 셀과 AC-CEP-004의 대조 셀은 preserved(무변경 경로 — 현행 GREEN 유지)로 취급한다. 각 RED 셀은 "현 트리에서 왜 빨간가"를 서술하며, RED 관찰(명령·출력·종료 코드·트리 SHA)은 run phase가 verbatim으로 `progress.md` §E.2에 기록한다. 기준별 RED→GREEN 순서(D3/D7/D8): AC-CEP-007은 M1 안의 RED-first 주기(키 부재 트리에서 defaults RED 관찰 → 구현 → GREEN); AC-CEP-003의 RED-now 관찰은 M1 진입 시점(구현 전, 기저 커밋 핀) — 게이트 도입 뒤에는 그 전제를 RED로 관찰할 수 없다(회귀 수호 핀을 겸함); 나머지 RED(001/002/005/006)는 M2에서 관찰한다. AC-CEP-004는 regression-guard/preserved-surface 기준이다(모든 셀이 현행 GREEN — 도달 시 green-at-arrival): RED 관찰을 요구하지 않으며, 증거는 M1 진입 현행 GREEN 핀 + E5 갱신 범위 scoped-diff + M5의 E6 preserved 재실행이다(D7).
 - **기존 테스트 갱신 정책(plan.md §D와 동일 문면).** 기존 (b)/(b2)의 무게이트 임대를 고정하던 테스트는 **의도적으로 갱신**한다 — RED-first: 기대를 뒤집어 현 코드에서 RED를 관찰한 뒤 구현이 GREEN으로 만든다. 무관 경로(암 (a)/(b-priority)/(c))의 기존 테스트는 무수정이다.
 - 기준 이행의 검증 주체는 다음 명령군이다 — 모든 `-run` 셀렉터는 명령 문자열 안에 모든 분기에서 앵커된 `^…$` 형태로 인라인된다(plan §C.2 (a)): `go test ./internal/cli/ -run '^TestFactoryEligiblePull…$' -count=1 -v`, `go test ./internal/config/ -run '^TestWorkflowFactorySelfDispatchDefault$' -count=1 -v`, `go vet ./internal/cli/ ./internal/config/`, `golangci-lint run ./internal/cli/... ./internal/config/...`. 셀렉터 없는 `internal/cli` 패키지 전체 실행은 heavy run이므로 리더의 슬롯 리스 규칙(`moai slot acquire --resource go-test-heavy`; gitflow-lane-protocol §8, 2026-10-17 기계 부하 50-60)하에서만 허용된다.
 
@@ -32,7 +32,7 @@ maps REQ-CEP-001
 
 maps REQ-CEP-002, REQ-CEP-003
 
-- **Given** 플래그 ON. 무소유 picked 후보가 다음 중 **하나만** 결려 있다: (i) 큐 항목이 없거나 picked가 아니다(not-admitted); (ii) 유효 분류가 Class C인데 spec 식별자가 row·큐 힌트 어디에도 없다(spec-missing); (iii) hold 상태(`held`) 또는 **picked 상태 + hold 마커** — 카드 텍스트가 hold 마커로 시작, 상태 독립 술어 `autoRankHoldMarked`(`internal/cli/todo_auto_rank.go:150`) 경유(`hold-marker`; `factoryQueuedHoldMarked`는 Queued 조건부라 이 picked+마커 조합을 잡지 못한다 — 픽스처는 반드시 picked+마커 조합으로 짠다); (iv) `after` 선행이 로컬 미병합이거나 hub 경로 공유자가 미병합이다(predecessor-unmerged); (v) serial 모드인데 직렬 슬롯이 다른 카드에 붙잡혀 있다(serial-slot). **When** bare `moai factory next`를 실행한다. **Then** 그 후보를 임대하지 않고, 응답에 해당 토큰의 `refused` 라인이 남는다((iii)의 picked+마커 픽스처는 no-lease + `refused hold-marker:` 라인을 주장한다).
+- **Given** 플래그 ON. 무소유 picked 후보가 다음 중 **하나만** 결려 있다: (i) 큐 항목이 없거나 picked가 아니다(not-admitted) — hold **상태** 후보가 여기 속한다: 입장 = 큐 picked이므로 hold 상태는 조건 1에서 실격해 항상 `not-admitted`로 발현한다(`held` 토큰은 폐쇄 집합에 없다 — 흡수 관계의 명시, D9); (ii) 유효 분류가 Class C인데 spec 식별자가 row·큐 힌트 어디에도 없다(spec-missing); (iii) **picked 상태 + hold 마커** — 카드 텍스트가 hold 마커로 시작, 상태 독립 술어 `autoRankHoldMarked`(`internal/cli/todo_auto_rank.go:150`) 경유(`hold-marker`; `factoryQueuedHoldMarked`는 Queued 조건부라 이 picked+마커 조합을 잡지 못한다 — 픽스처는 반드시 picked+마커 조합으로 짠다); (iv) `after` 선행이 로컬 미병합이거나 hub 경로 공유자가 미병합이다(predecessor-unmerged); (v) serial 모드인데 직렬 슬롯이 다른 카드에 붙잡혀 있다(serial-slot). **When** bare `moai factory next`를 실행한다. **Then** 그 후보를 임대하지 않고, 응답에 해당 토큰의 `refused` 라인이 남는다((i)의 hold-상태 픽스처는 `refused not-admitted:` 라인을, (iii)의 picked+마커 픽스처는 `refused hold-marker:` 라인을 주장한다).
 - RED-now 셀 계획(각 셀): RED 테스트가 먼저 작성된다 — 현 트리는 게이트가 없어 (i)~(v) 셀에서 임대가 일어나거나(예: hold 마커·Class C 무spec 후보가 (b)/(b2)로 임대), 임대가 안 일어나도 사유 라인이 없어 라인 주장이 실패한다.
 - Green path: M2(RED 확정) → M3(게이트) → M4(표면).
 
@@ -42,15 +42,15 @@ maps REQ-CEP-002, REQ-CEP-003
 
 - **Given** 플래그 ON. 무소유 picked 후보가 5조건 전부를 만족한다(admitted·spec 있는 Class C 또는 Class C 아님·hold 아님·의존성 충족·parallel 모드이거나 슬롯 비어 있음). **When** bare `factory next`를 실행한다. **Then** 후보는 암 (b)/(b2) 경유로 오늘과 같은 절차로 정상 임대된다 — 게이트는 적격 카드를 막지 않는다.
 - RED-now 셀 계획(D3): 이 기준의 RED 전제(무게이트 암이 적격 후보를 임대한다)는 게이트 도입 **전에만** 관찰 가능하다 — 관찰은 **M1 진입 시점**(구현 전 트리)에 수행해 기저 커밋 핀과 함께 §E.2에 기록하며, 이 관찰이 회귀 수호 핀을 겸한다(two-cell discipline의 regression-guard 분류). 픽스처 자체는 M2에서 **룰-페어링**(verification-completeness §2)으로 짠다 — 같은 픽스처 안에 적격 후보(임대 주장)와 실격 형제(거부 라인 주장)를 함께 두어 과차단·과통과 양방향 뮤턴트에 저항한다.
-- Green path: M3(게이트가 적격 임대를 막지 않음).
+- Green path: M4 — 픽스처의 **양 주장**(적격 임대와 실격 형제의 거부 라인)이 모두 표면이 존재하는 M4에서 닫힌다(D8; 룰-페어링 유지 — 픽스처를 분리하지 않는다).
 
 ### AC-CEP-004 — 배정·번들·승격 경로 면역(플래그 양상 모두)
 
 maps REQ-CEP-004
 
 - **Given** 플래그 ON과 OFF 각각에서: 카드가 **이 레인에 배정**되어 있다(assigned row, owner = 이 레인) — 자격 술어에 실패하는 상태까지 포함(예: spec 없는 Class C 배정 카드, hold 마커가 없고 keep-set이 허용하는 범위). 자기 소유 번들의 다음 멤버와 queued 카드도 각각 대조 셀로 존재한다. **When** bare `factory next`를 실행한다. **Then** 배정 카드는 기존 암 (a)의 조건 그대로, 번들 멤버는 (b-priority)의 조건 그대로, queued 카드는 암 (c) 승격으로 임대된다 — 어느 것도 제네릭 암 자격 술어·플래그의 영향을 받지 않는다.
-- RED-now 셀 계획: 무관성을 고정하는 명세 셀(대조 경로는 preserved — 현행 GREEN 유지).
-- Green path: M3.
+- 셀 분류(D7 — regression-guard/preserved-surface): 이 기준의 모든 셀은 현행 GREEN preserved(도달 시 green-at-arrival)이므로 RED 관찰을 요구하지 않는다(two-cell discipline: green-at-arrival ⇒ regression-guard, release-blocking RED가 아님). 증거 = M1 진입 시점 현행 GREEN 핀(§E.2) + E5 갱신 범위 scoped-diff(무관 경로 무수정) + M5의 E6 preserved 재실행 GREEN.
+- Green path: M5(E5/E6).
 
 ### AC-CEP-005 — 스킵·거부는 무흔적
 
@@ -64,7 +64,7 @@ maps REQ-CEP-006
 
 maps REQ-CEP-005
 
-- **Given** 플래그 ON, 게이트가 후보를 넘겼고 그 패스가 아무 카드도 임대하지 못했다. **When** 응답 텍스트를 plan.md §D의 문법으로 파싱한다. **Then** (1) 첫 줄은 기존 `no card is available`(또는 기존 hold 안내 줄)을 유지하고, (2) 게이트 실격 후보마다 정확히 한 줄의 `refused <token>: <detail>`이 따르고(detail은 카드 id 포함, 한 줄), (3) 모든 토큰이 닫힌 집합 `not-admitted|spec-missing|held|hold-marker|predecessor-unmerged|serial-slot`에 속하며, (4) exit code는 3을 유지하고, (5) cobra verb 출력과 MCP 도구 출력이 **하나의 공유 거부 결과 소스에서 렌더된 같은 텍스트**를 낸다(plan §D 공유 거부 결과 경로 — `mcp_factory_card.go:187`의 자체 고정 텍스트 지점 포함). 플래그 OFF의 스킵은 사유 라인을 내지 않는다(REQ-CEP-001의 조용한 스킵 — 평가가 없으므로 사유도 없다).
+- **Given** 플래그 ON, 게이트가 후보를 넘겼고 그 패스가 아무 카드도 임대하지 못했다. **When** 응답 텍스트를 plan.md §D의 문법으로 파싱한다. **Then** (1) 첫 줄은 기존 `no card is available`(또는 기존 hold 안내 줄)을 유지하고, (2) 게이트 실격 후보마다 정확히 한 줄의 `refused <token>: <detail>`이 따르고(detail은 카드 id 포함, 한 줄), (3) 모든 토큰이 닫힌 집합 `not-admitted|spec-missing|hold-marker|predecessor-unmerged|serial-slot`에 속하며(hold 상태는 `not-admitted`로 흡수 발현 — D9), (4) exit code는 3을 유지하고, (5) cobra verb 출력과 MCP 도구 출력이 **하나의 공유 거부 결과 소스에서 렌더된 같은 텍스트**를 낸다(plan §D 공유 거부 결과 경로 — `mcp_factory_card.go:187`의 자체 고정 텍스트 지점 포함). 플래그 OFF의 스킵은 사유 라인을 내지 않는다(REQ-CEP-001의 조용한 스킵 — 평가가 없으므로 사유도 없다).
 - RED-now 셀 계획: 문법 파싱 셀 — 현 트리의 no-card 응답(`factory_card.go:1775-1776`)에는 사유 라인이 없어 파서가 0줄을 고르고 기준이 실패한다.
 - Green path: M4.
 
