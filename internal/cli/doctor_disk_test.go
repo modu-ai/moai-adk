@@ -180,7 +180,12 @@ func TestHomeDiskReportDetectsInactiveOversizeAndInsecureProfiles(t *testing.T) 
 	if err := os.MkdirAll(fresh, 0o700); err != nil {
 		t.Fatal(err)
 	}
-	writeHomeFixtureFile(t, oversize, config.DefaultProfileMaxBytes+1, time.Now())
+	// The oversize judgment reads state.profile_max_bytes (no compiled
+	// fallback), so the fixture configures a small HOME-tier cap and pins the
+	// PROJECT tier to an empty dir.
+	t.Setenv("CLAUDE_PROJECT_DIR", t.TempDir())
+	writeHomeStateYAML(t, home, "state:\n    profile_max_bytes: 4096\n")
+	writeHomeFixtureFile(t, oversize, 4096+1, time.Now())
 	old := time.Now().AddDate(0, 0, -(config.DefaultProfileUnusedDays + 1))
 	if err := os.Chtimes(stale, old, old); err != nil {
 		t.Fatal(err)
