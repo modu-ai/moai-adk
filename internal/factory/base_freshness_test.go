@@ -42,7 +42,7 @@ func bfGit(t *testing.T, dir string, args ...string) string {
 	cmd.Env = append(gitenv.Env(),
 		"GIT_AUTHOR_NAME=t", "GIT_AUTHOR_EMAIL=t@t.local",
 		"GIT_COMMITTER_NAME=t", "GIT_COMMITTER_EMAIL=t@t.local",
-		"GIT_CONFIG_GLOBAL=/dev/null", "GIT_CONFIG_NOSYSTEM=1",
+		"GIT_CONFIG_GLOBAL="+os.DevNull, "GIT_CONFIG_NOSYSTEM=1",
 	)
 	out, err := cmd.CombinedOutput()
 	if err != nil {
