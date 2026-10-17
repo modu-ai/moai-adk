@@ -58,12 +58,16 @@ func TestLocalMainResyncRivalTakeoverBeforeFastForwardCannotLand(t *testing.T) {
 // every regression the audits built: the re-validation moved out of the section (mutant
 // A), the re-validation and the move split into two sections (mutant B), the re-validation
 // result computed before the section and only checked inside it (mutant C), only the
-// ownership read hoisted out of the section (mutant D), and the move run after the section
-// (mutant E).
+// ownership read hoisted out of the section (mutant D), the move run after the section
+// (mutant E), the mutation lock dropped altogether (mutant F), and the ownership read run
+// in a section of its own with the cached record checked and moved on in a second section
+// (mutant H, sync-audit F1 of iteration 4).
 //
 // It is one half of a pair: TestLocalMainResyncRivalTakeoverBeforeFastForwardCannotLand
 // attempts the same synchronous takeover right before the fast-forward and is the
-// deterministic catch for mutant E. This test is the deterministic catch for A to D.
+// deterministic catch for mutant E. This test is the deterministic catch for A to D and H.
+// TestLocalMainResyncRivalTakeoverSeenByOwnershipReadRefuses pins that the holder decision
+// rests on the record this read returns.
 //
 // Three signals, two of them deterministic.
 //
@@ -83,15 +87,19 @@ func TestLocalMainResyncRivalTakeoverBeforeFastForwardCannotLand(t *testing.T) {
 //     it is reliable.
 //  3. The deterministic tripwire. Every acquisition of the mutation lock rewrites the lock
 //     artifact with a fresh owner record (ftruncate + write on Unix, create-new on
-//     Windows); a contender that loses the lock writes nothing. The seam plants a record
-//     no acquisition can produce (created_at 1970-01-01) into the artifact, and the
+//     Windows); a contender that loses the lock writes nothing. The read seam plants a
+//     record no acquisition can produce (created_at 1970-01-01) into the artifact right
+//     after the read probe (which lost the lock and wrote nothing), and the
 //     pre-fast-forward seam reads it back. Still intact means nobody acquired the lock
-//     between the re-validation and the move: one section. Gone means the lock was taken
-//     in between, which is exactly mutant A (the section is entered after the
-//     re-validation) and mutant B (section 2 is entered after section 1). The positive
-//     control is the end of the re-sync: the window release acquires the lock again, so
-//     the tripwire must be gone by then, or the artifact no longer records acquisitions
-//     and the tripwire cannot see a split.
+//     between the ownership read and the move: one section from the read to the move.
+//     Gone means the lock was taken in between, which is exactly mutant A (the section is
+//     entered after the read), mutant B (section 2 is entered after section 1), and mutant
+//     H (the move's section is entered after the read's own section). The tripwire is
+//     planted at the read, not at the end of the re-validation, so a section boundary
+//     between the read and the rest of the re-validation falls inside the observed span.
+//     The positive control is the end of the re-sync: the window release acquires the lock
+//     again, so the tripwire must be gone by then, or the artifact no longer records
+//     acquisitions and the tripwire cannot see a split.
 //
 // A rival that lands after the move but before the re-sync releases the window is the
 // legitimate post-merge race: the re-sync then reports that releasing the window failed
@@ -155,13 +163,15 @@ func TestLocalMainResyncRivalTakeoverDuringRevalidateCannotLand(t *testing.T) {
 		if !readProbed {
 			readProbed = true
 			readProbeErr = probeSection(repoRoot)
+			// Planted after the probe: inside the section the probe lost the lock and
+			// wrote nothing, so from here only a later acquisition can remove it.
+			plantErr = os.WriteFile(lockPath, tripwire, 0o644)
 		}
 		return lock, err
 	}
 	prevAfter := localMainResyncAfterRevalidate
 	localMainResyncAfterRevalidate = func(repoRoot string) {
 		attempted = true
-		plantErr = os.WriteFile(lockPath, tripwire, 0o644)
 		wg.Add(1)
 		go func() {
 			defer wg.Done()
@@ -214,7 +224,7 @@ func TestLocalMainResyncRivalTakeoverDuringRevalidateCannotLand(t *testing.T) {
 		t.Errorf("a rival --force takeover right after the ownership read was not refused as lock-busy (got %v; re-sync err = %v): the ownership read ran outside the mutation section", readProbeErr, err)
 	}
 	if !intactAtMove {
-		t.Errorf("the mutation lock was acquired between the ownership re-check and the fast-forward (re-sync err = %v): the re-validation and the move do not share one unbroken mutation section", err)
+		t.Errorf("the mutation lock was acquired between the ownership read and the fast-forward (re-sync err = %v): the read, the rest of the re-validation, and the move do not share one unbroken mutation section", err)
 	}
 	mu.Lock()
 	got := append([]landing(nil), landings...)
@@ -238,5 +248,45 @@ func TestLocalMainResyncRivalTakeoverDuringRevalidateCannotLand(t *testing.T) {
 	}
 	if head := lmfHead(t, root); head != target {
 		t.Fatalf("local main must move to origin/main %s, got HEAD %s", target, head)
+	}
+}
+
+// TestLocalMainResyncRivalTakeoverSeenByOwnershipReadRefuses pins that the holder decision
+// rests on the record the ownership read seam returns (card t1670, sync-audit F2 of
+// iteration 4). The seam hands back the real record with the holder swapped to the rival,
+// as a takeover that landed just before the read would leave it. The re-sync must refuse
+// with the not-holder class and leave primary's HEAD where it was. A holder decision taken
+// from any other read (the direct read hoisted out of the section, with the seam kept
+// inside only for the lease check: mutant D3) still sees this session as the holder and
+// moves HEAD.
+func TestLocalMainResyncRivalTakeoverSeenByOwnershipReadRefuses(t *testing.T) {
+	root := lmfResyncFixture(t, "")
+	base := lmfHead(t, root)
+	lmfOriginCommit(t, root, base, "origin-ahead", map[string]string{"ahead.txt": "ahead\n"}, false)
+
+	seamRan := false
+	prevRead := localMainResyncReadWindow
+	localMainResyncReadWindow = func(repoRoot string) (*factory.IntegrationLock, error) {
+		lock, err := prevRead(repoRoot)
+		if err != nil || lock == nil {
+			return lock, err
+		}
+		seamRan = true
+		rival := *lock
+		rival.SessionID = lmfRival
+		rival.SessionName = "lane-rival"
+		return &rival, nil
+	}
+	t.Cleanup(func() { localMainResyncReadWindow = prevRead })
+
+	_, err := runLocalMainResync(root)
+	if !seamRan {
+		t.Fatalf("the ownership read seam localMainResyncReadWindow never returned a record (re-sync err = %v): the holder decision is not read through it", err)
+	}
+	if code, ok := factory.MergeExitCode(err); !ok || code != factory.MergeExitNotHolder {
+		t.Errorf("with the read seam reporting %s as the holder, the re-sync must refuse with the not-holder class %d, got %v", lmfRival, factory.MergeExitNotHolder, err)
+	}
+	if head := lmfHead(t, root); head != base {
+		t.Fatalf("primary HEAD moved to %s although the ownership read returned a record held by %s: the holder decision does not rest on the seam's record", head, lmfRival)
 	}
 }
