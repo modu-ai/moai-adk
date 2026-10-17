@@ -8,6 +8,7 @@
 - plan-audit 1차 (`.moai/reports/t1668/plan-audit-iter1.md`, audited_sha `76f530fd2`): 판정 FAIL, 총점 0.875(Tier M 문턱 0.80 초과), MP-7 미통과(마커 4건, D1). 수리 반영(D1-D5, 2026-10-17, manager-spec): plan.md 마커 4건 해결 치환(Q1-Q4 감사 확정 인용), M1 순서 전제 교정(D3, 재배치 지시 + REQ-UPM 잔여 위험 점검 추가), acceptance.md AC-RC30-01 조건자 교정(D2, `-x` 정확 이름 + claude 종료 상태 별도 기록)·AC-RC30-26 구조 근거 각주(D4), spec.md REQ-RC30-003 Items 정정(D5). 델타 재심사 대기(D1-D4 + CN-4).
 
 plan_status: audit-ready
+audit_ready: true
 plan_complete_at: 2026-10-17
 tier: M
 artifacts: spec.md, plan.md, acceptance.md (3, Tier M) + decision-index.md (decision gate on) + progress.md
@@ -29,3 +30,4 @@ _pending sync-phase (manager-docs)_
 
 - 2026-10-17T16:04:09Z SPEC-UPDATE-REMOVAL-FAMILY-001 ceiling-outcome outcome=pass-through reasons="plan-audit ceiling reached (round count 3 >= tier ceiling 2 + 1 delta rounds); the verdict is admission-clean and admits without a question (REQ-ACE-013)" evidence=/Users/goos/MoAI/moai-adk-go/.moai/worktrees/t1668/.moai/reports/t1668/plan-audit-iter1.md,/Users/goos/MoAI/moai-adk-go/.moai/worktrees/t1668/.moai/reports/t1668/plan-audit-iter2.md,/Users/goos/MoAI/moai-adk-go/.moai/worktrees/t1668/.moai/reports/t1668/plan-audit-iter3.md
 - 2026-10-17T16:04:10Z SPEC-UPDATE-REMOVAL-FAMILY-001 ceiling-outcome outcome=pass-through reasons="plan-audit ceiling reached (round count 3 >= tier ceiling 2 + 1 delta rounds); the verdict is admission-clean and admits without a question (REQ-ACE-013)" evidence=/Users/goos/MoAI/moai-adk-go/.moai/worktrees/t1668/.moai/reports/t1668/plan-audit-iter1.md,/Users/goos/MoAI/moai-adk-go/.moai/worktrees/t1668/.moai/reports/t1668/plan-audit-iter2.md,/Users/goos/MoAI/moai-adk-go/.moai/worktrees/t1668/.moai/reports/t1668/plan-audit-iter3.md
+- 2026-10-17T16:07:39Z SPEC-UPDATE-REMOVAL-FAMILY-001 ceiling-outcome outcome=pass-through reasons="plan-audit ceiling reached (round count 3 >= tier ceiling 2 + 1 delta rounds); the verdict is admission-clean and admits without a question (REQ-ACE-013)" evidence=/Users/goos/MoAI/moai-adk-go/.moai/worktrees/t1668/.moai/reports/t1668/plan-audit-iter1.md,/Users/goos/MoAI/moai-adk-go/.moai/worktrees/t1668/.moai/reports/t1668/plan-audit-iter2.md,/Users/goos/MoAI/moai-adk-go/.moai/worktrees/t1668/.moai/reports/t1668/plan-audit-iter3.md
