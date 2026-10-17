@@ -92,15 +92,18 @@ plan_artifact_hash_runtime: 7b648f6230fb71cd9dfd46fc1b85c0d03d1d03a96130c7a20013
 sync_status: audit-ready
 audit_ready: true
 sync_complete_at: 2026-10-18
-sync_commit_sha: pending-backfill
+sync_commit_sha: a2e6fa11777b57fbdc6af0d6063dba385977a46e
 sync_commit_note: a commit cannot cite its own hash; the lane backfills the real SHA in a following commit (spec-frontmatter-schema.md, SHA placeholder backfill exemption D3)
 frontmatter_status_transitions: draft -> implemented -> completed via `moai spec status` on the single sync commit; `updated: 2026-10-18`
 run_commits: 5ccf12db8, a67623ebd, 6dcb45586, 72a6d8796, 499701907, 5beb170e0 (run evidence)
 binding_run_conditions: N2, N3, N4 disposed (E.2); Disposed markers added beside the debt lines, verbatim `- debt:` lines unchanged
 plan_artifact_hash_bound_by_verdict: 1c0ff82567b85349cda46a4861630e66d5c766b70c90e914809e3499a0d8319d
 plan_artifact_hash_after_n2: 7b648f6230fb71cd9dfd46fc1b85c0d03d1d03a96130c7a200133d8bc909a4d2 (commit 72a6d8796)
-plan_artifact_hash_after_sync: pending-lane-measure
+plan_artifact_hash_after_sync: 168bd9a8282076c362bef1042e36fc8610069dbe02d1d2636e97b4005b9271a3
 plan_artifact_hash_note: spec.md changed after the plan-audit verdict (N2 disposal; sync close status/updated), so the hash differs from the verdict-bound value; the lane measures it with audit_cache and replaces the placeholder in the backfill commit
+new_warnings_or_lints_introduced: 1 (StatusTransitionInvalid, see Recorded deviation)
+- Recorded deviation: `moai spec lint --strict` prints WARNING StatusTransitionInvalid for the sync commit a2e6fa117 ('draft' -> 'completed' is not a canonical lifecycle edge) because spec.md status stayed draft through the run phase (the run owner did not take the draft -> in-progress step at run start) and the sync commit carried the merged transition; the lint output before the sync commit was 0 error(s), 0 warning(s); not repaired because that would rewrite the card branch history; to be judged by the sync audit and the leader.
+  `WARNING   StatusTransitionInvalid  .moai/specs/SPEC-LANDING-SURFACE-RULES-001/spec.md  1     SPEC SPEC-LANDING-SURFACE-RULES-001 status transition "draft" → "completed" is not a canonical lifecycle edge (commit a2e6fa11777b57fbdc6af0d6063dba385977a46e)`
 docs_scope: CHANGELOG.md, README and docs-site not edited (guidance-only SPEC, no user-visible feature; plan.md B.5)
 close_tool: `moai spec close` not used (legacy 4-phase preconditions); 3-phase close per spec-workflow.md Sync (close)
 
