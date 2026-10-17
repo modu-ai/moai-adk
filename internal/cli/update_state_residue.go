@@ -18,25 +18,58 @@ import (
 // it open, and unlinking an open file would discard that session's first write.
 const stateResidueMinAge = 10 * time.Minute
 
-// removeStateResidue deletes what earlier state layouts left under .moai/state:
-// zero-byte *.db stubs (an empty SQLite file, no queue data) and the zero-byte
-// backlog.json.lock, the retired lock name that no current reader opens. Rollback
-// snapshots such as backlog.json, live locks such as backlog.lock, populated
-// databases, and anything written within stateResidueMinAge are never touched.
-// A stub with a write-ahead log or shared-memory sidecar is kept, and a symbolic
-// .moai refuses the whole pass: isMoAIProject follows links, so the walk would
-// otherwise reach a tree outside the project. It returns the removed paths
-// relative to projectRoot so the update summary can list each one. The walk is
-// best-effort: an entry it cannot read or remove is skipped, since a leftover stub
-// is harmless. A second pass finds nothing new.
+// removeStateResidue deletes the one residue file earlier state layouts left under
+// .moai/state that is safe to delete: the zero-byte backlog.json.lock, the retired
+// lock name that no current reader opens. Rollback snapshots such as backlog.json,
+// live locks such as backlog.lock, every database (empty or not: see
+// emptyStateDBs), and anything written within stateResidueMinAge are never
+// touched. A symbolic .moai refuses the whole pass: isMoAIProject follows links,
+// so the walk would otherwise reach a tree outside the project. It returns the
+// removed paths relative to projectRoot so the update summary can list each one.
+// The walk is best-effort: an entry it cannot read or remove is skipped, since a
+// leftover file is harmless. A second pass finds nothing new.
 func removeStateResidue(projectRoot string) []string {
+	var removed []string
+	walkStateResidue(projectRoot, func(path, name string) {
+		if name != "backlog.json.lock" || os.Remove(path) != nil {
+			return
+		}
+		if rel, relErr := filepath.Rel(projectRoot, path); relErr == nil {
+			removed = append(removed, filepath.ToSlash(rel))
+		}
+	})
+	return removed
+}
+
+// emptyStateDBs lists the zero-byte *.db files under .moai/state that are older
+// than stateResidueMinAge and have no write-ahead log or shared-memory sidecar,
+// relative to projectRoot (REQ-UBR-018). Nothing is removed: a process that opened
+// such a file without writing to it takes an I/O error on its next write if the
+// file is unlinked, so the update only reports it. The same refusals as
+// removeStateResidue apply, including the symbolic .moai.
+func emptyStateDBs(projectRoot string) []string {
+	var empty []string
+	walkStateResidue(projectRoot, func(path, name string) {
+		if !strings.HasSuffix(name, ".db") || walSidecarPresent(path) {
+			return
+		}
+		if rel, relErr := filepath.Rel(projectRoot, path); relErr == nil {
+			empty = append(empty, filepath.ToSlash(rel))
+		}
+	})
+	return empty
+}
+
+// walkStateResidue calls visit for every zero-byte regular backlog.json.lock or
+// *.db under .moai/state that has sat untouched for stateResidueMinAge. A symbolic
+// .moai ends the walk before it starts, and an entry it cannot read is skipped.
+func walkStateResidue(projectRoot string, visit func(path, name string)) {
 	// Lstat, not Stat: a symbolic .moai is refused, not followed.
 	if info, err := os.Lstat(filepath.Join(projectRoot, defs.MoAIDir)); err != nil || info.Mode()&fs.ModeSymlink != 0 {
-		return nil
+		return
 	}
 	stateDir := filepath.Join(projectRoot, defs.MoAIDir, "state")
 	cutoff := time.Now().Add(-stateResidueMinAge)
-	var removed []string
 	_ = filepath.WalkDir(stateDir, func(path string, d fs.DirEntry, err error) error {
 		if err != nil || d.IsDir() || !d.Type().IsRegular() {
 			return nil
@@ -49,25 +82,16 @@ func removeStateResidue(projectRoot string) []string {
 		if infoErr != nil || info.Size() != 0 || info.ModTime().After(cutoff) {
 			return nil
 		}
-		if strings.HasSuffix(name, ".db") && walSidecarPresent(path) {
-			return nil
-		}
-		if os.Remove(path) != nil {
-			return nil
-		}
-		if rel, relErr := filepath.Rel(projectRoot, path); relErr == nil {
-			removed = append(removed, filepath.ToSlash(rel))
-		}
+		visit(path, name)
 		return nil
 	})
-	return removed
 }
 
 // walSidecarPresent reports whether the SQLite write-ahead log or shared-memory
 // file beside the database at path exists. In WAL mode the committed pages stay in
 // the -wal file until a checkpoint, so a zero-byte main file with a sidecar may
 // hold data. A lookup that fails for any reason other than "does not exist" counts
-// as present, so the stub is kept rather than removed on an unknown answer.
+// as present, so the stub is not reported as empty on an unknown answer.
 func walSidecarPresent(path string) bool {
 	for _, suffix := range []string{"-wal", "-shm"} {
 		_, err := os.Lstat(path + suffix)
@@ -125,6 +149,10 @@ func runUpdateHousekeepingDeferRenames(projectRoot string) {
 	}
 	if removed := removeStateResidue(projectRoot); len(removed) > 0 {
 		updateLedger.referencef("removed %d leftover state file(s): %s", len(removed), strings.Join(removed, ", "))
+	}
+	// REQ-UBR-018: an empty database is reported and left in place.
+	for _, rel := range emptyStateDBs(projectRoot) {
+		updateLedger.referencef("empty DB file present: %s (zero bytes, left in place; nothing was removed)", rel)
 	}
 	// Skill-folder residue: empty folders of shipped skills, a lowercase skill.md
 	// (held back, see above), and retired skill folders, which are reported and left in
