@@ -247,4 +247,37 @@ audit_ready: true
 
 ## §E.4 Sync-phase Audit-Ready Signal
 
-_<pending sync-phase>_
+sync_complete_at: 2026-10-18
+sync_commit_sha: pending-backfill
+sync_status: complete
+b12_self_test_a: PASS (pre-emission `grep -c 'SPEC-LANE-JOIN-RUN-SELECT-001' CHANGELOG.md` printed `0` before the entry was added; `1` after)
+b12_self_test_b: DEVIATION, reported not softened (see "B12 self-test 2" below): the CHANGELOG entry states 8 criteria (AC-LJR-001..008); the reference counter printed 16
+b12_self_test_c: PASS (every path the CHANGELOG entry names exists; `ls` exit 0)
+changelog_entry_position: top of `## [Unreleased]` / `### Added`, above SPEC-JEV-RESOLVED-MODEL-001
+frontmatter_status_transitions: spec.md `in-progress -> implemented -> completed` applied atomically on this single sync commit (final value `completed`); `updated: 2026-10-18` unchanged because it already equals the sync commit date; plan.md and acceptance.md untouched (stateless, bodies unedited)
+canary_compliance_check: not applicable (this SPEC defines no forward-looking policy that its own sync tests)
+
+audit_ready: true
+
+### Sync-phase evidence (judging build and tree)
+
+Tree `.moai/worktrees/t1853` at HEAD `2011df0cc` (run-phase complete, before this commit). The spec lint binary was built from this tree: `go build -ldflags "-X github.com/modu-ai/moai-adk/pkg/version.Version=v0.0.0-t1853sync -X github.com/modu-ai/moai-adk/pkg/version.Commit=2011df0cc" -o <scratchpad>/bin/moai ./cmd/moai` (exit 0) and invoked by path; `moai version` printed `v0.0.0-t1853sync   2011df0cc`.
+
+- Docs-site, four locales, one edit each: `git diff --stat` lists `docs-site/content/{en,ja,ko,zh}/advanced/factory-mode.md | 2 +-`; only the ambiguity-refusal sentence of line 67 changed (the `--retire` sentence is byte-identical, the first sentence is untouched). The edit describes the interactive chooser, the cleanup-then-join eligibility, KST times, the fail-closed non-interactive path and the explicit-selector skip.
+- 4-locale parity (headings): `en h2=9 h3=1 lines=142`, `ko h2=9 h3=1 lines=142`, `ja h2=9 h3=1 lines=142`, `zh h2=9 h3=1 lines=142`.
+- URL blacklist grep (`docs.moai-ai.dev|adk.moai.com|adk.moai.kr` over the four pages): no output, exit 1 (no hits). Mermaid `(flowchart|graph) (LR|RL)` grep: no output, exit 1. Body-emoji scan (code fences stripped): `en 0, ko 0, ja 0, zh 0, total 0`. Emphasis-spacing grep: no hits.
+- `hugo --destination <scratchpad>/hugo-public --cleanDestinationDir` (hugo v0.160.1+extended) in `docs-site`: exit 0; page table `KO 187 / EN 185 / JA 185 / ZH 185`; `grep -ci 'warn|error'` over the build output printed `0`; `sitemap.xml` exists in the destination.
+- Moved-page redirects: no page was moved or renamed, so no `vercel.json` change.
+- `moai spec lint .moai/specs/SPEC-LANE-JOIN-RUN-SELECT-001`: `✓ No findings — all SPEC documents are valid`, exit 0. `moai spec lint --strict` on the same directory: the same line, exit 0. (Both ran after the `spec.md` status edit and before this section was written.)
+
+- `mcp__moai__spec_audit` (filter SPEC-LANE-JOIN-RUN-SELECT-001, project_root = this tree): `total_specs 1, modern_era_clean 1, grandfathered 0`, one finding `EraAutoDetected` INFO (`H-4 (§E.2 + §E.4 + sync_commit_sha)`), no drift finding. The MCP server process is the installed build `ee981a932` (an ancestor of HEAD), not a tree-built one.
+
+### B12 self-test 2 (acceptance count) - deviation, stated plainly
+
+`ac_source=.moai/specs/SPEC-LANE-JOIN-RUN-SELECT-001/acceptance.md`, `tier=M`, state `resolved` (`test -s` passed). The reference counter from `.claude/agents/moai/manager-docs.md` printed `16` with stderr `live=16 excluded=0 ambiguous=0`, exit 0 (no ambiguity, so the halt obligation does not fire). The acceptance file declares 8 criteria: the AC matrix rows AC-LJR-001..008, and its own `Counts:` line says 8. The other 8 counted identifiers are the shorthand `AC-001`..`AC-008`, each appearing once, on the `Requirement-to-criterion map:` line (acceptance.md line 68), where they are cross-references to the same eight criteria rather than new ones. The counter cannot tell a shorthand reference from a declaration without the `[REF]` token, and adding `[REF]` after those occurrences is an `acceptance.md` body edit, which this sync phase may not make. The CHANGELOG entry therefore states 8, matching the matrix and `ac_pass_count: 8` in §E.3; it does not state 16. Resolution owner: a manager-spec re-delegation (the same re-delegation that carries the plan audit's DEBT-3 wording fix) places `[REF]` after the eight shorthand occurrences, after which the counter prints 8.
+
+### Residual notes carried forward (not sync-phase work)
+
+- DEBT-3 (plan audit): `acceptance.md` AC-LJR-003's "no digit 7" fixture sentence is unchanged and stays a reported residual; it needs a manager-spec re-delegation.
+- `sync_commit_sha` holds the canonical `pending-backfill` placeholder because a commit cannot cite its own hash; the real SHA is backfilled in a following commit (spec-workflow.md Sync (close)).
+- The MX Tag sub-step added no tag: this change touches no `@MX` annotation, and no tag validation tool was run in this sync phase (see the report's Gaps).
