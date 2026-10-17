@@ -136,3 +136,43 @@ Leader ruling (cross-session message): known family, card t1817 owns the cause, 
 `~/.gitconfig` around the first remeasure: before sha b68571080eb1d2cf67a10e381bfd5d94cb3d1e7b3967470ffba896b2bc628e14 (486 lines, snapshot about a minute after the run started); after sha 3596c79456fdf394c7a670f1820dcf8c82adc1612f96405ebd52de5a74ee2581 (489 lines). The three added lines are `directory = …/.moai/worktrees/t1757`, `…/t1800`, `…/t1822` (the leader confirms these are other cards' tree registrations).
 
 Both sides show the same 7 top-level failures with the same messages (the A side prints each message before its `--- FAIL` header because it came from a `-v` run; the B side from a plain run).
+
+## §6 Landing remeasure history, lane-4 takeover (2026-10-16 / 17)
+
+Lane-4 took the card over from lane-38 (queue record: owner lane-4, stage merge-ready; lease re-taken after an expiry via the 8859 sequence). All runs: `moai integration remeasure -- go test -json -count=1 -timeout=150m [-skip …] ./internal/cli/`, TMPDIR/GOTMPDIR/HOME unset. Machine-local scratch holds the outputs; the integration record is the durable one.
+
+| # | Window (UTC) | Tree state | Skips | Result |
+|---|---|---|---|---|
+| 1 | 13:03:27–13:51:43 | 3bac1c8f8 (no main absorb), 54-name skip from §5 | 54 names | exit 1 — `TestCheckCodexWiring_CopyModeDetailOnly` (9th Codex wiring name) |
+| 2 | 13:53:40–14:31:50 | 85496a5f4 (main a4a06d96e absorbed, incl. t1813 99f1ebd07) | none | exit 1 — `TestManagedTUINeverReachedWithoutOptIn/opted_in_probes_once` |
+| 3 | 14:32:38–15:11:29 | 85496a5f4 | one subtest | exit 1 — `TestAuditLagUsesBinlagSeam` |
+| 4 | 15:12:12–15:44:55 | 85496a5f4 | `^(TestAuditLagUsesBinlagSeam\|TestManagedTUINeverReachedWithoutOptIn)$` | exit 0, valid for tree 8b3c8a0ac063 (base a4a06d96e4bd) |
+| 5 | 18:57:12–19:27:36 | 962d18b5e (main fb55b8029 absorbed, incl. t1792 + t1823) | none | **exit 0, valid for tree 9fe0280c39fb (base fb55b8029a4a)** |
+
+Decisions (leader window lane-17, facts passed by message; peer answers are not operator approvals):
+- Run 1 red: cause unit = real-HOME state; main already carried t1813 (99f1ebd07), our base did not. A/B this session: the test fails in this tree, passes in `.claude/worktrees/main`. Decision: absorb main, drop all Codex skips.
+- Run 2 red / run 3 red: both failed identically in the main tree and this tree (A/B same session), card diff (two `codex_review*_test.go` files) overlaps neither. Messages: `managed_codex_tui_test.go:2120: probe=0 tui spawns=0 direct door=0, want 1/0/0`; `mcp_build_identity_test.go:809/814` want-map drift (`local_main_resync.go` 414→435, 417→438, `integration.go` 287→288). Both are fixed by card t1823 (f37be81f7 and the want-map commit). Run 4 therefore skipped those two exact names (the whole TUI test, since `-skip` takes one regex).
+- Run 5 needed no skips after t1823 landed on main (fb55b8029).
+
+Gaps:
+- Run 4 skip list was two names; the TUI skip also removed the three passing subtests of that test. Superseded by run 5 (no skips).
+- `~/.gitconfig` line counts (observed only, cause not separated, other sessions also write): 512→573 (run 1), 573→582 (run 2), 584→595 (run 3), 595→596 (run 4), 598→599 (run 5).
+- The `-json` stream is held by the integration record; the lane stored only its stdout summary line.
+- Refusals recorded: the permission classifier denied `mcp__moai__factory_complete` (reason "Security Test Removal", twice: after run 4 and after run 5, the second time with no skips) and `mcp__moai__factory_renew` (no reason given). Neither was routed around (no CLI, no peer). Source: this session's tool results.
+
+Residual-risk:
+- main moved on after run 5 (0bd1da497, statusline t1822 only). `complete` may refuse with "integration branch moved past the record's base"; then absorb main again and re-measure before completing.
+- This file is the only edit since the merge `962d18b5e` and is deliberately NOT committed: the remeasure record is tree-keyed, so a commit here would invalidate tree 9fe0280c39fb. Commit it only together with, or after, the landing decision.
+
+Waiting state: card t1812 is at merge-ready, lease expired/expiring, waiting for the operator to allow `mcp__moai__factory_complete` and `mcp__moai__factory_renew` in the lane-4 session. Tree `.moai/worktrees/t1812`, branch `WT-codex-gate-tmpdir-symlink`, HEAD 962d18b5e. Do not remove the tree.
+
+## §7 Re-lease into run tn1p4e (lane-4, 2026-10-17)
+
+Leader notice (cross-session): run tmvgvn retired 10-17 10:01Z, so stage/complete/renew fail "factory card not found" on tn1p4e; re-lease with `moai factory next --card t1812` (card t1825). No operator hold found on t1812 (status row and memory notes read; absence of a hold marker is not proof of none).
+
+Observed this session:
+- `moai factory next --card t1812` from the primary checkout: leased, `stage=-`, record restarts (tmvgvn history not carried over).
+- The lease expired at 10:45:22Z before work resumed; `mcp__moai__factory_renew` returned `refused-expired`. Recovery per rule 8859: `moai factory stage t1812 run` (answered "lease expired", card back to assigned) → `moai factory next --card t1812` from the primary checkout (from inside the worktree it errors) → `moai factory stage t1812 run` → `run v7 lease renewed`, lease until 11:31:13Z.
+- The earlier classifier denials of factory_complete/factory_renew were NOT reproduced for renew (it executed and returned a result); factory_complete not yet attempted in this run.
+
+Gaps: sync-audit and the landing remeasure for tn1p4e are not re-done yet; run 5 (tree 9fe0280c39fb, §6) was recorded against tmvgvn and its validity under tn1p4e is unverified.
