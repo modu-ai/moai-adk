@@ -21,7 +21,54 @@ Basis for the explicit signal: `moai spec lint` exited 0 on the SPEC directory i
 
 ## §E.2 Run-phase Evidence
 
-_<pending run-phase>_
+Run-phase environment: card tree `.moai/worktrees/t1853` at base `8d7b16f01`; every test command ran with the eleven factory variables of acceptance.md unset (`unset MOAI_KANBAN_ID MOAI_FACTORY_WORKER MOAI_FACTORY_ROLE MOAI_FACTORY_WORKERS MOAI_FACTORY_CLEAR_POLICY MOAI_FACTORY_AUTO_DISPATCH MOAI_KANBAN_BACKEND MOAI_KANBAN_SETTINGS_INJECTED && go test ...`; `MOAI_KANBAN_CARD`, `MOAI_KANBAN_ID`, `MOAI_KANBAN_LABEL`, `MOAI_KANBAN_LEAD_NAME`, `MOAI_KANBAN_LEAD_ADDR` were not set in the shell). Go 1.26.8, darwin/arm64. `TMPDIR` is the OS default under `/var/folders`, outside `$HOME` and the repository.
+
+### M1 - facts read path and KST (AC-LJR-001, AC-LJR-002)
+
+RED, behavioral (a stub `ActiveRunFacts` returning no rows, a stub `FormatKST` returning its input; tests written first):
+
+```text
+$ go test ./internal/homestate -run '^(TestActiveRunFactsCountsNonTerminalCards|TestActiveRunFactsLastActivityUsesParsedTimes|TestActiveRunFactsIsReadOnly)$' -count=1 -v
+--- FAIL: TestActiveRunFactsCountsNonTerminalCards (0.69s)
+    factory_run_select_test.go:69: run-a InProgress = 0, want 3 (leased, needs-decision, merged-local)
+    factory_run_select_test.go:78: listed 0 runs, want 2
+--- FAIL: TestActiveRunFactsLastActivityUsesParsedTimes (0.41s)
+    factory_run_select_test.go:115: run-w: not listed   (x5: w h u e n)
+--- FAIL: TestActiveRunFactsIsReadOnly (0.36s)
+    factory_run_select_test.go:170: run-z was not listed
+FAIL	github.com/modu-ai/moai-adk/internal/homestate	1.810s
+
+$ go test ./internal/factorymsg -run '^(TestFormatKST|TestAmbiguousRunsErrorRendersStartInKST)$' -count=1 -v
+    factory_run_select_test.go:33: utc-nanos: FormatKST("2026-10-17T09:31:00.123456789Z") = "2026-10-17T09:31:00.123456789Z", want "2026-10-17 18:31:00 KST"
+    factory_run_select_test.go:47: refusal "AMBIGUOUS_FACTORY: run-kst (owner live, leader pid 4242, started 2026-10-17T09:31:00.123456789Z)" does not render the start as KST
+--- FAIL: TestFormatKST (0.00s)
+--- FAIL: TestAmbiguousRunsErrorRendersStartInKST (0.00s)
+FAIL	github.com/modu-ai/moai-adk/internal/factorymsg	0.344s
+```
+
+GREEN:
+
+```text
+$ go test ./internal/homestate -run '^(TestActiveRunFacts.*)$' -count=1 -v
+--- PASS: TestActiveRunFactsCountsNonTerminalCards (0.47s)
+--- PASS: TestActiveRunFactsLastActivityUsesParsedTimes (0.40s)
+--- PASS: TestActiveRunFactsIsReadOnly (0.45s)
+--- PASS: TestActiveRunFactsSurfacesReadFailures (1.12s)   [3 subtests PASS]
+ok  	github.com/modu-ai/moai-adk/internal/homestate	2.790s
+$ go test ./internal/factorymsg -run '^(TestFormatKST|TestAmbiguousRunsErrorRendersStartInKST)$' -count=1 -v
+--- PASS: TestFormatKST (0.00s)
+--- PASS: TestAmbiguousRunsErrorRendersStartInKST (0.00s)
+ok  	github.com/modu-ai/moai-adk/internal/factorymsg	0.344s
+```
+
+Mutant probes executed against the GREEN tree (each applied to a copy, test run, file restored):
+
+- AC-LJR-001 string-order mutant (`raw > bestRaw` in place of the parsed comparison): `--- FAIL: TestActiveRunFactsLastActivityUsesParsedTimes`, `run-w LastActivity = "2026-10-17T10:00:00.1Z", want "...00.11Z"` and `run-h LastActivity = "2026-10-17T10:00:00Z", want "...00.5Z"`. Killed.
+- AC-LJR-001 reconciler mutant (`ReconcileActiveRuns` called before the read): `--- FAIL: TestActiveRunFactsIsReadOnly`, `run-z was not listed` (the reconciler retired the dead zero-card run). Killed.
+- AC-LJR-002 host-zone mutant (`at.Local()` instead of the fixed zone, with `time.Local` pinned to UTC): `offset-input: ... = "2026-10-17 09:31:00 KST", want "2026-10-17 18:31:00 KST"`, `day-rollover` and `utc-no-fraction` failing alike. Killed.
+
+Existing suites that share the touched code (unchanged, GREEN): all 12 tests of `internal/homestate/factory_run_retire_test.go` (`ok ... homestate 7.295s`) and all 6 of `internal/factorymsg/factory_run_retire_test.go` (`ok ... factorymsg 9.226s`); `GOOS=windows GOARCH=amd64 go build ./internal/homestate/... ./internal/factorymsg/...` exit 0.
+
 
 ## §E.3 Run-phase Audit-Ready Signal
 

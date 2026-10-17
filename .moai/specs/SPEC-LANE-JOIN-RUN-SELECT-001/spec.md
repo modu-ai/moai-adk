@@ -2,9 +2,9 @@
 id: SPEC-LANE-JOIN-RUN-SELECT-001
 title: "Lane-join run selection — an interactive chooser when two or more active factory runs survive, KST times, and a fail-closed non-interactive path"
 version: "0.1.0"
-status: draft
+status: in-progress
 created: 2026-10-17
-updated: 2026-10-17
+updated: 2026-10-18
 author: manager-spec
 priority: P1
 phase: "v3.2.0 target"
