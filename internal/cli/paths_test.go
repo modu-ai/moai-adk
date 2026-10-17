@@ -797,3 +797,30 @@ func TestPaths_FlagsAreExclusive(t *testing.T) {
 		t.Errorf("--json with --field: err = %v, stdout = %q, want a failure with empty stdout", err, out)
 	}
 }
+
+// ---------------------------------------------------------------------------
+// AC-DBP-008 — help texts point at `moai paths`
+// ---------------------------------------------------------------------------
+
+func TestPaths_HelpPointers(t *testing.T) {
+	var save string
+	for _, c := range newHandoffCmd().Commands() {
+		if c.Name() == "save" {
+			save = c.Long
+		}
+	}
+	for name, text := range map[string]string{
+		"moai todo --help":         newTodoCmd().Long,
+		"moai factory --help":      newFactoryCommand().Long,
+		"moai handoff save --help": save,
+	} {
+		if !strings.Contains(text, "moai paths") {
+			t.Errorf("%s does not point at `moai paths`:\n%s", name, text)
+		}
+	}
+	// The pinned canonical-store string stays in the todo long help.
+	// home-guard:allow the help text names the store; the string is asserted, never resolved
+	if !strings.Contains(newTodoCmd().Long, "~/.moai/db/<project-key>/todo/backlog.db") {
+		t.Errorf("the todo long help lost its canonical-store string")
+	}
+}
