@@ -65,6 +65,13 @@ var localMainResyncBeforeFastForward = func(repoRoot string) {}
 // @MX:SPEC: SPEC-LOCAL-MAIN-FLOW-001
 var localMainResyncAfterRevalidate = func(repoRoot string) {}
 
+// localMainResyncReadWindow is the window-record read localMainResyncRevalidate uses for
+// its ownership re-check (card t1670, sync-audit F1 of iteration 3). The production value
+// is factory.ReadIntegrationLock itself, so behaviour is unchanged.
+// @MX:NOTE: [AUTO] seam exists so a test can prove the ownership read happens inside the mutation section: a rival takeover attempted from the read must be refused as lock-busy.
+// @MX:SPEC: SPEC-LOCAL-MAIN-FLOW-001
+var localMainResyncReadWindow = factory.ReadIntegrationLock
+
 // newIntegrationResyncCmd registers `moai integration resync`. It takes no
 // flags: the session is the one the window verbs resolve from the environment.
 func newIntegrationResyncCmd() *cobra.Command {
@@ -301,7 +308,7 @@ func localMainResyncInWindow(repoRoot, sessionID string) (string, error) {
 // the primary must still be fully clean (iv). A refusal carries the exit class the
 // merge step uses for the same cause, and it moves nothing.
 func localMainResyncRevalidate(git func(args ...string) (string, error), repoRoot, sessionID, ref, headBeforeFetch string) error {
-	lock, err := factory.ReadIntegrationLock(repoRoot)
+	lock, err := localMainResyncReadWindow(repoRoot)
 	if err != nil {
 		return localMainResyncRefusal(factory.MergeExitOther, "integration resync: read the window record before the move: %v", err)
 	}

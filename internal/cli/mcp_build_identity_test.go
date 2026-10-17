@@ -795,8 +795,12 @@ func TestAuditLagUsesBinlagSeam(t *testing.T) {
 		// added 9 lines above the helper, moving the doc mention 435→444 and
 		// the call 438→447. Same two hits, same count; no added line is an
 		// ancestry comparison.
-		"local_main_resync.go:444": true,
-		"local_main_resync.go:447": true,
+		// Re-measured at card t1670, iteration 4: the localMainResyncReadWindow
+		// ownership-read seam (+7) added 7 lines above the helper, moving the doc
+		// mention 444→451 and the call 447→454. Same two hits, same count; no
+		// added line is an ancestry comparison.
+		"local_main_resync.go:451": true,
+		"local_main_resync.go:454": true,
 	}
 	got := map[string]bool{}
 	entries, err := os.ReadDir(".")
