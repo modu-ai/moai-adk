@@ -150,6 +150,59 @@ func TestFactoryNextReNominationAfterOwnExpiryStillRefused(t *testing.T) {
 	}
 }
 
+// TestFactoryNextRefusedBehindCollectedAssignedOfLiveHolder — sync-audit
+// cold F1 (card t1828, repair round 3): factoryStageCard does not verify the
+// requesting lane owns the cardID, so a FOREIGN lane's stage on an expired
+// card triggers the lazy T27/T28 collection to `assigned` (owner and
+// heartbeat kept); the walk's ignoreAssigned skip then excluded that row, so
+// a lane nominating its own assigned card leased a second serial card while
+// the first holder's session was still live. An expiry-collected assigned
+// row is not "merely assigned" — its heartbeat names the work session — and
+// the same generation-aware liveness reader decides it.
+func TestFactoryNextRefusedBehindCollectedAssignedOfLiveHolder(t *testing.T) {
+	root, store := flSerialPair(t)
+	nmSetState(t, store, "t2", factory.BacklogStatePicked)
+	nmIsolatedWorktrees(t, "t1", "t2")
+	fcPlace(t, root,
+		homestate.Card{CardID: "t1", State: homestate.CardLeased, OwnerLabel: "lane-2", LeaseHolder: "lane-2",
+			LeaseExpiresAt: fcNow.Add(-time.Minute).Format(time.RFC3339Nano),
+			HeartbeatAt:    fcNow.Add(-90 * time.Second).Format(time.RFC3339Nano), Stage: homestate.CardRun},
+		homestate.Card{CardID: "t2", State: homestate.CardAssigned, OwnerLabel: "lane-1", Stage: homestate.CardRun},
+	)
+	serialSlotWorkerPID(t, root, "lane-2", os.Getpid(), serialSlotIncarnationEarly)
+
+	// A foreign lane's stage on the expired card collects the lease to
+	// `assigned` — owner kept, heartbeat kept (sync-audit F1 leg 1).
+	db, err := homestate.OpenFactory(root)
+	if err != nil {
+		t.Fatalf("open factory: %v", err)
+	}
+	if _, err := db.Transition(context.Background(), homestate.TransitionRequest{
+		RunID: fcRun, CardID: "t1", To: homestate.CardRun,
+		ExpectedVersion: fcCard(t, root, "t1").Version, Actor: "lane-13", Now: fcNow,
+	}); !errors.Is(err, homestate.ErrLeaseExpired) {
+		t.Fatalf("collecting t1's expired lease: err=%v, want ErrLeaseExpired", err)
+	}
+	if err := db.Close(); err != nil {
+		t.Fatalf("close factory: %v", err)
+	}
+	if c := fcCard(t, root, "t1"); c.State != homestate.CardAssigned || c.OwnerLabel != "lane-2" || c.HeartbeatAt == "" {
+		t.Fatalf("t1 after collection: state=%s owner=%q heartbeat=%q, want assigned/lane-2/kept", c.State, c.OwnerLabel, c.HeartbeatAt)
+	}
+
+	nmLaneEnv(t, "lane-1", "")
+	_, stderr, err := qasRunNext(t, "--run", fcRun, "--card", "t2")
+	if err == nil {
+		t.Fatalf("factory next leased a second serial card behind a collected assigned row whose session is live: stderr=%q", stderr)
+	}
+	if !strings.Contains(stderr, "refused serial-slot") {
+		t.Fatalf("refusal is not serial-slot: %v stderr=%q", err, stderr)
+	}
+	if !strings.Contains(stderr, "t1 (holder lane-2)") {
+		t.Fatalf("refusal does not name the blocking card and holder: %v stderr=%q", err, stderr)
+	}
+}
+
 // TestFactoryNextLeasesBehindExpiredLeaseOfReRegisteredHolder — the
 // card-review r1 P2 repair of card t1828: factory_slots deletes a dead
 // worker's roster row and REASSIGNS the same label to a new process (a lane

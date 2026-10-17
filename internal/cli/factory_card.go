@@ -302,12 +302,23 @@ func factorySerialSlotFree(state string) bool {
 // re-registered by a later process — measured 2026-10-17 (run tn1p4e),
 // t1825's lease expired at 10:57:43Z while its worker (pid 21334) stayed
 // alive and committed at 11:22:39Z, and t1697 leased the slot at 10:59:37Z:
-// two serial cards worked concurrently. holderAlive is threaded in from the
+// two serial cards worked concurrently. An expiry-collected `assigned` row
+// with a recorded heartbeat (sync-audit cold F1) is decided the same way —
+// factoryStageCard does not verify the requesting lane owns the card, so a
+// foreign lane's stage collects an expired lease to assigned while the
+// first holder still works; a pure assignment row (empty HeartbeatAt, never
+// started work) holds as before. holderAlive is threaded in from the
 // db-owning callers (the generation-aware workers-table read by OwnerLabel,
 // factoryWorkerPidAlive); a nil reader frees on expiry, the pre-t1828 read.
 func factorySerialSlotHeld(c homestate.Card, now time.Time, holderAlive func(homestate.Card) bool) bool {
 	if factorySerialSlotFree(c.State) || c.OwnerLabel == "" {
 		return false
+	}
+	// An expiry-collected assigned row (card t1828, sync-audit F1): its
+	// heartbeat names the work session, so the same generation-aware liveness
+	// reader decides it — a live session holds, a dead one frees.
+	if c.State == homestate.CardAssigned && c.HeartbeatAt != "" {
+		return holderAlive != nil && holderAlive(c)
 	}
 	if !c.LeaseExpired(now) {
 		return true
@@ -362,7 +373,13 @@ func factoryWorkerPidAlive(ctx context.Context, db *homestate.FactoryDB, c homes
 // leader-assigned serial card against the others with nothing in flight. The
 // unnominated arm and — since card t1542 — the nominated lease of the lane's
 // own assigned card pass true; every path that takes a NEW card passes
-// false.
+// false. Since card t1828 (sync-audit cold F1) the skip covers only PURE
+// assignment rows — empty HeartbeatAt, never started work. An
+// expiry-collected assigned row keeps its heartbeat, and factoryStageCard
+// does not verify the requesting lane owns the card, so a foreign lane's
+// stage collects an expired lease to assigned while the first holder still
+// works; that row stays in the walk and the predicate's liveness clause
+// decides it instead of the skip letting a second serial card lease.
 //
 // A `picked` row carrying a bundle identity is excluded the same way (card
 // t1454 card-review r2 P1-2): it is a chain member waiting on its head, not
@@ -386,7 +403,7 @@ func factorySerialInFlightExcluding(cards []homestate.Card, classOf func(string)
 		if c.CardID == cardID {
 			continue
 		}
-		if ignoreAssigned && c.State == homestate.CardAssigned {
+		if ignoreAssigned && c.State == homestate.CardAssigned && c.HeartbeatAt == "" {
 			continue
 		}
 		if c.State == homestate.CardPicked && (c.BundleID != "" || c.HintAfter != "") {

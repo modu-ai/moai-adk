@@ -34,6 +34,8 @@ func TestFactorySerialSlotHeldRequiresADriver(t *testing.T) {
 		{"picked without owner or lease holds nothing", homestate.Card{CardID: "t1453", State: homestate.CardPicked}, false, false},
 		{"picked with an owner holds", homestate.Card{CardID: "t1", State: homestate.CardPicked, OwnerLabel: "lane-5"}, true, true},
 		{"assigned with an owner holds", homestate.Card{CardID: "t2", State: homestate.CardAssigned, OwnerLabel: "lane-2"}, true, true},
+		{"an assigned row with a heartbeat holds while its session is live", homestate.Card{CardID: "t7", State: homestate.CardAssigned, OwnerLabel: "lane-2", HeartbeatAt: now.Add(-time.Minute).Format(time.RFC3339Nano)}, true, true},
+		{"an assigned row with a heartbeat frees when its session is dead", homestate.Card{CardID: "t8", State: homestate.CardAssigned, OwnerLabel: "lane-2", HeartbeatAt: now.Add(-time.Minute).Format(time.RFC3339Nano)}, false, false},
 		{"leased with a live lease holds", homestate.Card{CardID: "t3", State: homestate.CardLeased, OwnerLabel: "lane-1", LeaseHolder: "lane-1", LeaseExpiresAt: live}, true, true},
 		{"an expired lease with a dead holder frees", homestate.Card{CardID: "t4", State: homestate.CardLeased, OwnerLabel: "lane-1", LeaseHolder: "lane-1", LeaseExpiresAt: expired}, false, false},
 		{"an expired lease with a live holder holds", homestate.Card{CardID: "t6", State: homestate.CardLeased, OwnerLabel: "lane-1", LeaseHolder: "lane-1", LeaseExpiresAt: expired}, true, true},
@@ -45,8 +47,11 @@ func TestFactorySerialSlotHeldRequiresADriver(t *testing.T) {
 		if got := factorySerialSlotHeld(tc.card, now, holderAlive); got != tc.want {
 			t.Errorf("%s: held=%v, want %v", tc.name, got, tc.want)
 		}
-		// The roster is consulted only for an expired lease of a driven row.
-		wantAsked := tc.card.OwnerLabel != "" && tc.card.LeaseExpired(now)
+		// The roster is consulted only where liveness decides: an expired
+		// lease of a driven row, or an assigned row carrying a heartbeat
+		// (card t1828 sync-audit F1).
+		wantAsked := tc.card.OwnerLabel != "" && (tc.card.LeaseExpired(now) ||
+			(tc.card.State == homestate.CardAssigned && tc.card.HeartbeatAt != ""))
 		if wantAsked && asked == "" {
 			t.Errorf("%s: holder liveness never consulted", tc.name)
 		}
