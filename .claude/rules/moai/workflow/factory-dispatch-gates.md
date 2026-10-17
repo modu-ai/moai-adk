@@ -1,5 +1,5 @@
 ---
-description: "Gate-measurement companion for factory-dispatch.md — the CodeRabbit endpoint measurement, review lens selection table, the pre-merge settings-drift assertion, and the verification-load incident record"
+description: "Gate-measurement companion for factory-dispatch.md — the CodeRabbit endpoint measurement, review lens selection table, the pre-merge settings-drift assertion, the pre-integration base freshness gate, and the verification-load incident record"
 paths: "**/factory-dispatch*.md,**/.claude/agents/moai/manager-lead.md,**/.claude/skills/moai/workflows/gtd.md"
 ---
 
@@ -51,6 +51,22 @@ On a hit: the working copy is preserved under the primary checkout's state direc
 Two surfaces, and neither is redundant. Without the `acquire` precondition, running the check would be a social protocol — the same gap the announcement rule named about itself. Without `moai integration preflight [path]`, there would be no way to ask the question without taking a window.
 
 Refusal is the only part that is opt-in (`workflow.settings_drift_gate.enabled`, default off, the same posture as the repository's other guards). Detection, preservation, the ledger row and the report run on every `acquire` regardless — the observed failure was nine days of nobody looking, not nine days of nothing being blocked, so gating the observation would remove the very thing the default-off posture rests on. Where refusal is on, `--allow-settings-drift` records the window anyway and stamps the bypass into the lock record; `--force` does not and must not, because it answers a different question ("take the window from a live holder") and one flag carrying both leaves the record unable to say which was meant. An `undetermined` verdict does not refuse — it is reported loudly and the window is recorded, matching every other guard's fail-open posture on uncertainty.
+
+## The pre-integration base freshness gate
+
+The settings-drift assertion is not the only precondition at the window door. A candidate that is too far behind the local integration branch, or whose tests were not re-run after its last absorb, is refused at entry rather than after it has taken, or queued for, a turn of the window. Merge cause 2 already refuses a moved base exactly, but only inside the window, where the turn and the queue position are already spent; the gate asks the same question earlier and consumes nothing.
+
+What is measured, in this order. First, a valid re-measure record keyed to the candidate tree's current HEAD tree: an absorb that changes content changes the tree, so a record keyed to the old tree cannot match. Second, landings behind: the count of first-parent commits of the local integration branch that are not reachable from the base that record stores, the very field cause 2 compares with the tip. First-parent, because a merged side branch is one landing however many commits it carries. A stored base that is not an ancestor of the tip is stale whatever the tolerance.
+
+Where it runs. `moai integration acquire --card <id>` from the card's worktree, before the window record is written and before a `--wait` ticket is enqueued; and `moai factory complete` when it is about to take the window itself. Admitted silently as not applicable: no card id, the working directory on the integration branch, a detached HEAD. In `complete`, a card whose integration tip is already its own merge commit (an adoption) is exempt, because that merge commit would otherwise read as a landing past the record's base.
+
+Configuration. `workflow.base_freshness_gate.max_behind_landings` is the tolerance K (default 0) and `workflow.base_freshness_gate.enabled` gates only the refusal (default off). With the gate off it still measures and prints one advisory line when it would have refused.
+
+What K means. At 0 the gate tests the predicate cause 2 tests, including after an absorb that changed no content: the tree and the record stay valid but the tip has moved past the stored base, so the lane re-runs `moai integration remeasure`, which rewrites the record with the new base. Above 0 a lane up to K landings behind may enter and queue and re-absorb while it waits. K buys queue-wait slack and never relaxes the merge step, which still refuses a moved base with its own exit code 2.
+
+Refusal and fail-open. A refusal starts with `BASE_FRESHNESS_VIOLATION:`, names the landings behind, K, the key, the integration tip and the remedy (absorb local main into the card branch, re-run `moai integration remeasure`, retry), and exits 16, a code the merge step (1-15) and `complete` (20) never use. The gate refuses only on positive evidence: a measured excess, a stale base, or a missing or invalid record. An unreadable configuration, a negative K, an unresolvable branch, or a failed git read admits with one line naming the cause, because the merge step re-enforces the strict form.
+
+The gate never absorbs, writes no record, window or ticket, and reads no audit verdict or evidence SHA.
 
 ## Verification load incident record
 
