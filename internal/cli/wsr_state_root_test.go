@@ -526,8 +526,8 @@ func wsrStateListing(t *testing.T, root string) string {
 
 // AC-WSR-004 (amended 0.3.0, operator decision 2026-10-17). Two tool groups:
 //
-// Group A — the REQ-MN-005-confined set (verify_snapshot, verify_trend, the spec
-// catalogue tools): a registered worktree of the SERVER's own repository keeps
+// Group A — the REQ-MN-005-confined set (verify_snapshot, verify_trend and the
+// spec_progress / spec_audit / spec_drift catalogue tools): a registered worktree of the SERVER's own repository keeps
 // today's paths; any other root (another repository, a directory that is not a
 // git worktree) is refused and nothing is written; with no git on PATH
 // confinement cannot be established, so every leg fails closed.
@@ -572,17 +572,20 @@ func TestWSR004_OtherRootsUnchanged(t *testing.T) {
 
 			// Group A: the confined set.
 			admitted := l.registered && withGit
-			for name, args := range map[string]map[string]any{
-				"verify_snapshot": {"project_root": l.root, "key": "h:d", "command": "c"},
-				"verify_trend":    {"project_root": l.root, "key": "h:d"},
-			} {
-				h := handleVerifySnapshot
-				if name == "verify_trend" {
-					h = handleVerifyTrend
-				}
-				isErr, text := wsrToolText(t, h, args)
+			confined := map[string]struct {
+				h    func(context.Context, mcpReq) (*mcpRes, error)
+				args map[string]any
+			}{
+				"verify_snapshot": {handleVerifySnapshot, map[string]any{"project_root": l.root, "key": "h:d", "command": "c"}},
+				"verify_trend":    {handleVerifyTrend, map[string]any{"project_root": l.root, "key": "h:d"}},
+				"spec_progress":   {handleSpecProgress, map[string]any{"project_root": l.root}},
+				"spec_audit":      {handleSpecAudit, map[string]any{"project_root": l.root}},
+				"spec_drift":      {handleSpecDrift, map[string]any{"project_root": l.root}},
+			}
+			for name, c := range confined {
+				isErr, text := wsrToolText(t, c.h, c.args)
 				switch {
-				case admitted && isErr && name == "verify_snapshot":
+				case admitted && isErr && name != "verify_trend":
 					t.Errorf("git=%v %s (group A): %s refused a registered worktree: %s", withGit, l.name, name, text)
 				case !admitted && !isErr:
 					t.Errorf("git=%v %s (group A): %s accepted a root that is not a registered worktree of the server's repository: %s", withGit, l.name, name, text)
