@@ -18,3 +18,13 @@
 - Resume condition: the card record carries a valid SPEC id (SpecID is settable only in the `picked` state), then the card is re-dispatched. Next step on resume: plan-audit round 2 against the committed plan fix, then run -> sync -> landing per Class C.
 - Lease: no renewal is made; it lapses on its own.
 - Session: lane-3 ends here; no work is carried in conversation context.
+
+## Resume record (lane-3, run tn1p4e, 2026-10-17)
+- Leased via `moai factory next --card t1760` after the leader re-picked the card with `--spec SPEC-CONTAINMENT-MAPPING-DOC-001` (the SpecID hold is resolved). Run tmvgvn was retired (t1825); stages were re-recorded from plan.
+- Plan fix rounds 2-4 (commits 04890fc13, 1e7588b6f, 01382b072) closed plan-audit defects N1-N5; verdict files plan-audit-r2..r6.md under .moai/reports/t1760/.
+- Stage records: plan, plan-audit (evidence 5ea162734398a6e4d537e29e79101a99de9a1293 — the commit that round 6 audited), kickoff, run.
+- Plan-audit round 6: PASS 0.96, audited_sha 5ea162734398a6e4d537e29e79101a99de9a1293, plan_artifact_hash 563b5fcaea70222f2f9a418d6b07c2aceca41315670c3838ab4d870b5e2b46ab (computed by two independent reimplementations of internal/runtime/audit_cache.go ComputeHash; the runtime function itself was not invoked, see the verdict's Gaps), codex gate pass, receipt rcpt-5f93a1940bbfd21a65345626.
+- Process note: the plan-audit stage was first recorded with the verdict-file commit 5ea162734 while the round-5 verdict named audited_sha 01382b072, and round 5's hash was the auditor's own (progress.md included). The gate refuses both mismatches, so a round 6 was run at the recorded commit with the runtime hash algorithm instead of editing any record.
+
+decision record: decided_by=lane-3 (audit decider, `moai factory decide t1760 --gate kickoff --choice approve --decider audit`) evidence_refs=.moai/reports/t1760/plan-audit-r6.md (PASS 0.96, rcpt-5f93a1940bbfd21a65345626), .moai/specs/SPEC-CONTAINMENT-MAPPING-DOC-001/progress.md §E.1 (audit_ready: true, d96548967) ladder_path=auto-semantics.md §9.1 default-autonomous Kickoff (gate row plan→run Kickoff)
+- Result: factory record t1760 state=run v12 at 2026-10-17T12:44Z. No keep-set item involved: no push, PR, tag, deploy, or other card touched; the deliverable is a reference-only document (Class C).
