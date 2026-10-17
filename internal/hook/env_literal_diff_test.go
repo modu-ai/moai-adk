@@ -80,7 +80,7 @@ func srlRepoRoot(t *testing.T) string {
 // reading as a silent pass.
 func srlDiffBase(t *testing.T, root string) string {
 	t.Helper()
-	for _, ref := range []string{"develop", "origin/develop"} {
+	for _, ref := range []string{"main", "origin/main"} {
 		if out, err := exec.Command("git", "-C", root, "merge-base", "HEAD", ref).Output(); err == nil {
 			return strings.TrimSpace(string(out))
 		}
