@@ -13,9 +13,10 @@ import (
 // reference to the root-bound steps of the held-back rename and to their seams, by
 // enclosing declaration. The registry row for dropOne
 // (internal/cli/update_destructive_registry.go) covers the one Remove behind it; the
-// package has no Rename (the moveFile seam and its row were removed, card t1733 F2). A new
-// reference to any of these names is a new route to a link or a removal: the test fails
-// and forces that row to be reviewed. The declaration name of a function itself is not a
+// package has no Rename of its own (the moveFile seam and its row were removed, card t1733
+// F2); the no-replace rename and the rmdir of the staging folder are pinned beside it. A new
+// reference to any of these names is a new route to a move, a link or a removal: the test
+// fails and forces that row to be reviewed. The declaration name of a function itself is not a
 // reference, so it is not counted.
 func TestMoveFileReferencesArePinned(t *testing.T) {
 	pinned := map[string]bool{
@@ -23,6 +24,9 @@ func TestMoveFileReferencesArePinned(t *testing.T) {
 		"moveFile": true, "moveOne": true, // removed seams: any reappearance is a new route to a Rename
 		"linkFile": true, "linkOne": true,
 		"dropFile": true, "dropOne": true,
+		// The no-replace rename and the rmdir behind the staging folder (card t1733 round 4).
+		"renameNoReplace": true, "noReplaceRename": true,
+		"Rmdir": true,
 	}
 	entries, err := os.ReadDir(".")
 	if err != nil {
@@ -67,18 +71,23 @@ func TestMoveFileReferencesArePinned(t *testing.T) {
 	}
 
 	// The only allowed references. At package level each seam variable is declared once
-	// and bound to its function once. renameSkillFile makes the first link, the SKILL.md
-	// link and the restore link, and drops skill.md itself; dropOurs drops every other name
-	// (only while it is still ours); claimStage claims the staging folder.
+	// and bound to its function once. moveNoReplace is the one caller of the no-replace
+	// rename and removeStage the one caller of rmdir. renameByLinks (the fallback) makes the
+	// first link, the SKILL.md link and the restore link, and drops skill.md itself; dropOurs
+	// drops every other name (only while it is still ours); claimStage claims the staging
+	// folder.
 	want := map[string]int{
 		"mkdirFile@package-level": 1, "mkdirOne@package-level": 1,
 		"linkFile@package-level": 1, "linkOne@package-level": 1,
 		"dropFile@package-level": 1, "dropOne@package-level": 1,
+		"renameNoReplace@package-level": 1, "noReplaceRename@package-level": 1,
 
-		"mkdirFile@claimStage":     1,
-		"linkFile@renameSkillFile": 3,
-		"dropFile@renameSkillFile": 1,
-		"dropFile@dropOurs":        1,
+		"mkdirFile@claimStage":          1,
+		"renameNoReplace@moveNoReplace": 1,
+		"Rmdir@removeStage":             1,
+		"linkFile@renameByLinks":        3,
+		"dropFile@renameByLinks":        1,
+		"dropFile@dropOurs":             1,
 	}
 	for key, n := range want {
 		if got[key] != n {

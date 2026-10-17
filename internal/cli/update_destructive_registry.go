@@ -192,21 +192,22 @@ var destructiveTargetRegistry = []destructiveSite{
 	},
 	{
 		File: "internal/cli/update/skillresidue/residue.go", Function: "dropOne", Sites: 1,
-		Protection: "SPEC-UPDATE-BACKUP-RETENTION-001 REQ-UBR-017 (findings F24, F25, F7, F11, F2). " +
-			"The package's one root-bound Remove, reached through the dropFile seam; the package " +
-			"has no Rename (the moveOne row and the fallback Rename were removed). The held-back " +
-			"rename creates a staging folder exclusively, links skill.md into it (a link fails " +
-			"when the name exists), drops skill.md, then links SKILL.md (fails when it exists), " +
-			"all through a handle bound to the project root. It captures the identity of " +
-			"skill.md and of the staging folder, and removes a name only while Lstat still " +
-			"reports that identity (dropOurs); skill.md itself is dropped only after both " +
-			"names were looked at again and both still matched. A name that is gone, " +
-			"unreadable or replaced (an atomic save over skill.md, a foreign writer in the " +
-			"staging folder) is left in place and the error names it; the state table above " +
-			"renameSkillFile lists every state. A microsecond window between each look and " +
-			"its unlink remains because no no-replace rename exists. A restore that cannot " +
-			"happen leaves the staged copy in place and the error names it. Remove, unlike " +
-			"RemoveAll, cannot remove a non-empty folder. TestMoveFileReferencesArePinned fails " +
-			"on any new reference to the seams, which forces this row to be reviewed.",
+		Protection: "SPEC-UPDATE-BACKUP-RETENTION-001 REQ-UBR-017 (findings F24, F25, F7, F11, F2, " +
+			"F13, F14). The package's one root-bound Remove, reached through the dropFile seam, " +
+			"and since card t1733 round 4 reached ONLY by the link fallback renameByLinks (and " +
+			"its dropOurs). The held-back rename itself moves skill.md by atomic no-replace " +
+			"renames (renameat2 RENAME_NOREPLACE, renamex_np RENAME_EXCL, MoveFileEx without a " +
+			"replace flag): skill.md -> a randomly named staging folder -> SKILL.md, each " +
+			"refusing when the destination exists, so no user-visible name is unlinked behind a " +
+			"check. The staging folder is removed by rmdir (syscall.Rmdir, which the scan does " +
+			"not count and which cannot remove a file or a non-empty folder). A refused " +
+			"SKILL.md rename is undone by a no-replace rename back to skill.md; a refused undo " +
+			"leaves the content staged and the error names it. The package has no Rename. Only " +
+			"the fallback, used when the platform or filesystem reports no no-replace rename, " +
+			"keeps the round-3 identity rule (a name is removed only while Lstat still reports " +
+			"the identity captured before the link) and its microsecond window between each " +
+			"look and its unlink. The state tables above renameSkillFile and renameByLinks " +
+			"list every state. TestMoveFileReferencesArePinned fails on any new reference to " +
+			"the seams, the no-replace rename or rmdir, which forces this row to be reviewed.",
 	},
 }
