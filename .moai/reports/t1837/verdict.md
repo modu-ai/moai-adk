@@ -13,6 +13,7 @@ Verdict: PASS-WITH-GAPS (lane's own verdict; evidence listed below). Operator-re
 - `cmp` of both mirror pairs after `1969709ce` printed `identical` (lane-run).
 - `factory-dispatch-core.md` (always-loaded) is 10080 bytes (`wc -c`), unchanged from before the card.
 - Card-review: `.moai/reports/t1837/card-review.md` — round 1 fail (P2, fixed), round 2 pass.
+- Sync audit (independent sync-auditor, read by the lane): `.moai/reports/t1837/sync-audit.md` — PASS 0.93, no blocking findings, required codex backend returned pass, audited_sha `2d649e6a2`; stage record reached `merge-ready` on evidence `2b82bebd7:.moai/reports/t1837/sync-audit.md`.
 - Agent-reported, observed output cited by it (not re-observed by the lane): `make build` ok (no errors); `go test ./internal/template/ -count=1` -> `ok github.com/modu-ai/moai-adk/internal/template 360.115s` on tree `fb749d372`; after the fix, `go test ./internal/template/ -run 'TestRuleTemplateMirrorDrift|TestDeclaredRuleMirrorForks' -count=1 -v` -> `--- PASS: TestDeclaredRuleMirrorForks`, `--- PASS: TestRuleTemplateMirrorDrift`, `ok ... 0.811s` (2 tests swept) on tree `dd4d40427`.
 
 ## Baseline-attribution
@@ -26,6 +27,8 @@ Verdict: PASS-WITH-GAPS (lane's own verdict; evidence listed below). Operator-re
 - The lane did not re-observe the agent's test output; it is cited as agent-reported.
 - The `.github/workflows` detection command in the new text was not executed (documentation only).
 - CI / CodeRabbit not observed yet (no PR).
+- The `audit_multi` convergence check (`moai verify audit-plan --result-file`) was NOT run: the sync audit reached its single required backend (codex) directly through `codex_audit`, so no `audit_multi` result exists to compare. No result file was hand-written.
+- The delegated agent's unslotted 360 s full-package run is left on the record as it happened; the landing re-measure (inside the `go-test-heavy` slot, scoped per standing rule b2cd) replaces it as the final-tree measurement.
 
 ## Residual-risk
 - The "about 10 files / 400 lines" figures are illustrative values chosen by the agent; a reader may still treat them as a threshold.
