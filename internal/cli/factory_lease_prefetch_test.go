@@ -180,3 +180,38 @@ func TestFactoryNextIssuesNoOpenPRQueryBehindSerialSlot(t *testing.T) {
 		}
 	})
 }
+
+// TestFactoryNextIssuesNoOpenPRQueryWhenEveryCandidateIsSkipped — sync-audit-iter3
+// N3 regression: the bare peek applies the selector's own skip predicates — a
+// hold-marked card, a blocked classification — so a queue whose every
+// candidate the selector would skip issues no open-PR query either.
+func TestFactoryNextIssuesNoOpenPRQueryWhenEveryCandidateIsSkipped(t *testing.T) {
+	t.Run("every candidate hold-marked", func(t *testing.T) {
+		_, store := nmBase(t, factory.BacklogStateQueued, factory.BacklogStateQueued)
+		nmSetText(t, store, "t1", nmHoldMarker+" parked card")
+		nmSetText(t, store, "t2", nmHoldMarker+" another parked card")
+		nmLaneEnv(t, "lane-1", "")
+		gh := flFirstGhCall(t, func() (string, error) { return "[]", nil })
+		out, _, err := qasRunNext(t, "--run", fcRun)
+		sdExit3(t, "only marker cards remain", err)
+		_ = out
+		if at := gh(); !at.IsZero() {
+			t.Errorf("a bare attempt whose every candidate is hold-marked issued the open-PR query (gh pr list); want zero gh calls")
+		}
+	})
+	t.Run("every candidate blocked", func(t *testing.T) {
+		root, store := fcFixture(t)
+		fcQueue(t, store, factory.BacklogStateQueued, factory.BacklogStateQueued)
+		fcClassify(t, store, "t1", factory.ClassPriorityHigh, true, factory.ClassModeParallelizable)
+		fcClassify(t, store, "t2", factory.ClassPriorityLow, true, factory.ClassModeParallelizable)
+		sdRegisterLane(t, root, "lane-1")
+		sdLaneEnv(t, "lane-1", "")
+		gh := flFirstGhCall(t, func() (string, error) { return "[]", nil })
+		out, _, err := qasRunNext(t, "--run", fcRun)
+		sdExit3(t, "only blocked candidates remain", err)
+		_ = out
+		if at := gh(); !at.IsZero() {
+			t.Errorf("a bare attempt whose every candidate is blocked issued the open-PR query (gh pr list); want zero gh calls")
+		}
+	})
+}
