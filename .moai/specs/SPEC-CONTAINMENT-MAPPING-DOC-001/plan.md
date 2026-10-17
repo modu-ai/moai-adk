@@ -90,7 +90,7 @@ Exit: AC-CMM-005, 006, 007 flip green.
 
 ### M4 — Run the acceptance battery
 
-Run E01 to E09 from `acceptance.md` on the document, then the scope guard E10a and E10b against the pinned base commit (both exclude the document, this SPEC directory, and `.moai/reports/`). Apply the inline humanize pass first, then re-run, because wording edits can introduce a forbidden token.
+Run E01 to E09 from `acceptance.md` on the document, then the scope guard E10a and E10b against the pinned base commit (both exclude the document, this SPEC directory, and this card's evidence directory `.moai/reports/t1760/`). Apply the inline humanize pass first, then re-run, because wording edits can introduce a forbidden token.
 
 Exit: AC-CMM-008, 009, 010 hold on the final document. AC-CMM-008 and 009 can first be read once M2 has written the text, and are re-run here because later wording edits can reintroduce a token; AC-CMM-010 is green at the run-phase tip.
 
@@ -142,3 +142,16 @@ The second independent plan audit (score 0.875, verdict FAIL on one required-bac
 | O2 — Known limit omitted other date spellings | Fixed, by listing | Seven uncovered shapes observed uncounted and listed under Known limit |
 | O3 — milestones were list items, so the CN-4 verb could not read their order | Fixed | § F is now `###` headings, each with an `Exit:` line |
 | O4 — AC-CMM-004 is read across two commands | Not changed | Optional; stays a reviewer-run comparison of E04a and E04b |
+
+### J.1 Plan-audit fix round 3 — dispositions
+
+The third independent plan audit (score 0.90, verdict FAIL on the required codex leg, two blocking findings reproduced by the auditor) confirmed N1, N2, D1, and D2 fixed and returned two new blocking findings plus two optional ones. The ids N3 and N4 are the audit report's own. Its two optional findings are labelled D3 and D4 in the report; they are listed here as O5 and O6 so that they do not clash with the round-1 ids D3 and D4 used in § I. N1, N2, and the round-1 blockers D1 and D2 were not touched.
+
+| Finding | Disposition | Where, or why not |
+|---|---|---|
+| N3 — the pathspec `':!.moai/reports'` hides 1789 tracked files, so deleting another card's tracked evidence leaves E10a at exit 0 and E10b empty | Fixed, by narrowing | `acceptance.md` E10a and E10b now exclude `':!.moai/reports/t1760'` only; AC-CMM-010, the pin paragraph in the header, the Guard measurements, and the Definition of Done follow in the same edit. Cross-layer sweep (`.claude/rules/moai/development/verification-completeness.md` § 3): REQ-CMM-001 in `spec.md` now names `.moai/reports/t1760/`, the same scope as its check, and § F M4 above follows. Observed on the real tree: E10a exit 0, E10b stdout empty. Observed on a throwaway repo (ledger): deleting another card's tracked file now gives E10a exit 1 (the round-2 form stayed at exit 0), E10b prints the deletion, and deleting this card's own evidence stays invisible by design. This supersedes the round-2 pathspec recorded in the N1 row above. |
+| N4 — AC-CMM-008 promised month names "in any letter case" while E08 spells only `May` and `MAY` | Fixed, by narrowing the wording; the command is unchanged | The least-risk option. Extending the command to cover mixed-case May (`mAy`, `maY`, `MAy`, and the rest) would need a long alternation to avoid counting the ordinary verb `may`, and the rewrite would reopen every fixture. `acceptance.md` AC-CMM-008 now says May counts only as `May` or `MAY`; the six mixed-case spellings observed uncounted are listed under Known limit. Command re-run unchanged: 24 of 24 must-count lines, 0 of the 26 must-stay-zero lines, 18 of 18 new date lines, 3 of 3 for `october 16` / `OCTOBER 16` / `16 October` |
+| O5 (audit "D3") — Template-Mirror check is evaluated only at the run-phase tip | Not taken | Optional. A sync-phase check would be a new command, and a new check is unfinished until its red is observed (`verification-completeness.md` § 1.1), which is more than the one-line fix the audit allowed for. The run-phase check AC-CMM-010 already sees a file added under `internal/template/templates/` (outside all three allowed paths). The Definition of Done keeps the sentence that no phase changes that directory; the sync auditor and the sync-phase reviewer own it. Left open for a future round if the audit still wants it |
+| O6 (audit "D4") — a section range such as `10-12` matches the month-day branch of E08 | Recorded, not fixed | Observed in this round: a one-line fixture `sections 10-12 of the guide` counted 1. Recorded under Known limit in `acceptance.md` as a false red a reviewer resolves by rewording the range (for example `10 to 12`) |
+
+Residual risk carried from the audit, not tested here: if the run phase merges `main` into the card branch, other cards' files would enter the diff against the fixed base `629bb51cda73fc70422769988b8c28182c9bd2d5` and E10a would read red at the run-phase tip. The inference follows from the fixed-base design; the landing sequence was not measured.
