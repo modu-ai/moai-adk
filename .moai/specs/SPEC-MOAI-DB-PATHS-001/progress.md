@@ -144,14 +144,30 @@ run_status: complete
 audit_ready: true
 ac_pass_count: 16
 ac_fail_count: 0
-run_commit_sha: pending-backfill
+run_commit_sha: 4edfbc774
 M5: kept
 total_run_phase_files: 47 entries in git diff --name-status main...HEAD (11 A, 36 M)
 note: whole-package internal/cli run not observed (Gap, left to CI); AC-DBP-016 (2) is change-scoped and does not require it
 
 ## §E.4 Sync-phase Audit-Ready Signal
 
-_pending sync-phase_
+sync_status: complete
+audit_ready: true
+sync_complete_at: 2026-10-18
+sync_commit_sha: pending-backfill
+changelog_entry_position: first bullet of [Unreleased] > Added
+frontmatter_status_transitions: in-progress -> implemented -> completed on this single sync commit; spec.md updated: 2026-10-18; SPEC bodies untouched
+ac_source: .moai/specs/SPEC-MOAI-DB-PATHS-001/acceptance.md (tier M); B12 self-tests: pre-emission grep count 0, live AC count 16 (excluded 0, ambiguous 0), 12 cited paths exist
+run_commit_sha basis: 4edfbc774 is the last run-phase commit in `git log --format='%h %s' main..HEAD` (the docs commit recording final AC status and audit_ready true)
+sync_commit_sha handling: a commit cannot cite its own hash, so the slot holds the canonical `pending-backfill` placeholder; the real SHA is backfilled in a following commit only if the leader requires it (schema D3 backfill window)
+
+AC-DBP-016(5) ruling (run-phase-close judgment used): AC-DBP-016(5) is a run-phase-close criterion. It was judged at run-phase close (allow-list 11 A + 36 M, no excluded path, at 0242d5ef7, re-counted at 4edfbc774) and passed. This sync commit adds CHANGELOG.md, which the SPEC assigns to the sync phase (spec.md:114, acceptance.md:174), so that path is not a violation. SPEC bodies were not edited, which keeps the audited plan_artifact_hash 7446b8ac2c430a4041604b1b206f4a609cb1a7a9ce5343832ed3f4ed29fe77db bound.
+
+Decision record: decided_by=lane-5 claude-orchestrator evidence_refs=acceptance.md:153,spec.md:114,spec.md:164,acceptance.md:174 ladder_path=ladder step: judgment on a self-contradicting SPEC clause, SPEC body untouched to keep the audited plan_artifact_hash 7446b8ac…77db bound
+
+Named Gap (spec F.5 sync checkpoint), codemaps NOT regenerated in this task: `.moai/project/codemaps/{data-flow,modules,overview}.md`. The generator is the orchestrator-direct `/moai codemaps` workflow, which a subagent cannot run. Grep-level pre-regeneration observation (a hypothesis, not a verified defect): data-flow 6 database-path mentions / 0 `moai paths`; modules 7 / 0; overview 2 / 0. Command left for the leader: `/moai codemaps --force`, then `moai graph stamp codemaps`. Per spec F.5, any file still naming a path without the pointer afterwards is follow-up card input, not hand-edited.
+
+Other Gaps: the lint binary `/private/tmp/dbp-bin/moai-tree` prints commit `none` in `version`; progress §E.2 records it as built from 944f7ee76, and the only Go file changed since is internal/template/db_paths_surfaces_test.go. The whole internal/cli package run remains left to CI (see §E.2 Gaps).
 
 ## §G Override and Refusal Record
 
