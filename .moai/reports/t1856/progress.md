@@ -311,3 +311,107 @@ Wait record `w-t1856-20261017T1750Z-c305` (explicit wait, no idle-spin):
 - on resolution: spawn the repair (F1, F2 tests with mutant observation, F3-F5 records), re-run the
   targeted selector, re-audit with the required codex backend, then merge-ready and the landing
   re-measure (b2cd, rule 35e9 as clarified by `d-20261017T155926Z-148c`).
+
+## 11. Sync audit round 1 repair (lane-22)
+
+Audit: `.moai/reports/t1856/sync-audit.md` (FAIL, audited_sha 772c1c050). Repair tree HEAD before
+this round: `89c89da80`; test-code commit: `1b7d86152`. The resolver `srlDiffBase` is unchanged
+(ref list `{"main","origin/main"}`).
+
+### Dispositions
+
+- F1 repaired: `envDiffTempRepo` in `internal/hook/env_literal_diff_base_test.go` now uses
+  `t.TempDir()`; the manual cleanup is gone and the two /private/tmp comments say the caller's
+  TMPDIR carries the placement discipline. `grep -n 'private/tmp' internal/hook/env_literal_diff_base_test.go`
+  prints nothing (exit 1).
+- F2 repaired: two new cases, same helper style, same fixture email (no deny-list change; the
+  AC-CIG-010 drift test `TestCommitIdentityGuard_BuiltinListCoversFixtureEnumeration` passes).
+  `TestSrlDiffBasePrefersLocalMainOverStaleOriginMain` (kills D) and
+  `TestSrlDiffBaseSkipsDevelopBetweenMainAndOriginMain` (kills C). Each asserts its fixture is
+  discriminating (wanted base differs from the wrong ref's base) before judging the resolver.
+- F3 recorded below (follow-up material only).
+- F4 recounted below.
+- F5 repaired: the CHANGELOG sentence now names four tests and what each pins.
+
+### Mutant observation (edit of the ref list in srlDiffBase, restored with `git checkout -- internal/hook/env_literal_diff_test.go`; targeted selector `-run 'TestSrlDiffBase'`)
+
+Mutant C `{"main","develop","origin/main"}`:
+```
+--- FAIL: TestSrlDiffBaseSkipsDevelopBetweenMainAndOriginMain (0.31s)
+    env_literal_diff_base_test.go:139: srlDiffBase picked 167b9d23eb8ccff0a963589c344d8c3f2959984c; want merge-base with origin/main e96433700407581c4a968a69f64f80b40929b997, not stale develop 167b9d23eb8ccff0a963589c344d8c3f2959984c (card t1856)
+FAIL	github.com/modu-ai/moai-adk/internal/hook	2.516s
+```
+Mutant D `{"origin/main","main"}`:
+```
+--- FAIL: TestSrlDiffBasePrefersLocalMainOverStaleOriginMain (0.26s)
+    env_literal_diff_base_test.go:117: srlDiffBase picked e324a48e397ffcdbf9d46c225a7b90ee823b7624; want merge-base with local main 5d74389c68163a437f2e87615cd675827bf3abcb, not stale origin/main e324a48e397ffcdbf9d46c225a7b90ee823b7624 (card t1856)
+FAIL	github.com/modu-ai/moai-adk/internal/hook	2.353s
+```
+Mutant A `{"develop","origin/develop"}` (the original defect), all four fail:
+```
+--- FAIL: TestSrlDiffBaseResolvesFromMainNotStaleDevelop (0.68s)
+    env_literal_diff_base_test.go:78: srlDiffBase picked 048e5a52f01438863e3e1aea412bbf74831aef4d; want merge-base with local main d52be2a30fede466a30e4b850e229400dd95826e (stale-develop false positive, card t1856)
+--- FAIL: TestSrlDiffBaseFallsBackToOriginMain (0.53s)
+    env_literal_diff_base_test.go:95: srlDiffBase picked HEAD; want merge-base with origin/main 5b5afc5a9e85b9dee90471a189fa660b00170970 (fallback, card t1856)
+--- FAIL: TestSrlDiffBasePrefersLocalMainOverStaleOriginMain (0.42s)
+    env_literal_diff_base_test.go:117: srlDiffBase picked HEAD; want merge-base with local main 14ca9f0e4c00571ba35cd9171e391a1386d61682, not stale origin/main 5b5afc5a9e85b9dee90471a189fa660b00170970 (card t1856)
+--- FAIL: TestSrlDiffBaseSkipsDevelopBetweenMainAndOriginMain (0.33s)
+    env_literal_diff_base_test.go:139: srlDiffBase picked 44d344a56d583d51dbf55f7eaa6f8b7b8625514a; want merge-base with origin/main a00a1ffb774228befddf2a0a1953fe5d1a570fa8, not stale develop 44d344a56d583d51dbf55f7eaa6f8b7b8625514a (card t1856)
+```
+After each mutant `git checkout -- internal/hook/env_literal_diff_test.go`; `git diff --stat` then listed only
+`internal/hook/env_literal_diff_base_test.go`. No mutant was committed. (Mutant B, returning HEAD
+when main is absent, was not run; it fails `TestSrlDiffBaseFallsBackToOriginMain` by the same
+mechanism as mutant A's second line.)
+
+### Targeted GREEN (env scrubbed, TMPDIR/GOTMPDIR under /private/tmp/t-rp, real resolver)
+
+```
+--- PASS: TestCommitIdentityGuard_BuiltinListCoversFixtureEnumeration (2.01s)
+--- PASS: TestSrlDiffBaseResolvesFromMainNotStaleDevelop (0.87s)
+--- PASS: TestSrlDiffBaseFallsBackToOriginMain (0.27s)
+--- PASS: TestSrlDiffBasePrefersLocalMainOverStaleOriginMain (0.43s)
+--- PASS: TestSrlDiffBaseSkipsDevelopBetweenMainAndOriginMain (0.32s)
+    env_literal_diff_test.go:52: env-literal sweep: 2 added lines swept across internal/hook internal/factorymsg internal/cli (envkeys.go and _test.go excluded), base=e4b747678aae096b22769fdfd3efc5d89498006a, distinct literals=0
+--- PASS: TestNoNewEnvLiteralsInDiff (0.09s)
+ok  	github.com/modu-ai/moai-adk/internal/hook	4.798s
+```
+
+### F3 literal-`develop` base lookups (follow-up material, not repaired here)
+
+Commands, run on this tree: `git grep -n 'merge-base[^|]*develop' -- '*.go'` and
+`git grep -n '"develop"' -- 'internal/**/*_test.go'` (filtered to merge/base/branch lines).
+Own list from the first command (excluding this card's own `internal/hook/env_literal_diff_base_test.go` lines):
+- internal/cli/codex_review_scope_test.go:163, :546 (code), :134 (comment)
+- internal/cli/mcp_selfreview_fixture_test.go:128 (code), :64 (comment)
+- internal/cli/mcp_selfreview_test.go:281
+- internal/cli/factory_complete_test.go:409 (`merge-base --is-ancestor <sha> develop`; the fixture also does `merge ... develop` at :395)
+- internal/cli/factory_merge_test.go:99
+- internal/cli/mcp_build_identity_test.go:704 (comment)
+- internal/cli/todo_issuance_probe_test.go:5 (comment)
+- internal/factory/integration_remeasure_run_test.go:48 (`merge-base develop main`; NOT in the auditor's list)
+Cross-check against the auditor's six: all six present (codex_review_scope_test.go:163,
+mcp_selfreview_fixture_test.go:128, mcp_selfreview_test.go:281, factory_complete_test.go:409,
+factory_merge_test.go:99, todo_issuance_probe_test.go:5). My list adds codex_review_scope_test.go:546,
+integration_remeasure_run_test.go:48 and three comment lines. The second command's remaining hits
+(IntegrationBranch: "develop", `--develop develop`, config fixtures) pass a branch name as data and are not base lookups;
+that classification is my reading, not a run of each test.
+
+### F4 recount of `origin/develop`
+
+Commands: `git grep -n 'origin/develop' | wc -l` = 1923 on this tree (audit saw 1919; survey file has 1903 lines).
+`git grep -n 'origin/develop' -- . ':!CHANGELOG.md' ':!.moai/reports/t1856' | wc -l` = 1888;
+`-- CHANGELOG.md` = 18; `-- .moai/reports/t1856` = 17 (progress.md 11, sync-audit.md 4, verdict.md 2).
+Diff of the current grep against the survey file (sorted, `comm`): new lines per file = progress.md 11,
+sync-audit.md 4, verdict.md 2, CHANGELOG.md 18, internal/hook/env_literal_diff_base_test.go 2; removed =
+CHANGELOG.md 17 (same entries, line numbers shifted, so they appear as removed plus re-added; net +1).
+Net delta 11+4+2+1+2 = 20 = 1923 - 1903. Every line of the delta is the lane's own files; no other
+file gained or lost an `origin/develop` hit. The survey file itself is untouched.
+
+### Gaps
+
+- The Linux run was NOT observed locally: CI is Linux-only and this agent ran on macOS. Removing the
+  hard-coded path removes the known failure cause; it is not an observed Linux pass.
+- The full `internal/hook` package and the landing re-measure have not run since this change.
+- The repair changes only test code in `internal/hook`; no non-test file changed this round.
+- The sync audit has not been re-run on this delta; the required codex backend still owes a verdict.
+- Mutant B was not run (see above).
