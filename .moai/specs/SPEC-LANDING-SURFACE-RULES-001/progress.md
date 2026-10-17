@@ -29,11 +29,60 @@ Copied verbatim from the `- debt:` lines of `.moai/reports/t1846/plan-audit-iter
 
 ## §E.2 Run-phase Evidence
 
-_<pending run-phase>_
+Tree pin (plan base) `7faf75fdf`; run tree HEAD `499701907`. Evidence refs: **R** = `.moai/reports/t1846/run-evidence-m1-m4.md` (local, gitignored, section named); **H** = heavy-chain outputs in the lane scratchpad `.../scratchpad/heavy/out/<file>` (machine-local, not committed). The deciding lines are quoted here; the files are not citable from another machine.
+
+| AC | Class | Command (abridged) | Observed (deciding lines) | Ref |
+|---|---|---|---|---|
+| 001 | flip | `git grep -noF -e 'landing and resync only' -e 'is the human and leader workspace and does not check out `main`' -- <protocol>`; heading bounds `^## [23]\. ` | both phrases at line 37; bounds 35 and 55; exit 0 | R "AC-001/003 placement bounds", L3 |
+| 002 | flip | L1 five-sentence `git grep -noF` on the protocol file | empty, `exit=1` (was 5 lines, exit 0 at the pin) | R "L1" |
+| 003 | flip | same two phrases on `AGENTS.local.md`; `^### §4\.[01]` bounds | both at line 184; bounds 182 and 239; exit 0 | R "AC-001/003 placement bounds" |
+| 004 | flip | L2 five-sentence `git grep -noF` on `AGENTS.local.md` | empty, `exit=1` (was 5 lines at the pin) | R "L2" |
+| 005 | flip | three phrases x five template sources, `git grep -c -F` | each phrase: five files, count 1 each, exit 0 | R "AC-005" |
+| 006 | guard | `git diff --name-only '-G(SPEC-[A-Z]\|[^a-z]t[0-9]{3,4}[^0-9]\|date\|planned in)' 7faf75fdf HEAD -- <template paths>` | empty, exit 0 (committed and working-tree forms); positive control L4b lists the ops template file | R "AC-006", "L4b" |
+| 007 | flip+guard | deployed-path phrase counts; `diff -q`/`diff -rq`/`--numstat` pairs | phrases 5/5/5; `diff -q` exit 0 on 4 pairs, sync dir exit 0; rules dir lists exactly the six G5 files; ops numstat `9 9` | R "AC-007", "G5 identity" |
+| 008 | chain | `make agents-emit-check` (RED), `make agents-emit`, `cp`, `make agents-emit-check`, `make build`, `make embed-manifest-check`, six named tests | c1 RED `sha256 mismatch ... exit=2`; c2 `exit=0`, deployed stale; after `cp` `diff -q` exit 0; c3 `ok ... exit=0`; c4 `catalog.yaml updated successfully`, exit 0, numstat `2 2 internal/template/catalog.yaml`; c5 `ok ... exit=0`; c6 six `--- PASS` lines (TestTemplateNoInternalContentLeak, TestRouteBPrecheckCoversAllEntryPoints, TestWorkflowRulePathsPinned, TestDeclaredRuleMirrorForks, TestRuleTemplateMirrorDrift, TestSanitizedPairParity), `ok ... 2.640s`, exit 0 (swept count 6) | H c1-c6; own re-check at HEAD: toml phrase count 1 in both copies, `diff -q` exit 0, catalog numstat `2 2` |
+| 009 | flip | `git grep -noF -e 'git show main:' -e 'smudge'` on both files | protocol line 39 and `AGENTS.local.md` line 198, both phrases each; exit 0 | R "AC-009" |
+| 010 | flip | `git grep -noF -e 'each untracked or modified file' -e 'no moai verb moves the primary checkout to the current local'` | protocol line 39 (both); `AGENTS.local.md` lines 198 and 202; exit 0 | R "AC-010" |
+| 011 | flip+guard | `-e 'branches from the named ref' -e 'falls back to the invoking tree'`; `-e 'point to the same commit'` | both phrases in both files (protocol 18, `AGENTS.local.md` 188); guard half protocol line 29; exit 0 | R "AC-011" |
+| 012 | flip+guard | `git grep -c -F 'named local ref'` on four files; `Branches from default remote branch` | four files, count 1 each; guard lines `worktree-integration.md:93` in both copies; exit 0 | R "AC-012" |
+| 013 | flip+guard | `git grep -c -F 'planned in t1847'` on the two local files; L6 over distributed surfaces | protocol 4, `AGENTS.local.md` 2; L6 empty `exit=1` | R "AC-013", "L6" |
+| 014 | guard | `git diff --name-only -G'race-safe\|guaranteed\|always safe' 7faf75fdf HEAD -- <edit set>` and working-tree form | empty, exit 0 in both forms | R "L4" |
+| 015 | guard | allow-list fence, 19 exclude pathspecs, `git diff --name-only 7faf75fdf HEAD -- . ':(exclude)...'` and `git diff --name-only 7faf75fdf -- ...`; `agentic-trunk` grep | both fence forms empty, exit 0 (re-run at HEAD `499701907` before this commit); `agentic-trunk` `exit=1` empty | R "L7", "L7b"; fence re-run by the run agent |
+
+Other measurements: `AGENTS.local.md` 50017 -> 51010 bytes (+993, within the OQ-9 default of 1000); protocol 30381 -> 32738. `moai spec lint --strict` on the SPEC directory: `0 error(s), 0 warning(s)` (one INFO `OwnershipTransitionUnmeasured`, no exit-status effect), installed `moai v3.2.0-rc.36-t1822c` built from `ee981a932`, an ancestor of HEAD with no `internal/spec` change in between (R "tool provenance").
+
+### Binding run conditions
+
+- **N2 disposed.** The stale ledger-id ranges in spec.md and plan.md were corrected by manager-spec re-delegation in `72a6d8796`. The runtime `plan_artifact_hash` is now `7b648f6230fb71cd9dfd46fc1b85c0d03d1d03a96130c7a200133d8bc909a4d2`, measured by the lane with the MCP `audit_cache` tool (E.1 carries the previous value `1c0ff825...`); re-record it in E.4.
+- **N3 disposed.** The fence ran in the committed-range form and in the working-tree form `git diff --name-only 7faf75fdf -- .` with the same exclusions: both empty, exit 0 (R "L7"; re-run at HEAD `499701907`).
+- **N4 disposed.** Green baselines were measured on a shared-object clone of the pin `7faf75fdf` before any edit reached it: H b1 `make agents-emit-check` `ok ... exit=0`; H b2 `make embed-manifest-check` `ok ... exit=0`; H b3 `gen-catalog-hashes.go --all --dry-run` (70 entries, `[dry-run] catalog.yaml not modified`, exit 0). The RED observation is H c1 in the card tree before regeneration (`sha256 mismatch`, exit 2). Method note: two earlier baseline attempts failed and are kept as H `b2-first-attempt-no-git.txt` (a `git archive` copy has no `.git`) and `b2-second-attempt-scratch-add-A.txt` (a scratch `git add -A` tracks a different file set than the real repository); only the clone is a valid baseline.
+
+### Gaps
+
+- Placement correctness of AC-LSR-010, 011 and the limit-naming half of AC-LSR-014 is by reading, not grep; the grep clauses can be satisfied by an off-target edit (plan.md R5).
+- The fence uses the plan pin `7faf75fdf` while local `main` moved 36 commits on; none of them touched an in-scope file (R "G3"). A rebase onto later `main` needs L7 re-pinned.
+- No `internal/cli` change, so the remeasure rule for `./internal/cli` does not apply; no full-suite run was made.
+- H outputs are machine-local scratch and not reachable from another machine; the quoted lines above are the carried evidence.
+- No sync-phase work was done: the E.4 evidence, the sync-audit and the `plan_artifact_hash` re-record belong to the sync phase.
 
 ## §E.3 Run-phase Audit-Ready Signal
 
-_<pending run-phase>_
+run_status: audit-ready
+audit_ready: true
+run_complete_at: 2026-10-18
+run_commit_sha: 499701907 (last code commit; this evidence commit follows it and cannot cite its own hash)
+run_commits: 5ccf12db8 (repo-local guidance), a67623ebd (template sources), 6dcb45586 (deployed copies), 72a6d8796 (N2 disposal), 499701907 (generated toml pair and catalog.yaml)
+ac_pass_count: 15
+ac_fail_count: 0
+preserve_list_post_run_count: not applicable (guidance-only SPEC, no PRESERVE list)
+l44_pre_commit_fetch: not run (no push in the run phase; the lane lands)
+l44_post_push_fetch: not run (no push in the run phase)
+new_warnings_or_lints_introduced: 0 (`moai spec lint --strict`: 0 error(s), 0 warning(s))
+cross_platform_build: not applicable (no Go change); `make build` exit 0 under the lane's go-test-heavy slot
+total_run_phase_files: 17 (the plan.md B.7 allow-list) plus spec.md and plan.md for N2
+m1_to_mN_commit_strategy: one commit per milestone step (M2, M3, M4 edit half), then N2 disposal and the generated-artifact commit, then this evidence commit; no push
+fence_pin: 7faf75fdf (fence empty in the HEAD and working-tree forms)
+plan_artifact_hash_runtime: 7b648f6230fb71cd9dfd46fc1b85c0d03d1d03a96130c7a200133d8bc909a4d2
 
 ## §E.4 Sync-phase Audit-Ready Signal
 
