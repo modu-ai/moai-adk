@@ -48,6 +48,7 @@ import (
 	"github.com/modu-ai/moai-adk/internal/factory"
 	"github.com/modu-ai/moai-adk/internal/factorymsg"
 	"github.com/modu-ai/moai-adk/internal/homestate"
+	"github.com/modu-ai/moai-adk/internal/paths"
 	"github.com/modu-ai/moai-adk/internal/session"
 	"github.com/spf13/cobra"
 )
@@ -127,6 +128,28 @@ func codexChildArgs(kind codexVerb, tail []string) []string {
 	}
 	return append(args, tail...)
 }
+
+// codexMoaiHomeAddDir returns `--add-dir <moai home>` for an interactive
+// codex session. The project databases live under ~/.moai, outside the
+// workspace a workspace-write sandbox may write, and SQLite must create its
+// -wal/-shm/journal files beside a database even to read it — without the
+// flag every `moai todo` / `moai factory` call inside the session fails with
+// "unable to open database file (14)". A home that cannot be resolved or does
+// not exist yet adds nothing; the launch proceeds as before.
+func codexMoaiHomeAddDir() []string {
+	home, err := paths.MoaiHome()
+	if err != nil {
+		return nil
+	}
+	if info, err := os.Stat(home); err != nil || !info.IsDir() {
+		return nil
+	}
+	return []string{"--add-dir", home}
+}
+
+// codexMoaiHomeAddDirArgs is the seam the launch paths call; tests that pin
+// exact child argv replace it.
+var codexMoaiHomeAddDirArgs = codexMoaiHomeAddDir
 
 // codexLocalDeveloperInstructionArgs is codexLocalDeveloperInstructions without
 // the list of files read, for callers that only need the argv pair.
@@ -942,9 +965,20 @@ func enterCodexRelaunchJoin(root string, entry factoryFlagParse, timing *factory
 // loop's removal. The positional prompt is the Codex CLI's own channel for an
 // initial directive (`codex [OPTIONS] [PROMPT]`), and `-l` takes no operator
 // tail, so the prompt is always ours.
-const codexLaneAutoPrompt = "Run `moai todo --auto` to consume the backlog queue: " +
-	"the cycle ranks the queued candidates, leases the top card through the factory lease edge, " +
-	"dispatches one isolated lane per card, judges completion on the disk evidence, and continues to the next card."
+//
+// Card t1776 made the directive IMPERATIVE: the previous descriptive prompt
+// ("the cycle ranks…, dispatches…, judges…") sent the session reading
+// todo_auto*.go and factory-dispatch*.md in full before it established the
+// command's existence — 72% of the dispatch context burned before any
+// autonomous progress. The prompt now commands the run, forbids the source
+// reading, pins the output-line contract, and stops on a refusal. Card t1814
+// moved it to `--auto-lane`: `--auto` waits for the worker evidence, and a
+// Codex session acts only after the command exits.
+const codexLaneAutoPrompt = "Run `moai todo --auto-lane` now. " +
+	"Do not read the engine or the rule sources first — act on the output directly: " +
+	"follow its selection:/accept/dispatch lines verbatim. " +
+	"A `refused (...) — next candidate` line is a normal skip: keep going with the next card. " +
+	"If the run ends in a refusal line with no dispatch directive after it, report that one refusal and stop."
 
 // @MX:NOTE: card t1554 removed the boot auto-lease loop — lane boot is not
 // queue consumption. The launcher stamps the lane environment (the shared
@@ -959,7 +993,8 @@ const codexLaneAutoPrompt = "Run `moai todo --auto` to consume the backlog queue
 func runCodexFactoryLane(cmd *cobra.Command, entry factoryFlagParse, debug bool) error {
 	// The lane session leases through `moai todo --auto` from the parent
 	// checkout — the lease machinery's own precondition (REQ-SD-010).
-	if err := factoryAssertParentCheckout(resolveProjectDir()); err != nil {
+	launchDir := codexLaneLaunchDir()
+	if err := codexLaneParentCheckout(launchDir); err != nil {
 		return err
 	}
 	// Debug mode (SPEC-CODEX-DEBUG-MODE-001): the lane launch traces its own
@@ -978,7 +1013,7 @@ func runCodexFactoryLane(cmd *cobra.Command, entry factoryFlagParse, debug bool)
 		_, _ = fmt.Fprintln(cmd.ErrOrStderr(), codexInstallHint)
 		return &exitCodeError{code: 1}
 	}
-	root := factoryCardRoot()
+	root := factory.ResolveTodoQueueRootAdopting(launchDir)
 	// The run id and the git requirement arrive together: a lane join
 	// resolves the single active run and refuses outside a git working tree
 	// before any write (REQ-SD-005) — the same door the cc/glm lane join
@@ -986,7 +1021,7 @@ func runCodexFactoryLane(cmd *cobra.Command, entry factoryFlagParse, debug bool)
 	// ②): named or empty, the shared gate resolves it.
 	restoreRun, err := enterCodexRelaunchJoin(root, entry, launchTiming)
 	if err != nil {
-		return err
+		return codexLaneJoinError(err)
 	}
 	defer restoreRun()
 	runID := strings.TrimSpace(os.Getenv(config.EnvFactoryRunID))
@@ -1022,13 +1057,21 @@ func runCodexFactoryLane(cmd *cobra.Command, entry factoryFlagParse, debug bool)
 		return fmt.Errorf("load Codex local instructions: %w", err)
 	}
 	args := append([]string{"-C", root}, localArgs...)
+	args = append(args, codexMoaiHomeAddDirArgs()...)
+	// card t1808: the lane session's default model and effort.
+	args = append(args, codexSessionDefaultArgsFn(root, config.SessionRoleLane, nil)...)
+	laneEnv := []string{
+		config.EnvFactoryRole + "=" + config.FactoryRoleLane,
+		config.EnvMoaiFactoryWorker + "=" + label,
+		config.EnvFactoryBackend + "=" + factory.BackendGPT,
+		config.EnvFactoryRunID + "=" + runID,
+	}
+	// card t1819: the same keys as shell_environment_policy.set overrides, so
+	// they reach the session's shell commands under any inherit setting.
+	args = append(args, codexShellEnvSetArgs(laneEnv)...)
 	args = append(args, codexLaneAutoPrompt)
-	env := append(codexChildEnv(),
-		config.EnvFactoryRole+"="+config.FactoryRoleLane,
-		config.EnvMoaiFactoryWorker+"="+label,
-		config.EnvFactoryBackend+"="+factory.BackendGPT,
-		config.EnvFactoryRunID+"="+runID,
-	)
+	env := append(codexChildEnv(), laneEnv...)
+	env = codexLaneChildEnv(env, root)
 	if debug {
 		env = codexApplyDebugEnv(env)
 	}
@@ -1151,7 +1194,19 @@ func runCodexLaunch(cmd *cobra.Command, kind codexVerb, tail []string, spawn boo
 		launchTiming.annotateDetail("resolved " + resolved + "; writer-check ok")
 		dir = resolved
 	}
-	childArgs := append(localArgs, codexChildArgs(kind, tail)...)
+	childArgs := localArgs
+	if kind == codexVerbLaunchCli {
+		// The desktop app is not the sandboxed CLI session; only the CLI
+		// session needs the moai home writable.
+		childArgs = append(childArgs, codexMoaiHomeAddDirArgs()...)
+		// card t1808: a plain `moai codex` is the operator's ordinary session
+		// and adds no model args — .codex/config.toml decides. The leader
+		// session default is reserved for a future `moai codex -f` (t1645).
+	}
+	// The factory overrides below are spliced here, ahead of the verb and the
+	// operator tail.
+	overrideAt := len(childArgs)
+	childArgs = append(childArgs, codexChildArgs(kind, tail)...)
 	req := codexLaunchRequest{Program: binaryPath, Args: childArgs, Dir: dir, Debug: debug, timing: launchTiming}
 	// SPEC-FACTORY-MANAGED-SESSION-001 M3 (design.md D-7): the divert engages
 	// only when the explicit opt-in MOAI_FACTORY_MANAGED (1/true) AND the
@@ -1170,7 +1225,11 @@ func runCodexLaunch(cmd *cobra.Command, kind codexVerb, tail []string, spawn boo
 				return &exitCodeError{code: 1}
 			}
 		}
-		return managedFactoryCodexLaunchFunc(binaryPath, append([]string{binaryPath}, childArgs...), os.Environ(), req.Dir)
+		// The managed owner is headless and refuses every flag but -c/-m, so it
+		// gets the argv without the launcher's moai-home --add-dir (card t1823).
+		// Clone first: childArgs aliases localArgs.
+		managedArgs := append(slices.Clone(localArgs), codexChildArgs(kind, tail)...)
+		return managedFactoryCodexLaunchFunc(binaryPath, append([]string{binaryPath}, managedArgs...), os.Environ(), req.Dir)
 	}
 	if spawn {
 		if err := checkSpawnPrereqs(); err != nil {
@@ -1185,6 +1244,8 @@ func runCodexLaunch(cmd *cobra.Command, kind codexVerb, tail []string, spawn boo
 		}
 		defer restore()
 		req.FactoryEnv = codexFactoryEnv(factoryEntry)
+		// card t1819: mirror the factory keys into the shell environment too.
+		req.Args = slices.Insert(req.Args, overrideAt, codexShellEnvSetArgs(req.FactoryEnv)...)
 	}
 	// The child-env assembly is a traced pre-exec step (REQ-005), performed
 	// HERE — ahead of the pre-seam reports — so the assembly line precedes

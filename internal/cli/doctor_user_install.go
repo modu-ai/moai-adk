@@ -6,6 +6,7 @@ package cli
 import (
 	"crypto/sha256"
 	"encoding/hex"
+	"encoding/json"
 	"fmt"
 	"io/fs"
 	"os"
@@ -127,18 +128,48 @@ func splitManifestKeyUser(key string) (userassets.RootSlug, string, bool) {
 // in BOTH directions (REQ-015): a project file absent from the lock, and a
 // lock entry absent from the project. Read-only; the lock schema is not
 // touched (C3).
+//
+// M7 (REQ-DOC-001/002, SPEC-USERASSET-DEPLOY-GUARD-001):
+//   - the manifest is READ FIRST and judged read-only: a corrupt manifest
+//     is reported at a failure grade (never the CheckOK disguise) and the
+//     manager's quarantining Load is never reached, so the corrupt
+//     original stays at its path and a pre-existing .corrupt recovery copy
+//     is never overwritten (the audited double assertion);
+//   - a tree that offers NO lock-comparable surface reports the vacuous
+//     condition instead of the "matches the lock file" claim (AC-020).
 func checkProjectVsLock(projectRoot string, verbose bool) DiagnosticCheck {
 	check := DiagnosticCheck{Name: "Project Lock"}
 
-	mgr := manifest.NewManager()
-	if _, err := mgr.Load(projectRoot); err != nil {
+	manifestPath := filepath.Join(projectRoot, ".moai", "manifest.json")
+	manifestData, readErr := os.ReadFile(manifestPath)
+	if readErr != nil {
+		if !os.IsNotExist(readErr) {
+			// present but unreadable: surfaced, never disguised
+			check.Status = uikit.CheckWarn
+			check.Message = fmt.Sprintf("project manifest unreadable: %v", readErr)
+			return check
+		}
+		// genuinely absent: nothing to compare — the honest shape
 		check.Status = uikit.CheckOK
 		check.Message = "no project manifest (nothing to compare)"
 		return check
 	}
+	// Finding A (card t1591): decode into the type manifest.Load decodes into, but
+	// read-only. Valid JSON of the wrong shape (for example {"files":123}) is as
+	// corrupt as text that is not JSON, and it must never reach Load, which moves
+	// a manifest it cannot decode aside.
+	var mf manifest.Manifest
+	if json.Unmarshal(manifestData, &mf) != nil {
+		check.Status = uikit.CheckFail
+		check.Message = fmt.Sprintf("project manifest at %s is corrupt — run 'moai doctor --json' for recovery guidance; the file is preserved untouched", manifestPath)
+		if verbose {
+			check.Detail = "the doctor reads the manifest read-only: the corrupt bytes stay at their path and any prior .corrupt recovery copy is left alone."
+		}
+		return check
+	}
 
 	notInLock, notOnDisk := 0, 0
-	for p := range mgr.Manifest().Files {
+	for p := range mf.Files {
 		abs := filepath.Join(projectRoot, filepath.FromSlash(p))
 		if _, err := os.Stat(abs); os.IsNotExist(err) {
 			notOnDisk++
@@ -147,6 +178,7 @@ func checkProjectVsLock(projectRoot string, verbose bool) DiagnosticCheck {
 			}
 		}
 	}
+	comparable := 0
 	_ = filepath.WalkDir(projectRoot, func(p string, d fs.DirEntry, err error) error {
 		if err != nil || d.IsDir() {
 			return nil
@@ -160,7 +192,7 @@ func checkProjectVsLock(projectRoot string, verbose bool) DiagnosticCheck {
 			strings.HasPrefix(relSlash, "node_modules/") {
 			return nil
 		}
-		if _, tracked := mgr.Manifest().Files[relSlash]; !tracked {
+		if _, tracked := mf.Files[relSlash]; !tracked {
 			// Only template-recorded ROOTS are lock-comparable surface.
 			for _, root := range projectCommonAssetRels {
 				if strings.HasPrefix(relSlash, root) {
@@ -172,6 +204,12 @@ func checkProjectVsLock(projectRoot string, verbose bool) DiagnosticCheck {
 				}
 			}
 		}
+		for _, root := range projectCommonAssetRels {
+			if strings.HasPrefix(relSlash, root) {
+				comparable++
+				break
+			}
+		}
 		return nil
 	})
 
@@ -179,6 +217,12 @@ func checkProjectVsLock(projectRoot string, verbose bool) DiagnosticCheck {
 	case notInLock > 0 || notOnDisk > 0:
 		check.Status = uikit.CheckWarn
 		check.Message = fmt.Sprintf("lock drift: %d project file(s) absent from lock, %d lock entr(ies) absent from project", notInLock, notOnDisk)
+	case comparable == 0:
+		// M7 (REQ-DOC-002): the vacuous-comparison honesty — the tree
+		// offers no lock-comparable surface, so a "matches the lock file"
+		// claim here would have compared nothing.
+		check.Status = uikit.CheckWarn
+		check.Message = "the project tree offers no lock-comparable surface — the lock comparison is vacuous (nothing was judged)"
 	default:
 		check.Status = uikit.CheckOK
 		check.Message = "project tree matches the lock file"

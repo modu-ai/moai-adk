@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"os"
 	"os/exec"
+	"path/filepath"
 	"testing"
 
 	"charm.land/fang/v2"
@@ -45,6 +46,30 @@ func TestHelperProcess(t *testing.T) {
 		return
 	}
 	os.Exit(3)
+}
+
+// TestHelperProcess_ReusesTheParentGitConfigPin: a re-executed test binary runs
+// TestMain again. It must reuse the parent's GIT_CONFIG_GLOBAL file instead of
+// creating a second one that os.Exit(3) would orphan (card t1801). Each helper
+// gets a private temp dir, so the count is deterministic whatever else runs.
+func TestHelperProcess_ReusesTheParentGitConfigPin(t *testing.T) {
+	const helpers = 3
+	private := t.TempDir()
+	for i := range helpers {
+		cmd := exec.Command(os.Args[0], "-test.run=^TestHelperProcess$")
+		cmd.Env = append(os.Environ(), "GO_WANT_HELPER_PROCESS=1", "TMPDIR="+private, "TMP="+private, "TEMP="+private)
+		var exitErr *exec.ExitError
+		if err := cmd.Run(); !errors.As(err, &exitErr) || exitErr.ExitCode() != 3 {
+			t.Fatalf("helper %d: want exit 3, got %v", i, err)
+		}
+	}
+	leaked, err := filepath.Glob(filepath.Join(private, "moai-cli-gitconfig-*"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(leaked) != 0 {
+		t.Fatalf("%d helper processes left %d git config temp files in their private temp dir: %v", helpers, len(leaked), leaked)
+	}
 }
 
 // exitCoderWrappingRaw is the adversarial shape: an intentional ExitCoder

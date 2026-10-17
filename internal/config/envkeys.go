@@ -40,6 +40,12 @@ const (
 	// optimization is bypassed (SPEC-HOOK-PRETOOL-PERF-001).
 	EnvConfigCacheDisabled = "MOAI_CONFIG_CACHE_DISABLED"
 
+	// EnvCodexAuditLeg marks the codex child of an audit leg with "1" (t1788). The
+	// child's Stop chain skips every member that asks the model to run a
+	// verification command, which would otherwise nest a verification inside the
+	// leg's own review.
+	EnvCodexAuditLeg = "MOAI_CODEX_AUDIT_LEG"
+
 	// EnvDevelopmentMode overrides the development methodology (ddd or tdd).
 	EnvDevelopmentMode = "MOAI_DEVELOPMENT_MODE"
 
@@ -402,8 +408,9 @@ const (
 	EnvFactoryClearPolicy = "MOAI_FACTORY_CLEAR_POLICY"
 
 	// FactoryClearPolicyEach is the default clear policy: after each
-	// completion the lane asks the operator to /clear and continues on the
-	// fresh session.
+	// completion the lane prints the in-session card transition (exit the
+	// card worktree keeping it, lease the next card, enter its worktree);
+	// no value instructs a session clear (SPEC-FACTORY-LANE-NO-CLEAR-001).
 	FactoryClearPolicyEach = "clear-each"
 
 	// EnvFactoryAutoDispatch carries the auto-dispatch selection a factory
@@ -424,9 +431,10 @@ const (
 	// receives a manual-mode rule instead of the next-card rule.
 	FactoryDispatchManual = "manual"
 
-	// FactoryClearPolicyWhenFull asks for /clear only once the session's
-	// context-usage record reaches the model-specific handoff threshold;
-	// below it the lane continues with the next card in the same session.
+	// FactoryClearPolicyWhenFull prints the in-session card transition only
+	// once the session's context-usage record reaches the model-specific
+	// handoff threshold; below it the lane prints nothing and continues with
+	// the next card in the same session. It names no clear instruction.
 	FactoryClearPolicyWhenFull = "clear-when-full"
 
 	// FactoryClearPolicyRelaunch asks the operator to end the session; the

@@ -130,10 +130,15 @@ func TestHandleCodexReviewGate_LiveCodexBlocksInjectionAndKey(t *testing.T) {
 		if entryErr != nil {
 			t.Fatalf("entry error: %v", entryErr)
 		}
-		if entry == nil || entry.Decision != hook.DecisionBlock {
-			t.Fatalf("a fresh FAIL receipt must BLOCK at turn entry (the delayed enforcement point), got %+v", entry)
+		// M2 (REQ-RG-001, REQ-RG-002): the entry never blocks; the fail detail
+		// reaches the prompt as additional context. Previously: BLOCK.
+		if entry == nil || entry.Decision == hook.DecisionBlock {
+			t.Fatalf("a fresh FAIL receipt must not block at turn entry (REQ-RG-001), got %+v", entry)
 		}
-		t.Logf("BLOCK reached at turn entry. reason=%q", entry.Reason)
+		if entryDeliveryContext(entry) == "" {
+			t.Fatalf("a fresh FAIL receipt must deliver the fail detail as additional context at turn entry (REQ-RG-002), got %+v", entry)
+		}
+		t.Logf("turn entry delivered the fail detail as additional context. additionalContext=%q", entryDeliveryContext(entry))
 	case codexReviewVerdictInconclusive:
 		t.Skipf("codex review turn did not complete — the producer recorded inconclusive with the error surfaced (correct behavior)")
 	default:

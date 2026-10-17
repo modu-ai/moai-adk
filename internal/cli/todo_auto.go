@@ -1,6 +1,7 @@
 package cli
 
 import (
+	"bytes"
 	"context"
 	"fmt"
 	"io"
@@ -205,12 +206,19 @@ func autoPickTargets(rec *factory.BacklogRecord, lv autoLiveness, root string) (
 
 // autoOptions carries the cycle's seams and knobs.
 type autoOptions struct {
-	wait      time.Duration            // evidence deadline per card
-	liveness  autoLiveness             // owner-measurement channels
-	sessionID string                   // the invoking (operator) session, named in the guidance
-	sleep     func(time.Duration)      // poll-tick seam (tests drive evidence arrival here)
-	now       func() time.Time         // clock seam for the deadline
-	jev       func(root string) string // display-only consultation seam (tests stub it)
+	wait      time.Duration               // evidence deadline per card
+	liveness  autoLiveness                // owner-measurement channels
+	sessionID string                      // the invoking (operator) session, named in the guidance
+	sleep     func(time.Duration)         // poll-tick seam (tests drive evidence arrival here)
+	now       func() time.Time            // clock seam for the deadline
+	jev       func(autoJevDisplay) string // display-only line seam (tests stub it)
+
+	// noWait is the `--auto-lane` mode (card t1814): the lane cycle leases one
+	// card, prints its dispatch directive, and returns without polling for the
+	// worker evidence. A Codex session acts only after the command exits, so a
+	// waiting command and the session it boots would wait on each other.
+	// Completion stays with the existing factory stage/complete path.
+	noWait bool
 
 	// The two inputs of the ranking stage. A nil value is INERT: a nil landed
 	// lookup leaves the landed signal unmeasured, a nil Jev ranker is Jev
@@ -267,16 +275,6 @@ func runAutoCycle(out io.Writer, store *factory.BacklogStore, root string, opts 
 		opts.jev = consultJev
 	}
 
-	// The script consultation is display-only (REQ-MT-014/015): its signal is
-	// rendered verbatim as a labelled line and consumed by NO decision —
-	// never a queue mutation, a completion verdict, a merge approval, or an
-	// operator gate. Absent scripts or an absent key degrade to a labelled
-	// non-finding and the cycle proceeds on lead judgment alone, exit 0.
-	// This line is not the ranking input: the one place a Jev answer informs
-	// the cycle is the ranking stage below (opts.jevRank, the Go capability),
-	// and it sets the selection order only.
-	_, _ = fmt.Fprintln(out, opts.jev(root))
-
 	rec, err := store.LoadPure()
 	if err != nil {
 		return err
@@ -285,13 +283,24 @@ func runAutoCycle(out io.Writer, store *factory.BacklogStore, root string, opts 
 	if err != nil {
 		return err
 	}
+	// Ranking stage (SPEC-TODO-AUTO-PRIORITY-001): orders the queued suffix of
+	// the targets; the dead-owner rescue targets stay first. It writes nothing
+	// to the queue. Its selection record is held back so the output order
+	// stays jev line, notes, record.
+	var record bytes.Buffer
+	targets, ranking, ranked := autoRankTargets(&record, rec, targets, opts)
+
+	// The Jev display line is display-only (REQ-MT-014/015) and consumed by NO
+	// decision — never a queue mutation, a completion verdict, a merge
+	// approval, or an operator gate. It is built from the ranking stage's own
+	// Jev result (card t1814: one call, never two; no local script runs), so
+	// an unavailable or disabled capability degrades to one labelled
+	// non-finding line and the cycle proceeds, exit 0.
+	_, _ = fmt.Fprintln(out, opts.jev(autoJevDisplay{Consulted: ranked && len(ranking.Ranked) > 0, Source: ranking.Source, Reason: ranking.Reason}))
 	for _, n := range notes {
 		_, _ = fmt.Fprintln(out, n)
 	}
-	// Ranking stage (SPEC-TODO-AUTO-PRIORITY-001): orders the queued suffix of
-	// the targets and prints the selection record; the dead-owner rescue
-	// targets stay first. It writes nothing to the queue.
-	targets = autoRankTargets(out, rec, targets, opts)
+	_, _ = out.Write(record.Bytes())
 	if len(targets) == 0 {
 		_, _ = fmt.Fprintln(out, "no eligible card: queue is empty or every card is untouched-by-authority (nothing to do)")
 		return nil
@@ -450,24 +459,39 @@ func runAutoCycle(out io.Writer, store *factory.BacklogStore, root string, opts 
 	return nil
 }
 
-// consultJev asks the local Jev scripts for a dispatch-order/priority signal.
-// The return value is a labelled display line — the ONLY thing the cycle does
+// autoJevDisplay is what the Jev display line is built from: whether the
+// ranking stage ran (Consulted) and the source and fallback reason of its one
+// Jev result.
+type autoJevDisplay struct {
+	Consulted bool
+	Source    string
+	Reason    string
+}
+
+// autoJevNonFinding is the tail of every degraded Jev display line.
+const autoJevNonFinding = " — labelled non-finding; proceeding on the operator session's own judgment"
+
+// consultJev renders the Jev display line from the ranking stage's result. The
+// return value is a labelled display line — the ONLY thing the cycle does
 // with it is print it. No decision reads it: Jev output is never the basis of
 // a queue mutation, a completion verdict, a merge approval, or any
-// operator-gate decision (REQ-MT-015). An absent script, key, or network
-// degrades to a labelled non-finding; degradation is never an error exit.
-// The ranking stage's Jev consumer is a separate seam (autoJevRanker) and does
-// not read this line.
-func consultJev(root string) string {
-	script := filepath.Join(root, "scripts", "jev", "route.sh")
-	if _, err := os.Stat(script); err != nil {
-		return "jev: unavailable (no local scripts) — labelled non-finding; proceeding on the operator session's own judgment"
+// operator-gate decision (REQ-MT-015). It runs nothing: card t1814 removed the
+// exec of the repository-local Jev route script (invoked without stdin it
+// always exited 2, and a user project carries no such file), so the line
+// reads the same in any root.
+// A disabled or unavailable capability degrades to one labelled non-finding;
+// degradation is never an error exit.
+func consultJev(d autoJevDisplay) string {
+	switch {
+	case !d.Consulted:
+		return "jev: not consulted (no eligible queued candidate to rank)" + autoJevNonFinding
+	case d.Source == autoRankSourceJev:
+		return "jev signal (display-only): the selection order below is jev's ranking"
+	case d.Reason == autoRankReasonDisabled:
+		return "jev: disabled (workflow.jev.enabled is false or unreadable)" + autoJevNonFinding
+	default:
+		return "jev: unavailable (" + d.Reason + ")" + autoJevNonFinding
 	}
-	out, err := exec.Command(script).Output()
-	if err != nil {
-		return fmt.Sprintf("jev: consultation failed (%v) — labelled non-finding; proceeding on the operator session's own judgment", err)
-	}
-	return "jev signal (display-only): " + strings.TrimSpace(string(out))
 }
 
 // writeAutoDirective emits the fixed-field dispatch address block — a

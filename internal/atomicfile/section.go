@@ -57,7 +57,20 @@ var sectionRereadFn = func(path string) ([]byte, error) {
 		return nil, err
 	}
 	defer func() { _ = f.Close() }()
-	return io.ReadAll(io.LimitReader(f, sectionOwnerReadMaxBytes))
+	// One byte PAST the cap (review-gate finding on card t1606, round 5):
+	// a silent truncation would let the disposal gate compare a valid
+	// owner record's first 4096 bytes while garbage past the cap slipped
+	// the byte-compare — an oversized file is not a valid owner record
+	// anywhere, so refusing it is the conservative direction for every
+	// reader (verdict, release, pre-check).
+	raw, err := io.ReadAll(io.LimitReader(f, sectionOwnerReadMaxBytes+1))
+	if err != nil {
+		return nil, err
+	}
+	if len(raw) > sectionOwnerReadMaxBytes {
+		return nil, fmt.Errorf("section owner %s: %d bytes, over the %d-byte owner-record cap", path, len(raw), sectionOwnerReadMaxBytes)
+	}
+	return raw, nil
 }
 
 // sectionRemoveFn is the removal seam.
@@ -86,20 +99,38 @@ const breakingSuffix = ".breaking"
 // so a late delete can never land on a live marker.
 const reclaimSuffix = ".reclaim"
 
-// maxReclaimDepth bounds how deep a chain of nested dead guards is
-// followed. Each level of a chain is one historical process death (a
-// reclaimer that died holding its guard), so a chain deeper than a couple
-// of levels is a pathological accumulation, not a working state. The cap
-// is deliberately small for a second reason: each level's contention retry
-// loop re-walks the chain below it (the recursion re-enters through
-// ClaimSection's own attempts), so the walk cost grows exponentially with
-// the cap — at 3 the worst case is a bounded handful of chain walks. Past
-// the cap the reclaim REFUSES — no delete ever runs without its guard
-// claim — and the caller's budget backs off; a wedge beats a race, and the
-// store then needs an operator's cleanup. The depth is read from the path
-// itself (the number of reclaimSuffix occurrences), because the recursion
-// re-enters through ClaimSection's contention path.
-const maxReclaimDepth = 3
+// maxReclaimGuardAttempts bounds the guard claim's attempts (card t1606):
+// one initial O_EXCL and one more — after a blocked rival guard was
+// disposed, or after a live-rival backoff, whichever consumed the first.
+// A successful disposal claims immediately outside this budget. The
+// former design claimed the guard through ClaimSection, whose contention
+// path spawned the next .reclaim level for EVERY blocked rival — live ones
+// included — so contention self-propagated the chain and the depth-3 cap
+// refused it permanently: a single dead reclaimer wedged the lock for the
+// life of the boot. The non-recursive guard claim kills the
+// self-propagation: a single walk spawns at most one transient guard
+// level PER blocked rival disposal (a live rival spawns none — it owns
+// its disposal and the walk refuses; a dead rival's disposal claims its
+// own guard, one level deeper, released as soon as that disposal ends),
+// and under N concurrent walkers those levels can stack N deep — the
+// bound that matters is maxReclaimWalkDepth, read from the path, not
+// this attempt count.
+const maxReclaimGuardAttempts = 2
+
+// reclaimBackoff is the guard claim's pause between attempts — the same
+// delay ClaimSection's callers pass for a guard claim, named so both call
+// sites share one value.
+const reclaimBackoff = 2 * time.Millisecond
+
+// maxReclaimWalkDepth bounds how deep a marker chain the reclaim walk
+// follows (round-3 4-dim finding: the former maxReclaimDepth(3) removal
+// left the recursion bounded only by filesystem path length — a
+// pathological on-disk chain drives equally deep synchronous recursion
+// before ENAMETOOLONG refuses). 32 levels ≈ 256 path bytes of suffix:
+// far past any chain real process deaths accumulate, and a chain past it
+// is an operator-cleanup wedge exactly like the old cap's, without
+// capping the reclaimable ones.
+const maxReclaimWalkDepth = 32
 
 // ClaimSection takes the advisory lock at path, returning its release
 // func. Contention retries within the given budget, breaking the lock only
@@ -116,14 +147,11 @@ func ClaimSection(ctx context.Context, path string, perm os.FileMode, retries in
 		}
 		err := Claim(path, perm)
 		if err == nil {
-			if werr := writeOwnerLabel(path, perm); werr != nil {
-				// The lock is HELD but unlabelled: release immediately and
-				// report — an unlabelled lock could never be verified, and
-				// wedging on write failure beats breaking the invariant.
-				_ = os.Remove(path)
-				return nil, fmt.Errorf("claim section %s: labelling lock: %w", path, werr)
+			release, lerr := claimAndLabel(path, perm)
+			if lerr != nil {
+				return nil, lerr
 			}
-			return releaseSectionFunc(path), nil
+			return release, nil
 		}
 		if !errors.Is(err, os.ErrExist) {
 			return nil, fmt.Errorf("claim section %s: lock: %w", path, err)
@@ -131,8 +159,8 @@ func ClaimSection(ctx context.Context, path string, perm os.FileMode, retries in
 		// Contention: check whether the holder is a verified-dead owner. A
 		// live owner blocks through the budget; a verified-dead one is
 		// broken and the claim retried immediately. The caller's context
-		// reaches the recursive reclaim, so a cancelled claim does not
-		// re-walk a deep guard chain.
+		// reaches the guard claim, so a cancelled claim does not re-walk
+		// any guard chain.
 		if BreakStaleLockContext(ctx, path) {
 			lastErr = err
 			continue
@@ -226,36 +254,148 @@ func BreakStaleLock(path string) bool {
 	return BreakStaleLockContext(context.Background(), path)
 }
 
+// claimGuard takes a break's guard marker WITHOUT the ClaimSection
+// recursion that once self-propagated the chain (card t1606): one O_EXCL
+// attempt, and on contention the rival guard's disposal runs through the
+// GUARDED path (BreakStaleLockContext — the rival's own guard is claimed
+// first, so two reclaimers of the same dead guard can never interleave a
+// verdict with the other's live re-acquisition) and the claim retried. A
+// live rival guard owns its disposal: the caller refuses and its own
+// retry budget backs off, exactly as a live section holder blocks a
+// claim.
+func claimGuard(ctx context.Context, guardPath string) (func() error, bool) {
+	for range maxReclaimGuardAttempts {
+		if err := ctx.Err(); err != nil {
+			return nil, false
+		}
+		err := Claim(guardPath, 0o600)
+		if err == nil {
+			release, lerr := claimAndLabel(guardPath, 0o600)
+			if lerr != nil {
+				// A label-write failure is not diagnosable from a bare
+				// false — surface it (round-3 4-dim finding: the silent
+				// swallow left this path invisible in logs).
+				slog.Warn("lock section: guard claim failed to label the guard", "guard", guardPath, "err", lerr)
+				return nil, false
+			}
+			return release, true
+		}
+		if !errors.Is(err, os.ErrExist) {
+			return nil, false
+		}
+		// A LIVE rival guard owns its disposal: refuse at once, without
+		// entering the deeper reclaim walk (review-gate finding on card
+		// t1606, round 2 — with concurrently-held guards the walk through
+		// claimGuard → BreakStaleLockContext → claimGuard multiplied the
+		// wait exponentially, 1.4s at 8 levels vs the base's 107ms). The
+		// read is the same bounded one every verdict uses.
+		if raw, rerr := sectionRereadFn(guardPath); rerr == nil {
+			if owner, ok := OwnerFromBytes(raw); ok && !OwnerIsDead(owner) {
+				select {
+				case <-ctx.Done():
+					return nil, false
+				case <-time.After(reclaimBackoff):
+				}
+				continue
+			}
+		}
+		// A rival guard that is not verifiably live blocks the claim. Its
+		// disposal must be SERIALIZED (review-gate finding on card t1606,
+		// P1): a bare verify-and-delete lets two reclaimers of the same
+		// dead guard interleave so one's late delete removes the other's
+		// LIVE re-acquired guard. Route the disposal through the guarded
+		// path — the rival's OWN guard is claimed first, exactly like
+		// every other delete here. That guarded claim is itself the one
+		// place a deeper guard marker is created (transient: released as
+		// soon as the disposal ends); a dead chain unwinds one level per
+		// walk, and the guarded path's own verified-bytes gate aborts if
+		// the rival re-acquired between this pre-check and the disposal.
+		if !BreakStaleLockContext(ctx, guardPath) {
+			// The disposal walk failed: a live owner sits at some depth, or
+			// a rival reclaimer is mid-walk. Neither changes within this
+			// function's backoff, and a retry here would re-walk the whole
+			// failed sub-chain — 2^depth reads on a dead chain blocked by a
+			// live tail (review-gate finding on card t1606, round 3:
+			// 1,022 reads / 2.6s at 8 dead guards + a live tail). Return at
+			// once; the caller's own retry budget re-enters later, against
+			// whatever the state has become.
+			slog.Warn("lock section: guard reclaim walk failed; refusing",
+				"guard", guardPath)
+			return nil, false
+		}
+		// The disposal cleared the path — claim it NOW, outside the attempt
+		// budget: an attempt that ends here with a false would waste the
+		// caller's budget round-trip on a path this call just cleared.
+		// (review-gate finding on card t1606, round 4: the walk may have
+		// consumed time while the caller's context was cancelled — a
+		// cancelled caller stops here like every other retry boundary.)
+		if cerr := ctx.Err(); cerr != nil {
+			return nil, false
+		}
+		if err := Claim(guardPath, 0o600); err != nil {
+			continue // a rival re-claimed between disposal and this claim
+		}
+		release, lerr := claimAndLabel(guardPath, 0o600)
+		if lerr != nil {
+			slog.Warn("lock section: guard claim failed to label the guard", "guard", guardPath, "err", lerr)
+			return nil, false
+		}
+		return release, true
+	}
+	// Attempt exhaustion is normally the benign live-rival case — normal
+	// contention the caller is designed to back off from — so it stays
+	// silent; logging it here wrote a Warn per refusal under sustained
+	// contention (round-3 4-dim finding). Genuine failures Warn where they
+	// happen (the failed walk above, the label failure).
+	return nil, false
+}
+
+// claimAndLabel labels a just-claimed lock file, removing it on label
+// failure. It is the acquire tail ClaimSection and claimGuard share — one
+// label write, one conservative failure direction.
+func claimAndLabel(path string, perm os.FileMode) (func() error, error) {
+	if werr := writeOwnerLabel(path, perm); werr != nil {
+		// The lock is HELD but unlabelled: release immediately and report —
+		// an unlabelled lock could never be verified, and wedging on write
+		// failure beats breaking the invariant.
+		_ = os.Remove(path)
+		return nil, fmt.Errorf("claim section %s: labelling lock: %w", path, werr)
+	}
+	return releaseSectionFunc(path), nil
+}
+
 // BreakStaleLockContext is BreakStaleLock under a caller's context: the
-// cancellation reaches EVERY level of the recursive guard reclaim — each
-// level's guard ClaimSection selects on it — so a cancelled caller's walk
-// stops at the next claim boundary instead of re-walking the chain through
-// the retry loops (each level's loop re-walks the chain below it, which is
-// what makes an uncancelled deep walk expensive).
+// cancellation reaches the guard claim's every retry boundary, so a
+// cancelled caller's walk stops at the next claim boundary instead of
+// burning its whole budget.
 func BreakStaleLockContext(ctx context.Context, path string) bool {
 	if strings.HasSuffix(path, reclaimSuffix) || strings.HasSuffix(path, breakingSuffix) {
-		// Reclaiming a marker — a breaker's (.breaking) or a reclaimer's
-		// (.reclaim): hold ITS OWN guard marker first — delete only on
-		// creation success, at EVERY level (review-gate residual: the
-		// .reclaim path's verify-and-delete was bare, so a reclaimer
-		// pausing between its check and its delete could remove a rival's
-		// LIVE re-acquired guard). The recursion re-enters through
-		// ClaimSection's contention path when the guard is itself a dead
-		// marker; the chain depth read from the path bounds it — past
-		// maxReclaimDepth the reclaim refuses and nothing is deleted.
-		if strings.Count(path, reclaimSuffix) >= maxReclaimDepth {
-			slog.Warn("lock section: reclaim chain too deep; refusing to break",
-				"lock", path, "depth", strings.Count(path, reclaimSuffix))
+		if depth := strings.Count(path, reclaimSuffix); depth >= maxReclaimWalkDepth {
+			slog.Warn("lock section: reclaim chain past the walk depth; refusing",
+				"lock", path, "depth", depth)
 			return false
 		}
-		release, err := ClaimSection(ctx, path+reclaimSuffix, 0o600, 2, 2*time.Millisecond)
-		if err != nil {
+		// Reclaiming a marker — a breaker's (.breaking) or a reclaimer's
+		// (.reclaim): hold ITS OWN guard marker first — delete only on
+		// creation success (review-gate residual: the .reclaim path's
+		// verify-and-delete was bare, so a reclaimer pausing between its
+		// check and its delete could remove a rival's LIVE re-acquired
+		// guard). The guard is claimed through claimGuard, whose rival
+		// disposal may itself claim ONE deeper guard level (transient —
+		// released when that disposal ends): what is gone is the old
+		// ClaimSection recursion that spawned a new level for EVERY
+		// blocked contender, live ones included, until the depth cap
+		// refused permanently. A dead chain now unwinds one level per
+		// walk, bounded by the filesystem path length the suffix chain
+		// can occupy.
+		release, ok := claimGuard(ctx, path+reclaimSuffix)
+		if !ok {
 			return false // a live reclaimer owns the disposal, or the caller's context is done
 		}
 		defer func() { _ = release() }()
 		return breakStaleLockBare(path)
 	}
-	release, err := ClaimSection(ctx, path+breakingSuffix, 0o600, 2, 2*time.Millisecond)
+	release, err := ClaimSection(ctx, path+breakingSuffix, 0o600, 2, reclaimBackoff)
 	if err != nil {
 		return false // a live breaker owns the break, or the caller's context is done
 	}
@@ -279,8 +419,12 @@ func breakStaleLockBare(path string) bool {
 		return false
 	}
 	// The disposal gate: the bytes at the path must STILL be the bytes the
-	// verdict was made on, immediately before the unlink.
-	now, err := os.ReadFile(path)
+	// verdict was made on, immediately before the unlink. The re-check reads
+	// through the same BOUNDED read as the verdict (review-gate finding on
+	// card t1606, P2): a plain os.ReadFile here parked forever on a FIFO
+	// swapped in after the first read — the caller's context never reached
+	// it. sectionRereadFn refuses a non-regular path without opening it.
+	now, err := sectionRereadFn(path)
 	if err != nil || string(now) != string(raw) {
 		return false // someone replaced the lock between verdict and disposal
 	}

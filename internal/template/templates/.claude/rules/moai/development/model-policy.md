@@ -8,14 +8,14 @@ Rules for agent model field values and multi-model architecture.
 
 ## Valid Model Field Values
 
-Catalog agents under `.claude/agents/moai/` declare neither `model:` nor `effort:`: every subagent inherits the main session's model and effort, and a spawn passes neither. Harness specialists (`.claude/agents/harness/`) are the sanctioned exception — they pin `model`/`effort` to their purpose (§ Harness-Agent Model Policy). The values below remain the accepted set for an agent file a user authors.
+Catalog phase owners under `.claude/agents/moai/` declare their role's `model:` and `effort:` explicitly (role table: `.claude/rules/moai/core/agent-common-protocol.md` § Subagent Model and Effort); `manager-lead` declares neither and inherits the session. Harness specialists (`.claude/agents/harness/`) are the sanctioned exception — they pin `model`/`effort` to their purpose (§ Harness-Agent Model Policy). The values below remain the accepted set for an agent file a user authors.
 
 Agent definition `model` field accepts only these values:
 - inherit: Uses parent session's model (default)
 - opus: Claude Opus (highest capability)
 - sonnet: Claude Sonnet (balanced)
 - fable: Claude Fable (current generation; added to the model enum per CC v2.1.196 model-priority update)
-- haiku: Claude Haiku (fastest, lowest cost)
+- haiku: Claude Haiku 5.5 (fastest, lowest cost; Anthropic API 1M, CC v2.1.293+)
 
 Current model generation mapping:
 - opus = Opus 5.5 (`claude-opus-5-5`) on the Anthropic API — the `opus` alias target and default Opus model; requires Claude Code v2.1.280 or later; native 1M context, 128K max output, $4 / $20 per MTok, fast mode available, adaptive thinking always on (cannot be disabled), default effort `medium`. Defaults differ per model: `high` on most other effort-capable models, `xhigh` on Opus 4.7; raise the effort per role where the work needs it. The previous Opus 5 id `claude-opus-5` (superseded) stays selectable by full model name.
@@ -23,7 +23,7 @@ Current model generation mapping:
 
   Migration note (Sonnet 5.5): a session running Sonnet with thinking **off** must switch to the `between_tools` thinking setting before moving to Sonnet 5.5 — up-front thinking stays off under 5.5. This note is docs-surface only; no moai runtime surface reads or enforces the setting.
 - fable = Fable (current generation; added to the model enum per CC v2.1.196 model-priority update)
-- haiku = Haiku (current generation; retired from MoAI agent routing per the No-Haiku policy — value remains valid for documentation/example YAML)
+- haiku = Haiku 5.5 (`claude-haiku-5-5`) on the Anthropic API — the `haiku` alias target since Claude Code v2.1.293; 1M context on all plans (no `[1m]` suffix needed), auto-compact default ~967K, $0.10/$0.50 per MTok ($0.50/$2.50 for prompts over 100K tokens), adaptive thinking is on by default and can be disabled with `thinking: {"type": "disabled"}` at `high` effort or below; the effort parameter is the better quality/cost lever. Haiku 5.5 supports all five effort levels (low/medium/high/xhigh/max), default `medium`. The provider split decides the window: on AWS Bedrock / GCP Agent Platform / Microsoft Foundry the alias resolves `haiku` to Haiku 4.5 (200K); retired from MoAI agent routing per the No-Haiku policy — value remains valid for documentation/example YAML.
 
 On the Anthropic API, Opus 5.5 and Opus 4.8 serve the full 1M token context window by default (no beta header, no long-context premium). Since CC 2.1.287, the 1M window also defaults on Bedrock / Google Cloud (Vertex) / Microsoft Foundry and the Claude apps gateway for Opus 4.7+ and Fable — a 200K window on those surfaces is now the opt-in, not the default expectation. Fast mode applies to Opus 5.5 and Opus 4.8, and Opus 5.5 is the fast-mode default from CC 2.1.280 (Opus 4.7 was removed from fast mode). Explore (Anthropic built-in) inherits the session model per CC v2.1.198 — no separate deployment or model pin needed.
 
@@ -35,7 +35,7 @@ Invalid values (NEVER use):
 
 ## Inherit-by-Default Convention
 
-[ZONE:Evolvable] [HARD] Catalog agents (`.claude/agents/moai/`) declare no `model:` and no `effort:` frontmatter key; harness specialists are exempt (§ Harness-Agent Model Policy). Claude Code resolves a subagent's model as spawn-time `model` → frontmatter `model` → `CLAUDE_CODE_SUBAGENT_MODEL` → the main conversation's model, and an absent `effort` inherits the session's, so an agent with neither field runs on the main session's model and effort. MoAI never sets `CLAUDE_CODE_SUBAGENT_MODEL`; a user who exports it still pins every subagent (a documented user-environment residual).
+[ZONE:Evolvable] [HARD] Catalog phase owners (`.claude/agents/moai/`) declare their role's `model:` and `effort:` in frontmatter (role table: `agent-common-protocol.md` § Subagent Model and Effort); an agent without the keys (`manager-lead`) inherits the session, max and ultra are never a declared default effort, and harness specialists keep their own pins (§ Harness-Agent Model Policy). Claude Code resolves a subagent's model as spawn-time `model` → frontmatter `model` → `CLAUDE_CODE_SUBAGENT_MODEL` → the main conversation's model, and an absent `effort` inherits the session's, so an agent with neither field runs on the main session's model and effort. MoAI never sets `CLAUDE_CODE_SUBAGENT_MODEL`; a user who exports it still pins every subagent (a documented user-environment residual). Two further user-environment residuals exist upstream and MoAI sets neither: `CLAUDE_CODE_SUBAGENT_MODEL_FORCE` (v2.1.257+; forces the subagent model over every other resolution source) and `CLAUDE_CODE_WORKFLOW_SUBAGENT_MODEL` (fixes the model of every agent a dynamic workflow runs).
 
 Consumption exception (opt-in only): a session that sets `llm.agent_overrides_consume: true` may have the orchestrator pass a stored `llm.agent_overrides` model on the Agent() call — the spawn-time `model` slot of the resolution order above is the delivery channel, so the override touches no frontmatter, no env var, and no agent definition. Stored values are restricted to the closed alias set {inherit, haiku, sonnet, opus, fable} (full model-ID strings stay intentionally disallowed), and the `[1m]` residual above applies to any non-`inherit` value exactly as it does to an alias pin — which is why `inherit` remains the sanctioned no-op and `false` (the default) keeps storage-only behaviour.
 
@@ -51,7 +51,7 @@ Upstream tracking (Anthropic claude-code repository):
 
 Workaround pattern (no `model:` field, equivalent to `model: inherit`):
 - The subagent fully inherits the parent's model + context entitlement, eliminating the mismatch.
-- No agent definition under `.claude/agents/moai/` declares `model:` or `effort:`, and no spawn passes either. The No-Haiku policy retired the former `model: haiku` exception.
+- This workaround now covers only the agents that declare no `model:` (`manager-lead`). The per-role pins accept the `[1m]` residual above for their spawns, and the No-Haiku policy is superseded for the git and todo roles, which pin `haiku`.
 
 Exceptions (do NOT migrate to inherit):
 - Documentation/example YAML inside skill bodies (`.claude/skills/moai-foundation-cc/reference/**/*.md`) — these mirror official Claude Code documentation and MUST show all valid values (`sonnet`, `opus`, `haiku`, `inherit`) for educational purposes.
@@ -67,7 +67,7 @@ Exceptions (do NOT migrate to inherit):
 
 **Resolution (Sonnet 5.5 / Opus 5.5 era):** the breaker required a teammate to fall back to a **200K context variant** after the `[1m]` suffix was stripped on teammate spawn (Anthropic issues #36670 / #34421; the suffix-strip mechanism is still OPEN upstream). The fallback target — a 200K context variant — **no longer exists in the current default lineup**: Sonnet 5.5 ships a single 1M-token context window (1M is both default and maximum; no smaller variant — per the official Sonnet 5.5 model docs), and Opus 5.5 likewise serves the full 1M window by default on the Anthropic API. With no 200K variant to fall back to, a teammate spawned as `sonnet` / `opus` on the Anthropic API operates at 1M regardless of suffix stripping, and the rapid-refill → circuit-breaker → zero-output cascade cannot trigger. The mechanism (#36670) is technically still open but its observable impact on the current default lineup on the Anthropic API is zero. This resolution does not carry to 200K-budget paths — under `CLAUDE_CODE_DISABLE_1M_CONTEXT=1`, and for models below the default-1M line on an LLM gateway or a cloud provider (CC 2.1.285 defaults gateways to 1M for Sonnet 5+ / Opus 4.7+ / Fable, and CC 2.1.287 the cloud providers and the Claude apps gateway for Opus 4.7+ and Fable; see the `sonnet` alias entry and the provider-window paragraph at the top of this file): there a stripped suffix can still land on 200K, and the legacy hazard below applies.
 
-The breaker therefore remains documented as a **live hazard on the 200K-budget paths named above** and as a **historical hazard for legacy 200K-variant models** (Opus 4.6 and Sonnet 4.6, which in Claude Code reach 1M only through their `[1m]` variant, so a stripped suffix lands on the 200K default; and Sonnet 4.5 and earlier, Opus 4.5 and earlier, and Haiku 4.5, which are 200K outright): on those models a teammate can still fall back to 200K. For the current default lineup the operational mitigation (single `manager-develop` + Milestone split over team mode) is no longer forced by the breaker — though team mode is additionally disabled by default per the Phase 4 re-design (`.claude/rules/moai/workflow/orchestration-mode-selection.md`), in favor of subagent fanout (fanout) for multi-domain research/review and sequential sub-agent (serial) for coding.
+The breaker therefore remains documented as a **live hazard on the 200K-budget paths named above** and as a **historical hazard for legacy 200K-variant models** (Opus 4.6 and Sonnet 4.6, which in Claude Code reach 1M only through their `[1m]` variant, so a stripped suffix lands on the 200K default; and Sonnet 4.5 and earlier, Opus 4.5 and earlier, and Haiku 4.5, which are 200K outright — Haiku 4.5 remains the alias target on Bedrock / GCP Agent Platform / Foundry, while on the Anthropic API `haiku` is now Haiku 5.5 at 1M, so the legacy hazard no longer reaches an Anthropic-API haiku session): on those models a teammate can still fall back to 200K. For the current default lineup the operational mitigation (single `manager-develop` + Milestone split over team mode) is no longer forced by the breaker — though team mode is additionally disabled by default per the Phase 4 re-design (`.claude/rules/moai/workflow/orchestration-mode-selection.md`), in favor of subagent fanout (fanout) for multi-domain research/review and sequential sub-agent (serial) for coding.
 
 ## `[1m]` Constraint Re-Verification (CC 2.1.178; Sonnet 5.5 / Opus 5.5 practical-impact update)
 
@@ -80,7 +80,7 @@ Evidence fetched via the GitHub issue API + the canonical CC CHANGELOG:
 - Issue #36670 (Team teammates don't inherit `[1m]` from leader): **OPEN** — the Team-mode path is confirmed unfixed at CC 2.1.178.
 - CC 2.1.172 fixes ("1M context stuck session", "doubled `[1m]` suffix") address the *symptom* and *suffix normalization*, NOT the *spawn-time entitlement mismatch*. CC 2.1.173/2.1.174 are Fable-5-suffix and background-env-inheritance fixes — orthogonal.
 
-**Why STILL-ACTIVE mechanism ≠ practical impact (Sonnet 5.5 / Opus 5.5 era):** the #36670 mechanism strips the `[1m]` suffix on teammate spawn, which historically forced a fallback to a 200K variant. On the Anthropic API, Sonnet 5.5 and Opus 5.5 have **no 200K variant** — their context window is 1M as both default and maximum (per the official Sonnet 5.5 model docs; Opus 5.5 serves the full 1M window by default). The stripped-suffix teammate therefore still resolves to 1M; there is no smaller variant to degrade into. The mechanism is unfixed upstream, but on the current default lineup it has nothing to break. The no-field (inherit) convention is retained as defense-in-depth and for legacy-200K-variant models (Haiku 4.5 still ships 200K).
+**Why STILL-ACTIVE mechanism ≠ practical impact (Sonnet 5.5 / Opus 5.5 era):** the #36670 mechanism strips the `[1m]` suffix on teammate spawn, which historically forced a fallback to a 200K variant. On the Anthropic API, Sonnet 5.5 and Opus 5.5 have **no 200K variant** — their context window is 1M as both default and maximum (per the official Sonnet 5.5 model docs; Opus 5.5 serves the full 1M window by default). The stripped-suffix teammate therefore still resolves to 1M; there is no smaller variant to degrade into. The mechanism is unfixed upstream, but on the current default lineup it has nothing to break. The no-field (inherit) convention is retained as defense-in-depth and for legacy-200K-variant models (Haiku 4.5 keeps 200K where it remains the alias target — Bedrock / GCP Agent Platform / Foundry; on the Anthropic API `haiku` is now Haiku 5.5 at 1M).
 
 A follow-up SPEC (conditional) MAY re-enable per-agent pinning only when #36670 is closed-with-fixed AND a CHANGELOG confirms Team `[1m]` inheritance for explicit `model:` teammates — though for Sonnet 5.5 / Opus 5.5 the practical case for that re-enablement has dissolved.
 
@@ -158,7 +158,7 @@ Generated harness specialists (`/moai:harness`, `.claude/agents/harness/`) pin `
 
 ## Effort Levels
 
-Claude models support five effort levels that control reasoning depth. The set is `low` → `medium` → `high` → `xhigh` → `max`; availability is per-model — `max` is offered on Fable 5, Opus 5.5, Sonnet 5.5 and the 4.6+ Opus/Sonnet generations, while `xhigh` is the newer level and is offered on Fable 5, Opus 5.5, Opus 4.8/4.7 and Sonnet 5.5. Haiku 4.5 supports neither. The effort scale is calibrated per model, so the same level name is not the same underlying value across models. Opus 5.5 calibration:
+Claude models support five effort levels that control reasoning depth. The set is `low` → `medium` → `high` → `xhigh` → `max`; availability is per-model — `max` is offered on Fable 5, Opus 5.5, Sonnet 5.5 and the 4.6+ Opus/Sonnet generations, while `xhigh` is the newer level and is offered on Fable 5, Opus 5.5, Opus 4.8/4.7 and Sonnet 5.5. Haiku 5.5 supports all five effort levels (low/medium/high/xhigh/max), default medium. The effort scale is calibrated per model, so the same level name is not the same underlying value across models. Opus 5.5 calibration:
 
 - max: can improve demanding tasks but shows diminishing returns; reserve for tasks that justify it
 - xhigh: deeper reasoning at higher token spend; raise to it per role for hard coding and agentic work
@@ -172,6 +172,20 @@ Effort is a session setting: subagents inherit the main session's effort. Under 
 
 Note: `ultrathink` is a Claude Code one-turn keyword that requests deeper reasoning for that prompt; MoAI standardizes it to `effort: xhigh` (the coding/agentic level above) for that turn.
 
+## Jev Model Attribution
+
+[ZONE:Evolvable] [HARD] A Jev answer names the model that produced it. The request alias is what the package asks for, and it is never the name of the model that answered.
+
+- **Request.** The `internal/jev` package sends the request alias `jev-latest`. The alias is a request, not an attribution.
+- **Attribution.** The `model` field of the response is the interpreted model id, for example `jev-1.13.0`. Every model field a consumer reads carries the interpreted model id: the usage record's `model`, a measurement artifact's `model`, a rendered answer label, and a kickoff cross-check reason. The request alias appears only in its own field: `request_model` in a usage record, and `request model` in a measurement artifact.
+- **Unattributed answers are not answers.** A response with no interpreted model id in the shape `jev-<major>.<minor>.<patch>` is an unavailable result (`unattributed`). No consumer reads an answer from it.
+- **No straddled measurement.** A measurement run whose answered calls report more than one interpreted model id is refused. Re-run it under one id.
+- **Version change.** When the interpreted model id of an answered call differs from the verified id held in code (`internal/jev/jev.go:VerifiedInterpretedModel`), the first such call in each client reports one notice line naming both ids and that location. Until the measurement regression set has been re-run against the new id and the verified id has been changed to it, every consumer that shows a Jev answer to a person, or selects on one (an advise-or-above consumer), returns to shadow: its answer is recorded, and it is neither shown nor selected on.
+- **Regression set.** The regression set is the labelled answer set that `internal/jevmeasure` runs for each consumer.
+- **Terms.** Both terms describe behaviour and introduce no configuration key. *advise-or-above* names a consumer behaviour that shows a Jev answer to a person, or selects on one. *shadow* names the state in which a Jev answer is recorded and neither shown nor selected on.
+
+Why: the prohibition on the alias rested on the risk that the answering model could not be attributed. Recording the response's `model` field removes that risk. The vendor can move the version behind the alias at any time, and the notice and the shadow return make such a move visible rather than silent.
+
 ## Rules
 
 - Agent `model` field must be one of: inherit, opus, sonnet, fable, haiku
@@ -181,3 +195,4 @@ Note: `ultrathink` is a Claude Code one-turn keyword that requests deeper reason
 - The model policy (high/medium/low) is a main-session preference set with `moai profile setup`, not an agent definition concern
 - Legacy CG configuration never selects a runtime provider or bypasses independent review
 - Old model versions are auto-migrated: do not pin to specific version IDs
+- Jev answers name the interpreted model the endpoint returns; the request alias `jev-latest` is never an attribution (§ Jev Model Attribution)

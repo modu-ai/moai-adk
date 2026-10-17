@@ -668,7 +668,15 @@ func TestAuditLagUsesBinlagSeam(t *testing.T) {
 		// primitive name in that COMMENT — a doc mention, the same class as
 		// the t1561 lane-12 doc-block precedent: no ancestry call executes
 		// here, so binlag.Evaluate stays the one binary-lag comparison.
-		"integration.go:277": true,
+		// Re-measured at card t1478 (CI red on 9a16d364): the M2 root-resolution
+		// repair added ten lines above this doc comment (the gitenv import and the
+		// rev-parse closure), moving it 277→287. The line is the same doc mention
+		// of the primitive, and no line added above it is a comparison — same
+		// count, only the coordinate moved.
+		// Re-measured at card t1823: card t1589 (a310ff444) added one line above
+		// this doc comment (the gitenv.Env() assignment in canonicalTreeSpelling),
+		// moving it 287→288. Same doc mention, no added line is a comparison.
+		"integration.go:288": true,
 		// Re-measured at card t948: the coverage-budget constant and its
 		// deadline attribution were added above these two comparisons, moving
 		// them from 245/253. Same two comparisons, same count — only the
@@ -768,6 +776,22 @@ func TestAuditLagUsesBinlagSeam(t *testing.T) {
 		// precedent).
 		"todo_issuance.go:204": true,
 		"todo_issuance.go:215": true,
+		// SPEC-LOCAL-MAIN-FLOW-001 (card t1616): localMainResyncAncestor
+		// answers the two ancestry questions the local-main resync asks: does
+		// local main already contain origin/main, and can local main
+		// fast-forward to it. :414 is the function's doc comment naming the
+		// primitive (a doc mention; no ancestry call runs there) and :417 is
+		// the call itself. Both are branch-ancestry questions about two
+		// revisions, not a comparison of the running binary against its
+		// source, so binlag.Evaluate does not own them.
+		// Re-measured at card t1823: card t1619 (first seen in merge cd19e5494)
+		// added 21 lines above the helper — the localMainResyncBeforeFastForward
+		// test seam (+6) and the one-mutation-section rewrite of the
+		// revalidate-and-fast-forward step (+15) — moving the doc mention
+		// 414→435 and the call 417→438. Same two hits, same count; no added line
+		// is an ancestry comparison.
+		"local_main_resync.go:435": true,
+		"local_main_resync.go:438": true,
 	}
 	got := map[string]bool{}
 	entries, err := os.ReadDir(".")

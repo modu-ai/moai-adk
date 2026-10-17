@@ -32,6 +32,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/modu-ai/moai-adk/internal/gitenv"
 	"github.com/modu-ai/moai-adk/pkg/version"
 )
 
@@ -50,11 +51,15 @@ type RemeasureRecord struct {
 	// recognized structured report (go test): the verifier then demands
 	// one. A tool with no recognized report leaves it false and is valid
 	// on exit code zero (REQ-MWQ-015's last clause).
-	StructuredRequired bool   `json:"structured_required"`
-	HasStructured      bool   `json:"structured_count"`
-	TestCount          int    `json:"test_count,omitempty"`
-	BuildIdentity      string `json:"build_identity"`
-	RecordedAt         string `json:"recorded_at"`
+	StructuredRequired bool `json:"structured_required"`
+	HasStructured      bool `json:"structured_count"`
+	TestCount          int  `json:"test_count,omitempty"`
+	// Failing names the failing test or package the structured report
+	// reported when the sweep failed (card t1677, t1568's undiagnosable
+	// failure). Empty on a green sweep.
+	Failing       []string `json:"failing,omitempty"`
+	BuildIdentity string   `json:"build_identity"`
+	RecordedAt    string   `json:"recorded_at"`
 }
 
 // remeasureDir resolves the re-measure store under the project's state
@@ -116,7 +121,9 @@ func readFileNoRename(path string) ([]byte, error) {
 //   - the structured count is zero or the tool reported an empty sweep
 //     (go test -json with zero tests — REQ-MWQ-015);
 //   - any identity field the gate needs is missing (tree key, base, build
-//     identity, command).
+//     identity, command);
+//   - the tree key or the absorbed base is not a full 40-character hex SHA
+//     (REQ-MWQ2-001).
 //
 // A merge stand-in (factoryWriteMergeRecord's text) never satisfies this
 // verifier (REQ-MWQ-020): it is a different file on a different path, and
@@ -137,6 +144,13 @@ func ValidateRemeasureRecord(rec *RemeasureRecord) error {
 		return errors.New("re-measure record carries no command")
 	case rec.BuildIdentity == "":
 		return errors.New("re-measure record carries no build identity")
+	// REQ-MWQ2-001: the tree key and the absorbed base must be full SHAs. The
+	// refusal is the record-invalid cause, raised before any render prefixes
+	// the value (a 3-byte base previously reached the [:12] renders downstream).
+	case !isFullSHA(rec.Tree):
+		return fmt.Errorf("re-measure record carries a malformed tree key %q — a full 40-character hex SHA is required", rec.Tree)
+	case !isFullSHA(rec.Base):
+		return fmt.Errorf("re-measure record carries a malformed absorbed base %q — a full 40-character hex SHA is required", rec.Base)
 	case rec.ExitCode != 0:
 		return fmt.Errorf("re-measure command exited %d (recorded as observed)", rec.ExitCode)
 	case rec.StructuredRequired && !rec.HasStructured:
@@ -145,6 +159,23 @@ func ValidateRemeasureRecord(rec *RemeasureRecord) error {
 		return fmt.Errorf("structured report carries %d tests — an empty sweep cannot stand for a re-measure", rec.TestCount)
 	}
 	return nil
+}
+
+// isFullSHA reports whether s is a full 40-character lowercase hexadecimal
+// git object name — the one form the record's tree key and absorbed base may
+// take (REQ-MWQ2-001). git prints lowercase, so any other form cannot be the
+// tree or commit the merge step compares against.
+func isFullSHA(s string) bool {
+	if len(s) != 40 {
+		return false
+	}
+	for i := 0; i < len(s); i++ {
+		c := s[i]
+		if (c < '0' || c > '9') && (c < 'a' || c > 'f') {
+			return false
+		}
+	}
+	return true
 }
 
 // ClassifyStructuredOutput judges one command's output for REQ-MWQ-015: it
@@ -410,20 +441,58 @@ func requestsGoTestJSON(command string) bool {
 	return false
 }
 
-// emptySweepMarkers are the runner-reported empty-sweep tokens REQ-MWQ-015
-// refuses: go test -json surfaces them inside output events when a package
-// has no tests at all.
-const emptySweepMarker = "[no test files]"
+// failingSweepError is the classifier's refusal for a stream carrying a fail
+// event. It carries the failing name(s) so the run can record them in
+// RemeasureRecord.Failing and name them in its refusal — a failed re-measure
+// is then diagnosable from the record alone (card t1677, t1568's undiagnosable
+// failure).
+type failingSweepError struct {
+	failing []string
+}
+
+func (e *failingSweepError) Error() string {
+	return fmt.Sprintf("go test -json stream reports a failing test %q — a failing sweep cannot stand for a re-measure", e.failing[0])
+}
+
+// failingTestsOf returns the failing name(s) a classifier refusal carries, or
+// nil for any other error.
+func failingTestsOf(err error) []string {
+	var refuse *failingSweepError
+	if errors.As(err, &refuse) {
+		return refuse.failing
+	}
+	return nil
+}
+
+// boundedFailing renders a bounded name list for the run's refusal — the
+// first three names, then a count of the rest.
+func boundedFailing(names []string) string {
+	shown := names
+	if len(shown) > 3 {
+		shown = shown[:3]
+	}
+	quoted := make([]string, len(shown))
+	for i, name := range shown {
+		quoted[i] = fmt.Sprintf("%q", name)
+	}
+	text := strings.Join(quoted, ", ")
+	if len(names) > 3 {
+		text += fmt.Sprintf(" and %d more", len(names)-3)
+	}
+	return text
+}
 
 // countGoTestJSONTests counts the per-test pass events in a go test -json
-// stream and refuses an empty sweep. A stream that parses but carries zero
-// per-test events is a count of zero — the caller records it and the
-// verifier refuses it as an empty sweep (the distinction between "no tests
-// to run" and "no structure" is carried by structured=true).
+// stream. The judgment is the stream's TOTAL per-test pass count (REQ-MWQ2-003,
+// which supersedes the marker refusal of REQ-MWQ-015): a package without tests
+// reports `[no test files]` inside an output event and closes with a
+// package-level skip. That is the package's own report, and it says nothing
+// against the passes the other packages measured, so a mixed sweep is judged
+// by those passes. A stream that parses but carries zero per-test passes is a
+// count of zero (REQ-MWQ2-009): it reads structured-with-zero here, and the
+// run and the verifier refuse it as an empty sweep. The distinction between
+// "no tests to run" and "no structure" is carried by structured=true.
 func countGoTestJSONTests(text string) (count int, structured bool, err error) {
-	if strings.Contains(text, emptySweepMarker) {
-		return 0, false, fmt.Errorf("runner reported %s — an empty sweep cannot stand for a re-measure", emptySweepMarker)
-	}
 	structured = true
 	decoder := json.NewDecoder(strings.NewReader(text))
 	// t1576 review round 4: a pipe into `head` truncates the stream — EOF
@@ -443,21 +512,25 @@ func countGoTestJSONTests(text string) (count int, structured bool, err error) {
 			if errors.Is(decErr, io.EOF) {
 				break
 			}
-			// A malformed stream (tool output interleaved with the JSON) is
-			// not a recognized report: refuse rather than count the prefix.
-			return 0, true, fmt.Errorf("go test -json stream is not a recognized report: %v", decErr)
+			// A malformed stream — tool output interleaved with the JSON, or a
+			// bare runner line such as a lone `[no test files]` — is not a
+			// recognized report: refuse it unstructured rather than count the
+			// prefix.
+			return 0, false, fmt.Errorf("go test -json stream is not a recognized report: %v", decErr)
 		}
 		// t1576 review round 1: `go test -json ./... | cat` reports the
 		// pipe's exit 0 while a test failed — the stream is the verdict the
 		// exit code cannot carry. Any fail event (per-test, or package-level
 		// — a build or setup failure behind which no per-test event may
-		// exist) invalidates the record.
+		// exist) invalidates the record. The name rides a typed error so the
+		// run can record it (card t1677): t1568's re-measure failed with no
+		// failing name anywhere in its record.
 		if event.Action == "fail" {
 			name := event.Test
 			if name == "" {
 				name = event.Package + " (package-level)"
 			}
-			return 0, true, fmt.Errorf("go test -json stream reports a failing test %q — a failing sweep cannot stand for a re-measure", name)
+			return 0, true, &failingSweepError{failing: []string{name}}
 		}
 		switch {
 		case event.Action == "start" && event.Package != "":
@@ -476,8 +549,18 @@ func countGoTestJSONTests(text string) (count int, structured bool, err error) {
 			finished[event.Package] = true
 		}
 	}
-	if missing := len(started) - len(finished); missing > 0 {
-		return 0, true, fmt.Errorf("go test -json stream ended with %d started package(s) unreported — a truncated capture (a pipe into head/tail, a killed runner) cannot stand for a re-measure", missing)
+	// The unreported set, not a count: a start-less terminal event reports a
+	// package the stream never started, and a count difference let it cancel
+	// one unfinished started package (card t1582 sync-audit F2). The set
+	// difference refuses on every started package without its terminal event.
+	var missing []string
+	for pkg := range started {
+		if !finished[pkg] {
+			missing = append(missing, pkg)
+		}
+	}
+	if len(missing) > 0 {
+		return 0, true, fmt.Errorf("go test -json stream ended with %d started package(s) unreported — a truncated capture (a pipe into head/tail, a killed runner) cannot stand for a re-measure", len(missing))
 	}
 	return count, structured, nil
 }
@@ -504,6 +587,7 @@ func IsIntegrationWorktreeCleanError(err error) bool {
 func gitIntegrationWorktreeClean(dir string) (bool, string, error) {
 	cmd := exec.Command("git", "status", "--porcelain", "--untracked-files=all")
 	cmd.Dir = dir
+	cmd.Env = gitenv.Env() // an inherited GIT_DIR would outrank cmd.Dir
 	out, err := cmd.Output()
 	if err != nil {
 		return false, "", fmt.Errorf("git status in %s: %v: %s", dir, err, out)
@@ -573,6 +657,16 @@ func RunRemeasure(projectRoot, worktree, baseBranch, command string) (*Remeasure
 		}
 	}
 	count, structured, classifyErr := ClassifyStructuredOutput(command, bytes.NewReader(outBytes))
+	// Card t1677: the failing name(s) the classifier refusal carries ride
+	// into the record and the run's refusal, whichever cause branch fires.
+	failing := failingTestsOf(classifyErr)
+	// REQ-MWQ2-009: a go test stream whose total per-test pass count is zero is
+	// an empty sweep. The classifier reports the zero (its contract, pinned by
+	// TestClassifyEmptySweepAndUnstructured); the run refuses it here, so the
+	// verb cannot return success for a sweep that measured nothing.
+	if classifyErr == nil && structured && count == 0 {
+		classifyErr = fmt.Errorf("go test reported no per-test pass — an empty sweep cannot stand for a re-measure")
+	}
 
 	// The finish checks (REQ-MWQ-016): the tree must be clean and HEAD
 	// unchanged across the run, or no record is written.
@@ -604,6 +698,7 @@ func RunRemeasure(projectRoot, worktree, baseBranch, command string) (*Remeasure
 		StructuredRequired: isGoTestCommand(command),
 		HasStructured:      structured,
 		TestCount:          count,
+		Failing:            failing,
 		BuildIdentity:      moaiBuildIdentity(),
 		RecordedAt:         WindowClock().Format(time.RFC3339),
 	}
@@ -611,7 +706,11 @@ func RunRemeasure(projectRoot, worktree, baseBranch, command string) (*Remeasure
 		return nil, err
 	}
 	if exitCode != 0 {
-		return rec, fmt.Errorf("integration remeasure: %q exited %d (recorded as observed; the record is invalid until a green re-measure)", command, exitCode)
+		msg := fmt.Sprintf("integration remeasure: %q exited %d (recorded as observed; the record is invalid until a green re-measure)", command, exitCode)
+		if len(failing) > 0 {
+			msg += " — failing: " + boundedFailing(failing)
+		}
+		return rec, errors.New(msg)
 	}
 	if classifyErr != nil {
 		return rec, fmt.Errorf("integration remeasure: %q is not a valid re-measure (%v); the record is written and the verifier refuses it", command, classifyErr)

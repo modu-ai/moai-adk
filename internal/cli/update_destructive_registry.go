@@ -42,8 +42,8 @@ type destructiveSite struct {
 // key identifies a registry row independently of its count and assignment.
 func (s destructiveSite) key() string { return s.File + " " + s.Function }
 
-// destructiveTargetRegistry is the registry itself: 15 (file, function) rows
-// covering 25 call sites, matching the source scan the drift guard performs.
+// destructiveTargetRegistry is the registry itself: 16 (file, function) rows
+// covering 26 call sites, matching the source scan the drift guard performs.
 //
 // Rows carry either a Protection or an Exemption, never both and never neither.
 // The exempt rows rest on three materially different grounds — same-call rewind
@@ -103,12 +103,16 @@ var destructiveTargetRegistry = []destructiveSite{
 	},
 	{
 		File: "internal/cli/update/backup/backup.go", Function: "CleanupOldBackups", Sites: 1,
-		Exemption: "Retention pruning of moai-authored backup directories — NOT a same-call rewind. " +
-			"It deletes the oldest excess backups of PREVIOUS runs, filtered to the YYYYMMDD_HHMMSS " +
-			"name pattern under the backup root, so every directory it removes was authored by moai " +
-			"itself under a declared retention policy. Exempt from the user-data protection set; not " +
-			"harmless to the recovery contract, since a sufficiently old restore point can be rotated " +
-			"out by a later run.",
+		Exemption: "Retention pruning of moai-authored backup runs — NOT a same-call rewind. It " +
+			"removes every directory of the runs older than the newest keepCount, across the config " +
+			"root (.moai-backups/) and the namespace root (.moai/backups/). A run is the set of " +
+			"directories that share a run marker. An unmarked directory counts as a run of its own " +
+			"only when its name has a shape a moai backup writer produces; any other unmarked name is " +
+			"neither counted nor deleted, so every directory it removes was authored by moai itself " +
+			"under a declared retention policy. The namespace root was not pruned before this rule, " +
+			"so user-owned namespace backups and clean-reinstall snapshots now rotate too. Exempt from " +
+			"the user-data protection set; not harmless to the recovery contract, since a sufficiently " +
+			"old restore point can be rotated out by a later run.",
 	},
 	{
 		File: "internal/cli/update/backup/file_snapshot.go", Function: "promote", Sites: 1,
@@ -177,5 +181,14 @@ var destructiveTargetRegistry = []destructiveSite{
 			"verbatim while the template render goes to a separately claimed .moai-new sidecar. " +
 			"A conflicted file is never auto-rewritten (the conflictDisposition path), so the " +
 			"only replacements are ones the operator's content survives inside.",
+	},
+	{
+		File: "internal/cli/update/skillresidue/residue.go", Function: "moveOne", Sites: 1,
+		Protection: "The single os.Rename in the skillresidue package. All three moves in " +
+			"renameSkillFile reach this site through the moveFile seam (skill.md to a temporary " +
+			"name, the temporary name to SKILL.md, and the restore after a failed second move). " +
+			"The temporary name comes from freeName, so no user file is replaced, and a failed " +
+			"second move puts the content back under its own name. TestMoveFileReferencesArePinned " +
+			"fails on any new reference to moveFile, which forces this row to be reviewed.",
 	},
 }

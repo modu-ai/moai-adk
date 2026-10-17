@@ -15,23 +15,28 @@
 // The same two-audience split applies. The orchestrator reads
 // hookSpecificOutput.additionalContext, the operator reads systemMessage, and
 // the operator needs the lane-start sentence because a session cannot launch
-// another session — those terminals are opened by hand. Each copy is rendered
-// in its own language (agent-facing English, operator-facing
-// conversation_language); the commands, run id, and socket path are protocol
-// tokens and are emitted verbatim in every locale so the operator's paste
-// keeps working. The notice states no lane count, no per-lane line, and no
-// free-slot list (SPEC-LAUNCHER-ENTRY-FLAGS-001 REQ-009).
+// another session — those terminals are opened by hand. Both copies render in
+// the session's conversation_language (SPEC-SESSION-START-GUIDE-I18N-001:
+// card t1603 amends the bootstrap guide's two-audience English rule for this
+// surface only — decision-index Q1; agent_prompt_language still governs the
+// other agent-facing surfaces); the commands, run id, and socket path are
+// protocol tokens and are emitted verbatim in every locale so the operator's
+// paste keeps working. The notice states no lane count, no per-lane line, and
+// no free-slot list (SPEC-LAUNCHER-ENTRY-FLAGS-001 REQ-009).
 package hook
 
 import (
 	"context"
 	"fmt"
 	"os"
+	"path/filepath"
 	"strconv"
 	"strings"
+	"time"
 
 	"github.com/modu-ai/moai-adk/internal/config"
 	"github.com/modu-ai/moai-adk/internal/factory"
+	"github.com/modu-ai/moai-adk/internal/homestate"
 )
 
 // factoryBootstrapNotice returns the factory announcement for this session in
@@ -46,19 +51,31 @@ import (
 // the session start, and an unknown lang degrades to English, never to an
 // empty notice.
 func factoryBootstrapNotice(root, sessionID, lang string) string {
+	return factoryBootstrapNoticeLang(root, sessionID, lang, lang)
+}
+
+// factoryBootstrapNoticeLang is factoryBootstrapNotice with the stale-run
+// recovery notice's locale pinned separately from the guidance locale. The
+// operator-facing copy passes lang twice (stale-run recovery localizes like
+// the rest of the operator notice); the agent-facing channel pins the
+// stale-run recovery notice to English — that surface names relaunch
+// commands and recovery state, and sits outside the bootstrap-guide surface
+// the conversation-language rule localizes
+// (SPEC-SESSION-START-GUIDE-I18N-001 § Out of Scope).
+func factoryBootstrapNoticeLang(root, sessionID, lang, staleRunLang string) string {
 	if label := os.Getenv(config.EnvMoaiFactoryWorker); label != "" {
 		if factory.IsLegacyFactoryRoleValue(label) {
 			// Run-state gated: an active run prescribes once, a dead run
 			// unbinds once, an unmeasurable one degrades — never an
 			// unconditional prescription (SPEC-STALE-RUN-LABEL-001).
-			return staleRunPrescriptionGate(context.Background(), root, sessionID, label, os.Getenv(config.EnvFactoryRunID), lang)
+			return staleRunPrescriptionGate(context.Background(), root, sessionID, label, os.Getenv(config.EnvFactoryRunID), staleRunLang)
 		}
 		return factoryLaneNotice(label, factoryLanesEnv(), lang)
 	}
 	if os.Getenv(config.EnvMoaiFactoryWorkers) == "" {
 		return ""
 	}
-	if notice := staleRunNoticeFor(root, sessionID, lang); notice != "" {
+	if notice := staleRunNoticeFor(root, sessionID, staleRunLang); notice != "" {
 		return notice
 	}
 	return factoryLeaderNotice(os.Getenv(config.EnvFactoryRunID), factoryLanesEnv(), lang)
@@ -77,15 +94,21 @@ func factoryBootstrapNoticeForSource(source, root, sessionID, lang string) strin
 	if source != "" && source != "startup" {
 		return ""
 	}
-	return factoryBootstrapNotice(root, sessionID, lang)
+	// The agent-facing channel (additionalContext) localizes the bootstrap
+	// GUIDE per conversation_language (card t1603, decision-index Q1) and
+	// keeps the stale-run recovery notice English — that recovery surface is
+	// outside the guide surface the card localizes. The operator-facing copy
+	// (factoryBootstrapNotice, called separately by the handler) localizes
+	// both as before.
+	return factoryBootstrapNoticeLang(root, sessionID, lang, langEnglish)
 }
 
 // factoryLaneRuleForSource returns the lane SessionStart rule
 // (SPEC-FACTORY-SELF-DISPATCH-001 REQ-SD-019) for this session, or "" when
 // the session receives none. The rule fires on source startup — under every
 // clear policy, which is why the policy value is never read here — and on
-// clear, where it re-enters the fresh session and keeps the clear-each loop
-// going; resume and compact receive nothing, matching the bootstrap gate's
+// clear, where it re-enters a freshly reset session so the lane still holds
+// the in-session card transition; resume and compact receive nothing, matching the bootstrap gate's
 // re-entry discipline. The rule is chosen by the backend variable: a
 // Claude-harness lane (claude or glm) gets the next-card rule, a
 // Codex-harness lane (gpt) the owned-card rule naming its leased card. A
@@ -93,6 +116,16 @@ func factoryBootstrapNoticeForSource(source, root, sessionID, lang string) strin
 // without a card id, and an unknown backend value all receive no rule.
 // lang is the session's conversation language (REQ-SD-019).
 func factoryLaneRuleForSource(source, lang string) string {
+	return factoryLaneRuleForSourceInDir(source, lang, "")
+}
+
+// factoryLaneRuleForSourceInDir is factoryLaneRuleForSource with the session
+// directory the card id may be derived from (card t1776 audit round-12: a
+// gpt lane standing in its card worktree without the card env (config.EnvFactoryCard) stamped
+// still carries a card — resolving it from the path keeps such a session on
+// the owned-card rule instead of misdirecting it at the parent-checkout
+// queue verb). dir may be empty; an empty dir resolves env-only.
+func factoryLaneRuleForSourceInDir(source, lang, dir string) string {
 	if source != "" && source != "startup" && source != "clear" {
 		return ""
 	}
@@ -117,22 +150,62 @@ func factoryLaneRuleForSource(source, lang string) string {
 		// owned-card rule below does not, because that harness has no session
 		// cron tool.
 		m := factoryMessagesFor(lang)
+		recheck := fmt.Sprintf(m.laneRecheckRule, laneArmExpression())
 		if os.Getenv(config.EnvFactoryAutoDispatch) == config.FactoryDispatchManual {
-			return m.laneManualDispatchRule + "\n\n" + m.laneRecheckRule
+			return m.laneManualDispatchRule + "\n\n" + recheck
 		}
-		return m.laneNextCardRule + "\n\n" + m.laneRecheckRule
+		return m.laneNextCardRule + "\n\n" + recheck
 	case factory.BackendGPT:
-		cardID := os.Getenv(config.EnvFactoryCard)
+		// Env override first (the launcher's stamp), else the REGISTERED
+		// card worktree this session stands in (card t1776 audit rounds
+		// 12+14: the path fallback must not mint a card from a coincidental
+		// `worktrees/` parent — only the MoAI tiers count).
+		cardID := strings.TrimSpace(os.Getenv(config.EnvFactoryCard))
 		if cardID == "" {
-			// An owned-card rule without a card id names nothing the lane
-			// could carry; the M5 launcher always stamps the id, so this is
-			// the degraded edge, not the expected shape.
-			return ""
+			cardID = cardIDFromRegisteredWorktree(dir)
 		}
-		return fmt.Sprintf(factoryMessagesFor(lang).laneOwnedCardRule, cardID)
+		if cardID == "" {
+			// The card-less queue boot (moai codex -l before its first
+			// lease): the role core's read-first duty conflicts with the
+			// boot prompt exactly as it does for a leased card — the
+			// BOOT-form precedence note names the queue verb this boot
+			// owns (audit round-8: the empty return left the conflict
+			// unresolved on the boot path).
+			return codexLaneBootPrecedenceNote
+		}
+		// t1776 audit round-3: the role core's read-the-full-rule duty
+		// conflicts with the lane's boot directive (run `moai todo --auto`
+		// now; the operator-measured session burned 72% of its context on
+		// exactly that reading). The owned-card rule carries the precedence
+		// note so the two texts resolve instead of contradicting.
+		return fmt.Sprintf(factoryMessagesFor(lang).laneOwnedCardRule, cardID, config.EnvFactoryCard) +
+			"\n\n" + codexLanePrecedenceNote
 	default:
 		return ""
 	}
+}
+
+// laneArmExpression renders the arm expression of the standing recheck, `*/N * * * *`,
+// for the effective watchdog renewal period, workflow.factory_lease.renew_interval
+// (SPEC-FACTORY-LEASE-RENEW-001 REQ-FLR-012). The configuration is read from the
+// project root the factory opens: the launch base, CLAUDE_PROJECT_DIR or else the
+// working directory, resolved through factory.ResolveTodoQueueRoot. That is the
+// resolution the factory's own root uses (internal/cli factoryCardRoot), so the
+// rendered period is the one the factory enforces. A configuration the factory
+// refuses renders the default period, because a session-start hook must not block;
+// the factory's own open names the refused key.
+func laneArmExpression() string {
+	renew := config.DefaultFactoryLeaseRenewInterval
+	base := os.Getenv(config.EnvClaudeProjectDir)
+	if base == "" {
+		base, _ = os.Getwd()
+	}
+	if base != "" {
+		if _, configured, err := homestate.EffectiveFactoryLease(factory.ResolveTodoQueueRoot(base)); err == nil {
+			renew = configured
+		}
+	}
+	return fmt.Sprintf("*/%d * * * *", int(renew/time.Minute))
 }
 
 // factoryLanesEnv reads the run's fan-out size from the environment the
@@ -144,6 +217,90 @@ func factoryLanesEnv() int {
 		return 0
 	}
 	return n
+}
+
+// cardIDFromRegisteredWorktree resolves the card id from dir ONLY when dir
+// stands inside a MoAI-MANAGED card worktree — a directory whose ancestry
+// carries a `worktrees` segment whose parent is `.moai` or `.claude` (the
+// two MoAI worktree tiers). A checkout that merely happens to live under a
+// plain `worktrees/` parent (e.g. ~/worktrees/myrepo) resolves no card:
+// minting an owned-card rule from a coincidental directory name would hand
+// a card-less boot both the queue-start directive and its contradiction
+// (card t1776 audit round-14). Empty when dir is not a registered-tier
+// card worktree.
+func cardIDFromRegisteredWorktree(dir string) string {
+	if strings.TrimSpace(dir) == "" {
+		return ""
+	}
+	d := filepath.Clean(dir)
+	for {
+		parent := filepath.Dir(d)
+		if parent == d {
+			return ""
+		}
+		if filepath.Base(parent) == "worktrees" {
+			gp := filepath.Base(filepath.Dir(parent))
+			if gp == ".moai" || gp == ".claude" {
+				return filepath.Base(d)
+			}
+			// A worktrees parent outside the MoAI tiers: not a card tree AT
+			// THIS LEVEL — the walk CONTINUES (card t1776 audit round-16: a
+			// session deep inside a card worktree whose own subtree carries
+			// an inner `worktrees` directory still resolves the card above;
+			// an early return minted the boot directive for a card session).
+		}
+		d = parent
+	}
+}
+
+// codexLanePrecedenceNote resolves the role core's read-first duty against
+// the lane boot directive for a Codex auto lane (card t1776 audit round-3).
+// The precedence lives HERE, not in the role core: the dispatch core sits
+// within 7 UTF-16 units of TestRoleInjectionAssemblyBudget's cap (audit
+// round-6 P1 — any core addition breaches it), so the hook context carries
+// the resolution. No queue-start verb rides it either: this branch is an
+// already-card-assigned session working its card worktree, and `moai todo
+// --auto` belongs to the card-less queue boot only (audit round-4).
+const codexLanePrecedenceNote = "Codex auto-lane precedence: the boot directive governs your first action — " +
+	"proceed with the leased card's work; " +
+	"open the rule files when that work needs them, not before."
+
+// codexLaneBootPrecedenceNote is the card-less queue boot's precedence
+// note (card t1776 audit round-8): `moai codex -l` boots WITHOUT a card id,
+// and this boot owns the queue verb — the note names it so the role core's
+// read-first duty resolves against the boot directive instead of
+// contradicting it.
+const codexLaneBootPrecedenceNote = "Codex auto-lane precedence: the boot directive governs your first action — " +
+	"run `moai todo --auto-lane` before any rule-file reading; " +
+	"open the rule files when the cards' work needs them, not before."
+
+// codexLaneEnvFailFast is the t1776 one-line stop for a broken lane launch:
+// a session stamped with the Codex factory backend but missing its lane
+// stamps — the launcher writes the worker-label stamp and the run-id stamp
+// together with the backend stamp (codex_launcher.go), so a
+// missing one means the launch did not go through the lane door — gets ONE
+// agent-facing stop line instead of silence. The operator-measured failure:
+// an unstamped session inferred lane behavior by reading todo_auto*.go and
+// factory-dispatch*.md in full, burning the dispatch context before any
+// autonomous progress; the line forbids exactly that. Fully stamped lanes and
+// non-codex backends receive nothing.
+func codexLaneEnvFailFast() string {
+	if os.Getenv(config.EnvFactoryBackend) != factory.BackendGPT {
+		return ""
+	}
+	if os.Getenv(config.EnvMoaiFactoryWorker) != "" && os.Getenv(config.EnvFactoryRunID) != "" {
+		return ""
+	}
+	missing := config.EnvMoaiFactoryWorker
+	if os.Getenv(config.EnvMoaiFactoryWorker) != "" {
+		missing = config.EnvFactoryRunID
+	}
+	// REQ-SRL-009: the env names ride the config constants, never literals.
+	return fmt.Sprintf(
+		"MOAI factory lane launch is incomplete: %s=gpt but the lane stamps are not both set (%s, %s; empty: %s) — stop. "+
+			"Do not read the engine or the rule sources and do not infer lane behavior; "+
+			"report this line and relaunch through `moai codex -l`.",
+		config.EnvFactoryBackend, config.EnvMoaiFactoryWorker, config.EnvFactoryRunID, missing)
 }
 
 // factoryLeaderNotice is the factory leader branch. It carries, in order:
@@ -209,6 +366,11 @@ func factoryLeaderNotice(runID string, lanes int, lang string) string {
 	}
 	blocks = append(blocks, strings.Join(context, "\n"))
 
+	// (f) the two-mode auto guidance (leader variant, carrying the
+	// design-surface marker REQ-005 pins) and the online docs pointer
+	// (card t1603).
+	blocks = append(blocks, strings.Join([]string{m.autoModeGuideLeader, m.docsPointer}, "\n"))
+
 	return strings.Join(blocks, "\n\n") + "\n"
 }
 
@@ -239,6 +401,14 @@ func factoryLaneNotice(label string, lanes int, lang string) string {
 	// Card t224: the standing spawn authority rides the join notice — it is
 	// the one message the lane is guaranteed to read at startup, and the
 	// tk8hce incident showed a lane without it refusing to spawn the
-	// phase-required specialist. English-only; see lane_spawn_authority.go.
-	return join + "\n\n" + laneSpawnAuthority
+	// phase-required specialist. Card t1603 moved it into the message table
+	// (the laneSpawnAuthority field), so it renders in the session's
+	// conversation language; en carries the canonical sentence. The lane
+	// variant of the two-mode auto guidance and the docs pointer ride the
+	// same notice (SPEC-SESSION-START-GUIDE-I18N-001).
+	return strings.Join([]string{
+		join,
+		m.laneSpawnAuthority,
+		strings.Join([]string{m.autoModeGuideLane, m.docsPointer}, "\n"),
+	}, "\n\n")
 }

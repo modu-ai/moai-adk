@@ -16,6 +16,7 @@ import (
 	"io/fs"
 	"os"
 	"path/filepath"
+	"regexp"
 	"sort"
 	"strings"
 	"time"
@@ -206,68 +207,191 @@ type BackupMetadata struct {
 	TemplateDefaultsDir string   `json:"template_defaults_dir,omitempty"`
 }
 
+// CleanupOldBackups prunes old backup runs and returns the number of backup
+// directories it removed. A negative keepCount deletes nothing.
+//
+// Retention counts runs, not directories, across both backup roots: the config
+// root (.moai-backups/) and the namespace root (.moai/backups/). A run is the set
+// of directories that carry the same run marker (RunMarkerName), whichever root
+// they sit under. A directory without a readable marker is a run of its own only
+// when its name has a shape a backup writer produces under its root (see
+// configBackupName and namespaceBackupName); any other unmarked name is neither
+// counted nor deleted. Runs are ordered newest first: a marked run by its run id,
+// an unmarked run by its directory's modification time, and ties by path
+// ascending. The newest keepCount runs are kept, and every directory of every
+// older run is removed. A missing root contributes no runs and is not an error.
+//
+// A backup root that is a symbolic link or leads outside projectRoot is refused,
+// and nothing is removed from either root (see OldBackupRootRefused and
+// NamespaceBackupRootRefused).
 func CleanupOldBackups(projectRoot string, keepCount int) int {
-	backupDir := filepath.Join(projectRoot, defs.BackupsDir)
-
-	// Check if backup directory exists
-	info, err := os.Stat(backupDir)
-	if err != nil {
-		if os.IsNotExist(err) {
-			return 0 // No backups to clean up
-		}
-		// Return 0 on stat errors (ignore for cleanup)
+	if keepCount < 0 {
 		return 0
 	}
-	if !info.IsDir() {
+	if OldBackupRootRefused(projectRoot) || NamespaceBackupRootRefused(projectRoot) {
+		return 0
+	}
+	runs := collectBackupRuns(projectRoot)
+	if len(runs) <= keepCount {
 		return 0
 	}
 
-	// Get all subdirectories in backup directory
-	entries, err := os.ReadDir(backupDir)
-	if err != nil {
-		return 0
-	}
-
-	// Filter for directories matching YYYYMMDD_HHMMSS pattern
-	// Pattern: 8 digits + underscore + 6 digits = 15 characters
-	var backups []string
-	for _, entry := range entries {
-		if entry.IsDir() && len(entry.Name()) == 15 {
-			// Check if it matches the timestamp pattern (digits + underscore + digits)
-			parts := strings.SplitN(entry.Name(), "_", 2)
-			if len(parts) == 2 {
-				if len(parts[0]) == 8 && len(parts[1]) == 6 {
-					backups = append(backups, entry.Name())
-				}
+	deletedCount := 0
+	for _, run := range runs[keepCount:] {
+		for _, dir := range run.dirs {
+			if err := os.RemoveAll(dir); err != nil {
+				// Log error but continue with other backups
+				fmt.Fprintf(os.Stderr, "Warning: failed to delete backup %s: %v\n", dir, err)
+			} else {
+				deletedCount++
 			}
 		}
 	}
 
-	// If we have fewer backups than keepCount, no cleanup needed
-	if len(backups) <= keepCount {
-		return 0
+	return deletedCount
+}
+
+// backupRun is one retention unit: the backup directories that share one run
+// id, or a single unmarked directory. at orders the run: the run id for a marked
+// run, the modification time for an unmarked one. dirs is sorted ascending, so
+// dirs[0] is the path a tie is broken on.
+type backupRun struct {
+	at   time.Time
+	dirs []string
+}
+
+// configBackupName matches the names the writers give the directories they create
+// directly under the config root: BackupMoaiConfig, ensureRunBackupDir, the deploy
+// pre-clean and legacy-memory backups, and BackupExistingProject all use a
+// defs.BackupTimestampFormat timestamp (YYYYMMDD_HHMMSS).
+var configBackupName = regexp.MustCompile(`^[0-9]{8}_[0-9]{6}$`)
+
+// namespaceBackupName matches the names the writers give the directories they
+// create directly under the namespace root: backupUserOwnedNamespace writes
+// update-<stamp> and clean reinstall writes v2-to-v3-<stamp>, where <stamp> is the
+// UTC 2006-01-02T15-04-05Z layout of newNamespaceBackupStamp and a same-second
+// collision appends -N.
+var namespaceBackupName = regexp.MustCompile(`^(update|v2-to-v3)-[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}-[0-9]{2}-[0-9]{2}Z(-[0-9]+)?$`)
+
+// backupRoot is one backup root and the name an unmarked directory under it must
+// match to count as a run.
+type backupRoot struct {
+	dir   string
+	names *regexp.Regexp
+}
+
+// backupRoots returns the config root and the namespace root of projectRoot.
+func backupRoots(projectRoot string) []backupRoot {
+	return []backupRoot{
+		{dir: filepath.Join(projectRoot, defs.BackupsDir), names: configBackupName},
+		{dir: filepath.Join(projectRoot, defs.MoAIDir, defs.NamespaceBackupsSubdir), names: namespaceBackupName},
 	}
+}
 
-	// Sort backups by name (timestamp) ascending (oldest first)
-	sort.Strings(backups)
-
-	// Delete the OLDEST excess backups so the NEWEST keepCount survive.
-	// The timestamps sort ascending, so the retention window is the tail
-	// backups[len-keepCount:]; everything before it is the oldest excess.
-	// (A prior revision deleted backups[keepCount:] — the newest — which
-	// destroyed the most recent restore points on every rotation.)
-	deletedCount := 0
-	for _, backupName := range backups[:len(backups)-keepCount] {
-		backupPath := filepath.Join(backupDir, backupName)
-		if err := os.RemoveAll(backupPath); err != nil {
-			// Log error but continue with other backups
-			fmt.Fprintf(os.Stderr, "Warning: failed to delete backup %s: %v\n", backupName, err)
-		} else {
-			deletedCount++
+// collectBackupRuns groups the directories under both backup roots into runs and
+// returns them newest first.
+func collectBackupRuns(projectRoot string) []*backupRun {
+	var runs []*backupRun
+	byID := make(map[string]*backupRun)
+	for _, root := range backupRoots(projectRoot) {
+		for _, dir := range listBackupDirs(root.dir) {
+			id, ok := readRunID(dir.path)
+			if !ok {
+				if !root.names.MatchString(dir.name) {
+					// Not a name a backup writer produces: neither counted nor deleted.
+					continue
+				}
+				runs = append(runs, &backupRun{at: dir.modTime, dirs: []string{dir.path}})
+				continue
+			}
+			key := id.Format(runIDLayout)
+			run, seen := byID[key]
+			if !seen {
+				run = &backupRun{at: id}
+				byID[key] = run
+				runs = append(runs, run)
+			}
+			run.dirs = append(run.dirs, dir.path)
 		}
 	}
 
-	return deletedCount
+	for _, run := range runs {
+		sort.Strings(run.dirs)
+	}
+	sort.Slice(runs, func(i, j int) bool {
+		if !runs[i].at.Equal(runs[j].at) {
+			return runs[i].at.After(runs[j].at)
+		}
+		return runs[i].dirs[0] < runs[j].dirs[0]
+	})
+	return runs
+}
+
+// backupDirEntry is one directory directly under a backup root.
+type backupDirEntry struct {
+	name    string
+	path    string
+	modTime time.Time
+}
+
+// listBackupDirs returns the directories directly under root. Symbolic links are
+// not followed. A missing root, a root that is not a directory, and a root that
+// cannot be read all yield no directories.
+func listBackupDirs(root string) []backupDirEntry {
+	info, err := os.Stat(root)
+	if err != nil || !info.IsDir() {
+		return nil
+	}
+	entries, err := os.ReadDir(root)
+	if err != nil {
+		return nil
+	}
+
+	var dirs []backupDirEntry
+	for _, entry := range entries {
+		if !entry.IsDir() {
+			continue
+		}
+		fi, err := entry.Info()
+		if err != nil {
+			continue
+		}
+		dirs = append(dirs, backupDirEntry{name: entry.Name(), path: filepath.Join(root, entry.Name()), modTime: fi.ModTime()})
+	}
+	return dirs
+}
+
+// backupRootContained reports whether a backup root is a real directory inside
+// projectRoot. A root that is a symbolic link, or that sits under one, would make
+// pruning delete entries outside the project, so the root must pass both checks
+// that the restore path already applies to its targets.
+func backupRootContained(projectRoot, root string) bool {
+	if IsSymlinkEntry(root) {
+		return false
+	}
+	absProject, err := filepath.Abs(projectRoot)
+	if err != nil {
+		return false
+	}
+	absRoot, err := filepath.Abs(root)
+	if err != nil {
+		return false
+	}
+	return ParentChainContained(absProject, absRoot)
+}
+
+// OldBackupRootRefused reports whether CleanupOldBackups refuses the timestamped
+// backup root because it is a symbolic link or leads outside projectRoot. A missing
+// root is not refused. The cleanup returns only a count, so the caller reports the
+// refusal itself.
+func OldBackupRootRefused(projectRoot string) bool {
+	return !backupRootContained(projectRoot, filepath.Join(projectRoot, defs.BackupsDir))
+}
+
+// NamespaceBackupRootRefused is OldBackupRootRefused for the namespace backup root
+// under .moai.
+func NamespaceBackupRootRefused(projectRoot string) bool {
+	return !backupRootContained(projectRoot, filepath.Join(projectRoot, defs.MoAIDir, defs.NamespaceBackupsSubdir))
 }
 
 // IsSymlinkEntry reports whether path is a symbolic link (via os.Lstat, which

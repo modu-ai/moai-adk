@@ -21,6 +21,7 @@ import (
 
 	"github.com/modu-ai/moai-adk/internal/codexadapter"
 	"github.com/modu-ai/moai-adk/internal/codexwiring"
+	"github.com/modu-ai/moai-adk/internal/testguard"
 )
 
 // ─── AC-CL-007 / AC-CL-004 sentinel values (distinct from any real value) ───
@@ -534,6 +535,7 @@ func TestClassifyCodexWiring_UnreadableHooks(t *testing.T) {
 // TestCountCodexAgentTOMLs_BadPatternRoot pins the glob-error branch: a root
 // whose name breaks the glob pattern counts as 0 agents, never an error.
 func TestCountCodexAgentTOMLs_BadPatternRoot(t *testing.T) {
+	testguard.RedirectHome(t)
 	root := filepath.Join(t.TempDir(), "bad[")
 	if err := os.MkdirAll(filepath.Join(root, ".codex", "agents", "moai"), 0o755); err != nil {
 		t.Fatal(err)
@@ -549,6 +551,7 @@ func TestCountCodexAgentTOMLs_BadPatternRoot(t *testing.T) {
 // ─── agents row ───
 
 func TestCountCodexAgentTOMLs(t *testing.T) {
+	testguard.RedirectHome(t)
 	root := t.TempDir()
 	dir := filepath.Join(root, ".codex", "agents", "moai")
 	if err := os.MkdirAll(dir, 0o755); err != nil {

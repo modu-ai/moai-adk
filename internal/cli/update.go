@@ -86,7 +86,7 @@ func init() {
 	updateCmd.Flags().Bool("no-hooks", false, "Skip git hook installation (REQ-CIAUT-002)")
 	updateCmd.Flags().Bool("no-plugin", false, "Skip the moai plugin install step during a record-less project's migration and record deployment_mode: local (also MOAI_SKIP_PLUGIN_INSTALL=1; SPEC-INIT-SHRINK-001 REQ-015)")
 	updateCmd.Flags().String("restore", "", "Restore .moai/config from a backup directory left by a previous update (works on a tree whose .moai/config/sections/system.yaml was destroyed)")
-	updateCmd.Flags().Bool("verbose", false, "Show all warnings including acknowledged reserved-name and 3-way merge fallback notices (diagnostic mode; SPEC-V3R6-UPDATE-NOISE-001 REQ-UN-005/010)")
+	updateCmd.Flags().Bool("verbose", false, "Show all warnings including acknowledged reserved-name and 3-way merge fallback notices, and list each preserved file by path in the update summary (diagnostic mode; the default summary shows a count; SPEC-V3R6-UPDATE-NOISE-001 REQ-UN-005/010; SPEC-UPDATE-REPAIR-RC30-001 REQ-RC30-015)")
 
 	// Retired --profile (SPEC-AGENT-MODEL-INHERIT-001 D10): accepted for script
 	// compatibility, warns, and has no effect.
@@ -161,7 +161,8 @@ func runUpdate(cmd *cobra.Command, _ []string) error {
 	// 3-strike suppression. `moai update` is single-process sequential — no
 	// synchronization needed. The flag is reset on function exit so subsequent
 	// in-process invocations (CLI tests, helpers) start with the default
-	// suppression-on behavior.
+	// suppression-on behavior. The reconciliation summary reads the same flag
+	// for its preserved list (SPEC-UPDATE-REPAIR-RC30-001 REQ-RC30-015).
 	updateVerboseMode = getBoolFlag(cmd, "verbose")
 	defer func() { updateVerboseMode = false }()
 
@@ -179,6 +180,13 @@ func runUpdate(cmd *cobra.Command, _ []string) error {
 		return fmt.Errorf("--binary and --templates-only are mutually exclusive")
 	}
 
+	// --dry-run promises no filesystem change. The --config and --binary paths
+	// housekeep (and --binary installs) before the dry-run branch, and the config
+	// wizard writes on confirm, so the combinations are refused up front.
+	if getBoolFlag(cmd, "dry-run") && (editConfig || binaryOnly) {
+		return fmt.Errorf("--dry-run cannot be combined with --config or --binary: those paths change the filesystem before any preview")
+	}
+
 	// REQ-ITI-001: `moai update` carries NO profile entry — no confirmation, no
 	// profile wizard, whatever stdin and the flags are. The profile wizard
 	// starts only from `moai profile setup` / `--setup`.
@@ -186,18 +194,23 @@ func runUpdate(cmd *cobra.Command, _ []string) error {
 	// Handle --config / -c mode (edit configuration only, no template updates)
 	// This takes priority over all other flags
 	if editConfig {
+		// M6: the configuration path writes project state too, so it runs the
+		// same housekeeping under the update lock (marker-guarded; a busy lock
+		// skips, because the other update housekeeps).
+		runUpdateHousekeepingLocked(updateProjectRoot())
 		return runInitWizard(cmd, true) // true = reconfigure mode
 	}
 
 	currentVersion := version.GetVersion()
-	// Card t1527 D1: on the re-executed pass the version identity is carried by
-	// the template-sync band (renderIdentityBand) alone — repeating the KV here
-	// printed the same version twice per install (three times counting the
-	// pre-exec pass). The marker rides ARGV (hidden flag inserted by
-	// reexecNewBinary), not the environment — an inherited env var cannot
-	// fake the pass (card review round 2).
+	// REQ-RC30-013 / REQ-TUXIU-015: the identity band is the run's single
+	// version banner. It prints here, ahead of every mode branch below, so each
+	// run shows it exactly once (AC-RC30-18). The re-executed pass skips it,
+	// because the pre-exec pass already printed the band before the binary was
+	// replaced. The marker rides ARGV (hidden flag inserted by reexecNewBinary),
+	// not the environment — an inherited env var cannot fake the pass (card
+	// review round 2).
 	if !reexecPassActive(cmd) {
-		_, _ = fmt.Fprintln(out, tui.KV("Current version", "moai-adk "+currentVersion, tui.KVOpts{Theme: &th, KeyWidth: 16}))
+		_, _ = fmt.Fprintln(out, renderIdentityBand(currentVersion, th))
 	}
 
 	// Handle shell-env mode
@@ -303,6 +316,13 @@ func runUpdate(cmd *cobra.Command, _ []string) error {
 		defer releaseLock()
 	}
 
+	// M6: a --binary run never re-execs, so it housekeeps here, under the lock it
+	// already holds, and its report reaches the terminal block. Every other entry
+	// point housekeeps after the binary step (see the post-dry-run call below).
+	if binaryOnly {
+		runUpdateHousekeeping(lockRoot)
+	}
+
 	// Step 1: Binary update (unless skipped)
 	if !shouldSkipBinaryUpdate(cmd) {
 		updated, err := runBinaryUpdateStep(cmd)
@@ -374,6 +394,15 @@ func runUpdate(cmd *cobra.Command, _ []string) error {
 		//
 		return emitDryRunReinstallPlan(cmd, cwd, getBoolFlag(cmd, "force"), th)
 	}
+
+	// M6: housekeeping (state residue + skill-folder residue). It runs here, after
+	// the dry-run return and under the update lock, so every project-mutating path
+	// reaches it: --force, --templates-only, the normal flow, and the re-exec'd
+	// child (a parent that re-execs replaces its process and never gets this far,
+	// so no report is lost with a discarded ledger). The lowercase skill.md rename is
+	// held back: the template sync that follows may still be cancelled at its
+	// confirmation, and applyDeferredSkillRenames runs only once that is settled.
+	runUpdateHousekeepingDeferRenames(lockRoot)
 
 	// This is after the dry-run return and under the update lock. It also runs
 	// when template sync is version-matched, so a later update can retry trees
@@ -602,6 +631,15 @@ func runUpdate(cmd *cobra.Command, _ []string) error {
 	// Pre-fix UX leaked a "Skipping sync" line immediately followed by
 	// "Legacy skill archive failed" because the archive ran unconditionally.
 	if syncSkipped {
+		// SPEC-UPDATE-MIGRATION-FIX-001 (REQ-UMF-001..003): the managed-surface
+		// integrity probe runs on the version-match entry only. A user-cancelled
+		// merge returns the same skipped=true, so the version predicate that
+		// updateSkippedOnVersionMatch re-evaluates also gates the probe. The probe
+		// runs before the strip below because it is pure observation and the strip
+		// mutates configuration.
+		if updateSkippedOnVersionMatch(cmd, ".") {
+			runManagedSurfaceIntegrityProbe(out, ".")
+		}
 		// A version-matched update runs no sync and no merge, so the retired
 		// per-agent model/effort keys are stripped here, after its own backup.
 		// A user-cancelled merge returns the same skipped=true; the helper
@@ -648,8 +686,11 @@ func runUpdate(cmd *cobra.Command, _ []string) error {
 		updateLedger.requiref(sevWarn, "evolution directory scaffold failed: %v", err)
 	}
 
-	// Sync profile preferences to project config (after template deployment)
-	profileName := profile.GetCurrentName()
+	// Sync profile preferences to project config (after template deployment).
+	// The profile is the project's mapping in the launch ledger (AC-RC30-21), not
+	// the environment alone: GetCurrentName() never reads the ledger.
+	profileRoot, _ := filepath.Abs(".")
+	profileName := profile.GetCurrentNameForProject(profileRoot)
 	prefs, err := profile.ReadPreferences(profileName)
 	if err != nil {
 		updateLedger.requiref(sevWarn, "profile preferences read failed: %v", err)
@@ -1041,6 +1082,8 @@ func globalMoaiHooksDir(homeDir string) string {
 	return filepath.Join(homeDir, defs.ClaudeDir, "hooks", "moai")
 }
 
+// @MX:ANCHOR: [AUTO] ensureGlobalSettingsEnv is the global settings and hooks cleanup shared by the init, update, and init-resume paths; it removes ~/.claude/hooks/moai
+// @MX:REASON: [AUTO] fan_in=3 non-test call sites: runInit (init.go), runTemplateSyncWithReporter (update_template_sync.go), resumeInitializedProject (init_resume.go)
 // ensureGlobalSettingsEnv cleans up moai-managed settings from ~/.claude/settings.json.
 // All settings (env, permissions, teammateMode, hooks) are managed at the project level.
 // The global hooks directory (~/.claude/hooks/moai/) is also removed since hooks

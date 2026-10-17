@@ -490,12 +490,16 @@ func TestSettingsTemplatePermissions(t *testing.T) {
 		t.Fatal("missing permissions section")
 	}
 
-	// CLAUDE.local.md §22.1: the template ships defaultMode UNSPECIFIED so
-	// distributed user projects inherit Claude Code's safe "default"
-	// (prompt-each-time) mode. The maintainer's acceptEdits/bypassPermissions
-	// preference lives in settings.local.json, not the rendered template.
-	if mode, ok := perms["defaultMode"]; ok {
-		t.Errorf("permissions.defaultMode should be absent (template ships unspecified per CLAUDE.local.md §22.1; distributed users get Claude Code's safe default), got %q", mode)
+	// SPEC-USER-SETTINGS-PROTECT-001 (decision Q2, DECIDED): the template
+	// carries exactly one permissions.defaultMode key with the value "default"
+	// (the CC prompt-each-time mode), superseding the earlier unspecified
+	// contract of CLAUDE.local.md §22.1. The maintainer's
+	// acceptEdits/bypassPermissions preference still lives in
+	// settings.local.json, not the rendered template.
+	if mode, ok := perms["defaultMode"]; !ok {
+		t.Error("permissions.defaultMode should be present with the value \"default\" (SPEC-USER-SETTINGS-PROTECT-001, decided Q2)")
+	} else if mode != "default" {
+		t.Errorf("permissions.defaultMode = %q, want \"default\" (SPEC-USER-SETTINGS-PROTECT-001, decided Q2)", mode)
 	}
 
 	allow, ok := perms["allow"].([]any)
@@ -740,9 +744,13 @@ func TestSettingsTemplateNewHookStructure(t *testing.T) {
 			// Verify timeout. SPEC-HOOK-OFFICIAL-COMPLIANCE-001 M4 (REQ-HOC-010)
 			// raised TeammateIdle/TaskCompleted from 5s to 60s toward the sync-gate
 			// 60s precedent; the remaining events stay at the 5s default.
+			// UserPromptSubmit is pinned at 30s, the Claude Code default for its command hooks
+			// (card t1775; https://code.claude.com/docs/en/hooks, checked 2026-10-15, a default rather than a maximum).
+			// bash startup alone exceeded 5s under multi-lane load.
 			expectedTimeout := map[string]float64{
-				"TeammateIdle":  60,
-				"TaskCompleted": 60,
+				"TeammateIdle":     60,
+				"TaskCompleted":    60,
+				"UserPromptSubmit": 30,
 			}
 			want, hasCustom := expectedTimeout[ne.event]
 			if !hasCustom {

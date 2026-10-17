@@ -1,10 +1,10 @@
 ---
 id: SPEC-JEV-CORE-001
 title: "Jev core capability — package, config gate, credential, fail-open"
-version: "0.4.0"
+version: "0.5.0"
 status: completed
 created: 2026-09-20
-updated: 2026-10-02
+updated: 2026-10-15
 author: manager-spec
 priority: P2
 phase: "v3.1.0 target"
@@ -12,6 +12,7 @@ module: "internal/jev + internal/jevcred + internal/config"
 lifecycle: spec-anchored
 tags: "jev, typesafe, system-one, core, credential, fail-open"
 tier: L
+amendment_of: SPEC-JEV-CORE-001
 ---
 
 # SPEC-JEV-CORE-001
@@ -20,10 +21,21 @@ tier: L
 
 | Date | Version | Change | Author |
 |---|---|---|---|
+| 2026-10-15 | 0.5.0 | **Amendment to a `completed` SPEC, card t1768 (`SPEC-JEV-RESOLVED-MODEL-001`). Status `completed → in-progress (amendment)`; `amendment_of: SPEC-JEV-CORE-001`.** Operator decision of 2026-10-15 (brain session). The request model becomes the alias `jev-latest`, because the response reports the version that answered. Measured by the leader on 2026-10-15: a request with `model=jev-latest` returned a response whose `model` field is `jev-1.13.0`, with the same answer and tokens as a request with `model=jev-1.13.0`. The prohibition on the alias rested on the risk that the answering model could not be attributed; recording the response's `model` field removes that risk. REQ-JEVC-003 changes from an alias prohibition to an alias request plus a mandatory recording of the response model. REQ-JEVC-004 records the interpreted model and the request alias in separate fields. Q2 changes its wording only. No requirement is removed or renumbered, and no acceptance criterion changes, because none of this SPEC's criteria names the alias. `sync_commit_sha` (`c8731f965`) is NOT rewritten. | manager-spec |
 | 2026-10-02 | 0.4.0 | **Narrow amendment to a `completed` SPEC, card t1403 (`SPEC-JEV-AUTO-EXCEPTION-001`).** `SPEC-TODO-AUTO-PRIORITY-001` gave the `moai todo --auto` cycle an auto-scoped ranking exception — the cycle may rank the queued candidates it is about to accept, which changes its selection order only — while this SPEC still stated the display-only principle without it. REQ-JEVC-011 and REQ-JEVC-012 each gain exactly one more exception, the same one in both, and each now names two exceptions: **the `--auto` cycle's own candidate ranking**, behind the default-off `workflow.jev.enabled` gate, with the candidate set fixed by mechanical filters before any answer is read and a fallback to recorded priority when the answer cannot be used as a whole. Both `### Out of Scope — authority` items name the same exception inside the existing bullet, so their count stays two. Every other prohibition stands unchanged, the Kickoff exception of v0.3.0 is untouched, and no ordering accuracy is claimed. No requirement was removed, no id renumbered, no AC mapping changed. As with v0.2.0 and v0.3.0, `sync_commit_sha` is NOT rewritten and `status` stays `completed` — a non-transition correction, decided as an in-place amendment in `SPEC-JEV-AUTO-EXCEPTION-001` `progress.md` §G OD-4. | manager-spec |
 | 2026-09-26 | 0.3.0 | **Narrow amendment to a `completed` SPEC, card t1236 (`SPEC-AUTONOMY-GATE-REWIRE-001` REQ-GR-013/025).** Operator decision, relayed by the lead: 「Kickoff 는 LLM·Jev 도 할 수 있게」 (let the LLM and Jev also decide Kickoff) — then the operator's same-day re-decision of 2026-09-26: **no Jev-alone decider; the cross-check only.** REQ-JEVC-011 and REQ-JEVC-012 each gain exactly one exception, the same one in both: **the second signal of the contract-mode Kickoff `llm+jev` cross-check**, where `moai contract decide` may call Jev directly and Jev's answer can only confirm an LLM approval or route the Kickoff to a human — it never starts a Kickoff alone. REQ-JEVC-011 additionally allows moai to record that answer in the Kickoff receipt and the contract store. Both `### Out of Scope — authority` items name the same exception so the SPEC does not contradict its own REQ-JEVC-012. Every other prohibition stands unchanged: completion verdicts, merge approvals, `moai todo`/`moai gtd` mutations, every other operator gate, user-surface behaviour changes, CodeRabbit slot-wait adjudication, and any Jev-alone decision. No requirement was removed, no id renumbered, no AC mapping changed. This amendment lands in one commit with the code constant that lifts the interim rule and with the matching rule, config, and local-guide sentences (REQ-GR-025). As with v0.2.0, `sync_commit_sha` is NOT rewritten and `status` stays `completed` — this is a non-transition correction. | manager-spec |
 | 2026-09-21 | 0.2.0 | **Clarifying amendment to a `completed` SPEC, card t1066.** REQ-JEVC-011 and REQ-JEVC-012 were reconciled with `SPEC-JEV-CONSUMERS-001` REQ-JEVN-001, which authorises an inert finding append during `moai todo add` and which a plain reading of both clauses forbade. REQ-JEVC-011 gains a bounded inert-sibling-record carve-out with three binding conditions; REQ-JEVC-012 gains a definition of "for" that separates *reaching* a listed act from merely *co-occurring* with one. No requirement was removed, no id renumbered, no AC mapping changed, and the scope this SPEC closed is unchanged. **This amendment postdates the sync commit `c8731f965`** recorded in `progress.md` §E.4, so the SPEC body no longer byte-matches the tree that was synced; `sync_commit_sha` is NOT rewritten, because it records which tree was synced and not which text currently stands. `status` stays `completed`. | manager-spec |
 | 2026-09-20 | 0.1.0 | Split from SPEC-JEV-INTEGRATION-001 (card t1020) on the M1 seam, after that SPEC exceeded the Tier L REQ/AC ceilings (68/56 against 25/25). Carries M1: the single implementation, the config gate, the credential, the display-only invariant, fail-open, and the doctor check. Requirements re-numbered `REQ-JEVC-*`; no requirement was dropped. | manager-spec |
+
+## Amendments
+
+- Amendment: v0.5.0, card t1768, carried by `SPEC-JEV-RESOLVED-MODEL-001`. In place.
+- Prior completed version: 0.4.0 (status `completed`; the close is recorded in `progress.md` §E.4).
+- prior_completed_sha: c8731f965
+- Rationale: the response's `model` field names the version that answered. Recording it removes the attribution risk the alias prohibition guarded against. The amended text uses two terms. The **interpreted model id** is the response's `model` value. The **request alias** is `jev-latest`, the value the package sends.
+- Scope: REQ-JEVC-003 and REQ-JEVC-004 (text), and §E Q2 (wording). Nothing else changes. `design.md`, `research.md`, `plan.md`, and the prior `progress.md` are historical records of the 0.1.0–0.4.0 work and are not rewritten.
+- Sync commit SHA: not changed. The `sync_commit_sha` in `progress.md` §E.4 stays `c8731f965`. It records which tree was synced, not which text currently stands, and an amendment does not rewrite it.
+- Return to completed: at the sync phase of `SPEC-JEV-RESOLVED-MODEL-001`, this SPEC's frontmatter `status` returns to `completed`, a frontmatter-only change. The sync record of this amendment is that SPEC's `progress.md` §E.4.
 
 ## Position in the chain
 
@@ -57,9 +69,9 @@ One Go package owning the single call path; one config gate defaulting to off; o
 
 **REQ-JEVC-002** (Ubiquitous) Every consumer — CLI, MCP tool wrapper, and web surface — shall reach the model only through `internal/jev`; no second client implementation shall exist.
 
-**REQ-JEVC-003** (Ubiquitous) The package shall send a **pinned** model id. The alias `jev-latest` shall not appear in any request this package constructs.
+**REQ-JEVC-003** (Ubiquitous) **[AMENDED 2026-10-15 — v0.5.0; see HISTORY]** The package shall send the request model alias `jev-latest` in every request it constructs, and shall record the response's `model` field, the interpreted model id, for every answered call. A response that reports no interpreted model id in the versioned shape `jev-<major>.<minor>.<patch>` is not an answer: the package shall return a typed unavailable result for it, with the condition `unattributed`.
 
-**REQ-JEVC-004** (Ubiquitous) The package shall record, per call, the request's input-token count and the pinned model id, so a later cost or provenance question is answerable from the record rather than from recollection.
+**REQ-JEVC-004** (Ubiquitous) **[AMENDED 2026-10-15 — v0.5.0; see HISTORY]** The package shall record, per call, the request's input-token count, the interpreted model id from the response, and the request alias in a separate field, so a later cost or provenance question is answerable from the record rather than from recollection.
 
 ### C.2 — Fail-open
 
@@ -171,5 +183,5 @@ A consumer relying on this carve-out is authorised **by name** in a downstream S
 
 | # | Question | Status |
 |---|---|---|
-| Q2 | Is the pinned model id compiled, or operator-visible configuration? | OPEN — decides whether `workflow.jev` is a bare `enabled` flag or a block. Affects REQ-JEVC-003 and REQ-JEVC-015. |
+| Q2 | Is the request model alias compiled, or operator-visible configuration? | OPEN — decides whether `workflow.jev` is a bare `enabled` flag or a block. Affects REQ-JEVC-003 and REQ-JEVC-015. |
 | Q4 | Is a credential-reveal route wanted? | OPEN — the GLM precedent has one (`glmKeyRevealPath`); REQ-JEVC-020 is satisfied without it. |

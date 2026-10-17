@@ -13,11 +13,10 @@ import (
 // Card t1527 D1 — one version identity surface per update run.
 //
 // The re-executed pass carries a hidden ARGV marker (inserted by
-// reexecNewBinary via reexecChildArgv): runUpdate suppresses its top
-// "Current version" KV line there, and the template-sync identity band is
-// that pass's single version surface. The marker rides ARGV, NOT the
-// environment — an inherited env var cannot fake the pass (card review
-// round 2).
+// reexecNewBinary via reexecChildArgv): runUpdate suppresses its top identity
+// band there, because the pre-exec pass already printed the run's single
+// version banner. The marker rides ARGV, NOT the environment — an inherited
+// env var cannot fake the pass (card review round 2).
 
 func TestReexecPassActive_FlagGated(t *testing.T) {
 	// A command WITHOUT the marker set reads as an ordinary pass.
@@ -92,7 +91,7 @@ func TestUpdateBanner_IdentityBandIsTheSingleSyncSurface(t *testing.T) {
 
 	var buf bytes.Buffer
 	_, _ = buf.WriteString(renderIdentityBand("v9.9.9-test", th))
-	// The template-sync header is band + progress line, nothing else versioned.
+	// The version banner names the version exactly once.
 	if n := strings.Count(stripSGR(buf.String()), "v9.9.9-test"); n != 1 {
 		t.Errorf("sync header must show the version exactly once, got %d in %q", n, stripSGR(buf.String()))
 	}

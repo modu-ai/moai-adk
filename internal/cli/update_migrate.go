@@ -29,6 +29,7 @@ import (
 	"path/filepath"
 	"strings"
 
+	"github.com/modu-ai/moai-adk/internal/cli/uikit"
 	"github.com/modu-ai/moai-adk/internal/cli/update"
 	"github.com/modu-ai/moai-adk/internal/cli/update/deploy"
 	"github.com/modu-ai/moai-adk/internal/template"
@@ -139,6 +140,38 @@ func runUpdateMigrationTrigger(projectRoot string, noPlugin bool, out, errOut io
 	// user-asset phase's confirmed install).
 	plan.outcome = migrateOptedOut
 	return plan, nil
+}
+
+// stampMigrationDeployMode writes the deployment_mode record a completed
+// migration run owes (SPEC-INIT-SHRINK-001 REQ-015, design §3 step 5). A
+// record-less project stamped local over a migration archive is announced
+// (SPEC-UPDATE-REPAIR-RC30-001 REQ-RC30-008, U-06): the local stamp is never
+// silent.
+func stampMigrationDeployMode(projectRoot string, outcome migrationOutcome, errOut io.Writer) {
+	switch outcome {
+	case migrateConfirmed:
+		if err := template.ApplyDeployMode(projectRoot, "plugin"); err != nil {
+			_, _ = fmt.Fprintf(errOut, "  %s deployment_mode write warning: %v\n", uikit.SymWarning(), err)
+		}
+	case migrateNotDemonstrated, migrateOptedOut:
+		if migrationArchiveExists(projectRoot) {
+			emitSeverityLine(errOut, sevWarn, resolveTheme(), "deployment_mode was not recorded for this project, so it is recorded as local; if it is a plugin project, set deployment_mode: plugin in .moai/config/sections/llm.yaml")
+		}
+		if err := template.ApplyDeployMode(projectRoot, "local"); err != nil {
+			_, _ = fmt.Fprintf(errOut, "  %s deployment_mode write warning: %v\n", uikit.SymWarning(), err)
+		}
+	}
+}
+
+// migrationArchiveExists reports whether projectRoot holds a migration archive:
+// either archive layout root is present.
+func migrationArchiveExists(projectRoot string) bool {
+	for _, rel := range []string{update.ArchiveSkillFileRoot(), update.ArchiveFilesRoot()} {
+		if info, err := os.Stat(filepath.Join(projectRoot, rel)); err == nil && info.IsDir() {
+			return true
+		}
+	}
+	return false
 }
 
 // classifiedCleanTarget builds one classified removal target.

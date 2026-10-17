@@ -69,8 +69,8 @@ func TestRemeasureRunsAndWritesRecord(t *testing.T) {
 
 func TestRemeasureGoTestJSONRecordsCount(t *testing.T) {
 	root, _ := remeasureFixtureRepo(t)
-	// A go package with no test files: go test -json reports the
-	// empty-sweep marker, which the classifier refuses — the record is
+	// A go package with no test files: go test -json reports no per-test
+	// pass, an empty sweep. The run refuses it (REQ-MWQ2-009); the record is
 	// written (observed as observed) and the verifier rejects it.
 	write := func(rel, body string) {
 		path := filepath.Join(root, rel)
@@ -168,6 +168,32 @@ func TestRemeasureCleanCheckSeesIgnoredUnderShowUntrackedNo(t *testing.T) {
 	}
 }
 
+// TestRemeasureFailingSweepRecordsFailingNames (card t1677, t1568's
+// undiagnosable failure): a re-measure whose go test -json stream carries a
+// fail event and whose command exits non-zero must record WHICH test failed —
+// in the written record (Failing) and in the returned error — so the failure
+// is diagnosable from the record alone, without re-running the sweep.
+func TestRemeasureFailingSweepRecordsFailingNames(t *testing.T) {
+	root, _ := remeasureFixtureRepo(t)
+	command := "go test -json ./example.com/a/... >/dev/null 2>&1; printf '%s\\n' '{\"Action\":\"fail\",\"Package\":\"example.com/a\",\"Test\":\"TestFlakyUnderLoad\"}'; false"
+	rec, err := RunRemeasure(root, root, "develop", command)
+	if rec == nil {
+		t.Fatalf("the record is still written (observed as observed); got none")
+	}
+	if err == nil {
+		t.Fatalf("a failing sweep must be reported")
+	}
+	if len(rec.Failing) != 1 || rec.Failing[0] != "TestFlakyUnderLoad" {
+		t.Fatalf("the record must name the failing test, got %q", rec.Failing)
+	}
+	if !strings.Contains(err.Error(), "TestFlakyUnderLoad") {
+		t.Fatalf("the returned error must name the failing test: %v", err)
+	}
+	if err := ValidateRemeasureRecord(rec); err == nil {
+		t.Fatalf("a failing-sweep record must be invalid")
+	}
+}
+
 // recTreeOf computes the tree SHA a remeasure record for root would be keyed
 // under — the current HEAD tree.
 func recTreeOf(root string) string {
@@ -180,9 +206,13 @@ func recTreeOf(root string) string {
 	return strings.TrimSpace(string(out))
 }
 
-// AC-MWQ-015 explicitly rejects output containing [no test files], even
-// when another package has executed tests. Keep that conservative contract.
-func TestRemeasureMixedTestAndEmptyPackageRemainsInvalid(t *testing.T) {
+// REQ-MWQ2-003 (card t1582): the marker refusal of AC-MWQ-015 is superseded.
+// A mixed sweep — a package with passing tests beside a package whose output
+// carries `[no test files]` and whose terminal event is a package-level skip —
+// is judged by its total per-test pass count, so it is valid and records the
+// count it measured. The all-no-test negative procedure stays refused
+// (TestRemeasureGoTestJSONRecordsCount, TestClassifyAllNoTestSweepStaysEmpty).
+func TestRemeasureMixedTestAndEmptyPackageIsValid(t *testing.T) {
 	root, _ := remeasureFixtureRepo(t)
 	for rel, body := range map[string]string{
 		"go.mod":           "module example.com/mixed\n\ngo 1.23\n",
@@ -214,14 +244,18 @@ func TestRemeasureMixedTestAndEmptyPackageRemainsInvalid(t *testing.T) {
 		t.Fatalf("positive control: not a mixed report: %s", output)
 	}
 	t.Logf("positive control: real mixed report includes TestPass and [no test files]")
-	if _, _, err := ClassifyStructuredOutput("go test -json ./...", strings.NewReader(string(output))); err == nil {
-		t.Fatal("mixed output must remain invalid under AC-MWQ-015")
+	count, structured, err := ClassifyStructuredOutput("go test -json ./...", strings.NewReader(string(output)))
+	if err != nil || !structured || count != 1 {
+		t.Fatalf("a mixed sweep must be judged by its 1 per-test pass: count=%d structured=%v err=%v", count, structured, err)
 	}
 	rec, err := RunRemeasure(root, root, "develop", "go test -json ./...")
-	if rec == nil || err == nil {
-		t.Fatalf("mixed report must be recorded and refused: record=%+v err=%v", rec, err)
+	if rec == nil || err != nil {
+		t.Fatalf("mixed sweep must be recorded and accepted: record=%+v err=%v", rec, err)
 	}
-	if err := ValidateRemeasureRecord(rec); err == nil {
-		t.Fatal("mixed report record must remain invalid")
+	if err := ValidateRemeasureRecord(rec); err != nil {
+		t.Fatalf("mixed sweep record must be valid: %v", err)
+	}
+	if rec.TestCount != 1 {
+		t.Fatalf("the record must carry the measured count 1, got %d", rec.TestCount)
 	}
 }

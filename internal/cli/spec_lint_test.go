@@ -1079,3 +1079,25 @@ func slReadBaseline(t *testing.T, path string) slBaselineFile {
 	}
 	return b
 }
+
+// Card t1667 — CLI-level negative contrast for the VacuousTestAssertion
+// apostrophe defect. A real subtest name carries a mid-word apostrophe
+// (t.Run("window naming the card's own branch: refused", …) prints
+// …_window_naming_the_card's_own_branch:_refused); the outcome-assertion
+// grammar used to cut the component at the apostrophe and warn on the
+// truncated prefix. Citing the printed line in an artifact must produce no
+// VacuousTestAssertion row.
+func TestSpecLint_PossessiveSubtestName_NoVacuousRow(t *testing.T) {
+	root := newFixtureProject(t)
+	acc := "# acceptance\n\nstdout:     --- PASS: " +
+		"TestSD_AC013/window_naming_the_card's_own_branch:_refused (1.61s)\n"
+	accPath := filepath.Join(root, ".moai", "specs", "SPEC-FIX-001", "acceptance.md")
+	if err := os.WriteFile(accPath, []byte(acc), 0o644); err != nil {
+		t.Fatalf("write acceptance.md: %v", err)
+	}
+
+	out, rc := runSpecLint(t, "SPEC-FIX-001")
+	if n := countCode(out, "VacuousTestAssertion"); n != 0 {
+		t.Fatalf("VacuousTestAssertion count = %d, want 0 (rc=%d)\n%s", n, rc, out)
+	}
+}

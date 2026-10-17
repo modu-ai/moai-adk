@@ -213,17 +213,18 @@ func TestProducerFailReceiptPreservesDetailForDelayedBlock(t *testing.T) {
 		t.Fatalf("the cached block must carry the preserved finding text, got %q", second.Reason)
 	}
 
-	// The NEXT TURN ENTRY: the delayed enforcement point blocks the prompt
-	// with the same detail (REQ-GBN-002).
+	// The NEXT TURN ENTRY: the delayed verdict never blocks the prompt; the
+	// same detail reaches it as additional context (REQ-RG-001, REQ-RG-002).
+	// Previously this expectation was BLOCK with the detail in Reason.
 	entry, err := HandleCodexReviewEntry(&hook.HookInput{CWD: root}, true, root)
 	if err != nil {
 		t.Fatalf("entry hook must not error; got %v", err)
 	}
-	if entry == nil || entry.Decision != hook.DecisionBlock {
-		t.Fatalf("a fresh FAIL receipt must BLOCK at turn entry, got %+v", entry)
+	if entry == nil || entry.Decision == hook.DecisionBlock {
+		t.Fatalf("a fresh FAIL receipt must not block at turn entry (REQ-RG-001), got %+v", entry)
 	}
-	if !strings.Contains(entry.Reason, "blocking finding on shared file.") {
-		t.Fatalf("the delayed block must carry the preserved finding text, got %q", entry.Reason)
+	if ctx := entryDeliveryContext(entry); !strings.Contains(ctx, "blocking finding on shared file.") {
+		t.Fatalf("the delayed detail must reach the prompt as additional context (REQ-RG-002), got additionalContext=%q", ctx)
 	}
 }
 

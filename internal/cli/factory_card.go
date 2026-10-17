@@ -19,6 +19,7 @@ import (
 	"github.com/modu-ai/moai-adk/internal/config"
 	"github.com/modu-ai/moai-adk/internal/factory"
 	"github.com/modu-ai/moai-adk/internal/factorymsg"
+	"github.com/modu-ai/moai-adk/internal/gitenv"
 	"github.com/modu-ai/moai-adk/internal/homestate"
 	"github.com/modu-ai/moai-adk/internal/session"
 	"github.com/modu-ai/moai-adk/internal/statusline"
@@ -49,13 +50,17 @@ var factoryLeaseBeforeClaim = func(arm, cardID string) error { return nil }
 var factoryLeaseAtPassEntry = func() {}
 
 // The lease path's claim bound and the worktree step's lock wait
-// (SPEC-FACTORY-ATOMIC-LEASE-001 plan D2, D3). The claim wait cap is the sum of
-// the claim's context deadline and the busy timeout its record connection
-// carries; it must stay within one third of the queue lock's wait budget
-// (factory.LockWaitBudget). The worktree step takes its lock for at most
+// (SPEC-FACTORY-ATOMIC-LEASE-001 plan D2, D3; deadline resized by card
+// t1696). The claim wait cap is the sum of the claim's context deadline and
+// the busy timeout its record connection carries; it must stay within one
+// third of the queue lock's wait budget (factory.LockWaitBudget). The
+// deadline is 2 s: sized to the load-32 storm of 2026-10-14 (run tmvgvn),
+// where a single record verb measured 2.1 s and the previous 800 ms deadline
+// killed committed transactions mid-write on every lane
+// (factoryClaimFailure). The worktree step takes its lock for at most
 // factoryWorktreeStepWait (factoryCreateAndRenameWorktree).
 const (
-	factoryLeaseClaimDeadline    = 800 * time.Millisecond
+	factoryLeaseClaimDeadline    = 2 * time.Second
 	factoryLeaseClaimBusyTimeout = 200 * time.Millisecond
 	factoryLeaseClaimWaitCap     = factoryLeaseClaimDeadline + factoryLeaseClaimBusyTimeout
 
@@ -64,12 +69,27 @@ const (
 	factoryWorktreeStepWaitDefault = 60 * time.Second
 )
 
+// factoryLeaseClaimDeadlineOverride is the claim deadline's test seam
+// (card t1696): a positive value replaces the constant for the calls in this
+// process, so a test can drive the deadline paths deterministically. Zero
+// leaves the constant in force.
+var factoryLeaseClaimDeadlineOverride time.Duration
+
 // factoryWorktreeStepWait is the wait factoryEnsureCardWorktree gives the
 // worktree-step lock; a test shortens it and restores it at cleanup.
 var factoryWorktreeStepWait = factoryWorktreeStepWaitDefault
 
-// factoryCardRoot is the project root the factory record and the queue share.
-func factoryCardRoot() string { return resolveTodoQueueRoot() }
+// factoryCardRoot is the project root the factory record and the queue share: the factory
+// root of the process's launch directory.
+func factoryCardRoot() string { return factoryRootOf(resolveProjectDir()) }
+
+// factoryRootOf is the one factory-root rule (SPEC-FACTORY-LEASE-RENEW-001, sync-audit F2,
+// card t1663): the queue root of a launch tree, which for a linked worktree is the primary
+// checkout. The factory record is kept at that root, and the lease keys are read from the root
+// the factory is opened at, so every surface that opens the factory for a launch tree applies
+// this rule. The verb applies it to its launch directory (factoryCardRoot); the factory_renew
+// tool applies it to the caller's project_root.
+func factoryRootOf(launch string) string { return factory.ResolveTodoQueueRoot(launch) }
 
 // Lane predicates (SPEC-FACTORY-SELF-DISPATCH-001 REQ-SD-015), deliberately
 // asymmetric. Admission — the right to run `moai factory next`, `stage`, and
@@ -433,25 +453,44 @@ func factoryQueueLockError(err error) error {
 var errFactoryRecordBusy = errors.New("the factory record stayed busy")
 
 // factoryClaimContext bounds one claim — RecordPicked and the two transitions
-// taken together — by factoryLeaseClaimDeadline, and marks it so that none of
+// taken together — by the claim deadline, and marks it so that none of
 // its record writes waits for the drift log's lock (plan D2). The record
 // connection's own busy timeout bounds how far past the deadline one write can
 // run; a child of an already-bounded claim context cannot extend it.
 func factoryClaimContext(ctx context.Context) (context.Context, context.CancelFunc) {
-	return context.WithTimeout(homestate.WithBoundedReconcile(ctx), factoryLeaseClaimDeadline)
+	deadline := factoryLeaseClaimDeadline
+	if factoryLeaseClaimDeadlineOverride > 0 {
+		deadline = factoryLeaseClaimDeadlineOverride
+	}
+	return context.WithTimeout(homestate.WithBoundedReconcile(ctx), deadline)
+}
+
+// factoryClaimOneLine flattens an inner error for a claim wrap: retryFactoryBusy
+// returns errors.Join (newline-separated), and a refusal line that embeds it
+// verbatim breaks the one-line refusal contract (card t1696, family
+// regression run 2026-10-14).
+func factoryClaimOneLine(err error) string {
+	return strings.NewReplacer("\n", "; ").Replace(err.Error())
 }
 
 // factoryClaimFailure marks a claim write's error as the busy-record outcome
-// when the claim's deadline has passed; a stale version or a holder mismatch is
-// the lost race the caller already retries, and any other error stays as it is.
+// and names the class (card t1696): a deadline the claim's own context
+// passed is the host under load — never a lock race — a SQLite busy/locked
+// error is another writer holding the record, and a stale version or a
+// holder mismatch is the lost race the caller already retries. Any other
+// error stays as it is.
 func factoryClaimFailure(claimCtx context.Context, err error) error {
 	if errors.Is(err, homestate.ErrStaleVersion) || errors.Is(err, homestate.ErrLeaseHolder) {
 		return err
 	}
-	if errors.Is(claimCtx.Err(), context.DeadlineExceeded) {
-		return fmt.Errorf("%w for %s: %v", errFactoryRecordBusy, factoryLeaseClaimWaitCap, err)
+	switch {
+	case errors.Is(err, context.DeadlineExceeded) || errors.Is(claimCtx.Err(), context.DeadlineExceeded):
+		return fmt.Errorf("%w — the claim deadline (%s) passed while a record write was still running: the host is under load, not a lock race: %s", errFactoryRecordBusy, factoryLeaseClaimWaitCap, factoryClaimOneLine(err))
+	case homestate.IsBusy(err):
+		return fmt.Errorf("%w — another writer held the record past every retry: %s", errFactoryRecordBusy, factoryClaimOneLine(err))
+	default:
+		return err
 	}
-	return err
 }
 
 // factoryCardWorktreeDir is the card's landing directory under the shared
@@ -507,10 +546,17 @@ func factoryCarryPreviousWorktree(ctx context.Context, db *homestate.FactoryDB, 
 // factoryWorktreeSlug derives the card worktree's WT- branch slug from the
 // card's queue title (the Factory Dispatch Protocol branch-naming rule): lowercase
 // [a-z0-9-], at most three tokens, at most 24 characters, and never
-// containing the card id — a token carrying the id is dropped. A title with
-// no usable token falls back to "card".
-func factoryWorktreeSlug(cardID, title string) string {
+// containing the card id — a token carrying the id is dropped. A leading
+// [...] metadata group and metadata tokens (bare numbers and dates, p0/p1
+// priorities, the Class label, single letters, card-id-shaped t<digits>
+// tokens) are skipped first (card t1713): "[3.2-2-5·P1·Class C·운영자 승인
+// 10-10] …" once derived the numeric slug 3-2-2. When the title body has no
+// usable token, the linked SPEC id supplies the slug (SPEC-MCP-NEUTRALITY-001
+// → mcp-neutrality); with neither, the slug falls back to "card" — never a
+// bare number.
+func factoryWorktreeSlug(cardID, title, specID string) string {
 	id := strings.ToLower(strings.TrimSpace(cardID))
+	title = factoryStripMetadataPrefix(strings.TrimSpace(title))
 	var tokens []string
 	cur := &strings.Builder{}
 	flush := func() {
@@ -520,6 +566,9 @@ func factoryWorktreeSlug(cardID, title string) string {
 		tok := cur.String()
 		cur.Reset()
 		if id != "" && strings.Contains(tok, id) {
+			return
+		}
+		if factorySlugTokenIsMetadata(tok) {
 			return
 		}
 		tokens = append(tokens, tok)
@@ -540,7 +589,86 @@ func factoryWorktreeSlug(cardID, title string) string {
 		slug = slug[:24]
 	}
 	if slug == "" {
+		if slug = factorySpecIDSlug(specID, id); slug != "" {
+			return slug
+		}
 		return "card"
+	}
+	return slug
+}
+
+// factoryStripMetadataPrefix removes leading bracketed metadata groups — the
+// "[3.2-2-5·P1·Class C·…]" / "[Class B·P0·operator-reported 10-14]" wave,
+// priority, and date prefixes queue titles carry (card t1713). An
+// unterminated "[" is left alone.
+func factoryStripMetadataPrefix(title string) string {
+	for strings.HasPrefix(title, "[") {
+		end := strings.IndexByte(title, ']')
+		if end < 0 {
+			break
+		}
+		title = strings.TrimSpace(title[end+1:])
+	}
+	return title
+}
+
+// factorySlugTokenIsMetadata reports whether a slug token is queue metadata
+// rather than a descriptive word (card t1713): single letters, bare numbers
+// (wave numbers and dates), the Class label, and t<digits>/p<digits> shapes —
+// a card id or priority never belongs in a branch name.
+func factorySlugTokenIsMetadata(tok string) bool {
+	if len(tok) <= 1 || isASCIIDigits(tok) || tok == "class" {
+		return true
+	}
+	if (tok[0] == 't' || tok[0] == 'p') && isASCIIDigits(tok[1:]) {
+		return true
+	}
+	return false
+}
+
+func isASCIIDigits(s string) bool {
+	if s == "" {
+		return false
+	}
+	for i := 0; i < len(s); i++ {
+		if s[i] < '0' || s[i] > '9' {
+			return false
+		}
+	}
+	return true
+}
+
+// factorySpecIDSlug derives a branch slug from a linked SPEC id — the
+// no-ASCII-title fallback (card t1713): the SPEC- prefix and the trailing
+// numeric sequence are dropped and the domain tokens carry
+// (SPEC-MCP-NEUTRALITY-001 → mcp-neutrality), under the same ≤3-token /
+// ≤24-char naming rule. The metadata filter applies to SPEC tokens too, so
+// a SPEC id carrying the card-id shape never leaks it into the branch
+// (SPEC-T1713-001 → "" → "card"; round-1 review finding), and so does the
+// card-id containment filter the title path already applies — an id inside
+// a larger token (SPEC-FOOT1713-001 → foot1713) is dropped as well
+// (round-2 review finding). Returns "" when nothing usable remains.
+func factorySpecIDSlug(specID, cardID string) string {
+	id := strings.ToLower(strings.TrimSpace(cardID))
+	var out []string
+	for _, part := range strings.Split(strings.ToLower(strings.TrimSpace(specID)), "-") {
+		if part == "" || factorySlugTokenIsMetadata(part) {
+			continue
+		}
+		if id != "" && strings.Contains(part, id) {
+			continue
+		}
+		if len(out) == 0 && part == "spec" {
+			continue
+		}
+		out = append(out, part)
+	}
+	if len(out) > 3 {
+		out = out[:3]
+	}
+	slug := strings.Join(out, "-")
+	if len(slug) > 24 {
+		slug = slug[:24]
 	}
 	return slug
 }
@@ -585,7 +713,7 @@ func factoryEnsureCardWorktree(ctx context.Context, root, runID string, card hom
 	if worktree.WorktreeCreator == nil {
 		return "", false, errors.New("worktree creator is not initialized")
 	}
-	slug := factoryWorktreeSlug(card.CardID, factoryCardQueueTitle(root, card.CardID))
+	slug := factoryWorktreeSlug(card.CardID, factoryCardQueueTitle(root, card.CardID), card.SpecID)
 	wt, err := factoryCreateAndRenameWorktree(root, card.CardID, slug, out)
 	if err != nil {
 		return "", false, err
@@ -599,6 +727,26 @@ func factoryEnsureCardWorktree(ctx context.Context, root, runID string, card hom
 		return "", false, fmt.Errorf("record the card worktree: %w", err)
 	}
 	return wt, true, nil
+}
+
+// uniqueWorktreeBranchName returns SessionWorktreeBranchPrefix+slug, or the
+// first suffixed form WT-<slug>-N (N from 2) whose branch ref does not yet
+// exist (card t1696, defect D3): slug tokens truncate to the same name for
+// sibling cards ("[3.2-0-1 …" and "[3.2-0-3 …" both derived WT-3-2-0), and
+// the blind rename then failed for the second card. The card id is never
+// part of the name.
+func uniqueWorktreeBranchName(slug string, exists func(string) bool) (string, error) {
+	base := SessionWorktreeBranchPrefix + slug
+	name := base
+	for n := 2; ; n++ {
+		if !exists(name) {
+			return name, nil
+		}
+		if n > 100 {
+			return "", fmt.Errorf("no free worktree branch name under %s within 100 numeric suffixes", base)
+		}
+		name = fmt.Sprintf("%s-%d", base, n)
+	}
 }
 
 // factoryCreateAndRenameWorktree runs the creator and the in-place branch
@@ -620,7 +768,16 @@ func factoryCreateAndRenameWorktree(root, cardID, slug string, out io.Writer) (s
 	if err != nil {
 		return "", fmt.Errorf("create the card worktree: %w", err)
 	}
-	rename := exec.Command("git", "-C", wt, "branch", "-m", SessionWorktreeBranchPrefix+slug)
+	name, err := uniqueWorktreeBranchName(slug, func(ref string) bool {
+		// rev-parse --verify --quiet exits non-zero when the ref is absent;
+		// every failure reads as absent, and the rename below reports a real
+		// clash loudly if one remains.
+		return exec.Command("git", "-C", wt, "rev-parse", "--verify", "--quiet", "refs/heads/"+ref).Run() == nil
+	})
+	if err != nil {
+		return "", fmt.Errorf("name the card worktree branch: %w", err)
+	}
+	rename := exec.Command("git", "-C", wt, "branch", "-m", name)
 	if outb, err := rename.CombinedOutput(); err != nil {
 		return "", fmt.Errorf("rename the card worktree branch: %v: %s", err, strings.TrimSpace(string(outb)))
 	}
@@ -951,11 +1108,15 @@ func factoryNextSelectAndLease(ctx context.Context, l *factory.LockedBacklog, db
 // hub-chain after hint (REQ-TCI-020); the unnominated arms pass the hub
 // read's answer, the nominated path the one computed inside its section.
 func factoryNextRecordAndClaim(ctx context.Context, db *homestate.FactoryDB, root, runID, cardID, lane string, fields homestate.CardFields) (homestate.Card, bool, bool, error) {
-	ctx, cancel := factoryClaimContext(ctx)
+	// T1's own window (card t1696): it closes here, so the claim below wraps
+	// the CALLER's context and T2/T3 receive a full claim window instead of
+	// whatever T1 left of this one — the nested WithTimeout used to shrink
+	// the lease edge to T1's remainder.
+	recordCtx, cancel := factoryClaimContext(ctx)
 	defer cancel()
-	fresh, err := db.RecordPicked(ctx, runID, cardID, fields, "factory-next", factoryCardNow())
+	fresh, err := db.RecordPicked(recordCtx, runID, cardID, fields, "factory-next", factoryCardNow())
 	if err != nil {
-		return factoryNextClaimRefused(factoryClaimFailure(ctx, err))
+		return factoryNextClaimRefused(factoryClaimFailure(recordCtx, err))
 	}
 	// RecordPicked returns the existing row unchanged when fields are empty —
 	// whatever state it is in (card_picked.go). Both callers are queue-picked
@@ -1422,7 +1583,7 @@ func factoryNominateInSection(ctx context.Context, l *factory.LockedBacklog, db 
 	case cerr != nil:
 		return homestate.Card{}, cerr
 	case errors.Is(claimErr, errFactoryRecordBusy):
-		return homestate.Card{}, factoryRefusal(factoryRefuseRaced, "the factory record was busy for the whole %s claim wait cap, so %s was not leased; retry", factoryLeaseClaimWaitCap, cardID)
+		return homestate.Card{}, factoryRefusal(factoryRefuseRaced, "%s was not leased: %v; retry when the host is quieter", cardID, claimErr)
 	case otherHolder || claimErr == nil:
 		return homestate.Card{}, factoryRefusal(factoryRefuseRaced, "another lane leased or claimed %s first", cardID)
 	default:
@@ -1595,7 +1756,10 @@ func newFactoryNextCommand() *cobra.Command {
 				if leased {
 					wt, _, err := factoryEnsureCardWorktree(ctx, root, runID, card, lane, cmd.OutOrStdout())
 					if err != nil {
-						return fmt.Errorf("factory next: %w", err)
+						// The lease already committed (card t1696, the lane-20
+						// shape): the refusal must say so, or the lane retries a
+						// card it already holds.
+						return fmt.Errorf("factory next: %s was leased (the lease stands in the record; do not re-run next for it — settle the worktree step instead): %w", card.CardID, err)
 					}
 					card.WorktreePath = wt
 					return factoryNextPrint(cmd, card)
@@ -1738,6 +1902,119 @@ func factoryStageCard(ctx context.Context, root, cardID, state, evidence, run, l
 		return refuse(err)
 	}
 	return next, nil
+}
+
+// The renew outcome classes of `moai factory renew` and the factory_renew tool
+// (SPEC-FACTORY-LEASE-RENEW-001 REQ-FLR-001, REQ-FLR-002, REQ-FLR-011). The four values
+// are the closed set that the watchdog copies into renew_result.
+const (
+	factoryRenewRenewed        = "renewed"
+	factoryRenewRefusedExpired = "refused-expired"
+	factoryRenewRefusedHolder  = "refused-not-holder"
+	factoryRenewError          = "error"
+)
+
+// factoryRenewOutcome is the machine-readable outcome of one renewal request. After a
+// renewal, expires_at is the new expiry. After a refusal it is the expiry that the card
+// still carries, which is empty when the card holds no lease. detail names the refusal
+// in prose and is omitted on a renewal.
+type factoryRenewOutcome struct {
+	Result    string `json:"result"`
+	ExpiresAt string `json:"expires_at"`
+	Detail    string `json:"detail,omitempty"`
+}
+
+// newFactoryRenewCommand — `moai factory renew <card> [--json]`
+// (SPEC-FACTORY-LEASE-RENEW-001 REQ-FLR-001, REQ-FLR-011): a lane extends its own card
+// lease by the configured card lease duration and prints the new expiry. With --json it
+// prints the outcome as one JSON object, and a refusal exits non-zero after printing it.
+func newFactoryRenewCommand() *cobra.Command {
+	var run string
+	var asJSON bool
+	cmd := &cobra.Command{
+		Use:          "renew <card>",
+		Short:        "Extend the lane's card lease by the configured duration (lane session)",
+		Args:         cobra.ExactArgs(1),
+		SilenceUsage: true,
+		RunE: func(cmd *cobra.Command, args []string) error {
+			if !factoryLaneAdmission() {
+				return factoryNotALaneError("renew")
+			}
+			lane, err := factoryLaneLabelFromEnv("renew")
+			if err != nil {
+				return err
+			}
+			ctx := cmd.Context()
+			if ctx == nil {
+				ctx = context.Background()
+			}
+			outcome, renewErr := factoryRenewCard(ctx, factoryCardRoot(), args[0], run, lane)
+			switch {
+			case asJSON:
+				body, err := json.Marshal(outcome)
+				if err != nil {
+					return err
+				}
+				_, _ = fmt.Fprintln(cmd.OutOrStdout(), string(body))
+			case renewErr == nil:
+				_, _ = fmt.Fprintf(cmd.OutOrStdout(), "%s lease renewed until %s\n", args[0], outcome.ExpiresAt)
+			}
+			return renewErr
+		},
+	}
+	cmd.Flags().StringVar(&run, "run", "", "factory run id (default: the single active run)")
+	cmd.Flags().BoolVar(&asJSON, "json", false, "print the outcome as JSON: result and expires_at")
+	return cmd
+}
+
+// factoryRenewBeforeWrite is a test seam (sync-audit F14, card t1663). It runs after factoryRenewCard
+// resolves the renewal's run and before the lease write, so a test can interleave a roster change at that
+// point. Production leaves it nil, and a nil seam carries no behavior.
+var factoryRenewBeforeWrite func()
+
+// factoryRenewCard is the one implementation of the renew verb and of the factory_renew
+// tool (design.md §3: one implementation per verb). It renews the lease that lane holds on
+// card cardID through the factory record. RenewLease extends the lease from the request
+// time by the handle's card lease duration, which is the configured
+// workflow.factory_lease.duration. A refusal writes nothing, and the outcome class names
+// it: an expired lease, a caller that does not hold the lease, or any other failure. Without
+// an explicit run the run resolves through resolveFactoryRenewRun.
+func factoryRenewCard(ctx context.Context, root, cardID, run, lane string) (factoryRenewOutcome, error) {
+	fail := func(err error) (factoryRenewOutcome, error) {
+		return factoryRenewOutcome{Result: factoryRenewError, Detail: err.Error()}, fmt.Errorf("factory renew: %w", err)
+	}
+	runID, rule, err := resolveFactoryRenewRunRule(ctx, root, run, lane, cardID)
+	if err != nil {
+		return fail(err)
+	}
+	if factoryRenewBeforeWrite != nil {
+		factoryRenewBeforeWrite()
+	}
+	db, err := homestate.OpenFactory(root)
+	if err != nil {
+		return fail(err)
+	}
+	defer func() { _ = db.Close() }()
+	// The write re-checks the roster binding inside its transaction (sync-audit F14, card t1663): a
+	// re-registration after the resolution above is refused here, with no write, and the message names --run.
+	card, err := db.RenewLeaseUnderRoster(ctx, runID, cardID, lane, factoryCardNow(), rule)
+	if err == nil {
+		return factoryRenewOutcome{Result: factoryRenewRenewed, ExpiresAt: card.LeaseExpiresAt}, nil
+	}
+	if errors.Is(err, homestate.ErrRosterBinding) {
+		err = fmt.Errorf("no --run given: %w; pass --run", err)
+	}
+	outcome := factoryRenewOutcome{Result: factoryRenewError, Detail: err.Error()}
+	switch {
+	case errors.Is(err, homestate.ErrLeaseExpired):
+		outcome.Result = factoryRenewRefusedExpired
+	case errors.Is(err, homestate.ErrLeaseHolder):
+		outcome.Result = factoryRenewRefusedHolder
+	}
+	if cur, lerr := db.LoadCard(ctx, runID, cardID); lerr == nil {
+		outcome.ExpiresAt = cur.LeaseExpiresAt
+	}
+	return outcome, fmt.Errorf("factory renew: %w", err)
 }
 
 // newFactoryCompleteCommand — `moai factory complete <card> [remeasure]`
@@ -1883,14 +2160,22 @@ func factoryCompleteCard(ctx context.Context, out io.Writer, root, lockRoot, car
 	if (cardBranch != "" && branch == cardBranch) || factorySameTree(windowTree, card.WorktreePath) || factorySameTree(integTree, card.WorktreePath) {
 		return fmt.Errorf("factory complete: refused — the integration branch %q is the card's own branch (worktree %s): a card's own branch never serves as its integration branch", branch, card.WorktreePath)
 	}
-	// (3) The integration worktree must be provisioned: the only tree holding
-	// the integration branch may not be the parent checkout (which never
-	// changes branch), and no tree at all is the same refusal.
+	// (3) The integration worktree must be provisioned. The parent checkout
+	// serves as the integration tree only where the shared surface resolver
+	// admits it (SPEC-LOCAL-MAIN-FLOW-001 plan §B2 case 4: the local-main gate
+	// is on). The verdict comes from integrationMergeWorktree, the same
+	// resolver the merge verb uses; complete keeps its own refusal wording.
+	// No tree at all is the same refusal.
 	primary, _, err := identifyPrimaryCheckout(root)
 	if err != nil {
 		return fmt.Errorf("factory complete: cannot identify the parent checkout of %s: %w", root, err)
 	}
-	if integTree == "" || factorySameTree(integTree, primary) {
+	parentRefused := false
+	if factorySameTree(integTree, primary) {
+		_, surfaceErr := integrationMergeWorktree(lockRoot, branch)
+		parentRefused = surfaceErr != nil
+	}
+	if integTree == "" || parentRefused {
 		return fmt.Errorf("factory complete: refused — the integration worktree for %q is not provisioned: no tree holds it, or only the parent checkout %s does (the parent never changes branch; the leader provisions the integration worktree)", branch, primary)
 	}
 
@@ -1900,6 +2185,19 @@ func factoryCompleteCard(ctx context.Context, out io.Writer, root, lockRoot, car
 	acquiredHere := false
 	if !heldByUs {
 		ownerPID, _ := session.ResolveOwnerPID()
+		// The per-card red hold (SPEC-CANDIDATE-CI-001 REQ-CCI-012, card t1478
+		// Finding 4): complete's own acquisition is a window grant to this card,
+		// so a red candidate refuses it before the window record is touched. The
+		// refusal carries the landing refusal's exit code — the same red candidate,
+		// reached one step earlier.
+		if candidateCIEnabled(lockRoot) {
+			if holdErr := factory.CandidateHoldRefusal(lockRoot, card.CardID); holdErr != nil {
+				return &exitCodeError{code: factory.MergeExitLandingRefused, msg: fmt.Sprintf("factory complete: refused — %v", holdErr)}
+			}
+		}
+		if factoryCompleteAcquireHook != nil {
+			factoryCompleteAcquireHook()
+		}
 		replaced, err := factory.AcquireIntegrationWindow(lockRoot, factory.IntegrationLock{
 			SessionID:    sessionID,
 			SessionName:  lane,
@@ -1982,7 +2280,7 @@ func factoryCompleteCard(ctx context.Context, out io.Writer, root, lockRoot, car
 	}
 	if _, err := factory.ReadRemeasureRecord(lockRoot, candidateTree); err != nil {
 		releaseOwnAcquisition()
-		return &exitCodeError{code: factory.MergeExitBaseMoved, msg: fmt.Sprintf("factory complete: refused — no valid re-measure record for the candidate tree %s (%v); run moai integration remeasure, then re-acquire --wait — the re-measure-and-re-acquire code", candidateTree[:12], err)}
+		return &exitCodeError{code: factory.MergeExitBaseMoved, msg: fmt.Sprintf("factory complete: refused — no valid re-measure record for the candidate tree %s (%v); run moai integration remeasure, then re-acquire --wait — the re-measure-and-re-acquire code", factory.ShortSHA(candidateTree), err)}
 	}
 
 	// REQ-MWQ-019 step 4 — the merge runs ONLY by calling the REQ-MWQ-017
@@ -1990,6 +2288,29 @@ func factoryCompleteCard(ctx context.Context, out io.Writer, root, lockRoot, car
 	// complete's state transitions are done. The step's pre-merge causes
 	// release inside it; a step failure leaves the card state unchanged
 	// (REQ-MWQ-019: the card state shall not change).
+	mergeSeams := factory.MergeStepSeams{
+		ReadCard: func(id string) (factory.MergeCardState, error) {
+			return integrationReadMergeCardForRun(ctx, root, runID, id, lane)
+		},
+	}
+	// AC-CCI-011-1's both-call-sites clause: the self-issued merge path
+	// wires the SAME shared landing check the merge verb does — its seams
+	// formerly carried only ReadCard, and the step gates on
+	// seams.LandingCheck != nil, so an unwired complete merged with no
+	// landing gate at all. The step's own fail-closed guard refuses an
+	// unwired seam when the key is enabled, so this wiring is mandatory
+	// exactly while the gate is on.
+	if candidateCIEnabled(lockRoot) {
+		mergeSeams.LandingCheck = func(id, sha string) error {
+			return factory.CandidateLandingCheck(factory.LandingCheckInput{
+				Root:                lockRoot,
+				CardID:              id,
+				PinnedSHA:           sha,
+				TargetBranch:        branch,
+				IntegrationWorktree: integTree,
+			})
+		}
+	}
 	mergeSHA, err := factory.RunMergeStep(factory.MergeStepInput{
 		Root:                lockRoot,
 		IntegrationWorktree: integTree,
@@ -1997,11 +2318,7 @@ func factoryCompleteCard(ctx context.Context, out io.Writer, root, lockRoot, car
 		CardID:              cardID,
 		CallerSessionID:     sessionID,
 		DeferRelease:        true,
-	}, factory.MergeStepSeams{
-		ReadCard: func(id string) (factory.MergeCardState, error) {
-			return integrationReadMergeCardForRun(ctx, root, runID, id, lane)
-		},
-	})
+	}, mergeSeams)
 	if err != nil {
 		if code, ok := factory.MergeExitCode(err); ok {
 			return &exitCodeError{code: code, msg: fmt.Sprintf("factory complete: the merge step refused: %v", err)}
@@ -2077,12 +2394,12 @@ func completeTransitions(ctx context.Context, db *homestate.FactoryDB, out io.Wr
 // own, distinct from the thirteen.
 func completePostMergeConflict(out io.Writer, lockRoot, sessionID, cardID, mergeSHA string, transitionErr error) error {
 	if holdErr := factory.CompletePostMergeHold(lockRoot, cardID, mergeSHA); holdErr != nil {
-		_, _ = fmt.Fprintf(out, "  writing the hold also failed (%v) — the merge commit %s stays on the integration branch; moai integration policy hold by hand\n", holdErr, mergeSHA[:12])
+		_, _ = fmt.Fprintf(out, "  writing the hold also failed (%v) — the merge commit %s stays on the integration branch; moai integration policy hold by hand\n", holdErr, factory.ShortSHA(mergeSHA))
 	}
 	if _, err := factory.ReleaseIntegrationLock(lockRoot, sessionID, 0, false); err != nil {
 		_, _ = fmt.Fprintf(out, "  releasing the window failed (%v) — release it by hand after reading the hold\n", err)
 	}
-	return &exitCodeError{code: completePostMergeTransitionConflictExit, msg: fmt.Sprintf("factory complete: %v — the merge commit %s stays on the integration branch; the window policy holds with cause post-merge-transition-conflict", transitionErr, mergeSHA[:12])}
+	return &exitCodeError{code: completePostMergeTransitionConflictExit, msg: fmt.Sprintf("factory complete: %v — the merge commit %s stays on the integration branch; the window policy holds with cause post-merge-transition-conflict", transitionErr, factory.ShortSHA(mergeSHA))}
 }
 
 // completePostMergeTransitionConflictExit is complete's own exit code
@@ -2099,10 +2416,16 @@ const completePostMergeTransitionConflictExit = 20
 // leaves it nil, and the call site is nil-guarded.
 var factoryCompleteTransitionHook func()
 
+// factoryCompleteAcquireHook is the acquisition's test seam (card t1478
+// Finding 4): called just before complete takes the integration window for
+// its card, after the card's own refusals. A red candidate must never reach it.
+var factoryCompleteAcquireHook func()
+
 // cliGitIn runs one git command in dir — the small adoption probes' helper.
 func cliGitIn(dir string, args ...string) (string, error) {
 	cmd := exec.Command("git", args...)
 	cmd.Dir = dir
+	cmd.Env = gitenv.Env() // an inherited GIT_DIR would outrank cmd.Dir
 	out, err := cmd.Output()
 	return string(out), err
 }
@@ -2195,11 +2518,13 @@ func factoryContextAtHandoffThreshold(root string) bool {
 }
 
 // factoryPrintClearPolicyLine prints the one line the lane follows after a
-// completion (REQ-SD-020): clear-each — the default, absence included —
-// asks the operator to /clear; clear-when-full asks only once the session's
-// context-usage record is at or above the handoff threshold and prints
-// nothing below it; relaunch asks the operator to end the session so the
-// supervising launcher starts the next card's session.
+// completion (REQ-SD-020, reshaped by SPEC-FACTORY-LANE-NO-CLEAR-001
+// REQ-LNC-007/009): clear-each — the default, absence included — prints the
+// in-session card transition; clear-when-full prints the same line only once
+// the session's context-usage record is at or above the handoff threshold and
+// prints nothing below it; relaunch asks the operator to end the session so
+// the supervising launcher starts the next card's session. No value
+// instructs a session clear.
 func factoryPrintClearPolicyLine(out io.Writer, root string) {
 	policy := factoryClearPolicySelected()
 	if policy == config.FactoryClearPolicyRelaunch {
@@ -2209,7 +2534,13 @@ func factoryPrintClearPolicyLine(out io.Writer, root string) {
 	if policy == config.FactoryClearPolicyWhenFull && !factoryContextAtHandoffThreshold(root) {
 		return // below the handoff threshold: continue with the next card, no line
 	}
-	_, _ = fmt.Fprintf(out, "  clear policy %s: ask the operator to /clear, then take the next card on the fresh session\n", policy)
+	if os.Getenv(config.EnvFactoryAutoDispatch) == config.FactoryDispatchManual {
+		// Manual dispatch: the operator chose to route cards to this lane, so
+		// the line must not tell it to lease one (REQ-LNC-007, manual mode).
+		_, _ = fmt.Fprintf(out, "  card transition (policy %s, manual dispatch): ExitWorktree(keep), then wait for the leader's next dispatch; earlier cards' conversation context is non-authoritative\n", policy)
+		return
+	}
+	_, _ = fmt.Fprintf(out, "  card transition (policy %s): ExitWorktree(keep), then `moai factory next` from the primary checkout, then EnterWorktree(<leased worktree path>) and verify the toplevel; earlier cards' conversation context is non-authoritative\n", policy)
 }
 
 // factoryResolveIntegrationBranch mirrors acquire's branch resolution
@@ -2244,6 +2575,7 @@ func factoryBranchOfWorktree(dir string) string {
 	}
 	cmd := exec.Command("git", "rev-parse", "--abbrev-ref", "HEAD")
 	cmd.Dir = dir
+	cmd.Env = gitenv.Env() // an inherited GIT_DIR would outrank cmd.Dir
 	out, err := cmd.Output()
 	if err != nil {
 		return ""
@@ -2259,6 +2591,7 @@ func factoryBranchOfWorktree(dir string) string {
 func factoryWorktreeForBranchIn(repoDir, branch string) string {
 	cmd := exec.Command("git", "worktree", "list", "--porcelain")
 	cmd.Dir = repoDir
+	cmd.Env = gitenv.Env() // an inherited GIT_DIR would outrank cmd.Dir
 	out, err := cmd.Output()
 	if err != nil {
 		return ""
@@ -2319,6 +2652,98 @@ func resolveFactoryCardRun(ctx context.Context, root, explicit string) (string, 
 		return "", fmt.Errorf("no --run given and no single active factory run (%w)", err)
 	}
 	return run, nil
+}
+
+// resolveFactoryRenewRun returns the run a renewal acts in (SPEC-FACTORY-LEASE-RENEW-001,
+// sync-audit F3, F7 and F11, card t1663). An explicit --run value wins. Otherwise the lane's roster
+// binding (workers.run_id, the run the lane joined) is read against the active runs. A sole active run
+// answers, except that a binding naming another run, active or not, refuses (F11); an empty binding or a
+// missing roster row keeps the sole-run answer. When several active runs survive reconciliation, the
+// binding must name an active run, and the card's lease must be held by this lane in that run: the lease
+// holder alone does not decide it, because a label can be reused across runs, so a stale lease in another
+// run can name the same label. Every other ambiguous case refuses, naming --run: no binding, a binding
+// outside the active set, or a card the lane does not hold in its bound run. Each refusal keeps the detail
+// that prevented the narrowing.
+// resolveFactoryRenewRunRule returns the run a renewal acts in and the roster rule its lease write must re-check
+// (sync-audit F14, card t1663). An explicit --run value wins with no rule. The pre-check below reads the
+// binding; the write then re-reads it inside its own transaction and applies the rule (homestate
+// RenewLeaseUnderRoster), so a re-registration after this read is refused there. The sole-run answer carries
+// RosterSoleRun, and the ambiguous-set answer carries RosterBound.
+func resolveFactoryRenewRunRule(ctx context.Context, root, explicit, lane, cardID string) (string, homestate.RosterRule, error) {
+	if run := strings.TrimSpace(explicit); run != "" {
+		return run, homestate.RosterUnchecked, nil
+	}
+	run, err := factorymsg.ResolveActiveRun(ctx, root, "")
+	if err == nil {
+		// The roster binding is the lane's own run. A binding to any other run is a mismatch: refuse,
+		// naming --run, and write nothing.
+		bound, berr := factoryRenewBoundRun(ctx, root, lane)
+		if berr != nil {
+			return "", homestate.RosterUnchecked, berr
+		}
+		if bound != "" && bound != run {
+			return "", homestate.RosterUnchecked, fmt.Errorf("no --run given: lane %s is bound to run %s, not to the single active run %s; pass --run", lane, bound, run)
+		}
+		return run, homestate.RosterSoleRun, nil
+	}
+	var ambiguous *factorymsg.AmbiguousRunsError
+	if !errors.As(err, &ambiguous) {
+		return "", homestate.RosterUnchecked, fmt.Errorf("no --run given and no single active factory run (%w)", err)
+	}
+	refuse := func(detail error) error {
+		return fmt.Errorf("no --run given and no single active factory run (%w): %v; pass --run", err, detail)
+	}
+	db, derr := homestate.OpenFactory(root)
+	if derr != nil {
+		return "", homestate.RosterUnchecked, refuse(derr)
+	}
+	defer func() { _ = db.Close() }()
+	bound, berr := db.WorkerRunBinding(ctx, lane)
+	if berr != nil {
+		return "", homestate.RosterUnchecked, refuse(berr)
+	}
+	if bound == "" {
+		return "", homestate.RosterUnchecked, refuse(fmt.Errorf("lane %s has no roster binding", lane))
+	}
+	if !factoryRunListed(ambiguous.Owners, bound) {
+		return "", homestate.RosterUnchecked, refuse(fmt.Errorf("lane %s is bound to run %s, which is not an active run", lane, bound))
+	}
+	card, cerr := db.LoadCard(ctx, bound, cardID)
+	if cerr != nil {
+		return "", homestate.RosterUnchecked, refuse(fmt.Errorf("card %s in its bound run %s: %w", cardID, bound, cerr))
+	}
+	if card.LeaseHolder != lane {
+		return "", homestate.RosterUnchecked, refuse(fmt.Errorf("card %s is not held by lane %s in its bound run %s", cardID, lane, bound))
+	}
+	return bound, homestate.RosterBound, nil
+}
+
+// resolveFactoryRenewRun returns the run a renewal acts in; resolveFactoryRenewRunRule also returns the roster
+// rule the lease write re-checks.
+func resolveFactoryRenewRun(ctx context.Context, root, explicit, lane, cardID string) (string, error) {
+	run, _, err := resolveFactoryRenewRunRule(ctx, root, explicit, lane, cardID)
+	return run, err
+}
+
+// factoryRenewBoundRun returns the run the roster binds lane to: "" when the lane has no roster row or an
+// empty binding. The factory record is opened for that one read.
+func factoryRenewBoundRun(ctx context.Context, root, lane string) (string, error) {
+	db, err := homestate.OpenFactory(root)
+	if err != nil {
+		return "", fmt.Errorf("open the factory record for the roster binding of lane %s: %w", lane, err)
+	}
+	defer func() { _ = db.Close() }()
+	return db.WorkerRunBinding(ctx, lane)
+}
+
+// factoryRunListed reports whether runID is one of the active runs owners names.
+func factoryRunListed(owners []homestate.RunOwner, runID string) bool {
+	for _, owner := range owners {
+		if owner.RunID == runID {
+			return true
+		}
+	}
+	return false
 }
 
 // queueItemState reads the queue state of cardID, anchored at root; ok is
@@ -2383,6 +2808,7 @@ func requireQueuePicked(root, cardID string) error {
 
 func newFactoryAssignCommand() *cobra.Command {
 	var to, prefer, after, spec, worktree, contractRef, run string
+	var reassign bool
 	cmd := &cobra.Command{
 		Use:   "assign <card>",
 		Short: "Record a queue-picked card in the factory record, optionally assigning it to a lane",
@@ -2466,6 +2892,29 @@ func newFactoryAssignCommand() *cobra.Command {
 				}
 			}
 			now := factoryCardNow()
+			if reassign {
+				// The leader's recovery path (card t1696, defect D2): a dead
+				// lane's label is never reused, so its assigned cards need a
+				// way back into a lease. A lane session is refused, and the
+				// reassignment changes the owner only.
+				if factoryLaneRefusal() {
+					return fmt.Errorf("factory assign: refused — %s: reassignment is the leader path's act (%s=%s marks a lane)", factoryLaneBoundarySentinel, config.EnvFactoryRole, config.FactoryRoleLane)
+				}
+				if strings.TrimSpace(to) == "" {
+					return errors.New("factory assign: --reassign needs --to <lane>")
+				}
+				for _, name := range []string{"prefer", "after", "spec", "worktree", "contract-ref"} {
+					if cmd.Flags().Changed(name) {
+						return fmt.Errorf("factory assign: --reassign takes --to only; --%s changes no other field", name)
+					}
+				}
+				prevOwner, reassigned, err := factoryAssignReassign(ctx, queueStore, db, runID, cardID, to, now)
+				if err != nil {
+					return fmt.Errorf("factory assign: %w", err)
+				}
+				_, _ = fmt.Fprintf(cmd.OutOrStdout(), "%s %s owner=%s (reassigned from %s)\n", cardID, reassigned.State, to, dash(prevOwner))
+				return nil
+			}
 			var card homestate.Card
 			err = queueStore.WithLock(func(l *factory.LockedBacklog) error {
 				recordCard, err := db.RecordPicked(ctx, runID, cardID, fields, "assign", now)
@@ -2535,7 +2984,9 @@ func newFactoryAssignCommand() *cobra.Command {
 			return nil
 		},
 	}
-	cmd.Flags().StringVar(&to, "to", "", "assign the card to this lane label (picked → assigned)")
+	cmd.Flags().StringVar(&to, "to", "", "assign the card to this lane label (picked → assigned); with --reassign, the lane that takes over an assigned card")
+	cmd.Flags().BoolVar(&reassign, "reassign", false,
+		"move an assigned card to --to's registered lane (the leader path for a card whose owner lane is gone; refuses a live lease and every other field)")
 	cmd.Flags().StringVar(&prefer, "prefer", "", "assignment preference hint, key=value (reported, never enforced)")
 	cmd.Flags().StringVar(&after, "after", "", "predecessor card that must reach merged-local (git-flow) or merged-pr (github-flow) first (\"\" clears)")
 	cmd.Flags().StringVar(&spec, "spec", "", "SPEC identifier for the card")
@@ -2543,6 +2994,43 @@ func newFactoryAssignCommand() *cobra.Command {
 	cmd.Flags().StringVar(&contractRef, "contract-ref", "", "contract pointer <spec-id>,<sha256>,<signed-at>[,<event>]")
 	cmd.Flags().StringVar(&run, "run", "", "factory run id (default: the single active run)")
 	return cmd
+}
+
+// factoryAssignReassign is the write half of `factory assign --reassign`
+// (card t1696, defect D2): under the queue lock, it moves a card whose owner
+// lane is gone to another registered lane of this run, refreshing the queue's
+// current-dispatch mirror inside the same transaction. The caller has already
+// refused lanes and a missing --to.
+func factoryAssignReassign(ctx context.Context, queueStore *factory.BacklogStore, db *homestate.FactoryDB, runID, cardID, to string, now time.Time) (string, homestate.Card, error) {
+	var prevOwner string
+	var next homestate.Card
+	err := queueStore.WithLock(func(l *factory.LockedBacklog) error {
+		// The stale-run guard (sync-audit F6 of card t1696): the card's
+		// current dispatch names the run its mirror must keep in step, and
+		// the mirror write overwrites run_id unconditionally — a reassign
+		// resolved against a stale run would drag the mirror to the old run
+		// and admit a second live lease. No dispatch row means nothing keeps
+		// step and the guard passes.
+		rec, err := l.LoadPure()
+		if err != nil {
+			return fmt.Errorf("read the queue's current dispatch: %w", err)
+		}
+		for _, entry := range rec.Runtime.DispatchCurrent {
+			if entry.CardID == cardID && entry.RunID != "" && entry.RunID != runID {
+				return fmt.Errorf("card %s's current dispatch is run %s, not %s; reassign in the card's current run (pass --run %s)", cardID, entry.RunID, runID, entry.RunID)
+			}
+		}
+		cur, err := db.LoadCard(ctx, runID, cardID)
+		if err != nil {
+			return err
+		}
+		prevOwner = cur.OwnerLabel
+		next, err = db.ReassignCard(ctx, runID, cardID, to, "assign --reassign", now, func(homestate.Card) error {
+			return l.RefreshDispatchCurrent(cardID, runID, to)
+		})
+		return err
+	})
+	return prevOwner, next, err
 }
 
 // factoryCardView is one card as `status` reports it.
@@ -2583,6 +3071,11 @@ type factoryStatusReport struct {
 	// Unavailable lists the dispatch mirror writes that failed and have not
 	// been reconciled by a later successful write (REQ-FR-025).
 	Unavailable []homestate.RecordUnavailableEntry `json:"unavailable"`
+	// LeaseDuration and RenewInterval are the effective workflow.factory_lease values
+	// the factory opens with (SPEC-FACTORY-LEASE-RENEW-001, REQ-FLR-009), as Go duration
+	// strings. They sit before Quota, which stays last.
+	LeaseDuration string `json:"lease_duration"`
+	RenewInterval string `json:"renew_interval"`
 	// Quota is the read-only quota block (SPEC-QUOTA-AWARE-SCHEDULING-001
 	// REQ-QAS-013): present only while the quota gate is enabled and some window
 	// has data, and last, so every pre-existing key keeps its place.
@@ -2624,6 +3117,14 @@ func newFactoryStatusCommand() *cobra.Command {
 				ctx = context.Background()
 			}
 			report := factoryStatusReport{Run: strings.TrimSpace(run), Cards: []factoryCardView{}}
+			// The effective lease values are reported whether or not a database exists.
+			// A refused configuration is refused here as it is at open.
+			leaseDuration, renewInterval, err := homestate.EffectiveFactoryLease(root)
+			if err != nil {
+				return fmt.Errorf("factory status: %w", err)
+			}
+			report.LeaseDuration = leaseDuration.String()
+			report.RenewInterval = renewInterval.String()
 			path, err := homestate.FactoryDBPath(root)
 			if err != nil {
 				return fmt.Errorf("factory status: %w", err)

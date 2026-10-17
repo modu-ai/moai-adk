@@ -1,187 +1,194 @@
 ---
-description: "git-flow lane protocol (repo-local) — card worktrees branch from develop, lanes merge into a single develop integration worktree, origin/develop is the CI verdict surface, rc builds are cut from develop, release/vX.Y.Z is the only path to main"
-paths: ".moai/specs/**,.claude/skills/moai/workflows/run.md,.claude/skills/moai/workflows/sync.md,.claude/rules/local/repo-local-pr-policy.md,CLAUDE.local.md,internal/cli/**,internal/hook/**"
+description: "git-flow lane protocol (repo-local) — card worktrees branch from local main, lanes land through the integration verb on local main, origin/main is the CI verdict surface, batch releases reach origin/main only through a release PR"
+paths: ".moai/specs/**,.claude/skills/moai/workflows/run.md,.claude/skills/moai/workflows/sync.md,.claude/rules/local/repo-local-pr-policy.md,AGENTS.local.md,internal/cli/**,internal/hook/**"
 ---
 
 # git-flow Lane Protocol (moai-adk-go, local-only)
 
-> **2026-08-27, 운영자 지시.** 이 리포는 GitHub Flow에서 git-flow로 전환했다. 2026-08-26 백로그 카드 t281이 정한 "로컬 전용·일회용 `develop`, 원격 push 금지"를 **의도적으로 뒤집는다**. 모델과 근거는 `CLAUDE.local.md` §4.1, 여기는 레인과 팩토리 리더가 그대로 따르는 **운영 규칙**이다.
+> **2026-08-27, operator instruction.** This repository switched from GitHub Flow to git-flow. It deliberately reverses the "local-only, disposable `develop`, no remote push" decision that backlog card t281 set on 2026-08-26. The model and its rationale are in `AGENTS.local.md` §4.1; this file is the **operating rule** that lanes and the factory leader follow as written.
 >
-> 로컬 전용 파일이다(형제: `ci-watch-protocol.md`, `repo-local-pr-policy.md`, `lifecycle-sync-gate.md`). `internal/template/templates/`에 미러하지 않는다.
+> This is a local-only file (siblings: `ci-watch-protocol.md`, `repo-local-pr-policy.md`, `lifecycle-sync-gate.md`). Do not mirror it into `internal/template/templates/`.
 
 ---
 
-## 1. 분기점 — 카드 워크트리는 `develop`에서
+## 1. Branch point — card worktrees branch from local `main`
 
-[HARD] 카드 워크트리는 **`develop`에서** 만든다. `main`이 아니다.
+[HARD] Create card worktrees **from local `main`**, not from `origin/main` (§4.0 §1).
 
-[HARD] **로컬 `main`은 동기화만 하는 참조점이고, 아무도 거기서 분기하지 않는다.** 이 모델에서 `main`을 갱신하는 유일한 경로는 릴리스 PR이며, 로컬 `main`이 `origin/main`보다 뒤처져 있어도 작업에는 지장이 없다 — `develop`이 `origin/main`을 포함하기 때문이다. 따라서 로컬 `main`을 앞당기지 못하는 상황(예: 공유 체크아웃의 미커밋 작업과 충돌)은 작업을 막는 사유가 아니다. 상태줄의 `↓N` 표시는 그 사실의 반영일 뿐이다.
+[HARD] **Local `main` is both the card base and the landing surface** (§4.0 §1·§2). `origin/main` advances only through release batches, so it is normal for local `main` to be ahead. A `↓N` on the status line means a batch has reached `origin/main` but has not been resynchronized yet; in that case the resynchronization of §4.0 §4 applies.
 
-[HARD] **로컬 `main`은 commit-dead다 — 어느 세션도 그 안에서 커밋하지 않는다 (SPEC-MAIN-COMMIT-BAN-001, 카드 t1337).** primary 체크아웃의 `main`에서 `git commit` / `git revert` / `git cherry-pick`은 BranchGuard(`workflow.branch_guard.deny_commits_on: [main]`)가 거부한다. 커밋은 `develop`에서 분기한 카드 워크트리에서만 만들고, main의 잔여물 처분(되살리기)은 운영자 터미널 전용 절차로 `.moai/docs/gitflow-integration-chain.md`가 소유한다.
+[HARD] **Committing on local `main` is blocked by configuration (SPEC-MAIN-COMMIT-BAN-001, card t1337).** `workflow.branch_guard.deny_commits_on: [main]` rejects `git commit` / `git revert` / `git cherry-pick` in the primary checkout. Under the SPEC-LOCAL-MAIN-FLOW-001 Q1 decision (keep), that value is unchanged. Create card commits only in card worktrees branched from local `main`; only merges go through the tool path of §4.0 §2. The procedure for disposing of leftovers is historical, recorded in `.moai/docs/gitflow-integration-chain.md`.
 
-- 하네스에 맞는 경로로 들어간다:
-  - Claude Code 레인: `moai cc -w <card-id>` 또는 현재 세션의 `EnterWorktree(<card-id>)`.
-  - Codex 레인: 기존 트리에 새 세션으로 들어갈 때 `moai codex -w <card-id>`.
-  - Codex의 `-l` 레인: 감독 런처가 카드 워크트리를 고르고 `codex -C <워크트리 절대경로>`로 자식 세션을 시작한다. 자식 세션은 해당 트리의 `CLAUDE.local.md`를 읽고 작업하며 `moai cc -w`를 호출하지 않는다. `moai codex` 런처로 시작한 세션은 이 파일을 `developer_instructions`에 싣는다.
-  - 트리가 없으면 `moai worktree new <card-id>`로 먼저 만든다. **맨손 `git worktree add` 금지** — git은 아는데 MoAI는 모르는 트리가 생겨 `done`/`clean`/`recover`가 닫을 대상이 없어진다.
-- 생성 직후 카드 트리의 `HEAD`와 로컬 `develop`의 커밋이 같은지 확인한다. 다르면 작업을 시작하지 않고 분기 기준을 바로잡는다.
-- 생성 직후 브랜치를 제자리에서 개명한다: `git branch -m WT-<slug>`. slug은 카드가 **하는 일**에서 뽑고(소문자 `a-z0-9-`, 토큰 3개 이하, 24자 이하), **카드 id를 넣지 않는다**. 워크트리 디렉터리는 카드 id를 유지한다(`.claude/worktrees/<card-id>`).
-- 새 카드는 새 워크트리다. 이전 카드 트리에 앵커돼 있으면 `ExitWorktree`로 primary 체크아웃에 돌아온 뒤 만든다 — 안 그러면 새 카드 작업이 옛 카드 브랜치에 얹힌다.
-- **추적성 운반체 3종은 그대로다**: dispatch의 `card:` 필드, 브랜치 위 **모든** 커밋 메시지 안의 카드 id, 증거 경로(`.moai/reports/<card-id>/…`). 브랜치 이름은 더 이상 카드를 식별하지 않으므로 셋 중 무엇도 생략하지 않는다.
-- [HARD] 레인 세션은 카드 워크트리 안에서 시작해 그 안에 머문다 — 세션 도중 카드 워크트리에서 다른 카드 워크트리로의 이동은 금지며, 불가피하게 이동할 때는 이동 뒤 `/clear` 를 정확히 1회 실행한다. 이 금지의 정본은 배포 규칙 `.claude/rules/moai/workflow/factory-dispatch.md`의 Isolation 절이며, 여기에 다시 적지 않는다. 통합 워크트리 진입(§2)은 이 금지의 적용 밖이다 — 자체 재진입 규칙을 그대로 따른다.
+- Enter through the path that fits your harness:
+  - Claude Code lane: `moai cc -w <card-id>`, or `EnterWorktree(<card-id>)` in the current session.
+  - Codex lane: when entering an existing tree with a new session, use `moai codex -w <card-id>`.
+  - Codex `-l` lane: the supervising launcher picks the card worktree and starts the child session with `codex -C <worktree absolute path>`. The child session reads that tree's `AGENTS.local.md`, works there, and does not call `moai cc -w`. A session started by the `moai codex` launcher loads this file into `developer_instructions`.
+  - If the tree does not exist, create it first with `moai worktree new <card-id>`. **Bare `git worktree add` is prohibited.** Git would know the tree while MoAI would not, so `done`/`clean`/`recover` would have no target to close.
+- Immediately after creation, confirm that the card tree's `HEAD` and local `main` point to the same commit. If they differ, do not start work; correct the branch base first.
+- Immediately after creation, rename the branch in place: `git branch -m WT-<slug>`. Take the slug from **what the card does** (lowercase `a-z0-9-`, at most 3 tokens, at most 24 characters), and **do not put the card id in it**. The worktree directory keeps the card id (`.claude/worktrees/<card-id>`). The derivation is now automated and honors the same shape (metadata prefixes skipped, label tokens dropped, SPEC-id fallback); branches created before it carry legacy numeric slugs (`WT-3-2-2` shape) — rename them in place the same way inside the card tree: renaming the checked-out branch is safe (the tree, its lock, and the session anchoring are unaffected) and card tooling keys on the worktree path, not the branch name (`resolveCardBranch` resolves through `card.WorktreePath`), so the card record and evidence paths carry unchanged.
+- A new card gets a new worktree. If the session is anchored to the previous card's tree, return to the primary checkout with `ExitWorktree` before creating it; otherwise the new card's work stacks on top of the old card's branch.
+- **The three traceability carriers stay in force**: the dispatch's `card:` field, the card id in **every** commit message on the branch, and the evidence path (`.moai/reports/<card-id>/…`). Branch names no longer identify the card, so do not omit any of the three.
+- [HARD] A lane session starts inside its card worktree and stays there. Between cards a Claude Code lane moves only by the in-session transition (`ExitWorktree(keep)`, `moai factory next` from the primary checkout, `EnterWorktree` of the leased tree, verify the toplevel); no operator clear is involved. The canonical source for this transition is the Lane card transition and Isolation sections of the distributed rule `.claude/rules/moai/workflow/factory-dispatch.md`, and it is not restated here. Returning to the primary checkout (`ExitWorktree`, §6) is outside the scope of this prohibition.
 
-## 2. 통합 면 — `develop` 워크트리는 하나뿐
+## 2. Integration surface — the primary checkout (`main`)
 
-[HARD] `develop`은 **정확히 한 워크트리**에만 체크아웃된다 — 리더가 배치 시작 시 provisioning 하는 통합 워크트리 `.claude/worktrees/develop`. 레인은 자기 트리에 `develop`을 체크아웃하지 않는다(git은 한 브랜치를 한 워크트리에만 내준다).
+[HARD] The landing surface is the **primary checkout** (when HEAD points at `main`, §4.0 §2). If a separate integration worktree holds `main`, that worktree is the surface. A lane does not check out `main` in its own card tree (git checks out a given branch in only one worktree).
 
-[HARD] **병합 절차의 정본은 여기가 아니다.** `WT-*` 브랜치의 통합 절차 — 병합 창 조율, 통합 워크트리 진입, no-ff 병합, 통합 브랜치 push(강제 push 금지), 퇴장 — 는 배포되는 `.claude/skills/moai/workflows/sync/delivery.md` Step 3.2 의 `git-flow` 전략 `WT-*` 경로가 소유한다. 레인은 그 절차를 그대로 따르고, 이 문서는 아래 리포 고유 사항만 덧붙인다. 절차를 여기에 다시 적지 않는다 — 두 벌이 되는 순간 갈라진다.
+[HARD] **The canonical merge procedure is not here.** The canonical source for merging into local `main` is `AGENTS.local.md` §4.0 §2 (the tool path). The `WT-*` path in Step 3.2 of the distributed skill `.claude/skills/moai/workflows/sync/delivery.md` does not apply to this repository wherever it conflicts with that canonical source. The procedure is not restated here, because two copies diverge as soon as they exist.
 
-[HARD] **리포 로컬 예외 — delivery.md Step 3.2 제6단계(통합 브랜치 push)는 이 리포에서 EXCLUDED다(2026-09-02 운영자 지시).** 배포 스킬의 WT-* 절차가 push 단계를 안내하더라도 이 리포의 레인은 그 단계를 수행하지 않는다 — develop push는 리더의 일괄 행위다(§4, §7). 배포 스킬 파일은 건드리지 않으며, 레인에게는 이 리포의 로컬 답이 우선한다.
+[HARD] **Repo-local exception — Step 6 of delivery.md Step 3.2 (push of the integration branch) is EXCLUDED in this repository (operator instruction, 2026-09-02).** Even if the distributed skill's WT-* procedure describes the push step, lanes in this repository do not perform that step; batch releases are a single bulk action by the leader (§4, §7). The distributed skill file is left untouched, and for lanes this repository's local answer takes precedence.
 
-리포 고유 사항:
+Repo-specific matters:
 
-- 통합 워크트리 경로는 `.claude/worktrees/develop` 이고, 리더가 배치 시작 시 provisioning 한다. provisioning 경로는 런처의 기존-브랜치 플래그다: `moai cc -w develop --branch develop` (2026-09-02 착지 — 이전에는 인가된 생성 경로가 없어 raw `git worktree add` 이탈이 반복됐다).
-- 통합 브랜치는 `develop` 이며 push 대상은 `origin/develop` 이다(§4의 CI 판정 면).
-- 병합을 마치고 자기 카드 작업이 남아 있으면 `EnterWorktree(<card-id>)` 로 재진입한다 — `ExitWorktree` 는 primary 체크아웃으로 돌아가지 자기 트리로 돌아가지 않는다.
+- When no separate integration worktree holds `main`, the surface is the primary checkout. There is no provisioning procedure; `.claude/worktrees/develop` and `moai cc -w develop --branch develop` (2026-09-02) from the develop era are history.
+- The integration branch is `main`. Batches land on `origin/main` via `release/main-batch-YYYYMMDD` (§4.0 §6), and the CI of origin/main is the verdict surface (§4).
+- After the merge, if work remains on your own card, re-enter with `EnterWorktree(<card-id>)`. `ExitWorktree` returns you to the primary checkout, not to your own tree.
 
-[HARD] 자기 워크트리 안에서 `git -C .claude/worktrees/develop merge …` 로 **원격 조작하는 것은 worktree-session 가드가 거부한다**. 들어가는 것이 유일한 인가 경로다.
+[HARD] Merging from within your own worktree with `git -C <primary path> merge …` **is refused by the worktree-session guard**. Merges into local `main` go only through the tool path (`moai integration merge --card`) (§4.0 §2).
 
-## 3. 직렬화 — 병합 창은 한 번에 한 레인
+[HARD] **Candidate-path exception — operator approval 2026-10-03 (REQ-CCI-016).** `moai integration candidate --card <card-id>` is the path that pushes a candidate commit to `ci/<card-id>`. It neither takes nor touches the integration window (`moai integration acquire`/`release`). Merges and integration-branch pushes remain a single bulk action by the leader, as in §4.
 
-[HARD] 기존 메커니즘을 그대로 쓴다. 새로 만들지 않는다.
+## 3. Serialization — one lane at a time in the merge window
 
-> **[HARD] 창의 생존 판정은 세션 프로세스에 묶여 있다 — 카드 t298.** `acquire`가 남기는 pid는 그 명령을 실행한 짧은 CLI 프로세스가 아니라 **그것을 실행한 세션**의 것이다. 그래서 창은 `acquire`가 반환한 뒤에도 계속 held로 읽히고, 풀리는 길은 셋뿐이다 — 홀더 세션이 죽거나, 홀더가 스스로 `release` 하거나, 다른 레인이 기록을 남기는 `--force`로 가져가거나.
-> 소유자를 판별하지 못한 채 잡힌 창은 pid 0으로 기록되고 **살아 있는 것으로** 읽힌다. 확실하지 않을 때 창을 비우는 쪽이 두 레인이 함께 머지하는 사고로 이어지므로, 판정은 늘 "살아 있다" 쪽으로 기운다.
-> **수정 이전에 잡힌 창은 여전히 인수 가능하게 읽힌다** — 옛 기록에는 세션 앵커가 없다. 업그레이드 시점에 창을 쥐고 있던 레인은 `moai integration acquire --name <lane> --card <card-id>`를 한 번 더 실행해 재획득한다.
-> 이 기록이 레인을 기계적으로 갈라놓지는 않는다. `acquire` 자체가 읽고-고치고-쓰는 과정을 갈라 세우지 않으므로, 같은 순간에 두 레인이 잡으러 들어오면 둘 다 잡았다고 믿을 수 있다. 이것은 조율 신호이지 권한 경계가 아니며, 이 기록이 기계 층이다. open 정책에서 대기열 맨 앞으로 승격되어 창을 쥔 레인은 리더 지명 없이 병합한다.
+[HARD] Use the existing mechanism as it is. Do not build a new one.
+
+> **[HARD] Whether the window is alive is tied to the session process — card t298.** The pid that `acquire` records belongs not to the short-lived CLI process that ran the command, but to **the session that ran it**. So the window keeps reading as held even after `acquire` returns, and there are only three ways it is released: the holder session dies, the holder itself runs `release`, or another lane takes it with a recorded `--force`.
+> A window taken without identifying its owner is recorded with pid 0 and reads as **alive**. When uncertain, emptying the window would lead to two lanes merging together, so the judgment always leans toward "alive".
+> **A window taken before the fix still reads as available for takeover** — old records carry no session anchor. A lane that held the window at upgrade time re-acquires it by running `moai integration acquire --name <lane> --card <card-id>` once more.
+> This record does not mechanically separate the lanes. `acquire` itself does not make its read-modify-write sequence atomic, so if two lanes try to acquire at the same moment, both may believe they hold the window. This is a coordination signal, not a permission boundary; this record is the mechanical layer. Under the open policy, a lane promoted to the front of the queue and holding the window merges without a leader nomination.
 
 ```bash
-moai integration acquire --name <lane> --card <card-id>   # 통합 워크트리에 들어가기 전
-moai integration status                  # 누가 쥐고 있는지
-moai integration release                 # 완료 보고를 보낸 뒤
+moai integration acquire --name <lane> --card <card-id>   # before entering the integration worktree
+moai integration status                  # who holds it
+moai integration release                 # after sending the completion report
 ```
 
-살아 있는 보유자의 창을 뺏으려면 `--force`가 필요하고, 무엇을 밀어냈는지 기록된다 — 의도적이어야 하며 조용해서는 안 된다.
+Taking the window from a live holder requires `--force`, and what was displaced is recorded. It must be deliberate and must not be silent.
 
-[HARD] **`MERGE_HEAD`가 비어 있는 것은 필요조건일 뿐 결코 충분조건이 아니다.** `git rev-parse -q --verify MERGE_HEAD` 가 아무것도 찍지 않는 상태는 다른 레인이 해결 중일 때도 똑같이 나타난다 — `git merge --abort` 와 재시도 사이, 혹은 아직 아무것도 stage 하지 않은 시점. 이 침묵을 "트리가 비었다"로 읽는 것이 정확히 두 레인이 겹치는 경로다. 겹침은 한쪽이 커밋할 때까지 보이지 않는다. 프로브는 **마지막** 확인이지 첫 확인이 아니다.
+[HARD] **`MERGE_HEAD` being empty is a necessary condition, never a sufficient one.** A state where `git rev-parse -q --verify MERGE_HEAD` prints nothing looks exactly the same while another lane is resolving a conflict — between `git merge --abort` and a retry, or at a point where nothing has been staged yet. Reading this silence as "the tree is empty" is precisely the path on which two lanes overlap. The overlap stays invisible until one side commits. The probe is the **last** check, not the first.
 
-[HARD] **병합 커밋 직전과 push 직전에 `HEAD`를 다시 읽는다.** 턴 앞에서 읽어둔 값도, 세션 시작 시 보고된 브랜치도 쓰지 않는다.
+[HARD] **Re-read `HEAD` immediately before the merge commit and immediately before any push.** Do not use a value read earlier in the turn, or the branch reported at session start.
 
 ```bash
 git rev-parse --short HEAD
 git branch --show-current
 ```
 
-가정과 다르면 진행하지 말고 발산을 보고한다.
+If either differs from what you assumed, do not proceed; report the divergence.
 
-## 4. Push — 리더 일괄, 레인은 하지 않는다
+## 4. Push — the leader does it in bulk; lanes never push
 
-**레인은 `develop`을 push하지 않는다(2026-09-02 운영자 지시).** 레인의 공개 소관은 로컬 병합에서 끝난다 — 병합 커밋 SHA(카드 id 포함)를 완료 보고로 리더에게 전달하는 것까지다. push는 리더가 **일괄**로 수행한다: 완료 보고에서 병합 SHA를 모아 배치를 닫고 한 번 push한다.
+**Lanes do not push `main`.** This rule is the current form of the 2026-09-02 operator instruction (at that time it covered develop). A lane's responsibility ends at the local merge: it passes the merge commit SHA (including the card id) to the leader in its completion report, and nothing further. The leader performs batch releases in **bulk**: it collects the merge SHAs from completion reports, closes the batch, and pushes to `release/main-batch-YYYYMMDD` by the procedure in §4.0 §6.
 
-**리더의 원격 착지 검증.** push 뒤에 리더는 `git fetch origin develop` + `git rev-parse origin/develop`으로 원격이 움직였는지 확인하고, 그 뒤에야 카드 done과 워크트리 폐기 승인을 낸다.
+**Candidate-path exception — operator approval 2026-10-03 (REQ-CCI-016).** For this one path only, this replaces `WT push · CI request prohibited`. A lane may push a candidate commit made by `moai integration candidate --card <card-id>` to `ci/<card-id>` to receive a CI verdict before landing, and the landing gate requires a green verdict for that candidate. Pushing the integration branch remains, as before, a bulk action by the leader. The remaining rules of this section (landing verification, batch trigger, green condition) do not change, and this section's develop descriptions are to be read under the transition notice (drift) in AGENTS.local.md §4.1.
 
-**원격 CI(`origin/develop`)가 통합 판정의 주체다.** 로컬 통과는 조기 신호일 뿐이다 — 깨끗한 환경도, darwin/windows 매트릭스도 아니다.
+**The leader verifies the remote landing.** After the batch PR is merged, the leader confirms that the remote has moved, using `git fetch origin main` followed by `git rev-parse origin/main`, and only then approves worktree disposal. A card's done does not wait for the batch (§4.0 §5; implemented by t1621).
 
-**배치 닫기 트리거 — 임계값은 설정이 운반한다(SPEC-LEAD-AUTOPUSH-001).** 배치를 닫을 시점은 리더의 재량이 아니라 계수 트리거가 정한다: `git rev-list --count origin/develop..develop`이 `git_strategy.manual.lead_push_threshold`에 닿으면 배치를 닫고 `git push origin develop`을 **한 번** 실행한다. 값의 원천은 `.moai/config/sections/git-strategy.yaml`이며 이 문서는 그 수를 다시 쓰지 않는다 — 키와 계수 명령만 명명한다. 트리거는 병합 창이 닫힌 뒤에만 평가한다 — 창(`moai integration acquire`/`release`) 안에서 push하지 않는다.
+**The remote CI (`origin/main`) is the authority for the integration verdict.** A local pass is only an early signal — it is neither a clean environment nor the darwin/windows matrix.
 
-**초록 조건부 — push는 green일 때만 다시 연다.** 두 층이 있다. (i) 카드별 사전 게이트: 통합 창의 병합 트리 재측정을 통과하지 못한 병합은 배치에 넣지 않는다(지난 3건의 적색은 전부 이 재측정이 push 전에 잡았다). (ii) 배치 단위 보류: 마지막 push의 `origin/develop` CI가 red면 다음 push를 보류한다 — 수리되어 green으로 돌아온 뒤에야 트리거가 다시 유효하다. 초록 조건부가 계수 트리거보다 우선한다. 마지막 push의 CI 판정이 아직 없으면(새 develop의 첫 push 등) red가 아니므로 보류 사유가 아니다.
+**Batch-close trigger — the threshold is carried by configuration (SPEC-LEAD-AUTOPUSH-001).** The moment to close a batch is set by a count trigger, not by the leader's discretion: when `git rev-list --count origin/main..main` reaches `git_strategy.manual.lead_push_threshold`, the leader closes the batch and starts the procedure in §4.0 §6. The source of the value is `.moai/config/sections/git-strategy.yaml`, and this document does not restate the number; it names only the key and the count command. The trigger is evaluated only after the merge window has closed — do not push inside the window (`moai integration acquire`/`release`).
 
-**임계값 0(또는 키 부재)은 오류가 아니라 비활성이다.** `lead_push_threshold`가 0이면 트리거는 꺼진 것으로, 배치 닫기 시점은 리더의 판단으로 돌아간다 — 오류 조건으로 취급하지 않는다.
+**Green condition — a batch reopens only when green.** There are two layers. (i) Per-card pre-gate: a merge that fails the merge-tree re-measurement in the integration window is not put into a batch (all three recent reds were caught by this re-measurement before the push). (ii) Per-batch hold: if the `origin/main` CI of the most recently landed batch is red, the next batch is held; the trigger becomes valid again only after the batch has been repaired and returned to green. The green condition takes precedence over the count trigger. If that CI verdict does not yet exist (for example, for the first batch), it is not red and is not a reason to hold.
 
-## 5. 충돌 — 변경을 소유한 레인의 몫
+**A threshold of 0 (or a missing key) means disabled, not an error.** If `lead_push_threshold` is 0, the trigger is treated as off, and the timing of batch closure reverts to the leader's judgment; do not treat it as an error condition.
 
-병합이 일으킨 충돌은 그 병합을 하는 레인이 해결한다. 해결할 수 없는 충돌(다른 레인이 이미 합친 변경과의 의미적 충돌)은 **리더에게 blocker 보고**다. 강제 병합이 아니다.
+## 5. Conflicts — the lane that owns the change handles them
 
-## 6. 병합 이후 — 레인은 카드를 스스로 고르지 않는다
+The lane performing a merge resolves the conflicts that merge causes. A conflict that cannot be resolved (a semantic conflict with changes another lane has already merged) is a **blocker report to the leader**. It is not a forced merge.
 
-- 로컬 병합을 마치고 병합 SHA를 리더에게 보고하면 `ExitWorktree`로 primary 체크아웃에 돌아와, **리더가 다음 카드를 dispatch 할 때까지 기다린다.** 레인이 큐에서 카드를 집지 않는다. 그 대기는 열린 대기가 아니라 **명시적 대기(explicit wait)** 다 — 디스크에 대기 기록(reason + 대상 + 재확인 지점)을 남기는 대기이고, 각성(awaken) 턴에서는 카드 작업 재개 전에 레인 스톨 워치독을 먼저 실행한다 — Skill("moai-lane-watchdog")을 호출해 따른다. 워치독은 진행 3채널(HEAD SHA · 증거 mtime · 통합 창 상태)을 재측정해 원인을 분류하고, 판단이 필요하면 결정 사다리(디스크 증거 → 결정 보드 → 감사 교차 → jev_ask → 리드 채팅 최후)로 답장 없이 푼다 — 답장 부재를 진행 부재로 읽지 않는다. 이 대기·사다리 독트린의 정본은 `.claude/rules/moai/workflow/auto-semantics.md`이고, 워치독의 queue-readonly 경계는 큐 수준 픽업 필터를 소유하는 SPEC-RELATION-PICKUP-FILTER-001과의 조합으로 성립한다(레인은 여전히 카드를 고르지 않는다 — 위 금지와 같은 경계다).
-- **self-dispatch lane 예외 — 카드 임대.** self-dispatch 팩토리 run의 레인은 `moai factory next`로 대기 중인 다음 카드를 임대할 수 있다(레인이 수행하는 유일한 promotion). 이 예외를 제외한 큐 변경(`add`, `drop`, `done`, `edit` 등)과 `moai contract sign`은 레인에게 금지된다.
-- **self-dispatch lane 예외 — 병합 창.** Claude self-dispatch 레인은 리더에게 창을 요청하지 않고 `moai integration merge --card`를 부르는 `moai factory complete`의 통합 절차로 스스로 통합 창을 잡고 자기 카드를 `develop`에 병합한다(위 첫 번째 항목의 「리더에게 병합을 요청한다」를 이 레인에서 대체한다). 레인은 develop에 손으로 git merge 하지 않고 moai integration merge --card 또는 그것을 부르는 moai factory complete 로만 병합한다. Codex 레인은 예외가 아니다 — merge-ready에서 정지한다(REQ-SD-025). 두 예외 모두 위 금지(그 외 큐 변경 + `moai contract sign`)를 바꾸지 않는다.
-- [HARD] **카드 워크트리는 작업이 `origin/develop`에 올라간 뒤에야 폐기한다.** 그전까지 그 트리가 작업의 유일한 사본이다. 원격 착지는 리더의 일괄 push가 만든다(§4, §7). L1 트리(`.claude/worktrees/…`)는 `moai worktree done`의 대상이 아니다 — 세션 종료 keep/remove 프롬프트나 `git worktree unlock` + `git worktree remove`로 닫는다.
+## 6. After the merge — a lane does not pick its own card
 
-## 7. 리더 — 읽어서 판정한다
+- After completing the local merge and reporting the merge SHA to the leader, return to the primary checkout with `ExitWorktree` and **wait until the leader dispatches the next card.** A lane does not take a card from the queue. This wait is not an open-ended wait but an **explicit wait** — a wait that leaves a wait record on disk (reason, target, and re-check point). On an awaken turn, before card work resumes, the lane runs the lane-stall watchdog first: it invokes Skill("moai-lane-watchdog") and follows it. The watchdog re-measures three progress channels (HEAD SHA, evidence mtime, integration-window state), classifies the cause, and when a judgment is needed, resolves it without waiting for a reply through the decision ladder (disk evidence → decision board → audit cross-check → jev_ask → lead chat as a last resort). Do not read the absence of a reply as the absence of progress. The canonical source for this wait and ladder doctrine is `.claude/rules/moai/workflow/auto-semantics.md`. The watchdog's queue-readonly boundary holds in combination with SPEC-RELATION-PICKUP-FILTER-001, which owns the queue-level pickup filter (a lane still does not pick cards — the same boundary as the prohibition above).
+- **Self-dispatch lane exception — card lease.** A lane of a self-dispatch factory run may lease the next waiting card with `moai factory next` (the only promotion a lane performs). Apart from this exception, queue changes (`add`, `drop`, `done`, `edit`, etc.) and `moai contract sign` are prohibited for lanes.
+- **Self-dispatch lane exception — merge window.** A Claude self-dispatch lane does not request the window from the leader. Through the integration procedure of `moai factory complete`, which calls `moai integration merge --card`, it takes the integration window itself and merges its own card into local `main` (this lane replaces "ask the leader to merge" in the first item above). A lane never runs a hand-made git merge into main; it merges only with moai integration merge --card, or with moai factory complete, which calls it. Codex lanes are not covered by this exception: they stop at merge-ready (REQ-SD-025). Neither exception changes the prohibition above (other queue changes plus `moai contract sign`).
+- [HARD] **A card worktree is disposed of only after the batch carrying its merge has landed on `origin/main` (§4.0 §5).** Until then, that tree is the only copy of the work. The remote landing is produced by the leader's batch release (§4, §7). An L1 tree (`.claude/worktrees/…`) is not a target of `moai worktree done`; close it through the keep/remove prompt at session end, or with `git worktree unlock` followed by `git worktree remove`.
 
-- [HARD] 리더는 레인의 **답장이 아니라 증거를 읽고** 카드를 전진시킨다. 답장은 관측이 아니라 주장이고, 라우팅이 보장되지도 않는다.
-- 병합 판정(무엇이 `develop`에 들어갔는가)은 리더의 것이다. 작업을 만든 레인에게 자기 결과를 판정하게 하지 않는다.
-- 증거 파일이 없거나 읽히지 않거나 낡았으면 **gap**이다 — 카드는 그대로 두고 이유를 보고한다.
-- 병합이 확인되면 다음 카드를 **지금 비어 있는 레인**에 dispatch 한다.
-- **develop push는 리더의 일괄 소관이다(2026-09-02).** 레인 완료 보고에서 카드 id와 로컬 병합 SHA를 모은다 → 배치를 닫을 시점은 §4의 임계 트리거와 초록 조건부가 정한다(리더 재량 단독이 아니다) → `git push origin develop`을 **한 번** 실행한다 → `git fetch`와 `git rev-parse origin/develop`으로 원격 착지를 검증한다 → 그 뒤에야 카드 done과 워크트리 폐기 승인을 낸다.
+## 7. Leader — judge by reading the evidence
 
-## 8. 검증은 레인-로컬
+- [HARD] The leader advances a card by **reading the lane's evidence, not its reply**. A reply is a claim, not an observation, and routing is not guaranteed either.
+- The merge verdict (what entered local `main`) belongs to the leader. Do not let the lane that produced the work judge its own result.
+- If the evidence file is absent, unreadable, or stale, it is a **gap** — leave the card where it is and report the reason.
+- Once a merge is confirmed, dispatch the next card to **a lane that is free right now**.
+- **Batch release is the leader's bulk responsibility.** Collect the card ids and local merge SHAs from the lanes' completion reports → the timing of batch closure is set by the §4 count trigger and the green condition (not by the leader's discretion alone) → push to `release/main-batch-YYYYMMDD` and merge the PR by the procedure in §4.0 §6 → verify the remote landing with `git fetch` and `git rev-parse origin/main` → only then approve worktree disposal.
 
-[HARD] 자기 변경이 영향 줄 수 있는 테스트만 돌리고, push 후 `origin/develop` CI가 전체 스위트를 돌리게 한다.
+## 8. Verification is lane-local
 
-- **`go test ./...` 를 로컬에서 돌리지 않는다.** 레인 여럿이 동시에 돌려 load 413까지 치솟고 머신을 마비시킨 사고가 있다(2026-08-15).
-- **백그라운드 부하를 만들지 않는다.** 경합이 필요한 검증이라면 부하는 정리 보장이 있어야 한다 — 테스트 프레임워크 cleanup 훅에 등록된 kill이거나, 밖에서 프로세스를 묶는 `timeout` 래퍼. 뒤에 붙인 `kill`은 정리가 아니다(도달하지 못하는 줄이다).
-- **무거운 실행이 겹칠 자리에서는 자원 임대를 먼저 잡는다.** `moai slot acquire --resource <이름> --max-duration <상한>` → 실행 → `moai slot release --resource <이름>`. 보유자는 `moai slot status`로 읽는다. 통합 창(`moai integration`)과 기록·락·설정 키가 **분리돼 있다** — 병합 대기와 무거운 실행 대기가 서로를 막지 않게 하려는 것이다. 상한은 보유자 자신의 선언이라, 해제를 잊어도 상한까지만 묶인다(그 뒤에는 다른 레인이 `--force` 없이 인수한다). 매칭 명령을 거부하는 PreToolUse 가드는 **선택형이고 기본 꺼짐**(`workflow.slot_lease.enabled`)이며, 세 동작은 그 값과 무관하게 돈다. 표면 전체는 `.claude/rules/moai/workflow/resource-slot-lease.md`.
-  - 거부는 숫자로 온다: 살아 있는 보유자가 상한 안에 있는 동안 다른 세션의 획득은 **exit 3**으로 침묵 거부되고 아무도 대체되지 않는다(2026-09-14 실측, `t774-repro-demo`) — 리더에게 묻는 대신 `moai slot status --resource <이름>` 한 번으로 지금 순번의 주인을 확인한다.
-  - "무거운 실행"의 예 — 최소한 `internal/cli` 전체 스위트(2026-09-10 침입: 세 레인이 동시에 돌려 load 8~21에서 판정이 뒤집혔다 — 이것이 표면이 없을 때 침범이 실제로 난다는 통제군 기록이며, 동시 스위트 재실행으로 재시연하지 않는다), 그리고 `internal/factory`·`internal/hook` 같은 분 단위 패키지 스위트.
-  - 이 규율이 리더의 기억이 아니라 디스크 위에 있어야 하는 이유가 바로 그 두 차례의 침입이다: 1차는 통지 누락, 2차는 통지가 도달해도 레인이 순번을 조회할 방법이 없었다 — 선언과 통지와 조회 가능한 절차는 각각 다른 일이다.
-- **[HARD] 「이 카드가 무엇을 바꿨는가」는 흡수한 ref 와의 merge-base 부터 잰다 — 리터럴 base SHA 로 재지 않는다.** "Go 변경 없음", "템플릿 변경 없음", "이 경로만" 같은 범위 판정식의 왼쪽 끝은 읽는 시점에 `CARD_BASE=$(git merge-base develop HEAD)` 로 다시 구하고, 값을 핀하지 않는다. 대조군은 `git diff --name-only "$CARD_BASE"..HEAD | wc -l`(1 이상이어야 함), 프로브는 같은 범위에 pathspec 을 붙인 형태다. 대조군이 0 이면 "변경 없음"이 아니라 "측정 불가"로 보고한다.
-  - 이유: 흡수하는 순간 리터럴 핀 범위에 다른 카드의 커밋이 들어온다. 로컬 develop 이 원격보다 앞서 있으면 `origin/develop` 기준 merge-base 도 흡수 전 분기점에 머물러 같은 오탐을 낸다. 실측(2026-09-10, `.moai/reports/t543/verdict.md`): 로컬 develop 을 흡수한 뒤 리터럴 핀과 `origin/develop` 기준은 모두 Go 51개를 냈고, `develop` 기준만 카드 자기 기여(파일 4, Go 0)를 냈다. 이 재현이 이 규율의 대조군이다.
-  - 원칙은 "흡수한 바로 그 ref"다. 이 저장소 절차의 흡수 대상은 로컬 `develop`(§11, `CLAUDE.local.md` §4.1)이라 기본값이 `develop` 이다. 원격 develop 을 흡수하는 절차라면 ref 는 `origin/develop` 이 된다. develop 이 흡수 뒤 더 앞서가도 merge-base 는 마지막으로 흡수한 develop 커밋에 머물러 계속 옳다.
-  - 한계 — **병합 뒤에는 쓸 수 없다.** 카드가 develop 에 병합되면 merge-base 가 카드 tip 자신이 되어 범위가 비고, 판정식은 공허하게 통과한다(실측: 이미 병합된 카드 브랜치에서 빈 출력, `.moai/reports/t543/repro/limit-a-post-merge-all.txt`). 범위 판정식은 병합 전 평가 전용이다. 병합 뒤 근거는 병합 트리와 카드 브랜치 트리의 동일성으로 대신한다.
-- **[HARD] 「이건 누구 것인가」는 커밋 열거로만 답한다 — 트리 비교로 답하지 않는다.** 정본형은 하나다: `git log <내 HEAD>..<상대 ref> -- <경로>`. 그리고 **두 번째 피연산자는 양성 대조 경로**다 — 같은 형태를 **남의 커밋이 확실히 있는 경로**에 한 번 더 걸어 발화를 본다. 그 두 번째 실행이 비면 첫 번째의 0행은 부재가 아니라 **미측정**이다. 대조를 따로 기억해야 할 규율로 두지 않는 이유는, 그렇게 둬 봤더니 물지 않았기 때문이다(2026-09-20 같은 날 세 카드가 전부 대조를 언급하고도 전부 틀렸다 — `t950` 은 9회 언급).
-  - `git diff` 는 **어떤 철자든 트리 비교**라 이 질문을 답하지 않는다. 실측: 같은 피연산자 쌍에서 `git diff A..B` 와 `git diff A B` 는 **출력이 바이트 동일**하고, 같은 `A..B` 가 `git log` 에서는 반대 답을 낸다(log 0행 / diff 1행). 세 점 `git diff A...B` 만 `log A..B` 와 일치한다.
-  - 왼쪽 끝은 **`HEAD`** 다 — 「내가 이미 가진 전부」라는 뜻이다. merge-base 나 핀한 SHA 를 놓으면 **내 앞 카드의 커밋이 상대 쪽 접촉으로 돌아온다**(실측 2건, 둘 다 `git merge-base --is-ancestor <커밋> <내 tip>` exit 0 = 내 것).
-  - 바로 위 규율과 **묻는 질문이 다르다**: 저쪽은 「이 카드가 무엇을 바꿨는가」(자기 기여), 이쪽은 「이건 누구 것인가」(귀속). 병합 전 평가 전용이라는 경계는 같다.
-  - 측정 출처: `.moai/reports/t1014/verdict.md` (재현 13건 동반).
+**[SUPERSEDED by §4.0]** [HARD] Run only the tests your own change can affect, and after the push let the `origin/develop` CI run the full suite.
 
-## 9. rc 빌드 — 운영자 요청 시, 통합 워크트리에서
+- **Do not run `go test ./...` locally.** There was an incident in which several lanes ran it at once, pushing load up to 413 and paralyzing the machine (2026-08-15).
+- **Do not create background load.** If a verification needs contention, the load must come with a cleanup guarantee: either a kill registered in the test framework's cleanup hook, or a `timeout` wrapper that bounds the process from outside. A `kill` appended afterward is not cleanup (it is a line that cannot be reached).
+- **Where heavy runs may overlap, take a resource lease first.** `moai slot acquire --resource <name> --max-duration <limit>` → run → `moai slot release --resource <name>`. Read the holder with `moai slot status`. The integration window (`moai integration`) and its records, locks, and config keys are **kept separate** — so that a merge wait and a heavy-run wait do not block each other. The limit is the holder's own declaration, so if the holder forgets to release, the lease is bound only up to that limit (after which another lane takes it over without `--force`). The PreToolUse guard that refuses matching commands is **optional and off by default** (`workflow.slot_lease.enabled`); its three behaviors run regardless of that value. For the full surface, see `.claude/rules/moai/workflow/resource-slot-lease.md`.
+  - Refusals come as exit codes: while a live holder is within its limit, another session's acquisition is silently refused with **exit 3**, and no one is replaced (observed 2026-09-14, `t774-repro-demo`). Instead of asking the leader, check who holds the current turn with a single `moai slot status --resource <name>`.
+  - Examples of "heavy runs" — at a minimum, the full `internal/cli` suite (2026-09-10 intrusion: three lanes running it at once flipped verdicts at load 8–21; this is the control record showing that intrusion happens in practice when no surface exists, and it is not re-staged by re-running the suites concurrently), plus minute-scale package suites such as `internal/factory` and `internal/hook`.
+  - The reason this discipline must live on disk rather than in the leader's memory is precisely those two intrusions: the first was a missing notice; the second was that even when the notice arrived, the lane had no way to look up the turn. Declaring, notifying, and having a queryable procedure are each different things.
+- **[SUPERSEDED by §4.0]** **[HARD] "What did this card change?" is measured from the merge-base with the absorbed ref, not from a literal base SHA.** The left end of a scope judgment such as "no Go changes", "no template changes", or "this path only" is recomputed at read time with `CARD_BASE=$(git merge-base develop HEAD)`, and the value is not pinned. The control is `git diff --name-only "$CARD_BASE"..HEAD | wc -l` (must be 1 or more); the probe is the same range with a pathspec attached. If the control is 0, report "not measurable", not "no changes".
+  - **[SUPERSEDED by §4.0]** Reason: at the moment of absorption, commits from other cards enter the literal pinned range. If local develop is ahead of the remote, the merge-base against `origin/develop` also stays at the pre-absorption fork point and produces the same false positive. Measured (2026-09-10, `.moai/reports/t543/verdict.md`): after absorbing local develop, both the literal pin and the `origin/develop` base reported 51 Go files, while only the `develop` base reported the card's own contribution (4 files, 0 Go). This reproduction is the control for this discipline.
+  - **[SUPERSEDED by §4.0]** The principle is "the very ref that was absorbed." The absorption target in this repository's procedure is local `develop` (§11, `AGENTS.local.md` §4.1), so the default is `develop`. For a procedure that absorbs the remote develop, the ref becomes `origin/develop`. Even if develop moves further ahead after absorption, the merge-base stays at the last absorbed develop commit and remains correct.
+  - **[SUPERSEDED by §4.0]** Limitation — **it cannot be used after the merge.** Once the card merges into develop, the merge-base becomes the card's own tip, the range empties, and the judgment passes vacuously (observed: empty output on an already-merged card branch, `.moai/reports/t543/repro/limit-a-post-merge-all.txt`). The scope judgment is for evaluation before the merge only. After the merge, the evidence is instead the identity of the merged tree and the card branch tree.
+- **[HARD] "Whose is this?" is answered only by enumerating commits — never by comparing trees.** There is one canonical form: `git log <my HEAD>..<counterpart ref> -- <path>`. And **the second operand is a positive control path**: run the same form once more on **a path where another party's commits are certain to exist**, and check that it fires. If that second run is empty, the zero rows of the first are not an absence but **not measured**. This control is not kept as a discipline to be remembered separately, because when it was left that way, it did not catch anything (on 2026-09-20 three cards all mentioned the control and all were wrong — `t950` mentioned it nine times).
+  - `git diff` is a tree comparison **in every spelling**, so it does not answer this question. Observed: with the same operand pair, `git diff A..B` and `git diff A B` produce **byte-identical output**, and the same `A..B` gives the opposite answer under `git log` (log: 0 rows / diff: 1 row). Only the three-dot form `git diff A...B` agrees with `log A..B`.
+  - The left end is **`HEAD`** — it means "everything I already have." If you use a merge-base or a pinned SHA instead of HEAD as the left end, **commits from the earlier card come back as contact from the other side** (observed twice; in both cases `git merge-base --is-ancestor <commit> <my tip>` exit 0 = mine).
+  - The question differs from the discipline just above: that one asks "What did this card change?" (its own contribution), while this one asks "Whose is this?" (attribution). Both are for evaluation before the merge only.
+  - Measurement source: `.moai/reports/t1014/verdict.md` (accompanied by 13 reproductions).
+
+## 9. rc build — on operator request, from the local main tree
 
 ```bash
-# .claude/worktrees/develop 안에서
-# macOS의 /usr/bin 개발 도구가 Xcode 라이선스 exit 69이면 설치된 CLT를 우선한다.
+# Inside the tree whose HEAD is local main (the primary checkout)
+# If macOS's /usr/bin dev tools exit 69 because of the Xcode license, prefer the installed CLT.
 if [ -x /Library/Developer/CommandLineTools/usr/bin/make ]; then
   PATH="/Library/Developer/CommandLineTools/usr/bin:$PATH"
   export PATH
 fi
 make build VERSION=vX.Y.Z-rc.N
+git status --short                      # After the build, there must be no tracked-file changes (AGENTS.local.md §4.0 §3)
 rm -f ~/go/bin/moai && cp bin/moai ~/go/bin/moai
-sh scripts/verify-local-install.sh       # byte 동일성 + 설치본 version SHA/exit 0
+sh scripts/verify-local-install.sh       # byte identity + installed-binary version SHA / exit 0
 ```
 
-- [HARD] `rm -f` 를 생략한 맨 `cp` 덮어쓰기는 다음 호출에서 **exit 137(SIGKILL)** 을 낸 전례가 있다 — inode를 갈아끼우는 clean 재설치여야 한다. (`make install` 도 동등하다.)
-- [HARD] **맨손 `go install ./cmd/moai` 금지.** Makefile의 `LDFLAGS`를 안 실어서 버전/커밋/날짜가 컴파일 기본값으로 박히고, 그러면 binary lag 검증 자체가 불가능해진다.
-- [HARD] 설치본 검증에 macOS `strings`를 쓰지 않는다. Xcode 라이선스 동의 여부가 제품 binary 판정을 중단시키기 때문이다. `scripts/verify-local-install.sh`는 `cmp`로 `bin/moai`와 설치본의 byte 동일성을 확인하고, 설치본의 `version`을 직접 실행해 측정 시점 HEAD의 short SHA와 exit 0을 함께 관측한다. 기본 `git`이 불가하면 macOS Command Line Tools의 `git`을 자동으로 재시도하며, 둘 다 불가하면 세 번째 인자로 기대 short SHA를 받아야 한다. `make verify-local-install`은 같은 script를 호출하는 편의 alias다.
-- [HARD] macOS에서 `/usr/bin/make` 또는 `/usr/bin/git`이 Xcode 라이선스 exit 69를 내면 위 전처리로 설치된 Command Line Tools 경로를 PATH 선두에 둔다. `sudo xcodebuild -license`를 자동 실행하거나 검증 실패를 `|| true`로 숨기지 않는다.
-- 137이 나오면 `rm -f` + `cp` 를 다시 한다.
+- [HARD] A bare `cp` overwrite that omits `rm -f` has a precedent of producing **exit 137 (SIGKILL)** on the next invocation — the reinstall must be a clean one that replaces the inode. (`make install` is equivalent.)
+- [HARD] **Bare `go install ./cmd/moai` is prohibited.** It does not carry the Makefile's `LDFLAGS`, so the version, commit, and date get baked in as compile-time defaults, and then the binary-lag verification itself becomes impossible.
+- [HARD] Do not use macOS `strings` to verify the installed binary. Whether the Xcode license has been accepted would halt the verdict on the product binary. `scripts/verify-local-install.sh` uses `cmp` to confirm that `bin/moai` and the installed binary are byte-identical, and it runs the installed binary's `version` directly to observe, together, the short SHA of HEAD at measurement time and exit 0. If the default `git` is unavailable, it automatically retries with the `git` from macOS Command Line Tools; if neither works, it must receive the expected short SHA as the third argument. `make verify-local-install` is a convenience alias that calls the same script.
+- [HARD] If `/usr/bin/make` or `/usr/bin/git` on macOS exits 69 because of the Xcode license, put the installed Command Line Tools path at the front of PATH using the preprocessing above. Do not run `sudo xcodebuild -license` automatically, and do not hide a verification failure with `|| true`.
+- If you get 137, run `rm -f` and `cp` again.
 
-## 10. 릴리스 — 레인의 범위 밖
+## 10. Release — outside the lane's scope
 
-로컬 rc 시험을 통과하면 `release/vX.Y.Z`를 **`develop`에서** 분기하고, 이후는 `release` 하네스가 맡는다. `main`은 그 릴리스 PR로만 갱신된다(브랜치 보호 `enforce_admins: true`). 레인은 릴리스 브랜치를 만들지도, main PR을 내지도 않는다.
+**[SUPERSEDED — pending OQ-7]** Once the local rc test passes, branch `release/vX.Y.Z` **from `develop`**, and the `release` harness takes it from there. `origin/main` is updated only through release PRs — including batch releases (`release/main-batch-YYYYMMDD`) (§4.0 §6; branch protection `enforce_admins: true`). Lanes neither create release branches nor open PRs to main.
 
-## 11. develop 갱신 — 병합 후 로컬 develop 재생성 (SPEC-RC-TESTBED-001)
+## 11. Updating main — resynchronizing local main after a batch lands (SPEC-RC-TESTBED-001)
 
-다른 레인의 병합이 `origin/develop`에 올라가면 통합 워크트리의 로컬 `develop`은 뒤처진다. 언제 갱신할지의 **판정 기준**과 갱신하는 **경로**를 이 절이 정한다. rc.N 번호 정책(몇 번째 후보인가)은 `.moai/docs/version-management.md`의 Local RC Numbering 절이 소유한다.
+When a release batch lands on `origin/main`, local `main` can fall behind (§4.0 §4). This section sets the **criterion** for deciding when to update and the **path** for updating. The rc.N numbering policy (which candidate this is) is owned by the Local RC Numbering section of `.moai/docs/version-management.md`.
 
-[HARD] **판정 기준은 `origin/develop`과의 ref 비교이고, 병합 모양을 전제하지 않는다.**
+[HARD] **The criterion is a ref comparison with `origin/main`, and it assumes nothing about the shape of the merges.**
 
 ```bash
-git fetch origin develop
-git rev-list --count --left-right origin/develop...develop
-# "0 0" = 로컬이 최신. "N M"(N≥1) = origin/develop 쪽에 흡수되지 않은 커밋 → 갱신 대상
+git fetch origin main
+git rev-list --count --left-right origin/main...main
+# "0 0" = identical. "0 M" = landed commits only in local (before the batch) → not an update target
+# "N 0" (N≥1) = commits only on the origin/main side → fast-forward target (§4.0 §4)
+# "N M" (both ≥1) = diverged → the tool refuses (operator decision Q2 (i))
 ```
 
-- `git branch --merged`는 **충분한 기준이 아니다.** `--merged`는 브랜치 헤드의 도달성만 보고, squash 병합으로 들어온 변경은 커밋 그래프에 헤드를 남기지 않아 못 본다 — reachability blindness의 사례가 `SPEC-WORKTREE-SQUASH-MERGE-001` 이다. 이 리포의 develop 레인 병합은 `--no-ff`(§2가 가리키는 delivery.md Step 3.2 경로)로 규정되어 있지만, 그래서 *"--merged가 비어 있다"*를 이 레인의 확립된 사실로 단언하지도 않는다 — 판정식이 병합 모양과 무관해야 하므로, 위 rev-list 비교를 쓴다.
-- 기준은 언제나 `origin/develop`이다. 로컬 `main`이 아니고(§1), 카드 워크트리의 브랜치 상태도 아니다.
+- `git branch --merged` is **not a sufficient criterion.** `--merged` reports only whether a branch head is reachable, and changes brought in by a squash merge leave no head in the commit graph, so it misses them — the reachability-blindness case is `SPEC-WORKTREE-SQUASH-MERGE-001`. Landing on local main in this repository is specified as `--no-ff` (the tool path of §4.0 §2), but for that reason this lane also does not assert *"--merged is empty"* as an established fact — because the judgment must be independent of the merge shape, use the rev-list comparison above.
+- The criterion is always `origin/main`. Neither the local `main` being updated nor the branch state of a card worktree is the criterion.
 
-[HARD] **갱신 경로는 BranchGuard-안전 경로 하나뿐이다 — 통합 워크트리로의 런처 진입.**
+[HARD] **The update path is one tool path only — a fast-forward-only merge inside the integration window (§4.0 §4).**
 
-- `moai cc -w develop` 또는 현재 세션에서 `EnterWorktree(<develop 워크트리 경로>)` 로 `.claude/worktrees/develop` 에 들어가 `git merge origin/develop` 로 흡수한다.
-- primary 체크아웃에서 `git branch` / `git checkout` 으로 갱신하지 않는다. BranchGuard(`workflow.yaml` `branch_guard.enabled`, 로컬 opt-in)가 해당 패턴을 차단하며, 면제 경로 두 개(`claude --agent` 직접 실행, `MOAI_BRANCH_GUARD_EXEMPT=1`)는 **도구로 spawn된 서브에이전트에서 도달 불가능하다.** 운영자 터미널 sentinel 경로를 서브에이전트에 권장하지 않는다 — 도달 불가능한 면제에 기대는 절차는 의존 가능한 절차가 아니다.
-- 자기 워크트리 안에서 `git -C .claude/worktrees/develop …` 로 원격 조작하는 것은 §2와 같은 이유로 worktree-session 가드가 거부한다. **들어가는 것이 유일한 인가 경로다.**
-- 갱신 창 조율은 §3의 메커니즘을 그대로 쓴다(병합 창과 갱신이 겹치지 않게 한다). 갱신 후의 rc 빌드·clean 재설치는 §9 런북이 소유한다 — 여기에 다시 적지 않는다.
+- Do not do this from the operator's terminal. The tool takes the integration window, confirms that HEAD points at `main` and that the primary checkout is clean, and then performs a fast-forward-only update (§4.0 §4). The command name is decided at execution time, so it is not written here.
+- Do not update with `git branch` / `git checkout` in the primary checkout. The BranchGuard (`workflow.yaml` `branch_guard.enabled`, local opt-in) blocks those patterns, and the two exemption paths (direct `claude --agent` execution and `MOAI_BRANCH_GUARD_EXEMPT=1`) are **unreachable from subagents spawned through the tool.** Do not recommend the operator-terminal sentinel path for subagents — a procedure that relies on an unreachable exemption is not a procedure that can be depended on.
+- Operating with `git -C <primary path> …` from within your own worktree is refused by the worktree-session guard, for the same reason as §2. **The tool path is the only authorized path.**
+- Coordinate the update window using the §3 mechanism as it is (so the merge window and the update do not overlap). The rc build and clean reinstall after the update are owned by the §9 runbook — not restated here.
 
 ---
 
 ## Cross-references
 
-- `.claude/skills/moai/workflows/sync/delivery.md` Step 3.2 — `WT-*` 통합 절차의 정본(배포되는 스킬이 소유; 이 문서는 리포 고유 사항만)
-- `CLAUDE.local.md` §4.1 — 이 모델의 근거와 전환 기록(t281 역전, 2026-08-14 기각 사유의 현재 상태)
-- `.claude/rules/local/repo-local-pr-policy.md` — `main` 브랜치 보호와 PR 필수 규정
-- `.moai/docs/git-workflow-doctrine.md` (§18) / `.moai/docs/git-local-workflow-doctrine.md` (§23) — 상위 독트린(일부 초과분(superseded), 상단 주석 참조)
-- `.moai/config/sections/git-strategy.yaml` — `git_strategy.manual.workflow: git-flow` + develop/release 키(`moai update` 후 재적용 필요, `CLAUDE.local.md` §2.3)
+- `.claude/skills/moai/workflows/sync/delivery.md` Step 3.2 — canonical source of the `WT-*` integration procedure (owned by the distributed skill; this document covers only repo-specific matters)
+- `AGENTS.local.md` §4.1 — the rationale for this model and its transition record (reversal of t281; the current status of the rejection reasons of 2026-08-14)
+- `.claude/rules/local/repo-local-pr-policy.md` — the `main` branch protection and the mandatory-PR rule
+- `.moai/docs/git-workflow-doctrine.md` (§18) / `.moai/docs/git-local-workflow-doctrine.md` (§23) — parent doctrines (some parts superseded; see the notes at the top)
+- **[SUPERSEDED by §4.0]** `.moai/config/sections/git-strategy.yaml` — `git_strategy.manual.workflow: git-flow` plus the develop/release keys (must be re-applied after `moai update`; `AGENTS.local.md` §2.3)
 
 ---
 

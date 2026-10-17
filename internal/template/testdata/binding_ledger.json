@@ -506,7 +506,7 @@
     "start_line": 102
    },
    "before_text": "Subagents inherit the main session's model and effort: pass neither `model` nor `effort` when spawning a subagent, and MoAI agent definitions declare neither. A PreToolUse hook records each Agent spawn to `.moai/logs/agent-model-audit.jsonl` as an observation log; it never blocks a spawn.",
-   "after_text": "Subagents inherit the main session's model and effort: pass neither `model` nor `effort` when spawning a subagent, and MoAI agent definitions declare neither. A PreToolUse hook records each Agent spawn to `.moai/logs/agent-model-audit.jsonl` as an observation log; it never blocks a spawn.",
+   "after_text": "Phase owners declare model and effort explicitly: each MoAI agent definition carries its role's default `model:` and `effort:` in its frontmatter, and a spawn passes neither unless a rule names an override. `manager-lead` declares neither and inherits the session. max and ultra are never a declared default effort.\n\n| Role | Agents | `model` | `effort` |\n|---|---|---|---|\n| Plan owner | `manager-spec` | opus | medium |\n| Judging roles | `plan-auditor`, `sync-auditor`, `super-advisor` | opus | high |\n| Run, sync, and build owners | `manager-develop`, `manager-docs`, `e2e-tester`, `builder-harness`, `manager-design` | sonnet | medium |\n| Mechanical roles | `manager-git`, `manager-todo` | haiku | medium |\n\nA factory lane spawning its implementer passes `effort` by card class (C high, B medium, A low — `factory-dispatch.md` § Lane spawn authority). On a GLM or Codex lane the judging roles keep a Claude leg: their verdict also carries an independent Claude-backed review. That expectation is documented only; nothing enforces it. A PreToolUse hook records each Agent spawn to `.moai/logs/agent-model-audit.jsonl` as an observation log; it never blocks a spawn.",
    "location": "always:.claude/rules/moai/core/agent-common-protocol.md",
    "processing": "verbatim",
    "entry_points": [
@@ -527,7 +527,7 @@
     "start_line": 104
    },
    "before_text": "Opt-in consumption exception — `llm.agent_overrides_consume` (boolean, default `false`): a session that sets the key `true` opts its spawns into consuming the stored `llm.agent_overrides`; the orchestrator consults the resolved override before spawning and passes the configured model on the Agent() call — the one sanctioned override surface. A stored model override wins on the model axis, an agent without an entry resolves to plain session inheritance (not a profile-matrix cell), and an override value of `inherit` is an explicit no-op. Effort remains doctrine-level: since CC 2.1.292 the Agent tool does accept an `effort` parameter, and MoAI deliberately leaves it unset — subagents inherit the session effort, and a per-spawn effort value would split the spawn onto a cold model-scoped cache (composing with the model-override cost in `cache-aware-execution.md` directive 5). Key-less sessions keep the inherit default above; the spawn-audit JSONL gains an `override_consumption` field ∈ {hit, miss, inherit, off} and stays observe-never-blocks; a closed config gate reads as `off`.",
-   "after_text": "Opt-in consumption exception — `llm.agent_overrides_consume` (boolean, default `false`): a session that sets the key `true` opts its spawns into consuming the stored `llm.agent_overrides`; the orchestrator consults the resolved override before spawning and passes the configured model on the Agent() call — the one sanctioned override surface. A stored model override wins on the model axis, an agent without an entry resolves to plain session inheritance (not a profile-matrix cell), and an override value of `inherit` is an explicit no-op. Effort remains doctrine-level: since CC 2.1.292 the Agent tool does accept an `effort` parameter, and MoAI deliberately leaves it unset — subagents inherit the session effort, and a per-spawn effort value would split the spawn onto a cold model-scoped cache (composing with the model-override cost in `cache-aware-execution.md` directive 5). Key-less sessions keep the inherit default above; the spawn-audit JSONL gains an `override_consumption` field ∈ {hit, miss, inherit, off} and stays observe-never-blocks; a closed config gate reads as `off`.",
+   "after_text": "Opt-in consumption exception — `llm.agent_overrides_consume` (boolean, default `false`): a session that sets the key `true` opts its spawns into consuming the stored `llm.agent_overrides`; the orchestrator consults the resolved override before spawning and passes the configured model on the Agent() call — the one sanctioned override surface. A stored model override wins on the model axis, an agent without an entry resolves to its frontmatter default (not a profile-matrix cell), and an override value of `inherit` is an explicit no-op. Effort: the frontmatter carries each role's default; the Agent tool's `effort` parameter (accepted since CC 2.1.292) is passed only where a rule names it — the lane's card-class implementer effort — and every spawn whose model differs from the session's runs on its own model-scoped cache (`cache-aware-execution.md` directive 5). Key-less sessions spawn on the frontmatter defaults above; the spawn-audit JSONL gains an `override_consumption` field ∈ {hit, miss, inherit, off} and stays observe-never-blocks; a closed config gate reads as `off`.",
    "location": "always:.claude/rules/moai/core/agent-common-protocol.md",
    "processing": "verbatim",
    "entry_points": [
@@ -2743,10 +2743,11 @@
     "start_line": 3
    },
    "before_text": "> Single source of truth for the 47 tools exposed by the self-hosted `moai` MCP\n> server (`.mcp.json` → `{command: \"moai\", args: [\"mcp-server\"]}`). Each tool is\n> prefixed `mcp__moai__` at the call site. This rule tells agents and the\n> orchestrator WHEN to prefer an MCP tool over its CLI/slash equivalent.\n>\n> Wiring parity (local ↔ template) and per-agent `tools:` lists are owned by the\n> agent definitions; this file owns the capability map + the MCP-over-CLI rule.",
-   "after_text": "> Single source of truth for the 47 tools exposed by the self-hosted `moai` MCP\n> server (`.mcp.json` → `{command: \"moai\", args: [\"mcp-server\"]}`). Each tool is\n> prefixed `mcp__moai__` at the call site. This rule tells agents and the\n> orchestrator WHEN to prefer an MCP tool over its CLI/slash equivalent.\n>\n> Wiring parity (local ↔ template) and per-agent `tools:` lists are owned by the\n> agent definitions; this file owns the capability map + the MCP-over-CLI rule.",
+   "after_text": "> Single source of truth for the 48 tools exposed by the self-hosted `moai` MCP\n> server (`.mcp.json` → `{command: \"moai\", args: [\"mcp-server\"]}`). Each tool is\n> prefixed `mcp__moai__` at the call site. This rule tells agents and the\n> orchestrator WHEN to prefer an MCP tool over its CLI/slash equivalent.\n>\n> Wiring parity (local ↔ template) and per-agent `tools:` lists are owned by the\n> agent definitions; this file owns the capability map + the MCP-over-CLI rule.",
    "location": "companion:.claude/rules/moai/core/moai-mcp-tools-catalogue.md",
    "processing": "relocated",
-   "reason": "scope/capability-map description"
+   "reason": "scope/capability-map description",
+   "rewrite_note": "count follows 1f15ee972 (M2 added factory_renew to the catalogue): 47 tools -> 48 tools. before_text and the anchor are unchanged."
   },
   {
    "id": "ALB-0140",
@@ -2779,10 +2780,11 @@
     "start_line": 22
    },
    "before_text": "Twenty-two tools accept an optional `project_root` string: `spec_progress`,\n`spec_audit`, `spec_drift`, `verify_snapshot`, `verify_trend`, `codex_audit`,\n`codex_review`, `codex_task`, `glm_audit`, `glm_review`, `claude_audit`,\n`audit_multi`, `graph_file_api`, `graph_find_code`, `graph_shortest_path`,\n`graph_trace_calls`, `factory_decide`, `todo_add`, `todo_list`, `factory_next`,\n`factory_stage`, and `factory_complete`. It names the tree the call should act\non. Four of the twenty-two\nREQUIRE it rather than accept it: the lane verbs `factory_next`, `factory_stage`,\nand `factory_complete` reject a call without it naming the argument, and\n`codex_task` is required rather than optional — pass your own toplevel or the\ncall is refused (`project_root is required ...`); it is never defaulted.",
-   "after_text": "Twenty-two tools accept an optional `project_root` string: `spec_progress`,\n`spec_audit`, `spec_drift`, `verify_snapshot`, `verify_trend`, `codex_audit`,\n`codex_review`, `codex_task`, `glm_audit`, `glm_review`, `claude_audit`,\n`audit_multi`, `graph_file_api`, `graph_find_code`, `graph_shortest_path`,\n`graph_trace_calls`, `factory_decide`, `todo_add`, `todo_list`, `factory_next`,\n`factory_stage`, and `factory_complete`. It names the tree the call should act\non. Four of the twenty-two\nREQUIRE it rather than accept it: the lane verbs `factory_next`, `factory_stage`,\nand `factory_complete` reject a call without it naming the argument, and\n`codex_task` is required rather than optional — pass your own toplevel or the\ncall is refused (`project_root is required ...`); it is never defaulted.",
+   "after_text": "Twenty-three tools accept an optional `project_root` string: `spec_progress`,\n`spec_audit`, `spec_drift`, `verify_snapshot`, `verify_trend`, `codex_audit`,\n`codex_review`, `codex_task`, `glm_audit`, `glm_review`, `claude_audit`,\n`audit_multi`, `graph_file_api`, `graph_find_code`, `graph_shortest_path`,\n`graph_trace_calls`, `factory_decide`, `todo_add`, `todo_list`, `factory_next`,\n`factory_stage`, `factory_complete`, and `factory_renew`. It names the tree the call should act\non. Five of the twenty-three\nREQUIRE it rather than accept it: the lane verbs `factory_next`, `factory_stage`,\n`factory_complete`, and `factory_renew` reject a call without it naming the argument, and\n`codex_task` is required rather than optional — pass your own toplevel or the\ncall is refused (`project_root is required ...`); it is never defaulted.",
    "location": "companion:.claude/rules/moai/core/moai-mcp-tools-catalogue.md",
    "processing": "relocated",
-   "reason": "enumerates which tools require project_root (tool-behavior description)"
+   "reason": "enumerates which tools require project_root (tool-behavior description)",
+   "rewrite_note": "project_root list follows 1f15ee972 (M2 added factory_renew to the catalogue): Twenty-two -> Twenty-three tools, Four of the twenty-two -> Five of the twenty-three, and factory_renew added to the REQUIRE clause. before_text and the anchor are unchanged."
   },
   {
    "id": "ALB-0142",
@@ -2889,10 +2891,11 @@
     "start_line": 71
    },
    "before_text": "`moai-mcp-tools-catalogue.md` — the lazy companion. Load it for § Tool catalogue\n(47 tools) · § Tool families (the family-to-consumer map) · § Session messaging\nbroker (Claude ↔ Codex) · § Unwired-by-design (why `goal_arm` reaches no agent).",
-   "after_text": "`moai-mcp-tools-catalogue.md` — the lazy companion. Load it for § Tool catalogue\n(47 tools) · § Tool families (the family-to-consumer map) · § Session messaging\nbroker (Claude ↔ Codex) · § Unwired-by-design (why `goal_arm` reaches no agent).",
+   "after_text": "`moai-mcp-tools-catalogue.md` — the lazy companion. Load it for § Tool catalogue\n(48 tools) · § Tool families (the family-to-consumer map) · § Session messaging\nbroker (Claude ↔ Codex) · § Unwired-by-design (why `goal_arm` reaches no agent).",
    "location": "companion:.claude/rules/moai/core/moai-mcp-tools-catalogue.md",
    "processing": "relocated",
-   "reason": "companion navigation pointer"
+   "reason": "companion navigation pointer",
+   "rewrite_note": "count follows 1f15ee972 (M2 added factory_renew to the catalogue): (47 tools) -> (48 tools) in the navigation line. before_text and the anchor are unchanged."
   },
   {
    "id": "ALB-0149",
@@ -3775,7 +3778,7 @@
     "start_line": 9
    },
    "before_text": "1. **Front-load user gates** [ZONE:Evolvable] Ask intent-drain gates early (Clarify stage, small context) rather than late in a large one: a blocking wait late in a session risks expiring the cache over the whole accumulated prefix. Unavoidable late gates (sync approval, completion decisions) SHOULD be batched into consecutive rounds so the expiry window is paid at most once, not per question.\n\n2. **Stagger-spawn parallel same-type agents** [ZONE:Evolvable] When fanning out N parallel subagents sharing one agent definition, spawn ONE first and the remaining N−1 after it starts producing output: concurrent requests cannot read a cache entry still being written, so simultaneous fan-out makes all N pay the cold write. This composes with (does not replace) the fanout bounds in `orchestration-mode-selection.md` §C.2.\n\n3. **Defer session-loaded file edits to task end** [ZONE:Evolvable] Files loaded into the session prefix at start (`.claude/rules/`, `AGENTS.md`, output styles, always-loaded skills) invalidate the entire cache prefix when edited mid-session — every subsequent turn re-writes from the edit point. Batch such edits at the END of a task, or immediately before a `/clear` boundary. This aligns naturally with the Template-First cycle (edit → `make build` → commit → session boundary).\n\n4. **Consider `/clear` before large batches** [ZONE:Evolvable] `/clear` discards the warm cache but shrinks the prefix. Apply `.claude/rules/moai/workflow/context-clear-policy.md`: persist a paste-ready handoff and clear before a large multi-spawn batch when unrelated context is bloated, an audit needs independence, or a prefix/model/effort change invalidates the warm state. When only short follow-up work remains and the plan/tree identity is unchanged, keep the warm cache instead.\n\n5. **Inherit the session model on spawns** [ZONE:Evolvable] Caches are model-scoped: a per-spawn model override splits the spawn off from every cache the session has built. MoAI passes no model on a spawn and its agent definitions declare none, so every subagent shares the session's model; this directive records the caching cost of overriding it. The one sanctioned override surface is the opt-in `llm.agent_overrides_consume` key (boolean, default `false`): a session that sets it `true` accepts this cache-split cost on its opted-in spawns — every override-bearing spawn starts on a cold model-scoped cache — while key-less sessions keep the inherit default, and directive 10's effort caution applies unchanged.\n\n6. **Pass files by `@`-mention, not by name** [ZONE:Evolvable] [HARD] When a prompt needs a file's content, pass it with an `@`-mention or a Read call rather than citing the filename for the model to fetch — one deterministic load beats a fetch-retry cycle. Use `/context` only as a one-shot audit of what is loaded, not a routine check.\n\n7. **Keep command output bounded** [ZONE:Evolvable] [HARD] Every command must bound what it returns: quiet flags, targeted queries, or redirect-to-file with the exit code and a bounded tail. `BASH_MAX_OUTPUT_LENGTH` is the runtime backstop, not the target; the file-redirect contract in `agent-common-protocol.md` § Parallel Execution applies to all commands.\n\n8. **Prefer the quiet form of routine commands** [ZONE:Evolvable] [HARD] Call everyday commands in their quiet form — `--no-progress`, `-q`, machine-readable output with a targeted filter — not forms that emit spinners, banners, tables, or color noise: the same decision bytes, a fraction of the context cost.\n\n9. **Weigh session length as a cost axis** [ZONE:Evolvable] [HARD] One long session is cheaper than several short ones for the same work — every fresh session re-pays the always-loaded prefix at write price, a continuing one reads it from cache — if it stays warm: a >5-min idle gap or prefix edit reverts it to write price. Treat session splitting as directive 4 treats `/clear`: a cost to justify, not a default.\n\n10. **A mid-session model or effort switch busts the cache** [ZONE:Evolvable] [HARD] Changing model or effort mid-session (thinking budget included — `MAX_THINKING_TOKENS`) discards the prompt cache; prefer a natural boundary for the switch.",
-   "after_text": "1. **Front-load user gates** [ZONE:Evolvable] Ask intent-drain gates early (Clarify stage, small context) rather than late in a large one: a blocking wait late in a session risks expiring the cache over the whole accumulated prefix. Unavoidable late gates (sync approval, completion decisions) SHOULD be batched into consecutive rounds so the expiry window is paid at most once, not per question.\n\n2. **Stagger-spawn parallel same-type agents** [ZONE:Evolvable] When fanning out N parallel subagents sharing one agent definition, spawn ONE first and the remaining N−1 after it starts producing output: concurrent requests cannot read a cache entry still being written, so simultaneous fan-out makes all N pay the cold write. This composes with (does not replace) the fanout bounds in `orchestration-mode-selection.md` §C.2.\n\n3. **Defer session-loaded file edits to task end** [ZONE:Evolvable] Files loaded into the session prefix at start (`.claude/rules/`, `AGENTS.md`, output styles, always-loaded skills) invalidate the entire cache prefix when edited mid-session — every subsequent turn re-writes from the edit point. Batch such edits at the END of a task, or immediately before a `/clear` boundary. This aligns naturally with the Template-First cycle (edit → `make build` → commit → session boundary).\n\n4. **Consider `/clear` before large batches** [ZONE:Evolvable] `/clear` discards the warm cache but shrinks the prefix. Apply `.claude/rules/moai/workflow/context-clear-policy.md`: persist a paste-ready handoff and clear before a large multi-spawn batch when unrelated context is bloated, an audit needs independence, or a prefix/model/effort change invalidates the warm state. When only short follow-up work remains and the plan/tree identity is unchanged, keep the warm cache instead.\n\n5. **Inherit the session model on spawns** [ZONE:Evolvable] Caches are model-scoped: a per-spawn model override splits the spawn off from every cache the session has built. MoAI passes no model on a spawn and its agent definitions declare none, so every subagent shares the session's model; this directive records the caching cost of overriding it. The one sanctioned override surface is the opt-in `llm.agent_overrides_consume` key (boolean, default `false`): a session that sets it `true` accepts this cache-split cost on its opted-in spawns — every override-bearing spawn starts on a cold model-scoped cache — while key-less sessions keep the inherit default, and directive 10's effort caution applies unchanged.\n\n6. **Pass files by `@`-mention, not by name** [ZONE:Evolvable] [HARD] When a prompt needs a file's content, pass it with an `@`-mention or a Read call rather than citing the filename for the model to fetch — one deterministic load beats a fetch-retry cycle. Use `/context` only as a one-shot audit of what is loaded, not a routine check.\n\n7. **Keep command output bounded** [ZONE:Evolvable] [HARD] Every command must bound what it returns: quiet flags, targeted queries, or redirect-to-file with the exit code and a bounded tail. `BASH_MAX_OUTPUT_LENGTH` is the runtime backstop, not the target; the file-redirect contract in `agent-common-protocol.md` § Parallel Execution applies to all commands.\n\n8. **Prefer the quiet form of routine commands** [ZONE:Evolvable] [HARD] Call everyday commands in their quiet form — `--no-progress`, `-q`, machine-readable output with a targeted filter — not forms that emit spinners, banners, tables, or color noise: the same decision bytes, a fraction of the context cost.\n\n9. **Weigh session length as a cost axis** [ZONE:Evolvable] [HARD] One long session is cheaper than several short ones for the same work — every fresh session re-pays the always-loaded prefix at write price, a continuing one reads it from cache — if it stays warm: a >5-min idle gap or prefix edit reverts it to write price. Treat session splitting as directive 4 treats `/clear`: a cost to justify, not a default.\n\n10. **A mid-session model or effort switch busts the cache** [ZONE:Evolvable] [HARD] Changing model or effort mid-session (thinking budget included — `MAX_THINKING_TOKENS`) discards the prompt cache; prefer a natural boundary for the switch.",
+   "after_text": "1. **Front-load user gates** [ZONE:Evolvable] Ask intent-drain gates early (Clarify stage, small context) rather than late in a large one: a blocking wait late in a session risks expiring the cache over the whole accumulated prefix. Unavoidable late gates (sync approval, completion decisions) SHOULD be batched into consecutive rounds so the expiry window is paid at most once, not per question.\n\n2. **Stagger-spawn parallel same-type agents** [ZONE:Evolvable] When fanning out N parallel subagents sharing one agent definition, spawn ONE first and the remaining N−1 after it starts producing output: concurrent requests cannot read a cache entry still being written, so simultaneous fan-out makes all N pay the cold write. This composes with (does not replace) the fanout bounds in `orchestration-mode-selection.md` §C.2.\n\n3. **Defer session-loaded file edits to task end** [ZONE:Evolvable] Files loaded into the session prefix at start (`.claude/rules/`, `AGENTS.md`, output styles, always-loaded skills) invalidate the entire cache prefix when edited mid-session — every subsequent turn re-writes from the edit point. Batch such edits at the END of a task, or immediately before a `/clear` boundary. This aligns naturally with the Template-First cycle (edit → `make build` → commit → session boundary).\n\n4. **Consider `/clear` before large batches** [ZONE:Evolvable] `/clear` discards the warm cache but shrinks the prefix. Apply `.claude/rules/moai/workflow/context-clear-policy.md`: persist a paste-ready handoff and clear before a large multi-spawn batch when unrelated context is bloated, an audit needs independence, or a prefix/model/effort change invalidates the warm state. When only short follow-up work remains and the plan/tree identity is unchanged, keep the warm cache instead.\n\n5. **Per-role model pins split the cache — accepted** [ZONE:Evolvable] Caches are model-scoped: a spawn whose model differs from the session's starts on a cold cache instead of reading the session's. MoAI phase owners declare their role's model and effort in frontmatter (`agent-common-protocol.md` § Subagent Model and Effort), so a spawn whose role model differs from the session model pays that cold write. This cost is accepted in exchange for the per-role defaults. The opt-in `llm.agent_overrides_consume` key (boolean, default `false`) adds the same cost to its opted-in spawns. Directive 10's effort caution applies unchanged.\n\n6. **Pass files by `@`-mention, not by name** [ZONE:Evolvable] [HARD] When a prompt needs a file's content, pass it with an `@`-mention or a Read call rather than citing the filename for the model to fetch — one deterministic load beats a fetch-retry cycle. Use `/context` only as a one-shot audit of what is loaded, not a routine check.\n\n7. **Keep command output bounded** [ZONE:Evolvable] [HARD] Every command must bound what it returns: quiet flags, targeted queries, or redirect-to-file with the exit code and a bounded tail. `BASH_MAX_OUTPUT_LENGTH` is the runtime backstop, not the target; the file-redirect contract in `agent-common-protocol.md` § Parallel Execution applies to all commands.\n\n8. **Prefer the quiet form of routine commands** [ZONE:Evolvable] [HARD] Call everyday commands in their quiet form — `--no-progress`, `-q`, machine-readable output with a targeted filter — not forms that emit spinners, banners, tables, or color noise: the same decision bytes, a fraction of the context cost.\n\n9. **Weigh session length as a cost axis** [ZONE:Evolvable] [HARD] One long session is cheaper than several short ones for the same work — every fresh session re-pays the always-loaded prefix at write price, a continuing one reads it from cache — if it stays warm: a >5-min idle gap or prefix edit reverts it to write price. Treat session splitting as directive 4 treats `/clear`: a cost to justify, not a default.\n\n10. **A mid-session model or effort switch busts the cache** [ZONE:Evolvable] [HARD] Changing model or effort mid-session (thinking budget included — `MAX_THINKING_TOKENS`) discards the prompt cache; prefer a natural boundary for the switch.",
    "location": "always:.claude/rules/moai/workflow/cache-aware-execution.md",
    "processing": "verbatim",
    "entry_points": [
@@ -3876,7 +3879,7 @@
     "start_line": 7
    },
    "before_text": "[ZONE:Evolvable] [HARD] Operational threshold is **model-specific**. Larger windows tolerate higher percentage utilization before stall risk dominates; smaller windows hit the operational ceiling later in percentage terms but with less absolute headroom:\n\n| Model class | Window | Handoff threshold | Absolute ceiling |\n|-------------|--------|-------------------|------------------|\n| Opus 5.5 on the Anthropic API (1M) | 1,000,000 tokens | **50%** | ~500,000 tokens |\n| Opus 4.8 on the Anthropic API (1M) | 1,000,000 tokens | **50%** | ~500,000 tokens |\n| GLM-5.3 via `moai glm`/`moai cg` (1M) | 1,000,000 tokens | **50%** | ~500,000 tokens |\n| Fable (1M) | 1,000,000 tokens | **50%** | ~500,000 tokens |\n| Sonnet 5.5 (1M) | 1,000,000 tokens | **50%** | ~500,000 tokens |\n| 200K sessions — any native-1M model under `CLAUDE_CODE_DISABLE_1M_CONTEXT=1`; Sonnet 4.6 / Opus 4.6 without `[1m]`; models below the 1M-default line behind an LLM gateway (non-Anthropic `ANTHROPIC_BASE_URL`; CC 2.1.285 / 2.1.287 default 1M on gateways for Sonnet 5+ / Opus 4.7+ / Fable and on Bedrock / Vertex / Foundry for Opus 4.7+ and Fable); a 200K-capped gateway — run `/autocompact 200k`; Sonnet 4.5 / Opus 4.5 and earlier | 200,000 tokens | **90%** | ~180,000 tokens |\n| Haiku (200K) | 200,000 tokens | **90%** | ~180,000 tokens |",
-   "after_text": "Operational threshold is **model-specific**. Match the row for the window the session actually runs with:\n\n| Model class | Window | Handoff threshold | Absolute ceiling |\n|---|---|---|---|\n| Opus 5.5 / Opus 4.8 / GLM-5.3 via `moai glm`/`moai cg` / Fable / Sonnet 5.5, native 1M | 1,000,000 tokens | **50%** | ~500,000 tokens |\n| Any native-1M model under `CLAUDE_CODE_DISABLE_1M_CONTEXT=1`; Sonnet 4.6 / Opus 4.6 without `[1m]`; models below the 1M-default line on an LLM gateway (non-Anthropic `ANTHROPIC_BASE_URL`; CC 2.1.285+ defaults 1M there for Sonnet 5+ / Opus 4.7+ / Fable, and on Bedrock / Vertex / Foundry for Opus 4.7+ and Fable); a 200K-capped gateway — run `/autocompact 200k`; Sonnet 4.5 / Opus 4.5 and earlier; Haiku | 200,000 tokens | **90%** | ~180,000 tokens |",
+   "after_text": "Operational threshold is **model-specific**. Match the row for the window the session actually runs with:\n\n| Model class | Window | Handoff threshold | Absolute ceiling |\n|---|---|---|---|\n| Opus 5.5 / Opus 4.8 / GLM-5.3 via `moai glm`/`moai cg` / Fable / Sonnet 5.5 / Haiku 5.5, native 1M | 1,000,000 tokens | **50%** | ~500,000 tokens |\n| Any native-1M model under `CLAUDE_CODE_DISABLE_1M_CONTEXT=1`; Sonnet 4.6 / Opus 4.6 without `[1m]`; models below the 1M-default line on an LLM gateway (non-Anthropic `ANTHROPIC_BASE_URL`; CC 2.1.285+ defaults 1M there for Sonnet 5+ / Opus 4.7+ / Fable, and on Bedrock / Vertex / Foundry for Opus 4.7+ and Fable); a 200K-capped gateway — run `/autocompact 200k`; Sonnet 4.5 / Opus 4.5 / Haiku 4.5 and earlier | 200,000 tokens | **90%** | ~180,000 tokens |",
    "location": "always:.claude/rules/moai/workflow/context-window-management.md",
    "processing": "rewrite",
    "rewrite_note": "merged the five identical-value 1M rows into one row and the two identical-value 200K rows into one; every model-to-threshold mapping preserved",
@@ -3897,7 +3900,7 @@
     "start_line": 19
    },
    "before_text": "A session that matches both a 1M row and the 200K-sessions row takes the 200K row: the window the session actually runs with sets the threshold, not the model name. The model-specific threshold is the operational ceiling — beyond it, plan for a `/clear` before the next non-trivial action. Both this rule and `session-handoff.md` Trigger #1 read from this same table.",
-   "after_text": "A session that matches both a 1M row and the 200K row takes the 200K row: the window the session actually runs with sets the threshold, not the model name. The threshold is the operational ceiling. Beyond it, plan a `/clear` before the next non-trivial action. `session-handoff.md` Trigger #1 reads this same table.",
+   "after_text": "A session that matches both a 1M row and the 200K row takes the 200K row: the window the session actually runs with sets the threshold, not the model name. Haiku 5.5 composes with that rule: on the Anthropic API the `haiku` alias resolves to Haiku 5.5 (1M, requires Claude Code v2.1.293+), while on AWS Bedrock / GCP Agent Platform / Microsoft Foundry it still resolves to Haiku 4.5, which keeps the 200K / **90%** row. The threshold is the operational ceiling. Beyond it, plan a `/clear` before the next non-trivial action. `session-handoff.md` Trigger #1 reads this same table.",
    "location": "always:.claude/rules/moai/workflow/context-window-management.md",
    "processing": "rewrite",
    "rewrite_note": "split into short sentences; no condition dropped",
@@ -4141,7 +4144,7 @@
     "start_line": 84
    },
    "before_text": "- `.claude/rules/moai/workflow/cache-aware-execution.md` — prompt-cache-aware `/clear` timing (its directive 4 permits an earlier `/clear` before a large multi-spawn batch, below the thresholds above) + gate placement and stagger-spawn ordering.\n- `.claude/rules/moai/workflow/session-handoff.md` — paste-ready resume format + auto-memory integration. Trigger #1 consumes the model-specific threshold table from this file (1M = 50%, 200K = 90%); `/clear` recommendation and paste-ready emission both fire at the same boundary.\n- `context-window-management-detail.md` — the lazy companion. Load it for § Why This Matters · § Claude Code's Graduated-Compaction Layers · § Reduction Ladder — cheaper moves before `/clear` (the four cheaper rungs and the checkpoint mechanics) · § GLM-5.3 context window · § Multi-session work — resume rather than re-establish · § Detection Heuristics · § Snapshot confidence",
-   "after_text": "- `.claude/rules/moai/workflow/cache-aware-execution.md` — prompt-cache-aware `/clear` timing (its directive 4 permits an earlier `/clear` before a large multi-spawn batch, below the thresholds above) + gate placement and stagger-spawn ordering.\n- `.claude/rules/moai/workflow/session-handoff.md` — paste-ready resume format + auto-memory integration. Trigger #1 consumes the model-specific threshold table from this file (1M = 50%, 200K = 90%); `/clear` recommendation and paste-ready emission both fire at the same boundary.\n- `context-window-management-detail.md` — the lazy companion. Load it for § Why This Matters · § Claude Code's Graduated-Compaction Layers · § Reduction Ladder — cheaper moves before `/clear` (the four cheaper rungs and the checkpoint mechanics) · § GLM-5.3 context window · § Multi-session work — resume rather than re-establish · § Detection Heuristics · § Snapshot confidence",
+   "after_text": "- `.claude/rules/moai/workflow/cache-aware-execution.md` — prompt-cache-aware `/clear` timing (its directive 4 permits an earlier `/clear` before a large multi-spawn batch, below the thresholds above) + gate placement and stagger-spawn ordering.\n- `.claude/rules/moai/workflow/session-handoff.md` — paste-ready resume format + auto-memory integration. Trigger #1 consumes the model-specific threshold table from this file (1M = 50%, 200K = 90%); `/clear` recommendation and paste-ready emission both fire at the same boundary.\n- `context-window-management-detail.md` — the lazy companion. Load it for § Why This Matters · § Claude Code's Graduated-Compaction Layers · § Reduction Ladder — cheaper moves before `/clear` (the five cheaper rungs and the checkpoint mechanics) · § GLM-5.3 context window · § Multi-session work — resume rather than re-establish · § Detection Heuristics · § Snapshot confidence",
    "location": "companion:.claude/rules/moai/workflow/context-window-management-detail.md",
    "processing": "relocated",
    "reason": "cross-reference list"
@@ -4645,7 +4648,7 @@
     "start_line": 3
    },
    "before_text": "How the **leader** session of Factory Mode moves a card through the queue: what admits work, who is told to do it, how completion is judged, and when the operator is asked to `/clear`.",
-   "after_text": "How the **leader** session of Factory Mode moves a card through the queue: what admits work, who is told to do it, how completion is judged, and when the operator is asked to `/clear`.",
+   "after_text": "How the **leader** session of Factory Mode moves a card through the queue: what admits work, who is told to do it, how completion is judged, and when the lane moves to its next card.",
    "location": "companion:.claude/rules/moai/workflow/factory-dispatch-mechanics.md",
    "processing": "relocated",
    "reason": "intro description"
@@ -4824,9 +4827,9 @@
     "start_line": 27
    },
    "before_text": "[HARD] **The leader is the queue's sole producer.** The operator asks; the leader turns the request into a card with `moai gtd add \"<description>\"` (`moai gtd` alone lists the queue). Production is the one queue mutation the leader performs on its own authority — translation, not invention: nothing enters the queue the operator did not ask for.",
-   "after_text": "[HARD] **The leader is the queue's sole producer.** The operator asks; the leader turns the request into a card with `moai gtd add \"<description>\"` (`moai gtd` alone lists the queue). Production is the one queue mutation the leader performs on its own authority — translation, not invention: nothing enters the queue the operator did not ask for.",
-   "location": "role-core:workflow/factory-dispatch.md",
-   "processing": "verbatim",
+   "after_text": "[HARD] The leader is the sole queue producer, and production its only self-authority queue mutation: `moai gtd add` turns an operator request into a card (translation, not invention; `moai gtd` alone lists); nothing the operator did not ask for enters.",
+   "location": "rule-body:.claude/rules/moai/workflow/factory-dispatch.md",
+   "processing": "relocated",
    "entry_points": [
     {
      "entry_point": "factory-leader",
@@ -4848,7 +4851,8 @@
      "entry_point": ".claude/skills/moai/workflows/gtd.md",
      "delivery": "REQ-ALB-024"
     }
-   ]
+   ],
+   "rewrite_note": "compressed rewrite in role core (t1617 M2); procedure detail at the named companion ; Opus final wording applied verbatim to the core (operator decision 6c5e) ; moved OUT of the markers per the Opus IN/OUT selection (leader gate, card t1617): delivered by the [HARD] read directive naming this file"
   },
   {
    "id": "ALB-0255",
@@ -4860,9 +4864,9 @@
     "start_line": 29
    },
    "before_text": "[HARD] **Standing sources are the other producers, and they produce on the operator's prior authorization.** `/moai project` issues one card when it completes (`[PROJECT] ` prefix); the codemaps-debt trigger in `moai integration release` issues one per debt period (`[GRAPH] ` prefix). The full conditions — one per occasion, derived not invented, marked, id reported, starting still a separate pick — are the SSOT at `.claude/skills/moai/workflows/gtd.md` § Standing sources, and that set is **conditional, not closed**. Nothing else produces; a report milestone, an audit finding, or an open issue still reaches the queue only as a card request the operator approves.",
-   "after_text": "[HARD] **Standing sources are the other producers, and they produce on the operator's prior authorization.** `/moai project` issues one card when it completes (`[PROJECT] ` prefix); the codemaps-debt trigger in `moai integration release` issues one per debt period (`[GRAPH] ` prefix). The full conditions — one per occasion, derived not invented, marked, id reported, starting still a separate pick — are the SSOT at `.claude/skills/moai/workflows/gtd.md` § Standing sources, and that set is **conditional, not closed**. Nothing else produces; a report milestone, an audit finding, or an open issue still reaches the queue only as a card request the operator approves.",
-   "location": "role-core:workflow/factory-dispatch.md",
-   "processing": "verbatim",
+   "after_text": "[HARD] On prior operator authorization, standing sources also produce: `/moai project` one `[PROJECT] ` card at completion, codemaps-debt one `[GRAPH] ` card per debt period; each per occasion, derived not invented, marked, id reported, start a separate pick (gtd § Standing sources; conditional, not closed); nothing else produces: milestones, audit findings, open issues enter only as operator-approved card requests.",
+   "location": "rule-body:.claude/rules/moai/workflow/factory-dispatch.md",
+   "processing": "relocated",
    "entry_points": [
     {
      "entry_point": "factory-leader",
@@ -4884,7 +4888,8 @@
      "entry_point": ".claude/skills/moai/workflows/gtd.md",
      "delivery": "REQ-ALB-024"
     }
-   ]
+   ],
+   "rewrite_note": "compressed rewrite in role core (t1617 M2); procedure detail at the named companion ; Opus final wording applied verbatim to the core (operator decision 6c5e) ; moved OUT of the markers per the Opus IN/OUT selection (leader gate, card t1617): delivered by the [HARD] read directive naming this file"
   },
   {
    "id": "ALB-0256",
@@ -4896,9 +4901,9 @@
     "start_line": 31
    },
    "before_text": "[HARD] **Promotion is the operator's act, in person or in advance.** After a `/clear`, the leader presents the queued cards through `AskUserQuestion` and the operator picks; only then does the leader route the card whole to a free lane. Outside an --auto authorization the leader never picks for the operator, never reorders by inferred priority, and never silently promotes a backlog item. An empty queue is a state to report, not a prompt to invent work. The one ranking the queue admits is the `--auto` cycle's own, bounded in the next paragraph.",
-   "after_text": "[HARD] **Promotion is the operator's act, in person or in advance.** After a `/clear`, the leader presents the queued cards through `AskUserQuestion` and the operator picks; only then does the leader route the card whole to a free lane. Outside an --auto authorization the leader never picks for the operator, never reorders by inferred priority, and never silently promotes a backlog item. An empty queue is a state to report, not a prompt to invent work. The one ranking the queue admits is the `--auto` cycle's own, bounded in the next paragraph.",
-   "location": "role-core:workflow/factory-dispatch.md",
-   "processing": "verbatim",
+   "after_text": "[HARD] Promotion is the operator's act, live or in advance: after `/clear` present the queue via `AskUserQuestion`, the operator picks, then route the card whole to a free lane; outside `--auto` never pick, reorder, or silently promote; report an empty queue, never invent work.",
+   "location": "rule-body:.claude/rules/moai/workflow/factory-dispatch.md",
+   "processing": "relocated",
    "entry_points": [
     {
      "entry_point": "factory-leader",
@@ -4920,7 +4925,8 @@
      "entry_point": ".claude/skills/moai/workflows/gtd.md",
      "delivery": "REQ-ALB-024"
     }
-   ]
+   ],
+   "rewrite_note": "compressed rewrite in role core (t1617 M2); procedure detail at the named companion ; Opus final wording applied verbatim to the core (operator decision 6c5e) ; moved OUT per the final Opus fit (d-1670/88a7 arc): read-directive delivery, card t1617"
   },
   {
    "id": "ALB-0257",
@@ -4953,9 +4959,9 @@
     "start_line": 35
    },
    "before_text": "[HARD] **The self-dispatch lane exception.** In a self-dispatch factory run, a lane session may lease the next queued card — the one promotion a lane performs — only through `moai factory next` — bare, or `--card <id>` for its own judged pick. Every other queue mutation (`add`, `drop`, `done`, `edit`, and the rest) and `moai contract sign` stay forbidden to a lane: the lane works the operator's queue, it never authors it.",
-   "after_text": "[HARD] **The self-dispatch lane exception.** In a self-dispatch factory run, a lane session may lease the next queued card — the one promotion a lane performs — only through `moai factory next` — bare, or `--card <id>` for its own judged pick. Every other queue mutation (`add`, `drop`, `done`, `edit`, and the rest) and `moai contract sign` stay forbidden to a lane: the lane works the operator's queue, it never authors it.",
+   "after_text": "[HARD] A self-dispatch lane leases its next card only via `moai factory next`; other queue mutations and contract signing stay forbidden to a lane.",
    "location": "role-core:workflow/factory-dispatch.md",
-   "processing": "verbatim",
+   "processing": "rewrite",
    "entry_points": [
     {
      "entry_point": "factory-leader",
@@ -4977,7 +4983,8 @@
      "entry_point": ".claude/skills/moai/workflows/gtd.md",
      "delivery": "REQ-ALB-024"
     }
-   ]
+   ],
+   "rewrite_note": "compressed rewrite in role core (t1617 M2); procedure detail at the named companion"
   },
   {
    "id": "ALB-0259",
@@ -5010,9 +5017,9 @@
     "start_line": 39
    },
    "before_text": "[HARD] **The leader may attach a finding; it may not act on one.** Analysis records a relation between two cards (`moai gtd relate`); the record is evidence the operator reads, never a mandate — the leader never folds the related card away, never reorders the queue around it, and never drops or edits it. Analysis changes exactly one thing on its own authority: it refuses the admission of a card whose normalized text is identical to one already queued or picked.",
-   "after_text": "[HARD] **The leader may attach a finding; it may not act on one.** Analysis records a relation between two cards (`moai gtd relate`); the record is evidence the operator reads, never a mandate — the leader never folds the related card away, never reorders the queue around it, and never drops or edits it. Analysis changes exactly one thing on its own authority: it refuses the admission of a card whose normalized text is identical to one already queued or picked.",
+   "after_text": "[HARD] The leader records relations (`moai gtd relate`) as evidence for the operator, never a mandate: it never folds away, reorders around, drops, or edits a related card; its one self-authority act is refusing a card whose normalized text is identical to one queued or picked.",
    "location": "role-core:workflow/factory-dispatch.md",
-   "processing": "verbatim",
+   "processing": "rewrite",
    "entry_points": [
     {
      "entry_point": "factory-leader",
@@ -5034,7 +5041,8 @@
      "entry_point": ".claude/skills/moai/workflows/gtd.md",
      "delivery": "REQ-ALB-024"
     }
-   ]
+   ],
+   "rewrite_note": "compressed rewrite in role core (t1617 M2); procedure detail at the named companion ; Opus final wording applied verbatim to the core (operator decision 6c5e)"
   },
   {
    "id": "ALB-0261",
@@ -5046,9 +5054,9 @@
     "start_line": 41
    },
    "before_text": "[HARD] **The pre-dispatch PR cross-check.** Before dispatching a card out of `backlog`, the leader reads that card's pull-request and landed state (`moai gtd pr <id>`; by hand `gh pr list` plus a `git log` against the integration branch) and reports what it read in the same turn. An unchecked card is a gap, not a clean card (§ Completion is read, never trusted).",
-   "after_text": "[HARD] **The pre-dispatch PR cross-check.** Before dispatching a card out of `backlog`, the leader reads that card's pull-request and landed state (`moai gtd pr <id>`; by hand `gh pr list` plus a `git log` against the integration branch) and reports what it read in the same turn. An unchecked card is a gap, not a clean card (§ Completion is read, never trusted).",
+   "after_text": "[HARD] The pre-dispatch cross-check reads the card's PR and landed state and reports the same turn — an unchecked card is a gap.",
    "location": "role-core:workflow/factory-dispatch.md",
-   "processing": "verbatim",
+   "processing": "rewrite",
    "entry_points": [
     {
      "entry_point": "factory-leader",
@@ -5070,7 +5078,8 @@
      "entry_point": ".claude/skills/moai/workflows/gtd.md",
      "delivery": "REQ-ALB-024"
     }
-   ]
+   ],
+   "rewrite_note": "compressed rewrite in role core (t1617 M2); procedure detail at the named companion"
   },
   {
    "id": "ALB-0262",
@@ -5082,9 +5091,9 @@
     "start_line": 43
    },
    "before_text": "[HARD] **The cross-check also asks whether a completed SPEC already covers the work.** A card id cannot answer \"has someone else already done this\" — where the card names an issue or a subsystem, the leader also reads whether a covering SPEC is already `completed` and reports that alongside the PR and landed state. Neither read is conclusive: the final discriminator stays reproduction.",
-   "after_text": "[HARD] **The cross-check also asks whether a completed SPEC already covers the work.** A card id cannot answer \"has someone else already done this\" — where the card names an issue or a subsystem, the leader also reads whether a covering SPEC is already `completed` and reports that alongside the PR and landed state. Neither read is conclusive: the final discriminator stays reproduction.",
+   "after_text": "[HARD] The cross-check also reports completed-SPEC coverage; neither read is conclusive — the final discriminator stays reproduction.",
    "location": "role-core:workflow/factory-dispatch.md",
-   "processing": "verbatim",
+   "processing": "rewrite",
    "entry_points": [
     {
      "entry_point": "factory-leader",
@@ -5106,7 +5115,8 @@
      "entry_point": ".claude/skills/moai/workflows/gtd.md",
      "delivery": "REQ-ALB-024"
     }
-   ]
+   ],
+   "rewrite_note": "compressed rewrite in role core (t1617 M2); procedure detail at the named companion"
   },
   {
    "id": "ALB-0263",
@@ -5118,9 +5128,9 @@
     "start_line": 45
    },
    "before_text": "[HARD] **The cross-check reports; it never vetoes.** Where the card carries an open pull request or is already landed, the leader surfaces that and the operator **confirms or withdraws** it. The leader never withholds a picked card on its own authority. Why the wording is the only available control: `factory-dispatch-cards.md` § The pre-dispatch cross-check.",
-   "after_text": "[HARD] **The cross-check reports; it never vetoes.** Where the card carries an open pull request or is already landed, the leader surfaces that and the operator **confirms or withdraws** it. The leader never withholds a picked card on its own authority. Why the wording is the only available control: `factory-dispatch-cards.md` § The pre-dispatch cross-check.",
+   "after_text": "[HARD] The cross-check reports, never vetoes — the operator confirms or withdraws; never withhold a picked card.",
    "location": "role-core:workflow/factory-dispatch.md",
-   "processing": "verbatim",
+   "processing": "rewrite",
    "entry_points": [
     {
      "entry_point": "factory-leader",
@@ -5142,7 +5152,8 @@
      "entry_point": ".claude/skills/moai/workflows/gtd.md",
      "delivery": "REQ-ALB-024"
     }
-   ]
+   ],
+   "rewrite_note": "compressed rewrite in role core (t1617 M2); procedure detail at the named companion"
   },
   {
    "id": "ALB-0264",
@@ -5154,9 +5165,9 @@
     "start_line": 49
    },
    "before_text": "[HARD] **A milestone-bearing report under `.moai/reports/` carries a `## Card Cross-Check` section** — one table row per milestone, a `card` column holding the delivering card id or an explicit new-card marker. A mapping claim is verified against the queue (`moai gtd`), never remembered. Before the leader turns a report into card requests, the request message states the full comparison — `N milestones → N cards` — naming every milestone with no card in the live queue. Detail: `factory-dispatch-cards.md` § Report milestones ↔ queue cards.",
-   "after_text": "[HARD] **A milestone-bearing report under `.moai/reports/` carries a `## Card Cross-Check` section** — one table row per milestone, a `card` column holding the delivering card id or an explicit new-card marker. A mapping claim is verified against the queue (`moai gtd`), never remembered. Before the leader turns a report into card requests, the request message states the full comparison — `N milestones → N cards` — naming every milestone with no card in the live queue. Detail: `factory-dispatch-cards.md` § Report milestones ↔ queue cards.",
-   "location": "role-core:workflow/factory-dispatch.md",
-   "processing": "verbatim",
+   "after_text": "[HARD] A milestone report under `.moai/reports/` carries `## Card Cross-Check`: a row per milestone, `card` = delivering id or explicit new-card marker, checked against `moai gtd`, never memory; card requests first state `N milestones → N cards`, naming every milestone without a live-queue card.",
+   "location": "rule-body:.claude/rules/moai/workflow/factory-dispatch.md",
+   "processing": "relocated",
    "entry_points": [
     {
      "entry_point": "factory-leader",
@@ -5178,7 +5189,8 @@
      "entry_point": ".claude/skills/moai/workflows/gtd.md",
      "delivery": "REQ-ALB-024"
     }
-   ]
+   ],
+   "rewrite_note": "compressed rewrite in role core (t1617 M2); procedure detail at the named companion ; Opus final wording applied verbatim to the core (operator decision 6c5e) ; moved OUT of the markers per the Opus IN/OUT selection (leader gate, card t1617): delivered by the [HARD] read directive naming this file"
   },
   {
    "id": "ALB-0265",
@@ -5211,9 +5223,9 @@
     "start_line": 55
    },
    "before_text": "[HARD] **Class A is admitted on checked evidence, not on an assertion.** Two of its three properties are mechanically checked and cited: the diff is measured (`git diff --stat` against the base, showing the one file) and CI is green **on the head that will merge**. The third — no design judgement in it — is a judgement, stated in the dispatch where the operator can disagree with it. A card that cannot cite both measurements is not Class A. The justification is never \"it is faster\".",
-   "after_text": "[HARD] **Class A is admitted on checked evidence, not on an assertion.** Two of its three properties are mechanically checked and cited: the diff is measured (`git diff --stat` against the base, showing the one file) and CI is green **on the head that will merge**. The third — no design judgement in it — is a judgement, stated in the dispatch where the operator can disagree with it. A card that cannot cite both measurements is not Class A. The justification is never \"it is faster\".",
-   "location": "role-core:workflow/factory-dispatch.md",
-   "processing": "verbatim",
+   "after_text": "[HARD] Class A requires both cited: `git diff --stat` vs base showing one file, and CI green on the merging head (else not Class A); the dispatch states no-design-judgement for the operator to dispute; never \"faster\" as the reason.",
+   "location": "rule-body:.claude/rules/moai/workflow/factory-dispatch.md",
+   "processing": "relocated",
    "entry_points": [
     {
      "entry_point": "factory-leader",
@@ -5235,7 +5247,8 @@
      "entry_point": ".claude/skills/moai/workflows/gtd.md",
      "delivery": "REQ-ALB-024"
     }
-   ]
+   ],
+   "rewrite_note": "compressed rewrite in role core (t1617 M2); procedure detail at the named companion ; Opus final wording applied verbatim to the core (operator decision 6c5e) ; moved OUT of the markers per the Opus IN/OUT selection (leader gate, card t1617): delivered by the [HARD] read directive naming this file"
   },
   {
    "id": "ALB-0267",
@@ -5289,9 +5302,9 @@
     "start_line": 65
    },
    "before_text": "[HARD] Work is delegated through the queue on disk, not through messages. The queue file resolves against the primary checkout from every linked worktree — one repository, one queue — so a card admitted from anywhere is visible everywhere, and that single-file visibility is what makes the queue a channel rather than a shared opinion.",
-   "after_text": "[HARD] Work is delegated through the queue on disk, not through messages. The queue file resolves against the primary checkout from every linked worktree — one repository, one queue — so a card admitted from anywhere is visible everywhere, and that single-file visibility is what makes the queue a channel rather than a shared opinion.",
+   "after_text": "[HARD] Work is delegated through the queue on disk, not messages — one queue, visible from every worktree.",
    "location": "role-core:workflow/factory-dispatch.md",
-   "processing": "verbatim",
+   "processing": "rewrite",
    "entry_points": [
     {
      "entry_point": "factory-leader",
@@ -5313,7 +5326,8 @@
      "entry_point": ".claude/skills/moai/workflows/gtd.md",
      "delivery": "REQ-ALB-024"
     }
-   ]
+   ],
+   "rewrite_note": "compressed rewrite in role core (t1617 M2); procedure detail at the named companion"
   },
   {
    "id": "ALB-0270",
@@ -5325,9 +5339,9 @@
     "start_line": 67
    },
    "before_text": "A cross-session message is a nudge, never the delegation itself. **A lane can be asked to report when it next goes idle** (`SendMessage` `notify_when_idle`), but [HARD] the notice is not the completion signal — it says *when to read the evidence*, nothing about what it says. **A nudge can be refused outright under fan-out**; read the send result, and a refusal costs the run nothing because the queue already carries the delegation (`cross-session-messaging.md` § An idle notice is a scheduling hint, § Configuration surface).",
-   "after_text": "A cross-session message is a nudge, never the delegation itself. **A lane can be asked to report when it next goes idle** (`SendMessage` `notify_when_idle`), but [HARD] the notice is not the completion signal — it says *when to read the evidence*, nothing about what it says. **A nudge can be refused outright under fan-out**; read the send result, and a refusal costs the run nothing because the queue already carries the delegation (`cross-session-messaging.md` § An idle notice is a scheduling hint, § Configuration surface).",
-   "location": "role-core:workflow/factory-dispatch.md",
-   "processing": "verbatim",
+   "after_text": "A message is a nudge, never the delegation; `notify_when_idle` can request an idle report, but [HARD] the notice is not completion, only when to read the evidence; read the send result: a fan-out refusal costs nothing, the queue holds the delegation.",
+   "location": "rule-body:.claude/rules/moai/workflow/factory-dispatch.md",
+   "processing": "relocated",
    "entry_points": [
     {
      "entry_point": "factory-leader",
@@ -5349,7 +5363,9 @@
      "entry_point": ".claude/skills/moai/workflows/gtd.md",
      "delivery": "REQ-ALB-024"
     }
-   ]
+   ],
+   "rewrite_note": "restored verbatim in the F4 repair; the offset trim of this line was reverted by the leader ruling ; Opus final wording applied verbatim to the core (operator decision 6c5e) ; moved OUT per the final Opus fit (d-1670/88a7 arc): read-directive delivery, card t1617",
+   "reason": "F4 restoration (leader ruling d-030402Z-4f2c + 영실이 2순위): the explanation line returned to the core — offset trim rejected because it cut Codex-reachable obligation delivery"
   },
   {
    "id": "ALB-0271",
@@ -5361,9 +5377,9 @@
     "start_line": 71
    },
    "before_text": "[HARD] A dispatch is written in the operator's `conversation_language` — the operator watches it scroll past, which makes it user-facing output rather than internal agent traffic. The boundary is **who reads it**: an `Agent()` subagent prompt reaches no human and stays English. What stays verbatim in every language: SPEC IDs, command names and their flags, file paths, session names, and technical identifiers. (Classification rationale: `factory-dispatch-detail.md` § Dispatch language.)",
-   "after_text": "[HARD] A dispatch is written in the operator's `conversation_language` — the operator watches it scroll past, which makes it user-facing output rather than internal agent traffic. The boundary is **who reads it**: an `Agent()` subagent prompt reaches no human and stays English. What stays verbatim in every language: SPEC IDs, command names and their flags, file paths, session names, and technical identifiers. (Classification rationale: `factory-dispatch-detail.md` § Dispatch language.)",
+   "after_text": "[HARD] Dispatches go in the operator's `conversation_language`; `Agent()` prompts stay English; identifiers verbatim.",
    "location": "role-core:workflow/factory-dispatch.md",
-   "processing": "verbatim",
+   "processing": "rewrite",
    "entry_points": [
     {
      "entry_point": "factory-leader",
@@ -5385,7 +5401,8 @@
      "entry_point": ".claude/skills/moai/workflows/gtd.md",
      "delivery": "REQ-ALB-024"
     }
-   ]
+   ],
+   "rewrite_note": "compressed rewrite in role core (t1617 M2); procedure detail at the named companion"
   },
   {
    "id": "ALB-0272",
@@ -5397,9 +5414,9 @@
     "start_line": 75
    },
    "before_text": "[HARD] A dispatch is a fixed-field address block, not prose. The fields:\n\n```\ncard: <id>\nspec: <SPEC-ID>\ncmd: /moai run <SPEC-ID>\nwt: .moai/worktrees/<name>\nevidence: .moai/specs/<SPEC-ID>/progress.md\nlens: --security --deep\n```\n\n- `card`, `cmd`, `wt`, and `evidence` are always present. `spec` joins once a SPEC exists; a Class B card carries none, and its `evidence` names whatever record the leader will read instead. `lens` appears only when the leader names review lenses for the card's sync gate.\n- `wt` names the new card's worktree, never a previous card's tree. The tree keeps the card id; the branch takes a descriptive slug (§ Isolation below).\n- **No explanatory prose.** Procedure, background, and justification live in the card text and the SPEC artifacts the block points at.\n- **Ceiling: the block is at most 10 lines.** A dispatch that does not fit is trying to be a handoff; move the payload into the card and send the block.\n- **[HARD] The send is read, not assumed.** A `routing` object on the result means an in-process mailbox took the block — lost (re-send to `name [ref]`); a following `[Cross-session delivery notice]` means the lane's permission policy is holding or refused it (surface it to the operator, do not re-send); anything else queued it. None of the three establishes that the lane's Claude read it. Full shape table: `cross-session-messaging.md` § A send result has three shapes.",
-   "after_text": "[HARD] A dispatch is a fixed-field address block, not prose. The fields:\n\n```\ncard: <id>\nspec: <SPEC-ID>\ncmd: /moai run <SPEC-ID>\nwt: .moai/worktrees/<name>\nevidence: .moai/specs/<SPEC-ID>/progress.md\nlens: --security --deep\n```\n\n- `card`, `cmd`, `wt`, and `evidence` are always present. `spec` joins once a SPEC exists; a Class B card carries none, and its `evidence` names whatever record the leader will read instead. `lens` appears only when the leader names review lenses for the card's sync gate.\n- `wt` names the new card's worktree, never a previous card's tree. The tree keeps the card id; the branch takes a descriptive slug (§ Isolation below).\n- **No explanatory prose.** Procedure, background, and justification live in the card text and the SPEC artifacts the block points at.\n- **Ceiling: the block is at most 10 lines.** A dispatch that does not fit is trying to be a handoff; move the payload into the card and send the block.\n- **[HARD] The send is read, not assumed.** A `routing` object on the result means an in-process mailbox took the block — lost (re-send to `name [ref]`); a following `[Cross-session delivery notice]` means the lane's permission policy is holding or refused it (surface it to the operator, do not re-send); anything else queued it. None of the three establishes that the lane's Claude read it. Full shape table: `cross-session-messaging.md` § A send result has three shapes.",
-   "location": "role-core:workflow/factory-dispatch.md",
-   "processing": "verbatim",
+   "after_text": "[HARD] A dispatch is a ≤10-line fixed-field block, no prose (overflow goes into the card): always `card:`, `cmd:` (`/moai run <SPEC-ID>`), `wt:` (the new card tree, never a prior one), `evidence:` (`progress.md`; Class B: the record the leader reads); `spec:` once a SPEC exists (not Class B); `lens:` only if the leader names sync-gate lenses. [HARD] Read the send result: `routing` = lost, re-send to `name [ref]`; `[Cross-session delivery notice]` = held or refused, tell the operator, never re-send; else queued; none proves the lane read it.",
+   "location": "rule-body:.claude/rules/moai/workflow/factory-dispatch.md",
+   "processing": "relocated",
    "entry_points": [
     {
      "entry_point": "factory-leader",
@@ -5421,7 +5438,8 @@
      "entry_point": ".claude/skills/moai/workflows/gtd.md",
      "delivery": "REQ-ALB-024"
     }
-   ]
+   ],
+   "rewrite_note": "stub factory-dispatch-core.md § The dispatch cycle (multi-obligation composite — fuller text at the always-surface preserves the delivery-shape nuance the 3,946 core budget cannot) ; Opus final wording applied verbatim to the core (operator decision 6c5e) ; moved OUT of the markers per the Opus IN/OUT selection (leader gate, card t1617): delivered by the [HARD] read directive naming this file"
   },
   {
    "id": "ALB-0273",
@@ -5433,9 +5451,9 @@
     "start_line": 94
    },
    "before_text": "[HARD] A lane session tracks its card's execution on the session's task tools. At card intake it registers the card's execution stages via `TaskCreate` before beginning the first stage; at every stage transition it keeps the list current via `TaskUpdate` so the list always shows the stage in flight; and it reports completion only while the list reflects the end state — or carries an explicit annotation naming why it does not. A task list that contradicts its completion report is the same gap as a missing evidence file (§ Completion is read, never trusted).",
-   "after_text": "[HARD] A lane session tracks its card's execution on the session's task tools. At card intake it registers the card's execution stages via `TaskCreate` before beginning the first stage; at every stage transition it keeps the list current via `TaskUpdate` so the list always shows the stage in flight; and it reports completion only while the list reflects the end state — or carries an explicit annotation naming why it does not. A task list that contradicts its completion report is the same gap as a missing evidence file (§ Completion is read, never trusted).",
-   "location": "role-core:workflow/factory-dispatch.md",
-   "processing": "verbatim",
+   "after_text": "[HARD] A lane `TaskCreate`s its stages at intake, `TaskUpdate`s every transition, reports done only when the list shows the end state (or says why not); a contradicting list is a missing-evidence gap.",
+   "location": "rule-body:.claude/rules/moai/workflow/factory-dispatch.md",
+   "processing": "relocated",
    "entry_points": [
     {
      "entry_point": "factory-leader",
@@ -5457,7 +5475,8 @@
      "entry_point": ".claude/skills/moai/workflows/gtd.md",
      "delivery": "REQ-ALB-024"
     }
-   ]
+   ],
+   "rewrite_note": "compressed rewrite in role core (t1617 M2); procedure detail at the named companion ; Opus final wording applied verbatim to the core (operator decision 6c5e) ; moved OUT per the final Opus fit (d-1670/88a7 arc): read-directive delivery, card t1617"
   },
   {
    "id": "ALB-0274",
@@ -5484,9 +5503,9 @@
     "start_line": 98
    },
    "before_text": "[HARD] Between run-exit verification and integration every lane runs a `card-review` stage: a card-scope self-review through `codex_review` (`glm_review` optional) whose result is written to `.moai/reports/<card-id>/card-review.md` — advisory only, never a replacement for the leader's evidence read or an independent audit. With `tree_scope: skip` configured for the leader's checkout, the leader session carries no turn-end codex review gate and reviews its own internal output directly with the same tools. Stage order, evidence fields, and the re-review ceiling: `factory-dispatch-detail.md` § The card-review stage.",
-   "after_text": "[HARD] Between run-exit verification and integration every lane runs a `card-review` stage: a card-scope self-review through `codex_review` (`glm_review` optional) whose result is written to `.moai/reports/<card-id>/card-review.md` — advisory only, never a replacement for the leader's evidence read or an independent audit. With `tree_scope: skip` configured for the leader's checkout, the leader session carries no turn-end codex review gate and reviews its own internal output directly with the same tools. Stage order, evidence fields, and the re-review ceiling: `factory-dispatch-detail.md` § The card-review stage.",
+   "after_text": "[HARD] Between run-exit verification and integration every lane runs `card-review`: `codex_review` (`glm_review` optional) into `.moai/reports/<card-id>/card-review.md`, advisory, never replacing the leader evidence read or an independent audit; under `tree_scope: skip` the leader self-reviews with the same tools.",
    "location": "role-core:workflow/factory-dispatch.md",
-   "processing": "verbatim",
+   "processing": "rewrite",
    "entry_points": [
     {
      "entry_point": "factory-leader",
@@ -5508,7 +5527,8 @@
      "entry_point": ".claude/skills/moai/workflows/gtd.md",
      "delivery": "REQ-ALB-024"
     }
-   ]
+   ],
+   "rewrite_note": "F4 restoration: the tool/path example detail returned to the core — Codex-only lanes receive only the injected core (card t1617, leader ruling) ; Opus final wording applied verbatim to the core (operator decision 6c5e)"
   },
   {
    "id": "ALB-0276",
@@ -5520,9 +5540,9 @@
     "start_line": 102
    },
    "before_text": "[HARD] A lane that cannot proceed records an explicit wait on disk — reason, whom, recheck point — and ends its turn; it never idles open-ended on a reply. On its next awaken the lane runs the stall watchdog first — invoke Skill(\"moai-lane-watchdog\") and follow it — which measures progress, classifies the stall cause, and resolves the judgment through the decision ladder (doctrine: `.claude/rules/moai/workflow/auto-semantics.md` §6). The ladder's terminal step is the lane's own judgment + decision record — the lane never asks the leader and waits on a judgment; reaching the leader is a gate boundary (a keep-set category or a cross-card conflict), not a ladder step. The lead's decision board carries leader-level rulings only — cross-card conflicts, serial-slot policy calls, keep-set gate relays — never a lane's in-card judgment. A lane also arms a standing recheck cron (`CronCreate`, recurring, every 20 minutes) before its first stage and keeps it until its completion report: a lane stopped by an API error (429) or by a delegate's report that never comes wakes without outside help only if something armed before it stopped fires, and every wake reads the disk evidence (progress record, reports, commits, the delegate's deliverable) before it replies (`.claude/rules/moai/workflow/auto-semantics.md` §5.1).",
-   "after_text": "[HARD] A lane that cannot proceed records an explicit wait on disk — reason, whom, recheck point — and ends its turn; it never idles open-ended on a reply. On its next awaken the lane runs the stall watchdog first — invoke Skill(\"moai-lane-watchdog\") and follow it — which measures progress, classifies the stall cause, and resolves the judgment through the decision ladder (doctrine: `.claude/rules/moai/workflow/auto-semantics.md` §6). The ladder's terminal step is the lane's own judgment + decision record — the lane never asks the leader and waits on a judgment; reaching the leader is a gate boundary (a keep-set category or a cross-card conflict), not a ladder step. The lead's decision board carries leader-level rulings only — cross-card conflicts, serial-slot policy calls, keep-set gate relays — never a lane's in-card judgment. A lane also arms a standing recheck cron (`CronCreate`, recurring, every 20 minutes) before its first stage and keeps it until its completion report: a lane stopped by an API error (429) or by a delegate's report that never comes wakes without outside help only if something armed before it stopped fires, and every wake reads the disk evidence (progress record, reports, commits, the delegate's deliverable) before it replies (`.claude/rules/moai/workflow/auto-semantics.md` §5.1).",
+   "after_text": "[HARD] A stuck lane writes a disk wait (reason, whom, recheck point), ends its turn, never idles on a reply; on wake: `moai-lane-watchdog` first, then the `auto-semantics.md` §6 ladder ending in its own judgment + decision record, never ask-and-wait; the leader only at a gate boundary (keep-set, cross-card conflict); a recurring `CronCreate` recheck armed before the first stage, kept to the completion report; each wake reads disk evidence before replying.",
    "location": "role-core:workflow/factory-dispatch.md",
-   "processing": "verbatim",
+   "processing": "rewrite",
    "entry_points": [
     {
      "entry_point": "factory-leader",
@@ -5544,7 +5564,8 @@
      "entry_point": ".claude/skills/moai/workflows/gtd.md",
      "delivery": "REQ-ALB-024"
     }
-   ]
+   ],
+   "rewrite_note": "stub factory-dispatch-core.md § The dispatch cycle (composite: wait + watchdog + ladder + cron — four obligations, stub carries them without core-budget compression) ; Opus final wording applied verbatim to the core (operator decision 6c5e)"
   },
   {
    "id": "ALB-0277",
@@ -5556,9 +5577,9 @@
     "start_line": 106
    },
    "before_text": "[HARD] **The deputy is resident, not optional.** Before the batch's first lane dispatch, the factory leader session spawns exactly one UNNAMED background `Agent()` running manager-lead as its **coordination deputy** and keeps it for the batch. Its delegable/retained matrix lives in the agent itself (`manager-lead.md` § Deputy dispatch surface); this stub carries only the boundary that binds the queue.",
-   "after_text": "[HARD] **The deputy is resident, not optional.** Before the batch's first lane dispatch, the factory leader session spawns exactly one UNNAMED background `Agent()` running manager-lead as its **coordination deputy** and keeps it for the batch. Its delegable/retained matrix lives in the agent itself (`manager-lead.md` § Deputy dispatch surface); this stub carries only the boundary that binds the queue.",
-   "location": "role-core:workflow/factory-dispatch.md",
-   "processing": "verbatim",
+   "after_text": "[HARD] Before the first lane dispatch the leader spawns exactly one resident UNNAMED background `Agent()` running manager-lead as deputy, kept for the batch.",
+   "location": "rule-body:.claude/rules/moai/workflow/factory-dispatch.md",
+   "processing": "relocated",
    "entry_points": [
     {
      "entry_point": "factory-leader",
@@ -5580,7 +5601,8 @@
      "entry_point": ".claude/skills/moai/workflows/gtd.md",
      "delivery": "REQ-ALB-024"
     }
-   ]
+   ],
+   "rewrite_note": "compressed rewrite in role core (t1617 M2); procedure detail at the named companion ; Opus final wording applied verbatim to the core (operator decision 6c5e) ; moved OUT of the markers per the Opus IN/OUT selection (leader gate, card t1617): delivered by the [HARD] read directive naming this file"
   },
   {
    "id": "ALB-0278",
@@ -5592,9 +5614,9 @@
     "start_line": 108
    },
    "before_text": "[HARD] **A completion report reaches the leader as a `RECOMMEND:` summary, not as raw reading batches** — turn occupancy moves; the leader's own evidence-read before advancing a card does not (§ Completion is read, never trusted).",
-   "after_text": "[HARD] **A completion report reaches the leader as a `RECOMMEND:` summary, not as raw reading batches** — turn occupancy moves; the leader's own evidence-read before advancing a card does not (§ Completion is read, never trusted).",
+   "after_text": "[HARD] Completion reports arrive as `RECOMMEND:` summaries — occupancy moves; the leader's evidence read does not.",
    "location": "role-core:workflow/factory-dispatch.md",
-   "processing": "verbatim",
+   "processing": "rewrite",
    "entry_points": [
     {
      "entry_point": "factory-leader",
@@ -5616,7 +5638,8 @@
      "entry_point": ".claude/skills/moai/workflows/gtd.md",
      "delivery": "REQ-ALB-024"
     }
-   ]
+   ],
+   "rewrite_note": "compressed rewrite in role core (t1617 M2); procedure detail at the named companion"
   },
   {
    "id": "ALB-0279",
@@ -5628,9 +5651,9 @@
     "start_line": 110
    },
    "before_text": "[HARD] **The deputy never holds a power of consequence.** Final PASS/FAIL verdicts, final merge approval (`LEAD-MERGE-APPROVED`), operator gates, card issuance and `done` (`moai gtd` mutations), CodeRabbit slot-wait adjudication, and cross-session dispute coordination stay with the leader session. Round-report measurement and drafting are the deputy's; the asserted figures are the leader's — every figure names its measurer. Nothing structural moves with the delegation: the queue stays the channel, completion stays evidence the leader read, and the verdict's home stays the lead.",
-   "after_text": "[HARD] **The deputy never holds a power of consequence.** Final PASS/FAIL verdicts, final merge approval (`LEAD-MERGE-APPROVED`), operator gates, card issuance and `done` (`moai gtd` mutations), CodeRabbit slot-wait adjudication, and cross-session dispute coordination stay with the leader session. Round-report measurement and drafting are the deputy's; the asserted figures are the leader's — every figure names its measurer. Nothing structural moves with the delegation: the queue stays the channel, completion stays evidence the leader read, and the verdict's home stays the lead.",
-   "location": "role-core:workflow/factory-dispatch.md",
-   "processing": "verbatim",
+   "after_text": "[HARD] The deputy holds no power of consequence: final PASS/FAIL verdicts, final merge approval (`LEAD-MERGE-APPROVED`), operator gates, card issuance and `done`, CodeRabbit slot-wait adjudication, cross-session dispute coordination stay with the leader; the deputy measures and drafts round reports, the leader asserts the figures, each naming its measurer.",
+   "location": "rule-body:.claude/rules/moai/workflow/factory-dispatch.md",
+   "processing": "relocated",
    "entry_points": [
     {
      "entry_point": "factory-leader",
@@ -5652,7 +5675,8 @@
      "entry_point": ".claude/skills/moai/workflows/gtd.md",
      "delivery": "REQ-ALB-024"
     }
-   ]
+   ],
+   "rewrite_note": "compressed rewrite in role core (t1617 M2); procedure detail at the named companion ; Opus final wording applied verbatim to the core (operator decision 6c5e) ; moved OUT of the markers per the Opus IN/OUT selection (leader gate, card t1617): delivered by the [HARD] read directive naming this file"
   },
   {
    "id": "ALB-0280",
@@ -5664,9 +5688,9 @@
     "start_line": 114
    },
    "before_text": "[HARD] The leader advances a card on **evidence it read**, not on a lane's reply. Before moving a card out of a working stage, the leader reads the card's `progress.md` and the verification evidence path the phase declares; a missing, unreadable, or stale evidence file is a **gap** — the card stays put and the leader reports why. Absence of a failure signal is not a pass.",
-   "after_text": "[HARD] The leader advances a card on **evidence it read**, not on a lane's reply. Before moving a card out of a working stage, the leader reads the card's `progress.md` and the verification evidence path the phase declares; a missing, unreadable, or stale evidence file is a **gap** — the card stays put and the leader reports why. Absence of a failure signal is not a pass.",
+   "after_text": "[HARD] The leader advances a card only on evidence it read, never a lane reply: `progress.md` + the declared verification path; missing, unreadable, or stale evidence is a gap: the card stays, the leader says why; no failure signal is not a pass.",
    "location": "role-core:workflow/factory-dispatch.md",
-   "processing": "verbatim",
+   "processing": "rewrite",
    "entry_points": [
     {
      "entry_point": "factory-leader",
@@ -5688,7 +5712,8 @@
      "entry_point": ".claude/skills/moai/workflows/gtd.md",
      "delivery": "REQ-ALB-024"
     }
-   ]
+   ],
+   "rewrite_note": "compressed rewrite in role core (t1617 M2); procedure detail at the named companion ; Opus final wording applied verbatim to the core (operator decision 6c5e)"
   },
   {
    "id": "ALB-0281",
@@ -5763,9 +5788,9 @@
     "start_line": 124
    },
    "before_text": "[HARD] A `gh pr checks` row naming CodeRabbit is not evidence that a review happened: the status is `success` **even when no review ran**, and the row prints `pass` byte-identically in both cases. A row counts only when BOTH hold:\n\n1. The **combined** endpoint `/commits/{sha}/status` shows `state == \"success\"` **and** description `Review completed`:\n\n    ```bash\n    gh api \"repos/$REPO/commits/$HEAD_SHA/status\" \\\n      --jq '.statuses[] | select(.context == \"CodeRabbit\" and .state == \"success\") | .description'\n    ```\n\n2. A `Merge Risk:` line exists whose commit prefix matches the current `headRefOid`.",
-   "after_text": "[HARD] A `gh pr checks` row naming CodeRabbit is not evidence that a review happened: the status is `success` **even when no review ran**, and the row prints `pass` byte-identically in both cases. A row counts only when BOTH hold:\n\n1. The **combined** endpoint `/commits/{sha}/status` shows `state == \"success\"` **and** description `Review completed`:\n\n    ```bash\n    gh api \"repos/$REPO/commits/$HEAD_SHA/status\" \\\n      --jq '.statuses[] | select(.context == \"CodeRabbit\" and .state == \"success\") | .description'\n    ```\n\n2. A `Merge Risk:` line exists whose commit prefix matches the current `headRefOid`.",
-   "location": "role-core:workflow/factory-dispatch.md",
-   "processing": "verbatim",
+   "after_text": "[HARD] A CodeRabbit `gh pr checks` row is not evidence (success even with no review); count it only when combined `/commits/{sha}/status` shows `success` + `Review completed` AND a `Merge Risk:` line commit prefix matches the current `headRefOid`.",
+   "location": "rule-body:.claude/rules/moai/workflow/factory-dispatch.md",
+   "processing": "relocated",
    "entry_points": [
     {
      "entry_point": "factory-leader",
@@ -5787,7 +5812,8 @@
      "entry_point": ".claude/skills/moai/workflows/gtd.md",
      "delivery": "REQ-ALB-024"
     }
-   ]
+   ],
+   "rewrite_note": "stub factory-dispatch-core.md § CodeRabbit (two-condition predicate kept whole at the always-surface) ; Opus final wording applied verbatim to the core (operator decision 6c5e) ; moved OUT of the markers per the Opus IN/OUT selection (leader gate, card t1617): delivered by the [HARD] read directive naming this file"
   },
   {
    "id": "ALB-0285",
@@ -5820,9 +5846,9 @@
     "start_line": 139
    },
    "before_text": "[HARD] A lane session does not carry one card's context into the next card. When a card reaches `done` and the leader has read its evidence, the leader **asks the operator to `/clear` that lane session** — `/clear` is a user-typed command and cannot be sent as an instruction. The leader's message states, in order: what closed (card, evidence read), which session to `/clear` (by name), and what happens next.",
-   "after_text": "[HARD] A lane session does not carry one card's context into the next card. When a card reaches `done` and the leader has read its evidence, the leader **asks the operator to `/clear` that lane session** — `/clear` is a user-typed command and cannot be sent as an instruction. The leader's message states, in order: what closed (card, evidence read), which session to `/clear` (by name), and what happens next.",
-   "location": "role-core:workflow/factory-dispatch.md",
-   "processing": "verbatim",
+   "after_text": "[HARD] No card context crosses to the next: a lane treats the conversation context of earlier cards as non-authoritative and works each newly leased card only from that card's body, its SPEC artifacts, and its progress record. At `done`, evidence read, the leader does not ask the operator to clear the lane session; the leader names what closed (card, evidence read) and the lane moves on by the transition below.",
+   "location": "rule-body:.claude/rules/moai/workflow/factory-dispatch.md",
+   "processing": "relocated",
    "entry_points": [
     {
      "entry_point": "factory-leader",
@@ -5844,7 +5870,8 @@
      "entry_point": ".claude/skills/moai/workflows/gtd.md",
      "delivery": "REQ-ALB-024"
     }
-   ]
+   ],
+   "rewrite_note": "compressed rewrite in role core (t1617 M2); procedure detail at the named companion ; Opus final wording applied verbatim to the core (operator decision 6c5e) ; moved OUT of the markers per the Opus IN/OUT selection (leader gate, card t1617): delivered by the [HARD] read directive naming this file"
   },
   {
    "id": "ALB-0287",
@@ -5856,9 +5883,9 @@
     "start_line": 141
    },
    "before_text": "[HARD] On a card transition inside a lane session, `/clear` happens exactly once, **after** the session has moved into the next card's worktree — not before the move. The count is not reduced: one card transition, one `/clear`.",
-   "after_text": "[HARD] On a card transition inside a lane session, `/clear` happens exactly once, **after** the session has moved into the next card's worktree — not before the move. The count is not reduced: one card transition, one `/clear`.",
+   "after_text": "[HARD] `ExitWorktree(keep)`, lease, `EnterWorktree(path)`; conversation context never carries.",
    "location": "role-core:workflow/factory-dispatch.md",
-   "processing": "verbatim",
+   "processing": "rewrite",
    "entry_points": [
     {
      "entry_point": "factory-leader",
@@ -5880,7 +5907,8 @@
      "entry_point": ".claude/skills/moai/workflows/gtd.md",
      "delivery": "REQ-ALB-024"
     }
-   ]
+   ],
+   "rewrite_note": "compressed rewrite in role core (t1617 M2); procedure detail at the named companion"
   },
   {
    "id": "ALB-0288",
@@ -5892,7 +5920,7 @@
     "start_line": 143
    },
    "before_text": "Where the next card reuses a just-cleared lane, the leader re-sends the full pointer instruction rather than assuming the session remembers.",
-   "after_text": "Where the next card reuses a just-cleared lane, the leader re-sends the full pointer instruction rather than assuming the session remembers.",
+   "after_text": "Where the next card reuses a lane, the leader re-sends the full pointer instruction rather than assuming the session remembers.",
    "location": "always:.claude/rules/moai/workflow/factory-dispatch-core.md",
    "processing": "verbatim",
    "entry_points": [
@@ -5913,7 +5941,7 @@
     "start_line": 145
    },
    "before_text": "The leader's own session is cleared the same way, between cards: once a card reaches `done`, the operator is asked to `/clear` the leader session, and the next turn presents the queue again.",
-   "after_text": "The leader's own session is cleared the same way, between cards: once a card reaches `done`, the operator is asked to `/clear` the leader session, and the next turn presents the queue again.",
+   "after_text": "The leader's own session is cleared between cards: once a card reaches `done`, the operator is asked to `/clear` the leader session, and the next turn presents the queue again.",
    "location": "always:.claude/rules/moai/workflow/factory-dispatch-core.md",
    "processing": "verbatim",
    "entry_points": [
@@ -5934,9 +5962,9 @@
     "start_line": 149
    },
    "before_text": "[HARD] A card's work happens inside a worktree, and that worktree is **entered through the launcher** — never created with a bare `git worktree add`. Launcher table (per-harness forms): `factory-dispatch-mechanics.md` § Isolation.",
-   "after_text": "[HARD] A card's work happens inside a worktree, and that worktree is **entered through the launcher** — never created with a bare `git worktree add`. Launcher table (per-harness forms): `factory-dispatch-mechanics.md` § Isolation.",
+   "after_text": "[HARD] Card work happens in a launcher-entered worktree — never a bare `git worktree add` (mechanics § Isolation).",
    "location": "role-core:workflow/factory-dispatch.md",
-   "processing": "verbatim",
+   "processing": "rewrite",
    "entry_points": [
     {
      "entry_point": "factory-leader",
@@ -5958,7 +5986,8 @@
      "entry_point": ".claude/skills/moai/workflows/gtd.md",
      "delivery": "REQ-ALB-024"
     }
-   ]
+   ],
+   "rewrite_note": "compressed rewrite in role core (t1617 M2); procedure detail at the named companion"
   },
   {
    "id": "ALB-0291",
@@ -5970,9 +5999,9 @@
     "start_line": 151
    },
    "before_text": "[HARD] A Codex factory agent must never call `moai cc -w`, `EnterWorktree`, or `ExitWorktree`; those are Claude Code entry mechanisms.",
-   "after_text": "[HARD] A Codex factory agent must never call `moai cc -w`, `EnterWorktree`, or `ExitWorktree`; those are Claude Code entry mechanisms.",
+   "after_text": "[HARD] A Codex factory agent never calls `moai cc -w`, `EnterWorktree`, or `ExitWorktree`.",
    "location": "role-core:workflow/factory-dispatch.md",
-   "processing": "verbatim",
+   "processing": "rewrite",
    "entry_points": [
     {
      "entry_point": "factory-leader",
@@ -5994,7 +6023,8 @@
      "entry_point": ".claude/skills/moai/workflows/gtd.md",
      "delivery": "REQ-ALB-024"
     }
-   ]
+   ],
+   "rewrite_note": "compressed rewrite in role core (t1617 M2); procedure detail at the named companion"
   },
   {
    "id": "ALB-0292",
@@ -6006,9 +6036,9 @@
     "start_line": 153
    },
    "before_text": "[HARD] **`moai worktree done` closes L2 trees only** — project trees under `.claude/worktrees/` and `.moai/worktrees/` are L1 and absent from its registry. The full L1/L2 boundary lives in `worktree-integration.md` § Terminology Glossary.",
-   "after_text": "[HARD] **`moai worktree done` closes L2 trees only** — project trees under `.claude/worktrees/` and `.moai/worktrees/` are L1 and absent from its registry. The full L1/L2 boundary lives in `worktree-integration.md` § Terminology Glossary.",
+   "after_text": "[HARD] `moai worktree done` closes L2 trees only (worktree-integration § Terminology Glossary).",
    "location": "role-core:workflow/factory-dispatch.md",
-   "processing": "verbatim",
+   "processing": "rewrite",
    "entry_points": [
     {
      "entry_point": "factory-leader",
@@ -6030,7 +6060,8 @@
      "entry_point": ".claude/skills/moai/workflows/gtd.md",
      "delivery": "REQ-ALB-024"
     }
-   ]
+   ],
+   "rewrite_note": "compressed rewrite in role core (t1617 M2); procedure detail at the named companion"
   },
   {
    "id": "ALB-0293",
@@ -6042,9 +6073,9 @@
     "start_line": 155
    },
    "before_text": "[HARD] **The card's branch is unpushed, so its worktree is the work's only instance.** Dispose of no worktree — L1 or L2 — until the leader has integrated the branch and the remote merge has landed.",
-   "after_text": "[HARD] **The card's branch is unpushed, so its worktree is the work's only instance.** Dispose of no worktree — L1 or L2 — until the leader has integrated the branch and the remote merge has landed.",
-   "location": "role-core:workflow/factory-dispatch.md",
-   "processing": "verbatim",
+   "after_text": "[HARD] An unpushed card branch makes its worktree the only copy: dispose of none (L1 or L2) until the leader integrated it and the remote merge landed.",
+   "location": "rule-body:.claude/rules/moai/workflow/factory-dispatch.md",
+   "processing": "relocated",
    "entry_points": [
     {
      "entry_point": "factory-leader",
@@ -6066,7 +6097,8 @@
      "entry_point": ".claude/skills/moai/workflows/gtd.md",
      "delivery": "REQ-ALB-024"
     }
-   ]
+   ],
+   "rewrite_note": "compressed rewrite in role core (t1617 M2); procedure detail at the named companion ; Opus final wording applied verbatim to the core (operator decision 6c5e) ; moved OUT of the markers per the Opus IN/OUT selection (leader gate, card t1617): delivered by the [HARD] read directive naming this file"
   },
   {
    "id": "ALB-0294",
@@ -6078,9 +6110,9 @@
     "start_line": 157
    },
    "before_text": "[HARD] **A card session starts inside its worktree and stays there.** The standard is a lane session launched inside the card's worktree through the launcher (`moai cc -w`); it starts with that tree's project skill set. Moving a running card session from one card worktree into another card worktree is prohibited — that transition attaches a second skill listing on top of the session's first, and that duplication is what this rule exists to prevent. Two composition rules bound the prohibition rather than leaving it implicit: (a) the \"A new card starts in a new worktree\" clause below composes with it — its exit-first requirement is satisfied by ending the lane session and launching the next session inside the new tree, never by moving the running session; (b) the brief entry into the release/integration worktree that the same files mandate for merging a card branch is NOT covered by the prohibition — it keeps its own re-entry rule (return to the card worktree before continuing card work). Where a worktree move is unavoidable anyway, `/clear` is issued exactly once, after the move — never before it.",
-   "after_text": "[HARD] **A card session starts inside its worktree and stays there.** The standard is a lane session launched inside the card's worktree through the launcher (`moai cc -w`); it starts with that tree's project skill set. Moving a running card session from one card worktree into another card worktree is prohibited — that transition attaches a second skill listing on top of the session's first, and that duplication is what this rule exists to prevent. Two composition rules bound the prohibition rather than leaving it implicit: (a) the \"A new card starts in a new worktree\" clause below composes with it — its exit-first requirement is satisfied by ending the lane session and launching the next session inside the new tree, never by moving the running session; (b) the brief entry into the release/integration worktree that the same files mandate for merging a card branch is NOT covered by the prohibition — it keeps its own re-entry rule (return to the card worktree before continuing card work). Where a worktree move is unavoidable anyway, `/clear` is issued exactly once, after the move — never before it.",
-   "location": "role-core:workflow/factory-dispatch.md",
-   "processing": "verbatim",
+   "after_text": "[HARD] A card session starts in its worktree (`moai cc -w`) and stays while it carries the card; between cards it moves by the in-session transition (`ExitWorktree(keep)`, lease, `EnterWorktree` of the leased tree); an integration-tree merge entry is exempt but returns to the card worktree before card work.",
+   "location": "rule-body:.claude/rules/moai/workflow/factory-dispatch.md",
+   "processing": "relocated",
    "entry_points": [
     {
      "entry_point": "factory-leader",
@@ -6102,7 +6134,8 @@
      "entry_point": ".claude/skills/moai/workflows/gtd.md",
      "delivery": "REQ-ALB-024"
     }
-   ]
+   ],
+   "rewrite_note": "stub factory-dispatch-core.md § Isolation and integration (composite: stay-put + move ban + composition rules + clear-once) ; Opus final wording applied verbatim to the core (operator decision 6c5e) ; moved OUT of the markers per the Opus IN/OUT selection (leader gate, card t1617): delivered by the [HARD] read directive naming this file"
   },
   {
    "id": "ALB-0295",
@@ -6114,9 +6147,9 @@
     "start_line": 159
    },
    "before_text": "[HARD] **A new card starts in a new worktree** — a lane anchored in the previous card's tree MUST `ExitWorktree` before entering the next one; the fresh tree is created from the configured base, never reused. Where the new card depends on a prior card's unmerged code, merge that branch inside the new worktree.",
-   "after_text": "[HARD] **A new card starts in a new worktree** — a lane anchored in the previous card's tree MUST `ExitWorktree` before entering the next one; the fresh tree is created from the configured base, never reused. Where the new card depends on a prior card's unmerged code, merge that branch inside the new worktree.",
-   "location": "role-core:workflow/factory-dispatch.md",
-   "processing": "verbatim",
+   "after_text": "[HARD] A new card gets a new worktree from the configured base, never reused; `ExitWorktree` the old tree first; merge an unmerged prior-card dependency inside the new tree.",
+   "location": "rule-body:.claude/rules/moai/workflow/factory-dispatch.md",
+   "processing": "relocated",
    "entry_points": [
     {
      "entry_point": "factory-leader",
@@ -6138,7 +6171,8 @@
      "entry_point": ".claude/skills/moai/workflows/gtd.md",
      "delivery": "REQ-ALB-024"
     }
-   ]
+   ],
+   "rewrite_note": "compressed rewrite in role core (t1617 M2); procedure detail at the named companion ; Opus final wording applied verbatim to the core (operator decision 6c5e) ; moved OUT of the markers per the Opus IN/OUT selection (leader gate, card t1617): delivered by the [HARD] read directive naming this file"
   },
   {
    "id": "ALB-0296",
@@ -6150,9 +6184,9 @@
     "start_line": 161
    },
    "before_text": "[HARD] **Card worktree branches carry the `WT-` prefix and a descriptive slug — never the card id** (rename in place with `git branch -m WT-<slug>`); the worktree directory keeps the card id, and traceability rests on the dispatch `card:` field, the commit message, the evidence path, and the PR title — all mandatory. Slug shape and carrier detail: `factory-dispatch-mechanics.md` § Isolation · `factory-dispatch-cards.md` § The PR-title carrier.",
-   "after_text": "[HARD] **Card worktree branches carry the `WT-` prefix and a descriptive slug — never the card id** (rename in place with `git branch -m WT-<slug>`); the worktree directory keeps the card id, and traceability rests on the dispatch `card:` field, the commit message, the evidence path, and the PR title — all mandatory. Slug shape and carrier detail: `factory-dispatch-mechanics.md` § Isolation · `factory-dispatch-cards.md` § The PR-title carrier.",
+   "after_text": "[HARD] Branches carry `WT-` + a descriptive slug, never the card id; traceability = dispatch `card:` + commit message + evidence path + PR title.",
    "location": "role-core:workflow/factory-dispatch.md",
-   "processing": "verbatim",
+   "processing": "rewrite",
    "entry_points": [
     {
      "entry_point": "factory-leader",
@@ -6174,7 +6208,8 @@
      "entry_point": ".claude/skills/moai/workflows/gtd.md",
      "delivery": "REQ-ALB-024"
     }
-   ]
+   ],
+   "rewrite_note": "compressed rewrite in role core (t1617 M2); procedure detail at the named companion"
   },
   {
    "id": "ALB-0297",
@@ -6186,9 +6221,9 @@
     "start_line": 163
    },
    "before_text": "[HARD] **Inside a worktree session that `<path>` is the worktree's own absolute path** — the guard refuses `-C .`, relative paths, runtime-computed paths, and paths outside this worktree; plain `git`, `git -C <own absolute path>`, and `--git-dir=<own .git>` pass.",
-   "after_text": "[HARD] **Inside a worktree session that `<path>` is the worktree's own absolute path** — the guard refuses `-C .`, relative paths, runtime-computed paths, and paths outside this worktree; plain `git`, `git -C <own absolute path>`, and `--git-dir=<own .git>` pass.",
+   "after_text": "[HARD] In a worktree session `<path>` is that worktree's absolute path — relative, computed, and outside forms are refused.",
    "location": "role-core:workflow/factory-dispatch.md",
-   "processing": "verbatim",
+   "processing": "rewrite",
    "entry_points": [
     {
      "entry_point": "factory-leader",
@@ -6210,7 +6245,8 @@
      "entry_point": ".claude/skills/moai/workflows/gtd.md",
      "delivery": "REQ-ALB-024"
     }
-   ]
+   ],
+   "rewrite_note": "compressed rewrite in role core (t1617 M2); procedure detail at the named companion"
   },
   {
    "id": "ALB-0298",
@@ -6222,9 +6258,9 @@
     "start_line": 167
    },
    "before_text": "[HARD] **Lane-local verification is scoped to the card.** A lane runs the tests its own change can affect, then pushes and lets CI run the full suite. (Incident record: `factory-dispatch-gates.md` § Verification load incident record.)",
-   "after_text": "[HARD] **Lane-local verification is scoped to the card.** A lane runs the tests its own change can affect, then pushes and lets CI run the full suite. (Incident record: `factory-dispatch-gates.md` § Verification load incident record.)",
+   "after_text": "[HARD] Verification is lane-local — only what the change can affect; CI runs the full suite (gates § incident record).",
    "location": "role-core:workflow/factory-dispatch.md",
-   "processing": "verbatim",
+   "processing": "rewrite",
    "entry_points": [
     {
      "entry_point": "factory-leader",
@@ -6246,7 +6282,8 @@
      "entry_point": ".claude/skills/moai/workflows/gtd.md",
      "delivery": "REQ-ALB-024"
     }
-   ]
+   ],
+   "rewrite_note": "compressed rewrite in role core (t1617 M2); procedure detail at the named companion"
   },
   {
    "id": "ALB-0299",
@@ -6258,9 +6295,9 @@
     "start_line": 169
    },
    "before_text": "[HARD] **Never spawn background load.** Where a verification genuinely needs contention, the load must be cleanup-guaranteed — kills registered with the test framework's cleanup hook, or a `timeout` wrapper bounding the process from outside.",
-   "after_text": "[HARD] **Never spawn background load.** Where a verification genuinely needs contention, the load must be cleanup-guaranteed — kills registered with the test framework's cleanup hook, or a `timeout` wrapper bounding the process from outside.",
+   "after_text": "[HARD] Never spawn background load — contention needs cleanup-guaranteed kills or a `timeout` wrapper.",
    "location": "role-core:workflow/factory-dispatch.md",
-   "processing": "verbatim",
+   "processing": "rewrite",
    "entry_points": [
     {
      "entry_point": "factory-leader",
@@ -6282,7 +6319,8 @@
      "entry_point": ".claude/skills/moai/workflows/gtd.md",
      "delivery": "REQ-ALB-024"
     }
-   ]
+   ],
+   "rewrite_note": "compressed rewrite in role core (t1617 M2); procedure detail at the named companion"
   },
   {
    "id": "ALB-0300",
@@ -6294,9 +6332,9 @@
     "start_line": 173
    },
    "before_text": "[HARD] Inside a worktree, an environment-scrubbed verification runs as one compound `unset … && <command>` invocation — each Bash call is a fresh process, so a separate `unset` does not carry into the next command; the scrub and the command travel together, or the scrub does nothing:\n\n```bash\nunset MOAI_KANBAN_ID MOAI_KANBAN_LEAD_ADDR MOAI_KANBAN_SETTINGS_INJECTED && go test ./...\n```",
-   "after_text": "[HARD] Inside a worktree, an environment-scrubbed verification runs as one compound `unset … && <command>` invocation — each Bash call is a fresh process, so a separate `unset` does not carry into the next command; the scrub and the command travel together, or the scrub does nothing:\n\n```bash\nunset MOAI_KANBAN_ID MOAI_KANBAN_LEAD_ADDR MOAI_KANBAN_SETTINGS_INJECTED && go test ./...\n```",
+   "after_text": "[HARD] Env-scrubbed verification is one compound `unset … && <command>` call — a separate `unset` carries nothing.",
    "location": "role-core:workflow/factory-dispatch.md",
-   "processing": "verbatim",
+   "processing": "rewrite",
    "entry_points": [
     {
      "entry_point": "factory-leader",
@@ -6318,7 +6356,8 @@
      "entry_point": ".claude/skills/moai/workflows/gtd.md",
      "delivery": "REQ-ALB-024"
     }
-   ]
+   ],
+   "rewrite_note": "compressed rewrite in role core (t1617 M2); procedure detail at the named companion"
   },
   {
    "id": "ALB-0301",
@@ -6360,9 +6399,9 @@
     "start_line": 185
    },
    "before_text": "[HARD] A lane whose card has passed verification does not wait for the leader to integrate it: the lane merges its own branch into the batch's release branch (`release/vX.Y.Z`) itself. The window is taken with `moai integration acquire --name <lane> --card <card-id>` BEFORE entering the release worktree, released after the completion report is sent; the lane enters the release worktree with `EnterWorktree` (a cross-tree `git -C` is refused), merges `--no-ff`, re-reads `HEAD` before the commit and again before the push, pushes `release/vX.Y.Z` (never force), and leaves the batch pull request with the leader. The full window procedure: `factory-dispatch-mechanics.md` § Integration into the release branch is self-served · the `acquire` settings-drift assertion: `factory-dispatch-gates.md` § The pre-merge settings-drift assertion.",
-   "after_text": "[HARD] A lane whose card has passed verification does not wait for the leader to integrate it: the lane merges its own branch into the batch's release branch (`release/vX.Y.Z`) itself. This is the **git-flow variant** — it applies only where the project's git strategy names git-flow; under github-flow (the distributed default) the delivery is `moai factory complete`'s pull-request edge and the full sequence is `factory-dispatch-mechanics.md` § The lane's standard landing. Where it applies, the window is taken with `moai integration acquire --name <lane> --card <card-id>` BEFORE entering the release worktree, released after the completion report is sent; the lane enters the release worktree with `EnterWorktree` (a cross-tree `git -C` is refused), merges `--no-ff`, re-reads `HEAD` before the commit and again before the push, pushes `release/vX.Y.Z` (never force), and leaves the batch pull request with the leader. The full window procedure: `factory-dispatch-mechanics.md` § Integration into the release branch is self-served · the `acquire` settings-drift assertion: `factory-dispatch-gates.md` § The pre-merge settings-drift assertion.",
+   "after_text": "[HARD] git-flow only: a verified lane merges its branch into `release/vX.Y.Z` itself: `moai integration acquire --name <lane> --card <card-id>` before entry, release after the completion report; `EnterWorktree` in (cross-tree `git -C` refused; Codex: `git -C <absolute release worktree path>`); `--no-ff`; re-read `HEAD` before the commit and again before the push; push, never force; the batch PR stays with the leader.",
    "location": "role-core:workflow/factory-dispatch.md",
-   "processing": "verbatim",
+   "processing": "rewrite",
    "entry_points": [
     {
      "entry_point": "factory-leader",
@@ -6384,7 +6423,8 @@
      "entry_point": ".claude/skills/moai/workflows/gtd.md",
      "delivery": "REQ-ALB-024"
     }
-   ]
+   ],
+   "rewrite_note": "stub factory-dispatch-core.md § Isolation and integration (composite: self-integration + variant scoping + window steps; full window procedure at mechanics § Integration) ; Opus final wording applied verbatim to the core (operator decision 6c5e) ; EnterWorktree entry means defined for Codex lanes per the leader gate (card t1617)"
   },
   {
    "id": "ALB-0304",
@@ -6474,7 +6514,7 @@
     "start_line": 202
    },
    "before_text": "- `.claude/rules/moai/core/askuser-protocol.md` — the question channel the leader uses for card selection and `/clear` prompts\n- `.claude/rules/moai/core/verification-claim-integrity.md` — why completion is read rather than trusted\n- The remaining four (blocker-report format, worktree tiers, the queue surface, `manager-lead`): `factory-dispatch-mechanics.md` § Cross-references",
-   "after_text": "- `.claude/rules/moai/core/askuser-protocol.md` — the question channel the leader uses for card selection and `/clear` prompts\n- `.claude/rules/moai/core/verification-claim-integrity.md` — why completion is read rather than trusted\n- The remaining four (blocker-report format, worktree tiers, the queue surface, `manager-lead`): `factory-dispatch-mechanics.md` § Cross-references",
+   "after_text": "- `.claude/rules/moai/core/askuser-protocol.md` — the question channel the leader uses for card selection and queue prompts\n- `.claude/rules/moai/core/verification-claim-integrity.md` — why completion is read rather than trusted\n- The remaining four (blocker-report format, worktree tiers, the queue surface, `manager-lead`): `factory-dispatch-mechanics.md` § Cross-references",
    "location": "companion:.claude/rules/moai/workflow/factory-dispatch-mechanics.md",
    "processing": "relocated",
    "reason": "cross-reference list"

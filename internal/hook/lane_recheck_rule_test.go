@@ -16,10 +16,11 @@ import (
 	"github.com/modu-ai/moai-adk/internal/factory"
 )
 
-// recheckRuleTokens are locale-independent: the tool names, the watchdog skill
-// the recheck prompt must invoke, and the off-minute recurring cadence stay
-// verbatim in every locale the way the MCP tool names do.
-var recheckRuleTokens = [...]string{"CronCreate", "CronList", "CronDelete", "moai-lane-watchdog", "7,27,47 * * * *"}
+// recheckRuleTokens are locale-independent: the tool names and the watchdog skill
+// the recheck prompt must invoke stay verbatim in every locale the way the MCP
+// tool names do. The arm expression is rendered from the configured renewal
+// period and is checked by TestLaneRuleCarriesConfiguredRenewInterval.
+var recheckRuleTokens = [...]string{"CronCreate", "CronList", "CronDelete", "moai-lane-watchdog"}
 
 // recheckLocaleScript is the script the appended recheck paragraph must be
 // written in per locale; a locale whose paragraph is still the English sentence

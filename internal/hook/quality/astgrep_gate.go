@@ -40,7 +40,18 @@ const (
 	// from the scanner-skip reasons above and from a clean scan ("").
 	astGrepReasonRulesDirUnconfigured = "ast-grep scan skipped: ast_grep_gate.rules_dir is empty (not configured); " +
 		"set it in .moai/config/sections/gate.yaml to enable the scan"
+
+	// astGrepReasonRulesetLoadPrefix opens the pass reason for a ruleset that sg
+	// refused to load. sg's first stderr line follows it in parentheses. Distinct
+	// from the scanner-skip and degraded reasons, and from a clean scan ("").
+	astGrepReasonRulesetLoadPrefix = "ast-grep scan skipped: ruleset failed to load ("
 )
+
+// astGrepRulesetLoadReason builds the ruleset-load skip reason from sg's first
+// stderr line (astgrep.RulesetLoadError.Detail).
+func astGrepRulesetLoadReason(detail string) string {
+	return astGrepReasonRulesetLoadPrefix + detail + ")"
+}
 
 // ResolveRulesDirPath resolves a configured ast-grep rules directory against
 // the project root: empty stays empty ("not configured"), an absolute path
@@ -116,6 +127,12 @@ func RunAstGrepGateV2(ctx context.Context, projectDir string, cfg *AstGrepGateCo
 		// indistinguishable from scanned-and-clean.
 		if errors.Is(err, astgrep.ErrScannerUnavailable) {
 			return true, astGrepReasonScannerUnavailable
+		}
+		// The ruleset did not load: still fail-open, but the skip names the
+		// cause and never reads as a clean scan (GH #1824).
+		var rulesetErr *astgrep.RulesetLoadError
+		if errors.As(err, &rulesetErr) {
+			return true, astGrepRulesetLoadReason(rulesetErr.Detail)
 		}
 		return true, astGrepReasonScanDegraded
 	}

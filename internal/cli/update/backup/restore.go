@@ -5,6 +5,7 @@ import (
 	"io"
 	"os"
 	"path/filepath"
+	"slices"
 	"strings"
 
 	"github.com/modu-ai/moai-adk/internal/defs"
@@ -122,6 +123,11 @@ func RestoreMoaiConfigRetained(projectRoot, backupDir string, recordFallback Mer
 		// 백업 엔트리는 os.ReadFile로 따라가지 않고 스킵한다(CWE-61 fail-closed).
 		if IsSymlinkEntry(backupPath) {
 			_, _ = fmt.Fprintf(os.Stderr, "Warning: skipping symlink backup entry %s (containment)\n", backupPath)
+			return nil
+		}
+
+		// The run marker is backup bookkeeping, never a user file.
+		if filepath.Base(backupPath) == RunMarkerName {
 			return nil
 		}
 
@@ -251,6 +257,20 @@ func RestoreMoaiConfigLegacy(projectRoot, backupDir, configDir string) error {
 		// Skip metadata and template defaults
 		if filepath.Base(relPath) == "backup_metadata.json" ||
 			strings.HasPrefix(relPath, ".template-defaults") {
+			return nil
+		}
+
+		// The run marker is backup bookkeeping, never a user file: it must not
+		// land in the project (SPEC-UPDATE-REPAIR-RC30-001 D9).
+		if filepath.Base(relPath) == RunMarkerName {
+			return nil
+		}
+
+		// The unmanaged config directories belong to RestoreUnmanagedConfigDirs,
+		// which every caller runs next and which honors the skip filter for
+		// profiles and rules the reconciliation archived or preserved. Writing
+		// them here would bring those files back (card t1799).
+		if topDir, _, _ := strings.Cut(filepath.ToSlash(relPath), "/"); slices.Contains(unmanagedConfigDirs, topDir) {
 			return nil
 		}
 

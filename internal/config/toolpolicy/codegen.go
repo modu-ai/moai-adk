@@ -231,6 +231,33 @@ func BuildInto(path string, doc *PolicyDocument, targetKind TargetKind, defaultM
 	// block so the codegen does not drop non-list permission settings.
 	block.Raw = existing.Raw
 
+	// Record protocol (card t1630 card-review round 2 P2-2 + sync-audit F2/F3):
+	// the TargetJSON target is the project's settings file (the only
+	// production JSON target of this codegen — the `moai tool-policy build`
+	// local target), so ALL policy-generation paths maintain the sidecar
+	// record the Q5 union classification reads. Stage before the settings
+	// mutation, converge after it lands, roll back to the pre-render record on
+	// a failed write — the same protocol RenderTierPermissions uses, under the
+	// same protocol lock. The TargetTemplate target is the distribution
+	// template, not a project settings file; it maintains no record.
+	isProjectTarget := targetKind == TargetJSON
+	var prior []string
+	if isProjectTarget {
+		recordProtocolMu.Lock()
+		defer recordProtocolMu.Unlock()
+		// Inter-process lock (sync-audit F2'): mutex first, file lock second —
+		// same ordering as RenderTierPermissions.
+		releaseRecordLock, lockErr := acquireProjectRecordLock(path)
+		if lockErr != nil {
+			return nil, fmt.Errorf("acquire record lock: %w", lockErr)
+		}
+		defer releaseRecordLock()
+		prior = readManagedAllowRecordList(path)
+		if err := stageManagedAllowRecord(path, block.Allow); err != nil {
+			return nil, fmt.Errorf("stage managed-allow record: %w", err)
+		}
+	}
+
 	var out []byte
 	switch targetKind {
 	case TargetJSON:
@@ -241,11 +268,26 @@ func BuildInto(path string, doc *PolicyDocument, targetKind TargetKind, defaultM
 		return nil, fmt.Errorf("unknown target kind %q", targetKind)
 	}
 	if err != nil {
+		if isProjectTarget {
+			if rbErr := rollbackManagedAllowRecord(path, prior); rbErr != nil {
+				return nil, fmt.Errorf("codegen render %q: %w (record rollback failed: %v)", path, err, rbErr)
+			}
+		}
 		return nil, fmt.Errorf("codegen render %q: %w", path, err)
 	}
 
 	if err := atomicfile.Write(path, out, defs.FilePerm); err != nil {
+		if isProjectTarget {
+			if rbErr := rollbackManagedAllowRecord(path, prior); rbErr != nil {
+				return nil, fmt.Errorf("codegen write %q: %w (record rollback failed: %v)", path, err, rbErr)
+			}
+		}
 		return nil, fmt.Errorf("codegen write %q: %w", path, err)
+	}
+	if isProjectTarget {
+		if err := persistManagedAllowRecord(path, block.Allow); err != nil {
+			return nil, fmt.Errorf("persist managed-allow record: %w", err)
+		}
 	}
 	res.Path = path
 	res.TargetKind = targetKind

@@ -85,14 +85,16 @@ func withoutStrippedKeys(refs []backup.RetainedKeyRef, removed []template.Retire
 }
 
 // updateSkippedOnVersionMatch re-evaluates the version-match predicate
-// runTemplateSyncWithProgress uses, with the same inputs. It is how host (b)
-// tells a version-matched skip from a user-cancelled merge: both return
-// (true, nil), and that return shape is pinned (REQ-UMH-003).
+// runTemplateSyncWithProgress uses, with the same inputs, tree check included. It is
+// how host (b) tells a version-matched skip from a user-cancelled merge: both return
+// (true, nil), and that return shape is pinned (REQ-UMH-003). A version match whose
+// template tree changed is a sync prompt, so a cancel at that prompt is not a skip
+// (card t1619, codex review round 3).
 func updateSkippedOnVersionMatch(cmd *cobra.Command, projectRoot string) bool {
 	forceUpdate := getBoolFlag(cmd, "force")
 	packageVersion := version.GetVersion()
 	projectVersion, verr := plan.GetProjectConfigVersion(projectRoot)
-	return verr == nil && packageVersion == projectVersion && !forceUpdate
+	return verr == nil && packageVersion == projectVersion && !forceUpdate && versionMatchSkipsSync(projectRoot)
 }
 
 // stripRetiredModelConfigOnVersionMatch is host (b): a version-matched update

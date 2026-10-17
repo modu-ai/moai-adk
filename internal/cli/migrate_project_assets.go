@@ -19,6 +19,7 @@ import (
 	"strings"
 
 	"github.com/modu-ai/moai-adk/internal/manifest"
+	"github.com/modu-ai/moai-adk/internal/profile"
 	"github.com/modu-ai/moai-adk/internal/template"
 	"github.com/modu-ai/moai-adk/internal/userassets"
 )
@@ -31,6 +32,9 @@ var projectCommonAssetRels = []string{
 	".claude/agents/moai/",
 	".codex/agents/moai/",
 }
+
+// removalEnabled gates the project-side removal; its criterion (AC-RC30-02) is owned by card t1668.
+var removalEnabled = false
 
 // migrateProjectCommonAssets removes template-managed common skills and
 // agents from the project after confirming each user counterpart (REQ-020).
@@ -86,6 +90,16 @@ func migrateProjectCommonAssets(projectRoot, homeDir string, userAssetsInstalled
 	if rootErr != nil {
 		return nil, fmt.Errorf("resolve project root: %w", rootErr)
 	}
+	// U-01 (option (c), AC-RC30-27): a project the launch ledger maps to a
+	// profile is one a profile session launches, so its shipped copies stay
+	// project-side. A normal run passes "." as the root, and a relative root
+	// misses the mapping of an ancestor project (a worktree), so the root is
+	// made absolute first. Resolved once per run; the ledger is only read.
+	rootAbs, absErr := filepath.Abs(projectRoot)
+	if absErr != nil {
+		return nil, fmt.Errorf("resolve project root: %w", absErr)
+	}
+	profileMapped := profile.ResolveLaunchProfileForProject(rootAbs, "") != ""
 	for _, rootRel := range projectCommonAssetRels {
 		absRoot := filepath.Join(projectRoot, filepath.FromSlash(rootRel))
 		err := filepath.WalkDir(absRoot, func(p string, d fs.DirEntry, err error) error {
@@ -119,6 +133,12 @@ func migrateProjectCommonAssets(projectRoot, homeDir string, userAssetsInstalled
 			if !hasEntry || entry == nil {
 				untouched++
 				migrationPreservedProjectFiles[p] = true
+				// M6 (REQ-SRF-001): an unregistered mirror copy is
+				// CLASSIFIED + REPORTED per file — a hash match with the
+				// template is not creation provenance, so the copy stays
+				// and the removal question is named for the user (the
+				// audited round-8 contract: preservation is the default).
+				report("  migration: unregistered mirror copy (kept — removal needs creation provenance or your approval): %s", relSlash)
 				return nil
 			}
 			if provenance == string(manifest.UserCreated) {
@@ -149,6 +169,21 @@ func migrateProjectCommonAssets(projectRoot, homeDir string, userAssetsInstalled
 				report("  migration: preserved (you modified it): %s", relSlash)
 				return nil
 			}
+			// U-01 (option (c), AC-RC30-27): under profile reach a shipped copy
+			// (template_managed, bytes equal to the template) stays project-side
+			// and is marked for the profile session. It is neither removed nor
+			// refreshed in rc.30. A retired (deprecated) copy is not in the kept
+			// set. The counterpart check does not gate this keep, so every shipped
+			// copy of a mapped project carries the mark.
+			if profileMapped && provenance == string(manifest.TemplateManaged) {
+				if err := mgr.SetKeptBy(relSlash, manifest.KeptByProfileReach); err != nil {
+					return fmt.Errorf("mark profile-reach keep for %s: %w", relSlash, err)
+				}
+				stayed++
+				migrationPreservedProjectFiles[p] = true
+				report("  migration: kept (profile-mapped project — profile sessions need this shared copy, so it stays project-side): %s", relSlash)
+				return nil
+			}
 			// template_managed with template-matching bytes: removable once
 			// the user counterpart is confirmed.
 			if !userCounterpartConfirmed(userManifest, cat, embedded, homeDir, relSlash) {
@@ -157,12 +192,26 @@ func migrateProjectCommonAssets(projectRoot, homeDir string, userAssetsInstalled
 				// — and gated out of the cleanup list (F2).
 				stayed++
 				migrationPreservedProjectFiles[p] = true
+				// U-09 (REQ-RC30-005): a skill the catalog does not carry has no
+				// installer source, so no bundle opts it in and the opt-in
+				// command would name nothing that can help.
+				if skillNotInCatalog(cat, relSlash) {
+					report("  migration: kept project-side (no catalog entry for this managed skill — no bundle carries it, so there is no opt-in): %s", relSlash)
+					return nil
+				}
 				report("  migration: kept project-side (user counterpart not confirmed — opt in via 'moai bundle add <name>' or re-run update): %s", relSlash)
 				return nil
 			}
 			resolvedP, resErr := filepath.EvalSymlinks(p)
 			if resErr != nil || !withinRootBoundary(rootResolved, resolvedP) {
 				report("  migration: removal refused (path escapes the project root through a symlink): %s", relSlash)
+				return nil
+			}
+			if !removalEnabled {
+				// AC-RC30-02 (the removal criterion) belongs to card t1668; the switch ships off.
+				stayed++
+				migrationPreservedProjectFiles[p] = true
+				report("  migration: kept project-side (removal is not enabled yet): %s", relSlash)
 				return nil
 			}
 			if err := os.Remove(p); err != nil {
@@ -280,6 +329,17 @@ func userCounterpartConfirmed(userManifest *userassets.Manifest, cat *template.C
 	if err != nil {
 		return false
 	}
+	// Gate round 49 NEW-2: the CODEX faces carry the deploy-path CONVERTED
+	// bytes — targetBytes applies NormalizeCodexRoleForDeploy before
+	// writing and hashing (REQ-CNV-001) — so the confirmation compares
+	// CONVERTED against CONVERTED. Raw-vs-installed never matched a
+	// correctly installed .toml counterpart, confirming false every time
+	// and pinning the stale project copy forever (the provenance
+	// discipline's direct corollary: compare like provenance with like).
+	switch userassets.RootSlug(slug) {
+	case userassets.RootCodexAgents, userassets.RootAgentsSkills:
+		current = template.NormalizeCodexRoleForDeploy(current)
+	}
 	return bytes.Equal(data, current)
 }
 
@@ -308,6 +368,18 @@ func skillSourceRel(cat *template.Catalog, projectRel string) string {
 		return ""
 	}
 	return strings.TrimSuffix(strings.TrimPrefix(entry.Path, "templates/"), "/") + "/" + file
+}
+
+// skillNotInCatalog reports whether a project skill path names a skill the
+// catalog does not carry (U-09), so the installer has no source for it. Agent
+// paths are not skills and always report false.
+func skillNotInCatalog(cat *template.Catalog, projectRel string) bool {
+	for _, root := range projectCommonAssetRels[:2] { // the two skill roots
+		if strings.HasPrefix(projectRel, root) {
+			return skillSourceRel(cat, projectRel) == ""
+		}
+	}
+	return false
 }
 
 // withinRootBoundary reports whether path is inside (or equal to) the

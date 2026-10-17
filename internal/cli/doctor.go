@@ -257,6 +257,19 @@ func runGroupedChecksObserved(verbose bool, filterCheck string, obs checkObserve
 			return checkUserInstallIntegrity(home, v)
 		}},
 		{"Project Lock", func(v bool) DiagnosticCheck { return checkProjectVsLock(cwd, v) }},
+		// SPEC-USERASSET-DEPLOY-GUARD-001 (M2, REQ-LOCK-001): the user-lock
+		// marker's visible-recovery row — an ownerless marker is never
+		// auto-reclaimed and resolves through this report + explicit
+		// confirmed removal. Read-only.
+		{"User Lock", func(v bool) DiagnosticCheck {
+			home, err := os.UserHomeDir()
+			if err != nil {
+				c := DiagnosticCheck{Name: "User Lock", Status: uikit.CheckWarn}
+				c.Message = fmt.Sprintf("cannot resolve home: %v", err)
+				return c
+			}
+			return checkUserLockMarkers(home, v)
+		}},
 		{"Plugin Migration", func(v bool) DiagnosticCheck { return checkPluginMigrationAdvisory(v) }},
 		// SPEC-USER-ASSET-INSTALL-001 (REQ-019): the Plugin Deployment and
 		// Plugin Version carrier rows are REMOVED with the retired carrier
@@ -281,6 +294,9 @@ func runGroupedChecksObserved(verbose bool, filterCheck string, obs checkObserve
 		// shipped-template hook entries missing from the project's
 		// settings.json (Option B — detect + guide; never writes).
 		{"Hook Delivery", func(v bool) DiagnosticCheck { return checkHookDelivery(cwd, v) }},
+		// Card t1757: warn when exec-form "bash" hooks cannot resolve bash on
+		// Windows (Claude Code >= 2.1.299 blocks the call on a failing guard).
+		{hookShellWindowsCheckName, func(v bool) DiagnosticCheck { return hookShellWindowsDefault(cwd, v) }},
 		{"Hook opt-in:", func(v bool) DiagnosticCheck { return checkHookOptIn(cwd, v) }},
 		{"Slash Commands", func(v bool) DiagnosticCheck { return checkSlashCommands(cwd, v) }},
 		// Card t1247: project/local defaultMode="bypassPermissions" is dead
@@ -357,13 +373,14 @@ func runGroupedChecksObserved(verbose bool, filterCheck string, obs checkObserve
 // .claude/skills, .claude/rules) — the set REQ-IH-011 downgrades on a
 // codex-only project.
 var claudeSurfaceCheckNames = map[string]bool{
-	"Claude Config":         true,
-	"Hooks Config":          true,
-	hookWiringCheckName:     true,
-	"Hook Delivery":         true,
-	"Slash Commands":        true,
-	"Skills Allowlist":      true,
-	"Constitution Registry": true,
+	"Claude Config":           true,
+	"Hooks Config":            true,
+	hookWiringCheckName:       true,
+	"Hook Delivery":           true,
+	hookShellWindowsCheckName: true,
+	"Slash Commands":          true,
+	"Skills Allowlist":        true,
+	"Constitution Registry":   true,
 	// Card t1247: reads .claude/settings.json + settings.local.json — a
 	// claude-only surface, downgraded on codex-only projects (REQ-IH-011).
 	settingsDefaultModeCheckName: true,

@@ -1,7 +1,9 @@
 package statusline
 
 import (
+	"encoding/json"
 	"fmt"
+	"os"
 	"strings"
 	"time"
 
@@ -14,8 +16,17 @@ import (
 // the 5-line "Full" layout was retired and every mode collapses to it (see
 // Render / NormalizeMode).
 type Renderer struct {
-	separator     string
-	noColor       bool
+	separator string
+	noColor   bool
+	// lg is the statusline-owned lipgloss renderer with a forced color
+	// profile; nil when color is disabled (card t1822).
+	lg *lipgloss.Renderer
+	// bars styles the usage bars (theme gradient stops + muted placeholder);
+	// nil when color is disabled.
+	bars *barStyle
+	// baseSeq is the SGR foreground for plain text (theme Text color);
+	// empty when color is disabled.
+	baseSeq       string
 	mutedStyle    lipgloss.Style
 	segmentConfig map[string]bool
 	theme         Theme
@@ -48,8 +59,15 @@ func NewRenderer(themeName string, noColor bool, segmentConfig map[string]bool) 
 		return r
 	}
 
+	// Claude Code reads the statusline through a pipe, so TTY detection would
+	// fall back to Ascii and drop every color; force the profile instead
+	// (card t1822).
+	r.lg = newForcedColorRenderer(os.Getenv("COLORTERM"))
+	r.baseSeq = foregroundSequence(r.lg, theme.Text())
+	r.bars = newBarStyle(r.lg, theme)
+
 	// Set muted style from theme color (REQ-SLE-017)
-	r.mutedStyle = lipgloss.NewStyle().Foreground(theme.Muted())
+	r.mutedStyle = r.lg.NewStyle().Foreground(theme.Muted())
 
 	return r
 }
@@ -64,15 +82,17 @@ func NewRenderer(themeName string, noColor bool, segmentConfig map[string]bool) 
 // @MX:REASON: [AUTO] Public API boundary; keeps the mode parameter so external
 // callers compile unchanged while the layout is fixed to default.
 func (r *Renderer) Render(data *StatusData, mode StatuslineMode) string {
-	if data == nil {
-		return "MoAI"
+	result := "MoAI"
+	if data != nil {
+		_ = NormalizeMode(mode) // legacy-name collapse, kept for symmetry
+		if rendered := r.renderDefaultV3(data); rendered != "" {
+			result = rendered
+		}
 	}
-	_ = NormalizeMode(mode) // legacy-name collapse, kept for symmetry
-	result := r.renderDefaultV3(data)
-	if result == "" {
-		return "MoAI"
+	if r.noColor {
+		return result
 	}
-	return result
+	return applyBaseColor(result, r.baseSeq)
 }
 
 // filterEmpty removes empty strings from a slice.
@@ -242,6 +262,125 @@ func (r *Renderer) renderSessionLine(data *StatusData) string {
 	return r.joinSegments(segs)
 }
 
+// renderSubagentOutput writes one JSON line per visible subagent row — the
+// output shape the official subagentStatusLine contract requires:
+// {"id":"<task id>","content":"<row body>"}. The id is echoed verbatim so
+// Claude Code can key partial row updates; a task with an empty id is
+// SKIPPED entirely (an omitted row keeps Claude Code's default rendering for
+// it). Content carries the agentType badge only when the row carries one
+// (REQ-CC-HAIKU55-010); an absent or null agentType degrades to a badge-less
+// row and never errors (REQ-CC-HAIKU55-011). An empty tasks[] produces an
+// empty string.
+//
+// @MX:ANCHOR: [AUTO] subagentStatusLine JSONL row output — called from Build() in builder.go
+// @MX:REASON: [AUTO] External contract boundary: Claude Code parses each stdout line as JSON
+// keyed by task id (docs: statusline #subagent-status-lines).
+func renderSubagentOutput(tasks []SubagentTaskInfo) string {
+	var out strings.Builder
+	for _, task := range tasks {
+		if task.ID == "" {
+			continue
+		}
+		row := struct {
+			ID      string `json:"id"`
+			Content string `json:"content"`
+		}{ID: task.ID, Content: formatSubagentTaskRow(task)}
+		line, err := json.Marshal(row)
+		if err != nil {
+			continue
+		}
+		out.Write(line)
+		out.WriteByte('\n')
+	}
+	return out.String()
+}
+
+// sanitizeSubagentText strips C0/C1 control characters and DEL from a
+// subagent row text field (name / label / description / agentType / status).
+// The official contract renders row content as-is, so an ESC, BEL, or
+// newline smuggled through a crafted task name could corrupt the statusline
+// display or forge ANSI/OSC sequences; the JSONL framing itself stays
+// parseable regardless (json.Marshal escapes what remains).
+func sanitizeSubagentText(s string) string {
+	return strings.Map(func(r rune) rune {
+		switch {
+		case r < 0x20: // C0 controls (ESC, BEL, newline, tab, ...)
+			return -1
+		case r == 0x7f: // DEL
+			return -1
+		case r >= 0x80 && r <= 0x9f: // C1 controls
+			return -1
+		}
+		return r
+	}, s)
+}
+
+// formatSubagentTaskRow renders one subagent row body:
+// "⚙ [agentType] display (status) · N tokens", each element omitted when its
+// source is absent. Text fields are control-character-sanitized before
+// composition. The display name falls back name → label → description →
+// "#"+full-id (the optional name field is absent on most rows; the full id
+// keeps distinct ids distinct — a truncated 8-char prefix let task-1234 and
+// task-1235 both render as #task-123).
+func formatSubagentTaskRow(task SubagentTaskInfo) string {
+	var b strings.Builder
+	b.WriteString("⚙ ")
+	if badge := sanitizeSubagentText(agentTypeValue(task)); badge != "" {
+		b.WriteString("[" + badge + "] ")
+	}
+	b.WriteString(sanitizeSubagentText(subagentTaskDisplayName(task)))
+	if status := sanitizeSubagentText(task.Status); status != "" {
+		b.WriteString(" (" + status + ")")
+	}
+	if task.TokenCount > 0 {
+		b.WriteString(fmt.Sprintf(" · %s tokens", formatTokenCount(task.TokenCount)))
+	}
+	return b.String()
+}
+
+// agentTypeValue dereferences the optional agentType, or "" when absent/null.
+func agentTypeValue(task SubagentTaskInfo) string {
+	if task.AgentType == nil {
+		return ""
+	}
+	return *task.AgentType
+}
+
+// subagentTaskDisplayName resolves the row's display name through the
+// null-fallback chain: name (optional, pointer-nil) → label → description →
+// "#"+full-id. Each candidate is sanitized BEFORE the emptiness test, so a
+// candidate made entirely of control characters (sanitize → empty) falls
+// through to the next candidate instead of rendering as blank space. The
+// full id (not a truncated prefix) is used so two distinct task ids never
+// render identically.
+func subagentTaskDisplayName(task SubagentTaskInfo) string {
+	if task.Name != nil {
+		if name := sanitizeSubagentText(*task.Name); name != "" {
+			return name
+		}
+	}
+	if label := sanitizeSubagentText(task.Label); label != "" {
+		return label
+	}
+	if description := sanitizeSubagentText(task.Description); description != "" {
+		return description
+	}
+	return "#" + task.ID
+}
+
+// formatTokenCount abbreviates a running token count for row display:
+// 850 → "850", 12_300 → "12.3k", 1_234_567 → "1.2M".
+func formatTokenCount(n int) string {
+	switch {
+	case n >= 1_000_000:
+		return fmt.Sprintf("%.1fM", float64(n)/1_000_000)
+	case n >= 1_000:
+		return fmt.Sprintf("%.1fk", float64(n)/1_000)
+	default:
+		return fmt.Sprintf("%d", n)
+	}
+}
+
 func (r *Renderer) renderInfoLine(data *StatusData, withPrefix bool) string {
 	var segs []string
 
@@ -364,7 +503,7 @@ func (r *Renderer) renderBarsInline(data *StatusData, width int) string {
 	// guide config never gates it (M1 no-regression invariant, REQ-THRESHOLD-006).
 	if r.isSegmentEnabled(SegmentContext) && data.Memory.Available && data.Memory.TokenBudget > 0 {
 		pct := usagePercent(data.Memory.TokensUsed, data.Memory.TokenBudget)
-		bar := renderUsageBar("CW:", pct, width, r.noColor)
+		bar := renderUsageBar("CW:", pct, width, r.bars)
 		// SPEC-INFINITE-GOAL-001 REQ-3: when a goal is armed, suppress the /clear
 		// directive markers (the stage still computes for informational use; only
 		// the directive text is omitted). Auto-compact handles context pressure
@@ -378,36 +517,40 @@ func (r *Renderer) renderBarsInline(data *StatusData, width int) string {
 			}
 		}
 		segs = append(segs, bar)
+	} else if r.isSegmentEnabled(SegmentContext) {
+		// Unknown context window: keep the bar's footprint with an empty muted
+		// placeholder and "n/a", like 5H/7D — never a percentage (operator
+		// decision 2026-10-16, card t1822).
+		segs = append(segs, renderUnknownBar("CW:", width, r.bars))
 	}
 
-	// 5H bar - always shown, defaults to 0% when no data.
-	// Prefer RateLimits (from Claude Code v2.1.80+ statusline JSON) over Usage (MoAI API call).
+	// 5H bar — official stdin rate_limits first (Claude Code 2.1.80+,
+	// REQ-SOU-002); without them, the local context-usage snapshot fallback
+	// (SPEC-STATUSLINE-OFFICIAL-USAGE-001 M3, REQ-SOU-003); a window neither
+	// carries — or has rolled over — renders n/a, never a 0% bar
+	// (REQ-SOU-004).
 	if r.isSegmentEnabled(SegmentUsage5H) {
-		pct5H := 0
-		var reset5H string
+		var seg5H string
 		if data.RateLimits != nil && data.RateLimits.FiveHour != nil {
-			pct5H = int(data.RateLimits.FiveHour.UsedPercentage)
-			reset5H = formatResetTimeRelative(data.RateLimits.FiveHour.ResetsAt)
-		} else if data.Usage != nil && data.Usage.Usage5H != nil {
-			pct5H = int(data.Usage.Usage5H.Percentage)
-			reset5H = formatResetTimeRelative(data.Usage.Usage5H.ResetsAt)
+			seg5H = renderUsageBarWithReset("5H:", int(data.RateLimits.FiveHour.UsedPercentage), width, r.bars,
+				formatResetTimeRelative(data.RateLimits.FiveHour.ResetsAt))
+		} else {
+			seg5H = renderQuotaSegment("5H:", quotaWindowReading(data.UsageSnapshot, false), width, r.bars, true)
 		}
-		segs = append(segs, renderUsageBarWithReset("5H:", pct5H, width, r.noColor, reset5H))
+		segs = append(segs, seg5H)
 	}
 
-	// 7D bar - always shown, defaults to 0% when no data.
-	// Prefer RateLimits (from Claude Code v2.1.80+ statusline JSON) over Usage (MoAI API call).
+	// 7D bar — same precedence as 5H (stdin rate_limits → snapshot → n/a),
+	// with the absolute reset-time formatter the stdin era established.
 	if r.isSegmentEnabled(SegmentUsage7D) {
-		pct7D := 0
-		var reset7D string
+		var seg7D string
 		if data.RateLimits != nil && data.RateLimits.SevenDay != nil {
-			pct7D = int(data.RateLimits.SevenDay.UsedPercentage)
-			reset7D = formatResetTimeAbsolute(data.RateLimits.SevenDay.ResetsAt)
-		} else if data.Usage != nil && data.Usage.Usage7D != nil {
-			pct7D = int(data.Usage.Usage7D.Percentage)
-			reset7D = formatResetTimeAbsolute(data.Usage.Usage7D.ResetsAt)
+			seg7D = renderUsageBarWithReset("7D:", int(data.RateLimits.SevenDay.UsedPercentage), width, r.bars,
+				formatResetTimeAbsolute(data.RateLimits.SevenDay.ResetsAt))
+		} else {
+			seg7D = renderQuotaSegment("7D:", quotaWindowReading(data.UsageSnapshot, true), width, r.bars, false)
 		}
-		segs = append(segs, renderUsageBarWithReset("7D:", pct7D, width, r.noColor, reset7D))
+		segs = append(segs, seg7D)
 	}
 
 	return r.joinSegments(segs)
@@ -531,7 +674,7 @@ func (r *Renderer) renderPRSegment(data *StatusData) string {
 	// Apply color to the review-state suffix only (number stays uncolored)
 	if !r.noColor {
 		if color, ok := r.prReviewStateColor(state); ok {
-			stateText = lipgloss.NewStyle().Foreground(color).Render(stateText)
+			stateText = r.lg.NewStyle().Foreground(color).Render(stateText)
 		}
 	}
 
@@ -787,28 +930,81 @@ func (r *Renderer) prReviewStateColor(state string) (lipgloss.Color, bool) {
 // ─────────────────────────────────────────────────────────────────────────────
 
 // renderUsageBar renders battery icon + label + gradient bar + percentage.
-// Format: {BatteryIcon(pct)} {label} {BuildGradientBar(pct, width, noColor)} {pct}%
+// Format: {BatteryIcon(pct)} {label} {gradient bar} {pct}%
+// bs colors the bar; nil renders it plain (no color).
 // Example: 🪫 CW: ████████████████████████████████████░░░░ 88%
 // Layout v3 CH6: icon position moved before label for visual prominence.
-func renderUsageBar(label string, pct int, width int, noColor bool) string {
+func renderUsageBar(label string, pct int, width int, bs *barStyle) string {
 	icon := BatteryIcon(pct)
-	bar := BuildGradientBar(pct, width, noColor)
+	bar := buildGradientBar(pct, width, bs)
 	return fmt.Sprintf("%s %s %s %d%%", icon, label, bar, pct)
 }
 
 // renderUsageBarWithReset renders a usage bar with optional reset time suffix.
 // Format: {label} {icon} {bar} {pct}% ({resetStr})
-func renderUsageBarWithReset(label string, pct int, width int, noColor bool, resetStr string) string {
-	base := renderUsageBar(label, pct, width, noColor)
+func renderUsageBarWithReset(label string, pct int, width int, bs *barStyle, resetStr string) string {
+	base := renderUsageBar(label, pct, width, bs)
 	if resetStr == "" {
 		return base
 	}
 	return fmt.Sprintf("%s (%s)", base, resetStr)
 }
 
+// renderUnknownBar renders a usage segment whose value is unknown: the label,
+// an empty muted placeholder bar, and "n/a" — no fill, no percentage.
+func renderUnknownBar(label string, width int, bs *barStyle) string {
+	if bar := placeholderBar(width, bs); bar != "" {
+		return fmt.Sprintf("%s %s n/a", label, bar)
+	}
+	return fmt.Sprintf("%s n/a", label)
+}
+
+// renderQuotaSegment renders one 5H/7D segment from a quota aggregate reading
+// (SPEC-STATUSLINE-OFFICIAL-USAGE-001 M3). Fresh renders the percentage bar,
+// the reset time (relativeReset selects the 5H-style relative formatter; 7D
+// keeps the absolute one), and the source record's captured-at age marker
+// (REQ-SOU-003). Unknown / reset / absent renders an empty muted placeholder
+// bar followed by "n/a" — never a 0% bar, never a stale percentage
+// (REQ-SOU-004).
+func renderQuotaSegment(label string, reading QuotaReading, width int, bs *barStyle, relativeReset bool) string {
+	if reading.State != QuotaFresh {
+		// Keep the bar's footprint with an empty muted placeholder so the
+		// line does not collapse; still no fill and no percentage (card t1822).
+		return renderUnknownBar(label, width, bs)
+	}
+	reset := formatResetTimeAbsolute(reading.ResetsAt)
+	if relativeReset {
+		reset = formatResetTimeRelative(reading.ResetsAt)
+	}
+	seg := renderUsageBarWithReset(label, int(reading.UsedPercentage), width, bs, reset)
+	return fmt.Sprintf("%s (captured %s ago)", seg, formatCapturedAge(reading.CapturedAt))
+}
+
+// formatCapturedAge renders a capture time as a coarse relative age marker
+// ("5m", "2h 14m", "3d 4h") in the existing relative-time style
+// (REQ-SOU-003). A zero capture time reads as "unknown" — never a fake age.
+func formatCapturedAge(captured time.Time) string {
+	if captured.IsZero() {
+		return "unknown"
+	}
+	age := time.Since(captured)
+	if age < time.Minute {
+		return "<1m"
+	}
+	minutes := int(age.Minutes())
+	if minutes < 60 {
+		return fmt.Sprintf("%dm", minutes)
+	}
+	hours := int(age.Hours())
+	if hours < 24 {
+		return fmt.Sprintf("%dh %dm", hours, minutes%60)
+	}
+	return fmt.Sprintf("%dd %dh", hours/24, hours%24)
+}
+
 // formatResetTimeRelative formats a reset time as "4h 30m", "1D, 4h 30m", or "30m".
 // Returns "rolling" if the reset time is zero, in the past, or unparseable.
-// Accepts either an ISO 8601 string (from UsageData) or Unix epoch int64 (from RateLimitWindow).
+// Accepts either an ISO 8601 string or Unix epoch int64 (from RateLimitWindow).
 func formatResetTimeRelative(resetTime interface{}) string {
 	t := parseResetTime(resetTime)
 	if t.IsZero() {
@@ -845,7 +1041,7 @@ func formatResetTimeRelative(resetTime interface{}) string {
 
 // formatResetTimeAbsolute formats a reset time as "Jan 21" or "rolling".
 // Returns "rolling" (sliding window) if the reset time is zero or unparseable.
-// Accepts either an ISO 8601 string (from UsageData) or Unix epoch int64 (from RateLimitWindow).
+// Accepts either an ISO 8601 string or Unix epoch int64 (from RateLimitWindow).
 func formatResetTimeAbsolute(resetTime interface{}) string {
 	t := parseResetTime(resetTime)
 	if t.IsZero() {
@@ -859,7 +1055,7 @@ func formatResetTimeAbsolute(resetTime interface{}) string {
 // parseResetTime converts a reset time value to time.Time.
 // Accepts:
 //   - int64: Unix epoch seconds (from Claude Code official statusline schema)
-//   - string: ISO 8601 / RFC 3339 timestamp (from MoAI API UsageData)
+//   - string: ISO 8601 / RFC 3339 timestamp
 //
 // Returns zero time on failure.
 func parseResetTime(resetTime interface{}) time.Time {
