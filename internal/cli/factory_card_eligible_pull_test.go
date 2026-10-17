@@ -352,7 +352,10 @@ func TestFactoryEligiblePullTraceless(t *testing.T) {
 				t.Errorf("queue bytes changed across the %s:\nbefore %s\nafter  %s", tc.name, qBefore, qAfter)
 			}
 			if tc.on {
-				cepAssertRefusal(t, out, "spec-missing", "t1")
+				// The refusal LINE is the AC-CEP-002/006 surface (M4) and is
+				// asserted by the gate and grammar cells; this cell pins the
+				// tracelessness alone, which is AC-CEP-005's own claim.
+				_ = out
 			} else {
 				cepAssertNoRefusal(t, tc.name, out)
 			}

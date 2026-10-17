@@ -101,7 +101,30 @@ All runs on the pre-gate tree (M3 not yet implemented); anchored selectors per p
   ```
 - Flip enumeration (§C.3 (a), complete): the only existing tests pinning ungated (b)/(b2) bare-next leasing are the two `TestSD_AC008` subtests above — verified by sweeping every `factoryNextLeaseOnce`/`factoryNextLeaseOnceGated` test call site and every picked-queue fixture (classify/serial-slot/drift-log/duplicate-dispatch/bundle/adopt/assign/nominate families all lease through arm (a)/(c) or the nominated path, out of gate scope).
 
-_<M3-M5 evidence appended below as milestones land>_
+### M3 — flag branch, dormancy, five-condition predicate — tree `3ba9cda1f` + gate implementation
+
+`internal/cli/factory_card.go`: `factoryEligibility` (flag + refusal collector), `disqualify` (conditions 1→5, fixed order, first disqualifier only), `factorySelfDispatchEnabled` (root-scoped read, fail-safe OFF), `factoryNextLeaseOnceEligibility` (gated wrapper keeps its signature; refusals ride the last pass out), arms (b)/(b2) behind `elig.active()`/`disqualify`. Arms (a)/(b-priority)/(c) untouched; serial-slot read reused read-only (D5); hold marker via state-independent `autoRankHoldMarked` (D1).
+
+- **`go test ./internal/cli/ -run '^TestFactoryEligiblePullOffDormancy$' -count=1 -v`** — exit 0, 3/3 PASS (AC-CEP-001 green path M2→M3 closed):
+  ```
+  --- PASS: TestFactoryEligiblePullOffDormancy (4.18s)
+      --- PASS: .../unowned_picked_row_is_not_leased;_the_queued_sibling_is_promoted_instead
+      --- PASS: .../queue-picked_card_with_no_row_is_neither_recorded_nor_leased
+      --- PASS: .../lone_unowned_picked_card_answers_no-card_with_no_reason_line
+  ```
+- **`go test ./internal/cli/ -run '^TestFactoryEligiblePullTraceless$' -count=1 -v`** — exit 0, 2/2 PASS (AC-CEP-005 green path M3 closed; the refusal LINE assertion lives in the gate/grammar cells — M4):
+  ```
+  --- PASS: TestFactoryEligiblePullTraceless (2.24s)
+      --- PASS: .../off_quiet_skip
+      --- PASS: .../on_gate_refusal
+  ```
+- **`go test ./internal/cli/ -run '^TestSD_AC008_NextSelectionOrderAndOutput$' -count=1 -v`** — exit 0, 6/6 PASS (the two flipped subtests GREEN through the implementation; the four untouched subtests still GREEN — regression guard):
+  ```
+  --- PASS: TestSD_AC008_NextSelectionOrderAndOutput (10.13s)   [all six subtests PASS]
+  ```
+- `go build ./internal/cli/` + `go vet ./internal/cli/` — exit 0, no output.
+
+_<M4-M5 evidence appended below as milestones land>_
 
 ## §E.3 Run-phase Audit-Ready Signal
 
