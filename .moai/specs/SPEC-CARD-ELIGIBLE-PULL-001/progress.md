@@ -58,7 +58,50 @@ notes: 플랜 페이스 종결 — 플랜 페이스는 문서만 작성·갱신(
   ```
 - **Package-wide**: `go test ./internal/config/ -count=1` — exit 0: `ok github.com/modu-ai/moai-adk/internal/config 4.375s`.
 
-_<M2-M5 evidence appended below as milestones land>_
+### M2 — RED landing (new gate scenarios + expectation flips), tree `6cf3bf85e` + test edits
+
+All runs on the pre-gate tree (M3 not yet implemented); anchored selectors per plan §C.2 (a).
+
+- **`go test ./internal/cli/ -run '^TestFactoryEligiblePullOffDormancy$' -count=1 -v`** — FAIL (RED, 3/3 subtests):
+  ```
+      factory_card_eligible_pull_test.go:141: load t1: factory card not found
+      factory_card_eligible_pull_test.go:164: t1 gained a record row although arm (b2) is dormant — the skip must be traceless
+      factory_card_eligible_pull_test.go:180: gate refusal: expected an error, got nil
+  ```
+  Why red: today's ungated tree leases the unowned picked card (arms (b)/(b2) active) — the no-lease/traceless assertions fail.
+- **`go test ./internal/cli/ -run '^TestFactoryEligiblePullOnGate$' -count=1 -v`** — FAIL (RED, 5/5 cells):
+  ```
+      factory_card_eligible_pull_test.go:250: gate refusal: expected an error, got nil            (cells i–iii: today the candidate LEASES)
+      factory_card_eligible_pull_test.go:266: refused predecessor-unmerged lines for t1: 0 ([]), want exactly 1
+      factory_card_eligible_pull_test.go:284: refused serial-slot lines for t1: 0 ([]), want exactly 1
+  ```
+  Why red per cell: (i) hold-state row — today no lease but no reason line; (ii)/(iii) high-no-spec and picked+marker — today the candidate leases through the ungated arm; (iv)/(v) predecessor/slot — today the skip already happens but silently (no token line).
+- **`go test ./internal/cli/ -run '^TestFactoryEligiblePullOnEligible$' -count=1 -v`** — FAIL (RED at the second call; the eligible lease itself passes today too, as expected — the fixture's RED premise was pinned at M1-entry):
+  ```
+      factory_card_eligible_pull_test.go:321: gate refusal: expected an error, got nil
+  ```
+- **`go test ./internal/cli/ -run '^TestFactoryEligiblePullTraceless$' -count=1 -v`** — FAIL (RED, 2/2):
+  ```
+      factory_card_eligible_pull_test.go:349: gate refusal: expected an error, got nil   (off_quiet_skip)
+      factory_card_eligible_pull_test.go:349: gate refusal: expected an error, got nil   (on_gate_refusal)
+  ```
+- **`go test ./internal/cli/ -run '^TestFactoryEligiblePullRefusalGrammar$' -count=1 -v`** — FAIL (RED):
+  ```
+      factory_card_eligible_pull_test.go:411: gate refusal: expected an error, got nil
+  ```
+  Why red: today's no-card response (`factory_card.go:1775-1776`) carries no reason lines, so the parser cell cannot find them.
+- **Flipped pinning tests — `go test ./internal/cli/ -run '^TestSD_AC008_NextSelectionOrderAndOutput$' -count=1 -v`** — FAIL (RED on exactly the two flipped subtests; the four untouched subtests stay PASS in the same run — preserved-contrast evidence):
+  ```
+      factory_self_dispatch_test.go:174: load t1: factory card not found
+      factory_self_dispatch_test.go:270: t2 = leased holder="lane-1", want still picked and unleased — arm (b) is dormant
+      --- PASS: .../assigned-to-this-lane_wins_over_unowned_picked
+      --- PASS: .../card_assigned_to_another_lane_is_never_taken;_exit_3
+      --- PASS: .../oldest_queued_promoted_and_leased;_newer_stays_queued
+      --- PASS: .../empty_queue_prints_no-card_and_exits_3
+  ```
+- Flip enumeration (§C.3 (a), complete): the only existing tests pinning ungated (b)/(b2) bare-next leasing are the two `TestSD_AC008` subtests above — verified by sweeping every `factoryNextLeaseOnce`/`factoryNextLeaseOnceGated` test call site and every picked-queue fixture (classify/serial-slot/drift-log/duplicate-dispatch/bundle/adopt/assign/nominate families all lease through arm (a)/(c) or the nominated path, out of gate scope).
+
+_<M3-M5 evidence appended below as milestones land>_
 
 ## §E.3 Run-phase Audit-Ready Signal
 
