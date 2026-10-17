@@ -28,7 +28,8 @@ Why unresolved: The base doctrine refuses lane sessions every queue mutation, an
 Ruling provenance (2026-10-17): lane ruling per the decision ladder — no carve-out; plan-audit iteration 1 assessed the default as safe ("preserves today's behavior exactly; t1715's item (4) routes through the leader at the cost of one message"). Recorded as DEFAULT-APPLIED below.
 Operator verdict: DEFAULT-APPLIED 2026-10-17T13:02:13Z lane-15 (factory lane, decision-ladder ruling, run tn1p4e)
 
-Class: implementation-level (permission detail of a new verb; does not change an existing shipped command's behavior).
+Class: implementation-level.
+Class detail: permission detail of a new verb; does not change an existing shipped command's behavior.
 Default: no carve-out — leader/operator-only; t1715's item (4) routes through the leader (rule: preserves current behavior — today no lane queue mutation is admitted anywhere).
 Alternate: own-card blank-fill carve-out for `set-spec` only (never `reclassify`, never a non-blank overwrite).
 
