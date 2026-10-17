@@ -3,7 +3,7 @@ id: SPEC-MCP-NEUTRALITY-001
 title: "Acceptance criteria — MCP refusal structuring and harness neutrality"
 version: "0.2.0"
 created: 2026-10-14
-updated: 2026-10-14
+updated: 2026-10-17
 author: manager-spec
 ---
 
@@ -28,7 +28,7 @@ Verification commands are single-invocation, read-only forms run from the worktr
 | AC-MN-004 | Given a spawn recorded as lane-A, an active run R1 and a completed run R0, When the tool is called with `actor: lane-B` on R1 and with `actor: lane-A` on R0, Then both refuse (`refused: true`, codes `owned` / `stale-run`, `is_error` false) and a lane-A call on R1 proceeds. | REQ-MN-003 | EV-004 | M1 |
 | AC-MN-005 | Given a session with no lane env and no operator mark, When `factory_decide` is called, Then it refuses with unknown attribution; with the positive operator mark it proceeds. | REQ-MN-003 | EV-005 | M1 |
 | AC-MN-006 | Given the server on a registered worktree, When a root-less family tool receives `project_root: 42`, Then an invalid-argument error results (no silent coercion); When a mutating family tool omits `project_root`, Then the call refuses at the tool layer with the wire result `{"isError": true, "content": [{"type": "text", "text": "<tool>: project_root is required for mutating calls"}]}` — argument validation, outside the five policy codes; no JSON-RPC `-32602` protocol error is produced for this case; When called correctly, Then the result carries `_root{dir, source: "param"}`; and When `factory_complete` runs with `project_root`, Then the integration lock root resolves through the same git-common-dir resolver the CLI uses. | REQ-MN-004, REQ-MN-005 | EV-006 | M2 |
-| AC-MN-007 | Given `project_root: "<home>"` and `project_root: "<sibling repo>"`, When a root-taking tool is called, Then both are rejected; a registered worktree of the server's repository is accepted. | REQ-MN-005 | EV-007 | M2 |
+| AC-MN-007 | Given `project_root: "<home>"` and `project_root: "<sibling repo>"`, When a root-taking tool other than the audit/delegation surface is called, Then both are rejected; a registered worktree of the server's repository is accepted. Exception: the audit/delegation surface (`codex_audit`, `audit_multi`, `glm_audit`, `claude_audit`) is validated but not confined to the server's repository — a non-string root is rejected, the home directory is rejected, the root is symlink-canonicalized, and it must carry a `.moai` or be an accepted linked worktree — because an audit legitimately names another repository's tree (`resolveValidatedToolProjectRoot`, `internal/cli/mcp_project_root.go`; `progress.md` M3 note 3); a sibling repository is therefore accepted there. | REQ-MN-005 | EV-007 | M2 |
 | AC-MN-008 | Given the built server, When `tools/list` is called, Then `todo_claim` appears; given a test registering a name absent from the catalogue, Then the build-time gate fails it. | REQ-MN-006 | EV-008 | M2 |
 | AC-MN-009 | Given the schema lint test over all served tools, When run on the fixed tree, Then it passes; run on a fixture missing a property description or carrying an undeclared handler-read argument, Then it fails. | REQ-MN-007 | EV-009 | M2 |
 | AC-MN-010 | Given `factory_msg_list` with zero eligible targets, When called, Then `messages` is `[]` plus any already-claimed entries (never null); given a structured-result tool, Then the text block carries the same JSON as `structuredContent`. | REQ-MN-008, REQ-MN-017 | EV-010 | M2/M5 |

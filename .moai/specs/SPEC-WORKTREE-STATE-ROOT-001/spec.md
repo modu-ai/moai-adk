@@ -66,13 +66,12 @@ tags: "worktree, untracked-moai, state-root, audit-receipt, review-gate, catalog
   registered-worktree set), so each confined-set call runs it. Primary identification
   (REQ-WSR-001..004) still runs only for a config-orphaned root. The audit surface
   runs no confinement and keeps the old no-extra-git promise.
-- **OPEN QUESTION (not a requirement; not decided here)**: the audit surface therefore
-  accepts a foreign repository's root, or a bare directory carrying `.moai`, and writes
-  receipts and convergence results under that root's own `.moai/state`. The literal
-  wording of SPEC-MCP-NEUTRALITY-001 AC-MN-007 ("a root-taking tool rejects a sibling
-  repo") is not met by that surface. Whether the audit surface should be confined, or
-  AC-MN-007 should name the exemption, is a scope question for the delta sync-audit and
-  the operator.
+- **RESOLVED by operator decision (a), 2026-10-17 (`decided_by: operator`)**: the audit
+  surface therefore accepts a foreign repository's root, or a bare directory carrying
+  `.moai`, and writes receipts and convergence results under that root's own
+  `.moai/state`. The current scope is kept and documented: SPEC-MCP-NEUTRALITY-001
+  AC-MN-007 and REQ-MN-005 now carry an explicit exception naming the audit/delegation
+  surface as validated but not confined. Documentation only, no code change.
 - **Reading rule for the untouched criteria** (stated here instead of editing them):
   (i) AC-WSR-014 keeps its fixture B legs: B's MCP writer is `codex_audit`, an audit
   tool, so B stays accepted; (ii) F-noid variant (a), a `PATH` from which git cannot be
