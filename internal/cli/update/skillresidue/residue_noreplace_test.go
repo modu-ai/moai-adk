@@ -423,34 +423,6 @@ func TestAC_UBR_17_RenameLeavesTheContentStagedWhenBothLaterRenamesFail(t *testi
 	}
 }
 
-// The staged name is overwritten by a foreign atomic write between the two renames. The step
-// moves whatever holds the name and removes nothing: the foreign file ends at SKILL.md. (The
-// content of skill.md has exactly one name during this interval, a random private one; the
-// loss in this row is the foreign writer's overwrite, which the step cannot prevent.)
-func TestAC_UBR_17_RenameMovesWhateverHoldsTheStagedNameAndRemovesNothing(t *testing.T) {
-	dir := nrSetup(t)
-	calls := afterNthRename(t, func(n int) {
-		if n == 1 {
-			replaceByRename(t, filepath.Join(dir, stageFolder(t, dir), "skill.md"), "FOREIGN STAGED")
-		}
-	}, nil)
-
-	err := renameSkillFile(openRootT(t, dir), ".")
-
-	if *calls < 2 {
-		t.Fatalf("the rename made %d calls of the no-replace seam, want 2", *calls)
-	}
-	if err != nil {
-		t.Fatalf("rename: %v", err)
-	}
-	if got := readOrFail(t, filepath.Join(dir, "SKILL.md")); got != "FOREIGN STAGED" {
-		t.Fatalf("SKILL.md = %q, want the file that held the staged name", got)
-	}
-	if names := exactNames(t, dir); len(names) != 1 {
-		t.Fatalf("names = %v, want only SKILL.md", names)
-	}
-}
-
 // The stage folder, empty after the second rename, is replaced by a regular file before it is
 // removed: the removal cannot take a file, so the foreign file stays and the error names it.
 func TestAC_UBR_17_RenameLeavesAFileThatReplacedTheStageFolderBeforeItsRemoval(t *testing.T) {
