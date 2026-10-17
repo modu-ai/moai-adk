@@ -1,0 +1,447 @@
+package cli
+
+// integration_base_freshness_test.go — the CLI half of the pre-integration
+// base-freshness gate (SPEC-INTEGRATION-STALE-BASE-001, card t1834): the two
+// call sites (`moai integration acquire`, `moai factory complete`), the
+// adapters' failure posture, the sentinel and exit code, and the adoption
+// exemption. The pure gate is pinned in internal/factory.
+//
+// Two fixtures. The acquire fixture is one repository whose `main` is the
+// integration branch plus a card worktree carrying a commit and a valid
+// re-measure record; landings are added to `main` after the card branched so
+// the card's tree never changes while its distance grows. The complete tests
+// reuse mwq19Fixture, the substantive-completion environment of card t1479.
+
+import (
+	"bytes"
+	"errors"
+	"fmt"
+	"os"
+	"os/exec"
+	"path/filepath"
+	"strings"
+	"testing"
+	"time"
+
+	"github.com/spf13/cobra"
+
+	"github.com/modu-ai/moai-adk/internal/factory"
+	"github.com/modu-ai/moai-adk/internal/factorylane"
+	"github.com/modu-ai/moai-adk/internal/gitenv"
+	"github.com/modu-ai/moai-adk/internal/homestate"
+)
+
+const bfcSentinel = "BASE_FRESHNESS_VIOLATION:"
+
+func bfcGit(t *testing.T, dir string, args ...string) string {
+	t.Helper()
+	cmd := exec.Command("git", args...)
+	cmd.Dir = dir
+	cmd.Env = append(gitenv.Env(),
+		"GIT_AUTHOR_NAME=t", "GIT_AUTHOR_EMAIL=t@t.local",
+		"GIT_COMMITTER_NAME=t", "GIT_COMMITTER_EMAIL=t@t.local",
+		"GIT_CONFIG_GLOBAL=/dev/null", "GIT_CONFIG_NOSYSTEM=1",
+	)
+	out, err := cmd.CombinedOutput()
+	if err != nil {
+		t.Fatalf("git %v in %s: %v: %s", args, dir, err, out)
+	}
+	return strings.TrimSpace(string(out))
+}
+
+type bfcFixture struct {
+	t    *testing.T
+	root string
+	repo string
+	card string
+	base string
+}
+
+func newBFCFixture(t *testing.T) *bfcFixture {
+	t.Helper()
+	root, err := filepath.EvalSymlinks(t.TempDir())
+	if err != nil {
+		t.Fatal(err)
+	}
+	f := &bfcFixture{t: t, root: root, repo: filepath.Join(root, "repo"), card: filepath.Join(root, "card")}
+	if err := os.MkdirAll(f.repo, 0o755); err != nil {
+		t.Fatal(err)
+	}
+	bfcGit(t, f.repo, "init", "-q", "-b", "main")
+	if err := os.WriteFile(filepath.Join(f.repo, "base.txt"), []byte("base\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	bfcGit(t, f.repo, "add", "base.txt")
+	bfcGit(t, f.repo, "commit", "-q", "-m", "base")
+	f.base = bfcGit(t, f.repo, "rev-parse", "HEAD")
+	bfcGit(t, f.repo, "worktree", "add", "-q", "-b", "WT-card", f.card, "main")
+	if err := os.WriteFile(filepath.Join(f.card, "card.txt"), []byte("card work\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	bfcGit(t, f.card, "add", "card.txt")
+	bfcGit(t, f.card, "commit", "-q", "-m", "card work")
+	// A card session's environment names the lane it runs in; the fixture pins
+	// only what the verbs under test read.
+	t.Setenv("CLAUDE_PROJECT_DIR", root)
+	return f
+}
+
+func (f *bfcFixture) tree() string { return bfcGit(f.t, f.card, "rev-parse", "HEAD^{tree}") }
+
+// writeRecord stores a valid re-measure record keyed to the card's tree and
+// naming base as the absorbed base.
+func (f *bfcFixture) writeRecord(base string) {
+	f.t.Helper()
+	tree := f.tree()
+	rec := factory.RemeasureRecord{
+		Tree: tree, Base: base, Command: "true", ExitCode: 0, BuildIdentity: "moai test",
+		RecordedAt: time.Date(2026, 10, 18, 9, 0, 0, 0, time.UTC).Format(time.RFC3339),
+	}
+	if err := factory.WriteRemeasureRecord(f.root, tree, rec); err != nil {
+		f.t.Fatal(err)
+	}
+}
+
+func (f *bfcFixture) land(n int) {
+	f.t.Helper()
+	for i := 0; i < n; i++ {
+		bfcGit(f.t, f.repo, "commit", "-q", "--allow-empty", "-m", fmt.Sprintf("landing %d", i))
+	}
+}
+
+func (f *bfcFixture) acquire(args ...string) (string, string, error) {
+	return runIntegrationSplit(f.t, f.card, f.root, append([]string{"acquire"}, args...)...)
+}
+
+// bfcWriteWorkflow writes the project's workflow.yaml section.
+func bfcWriteWorkflow(t *testing.T, root, body string) {
+	t.Helper()
+	dir := filepath.Join(root, ".moai", "config", "sections")
+	if err := os.MkdirAll(dir, 0o750); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(dir, "workflow.yaml"), []byte(body), 0o600); err != nil {
+		t.Fatal(err)
+	}
+}
+
+func bfcGateYAML(enabled bool, k int) string {
+	return fmt.Sprintf("workflow:\n  base_freshness_gate:\n    enabled: %t\n    max_behind_landings: %d\n", enabled, k)
+}
+
+// runIntegrationSplit is runIntegrationIn with the two streams kept apart: the
+// gate's one-line notices go to standard error and are counted there.
+func runIntegrationSplit(t *testing.T, worktree, root string, args ...string) (string, string, error) {
+	t.Helper()
+	prev, err := os.Getwd()
+	if err != nil {
+		t.Fatalf("getwd: %v", err)
+	}
+	if err := os.Chdir(worktree); err != nil {
+		t.Fatalf("chdir %s: %v", worktree, err)
+	}
+	defer func() { _ = os.Chdir(prev) }()
+	t.Setenv("CLAUDE_PROJECT_DIR", root)
+	cmd := newIntegrationCmd()
+	var out, errBuf bytes.Buffer
+	cmd.SetOut(&out)
+	cmd.SetErr(&errBuf)
+	cmd.SetArgs(args)
+	walk(cmd, func(c *cobra.Command) { c.SilenceUsage = true; c.SilenceErrors = true })
+	execErr := cmd.Execute()
+	return out.String(), errBuf.String(), execErr
+}
+
+func freshnessLines(s string) []string {
+	var lines []string
+	for _, line := range strings.Split(s, "\n") {
+		if strings.HasPrefix(line, "base-freshness") {
+			lines = append(lines, line)
+		}
+	}
+	return lines
+}
+
+func windowBytes(t *testing.T, root string) string {
+	t.Helper()
+	data, err := os.ReadFile(lockPathFor(root))
+	if errors.Is(err, os.ErrNotExist) {
+		return "<absent>"
+	}
+	if err != nil {
+		t.Fatal(err)
+	}
+	return string(data)
+}
+
+// requireFreshnessRefusal asserts the refusal shape of AC-ISB-011: the message
+// starts with the sentinel and the process exit code is 16, a code the merge
+// step (1-15) and complete (20) never use.
+func requireFreshnessRefusal(t *testing.T, err error) {
+	t.Helper()
+	if err == nil {
+		t.Fatalf("expected a base-freshness refusal, got success")
+	}
+	if !strings.HasPrefix(err.Error(), bfcSentinel) {
+		t.Fatalf("the refusal must start with %s, got %q", bfcSentinel, err.Error())
+	}
+	code, ok := ResolveExitCode(err)
+	if !ok || code != 16 {
+		t.Fatalf("the refusal must exit 16, got %d (resolved=%v): %v", code, ok, err)
+	}
+	if (code >= 1 && code <= 15) || code == 20 {
+		t.Fatalf("exit %d collides with a merge/complete code", code)
+	}
+}
+
+func TestIntegrationAcquireRefusesStaleBase(t *testing.T) {
+	// AC-ISB-001: one landing past the stored base, K=0, gate on. A live foreign
+	// holder makes --wait enqueue — unless the gate refuses first. The refusal
+	// exits 16 with the sentinel, the window bytes are untouched, and no ticket
+	// is queued.
+	f := newBFCFixture(t)
+	bfcWriteWorkflow(t, f.root, bfcGateYAML(true, 0))
+	f.writeRecord(f.base)
+	f.land(1)
+	sdHoldWindow(t, f.root, "sess-foreign", "lane-9", "main", factory.BranchSourceConfig, f.repo, "t9")
+	before := windowBytes(t, f.root)
+
+	_, _, err := f.acquire("--wait=2s", "--card", "t1", "--branch", "main", "--session", "sess-lane1")
+	requireFreshnessRefusal(t, err)
+	if after := windowBytes(t, f.root); after != before {
+		t.Fatalf("a refused acquire must leave the window record byte-identical\nbefore: %s\nafter:  %s", before, after)
+	}
+	if lock := sdWindow(t, f.root); len(lock.Queue) != 0 {
+		t.Fatalf("a refused acquire must enqueue no ticket: %+v", lock.Queue)
+	}
+}
+
+func TestBaseFreshnessGateOffAdvisesOnly(t *testing.T) {
+	// AC-ISB-008: the gate off (the shipped default) — the same stale fixture
+	// acquires, records the window, writes one advisory line on standard error,
+	// and prints no sentinel.
+	f := newBFCFixture(t)
+	f.writeRecord(f.base)
+	f.land(1)
+
+	stdout, stderr, err := f.acquire("--card", "t1", "--branch", "main", "--session", "sess-lane1")
+	if err != nil {
+		t.Fatalf("acquire with the gate off must succeed: %v\nstdout: %s\nstderr: %s", err, stdout, stderr)
+	}
+	lines := freshnessLines(stderr)
+	if len(lines) != 1 || !strings.HasPrefix(lines[0], "base-freshness (advisory, gate off): would refuse") {
+		t.Fatalf("want exactly one advisory line on standard error, got %q\nstderr: %s", lines, stderr)
+	}
+	if strings.Contains(stdout+stderr, bfcSentinel) {
+		t.Fatalf("an advisory must not print the sentinel\nstdout: %s\nstderr: %s", stdout, stderr)
+	}
+	if lock := sdWindow(t, f.root); lock.SessionID != "sess-lane1" {
+		t.Fatalf("the window must be recorded for the caller: %+v", lock)
+	}
+}
+
+func TestBaseFreshnessCLIUncertaintyAdmitsWithCauseLine(t *testing.T) {
+	// AC-ISB-009 (CLI half): the tree is stale and the gate on throughout. An
+	// uncertain applicable call admits, records the window, and writes exactly
+	// one standard-error line naming the cause; a not-applicable call admits and
+	// writes no gate line; nothing prints the sentinel. A pure-package test
+	// alone would pass a CLI that dropped the line.
+	type tc struct {
+		name  string
+		setup func(f *bfcFixture)
+		args  []string
+		cwd   func(f *bfcFixture) string
+		want  string // cause substring; "" = silent
+	}
+	card := []string{"--card", "t1", "--branch", "main", "--session", "sess-lane1"}
+	cases := []tc{
+		{"unreadable configuration", func(f *bfcFixture) {
+			bfcWriteWorkflow(f.t, f.root, "workflow:\n  base_freshness_gate:\n    enabled: true\n  agent_tiers:\n    classes:\n      lane: bogus\n")
+		}, card, nil, "configuration unreadable"},
+		{"negative K", func(f *bfcFixture) { bfcWriteWorkflow(f.t, f.root, bfcGateYAML(true, -1)) }, card, nil, "negative"},
+		{"integration branch unresolvable", nil,
+			[]string{"--card", "t1", "--branch", "no-such-branch", "--session", "sess-lane1"}, nil, "no-such-branch"},
+		{"git failure injected", func(f *bfcFixture) {
+			orig := baseFreshnessSeams
+			baseFreshnessSeams = factory.BaseFreshnessSeams{Git: func(args ...string) (string, error) {
+				if len(args) > 0 && args[0] == "rev-list" {
+					return "", errors.New("injected rev-list failure")
+				}
+				return factorylane.ExecGitRunner{Dir: f.card}.Git(args...)
+			}}
+			f.t.Cleanup(func() { baseFreshnessSeams = orig })
+		}, card, nil, "injected rev-list failure"},
+		{"no card flag", nil, []string{"--branch", "main", "--session", "sess-lane1"}, nil, ""},
+		{"cwd on the integration branch", nil, card, func(f *bfcFixture) string { return f.repo }, ""},
+		{"detached HEAD", func(f *bfcFixture) { bfcGit(f.t, f.card, "checkout", "-q", "--detach") }, card, nil, ""},
+	}
+	for _, c := range cases {
+		t.Run(c.name, func(t *testing.T) {
+			f := newBFCFixture(t)
+			bfcWriteWorkflow(t, f.root, bfcGateYAML(true, 0))
+			f.writeRecord(f.base)
+			f.land(1)
+			if c.setup != nil {
+				c.setup(f)
+			}
+			dir := f.card
+			if c.cwd != nil {
+				dir = c.cwd(f)
+			}
+			stdout, stderr, err := runIntegrationSplit(t, dir, f.root, append([]string{"acquire"}, c.args...)...)
+			if err != nil {
+				t.Fatalf("must admit, got %v\nstdout: %s\nstderr: %s", err, stdout, stderr)
+			}
+			if lock := sdWindow(t, f.root); lock.SessionID != "sess-lane1" {
+				t.Fatalf("the window must be recorded for the caller: %+v", lock)
+			}
+			if strings.Contains(stdout+stderr, bfcSentinel) {
+				t.Fatalf("no admit may print the sentinel\nstdout: %s\nstderr: %s", stdout, stderr)
+			}
+			lines := freshnessLines(stderr)
+			if c.want == "" {
+				if len(lines) != 0 {
+					t.Fatalf("a not-applicable call must write no gate line, got %q", lines)
+				}
+				return
+			}
+			if len(lines) != 1 || !strings.Contains(lines[0], c.want) {
+				t.Fatalf("want exactly one line naming %q, got %q\nstderr: %s", c.want, lines, stderr)
+			}
+		})
+	}
+}
+
+func TestBaseFreshnessRefusalSentinelAndExitCode(t *testing.T) {
+	// AC-ISB-011: the three refusal kinds — stale past K, past a positive K, and
+	// no valid record — each start with the sentinel and exit 16.
+	args := []string{"--card", "t1", "--branch", "main", "--session", "sess-lane1"}
+	t.Run("landings behind exceeds K=0", func(t *testing.T) {
+		f := newBFCFixture(t)
+		bfcWriteWorkflow(t, f.root, bfcGateYAML(true, 0))
+		f.writeRecord(f.base)
+		f.land(1)
+		_, _, err := f.acquire(args...)
+		requireFreshnessRefusal(t, err)
+	})
+	t.Run("landings behind exceeds K=2", func(t *testing.T) {
+		f := newBFCFixture(t)
+		bfcWriteWorkflow(t, f.root, bfcGateYAML(true, 2))
+		f.writeRecord(f.base)
+		f.land(3)
+		_, _, err := f.acquire(args...)
+		requireFreshnessRefusal(t, err)
+		if !strings.Contains(err.Error(), "3 landings behind") || !strings.Contains(err.Error(), "max_behind_landings=2") {
+			t.Fatalf("the refusal must name the numbers: %v", err)
+		}
+	})
+	t.Run("no valid record", func(t *testing.T) {
+		f := newBFCFixture(t)
+		bfcWriteWorkflow(t, f.root, bfcGateYAML(true, 2))
+		_, _, err := f.acquire(args...)
+		requireFreshnessRefusal(t, err)
+	})
+	t.Run("equal to K admits", func(t *testing.T) {
+		f := newBFCFixture(t)
+		bfcWriteWorkflow(t, f.root, bfcGateYAML(true, 2))
+		f.writeRecord(f.base)
+		f.land(2)
+		if _, _, err := f.acquire(args...); err != nil {
+			t.Fatalf("landings behind == K must admit: %v", err)
+		}
+	})
+}
+
+// ---- factory complete ------------------------------------------------------
+
+func TestFactoryCompleteRefusesStaleBaseBeforeAcquire(t *testing.T) {
+	// AC-ISB-002: complete is about to acquire the window itself, the base moved
+	// one landing, the tip is not an adoption, the gate is on. The refusal
+	// precedes the acquisition: the window record, the integration branch and the
+	// card state are unchanged.
+	root, integ, _ := mwq19Fixture(t)
+	bfcWriteWorkflow(t, root, bfcGateYAML(true, 0))
+	fcGit(t, integ, "commit", "-q", "--allow-empty", "-m", "another lane landed")
+	tipBefore := fcGit(t, integ, "rev-parse", "develop")
+	cardBefore := fcCard(t, root, "t1")
+	windowBefore := windowBytes(t, root)
+
+	_, _, err := runFactory(t, "complete", "t1", "--run", fcRun)
+	requireFreshnessRefusal(t, err)
+	if got := windowBytes(t, root); got != windowBefore {
+		t.Fatalf("the window record must be unchanged\nbefore: %s\nafter:  %s", windowBefore, got)
+	}
+	if got := fcGit(t, integ, "rev-parse", "develop"); got != tipBefore {
+		t.Fatalf("the integration branch must be unchanged: %s -> %s", tipBefore, got)
+	}
+	sdCardUnchanged(t, "refused complete", root, "t1", cardBefore)
+}
+
+func TestBaseFreshnessKDoesNotRelaxMergeStep(t *testing.T) {
+	// AC-ISB-010 Case B at the CLI: K=3 admits a candidate two landings behind,
+	// and the merge step — the authority — still refuses it with its own code 2
+	// and releases the window. K buys entry slack, never a relaxed merge.
+	root, integ, _ := mwq19Fixture(t)
+	bfcWriteWorkflow(t, root, bfcGateYAML(true, 3))
+	fcGit(t, integ, "commit", "-q", "--allow-empty", "-m", "landing one")
+	fcGit(t, integ, "commit", "-q", "--allow-empty", "-m", "landing two")
+
+	_, _, err := runFactory(t, "complete", "t1", "--run", fcRun)
+	if err == nil {
+		t.Fatalf("the merge step must still refuse a moved base")
+	}
+	if strings.Contains(err.Error(), bfcSentinel) {
+		t.Fatalf("K=3 must admit 2 landings behind — the refusal is the merge step's: %v", err)
+	}
+	code, ok := ResolveExitCode(err)
+	if !ok || code != factory.MergeExitBaseMoved {
+		t.Fatalf("the merge step's own code %d must stand, got %d (resolved=%v): %v", factory.MergeExitBaseMoved, code, ok, err)
+	}
+	if lock := sdWindow(t, root); lock.Held() {
+		t.Fatalf("the refused merge must release the window: %+v", lock)
+	}
+}
+
+func TestFactoryCompleteAdoptionNotRefusedByBaseFreshness(t *testing.T) {
+	// AC-ISB-016: a card the lane merged through the merge verb earlier is
+	// adopted by complete without the gate, whether or not the lane holds the
+	// window. Without the exemption the merge commit is a first-parent landing
+	// past the candidate record's base and K=0 refuses a legitimate adoption.
+	adopted := func(t *testing.T) (root, integ string, cardWT sdCardTree, merge string) {
+		root, integ, cardWT = mwq19Fixture(t)
+		bfcWriteWorkflow(t, root, bfcGateYAML(true, 0))
+		fcGit(t, integ, "merge", "-q", "--no-ff", "-m", "M t1", cardWT.branch)
+		merge = fcGit(t, integ, "rev-parse", "HEAD")
+		// the lane re-measured on the merged tree after its verb merge
+		if _, err := factory.RunRemeasure(root, integ, "develop", "true"); err != nil {
+			t.Fatalf("remeasure on the merged tree: %v", err)
+		}
+		return root, integ, cardWT, merge
+	}
+	t.Run("adoption completes and prints no sentinel", func(t *testing.T) {
+		root, _, _, merge := adopted(t)
+		stdout, stderr, err := runFactory(t, "complete", "t1", "--run", fcRun)
+		if err != nil {
+			t.Fatalf("an adoption must complete exactly as without the gate: %v", err)
+		}
+		if strings.Contains(stdout+stderr, bfcSentinel) {
+			t.Fatalf("no sentinel on an adoption\nstdout: %s\nstderr: %s", stdout, stderr)
+		}
+		card := fcCard(t, root, "t1")
+		if card.State != homestate.CardMergedLocal || card.MergeSHA != merge {
+			t.Fatalf("the card must land merged-local on the pre-made merge %s, got %s %s", merge, card.State, card.MergeSHA)
+		}
+	})
+	t.Run("a commit after the merge is not an adoption; the gate evaluates", func(t *testing.T) {
+		root, _, cardWT, _ := adopted(t)
+		if err := os.WriteFile(filepath.Join(cardWT.wt, "later.txt"), []byte("later\n"), 0o600); err != nil {
+			t.Fatal(err)
+		}
+		fcGit(t, cardWT.wt, "add", "later.txt")
+		fcGit(t, cardWT.wt, "commit", "-q", "-m", "work after the merge")
+		before := fcCard(t, root, "t1")
+		_, _, err := runFactory(t, "complete", "t1", "--run", fcRun)
+		requireFreshnessRefusal(t, err)
+		sdCardUnchanged(t, "non-adoption refusal", root, "t1", before)
+	})
+}
