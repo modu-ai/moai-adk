@@ -3,6 +3,7 @@
 ## §E.1 Plan-phase Audit-Ready Signal
 
 - plan_status: audit-ready
+- audit_ready: true
 - plan_complete_at: 2026-10-17T13:46:00Z
 - Authoring: spec.md, plan.md, acceptance.md, decision-index.md written by manager-spec (Tier M, card t1852, Class C; part C only of the card line t1825 -> t1848). Tree `d2d9ac08fb1899440da911121ddf13eecc806a3f`, branch `WT-factory-retire-guard`. Not yet audited.
 - Counts: 7 requirements (Tier M ceiling 16), 8 acceptance criteria (ceiling 16), 2 milestones (M1, M2).
@@ -22,6 +23,7 @@
 - Out-of-anchor changes, each the smallest edit that keeps a sentence true: `decision-index.md` Q3 Default (the phrase "the one exit that works for a non-active run" was the same false exclusivity claim). No other out-of-anchor edit. O1, O2 (AC-002, REQ-007) not taken; O3 (English error text duplicating the card list) not taken because the fix is the `Error()` sentence in plan §C.1, outside the anchors.
 - Sentences re-checked for consistency with the new order and left unchanged: REQ-RRG-001 and REQ-RRG-002 (the owner gate still precedes the card read; "no row changed" stays true because the stamp check refuses before the flip), AC-RRG-002 (the hook still fires right after the in-transaction `SELECT`, after the stamp check), plan §C.1 (hook placement), plan §C.3 (the printed classification now always belongs to a still-unchanged owner).
 - Repair-time lint: `moai spec lint --strict` on spec.md under the installed build and the tree-built binary, see the repair commit.
+- Iteration 2: PASS 0.94 (.moai/reports/t1852/plan-audit-iter2.md, audited commit 9d171631a, plan_artifact_hash 0e68a9981361c7a407aa050f25c1614940ffd9cd07b668c04e2b17d1fd2e5110, codex receipt rcpt-dfdb489c540acf07a44604ff).
 
 ## §E.2 Run-phase Evidence
 
@@ -34,3 +36,7 @@ _<pending run-phase>_
 ## §E.4 Sync-phase Audit-Ready Signal
 
 _<pending sync-phase>_
+
+## §G Override and Refusal Record
+
+- 2026-10-17T14:10:57Z SPEC-FACTORY-RETIRE-GUARD-001 ceiling-outcome outcome=pass-through reasons="plan-audit ceiling reached (round count 2 >= tier ceiling 2 + 1 delta rounds); the verdict is admission-clean and admits without a question (REQ-ACE-013)" evidence=/Users/goos/MoAI/moai-adk-go/.moai/worktrees/t1852/.moai/reports/t1852/plan-audit-iter2.md,/Users/goos/MoAI/moai-adk-go/.moai/worktrees/t1852/.moai/reports/t1852/plan-audit.md
