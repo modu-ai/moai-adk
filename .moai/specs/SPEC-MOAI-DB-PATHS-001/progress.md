@@ -18,6 +18,10 @@ Verdict FAIL 0.69 (audited_sha 4a8e8cfd5, plan_artifact_hash 404d75ef…, defect
 
 Verdict FAIL 0.75 (D2 unresolved). N1: the two existing foreman-script tests in internal/factory become M3 deliverables and allow-list entries, with a `moai` stub on the fixture PATH (plan M3 step 7, risk row, AC-DBP-011 judge). N2: the four SPEC artifacts moved to the added (A) allow-list, matching the real `git diff --name-status main...HEAD` letters. O1: REQ-DBP-007 first clause reworded. O2: AC-DBP-011 counts the watch family swept only with the deterministic stub. Status draft, counts 16/16.
 
+### Plan-audit iteration 3 revision (v0.1.3)
+
+N3: foreman watch family description corrected (five top-level tests, subtests only under FiresOnMutation). O3: home-guard escape is the allow comment, seed file untouched. Counts 16/16, status draft.
+
 ## §E.2 Run-phase Evidence
 
 _pending run-phase_
