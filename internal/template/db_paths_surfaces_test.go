@@ -304,3 +304,100 @@ func TestForemanWatch_FailsVisibly(t *testing.T) {
 		})
 	}
 }
+
+// ---------------------------------------------------------------------------
+// REQ-DBP-013 — the four READMEs and eight docs-site pages
+// ---------------------------------------------------------------------------
+
+// dbPathsUserFacingAnchors are language-neutral anchors in code spans; the
+// locale prose around them is judged by review, their presence by this test.
+var dbPathsUserFacingAnchors = []string{
+	"moai paths",
+	// home-guard:allow the anchor is the forbidden guessed path, asserted as text and never resolved
+	"~/.moai/db/todo.db",
+	"sqlite3",
+	".db-wal",
+	"moai todo list --json",
+}
+
+var dbPathsUserFacingPages = func() []string {
+	pages := []string{"../../README.md", "../../README.ko.md", "../../README.ja.md", "../../README.zh.md"}
+	for _, l := range []string{"en", "ko", "ja", "zh"} {
+		for _, p := range []string{"advanced/factory-mode.md", "utility-commands/moai-todo.md"} {
+			pages = append(pages, "../../docs-site/content/"+l+"/"+p)
+		}
+	}
+	return pages
+}()
+
+// anchorsMissingInSection reports the anchors absent from the heading-delimited
+// section that holds the page's pre-existing database mention (the section
+// containing `project-key` or `backlog.db`). A page with no such section
+// reports every anchor.
+func anchorsMissingInSection(content string) []string {
+	lines := strings.Split(content, "\n")
+	mention := -1
+	for i, ln := range lines {
+		if strings.Contains(ln, "project-key") || strings.Contains(ln, "backlog.db") {
+			mention = i
+			break
+		}
+	}
+	if mention < 0 {
+		return append([]string(nil), dbPathsUserFacingAnchors...)
+	}
+	isHeading := func(ln string) bool { return strings.HasPrefix(ln, "#") && strings.Contains(ln, " ") }
+	start := 0
+	for i := mention; i >= 0; i-- {
+		if isHeading(lines[i]) {
+			start = i
+			break
+		}
+	}
+	end := len(lines)
+	for i := mention + 1; i < len(lines); i++ {
+		if isHeading(lines[i]) {
+			end = i
+			break
+		}
+	}
+	section := strings.Join(lines[start:end], "\n")
+	var missing []string
+	for _, a := range dbPathsUserFacingAnchors {
+		if !strings.Contains(section, a) {
+			missing = append(missing, a)
+		}
+	}
+	return missing
+}
+
+func TestDBPathsBlock_UserFacingPages(t *testing.T) {
+	for _, path := range dbPathsUserFacingPages {
+		raw, err := os.ReadFile(path)
+		if err != nil {
+			t.Errorf("read page %s: %v", path, err)
+			continue
+		}
+		if missing := anchorsMissingInSection(string(raw)); len(missing) > 0 {
+			t.Errorf("%s: the section holding the database mention lacks the anchors %v", path, missing)
+		}
+	}
+	t.Logf("pages=%d anchors=%d", len(dbPathsUserFacingPages), len(dbPathsUserFacingAnchors))
+
+	t.Run("mutant-anchor-dropped", func(t *testing.T) {
+		page := "## Storage\n\nThe queue is `backlog.db`. Use `moai paths`, never `~/.moai/db/todo.db`; `sqlite3` creates files; copy `.db-wal`; `moai todo list --json`.\n"
+		if m := anchorsMissingInSection(page); len(m) != 0 {
+			t.Fatalf("the synthetic page must pass: %v", m)
+		}
+		mutated := strings.ReplaceAll(page, ".db-wal", ".wal")
+		if m := anchorsMissingInSection(mutated); len(m) != 1 || m[0] != ".db-wal" {
+			t.Errorf("the check did not report the dropped .db-wal anchor: %v", m)
+		}
+	})
+	t.Run("mutant-anchors-in-other-section", func(t *testing.T) {
+		page := "## Storage\n\nThe queue is `backlog.db`.\n\n## Elsewhere\n\n`moai paths` `~/.moai/db/todo.db` `sqlite3` `.db-wal` `moai todo list --json`\n"
+		if m := anchorsMissingInSection(page); len(m) != len(dbPathsUserFacingAnchors) {
+			t.Errorf("anchors outside the mention's section must not count: missing %v", m)
+		}
+	})
+}

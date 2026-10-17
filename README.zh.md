@@ -65,6 +65,8 @@ moai codex -l                 # Codex 泳道
 
 想加泳道，再执行一次 `-l` 即可。编号自动分配，所以同时给 `--name`/`-n` 会报错。只有被存活会话占用的编号才会被跳过。泳道死了，它的占用不再挡住那个编号，但自动分配总是取存活最高编号 +1，不会回填中间的空号。泳道归属记录在 `~/.moai/db/<project-key>/factory/factory.db` 中。启动目录是临时目录时（没有绝对 `MOAI_HOME` 覆盖），则记录在项目本地的 `<base>/.moai/db/<project-key>/factory/` 下，与 backlog 队列同一例外。旧的 `.moai/state/factory/workers.json` 只导入一次，之后仅作为回滚凭据保留。
 
+数据库路径不要猜，用 `moai paths` 确认。用 `sqlite3` 打开 `~/.moai/db/todo.db` 这类猜出来的路径，会创建出一个空文件，所以不要这样做。确需直接读取时，只读把 `.db`、`.db-wal`、`.db-shm` 一起复制出来的快照；平时优先使用 `moai todo list --json`、`moai factory status` 等 CLI。
+
 一条泳道最多并发运行 10 个 `Agent()` 子智能体，其中承担写入的生成各自隔离在自己的工作树里。不要一次把所有泳道全开：先起第一条，确认它真的开始产出，再启动其余。卡片绝不会被拆到多条泳道上。
 
 工厂 run 会记录持有它的会话的进程标识，因此主导已经死掉的 run，会在下一条泳道加入时自动退役，那次加入不会卡在 `AMBIGUOUS_FACTORY` 上。反方向同样有闸门：泳道加入时若运行记录缺失或已退役，而主导会话还活着，加入会先验证该主导（pid 加进程启动指纹，目标用长形式 `--leader <名称>` 指定，默认 `leader`），恢复其运行记录后照常加入。验证通过的主导有两个或更多时，逐一点名候选并失败关闭。`--leader` 是只能与 `-l`/`--lane` 搭配的选择器，不是任何进入令牌的短形式。`moai factory runs` 列出每个 run 及其属主的存活状态，`moai factory runs --retire <run-id>` 手动退役指定的 run，属主没有真正死掉就会被拒绝。

@@ -26,7 +26,11 @@ plan_audit: PASS 0.92 iteration 4 audited_sha 598362ff325d34d507ab7da6e7a09999cb
 
 ## §E.2 Run-phase Evidence
 
-_pending run-phase_
+decision record: decided_by=lane-5 claude-orchestrator evidence_refs=.moai/reports/t1827/plan-audit-iter4.md(PASS 0.92, receipt rcpt-358150a21424f6cf75555ed5),.moai/specs/SPEC-MOAI-DB-PATHS-001/progress.md#E.1(audit_ready: true),plan_artifact_hash=7446b8ac2c430a4041604b1b206f4a609cb1a7a9ce5343832ed3f4ed29fe77db ladder_path=gate-row plan→run Kickoff (auto-semantics §9.1, T8a decider=audit)
+
+slot wait note: 2026-10-17T12:58:48Z `moai slot acquire --resource go-test-heavy` exit 3 (held by lane-4, t1812 landing remeasure since 12:42:57Z); also exit 3 at 12:45:15Z. Heavy commands (make agents-emit/build, whole-package go test) deferred; targeted anchored go test -run commands ran without the slot.
+
+(per-AC matrix is filled at the end of the run)
 
 ## §E.3 Run-phase Audit-Ready Signal
 

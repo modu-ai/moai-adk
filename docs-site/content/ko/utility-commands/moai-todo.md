@@ -62,6 +62,8 @@ flowchart TD
 
 일반적인 프로젝트 디렉터리라면 대기열은 `~/.moai/db/<project-key>/todo/backlog.db` 하나의 SQLite 데이터베이스에 저장됩니다. 다만 프로젝트가 임시 디렉터리(`os.TempDir()`, `/tmp`, `/var/folders` 아래)에서 시작된 것이라면 절대 경로의 `MOAI_HOME` 재정의가 없는 한 홈 대신 `<base>/.moai/state/todo/backlog.db`에 프로젝트 로컬로 저장됩니다. 프로젝트 키가 연결된 워크트리를 홈의 큐 하나에 묶으며, 데이터베이스는 커밋되지 않습니다. 아래 형태는 `moai todo list --json`과 `moai todo export-json`이 내보내는 레코드 모양이며, 데이터베이스도 같은 필드를 담습니다. 이전과 다운그레이드 방법은 프로젝트 안의 `.moai/docs/todo-queue-storage.md`에 있습니다.
 
+데이터베이스 경로는 추측하지 말고 `moai paths`로 확인합니다. `~/.moai/db/todo.db`처럼 추측한 경로를 `sqlite3`로 열면 빈 파일이 만들어지므로 열지 않습니다. 직접 읽어야 하면 `.db`, `.db-wal`, `.db-shm`을 함께 복사한 스냅샷에서만 읽고, 평소에는 `moai todo list --json`, `moai factory status` 같은 CLI를 우선 씁니다.
+
 ```json
 {
   "version": 1,

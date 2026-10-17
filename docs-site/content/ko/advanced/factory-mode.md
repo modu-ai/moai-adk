@@ -121,6 +121,8 @@ flowchart TD
 
 어느 번호를 어느 레인이 쥐고 있는지는 `~/.moai/db/<project-key>/factory/factory.db`에 기록됩니다. 새 레인은 살아 있는 레인 가운데 **가장 큰 번호의 다음 번호**를 받으며, 중간의 빈 번호를 채우지는 않습니다. 살아 있는 레인이 lane-1과 lane-3이면 새 레인은 lane-4입니다. 죽은 레인의 claim은 더 이상 번호를 막지 않습니다. 레인 번호는 자동 배정이므로 `--name`/`-n`을 함께 쓰면 오류입니다.
 
+데이터베이스 경로는 추측하지 말고 `moai paths`로 확인합니다. `~/.moai/db/todo.db`처럼 추측한 경로를 `sqlite3`로 열면 빈 파일이 만들어지므로 열지 않습니다. 직접 읽어야 하면 `.db`, `.db-wal`, `.db-shm`을 함께 복사한 스냅샷에서만 읽고, 평소에는 `moai todo list --json`, `moai factory status` 같은 CLI를 우선 씁니다.
+
 리더의 소켓은 `/tmp/moai-socket-factory/<run-id>`에 열리고, 부트스트랩 안내가 실제 경로를 알려 줍니다. 리더와 레인 세션은 시작할 때 `.moai/state/todo/<session-id>.json`에 역할·백엔드·진입 시각이 담긴 세션 레코드를 한 번 남깁니다.
 
 팩토리 세션은 시작할 때 연속 Stop 훅 차단 상한을 `CLAUDE_CODE_STOP_HOOK_BLOCK_CAP=200`으로 올립니다. 이는 무인 실행을 길게 허용하는 설정이지 게이트를 건너뛰는 장치가 아닙니다. 사람의 승인 게이트는 Stop 훅 차단이 아니라 오케스트레이터가 묻는 질문이기 때문입니다.

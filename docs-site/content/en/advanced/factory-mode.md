@@ -121,6 +121,8 @@ Do not switch on all lanes at once. Bring up the first lane, wait until it actua
 
 Which lane holds which number is recorded in `~/.moai/db/<project-key>/factory/factory.db`. A new lane takes **one past the highest live lane** and does not fill a gap: with live lane-1 and lane-3, the new lane is lane-4. A dead lane's claim no longer blocks a number. Because lane numbers are assigned automatically, combining `--name`/`-n` with `-l` is an error.
 
+Find the database paths with `moai paths` instead of guessing them. Opening a guessed path such as `~/.moai/db/todo.db` with `sqlite3` creates an empty file, so never do it. If you must read directly, read only a snapshot copy of `.db`, `.db-wal`, and `.db-shm` together; otherwise prefer the CLI, such as `moai todo list --json` and `moai factory status`.
+
 The leader's socket opens at `/tmp/moai-socket-factory/<run-id>`, and the bootstrap notice tells you the actual path. When a leader or lane session starts, it writes one session record to `.moai/state/todo/<session-id>.json` holding its role, backend, and entry time.
 
 A factory session raises the consecutive Stop-hook block cap to `CLAUDE_CODE_STOP_HOOK_BLOCK_CAP=200` at launch. This allows longer unattended runs and is not a way around any gate: the human approval gates are questions the orchestrator asks, not Stop-hook blocks.

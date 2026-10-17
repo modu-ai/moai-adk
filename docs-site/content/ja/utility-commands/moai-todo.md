@@ -62,6 +62,8 @@ flowchart TD
 
 通常のプロジェクトディレクトリであれば、キューは `~/.moai/db/<project-key>/todo/backlog.db` という 1 つの SQLite データベースに保存されます。ただしプロジェクトが一時ディレクトリ(`os.TempDir()`, `/tmp`, `/var/folders` の下)を起点とする場合は、絶対パスの `MOAI_HOME` 上書きがなければホームではなく `<base>/.moai/state/todo/backlog.db` にプロジェクトローカルで保存されます。プロジェクトキーによってリンクされた worktree がホーム内の 1 つのキューに結び付けられ、データベースはコミットされません。下の形は `moai todo list --json` と `moai todo export-json` が出力するレコードの形で、データベースも同じフィールドを持ちます。移行とダウングレードの方法は、プロジェクト内の `.moai/docs/todo-queue-storage.md` にあります。
 
+データベースのパスは推測せず、`moai paths` で確認します。`~/.moai/db/todo.db` のように推測したパスを `sqlite3` で開くと空のファイルが作られるため、開きません。直接読む必要があるときは、`.db`、`.db-wal`、`.db-shm` を一緒にコピーしたスナップショットだけを読み、普段は `moai todo list --json` や `moai factory status` などの CLI を優先します。
+
 ```json
 {
   "version": 1,
