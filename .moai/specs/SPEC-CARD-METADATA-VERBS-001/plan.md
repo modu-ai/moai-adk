@@ -1,9 +1,9 @@
 ---
 id: SPEC-CARD-METADATA-VERBS-001
 title: "Implementation plan — card-metadata editing verbs"
-version: "0.2.0"
+version: "0.3.0"
 created: 2026-10-17
-updated: 2026-10-17
+updated: 2026-10-18
 author: manager-spec
 tags: "card-metadata, set-spec, reclassify, audit-trail, card-t1840"
 ---
@@ -62,13 +62,13 @@ Lane boundary precedent: `factoryLaneRefusal` (`internal/cli/factory_card.go:120
 
 ## §E Self-Verification
 
-Plan-phase: this document plus spec.md, acceptance.md, progress.md, decision-index.md authored by manager-spec; `moai spec lint` run on spec.md at strict level before the plan-audit; frontmatter validated against `.claude/rules/moai/development/spec-frontmatter-schema.md` (12 canonical fields, `phase` a release target, status `draft`). Iteration-2 repair (v0.2.0) applied the plan-audit iteration-1 fix routes D1-D6 (blocking) and D7-D10 (optional, applied where cheap).
+Plan-phase: this document plus spec.md, acceptance.md, progress.md, decision-index.md authored by manager-spec; `moai spec lint` run on spec.md at strict level before the plan-audit; frontmatter validated against `.claude/rules/moai/development/spec-frontmatter-schema.md` (12 canonical fields, `phase` a release target, status `draft`). Iteration-2 repair (v0.2.0) applied the plan-audit iteration-1 fix routes D1-D6 (blocking) and D7-D10 (optional, applied where cheap). Iteration-3 repair (v0.3.0) applied the iteration-2 blockers N1-N3 and the optional N4-N5: the REQ-CMV-004 direction-6 catch-up with the gate-(d) converged-AND-audited semantics and QUEUE-read pin, the M1 commit-boundary split (audit append outside the homestate transaction), the reclassify queue-layer write-target decoupling, and the refusal-atomicity sweep rewording.
 
 ## §F Milestones
 
 Ordered by decision-reversibility: the data model lands first (hardest to reverse once audit rows exist), user-facing verbs second, mechanical integration last.
 
-### M1 — Audit surface and record-layer mutation functions (Priority High)
+### M1 — Audit surface and the set-spec record-layer mutation function (Priority High)
 
 Data model + homestate layer. RED tests first. Pre-condition: decision-index Q3 disposition (satisfied — Default applied).
 
@@ -76,26 +76,26 @@ Data model + homestate layer. RED tests first. Pre-condition: decision-index Q3 
 - RED: `TestCardMetadataSurface_RowPreserving` — pre-seeded rows of every existing table byte-identical after the migration runs (REQ-CMV-014).
 - RED: `TestSetCardSpec_AnyState_Lands` — the record-layer mutation function writes spec_id at every state `CardStates()` enumerates (all 21: picked plus the 20 post-picked; the sweep derives from the source enumeration, not a hand-picked subset), bumping version (REQ-CMV-005); contrast case documents that `RecordPicked` still refuses past-picked (characterization guard, so the while-picked rule is not silently widened for `assign`).
 - RED: `TestSetCardSpec_StaleVersion_Refused` (REQ-CMV-005).
-- GREEN: card-keyed metadata event surface — additive `CREATE TABLE IF NOT EXISTS card_metadata_events`, the decision-index Q3 Default (applied 2026-10-17) — plus the set-spec/reclassify record-layer mutation functions in `internal/homestate` beside `RecordPicked` (withCardTx + updateCardRow + event append; the `card.fields` event path is the precedent), the strict spec-grammar pattern, version fencing, and the compensating-restore entry point REQ-CMV-004 direction 2 requires.
+- GREEN: card-keyed metadata event surface — additive `CREATE TABLE IF NOT EXISTS card_metadata_events`, the decision-index Q3 Default (applied 2026-10-17) — plus, scoped to `set-spec` ONLY, the record-layer card-row mutation function in `internal/homestate` beside `RecordPicked` (withCardTx + updateCardRow + version fencing; NO audit append inside this function and none inside the homestate transaction — the `card.fields` event path at `card_picked.go:197` is the precedent for the versioned-write MECHANICS only, never for append timing, because REQ-CMV-004 orders the audit row after both stores commit), the strict spec-grammar pattern, the compensating-restore entry point REQ-CMV-004 direction 2 requires, and the separate audit-append entry points — the after-both-commits append and the direction-6 catch-up append — both invoked outside the mutation function, after both stores have committed (the catch-up mutates neither store). `reclassify` gets NO card-row mutation function here: its write target is the queue item's classification record (REQ-CMV-009), landed in M3 as a queue-layer `WithLock`/`Mutate` write — only its audit append touches this surface.
 
 ### M2 — `set-spec` CLI verb + flag gate (Priority High)
 
 User-facing surface. RED tests first. Pre-condition: decision-index Q1 disposition before this milestone begins (Default: `moai factory` family; operator confirms at Kickoff).
 
 - RED: `TestSetSpec_FlagOff_Refused` — refusal names the flag key; queue and factory stores untouched (row level); no audit row (REQ-CMV-001, REQ-CMV-002 default).
-- RED: `TestSetSpec_ValidationGate` — the refusal table of AC-CMV-003: admission states, no-factory-record (queue-picked, never-assigned), grammar cases, no-change (REQ-CMV-003).
+- RED: `TestSetSpec_ValidationGate` — the refusal table of AC-CMV-003: admission states, no-factory-record (queue-picked, never-assigned), grammar cases, no-change — the converged-AND-audited duplicate of gate (d) (REQ-CMV-003; the converged-but-unaudited admission is asserted in `TestSetSpec_FailureMatrix`, direction 6).
 - RED: `TestSetSpec_TwoStoresWritten` — queue item AND factory record carry the new value; exactly one audit row (REQ-CMV-004, REQ-CMV-010).
-- RED: `TestSetSpec_FailureMatrix` — the four injected directions of AC-CMV-005: factory-side failure (nothing committed, queue write never attempted), queue-side failure after the record commit (compensating restore + divergence sentinel, no audit row), compensating-write failure (sentinel names card, prior value, attempted value), audit-append failure after both commits (one retry, audit-loss sentinel, stores left in place) (REQ-CMV-004).
+- RED: `TestSetSpec_FailureMatrix` — the four injected directions plus the two seeded crash states of AC-CMV-005: factory-side failure (nothing committed, queue write never attempted), queue-side failure after the record commit (compensating restore + divergence sentinel, no audit row), compensating-write failure (sentinel names card, prior value, attempted value), audit-append failure after both commits (one retry, audit-loss sentinel, stores left in place); seeded record-new/queue-old (direction 5) — the re-run is admitted and converges both stores with exactly one audit row; seeded both-converged/unaudited (direction 6) — the re-run is admitted as the converged-state audit completion, emits exactly the owed row with the re-run's actor and reason, mutates neither store, exits zero; and the duplicate re-run after that completion (converged AND audited) is refused with no second row (REQ-CMV-004).
 - RED: `TestSetSpec_ReasonValidation` — empty, whitespace-only, 501 runes refused; 500 accepted (REQ-CMV-012).
-- RED: `TestSetSpec_RefusalAtomicity` — every refusal above leaves both stores unchanged (row level) and writes no audit row (REQ-CMV-013).
-- GREEN: verb under the decision-index Q1 Default family (`moai factory set-spec <card> --spec <id> --reason "..."`), config key + gate check + the Go config default (the template key and help text land in M5 — one milestone per config surface), grammar validation, record→queue write order inside `WithLock`, audit append only after both stores commit.
+- RED: `TestSetSpec_RefusalAtomicity` — the gate-refusal set only — flag-off, the REQ-CMV-003 admission/no-record/grammar/no-change gates, and the REQ-CMV-012 reason refusals (every refusal at a gate BEFORE the write, REQ-CMV-013's scope) — leaves both stores unchanged (row level) and writes no audit row; the failure directions are NOT in this sweep (their rules deliberately leave residue — the compensating restore, the surfaced divergence, the audit-loss sentinel) and are asserted per-direction by `TestSetSpec_FailureMatrix`, as is the direction-6 catch-up, which is an admitted completion, not a refusal (REQ-CMV-013).
+- GREEN: verb under the decision-index Q1 Default family (`moai factory set-spec <card> --spec <id> --reason "..."`), config key + gate check + the Go config default (the template key and help text land in M5 — one milestone per config surface), grammar validation, record→queue write order inside `WithLock`, audit append only after both stores commit through M1's separate append entry point, and the no-change gate comparing against the QUEUE item — refusing only a converged-AND-audited duplicate and admitting the direction-6 catch-up.
 
 ### M3 — `reclassify` CLI verb (Priority Medium)
 
 - RED: `TestReclassify_ValidationGate` — admission states (queued/picked admitted; dropped, hold, missing refused, positive enumeration), closed-set mode/priority tables through the real validator, no-axis usage refusal (REQ-CMV-007).
 - RED: `TestReclassify_UnspecifiedAxisPreserved` + `TestReclassify_BlockedUntouched` (REQ-CMV-008).
 - RED: `TestReclassify_WriteSemantics` — decider `human`, fresh stamp, reason landed; first-time classification acquires the nullable field additively (REQ-CMV-009).
-- GREEN: verb, `--mode`/`--priority`/`--reason` flags, read-modify-write through `EffectiveCardClassification`, audit append.
+- GREEN: verb, `--mode`/`--priority`/`--reason` flags, the queue-layer `WithLock`/`Mutate` classification write — REQ-CMV-009's write target, the queue item's classification record; NO Card-row write and no run identity (a queued-only card has no factory row — REQ-CMV-007 admits `queued`), so a queued-only card takes the queue-only path and only the audit append touches homestate — read-modify-write through `EffectiveCardClassification`, audit append after the queue write commits.
 
 ### M4 — Actor resolution, lane boundary, consumer integration (Priority Medium)
 
@@ -120,10 +120,10 @@ Pre-condition: decision-index Q2 disposition (satisfied — Default applied: no 
 - **Do not** widen `RecordPicked`'s while-picked rule for `assign` — the new verb gets its own mutation function; `assign --spec` keeps its existing semantics (M1 contrast case pins this).
 - **Do not** re-spell the closed sets or the spec grammar — reuse `ValidateCardClassification`; define the strict grammar as a NEW pattern beside `specIDPattern`, never a mutation of it.
 - **Do not** write the queue store outside `WithLock`/`Mutate`.
-- **Do not** claim or build cross-database transactionality — `WithLock` is a lock; the REQ-CMV-004 failure matrix defines every divergence direction and its rule (compensating restore, surfaced double-failure, audit-loss sentinel, re-run heal).
+- **Do not** claim or build cross-database transactionality — `WithLock` is a lock; the REQ-CMV-004 failure matrix defines every divergence direction and its rule (compensating restore, surfaced double-failure, audit-loss sentinel, re-run heal, converged-state catch-up).
 - **Do not** key audit rows by run — a queued card has no run (Q3 Default rationale); do not invent a synthetic run id; do not add a nullable card column to the existing `events` table (foreclosed by REQ-CMV-014).
 - **Do not** create a factory card row for a never-assigned card or invent a run identity for it — set-spec refuses (REQ-CMV-003 gate (b)).
-- **Do not** emit an audit row on a refused or aborted mutation (fail-atomic; the append runs only after both stores commit).
+- **Do not** emit an audit row for a mutation whose store writes did not both commit (fail-atomic; the append runs only after both stores commit — the direction-6 catch-up appends precisely because both stores DID commit in the crashed run; the row is owed, not fabricated).
 - **Do not** touch the in-tree `backlog.db` (ghost); the home DB is the live store, resolved through the sibling seam.
 - **Do not** have t1715's recovery verbs re-implement set-spec (spec.md §E; the leader's dispatch of t1715 annotates its card text to reuse this verb).
 
