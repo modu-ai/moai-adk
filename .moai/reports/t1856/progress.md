@@ -282,3 +282,32 @@ package's own skips, unrelated to this card. Named lines from the file:
 - (d) The origin/develop survey (§6) is follow-up material, untouched.
 - (e) The recording agent re-observed nothing; it transcribed the files above (and re-counted
   PASS/FAIL/SKIP lines with grep).
+
+## 10. Sync audit round 1 FAIL and the explicit wait (lane-22, 2026-10-17)
+
+Sync audit round 1 returned FAIL (score 0.55; required backend codex also fail; file
+`.moai/reports/t1856/sync-audit.md`, preserved in commit `6b97e64bc`). Blocking findings, each
+confirmed by the lane against the source: F1 `internal/hook/env_literal_diff_base_test.go:52`
+hard-codes `/private/tmp` while CI runs ubuntu-latest only; F2 the two new tests do not pin the
+`main` -> `origin/main` order (mutants `{"main","develop","origin/main"}` and
+`{"origin/main","main"}` pass them). Non-blocking: F3 literal-`develop` base lookups missing from
+the survey, F4 survey recount (1903 vs 1919), F5 CHANGELOG sentence overstates. The resolver
+change itself was judged correct. Repair is test code only and is not done yet.
+
+Wait record `w-t1856-20261017T1750Z-c305` (explicit wait, no idle-spin):
+- reason: the repair spawn (manager-develop) is refused by the spawn guard:
+  `AUDIT_RECEIPT_VIOLATION: ... Outstanding: sync-auditor / unknown-spec / verdict line missing`.
+  The refusal record is `.moai/state/audit-receipts/rejections/sync-auditor--unknown-spec.json`
+  (agent_id ac98645f0cf74b59e, rejected_at 2026-10-17T17:12:20Z).
+- whom: the leader. Standing rule `d-20261017T152443Z-c305` gives the leader, not a lane, the power
+  to remove exactly one such record; the lane compared all five of its conditions against the
+  observed record and sent the facts to the leader at 17:12Z.
+- observed since: three watchdog channels unchanged from 17:31:11Z to 17:50:03Z (HEAD `6b97e64bc`,
+  newest evidence mtime unchanged, integration window free); the decision board holds no record for
+  this card newer than `d-20261017T165823Z-ea3d` (16:58Z). Ladder steps 3 (audit cross) and 4
+  (jev_ask) do not apply: the open question is a guard state, not a verdict.
+- recheck point: every standing recheck cron fire (renew both leases, then read the refusal record
+  and the board). The lane does not delete the record, bypass the guard, or re-send the request.
+- on resolution: spawn the repair (F1, F2 tests with mutant observation, F3-F5 records), re-run the
+  targeted selector, re-audit with the required codex backend, then merge-ready and the landing
+  re-measure (b2cd, rule 35e9 as clarified by `d-20261017T155926Z-148c`).
