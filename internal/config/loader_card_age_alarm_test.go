@@ -151,22 +151,42 @@ func TestCardAgeAlarmTemplateCarriesBlock(t *testing.T) {
 	if !strings.Contains(body, "card_age_alarm:") {
 		t.Fatal("template workflow.yaml carries no card_age_alarm block")
 	}
-	for _, pair := range [][2]string{
-		{"enabled:", "false"},
-		{"gate_warn_after:", DefaultCardAgeAlarmGateWarnAfter.String()},
-		{"gate_alert_after:", DefaultCardAgeAlarmGateAlertAfter.String()},
-		{"stall_warn_after:", DefaultCardAgeAlarmStallWarnAfter.String()},
-		{"stall_alert_after:", DefaultCardAgeAlarmStallAlertAfter.String()},
+	if !strings.Contains(body, "enabled: false") {
+		t.Fatal("template card_age_alarm block does not show the OFF flag")
+	}
+	for _, pair := range []struct {
+		key  string
+		want time.Duration
+	}{
+		{"gate_warn_after:", DefaultCardAgeAlarmGateWarnAfter},
+		{"gate_alert_after:", DefaultCardAgeAlarmGateAlertAfter},
+		{"stall_warn_after:", DefaultCardAgeAlarmStallWarnAfter},
+		{"stall_alert_after:", DefaultCardAgeAlarmStallAlertAfter},
 	} {
-		needle := pair[0] + " " + pair[1]
-		if !strings.Contains(body, needle) {
-			t.Fatalf("template block does not carry %q", needle)
+		line := caaTemplateValue(t, body, pair.key)
+		d, err := time.ParseDuration(line)
+		if err != nil || d != pair.want {
+			t.Fatalf("template %s = %q, want the compiled default %s", pair.key, line, pair.want)
 		}
 	}
 	// The values are declared unmeasured where they ship, so a reader tuning
 	// them knows they are starting points, not recommendations.
-	block := body[strings.Index(body, "card_age_alarm:"):strings.Index(body, "card_age_alarm:")+600]
+	block := body[strings.Index(body, "card_age_alarm:") : strings.Index(body, "card_age_alarm:")+600]
 	if !strings.Contains(strings.ToLower(block), "unmeasured") {
 		t.Fatal("template card_age_alarm block does not declare its values unmeasured")
 	}
+}
+
+// caaTemplateValue returns the value written after key on its indented
+// template line.
+func caaTemplateValue(t *testing.T, body, key string) string {
+	t.Helper()
+	for _, line := range strings.Split(body, "\n") {
+		trimmed := strings.TrimSpace(line)
+		if strings.HasPrefix(trimmed, key) {
+			return strings.TrimSpace(strings.TrimPrefix(trimmed, key))
+		}
+	}
+	t.Fatalf("template carries no %s line", key)
+	return ""
 }
