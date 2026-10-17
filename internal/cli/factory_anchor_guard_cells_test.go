@@ -94,6 +94,33 @@ func TestLauncherAnchorFinalArgv(t *testing.T) {
 		}
 	})
 
+	// Controls for §D.4 rows 15-17: with a SINGLE `--` the launcher eats it as its
+	// own separator, so the backend sees `-n -w WT-card`: `-n` takes `-w` as its
+	// value (a required-value option takes a flag-shaped token), and `WT-card` is
+	// a positional — no worktree selection, the leader launch is allowed. Without
+	// them rows 15-17 would also pass a resolver that simply stopped honouring `--`.
+	t.Run("required_value_separator_controls", func(t *testing.T) {
+		for _, arm := range leaderArms {
+			for _, args := range [][]string{
+				{"-n", "--", "-w", "WT-card"},
+				{"-cn", "--", "-w", "WT-card"},
+				{"--append-system-prompt", "--", "--worktree", "WT-card"},
+			} {
+				t.Run(arm+"/"+strings.Join(args, "_"), func(t *testing.T) {
+					view := resolveLaunchView(args)
+					if view.Selection.Present {
+						t.Errorf("view selection = %+v, want none (the value option took the worktree flag as its value)", view.Selection)
+					}
+					fx := newLeaderFixture(t)
+					obs := driveLeaderLaunch(t, fx, arm, append([]string{"-f"}, args...))
+					if obs.err != nil || !obs.launched {
+						t.Errorf("leader launch of a single-separator form: err=%v launched=%v, want allowed", obs.err, obs.launched)
+					}
+				})
+			}
+		}
+	})
+
 	// AC-LA-005: for every §D.4 spelling the view's FinalArgv equals, token by
 	// token, the argv the exec boundary receives (minus the flags the launcher
 	// injects from profile state and, for a leader, the tail flags it appends

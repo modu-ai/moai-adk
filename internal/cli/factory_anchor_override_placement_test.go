@@ -36,6 +36,12 @@ func TestLauncherAnchorOverrideFlagPlacement(t *testing.T) {
 			{"attached cluster value takes no next token", []string{"-cnNAME", "--allow-card-anchor"}, []string{"-cnNAME"}, true},
 			{"cluster ending in an optional-value option leaves a flag-shaped token alone", []string{"-cw", "--allow-card-anchor"}, []string{"-cw"}, true},
 			{"the separator is never a value", []string{"-cn", "--", "--allow-card-anchor"}, []string{"-cn", "--", "--allow-card-anchor"}, false},
+			// One argv, one interpretation: consumeLaunchArgs eats the token after
+			// --model / --permission-mode / -m even when it is `--`; any other
+			// option's following `--` is the launcher's own separator.
+			{"the separator is the value of a launcher-consumed option", []string{"--model", "--", "--allow-card-anchor"}, []string{"--model", "--"}, true},
+			{"the separator is the value of -m", []string{"-m", "--", "--allow-card-anchor"}, []string{"-m", "--"}, true},
+			{"the separator after another value option is the launcher separator", []string{"--name", "--", "--allow-card-anchor"}, []string{"--name", "--", "--allow-card-anchor"}, false},
 			{"a cluster of booleans only", []string{"-cc", "--allow-card-anchor"}, []string{"-cc"}, true},
 		}
 		for _, tc := range cases {
