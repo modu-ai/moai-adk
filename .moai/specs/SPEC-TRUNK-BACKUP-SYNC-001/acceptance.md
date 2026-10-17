@@ -1,7 +1,7 @@
 ---
 id: SPEC-TRUNK-BACKUP-SYNC-001
 title: "Acceptance criteria — trunk backup sync verb + workflow-exclusion regression guard"
-version: "0.2.0"
+version: "0.3.0"
 created: 2026-10-17
 updated: 2026-10-17
 author: manager-spec
@@ -34,7 +34,7 @@ tags: "trunk-backup, sync-ref, git-push, workflow-triggers, regression-guard"
 ## §B — Acceptance criteria
 
 - **AC-TBS-001 — live workflow sweep**. Given the repository's `.github/workflows/` at the tested commit, when the regression test enumerates every `*.yml`/`*.yaml` file and evaluates each `on.push` trigger's branch filter against the ref name `sync/main`, then every push trigger excludes `sync/main`, and the test asserts it found at least one workflow file carrying a push trigger (empty-sweep guard: a zero-count sweep fails the test, never passes it).
-- **AC-TBS-002 — mutant detection (observed-failure evidence)**. Given the in-test mutant fixtures — a bare `on: push` block with no branch filter, a `branches: ['sync/**']` list, and the bidirectional set of REQ-TBS-005 (`['**']` admits `sync/main`; `['*']` does not; `['**', '!sync/main']` does not, last-match negation winning; `['sync/m[a-i]n']` does, character-class support) — when the same matcher evaluates them, then each fixture's admission verdict matches that stated direction. These cases are the guard's red-on-known-failing-input record in both directions (verification-completeness §1.1, §2 mutant probe); a matcher that passes the live sweep but misses a mutant, or one that flags `['*']` as admitting, fails this criterion.
+- **AC-TBS-002 — mutant detection (observed-failure evidence)**. Given the in-test mutant fixtures — a bare `on: push` block with no branch filter, a `branches: ['sync/**']` list, and the bidirectional set of REQ-TBS-005 (`['**']` admits `sync/main`; `['*']` does not; `['**', '!sync/main']` does not, last-match negation winning; `['sync/m[a-z]in']` does, character-class support) — when the same matcher evaluates them, then each fixture's admission verdict matches that stated direction. These cases are the guard's red-on-known-failing-input record in both directions (verification-completeness §1.1, §2 mutant probe); a matcher that passes the live sweep but misses a mutant, or one that flags `['*']` as admitting, fails this criterion.
 - **AC-TBS-003 — first backup push against a temp remote**. Given a temporary repository whose `origin` is a bare repository under `t.TempDir()`, with `refs/heads/main` at commit SHA `X` and no `sync/main` on the remote, when the verb runs, then the remote gains `refs/heads/sync/main` at `X`, no other remote ref changes, and the verb's output names `X` and the target ref.
 - **AC-TBS-004 — force scoping, the non-FF case, and no tag leak**. Given the temp remote's `refs/heads/sync/main` at a commit that is not an ancestor of local `main` (the rewound-main shape), when the verb runs, then the push succeeds and updates `sync/main`; given the test's captured record of every git command the verb issued across all runs, then `--force` (or `-f`) appears only on the exact constant refspec `refs/heads/main:refs/heads/sync/main`, and no captured command updates any other remote ref; and given a temp clone whose gitconfig sets `push.followTags=true` with an annotated `v*` tag reachable from `main`, when the verb runs, then the remote ref set changes only at `refs/heads/sync/main` — no tag ref is created (the `--no-follow-tags` constant holds).
 - **AC-TBS-005 — refusal on missing main**. Given a temporary repository in which `refs/heads/main` does not resolve, when the verb runs, then it exits non-zero, prints guidance naming the missing ref and the constant target, and its captured command record shows no push command was executed.
@@ -42,7 +42,7 @@ tags: "trunk-backup, sync-ref, git-push, workflow-triggers, regression-guard"
 - **AC-TBS-007 — environment scrub (t1478 shape)**. Given a process environment carrying inherited `GIT_DIR`/`GIT_WORK_TREE` pointing at a foreign temporary repository, when the verb runs, then the push targets the caller's repository (the temp clone the test constructed), proving repository-location variables were removed before exec.
 - **AC-TBS-008 — runbook and template isolation**. Given the card's final state, then `.moai/docs/trunk-backup-runbook.md` exists and carries the four REQ-TBS-007 statements (leader-round step; operator-approved origin-push scope; redundancy-copy-only status; unchanged batch discipline and main protection), and no file under `internal/template/templates/` and no branch-protection or guard configuration changed.
 - **AC-TBS-009 — push-failure reporting**. Given a temporary remote configured to reject the ref update (a failing pre-receive hook), when the verb runs, then it exits non-zero, prints both the stdout and the stderr of the failed push command, and its captured command record shows no git command was issued after the failed push.
-- **AC-TBS-010 — guard fires on workflow-only diffs**. Given `.github/test-input-filters.yml` after M1, when its `go_code` path filter is read, then it maps `.github/workflows/**`, so a diff touching only workflow files (a new file, or an edit to any of the currently unmapped 18) no longer classifies as not-Go and the Go suite — with it the REQ-TBS-005 guard — is scheduled. The static mapping is verifiable by a single grep for `.github/workflows/**` in that file (RED-now cell E-TBS-R5: at the audited tree the filter maps only three named workflow files).
+- **AC-TBS-010 — guard fires on workflow-only diffs**. Given `.github/test-input-filters.yml` after M1, when its `go_code` path filter is read, then it maps `.github/workflows/**`, so a diff touching only workflow files (a new file, or an edit to any of the currently unmapped 18) no longer classifies as not-Go and the Go suite — with it the REQ-TBS-005 guard — is scheduled. The mapping is verifiable by parsing the file's YAML and asserting that the `go_code` sequence contains `.github/workflows/**` as a parsed list entry — never by text search, which a comment mentioning the glob also satisfies (in-tree parsing precedent: `mappingSequenceStrings`, `internal/template/dotgithub_template_test.go:322`). RED-now cell E-TBS-R5: at the audited tree the filter maps only three named workflow files.
 
 ## §C — Edge cases (covered by the tests or explicitly excluded)
 
@@ -67,7 +67,7 @@ tags: "trunk-backup, sync-ref, git-push, workflow-triggers, regression-guard"
 
 ### RED-now evidence ledger (tree `8bff29c5f`, measured 2026-10-17)
 
-Provenance: file-reading probes observed directly on the tree; the `moai`-invoking probe executed by the installed build `/Users/goos/go/bin/moai` (moai-adk v3.2.0-rc.36-t1822c, commit `ee981a932` — a strict ancestor of `8bff29c5f`; the verb's absence is a property of both the installed surface and the tree, which contains no `newIntegrationBackupCmd` anywhere). Two recording notes: (i) stdout blocks below preserve line content byte-for-byte; the terminal form's trailing space padding is not reproduced inside markdown fencing. (ii) Divergence note (D1): the audit verdict's example predicted `Error: unknown command "backup" for "moai integration"`; the installed binary resolves an unknown subcommand to the parent group help instead — the recorded stdout is the observed output, not the predicted one.
+Provenance: file-reading probes observed directly on the tree; the `moai`-invoking probe executed by the installed build `/Users/goos/go/bin/moai` (moai-adk v3.2.0-rc.36-t1822c, commit `ee981a932` — a strict ancestor of `8bff29c5f`; the verb's absence is a property of both the installed surface and the tree, which contains no `newIntegrationBackupCmd` anywhere). Two recording notes: (i) E-TBS-R1's stdout block is the raw command output embedded by file redirect (round-2 recapture, D13), with exactly two stated transformations — each line is indented four spaces for ledger layout, and the output's final newline is elided at the fence; trailing space runs and the leading blank line are preserved as bytes. R2-R5 blocks preserve line content byte-for-byte, with the terminal form's trailing space padding not reproduced inside markdown fencing. (ii) Divergence note (D1): the audit verdict's example predicted `Error: unknown command "backup" for "moai integration"`; the installed binary resolves an unknown subcommand to the parent group help instead — the recorded stdout is the observed output, not the predicted one. The R1 recapture was executed at tree `72135c81f` with the same judging build (`ee981a932`) and reproduces the round-1 measurement; per the round-2 verdict, the cell's command, exit code, and `8bff29c5f` pin are unchanged.
 
 ```text
 E-TBS-R1 — the verb is absent from the shipped command surface
@@ -75,36 +75,38 @@ E-TBS-R1 — the verb is absent from the shipped command surface
   tree:      8bff29c5f (judging build ee981a932)
   exit code: 0
   stdout (verbatim):
-    Hold and release the release-integration window.
-
-    A lane announces its integration to the leader, then records the hold here so
-    the PreToolUse guard can refuse a second lane's `git merge` in the release
-    worktree. The record lives in the primary checkout's .moai/state, visible
-    from every linked worktree.
-
-    The deny layer is opt-in (workflow.integration_lock.enabled, default false);
-    these verbs work regardless, so a project may keep the record as a
-    coordination signal without enabling refusal.
-
-    USAGE
-
-      moai integration [command] [--flags]
-
-    COMMANDS
-
-      status [--flags]                              Report who holds the release-integration window
-      acquire [--flags]                             Record this session as the holder of the release-integration window
-      release [--flags]                             Release the release-integration window this session holds
-      policy open|hold --reason <text> [command]    Read or set the release-integration window policy (open | hold)
-      remeasure -- <command>                        Run the re-measure and store the record keyed to the candidate tree
-      merge --card <id> [--session <id>] [--flags]  Run the in-window merge step for a card (holder only; thirteen causes, one path)
-      preflight [path] [--flags]                    Assert that a worktree has no modified tracked .claude/settings.json
-      resync                                        Fast-Forward the primary checkout's local main to origin/main, inside the integration window
-      candidate --card <id> [--observe] [--flags]   Build and push this card's pre-landing candidate commit to ci/<card> (the landing gate consumes its verdict); --observe records the CI run's verdict instead
-
-    FLAGS
-
-      -h --help                                     Help for integration
+    
+      Hold and release the release-integration window.                                                                      
+                                                                                                                            
+      A lane announces its integration to the leader, then records the hold here so                                         
+      the PreToolUse guard can refuse a second lane's `git merge` in the release                                            
+      worktree. The record lives in the primary checkout's .moai/state, visible                                             
+      from every linked worktree.                                                                                           
+                                                                                                                            
+      The deny layer is opt-in (workflow.integration_lock.enabled, default false);                                          
+      these verbs work regardless, so a project may keep the record as a                                                    
+      coordination signal without enabling refusal.                                                                         
+             
+      USAGE  
+             
+        moai integration [command] [--flags]  
+                
+      COMMANDS  
+                
+        status [--flags]                              Report who holds the release-integration window
+        acquire [--flags]                             Record this session as the holder of the release-integration window
+        release [--flags]                             Release the release-integration window this session holds
+        policy open|hold --reason <text> [command]    Read or set the release-integration window policy (open | hold)
+        remeasure -- <command>                        Run the re-measure and store its record keyed by the candidate tree
+        merge --card <id> [--session <id>] [--flags]  Run the in-window merge step for a card (holder only; thirteen causes, one path)
+        preflight [path] [--flags]                    Assert that a worktree has no modified tracked .claude/settings.json
+        resync                                        Fast-Forward the primary checkout's local main to origin/main, inside the integration window
+        candidate --card <id> [--observe] [--flags]   Build and push this card's pre-landing candidate commit to ci/<card> (the landing gate consumes its verdict); --observe records the CI run's verdict instead
+             
+      FLAGS  
+             
+        -h --help                                     Help for integration
+    
   RED reading: the COMMANDS enumeration lists exactly nine subcommands — no `backup`. Every
   verb-behavior criterion is unmeetable at this tree.
 
