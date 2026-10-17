@@ -2,7 +2,7 @@
 id: SPEC-FACTORY-RETIRE-GUARD-001
 title: "Factory run retirement guard — operator run retirement refuses a run that still holds in-progress cards"
 version: "0.1.0"
-status: draft
+status: in-progress
 created: 2026-10-17
 updated: 2026-10-17
 author: manager-spec
