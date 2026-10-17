@@ -497,7 +497,7 @@ var pathsForbiddenSelectors = map[string]bool{
 	"EnsureProjectLayout": true, "EnsureHomeLayout": true, "FactoryRegistryPath": true,
 	"BacklogPathForRoot": true, "BacklogPathForRootAdopting": true,
 	"MkdirAll": true, "Mkdir": true, "WriteFile": true, "Create": true, "OpenFile": true,
-	"Rename": true, "Remove": true, "RemoveAll": true, "Join": true,
+	"Rename": true, "Remove": true, "RemoveAll": true,
 }
 
 // forbiddenPathsCalls parses src and reports every forbidden selector, plus any
@@ -514,9 +514,14 @@ func forbiddenPathsCalls(t *testing.T, filename, src string) []string {
 		if !ok {
 			return true
 		}
-		if pathsForbiddenSelectors[sel.Sel.Name] {
+		id, _ := sel.X.(*ast.Ident)
+		switch {
+		case pathsForbiddenSelectors[sel.Sel.Name]:
 			found = append(found, sel.Sel.Name)
-		} else if id, ok := sel.X.(*ast.Ident); ok && strings.HasPrefix(sel.Sel.Name, "Open") {
+		case id != nil && sel.Sel.Name == "Join" && (id.Name == "filepath" || id.Name == "path"):
+			// the command never joins path segments of its own (REQ-DBP-002)
+			found = append(found, id.Name+".Join")
+		case id != nil && strings.HasPrefix(sel.Sel.Name, "Open"):
 			switch id.Name {
 			case "homestate", "factorymsg", "sql", "sqlite3":
 				found = append(found, id.Name+"."+sel.Sel.Name)
@@ -532,6 +537,12 @@ func TestPaths_SourceHasNoOpeningCalls(t *testing.T) {
 	// the two resolvers that would let the command report a legacy directory.
 	if got := forbiddenPathsCalls(t, "bad.go", "package x\nfunc f(){ _, _ = homestate.OpenFactory(\"r\") }"); len(got) == 0 {
 		t.Fatalf("positive control: the detector missed homestate.OpenFactory")
+	}
+	if got := forbiddenPathsCalls(t, "bad.go", "package x\nfunc f(){ _ = filepath.Join(\"a\", \"todo\") }"); len(got) == 0 {
+		t.Fatalf("positive control: the detector missed filepath.Join")
+	}
+	if got := forbiddenPathsCalls(t, "ok.go", "package x\nfunc f(){ _ = strings.Join(nil, \",\") }"); len(got) != 0 {
+		t.Fatalf("strings.Join joins no path and must not be flagged: %v", got)
 	}
 	for _, name := range []string{"BacklogPathForRoot", "BacklogPathForRootAdopting", "FactoryRegistryPath", "EnsureProjectLayout"} {
 		if !pathsForbiddenSelectors[name] {
