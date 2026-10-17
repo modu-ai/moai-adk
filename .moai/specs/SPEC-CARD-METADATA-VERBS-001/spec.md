@@ -1,7 +1,7 @@
 ---
 id: SPEC-CARD-METADATA-VERBS-001
 title: "Card-metadata editing verbs — set-spec and reclassify with an actor+reason audit trail"
-version: "0.1.0"
+version: "0.2.0"
 status: draft
 created: 2026-10-17
 updated: 2026-10-17
@@ -33,7 +33,7 @@ In scope:
 
 - Two CLI verbs on the card record: `set-spec` (spec_id, after pick) and `reclassify` (mode + priority, after issue).
 - Validation: SPEC-ID grammar for `set-spec`; closed-set values for `reclassify`; non-empty bounded reason for both.
-- An audit surface recording actor, timestamp, field, old value, new value, and reason for every successful metadata mutation, reusing the shape of the existing homestate `events` mechanism (`internal/homestate/factory.go:79-84`, `appendEvent` at `internal/homestate/card_transition.go:901`).
+- An audit surface recording actor, timestamp, field, old value, new value, and reason for every successful metadata mutation: a NEW card-keyed `card_metadata_events` table in the homestate database (decision-index Q3, Default applied 2026-10-17) reusing the shape of the existing `events` mechanism (`internal/homestate/factory.go:79-84`, `appendEvent` at `internal/homestate/card_transition.go:901`).
 - A config flag, default OFF, gating both verbs.
 - Actor identity capture following the existing patterns: lane label via `MOAI_FACTORY_WORKER` (`internal/cli/factory_audit_decide.go:30-34`), operator default, session UUID via the existing capture (`integrationSessionID`, `internal/cli/integration.go:138-150`).
 
@@ -49,49 +49,58 @@ Two stores are in play and both are write targets for `set-spec`:
 - REQ-CMV-001: **Where** `workflow.card_metadata_verbs.enabled` is not true, the `set-spec` and `reclassify` verbs shall refuse with a refusal naming the flag key, writing neither store and no audit row.
 - REQ-CMV-002: The distributed configuration default for `workflow.card_metadata_verbs.enabled` shall be false (flag default OFF), following the existing `workflow.<feature>.enabled` key conventions in `.moai/config/sections/workflow.yaml`.
 
-### C.2 set-spec — admission and validation
+### C.2 set-spec — validation gate
 
-- REQ-CMV-003: **When** `set-spec` names a card whose queue item does not exist or is not in the `picked` state, the verb shall refuse through the same admission family `factory assign` uses (`requireQueuePicked`, `internal/cli/factory_card.go:2792-2806`), writing neither store.
-- REQ-CMV-004: **When** `set-spec` receives a spec_id that does not match the SPEC-ID grammar — literal `SPEC` prefix, one or more letter-leading uppercase-alphanumeric middle segments, and a digit-only three-digit tail — the verb shall refuse with a refusal quoting the rejected value, writing neither store.
-- REQ-CMV-005: **When** `set-spec` receives a spec_id equal to the value the queue item already carries, the verb shall refuse as a no-change mutation, writing neither store nor audit row.
+- REQ-CMV-003: **When** `set-spec` names a card or spec_id that fails any gate of its admission family, the verb shall refuse, writing neither store and no audit row.
+    - Gate (a) — admission state: the queue item does not exist or is not in the `picked` state (the `requireQueuePicked` family, `internal/cli/factory_card.go:2792-2806`).
+    - Gate (b) — no factory card record: the card is queue-picked but never assigned; the `cards` table is keyed `(run_id, card_id)` (`internal/homestate/factory.go:70-78`), and this SPEC creates no card row and invents no run identity for a card that has none — the operator assigns first, then sets the spec.
+    - Gate (c) — grammar: the spec_id does not match the SPEC-ID grammar (literal `SPEC` prefix, one or more letter-leading uppercase-alphanumeric middle segments, digit-only three-digit tail); the refusal quotes the rejected value.
+    - Gate (d) — no-change: the spec_id equals the value the queue item already carries (no-change mutation).
 
 ### C.3 set-spec — write semantics
 
-- REQ-CMV-006: **When** `set-spec` succeeds, the verb shall write the new spec_id to BOTH the queue item's `spec_id` and the factory card record's spec_id column, sequenced inside the queue lock so a factory-side failure rolls the queue write back (the cross-store pattern of `factory assign`, `internal/cli/factory_card.go` — `queueStore.WithLock` wrapping the record write).
-- REQ-CMV-007: The `set-spec` factory-record write shall land at every card state from `picked` onward — including every post-picked state the transition machine defines — superseding the `RecordPicked` while-picked-only field rule for this verb; the write shall bump the card row's version and refuse on a stale expected version (`ErrStaleVersion`).
-- REQ-CMV-008: **When** `set-spec` succeeds, the queue-side consumer path (`cardToSpecID`, `internal/cli/contract_report.go:44`) shall resolve the new spec_id on its next read.
+- REQ-CMV-004: **When** `set-spec` succeeds, the verb shall write the new spec_id to BOTH the queue item's `spec_id` and the factory card record's spec_id column — factory-record write first, queue write second, both inside the queue lock, and the audit row appended only after both stores have committed — under the cross-store failure matrix below. `WithLock` is a lock, not a transaction (`internal/factory/backlog_store.go:938-952`); the sequencing follows the `factory assign` cross-store pattern (`internal/cli/factory_card.go:2919-2923`), and this requirement states the rule for every direction in which the two stores can diverge.
+    - Direction 1 — factory-side failure (the record write fails): nothing commits, the queue write is never attempted, the verb refuses; both stores unchanged, no audit row.
+    - Direction 2 — queue-side failure after the record write committed: the verb shall run a compensating homestate write restoring the prior spec_id through the same version-fenced mutation function and exit non-zero with a divergence sentinel; no audit row is emitted (the append never ran).
+    - Direction 3 — the compensating write itself fails: the verb shall exit non-zero with the divergence sentinel naming the card, the prior value, and the attempted value; the record-new/queue-old divergence stands, surfaced for operator repair — this SPEC builds and claims no cross-database transactionality.
+    - Direction 4 — audit-append failure after both stores committed: the verb shall retry the append once, then exit non-zero with an audit-loss sentinel naming the card and the mutation, leaving the completed store writes in place — a surfaced missing row, never a silent success.
+    - Direction 5 — crash between the two commits: the divergence is healed by re-running the verb — the no-change gate (REQ-CMV-003 gate (d)) reads the queue item, so the re-run is admitted and converges both stores on the commanded value.
+- REQ-CMV-005: The `set-spec` record-layer mutation function (the homestate function the verb calls — not the CLI verb itself) shall land the spec_id write at every card state from `picked` onward — every state `CardStates()` enumerates (`internal/homestate/card_record.go`: 21 states, `picked` plus the 20 post-picked states; `terminalStates = [done, failed, abandoned]`) — superseding the `RecordPicked` while-picked-only field rule for this mutation function alone; the write shall bump the card row's version and refuse on a stale expected version (`ErrStaleVersion`). Verb-level admission stays queue-picked-only per REQ-CMV-003: `todo done` archives the queue item out of the queue (`internal/cli/todo.go:1319-1320`), so terminal-state rows are reachable through the record-layer function only, never through the verb.
+- REQ-CMV-006: **When** `set-spec` succeeds, the queue-side consumer path (`cardToSpecID`, `internal/cli/contract_report.go:44`) shall resolve the new spec_id on its next read.
 
-### C.4 reclassify — admission and validation
+### C.4 reclassify — validation gate
 
-- REQ-CMV-009: **When** `reclassify` names a card whose queue item is in a state other than `queued` or `picked`, the verb shall refuse, enumerating admitted states positively (no negated default that a future state could fall through).
-- REQ-CMV-010: The `reclassify` verb shall refuse any mode outside the closed set {serial, parallelizable} and any priority outside the closed set {low, normal, high}, validating through the existing closed-set validator (`ValidateCardClassification`, `internal/factory/classification.go:109-124`) rather than a re-spelled copy.
-- REQ-CMV-011: **When** `reclassify` is invoked with neither `--mode` nor `--priority`, the verb shall refuse with a usage error, writing nothing.
-- REQ-CMV-012: **When** `reclassify` supplies one axis, the verb shall preserve the other axis's current value and the `blocked` flag unchanged, deriving any absent classification through the read-side default seam (`EffectiveCardClassification`, `internal/factory/classification.go`) — the reclassify write shall never alter the `blocked` axis.
+- REQ-CMV-007: **When** `reclassify` is invoked on a card that fails any gate of its admission family, the verb shall refuse, writing nothing, enumerating admitted states positively (no negated default that a future state could fall through).
+    - Gate (a) — admission state: the queue item is in a state other than `queued` or `picked`, or is missing.
+    - Gate (b) — closed sets: a mode outside {serial, parallelizable} or a priority outside {low, normal, high}, validated through the existing closed-set validator (`ValidateCardClassification`, `internal/factory/classification.go:109-124`) rather than a re-spelled copy.
+    - Gate (c) — no axis: neither `--mode` nor `--priority` supplied (usage error).
 
 ### C.5 reclassify — write semantics
 
-- REQ-CMV-013: **When** `reclassify` succeeds, the verb shall write the supplied axes onto the queue item's classification record with decider `human`, the caller-supplied reason, and a fresh classified-at stamp, preserving the additive nullable-field discipline (absence marshals byte-identically; a card classified for the first time by reclassify acquires the field, never a placeholder value).
+- REQ-CMV-008: **When** `reclassify` supplies one axis, the verb shall preserve the other axis's current value and the `blocked` flag unchanged, deriving any absent classification through the read-side default seam (`EffectiveCardClassification`, `internal/factory/classification.go`) — the reclassify write shall never alter the `blocked` axis.
+- REQ-CMV-009: **When** `reclassify` succeeds, the verb shall write the supplied axes onto the queue item's classification record with decider `human`, the caller-supplied reason, and a fresh classified-at stamp, preserving the additive nullable-field discipline (absence marshals byte-identically; a card classified for the first time by reclassify acquires the field, never a placeholder value).
 
 ### C.6 Audit trail
 
-- REQ-CMV-014: Every successful `set-spec` or `reclassify` mutation shall append exactly one audit row carrying actor, timestamp, field, old value, new value, and the caller-supplied reason, in a card-keyed metadata event surface in the homestate database that reuses the `events` table's shape (autoincrement seq, kind, JSON payload, created-at) per `internal/homestate/factory.go:79-84`.
-- REQ-CMV-015: The audit row's actor shall be the lane label read from the lane marker environment variable when set, otherwise `operator` (the capture pattern of `factory decide`, `internal/cli/factory_audit_decide.go:30-34`), and the row shall additionally carry the session UUID resolved through the existing session-identity capture when one is resolvable.
-- REQ-CMV-016: The verbs shall refuse a reason that is empty, whitespace-only, or longer than 500 runes, writing neither store nor audit row.
-- REQ-CMV-017: **When** a mutation is refused at any gate before its write, the verb shall write no audit row and leave both stores byte-identical (refusal atomicity).
+- REQ-CMV-010: Every successful `set-spec` or `reclassify` mutation shall append exactly one audit row carrying actor, timestamp, field, old value, new value, and the caller-supplied reason, to a NEW card-keyed `card_metadata_events` table in the homestate database (decision-index Q3, Default applied 2026-10-17) that reuses the `events` table's shape — autoincrement seq, kind, JSON payload, created-at (`internal/homestate/factory.go:79-84`) — keyed by the card id the data actually has.
+- REQ-CMV-011: The audit row's actor shall be the lane label read from the lane marker environment variable when set, otherwise `operator` (the capture pattern of `factory decide`, `internal/cli/factory_audit_decide.go:30-34`), and the row shall additionally carry the session UUID resolved through the existing session-identity capture when one is resolvable.
+- REQ-CMV-012: The verbs shall refuse a reason that is empty, whitespace-only, or longer than 500 runes, writing neither store nor audit row.
+- REQ-CMV-013: **When** a mutation is refused at any gate before its write, the verb shall write no audit row and leave both stores unchanged, judged at row level (per-row content comparison on a quiesced store — the form of the migration criterion REQ-CMV-014; file-byte identity is not the criterion).
 
 ### C.7 Migration discipline
 
-- REQ-CMV-018: Adding the audit surface shall be row-preserving — additive `CREATE TABLE IF NOT EXISTS` only — and shall rewrite, migrate, or delete no existing row of any existing table.
+- REQ-CMV-014: Adding the `card_metadata_events` surface shall be row-preserving — additive `CREATE TABLE IF NOT EXISTS` only — and shall rewrite, migrate, or delete no existing row of any existing table. (This discipline also forecloses the third audit-landing option — adding a nullable card column to the existing run-keyed `events` table — per decision-index Q3.)
 
 ### C.8 Actor boundary
 
-- REQ-CMV-019: **When** either verb is invoked from a lane session (the lane marker environment variable set), the verb shall refuse with the lane-boundary sentinel of the existing lane-mutation boundary (`factoryLaneRefusal`, `internal/cli/factory_card.go:120-124`); the metadata verbs are leader/operator acts. (The t1715 lane-reuse carve-out — a lane filling a blank spec_id on its own card — is an open decision: `decision-index.md` Q2; this requirement encodes the no-carve-out default.)
+- REQ-CMV-015: **When** either verb is invoked from a lane session (the lane marker environment variable set), the verb shall refuse with the lane-boundary sentinel of the existing lane-mutation boundary (`factoryLaneRefusal`, `internal/cli/factory_card.go:120-124`); the metadata verbs are leader/operator acts. (Decision-index Q2, Default applied 2026-10-17: no lane carve-out — t1715's blank-fill affordance routes through the leader; this requirement encodes the settled default.)
 
 ## §D Constraints
 
 - RED tests first: every requirement lands as a failing test before its implementation (TDD mode per `.moai/config/sections/quality.yaml` `constitution.development_mode: tdd`).
 - Config flag default OFF: `workflow.card_metadata_verbs.enabled`, distributed default false (design doc §6 "Each stage: RED tests first, config flag default off, row-preserving migration").
 - Row-preserving migration: no destructive schema change (design doc §6).
+- Cross-store write sequence: factory-record write first, queue write second, audit append only after both commit, all inside the queue lock — the failure matrix of REQ-CMV-004 is the honest boundary of `WithLock` (a lock, not a transaction); no cross-database transactionality is claimed or built.
 - The queue store is the home SQLite database (the `<home>/db/<key>` layout), never the in-tree `backlog.db`; factory-database resolution for a queue store follows the sibling-resolution seam (`gtdFactoryDBForStore`, `internal/factory/gtd_operation.go:577+`, the site flagged P2 in a prior review).
 - Reason bound: 500 runes maximum, named constant in the implementation.
 - SPEC-ID grammar for `set-spec`: `^SPEC(-[A-Z][A-Z0-9]*)+-[0-9]{3}$` (letter-leading uppercase middle segments, digit-only three-digit tail — the card delegation's named rule). Note: pick-time acceptance remains the looser historical pattern (`specIDPattern`, `internal/homestate/card_picked.go:15`); tightening pick-time is NOT part of this SPEC (see §F).
@@ -100,7 +109,7 @@ Two stores are in play and both are write targets for `set-spec`:
 ## §E Coordination
 
 - **t1641** (picked, in queue): its addendum ("동사 부세 — pick 이후 spec_id 기록 불가" / "verb lacking — spec_id unrecordable after pick") named this exact gap. The implementation lives HERE. This SPEC absorbs that addendum: t1641 does not carry it, and t1641's remaining scope is untouched by this SPEC.
-- **t1715** (queued): its lane self-recovery item (4) — "link a SPEC id when the record has none" — REUSES the `set-spec` verb this SPEC defines; t1715 must not re-implement it. t1715 keeps its own recovery verbs (re-acquire, re-stamp, adopt-tree). The lane-affordance question (may a lane invoke `set-spec` on its own card) is decision-index Q2; t1715's card work consumes whichever resolution lands.
+- **t1715** (queued): its lane self-recovery item (4) — "link a SPEC id when the record has none" — REUSES the `set-spec` verb this SPEC defines; t1715 must not re-implement it. t1715 keeps its own recovery verbs (re-acquire, re-stamp, adopt-tree). Decision-index Q2 (Default applied): the verbs are leader/operator-only, so t1715's item (4) routes through the leader; and the leader's dispatch of t1715 annotates its card text to reuse this verb rather than re-implement it (leader-side act — plan-audit iteration-1 D10; this SPEC cannot amend t1715's queue text from this tree).
 - Stage mapping (design doc §6): this SPEC is stage E. Stage A (liveness/ownership), stage C (eligibility-filtered selection), and stage D (resource-keyed locks) are separate cards and are excluded below.
 
 ## §F Out of Scope
@@ -135,9 +144,10 @@ Two stores are in play and both are write targets for `set-spec`:
 ## §G References
 
 - Design authority (machine-local, read-only, primary tree): `/Users/goos/MoAI/moai-adk-go/.moai/reports/card-policy-redesign-20261017/design.md` §2 principle 10, §3 Metadata row, §6 stage E, §7.
-- `internal/cli/factory_card.go` — `factory assign` `--spec` path (2810-2995), `requireQueuePicked` (2792), `factoryLaneRefusal` (120).
+- `internal/cli/factory_card.go` — `factory assign` `--spec` path (2810-2995), `requireQueuePicked` (2792), `factoryLaneRefusal` (120), the `WithLock`-wrapping-`RecordPicked` cross-store pattern (2919-2923).
 - `internal/homestate/card_picked.go` — `CardFields` (63-71), spec-ID pattern (15), while-picked-only refusal (184-185), `card.fields` event (197).
-- `internal/homestate/factory.go` — `events` table shape (79-84).
+- `internal/homestate/factory.go` — `cards` PK `(run_id, card_id)` (70-78), `events` table shape (79-84; `run_id TEXT NOT NULL DEFAULT ''` at 81).
+- `internal/homestate/card_record.go` — `CardStates()` (21 states), `terminalStates` (done/failed/abandoned).
 - `internal/homestate/card_transition.go` — `TransitionRequest` (34+), `appendEvent` (901), version fencing.
 - `internal/factory/backlog_store.go` — `BacklogItem.SpecID` (89), `clearBacklogLease` (1175-1181), `WithLock`/`Mutate` (921-1000).
 - `internal/factory/classification.go` — closed sets (33-68), `ValidateCardClassification` (109), `EffectiveCardClassification`.
@@ -145,9 +155,10 @@ Two stores are in play and both are write targets for `set-spec`:
 - `internal/cli/contract_report.go` — `cardToSpecID` (43-60).
 - `internal/cli/factory_audit_decide.go` — actor capture pattern (30-34).
 - `internal/cli/integration.go` — session-identity capture (138-150).
-- `internal/cli/todo.go` — pick/unpick spec write sites (1671, 1749), `recordFactoryCardState` (1765-1778).
-- Status Transition Ownership Matrix: plan-phase artifacts authored by manager-spec (this agent); `draft → in-progress` owned by manager-develop; `in-progress → implemented → completed` owned by manager-docs (`.claude/rules/moai/development/spec-frontmatter-schema.md`).
+- `internal/cli/todo.go` — pick/unpick spec write sites (1671, 1749), `todo done` archive semantics (1319-1320), `recordFactoryCardState` (1765-1778).
+- Status Transition Ownership Matrix: plan-phase artifacts authored by manager-spec (this agent); `draft → in-progress` owned by manager-develop; `in-progress → implemented → completed` by manager-docs (`.claude/rules/moai/development/spec-frontmatter-schema.md`).
 
 ## HISTORY
 
 - 2026-10-17 v0.1.0 — Initial draft (manager-spec, card t1840 plan phase, stage E of the card-policy redesign). Absorbs the t1641 addendum naming the post-pick spec_id gap.
+- 2026-10-17 v0.2.0 — Iteration-2 repair after plan-audit FAIL 0.81 (D1-D6): Q3 ruled — new card-keyed `card_metadata_events` table recorded as the Default and applied (D1, D8); REQ-CMV-004 rewritten as a bidirectional five-direction cross-store failure matrix with a compensating action and injected-failure AC (D2); consolidated 19 REQ / 21 AC to 15 REQ / 16 AC within the Tier M ceilings of 16/16 (D3); actor AC moved to the capture-layer function (D4); all-state sweep derived from `CardStates()` at the record layer with the verb-vs-record boundary stated (D5); set-spec on a card with no factory record refused at the admission gate with the `cards` PK `(run_id, card_id)` run-identity rule (D6); row-level store-identity wording (D7); t1715 leader-annotation note (D10).
