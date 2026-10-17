@@ -335,7 +335,7 @@ audit_ready: true
 
 ```yaml
 sync_phase_complete_at: 2026-10-18
-sync_commit_sha: pending-backfill   # a commit cannot cite its own hash; the real SHA is backfilled by a following commit (spec-workflow Sync (close))
+sync_commit_sha: bc6208f587885b4647b3e567c343e46b8486f738   # backfilled: names the sync commit itself (docs(SPEC-LAUNCHER-ARGV-001): sync-phase artifacts); it carried pending-backfill because a commit cannot cite its own hash (spec-workflow Sync (close))
 sync_status: completed
 ac_source: .moai/specs/SPEC-LAUNCHER-ARGV-001/acceptance.md   # tier M
 changelog_entry_position: "CHANGELOG.md [Unreleased] > Added, first entry"
