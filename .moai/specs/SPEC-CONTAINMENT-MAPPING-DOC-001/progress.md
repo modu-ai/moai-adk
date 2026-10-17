@@ -108,6 +108,46 @@ Gaps: the deliverable document does not exist, so E01 to E09 remain observed red
 
 Residual risk: E08 still counts lines and enumerates date shapes, so mixed-case May, a `10-12` section range (false red), and the shapes listed under Known limit are outside what the command decides; a change under `.moai/reports/t1760/` is invisible to E10 by design; if the run phase merges `main` into the card branch, E10a (fixed base) would read red at the run-phase tip (inferred, not tested).
 
+### Plan fix round 4 record (card t1760)
+
+Scope: the one blocking finding N5 of the round-4 plan audit (verdict FAIL, 0.92; the required codex leg failed with one P2 finding the auditor reproduced), plus the two optional findings, labelled O-a and O-b in `plan.md` section J.2. Dispositions: `plan.md` section J.2. N3, N4, N1, N2, and the round-1 blockers D1 and D2 were not touched; the E08, E10a, and E10b command texts were not changed (`git diff -U0` of `acceptance.md` has no changed `command:` line for them: three `grep -c -F` counts, each 0).
+
+Tree: HEAD `5a8e8dfd5731edfb767c2e468eb82a5b7c268f1d`, branch `WT-10-15-release-3`, working tree clean at the start; the edits are confined to this SPEC directory. Tools used: `git`, `awk` (CN-4 and traceability programs from the earlier scratch copies `r3_cn4.awk` and `r3_trace.awk`, extracted in round 3 from `.claude/agents/moai/plan-auditor.md`; not re-extracted this round), `cp`, `sed`. The only project tooling is the `mcp__moai__spec_audit` call; its judging build is the MCP server `v3.2.0-rc.36-t1822c`, commit `ee981a932` (server banner), and `git merge-base --is-ancestor ee981a932 HEAD` printed `is-ancestor exit=1`, so that commit is not an ancestor of this tree's HEAD.
+
+Claim 1 (N5): a new file under another card's report directory is not seen by the scope guard in this repository, and the criterion now says so. Real tree:
+
+```text
+$ git check-ignore -v .moai/reports/t9999/new.md
+.gitignore:235:.moai/reports/*	.moai/reports/t9999/new.md
+check-ignore exit=0
+$ git ls-files .moai/reports/t1760 | wc -l          -> 5
+$ git ls-files .moai/reports | wc -l                -> 1792
+real-tree E10a exit=0
+real-tree E10b exit=0        (stdout empty)
+```
+
+Throwaway repository in session scratch with a copy of the real `.gitignore` (base commit `bbbb14105fee0500d89ad6d7a7e971b980071e0e`; tracked, force-added `.moai/reports/t9999/verdict.md`, `.moai/reports/t1760/plan-audit.md`, plus `src/keep.txt`), the real tree untouched; the narrowed E10a and E10b were run unchanged:
+
+```text
+clean tree                                       E10a exit=0   E10b stdout empty
+new untracked t9999/new.md (ignored)             E10a exit=0   E10b stdout empty   (check-ignore in that repo: .gitignore:235:.moai/reports/*  .moai/reports/t9999/new.md, exit 0)
+t9999/verdict.md modified (appended line)        E10a exit=1   E10b " M .moai/reports/t9999/verdict.md"
+t9999/verdict.md deleted                         E10a exit=1   E10b " D .moai/reports/t9999/verdict.md"
+t9999/forced.md created and `git add -f`         E10a exit=1   E10b "A  .moai/reports/t9999/forced.md"
+```
+
+The fix-round-3 throwaway repository (base `1203114`) was re-inspected: no `.gitignore` (`test -f .gitignore` exit 1) and `git check-ignore -v .moai/reports/t9999/new.md` exit 1, which is why its `??` line did not transfer. Two probe pairs were issued in the same turn against the same scratch repository, so the first clean-tree line was re-taken on its own after removing the new file (exit 0, stdout empty).
+
+Claim 2 (O-a): the two stale counts are replaced by statements that name their command and tree; the measured values at the tree above are 5 and 1792.
+
+Claim 3: `awk -f r3_cn4.awk plan.md acceptance.md` after the edits printed `COLLECTED: 4 milestones in plan order (M1 M2 M3 M4), 12 exit bindings, 10 ordering candidates`, exit 0, no `CONFLICT:` line. The candidate count rose from 8 to 10 because the new prose carries ordering words; the ten printed lines were read on screen, and none orders work across milestones except the Definition of Done line for AC-CMM-010 (run-phase tip, before sync), which agrees with M4. The traceability verb with `-v accstate=read` printed `COLLECTED: 11 REQ definitions (acceptance input: read)`, exit 0, no `UNCOVERED:` or `ORPHAN:` line (a first invocation without `-v accstate` printed an empty input state and was discarded).
+
+Claim 4: `mcp__moai__spec_audit` (project_root = this worktree, filter this SPEC) returned `modern_era_clean: 1`, `total_specs: 1`, one INFO `EraAutoDetected` (H-5). ID check on `SPEC-CONTAINMENT-MAPPING-DOC-001` against `^SPEC(-[A-Z][A-Z0-9]*)+-[0-9]{3}$` printed `PASS`.
+
+Gaps: the deliverable document does not exist, so E01 to E09 were not re-run in this round (their commands and recorded red are unchanged); the fix-round-1 and fix-round-2 E10 probes carried in the ledger were not re-run; only the `.moai/reports/*` ignore rule was probed, so the claim that other ignored paths behave the same is a git-behaviour expectation, not an observation; the `.moai/lessons-inbox.jsonl` tool-failure rows were not inspected, though no command was refused in this round; no `audit_multi` or `spec lint` run was made (the independent re-audit is the next step); optional finding O-b (merge of `main` into the card branch) was not measured; the post-commit E10a and E10b run is reported in the hand-off message because a commit cannot cite its own hash here.
+
+Residual risk: a new local file under `.moai/reports/` (any card's directory) or under any other ignored path passes E10a and E10b by design (Known limit 2 in AC-CMM-010); a change under `.moai/reports/t1760/` is invisible by design; if the run phase merges `main` into the card branch, E10a (fixed base) would read red at the run-phase tip (inferred, not tested, carried in `plan.md` section J.1 and J.2); E08 still counts lines and enumerates date shapes, so the shapes listed under its Known limit are outside what the command decides.
+
 ## §E.2 Run-phase Evidence
 
 _pending run-phase_
