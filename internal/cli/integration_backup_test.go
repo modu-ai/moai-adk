@@ -365,6 +365,49 @@ func TestIntegrationBackupRecursionHazard(t *testing.T) {
 	assertBackupCapture(t, base, rec)
 }
 
+// TestIntegrationBackupReportsPushedSHA — S3 (sync-audit round 1, P2): the
+// success line names the SHA git ACTUALLY pushed, derived from the push's own
+// remote-tracking output — never the pre-push rev-parse value. The fixture
+// advances main between the verb's resolution call and its push (seam-level:
+// the recording seam commits on the clone the moment rev-parse answers), so
+// the two SHAs differ and the printed one is falsifiable.
+func TestIntegrationBackupReportsPushedSHA(t *testing.T) {
+	t.Parallel()
+
+	base, origin, clone := backupFixture(t)
+	rec := &backupRecorder{}
+	stale := ""
+	seam := integrationBackupSeams{Git: func(dir string, args ...string) (string, error) {
+		rec.calls = append(rec.calls, backupGitCall{Dir: dir, Args: append([]string(nil), args...)})
+		if len(args) > 0 && args[0] == "rev-parse" {
+			stale = backupGit(t, clone, "rev-parse", "refs/heads/main")
+			// main advances AFTER the verb resolved it, BEFORE the push.
+			backupGit(t, clone, "commit", "-q", "--allow-empty", "-m", "advanced mid-flight")
+			return stale, nil
+		}
+		return candidateScrubbedGit(dir, args...)
+	}}
+
+	var out strings.Builder
+	if err := runIntegrationBackup(clone, seam, &out); err != nil {
+		t.Fatalf("verb: %v", err)
+	}
+	pushed := backupGit(t, clone, "rev-parse", "refs/heads/main")
+	if remote := backupRemoteRefs(origin)["refs/heads/sync/main"]; remote != pushed {
+		t.Fatalf("fixture guard: remote sync/main = %s, want the advanced tip %s", remote, pushed)
+	}
+	if stale == pushed {
+		t.Fatal("fixture failed: main did not advance between resolution and push")
+	}
+	if !strings.Contains(out.String(), pushed) {
+		t.Errorf("success line %q: want the ACTUALLY-pushed SHA %s (git pushed the advanced tip; the pre-push rev-parse value %s is stale)", out.String(), pushed, stale)
+	}
+	if strings.Contains(out.String(), stale) {
+		t.Errorf("success line %q: names the stale pre-push SHA %s", out.String(), stale)
+	}
+	assertBackupCapture(t, base, rec)
+}
+
 // TestIntegrationBackupScrubbedEnv — AC-TBS-007 (the t1478 shape): with the
 // process environment carrying inherited GIT_DIR/GIT_WORK_TREE pointing at a
 // foreign temporary repository, the verb still pushes the CALLER's repository

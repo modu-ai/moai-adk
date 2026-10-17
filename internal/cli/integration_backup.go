@@ -86,7 +86,23 @@ func runIntegrationBackup(dir string, seams integrationBackupSeams, out io.Write
 		return fmt.Errorf("integration backup: push to %s failed: %v — no further git command was issued", backupTargetRef, err)
 	}
 
-	_, _ = fmt.Fprintf(out, "integration backup: pushed %s to %s on %s\n", sha, backupTargetRef, backupRemote)
+	// S3 (sync-audit round 1): report the SHA git ACTUALLY pushed, read from
+	// the post-push remote state — never the pre-push rev-parse value, which
+	// names a SHA that can be superseded between the two calls. The pinned
+	// argv carries no --porcelain, so the push's human status table rides
+	// stderr, which the runner discards on success; ls-remote answers the
+	// question directly, full-length, without updating anything. It is a
+	// READ: REQ-TBS-002's invariant binds commands that update remote refs,
+	// and REQ-TBS-004's no-further-command rule binds the FAILURE path — the
+	// push has succeeded here. A read failure degrades to the rev-parse
+	// value rather than failing a push that landed.
+	pushed := sha
+	if remoteRef, err := git(dir, "ls-remote", backupRemote, backupTargetRef); err == nil {
+		if fields := strings.Fields(strings.TrimSpace(remoteRef)); len(fields) == 2 && fields[1] == backupTargetRef && fields[0] != "" {
+			pushed = fields[0]
+		}
+	}
+	_, _ = fmt.Fprintf(out, "integration backup: pushed %s to %s on %s\n", pushed, backupTargetRef, backupRemote)
 	return nil
 }
 
