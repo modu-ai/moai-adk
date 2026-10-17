@@ -561,22 +561,37 @@ func thresholdLiteralComparisons(t *testing.T, src string) []string {
 	if err != nil {
 		t.Fatalf("parse: %v", err)
 	}
-	reads := func(e ast.Expr) bool {
-		var text string
+	// name returns the identifier text of an operand, or "" for anything else.
+	name := func(e ast.Expr) string {
 		switch v := e.(type) {
 		case *ast.Ident:
-			text = v.Name
+			return strings.ToLower(v.Name)
 		case *ast.SelectorExpr:
-			text = v.Sel.Name
-		default:
+			return strings.ToLower(v.Sel.Name)
+		}
+		return ""
+	}
+	intLit := func(e ast.Expr) (string, bool) {
+		lit, ok := e.(*ast.BasicLit)
+		if !ok || lit.Kind != token.INT {
+			return "", false
+		}
+		return lit.Value, true
+	}
+	// A landings-behind operand set against ANY integer literal is a hardcoded
+	// threshold. The tolerance K set against a non-zero literal is one too; K
+	// compared with zero is the sign check that rejects a negative setting, not
+	// a threshold.
+	flagged := func(operand ast.Expr, lit ast.Expr) bool {
+		value, ok := intLit(lit)
+		if !ok {
 			return false
 		}
-		lower := strings.ToLower(text)
-		return strings.Contains(lower, "behind") || lower == "k"
-	}
-	isInt := func(e ast.Expr) bool {
-		lit, ok := e.(*ast.BasicLit)
-		return ok && lit.Kind == token.INT
+		text := name(operand)
+		if strings.Contains(text, "behind") {
+			return true
+		}
+		return text == "k" && value != "0"
 	}
 	var found []string
 	ast.Inspect(file, func(n ast.Node) bool {
@@ -589,7 +604,7 @@ func thresholdLiteralComparisons(t *testing.T, src string) []string {
 		default:
 			return true
 		}
-		if (isInt(bin.X) && reads(bin.Y)) || (isInt(bin.Y) && reads(bin.X)) {
+		if flagged(bin.Y, bin.X) || flagged(bin.X, bin.Y) {
 			found = append(found, fset.Position(bin.Pos()).String())
 		}
 		return true
@@ -600,9 +615,13 @@ func thresholdLiteralComparisons(t *testing.T, src string) []string {
 func TestBaseFreshnessDecisionCodeHasNoThresholdLiteral(t *testing.T) {
 	// AC-ISB-007's last clause: the decision code compares landings behind
 	// against the loaded K, never against a literal.
-	control := "package x\nfunc f(behind, k int) bool { return behind > 0 || k == 2 }\n"
-	if got := thresholdLiteralComparisons(t, control); len(got) != 2 {
-		t.Fatalf("positive control: the scanner must flag both literal comparisons, got %v", got)
+	control := "package x\nfunc f(behind, k int) bool { return behind > 0 || k == 2 || 3 < behind }\n"
+	if got := thresholdLiteralComparisons(t, control); len(got) != 3 {
+		t.Fatalf("positive control: the scanner must flag all three literal comparisons, got %v", got)
+	}
+	signCheck := "package x\nfunc f(k int) bool { return k < 0 }\n"
+	if got := thresholdLiteralComparisons(t, signCheck); len(got) != 0 {
+		t.Fatalf("negative control: a sign check of K against zero is not a threshold, got %v", got)
 	}
 	src, err := os.ReadFile("base_freshness.go")
 	if err != nil {
