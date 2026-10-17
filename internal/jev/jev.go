@@ -3,7 +3,7 @@
 // response decoding, and usage accounting.
 //
 // @MX:ANCHOR: [AUTO] TypeSafe System One call-path SSOT — the only client implementation
-// @MX:REASON: a second client would double the size bounds, the fail-open policy, the secret screening, and the model pin, and the four would drift independently (REQ-JEVC-002)
+// @MX:REASON: a second client would double the size bounds, the fail-open policy, the secret screening, and the request alias with its attribution, and the four would drift independently (REQ-JEVC-002)
 //
 // Three properties shape the whole package, and each is the reason a more
 // obvious design was rejected:
@@ -57,24 +57,39 @@ import (
 	"sync"
 )
 
-// ModelID is the PINNED model identifier every request carries.
+// ModelID is the request alias every request carries: the model value the
+// package sends. It names the vendor's alias, not a version, and it is never a
+// citation of the model that answered. The answering model is the interpreted
+// model id the response reports, which ValidInterpretedModel checks and which
+// every result, usage record, and answer label carries.
 //
 // It is a compiled constant rather than operator-visible configuration, per the
 // repository rule that model names, endpoint URLs, and API headers live in Go
-// constants. The pin is the load-bearing part: the vendor's moving alias
-// (`jev-latest`) would make every measurement and every cost record
-// unattributable, because the model that answered could differ between two
-// readings of the same record. REQ-JEVC-003 forbids the alias appearing in any
-// request this package constructs.
-//
-// The literal is the vendor's VERSIONED id — the family name plus three
-// dot-separated numbers. `jev-1.13` names the release family in the vendor's
-// prose but is NOT an id the endpoint accepts, and no test in this package can
-// catch that substitution on its own: every transport test answers a fake
-// server that echoes whatever id it is handed, so a malformed pin travels the
-// whole suite green and fails only in production. The shape is therefore
-// asserted mechanically by TestModelID_MatchesVendorVersionedShape.
-const ModelID = "jev-1.13.0"
+// constants. The alias is what the request asks for. The attribution comes from
+// the response, not from this constant, so a vendor move of the version behind
+// the alias shows up in the record instead of being silently re-attributed. Its
+// value is asserted by TestRequestModel_IsTheAliasNotAVersion.
+const ModelID = "jev-latest"
+
+// VerifiedInterpretedModel is the interpreted model id the measurement
+// regression set was last run against. Measured 2026-10-15: the request alias
+// resolved to this version at that time. It changes only by a code change made
+// after the regression set has been re-run against the new id. An answered call
+// reporting any other id earns the client one change notice.
+const VerifiedInterpretedModel = "jev-1.13.0"
+
+// interpretedModelShape is the vendor's versioned model id: the family name and
+// three dot-separated numbers, as in jev-1.13.0. The bare family name (jev-1.13)
+// and the request alias (jev-latest) do not match, because neither names the
+// model that answered.
+var interpretedModelShape = regexp.MustCompile(`^jev-[0-9]+\.[0-9]+\.[0-9]+$`)
+
+// ValidInterpretedModel reports whether s is an interpreted model id in the
+// versioned shape. A response whose model is not valid yields no attributable
+// answer: its result is Unattributed (REQ-JRM-003).
+func ValidInterpretedModel(s string) bool {
+	return interpretedModelShape.MatchString(s)
+}
 
 // EndpointURL is the System One endpoint. Compiled, for the same reason the
 // model id is: no configuration path may aim a request somewhere else.
@@ -133,6 +148,10 @@ const (
 	SecretDetected Availability = "secret-detected"
 	// Malformed — the request carried no question to ask.
 	Malformed Availability = "malformed"
+	// Unattributed — the endpoint answered OK, but its response names no
+	// interpreted model id in the versioned shape. No answer is returned: an
+	// answer that cannot be attributed to a version is not an answer (REQ-JRM-003).
+	Unattributed Availability = "unattributed"
 )
 
 // AnswerKind is the typed shape of an answer. System One answers a typed
@@ -203,6 +222,10 @@ type Answer struct {
 	Choice      string     `json:"choice,omitempty"`
 	Score       float64    `json:"score,omitempty"`
 	Probability float64    `json:"probability"`
+	// Model is the interpreted model id the response reported for the call that
+	// produced this answer: the version that answered. Ask sets it on every answer
+	// it returns, and it is empty only for an answer built by hand.
+	Model string `json:"model,omitempty"`
 	// Probabilities is the per-option (choice) or per-level-index (score)
 	// distribution the vendor returned. Empty for a noul.
 	Probabilities map[string]float64 `json:"probabilities,omitempty"`
@@ -211,11 +234,16 @@ type Answer struct {
 }
 
 // Label renders the answer as a labelled model signal (REQ-JEVC-013). It names
-// the marker and the pinned model, and deliberately avoids any word that reads
-// as a mechanical measurement — a reader must be able to tell this apart from
-// something that was measured.
+// the marker and the interpreted model that answered, and deliberately avoids
+// any word that reads as a mechanical measurement — a reader must be able to
+// tell this apart from something that was measured. An answer with no
+// interpreted model renders as "unattributed", never as the request alias.
 func (a Answer) Label() string {
-	prefix := fmt.Sprintf("[%s · %s] %s", SignalLabel, ModelID, a.QuestionID)
+	model := a.Model
+	if model == "" {
+		model = "unattributed"
+	}
+	prefix := fmt.Sprintf("[%s · %s] %s", SignalLabel, model, a.QuestionID)
 	switch a.Kind {
 	case KindChoice:
 		return fmt.Sprintf("%s = %s (confidence=%.2f)", prefix, a.Choice, a.Probability)
@@ -227,11 +255,19 @@ func (a Answer) Label() string {
 }
 
 // Usage is the per-call record REQ-JEVC-004 requires: the input-token count the
-// call was charged for and the model id that answered, so a later cost or
-// provenance question is answerable from the record rather than recollection.
+// call was charged for, the interpreted model id that answered, and the request
+// alias that was sent (REQ-JRM-004). The two model fields are held apart, so a
+// later cost or provenance question is answerable from the record and a reader
+// cannot take the alias for the version that answered.
 type Usage struct {
-	InputTokens int    `json:"input_tokens"`
-	Model       string `json:"model"`
+	InputTokens int `json:"input_tokens"`
+	// Model is the interpreted model id the response reported: the version that
+	// answered. It is empty when the call was not answered (refused before the
+	// send, unavailable, or unattributed).
+	Model string `json:"model"`
+	// RequestModel is the request alias this call sent. It is recorded in its own
+	// field, separate from Model.
+	RequestModel string `json:"request_model"`
 }
 
 // Result is what every call returns. There is no error return: see the package
@@ -243,14 +279,21 @@ type Result struct {
 	Condition string
 	Answers   []Answer
 	Usage     Usage
+	// Notice is set only on the change notice: the first answered call of a
+	// client whose interpreted model id differs from VerifiedInterpretedModel.
+	Notice string
 }
 
 // OK reports whether the call produced answers.
 func (r Result) OK() bool { return r.Availability == Available }
 
 // NoticeLine renders the at-most-one notice line a consumer may emit
-// (REQ-JEVC-007). An available result has nothing to notice and returns empty.
+// (REQ-JEVC-007). It returns the change notice when one is set. Otherwise an
+// available result has nothing to notice and returns empty.
 func (r Result) NoticeLine() string {
+	if r.Notice != "" {
+		return r.Notice
+	}
 	if r.Availability == Available {
 		return ""
 	}
@@ -288,9 +331,12 @@ type Client struct {
 
 	mu    sync.Mutex
 	usage []Usage
+	// changeNoticed records that this client already issued the change notice.
+	// Guarded by mu.
+	changeNoticed bool
 }
 
-// New returns a client for the given gate state, wired to the pinned endpoint.
+// New returns a client for the given gate state, wired to the compiled endpoint.
 // The credential reader is left nil deliberately: this package does not import
 // internal/jevcred, so the caller supplies it (jevcred.Load) and the two
 // packages stay independently testable.
@@ -327,8 +373,8 @@ func EstimateTokens(s string) int {
 	return (len(s) + bytesPerTokenEstimate - 1) / bytesPerTokenEstimate
 }
 
-// wireRequest is the on-the-wire payload. The pinned model id is written here
-// and nowhere else, so there is exactly one place a moving alias could enter.
+// wireRequest is the on-the-wire payload. The request alias is written here and
+// nowhere else, so every request this package constructs carries the same one.
 //
 // The layout follows the vendor's documented schema: `questions` is an OBJECT
 // keyed by the caller's question id (the id is not a field), and each entry
@@ -350,7 +396,8 @@ type wireQuestion struct {
 }
 
 // wireResponse is the documented response: `answers` is an object keyed by the
-// question id the caller sent.
+// question id the caller sent, and `model` names the version that answered. The
+// model is read here and attributed in Ask; it is never assumed.
 type wireResponse struct {
 	Model   string                `json:"model"`
 	Answers map[string]wireAnswer `json:"answers"`
@@ -432,11 +479,12 @@ func toWire(req Request) wireRequest {
 
 // fromWire flattens the answer map into the caller-facing list, in the
 // request's question order; answers for ids the request did not carry follow,
-// sorted by id, so the result is deterministic.
-func fromWire(questions []Question, answers map[string]wireAnswer) []Answer {
+// sorted by id, so the result is deterministic. Every answer carries the
+// interpreted model id the response reported.
+func fromWire(questions []Question, answers map[string]wireAnswer, model string) []Answer {
 	out := make([]Answer, 0, len(answers))
 	convert := func(id string, w wireAnswer) Answer {
-		a := Answer{QuestionID: id, Kind: w.Type, Probabilities: w.Probabilities}
+		a := Answer{QuestionID: id, Kind: w.Type, Model: model, Probabilities: w.Probabilities}
 		switch w.Type {
 		case KindNoul:
 			a.Probability = w.Noul
@@ -481,6 +529,12 @@ func fromWire(questions []Question, answers map[string]wireAnswer) []Answer {
 //
 // Every one of the five returns a typed unavailable result. None returns an
 // error, and none panics.
+//
+// Once the request is sent, the result is decided on the response. An OK
+// response whose interpreted model id is not in the versioned shape is
+// Unattributed and returns no answers. Every sent call is recorded in the usage
+// log, whatever its outcome, with the request alias and, only when the call was
+// answered, the interpreted model id.
 func (c *Client) Ask(ctx context.Context, req Request) Result {
 	if !c.Enabled {
 		return Result{
@@ -518,21 +572,57 @@ func (c *Client) Ask(ctx context.Context, req Request) Result {
 		return Result{Availability: Malformed, Condition: "request could not be encoded: " + err.Error()}
 	}
 
-	// The call is charged from here on, whatever the outcome: a sent-but-refused
-	// call still consumed input tokens.
-	usage := Usage{InputTokens: requestTokens(req), Model: ModelID}
-	c.record(usage)
-
-	res, answers := c.send(ctx, body, req.Repeatable)
+	res, answers, model := c.send(ctx, body, req.Repeatable)
+	// Attribution is decided on the response, never assumed. An OK response that
+	// names no valid interpreted model has no attributable answer, so none is
+	// returned (REQ-JRM-003).
 	if res.OK() {
-		res.Answers = fromWire(req.Questions, answers)
+		if ValidInterpretedModel(model) {
+			res.Answers = fromWire(req.Questions, answers, model)
+			res.Notice = c.changeNotice(model)
+		} else {
+			res = Result{
+				Availability: Unattributed,
+				Condition:    "endpoint response names no interpreted model id in the shape jev-<major>.<minor>.<patch>; no answer is attributable",
+			}
+		}
 	}
+
+	// Every call that reached the send is charged, whatever the outcome: a
+	// sent-but-refused call still consumed input tokens. The record is written
+	// once, after the send returns, and it names the interpreted model only for an
+	// answered call. The request alias is always recorded in its own field.
+	usage := Usage{InputTokens: requestTokens(req), RequestModel: ModelID}
+	if res.OK() {
+		usage.Model = model
+	}
+	c.record(usage)
 	res.Usage = usage
 	return res
 }
 
-// send performs the round trip with the retry policy applied.
-func (c *Client) send(ctx context.Context, body []byte, repeatable bool) (Result, map[string]wireAnswer) {
+// changeNotice returns the one-line change notice when model differs from
+// VerifiedInterpretedModel and this client has not yet issued it, and marks the
+// client as noticed. Otherwise it returns empty.
+func (c *Client) changeNotice(model string) string {
+	if model == VerifiedInterpretedModel {
+		return ""
+	}
+	c.mu.Lock()
+	defer c.mu.Unlock()
+	if c.changeNoticed {
+		return ""
+	}
+	c.changeNoticed = true
+	return fmt.Sprintf("jev interpreted model changed: answered by %s, verified %s (internal/jev/jev.go:VerifiedInterpretedModel); "+
+		"until the measurement regression set is re-run against the new id and the verified id is changed, "+
+		"consumers that show or select on a Jev answer return to shadow", model, VerifiedInterpretedModel)
+}
+
+// send performs the round trip with the retry policy applied. It returns the
+// result, the raw answer map, and the interpreted model id the response reported
+// (empty when there was no decodable response).
+func (c *Client) send(ctx context.Context, body []byte, repeatable bool) (Result, map[string]wireAnswer, string) {
 	endpoint := c.Endpoint
 	if endpoint == "" {
 		endpoint = EndpointURL
@@ -551,7 +641,7 @@ func (c *Client) send(ctx context.Context, body []byte, repeatable bool) (Result
 	for attempt := 0; attempt < attempts; attempt++ {
 		httpReq, err := http.NewRequestWithContext(ctx, http.MethodPost, endpoint, bytes.NewReader(body))
 		if err != nil {
-			return Result{Availability: Unreachable, Condition: "request could not be built: " + err.Error()}, nil
+			return Result{Availability: Unreachable, Condition: "request could not be built: " + err.Error()}, nil, ""
 		}
 		httpReq.Header.Set("Content-Type", "application/json")
 		httpReq.Header.Set("User-Agent", UserAgent)
@@ -567,11 +657,11 @@ func (c *Client) send(ctx context.Context, body []byte, repeatable bool) (Result
 			if preDelivery(err) {
 				continue
 			}
-			return last, nil
+			return last, nil, ""
 		}
 		return decode(resp)
 	}
-	return last, nil
+	return last, nil, ""
 }
 
 // credentialHeader re-reads the credential for the Authorization header. It is
@@ -595,35 +685,36 @@ func preDelivery(err error) bool {
 	return false
 }
 
-// decode maps the HTTP response to a Result and, on success, the raw answer
-// map; Ask flattens the map in request order (fromWire).
-func decode(resp *http.Response) (Result, map[string]wireAnswer) {
+// decode maps the HTTP response to a Result, the raw answer map on success, and
+// the interpreted model id the response reported. Ask attributes the answers
+// (see Ask) and flattens the map in request order (fromWire).
+func decode(resp *http.Response) (Result, map[string]wireAnswer, string) {
 	defer func() { _ = resp.Body.Close() }()
 
 	switch resp.StatusCode {
 	case http.StatusUnauthorized:
-		return Result{Availability: Unauthorized, Condition: "endpoint returned HTTP 401"}, nil
+		return Result{Availability: Unauthorized, Condition: "endpoint returned HTTP 401"}, nil, ""
 	case http.StatusTooManyRequests:
-		return Result{Availability: RateLimited, Condition: "endpoint returned HTTP 429"}, nil
+		return Result{Availability: RateLimited, Condition: "endpoint returned HTTP 429"}, nil, ""
 	case 529:
-		return Result{Availability: Overloaded, Condition: "endpoint returned HTTP 529"}, nil
+		return Result{Availability: Overloaded, Condition: "endpoint returned HTTP 529"}, nil, ""
 	}
 	if resp.StatusCode < 200 || resp.StatusCode >= 300 {
 		return Result{
 			Availability: Unreachable,
 			Condition:    fmt.Sprintf("endpoint returned HTTP %d", resp.StatusCode),
-		}, nil
+		}, nil, ""
 	}
 
 	raw, err := io.ReadAll(resp.Body)
 	if err != nil {
-		return Result{Availability: Unreachable, Condition: "response could not be read: " + err.Error()}, nil
+		return Result{Availability: Unreachable, Condition: "response could not be read: " + err.Error()}, nil, ""
 	}
 	var wire wireResponse
 	if err := json.Unmarshal(raw, &wire); err != nil {
-		return Result{Availability: Unreachable, Condition: "response could not be decoded: " + err.Error()}, nil
+		return Result{Availability: Unreachable, Condition: "response could not be decoded: " + err.Error()}, nil, ""
 	}
-	return Result{Availability: Available}, wire.Answers
+	return Result{Availability: Available}, wire.Answers, wire.Model
 }
 
 // checkBounds applies both size bounds (REQ-JEVC-009) and reports which one was

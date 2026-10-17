@@ -244,7 +244,17 @@ func runTemplateSyncWithReporter(cmd *cobra.Command, reporter project.ProgressRe
 		plVersion.Done("Already up-to-date")
 		_, _ = fmt.Fprintln(out)
 		_, _ = fmt.Fprintln(out, tui.Pill(tui.PillOpts{Kind: tui.PillOk, Solid: false, Label: report.RenderOutcome(report.OutcomeAlreadyUpToDate, 0, ""), Theme: &th}))
+		// No confirmation applies on this path, so the held-back skill.md renames run here.
+		applyDeferredSkillRenames(projectRoot)
 		return nil
+	}
+
+	// M3: a project whose recorded template version is newer than this binary
+	// would have its rules downgraded by the sync below. Warn; do not block.
+	if err == nil {
+		if msg, warn := versionSkewWarning(packageVersion, projectVersion); warn {
+			updateLedger.referencef("%s", msg)
+		}
 	}
 
 	plVersion.Done("Version check complete")
@@ -347,6 +357,10 @@ func runTemplateSyncWithReporter(cmd *cobra.Command, reporter project.ProgressRe
 		}
 		return nil
 	}
+
+	// The user confirmed (or no confirmation applies), so the held-back skill.md renames
+	// run now. A cancelled update returned above and leaves every skill file as it was.
+	applyDeferredSkillRenames(projectRoot)
 
 	// SPEC-INIT-SHRINK-001 (REQ-015, OD-4 settled (a, amended)): on a
 	// record-less project the migration trigger runs AFTER the user
@@ -824,6 +838,26 @@ func runTemplateSyncWithReporter(cmd *cobra.Command, reporter project.ProgressRe
 					return recovery.fail(step.name, restoreErr)
 				}
 				plRestore.Done("User settings restored")
+				// M2: evaluator-profiles/ and astgrep-rules/ restore beside the section
+				// merge. A differing copy is kept as <name>.from-<stamp>, never written
+				// over the new template. A failure warns; the section restore succeeded.
+				// F33: the same exclusion as the section restore above. A profile or
+				// astgrep rule the reconciliation archived and removed, or preserved,
+				// is not written back from the backup in this run.
+				unmanagedSkip := make(map[string]bool, len(reconSummary.ArchivedRemoved)+len(reconSummary.Preserved))
+				for _, a := range reconSummary.ArchivedRemoved {
+					unmanagedSkip[a] = true
+				}
+				for _, p := range reconSummary.Preserved {
+					unmanagedSkip[p] = true
+				}
+				unmanagedRefs, unmanagedErr := backup.RestoreUnmanagedConfigDirsSkipping(projectRoot, configBackupPath, func(refPath string) bool { return unmanagedSkip[refPath] })
+				if unmanagedErr != nil {
+					updateLedger.requiref(sevWarn, "unmanaged config restore failed: %v", unmanagedErr)
+				}
+				for _, msg := range unmanagedRestoreMessages(unmanagedRefs, configBackupPath) {
+					updateLedger.referencef("%s", msg)
+				}
 				// Strip the retired per-agent model/effort keys the merge just
 				// retained (old-only keys are kept), after the backup holds their
 				// originals. Stripped keys leave the retained list so each is
@@ -870,9 +904,20 @@ func runTemplateSyncWithReporter(cmd *cobra.Command, reporter project.ProgressRe
 				if retrackErr := retrackSectionFiles(projectRoot, errOut); retrackErr != nil {
 					emitSeverityLine(errOut, sevWarn, resolveTheme(), "manifest retrack (config sections) failed: %v", retrackErr)
 				}
-				deletedCount := backup.CleanupOldBackups(projectRoot, 5)
-				if deletedCount > 0 {
-					_, _ = fmt.Fprintf(out, "  %s Cleaned up %d old backup(s)\n", uikit.SymSuccess(), deletedCount)
+				if backup.OldBackupRootRefused(projectRoot) || backup.NamespaceBackupRootRefused(projectRoot) {
+					emitSeverityLine(errOut, sevWarn, resolveTheme(), "skipped old backup pruning: the old backup root or the namespace backup root is a symbolic link or leads outside the project")
+				} else {
+					// Budgeted retention (SPEC-UPDATE-BACKUP-RETENTION-001): an
+					// older run that holds the last copy of a past file version
+					// within the state.backup_past_versions_keep budget is kept, and
+					// every removed or retained run is named in the ledger.
+					rep := backup.PruneBackups(projectRoot, 5, config.LoadBackupPastVersionsKeep(projectRoot))
+					if rep.Removed > 0 {
+						_, _ = fmt.Fprintf(out, "  %s Cleaned up %d old backup(s)\n", uikit.SymSuccess(), rep.Removed)
+					}
+					for _, line := range backupRetentionReportLines(rep, projectRoot) {
+						updateLedger.referencef("%s", line)
+					}
 				}
 			}
 			// Merge .gitignore: preserve user-added patterns via EntryMerge
@@ -1161,6 +1206,9 @@ func runTemplateSyncWithProgress(cmd *cobra.Command, userAssetsInstalled bool) (
 	if verr == nil && packageVersion == projectVersion && !forceUpdate && versionMatchSkipsSync(projectRoot) {
 		_, _ = fmt.Fprintln(out)
 		_, _ = fmt.Fprintln(out, tui.Pill(tui.PillOpts{Kind: tui.PillOk, Solid: false, Label: report.RenderOutcome(report.OutcomeAlreadyUpToDate, 0, ""), Theme: &th}))
+		// No confirmation applies on a same-version run, so the held-back skill.md renames
+		// run here. A run cancelled at the confirmation below does not reach this point.
+		applyDeferredSkillRenames(projectRoot)
 		return true, nil
 	}
 

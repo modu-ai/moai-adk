@@ -17,6 +17,7 @@ import (
 
 	"github.com/modu-ai/moai-adk/internal/config"
 	"github.com/modu-ai/moai-adk/internal/profile"
+	"github.com/modu-ai/moai-adk/internal/testguard"
 	"github.com/spf13/cobra"
 )
 
@@ -26,6 +27,7 @@ import (
 // (WT-<session-short>-profile). This re-exercises the shared wrapper (M1/M2)
 // at the profile subcommand value.
 func TestEnterSessionWorktree_ProfileSubcommand(t *testing.T) {
+	testguard.RedirectHome(t)
 	t.Setenv("MOAI_SESSION_WORKTREE", "1")
 	swapSessionWorktreeSeams(t, swSeams{
 		inWt:      func() bool { return false },
@@ -121,6 +123,7 @@ func TestEmitProfileScopeNotice_FalsificationRoundTrip(t *testing.T) {
 // the enumeration; it is not invoked here to avoid touching the real global
 // profile dir.)
 func TestProfileReadOnlySubverbs_DoNotInvokeAutoEntry(t *testing.T) {
+	testguard.RedirectHome(t)
 	t.Setenv("MOAI_SESSION_WORKTREE", "1")
 	swapSessionWorktreeSeams(t, swSeams{
 		inWt: func() bool { return false },
