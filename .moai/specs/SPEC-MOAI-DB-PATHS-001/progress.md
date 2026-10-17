@@ -28,13 +28,93 @@ plan_audit: PASS 0.92 iteration 4 audited_sha 598362ff325d34d507ab7da6e7a09999cb
 
 decision record: decided_by=lane-5 claude-orchestrator evidence_refs=.moai/reports/t1827/plan-audit-iter4.md(PASS 0.92, receipt rcpt-358150a21424f6cf75555ed5),.moai/specs/SPEC-MOAI-DB-PATHS-001/progress.md#E.1(audit_ready: true),plan_artifact_hash=7446b8ac2c430a4041604b1b206f4a609cb1a7a9ce5343832ed3f4ed29fe77db ladder_path=gate-row plan→run Kickoff (auto-semantics §9.1, T8a decider=audit)
 
-slot wait note: 2026-10-17T12:58:48Z `moai slot acquire --resource go-test-heavy` exit 3 (held by lane-4, t1812 landing remeasure since 12:42:57Z); also exit 3 at 12:45:15Z. Heavy commands (make agents-emit/build, whole-package go test) deferred; targeted anchored go test -run commands ran without the slot.
+slot wait note: 2026-10-17T12:45:15Z, 12:58:48Z and 13:03:19Z `moai slot acquire --resource go-test-heavy` exit 3 (held by lane-4, t1812, since 12:42:57Z); later by lane-8 (13:28:52Z). The leader then ordered the slot t1632, t1760, t1827 and forbade acquiring until the lane forwards "your turn". No heavy command was run; targeted anchored `go test -run` commands ran without the slot. A background acquire loop started at 13:09Z never acquired the slot (holder file absent) and was stopped at 13:34Z.
 
-(per-AC matrix is filled at the end of the run)
+**Environment.** Tests ran through `/private/tmp/dbp-bin/run.sh` (scrubs MOAI_/CLAUDE_/GIT_ env; HOME=/private/tmp/dbp-h1/home, MOAI_HOME=/private/tmp/dbp-h1/home/.moai, TMPDIR=GOTMPDIR=/private/tmp/dbp-t1/tmp; Go 1.26 `t.TempDir` follows GOTMPDIR, so the two must be equal or the todoFixture isolation guard fires). Judging build for every `go test` below: compiled from the tree at the HEAD named per row. Tree HEAD at the final targeted run: 0242d5ef7. `moai spec lint` used `/private/tmp/dbp-bin/moai-base`, built from tree HEAD 9a52516e3 (spec lint code is untouched by this card).
+
+**Commits** (oldest first): f10adec63 M1 RED+skeleton (status draft to in-progress) · 93af4a485 M1 GREEN · 515b27c43 M2 RED · 0232c6517 M2 GREEN · 05078344f M3 RED · baecbf74c M3 GREEN surfaces + foreman tests · 24856cf86 M4 pages · fe4e0d350 M5 RED · 50a87dd16 M5 GREEN · 0242d5ef7 TOML + catalog regeneration.
+
+### RED record (classification per tdd-result-contract)
+
+| Test(s) | Command (anchored selector) | Exit | Verbatim intended-assertion output | Class |
+|---|---|---|---|---|
+| L-02 binary | `moai-base paths --json` (build 9a52516e3) | 1 | `Unknown command "paths" for "moai".` | EXPECTED_RED |
+| AC-001..007 (17 names) | `go test ./internal/cli -run '^(TestPaths_JSONShape|...|TestPaths_BrokerTemplateCount|...)$' -v -count=1` at f10adec63 skeleton | 1 | `paths_test.go:191: key "project_key" missing from map[]`; `paths_test.go:228: the JSON object is empty: {}`; `paths_test.go:239: key "todo.path" missing from map[]`; `paths_test.go:302: line "" is not a name: value line`; `paths_test.go:585: --field todo-path: err = <nil>, stdout = "", want a failure with empty stdout`; `paths_test.go:723: paths [--run ../x] must exit non-zero`; `paths_test.go:774: paths must be on the deps-free fast path` (TestPaths_TrivialFastPath) | EXPECTED_RED (a first run with TMPDIR!=GOTMPDIR hit the todo isolation guard: TOOL_FAILURE, reclassified after the env fix) |
+| queue location | `go test ./internal/factory -run '^(TestQueueLocationForRoot_...)$' -v` | 1 | `queue_location_test.go:57: Dir = "", want ".../001/.moai/state/todo"`; `:155: queue database "" absent after adoption` | EXPECTED_RED |
+| AC-008 | `go test ./internal/cli -run '^(TestPaths_HelpPointers|...)$'` with todo.go/handoff.go/factory_handoff_recover.go at HEAD | 1 | `paths_test.go:818: moai todo --help does not point at \`moai paths\`` (x3 commands) | EXPECTED_RED |
+| AC-009/013/011 | `go test ./internal/template -run '^(TestDBPathsBlock_Surfaces|TestTemplateDBPathSurfacesCarryPointer|TestForemanWatch_FailsVisibly)$' -v` with the 11 surface files at HEAD | 1 | `db_paths_surfaces_test.go:80: ../../.claude/agents/moai/manager-todo.md lacks the instruction block: [Find the database files with  (count 0) ...]` (12 surfaces); `:254: the watch still computes the project key by hand`; `:280: the watch kept running although moai paths failed` | EXPECTED_RED (first attempt: compile error `undefined: dbPathPointer` = TOOL_FAILURE; the unbounded old watch also hung the run until the test gained a 20s deadline) |
+| AC-011 stubless | `go test ./internal/factory -run '^TestForemanQueueWatchResolvesCanonicalStateDir$' -v` after the watch rewrite, before the stub | 1 | `foreman_queue_statement_test.go:115: the skill's resolution prologue failed inside the fixture: exit status 1` | EXPECTED_RED |
+| AC-014 | `go test ./internal/cli -run '^(TestDBPathGhosts_...)$' -v` at skeleton | 1 | `doctor_db_ghosts_test.go:60: status = ok, want warning (message "not implemented")`; `:113: the readable directories still hold ghosts, status = ok` | EXPECTED_RED (the three negative-direction tests are vacuous against the skeleton; killed by mutants below) |
+| AC-015 | registered in doctor.go without the contract entry | 1 | `binary_lag_test.go:239: unknown doctor registration dbPathGhostCheckName` | EXPECTED_RED |
+| goldens | `go test ./internal/cli -run '^TestDoctorGolden'` before UPDATE_GOLDEN | 1 | `--- FAIL: TestDoctorGolden_Light/Dark/NoColor` | EXPECTED_RED |
+| TOML | `AGENTEMIT_UPDATE= go test ./internal/template/agentemit/... -run '^TestGoldenCommittedArtifactsMatchEmission$'` with the TOML at HEAD | 1 | `golden_test.go:102: .codex/agents/moai/manager-todo.toml: committed artifact differs from emission (sha256 mismatch)` | EXPECTED_RED |
+
+Mutants observed red: forbidden `factory.FactoryRegistryPath` in paths.go kills TestPaths_SourceHasNoOpeningCalls, TestPaths_FieldUnknown/unresolved and TestPaths_LayoutUnresolved; `Dir` taken from the pure resolver kills TestQueueLocationForRoot_LegacyPreAdoption and _PostAdoption; skipping the canonical exclusion kills TestDBPathGhosts_CanonicalExcluded; dropping the size test kills TestDBPathGhosts_NonEmptyIgnored; the surface/pointer/anchor checks each carry in-memory mutant subtests.
+
+### Per-AC matrix (final targeted runs, tree HEAD 0242d5ef7, no slot)
+
+| AC | Status | Command | Observed output |
+|---|---|---|---|
+| AC-DBP-001 | PASS | `go test ./internal/cli -run '^(TestPaths_JSONShape|TestPaths_JSONSingleObject|TestPaths_ExistenceSizeWalShm|TestPaths_HumanListing)$' -v -count=1` (one 29-name run) | `--- PASS` x4; `ok github.com/modu-ai/moai-adk/internal/cli 11.457s` |
+| AC-DBP-002 | PASS | same run | `--- PASS: TestPaths_ParityWithVerbs` (subtests home, temp-origin), `--- PASS: TestPaths_LegacyQueuePreAdoption` (pre-adoption, post-adoption); queue-location unit tests 4/4 PASS |
+| AC-DBP-003 | PASS | same run | `--- PASS: TestPaths_NeverCreatesFiles` (positive control inside), `--- PASS: TestPaths_SourceHasNoOpeningCalls`; mutant red observed |
+| AC-DBP-004 | PASS | same run | `--- PASS: TestPaths_FieldValues` (5 subtests), `--- PASS: TestPaths_FieldUnknown` (unknown, empty, unresolved) |
+| AC-DBP-005 | PASS (OM item pending) | same run | `--- PASS: TestPaths_WorktreeConverges`; the operator-machine `moai-adk-go-1bd3d038` print needs the tree binary (slot list) |
+| AC-DBP-006 | PASS | same run | `--- PASS: TestPaths_LayoutProjectLocal`, `--- PASS: TestPaths_LayoutUnresolved` |
+| AC-DBP-007 | PASS | same run | `--- PASS` x3 broker tests |
+| AC-DBP-008 | PASS | same run | `--- PASS` TestPaths_HelpPointers, TestTodoHelp_NamesTheDatabaseStore, TestTodoStoreClaims_NoStaleGoSourceSite |
+| AC-DBP-009 | PASS | `go test ./internal/template -run '^TestDBPathsBlock_Surfaces$' -v` and `AGENTEMIT_UPDATE= go test ./internal/template/agentemit/... -run '^TestGoldenCommittedArtifactsMatchEmission$' -v -count=1` | `surfaces=12 phrases=5`, `--- PASS`; `--- PASS: TestGoldenCommittedArtifactsMatchEmission` (swept 1). `make agents-emit-check` itself is in the slot list |
+| AC-DBP-010 | PASS | `git diff --numstat 93f4fc75c8dafc1c436458940efa8957fd25ae12 -- <the four paths>` | `6 0 .claude/skills/moai/SKILL.md`, `14 0 .moai/docs/todo-queue-storage.md`, `6 0 internal/template/templates/.claude/skills/moai/SKILL.md`, `14 0 internal/template/templates/.moai/docs/todo-queue-storage.md` |
+| AC-DBP-011 | PASS | `grep -c sha256sum <path>` = 0 and `grep -c "paths --field todo-dir" <path>` = 1 for both foreman files; `go test ./internal/template -run '^TestForemanWatch_FailsVisibly$' -v`; `go test ./internal/factory -run '^(TestForemanQueueWatchResolvesCanonicalStateDir|TestForemanQueueWatch_FiresOnMutation|TestForemanQueueWatch_ShippedJSONTargetIsSilent|TestForemanQueueWatch_FiresWithStaleJSONPresent|TestForemanQueueWatch_WatchTargetsAgree)$' -v -count=1` | FailsVisibly PASS (local, template); factory: 5 top-level PASS + 2 subtests (7 PASS lines), `ok .../internal/factory 82.480s` |
+| AC-DBP-012 | PASS | `go test ./internal/template -run '^TestDBPathsBlock_UserFacingPages$' -v` | `pages=12 anchors=5`, `--- PASS`. The `hns-oss-docs-verify` hugo build and heading parity are NOT run (see Gaps) |
+| AC-DBP-013 | PASS | `go test ./internal/template -run '^TestTemplateDBPathSurfacesCarryPointer$' -v`; `TestDeprecatedPaths_NoTemplateTextReference` in the cli run | tree + 2 mutant subtests PASS (swept 3); deprecated-path guard PASS |
+| AC-DBP-014 | PASS (CLI row pending) | `go test ./internal/cli -run '^(TestDBPathGhosts_EightObserved|...|TestDBPathGhosts_ReadOnly)$' -v` | `--- PASS` x5 (swept 5); `moai doctor --check "DB Path Ghosts"` row needs the tree binary (slot list) |
+| AC-DBP-015 | PASS | `go test ./internal/cli -run '^(TestBinaryLag_DoctorCheckNameSetIsUnchanged|...GuardRejectsMutations|...OneSeamServesBothSurfaces|...NonGitDirectoryKeepsDoctorExitZero)$' -v`; `grep -c dbPathGhostCheckName internal/cli/binary_lag_test.go` = 1; `grep -c "DB Path Ghosts" internal/cli/testdata/doctor-{dark,light,nocolor}.golden` = 1 each | `--- PASS` x4 |
+| AC-DBP-016 | PARTIAL | (1) build/vet, (2) full-package scoped runs, (3) emit checks: slot list; (4) `moai-base spec lint .moai/specs/SPEC-MOAI-DB-PATHS-001/spec.md` | (4) `0 error(s), 0 warning(s)` (one INFO: OwnershipTransitionUnmeasured, commits carry no Authored-By-Agent trailer). (5) see allow-list below |
+
+Coverage: `go test ./internal/cli -run '^TestPaths_' -coverprofile` on paths.go: 120/131 statements = 91.6% (target 85%); queue_location.go 7/7. gofmt -l on all touched Go files: empty.
+
+### Allow-list diff (AC-DBP-016 (5)) at 0242d5ef7
+
+`git diff --name-status main...HEAD`: 49 entries. Modified: the ten S12 twin files, `.moai/workflows/gtd.md`, `manager-todo.toml`, `catalog.yaml`, four READMEs, eight docs-site pages, `root.go`, `todo.go`, `handoff.go`, `factory_handoff_recover.go`, `doctor.go`, `binary_lag_test.go`, three doctor goldens, `foreman_queue_statement_test.go`, `foreman_queue_watch_test.go`. Added: the four SPEC artifacts, `paths.go`, `paths_test.go`, `queue_location.go`, `queue_location_test.go`, `db_paths_surfaces_test.go`, `doctor_db_ghosts.go`, `doctor_db_ghosts_test.go`. Every path is on the allow-list with the expected letter; no not-in-the-change-set path appears (no other internal/factory or internal/homestate file, no embed_manifest_gen.go, no codemaps, no CHANGELOG, no .agents/skills).
+
+### A.4 grep for legitimate `*.db` writers in the doctor directories
+
+`grep -rnE '"[A-Za-z0-9_.-]*\.db"' internal --include='*.go'` (non-test): backlog.db and factory.db (canonical, excluded), broker.db (below factory/messages), sessions.db (cache/search), profile-leases.db (home/run). No legitimate zero-byte writer lies directly in a scanned directory; no exclusion needed beyond the canonical pair.
+
+### Pending-slot list (one batch, script `/private/tmp/dbp-bin/verify.sh`, sequential, outputs to /private/tmp/dbp-t1/v/)
+
+1. `go build ./...` and `GOOS=windows GOARCH=amd64 go build ./...` (AC-016 (1)).
+2. `go vet ./internal/cli/... ./internal/homestate/... ./internal/factory/... ./internal/template/...` (AC-016 (1)).
+3. `make agents-emit-check commands-emit-check embed-manifest-check` (AC-009, AC-016 (3)).
+4. `go build -o /private/tmp/dbp-bin/moai-tree ./cmd/moai`, then `moai-tree paths --json`, `moai-tree paths --field project-key` in this worktree (AC-005 OM: expects moai-adk-go-1bd3d038), `moai-tree doctor --check "DB Path Ghosts"` (AC-014 row), `moai-tree spec lint` (AC-016 (4) with the tree build).
+5. Whole-package `go test ./internal/homestate/... ./internal/testguard/... ./internal/template/... ./internal/factory/... ./internal/cli/ -count=1` (regression sweep for the shared packages; testguard proves the home-access guard stays green with the new `~/` literals).
+6. `hns-oss-docs-verify` recipe (hugo build, heading parity) for AC-DBP-012.
+
+### Gaps
+
+- Items 1 to 6 above were not observed (slot unavailable); no claim of build, vet, whole-package, or hugo success is made.
+- The statement-test and watch-family PASS lines were observed at the tree state of commit baecbf74c plus the later non-factory commits; no internal/factory file changed afterwards.
+- The Authored-By-Agent trailer is absent on all commits (lint INFO only).
+- AC-DBP-005 OM and AC-DBP-014 CLI-row evidence need the tree binary.
+
+### Residual risk
+
+- The anchors test proves presence in the right section, not the quality of the locale prose (review judges it).
+- `moai paths` joins the deps-free fast path (`trivialCommands`); a future change that makes it read `deps` would panic there.
+- The foreman watch relies on an installed moai that has `paths`; an older binary stops the watch with a visible message (by design).
+
 
 ## §E.3 Run-phase Audit-Ready Signal
 
-_pending run-phase_
+run_status: blocked-on-slot (implementation complete, slot-gated verification pending)
+audit_ready: false
+ac_pass_count: 13 of 16 observed PASS on targeted runs; AC-DBP-005, AC-DBP-014 partial (tree-binary rows), AC-DBP-016 partial (build/vet/emit checks/whole-package runs pending the slot)
+ac_fail_count: 0
+run_commit_sha: pending-backfill (HEAD at this record: 0242d5ef7 plus the progress.md commit that carries it)
+m1_to_mN_commit_strategy: RED test commit then GREEN commit per milestone (M1, M2, M3, M5), M4 pages in one commit, regeneration (TOML, catalog) in its own commit
+M5: kept
+total_run_phase_files: 49 entries in `git diff --name-status main...HEAD` (see §E.2)
 
 ## §E.4 Sync-phase Audit-Ready Signal
 
