@@ -385,6 +385,7 @@ func TestDBPathsBlock_UserFacingPages(t *testing.T) {
 	t.Logf("pages=%d anchors=%d", len(dbPathsUserFacingPages), len(dbPathsUserFacingAnchors))
 
 	t.Run("mutant-anchor-dropped", func(t *testing.T) {
+		// home-guard:allow synthetic page text asserted as a string, never resolved against a home
 		page := "## Storage\n\nThe queue is `backlog.db`. Use `moai paths`, never `~/.moai/db/todo.db`; `sqlite3` creates files; copy `.db-wal`; `moai todo list --json`.\n"
 		if m := anchorsMissingInSection(page); len(m) != 0 {
 			t.Fatalf("the synthetic page must pass: %v", m)
@@ -395,6 +396,7 @@ func TestDBPathsBlock_UserFacingPages(t *testing.T) {
 		}
 	})
 	t.Run("mutant-anchors-in-other-section", func(t *testing.T) {
+		// home-guard:allow synthetic page text asserted as a string, never resolved against a home
 		page := "## Storage\n\nThe queue is `backlog.db`.\n\n## Elsewhere\n\n`moai paths` `~/.moai/db/todo.db` `sqlite3` `.db-wal` `moai todo list --json`\n"
 		if m := anchorsMissingInSection(page); len(m) != len(dbPathsUserFacingAnchors) {
 			t.Errorf("anchors outside the mention's section must not count: missing %v", m)

@@ -82,7 +82,31 @@ Coverage: `go test ./internal/cli -run '^TestPaths_' -coverprofile` on paths.go:
 
 `grep -rnE '"[A-Za-z0-9_.-]*\.db"' internal --include='*.go'` (non-test): backlog.db and factory.db (canonical, excluded), broker.db (below factory/messages), sessions.db (cache/search), profile-leases.db (home/run). No legitimate zero-byte writer lies directly in a scanned directory; no exclusion needed beyond the canonical pair.
 
-### Pending-slot list (one batch, script `/private/tmp/dbp-bin/verify.sh`, sequential, outputs to /private/tmp/dbp-t1/v/)
+### Slot-batch follow-up (leader-run batch at 944f7ee76, then targeted fixes; no slot held by this lane)
+
+Batch (leader-run, /private/tmp/dbp-t1/v/): build-linux, build-windows, vet, make-checks, tree-binary, test-homestate, test-template exit 0. Findings and repairs:
+
+| Item | Command | Exit | Verbatim / swept |
+|---|---|---|---|
+| testguard (2 new `~/` literals at db_paths_surfaces_test.go:388, :398) | `go test ./internal/testguard -run '^TestHomeGuard_RepositoryHasNoNewHomeAccess$' -count=1 -v` after adding `// home-guard:allow synthetic page text asserted as a string, never resolved against a home` above each | 0 | `scanned 3398 test files: 182 violations, seed 184 entries, 0 new, 2 stale seed entries`; `--- PASS: TestHomeGuard_RepositoryHasNoNewHomeAccess` (seed untouched) |
+| template tests owning those lines | `go test ./internal/template -run '^(TestDBPathsBlock_UserFacingPages\|TestDBPathsBlock_Surfaces\|TestTemplateDBPathSurfacesCarryPointer)$' -count=1 -v` | 0 | 10 `--- PASS` lines |
+| factory 9 env failures (run.sh exported MOAI_HOME, overriding the tests' own home; removed from run.sh) | `go test ./internal/factory -run '^(TestAdoptionLandsWhereConsumersRead_NonTemp\|TestBacklogIssuancePureReaderNoDDL\|TestBacklogQueuedCountSharedShape\|TestResolveTodoQueueRoot_FallbackNoGit\|TestResolveTodoQueueRootAdopting_AdoptsLocalQueue\|TestStateDirRelocatesLegacyWithRegistryFiles\|TestStateDirRelocationRefusedFallsBackToLegacyRead\|TestTodoQueueRoot_NonTempNonGitKeepsHomeFallback\|TestTodoQueueRoot_PureGuardIsSilent)$' -count=1 -v` | 0 | 9 `--- PASS` |
+| factory family | `go test ./internal/factory -run '^(TestForeman\|TestQueueLocation\|TestStateDir\|TestTodoQueueRoot\|TestResolveTodoQueueRoot)' -count=1 -v -timeout 15m` | 0 | 36 `--- PASS`, `ok .../internal/factory 130.016s` |
+| cli scoped set | `go test ./internal/cli -timeout 15m -count=1 -v -run '^(TestPaths_\|TestTodoHelp_\|TestTodoStoreClaims_\|TestDBPathGhosts_\|TestBinaryLag_\|TestDoctorGolden\|TestDoctor_\|TestDeprecatedPaths_)'` | 0 | 49 `--- PASS`, no FAIL, `ok .../internal/cli 39.509s` |
+| tree binary (built from tree HEAD 944f7ee76, isolated HOME /private/tmp/dbp-h1/home, MOAI_HOME unset, cwd = this worktree, which resolves to the primary project) | `moai-tree paths --field project-key` | 0 | `moai-adk-go-1bd3d038` (AC-DBP-005 OM met); `paths --json` shows queue_layout home, queue_state pre-adoption with legacy_dir `/Users/goos/MoAI/moai-adk-go/.moai/state/kanban`, no file created |
+| doctor row | `moai-tree doctor --check "DB Path Ghosts"` | 0 | `ok      DB Path Ghosts  no zero-byte database files at unconfirmed paths`, `Pass 1 Warn 0 Fail 0` (AC-DBP-014) |
+| spec lint | `moai-tree spec lint .moai/specs/SPEC-MOAI-DB-PATHS-001/spec.md` | 0 | `0 error(s), 0 warning(s)` (AC-DBP-016 (4)) |
+
+AC-DBP-016 (1) builds, vet and (3) emit/manifest checks: exit 0 in the leader-run batch.
+
+### Gaps (final)
+
+- The whole `internal/cli` package run was not observed: it hit the 40m timeout on a loaded machine (a load symptom in TestMain/TestOutputText_NoFindings, not a failure of this change); left to CI. Only the scoped anchored set above was observed.
+- The `hns-oss-docs-verify` hugo build and README/docs heading parity for AC-DBP-012 were not run; only the anchor test (pages=12 anchors=5) was observed.
+- test-factory and test-testguard whole-package results were observed only as the repaired anchored sets above, not as whole-package passes.
+- Authored-By-Agent trailer absent on commits (lint INFO).
+
+### Pending-slot list (superseded by the follow-up above except hugo and whole-package cli) (one batch, script `/private/tmp/dbp-bin/verify.sh`, sequential, outputs to /private/tmp/dbp-t1/v/)
 
 1. `go build ./...` and `GOOS=windows GOARCH=amd64 go build ./...` (AC-016 (1)).
 2. `go vet ./internal/cli/... ./internal/homestate/... ./internal/factory/... ./internal/template/...` (AC-016 (1)).
@@ -107,14 +131,14 @@ Coverage: `go test ./internal/cli -run '^TestPaths_' -coverprofile` on paths.go:
 
 ## §E.3 Run-phase Audit-Ready Signal
 
-run_status: blocked-on-slot (implementation complete, slot-gated verification pending)
+run_status: complete-with-gaps
 audit_ready: false
-ac_pass_count: 13 of 16 observed PASS on targeted runs; AC-DBP-005, AC-DBP-014 partial (tree-binary rows), AC-DBP-016 partial (build/vet/emit checks/whole-package runs pending the slot)
+audit_ready_reason: AC-DBP-012 hugo build / heading parity and the whole-package internal/cli run are not observed (Gaps in §E.2); every other AC is observed PASS
+ac_pass_count: 15 of 16 observed PASS; AC-DBP-012 PASS on the anchor test, hugo recipe unobserved
 ac_fail_count: 0
-run_commit_sha: pending-backfill (HEAD at this record: 0242d5ef7 plus the progress.md commit that carries it)
-m1_to_mN_commit_strategy: RED test commit then GREEN commit per milestone (M1, M2, M3, M5), M4 pages in one commit, regeneration (TOML, catalog) in its own commit
+run_commit_sha: pending-backfill
 M5: kept
-total_run_phase_files: 49 entries in `git diff --name-status main...HEAD` (see §E.2)
+total_run_phase_files: 49 entries in git diff --name-status main...HEAD
 
 ## §E.4 Sync-phase Audit-Ready Signal
 
