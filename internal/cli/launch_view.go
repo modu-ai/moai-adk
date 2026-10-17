@@ -207,6 +207,40 @@ func consumeLaunchArgs(extraArgs []string) launchConsumption {
 	return c
 }
 
+// consumeAllowCardAnchor is the launcher's consumption of its own override
+// flag (REQ-LA-005): it removes --allow-card-anchor from the launcher segment of
+// args (before the first `--`; tokens after it are the backend's own) and
+// reports whether it stood there. The flag counts only where it stands: the
+// token after a required-value option is that option's VALUE — never the
+// override — and stays in the argv the backend receives. Which options take the
+// next token as a value is the repo's one option knowledge: the launcher-owned
+// value flags plus the measured claude option model.
+func consumeAllowCardAnchor(args []string) (rest []string, allowed bool) {
+	rest = make([]string, 0, len(args))
+	for i := 0; i < len(args); i++ {
+		arg := args[i]
+		if arg == argSeparator {
+			return append(rest, args[i:]...), allowed
+		}
+		if arg == allowCardAnchorFlag {
+			allowed = true
+			continue
+		}
+		rest = append(rest, arg)
+		if takesNextTokenAsValue(arg) && i+1 < len(args) && args[i+1] != argSeparator {
+			rest = append(rest, args[i+1])
+			i++
+		}
+	}
+	return rest, allowed
+}
+
+// takesNextTokenAsValue reports whether arg is an option whose next token is its
+// value even when that token is flag-shaped.
+func takesNextTokenAsValue(arg string) bool {
+	return launcherSegmentValueFlags[arg] || activeClaudeOptionModel[arg] == claudeOptionRequiredValue
+}
+
 // --- backend option model: the worktree selection ----------------------------
 
 // selectBackendWorktree returns the worktree the backend selects from argv: the

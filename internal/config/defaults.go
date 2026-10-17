@@ -1048,6 +1048,13 @@ const DefaultFactoryLanes = 8
 // fallback where a run carries no record or a capacity-open one.
 const DefaultFactoryLeaderLanes = 1
 
+// DefaultLeaderAnchorAuditRelPath is the override audit log of the leader
+// launch anchor guard (SPEC-LAUNCHER-ARGV-001 REQ-LA-005), relative to the
+// project root: one row per --allow-card-anchor bypass (backend, tree, branch),
+// following the BranchGuard `.moai/logs/` audit precedent. A bypass that cannot
+// be recorded here is refused, so the path is part of the guard's contract.
+const DefaultLeaderAnchorAuditRelPath = ".moai/logs/leader-anchor-audit.log"
+
 // DefaultFactorySlowLaunchThreshold is the slow-launch threshold of the
 // codex lane launch's pre-exec phase (SPEC-CODEX-LANE-SLOTS-001 REQ-012):
 // when the phase exceeds it, the launcher prints one timing line per

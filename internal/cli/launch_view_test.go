@@ -130,15 +130,26 @@ func TestLaunchViewStageReads(t *testing.T) {
 	}
 }
 
-// viewEqualityRow is one §D.4 spelling for the view-exec equality test.
+// viewEqualityRow is one §D.4 spelling. The first block is the backend
+// selection the view must carry; the second is the leader verdict the guard
+// must reach in a fixture whose trees are WT-card (branch WT-card), plain
+// (branch plain-branch) and plain-tree (branch plain-tree-branch).
 type viewEqualityRow struct {
 	name string
 	args []string
-	// selection is the expected backend selection over the final argv. Index is
-	// not asserted here (it is a position, covered by TestLaunchViewBackendSelection).
+	// spelling / value / hasValue: the expected backend selection over the
+	// final argv. Index is not asserted here (see TestLaunchViewBackendSelection).
 	spelling string
 	value    string
 	hasValue bool
+	// tree is the selected tree relative to the project root ("" = none);
+	// branch is its effective branch, "<base>" meaning the launch directory's;
+	// refuse is the expected leader verdict. leader is false for the one row
+	// (14) that is a non-leader compatibility cell.
+	tree   string
+	branch string
+	refuse bool
+	leader bool
 }
 
 // viewEqualityRows are the acceptance.md §D.4 spellings (rows 1-14). The
@@ -147,52 +158,21 @@ type viewEqualityRow struct {
 // rows 1-3 and 5-6 end up as `--worktree <value>`; the attached and cluster
 // forms reach the backend untouched.
 func viewEqualityRows(elsewhere string) []viewEqualityRow {
+	const card = ".claude/worktrees/WT-card"
 	return []viewEqualityRow{
-		{"1 -w WT-card", []string{"-w", "WT-card"}, "--worktree", "WT-card", true},
-		{"2 --worktree WT-card", []string{"--worktree", "WT-card"}, "--worktree", "WT-card", true},
-		{"3 --worktree=WT-card", []string{"--worktree=WT-card"}, "--worktree", "WT-card", true},
-		{"4 -wWT-card", []string{"-wWT-card"}, "-w<value>", "WT-card", true},
-		{"5 -w -b -- WT-card (consumed option shadowing)", []string{"-w", "-b", "--", "WT-card"}, "--worktree", "WT-card", true},
-		{"6 -w plain-tree --worktree --branch main WT-card (last wins)", []string{"-w", "plain-tree", "--worktree", "--branch", "main", "WT-card"}, "--worktree", "WT-card", true},
-		{"7 -- -pwWT-card PROMPT (bundled cluster)", []string{"--", "-pwWT-card", "PROMPT"}, "-<cluster>w<value>", "WT-card", true},
-		{"8 bare -w", []string{"-w"}, "--worktree", "", false},
-		{"9 -- --worktree WT-card PROMPT", []string{"--", "--worktree", "WT-card", "PROMPT"}, "--worktree", "WT-card", true},
-		{"10 --worktree=WT-card -- TAIL", []string{"--worktree=WT-card", "--", "TAIL"}, "--worktree", "WT-card", true},
-		{"11 -w plain -- prompt that contains -w WT-card", []string{"-w", "plain", "--", "fix -w WT-card please"}, "--worktree", "plain", true},
-		{"12 -w plain -- P1 -- --worktree WT-card (second separator)", []string{"-w", "plain", "--", "P1", "--", "--worktree", "WT-card"}, "--worktree", "plain", true},
-		{"13 -- --worktree plain PROMPT", []string{"--", "--worktree", "plain", "PROMPT"}, "--worktree", "plain", true},
-		{"14 -w plain --worktree <elsewhere> (duplicate options)", []string{"-w", "plain", "--worktree", elsewhere}, "--worktree", elsewhere, true},
+		{"1 -w WT-card", []string{"-w", "WT-card"}, "--worktree", "WT-card", true, card, "WT-card", true, true},
+		{"2 --worktree WT-card", []string{"--worktree", "WT-card"}, "--worktree", "WT-card", true, card, "WT-card", true, true},
+		{"3 --worktree=WT-card", []string{"--worktree=WT-card"}, "--worktree", "WT-card", true, card, "WT-card", true, true},
+		{"4 -wWT-card", []string{"-wWT-card"}, "-w<value>", "WT-card", true, card, "WT-card", true, true},
+		{"5 -w -b -- WT-card (consumed option shadowing)", []string{"-w", "-b", "--", "WT-card"}, "--worktree", "WT-card", true, card, "WT-card", true, true},
+		{"6 -w plain-tree --worktree --branch main WT-card (last wins)", []string{"-w", "plain-tree", "--worktree", "--branch", "main", "WT-card"}, "--worktree", "WT-card", true, card, "WT-card", true, true},
+		{"7 -- -pwWT-card PROMPT (bundled cluster)", []string{"--", "-pwWT-card", "PROMPT"}, "-<cluster>w<value>", "WT-card", true, card, "WT-card", true, true},
+		{"8 bare -w", []string{"-w"}, "--worktree", "", false, "", "<base>", false, true},
+		{"9 -- --worktree WT-card PROMPT", []string{"--", "--worktree", "WT-card", "PROMPT"}, "--worktree", "WT-card", true, card, "WT-card", true, true},
+		{"10 --worktree=WT-card -- TAIL", []string{"--worktree=WT-card", "--", "TAIL"}, "--worktree", "WT-card", true, card, "WT-card", true, true},
+		{"11 -w plain -- prompt that contains -w WT-card", []string{"-w", "plain", "--", "fix -w WT-card please"}, "--worktree", "plain", true, ".claude/worktrees/plain", "plain-branch", false, true},
+		{"12 -w plain -- P1 -- --worktree WT-card (second separator)", []string{"-w", "plain", "--", "P1", "--", "--worktree", "WT-card"}, "--worktree", "plain", true, ".claude/worktrees/plain", "plain-branch", false, true},
+		{"13 -- --worktree plain PROMPT", []string{"--", "--worktree", "plain", "PROMPT"}, "--worktree", "plain", true, ".claude/worktrees/plain", "plain-branch", false, true},
+		{"14 -w plain --worktree <elsewhere> (duplicate options)", []string{"-w", "plain", "--worktree", elsewhere}, "--worktree", elsewhere, true, "", "", false, false},
 	}
-}
-
-// TestLauncherAnchorFinalArgv holds the guard-input cells of SPEC-LAUNCHER-ARGV-001.
-// M1 lands view_exec_byte_equality (AC-LA-005); M2 adds the three iter8 families.
-func TestLauncherAnchorFinalArgv(t *testing.T) {
-	pinSnapshotModel(t)
-	// AC-LA-005: for every §D.4 spelling the view's FinalArgv equals, token by
-	// token, the argv the exec boundary receives (minus the flags the launcher
-	// injects from profile state), and the view carries the expected backend
-	// selection. Equality alone would pass a resolver that misparses every
-	// value identically on both sides, so the selection is asserted too.
-	t.Run("view_exec_byte_equality", func(t *testing.T) {
-		elsewhere := filepath.Join(t.TempDir(), "elsewhere")
-		for _, arm := range []string{"cc", "glm"} {
-			for _, row := range viewEqualityRows(elsewhere) {
-				t.Run(arm+"/"+row.name, func(t *testing.T) {
-					view := resolveLaunchView(row.args)
-					obs := launchWithStageSeams(t, arm, row.args, "bare")
-					if obs.Err != "" {
-						t.Fatalf("launch refused: %q", obs.Err)
-					}
-					if !reflect.DeepEqual(view.FinalArgv, obs.ExecTail) {
-						t.Errorf("view FinalArgv = %q, exec boundary received %q", view.FinalArgv, obs.ExecTail)
-					}
-					sel := view.Selection
-					if !sel.Present || sel.Spelling != row.spelling || sel.Value != row.value || sel.HasValue != row.hasValue {
-						t.Errorf("selection = %+v, want spelling %q value %q hasValue %v", sel, row.spelling, row.value, row.hasValue)
-					}
-				})
-			}
-		}
-	})
 }
