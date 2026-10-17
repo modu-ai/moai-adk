@@ -52,16 +52,16 @@ func seedWorktreeEntryHooks(tree string, warn io.Writer) {
 	sessionWorktreeSeedCodexHooks(tree, warn)
 }
 
-// seedAdmittedWorktreeHooks resolves the -w/--worktree value of an already
-// validated launcher argv the same way ccWorktreeWriterPrecheck and
-// resolveWorktreeL2Path do, and applies the launcher-entry backfill. The entry
+// seedAdmittedWorktreeHooksFor applies the launcher-entry backfill to the tree
+// the stage-B first-match -w/--worktree read of an already validated launcher
+// argv names (the same read ccWorktreeWriterPrecheck consumes). The entry
 // flows call it at their post-admission point so the backfill only runs on an
 // admitted launch. Resolution mirrors resolveWorktreeL2Path's: an absolute
 // value is used directly (prefix validation already happened), a short name
 // resolves against <root>/.claude/worktrees/<name>.
-func seedAdmittedWorktreeHooks(args []string, warn io.Writer) {
-	value, ok := worktreeFlagValue(args)
-	if !ok || value == "" {
+func seedAdmittedWorktreeHooksFor(read worktreeRead, warn io.Writer) {
+	value := read.Value
+	if !read.Has || value == "" {
 		return
 	}
 	tree := value
