@@ -134,6 +134,11 @@ file the completion report names:
    The card-review stage). The receipt the review returns is the mechanical
    basis of the lane's own completion verdict — a completion carrying
    neither a review receipt nor a recorded reason for its absence is a gap.
+2b. **Workflow-file check** — runs before Deliver. A branch changing
+   `.github/workflows/**` is "operator review required before landing": the
+   lane stops here (no `moai factory complete`, no PR) and reports to the
+   leader (`factory-dispatch-cards.md` § Workflow-file changes need operator
+   review).
 3. **Deliver** — `moai factory complete`: under github-flow (the
    distributed default) the verb runs the merge-readiness triple against
    the integration target, pushes the card branch, opens the pull request
@@ -152,10 +157,6 @@ file the completion report names:
    `state == "success"` with description `Review completed`, AND a
    `Merge Risk:` line whose commit prefix matches the current
    `headRefOid`. Anything else is a gap.
-5b. **Workflow-file check** — a branch changing `.github/workflows/**` is
-   "operator review required before landing": stop before the PR edge and
-   report (`factory-dispatch-cards.md` § Workflow-file changes need operator
-   review).
 6. **Sweep** — once the remote landing is confirmed, `moai worktree sweep`
    disposes the card tree (owner check, dirty trees skipped — the
    `worktree-integration.md` disposal contract).

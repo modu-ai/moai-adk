@@ -41,7 +41,7 @@ Whoever issues or classifies a card states its expected size — files touched a
 
 ## Workflow-file changes need operator review
 
-A card whose agent-authored branch changes any file under `.github/workflows/` is marked **operator review required before landing**. Detect it with `git diff --name-only <base>...HEAD -- .github/workflows` (non-empty output means marked). This is an operator-held gate in the keep-set style, not automation: the lane's verdict text states the marking, the lane does NOT self-land it (it stops at the point where `moai factory complete` would open or merge the PR and reports to the leader), and the leader's checklist lists the card until the operator has reviewed it.
+A card whose agent-authored branch changes any file under `.github/workflows/` is marked **operator review required before landing**. Detect it with `git diff --name-only <base>...HEAD -- .github/workflows` (non-empty output means marked). This is an operator-held gate in the keep-set style, not automation: the lane's verdict text states the marking, the lane does NOT self-land it (it stops before Deliver, the step where `moai factory complete` would open the PR, and reports to the leader), and the leader's checklist lists the card until the operator has reviewed it.
 
 ## Lane card transition — statement structure
 
