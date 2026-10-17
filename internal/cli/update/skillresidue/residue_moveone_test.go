@@ -24,9 +24,13 @@ func TestMoveFileReferencesArePinned(t *testing.T) {
 		"moveFile": true, "moveOne": true, // removed seams: any reappearance is a new route to a Rename
 		"linkFile": true, "linkOne": true,
 		"dropFile": true, "dropOne": true,
-		// The no-replace rename and the rmdir behind the staging folder (card t1733 round 4).
-		"renameNoReplace": true, "noReplaceRename": true,
-		"Rmdir": true,
+		// The no-replace rename and the rmdir behind the staging folder (card t1733 round 4),
+		// and since round 5 the per-platform calls themselves: the registry scan in
+		// internal/cli does not count a syscall.Rmdir or a platform rename (F19), so this
+		// test is where a new reference inside this package is caught.
+		"renameNoReplace": true, "noReplaceRenameAt": true, "renameatNoReplace": true,
+		"Renameat2": true, "RenameatxNp": true, "MoveFileEx": true,
+		"removeDirAt": true, "Unlinkat": true, "Rmdir": true,
 	}
 	entries, err := os.ReadDir(".")
 	if err != nil {
@@ -72,7 +76,7 @@ func TestMoveFileReferencesArePinned(t *testing.T) {
 
 	// The only allowed references. At package level each seam variable is declared once
 	// and bound to its function once. moveNoReplace is the one caller of the no-replace
-	// rename and removeStage the one caller of rmdir. renameByLinks (the fallback) makes the
+	// rename and removeStage the one caller of removeDirAt. renameByLinks (the fallback) makes the
 	// first link, the SKILL.md link and the restore link, and drops skill.md itself; dropOurs
 	// drops every other name (only while it is still ours); claimStage claims the staging
 	// folder.
@@ -80,14 +84,22 @@ func TestMoveFileReferencesArePinned(t *testing.T) {
 		"mkdirFile@package-level": 1, "mkdirOne@package-level": 1,
 		"linkFile@package-level": 1, "linkOne@package-level": 1,
 		"dropFile@package-level": 1, "dropOne@package-level": 1,
-		"renameNoReplace@package-level": 1, "noReplaceRename@package-level": 1,
+		"renameNoReplace@package-level": 1, "noReplaceRenameAt@package-level": 1,
 
 		"mkdirFile@claimStage":          1,
 		"renameNoReplace@moveNoReplace": 1,
-		"Rmdir@removeStage":             1,
-		"linkFile@renameByLinks":        3,
-		"dropFile@renameByLinks":        1,
-		"dropFile@dropOurs":             1,
+		"removeDirAt@removeStage":       1,
+		// The platform calls, one owner each: the descriptor-relative renames (linux,
+		// darwin), the MoveFileEx call (windows), and the rmdir behind removeDirAt.
+		"renameatNoReplace@noReplaceRenameAt": 1,
+		"Renameat2@renameatNoReplace":         1,
+		"RenameatxNp@renameatNoReplace":       1,
+		"MoveFileEx@noReplaceRenameAt":        1,
+		"Unlinkat@removeDirAt":                1,
+		"Rmdir@removeDirAt":                   2, // windows and the platforms without a rename primitive
+		"linkFile@renameByLinks":              3,
+		"dropFile@renameByLinks":              1,
+		"dropFile@dropOurs":                   1,
 	}
 	for key, n := range want {
 		if got[key] != n {

@@ -196,18 +196,26 @@ var destructiveTargetRegistry = []destructiveSite{
 			"F13, F14). The package's one root-bound Remove, reached through the dropFile seam, " +
 			"and since card t1733 round 4 reached ONLY by the link fallback renameByLinks (and " +
 			"its dropOurs). The held-back rename itself moves skill.md by atomic no-replace " +
-			"renames (renameat2 RENAME_NOREPLACE, renamex_np RENAME_EXCL, MoveFileEx without a " +
+			"renames (renameat2 RENAME_NOREPLACE, renameatx_np RENAME_EXCL, MoveFileEx without a " +
 			"replace flag): skill.md -> a randomly named staging folder -> SKILL.md, each " +
 			"refusing when the destination exists, so no user-visible name is unlinked behind a " +
-			"check. The staging folder is removed by rmdir (syscall.Rmdir, which the scan does " +
-			"not count and which cannot remove a file or a non-empty folder). A refused " +
-			"SKILL.md rename is undone by a no-replace rename back to skill.md; a refused undo " +
-			"leaves the content staged and the error names it. The package has no Rename. Only " +
-			"the fallback, used when the platform or filesystem reports no no-replace rename, " +
-			"keeps the round-3 identity rule (a name is removed only while Lstat still reports " +
-			"the identity captured before the link) and its microsecond window between each " +
-			"look and its unlink. The state tables above renameSkillFile and renameByLinks " +
-			"list every state. TestMoveFileReferencesArePinned fails on any new reference to " +
-			"the seams, the no-replace rename or rmdir, which forces this row to be reviewed.",
+			"check. Since round 5 the linux and darwin renames and the removal of the staging " +
+			"folder are relative to the descriptors of the skill folder and the staging folder, " +
+			"both opened through the project root and held open, so swapping either path " +
+			"afterwards cannot redirect them; windows stays path-based behind a root-bound look. " +
+			"The staging folder is removed by rmdir (unlinkat AT_REMOVEDIR, or syscall.Rmdir " +
+			"where there is no such form), which the scan does not count and which cannot " +
+			"remove a file, a link or a non-empty folder. The step takes the identity of " +
+			"skill.md before the first rename and requires it at the staged name before the " +
+			"second and at SKILL.md after it. A refused SKILL.md rename is undone by a " +
+			"no-replace rename back to skill.md; a refused undo leaves the content staged and " +
+			"the error names it. The package has no Rename. Only the fallback, used when the " +
+			"platform or filesystem reports no no-replace rename, keeps the round-3 identity " +
+			"rule (a name is removed only while Lstat still reports the identity captured " +
+			"before the link) and its microsecond window between each look and its unlink. The " +
+			"state tables above renameSkillFile and renameByLinks list every state. " +
+			"TestMoveFileReferencesArePinned fails on any new reference, inside the package, to " +
+			"the seams, the platform renames or rmdir, which forces this row to be reviewed; a " +
+			"caller in another package is not seen by that test.",
 	},
 }

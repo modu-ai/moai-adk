@@ -16,7 +16,6 @@ import (
 	"path"
 	"path/filepath"
 	"slices"
-	"syscall"
 )
 
 // retiredSkills maps a skill folder name MoAI no longer ships to the name that
@@ -223,7 +222,7 @@ func linkOne(root *os.Root, from, to string) error { return root.Link(from, to) 
 // never removes the last name of content (see renameByLinks).
 func dropOne(root *os.Root, name string) error { return root.Remove(name) }
 
-// errNoReplaceUnsupported is returned by noReplaceRename when the platform or the filesystem
+// errNoReplaceUnsupported is returned by noReplaceRenameAt when the platform or the filesystem
 // cannot rename without replacing. Nothing has moved when it is returned.
 var errNoReplaceUnsupported = errors.New("no-replace rename is not supported here")
 
@@ -238,9 +237,10 @@ var (
 	mkdirFile = mkdirOne
 	linkFile  = linkOne
 	dropFile  = dropOne
-	// renameNoReplace renames from to to (absolute paths) and fails when to exists, in one
-	// atomic step; noReplaceRename is the per-platform implementation.
-	renameNoReplace = noReplaceRename
+	// renameNoReplace renames src in srcDir to dst in dstDir (both open folders) and fails
+	// when dst exists, in one atomic step; noReplaceRenameAt is the per-platform
+	// implementation, relative to the folders' descriptors where the platform has them.
+	renameNoReplace = noReplaceRenameAt
 	// stageSuffix returns the random part of a staging folder name; an empty string selects
 	// the deterministic names the link-fallback tests address by literal path.
 	stageSuffix = randomStageSuffix
@@ -303,6 +303,42 @@ func regularFileAt(name string) bool {
 	return err == nil && info.Mode().IsRegular()
 }
 
+// heldDir is a folder opened through the project root and kept open for a whole rename. The
+// root refuses a path that leaves the project, and both handles name the folder's inode, so
+// what is done through them cannot be redirected by swapping the folder's path afterwards:
+// root answers fd-relative looks (Lstat), file supplies the descriptor for the renames.
+type heldDir struct {
+	root *os.Root
+	file *os.File
+}
+
+// holdDir opens the folder rel (slash-separated, relative to parent) through parent.
+func holdDir(parent *os.Root, rel string) (*heldDir, error) {
+	r, err := parent.OpenRoot(rel)
+	if err != nil {
+		return nil, err
+	}
+	f, err := r.Open(".")
+	if err != nil {
+		_ = r.Close()
+		return nil, err
+	}
+	return &heldDir{root: r, file: f}, nil
+}
+
+func (h *heldDir) close() {
+	_ = h.file.Close()
+	_ = h.root.Close()
+}
+
+// moveEnd is one end of a move: rel is its slash-separated path relative to the project root
+// (for the root-bound look and for messages), name its name inside the held folder dir.
+type moveEnd struct {
+	rel  string
+	dir  *heldDir
+	name string
+}
+
 // renameSkillFile renames <dirRel>/skill.md to <dirRel>/SKILL.md, where root is a handle
 // bound to the project root and dirRel is the skill folder's slash-separated path relative
 // to that root.
@@ -311,16 +347,32 @@ func regularFileAt(name string) bool {
 // check, so no user-visible name is removed and no step can replace one:
 //
 //	A  claim a staging folder S beside the file (Mkdir fails when the name exists; the name
-//	   carries a random part, so a foreign actor has to guess it)
+//	   carries a random part, so a foreign actor has to guess it), then open the skill folder
+//	   and S through the root and keep both open (holdDir)
 //	B  skill.md -> S/skill.md   (refuses when S/skill.md exists)
 //	C  S/skill.md -> SKILL.md   (refuses when SKILL.md exists)
 //	D  rmdir S                  (rmdir only: it cannot take a file or a non-empty folder)
 //
-// B and C are two steps because skill.md and SKILL.md are one name on a case-insensitive
-// filesystem (APFS, NTFS), where a direct rename between them would be a rename onto itself.
-// Each rename is path-based; a root-bound look at its source precedes it (moveNoReplace), so a
-// skill folder swapped for a link out of the project is refused, with a microsecond window
-// between the look and the rename.
+// B and C are two steps through a private name. On APFS a direct no-replace rename from
+// skill.md to SKILL.md was measured to succeed (sync audit iteration 5, F18), so the staging
+// hop is not shown to be necessary there; it stays as the designed route, and whether another
+// case-folding filesystem (NTFS) needs it was not measured.
+//
+// Containment. On linux and darwin the renames and the removal of S are relative to the two
+// open folders' descriptors (renameat2 RENAME_NOREPLACE, renameatx_np RENAME_EXCL,
+// unlinkat AT_REMOVEDIR): swapping the path of the skill folder or of S after it was opened
+// cannot redirect them, because the descriptor names the original inode. Opening goes through
+// the root, which refuses a path that leaves the project, so a skill folder or S swapped for a
+// link out of the project before it was opened is refused. A root-bound Lstat of the source's
+// path still precedes every rename (moveNoReplace): with descriptors it no longer contains the
+// move, it makes the step refuse when the path no longer leads to the folder it holds. On
+// windows the renames are path-based (MoveFileEx has no folder-relative form in x/sys), so that
+// look is the containment and a microsecond window remains between it and the call.
+//
+// Identity. The step takes the identity of skill.md right before B (fd-relative Lstat) and
+// requires the file at S/skill.md to be that file before C and the file at SKILL.md to be that
+// file after C. A replacement landing between B and C is refused without moving it; one landing
+// inside C itself cannot be prevented, but is reported.
 //
 // States and outcomes (L = skill.md, S = staging folder, T = S/skill.md; every row keeps the
 // user's bytes unless it says otherwise):
@@ -328,40 +380,57 @@ func regularFileAt(name string) bool {
 //	step  state                                        action                                user data
 //	A     name taken (file or folder)                  try another name; 100 taken: error    nothing changed
 //	A     Mkdir fails                                  error                                 nothing changed
-//	A/B   S swapped for a regular file                 B fails (ENOTDIR); D fails; L stays;  foreign file kept
-//	                                                   error names S
+//	A/B   S swapped for a regular file                 opening S fails (ENOTDIR); rmdir S    foreign file kept
+//	                                                   fails; L stays; error names S
+//	A/B   S swapped for a link to a folder inside      opened through the link; B lands T    content not lost
+//	      or outside the project                       there only when inside; outside:
+//	                                                   the root refuses the open, nothing
+//	                                                   moves, the link stays, error names S
 //	A/B   S swapped for a foreign folder               B lands T in it; C completes; D       content not lost; the
 //	                                                   fails if the folder holds anything    foreign folder keeps
 //	                                                   else (error names it)                 its own files
-//	A/B   skill folder swapped for a link out of       the root-bound look refuses; nothing  outside untouched
-//	      the project                                  moves; error
+//	A/B   skill folder swapped for a link out of       opening the skill folder is refused   outside untouched
+//	      the project before it was opened             by the root; nothing moves; error
+//	B     S or the skill folder swapped after it was   the rename uses the open folder, so   outside untouched; the
+//	      opened (path now leads elsewhere)            it lands in the original inode; the   file stays in the project
+//	                                                   look before C refuses (the path no
+//	                                                   leads there); error
 //	B     a foreign file sits at T                     B refused; L untouched; D fails       foreign file and L kept
 //	                                                   (S not empty); error names T
-//	B     L replaced or deleted before B               B moves whatever is at L (an editor's the user's newest file
-//	                                                   atomic save: the new file); a missing becomes SKILL.md
+//	B     L replaced or deleted before the identity    B moves whatever is at L (an editor's the user's newest file
+//	      is taken                                     atomic save: the new file); a missing becomes SKILL.md
 //	                                                   L fails the rename; error
+//	B     L replaced between the identity and B        the file at T is not the identity:    the moved file stays at T
+//	                                                   C is not run; error names T
 //	B     B fails for another reason                   L untouched; rmdir S; error           none lost
 //	B     B reports errNoReplaceUnsupported            nothing moved; renameByLinks takes    see renameByLinks
 //	                                                   over with the same S
-//	B-C   T overwritten by a foreign atomic write      C moves whatever holds T; nothing is  the content of L was
-//	                                                   removed by this step                  overwritten by the foreign
+//	B-C   T replaced by a foreign file                 the file at T is not the identity:    the foreign file stays at
+//	                                                   C is not run, nothing is put back,    T; the content of L was
+//	                                                   S is kept; error names T              overwritten by the foreign
 //	                                                                                         write, not by this step
 //	B-C   a file appears at SKILL.md (or, on a case-   C refused; D puts T back to L        user's file kept; content
 //	      folding filesystem, at skill.md)             (refused if L is taken); error names  back at L, or staged at T
 //	                                                   SKILL.md; if D is refused the error   when L is taken
 //	                                                   names T
+//	C     T replaced inside the step itself            the foreign file moves to SKILL.md;   the foreign file is kept
+//	                                                   the file at SKILL.md is not the       at SKILL.md; the
+//	                                                   identity: error names SKILL.md        content of L was
+//	                                                                                         overwritten by the foreign write
 //	C     C fails for another reason                   as the row above                      as above
 //	C-D   S swapped for a file after C                 D fails (ENOTDIR); error names S      foreign file kept
 //	C-D   S swapped for a non-empty folder             D fails (ENOTEMPTY); error names S    foreign files kept
 //
 // A refused put back leaves the content staged at T and the error names it; no step ever
-// removes a file it did not just move. A microsecond window therefore remains only in
-// renameByLinks (the fallback below).
+// removes a file it did not just move. A microsecond window therefore remains only (1) in
+// renameByLinks (the fallback below), (2) between the identity check before C and C, which the
+// check after C reports, (3) between the look and the call on platforms whose rename is
+// path-based (windows).
 //
 // @MX:WARN: [AUTO] filesystem moves inside a user's skill folder
 // @MX:REASON: a path swapped between a check and a move is the F24/F25 hazard; every move is
-// a no-replace rename, no user-visible name is unlinked, and the staging folder is removed
-// by rmdir, which cannot take a file.
+// a no-replace rename relative to open folders, no user-visible name is unlinked, and the
+// staging folder is removed by rmdir, which cannot take a file.
 func renameSkillFile(root *os.Root, dirRel string) error {
 	lower := path.Join(dirRel, "skill.md")
 	canonical := path.Join(dirRel, "SKILL.md")
@@ -373,51 +442,77 @@ func renameSkillFile(root *os.Root, dirRel string) error {
 		return fmt.Errorf("%s is not a regular file; nothing renamed", lower)
 	}
 
+	skill, err := holdDir(root, dirRel)
+	if err != nil {
+		return err
+	}
+	defer skill.close()
 	stage, stageInfo, err := claimStage(root, dirRel)
 	if err != nil {
 		return err
 	}
+	stageDir, err := holdDir(root, stage)
+	if err != nil {
+		// S was swapped before it could be opened (a file, a link out of the project): nothing
+		// moved. rmdir takes S back only while it is still our empty folder.
+		return errors.Join(fmt.Errorf("staging folder %s cannot be opened: %w", stage, err), removeStage(skill, stage))
+	}
+	defer stageDir.close()
 	staged := path.Join(stage, "skill.md")
-	switch err := moveNoReplace(root, lower, staged); {
+	from := moveEnd{rel: lower, dir: skill, name: "skill.md"}
+	mid := moveEnd{rel: staged, dir: stageDir, name: "skill.md"}
+	to := moveEnd{rel: canonical, dir: skill, name: "SKILL.md"}
+
+	// The identity of the file about to move, taken from the folder's descriptor right before
+	// the move: it is what must be at T before C and at SKILL.md after it.
+	moving, err := skill.root.Lstat("skill.md")
+	if err != nil {
+		return errors.Join(err, removeStage(skill, stage))
+	}
+	switch err := moveNoReplace(root, from, mid); {
 	case errors.Is(err, errNoReplaceUnsupported):
 		return renameByLinks(root, lower, canonical, stage, stageInfo, orig)
 	case err != nil:
 		// Nothing moved. The stage folder is ours to take back unless a foreign file made
 		// it non-empty or replaced it, in which case rmdir refuses and the error says so.
-		return errors.Join(err, removeStage(root, stage))
+		return errors.Join(err, removeStage(skill, stage))
 	}
-	if err := moveNoReplace(root, staged, canonical); err != nil {
+	if now, err := stageDir.root.Lstat("skill.md"); err != nil || !os.SameFile(moving, now) {
+		return fmt.Errorf("%s no longer holds the file that was moved there (%v); nothing more was moved, and whatever is at %s was left in place", staged, err, staged)
+	}
+	if err := moveNoReplace(root, mid, to); err != nil {
 		// SKILL.md is taken (or the move failed): put the file back under its own name. A
 		// refused put back leaves the content staged and the error says where.
-		if backErr := moveNoReplace(root, staged, lower); backErr != nil {
+		if backErr := moveNoReplace(root, mid, from); backErr != nil {
 			return fmt.Errorf("%w (restoring %s also failed: %v; the content is at %s)", err, lower, backErr, staged)
 		}
-		return errors.Join(err, removeStage(root, stage))
+		return errors.Join(err, removeStage(skill, stage))
 	}
-	return removeStage(root, stage)
+	if now, err := skill.root.Lstat("SKILL.md"); err != nil || !os.SameFile(moving, now) {
+		return errors.Join(fmt.Errorf("%s does not hold the file that was staged (%v): the staged name was replaced during the move, and the file now at %s was left in place", canonical, err, canonical), removeStage(skill, stage))
+	}
+	return removeStage(skill, stage)
 }
 
-// moveNoReplace renames from to to (slash-separated, relative to root) without replacing to.
-// The rename is path-based, so a root-bound look at from comes first: it refuses a path whose
-// folder was swapped for a link that leaves the project.
-func moveNoReplace(root *os.Root, from, to string) error {
-	if _, err := root.Lstat(from); err != nil {
+// moveNoReplace renames from to to without replacing to. A root-bound look at from precedes
+// the rename: where the rename is relative to descriptors it makes the step refuse when the
+// path of from no longer leads to the folder that is held, where it is path-based (windows)
+// it is the containment against a folder swapped for a link out of the project.
+func moveNoReplace(root *os.Root, from, to moveEnd) error {
+	if _, err := root.Lstat(from.rel); err != nil {
 		return err
 	}
-	abs := func(rel string) string { return filepath.Join(root.Name(), filepath.FromSlash(rel)) }
-	if err := renameNoReplace(abs(from), abs(to)); err != nil {
-		return fmt.Errorf("move %s to %s: %w", from, to, err)
+	if err := renameNoReplace(from.dir.file, from.name, to.dir.file, to.name); err != nil {
+		return fmt.Errorf("move %s to %s: %w", from.rel, to.rel, err)
 	}
 	return nil
 }
 
-// removeStage removes the staging folder with rmdir, which fails on a file and on a folder
-// that holds anything, so a foreign entry that took the name stays and the error names it.
-func removeStage(root *os.Root, stage string) error {
-	if _, err := root.Lstat(stage); err != nil {
-		return fmt.Errorf("staging folder %s not removed: %w", stage, err)
-	}
-	if err := syscall.Rmdir(filepath.Join(root.Name(), filepath.FromSlash(stage))); err != nil {
+// removeStage removes the staging folder with rmdir, relative to the held skill folder, which
+// fails on a file, a link and a folder that holds anything, so a foreign entry that took the
+// name stays and the error names it.
+func removeStage(skill *heldDir, stage string) error {
+	if err := removeDirAt(skill.file, path.Base(stage)); err != nil {
 		return fmt.Errorf("staging folder %s not removed: %w", stage, err)
 	}
 	return nil

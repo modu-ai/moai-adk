@@ -22,9 +22,22 @@ func requireNoReplace(t *testing.T) {
 	t.Helper()
 	d := t.TempDir()
 	mustWriteFile(t, filepath.Join(d, "a"), "x")
-	if err := noReplaceRename(filepath.Join(d, "a"), filepath.Join(d, "b")); errors.Is(err, errNoReplaceUnsupported) {
+	if err := renameInDir(t, d, "a", "b"); errors.Is(err, errNoReplaceUnsupported) {
 		t.Skip("no no-replace rename on this filesystem; the link fallback is tested instead")
 	}
+}
+
+// renameInDir calls the platform primitive on two names inside dir, held open as one folder.
+// Round 5 moved the primitive from absolute paths to open folders, so the primitive tests go
+// through this wrapper and keep their assertions.
+func renameInDir(t *testing.T, dir, from, to string) error {
+	t.Helper()
+	f, err := os.Open(dir)
+	if err != nil {
+		t.Fatalf("open %s: %v", dir, err)
+	}
+	defer func() { _ = f.Close() }()
+	return noReplaceRenameAt(f, from, f, to)
 }
 
 // legacyStageNames makes the staging folder names deterministic (skill.md.tmp-rename,
@@ -43,7 +56,7 @@ func forceFallback(t *testing.T) {
 	legacyStageNames(t)
 	orig := renameNoReplace
 	t.Cleanup(func() { renameNoReplace = orig })
-	renameNoReplace = func(string, string) error { return errNoReplaceUnsupported }
+	renameNoReplace = func(*os.File, string, *os.File, string) error { return errNoReplaceUnsupported }
 }
 
 // afterNthRename wraps the no-replace seam: fail(n), when it returns an error for the n-th
@@ -54,14 +67,14 @@ func afterNthRename(t *testing.T, act func(n int), fail func(n int) error) *int 
 	orig := renameNoReplace
 	t.Cleanup(func() { renameNoReplace = orig })
 	calls := new(int)
-	renameNoReplace = func(from, to string) error {
+	renameNoReplace = func(srcDir *os.File, src string, dstDir *os.File, dst string) error {
 		*calls++
 		if fail != nil {
 			if err := fail(*calls); err != nil {
 				return err
 			}
 		}
-		if err := orig(from, to); err != nil {
+		if err := orig(srcDir, src, dstDir, dst); err != nil {
 			return err
 		}
 		if act != nil {
@@ -102,7 +115,7 @@ func TestNoReplaceRename_MovesWhenTheDestinationIsFree(t *testing.T) {
 	d := t.TempDir()
 	mustWriteFile(t, filepath.Join(d, "a"), "body")
 
-	if err := noReplaceRename(filepath.Join(d, "a"), filepath.Join(d, "b")); err != nil {
+	if err := renameInDir(t, d, "a", "b"); err != nil {
 		t.Fatalf("rename onto a free name: %v", err)
 	}
 	if got := readOrFail(t, filepath.Join(d, "b")); got != "body" {
@@ -119,7 +132,7 @@ func TestNoReplaceRename_RefusesAnExistingDestination(t *testing.T) {
 	mustWriteFile(t, filepath.Join(d, "a"), "mine")
 	mustWriteFile(t, filepath.Join(d, "b"), "theirs")
 
-	err := noReplaceRename(filepath.Join(d, "a"), filepath.Join(d, "b"))
+	err := renameInDir(t, d, "a", "b")
 
 	if err == nil {
 		t.Fatal("rename onto an existing name succeeded")
@@ -500,7 +513,7 @@ func TestAC_UBR_17_RenameFallsBackToLinksWhenNoReplaceRenameIsUnsupported(t *tes
 	calls := 0
 	orig := renameNoReplace
 	t.Cleanup(func() { renameNoReplace = orig })
-	renameNoReplace = func(string, string) error {
+	renameNoReplace = func(*os.File, string, *os.File, string) error {
 		calls++
 		return errNoReplaceUnsupported
 	}
@@ -527,7 +540,7 @@ func TestAC_UBR_17_FallbackKeepsAForeignStagedFileUnderARandomStageName(t *testi
 	mustWriteFile(t, filepath.Join(dir, "skill.md"), "old body")
 	orig := renameNoReplace
 	t.Cleanup(func() { renameNoReplace = orig })
-	renameNoReplace = func(string, string) error { return errNoReplaceUnsupported }
+	renameNoReplace = func(*os.File, string, *os.File, string) error { return errNoReplaceUnsupported }
 	afterNthLink(t, func(n int) {
 		if n == 1 {
 			matches, err := filepath.Glob(filepath.Join(dir, "skill.md.tmp-rename-*", "skill.md"))
