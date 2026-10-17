@@ -532,12 +532,6 @@ func resolveWorktreeExistingBranch(args []string, warn io.Writer) ([]string, err
 	return rest, nil
 }
 
-// requireShortWorktreeName returns the first -w value of args under the
-// --branch preconditions (shortWorktreeNameOf).
-func requireShortWorktreeName(args []string) (string, error) {
-	return shortWorktreeNameOf(readFirstWorktree(args))
-}
-
 // seedAdmittedWorktreeHooks seeds the tree the first -w value of args names.
 func seedAdmittedWorktreeHooks(args []string, warn io.Writer) {
 	seedAdmittedWorktreeHooksFor(readFirstWorktree(args), warn)
