@@ -331,7 +331,30 @@ m1_to_mN_commit_strategy: one baseline commit, then one commit per milestone, th
 
 ## §E.4 Sync-phase Audit-Ready Signal
 
-_<pending sync-phase>_
+audit_ready: true
+
+```yaml
+sync_phase_complete_at: 2026-10-18
+sync_commit_sha: pending-backfill   # a commit cannot cite its own hash; the real SHA is backfilled by a following commit (spec-workflow Sync (close))
+sync_status: completed
+ac_source: .moai/specs/SPEC-LAUNCHER-ARGV-001/acceptance.md   # tier M
+changelog_entry_position: "CHANGELOG.md [Unreleased] > Added, first entry"
+frontmatter_status_transitions:
+  spec_md: "in-progress -> completed (single sync commit; updated: 2026-10-18)"
+  plan_md: "updated: 2026-10-15 -> 2026-10-18 (no status field)"
+  acceptance_md: "updated: 2026-10-15 -> 2026-10-18 (no status field)"
+```
+
+**Sync record** (tree `ecbe42094`; every command below was run in this sync pass)
+
+- **B12 self-test.** (1) pre-emission `grep -c 'SPEC-LAUNCHER-ARGV-001' CHANGELOG.md` -> 0 before the entry; (2) AC count from `acceptance.md` (tier M) with the reserved-token counter -> `live=15 excluded=0 ambiguous=0`, stdout `15`, matching the entry's "15 acceptance criteria"; the 13 requirements counted from `spec.md` (`REQ-LA-001..013`); (3) every repository path the entry cites was checked with `ls` (exit 0): `internal/cli/launch_view.go`, `internal/cli/factory_anchor_guard.go`, `internal/cli/launch_view_scan_test.go`, `internal/cli/cc.go`, `internal/cli/glm.go`, `internal/cli/launcher.go`, `internal/config/defaults.go`. `.moai/logs/leader-anchor-audit.log` is the runtime path the guard writes (`DefaultLeaderAnchorAuditRelPath`), not a repository file.
+- **Files read before drafting the entry:** `factory_anchor_guard.go` (whole), `launch_view.go` (whole walk helpers), the `defaults.go` diff, and the `cc.go` / `glm.go` / `launcher.go` diffs of `538af8d7c~1..ecbe42094`. Finding recorded for the changelog's framing: `factory_anchor_guard.go` and the `--allow-card-anchor` flag do not exist at `538af8d7c~1` (`git cat-file -e` exit 128, no `allow-card-anchor` in base `internal/`), so the entry presents the leader anchor guard as new behaviour on this base, not only as a redesign of an existing one.
+- **MX validation (sync sub-step).** Exported identifiers in the four new files: none. `@MX` tags present before the pass: none. Goroutines: none. Fan-in measured by non-test call sites (`grep` over `internal cmd`): `resolveLaunchView` 4 (`cc.go:204`, `cc.go:291`, `glm.go:266`, `glm.go:340`), all other new functions <= 2. One tag added, to `resolveLaunchView` in `internal/cli/launch_view.go`: `@MX:ANCHOR` with `@MX:REASON` and `@MX:SPEC` (comment text English per `code_comments`). Post-edit: `gofmt -l internal/cli/launch_view.go` empty exit 0; `go build ./...` exit 0; `go vet ./internal/cli/` exit 0; `GOOS=windows GOARCH=amd64 go build ./...` exit 0.
+- **Doc-surface decision: no shipped documentation statement is affected.** `grep -rln -e 'allow-card-anchor' -e 'leader-anchor' -e 'card-tree anchor'` over the tree (excluding `.git`, `node_modules`, `specs`, `reports`) matched Go sources only (`defaults.go`, `launch_view.go`, `factory_anchor_guard.go`, `factory_audit_nofollow_unix.go`, and two files untouched by this SPEC, `codex_lane_precondition.go` and `codex_lane_child_anchor_test.go`; the former's only hit is an unrelated comment about a stale anchor, last changed by card t1628). The refusal-text grep matched only `factory_anchor_guard.go`. `README.md`, `README.ko.md`, `README.ja.md`, `README.zh.md` carry 0 hits for `allow-card-anchor` / `worktree guard` / `worktree-guard`; `docs-site`, `.claude`, `internal/template` and `AGENTS*.md` carry none. No 4-locale edit was needed. No new docs were created.
+- **Carried Gaps (from §E.3, unchanged in substance):** (1) the package-wide `internal/cli` run and coverage are not measured (standing rule 35e9); the full-suite verdict is the integration-branch CI, pending. (2) No measurement on a running claude of repeated or empty `--worktree`, the attached `-w=value` read, or the short-cluster decomposition; they rest on `claude --help` (2.1.302, `-w, --worktree [name]` optional value), commander's documented parsing and the audited iter8 record. (3) The Lstat-layer mutant survived: on Unix `O_NOFOLLOW|O_NONBLOCK` plus the descriptor re-read refuse the same shapes, so that layer is observable only where `auditLogOpenNoFollow` is 0, and no Windows run was available. (4) One load-dependent timing test failed once under load ~31 (`TestFactoryLeaseDriftLogVerbWorktreeWriteWaits/nominated`, 633ms against a 500ms bound); it passed alone three times and the AC-LA-014 selector passed whole at three SHAs; not caused by this change.
+- **Gaps new in this sync pass:** no test was run in this pass (the pass touched one comment in a Go file plus documentation, and the heavy-run slot was not granted); the build, vet, gofmt and cross-build results above are the only code-level observations. The MoAI `/verify` gate was not run (it runs lint plus the full suite, which this lane may not run); substituted by `gofmt -l`, `go vet ./internal/cli/`, `go build ./...` and the windows cross-build. The MoAI `/verify` gate was not run (it runs the full suite); substituted by the four commands listed.
+- **SPEC audit (MCP `spec_audit`, `filter_spec=SPEC-LAUNCHER-ARGV-001`, `project_root` = this tree, run on the working tree after the frontmatter and §E.4 edits and before the commit):** `modern_era_clean: 1`, `grandfathered: 0`, `total_specs: 1`, one finding `EraAutoDetected` severity `INFO` (`H-4 (§E.2 + §E.4 + sync_commit_sha)`, era `V3R6`), no drift finding. Tool provenance: the running MCP server is build `ee981a932`, a strict ancestor of tree HEAD `ecbe42094` (`git merge-base --is-ancestor` exit 0, 293 commits behind), so this audit was judged by a build older than the tree; whether `internal/spec` changed in that range was not checked, and the result is therefore an advisory reading, not a build-matched one.
+- **Residual risk:** `sync_commit_sha` is a placeholder until the backfill commit lands; until then `moai spec audit` may read this SPEC as owing a backfill. The `@MX:ANCHOR` fan-in count is as observed at `ecbe42094`; a later caller change moves it.
 
 ## §G Override and Refusal Record
 

@@ -126,6 +126,10 @@ type launchView struct {
 
 // resolveLaunchView resolves entry once. It is pure: no filesystem, environment
 // or process state is read.
+//
+// @MX:ANCHOR: [AUTO] the single launch-argv resolver; the cc and glm entries each call it twice (the anchor guard, then the launch readers)
+// @MX:REASON: [AUTO] fan_in 4 (cc.go x2, glm.go x2); the guard and every worktree reader must judge the same view, so a change to the view shape or its walk rules moves all four sites together
+// @MX:SPEC: SPEC-LAUNCHER-ARGV-001
 func resolveLaunchView(entry []string) launchView {
 	v := launchView{Entry: entry}
 	v.StageA = readFirstWorktree(entry)
