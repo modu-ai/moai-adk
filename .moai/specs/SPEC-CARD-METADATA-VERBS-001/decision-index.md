@@ -28,7 +28,7 @@ Why unresolved: The base doctrine refuses lane sessions every queue mutation, an
 Ruling provenance (2026-10-17): lane ruling per the decision ladder — no carve-out; plan-audit iteration 1 assessed the default as safe ("preserves today's behavior exactly; t1715's item (4) routes through the leader at the cost of one message"). Recorded as DEFAULT-APPLIED below.
 Operator verdict: DEFAULT-APPLIED 2026-10-17T13:02:13Z lane-15 (factory lane, decision-ladder ruling, run tn1p4e)
 
-Class: implementation-level.
+Class: implementation-level
 Class detail: permission detail of a new verb; does not change an existing shipped command's behavior.
 Default: no carve-out — leader/operator-only; t1715's item (4) routes through the leader (rule: preserves current behavior — today no lane queue mutation is admitted anywhere).
 Alternate: own-card blank-fill carve-out for `set-spec` only (never `reclassify`, never a non-blank overwrite).
@@ -43,7 +43,7 @@ Why unresolved (iteration-2 corrected, plan-audit D8): The delegation says "stud
 Ruling provenance (2026-10-17): lane ruling per the decision ladder — option (a); plan-audit iteration 1 recommended the same (D1 fix route; the D8 wording correction above is applied). Rationale: design principle 5 (durable card identity; runs are membership) — the new table is keyed by the identity the data actually has; the run-keyed option forces invented runs or unindexed lookups; the nullable-column option is foreclosed by REQ-CMV-014.
 Operator verdict: DEFAULT-APPLIED 2026-10-17T13:02:13Z lane-15 (factory lane, decision-ladder ruling, run tn1p4e)
 
-Class: implementation-level.
+Class: implementation-level
 Default: option (a) — a NEW card-keyed `card_metadata_events` table in the homestate database, keyed by card id, reusing the `events` shape (autoincrement seq, kind, JSON payload, created-at).
 Alternate: the existing run-keyed `events` table with `run_id = ''` for queue-only cards (schema-legal; rejected on consumer/keying discipline grounds, not schema legality).
 
