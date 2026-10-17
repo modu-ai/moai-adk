@@ -1,6 +1,6 @@
 # Decision index: SPEC-CARD-AGE-ALARM-001
 
-Revision 0.1.1 — rows Q1-Q5 authored at plan phase (0.1.0); rows Q6-Q8 record the plan-audit iteration 1 repairs (verdict `.moai/reports/t1838/plan-audit-iter1.md`), for card t1838 (Tier M). The decision gate is on (`.moai/config/sections/interview.yaml:6`, `interview.decision_gate: on`), so this index is owed alongside the Tier artifacts. It carries no status field: the lifecycle lives in `spec.md` alone.
+Revision 0.1.2 — rows Q1-Q5 authored at plan phase (0.1.0); rows Q6-Q8 record the plan-audit iteration 1 repairs (verdict `.moai/reports/t1838/plan-audit-iter1.md`); rows Q9-Q10 record the plan-audit iteration 2 rule-C correction (verdict `.moai/reports/t1838/plan-audit-iter2.md`), for card t1838 (Tier M). The decision gate is on (`.moai/config/sections/interview.yaml:6`, `interview.decision_gate: on`), so this index is owed alongside the Tier artifacts. It carries no status field: the lifecycle lives in `spec.md` alone.
 
 The card is an operator delegation ("운영자 위임 10-17") whose design input is the leader-authored redesign doc at `.moai/reports/card-policy-redesign-20261017/design.md`. That doc is **not committed in this branch's tree** (measured: absent from the worktree at base `7faf75fdf`; it exists in the primary checkout only). It is therefore cited below as the card's normative input, never as a committed authority anchor — every DECIDED row below is anchored instead on a measurement of committed code at `7faf75fdf`, which the row names.
 
@@ -12,7 +12,7 @@ The card is an operator delegation ("운영자 위임 10-17") whose design input
 - **Why unresolved** states what the operator must settle.
 - **Default** and **Alternate** appear only where a ranking exists.
 
-An open FOUNDER row blocks the autonomous Kickoff until its `Operator verdict:` line is written. No row below is an open FOUNDER: Q1-Q4 are settled by committed evidence or policy, Q5 records the values question with its confirmation surface named (the OFF-by-default enable flag) rather than leaving it open — see the row for the exact residual that remains the operator's to override — and Q6-Q8 (added at the iter1 repair) are settled by measured substrate or committed precedent.
+An open FOUNDER row blocks the autonomous Kickoff until its `Operator verdict:` line is written. No row below is an open FOUNDER: Q1-Q4 are settled by committed evidence or policy, Q5 records the values question with its confirmation surface named (the OFF-by-default enable flag) rather than leaving it open — see the row for the exact residual that remains the operator's to override — and Q6-Q8 (added at the iter1 repair) are settled by measured substrate or committed precedent, and Q9-Q10 (added at the iter2 rule-C correction) are settled by audit findings reproduced through the real card API plus committed substrate and precedent.
 
 ## Summary
 
@@ -26,13 +26,15 @@ An open FOUNDER row blocks the autonomous Kickoff until its `Operator verdict:` 
 | Q6 | Does a same-stage re-entry (expiry → re-acquire → T4) refresh the stage-checkpoint anchor | DECIDED | implementation-level | not required (DECIDED by audit finding + committed transition-table measurement) |
 | Q7 | How a future-dated signal timestamp is handled | DECIDED | implementation-level | not required (DECIDED by committed precedent `QuotaClockSkewTolerance`) |
 | Q8 | Where AC-CAA-006's RED observation points | DECIDED | implementation-level | not required (repair of an acceptance-wording defect; DECIDED by audit finding + plan pin) |
+| Q9 | Does the no-progress-age basis admit the card's creation event (bounding the age against inherited base commits and pool-state cycling) | DECIDED | implementation-level | not required (DECIDED by audit finding + committed event-table measurement) |
+| Q10 | Does the timestamp-validity rule bind every derived age or only the three signal timestamps | DECIDED | implementation-level | not required (DECIDED by audit finding + committed precedent `QuotaClockSkewTolerance`) |
 
 ## Routing
 
 1. **FOUNDER rows with recorded operator verdicts:** none.
 2. **DEFAULT-APPLIED at plan close:** none.
 3. **POLICY-COVERED, no verdict needed:** Q3.
-4. **DECIDED:** Q1, Q2, Q4 (committed-evidence anchors), Q5 (see the row's own residual statement), and Q6-Q8 (plan-audit iteration 1 repairs, each anchored on a measured substrate or a committed precedent).
+4. **DECIDED:** Q1, Q2, Q4 (committed-evidence anchors), Q5 (see the row's own residual statement), Q6-Q8 (plan-audit iteration 1 repairs, each anchored on a measured substrate or a committed precedent), and Q9-Q10 (plan-audit iteration 2 rule-C correction, anchored on audit findings reproduced through the real card API plus committed substrate and precedent).
 
 ## Rows
 
@@ -108,3 +110,21 @@ Authority anchor: plan-audit iteration 1 finding D3 — the 0.1.0 E-006 cell gre
 Why resolved: E-006 is retargeted to `grep -rln "age-alarm" internal/cli/` — empty, exit 1, re-measured on tree `1cac5de4fa4c0f45942c8e2e037de1bd7f2fac2d` — and the flip is made plan-entailed in both directions: plan.md M3 (2) pins the text alarm section's tag-prefixed lines to the literal token `age-alarm`, and plan §C places the renderer in the new file `internal/cli/factory_age_alarm.go`. Nothing else under `internal/cli/` carries the token today (measured), so only M3's own renderer flips the cell.
 Default: none needed (one observation is plan-entailed).
 Operator verdict: not required (repair of an acceptance-wording defect; DECIDED by audit finding + plan pin)
+
+### Q9: Does the no-progress-age basis admit the card's creation event — bounding the age against inherited base commits and pool-state cycling?
+
+Label: DECIDED
+Class: implementation-level
+Authority anchor: plan-audit iteration 2 findings B1/B2 (`.moai/reports/t1838/plan-audit-iter2.md`; the codex required-backend leg reproduced both through the real card transition API on `c14bb152a` — a fresh picked card reading `SPEC_no_progress_age=48h` against an `actual_card_age=0s` via its 48h-old inherited base commit, and a 10-cycle pre-stage expiry/re-acquire loop whose stuck time of 2h41m read as `1m` through the fallback) and the committed creation-event substrate `internal/homestate/card_picked.go:173` (creation is a `card.transition` with payload `from: ""`, `to: picked`, appended only in the card-not-found branch — exactly one per card with events, necessarily that card's first event).
+Why resolved: without the creation member, (B2) a fresh card's no-progress age could predate its existence through the inherited base HEAD's committer timestamp — systematic false-alert noise on every newly-leased card whenever local main's HEAD is older than the band, precisely the quiet periods the panel exists for — and (B1) a pre-pipeline crash loop reset the age on every expiry → re-acquire cycle, because the 0.1.1 both-unknown fallback read the most recent `card.transition` and every cycle appends a fresh T3 (`assigned` → `leased`, `internal/homestate/card_transition.go:136`). REQ-CAA-005 (0.1.2) measures from the newest of {stage checkpoint, commit, creation}: creation is by construction the card's earliest event, so the iter1 D1 post-entry predicate is unchanged, while the both-unknown path now anchors at creation — pool-state cycling is activity, not progress (design principle 2), and the most-recent-transition fallback (the reset vector) is withdrawn, leaving `updated_at` as the legacy-row fallback only. Regression-pinned by plan.md M2 (g), `TestNoProgressAgeCreationAnchor`, covering the crash-loop mutant, the inherited-base mutant, and the stuck-still-alerts true positive.
+Default: none needed (audit finding + substrate measurement leave one sound predicate).
+Operator verdict: not required (DECIDED by audit finding + committed event-table measurement)
+
+### Q10: Does the timestamp-validity rule bind every derived age, or only the three signal timestamps?
+
+Label: DECIDED
+Class: implementation-level
+Authority anchor: plan-audit iteration 2 finding B3 (`.moai/reports/t1838/plan-audit-iter2.md`; reproduced through the real `RecordPicked` API on `c14bb152a` with a future stamp — a fallback transition dated tomorrow yielded a `−24h` no-progress age) and the committed precedent `internal/config/defaults.go:82-87` (`QuotaClockSkewTolerance`, REQ-QAS-005: "a record from another machine or a skewed clock must not win by being 'newest'").
+Why resolved: the 0.1.1 rule bound only the three signal timestamps; the both-unknown fallback, the `updated_at` fallback, and the REQ-CAA-003 gate-wait anchor subtracted store-written timestamps unchecked, so a rolled-back clock or a DB read from another machine could produce negative ages — the exact hazard class iter1 D2 established as blocking, incompletely repaired. REQ-CAA-003/004/005 (0.1.2) extend the rule to every timestamp the displayed ages derive from: the REQ-CAA-005 basis members (stage checkpoint, commit, and the creation event), the legacy `updated_at` fallback, and the gate-wait anchor (transition/lease-expired event `created_at`, `updated_at` fallback). A future-dated source beyond `CardAgeAlarmClockSkewTolerance` renders that source `unknown`; an age with no valid basis member renders `unknown`; no derived age is ever negative. Named test: plan.md M2 (h), `TestAgeAnchorsFutureTimestamps`.
+Default: none needed (precedent + audit finding decide shape and reach).
+Operator verdict: not required (DECIDED by audit finding + committed precedent `QuotaClockSkewTolerance`)
