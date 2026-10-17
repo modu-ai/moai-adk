@@ -40,7 +40,7 @@ related_specs: [SPEC-UPDATE-REPAIR-RC30-001, SPEC-UPDATE-MIGRATION-001, SPEC-UPD
 
 요구사항 ID 는 SPEC A 에서 그대로 유지된다 (F1 규정). Tier M 요구사항 상한은 16; 이 SPEC 은 3 개를 가진다.
 
-- **REQ-RC30-003** (Unwanted behavior): The update flow shall not delete a project-side managed skill or agent copy (for example `.claude/skills/moai/**`) until the runnable profile-visibility check AC-RC30-01 has passed on the tree being updated. Items: U-02, U-10 (소유); U-01, U-25 (교차 참조 — SPEC A 소유). 판정: AC-RC30-02 (게이트), AC-RC30-27 제거 반쪽, AC-RC30-01 (채택 전제, 운영자 단말).
+- **REQ-RC30-003** (Unwanted behavior): The update flow shall not delete a project-side managed skill or agent copy (for example `.claude/skills/moai/**`) until the runnable profile-visibility check AC-RC30-01 has passed on the tree being updated. Items: U-01, U-25 (교차 참조 — SPEC A 소유; U-02·U-10 은 REQ-RC30-004 의 항목이다, § C 대장 — plan-audit-iter1 D5 정정). 판정: AC-RC30-02 (게이트), AC-RC30-27 제거 반쪽, AC-RC30-01 (채택 전제, 운영자 단말).
 - **REQ-RC30-004** (Event-driven): **When** the migration removes a file, the run backup shall contain a copy of that file, the migration step shall run after the backup step, and an emptied skill directory shall be removed with its last file. Items: U-02, U-10. 판정: AC-RC30-03, AC-RC30-11.
 - **REQ-RC30-021** (State-driven): **While** the Claude harness is hidden for a project (codex-only projects, `hideClaude=true`, `internal/template/harness_fs.go` 의 `isHidden`), the managed-surface integrity probe shall not treat the absence of `.claude/settings.json` as damage, and shall still check every other entry of its set. Item: U-31. 판정: AC-RC30-26.
 
@@ -103,4 +103,4 @@ SPEC A `decision-index.md` F1 절 (커밋된 기록) 에서 이 카드에 배정
 
 ## H. 의사결정 지점
 
-이 SPEC 의 열린 의사결정은 `decision-index.md` 에 기록한다 (interview.decision_gate: on). 네 개의 FOUNDER 행: AC-RC30-27 제거 반쪽의 픽스처 의미 (Q1), 번들 G 의 형태 (Q2), AC-RC30-26 판정 명령의 재지정 (Q3), AC-RC30-01 운영자 단말 항목의 종결 처분 (Q4). plan-audit 전에 기본값 적용 행이 채워진다.
+이 SPEC 의 의사결정은 `decision-index.md` 에 기록한다 (interview.decision_gate: on). 네 개의 FOUNDER 행: AC-RC30-27 제거 반쪽의 픽스처 의미 (Q1), 번들 G 의 형태 (Q2), AC-RC30-26 판정 명령의 재지정 (Q3), AC-RC30-01 운영자 단말 항목의 종결 처분 (Q4). 네 질문 모두 기본값이 적용되었고(2026-10-17T11:54:29Z) plan-audit-iter1 이 확정했다; 운영자는 언제든 뒤집을 수 있고, 그 경우 plan.md 의 해결 항목이 결정 기록을 따라 다시 쓰인다.

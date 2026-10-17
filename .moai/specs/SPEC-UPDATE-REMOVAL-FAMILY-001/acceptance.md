@@ -23,7 +23,8 @@ created: 2026-10-17
 - **When** 프로필 세션에서 가시 스킬 목록 명령을 실행해 `moai-plan` 이 목록에 나오는지 센다.
 - **Then** 개수는 1 이상이다. 개수가 0 이면 REQ-RC30-003 은 계속 유효하고, 제거 경로는 머지되지 않는다 (게이트 유지).
 
-- 판정 명령 (SPEC A 행에서 문자 그대로 인용; 프로필 디렉터리 이름은 리더·운영자 입력; 미실행): `CLAUDE_CONFIG_DIR="<profile-dir>" claude -p "List every skill name you can invoke, one per line." | grep -c "moai-plan"`
+- 판정 명령 (D2 수정 — plan-audit-iter1; 프로필 디렉터리 이름은 리더·운영자 입력; 미실행): `CLAUDE_CONFIG_DIR="<profile-dir>" claude -p "List every skill name you can invoke, one per line." | grep -cx 'moai-plan'` — 정확 이름 조건자(`-x`, 행 전체 일치)로 센다. SPEC A 원문의 `grep -c "moai-plan"` 은 부분 문자열을 세어 `Cannot invoke moai-plan` 이나 `moai-plan-archived` 도 1 로 세고(plan-audit-iter1 실측), 파이프라인 종료 상태는 grep 이 매치하면 claude 호출의 실패와 무관하게 0 이다.
+- 운영자 기록 의무 (D2): claude 호출 자체의 종료 상태를 개수와 별도로 기록한다 — 두 단계 실행을 권장한다(목록을 파일로 받아 claude 의 종료 상태를 먼저 관측한 뒤 `grep -cx 'moai-plan' < <목록 파일>` 로 센다). claude 가 실패했으면 개수는 무효이며 채택 판정의 근거로 쓰지 않는다.
 - 게이트 구분: **채택 게이트** — 제거 경로 프로덕션 활성화의 전제. 회귀 가드로 시작.
 - 현재 상태: 레인 워크트리 세션은 프로필 세션을 가질 수 없어 실행 불가 (SPEC A Q8, ruling d-20261010T124923Z-2b09 2항의 가드 거부 전례). Gap G-01. 소유 마일스톤 M7 (운영자 단말).
 
@@ -61,11 +62,11 @@ created: 2026-10-17
 
 - **Given** codex-only 프로젝트 (`hideClaude=true` — `.claude/**` 가 배포에서 숨겨져 `.claude/settings.json` 이 없는 상태) 와, 대조 하위 사례로 `.claude/settings.json` 이 실제로 삭제된 Claude 하니스 프로젝트.
 - **When** 관리 표면 무결성 프로브가 점검을 실행한다.
-- **Then** codex-only 픽스처에서는 `.claude/settings.json` 의 "missing" 발견이 없고, 집합의 다른 모든 항목은 계속 점검된다. Claude 픽스처에서는 같은 파일의 삭제가 여전히 "missing" 으로 보고된다.
+- **Then** codex-only 픽스처에서는 `.claude/settings.json` 의 "missing" 발견이 없다. Claude 픽스처에서는 같은 파일의 삭제가 여전히 "missing" 으로 보고된다. 세 번째 조항 "집합의 다른 모든 항목은 계속 점검된다" 는 구조적 근거로 뒷받침된다(D4 수정 — plan-audit-iter1): 프로브 루프(`internal/cli/update_integrity_probe.go:154-156`)는 `appliesTo` 를 통과하지 못하는 항목만 건너뛰고(`:157` 의 점검은 그대로 실행) 나머지 전부를 점검하므로, gpt 하니스에서 집합 전체를 건너뛰는 과잉 건너뛰기가 일어나려면 그 루프 자체가 바뀌어야 한다. 다만 이 조항의 반증 입력(codex-only 픽스처에서 매니페스트 손상 사례)은 판정 세트에 없으므로 판정 명령이 목격하지 않는다 — 명시적 미목격 사항이다(판정 세트 확장은 Q3 옵션 (나) 영역이며, 확정된 기본값 (가) — 새 테스트 코드 없음 — 을 따르는 한 추가하지 않는다).
 
 - 판정 명령 (decision-index.md Q3 기본값 — 기존 시험 재지정): `go test ./internal/cli/ -run 'TestIntegrityProbe_ClaudeOnlyMemberFollowsHarness|TestRunUpdate_CodexOnlyVersionMatch_PrintsNoIntegrityRow' -count=1 -v`
 - 게이트 구분: **회귀 가드 (검증 전용)** — t1578 수선 (`ac141b2cb`) 이 이 카드에 선행해 착지했으므로 SPEC A 원래 행의 RED-우선 계획은 무효다. 프로덕션 변화 없음.
-- 현재 상태: 수선 착지 확인 (`internal/cli/update_integrity_probe.go:55-57` `appliesTo`, `:71` claudeOnly 항목, `:154-156` 스킵 루프; 이번 실행 관측). SPEC A 가 지정한 이름 `TestIntegrityProbeCodexOnlyNoClaudeSettings` 의 테스트는 만들어진 적 없음 — 판정 명령 재지정은 열린 질문 Q3.
+- 현재 상태: 수선 착지 확인 (`internal/cli/update_integrity_probe.go:55-57` `appliesTo`, `:71` claudeOnly 항목, `:154-156` 스킵 루프; 이번 실행 관측). SPEC A 가 지정한 이름 `TestIntegrityProbeCodexOnlyNoClaudeSettings` 의 테스트는 만들어진 적 없음 — 판정 명령 재지정은 Q3 로 확정(기본값 (가), plan-audit-iter1).
 
 ### AC-RC30-27 (제거 반쪽) — 프로필 도달 부재 시 제거 (U-01 계열; REQ-RC30-002 [REF, SPEC A], REQ-RC30-003)
 
@@ -75,7 +76,7 @@ created: 2026-10-17
 
 - 판정 명령: `go test ./internal/cli/ -run '^TestMigrationRemovesSharedCopyWithoutProfileReach$' -count=1 -v`
 - 게이트 구분: **TDD RED 마일스톤 (M3) 에서의 릴리스 게이트**. 그때까지 회귀 가드.
-- 유래와 한계: SPEC A 의 acceptance.md 는 이 반쪽의 행 본문을 담은 적이 없다 ([RETIRED] 주석만 `TestMigrationRemovesSharedCopyWithoutProfileReach` 이름과 "moves with AC-RC30-01" 소유를 기록 — SPEC A acceptance.md:239). 위 Given-When-Then 의미는 keep 반쪽(SPEC A acceptance.md:239)의 대칭과 REQ-RC30-003 게이트에서 **파생한 것**으로, 확정은 열린 질문 Q1 (decision-index.md; plan.md § F M3 마커). 픽스처는 keep 반쪽 미러: `profileReachSandbox` + 무매핑 + `enableRemovalForTest` (`internal/cli/migrate_profile_reach_test.go`, `internal/cli/migrate_removal_switch_test.go:26`).
+- 유래와 한계: SPEC A 의 acceptance.md 는 이 반쪽의 행 본문을 담은 적이 없다 ([RETIRED] 주석만 `TestMigrationRemovesSharedCopyWithoutProfileReach` 이름과 "moves with AC-RC30-01" 소유를 기록 — SPEC A acceptance.md:239). 위 Given-When-Then 의미는 keep 반쪽(SPEC A acceptance.md:239)의 대칭과 REQ-RC30-003 게이트에서 **파생한 것**으로, Q1 기본값 (가) 가 plan-audit-iter1 에 의해 확정되었다(decision-index.md Q1; plan.md § F M3 해결 항목 — 감사 원문: "Q1 → (가) CONFIRMED. The derived Given-When-Then is sound and invents no scope"). 픽스처는 keep 반쪽 미러: `profileReachSandbox` + 무매핑 + `enableRemovalForTest` (`internal/cli/migrate_profile_reach_test.go`, `internal/cli/migrate_removal_switch_test.go:26`).
 
 ## 갭 목록
 
