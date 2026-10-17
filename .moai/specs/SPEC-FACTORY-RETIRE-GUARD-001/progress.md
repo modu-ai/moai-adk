@@ -27,11 +27,33 @@ audit_ready: true
 
 ## §E.2 Run-phase Evidence
 
-_<pending run-phase>_
+Tree base fe761c8e9; run commits M1 f766f0b03, M2 5b03422ac (branch WT-factory-retire-guard). Env scrubbed of MOAI_KANBAN_*/MOAI_FACTORY_* per run. RED = first run of the named tests before the production change (M1: tests compiled against the new `factory_run_cards.go` seam, old `retireRun`; M2: tests against old CLI). Raw outputs are machine-local scratch; the deciding lines are quoted.
+
+| AC | Test | RED (observed) | GREEN (observed) | Commit |
+|---|---|---|---|---|
+| AC-RRG-001 | TestRetireRunIfDeadRefusesInProgressCards / ...RetiresWhenOnlyTerminalCardsOrWorkers | `RetireRunIfDead retired a run holding non-terminal cards (class "dead")`; control test PASS by design (retires today) | PASS both | f766f0b03 |
+| AC-RRG-002 | TestRetireRunIfDeadCardReadHoldsWriteLock | `card-read hook calls = 0, want 1`; mutant probe (card read via pool handle before BeginTx, hook with it): `second handle's insert committed while the card read ran: the read is outside the write-locked transaction`, then placement restored | PASS | f766f0b03 |
+| AC-RRG-003 | TestRetireRunIfDeadFlipIsCASOnClassifiedStamp | 3 of 4 rows FAIL: `err = <nil>, want ErrRunOwnerNotDead stating the owner or status changed` (rows a, b), `err = <nil>, want an error wrapping ErrRunOwnerNotDead` (row c); row d (peer basis) PASS as regression | PASS 4 rows | f766f0b03 |
+| AC-RRG-004 | TestRetireRunIfDeadAlreadyRetiredIsNoOp | `a no-op wrote:` (second event today); `err = <nil>, want the cards refusal` | PASS 3 subtests | f766f0b03 |
+| AC-RRG-005 | TestFactoryRunsRetireRefusesInProgressCards | operator and lane subtests FAIL: output lacked the refusal header/exits/abandon note; no Hangul in output | PASS operator + lane | 5b03422ac |
+| AC-RRG-006 | TestFactoryRunsRetireReportsStrandedCardsOfRetiredRun | subtest A FAIL: output lacked stranded header, cards, exits, notes; B and C PASS by design (first line only) | PASS A, B, C | 5b03422ac |
+| AC-RRG-007 | TestRelaunchFromRunLeavesRunWithCardsActive | `outcome = "run runD: could not be retired (factory run holds in-progress cards: ...), left untouched"` | PASS | 5b03422ac |
+| AC-RRG-008 | TestFactoryRunsHasNoForceFlag | regression guard, PASS before and after by design | PASS | 5b03422ac |
+
+Existing guards GREEN after M1 and M2: TestRetireRunIfDeadRefusesLiveAndIndeterminate, TestEveryRetirementPathDeclinesUnenumeratedClassification, TestRetireRunIfDeadAcceptsBootProof, TestRetireRunPreservesRowAndAppendsEvent, TestFactoryRunsCommandReportsAndRefuses, TestFactoryRelaunchFromRunRetiresDeadOwnerOnly.
+
+Cross-cutting (this tree, HEAD 5b03422ac, slot go-test-heavy held 15:30:11Z-released): `go vet ./internal/homestate ./internal/cli` exit 0; `GOOS=windows GOARCH=amd64 go build ./...` exit 0; `gofmt -l` empty; `go test -cover ./internal/homestate` ok 81.9% (package, full); changed-function coverage: inProgressCards 66.7%, retireRun 76.7%, RetireRunIfDead 92.9%, InProgressCards 100%, text renderers 100%, newFactoryRunsCommand 88.2%, relaunchRetireFromRun 78.3% (the uncovered branches are error returns of DB reads). golangci-lint on ./internal/homestate/... ./internal/cli/...: exit 1 with 3 errcheck findings, all in untouched `internal/cli/factory_run_adopt.go:79,91,103` (pre-existing, none in touched files). No `\u` in the catalogue.
 
 ## §E.3 Run-phase Audit-Ready Signal
 
-_<pending run-phase>_
+audit_ready: true
+run_status: complete
+run_commit_sha: 5b03422ac
+ac_pass_count: 8
+ac_fail_count: 0
+cross_platform_build.windows_amd64: exit 0
+m1_to_mN_commit_strategy: per-milestone (M1 f766f0b03, M2 5b03422ac) + this progress commit
+gaps: sync-phase docs (8 files) not edited by design; new-code function coverage below 85% on error-return branches; pre-existing errcheck findings in factory_run_adopt.go; full internal/cli suite not run (CI owns it); the `retireAfterCardRead` hook in internal/homestate has no @MX:ANCHOR (fan_in 1)
 
 ## §E.4 Sync-phase Audit-Ready Signal
 
@@ -42,3 +64,4 @@ _<pending sync-phase>_
 - 2026-10-17T14:10:57Z SPEC-FACTORY-RETIRE-GUARD-001 ceiling-outcome outcome=pass-through reasons="plan-audit ceiling reached (round count 2 >= tier ceiling 2 + 1 delta rounds); the verdict is admission-clean and admits without a question (REQ-ACE-013)" evidence=/Users/goos/MoAI/moai-adk-go/.moai/worktrees/t1852/.moai/reports/t1852/plan-audit-iter2.md,/Users/goos/MoAI/moai-adk-go/.moai/worktrees/t1852/.moai/reports/t1852/plan-audit.md
 - 2026-10-17T14:11:36Z SPEC-FACTORY-RETIRE-GUARD-001 ceiling-outcome outcome=pass-through reasons="plan-audit ceiling reached (round count 2 >= tier ceiling 2 + 1 delta rounds); the verdict is admission-clean and admits without a question (REQ-ACE-013)" evidence=/Users/goos/MoAI/moai-adk-go/.moai/worktrees/t1852/.moai/reports/t1852/plan-audit-iter2.md,/Users/goos/MoAI/moai-adk-go/.moai/worktrees/t1852/.moai/reports/t1852/plan-audit.md
 - 2026-10-17T14:12:52Z SPEC-FACTORY-RETIRE-GUARD-001 ceiling-outcome outcome=pass-through reasons="plan-audit ceiling reached (round count 2 >= tier ceiling 2 + 1 delta rounds); the verdict is admission-clean and admits without a question (REQ-ACE-013)" evidence=/Users/goos/MoAI/moai-adk-go/.moai/worktrees/t1852/.moai/reports/t1852/plan-audit-iter2.md,/Users/goos/MoAI/moai-adk-go/.moai/worktrees/t1852/.moai/reports/t1852/plan-audit.md
+- 2026-10-17T14:13:46Z SPEC-FACTORY-RETIRE-GUARD-001 ceiling-outcome outcome=pass-through reasons="plan-audit ceiling reached (round count 2 >= tier ceiling 2 + 1 delta rounds); the verdict is admission-clean and admits without a question (REQ-ACE-013)" evidence=/Users/goos/MoAI/moai-adk-go/.moai/worktrees/t1852/.moai/reports/t1852/plan-audit-iter2.md,/Users/goos/MoAI/moai-adk-go/.moai/worktrees/t1852/.moai/reports/t1852/plan-audit.md
