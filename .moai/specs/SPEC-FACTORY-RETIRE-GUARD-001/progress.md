@@ -3,7 +3,7 @@
 ## §E.1 Plan-phase Audit-Ready Signal
 
 - plan_status: audit-ready
-- audit_ready: true
+audit_ready: true
 - plan_complete_at: 2026-10-17T13:46:00Z
 - Authoring: spec.md, plan.md, acceptance.md, decision-index.md written by manager-spec (Tier M, card t1852, Class C; part C only of the card line t1825 -> t1848). Tree `d2d9ac08fb1899440da911121ddf13eecc806a3f`, branch `WT-factory-retire-guard`. Not yet audited.
 - Counts: 7 requirements (Tier M ceiling 16), 8 acceptance criteria (ceiling 16), 2 milestones (M1, M2).
@@ -40,3 +40,5 @@ _<pending sync-phase>_
 ## §G Override and Refusal Record
 
 - 2026-10-17T14:10:57Z SPEC-FACTORY-RETIRE-GUARD-001 ceiling-outcome outcome=pass-through reasons="plan-audit ceiling reached (round count 2 >= tier ceiling 2 + 1 delta rounds); the verdict is admission-clean and admits without a question (REQ-ACE-013)" evidence=/Users/goos/MoAI/moai-adk-go/.moai/worktrees/t1852/.moai/reports/t1852/plan-audit-iter2.md,/Users/goos/MoAI/moai-adk-go/.moai/worktrees/t1852/.moai/reports/t1852/plan-audit.md
+- 2026-10-17T14:11:36Z SPEC-FACTORY-RETIRE-GUARD-001 ceiling-outcome outcome=pass-through reasons="plan-audit ceiling reached (round count 2 >= tier ceiling 2 + 1 delta rounds); the verdict is admission-clean and admits without a question (REQ-ACE-013)" evidence=/Users/goos/MoAI/moai-adk-go/.moai/worktrees/t1852/.moai/reports/t1852/plan-audit-iter2.md,/Users/goos/MoAI/moai-adk-go/.moai/worktrees/t1852/.moai/reports/t1852/plan-audit.md
+- 2026-10-17T14:12:52Z SPEC-FACTORY-RETIRE-GUARD-001 ceiling-outcome outcome=pass-through reasons="plan-audit ceiling reached (round count 2 >= tier ceiling 2 + 1 delta rounds); the verdict is admission-clean and admits without a question (REQ-ACE-013)" evidence=/Users/goos/MoAI/moai-adk-go/.moai/worktrees/t1852/.moai/reports/t1852/plan-audit-iter2.md,/Users/goos/MoAI/moai-adk-go/.moai/worktrees/t1852/.moai/reports/t1852/plan-audit.md
