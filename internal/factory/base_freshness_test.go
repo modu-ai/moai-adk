@@ -382,6 +382,70 @@ func failingGitIn(dir, verb string) func(args ...string) (string, error) {
 	}
 }
 
+// seamOverriding is a git-runner seam bound to dir that answers the calls
+// match selects with (out, err) and forwards every other call to a real git.
+func seamOverriding(dir string, match func(args []string) bool, out string, err error) func(args ...string) (string, error) {
+	real := factorylane.ExecGitRunner{Dir: dir}
+	return func(args ...string) (string, error) {
+		if match(args) {
+			return out, err
+		}
+		return real.Git(args...)
+	}
+}
+
+func TestBaseFreshnessUncertainGitAnswers(t *testing.T) {
+	// A git answer the gate cannot read is uncertainty, never staleness: the
+	// tree read failing, the ancestry probe failing with a code other than its
+	// "no" (exit 1), and a count that is not a number each admit with one line
+	// naming the cause. The exit-1 control proves the probe still answers "no".
+	verb := func(name string) func([]string) bool {
+		return func(args []string) bool { return len(args) > 0 && args[0] == name }
+	}
+	cases := []struct {
+		name  string
+		seam  func(f *bfFixture) func(args ...string) (string, error)
+		cause string
+	}{
+		{"tree read fails", func(f *bfFixture) func(args ...string) (string, error) {
+			return seamOverriding(f.card, func(args []string) bool {
+				return len(args) > 1 && args[len(args)-1] == "HEAD^{tree}"
+			}, "", errors.New("injected tree read failure"))
+		}, "injected tree read failure"},
+		{"ancestry probe fails with a code other than 1", func(f *bfFixture) func(args ...string) (string, error) {
+			return seamOverriding(f.card, verb("merge-base"), "",
+				&factorylane.GitExitError{ExitCode: 128, Stderr: "fatal: Not a valid commit name"})
+		}, "Not a valid commit name"},
+		{"count is not a number", func(f *bfFixture) func(args ...string) (string, error) {
+			return seamOverriding(f.card, verb("rev-list"), "not-a-number\n", nil)
+		}, "not a count"},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			f := newBFFixture(t)
+			f.writeRecord(f.base, nil)
+			f.landEmpty(1)
+			res := EvaluateBaseFreshness(f.input(0, true), BaseFreshnessSeams{Git: tc.seam(f)})
+			if !res.Admit || res.Refusal != "" || res.Stale {
+				t.Fatalf("an unreadable git answer must admit, not refuse: %+v", res)
+			}
+			requireOneLine(t, "notice", res.Notice)
+			if !strings.HasPrefix(res.Notice, "base-freshness: not measured") || !strings.Contains(res.Notice, tc.cause) {
+				t.Fatalf("the notice must name %q: %q", tc.cause, res.Notice)
+			}
+		})
+	}
+	t.Run("control: exit 1 is the probe's no and reads as stale", func(t *testing.T) {
+		f := newBFFixture(t)
+		f.writeRecord(f.base, nil)
+		seam := seamOverriding(f.card, verb("merge-base"), "", &factorylane.GitExitError{ExitCode: 1})
+		res := EvaluateBaseFreshness(f.input(0, true), BaseFreshnessSeams{Git: seam})
+		if res.Admit || !res.Stale || !strings.HasPrefix(res.Refusal, BaseFreshnessSentinel) {
+			t.Fatalf("exit 1 from the ancestry probe is staleness: %+v", res)
+		}
+	})
+}
+
 func TestBaseFreshnessGateOffAdvisesOnlyPure(t *testing.T) {
 	// REQ-ISB-008 (pure half): with the gate off a would-be refusal becomes one
 	// advisory line and an admit; a fresh candidate stays silent.
