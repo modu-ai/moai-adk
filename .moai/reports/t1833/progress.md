@@ -153,3 +153,56 @@ Commands (GREEN, after the fixes):
 - Who is waited on: the leader (operator-delegated), asked by message.
 - Resume condition: a decision that lets the fix round run. Then: fix round 2 as scoped above -> sync-audit iteration 3 on the new HEAD with the codex gate -> T11 `sync-audit` with `<audited_sha>:<tracked file>` -> T13 `merge-ready` -> slot, re-measure, window, `factory complete`.
 - State now: factory record t1833 = sync v6 (run tn1p4e), lease kept alive by the session-local renew cron; card branch WT-10-17-class-7.
+
+## Fix round 2 (after sync-audit iteration 2 FAIL, lane-3, 2026-10-18)
+
+Tree `.moai/worktrees/t1833`, branch `WT-10-17-class-7`, start HEAD `154f2087d`, clean. Commits: `7c5b5cfc5` (N1, N3, N6a: `integration_bisect.go`, `integration_bisect_unix.go`, `integration_bisect_windows.go`, tests), `4e72e171f` (N2 and the jq skip: `scripts/release.sh`, `release_ci_gate_test.go`, `release_fixture_test.go`), then the docs/evidence commit carrying this section, the runbook and the two t1833 CHANGELOG lines. Nothing pushed, no tag, `release.sh` never run against the real repository, no real `gh` call (canary below), nothing under `.moai/state/` touched. Go commands: `env -u MOAI_FACTORY_WORKER -u CLAUDE_PROJECT_DIR TMPDIR=/private/tmp/lane3-fix2 GOTMPDIR=/private/tmp/lane3-fix2 go test ...`, no `-race`, one package per invocation, targeted selectors only.
+
+### N1 path taken: the real fix (signal handling), not the rewording fallback
+
+A deterministic test was affordable: the test binary is re-executed as the verb's process (`TestBisectSignalHelper`, skipped unless the parent sets `MOAI_BISECT_SIGNAL_HELPER`), the parent waits for the judged command's marker file (so HEAD is provably mid-bisect), sends a real SIGINT / SIGTERM to the helper, and asserts: exit 3 with an error containing `interrupted` and `restored`, HEAD back at the tip and detached as it started, no `BISECT_LOG`, and the judged command's pid gone. Mechanism: `signal.NotifyContext(SIGINT, SIGTERM)` is registered before `git bisect start`; `git bisect run` runs through `exec.CommandContext` in its own process group (`bisectRunPrepare`, unix: `Setpgid`, `Cancel` = `kill(-pgid, SIGTERM)`, `WaitDelay` 10s; windows: no-op); on a signal the group is terminated and waited for, then `bisectRestore` runs (it uses no context, and the registered notification keeps swallowing further signals until return); the error says the search was interrupted and whether restoration was confirmed.
+
+### Red then green, per defect (tests written first, observed red on the unchanged code)
+
+| Defect | Test | RED command, exit, verbatim | GREEN command, exit, verbatim |
+|---|---|---|---|
+| N1 interrupt leaves the tree mid-bisect | `TestBisectRestoresTheTreeOnSignal/{interrupt,terminated}` | `go test ./internal/cli -run '^TestBisectRestoresTheTreeOnSignal$' -count=1` (verb body reverted to `HEAD`) exit 1: `--- FAIL: TestBisectRestoresTheTreeOnSignal/interrupt` `integration_bisect_signal_unix_test.go:80: the verb must return an error (exit 3) after interrupt, got signal: interrupt`; same for `terminated` (`got signal: terminated`) | same command with the fix, `-v` exit 0: `--- PASS: TestBisectRestoresTheTreeOnSignal/interrupt (3.37s)`, `/terminated (3.19s)`, `ok ... internal/cli 7.959s` |
+| N3 ignored file overwritten | `TestBisectRefusesAnIgnoredFileThatACommitInTheRangeTracks` | `go test ./internal/cli -run '^TestBisectRefusesAnIgnoredFile' -count=1` exit 1: `integration_bisect_test.go:293: an ignored file that a commit in the range tracks must be refused by name, got <nil>` | exit 0: `ok ... internal/cli 3.961s` |
+| N6a dry-run not pasteable | `TestBisectDryRunPrintsTheGitCommandsAndMovesNothing` (extended: a shell re-reads the printed run line) | `go test ./internal/cli -run '^TestBisectDryRun' -count=1` exit 1: `the printed run line splits into "sh\n-c\ntest\n\n!=\na b", want "sh\n-c\ntest \"$X\" != 'a b' && test ! -f bad.txt" (line: sh -c test "$X" != 'a b' && test ! -f bad.txt)` | exit 0: `ok ... internal/cli 3.559s` |
+| N2 check name without app | `TestReleaseScriptCIGate/right_name_from_another_app_is_refused`, `/right_names_without_an_app_are_refused` | `go test ./internal/template -run '^TestReleaseScriptCIGate$' -count=1` exit 1: `--- FAIL: TestReleaseScriptCIGate/right_name_from_another_app_is_refused`, `--- FAIL: .../right_names_without_an_app_are_refused` (the other 11 rows PASS) | `-v` exit 0: all 13 rows `--- PASS`, `ok ... internal/template 19.046s` |
+| jq dependency of the gh stub | `TestReleaseScriptCharacterization`, `TestReleaseScriptHeadAdmission`, `TestReleaseScriptRcChangelogSkip` | PATH holding symlinks to go/git/bash/awk... but no jq (`/private/tmp/lane3-fix2/nojq`; `command -v jq` exit 1): `go test ./internal/template -run '^(TestReleaseScriptCharacterization\|TestReleaseScriptHeadAdmission\|TestReleaseScriptRcChangelogSkip)$' -count=1` exit 1, 7 rows FAIL (`gh: line 20: jq: command not found`, then `[FAIL] CI gate: no check runs found ...`) | same PATH with `rlsNewStub` skipping, 7 selectors, `-v` exit 0: `jq not available; the gh stub answers through jq` per row, `--- SKIP` for `TestReleaseScriptCIGate`, `...TagsTheVerifiedCommit`, `...MatrixGate`; exit 0 with every stub-using row skipped |
+
+Full selectors after the fixes (real PATH): `go test ./internal/cli -run '^TestBisect' -count=1 -v` exit 0, 14 `--- PASS` plus `--- SKIP: TestBisectSignalHelper` (helper entry, by design), `ok ... 31.763s`. `go test ./internal/template -run '^(TestReleaseScriptCIGate|TestReleaseScriptCIGateWithoutGh|TestReleaseScriptTagsTheVerifiedCommit|TestReleaseScriptCharacterization|TestReleaseScriptMatrixGate|TestReleaseScriptHeadAdmission|TestReleaseScriptRcChangelogSkip|TestGitHubFlowSweepGuard)$' -count=1 -v` exit 0, 8 `--- PASS`, `ok ... 57.103s`. `bash -n scripts/release.sh` exit 0; `gofmt -l` on the touched Go files exit 0, no output; `go vet ./internal/cli` exit 0; `go vet ./internal/template` exit 0; `GOOS=windows go vet ./internal/cli` exit 0 (cross-compile only).
+
+### What changed, by defect
+
+- N2: the jq now emits `name, status, conclusion, app.slug` (`(.app.slug // "")`); the required-name match is `$1 == n && $4 == a` with `CI_APP="github-actions"`; the refusal text says `(by name, from the github-actions app)`; the pass line says `CI workflow checks present from github-actions`. Pending/failed tallies still read every check run.
+- N3: `bisectIgnoredCollisions` runs before `git bisect start` (and before `--dry-run`'s output): `git ls-files -z --others --ignored --exclude-standard`, intersected with `git ls-tree -r -z --name-only <good>` plus `git log --first-parent --diff-filter=A --name-only -z --format= <good>..<bad>`; any hit refuses by name; a failure to list refuses too (fail closed). Exact-path match only.
+- N6a: the dry-run line prints the judged command through `shellQuoteArg` (the helper `shellJoinArgs` uses).
+- jq: skip lives in `rlsNewStub` (the file I may touch), so every stub user skips with the reason. The real script does not need jq (it uses gh's built-in `--jq`); with a stub whose jq is missing the gate still refuses (`no check runs found`), but that message does not name jq.
+
+### Mutation checks (apply the revert, run the matching test, restore, compare)
+
+| Fix reverted | Test | Result | After restore |
+|---|---|---|---|
+| N1: `bisectGitCtx(context.Background(), ..., nil, run...)` (signal no longer stops the run) | `TestBisectRestoresTheTreeOnSignal` | exit 1, `--- FAIL .../interrupt (61.92s)`: `the verb did not exit after interrupt:` and the same for `terminated` (the judged `sleep 120` keeps running) | sha256 `80884fba844eb5e9...` = the file committed in `7c5b5cfc5`; `git status` clean |
+| N3: `if false && len(hits) > 0` | `TestBisectRefusesAnIgnoredFile...` | exit 1, `--- FAIL` | same hash |
+| N2: `$1 == n && $4 == a` -> `$1 == n` | `TestReleaseScriptCIGate` | exit 1, the two new rows FAIL | `git checkout -- scripts/release.sh`, sha256 `8139e9002c7cbf6a...` = `git show HEAD:scripts/release.sh` |
+
+The first N1 mutation attempt hit my own 110 s `timeout` before the test's 60 s waits finished and printed nothing; it was rerun with a 250 s timeout (above) and the test's wait was then lowered to 30 s. Not counted as evidence.
+
+### Real `gh` unreachable (item: committed test cannot reach it)
+
+A canary `gh` that logs and exits 9 was put first on the PATH of the `go test` process: `PATH=/private/tmp/lane3-fix2/canary:$PATH go test ./internal/template -run '^(TestReleaseScriptCIGate|TestReleaseScriptTagsTheVerifiedCommit)$' -count=1` -> exit 0, `ok ... 10.844s`; `/private/tmp/lane3-fix2/canary.log` does not exist (never invoked).
+
+### Documented limits (wording only, runbook section 4 items 10-12)
+
+N4 (`-- true` names the `--bad` tip, `-- false` the oldest landing; defense is the section 2.1 pre-run), N5 (a judged command that moves HEAD can loop forever, no timeout; Ctrl-C now restores), N6b (40-hex regex; a sha256 repository reports `did not converge` after a successful search). Also stated in the runbook: the ignored-file check matches exact paths only, Windows has no process-group stop, SIGKILL cannot restore.
+
+### Gaps
+
+- Not observed: SIGKILL (cannot be handled; documented), a signal arriving during `git bisect start` or during the restore itself (design: start finishes and the run is then skipped by the cancelled context; restore swallows signals), a second signal, the Windows behaviour (only `GOOS=windows go vet` ran), the file-versus-directory name collision for ignored files, and a real terminal Ctrl-C to the foreground process group (the test sends the signal to the one process; the judged group is separate by design, so the group is stopped only by the verb).
+- `TestReleaseScriptCharacterization`, `...HeadAdmission` and `...RcChangelogSkip` report `ok` with every row SKIP when jq is absent, because the skip sits in `rlsNewStub` and `release_script_test.go` is outside this round's file list; a test-level `rlsRequireTools(t, "jq")` there would report SKIP for the whole test.
+- `app.slug` is the field name documented for the check-runs API; it was never read from live GitHub (no remote contact on purpose), so the first real `release.sh --dry-run` remains the measurement; a missing or different slug refuses (fail closed).
+- Coverage not measured; `golangci-lint` and `make build` not run (load rule); CHANGELOG/runbook markdown not linted; Korean text not passed through a humanize pass (written in the clean written register by hand).
+- No tool refusals occurred in this round; the earlier fix-spawn denial is the one recorded in WAIT STATE 2 above.

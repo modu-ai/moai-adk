@@ -53,7 +53,7 @@ moai integration bisect --good <ref> [--bad <ref>] [--dry-run] -- <시험 명령
 ```
 
 `--bad`의 기본값은 `HEAD`다. `--dry-run`은 정확히 실행될 git 명령 세 줄을 출력하고 HEAD를 옮기지 않는다.
-이 하위 명령이 하는 일은 아래 git 명령과 같다. 더하는 것은 거부 조건과 마무리뿐이다.
+이 하위 명령이 하는 일은 아래 git 명령과 같다(`--dry-run`은 시험 명령을 따옴표로 묶어 출력하므로 그 줄을 셸에 그대로 붙여넣을 수 있다). 더하는 것은 거부 조건과 마무리뿐이다.
 
 ```bash
 git bisect start --first-parent <bad> <good>
@@ -61,10 +61,18 @@ git bisect run sh -c '<시험 명령>'
 git bisect reset
 ```
 
-하위 명령이 거부하는 경우: 주 체크아웃, 커밋 안 된 변경이 있는 트리, 이미 진행 중인 bisect, 해석되지 않는 ref.
-성공이든 실패든 끝에서 `git bisect reset`을 실행하고, HEAD가 시작 전의 브랜치 또는 커밋으로 돌아왔는지와
+하위 명령이 거부하는 경우: 주 체크아웃, 커밋 안 된 변경이 있는 트리, 이미 진행 중인 bisect, 해석되지 않는 ref,
+그리고 무시된(ignored) 로컬 파일 중 good 트리나 범위 안에서 추가되는 경로와 겹치는 것. 마지막 경우는 `git status`가
+무시된 파일을 보여 주지 않고 bisect 중 체크아웃이 그 파일을 경고 없이 덮어쓰기 때문이다. 겹치는 파일을 치우고
+다시 실행한다. 겹침 검사는 경로가 정확히 같은 파일만 본다(파일과 디렉터리가 같은 이름을 쓰는 경우는 보지 않는다).
+모든 반환 경로의 끝에서 `git bisect reset`을 실행하고, HEAD가 시작 전의 브랜치 또는 커밋으로 돌아왔는지와
 bisect가 끝났는지를 확인한다. 돌아오지 못했으면 종료 코드 1로 실패하고 오류에 이유와 수동 복구 방법을 적는다.
 `git bisect start`가 도중에 실패해 HEAD가 옮겨졌을 때도 같은 복원과 확인을 한다.
+SIGINT(Ctrl-C)나 SIGTERM을 받으면 시험 실행(`git bisect run`과 시험 명령의 프로세스 그룹)을 SIGTERM으로 멈추고
+끝나기를 기다린 뒤, 취소되지 않는 경로에서 같은 복원과 확인을 하며, 탐색이 중단되었다는 오류(종료 코드 1)에
+복원이 확인되었는지를 적는다. 시험 명령이 SIGTERM을 무시하면 10초 뒤 런타임이 직접 종료한다.
+복원 중에 들어오는 신호는 무시된다. 복원이 확인되지 않았다는 오류가 나오면 `git bisect reset`을 직접 실행한다.
+Windows에는 프로세스 그룹 종료가 없어 시험 명령이 띄운 자식 프로세스가 남을 수 있다. SIGKILL은 잡을 수 없으므로 이 경우에는 복원이 일어나지 않는다.
 원인 카드는 git이 남기는 bisect 기록(`git bisect log`의 `# first bad commit:` 줄)에서만 읽는다. 시험 명령이
 무엇을 출력하든 결과에 영향을 주지 않는다. `git bisect`의 세 단계는 `GIT_DIR`, `GIT_WORK_TREE` 같은
 저장소 지정 환경 변수를 뺀 환경에서 돌고, 사전 확인과 같은 트리를 본다. 시험 명령은 그 변수들을 뺀
@@ -116,9 +124,9 @@ origin CI 결과**를 확인한다(검증 9).
   origin의 끝과 같음을 이미 보장하므로 `<sha>`는 태그될 커밋이다.
 - 통과 조건: check run이 하나 이상 있고, 전부 `completed`이며, 전부 `success`, `neutral`, `skipped` 중
   하나로 끝났고, 이 저장소 CI 워크플로(`.github/workflows/ci.yml`, `name: CI`)가 게시하는 check run 세 개가
-  이름까지 일치해 모두 있다: `Lint`, `Test (ubuntu-latest)`, `Build (linux/amd64)`. 이름 목록은 스크립트
+  이름까지 일치하고 `github-actions` 앱이 게시한 것으로 모두 있다: `Lint`, `Test (ubuntu-latest)`, `Build (linux/amd64)`. 이름 목록은 스크립트
   검증 9 맨 위의 `CI_REQUIRED_CHECKS` 한 곳이고, 잡 이름이 바뀌면 그 한 줄을 고친다. 다른 앱의 녹색 check run
-  하나만으로는 통과하지 못한다.
+  하나만으로는, 그리고 필수 이름을 쓰는 다른 앱의 check run으로는 통과하지 못한다(`app.slug`를 읽어 비교한다. 앱 정보가 없는 check run도 세지 않는다).
 - 거부(종료 코드 1, 조건 이름을 출력): check run 없음, 진행 중인 것이 있음, 실패한 것이 있음, 읽기 실패,
   `gh` 없음, CI 워크플로의 check run이 빠져 있음(없는 이름을 나열한다). 실패와 진행 중이 함께 있으면
   실패로 보고한다.
@@ -162,12 +170,25 @@ origin CI 결과**를 확인한다(검증 9).
    `ci.yml`·`.github/required-checks.yml` 읽기로만 정했다. 실제 GitHub가 main push 커밋에 게시하는 check run
    이름은 원격에 접속해야 하므로 이 카드에서 확인하지 않았다. 다음 실제 릴리스의 `--dry-run`이 첫 실측이다.
    이름이 다르면 그 실행이 `expected check run(s) not reported`로 거부하므로 거짓 통과는 나지 않는다.
+   `app.slug` 값 `github-actions`도 같은 방식으로 실측하지 않았다.
+10. **끝 ref 오판정(false culprit).** 시험 명령이 어디서나 통과하면(`-- true`) 이 하위 명령은 `--bad`로 준 끝을,
+    어디서나 실패하면(`-- false`) 가장 오래된 착지를 원인으로 지목한다. 하위 명령이 양 끝을 검증하지 않기 때문이며
+    방어선은 §2.1의 양 끝 사전 실행뿐이다(한계 1과 같은 뿌리).
+11. **HEAD를 옮기는 시험 명령.** 시험 명령이 스스로 HEAD를 옮기면(예: `git checkout --detach main; ...`)
+    `git bisect run`이 같은 커밋을 계속 bad로 판정해 끝나지 않는다. 시간 제한이 없으므로 시험 명령은 트리를
+    바꾸지 않는 것만 쓰고, 멈추지 않으면 Ctrl-C로 중단한다(트리는 복원된다).
+12. **40자리가 아닌 커밋 해시.** 원인 커밋을 읽는 정규식이 40자리 16진수만 받는다. sha256 저장소는 탐색이 성공해도
+    `did not converge`로 보고한다(안전한 실패이고 틀린 카드를 지목하지는 않는다). 이 저장소는 sha1이다.
 
 ## 5. 검증 근거
 
 - 하위 명령 시험: `internal/cli/integration_bisect_test.go`. 실제 git 저장소에 카드 병합 5개를 만들고(내부 커밋 2개씩),
   세 번째가 깨는 상황에서 first-parent 병합 제목과 `card: t1003`이 출력되고 HEAD가 복원됨을 확인한다. 주
-  체크아웃, 더러운 트리, 진행 중인 bisect, 중단된 탐색, `--dry-run`도 각각 시험한다.
+  체크아웃, 더러운 트리, 진행 중인 bisect, 중단된 탐색, `--dry-run`(출력한 줄을 셸이 세 단어로 다시 읽는지까지)도 각각 시험한다.
+  무시된 파일이 범위 안 추적 경로와 겹치면 거부하고 겹치지 않으면 통과시키는지, 그리고 시험 명령 실행 중 SIGINT·SIGTERM을
+  받으면(테스트 바이너리를 하위 프로세스로 다시 실행해 실제 신호를 보낸다) HEAD·브랜치·bisect 상태가 복원되고 시험 명령의
+  프로세스가 남지 않는지를 확인한다.
 - 릴리스 시험: `internal/template/release_ci_gate_test.go`. 가짜 `gh`로 녹색, 진행 중, 실패, 없음, 읽기 실패,
-  `gh` 없음, 우회, 다른 앱의 녹색 check run만 있는 경우, CI 워크플로 check run 일부가 빠진 경우를 시험하고,
+  `gh` 없음, 우회, 다른 앱의 녹색 check run만 있는 경우, CI 워크플로 check run 일부가 빠진 경우, 필수 이름이지만 다른 앱이 게시한 경우,
+  앱 정보가 없는 경우를 시험하고,
   확인 뒤 `HEAD`가 움직여도 태그가 확인한 커밋에 붙는지를 `git` 대역으로 시험한다. 증거 기록은 `.moai/reports/t1833/progress.md`.
