@@ -299,7 +299,7 @@ spec_status_transition: not performed (see E.2.6)
 ## §E.4 Sync-phase Audit-Ready Signal
 
 sync_complete_at: 2026-10-17T22:00:56+09:00 (authoring time of this record, from `date +%FT%T%z`; the commit follows it)
-sync_commit_sha: pending-backfill
+sync_commit_sha: d8f8b1196
 sync_status: audit-ready
 sync_agent: manager-docs
 sync_scope: SPEC-directory-only close; no CHANGELOG, README, docs-site, or codemaps change (decision and reasons below)
@@ -312,6 +312,7 @@ frontmatter_status_transitions.in-progress→implemented→completed: single syn
 mx_tag_validation: sync diff is documentation only (spec.md frontmatter line plus this section); zero @MX tag changes, no source file touched
 canary_compliance_check: not applicable (this SPEC defines no forward-looking policy that its own sync tests)
 commit_plan: one sync commit `docs(SPEC-CONTAINMENT-MAPPING-DOC-001): sync-phase artifacts (card t1760)` carrying the placeholder above, then one backfill commit replacing `pending-backfill` with the real sync-commit SHA (the D3 backfill window of `spec-frontmatter-schema.md`)
+backfill: done — the sync commit is d8f8b1196 (full SHA d8f8b11967d30d0213468655b0c8f2d72b52660b, read back with `git rev-parse HEAD` right after it landed) and is now written into `sync_commit_sha` above; this backfill commit follows it and touches only that field and this line
 
 ### Sync-artifacts decision (what the sync phase did not produce, and why)
 
