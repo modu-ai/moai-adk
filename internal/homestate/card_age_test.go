@@ -92,8 +92,9 @@ func TestGateWaitAge(t *testing.T) {
 		frRegisterWorker(t, db, "worker-1")
 		c := frFixtureCard(repo, "gw-kickoff", CardPlanAudit, CardKickoff)
 		frPlace(t, db, c)
+		c.Version = 1
 		frWriteVerdictsFor(t, repo, "gw-kickoff", CardPlanAudit)
-		entry := frNow.Add(time.Hour)
+		entry := frNow.Add(30 * time.Minute) // inside the fixture's 1h lease
 		caaStep(t, db, frFullRequest(repo, c, CardKickoff), entry)
 		// A later row write stamps updated_at without appending a transition
 		// (the card.fields write of card_picked.go:197 is the motivating
@@ -178,7 +179,8 @@ func TestGateWaitAge(t *testing.T) {
 		// T21 into needs-decision, then T23 into blocked — both real edges.
 		c := frFixtureCard(repo, "gw-nd", CardPicked, CardNeedsDecision)
 		frPlace(t, db, c)
-		entry := frNow.Add(time.Hour)
+		c.Version = 1
+		entry := frNow.Add(30 * time.Minute)
 		after := caaStep(t, db, frFullRequest(repo, c, CardNeedsDecision), entry)
 		events, _ := db.LoadCardEvents(ctx, "")
 		got := ComputeCardAges(after, caaEventsOf(t, events, frRun, "gw-nd"), caaNoCommit, now)
@@ -241,13 +243,20 @@ func TestCardAgeSignals(t *testing.T) {
 	if !got.Activity.Known || got.Activity.Age != now.Sub(lease) {
 		t.Fatalf("activity signal = %+v, want %s from heartbeat_at (the T3 lease write)", got.Activity, now.Sub(lease))
 	}
-	// The newest-of basis is the stage checkpoint (newest of stage, commit,
-	// creation); the heartbeat never enters it.
-	if !got.NoProgress.Known || got.NoProgress.Age != now.Sub(stage) {
-		t.Fatalf("no-progress age = %+v, want %s from the stage checkpoint, heartbeat excluded", got.NoProgress, now.Sub(stage))
+	// The newest-of basis is the injected commit (newest of stage, commit,
+	// creation — the commit lands after the stage entry here); the heartbeat
+	// never enters it.
+	if !got.NoProgress.Known || got.NoProgress.Age != now.Sub(commitAt) {
+		t.Fatalf("no-progress age = %+v, want %s from the newest basis member (the commit), heartbeat excluded", got.NoProgress, now.Sub(commitAt))
 	}
 
-	// A fresh heartbeat renewal advances only the activity signal.
+	// A fresh heartbeat renewal advances only the activity signal. The lease
+	// is extended first so the renewal at +9h is a live-lease renewal, not an
+	// expired-lease refusal.
+	if _, err := db.DB.Exec(`UPDATE cards SET lease_expires_at=? WHERE run_id=? AND card_id=?`,
+		frNow.Add(20*time.Hour).Format(time.RFC3339Nano), frRun, "sig"); err != nil {
+		t.Fatal(err)
+	}
 	renewed := frNow.Add(9 * time.Hour)
 	if _, err := db.RenewLease(ctx, frRun, "sig", "worker-1", renewed); err != nil {
 		t.Fatal(err)
@@ -261,8 +270,8 @@ func TestCardAgeSignals(t *testing.T) {
 	if !got.Activity.Known || got.Activity.Age != now.Sub(renewed) {
 		t.Fatalf("activity after renewal = %+v, want %s", got.Activity, now.Sub(renewed))
 	}
-	if !got.NoProgress.Known || got.NoProgress.Age != now.Sub(stage) {
-		t.Fatalf("no-progress after renewal = %+v, want still %s — activity is not progress", got.NoProgress, now.Sub(stage))
+	if !got.NoProgress.Known || got.NoProgress.Age != now.Sub(commitAt) {
+		t.Fatalf("no-progress after renewal = %+v, want still %s — activity is not progress", got.NoProgress, now.Sub(commitAt))
 	}
 
 	// Unknown renderings: an empty worktree path and an empty heartbeat.
@@ -294,6 +303,7 @@ func TestCardAgeSignals(t *testing.T) {
 func TestNoProgressAge(t *testing.T) {
 	ctx := context.Background()
 	db := frOpen(t)
+	frRegisterWorker(t, db, "worker-1")
 	create, assign, lease := frNow, frNow.Add(time.Hour), frNow.Add(2*time.Hour)
 	wp := frNewRepo(t, true).Dir
 	if _, err := db.RecordPicked(ctx, frRun, "np", CardFields{WorktreePath: &wp}, "op", create); err != nil {
@@ -326,12 +336,14 @@ func TestNoProgressAgeCreationAnchor(t *testing.T) {
 
 	t.Run("pre-stage-crash-loop-preserves-age", func(t *testing.T) {
 		db := frOpen(t)
+		frRegisterWorker(t, db, "worker-1")
 		wp := frNewRepo(t, true).Dir
 		create := frNow
 		if _, err := db.RecordPicked(ctx, frRun, "loop", CardFields{WorktreePath: &wp}, "op", create); err != nil {
 			t.Fatal(err)
 		}
 		c := caaStep(t, db, TransitionRequest{RunID: frRun, CardID: "loop", To: CardAssigned, ExpectedVersion: 1, Actor: "op", Owner: "worker-1"}, create.Add(time.Minute))
+		c = caaStep(t, db, TransitionRequest{RunID: frRun, CardID: "loop", To: CardLeased, ExpectedVersion: c.Version, Actor: "worker-1"}, create.Add(2*time.Minute))
 		// >= 10 expiry -> re-acquire cycles (lease 15m default): each cycle is
 		// activity, not progress, and none of them enters a pipeline stage.
 		for i := 0; i < 10; i++ {
@@ -446,13 +458,27 @@ func TestAgeAnchorsFutureTimestamps(t *testing.T) {
 		frRegisterWorker(t, db, "worker-1")
 		c := frFixtureCard(repo, "fut-gate", CardPicked, CardNeedsDecision)
 		frPlace(t, db, c)
+		c.Version = 1
 		caaStep(t, db, frFullRequest(repo, c, CardNeedsDecision), frNow)
 		caaStampEvents(t, db, CardNeedsDecision, future.Format(time.RFC3339Nano))
 		card, _ := db.LoadCard(ctx, frRun, "fut-gate")
 		events, _ := db.LoadCardEvents(ctx, "")
-		got := ComputeCardAges(card, caaEventsOf(t, events, frRun, "fut-gate"), caaNoCommit, now)
+		ev := caaEventsOf(t, events, frRun, "fut-gate")
+		// The future-dated anchor renders that source unknown; the updated_at
+		// fallback (valid, stamped by the same write) keeps the age answering.
+		got := ComputeCardAges(card, ev, caaNoCommit, now)
+		if !got.GateWait.Known || got.GateWait.Age != 0 {
+			t.Fatalf("gate-wait age with a future anchor and a valid updated_at = %+v, want a known zero from the fallback", got.GateWait)
+		}
+		// With every basis member future-dated, no valid basis remains.
+		if _, err := db.DB.Exec(`UPDATE cards SET updated_at=? WHERE run_id=? AND card_id=?`,
+			future.Format(time.RFC3339Nano), frRun, "fut-gate"); err != nil {
+			t.Fatal(err)
+		}
+		card, _ = db.LoadCard(ctx, frRun, "fut-gate")
+		got = ComputeCardAges(card, ev, caaNoCommit, now)
 		if got.GateWait.Known {
-			t.Fatalf("gate-wait age from a future-dated anchor = %+v, want unknown", got.GateWait)
+			t.Fatalf("gate-wait age with every basis member future-dated = %+v, want unknown", got.GateWait)
 		}
 		caaAssertNoNegativeAge(t, got)
 	})
@@ -531,15 +557,16 @@ func TestStageCheckpointSameStageReEntry(t *testing.T) {
 	}
 	now := t0.Add(40 * time.Hour)
 
-	// First pipeline entry (T4a into plan) is a stage change.
-	t3 := t0.Add(30 * time.Minute)
+	// First pipeline entry (T4a into plan) is a stage change. The walk times
+	// stay inside the 15m lease T3 took at t2.
+	t3 := t0.Add(22 * time.Minute)
 	c = caaStep(t, db, TransitionRequest{RunID: frRun, CardID: "reenter", To: CardPlan, ExpectedVersion: c.Version, Actor: "worker-1"}, t3)
 	if got := ages(c); !got.Stage.Known || got.Stage.Age != now.Sub(t3) {
 		t.Fatalf("stage checkpoint after the first T4a = %+v, want %s (a first entry is a stage change)", got.Stage, now.Sub(t3))
 	}
 
 	// A forward advance (T5 plan -> plan-audit) refreshes the checkpoint.
-	t4 := t0.Add(40 * time.Minute)
+	t4 := t0.Add(24 * time.Minute)
 	req := frFullRequest(repo, c, CardPlanAudit)
 	req.ExpectedVersion = c.Version
 	c = caaStep(t, db, req, t4)
@@ -549,7 +576,7 @@ func TestStageCheckpointSameStageReEntry(t *testing.T) {
 
 	// The backward T6 (plan-audit -> plan after an audit FAIL) refreshes it too.
 	frWriteVerdict(t, repo.Dir, "reenter", "plan-audit.md", "FAIL", repo.Commit)
-	t5 := t0.Add(50 * time.Minute)
+	t5 := t0.Add(26 * time.Minute)
 	req = frFullRequest(repo, c, CardPlan)
 	req.ExpectedVersion = c.Version
 	c = caaStep(t, db, req, t5)
