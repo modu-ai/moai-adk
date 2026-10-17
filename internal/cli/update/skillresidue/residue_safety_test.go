@@ -94,6 +94,7 @@ func TestClean_KeepsLinkToAnotherProjectsFolder(t *testing.T) {
 // A link to SKILL.md that fails must put the lowercase file back under its own name.
 // Otherwise its content stays under the staging folder, where nothing reads it.
 func TestRenameSkillFile_RestoresLowercaseNameWhenTheLinkIsRefused(t *testing.T) {
+	forceFallback(t) // injects the refusal through the link seam
 	dir := t.TempDir()
 	mustWriteFile(t, filepath.Join(dir, "skill.md"), "lower body")
 	orig := linkFile

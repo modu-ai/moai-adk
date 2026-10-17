@@ -163,6 +163,7 @@ func TestAC_UBR_17_RenameDoesNotOverwriteAFileThatAppearsInsideTheStagingFolder(
 // AC-UBR-17 (F25, destination): a SKILL.md that appears after the check, before the final
 // step, keeps its bytes, and the step reports the refusal.
 func TestAC_UBR_17_RenameDoesNotOverwriteASkillFileThatAppearsAtTheDestination(t *testing.T) {
+	forceFallback(t) // drives the link seam; the no-replace path has its own test
 	root := t.TempDir()
 	dir := filepath.Join(root, ".claude", "skills", raceSkill)
 	mustWriteFile(t, filepath.Join(dir, "skill.md"), "lower body")

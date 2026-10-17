@@ -56,8 +56,12 @@ func replaceByRename(t *testing.T, path, body string) {
 	}
 }
 
+// idSetup runs the test through the link-based fallback with deterministic stage names:
+// the round-3 identity tests address the staging folder by literal path and drive the link
+// and drop seams (card t1733 round 4 moved the default path to no-replace renames).
 func idSetup(t *testing.T) string {
 	t.Helper()
+	forceFallback(t)
 	dir := t.TempDir()
 	mustWriteFile(t, filepath.Join(dir, idLower), "old body")
 	return dir

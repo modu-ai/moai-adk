@@ -14,6 +14,7 @@ import (
 // rename must notice the replacement, leave the user's file alone, report an error, and
 // take back its own staging names.
 func TestAC_UBR_17_RenameDoesNotDropASkillFileThatWasAtomicallyReplaced(t *testing.T) {
+	forceFallback(t) // drives the link seam; the default path is no-replace renames
 	dir := t.TempDir()
 	mustWriteFile(t, filepath.Join(dir, "skill.md"), "old body")
 

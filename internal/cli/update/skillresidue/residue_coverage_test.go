@@ -163,6 +163,7 @@ func TestClean_UnreadableFolderIsAnError(t *testing.T) {
 // A failed first move leaves the lowercase file where it was, returns the error, and
 // leaves no staging folder behind.
 func TestClean_RenameFailureIsReturnedAndNothingMoves(t *testing.T) {
+	forceFallback(t) // injects the failure through the link seam
 	root := t.TempDir()
 	dir := filepath.Join(root, ".claude", "skills", "moai-ref-owasp-checklist")
 	mustWriteFile(t, filepath.Join(dir, "skill.md"), "lower body")
@@ -184,6 +185,7 @@ func TestClean_RenameFailureIsReturnedAndNothingMoves(t *testing.T) {
 
 // When no temporary name is free, the rename is refused and nothing changes.
 func TestRenameSkillFile_NoFreeTemporaryNameIsRefused(t *testing.T) {
+	legacyStageNames(t) // the deterministic names are the ones the test fills
 	dir := t.TempDir()
 	mustWriteFile(t, filepath.Join(dir, "skill.md"), "lower body")
 	for n := range 100 {
@@ -205,6 +207,7 @@ func TestRenameSkillFile_NoFreeTemporaryNameIsRefused(t *testing.T) {
 // When the link to SKILL.md and the restore both fail, the error names both and the
 // staging folder, so a person knows where the content went.
 func TestRenameSkillFile_RestoreFailureIsReported(t *testing.T) {
+	forceFallback(t) // drives the link seam and addresses the stage folder by literal path
 	dir := t.TempDir()
 	mustWriteFile(t, filepath.Join(dir, "skill.md"), "lower body")
 	origLink := linkFile
