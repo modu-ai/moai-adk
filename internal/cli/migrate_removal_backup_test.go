@@ -134,3 +134,66 @@ func TestMigrationBackupBeforeRemoval(t *testing.T) {
 		t.Errorf("the removed file's manifest entry resurrected after the full update flow")
 	}
 }
+
+// TestEmptiedSkillDirRemoved is AC-RC30-11 (U-10, REQ-RC30-004): a skill
+// directory the migration empties by removing its last file goes WITH that
+// file, and a directory that still holds user content stays.
+func TestEmptiedSkillDirRemoved(t *testing.T) {
+	t.Run("emptied_dir_removed_with_its_last_file", func(t *testing.T) {
+		enableRemovalForTest(t)
+		root := buildMigrationFixture(t)
+		home := installMigrationUserCounterparts(t)
+
+		if _, err := migrateProjectCommonAssets(root, home, true, nil, func(string, ...interface{}) {}); err != nil {
+			t.Fatal(err)
+		}
+		assertFileAbsent(t, root, migIdenticalSkill)
+		// The fixture's moai-foundation-core directory held only SKILL.md:
+		// its last file gone, the directory itself must be gone too.
+		if _, err := os.Stat(filepath.Join(root, ".claude", "skills", "moai-foundation-core")); !os.IsNotExist(err) {
+			t.Errorf("the emptied skill directory survived its last file's removal (stat err: %v)", err)
+		}
+		// The skills ROOT itself is never a pruning target.
+		if _, err := os.Stat(filepath.Join(root, ".claude", "skills")); err != nil {
+			t.Errorf("the skills root was pruned: %v", err)
+		}
+		// Manifest consistency: the dropped file's entry is gone (the
+		// entries-drop loop keys on the FILE, so pruning the directory must
+		// not disturb it).
+		mgr := manifest.NewManager()
+		if _, err := mgr.Load(root); err != nil {
+			t.Fatal(err)
+		}
+		if _, found := mgr.GetEntry(migIdenticalSkill); found {
+			t.Errorf("the removed file's manifest entry survived the removal")
+		}
+	})
+
+	t.Run("dir_with_user_content_stays", func(t *testing.T) {
+		enableRemovalForTest(t)
+		root := buildMigrationFixture(t)
+		home := installMigrationUserCounterparts(t)
+		// A user file beside the managed one: after SKILL.md is removed the
+		// directory still holds user content, so it must stay.
+		notes := filepath.Join(root, ".claude", "skills", "moai-foundation-core", "NOTES.md")
+		if err := os.MkdirAll(filepath.Dir(notes), 0o755); err != nil {
+			t.Fatal(err)
+		}
+		if err := os.WriteFile(notes, []byte("# the user's own notes\n"), 0o644); err != nil {
+			t.Fatal(err)
+		}
+
+		if _, err := migrateProjectCommonAssets(root, home, true, nil, func(string, ...interface{}) {}); err != nil {
+			t.Fatal(err)
+		}
+		assertFileAbsent(t, root, migIdenticalSkill)
+		if data, err := os.ReadFile(notes); err != nil {
+			t.Errorf("the user's file in the not-emptied directory was lost: %v", err)
+		} else if string(data) != "# the user's own notes\n" {
+			t.Errorf("the user's file in the not-emptied directory was altered: %q", data)
+		}
+		if _, err := os.Stat(filepath.Join(root, ".claude", "skills", "moai-foundation-core")); err != nil {
+			t.Errorf("a directory still holding user content was removed: %v", err)
+		}
+	})
+}

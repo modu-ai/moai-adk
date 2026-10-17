@@ -325,6 +325,15 @@ func migrateProjectCommonAssets(projectRoot, homeDir string, userAssetsInstalled
 				rc.removed = append(rc.removed, relSlash)
 			}
 			report("  migration: removed: %s", relSlash)
+			// REQ-RC30-004 (U-10, AC-RC30-11, card t1668 M2): the skill
+			// directory that held this file goes with it when the removal
+			// emptied it. A directory still holding content (the user's own
+			// files) stays.
+			if pruned, pErr := pruneEmptiedSkillDir(projectRoot, rootResolved, p); pErr != nil {
+				report("  migration: emptied-directory prune failed: %s: %v", relSlash, pErr)
+			} else if pruned {
+				report("  migration: removed empty skill directory: %s", filepath.ToSlash(filepath.Dir(relSlash)))
+			}
 			return nil
 		})
 		if err != nil && !os.IsNotExist(err) {
@@ -496,6 +505,58 @@ func withinRootBoundary(root, path string) bool {
 // verification below surfaces, so the signal is grep-able in run output and
 // logs (the backupWriteFailedSentinel pattern).
 const migrationFinalStateSentinel = "migration-final-state-mismatch:"
+
+// pruneEmptiedSkillDir removes the skill directory that held a just-removed
+// file when that removal emptied it (REQ-RC30-004, U-10 / AC-RC30-11): a
+// managed-asset walk that only removes files would leave every emptied
+// `.claude/skills/<name>` / `.agents/skills/<name>` behind as litter.
+//
+// Boundaries (the removal point's own guards, followed deliberately): the
+// directory is resolved through symlinks and checked against the resolved
+// project root (withinRootBoundary), and only a path EXACTLY one component
+// below a skill root is a candidate — the skill roots themselves and any
+// deeper layout are never pruning targets. os.Remove (not RemoveAll) can
+// only take an empty directory, so a directory still holding the user's own
+// content stays even if the ReadDir check were ever bypassed. The manifest
+// needs no extra handling: its entries are FILES, and the entries-drop loop
+// stats file paths.
+//
+// Agent directories (.claude/agents/moai, .codex/agents/moai) are outside
+// this function on purpose — REQ-RC30-004 names skill directories only.
+func pruneEmptiedSkillDir(projectRoot, rootResolved, removedFile string) (bool, error) {
+	dir := filepath.Dir(removedFile)
+	resolvedDir, err := filepath.EvalSymlinks(dir)
+	if err != nil {
+		// The directory is already gone (a prior run) or unreadable: nothing
+		// to prune, not a failure.
+		return false, nil
+	}
+	if !withinRootBoundary(rootResolved, resolvedDir) {
+		return false, nil
+	}
+	rel, err := filepath.Rel(projectRoot, dir)
+	if err != nil {
+		return false, nil
+	}
+	parts := strings.Split(filepath.ToSlash(rel), "/")
+	if len(parts) != 3 || parts[2] == "" {
+		return false, nil
+	}
+	if parts[0] != ".claude" && parts[0] != ".agents" {
+		return false, nil
+	}
+	if parts[1] != "skills" {
+		return false, nil
+	}
+	entries, err := os.ReadDir(dir)
+	if err != nil || len(entries) != 0 {
+		return false, nil
+	}
+	if err := os.Remove(dir); err != nil {
+		return false, err
+	}
+	return true, nil
+}
 
 // verifyMigrationFinalState re-reads the DISK manifest after the whole
 // update flow (the runTemplateSyncWithReporter path included) and confirms
