@@ -11,3 +11,10 @@
 - Actions taken by lane-3: no further lease renewal; work committed to preserve it; ExitWorktree(keep) then idle.
 - Gap: the `spec_id: ""` claim and the T7 refusal are the leader's report; this lane did not read the card record field or run kickoff-check.
 - Gap: plan-audit round 2 not run; run/sync not started; nothing pushed (remote push stays with the operator).
+
+## WAIT STATE (reboot notice relayed by lane-17, operator instruction 2026-10-17)
+- What is waiting: card t1760 (SPEC-CONTAINMENT-MAPPING-DOC-001), paused after plan fix round 1. Nothing is in progress. The tree holds no uncommitted change; all work is in commit b50a31b1a on branch WT-10-15-release-3, worktree `.moai/worktrees/t1760`, not pushed. Do not delete the tree.
+- Who is waited on: the operator, who re-selects the card with `--spec` (relayed by lane-17; this lane did not observe that selection).
+- Resume condition: the card record carries a valid SPEC id (SpecID is settable only in the `picked` state), then the card is re-dispatched. Next step on resume: plan-audit round 2 against the committed plan fix, then run -> sync -> landing per Class C.
+- Lease: no renewal is made; it lapses on its own.
+- Session: lane-3 ends here; no work is carried in conversation context.
