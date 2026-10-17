@@ -198,6 +198,7 @@ var doctorCheckNameContract = map[string]bool{
 	`"ast-grep CLI"`:                 true,
 	"agentEmitEmbedCheckName":        true,
 	"ccVersionStalenessCheckName":    true,
+	"dbPathGhostCheckName":           true,
 	"factoryRunCheckName":            true,
 	"flagSlotCheckName":              true,
 	"hookMissingLogCheckName":        true,

@@ -228,6 +228,10 @@ func runGroupedChecksObserved(verbose bool, filterCheck string, obs checkObserve
 		// artifact inventory (legacy backlog.json, .migrated, session
 		// records), judged from the same detector (REQ-TSP-042). Read-only.
 		{todoGhostInventoryCheckName, func(v bool) DiagnosticCheck { return checkTodoGhostInventory(cwd, v) }},
+		// SPEC-MOAI-DB-PATHS-001 (card t1827): zero-byte *.db files at unconfirmed
+		// paths, the trace of a guessed path opened with sqlite3. Read-only,
+		// warning severity, never gates doctor.
+		{dbPathGhostCheckName, func(v bool) DiagnosticCheck { return checkDBPathGhosts(cwd, v) }},
 		// SPEC-SESSION-CC-VERSION-001 REQ-SCV-007: per live registry session,
 		// the running Claude Code version against the installed one. Read-only,
 		// at most one probe per live entry, advisory — never CheckFail, so it
