@@ -2,13 +2,16 @@ package cli
 
 import (
 	"bytes"
+	"context"
 	"fmt"
 	"io"
 	"os"
 	"os/exec"
+	"os/signal"
 	"regexp"
 	"slices"
 	"strings"
+	"syscall"
 
 	"github.com/modu-ai/moai-adk/internal/factory"
 	"github.com/spf13/cobra"
@@ -43,8 +46,9 @@ type integrationBisectOpts struct {
 // visits one commit per card and the first bad one names the culprit card.
 // The verb is a thin guard around `git bisect --first-parent`: it refuses the
 // primary checkout (bisect moves HEAD), a dirty tree and a bisect already in
-// progress, and it resets on every path out, failing the command when it
-// cannot confirm that HEAD and the bisect state are back where they started.
+// progress, and it resets on every path out, SIGINT and SIGTERM included (the
+// judged run is stopped, then the tree is restored), failing the command when
+// it cannot confirm that HEAD and the bisect state are back where they started.
 func newIntegrationBisectCmd() *cobra.Command {
 	var badFlag, goodFlag string
 	var dryRun bool
@@ -76,7 +80,16 @@ func newIntegrationBisectCmd() *cobra.Command {
 // environment is kept: the judged command inherits it, so it must be the real
 // one, not a scrubbed copy.
 func bisectGit(dir string, out io.Writer, args ...string) error {
-	c := exec.Command("git", append([]string{"-C", dir}, args...)...)
+	return bisectGitCtx(context.Background(), dir, out, nil, args...)
+}
+
+// bisectGitCtx is bisectGit for a command that a context may stop; prepare, when
+// set, adjusts the command before it starts.
+func bisectGitCtx(ctx context.Context, dir string, out io.Writer, prepare func(*exec.Cmd), args ...string) error {
+	c := exec.CommandContext(ctx, "git", append([]string{"-C", dir}, args...)...)
+	if prepare != nil {
+		prepare(c)
+	}
 	for _, kv := range os.Environ() {
 		name, _, _ := strings.Cut(kv, "=")
 		if !slices.Contains(bisectRepoVars, name) {
@@ -130,6 +143,40 @@ func bisectRestore(dir, origSHA, origBranch string) error {
 	return fmt.Errorf("integration bisect: %s in %s; run git bisect reset by hand (and check out the starting commit %s)", strings.Join(problems, "; "), dir, factory.ShortSHA(origSHA))
 }
 
+// bisectIgnoredCollisions lists ignored local files whose path a commit the
+// search can visit tracks. `git checkout` replaces such a file without a word
+// (the dirty-tree check does not see ignored files), so the verb refuses first.
+// The visited trees are the good tree plus every path a first-parent step adds.
+func bisectIgnoredCollisions(top, good, bad string) ([]string, error) {
+	ignored, err := runScrubbedGit(top, "ls-files", "-z", "--others", "--ignored", "--exclude-standard")
+	if err != nil {
+		return nil, fmt.Errorf("list ignored files: %w", err)
+	}
+	if ignored == "" {
+		return nil, nil
+	}
+	tracked := map[string]bool{}
+	for _, args := range [][]string{
+		{"ls-tree", "-r", "-z", "--name-only", good},
+		{"log", "--first-parent", "--diff-filter=A", "--name-only", "-z", "--format=", good + ".." + bad},
+	} {
+		out, listErr := runScrubbedGit(top, args...)
+		if listErr != nil {
+			return nil, fmt.Errorf("list tracked paths (git %s): %w", args[0], listErr)
+		}
+		for _, p := range strings.Split(out, "\x00") {
+			tracked[strings.TrimLeft(p, "\n")] = true
+		}
+	}
+	var hits []string
+	for _, p := range strings.Split(ignored, "\x00") {
+		if p != "" && tracked[p] {
+			hits = append(hits, p)
+		}
+	}
+	return hits, nil
+}
+
 func bisectBranchNote(branch string) string {
 	if branch == "" {
 		return " (detached)"
@@ -167,13 +214,26 @@ func runIntegrationBisect(out io.Writer, o integrationBisectOpts) error {
 		}
 		shas[ref] = strings.TrimSpace(sha)
 	}
+	hits, collideErr := bisectIgnoredCollisions(top, shas[o.Good], shas[o.Bad])
+	if collideErr != nil {
+		return fmt.Errorf("integration bisect: refused — cannot rule out ignored local files that the search would overwrite (%w)", collideErr)
+	}
+	if len(hits) > 0 {
+		return fmt.Errorf("integration bisect: refused — ignored local file(s) %s in %s share a path with a commit between %s and %s; a checkout during the bisect would overwrite them without warning. Move them away, then run again", strings.Join(hits, ", "), top, factory.ShortSHA(shas[o.Good]), factory.ShortSHA(shas[o.Bad]))
+	}
 	start := []string{"bisect", "start", "--first-parent", o.Bad, o.Good}
 	run := []string{"bisect", "run", "sh", "-c", o.Command}
 	reset := []string{"bisect", "reset"}
 	if o.DryRun {
 		_, _ = fmt.Fprintf(out, "integration bisect (dry-run): bad %s, good %s, tree %s\n", factory.ShortSHA(shas[o.Bad]), factory.ShortSHA(shas[o.Good]), top)
 		for _, args := range [][]string{start, run, reset} {
-			_, _ = fmt.Fprintf(out, "  git %s\n", strings.Join(args, " "))
+			// The judged command is one word to git; quote it so the printed line
+			// pastes into a shell as the same three words.
+			shown := slices.Clone(args)
+			if len(shown) == 5 && shown[1] == "run" {
+				shown[4] = shellQuoteArg(shown[4])
+			}
+			_, _ = fmt.Fprintf(out, "  git %s\n", strings.Join(shown, " "))
 		}
 		return nil
 	}
@@ -185,6 +245,11 @@ func runIntegrationBisect(out io.Writer, o integrationBisectOpts) error {
 	origBranch, _ := runScrubbedGit(top, "symbolic-ref", "--quiet", "--short", "HEAD")
 	origBranch = strings.TrimSpace(origBranch)
 
+	// An interrupt stops the judged run (below) and still restores the tree: the
+	// notification is registered before anything moves HEAD and released on return.
+	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
+	defer stop()
+
 	var startLog bytes.Buffer
 	if err := bisectGit(top, &startLog, start...); err != nil {
 		_, _ = fmt.Fprint(out, startLog.String())
@@ -194,7 +259,8 @@ func runIntegrationBisect(out io.Writer, o integrationBisectOpts) error {
 		}
 		return startErr
 	}
-	runErr := bisectGit(top, out, run...)
+	runErr := bisectGitCtx(ctx, top, out, bisectRunPrepare, run...)
+	interrupted := runErr != nil && ctx.Err() != nil
 	// The culprit is read from git's own bisect log before the reset removes it.
 	var culprit string
 	if runErr == nil {
@@ -203,7 +269,17 @@ func runIntegrationBisect(out io.Writer, o integrationBisectOpts) error {
 			culprit = m[1]
 		}
 	}
+	// Restoration runs on the uncancelled context: bisectRestore starts its git
+	// processes without ctx, and the registered notification keeps swallowing
+	// further signals until the function returns.
 	restoreErr := bisectRestore(top, origSHA, origBranch)
+	if interrupted {
+		state := "the tree is restored (HEAD and the bisect state are back where they started)"
+		if restoreErr != nil {
+			state = "restoration was NOT confirmed: " + restoreErr.Error()
+		}
+		return fmt.Errorf("integration bisect: interrupted by a signal before the search converged, no culprit is named; %s", state)
+	}
 	if culprit == "" {
 		notConverged := fmt.Errorf("integration bisect: the search did not converge (git bisect run aborts on exit codes 126, 127 and 128 or above, and stops short when every candidate is skipped with 125 or the endpoints do not bracket a change)")
 		if restoreErr != nil {

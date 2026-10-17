@@ -8,6 +8,7 @@ package cli
 import (
 	"fmt"
 	"os"
+	"os/exec"
 	"path/filepath"
 	"strings"
 	"testing"
@@ -129,13 +130,33 @@ func TestBisectRefusesWhenOneIsInProgress(t *testing.T) {
 func TestBisectDryRunPrintsTheGitCommandsAndMovesNothing(t *testing.T) {
 	_, wt, base, tip := bisectRepo(t)
 	var out strings.Builder
-	if err := runIntegrationBisect(&out, integrationBisectOpts{Dir: wt, Bad: tip, Good: base, Command: "test ! -f bad.txt", DryRun: true}); err != nil {
+	// A command with spaces, a quote and a variable: the printed line must be
+	// pasteable, so a shell must read it back as the words git runs.
+	command := `test "$X" != 'a b' && test ! -f bad.txt`
+	if err := runIntegrationBisect(&out, integrationBisectOpts{Dir: wt, Bad: tip, Good: base, Command: command, DryRun: true}); err != nil {
 		t.Fatalf("dry-run: %v", err)
 	}
-	for _, want := range []string{"git bisect start --first-parent " + tip + " " + base, "git bisect run sh -c test ! -f bad.txt", "git bisect reset"} {
+	for _, want := range []string{"git bisect start --first-parent " + tip + " " + base, "git bisect reset"} {
 		if !strings.Contains(out.String(), want) {
 			t.Fatalf("dry-run must print %q:\n%s", want, out.String())
 		}
+	}
+	var runLine string
+	for _, line := range strings.Split(out.String(), "\n") {
+		if rest, ok := strings.CutPrefix(strings.TrimSpace(line), "git bisect run "); ok {
+			runLine = rest
+		}
+	}
+	if runLine == "" {
+		t.Fatalf("dry-run must print the git bisect run line:\n%s", out.String())
+	}
+	// N6a: the line, read by a shell, splits into exactly `sh`, `-c`, <command>.
+	words, err := exec.Command("sh", "-c", "printf '%s\\n' "+runLine).Output()
+	if err != nil {
+		t.Fatalf("the printed run line is not valid shell: %v\n%s", err, runLine)
+	}
+	if got, want := strings.TrimSuffix(string(words), "\n"), "sh\n-c\n"+command; got != want {
+		t.Fatalf("the printed run line splits into %q, want %q (line: %s)", got, want, runLine)
 	}
 	if head := fcGit(t, wt, "rev-parse", "HEAD"); head != tip {
 		t.Fatalf("dry-run must not move HEAD: %s", head)
@@ -267,5 +288,46 @@ func TestBisectRestoresHeadWhenStartFailsPartway(t *testing.T) {
 	}
 	if head := fcGit(t, wt, "rev-parse", "HEAD"); head != tip {
 		t.Fatalf("a failed start must leave HEAD at %s, is %s", tip, head)
+	}
+}
+
+// N3 (fix round 2): a checkout during the bisect overwrites an ignored local
+// file without a word when a visited commit tracks the same path. The verb must
+// refuse before it starts, and must not refuse an ignored file nothing tracks.
+func TestBisectRefusesAnIgnoredFileThatACommitInTheRangeTracks(t *testing.T) {
+	primary, wt, base, tip := bisectRepo(t)
+	fcGit(t, wt, "checkout", "-q", "--detach", base)
+	if err := os.WriteFile(filepath.Join(primary, ".git", "info", "exclude"), []byte("bad.txt\nscratch.log\n"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	for name, body := range map[string]string{"bad.txt": "LOCAL\n", "scratch.log": "log\n"} {
+		if err := os.WriteFile(filepath.Join(wt, name), []byte(body), 0o600); err != nil {
+			t.Fatal(err)
+		}
+	}
+	if st := fcGit(t, wt, "status", "--porcelain"); st != "" {
+		t.Fatalf("test setup: the files must be ignored, status reads %q", st)
+	}
+
+	err := runIntegrationBisect(&strings.Builder{}, integrationBisectOpts{Dir: wt, Bad: tip, Good: base, Command: "test ! -f bad.txt"})
+	if err == nil || !strings.Contains(err.Error(), "ignored") || !strings.Contains(err.Error(), "bad.txt") {
+		t.Fatalf("an ignored file that a commit in the range tracks must be refused by name, got %v", err)
+	}
+	if strings.Contains(err.Error(), "scratch.log") {
+		t.Fatalf("an ignored file nothing tracks must not be named: %v", err)
+	}
+	if body, _ := os.ReadFile(filepath.Join(wt, "bad.txt")); string(body) != "LOCAL\n" {
+		t.Fatalf("the ignored file must survive the refusal, reads %q", body)
+	}
+	if head := fcGit(t, wt, "rev-parse", "HEAD"); head != base {
+		t.Fatalf("the refusal must not move HEAD: %s", head)
+	}
+
+	// Control: with only the non-colliding ignored file, the verb goes on.
+	if err := os.Remove(filepath.Join(wt, "bad.txt")); err != nil {
+		t.Fatal(err)
+	}
+	if err := runIntegrationBisect(&strings.Builder{}, integrationBisectOpts{Dir: wt, Bad: tip, Good: base, Command: "true", DryRun: true}); err != nil {
+		t.Fatalf("an ignored file nothing tracks must not block the verb: %v", err)
 	}
 }
