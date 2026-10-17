@@ -100,7 +100,7 @@ func warnTempOriginQueueRefusal(cmd *cobra.Command) {
 		return
 	}
 	_, _ = fmt.Fprintf(cmd.ErrOrStderr(),
-		"moai todo: the launch directory is inside the temporary root %s, so no home queue was created under ~/.moai/db/<project-key>/todo; continuing against the project-local queue at %s\n",
+		"moai todo: the launch directory is inside the temporary root %s, so no home queue was created under ~/.moai/db/<project-key>/todo; continuing against the project-local queue at %s (moai paths prints the confirmed paths)\n",
 		matched, substitute)
 }
 
@@ -253,7 +253,10 @@ or a bare ` + "`<n>`" + ` when it is the whole remainder or the first token is a
 near-miss of a real verb (` + "`moai todo drp 401 stale`" + `). A number after an
 ordinary word is still card text (` + "`moai todo fix 3 flaky tests`" + `). A card text that merely
 mentions an id later in the sentence still falls through, and
-` + "`moai todo add \"<text>\"`" + ` adds any text verbatim.`,
+` + "`moai todo add \"<text>\"`" + ` adds any text verbatim.
+
+Find the database path with ` + "`moai paths`" + `; never guess it. Opening a missing file
+with sqlite3 creates an empty one.`,
 		Args: func(cmd *cobra.Command, args []string) error {
 			// t69 fallthrough: two or more words are natural language → add.
 			// Deliberate failure modes: a single token (the mistyped verb
