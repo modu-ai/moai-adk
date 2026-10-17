@@ -3,7 +3,7 @@ id: SPEC-TRUNK-BACKUP-SYNC-001
 title: "Acceptance criteria — trunk backup sync verb + workflow-exclusion regression guard"
 version: "0.3.0"
 created: 2026-10-17
-updated: 2026-10-17
+updated: 2026-10-18
 author: manager-spec
 priority: P1
 phase: "v3.2.0 target"

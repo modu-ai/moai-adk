@@ -2,9 +2,9 @@
 id: SPEC-TRUNK-BACKUP-SYNC-001
 title: "Trunk backup sync: push local main to the non-reacting sync/main ref via a minimal integration verb, guarded by a workflow-exclusion regression test"
 version: "0.3.0"
-status: draft
+status: in-progress
 created: 2026-10-17
-updated: 2026-10-17
+updated: 2026-10-18
 author: manager-spec
 priority: P1
 phase: "v3.2.0 target"
