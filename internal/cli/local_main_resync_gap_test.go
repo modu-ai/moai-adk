@@ -168,6 +168,7 @@ func TestLocalMainResyncRivalTakeoverDuringRevalidateCannotLand(t *testing.T) {
 	t.Cleanup(halt)
 
 	attempted, moveSeen, intactAtMove := false, false, false
+	movedBySeam := false
 	var moveProbeErr error
 	var plantErr error
 	readProbed := false
@@ -218,6 +219,9 @@ func TestLocalMainResyncRivalTakeoverDuringRevalidateCannotLand(t *testing.T) {
 			moveSeen = true
 			intactAtMove = tripwireIntact()
 			moveProbeErr = probeSection(root)
+			out, mErr := prevMove(git, baseline)
+			movedBySeam = mErr == nil && lmfHead(t, root) == target
+			return out, mErr
 		}
 		return prevMove(git, baseline)
 	}
@@ -232,6 +236,9 @@ func TestLocalMainResyncRivalTakeoverDuringRevalidateCannotLand(t *testing.T) {
 
 	if !attempted || !moveSeen {
 		t.Fatalf("the re-validation seam ran = %v and the fast-forward seam localMainResyncFastForward ran = %v (re-sync err = %v): both must run for the section to be observed, and a move that bypasses the fast-forward seam is unobserved", attempted, moveSeen, err)
+	}
+	if !movedBySeam {
+		t.Errorf("the fast-forward seam localMainResyncFastForward returned without moving primary HEAD to %s: the move is done somewhere other than the observed seam", target)
 	}
 	if plantErr != nil {
 		t.Fatalf("plant the tripwire in %s: %v", lockPath, plantErr)
