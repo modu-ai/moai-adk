@@ -531,6 +531,16 @@ func runCleanReinstall(ctx context.Context, projectRoot string, opts CleanReinst
 		if restoreErr != nil {
 			return result, recovery.fail("step 5.5: restore .moai/config sections", restoreErr)
 		}
+		// M2: evaluator-profiles/ and astgrep-rules/ restore beside the section
+		// merge, as on the template-sync path. A failure warns; the section restore
+		// succeeded.
+		unmanagedRefs, unmanagedErr := backup.RestoreUnmanagedConfigDirs(projectRoot, configBackupPath)
+		if unmanagedErr != nil {
+			_, _ = fmt.Fprintf(out, "[clean-reinstall] unmanaged config restore warning: %v\n", unmanagedErr)
+		}
+		for _, msg := range unmanagedRestoreMessages(unmanagedRefs, configBackupPath) {
+			_, _ = fmt.Fprintf(out, "[clean-reinstall] %s\n", msg)
+		}
 		removedModelKeys, stripErr := stripRetiredModelConfig(out, projectRoot, configBackupPath)
 		if stripErr != nil {
 			_, _ = fmt.Fprintf(out, "[clean-reinstall] retired model key removal warning: %v\n", stripErr)
@@ -542,9 +552,22 @@ func runCleanReinstall(ctx context.Context, projectRoot string, opts CleanReinst
 		// counts runs across both backup roots: this run's v2-to-v3-* forensic
 		// backup and its config backup share one run marker, so they are kept or
 		// pruned together, and an unmarked directory is a candidate only under a
-		// name a moai writer produces.
-		if deleted := backup.CleanupOldBackups(projectRoot, 5); deleted > 0 {
-			_, _ = fmt.Fprintf(out, "[clean-reinstall] Cleaned up %d old config backup(s)\n", deleted)
+		// name a moai writer produces. A backup root that is a symbolic link or
+		// leads outside the project is refused, and nothing is pruned.
+		if backup.OldBackupRootRefused(projectRoot) || backup.NamespaceBackupRootRefused(projectRoot) {
+			_, _ = fmt.Fprintln(out, "[clean-reinstall] skipped old config backup pruning: the backup root is a symbolic link or leads outside the project")
+		} else {
+			// Budgeted retention (SPEC-UPDATE-BACKUP-RETENTION-001): an older run
+			// that holds the last copy of a past file version within the
+			// state.backup_past_versions_keep budget is kept, and every removed or
+			// retained run is named.
+			rep := backup.PruneBackups(projectRoot, 5, config.LoadBackupPastVersionsKeep(projectRoot))
+			if rep.Removed > 0 {
+				_, _ = fmt.Fprintf(out, "[clean-reinstall] Cleaned up %d old config backup(s)\n", rep.Removed)
+			}
+			for _, line := range backupRetentionReportLines(rep, projectRoot) {
+				_, _ = fmt.Fprintf(out, "[clean-reinstall] %s\n", line)
+			}
 		}
 	}
 	// MergeUserFiles preserves the user's version on any merge failure, so a

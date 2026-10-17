@@ -20,7 +20,7 @@ The factory leader and lane sessions keep **only orchestration** in their contex
 | **lane** | One parallel work stream that carries a card end to end: one session paired with one worktree. A lane is a swimlane — a band reserved for one stream of work; parallel streams never interleave and never share a working tree. "Lane-local verification" = that lane runs only the tests its own change can affect. | `lane-2` working in worktree `.moai/worktrees/t0` is one lane. |
 | **card** | One unit of work in the queue, entered by the operator via `/moai gtd "<description>"` and referred to by a short id. A card owns one worktree, one progress record, and its completion evidence. | `t0` — a one-line fix card. |
 | **backlog** | The entry queue. No session owns it by design — work enters only when the operator puts it there. | `/moai gtd "rename hint is stale"` appends a card to the backlog. |
-| **leader** | The single coordinating session (`moai cc -f`). Routes cards to lanes on evidence it read itself, asks the operator to `/clear` a lane between cards, never writes code. | The session that dispatched a card with its worktree instruction. |
+| **leader** | The single coordinating session (`moai cc -f`). Routes cards to lanes on evidence it read itself, moves a lane between cards by the in-session transition, never writes code. | The session that dispatched a card with its worktree instruction. |
 | **run-id** | The short identifier the leader prints at launch. It lives in `MOAI_KANBAN_ID` and the leader socket path — no session name carries it, the leader's included (t133): a lane is named `lane-<n>`, and a second live claim on a label takes the next free number. | `a1b2c3` — printed in the leader's bootstrap notice; the session itself is named `leader`. |
 | **worktree** | The isolated checkout where a card's work happens — created by `moai worktree new` or a supported launcher and entered through one, never a raw worktree add. The directory carries the card id; the branch carries `WT-<slug>` (shape: the stub § Isolation is provisioned by MoAI). A worktree outlives a stage: one spans plan through sync. | `.claude/worktrees/t0` on branch `WT-todo-queue`. |
 | **dispatch** | The leader's instruction to one lane: a pointer (card id, SPEC id, entry command, completion signal), never a copy of the work. Written in the operator's conversation_language. | "card: t0 — wt: EnterWorktree(t0) … evidence: .moai/reports/t0/". |
@@ -70,13 +70,13 @@ Each instruction carries, at minimum: the card, the SPEC ID once one exists, the
 
 ### Dispatch format — rationale
 
-The address-block format (normative statement lives in the stub) is the "pointer, not a copy" rule above made mechanical: every field is an address the lane resolves by reading what it names. It also settles the Dispatch language rule by construction — a block of pure addresses has nothing to translate, while the leader's reports to the operator (progress notes, `/clear` requests) remain in the operator's `conversation_language`.
+The address-block format (normative statement lives in the stub) is the "pointer, not a copy" rule above made mechanical: every field is an address the lane resolves by reading what it names. It also settles the Dispatch language rule by construction — a block of pure addresses has nothing to translate, while the leader's reports to the operator (progress notes, card-transition statements) remain in the operator's `conversation_language`.
 
 ## The leader works through manager-lead
 
 The factory leader session does not draft its own coordination: it spawns the `manager-lead` agent and works through it. The split:
 
-- **Dialogue.** manager-lead holds the operator conversation — card selection, `/clear` prompts, blocker surfacing. The blocker-report discipline is unchanged (`agent-common-protocol.md` § Blocker Report Format): manager-lead returns blocker reports, and the session's `AskUserQuestion` remains the user channel. The rename moves no part of the user channel into the agent.
+- **Dialogue.** manager-lead holds the operator conversation — card selection, queue prompts, blocker surfacing. The blocker-report discipline is unchanged (`agent-common-protocol.md` § Blocker Report Format): manager-lead returns blocker reports, and the session's `AskUserQuestion` remains the user channel. The rename moves no part of the user channel into the agent.
 - **Dispatch.** manager-lead routes cards and reads evidence in the background while the dialogue continues — neither the conversation nor the lane coordination blocks the other, because sub-agents run in the background by default and the session stays free between their returns.
 
 [HARD] **Spawn manager-lead UNNAMED.** Under `CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS` a named spawn converts to an in-process teammate, and that path carries two measured hazards: an observed output-loss discrepancy (one same-version session watched a named spawn become an output-less in-process teammate — the two-sided evidence is recorded in orchestration-mode-selection.md §C.1), and in-process teammates cannot spawn background subagents, which forces foreground-only execution and breaks the dialogue-never-blocks property above. An unnamed spawn keeps it a plain subagent (related: `orchestration-mode-selection.md` §C.1).
@@ -134,7 +134,7 @@ Factory Mode (`moai cc -f` / `moai glm -f` for the leader, `-l` for each lane) r
 - **Serial stages, sub-agent execution.** Plan completes before run begins, run before sync — a lane never runs two stages of the same card concurrently. Within a stage it fans out sub-agents per § Sub-agent execution within a lane.
 - **Standing spawn authority (card t224's normative home).** The lane's right to those sub-agent spawns is standing, not per-dispatch: the SessionStart join notice carries the authority sentence verbatim, and the runtime's default "don't spawn unless the user asks" guidance does not bind a lane (the leader is not the lane's user, so leader approval can neither grant nor revoke what the bootstrap grants). Scope is the Status Transition Ownership Matrix's specialist for the stage at hand; depth is one — spawned agents are leaves. Observed defect this closes: two tk8hce lanes refused to spawn `manager-spec` and edited SPEC bodies directly, routing artifact writes around the ownership matrix.
 - **Classes name the entry stage.** A/B/C name which ceremonies a card skips (B skips `plan` and carries no SPEC; A goes straight to the close); no card changes sessions. Every lane runs the serial stages for whatever its card still needs.
-- **The `/clear` boundary is between cards.** A factory lane is cleared once its card reaches `done`, before the next card is routed to it, exactly as the stub's `/clear` rule requires.
+- **The transition boundary is between cards.** A factory lane leaves its card worktree (`ExitWorktree(keep)`) once its card reaches `done`, before the next card is routed to it, exactly as the stub's lane card transition rule requires.
 - **Evidence, verdict, integration since the lane-autonomy revision.** The lane writes the same completion signals; the per-card verdict and the landing are the lane's own (§ The verdict's home; `factory-dispatch-mechanics.md` § The lane's standard landing), and the leader reads evidence for its retained duties only. The deputy surface applies too: the factory leader may delegate dispatch sends and watches to the coordination deputy (§ The leader works through manager-lead → Deputy mode).
 
 ## The card-review stage
@@ -144,7 +144,7 @@ A lane closes its card through an ordered list of stages. The list fixes where t
 1. `[run-exit]` Run convergence and lane-local verification (stub § Verification load is lane-local).
 2. `[card-review]` The card-scope self-review described below.
 3. `[integration]` The integration window and the merge into the batch's release branch (stub § Integration into the release branch is self-served).
-4. `[report]` The completion report naming every evidence path, then the `/clear` the stub requires.
+4. `[report]` The completion report naming every evidence path, then the in-session transition the stub requires.
 
 Running `[card-review]`:
 
@@ -163,6 +163,6 @@ The lane-autonomy revision moved the per-card completion verdict to the lane tha
 
 ## Cross-references
 
-- `factory-dispatch-cards.md` — report milestones ↔ queue cards, card classes, the `/clear` handoff message structure, isolation rationale, the pre-dispatch cross-check, and the PR-title carrier.
+- `factory-dispatch-cards.md` — report milestones ↔ queue cards, card classes, the lane card transition statement structure, isolation rationale, the pre-dispatch cross-check, and the PR-title carrier.
 - `factory-dispatch-gates.md` — the CodeRabbit endpoint measurement, review lens selection, the pre-merge settings-drift assertion, and the verification-load incident record.
 - `factory-dispatch-mechanics.md` — the lane-and-lens mechanics bodies relocated from the stub (isolation launchers and tiers, lane-local verification variants, the integration window procedure).

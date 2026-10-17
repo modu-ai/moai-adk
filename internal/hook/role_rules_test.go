@@ -213,9 +213,11 @@ func TestSessionStartRoleRulesNoInjection(t *testing.T) {
 }
 
 // TestSessionStartRoleRulesFailVisible is AC-ALB-011 / REQ-ALB-009: for the
-// absent, unreadable, empty, and unmarked fixtures the hook emits the
-// operator-visible warning AND the agent read directive TOGETHER — never a
-// silent start.
+// absent, unreadable, empty, and malformed-marker fixtures the hook emits
+// the operator-visible warning AND the agent read directive TOGETHER — never
+// a silent start. (t1729: the unmarked fixture LEFT this set — a stale
+// deployed copy falls back to the binary's embedded template copy instead of
+// failing; see role_rules_fallback_test.go.)
 func TestSessionStartRoleRulesFailVisible(t *testing.T) {
 	clearFactoryEnv(t)
 	dispatch := roleRuleFiles[0]
@@ -260,13 +262,6 @@ func TestSessionStartRoleRulesFailVisible(t *testing.T) {
 		writeRoleRuleFixture(t, root, dispatch, "")
 		inj := roleRuleInjectionFor(root, "startup", langEnglish)
 		assertFailVisible(t, inj, "empty")
-	})
-	t.Run("unmarked_file", func(t *testing.T) {
-		t.Setenv(config.EnvMoaiFactoryWorkers, "1")
-		root := build(t)
-		writeRoleRuleFixture(t, root, dispatch, "# Rule\n\nbody without any role-core markers\n")
-		inj := roleRuleInjectionFor(root, "startup", langEnglish)
-		assertFailVisible(t, inj, "unmarked")
 	})
 	t.Run("unclosed_region", func(t *testing.T) {
 		// A start marker without its closing pair must fail visible, not
