@@ -4,7 +4,7 @@ title: "Multi-agent containment and source-control mapping reference document"
 version: "0.1.0"
 status: draft
 created: 2026-10-16
-updated: 2026-10-16
+updated: 2026-10-17
 author: manager-spec
 priority: P2
 phase: "v3.2.0"
@@ -20,6 +20,7 @@ tier: M
 
 - 0.1.0: Initial draft. Plan-phase artifacts (Tier M: spec, plan, acceptance, plus the progress skeleton).
 - 0.1.0 (plan-audit fix round 1): REQ-CMM-007 scoped to eight distinct paths so that it matches the revised acceptance command; the acceptance commands for the source register, the mapping table, the path check, the forbidden-token check, and the scope guard were rebuilt (see `plan.md` § I).
+- 0.1.0 (plan-audit fix round 2): REQ-CMM-001 now names the card-evidence directory `.moai/reports/` as a third allowed location, so that it carries the same scope as the revised scope-guard criterion (AC-CMM-010 excludes that directory because card evidence is tracked there); the forbidden-token check gained full and abbreviated English month names in both orders and any case (see `plan.md` § J).
 
 ## 1. Purpose
 
@@ -61,7 +62,7 @@ The flags above describe the planning run. The document author re-verifies at au
 
 Notation: GEARS. The mapping table, source register, and flag tokens are fixed English tokens so that the acceptance commands can key on them.
 
-- **REQ-CMM-001** (Ubiquitous): The deliverable shall be a single markdown document at `.moai/docs/multi-agent-containment-mapping.md`, and the run phase shall add, change, or remove no file outside that document and this SPEC directory.
+- **REQ-CMM-001** (Ubiquitous): The deliverable shall be a single markdown document at `.moai/docs/multi-agent-containment-mapping.md`, and the run phase shall add, change, or remove no file outside that document, this SPEC directory, and the card-evidence directory `.moai/reports/`.
 - **REQ-CMM-002** (Ubiquitous): The document shall state in its opening section that it is reference-only, using the literal token `reference-only`: a comparison of published external practice with defenses already present in the repository, carrying no recommendation to change any rule, configuration, code, or template.
 - **REQ-CMM-003** (Ubiquitous): The document shall carry a source register with one row for each of BP-1, BP-2, BP-5, and BP-6, each row giving the source title, its URL, one double-quoted fragment of at least 20 characters copied verbatim from the page, and, as its final cell, the flag `VERIFIED` or `UNVERIFIED`.
 - **REQ-CMM-004** (Event-driven): When the author assigns `VERIFIED` to a source, the author shall have fetched that URL during the authoring run and observed the quoted fragment on the fetched page; where either condition is not met, the author shall assign `UNVERIFIED`.

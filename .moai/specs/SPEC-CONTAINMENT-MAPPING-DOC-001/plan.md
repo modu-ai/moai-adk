@@ -70,10 +70,29 @@ Gap: whether `moai update` preserves or removes untracked-by-template files in `
 
 ## F. Milestones (execution order, priority High unless noted)
 
-1. **M1 — Re-verify the four sources.** Fetch each URL, download raw, grep each fragment to be quoted. Record the flag per source from this run. (Mechanical; Priority High, because every later row depends on the flags.)
-2. **M2 — Author the document skeleton.** Opening reference-only statement, source register (fixed columns), mapping table header, scale caveat for the merge-queue theme. Korean prose per § B.2.
-3. **M3 — Fill the mapping rows.** Start from § D, re-open each cited file, keep or flip each Fit, paraphrase rather than copy. Keep both gap rows unless a defense is actually found; before E06 runs, record in the run-phase evidence how many seed gap claims still have no located defense (G in AC-CMM-006) and, for each one carried as a non-gap row, the file and section that supplied the defense. Add candidate rows from § B.4 only with a source.
-4. **M4 — Run the acceptance battery.** Run E01 to E09 from `acceptance.md` on the document, then the scope guard E10a and E10b against the pinned base commit. Apply the inline humanize pass first, then re-run, because wording edits can introduce a forbidden token.
+### M1 — Re-verify the four sources
+
+Fetch each URL, download raw, grep each fragment to be quoted. Record the flag per source from this run. (Mechanical; Priority High, because every later row depends on the flags.)
+
+Exit: no mechanical criterion flips here. The fetch output and the raw-byte fragment match output for each source are recorded in the run-phase evidence (`progress.md` § E.2), and every source flag is known before M2 fills the register.
+
+### M2 — Author the document skeleton
+
+Opening reference-only statement, source register (fixed columns), mapping table header, scale caveat for the merge-queue theme. Korean prose per § B.2.
+
+Exit: AC-CMM-001, 002, 003, 004 flip green.
+
+### M3 — Fill the mapping rows
+
+Start from § D, re-open each cited file, keep or flip each Fit, paraphrase rather than copy. Keep both gap rows unless a defense is actually found; before E06 runs, record in the run-phase evidence how many seed gap claims still have no located defense (G in AC-CMM-006) and, for each one carried as a non-gap row, the file and section that supplied the defense. Add candidate rows from § B.4 only with a source.
+
+Exit: AC-CMM-005, 006, 007 flip green.
+
+### M4 — Run the acceptance battery
+
+Run E01 to E09 from `acceptance.md` on the document, then the scope guard E10a and E10b against the pinned base commit (both exclude the document, this SPEC directory, and `.moai/reports/`). Apply the inline humanize pass first, then re-run, because wording edits can introduce a forbidden token.
+
+Exit: AC-CMM-008, 009, 010 hold on the final document. AC-CMM-008 and 009 can first be read once M2 has written the text, and are re-run here because later wording edits can reintroduce a token; AC-CMM-010 is green at the run-phase tip.
 
 ## G. Risks and residual risk
 
@@ -110,3 +129,16 @@ The first independent plan audit returned FAIL on two release-blocking criteria 
 One cross-layer change followed from D2 (the revision-sweep rule in `.claude/rules/moai/development/verification-completeness.md` § 3): REQ-CMM-007 in `spec.md` now says "at least eight distinct paths", so the requirement and the criterion carry the same scope.
 
 Not covered by any command, and left to reviewers: HTML entities or full-width digits that spell a forbidden token, a path hidden inside link markup, and paraphrase drift (AC-CMM-014). None of these was exercised in the fix round.
+
+## J. Plan-audit fix round 2 — dispositions
+
+The second independent plan audit (score 0.875, verdict FAIL on one required-backend leg and two blocking findings) confirmed D1 and D2 fixed and returned two new blocking findings and four optional ones. The finding ids N1, N2, and O1 to O4 are the audit report's own.
+
+| Finding | Disposition | Where, or why not |
+|---|---|---|
+| N1 — E10a can never reach exit 0 because two files under `.moai/reports/t1760/` are tracked | Fixed | `acceptance.md` E10a and E10b gain the pathspec `':!.moai/reports'`; AC-CMM-010 replaces the false "registers at neither" sentence with the tracked-evidence explanation and states the cost of the exclusion; the Definition of Done last bullet follows. Cross-layer sweep: REQ-CMM-001 in `spec.md` now names `.moai/reports/` as a third allowed location. Green re-observed on the current tree (exit 0; the fix-round-1 form exits 1), with an untracked-file probe for E10b and an older-base probe for E10a |
+| N2 — E08 misses `october 16`, `OCTOBER 16`, `16 October` | Fixed, by extending the command | `acceptance.md` E08 and AC-CMM-008: month names (full and abbreviated) as bracket classes, both orders, optional ordinal suffix; `SPEC-` branch still case-sensitive; lowercase `may` excluded by design. Fixtures: 24 of 24 counted, 26-line must-stay-zero fixture 0, 18 of 18 new date lines counted, 21 further look-alike lines 0 |
+| O1 — stale `HEAD` sentence in the document-level pin | Fixed | `acceptance.md` header names `cf5a52f55992e59fe9593fa508ace5d4dba59fc7` where that tree is meant; the diff was re-observed |
+| O2 — Known limit omitted other date spellings | Fixed, by listing | Seven uncovered shapes observed uncounted and listed under Known limit |
+| O3 — milestones were list items, so the CN-4 verb could not read their order | Fixed | § F is now `###` headings, each with an `Exit:` line |
+| O4 — AC-CMM-004 is read across two commands | Not changed | Optional; stays a reviewer-run comparison of E04a and E04b |
