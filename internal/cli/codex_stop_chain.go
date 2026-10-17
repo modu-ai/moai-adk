@@ -700,7 +700,7 @@ func (c *codexStopChain) multiReviewMember(context.Context) stopMemberOutcome {
 	if !ok {
 		return c.multiMissing("no multi-model review result is recorded for this session")
 	}
-	if result.OverallVerdict == overallVerdictFail {
+	if convergenceBlocksStop(result) {
 		return stopMemberOutcome{Decision: codexadapter.DecisionDeny, Class: reasonGateFailed, Reason: blockReason(result)}
 	}
 	return stopMemberOutcome{Decision: codexadapter.DecisionAllow, Status: stopStatusPass}
