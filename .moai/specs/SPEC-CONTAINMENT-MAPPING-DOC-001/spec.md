@@ -2,7 +2,7 @@
 id: SPEC-CONTAINMENT-MAPPING-DOC-001
 title: "Multi-agent containment and source-control mapping reference document"
 version: "0.1.0"
-status: in-progress
+status: completed
 created: 2026-10-16
 updated: 2026-10-17
 author: manager-spec

@@ -298,4 +298,31 @@ spec_status_transition: not performed (see E.2.6)
 
 ## §E.4 Sync-phase Audit-Ready Signal
 
-_pending sync-phase_
+sync_complete_at: 2026-10-17T22:00:56+09:00 (authoring time of this record, from `date +%FT%T%z`; the commit follows it)
+sync_commit_sha: pending-backfill
+sync_status: audit-ready
+sync_agent: manager-docs
+sync_scope: SPEC-directory-only close; no CHANGELOG, README, docs-site, or codemaps change (decision and reasons below)
+run_commits_cited: 5e3902e27 (document), d2f90c152 (run-phase evidence, §E.2 and §E.3), 1fdf0c796 (spec.md status draft to in-progress)
+changelog_entry_position: none — no entry emitted
+b12_self_test_a: not applicable (no CHANGELOG emission); observed anyway: `grep -c -F 'SPEC-CONTAINMENT-MAPPING-DOC-001' CHANGELOG.md` printed 0, and `grep -c -F 't1760' CHANGELOG.md` printed 0, this run, this tree
+b12_self_test_b: not applicable (no CHANGELOG entry, so no acceptance-criterion count is stated anywhere in a sync artifact); the AC count in §E.3 is manager-develop's and was not re-derived here
+b12_self_test_c: not applicable (no CHANGELOG entry claims a file path); the paths named in this section were checked with `ls` before the commit (see the report)
+frontmatter_status_transitions.in-progress→implemented→completed: single sync commit; `spec.md` frontmatter `status: in-progress` to `status: completed` only. The intermediate `implemented` value is not written as a separate commit, per the schema's Status Transition Ownership Matrix (the `completed` transition rides the sync commit). `updated:` was already 2026-10-17, the sync commit date, so it is unchanged. No body edit in spec.md, plan.md, or acceptance.md; plan.md and acceptance.md carry no frontmatter, so no `updated:` refresh is owed.
+mx_tag_validation: sync diff is documentation only (spec.md frontmatter line plus this section); zero @MX tag changes, no source file touched
+canary_compliance_check: not applicable (this SPEC defines no forward-looking policy that its own sync tests)
+commit_plan: one sync commit `docs(SPEC-CONTAINMENT-MAPPING-DOC-001): sync-phase artifacts (card t1760)` carrying the placeholder above, then one backfill commit replacing `pending-backfill` with the real sync-commit SHA (the D3 backfill window of `spec-frontmatter-schema.md`)
+
+### Sync-artifacts decision (what the sync phase did not produce, and why)
+
+- CHANGELOG.md — omitted. (1) `CHANGELOG.md` opens with Keep a Changelog framing ("All notable changes to this project"), and the deliverable changes no shipped behavior, rule, configuration, code, or template. (2) The document is local-development material that is deliberately not mirrored to `internal/template/templates/` (`plan.md` § E; spec.md § 1.3; `ls internal/template/templates/.moai/docs/ | grep -c -i containment` is checked below), so no user project receives it. (3) A CHANGELOG.md edit would turn the AC-CMM-010 scope guard E10a red when it is re-run at the sync tip: E10a compares the pinned base with the working tree and excludes only the document, this SPEC directory, and `.moai/reports/t1760/`. The Definition of Done in `acceptance.md` says the sync phase "may" add a changelog entry; it does not require one. Precedent is mixed and not decisive: two other local `.moai/docs` files sampled (`stale-card-premise-check.md`, `memory-dir-resolution-doctrine.md`) have zero CHANGELOG mentions, while others have one or two (not checked whether those mentions came from code-bearing SPECs).
+- README.md and the docs-site (4 locales) — omitted. The SPEC touches no user-facing documentation and `.claude/agents/moai/manager-docs.md` limits README and docs-site synchronization to what the SPEC dictates; this SPEC dictates none (REQ-CMM-001, REQ-CMM-011).
+- Codemaps (`.moai/project/codemaps/`) — omitted. No directory, dependency graph, or module changed; the deliverable is one markdown file under `.moai/docs/`, and a content search for the string `multi-agent-containment` over `*.md`, `*.go`, `*.yaml`, and `*.json` (excluding `.moai/reports`) matched only the four files of this SPEC directory (observed this run, this tree), so no codemap, index, or other document references it.
+- Template-First mirror — none, by REQ-CMM-011; `internal/template/templates/` is unchanged by every commit of this card.
+
+### Carried forward (stated, not fixed here)
+
+- §E.2.6 and the `spec_status_transition: not performed` line of §E.3 were true when written and are superseded by commit 1fdf0c796 (status draft to in-progress) and by this sync commit. Those two sections belong to manager-develop and were not edited.
+- §E.3 `run_complete_at: pending-backfill` is still a placeholder; backfilling it belongs to the run-phase owner.
+- AC-CMM-011, 013, and 014 are reviewer-checked criteria that §E.3 lists as pending; this sync phase did not perform that review (the independent sync audit owns the read).
+- Replacing the status `in-progress` with `completed` changes the bytes of `spec.md`, a subject of the plan-artifact hash that the passed plan audit is bound to (§E.2.6). That is inherent to the sync-phase transition and was not worked around.
