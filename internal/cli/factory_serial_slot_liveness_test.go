@@ -203,6 +203,62 @@ func TestFactoryNextRefusedBehindCollectedAssignedOfLiveHolder(t *testing.T) {
 	}
 }
 
+// TestFactoryNextLeasesBehindAReassignedCollectedCard — sync-audit round 2
+// F4 (card t1828, repair round 4): ReassignCard kept HeartbeatAt when the
+// owner changed, so the reassigned row carried the OLD owner's heartbeat and
+// the round-3 "started work" discriminator read the not-yet-started row as
+// work-started — two expiry-collected serial cards reassigned cross-wise
+// wedge each lane's self-nomination, unrecoverably. The reassignment clears
+// the heartbeat — the row is a pure assignment for its new owner — and the
+// nomination SUCCEEDS.
+func TestFactoryNextLeasesBehindAReassignedCollectedCard(t *testing.T) {
+	root, store := flSerialPair(t)
+	nmSetState(t, store, "t2", factory.BacklogStatePicked)
+	nmIsolatedWorktrees(t, "t1", "t2")
+	fcPlace(t, root,
+		homestate.Card{CardID: "t1", State: homestate.CardLeased, OwnerLabel: "lane-2", LeaseHolder: "lane-2",
+			LeaseExpiresAt: fcNow.Add(-time.Minute).Format(time.RFC3339Nano),
+			HeartbeatAt:    fcNow.Add(-90 * time.Second).Format(time.RFC3339Nano), Stage: homestate.CardRun},
+		homestate.Card{CardID: "t2", State: homestate.CardAssigned, OwnerLabel: "lane-1", Stage: homestate.CardRun},
+	)
+	serialSlotWorkerPID(t, root, "lane-2", os.Getpid(), serialSlotIncarnationEarly)
+
+	// Collect t1's expired lease to `assigned` (heartbeat kept) — the F1
+	// shape — then reassign the collected card cross-wise to lane-1 through
+	// the real reassign path.
+	db, err := homestate.OpenFactory(root)
+	if err != nil {
+		t.Fatalf("open factory: %v", err)
+	}
+	if _, err := db.Transition(context.Background(), homestate.TransitionRequest{
+		RunID: fcRun, CardID: "t1", To: homestate.CardRun,
+		ExpectedVersion: fcCard(t, root, "t1").Version, Actor: "lane-13", Now: fcNow,
+	}); !errors.Is(err, homestate.ErrLeaseExpired) {
+		t.Fatalf("collecting t1's expired lease: err=%v, want ErrLeaseExpired", err)
+	}
+	if _, err := db.ReassignCard(context.Background(), fcRun, "t1", "lane-1", "leader", fcNow, nil); err != nil {
+		t.Fatalf("reassign t1: %v", err)
+	}
+	if err := db.Close(); err != nil {
+		t.Fatalf("close factory: %v", err)
+	}
+	if c := fcCard(t, root, "t1"); c.State != homestate.CardAssigned || c.OwnerLabel != "lane-1" {
+		t.Fatalf("t1 after reassign: state=%s owner=%q, want assigned/lane-1", c.State, c.OwnerLabel)
+	}
+
+	// The stale heartbeat names the OLD owner's session, but it rides the row
+	// into lane-1's own roster generation and reads as lane-1's live session
+	// — the self-unrecoverable wedge this repair closes.
+	serialSlotWorkerPID(t, root, "lane-1", os.Getpid(), serialSlotIncarnationEarly)
+	nmLaneEnv(t, "lane-1", "")
+	if _, stderr, err := qasRunNext(t, "--run", fcRun, "--card", "t2"); err != nil {
+		t.Fatalf("factory next refused behind a reassigned card carrying its old owner's heartbeat: %v stderr=%q", err, stderr)
+	}
+	if st, owner := flRow(t, root, "t2"); st != homestate.CardLeased || owner != "lane-1" {
+		t.Fatalf("t2 state=%s owner=%q, want leased by lane-1", st, owner)
+	}
+}
+
 // TestFactoryNextLeasesBehindExpiredLeaseOfReRegisteredHolder — the
 // card-review r1 P2 repair of card t1828: factory_slots deletes a dead
 // worker's roster row and REASSIGNS the same label to a new process (a lane
