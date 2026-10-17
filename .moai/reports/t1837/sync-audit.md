@@ -5,7 +5,7 @@ auditor-model: claude-sonnet-5-5
 verdict: PASS
 audited_sha: 2d649e6a2c2a63ea6e0ac826bc05eecd5a62d8aa
 
-Verdict: PASS. Score: 0.93.
+Result: PASS, score 0.93.
 
 Dimension notes:
 - Functionality (40%): PASS. Card parts (a) and (b) are present, and the leader constraints (examples, not policy; rationale quoted; Template-First) hold.
