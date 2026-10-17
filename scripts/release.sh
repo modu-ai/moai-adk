@@ -8,12 +8,13 @@
 #   scripts/release.sh v2.15.0 --dry-run    # 검증만 (실제 tag/push 없이)
 #   scripts/release.sh v3.2.0-rc.1          # Release candidate (-rc.N): CHANGELOG 섹션 불필요
 #   scripts/release.sh v3.2.0 --require-matrix-run   # 태그 전에 3-OS 매트릭스(workflow_dispatch) 녹색 확인 (기본 꺼짐)
+#   scripts/release.sh v3.2.0 --skip-ci-check        # CI 게이트 우회 (origin 의 CI 통과 확인 없이 태그; 요약에 OVERRIDDEN 기록)
 #
 # 전제 조건 (CLAUDE.local.md §18.8):
 #   - CHANGELOG.md 에 해당 버전 섹션 존재 (-rc.N 태그는 예외)
 #   - main 브랜치 checkout + origin/main 과 동기화
 #     (origin/main 과 같은 커밋을 가리키는 detached HEAD 도 허용)
-#   - 모든 CI 통과
+#   - 태그할 커밋의 origin CI(check run) 전부 완료·통과 (없음/진행 중/실패/gh 없음 = 거부; --skip-ci-check 로만 우회)
 #   - 작업 트리 clean
 #
 # 흐름:
@@ -57,7 +58,7 @@ while [[ $# -gt 0 ]]; do
         --skip-ci-check) SKIP_CI_CHECK=true; shift ;;
         --require-matrix-run) REQUIRE_MATRIX_RUN=true; shift ;;
         -h|--help)
-            sed -n '2,23p' "$0"
+            sed -n '2,24p' "$0"
             exit 0
             ;;
         -*)
@@ -218,36 +219,38 @@ else
     log_ok "Pre-release $VERSION: no CHANGELOG.md section required (skipped)"
 fi
 
-# ─── Validation 9: CI status on HEAD (optional) ────────────────────────────
-if [[ "$SKIP_CI_CHECK" != true ]]; then
-    if command -v gh >/dev/null 2>&1; then
-        CI_STATE="$(gh pr list --head "$CURRENT_BRANCH" --state merged --limit 1 --json number --jq '.[0].number // ""' 2>/dev/null || echo "")"
-
-        # 직접 HEAD commit의 check suite 상태 조회 (main push 이후 CI)
-        HEAD_CHECKS="$(gh api "/repos/modu-ai/moai-adk/commits/$LOCAL_SHA/status" --jq '.state' 2>/dev/null || echo "unknown")"
-
-        case "$HEAD_CHECKS" in
-            success)
-                log_ok "CI status on HEAD: success"
-                ;;
-            pending)
-                log_warn "CI status on HEAD: pending (in progress)"
-                echo -n "  Proceed anyway? [y/N] "
-                read -r reply
-                [[ "$reply" =~ ^[Yy]$ ]] || die "Aborted by user"
-                ;;
-            failure|error)
-                die "CI status on HEAD: $HEAD_CHECKS. Fix CI before releasing."
-                ;;
-            *)
-                log_warn "CI status on HEAD: $HEAD_CHECKS (unable to verify)"
-                ;;
-        esac
-    else
-        log_warn "gh CLI not available — skipping CI status check"
-    fi
+# ─── Validation 9: CI verdict on the commit to be tagged ───────────────────
+# A pushed v* tag cannot be deleted or moved, so a tag is placed only on a commit
+# whose CI has passed on origin. HEAD equals origin's tip here (validation 6), so
+# the check runs read from GitHub for $LOCAL_SHA are the CI of the commit that
+# will be tagged. The verdict is read from the check-runs endpoint: the combined
+# status endpoint lists commit statuses only, and a green third-party status
+# (CodeRabbit) answers "success" while the Actions jobs are red or still running.
+# Passes only when at least one check run exists, every one is completed, and
+# every one concluded success, neutral or skipped. Absent, pending, failed and
+# unreadable are all refusals. gh missing is a refusal too. The one way past is
+# --skip-ci-check, which is announced here and recorded in the release summary.
+CI_GATE="verified"
+if [[ "$SKIP_CI_CHECK" == true ]]; then
+    CI_GATE="OVERRIDDEN (--skip-ci-check)"
+    log_warn "CI gate OVERRIDDEN (--skip-ci-check): $VERSION would be tagged on ${LOCAL_SHA:0:12} with NO verified passing CI on origin"
 else
-    log_warn "CI check skipped (--skip-ci-check)"
+    command -v gh >/dev/null 2>&1 || die "CI gate: the gh CLI is not available, so the CI verdict of ${LOCAL_SHA:0:12} on origin cannot be read. Install gh, or pass --skip-ci-check to override (recorded in the release summary)."
+
+    # One line per page: "<total> <not completed> <completed but not success|neutral|skipped>".
+    CI_PAGES="$(gh api --paginate "repos/modu-ai/moai-adk/commits/$LOCAL_SHA/check-runs?per_page=100" \
+        --jq '.check_runs | "\(length) \(map(select(.status != "completed")) | length) \(map(select(.status == "completed" and (.conclusion == "success" or .conclusion == "neutral" or .conclusion == "skipped" | not))) | length)"')" \
+        || die "CI gate: could not read the check runs of ${LOCAL_SHA:0:12} (gh api failed). Fix gh access, or pass --skip-ci-check to override (recorded in the release summary)."
+    read -r CI_TOTAL CI_PENDING CI_FAILED < <(printf '%s\n' "$CI_PAGES" | awk '{t+=$1; p+=$2; f+=$3} END {printf "%d %d %d\n", t, p, f}')
+
+    if (( CI_TOTAL == 0 )); then
+        die "CI gate: no check runs found for ${LOCAL_SHA:0:12} on origin. Wait for CI to start on this commit (or push it), then release again."
+    elif (( CI_FAILED > 0 )); then
+        die "CI gate: $CI_FAILED of $CI_TOTAL check run(s) on ${LOCAL_SHA:0:12} did not succeed. Fix CI before releasing."
+    elif (( CI_PENDING > 0 )); then
+        die "CI gate: $CI_PENDING of $CI_TOTAL check run(s) on ${LOCAL_SHA:0:12} are not completed. Wait for CI to finish, then release again."
+    fi
+    log_ok "CI status on HEAD: success ($CI_TOTAL check runs, all completed green)"
 fi
 
 # ─── Validation 9b: 3-OS matrix run on this commit (opt-in) ─────────────────
@@ -388,6 +391,7 @@ else
     echo "  Branch:      $CURRENT_BRANCH"
 fi
 echo "  HEAD SHA:    ${LOCAL_SHA:0:12}"
+echo "  CI gate:     $CI_GATE"
 if [[ "$CHANGELOG_HAS_SECTION" == true ]]; then
     echo "  Notes size:  $NOTES_LINES lines (from CHANGELOG.md $CHANGELOG_HEADER)"
 else
@@ -412,6 +416,10 @@ read -r confirm
 [[ "$confirm" =~ ^[Yy]$ ]] || die "Aborted by user"
 
 # ─── Create + push annotated tag ───────────────────────────────────────────
+# The CI verdict above belongs to $LOCAL_SHA; the tag goes on HEAD, so HEAD must
+# still be that commit after the confirmation prompt.
+[[ "$(git rev-parse HEAD)" == "$LOCAL_SHA" ]] || die "HEAD moved from ${LOCAL_SHA:0:12} after the CI gate; refusing to tag a commit whose CI was not checked."
+
 log_info "Creating annotated tag $VERSION..."
 git tag -a "$VERSION" -F "$TMP_NOTES"
 log_ok "Tag $VERSION created locally"
