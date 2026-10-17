@@ -65,7 +65,41 @@ Combined post-gofmt rerun on the committed tree: `go test -run 'TestWorkflowPush
 - `moai slot acquire --resource go-test-heavy --max-duration 20m` at 2026-10-17T16:06:19Z → one heavy command under the hold (`golangci-lint run --timeout=4m`, full-repo lint baseline: 3 pre-existing errcheck findings, all in `internal/cli/factory_run_adopt.go`) → `moai slot release --resource go-test-heavy` at 2026-10-17T16:08:31Z. No re-acquire; the later turn grant was cancelled by the lane before use.
 - Per leader rule 35e9 (supersedes E3/E5 as written): coverage measured only with scoped `-run` runs; full `go test -cover ./internal/cli/...` and full-`./...` lint sweeps are NOT run in this lane turn — recorded as Gaps, deferred to batch CI.
 
-_(M2/M3 rows appended below as milestones complete.)_
+### M2 RED (verbatim pre-GREEN failure)
+
+**M2 RED — the verb absent; package build failure.** Tree: M1 commit `b823791c7` + the M2 test file (implementation not yet written). Command: `go test -run 'TestIntegrationBackupFirstPush' ./internal/cli/ -count=1` → build failure:
+
+```text
+internal/cli/integration_backup_test.go:87:9: undefined: integrationBackupSeams
+internal/cli/integration_backup_test.go:113:76: undefined: backupRefspec
+internal/cli/integration_backup_test.go:144:12: undefined: runIntegrationBackup
+internal/cli/integration_backup_test.go:182:12: undefined: runIntegrationBackup
+internal/cli/integration_backup_test.go:196:12: undefined: runIntegrationBackup
+internal/cli/integration_backup_test.go:224:9: undefined: runIntegrationBackup
+internal/cli/integration_backup_test.go:260:9: undefined: runIntegrationBackup
+internal/cli/integration_backup_test.go:301:12: undefined: runIntegrationBackup
+internal/cli/integration_backup_test.go:330:12: undefined: runIntegrationBackup
+internal/cli/integration_backup_test.go:330:12: too many errors
+FAIL	github.com/modu-ai/moai-adk/internal/cli [build failed]
+FAIL
+```
+
+### M2 — the backup verb (AC-TBS-003, AC-TBS-004, AC-TBS-005, AC-TBS-007, AC-TBS-009) — PASS
+
+| AC | Status | Command | Observed output |
+|---|---|---|---|
+| AC-TBS-003 (first push) | PASS | `go test -run 'TestIntegrationBackupFirstPush' ./internal/cli/ -count=1 -v` | `--- PASS` — remote refs exactly `{refs/heads/sync/main: <main SHA>}`, output names SHA + target ref |
+| AC-TBS-004 (force scoping, non-FF, no tag leak) | PASS | `go test -run 'TestIntegrationBackupNonFFForce|TestIntegrationBackupFollowTagsNoLeak' ./internal/cli/ -count=1 -v` | both `--- PASS` — amended (non-FF) main force-updates the ref; with `push.followTags=true` + annotated `v9.9.9` the remote ref set changes only at `refs/heads/sync/main`; every captured push argv is exactly `push --force --no-follow-tags origin refs/heads/main:refs/heads/sync/main`, force never rides another command, and every push's `origin` URL resolves under the test's `t.TempDir()` root |
+| AC-TBS-005 (refusal on missing main) | PASS | `go test -run 'TestIntegrationBackupMissingMainRefusal' ./internal/cli/ -count=1 -v` | `--- PASS` — non-zero exit, guidance names `refs/heads/main` and `refs/heads/sync/main`, captured record shows no push, remote ref set stays empty |
+| AC-TBS-007 (env scrub, t1478 shape) | PASS | `go test -run 'TestIntegrationBackupScrubbedEnv' ./internal/cli/ -count=1 -v` | `--- PASS` — under inherited `GIT_DIR`/`GIT_WORK_TREE` pointing at a foreign temp repo, the push lands on the CALLER's temp origin; the foreign repo gains no `refs/heads/sync/main` |
+| AC-TBS-009 (push-failure reporting) | PASS | `go test -run 'TestIntegrationBackupPushFailureBothStreams' ./internal/cli/ -count=1 -v` | `--- PASS` — pre-receive rejection: non-zero exit, both captured streams printed (both hook markers present in the error, stdout/stderr sections labelled), failed push is the LAST captured git command |
+| REQ-TBS-001 surface (no flags / no args / registration) | PASS | `go test -run 'TestIntegrationBackupRegistered|TestIntegrationBackupCmdRunE' ./internal/cli/ -count=1 -v` | both `--- PASS` — registered in the integration group with 0 flags; the cobra path executes from a temp clone and refuses an extra argument |
+
+Combined: `go test -run 'TestIntegrationBackup' ./internal/cli/ -count=1 -v` → 8 `--- PASS`, `ok github.com/modu-ai/moai-adk/internal/cli 1.755s`. M1 guard regression check post-M2: `ok github.com/modu-ai/moai-adk/internal/cli 1.347s`.
+
+Quality: `go build ./...` exit 0; `GOOS=windows GOARCH=amd64 go build ./...` exit 0; `go vet ./internal/cli/` exit 0; gofmt clean; scoped `golangci-lint run --timeout=4m ./internal/cli/...` → the same 3 pre-existing errcheck findings (`factory_run_adopt.go`), 0 NEW. Coverage per leader rule 35e9 (scoped only): `go test -cover -run 'TestIntegrationBackup' ./internal/cli/ -count=1` → `coverage: 4.6% of statements` (package-wide figure under a scoped run); per-file `go tool cover -func` on `integration_backup.go` → `gitRunner 100.0%`, `runIntegrationBackup 91.7%`, `newIntegrationBackupCmd 83.3%`; file aggregate 19/21 statements = 90.5%.
+
+_(M3 rows appended below as the milestone completes.)_
 
 ## §E.3 Run-phase Audit-Ready Signal
 
