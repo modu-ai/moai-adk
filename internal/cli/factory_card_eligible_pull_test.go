@@ -185,6 +185,30 @@ func TestFactoryEligiblePullOffDormancy(t *testing.T) {
 			t.Errorf("t1 queue state = %s, want %s", got, want)
 		}
 	})
+
+	t.Run("unreadable config fails safe to dormancy", func(t *testing.T) {
+		root, store := fcFixture(t)
+		fcQueue(t, store, factory.BacklogStatePicked)
+		fcClassify(t, store, "t1", factory.ClassPriorityNormal, false, factory.ClassModeParallelizable)
+		sdRegisterLane(t, root, "lane-1")
+		fcPlace(t, root, homestate.Card{CardID: "t1", State: homestate.CardPicked})
+		before := fcCard(t, root, "t1")
+		// A workflow.yaml the loader must reject: the kill-switch default is
+		// the fail-safe, so the arms stay dormant rather than arming on a
+		// half-read config.
+		dir := filepath.Join(root, ".moai", "config", "sections")
+		if err := os.MkdirAll(dir, 0o755); err != nil {
+			t.Fatalf("mkdir config sections: %v", err)
+		}
+		if err := os.WriteFile(filepath.Join(dir, "workflow.yaml"), []byte("workflow: ["), 0o644); err != nil {
+			t.Fatalf("write broken workflow.yaml: %v", err)
+		}
+		sdLaneEnv(t, "lane-1", "")
+		t.Chdir(root)
+		out := cepNoCard(t, root)
+		cepAssertRowFrozen(t, root, "t1", before)
+		cepAssertNoRefusal(t, "unreadable config", out)
+	})
 }
 
 // fcQueueItemState reads one item's queue state.

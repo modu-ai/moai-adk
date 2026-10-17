@@ -360,6 +360,13 @@ func TestFactoryNextSkipsHubCandidateWhosePredecessorIsUnmerged(t *testing.T) {
 // gated its successor forever when only the current run's rows were read.
 func TestFactoryNextAfterGuardCountsOtherRunsMerges(t *testing.T) {
 	root, store := fcFixture(t)
+	// SPEC-CARD-ELIGIBLE-PULL-001 update: the unowned-picked lease this test
+	// uses as its vehicle now sits behind the self-dispatch flag — armed here
+	// so the subject (the after guard's merged-set scope) keeps its coverage.
+	// The gate's condition 4 is what the subject rides: a predecessor merged
+	// under run-prev must read as merged, or the candidate is refused
+	// predecessor-unmerged instead of leased.
+	cepSelfDispatchYAML(t, root, true)
 	// t1 is queue-held with no row in the current run: its merge lives only
 	// in run-prev, and no arm may take or re-record t1 itself.
 	fcQueue(t, store, factory.BacklogStateHold, factory.BacklogStatePicked)
