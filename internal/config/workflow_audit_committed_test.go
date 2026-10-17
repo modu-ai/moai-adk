@@ -44,15 +44,17 @@ func readRawAuditBlock(t *testing.T, path string) (rawAuditBlock, string) {
 }
 
 // TestCommittedWorkflowYamlAuditAlignment pins the repository's committed
-// .moai/config/sections/workflow.yaml against the 2026-10-17 operator posture
-// (card t1829): audit.model is the claude token with an EXPLICIT gates key
-// (claude required, codex off, glm off), and the claude pin is opus[1m] with
-// its effort at medium — the operator's live value, diverging from
-// DefaultClaudeAuditEffort (high). The codex and glm pins are unchanged from
-// the multi era. The distributed template yaml stays neutral — no model key,
-// no gates, and the claude pin at the default effort. The repository root
-// comes from this file's location, not from the working directory or
-// CLAUDE_PROJECT_DIR.
+// .moai/config/sections/workflow.yaml against the D8-adopted audit posture
+// (operator decision D8, commit "adopt codex-single audit gates"): audit.model
+// is the codex-single token with an EXPLICIT gates key (claude off, codex
+// required, glm off), and the claude pin keeps the D8 model divergence
+// (opus[1m]) with its effort at the Go default (high): the 2026-10-14
+// operator role table moved it from D8's medium (commit "auditor and planner
+// models per operator role table (opus high)"). The codex and glm pins are
+// unchanged from the multi era. The distributed template yaml stays neutral —
+// no model key, no gates, and the claude pin at the default effort. The
+// repository root comes from this file's location, not from the working
+// directory or CLAUDE_PROJECT_DIR.
 func TestCommittedWorkflowYamlAuditAlignment(t *testing.T) {
 	repoRoot := findRepoRootFromCaller(t)
 	committedPath := filepath.Join(repoRoot, ".moai", "config", "sections", "workflow.yaml")
@@ -61,11 +63,11 @@ func TestCommittedWorkflowYamlAuditAlignment(t *testing.T) {
 
 	committed, body := readRawAuditBlock(t, committedPath)
 
-	if committed.Model != AuditModelClaude {
-		t.Errorf("committed workflow.audit.model = %q, want %q (card t1829 claude-single)", committed.Model, AuditModelClaude)
+	if committed.Model != AuditModelCodex {
+		t.Errorf("committed workflow.audit.model = %q, want %q (D8 codex-single)", committed.Model, AuditModelCodex)
 	}
-	if committed.Claude.Effort != "medium" {
-		t.Errorf("committed claude pin effort = %q, want %q (operator decision 2026-10-17, card t1829; diverges from DefaultClaudeAuditEffort)", committed.Claude.Effort, "medium")
+	if committed.Claude.Effort != "high" {
+		t.Errorf("committed claude pin effort = %q, want %q (operator role table 2026-10-14; equals DefaultClaudeAuditEffort)", committed.Claude.Effort, "high")
 	}
 	if committed.Claude.Model != "opus[1m]" {
 		t.Errorf("committed claude pin model = %q, want %q (D8)", committed.Claude.Model, "opus[1m]")
@@ -76,9 +78,9 @@ func TestCommittedWorkflowYamlAuditAlignment(t *testing.T) {
 	if committed.GLM.Model != "glm-5.3" || committed.GLM.Effort != "max" {
 		t.Errorf("committed glm pin = {%s %s}, want {glm-5.3 max}", committed.GLM.Model, committed.GLM.Effort)
 	}
-	wantGates := map[string]any{"claude": "required", "codex": "off", "glm": "off"}
+	wantGates := map[string]any{"claude": "off", "codex": "required", "glm": "off"}
 	if !reflect.DeepEqual(committed.Gates, wantGates) {
-		t.Errorf("committed workflow.audit.gates = %v, want %v (the 2026-10-17 operator posture, card t1829 — not the model-token resolution)", committed.Gates, wantGates)
+		t.Errorf("committed workflow.audit.gates = %v, want %v (the D8 explicit posture — not the model-token resolution)", committed.Gates, wantGates)
 	}
 	if strings.Contains(body, "claude-opus-5-5/medium") {
 		t.Errorf("committed workflow.yaml header comment still names claude-opus-5-5/medium")
@@ -89,11 +91,11 @@ func TestCommittedWorkflowYamlAuditAlignment(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Loader.Load(committed tree): %v", err)
 	}
-	if got := cfg.Workflow.Audit.Model; got != AuditModelClaude {
-		t.Errorf("loaded Audit.Model = %q, want %q (card t1829 claude-single)", got, AuditModelClaude)
+	if got := cfg.Workflow.Audit.Model; got != AuditModelCodex {
+		t.Errorf("loaded Audit.Model = %q, want %q (D8 codex-single)", got, AuditModelCodex)
 	}
-	if got := cfg.Workflow.Audit.Claude.Effort; got != "medium" {
-		t.Errorf("loaded Audit.Claude.Effort = %q, want %q (operator decision 2026-10-17, card t1829)", got, "medium")
+	if got := cfg.Workflow.Audit.Claude.Effort; got != "high" {
+		t.Errorf("loaded Audit.Claude.Effort = %q, want %q (operator role table 2026-10-14)", got, "high")
 	}
 
 	// The Go default stays claude: the opt-in lives in this repository's yaml only.
