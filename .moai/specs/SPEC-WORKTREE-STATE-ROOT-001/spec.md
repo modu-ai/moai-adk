@@ -1,10 +1,10 @@
 ---
 id: SPEC-WORKTREE-STATE-ROOT-001
 title: "State and catalogue roots for a config-orphaned linked worktree"
-version: "0.2.1"
-status: completed
+version: "0.3.0"
+status: in-progress
 created: 2026-09-26
-updated: 2026-09-26
+updated: 2026-10-17
 author: manager-spec (card t1213)
 priority: P1
 phase: "v3.2.0 target"
@@ -13,6 +13,7 @@ lifecycle: spec-anchored
 tier: M
 issue_number: 1716
 related_specs: [SPEC-MCP-WORKTREE-UNTRACKED-001, SPEC-MCP-WORKTREE-ROOT-001]
+amendment_of: SPEC-WORKTREE-STATE-ROOT-001
 tags: "worktree, untracked-moai, state-root, audit-receipt, review-gate, catalogue"
 ---
 
@@ -25,6 +26,45 @@ tags: "worktree, untracked-moai, state-root, audit-receipt, review-gate, catalog
 | 0.1.0 | 2026-09-26 | manager-spec (t1213) | Initial plan-phase draft. Takes over the configuration/catalogue/state items SPEC-MCP-WORKTREE-UNTRACKED-001 §6 deferred to card t1213, grounded in the re-measurement of t1202 plan-audit-iter2 D18 and D25. |
 | 0.2.0 | 2026-09-26 | manager-spec (t1213) | Plan-audit iter-1 revision (FAIL 0.71). Closes D1 (rejection records carry and are filtered by tree identity — REQ-WSR-003 widened to every record routed into a shared store), D2 (predecessor tests that break named; plan R4 corrected), D3 (change-detector seam in the review-gate criterion), D4 (`spec_drift` / `spec_audit` union predicates with a non-empty-findings premise), D5 (guard behaviour with an unresolved store: no marker or rejection, re-entrant stop, spawn denial — REQ-WSR-010), D6 (convergence results carry tree identity, never replace another tree's, and the gate blocks on any fail — REQ-WSR-003, REQ-WSR-007), D7 (`audit_multi` skip cell), D8 (decision-1 rationale narrowed to store reachability), D9 (`moai verify record`, rejection path, drift/audit, tool descriptions observed), D10 (criterion selector), and optional D11–D14 (unattributed observation removed, review-gate activation risk, `_root` tool list enumerated, REQ-WSR-001 stated as behaviour). Adds the review-gate root measurement matrix requested by the lead (acceptance AC-WSR-006) and the shared `project_root` parameter description to REQ-WSR-016. REQ and AC counts unchanged (16 / 16); AC-WSR-006 and the former AC-WSR-007 were merged into the matrix, and AC-WSR-007 now carries the rejection tree-identity criterion. |
 | 0.2.1 | 2026-09-26 | manager-spec (t1213) | Plan-audit iter-2 (FAIL 0.78) accepted by the operator as PASS-with-debt; conditions applied. N1: AC-WSR-002 cell 2 gains cell 2b (gate input `cwd = P` must block on the `fail` `audit_multi` wrote for `W`) and the named mutant "P gate reads only `S.json`". N2: plan.md decision 2 and new risk R9 state the fail-closed spawn denial's blast radius (repositories without the receipt gate, permanent under separate-git-dir layouts, broader than the MCP side) and the release path (`workflow.yaml` in `W`). N3: `[REF]` markers on the two predecessor AC citations. N4: AC-WSR-007 mutant derivation corrected. No REQ change; REQ and AC counts unchanged (16 / 16). |
+| 0.3.0 | 2026-10-17 | manager-spec (card t1632) | In-place amendment of the completed 0.2.1 (`prior_completed_sha: b105bc1a8`), operator decision 2026-10-17 (`decided_by: operator`): REQ-WSR-005 and AC-WSR-004 brought in line with SPEC-MCP-NEUTRALITY-001 REQ-MN-005 root confinement. A `project_root` that is not a registered worktree of the server's repository is refused with a structured refusal and nothing is written; a git-less `PATH` fails closed; confinement itself runs git. See `## Amendments`. REQ and AC counts unchanged (16 / 16). |
+
+## Amendments
+
+### Amendment 1 — REQ-WSR-005 / AC-WSR-004 aligned with REQ-MN-005 (v0.3.0)
+
+- **Prior completed version**: 0.2.1.
+- **prior_completed_sha**: b105bc1a8 (the sync commit of the prior close).
+- **decided_by**: operator, 2026-10-17 (relayed by the factory leader for card t1632).
+- **Rationale**: two completed SPECs collided on `project_root` handling.
+  SPEC-MCP-NEUTRALITY-001 REQ-MN-005 (shipped by card t1632, security-relevant)
+  confines `project_root` to a registered worktree of the server's own repository and
+  rejects the home directory and every path outside that set. The prior REQ-WSR-005
+  and AC-WSR-004 required the opposite for a root that is not config-orphaned: accept
+  any such root (a different repository, a bare non-git directory) and write its state
+  under that root's own `.moai/state`, identically with and without git on `PATH`.
+  The operator decided to bring this SPEC in line with REQ-MN-005; the confinement is
+  not weakened.
+- **Scope**: REQ-WSR-005 and AC-WSR-004 only. Every other REQ and AC keeps its text.
+  Two consistency edits carry the new contract into sentences that cited the old one
+  (the last clause of REQ-WSR-001 and the second §4 constraint); neither changes a
+  requirement.
+- **Accepted delta**: REQ-WSR-005 no longer promises "no git subprocess it does not
+  run today" for MCP calls. Root confinement is itself a git inspection (the
+  registered-worktree set), so every MCP call that carries a `project_root` now runs
+  it. Primary identification (REQ-WSR-001..004) still runs only for a config-orphaned
+  root.
+- **Reading rule for the untouched criteria** (stated here instead of editing them):
+  (i) where AC-WSR-014 puts fixture B (a bare non-git root) through the MCP writer
+  `codex_audit`, that leg is the structured refusal of AC-WSR-004, and B's hook and
+  CLI legs are unchanged; (ii) a criterion that mixes roots of different repositories
+  (AC-WSR-014's `P`/`W` rows against `WT`/T's primary) runs each row against a server
+  whose own repository is that row's repository; (iii) F-noid variant (a), a `PATH`
+  from which git cannot be found, makes confinement fail closed before an MCP tool
+  reaches its primary identification, so for the MCP-side criteria (AC-WSR-003,
+  AC-WSR-012) that variant yields the AC-WSR-004 refusal, and it keeps its meaning for
+  the hook-side criteria (AC-WSR-009), which run no confinement; variant (b) keeps its
+  contracts where the confinement inspection still registers `W`, and the run phase
+  measures and records whether it does.
 
 ## §1 Problem
 
@@ -142,7 +182,8 @@ Two record kinds then lose their meaning without a tree identity:
   primary checkout for a config-orphaned root whose primary checkout is
   identifiable; unresolved (never a substituted root) for a config-orphaned root
   whose primary checkout cannot be identified; and the root itself for every root
-  that is not config-orphaned, so that a primary checkout maps to itself.
+  that is not config-orphaned and that REQ-WSR-005 admits, so that a primary checkout
+  maps to itself.
 
 - **REQ-WSR-002 (State-driven, writes on a config-orphaned root).** While a call's
   root is config-orphaned and its primary checkout is identifiable, the audit
@@ -170,13 +211,32 @@ Two record kinds then lose their meaning without a tree identity:
   the audit verdict shall be unchanged, and the tool result shall carry a notice
   naming the skipped write and its cause.
 
-- **REQ-WSR-005 (Ubiquitous, other roots unchanged).** For a root that is not
-  config-orphaned, every writer and reader named in this SPEC shall read and write
-  at exactly the paths it uses today and shall run no git subprocess it does not
-  run today. The only permitted differences are the tree-identity field REQ-WSR-003
-  adds to rejections and convergence results, and — for a primary checkout that is
-  the store root of config-orphaned worktrees — the reads of those worktrees'
-  records that REQ-WSR-003 and REQ-WSR-007 require.
+- **REQ-WSR-005 (Ubiquitous, confined roots unchanged; foreign roots refused).** Every
+  MCP call that carries a `project_root` sits under the root confinement of
+  SPEC-MCP-NEUTRALITY-001 REQ-MN-005, which this SPEC does not weaken. Three cases
+  follow.
+  (a) For a `project_root` that is a registered worktree of the server's own
+  repository and is not config-orphaned — the primary checkout, or a registered linked
+  worktree that carries its own workflow config — every writer and reader named in this
+  SPEC shall read and write at exactly the paths it uses today, under that root's own
+  `.moai/state`, and shall run no git subprocess it does not run today other than the
+  confinement inspection itself (an accepted delta: confinement runs git). The only
+  permitted path differences are the tree-identity field REQ-WSR-003 adds to rejections
+  and convergence results, and — for a primary checkout that is the store root of
+  config-orphaned worktrees — the reads of those worktrees' records that REQ-WSR-003
+  and REQ-WSR-007 require. A registered worktree that is config-orphaned is governed by
+  REQ-WSR-001 through REQ-WSR-004.
+  (b) When the `project_root` is not a registered worktree of the server's own
+  repository — a different repository, or a directory that is not a git worktree —
+  the tool shall answer with the structured refusal of REQ-MN-001 (a successful MCP
+  result whose structured content carries `refused: true` and a reason naming the root
+  confinement of REQ-MN-005), and shall write nothing anywhere: no receipt, no
+  convergence result, no snapshot, and no state directory.
+  (c) When confinement cannot be established because git cannot be found, the call
+  shall fail closed with the same structured refusal and the same absence of writes; it
+  shall not behave as in case (a) or fall back to the root as given.
+  The hook and `moai verify` CLI call sites, which take no MCP `project_root`, keep for
+  a root that is not config-orphaned the paths they use today.
 
 ### §3.2 Paired readers
 
@@ -276,7 +336,8 @@ Two record kinds then lose their meaning without a tree identity:
   redefined; the scrubbed-git and `LC_ALL=C` rules of SPEC-MCP-WORKTREE-UNTRACKED-001
   REQ-MWU-006 apply to every primary identification this SPEC adds, including those
   in hook processes.
-- Primary identification runs only for a config-orphaned root (REQ-WSR-005).
+- Primary identification runs only for a config-orphaned root (REQ-WSR-005); the
+  confinement inspection of REQ-MN-005 is separate and runs for every MCP `project_root`.
 - The reject-never-fall-back contract of `project_root` is unchanged; REQ-WSR-004
   extends the same stance to state writes.
 - Template text stays neutral across the 16 supported programming languages and free
