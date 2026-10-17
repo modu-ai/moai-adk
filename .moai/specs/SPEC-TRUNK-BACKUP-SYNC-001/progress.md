@@ -126,10 +126,6 @@ total_run_phase_files: 10
 m1_to_mN_commit_strategy: per-milestone conventional commits, card id + Authored-By-Agent trailer in each (M1 b823791c7, M2 c5bce4c86, M3 + backfill); branch stays local per lane protocol
 ```
 
-## §E.3 Run-phase Audit-Ready Signal
-
-_<pending run-phase>_
-
 ## §E.4 Sync-phase Audit-Ready Signal
 
 ```yaml
