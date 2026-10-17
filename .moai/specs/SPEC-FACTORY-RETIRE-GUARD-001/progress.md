@@ -17,7 +17,11 @@
 
 ## Plan audit history
 
-_<none yet>_
+- Iteration 1: FAIL 0.88 (`.moai/reports/t1852/plan-audit.md`, audited commit `b26050d9b`; 3 blocking: D1 false "the one exit that still works" claim and an unscoped revival statement, D2 cards-before-owner ordering with a false "non-destructive exits" sentence, D3 abandon caveats missing from REQ-RRG-005, the stranded block and AC-RRG-006). Tier M ceiling 2, so this is the one repair round and the next audit is the last.
+- Repair (version stays `0.1.0`; REQ 001-007 and AC 001-008 id sets unchanged), inside the audit's fix_scope: D1 spec REQ-RRG-005 and §C.7 (exclusivity removed; `--factory-run` statement scoped to that flag; revival routes `RecordRun` and `ResumeRun` recorded as a factual note and a residual risk, offered as no exit, no new requirement), plan §E stranded exit/note, AC-RRG-006; D2 plan §C.2 (order inside `retireRun` is status -> stamp -> cards -> flip -> event; the false ordering sentence replaced), AC-RRG-003 row (b) and mutant probes, Edge-cases third bullet; D3 REQ-RRG-005, plan §E (new stranded abandon-note row), AC-RRG-006 (abandon note asserted, mutant probe).
+- Out-of-anchor changes, each the smallest edit that keeps a sentence true: `decision-index.md` Q3 Default (the phrase "the one exit that works for a non-active run" was the same false exclusivity claim). No other out-of-anchor edit. O1, O2 (AC-002, REQ-007) not taken; O3 (English error text duplicating the card list) not taken because the fix is the `Error()` sentence in plan §C.1, outside the anchors.
+- Sentences re-checked for consistency with the new order and left unchanged: REQ-RRG-001 and REQ-RRG-002 (the owner gate still precedes the card read; "no row changed" stays true because the stamp check refuses before the flip), AC-RRG-002 (the hook still fires right after the in-transaction `SELECT`, after the stamp check), plan §C.1 (hook placement), plan §C.3 (the printed classification now always belongs to a still-unchanged owner).
+- Repair-time lint: `moai spec lint --strict` on spec.md under the installed build and the tree-built binary, see the repair commit.
 
 ## §E.2 Run-phase Evidence
 

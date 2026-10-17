@@ -30,7 +30,7 @@ Label: FOUNDER
 Class: implementation-level
 Authority anchor: none
 Why unresolved: today the call succeeds, prints `retired <run>` and appends a second `run.retired` event (probe P2, `acceptance.md`). The incident run itself (`tmvgvn`) is a retired run that still holds 41 non-terminal cards, so a bare idempotent success would be a silent report of stranded cards, and an error would change the visible result of an idempotent retry. Classification note: the exit code and the first output line are unchanged; the command adds an informational block and the library stops writing a duplicate event, so the row is classed implementation-level. If the operator reads the added block as a change of a shipped command's default user-visible behavior, the row becomes product-level and the verdict below must be replaced by an operator answer.
-Default: idempotent no-op — no write, no card read, no second event, nil error, exit zero — plus an informational block listing the stranded non-terminal cards (id, state, owner label) with the one exit that works for a non-active run, `moai factory decide <card> --choice abandon --run <run>` (rule: preserves current behavior — the success exit and message)
+Default: idempotent no-op — no write, no card read, no second event, nil error, exit zero — plus an informational block listing the stranded non-terminal cards (id, state, owner label) with `moai factory decide <card> --choice abandon --run <run>` as an available exit, with its caveats (rule: preserves current behavior — the success exit and message)
 Alternate: return an error wrapping `ErrRunOwnerNotDead` stating the run is no longer active
 Operator verdict: DEFAULT-APPLIED 2026-10-17T13:45:32Z manager-spec+plan-author
 

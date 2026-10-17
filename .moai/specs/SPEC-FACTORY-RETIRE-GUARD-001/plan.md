@@ -47,14 +47,17 @@ Existing tests that must stay green (all read; four homestate and two cli ones w
 
 `retireRun(ctx, owner RunOwner, c, basis)`, inside its existing `BeginTx` transaction, in this order:
 
-1. `cards, err := inProgressCards(ctx, tx, owner.RunID)` (the hook fires inside it); a non-empty result returns `*RunInProgressCardsError` and commits nothing (the deferred rollback ends the transaction).
-2. `UPDATE runs SET status='retired', updated_at=? WHERE run_id=? AND status='active' AND lead_pid=? AND lead_process_start=?` with the owner's stamp as `classifyRuns` scanned it (for a peer- or boot-basis run that is `(0,'')`), then `RowsAffected`.
-3. `!= 1` -> `fmt.Errorf("%w: run %s changed owner or status since classification", ErrRunOwnerNotDead, runID)`, commit nothing.
+0. `SELECT status, lead_pid, lead_process_start FROM runs WHERE run_id=?` through the transaction. If the status is no longer `active`, or the stamp differs from the stamp `classifyRuns` scanned (for a peer- or boot-basis run that is `(0,'')`), return `fmt.Errorf("%w: run %s changed owner or status since classification", ErrRunOwnerNotDead, runID)` and commit nothing. This is the owner-changed error, and it is reached **before** any card read.
+1. `cards, err := inProgressCards(ctx, tx, owner.RunID)` (the hook fires inside it); a non-empty result returns `*RunInProgressCardsError` and commits nothing (the deferred rollback ends the transaction). Only a run whose classified owner stamp is still on the row reaches this step.
+2. `UPDATE runs SET status='retired', updated_at=? WHERE run_id=? AND status='active' AND lead_pid=? AND lead_process_start=?` with the same classified stamp, then `RowsAffected`. Step 0 and this `WHERE` clause are the same comparison; inside the write-locked transaction nothing can change between them, so the clause is the second, defensive statement of it and the `RowsAffected` check is what keeps the event honest.
+3. `!= 1` -> the same owner-changed error as step 0, commit nothing.
 4. Exactly one row -> append the `run.retired` event (payload unchanged: `{"classification":...,"basis":...}`), commit.
 
-**Why the flip is a real compare-and-set and the card read is inside the lock** (spec §C.4, §C.5): `OpenFactory` -> `OpenFactoryPath` -> `openFactoryPathBusy` builds the DSN with `_txlock=immediate` (`factory.go:303`) and caps the pool at one connection (`:313`), so `BeginTx` issues `BEGIN IMMEDIATE` and holds the write lock to commit or rollback; a second handle's write waits out its busy timeout and fails. The race this SPEC closes is the one between `ClassifyRuns` (outside the transaction) and `BeginTx`: an `AdoptRun` — itself a compare-and-set on the dead stamp — that commits in that window changes the stamp, and the new `WHERE` clause then matches zero rows.
+The order inside the transaction is therefore **status -> stamp -> cards -> flip -> event**.
 
-**Ordering note (named so no reader assumes otherwise).** The card read precedes the compare-and-set, so a run that was restamped *and* carries a non-terminal card gets the cards error, not the owner-changed error. Both refuse and write nothing; the cards error then lists a run whose owner may already be live, which is harmless because the refusal text offers only non-destructive exits.
+**Why the flip is a real compare-and-set and the card read is inside the lock** (spec §C.4, §C.5): `OpenFactory` -> `OpenFactoryPath` -> `openFactoryPathBusy` builds the DSN with `_txlock=immediate` (`factory.go:303`) and caps the pool at one connection (`:313`), so `BeginTx` issues `BEGIN IMMEDIATE` and holds the write lock to commit or rollback; a second handle's write waits out its busy timeout and fails. The race this SPEC closes is the one between `ClassifyRuns` (outside the transaction) and `BeginTx`: an `AdoptRun` — itself a compare-and-set on the dead stamp — that commits in that window changes the stamp, and step 0 then returns the owner-changed error.
+
+**Ordering note (named so no reader assumes otherwise).** The stamp comparison precedes the card read. A run that was restamped — for example adopted by a live leader — gets the owner-changed error whether or not it carries cards: nothing is written, no cards error is produced, and the CLI never prints the abandon exit for it. So the cards error means "the classified owner is still on the row". Two limits: for a peer- or boot-basis run the compared stamp is the row's `(0,'')`, so a leader that registers as a peer without restamping the row is not seen by the comparison (spec §G); and the comparison is as fresh as the transaction, not as the operator's last look, so the abandon exit a refusal lists is still an irreversible command the operator chooses to run.
 
 **What is deliberately unchanged:** `retireRunUnlessLive`, `ReconcileActiveRuns`, `runHasLiveRecords`, `retirable`, the classifier, the boot proof. The `Preserved` routing and every test that pins it are untouched.
 
@@ -101,8 +104,9 @@ Retirement is rendered `은퇴` to match the docs-site Korean page. A particle t
 | exit: abandon | `  카드 종료: moai factory decide %s --choice abandon --run %s` |
 | abandon note | `카드 종료는 되돌릴 수 없고, 레인 세션에서는 거절되며, 임대가 만료된 카드는 한 번 더 호출해야 종료됩니다.` |
 | stranded header | `이미 은퇴한 run %s에 진행 중 카드 %d개가 남아 있습니다.` |
-| stranded exit | `  남은 방법: moai factory decide %s --choice abandon --run %s` |
-| stranded note | `이 run은 활성 상태가 아니어서 --factory-run으로 합류하거나 이어받을 수 없습니다 (NO_ACTIVE_FACTORY).` |
+| stranded exit | `  카드 종료: moai factory decide %s --choice abandon --run %s` |
+| stranded note | `--factory-run 플래그는 활성 run만 고르므로 이 run에는 합류하거나 이어받을 수 없습니다 (NO_ACTIVE_FACTORY).` |
+| stranded abandon note | the `abandon note` row above, printed once after the stranded exits (the three caveats: irreversible; refused in a lane session; an expired lease needs a second call) |
 
 The first line `retired <run> (owner <classification>)` and the relaunch outcome `run <run>: left active (<N> in-progress cards)` stay English: both extend vocabulary that existing tests already pin. The typed error's `Error()` text is English (library layer). This departs from the sibling SPEC t1848, which kept the whole `--retire` surface English; the dispatch for this card requires Korean operator prose, so the departure is recorded in `spec.md` §E rather than silently made.
 
