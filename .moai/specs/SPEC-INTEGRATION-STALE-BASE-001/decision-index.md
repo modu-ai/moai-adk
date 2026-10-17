@@ -1,0 +1,63 @@
+# Decision index: SPEC-INTEGRATION-STALE-BASE-001
+
+Revision 0.1.0, authored at plan phase for card t1834 (Tier M). The decision gate is on (`.moai/config/sections/interview.yaml`, `decision_gate: on`), so this index is owed alongside the Tier artifacts. It carries no status field: the lifecycle lives in `spec.md` alone.
+
+## How to read a row
+
+- **Label** is one of `DECIDED`, `POLICY-COVERED`, `EVIDENCE-NEEDED`, or `FOUNDER`.
+- **Class** is `product-level` or `implementation-level`. A row with no Class line is product-level.
+- **Authority anchor** names a committed file and section, or states that none was found.
+- **Default** and **Alternate** appear only where the published Default rule ranks the options (preserves current behavior; else single-revert undo; else smaller user-visible surface). A Default is a policy application, not a recommendation.
+- An `Operator verdict:` line is left empty at authoring except for an implementation-level row that carries a Default, which takes `DEFAULT-APPLIED` at plan close.
+
+## Summary
+
+| Row | Subject | Label | Class | Operator verdict: line |
+|---|---|---|---|---|
+| Q1 | Shipped default of `max_behind_landings` (0 or a positive number) | FOUNDER | implementation-level | DEFAULT-APPLIED 2026-10-17T14:50Z lane / manager-spec |
+| Q2 | Whether this repository's live `workflow.yaml` opts the gate in (`enabled: true`) | FOUNDER | implementation-level | DEFAULT-APPLIED 2026-10-17T14:50Z lane / manager-spec |
+| Q3 | Whether queue promotion also runs the gate | FOUNDER | product-level | (empty, operator) |
+| Q4 | Order against card t1847 on the shared verbs `acquire` and `factory complete` | FOUNDER | implementation-level | (empty, leader) |
+
+## Rows
+
+### Q1: What is the shipped default of `workflow.base_freshness_gate.max_behind_landings`?
+
+Label: FOUNDER
+Class: implementation-level
+Authority anchor: none found. The card text asks for "a configuration key (default in config yaml)" and names no number; no committed setting or constitution clause decides it.
+Why unresolved: a positive default admits lanes that `RunMergeStep` cause 2 refuses by construction (`internal/factory/integration_merge_step.go:332-335`), while 0 matches that check exactly; which trade the operator wants for queue-wait slack is a judgment, and the landing rate that would ground a number is not measured here.
+Default: 0 (rule: the option that preserves current behavior; with 0 the gate refuses at entry exactly what the merge step already refuses inside the window)
+Alternate: a small positive number, to be chosen from a measured landing rate
+Operator verdict: DEFAULT-APPLIED 2026-10-17T14:50Z lane / manager-spec
+
+### Q2: Does the live `.moai/config/sections/workflow.yaml` ship `enabled: true`?
+
+Label: FOUNDER
+Class: implementation-level
+Authority anchor: none found for this key. The sibling opt-ins in the live file are operator-local choices (`branch_guard.enabled: true`, `local_main_integration.enabled: true`, `.moai/config/sections/workflow.yaml:187-195`); the template ships them off.
+Why unresolved: turning the gate on in the live file changes how this repository's lanes land cards; the card asks for the mechanism and does not say whether to arm it here.
+Default: false (rule: the option that preserves current behavior)
+Alternate: true in the live file only, the template staying false
+Operator verdict: DEFAULT-APPLIED 2026-10-17T14:50Z lane / manager-spec
+
+### Q3: Should the freshness gate also run when the queue promotes a waiting ticket?
+
+Label: FOUNDER
+Class: product-level
+Authority anchor: none found. The existing promotion gate (`CandidateGrantGate`, `internal/factory/integration_window_ops.go:451-465`) takes only a card id, and the staleness that arises while a lane waits is today governed by merge cause 2.
+Why unresolved: gating promotion would need the gate to resolve a card's worktree inside the window-queue package and would drop a waiting lane from the queue when main moves, which changes the queue's observable behavior for every waiter; that is a judgment about product behavior, not an implementation detail.
+Operator verdict:
+
+### Q4: In what order do t1834 and t1847 land, given both edit `acquire` and `factory complete`?
+
+Label: FOUNDER
+Class: implementation-level
+Authority anchor: none found. t1846's SPEC records the same kind of request for t1831 (`SPEC-LANDING-SURFACE-RULES-001/spec.md` §A.5, in tree `.moai/worktrees/t1846`, not committed to this tree); t1847's SPEC does not exist in any tree read.
+Why unresolved: ordering is a leader scheduling decision; this plan only keeps its edits to one added call at each verb so that either order merges cleanly.
+Operator verdict:
+
+## Routing
+
+1. **Open FOUNDER rows:** Q3 (product-level) blocks the autonomous Kickoff until the operator writes its `Operator verdict:`; Q4 is implementation-level with no ranked Default and goes to the leader.
+2. **DEFAULT-APPLIED at plan close:** Q1 and Q2, both implementation-level with a ranked Default, so the audited hash covers them.

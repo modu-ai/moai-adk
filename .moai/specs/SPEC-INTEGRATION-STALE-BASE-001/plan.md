@@ -1,0 +1,132 @@
+# Plan: SPEC-INTEGRATION-STALE-BASE-001 (card t1834)
+
+Tier **M** (justification in §A.1). Pinned plan tree: `fb749d372e61a6b10c53091362c76b4412827427` (branch `WT-10-17-class-8`). Every `file:line` below was read in that tree. Symbol names introduced by this plan are **proposals**, marked `(new)`; the run phase may rename them without a SPEC change as long as the requirements in spec.md §B hold.
+
+## §A — Context, tier, and reuse
+
+### A.1 Tier M, and why not S or L
+
+- **Not S** (ceiling 8 requirements, fewer than 5 files): 15 requirements, and 12 to 14 files change (§C allow-list: 5 Go source files incl. 1 new factory file and 1 new cli file, 3 config registration files, 2 yaml files, 2 guidance mirrors, plus tests).
+- **Not L** (more than 15 files or constitutional): the gate is one function plus two call sites; no new subsystem, no schema migration, no constitutional change. Estimated 300 to 600 lines including tests, inside the Tier M band of 300 to 1000.
+- Budget: 15 of 16 requirements, 15 of 16 acceptance criteria. Any addition requires a tier change, not a relaxed budget.
+
+### A.2 Reuse map (constraint 1: no parallel mechanism)
+
+| Need | Existing mechanism reused (file:line, read in the pinned tree) | New code |
+|------|------------------------------------------------------------------|----------|
+| The "tests re-run after the absorb" evidence | `factory.ReadRemeasureRecord(projectRoot, treeSHA)` (`internal/factory/integration_remeasure.go:86`) and `factory.ValidateRemeasureRecord(rec)` (`:135`), the single verifier with five production call sites (the `@MX:ANCHOR` at `:128-134`) | none: the gate calls both, unchanged |
+| The record store and its key | `remeasureDir` (`:68-70`), keyed by the candidate tree SHA; record fields `Tree`, `Base`, `Command`, `ExitCode` (`:35-57`) | none |
+| The absorbed base | `gitMergeBase(dir, baseRef)` semantics (`:612-620`): `git merge-base <integration branch> HEAD`, the value `RunRemeasure` stores as `Base` (`:634-720`) | the gate runs the same `git merge-base` through its own git runner; `gitMergeBase` is unexported in package `factory`, and the gate lives in the same package, so it may call it directly |
+| The candidate tree | `remeasureWorktreeDir()` returns `os.Getwd()` (`internal/cli/integration_remeasure.go:118-120`); `headTreeSHA(dir, commit)` (`integration_remeasure.go:722-731`) | `acquire` passes the working directory; `complete` passes `card.WorktreePath` |
+| The integration branch and its tip | `resolveIntegrationTarget` (`internal/cli/integration.go:179-198`), `config.LoadGitFlowIntegrationConfig(root)` (`integration.go:465`); `factoryResolveIntegrationBranch(root, card)` (`internal/cli/factory_card.go:2552-2557`); the tip read `git rev-parse refs/heads/<branch>` the merge step uses (`internal/factory/integration_merge_step.go:~314`) | none |
+| Pre-window precondition position and shape | `candidateAcquirePrecondition(root, cardFlag)` call (`integration.go:457`) and `factory.CandidateHoldRefusal` (`internal/factory/integration_window_ops.go:389-414`); in `complete`, the candidate-CI hold before the acquisition (`factory_card.go:2193-2199`, acquisition `:2201`) | one sibling call at each position |
+| Fail-open posture precedent | `acquireSettingsDriftPrecondition` doc comment (`internal/cli/integration_settings_drift.go:253-258`): an `undetermined` verdict does not refuse | same posture, justified in §B.5 |
+| Config gate shape | `SettingsDriftGateConfig` (`internal/config/types.go:825-835`) and its field (`:544`), default (`internal/config/defaults.go:1548`), loader test shape (`internal/config/workflow_settings_drift_gate_test.go`) | one sibling struct, field, default, test |
+| Exit-code and error shape | `exitCodeError{code,msg}` (`internal/cli/constitution.go:305-313`); merge exit-code table (`internal/factory/integration_merge_step.go:32-47`, codes 1-15, 20) | one new code (proposed 16) |
+| Absorb | The lane's own hand-run `git merge main` in its worktree (doctrine: `.claude/rules/moai/workflow/factory-dispatch-mechanics.md:114` and the cause-2 message `integration_merge_step.go:333`) | none: the gate never absorbs |
+
+### A.3 The strict authority the gate sits in front of
+
+`RunMergeStep` cause 1 (`integration_merge_step.go:321-327`) and cause 2 (`:332-335`, `MergeExitBaseMoved` = 2). This SPEC changes neither (REQ-ISB-010). With `K = 0` the gate refuses at entry exactly the staleness cause 2 would refuse inside; with `K > 0` the gate admits lanes the merge step will still refuse unless they re-absorb and re-measure while queued (§B.4).
+
+## §B — Design (ordered by decision-reversibility: the choices most likely to change come first)
+
+### B.1 Config keys, defaults, and refusal text (constraint 4)
+
+New block under `workflow:` in `.moai/config/sections/workflow.yaml` and, identically, in `internal/template/templates/.moai/config/sections/workflow.yaml`:
+
+```yaml
+    base_freshness_gate:
+        enabled: false
+        max_behind_landings: 0
+```
+
+- `workflow.base_freshness_gate.enabled`: bool, **shipped default `false`** (the guard family's template-neutrality posture: `defaults.go:1541-1550` ships `IntegrationLock` and `SettingsDriftGate` off, and the template carries no `enabled: true`; the template yaml already holds `enabled: true` at lines 18 and 100 for unrelated blocks, so the neutrality rule is per-guard, not file-wide). Detection and the advisory line run whatever it holds; only the refusal is gated (REQ-ISB-008).
+- `workflow.base_freshness_gate.max_behind_landings`: int, **shipped default `0`**, K of the card. Negative is invalid and reads as "cannot determine" (fail-open with a notice, REQ-ISB-009). The default value lives in the yaml and, as the repository's loader convention requires, in `NewDefaultConfig`; the gate's decision code reads only the loaded value and holds no integer literal (REQ-ISB-007).
+- Go: `config.BaseFreshnessGateConfig{Enabled bool "yaml:enabled"; MaxBehindLandings int "yaml:max_behind_landings"}` as a `WorkflowConfig` field `BaseFreshnessGate` `yaml:"base_freshness_gate"` next to `types.go:544`; default in `defaults.go` beside `:1548`; `configCacheSchemaVersion` 12 to 13 (`internal/config/cache.go:50`; the file's own comment block records that every field addition bumps it).
+- Registration: two entries in `internal/config/testdata/shipped_key_inventory.yaml` (entry format at `:2472-2480`): `workflow.base_freshness_gate.enabled` class `W` with the reader evidence, `workflow.base_freshness_gate.max_behind_landings` class `W`; the reader guard is `TestShippedConfigKeysHaveReaders` (`internal/config/shipped_key_reader_test.go:74`).
+- Template-first: edit `internal/template/templates/.moai/config/sections/workflow.yaml` first, then the live `.moai/config/sections/workflow.yaml`. The live value of `enabled` is decision-index Q2.
+- **Refusal message** (one block, sentinel first):
+
+  `BASE_FRESHNESS_VIOLATION: integration window refused: card <id> is <L> landings behind local <branch> (tip <short>), more than workflow.base_freshness_gate.max_behind_landings=<K>. Absorb local <branch> into the card branch, re-run moai integration remeasure, then retry.`
+
+  and for the record case:
+
+  `BASE_FRESHNESS_VIOLATION: integration window refused: no valid re-measure record for tree <short> (<cause from ReadRemeasureRecord or ValidateRemeasureRecord>). Run moai integration remeasure after the last absorb, then retry.`
+
+  Exit code 16 (proposed; the merge table holds 1-15 and 20, and a source grep for other literals 16-19 found none).
+
+### B.2 The gate function (proposed `factory.EvaluateBaseFreshness`, new file `internal/factory/base_freshness.go`)
+
+Input: `{Root, Dir (candidate tree), CardID, IntegrationBranch, K, Enabled}` plus a git-runner seam (the `MergeStepSeams.Git` shape, `integration_merge_step.go:129-135`). Output: `{Applicable, Admit, Behind, Tip, Tree, Cause}` plus the rendered refusal text.
+
+1. `Applicable` only with a non-empty `CardID`, a resolvable integration branch, and `Dir` on a branch other than the integration branch and not detached; otherwise admit with cause `not-applicable` (no output).
+2. `tip = git rev-parse --verify refs/heads/<branch>`; `mb = git merge-base <branch> HEAD`; `L = git rev-list --count --first-parent <mb>..<branch>`; any git failure admits with cause `git: <err>`.
+3. `tree = git rev-parse HEAD^{tree}` (as `headTreeSHA`); `rec, err = ReadRemeasureRecord(Root, tree)`; `err == nil` then `ValidateRemeasureRecord(rec)`.
+4. Verdict: refuse when `L > K` (message 1) or when the record step failed (message 2); both evaluated, both causes reported when both hold.
+5. `Enabled == false` turns a refusal into the advisory line `base-freshness (advisory, gate off): would refuse — <cause>` and admits.
+
+`git rev-list --count --first-parent` is the landing count of spec.md §A.3 (measured 40 versus 664 for the same range in the pinned tree).
+
+### B.3 Call sites (REQ-ISB-001, REQ-ISB-002)
+
+- `moai integration acquire`: one call in `internal/cli/integration.go` immediately after the `candidateAcquirePrecondition` block (`:449-458`) and before `config.LoadGitFlowIntegrationConfig` (`:465`); the branch is resolved by the same `resolveIntegrationTarget` the verb uses, so the call sits after that resolution if the run phase finds the branch is needed earlier (the pure move of one resolution line is the only permitted adjustment, flagged in M3). A refusal returns before `AcquireIntegrationWindow` (`:476`) and before `integrationWaitInQueue` (`:517`), so no record and no ticket is written.
+- `moai factory complete`: one call inside `if !heldByUs {` (`factory_card.go:2183-2200`) between the candidate-CI hold (`:2193-2199`) and `factoryCompleteAcquireHook`/`AcquireIntegrationWindow` (`:2201`); candidate tree is `card.WorktreePath`. A lane that already holds the window (`heldByUs`) skips the gate: it entered through `acquire`, where the gate already ran.
+- New file `internal/cli/integration_base_freshness.go` holds the thin CLI adapters (config read, `exitCodeError` mapping, advisory printing) so that `integration.go` and `factory_card.go` gain one call each.
+
+### B.4 K greater than zero (what it means, and what it does not)
+
+K only decides entry. At `K = 0` (shipped) the entry check equals the merge step's cause 2. At `K > 0` a lane up to K landings behind may queue behind a live holder and re-absorb and re-measure while it waits (the merge step reads the record for the tree pinned at merge time, `:321`), so K buys queue-wait slack and not a relaxed merge. The merge step stays exact; `AC-ISB-010` pins that. Promotion-time staleness (a lane fresh at entry, stale at promotion) stays governed by cause 2: the grant gate type carries only a card id (`integration_window_ops.go:369`), and resolving a card's worktree there would pull the factory record into the window-queue package; Out of Scope in spec.md §C and decision-index Q3.
+
+### B.5 Fail-open versus fail-closed (constraint 5)
+
+**Decision: fail-open on uncertainty, fail-closed on positive evidence.** Refuse only when the gate has positively measured `L > K` or positively found no valid record for a determinable tree. Any inability to measure (config unreadable, K negative, git error, integration branch unresolved, no card id, cwd not a card branch) admits and prints one line naming the cause.
+
+Justification: (i) the gate is an early, cheap refusal in front of an authority that is itself strict (`integration_merge_step.go:321-335`), so a wrongly-admitted lane costs one window turn that cause 1 or 2 then refuses and releases; a wrongly-refused lane costs a blocked landing with no in-band escape; (ii) the same posture is stated by the nearest sibling (`integration_settings_drift.go:253-258`: "a lane blocked from integrating because git could not be run is a worse failure than an unmeasured tree that says so in its output"); (iii) `CandidateHoldRefusal` fails closed on an unreadable store (`integration_window_ops.go:396-409`), but that gate guards a verdict that exists nowhere else, while this gate duplicates a check that the merge step enforces anyway. The refusal layer is additionally opt-in (`enabled: false`), so an operator who wants the fail-closed variant can request it as a follow-up SPEC; this SPEC does not provide one.
+
+### B.6 Guidance (REQ-ISB-012)
+
+One section in `.claude/rules/moai/workflow/factory-dispatch-gates.md`, placed after `## The pre-merge settings-drift assertion` (heading at `:29`), and its byte-identical template mirror (`diff -q` of the pair prints nothing at the pinned tree). Content: what is measured, the two keys, the sentinel and exit code, the fail-open posture, and the K meaning of §B.4. The stub `factory-dispatch-mechanics.md` line 114 is not edited (it is not in the allow-list; the gates companion is the settings-drift gate's home and is the sibling home here).
+
+## §C — Milestones (priority order; no time estimates)
+
+The run-phase file allow-list (REQ-ISB-015), pinned to the plan tree:
+
+- Go source: `internal/factory/base_freshness.go` (new), `internal/factory/base_freshness_test.go` (new), `internal/cli/integration_base_freshness.go` (new), `internal/cli/integration_base_freshness_test.go` (new), `internal/cli/integration.go`, `internal/cli/factory_card.go`.
+- Config: `internal/config/types.go`, `internal/config/defaults.go`, `internal/config/cache.go`, `internal/config/workflow_base_freshness_gate_test.go` (new), `internal/config/testdata/shipped_key_inventory.yaml`.
+- YAML: `internal/template/templates/.moai/config/sections/workflow.yaml`, `.moai/config/sections/workflow.yaml`.
+- Guidance: `.claude/rules/moai/workflow/factory-dispatch-gates.md` and `internal/template/templates/.claude/rules/moai/workflow/factory-dispatch-gates.md`.
+- Generated, only if `make build` rewrites it: `internal/template/catalog.yaml`.
+- Plus `.moai/specs/SPEC-INTEGRATION-STALE-BASE-001/` and `.moai/reports/t1834/`.
+
+Milestones:
+
+- **M1 (Priority High) — config surface and RED tests.** Struct, default, cache schema bump, inventory entries, both yaml blocks, the config test, and the failing gate tests (RED recorded before M2). Highest-change-likelihood decisions (key names, defaults, message text) are fixed here first.
+- **M2 (Priority High) — the pure gate function.** `base_freshness.go` with a git-runner seam: landing count, record judgment, verdict, advisory rendering. Fixture repositories prove first-parent counting, the K boundary, the record cases, and every fail-open cause.
+- **M3 (Priority High) — the two call sites and the CLI adapter.** One call each in `acquire` and `complete`; refusal leaves lock bytes, queue, and card state unchanged; sentinel and exit code.
+- **M4 (Priority Medium) — guidance pair and parity.** Gates-companion section, template mirror, `diff -q`, `make build` embed regeneration.
+- **M5 (Priority Medium) — boundary and scope-fence evidence.** The allow-list diff, the no-verdict-read grep with its positive control, the merge-step regression run.
+
+Mechanical steps (docs mirror, inventory entries, cache bump) are last by reversibility; the decisions most likely to be reopened (names, defaults, K semantics, fail-open posture) are in B.1, B.4, B.5 and are exercised first by M1/M2.
+
+## §D — Risks
+
+- **R1 — same-file edits with t1847.** Both cards edit `integration.go` and `factory_card.go`. Mitigation: one added call at a named position, no reordering; t1847's SPEC is unauthored, so the order is a coordination request to the leader (Q4 in decision-index).
+- **R2 — K greater than zero misread as a relaxed merge.** Mitigation: B.4, AC-ISB-010, and the guidance section state it.
+- **R3 — a record exists for the tree but the lane absorbed after it.** Cannot happen: an absorb that changes content changes the HEAD tree and therefore the key; an absorb that changes nothing leaves the tree and the record valid, which is correct (the tested content is identical).
+- **R4 — `first-parent` miscount on non-merge landings.** Direct commits and fast-forwards each count as one landing; the metric is a staleness proxy, not a card count (Gap G2).
+- **R5 — cwd is not the card tree at `acquire`.** The gate then reads `not-applicable` or a wrong tree. Mitigation: applicability rule 1 (branch is neither the integration branch nor detached) plus the card flag; residual in Gap G7.
+
+## §G — Gaps (not asserted as fact anywhere in the SPEC)
+
+- **G1** — The K=0 equivalence with merge cause 2 was derived by reading `integration_merge_step.go:332-335`; no live window was run to observe it.
+- **G2** — First-parent landing counting was measured in this one tree (`git rev-list --count --first-parent main~40..main` printed 40; without the flag, 664). It was not measured across fast-forwarded resyncs, squash-merged batches, or a main that received direct commits.
+- **G3** — t1847's SPEC (`SPEC-LANDING-SURFACE-MECH-001`) does not exist in any tree read; the seam in spec.md §D is drawn from t1846's `spec.md` out-of-scope list (`.moai/worktrees/t1846/.moai/specs/SPEC-LANDING-SURFACE-RULES-001/spec.md:92-94`) and its 17-file allow-list (`plan.md:81-89`). t1847's requirement set was not read, so an overlap in `acquire`/`complete` behaviour cannot be excluded beyond the placement mitigation.
+- **G4** — The evidence-carry card (D, t1738) has no SPEC in any tree I searched (`git log --all --grep=t1738` printed one commit, `c9eb361bc`, the split itself). Its text is the holding file `.moai/worktrees/t1715/.moai/reports/t1715/moved/card-D.md`, which `git ls-files` in that tree does not list (untracked). The boundary in spec.md §D therefore rests on an uncommitted file.
+- **G5** — The brief names "the t1715 evidence carry"; t1715's own SPEC (`SPEC-LANE-SELF-RECOVERY-001`, draft) is the repair-verb card A, with the carry retired to card D. This plan treats the carry as card D's.
+- **G6** — Exit code 16 was chosen after grepping `Exit* = 16-19` constants and `code: 16-19` literals (no hits); every `exitCodeError{code:` literal in `internal/cli` was not enumerated.
+- **G7** — Whether leaders or automation ever invoke `acquire --card` from a directory other than the card worktree was not observed; the applicability rule fail-opens that case.
+- **G8** — The repository's `defaults.go` convention puts a default in Go as well as in yaml; the card asks that K be "never hardcoded in Go". This plan reads that as "the gate's decision code holds no literal" (REQ-ISB-007) and keeps the loader default; the operator may read it more strictly.
+- **G9** — Whether docs-site pages list `workflow.*` keys was not measured beyond a grep of `docs-site/content/en` for the two sibling keys (no hit); a 4-locale obligation, if one exists for this key, is not planned.
+- **G10** — Whether a config-completeness test other than `TestShippedConfigKeysHaveReaders` pins the template yaml against `NewDefaultConfig` was not enumerated.
+- **G11** — `moai spec lint <spec.md> --json --strict` printed `[]` (exit 0) at authoring, run with the installed binary `moai-adk v3.2.0-rc.36-t1822c`, not a binary built from this tree (judging-build commit not compared with HEAD `fb749d372`); `plan-auditor` has not run. A first lint pass reported three `VacuousTestAssertion` warnings for unanchored `-run` patterns, which were anchored before the clean run.
