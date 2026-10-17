@@ -300,4 +300,4 @@ E-11  cmd:    git diff --name-only fb749d372e61a6b10c53091362c76b4412827427 HEAD
 
 ## §G — Definition of Done
 
-All 16 criteria PASS with their commands run in the run phase and the verbatim output carried into the run-phase verdict file; every criterion shows its committed RED before its GREEN; the allow-list check (G-15) is clean with its control (G-15c) non-empty; the merge-step regression run (G-10b) is green with a swept count above zero; the sync phase moves the guidance pair into the template tree before the repository copy (Template-First).
+All 16 criteria PASS with their commands run in the run phase and the verbatim output carried into the run-phase verdict file; every criterion shows its committed RED before its GREEN; the allow-list check (G-15) is clean with its control (G-15c) non-empty; the merge-step regression run (G-10b) is green with a swept count above zero; the run-phase milestone M4 edits the guidance pair in the template tree first and then the repository copy (Template-First).
