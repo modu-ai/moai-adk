@@ -328,7 +328,7 @@ Forty-five tools accept an optional `project_root` string: `spec_progress`,
 `glm_task`, `goal_arm`, `goal_status`, `jev_ask`, `session_list`,
 `session_msg_list`, `session_msg_poll`, `session_msg_register`,
 `session_msg_send`, and `todo_claim`. It names the tree the call should act
-on. Five of the twenty-three
+on. Five of the forty-five
 REQUIRE it rather than accept it: the lane verbs `factory_next`, `factory_stage`,
 `factory_complete`, and `factory_renew` reject a call without it naming the argument, and
 `codex_task` is required rather than optional — pass your own toplevel or the
