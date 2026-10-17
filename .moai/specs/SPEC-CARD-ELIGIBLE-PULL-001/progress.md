@@ -124,7 +124,30 @@ All runs on the pre-gate tree (M3 not yet implemented); anchored selectors per p
   ```
 - `go build ./internal/cli/` + `go vet ./internal/cli/` — exit 0, no output.
 
-_<M4-M5 evidence appended below as milestones land>_
+### M4 — structured refusal surface — tree `ea1facf53` + surface rendering
+
+`factoryNextNoCardText` (one shared renderer: first line kept, one `refused <token>: <detail>` per candidate); the verb's no-card path prints it to stdout (exit 3, msg unchanged); the factory_next MCP handler returns it as the tool text (the fixed `"no card is available"` literal at mcp_factory_card.go:187 replaced by the shared source — AC-CEP-006(5)). OFF skips still add no line.
+
+- **`go test ./internal/cli/ -run '^TestFactoryEligiblePullOnGate$' -count=1 -v`** — exit 0, 5/5 cells PASS (AC-CEP-002 green path M2→M3→M4 closed):
+  ```
+  --- PASS: TestFactoryEligiblePullOnGate (7.18s)
+      --- PASS: .../i_queue_item_held:_refused_not-admitted
+      --- PASS: .../ii_class-C_high_without_spec:_refused_spec-missing
+      --- PASS: .../iii_picked_plus_hold_marker:_refused_hold-marker
+      --- PASS: .../iv_unmerged_after-predecessor:_refused_predecessor-unmerged
+      --- PASS: .../v_serial_slot_held:_refused_serial-slot
+  ```
+- **`go test ./internal/cli/ -run '^TestFactoryEligiblePullOnEligible$' -count=1 -v`** — exit 0 (AC-CEP-003 green path M4 closed, both rule-paired assertions):
+  ```
+  --- PASS: TestFactoryEligiblePullOnEligible (2.97s)
+  ```
+- **`go test ./internal/cli/ -run '^TestFactoryEligiblePullRefusalGrammar$' -count=1 -v`** — exit 0 (AC-CEP-006: first line preserved, 3 grammar-matching lines naming t1/t2/t3, cobra block == MCP block):
+  ```
+  --- PASS: TestFactoryEligiblePullRefusalGrammar (1.31s)
+  ```
+- **Scope suite (E2 form)** — `go test ./internal/cli/ -run '^TestFactoryEligiblePullOffDormancy$|^TestFactoryEligiblePullOnGate$|^TestFactoryEligiblePullOnEligible$|^TestFactoryEligiblePullTraceless$|^TestFactoryEligiblePullRefusalGrammar$' -count=1` — exit 0: `ok github.com/modu-ai/moai-adk/internal/cli 16.402s`.
+
+_<M5 evidence appended below>_
 
 ## §E.3 Run-phase Audit-Ready Signal
 

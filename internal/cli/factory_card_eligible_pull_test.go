@@ -386,9 +386,25 @@ func TestFactoryEligiblePullRefusalGrammar(t *testing.T) {
 	t.Chdir(root)
 
 	grammar := regexp.MustCompile(`^refused (not-admitted|spec-missing|hold-marker|predecessor-unmerged|serial-slot): .+$`)
+	// cepNoCardBlock picks the response block off a surface's text: the
+	// no-card first line plus the contiguous `refused` lines that follow.
+	// The cobra verb's error also prints a usage block after the response —
+	// that noise is not part of the answer and stops the block.
+	block := func(text string) []string {
+		lines := strings.Split(strings.TrimRight(text, "\n"), "\n")
+		var b []string
+		for i, l := range lines {
+			if i == 0 || strings.HasPrefix(l, "refused ") {
+				b = append(b, l)
+				continue
+			}
+			break
+		}
+		return b
+	}
 	parse := func(t *testing.T, label, text string) {
 		t.Helper()
-		lines := strings.Split(strings.TrimRight(text, "\n"), "\n")
+		lines := block(text)
 		if len(lines) == 0 || lines[0] != "no card is available" {
 			t.Fatalf("%s first line = %q, want the existing no-card line", label, firstOr(lines))
 		}
@@ -422,8 +438,8 @@ func TestFactoryEligiblePullRefusalGrammar(t *testing.T) {
 		t.Fatalf("mcp factory_next on a refused pass: %v", mcpErr)
 	}
 	parse(t, "mcp", mcpOut)
-	if strings.TrimRight(mcpOut, "\n") != strings.TrimRight(cliOut, "\n") {
-		t.Errorf("surface texts diverge:\ncli %q\nmcp %q", cliOut, mcpOut)
+	if strings.Join(block(mcpOut), "\n") != strings.Join(block(cliOut), "\n") {
+		t.Errorf("surface texts diverge:\ncli %q\nmcp %q", strings.Join(block(cliOut), "\n"), strings.Join(block(mcpOut), "\n"))
 	}
 }
 

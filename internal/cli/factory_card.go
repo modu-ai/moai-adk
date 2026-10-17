@@ -1292,6 +1292,24 @@ func factoryQueuedHoldMarked(it factory.BacklogItem) bool {
 	return it.State == factory.BacklogStateQueued && autoRankHoldMarked(it.Text)
 }
 
+// factoryNextNoCardText renders the no-card answer BOTH surfaces print —
+// the cobra verb's stdout and the factory_next MCP tool's result text — from
+// one shared source (SPEC-CARD-ELIGIBLE-PULL-001 REQ-CEP-005, plan §D shared
+// refusal-result route): the existing no-card first line, unchanged so no
+// consumer parser breaks, then at most one `refused <token>: <detail>` line
+// per gate-disqualified candidate. An empty collection is the bare
+// no-card line — the OFF dormancy's quiet skip adds nothing (plan §G
+// anti-pattern: a reason line on an unevaluated skip).
+func factoryNextNoCardText(refusals []factoryEligibleRefusal) string {
+	var b strings.Builder
+	b.WriteString("no card is available")
+	for _, r := range refusals {
+		b.WriteString("\n")
+		b.WriteString(r.line())
+	}
+	return b.String()
+}
+
 // The closed token set of the self-dispatch eligibility gate
 // (SPEC-CARD-ELIGIBLE-PULL-001 REQ-CEP-005, spec §C D3/D9): hold-marker and
 // serial-slot reuse the nominated set's vocabulary; not-admitted,
@@ -1867,6 +1885,10 @@ func newFactoryNextCommand() *cobra.Command {
 			// pass, outside the selection arms, and carried across the --wait
 			// re-checks by the latch.
 			quotaLatch := &factoryQuotaLatch{}
+			// The gate's refusals of the last pass (SPEC-CARD-ELIGIBLE-PULL-001
+			// REQ-CEP-005): rendered only inside the no-card answer below — a
+			// lease or a hold supersedes them.
+			var gateRefusals []factoryEligibleRefusal
 			for {
 				held, holdLine := quotaLatch.evaluate(root)
 				var card homestate.Card
@@ -1894,7 +1916,7 @@ func newFactoryNextCommand() *cobra.Command {
 						return fmt.Errorf("factory next: %w", err)
 					}
 				} else {
-					card, leased, err = factoryNextLeaseOnceGated(ctx, root, runID, lane, held)
+					card, leased, gateRefusals, err = factoryNextLeaseOnceEligibility(ctx, root, runID, lane, held)
 					if err != nil {
 						return fmt.Errorf("factory next: %w", err)
 					}
@@ -1918,7 +1940,10 @@ func newFactoryNextCommand() *cobra.Command {
 						_, _ = fmt.Fprintln(cmd.ErrOrStderr(), holdLine)
 						return &exitCodeError{code: factoryNextNoCardExit, msg: "factory next: " + holdLine}
 					}
-					_, _ = fmt.Fprintln(cmd.OutOrStdout(), "no card is available")
+					// The gate's refusal lines ride the no-card answer
+					// (SPEC-CARD-ELIGIBLE-PULL-001 REQ-CEP-005): first line kept,
+					// exit stays 3, both surfaces render the same shared text.
+					_, _ = fmt.Fprintln(cmd.OutOrStdout(), factoryNextNoCardText(gateRefusals))
 					return &exitCodeError{code: factoryNextNoCardExit, msg: "factory next: no card is available"}
 				}
 				factoryNextWaitSleep(factoryNextWaitInterval)
