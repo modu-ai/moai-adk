@@ -9,6 +9,7 @@
 package cli
 
 import (
+	"context"
 	"path/filepath"
 	"strings"
 	"sync/atomic"
@@ -236,6 +237,55 @@ func TestFactoryNextIssuesNoOpenPRQueryWhenEveryCandidateIsSkipped(t *testing.T)
 		}
 		if at := gh(); at.IsZero() {
 			t.Errorf("the peek skipped the open-PR query for a picked blocked candidate the (b2) arm leases; want the query taken (fail-closed regression, iter4 N4)")
+		}
+	})
+}
+
+// TestFactoryNextPeekMirrorsTheSelector — sync-audit iter5 N5/N6 regressions:
+// the bare peek's serial read excludes each candidate's own row (arm (c)'s
+// shape — a serial candidate whose own picked row is the only serial row still
+// queries, card t1407's unwedge), and an assigned-to-this-lane card the arm
+// (a) gates out (a blocked classification) is no candidate of the bare arms
+// either, so an attempt left alone with it issues no query.
+func TestFactoryNextPeekMirrorsTheSelector(t *testing.T) {
+	live := fcNow.Add(time.Hour).Format(time.RFC3339Nano)
+	t.Run("own serial row excluded from the bare serial read", func(t *testing.T) {
+		root, store := fcFixture(t)
+		fcQueue(t, store, factory.BacklogStateQueued)
+		fcClassify(t, store, "t1", factory.ClassPriorityNormal, false, factory.ClassModeSerial)
+		fcPlace(t, root, homestate.Card{CardID: "t1", State: homestate.CardPicked, OwnerLabel: "lane-9", LeaseHolder: "lane-9", LeaseExpiresAt: live})
+		sdRegisterLane(t, root, "lane-1")
+		if !factoryNextMayLease(context.Background(), root, fcRun, "lane-1", "", false) {
+			t.Errorf("peek = false while the only serial row is candidate t1's own (the self-excluding arm (c) read must not count it); want true — the skipped query forces the leased card's PR column to unknown (iter5 N5)")
+		}
+	})
+	t.Run("assigned blocked card alone issues no query", func(t *testing.T) {
+		root, store := fcFixture(t)
+		fcQueue(t, store, factory.BacklogStatePicked)
+		fcClassify(t, store, "t1", factory.ClassPriorityHigh, true, factory.ClassModeParallelizable)
+		fcPlace(t, root, homestate.Card{CardID: "t1", State: homestate.CardAssigned, OwnerLabel: "lane-1"})
+		sdRegisterLane(t, root, "lane-1")
+		sdLaneEnv(t, "lane-1", "")
+		gh := flFirstGhCall(t, func() (string, error) { return "[]", nil })
+		out, _, err := qasRunNext(t, "--run", fcRun)
+		sdExit3(t, "assigned blocked card alone", err)
+		_ = out
+		if at := gh(); !at.IsZero() {
+			t.Errorf("an attempt left alone with an assigned blocked card issued the open-PR query (gh pr list); want zero gh calls (iter5 N6)")
+		}
+	})
+	t.Run("cancelled context takes no query", func(t *testing.T) {
+		root, _ := fcFixture(t)
+		sdRegisterLane(t, root, "lane-1")
+		gh := flFirstGhCall(t, func() (string, error) { return "[]", nil })
+		ctx, cancel := context.WithCancel(context.Background())
+		cancel()
+		q := factoryNextPRSnapshot(ctx, root, fcRun, "lane-1", "", false)
+		if q.err != errFactoryNextPRNotTaken {
+			t.Errorf("snapshot err = %v on a cancelled context, want errFactoryNextPRNotTaken (iter5 N7)", q.err)
+		}
+		if at := gh(); !at.IsZero() {
+			t.Errorf("a cancelled context ran the open-PR query (gh pr list); want zero gh calls (iter5 N7)")
 		}
 	})
 }

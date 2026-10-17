@@ -1828,6 +1828,13 @@ var errFactoryNextPRNotTaken = errors.New("no open-PR query was taken: no lease 
 // AC-FAL-015 (vii)), and an attempt that cannot lease takes none. The output path
 // prints the outcome and issues no query of its own.
 func factoryNextPRSnapshot(ctx context.Context, root, runID, lane, nominee string, held bool) openPRQuery {
+	// A cancelled request never reaches the output path, so its query is not
+	// taken either — the peek would otherwise fail open on the cancelled
+	// context's ListCards error and run a bounded gh subprocess for a caller
+	// that is already gone.
+	if ctx.Err() != nil {
+		return openPRQuery{err: errFactoryNextPRNotTaken}
+	}
 	if !factoryNextMayLease(ctx, root, runID, lane, nominee, held) {
 		return openPRQuery{err: errFactoryNextPRNotTaken}
 	}
@@ -1836,14 +1843,16 @@ func factoryNextPRSnapshot(ctx context.Context, root, runID, lane, nominee strin
 
 // factoryNextMayLease is the unlocked, read-only peek that decides whether a lease
 // attempt can succeed. It over-approximates: false only when the queue and the
-// record show no card the attempt could take (an empty queue, an unknown or
-// keep-set nominee, a quota hold that leaves only the lane's assigned card, a
-// serial nominee behind a serial slot another card holds, or a bare attempt
-// whose every candidate is such a serial card), and true whenever a read fails
-// or the answer needs the section's own checks. The serial read is the same
-// factorySerialInFlightExcluding the lease arms run, over the rows this peek
-// already loads. A lease that wins a race the peek could not see prints the
-// query as unavailable.
+// record show no card the attempt could take (an empty queue; an unknown,
+// keep-set, or serial-blocked nominee; a quota hold that leaves only the
+// lane's assigned card; an assigned card arm (a) itself would skip — its
+// queue item excluded, or its self-excluding serial read busy; or a bare
+// attempt whose every candidate is queued-excluded — hold-marked or blocked —
+// or a serial candidate whose own self-excluding slot read is busy), and true
+// whenever a read fails or the answer needs the section's own checks. The
+// serial read is the same factorySerialInFlightExcluding the lease arms run,
+// over the rows this peek already loads. A lease that wins a race the peek
+// could not see prints the query as unavailable.
 func factoryNextMayLease(ctx context.Context, root, runID, lane, nominee string, held bool) bool {
 	rec, err := todoStoreAt(root).LoadPure()
 	if err != nil {
@@ -1860,7 +1869,10 @@ func factoryNextMayLease(ctx context.Context, root, runID, lane, nominee string,
 	}
 	classOf := func(id string) factory.CardClassification { return factoryQueueClassification(rec, id) }
 	now := factoryCardNow()
-	assignedHere := func(c homestate.Card) bool { return c.State == homestate.CardAssigned && c.OwnerLabel == lane }
+	rowByID := make(map[string]homestate.Card, len(rows))
+	for _, c := range rows {
+		rowByID[c.CardID] = c
+	}
 	if nominee != "" {
 		var row *homestate.Card
 		for i := range rows {
@@ -1881,28 +1893,46 @@ func factoryNextMayLease(ctx context.Context, root, runID, lane, nominee string,
 			if factoryKeepSetRefusal(it, row, lane, serialHeld) != nil {
 				return false
 			}
-			return !held || (row != nil && assignedHere(*row))
+			return !held || (row != nil && row.State == homestate.CardAssigned && row.OwnerLabel == lane)
 		}
 		return false
 	}
-	for _, c := range rows {
-		if assignedHere(c) {
-			return true
+	// Arm (a) mirror: an assigned-to-this-lane row is a candidate only past
+	// the same gates the lease edge applies — the queue item's keep-set
+	// refusal, and the self-excluding serial read with sibling assigned rows
+	// ignored (card t1542). An excluded or serial-blocked assigned card
+	// leaves the attempt to the bare arms below.
+	for i := range rows {
+		c := rows[i]
+		if c.State != homestate.CardAssigned || c.OwnerLabel != lane {
+			continue
 		}
+		if it, inQueue := queueItemIn(rec, c.CardID); inQueue {
+			if factoryKeepSetRefusal(it, &rows[i], lane, false) != nil {
+				continue
+			}
+		}
+		if classOf(c.CardID).Mode == factory.ClassModeSerial && factorySerialInFlightExcluding(rows, classOf, c.CardID, now, true) {
+			continue
+		}
+		return true
 	}
 	if held {
 		return false
 	}
 	// The bare path takes a NEW card, so sibling rows hold against it
 	// (ignoreAssigned=false). A candidate the selector itself skips is no
-	// candidate here either — but each skip mirrors the arm that applies it:
-	// the hold marker and the blocked classification park only a QUEUED
-	// candidate (the promotion arm's predicates, and factoryQueuedHoldMarked's
-	// own state check), while the operator-picked arms (b-priority)/(b)/(b2)
-	// lease a picked card with no blocked check, so a picked candidate stays
-	// leasable here. With the serial slot held, only a parallelizable
-	// candidate can lease this attempt.
-	serialBusy := factorySerialInFlightExcluding(rows, classOf, "", now, false)
+	// candidate here either — each skip mirrors the arm that applies it: the
+	// hold marker and the blocked classification park only a QUEUED candidate
+	// (the promotion arm's predicates, and factoryQueuedHoldMarked's own
+	// state check); a PICKED candidate is leasable only through the
+	// operator-picked arms — (b2) with no record row, (b) with a picked row
+	// no lane owns — and a row in any other shape (an assigned row the arm
+	// (a) mirror above already judged, an in-flight row) holds the card out
+	// of the bare arms here too. The serial read is per candidate and
+	// self-excluding — arm (c)'s shape: a serial candidate whose own row is
+	// the only serial row still leases (card t1407's unwedge), so it must
+	// still query.
 	for _, it := range rec.Items {
 		if it.State != factory.BacklogStateQueued && it.State != factory.BacklogStatePicked {
 			continue
@@ -1910,7 +1940,13 @@ func factoryNextMayLease(ctx context.Context, root, runID, lane, nominee string,
 		if it.State == factory.BacklogStateQueued && (factoryQueuedHoldMarked(it) || factory.EffectiveCardClassification(it).Blocked) {
 			continue
 		}
-		if !serialBusy || classOf(it.ID).Mode != factory.ClassModeSerial {
+		if it.State == factory.BacklogStatePicked {
+			row, hasRow := rowByID[it.ID]
+			if hasRow && !(row.State == homestate.CardPicked && strings.TrimSpace(row.OwnerLabel) == "") {
+				continue
+			}
+		}
+		if classOf(it.ID).Mode != factory.ClassModeSerial || !factorySerialInFlightExcluding(rows, classOf, it.ID, now, false) {
 			return true
 		}
 	}
