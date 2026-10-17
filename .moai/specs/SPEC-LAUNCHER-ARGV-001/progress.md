@@ -309,6 +309,36 @@ Why red: a required-value option followed by `--` was treated as having no value
 
 **GREEN pair** (same command, tree `b6f8697da` + the fix): exit **0**; `--- PASS: TestLauncherAnchorFinalArgv (20.97s)`, `--- PASS: TestLauncherAnchorOverrideFlagPlacement (2.65s)`, `--- PASS: TestLaunchViewBackendSelection (0.00s)`, `ok ... 24.527s`. The seven bound families together: exit 0, 109 subtest PASS, 0 FAIL, `ok ... 41.127s`, `view_exec_byte_equality` now 17 rows x 2 arms; AC-LA-014 selector: exit 0, 180 top-level PASS, 0 FAIL, both named tests present, `ok ... 121.675s`; the 183-test leader-entry sweep: exit 0, `ok ... 164.066s`. `golangci-lint run --timeout=8m --new-from-rev=6e729ba21 ./internal/cli/... ./internal/config/...` -> `0 issues.` exit 0; gofmt empty; `go vet ./internal/cli/ ./internal/config/` exit 0; native and `GOOS=windows GOARCH=amd64` `go build ./...` and windows `go vet` exit 0.
 
+### Sync-audit iteration 2 finding R1 (regression of `2c5b25d37`; repaired in `0b3ea3a5c`)
+
+**Defect.** `optionValueSpan` decided "the following `--` is this option's value" from `consumeLaunchArgs([arg, "--"])` reporting `ModelSet || PermissionModeSet`. Those fields are also set by `--model=<v>`, `--permission-mode=<v>`, `-b` and `--bypass`, none of which take the next token, so for them the `--` is the launcher's own separator. A `--allow-card-anchor` after that separator belongs to the backend, yet `consumeAllowCardAnchor` consumed it as the launcher override and the guard did not refuse a card-tree worktree selection (REQ-LA-005).
+
+**Observation method.** In-process only: the REAL `runCC` / `runGLM` leader entries in a fixture git repository with the exec seam stubbed; no session was started and the `claude` binary was never run.
+
+**RED (tree `240fc366e`, only tests added, no code change).** Command: `go test ./internal/cli/ -run 'TestLauncherAnchorSeparatorAfterNonValueOption|TestLauncherAnchorOptionValueSpanConsistency' -v -count=1`. Exit code **1**; red from assertions (everything compiled and ran). Verbatim failing lines (filtered to `_test.go:` lines; the cc and glm arms repeat each other, one arm shown for the leader-entry cells):
+
+```
+    factory_anchor_override_placement_test.go:122: consumeAllowCardAnchor(["--model=opus" "--" "--allow-card-anchor" "-w" "WT-card"]) = (["--model=opus" "--" "-w" "WT-card"], true), want the argv untouched and no override
+    factory_anchor_override_placement_test.go:126: ["--model=opus" "--" "--allow-card-anchor" "-w" "WT-card"]: FinalArgv = ["-w" "WT-card"], want the tail ["--allow-card-anchor" "-w" "WT-card"] unconsumed
+    (the same two lines for "--permission-mode=plan", "-b" and "--bypass")
+    factory_anchor_override_placement_test.go:143: cc/--model=opus: the anchored leader launch was not refused (launched=true)
+    factory_anchor_override_placement_test.go:146: cc/--model=opus: an audit row exists, so the backend-side flag was recorded as an override
+    (the same two lines for cc and glm x "--model=opus", "--permission-mode=plan", "-b", "--bypass": 8 leader-entry subtests)
+    factory_anchor_override_placement_test.go:203: optionValueSpan("-b", --, TAIL) = 1, but consumeLaunchArgs took the separator as a value = false (want span 0)
+    factory_anchor_override_placement_test.go:220: consumeAllowCardAnchor("-b", --, flag) allowed = true, want false (the launcher kept as its own the separator)
+    (likewise "--bypass", "--permission-mode=plan", "--model=opus")
+--- FAIL: TestLauncherAnchorSeparatorAfterNonValueOption (8.92s)
+--- FAIL: TestLauncherAnchorOptionValueSpanConsistency (0.00s)
+```
+
+The `:220` message was reworded after this run (to "launcher took the separator as a value = <bool>", the original read ungrammatically); the assertion itself is unchanged.
+
+**Cells that went red vs stayed controls.** RED: `flag_after_the_launcher_separator_is_the_backends`; `<arm>/<form>/refused` for 8 leader-entry cells (cc and glm x `--model=opus`, `--permission-mode=plan`, `-b`, `--bypass`); consistency subtests `-b`, `--bypass`, `--permission-mode=plan`, `--model=opus`. Controls that passed on the old code and stay green: `<arm>/<form>/control_flag_in_launcher_segment` (8 cells, the override before the separator is honored and recorded), `<arm>/control_separator_is_the_value_of_model` (`--model -- --allow-card-anchor -w WT-card`: the `--` IS the exact separate-token `--model` value, override honored), and the consistency subtests `--permission-mode`, `-c`, `--continue`, `--model`, `-m`, `--name`, `-n`, `-w`, `--worktree`, `-p`. The consistency test derives its ground truth mechanically from `consumeLaunchArgs([tok, "--", "TAIL"])` (the `--` was a value iff `Model` or `PermissionMode` equals `--`), so "one argv, one interpretation" is a tested property over every form that function handles, not a sentence.
+
+**Fix (`launch_view.go`, one condition).** The early branch of `optionValueSpan` returns 1 only when `consumeLaunchArgs([arg, "--"])` produced `Model == "--"` or `PermissionMode == "--"`; the knowledge of which forms eat the `--` stays in `consumeLaunchArgs` (no new option table, no parallel reader; `TestLaunchViewSingleParse` green). The required-value and optional-value behaviour from `2c5b25d37` is untouched.
+
+**GREEN pair** (same command, tree `240fc366e` + the fix): exit **0**; `--- PASS: TestLauncherAnchorSeparatorAfterNonValueOption (7.74s)`, `--- PASS: TestLauncherAnchorOptionValueSpanConsistency (0.00s)`, `ok ... 8.728s`; 35 subtest/test PASS lines, 0 FAIL. The seven bound families plus the two new tests together (`-v -count=1`): exit 0, 151 PASS lines, 0 FAIL, 0 SKIP, `ok ... 46.931s`. AC-LA-014 selector `-run 'Worktree|TestLaneJoinChildArgv' -v -count=1`: exit 0, 180 top-level PASS, 0 FAIL, 0 `no tests to run`, `--- PASS: TestLaneJoinChildArgv` and `--- PASS: TestLauncherWorktreeDuplicateOptionFirstValue` present, `ok ... 114.779s`. `golangci-lint run --timeout=8m --new-from-rev=6e729ba21 ./internal/cli/... ./internal/config/...` -> `0 issues.` exit 0; `gofmt -l internal/cli internal/config` empty; `go vet ./internal/cli/ ./internal/config/` exit 0; `go build ./...` exit 0; `GOOS=windows GOARCH=amd64 go build ./...` exit 0.
+
 ### Gaps (not observed) and refusals
 
 - **Package coverage (85%) and whole-package lint are not measured** — M4, excluded from this delegation. No coverage figure is claimed.
@@ -333,7 +363,7 @@ audit_ready: true
 ```yaml
 run_status: m1-m3-complete   # M4 (package coverage, whole-package lint, full-package run) is outside the lane delegation and carried to batch CI
 run_complete_at: 2026-10-18
-run_commit_sha: 2c5b25d37    # last code commit (sync-audit F1/F2/F3 fix); the commit carrying this block's update follows it
+run_commit_sha: 0b3ea3a5c    # last code commit (sync-audit iteration 2 R1 fix); the commit carrying this block's update follows it
 ac_pass_count: 15            # AC-LA-001..015, see the E1 pointer below
 ac_fail_count: 0
 m1_to_mN_commit_strategy: one baseline commit, then one commit per milestone, then evidence / lint / card-review fixes
@@ -364,6 +394,7 @@ m1_to_mN_commit_strategy: one baseline commit, then one commit per milestone, th
 - **F1 was observed in-process, not by running the installed binary.** Rows 15-17 and their controls drive the real cc / glm leader entries with the exec seam stubbed; no session was started and no live leader launch was run. The backend fact they rest on (a required-value option takes a following `--` as its value) is the orchestrator's measurement on claude 2.1.302, recorded in the SPEC HISTORY row; this run did not repeat it.
 - **The optional-value case stays unmeasured**: what `-w` / `--worktree [name]` does with a `--` right after it is unchanged by the fix and unmeasured (`TestLaunchViewBackendSelection` keeps the previous reading: the `--` is not its value and ends parsing).
 - **F2 is a recorded limit, not a repair**: the `.moai/logs` parent-directory swap between the path check and the by-path open is documented as `@MX:DEBT` on `openLeaderAnchorAuditLog` (ceiling: REQ-LA-009's three repairs; upgrade: no-follow directory open plus an openat-style relative open). No behaviour changed.
+- **R1 (sync-audit iteration 2) was observed and repaired in-process only**: the RED and GREEN cells drive the real cc / glm leader entries with the exec seam stubbed; no live leader launch through the installed binary and no `claude` process was run, so the claim "a `--allow-card-anchor` after the launcher's separator is the backend's" rests on `consumeLaunchArgs` dropping exactly the first `--` (REQ-LA-001 item 2 / REQ-LA-003) and not on a backend measurement. The consistency test enumerates the forms `consumeLaunchArgs` handles today; a launcher option added later is covered only if it is added to that list. The package-wide `internal/cli` run is still not measured (standing rule 35e9). Record: §E.2 "Sync-audit iteration 2 finding R1".
 - The card-review finding (the override flag consumed as the value of an option bundled in a short cluster, e.g. `-cn --allow-card-anchor hello`) **was fixed in `951e09cab`** with its RED/GREEN pair in §E.2; it is closed, not a gap. The leader-entry control for "flag standing alone after a boolean" uses the attached cluster `-cnNAME`, because a bare `-c` is consumed by the launcher as `--continue` and would take the resume path (pinned instead on the consumption function).
 
 
