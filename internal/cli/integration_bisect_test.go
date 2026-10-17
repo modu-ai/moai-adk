@@ -13,6 +13,19 @@ import (
 	"testing"
 )
 
+// bisectPostCheckoutHook installs a post-checkout hook in the repository that
+// owns primary. The hook body is a shell fragment; $2 is the commit checked out.
+func bisectPostCheckoutHook(t *testing.T, primary, body string) {
+	t.Helper()
+	hooks := filepath.Join(primary, ".git", "hooks")
+	if err := os.MkdirAll(hooks, 0o700); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(hooks, "post-checkout"), []byte("#!/bin/sh\n"+body+"\n"), 0o700); err != nil {
+		t.Fatal(err)
+	}
+}
+
 // bisectRepo builds main with five card landings; landing 3 (card t1003)
 // introduces bad.txt, and each card branch carries two inner commits so a
 // first-parent walk and a full-history walk disagree. It returns the primary
@@ -163,5 +176,96 @@ func TestBisectCmdRejectsAnEmptyCommand(t *testing.T) {
 	cmd.SetErr(&strings.Builder{})
 	if err := cmd.Execute(); err == nil || !strings.Contains(err.Error(), "after --") {
 		t.Fatalf("a bisect without a command must be refused, got %v", err)
+	}
+}
+
+// F1 (card t1833 fix round 1): the culprit comes from git's own bisect state,
+// never from text the judged command printed.
+func TestBisectIgnoresACulpritClaimPrintedByTheJudgedCommand(t *testing.T) {
+	_, wt, base, tip := bisectRepo(t)
+	decoy := fcGit(t, wt, "log", "--first-parent", "--format=%H", "--grep", "card t1001", "-n1")
+	var out strings.Builder
+	cmdline := fmt.Sprintf("echo %s is the first bad commit; test ! -f bad.txt", decoy)
+	if err := runIntegrationBisect(&out, integrationBisectOpts{Dir: wt, Bad: tip, Good: base, Command: cmdline}); err != nil {
+		t.Fatalf("bisect: %v\n%s", err, out.String())
+	}
+	if !strings.Contains(out.String(), "card: t1003") {
+		t.Fatalf("a decoy line printed by the judged command must not change the culprit; want card t1003:\n%s", out.String())
+	}
+	if strings.Contains(out.String(), "card: t1001") {
+		t.Fatalf("the decoy card was reported:\n%s", out.String())
+	}
+}
+
+// F2: with GIT_DIR / GIT_WORK_TREE aimed at another repository, the pre-checks
+// and the bisect itself must still look at the same tree.
+func TestBisectActsOnTheCheckedTreeWhenGitDirIsSet(t *testing.T) {
+	primary, wt, base, tip := bisectRepo(t)
+	other := filepath.Join(t.TempDir(), "other")
+	if err := os.MkdirAll(other, 0o700); err != nil {
+		t.Fatal(err)
+	}
+	fcGit(t, other, "init", "-q", "-b", "main")
+	if err := os.WriteFile(filepath.Join(other, "o.txt"), []byte("o\n"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	fcGit(t, other, "add", "o.txt")
+	fcGit(t, other, "commit", "-q", "-m", "other")
+	otherHead := fcGit(t, other, "rev-parse", "HEAD")
+	t.Setenv("GIT_DIR", filepath.Join(other, ".git"))
+	t.Setenv("GIT_WORK_TREE", other)
+
+	if err := runIntegrationBisect(&strings.Builder{}, integrationBisectOpts{Dir: primary, Bad: tip, Good: base, Command: "true"}); err == nil || !strings.Contains(err.Error(), "primary checkout") {
+		t.Fatalf("the primary checkout must still be refused with GIT_DIR set, got %v", err)
+	}
+	var out strings.Builder
+	if err := runIntegrationBisect(&out, integrationBisectOpts{Dir: wt, Bad: tip, Good: base, Command: "test ! -f bad.txt"}); err != nil {
+		t.Fatalf("bisect with GIT_DIR set: %v\n%s", err, out.String())
+	}
+	if !strings.Contains(out.String(), "card: t1003") {
+		t.Fatalf("culprit must be card t1003:\n%s", out.String())
+	}
+	if head, _ := runScrubbedGit(other, "rev-parse", "HEAD"); strings.TrimSpace(head) != otherHead {
+		t.Fatalf("the other repository must not move: %s -> %s", otherHead, head)
+	}
+	if log, _ := runScrubbedGit(other, "bisect", "log"); strings.TrimSpace(log) != "" {
+		t.Fatalf("the other repository must not be bisected:\n%s", log)
+	}
+	if head, _ := runScrubbedGit(wt, "rev-parse", "HEAD"); strings.TrimSpace(head) != tip {
+		t.Fatalf("the card tree must be restored to %s, is %s", tip, head)
+	}
+}
+
+// F3: a reset that fails leaves the tree mid-bisect, and the verb must say so
+// instead of exiting 0.
+func TestBisectFailsWhenTheResetFails(t *testing.T) {
+	primary, wt, base, tip := bisectRepo(t)
+	bisectPostCheckoutHook(t, primary, fmt.Sprintf(`[ "$2" = "%s" ] && exit 1; exit 0`, tip))
+	var out strings.Builder
+	err := runIntegrationBisect(&out, integrationBisectOpts{Dir: wt, Bad: tip, Good: base, Command: "test ! -f bad.txt"})
+	if err == nil || !strings.Contains(err.Error(), "reset") {
+		t.Fatalf("a failed git bisect reset must be an error that names the reset, got %v\n%s", err, out.String())
+	}
+	t.Chdir(wt)
+	cmd := newIntegrationBisectCmd()
+	cmd.SetArgs([]string{"--good", base, "--bad", tip, "--", "test", "!", "-f", "bad.txt"})
+	cmd.SetOut(&strings.Builder{})
+	cmd.SetErr(&strings.Builder{})
+	if cmdErr := cmd.Execute(); cmdErr == nil {
+		t.Fatal("the command must return an error (non-zero exit) when the reset fails")
+	}
+}
+
+// F4: a `git bisect start` that fails after moving HEAD must not leave the
+// tree on another commit.
+func TestBisectRestoresHeadWhenStartFailsPartway(t *testing.T) {
+	primary, wt, base, tip := bisectRepo(t)
+	bisectPostCheckoutHook(t, primary, fmt.Sprintf(`[ "$2" = "%s" ] && exit 0; exit 1`, tip))
+	err := runIntegrationBisect(&strings.Builder{}, integrationBisectOpts{Dir: wt, Bad: tip, Good: base, Command: "true"})
+	if err == nil || !strings.Contains(err.Error(), "start failed") {
+		t.Fatalf("a failed start must be reported, got %v", err)
+	}
+	if head := fcGit(t, wt, "rev-parse", "HEAD"); head != tip {
+		t.Fatalf("a failed start must leave HEAD at %s, is %s", tip, head)
 	}
 }

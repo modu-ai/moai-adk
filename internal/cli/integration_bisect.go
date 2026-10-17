@@ -7,16 +7,24 @@ import (
 	"os"
 	"os/exec"
 	"regexp"
+	"slices"
 	"strings"
 
 	"github.com/modu-ai/moai-adk/internal/factory"
 	"github.com/spf13/cobra"
 )
 
-// bisectFirstBadRe reads the line `git bisect run` prints when the search
-// converges. A run that aborted or never converged prints no such line, so
-// the verb reports a failure instead of naming whatever refs/bisect/bad holds.
-var bisectFirstBadRe = regexp.MustCompile(`(?m)^([0-9a-f]{40}) is the first bad commit`)
+// bisectFirstBadRe reads the line git writes into its own bisect log when the
+// search converges. The log is git's state, not a stream the judged command
+// writes to, so a command that prints "<sha> is the first bad commit" cannot
+// move the verdict. A run that aborted or never converged leaves no such line,
+// so the verb reports a failure instead of naming whatever refs/bisect/bad holds.
+var bisectFirstBadRe = regexp.MustCompile(`(?m)^# first bad commit: \[([0-9a-f]{40})\]`)
+
+// bisectRepoVars are the repository-scoped variables the pre-checks already
+// scrub (internal/auditreceipt scrubbedGitVars). git bisect start/run/reset
+// drop the same set, so the checks and the bisect cannot look at two trees.
+var bisectRepoVars = []string{"GIT_DIR", "GIT_WORK_TREE", "GIT_COMMON_DIR", "GIT_INDEX_FILE", "GIT_CEILING_DIRECTORIES"}
 
 // bisectCardIDRe reads the card id out of a landing subject written by the
 // merge step ("Merge <branch> into <target> (card <id>, integration merge)").
@@ -35,7 +43,8 @@ type integrationBisectOpts struct {
 // visits one commit per card and the first bad one names the culprit card.
 // The verb is a thin guard around `git bisect --first-parent`: it refuses the
 // primary checkout (bisect moves HEAD), a dirty tree and a bisect already in
-// progress, and it always resets.
+// progress, and it resets on every path out, failing the command when it
+// cannot confirm that HEAD and the bisect state are back where they started.
 func newIntegrationBisectCmd() *cobra.Command {
 	var badFlag, goodFlag string
 	var dryRun bool
@@ -62,12 +71,70 @@ func newIntegrationBisectCmd() *cobra.Command {
 	return cmd
 }
 
-// bisectGit runs git in dir under the caller's environment: the judged
-// command inherits it, so it must be the real one, not a scrubbed copy.
+// bisectGit runs git in dir. The repository-scoped GIT_* variables are removed
+// (the pre-checks run without them too) and the rest of the caller's
+// environment is kept: the judged command inherits it, so it must be the real
+// one, not a scrubbed copy.
 func bisectGit(dir string, out io.Writer, args ...string) error {
 	c := exec.Command("git", append([]string{"-C", dir}, args...)...)
+	for _, kv := range os.Environ() {
+		name, _, _ := strings.Cut(kv, "=")
+		if !slices.Contains(bisectRepoVars, name) {
+			c.Env = append(c.Env, kv)
+		}
+	}
 	c.Stdout, c.Stderr = out, out
 	return c.Run()
+}
+
+// bisectInProgress reports whether dir has a bisect in progress (BISECT_LOG).
+func bisectInProgress(dir string) bool {
+	logPath, _ := runScrubbedGit(dir, "rev-parse", "--path-format=absolute", "--git-path", "BISECT_LOG")
+	if strings.TrimSpace(logPath) == "" {
+		return false
+	}
+	_, statErr := os.Stat(strings.TrimSpace(logPath))
+	return statErr == nil
+}
+
+// bisectRestore ends any bisect in dir and puts HEAD back on the branch or
+// commit it started on, then checks that it worked. A nil result means the tree
+// is exactly as the verb found it.
+func bisectRestore(dir, origSHA, origBranch string) error {
+	var problems []string
+	if bisectInProgress(dir) {
+		if err := bisectGit(dir, io.Discard, "bisect", "reset"); err != nil {
+			problems = append(problems, fmt.Sprintf("git bisect reset failed (%v)", err))
+		}
+	}
+	if head, _ := runScrubbedGit(dir, "rev-parse", "HEAD"); strings.TrimSpace(head) != origSHA {
+		target := []string{"checkout", "--quiet", "--detach", origSHA}
+		if origBranch != "" {
+			target = []string{"checkout", "--quiet", origBranch}
+		}
+		if err := bisectGit(dir, io.Discard, target...); err != nil {
+			problems = append(problems, fmt.Sprintf("restoring HEAD failed (%v)", err))
+		}
+	}
+	head, _ := runScrubbedGit(dir, "rev-parse", "HEAD")
+	branch, _ := runScrubbedGit(dir, "symbolic-ref", "--quiet", "--short", "HEAD")
+	if bisectInProgress(dir) {
+		problems = append(problems, "a bisect is still in progress")
+	}
+	if strings.TrimSpace(head) != origSHA || strings.TrimSpace(branch) != origBranch {
+		problems = append(problems, fmt.Sprintf("HEAD is %s%s, not %s%s", factory.ShortSHA(strings.TrimSpace(head)), bisectBranchNote(strings.TrimSpace(branch)), factory.ShortSHA(origSHA), bisectBranchNote(origBranch)))
+	}
+	if len(problems) == 0 {
+		return nil
+	}
+	return fmt.Errorf("integration bisect: %s in %s; run git bisect reset by hand (and check out the starting commit %s)", strings.Join(problems, "; "), dir, factory.ShortSHA(origSHA))
+}
+
+func bisectBranchNote(branch string) string {
+	if branch == "" {
+		return " (detached)"
+	}
+	return " (" + branch + ")"
 }
 
 func runIntegrationBisect(out io.Writer, o integrationBisectOpts) error {
@@ -89,10 +156,8 @@ func runIntegrationBisect(out io.Writer, o integrationBisectOpts) error {
 	if st, _ := runScrubbedGit(top, "status", "--porcelain"); strings.TrimSpace(st) != "" {
 		return fmt.Errorf("integration bisect: refused — %s has uncommitted changes and bisect checks out other commits", top)
 	}
-	if logPath, _ := runScrubbedGit(top, "rev-parse", "--path-format=absolute", "--git-path", "BISECT_LOG"); logPath != "" {
-		if _, statErr := os.Stat(strings.TrimSpace(logPath)); statErr == nil {
-			return fmt.Errorf("integration bisect: refused — a bisect is already in progress in %s (git bisect reset ends it)", top)
-		}
+	if bisectInProgress(top) {
+		return fmt.Errorf("integration bisect: refused — a bisect is already in progress in %s (git bisect reset ends it)", top)
 	}
 	shas := map[string]string{}
 	for _, ref := range []string{o.Bad, o.Good} {
@@ -112,28 +177,46 @@ func runIntegrationBisect(out io.Writer, o integrationBisectOpts) error {
 		}
 		return nil
 	}
-	var log bytes.Buffer
-	if err := bisectGit(top, &log, start...); err != nil {
-		_, _ = fmt.Fprint(out, log.String())
-		return fmt.Errorf("integration bisect: git bisect start failed: %w", err)
+	origSHA, headErr := runScrubbedGit(top, "rev-parse", "HEAD")
+	if headErr != nil {
+		return fmt.Errorf("integration bisect: refused — cannot read HEAD of %s (%w)", top, headErr)
 	}
-	defer func() {
-		if resetErr := bisectGit(top, io.Discard, reset...); resetErr != nil {
-			_, _ = fmt.Fprintf(out, "integration bisect: WARNING git bisect reset failed (%v); run it by hand in %s\n", resetErr, top)
+	origSHA = strings.TrimSpace(origSHA)
+	origBranch, _ := runScrubbedGit(top, "symbolic-ref", "--quiet", "--short", "HEAD")
+	origBranch = strings.TrimSpace(origBranch)
+
+	var startLog bytes.Buffer
+	if err := bisectGit(top, &startLog, start...); err != nil {
+		_, _ = fmt.Fprint(out, startLog.String())
+		startErr := fmt.Errorf("integration bisect: git bisect start failed: %w", err)
+		if restoreErr := bisectRestore(top, origSHA, origBranch); restoreErr != nil {
+			return fmt.Errorf("%w; %w", startErr, restoreErr)
 		}
-	}()
-	log.Reset()
-	runErr := bisectGit(top, io.MultiWriter(&log, out), run...)
-	m := bisectFirstBadRe.FindStringSubmatch(log.String())
-	if runErr != nil || m == nil {
-		return fmt.Errorf("integration bisect: the search did not converge (the command exited >127, or the endpoints do not bracket a change)")
+		return startErr
 	}
-	subject, _ := runScrubbedGit(top, "show", "-s", "--format=%s", m[1])
+	runErr := bisectGit(top, out, run...)
+	// The culprit is read from git's own bisect log before the reset removes it.
+	var culprit string
+	if runErr == nil {
+		blog, _ := runScrubbedGit(top, "bisect", "log")
+		if m := bisectFirstBadRe.FindStringSubmatch(blog); m != nil {
+			culprit = m[1]
+		}
+	}
+	restoreErr := bisectRestore(top, origSHA, origBranch)
+	if culprit == "" {
+		notConverged := fmt.Errorf("integration bisect: the search did not converge (git bisect run aborts on exit codes 126, 127 and 128 or above, and stops short when every candidate is skipped with 125 or the endpoints do not bracket a change)")
+		if restoreErr != nil {
+			return fmt.Errorf("%w; %w", notConverged, restoreErr)
+		}
+		return notConverged
+	}
+	subject, _ := runScrubbedGit(top, "show", "-s", "--format=%s", culprit)
 	subject = strings.TrimSpace(subject)
 	card := "none in the subject (a direct commit, not a card landing)"
 	if cm := bisectCardIDRe.FindStringSubmatch(subject); cm != nil {
 		card = cm[1]
 	}
-	_, _ = fmt.Fprintf(out, "integration bisect: first bad first-parent commit %s\n  subject: %s\n  card: %s\n", factory.ShortSHA(m[1]), subject, card)
-	return nil
+	_, _ = fmt.Fprintf(out, "integration bisect: first bad first-parent commit %s\n  subject: %s\n  card: %s\n", factory.ShortSHA(culprit), subject, card)
+	return restoreErr
 }
