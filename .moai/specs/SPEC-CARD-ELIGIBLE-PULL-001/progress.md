@@ -7,6 +7,7 @@ tree: 93f4fc75c (branch WT-10-17-c)
 ## §E.1 Plan-phase Audit-Ready Signal
 
 plan_status: audit-ready
+audit_ready: true
 plan_complete_at: 2026-10-17T16:00:31Z (2026-10-18 KST)
 plan_artifacts: spec.md(7 REQ, v0.2.2) · plan.md(§A-§H, M1-M5, v0.2.2) · acceptance.md(AC-CEP-001..007, v0.2.2) · decision-index.md(Q1 판정 기록 포함)
 authored_at: 2026-10-17 (0.2.2 correction: 2026-10-18)
@@ -25,3 +26,8 @@ _<pending run-phase>_
 ## §E.4 Sync-phase Audit-Ready Signal
 
 _<pending sync-phase>_
+
+## §G Override and Refusal Record
+
+- 2026-10-17T16:07:12Z SPEC-CARD-ELIGIBLE-PULL-001 ceiling-outcome outcome=pass-through reasons="plan-audit ceiling reached (round count 2 >= tier ceiling 2 + 1 delta rounds); the verdict is admission-clean and admits without a question (REQ-ACE-013)" evidence=/Users/goos/MoAI/moai-adk-go/.moai/worktrees/t1839/.moai/reports/t1839/plan-audit-iter2.md,/Users/goos/MoAI/moai-adk-go/.moai/worktrees/t1839/.moai/reports/t1839/plan-audit.md
+- 2026-10-17T16:07:34Z SPEC-CARD-ELIGIBLE-PULL-001 ceiling-outcome outcome=pass-through reasons="plan-audit ceiling reached (round count 2 >= tier ceiling 2 + 1 delta rounds); the verdict is admission-clean and admits without a question (REQ-ACE-013)" evidence=/Users/goos/MoAI/moai-adk-go/.moai/worktrees/t1839/.moai/reports/t1839/plan-audit-iter2.md,/Users/goos/MoAI/moai-adk-go/.moai/worktrees/t1839/.moai/reports/t1839/plan-audit.md
