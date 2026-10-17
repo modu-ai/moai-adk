@@ -95,3 +95,130 @@ func TestLauncherAnchorOverrideFlagPlacement(t *testing.T) {
 		})
 	}
 }
+
+// TestLauncherAnchorSeparatorAfterNonValueOption — SPEC-LAUNCHER-ARGV-001
+// REQ-LA-005 / REQ-LA-003 (sync audit iteration 2, R1). A following `--` is the
+// VALUE of `--model`, `-m` and `--permission-mode` only in their exact
+// separate-token forms; after every other launcher-consumed form (`--model=v`,
+// `--permission-mode=v`, `-b`, `--bypass`) it is the launcher's own separator, so
+// a `--allow-card-anchor` after it belongs to the backend and is NOT an override.
+func TestLauncherAnchorSeparatorAfterNonValueOption(t *testing.T) {
+	pinSnapshotModel(t)
+
+	nonValueForms := [][]string{
+		{"--model=opus"},
+		{"--permission-mode=plan"},
+		{"-b"},
+		{"--bypass"},
+	}
+	tail := []string{allowCardAnchorFlag, "-w", "WT-card"}
+
+	// The consumption function and the view, in process.
+	t.Run("flag_after_the_launcher_separator_is_the_backends", func(t *testing.T) {
+		for _, form := range nonValueForms {
+			args := append(append(append([]string{}, form...), argSeparator), tail...)
+			rest, allowed := consumeAllowCardAnchor(args)
+			if allowed || !reflect.DeepEqual(rest, args) {
+				t.Errorf("consumeAllowCardAnchor(%q) = (%q, %v), want the argv untouched and no override", args, rest, allowed)
+			}
+			view := resolveLaunchView(rest)
+			if !reflect.DeepEqual(view.FinalArgv, tail) {
+				t.Errorf("%q: FinalArgv = %q, want the tail %q unconsumed", args, view.FinalArgv, tail)
+			}
+			if !view.Selection.Present || view.Selection.Value != "WT-card" {
+				t.Errorf("%q: selection = %+v, want -w WT-card selected", args, view.Selection)
+			}
+		}
+	})
+
+	// Through the real leader entry on both arms: the guard refuses, nothing is
+	// mutated, and no override audit row is written.
+	for _, arm := range leaderArms {
+		for _, form := range nonValueForms {
+			name := arm + "/" + form[0]
+			t.Run(name+"/refused", func(t *testing.T) {
+				fx := newLeaderFixture(t)
+				args := append(append(append([]string{"-f"}, form...), argSeparator), tail...)
+				obs := driveLeaderLaunch(t, fx, arm, args)
+				assertRefusedBeforeMutation(t, name, obs)
+				refusalNames(t, name, obs, fx.card, "WT-card")
+				if _, err := os.Stat(filepath.Join(fx.root, config.DefaultLeaderAnchorAuditRelPath)); err == nil {
+					t.Errorf("%s: an audit row exists, so the backend-side flag was recorded as an override", name)
+				}
+			})
+			// Control: the same flag standing in the LAUNCHER segment (before the
+			// separator) is the override, and is honored and recorded.
+			t.Run(name+"/control_flag_in_launcher_segment", func(t *testing.T) {
+				fx := newLeaderFixture(t)
+				args := append(append([]string{"-f"}, form...), allowCardAnchorFlag, "-w", "WT-card")
+				obs := driveLeaderLaunch(t, fx, arm, args)
+				if obs.err != nil || !obs.launched {
+					t.Fatalf("%s: override in the launcher segment: err=%v launched=%v, want a launch", name, obs.err, obs.launched)
+				}
+				if _, err := os.Stat(filepath.Join(fx.root, config.DefaultLeaderAnchorAuditRelPath)); err != nil {
+					t.Errorf("%s: no audit row for an honored override: %v", name, err)
+				}
+			})
+		}
+
+		// Control: the exact separate-token `--model` takes the `--` as its value, so
+		// the flag after it stands in the launcher segment and IS the override.
+		t.Run(arm+"/control_separator_is_the_value_of_model", func(t *testing.T) {
+			fx := newLeaderFixture(t)
+			obs := driveLeaderLaunch(t, fx, arm, []string{"-f", "--model", argSeparator, allowCardAnchorFlag, "-w", "WT-card"})
+			if obs.err != nil || !obs.launched {
+				t.Fatalf("%s: err=%v launched=%v, want the override honored", arm, obs.err, obs.launched)
+			}
+			if _, err := os.Stat(filepath.Join(fx.root, config.DefaultLeaderAnchorAuditRelPath)); err != nil {
+				t.Errorf("%s: no audit row for an honored override: %v", arm, err)
+			}
+		})
+	}
+}
+
+// TestLauncherAnchorOptionValueSpanConsistency makes "one argv, one
+// interpretation" a tested property: for every token form the launcher consumes
+// (and a few it passes through), optionValueSpan's answer to "does the following
+// `--` get taken as this option's value" equals what consumeLaunchArgs actually
+// did with that `--`, and the guard's override placement follows the same fact.
+func TestLauncherAnchorOptionValueSpanConsistency(t *testing.T) {
+	pinSnapshotModel(t)
+
+	forms := []string{
+		// every case and default-branch form consumeLaunchArgs handles
+		"-b", "--bypass", "--permission-mode", "--permission-mode=plan",
+		"-c", "--continue", "--model", "--model=opus", "-m",
+		// forms it passes through to the backend
+		"--name", "-n", "-w", "--worktree", "-p",
+	}
+	for _, tok := range forms {
+		t.Run(tok, func(t *testing.T) {
+			c := consumeLaunchArgs([]string{tok, argSeparator, "TAIL"})
+			tookSeparator := (c.ModelSet && c.Model == argSeparator) || (c.PermissionModeSet && c.PermissionMode == argSeparator)
+			want := 0
+			if tookSeparator {
+				want = 1
+			}
+			if got := optionValueSpan([]string{tok, argSeparator, "TAIL"}, 0); got != want {
+				t.Errorf("optionValueSpan(%q, --, TAIL) = %d, but consumeLaunchArgs took the separator as a value = %v (want span %d)", tok, got, tookSeparator, want)
+			}
+			// The launcher's own view of the separator: eaten as a value (the tail is
+			// the only pass-through) or dropped as the separator (the tail follows
+			// whatever the token itself passed through).
+			if n := len(c.PassThrough); n == 0 || c.PassThrough[n-1] != "TAIL" {
+				t.Errorf("consumeLaunchArgs(%q, --, TAIL).PassThrough = %q, want it to end in TAIL", tok, c.PassThrough)
+			}
+			for _, p := range c.PassThrough {
+				if p == argSeparator {
+					t.Errorf("consumeLaunchArgs(%q, --, TAIL).PassThrough = %q still carries the separator", tok, c.PassThrough)
+				}
+			}
+			// The override placement agrees: a flag right after the `--` counts only
+			// when the launcher took that `--` as a value (so the flag stands in the
+			// launcher segment).
+			if _, allowed := consumeAllowCardAnchor([]string{tok, argSeparator, allowCardAnchorFlag}); allowed != tookSeparator {
+				t.Errorf("consumeAllowCardAnchor(%q, --, flag) allowed = %v, want %v (launcher took the separator as a value = %v)", tok, allowed, tookSeparator, tookSeparator)
+			}
+		})
+	}
+}
