@@ -76,11 +76,13 @@ gofmt -l 3파일 = 0행(양쪽 모두), `go build ./internal/cli/` OK, `go vet .
 
 **관측(원인 판정 아님)**: 본 세션 임대 만료→갱신 거부→stage 수거→재임대 복구 전 과정(8859 순서 실측), lane-9 갱신 경쟁(리더 전달), lane-13 재임대 비대칭(두 시점 t1825 행 상태 차이로도 설명 가능 — 리더의 assignedHere 가설과 병립), lane-5 맨 next t1780 임대(mode 미확인).
 
-## 수정 파일 (커밋 424605284 + card-review P2 수리 34212a4be)
+## 수정 파일 (커밋 체인: 424605284 → 34212a4be → 7b2e9cd2c → 31be384b6 + 증거 docs c741e22ce·4576923e7·마감)
 
-- `internal/cli/factory_card.go` — `factorySerialSlotHeld`에 보유자 생존 조항(만료 임대는 roster pid 생존 시 유지, 부재/사망/비양수 해제 — t1407 no-wedge 보존), `factorySerialInFlightExcluding`→`(차단ID, bool)` 반환, `factoryWorkerPidAlive`(workers pid·registered_at + `factory.FactoryProcessAlive` 재사용), db 소유 호출부 2곳에서 클로저 스레딩, `factoryKeepSetRefusal` 거부문에 차단 카드·보유자 명시. **P2 수리**: 세대 판별 — 보유자 생존은 `workers.registered_at ≤ card.HeartbeatAt`(하트비트를 쓴 세대)인 경우만 인정, 레인 label 재할당(재부팅 재합류) 시 옛 보유자의 만료 임대 해제.
-- `internal/cli/factory_serial_slot_liveness_test.go`(신규) — 사례 (a) 생존 보유자 만료 임대 거부(RED 근거), (b) 자체 만료 수거 후 재임대도 대칭 거부(실제 `db.Transition` T27/T28 구동), 사망 보유자 해제 고정(roster 부재 + pid −1 + 빈 하트비트), **재등록 세대 해제**(RED 근거, round 1 P2), 차단자 명시 단언.
-- `internal/cli/factory_lane_join_guard_test.go` — 신규 서명 행렬 갱신(생존/사망 만료 임대행, 만료 시에만 판독자 호출 프로브).
+- `internal/cli/factory_card.go` — `factorySerialSlotHeld`에 보유자 생존 조항(만료 임대는 roster pid 생존 시 유지, 부재/사망/비양수 해제 — t1407 no-wedge 보존), `factorySerialInFlightExcluding`→`(차단ID, bool)` 반환, `factoryWorkerPidAlive`(workers pid·registered_at + `factory.FactoryProcessAlive` 재사용, 세대 판별 `registered_at ≤ HeartbeatAt`), db 소유 호출부 2곳 클로저 스레딩, `factoryKeepSetRefusal` 거부문 차단 카드·보유자 명시, **ignoreAssigned skip 을 순수 배정 행(HeartbeatAt 빈 값)으로 축소** + assigned-with-heartbeat 조항(F1: 만료 수거된 행도 세대 일치·pid 생존 시 점유 유지).
+- `internal/cli/factory_serial_slot_liveness_test.go`(신규) — 사례 (a) 생존 보유자 만료 임대 거부, (b) 자체 만료 수거 후 재임대 대칭 거부, 사망 보유자 해제(roster 부재·pid −1·빈 하트비트), 재등록 세대 해제, **수거 assigned 행 점유**(F1 RED), **재배정 행 하트비트 클리어**(F4 RED, 자기참조 웨징 `holder lane-1` 재현), 차단자 명시 단언.
+- `internal/cli/factory_lane_join_guard_test.go` — 신규 서명 행렬 갱신(생존/사망/assigned-with-heartbeat 행, 판독자 호출 프로브).
+- `internal/homestate/card_reassign.go` — **재배정 시 이전 보유자 HeartbeatAt 클리어**(F4 수리; 소비자 열거 선행 — 의존 소비자 없음 확인) + `card_reassign_test.go` 단언 핀.
+- sync-audit 경위: round 1 FAIL(F1 P1 — 타 레인 stage 수거 우회, 카드 정본 t1821-b 재현) → 3차 수리 → round 2 FAIL(F4 P2 — 재배정 하트비트 유지 회귀, 이번 델타 도입) → 4차 수리 → **round 3 PASS-WITH-DEBT**(codex 필수 게이트 pass, 부채 5 비차단: stage-ownership 리더 후속·커버리지/-race 미측정(부하)·게이트 도구 빌드 시차·pid 재사용 한계·docs 커밋). 판정 파일 `.moai/reports/t1828/sync-audit-cold.md`(round 1/1b/2/2b/3/3b 전체 기록).
 
 새 상수·스키마·설정 키 없음. 범위: internal/cli 3파일 + 본 보고서.
 

@@ -2,6 +2,9 @@
 
 - round 1: 2026-10-17 12:5xZ · backend codex · base `93f4fc75c` · tree `/Users/goos/MoAI/moai-adk-go/.moai/worktrees/t1828` · verdict **fail**(advisory) — P2 1건
 - round 1 수리: 커밋 `34212a4be` — RED 양방향(재등록 세대 오거부·빈 하트비트 오거부) 재현 후 세대 판별(registered_at ≤ HeartbeatAt + pid 생존) GREEN. 레인 독립 재실행: TestFactoryNextLeasesBehindExpiredLeaseOfReRegisteredHolder PASS 1.55s(ok 2.535s).
+  - RED verbatim(수리 전, `go test ./internal/cli/ -run TestFactoryNextLeasesBehindExpiredLeaseOfReRegisteredHolder -count=1`): `--- FAIL: TestFactoryNextLeasesBehindExpiredLeaseOfReRegisteredHolder (1.64s)` / `factory_serial_slot_liveness_test.go:165: factory next refused behind an expired lease whose holder is dead: factory next: refused serial-slot: another serial card is in flight and holds the serial slot: t1 (holder lane-2)` / `FAIL github.com/modu-ai/moai-adk/internal/cli 2.587s`
+  - RED verbatim(빈 하트비트 하위시험, `-run TestFactoryNextLeasesBehindExpiredLeaseWithDeadHolder`): `--- FAIL: TestFactoryNextLeasesBehindExpiredLeaseWithDeadHolder/empty_heartbeat (1.36s)` / 동일 거부 문구 / `FAIL github.com/modu-ai/moai-adk/internal/cli 6.179s`
+  - GREEN: TestAutoLaneCycle `ok 56.365s` · TestFactorySerialSlotHeld `ok 1.085s` · 신규 4종 `ok 2.5-10.9s` (sync-audit F2 보강, 10-18)
 - round 2: 2026-10-17 13:0xZ · backend codex · 동일 base/scope/card diff(424605284+34212a4be) · verdict **pass** — 결함 0건("변경 코드 정적 검토에서 수정이 필요한 결함을 발견하지 못했어")
 
 ## Round 1 — P2: 재사용된 레인 이름을 이전 임대 보유자로 오인 (factory_card.go:326)
