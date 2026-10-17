@@ -101,7 +101,7 @@ Not probed, and why: AC-RRG-002 (the hook that makes the placement observable do
 
 Counts: 7 requirements and 8 acceptance criteria (Tier M ceilings 16 and 16). Release-blocking, each with an attached RED-now cell (P1-P5 and E1, E2): AC-RRG-001, 002, 003, 004, 005, 006 (six). High: AC-RRG-007. Regression guard: AC-RRG-008 (one).
 
-Requirement-to-criterion map: REQ-RRG-001 -> AC-001, AC-002; REQ-RRG-002 -> AC-003; REQ-RRG-003 -> AC-004; REQ-RRG-004 -> AC-005; REQ-RRG-005 -> AC-006; REQ-RRG-006 -> AC-007; REQ-RRG-007 -> AC-005, AC-008.
+Requirement-to-criterion map: REQ-RRG-001 -> AC-001 [REF], AC-002 [REF]; REQ-RRG-002 -> AC-003 [REF]; REQ-RRG-003 -> AC-004 [REF]; REQ-RRG-004 -> AC-005 [REF]; REQ-RRG-005 -> AC-006 [REF]; REQ-RRG-006 -> AC-007 [REF]; REQ-RRG-007 -> AC-005 [REF], AC-008 [REF].
 
 ## Edge cases
 

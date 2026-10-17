@@ -24,6 +24,7 @@ audit_ready: true
 - Sentences re-checked for consistency with the new order and left unchanged: REQ-RRG-001 and REQ-RRG-002 (the owner gate still precedes the card read; "no row changed" stays true because the stamp check refuses before the flip), AC-RRG-002 (the hook still fires right after the in-transaction `SELECT`, after the stamp check), plan §C.1 (hook placement), plan §C.3 (the printed classification now always belongs to a still-unchanged owner).
 - Repair-time lint: `moai spec lint --strict` on spec.md under the installed build and the tree-built binary, see the repair commit.
 - Iteration 2: PASS 0.94 (.moai/reports/t1852/plan-audit-iter2.md, audited commit 9d171631a, plan_artifact_hash 0e68a9981361c7a407aa050f25c1614940ffd9cd07b668c04e2b17d1fd2e5110, codex receipt rcpt-dfdb489c540acf07a44604ff).
+- Post-PASS edit (sync phase): acceptance.md was edited after the plan-audit PASS (audited commit 9d171631a, plan_artifact_hash 0e68a998…5110) only to add eight reserved `[REF]` tokens after the shorthand AC ids on the Requirement-to-criterion map line, for the CHANGELOG AC counter (live=8 excluded=8 ambiguous=0); no semantic change. The factory plan-hash check ran at T7/T8a before this edit.
 
 ## §E.2 Run-phase Evidence
 
