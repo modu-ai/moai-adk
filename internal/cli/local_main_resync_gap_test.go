@@ -52,15 +52,28 @@ func TestLocalMainResyncRivalTakeoverBeforeFastForwardCannotLand(t *testing.T) {
 	}
 }
 
-// TestLocalMainResyncRivalTakeoverDuringRevalidateCannotLand pins that the re-validation
-// and the fast-forward share ONE unbroken mutation section (card t1670, sync-audit F1 of
-// iterations 1 and 2). It must fail for two regressions: the re-validation moved out of
-// the section (mutant A), and the re-validation and the move split into two sections
-// (mutant B, which re-opens the gap between the sections).
+// TestLocalMainResyncRivalTakeoverDuringRevalidateCannotLand pins that the ownership read,
+// the rest of the re-validation, and the fast-forward share ONE unbroken mutation section
+// (card t1670, sync-audit F1 of iterations 1 to 3). With its pair below, it must fail for
+// every regression the audits built: the re-validation moved out of the section (mutant
+// A), the re-validation and the move split into two sections (mutant B), the re-validation
+// result computed before the section and only checked inside it (mutant C), only the
+// ownership read hoisted out of the section (mutant D), and the move run after the section
+// (mutant E).
 //
-// Two signals, one of them deterministic.
+// It is one half of a pair: TestLocalMainResyncRivalTakeoverBeforeFastForwardCannotLand
+// attempts the same synchronous takeover right before the fast-forward and is the
+// deterministic catch for mutant E. This test is the deterministic catch for A to D.
 //
-//  1. A rival in a goroutine, started from the end of a successful re-validation, keeps
+// Three signals, two of them deterministic.
+//
+//  1. The read probe. From the localMainResyncReadWindow seam, which wraps the real
+//     ownership read, a rival --force takeover attempted synchronously right after the read
+//     must be refused as lock-busy (factory.IsIntegrationLockBusy). The probe is tied to the
+//     read itself, so it follows the read wherever a regression moves it: a read outside the
+//     section lets the takeover land (mutants A, C and D). Inside the section the probe waits
+//     out the mutation lock's whole retry budget before it comes back busy.
+//  2. A rival in a goroutine, started from the end of a successful re-validation, keeps
 //     attempting the --force takeover and records primary's HEAD when an attempt lands.
 //     A takeover that lands while HEAD is still the pre-fast-forward commit is the defect.
 //     This signal is timing-dependent for mutant B: the mutation lock is a polled
@@ -68,7 +81,7 @@ func TestLocalMainResyncRivalTakeoverBeforeFastForwardCannotLand(t *testing.T) {
 //     re-takes the lock for section 2 microseconds later while the rival is usually
 //     asleep between polls. It is kept because it is the real-world failure, not because
 //     it is reliable.
-//  2. The deterministic tripwire. Every acquisition of the mutation lock rewrites the lock
+//  3. The deterministic tripwire. Every acquisition of the mutation lock rewrites the lock
 //     artifact with a fresh owner record (ftruncate + write on Unix, create-new on
 //     Windows); a contender that loses the lock writes nothing. The seam plants a record
 //     no acquisition can produce (created_at 1970-01-01) into the artifact, and the
@@ -97,6 +110,23 @@ func TestLocalMainResyncRivalTakeoverDuringRevalidateCannotLand(t *testing.T) {
 		got, err := os.ReadFile(lockPath)
 		return err == nil && bytes.Equal(got, tripwire)
 	}
+	rivalRecord := func(repoRoot string) factory.IntegrationLock {
+		return factory.IntegrationLock{
+			SessionID:    lmfRival,
+			SessionName:  "lane-rival",
+			PID:          os.Getpid(),
+			PIDSource:    factory.PIDSourceSessionOwner,
+			Branch:       localMainResyncBranch,
+			BranchSource: factory.BranchSourceConfig,
+			Worktree:     repoRoot,
+		}
+	}
+	// probeSection attempts one synchronous rival takeover. Inside the mutation section it
+	// waits out the lock's retry budget and comes back lock-busy; outside it, it lands.
+	probeSection := func(repoRoot string) error {
+		_, err := factory.AcquireIntegrationLock(repoRoot, rivalRecord(repoRoot), true)
+		return err
+	}
 
 	type landing struct {
 		head    string
@@ -117,6 +147,17 @@ func TestLocalMainResyncRivalTakeoverDuringRevalidateCannotLand(t *testing.T) {
 
 	attempted, moveSeen, intactAtMove := false, false, false
 	var plantErr error
+	readProbed := false
+	var readProbeErr error
+	prevRead := localMainResyncReadWindow
+	localMainResyncReadWindow = func(repoRoot string) (*factory.IntegrationLock, error) {
+		lock, err := prevRead(repoRoot)
+		if !readProbed {
+			readProbed = true
+			readProbeErr = probeSection(repoRoot)
+		}
+		return lock, err
+	}
 	prevAfter := localMainResyncAfterRevalidate
 	localMainResyncAfterRevalidate = func(repoRoot string) {
 		attempted = true
@@ -124,15 +165,7 @@ func TestLocalMainResyncRivalTakeoverDuringRevalidateCannotLand(t *testing.T) {
 		wg.Add(1)
 		go func() {
 			defer wg.Done()
-			rival := factory.IntegrationLock{
-				SessionID:    lmfRival,
-				SessionName:  "lane-rival",
-				PID:          os.Getpid(),
-				PIDSource:    factory.PIDSourceSessionOwner,
-				Branch:       localMainResyncBranch,
-				BranchSource: factory.BranchSourceConfig,
-				Worktree:     repoRoot,
-			}
+			rival := rivalRecord(repoRoot)
 			// Bounded: the deadline and the stop channel both end the loop, and halt joins it.
 			deadline := time.Now().Add(30 * time.Second)
 			for time.Now().Before(deadline) {
@@ -157,6 +190,7 @@ func TestLocalMainResyncRivalTakeoverDuringRevalidateCannotLand(t *testing.T) {
 		intactAtMove = tripwireIntact()
 	}
 	t.Cleanup(func() {
+		localMainResyncReadWindow = prevRead
 		localMainResyncAfterRevalidate = prevAfter
 		localMainResyncBeforeFastForward = prevBefore
 	})
@@ -172,6 +206,12 @@ func TestLocalMainResyncRivalTakeoverDuringRevalidateCannotLand(t *testing.T) {
 	}
 	if tripwireIntact() {
 		t.Fatalf("positive control: the tripwire survived the window release, so an acquisition of the mutation lock no longer rewrites %s and this test cannot see a split section", lockPath)
+	}
+	if !readProbed {
+		t.Fatalf("the ownership read seam localMainResyncReadWindow never ran (re-sync err = %v): the re-validation no longer reads the window through it, so the read's placement is unobserved", err)
+	}
+	if !factory.IsIntegrationLockBusy(readProbeErr) {
+		t.Errorf("a rival --force takeover right after the ownership read was not refused as lock-busy (got %v; re-sync err = %v): the ownership read ran outside the mutation section", readProbeErr, err)
 	}
 	if !intactAtMove {
 		t.Errorf("the mutation lock was acquired between the ownership re-check and the fast-forward (re-sync err = %v): the re-validation and the move do not share one unbroken mutation section", err)
