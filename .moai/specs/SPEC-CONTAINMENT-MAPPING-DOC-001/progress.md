@@ -264,9 +264,9 @@ E10 is re-run after the evidence commit and reported in the hand-off message, be
 - AC-CMM-013: the volume figures and the post-merge-testing conclusion are attributed to the source in the scale paragraph and in rows 8 and 10; the document states that no adoption is recommended. Self-read only. Needs the sync audit's read.
 - AC-CMM-014: each defense cell was written from the section named in it and paraphrases; a reviewer compares the cells with the cited sections. The marker-token check cannot see a paraphrased restatement. Needs the sync audit's read.
 
-### E.2.6 Status transition not performed
+### E.2.6 Status transition
 
-The `draft -> in-progress` edit to `spec.md` frontmatter was not made. `internal/runtime/audit_cache.go` `planArtifactNames` includes `spec.md` and `ComputeHash` reads each file as exact bytes (`os.ReadFile`, line 126 at this tree), so any `spec.md` edit changes the plan-artifact hash that the passed plan audit is bound to. `spec.md`, `plan.md`, and `acceptance.md` are untouched by this run; the status stays `draft` until the orchestrator decides how to handle the hash binding.
+The `draft -> in-progress` edit to `spec.md` frontmatter was performed after this evidence was first written, in commit `1fdf0c796` (`status: in-progress`, read back with `git show 1fdf0c796:.moai/specs/SPEC-CONTAINMENT-MAPPING-DOC-001/spec.md`). The sync phase then moved `status` to `completed` in commit `d8f8b1196`, and its `sync_commit_sha` was backfilled in `f328a444d`. `internal/runtime/audit_cache.go` `planArtifactNames` includes `spec.md` and `ComputeHash` reads each file as exact bytes (`os.ReadFile`, line 126 at the tree this evidence was first written on), so any `spec.md` status edit changes the plan-artifact hash that the passed plan audit is bound to; that is inherent to the transition. When the run-phase evidence commit `d2f90c152` was made, `spec.md`, `plan.md`, and `acceptance.md` were still untouched and the status was `draft`.
 
 ### E.2.7 Gaps and residual risk
 
@@ -281,7 +281,7 @@ The `draft -> in-progress` edit to `spec.md` frontmatter was not made. `internal
 
 ## §E.3 Run-phase Audit-Ready Signal
 
-run_complete_at: pending-backfill (a record cannot cite its own commit time here)
+run_complete_at: 2026-10-17T21:58:12+09:00 (commit time of the last run-phase commit, `1fdf0c796`, from `git log -1 --format=%cI 1fdf0c796`)
 run_commit_sha: 5e3902e27 (document commit; the evidence commit carrying this section is reported in the hand-off message)
 run_status: audit-ready
 ac_pass_count: 9 of 9 mechanical criteria (AC-CMM-001 to 009) plus AC-CMM-010 at the tip (E10a exit 0, E10b empty)
@@ -294,7 +294,7 @@ new_warnings_or_lints_introduced: not measured (no lint or build run; documentat
 cross_platform_build: not applicable (no Go code changed)
 total_run_phase_files: 1 deliverable (`.moai/docs/multi-agent-containment-mapping.md`) plus this progress file
 m1_to_mN_commit_strategy: document first (one commit, `5e3902e27`), then this evidence in a second commit
-spec_status_transition: not performed (see E.2.6)
+spec_status_transition: draft -> in-progress performed in `1fdf0c796`; in-progress -> completed performed by the sync phase in `d8f8b1196` (see E.2.6)
 
 ## §E.4 Sync-phase Audit-Ready Signal
 
