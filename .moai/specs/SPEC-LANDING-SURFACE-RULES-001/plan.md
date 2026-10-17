@@ -1,6 +1,6 @@
 # SPEC-LANDING-SURFACE-RULES-001 — Plan (card t1846)
 
-Scope: guidance only (items A, B-guidance, E-guidance). Priority labels only; milestones are ordered by decision reversibility, the decisions most likely to change first. Every file:line and count below comes from a command run in this tree at HEAD `7faf75fdfbe27e442ea2c17a1a90caf5792d09e6` (acceptance.md ledger G0); the ledger ids G1-G9 and L1-L7 are in acceptance.md §E.
+Scope: guidance only (items A, B-guidance, E-guidance). Priority labels only; milestones are ordered by decision reversibility, the decisions most likely to change first. Every file:line and count below comes from a command run in this tree at HEAD `7faf75fdfbe27e442ea2c17a1a90caf5792d09e6` (acceptance.md ledger G0); the ledger ids G0-G11 and L1-L7 are in acceptance.md §E.
 
 ## §A — Tier classification and design against the recurring defect classes
 

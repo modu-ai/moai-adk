@@ -19,7 +19,7 @@ related_specs:
 
 # SPEC-LANDING-SURFACE-RULES-001 (card t1846)
 
-Card: **t1846** (Class C, plan -> run -> sync; operator delegation 2026-10-17; split 1 of 2 of the abandoned card t1830). Sibling cards: **t1847** (split 2 of 2, the mechanical half, ordered after this card; its SPEC id SPEC-LANDING-SURFACE-MECH-001 is a **forward reference** — no such directory exists in this tree until t1847 plans) and **t1831** (the workflow name; the order against this card is requested here, not recorded on the t1831 card — see §A.5). Evidence ledger ids (G0-G8, L1-L5) are defined in acceptance.md §E; every figure below was produced by a command run in the card tree at HEAD `7faf75fdfbe27e442ea2c17a1a90caf5792d09e6` (ledger G0).
+Card: **t1846** (Class C, plan -> run -> sync; operator delegation 2026-10-17; split 1 of 2 of the abandoned card t1830). Sibling cards: **t1847** (split 2 of 2, the mechanical half, ordered after this card; its SPEC id SPEC-LANDING-SURFACE-MECH-001 is a **forward reference** — no such directory exists in this tree until t1847 plans) and **t1831** (the workflow name; the order against this card is requested here, not recorded on the t1831 card — see §A.5). Evidence ledger ids (G0-G11, L1-L7) are defined in acceptance.md §E; every figure below was produced by a command run in the card tree at HEAD `7faf75fdfbe27e442ea2c17a1a90caf5792d09e6` (ledger G0).
 
 ## HISTORY
 
