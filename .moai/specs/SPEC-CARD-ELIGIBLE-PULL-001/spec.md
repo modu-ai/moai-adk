@@ -1,7 +1,7 @@
 ---
 id: SPEC-CARD-ELIGIBLE-PULL-001
 title: "카드 자격 임대 — bare `factory next` 제네릭 암 (b)/(b2)에 자격 게이트·self-dispatch 플래그·구조화 거부 도입"
-version: "0.2.0"
+version: "0.2.1"
 status: draft
 created: 2026-10-17
 updated: 2026-10-17
@@ -22,6 +22,7 @@ tags: "factory-next, eligibility, self-dispatch, card-selection, structured-refu
 |---------|------|--------|--------|
 | 0.1.0 | 2026-10-17 | manager-spec | 초기 플랜 페이스 초안(카드 t1839). 사고 t1780(2026-10-17): bare `moai factory next`를 실행한 레인이 다른 소비자를 기다리던 무관한 운영자 픽 카드를 임대 — 제네릭 암 (b)/(b2)에 관련성·자격 게이트가 없는 것이 원인. 운영자 위임 설계(카드 t1839 본문)를 GEARS REQ로 고정. 플래그 OFF 의미가 카드 본문에서 두 서술로 양립 불가하여 decision-index.md Q1으로 회부. |
 | 0.2.0 | 2026-10-17 | manager-spec | Q1 해결 반영 — 레인 결정 사다리(디스크 증거 결정적; board/jev 불필요)가 해석 (ii)(플래그 = 정책 노브·킬스위치)로 판정: 카드 본문의 대우(자기 배정이 아닌 카드는 자가 배차 설정이 켜진 경우에만 임대 ⇒ OFF ⇒ 제네릭 암 무임대)와 리더 설계 문서 원칙 7 + §3 목표 표("generic arms only behind explicit eligibility filter (or removed)"). 해석 (i)의 닻("기존 테스트 무수정 GREEN")은 스폰 프롬프트 유래로 철회됨. decided_by: lane-17(tn1p4e 무인 위임, 리더 통보). REQ-CEP-001/002/004/006 재작성(OFF = 암 (b)/(b2) 무소유 카드 완전 휴면·조용한 스킵; ON = 자격 게이트 뒤 활성), AC-CEP-001 교체, 기존 무게이트 임대 고정 테스트의 의도적 갱신 정책(RED-first) plan.md §D에 명시. REQ/AC 총수 불변(7/7). |
+| 0.2.1 | 2026-10-17 | manager-spec | plan-audit 1차 판정 FAIL(종합 0.83 — 스코어는 Tier M 통과선 0.80 초과, FAIL은 방화벽 동작: MP-9 순서 충돌 + codex 필수 백엔드 fail, receipt `rcpt-8b1c74f7dbede113c4974ecf`, 판정 파일 `.moai/reports/t1839/plan-audit.md`)의 결함 6건 수리. D1(치명): 게이트의 hold 마커 운반체를 상태 독립 `autoRankHoldMarked`(`todo_auto_rank.go:150`)로 교체 — `factoryQueuedHoldMarked`는 Queued 조건부라 picked 후보에 발화 불가; AC-CEP-002 (iii)에 picked+hold-marker 픽스처(no-lease + `refused hold-marker:` 라인) 확장. D2: 파일 범위에 `mcp_factory_card.go`(+`mcp_factory_msg_test.go`) 추가 + 양 표면 공유 거부 결과 경로 계획. D3(MP-9): AC-CEP-007의 RED+GREEN을 M1 RED-first 주기로 이동(M2 목록에서 제외), AC-CEP-003의 RED 셀을 M1 진입 관찰(기저 핀 회귀 수호 겸)·픽스처는 룰-페어링으로 재분류, E7 증거 사슬을 기준별 RED→GREEN 순서로 수정. D4: plan §C.1 상수 HEAD 핀을 진입 시 재계산 규칙으로 교체. D5: anchored `^…$` 셀렉터 전 명령 인라인 + 셀렉터 없는 internal/cli 전체 실행을 heavy run(슬롯 리스 `go-test-heavy` 규칙)으로 명시. D6: 롤아웃 노트(t1240 self-dispatch 배포는 `self_dispatch: true` 설정 필요 — 활성화 주체: 해당 배포 운영자/리더). Q1 (ii) 의미·설정 키·토큰 집합·Tier·감사 통과 항목은 불변. REQ/AC 총수 불변(7/7). |
 
 ## §A Problem
 

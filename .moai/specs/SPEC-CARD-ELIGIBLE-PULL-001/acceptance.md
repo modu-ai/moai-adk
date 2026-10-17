@@ -1,7 +1,7 @@
 ---
 id: SPEC-CARD-ELIGIBLE-PULL-001
 title: "인수 기준 — 플래그 OFF 휴면, 자격 게이트 5조건, 구조화 거부"
-version: "0.2.0"
+version: "0.2.1"
 created: 2026-10-17
 updated: 2026-10-17
 author: manager-spec
@@ -14,9 +14,9 @@ tier: M
 
 모든 기준은 두 셀(verification-completeness §2)으로 채택한다. 이 SPEC은 플랜 페이스 문서만 작성하므로(카드 t1839: 코드·테스트·설정 변경 금지) 이 문서는 **관찰이 아니라 셀 계획**을 기록한다 — 관찰되지 않은 출력을 적지 않는다.
 
-- **신규 계층**(AC-CEP-001..007): RED-now 셀은 run phase가 **먼저** 작성하는 RED 테스트가 된다(카드 배달 제약: RED first). AC-CEP-001(플래그 OFF 휴면)도 이제 정당한 RED 기준이다 — 현 트리는 게이트 없이 (b)/(b2)가 무소유 카드를 임대하므로 무임대 주장이 현 코드에서 빨갛다. 단 AC-CEP-001의 배정·자기 번들·암 (c) 대조 셀과 AC-CEP-004의 대조 셀은 preserved(무변경 경로 — 현행 GREEN 유지)로 취급한다. 각 RED 셀은 "현 트리에서 왜 빨간가"를 서술하며, RED 관찰(명령·출력·종료 코드·트리 SHA)은 run phase가 verbatim으로 `progress.md` §E.2에 기록한다.
+- **신규 계층**(AC-CEP-001..007): RED-now 셀은 run phase가 **먼저** 작성하는 RED 테스트가 된다(카드 배달 제약: RED first). AC-CEP-001(플래그 OFF 휴면)도 이제 정당한 RED 기준이다 — 현 트리는 게이트 없이 (b)/(b2)가 무소유 카드를 임대하므로 무임대 주장이 현 코드에서 빨갛다. 단 AC-CEP-001의 배정·자기 번들·암 (c) 대조 셀과 AC-CEP-004의 대조 셀은 preserved(무변경 경로 — 현행 GREEN 유지)로 취급한다. 각 RED 셀은 "현 트리에서 왜 빨간가"를 서술하며, RED 관찰(명령·출력·종료 코드·트리 SHA)은 run phase가 verbatim으로 `progress.md` §E.2에 기록한다. 기준별 RED→GREEN 순서(D3): AC-CEP-007은 M1 안의 RED-first 주기(키 부재 트리에서 defaults RED 관찰 → 구현 → GREEN); AC-CEP-003의 RED-now 관찰은 M1 진입 시점(구현 전, 기저 커밋 핀) — 게이트 도입 뒤에는 그 전제를 RED로 관찰할 수 없다(회귀 수호 핀을 겸함); 나머지(001/002/004/005/006)의 RED는 M2에서 관찰한다.
 - **기존 테스트 갱신 정책(plan.md §D와 동일 문면).** 기존 (b)/(b2)의 무게이트 임대를 고정하던 테스트는 **의도적으로 갱신**한다 — RED-first: 기대를 뒤집어 현 코드에서 RED를 관찰한 뒤 구현이 GREEN으로 만든다. 무관 경로(암 (a)/(b-priority)/(c))의 기존 테스트는 무수정이다.
-- 기준 이행의 검증 주체는 다음 명령군이다(셀렉터는 run phase가 anchored `^…$` 형태로 확정해 인용한다): factory-next 선택 계열의 `go test ./internal/cli/ -count=1 -v`, defaults/workflow 키 계열의 `go test ./internal/config/ -count=1 -v`, `go vet ./internal/cli/ ./internal/config/`, `golangci-lint run ./internal/cli/... ./internal/config/...`.
+- 기준 이행의 검증 주체는 다음 명령군이다 — 모든 `-run` 셀렉터는 명령 문자열 안에 모든 분기에서 앵커된 `^…$` 형태로 인라인된다(plan §C.2 (a)): `go test ./internal/cli/ -run '^TestFactoryEligiblePull…$' -count=1 -v`, `go test ./internal/config/ -run '^TestWorkflowFactorySelfDispatchDefault$' -count=1 -v`, `go vet ./internal/cli/ ./internal/config/`, `golangci-lint run ./internal/cli/... ./internal/config/...`. 셀렉터 없는 `internal/cli` 패키지 전체 실행은 heavy run이므로 리더의 슬롯 리스 규칙(`moai slot acquire --resource go-test-heavy`; gitflow-lane-protocol §8, 2026-10-17 기계 부하 50-60)하에서만 허용된다.
 
 ## §B 인수 기준(Given-When-Then)
 
@@ -32,7 +32,7 @@ maps REQ-CEP-001
 
 maps REQ-CEP-002, REQ-CEP-003
 
-- **Given** 플래그 ON. 무소유 picked 후보가 다음 중 **하나만** 결려 있다: (i) 큐 항목이 없거나 picked가 아니다(not-admitted); (ii) 유효 분류가 Class C인데 spec 식별자가 row·큐 힌트 어디에도 없다(spec-missing); (iii) hold 상태 또는 hold 마커(held/hold-marker); (iv) `after` 선행이 로컬 미병합이거나 hub 경로 공유자가 미병합이다(predecessor-unmerged); (v) serial 모드인데 직렬 슬롯이 다른 카드에 붙잡혀 있다(serial-slot). **When** bare `moai factory next`를 실행한다. **Then** 그 후보를 임대하지 않고, 응답에 해당 토큰의 `refused` 라인이 남는다.
+- **Given** 플래그 ON. 무소유 picked 후보가 다음 중 **하나만** 결려 있다: (i) 큐 항목이 없거나 picked가 아니다(not-admitted); (ii) 유효 분류가 Class C인데 spec 식별자가 row·큐 힌트 어디에도 없다(spec-missing); (iii) hold 상태(`held`) 또는 **picked 상태 + hold 마커** — 카드 텍스트가 hold 마커로 시작, 상태 독립 술어 `autoRankHoldMarked`(`internal/cli/todo_auto_rank.go:150`) 경유(`hold-marker`; `factoryQueuedHoldMarked`는 Queued 조건부라 이 picked+마커 조합을 잡지 못한다 — 픽스처는 반드시 picked+마커 조합으로 짠다); (iv) `after` 선행이 로컬 미병합이거나 hub 경로 공유자가 미병합이다(predecessor-unmerged); (v) serial 모드인데 직렬 슬롯이 다른 카드에 붙잡혀 있다(serial-slot). **When** bare `moai factory next`를 실행한다. **Then** 그 후보를 임대하지 않고, 응답에 해당 토큰의 `refused` 라인이 남는다((iii)의 picked+마커 픽스처는 no-lease + `refused hold-marker:` 라인을 주장한다).
 - RED-now 셀 계획(각 셀): RED 테스트가 먼저 작성된다 — 현 트리는 게이트가 없어 (i)~(v) 셀에서 임대가 일어나거나(예: hold 마커·Class C 무spec 후보가 (b)/(b2)로 임대), 임대가 안 일어나도 사유 라인이 없어 라인 주장이 실패한다.
 - Green path: M2(RED 확정) → M3(게이트) → M4(표면).
 
@@ -41,8 +41,8 @@ maps REQ-CEP-002, REQ-CEP-003
 maps REQ-CEP-002, REQ-CEP-003
 
 - **Given** 플래그 ON. 무소유 picked 후보가 5조건 전부를 만족한다(admitted·spec 있는 Class C 또는 Class C 아님·hold 아님·의존성 충족·parallel 모드이거나 슬롯 비어 있음). **When** bare `factory next`를 실행한다. **Then** 후보는 암 (b)/(b2) 경유로 오늘과 같은 절차로 정상 임대된다 — 게이트는 적격 카드를 막지 않는다.
-- RED-now 셀 계획: ON에서 암 활성 + 임대 성립을 고정하는 명세 셀 — 현 트리에는 플래그가 없어 "ON" 전제 자체가 성립하지 않는다.
-- Green path: M3.
+- RED-now 셀 계획(D3): 이 기준의 RED 전제(무게이트 암이 적격 후보를 임대한다)는 게이트 도입 **전에만** 관찰 가능하다 — 관찰은 **M1 진입 시점**(구현 전 트리)에 수행해 기저 커밋 핀과 함께 §E.2에 기록하며, 이 관찰이 회귀 수호 핀을 겸한다(two-cell discipline의 regression-guard 분류). 픽스처 자체는 M2에서 **룰-페어링**(verification-completeness §2)으로 짠다 — 같은 픽스처 안에 적격 후보(임대 주장)와 실격 형제(거부 라인 주장)를 함께 두어 과차단·과통과 양방향 뮤턴트에 저항한다.
+- Green path: M3(게이트가 적격 임대를 막지 않음).
 
 ### AC-CEP-004 — 배정·번들·승격 경로 면역(플래그 양상 모두)
 
@@ -64,7 +64,7 @@ maps REQ-CEP-006
 
 maps REQ-CEP-005
 
-- **Given** 플래그 ON, 게이트가 후보를 넘겼고 그 패스가 아무 카드도 임대하지 못했다. **When** 응답 텍스트를 plan.md §D의 문법으로 파싱한다. **Then** (1) 첫 줄은 기존 `no card is available`(또는 기존 hold 안내 줄)을 유지하고, (2) 게이트 실격 후보마다 정확히 한 줄의 `refused <token>: <detail>`이 따르고(detail은 카드 id 포함, 한 줄), (3) 모든 토큰이 닫힌 집합 `not-admitted|spec-missing|held|hold-marker|predecessor-unmerged|serial-slot`에 속하며, (4) exit code는 3을 유지하고, (5) cobra verb 출력과 MCP 도구 출력이 같은 텍스트를 낸다. 플래그 OFF의 스킵은 사유 라인을 내지 않는다(REQ-CEP-001의 조용한 스킵 — 평가가 없으므로 사유도 없다).
+- **Given** 플래그 ON, 게이트가 후보를 넘겼고 그 패스가 아무 카드도 임대하지 못했다. **When** 응답 텍스트를 plan.md §D의 문법으로 파싱한다. **Then** (1) 첫 줄은 기존 `no card is available`(또는 기존 hold 안내 줄)을 유지하고, (2) 게이트 실격 후보마다 정확히 한 줄의 `refused <token>: <detail>`이 따르고(detail은 카드 id 포함, 한 줄), (3) 모든 토큰이 닫힌 집합 `not-admitted|spec-missing|held|hold-marker|predecessor-unmerged|serial-slot`에 속하며, (4) exit code는 3을 유지하고, (5) cobra verb 출력과 MCP 도구 출력이 **하나의 공유 거부 결과 소스에서 렌더된 같은 텍스트**를 낸다(plan §D 공유 거부 결과 경로 — `mcp_factory_card.go:187`의 자체 고정 텍스트 지점 포함). 플래그 OFF의 스킵은 사유 라인을 내지 않는다(REQ-CEP-001의 조용한 스킵 — 평가가 없으므로 사유도 없다).
 - RED-now 셀 계획: 문법 파싱 셀 — 현 트리의 no-card 응답(`factory_card.go:1775-1776`)에는 사유 라인이 없어 파서가 0줄을 고르고 기준이 실패한다.
 - Green path: M4.
 
@@ -73,8 +73,8 @@ maps REQ-CEP-005
 maps REQ-CEP-007
 
 - **Given** 아무것도 설정하지 않은 배포. **When** 설정을 로드한다. **Then** `workflow.factory.self_dispatch`는 false로 읽히고, repo `.moai/config/sections/workflow.yaml`과 템플릿 `internal/template/templates/.moai/config/sections/workflow.yaml` 양쪽에 키가 같은 기본값 false로 존재하며, `internal/config/defaults.go`의 코드 기본값도 false다. 같은 의미의 다른 키는 존재하지 않는다.
-- RED-now 셀 계획: defaults 테스트(`internal/config/defaults_test.go`의 `Workflow.BranchGuard.Enabled` 패턴 준용) — 현 트리에는 키가 없어 false 주장이 컴파일/조회 단계에서 실패한다.
-- Green path: M1.
+- RED-now 셀 계획(D3 — M1 안의 RED-first 주기): defaults 테스트(`TestWorkflowFactorySelfDispatchDefault`, `internal/config/defaults_test.go`의 `Workflow.BranchGuard.Enabled` 패턴 준용)를 **먼저** 작성해 키 부재 트리에서 RED를 관찰한 뒤(컴파일/조회 실패), 구현이 GREEN으로 만든다 — 이 기준의 RED와 GREEN이 모두 M1 안에서 닫힌다(M2의 RED 목록에 없다).
+- Green path: M1(RED-first 주기 내).
 
 ## §C 품질 게이트·완료 정의(DoD)
 
