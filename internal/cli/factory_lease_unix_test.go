@@ -641,7 +641,8 @@ const (
 
 // flMarkWatch returns the getter of the instant the drift-log reconcile mark of the
 // run's card-worktree record write is set: the first read that finds no unreconciled
-// entry of the run (AC-FAL-015 (vii), as amended by decision d-20261015T070825Z-6cf7).
+// entry of the run (AC-FAL-015 (vii), as amended by decisions d-20261015T074309Z-fb83 and
+// d-20261015T074756Z-e04f).
 // The mark is set in the write's settle step, after the write's commit and after the
 // drift-log lock wait. The record commit that makes the card's worktree path visible
 // comes before that wait, so the path cannot mark the end of the interval. The watch

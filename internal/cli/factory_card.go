@@ -1643,11 +1643,6 @@ func newFactoryNextCommand() *cobra.Command {
 			if cmd.Flags().Changed("card") && nominee == "" {
 				return errors.New("factory next: --card needs a card id")
 			}
-			// The open-PR query runs before the factory record opens and before the queue
-			// lock is taken, so no network call runs inside the lease section or after its
-			// release (SPEC-FACTORY-ATOMIC-LEASE-001 AC-FAL-015 (vii)). The output path
-			// prints this outcome and issues no query of its own.
-			openPRs := prefetchOpenPRs()
 			deadline := factoryCardNow().Add(waitBound)
 			// The quota gate (SPEC-QUOTA-AWARE-SCHEDULING-001): evaluated once per
 			// pass, outside the selection arms, and carried across the --wait
@@ -1655,6 +1650,10 @@ func newFactoryNextCommand() *cobra.Command {
 			quotaLatch := &factoryQuotaLatch{}
 			for {
 				held, holdLine := quotaLatch.evaluate(root)
+				// The open-PR query of this attempt runs here, ahead of the attempt's queue
+				// lock, so a wait never prints a result older than the attempt that leases
+				// (factoryNextPRSnapshot).
+				openPRs := factoryNextPRSnapshot(ctx, root, runID, lane, nominee, held)
 				var card homestate.Card
 				leased := false
 				if nominee != "" {
@@ -1724,9 +1723,82 @@ func newFactoryNextCommand() *cobra.Command {
 // factoryNextPrint reports the leased card (REQ-SD-008, plan B9) on the
 // command's streams; the writer form is what the MCP factory_next handler
 // shares (design.md §3 — one implementation per verb). openPRs is the open-PR
-// query the verb ran before its lease (prefetchOpenPRs).
+// query the verb ran before the lease attempt that leased (factoryNextPRSnapshot).
 func factoryNextPrint(cmd *cobra.Command, card homestate.Card, openPRs openPRQuery) error {
 	return factoryNextWriteOutput(cmd.OutOrStdout(), cmd.ErrOrStderr(), factoryCardRoot(), card, openPRs)
+}
+
+// errFactoryNextPRNotTaken is the outcome of an attempt that took no open-PR query
+// because no lease was reachable; the output reports it as an unavailable query.
+var errFactoryNextPRNotTaken = errors.New("no open-PR query was taken: no lease was reachable at the attempt")
+
+// factoryNextPRSnapshot takes the open-PR query of one lease attempt (the `next`
+// verb and the factory_next MCP handler call it once per attempt, before the
+// attempt's lease call). It runs ahead of the queue lock, so no network call lies
+// inside the lease section or after its release (SPEC-FACTORY-ATOMIC-LEASE-001
+// AC-FAL-015 (vii)), and an attempt that cannot lease takes none. The output path
+// prints the outcome and issues no query of its own.
+func factoryNextPRSnapshot(ctx context.Context, root, runID, lane, nominee string, held bool) openPRQuery {
+	if !factoryNextMayLease(ctx, root, runID, lane, nominee, held) {
+		return openPRQuery{err: errFactoryNextPRNotTaken}
+	}
+	return prefetchOpenPRs()
+}
+
+// factoryNextMayLease is the unlocked, read-only peek that decides whether a lease
+// attempt can succeed. It over-approximates: false only when the queue and the
+// record show no card the attempt could take (an empty queue, an unknown or
+// keep-set nominee, a quota hold that leaves only the lane's assigned card), and
+// true whenever a read fails or the answer needs the section's own checks. A
+// lease that wins a race the peek could not see prints the query as unavailable.
+func factoryNextMayLease(ctx context.Context, root, runID, lane, nominee string, held bool) bool {
+	rec, err := todoStoreAt(root).LoadPure()
+	if err != nil {
+		return true
+	}
+	db, err := homestate.OpenFactory(root)
+	if err != nil {
+		return true
+	}
+	defer func() { _ = db.Close() }()
+	rows, err := db.ListCards(ctx, runID)
+	if err != nil {
+		return true
+	}
+	assignedHere := func(c homestate.Card) bool { return c.State == homestate.CardAssigned && c.OwnerLabel == lane }
+	if nominee != "" {
+		var row *homestate.Card
+		for i := range rows {
+			if rows[i].CardID == nominee {
+				row = &rows[i]
+				break
+			}
+		}
+		for _, it := range rec.Items {
+			if it.ID != nominee {
+				continue
+			}
+			if factoryKeepSetRefusal(it, row, lane, false) != nil {
+				return false
+			}
+			return !held || (row != nil && assignedHere(*row))
+		}
+		return false
+	}
+	for _, c := range rows {
+		if assignedHere(c) {
+			return true
+		}
+	}
+	if held {
+		return false
+	}
+	for _, it := range rec.Items {
+		if it.State == factory.BacklogStateQueued || it.State == factory.BacklogStatePicked {
+			return true
+		}
+	}
+	return false
 }
 
 // factoryNextWriteOutput reports the leased card: its id, its stage, its
