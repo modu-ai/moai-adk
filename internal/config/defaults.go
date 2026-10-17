@@ -468,7 +468,6 @@ const (
 	DefaultProfileProjectsRetentionDays = 180
 	DefaultProfileDebugRetentionDays    = 30
 	DefaultProfileUnusedDays            = 90
-	DefaultProfileMaxBytes              = 5 * 1024 * 1024 * 1024
 
 	// ProfileCapAdvisoryTimeout bounds the SessionStart profile-cap advisory
 	// check (SPEC-CAPACITY-RECLAIM-001 REQ-CAP-009): the check walks the
