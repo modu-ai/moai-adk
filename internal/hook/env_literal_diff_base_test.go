@@ -9,10 +9,9 @@ package hook
 // clean main-absorbed tree).
 //
 // These tests construct the defect's precondition in isolated throwaway git
-// repos under /private/tmp (outside $HOME and outside this repository, no
-// card id in the path) and pin the agentic-trunk contract: the base resolves
-// from local main first, falling back to origin/main when local main is
-// absent — never from develop.
+// repos (t.TempDir, so the caller's TMPDIR decides where they live) and pin
+// the agentic-trunk contract: the base resolves from local main first,
+// falling back to origin/main when local main is absent — never from develop.
 
 import (
 	"os"
@@ -45,15 +44,12 @@ func envDiffCommit(t *testing.T, repo, name, content string) {
 	envDiffGit(t, repo, "commit", "-q", "-m", "add "+name)
 }
 
-// envDiffTempRepo creates an isolated throwaway git repo under /private/tmp
-// (never under $HOME or this repository; no card id in the path).
+// envDiffTempRepo creates an isolated throwaway git repo under t.TempDir().
+// The helper hard-codes no path: keeping the repo outside $HOME and this
+// repository is the caller's TMPDIR discipline.
 func envDiffTempRepo(t *testing.T, initialBranch string) string {
 	t.Helper()
-	repo, err := os.MkdirTemp("/private/tmp", "env-diff-base-")
-	if err != nil {
-		t.Fatalf("temp repo: %v", err)
-	}
-	t.Cleanup(func() { os.RemoveAll(repo) })
+	repo := t.TempDir()
 	envDiffGit(t, repo, "init", "-q", "-b", initialBranch)
 	return repo
 }
@@ -97,5 +93,49 @@ func TestSrlDiffBaseFallsBackToOriginMain(t *testing.T) {
 	}
 	if got := srlDiffBase(t, repo); got != want {
 		t.Fatalf("srlDiffBase picked %s; want merge-base with origin/main %s (fallback, card t1856)", got, want)
+	}
+}
+
+// TestSrlDiffBasePrefersLocalMainOverStaleOriginMain pins the main ->
+// origin/main order: local main has advanced past a stale origin/main ref, so
+// the base MUST be the merge-base with local main. Resolving origin/main first
+// lands on the older commit.
+func TestSrlDiffBasePrefersLocalMainOverStaleOriginMain(t *testing.T) {
+	repo := envDiffTempRepo(t, "main")
+	envDiffCommit(t, repo, "base.txt", "base\n")
+	envDiffGit(t, repo, "update-ref", "refs/remotes/origin/main", "HEAD") // stale remote ref
+	envDiffCommit(t, repo, "advanced.txt", "main moved on\n")
+	envDiffGit(t, repo, "checkout", "-q", "-b", "card-branch")
+	envDiffCommit(t, repo, "card.txt", "card work\n")
+
+	want := envDiffGit(t, repo, "merge-base", "HEAD", "main")
+	stale := envDiffGit(t, repo, "merge-base", "HEAD", "origin/main")
+	if want == "" || want == stale {
+		t.Fatalf("fixture invalid: main base %q must be non-empty and differ from origin/main base %q", want, stale)
+	}
+	if got := srlDiffBase(t, repo); got != want {
+		t.Fatalf("srlDiffBase picked %s; want merge-base with local main %s, not stale origin/main %s (card t1856)", got, want, stale)
+	}
+}
+
+// TestSrlDiffBaseSkipsDevelopBetweenMainAndOriginMain pins that develop never
+// sits between main and origin/main: with no local main, a stale develop, and
+// an origin/main ahead of develop's fork point, the base MUST be the
+// merge-base with origin/main.
+func TestSrlDiffBaseSkipsDevelopBetweenMainAndOriginMain(t *testing.T) {
+	repo := envDiffTempRepo(t, "card-branch") // no local main in this repo
+	envDiffCommit(t, repo, "base.txt", "base\n")
+	envDiffGit(t, repo, "branch", "develop") // stale develop frozen at the fork point
+	envDiffCommit(t, repo, "landed.txt", "landed on origin/main\n")
+	envDiffGit(t, repo, "update-ref", "refs/remotes/origin/main", "HEAD")
+	envDiffCommit(t, repo, "card.txt", "card work\n")
+
+	want := envDiffGit(t, repo, "merge-base", "HEAD", "origin/main")
+	viaDevelop := envDiffGit(t, repo, "merge-base", "HEAD", "develop")
+	if want == "" || want == viaDevelop {
+		t.Fatalf("fixture invalid: origin/main base %q must be non-empty and differ from develop base %q", want, viaDevelop)
+	}
+	if got := srlDiffBase(t, repo); got != want {
+		t.Fatalf("srlDiffBase picked %s; want merge-base with origin/main %s, not stale develop %s (card t1856)", got, want, viaDevelop)
 	}
 }
