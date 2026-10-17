@@ -696,12 +696,17 @@ func (c *codexStopChain) multiReviewMember(context.Context) stopMemberOutcome {
 	if !readMultiReviewGateEnabled(c.root) || c.input.StopHookActive || !reviewGateChangeDetector(c.root) {
 		return stopMemberOutcome{Decision: codexadapter.DecisionAllow, Status: stopStatusNotApplicable}
 	}
-	result, ok := loadConvergenceResult(c.root, c.input.SessionID)
-	if !ok {
+	// Every tree's result, as HandleMultiReviewGate reads them: a config-orphaned
+	// worktree stores <session>--tree-<key>.json beside the primary's
+	// <session>.json, and any one that blocks blocks the stop on either runtime.
+	results := loadConvergenceResults(c.root, c.input.SessionID)
+	if len(results) == 0 {
 		return c.multiMissing("no multi-model review result is recorded for this session")
 	}
-	if convergenceBlocksStop(result) {
-		return stopMemberOutcome{Decision: codexadapter.DecisionDeny, Class: reasonGateFailed, Reason: blockReason(result)}
+	for _, result := range results {
+		if convergenceBlocksStop(result) {
+			return stopMemberOutcome{Decision: codexadapter.DecisionDeny, Class: reasonGateFailed, Reason: blockReason(result)}
+		}
 	}
 	return stopMemberOutcome{Decision: codexadapter.DecisionAllow, Status: stopStatusPass}
 }
