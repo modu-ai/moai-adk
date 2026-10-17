@@ -31,4 +31,9 @@ this directory carried before the refresh. `TestManagedCodexRemoteSupportProbe`
 (`internal/cli/managed_codex_tui_test.go`) reads it as the feature-detection
 baseline for the managed TUI's `--remote` capability probe.
 
+Compatibility check (2026-10-17, card t1754): the eight vendored schemas and `resume-help.txt` were
+compared byte-for-byte against `codex app-server generate-json-schema` and `codex resume --help` of the
+installed codex-cli 0.163.0, and all nine are identical. The files stay labelled 0.162.1 because that is
+the version they were captured from.
+
 Regenerate them, and re-run the tests, whenever the minimum supported codex version moves.
