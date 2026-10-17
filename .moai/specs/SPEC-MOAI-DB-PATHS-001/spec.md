@@ -2,7 +2,7 @@
 id: SPEC-MOAI-DB-PATHS-001
 title: "Confirmed database paths — a read-only path-reporting command, guess-proof instruction surfaces, and a ghost-file doctor check"
 version: "0.1.3"
-status: draft
+status: in-progress
 created: 2026-10-17
 updated: 2026-10-17
 author: manager-spec
