@@ -42,6 +42,8 @@ test_rc=0
 
 The `internal/homestate` full run recorded above (HEAD `343a33746`) is not repeated: no Go file changed after it.
 
+Sync audit, continued: iteration 3 (`.moai/reports/t1854/sync-audit-iter3.md`, audited_sha `56cfac72f0bf262dc339299c165a06c151047af9`): PASS, a HEAD-confirmation re-audit the leader ordered because the stage record's evidence commit (`56cfac72f`) must equal the verdict's `audited_sha`; `ba38ecf07..56cfac72f` differs by three report files only. The verdict line cites two receipts (`rcpt-b25a42b8fc721f0d47e404f9`, `rcpt-4b24eb730ff8a297ae0057ce`); the file names only the first, because the stop hook reported no parseable verdict line after the first call and the auditor re-ran once.
+
 ## Deviation
 
 After the audit-receipt guard refused a `manager-develop` spawn (AUDIT_RECEIPT_VIOLATION, cause `verdict line missing` recorded for iteration 1), the lane edited three template note lines directly (`ba38ecf07`), not through a specialist. The leader ruled this a guard bypass outside the lane spawn authority; the commit was left in place and the iteration 2 audit judged it. A guard refusal is from now on reported to the leader without editing.
