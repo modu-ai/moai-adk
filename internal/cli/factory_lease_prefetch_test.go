@@ -16,6 +16,7 @@ import (
 	"time"
 
 	"github.com/modu-ai/moai-adk/internal/factory"
+	"github.com/modu-ai/moai-adk/internal/homestate"
 )
 
 // TestFactoryNextIssuesNoOpenPRQueryWhenNothingIsLeased — a `next` run that leases
@@ -145,4 +146,37 @@ func TestFactoryNextWaitQueriesOpenPRsForTheSuccessfulAttempt(t *testing.T) {
 			}
 		})
 	}
+}
+
+// TestFactoryNextIssuesNoOpenPRQueryBehindSerialSlot — sync-audit-iter2 N1
+// regression: with the serial slot held by another lane's live serial card, an
+// attempt that cannot lease — the nominated serial card behind the slot, and
+// the bare form whose every candidate is such a serial card — issues no
+// open-PR query either. The peek (factoryNextMayLease) reads the slot through
+// the same factorySerialInFlightExcluding the lease arms run, over the rows it
+// already loads.
+func TestFactoryNextIssuesNoOpenPRQueryBehindSerialSlot(t *testing.T) {
+	live := fcNow.Add(time.Hour).Format(time.RFC3339Nano)
+	t.Run("nominated serial card behind the slot", func(t *testing.T) {
+		fcSlotFixture(t, fcDeadLaneCard(homestate.CardRun, live), 1)
+		nmLaneEnv(t, "lane-1", "")
+		gh := flFirstGhCall(t, func() (string, error) { return "[]", nil })
+		out, stderr, err := qasRunNext(t, "--run", fcRun, "--card", "t2")
+		nmAssertRefused(t, out, stderr, err, "serial-slot")
+		if at := gh(); !at.IsZero() {
+			t.Errorf("a nominated serial card behind a held serial slot issued the open-PR query (gh pr list); want zero gh calls")
+		}
+	})
+	t.Run("bare, every candidate serial behind the slot", func(t *testing.T) {
+		fcSlotFixture(t, fcDeadLaneCard(homestate.CardRun, live), 1)
+		nmLaneEnv(t, "lane-1", "")
+		gh := flFirstGhCall(t, func() (string, error) { return "[]", nil })
+		out, stderr, err := qasRunNext(t, "--run", fcRun)
+		sdExit3(t, "bare next behind a held serial slot", err)
+		_ = out
+		_ = stderr
+		if at := gh(); !at.IsZero() {
+			t.Errorf("a bare attempt whose every candidate is a serial card behind a held serial slot issued the open-PR query (gh pr list); want zero gh calls")
+		}
+	})
 }

@@ -1837,9 +1837,13 @@ func factoryNextPRSnapshot(ctx context.Context, root, runID, lane, nominee strin
 // factoryNextMayLease is the unlocked, read-only peek that decides whether a lease
 // attempt can succeed. It over-approximates: false only when the queue and the
 // record show no card the attempt could take (an empty queue, an unknown or
-// keep-set nominee, a quota hold that leaves only the lane's assigned card), and
-// true whenever a read fails or the answer needs the section's own checks. A
-// lease that wins a race the peek could not see prints the query as unavailable.
+// keep-set nominee, a quota hold that leaves only the lane's assigned card, a
+// serial nominee behind a serial slot another card holds, or a bare attempt
+// whose every candidate is such a serial card), and true whenever a read fails
+// or the answer needs the section's own checks. The serial read is the same
+// factorySerialInFlightExcluding the lease arms run, over the rows this peek
+// already loads. A lease that wins a race the peek could not see prints the
+// query as unavailable.
 func factoryNextMayLease(ctx context.Context, root, runID, lane, nominee string, held bool) bool {
 	rec, err := todoStoreAt(root).LoadPure()
 	if err != nil {
@@ -1854,6 +1858,8 @@ func factoryNextMayLease(ctx context.Context, root, runID, lane, nominee string,
 	if err != nil {
 		return true
 	}
+	classOf := func(id string) factory.CardClassification { return factoryQueueClassification(rec, id) }
+	now := factoryCardNow()
 	assignedHere := func(c homestate.Card) bool { return c.State == homestate.CardAssigned && c.OwnerLabel == lane }
 	if nominee != "" {
 		var row *homestate.Card
@@ -1867,7 +1873,12 @@ func factoryNextMayLease(ctx context.Context, root, runID, lane, nominee string,
 			if it.ID != nominee {
 				continue
 			}
-			if factoryKeepSetRefusal(it, row, lane, false) != nil {
+			// The serial read mirrors factoryNextValidate: only a serial
+			// nominee is blocked by the slot, and a lane nominating its own
+			// assigned card ignores sibling assigned rows (card t1542).
+			ownAssigned := row != nil && row.State == homestate.CardAssigned && row.OwnerLabel == lane
+			serialHeld := classOf(nominee).Mode == factory.ClassModeSerial && factorySerialInFlightExcluding(rows, classOf, nominee, now, ownAssigned)
+			if factoryKeepSetRefusal(it, row, lane, serialHeld) != nil {
 				return false
 			}
 			return !held || (row != nil && assignedHere(*row))
@@ -1882,8 +1893,15 @@ func factoryNextMayLease(ctx context.Context, root, runID, lane, nominee string,
 	if held {
 		return false
 	}
+	// The bare path takes a NEW card, so sibling rows hold against it
+	// (ignoreAssigned=false). With the serial slot held, only a
+	// parallelizable candidate can lease this attempt.
+	serialBusy := factorySerialInFlightExcluding(rows, classOf, "", now, false)
 	for _, it := range rec.Items {
-		if it.State == factory.BacklogStateQueued || it.State == factory.BacklogStatePicked {
+		if it.State != factory.BacklogStateQueued && it.State != factory.BacklogStatePicked {
+			continue
+		}
+		if !serialBusy || classOf(it.ID).Mode != factory.ClassModeSerial {
 			return true
 		}
 	}
