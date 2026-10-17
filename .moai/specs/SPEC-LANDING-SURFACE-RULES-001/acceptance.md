@@ -74,7 +74,7 @@ Edge cases:
 - **Main moves during run.** Ledger G3 shows 12 commits on local `main` after the pinned tree and none touching an in-scope file; if `main` moves again, M1 re-runs G3 and re-pins G0 before any edit, and no AC is re-cited from memory.
 - **t1831 lands first.** A.5 of spec.md orders t1831 after this card; if the order inverts, this card's run rebases onto t1831's text and re-runs L1 and L2 to re-anchor line numbers (the anchors are sentences, not line numbers).
 - **The ops pair is a sanitized pair.** The paragraph added to `worktree-integration-ops.md` must be byte-identical in both copies and carry no card id or date, so the recorded `9 9` difference does not change (AC-LSR-007).
-- **Generated artifact.** `.codex/agents/moai/manager-git.toml` is never edited by hand; only `make agents-emit` changes it (AC-LSR-008).
+- **Generated artifact.** Neither `.codex/agents/moai/manager-git.toml` copy is edited by hand. `make agents-emit` rewrites the template copy only (`internal/template/templates/.codex/agents/moai/manager-git.toml`, ledger G10); the deployed copy is then brought in line by a `cp` of that regenerated template toml, confirmed by `diff -q` (AC-LSR-008).
 
 Quality gates: each flip criterion is paired with a presence clause and a removal clause so neither one-sided mutant passes; each guard names its mutant; the chain criterion names its six tests and requires the swept count of six.
 
