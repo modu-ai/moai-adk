@@ -949,7 +949,7 @@ L = skill.md, S = staging folder, T = S/skill.md. Rows marked * changed or are n
 | A/B* | S swapped for a link to a folder outside the project | the root refuses the open, nothing moves, the link stays (rmdir fails on a link), error names S | outside untouched; L stays | `TestAC_UBR_16_RenameRefusesAStageFolderSwappedForALinkOutsideTheProject` |
 | A/B | S swapped for a foreign folder | B lands T in it; C completes; D fails if the folder holds anything else, error names it | content not lost; foreign files kept | `...KeepsTheContentsOfAFolderThatReplacedTheStageFolder` (unchanged) |
 | A/B | skill folder swapped for a link out of the project before it was opened | the root refuses the open; nothing moves | outside untouched | `TestAC_UBR_16_SwappedSkillFolderCannotRedirectTheRename` (unchanged) |
-| B* | S (or the skill folder) swapped after it was opened | the rename uses the open folder and lands in the original inode (now moved aside, inside the project); the look before C refuses (the path now leads out); error | outside untouched; the file stays in the project | `TestAC_UBR_16_RenameIsBoundToTheOpenedStageFolderNotToItsPath` |
+| B* | S (or the skill folder) swapped after it was opened | the rename uses the open folder and lands in the original inode (now moved aside, inside the project); the look before C refuses (the path now leads out); error | outside untouched; the file stays in the project **[CORRECTED in §E.10: false when the held folder is renamed out of the project; the file went with it and the put-back was refused]** | `TestAC_UBR_16_RenameIsBoundToTheOpenedStageFolderNotToItsPath` |
 | B | a foreign file sits at T | B refused; L untouched; D fails (S not empty); error names T | foreign file and L kept | unchanged |
 | B | L replaced before the identity is taken | B moves whatever is at L | the user's newest file becomes SKILL.md | `...MovesTheUsersNewFileWhenSkillMdWasSavedBeforeTheFirstRename` (unchanged) |
 | B* | L replaced between the identity and B | the file at T is not the identity: C not run, error names T, nothing put back | the moved file stays at T | covered by the same check as the next row; not separately injectable (no seam between the record and the rename) |
@@ -1020,7 +1020,7 @@ A fourth mutant removing both identity checks did not compile (an unused variabl
 
 ### Honest residual (per platform)
 
-- linux, darwin: no path swap can redirect a rename (descriptor-relative). A microsecond window remains between the identity check before C and the call of C itself: a foreign atomic overwrite landing exactly there moves the foreign file to SKILL.md; the step cannot prevent it and reports it (error names SKILL.md) but does not move it back. Between B and C the content has one private name; the overwrite of that name destroys the content (the foreign writer's overwrite, not this step's), and it is now reported at the next check instead of succeeding. Reaching either needs the 48-bit stage name.
+- linux, darwin: no path swap can redirect a rename (descriptor-relative) **[CORRECTED in §E.10: a held folder renamed away still receives the move, because the descriptor names the inode; the claim held only for a swap that leaves the folder where it is]**. A microsecond window remains between the identity check before C and the call of C itself: a foreign atomic overwrite landing exactly there moves the foreign file to SKILL.md; the step cannot prevent it and reports it (error names SKILL.md) but does not move it back. Between B and C the content has one private name; the overwrite of that name destroys the content (the foreign writer's overwrite, not this step's), and it is now reported at the next check instead of succeeding. Reaching either needs the 48-bit stage name.
 - linux: runtime unobserved. `Renameat2`, `Unlinkat` and the `SyscallConn` use compile and vet for linux/amd64; they ran only on darwin. A seccomp profile answering `renameat2` with EPERM still takes no fallback (unchanged from iteration 5).
 - windows: the rename is still path-based (`MoveFileEx` with the held folders' `Name()`); `golang.org/x/sys/windows` has no folder-relative no-replace rename. The root-bound look before each rename is the containment, and a microsecond window remains between the look and the call: a stage folder replaced by a junction or symlink inside that window carries the file out of the project (a move, not a deletion; the next look then refuses, the put-back is refused, the error names the staged path). The windows build is cross-compiled and vetted only. I kept the path-based call over the round-3 `os.Root` link route for windows because the link route reintroduces the unlink-after-check data-loss windows (F13/F14) that the primary design removed.
 - platforms with no primitive (`rename_noreplace_other.go`) and filesystems answering EINVAL/ENOSYS/ENOTSUP: the round-3 link fallback with its look-to-unlink windows (E.7), unchanged.
@@ -1049,3 +1049,136 @@ go test -count=1 ./internal/template/...                -> ok template 150.029s,
 Extra cross-builds of the package (amd64 unless noted): darwin, linux, windows, freebsd, openbsd, js/wasm -> all exit 0.
 
 Gaps: repository-wide test verdict PENDING (CI on the integration branch owns it); `make build` not run; Linux and Windows runtime behavior of the descriptor-relative renames, `Unlinkat` and `MoveFileEx` not observed (cross-build and vet only); the real-filesystem tests ran on case-insensitive APFS (darwin/arm64) only; a hostile-writer race stress with real syscalls (iteration 5 row 12) was not re-run this round; the row "L replaced between the identity and B" has no injection point and is covered only by reading the check; no tool call was refused this round; the `verify` skill delegation of the pre-commit gate was not separately run (scoped commands above were); re-audit is the auditor's.
+
+## §E.10 Repair-round-6 evidence (card t1733, sync-audit iteration 6: codex P1 residue.go:505, codex P2 residue.go:502, F20, F21, F22, F23; owner manager-develop)
+
+Source: `.moai/reports/t1733/sync-audit-iter6.md` (local-only). Start HEAD `9c74d7d0e`. Round 5 bound the renames to open folder handles, which closed the stage-swap and staged-file-replacement findings and, as iteration 6 verified, opened two new states: a held folder renamed away keeps receiving the move because the descriptor names the inode, and a held skill folder renamed away can leave the requested path without SKILL.md while the step reports success. Nothing is destroyed in either state: the bytes sit in a folder the same-user actor chose to move. This round makes the put-back independent of paths on unix and makes the final check name the requested path.
+
+### Correction of an earlier claim (E.9 and the code comment)
+
+The state-table row `B*` of §E.9 and of the comment above `renameSkillFile` said, for "S (or the skill folder) swapped after it was opened", "outside untouched; the file stays in the project". That is **false when the held folder is renamed out of the project**: the first rename lands in the moved folder and the file leaves the project with it. The same sentence in the first bullet of §E.9 "Honest residual" ("no path swap can redirect a rename") held only for a swap that leaves the folder where it is. Both E.9 places now carry an inline `[CORRECTED in §E.10 ...]` marker; the code comment table was rewritten (rows below).
+
+### Design
+
+- `moveNoReplace(root, from, to, look bool)`: the root-bound look at the source path precedes the rename only when `look` is set. The two forward moves (B and C) pass `true`, so the F17 pin (the look at the second rename's source) is unchanged. The put-back passes `!renameIsDescriptorBound`.
+- `renameIsDescriptorBound` is a per-platform constant: `true` on linux and darwin (`rename_noreplace_unix.go`), `false` on windows and on the platforms without a rename primitive. On unix the put-back is therefore `renameat2` / `renameatx_np` from the held stage folder into the held skill folder, with no path look; on windows it keeps the look.
+- F21: after the second rename, besides the held-folder identity check, `root.Lstat(canonical)` must name the same file as `moving`. On mismatch the step returns an error that says the skill folder this step opened as `<dirRel>` was moved (checked with `leadsTo`: `os.SameFile` of the path's `Lstat` and the held folder's `Lstat(".")`), that SKILL.md was written inside that moved folder, and that nothing was removed or moved back. The staging folder is left in place on purpose (nothing is removed in that branch). The moved folder's new path is not determinable without a path-of-descriptor lookup (`F_GETPATH` on darwin, `/proc/self/fd` on linux), so the message does not claim one.
+- F22: `contentPlace` / `where` name the staged path only when the path still leads to the held stage folder (`leadsTo`); otherwise they say "in skill.md inside the folder this step opened as `<stage>`, which was moved". The identity-mismatch error before C uses the same helper.
+- The look error of `moveNoReplace` is now wrapped (`move <from> to <to>: statat ...`) like the rename error; `errors.Is` on `errNoReplaceUnsupported` is unaffected.
+- `go.mod` / `go.sum` untouched; `spec.md` untouched (the F15 wording item for the leader stays in §E.9).
+
+### State table (rows new or changed this round; mirrored from the code comment above `renameSkillFile`)
+
+L = skill.md, S = staging folder, T = S/skill.md. The remaining rows are as in §E.9. The windows column is read from the code (path-based `MoveFileEx` behind the look) and was not run.
+
+| Step | State | Before this round (code at `9c74d7d0e`) | After this round (unix) | Windows (path-based) | Test |
+|---|---|---|---|---|---|
+| B* | S renamed away after it was opened (to a link, a folder, out of the project, or nothing at its old path) | B landed in the moved S; the look before C refused; the put-back went through the same look and was refused; **the file stayed in the moved folder** (outside the project when S was moved out), the error named the old stage path where nothing is | B lands in the held S, the look before C refuses, the put-back goes through the held descriptors with no look: **the file is back at L**; an empty or foreign folder may sit where S was; the error is the look error (plus the rmdir refusal when S is gone) and does not claim a content path | the put-back is refused by the look; the file stays in the moved folder; the error says so ("which was moved") | `...PutsTheFileBackWhenTheStageFolderWasMovedOutOfTheProject` (two variants), `...MovedOutBetweenTheRenames` |
+| B* | the skill folder renamed away before B | B landed in S inside the moved folder; the put-back was refused; the file stayed at `<moved>/S/skill.md` | the put-back goes into the held (moved) skill folder: the file is back as skill.md inside the moved folder; error | as above | `...PutsTheFileBackIntoASkillFolderThatWasMovedAside` |
+| C* | the skill folder renamed away after B, a decoy folder put at its old path | C ran in the held moved folder, the look passed on the decoy, the step **returned nil** with no SKILL.md at the requested path | error: the requested path does not name the renamed file, the skill folder was moved, SKILL.md is inside it; nothing removed, nothing moved back by path, decoy kept | same (the check is a root-bound look, on every platform) | `...DoesNotReportSuccessWhenTheSkillFolderWasMovedAndADecoyTookItsPath` |
+| B-C* | the stage folder moved away and a user file took L, so the put-back is refused | error said "the content is at `<stage>/skill.md`", a path with nothing at it | error says the content is in skill.md inside the folder this step opened as `<stage>`, which was moved; nothing overwritten | same | `...NamesTheMovedFolderWhenThePutBackIsRefused` |
+
+### RED / GREEN / mutant
+
+| Step | Commit | Command and result |
+|---|---|---|
+| RED | `46aacdcde540719adea67ef04402d1abff497cb0` | `go test -count=1 -v -run 'MovedOutOfTheProject\|MovedOutBetween\|MovedAside\|MovedAndADecoy\|NamesTheMovedFolder' ./internal/cli/update/skillresidue/`: 5 test functions (6 with subtests) FAIL, 0 pass; no pin among the new tests |
+| GREEN | `6888aff16283c782a6e2680fbeac4fafa1076f50` | same command: 5 functions PASS (6 with subtests); `go test -count=1 -race ./internal/cli/update/skillresidue/` -> `ok ... 1.232s`; coverage 89.7% |
+
+RED compiled on the unchanged code (the tests use only `renameSkillFile`, `afterNthRename`, `handleSetup`, `stageFolder`, `readOrFail`, `fileWithBodyUnder`, `treeSnapshot`). RED output (run at `46aacdcde`; the temporary-directory prefix is removed or shown as `<tmp>`, the subtest lines are shortened with `...`, nothing else is edited):
+
+```
+=== RUN   TestAC_UBR_16_RenamePutsTheFileBackWhenTheStageFolderWasMovedOutOfTheProject/nothing_at_the_old_path
+    residue_moved_folder_test.go:92: skill.md = "" (present false), want the user's bytes back at the requested path (project [. dir moai-ref-owasp-checklist dir], outside [. dir moved-stage dir moved-stage/skill.md file])
+=== RUN   TestAC_UBR_16_RenamePutsTheFileBackWhenTheStageFolderWasMovedOutOfTheProject/a_new_folder_at_the_old_path
+    residue_moved_folder_test.go:92: skill.md = "" (present false), want the user's bytes back at the requested path (project [. dir moai-ref-owasp-checklist dir moai-ref-owasp-checklist/skill.md.tmp-rename-27d461b2c94c dir], outside [. dir moved-stage dir moved-stage/skill.md file])
+--- FAIL: TestAC_UBR_16_RenamePutsTheFileBackWhenTheStageFolderWasMovedOutOfTheProject (0.00s)
+    --- FAIL: ...MovedOutOfTheProject/nothing_at_the_old_path (0.00s)
+    --- FAIL: ...MovedOutOfTheProject/a_new_folder_at_the_old_path (0.00s)
+=== RUN   TestAC_UBR_16_RenamePutsTheFileBackWhenTheStageFolderWasMovedOutBetweenTheRenames
+    residue_moved_folder_test.go:110: skill.md = "" (present false), want the user's bytes back at the requested path (project [. dir moai-ref-owasp-checklist dir], outside [. dir moved-stage dir moved-stage/skill.md file])
+--- FAIL: TestAC_UBR_16_RenamePutsTheFileBackWhenTheStageFolderWasMovedOutBetweenTheRenames (0.00s)
+=== RUN   TestAC_UBR_16_RenamePutsTheFileBackIntoASkillFolderThatWasMovedAside
+    residue_moved_folder_test.go:130: moved skill folder's skill.md = "" (present false), want the user's bytes put back (tree [. dir moai-ref-owasp-checklist.moved dir moai-ref-owasp-checklist.moved/skill.md.tmp-rename-a30597eb6395 dir moai-ref-owasp-checklist.moved/skill.md.tmp-rename-a30597eb6395/skill.md file])
+--- FAIL: TestAC_UBR_16_RenamePutsTheFileBackIntoASkillFolderThatWasMovedAside (0.00s)
+=== RUN   TestAC_UBR_17_RenameDoesNotReportSuccessWhenTheSkillFolderWasMovedAndADecoyTookItsPath
+    residue_moved_folder_test.go:161: the rename reported success although <tmp>/002/.claude/skills/moai-ref-owasp-checklist has no SKILL.md (tree [. dir moai-ref-owasp-checklist dir moai-ref-owasp-checklist.moved dir moai-ref-owasp-checklist.moved/SKILL.md file moai-ref-owasp-checklist/skill.md.tmp-rename-5faa7a9e6497 dir moai-ref-owasp-checklist/skill.md.tmp-rename-5faa7a9e6497/skill.md file])
+--- FAIL: TestAC_UBR_17_RenameDoesNotReportSuccessWhenTheSkillFolderWasMovedAndADecoyTookItsPath (0.00s)
+=== RUN   TestAC_UBR_17_RenameNamesTheMovedFolderWhenThePutBackIsRefused
+    residue_moved_folder_test.go:203: error = statat .claude/skills/moai-ref-owasp-checklist/skill.md.tmp-rename-ec33e23c7d38/skill.md: no such file or directory (restoring .claude/skills/moai-ref-owasp-checklist/skill.md also failed: statat .claude/skills/moai-ref-owasp-checklist/skill.md.tmp-rename-ec33e23c7d38/skill.md: no such file or directory; the content is at .claude/skills/moai-ref-owasp-checklist/skill.md.tmp-rename-ec33e23c7d38/skill.md); it points at a staging path that holds nothing
+--- FAIL: TestAC_UBR_17_RenameNamesTheMovedFolderWhenThePutBackIsRefused (0.00s)
+FAIL
+FAIL	github.com/modu-ai/moai-adk/internal/cli/update/skillresidue	0.250s
+```
+
+Reading the RED. The first three fail for the right reason: the user's `skill.md` is not at the requested path (it sits in the folder moved out of the project, or inside the moved skill folder under the staging name). The fourth fails because the step returned success with no SKILL.md at the requested path. The fifth fails because the error points at a staging path that holds nothing.  The decoy test and the refused-put-back test also assert that the decoy, the staging folder and the user's new file stay as they were.
+
+Verbatim GREEN (same command at `6888aff16`):
+
+```
+--- PASS: TestAC_UBR_16_RenamePutsTheFileBackWhenTheStageFolderWasMovedOutOfTheProject (0.00s)
+    --- PASS: TestAC_UBR_16_RenamePutsTheFileBackWhenTheStageFolderWasMovedOutOfTheProject/nothing_at_the_old_path (0.00s)
+    --- PASS: TestAC_UBR_16_RenamePutsTheFileBackWhenTheStageFolderWasMovedOutOfTheProject/a_new_folder_at_the_old_path (0.00s)
+--- PASS: TestAC_UBR_16_RenamePutsTheFileBackWhenTheStageFolderWasMovedOutBetweenTheRenames (0.00s)
+--- PASS: TestAC_UBR_16_RenamePutsTheFileBackIntoASkillFolderThatWasMovedAside (0.00s)
+--- PASS: TestAC_UBR_17_RenameDoesNotReportSuccessWhenTheSkillFolderWasMovedAndADecoyTookItsPath (0.00s)
+--- PASS: TestAC_UBR_17_RenameNamesTheMovedFolderWhenThePutBackIsRefused (0.00s)
+PASS
+ok  	github.com/modu-ai/moai-adk/internal/cli/update/skillresidue	0.253s
+```
+
+Error texts observed at GREEN through a scratch overlay test (not added to the tree; a joined error prints its parts on separate lines, the first line is shown):
+
+```
+stage moved out, nothing at its old path:
+  move .claude/skills/moai-ref-owasp-checklist/skill.md.tmp-rename-45ecb5d6442f/skill.md to .claude/skills/moai-ref-owasp-checklist/SKILL.md: statat .claude/skills/moai-ref-owasp-checklist/skill.md.tmp-rename-45ecb5d6442f/skill.md: no such file or directory
+  tree after: project=[. dir .claude dir .claude/skills dir .claude/skills/moai-ref-owasp-checklist dir .claude/skills/moai-ref-owasp-checklist/skill.md file] outside=[. dir moved-stage dir]
+skill folder moved, decoy at the old path:
+  .claude/skills/moai-ref-owasp-checklist/SKILL.md does not name the file that was renamed (statat .claude/skills/moai-ref-owasp-checklist/SKILL.md: no such file or directory): the skill folder this step opened as .claude/skills/moai-ref-owasp-checklist was moved, so SKILL.md was written inside that moved folder; nothing was removed or moved back, and the staging folder skill.md.tmp-rename-7562b56e85a8 inside it was left in place
+stage moved out and a user file at skill.md (put-back refused):
+  move .../skill.md.tmp-rename-1f2a035dbb65/skill.md to .../SKILL.md: statat ...: no such file or directory (restoring .claude/skills/moai-ref-owasp-checklist/skill.md also failed: move .../skill.md.tmp-rename-1f2a035dbb65/skill.md to .../skill.md: file exists; the content is in skill.md inside the folder this step opened as .claude/skills/moai-ref-owasp-checklist/skill.md.tmp-rename-1f2a035dbb65, which was moved)
+```
+
+In the first case the joined error carries a second line from the rmdir of the moved-away staging name (`staging folder ... not removed: ...`); the step does not hide it. Where a new empty folder was put at the stage name, the rmdir takes that empty folder back (the same `removeStage` behaviour as in every earlier row: it removes only an empty folder at our private random name).
+
+Mutants (`go test -count=1 -overlay=<json> ./internal/cli/update/skillresidue/`; overlay JSON and mutated copies under `/private/tmp/t1733r6/ov/`, nothing in the tree):
+
+| Mutant | Edit | Result |
+|---|---|---|
+| 1 put-back through the path look | `moveNoReplace(root, mid, from, !renameIsDescriptorBound)` -> `moveNoReplace(root, mid, from, true)` | exit 1, 3 test functions FAIL: `...WhenTheStageFolderWasMovedOutOfTheProject` (both variants), `...MovedOutBetweenTheRenames` (`skill.md = "" (present false), want the user's bytes back ... outside [. dir moved-stage dir moved-stage/skill.md file]`), `...IntoASkillFolderThatWasMovedAside` |
+| 2 post-second-rename path check removed | the `root.Lstat(canonical)` identity check deleted | exit 1, 1 FAIL: `...DoesNotReportSuccessWhenTheSkillFolderWasMovedAndADecoyTookItsPath` (`the rename reported success although ... has no SKILL.md`) |
+| 3 content place always claimed as a path | `contentPlace` returns "at <path>" regardless of `leadsTo` | exit 1, 1 FAIL: `...NamesTheMovedFolderWhenThePutBackIsRefused` |
+
+### Existing tests (assertions untouched)
+
+No existing test file was edited this round: `git diff --stat 9c74d7d0e..HEAD` before this docs commit lists `residue.go`, the three `rename_noreplace_{unix,windows,other}.go` files and the new `residue_moved_folder_test.go` only. `TestMoveFileReferencesArePinned` needed no change: `renameNoReplace` is still referenced once, from `moveNoReplace`. The `afterNthRename` / `mkdirFile` injections are used as in round 5 (the swap runs inside the seam, F24 of the audit still applies: a mutant that resolves the folders by path right before the seam call would survive; the faithful path-based mutant of round 5 stays killed).
+
+### Honest residual (per platform)
+
+- linux, darwin: a held folder renamed away after it was opened still receives the move, which is the property of binding to inodes, not a bug to remove. The step now restores the file by the held descriptors and says so; it does not prevent the move. If the put-back itself is refused (a user file took `skill.md`, or the filesystem refuses) the content stays in the moved folder and the error says "in skill.md inside the folder this step opened as <stage>, which was moved"; the moved folder's new path is not reported (it needs `F_GETPATH` / `/proc/self/fd`). A skill folder moved away after the first rename leaves SKILL.md inside the moved folder; the step reports an error, removes nothing and moves nothing back by path; the staging folder inside the moved folder stays. The user ends up with the renamed file in a folder they or another process moved, and a clear error. Both states need a same-user rename of a 48-bit-random, microsecond-lived staging folder, or of the skill folder, inside a microsecond gap.
+- windows: unchanged in kind and now stated plainly. The rename is path-based (`MoveFileEx`), the put-back keeps the root-bound look, and a stage folder (or skill folder) moved away between the look and the call, or before the put-back, leaves the file in the moved folder: the look refuses the put-back, the error says the staging folder was moved. A move, not a deletion. The windows build is cross-built and vetted only.
+- F23 (unobserved, windows): `srcDir.Name()` for a file opened through `Root.Open(".")` joins to a path under the project root only while the root name is absolute or the working directory is unchanged (read in `os/root_windows.go` by the auditor, not run); `removeDirAt` (`syscall.Rmdir`) runs while the `stageDir` handles are still open, which Go opens with FILE_SHARE_DELETE, so the removal should be a pending delete. Neither was observed on Windows in this round.
+- Linux runtime of `Renameat2`, `Unlinkat` and `SyscallConn().Control` is still unobserved (compile and vet for linux/amd64; tests ran on darwin/arm64 APFS only).
+- Platforms with no primitive and filesystems answering EINVAL/ENOSYS/ENOTSUP: the round-3 link fallback with its look-to-unlink windows, unchanged (E.7).
+- Required codex gate for iteration 6 returned `fail` (rcpt-441c9ee2bd8c68ac93efb525); this round answers its two findings; a re-audit is the auditor's.
+
+### Verification
+
+Env: `GIT_CONFIG_GLOBAL=/private/tmp/t1733r6/gitconfig` (only `[user]`), `TMPDIR=/private/tmp/t1733r6/tmp`, `GOTMPDIR=/private/tmp/t1733r6/gotmp`, no HOME override, no `-mod=mod`. Run at GREEN `6888aff16` (the docs commit changes this file only):
+
+```
+go build ./...                                          -> build=0
+gofmt -l internal/cli internal/cli/update internal/template -> (empty), gofmt=0
+go vet ./internal/cli/update/...                        -> vet=0
+GOOS=linux go vet ./internal/cli/update/skillresidue/   -> vet-linux=0
+GOOS=windows go vet ./internal/cli/update/skillresidue/ -> vet-windows=0
+GOOS=freebsd go build ./internal/cli/update/skillresidue/ -> build-freebsd=0
+GOOS=linux GOARCH=amd64 go build ./...                  -> linuxbuild=0
+GOOS=windows GOARCH=amd64 go build ./...                -> winbuild=0
+go test -count=1 -race ./internal/cli/update/skillresidue/ -> ok ... 1.232s
+go test -count=1 -cover ./internal/cli/update/...       -> ok update 0.775s 85.2%, backup 0.702s 88.4%, deploy 0.446s 85.9%, merge 0.444s 93.1%, plan 0.234s 95.2%, report 0.610s 95.1%, skillresidue 0.387s 89.7%
+go test -count=1 ./internal/cli/ -run 'Backup|Retention|Destructive|Housekeeping|UBR|Unmanaged|TemplateSync|CleanReinstall' -> ok internal/cli 15.520s
+go test -count=1 ./internal/template/...                -> ok template 137.081s, agentemit 0.365s, commandemit 0.242s, embedemit 0.255s, scripts [no test files]
+```
+
+Gaps: repository-wide test verdict PENDING (CI on the integration branch owns it); `make build` not run; Linux and Windows runtime behaviour of the descriptor-relative renames, `Unlinkat`, `MoveFileEx` and `syscall.Rmdir` not observed (cross-build and vet only); the real-filesystem tests ran on case-insensitive APFS only; the F23 Windows handle behaviour (item above) not observed; the auditor's real-syscall hostile-writer race stress (iteration 6, `Evidence` row 10) was not re-run this round; no tool call was refused this round; the `verify` skill delegation of the pre-commit gate was not separately run (the scoped commands above were); re-audit is the auditor's.
