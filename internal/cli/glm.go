@@ -329,14 +329,16 @@ func runGLM(cmd *cobra.Command, args []string) error {
 		}
 		defer settingsCleanup()
 	}
+	// SPEC-LAUNCHER-ARGV-001: see cc.go — one resolution, stage values to the readers.
+	view := resolveLaunchView(filteredArgs)
 	// SPEC-WORKTREE-ENTRY-STRATEGY-001 M3a: see cc.go for the rationale.
 	endWt := debugTiming.beginDebug(launchStepWorktree, "")
-	if err := resolveWorktreeL2Path(filteredArgs, cmd.ErrOrStderr()); err != nil {
+	if err := validateWorktreeL2Value(view.StageA, cmd.ErrOrStderr()); err != nil {
 		endWt()
 		return err
 	}
 	// Card t295: see cc.go — `-w <name> --branch <existing>` creation path.
-	filteredArgs, err = resolveWorktreeExistingBranch(filteredArgs, cmd.ErrOrStderr())
+	err = view.materializeBranch(cmd.ErrOrStderr())
 	endWt()
 	if err != nil {
 		return err
@@ -344,12 +346,11 @@ func runGLM(cmd *cobra.Command, args []string) error {
 	// SPEC-HANDOFF-NEUTRAL-001 REQ-HN-006: launcher-entry backfill, at the same
 	// post-validation point the cc flow applies it after its writer precheck —
 	// the glm flow has no moai-side refusal, so this is the admitted point (audit F0).
-	seedAdmittedWorktreeHooks(filteredArgs, cmd.ErrOrStderr())
-	filteredArgs = normalizeWorktreeFlag(filteredArgs)
+	seedAdmittedWorktreeHooksFor(view.StageB, cmd.ErrOrStderr())
 
 	// Auto mode is not available with third-party providers (GLM/Z.AI).
 	// Validate before launch to give a clear error instead of a cryptic Claude Code rejection.
-	if containsPermissionMode(filteredArgs, "auto") {
+	if containsPermissionMode(view.LaunchArgs, "auto") {
 		_, _ = fmt.Fprintln(cmd.ErrOrStderr(), "auto mode requires a supported Claude model; GLM models are not supported (see Claude Code permission-modes docs)")
 		_, _ = fmt.Fprintln(cmd.ErrOrStderr(), "use 'moai cc --permission-mode auto' instead")
 		return fmt.Errorf("auto mode is not available with GLM (third-party provider)")
@@ -364,7 +365,7 @@ func runGLM(cmd *cobra.Command, args []string) error {
 	_, _ = fmt.Fprintln(cmd.ErrOrStderr(), "Mixed Claude/GLM teammate roles require verified teammate routing support.")
 
 	endHandoff := debugTiming.beginDebug(launchStepLaunchHandoff, "")
-	filteredArgs = normalizeWorktreeFlag(filteredArgs)
+	filteredArgs = view.LaunchArgs
 	endHandoff()
 	if debugRequested {
 		// REQ-009's cc/glm form: see cc.go — the dump precedes the launch.
