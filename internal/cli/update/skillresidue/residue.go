@@ -365,14 +365,20 @@ type moveEnd struct {
 // the root, which refuses a path that leaves the project, so a skill folder or S swapped for a
 // link out of the project before it was opened is refused. A root-bound Lstat of the source's
 // path still precedes every rename (moveNoReplace): with descriptors it no longer contains the
-// move, it makes the step refuse when the path no longer leads to the folder it holds. On
-// windows the renames are path-based (MoveFileEx has no folder-relative form in x/sys), so that
-// look is the containment and a microsecond window remains between it and the call.
+// move, it makes the step refuse when the path no longer leads to the folder it holds. A
+// put-back after such a refusal skips the look on these platforms, because the descriptors still
+// name both folders and the path it would look at is what was moved: a stage folder renamed out
+// of the project takes the first move with it, and the put-back brings the file home. On windows
+// the renames are path-based (MoveFileEx has no folder-relative form in x/sys), so that look is
+// the containment, the put-back keeps it, and a microsecond window remains between the look and
+// the call.
 //
 // Identity. The step takes the identity of skill.md right before B (fd-relative Lstat) and
 // requires the file at S/skill.md to be that file before C and the file at SKILL.md to be that
 // file after C. A replacement landing between B and C is refused without moving it; one landing
-// inside C itself cannot be prevented, but is reported.
+// inside C itself cannot be prevented, but is reported. After C the requested path must name the
+// same file too (root-bound look of SKILL.md): a skill folder renamed away after B with another
+// folder at its path leaves SKILL.md in the moved folder, which the step reports as an error.
 //
 // States and outcomes (L = skill.md, S = staging folder, T = S/skill.md; every row keeps the
 // user's bytes unless it says otherwise):
@@ -391,10 +397,14 @@ type moveEnd struct {
 //	                                                   else (error names it)                 its own files
 //	A/B   skill folder swapped for a link out of       opening the skill folder is refused   outside untouched
 //	      the project before it was opened             by the root; nothing moves; error
-//	B     S or the skill folder swapped after it was   the rename uses the open folder, so   outside untouched; the
-//	      opened (path now leads elsewhere)            it lands in the original inode; the   file stays in the project
-//	                                                   look before C refuses (the path no
-//	                                                   leads there); error
+//	B     S renamed away after it was opened (to a     B lands in the open S, where it went; file back at L (unix); an empty or foreign
+//	      link, a folder, out of the project, or       the look before C refuses (the path   folder may sit where S was; windows: the
+//	      nothing at its old path)                     leads elsewhere); the put-back goes   put-back is refused by the look, the file
+//	                                                   through the held descriptors, with no stays in the moved folder, error says so
+//	                                                   look (unix); error
+//	B     the skill folder renamed away before B       B lands in S inside the moved folder; file back as skill.md in the moved folder;
+//	                                                   look before C refuses; the put-back   error
+//	                                                   goes to the held (moved) skill folder
 //	B     a foreign file sits at T                     B refused; L untouched; D fails       foreign file and L kept
 //	                                                   (S not empty); error names T
 //	B     L replaced or deleted before the identity    B moves whatever is at L (an editor's the user's newest file
@@ -418,14 +428,22 @@ type moveEnd struct {
 //	                                                   identity: error names SKILL.md        content of L was
 //	                                                                                         overwritten by the foreign write
 //	C     C fails for another reason                   as the row above                      as above
+//	C     the skill folder renamed away after B, a     C runs in the held, moved folder; the SKILL.md is in the moved folder; the decoy
+//	      decoy folder put at its old path             root-bound look of SKILL.md at the    is kept; nothing is moved back by path
+//	                                                   requested path is not that file:
+//	                                                   error says the folder was moved;
+//	                                                   nothing is removed
 //	C-D   S swapped for a file after C                 D fails (ENOTDIR); error names S      foreign file kept
 //	C-D   S swapped for a non-empty folder             D fails (ENOTEMPTY); error names S    foreign files kept
 //
-// A refused put back leaves the content staged at T and the error names it; no step ever
-// removes a file it did not just move. A microsecond window therefore remains only (1) in
-// renameByLinks (the fallback below), (2) between the identity check before C and C, which the
-// check after C reports, (3) between the look and the call on platforms whose rename is
-// path-based (windows).
+// A refused put back leaves the content where it is and the error names the place: the staged
+// path T while the path of S still leads to the folder that was moved into, otherwise "inside
+// the folder this step opened as S, which was moved" (the step cannot name the moved folder's
+// new path). No step ever removes a file it did not just move. A microsecond window therefore
+// remains only (1) in renameByLinks (the fallback below), (2) between the identity check before
+// C and C, which the check after C reports, (3) between the look and the call on platforms whose
+// rename is path-based (windows), where a folder renamed away between the look and the call
+// also takes the file and the put-back is refused by the look.
 //
 // @MX:WARN: [AUTO] filesystem moves inside a user's skill folder
 // @MX:REASON: a path swapped between a check and a move is the F24/F25 hazard; every move is
@@ -469,7 +487,7 @@ func renameSkillFile(root *os.Root, dirRel string) error {
 	if err != nil {
 		return errors.Join(err, removeStage(skill, stage))
 	}
-	switch err := moveNoReplace(root, from, mid); {
+	switch err := moveNoReplace(root, from, mid, true); {
 	case errors.Is(err, errNoReplaceUnsupported):
 		return renameByLinks(root, lower, canonical, stage, stageInfo, orig)
 	case err != nil:
@@ -478,29 +496,74 @@ func renameSkillFile(root *os.Root, dirRel string) error {
 		return errors.Join(err, removeStage(skill, stage))
 	}
 	if now, err := stageDir.root.Lstat("skill.md"); err != nil || !os.SameFile(moving, now) {
-		return fmt.Errorf("%s no longer holds the file that was moved there (%v); nothing more was moved, and whatever is at %s was left in place", staged, err, staged)
+		return fmt.Errorf("%s no longer holds the file that was moved there (%v); nothing more was moved, and whatever is there was left in place", where(root, stageDir, stage), err)
 	}
-	if err := moveNoReplace(root, mid, to); err != nil {
-		// SKILL.md is taken (or the move failed): put the file back under its own name. A
-		// refused put back leaves the content staged and the error says where.
-		if backErr := moveNoReplace(root, mid, from); backErr != nil {
-			return fmt.Errorf("%w (restoring %s also failed: %v; the content is at %s)", err, lower, backErr, staged)
+	if err := moveNoReplace(root, mid, to, true); err != nil {
+		// SKILL.md is taken, the move failed, or the path of S no longer leads to the folder
+		// that was moved into: put the file back under its own name. On a descriptor-bound
+		// platform the put-back does not look at any path (the path may be what changed); a
+		// refused put-back leaves the content where it is and the error says where.
+		if backErr := moveNoReplace(root, mid, from, !renameIsDescriptorBound); backErr != nil {
+			return fmt.Errorf("%w (restoring %s also failed: %v; the content is %s)", err, lower, backErr, contentPlace(root, stageDir, stage, "skill.md"))
 		}
 		return errors.Join(err, removeStage(skill, stage))
 	}
 	if now, err := skill.root.Lstat("SKILL.md"); err != nil || !os.SameFile(moving, now) {
 		return errors.Join(fmt.Errorf("%s does not hold the file that was staged (%v): the staged name was replaced during the move, and the file now at %s was left in place", canonical, err, canonical), removeStage(skill, stage))
 	}
+	// The held folder holds the renamed file; the requested path must name it too. A skill
+	// folder renamed away after the first rename, with another folder put at its path, passes
+	// the look and the held checks and still leaves the requested path without SKILL.md.
+	if now, err := root.Lstat(canonical); err != nil || !os.SameFile(moving, now) {
+		reason := "the file at that path changed while it was being checked"
+		if !leadsTo(root, skill, dirRel) {
+			reason = fmt.Sprintf("the skill folder this step opened as %s was moved, so SKILL.md was written inside that moved folder", dirRel)
+		}
+		return fmt.Errorf("%s does not name the file that was renamed (%v): %s; nothing was removed or moved back, and the staging folder %s inside it was left in place", canonical, err, reason, path.Base(stage))
+	}
 	return removeStage(skill, stage)
 }
 
-// moveNoReplace renames from to to without replacing to. A root-bound look at from precedes
-// the rename: where the rename is relative to descriptors it makes the step refuse when the
-// path of from no longer leads to the folder that is held, where it is path-based (windows)
-// it is the containment against a folder swapped for a link out of the project.
-func moveNoReplace(root *os.Root, from, to moveEnd) error {
-	if _, err := root.Lstat(from.rel); err != nil {
-		return err
+// leadsTo reports whether the path rel, looked at through root without following links, still
+// names the folder h holds open.
+func leadsTo(root *os.Root, h *heldDir, rel string) bool {
+	byPath, err := root.Lstat(rel)
+	if err != nil {
+		return false
+	}
+	held, err := h.root.Lstat(".")
+	return err == nil && os.SameFile(byPath, held)
+}
+
+// where names the held folder h, opened as rel, for an error message: rel while the path still
+// leads to it, otherwise rel with the fact that the folder was moved away from it.
+func where(root *os.Root, h *heldDir, rel string) string {
+	if leadsTo(root, h, rel) {
+		return rel
+	}
+	return fmt.Sprintf("the folder this step opened as %s, which was moved", rel)
+}
+
+// contentPlace says where the file name inside the held folder h (opened as rel) is: at its
+// path while the path still leads to the folder, otherwise inside the folder that was moved.
+func contentPlace(root *os.Root, h *heldDir, rel, name string) string {
+	if leadsTo(root, h, rel) {
+		return "at " + path.Join(rel, name)
+	}
+	return fmt.Sprintf("in %s inside the folder this step opened as %s, which was moved", name, rel)
+}
+
+// moveNoReplace renames from to to without replacing to. With look set, a root-bound look at
+// from precedes the rename: where the rename is relative to descriptors it makes the step
+// refuse when the path of from no longer leads to the folder that is held, where it is
+// path-based (windows) it is the containment against a folder swapped for a link out of the
+// project. A put-back passes look false on a descriptor-bound platform: the path it would look
+// at is exactly what may have been moved away, and the descriptors still name the folders.
+func moveNoReplace(root *os.Root, from, to moveEnd, look bool) error {
+	if look {
+		if _, err := root.Lstat(from.rel); err != nil {
+			return fmt.Errorf("move %s to %s: %w", from.rel, to.rel, err)
+		}
 	}
 	if err := renameNoReplace(from.dir.file, from.name, to.dir.file, to.name); err != nil {
 		return fmt.Errorf("move %s to %s: %w", from.rel, to.rel, err)

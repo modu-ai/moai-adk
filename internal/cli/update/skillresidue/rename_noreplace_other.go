@@ -8,6 +8,9 @@ import (
 	"syscall"
 )
 
+// renameIsDescriptorBound is false here (no rename primitive at all, the link fallback runs).
+const renameIsDescriptorBound = false
+
 // noReplaceRenameAt reports that this platform has no rename that refuses to replace, so the
 // held-back rename uses the link-based path.
 func noReplaceRenameAt(*os.File, string, *os.File, string) error { return errNoReplaceUnsupported }

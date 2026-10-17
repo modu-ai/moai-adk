@@ -12,6 +12,10 @@ import (
 	"golang.org/x/sys/windows"
 )
 
+// renameIsDescriptorBound is false here: the rename is path-based, so every move, a put-back
+// included, is preceded by the root-bound look at its source path.
+const renameIsDescriptorBound = false
+
 // noReplaceRenameAt renames src in srcDir to dst in dstDir with MoveFileEx and no flags:
 // without MOVEFILE_REPLACE_EXISTING the call fails when dst exists. A destination that exists
 // is reported with the operating system's own error (errors.Is(err, fs.ErrExist)); a volume

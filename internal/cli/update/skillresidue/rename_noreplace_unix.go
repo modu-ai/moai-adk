@@ -10,6 +10,11 @@ import (
 	"golang.org/x/sys/unix"
 )
 
+// renameIsDescriptorBound reports that noReplaceRenameAt resolves both names against the open
+// folders' descriptors, so a move between two held folders needs no look at their paths and a
+// put-back can still reach a folder that was renamed away.
+const renameIsDescriptorBound = true
+
 // withDirFd runs fn with the descriptor of an open folder. The descriptor is only valid
 // inside fn, and the file is kept alive for its duration.
 func withDirFd(dir *os.File, fn func(fd int) error) error {
