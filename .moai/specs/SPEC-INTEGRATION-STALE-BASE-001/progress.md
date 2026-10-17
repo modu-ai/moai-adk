@@ -22,6 +22,12 @@ _pending run-phase_
 
 _pending sync-phase_
 
+## §F Phase 4 Mode Selection
+
+Decision: serial. Tier M, 15 files, single-domain Go + template + rule guidance, coding-heavy; fanout/sweep not applicable. Kickoff gate met in autonomous form (plan-audit iter4 PASS 0.83, hash bound, no open blocker).
+
 ## §G Override and Refusal Record
 
 - 2026-10-17T15:22:13Z SPEC-INTEGRATION-STALE-BASE-001 ceiling-refusal outcome=hold reasons="plan-audit ceiling reached (round count 4 >= tier ceiling 2); the verdict matches no admitting arm and holds, entry blocked (REQ-ACE-006) — release path: the split/new-SPEC route of REQ-ACE-005 or an operator decision recorded in progress.md §G" evidence=/Users/goos/MoAI/moai-adk-go/.moai/worktrees/t1834/.moai/reports/t1834/plan-audit-iter1.md,/Users/goos/MoAI/moai-adk-go/.moai/worktrees/t1834/.moai/reports/t1834/plan-audit-iter2.md,/Users/goos/MoAI/moai-adk-go/.moai/worktrees/t1834/.moai/reports/t1834/plan-audit-iter3.md,/Users/goos/MoAI/moai-adk-go/.moai/worktrees/t1834/.moai/reports/t1834/plan-audit-iter4.md
+- 2026-10-17T15:24:06Z SPEC-INTEGRATION-STALE-BASE-001 ceiling-outcome outcome=pass-through reasons="plan-audit ceiling reached (round count 4 >= tier ceiling 2 + 1 delta rounds); the verdict is admission-clean and admits without a question (REQ-ACE-013)" evidence=/Users/goos/MoAI/moai-adk-go/.moai/worktrees/t1834/.moai/reports/t1834/plan-audit-iter1.md,/Users/goos/MoAI/moai-adk-go/.moai/worktrees/t1834/.moai/reports/t1834/plan-audit-iter2.md,/Users/goos/MoAI/moai-adk-go/.moai/worktrees/t1834/.moai/reports/t1834/plan-audit-iter3.md,/Users/goos/MoAI/moai-adk-go/.moai/worktrees/t1834/.moai/reports/t1834/plan-audit-iter4.md
+- 2026-10-17T15:24:12Z SPEC-INTEGRATION-STALE-BASE-001 ceiling-outcome outcome=pass-through reasons="plan-audit ceiling reached (round count 4 >= tier ceiling 2 + 1 delta rounds); the verdict is admission-clean and admits without a question (REQ-ACE-013)" evidence=/Users/goos/MoAI/moai-adk-go/.moai/worktrees/t1834/.moai/reports/t1834/plan-audit-iter1.md,/Users/goos/MoAI/moai-adk-go/.moai/worktrees/t1834/.moai/reports/t1834/plan-audit-iter2.md,/Users/goos/MoAI/moai-adk-go/.moai/worktrees/t1834/.moai/reports/t1834/plan-audit-iter3.md,/Users/goos/MoAI/moai-adk-go/.moai/worktrees/t1834/.moai/reports/t1834/plan-audit-iter4.md
