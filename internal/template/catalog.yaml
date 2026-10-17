@@ -6,7 +6,7 @@ catalog:
             - name: moai
               tier: core
               path: templates/.claude/skills/moai/
-              hash: 7bccb1b1df9f0b9f6d9ca581fb6301c04bfe98733b7b2909c6e45239778a422b
+              hash: 690a801102c9c09bcdbcc6c4c2b321b4b3ab2d6ee16d11eda3a80c85355e06df
               version: 1.0.0
               depends_skills:
                 - moai-workflow-spec
@@ -39,7 +39,7 @@ catalog:
             - name: moai-factory-foreman
               tier: core
               path: templates/.claude/skills/moai-factory-foreman/
-              hash: f2f10b926c501eec4688211e190eee2ffa6b9116c4bc5d2bf5d42426d4e1ff1f
+              hash: 78fae53ee35ff7349d6fbe2ed5dea155348e298361c6af2cc7a0847636b0385d
               version: 1.0.0
               depends_skills:
                 - moai-lane-watchdog
@@ -344,7 +344,7 @@ catalog:
                 - name: manager-todo
                   tier: optional-pack:consult
                   path: templates/.claude/agents/moai/manager-todo.md
-                  hash: 45a4bb7eef286735ba7a42fe7b5110d6516788927b1d1d614bf7a98b4b318ce9
+                  hash: 7b1b374a398a8cde072d643f4afc178e0c35807cdd0378062eeabab2b204e9f6
                   version: 1.0.0
                 - name: super-advisor
                   tier: optional-pack:consult

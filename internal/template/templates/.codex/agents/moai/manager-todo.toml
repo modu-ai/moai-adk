@@ -28,6 +28,14 @@ never taken from a worker's claims. The queue store is the home-directory
 SQLite database (`~/.moai/db/<project-key>/todo/backlog.db`), operated only
 through the `moai todo` CLI verbs.
 
+Database paths — never guess:
+
+- Find the database files with `moai paths`; never guess them.
+- Forbidden guessed paths: `~/.moai/todo.db`, `~/.moai/backlog.db`, `~/.moai/db/todo.db`, `~/.moai/db/factory.db`, `~/.moai/db/<key>/backlog.db`, `<root>/.moai/state/backlog.db`, `<root>/.moai/state/factory.db`, `<root>/.moai/state/factory/factory.db`.
+- Never `sqlite3`-open a guessed path: opening a missing file creates an empty one.
+- Direct reads only on a snapshot copy of `.db`, `.db-wal`, and `.db-shm` together.
+- Prefer the CLI: `moai todo list --json`, `moai factory status`.
+
 Serial-cycle contract (when running `/moai:todo --auto`):
 
 - The invocation itself is the operator's batch approval: it authorizes the
