@@ -99,7 +99,32 @@ Combined: `go test -run 'TestIntegrationBackup' ./internal/cli/ -count=1 -v` →
 
 Quality: `go build ./...` exit 0; `GOOS=windows GOARCH=amd64 go build ./...` exit 0; `go vet ./internal/cli/` exit 0; gofmt clean; scoped `golangci-lint run --timeout=4m ./internal/cli/...` → the same 3 pre-existing errcheck findings (`factory_run_adopt.go`), 0 NEW. Coverage per leader rule 35e9 (scoped only): `go test -cover -run 'TestIntegrationBackup' ./internal/cli/ -count=1` → `coverage: 4.6% of statements` (package-wide figure under a scoped run); per-file `go tool cover -func` on `integration_backup.go` → `gitRunner 100.0%`, `runIntegrationBackup 91.7%`, `newIntegrationBackupCmd 83.3%`; file aggregate 19/21 statements = 90.5%.
 
-_(M3 rows appended below as the milestone completes.)_
+### M3 — runbook + isolation audit (AC-TBS-006, AC-TBS-008) — PASS
+
+| AC | Status | Command | Observed output |
+|---|---|---|---|
+| AC-TBS-006 (no-real-push + no-workflow-edit) | PASS | `git diff --name-only 5a0219448..HEAD -- .github/workflows/` | empty output — no workflow file modified against the run-phase baseline SHA. No-push: the run phase issued no `git push` (lane protocol B9; every remote contact in tests resolves under `t.TempDir()`, asserted per-run by `assertBackupCapture`). Isolation audit: `grep -nE 'https?://|git@|github\.com[:/]'` over both new test files matches only the Go module import line (`integration_backup_test.go:24: "github.com/modu-ai/moai-adk/internal/gitenv"`) — no network URL, no dev-repo remote named |
+| AC-TBS-008 (runbook + isolation of templates/config) | PASS | `ls .moai/docs/trunk-backup-runbook.md`; `git diff --name-only 5a0219448..HEAD` | runbook exists carrying the four REQ-TBS-007 statements (§2 leader-round step, §3 operator-approved origin-push scope, §4 redundancy-copy-only, §5 unchanged batch discipline + main protection). Full run-phase diff = exactly the 10 §A.5 files (guard test, verb + tests, integration.go registration, test-input-filters.yml, runbook, 4 SPEC artifacts) — nothing under `internal/template/templates/**`, `.moai/config/`, `.claude/`, or any branch-protection/guard surface |
+| quality gate (acceptance §D) | PASS | `moai spec lint SPEC-TRUNK-BACKUP-SYNC-001` | `✓ No findings — all SPEC documents are valid` |
+
+## §E.3 Run-phase Audit-Ready Signal
+
+```yaml
+run_complete_at: 2026-10-18
+run_commit_sha: pending-backfill-run
+run_status: complete
+ac_pass_count: 10
+ac_fail_count: 0
+preserve_list_post_run_count: 0   # run-phase diff vs baseline 5a0219448 touches only plan §A.5 files; workflows/ templates/ config/ guards all untouched
+l44_pre_commit_fetch: not-run     # factory lane tree; origin divergence is the leader's batch-time measurement
+l44_post_push_fetch: n/a          # no push performed (REQ-TBS-008; leader batch-push is the only push path)
+new_warnings_or_lints_introduced: 0   # scoped golangci-lint ./internal/cli/... identical to baseline (3 pre-existing errcheck, factory_run_adopt.go)
+cross_platform_build:
+  darwin_arm64: pass
+  windows_amd64: pass
+total_run_phase_files: 10
+m1_to_mN_commit_strategy: per-milestone conventional commits, card id + Authored-By-Agent trailer in each (M1 b823791c7, M2 c5bce4c86, M3 + backfill); branch stays local per lane protocol
+```
 
 ## §E.3 Run-phase Audit-Ready Signal
 
