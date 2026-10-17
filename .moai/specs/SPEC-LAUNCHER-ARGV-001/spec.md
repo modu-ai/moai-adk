@@ -2,9 +2,9 @@
 id: SPEC-LAUNCHER-ARGV-001
 title: "Launcher worktree-guard argv judgment — one canonical resolver, exec-boundary judgment"
 version: "0.1.0"
-status: draft
+status: in-progress
 created: 2026-10-15
-updated: 2026-10-15
+updated: 2026-10-18
 author: manager-spec (MoAI factory, card t1748)
 priority: P1
 phase: "v3.3.0"
