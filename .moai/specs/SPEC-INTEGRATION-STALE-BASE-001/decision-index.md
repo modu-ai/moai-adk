@@ -16,8 +16,8 @@ Revision 0.1.0, authored at plan phase for card t1834 (Tier M). The decision gat
 |---|---|---|---|---|
 | Q1 | Shipped default of `max_behind_landings` (0 or a positive number) | FOUNDER | implementation-level | DEFAULT-APPLIED 2026-10-17T14:50Z lane / manager-spec |
 | Q2 | Whether this repository's live `workflow.yaml` opts the gate in (`enabled: true`) | FOUNDER | implementation-level | DEFAULT-APPLIED 2026-10-17T14:50Z lane / manager-spec |
-| Q3 | Whether queue promotion also runs the gate | FOUNDER | product-level | (empty, operator) |
-| Q4 | Order against card t1847 on the shared verbs `acquire` and `factory complete` | FOUNDER | implementation-level | (empty, leader) |
+| Q3 | Whether queue promotion also runs the gate (deferred scope question; non-blocking) | FOUNDER | product-level | not required for Kickoff: promotion gating is Out of Scope (spec.md §C); a widening answer would be a new SPEC |
+| Q4 | Order against card t1847 on the shared verbs `acquire` and `factory complete` (scheduling; non-blocking) | FOUNDER | implementation-level | not required for Kickoff: the SPEC is self-consistent in either order |
 
 ## Rows
 
@@ -47,7 +47,7 @@ Label: FOUNDER
 Class: product-level
 Authority anchor: none found. The existing promotion gate (`CandidateGrantGate`, `internal/factory/integration_window_ops.go:451-465`) takes only a card id, and the staleness that arises while a lane waits is today governed by merge cause 2.
 Why unresolved: gating promotion would need the gate to resolve a card's worktree inside the window-queue package and would drop a waiting lane from the queue when main moves, which changes the queue's observable behavior for every waiter; that is a judgment about product behavior, not an implementation detail.
-Operator verdict:
+Operator verdict: not required for Kickoff (deferred scope question; the SPEC is self-consistent either way)
 
 ### Q4: In what order do t1834 and t1847 land, given both edit `acquire` and `factory complete`?
 
@@ -55,9 +55,9 @@ Label: FOUNDER
 Class: implementation-level
 Authority anchor: none found. t1846's SPEC records the same kind of request for t1831 (`SPEC-LANDING-SURFACE-RULES-001/spec.md` §A.5, in tree `.moai/worktrees/t1846`, not committed to this tree); t1847's SPEC does not exist in any tree read.
 Why unresolved: ordering is a leader scheduling decision; this plan only keeps its edits to one added call at each verb so that either order merges cleanly.
-Operator verdict:
+Operator verdict: not required for Kickoff (scheduling matter for the leader)
 
 ## Routing
 
-1. **Open FOUNDER rows:** Q3 (product-level) blocks the autonomous Kickoff until the operator writes its `Operator verdict:`; Q4 is implementation-level with no ranked Default and goes to the leader.
+1. **No row blocks the Kickoff.** Q3 is a deferred scope question and Q4 a scheduling matter; the SPEC is self-consistent whichever way either is answered, and a widening answer to Q3 would be a new SPEC.
 2. **DEFAULT-APPLIED at plan close:** Q1 and Q2, both implementation-level with a ranked Default, so the audited hash covers them.

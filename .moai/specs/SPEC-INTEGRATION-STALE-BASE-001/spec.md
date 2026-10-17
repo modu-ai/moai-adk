@@ -47,28 +47,28 @@ No check at window entry asks "is this candidate close enough to local main, and
 ### A.3 Vocabulary
 
 - **Landing**: one commit on the first-parent chain of the local integration branch (an integration merge, `Merge WT-... into main (card ..., integration merge)`, or a direct commit). Measured in this tree: `git rev-list --count --first-parent main~40..main` prints 40, while `git rev-list --count main~40..main` prints 664, so counting all commits would overstate "landings" by a factor of 16.6 (plan.md §G records the single-tree limit).
-- **Landings behind (L)**: the number of landings on the local integration branch that the candidate has not absorbed: `git rev-list --count --first-parent <merge-base>..<integration branch>` where `<merge-base>` is `git merge-base <integration branch> HEAD` of the candidate tree. At absorb time `L = 0`.
+- **Landings behind (L)**: the number of landings on the local integration branch that the candidate's re-measure did not cover: `git rev-list --count --first-parent <record.Base>..<integration branch>`, where `record.Base` is the absorbed base stored in the valid re-measure record keyed to the candidate's HEAD tree (the very field merge cause 2 compares against the tip). When `record.Base` is not an ancestor of the tip, the candidate is stale whatever K is. At absorb-then-remeasure time `L = 0`. (The live `git merge-base` is not used: after a content-free absorb it moves while the stored base does not, and the two would disagree with cause 2.)
 - **K**: the operator-set tolerance, `workflow.base_freshness_gate.max_behind_landings`.
 - **Candidate tree**: the tree whose HEAD tree SHA keys the re-measure record, resolved the way the re-measure verb resolves it (the caller's working directory at `acquire`; the card's worktree at `complete`).
 
 ### A.4 What the gate asks, and why two conditions
 
-(a) **Absorb**: `L <= K`. (b) **Post-absorb re-measure**: a valid re-measure record keyed to the candidate tree's current HEAD tree. Condition (b) is the "tests re-run after the absorb" evidence without a new mechanism: an absorb changes the HEAD tree, so a record keyed to the old tree cannot match the new one, and a record keyed to the current tree was necessarily produced on content that includes everything absorbed. The gate does not (and cannot) judge whether the recorded command is the right scoped suite; that remains the lane's declaration, exactly as today.
+(b) **Post-absorb re-measure**: a valid re-measure record keyed to the candidate tree's current HEAD tree. An absorb that changes content changes the HEAD tree, so a record keyed to the old tree cannot match, and a record keyed to the current tree was produced on content that includes everything absorbed. (a) **Absorb**: with that record in hand, `L <= K`, where L is measured from the record's stored `Base`. Measuring from the stored base makes the gate and merge cause 2 (`record.Base != tip`) agree: at K = 0 the gate refuses exactly when `record.Base != tip` (an ancestor `Base` makes L at least 1; a non-ancestor `Base` is refused outright). A content-free absorb leaves the tree and the record valid but moves the tip past the stored base, so the gate refuses until the lane re-runs `moai integration remeasure`, which rewrites the record with the new base; that is the same outcome cause 2 would force inside the window. The gate does not (and cannot) judge whether the recorded command is the right scoped suite; that remains the lane's declaration, exactly as today.
 
 ---
 
 ## §B — Requirements (GEARS)
 
-15 requirements (Tier M ceiling 16). Each REQ line keeps `shall` on its first physical line. Acceptance criteria live in acceptance.md and map by `maps REQ-ISB-NNN`.
+16 requirements (Tier M ceiling 16). Each REQ line keeps `shall` on its first physical line. Acceptance criteria live in acceptance.md and map by `maps REQ-ISB-NNN`.
 
 ### B.1 Where the gate runs
 
-- REQ-ISB-001: When `moai integration acquire` is invoked with a card id from a working directory whose HEAD is a card branch and the gate is enabled, the verb shall evaluate base freshness before any window-record mutation and before any queue-ticket enqueue, at the position of the existing pre-window preconditions.
-- REQ-ISB-002: When `moai factory complete` is about to acquire the window itself (the calling lane does not already hold it) and the gate is enabled, the verb shall evaluate base freshness for the card's worktree before the acquisition, so that a refusal leaves the window record, the integration branch, and the card state unchanged.
+- REQ-ISB-001: When `moai integration acquire` is invoked with a card id from a working directory whose HEAD is a card branch (neither the integration branch nor detached) and the gate is enabled, the verb shall evaluate base freshness before any window-record mutation and before any queue-ticket enqueue, at the position of the existing pre-window preconditions; when the invocation has no card id or the working directory is not a card branch, the gate is not applicable and the verb shall admit silently.
+- REQ-ISB-002: When `moai factory complete` is about to acquire the window itself (the calling lane does not already hold it), the gate is enabled, and the case is not an adoption (REQ-ISB-016), the verb shall evaluate base freshness for the card's worktree before the acquisition, so that a refusal leaves the window record, the integration branch, and the card state unchanged.
 
 ### B.2 What it measures and decides
 
-- REQ-ISB-003: The gate shall measure landings behind as the count of first-parent commits of the local integration branch that are not reachable from the merge-base of that branch and the candidate tree's HEAD, and shall not count commits reachable only through a merged side branch.
+- REQ-ISB-003: The gate shall measure landings behind as the count of first-parent commits of the local integration branch that are not reachable from the `Base` stored in the valid re-measure record keyed to the candidate tree's HEAD tree, shall treat a stored `Base` that is not an ancestor of the integration tip as stale, and shall not count commits reachable only through a merged side branch.
 - REQ-ISB-004: When landings behind exceeds K, the gate shall refuse window entry with a message that names the landings behind, K, the configuration key, the integration branch tip, and the remedy (absorb local `main` into the card branch, re-run `moai integration remeasure`, then retry).
 - REQ-ISB-005: When the candidate tree's HEAD tree has no valid re-measure record, the gate shall refuse window entry whatever the value of landings behind, with a message naming the tree and the remedy (re-run `moai integration remeasure` after the last absorb).
 - REQ-ISB-006: The gate shall judge the record through `ReadRemeasureRecord` and `ValidateRemeasureRecord` and shall not introduce a second record type, a second store, a second validator, or any verb that performs the absorb.
@@ -80,7 +80,7 @@ No check at window entry asks "is this candidate close enough to local main, and
 
 ### B.4 Failure posture, authority, and refusal shape
 
-- REQ-ISB-009: When the gate cannot determine its verdict (configuration unreadable or K negative, integration branch unresolvable, a git read fails, no card id given, or the working directory is not a card branch), the gate shall admit the entry and print one line naming the cause, and shall refuse only on positive evidence of staleness or of a missing record.
+- REQ-ISB-009: When the gate is applicable but cannot determine its verdict (configuration unreadable or K negative, integration branch unresolvable, or a git read fails), the gate shall admit the entry and print exactly one line naming the cause, and shall refuse only on positive evidence of staleness or of a missing or invalid record.
 - REQ-ISB-010: The gate shall leave the merge step's cause 1 and cause 2 checks, their exit codes 1 and 2, and every exit code in 1-15 and 20 unchanged, and a K above 0 shall never relax them.
 - REQ-ISB-011: Every gate refusal shall begin with the sentinel `BASE_FRESHNESS_VIOLATION:` and shall exit with a code distinct from 1-15 and 20 (proposed 16).
 
@@ -90,6 +90,7 @@ No check at window entry asks "is this candidate close enough to local main, and
 - REQ-ISB-013: The new keys shall be registered wherever the configuration surface is registered (the Go struct and defaults, the configuration cache schema version, and the shipped-key inventory) so that the shipped-key reader guard passes.
 - REQ-ISB-014: The gate shall read no audit verdict and no card evidence SHA, and shall write no factory-record field, no re-measure record, no window record, and no queue ticket.
 - REQ-ISB-015: While the SPEC is in its run phase, the set of files changed between the plan pin and HEAD shall be a subset of the allow-list in plan.md §C plus the SPEC directory and `.moai/reports/t1834/`, so that no file owned by the cards in §D changes.
+- REQ-ISB-016: When `moai factory complete` finds that the integration tip is a merge commit whose second parent is the card branch's current tip and that a valid re-measure record keys the tip's tree (the adoption predicate of REQ-MWQ-019 step 2), the verb shall not evaluate the freshness gate and the adoption path shall behave exactly as without the gate, whether or not the lane holds the window.
 
 ---
 
@@ -131,9 +132,9 @@ No check at window entry asks "is this candidate close enough to local main, and
 
 ## §E — Constraints and assumptions
 
-1. **Authority stays in the merge step.** The gate is an advisory-grade early refusal whose fail-open posture is safe because `RunMergeStep` re-enforces the strict form (REQ-ISB-009, REQ-ISB-010).
+1. **Authority stays in the merge step.** The gate is an early refusal whose fail-open posture is safe because `RunMergeStep` re-enforces the strict form (REQ-ISB-009, REQ-ISB-010).
 2. **Default-off shipping posture.** The repository's guard family ships its refusal layer off and neutral in the template (`internal/config/defaults.go:1541-1550` for the two nearest siblings); this gate follows it. Whether this repository's live configuration opts in is decision-index Q2.
-3. **K=0 default.** It preserves today's in-window behaviour (cause 2 demands equality with the tip), so enabling the gate refuses at entry exactly what the merge step would refuse inside the window (decision-index Q1).
+3. **K=0 default.** Because L is measured from the record's stored `Base` (REQ-ISB-003), K = 0 makes the gate test the same predicate as cause 2 (`record.Base != tip`), so at K = 0 enabling the gate refuses at entry what the merge step would refuse inside the window for that reason; causes 3 to 13 stay the merge step's alone (decision-index Q1).
 4. **Placement keeps the seam with t1847.** The gate is one function in a new file under `internal/factory` plus one new CLI file; `integration.go` and `factory_card.go` each gain one call placed beside the existing candidate-hold precondition, with no reordering or editing of any existing line.
 5. **Template-first.** The template configuration and the gates guidance are edited in `internal/template/templates/` and the repository copies follow; the guidance pair is byte-identical today (`diff -q` printed nothing for `factory-dispatch-gates.md` and `factory-dispatch-mechanics.md`).
 6. **No time estimates** appear in any artifact.
