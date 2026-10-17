@@ -3,6 +3,7 @@
 ## §E.1 Plan-phase Audit-Ready Signal
 
 plan_status: audit-ready
+audit_ready: true
 plan_complete_at: 2026-10-17
 tier: M (12 requirements, 15 acceptance criteria; spec.md, plan.md, acceptance.md)
 tree_pin: 7faf75fdfbe27e442ea2c17a1a90caf5792d09e6
@@ -37,3 +38,8 @@ _<pending run-phase>_
 ## §E.4 Sync-phase Audit-Ready Signal
 
 _<pending sync-phase>_
+
+## §G Override and Refusal Record
+
+- 2026-10-17T14:39:39Z SPEC-LANDING-SURFACE-RULES-001 ceiling-outcome outcome=pass-through reasons="plan-audit ceiling reached (round count 3 >= tier ceiling 2 + 1 delta rounds); the verdict is admission-clean and admits without a question (REQ-ACE-013)" evidence=/Users/goos/MoAI/moai-adk-go/.moai/worktrees/t1846/.moai/reports/t1846/plan-audit-iter2.md,/Users/goos/MoAI/moai-adk-go/.moai/worktrees/t1846/.moai/reports/t1846/plan-audit-iter3.md,/Users/goos/MoAI/moai-adk-go/.moai/worktrees/t1846/.moai/reports/t1846/plan-audit.md
+- 2026-10-17T14:40:07Z SPEC-LANDING-SURFACE-RULES-001 ceiling-outcome outcome=pass-through reasons="plan-audit ceiling reached (round count 3 >= tier ceiling 2 + 1 delta rounds); the verdict is admission-clean and admits without a question (REQ-ACE-013)" evidence=/Users/goos/MoAI/moai-adk-go/.moai/worktrees/t1846/.moai/reports/t1846/plan-audit-iter2.md,/Users/goos/MoAI/moai-adk-go/.moai/worktrees/t1846/.moai/reports/t1846/plan-audit-iter3.md,/Users/goos/MoAI/moai-adk-go/.moai/worktrees/t1846/.moai/reports/t1846/plan-audit.md
