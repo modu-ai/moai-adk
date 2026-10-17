@@ -154,11 +154,147 @@ Residual risk: a new local file under `.moai/reports/` (any card's directory) or
 
 ## §E.2 Run-phase Evidence
 
-_pending run-phase_
+Card t1760, run phase. Tree: branch `WT-10-15-release-3`, HEAD `1ed32946c` at start, document commit `5e3902e27`. Every command below was run in this run against this tree, from the worktree root. Tools used: `curl`, `grep` (a shell function over ugrep here; its version string was not observed), `awk`, `python3 -I`, `git`. No project-built tool judged anything, so no tool-provenance coordinate (judging build) applies. Scratch directory for downloads: `/private/tmp/claude-501/-Users-goos-MoAI-moai-adk-go/39eb45b2-9233-459e-a4d1-94f379f1058c/scratchpad` (machine-local; not a citation target; the deciding output is reproduced here).
+
+### E.2.1 M1 — source re-verification (REQ-CMM-004)
+
+Fetch, one URL per scratch directory, raw bytes (`curl -sS -L -o page.bin -w 'HTTP=%{http_code} size_download=%{size_download} url_effective=%{url_effective}\n' <URL>`):
+
+```text
+BP-5 HTTP=200 size_download=165292 url_effective=https://www.anthropic.com/engineering/redesigning-source-control   (exit=0)
+BP-6 HTTP=200 size_download=193084 url_effective=https://www.anthropic.com/engineering/how-we-contain-claude          (exit=0)
+BP-1 HTTP=200 size_download=144992 url_effective=https://www.anthropic.com/engineering/managed-agents                  (exit=0)
+BP-2 HTTP=200 size_download=453103 url_effective=https://platform.claude.com/docs/en/build-with-claude/prompt-engineering/prompting-claude-opus-5-5   (exit=0)
+```
+
+Fragment match, `grep -c -F -- "$fragment" page.bin` per fragment (counts are matching lines, not occurrences):
+
+```text
+BP-5 count=1 :: Redesigning source control at Anthropic
+BP-5 count=1 :: source control became our biggest development bottleneck
+BP-5 count=1 :: around 2,500 code changes merged per day
+BP-5 count=1 :: we merged over 30,000 per day
+BP-5 count=1 :: A proper merge queue, for example
+BP-5 count=1 :: much sense at agent scale
+BP-5 count=1 :: global repository lock on the merge queue
+BP-5 count=1 :: post-merge and pre-deploy automated testing
+BP-5 count=1 :: concurrent changes can conflict
+BP-5 count=1 :: Claude can typically fix these conflicts faster than humans
+BP-6 count=2 :: How we contain Claude across products
+BP-6 count=1 :: users approved roughly 93% of permission prompts
+BP-6 count=1 :: Design for containment at the environment layer first, then steer behavior at the model layer
+BP-6 count=1 :: The goal is to set a hard boundary on what an agent can reach
+BP-1 count=1 :: Scaling Managed Agents: Decoupling the brain from the hands
+BP-1 count=1 :: Decoupling the brain from the hands meant the harness no longer lived inside the container
+BP-1 count=1 :: each could fail or be replaced independently
+BP-1 count=1 :: the tokens are never reachable from the sandbox where Claude
+BP-1 count=1 :: nothing in the harness needs to survive a crash
+BP-2 count=2 :: Prompting Claude Opus 5.5
+BP-2 count=2 :: Treat a text-only end of turn as a report rather than as proof the task is done
+BP-2 count=2 :: stop after two or three automatic continuations on the same task
+```
+
+Two further context sentences relied on by the rows were matched the same way (each count=1): BP-6 `A tight perimeter also means you can relax oversight`; BP-1 `Auth can be bundled with a resource or held in a vault outside the sandbox`. The BP-5 bottleneck sentence also occurs in the article body, not only in the page description (python `-I` offset scan on page.bin: ten offsets, first body offset 15352). Surrounding text of each quoted fragment was read from the fetched bytes (python `-I` context extraction) before the source-claim cells were paraphrased.
+
+Flags from this run: BP-1 VERIFIED, BP-2 VERIFIED, BP-5 VERIFIED, BP-6 VERIFIED. The register fragments in the document are: BP-1 `each could fail or be replaced independently`, BP-2 `Treat a text-only end of turn as a report rather than as proof the task is done`, BP-5 `post-merge and pre-deploy automated testing`, BP-6 `Design for containment at the environment layer first, then steer behavior at the model layer`; each is in the table above with count 1 or more.
+
+### E.2.2 M3 — row basis (REQ-CMM-007, REQ-CMM-008)
+
+Sections read before each row was written, with the Read tool, by line range, at this tree: `factory-dispatch.md` lines 86-239; `factory-dispatch-mechanics.md` lines 10-30 and 100-128; `factory-dispatch-gates.md` lines 52-72; `auto-semantics.md` lines 113-149 and 206-251; `worktree-integration.md` lines 161-216; `gitflow-lane-protocol.md` lines 51-97; `cross-session-messaging-core.md` lines 44-63; `moai-constitution.md` lines 132-142; `ci-autofix-protocol.md` lines 120-141; `glm-web-tooling.md` lines 46-53; `goal-directive-detail.md` lines 120-131. `main-checkout-branch-guard.md` was read from the full copy the harness attached from this worktree path (a Read call answered that the file was already in context), so that one was not opened by a Read call of mine. The harness also attached primary-checkout copies of several rule files that differ from the worktree copies; every citation follows the worktree copy.
+
+Fit calls, seed (plan.md § D) against final:
+
+| Row | Theme / Source | Seed | Final | Basis |
+|---|---|---|---|---|
+| 1 | correlated-failure / BP-1 crash | aligned | aligned | queue on disk, evidence read, standing awaken carrier |
+| 2 | correlated-failure / BP-1 independent | differs | differs | shared machine, incident record, opt-in slot-lease guard |
+| 3 | correlated-failure / BP-2 text-only | aligned | aligned | idle notice is a scheduling hint; scope note on layer difference |
+| 11 (candidate) | correlated-failure / BP-2 continuations | not seeded | differs | goal ceiling, runtime block cap, stagnation guard; magnitude differs |
+| 4 | isolation-first / BP-6 environment layer | differs | differs | doctrine always loaded; mechanical layer opt-in, fail-open, identity exemption |
+| 5 | isolation-first / BP-6 hard boundary | aligned | **differs (flipped)** | read text justifies worktree isolation as write-conflict and branch-state separation, and read-only agents by tool list; no file-system, network, or credential bound was read, so `aligned` would overstate |
+| 6 | isolation-first / BP-6 93% | aligned | aligned | gate inventory; order of operations (containment before relaxing oversight) stated as NOT matched |
+| 7 | isolation-first / BP-1 tokens | gap | gap | three files read besides the constitution; none describes structural separation |
+| 8 | merge-queue-alternative / BP-5 post-merge testing | differs | differs | FIFO window, re-measure before queue, no tests inside window; also read § 4 of the lane protocol: origin CI is the verdict surface and a red batch holds the next, so the contrast is partial (stated in the cell) |
+| 9 | merge-queue-alternative / BP-5 conflicts | aligned | aligned | conflicts bullet; speed claim explicitly not mapped |
+| 10 | merge-queue-alternative / BP-5 bottleneck | gap | gap | no merge-volume or bottleneck measurement opened |
+
+Seed gap claims still without a located defense (G in AC-CMM-006): **2** of 2. Seed gap claims carried as a non-gap row: **0**. Candidate rows of plan.md § B.4: the bounded-continuation candidate was added as row 11 with its source (BP-2 fragment); the independent-review-evidence candidate was dropped because no source row backs it.
+
+Counts on the final document: 11 mapping rows (4 aligned, 5 differs, 2 gap); 12 distinct cited `.md` paths (`grep -o -E '\.(claude|moai)/[A-Za-z0-9_./-]+\.md' | sort -u | wc -l` printed `12`, an extra measurement outside the battery).
+
+### E.2.3 M2/M4 — humanize pass (plan.md § B.2, native-idiom rule)
+
+The `moai-domain-humanize` skill is installed in this session, so it was loaded and its Korean module (`modules/korean.md`, prose layer A-J) read before the pass. Invariant ledger held fixed: the literal tokens, the four fragments, URLs, flags, paths, section names, Fit values, the two source figures, the 93% statistic, and every scope caveat. Seven surgical edits: four `~에 대한/대해` calque spans (category A), one `~하려는 것이다` frame (category I), the calque-like noun `판정 면`, and one clarity rewording of `측정값을 열어 보지 않았다` that is not a catalogued tell (it removed an ambiguity about what was left unopened; the module's principle 2 would count it as an unmatched edit). Estimated change under 2% of the text (an estimate, not a computed metric); no residual S1 identified. The battery below was re-run after the last wording edit.
+
+### E.2.4 M4 — acceptance battery on the final document
+
+Commands are those in `acceptance.md` § Evidence ledger (E01 to E09), copied verbatim, run with the worktree root as cwd, each followed by `echo "Exxx exit=$?"`. First pass was on the pre-humanize draft; the pass below is the re-run on the final text (document commit `5e3902e27`). Both passes gave the same results.
+
+| Id | stdout | exit | Reads as |
+|---|---|---|---|
+| E01 | (empty) | 0 | document exists |
+| E02 | `1` | 0 | `reference-only` present |
+| E03 | (empty) | 0 | four register rows, one per id, fragment of 20+ chars, flag cell last |
+| E04a | `4` | 0 | four URL lines |
+| E04b | `4` | 0 | all four end with a flag cell (equal to E04a) |
+| E05 | (empty) | 0 | header once, Fit tokens valid, every non-gap defense cell has path then section marker, three themes present |
+| E06 | `2` | 0 | two gap rows, G = 2 |
+| E07 | (empty) | 0 | no bad suffix, no missing path, at least eight distinct paths |
+| E08 | `0` | 1 | no identifier, year, date, or `develop` (exit 1 is the conforming grep exit for a zero count) |
+| E09 | `0` | 1 | no rule-marker token (exit 1 conforming for a zero count) |
+
+Scope guard, run on this tree after the document commit, before this evidence edit (the two commands exclude this SPEC directory, so the evidence edit does not change them):
+
+```text
+E10a: git diff --quiet 629bb51cda73fc70422769988b8c28182c9bd2d5 -- . ':!.moai/docs/multi-agent-containment-mapping.md' ':!.moai/specs/SPEC-CONTAINMENT-MAPPING-DOC-001' ':!.moai/reports/t1760'
+E10a exit=0
+E10b: git status --porcelain --untracked-files=all -- . (same three exclusions)
+(stdout empty)  E10b exit=0
+git merge-base --is-ancestor 629bb51cda73fc70422769988b8c28182c9bd2d5 HEAD  -> exit=0
+git diff --name-only 629bb51cda73fc70422769988b8c28182c9bd2d5 HEAD, collapsed -> .moai/docs/multi-agent-containment-mapping.md ; .moai/reports/t1760/* ; four SPEC files (acceptance.md, plan.md, progress.md, spec.md)
+ls internal/template/templates/.moai/docs/ | grep -c -i 'containment'  -> 0
+```
+
+E10 is re-run after the evidence commit and reported in the hand-off message, because a commit cannot cite its own hash here.
+
+### E.2.5 Reviewer-checked criteria (AC-CMM-011 to 014) — self-check, not a mechanical pass
+
+- AC-CMM-011: each VERIFIED flag has its fetch and fragment-match output in E.2.1 above. The check that a fragment is verbatim against the live page was done by the fixed-string match; a reviewer still owns whether the URL is the page intended. Needs the sync audit's read.
+- AC-CMM-012: dormant, all four flags are VERIFIED.
+- AC-CMM-013: the volume figures and the post-merge-testing conclusion are attributed to the source in the scale paragraph and in rows 8 and 10; the document states that no adoption is recommended. Self-read only. Needs the sync audit's read.
+- AC-CMM-014: each defense cell was written from the section named in it and paraphrases; a reviewer compares the cells with the cited sections. The marker-token check cannot see a paraphrased restatement. Needs the sync audit's read.
+
+### E.2.6 Status transition not performed
+
+The `draft -> in-progress` edit to `spec.md` frontmatter was not made. `internal/runtime/audit_cache.go` `planArtifactNames` includes `spec.md` and `ComputeHash` reads each file as exact bytes (`os.ReadFile`, line 126 at this tree), so any `spec.md` edit changes the plan-artifact hash that the passed plan audit is bound to. `spec.md`, `plan.md`, and `acceptance.md` are untouched by this run; the status stays `draft` until the orchestrator decides how to handle the hash binding.
+
+### E.2.7 Gaps and residual risk
+
+- `grep -o -E` with a `.{0,420}` window around a fragment was refused by ugrep (`exceeds complexity limits`, twelve fragment invocations across the four sources: 4 + 3 + 3 + 2). That was a tool error, not a worktree-guard refusal. Fallback: a short Python script (`python3 -I`) printing the context window from the same raw bytes; it is the source of the context sentences used for paraphrase. The fixed-string counts above are unaffected.
+- No worktree-guard refusal was seen in this run. `.moai/lessons-inbox.jsonl` was not inspected.
+- The `grep -c` counts are matching lines; the fetched pages are large single-line HTML, so a count of 1 does not mean one occurrence.
+- Not opened: this repository's own `branch_guard` setting values and any file measuring merge volume; rows 4, 8, and the two gap rows say so.
+- Paraphrase drift in the defense cells is not detectable by any command (E09 only sees marker tokens). E08 counts lines and covers only the date shapes listed in its Known limit.
+- A third-party page can change after this run; the flags describe this run's fetch only.
+- Row 5 was flipped from the seed's `aligned`; a reviewer may weigh the tool-list restriction of read-only agents (named in the cell) differently.
+- If the landing sequence merges `main` into the card branch, E10a (fixed base) would read red at the tip (inferred from the fixed-base design, not tested; carried from plan.md § J.1).
 
 ## §E.3 Run-phase Audit-Ready Signal
 
-_pending run-phase_
+run_complete_at: pending-backfill (a record cannot cite its own commit time here)
+run_commit_sha: 5e3902e27 (document commit; the evidence commit carrying this section is reported in the hand-off message)
+run_status: audit-ready
+ac_pass_count: 9 of 9 mechanical criteria (AC-CMM-001 to 009) plus AC-CMM-010 at the tip (E10a exit 0, E10b empty)
+ac_fail_count: 0
+reviewer_checked_pending: AC-CMM-011, 013, 014 (AC-CMM-012 dormant)
+preserve_list_post_run_count: 0 files outside the document, this SPEC directory, and `.moai/reports/t1760/` changed since the pinned base
+l44_pre_commit_fetch: not run (no push in this run; the pre-commit HEAD and branch were re-read: `1ed32946c`, `WT-10-15-release-3`)
+l44_post_push_fetch: not applicable (no push, by instruction)
+new_warnings_or_lints_introduced: not measured (no lint or build run; documentation-only card)
+cross_platform_build: not applicable (no Go code changed)
+total_run_phase_files: 1 deliverable (`.moai/docs/multi-agent-containment-mapping.md`) plus this progress file
+m1_to_mN_commit_strategy: document first (one commit, `5e3902e27`), then this evidence in a second commit
+spec_status_transition: not performed (see E.2.6)
 
 ## §E.4 Sync-phase Audit-Ready Signal
 
