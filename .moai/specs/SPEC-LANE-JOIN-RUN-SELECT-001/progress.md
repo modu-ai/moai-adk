@@ -70,6 +70,45 @@ Mutant probes executed against the GREEN tree (each applied to a copy, test run,
 Existing suites that share the touched code (unchanged, GREEN): all 12 tests of `internal/homestate/factory_run_retire_test.go` (`ok ... homestate 7.295s`) and all 6 of `internal/factorymsg/factory_run_retire_test.go` (`ok ... factorymsg 9.226s`); `GOOS=windows GOARCH=amd64 go build ./internal/homestate/... ./internal/factorymsg/...` exit 0.
 
 
+### M2 - chooser seams (AC-LJR-003 render half, AC-LJR-004)
+
+RED, behavioral (stub `buildLaneRows` returning no rows, stub `renderLaneTable` returning "", stub chooser always returning a join of "stub"; tests written first):
+
+```text
+$ go test ./internal/cli -run '^(TestLaneJoinChooserRendersFacts|TestLaneJoinChooserRowCellEdgeCases|TestLaneJoinChooserOptionEligibility|TestRunChooserParsesInMemoryStreams|TestRunChooserPromptText|TestRunChooserCatalogueHasNoUnicodeEscapes|TestRunChooserSurfacesWriteFailure)$' -count=1 -v
+--- FAIL: TestLaneJoinChooserRendersFacts (0.00s)         factory_run_select_test.go:45: buildLaneRows returned 0 rows, want 2
+--- FAIL: TestLaneJoinChooserRowCellEdgeCases (0.00s)     factory_run_select_test.go:89: buildLaneRows returned 0 rows, want 2
+--- FAIL: TestLaneJoinChooserOptionEligibility (0.00s)    factory_run_select_test.go:120: a single dead zero-card row = [], want CanCleanup false ...
+--- FAIL: TestRunChooserParsesInMemoryStreams (0.00s)     choice = {Kind:1 RunID:stub}, want {Kind:1 RunID:r2}  (and 19 sibling subtests)
+--- FAIL: TestRunChooserPromptText (0.00s)
+--- PASS: TestRunChooserCatalogueHasNoUnicodeEscapes (0.00s)   [guard, green by design: the catalogue constants live in the stub]
+--- FAIL: TestRunChooserSurfacesWriteFailure (0.00s)
+FAIL	github.com/modu-ai/moai-adk/internal/cli	1.285s
+```
+
+GREEN:
+
+```text
+--- PASS: TestLaneJoinChooserRendersFacts (0.00s)
+--- PASS: TestLaneJoinChooserRowCellEdgeCases (0.00s)
+--- PASS: TestLaneJoinChooserOptionEligibility (0.00s)
+--- PASS: TestRunChooserParsesInMemoryStreams (0.00s)      [19 subtests incl. the DEBT-1 entries 99, r99, garbage, 0, -1, r0, r, +2, overflow, two bad entries, invalid-then-EOF]
+--- PASS: TestRunChooserPromptText (0.00s)
+--- PASS: TestRunChooserCatalogueHasNoUnicodeEscapes (0.00s)
+--- PASS: TestRunChooserSurfacesWriteFailure (0.00s)
+ok  	github.com/modu-ai/moai-adk/internal/cli	1.398s	coverage: 4.7% of statements (package); factory_run_select.go functions 80.0%-100.0%
+```
+
+DEBT-1 (plan audit) disposed here: `TestRunChooserParsesInMemoryStreams` pins out-of-range and unparseable entries (`99`, `r99`, `garbage`, `0`, `-1`, `r0`, bare `r`, `+2`, a 20-digit number, two consecutive bad entries, a bad entry followed by end of input): each prints the catalogue's invalid-entry line exactly the expected number of times, the prompt repeats, and no choice is returned for the bad entry.
+
+Mutant probes executed against the GREEN tree (applied to a copy, test run, file restored):
+
+- AC-LJR-004 eligibility keyed on classification alone (drop `InProgress == 0`): `--- FAIL: TestLaneJoinChooserOptionEligibility`, `row 3 (r3, dead (종료), 2 cards) CanCleanup = true, want false`. Killed.
+- AC-LJR-004 one-row table offering cleanup (drop `len(facts) >= 2`): `--- FAIL: TestLaneJoinChooserOptionEligibility`, `a single dead zero-card row = [{RunID:r4 ... CanCleanup:true}], want CanCleanup false`. Killed.
+- AC-LJR-004 default-on-empty (an empty line joins row 1): `--- FAIL: TestRunChooserParsesInMemoryStreams`. Killed.
+- AC-LJR-004 over-reading buffered reader (`bufio.NewReader(r).ReadString('\n')`): `source reader left "" unread, want "TYPEAHEAD" (the chooser over-read)`. Killed.
+- AC-LJR-003 renderer dropping the count column: `line 1 has 6 cells, want 7: "1 | runa-live | live (생존) | lane-x9 | 2026-10-18 11:11:00 KST | -"`. Killed.
+
 ## §E.3 Run-phase Audit-Ready Signal
 
 _<pending run-phase>_
