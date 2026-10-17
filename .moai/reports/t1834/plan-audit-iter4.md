@@ -14,8 +14,8 @@ convergence_overall: pass
 required_backend: codex pass
 
 Iteration: 4 (final, scope-limited delta of the iter3 FAIL at the tier ceiling) | Tier M (PASS threshold 0.80) | Reasoning context ignored per M1 Context Isolation.
-Score: carried forward unchanged from iter3 (0.83); the delta removes the three blocking defects and the aggregate cannot fall, so 0.83 stands as a floor. Dimension scores for everything the delta did not touch are carried forward from iter3 and were not re-audited.
-Plan Artifact Hash: ComputeHash framing of internal/runtime/audit_cache.go (`name:len\0` + bytes + `\0`, names in the runtime order, absent files skipped: acceptance, decision-index, plan, spec; design/research/tasks absent), reproduced with `python3 -I`, not by the installed binary.
+The aggregate is carried forward unchanged from iter3 (0.83); the delta removes the three blocking defects and the aggregate cannot fall, so 0.83 stands as a floor. Dimension scores for everything the delta did not touch are carried forward from iter3 and were not re-audited.
+The hash uses the ComputeHash framing of internal/runtime/audit_cache.go (`name:len\0` + bytes + `\0`, names in the runtime order, absent files skipped: acceptance, decision-index, plan, spec; design/research/tasks absent), reproduced with `python3 -I`, not by the installed binary.
 Auditor Version: plan-auditor/v1. Gate plan (`moai verify audit-plan`): `cross_model_active: true`, `enforced_required: [codex]`, claude and glm gates off.
 
 ## Delta examined
