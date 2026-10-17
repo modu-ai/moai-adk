@@ -6,6 +6,8 @@
 package template_test
 
 import (
+	"context"
+	"errors"
 	"fmt"
 	"os"
 	"os/exec"
@@ -15,10 +17,22 @@ import (
 )
 
 const (
-	rlsCheckRunsGreen = `{"total_count":3,"check_runs":[` +
-		`{"name":"build","status":"completed","conclusion":"success"},` +
-		`{"name":"lint","status":"completed","conclusion":"success"},` +
+	// The green page names the check runs the repository CI workflow (.github/
+	// workflows/ci.yml, name: CI) publishes on a push to main; the gate demands
+	// them by name (fix round 1, F6).
+	rlsCheckRunsGreen = `{"total_count":4,"check_runs":[` +
+		`{"name":"Lint","status":"completed","conclusion":"success"},` +
+		`{"name":"Test (ubuntu-latest)","status":"completed","conclusion":"success"},` +
+		`{"name":"Build (linux/amd64)","status":"completed","conclusion":"success"},` +
 		`{"name":"docs","status":"completed","conclusion":"skipped"}]}`
+	// Green, completed, and from an unrelated app: no CI workflow check run.
+	rlsCheckRunsUnrelatedGreen = `{"total_count":1,"check_runs":[` +
+		`{"name":"CodeRabbit","status":"completed","conclusion":"success"}]}`
+	// Lint and Test reported, the Build leg never did.
+	rlsCheckRunsBuildMissing = `{"total_count":3,"check_runs":[` +
+		`{"name":"Lint","status":"completed","conclusion":"success"},` +
+		`{"name":"Test (ubuntu-latest)","status":"completed","conclusion":"success"},` +
+		`{"name":"CodeRabbit","status":"completed","conclusion":"success"}]}`
 	rlsCheckRunsPending = `{"total_count":2,"check_runs":[` +
 		`{"name":"build","status":"completed","conclusion":"success"},` +
 		`{"name":"test","status":"in_progress","conclusion":null}]}`
@@ -53,7 +67,7 @@ func TestReleaseScriptCIGate(t *testing.T) {
 		wantOut  []string
 	}{
 		{name: "green", runs: rlsCheckRunsGreen, wantExit: 0,
-			wantOut: []string{"CI status on HEAD: success (3 check runs", "CI gate:     verified"}},
+			wantOut: []string{"CI status on HEAD: success (4 check runs", "CI gate:     verified"}},
 		{name: "pending_is_refused", runs: rlsCheckRunsPending, wantExit: 1,
 			wantOut: []string{"CI gate: 1 of 2 check run(s)", "not completed"}},
 		{name: "failed_is_refused", runs: rlsCheckRunsFailed, wantExit: 1,
@@ -62,6 +76,14 @@ func TestReleaseScriptCIGate(t *testing.T) {
 			wantOut: []string{"did not succeed"}},
 		{name: "absent_is_refused", runs: rlsCheckRunsAbsent, wantExit: 1,
 			wantOut: []string{"CI gate: no check runs"}},
+		{name: "unrelated_green_check_run_alone_is_refused", runs: rlsCheckRunsUnrelatedGreen, wantExit: 1,
+			wantOut: []string{"CI gate: expected check run(s) not reported", "Lint", "Test (ubuntu-latest)", "Build (linux/amd64)"}},
+		{name: "expected_workflow_missing_one_check_is_refused", runs: rlsCheckRunsBuildMissing, wantExit: 1,
+			wantOut: []string{"CI gate: expected check run(s) not reported", "Build (linux/amd64)"}},
+		{name: "expected_workflow_green_passes_beside_an_unrelated_run", runs: rlsCheckRunsGreen, wantExit: 0,
+			wantOut: []string{"CI gate:     verified"}},
+		{name: "override_on_an_unrelated_only_page_is_recorded", runs: rlsCheckRunsUnrelatedGreen, args: []string{"--skip-ci-check"}, wantExit: 0,
+			wantOut: []string{"CI gate OVERRIDDEN (--skip-ci-check)"}},
 		{name: "unreadable_is_refused", runs: rlsCheckRunsGreen, apiFail: true, wantExit: 1,
 			wantOut: []string{"CI gate: could not read the check runs"}},
 		{name: "override_on_a_failed_run_is_recorded", runs: rlsCheckRunsFailed, args: []string{"--skip-ci-check"}, wantExit: 0,
@@ -145,4 +167,67 @@ func rlsLookPath(tool string) string {
 		return ""
 	}
 	return p
+}
+
+// TestReleaseScriptTagsTheVerifiedCommit (fix round 1, F5): the tag names the
+// commit the CI gate verified, so a HEAD that moves after the re-check cannot
+// carry the tag. A git shim moves HEAD at the moment `git tag -a` is invoked
+// and blocks the push, so the test ends at a local tag in a scratch clone.
+func TestReleaseScriptTagsTheVerifiedCommit(t *testing.T) {
+	rlsRequireTools(t, "jq")
+
+	realGit, err := exec.LookPath("git")
+	if err != nil {
+		t.Skip("git not available")
+	}
+	r := rlsBuildReleaseRepo(t, rlsRcChangelog)
+	s := rlsNewStub(t)
+	verified := r.git("rev-parse", "HEAD")
+
+	shim := t.TempDir()
+	rlsWriteScript(t, shim, "git", fmt.Sprintf(`#!/usr/bin/env bash
+case "${1:-} ${2:-}" in
+  "tag -a") %q commit -q --allow-empty -m "HEAD moved after the re-check" ;;
+  "push "*) echo "git shim: push blocked" >&2; exit 1 ;;
+esac
+exec %q "$@"
+`, realGit, realGit))
+	// A non-dry run needs the harness marker; the scratch clone and the push
+	// block keep this away from the real repository and any remote.
+	// The shim goes in front of the PATH the gh stub already set up, so the
+	// real gh can never be reached.
+	stubPath := ""
+	for _, kv := range s.env {
+		if v, ok := strings.CutPrefix(kv, "PATH="); ok {
+			stubPath = v
+		}
+	}
+	env := append(append([]string{}, s.env...), "MOAI_RELEASE_VIA_HARNESS=1", "PATH="+shim+string(os.PathListSeparator)+stubPath)
+
+	script := filepath.Join(findProjectRootForMirrorTest(t), filepath.FromSlash(rlsReleaseScriptRel))
+	ctx, cancel := context.WithTimeout(context.Background(), rlsDeadline)
+	defer cancel()
+	cmd := exec.CommandContext(ctx, "bash", script, rlsRcTag)
+	cmd.Dir, cmd.Env, cmd.Stdin = r.work, env, strings.NewReader("y\n")
+	out, runErr := cmd.CombinedOutput()
+	if ctx.Err() != nil {
+		t.Fatalf("release.sh exceeded %s\n%s", rlsDeadline, out)
+	}
+	var exitErr *exec.ExitError
+	if runErr != nil && !errors.As(runErr, &exitErr) {
+		t.Fatalf("start release.sh: %v", runErr)
+	}
+	t.Logf("release.sh err=%v\n%s", runErr, rlsNorm(string(out)))
+
+	moved := r.git("rev-parse", "HEAD")
+	if moved == verified {
+		t.Fatalf("the shim did not move HEAD; the test proves nothing")
+	}
+	tagged := strings.TrimSpace(rlsRun(t, r.work, rlsEnv(), "git", "rev-parse", "--verify", "--quiet", rlsRcTag+"^{commit}").out)
+	if tagged == "" {
+		return // refusing to tag is also an acceptable outcome
+	}
+	if tagged != verified {
+		t.Errorf("tag %s names %s, but the CI gate verified %s (HEAD had moved to %s)", rlsRcTag, tagged, verified, moved)
+	}
 }

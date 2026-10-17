@@ -226,10 +226,20 @@ fi
 # will be tagged. The verdict is read from the check-runs endpoint: the combined
 # status endpoint lists commit statuses only, and a green third-party status
 # (CodeRabbit) answers "success" while the Actions jobs are red or still running.
-# Passes only when at least one check run exists, every one is completed, and
-# every one concluded success, neutral or skipped. Absent, pending, failed and
-# unreadable are all refusals. gh missing is a refusal too. The one way past is
-# --skip-ci-check, which is announced here and recorded in the release summary.
+# Passes only when every check run on the commit is completed and concluded
+# success, neutral or skipped, AND the repository's own CI workflow reported:
+# each name in CI_REQUIRED_CHECKS below must be present among them. Absent,
+# pending, failed, unreadable and "only somebody else's checks" are all
+# refusals. gh missing is a refusal too. The one way past is --skip-ci-check,
+# which is announced here and recorded in the release summary.
+#
+# CI_REQUIRED_CHECKS: the check-run names the CI workflow (.github/workflows/
+# ci.yml, `name: CI`) publishes on a push to main. A check run is named after
+# its JOB: `Lint`, `Test (ubuntu-latest)` (the real job or its docs-only
+# skip-marker publish the same name) and `Build (linux/amd64)`. They are the
+# subset of .github/required-checks.yml (branches.main.contexts) that ci.yml
+# itself emits; a renamed job or a changed matrix is a one-line change here.
+CI_REQUIRED_CHECKS=("Lint" "Test (ubuntu-latest)" "Build (linux/amd64)")
 CI_GATE="verified"
 if [[ "$SKIP_CI_CHECK" == true ]]; then
     CI_GATE="OVERRIDDEN (--skip-ci-check)"
@@ -237,11 +247,12 @@ if [[ "$SKIP_CI_CHECK" == true ]]; then
 else
     command -v gh >/dev/null 2>&1 || die "CI gate: the gh CLI is not available, so the CI verdict of ${LOCAL_SHA:0:12} on origin cannot be read. Install gh, or pass --skip-ci-check to override (recorded in the release summary)."
 
-    # One line per page: "<total> <not completed> <completed but not success|neutral|skipped>".
-    CI_PAGES="$(gh api --paginate "repos/modu-ai/moai-adk/commits/$LOCAL_SHA/check-runs?per_page=100" \
-        --jq '.check_runs | "\(length) \(map(select(.status != "completed")) | length) \(map(select(.status == "completed" and (.conclusion == "success" or .conclusion == "neutral" or .conclusion == "skipped" | not))) | length)"')" \
+    # One line per check run: "<name><TAB><status><TAB><conclusion>".
+    CI_RUNS="$(gh api --paginate "repos/modu-ai/moai-adk/commits/$LOCAL_SHA/check-runs?per_page=100" \
+        --jq '.check_runs[] | "\(.name)\t\(.status)\t\(.conclusion // "")"')" \
         || die "CI gate: could not read the check runs of ${LOCAL_SHA:0:12} (gh api failed). Fix gh access, or pass --skip-ci-check to override (recorded in the release summary)."
-    read -r CI_TOTAL CI_PENDING CI_FAILED < <(printf '%s\n' "$CI_PAGES" | awk '{t+=$1; p+=$2; f+=$3} END {printf "%d %d %d\n", t, p, f}')
+    # Counts: total, not completed, completed but not success|neutral|skipped.
+    read -r CI_TOTAL CI_PENDING CI_FAILED < <(printf '%s\n' "$CI_RUNS" | awk -F'\t' 'NF >= 2 {t++; if ($2 != "completed") p++; else if ($3 != "success" && $3 != "neutral" && $3 != "skipped") f++} END {printf "%d %d %d\n", t, p, f}')
 
     if (( CI_TOTAL == 0 )); then
         die "CI gate: no check runs found for ${LOCAL_SHA:0:12} on origin. Wait for CI to start on this commit (or push it), then release again."
@@ -250,7 +261,18 @@ else
     elif (( CI_PENDING > 0 )); then
         die "CI gate: $CI_PENDING of $CI_TOTAL check run(s) on ${LOCAL_SHA:0:12} are not completed. Wait for CI to finish, then release again."
     fi
-    log_ok "CI status on HEAD: success ($CI_TOTAL check runs, all completed green)"
+
+    # Every run is completed and green; now require the CI workflow's own runs
+    # by exact name, so a green run from an unrelated app cannot satisfy the gate.
+    CI_MISSING=""
+    for expected in "${CI_REQUIRED_CHECKS[@]}"; do
+        printf '%s\n' "$CI_RUNS" | awk -F'\t' -v n="$expected" '$1 == n {found=1} END {exit !found}' \
+            || CI_MISSING="${CI_MISSING:+$CI_MISSING; }$expected"
+    done
+    if [[ -n "$CI_MISSING" ]]; then
+        die "CI gate: expected check run(s) not reported for ${LOCAL_SHA:0:12} on origin: $CI_MISSING. The repository CI workflow (CI_REQUIRED_CHECKS in this script) has not run on this commit; $CI_TOTAL other check run(s) do not stand in for it. Wait for CI, or pass --skip-ci-check to override (recorded in the release summary)."
+    fi
+    log_ok "CI status on HEAD: success ($CI_TOTAL check runs, all completed green; CI workflow checks present: ${CI_REQUIRED_CHECKS[*]})"
 fi
 
 # ─── Validation 9b: 3-OS matrix run on this commit (opt-in) ─────────────────
@@ -416,13 +438,14 @@ read -r confirm
 [[ "$confirm" =~ ^[Yy]$ ]] || die "Aborted by user"
 
 # ─── Create + push annotated tag ───────────────────────────────────────────
-# The CI verdict above belongs to $LOCAL_SHA; the tag goes on HEAD, so HEAD must
-# still be that commit after the confirmation prompt.
+# The CI verdict above belongs to $LOCAL_SHA. The tag names that commit
+# explicitly, so it lands on the verified commit by construction; the HEAD
+# check stays as an early refusal when the tree moved during the prompt.
 [[ "$(git rev-parse HEAD)" == "$LOCAL_SHA" ]] || die "HEAD moved from ${LOCAL_SHA:0:12} after the CI gate; refusing to tag a commit whose CI was not checked."
 
 log_info "Creating annotated tag $VERSION..."
-git tag -a "$VERSION" -F "$TMP_NOTES"
-log_ok "Tag $VERSION created locally"
+git tag -a "$VERSION" -F "$TMP_NOTES" "$LOCAL_SHA"
+log_ok "Tag $VERSION created locally on ${LOCAL_SHA:0:12}"
 
 log_info "Pushing tag to origin (triggers GoReleaser)..."
 git push origin "$VERSION"
