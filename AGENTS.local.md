@@ -181,7 +181,7 @@ Conventional Commits — `<type>(<scope>): <description>` + an optional body/foo
 
 ### §4.0 Default development flow (local-main integration)
 
-`main` is checked out in exactly one dedicated integration worktree, at a fixed path (currently `.claude/worktrees/main`). That worktree performs landing and resync only: it is never used to edit or experiment, and it stays clean. The primary checkout is the human and leader workspace and does not check out `main`. Clauses marked in §4.1 are superseded by this section; clauses without a marker remain in force as written.
+`main` is checked out in exactly one dedicated integration worktree, at a fixed path (currently `.claude/worktrees/main`). That worktree performs landing and resync only, plus the operator-requested rc build (lane protocol §9): it is never used to edit or experiment, and it stays clean. The primary checkout is the human and leader workspace and does not check out `main`. Clauses marked in §4.1 are superseded by this section; clauses without a marker remain in force as written.
 
 **[HARD] 1. Branch base**
 
@@ -189,17 +189,17 @@ Card worktrees branch from local `main`. Because origin/main can fall behind loc
 
 **[HARD] 2. Merge landing**
 
-- The landing surface is the integration worktree that holds `main`; the tool refuses when no tree holds it. `workflow.local_main_integration.enabled` is `true` today, so the tool still accepts the primary as holder; changing it is planned in t1847.
+- The landing surface is the integration worktree that holds `main`; the tool refuses when no tree holds it. `workflow.local_main_integration.enabled` is `true` today, so the tool accepts the primary as holder; changing it is planned in t1847.
 - Merging is performed only by `moai integration merge --card <id>`. `moai factory complete` calls this command from lane sessions. Agents writing `git merge` directly in Bash is still refused. This path is a designed exception.
 - The tool (1) takes the integration window, (2) reads HEAD symbolically and confirms that it points at `main`, (3) applies the clean check of item 3, and (4) pins the tip commit of the card branch; then it refuses if any ignored or untracked file sits on the paths the merge will write or on their ancestor or descendant paths. The tool does not delete or stash files. It then (5) performs a no-fast-forward merge with autostash turned off, (6) compares the first parent, HEAD, and the status set against their pre-merge values, and (7) records the merge SHA and tree and releases the integration window (`moai integration release`).
 
 **[HARD] 3. Clean-tree rule**
 
-A landing tree must be clean: `git status --porcelain=v1 -z --untracked-files=all` must print nothing, or the merge is refused. A separate integration worktree gets the overlap rule (REQ-LMF-005) instead. Diagnose each untracked or modified file in the primary checkout (commit it in the card worktree that owns it, move it there, or add an ignore rule); never stash. Read `main` source through `git show main:<path>` or inside the integration worktree, not from the primary's working tree; that read does not cover a smudge or clean filter, end-of-line conversion, an uncommitted change, or a later move of `main`.
+A landing tree must be clean: `git status --porcelain=v1 -z --untracked-files=all` must be empty, or the merge is refused. A separate integration worktree gets the overlap rule (REQ-LMF-005). Diagnose each untracked or modified file in the primary checkout (commit it in its owning card worktree, move it there, or ignore it); no stash. Read `main` source through `git show main:<path>` or in the integration worktree, not from the primary's working tree; it does not cover a smudge or clean filter, end-of-line conversion, uncommitted changes, or a later move of `main`.
 
 **[HARD] 4. Resynchronization**
 
-When a release batch lands on `origin/main`, local `main` follows it. The tool performs this as a fast-forward-only update inside the integration window; it is not done from the operator's terminal. Today `moai integration resync` refuses when another tree holds `main` and no moai verb moves the primary checkout to the current local `main` tip; both are planned in t1847.
+When a release batch lands on `origin/main`, local `main` follows it. The tool performs this as a fast-forward-only update inside the integration window; it is not done from the operator's terminal. `moai integration resync` refuses when another tree holds `main` and no moai verb moves the primary checkout to the current local `main` tip; both are planned in t1847.
 
 - (1) Take the window, and confirm that HEAD points at `main` and that the tree being updated is clean.
 - (2) Run `git fetch origin main` and check its exit status. Pin the `origin/main` value obtained as the baseline, and make every later remote comparison against this value.
