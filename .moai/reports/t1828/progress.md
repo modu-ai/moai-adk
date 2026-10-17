@@ -86,6 +86,9 @@ ack/accepted 를 착수·완료로 승격하지 않음: dispatch `started` 전�
 - 12:32:42Z — 파일 집합 ~10분 동결·중단 통보 없음(재개 2/2 생존 = 시험·검증 실행 국면 판단). 명시적 대기. 갱신 renewed(만료 12:47:42Z). 다음 발화에서도 동결·통보 없으면 상태 문의 1회.
 - 12:37:30Z — 동결 ~15분 지속·통보 없음 → 상태 문의 1회 발송(단계 확인·거부/레이트리밋 여부). 갱신 renewed(만료 12:52:28Z). 응답·통보 없이 다음 발화까지 동결이면: 산출물 부분 상태로 판단해 인수(in-take) 검토 개시.
 - 12:4xZ — 대리자 응답: 자체 백그라운드 시험 실행 대기 중(출력 버퍼링, 종료 시 자동 재개·재통보). 파일 동결 원인 해명 — 범위 시험 백그라운드 실행. 별도 조치 없음, 통보 대기.
+- 12:42-12:47Z — 수리 커밋 `424605284` 착지(RED 재현→GREEN 범위 시험 4종 통과 보고). 레인 독립 검증: 신규 시험 2종 PASS+gofmt 클린. 보고서 `wait-boundary-report.md` 작성, 증거 커밋 `c741e22ce`(force-add).
+- 12:5xZ — card-review round 1 (codex scope=card): **FAIL(advisory) P2 1건** — label 재할당 시 새 프로세스 생존이 옛 보유자 생존으로 오인(factoryWorkerPidAlive 가 label 만 조회). 지적 타당으로 판단, 대리자 재위임: card.HeartbeatAt vs workers.registered_at 세대 판별 최소 수리(RED 먼저: 재등록 세대에서 슬롯 해제). `.moai/reports/t1828/card-review.md` round 1 기록. 재심사(round 2) 대기.
+- 13:0xZ — P2 수리 커밋 `34212a4be`(세대 판별, RED 양방향→GREEN 6종). 레인 독립 검증 PASS(재등록 세대 시험 1.55s). **card-review round 2: PASS(결함 0건)**. 다음: 문서 마감 커밋 → 단계 전이 run→sync→merge-ready 정지.
 
 ## 5. 산출물
 

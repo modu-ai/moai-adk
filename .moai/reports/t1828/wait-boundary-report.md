@@ -76,10 +76,10 @@ gofmt -l 3파일 = 0행(양쪽 모두), `go build ./internal/cli/` OK, `go vet .
 
 **관측(원인 판정 아님)**: 본 세션 임대 만료→갱신 거부→stage 수거→재임대 복구 전 과정(8859 순서 실측), lane-9 갱신 경쟁(리더 전달), lane-13 재임대 비대칭(두 시점 t1825 행 상태 차이로도 설명 가능 — 리더의 assignedHere 가설과 병립), lane-5 맨 next t1780 임대(mode 미확인).
 
-## 수정 파일 (커밋 424605284)
+## 수정 파일 (커밋 424605284 + card-review P2 수리 34212a4be)
 
-- `internal/cli/factory_card.go` — `factorySerialSlotHeld`에 보유자 생존 조항(만료 임대는 roster pid 생존 시 유지, 부재/사망/비양수 해제 — t1407 no-wedge 보존), `factorySerialInFlightExcluding`→`(차단ID, bool)` 반환, `factoryWorkerPidAlive`(workers.pid + `factory.FactoryProcessAlive` 재사용), db 소유 호출부 2곳에서 클로저 스레딩, `factoryKeepSetRefusal` 거부문에 차단 카드·보유자 명시.
-- `internal/cli/factory_serial_slot_liveness_test.go`(신규) — 사례 (a) 생존 보유자 만료 임대 거부(RED 근거), (b) 자체 만료 수거 후 재임대도 대칭 거부(실제 `db.Transition` T27/T28 구동), 사망 보유자 해제 고정(roster 부재 + pid −1), 차단자 명시 단언.
+- `internal/cli/factory_card.go` — `factorySerialSlotHeld`에 보유자 생존 조항(만료 임대는 roster pid 생존 시 유지, 부재/사망/비양수 해제 — t1407 no-wedge 보존), `factorySerialInFlightExcluding`→`(차단ID, bool)` 반환, `factoryWorkerPidAlive`(workers pid·registered_at + `factory.FactoryProcessAlive` 재사용), db 소유 호출부 2곳에서 클로저 스레딩, `factoryKeepSetRefusal` 거부문에 차단 카드·보유자 명시. **P2 수리**: 세대 판별 — 보유자 생존은 `workers.registered_at ≤ card.HeartbeatAt`(하트비트를 쓴 세대)인 경우만 인정, 레인 label 재할당(재부팅 재합류) 시 옛 보유자의 만료 임대 해제.
+- `internal/cli/factory_serial_slot_liveness_test.go`(신규) — 사례 (a) 생존 보유자 만료 임대 거부(RED 근거), (b) 자체 만료 수거 후 재임대도 대칭 거부(실제 `db.Transition` T27/T28 구동), 사망 보유자 해제 고정(roster 부재 + pid −1 + 빈 하트비트), **재등록 세대 해제**(RED 근거, round 1 P2), 차단자 명시 단언.
 - `internal/cli/factory_lane_join_guard_test.go` — 신규 서명 행렬 갱신(생존/사망 만료 임대행, 만료 시에만 판독자 호출 프로브).
 
 새 상수·스키마·설정 키 없음. 범위: internal/cli 3파일 + 본 보고서.
@@ -104,6 +104,7 @@ gofmt -l 3파일 = 0행(양쪽 모두), `go build ./internal/cli/` OK, `go vet .
 
 ## Residual-risk
 
-- 생존 판정이 roster(workers) pid 기반: 레인 프로세스가 살아 있되 그 카드를 버린 경우(예: 재부팅 후 새 세션이 같은 pid 없음)는 해제되나, **pid 재사용** 시 죽은 보유자가 살아 있는 것으로 읽힐 가능성(프로세스 시작시각 미확인 — factorymsg `ownerCurrent`는 start 대조하나 본 수리는 pid 신호만 사용). 빈도 낮음, t1407 방향과의 균형에서 선택.
-- 만료 임대가 살아 있는 보유자에게 무한 유지되면, 보유자가 실제로 죽어도 pid 사망 전까지 다른 serial 카드가 대기 — 갱신 거부 룰링과 결합 시 회복이 stage 수거 순서에 의존(본 세션에서 실측한 복구 경로).
+- **세대 판별 한계(round 1 P2 수리 후)**: 같은 incarnation 창 안에서의 **pid 재사용**(재등록 없이 죽은 프로세스의 pid 를 새 프로세스가 물려받음)은 여전히 생존으로 읽힘 — registered_at ≤ HeartbeatAt 조건을 통과하므로. 빈도 낮음(os pid 순환 + 레인 label 미변경 + 시간창 중첩이 필요). factorymsg `ownerCurrent`의 process_start 대조가 장기 개선 방향.
+- 만료 임대가 살아 있는 보유자에게 유지되는 동안 다른 serial 카드는 대기 — 갱신 거부 룰링(d-20261010T095731Z-5ddc)과 결합 시 회복은 보유자의 stage 수거·재임대 순서에 의존(본 세션 실측 복구 경로). 레인 갱신 규율(긴 턴 사이 선제 갱신)이 완화책.
 - 18-레인 부하에서 타이밍 민감 시험의 비결정성(hook 1차 FAIL)은 환경 잔여 위험으로 남는다.
+- card-review round 2 PASS(정적, codex) — 런타임·CI 검증은 통합 시점 원격 CI 소관.
