@@ -227,7 +227,7 @@ func consumeAllowCardAnchor(args []string) (rest []string, allowed bool) {
 			continue
 		}
 		rest = append(rest, arg)
-		if takesNextTokenAsValue(arg) && i+1 < len(args) && args[i+1] != argSeparator {
+		if optionValueSpan(args, i) > 0 {
 			rest = append(rest, args[i+1])
 			i++
 		}
@@ -235,10 +235,26 @@ func consumeAllowCardAnchor(args []string) (rest []string, allowed bool) {
 	return rest, allowed
 }
 
-// takesNextTokenAsValue reports whether arg is an option whose next token is its
-// value even when that token is flag-shaped.
-func takesNextTokenAsValue(arg string) bool {
-	return launcherSegmentValueFlags[arg] || activeClaudeOptionModel[arg] == claudeOptionRequiredValue
+// optionValueSpan reports how many following tokens args[i] consumes as its
+// value in the launcher segment: 1 when the token is an option whose next token
+// is its value even when that token is flag-shaped, else 0. A whole-token
+// option is looked up in the launcher-owned value flags and the claude option
+// model; a bundled short cluster (`-cn <name>`: `c` boolean, `n` takes the next
+// token) is decomposed by scanShortCluster — the same walk the backend
+// selection uses — so one argv has one interpretation.
+func optionValueSpan(args []string, i int) int {
+	arg := args[i]
+	if launcherSegmentValueFlags[arg] || activeClaudeOptionModel[arg] == claudeOptionRequiredValue {
+		if i+1 < len(args) && args[i+1] != argSeparator {
+			return 1
+		}
+		return 0
+	}
+	if len(arg) >= 2 && arg[0] == '-' && arg[1] != '-' {
+		_, consumed := scanShortCluster(args, i, worktreeSelection{})
+		return consumed
+	}
+	return 0
 }
 
 // --- backend option model: the worktree selection ----------------------------
