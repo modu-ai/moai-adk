@@ -340,6 +340,12 @@ type rlsStub struct {
 
 func rlsNewStub(t *testing.T) *rlsStub {
 	t.Helper()
+	// The stub answers `gh api --jq` and `gh run list` through jq (card t1833 fix
+	// round 2): without it every gh call fails, which is not what these tests
+	// measure, so they skip with the reason rather than fail.
+	if _, err := exec.LookPath("jq"); err != nil {
+		t.Skip("jq not available; the gh stub answers through jq")
+	}
 	dir := t.TempDir()
 	bin := filepath.Join(dir, "bin")
 	if err := os.MkdirAll(bin, 0o755); err != nil {

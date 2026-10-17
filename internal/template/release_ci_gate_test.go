@@ -21,18 +21,29 @@ const (
 	// workflows/ci.yml, name: CI) publishes on a push to main; the gate demands
 	// them by name (fix round 1, F6).
 	rlsCheckRunsGreen = `{"total_count":4,"check_runs":[` +
-		`{"name":"Lint","status":"completed","conclusion":"success"},` +
-		`{"name":"Test (ubuntu-latest)","status":"completed","conclusion":"success"},` +
-		`{"name":"Build (linux/amd64)","status":"completed","conclusion":"success"},` +
-		`{"name":"docs","status":"completed","conclusion":"skipped"}]}`
+		`{"name":"Lint","status":"completed","conclusion":"success","app":{"slug":"github-actions"}},` +
+		`{"name":"Test (ubuntu-latest)","status":"completed","conclusion":"success","app":{"slug":"github-actions"}},` +
+		`{"name":"Build (linux/amd64)","status":"completed","conclusion":"success","app":{"slug":"github-actions"}},` +
+		`{"name":"docs","status":"completed","conclusion":"skipped","app":{"slug":"github-actions"}}]}`
 	// Green, completed, and from an unrelated app: no CI workflow check run.
 	rlsCheckRunsUnrelatedGreen = `{"total_count":1,"check_runs":[` +
-		`{"name":"CodeRabbit","status":"completed","conclusion":"success"}]}`
+		`{"name":"CodeRabbit","status":"completed","conclusion":"success","app":{"slug":"coderabbitai"}}]}`
 	// Lint and Test reported, the Build leg never did.
 	rlsCheckRunsBuildMissing = `{"total_count":3,"check_runs":[` +
+		`{"name":"Lint","status":"completed","conclusion":"success","app":{"slug":"github-actions"}},` +
+		`{"name":"Test (ubuntu-latest)","status":"completed","conclusion":"success","app":{"slug":"github-actions"}},` +
+		`{"name":"CodeRabbit","status":"completed","conclusion":"success","app":{"slug":"coderabbitai"}}]}`
+	// Fix round 2 (N2): all three required names, but one is published by another
+	// app. A name alone does not prove the CI workflow ran.
+	rlsCheckRunsRightNameWrongApp = `{"total_count":3,"check_runs":[` +
+		`{"name":"Lint","status":"completed","conclusion":"success","app":{"slug":"github-actions"}},` +
+		`{"name":"Test (ubuntu-latest)","status":"completed","conclusion":"success","app":{"slug":"some-other-app"}},` +
+		`{"name":"Build (linux/amd64)","status":"completed","conclusion":"success","app":{"slug":"github-actions"}}]}`
+	// The app object absent (an app-less check run): treated as not from Actions.
+	rlsCheckRunsNoApp = `{"total_count":3,"check_runs":[` +
 		`{"name":"Lint","status":"completed","conclusion":"success"},` +
 		`{"name":"Test (ubuntu-latest)","status":"completed","conclusion":"success"},` +
-		`{"name":"CodeRabbit","status":"completed","conclusion":"success"}]}`
+		`{"name":"Build (linux/amd64)","status":"completed","conclusion":"success"}]}`
 	rlsCheckRunsPending = `{"total_count":2,"check_runs":[` +
 		`{"name":"build","status":"completed","conclusion":"success"},` +
 		`{"name":"test","status":"in_progress","conclusion":null}]}`
@@ -78,6 +89,10 @@ func TestReleaseScriptCIGate(t *testing.T) {
 			wantOut: []string{"CI gate: no check runs"}},
 		{name: "unrelated_green_check_run_alone_is_refused", runs: rlsCheckRunsUnrelatedGreen, wantExit: 1,
 			wantOut: []string{"CI gate: expected check run(s) not reported", "Lint", "Test (ubuntu-latest)", "Build (linux/amd64)"}},
+		{name: "right_name_from_another_app_is_refused", runs: rlsCheckRunsRightNameWrongApp, wantExit: 1,
+			wantOut: []string{"CI gate: expected check run(s) not reported", "Test (ubuntu-latest)", "github-actions"}},
+		{name: "right_names_without_an_app_are_refused", runs: rlsCheckRunsNoApp, wantExit: 1,
+			wantOut: []string{"CI gate: expected check run(s) not reported", "Lint", "github-actions"}},
 		{name: "expected_workflow_missing_one_check_is_refused", runs: rlsCheckRunsBuildMissing, wantExit: 1,
 			wantOut: []string{"CI gate: expected check run(s) not reported", "Build (linux/amd64)"}},
 		{name: "expected_workflow_green_passes_beside_an_unrelated_run", runs: rlsCheckRunsGreen, wantExit: 0,

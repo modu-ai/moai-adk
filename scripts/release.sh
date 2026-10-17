@@ -228,7 +228,9 @@ fi
 # (CodeRabbit) answers "success" while the Actions jobs are red or still running.
 # Passes only when every check run on the commit is completed and concluded
 # success, neutral or skipped, AND the repository's own CI workflow reported:
-# each name in CI_REQUIRED_CHECKS below must be present among them. Absent,
+# each name in CI_REQUIRED_CHECKS below must be present among them, published by
+# the GitHub Actions app (a check run of the right name from another app does
+# not count). Absent,
 # pending, failed, unreadable and "only somebody else's checks" are all
 # refusals. gh missing is a refusal too. The one way past is --skip-ci-check,
 # which is announced here and recorded in the release summary.
@@ -247,9 +249,9 @@ if [[ "$SKIP_CI_CHECK" == true ]]; then
 else
     command -v gh >/dev/null 2>&1 || die "CI gate: the gh CLI is not available, so the CI verdict of ${LOCAL_SHA:0:12} on origin cannot be read. Install gh, or pass --skip-ci-check to override (recorded in the release summary)."
 
-    # One line per check run: "<name><TAB><status><TAB><conclusion>".
+    # One line per check run: "<name><TAB><status><TAB><conclusion><TAB><app slug>".
     CI_RUNS="$(gh api --paginate "repos/modu-ai/moai-adk/commits/$LOCAL_SHA/check-runs?per_page=100" \
-        --jq '.check_runs[] | "\(.name)\t\(.status)\t\(.conclusion // "")"')" \
+        --jq '.check_runs[] | "\(.name)\t\(.status)\t\(.conclusion // "")\t\(.app.slug // "")"')" \
         || die "CI gate: could not read the check runs of ${LOCAL_SHA:0:12} (gh api failed). Fix gh access, or pass --skip-ci-check to override (recorded in the release summary)."
     # Counts: total, not completed, completed but not success|neutral|skipped.
     read -r CI_TOTAL CI_PENDING CI_FAILED < <(printf '%s\n' "$CI_RUNS" | awk -F'\t' 'NF >= 2 {t++; if ($2 != "completed") p++; else if ($3 != "success" && $3 != "neutral" && $3 != "skipped") f++} END {printf "%d %d %d\n", t, p, f}')
@@ -263,16 +265,18 @@ else
     fi
 
     # Every run is completed and green; now require the CI workflow's own runs
-    # by exact name, so a green run from an unrelated app cannot satisfy the gate.
+    # by exact name AND publishing app, so neither a green run from an unrelated
+    # app nor a run that borrows a required name can satisfy the gate.
+    CI_APP="github-actions"
     CI_MISSING=""
     for expected in "${CI_REQUIRED_CHECKS[@]}"; do
-        printf '%s\n' "$CI_RUNS" | awk -F'\t' -v n="$expected" '$1 == n {found=1} END {exit !found}' \
+        printf '%s\n' "$CI_RUNS" | awk -F'\t' -v n="$expected" -v a="$CI_APP" '$1 == n && $4 == a {found=1} END {exit !found}' \
             || CI_MISSING="${CI_MISSING:+$CI_MISSING; }$expected"
     done
     if [[ -n "$CI_MISSING" ]]; then
-        die "CI gate: expected check run(s) not reported for ${LOCAL_SHA:0:12} on origin: $CI_MISSING. The repository CI workflow (CI_REQUIRED_CHECKS in this script) has not run on this commit; $CI_TOTAL other check run(s) do not stand in for it. Wait for CI, or pass --skip-ci-check to override (recorded in the release summary)."
+        die "CI gate: expected check run(s) not reported for ${LOCAL_SHA:0:12} on origin (by name, from the $CI_APP app): $CI_MISSING. The repository CI workflow (CI_REQUIRED_CHECKS in this script) has not run on this commit; $CI_TOTAL other check run(s) do not stand in for it. Wait for CI, or pass --skip-ci-check to override (recorded in the release summary)."
     fi
-    log_ok "CI status on HEAD: success ($CI_TOTAL check runs, all completed green; CI workflow checks present: ${CI_REQUIRED_CHECKS[*]})"
+    log_ok "CI status on HEAD: success ($CI_TOTAL check runs, all completed green; CI workflow checks present from $CI_APP: ${CI_REQUIRED_CHECKS[*]})"
 fi
 
 # ─── Validation 9b: 3-OS matrix run on this commit (opt-in) ─────────────────
