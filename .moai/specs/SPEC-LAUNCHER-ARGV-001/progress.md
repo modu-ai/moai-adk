@@ -293,7 +293,41 @@ Note on the "control" the task named (`-c --allow-card-anchor hello`): `-c` is c
 
 ## §E.3 Run-phase Audit-Ready Signal
 
-_<pending run-phase>_
+audit_ready: true
+
+```yaml
+run_status: m1-m3-complete   # M4 (package coverage, whole-package lint, full-package run) is outside the lane delegation and carried to batch CI
+run_complete_at: 2026-10-18
+run_commit_sha: 951e09cab    # last code commit; the commit carrying this block follows it
+ac_pass_count: 15            # AC-LA-001..015, see the E1 pointer below
+ac_fail_count: 0
+m1_to_mN_commit_strategy: one baseline commit, then one commit per milestone, then evidence / lint / card-review fixes
+```
+
+**Final commit list** (branch `WT-launcher-argv-redesign`, nothing pushed): `538af8d7c` baseline characterization + pre-flight + status flip; `a022ada95` M1 resolver; `87abe2ef7` M2 guard; `f4676475b` M3 source scan; `f08294446` M1-M3 evidence record; `c14b127a2` unused wrapper dropped (lint); `951e09cab` card-review P2 fix (override flag as the value of a bundled-cluster option); then the commit carrying this section.
+
+**E1-E8 summary** (every record is in §E.2 above; this block repeats no output):
+
+| Item | Where |
+|---|---|
+| E1 AC matrix | §E.2 "AC matrix M1-M3 at tree `f4676475b`" (AC-LA-001..014 exact selectors, exit codes, PASS lines) and the later re-runs: AC-LA-014 exit 0 / 180 PASS at `a022ada95`, `c14b127a2` and `951e09cab`; AC-LA-015 is the RED/GREEN records themselves |
+| E2 builds | `go build ./...` and `GOOS=windows GOARCH=amd64 go build ./...` exit 0 at `f4676475b`, `c14b127a2` and `951e09cab` (re-run after every code change) |
+| E3 coverage | **not measured** (package-wide run, standing rule 35e9) |
+| E4 subagent boundary | §E.2 "E2 / E4 / E5 / E6": no `AskUserQuestion` in any touched non-test file, no `syscall` in the new files |
+| E5 lint / format / vet | `golangci-lint run --timeout=8m --new-from-rev=6e729ba21 ./internal/cli/... ./internal/config/...` -> `0 issues.` exit 0 at `c14b127a2` and at `951e09cab` (after the one `unused` finding and the P2 fix); gofmt empty, `go vet` exit 0, windows vet exit 0 |
+| E6 commits / tree state | list above; `git status --short` shows only the runtime-managed `usage-log.jsonl.prune-state` |
+| E7 blocker report | none |
+| E8 RED output | §E.2: M1 mutants, M2 families (a)(b)(c)(d), placement and weakening mutants, M3 scan mutants, and the card-review finding (EXPECTED_RED from assertions at `c14b127a2`, GREEN at `951e09cab`) |
+
+**Gaps (not observed)**
+- The package-wide `internal/cli` run and coverage are not measured (standing rule 35e9); the full-suite verdict is the CI run on the integration branch, PENDING at report time. Only name-scoped families were run (the six bound families, the AC-LA-014 selector, two leader-entry sweeps of 183 and 334 tests).
+- No measurement on a running claude of repeated or empty `--worktree`, the attached `-w=value` read, or the short-cluster decomposition; they rest on `claude --help` (2.1.302, `-w, --worktree [name]` optional value), commander's documented parsing and the audited iter8 record.
+- The Lstat-layer mutant (E3 in §E.2) survived: on Unix `O_NOFOLLOW|O_NONBLOCK` plus the descriptor re-read refuse the same shapes, so that layer is observable only where `auditLogOpenNoFollow` is 0 (Windows), and no Windows run was available (cross-build and vet only).
+- One load-dependent timing test failed once in an AC-LA-014 run: `TestFactoryLeaseDriftLogVerbWorktreeWriteWaits/nominated` (`returned 633.191541ms after the release ... within 500ms`, load average ~31); it passed alone three times and the selector passed whole at `a022ada95`, `c14b127a2` and `951e09cab`. Not caused by this change.
+- The `/verify` gate was not run before the commits (it runs the full suite); substituted by gofmt, vet, both builds, lint and the scoped families.
+- `appendCrossSessionSettings` is not exercised by the exec-seam cells (covered as a class by `appended_flags_are_worktree_neutral`).
+- The card-review finding (the override flag consumed as the value of an option bundled in a short cluster, e.g. `-cn --allow-card-anchor hello`) **was fixed in `951e09cab`** with its RED/GREEN pair in §E.2; it is closed, not a gap. The leader-entry control for "flag standing alone after a boolean" uses the attached cluster `-cnNAME`, because a bare `-c` is consumed by the launcher as `--continue` and would take the resume path (pinned instead on the consumption function).
+
 
 ## §E.4 Sync-phase Audit-Ready Signal
 
