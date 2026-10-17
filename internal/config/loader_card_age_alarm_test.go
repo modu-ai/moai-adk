@@ -1,0 +1,172 @@
+package config
+
+import (
+	"os"
+	"path/filepath"
+	"strings"
+	"testing"
+	"time"
+)
+
+// SPEC-CARD-AGE-ALARM-001 (card t1838), milestone M1: the workflow.card_age_alarm
+// keys — the OFF-by-default enable flag, the four band thresholds read through a
+// dedicated loader with compiled defaults, the compiled clock-skew tolerance, the
+// bound refusals that name the key path (REQ-CAA-002), and the shipped template
+// block mirroring the defaults with the OFF flag visible.
+
+// caaWriteWorkflow writes body to <root>/.moai/config/sections/workflow.yaml.
+// An empty body writes no file.
+func caaWriteWorkflow(t *testing.T, root, body string) {
+	t.Helper()
+	if body == "" {
+		return
+	}
+	dir := filepath.Join(root, ".moai", "config", "sections")
+	if err := os.MkdirAll(dir, 0o750); err != nil {
+		t.Fatalf("mkdir config sections: %v", err)
+	}
+	if err := os.WriteFile(filepath.Join(dir, "workflow.yaml"), []byte(body), 0o600); err != nil {
+		t.Fatalf("write workflow.yaml: %v", err)
+	}
+}
+
+// TestLoadCardAgeAlarm covers REQ-CAA-001/002's config surface: an unset or
+// absent workflow file resolves enabled=false plus the four compiled defaults,
+// a written block is read as written, a malformed file falls back to the
+// defaults with a warning naming the file, and NewDefaultWorkflowConfig seeds
+// the same values.
+func TestLoadCardAgeAlarm(t *testing.T) {
+	t.Setenv(EnvConfigDir, "")
+	wantDefaults := CardAgeAlarmConfig{
+		Enabled:         false,
+		GateWarnAfter:   "6h0m0s",
+		GateAlertAfter:  "24h0m0s",
+		StallWarnAfter:  "2h0m0s",
+		StallAlertAfter: "8h0m0s",
+	}
+	cases := []struct {
+		name string
+		body string
+		want CardAgeAlarmConfig
+	}{
+		{"no-file", "", wantDefaults},
+		{"no-block", "workflow:\n  execution_mode: auto\n", wantDefaults},
+		{"enabled-only", "workflow:\n  card_age_alarm:\n    enabled: true\n", CardAgeAlarmConfig{
+			Enabled: true, GateWarnAfter: "6h0m0s", GateAlertAfter: "24h0m0s", StallWarnAfter: "2h0m0s", StallAlertAfter: "8h0m0s",
+		}},
+		{"all-keys", "workflow:\n  card_age_alarm:\n    enabled: true\n    gate_warn_after: 30m\n    gate_alert_after: 2h\n    stall_warn_after: 10m\n    stall_alert_after: 1h\n", CardAgeAlarmConfig{
+			Enabled: true, GateWarnAfter: "30m", GateAlertAfter: "2h", StallWarnAfter: "10m", StallAlertAfter: "1h",
+		}},
+	}
+	for _, c := range cases {
+		t.Run(c.name, func(t *testing.T) {
+			root := t.TempDir()
+			caaWriteWorkflow(t, root, c.body)
+			got := LoadCardAgeAlarm(root)
+			if got != c.want {
+				t.Fatalf("LoadCardAgeAlarm = %+v, want %+v", got, c.want)
+			}
+		})
+	}
+	if got := NewDefaultWorkflowConfig().CardAgeAlarm; got != wantDefaults {
+		t.Fatalf("NewDefaultWorkflowConfig().CardAgeAlarm = %+v, want %+v", got, wantDefaults)
+	}
+}
+
+// TestCardAgeAlarmDefaultsAreSeeded pins the compiled constants themselves
+// (decision-index Q5: UNMEASURED chosen starting points, the quota-gate
+// tradition) and the tolerance's mirror of the quota precedent.
+func TestCardAgeAlarmDefaultsAreSeeded(t *testing.T) {
+	if DefaultCardAgeAlarmEnabled {
+		t.Fatal("DefaultCardAgeAlarmEnabled = true, want the OFF-by-default flag (REQ-CAA-001)")
+	}
+	if DefaultCardAgeAlarmGateWarnAfter != 6*time.Hour || DefaultCardAgeAlarmGateAlertAfter != 24*time.Hour {
+		t.Fatalf("gate bands = %s/%s, want 6h/24h", DefaultCardAgeAlarmGateWarnAfter, DefaultCardAgeAlarmGateAlertAfter)
+	}
+	if DefaultCardAgeAlarmStallWarnAfter != 2*time.Hour || DefaultCardAgeAlarmStallAlertAfter != 8*time.Hour {
+		t.Fatalf("stall bands = %s/%s, want 2h/8h", DefaultCardAgeAlarmStallWarnAfter, DefaultCardAgeAlarmStallAlertAfter)
+	}
+	if DefaultCardAgeAlarmGateWarnAfter >= DefaultCardAgeAlarmGateAlertAfter {
+		t.Fatal("gate warn band must stay strictly below the alert band")
+	}
+	if DefaultCardAgeAlarmStallWarnAfter >= DefaultCardAgeAlarmStallAlertAfter {
+		t.Fatal("stall warn band must stay strictly below the alert band")
+	}
+	if CardAgeAlarmClockSkewTolerance <= 0 {
+		t.Fatalf("CardAgeAlarmClockSkewTolerance = %s, want a positive compiled tolerance", CardAgeAlarmClockSkewTolerance)
+	}
+}
+
+// TestCardAgeAlarmBounds covers REQ-CAA-002's refusal half: a key that is not a
+// positive duration, and a warn band not strictly below its alert band, are
+// refused with the key path named; positive in-bound values are accepted.
+func TestCardAgeAlarmBounds(t *testing.T) {
+	inBound := CardAgeAlarmConfig{
+		Enabled: true, GateWarnAfter: "30m", GateAlertAfter: "2h", StallWarnAfter: "10m", StallAlertAfter: "1h",
+	}
+	got, err := ResolveCardAgeAlarm(inBound)
+	if err != nil {
+		t.Fatalf("in-bound resolve refused: %v", err)
+	}
+	if !got.Enabled || got.GateWarn != 30*time.Minute || got.GateAlert != 2*time.Hour ||
+		got.StallWarn != 10*time.Minute || got.StallAlert != time.Hour {
+		t.Fatalf("ResolveCardAgeAlarm = %+v, want the parsed in-bound bands", got)
+	}
+	cases := []struct {
+		name string
+		raw  CardAgeAlarmConfig
+		key  string
+	}{
+		{"gate-warn-not-a-duration", CardAgeAlarmConfig{GateWarnAfter: "soon", GateAlertAfter: "2h", StallWarnAfter: "10m", StallAlertAfter: "1h"}, CardAgeAlarmGateWarnKey},
+		{"gate-warn-zero", CardAgeAlarmConfig{GateWarnAfter: "0s", GateAlertAfter: "2h", StallWarnAfter: "10m", StallAlertAfter: "1h"}, CardAgeAlarmGateWarnKey},
+		{"gate-warn-negative", CardAgeAlarmConfig{GateWarnAfter: "-5m", GateAlertAfter: "2h", StallWarnAfter: "10m", StallAlertAfter: "1h"}, CardAgeAlarmGateWarnKey},
+		{"gate-alert-not-a-duration", CardAgeAlarmConfig{GateWarnAfter: "30m", GateAlertAfter: "later", StallWarnAfter: "10m", StallAlertAfter: "1h"}, CardAgeAlarmGateAlertKey},
+		{"stall-warn-not-a-duration", CardAgeAlarmConfig{GateWarnAfter: "30m", GateAlertAfter: "2h", StallWarnAfter: "soon", StallAlertAfter: "1h"}, CardAgeAlarmStallWarnKey},
+		{"stall-alert-zero", CardAgeAlarmConfig{GateWarnAfter: "30m", GateAlertAfter: "2h", StallWarnAfter: "10m", StallAlertAfter: "0s"}, CardAgeAlarmStallAlertKey},
+		{"gate-warn-equals-alert", CardAgeAlarmConfig{GateWarnAfter: "2h", GateAlertAfter: "2h", StallWarnAfter: "10m", StallAlertAfter: "1h"}, CardAgeAlarmGateWarnKey},
+		{"gate-warn-above-alert", CardAgeAlarmConfig{GateWarnAfter: "3h", GateAlertAfter: "2h", StallWarnAfter: "10m", StallAlertAfter: "1h"}, CardAgeAlarmGateWarnKey},
+		{"stall-warn-equals-alert", CardAgeAlarmConfig{GateWarnAfter: "30m", GateAlertAfter: "2h", StallWarnAfter: "1h", StallAlertAfter: "1h"}, CardAgeAlarmStallWarnKey},
+		{"stall-warn-above-alert", CardAgeAlarmConfig{GateWarnAfter: "30m", GateAlertAfter: "2h", StallWarnAfter: "2h", StallAlertAfter: "1h"}, CardAgeAlarmStallWarnKey},
+	}
+	for _, c := range cases {
+		t.Run(c.name, func(t *testing.T) {
+			if _, err := ResolveCardAgeAlarm(c.raw); err == nil {
+				t.Fatalf("ResolveCardAgeAlarm(%+v) accepted a value outside its bound", c.raw)
+			} else if !strings.Contains(err.Error(), c.key) {
+				t.Fatalf("refusal does not name the key %s: %v", c.key, err)
+			}
+		})
+	}
+}
+
+// TestCardAgeAlarmTemplateCarriesBlock pins the shipped template block: the OFF
+// flag visible, the four band values mirroring the compiled defaults, and the
+// comment declaring the values unmeasured (REQ-CAA-002).
+func TestCardAgeAlarmTemplateCarriesBlock(t *testing.T) {
+	raw, err := os.ReadFile("../template/templates/.moai/config/sections/workflow.yaml")
+	if err != nil {
+		t.Fatalf("read template workflow.yaml: %v", err)
+	}
+	body := string(raw)
+	if !strings.Contains(body, "card_age_alarm:") {
+		t.Fatal("template workflow.yaml carries no card_age_alarm block")
+	}
+	for _, pair := range [][2]string{
+		{"enabled:", "false"},
+		{"gate_warn_after:", DefaultCardAgeAlarmGateWarnAfter.String()},
+		{"gate_alert_after:", DefaultCardAgeAlarmGateAlertAfter.String()},
+		{"stall_warn_after:", DefaultCardAgeAlarmStallWarnAfter.String()},
+		{"stall_alert_after:", DefaultCardAgeAlarmStallAlertAfter.String()},
+	} {
+		needle := pair[0] + " " + pair[1]
+		if !strings.Contains(body, needle) {
+			t.Fatalf("template block does not carry %q", needle)
+		}
+	}
+	// The values are declared unmeasured where they ship, so a reader tuning
+	// them knows they are starting points, not recommendations.
+	block := body[strings.Index(body, "card_age_alarm:"):strings.Index(body, "card_age_alarm:")+600]
+	if !strings.Contains(strings.ToLower(block), "unmeasured") {
+		t.Fatal("template card_age_alarm block does not declare its values unmeasured")
+	}
+}

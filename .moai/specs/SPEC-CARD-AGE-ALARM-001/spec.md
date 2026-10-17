@@ -2,7 +2,7 @@
 id: SPEC-CARD-AGE-ALARM-001
 title: "Work-item-age alarms on gate-waiting and stalled factory cards (card t1838, card-policy stage G1)"
 version: "0.1.2"
-status: draft
+status: in-progress
 created: 2026-10-17
 updated: 2026-10-18
 author: manager-spec (card t1838)
