@@ -91,29 +91,25 @@ func TestClean_KeepsLinkToAnotherProjectsFolder(t *testing.T) {
 	}
 }
 
-// A second move that fails must put the lowercase file back under its own name.
-// Otherwise its content stays under the temporary name, where nothing reads it.
-func TestRenameSkillFile_RestoresLowercaseNameWhenSecondMoveFails(t *testing.T) {
+// A link to SKILL.md that fails must put the lowercase file back under its own name.
+// Otherwise its content stays under the staging folder, where nothing reads it.
+func TestRenameSkillFile_RestoresLowercaseNameWhenTheLinkIsRefused(t *testing.T) {
+	forceFallback(t) // injects the refusal through the link seam
 	dir := t.TempDir()
 	mustWriteFile(t, filepath.Join(dir, "skill.md"), "lower body")
-	orig := moveFile
-	t.Cleanup(func() { moveFile = orig })
-	calls := 0
-	moveFile = func(from, to string) error {
-		calls++
-		if calls == 2 {
-			return errors.New("injected failure on the second move")
-		}
-		return orig(from, to)
+	orig := linkFile
+	t.Cleanup(func() { linkFile = orig })
+	linkFile = func(*os.Root, string, string) error {
+		return errors.New("injected failure on the link")
 	}
 
-	if err := renameSkillFile(dir); err == nil {
-		t.Fatal("renameSkillFile reported success although the second move failed")
+	if err := renameSkillFile(openRootT(t, dir), "."); err == nil {
+		t.Fatal("renameSkillFile reported success although the link failed")
 	}
 	if got := readOrFail(t, filepath.Join(dir, "skill.md")); got != "lower body" {
 		t.Fatalf("skill.md = %q after the failed rename, want the original body", got)
 	}
 	if _, err := os.Lstat(filepath.Join(dir, "skill.md.tmp-rename")); !os.IsNotExist(err) {
-		t.Fatalf("temporary name left behind after the failed rename (stat err: %v)", err)
+		t.Fatalf("staging folder left behind after the failed rename (stat err: %v)", err)
 	}
 }

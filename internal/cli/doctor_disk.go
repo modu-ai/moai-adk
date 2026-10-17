@@ -20,6 +20,7 @@ import (
 	"github.com/modu-ai/moai-adk/internal/cli/uikit"
 	"github.com/modu-ai/moai-adk/internal/config"
 	"github.com/modu-ai/moai-adk/internal/defs"
+	"github.com/modu-ai/moai-adk/internal/hygiene"
 	"github.com/modu-ai/moai-adk/internal/paths"
 	"github.com/modu-ai/moai-adk/pkg/version"
 )
@@ -65,6 +66,12 @@ type homeDiskReport struct {
 	InactiveProfiles []string
 	OversizeProfiles []string
 	InsecureHomeDirs int
+	// ProfileCapBytes is the loaded state.profile_max_bytes; 0 means no cap
+	// is configured (or it could not be loaded) and no oversize check runs.
+	ProfileCapBytes int64
+	// ProfileCapErr names a cap loader failure; the check degrades to no
+	// oversize judgment and the detail reports why.
+	ProfileCapErr string
 }
 
 // @MX:NOTE: [AUTO] Home Disk Usage check — advisory only; the WARN threshold is the compiled DefaultHomeDiskWarnBytes (config surface per CLAUDE.local.md §14)
@@ -127,6 +134,17 @@ func gatherHomeDiskReport(root string) homeDiskReport {
 		CurrentVersion: version.GetVersion(),
 	}
 
+	// Per-profile size cap, read once per report through the same loader the
+	// SessionStart advisory uses, so doctor and the advisory cannot disagree.
+	//
+	// @MX:NOTE: [AUTO] No-compiled-fallback contract: an absent state.profile_max_bytes (HOME tier, then PROJECT tier) leaves ProfileCapBytes at 0 and skips the oversize check; a loader error skips it too and is named in the detail — never substitute a compiled cap
+	// @MX:SPEC: SPEC-CAPACITY-RECLAIM-001
+	if capBytes, ok, err := hygiene.LoadProfileCapMaxBytes(resolveProjectDir()); err != nil {
+		report.ProfileCapErr = err.Error()
+	} else if ok {
+		report.ProfileCapBytes = capBytes
+	}
+
 	// Top-level breakdown.
 	if entries, err := os.ReadDir(root); err == nil {
 		for _, e := range entries {
@@ -152,7 +170,7 @@ func gatherHomeDiskReport(root string) homeDiskReport {
 			profileRoot := filepath.Join(profilesDir, p.Name())
 			size, files := homeEntrySize(profileRoot, p)
 			report.Profiles = append(report.Profiles, homeDirStat{Name: p.Name(), Size: size, Files: files})
-			if size > config.DefaultProfileMaxBytes {
+			if report.ProfileCapBytes > 0 && size > report.ProfileCapBytes {
 				report.OversizeProfiles = append(report.OversizeProfiles, p.Name())
 			}
 			lastUsed := newestModTime(filepath.Join(profileRoot, "projects"))
@@ -258,7 +276,10 @@ func renderHomeDiskDetail(report homeDiskReport) string {
 		lines = append(lines, "duplicate clusters: "+strings.Join(clusterParts, "; ")+" — report-only")
 	}
 	if len(report.OversizeProfiles) > 0 {
-		lines = append(lines, fmt.Sprintf("profiles above %s: %s", formatDiskBytes(config.DefaultProfileMaxBytes), strings.Join(report.OversizeProfiles, ", ")))
+		lines = append(lines, fmt.Sprintf("profiles above %s: %s", formatDiskBytes(report.ProfileCapBytes), strings.Join(report.OversizeProfiles, ", ")))
+	}
+	if report.ProfileCapErr != "" {
+		lines = append(lines, fmt.Sprintf("profile size cap unreadable — oversize check skipped: %s", report.ProfileCapErr))
 	}
 	if len(report.InactiveProfiles) > 0 {
 		lines = append(lines, fmt.Sprintf("profiles unused for %d+ days: %s (report-only)", config.DefaultProfileUnusedDays, strings.Join(report.InactiveProfiles, ", ")))

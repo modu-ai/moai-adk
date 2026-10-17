@@ -137,6 +137,23 @@ func runAstGrep(cmd *cobra.Command, flags *astGrepFlags, path string) error {
 					"Install it from %s, then re-run.\n", astgrep.InstallURL)
 			return &exitCodeError{code: 1, msg: "ast-grep: sg CLI not found; scan did not run"}
 		}
+		// sg exited without findings for a reason other than a ruleset load
+		// failure. Fail loud under its own headline, never the load headline.
+		var execErr *astgrep.ScanExecError
+		if errors.As(err, &execErr) {
+			_, _ = fmt.Fprintf(cmd.ErrOrStderr(),
+				"ast-grep: scan did not run — sg exited without findings.\n%s\n", execErr.Error())
+			return &exitCodeError{code: 1, msg: "ast-grep: scan did not run"}
+		}
+		// sg refused to load the ruleset, so no rule ran. Same contract as the
+		// unavailable case: a non-zero exit with sg's first error line on stderr,
+		// never a "no findings" line over code nothing scanned (GH #1824).
+		var rulesetErr *astgrep.RulesetLoadError
+		if errors.As(err, &rulesetErr) {
+			_, _ = fmt.Fprintf(cmd.ErrOrStderr(),
+				"ast-grep: scan did not run — the ruleset failed to load.\n%s\n", rulesetErr.Detail)
+			return &exitCodeError{code: 1, msg: "ast-grep: ruleset failed to load; scan did not run"}
+		}
 		return fmt.Errorf("ast-grep scan: %w", err)
 	}
 

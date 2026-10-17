@@ -7,6 +7,7 @@ import (
 	"go/token"
 	"os"
 	"path/filepath"
+	"regexp"
 	"strings"
 	"testing"
 
@@ -88,6 +89,24 @@ func TestCheckJev_EnabledWithCredentialAndReachableEndpoint(t *testing.T) {
 	}
 	if !strings.Contains(text, "wxyz") {
 		t.Errorf("the report does not carry the four-character hint: %q", text)
+	}
+}
+
+// AC-JRM-008 — the verbose detail names the request alias and never an
+// interpreted version: the doctor sends no judgment request, so it cannot
+// know which version would answer.
+func TestDoctorJev_VerboseNamesAliasAndNoInterpretedVersion(t *testing.T) {
+	root := jevProject(t, true)
+	stubProbe(t, nil)
+	if err := jevcred.Save("NOT-A-REAL-KEY-0123456789wxyz"); err != nil {
+		t.Fatal(err)
+	}
+	got := checkJev(root, true)
+	if !strings.Contains(got.Detail, "request model jev-latest") {
+		t.Errorf("detail does not contain %q: %q", "request model jev-latest", got.Detail)
+	}
+	if regexp.MustCompile(`model jev-\d+\.\d+\.\d+`).MatchString(got.Detail) {
+		t.Errorf("detail names an interpreted version: %q", got.Detail)
 	}
 }
 

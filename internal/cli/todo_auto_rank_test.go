@@ -632,6 +632,7 @@ func TestAutoFallbackReasonMapping(t *testing.T) {
 		{jev.Oversize, "jev-oversize"},
 		{jev.SecretDetected, "jev-secret-detected"},
 		{jev.Malformed, "jev-malformed"},
+		{jev.Unattributed, "jev-unattributed"},
 	}
 	seen := map[string]jev.Availability{}
 	for _, tc := range cases {
@@ -1404,7 +1405,7 @@ func TestAutoLiveJevRanker(t *testing.T) {
 		if err := jevcred.Save("NOT-A-REAL-KEY-live-ranker-0123456789"); err != nil {
 			t.Fatal(err)
 		}
-		d := &rankFakeDoer{status: 200, body: `{"answers":{"t1":{"type":"score","score":3,"confidence":0.75}}}`}
+		d := &rankFakeDoer{status: 200, body: `{"model":"jev-9.8.7","answers":{"t1":{"type":"score","score":3,"confidence":0.75}}}`}
 		rankUseDoer(t, d)
 		res := liveAutoJevRanker(req)
 		if !res.OK() || d.calls != 1 {
@@ -1412,6 +1413,19 @@ func TestAutoLiveJevRanker(t *testing.T) {
 		}
 		if len(res.Answers) != 1 || res.Answers[0].Score != 3 || res.Answers[0].Probability != 0.75 {
 			t.Errorf("answers = %+v, want one score-3 answer with confidence 0.75", res.Answers)
+		}
+	})
+
+	t.Run("gate on with a credential and no versioned model is unattributed", func(t *testing.T) {
+		t.Setenv("CLAUDE_PROJECT_DIR", jevProject(t, true))
+		if err := jevcred.Save("NOT-A-REAL-KEY-live-ranker-0123456789"); err != nil {
+			t.Fatal(err)
+		}
+		d := &rankFakeDoer{status: 200, body: `{"answers":{"t1":{"type":"score","score":3,"confidence":0.75}}}`}
+		rankUseDoer(t, d)
+		res := liveAutoJevRanker(req)
+		if res.Availability != jev.Unattributed || len(res.Answers) != 0 {
+			t.Errorf("availability=%q answers=%+v, want unattributed with no answers", res.Availability, res.Answers)
 		}
 	})
 

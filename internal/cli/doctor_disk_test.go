@@ -180,7 +180,12 @@ func TestHomeDiskReportDetectsInactiveOversizeAndInsecureProfiles(t *testing.T) 
 	if err := os.MkdirAll(fresh, 0o700); err != nil {
 		t.Fatal(err)
 	}
-	writeHomeFixtureFile(t, oversize, config.DefaultProfileMaxBytes+1, time.Now())
+	// The oversize judgment reads state.profile_max_bytes (no compiled
+	// fallback), so the fixture configures a small HOME-tier cap and pins the
+	// PROJECT tier to an empty dir.
+	t.Setenv("CLAUDE_PROJECT_DIR", t.TempDir())
+	writeHomeStateYAML(t, home, "state:\n    profile_max_bytes: 4096\n")
+	writeHomeFixtureFile(t, oversize, 4096+1, time.Now())
 	old := time.Now().AddDate(0, 0, -(config.DefaultProfileUnusedDays + 1))
 	if err := os.Chtimes(stale, old, old); err != nil {
 		t.Fatal(err)
@@ -205,6 +210,90 @@ func containsDiskProfile(values []string, want string) bool {
 		}
 	}
 	return false
+}
+
+// writeHomeStateYAML seeds the HOME-tier state.yaml
+// (~/.moai/config/sections/state.yaml, the paths.UserConfigSectionsDir()
+// tier hygiene.LoadProfileCapMaxBytes reads first).
+func writeHomeStateYAML(t *testing.T, home, body string) {
+	t.Helper()
+	sections := filepath.Join(home, ".moai", "config", "sections")
+	if err := os.MkdirAll(sections, 0o755); err != nil {
+		t.Fatalf("mkdir sections: %v", err)
+	}
+	if err := os.WriteFile(filepath.Join(sections, "state.yaml"), []byte(body), 0o644); err != nil {
+		t.Fatalf("seed state.yaml: %v", err)
+	}
+}
+
+// TestHomeDiskReportOversizeUsesConfiguredProfileCap pins the doctor's
+// oversize-profile judgment to state.profile_max_bytes — the same loader the
+// SessionStart advisory reads (HOME tier, then PROJECT tier, no compiled
+// fallback) — instead of a compiled constant (card t1665). The PROJECT tier is
+// pinned to an empty temp dir so the ambient checkout never leaks in.
+func TestHomeDiskReportOversizeUsesConfiguredProfileCap(t *testing.T) {
+	const capBytes int64 = 4096
+
+	t.Run("configured cap flags exactly the profiles above it", func(t *testing.T) {
+		home := hermeticHomeEnv(t)
+		t.Setenv("CLAUDE_PROJECT_DIR", t.TempDir())
+		writeHomeStateYAML(t, home, "state:\n    profile_max_bytes: 4096\n")
+		profiles := filepath.Join(home, ".moai", "claude-profiles")
+		writeHomeFixtureFile(t, filepath.Join(profiles, "above", "projects", "s.jsonl"), capBytes+1, time.Now())
+		writeHomeFixtureFile(t, filepath.Join(profiles, "at-cap", "projects", "s.jsonl"), capBytes, time.Now())
+		writeHomeFixtureFile(t, filepath.Join(profiles, "below", "projects", "s.jsonl"), 100, time.Now())
+
+		report := gatherHomeDiskReport(filepath.Join(home, ".moai"))
+		if len(report.OversizeProfiles) != 1 || report.OversizeProfiles[0] != "above" {
+			t.Fatalf("oversize profiles = %v, want exactly [above] under a %d-byte cap", report.OversizeProfiles, capBytes)
+		}
+		detail := renderHomeDiskDetail(report)
+		want := "profiles above " + formatDiskBytes(capBytes) + ": above"
+		if !strings.Contains(detail, want) {
+			t.Fatalf("detail missing %q:\n%s", want, detail)
+		}
+	})
+
+	t.Run("key absent in every tier flags nothing", func(t *testing.T) {
+		home := hermeticHomeEnv(t)
+		t.Setenv("CLAUDE_PROJECT_DIR", t.TempDir())
+		// state.yaml present, key absent — the sharper absent case.
+		writeHomeStateYAML(t, home, "state:\n    home_retention_days: 30\n")
+		// 6 GiB logical (sparse): above any plausible compiled cap, so a
+		// compiled fallback would flag it here.
+		writeHomeFixtureFile(t,
+			filepath.Join(home, ".moai", "claude-profiles", "huge", "projects", "s.jsonl"),
+			6*1024*1024*1024, time.Now())
+
+		report := gatherHomeDiskReport(filepath.Join(home, ".moai"))
+		if len(report.OversizeProfiles) != 0 {
+			t.Fatalf("oversize profiles = %v, want none when state.profile_max_bytes is absent", report.OversizeProfiles)
+		}
+		if detail := renderHomeDiskDetail(report); strings.Contains(detail, "profiles above") {
+			t.Fatalf("detail must carry no \"profiles above\" line when the cap is absent:\n%s", detail)
+		}
+	})
+
+	t.Run("loader error skips the check and names the error", func(t *testing.T) {
+		home := hermeticHomeEnv(t)
+		t.Setenv("CLAUDE_PROJECT_DIR", t.TempDir())
+		writeHomeStateYAML(t, home, "state:\n    profile_max_bytes: -1\n")
+		writeHomeFixtureFile(t,
+			filepath.Join(home, ".moai", "claude-profiles", "huge", "projects", "s.jsonl"),
+			6*1024*1024*1024, time.Now())
+
+		report := gatherHomeDiskReport(filepath.Join(home, ".moai"))
+		if len(report.OversizeProfiles) != 0 {
+			t.Fatalf("oversize profiles = %v, want none when the cap cannot be loaded", report.OversizeProfiles)
+		}
+		detail := renderHomeDiskDetail(report)
+		if strings.Contains(detail, "profiles above") {
+			t.Fatalf("detail must carry no \"profiles above\" line on a loader error:\n%s", detail)
+		}
+		if !strings.Contains(detail, "state.profile_max_bytes must be strictly positive") {
+			t.Fatalf("detail must name the loader error:\n%s", detail)
+		}
+	})
 }
 
 // TestCheckHomeDisk_WarnsWhenCleanableExceedsDefaultThreshold covers

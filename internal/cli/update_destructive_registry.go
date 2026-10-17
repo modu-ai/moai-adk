@@ -42,13 +42,16 @@ type destructiveSite struct {
 // key identifies a registry row independently of its count and assignment.
 func (s destructiveSite) key() string { return s.File + " " + s.Function }
 
-// destructiveTargetRegistry is the registry itself: 16 (file, function) rows
-// covering 26 call sites, matching the source scan the drift guard performs.
+// destructiveTargetRegistry is the registry itself: 17 (file, function) rows
+// covering 27 call sites, matching the source scan the drift guard performs.
+// The scan counts os.RemoveAll and os.Rename, and also Rename, RemoveAll and
+// Remove called on an os.Root handle (a parameter typed *os.Root, or the result
+// of os.OpenRoot), which the root-bound rename in skillresidue uses.
 //
 // Rows carry either a Protection or an Exemption, never both and never neither.
 // The exempt rows rest on three materially different grounds — same-call rewind
 // (BackupMoaiConfig, backupUserOwnedNamespace), retention pruning of
-// moai-authored backup directories (CleanupOldBackups), and cache-base
+// moai-authored backup directories (PruneBackups, reached through CleanupOldBackups), and cache-base
 // replacement (fileSnapshot.promote) — and must not be collapsed into one
 // reason: the pruning row destroys restore points from PREVIOUS runs, so it is
 // exempt from the user-data protection set without being harmless to the
@@ -102,10 +105,15 @@ var destructiveTargetRegistry = []destructiveSite{
 			"created, on its own error paths, so nothing that predates the run can be reached.",
 	},
 	{
-		File: "internal/cli/update/backup/backup.go", Function: "CleanupOldBackups", Sites: 1,
+		File: "internal/cli/update/backup/retention_prune.go", Function: "PruneBackups", Sites: 1,
 		Exemption: "Retention pruning of moai-authored backup runs — NOT a same-call rewind. It " +
 			"removes every directory of the runs older than the newest keepCount, across the config " +
-			"root (.moai-backups/) and the namespace root (.moai/backups/). A run is the set of " +
+			"root (.moai-backups/) and the namespace root (.moai/backups/), except an older run that " +
+			"is the only retained holder of a past version of a file within the per-file budget " +
+			"(state.backup_past_versions_keep, SPEC-UPDATE-BACKUP-RETENTION-001) or that holds an " +
+			"entry the pruner cannot classify; each removed and each retained run is reported. " +
+			"The one os.RemoveAll site sits in PruneBackups; CleanupOldBackups only forwards to it. " +
+			"A run is the set of " +
 			"directories that share a run marker. An unmarked directory counts as a run of its own " +
 			"only when its name has a shape a moai backup writer produces; any other unmarked name is " +
 			"neither counted nor deleted, so every directory it removes was authored by moai itself " +
@@ -129,7 +137,7 @@ var destructiveTargetRegistry = []destructiveSite{
 			"back to the derived base when it is absent, without failing the update. Exempt on the " +
 			"ground that the bytes replaced are moai-authored cache, which is materially distinct from " +
 			"the same-call rewind rows (BackupMoaiConfig, backupUserOwnedNamespace) and from retention " +
-			"pruning of restore points (CleanupOldBackups).",
+			"pruning of restore points (PruneBackups).",
 	},
 	{
 		File: "internal/cli/update_clean_install.go", Function: "runCleanReinstall", Sites: 1,
@@ -183,12 +191,31 @@ var destructiveTargetRegistry = []destructiveSite{
 			"only replacements are ones the operator's content survives inside.",
 	},
 	{
-		File: "internal/cli/update/skillresidue/residue.go", Function: "moveOne", Sites: 1,
-		Protection: "The single os.Rename in the skillresidue package. All three moves in " +
-			"renameSkillFile reach this site through the moveFile seam (skill.md to a temporary " +
-			"name, the temporary name to SKILL.md, and the restore after a failed second move). " +
-			"The temporary name comes from freeName, so no user file is replaced, and a failed " +
-			"second move puts the content back under its own name. TestMoveFileReferencesArePinned " +
-			"fails on any new reference to moveFile, which forces this row to be reviewed.",
+		File: "internal/cli/update/skillresidue/residue.go", Function: "dropOne", Sites: 1,
+		Protection: "SPEC-UPDATE-BACKUP-RETENTION-001 REQ-UBR-017 (findings F24, F25, F7, F11, F2, " +
+			"F13, F14). The package's one root-bound Remove, reached through the dropFile seam, " +
+			"and since card t1733 round 4 reached ONLY by the link fallback renameByLinks (and " +
+			"its dropOurs). The held-back rename itself moves skill.md by atomic no-replace " +
+			"renames (renameat2 RENAME_NOREPLACE, renameatx_np RENAME_EXCL, MoveFileEx without a " +
+			"replace flag): skill.md -> a randomly named staging folder -> SKILL.md, each " +
+			"refusing when the destination exists, so no user-visible name is unlinked behind a " +
+			"check. Since round 5 the linux and darwin renames and the removal of the staging " +
+			"folder are relative to the descriptors of the skill folder and the staging folder, " +
+			"both opened through the project root and held open, so swapping either path " +
+			"afterwards cannot redirect them; windows stays path-based behind a root-bound look. " +
+			"The staging folder is removed by rmdir (unlinkat AT_REMOVEDIR, or syscall.Rmdir " +
+			"where there is no such form), which the scan does not count and which cannot " +
+			"remove a file, a link or a non-empty folder. The step takes the identity of " +
+			"skill.md before the first rename and requires it at the staged name before the " +
+			"second and at SKILL.md after it. A refused SKILL.md rename is undone by a " +
+			"no-replace rename back to skill.md; a refused undo leaves the content staged and " +
+			"the error names it. The package has no Rename. Only the fallback, used when the " +
+			"platform or filesystem reports no no-replace rename, keeps the round-3 identity " +
+			"rule (a name is removed only while Lstat still reports the identity captured " +
+			"before the link) and its microsecond window between each look and its unlink. The " +
+			"state tables above renameSkillFile and renameByLinks list every state. " +
+			"TestMoveFileReferencesArePinned fails on any new reference, inside the package, to " +
+			"the seams, the platform renames or rmdir, which forces this row to be reviewed; a " +
+			"caller in another package is not seen by that test.",
 	},
 }
