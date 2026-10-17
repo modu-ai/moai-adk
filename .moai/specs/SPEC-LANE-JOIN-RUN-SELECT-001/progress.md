@@ -248,7 +248,7 @@ audit_ready: true
 ## §E.4 Sync-phase Audit-Ready Signal
 
 sync_complete_at: 2026-10-18
-sync_commit_sha: pending-backfill
+sync_commit_sha: e73e296b9b5f6dd4bfdbf5c643c19ce696666aed
 sync_status: complete
 b12_self_test_a: PASS (pre-emission `grep -c 'SPEC-LANE-JOIN-RUN-SELECT-001' CHANGELOG.md` printed `0` before the entry was added; `1` after)
 b12_self_test_b: DEVIATION, reported not softened (see "B12 self-test 2" below): the CHANGELOG entry states 8 criteria (AC-LJR-001..008); the reference counter printed 16
@@ -279,5 +279,5 @@ Tree `.moai/worktrees/t1853` at HEAD `2011df0cc` (run-phase complete, before thi
 ### Residual notes carried forward (not sync-phase work)
 
 - DEBT-3 (plan audit): `acceptance.md` AC-LJR-003's "no digit 7" fixture sentence is unchanged and stays a reported residual; it needs a manager-spec re-delegation.
-- `sync_commit_sha` holds the canonical `pending-backfill` placeholder because a commit cannot cite its own hash; the real SHA is backfilled in a following commit (spec-workflow.md Sync (close)).
+- `sync_commit_sha` was written as the canonical `pending-backfill` placeholder in the sync commit because a commit cannot cite its own hash; it has been backfilled with the real sync commit SHA `e73e296b9b5f6dd4bfdbf5c643c19ce696666aed` in a following commit (spec-workflow.md Sync (close); spec-frontmatter-schema.md D3 backfill exemption).
 - The MX Tag sub-step added no tag: this change touches no `@MX` annotation, and no tag validation tool was run in this sync phase (see the report's Gaps).
