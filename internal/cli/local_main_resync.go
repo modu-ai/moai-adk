@@ -72,6 +72,17 @@ var localMainResyncAfterRevalidate = func(repoRoot string) {}
 // @MX:SPEC: SPEC-LOCAL-MAIN-FLOW-001
 var localMainResyncReadWindow = factory.ReadIntegrationLock
 
+// localMainResyncFastForward is the fast-forward itself, the one call that moves the
+// primary checkout's local main (card t1670, sync-audit F1 of iteration 5). The
+// --no-overwrite-ignore flag is the second guard (plan §B4). Autostash is disabled so
+// the verb never stashes another session's changes (plan §B5). The production value
+// runs that merge and nothing else, so behaviour is unchanged.
+// @MX:NOTE: [AUTO] seam exists so a test observes the in-lock invariant at the move itself, not at a no-op hook beside it: when it runs, the read-time tripwire must be intact and a rival takeover must be refused as lock-busy.
+// @MX:SPEC: SPEC-LOCAL-MAIN-FLOW-001
+var localMainResyncFastForward = func(git func(args ...string) (string, error), baseline string) (string, error) {
+	return git("-c", "merge.autoStash=false", "merge", "--ff-only", "--no-overwrite-ignore", "-q", baseline)
+}
+
 // newIntegrationResyncCmd registers `moai integration resync`. It takes no
 // flags: the session is the one the window verbs resolve from the environment.
 func newIntegrationResyncCmd() *cobra.Command {
@@ -255,10 +266,9 @@ func localMainResyncInWindow(repoRoot, sessionID string) (string, error) {
 		if revalidateErr = localMainResyncRevalidate(git, repoRoot, sessionID, ref, head); revalidateErr != nil {
 			return nil
 		}
-		// The --no-overwrite-ignore flag is the second guard (plan §B4). Autostash is
-		// disabled so the verb never stashes another session's changes (plan §B5).
+		// The move runs through localMainResyncFastForward, inside this section.
 		localMainResyncBeforeFastForward(repoRoot)
-		_, moveErr = git("-c", "merge.autoStash=false", "merge", "--ff-only", "--no-overwrite-ignore", "-q", baseline)
+		_, moveErr = localMainResyncFastForward(git, baseline)
 		return nil
 	}); lockErr != nil {
 		return "", localMainResyncRefusal(factory.MergeExitOther, "integration resync: take the mutation lock before the move: %v", lockErr)
