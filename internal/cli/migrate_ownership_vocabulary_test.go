@@ -20,6 +20,9 @@ func TestKeepReasonVocabularyIsClosed(t *testing.T) {
 		keepUserModified, keepUserCreated, keepNoProvenanceRecord, keepRecordHashMismatch,
 		keepProfileReach, keepCounterpartUnconfirmed, keepNonCatalog, keepRemovalGateOff,
 		keepSymlinkEscape, keepReadFailed, keepNoTemplateHash, keepEmptyDirNoProvenance, keepBackupFailed,
+		// Added deliberately by the second card-review fix: a path that is not a regular
+		// file is kept without being read.
+		keepReason("non-regular-file"),
 	}
 	for _, item := range allEvidenceItems {
 		known = append(known, evidenceIncompleteReason(item))
