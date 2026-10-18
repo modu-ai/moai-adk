@@ -31,7 +31,7 @@ When the git pre-commit hook runs the heavy gate (`gate.pre_commit.enabled: true
 
 ### A.2 Why (WHY)
 
-`AGENTS.md` §4 says verification is scoped to the change and the full suite is CI's job. The distributed pre-commit gate does the opposite: its Go test step is `go test ./...` on every commit (observed: `internal/hook/quality/gate.go`, the `toolchains` table, Go entry, `testStep` with args `test`, `./...`). On this repository the `internal/cli` package alone carries 1022 `_test.go` files (observed from `go list` on tree 3642a3a9b), and board ruling 35e9 bars full `internal/cli` suite runs. The unchanged 120 s test budget therefore cannot hold the full-suite step, which is one reason the shared git configuration currently has every hook switched off.
+`AGENTS.md` §4 says verification is scoped to the change and the full suite is CI's job. The distributed pre-commit gate does the opposite: its Go test step is `go test ./...` on every commit (observed: `internal/hook/quality/gate.go`, the `toolchains` table, Go entry, `testStep` with args `test`, `./...`). On this repository the `internal/cli` package alone carries 1022 `_test.go` files (observed from `go list` on tree 3642a3a9b), and board ruling 35e9 bars full `internal/cli` suite runs. That the full-suite step cannot fit the unchanged 120 s test budget is an inference from the test-file count and ruling 35e9 — it is not a measurement, and no full `internal/cli` run was taken (ruling 35e9 bars one). It is one plausible reason the shared git configuration currently has every hook switched off.
 
 ### A.3 Observed facts (tree 3642a3a9b9cf101863656153d2d99b69fcb66a05)
 
@@ -42,7 +42,7 @@ When the git pre-commit hook runs the heavy gate (`gate.pre_commit.enabled: true
 | F3 | The pre-commit hook exports `MOAI_PRECOMMIT=1` and runs `moai gate`; the runner branches on that marker and on `gate.pre_commit.enabled`. The hook script is byte-identical to its template twin (`diff` printed no difference). | read `internal/cli/gate.go`; `.git/hooks/pre-commit` vs `internal/template/templates/.git_hooks/pre-commit` |
 | F4 | `gate.yaml` in this repository has `pre_commit.enabled: true`; the template copy has `false`. | `diff` of the two files |
 | F5 | `git config --show-origin --get core.hooksPath` prints `file:/Users/goos/MoAI/moai-adk-go/.git/config	/dev/null` (exit 0): the switch lives in the shared repository config, so it affects every worktree and session. | executed |
-| F6 | The module has 176 packages. `internal/config` has 48 direct dependents (47 with tests); `internal/hook/quality` has 2 (`internal/cli`: 1022 test files, `internal/hook`: 296). | `go list -e -json=...` on the tree, `jq` |
+| F6 | The module has 176 packages. `internal/config` has 47 direct dependents by exact import-path match, itself excluded (46 with tests; the one without is `internal/closure/closuretest`); `internal/hook/quality` has 2 (`internal/cli`: 1022 test files, `internal/hook`: 296). An earlier draft said 48 because the package's own external-test package imports it; re-measured on tree 888ce5c03 (Go code identical to 3642a3a9b). | `go list -e -json=...` on the tree, `jq` with the package itself filtered out |
 | F7 | The base defect is real, not hypothetical: `moai gate` built from this tree, run against a project holding only the `suppressed.go` fixture, with every other step disabled and the ast-grep gate configured advisory (`block_on_error: false`, `warn_only_mode: true`), exits 1 with `ast-grep suppression at .../internal/astgrep/testdata/fixtures/go/suppressed.go:15 requires adjacent '// @MX:REASON <rationale>' on next line`. Verbatim output: `acceptance.md` LEDGER-PAS-013-A. | executed |
 | F8 | Cause of F7: the suppression-pairing check is a pure-Go step that ignores `block_on_error` / `warn_only_mode`, requires `@MX:REASON` on the line AFTER `// ast-grep-ignore`, and its file walk skips `_test.go` but not `testdata`. The Go fixture, added by 59f201e85, puts `@MX:REASON` BEFORE the marker because ast-grep suppresses the line immediately following the marker. | read `astgrep_gate.go`; `sg scan` on the fixture prints `[]`; on a variant with the marker first it reports rule `go-interface-empty-not-any` |
 | F9 | The five other `suppressed.*` fixtures (kotlin, csharp, ruby, elixir, php) already follow marker-then-REASON; php has no comment prefix in the checker. The Go fixture is the only offender found by grep outside `_test.go`. | grep over the tree (a full-tree run of the real checker was not performed) |
@@ -61,17 +61,17 @@ When the Go toolchain's test step runs in the pre-commit context with the heavy 
 
 The affected package set shall be the union of (a) every package that owns a changed file and (b) every package that directly imports a package in (a) through its regular, in-package-test, or external-test imports; packages that depend on (a) only transitively shall not be included. The set shall be a pure function of the changed-file list, the package import graph, and the module root — it shall not read the wall clock or the process environment.
 
-### REQ-PAS-003 — Ownership of non-Go files (Ubiquitous)
+### REQ-PAS-003 — Ownership of changed files (Ubiquitous)
 
-The owner of a changed non-`.go` file shall be the package whose embedded-file set contains it, and otherwise the nearest ancestor directory that is a Go package directory (a `testdata` file belongs to the package whose directory contains that `testdata`). A file with no owner shall contribute no package and shall be named in the gate's summary as owned by none.
+The owner of a changed file shall be decided in this order: (1) a file lying under a `testdata` path segment, of any extension including `.go`, belongs to the package whose directory contains that `testdata` directory; (2) a Go source file of any build configuration, including one excluded on this platform, belongs to the package of its directory; (3) any other file belongs to the package whose embedded-file set contains it, and otherwise to the nearest ancestor directory that is a Go package directory. A file with no owner shall contribute no package and shall be named in the gate's summary as owned by none.
 
 ### REQ-PAS-004 — Test-only changes do not widen (Event-driven)
 
-When every changed file owned by a package is a `_test.go` file or lies under that package's `testdata`, the gate shall include that package and shall not include its dependents on account of those files.
+A changed file is test-only when it is a `_test.go` file or lies under a `testdata` path segment; every other owned file, including an embedded file and a non-Go file owned by ancestor-directory fallback, is a source change. When every changed file owned by a package is test-only, the gate shall include that package and shall not include its dependents on account of those files; when any file owned by a package is a source change, the gate shall include the package and its direct dependents.
 
 ### REQ-PAS-005 — Deleted and renamed files (Event-driven)
 
-When a commit deletes or renames a Go file, the gate shall attribute the file to the package of its former directory and shall select that package's importers by import path, whether or not the former package still exists on disk.
+When a commit deletes or renames a Go file, the gate shall obtain the changed-file list with rename detection off, so that a rename reports both its old and its new path, shall attribute each path to the package of its directory (the former directory for the old path), and shall select the importers of those packages by import path, whether or not a former package still exists on disk.
 
 ### REQ-PAS-006 — No-test packages are dropped and counted (Ubiquitous)
 
@@ -79,15 +79,15 @@ The gate shall drop selected packages that have no test files, shall report in i
 
 ### REQ-PAS-007 — Dependency-graph changes widen to the full scope (Event-driven)
 
-When the commit changes `go.mod`, `go.sum`, `go.work`, `go.work.sum`, or `.moai/config/build-tags`, the gate shall run the full-module test scope and shall state that widening and its trigger in the summary.
+When the commit changes `go.mod`, `go.sum`, `go.work`, `go.work.sum`, or `.moai/config/build-tags` at any path of the repository — evaluated over the whole changed-file list before any file is discarded for lying outside the toolchain's module root — the gate shall run the full-module test scope and shall state that widening and its trigger in the summary.
 
 ### REQ-PAS-008 — Failure falls back, never to a pass (Event-driven)
 
-When the changed-file query or the package-graph query fails, the gate shall fall back to the full-module test scope with a notice naming the failed query, and shall not report a pass derived from the failed computation.
+When the changed-file query fails, the package-graph query fails, or the package-graph query succeeds but reports any package as errored or incomplete (including a missing dependency, which `go list -e` reports with a zero exit status), the gate shall fall back to the full-module test scope with a notice naming the failed query or the affected package, and shall not report a pass derived from the failed computation.
 
 ### REQ-PAS-009 — Changed set is what the commit records (Ubiquitous)
 
-The changed-file set the gate uses shall be the set the commit will record, including commits made with `git commit -a` and with explicit paths.
+The changed-file set the gate uses shall be the set the commit will record, including commits made with `git commit -a`, with explicit paths, with `--amend`, and from a linked worktree.
 
 ### REQ-PAS-010 — Context isolation (Ubiquitous)
 
@@ -95,7 +95,7 @@ Outside the pre-commit context — the standalone `moai gate`, the PreToolUse pa
 
 ### REQ-PAS-011 — Scope setting (Capability gate)
 
-Where `gate.pre_commit.test_scope.mode` is present in `gate.yaml`, the gate shall accept `affected` or `full`, shall default to `affected` when the key is absent, and shall reject any other value with a message naming the key and the accepted values; `full` restores today's `./...` scope in the pre-commit context.
+The gate shall default `gate.pre_commit.test_scope.mode` to `affected` when the key is absent. Where the key is present in `gate.yaml`, the gate shall accept `affected` or `full` and shall reject any other value with a message naming the key and the accepted values; `full` restores today's `./...` scope in the pre-commit context.
 
 ### REQ-PAS-012 — WITHDRAWN (slot retained for traceability)
 
@@ -107,11 +107,11 @@ The ast-grep suppression-policy check shall not examine files under any `testdat
 
 ### REQ-PAS-014 — No timeout enlargement, no skips (Unwanted)
 
-The change shall not enlarge any gate timeout, shall not add a test skip (`t.Skip*` or an equivalent), and shall not remove any existing test.
+The change shall not enlarge any gate timeout — the budgets handed to the step runner stay 30 s (vet), 60 s (lint), 120 s (test) and 300 s (typecheck), at the gate's definition sites and at every call site that passes them on — shall not add a test skip (`t.Skip*` or an equivalent), and shall not remove any existing test.
 
 ### REQ-PAS-015 — Hooks stay off; no git-configuration writes (Unwanted)
 
-The delivered code and configuration shall not write `core.hooksPath` or any other git configuration key, and the repository's hook switch shall remain as it is when this SPEC lands; re-enabling hooks is the post-landing handoff in § C.
+No code path or configuration this SPEC delivers shall write `core.hooksPath` or any other git configuration key; re-enabling hooks is the post-landing handoff in § C, performed by an operator outside this SPEC's deliverables.
 
 ## C. Exclusions
 
@@ -130,7 +130,7 @@ The delivered code and configuration shall not write `core.hooksPath` or any oth
 ### Out of Scope — Test-selection inside a package (name-based selection for `internal/cli`)
 
 - Choosing individual tests by name (`-run`) is not done by the gate. It remains the operator and lane technique under ruling 35e9 for `internal/cli`.
-- Consequence, stated plainly: a commit whose affected set includes `internal/cli` fails by budget overrun (its suite exceeds the unchanged 120 s test budget; no timeout is enlarged and nothing is skipped). A pre-commit `-run` selection for `internal/cli`, in the manner of ruling 35e9, is a follow-up card recorded by the leader and is not part of this SPEC.
+- Consequence, stated plainly: a commit whose affected set includes `internal/cli` fails by budget overrun (inferred, not measured: ruling 35e9 bars measuring, and the package carries 1022 test files; `internal/hook`, with 296, and the 46 tested dependents of `internal/config` summed into one 120 s budget carry the same unmeasured risk; no timeout is enlarged and nothing is skipped). A pre-commit `-run` selection for `internal/cli`, in the manner of ruling 35e9, is a follow-up card recorded by the leader and is not part of this SPEC.
 - Test files that read repository files by relative path are invisible to package-graph analysis (residual risk R3 in plan.md); CI remains the net.
 
 ### Out of Scope — Policy semantics of the suppression check

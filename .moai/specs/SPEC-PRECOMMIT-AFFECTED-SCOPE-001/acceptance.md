@@ -2,35 +2,37 @@
 
 This file is the verification layer: every entry is Given / When / Then and binary. Requirements (GEARS) live in `spec.md` § B.
 
-Conventions. "Run" commands are plain single invocations, scoped per `plan.md` § D (no full `internal/cli` suite). A criterion counts as met only when its named tests print `--- PASS` and the swept count is at least the number stated; a `[no tests to run]` line is a failure of the instrument, not a pass (see LEDGER-PAS-VACUOUS below). Tree pin for all starting observations: `3642a3a9b9cf101863656153d2d99b69fcb66a05`.
+Conventions. "Run" commands are plain single invocations, scoped per `plan.md` § D (no full `internal/cli` suite). A criterion counts as met only when its named tests print `--- PASS` and the swept count is at least the number stated; a `[no tests to run]` line is a failure of the instrument, not a pass (see LEDGER-PAS-VACUOUS). Tree pin for the starting observations in the ledger: `888ce5c035a2527d81507441d71e69c929042ad0`; the `moai` binary used was built from `3642a3a9b`, and `git diff --stat 3642a3a9b HEAD -- internal cmd go.mod go.sum` prints nothing, so the Go code is identical (tool-provenance: judging build and tree HEAD cited together).
 
 ## D. AC Matrix
 
 | AC | REQ | Class |
 |----|-----|-------|
-| AC-PAS-001 | REQ-PAS-002 | release-blocking |
-| AC-PAS-002 | REQ-PAS-002 | release-blocking |
-| AC-PAS-003 | REQ-PAS-003 | release-blocking |
-| AC-PAS-004 | REQ-PAS-004 | release-blocking |
-| AC-PAS-005 | REQ-PAS-005 | release-blocking |
-| AC-PAS-006 | REQ-PAS-006 | release-blocking |
-| AC-PAS-007 | REQ-PAS-007 | release-blocking |
-| AC-PAS-008 | REQ-PAS-008 | release-blocking |
-| AC-PAS-009 | REQ-PAS-009 | release-blocking |
+| AC-PAS-001 | REQ-PAS-002 | release-blocking (RED-now: LEDGER-PAS-016-A) |
+| AC-PAS-002 | REQ-PAS-002 | adoption-pending (policy P1) |
+| AC-PAS-003 | REQ-PAS-003, REQ-PAS-004 | adoption-pending (policy P1) |
+| AC-PAS-004 | REQ-PAS-004 | adoption-pending (policy P1) |
+| AC-PAS-005 | REQ-PAS-005 | release-blocking (RED-now: LEDGER-PAS-009-A row iv) |
+| AC-PAS-006 | REQ-PAS-006 | adoption-pending (policy P1) |
+| AC-PAS-007 | REQ-PAS-007 | regression-guard (green today by construction) |
+| AC-PAS-008 | REQ-PAS-008 | regression-guard (green today by construction) |
+| AC-PAS-009 | REQ-PAS-009, REQ-PAS-005 | release-blocking (RED-now: LEDGER-PAS-009-A) |
 | AC-PAS-010 | REQ-PAS-010 | regression-guard |
-| AC-PAS-011 | REQ-PAS-011 | release-blocking |
+| AC-PAS-011 | REQ-PAS-011 | adoption-pending (policy P1) |
 | AC-PAS-012 | REQ-PAS-012 | withdrawn (Q1) |
-| AC-PAS-013 | REQ-PAS-013 | release-blocking |
+| AC-PAS-013 | REQ-PAS-013 | release-blocking (RED-now: LEDGER-PAS-013-A) |
 | AC-PAS-014 | REQ-PAS-014 | regression-guard |
 | AC-PAS-015 | REQ-PAS-015 | regression-guard |
-| AC-PAS-016 | REQ-PAS-001, REQ-PAS-010 | release-blocking |
+| AC-PAS-016 | REQ-PAS-001, REQ-PAS-010 | release-blocking (RED-now: LEDGER-PAS-016-A) |
+
+Policy P1 (adoption of unit-level criteria). Criteria marked adoption-pending are unadopted in the sense of `verification-completeness.md` §2 until their RED-now cell exists: the run phase writes each such test before its implementation, and records in `progress.md` §E.2 one ledger row per AC holding the command, the verbatim failing stdout, the exit code, and the tree SHA, before the milestone's GREEN commit. An adoption-pending AC reported as passed without its row is a Gap, not a pass. The reason these cannot carry a RED-now cell today is stated in LEDGER-PAS-VACUOUS: the tests do not exist, and the only available "red" is an empty-swept-set green.
 
 ### AC-PAS-001 — Direct dependents only (REQ-PAS-002)
 **Given** an in-memory graph with `a`; `b` importing `a`; `c` importing `b`; `d` standalone, all with test files
 **When** the changed list is `a/x.go`
 **Then** the selection is exactly `{a, b}`; `c` and `d` are absent.
 Run: `go test ./internal/hook/quality -run '^TestAffectedScope_DirectDependents$' -count=1 -v` — expect 1 PASS line, swept ≥ 1.
-Mutant probe: a transitive-closure implementation selects `c` and fails this AC; a package-only implementation omits `b` and fails it.
+Mutant probe: a transitive-closure implementation selects `c` and fails; a package-only implementation omits `b` and fails.
 
 ### AC-PAS-002 — Test-import edges count (REQ-PAS-002)
 **Given** package `e` that imports `a` only from its in-package `_test.go`, and package `f` that imports `a` only from an external `_test` package
@@ -39,24 +41,26 @@ Mutant probe: a transitive-closure implementation selects `c` and fails this AC;
 Run: `... -run '^TestAffectedScope_TestImportEdges$'`.
 Mutant probe: an implementation reading only regular imports selects neither.
 
-### AC-PAS-003 — Ownership of non-Go files (REQ-PAS-003)
-**Given** a package `p` with `p/testdata/in.json`, a package `q` embedding `q/tpl/t.txt`, and a file `docs/note.md` under no package
-**When** the changed list is those three files
-**Then** the selection is `{p, q}` (with `p`/`q` dependents per AC-PAS-001 rules), and the summary line names `docs/note.md` as owned by no package.
-Run: `... -run '^TestAffectedScope_NonGoOwnership$'`.
+### AC-PAS-003 — Ownership and widening per file kind (REQ-PAS-003, REQ-PAS-004)
+**Given** the graph of AC-PAS-001 plus: package `p` with `p/testdata/in.json` and `p/testdata/fix.go`, and package `pp` importing `p`; package `q` whose resolved embedded-file list contains `q/tpl/t.txt`, and package `r` importing `q`; a file `docs/note.md` under no package directory
+**When** the changed list is `p/testdata/in.json`, `p/testdata/fix.go`, `q/tpl/t.txt`, `docs/note.md`
+**Then** the selection is exactly `{p, q, r}`: `p` alone (test-only changes, `pp` absent, and the `.go` fixture is owned by `p`, not ownerless); `q` and its dependent `r` (an embedded file is a source change); and the summary names `docs/note.md` as owned by no package.
+Run: `... -run '^TestAffectedScope_Ownership$'`.
+Mutant probe: a directory-of-the-file rule leaves `p/testdata/fix.go` ownerless and fails; treating embedded files as test-only omits `r` and fails; treating `testdata` as source selects `pp` and fails.
 
 ### AC-PAS-004 — Test-only changes do not widen (REQ-PAS-004)
 **Given** the AC-PAS-001 graph
-**When** the changed list is `a/x_test.go` and `a/testdata/y.json`
+**When** the changed list is `a/x_test.go`, `a/testdata/y.json` and `a/testdata/f.go`
 **Then** the selection is exactly `{a}`.
 Run: `... -run '^TestAffectedScope_TestOnlyNarrows$'`.
 Mutant probe: treating any change as a source change selects `b`.
 
-### AC-PAS-005 — Deleted and renamed files (REQ-PAS-005)
-**Given** the AC-PAS-001 graph with `a/x.go` deleted and `a` retaining no files, and separately `a/x.go` renamed to `a/y.go`
-**When** the changed list is the deleted path (and, for the rename, both paths)
-**Then** `b` is still selected by import-path match in the deleted case; in the rename case the selection equals the AC-PAS-001 result.
-Run: `... -run '^TestAffectedScope_DeletedAndRenamed$'`.
+### AC-PAS-005 — Deleted and renamed files, including through the real git adapter (REQ-PAS-005) — release-blocking
+**Given** (core) the AC-PAS-001 graph with `a/x.go` deleted and `a` retaining no files, and separately `a/x.go` renamed to `a/y.go`; and (adapter) a temporary git repository in which `git mv a/x.go e/x.go` (cross-package rename) is staged, and in which the last file of a package is deleted
+**When** the core receives the old path (core cases), and the REAL git adapter produces the changed list from the real staged state (adapter cases)
+**Then** core: `b` is selected by import-path match in the deleted case, and the rename case equals the AC-PAS-001 result; adapter: the produced list contains both `a/x.go` and `e/x.go`, and the importers of the old package are selected end to end.
+Run: `... -run '^TestAffectedScope_DeletedAndRenamed$'` and `... -run '^TestAffectedScope_RealGitRenameDelete$'`.
+Mutant probe: an adapter using the default name list drops `a/x.go` and fails the adapter case (the core case alone, which injects both paths, cannot catch it).
 
 ### AC-PAS-006 — Dropped packages are counted; empty selection is an explicit skip (REQ-PAS-006)
 **Given** a selection containing one package with test files and one without; and, separately, a changed list containing only `docs/note.md`
@@ -64,26 +68,28 @@ Run: `... -run '^TestAffectedScope_DeletedAndRenamed$'`.
 **Then** the first case reports `selected 2, dropped 1` and the dropped package with the reason `no test files`; the second case records the Go test step as skipped with a stated reason and the gate does not report a pass for that step.
 Run: `... -run '^TestAffectedScope_DropAndEmpty$'` and `... -run '^TestQualityGate_AffectedScope_EmptySelectionSkips$'`.
 
-### AC-PAS-007 — Widening triggers (REQ-PAS-007; decision-index Q2 default applied)
-**Given** a changed list containing, one case each, `go.mod`, `go.sum`, `go.work`, `go.work.sum`, `.moai/config/build-tags`
+### AC-PAS-007 — Widening triggers, evaluated before module filtering (REQ-PAS-007) — regression-guard
+**Given** a changed list containing, one case each, `go.mod`, `go.sum`, `go.work`, `go.work.sum`, `.moai/config/build-tags`; and a nested-module layout whose Go module root is `m/`, with the trigger file at the repository root (`go.work`, and separately `.moai/config/build-tags`) and every other changed file inside `m/`
 **When** the Go test step's argument list is computed
-**Then** it is the full-module scope (`./...`) and the summary names the trigger file.
+**Then** it is the full-module scope (`./...`) and the summary names the trigger file, in every case including the nested layout.
 Run: `... -run '^TestAffectedScope_WideningTriggers$'`.
+Mutant probe: filtering to the module root before checking triggers drops the root-level `go.work` and narrows the scope; the nested case fails it.
 
-### AC-PAS-008 — Failed queries fall back, never pass (REQ-PAS-008)
-**Given** an injected changed-file query that fails, and separately an injected package-graph query that fails
+### AC-PAS-008 — Failed or incomplete queries fall back, never pass (REQ-PAS-008) — regression-guard
+**Given** an injected changed-file query that fails; an injected package-graph query that fails; and, through the REAL `go list` adapter, a temporary module in which one package imports a nonexistent dependency (`go list -e` exits 0 and marks the package incomplete)
 **When** the gate computes the Go test step
-**Then** the argument list is `./...`, the summary names which query failed, and no result is reported as a pass for the computation itself.
-Run: `... -run '^TestQualityGate_AffectedScope_QueryFailureFallsBack$'`.
+**Then** in every case the argument list is `./...`, the summary names the failed query or the incomplete package, and no result is reported as a pass for the computation itself.
+Run: `... -run '^TestQualityGate_AffectedScope_QueryFailureFallsBack$'` and `... -run '^TestAffectedScope_IncompleteGraphFallsBack$'`.
+Mutant probe: an adapter that trusts a zero exit status selects a normal set from the incomplete graph and fails the third case.
 
-### AC-PAS-009 — Changed set equals what the commit records (REQ-PAS-009) — release-blocking
-**Given** a temporary git repository with a real `pre-commit` script that records the changed set the gate computes, containing tracked files `a/x.go` and `d/z.go`, both modified, only `a/x.go` staged
-**When** (i) `git commit`, (ii) `git commit -a`, (iii) `git commit d/z.go` are each run
-**Then** the recorded sets are (i) `{a/x.go}`, (ii) `{a/x.go, d/z.go}`, (iii) `{d/z.go}`.
+### AC-PAS-009 — Changed set equals what the commit records (REQ-PAS-009, REQ-PAS-005) — release-blocking
+**Given** a temporary git repository with a real `pre-commit` script that records the changed set the gate computes, containing tracked files `a/x.go` and `d/z.go`, both modified, only `a/x.go` staged; the same repository also as a linked worktree
+**When** (i) `git commit`, (ii) `git commit -a`, (iii) `git commit d/z.go`, (iv) a staged rename `old/o.go` → `new/o.go`, (v) `git commit --amend` after staging one further file are each run
+**Then** the recorded sets are (i) `{a/x.go}`, (ii) `{a/x.go, d/z.go}`, (iii) `{d/z.go}`, (iv) `{old/o.go, new/o.go}`, (v) exactly the newly staged file; identical in the plain repository and in the linked worktree.
 Run: `... -run '^TestAffectedScope_ChangedSetMatchesCommit$' -count=1 -v`.
-Mutant probe: reading the real index under `-a` yields `{a/x.go}` for (ii) and fails; an implementation that includes unstaged files yields `{a/x.go, d/z.go}` for (i) and fails.
+Mutant probe: reading the real index under `-a` yields `{a/x.go}` for (ii) and fails; an implementation that includes unstaged files yields `{a/x.go, d/z.go}` for (i) and fails; the default name list yields `{new/o.go}` for (iv) and fails.
 
-### AC-PAS-010 — Context isolation (REQ-PAS-010)
+### AC-PAS-010 — Context isolation (REQ-PAS-010) — regression-guard
 **Given** the gate constructed without the pre-commit flag (standalone and PreToolUse shapes), and separately constructed for the node and python toolchains with the flag
 **When** each toolchain's step list is built
 **Then** the Go test step argument list is `test ./...` without the flag; the node and python test steps are identical to today's; vet, lint, typecheck, graph-freshness and ast-grep steps are identical in all shapes.
@@ -105,25 +111,71 @@ Withdrawn by the Q1 ruling (board d-20261018T005931Z-f264). It has no Given/When
 Run: `go test ./internal/hook/quality -run '^TestSuppressionWalkSkipsTestdata$' -count=1 -v`; then the ledger command.
 Mutant probe: a walk that skips every directory named `fixtures` would also hide production code, so the production file lives under a path containing a `fixtures` segment but no `testdata` segment and must still be reported; a walk that skips nothing reports the fixture and fails the first half.
 
-### AC-PAS-014 — No timeout enlargement, no skips (REQ-PAS-014) — regression guard
-**Given** the diff of this SPEC's commits against `3642a3a9b`
-**When** the `timeouts:` block of both `gate.yaml` files and the default timeout values are compared, and the added lines are scanned
-**Then** the timeouts are unchanged (30 / 60 / 120 / 300 / 30), the added lines contain no `t.Skip`, and the count of removed `func Test` lines is 0.
-Run: `git diff 3642a3a9b -- .moai/config/sections/gate.yaml internal/template/templates/.moai/config/sections/gate.yaml` (the `timeouts:` hunk must be absent) and `git diff -U0 3642a3a9b -- '*_test.go'` read for added `t.Skip` lines and removed `func Test` lines (expect none).
+### AC-PAS-014 — Step budgets unchanged at every definition and call site (REQ-PAS-014) — regression-guard
+**Given** the gate's budget definition sites — the `DefaultGateConfig` values (30 s vet, 60 s lint, 120 s test, 300 s typecheck, 30 s lock wait) in `internal/hook/quality/gate.go`, and the `timeouts:` block of both `gate.yaml` copies (30 / 60 / 120 / 300 / 30) — and the call sites that pass them to the step runner (vet, typecheck, lint and test steps in `gate.go`)
+**When** the budget test drives the gate with the default configuration and a recording runner, and the diff of this SPEC's commits is read
+**Then** the runner receives exactly 30 s, 60 s, 120 s and 300 s for the vet, lint, test and typecheck steps respectively; the `timeouts:` hunk of both `gate.yaml` files is absent from the diff; the added `_test.go` lines contain no `t.Skip`; the removed lines contain no `func Test`.
+Run: `... -run '^TestQualityGate_StepBudgetsUnchanged$' -count=1 -v`; `git diff 3642a3a9b -- .moai/config/sections/gate.yaml internal/template/templates/.moai/config/sections/gate.yaml`; `git diff -U0 3642a3a9b -- '*_test.go'` read for added `t.Skip` and removed `func Test` lines (expect none).
+Mutant probe: replacing the test step's call-site argument with a multiple of the configured test budget (for example `2*g.config.TestTimeout` at the test-step call in `gate.go`) leaves every value in the diff checks unchanged but makes the runner receive 240 s — the budget test fails it; changing a default or a YAML value fails both.
 
-### AC-PAS-015 — Hooks stay off (REQ-PAS-015) — regression guard
-**Given** this SPEC's commits landed
-**When** `git config --show-origin --get core.hooksPath` is run in the primary checkout, and the added Go lines are scanned for writes to git configuration
-**Then** the command still prints `file:/Users/goos/MoAI/moai-adk-go/.git/config	/dev/null`, and no added line invokes `git config` with `hooksPath`.
-Run: `git config --show-origin --get core.hooksPath`; `git diff -U0 3642a3a9b -- '*.go'` read for added lines containing `hooksPath` (expect none).
+### AC-PAS-015 — No code path writes git configuration (REQ-PAS-015) — regression-guard
+**Given** the diff of this SPEC's deliverables against `3642a3a9b`
+**When** the added non-test Go lines and the added lines of the shipped YAML and hook files are scanned
+**Then** no added line contains `hooksPath`, and no added line invokes `git` with a `config` (or `-c`) argument that writes configuration; the hook script and its Go raw-string twin (`internal/template/templates/.git_hooks/pre-commit`, `internal/cli/hook_install_precommit.go`) are unmodified.
+Run: `git diff -U0 3642a3a9b -- '*.go' '*.yaml'` read for added lines containing `hooksPath` or a git-config write (expect none, test files excluded); `git diff --stat 3642a3a9b -- internal/template/templates/.git_hooks internal/cli/hook_install_precommit.go` (expect empty).
+This AC does not assert the live value of the shared `core.hooksPath`, which is mutable operator state: the sanctioned post-landing switch (plan.md § E) must not turn a code guard red. The value is recorded in the runbook's step 1 instead.
+Mutant probe: a helper that runs `git config core.hooksPath <path>` fails the scan; a no-op change does not.
 
-### AC-PAS-016 — End-to-end rehearsal on a throwaway module (REQ-PAS-001)
-**Given** a temporary repository holding a three-package Go module with a real `pre-commit` script that exports `MOAI_PRECOMMIT=1` and runs `moai gate` (built from this tree), `pre_commit.enabled: true`, every ast-grep and graph step disabled, and a hook activated with `git -c core.hooksPath=<hooks dir> commit` (no shared configuration touched)
-**When** (i) a change to the leaf package with a passing test is committed, (ii) a change to a package whose dependent has a failing test is committed
-**Then** (i) the commit succeeds and the gate summary lists only the leaf package; (ii) the commit is refused with the failing dependent named, and the untouched third package's tests did not run.
+### AC-PAS-016 — End-to-end rehearsal on a throwaway module (REQ-PAS-001, REQ-PAS-010) — release-blocking
+**Given** a temporary repository holding a three-package Go module (`a`; `b` importing `a`; `c` standalone, each with a test) with a real `pre-commit` script that exports `MOAI_PRECOMMIT=1` and runs `moai gate` (built from this tree), `pre_commit.enabled: true`, every ast-grep and graph step disabled, and a hook activated by `core.hooksPath` of that temporary repository only (no shared configuration touched)
+**When** (i) a change to `a/a.go` is committed with a recording `go` on PATH; (ii) a change to `a` is committed with `b`'s test failing
+**Then** (i) the recorded `go` argv is `test ./a ./b` and the commit succeeds; (ii) the commit is refused with `b` named as failing and `c`'s tests did not run.
 Run: `go test ./internal/cli -run '^TestPreCommitAffectedScopeE2E$' -count=1 -v`.
+Mutant probe: any implementation that leaves `./...` fails (i); one that omits `b` fails (i) and (ii).
 
-## Evidence ledger (starting observations; tree 3642a3a9b9cf101863656153d2d99b69fcb66a05)
+## Evidence ledger (starting observations)
+
+### LEDGER-PAS-016-A — RED-now for AC-PAS-016 and AC-PAS-001 (observed red, for the right stated reason)
+Why red: REQ-PAS-001/-002 are not implemented, so the pre-commit gate hands the Go test step `./...` even though only `a` and its direct dependent `b` are affected.
+Command: `env PROBE_DIR=/private/tmp/pas-probe sh .moai/specs/SPEC-PRECOMMIT-AFFECTED-SCOPE-001/evidence/probe016.sh <moai built from the tree under measurement>` — the script (committed beside this file, re-executed on the committed copy with the same result) builds the three-package module, a recording `go` on PATH, a hook that runs `MOAI_PRECOMMIT=1 CLAUDE_PROJECT_DIR=<repo> moai gate`, commits a change to `a/a.go`, prints the recorded argv, and exits 1 when it differs from `test ./a ./b`.
+Tree: `888ce5c035a2527d81507441d71e69c929042ad0`; judging build: `moai` built from `3642a3a9b` (Go code identical, see header).
+Exit code: 1
+Output:
+```
+graph-freshness: step disabled in gate config (explicit skip notice)
+
+quality gate steps (3 configured):
+  - go vet: disabled — turned off by the gate.disabled_steps setting
+  - golangci-lint: disabled — turned off by the gate.disabled_steps setting
+  - go test: executed in 215ms at 2026-10-18T10:13:57.035+09:00 — go test ./...
+commit exit=0
+--- fake go argv:
+test ./...
+RESULT: RED (wanted argv 'test ./a ./b', got 'test ./...')
+```
+Green path: M3 flips it; the same script then prints `RESULT: GREEN (argv == test ./a ./b)` and exits 0.
+
+### LEDGER-PAS-009-A — RED-now for AC-PAS-009 and for the adapter half of AC-PAS-005
+Why red: the gate's existing staged-file helper reads the real index with the repository-location variables removed, so it does not report what the commit records under `commit -a` and path-limited commits, and the default name list reports only a rename's new path.
+Command: `env PROBE_DIR=/private/tmp/pas-probe sh .moai/specs/SPEC-PRECOMMIT-AFFECTED-SCOPE-001/evidence/probe009.sh` — a temporary repository whose hook records (a) the commit-accurate list (`git diff --cached --name-only --no-renames`, environment as git gave it) and (b) the helper's form (`git diff --cached --name-only` with the `gitenv.RepoScopingVars` entries removed from the environment: `GIT_DIR`, `GIT_COMMON_DIR`, `GIT_WORK_TREE`, `GIT_INDEX_FILE`, `GIT_OBJECT_DIRECTORY`, `GIT_ALTERNATE_OBJECT_DIRECTORIES`, `GIT_NAMESPACE`, `GIT_PREFIX`, `GIT_SUPER_PREFIX`, `GIT_CEILING_DIRECTORIES`, `GIT_QUARANTINE_PATH`); it exits 1 when (b) differs from (a). The probe replicates the helper's query and scrub; it does not call the helper (unexported).
+Tree: `888ce5c035a2527d81507441d71e69c929042ad0` (Go code identical to `3642a3a9b`).
+Exit code: 1
+Output:
+```
+(ii)  git commit -a            (a/x.go staged, d/z.go modified unstaged)
+  commit records : a/x.go d/z.go 
+  helper form    : a/x.go    [DIFFERENT]
+(iii) git commit d/z.go        (path-limited)
+  commit records : d/z.go 
+  helper form    : a/x.go    [DIFFERENT]
+(iv)  git mv old/o.go new/o.go (rename)
+  commit records : new/o.go old/o.go 
+  helper form    : new/o.go    [DIFFERENT]
+exit=1
+```
+Row (iv) is the rename: the helper's default name list omits `old/o.go` (REQ-PAS-005 requires both paths). The plan-audit iter1 probe (`.moai/reports/t1673/plan-audit-iter1.md` E2) measured the same three divergences independently.
+Green path: M3 flips it; with the adapter reading the commit-accurate index and rename detection off, every row prints `[same]` and the script exits 0.
+Not covered by this cell: `--amend` and the linked-worktree form (`GIT_DIR` = `.git/worktrees/<name>`); M3 measures them and records the rows in `progress.md` §E.2.
 
 ### LEDGER-PAS-013-A — RED-now for AC-PAS-013 (observed red, for the right stated reason)
 Why red: the suppression check walks `testdata` and the fixture's REASON line precedes its marker (spec.md F8), so a gate run reports the fixture even in advisory ast-grep configuration.
@@ -147,6 +199,7 @@ gate:
     enabled: false
 ```
 Command: `env CLAUDE_PROJECT_DIR=<that directory> <moai built from the tree under measurement> gate`
+Tree: `3642a3a9b9cf101863656153d2d99b69fcb66a05` (measured by the author), reproduced on `2febc5c2f5036059724819044b67131f64e9a596` by the plan-audit iter1 (E1).
 Exit code: 1
 Output as printed (stream-merged; banner trailing whitespace not preserved):
 ```
@@ -166,24 +219,24 @@ quality gate steps (3 configured):
 Green path: M5 flips it; after the fix the same command exits 0 and prints no suppression line.
 Not covered by this cell: whether any other file in the full repository trips the checker (not run; grep found none outside `_test.go`, spec.md F9). M6 runs the command against a copy of the whole tree's source directories.
 
-### LEDGER-PAS-VACUOUS — why behavior ACs 001–012 and 016 carry no RED-now command
+### LEDGER-PAS-VACUOUS — why unit-level ACs carry no RED-now command (policy P1 applies)
 Command: `go test ./internal/hook/quality -run '^TestAffectedScope$' -count=1`
 Exit code: 0
 Output: `ok  	github.com/modu-ai/moai-adk/internal/hook/quality	0.510s [no tests to run]`
-This is NOT a red. The named tests do not exist yet, and the runner reports success with an empty swept set. Therefore each of those ACs is adopted with: RED cell = the run phase captures, before any implementation (E8), the verbatim failing output of the named test (compile failure or assertion); green path = the milestone named in `plan.md` § C flips it. An AC whose run output shows `[no tests to run]` or a swept count of 0 is failed, never passed.
+This is NOT a red. The named tests do not exist yet, and the runner reports success with an empty swept set. The adoption-pending ACs are therefore adopted by policy P1 (the failing output captured before GREEN, recorded as a ledger row), and the release-blocking ACs that can be shown red today carry their cells above (001 and 016 via LEDGER-PAS-016-A, 005 and 009 via LEDGER-PAS-009-A, 013 via LEDGER-PAS-013-A). An AC whose run output shows `[no tests to run]` or a swept count of 0 is failed, never passed.
 
 ### Regression-guard classification
-AC-PAS-010, -014 and -015 assert preservation (green today by construction). They are regression guards, not release-blocking RED→GREEN criteria; their mutants are named in the entries.
+AC-PAS-007, -008, -010, -014 and -015 assert preservation or fallback behavior that equals today's by construction (the full scope, the unchanged budgets, no configuration writes). They are regression guards, not RED→GREEN criteria; their mutants are named in the entries.
 
 ## Edge cases the tests must cover
-- A changed file inside a nested module: handled relative to that module's root; files outside it contribute nothing to that module's step.
+- A changed file inside a nested module: handled relative to that module's root; files outside it contribute nothing to that module's step, but a trigger file anywhere in the changed list widens first (AC-PAS-007).
 - A commit renaming a package directory: both former and new directories attributed (AC-PAS-005).
-- `git commit --amend` with nothing newly staged: empty selection, explicit skip (AC-PAS-006).
+- `git commit --amend` with nothing newly staged: empty selection, explicit skip (AC-PAS-006, AC-PAS-009 row v).
 - A build-constraint-excluded Go file: owner is its directory's package (plan.md R4).
 
 ## Definition of Done
-1. AC-PAS-001..-011, -013, -016 pass with swept count ≥ 1 and RED output captured before GREEN; AC-PAS-012 is withdrawn; AC-PAS-014 and -015 guards pass.
-2. LEDGER-PAS-013-A command exits 0 on the final tree, from a binary built from that tree (tool-provenance: the judging build's commit is cited beside the tree HEAD).
+1. Release-blocking ACs (001, 005, 009, 013, 016) pass with swept count ≥ 1, each flipped from its ledger RED-now cell; adoption-pending ACs (002, 003, 004, 006, 011) pass only with their P1 ledger row in `progress.md` §E.2; regression guards (007, 008, 010, 014, 015) pass; AC-PAS-012 is withdrawn.
+2. LEDGER-PAS-013-A command exits 0 on the final tree, from a binary built from that tree (tool-provenance: the judging build's commit is cited beside the tree HEAD); likewise `probe016.sh` prints GREEN and `probe009.sh` exits 0.
 3. `internal/hook/quality`, `internal/config` pass in full; `internal/cli` and the other dependents pass under the § D selection with the `ls` evidence for dropped importers recorded.
-4. Both `gate.yaml` copies updated; no timeout value changed; no skip added; `core.hooksPath` unchanged.
-5. `progress.md` §E.2 carries the verbatim evidence, including the M3 measurement of the three commit shapes.
+4. Both `gate.yaml` copies updated; no timeout value changed; no skip added; no code path writes git configuration.
+5. `progress.md` §E.2 carries the verbatim evidence, including the M3 measurement of `--amend` and the linked-worktree form.

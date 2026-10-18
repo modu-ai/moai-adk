@@ -12,7 +12,10 @@ withdrawn: REQ-PAS-012, AC-PAS-012, plan M4 (Q1 ruled B, board d-20261018T005931
 planned_against_tree: 3642a3a9b9cf101863656153d2d99b69fcb66a05
 open_decisions_blocking_kickoff: none (Q1 and Q5 RULED by the leader; Q4 is a run-phase measurement)
 applied_defaults: Q2, Q3 (DEFAULT-APPLIED at plan close)
-known_gaps: G1 (commit -a / path-commit index view unmeasured), G2 (go list wall time unmeasured), G3 (project-wide vet/lint/typecheck runtime unmeasured), G4 (full-tree run of the real suppression checker not performed)
+artifacts_added: evidence/probe016.sh, evidence/probe009.sh (RED-now probes cited by acceptance.md ledger)
+plan_audit_iter1: FAIL 0.75 at 2febc5c2f (.moai/reports/t1673/plan-audit-iter1.md); one correction pass applied (D1-D7 and D9 blocking; D8, D10-D14 folded); counts unchanged: 14 live REQ, 15 live AC, withdrawn slots REQ-PAS-012 / AC-PAS-012 / M4
+class_counts: release-blocking 5 (AC-001, -005, -009, -013, -016), adoption-pending 5 (AC-002, -003, -004, -006, -011), regression-guard 5 (AC-007, -008, -010, -014, -015)
+known_gaps: G1 (commit -a, path-limited and rename divergences OBSERVED in LEDGER-PAS-009-A; --amend and linked-worktree forms still unmeasured), G2 (go list wall time unmeasured), G3 (project-wide vet/lint/typecheck runtime unmeasured), G4 (full-tree run of the real suppression checker not performed)
 
 ## §E.2 Run-phase Evidence
 
