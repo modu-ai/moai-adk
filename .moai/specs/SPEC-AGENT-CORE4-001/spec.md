@@ -1,7 +1,7 @@
 ---
 id: SPEC-AGENT-CORE4-001
 title: "Agent core four, piece 1: agent sources, two renders, generated copies"
-version: "0.3.0"
+version: "0.4.0"
 status: draft
 created: 2026-10-18
 updated: 2026-10-18
@@ -42,14 +42,25 @@ that commit's `research.md` and `design.md`.
 - **The eight** — manager-spec, manager-develop, manager-docs, manager-git, manager-lead,
   manager-todo, plan-auditor, sync-auditor. **The carried four** — builder-harness, e2e-tester,
   manager-design, super-advisor. **The twelve** — both sets.
-- **Pin file** `internal/template/agentemit/testdata/agents-head.sha256` — sha256 of the 24 C2 and
-  C3 files of the twelve at the parent of the M0 commit. **Post pins** — the 8 sha256 values of
-  `acceptance.md` §3, for the carried four after the 8 line changes.
+- **Baseline** — the tree at the parent of the M0 commit (`<M0>^`); the M0 commit records its SHA in
+  `m0-baseline.md` and as `m0_commit:` in `progress.md`. No hash file is frozen: the baseline bytes
+  are read from git (`git show <M0>^:<path>`), so a foreign commit absorbed before M0 moves the
+  baseline instead of making a frozen value stale.
+- **Agent source** — a verbatim copy of the shipped definition file (frontmatter keys `name`,
+  `description`, `tools`, `color`, `permissionMode`, `isolation`, `memory`, `skills`, `hooks`,
+  `model`, `effort` as shipped, then the body); the only addition is the optional block markers.
+  The `tools:` CSV is the capability list; a neutral capability vocabulary is deferred to piece 2.
 - **specs** in the check summary — the number of agent sources (12 from M1 on).
 - **copies** — the number of file sets compared: 2 at M1 (C2, C3), 4 at M2 (C1, C2, C3, C3p; the
   project sets cover the carried four only).
 
 ## §C Requirements (GEARS)
+
+Operator decision `d-20261018T062320Z-5952` (decided_by operator, 2026-10-18, scope card:t1649): agent copies become
+generated outputs; the agent source is the only edit surface; C2 is rendered from it; C1 is
+byte-identical to C2; hand-editing C2 fails `make build`; the contrary `AGENTS.local.md` §2.0
+sentences are superseded and rewritten by this work; other in-flight cards move their agent edits
+to the source layer when they land after piece 1.
 
 - **REQ-AC4-001** The agent definition set shall have exactly one agent source per definition and
   no rendered C2 or C3 file without one.
@@ -58,25 +69,46 @@ that commit's `research.md` and `design.md`.
 - **REQ-AC4-003** The Codex renderer shall produce each C3 definition directly from the same agent
   source, keeping blocks marked for Codex and dropping blocks marked for Claude, and shall leave
   every permission-contract row of the twelve roles unchanged.
-- **REQ-AC4-004** When a capability token of an agent source has no mapping, the emitter shall fail
-  emission naming the file and the token.
-- **REQ-AC4-005** From M1 on, rendering the twelve sources shall yield C2 and C3 files whose bytes
-  equal the pin file, except the carried four after M2.
-- **REQ-AC4-006** From M2 on, the carried four shall differ from the pin file on exactly the 8 lines
-  of `acceptance.md` §3, each new line shall contain no `~/`, and the resulting C2 and C3 files
-  shall equal the post pins.
+- **REQ-AC4-004** When a `tools:` token of an agent source has no manifest mapping, or a block
+  marker is unterminated or nested, the emitter shall fail emission naming the file and the token
+  or marker.
+- **REQ-AC4-005** At M1, the C2 and C3 files of the twelve shall equal their bytes at the baseline.
+- **REQ-AC4-006** From M2 on, each carried-four definition shall differ from its baseline on exactly
+  the 8 lines of §C.1, matched by their old content, and each new line shall contain no `~/`.
 - **REQ-AC4-007** From M2 on, C1 shall equal C2 and C3p shall equal C3 for the carried four.
 - **REQ-AC4-008** When a rendered file differs from a fresh render, the read-only emission check
-  shall fail naming the file.
+  shall fail naming the file, and the check shall leave every rendered file unmodified.
 - **REQ-AC4-009** When `make agents-emit-check` passes, it shall print `specs=<n> copies=<k>
   diff=0`.
-- **REQ-AC4-010** The commit history shall show the pin file added by the M0 commit alone, no
-  commit changing an agent source or a rendered definition before M1, and no later change to the
-  pin file.
+- **REQ-AC4-010** The commit history shall show the M0 baseline commit, alone, before any commit
+  that changes an agent source or a rendered definition, then M1, then M2.
 - **REQ-AC4-011** The roster guard's numeral layer shall report no undischarged hit for the agent
   source directory.
-- **REQ-AC4-012** The existing emission tests shall keep every assertion they hold at the pin
-  tree, the Markdown identity assertion being replaced by equality with the pinned bytes.
+- **REQ-AC4-012** The emission test suite shall keep every test and assertion it holds at the
+  baseline, the Markdown identity assertion being replaced by equality with a fresh render.
+- **REQ-AC4-013** In the commit that makes the renderer generate C2 (M1), `AGENTS.local.md` §2.0
+  shall have only its sentences stating that C1 differs from C2 or that C2 is hand-edited replaced
+  by the rule: the agent source is the sole edit surface, C2 and C3 are rendered from it, C1 equals
+  C2 for generated agents, and hand-editing C2 turns `make build` red; no other line of the file
+  changes, and the commit message cites `d-20261018T062320Z-5952`.
+
+### §C.1 The 8 line changes (carried four)
+
+Old = the C2 line at the baseline (matched by content, not line number); new = the text shown. Rule:
+the new line is the project-copy (C1) line, except e2e-tester:143, where C1 itself holds `~/` and
+the new line drops it (which also fixes the shipped `~/~/.claude/` defect). If any of the 8 old
+lines no longer matches at M0, M0 aborts and the pairs are recomputed and re-audited; a change to
+any other line of the carried four is preserved and the expected result is recomputed at M0 by the
+documented command (`acceptance.md` §3).
+
+1. builder-harness:38 — old has `~/.claude/agents/` inside the table cell "`.claude/agents/` or `~/.claude/agents/` (with `--moai`)"; new: `~/.claude/agents/` replaced by `.claude/agents/moai/`.
+2. builder-harness:155 — old: `` `~/.claude/agents/manager-spec.md` for the verbatim line: ``; new: `` `.claude/agents/moai/manager-spec.md` for the verbatim line: ``.
+3. e2e-tester:92 — old holds `~/.claude/skills/moai-workflow-testing/references/e2e-desktop-native-recipes.md`; new: the same sentence with `.claude/skills/moai-workflow-testing/references/e2e-desktop-native-recipes.md`.
+4. e2e-tester:143 — old holds `~/~/.claude/skills/moai-workflow-testing/references/e2e-desktop-native-recipes.md`; new: `.claude/skills/moai-workflow-testing/references/e2e-desktop-native-recipes.md`.
+5. manager-design:50 — old: `` `~/.claude/skills/moai/workflows/design.md` (D1-D5 step headings). Summary: ``; new: the same with `.claude/skills/moai/workflows/design.md`.
+6. manager-design:203 — old: `- **Design pipeline skill**: ` + `~/.claude/skills/moai/workflows/design.md` + ` (D1-D5).`; new: with `.claude/skills/moai/workflows/design.md`.
+7. manager-design:206 — old: `- **Agent catalog**: ` + `CLAUDE.md` + ` § 4 (13 retained agents — manager-design is row 6 of the Selection Decision Tree).`; new: `- **Agent catalog**: ` + `.moai/config/sections/delegation.yaml` + ` (13 retained agents — manager-design is row 6 of the Selection Decision Tree).`
+8. super-advisor:129 — old: `- Advisor/Evaluator separation: ` + `~/.claude/agents/{plan-auditor,sync-auditor}.md` + `.`; new: `.claude/agents/moai/{plan-auditor,sync-auditor}.md`.
 
 ## §D Out of Scope — follow-on pieces
 
@@ -98,7 +130,7 @@ Claude and Codex, the preload probe, the doctor check.
 ### Out of Scope — other
 
 - docs-site and README pages, user-scope `~/.claude/agents`, and the `AGENTS.local.md` §2.0 text
-  (user-owned; amendments are named in decisions Q4 and Q17).
+  (user-owned; only the §2.0 sentences named in REQ-AC4-013 change).
 - Any change of agent bodies, tools, model, effort or permission mode beyond the 8 pinned lines.
 
 ## §E Hand-off table (audit defects not fixed here)
@@ -115,7 +147,7 @@ Claude and Codex, the preload probe, the doctor check.
 | iter1 D14 core-body preservation | piece 2 | pinned [HARD]-clause list; implementer budget row |
 | iter1 D15 "never blocks a spawn" statements | piece 2 | rewrite sentence and file header; deny in a separate handler |
 | iter1 D18 doctor check name | piece 3 | registered check is "Skills Allowlist" (`internal/cli/doctor.go:306`) |
-| pin lifecycle | piece 2 | `agents-head.sha256` and AC5 are retired or retargeted when piece 2 absorbs the eight |
+| C1 of the eight | piece 2 | C1 of the eight stays hand-managed until piece 2 absorbs them (decision Q20) |
 | Q2, Q3, Q5-Q15 | pieces 2, 3 | `decision-index.md` hand-off rows |
 
 ## §F HISTORY
@@ -124,4 +156,5 @@ Claude and Codex, the preload probe, the doctor check.
 |---|---|---|
 | 0.1.0 | 2026-10-18 | Initial unsplit plan (commit `b4ea2d6c93`). |
 | 0.2.0 | 2026-10-18 | Narrowed to piece 1 after plan-audit iter1 FAIL (commit `8260bbaa0b`). |
-| 0.3.0 | 2026-10-18 | Plan-audit iter2 FAIL fixes: Tier L, all twelve sources at M1, both renderers read the source, pinned line pairs and post hashes, path-based ordering ACs, decisions Q17 and Q18. |
+| 0.3.0 | 2026-10-18 | Plan-audit iter2 FAIL fixes: Tier L, all twelve sources at M1, both renderers read the source, pinned line pairs, path-based ordering ACs, decisions Q17 and Q18. |
+| 0.4.0 | 2026-10-18 | Plan-audit iter3 FAIL fixes: sources are verbatim shipped files, baseline read from git instead of frozen hashes, ordering ACs bound to the recorded M0 commit, verdict section §G; operator decision `d-20261018T062320Z-5952` closes Q4 and Q17; REQ-AC4-013 added. |

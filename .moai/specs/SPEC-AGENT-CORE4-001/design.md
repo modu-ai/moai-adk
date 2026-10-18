@@ -1,7 +1,7 @@
 ---
 id: SPEC-AGENT-CORE4-001
 title: "Design: agent sources and renderers"
-version: "0.3.0"
+version: "0.4.0"
 created: 2026-10-18
 ---
 
@@ -12,28 +12,32 @@ Direction only; identifiers are chosen by the run phase.
 ## §1 Agent source
 
 Location `internal/template/agentemit/source/<name>.md`, outside `templates/` (never distributed,
-same status as `agents-codex.yaml`). Frontmatter: `name`, `description`, `capabilities` (ordered
-tokens), `sandbox`, `model`, `effort`, `skills`, `memory`, `hooks`; then the body. Blocks:
-`<!-- claude-only -->...<!-- /claude-only -->` and `<!-- codex-only -->...<!-- /codex-only -->`
-(unnested, own lines). At M1 none of the twelve bodies contains a block, so each source is a pure
-copy of its C2 file, which is what the pin file proves.
+same status as `agents-codex.yaml`). **Format decision (iter3 D1): option A.** A source is the
+shipped definition file verbatim: the frontmatter keys as shipped (`name`, `description`, `tools`
+CSV, `color`, `permissionMode`, `isolation`, `memory`, `skills`, `hooks`, `model`, `effort`) and the
+body. The `tools:` CSV stays the capability list; a harness-neutral capability vocabulary and a
+sandbox key are deferred to piece 2. The one addition is optional block markers on their own lines:
+`<!-- claude-only -->...<!-- /claude-only -->` and `<!-- codex-only -->...<!-- /codex-only -->`.
+Markers are fail-closed: an unterminated or nested marker fails emission naming the file (REQ-AC4-004).
+None of the twelve bodies contains a marker at M1, so each source equals its baseline C2 file byte
+for byte; the byte-identity ACs stay meaningful because they compare renders to git, not to the
+sources.
 
 ## §2 Rendering (both renderers read the source)
 
-- Claude renderer: source -> C2 bytes: capabilities expand to the exact ordered `tools:` CSV
-  through a manifest table (a token maps to one or more Claude tool names; `mcp` groups to their
-  `mcp__moai__*` names); codex-only blocks are dropped, claude-only blocks kept (markers removed).
+- Claude renderer: source -> C2 bytes: codex-only blocks dropped, claude-only blocks kept (markers
+  removed). With no markers present the output is the source bytes.
 - Codex renderer: source -> Codex view (claude-only dropped, codex-only kept) -> the existing
   `renderTOML` path. C3 is produced from the source, not from C2 bytes; `emitAll` keeps its TOML
-  construction, permission-contract evaluation, fail-closed token check and duplicate-name check but
-  its input changes from "C2 bytes" to "the Codex view". The prior "Markdown publication is identity"
-  assertion becomes "rendered C2 equals the pinned bytes" (REQ-AC4-012).
-- A token without a manifest entry fails emission naming file and token; no partial output.
-- A source whose `tools:` order cannot be expressed grows the token table; there is no raw escape.
+  construction, `tools:` token classification (an unmapped token already fails closed), permission
+  contract and duplicate-name check, but its input is the Codex view. The old assertion that the
+  Markdown publication is an identity pass-through becomes "rendered C2 equals a fresh render"
+  (REQ-AC4-012).
+- Block behavior is exercised with fixture sources; the twelve shipped bodies carry no markers.
 
 ## §3 Generation and check
 
-`make agents-emit` writes C2, C3 for the twelve and, from M2, C1, C3p for the carried four.
+`make agents-emit` writes C2, C3 for the twelve and, from M2, C1, C3p for the carried four (C1 of the eight stays hand-managed, decision Q20).
 `make agents-emit-check` re-renders in memory, compares the same sets, never writes, prints
 `specs=<n> copies=<k> diff=<d>` and fails naming the first differing file. The Makefile target may
 call a Go test or a small command, provided the summary line reaches stdout at exit 0.

@@ -1,7 +1,7 @@
 ---
 id: SPEC-AGENT-CORE4-001
 title: "Research: piece 1 baselines"
-version: "0.3.0"
+version: "0.4.0"
 created: 2026-10-18
 ---
 
@@ -32,3 +32,13 @@ Measured on tree `8260bbaa0b` (code identical to `b4ea2d6c93`) unless stated; co
 
 Gaps: no live Claude Code or Codex run; the exact-byte capability expansion is unproven until M1;
 the replacement text of the 8 lines is a plan-phase choice, not a runtime measurement.
+
+Added in iter3: shipped frontmatter keys of all twelve C2 files are `tools`, `color`,
+`permissionMode` (some `isolation`, `memory`, `skills`, `hooks`, `model`, `effort`); none has
+`capabilities` or `sandbox`. Local main already carries foreign commits on the 16 paths
+(`0242d5ef75`, `baecbf74c6`, card t1827, manager-todo twin surfaces). `golden_test.go` Markdown
+identity block is lines 106-116 (assertion at 114). `agents-reference.md:46` holds the Selection
+Decision Tree, where row 6 is manager-git, not manager-design; `delegation.yaml` has "13 retained
+agents" (line 14) and manager-design (line 97) but no Selection Decision Tree. Registry
+`CountPattern` for the manager-design citation rows matches `(?:§ 4|delegation\.yaml`) (N retained
+agents`, so changing the citation to another file would break three rows.
