@@ -191,14 +191,18 @@ func checkServedModelSpawn(input *HookInput) (decision, reason string) {
 	// milestone belongs to. A refusal attributes to the AUDITED SPEC, so an
 	// unrelated milestone's spawn is not blocked by it; a refusal that could
 	// not be attributed at all (unknown-spec — its verdict line and transcript
-	// both named no SPEC) stays conservative and denies the spawn.
+	// both named no SPEC) stays conservative and denies the spawn. A
+	// card-attributed refusal is conservative the same way (card t1861,
+	// sync-audit F1): the prompt axis extracts only SPEC ids, so a card id it
+	// can never match is an attribution this deny cannot discriminate on.
 	spawnSpec := auditreceipt.SpecIDFromText(sp.Prompt)
 	var parts []string
 	for _, r := range all {
 		if auditreceipt.RejectionKind(r) != auditreceipt.KindServed {
 			continue
 		}
-		if spawnSpec != "" && r.SpecID != auditreceipt.UnknownSpec && r.SpecID != spawnSpec {
+		if spawnSpec != "" && r.SpecID != auditreceipt.UnknownSpec &&
+			!auditreceipt.IsCardSpecID(r.SpecID) && r.SpecID != spawnSpec {
 			continue
 		}
 		parts = append(parts, fmt.Sprintf("%s / %s / %s", r.AgentType, r.SpecID, r.Cause))
