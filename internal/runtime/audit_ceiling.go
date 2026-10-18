@@ -177,7 +177,7 @@ func EvaluateCeiling(in VerdictCeilingInput, fields auditverdict.Fields, hashOK 
 		Blocked:  true,
 		Evidence: ev.Sources,
 		Reasons: []string{fmt.Sprintf(
-			"plan-audit ceiling reached (round count %d >= tier ceiling %d%s); the verdict matches no admitting arm and holds, entry blocked (REQ-ACE-006) — release path: the split/new-SPEC route of REQ-ACE-005 or an operator decision recorded in progress.md §G",
+			"plan-audit ceiling reached (round count %d >= tier ceiling %d%s); the verdict matches no admitting arm and holds, entry blocked (REQ-ACE-006) — release path: the split/new-SPEC route of REQ-ACE-005",
 			ev.Count, tierCeiling, policyNote(policyNamed))},
 	}
 	persistOutcome(in, "ceiling-refusal", oc)
@@ -1027,9 +1027,13 @@ func appendAuditTrail(in VerdictCeilingInput, kind, outcome, reason string, extr
 	return err
 }
 
-// AcknowledgeRequiredBackend records an operator override of a required-
-// backend refusal (REQ-ACE-011): the backend and a mandatory acknowledgement
-// note, written to the SPEC's progress.md §G record and the audit trail.
+// AcknowledgeRequiredBackend is a record writer for an operator's
+// acknowledgement of a required-backend refusal (REQ-ACE-011): the backend and
+// a mandatory acknowledgement note, written to the SPEC's progress.md §G record
+// and the audit trail. It has NO admission effect: no admission path
+// (EvaluateCeiling, the kickoff plan-audit check, the card-evidence reader)
+// reads the record it writes, and nothing in production calls it, so it
+// releases no hold and must not be named as a release path (card t1770).
 // An empty note is refused (acceptance.md §C edge 8); there is no
 // silent-skip path.
 //
@@ -1327,7 +1331,16 @@ func EvaluatePlanAuditCeiling(in CeilingInput) (CeilingOutcome, bool, error) {
 		}
 		fields = auditverdict.Parse(raw)
 	}
-	admitted, _ := auditverdict.Admit(fields, auditverdict.PhasePlan, in.Threshold, true)
+	// Every backend the receipt records is a required backend by construction
+	// (the line is `required_backend: <name> <verdict>`), so a non-pass entry
+	// must refuse here exactly as AdmitWithRequired refuses it at the seams
+	// (card t1770): without it a PASS-WITH-DEBT verdict with a codex fail
+	// receipt read as admitted and recorded debt-proceed.
+	recorded := make([]string, 0, len(fields.Receipt.Backends))
+	for name := range fields.Receipt.Backends {
+		recorded = append(recorded, name)
+	}
+	admitted, _ := auditverdict.AdmitWithRequired(fields, auditverdict.PhasePlan, in.Threshold, true, recorded)
 
 	if admitted && fields.Label == auditverdict.LabelPass {
 		return CeilingOutcome{}, false, nil
