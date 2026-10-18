@@ -1,4 +1,4 @@
-# SPEC-V3R6-DOCS-PREREWRITE-GATE-001 — Implementation Plan (revision 0.1.0)
+# SPEC-V3R6-DOCS-PREREWRITE-GATE-001 — Implementation Plan (revision 0.1.1)
 
 Methodology: TDD (`.moai/config/sections/quality.yaml` `constitution.development_mode: tdd`). The checker is test-first: the test and fixtures land red before the checker exists. The workflow edits use the RED-now cells of acceptance.md §C as their red state and the recipes of acceptance.md §B.0 as their green check. Milestones are ordered by decision reversibility: the interface other work consumes first, the decisions most likely to change next, mechanical steps last. No time estimates are given.
 
@@ -8,12 +8,12 @@ Methodology: TDD (`.moai/config/sections/quality.yaml` `constitution.development
 - **Artifacts.** spec.md, plan.md, acceptance.md (Tier M), plus decision-index.md and progress.md. The measurements behind every statement here are the ledger cells of acceptance.md §C (EG-nn, EP-nn).
 - **File set (11, from spec.md § Scope).** New: `scripts/docs-cited-verbs.py`, `scripts/test-docs-cited-verbs.sh`, three fixtures under `scripts/docs-cited-verbs-testdata/`, `.github/workflows/docs-cited-verbs.yml`, `.github/workflows/docs-hugo-build.yml`, `.github/workflows/docs-link-check.yml`, and (if Q11 names htmltest) `docs-site/.htmltest.yml`. Modified: `.github/workflows/docs-i18n-check.yml`, `.moai/guards/liveness.yaml`.
 - **Deviation from the card text, stated plainly.** The card said nine files, ten with a tool configuration. This plan has ten, eleven with the configuration, because `.moai/guards/liveness.yaml` must name every workflow file (`internal/guardstate/census_test.go`, EP-11). The addition is the registration of the three new workflows, and it is also the continued-firing answer that verification-completeness §1.3 requires of each new check. The leader confirms the count against the card before dispatch.
-- **Decision rows.** Open and holding work: Q9 (M3), Q11 (M2), Q25 (trigger shape of M2, M4, M5). Applied by the Default rule: Q10 (M4), Q26 (M2). Inputs holding nothing: Q5, Q18, Q22.
+- **Decision rows.** Open and holding work: Q9 (M3 only), Q11 (M2 only), Q25 (the trigger blocks of the three new workflows only; working shape LANE-RULED-5, so M2, M4, M5 proceed). Applied by the Default rule: Q10 (M4), Q26 (M2). Inputs holding nothing: Q5, Q18, Q22. The Kickoff can proceed without Q5, Q18, Q22, and Q25; M3 waits for Q9 and M2 for Q11 (decision-index.md summary table). The five lane rulings of plan-audit iteration 1 are LANE-RULED-1 to -5 there.
 
 ## B. Known issues and pitfalls found while measuring
 
 - **B-1 — the liveness census.** Adding a workflow file without a manifest entry turns `TestCensus_SetDifferenceEmptyBothDirections` red (EP-11). Register each new workflow in the same commit that adds it. Entry shape: five fields (`kind: github-workflow`, `locator`, `events`, `window`, `measure`); a path-gated pull-request check follows the parity workflow's precedent (`fired-with-effect`, a long window).
-- **B-2 — a link checker is red on arrival.** The default htmltest run reports 73,692 findings; with the trailing-slash and empty-alt classes suppressed, 668 unresolved targets remain, and for most of them the live site resolves through Vercel redirects that a file-reading checker cannot see (EP-06, EP-07). The configuration therefore carries an explicit, commented ignore list (Q26), and AC-PRC-014 requires every entry to be necessary (R-14e).
+- **B-2 — a link checker is red on arrival.** The default htmltest run reports 73,692 findings; with the trailing-slash and empty-alt classes suppressed, 668 unresolved targets remain, and for most of them the live site resolves through Vercel redirects that a file-reading checker cannot see (EP-06, EP-07). The configuration therefore carries an explicit, commented ignore list (Q26), and AC-PRC-014 requires every entry to be necessary, anchored, and tight against a sibling link (R-14e).
 - **B-3 — scratch Hugo builds.** A copy of `docs-site` outside the repository has no `.git`, and the site sets `enableGitInfo = true`; builds of copies use `HUGO_ENABLEGITINFO=false`. The CI jobs build inside the checkout and use the real configuration. The shallow-clone behavior on a runner is unmeasured (gap G-5), so the Hugo and link-check jobs check out with full history, as the Vercel deployment does (`VERCEL_DEEP_CLONE`).
 - **B-4 — tool output location.** htmltest writes `tmp/` in its working directory, and neither `tmp/` nor `docs-site/tmp/` is ignored; the link-check job and R-14 run it from a directory outside the tree.
 - **B-5 — sub-verb resolution.** `moai codex status` is valid but is not in the `codex` COMMANDS block; it appears among the usage alternatives (EP-10). The checker reads both. An exit-code probe cannot separate a real sub-verb from an absent one.
@@ -41,9 +41,9 @@ Record these baselines in `progress.md` §E.2 so the red states are witnessed by
 ## E. Self-verification deliverables (reported verbatim, each with command, output, and HEAD SHA)
 
 1. AC-PRC-002 Then 1 to 7: the test output, the stub-mutant runs (R-02m), `yq` and `actionlint` output for `docs-cited-verbs.yml`, the census test, `git status --short`.
-2. AC-PRC-012 Then 1 to 6: the R-12 matrix, the `has("if")` output, the `ADVISORY ONLY` grep, `actionlint`, and the strict-script red/green pair.
+2. AC-PRC-012 Then 1 to 7: the R-12 matrix, the `has("if")` output, the `ADVISORY ONLY` grep, `actionlint`, the `yq '.on'` comparison, the strict-script red/green pair, and the R-12b job-outcome lines (including the `echo skipped` mutant run).
 3. AC-PRC-013 Then 1 to 7: the `yq` and grep outputs, the R-13 pair, `actionlint`, the census test.
-4. AC-PRC-014 Then 1 to 7: R-14 baseline and injected runs, R-14e per entry, `git status --short`, `actionlint`, the census test.
+4. AC-PRC-014 Then 1 to 7: R-14 baseline and injected runs, R-14e per entry (necessity, sibling control, anchoring), `git status --short`, `actionlint`, the census test.
 5. `moai spec lint --strict` on `.moai/specs/SPEC-V3R6-DOCS-PREREWRITE-GATE-001` stays clean after any edit to this directory.
 6. The real-tree `cited-verbs: <N>` figure with the per-family comparison against the parent's E-01 to E-04 (recorded, not a criterion).
 7. A blocker report, never a question to the user, for any needed decision this plan did not settle.
@@ -54,9 +54,9 @@ Record these baselines in `progress.md` §E.2 so the red states are witnessed by
 
 The interface is fixed here because the parent's closing run consumes it: output lines, final line, exit codes (contract C-1 to C-8).
 
-1. Write the three fixtures and the test first, with the five cases and the `RESULT pass=N fail=M` line. Run the test and keep the red output (EG-02's successor: the test now exists and every case fails because the checker does not).
+1. Write the three fixtures and the test first, with the thirteen cases of AC-PRC-002 Then 1 (the five basic ones plus the C-1, C-2, C-6, and C-7 discriminators, built from temporary directories, so no file beyond the three fixtures is added) and the `RESULT pass=N fail=M` line. Run the test and keep the red output (EG-02's successor: the test now exists and every case fails because the checker does not).
 2. Write `scripts/docs-cited-verbs.py`. Approach: a line scanner that tracks fenced blocks (backtick and tilde fences) and extracts inline code spans; ANSI sequences stripped from help output; the verb set read from `<binary> --help` under every heading that ends in `COMMANDS`, `COMMANDS:`, or `TOOLS:`; the sub-verb set read from `<binary> <verb> --help` COMMANDS blocks plus the bracketed usage alternatives; the slash set from the file names in the commands directory; an unreadable binary, an unreadable scan path, or an empty scan set exits 2. Command-line options: `--moai`, `--commands-dir`, `--root`, and positional paths.
-3. Make the five cases pass; run R-02m and confirm each stub fails the test.
+3. Make the thirteen cases pass; run R-02m: the three stubs and the four checker mutants (M-d to M-g, one-line edits of a scratch copy) must each fail the test, and the failing case names are recorded.
 4. Run the finished checker once on the real tree with a binary built from the tree; record the figure (deliverable 6).
 
 ### M2 — Priority High: the link-check job and its configuration (REQ-PRC-014, AC-PRC-014; gate Q11, Q26, Q25)
@@ -65,15 +65,15 @@ Decision-heavy and most likely to change. Do not start until Q11 carries an oper
 
 1. Write the tool configuration (for htmltest: the file measured in EP-06 configuration B, `DirectoryPath: public`, comments on every ignore entry naming the baseline links and counts of EP-07). If Q11 names another tool, re-measure the three observations with that tool first.
 2. Write `docs-link-check.yml`: checkout with full history, install Hugo as in M4, build, install the tool at a pinned version, run it from `$RUNNER_TEMP` against `docs-site/public`.
-3. Run R-14 and R-14e; register the workflow in the liveness manifest in the same commit.
+3. Run R-14 and R-14e (necessity, sibling controls, anchoring); register the workflow in the liveness manifest in the same commit.
 
 ### M3 — Priority High: the i18n parity job blocks pull requests (REQ-PRC-012, AC-PRC-012; gate Q9)
 
 Do not start until Q9 carries an operator verdict.
 
 1. Keep the R-12 baseline output (EG-08) as the red record.
-2. Edit `docs-i18n-check.yml`: the pull-request branch of the strictness step (lines 76 to 77) writes `strict=true`; the `continue-on-error` expression at line 85 no longer depends on the strictness output for a pull request; the header comment (lines 3 to 16) describes pull requests as blocking and push as still advisory, and the "Phase 2" paragraph is rewritten to match. The push branch (line 74) and the `workflow_dispatch` branch stay unchanged.
-3. Run R-12 and compare with AC-PRC-012 Then 1 line by line; run the other Then checks.
+2. Edit `docs-i18n-check.yml` (no other file, and no edit outside lines 3 to 16, 76 to 77, and 85 is needed: with line 77 forcing strict mode the check step already runs `DOCS_I18N_STRICT=1`, EP-12): the pull-request branch of the strictness step (lines 76 to 77) writes `strict=true`; the `continue-on-error` expression at line 85 no longer depends on the strictness output for a pull request; the header comment (lines 3 to 16) describes pull requests as blocking and push as still advisory, and the "Phase 2" paragraph is rewritten to match. The push branch (line 74) and the `workflow_dispatch` branch stay unchanged.
+3. Run R-12 and R-12b and compare with AC-PRC-012 Then 1 and Then 7 line by line; run the other Then checks, including the `echo skipped` mutant against R-12b.
 
 ### M4 — Priority Medium: the Hugo build job (REQ-PRC-013, AC-PRC-013; Q10 applied, gate Q25)
 
@@ -104,6 +104,6 @@ Do not start until Q9 carries an operator verdict.
 
 ## I. Open questions (none blocks authoring; each has a stated default or an owner)
 
-- **OQ-1.** The checker's trigger paths if Q25 chooses path-filtered triggers: README files, `docs-site/content/**`, the checker, test and fixtures, `.claude/commands/moai/**`, and the CLI sources (`cmd/**`, `internal/cli/**`) whose change can alter the verb set. A verb registered outside those directories would not retrigger the check (unmeasured).
+- **OQ-1.** The trigger paths of the three new workflows under the working shape (a) of Q25 (the parity workflow's triggers are untouched; its path filter is a follow-up for the leader). For the checker's workflow: README files, `docs-site/content/**`, the checker, test and fixtures, `.claude/commands/moai/**`, and the CLI sources (`cmd/**`, `internal/cli/**`) whose change can alter the verb set. A verb registered outside those directories would not retrigger the check (unmeasured).
 - **OQ-2.** The concrete ignore patterns are the three of EP-06 configuration B; if REDIR changes the `/changelog` rule, the first pattern changes with it (gap G-9).
 - **OQ-3.** `window` and `measure` values of the three manifest entries follow the parity workflow's precedent (`fired-with-effect`, a long window); the run phase confirms them against the entry's own trigger.

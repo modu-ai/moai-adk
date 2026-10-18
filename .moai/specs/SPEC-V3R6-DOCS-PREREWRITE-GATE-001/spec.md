@@ -1,7 +1,7 @@
 ---
 id: SPEC-V3R6-DOCS-PREREWRITE-GATE-001
 title: "Docs Pre-Rewrite Cleanup — CI gate child: cited-verbs check, blocking i18n parity, Hugo build job, link-check job (card t1717)"
-version: "0.1.0"
+version: "0.1.1"
 status: draft
 created: 2026-10-18
 updated: 2026-10-18
@@ -22,6 +22,7 @@ related_specs: [SPEC-V3R6-DOCS-PREREWRITE-CLEANUP-001, SPEC-DOCS-SITE-001]
 | Date | Version | Author | Change |
 |------|---------|--------|--------|
 | 2026-10-18 | 0.1.0 | manager-spec | Initial plan-phase authoring for factory card t1717 (Class C), the GATE child of the umbrella SPEC-V3R6-DOCS-PREREWRITE-CLEANUP-001 (split ruling `d-20261014T060405Z-0fcd`; routing `d-20261014T114834Z-e039`). It carries REQ-PRC-002, -012, -013, -014 and AC-PRC-002, -012, -013, -014 under their parent numbers, unrenumbered. REQ-PRC-012 is conditional on Q9 and REQ-PRC-013 on Q10, as the parent pointers state. Every measurement below was taken on tree `ae34f268319ce91f028ee692f25c1bd476f9e6e5` (card branch `WT-docs-ci-gate`, equal to local `main` at that moment) in this planning pass; nothing is carried over from the parent ledger except where a cell says so. **Audit defect B01 fixed:** the RED cell of AC-PRC-012 no longer cites E-16d (a green observation); it cites cells EG-05, EG-06, EG-07, and the supplemental simulation EG-08, which are red on this tree for the stated reason (acceptance §C). **Found while measuring, not in the card scope text:** (1) `internal/guardstate/census_test.go` fails when a workflow file has no `.moai/guards/liveness.yaml` entry, so the real file set is 10, or 11 when the link-check tool needs a config file (the card said 9 and 10); (2) a default-configured link checker is red on arrival (73,692 findings), so the link-check job needs a config and an explicit baseline policy (decision rows Q11, Q26); (3) the Q24 example-marker token is defined by the SWEEPE child and read by this child's checker (dependency, below). Status stays `draft`. |
+| 2026-10-18 | 0.1.1 | manager-spec | Correction after plan-audit iteration 1 (FAIL 0.83 at `ec977eaf1`, `.moai/reports/t1717/plan-audit.md`; defect numbers follow it). **Fixed:** D1 (REQ-PRC-012 no longer promises a failure "whatever the strictness output says", which the planned edit could not produce; it now states what the job does: strict script on pull requests, failure on a non-zero exit, no continue-on-error; lane ruling LANE-RULED-1); D2 (AC-PRC-012 runs the real step bodies, new recipe R-12b, and the `echo skipped` mutant fails it); D3 (AC-PRC-002 grows from 5 to 13 test cases that discriminate C-1, C-2, C-6, and C-7, inside the existing three fixtures and one test); D4 (the ignore-list necessity check gets a per-entry sibling negative control, R-14e); D5 (Q25 binds the three new jobs only, and the parity job's trigger is stated as out of scope, LANE-RULED-5); D6 (exit codes recorded for EG-04, EG-11, EG-12, EG-13, EP-13; gap G-3 corrected). **Taken because the touched hunks allowed it:** D7 (Out of Scope names anchors and the 13 baseline links), D8 for AC-PRC-013 (parsed-step assertions), D9 (the Q9 negative branch), D10 (absent key counts as false in R-12), D11 (gap G-5). No requirement other than REQ-PRC-012 changed. Status stays `draft`. |
 
 **Tier note.** Tier M: 10 to 11 files (inside the 5 to 15 band), an estimated 600 to 900 lines in total (an estimate, not a measurement), 4 requirements and 4 acceptance criteria (ceilings 16 and 16). No `design.md` or `research.md` is authored. The artifact set is spec.md, plan.md, acceptance.md, plus `decision-index.md` (decision gate is on in this repository) and `progress.md`.
 
@@ -67,7 +68,7 @@ The GEARS text of each requirement keeps the parent's REQ number. The parent's p
 ### CI gates (card item 7)
 
 - **REQ-PRC-002** (Event-driven): **When** a pull request changes README or docs-site content and a cited verb, sub-verb, or slash command does not resolve under REQ-PRC-001, the docs cited-verbs check **shall** fail the run.
-- **REQ-PRC-012** (Ubiquitous, conditional on decision Q9): **Where** decision Q9 records that pull requests are blocked on i18n drift, the docs i18n parity job **shall** run the parity check in strict mode on `pull_request` events, **shall** fail the run when the check reports an error whatever the strictness output says, and its header comment **shall not** describe the pull-request path as advisory.
+- **REQ-PRC-012** (Ubiquitous, conditional on decision Q9): **Where** decision Q9 records that pull requests are blocked on i18n drift, the docs i18n parity job **shall** run the parity script in strict mode on `pull_request` events, **shall** fail the run when that script exits non-zero, **shall not** continue on error for a `pull_request` run, and its header comment **shall not** describe the pull-request path as advisory.
 - **REQ-PRC-013** (Ubiquitous, conditional on decision Q10): A Hugo build job **shall** run on pull requests, **shall** build the site with the Hugo version that decision Q10 records (default: the version named by `HUGO_VERSION` in `docs-site/vercel.json`), and **shall** fail the run when the build fails.
 - **REQ-PRC-014** (Ubiquitous): A link-check job **shall** run on pull requests and **shall** fail the run when an internal link in the built docs-site is broken.
 
@@ -101,11 +102,13 @@ Each item is named so that a later change cannot claim it silently. Child-level 
 
 - Editing any page under `docs-site/content/`, any README, or `docs-site/vercel.json`. The stale citations are fixed by the README and SWEEP children, the redirects by REDIR. This child only builds the gates that detect them.
 - Fixing the 32 relative links and the footer link `/changelog/` that the link checker reports on the baseline; this child records them as baseline debts under Q26.
+- Anchor (fragment) validity: REQ-PRC-014 gates internal page links only. The measured configuration switches anchor checking off, and the 20 anchor findings on the baseline are unclassified (acceptance.md G-8). The 13 baseline relative links that no redirect serves (EP-07) are ignored by the Q26 list and are not gated.
 
 ### Out of Scope — flags, Go code, and the push trigger
 
 - Counting `--factory-run` and `--clear-policy` or any other flag (FLAG child, Q18), and any change under `internal/` or `cmd/`.
 - Changing the `push` branch of the i18n strictness step (line 74): main-push behavior stays as it is; Q9 covers pull requests only.
+- Changing the `on:` triggers of the parity workflow, including its `paths:` filter (`docs-i18n-check.yml` lines 22 to 26). AC-PRC-012 Then 5 freezes them. Decision Q25 binds the three new jobs only; whether the parity job should report on every pull request before it becomes a required check is a follow-up for the leader and the parent's REQ-PRC-015 closure (LANE-RULED-5 in decision-index.md).
 
 ### Out of Scope — pushing and remote observation
 

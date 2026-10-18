@@ -6,16 +6,28 @@ Labels: DECIDED and POLICY-COVERED need a committed anchor in the authority regi
 
 No row carries a recommendation. A `Default:` line is the output of the published Default rule (the option that preserves current behavior; else the option whose undo is a single revert of this SPEC's own commits; else the option with the smaller user-visible surface), not a preference. At plan close, implementation-level rows that carry a `Default:` and an empty verdict are filled with `DEFAULT-APPLIED`. Rows that are open block the autonomous Kickoff and go to the operator; the gating column of the summary below says which acceptance criteria each open row holds.
 
-| Row | Label | Owner | Verdict state | Gates |
-|-----|-------|-------|---------------|-------|
-| Q5 | EVIDENCE-NEEDED | GATE (producer input) | open | none of AC-PRC-002, -012, -013, -014 |
-| Q9 | FOUNDER | GATE | open | AC-PRC-012 |
-| Q10 | FOUNDER | GATE | DEFAULT-APPLIED | AC-PRC-013 |
-| Q11 | EVIDENCE-NEEDED | GATE | open | AC-PRC-014 (and the conditional file `docs-site/.htmltest.yml`) |
-| Q18 | FOUNDER | FLAG (input to GATE) | open at FLAG | none of the four criteria |
-| Q22 | FOUNDER | GATE (leader-confirmed) | open | none of the four criteria |
-| Q25 | FOUNDER | GATE (proposed number) | open | the trigger shape of AC-PRC-002, -013, -014 |
-| Q26 | FOUNDER | GATE (proposed number) | DEFAULT-APPLIED | AC-PRC-014 |
+| Row | Label | Owner | Verdict state | Blocks | Kickoff can proceed without it |
+|-----|-------|-------|---------------|--------|-------------------------------|
+| Q5 | EVIDENCE-NEEDED | GATE (producer input) | open | nothing: no output of the checker and no criterion reads it | yes |
+| Q9 | FOUNDER | GATE | open (operator policy) | milestone M3 and AC-PRC-012 only; REQ-PRC-012 is conditional on it | yes for M1, M2, M4, M5; M3 waits. If the answer is "do not block", REQ-PRC-012 and AC-PRC-012 are not applicable and the parent's M6 imports AC-PRC-012 as such (acceptance.md AC-PRC-012) |
+| Q10 | FOUNDER | GATE | DEFAULT-APPLIED | nothing open | yes |
+| Q11 | EVIDENCE-NEEDED | GATE | open | milestone M2, AC-PRC-014, and the conditional file `docs-site/.htmltest.yml` | yes for M1, M3, M4, M5; M2 waits |
+| Q18 | FOUNDER | FLAG (input to GATE) | open at FLAG | nothing: the checker does not count flags (C-6) | yes |
+| Q22 | FOUNDER | GATE (leader-confirmed) | open (operator policy) | nothing in this SPEC; the parent's REQ-PRC-015 closure | yes |
+| Q25 | FOUNDER | GATE (proposed number) | open; working shape LANE-RULED | the trigger blocks of the three new workflows only | yes: the working shape (a) is used until the operator answers |
+| Q26 | FOUNDER | GATE (proposed number) | DEFAULT-APPLIED | nothing open | yes |
+
+## Lane rulings (plan-audit iteration 1 correction)
+
+These are choices the plan audit (`.moai/reports/t1717/plan-audit.md`, FAIL 0.83) left open. They were ruled by the lane, not by the operator: `decided_by=lane-41`, `ladder_path=disk evidence (plan-audit.md D1 to D5 and the parent SPEC)`, the operator being away. Each is marked LANE-RULED and is revisable by the operator at any time; revising one changes the named hunks only.
+
+| Id | Defect | Ruling | Revisable how |
+|----|--------|--------|---------------|
+| LANE-RULED-1 | D1 | REQ-PRC-012 states what the job does (strict script on `pull_request`, failure on a non-zero exit, no continue-on-error) instead of "whatever the strictness output says". The edit set stays inside `docs-i18n-check.yml` lines 76 to 77, 85, and the header; no wider edit is needed, because with line 77 forcing strict mode the check step already runs `DOCS_I18N_STRICT=1` (EP-12, R-12b). | reword REQ-PRC-012 and AC-PRC-012 Then 1 and 7 |
+| LANE-RULED-2 | D2 | AC-PRC-012 asserts that the check step's real `run` body fails a drifted tree and passes a clean one (R-12b), and the `echo skipped` mutant fails it. | edit AC-PRC-012 Then 7 |
+| LANE-RULED-3 | D3 | AC-PRC-002 gains eight discriminating cases inside the existing three fixtures and one test; cases that need extra inputs build them in a temporary directory, so no file is added. | edit AC-PRC-002 Then 1 to 4 |
+| LANE-RULED-4 | D4 | R-14e gains a per-entry sibling negative control and an anchoring requirement; the false mutant-probe sentence is replaced by what the control guarantees. | edit AC-PRC-014 Then 4 |
+| LANE-RULED-5 | D5 | Q25 binds the three new jobs only. The parity job's `on:` triggers and path filter stay out of scope (frozen by AC-PRC-012 Then 5) and are recorded as a follow-up for the leader. The three new jobs use path-filtered triggers as their working shape until the operator answers Q25. | revise Q25's verdict, then the three trigger blocks |
 
 ### Q5: Are `translate.mjs` and `migrate-frontmatter.sh` kept?
 Label: EVIDENCE-NEEDED
@@ -28,6 +40,7 @@ Operator verdict:
 Label: FOUNDER
 Authority anchor: none in the committed tree (SPEC-DOCS-SITE-001 is `implemented` and silent on strict mode; the workflow's own header comment names the flip trigger, and a workflow comment is not a register authority)
 Why unresolved: the facts the operator weighs, all measured. The strict run passes on this tree with 0 errors and 0 warnings (EP-01). The header comment's flip trigger is "scripts/docs-i18n-check.sh reports 0 ERROR drifts on main" (`docs-i18n-check.yml` lines 13 to 14); the parent recorded that `main` itself was not measured, and it is measured here: on a tree extracted from `origin/main` at `6dde1c1c1bdc84bf82c1b8266c071c44756fe7c0` (the local remote-tracking ref, not re-fetched in this run, gap G-4) the strict run exits 0 with 0 errors (EP-02). The strict run does go red on a known failing input: with `en/getting-started/faq.md` deleted from that extracted tree it exits 1 with one error, and the warn-only run on the same tree exits 0 (EP-03), which is exactly what the advisory pull-request path does today. The pull-request path writes `strict=false` (lines 74 and 77, EG-05) and the `continue-on-error` expression at line 85 evaluates to true for it (EG-06); a simulation of both gives `event=pull_request strict=false continue-on-error=true` (EG-08). Blocking pull requests changes what every contributor waits on whenever `docs-site/content/**` changes. The card's scope text asks to fix those lines; that text is the work order, recorded here as context, and it is not an operator verdict on this row. No Default is ranked: the published rule would keep the advisory behavior, and applying it would silently decide against the work order, so the row is left to the operator.
+Lane ruling: LANE-RULED-5 (decided_by=lane-41; revisable by the operator): until the operator answers, the three new jobs use shape (a), path-filtered triggers; switching to (b) later rewrites three trigger blocks and nothing else.
 Class: implementation-level
 Operator verdict:
 
@@ -66,9 +79,10 @@ Why unresolved: REQ-PRC-015 (parent) requires the three jobs of REQ-PRC-012 to R
 Class: implementation-level (an external setting; keep-set)
 Operator verdict:
 
-### Q25: Do the three new jobs report a status on every pull request, or only when their paths match?
+### Q25: Do the three NEW jobs report a status on every pull request, or only when their paths match?
 Label: FOUNDER
 Authority anchor: none in the committed tree
+Binds: the trigger blocks of `docs-cited-verbs.yml`, `docs-hugo-build.yml`, and `docs-link-check.yml` only. It does not bind the parity workflow: that job's `on:` triggers and path filter are out of scope of this child and frozen by AC-PRC-012 Then 5 (spec.md § Out of Scope; LANE-RULED-5). Whether the parity job should also report on every pull request before it becomes a required check is a follow-up for the leader and the parent's REQ-PRC-015 closure, not an effect of this row.
 Why unresolved: the existing parity workflow is path-filtered (`docs-i18n-check.yml` lines 22 to 26: `docs-site/content/**`, the script, the workflow file). The repository has a second convention for checks that are required: `ci.yml` always runs and a stub job satisfies the required Test check when a path filter says no Go inputs changed (EP-14). A required check that a path filter skips can leave an unrelated pull request waiting (parent plan §D, which assigns the fix to this child and says it is observed before REQ-PRC-015 closes). The choice has no effect until the jobs become required, which is the parent's operator-held step. The two shapes: (a) path-filtered triggers on each workflow, like the existing parity workflow; (b) triggers on every pull request, with the work steps skipped by an in-job path filter and a status always reported, like `ci.yml`. No Default is ranked: the first rule step has nothing to preserve (the jobs do not exist), the second gives no order (both are undone by one revert), and the third would rank (a), but applying it would leave unaddressed a risk the parent assigns to this child, so the row is left to the operator.
 Class: implementation-level
 Operator verdict:
