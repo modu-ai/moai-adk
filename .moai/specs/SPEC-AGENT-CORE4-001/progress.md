@@ -634,14 +634,14 @@ recorded_debt: spec.md draft to in-progress not written (it would change the aud
 sync_status: audit-ready
 sync_complete_at: 2026-10-18
 audit_ready: true
-sync_commit_sha: pending-backfill
+sync_commit_sha: d575238c314bbbda1ad8163e4afc66fb1569fcda
 
 Sync close (manager-docs, 2026-10-18, branch `WT-3-3-10`, worktree `.moai/worktrees/t1649`, run head `a702bf117c`): the single sync commit carries (a) the CHANGELOG `[Unreleased]` → `### Added` entry, first in the list, (b) the `spec.md` frontmatter transition `in-progress → implemented → completed` merged on this one commit (`status:` only; `updated: 2026-10-18` already read today), and (c) this §E.4 with the canonical `pending-backfill` placeholder, backfilled by the following commit (a commit cannot cite its own SHA). No code, template file, `AGENTS.local.md`, `m0-baseline.md`, docs-site or README file is touched.
 
 ### Sync evidence (this run, this tree)
 
 - B12 pre-check: `grep -c 'SPEC-AGENT-CORE4-001' CHANGELOG.md` → `0` before emission (no duplicate), `1` after.
-- B12 AC-count self-test (`ac_source=.moai/specs/SPEC-AGENT-CORE4-001/acceptance.md`, tier L, source resolved and non-empty): the reserved-token counter printed `13` with `live=13 excluded=0 ambiguous=0`, rc 0. The CHANGELOG states **12**, the SPEC's own bijection (`acceptance.md` §1 "12 rows = 12 AC", REQ-AC4-001..012 ↔ AC-AC4-001..012). The difference is one stray identifier, `AC-001`, inside the AC-AC4-011 row (line 34: "the block from `AC-001's .md face`"), which names a test label of the baseline golden test, not a criterion of this SPEC. Recorded as sync debt: it needs a `[REF]` marker (or a different spelling) in `acceptance.md`, a body edit owned by `manager-spec`; manager-docs did not touch it.
+- B12 AC-count self-test (`ac_source=.moai/specs/SPEC-AGENT-CORE4-001/acceptance.md`, tier L, source resolved and non-empty): the reserved-token counter printed `13` with `live=13 excluded=0 ambiguous=0`, rc 0. The CHANGELOG states **12**, the SPEC's own bijection (`acceptance.md` §1 "12 rows = 12 AC", REQ-AC4-001..012 ↔ AC-AC4-001..012). The difference is one stray identifier, `AC-001`, inside the AC-AC4-011 row (line 34: "the block from `AC-001's .md face`"), which names a test label of the baseline golden test, not a criterion of this SPEC. Closed after the sync commit by `manager-spec` commit `a0f52732f5` (`acceptance.md` only): the counter now prints `12` with `live=12 excluded=1`; manager-docs did not touch `acceptance.md`.
 - `moai spec lint --strict SPEC-AGENT-CORE4-001` with a moai built from this tree by path (`go build -o <scratchpad>/moai-t1649 ./cmd/moai`, built at HEAD `a702bf117c`; the build embeds no commit, `version` prints `none`) → `0 error(s), 0 warning(s)`, rc 0; one INFO `OwnershipTransitionUnmeasured` on the earlier `draft → in-progress` commit (no `Authored-By-Agent` trailer), which never changes the exit status.
 - `go run ./internal/template/agentemit/cmd/agents-emit -check` → `agents-emit-check: specs=12 copies=4 diff=0`, rc 0.
 - Plan-artifact hash (ComputeHash-equivalent): `24308dc6eb61cd352cd82ec10f96701fedf08037298bf46bd72f80c5402247ac` before the sync commit, `a08250701973e8ce15997fc13a66dc8556eb8e1e9b0d6bd9f0343b14b3763515` after it; the only plan-artifact file changed is `spec.md` (`status: in-progress` → `completed`).
@@ -651,7 +651,7 @@ Sync close (manager-docs, 2026-10-18, branch `WT-3-3-10`, worktree `.moai/worktr
 ### Carried debt and Gaps
 
 - §E.3 `recorded_debt` listed the D2, D3, D5 text defects and the `plan.md` Q19 wording as left for a `manager-spec` re-pin. Commit `e461478887` ("run-phase re-pin of SPEC text debts") later changed `acceptance.md`, `design.md`, `plan.md` and `spec.md`; this sync did not re-verify each defect's closure.
-- The stray `AC-001` above is new in this list.
+- The stray `AC-001` debt is closed by `a0f52732f5` (see the B12 note above).
 - Pieces 2 and 3 inherit the hand-off rows of `spec.md` §E.
 
 ## Binding run conditions
