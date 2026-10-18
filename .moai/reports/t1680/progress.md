@@ -120,3 +120,15 @@ Proposed shared edit, for a decision before anything is changed:
 - The `complete` happy-path row runs real `git merge` inside temp worktrees on the fixture; a git version difference in merge output could change the row, though it asserts only the final card state.
 - The handler now uses the same dir for record and window; if a deployment sets `CLAUDE_PROJECT_DIR` to a non-parent directory (see Gaps), verb and handler windows would diverge again and the table would not detect it, since the fixture pins the variable to the parent.
 - CI on the integration branch owns the repository-wide test verdict; it is PENDING at report time.
+
+## Sync
+
+Scope split (leader 10-18): N3, F8 and (c) -> t1867; this card delivers N1, (a) and (b) on the MCP handler side only. t1867 is Class B, P2, queued behind t1839 and t1688.
+
+What changed in the sync commit: one `### Fixed` entry under `[Unreleased]` in `CHANGELOG.md` (no SPEC, so no B12 AC count; the entry's claims were checked against the handler diff `git diff 6a03acf941 HEAD -- internal/cli/mcp_factory_card.go`, the four test names in `internal/cli/factory_mcp_verb_parity_test.go`, and the Run evidence above; `grep -c 't1680' CHANGELOG.md` was 0 before writing), and this section. No docs changed: the MCP catalogue (`.claude/rules/moai/core/moai-mcp-tools-catalogue.md` and its template mirror) and `docs-site/content/{ko,en,ja,zh}/guides/mcp-server.md` list the tools and the `project_root` requirement only, and none states a lane-label or window-root rule that became inaccurate. No template or docs-site file touched, so no `make build`.
+
+Verification (HEAD a5b312d066, this tree): `go build ./...` exit 0; `GOOS=windows GOARCH=amd64 go build ./...` exit 0; `gofmt -l internal/cli` printed nothing, exit 0; `TMPDIR=GOTMPDIR=/private/tmp/t1680-tmp go test -count=1 -run 'TestMCPVerbParity_' ./internal/cli/` -> `ok  github.com/modu-ai/moai-adk/internal/cli 26.595s`.
+
+Observations (not in scope): the `@MX:ANCHOR` on `mcpRequiredProjectRoot` (`internal/cli/mcp_factory_card.go`) says 3 call sites while it has 4 since `handleFactoryRenew` (t1663); observation only, not changed here.
+
+Gaps: `/verify` wrapper not invoked; the full `internal/cli` suite and every other package test were not run (ruling 35e9, no slot); the CHANGELOG sentence on `factory_decide` ("acts on another tree's config") rests on the RED row `DecideConfigRoot` (card = merged-local v1 vs verb pushed v2), not on a separate reproduction; CI owns the repository-wide verdict.
