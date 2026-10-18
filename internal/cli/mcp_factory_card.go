@@ -34,6 +34,7 @@ import (
 	"github.com/mark3labs/mcp-go/mcp"
 	"github.com/mark3labs/mcp-go/server"
 
+	"github.com/modu-ai/moai-adk/internal/factory"
 	"github.com/modu-ai/moai-adk/internal/homestate"
 )
 
@@ -248,12 +249,12 @@ func handleFactoryComplete(ctx context.Context, req mcp.CallToolRequest) (*mcp.C
 	// The record and the git-flow config live at the factory root of the caller's tree, the parent checkout
 	// (sync-audit N2, card t1680 (b)). The integration window and the re-measure record live at the
 	// repository common root, which the verb gets from integrationLockRoot() and this handler from the same
-	// rule, integrationCommonRootOf, applied to project_root: both surfaces resolve to the repository common
+	// rule, factory.IntegrationCommonRoot, applied to project_root: both surfaces resolve to the repository common
 	// root, so a CLAUDE_PROJECT_DIR naming a linked worktree no longer splits them (sync-audit round 1, F1).
 	// The handler cannot call integrationLockRoot() itself — it reads the process environment and working
 	// directory, which this long-lived server cannot use for a caller's tree.
 	root := factoryRootOf(launch)
-	if err := factoryCompleteCard(ctx, out, root, integrationCommonRootOf(launch), cardID, "", req.GetString("run", ""), lane); err != nil {
+	if err := factoryCompleteCard(ctx, out, root, factory.IntegrationCommonRoot(launch), cardID, "", req.GetString("run", ""), lane); err != nil {
 		return toolErr("factory_complete", err), nil
 	}
 	return mcp.NewToolResultText(strings.TrimRight(out.String(), "\n")), nil

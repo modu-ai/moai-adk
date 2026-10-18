@@ -6,14 +6,16 @@ package cli
 // variable was set, so a variable naming a LINKED worktree made the verb's
 // integration-window and re-measure root that worktree, while the MCP handler
 // derived the parent checkout from project_root. The two surfaces then used
-// different windows. integrationCommonRootOf is the one rule both surfaces now
-// share: the repository common root (the primary checkout), never the caller's
-// own worktree.
+// different windows. factory.IntegrationCommonRoot is the one rule both surfaces
+// now share (and the PreToolUse guard, card t1680 iter5): the repository common
+// root (the primary checkout), never the caller's own worktree. Its unit cases
+// live beside it in internal/factory; this file keeps the CLI-level pins.
 
 import (
-	"os"
 	"path/filepath"
 	"testing"
+
+	"github.com/modu-ai/moai-adk/internal/factory"
 )
 
 // commonRootRepo builds a repository with one commit and one linked worktree, and
@@ -26,67 +28,6 @@ func commonRootRepo(t *testing.T) (primary, linked string) {
 	linked = filepath.Join(filepath.Dir(primary), "Common-Root-Linked")
 	fcGit(t, primary, "worktree", "add", "-q", "-b", "WT-common-root", linked)
 	return primary, linked
-}
-
-func TestIntegrationCommonRootOf_LinkedWorktreeResolvesToThePrimaryCheckout(t *testing.T) {
-	primary, linked := commonRootRepo(t)
-	if got := integrationCommonRootOf(linked); got != primary {
-		t.Errorf("integrationCommonRootOf(linked worktree) = %q, want the primary checkout %q", got, primary)
-	}
-}
-
-func TestIntegrationCommonRootOf_PrimaryCheckoutIsItself(t *testing.T) {
-	primary, _ := commonRootRepo(t)
-	if got := integrationCommonRootOf(primary); got != primary {
-		t.Errorf("integrationCommonRootOf(primary) = %q, want %q", got, primary)
-	}
-}
-
-func TestIntegrationCommonRootOf_SubdirectoryOfALinkedWorktreeResolvesToThePrimaryCheckout(t *testing.T) {
-	primary, linked := commonRootRepo(t)
-	sub := filepath.Join(linked, "pkg", "deep")
-	if err := os.MkdirAll(sub, 0o755); err != nil {
-		t.Fatal(err)
-	}
-	if got := integrationCommonRootOf(sub); got != primary {
-		t.Errorf("integrationCommonRootOf(subdir of linked worktree) = %q, want the primary checkout %q", got, primary)
-	}
-}
-
-func TestIntegrationCommonRootOf_NonRepoAndMissingPathsAreReturnedVerbatim(t *testing.T) {
-	plain, err := filepath.EvalSymlinks(t.TempDir())
-	if err != nil {
-		t.Fatal(err)
-	}
-	missing := filepath.Join(plain, "T1680MISSING")
-	for name, dir := range map[string]string{"non-repo": plain, "missing": missing} {
-		if got := integrationCommonRootOf(dir); got != dir {
-			t.Errorf("%s: integrationCommonRootOf(%q) = %q, want it returned verbatim", name, dir, got)
-		}
-	}
-}
-
-// TestIntegrationCommonRootOf_ReturnsGitsOwnSpellingNotTheCallers is the t766 property
-// carried through the new rule: a wrong-case spelling of the primary checkout, and of a
-// linked worktree, both answer the primary checkout in git's spelling. On a
-// case-sensitive volume the wrong spelling names nothing and is returned verbatim.
-func TestIntegrationCommonRootOf_ReturnsGitsOwnSpellingNotTheCallers(t *testing.T) {
-	primary, linked := commonRootRepo(t)
-	for name, c := range map[string]struct{ in, want string }{
-		"primary":  {lowerLeaf(primary), primary},
-		"worktree": {lowerLeaf(linked), primary},
-	} {
-		if c.in == "" || c.in == c.want {
-			t.Fatalf("%s: fixture spelling %q is not distinct from %q; the test would be vacuous", name, c.in, c.want)
-		}
-		want := c.want
-		if _, err := os.Stat(c.in); err != nil { // case-sensitive volume: the wrong spelling names nothing
-			want = c.in
-		}
-		if got := integrationCommonRootOf(c.in); got != want {
-			t.Errorf("%s: integrationCommonRootOf(%q) = %q, want %q", name, c.in, got, want)
-		}
-	}
 }
 
 // TestIntegrationLockRoot_LinkedWorktreeVariableResolvesToThePrimaryCheckout pins the verb
@@ -111,7 +52,7 @@ func TestIntegrationWindowRootAgreesWithTheFactoryRecordRoot(t *testing.T) {
 		t.Fatal(err)
 	}
 	for name, dir := range map[string]string{"primary": primary, "linked worktree": linked, "non-repo": plain} {
-		window := integrationCommonRootOf(dir)
+		window := factory.IntegrationCommonRoot(dir)
 		if record := factoryRootOf(dir); window != record {
 			t.Errorf("%s: window root %q != record root %q", name, window, record)
 		}
