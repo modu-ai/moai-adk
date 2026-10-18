@@ -16,19 +16,15 @@ import (
 	"github.com/spf13/cobra"
 )
 
-// Wizard default constants. They are the CLAUDE-settings values pre-selected for
-// a profile that stored nothing (card t1866, operator decision 2026-10-18); a
-// stored choice always wins. defaultModel is the 1M Sonnet picker value the web
-// console labels "Sonnet 5.5" (the picker offers no bare alias).
+// Wizard default constants. defaultModel and defaultEffortLevel are the
+// CLAUDE-settings values pre-selected for a profile that stored nothing (card
+// t1866, operator decision 2026-10-18); a stored choice always wins.
+// defaultModel is the 1M Sonnet picker value the web console labels
+// "Sonnet 5.5" (the picker offers no bare alias).
 const (
-	defaultPermissionMode = "auto"
+	defaultPermissionMode = "acceptEdits"
 	defaultModel          = "sonnet[1m]"
 	defaultEffortLevel    = "medium"
-
-	// acceptEditsPermissionMode is the mode whose persistence the wizard
-	// confirms: it was the default until card t1866 and is now an ordinary
-	// explicit choice that writes a settings.local.json override.
-	acceptEditsPermissionMode = "acceptEdits"
 )
 
 // acceptEditsConfirmationLine is the deterministic English confirmation emitted
@@ -145,8 +141,8 @@ func normalizeModelLegacy1M(m string) string {
 // withEmpty controls whether the field's canonical empty option
 // (settings.EmptyLabelFor) is prepended. It is per-call-site rather than derived
 // from the schema because permission_mode declares an empty label for the web
-// console but the wizard has never offered one (it pre-selects auto, and the
-// chosen value is saved as it is). The empty option's label is resolved
+// console but the wizard has never offered one (it defaults to acceptEdits and
+// normalizes that back to "" on save). The empty option's label is resolved
 // through schemaOptionBridge by the field's EmptyLabelKey when the locale
 // carries a translation for it, and is the schema's EmptyLabel otherwise.
 //
@@ -231,8 +227,8 @@ func init() {
 // initialProfileResult maps the stored preferences onto the absorbed wizard's
 // initial values — the binding point of the v2 profile wizard. Every select
 // pre-selects the stored value (REQ-ITI-005 (5)); the empty language slots
-// pre-select English; the empty permission mode pre-selects auto
-// (REQ-ITI-005 (9); card t1866); development_mode initializes from the CURRENT project
+// pre-select English; the empty permission mode pre-selects acceptEdits
+// (REQ-ITI-005 (9)); development_mode initializes from the CURRENT project
 // config, not from the profile store (SPEC-WEB-CONSOLE-003). Outside a MoAI
 // project (no .moai dir) it stays empty "(project default)" and the save is a
 // no-op.
@@ -375,7 +371,7 @@ func runProfileSetup(cmd *cobra.Command, args []string) (err error) {
 	// project acceptEdits default (card t1414). The confirmation line surfaces
 	// the persistence so the selection is not perceived as silent
 	// (REQ-CCI-006).
-	if permissionMode == acceptEditsPermissionMode {
+	if permissionMode == defaultPermissionMode {
 		emitAcceptEditsConfirmation(cmd.OutOrStdout(), result.ConversationLang)
 	}
 

@@ -290,10 +290,9 @@ func inOptionValues(opts []OptionDef, v string) bool {
 	return false
 }
 
-// normalizePermissionMode는 permission_mode 의 저장 직전 정규화다: 기본값 auto 는
-// 빈 문자열로 정규화하여 불필요한 override 를 기록하지 않는다(REQ-WC10-014).
-// 빈 값은 런처가 Claude 백엔드에서 auto 로 푼다(launcher.go launchDefaultPermissionMode,
-// card t1866). acceptEdits 는 더 이상 기본값이 아니므로 명시 override 로 저장된다.
+// normalizePermissionMode는 permission_mode 의 저장 직전 정규화다: 프로젝트 기본값
+// acceptEdits 는 빈 문자열로 정규화하여 불필요한 override 를 기록하지 않는다
+// (REQ-WC10-014, 기존 profile_setup.go:443 의미 보존).
 func normalizePermissionMode(v string) string {
 	if v == defaultPermissionMode {
 		return ""
@@ -301,9 +300,8 @@ func normalizePermissionMode(v string) string {
 	return v
 }
 
-// defaultPermissionMode는 기본 permission mode 다(profile_setup.go 와 일치).
-// card t1866 이전에는 acceptEdits 였다.
-const defaultPermissionMode = "auto"
+// defaultPermissionMode는 프로젝트 기본 permission mode 다(profile_setup.go 와 일치).
+const defaultPermissionMode = "acceptEdits"
 
 // statuslineThemeOptions는 정규 statusline 테마 옵션을 반환한다(TUI 위저드와 일치).
 func statuslineThemeOptions() []OptionDef {

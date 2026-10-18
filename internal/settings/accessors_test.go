@@ -111,16 +111,10 @@ func TestEmptyLabelFor(t *testing.T) {
 	}
 }
 
-// TestNormalizePermissionMode는 기본값 auto → "" 정규화를 검증한다(REQ-WC10-014,
-// 기본값은 card t1866에서 acceptEdits → auto). acceptEdits는 이제 명시 override로
-// 저장된다: ""는 런처에서 Claude 백엔드의 auto 기본으로 풀리므로, acceptEdits를
-// ""로 접으면 사용자가 고른 값이 auto로 바뀐다.
+// TestNormalizePermissionMode는 acceptEdits → "" 정규화를 검증한다(REQ-WC10-014).
 func TestNormalizePermissionMode(t *testing.T) {
-	if got := normalizePermissionMode("auto"); got != "" {
-		t.Errorf("normalizePermissionMode(auto) = %q, want empty", got)
-	}
-	if got := normalizePermissionMode("acceptEdits"); got != "acceptEdits" {
-		t.Errorf("normalizePermissionMode(acceptEdits) = %q, want acceptEdits (an explicit override)", got)
+	if got := normalizePermissionMode("acceptEdits"); got != "" {
+		t.Errorf("normalizePermissionMode(acceptEdits) = %q, want empty", got)
 	}
 	if got := normalizePermissionMode("plan"); got != "plan" {
 		t.Errorf("normalizePermissionMode(plan) = %q, want plan", got)
@@ -134,10 +128,7 @@ func TestNormalizePermissionMode(t *testing.T) {
 	if f.Persist.Normalize == nil {
 		t.Fatal("permission_mode field has nil Persist.Normalize")
 	}
-	if got := f.Persist.Normalize("auto"); got != "" {
-		t.Errorf("permission_mode Persist.Normalize(auto) = %q, want empty", got)
-	}
-	if got := f.Persist.Normalize("acceptEdits"); got != "acceptEdits" {
-		t.Errorf("permission_mode Persist.Normalize(acceptEdits) = %q, want acceptEdits", got)
+	if got := f.Persist.Normalize("acceptEdits"); got != "" {
+		t.Errorf("permission_mode Persist.Normalize(acceptEdits) = %q, want empty", got)
 	}
 }

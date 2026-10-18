@@ -4,6 +4,8 @@ Card t1866 (Class B, operator-directed, no SPEC): shipped defaults changed to th
 
 ## Decisions (leader rulings recorded in this session, 2026-10-18)
 
+> The `permission_mode` and GLM carve-out decisions below are superseded by "Reduction (leader ruling C, board aff3)" below.
+
 - CLAUDE settings are the profile store's launch keys (`permission_mode`, `model`, `effort_level`), not the deployed `settings.json.tmpl`. The template is untouched.
 - `model` default is `sonnet[1m]`, the value the web picker stores for the label "Sonnet 5.5". The card text's `claude-sonnet-5-5` is not a picker value.
 - `permission_mode`: operator chose "auto for all". The wizard pre-selects `auto`; a profile with no stored mode launches Claude sessions in `auto`; a stored value (`acceptEdits` included) is kept; the autonomy-tier mapping (`semi-auto` → `acceptEdits`) is unchanged; no migration write.
@@ -12,9 +14,13 @@ Card t1866 (Class B, operator-directed, no SPEC): shipped defaults changed to th
 
 ## Claim
 
+> Superseded by "Reduction (leader ruling C, board aff3)" below for the `permission_mode` part of the claim.
+
 The five default changes are in the tree and each is pinned by a test observed red before the change and green after it; the existing update-preservation tests still pass; the full-package suites for the touched packages have NOT run (see Gaps).
 
 ## Evidence (commands run in this tree; outputs observed in this session)
+
+> Superseded by "Reduction (leader ruling C, board aff3)" below for every permission-default row (launcher cells, `auto` normalize, wizard `auto`); GLM effort, report format, `sonnet[1m]` and `medium` rows stand.
 
 RED observed before each change:
 
@@ -68,6 +74,8 @@ ok  	github.com/modu-ai/moai-adk/internal/cli  3.465s
 
 ## What the wizard saves (source read, not run end to end)
 
+> Superseded by "Reduction (leader ruling C, board aff3)" below for `permission_mode`: the wizard no longer pre-selects `auto`; the `sonnet[1m]` and `medium` statements stand.
+
 `runProfileSetup` writes `PermissionMode: permissionMode` (`profile_setup.go`, the preferences literal) from the wizard result, so a user who accepts the pre-selected `auto` stores `"auto"` explicitly; the same holds for the pre-selected `sonnet[1m]` and `medium`. The launcher cells above cover what such a stored `auto` does at launch.
 
 ## Corrections made during the card (recorded so they are not re-inferred)
@@ -86,11 +94,15 @@ ok  	github.com/modu-ai/moai-adk/internal/cli  3.465s
 
 ## Residual-risk
 
+> Superseded by "Reduction (leader ruling C, board aff3)" below for the `auto` permission bullets; the other bullets are unchanged.
+
 - Users who already have `permission_mode` unset now start Claude sessions in `auto`; where Claude Code refuses `auto` for the account or model, the first launch after the change is where that would show.
 - A hand-edited project `settings.json` `defaultMode` is shadowed for those users by the `settings.local.json` override.
 - A `--permission-mode auto` typed on the GLM command line keeps its existing refusal; a stored `auto` on GLM is now dropped silently except for one stderr line.
 
 ## Audit repair round 1
+
+> Superseded by "Reduction (leader ruling C, board aff3)" below: the launcher permission-default behavior this section describes was removed.
 
 Source: `.moai/reports/t1866/sync-audit.md` (FAIL, audited_sha 2eb7daee9b). Repair cycle: each fix test-first; RED then GREEN observed in this tree. New tests: `internal/cli/launcher_permission_resume_test.go`; code: `internal/cli/launcher.go`.
 
@@ -114,6 +126,8 @@ Deviation: the run-phase implementation of this card was written directly by the
 
 ## Audit repair round 2
 
+> Superseded by "Reduction (leader ruling C, board aff3)" below: the GLM-resume removal of `auto` and its error were removed.
+
 Source: `.moai/reports/t1866/sync-audit-iter2.md` (FAIL, audited_sha bece378100; findings F7, F8). One commit; F6 stays out of scope.
 
 | Finding | Command and observed output |
@@ -128,6 +142,8 @@ Gaps remaining: no whole-package run of `internal/cli`, `internal/config`, `inte
 Note: the second fix spawn was refused with AUDIT_RECEIPT_VIOLATION (unknown-spec) and the leader removed that guard record after backing it up (board 6a81, backup directory `.moai/reports/t1866/backup-rejection-20261018T060040Z/`).
 
 ## Audit repair round 3 (test-only exception)
+
+> Superseded by "Reduction (leader ruling C, board aff3)" below: the launcher behavior and tests this section describes were removed.
 
 Source: `.moai/reports/t1866/sync-audit-iter3.md` (FAIL, audited_sha 02bb6804fb; findings F9 blocking via the required codex gate, F10 optional). One commit; test file, this record and one CHANGELOG sentence only; no product code (`git diff -- internal/cli/launcher.go` empty).
 
@@ -169,6 +185,8 @@ Note: the fifth fix spawn was refused with AUDIT_RECEIPT_VIOLATION (unknown-spec
 
 ## Audit repair round 4 (operator exception b18d: auto default for new sessions only)
 
+> Superseded by "Reduction (leader ruling C, board aff3)" below: the Claude `auto` permission default this section describes was removed.
+
 Finding F14 (`.moai/reports/t1866/sync-audit-iter6.md`, P1 per codex, `internal/cli/launcher.go:670`): with an unset profile permission mode, `--continue` still appended `--permission-mode auto` to the child argv, so a hand-edited `permissions.defaultMode: plan` in `settings.local.json` stayed on disk but was overridden at run time. Operator decision (board d-20261018T104449Z-b18d): the `auto` default for a profile that never chose a mode applies to new sessions only.
 
 Change (`internal/cli/launcher.go`, `runLaunchClaude`): the default application moved from before the argv consumption to after it, and became `if permMode == "" && !cont && !consumed.PermissionModeSet { permMode = launchDefaultPermissionMode(permGLM) }`, where `cont` is the final resume flag (settings `DO_CLAUDE_CONTINUE` or a typed `-c`/`--continue`). Unchanged: the GLM drop of a stored/settings-chosen `auto` (still before the typed-argv consumption), a typed `--permission-mode` winning, the `DO_CLAUDE_BYPASS` legacy path, `syncPermMode`, the resume drop of a stale `auto` on GLM, the failed-removal error. A stored profile mode (including `auto`) is still forwarded on a resume. CHANGELOG t1866 entry reworded to match. The extra `!consumed.PermissionModeSet` term keeps a typed (even empty) `--permission-mode` from being replaced by the default, as before.
@@ -205,6 +223,8 @@ The previous round's (round 6) audit made two codex calls whose results disagree
 The leader removed the guard records created after rounds 5 and 6 after backing them up (board 6a81; backup directories `backup-rejection-20261018T103222Z` and `backup-rejection-20261018T104643Z`; the second was made by the pre-reinstall guard binary).
 
 ## Audit repair round 5 (operator exception 3d79: resume-fallback new session)
+
+> Superseded by "Reduction (leader ruling C, board aff3)" below: the Claude `auto` permission default this section describes was removed.
 
 Findings (seventh delta sync audit, `.moai/reports/t1866/sync-audit-iter7.md`):
 - F15 (blocking): a resume (`-c`, `--continue`, `DO_CLAUDE_CONTINUE`) of an unset Claude-backend profile whose child exits 1 prints "No previous session found, starting new session..." and starts a NEW session with `buildArgs(false)`. `permMode` had been left empty because `cont` was true, so that session carried no `--permission-mode auto`, and the step 5b `settings.local.json` sync (skipped on `cont`) never ran.
@@ -252,3 +272,25 @@ Broad run, `go test ./internal/cli -run '^TestLaunch_' -count=1 -v` after the fi
 Gaps: no whole-package run of `internal/cli`, `internal/web`, `internal/template` or `internal/config` this round; no live Claude process (the child is a stub that records argv); the broad run was a name pattern, not the full suite. The fallback re-applies the default and sync only when the profile's own mode was unset; a fallback new session of a profile with a stored or settings-chosen mode gets that mode's flag but, as before, no `settings.local.json` sync (outside the operator decision, not changed).
 
 The seventh audit's codex receipt is rcpt-c68710bc814236dc0a67251f (fail).
+
+## Reduction (leader ruling C, board aff3): Claude auto permission default removed
+
+Reason: the Claude `auto` permission default produced a new adjacent defect in each audit round (F14, then F15, then F17), and both operator exceptions (b18d, 3d79) were spent, so the leader ruled "C (reduce)" (board d-20261018T112343Z-aff3): the card ships without it. FAIL receipts: round 6 rcpt-813169891395590312ae33f6 (pass) vs rcpt-ef9584ba0990325e17cfe714 (fail), round 7 rcpt-c68710bc814236dc0a67251f, round 8 rcpt-9833ef82b66be72a725eb4d3. The behavior moves to follow-up card t1870. Done as one new revert-style commit; no history rewriting.
+
+Removed (restored to the content at `4f9dba14bf`, the main commit absorbed by merge `a3dd18c5a`):
+- `internal/cli/launcher.go`: every card change (default application, GLM drop of a stored `auto`, GLM-resume stale-auto removal and its error, fallback re-application, `settings.local.json` sync of the default, helper functions). Main's own commit `a022ada95c` on that file stays because the file is restored to main's content.
+- `internal/cli/launcher_permission_default_test.go` and `internal/cli/launcher_permission_resume_test.go`: deleted.
+- `internal/settings/schema.go`: `defaultPermissionMode` back to `acceptEdits`, `normalizePermissionMode` back to folding `acceptEdits` to empty. `internal/settings/accessors_test.go` and `internal/cli/profile_setup_nested_test.go` (`TestPermissionModeNormalizeAcceptEdits`) restored to main.
+- `internal/cli/profile_setup.go`: `defaultPermissionMode` back to `acceptEdits`, the `acceptEditsPermissionMode` constant removed, the confirmation condition and comments back to main; `internal/cli/profile_setup_defaults_test.go` no longer asserts a permission default (the stored-choice test uses `plan`).
+- CHANGELOG t1866 entry: all `auto` / launcher-posture / GLM-resume / malformed-settings statements removed.
+
+Stays (unchanged): GLM tier effort (`DefaultGLMEffortLow` max, `DefaultGLMEffortFable` high, `llm.yaml`, the template, web and config tests), report format default `artifact` (initializer fallback, wizard default and label, `report.yaml`, `schemaform.go`, init tests), the profile wizard pre-selected `model: sonnet[1m]` and `effort_level: medium`, and `internal/cli/shipped_defaults_test.go` (it asserts a stored `acceptEdits` survives an update, not an `auto` default, so it needed no edit).
+
+Acceptance-check results measured in this tree before the commit (the committed-HEAD forms of checks 1-3 are quoted in the final report of the run):
+- `git diff 4f9dba14bf -- internal/cli/launcher.go | wc -l` -> `0`.
+- `grep -rn "launchDefaultPermissionMode\|dropAutoDefaultModeFromSettingsLocal\|profileModeUnset" internal` -> no output (exit 1).
+- `go build ./...` -> exit 0. `go vet ./internal/cli ./internal/settings ./internal/config ./internal/core/project ./internal/web ./internal/template` -> exit 0. `gofmt -l internal/cli internal/settings` -> no output.
+- `go test ./internal/cli -run '^(TestLaunch|TestProfileSetup|TestPermissionMode|TestInit_|TestUpdate_|TestInitialProfileResult_)' -count=1` -> `ok  github.com/modu-ai/moai-adk/internal/cli  343.668s`.
+- `go test ./internal/settings ./internal/cli/wizard ./internal/core/project ./internal/config -count=1` -> `ok` for all four (0.766s, 4.914s, 2.493s, 7.476s). Also `go test ./internal/web -run TestGLMEffortTierDefaults` ok and `go test ./internal/template -run TestGLMTierDefaultsTemplateMatchesGoDefaults` ok.
+
+Gaps: no whole-package run of `internal/cli`, `internal/web` or `internal/template` (named tests only; `internal/config`, `internal/settings`, `internal/cli/wizard` and `internal/core/project` ran whole as the acceptance check required); no live Claude process was run, so the restored launcher was observed only through its tests.

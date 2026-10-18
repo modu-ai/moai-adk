@@ -76,14 +76,12 @@ func nonCommentLines(src string) string {
 	return b.String()
 }
 
-// TestPermissionModeNormalizeDefaultAuto covers AC-WC10-015 as re-based by card
-// t1866: the shipped default auto normalizes to the empty string so the web
-// console records no redundant override, while acceptEdits — the default before
-// that card — is an ordinary explicit choice and is stored as such. The schema's
-// permission_mode Persist.Normalize is the single definition for the web surface;
-// the TUI (profile_setup.go) persists the chosen mode as it is and never applied
-// this normalization, which the previous source-grep guard here did not check.
-func TestPermissionModeNormalizeDefaultAuto(t *testing.T) {
+// TestPermissionModeNormalizeAcceptEdits covers AC-WC10-015: acceptEdits normalizes
+// to empty string so no redundant override is persisted. The TUI applies this in
+// runProfileSetup; the schema's permission_mode Persist.Normalize encodes the same
+// semantic for both surfaces.
+func TestPermissionModeNormalizeAcceptEdits(t *testing.T) {
+	// Schema-level normalization (shared by both surfaces).
 	f, ok := settings.Field("permission_mode")
 	if !ok {
 		t.Fatal("permission_mode field not found in schema")
@@ -91,14 +89,22 @@ func TestPermissionModeNormalizeDefaultAuto(t *testing.T) {
 	if f.Persist.Normalize == nil {
 		t.Fatal("permission_mode Persist.Normalize is nil")
 	}
-	for in, want := range map[string]string{
-		"auto":        "",
-		"acceptEdits": "acceptEdits",
-		"plan":        "plan",
-	} {
-		if got := f.Persist.Normalize(in); got != want {
-			t.Errorf("schema normalize(%q) = %q, want %q", in, got, want)
-		}
+	if got := f.Persist.Normalize("acceptEdits"); got != "" {
+		t.Errorf("schema normalize(acceptEdits) = %q, want empty", got)
+	}
+	if got := f.Persist.Normalize("plan"); got != "plan" {
+		t.Errorf("schema normalize(plan) = %q, want plan", got)
+	}
+
+	// TUI source-level guard: profile_setup.go must still apply the acceptEdits→""
+	// normalization in its save path.
+	data, err := os.ReadFile("profile_setup.go")
+	if err != nil {
+		t.Fatalf("read profile_setup.go: %v", err)
+	}
+	src := string(data)
+	if !strings.Contains(src, "permissionMode == defaultPermissionMode") {
+		t.Error("profile_setup.go must normalize acceptEdits permission mode to empty (REQ-WC10-014)")
 	}
 }
 
