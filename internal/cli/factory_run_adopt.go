@@ -163,6 +163,17 @@ func adoptExplicitLeaderRun(root, runID, backend string) (adopted string, err er
 	if err != nil {
 		return "", err
 	}
+	// The classified-backend refusal (sync-audit round 4 F1''): a run that
+	// is codex-led AT CLASSIFICATION is refused outright. The window
+	// re-checks below read the row's CURRENT state, so an ABA round-trip —
+	// codex at classification, claude at the re-checks, codex again before
+	// the write — would pass them and match the classified codex value in
+	// the compare-and-set; refusing the classified value here makes every
+	// commit-time state provably the classified non-codex state, with the
+	// CAS as the atomic backstop for post-read flips.
+	if owner.Backend == BackendCodex {
+		return "", codexLedRunRefusal(runID)
+	}
 	// The window re-checks: immediately-checked preconditions after the
 	// fresh classification, before the write.
 	if err = refuseCodexLeaderRun(root, runID); err != nil {

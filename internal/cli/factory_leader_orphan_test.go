@@ -1200,3 +1200,71 @@ func TestLeaderAdoptGuidanceDocsMatchAnchors(t *testing.T) {
 		t.Errorf("the template skill twin differs from the local skill; make the twins byte-identical")
 	}
 }
+
+// AC-FLAC-004 (sync-audit round 4 F1”) — the backend ABA round-trip is
+// refused at the CLASSIFIED read: the run is codex at classification, claude
+// at the window re-checks (both flips land inside the window through the
+// classification seam), and would be codex again at the write. Refusing the
+// classified codex value outright makes every commit-time state provably the
+// classified non-codex state — the compare-and-set stays as the atomic
+// backstop for post-read flips. The assertion pins the CODEX-led refusal,
+// not merely a refusal: the same two flips without the classified check
+// would earn the compare-and-set miss instead, which is exactly the hole.
+func TestExplicitFactoryRunAdoptRefusesABARoundTrip(t *testing.T) {
+	root := seedAdoptEntryRun(t, "adopt-aba", "claude", false, 1)
+	cardsBefore := adoptCardsSnapshot(t, root, "adopt-aba")
+	prod := classifyNamedRun
+	classifyNamedRun = func(ctx context.Context, root, runID string) (homestate.RunOwner, error) {
+		// Flip 1: codex lands before the classified read — classification
+		// observes a CODEX-led run.
+		db, openErr := homestate.OpenFactory(root)
+		if openErr != nil {
+			return homestate.RunOwner{}, openErr
+		}
+		if _, err := db.DB.Exec(`UPDATE runs SET lead_backend='codex' WHERE run_id=?`, runID); err != nil {
+			_ = db.Close()
+			return homestate.RunOwner{}, err
+		}
+		_ = db.Close()
+		owner, err := prod(ctx, root, runID)
+		if err != nil {
+			return owner, err
+		}
+		// Flip 2: claude lands before the window re-checks — they pass.
+		db, openErr = homestate.OpenFactory(root)
+		if openErr != nil {
+			return owner, openErr
+		}
+		if _, err := db.DB.Exec(`UPDATE runs SET lead_backend='claude' WHERE run_id=?`, runID); err != nil {
+			_ = db.Close()
+			return owner, err
+		}
+		_ = db.Close()
+		return owner, nil
+	}
+	t.Cleanup(func() { classifyNamedRun = prod })
+
+	c := installAdoptEntryEnv(t, root)
+	err := runAdoptEntry(t, "-f", "--factory-run", "adopt-aba")
+	if err == nil {
+		t.Fatal("the ABA round-trip was adopted; want the codex-led refusal")
+	}
+	if !strings.Contains(err.Error(), "codex") || !strings.Contains(err.Error(), "cannot be adopted") {
+		t.Fatalf("refusal %q is not the codex-led refusal — the classified backend must be refused outright, not left to the compare-and-set miss", err.Error())
+	}
+	if c.args != nil {
+		t.Errorf("the launch seam was called on a refused adopt")
+	}
+	if status, backend, pid, start, _ := adoptRunRow(t, root, "adopt-aba"); status != "active" || backend != "claude" || pid != 99999999 || start != "gone-before-explicit" {
+		t.Errorf("row after refused adopt = (%s, %s, %d, %s), want unchanged (active, claude, 99999999, gone-before-explicit)", status, backend, pid, start)
+	}
+	if n := adoptEventCount(t, root, "adopt-aba", "run.resumed"); n != 0 {
+		t.Errorf("run.resumed events = %d, want 0", n)
+	}
+	if after := adoptCardsSnapshot(t, root, "adopt-aba"); after != cardsBefore {
+		t.Errorf("cards changed across the refused adopt")
+	}
+	if n := adoptRunsCount(t, root); n != 1 {
+		t.Errorf("runs rows = %d, want 1", n)
+	}
+}
