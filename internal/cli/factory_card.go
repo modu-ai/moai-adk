@@ -1003,7 +1003,7 @@ func factoryNextSelectAndLease(ctx context.Context, l *factory.LockedBacklog, db
 			continue
 		}
 		it, inQueue := queueItemIn(queueRec, c.CardID)
-		if r := elig.disqualify(c.CardID, it, inQueue, classOf(c.CardID), !selectionSkips(c), modeEligible(c.CardID)); r != nil {
+		if r := elig.disqualify(c.CardID, it, inQueue, !selectionSkips(c), modeEligible(c.CardID)); r != nil {
 			elig.collect(*r)
 			continue
 		}
@@ -1034,7 +1034,7 @@ func factoryNextSelectAndLease(ctx context.Context, l *factory.LockedBacklog, db
 		// behind it. Skipped here, the card is neither recorded nor
 		// claimed, and selection reaches the ready cards.
 		_, wait := hubWaitUnmerged(it.ID)
-		if r := elig.disqualify(it.ID, it, true, classOf(it.ID), !wait, modeEligible(it.ID)); r != nil {
+		if r := elig.disqualify(it.ID, it, true, !wait, modeEligible(it.ID)); r != nil {
 			elig.collect(*r)
 			continue
 		}
@@ -1368,13 +1368,7 @@ func (e *factoryEligibility) active() bool { return e != nil && e.enabled }
 // recorded row, hubWaitUnmerged / modeEligible for a rowless item); the
 // serial-slot read is read-only (D5) and every input here reuses the
 // pass's one queue snapshot.
-//
-// Condition 2's "Class C" reads the queue classification's priority axis:
-// the item carries no dispatch class letter (A/B/C), and priority=high is
-// the heavyweight class the spec demands a design artifact for — the
-// fail-safe surrogate (SPEC §C run-phase interpretation I-1, recorded in
-// progress.md §E.2).
-func (e *factoryEligibility) disqualify(cardID string, it factory.BacklogItem, inQueue bool, cls factory.CardClassification, depsMet, slotFree bool) *factoryEligibleRefusal {
+func (e *factoryEligibility) disqualify(cardID string, it factory.BacklogItem, inQueue bool, depsMet, slotFree bool) *factoryEligibleRefusal {
 	refuse := func(token, detail string) *factoryEligibleRefusal {
 		return &factoryEligibleRefusal{Token: token, CardID: cardID, Detail: detail}
 	}
@@ -1388,11 +1382,12 @@ func (e *factoryEligibility) disqualify(cardID string, it factory.BacklogItem, i
 		}
 		return refuse(factoryEligibleNotAdmitted, "card "+cardID+" is not admitted: the queue item is "+state+", not picked")
 	}
-	// 2. Class C ⇒ spec exists — the heavyweight class must carry its spec id
-	// on the queue hint (the record row has no spec column; the hint is the
-	// one carrier).
-	if cls.Priority == factory.ClassPriorityHigh && (it.SpecID == nil || strings.TrimSpace(*it.SpecID) == "") {
-		return refuse(factoryEligibleSpecMissing, "card "+cardID+" is class-C (priority high) with no spec id on the row or the queue hint")
+	// 2. spec exists — FAIL-CLOSED and classification-agnostic (amendment
+	// 0.3.0, the F1 ruling): a card with no spec id on the row or the queue
+	// hint is never leased through the generic arms, whatever its priority.
+	// The record row has no spec column; the queue hint is the one carrier.
+	if it.SpecID == nil || strings.TrimSpace(*it.SpecID) == "" {
+		return refuse(factoryEligibleSpecMissing, "card "+cardID+" carries no spec id on the row or the queue hint")
 	}
 	// 3. not held — the marker predicate is state-independent (D1): a picked
 	// card whose text opens with the marker is parked the same way a queued

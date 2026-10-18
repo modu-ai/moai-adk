@@ -312,9 +312,11 @@ func TestSD_AC014_MCPMatchesCLIWithProjectRoot(t *testing.T) {
 			// SPEC-CARD-ELIGIBLE-PULL-001 update: this arm-(b2) lease is the
 			// parity test's vehicle; the self-dispatch flag is armed so the
 			// subject (cli and mcp lease identically) keeps its coverage
-			// behind the gate.
+			// behind the gate. Amendment 0.3.0: the vehicle carries a spec id
+			// (condition 2 is fail-closed).
 			cepSelfDispatchYAML(t, root, true)
 			fcQueue(t, store, factory.BacklogStatePicked)
+			cepSetSpecID(t, store, "t1", "SPEC-PARITY-001")
 			sdRegisterLane(t, root, "lane-1")
 			sdLaneEnv(t, "lane-1", "")
 			t.Chdir(root)

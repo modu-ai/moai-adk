@@ -190,6 +190,7 @@ func TestFactoryEligiblePullOffDormancy(t *testing.T) {
 		root, store := fcFixture(t)
 		fcQueue(t, store, factory.BacklogStatePicked)
 		fcClassify(t, store, "t1", factory.ClassPriorityNormal, false, factory.ClassModeParallelizable)
+		cepSetSpecID(t, store, "t1", "SPEC-GATE-001")
 		sdRegisterLane(t, root, "lane-1")
 		fcPlace(t, root, homestate.Card{CardID: "t1", State: homestate.CardPicked})
 		before := fcCard(t, root, "t1")
@@ -209,6 +210,24 @@ func TestFactoryEligiblePullOffDormancy(t *testing.T) {
 		cepAssertRowFrozen(t, root, "t1", before)
 		cepAssertNoRefusal(t, "unreadable config", out)
 	})
+}
+
+// cepSetSpecID attaches a spec id to one queue item — the eligible-candidate
+// shape under the amended (0.3.0) fail-closed condition 2: a card with no
+// spec id anywhere is never leased through the generic arms.
+func cepSetSpecID(t *testing.T, store *factory.BacklogStore, cardID, spec string) {
+	t.Helper()
+	if err := store.Mutate(func(r *factory.BacklogRecord) error {
+		for i := range r.Items {
+			if r.Items[i].ID == cardID {
+				s := spec
+				r.Items[i].SpecID = &s
+			}
+		}
+		return nil
+	}); err != nil {
+		t.Fatalf("set %s spec id: %v", cardID, err)
+	}
 }
 
 // fcQueueItemState reads one item's queue state.
@@ -260,11 +279,32 @@ func TestFactoryEligiblePullOnGate(t *testing.T) {
 		cepAssertRowFrozen(t, root, "t1", before)
 	})
 
+	// Amendment 0.3.0 (F1 ruling): condition 2 is FAIL-CLOSED and
+	// classification-agnostic — a spec-less candidate never leases through
+	// the generic arms whatever its priority. This cell is the repair
+	// verification: under the removed priority==high surrogate, a
+	// normal-priority no-spec candidate leased.
+	t.Run("ii-b normal priority without spec: refused spec-missing (fail-closed, amendment 0.3.0)", func(t *testing.T) {
+		root, store := fcFixture(t)
+		cepSelfDispatchYAML(t, root, true)
+		fcQueue(t, store, factory.BacklogStatePicked)
+		fcClassify(t, store, "t1", factory.ClassPriorityNormal, false, factory.ClassModeParallelizable)
+		sdRegisterLane(t, root, "lane-1")
+		fcPlace(t, root, homestate.Card{CardID: "t1", State: homestate.CardPicked})
+		before := fcCard(t, root, "t1")
+		sdLaneEnv(t, "lane-1", "")
+		t.Chdir(root)
+		out := cepNoCard(t, root)
+		cepAssertRefusal(t, out, "spec-missing", "t1")
+		cepAssertRowFrozen(t, root, "t1", before)
+	})
+
 	t.Run("iii picked plus hold marker: refused hold-marker", func(t *testing.T) {
 		root, store := fcFixture(t)
 		cepSelfDispatchYAML(t, root, true)
 		fcQueue(t, store, factory.BacklogStatePicked)
 		fcClassify(t, store, "t1", factory.ClassPriorityNormal, false, factory.ClassModeParallelizable)
+		cepSetSpecID(t, store, "t1", "SPEC-GATE-001")
 		cepMarkText(t, store, "t1", autoRankHoldMarker+" parked until the audit lands")
 		sdRegisterLane(t, root, "lane-1")
 		fcPlace(t, root, homestate.Card{CardID: "t1", State: homestate.CardPicked})
@@ -281,6 +321,7 @@ func TestFactoryEligiblePullOnGate(t *testing.T) {
 		cepSelfDispatchYAML(t, root, true)
 		fcQueue(t, store, factory.BacklogStatePicked)
 		fcClassify(t, store, "t1", factory.ClassPriorityNormal, false, factory.ClassModeParallelizable)
+		cepSetSpecID(t, store, "t1", "SPEC-GATE-001")
 		sdRegisterLane(t, root, "lane-1")
 		fcPlace(t, root, homestate.Card{CardID: "t1", State: homestate.CardPicked, HintAfter: "t0"})
 		before := fcCard(t, root, "t1")
@@ -295,6 +336,7 @@ func TestFactoryEligiblePullOnGate(t *testing.T) {
 		root, store := fcFixture(t)
 		cepSelfDispatchYAML(t, root, true)
 		fcQueue(t, store, factory.BacklogStatePicked)
+		cepSetSpecID(t, store, "t1", "SPEC-GATE-005")
 		sdRegisterLane(t, root, "lane-1")
 		live := fcNow.Add(time.Hour).Format(time.RFC3339Nano)
 		fcPlace(t, root,
@@ -320,6 +362,9 @@ func TestFactoryEligiblePullOnEligible(t *testing.T) {
 	fcQueue(t, store, factory.BacklogStatePicked, factory.BacklogStatePicked)
 	fcClassify(t, store, "t1", factory.ClassPriorityNormal, false, factory.ClassModeParallelizable)
 	fcClassify(t, store, "t2", factory.ClassPriorityHigh, false, factory.ClassModeParallelizable)
+	// Amendment 0.3.0: the eligible sibling carries a spec id — condition 2
+	// is fail-closed, so eligibility now requires the id whatever the class.
+	cepSetSpecID(t, store, "t1", "SPEC-ELIGIBLE-001")
 	sdRegisterLane(t, root, "lane-1")
 	sdRegisterLane(t, root, "lane-2")
 	fcPlace(t, root,
@@ -399,6 +444,10 @@ func TestFactoryEligiblePullRefusalGrammar(t *testing.T) {
 	fcClassify(t, store, "t1", factory.ClassPriorityNormal, false, factory.ClassModeParallelizable)
 	fcClassify(t, store, "t2", factory.ClassPriorityHigh, false, factory.ClassModeParallelizable)
 	fcClassify(t, store, "t3", factory.ClassPriorityNormal, false, factory.ClassModeParallelizable)
+	// t3 carries a spec id so its FIRST disqualifier is the marker (condition 3),
+	// not the fail-closed spec check (condition 2) — each grammar line demos a
+	// distinct token.
+	cepSetSpecID(t, store, "t3", "SPEC-GRAMMAR-003")
 	cepMarkText(t, store, "t3", autoRankHoldMarker+" parked")
 	sdRegisterLane(t, root, "lane-1")
 	fcPlace(t, root,

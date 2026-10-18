@@ -40,6 +40,9 @@ func TestReviewFindingMergedPRPredecessor(t *testing.T) {
 	// reads as merged, so depsMet holds and the lease proceeds).
 	cepSelfDispatchYAML(t, root, true)
 	fcQueue(t, store, factory.BacklogStateHold, factory.BacklogStatePicked)
+	// Amendment 0.3.0: t2 carries a spec id — condition 2 is fail-closed, and
+	// this test's vehicle is the (b) lease of t2.
+	cepSetSpecID(t, store, "t2", "SPEC-REVIEW-001")
 	for _, id := range []string{"t1", "t2"} {
 		fcClassify(t, store, id, factory.ClassPriorityNormal, false, factory.ClassModeParallelizable)
 	}

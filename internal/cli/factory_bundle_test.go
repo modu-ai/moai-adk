@@ -370,6 +370,9 @@ func TestFactoryNextAfterGuardCountsOtherRunsMerges(t *testing.T) {
 	// t1 is queue-held with no row in the current run: its merge lives only
 	// in run-prev, and no arm may take or re-record t1 itself.
 	fcQueue(t, store, factory.BacklogStateHold, factory.BacklogStatePicked)
+	// Amendment 0.3.0: t2 carries a spec id — condition 2 is fail-closed, and
+	// this test's vehicle is the (b) lease of t2.
+	cepSetSpecID(t, store, "t2", "SPEC-AFTERGUARD-001")
 	fcClassify(t, store, "t1", factory.ClassPriorityNormal, false, factory.ClassModeParallelizable)
 	fcClassify(t, store, "t2", factory.ClassPriorityNormal, false, factory.ClassModeParallelizable)
 	fcPlace(t, root,

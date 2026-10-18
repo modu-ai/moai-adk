@@ -19,7 +19,9 @@ notes: 플랜 페이스 종결 — 플랜 페이스는 문서만 작성·갱신(
 
 **Base pin (plan §C.1, recomputed at run-phase entry)**: branch `WT-10-17-c`, HEAD `51b6ffc98` (2026-10-18). Delegation-time HEAD was `e43b3eea2`; the two commits between them (`e43b3eea2`, `51b6ffc98`) are the coordinator's kickoff-gate docs commits (§E.1 audit_ready token + plan-audit-iter2 convention copy) — code-untouched, outside this SPEC's file scope. Kickoff confirmed by coordinator message: factory gate approved `t1839: run (v11)`, lease restored to lane-17. Plan-audit skip-eligibility for the Phase-1 gate: verdict PASS (rule-C delta audit, receipt `rcpt-d75ece55c14bd82d83f5ec47e`), Tier M threshold met, plan_artifact_hash `4ac6eca4…f3c1` unchanged since the verdict — skip taken per the three-condition contract.
 
-**Run-phase interpretation I-1 (recorded for operator/auditor review, not a SPEC edit)**: REQ-CEP-003 condition 2 names "유효 분류(EffectiveCardClassification)가 Class C인 카드" — the queue classification (`internal/factory/classification.go` `CardClassification`) carries priority/blocked/mode and NO dispatch class letter (A/B/C). Implemented surrogate: `Priority == ClassPriorityHigh` is treated as the heavyweight class that must carry a spec id (fail-safe direction; AC-CEP-003's "Class C 아님 + 무spec ⇒ 통과" cell forces a discriminating predicate, and priority is the only mechanical axis). Flagged for the sync audit; reversible in one predicate line.
+**Run-phase interpretation I-1 — SUPERSEDED by amendment 0.3.0 (commit `909a89d53`, F1 ruling)**: the `Priority == ClassPriorityHigh` surrogate for REQ-CEP-003 condition 2 was removed; the condition is now fail-closed and classification-agnostic (no spec id ⇒ always `spec-missing`). The original note is preserved below for the audit trail.
+
+**Run-phase interpretation I-1 (superseded — original record)**: REQ-CEP-003 condition 2 names "유효 분류(EffectiveCardClassification)가 Class C인 카드" — the queue classification (`internal/factory/classification.go` `CardClassification`) carries priority/blocked/mode and NO dispatch class letter (A/B/C). Implemented surrogate: `Priority == ClassPriorityHigh` is treated as the heavyweight class that must carry a spec id (fail-safe direction; the pre-amendment AC-CEP-003's "Class C 아님 + 무spec ⇒ 통과" cell forced a discriminating predicate, and priority was the only mechanical axis). The sync-audit round-1 F1 finding (codex bidirectional divergence, receipt `rcpt-b7f73391…`) rejected the surrogate; the F1 ruling (leader board d-20261018T021007Z-2620, operator delegation + Jev 0.98) made the requirement fail-closed via in-place amendment 0.3.0.
 
 ### Pre-flight (plan §C.2/C.3)
 
@@ -217,6 +219,31 @@ All runs on the pre-gate tree (M3 not yet implemented); anchored selectors per p
   Bare `fbLeasedCard` + t2 unowned picked row = arm-(b) vehicle. Repair: fixture arms the flag — the subject (merged-pr predecessor must not block the successor) now rides the gate's condition 4. GREEN: `--- PASS: TestReviewFindingMergedPRPredecessor (4.40s)` (`ok … 5.981s`).
 - **All other sweep hits cleared by inspection** (nominated `--card` or arm-(a)/(c) vehicles, out of gate scope): quota t1516 wait shape (assigned row), lease-operator held-assigned (no-card expected), m4/launcher codex-env (launcher must NOT lease; child leases nominated), lease-bound stall rows (nominated + bare arm (c) queued), lane-join-guard (`--card` nominated), review sibling tests (`--card`), nominate family (`--card`), t1533/quota-worktrees/carry/claim-deadline/harness (no bare-next picked vehicles).
 - **F2 repair verification (anchored, one selector)**: `go test ./internal/cli/ -run '^TestFactoryEligiblePull.*$|^TestFactoryLeaseSectionRecordWritesPerArm$|^TestReviewFindingMergedPRPredecessor$|^TestSD_AC008_NextSelectionOrderAndOutput$|^TestFactoryNextAfterGuardCountsOtherRunsMerges$|^TestSD_AC014_MCPMatchesCLIWithProjectRoot$' -count=1` — `ok github.com/modu-ai/moai-adk/internal/cli 168.104s`.
+
+### Amendment 0.3.0 run — F1 repair: fail-closed condition 2 — 2026-10-18 (tree `abcddd597` → F1 commit)
+
+Amendment `909a89d53` (F1 ruling: leader board d-20261018T021007Z-2620, operator delegation + Jev 0.98; sync-audit F1 codex divergence receipt `rcpt-b7f73391…`): REQ-CEP-003 condition 2 is fail-closed — a card with no spec id (row or queue hint) is NEVER leased through arms (b)/(b2), always refused `spec-missing`, classification/priority-agnostic. The priority==high surrogate is removed; interpretation I-1 marked SUPERSEDED above.
+
+- **RED (amended AC-CEP-003 (a) cell on the surrogate tree, tree `abcddd597` + test edits)** — `go test ./internal/cli/ -run '^TestFactoryEligiblePullOnGate$|^TestFactoryEligiblePullOnEligible$' -count=1 -v`:
+  ```
+  === RUN   TestFactoryEligiblePullOnGate/ii-b_normal_priority_without_spec:_refused_spec-missing_(fail-closed,_amendment_0.3.0)
+      factory_card_eligible_pull_test.go:296: gate refusal: expected an error, got nil
+  --- FAIL: TestFactoryEligiblePullOnGate (18.56s)
+  ```
+  Why red: the surrogate leased the normal-priority no-spec candidate — exactly the audit's divergence case. (OnEligible with the spec-carrying eligible sibling passed on the surrogate tree too, as expected.)
+- **Implementation**: `disqualify` condition 2 loses the `cls.Priority == ClassPriorityHigh` conjunct and the `cls` parameter; detail reworded to `card <id> carries no spec id on the row or the queue hint`. Doc comment cites amendment 0.3.0.
+- **Amended tests**: OnGate gains cell `ii-b` (normal no-spec ⇒ refused, the F1 repair-verification cell); OnEligible's eligible sibling t1 carries `SPEC-ELIGIBLE-001` (amended AC-CEP-003 (c)); single-defect cells iii/iv/v and the grammar fixture's marker candidate carry spec ids so each cell's targeted condition is the FIRST disqualifier under fail-closed ordering.
+- **Vehicle REDs under fail-closed (observed verbatim pre-fix)** — the four flag-armed vehicles lease spec-less unowned picked cards, so condition 2 now refuses them first:
+  ```
+  --- FAIL: TestFactoryNextAfterGuardCountsOtherRunsMerges — factory_bundle_test.go:383: lane-1's lease = "", want t2
+  --- FAIL: TestFactoryLeaseSectionRecordWritesPerArm — factory_lease_section_test.go:210: next: factory next: no card is available  [arm-b, arm-b2 rows]
+  --- FAIL: TestSD_AC014_MCPMatchesCLIWithProjectRoot — factory_m3_test.go:332: cli next: factory next: no card is available
+  --- FAIL: TestReviewFindingMergedPRPredecessor — review_observation_test.go:50: predecessor=merged-pr; factory next leased=""
+  ```
+  Repairs: each vehicle's leased candidate carries a spec id (`SPEC-FAL-ARM-001` / `SPEC-AFTERGUARD-001` / `SPEC-PARITY-001` / `SPEC-REVIEW-001`) via `cepSetSpecID` — subjects unchanged.
+- **GREEN — full anchored verification (one selector)**: `go test ./internal/cli/ -run '^TestFactoryEligiblePull.*$|^TestFactoryLeaseSectionRecordWritesPerArm$|^TestFactoryNextAfterGuardCountsOtherRunsMerges$|^TestSD_AC014_MCPMatchesCLIWithProjectRoot$|^TestReviewFindingMergedPRPredecessor$|^TestSD_AC008_NextSelectionOrderAndOutput$' -count=1` — `ok github.com/modu-ai/moai-adk/internal/cli 179.895s` (OnGate 6 cells incl. ii-b; OnEligible spec-carrying sibling leases, spec-less sibling refused; OffDormancy/Traceless/Grammar unchanged-green; all four vehicles green; flipped AC008 green).
+- **Narrowed companions**: `go test ./internal/config/ -run '^TestWorkflowFactorySelfDispatchDefault$' -count=1` — `ok … 0.371s`; `go vet ./internal/cli/ ./internal/config/` — exit 0; `golangci-lint run ./internal/cli/... ./internal/config/...` — `3 issues: * errcheck: 3` (= baseline, 0 NEW).
+- **GAP (unchanged)**: package-wide `internal/cli` suite not run locally (rule 35e9 — batch CI owns it).
 
 ## §E.3 Run-phase Audit-Ready Signal
 

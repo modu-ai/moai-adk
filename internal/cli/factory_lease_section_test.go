@@ -136,6 +136,10 @@ func TestFactoryLeaseSectionRecordWritesPerArm(t *testing.T) {
 			root, store := nmBase(t, c.itemState)
 			if c.selfDispatch {
 				cepSelfDispatchYAML(t, root, true)
+				// Amendment 0.3.0: condition 2 is fail-closed — the generic-arm
+				// vehicles carry a spec id so the lease (and the atomicity
+				// subject under it) stays reachable.
+				cepSetSpecID(t, store, "t1", "SPEC-FAL-ARM-001")
 			}
 			if c.row != nil {
 				fcPlace(t, root, *c.row)
