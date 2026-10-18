@@ -28,6 +28,11 @@ type RequiredChecks struct {
 	// Auxiliary lists check context names that run on PRs but do NOT block merge.
 	// Consumed by Round 2 CI watch loop to discriminate required vs advisory failures.
 	Auxiliary []string `yaml:"auxiliary,omitempty"`
+	// ReleaseGate lists the check-run names scripts/release.sh demands on the
+	// commit it is about to tag (the names ci.yml publishes on a push to main).
+	// It must be a subset of Branches["main"].Contexts. scripts/release.sh reads
+	// this block directly, so the script carries no check name of its own.
+	ReleaseGate []string `yaml:"release_gate,omitempty"`
 }
 
 // LoadRequiredChecks reads and parses .github/required-checks.yml from the given
