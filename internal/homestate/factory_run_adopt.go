@@ -144,11 +144,31 @@ func (f *FactoryDB) FindOrphanRuns(ctx context.Context, opts ReconcileOptions) (
 	return orphans, nil
 }
 
+// FindRunOwner classifies the ONE named run, whatever its classification —
+// the deliberate --factory-run adopt classifies the run it is pointed at; it
+// does not require an orphan (SPEC-FACTORY-LEADER-ADOPT-CORE-001 M2). A run
+// id the database does not hold is an error.
+func (f *FactoryDB) FindRunOwner(ctx context.Context, opts ReconcileOptions, runID string) (RunOwner, error) {
+	owners, err := f.classifyRuns(ctx, opts, "")
+	if err != nil {
+		return RunOwner{}, err
+	}
+	for _, o := range owners {
+		if o.RunID == runID {
+			return o, nil
+		}
+	}
+	return RunOwner{}, fmt.Errorf("factory run %s not found", runID)
+}
+
 // AdoptRun re-adopts one ACTIVE run for the resuming leader process: it
 // restamps the owner identity to the supplied pid and process-start
-// fingerprint and appends one run.resumed event carrying the adoption basis,
-// so the audit trail records why the run id stayed the same across the leader
-// process change (card t1707).
+// fingerprint, writes the adopting leader's backend on the row, and appends
+// one run.resumed event carrying the adoption basis, so the audit trail
+// records why the run id stayed the same across the leader process change
+// (card t1707; the backend write is SPEC-FACTORY-LEADER-ADOPT-CORE-001's
+// plan-audit D1 — a takeover that skipped it would leave the prior leader's
+// backend on the row).
 //
 // adopt is the finder's classified candidate, and its recorded owner stamp is
 // part of the write's WHERE clause: the restamp is a compare-and-set on the
@@ -158,12 +178,15 @@ func (f *FactoryDB) FindOrphanRuns(ctx context.Context, opts ReconcileOptions) (
 // identity (sync-audit finding F1). The row must still measure active under
 // that stamp; anything else is refused with an error, because re-activating a
 // retired row is the ResumeRun discovery path's decision, not this one.
-func (f *FactoryDB) AdoptRun(ctx context.Context, adopt RunOwner, pid int, processStart, basis string) error {
+func (f *FactoryDB) AdoptRun(ctx context.Context, adopt RunOwner, pid int, processStart, backend, basis string) error {
 	if strings.TrimSpace(adopt.RunID) == "" {
 		return errors.New("factory run id is empty")
 	}
 	if pid < 1 || strings.TrimSpace(processStart) == "" {
 		return errors.New("factory run adoption requires the resuming owner identity")
+	}
+	if strings.TrimSpace(backend) == "" {
+		return errors.New("factory run adoption requires the adopting leader's backend")
 	}
 	if strings.TrimSpace(basis) == "" {
 		return errors.New("factory run adoption requires a basis")
@@ -174,8 +197,8 @@ func (f *FactoryDB) AdoptRun(ctx context.Context, adopt RunOwner, pid int, proce
 		return err
 	}
 	defer func() { _ = tx.Rollback() }()
-	res, err := tx.ExecContext(ctx, `UPDATE runs SET lead_pid=?, lead_process_start=?, updated_at=? WHERE run_id=? AND status='active' AND lead_pid=? AND lead_process_start=?`,
-		pid, processStart, now, adopt.RunID, adopt.LeadPID, adopt.LeadProcessStart)
+	res, err := tx.ExecContext(ctx, `UPDATE runs SET lead_pid=?, lead_process_start=?, lead_backend=?, updated_at=? WHERE run_id=? AND status='active' AND lead_pid=? AND lead_process_start=?`,
+		pid, processStart, backend, now, adopt.RunID, adopt.LeadPID, adopt.LeadProcessStart)
 	if err != nil {
 		return err
 	}

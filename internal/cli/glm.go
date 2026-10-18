@@ -271,9 +271,18 @@ func runGLM(cmd *cobra.Command, args []string) error {
 		// Same resume re-adoption as the cc leader (card t1707): the run id
 		// survives only in the launch environment, so a resumed GLM leader
 		// would otherwise mint a new run over the live one.
-		adopted, adoptErr := leaderEntryRunAdoption(launchProjectRoot(), filteredArgs, leaderLabel, priorRunID, entry.FactoryRun, cmd.ErrOrStderr())
+		adopted, adoptErr := leaderEntryRunAdoption(launchProjectRoot(), filteredArgs, leaderLabel, priorRunID, entry.FactoryRun, factory.BackendGLM, cmd.ErrOrStderr())
 		if adoptErr != nil {
 			return fmt.Errorf("re-adopt factory run: %w", adoptErr)
+		}
+		// Same explicit --factory-run takeover as the cc leader
+		// (SPEC-FACTORY-LEADER-ADOPT-CORE-001 REQ-FLAC-003), with the GLM
+		// backend recorded on the row; see cc.go for the placement rationale.
+		if adopted == "" && entry.FactoryRun != "" {
+			adopted, adoptErr = adoptExplicitLeaderRun(launchProjectRoot(), entry.FactoryRun, factory.BackendGLM)
+			if adoptErr != nil {
+				return adoptErr
+			}
 		}
 		// Same recording as the cc leader: the factory run state a lane's -l join
 		// resolves. Without it every GLM-led run is unjoinable

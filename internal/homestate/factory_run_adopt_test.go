@@ -145,7 +145,7 @@ func TestAdoptRunRestampsOwnerAndAppendsResumedEvent(t *testing.T) {
 	mustRecordRun(t, db, FactoryRun{RunID: "run-old", ManifestJSON: "{}", LeadPID: 20, LeadProcessStart: "gone"})
 
 	adopt := RunOwner{RunID: "run-old", LeadPID: 20, LeadProcessStart: "gone"}
-	if err := db.AdoptRun(context.Background(), adopt, 4242, "new-start", "leader-resume-adoption"); err != nil {
+	if err := db.AdoptRun(context.Background(), adopt, 4242, "new-start", "claude", "leader-resume-adoption"); err != nil {
 		t.Fatalf("adopt: %v", err)
 	}
 	var pid int
@@ -175,11 +175,11 @@ func TestAdoptRunRefusesChangedStamp(t *testing.T) {
 	mustRecordRun(t, db, FactoryRun{RunID: "run-old", ManifestJSON: "{}", LeadPID: 20, LeadProcessStart: "gone"})
 
 	first := RunOwner{RunID: "run-old", LeadPID: 20, LeadProcessStart: "gone"}
-	if err := db.AdoptRun(context.Background(), first, 4242, "first-resume", "leader-resume-adoption"); err != nil {
+	if err := db.AdoptRun(context.Background(), first, 4242, "first-resume", "claude", "leader-resume-adoption"); err != nil {
 		t.Fatalf("first adopt: %v", err)
 	}
 	second := RunOwner{RunID: "run-old", LeadPID: 20, LeadProcessStart: "gone"}
-	if err := db.AdoptRun(context.Background(), second, 5151, "second-resume", "leader-resume-adoption"); err == nil {
+	if err := db.AdoptRun(context.Background(), second, 5151, "second-resume", "claude", "leader-resume-adoption"); err == nil {
 		t.Fatalf("second adopt with the stale stamp succeeded; it must be refused")
 	}
 	var pid int
@@ -201,7 +201,7 @@ func TestAdoptRunRefusesNonActiveRun(t *testing.T) {
 		t.Fatalf("reconcile: %v", err)
 	}
 	adopt := RunOwner{RunID: "run-gone", LeadPID: 20, LeadProcessStart: "gone"}
-	if err := db.AdoptRun(context.Background(), adopt, 4242, "new-start", "leader-resume-adoption"); err == nil {
+	if err := db.AdoptRun(context.Background(), adopt, 4242, "new-start", "claude", "leader-resume-adoption"); err == nil {
 		t.Fatalf("AdoptRun on a retired run succeeded; it must refuse")
 	}
 	if got := runStatus(t, db, "run-gone"); got != "retired" {

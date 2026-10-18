@@ -211,9 +211,23 @@ func runClaudeEntry(cmd *cobra.Command, args []string, commandName, mode, backen
 		// run over the live one and the dead-owner reconciliation would retire
 		// the prior run's records behind it. Shared with the glm leader, which
 		// mirrors this entry exactly.
-		adopted, adoptErr := leaderEntryRunAdoption(launchProjectRoot(), filteredArgs, leaderLabel, priorRunID, entry.FactoryRun, cmd.ErrOrStderr())
+		adopted, adoptErr := leaderEntryRunAdoption(launchProjectRoot(), filteredArgs, leaderLabel, priorRunID, entry.FactoryRun, backend, cmd.ErrOrStderr())
 		if adoptErr != nil {
 			return fmt.Errorf("re-adopt factory run: %w", adoptErr)
+		}
+		// The explicit --factory-run takeover (SPEC-FACTORY-LEADER-ADOPT-CORE-001
+		// REQ-FLAC-003): the run the operator named is taken over through the
+		// same adoption write the resume path uses — compare-and-set, one
+		// run.resumed event, the adopted address republished — instead of the
+		// unconditional restamp. The codex-led and live-legacy-peer refusals
+		// already returned from enterSelectedFactoryRun; this write's own
+		// refusal (the owner changed since classification) returns unchanged
+		// and aborts the launch before anything is recorded.
+		if adopted == "" && entry.FactoryRun != "" {
+			adopted, adoptErr = adoptExplicitLeaderRun(launchProjectRoot(), entry.FactoryRun, backend)
+			if adoptErr != nil {
+				return adoptErr
+			}
 		}
 		if err := recordLeaderRunStart(launchProjectRoot(), adopted, backend, entry.Spec, factoryDeclaredLanes(entry)); err != nil {
 			return err

@@ -25,6 +25,26 @@ import (
 // run.resumed event, so the audit trail names why the run id survived.
 const leaderResumeAdoptionBasis = "leader-resume-adoption"
 
+// leaderStartAdoptionBasis is the basis the DELIBERATE --factory-run adopt
+// records in the run's run.resumed event — distinct from the resume
+// adoption's leaderResumeAdoptionBasis, so the audit trail tells the two
+// entries apart (SPEC-FACTORY-LEADER-ADOPT-CORE-001 plan A4).
+const leaderStartAdoptionBasis = "leader-start-adoption"
+
+// classifyNamedRun resolves the ONE named run's owner classification for the
+// deliberate adopt. Production reads it through homestate.FindRunOwner with
+// the production reconcile options; the owner-change test overrides it to
+// restamp the row between classification and write (AC-FLAC-004(c), the
+// competing writer inside the classify-to-write window).
+var classifyNamedRun = func(ctx context.Context, root, runID string) (homestate.RunOwner, error) {
+	db, err := homestate.OpenFactory(root)
+	if err != nil {
+		return homestate.RunOwner{}, err
+	}
+	defer closeFactoryInto(&err, db, "factory state")
+	return db.FindRunOwner(ctx, factorymsg.ReconcileOptionsFor(root), runID)
+}
+
 // leaderRunIDWasMinted reports whether the run id the leader entry published
 // was freshly minted — the condition under which resume re-adoption may
 // replace it. An id the operator supplied explicitly (a pasted
@@ -61,7 +81,7 @@ func leaderRunIDWasMinted(leaderLabel, priorEnvRunID string) bool {
 // means "mint as before"; an error is a factory database failure and
 // propagates, matching recordFactoryRunStart's own failure contract at the
 // same call site.
-func adoptResumedLeaderRun(root string, shouldAdopt bool, warn io.Writer) (adopted string, err error) {
+func adoptResumedLeaderRun(root string, shouldAdopt bool, backend string, warn io.Writer) (adopted string, err error) {
 	if !shouldAdopt {
 		return "", nil
 	}
@@ -103,12 +123,48 @@ func adoptResumedLeaderRun(root string, shouldAdopt bool, warn io.Writer) (adopt
 		fmt.Fprintf(warn, "factory leader resume: run %s holds live legacy record %q from a binary before the leader/lane rename — adopting nothing; end its sessions and retire with 'moai factory runs --retire %s' first\n", adopt.RunID, value, adopt.RunID)
 		return "", nil
 	}
-	if err := db.AdoptRun(context.Background(), adopt, os.Getpid(), homestate.CurrentProcessFingerprint(), leaderResumeAdoptionBasis); err != nil {
+	if err := db.AdoptRun(context.Background(), adopt, os.Getpid(), homestate.CurrentProcessFingerprint(), backend, leaderResumeAdoptionBasis); err != nil {
 		return "", err
 	}
 	_ = os.Setenv(config.EnvFactoryRunID, adopt.RunID)
 	_ = os.Setenv(config.EnvFactoryLeadAddr, factory.FactoryLeaderSocketPath(adopt.RunID))
 	return adopt.RunID, nil
+}
+
+// adoptExplicitLeaderRun takes the run named by --factory-run over through
+// the same adoption write the resume adoption uses
+// (SPEC-FACTORY-LEADER-ADOPT-CORE-001 REQ-FLAC-003): a compare-and-set on the
+// owner identity the launch itself classified (whatever that classification
+// is — the deliberate adopt classifies the run it is pointed at), one
+// run.resumed event carrying the leader-start-adoption basis, no second run
+// row, no run.started event, the run's lane capacity untouched, and the
+// adopted id and its conventional address republished exactly as the resume
+// path republishes them. backend is the adopting launcher's own backend; the
+// adoption write lands it on the runs row in the same transaction as the
+// stamp (plan-audit D1).
+//
+// The codex-led and live-legacy-peer refusals are NOT re-implemented here:
+// enterSelectedFactoryRun already applies both as errors before this point,
+// and REQ-FLAC-004's abort is this write's own refusal (the owner changed
+// between classification and write, so the compare-and-set misses) returning
+// unchanged — nothing minted, nothing modified; the first write of the launch
+// is still recordLeaderRunStart, which this precedes.
+func adoptExplicitLeaderRun(root, runID, backend string) (string, error) {
+	owner, err := classifyNamedRun(context.Background(), root, runID)
+	if err != nil {
+		return "", err
+	}
+	db, openErr := homestate.OpenFactory(root)
+	if openErr != nil {
+		return "", openErr
+	}
+	defer closeFactoryInto(&err, db, "factory state")
+	if err := db.AdoptRun(context.Background(), owner, os.Getpid(), homestate.CurrentProcessFingerprint(), backend, leaderStartAdoptionBasis); err != nil {
+		return "", err
+	}
+	_ = os.Setenv(config.EnvFactoryRunID, runID)
+	_ = os.Setenv(config.EnvFactoryLeadAddr, factory.FactoryLeaderSocketPath(runID))
+	return runID, nil
 }
 
 // strictResumeCarrierSeen reports whether the args carry an EXPLICIT resume
@@ -159,10 +215,12 @@ func strictResumeCarrierSeen(args []string) bool {
 // exactly except for the backend constant. It computes the call site's
 // combined gate — an EXPLICIT resume carrier (strictResumeCarrierSeen) AND a
 // freshly minted id AND no explicit --factory-run — and re-adopts the prior
-// run when it holds.
-func leaderEntryRunAdoption(root string, args []string, leaderLabel, priorRunID, explicitRun string, warn io.Writer) (string, error) {
+// run when it holds. backend is the resuming launcher's backend, which the
+// adoption write lands on the runs row (the row already names this leader as
+// its owner — a same-direction truth).
+func leaderEntryRunAdoption(root string, args []string, leaderLabel, priorRunID, explicitRun, backend string, warn io.Writer) (string, error) {
 	resumeSeen := strictResumeCarrierSeen(args)
-	return adoptResumedLeaderRun(root, resumeSeen && explicitRun == "" && leaderRunIDWasMinted(leaderLabel, priorRunID), warn)
+	return adoptResumedLeaderRun(root, resumeSeen && explicitRun == "" && leaderRunIDWasMinted(leaderLabel, priorRunID), backend, warn)
 }
 
 // recordLeaderRunStart records the leader entry's run start: on the adopted

@@ -70,7 +70,7 @@ func TestAdoptResumedLeaderRunAdoptsSingleCandidate(t *testing.T) {
 
 	t.Setenv(config.EnvFactoryRunID, "minted01")
 	var warn bytes.Buffer
-	adopted, err := adoptResumedLeaderRun(root, true, &warn)
+	adopted, err := adoptResumedLeaderRun(root, true, BackendClaude, &warn)
 	if err != nil {
 		t.Fatalf("adopt: %v", err)
 	}
@@ -113,7 +113,7 @@ func TestAdoptResumedLeaderRunSkipsWhenNotResumeShaped(t *testing.T) {
 
 	t.Setenv(config.EnvFactoryRunID, "minted01")
 	var warn bytes.Buffer
-	adopted, err := adoptResumedLeaderRun(root, false, &warn)
+	adopted, err := adoptResumedLeaderRun(root, false, BackendClaude, &warn)
 	if err != nil {
 		t.Fatalf("adopt: %v", err)
 	}
@@ -142,7 +142,7 @@ func TestAdoptResumedLeaderRunWarnsOnMultipleCandidates(t *testing.T) {
 
 	t.Setenv(config.EnvFactoryRunID, "minted01")
 	var warn bytes.Buffer
-	adopted, err := adoptResumedLeaderRun(root, true, &warn)
+	adopted, err := adoptResumedLeaderRun(root, true, BackendClaude, &warn)
 	if err != nil {
 		t.Fatalf("adopt: %v", err)
 	}
@@ -170,7 +170,7 @@ func TestAdoptResumedLeaderRunMintsWhenNoCandidates(t *testing.T) {
 
 	t.Setenv(config.EnvFactoryRunID, "minted01")
 	var warn bytes.Buffer
-	adopted, err := adoptResumedLeaderRun(root, true, &warn)
+	adopted, err := adoptResumedLeaderRun(root, true, BackendClaude, &warn)
 	if err != nil {
 		t.Fatalf("adopt: %v", err)
 	}
@@ -206,7 +206,7 @@ func TestAdoptResumedLeaderRunWarnsCodexLedCandidate(t *testing.T) {
 
 	t.Setenv(config.EnvFactoryRunID, "minted01")
 	var warn bytes.Buffer
-	adopted, err := adoptResumedLeaderRun(root, true, &warn)
+	adopted, err := adoptResumedLeaderRun(root, true, BackendClaude, &warn)
 	if err != nil {
 		t.Fatalf("adopt: %v", err)
 	}

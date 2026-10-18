@@ -70,3 +70,35 @@ ok  	github.com/modu-ai/moai-adk/internal/homestate	0.812s
 E4 regression guards stay green after M1 (9/9, each `ok`): TestAdoptRunRefusesChangedStamp, TestLiveRecordsTerminalSetMatchesSharedDefinition, TestReconcilePreservesDeadOwnerRunWithLiveRecords, TestReconcilePreservesDeadOwnerWithOnlyWorkers, TestReconcileRetiresDeadOwnerWithTerminalRecordsOnly, TestFindResumableRunAdoptsSingleDeadOwnerWithLiveRecords, TestFindResumableRunSkipsLiveOwner, TestFindResumableRunSkipsRunWithoutLiveRecords, TestFindResumableRunReportsMultipleCandidates.
 
 `gofmt -l` on the two touched files: clean. spec.md frontmatter `draft → in-progress` recorded on this milestone's commit (Status Transition Ownership Matrix, manager-develop).
+
+### M2 — Deliberate adopt through the adoption write (AC-FLAC-003, AC-FLAC-004) — commit `<M2-SHA>`
+
+RED (pre-fix, verbatim; the seam and the explicit-adopt path do not exist yet — the E2 swept set covers these names at 0/9):
+
+```text
+$ go test ./internal/cli -run 'TestExplicitFactoryRunAdoptTakesOverAtomically' -count=1 -v
+# github.com/modu-ai/moai-adk/internal/cli [github.com/modu-ai/moai-adk/internal/cli.test]
+internal/cli/factory_leader_orphan_test.go:312:11: undefined: classifyNamedRun
+internal/cli/factory_leader_orphan_test.go:313:3: undefined: classifyNamedRun
+internal/cli/factory_leader_orphan_test.go:328:22: undefined: classifyNamedRun
+FAIL	github.com/modu-ai/moai-adk/internal/cli [build failed]
+FAIL
+```
+
+GREEN (verbatim, post-fix):
+
+```text
+$ go test ./internal/cli -run 'TestExplicitFactoryRunAdoptTakesOverAtomically' -count=1 -v
+--- PASS: TestExplicitFactoryRunAdoptTakesOverAtomically (5.81s)
+    --- PASS: TestExplicitFactoryRunAdoptTakesOverAtomically/dead-stamp_cross-backend (2.30s)
+    --- PASS: TestExplicitFactoryRunAdoptTakesOverAtomically/live-owner (3.51s)
+ok  github.com/modu-ai/moai-adk/internal/cli	7.154s
+$ go test ./internal/cli -run 'TestExplicitFactoryRunAdoptRefusals' -count=1 -v
+--- PASS: TestExplicitFactoryRunAdoptRefusals (8.33s)
+    --- PASS: TestExplicitFactoryRunAdoptRefusals/codex-led (2.56s)
+    --- PASS: TestExplicitFactoryRunAdoptRefusals/live-legacy-peer (1.44s)
+    --- PASS: TestExplicitFactoryRunAdoptRefusals/owner-change-race (4.32s)
+ok  github.com/modu-ai/moai-adk/internal/cli	9.570s
+```
+
+E3 regression guards stay green after M2 (10/10, each `ok`): TestAdoptResumedLeaderRunAdoptsSingleCandidate, TestAdoptResumedLeaderRunSkipsWhenNotResumeShaped, TestAdoptResumedLeaderRunWarnsOnMultipleCandidates, TestAdoptResumedLeaderRunMintsWhenNoCandidates, TestAdoptResumedLeaderRunWarnsCodexLedCandidate, TestStrictResumeCarrierSeen, TestLeaderRunIDWasMinted, TestFactoryLeadRefusesCodexLedRun, TestFactoryJoinAndLeadAcceptNonCodexRun, TestFactorySkillAssertionsMatchBehavior. The AdoptRun signature's mechanical test-caller updates leave their assertions untouched (TestAdoptRunRestampsOwnerAndAppendsResumedEvent, TestAdoptRunRefusesChangedStamp, TestAdoptRunRefusesNonActiveRun, TestRetireRunIfDead* all `ok`). `GOOS=windows GOARCH=amd64 go build ./...` exit 0. `gofmt -l` on all eight touched files: clean.
