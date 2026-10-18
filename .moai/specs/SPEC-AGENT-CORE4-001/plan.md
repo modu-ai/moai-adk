@@ -1,84 +1,85 @@
 ---
 id: SPEC-AGENT-CORE4-001
 title: "Plan: piece 1"
-version: "0.2.0"
+version: "0.3.0"
 created: 2026-10-18
 ---
 
 # plan.md — SPEC-AGENT-CORE4-001 (piece 1)
 
-Tier M (see §F). TDD per `quality.yaml` `development_mode: tdd`; characterization first because the
-neutral layer must reproduce shipped bytes. No time estimates.
+Tier L (§F). TDD per `quality.yaml` `development_mode: tdd`; characterization first because the
+agent source layer must reproduce shipped bytes. No time estimates. Design: `design.md`.
 
 ## §A Decisions most likely to change (reviewed first)
 
-1. Neutral frontmatter and capability tokens (new data model; every later piece builds on it).
-2. Q4: C1 = C2 for the carried four reverses `AGENTS.local.md` §2.0 (open product decision; gates M2 only).
-3. The pinned changed-line list for the carried four (wording of the path-free replacements).
-4. Location of neutral sources: `internal/template/agentemit/neutral/` (outside `templates/`, not distributed).
+1. Q17 — from M1 on C2 is generated, which reverses `AGENTS.local.md` §2.0 ("C2 hand-edited"); gates M1 onward.
+2. Q4 — C1 = C2 for the carried four; gates M2.
+3. The agent source data model (frontmatter, capability tokens, block semantics) — `design.md` §1.
+4. Q19 — the manager-design line 206 citation (chosen: the existing `delegation.yaml`).
 
-## §B Design (compact)
+## §B Gating by open decisions
 
-- **Neutral file**: frontmatter `name`, `description`, `capabilities` (ordered neutral tokens),
-  `sandbox`, `model`, `effort`, `skills`, `memory`, `hooks`; then the body. Two optional blocks,
-  `<!-- claude-only -->...<!-- /claude-only -->` and `<!-- codex-only -->...`, are kept in the
-  matching render and removed from the other.
-- **Capability expansion**: a table in the manifest maps each neutral token to the exact ordered
-  Claude tool names it expands to (for example a write token to `Write, Edit`; MCP groups to their
-  `mcp__moai__*` names). The Codex side keeps the existing class mapping in `agents-codex.yaml`.
-  A token with no entry fails emission naming file and token. The expansion must reproduce each
-  current `tools:` line byte for byte; if one cannot be expressed, the token set grows, never a raw
-  escape hatch.
-- **Render**: `Render(neutral) -> C2 bytes`; the existing `emitAll` then derives C3 from those
-  bytes as today, so the C3 contract is untouched. `make agents-emit` writes C2, C3 (all twelve) and
-  C1, C3p (carried four); `make agents-emit-check` re-renders in memory, compares the same sets and
-  never writes; it prints `specs=<n> copies=<k> diff=<d>`.
-- **Carried-four wording**: skills and files are named, not path-prefixed (a skill is "the
-  `moai-workflow-testing` skill, file `references/e2e-desktop-native-recipes.md`"). The 8 changed C2
-  lines are listed in `testdata/carried-four-lines.txt` (old line, new line).
-- **Project root**: piece 1 adds no hook or path guard; nothing resolves a project root (D2 moved to piece 2).
+| Milestone | Needs | Implementable without it |
+|---|---|---|
+| M0 | nothing | yes — pure measurement and pin, no behavior change |
+| M1 | Q17 verdict recorded | code can be written and tested on the branch; it must not land (merge to local main) before Q17, because landing flips every concurrent lane's edit workflow |
+| M2 | Q4 (and Q17) | no |
+
+Verdicts on open Q rows are recorded in `progress.md` `## §F Operator verdicts` (a non-hashed
+section, new letter per the section-letter rule), never by editing `decision-index.md` after audit
+(which is in the plan-artifact hash). A recorded verdict is a precondition line of the M1/M2 gate.
+Transition for in-flight cards that edit a C2 file while M1 lands: the lane absorbs main, moves its
+edit into the matching agent source and runs `make agents-emit`; until then `make build` is red by
+design.
 
 ## §C Milestones (priority High; commit `feat(SPEC-AGENT-CORE4-001): M<n> <subject> (card t1649)` + `🗿 MoAI`)
 
-### M0 baseline, alone in its commit
-Add exactly `.moai/specs/SPEC-AGENT-CORE4-001/m0-baseline.md` (re-measured on the then-HEAD, rebase
-re-pin: the ledger commands, the 12-file C2/C3 sizes, rosterguard result) and
-`internal/template/agentemit/testdata/agents-head.sha256` (sha256 of the 24 C2/C3 files). Both are
-tracked paths; nothing under `.moai/reports/` is staged (gitignored by operator directive,
-`.gitignore:232-248`; no `git add -f`). Gate: AC9.
+### M0 baseline and pin, alone in its commit
+Exactly two tracked files: `.moai/specs/SPEC-AGENT-CORE4-001/m0-baseline.md` (the ledger commands
+re-run on the then-HEAD) and `internal/template/agentemit/testdata/agents-head.sha256` (sha256 of the
+24 C2/C3 files of the twelve at the parent tree, the pin; if main changed those files since
+`b4ea2d6c93` the pin records the then-current bytes and `m0-baseline.md` says so). Nothing under
+`.moai/reports/` is staged (`.gitignore:232-248`; no `git add -f`). Gate: AC-AC4-010(c).
 
-### M1 neutral layer, renderers, check wiring (the eight)
-RED first: AC1-AC4, AC7 template subtests. Work: loader and capability expansion; Claude renderer;
-Codex path unchanged downstream; neutral sources for the eight with zero body change (paths kept
-verbatim, they retire in piece 2); `agents-emit(-check)` rewired with the summary line; existing
-`TestGoldenCommittedArtifactsMatchEmission` retargeted to neutral input, no assertion relaxed.
-Gate: AC1-AC4, AC7(template) green; `git diff --quiet b4ea2d6c93 HEAD -- <the 16 C2/C3 files of the eight>` exit 0.
+### M1 agent sources for all twelve, renderers, check wiring (needs Q17)
+RED first: AC-AC4-001..005, 008 (template subtests), 009, 011, 012. Work: `agentemit/source/*.md`
+for all twelve as byte-for-byte copies of C2 (paths verbatim; the pin file proves zero change); the
+loader, capability expansion, and two renderers (`design.md` §2); `agents-emit(-check)` rewired with
+the summary line; numeral registry rows for `source/manager-design.md` mirroring the three existing
+rows (`registry.go` manager-design citation rows); comments in `Makefile`, `emit.go`, `loader.go`
+updated; the existing golden test retargeted (assertions kept, AC-AC4-012). Gate: AC-AC4-001..005,
+008(template), 009 (`specs=12 copies=2`), 011, 012, guards. Because M1 changes no shipped byte,
+the gate compares to the pin file, not to `b4ea2d6c93`.
 
-### M2 carried four path-free, project copies generated (needs Q4 answered)
-RED first: AC5, AC6, AC7 project subtests. Work: neutral sources for the carried four with
-install-root-free bodies and the pinned line list; generate C1, C2, C3, C3p for them; summary
-becomes `copies=4`. Gate: AC1 (twelve), AC5-AC7, guards.
+### M2 carried four: the 8 line changes, C1/C3p generation (needs Q4)
+RED first: AC-AC4-006, 007, 008 (project subtests). Work: apply the 8 pairs of `acceptance.md` §3 to
+the four sources; generate C1, C2, C3, C3p for the carried four; the post pins and the pairs file
+`testdata/carried-four-post.sha256` are copied from `acceptance.md` §3 (authored at plan time, not
+by the implementer). Summary becomes `specs=12 copies=4`. Gate: AC-AC4-006..010, 011 and guards;
+the numeral layer stays green because line 206 keeps the numeral and the new rows exist.
 
-## §D Constraints
-Template-First (edit neutral source, `make agents-emit`, `make build`); PRESERVE the eight's shipped
-bytes, `agents-codex.yaml` semantics, `docs-site/**`, `README*.md`, other SPECs, `AGENTS.local.md`;
-no `AskUserQuestion` in `internal/template`; no SPEC ids, dates or SHAs in templates; explicit
-pathspecs; HEAD re-read before each commit; no skipped test, no relaxed assertion. Process rules
-(formerly REQ-011/020) live here, not in the requirement layer.
+## §D Constraints (process rules, formerly in the requirement layer)
+Template-First (edit the agent source, `make agents-emit`, `make build`, sync local copies); PRESERVE
+the eight's shipped bytes, `agents-codex.yaml` semantics, `docs-site/**`, `README*.md`, other SPECs,
+`AGENTS.local.md`; no `AskUserQuestion` in `internal/template`; no SPEC ids, dates or SHAs inside
+template files; explicit pathspecs; re-read HEAD before each commit; no skipped test, no relaxed
+assertion; the pin file is never edited after M0. Always-loaded rule files are not touched.
 
 ## §E Self-verification
-5-section format per milestone; CLI measurements cite a `moai` built from the tree by path with its
-commit next to the tree HEAD (`verification-claim-integrity.md` §2.2).
+5-section format per milestone; any CLI measurement cites a `moai` built from the tree by path with
+its commit next to the tree HEAD (`verification-claim-integrity.md` §2.2).
 
-## §F Tier judgment
-Tier M. Scope: about 8 Go source and test files (loader, renderer, check wiring, tests), one
-Makefile edit, 12 neutral sources, 2 testdata files and regenerated copies of 4 agents x 4 copies;
-estimated 600-1000 LOC excluding neutral bodies, below the 1000-LOC and 15-file marks that define
-Tier L, no constitutional change, 8 REQ and 9 AC against the Tier M ceilings of 16 and 16. The
-original Tier L judgment was for the unsplit scope. Artifacts: spec, plan, acceptance (design and
-research of the first revision are removed; their history is `b4ea2d6c93`).
+## §F Tier judgment (lane judgment, decision Q18)
+Counted honestly. Authored files: 12 agent sources, about 8 Go source and test files, `Makefile`,
+`registry.go` (+ numeral test), 2 testdata files, `m0-baseline.md` — about 24 (the audit measured 24
+excluding generated copies and 39 including the 16 generated copies). Lines: the 12 sources are
+2,969 lines (252,623 bytes) of new tracked agent text, plus roughly 600-1000 lines of Go. By files
+affected (more than 15) and by the size of the new data model that every later piece builds on,
+this is **Tier L** (threshold 0.85), not Tier M. Ceilings: 12 REQ and 12 AC against 25 and 25.
+Artifact set: spec, plan, acceptance, design, research (5) plus progress and decision-index.
 
 ## §G Risks
-Exact-byte capability expansion may need more tokens than expected (mitigated: tokens grow, test
-decides); Q4 unanswered stops M2 only; the neutral layer duplicates the `.md` files until piece 2
-absorbs the eight (accepted: C2 stays the distribution truth).
+Exact-byte capability expansion may need more tokens than expected (tokens grow, tests decide); Q17
+and Q4 unanswered stop M1 landing and M2; the source layer duplicates the `.md` files for the eight
+until piece 2 absorbs them (accepted; C2 stays the distribution truth); the pin file is a permanent
+frozen comparison until piece 2 retires or retargets AC-AC4-005 (hand-off table).
