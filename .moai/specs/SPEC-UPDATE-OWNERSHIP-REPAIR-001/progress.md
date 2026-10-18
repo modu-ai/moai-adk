@@ -844,6 +844,35 @@ exit=1
 REVERTED-CLEAN
 ```
 
+#### M3 — 잔존 목록 (AC-OWR-14)
+
+**AC-OWR-14 — 커밋 A** `167a6c0af4` (시험 파일만: `internal/cli/migrate_ownership_remaining_test.go`). 시험 `TestRemainingListKeeps313UnregisteredCopies` 는 서브 시험 일곱: `Premise` (내장 `.claude/skills` 파일 중 경로 순 앞 313개의 바이트를 읽어 `.agents/skills/<같은 상대 경로>` 에 두고 각각 바이트 일치 단언), `StructuredRowsKeepEveryCopy` (제거 가능한 등록 형제 `.claude/skills/moai-foundation-core/SKILL.md` 가 **같은 실행에서 먼저 제거됨**을 단언한 뒤 313개의 바이트·미제거·매니페스트 키 무증가·행 정확히 하나·분류 `unregistered`·이유 `no-provenance-record`·빠진 증거 셋·전체 행 경로 사전순·이유 폐쇄 집합), 변이 셋 (`MutantEmptyReasonRowsIsCaught`, `MutantPrintingEveryPathByDefaultIsCaught`, `MutantBytesEqualPromotionIsCaught` — 내장 `.claude/skills` 같은 상대 경로와 바이트가 같은 `.agents/skills` 파일에 세 증거를 모두 답하는 대역 원천), `RenderedByTheUpdateFlow` (실행 1: 일반, 기본 보기 / 실행 2: `--force` + `--verbose`, 규칙 7 의 도달 단언 — `skipped == false`, 새 `manifest.prior.json` 의 바이트가 실행 전 매니페스트와 같음 — 그리고 두 실행 뒤 313개 바이트 불변), `MixedReasonsEveryRowHasOne` (프로필 지도 사본, 사용자 수정, 사용자 작성, 미등록이 섞인 둘째 픽스처). 렌더러는 시험이 직접 부르지 않고 실제 갱신 흐름의 끝 터미널 블록 (`renderUpdateTerminalBlock`) 으로만 읽는다 — 그래서 이 시험은 렌더러가 없는 트리에서도 컴파일되고 단언 수준에서 붉다.
+
+**AC-OWR-14 RED 셀 (트리 `167a6c0af4`, A 커밋 직후, 작업 트리 깨끗)**
+
+명령: `TMPDIR=/private/tmp/own-fixture-d1 go test ./internal/cli/ -run '^TestRemainingListKeeps313UnregisteredCopies$' -count=1 -v`
+
+```text
+    migrate_ownership_remaining_test.go:351: the remaining rows are not in path order: 1 occurrence(s), first: the list as returned
+    migrate_ownership_remaining_test.go:419: default view: 313 planted paths are printed in the default standard output
+    migrate_ownership_remaining_test.go:419: default view: no default line names "no-provenance-record" with a count of at least 313
+    migrate_ownership_remaining_test.go:435: verbose view: a planted path has 0 verbose rows, want exactly 1: 313 occurrence(s), first: .agents/skills/moai-domain-backend/SKILL.md
+--- FAIL: TestRemainingListKeeps313UnregisteredCopies (22.52s)
+    --- PASS: TestRemainingListKeeps313UnregisteredCopies/Premise (0.17s)
+    --- FAIL: TestRemainingListKeeps313UnregisteredCopies/StructuredRowsKeepEveryCopy (1.05s)
+    --- PASS: TestRemainingListKeeps313UnregisteredCopies/MutantEmptyReasonRowsIsCaught (1.10s)
+    --- PASS: TestRemainingListKeeps313UnregisteredCopies/MutantPrintingEveryPathByDefaultIsCaught (0.14s)
+    --- PASS: TestRemainingListKeeps313UnregisteredCopies/MutantBytesEqualPromotionIsCaught (12.44s)
+    --- FAIL: TestRemainingListKeeps313UnregisteredCopies/RenderedByTheUpdateFlow (3.61s)
+    --- PASS: TestRemainingListKeeps313UnregisteredCopies/MixedReasonsEveryRowHasOne (4.01s)
+FAIL
+FAIL	github.com/modu-ai/moai-adk/internal/cli	23.580s
+FAIL
+exit=1
+```
+
+종료 코드 1. 이유 (단언 수준의 실패, 올바른 이유로 붉음): (1) 잔존 행이 경로 사전순이 아니다 — 걷기가 `.claude/skills` 뿌리를 `.agents/skills` 보다 먼저 돌아 행이 걷기 순서로 쌓인다. (2) **기본 표준 출력이 313개 경로를 전부 찍는다** — 갱신 흐름이 마이그레이션의 파일별 보고 줄 (`migration: unregistered mirror copy ... [reason: ...]: <경로>`) 을 그대로 `out` 으로 보낸다 (이번 측정으로 확인된 기존 동작; 코드 읽기 아님). (3) 기본 보기에 `no-provenance-record` 와 313 이상의 개수를 담은 이유별 한 줄이 없다. (4) `--verbose` 터미널 블록에 파일별 잔존 행이 없다 (313개 모두 0 행). 같은 출력의 통과 서브 시험이 보여주는 것: 구조 행의 나머지 (분류, 이유, 빠진 증거, 바이트, 제거 대조군) 는 chunk 1 의 코드가 이미 맞게 낸다 — 모자란 것은 정렬과 렌더뿐이다. 변이 서브 시험 셋의 PASS 는 각 변이 앞에서 단언이 비어 있지 않은 문제 목록을 돌려줬다는 뜻이다. 제로 매치가 아니며 (서브 시험 7개가 실제로 돌았다) 빌드 실패도 아니다.
+
 ## §E.3 Run-phase Audit-Ready Signal
 
 _<pending run-phase>_
