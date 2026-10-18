@@ -1,0 +1,47 @@
+{
+ "pairs": 40,
+ "decided": 37,
+ "lenient_reusable": 10,
+ "strict_reusable": 1,
+ "undecidable": 3
+}
+{"card": "417a7c65ec", "moved": "ec164d45d2", "status": "decided", "moved_n": 1, "card_n": 2, "closure_pkgs": 11, "lenient_overlap": true, "strict_overlap": true, "hit_closure_n": 1, "nongo_outside_n": 0}
+{"card": "90c0efb3c3", "moved": "417a7c65ec", "status": "decided", "moved_n": 2, "card_n": 8, "closure_pkgs": 147, "lenient_overlap": true, "strict_overlap": true, "hit_closure_n": 1, "nongo_outside_n": 1}
+{"card": "7705b365e2", "moved": "90c0efb3c3", "status": "decided", "moved_n": 8, "card_n": 12, "closure_pkgs": 147, "lenient_overlap": true, "strict_overlap": true, "hit_closure_n": 7, "nongo_outside_n": 1}
+{"card": "4f9dba14bf", "moved": "7705b365e2", "status": "decided", "moved_n": 12, "card_n": 2, "closure_pkgs": 147, "lenient_overlap": true, "strict_overlap": true, "hit_closure_n": 12, "nongo_outside_n": 0}
+{"card": "942a9258e7", "moved": "4f9dba14bf", "status": "decided", "moved_n": 2, "card_n": 2, "closure_pkgs": 147, "lenient_overlap": true, "strict_overlap": true, "hit_closure_n": 2, "nongo_outside_n": 0}
+{"card": "3333749309", "moved": "942a9258e7", "status": "decided", "moved_n": 2, "card_n": 10, "closure_pkgs": 147, "lenient_overlap": true, "strict_overlap": true, "hit_closure_n": 2, "nongo_outside_n": 0}
+{"card": "23296dcc98", "moved": "3333749309", "status": "decided", "moved_n": 10, "card_n": 6, "closure_pkgs": 11, "lenient_overlap": false, "strict_overlap": true, "hit_closure_n": 0, "nongo_outside_n": 7}
+{"card": "225bcb8fce", "moved": "23296dcc98", "status": "decided", "moved_n": 6, "card_n": 7, "closure_pkgs": 33, "lenient_overlap": false, "strict_overlap": true, "hit_closure_n": 0, "nongo_outside_n": 4}
+{"card": "026f48658f", "moved": "225bcb8fce", "status": "decided", "moved_n": 7, "card_n": 48, "closure_pkgs": 148, "lenient_overlap": true, "strict_overlap": true, "hit_closure_n": 3, "nongo_outside_n": 4}
+{"card": "ff7bf30e51", "moved": "026f48658f", "status": "decided", "moved_n": 48, "card_n": 7, "closure_pkgs": 90, "lenient_overlap": true, "strict_overlap": true, "hit_closure_n": 12, "nongo_outside_n": 26}
+{"card": "629ba6f7b6", "moved": "ff7bf30e51", "status": "decided", "moved_n": 7, "card_n": 33, "closure_pkgs": 147, "lenient_overlap": true, "strict_overlap": true, "hit_closure_n": 5, "nongo_outside_n": 2}
+{"card": "ae34f26831", "moved": "629ba6f7b6", "status": "decided", "moved_n": 33, "card_n": 7, "closure_pkgs": 147, "lenient_overlap": true, "strict_overlap": true, "hit_closure_n": 28, "nongo_outside_n": 5}
+{"card": "8ec75aaa10", "moved": "ae34f26831", "status": "decided", "moved_n": 7, "card_n": 7, "closure_pkgs": 147, "lenient_overlap": true, "strict_overlap": true, "hit_closure_n": 7, "nongo_outside_n": 0}
+{"card": "48bfe97afa", "moved": "8ec75aaa10", "status": "decided", "moved_n": 7, "card_n": 20, "closure_pkgs": 147, "lenient_overlap": true, "strict_overlap": true, "hit_closure_n": 1, "nongo_outside_n": 6}
+{"card": "bc5817d758", "moved": "48bfe97afa", "status": "decided", "moved_n": 20, "card_n": 14, "closure_pkgs": 25, "lenient_overlap": true, "strict_overlap": true, "hit_closure_n": 0, "nongo_outside_n": 10}
+{"card": "09f4959a5a", "moved": "bc5817d758", "status": "decided", "moved_n": 14, "card_n": 3, "closure_pkgs": 90, "lenient_overlap": true, "strict_overlap": true, "hit_closure_n": 4, "nongo_outside_n": 10}
+{"card": "2178966bb9", "moved": "09f4959a5a", "status": "decided", "moved_n": 3, "card_n": 13, "closure_pkgs": 22, "lenient_overlap": true, "strict_overlap": true, "hit_closure_n": 1, "nongo_outside_n": 0}
+{"card": "6041c38a48", "moved": "2178966bb9", "status": "no-go-packages(undecidable)", "moved_n": 13, "card_n": 21}
+{"card": "667e4bc83f", "moved": "6041c38a48", "status": "no-go-packages(undecidable)", "moved_n": 21, "card_n": 7}
+{"card": "3642a3a9b9", "moved": "667e4bc83f", "status": "decided", "moved_n": 7, "card_n": 5, "closure_pkgs": 1, "lenient_overlap": false, "strict_overlap": true, "hit_closure_n": 0, "nongo_outside_n": 7}
+{"card": "0e083d1523", "moved": "3642a3a9b9", "status": "decided", "moved_n": 5, "card_n": 21, "closure_pkgs": 147, "lenient_overlap": false, "strict_overlap": true, "hit_closure_n": 0, "nongo_outside_n": 3}
+{"card": "7f0dd62af2", "moved": "0e083d1523", "status": "decided", "moved_n": 21, "card_n": 7, "closure_pkgs": 90, "lenient_overlap": true, "strict_overlap": true, "hit_closure_n": 3, "nongo_outside_n": 14}
+{"card": "f4bcd4f2cc", "moved": "7f0dd62af2", "status": "decided", "moved_n": 7, "card_n": 1, "closure_pkgs": 9, "lenient_overlap": false, "strict_overlap": true, "hit_closure_n": 0, "nongo_outside_n": 4}
+{"card": "dc9cab9843", "moved": "f4bcd4f2cc", "status": "decided", "moved_n": 1, "card_n": 11, "closure_pkgs": 11, "lenient_overlap": false, "strict_overlap": false, "hit_closure_n": 0, "nongo_outside_n": 0}
+{"card": "e4b747678a", "moved": "dc9cab9843", "status": "decided", "moved_n": 11, "card_n": 13, "closure_pkgs": 147, "lenient_overlap": true, "strict_overlap": true, "hit_closure_n": 2, "nongo_outside_n": 9}
+{"card": "fb749d372e", "moved": "e4b747678a", "status": "no-go-packages(undecidable)", "moved_n": 13, "card_n": 14}
+{"card": "d2d9ac08fb", "moved": "fb749d372e", "status": "decided", "moved_n": 14, "card_n": 5, "closure_pkgs": 147, "lenient_overlap": false, "strict_overlap": true, "hit_closure_n": 0, "nongo_outside_n": 14}
+{"card": "7faf75fdfb", "moved": "d2d9ac08fb", "status": "decided", "moved_n": 5, "card_n": 2, "closure_pkgs": 23, "lenient_overlap": false, "strict_overlap": true, "hit_closure_n": 0, "nongo_outside_n": 3}
+{"card": "e806cdd6c4", "moved": "7faf75fdfb", "status": "decided", "moved_n": 2, "card_n": 4, "closure_pkgs": 23, "lenient_overlap": true, "strict_overlap": true, "hit_closure_n": 1, "nongo_outside_n": 1}
+{"card": "93f4fc75c8", "moved": "e806cdd6c4", "status": "decided", "moved_n": 4, "card_n": 12, "closure_pkgs": 147, "lenient_overlap": true, "strict_overlap": true, "hit_closure_n": 1, "nongo_outside_n": 3}
+{"card": "c3aa6b0572", "moved": "93f4fc75c8", "status": "decided", "moved_n": 12, "card_n": 54, "closure_pkgs": 147, "lenient_overlap": true, "strict_overlap": true, "hit_closure_n": 3, "nongo_outside_n": 9}
+{"card": "67e462e807", "moved": "c3aa6b0572", "status": "decided", "moved_n": 54, "card_n": 7, "closure_pkgs": 147, "lenient_overlap": true, "strict_overlap": true, "hit_closure_n": 46, "nongo_outside_n": 8}
+{"card": "a4130a8098", "moved": "67e462e807", "status": "decided", "moved_n": 7, "card_n": 2, "closure_pkgs": 2, "lenient_overlap": false, "strict_overlap": true, "hit_closure_n": 0, "nongo_outside_n": 3}
+{"card": "bb8f2f8495", "moved": "a4130a8098", "status": "decided", "moved_n": 2, "card_n": 8, "closure_pkgs": 147, "lenient_overlap": true, "strict_overlap": true, "hit_closure_n": 2, "nongo_outside_n": 0}
+{"card": "a903bf59fd", "moved": "bb8f2f8495", "status": "decided", "moved_n": 8, "card_n": 25, "closure_pkgs": 148, "lenient_overlap": true, "strict_overlap": true, "hit_closure_n": 8, "nongo_outside_n": 0}
+{"card": "56f66eda46", "moved": "a903bf59fd", "status": "decided", "moved_n": 25, "card_n": 4, "closure_pkgs": 23, "lenient_overlap": true, "strict_overlap": true, "hit_closure_n": 1, "nongo_outside_n": 10}
+{"card": "0bd1da4973", "moved": "56f66eda46", "status": "decided", "moved_n": 4, "card_n": 12, "closure_pkgs": 147, "lenient_overlap": true, "strict_overlap": true, "hit_closure_n": 4, "nongo_outside_n": 0}
+{"card": "fb55b8029a", "moved": "0bd1da4973", "status": "decided", "moved_n": 12, "card_n": 7, "closure_pkgs": 147, "lenient_overlap": true, "strict_overlap": true, "hit_closure_n": 10, "nongo_outside_n": 2}
+{"card": "6e56192afd", "moved": "fb55b8029a", "status": "decided", "moved_n": 7, "card_n": 14, "closure_pkgs": 89, "lenient_overlap": false, "strict_overlap": true, "hit_closure_n": 0, "nongo_outside_n": 4}
+{"card": "9b4922d8ee", "moved": "6e56192afd", "status": "decided", "moved_n": 14, "card_n": 11, "closure_pkgs": 147, "lenient_overlap": true, "strict_overlap": true, "hit_closure_n": 9, "nongo_outside_n": 5}
