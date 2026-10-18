@@ -234,6 +234,15 @@ func TestParseSkillListingEntry_KeepsRawFields(t *testing.T) {
 	if got.WhenToUse != "one\ntwo" {
 		t.Errorf("WhenToUse = %q, want %q", got.WhenToUse, "one\ntwo")
 	}
+	// A folded block scalar (`>`) keeps one trailing newline; parsing drops it
+	// from the description too (the host trims the description).
+	got, err = parseSkillListingEntry("x", "name: x\ndescription: >\n  alpha\n  beta\n")
+	if err != nil {
+		t.Fatalf("parse: %v", err)
+	}
+	if got.Description != "alpha beta" {
+		t.Errorf("folded Description = %q, want %q", got.Description, "alpha beta")
+	}
 }
 
 func TestTemplateSkillListingBudget(t *testing.T) {
