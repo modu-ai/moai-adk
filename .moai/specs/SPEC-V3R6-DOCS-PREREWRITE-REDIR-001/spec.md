@@ -1,7 +1,7 @@
 ---
 id: SPEC-V3R6-DOCS-PREREWRITE-REDIR-001
 title: "Docs Pre-Rewrite Cleanup — redirect repair (child 2 of 11 under SPEC-V3R6-DOCS-PREREWRITE-CLEANUP-001, card t1718)"
-version: "0.2.0"
+version: "0.3.0"
 status: draft
 created: 2026-10-19
 updated: 2026-10-19
@@ -23,6 +23,7 @@ related_specs: [SPEC-V3R6-DOCS-PREREWRITE-CLEANUP-001]
 |------|---------|--------|--------|
 | 2026-10-19 | 0.1.0 | manager-spec | Initial plan-phase authoring for card t1718 (Class C), child REDIR of the umbrella SPEC-V3R6-DOCS-PREREWRITE-CLEANUP-001 (card t1655). Every count and line number was measured on tree commit 0ddf5ca48b (tree a2c0d16b90c0e49371b6efec3084e6e270781bd7, clean); the umbrella's lines 88/93/98, 113/118, and 163/168 are unchanged between 8816de4dae and 0ddf5ca48b. Per the card's precondition, the moai-mx pair decision row (Q23) and its acceptance criterion (AC-PRC-011, extended to the pair) were recorded first. Status `draft`. |
 | 2026-10-19 | 0.2.0 | manager-spec | r2: leader verdicts applied (board record `d-20261018T170818Z-a207`, decided by the leader under operator delegation, with Jev 0.88 and 0.92). Q23 = option (c): remove only the rule at line 163, keep line 168. Q21 = option (b): keep the two external changelog rules and amend REQ-PRC-010 so `https://github.com/modu-ai/moai-adk/releases` is an admitted destination. Q16: delete the four changelog index pages, no longer conditional. Q15 and Q17 stay `DEFAULT-APPLIED`. The five-file scope is final: `docs-site/vercel.json` and the four `changelog/_index.md` pages; the footer file is not changed. The decision-dependent end states collapse to the chosen ones. The check script gained an optional third argument that names the admitted external destination (acceptance.md E-R0, new SHA-256), and the controls were re-run. REQ-REDIR-001 to -003 and AC-REDIR-001 to -003 are restated for the chosen end state. Status stays `draft`. |
+| 2026-10-19 | 0.3.0 | manager-spec | r3: plan-audit iter1 FAIL 0.72 (`.moai/reports/t1718/plan-audit-iter1.md`), D1 to D4 fixed, D5 to D10 done. D1: the `resolve` check now compares the destination's locale with the source's locale, and REQ-PRC-010 keeps its same-locale wording (hard-coded-locale mutant observed red). D2: the admitted external URL is scoped to its two sources in the check and in the done command (swap mutant observed red). D3: the scope guard is now a numstat (`0 20` on `docs-site/vercel.json`), with a replacement mutant observed red; the rule-count inference is demoted to an observation. D4: REQ-REDIR-003's deletion clause maps to AC-REDIR-003 D0, which fails on the pre-change tree. D5: AC-REDIR-00n now verifies REQ-REDIR-00n. D7: unsupported source characters are rejected. D8: the stale pointer in `hns-release-specialist.md` is named under Out of Scope with an owner. D9: requirement clauses restated as end states. D10: the Definition of Done separates gating criteria from guards. Status stays `draft`. |
 
 ## Overview (WHY)
 
@@ -42,7 +43,7 @@ Measured state on tree 0ddf5ca48b (full evidence in acceptance.md §C):
 - Q16: with the rule at line 113 kept, the four changelog index pages are shadowed, so they are deleted.
 - Q15 (Default: remove the three `/agency` rules) and Q17 (Default: the four pages in one change) stay `DEFAULT-APPLIED`.
 
-Expected end state: 35 redirect rules, 608 content pages, `shadow` and `resolve` (with the admitted URL) both exit 0 (scratch-copy proof in acceptance.md E-R14).
+Expected end state: 35 redirect rules, 608 content pages, `shadow` and `resolve` (with the admitted URL and its two sources) both exit 0, and `git diff --numstat` on `docs-site/vercel.json` reading `0 20` (scratch-copy proof and mutants in acceptance.md E-R14).
 
 ## Scope (WHAT)
 
@@ -61,19 +62,19 @@ The four-locale same-PR obligation is stated in `.moai/docs/docs-site-i18n-rules
 
 REQ-PRC-010 and REQ-PRC-011 keep the umbrella's identifiers and base text (umbrella spec.md, revision 0.3.1). The clauses under each base text are this child's scope under the recorded verdicts.
 
-- **REQ-PRC-011** (Ubiquitous; base text from the umbrella; the moai-mx rule is recorded first under Q23): The redirect sources in `docs-site/vercel.json` **shall** match zero existing content pages.
-  - Under Q23 option (c), the redirect configuration **shall** contain no rule whose source is `/:locale(ko|en|ja|zh)/utility-commands/moai-mx`, each of the four `docs-site/content/{ko,en,ja,zh}/utility-commands/moai-mx.md` pages **shall** remain published, and the root-level rule with source `/utility-commands/moai-mx` **shall** remain (it matches no content page).
-  - Under Q16 (with Q17), the four `docs-site/content/{ko,en,ja,zh}/changelog/_index.md` pages **shall** be absent in the same change, because the locale-aware rule for `changelog` stays.
+- **REQ-PRC-011** (Ubiquitous; base text from the umbrella): The redirect sources in `docs-site/vercel.json` **shall** match zero existing content pages.
+  - The redirect configuration **shall** contain no rule whose source is `/:locale(ko|en|ja|zh)/utility-commands/moai-mx`; each of the four `docs-site/content/{ko,en,ja,zh}/utility-commands/moai-mx.md` pages **shall** remain published; and the root-level rule with source `/utility-commands/moai-mx` **shall** remain (it matches no content page).
+  - The four `docs-site/content/{ko,en,ja,zh}/changelog/_index.md` pages **shall** be absent, because the locale-aware rule for `changelog` stays.
 
-- **REQ-PRC-010** (Ubiquitous; base text from the umbrella, amended by Q21 option (b)): Every redirect destination in `docs-site/vercel.json` **shall** resolve to an existing content page of the same locale, or the redirect **shall** be removed, except the admitted external destination below.
-  - **Where** the destination is exactly `https://github.com/modu-ai/moai-adk/releases` and the source is `/:locale(ko|en|ja|zh)/changelog` or `/changelog` (Q21 option (b)), the destination **shall** be admitted as an allowed redirect destination; the redirect configuration **shall** contain no other external destination.
-  - Under Q15 Default, the redirect configuration **shall** contain no rule whose source names `agency`.
+- **REQ-PRC-010** (Ubiquitous; base text from the umbrella, amended with one admitted destination): Every redirect destination in `docs-site/vercel.json` **shall** resolve to an existing content page of the same locale as the rule's source locale, or the redirect **shall** be removed, except the admitted external destination below.
+  - The destination `https://github.com/modu-ai/moai-adk/releases` **shall** be admitted for the sources `/:locale(ko|en|ja|zh)/changelog` and `/changelog` only; the redirect configuration **shall** contain no other external destination, and no other source **shall** carry that destination.
+  - The redirect configuration **shall** contain no rule whose source names `agency`.
 
 - **REQ-REDIR-001** (Ubiquitous; new): After the change, every internal reference to a URL whose serving the change alters **shall** resolve. In particular the footer link `/changelog/` **shall** keep resolving through the kept changelog rules, and the redirect rules for `/changelog` and `/:locale/changelog` **shall** remain after the changelog pages are deleted, so that the public changelog URL serves something.
 
-- **REQ-REDIR-002** (Ubiquitous; new, scope confinement): The change **shall** modify only the five files named in § Scope and this SPEC's own records; within `docs-site/vercel.json` it **shall** remove only the four rules the recorded verdicts name (line 163 and lines 88, 93, 98).
+- **REQ-REDIR-002** (Ubiquitous; new, scope confinement): The change **shall** modify only the five files named in § Scope and this SPEC's own records; `docs-site/vercel.json` **shall** differ from its pre-change text by the removal of the four rule blocks at the former lines 87 to 101 and 162 to 166, and by nothing else.
 
-- **REQ-REDIR-003** (Ubiquitous; new, locale parity): The four changelog index pages **shall** be deleted together, and `scripts/docs-i18n-check.sh` in its default strict mode **shall** exit 0 and report zero errors and zero warnings after the change.
+- **REQ-REDIR-003** (Ubiquitous; new, locale parity): The four changelog index pages **shall** be absent from all four locales together, and `scripts/docs-i18n-check.sh` in its default strict mode **shall** exit 0 and report zero errors and zero warnings.
 
 ## Out of Scope
 
@@ -84,6 +85,10 @@ Each item below is named so that a later change cannot claim it silently.
 - The 35 redirect rules that remain after the change (the kept changelog rules at lines 113 and 118, the root-level moai-mx rule at line 168, and the 32 rules outside this child such as `quality-commands/*`, `getting-started/*`, `kanban-*`, `book`, and `moai-rank`), the one rewrite, and the two header blocks.
 - Adding new redirect rules.
 - `docs-site/layouts/partials/site-footer.html` and the `footer_changelog` strings in `docs-site/i18n/*.yaml`.
+
+### Out of Scope — a stale pointer elsewhere
+
+- `.claude/agents/harness/hns-release-specialist.md` line 195 names the four `changelog/_index.md` pages this change deletes. It is outside the five files; its owner is the release-harness maintainers, and a follow-up card should update it after this change lands (acceptance.md G15).
 
 ### Out of Scope — page content and translation
 

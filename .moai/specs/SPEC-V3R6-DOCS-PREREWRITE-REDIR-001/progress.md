@@ -3,13 +3,14 @@
 ## §E.1 Plan-phase Audit-Ready Signal
 
 plan_status: audit-ready
-plan_revision: 0.2.0
+plan_revision: 0.3.0
 plan_complete_at: 2026-10-18T17:06:37Z
 plan_revision_2_at: 2026-10-18T17:13:14Z
+plan_revision_3_at: 2026-10-18T20:16:39Z
 plan_base_commit: 0ddf5ca48bed7aaeeb68ed4fc686bcfa098a82b1
-revision_note: r2: leader verdicts a207 applied (board d-20261018T170818Z-a207, decided by the leader under operator delegation with Jev 0.88 and 0.92). Q23 = (c) remove only line 163; Q21 = (b) keep the two external changelog rules and amend REQ-PRC-010; Q16 = delete the four pages; Q15 and Q17 stay DEFAULT-APPLIED. Footer file not changed; the five-file scope is final.
+revision_note: r3: plan-audit iter1 FAIL 0.72 (.moai/reports/t1718/plan-audit-iter1.md) D1-D4 fixed and D5-D10 done; the check script compares source and destination locale, scopes the admitted URL to its two sources, rejects unsupported source characters; AC-REDIR-002 uses numstat 0 20; REQ-REDIR-003 maps to AC-REDIR-003 D0; suffixes renumbered. Mutants observed in acceptance.md E-R14. r2: leader verdicts a207 applied (board d-20261018T170818Z-a207, decided by the leader under operator delegation with Jev 0.88 and 0.92). Q23 = (c) remove only line 163; Q21 = (b) keep the two external changelog rules and amend REQ-PRC-010; Q16 = delete the four pages; Q15 and Q17 stay DEFAULT-APPLIED. Footer file not changed; the five-file scope is final.
 open_decisions: none. Every decision row carries a verdict or a DEFAULT-APPLIED line (decision-index.md).
-lint: `moai spec lint <this SPEC directory> --strict` reports 0 errors and 0 warnings after the r2 edits (one INFO: OwnershipTransitionUnmeasured, the lane commit cde13ce99 carries no Authored-By-Agent trailer) (installed build moai_cp/20261007_195927-1888-g7705b365e2, a strict ancestor of the tree HEAD; internal/spec unchanged between the two, acceptance.md G11).
+lint: `moai spec lint <this SPEC directory> --strict` reports 0 errors and 0 warnings after the r3 edits (one INFO: OwnershipTransitionUnmeasured, the lane commit cde13ce99 carries no Authored-By-Agent trailer) (installed build moai_cp/20261007_195927-1888-g7705b365e2, a strict ancestor of the tree HEAD; internal/spec unchanged between the two, acceptance.md G11).
 scratch_proof: the exact a207 change set was applied on scratch copies under /private/tmp only; shadow turns green, resolve turns green only with the Q15 Default included (acceptance.md E-R14, G14).
 ordering_note: the Q23 row (decision-index.md) and the AC that covers the moai-mx rule (AC-PRC-011, acceptance.md § B) are the first row and the first criterion in their files. That ordering is positional, not a commit-order witness.
 

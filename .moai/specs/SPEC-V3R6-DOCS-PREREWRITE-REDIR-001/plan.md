@@ -1,6 +1,6 @@
-# SPEC-V3R6-DOCS-PREREWRITE-REDIR-001 — Implementation Plan (revision 0.2.0)
+# SPEC-V3R6-DOCS-PREREWRITE-REDIR-001 — Implementation Plan (revision 0.3.0)
 
-r2: leader verdicts `d-20261018T170818Z-a207` applied. Sections are ordered by decision reversibility: the rule edits (public URLs) come before the page deletions, and the mechanical measurement comes last.
+r3: plan-audit iter1 FAIL 0.72, D1 to D4 fixed (the check script now compares locales and scopes the admitted URL to its two sources; the scope guard is a numstat; REQ-REDIR-003 maps to a criterion that fails now). r2: leader verdicts `d-20261018T170818Z-a207` applied. Sections are ordered by decision reversibility: the rule edits (public URLs) come before the page deletions, and the mechanical measurement comes last.
 
 ## A. Recorded verdicts that shape the work
 
@@ -32,6 +32,7 @@ Resulting change set: `docs-site/vercel.json` loses four rule objects (the forme
 - Remove the three objects at the former lines 88, 93, and 98 (Q15 Default).
 - Record the amended REQ-PRC-010 wording (already in spec.md r2); no further spec edit is needed for Q21.
 - Keep the file valid JSON with its 2-space indentation; the check script exits 2 on unparsable JSON, so validity is part of AC-PRC-010 and AC-PRC-011.
+- After the edit, `git diff --numstat <BASE> -- docs-site/vercel.json` must read `0 20` (AC-REDIR-002 D2); any other figure means more or less than the four named blocks changed.
 - Stage by explicit pathspec (`git add docs-site/vercel.json`); never `git add -A` or `git add .`.
 
 ### M2 — Delete the four changelog index pages (Priority Medium; reversible by reverting one commit)
@@ -55,14 +56,14 @@ Resulting change set: `docs-site/vercel.json` loses four rule objects (the forme
 ## D. Green path per acceptance criterion
 
 - AC-PRC-011: the four moai-mx lines flip at M1; the four changelog lines flip at M2. Proof on a scratch copy: acceptance.md E-R14 (`shadowed: 0`, exit 0).
-- AC-PRC-010: the nine `/agency` lines flip at M1; the five external lines become admitted by the amended REQ-PRC-010 (the check is run with the admitted URL as its third argument). Proof on a scratch copy: E-R14.
+- AC-PRC-010: the nine `/agency` lines flip at M1; the five external lines become admitted by the amended REQ-PRC-010 (the check is run with the admitted URL and its two admitted sources as arguments). Proof on a scratch copy: E-R14.
 - AC-REDIR-001, -002, -003: regression-guards, observed at M0 (baselines) and M3.
 
 ## E. Risks
 
 - **Public URL change.** Removing a rule changes what a public URL serves. The verdicts for Q21, Q23, and Q16 are recorded; Q15 rests on live observations (E-R8) of a deployment whose commit is unknown (G1).
-- **Admitted-URL argument.** The `resolve` check passes only when run with the admitted URL; run without it, five external lines remain by design. A reader who runs it without the argument sees `unresolved: 5` and exit 1; the done check names the argument.
-- **Footer dependency.** The footer link depends on the kept rule at line 118 (G10). A later change that removes that rule would orphan it; AC-REDIR-002 D1 guards the rule's presence while the footer link exists.
+- **Admitted-URL argument.** The `resolve` check passes only when run with the admitted URL; run without it, five external lines remain by design. A reader who runs it without the argument sees `unresolved: 5` and exit 1; the done check names the argumentss.
+- **Footer dependency.** The footer link depends on the kept rule at line 118 (G10). A later change that removes that rule would orphan it; AC-REDIR-001 D1 guards the rule's presence while the footer link exists.
 - **Vercel precedence is inferred.** The claim that a redirect hides the built page rests on E-R8 for one deployment (G1, G8).
 - **Check blind spots.** Case-variant sources, `has` or `missing` conditions, `url:` front matter, static files, and Hugo-generated URLs are not seen (G3). The mutant probes in acceptance.md § B name the variants that other commands catch.
 - **Rebase drift.** If main moves, the line numbers (88, 93, 98, 113, 118, 163, 168) and the counts (39 redirects, 612 pages) can change. M0 re-measures them.
