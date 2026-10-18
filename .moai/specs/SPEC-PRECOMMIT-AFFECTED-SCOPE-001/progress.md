@@ -730,9 +730,150 @@ PASS
 ok  	github.com/modu-ai/moai-adk/internal/hook/quality	0.566s
 ```
 
+
+### M6 — verification sweep and dogfood (tree = HEAD `9d114393cac23a3a44dc96261ce7936cd36f11cc`, working tree clean before the evidence commit)
+
+**Judging build.** `/private/tmp/t1673-bin/moai`, built from this tree with `go build -buildvcs=false -ldflags "-X github.com/modu-ai/moai-adk/pkg/version.Commit=9d114393cac23a3a44dc96261ce7936cd36f11cc -X github.com/modu-ai/moai-adk/pkg/version.Version=t1673-final" -o /private/tmp/t1673-bin/moai ./cmd/moai` immediately after `git rev-parse HEAD` printed `9d114393cac23a3a44dc96261ce7936cd36f11cc` and `git status --short` printed nothing. `moai version` prints `t1673-final   9d114393c   built unknown`. (The default `go build` VCS stamp of the worktree read revision `478285ab4` with `vcs.modified=true`, an older ancestor, so it was NOT used as provenance.)
+
+**probe016.sh against that build (AC-PAS-016 / -001 / -004 / -006 / -011 real-binary half; RED-now cell in LEDGER-PAS-016-A)** — command `env PROBE_DIR=/private/tmp/t1673-tmp/probe sh .moai/specs/SPEC-PRECOMMIT-AFFECTED-SCOPE-001/evidence/probe016.sh /private/tmp/t1673-bin/moai`, exit code 0:
+```
+AC-016/001 change a: GREEN  (commit exit=0, HEAD moved=yes, go test calls=1 (wanted 1), wanted go argv 'test ./a ./b', got 'test ./a ./b')
+AC-004 test-only change: GREEN  (commit exit=0, HEAD moved=yes, go test calls=1 (wanted 1), wanted go argv 'test ./a', got 'test ./a')
+AC-006 docs-only change: GREEN  (commit exit=0, HEAD moved=yes, go test calls=0 (wanted 0), wanted go argv 'none', got 'none')
+AC-011 mode: bogus: GREEN  (gate exit=1, message names the key=yes)
+exit=0
+```
+
+**LEDGER-PAS-013-A (AC-PAS-013 real-tool half), same recipe as the RED re-run, judging build `/private/tmp/t1673-bin/moai` (9d114393c)** — command `sh ledger013.sh /private/tmp/t1673-bin/moai` (scratch script = the ledger recipe), exit code 0, no suppression line:
+```
+graph-freshness: step disabled in gate config (explicit skip notice)
+
+quality gate steps (3 configured):
+  - go vet: disabled — turned off by the gate.disabled_steps setting
+  - golangci-lint: disabled — turned off by the gate.disabled_steps setting
+  - go test: skipped — turned off by the gate.skip_tests setting
+exit=0
+```
+
+**G4 closed — the real checker over a copy of the whole tree's source directories** (`internal`, `cmd`, `pkg` copied next to the recipe's gate.yaml and the repository's ast-grep rules; command `sh ledger013_full.sh /private/tmp/t1673-bin/moai`), exit code 0; the ast-grep rule findings after the suppression step are advisory notices, not suppression-policy violations (head of the output):
+    copied:     5152 .go files,       38 of them under testdata
+    suppression lines: 0
+    graph-freshness: step disabled in gate config (explicit skip notice)
+    ast-grep domain rule scan results:
+
+**probe009.sh (immutable RED witness of the pre-change helper, never a green condition)** — exit code 1, as recorded in LEDGER-PAS-009-A; it hard-codes the old helper's query and does not call the new adapter:
+```
+(ii)  git commit -a            (a/x.go staged, d/z.go modified unstaged)
+  commit records : a/x.go d/z.go 
+  helper form    : a/x.go    [DIFFERENT]
+(iii) git commit d/z.go        (path-limited)
+  commit records : d/z.go 
+  helper form    : a/x.go    [DIFFERENT]
+(iv)  git mv old/o.go new/o.go (rename)
+  commit records : new/o.go old/o.go 
+  helper form    : new/o.go    [DIFFERENT]
+exit=1
+```
+
+**Dogfood (plan.md M6): this SPEC's own diff (`git diff --name-only 3642a3a9b HEAD`, 33 files) fed to the real resolver and to an independent jq computation over `go list -e -json ./...`.** Resolver run through a scratch test (not committed) against the real adapters; hand computation by `dogfood_hand.sh` (selected = the four packages owning a source change — internal/cli, internal/config, internal/hook/quality, internal/template (the embedded gate.yaml) — plus every package whose regular, test or external-test imports name one of them). Exit code 0, output:
+```
+hand selected:           57
+resolver selected:       57
+hand dropped:             3
+resolver dropped:         3
+selected sets: IDENTICAL
+dropped sets:  IDENTICAL
+dropped packages:
+github.com/modu-ai/moai-adk/cmd/moai
+github.com/modu-ai/moai-adk/internal/closure/closuretest
+github.com/modu-ai/moai-adk/internal/template/scripts
+internal/cli importers selected (own packages beyond the four owners):
+```
+The resolver also reported the twelve `.moai/**` files (specs, reports, local gate.yaml — none embedded by a package) as owned by none, and no widening trigger fired. This SPEC's own commit would therefore select 57 packages, `internal/cli` among them, and fail by budget overrun at the unchanged 120 s: the documented consequence of the Q1=(B) ruling (spec.md § C, R2), not a defect of the selection.
+
+**Measurements (G2, Q4).** G2, `go list` wall time: `go list -e -json=<fields> ./...` on this tree, warm build cache, 176 packages, 313459 bytes of JSON, started 11:08:36 and finished 11:08:39 local time (about 3 s), none errored or incomplete (`jq -s '[.[]|select(.Error!=null or .Incomplete==true)]'` printed `[]`). Q4 (project-wide vet / lint / typecheck runtime in the pre-commit context) was NOT measured: a project-wide `go vet ./...` and golangci-lint run over 176 packages is heavy-slot work and the lease was held by another lane (below); it stays a recorded Gap and gates only the post-landing handoff runbook (plan.md § E pre-condition 3).
+
+**Slot.** `moai slot acquire --resource go-test-heavy --name lane-27 --command "t1673 race+cover internal/hook/quality internal/config"` exited 3; `moai slot status --resource go-test-heavy` printed `slot go-test-heavy: held`, session c5c5d1ae-4185-43c8-8fab-4651c3995350, name lane-25, command `t1632 landing remeasure`, since 2026-10-18T02:26:13Z, bound 1h40m0s (ends 2026-10-18T04:06:13Z); re-read once more later in the run with the same result. This run therefore never held the lease and has nothing to release. Consequence: no full-package `-race` run of internal/hook/quality or internal/config was taken (scoped `-race` below). One deviation, disclosed: `go test ./internal/template -count=1` (440 s, exit 0) was run during M1 before the lease question arose, without a lease.
+
+**Scoped `-race` runs (this run, this tree)** — `go test -race -count=1 ./internal/hook/quality -run '^(TestAffectedScope_|TestQualityGate_AffectedScope_|TestQualityGate_StepBudgetsUnchanged|TestSuppressionWalkSkipsTestdata|TestCommitQueryEnv|TestGoListPackageProblem|TestScopeHookHelper)' -v`: exit 0, 22 top-level PASS, `ok github.com/modu-ai/moai-adk/internal/hook/quality 22.616s`, no DATA RACE; `go test -race -count=1 ./internal/config -run '^TestGatePreCommitTestScope$' -v`: exit 0, `ok github.com/modu-ai/moai-adk/internal/config 1.477s`.
+
+**Coverage (E3).** `go test -p 1 -count=1 -coverprofile=… ./internal/hook/quality`: exit 0, `ok ... 40.264s coverage: 93.3% of statements`; new-file functions: affected_scope.go 97.9-100%, affected_scope_gate.go 96-100%, affected_scope_queries.go `listModuleGraph` 77.8% / `queryCommitChanges` 85.7% / `runScopeQuery` 88.2% / the rest 100% (uncovered: decode-error and module-mismatch branches), `walkSourceFiles` 100%. `go test -p 1 -count=1 -coverprofile=… ./internal/config`: `coverage: 85.6% of statements` with the one BASELINE failure `TestNoHardcodedContexts` (reads scripts/release.sh, untouched; not attributable); `ValidateGateTestScopeMode` 100%. `internal/cli` package coverage is not measurable (the full suite is barred, ruling 35e9); the targeted `-run '^(TestRunGate|TestGAR_|TestPreCommitAffectedScopeE2E)'` selection reports `runGate` 92.9% and `mapConfigGateToQuality` 82.4% (package-wide figure of that selection: 4.8%, meaningless as a package number).
+
+**Lint (E5).** `golangci-lint run --timeout=3m ./internal/hook/quality/... ./internal/config/...`: exit 0, `0 issues.` (baseline at HEAD 00e7843ab for quality was also `0 issues.`). `golangci-lint run --timeout=5m ./internal/cli/`: exit 1, 3 issues, all `errcheck` in `internal/cli/factory_run_adopt.go` (lines 79, 91, 103) — a file this card does not touch (`git diff --stat 3642a3a9b HEAD -- internal/cli/factory_run_adopt.go` is empty): BASELINE, no NEW issue in the touched files. `moai spec lint SPEC-PRECOMMIT-AFFECTED-SCOPE-001` (the final build): exit 0, `0 error(s), 0 warning(s)` and one INFO `OwnershipTransitionUnmeasured` (the M1 commit carries no Authored-By-Agent trailer because the dispatch fixes the last commit-message line as `🗿 MoAI`).
+
+**Preservation guards (AC-PAS-014, AC-PAS-015), commands against `3642a3a9b`:**
+- `git diff -U0 3642a3a9b -- .moai/config/sections/gate.yaml internal/template/templates/.moai/config/sections/gate.yaml`: the only hunk in each file is the 7-line `test_scope` block under `pre_commit`; no `timeouts:` line is in the diff (`grep -c` over the diff for timeouts/vet/lint/test/typecheck/lock_wait keys: 0).
+- `git diff -U0 3642a3a9b -- '*_test.go'` (1616 lines): added lines matching `t\.Skip`: 0; removed lines matching `func Test`: 0; removed lines in total: 0; added lines containing `hooksPath`: 0.
+- `git diff -U0 3642a3a9b -- '*.go' '*.yaml' ':(exclude)*_test.go'` (838 lines): added lines containing `hooksPath`: 0; added lines containing a git `config` or `-c` argument: 0. `git diff --stat 3642a3a9b -- internal/template/templates/.git_hooks internal/cli/hook_install_precommit.go`: empty.
+- The step-budget definition sites are unchanged (`TestQualityGate_StepBudgetsUnchanged` PASS in both shapes) and its mutant (`2*g.config.TestTimeout` at the test-step call site) turns it red (recorded under GREEN-M3b).
+
+**Mutant probes executed (temporary edits, all reverted; `grep -rn MUTANT internal/hook/quality` over non-test files prints nothing):**
+| AC | mutant | observed |
+|----|--------|----------|
+| AC-PAS-001 / S4 | transitive-closure expansion after the direct-dependents step | `TestAffectedScope_DirectDependents` FAIL: `selected = [a b c], want exactly [a b]` |
+| AC-PAS-002 | importer edges read from regular imports only | `TestAffectedScope_TestImportEdges` FAIL: `selected = [a b], want exactly [a b e f]` |
+| AC-PAS-003 | directory-of-the-file rule for `.go` files under testdata | `TestAffectedScope_Ownership` PASSED against this mutant (the sibling `p/testdata/in.json` already owns `p`), so the AC's own change list cannot discriminate it; added `TestAffectedScope_OwnershipTestdataGoFixtureAlone`, which FAILS the mutant: `selected = [], want exactly [example.com/m/p]` |
+| AC-PAS-004 | every changed file counts as a source change | `TestAffectedScope_TestOnlyNarrows` FAIL: `selected = [a b], want exactly [a]` |
+| AC-PAS-007 | module-root filter before the trigger check | `TestAffectedScope_WideningTriggers` FAIL on both nested-module cases (go.work, .moai/config/build-tags) |
+| AC-PAS-008 | trust go list's zero exit status (no errored/incomplete check) | `TestAffectedScope_IncompleteGraphFallsBack` FAIL: `an incomplete package graph was accepted; the adapter trusted go list's zero exit status` |
+| AC-PAS-009 | scrubbed-only environment (drop the hook-provided index) | FAIL on (ii) and (iii) in both repository shapes (recorded under GREEN-M3a) |
+| AC-PAS-005 | default name list (drop `--no-renames`) | `TestAffectedScope_RealGitRenameDelete/cross-package_rename…` FAIL (recorded under GREEN-M3a) |
+| AC-PAS-014 | `2*g.config.TestTimeout` at the test-step call site | `TestQualityGate_StepBudgetsUnchanged` FAIL: `received budget 4m0s, want 2m0s` (recorded under GREEN-M3b) |
+
+**Disposal of the carried plan-audit debts (iter4).** S1-a: the implementation fails the gate with a non-zero exit and a message naming `gate.pre_commit.test_scope.mode` (`probe016.sh` AC-011 line: `GREEN (gate exit=1, message names the key=yes)`); REQ-PAS-011 / AC-PAS-011 still do not state the non-zero exit — spec-change request filed in the run report. S1-b: the run re-measured the RED-now cells on tree `00e7843ab` (RED-M3b above) and the GREEN cells on `9d114393c`; acceptance.md's tree-pin wording is a SPEC-body matter (request filed). S2: AC-PAS-003's Given does not say the new packages carry test files — the test graph gives them test files; wording request filed. S3: the placeholder `<moai built from the tree under measurement>` is replaced in this run by the named build `/private/tmp/t1673-bin/moai` (commit 9d114393c, judging build cited next to the tree HEAD). S4: AC-PAS-001's real-binary probe cannot tell transitive from direct dependents (its module has no package importing `b`); disposed by the unit test (a→b→c chain, transitive mutant red) and by package `d` (imports `b`) added to the AC-PAS-016 end-to-end module, whose recorded argv stays exactly `test ./a ./b`.
+
+
+### E1 — AC PASS/FAIL matrix (final tree HEAD `9d114393cac23a3a44dc96261ce7936cd36f11cc`; every command run in this run, this tree, TMPDIR=GOTMPDIR=/private/tmp/t1673-tmp)
+Final-tree re-runs: `go test ./internal/hook/quality -count=1` exit 0 (`ok ... 23.342s`, whole package); `go test ./internal/cli -run '^(TestRunGate|TestGAR_|TestGateCmd_|TestPrecommitE2E|TestUpdateGateYAML|TestPreCommitHook_|TestPreCommitRelocation_|TestPreCommitAffectedScopeE2E)' -count=1 -v` exit 0, 41 PASS lines, no FAIL (`ok ... 43.639s`); `go test ./internal/config` fails only the baseline `TestNoHardcodedContexts`.
+
+| AC | Class | RED cell (verbatim above) | GREEN command (exit 0 unless noted) | Status |
+|----|-------|---------------------------|-------------------------------------|--------|
+| AC-PAS-001 | release-blocking | RED-M2; probe016 `AC-016/001` RED (RED-M3b) | `go test ./internal/hook/quality -run '^TestAffectedScope_DirectDependents$' -count=1 -v`; probe016 `AC-016/001 change a: GREEN` | PASS |
+| AC-PAS-002 | adoption-pending | P1 ledger row (RED-M2) | `...-run '^TestAffectedScope_TestImportEdges$'` | PASS |
+| AC-PAS-003 | adoption-pending | P1 ledger row (RED-M2) | `...-run '^TestAffectedScope_Ownership$'` and `'^TestAffectedScope_OwnershipTestdataGoFixtureAlone$'` | PASS |
+| AC-PAS-004 | release-blocking | RED-M2; probe016 `AC-004` RED | `...-run '^TestAffectedScope_TestOnlyNarrows$'`; probe016 `AC-004 test-only change: GREEN` | PASS |
+| AC-PAS-005 | release-blocking | RED-M2 (core); RED-M3a (adapter) | `...-run '^TestAffectedScope_DeletedAndRenamed$'`; `...-run '^TestAffectedScope_RealGitRenameDelete$'` | PASS |
+| AC-PAS-006 | release-blocking | RED-M2 (core); RED-M3b (gate); probe016 `AC-006` RED | `...-run '^TestAffectedScope_DropAndEmpty$'`; `...-run '^TestQualityGate_AffectedScope_EmptySelectionSkips$'`; probe016 `AC-006 docs-only change: GREEN` | PASS |
+| AC-PAS-007 | regression-guard | n/a (green by construction; mutant probe red) | `...-run '^TestAffectedScope_WideningTriggers$'` | PASS |
+| AC-PAS-008 | regression-guard | n/a (mutant probe red) | `...-run '^TestQualityGate_AffectedScope_QueryFailureFallsBack$'`; `...-run '^TestAffectedScope_IncompleteGraphFallsBack$'` | PASS |
+| AC-PAS-009 | release-blocking | RED-M3a; LEDGER-PAS-009-A (probe009, immutable witness, exit 1 re-run above) | `...-run '^TestAffectedScope_ChangedSetMatchesCommit$' -count=1 -v` (plain repository and linked worktree, shapes i-v) | PASS |
+| AC-PAS-010 | regression-guard | n/a (passes against the stub) | `...-run '^TestQualityGate_AffectedScope_ContextIsolation$'` | PASS |
+| AC-PAS-011 | release-blocking | RED-M1; probe016 `AC-011` RED; RED-M3b CLI | `go test ./internal/config -run '^TestGatePreCommitTestScope$' -count=1 -v`; the two `TestUpdateGateYAML*` tests (in the 41 PASS); `go test ./internal/cli -run '^TestRunGatePreCommitInvalidScopeModeRejected$'`; probe016 `AC-011 mode: bogus: GREEN (gate exit=1, message names the key=yes)` | PASS |
+| AC-PAS-012 | withdrawn (Q1) | — | — | WITHDRAWN |
+| AC-PAS-013 | release-blocking | RED-M5; LEDGER-PAS-013-A re-run (exit 1) | `...-run '^TestSuppressionWalkSkipsTestdata$' -count=1 -v`; `ledger013.sh /private/tmp/t1673-bin/moai` exit 0, no suppression line; whole-tree run exit 0, 0 suppression lines | PASS |
+| AC-PAS-014 | regression-guard | n/a | `...-run '^TestQualityGate_StepBudgetsUnchanged$' -count=1 -v`; gate.yaml diff, added `t.Skip` = 0, removed `func Test` = 0 (M6 scans) | PASS |
+| AC-PAS-015 | regression-guard | n/a | diff scans in M6: added `hooksPath` 0, added git-config writes 0, hook files unmodified | PASS |
+| AC-PAS-016 | release-blocking | RED-M3b (probe016 RED; e2e RED) | `go test ./internal/cli -run '^TestPreCommitAffectedScopeE2E$' -count=1 -v`; `probe016.sh /private/tmp/t1673-bin/moai` exit 0, four GREEN lines | PASS |
+
+Live AC count 15 (001-011 less 012, 013-016): 15 PASS, 0 FAIL.
+
 ## §E.3 Run-phase Audit-Ready Signal
 
-_pending run-phase_
+```yaml
+run_complete_at: 2026-10-18
+run_commit_sha: 9d114393cac23a3a44dc96261ce7936cd36f11cc   # last code commit; the evidence-only commit(s) that record §E.2/§E.3 follow it
+run_status: PASS-WITH-DEBT
+audit_ready: true
+ac_pass_count: 15          # live ACs; AC-PAS-012 withdrawn (Q1)
+ac_fail_count: 0
+preserve_list_post_run_count: 0   # no file outside the SPEC's declared surface was modified (24 files, all under internal/hook/quality, internal/config, internal/cli/gate*.go + two tests, the two gate.yaml copies, and this SPEC's spec.md/progress.md)
+l44_pre_commit_fetch: not-run (local-only card: no push, no pre-spawn fetch dispatched in this run)
+l44_post_push_fetch: not-run (no push)
+new_warnings_or_lints_introduced: 0   # golangci-lint 0 issues on internal/hook/quality + internal/config; internal/cli shows 3 baseline errcheck in an untouched file; spec lint 0 errors / 0 warnings
+cross_platform_build:
+  darwin_arm64: "go build ./... exit 0"
+  windows_amd64: "GOOS=windows GOARCH=amd64 go build ./... exit 0; GOOS=windows go vet ./internal/hook/quality/ ./internal/config/ ./internal/cli/ exit 0"
+total_run_phase_files: 24
+m1_to_mN_commit_strategy: "RED commit before GREEN commit per milestone (M1, M2, M3a, M3b, M5), M4 withdrawn, M6 = test-hardening commit + evidence commit(s); no push"
+slot: "never held (acquire exit 3, lane-25 held go-test-heavy); nothing to release"
+debts:
+  - "Q4 (project-wide vet/lint/typecheck runtime) unmeasured; gates only the post-landing runbook"
+  - "no full-package -race run of internal/hook/quality or internal/config (slot unavailable); scoped -race runs PASS"
+  - "go test ./internal/template (440 s) ran during M1 without a slot lease"
+  - "internal/cli package coverage not measured (ruling 35e9); runGate 92.9% from a targeted selection"
+  - "baseline failure internal/config TestNoHardcodedContexts (scripts/release.sh), not attributable to this card"
+  - "SPEC-body wording requests for manager-spec (S1-a, S1-b, S2, AC-PAS-003 mutant weakness) are in the run report, not edited here"
+```
 
 ## §E.4 Sync-phase Audit-Ready Signal
 
