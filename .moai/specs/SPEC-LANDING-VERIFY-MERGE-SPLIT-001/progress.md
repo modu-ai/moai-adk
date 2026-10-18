@@ -9,7 +9,7 @@ plan_complete_at: 2026-10-18T17:21:00Z
 iteration: version 0.8.0 (board 6404 rulings on Q27 and Q28) on top of the split per board d20e after plan-audit iteration 5 (FAIL 0.86 at 9713b6757d stays on record); fresh plan-audit cycle on the reduced scope, REQ/AC ids of this piece unchanged
 scope: piece A2 only — M0 baseline, M1 receipt commit field, M2 audit binding in complete, M3 gate-state reader and key and status display, M4 lane guidance; the enabling switch is a separate later commit on the integration branch made only after A2 and A1 have both landed, not a milestone (boards 9dbe, 0577, 470c, 5d4d, d20e)
 plan_artifacts: spec.md, plan.md, acceptance.md, design.md, research.md, decision-index.md (Tier L by file count; 7 REQ / 7 AC)
-plan_artifact_hash: 583593b614fddbb45a1cd3907d449ce06c74f3817d6311977cd83d06b42b6955 (ComputeHash-equivalent over planArtifactNames; Python reimplementation of internal/runtime/audit_cache.go:121-141, not the Go function)
+plan_artifact_hash: ee585a8bf32bda941185f5b3bc89323836177bf335e1c61a6f703b58c7c739bf (ComputeHash-equivalent over planArtifactNames; Python reimplementation of internal/runtime/audit_cache.go:121-141, not the Go function)
 open_decisions: none; Q27 DECIDED by board 6404 (key on only after A2 and A1 have both landed); Q28 DEFAULT-APPLIED with the 6404 ruling (merge-path binding is A1's); Q7-Q13 by boards 9dbe/2c51/e4cc; Q14 by 0577 P4; Q18 by 470c; Q20 and Q22 by 5d4d; Q29 by d20e; Q28 DEFAULT-APPLIED (implementation-level, rule: smaller user-visible surface); Q15-Q17, Q19, Q21, Q23-Q26 recorded, Q15-Q17, Q25, Q26 move with piece A1
 record_cleanup: all bookkeeping is committed in the same commit as the final artifacts; no backfill commit is planned after the audited SHA (board 0577 P3)
 

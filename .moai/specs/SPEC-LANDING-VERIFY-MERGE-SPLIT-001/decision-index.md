@@ -1,6 +1,6 @@
 # SPEC-LANDING-VERIFY-MERGE-SPLIT-001 — decision index (card t1872)
 
-Version 0.3.0 adds the leader's policy rulings on plan-audit iteration 1 (board `d-20261018T153534Z-0577`, `0577`) and rows Q14-Q17. Version 0.4.0 adds the N2 ruling on plan-audit iteration 2 (board `d-20261018T160111Z-470c`, `470c`) and rows Q18-Q22. Version 0.8.0 adds the ruling on Q27 and Q28 (board `d-20261018T171932Z-6404`, `6404`) and corrects the recorded time of rows Q25 and Q26. Version 0.7.0 adds the split ruling (board `d-20261018T170131Z-d20e`, `d20e`, superseding `adbe`) and rows Q27-Q29; the SPEC now covers piece A2 only. Version 0.6.0 adds the single ceiling exception on plan-audit iteration 4 (board `d-20261018T164307Z-4812`, `4812`) and rows Q25-Q26. Version 0.5.0 adds the rule C ruling on plan-audit iteration 3 (board `d-20261018T162457Z-5d4d`, `5d4d`) and rows Q23-Q24, and re-states Q20 and Q22.
+Version 0.3.0 adds the leader's policy rulings on plan-audit iteration 1 (board `d-20261018T153534Z-0577`, `0577`) and rows Q14-Q17. Version 0.4.0 adds the N2 ruling on plan-audit iteration 2 (board `d-20261018T160111Z-470c`, `470c`) and rows Q18-Q22. Version 0.8.0 adds the ruling on Q27 and Q28 (board `d-20261018T171932Z-6404`, `6404`) and corrects the recorded time of rows Q15-Q17, Q19, Q21, Q23, Q24, Q25 and Q26 to the commit time of the commit that last set each verdict. Version 0.7.0 adds the split ruling (board `d-20261018T170131Z-d20e`, `d20e`, superseding `adbe`) and rows Q27-Q29; the SPEC now covers piece A2 only. Version 0.6.0 adds the single ceiling exception on plan-audit iteration 4 (board `d-20261018T164307Z-4812`, `4812`) and rows Q25-Q26. Version 0.5.0 adds the rule C ruling on plan-audit iteration 3 (board `d-20261018T162457Z-5d4d`, `5d4d`) and rows Q23-Q24, and re-states Q20 and Q22.
 
 `interview.decision_gate` is `on` in this repository. Version 0.2.0 records the leader's scope ruling of 2026-10-18 (board `d-20261018T150139Z-9dbe`, decided_by leader tn1p4e under operator delegation +Jev, operator-relayed scope review): the SPEC narrows to **piece A** (baseline M0, completeness gate, the Q13 binding, and the enable switch). Pieces B and C and the reuse relaxation are follow-ups, not part of this SPEC.
 
@@ -205,7 +205,7 @@ Authority anchor: none
 Why unresolved: the audit found no named verb for the manifest.
 Default: verbs under the existing `moai integration` family: `manifest derive`, `manifest show`, `manifest verify`, and `remeasure --call` (rule: the smaller user-visible surface — no new top-level family)
 Alternate: a new top-level `moai landing` family
-Operator verdict: DEFAULT-APPLIED 2026-10-18T15:58:00Z manager-spec+lane t1872
+Operator verdict: DEFAULT-APPLIED 2026-10-18T15:37:44Z manager-spec+lane t1872
 
 ### Q16: What is the manifest of a card with no Go change?
 
@@ -215,7 +215,7 @@ Authority anchor: none
 Why unresolved: a documentation-, rule- or configuration-only card has no `go test` call, and the audit found no defined admission.
 Default: reader calls found by the reader search become calls; when there are none, the manifest is empty-with-evidence (changed-path list recomputed by the verifier, the `go list` proof that no Go package contains a changed path, the recorded reader-search result) and is admitted (rule: the option that preserves current behaviour — such cards land today, and the gate must not wedge them)
 Alternate: require a declared non-Go verification command for every such card
-Operator verdict: DEFAULT-APPLIED 2026-10-18T15:58:00Z manager-spec+lane t1872
+Operator verdict: DEFAULT-APPLIED 2026-10-18T15:37:44Z manager-spec+lane t1872
 
 ### Q17: How is an attempt's command compared with the manifest call's?
 
@@ -225,7 +225,7 @@ Authority anchor: none
 Why unresolved: the audit showed a `-run`-narrowed attempt counts today.
 Default: exact argv equality of the `go test` segment after dropping leading environment assignments and an `unset … &&` scrub segment; any other compound, pipe or extra segment refuses (rule: the option that refuses strictly more, the fail-closed direction the rulings require)
 Alternate: compare only the package list and flags that select tests
-Operator verdict: DEFAULT-APPLIED 2026-10-18T15:58:00Z manager-spec+lane t1872
+Operator verdict: DEFAULT-APPLIED 2026-10-18T15:37:44Z manager-spec+lane t1872
 
 ## Rows Q18-Q22 (plan-audit iteration 2)
 
@@ -245,7 +245,7 @@ Authority anchor: none
 Why unresolved: no Go code parses an `audit_receipt:` line from a verdict file; measured sample of 8 merge-ready SPEC cards: all 8 verdicts cite receipt ids somewhere, only 2 as a top-level `audit_receipt:` machine line (`research.md` §10).
 Default: SPEC cards locate the newest `sync-audit*.md` under `.moai/reports/<card-id>/` (the T13 reader's rule: highest `-iter<N>`, then latest modification) and the verdict must carry exactly one `audit_receipt: rcpt-…[,rcpt-…]` machine line; the sync-auditor protocol and the audit artifact convention state it (rule: the smaller user-visible surface — one machine line instead of a new file). Consequence stated: a verdict lacking the line is refused while the gate is on; such a card is re-audited at landing anyway (board 2c51)
 Alternate: parse the `AUDIT-VERDICT:` final-message line or free prose
-Operator verdict: DEFAULT-APPLIED 2026-10-18T16:40:00Z manager-spec+lane t1872
+Operator verdict: DEFAULT-APPLIED 2026-10-18T16:04:08Z manager-spec+lane t1872
 
 ### Q20: What is the gate state when the key or the branch cannot be read?
 
@@ -263,7 +263,7 @@ Authority anchor: none
 Why unresolved: the auditor protocol cites every receipt id received, including failed extra calls; a universal rule would fail verdicts the existing guard accepts.
 Default: at least one cited receipt must qualify (readable, codex or multi-backend tool, unmet-gate empty, codex verdict pass, audited tree matching, audited commit equal to HEAD); a failed or inconclusive extra call is recorded, does not block, and never replaces the pass (rule: the option that preserves current behaviour — the existing guard accepts one qualifying receipt)
 Alternate: every cited receipt must pass
-Operator verdict: DEFAULT-APPLIED 2026-10-18T16:40:00Z manager-spec+lane t1872
+Operator verdict: DEFAULT-APPLIED 2026-10-18T16:04:08Z manager-spec+lane t1872
 
 ### Q22: What does "the audited commit is the current HEAD" mean?
 
@@ -283,7 +283,7 @@ Authority anchor: none
 Why unresolved: the receipt binds a commit but not the audited scope; a partial-scope audit stamped with the current HEAD would read as the audit of that HEAD.
 Default: record `audit_target` additively and do not gate on it; name the partial-scope case as accepted residual R5 (rule: the smaller user-visible surface — the legitimate full-scope target values are not enumerated at plan time, and a guessed gate could refuse valid audits)
 Alternate: qualify only a base-branch review target
-Operator verdict: DEFAULT-APPLIED 2026-10-18T17:20:00Z manager-spec+lane t1872
+Operator verdict: DEFAULT-APPLIED 2026-10-18T16:29:32Z manager-spec+lane t1872
 
 ### Q24: Does the receipt binding apply to SPEC-less cards?
 
@@ -293,7 +293,7 @@ Authority anchor: none (source: board 2c51 binds `complete` without a card-kind 
 Why unresolved: the SPEC-less readiness path binds `audited_sha` only, and iteration 3 found the scope undefined.
 Default: yes — the SPEC-less verdict is `.moai/reports/<card-id>/verdict.md`, and the citation line and the receipt binding apply to it as to a SPEC card (rule: the option that preserves the operator's ruling — Q13 has no card-kind exception)
 Alternate: SPEC cards only
-Operator verdict: DEFAULT-APPLIED 2026-10-18T17:20:00Z manager-spec+lane t1872
+Operator verdict: DEFAULT-APPLIED 2026-10-18T16:29:32Z manager-spec+lane t1872
 
 ## Rows Q25-Q26 (plan-audit iteration 4, inside the 4812 exception)
 
