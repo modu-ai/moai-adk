@@ -269,6 +269,15 @@ func ownTreeSnapshot(t *testing.T, root string, opts ownTreeOpts) map[string]str
 			return relErr
 		}
 		if rel == "." {
+			// The root directory itself: a file created and deleted directly in
+			// it (a probe file) moves its mtime and nothing else.
+			if opts.DirMtime {
+				info, infoErr := os.Lstat(p)
+				if infoErr != nil {
+					return infoErr
+				}
+				out["./"] = fmt.Sprintf("d %o %d", info.Mode().Perm(), info.ModTime().UnixNano())
+			}
 			return nil
 		}
 		key := filepath.ToSlash(rel)
@@ -949,6 +958,25 @@ func TestOwnershipHelperTreeSnapshotSeesDirMtime(t *testing.T) {
 	}
 	if got := ownTreeDigest(ownTreeSnapshot(t, root, withMtime)); got == beforeM {
 		t.Errorf("mtime-folding digest did not change after a create-then-delete; a temporary write would go unseen")
+	}
+
+	// Create-then-delete directly in the root directory: only the root's own
+	// mtime moves, so the snapshot must carry it.
+	pinTreeDirMtimes(t, root, pin)
+	rootBeforeM := ownTreeDigest(ownTreeSnapshot(t, root, withMtime))
+	rootBeforeN := ownTreeDigest(ownTreeSnapshot(t, root, noMtime))
+	rootTmp := filepath.Join(root, "probe.tmp")
+	if err := os.WriteFile(rootTmp, []byte("x"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.Remove(rootTmp); err != nil {
+		t.Fatal(err)
+	}
+	if got := ownTreeDigest(ownTreeSnapshot(t, root, noMtime)); got != rootBeforeN {
+		t.Errorf("content-only digest changed after a create-then-delete in the root; it must not")
+	}
+	if got := ownTreeSnapshot(t, root, withMtime); ownTreeDigest(got) == rootBeforeM {
+		t.Errorf("mtime-folding digest did not change after a create-then-delete in the root directory; a probe in the project root would go unseen")
 	}
 
 	// A byte change is always visible, and SkipPrefixes hides a subtree.

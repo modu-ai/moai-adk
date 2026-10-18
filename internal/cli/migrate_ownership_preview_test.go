@@ -372,6 +372,24 @@ func TestDryRunChangesNothingAndMatchesVerdict(t *testing.T) {
 		}
 	})
 
+	// The mutant the criterion names: a verdict path that calls
+	// probeCaseSensitiveFS(projectRoot) writes and removes a probe file directly in
+	// the project root, which moves the root directory's own mtime and nothing a
+	// byte hash can see.
+	t.Run("MutantRootProbeIsSeenByTheDigest", func(t *testing.T) {
+		root, _ := previewFixture(t, false)
+		pinTreeDirMtimes(t, root, prevPastTime)
+		opts := ownTreeOpts{DirMtime: true}
+		before := ownTreeSnapshot(t, root, opts)
+		if _, err := probeCaseSensitiveFS(root); err != nil {
+			t.Fatalf("probeCaseSensitiveFS: %v", err)
+		}
+		diff := ownTreeDiff(before, ownTreeSnapshot(t, root, opts))
+		if !slices.Contains(diff, "./") {
+			t.Errorf("probeCaseSensitiveFS(projectRoot) left the digest unchanged; diff %v", diff)
+		}
+	})
+
 	t.Run("MutantCreateThenDeleteIsSeenByTheDigest", func(t *testing.T) {
 		root, _ := previewFixture(t, false)
 		pinTreeDirMtimes(t, root, prevPastTime)
