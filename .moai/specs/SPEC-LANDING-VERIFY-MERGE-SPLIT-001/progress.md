@@ -5,14 +5,15 @@ Card t1872. Status of record: `spec.md` frontmatter (`draft`).
 ## §E.1 Plan-phase Audit-Ready Signal
 
 plan_status: audit-ready
-plan_complete_at: 2026-10-18T16:10:00Z
-iteration: 2 (revision after plan-audit iteration 1, FAIL 0.73 at 8a3014bee9)
-scope: piece A only (M0 baseline, M1 gate core, M2 receipt commit field, M3 audit binding, M4 lane guidance); the enabling switch is a separate later commit on main, not a milestone (boards 9dbe, 0577)
-plan_artifacts: spec.md, plan.md, acceptance.md, design.md, research.md, decision-index.md (Tier L; 15 REQ / 15 AC)
-plan_artifact_hash: 4588688b1a0d8e751f34eda53db0548bdfdd3b64827880fea74190265ba207ce (ComputeHash-equivalent over planArtifactNames; Python reimplementation of internal/runtime/audit_cache.go:121-141, not the Go function)
-open_decisions: none (Q7-Q13 by boards 9dbe/2c51/e4cc; Q14 by board 0577 P4; Q15-Q17 DEFAULT-APPLIED, implementation-level)
+plan_complete_at: 2026-10-18T16:45:00Z
+iteration: 3 (revision after plan-audit iteration 2, FAIL 0.80 at fc3746c10a; last Tier L round)
+scope: piece A only (M0 baseline, M1 gate core, M2 receipt commit field, M3 audit binding, M4 lane guidance); the enabling switch is a separate later commit on the integration branch, not a milestone (boards 9dbe, 0577, 470c)
+plan_artifacts: spec.md, plan.md, acceptance.md, design.md, research.md, decision-index.md (Tier L; 18 REQ / 18 AC)
+plan_artifact_hash: 67c06d55b8dcf2fd66b09667754d05a2de1d9e77a373dd25be7b39775fd7416c (ComputeHash-equivalent over planArtifactNames; Python reimplementation of internal/runtime/audit_cache.go:121-141, not the Go function)
+open_decisions: none (Q7-Q13 by boards 9dbe/2c51/e4cc; Q14 by 0577 P4; Q18 by 470c; Q15-Q17 and Q19-Q22 DEFAULT-APPLIED, implementation-level)
+record_cleanup: all bookkeeping is committed in the same commit as the final artifacts; no backfill commit is planned after the audited SHA (board 0577 P3)
 
-Iteration-1 defect disposition: D1 fixed (REQ-LVM-009/010, M2/M3, receipt writer and schema in the touch list and Tier arithmetic); D2 fixed (reject class 12, AC-005 N=12, mutant row); D3 fixed (REQ-LVM-013, AC-013); D4 fixed (REQ-LVM-014, AC-014, AC-011 greps name the commands); D5 fixed (binary prerequisite C5, config read from the integration root, switch outside the branch, DoD no longer claims first live use, transition picture research.md §10, no-backfill rule P3); D6 fixed (recovery path REQ-LVM-012, design §6); D7 fixed (AC-012 diffs S0^ and <S0>^..<S4> over workflow.yaml); D8 fixed (one grep per procedure step); D9 fixed (embed owners and deleted packages, AC-001 N=6); D10 fixed (per-package test counts, class 11); D11 fixed (REQs are list items); D12 partly (REQ-007 and REQ-015 reworded, bundling kept where one invariant); D13 fixed (AC-008 negatives, AC-007 oracle); D14 fixed (design §3 residuals R1-R3). CN-4: plan.md milestones are `###` headings with `Exit:` lines.
+Iteration-2 defect disposition: N1 fixed (REQ-LVM-016, class 13 by shared re-derivation, AC-016, mutant row); N2 fixed per board 470c (REQ-LVM-017 committed blob of the integration branch, fail-modes unreadable=ON with notice, AC-017 observes enable and revert with a detached stand-in primary as negative control, `manifest verify` prints the gate state and source); N3 fixed (REQ-LVM-008 locator, REQ-LVM-018 `audit_receipt:` grammar and parser with refusal for missing/duplicate/empty/none/malformed/absent-id, AC-008, AC-018, protocol text in the touch list); N4 fixed (one equivalent-HEAD predicate for verdict and receipt, AC-008/010 tolerated and refused cases with the real writer); O1 fixed (tree_root in REQ-010, AC-010 h); O2 fixed (entry points mcp_codex.go x2 and mcp_convergence.go x1 in REQ-009, touch list and Tier arithmetic, AC-009 TestEntryPointCapturesStartHead); O3 fixed (REQ-012 and AC-012 say the key-off card lands through the gated path with the configuration file's reader calls); O4 fixed (at least one qualifying receipt; failed extras recorded, never replace the pass; Q21); O5 fixed (reader search and go list proof recomputed by the shared derivation; build-tag activation stays residual R1); O6 partly (REQ-005 and REQ-001 keep their enumerations because each ACs splits them; REQ-016/017/018 are separate); O7 recorded as run-phase debt with the reason in research.md section 11.
 
 ## §E.2 Run-phase Evidence
 

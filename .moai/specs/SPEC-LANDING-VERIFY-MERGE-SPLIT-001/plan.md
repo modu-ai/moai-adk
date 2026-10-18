@@ -1,14 +1,15 @@
-# SPEC-LANDING-VERIFY-MERGE-SPLIT-001 — plan (v0.3.0, piece A)
+# SPEC-LANDING-VERIFY-MERGE-SPLIT-001 — plan (v0.4.0, piece A)
 
 Priority-ordered, no time estimates. Development mode TDD (RED first). Each milestone is its own commit with subject `feat(SPEC-LANDING-VERIFY-MERGE-SPLIT-001): M<k> <what> (card t1872)` (M0 uses `docs(...)`), carrying the `🗿 MoAI` trailer and, for the agent-authored ones, `Authored-By-Agent`. Scope is piece A only (board `9dbe`); follow-ups are in `spec.md` §7 and not planned here.
 
 ## A. Review-focus order (decision reversibility)
 
-1. **Record and verifier contracts** (manifest, attempt, verdict, producer verbs; REQ-LVM-001..006, 013, 014) — data-model decisions, highest change likelihood.
-2. **The receipt commit field and the audit binding** (REQ-LVM-008..010) — a schema change in the receipt store plus a landing-policy edge.
-3. **Switch discipline and prerequisites** (REQ-LVM-012, spec C5) — operator-visible landing policy; the switch is outside this branch.
-4. **Lane guidance** (REQ-LVM-011).
-5. Wiring edits in the merge step, `complete` and condition (d) — mechanical.
+1. **Record and verifier contracts** (manifest and its currency, attempt, verdict, producer verbs; REQ-LVM-001..006, 013, 014, 016) — data-model decisions, highest change likelihood.
+2. **The gate-state source** (REQ-LVM-017, board 470c) — a policy edge: which committed blob decides, and the fail-modes.
+3. **The receipt commit field, the verdict citation line and the audit binding** (REQ-LVM-008..010, 018) — a schema change in the receipt store plus a landing-policy edge.
+4. **Switch discipline and prerequisites** (REQ-LVM-012, spec C5) — operator-visible landing policy; the switch is outside this branch.
+5. **Lane guidance and protocol text** (REQ-LVM-011, 018 documents).
+6. Wiring edits in the merge step, `complete` and condition (d) — mechanical.
 
 ## B. Preconditions and constraints
 
@@ -28,27 +29,27 @@ Exit: AC-LVM-012 (M0 leg).
 
 ### M1 — gate core, producer verbs, zero-Go path
 
-Manifest producer (`moai integration manifest derive|show|verify`), attempt records and `remeasure --call` (command binding, per-package test counts), abort/restart classes, the whole-manifest verifier with its twelve reject classes, the zero-Go evidence path, wiring into the merge step, `complete`, condition (d) and the verify verb, config key `workflow.landing_gate.enabled` (false, read from the integration root) and the narrowing allowance list. Negative tests and the positive control are written first and end green. A characterization test of today's verdicts (the oracle of AC-LVM-007) is recorded before any edit of `ValidateRemeasureRecord`.
+Shared derivation and manifest producer (`moai integration manifest derive|show|verify`), attempt records and `remeasure --call` (command binding, per-package test counts), abort/restart classes, the whole-manifest verifier with its twelve attempt-level reject classes plus the thirteenth (manifest currency by re-derivation), the zero-Go evidence path, the gate-state reader (committed blob of the integration branch, fail-modes), wiring into the merge step, `complete`, condition (d) and the verify verb (which prints the gate state and its source), config key `workflow.landing_gate.enabled` (false in the template) and the narrowing allowance list. Negative tests and the positive control are written first and end green. A characterization test of today's verdicts (the oracle of AC-LVM-007) is recorded before any edit of `ValidateRemeasureRecord`.
 
-Exit: AC-LVM-001, 002, 003, 004, 005, 006, 007, 013, 014, 015.
+Exit: AC-LVM-001, 002, 003, 004, 005, 006, 007, 013, 014, 015, 016, 017.
 
 ### M2 — receipt commit field
 
-Additive `audited_commit` field in the receipt schema and its writer: read the audited tree's HEAD before the backends run, stamp it, leave it empty if HEAD differs at write time; never rewrite an existing receipt. The MCP server that writes receipts needs a build containing this change before a receipt counts as bound (spec C5).
+Additive `audited_commit` field in the receipt schema and its writer; the entry points `mcp_codex.go` (two call sites) and `mcp_convergence.go` (one) capture the audited tree's HEAD before the backends run and pass it; the writer stamps it, leaves it empty if HEAD differs at write time, never rewrites an existing receipt. The MCP server that writes receipts needs a build containing this change before a receipt counts as bound (spec C5).
 
 Exit: AC-LVM-009.
 
 ### M3 — audit binding in `complete`
 
-Under the gate flag, `complete` binds the SPEC card's sync-audit verdict to the current HEAD (evidence-directory difference only, no other exemption) and requires every cited receipt to be a readable, passing, unmet-gate-free codex or multi-backend receipt whose audited commit equals HEAD. Reuses `auditverdict` admission, `runtime.ResolveRequiredBackends`, and `auditreceipt.ReadReceipt`.
+Under the gate, `complete` locates the SPEC card's verdict (newest `sync-audit*.md`), parses the single `audit_receipt:` machine line (new parser; refusal for missing, duplicate, empty, `none`, malformed, or absent-from-store), binds the verdict and at least one qualifying receipt (readable, codex or multi-backend tool, matching `tree_root`, unmet gate empty, verdict pass, audited commit equivalent to HEAD) with one equivalence predicate (equal, or ancestor differing only under `.moai/reports/<card-id>/`); failed extra citations are recorded and never replace the pass. Reuses `auditverdict` admission, `runtime.ResolveRequiredBackends`, and `auditreceipt.ReadReceipt`.
 
-Exit: AC-LVM-008, 010.
+Exit: AC-LVM-008, 010, 018.
 
 ### M4 — lane guidance
 
-`factory-dispatch-mechanics.md` and its mirror state the gate, the three commands, restart as a new attempt, the no-backfill-after-audit rule, and the by-path binary and receipt-server prerequisites; Template-First: edit the template tree, `make build` (when the host admits it), local copies regenerated. Includes the recovery paragraph (the key-off one-path card).
+`factory-dispatch-mechanics.md` and its mirror state the gate, the three commands, restart as a new attempt, the gate-state source and its `gate_state_unreadable` notice, the no-backfill-after-audit rule, and the by-path binary and receipt-server prerequisites; the sync-auditor protocol (and mirror) and `.moai/docs/audit-artifact-convention.md` state the `audit_receipt machine line`. Template-First: edit the template tree, `make build` (when the host admits it), local copies regenerated. Includes the recovery paragraph (the key-off one-path card through the gated path).
 
-Exit: AC-LVM-011, 012.
+Exit: AC-LVM-011, 012, 018.
 
 ## D. Ordering, machine-checkable
 
@@ -60,13 +61,15 @@ Each milestone: (1) write the AC's tests first and observe them red for the stat
 
 - **M1 specifics.** Changed packages come from the diff against the merge-base, mapped through `go list` (a changed file under a package directory marks the package, embed and testdata included); importers from `Imports`, `TestImports`, `XTestImports`; embed owners from `EmbedFiles`/`TestEmbedFiles`/`XTestEmbedFiles`; a deleted package is handled by comparing the base and candidate package graphs. The structured form extends `moai integration remeasure` (keeping `RunRemeasure`'s clean-start and clean-finish checks, `integration_remeasure.go:634-720`); command comparison reuses the existing shell-segment helpers (`shellSegments`, `goSubcommand`, `stripLeadingEnv`). The verifier replaces the decision of `ValidateRemeasureRecord` where it is consulted (five call sites, `research.md` §2) only while the key is true.
 - **M2 specifics.** The writer is `recordAuditReceiptAt` (`internal/cli/mcp_audit_receipt.go:60-100`); the schema is `auditreceipt.Receipt` (`store.go:166-177`). The hook-side guard (`CheckCitedReceipts`) keeps its meaning; the new field is consulted only by the landing binding.
-- **M3 specifics.** Receipts are resolved from the store root the audit call used (`receiptTarget`); the binding reads the verdict file's cited ids as the guard already does.
+- **M3 specifics.** Receipts are resolved from the store root the audit call used (`receiptTarget`); the `audit_receipt:` line is parsed from the verdict file by new code (the existing guard parses the final-message `AUDIT-VERDICT:` line and never a file); the verdict locator reuses the T13 reader's newest-iteration rule (`homestate.newestVerdictFile`).
+- **M1 gate-state reader.** `git show <integration-branch>:.moai/config/sections/workflow.yaml` run in the repository (no working tree consulted); the branch is the window record's, else `configuredIntegrationBranch()`; unreadable reads ON with `gate_state_unreadable`; the negative-control fixture uses a temporary repository with a detached stand-in primary and never touches the real primary checkout.
 
 ## F. Risks
 
 | Risk | Mitigation |
 |---|---|
-| Enabling later refuses merge-ready cards until their calls are in the structured form and their audit is bound | decided cost (board 0577 P2); M4 guidance precedes the switch; the leader's pre-switch list is in `research.md` §10 |
+| Enabling later refuses merge-ready cards until their calls are in the structured form and their audit is bound | decided cost (board 0577 P2); M4 guidance precedes the switch; the leader's pre-switch list is in `research.md` §10 (6 of 8 sampled verdicts lack the `audit_receipt:` line and are re-audited at landing anyway) |
+| An unreadable gate key could wedge or silently disable the gate | unreadable reads ON with a notice; ON still admits a compliant landing, including the repairing card (REQ-LVM-017) |
 | The gate ON in a build that lacks it is silently inert | the switch is gated on the by-path binary prerequisite (C5); attempts record the judging build identity |
 | Receipts from a server without the writer change are unbound | prerequisite C5; an unbound receipt refuses, fail-closed |
 | `go list` derivation misses a reader of a changed non-Go file | the reader search is recorded with its command; a computed-path read stays residual (`design.md` §3) |
