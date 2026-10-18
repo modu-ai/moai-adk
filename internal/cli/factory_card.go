@@ -2806,6 +2806,47 @@ func requireQueuePicked(root, cardID string) error {
 	return nil
 }
 
+// canonicalWorktreePath normalizes a card worktree path to one canonical
+// spelling per tree (card t1784): when the path exists, it resolves to the
+// real path via EvalSymlinks and confirms with os.SameFile that the resolved
+// path still names the input, so variant spellings of the same tree
+// (/tmp/x vs /private/tmp/x) cannot fork the record against the string
+// equality in homestate.RecordCardWorktree. A nonexistent path (the tree is
+// created after assign) falls back to filepath.Abs. t1751 N1 (a) composes:
+// the input is accepted as typed; only the stored spelling is canonical.
+func canonicalWorktreePath(input string) (string, error) {
+	abs, err := filepath.Abs(input)
+	if err != nil {
+		return "", err
+	}
+	real, err := filepath.EvalSymlinks(abs)
+	if err != nil {
+		// The tree does not exist yet — nothing to resolve; store the Abs form.
+		return abs, nil
+	}
+	same, err := sameFilePath(abs, real)
+	if err != nil || !same {
+		// Could not confirm the resolution names the input — keep the Abs form
+		// rather than storing a path that points elsewhere.
+		return abs, nil
+	}
+	return real, nil
+}
+
+// sameFilePath reports whether two paths name the same file (os.SameFile on
+// their stat results).
+func sameFilePath(a, b string) (bool, error) {
+	infoA, err := os.Stat(a)
+	if err != nil {
+		return false, err
+	}
+	infoB, err := os.Stat(b)
+	if err != nil {
+		return false, err
+	}
+	return os.SameFile(infoA, infoB), nil
+}
+
 func newFactoryAssignCommand() *cobra.Command {
 	var to, prefer, after, spec, worktree, contractRef, run string
 	var reassign bool
@@ -2830,7 +2871,7 @@ func newFactoryAssignCommand() *cobra.Command {
 				abs := worktree
 				if abs != "" {
 					var err error
-					if abs, err = filepath.Abs(worktree); err != nil {
+					if abs, err = canonicalWorktreePath(worktree); err != nil {
 						return fmt.Errorf("factory assign: %w", err)
 					}
 				}
