@@ -77,9 +77,11 @@ var sweepGuardAllow = []sweepAllow{}
 // re-read off the real tree at card t1709 (HEAD 48bfe97af; the MOAI_SWEEP_GUARD_REPORT run
 // printed marker-exempted lines=18 (H1 0) and P-C lines=164) and raised 131 -> 164 to the
 // exact measurement, authorized by design D-31: growth over the t1453 M4 baseline 131 is
-// +11 of sanctioned t1698 Korean->English local-doc translation (audit F9, which measured
-// 142 — English wording matches the P-C heuristic where Korean did not) and +22 of
-// subsequent legitimate doc growth on main. Ceilings may only fall: a marker that silences
+// +33 net: +12 contributed by the sanctioned t1698 Korean->English local-doc translation
+// (audit F9 measured 130 -> 142 — English wording matches the P-C heuristic where Korean
+// did not; an unrelated -1 of drift had moved the tree 131 -> 130 since the baseline, so
+// the translation-era net increase reads +11) and +22 of subsequent legitimate doc growth
+// on main (142 -> 164, card t1709 re-measurement). Ceilings may only fall: a marker that silences
 // more live text than the baseline, a document-wide H1 marker, or a new token-less live
 // sentence fails the armed run. M4/M5 tighten them to the swept tree's values at the armed
 // run; raising one needs a decision row in design.md.
