@@ -2423,9 +2423,317 @@ T3 에서는 기존 게이트 시험도 붉다 (환경이 켜져 제거가 일�
 
 **구현 커밋 C 없음.** 구현이 필요한 차이가 없다 (스위치는 처음부터 꺼져 있다).
 
+#### Run chunk 4 GREEN 기록과 정직한 회계 (M8 + M9 + M10)
+
+**커밋 지도 (기준 HEAD `cf2581728e`)**
+
+| 묶음 | A (시험만) | B (셀 기록) | C (구현) | 비고 |
+|------|-----------|-----------|----------|------|
+| M8 AC-OWR-15 | `415644baff` | `b896029228` | — | 도착 시 GREEN 가드, 붉음은 변이 (시험 안 열여섯 + 운영 코드 넷) |
+| M9 AC-OWR-17 | `5614767764` | `7414777ee3` | — | 도착 시 GREEN 가드, 변이 열둘 + 운영 코드 넷 |
+| M9 AC-OWR-18 | `ace2e8d84b` | `886f5b2d82` | — | 도착 시 GREEN 가드, 변이 여덟 + 운영 코드 셋 |
+| M10 AC-OWR-19 | `dd5a4b42b6` | `5cebd5a3da` | — | 도착 시 GREEN 가드, 스캔 변이 열둘 + 운영 코드 셋 |
+| 린트 후속 (시험만) | `8afbbe9436` | — | — | AC-OWR-15 시험의 쓰지 않는 필드 둘 제거, 동작 변화 없음 |
+
+**구현 커밋이 하나도 없다.** M8-M10 의 기준 넷 모두 M1-M5 가 이미 닫은 동작을 도착 시 초록으로 확인하고, 붉음을 변이로 관측했다. 「M1-M5 가 남긴 차이만 고친다」 에 해당하는 남은 차이는 측정되지 않았다. 측정된 어긋남은 둘이고 모두 SPEC 본문의 모순이라 코드가 아니라 공개로 처리했다: REQ-OWR-012 의 「동일한 잔존 목록」 대 design.md D-2 의 이유 정제 (AC-OWR-17 기록의 관측 1), AC-OWR-15/-17 의 제외 목록과 기대 차이 집합이 시계 파생 위치 둘을 빠뜨림.
+
+**회귀: 이 카드의 시험 전부 (앵커된 이름 66개, 트리 `8afbbe9436`, 작업 트리 깨끗)** — 기준선 11 + 이 카드가 만든 시험 + 가드 (`TestUpdateDryRun_ZeroMutation`, `TestPreviewOmitsRemovalCandidateWhileSwitchOff_VerboseNamesCopy`, `TestShouldSkipBinaryUpdate_*` 여섯). 이름은 파일 `card_tests` 에서 나왔고 모두 패키지에 정확히 한 번 있음을 확인했다 (이름 점검 66/66). 명령: `TMPDIR=/private/tmp/own-fixture-d1 go test ./internal/cli/ -run '^(<아래 66개>)$' -count=1 -v -coverprofile=<파일>` (패키지 전체 실행이 아니다), 종료 코드 0, 최상위 `--- PASS`=66 `--- FAIL`=0 `--- SKIP`=0, 부하 평균 시작 `26.37 29.51 31.73` 끝 `30.33 30.96 32.02`:
+
+```text
+PASS
+coverage: 10.0% of statements
+```
+
+앵커된 이름:
+
+```text
+TestAliasToAKeyTheManifestLacksIsNoAlias
+TestBackupFailureRemovesNothingThroughProductionPath
+TestCaseVariantCounterpartAndMirrorSpelling
+TestCaseVariantOnHostFilesystem
+TestCaseVariantResolvesToRegisteredEntry
+TestCommandsAndAgentsDiscoverableAfterInterruptedRun
+TestCommandsSingleDispositionAndPresent
+TestCounterpartLocationAndStatusEdges
+TestDowngradeDropsEvidenceNotSafety
+TestDryRunChangesNothingAndMatchesVerdict
+TestDryRunRunsNoBinaryUpdateStep
+TestEmptiedSkillDirRemoved
+TestEmptyDirProvenanceVerdict
+TestInterruptedMigrationRecoversAndConverges
+TestKeepReasonVocabularyIsClosed
+TestLegacyManifestRoundTrip
+TestManagedOnlyEmptyDirsPruned
+TestMigrationBackupBeforeRemoval
+TestMigrationClassifiesUnregisteredMirrorCopy
+TestMigrationDefaultKeepsConfirmedProjectCopy
+TestMigrationIdempotent
+TestMigrationKeepsSharedCopyUnderProfileReach
+TestMigrationPreservesExistingMirrorEntries
+TestMigrationRemovalGate
+TestMigrationRemovesSharedCopyWithoutProfileReach
+TestNoProfileRootAccessInUpdateSources
+TestOwnershipAttestedManagedOnlyWithFullEvidence
+TestOwnershipAttestedManagedThroughOperatingSource
+TestOwnershipHelperFixtureBuilders
+TestOwnershipHelperForcedRunReachesReconciliation
+TestOwnershipHelperTreeSnapshotSeesDirMtime
+TestOwnershipHelperUsesRealEmbeddedPaths
+TestOwnershipPreserveByteEqualUserFile
+TestOwnershipPreserveUserModifiedFile
+TestOwnershipUnregisteredUnknownOriginKeptWithReason
+TestOwnershipVerdictClasses
+TestPreservePriorManifestOutcomes
+TestPreviewOmitsRemovalCandidateWhileSwitchOff
+TestPreviewOmitsRemovalCandidateWhileSwitchOff_VerboseNamesCopy
+TestPreviewVerdictsFailClosed
+TestPriorGenerationCorruptIsNoEvidence
+TestPriorGenerationSourceBoundedAndTolerant
+TestPriorGenerationsAreLookupBoundOnly
+TestPriorManifestAtomicWriteFailures
+TestPriorManifestRetainedInRunBackup
+TestProfileCallsiteBaselineMatchesTree
+TestProfileEnvDoesNotReachProfileRoot
+TestProfileMappedCopyKeptWithoutCounterpart
+TestProfileReachMarkUsesTheRegisteredKeyUnderACaseAlias
+TestProfileScanCatchesMutants
+TestPruneNestedEmptyDirGuards
+TestRF2F3b_MigrationPreservesUntracked
+TestRemainingListKeeps313UnregisteredCopies
+TestRemainingRenderEdges
+TestRemovalSwitchStaysOffInProduction
+TestRemovedAssetBackupRestoreByteIdentical
+TestRepeatedUpdateIsIdempotent
+TestShouldSkipBinaryUpdate_DevBuild
+TestShouldSkipBinaryUpdate_DevBuild_Phase5_V2
+TestShouldSkipBinaryUpdate_EnvVar
+TestShouldSkipBinaryUpdate_EnvVar_Phase5
+TestShouldSkipBinaryUpdate_Normal
+TestShouldSkipBinaryUpdate_TemplatesOnlyFlag
+TestUpdateDryRun_ZeroMutation
+TestVerdictAndPreviewCodeHasNoWritableCalls
+TestViewOfManifestIsAReadOnlyCopy
+```
+
+`internal/manifest`: 카드 시험 `TestManifestRecordsDeployedVersion` 만 (`-coverprofile`), 종료 코드 0:
+
+```text
+--- PASS: TestManifestRecordsDeployedVersion (0.01s)
+coverage: 49.5% of statements
+```
+
+패키지 전체 (작은 패키지라 한 번 돌렸다; 이 줄은 카드 범위 수치가 아니라 패키지 전체 수치이다), 종료 코드 0:
+
+```text
+
+```
+
+**범위가 좁은 구문 커버리지** — 위 회귀 한 번의 프로필 (internal/cli 는 앵커된 66개만이므로 그 파일을 덮는 다른 시험은 세지 않는다). 「바뀐 줄」 수치는 카드 diff (`git diff -U0 cdd72a814..HEAD`) 와 겹치는 블록의 구문 비율이며 그 블록 안의 바뀌지 않은 구문도 포함한다:
+
+```text
+internal/cli/migrate_ownership.go (created) 96.0% (119/124 statements)
+internal/cli/migrate_ownership_case.go (created) 96.6% (57/59 statements)
+internal/cli/migrate_ownership_emptydir.go (created) 93.3% (84/90 statements)
+internal/cli/migrate_ownership_env.go (created) 94.4% (34/36 statements)
+internal/cli/migrate_ownership_evidence.go (created) 100.0% (25/25 statements)
+internal/cli/migrate_ownership_remaining.go (created) 100.0% (67/67 statements)
+internal/cli/update_prior_manifest.go (created) 87.5% (70/80 statements)
+internal/cli/migrate_project_assets.go (edited) whole-file 82.8% (216/261); card-changed lines 87.9% (94/107 statements in blocks touching the card diff)
+internal/cli/update.go (edited) whole-file 35.7% (146/409); card-changed lines 100.0% (5/5 statements in blocks touching the card diff)
+internal/cli/update_dryrun_preview.go (edited) whole-file 86.1% (31/36); card-changed lines 100.0% (8/8 statements in blocks touching the card diff)
+internal/cli/update_template_sync.go (edited) whole-file 64.9% (276/425); card-changed lines 90.3% (28/31 statements in blocks touching the card diff)
+internal/manifest/manifest.go (edited) [card test only] whole-file 50.0% (45/90); card-changed lines 100.0% (7/7)
+internal/manifest/manifest.go (edited) [whole manifest package] whole-file 91.1% (82/90); card-changed lines 100.0% (7/7)
+internal/manifest/types.go (edited) [card test only] whole-file 25.0% (1/4); card-changed lines 0.0% (0/0)
+internal/manifest/types.go (edited) [whole manifest package] whole-file 100.0% (4/4); card-changed lines 0.0% (0/0)
+```
+
+85% 미만을 정직하게 표시한다: **`internal/cli/migrate_project_assets.go` 전체 82.8%, `internal/cli/update.go` 전체 35.7%, `internal/cli/update_template_sync.go` 전체 64.9%, `internal/manifest/manifest.go` 카드 시험만 50.0%** — 넷 모두 이 카드 이전의 코드가 대부분이고 (t1668 및 그 이전) 그 부분을 덮는 시험은 앵커된 66개 밖에 있다. 카드가 바꾼 줄은 각각 87.9%, 100%, 90.3%, 100% (패키지 전체 시험 기준 manifest.go 전체 91.1%). 카드가 만든 파일 일곱은 모두 85% 이상이다. 함수 단위로 85% 미만인 것은 둘: `update_prior_manifest.go` 의 `writePriorManifestTemp` 50.0% (임시 파일 만들기·쓰기·동기화·닫기 실패 가지 — 시험은 이 함수를 관측점 변수 `priorManifestTempWrite` 로 대체해 실패를 주입하므로 진짜 함수의 실패 가지는 닿지 않는다) 와 `readStartManifest` 75.0% (읽기 실패 시 nil). 카드가 만든 파일의 함수 단위 수치:
+
+```text
+internal/cli/migrate_ownership.go:45: valid 100.0%
+internal/cli/migrate_ownership.go:80: evidenceIncompleteReason 100.0%
+internal/cli/migrate_ownership.go:85: isKnownKeepReason 100.0%
+internal/cli/migrate_ownership.go:177: counterpartOf 100.0%
+internal/cli/migrate_ownership.go:218: manifestKey 100.0%
+internal/cli/migrate_ownership.go:227: row 100.0%
+internal/cli/migrate_ownership.go:243: rowKeptFor 100.0%
+internal/cli/migrate_ownership.go:258: classifyOwnership 100.0%
+internal/cli/migrate_ownership.go:272: classifyOwnershipCore 85.7%
+internal/cli/migrate_ownership.go:322: classifyUnregistered 100.0%
+internal/cli/migrate_ownership.go:345: disposition 100.0%
+internal/cli/migrate_ownership.go:375: reasonTag 100.0%
+internal/cli/migrate_ownership.go:397: userCounterpartLocation 100.0%
+internal/cli/migrate_ownership.go:417: userCounterpartStatus 90.9%
+internal/cli/migrate_ownership_case.go:44: resolveCaseAlias 100.0%
+internal/cli/migrate_ownership_case.go:73: manifestKeysByDir 100.0%
+internal/cli/migrate_ownership_case.go:85: shippedCaseSpelling 94.1%
+internal/cli/migrate_ownership_case.go:116: canonicalCounterpartRel 93.3%
+internal/cli/migrate_ownership_case.go:143: counterpartConfirmedCaseAware 100.0%
+internal/cli/migrate_ownership_emptydir.go:63: dirManagedProvenance 100.0%
+internal/cli/migrate_ownership_emptydir.go:114: startOfRunRecords 85.7%
+internal/cli/migrate_ownership_emptydir.go:129: emptyDirTree 100.0%
+internal/cli/migrate_ownership_emptydir.go:151: pruneNestedEmptyDir 88.9%
+internal/cli/migrate_ownership_emptydir.go:171: pruneManagedEmptyDirs 91.7%
+internal/cli/migrate_ownership_emptydir.go:195: pruneSkillDirTree 88.9%
+internal/cli/migrate_ownership_env.go:32: viewOfManager 100.0%
+internal/cli/migrate_ownership_env.go:38: viewOfManifest 100.0%
+internal/cli/migrate_ownership_env.go:74: removalEligible 100.0%
+internal/cli/migrate_ownership_env.go:87: buildPreviewEnv 87.5%
+internal/cli/migrate_ownership_evidence.go:103: provenanceEvidence 100.0%
+internal/cli/migrate_ownership_remaining.go:32: sortRemainingRows 100.0%
+internal/cli/migrate_ownership_remaining.go:41: isRemainingRowLine 100.0%
+internal/cli/migrate_ownership_remaining.go:51: remainingAwareReport 100.0%
+internal/cli/migrate_ownership_remaining.go:64: remainingSummaryLines 100.0%
+internal/cli/migrate_ownership_remaining.go:112: remainingDetailLines 100.0%
+internal/cli/migrate_ownership_remaining.go:135: missingList 100.0%
+internal/cli/migrate_ownership_remaining.go:146: recordRemainingList 100.0%
+internal/cli/update_prior_manifest.go:75: writePriorManifestTemp 50.0%
+internal/cli/update_prior_manifest.go:103: writePriorManifest 100.0%
+internal/cli/update_prior_manifest.go:118: readStartManifest 75.0%
+internal/cli/update_prior_manifest.go:131: preservePriorManifest 100.0%
+internal/cli/update_prior_manifest.go:148: recordManifestDeployedVersion 100.0%
+internal/cli/update_prior_manifest.go:172: newPriorGenerationSource 100.0%
+internal/cli/update_prior_manifest.go:176: generations 100.0%
+internal/cli/update_prior_manifest.go:199: readPriorGenerations 97.1%
+```
+
+**품질 (트리 `8afbbe9436` 의 Go 소스 = `8afbbe9436` 이후; 각 명령의 종료 코드를 직접 읽음)**
+
+```text
+go build ./... rc=0
+GOOS=windows go build ./... rc=0
+gofmt -l internal/cli internal/manifest rc=0 output-bytes=0
+go vet ./internal/cli/ ./internal/manifest/ rc=0 output-bytes=0
+GOOS=windows go vet ./internal/cli/ ./internal/manifest/ rc=0 output-bytes=0
+```
+
+`golangci-lint run ./internal/manifest/ ./internal/cli/` 첫 실행 (트리 `5cebd5a3da`), 종료 코드 1: 다섯 건 — 세 건은 이 카드가 만지지 않은 `internal/cli/factory_run_adopt.go` 의 기존 errcheck, **두 건은 내 시험 (`migrate_ownership_restore_test.go`) 의 쓰지 않는 필드** (`unused`). 두 건을 고쳐 별도 커밋 `8afbbe9436` 으로 냈다 (시험 다시 통과). 둘째 실행 (트리 `8afbbe9436`), 종료 코드 1:
+
+```text
+internal/cli/factory_run_adopt.go:79:15: Error return value of `fmt.Fprintf` is not checked (errcheck)
+internal/cli/factory_run_adopt.go:91:14: Error return value of `fmt.Fprintf` is not checked (errcheck)
+internal/cli/factory_run_adopt.go:103:14: Error return value of `fmt.Fprintf` is not checked (errcheck)
+internal/cli/migrate_ownership_restore_test.go:293:2: field postRun1Snapshot is unused (unused)
+internal/cli/migrate_ownership_restore_test.go:294:2: field postRun1AssetFiles is unused (unused)
+5 issues:
+* errcheck: 3
+* unused: 2
+```
+
+```text
+internal/cli/factory_run_adopt.go:79:15: Error return value of `fmt.Fprintf` is not checked (errcheck)
+internal/cli/factory_run_adopt.go:91:14: Error return value of `fmt.Fprintf` is not checked (errcheck)
+internal/cli/factory_run_adopt.go:103:14: Error return value of `fmt.Fprintf` is not checked (errcheck)
+3 issues:
+* errcheck: 3
+```
+
+카드 파일에 대한 린트 지적은 0건이다. (`factory_run_adopt.go` 는 `git diff --name-only cdd72a814..HEAD` 에 없다 — 아래 제약 점검.)
+
+**하드 제약 점검 (최종 트리, 종료 코드는 명령마다 직접 읽음; 양성 대조군 포함)**
+
+```text
+--- protected files / profile (card commits)
+exit=0
+--- positive control (.moai/specs commits)
+      27
+--- diff names touching protected/profile/audit-receipts/backup policy/templates
+grep-exit=1
+--- removalEnabled = true in non-test code
+grep-exit=1
+40:var removalEnabled = false
+--- AskUserQuestion in card production files
+grep-exit=1
+--- factory_run_adopt.go touched by the card?
+grep-exit=1
+--- spec bodies touched in chunk 4 (since cf2581728e)
+grep-exit=1
+```
+
+**M8-M10 의 정직한 회계 / 갭 / 잔여 위험**
+
+1. **네 기준의 RED-now 가 없다.** AC-OWR-15, -17, -18, -19 는 도착 시 GREEN 이다 (위 각 도착 셀). acceptance.md 가 적은 RED 이유는 M1b/M3/M5 가 이미 닫았다. 이 기준들은 regression-guard 이고 release-blocking 으로 승격되지 않는다. 붉음의 원문은 운영 코드 변이 열네 개 (M8 넷, AC-17 넷, AC-18 셋, AC-19 셋) 와 시험 안 변이 마흔여덟 개 (AC-15 열여섯, AC-17 열둘, AC-18 여덟, AC-19 열둘) 의 셀이다.
+2. **시계 독립.** 이 chunk 의 어떤 단언도 두 실행이 같은 초에 떨어지는지에 달려 있지 않다. 두 분기를 모두 몬다: 구별되는 디렉터리 (폴링으로 결정적) 와 공유 디렉터리 (이전 실행의 백업 내용을 합치는 쓰기 대역, `recSameDir` 로 같은 디렉터리 판정). 첫 초안의 대역은 「같은 디렉터리」 판정을 문자열 비교로 해서 (상대 경로와 절대 경로) 사용 중인 실행 디렉터리를 지웠다 — 제품 결함이 아니라 시험 구성 오류였고 커밋 A 이전에 고쳤다.
+3. **시험 구성의 의존.** 세 시험이 쓰는 이음매는 기존 것뿐이다: `priorManifestWriter` (AC-OWR-20 이 도입), `enableRemovalForTest`, 헬퍼 `runUpdateFlow*`. 운영 코드에 새 이음매나 끼어들기를 더하지 않았다.
+4. **시험이 보지 못하는 것.** AC-OWR-15: `.moai/logs/**`·`.moai/state/**` 안의 내용 차이, 디렉터리 mtime/xattr/소유자, 프로젝트 밖 쓰기. AC-OWR-17/-18: 같은 항목들, 그리고 실제 같은 초의 두 실행 (공유 분기는 최종 상태를 재현할 뿐 경합 자체는 아니다). AC-OWR-19: 리플렉션/`unsafe`/`go:linkname`.
+5. **실행하지 않은 것 (갭).** `internal/cli` 패키지 전체 시험과 패키지 전체 커버리지, `-race`, Windows 에서의 시험 실행 (빌드와 vet 만), 다른 OS 에서의 대소문자 구분 파일시스템 실행 — 이 chunk 의 금지 범위이거나 CI/리더의 착지 재측정 몫이다.
+6. **착지 재측정이 볼 위험.** 이 카드의 시험은 `internal/cli` 에서 무겁다 (회귀 한 번 148초, 부하 평균 약 30). 패키지 전체 실행과 병렬 실행에서 시간 초과나 간헐 실패가 나타날 수 있다. 앞 chunk 에서 한 번 있었던 시계 초 의존 실패 (AC-OWR-14) 는 고쳤고, 이 chunk 의 시험은 처음부터 시계 독립으로 썼다. 이 chunk 의 새 시험 넷 모두 연속 5회 초록이다 (각 도착 셀).
+
 ## §E.3 Run-phase Audit-Ready Signal
 
-_<pending run-phase>_
+```yaml
+run_complete_at: 2026-10-18
+run_commit_sha: 8afbbe9436  # code-verification baseline: the last test/code commit; the evidence commit that carries this block follows it
+run_status: complete
+ac_pass_count: 21
+ac_fail_count: 0
+preserve_list_post_run_count: 3  # internal/config/protected_zone.go; internal/config/userroots.go; internal/profile/** — diff-empty vs cdd72a814 over the card's commits (positive control: 27 spec commits)
+l44_pre_commit_fetch: not-run (lane worktree on a card branch; HEAD and branch re-read immediately before every commit instead of a shared-branch fetch)
+l44_post_push_fetch: not-applicable (the lane never pushes; the landing is the leader's batch act)
+new_warnings_or_lints_introduced: 0  # one intermediate golangci-lint finding (two unused fields in the AC-OWR-15 test) found and fixed in 8afbbe9436; the 3 errcheck findings in internal/cli/factory_run_adopt.go predate the card and are untouched
+cross_platform_build.darwin: PASS (go build ./... rc=0; go vet rc=0)
+cross_platform_build.windows: PASS (GOOS=windows go build ./... rc=0; GOOS=windows go vet ./internal/cli/ ./internal/manifest/ rc=0)
+total_run_phase_files: 34  # non-.moai files added or edited over the card: 20 test files, 13 Go sources, 1 data file
+m1_to_mN_commit_strategy: per acceptance criterion A (tests only) -> B (cell recorded from saved output files) -> C (implementation, where something was open); explicit pathspecs only; no push; M8-M10 needed no C
+```
+
+**AC 행렬 (21개).** 등급은 RED-now 를 이 트리에서 실제로 관측했는지로 정했다 (acceptance.md 「등급과 RED 셀 규약」 1항): release-blocking = A 직후 트리에서 판정 명령이 붉음을 보였고 명령·원문·종료 코드·트리 SHA 가 셀에 있음; regression-guard = 도착 시 초록이고 붉음은 변이에서 관측. 이 분류는 사실 기록이며 최종 판단은 감사의 몫이다.
+
+| AC | 등급 | RED-now | A | B | C |
+|----|------|---------|---|---|---|
+| AC-OWR-01 ~ -04 | release-blocking | 빌드 실패 형 | `9b73a35938` | `4764764ff0` | `3133329a64` |
+| AC-OWR-05 (a)-(g) | release-blocking | 빌드 실패 형 | `9b73a35938` | `4764764ff0` | `3133329a64` |
+| AC-OWR-05 (h) | release-blocking | 빌드 실패 형 | `f9206f5242` + `da53289c5f` | `558dd9e6c2` | `f8936c2070` |
+| AC-OWR-06 | release-blocking | 빌드 실패 형 | `f9206f5242` + `da53289c5f` | `558dd9e6c2` | `f8936c2070` |
+| AC-OWR-07 | release-blocking | 빌드 실패 형 | `73ace0cc2e` | `36f638ef0a` | `cca0c9ead1` |
+| AC-OWR-08 | **regression-guard** | 도착 시 초록, 운영 코드 변이 둘과 시험 안 변이에서 붉음 | `aa8037a7f2` | `ae4032950e` | — |
+| AC-OWR-09 | **regression-guard** | 세 변형 모두 재현 안 됨, 도착 시 초록 | `0ac54c59e2` (+ `4e9564f790`, `a7d2663e11`) | `f73dc001de` | — |
+| AC-OWR-10 | **regression-guard** | 도착 시 초록 | `0ac54c59e2` (+ `4e9564f790`) | `f73dc001de` | — |
+| AC-OWR-11 | release-blocking | 호스트 쪽 단언 수준, 주입 쪽 빌드 실패 형 | `5246f408cf` + `ae8868f6fc` | `cbf9579e9a` | `91e5bbcfa5` |
+| AC-OWR-12 | release-blocking | 빌드 실패 형 | `ae8868f6fc` | `cbf9579e9a` | `91e5bbcfa5` |
+| AC-OWR-13 | release-blocking | 단언 수준 | `42854e32aa` + `866a1f8103` | `89731b5e59` | `ba1ebac9a4` |
+| AC-OWR-14 | release-blocking | 단언 수준 | `167a6c0af4` | `db68f30cf7` | `e6e3e8d9f2` |
+| AC-OWR-15 | **regression-guard** | 도착 시 초록, 운영 코드 변이 넷과 시험 안 변이에서 붉음 | `415644baff` | `b896029228` | — |
+| AC-OWR-16 | release-blocking | 단언 수준 | `2d6ec34053` | `0065cb21ed` | `4683bed8e0`, `d09d66c6f9`, `4767df4de4` |
+| AC-OWR-17 | **regression-guard** | 도착 시 초록, 운영 코드 변이 넷과 시험 안 변이에서 붉음 | `5614767764` | `7414777ee3` | — |
+| AC-OWR-18 | **regression-guard** | 도착 시 초록, 운영 코드 변이 셋과 시험 안 변이에서 붉음 | `ace2e8d84b` | `886f5b2d82` | — |
+| AC-OWR-19 | **regression-guard** | 도착 시 초록, 기본값 뒤집기 포함 운영 코드 변이 셋에서 붉음 (기존 게이트 시험 둘도 같이) | `dd5a4b42b6` | `5cebd5a3da` | — |
+| AC-OWR-20 | release-blocking | 단언 수준 (b), 빌드 실패 형 | `f9206f5242` + `da53289c5f` | `558dd9e6c2` | `f8936c2070` |
+| AC-OWR-21 | release-blocking | 빌드 실패 형 | `f9206f5242` + `da53289c5f` | `558dd9e6c2` | `f8936c2070` |
+
+release-blocking 14 (AC-OWR-01 ~ -07, -11 ~ -14, -16, -20, -21), regression-guard 7 (AC-OWR-08, -09, -10, -15, -17, -18, -19). 합 21.
+
+**Binding run conditions 의 처분 (모든 항목, 각각 증거 위치).**
+
+| 조건 | 처분 | 근거 |
+|------|------|------|
+| N4 잔여 (전체 트리 동일 요구 철회 뒤 센티널이 못 보는 것) | **처분됨 (시험이 닿는 데까지), 못 보는 것은 공개** | M8 기록 관측 3: E 안의 차이는 복원 영역 R (매니페스트) 의 바이트 비교, 실행 백업 배치 비교 (통제 실행 + 정확히 제거 자산 사본), 로그/상태 경로 집합 비교로, 파일 모드는 스냅샷 서술자와 R 의 `(i-mode)`, `(iii-mode)` 로 닫았다. 못 보는 것: 로그/상태 안의 내용 차이, 디렉터리 mtime·xattr·소유자, 프로젝트 밖 쓰기. 시험 안 변이 열여섯과 운영 코드 변이 넷으로 붉음을 관측 |
+| N14 세대 간 우선순위 | 처분됨 (chunk 1) | 레코드를 가진 가장 새 세대가 결정한다 (보존 방향). 시험 `n14-newest-incomplete-older-complete` + 변이 `older-gen-outvotes` |
+| N15 `DeployedHash` 일치 허용 | 처분됨 (chunk 1, 리더 승인) | 비교를 `TemplateHash` 하나로 좁혔다 (등록 경로와 같게). design.md D-2 의 「(또는 DeployedHash)」 문구보다 엄격한 편차로 이미 보고 |
+| N16 실행 시점 조각으로 조립한 경로의 프로필 뿌리 읽기 | **열린 채 공개 (우회·재설정하지 않음)** | 카드 t1702 보류 범위. 이 카드는 프로필 뿌리를 열거나 읽는 코드를 더하지 않았다: 호출 지점 스캔 새 행 0, 보호 파일 둘과 `internal/profile` 불변 (위 제약 점검). 스캔·차분 카나리의 한계는 AC-OWR-08 기록에 그대로 |
+| N17 「트리 해시」 가 내용만임을 밝히지 않음 | **처분됨** | AC-OWR-15/-17/-18 시험 파일 머리 주석 (AC-OWR-17/-18 은 시험 로그 첫 줄에도) 이 비교하는 해시를 내용만 (경로, 바이트, 모드, 디렉터리 존재) 이라고 밝히고, 디렉터리 mtime·시계 값은 비교하지 않으며 서로 다른 두 실행을 비교할 때 `deployed_at` 만 가린다고 적었다 |
+| N18 AC-OWR-20 (a)(b) 가 규칙 7 조건 (ii) 를 요구받음 | **처분됨 (SPEC 문구 결함으로 공개, 본문 미수정)** | (a) 는 새 `manifest.prior.json` 이 실패하는 사례이므로 조건 (ii) 가 구조상 성립할 수 없다. 시험 `a-prior-manifest-copy-fails` 는 조건 (i)(iii) 에 해당하는 것으로 쓰기 대역이 정확히 한 번 불림 (Backup 단계 도달) 과 후보별 `backup-failed` 행을 단언하고, `b-candidate-bytes-copy-fails` 는 `rc.priorManifest == priorManifestWritten` 으로 (ii) 를 단언한다. 의도는 When 절의 괄호가 담는다 |
+| N19 `.moai/config` 가 없을 때 사본 위치 | 처분됨 (chunk 1) | `preservePriorManifest` 가 설정 백업이 디렉터리를 만들지 않았으면 새 실행 디렉터리를 만든다. 시험 「a fresh run directory when the config backup made none」 |
+| N20 건너뛴 `UserCreated` 항목에 `deployed_version` 없음 | 처분됨 (chunk 1) | `Track` 은 `template_managed` 만 도장한다. 시험 `DeployPathStampsTemplateManagedEntries` 와 `h1-...` |
+| N21 REQ-OWR-005 문구와 AC-OWR-20 (b) 의 `removalBackupWriter` | **처분됨 (SPEC 문구 결함으로 공개, 본문 미수정)** | (b) 는 D-3 항목 5 가 정의하는 `priorManifestWriter` 대역이 실행 디렉터리 안에 막는 디렉터리를 만드는 방식으로 구현했다. REQ-OWR-005 의 「동결된 기존 접촉들」 대 「단일 기존 접촉」 은 시험이 한 행·개수 1 의 예외로 단언한다 |
+| N22 AC-OWR-21 When 절에 구성 (o) 누락 | 처분됨 (chunk 1) | 시험이 (o) 를 가진다 (`o-normal-run-goes-through-temp-then-rename`); SPEC 문구 결함으로 공개 |
+| N23 plan.md M8 이 AC-OWR-15 (v) 도달 단언을 빠뜨림 | **처분됨 (이 chunk)** | 시험 절 `ReachedReconciliation` 이 실행 1 의 `skipped == false`, 새 `manifest.prior.json`, 제거 목록이 비어 있지 않음 (후보 셋과 정확히 같음), 통제 실행의 도달과 무제거를 단언하고 변이 `MutantSkippedRunIsCaught`, `MutantControlRunThatRemovedFilesIsCaught` 가 붉다 |
+| N24 변이 M-F (두 관측점을 정상으로 거친 뒤 최종 이름을 다시 쓰기) 미검출 | **확인됨, 못 닫음 (공개한 한계)** | 실측으로 `ok` 임을 확인했다 (chunk 1 변이 표). 접근 기록 이음매 없이는 닫을 수 없다 |
+
+**열린 제품 쪽 사실 (이 카드 밖, sync·리더가 알아야 함).** 같은 시계 초에 시작한 두 갱신은 실행 백업 디렉터리를 공유하고, 뒤 실행이 만든 `manifest.prior.json` 이 앞 실행의 것을 대체해 **더 오래된 이전 세대를 잃는다.** 영향은 증거 손실뿐이다: 그 세대를 근거로 하던 판정 (미등록 파일의 `managed` 승격, 이전 실행이 비운 디렉터리 정리) 이 보존 쪽으로 기운다 — 파일은 지워지지 않는다. AC-OWR-18 (c) 의 `SharedRunDirectory` 분기가 이를 정확히 단언한다 (디렉터리 셋이 남고 `empty-dir-no-provenance` 로 나열됨). 근거: 실행 백업 이름의 초 단위 해상도 (`defs.BackupTimestampFormat`). 고치려면 이 카드 밖의 변경이 필요하다 (실행 백업 이름이나 세대 보존 방식).
+
+**SPEC 본문에 대한 공개 (본문은 고치지 않았다; 필요하면 manager-spec 재위임).**
+
+1. REQ-OWR-006 / AC-OWR-10: 프로젝트 배포기는 에이전트를 쓰지 않고 사용자 자산 단계가 쓴다 (lane 결정 2, 공개된 부채로 유지).
+2. REQ-OWR-012 / AC-OWR-17 「동일한 잔존 목록」 대 design.md D-2 의 이유 정제: 313개 복사본 픽스처에서 앞 실행의 이유 열이 어긋난다 (AC-OWR-17 기록 관측 1). 시험은 정상 상태부터 완전 일치, 그 전에는 한 가지 정제만 허용으로 단언한다.
+3. AC-OWR-15 의 기대 차이 집합 E 와 AC-OWR-17 의 제외 목록이 시계 파생 위치 둘 (`.moai/backups/update-*`, `.moai/archive/files/update-migration/*`) 을 빠뜨렸다 (AC-OWR-15 기록 관측 1).
+4. N18, N21, N22 의 문구 결함 (위 표).
+5. N15: 증거 비교를 `TemplateHash` 하나로 좁힌 것은 design.md D-2 문구와 다르게 더 엄격하다 (리더 승인됨).
+
+**sync 단계가 알아야 할 사용자 가시 부작용 (lane 결정 1, `update.go` 변경 둘).** (a) 다른 업데이트가 업데이트 잠금을 들고 있는 동안에도 `moai update --dry-run` 이 `ErrUpdateLockHeld` 로 거절되지 않고 진행하며 그 실행의 중간 상태를 읽을 수 있다. (b) `moai update --dry-run` 은 새 버전 확인과 이진 자체 업데이트 단계에 더 이상 닿지 않는다.
+
+**이월한 갭 (CI 또는 리더의 착지 재측정 몫).** `internal/cli` 패키지 전체 시험과 패키지 전체 커버리지; `-race`; Windows 에서의 시험 실행 (빌드와 vet 만 했다); 대소문자 구분 파일시스템에서의 `TestCaseVariantOnHostFilesystem` 의 다른 가지; 이 카드가 만든 시험이 무거운 `internal/cli` 에서 병렬 실행 부하로 시간 초과를 내는지의 측정.
 
 ## §E.4 Sync-phase Audit-Ready Signal
 
