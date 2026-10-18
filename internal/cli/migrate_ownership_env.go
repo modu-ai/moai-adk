@@ -68,6 +68,14 @@ type previewVerdicts struct {
 	env   ownershipEnv
 }
 
+// close releases the project root the assembled environment holds, if one was
+// assembled. The preview calls it when it ends.
+func (p *previewVerdicts) close() {
+	if p.built && p.ok {
+		p.env.closeRoot()
+	}
+}
+
 // removalEligible reports whether the verdict function marks rel (a
 // project-relative slash path) removal-eligible for the project at projectRoot,
 // judged from mf, the manifest as the preview loaded it read-only.

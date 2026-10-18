@@ -198,7 +198,15 @@ func newOwnershipEnv(in ownershipEnvInputs) (ownershipEnv, error) {
 		return ownershipEnv{}, fmt.Errorf("resolve project root: %w", err)
 	}
 	profileMapped := profile.ResolveLaunchProfileForProject(rootAbs, "") != ""
+	// The project root is opened ONCE, here, and every read of an unregistered file goes
+	// through this handle: it keeps pointing at the directory that was the project when
+	// the run began, whatever is done to the root's path afterwards. The caller closes it.
+	root, err := openProjectRoot(in.projectRoot)
+	if err != nil {
+		return ownershipEnv{}, fmt.Errorf("open project root: %w", err)
+	}
 	return ownershipEnv{
+		root:     root,
 		entry:    in.view.entry,
 		evidence: in.evidence,
 		counterpartConfirmed: func(rel string) bool {
@@ -295,6 +303,7 @@ func migrateProjectCommonAssets(projectRoot, homeDir string, userAssetsInstalled
 	if err != nil {
 		return nil, err
 	}
+	defer env.closeRoot()
 	rootResolved := env.rootResolved
 	for _, rootRel := range projectCommonAssetRels {
 		absRoot := filepath.Join(projectRoot, filepath.FromSlash(rootRel))

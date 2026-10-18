@@ -298,16 +298,6 @@ func classifyOwnershipCore(env ownershipEnv, rel, abs string) ownershipVerdict {
 		}
 	}
 	if !registered || entry == nil {
-		// Where the file really lives and what kind it is are decided before
-		// anything reads it: a symlink (the file or any directory above it) out of
-		// the project would hand the read to a file that is not ours to open
-		// (REQ-OWR-005), and a FIFO would block the read until a writer appears.
-		if pathLeavesRoot(env.rootResolved, abs) {
-			return ownershipVerdict{class: ownershipUnregistered, keep: keepSymlinkEscape}
-		}
-		if unreadableKind(abs) {
-			return ownershipVerdict{class: ownershipUnregistered, keep: keepNonRegularFile}
-		}
 		return classifyUnregistered(env, rel, abs)
 	}
 
@@ -360,125 +350,104 @@ func unreadableKind(abs string) bool {
 	return info.Mode()&(os.ModeNamedPipe|os.ModeSocket|os.ModeDevice|os.ModeCharDevice|os.ModeIrregular) != 0
 }
 
-// pathLeavesRoot reports whether the fully resolved path of abs is outside the
-// project root. It resolves EVERY component (EvalSymlinks), so a symlinked
-// ancestor directory is seen exactly like a symlinked file, and it never opens
-// the target. A path that does not resolve (dangling, absent, not examinable) is
-// NOT reported: the read that follows fails on the same condition, so it keeps
-// behaving as before (`read-failed`). An unknown root (empty) fails closed.
-//
-// The update command passes the relative root "." (and so rootResolved is "."): a
-// link with an absolute in-project target resolves to an absolute path, and a
-// relative root cannot contain it. Both sides are therefore made absolute and
-// fully resolved before they are compared.
-func pathLeavesRoot(rootResolved, abs string) bool {
-	if rootResolved == "" {
-		return true
-	}
-	root := rootResolved
-	if !filepath.IsAbs(root) {
-		absRoot, err := filepath.Abs(root)
-		if err != nil {
-			return true
-		}
-		if root, err = filepath.EvalSymlinks(absRoot); err != nil {
-			return true
-		}
-	}
-	target := abs
-	if !filepath.IsAbs(target) {
-		absTarget, err := filepath.Abs(target)
-		if err != nil {
-			return true
-		}
-		target = absTarget
-	}
-	resolved, err := filepath.EvalSymlinks(target)
-	if err != nil {
-		return false
-	}
-	return !withinRootBoundary(root, resolved)
-}
-
-// readUnregisteredInsideRoot reads the file at abs through an os.Root on the
-// project root. It resolves abs fully, takes its path relative to the (resolved,
-// absolute) root, and opens that path in the Root: the Root follows links only
-// where they stay inside the root, so a link swapped in after the resolution is
-// refused instead of followed. errReadEscapesRoot means the resolved path, or a
-// link met on the way, leads outside; any other error is a failed read. The kind
-// of the file (a pipe, a socket, a device) was decided before this call.
-func readUnregisteredInsideRoot(rootResolved, abs string) ([]byte, error) {
-	if rootResolved == "" {
-		return nil, errReadEscapesRoot
-	}
-	root := rootResolved
-	if !filepath.IsAbs(root) {
-		absRoot, err := filepath.Abs(root)
-		if err != nil {
-			return nil, errReadEscapesRoot
-		}
-		if root, err = filepath.EvalSymlinks(absRoot); err != nil {
-			return nil, errReadEscapesRoot
-		}
-	}
-	target, err := filepath.Abs(abs)
-	if err != nil {
-		return nil, err
-	}
-	resolved, err := filepath.EvalSymlinks(target)
-	if err != nil {
-		return nil, err
-	}
-	if !withinRootBoundary(root, resolved) {
-		return nil, errReadEscapesRoot
-	}
-	rel, err := filepath.Rel(root, resolved)
-	if err != nil {
-		return nil, errReadEscapesRoot
-	}
-	r, err := os.OpenRoot(root)
-	if err != nil {
-		return nil, err
-	}
-	defer func() { _ = r.Close() }()
-	readWindowHook("resolve-to-open", abs)
-	f, err := r.Open(rel)
-	if err != nil {
-		// The standard library reports a link that leaves the root with an
-		// unexported error; its text is the only handle on it.
-		if strings.Contains(err.Error(), "path escapes from parent") {
-			return nil, errReadEscapesRoot
-		}
-		return nil, err
-	}
-	defer func() { _ = f.Close() }()
-	return io.ReadAll(f)
-}
-
-// readWindowHook is called inside the unregistered file's read, in the two windows
-// that follow the boundary check: "check-to-read" (before the path is resolved
-// again) and "resolve-to-open" (after it was resolved, before it is opened). It is
-// a variable only so a test can swap the target for a link at that point and prove
-// no byte outside the project is read; no production path replaces it.
+// readWindowHook is called inside the unregistered file's read, at the two points
+// where a path could still change under it: "check-to-read" (before the path is
+// examined) and "lstat-to-open" (after it was examined, before it is opened). It is
+// a variable only so a test can swap the target, or the project root itself, at that
+// point and prove no byte outside the project is read; no production path replaces it.
 var readWindowHook = func(stage, abs string) {}
 
-// errReadEscapesRoot says the file to read leads out of the project root.
-var errReadEscapesRoot = errors.New("the path escapes the project root")
+// escapesRoot reports whether err is os.Root refusing to leave the root. The
+// standard library reports it with an unexported error; its text is the only handle.
+func escapesRoot(err error) bool {
+	return err != nil && strings.Contains(err.Error(), "path escapes from parent")
+}
+
+// readUnregistered reads the unregistered file at the project-relative slash path
+// rel through the run's os.Root, which was opened once when the environment was
+// built, so a swap of the project root's path cannot redirect it. The path is
+// examined component by component from the root down (Lstat through the Root): a
+// symlink among the components is never followed — the file is kept unread
+// (`symlink-escape`), whether the link points inside the project or outside, except
+// that a link leading nowhere (dangling, a loop) is a failed read (`read-failed`).
+// A final element that is a pipe, a socket or a device is decided before any open
+// (`non-regular-file`). The Root itself refuses a link swapped in after the
+// examination that leaves the root (`symlink-escape`). The returned reason is empty
+// when the bytes were read.
+func readUnregistered(env ownershipEnv, rel, abs string) ([]byte, keepReason) {
+	root := env.root
+	if root == nil { // an environment built by hand, not by newOwnershipEnv
+		if env.rootResolved == "" {
+			return nil, keepSymlinkEscape // an unknown root fails closed
+		}
+		r, err := openProjectRoot(env.rootResolved)
+		if err != nil {
+			return nil, keepReadFailed
+		}
+		defer func() { _ = r.Close() }()
+		root = r
+	}
+	readWindowHook("check-to-read", abs)
+	var info fs.FileInfo
+	cur := ""
+	for _, part := range strings.Split(rel, "/") {
+		if part == "" || part == "." || part == ".." {
+			return nil, keepReadFailed
+		}
+		if cur != "" {
+			cur += "/"
+		}
+		cur += part
+		var err error
+		if info, err = root.Lstat(filepath.FromSlash(cur)); err != nil {
+			if escapesRoot(err) {
+				return nil, keepSymlinkEscape
+			}
+			return nil, keepReadFailed
+		}
+		if info.Mode()&fs.ModeSymlink != 0 {
+			// A link is never followed to read. Whether the path leads anywhere only picks
+			// the reason: a path that resolves nowhere (dangling, a loop) is a failed read,
+			// one that resolves is kept as symlink-escape. The Root cannot evaluate an
+			// absolute link, so the question is a metadata probe on the path: no open, no
+			// byte read, and a swap can change only which of the two reasons is reported.
+			if _, err := os.Stat(abs); err != nil {
+				return nil, keepReadFailed
+			}
+			return nil, keepSymlinkEscape
+		}
+	}
+	if info.Mode()&(fs.ModeNamedPipe|fs.ModeSocket|fs.ModeDevice|fs.ModeCharDevice|fs.ModeIrregular) != 0 {
+		return nil, keepNonRegularFile
+	}
+	if info.IsDir() {
+		return nil, keepReadFailed
+	}
+	readWindowHook("lstat-to-open", abs)
+	f, err := root.Open(filepath.FromSlash(cur))
+	if err != nil {
+		if escapesRoot(err) {
+			return nil, keepSymlinkEscape
+		}
+		return nil, keepReadFailed
+	}
+	defer func() { _ = f.Close() }()
+	data, err := io.ReadAll(f)
+	if err != nil {
+		return nil, keepReadFailed
+	}
+	return data, ""
+}
 
 // classifyUnregistered judges a file the manifest has no entry for. It is
 // `unregistered` unless the prior generations prove all three evidence items. The
-// bytes are read through an os.Root opened on the project root, so a link swapped
-// in after the boundary check cannot make the read land outside the project.
+// bytes come from readUnregistered; a path with a symlink in it, a pipe, or a read
+// that fails keeps the file unread with the reason it returns.
 func classifyUnregistered(env ownershipEnv, rel, abs string) ownershipVerdict {
 	v := ownershipVerdict{class: ownershipUnregistered}
-	readWindowHook("check-to-read", abs)
-	data, err := readUnregisteredInsideRoot(env.rootResolved, abs)
-	if errors.Is(err, errReadEscapesRoot) {
-		v.keep = keepSymlinkEscape
-		return v
-	}
-	if err != nil {
-		v.keep = keepReadFailed
+	data, keep := readUnregistered(env, rel, abs)
+	if keep != "" {
+		v.keep = keep
 		return v
 	}
 	v.data = data

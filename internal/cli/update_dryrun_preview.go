@@ -71,6 +71,7 @@ func previewReconciliation(projectRoot string, deployMode template.DeployMode, o
 	preserved := 0
 	migrationCandidates := 0
 	var verdicts previewVerdicts
+	defer verdicts.close()
 	for _, f := range plan.UserOwned {
 		// Gate round 12 (card t1547): under the common-asset roots, a file the
 		// migration would remove is a removal candidate. Whether it would is the
