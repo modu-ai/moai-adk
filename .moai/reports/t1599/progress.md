@@ -147,3 +147,11 @@ Files changed: `scripts/i18n-validator/main.go` (seam), `scripts/i18n-validator/
 - `TestBudget_TimeoutExitOnExcess` still depends on a real 1ns timer race; it passes under either arm winning (both yield exit 4), so it was left alone as instructed.
 - A nil-channel timer plus a 1ns budget relies on any scan taking longer than 1ns of wall clock; true on any real clock but not enforced by the type system.
 - Sync re-audit is still owed on this repair.
+
+## Sync re-audit round 2 PASS — 2026-10-18 (lane-27, tn1p4e)
+
+- Sync audit round 2: PASS, audited_sha 04d51d9815c56161e5b2ff995fae6dd2b47ba59a, required backend codex=pass rcpt-767efceacf7485a235b800a1 (+ native codex_audit pass rcpt-cca34120a81a8e012aaa14f2). Verdict file: .moai/reports/t1599/sync-audit.md (committed 78ed98f94). Auditor judging build ee981a932.
+- Lane-observed: tree HEAD 78ed98f94 clean; `go test -race -count=20 -run 'TestBudget_OverrunReportedWhenScanFinishesFirst|TestBudget_TimeoutExitOnExcess' ./scripts/i18n-validator/` -> `ok  	github.com/modu-ai/moai-adk/scripts/i18n-validator	1.353s` (run on 04d51d981, same code as HEAD).
+- card-review: .moai/reports/t1599/card-review.md refreshed (codex_review scope=card, pass, 0 findings).
+- Gaps: Windows and the full repo suite not run locally (CI on the integration branch owns them); base 0bd1da497 predates the main advance, so landing re-measures after absorbing main.
+- Next: stage merge-ready, then `factory complete` in the leader's slot order.
