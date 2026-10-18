@@ -29,22 +29,29 @@ func auditKickoffRefusal(cur Card, queueHold string) string {
 		return reason
 	}
 	specDir := filepath.Join(cur.WorktreePath, ".moai", "specs", cur.SpecID)
-	if !auditReadyRecorded(filepath.Join(specDir, "progress.md")) {
-		return "the plan phase records no audit-ready status (progress.md §E.1)"
+	if ok, ignored := auditReadyRecorded(filepath.Join(specDir, "progress.md")); !ok {
+		reason := "the plan phase records no audit-ready status (progress.md §E.1)"
+		if ignored != "" {
+			reason += fmt.Sprintf("; ignored look-alike key %q, write a bare `audit_ready: true` line", ignored)
+		}
+		return reason
 	}
 	return founderRowRefusal(filepath.Join(specDir, "decision-index.md"))
 }
 
 // auditReadyRecorded reports whether progress.md's §E.1 section carries the
-// explicit `audit_ready: true` signal and no conflicting `audit_ready` value.
-func auditReadyRecorded(path string) bool {
+// explicit `audit_ready: true` signal (one optional leading `- ` or `* ` list
+// marker is accepted) and no conflicting `audit_ready` value. When the signal
+// is not accepted it also returns the first ignored look-alike key (for
+// example `audit-ready` or `audit_ready_note`), so the refusal can name it.
+func auditReadyRecorded(path string) (bool, string) {
 	raw, err := readBoundedFile(path)
 	if err != nil {
-		return false
+		return false, ""
 	}
 	_, after, found := strings.Cut(string(raw), "## §E.1")
 	if !found {
-		return false
+		return false, ""
 	}
 	section := after
 	if i := strings.Index(after, "\n## "); i >= 0 {
@@ -54,10 +61,24 @@ func auditReadyRecorded(path string) bool {
 		section = rest
 	}
 	// Only the explicit signal counts; a non-empty section is not readiness.
-	ready, conflicting := false, false
+	ready, conflicting, ignored := false, false, ""
 	for _, line := range strings.Split(section, "\n") {
-		key, value, ok := strings.Cut(strings.TrimSpace(line), ":")
-		if !ok || strings.TrimSpace(key) != "audit_ready" {
+		line = strings.TrimSpace(line)
+		if rest, ok := strings.CutPrefix(line, "- "); ok {
+			line = rest
+		} else if rest, ok := strings.CutPrefix(line, "* "); ok {
+			line = rest
+		}
+		key, value, ok := strings.Cut(line, ":")
+		key = strings.TrimSpace(key)
+		if !ok {
+			continue
+		}
+		if key != "audit_ready" {
+			norm := strings.ToLower(strings.NewReplacer("-", "_", " ", "_").Replace(key))
+			if ignored == "" && strings.HasPrefix(norm, "audit_ready") {
+				ignored = key
+			}
 			continue
 		}
 		if strings.TrimSpace(value) == "true" {
@@ -66,7 +87,10 @@ func auditReadyRecorded(path string) bool {
 			conflicting = true
 		}
 	}
-	return ready && !conflicting
+	if ready && !conflicting {
+		return true, ""
+	}
+	return false, ignored
 }
 
 // founderRowRefusal reads decision-index.md (absent means no rows) and
