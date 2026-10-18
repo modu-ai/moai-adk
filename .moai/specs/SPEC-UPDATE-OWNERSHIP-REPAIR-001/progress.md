@@ -3941,6 +3941,37 @@ untracked=0
 5. 임시 파일 제거와 형제 제거는 최선 노력이다 (비어 있지 않은 디렉터리는 `os.Remove` 가 지우지 않는다).
 6. 코덱스·감사의 재확인은 레인의 몫이다. 이 chunk 는 `.moai/reports`, `.moai/state/audit-receipts`, §E.4, CHANGELOG, SPEC 본문을 건드리지 않았다. N4 (E.4 caveat 문구) 는 N1 수정으로 서술이 사실과 일치하게 되었으나 E.4 는 manager-docs 몫이다.
 
+### Chunk 12 (audit round 3 repair) — 기록 시작
+
+세 번째 독립 delta 감사 (HEAD `1d9b06a737`, 영수증 `rcpt-665b06f8d214d9a97633b90c`) 가 필수 codex 백엔드에서 FAIL 이다. 감사는 기계 부하(155)로 시험을 돌리지 못했고 문서·시험을 다시 읽지 못해 판정은 코덱스의 세 지적에 기댄다. 근거 문서는 `.moai/reports/t1865/sync-audit.md` 의 Findings (고치지 않았다). 이 chunk 는 마지막 수정 라운드다. 리더의 자원 입장 규칙 (게시판 `d-20261018T151201Z-8c1e`): 새 Go 호출 전에 1분 부하 <= 32 이고 여유 메모리 >= 50% 일 때만 시작하고 처음 충족되면 30초 기다려 다시 확인한다. 아래 모든 Go 호출은 `admit.sh` 로 이 규칙을 지켜 한 번에 하나씩 돌렸고, 호출마다의 부하 값은 말미의 표에 있다 (저장 파일 `admit.log`).
+
+#### 결정 기록
+
+- **F-A (SHOULD-FIX, 수정).** 미등록 파일의 읽기를 `os.OpenRoot(프로젝트 뿌리)` 로 연 `Root` 를 통해 한다. 범위는 `classifyUnregistered` 와 그것이 쓰는 새 도우미 `readUnregisteredInsideRoot` (그리고 시험용 이음매 `readWindowHook`, 오류 `errReadEscapesRoot`) 에 엄격히 한정한다. 등록된 파일의 읽기 (`classifyOwnershipCore` 의 등록 분기), `disposition`, 걷기, 빈 디렉터리 정리, 복원 코드, 다른 호출자는 바꾸지 않았다. **등록 경로에는 적용하지 않았다.** 이유: 등록된 파일이 프로젝트 밖을 가리키는 링크인 경우의 AC-OWR-01 고정 기대는 class `managed` + `symlink-escape` 이고, `managed` 는 대상 바이트의 해시 비교로 정해진다. `Root` 로 읽으면 그 바이트를 읽을 수 없어 class 가 바뀌므로 두 줄로 안전하게 바꿀 수 없다. 등록 경로는 기준 시점부터의 N16 계열 공개 부채로 남는다.
+- **F-B (SHOULD-FIX, 수정).** 표지 쓰기가 파일을 만든 뒤 실패하면 형제 디렉터리가 비어 있지 않아 `os.Remove` 가 실패했고 형제가 새어 나갔다. `claimPriorManifestDir` 가 방금 `Mkdir` 로 만든 바로 그 경로만 `os.RemoveAll` 한다 (공유 실행 디렉터리는 건드리지 않음). 청구는 여전히 닫힌 쪽으로 실패한다.
+- **F-C (MINOR, 거절 — 공개된 한계).** 대소문자를 구분하지 않는 파일 시스템에서 실제 뿌리와 대소문자만 다르게 쓴 링크 대상은 문자열 비교에서 밖으로 보여 `symlink-escape` 로 읽지 않고 보존된다. 이유: (1) 닫힌 쪽(읽지 않음)이라 파일이 지워지거나 밖이 읽히지 않는다; (2) `disposition` 이 기준 시점부터 같은 문자열 비교를 쓴다; (3) `os.SameFile` 로 상위 사슬을 비교하려면 경계 비교 전체를 바꿔야 하는데 이는 이 마지막 라운드의 작은 수정 범위를 넘는다.
+
+#### 시험 먼저 — RED 셀 (A `714adcc444`, 호출 시점 부하: load1=29.92 free=81%)
+
+F-A: `TestPathBoundaryCounterexamples` 표에 경쟁 그룹 `race` 세 행을 더했다 (`migrate_ownership_boundary_table_test.go`). 판정 함수 안 읽기 창에 이음매 `readWindowHook(stage, abs)` 를 두고 (동작 중립; 수정 전에는 `check-to-read` 한 곳만 호출됨), 시험이 그 시점에 대상을 프로젝트 밖 파일로 가는 링크로 바꿔치기한 뒤 밖의 바이트가 읽히지 않고 `symlink-escape` 로 보존되는지 본다. 행: 경계 검사와 읽기 사이 (`check-to-read`), 경로를 푼 뒤 열기 전 (`resolve-to-open`), 통제 (프로젝트 안의 다른 파일로 가는 링크로 바꿔치기하면 여전히 내용으로 판정).
+F-B: `TestMarkerCopyFailureFailsClosedWithoutResidue` 에 하위 시험 `FailureAfterTheMarkerFileWasCreatedLeavesNoSibling` 을 더했다 — 표지 복사 이중이 `.moai-run` 파일을 만든 **뒤** 실패를 돌려준다 (이전 이음매 시험은 파일이 생기기 전에 실패했다).
+
+```text
+TMPDIR=/private/tmp/own-fixture-d1 go test ./internal/cli/ -run '^(TestPathBoundaryCounterexamples|TestMarkerCopyFailureFailsClosedWithoutResidue)$' -count=1 -v
+    migrate_ownership_boundary_table_test.go:504: target swapped for a link to an outside file between the boundary check and the read: observed "class=unregistered keep=no-provenance-record read=other-bytes swapped=true", want "class=unregistered keep=symlink-escape read=none swapped=true"
+    migrate_ownership_boundary_table_test.go:504: target swapped for a link to an outside file after the path was resolved, before it is opened: observed "class=unregistered keep=no-provenance-record read=content swapped=false", want "class=unregistered keep=symlink-escape read=none swapped=true"
+--- FAIL: TestPathBoundaryCounterexamples (4.36s)
+    update_prior_manifest_markercopy_test.go:90: backup directories [20261018_153045 20261018_153045-02] remain, want only the intended 20261018_153045 (the sibling with its half-written marker must be removed)
+    update_prior_manifest_markercopy_test.go:99: retention sees runs=1 unmanaged=1, want 1 and 0
+--- FAIL: TestMarkerCopyFailureFailsClosedWithoutResidue (2.39s)
+FAIL
+FAIL	github.com/modu-ai/moai-adk/internal/cli	8.529s
+FAIL
+rc=1
+```
+
+붉은 이유: F-A 첫 행은 올바른 이유다 — 바꿔치기 뒤 밖의 바이트를 읽었다 (`read=other-bytes`) 이유 `no-provenance-record` (`symlink-escape` 가 맞다). 둘째 행(`resolve-to-open`)은 이 창이 수정 전 코드에 없어 이음매가 불리지 않아 (`swapped=false`) 붉다 — 이유가 「창이 없음」 이라 약한 RED 이며, 이 행의 실질 증거는 수정 뒤 초록과 변이다. 통제 행은 수정 전에도 통과한다. F-B 는 올바른 이유다 — 형제 `…-02` 가 남았고 보존 정책이 비관리 항목 1건으로 센다 (`unmanaged=1`).
+
 ## §E.3 Run-phase Audit-Ready Signal
 
 ```yaml
