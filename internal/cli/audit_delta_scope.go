@@ -110,10 +110,14 @@ func deltaProseReviewBase(sha string) string {
 // It states only what the verdicts show: a claude or glm leg counts as having
 // reviewed delta_base...HEAD when it produced a pass/fail verdict itself; the
 // caller's in-session Claude anchor arrives with a scope the server cannot know.
+// The codex clause appears only when a codex verdict is present.
 func deltaScopeNote(sha string, verdicts []PerBackendVerdict) string {
 	var reviewed []string
-	anchor := false
+	anchor, codexRan := false, false
 	for _, v := range verdicts {
+		if v.Backend == BackendCodex {
+			codexRan = true
+		}
 		if v.Backend != BackendClaude && v.Backend != BackendGLM {
 			continue
 		}
@@ -134,8 +138,12 @@ func deltaScopeNote(sha string, verdicts []PerBackendVerdict) string {
 	if len(clauses) == 0 {
 		clauses = append(clauses, "no claude or glm leg produced a verdict on it")
 	}
+	codex := "codex did not run on it"
+	if codexRan {
+		codex = "codex was scoped in prose only (not mechanically bounded)"
+	}
 	return "delta_base " + sha + ": " + strings.Join(clauses, "; ") +
-		"; codex was scoped in prose only (not mechanically bounded); no second-review record and no session state written"
+		"; " + codex + "; no second-review record and no session state written"
 }
 
 // codexDeltaScopeClause extends the adversarial prompt for a delta audit. The
