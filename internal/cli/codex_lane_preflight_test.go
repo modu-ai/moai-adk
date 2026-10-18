@@ -134,6 +134,31 @@ func TestCodexLaneLaunchRefusesRecursive(t *testing.T) {
 	assertCodexLaneRefusal(t, stderr, err, *launches, "recurs", root)
 }
 
+// TestCodexLaneLaunchRefusesPlainSessionRecursion — a plain `moai codex`
+// launch scrubs the factory keys from its child (codexChildEnv drops the
+// lane keys), so the gpt-backend marker cannot see a plain-session nest.
+// The launcher's self-identification marker closes the gap: the fixture env
+// carries ONLY config.EnvMoaiCodexSession — no gpt backend key — with TTY
+// and a clean ps pinned, and the refusal still fires with zero side effects
+// (card t1779, cold sync-audit F1). The writer half pins that codexChildEnv
+// stamps the marker, which is what makes the production nest reachable.
+func TestCodexLaneLaunchRefusesPlainSessionRecursion(t *testing.T) {
+	root, launches := codexLaneRefusalFixture(t)
+	armCodexLaneEnvironmentGate(t)
+	prevProbe, prevStdio := codexLaneSandboxProbeFn, codexLaneStdioIsTerminalFn
+	codexLaneSandboxProbeFn = func() error { return nil }
+	codexLaneStdioIsTerminalFn = func() bool { return true }
+	t.Cleanup(func() { codexLaneSandboxProbeFn, codexLaneStdioIsTerminalFn = prevProbe, prevStdio })
+	t.Setenv(config.EnvMoaiCodexSession, "1")
+
+	_, stderr, err := runCodexCmd(t, "-l")
+
+	assertCodexLaneRefusal(t, stderr, err, *launches, "recurs", root)
+	if got := launchEnvValue(codexChildEnv(), config.EnvMoaiCodexSession); got != "1" {
+		t.Fatalf("codexChildEnv %s = %q, want \"1\"", config.EnvMoaiCodexSession, got)
+	}
+}
+
 // TestCodexLaneLaunchEnvironmentRefusalSandboxSignature — a sandbox whose
 // process-listing probe fails with "operation not permitted" reads as the
 // sandbox signature and earns the same refusal as a terminal-less
@@ -146,8 +171,8 @@ func TestCodexLaneLaunchEnvironmentRefusalSandboxSignature(t *testing.T) {
 	t.Cleanup(func() { codexLaneSandboxProbeFn, codexLaneStdioIsTerminalFn = prevProbe, prevStdio })
 
 	codexLaneSandboxProbeFn = func() error { return errors.New("ps: Operation not permitted") }
-	if got := codexLaneLaunchEnvironmentRefusal([]string{"TERM=xterm-256color"}); !strings.Contains(got, "interactive terminal") {
-		t.Fatalf("sandbox-signature refusal = %q, want the interactive-terminal line", got)
+	if got := codexLaneLaunchEnvironmentRefusal([]string{"TERM=xterm-256color"}); !strings.Contains(got, "forbids process introspection") {
+		t.Fatalf("sandbox-signature refusal = %q, want the sandbox line", got)
 	}
 
 	codexLaneSandboxProbeFn = func() error { return exec.ErrNotFound }

@@ -37,7 +37,7 @@ func TestCodexLaneLaunchEnvironmentRefusalSandboxFakePS(t *testing.T) {
 	codexLaneStdioIsTerminalFn = func() bool { return true }
 	t.Cleanup(func() { codexLaneSandboxProbeFn, codexLaneStdioIsTerminalFn = prevProbe, prevStdio })
 
-	if got := codexLaneLaunchEnvironmentRefusal([]string{"TERM=xterm-256color"}); !strings.Contains(got, "interactive terminal") {
-		t.Fatalf("sandboxed-ps refusal = %q, want the interactive-terminal line", got)
+	if got := codexLaneLaunchEnvironmentRefusal([]string{"TERM=xterm-256color"}); !strings.Contains(got, "forbids process introspection") {
+		t.Fatalf("sandboxed-ps refusal = %q, want the sandbox line", got)
 	}
 }

@@ -46,6 +46,17 @@ const (
 	// leg's own review.
 	EnvCodexAuditLeg = "MOAI_CODEX_AUDIT_LEG"
 
+	// EnvMoaiCodexSession marks every codex child the moai launcher builds
+	// with "1" (card t1779). The codex CLI exports no session marker of its
+	// own (verified against the vendored 0.162.1 CLI surface: only
+	// CODEX_HOME, which moai itself sets), and a plain `moai codex` launch
+	// scrubs the factory keys from its child, so the lane launch's recursion
+	// guard cannot see a plain-session nest through the gpt backend key
+	// alone. Upstream shell_environment_policy defaults to inherit=all, so
+	// the child's copy reaches the session's shell, where a nested
+	// `moai codex -l` reads it.
+	EnvMoaiCodexSession = "MOAI_CODEX_SESSION"
+
 	// Orca pane-ownership variables (t1869). Orca injects these into the shell of
 	// the pane it owns; its agent hook reads them to report state into that pane.
 	// A codex review/audit/task child that inherits them reports into the parent's

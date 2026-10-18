@@ -65,22 +65,31 @@ func codexLaneJoinError(err error) error {
 const codexLaneInteractiveTerminalDiag = "moai codex -l needs an interactive terminal to run Codex; run it in a terminal directly"
 
 // codexLaneRecursiveLaunchDiag is the ONE-line refusal for a recursive launch
-// (card t1779): a process carrying the Codex-session backend marker is itself
-// a Codex session, and a lane launch from inside one would recurse.
+// (card t1779): a process carrying the Codex-session backend marker — or the
+// launcher's self-identification marker, which survives where a plain `moai
+// codex` child scrubs the factory keys — is itself a Codex session, and a
+// lane launch from inside one would recurse.
 const codexLaneRecursiveLaunchDiag = "moai codex -l refused: this session is already a Codex session; launching a lane from inside it would recurse"
+
+// codexLaneSandboxDiag is the ONE-line refusal for the sandbox signature
+// (card t1779, sync-audit F2): its own wording — the interactive-terminal
+// line would misdiagnose a sandboxed seat as a terminal-less one.
+const codexLaneSandboxDiag = "moai codex -l refused: this environment forbids process introspection (operation not permitted); run it outside the sandbox"
 
 // codexLaneLaunchEnvironmentRefusal returns the ONE-line refusal for a launch
 // environment a Codex lane session cannot run in, or "" when the environment
-// is usable (card t1779): the Codex-session marker (a recursive launch — the
-// factoryLaneRefusal comparison, config.EnvFactoryBackend ==
-// factory.BackendGPT), TERM=dumb, non-terminal stdin or stdout — judged on
+// is usable (card t1779): a Codex-session nest (a recursive launch — the gpt
+// backend key, the factoryLaneRefusal comparison, OR the launcher's
+// self-identification marker config.EnvMoaiCodexSession, because a plain
+// `moai codex` child scrubs the factory keys and only the marker survives
+// into a plain session), TERM=dumb, non-terminal stdin or stdout — judged on
 // the real descriptors REGARDLESS of TERM, because the session receives this
 // process's fds verbatim (card-review P2-2) — or the sandbox signature. The
 // caller prints the line and exits non-zero as the launch's FIRST act — the
 // run join, the lane-label claim, the stamps, and the launch-pending
 // registration all stay unwritten.
 func codexLaneLaunchEnvironmentRefusal(env []string) string {
-	if launchEnvValue(env, config.EnvFactoryBackend) == factory.BackendGPT {
+	if launchEnvValue(env, config.EnvFactoryBackend) == factory.BackendGPT || launchEnvValue(env, config.EnvMoaiCodexSession) != "" {
 		return codexLaneRecursiveLaunchDiag
 	}
 	term := launchEnvValue(env, "TERM")
@@ -93,7 +102,7 @@ func codexLaneLaunchEnvironmentRefusal(env []string) string {
 	if err := codexLaneSandboxProbeFn(); err != nil && strings.Contains(strings.ToLower(err.Error()), "operation not permitted") {
 		// The sandbox signature (card t1779): a sandbox that denies process
 		// introspection also denies the session this launch would start.
-		return codexLaneInteractiveTerminalDiag
+		return codexLaneSandboxDiag
 	}
 	return ""
 }

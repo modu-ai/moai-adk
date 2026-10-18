@@ -635,6 +635,11 @@ func codexChildEnv() []string {
 	if home, _ := resolveCodexHomeDir(); home != "" {
 		env = append(env, codexHomeEnvVar+"="+home)
 	}
+	// Self-identification (card t1779, sync-audit F1): every codex child the
+	// launcher builds IS a codex session. A plain launch scrubs the factory
+	// keys above, so this marker — not the gpt backend key — is what a nested
+	// `moai codex -l` inside a plain session sees.
+	env = append(env, config.EnvMoaiCodexSession+"=1")
 	return env
 }
 
