@@ -14,12 +14,14 @@ package cli
 // each update run adds its own.
 //
 // Time independence. Run-backup directories are named to the second. No assertion
-// here depends on which second a run lands in. Where it could matter, both
-// branches are driven and asserted: the DISTINCT-directory branch waits (polls)
-// until the clock is past every directory name the previous run wrote, and the
-// SHARED-directory branch reproduces the end state of two runs that fell in one
-// second (the earlier run's backup content merged into the later run's directory,
-// whose own files win) through the priorManifestWriter seam.
+// here depends on which second a run lands in. Two branches are driven and
+// asserted identically: the DISTINCT-directory branch waits (polls) until the
+// clock is past every directory name the previous run wrote, and the NO-WAIT
+// branch starts the next run at once, so the two runs share a clock second or not
+// depending on the machine. The outcome must be the same either way: each run's
+// start-of-run manifest lands in a directory no other run writes to (sync-audit
+// finding F2), so both prior generations survive. The same-second case itself is
+// pinned deterministically, without a clock, in update_prior_manifest_collision_test.go.
 //
 // Reach (rule 7). Only a run that touched reconciliation counts: not skipped, a
 // new manifest.prior.json whose bytes are the manifest the run started from, and a
@@ -52,60 +54,16 @@ const (
 	// branchDistinct: the next run starts in a later second than every
 	// clock-derived directory of the previous one.
 	branchDistinct clockBranch = iota
-	// branchShared: the next run's backup directory holds the previous run's
-	// content too, as it would if both fell in one second.
-	branchShared
+	// branchNoWait: the next run starts at once. Whether it shares a second with
+	// the previous run is up to the machine, and the assertions do not care.
+	branchNoWait
 )
 
 func (b clockBranch) String() string {
-	if b == branchShared {
-		return "SharedRunDirectory"
+	if b == branchNoWait {
+		return "NoWaitConsecutiveRuns"
 	}
 	return "DistinctRunDirectories"
-}
-
-// recMergeNoOverwrite copies every file of src into dst, keeping what dst already
-// holds.
-func recMergeNoOverwrite(src, dst string) error {
-	return filepath.WalkDir(src, func(p string, d fs.DirEntry, err error) error {
-		if err != nil {
-			return err
-		}
-		rel, relErr := filepath.Rel(src, p)
-		if relErr != nil {
-			return relErr
-		}
-		target := filepath.Join(dst, rel)
-		if d.IsDir() {
-			return os.MkdirAll(target, 0o755)
-		}
-		if _, statErr := os.Lstat(target); statErr == nil {
-			return nil
-		}
-		info, infoErr := d.Info()
-		if infoErr != nil {
-			return infoErr
-		}
-		data, readErr := os.ReadFile(p)
-		if readErr != nil {
-			return readErr
-		}
-		return os.WriteFile(target, data, info.Mode().Perm())
-	})
-}
-
-// recSameDir reports whether two paths name the same directory, whatever their
-// spelling (the flow hands the writer a path relative to the project root, a
-// test usually holds an absolute one).
-func recSameDir(a, b string) bool {
-	ra, err1 := filepath.EvalSymlinks(a)
-	rb, err2 := filepath.EvalSymlinks(b)
-	if err1 != nil || err2 != nil {
-		return false
-	}
-	aa, err1 := filepath.Abs(ra)
-	bb, err2 := filepath.Abs(rb)
-	return err1 == nil && err2 == nil && aa == bb
 }
 
 // withPriorWriter runs fn with the prior-manifest writer replaced and puts the
@@ -117,31 +75,15 @@ func withPriorWriter(w func(runDir string, data []byte) error, fn func()) {
 	fn()
 }
 
-// recPrepareNextRun arranges the clock branch for the run that follows prevRunDir
-// ("" when there is no previous run directory) and returns the function that runs
-// the flow under it. For the shared branch the writer wrapper moves the previous
-// run directory's content into the run directory of the new run before the real
-// writer replaces the new run's own copy.
-func recPrepareNextRun(t *testing.T, root string, br clockBranch, prevRunDir string, run func()) {
+// recPrepareNextRun arranges the clock branch for the next run and runs it: the
+// distinct branch first waits until the clock is past every run-scoped directory
+// name, the no-wait branch runs at once.
+func recPrepareNextRun(t *testing.T, root string, br clockBranch, run func()) {
 	t.Helper()
-	switch br {
-	case branchDistinct:
+	if br == branchDistinct {
 		awaitClockPast(t, restoreRunStamps(t, root))
-		run()
-	case branchShared:
-		real := priorManifestWriter
-		withPriorWriter(func(runDir string, data []byte) error {
-			if prevRunDir != "" && !recSameDir(prevRunDir, runDir) {
-				if err := recMergeNoOverwrite(prevRunDir, runDir); err != nil {
-					return err
-				}
-				if err := os.RemoveAll(prevRunDir); err != nil {
-					return err
-				}
-			}
-			return real(runDir, data)
-		}, run)
 	}
+	run()
 }
 
 // ---------------------------------------------------------------------------
@@ -475,11 +417,7 @@ func observeRepeated(t *testing.T, fx repeatFixture, br clockBranch) (runs [4]re
 	root, _ := fx.build(t)
 	runs[0] = recObserve(t, root, false)
 	for i := 1; i < len(runs); i++ {
-		prev := ""
-		if runs[i-1].run.NewPriorManifest != "" {
-			prev = filepath.Dir(runs[i-1].run.NewPriorManifest)
-		}
-		recPrepareNextRun(t, root, br, prev, func() { runs[i] = recObserve(t, root, true) })
+		recPrepareNextRun(t, root, br, func() { runs[i] = recObserve(t, root, true) })
 	}
 	plain[0] = recObserve(t, root, false)
 	plain[1] = recObserve(t, root, false)
@@ -489,12 +427,10 @@ func observeRepeated(t *testing.T, fx repeatFixture, br clockBranch) (runs [4]re
 func TestRepeatedUpdateIsIdempotent(t *testing.T) {
 	t.Log("compared tree hash: content-only (path, bytes, mode, directory presence); directory mtimes and clock values are not compared; deployed_at is masked between runs")
 	for _, fx := range repeatFixtures() {
-		for _, br := range []clockBranch{branchDistinct, branchShared} {
+		for _, br := range []clockBranch{branchDistinct, branchNoWait} {
 			t.Run(fx.name+"/"+br.String(), func(t *testing.T) {
 				runs, plain := observeRepeated(t, fx, br)
-				// Without a retained generation (shared directory) no reason can be
-				// refined, so the rows must be identical for every project.
-				problems := repeatedProblems(runs, plain, fx.strictRows || br == branchShared)
+				problems := repeatedProblems(runs, plain, fx.strictRows)
 				for i := 0; i < len(runs)-1; i++ {
 					refined := 0
 					for j := range runs[i].rows {
@@ -841,7 +777,7 @@ func convCases() []convRecoveryCase {
 				t.Fatalf("free the occupied path: %v", err)
 			}
 			var fin recObs
-			recPrepareNextRun(t, root, br, runDirA, func() { fin = recObserve(t, root, true) })
+			recPrepareNextRun(t, root, br, func() { fin = recObserve(t, root, true) })
 			return root, fin, convExpect{}
 		}},
 		{"ManifestRestoredToPreRunBytes", func(t *testing.T, pristine string, w convWorld, br clockBranch) (string, recObs, convExpect) {
@@ -864,7 +800,7 @@ func convCases() []convRecoveryCase {
 				}
 			}
 			var fin recObs
-			recPrepareNextRun(t, root, br, convRunDir(first), func() { fin = recObserve(t, root, true) })
+			recPrepareNextRun(t, root, br, func() { fin = recObserve(t, root, true) })
 			return root, fin, convExpect{}
 		}},
 		{"EmptiedDirectoriesRecreated", func(t *testing.T, pristine string, w convWorld, br clockBranch) (string, recObs, convExpect) {
@@ -888,15 +824,8 @@ func convCases() []convRecoveryCase {
 				t.Fatalf("premise: the first run pruned %d of the %d emptied directories (%v)", len(recreated), len(w.cands), recreated)
 			}
 			var fin recObs
-			recPrepareNextRun(t, root, br, convRunDir(first), func() { fin = recObserve(t, root, true) })
-			expect := convExpect{}
-			if br == branchShared {
-				// In one shared backup directory the second run's own copy replaced
-				// the first run's, so no retained record says the directories held
-				// only shipped files: they are kept, listed, and nothing is deleted.
-				expect.keptDirs = recreated
-			}
-			return root, fin, expect
+			recPrepareNextRun(t, root, br, func() { fin = recObserve(t, root, true) })
+			return root, fin, convExpect{}
 		}},
 	}
 }
@@ -929,7 +858,7 @@ func TestInterruptedMigrationRecoversAndConverges(t *testing.T) {
 		fin  recObs
 	}
 	for _, c := range convCases() {
-		for _, br := range []clockBranch{branchDistinct, branchShared} {
+		for _, br := range []clockBranch{branchDistinct, branchNoWait} {
 			t.Run(c.name+"/"+br.String(), func(t *testing.T) {
 				root, fin, expect := c.run(t, pristine, w, br)
 				for _, p := range convFinalProblems(w, ref, fin, root, expect) {
