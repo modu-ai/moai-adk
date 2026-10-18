@@ -697,43 +697,19 @@ func runLaunchClaude(profileName string, extraArgs []string) error {
 	// inject --no-chrome unless DO_CLAUDE_CHROME was "true", which kept /chrome
 	// from attaching in every launched session (card t1110). DO_CLAUDE_CHROME is
 	// no longer read; a stale value in settings.local.json is harmless.
-	var passThrough []string
-	explicitModel := false
-	for i := 0; i < len(extraArgs); i++ {
-		arg := extraArgs[i]
-		if arg == "--" {
-			// Consume MoAI's separator, not Claude's flags. A second separator
-			// in the tail belongs to Claude and must remain byte-for-byte intact.
-			passThrough = append(passThrough, extraArgs[i+1:]...)
-			break
-		}
-		switch arg {
-		case "-b", "--bypass":
-			permMode = "bypassPermissions"
-		case "--permission-mode":
-			if i+1 < len(extraArgs) {
-				permMode = extraArgs[i+1]
-				i++
-			}
-		case "-c", "--continue":
-			cont = true
-		case "--model", "-m":
-			if i+1 < len(extraArgs) {
-				model = extraArgs[i+1]
-				explicitModel = true
-				i++
-			}
-		default:
-			// Handle --permission-mode=value form
-			if strings.HasPrefix(arg, "--model=") {
-				model = strings.TrimPrefix(arg, "--model=")
-				explicitModel = true
-			} else if strings.HasPrefix(arg, "--permission-mode=") {
-				permMode = strings.TrimPrefix(arg, "--permission-mode=")
-			} else {
-				passThrough = append(passThrough, arg)
-			}
-		}
+	// The consumption model lives in launch_view.go (SPEC-LAUNCHER-ARGV-001):
+	// the one resolver the anchor guard and this exec boundary both read.
+	consumed := consumeLaunchArgs(extraArgs)
+	passThrough := consumed.PassThrough
+	explicitModel := consumed.ModelSet
+	if consumed.PermissionModeSet {
+		permMode = consumed.PermissionMode
+	}
+	if consumed.Continue {
+		cont = true
+	}
+	if consumed.ModelSet {
+		model = consumed.Model
 	}
 
 	// 5b. Sync the profile permission-mode preference to settings.local.json
@@ -920,7 +896,7 @@ func runLaunchClaude(profileName string, extraArgs []string) error {
 	// SPEC-CHAIN-CORE-001 REQ-CHAIN-005 (Path A): record the worktree spawn
 	// boundary on the chain ledger and hand the node ID to the child
 	// environment. Fail-open — never blocks the launch (card t242).
-	launchEnv = injectChainNodeForLaunch(passThrough, launchEnv, os.Stderr)
+	launchEnv = injectChainNodeForTarget(consumed.ChainTarget, launchEnv, os.Stderr)
 	return execOrSpawnClaudeFunc(claudeBin, buildArgs(false), launchEnv)
 }
 
@@ -968,53 +944,10 @@ func parseProfileFlag(args []string) (string, []string, error) {
 	return profileName, filtered, nil
 }
 
-// normalizeWorktreeFlag rewrites -w/--worktree[=name] forms (before any "--"
-// pass-through marker) into the canonical two-token "--worktree [name]" form
-// that Claude Code accepts, preserving argument order. Tokens after "--" are
-// left untouched — they are already verbatim pass-through to claude.
-// The name is optional: a bare -w lets claude auto-generate a worktree name.
-func normalizeWorktreeFlag(args []string) []string {
-	normalized := make([]string, 0, len(args)+1)
-
-	for i := 0; i < len(args); i++ {
-		arg := args[i]
-		if arg == "--" {
-			// Everything after -- is verbatim pass-through.
-			normalized = append(normalized, args[i:]...)
-			break
-		}
-		switch {
-		case arg == "-w" || arg == "--worktree":
-			normalized = append(normalized, "--worktree")
-			// Optional value: consume the next token unless it is another flag
-			// or the pass-through marker.
-			if i+1 < len(args) && args[i+1] != "--" && !strings.HasPrefix(args[i+1], "-") {
-				normalized = append(normalized, args[i+1])
-				i++
-			}
-		case strings.HasPrefix(arg, "--worktree="):
-			name := strings.TrimPrefix(arg, "--worktree=")
-			normalized = append(normalized, "--worktree")
-			if name != "" {
-				normalized = append(normalized, name)
-			}
-		case strings.HasPrefix(arg, "-w="):
-			name := strings.TrimPrefix(arg, "-w=")
-			normalized = append(normalized, "--worktree")
-			if name != "" {
-				normalized = append(normalized, name)
-			}
-		default:
-			normalized = append(normalized, arg)
-		}
-	}
-
-	return normalized
-}
-
-// resolveWorktreeL2Path is the MoAI-side pre-resolution step for the
-// -w/--worktree flag value. It runs BEFORE normalizeWorktreeFlag in the cc /
-// cg / glm launch paths.
+// validateWorktreeL2Value is the MoAI-side pre-resolution step for the
+// -w/--worktree flag value (the stage-A first-match read of the launch view,
+// launch_view.go; resolveWorktreeL2Path derives it from raw args for callers
+// outside the cc / glm launch paths). It runs BEFORE normalizeWorktreeFlag.
 //
 // SPEC-WORKTREE-ENTRY-STRATEGY-001 M3a (REQ-WES-010). The launcher's -w flag
 // accepts three kinds of values:
@@ -1041,16 +974,16 @@ func normalizeWorktreeFlag(args []string) []string {
 // now runs only after admission succeeds, via seedAdmittedWorktreeHooks at the
 // entry flows' post-admission points (cc.go / glm.go) and runCodexLaunch.
 //
-// Tokens after the "--" pass-through marker are not scanned (they are verbatim
-// pass-through to claude). Returns nil when no -w value is present or the
+// Tokens after the "--" pass-through marker are not scanned by the stage-A read
+// (they are verbatim pass-through to claude). Returns nil when no -w value is present or the
 // value is a short name; returns a non-nil error only for out-of-prefix
 // absolute paths.
 //
 // This function is ADDITIVE: normalizeWorktreeFlag is unchanged and remains
 // the owner of short-name token normalization (AC-WES-010b).
-func resolveWorktreeL2Path(args []string, warn io.Writer) error {
-	value, ok := worktreeFlagValue(args)
-	if !ok || value == "" {
+func validateWorktreeL2Value(read worktreeRead, warn io.Writer) error {
+	value := read.Value
+	if !read.Has || value == "" {
 		// Bare -w (auto-name) or no -w flag: nothing to validate.
 		return nil
 	}
@@ -1080,35 +1013,6 @@ func resolveWorktreeL2Path(args []string, warn io.Writer) error {
 			"  absolute path under one of the accepted prefixes to re-enter an existing worktree",
 		value,
 	)
-}
-
-// worktreeFlagValue scans args (stopping at the "--" pass-through marker) for
-// the value of the -w / --worktree flag. Returns the value and whether a
-// value was supplied. Mirrors the token-shape handling of normalizeWorktreeFlag
-// without mutating args.
-func worktreeFlagValue(args []string) (string, bool) {
-	for i := 0; i < len(args); i++ {
-		arg := args[i]
-		if arg == "--" {
-			// Everything after -- is verbatim pass-through — do not scan.
-			return "", false
-		}
-		switch {
-		case arg == "-w" || arg == "--worktree":
-			// Optional value: the next token is the value unless it is another
-			// flag or the pass-through marker.
-			if i+1 < len(args) && args[i+1] != "--" && !strings.HasPrefix(args[i+1], "-") {
-				return args[i+1], true
-			}
-			// Bare -w (claude auto-generates a worktree name): no value.
-			return "", false
-		case strings.HasPrefix(arg, "--worktree="):
-			return strings.TrimPrefix(arg, "--worktree="), true
-		case strings.HasPrefix(arg, "-w="):
-			return strings.TrimPrefix(arg, "-w="), true
-		}
-	}
-	return "", false
 }
 
 // isUnderWorktreePrefix reports whether path is contained within prefix.
