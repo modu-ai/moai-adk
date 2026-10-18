@@ -17,7 +17,7 @@ Label: FOUNDER
 Class: product-level
 Authority anchor: (none — the decision board is not in the committed authority register)
 Why unresolved: closed.
-Operator verdict: DECIDED by the operator — decision board `d-20261018T062320Z-5952` (decided_by=operator, 2026-10-18, scope card:t1649): agent copies become generated outputs; the agent source is the only edit surface; C1 is byte-identical to C2; the contrary §2.0 sentences are superseded and rewritten by this work (REQ-AC4-013).
+Operator verdict: DECIDED by the operator — decision board `d-20261018T062320Z-5952` (decided_by=operator, 2026-10-18, scope card:t1649): agent copies become generated outputs; the agent source is the only edit surface; C1 is byte-identical to C2; the contrary §2.0 sentences are superseded and rewritten by this work (REQ-AC4-012).
 
 ### Q17: Does C2 stop being the hand-edited source, generated from agent sources from M1 on?
 Label: FOUNDER

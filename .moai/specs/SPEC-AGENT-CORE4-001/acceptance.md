@@ -1,7 +1,7 @@
 ---
 id: SPEC-AGENT-CORE4-001
 title: "Acceptance: piece 1"
-version: "0.5.0"
+version: "0.6.0"
 created: 2026-10-18
 ---
 
@@ -10,9 +10,10 @@ created: 2026-10-18
 Document-level pin: RED-now cells were measured on tree `06095bb8fa`. `<M0>` is the M0 baseline
 commit; the M1 run records its SHA in `progress.md` §E.2. A `go test -v` row is green only when the
 listed `--- PASS:` lines print, because `ok ... [no tests to run]` exits 0 (empty sweep,
-`verification-completeness.md` §1.1). AC-AC4-001..012 are **release-blocking**. AC-AC4-005 and
-AC-AC4-006 are **one-time milestone cells** run once at M1 and M2 and recorded in `progress.md` §E.2;
-they are not tests and nothing re-runs them. Tests that need synthetic sources (block markers,
+`verification-completeness.md` §1.1). AC-AC4-001..004 and 007..011 are **release-blocking** (RED-now observed). AC-AC4-005, AC-AC4-006 and
+AC-AC4-012 (b)-(d) and (e) are **one-time milestone cells** run once at M1 or M2 and pasted into
+`progress.md` §E.2: they have no RED-now and are regression-guards, not release-blocking criteria;
+nothing re-runs them. Tests that need synthetic sources (block markers,
 unmapped tokens, hand edits) use in-memory or temp-dir fixtures, because none of the twelve shipped
 bodies contains a block marker.
 
@@ -22,25 +23,28 @@ bodies contains a block marker.
 |---|---|---|---|---|---|
 | AC-AC4-001 | REQ-AC4-001 | `go test ./internal/template/agentemit -run '^TestSourceSetIsOneToOne$' -v -count=1` | PASS `twelve_sources_twelve_definitions`, `rendered_file_without_source_fails` | M1 | L-T1 |
 | AC-AC4-002 | REQ-AC4-002 | `go test ./internal/template/agentemit -run '^TestClaudeRenderFromSource$' -v -count=1` | PASS (fixtures) `claude_only_block_present_in_c2`, `codex_only_block_absent_from_c2`, `render_is_deterministic` | M1 | L-T2 |
-| AC-AC4-003 | REQ-AC4-003 | `go test ./internal/template/agentemit -run '^TestCodexRenderFromSource$' -v -count=1` | PASS (fixtures) `codex_only_block_present_in_c3`, `claude_only_block_absent_from_c3`, `c3_rendered_without_c2_bytes`; PASS `contract_rows_unchanged_for_twelve` | M1 | L-T3 |
+| AC-AC4-003 | REQ-AC4-003 | `go test ./internal/template/agentemit -run '^TestCodexRenderFromSource$' -v -count=1` | PASS (fixtures) `codex_only_block_present_in_c3`, `claude_only_block_absent_from_c3`, `c3_rendered_without_c2_bytes`; PASS `contract_rows_unchanged_for_twelve` (compares the emitted permission-contract rows with the in-repo contract table in `agents-codex.yaml`, not with git or `<M0>`; it changes with that table, not with the agents) | M1 | L-T3 |
 | AC-AC4-004 | REQ-AC4-004 | `go test ./internal/template/agentemit -run '^TestRenderUnmappedCapabilityFails$' -v -count=1` | PASS (fixtures) `unmapped_tools_token_names_file_and_token`, `unterminated_marker_names_file`, `nested_marker_names_file`, `no_partial_output` | M1 | L-T4 |
-| AC-AC4-005 | REQ-AC4-005 | one-time, at the M1 commit, with `<M0>` from `git log --format=%H --grep='feat(SPEC-AGENT-CORE4-001): M0 baseline'`: (a) `git diff --quiet <M0>^ <M0> -- . ':(exclude).moai/specs/SPEC-AGENT-CORE4-001/m0-baseline.md'` (b) `git merge-base --is-ancestor <M0> HEAD` (c) `git diff --quiet <M0> HEAD -- internal/template/templates/.claude/agents/moai internal/template/templates/.codex/agents/moai` (d) `diff -rq internal/template/agentemit/source internal/template/templates/.claude/agents/moai` | all four exit 0: M0 changed nothing but the baseline file, M0 is an ancestor of M1, M1 changed no shipped C2 or C3 byte, and the twelve sources equal C2; exit-decided; the four outputs and the SHA are pasted into `progress.md` §E.2 | M1 | L-S |
-| AC-AC4-006 | REQ-AC4-006 | one-time, at the M2 commit: `git diff -U0 --no-color <M0> HEAD -- internal/template/templates/.claude/agents/moai/builder-harness.md internal/template/templates/.claude/agents/moai/e2e-tester.md internal/template/templates/.claude/agents/moai/manager-design.md internal/template/templates/.claude/agents/moai/super-advisor.md` | stdout contains exactly 8 hunks (`@@ -N +N @@`, trailing text ignored, `index` lines ignored) whose `-` and `+` lines are the 8 pairs of spec §C.1, nothing else; stdout-decided; pasted into `progress.md` §E.2 | M2 | L-S |
+| AC-AC4-005 | REQ-AC4-005 | one-time, at the M1 commit, with `<M0>` from `git log --format=%H --grep='feat(SPEC-AGENT-CORE4-001): M0 baseline'`: (a) `git diff --quiet <M0>^ <M0> -- . ':(exclude).moai/specs/SPEC-AGENT-CORE4-001/m0-baseline.md'` (b) `git merge-base --is-ancestor <M0> HEAD` (c) `git diff --quiet <M0> HEAD -- internal/template/templates/.claude/agents/moai internal/template/templates/.codex/agents/moai` (d) `diff -rq internal/template/agentemit/source internal/template/templates/.claude/agents/moai` | all four exit 0: M0 changed nothing but the baseline file, M0 is an ancestor of M1, M1 changed no shipped C2 or C3 byte, and the twelve sources equal C2; exit-decided; the four outputs and the SHA are pasted into `progress.md` §E.2 | M1 | one-time cell, no RED-now |
+| AC-AC4-006 | REQ-AC4-006 | one-time, at the M2 commit: `git diff -U0 --no-color <M0> HEAD -- internal/template/templates/.claude/agents/moai/builder-harness.md internal/template/templates/.claude/agents/moai/e2e-tester.md internal/template/templates/.claude/agents/moai/manager-design.md internal/template/templates/.claude/agents/moai/super-advisor.md` | stdout contains exactly 8 hunks (`@@ -N +N @@`, trailing text ignored, `index` lines ignored) whose `-` and `+` lines are the 8 pairs of spec §C.1, nothing else; stdout-decided; pasted into `progress.md` §E.2 | M2 | one-time cell, no RED-now |
 | AC-AC4-007 | REQ-AC4-007 | `go test ./internal/template/agentemit -run '^TestCarriedFourCopiesEqual$' -v -count=1` | PASS per agent `c1_equals_c2`, `c3p_equals_c3` (both files exist and are non-empty) | M2 | L-T5, L-C |
 | AC-AC4-008 | REQ-AC4-008 | `go test ./internal/template/agentemit -run '^TestEmitCheckFailsOnHandEdit$' -v -count=1` | PASS `claude_template`, `codex_template` (M1); `claude_project`, `codex_project` (M2); each names the file; `files_unmodified_after_pass`, `files_unmodified_after_fail` | M1 / M2 | L-T6 |
 | AC-AC4-009 | REQ-AC4-009 | `make agents-emit-check` | exit 0 and stdout contains `specs=12 copies=2 diff=0` (M1) or `specs=12 copies=4 diff=0` (M2); stdout-decided | M1 / M2 | L-E |
 | AC-AC4-010 | REQ-AC4-010 | `go test ./internal/harness/rosterguard -run '^TestNumeralSourceDirDischarged$' -v -count=1` | PASS `source_manager_design_discharged`, `no_undischarged_hit_under_source_dir` | M1 | L-T8 |
 | AC-AC4-011 | REQ-AC4-011 | (a) `go test ./internal/template/agentemit -run '^(TestGoldenCommittedArtifactsMatchEmission\|TestGoldenMarkdownMismatchDetected)$' -v -count=1` (b) one-time, M1 and M2: `go test ./internal/template/agentemit -list '^Test'` | (a) PASS both tests plus subtests `markdown_equals_fresh_render` and `injected_mismatch_is_red` (flips one byte of a rendered C2 in memory and requires the comparison to fail, so `if false` or self-comparison cannot pass) (b) the list contains each of the 30 names recorded in `m0-baseline.md`; the replaced assertion is the block from `AC-001's .md face` to the closing brace of its `for` (lines 106-116 at the baseline), anchored by text | M1 | L-T7 |
-| AC-AC4-012 | REQ-AC4-012 | (a) `go test ./internal/template -run '^TestAgentsLocalSection20Text$' -v -count=1` (b) one-time, at the M2 commit: `git diff --numstat <M2>^ <M2> -- AGENTS.local.md` (c) `git diff -U0 --no-color <M2>^ <M2> -- AGENTS.local.md` (d) `git log -1 --format=%B <M2>` | (a) PASS `new_lines_present_exactly` (each of the new §C.2 lines is present, whole-line comparison), `old_phrases_absent_from_section_2_0` (`hand-edited`, `not** a byte-identical`, `fix C2 and regenerate`, `only one of them is not a hand-edit target`, `emitted from \`.md\``); permanent, depends on the file only (b) stdout `9	8	AGENTS.local.md` (c) removed and added lines equal the §C.2 pairs, nothing else (d) the body contains `d-20261018T062320Z-5952`; (b)(c)(d) stdout-decided, pasted into `progress.md` §E.2 | M2 | L-T9 |
+| AC-AC4-012 | REQ-AC4-012 | (a) `go test ./internal/template -run '^TestAgentsLocalSection20Text$' -v -count=1` (b) one-time, at the M2 commit: `git diff --numstat <M2>^ <M2> -- AGENTS.local.md` (c) `git diff -U0 --no-color <M2>^ <M2> -- AGENTS.local.md` (d) `git log -1 --format=%B <M2>` (e) one-time, at the M2 commit: whole-line comparison of the new lines of spec §C.2 with the file | (a) permanent, depends on the file only and survives piece 2's later edits: PASS `section_2_0_exists`, `old_phrases_absent_from_section_2_0` (whole phrases that occur only in the eight old lines: `Local dogfooding, hand-edited`, `Distribution mirror, hand-edited`, `the third is not edited by hand`, `only one of them is not a hand-edit target`, `not** a byte-identical`, `fix C2 and regenerate`, `Machine-emitted from C2`, `emitted from \`.md\`` — never the bare word `hand-edited`, which the new rows contain), `source_path_named` (`internal/template/agentemit/source/` appears in §2.0). The section is located by the heading prefix `### [HARD] §2.0` up to the next `### ` heading (b) stdout `9\t8\tAGENTS.local.md` (c) removed and added lines equal the §C.2 pairs, nothing else (d) the body contains `d-20261018T062320Z-5952` (e) every new §C.2 line is present as a whole line (`new_lines_present_exactly`, one-time because piece 2 rewrites the transitional clauses); (b)-(e) stdout-decided, pasted into `progress.md` §E.2 | M2 | L-T9, L-P |
 
 REQ coverage (bijection): REQ-AC4-001-AC-AC4-001; REQ-AC4-002-AC-AC4-002; REQ-AC4-003-AC-AC4-003;
 REQ-AC4-004-AC-AC4-004; REQ-AC4-005-AC-AC4-005; REQ-AC4-006-AC-AC4-006; REQ-AC4-007-AC-AC4-007;
 REQ-AC4-008-AC-AC4-008; REQ-AC4-009-AC-AC4-009; REQ-AC4-010-AC-AC4-010;
 REQ-AC4-011-AC-AC4-011; REQ-AC4-012-AC-AC4-012. 12 REQ, 12 AC, Tier L ceilings 25 / 25.
 
-Handling after landing: no frozen-equality test exists. The permanent guards are AC-AC4-001, 007,
-008, 009. A legitimate later edit goes to the agent source and `make agents-emit`; none of the
-permanent tests compares against `<M0>` or reads git history, so a shallow checkout runs them.
+Handling after landing: no frozen-equality test exists. Permanent tests and guards after M2:
+AC-AC4-001, 002, 003, 004, 007, 008, 009, 010, 011(a), and AC-AC4-012(a) (old phrases absent, section
+exists, source path named). One-time cells, never re-run: AC-AC4-005, AC-AC4-006, AC-AC4-011(b),
+AC-AC4-012(b)-(e). A legitimate later edit goes to the agent source and `make agents-emit`; no
+permanent test compares against `<M0>` or reads git history, so a shallow checkout runs them, and
+piece 2's rewrite of the transitional §2.0 clauses keeps the permanent check green.
 
 Guards (regression, not stage criteria): `go test ./internal/harness/rosterguard/... -count=1`;
 `go test ./internal/template -run '^(TestTemplateNoInternalContentLeak|TestDeployedRoleRuleEntryPointMarkers|TestRealSetMarkdownTreeUnmodified)$' -count=1`;
@@ -56,9 +60,8 @@ produced any cell. Cell ids: L-C = the eight `cmp` cells (RED: exit 1, files dif
 `ls` of the missing source directory (RED: exit 1); L-T1..T9 = the selector cells in command order
 (RED by the empty-sweep rule: exit 0 with `[no tests to run]`, decided by absent PASS lines; T8 is
 rosterguard, T9 is `./internal/template`); L-E = `make agents-emit-check` (exit 0, no `specs=`
-line, hence RED for AC-AC4-009); the final `grep -c` shows the old phrase is still present in
-`AGENTS.local.md` (count > 0, RED for the `old_phrases_absent` subtest). One-time cells AC-AC4-005,
-006 and the AC-AC4-012 (b)-(d) have no meaningful RED-now and are not claimed to.
+line, hence RED for AC-AC4-009); L-P = the final `grep -c` of one exact old phrase (count 1 now, 0 after M2, so it genuinely flips; RED for the `old_phrases_absent` subtest). One-time cells AC-AC4-005,
+006 and AC-AC4-012 (b)-(e) have no RED-now and are not claimed to.
 
 ```text
 $ cmp .claude/agents/moai/builder-harness.md internal/template/templates/.claude/agents/moai/builder-harness.md
@@ -136,8 +139,8 @@ testing: warning: no tests to run
 PASS
 ok  	github.com/modu-ai/moai-adk/internal/template	0.516s [no tests to run]
 exit=0
-$ grep -c 'hand-edited' AGENTS.local.md
-3
+$ grep -c 'Distribution mirror, hand-edited' AGENTS.local.md
+1
 exit=0
 ```
 
@@ -166,7 +169,7 @@ unchanged emitter):
 | AC-AC4-009 | summary printed unconditionally | AC-AC4-008 hand-edit failure |
 | AC-AC4-003 | C3 derived from C2 so a claude-only block leaks | `c3_rendered_without_c2_bytes` and the block subtests |
 | AC-AC4-011 | comparison replaced by `if false` or self-comparison | `injected_mismatch_is_red`; the name list |
-| AC-AC4-012 | whole-line deletion of line 101 or 109, or an unrelated edit | whole-line comparison of the new text, (b) numstat, (c) exact pairs |
+| AC-AC4-012 | no-op, whole-line deletion of line 101 or 109, or an unrelated edit | simulated in a scratch copy: a no-op and a deletion both fail (a) (old phrases present, or source path absent); (b) numstat, (c) exact pairs, (e) whole-line comparison |
 
 Not covered, said once: the order "M0 before any change" is confirmed only by AC-AC4-005 at M1 (M0
 changes nothing but the baseline file and is an ancestor of M1); the SPEC claims nothing stronger

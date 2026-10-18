@@ -1,7 +1,7 @@
 ---
 id: SPEC-AGENT-CORE4-001
 title: "Design: agent sources and renderers"
-version: "0.5.0"
+version: "0.6.0"
 created: 2026-10-18
 ---
 
@@ -32,7 +32,7 @@ sources.
   construction, `tools:` token classification (an unmapped token already fails closed), permission
   contract and duplicate-name check, but its input is the Codex view. The old assertion that the
   Markdown publication is an identity pass-through becomes "rendered C2 equals a fresh render"
-  (REQ-AC4-012).
+  (REQ-AC4-011).
 - Block behavior is exercised with fixture sources; the twelve shipped bodies carry no markers.
 
 ## §3 Generation and check
@@ -48,7 +48,7 @@ No agent name changes. The enumeration sweep: the highest distinct-name count in
 is 9 (manager-lead) against `SweepThreshold = 10`, so the source copies are not swept. The numeral
 layer scans the repository and discharges hits through path-keyed registry rows; the source copy of
 manager-design carries "13 retained agents" and needs rows keyed to
-`internal/template/agentemit/source/manager-design.md` mirroring the C1/C2/C3 rows (AC-AC4-011).
+`internal/template/agentemit/source/manager-design.md` mirroring the C1/C2/C3 rows (AC-AC4-010).
 
 ## §5 Not here
 

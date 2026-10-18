@@ -1,7 +1,7 @@
 ---
 id: SPEC-AGENT-CORE4-001
 title: "Agent core four, piece 1: agent sources, two renders, generated copies"
-version: "0.5.0"
+version: "0.6.0"
 status: draft
 created: 2026-10-18
 updated: 2026-10-18
@@ -153,7 +153,7 @@ generated agents (the carried four); the remaining agents join when piece 2 abso
 - line 91
 ```text
 - ### [HARD] §2.0 There are three copies of the agent definitions, and the third is not edited by hand
-+ ### [HARD] §2.0 There are three copies of the agent definitions, and only the agent source is edited by hand
++ ### [HARD] §2.0 There are three copies of the agent definitions, and only the agent source is edited by hand (C1 of the eight agents not yet generated is the exception until piece 2)
 ```
 - line 93
 ```text
@@ -241,3 +241,4 @@ Claude and Codex, the preload probe, the doctor check.
 | 0.3.0 | 2026-10-18 | Plan-audit iter2 FAIL fixes: Tier L, all twelve sources at M1, both renderers read the source, pinned line pairs, path-based ordering ACs, decisions Q17 and Q18. |
 | 0.4.0 | 2026-10-18 | Plan-audit iter3 FAIL fixes: sources are verbatim shipped files, baseline read from git instead of frozen hashes, ordering ACs bound to the recorded M0 commit, verdict section §G; operator decision `d-20261018T062320Z-5952` closes Q4 and Q17; REQ-AC4-013 added. |
 | 0.5.0 | 2026-10-18 | Plan-audit iter4 FAIL (STOP) fixes under rule C final delta (d-20261018T070809Z-924f): git-history ordering cells and permanent baseline tests removed (one-time M1/M2 cells instead), AGENTS.local.md §2.0 rewrite moved to M2 with exact text, Q20 decided by the board. |
+| 0.6.0 | 2026-10-18 | Last round (board d-20261018T072844Z-765e, operator): phrase-level banned list for the permanent §2.0 check, whole-line comparison made a one-time M2 cell, heading qualified for the eight not yet generated. |

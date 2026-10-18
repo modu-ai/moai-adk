@@ -1,7 +1,7 @@
 ---
 id: SPEC-AGENT-CORE4-001
 title: "Plan: piece 1"
-version: "0.5.0"
+version: "0.6.0"
 created: 2026-10-18
 ---
 
@@ -50,7 +50,7 @@ RED first: AC-AC4-006 (one-time cell), 007, 008 (project subtests), 012(a). Work
 pairs of spec §C.1 to the four sources; generate C1, C2, C3, C3p for the carried four; summary
 becomes `specs=12 copies=4`; rewrite the eight `AGENTS.local.md` lines of spec §C.2 in this same
 commit, whose message cites board `d-20261018T062320Z-5952`. Then run the one-time cells AC-AC4-006 and AC-AC4-012
-(b)-(d) and paste them into `progress.md` §E.2.
+(b)-(e) and paste them into `progress.md` §E.2.
 
 ## §C Constraints (process rules)
 Template-First (edit the agent source, `make agents-emit`, `make build`, sync local copies); PRESERVE
