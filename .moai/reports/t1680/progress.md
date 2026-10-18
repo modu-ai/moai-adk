@@ -132,3 +132,8 @@ Verification (HEAD a5b312d066, this tree): `go build ./...` exit 0; `GOOS=window
 Observations (not in scope): the `@MX:ANCHOR` on `mcpRequiredProjectRoot` (`internal/cli/mcp_factory_card.go`) says 3 call sites while it has 4 since `handleFactoryRenew` (t1663); observation only, not changed here.
 
 Gaps: `/verify` wrapper not invoked; the full `internal/cli` suite and every other package test were not run (ruling 35e9, no slot); the CHANGELOG sentence on `factory_decide` ("acts on another tree's config") rests on the RED row `DecideConfigRoot` (card = merged-local v1 vs verb pushed v2), not on a separate reproduction; CI owns the repository-wide verdict.
+
+## Receipt-guard record removed (leader, board 6a81) — 2026-10-18T05:25:48Z
+
+- The repair spawn was refused with `AUDIT_RECEIPT_VIOLATION ... sync-auditor / unknown-spec / verdict line missing` after sync-audit round 1 (FAIL 0.78, verdict file committed at 11e07d2c5f). The leader removed that single record under the standing rule (conditions checked: only file in `rejections/`, `starts/` empty, verdict file on disk with `verdict: FAIL` and receipts). Backup: `.moai/reports/t1680/backup-rejection-20261018T052548Z/` (sha256 717ee6dbaa7577ea, cmp match per the leader). The FAIL stands; completion needs a new PASS.
+- Expectation recorded: this card has no SPEC, so an auditor's final line `spec=t1680` may form the same record again until t1861 lands and the binary is reinstalled; if it recurs the lane sends the raw record to the leader and does not edit guard records.
