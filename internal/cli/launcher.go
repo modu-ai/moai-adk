@@ -715,7 +715,14 @@ func runLaunchClaude(profileName string, extraArgs []string) error {
 	// in settings.local.json. Applied after the overrides above so an explicit
 	// DO_CLAUDE_* choice or a typed --permission-mode still wins; a stored profile
 	// mode is never touched here and is forwarded on a resume as before.
-	if permMode == "" && !cont && !consumed.PermissionModeSet {
+	//
+	// A resume whose child finds no previous session (exit 1) falls back to a NEW
+	// session (step 7). That session is a fresh launch, so it gets the same default
+	// and the same settings.local.json sync, under the same condition: the profile
+	// mode was unset. The fact is captured here, before the default is applied
+	// (card t1866 F15, operator exception 3d79).
+	profileModeUnset := permMode == "" && !consumed.PermissionModeSet
+	if profileModeUnset && !cont {
 		permMode = launchDefaultPermissionMode(permGLM)
 	}
 
@@ -892,6 +899,16 @@ func runLaunchClaude(profileName string, extraArgs []string) error {
 		var ee *exec.ExitError
 		if errors.As(err, &ee) && ee.ExitCode() == 1 {
 			fmt.Fprintln(os.Stderr, "No previous session found, starting new session...")
+			// The fallback is a new session: re-apply what a fresh launch does
+			// for a profile that never chose a mode (default flag + sync).
+			if profileModeUnset {
+				permMode = launchDefaultPermissionMode(permGLM)
+				if settingsLocalPath != "" {
+					if err := syncPermissionModeToSettingsLocal(settingsLocalPath, syncPermMode); err != nil {
+						_, _ = fmt.Fprintf(os.Stderr, "Warning: failed to sync permission mode setting: %v\n", err)
+					}
+				}
+			}
 		} else {
 			// StatusDetail, not %w: claude exiting 2+ would otherwise be
 			// mistaken for an intentional ExitCoder at the cmd/moai seam and

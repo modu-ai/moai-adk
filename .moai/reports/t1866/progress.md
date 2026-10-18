@@ -203,3 +203,52 @@ Gaps: no whole-package run of `internal/cli`, `internal/web`, `internal/template
 The previous round's (round 6) audit made two codex calls whose results disagreed (receipts rcpt-813169891395590312ae33f6 pass, rcpt-ef9584ba0990325e17cfe714 fail).
 
 The leader removed the guard records created after rounds 5 and 6 after backing them up (board 6a81; backup directories `backup-rejection-20261018T103222Z` and `backup-rejection-20261018T104643Z`; the second was made by the pre-reinstall guard binary).
+
+## Audit repair round 5 (operator exception 3d79: resume-fallback new session)
+
+Findings (seventh delta sync audit, `.moai/reports/t1866/sync-audit-iter7.md`):
+- F15 (blocking): a resume (`-c`, `--continue`, `DO_CLAUDE_CONTINUE`) of an unset Claude-backend profile whose child exits 1 prints "No previous session found, starting new session..." and starts a NEW session with `buildArgs(false)`. `permMode` had been left empty because `cont` was true, so that session carried no `--permission-mode auto`, and the step 5b `settings.local.json` sync (skipped on `cont`) never ran.
+- F16 (minor): the CHANGELOG and this record did not mention the resume-fallback path.
+
+Change (`internal/cli/launcher.go`, `runLaunchClaude`): the fact "the profile's own mode was unset" is captured before the default is applied (`profileModeUnset := permMode == "" && !consumed.PermissionModeSet`). On the exit-1 branch only, right before the fallback exec, when that fact holds the launcher sets `permMode = launchDefaultPermissionMode(permGLM)` and runs `syncPermissionModeToSettingsLocal(settingsLocalPath, syncPermMode)` (warn-only, like step 5b). A stored profile mode, a settings-chosen mode and a typed `--permission-mode` make the fact false, so they are never replaced; a GLM backend gets "" from `launchDefaultPermissionMode`, so it stays unchanged. The `cont` path, the GLM drop, the GLM resume drop, the legacy bypass handling and the argv-consumption order are untouched. The launcher comment states the rule; the CHANGELOG entry now says a successful resume passes no default flag while a fallback new session gets the `auto` default and the sync (F16).
+
+Tests (`internal/cli/launcher_permission_resume_test.go`; stub claude from `pinFallbackClaude` appends the argv of every call and exits 1 on `--continue`; it also routes the exec seam through the stub so the fallback call is recorded). RED run before the fix, `go test ./internal/cli -run '^TestLaunch_ClaudeResumeFallback' -count=1 -v`:
+
+```
+    launcher_permission_resume_test.go:480: fallback --permission-mode = "" in [--model opus[1m]], want auto
+    launcher_permission_resume_test.go:483: settings.local.json permissions.defaultMode = "" after the fallback, want auto (the sync ran)
+--- FAIL: TestLaunch_ClaudeResumeFallbackNewSessionGetsAutoDefault (0.67s)
+    --- FAIL: TestLaunch_ClaudeResumeFallbackNewSessionGetsAutoDefault/--continue (0.23s)
+    --- FAIL: TestLaunch_ClaudeResumeFallbackNewSessionGetsAutoDefault/-c (0.22s)
+    --- FAIL: TestLaunch_ClaudeResumeFallbackNewSessionGetsAutoDefault/DO_CLAUDE_CONTINUE=true (0.22s)
+--- PASS: TestLaunch_ClaudeResumeFallbackKeepsChosenModeAndGLMStaysWithoutAuto (0.71s)
+    --- PASS: TestLaunch_ClaudeResumeFallbackKeepsChosenModeAndGLMStaysWithoutAuto/stored_acceptEdits_profile (0.22s)
+    --- PASS: TestLaunch_ClaudeResumeFallbackKeepsChosenModeAndGLMStaysWithoutAuto/typed_plan (0.24s)
+    --- PASS: TestLaunch_ClaudeResumeFallbackKeepsChosenModeAndGLMStaysWithoutAuto/GLM_backend_unset_profile (0.25s)
+FAIL	github.com/modu-ai/moai-adk/internal/cli	2.868s
+```
+
+(One earlier RED run had the GLM subtest failing with "claude ran 1 times": that was a bug in my first `recordedChildCalls`, which dropped the blank line a no-argument fallback call writes; fixed in the test helper before the fix to the product code, and the GLM subtest was then green as shown.) GREEN, same command, after the fix:
+
+```
+--- PASS: TestLaunch_ClaudeResumeFallbackNewSessionGetsAutoDefault (0.73s)
+    --- PASS: TestLaunch_ClaudeResumeFallbackNewSessionGetsAutoDefault/--continue (0.23s)
+    --- PASS: TestLaunch_ClaudeResumeFallbackNewSessionGetsAutoDefault/-c (0.26s)
+    --- PASS: TestLaunch_ClaudeResumeFallbackNewSessionGetsAutoDefault/DO_CLAUDE_CONTINUE=true (0.24s)
+--- PASS: TestLaunch_ClaudeResumeFallbackKeepsChosenModeAndGLMStaysWithoutAuto (0.74s)
+    --- PASS: TestLaunch_ClaudeResumeFallbackKeepsChosenModeAndGLMStaysWithoutAuto/stored_acceptEdits_profile (0.26s)
+    --- PASS: TestLaunch_ClaudeResumeFallbackKeepsChosenModeAndGLMStaysWithoutAuto/typed_plan (0.26s)
+    --- PASS: TestLaunch_ClaudeResumeFallbackKeepsChosenModeAndGLMStaysWithoutAuto/GLM_backend_unset_profile (0.23s)
+PASS
+ok  	github.com/modu-ai/moai-adk/internal/cli	2.720s
+```
+
+Guards (green before the fix, as intended): `TestLaunch_ClaudeResumeFallbackKeepsChosenModeAndGLMStaysWithoutAuto` (stored `acceptEdits` stays `acceptEdits` on both calls, typed `plan` stays `plan`, GLM unset gets no `--permission-mode` on either call), plus the existing resume tests (`TestLaunch_ClaudeResume*`, successful resume: one call, no flag, file unchanged), which stayed green. The only RED cases were the three subtests of `TestLaunch_ClaudeResumeFallbackNewSessionGetsAutoDefault`, for the stated reason: the fallback call had no `--permission-mode auto` and `settings.local.json` held no `defaultMode: auto`.
+
+Mutation check: with the fallback re-application disabled in the working copy (`if false && profileModeUnset {`), `go test ./internal/cli -run '^TestLaunch_ClaudeResumeFallbackNewSessionGetsAutoDefault' -count=1 -v` gave `--- FAIL` for the parent and all three subtests (`FAIL	github.com/modu-ai/moai-adk/internal/cli	1.850s`); the mutation was reverted and the same tests are green again (the broad run below ran on the restored code).
+
+Broad run, `go test ./internal/cli -run '^TestLaunch_' -count=1 -v` after the fix: exit 0, `ok  	github.com/modu-ai/moai-adk/internal/cli	4.937s`; 37 `--- PASS`, 0 `--- FAIL`, 0 `--- SKIP` lines (29 before this round plus the 8 new tests and subtests). `go test ./internal/settings ./internal/cli/wizard ./internal/core/project -count=1`: all three `ok`. `gofmt -l internal/cli`: no output.
+
+Gaps: no whole-package run of `internal/cli`, `internal/web`, `internal/template` or `internal/config` this round; no live Claude process (the child is a stub that records argv); the broad run was a name pattern, not the full suite. The fallback re-applies the default and sync only when the profile's own mode was unset; a fallback new session of a profile with a stored or settings-chosen mode gets that mode's flag but, as before, no `settings.local.json` sync (outside the operator decision, not changed).
+
+The seventh audit's codex receipt is rcpt-c68710bc814236dc0a67251f (fail).

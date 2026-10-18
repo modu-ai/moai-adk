@@ -3,6 +3,7 @@ package cli
 import (
 	"encoding/json"
 	"os"
+	"os/exec"
 	"path/filepath"
 	"strings"
 	"testing"
@@ -394,6 +395,146 @@ func TestLaunch_SettingsChosenModeDoesNotPersistDefaultAuto(t *testing.T) {
 	}
 	if got := settingsDefaultMode(readSettingsDoc(t, root)); got != "" {
 		t.Errorf("permissions.defaultMode = %q, want the override removed (a settings-chosen mode is not the launcher default)", got)
+	}
+}
+
+// pinFallbackClaude pins a stub claude binary that appends the argv of EVERY
+// invocation to a file (one space-joined line per call) and exits 1 when its args
+// contain --continue, 0 otherwise: a resume that finds no previous session. It
+// also routes the exec seam through that binary, so the fallback new session the
+// launcher starts after the exit-1 resume is recorded as the next line (the real
+// seam would replace the test process). It returns the file path.
+func pinFallbackClaude(t *testing.T) string {
+	t.Helper()
+	dir := t.TempDir()
+	callsFile := filepath.Join(dir, "claude-calls")
+	bin := filepath.Join(dir, "claude-fallback-stub")
+	script := "#!/bin/sh\nprintf '%s\\n' \"$*\" >> '" + callsFile + "'\nfor a in \"$@\"; do\n  if [ \"$a\" = \"--continue\" ]; then exit 1; fi\ndone\nexit 0\n"
+	if err := os.WriteFile(bin, []byte(script), 0o755); err != nil {
+		t.Fatalf("write fallback stub: %v", err)
+	}
+	t.Setenv(config.EnvClaudeBin, bin)
+
+	origExec := execOrSpawnClaudeFunc
+	t.Cleanup(func() { execOrSpawnClaudeFunc = origExec })
+	execOrSpawnClaudeFunc = func(claudeBin string, a, env []string) error {
+		return exec.Command(claudeBin, a[1:]...).Run()
+	}
+	return callsFile
+}
+
+// recordedChildCalls returns the argv of every invocation the fallback stub saw,
+// in order; a call with no arguments is an empty slice, not a missing call. It
+// fails the test when the stub never ran.
+func recordedChildCalls(t *testing.T, callsFile string) [][]string {
+	t.Helper()
+	raw, err := os.ReadFile(callsFile)
+	if err != nil {
+		t.Fatalf("the pinned claude binary never ran (calls file %s): %v", callsFile, err)
+	}
+	var calls [][]string
+	for _, line := range strings.Split(strings.TrimSuffix(string(raw), "\n"), "\n") {
+		calls = append(calls, strings.Fields(line))
+	}
+	return calls
+}
+
+// TestLaunch_ClaudeResumeFallbackNewSessionGetsAutoDefault: a resume of an unset
+// profile passes no default flag, but when its child exits 1 (no previous session)
+// the launcher starts a NEW session, which gets the auto default and the
+// settings.local.json sync like any new session (card t1866 F15, operator
+// exception 3d79).
+func TestLaunch_ClaudeResumeFallbackNewSessionGetsAutoDefault(t *testing.T) {
+	cases := []struct {
+		name      string
+		extraArgs []string
+		envCont   bool
+	}{
+		{name: "--continue", extraArgs: []string{"--continue"}},
+		{name: "-c", extraArgs: []string{"-c"}},
+		{name: "DO_CLAUDE_CONTINUE=true", envCont: true},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			root := permissionProject(t)
+			if tc.envCont {
+				setSettingsEnv(t, root, "DO_CLAUDE_CONTINUE", "true")
+			}
+			callsFile := pinFallbackClaude(t)
+
+			if err := launchClaudeDefault("", tc.extraArgs); err != nil {
+				t.Fatalf("launch: %v", err)
+			}
+
+			calls := recordedChildCalls(t, callsFile)
+			if len(calls) != 2 {
+				t.Fatalf("claude ran %d times (%v), want the resume then the fallback new session", len(calls), calls)
+			}
+			if !hasArg(calls[0], "--continue") || hasArg(calls[0], "--permission-mode") {
+				t.Errorf("first call %v, want --continue and no --permission-mode", calls[0])
+			}
+			if hasArg(calls[1], "--continue") {
+				t.Errorf("fallback call %v carries --continue, want a new session", calls[1])
+			}
+			if got := permissionModeArg(calls[1]); got != "auto" {
+				t.Errorf("fallback --permission-mode = %q in %v, want auto", got, calls[1])
+			}
+			if got := settingsDefaultMode(readSettingsDoc(t, root)); got != "auto" {
+				t.Errorf("settings.local.json permissions.defaultMode = %q after the fallback, want auto (the sync ran)", got)
+			}
+		})
+	}
+}
+
+// TestLaunch_ClaudeResumeFallbackKeepsChosenModeAndGLMStaysWithoutAuto: the
+// fallback new session re-applies the auto default only for an unset profile on
+// the Claude backend. A stored profile mode and a typed --permission-mode are
+// forwarded unchanged, and a GLM backend never receives auto (card t1866 F15).
+func TestLaunch_ClaudeResumeFallbackKeepsChosenModeAndGLMStaysWithoutAuto(t *testing.T) {
+	cases := []struct {
+		name      string
+		stored    string
+		glm       bool
+		extraArgs []string
+		want      string
+	}{
+		{name: "stored acceptEdits profile", stored: "acceptEdits", extraArgs: []string{"--continue"}, want: "acceptEdits"},
+		{name: "typed plan", extraArgs: []string{"--permission-mode", "plan", "--continue"}, want: "plan"},
+		{name: "GLM backend unset profile", glm: true, extraArgs: []string{"--continue"}, want: ""},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			root := permissionProject(t)
+			if tc.glm {
+				setProjectBackend(t, root, true)
+			}
+			if tc.stored != "" {
+				if err := profile.WritePreferences("default", profile.ProfilePreferences{PermissionMode: tc.stored}); err != nil {
+					t.Fatalf("seed profile: %v", err)
+				}
+			}
+			callsFile := pinFallbackClaude(t)
+
+			if err := launchClaudeDefault("", tc.extraArgs); err != nil {
+				t.Fatalf("launch: %v", err)
+			}
+
+			calls := recordedChildCalls(t, callsFile)
+			if len(calls) != 2 {
+				t.Fatalf("claude ran %d times (%v), want the resume then the fallback new session", len(calls), calls)
+			}
+			for i, call := range calls {
+				if got := permissionModeArg(call); got != tc.want {
+					t.Errorf("call %d --permission-mode = %q in %v, want %q", i, got, call, tc.want)
+				}
+			}
+			if hasArg(calls[1], "--continue") {
+				t.Errorf("fallback call %v carries --continue, want a new session", calls[1])
+			}
+			if got := settingsDefaultMode(readSettingsDoc(t, root)); got == "auto" {
+				t.Errorf("settings.local.json permissions.defaultMode = auto, want no auto default for this profile")
+			}
+		})
 	}
 }
 
