@@ -286,11 +286,11 @@ func classifyOwnershipCore(env ownershipEnv, rel, abs string) ownershipVerdict {
 		}
 	}
 	if !registered || entry == nil {
-		// Where the file lives and what kind it is are decided before anything
-		// reads it: a symlink out of the project would hand the read to a file
-		// that is not ours to open (REQ-OWR-005), and a FIFO would block the read
-		// until a writer appears.
-		if linkLeavesRoot(env.rootResolved, abs) {
+		// Where the file really lives and what kind it is are decided before
+		// anything reads it: a symlink (the file or any directory above it) out of
+		// the project would hand the read to a file that is not ours to open
+		// (REQ-OWR-005), and a FIFO would block the read until a writer appears.
+		if pathLeavesRoot(env.rootResolved, abs) {
 			return ownershipVerdict{class: ownershipUnregistered, keep: keepSymlinkEscape}
 		}
 		if unreadableKind(abs) {
@@ -348,16 +348,12 @@ func unreadableKind(abs string) bool {
 	return info.Mode()&(os.ModeNamedPipe|os.ModeSocket|os.ModeDevice|os.ModeCharDevice|os.ModeIrregular) != 0
 }
 
-// linkLeavesRoot reports whether abs is a symlink whose fully resolved target is
-// outside the project root. It looks at the link and its resolution only
-// (Lstat, EvalSymlinks) and never opens the target. A path that is not a
-// symlink, a dangling link and a path that cannot be examined are NOT reported:
-// they keep behaving as before (a dangling link fails its read, `read-failed`).
-func linkLeavesRoot(rootResolved, abs string) bool {
-	info, err := os.Lstat(abs)
-	if err != nil || info.Mode()&os.ModeSymlink == 0 {
-		return false
-	}
+// pathLeavesRoot reports whether the fully resolved path of abs is outside the
+// project root. It resolves EVERY component (EvalSymlinks), so a symlinked
+// ancestor directory is seen exactly like a symlinked file, and it never opens
+// the target. A path that does not resolve (dangling, absent, not examinable) is
+// NOT reported: it keeps behaving as before, a failed read (`read-failed`).
+func pathLeavesRoot(rootResolved, abs string) bool {
 	resolved, err := filepath.EvalSymlinks(abs)
 	if err != nil {
 		return false
