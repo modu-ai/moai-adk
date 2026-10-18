@@ -148,3 +148,18 @@ ok  github.com/modu-ai/moai-adk/internal/cli	1.242s
 The mirror subtest ran `-count=3` to retire a fixture flake (unpinned created_at rendered record-time into the block; now pinned): 3/3 `ok`.
 
 E3 regression guards stay green after M3 (10/10, each `ok`, same name list as M2). `GOOS=windows GOARCH=amd64 go build ./...` exit 0. `gofmt -l` on the four touched files: clean.
+
+### M4 — Guidance text (AC-FLAC-010) — commit `<M4-SHA>`
+
+RED (pre-fix, verbatim): `TestLeaderAdoptGuidanceDocsMatchAnchors` ran against the untouched docs — 32 failure lines (20 anchor-presence errors: each of the ten files missing each of the two anchors; plus the banned-substring, heading-parity, and twin checks all failing their absent-anchor premises), `FAIL github.com/modu-ai/moai-adk/internal/cli` — matching ledger E5's 0-occurrence state.
+
+GREEN (verbatim tails):
+
+```text
+$ go test ./internal/cli -run 'TestLeaderAdoptGuidanceDocsMatchAnchors' -count=1
+ok  github.com/modu-ai/moai-adk/internal/cli	1.561s
+$ go test ./internal/cli -run '^TestFactorySkillAssertionsMatchBehavior$' -count=1
+ok  github.com/modu-ai/moai-adk/internal/cli	13.258s
+```
+
+E5 flipped (verbatim): `grep -c 'leader-start/orphan' <ten files>` → 1 for each of the ten; `grep -c 'lane-join/dead-owner' <ten files>` → 1 for each of the ten; the four banned README substrings (`is retired automatically when the next lane joins` / `자동으로 회수되므로` / `次にレーンが合流した時点で自動的に retire されるので` / `会在下一条泳道加入时自动退役`) each count 0 in its README. Docs-site level-2 headings 10/10/10/10 (E6 was 9 each, +1 new section, locale-locale equality holds); README level-2 headings 12/12/12/12 unchanged. Twin skill files byte-identical (`cmp` exit 0); `make build` exit 0 with the catalog regen (`internal/template/catalog.yaml` one hash line — the factory.md skill entry), and a second `gen-catalog-hashes --all` produced no further change. Hugo build (`hugo --quiet` in docs-site) exit 0 with sitemap.xml emitted. The four replaced README sentences are quoted in the §E.2 final matrix.

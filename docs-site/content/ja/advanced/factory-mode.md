@@ -55,6 +55,12 @@ $ moai codex -l    # Codex のレーン
 | 廃止された `-k` 進入 | かつてのマルチセッションボードのモードは削除されました。エラー文が `-f` と `-l` を案内します |
 | `moai cg`、`moai gpt` | `moai cg` は廃止済みで、移行案内を出して終了します (`moai migrate cg` でプレビュー)。`moai gpt` は存在せず、GPT モデルは `moai codex` で動かします |
 
+## 孤児 run の上でのリーダー起動
+
+resume オプションと `--factory-run` を伴わないリーダー起動(`-f`)は、孤児 run の上で 2 つ目の run を作りません。ファクトリー状態が孤児 run — 所有者が自分のスタンプ基準で死んだと判定され、進行中のカードをまだ抱えた有効な run — を報告すると、ランチャーは起動を拒否します。stderr にガイドブロックを 1 つ出力し、孤児 run ごとに run id、dead、リーダー pid、KST 開始時刻、進行中カード数と、そのランチャー固有の進入形の引き継ぎコマンドを告げ、終了コードは 0 以外になります。run は何も作られず、セッションも始まりません。`--factory-run <run-id>` が意図的な引き継ぎです。指名した run を引き継ぎ経路と同じ採用書き込みで引き取り、引き継ぐランチャーのバックエンドが run 行に記録されます。レーンの合流は、進行中のカードやワーカーをまだ抱えた死んだ所有者の run を retire しません。
+
+`leader-start/orphan: refused; no run created; adopt with --factory-run <run-id>` `lane-join/dead-owner-with-cards-or-workers: kept`
+
 ## 実行が複数生きているとき
 
 レーンの合流は、まず実行記録を読みます。`-l` と一緒に使えるセレクターは2つあります。

@@ -7,7 +7,7 @@ description: >
   own sections; no launcher flag enters or arms them.
 user-invocable: false
 metadata:
-  version: "0.2.0"
+  version: "0.3.0"
   category: "workflow"
   status: "active"
   tags: "factory, launcher, lane, session-record, verify-gate"
@@ -64,6 +64,12 @@ What the table fixes:
 - A lane joins a running factory and claims the next free lane number automatically. The operator does not choose slot numbers, and a launch with no running factory is refused.
 - `--leader <name>` selects which leader session a lane joins, and composes with `-l` or `--lane` only. It is not a short flag for any entry.
 - `moai cg` is retired and exits with its migration diagnostic; `moai migrate cg` previews an explicit role migration. `moai gpt` does not exist: GPT models run through `moai codex`.
+
+## Leader start over an orphaned run
+
+A leader start (`-f`) that carries no resume option and no `--factory-run` never mints a second run over an orphaned one. When the factory state reports an orphan run — an active run whose owner classifies dead on its own stamp and which still holds in-progress cards — the launcher refuses the start: it prints one guidance block on stderr naming each orphan run (run id, dead, lead pid, start time in KST, non-terminal card count) with the adopt command of the launcher's own entry form, and exits non-zero. No run is created and no session is started. `--factory-run <run-id>` is the deliberate adopt: it takes the named run over through the same adoption write the resume path uses — a compare-and-set on the classified owner stamp, one `run.resumed` event, the adopted address republished — and the adopting launcher's backend lands on the run row. A lane join does not retire a dead-owner run that still holds in-progress cards or workers.
+
+`leader-start/orphan: refused; no run created; adopt with --factory-run <run-id>` `lane-join/dead-owner-with-cards-or-workers: kept`
 
 ## Session record
 

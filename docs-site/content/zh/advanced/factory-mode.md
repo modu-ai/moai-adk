@@ -55,6 +55,12 @@ lane 由**人在各自的终端里手动**启动。没有哪个会话能替你�
 | 已停用的 `-k` 入口 | 早先那种多会话分列运行的模式已被移除，错误信息会指向 `-f` 和 `-l` |
 | `moai cg`、`moai gpt` | `moai cg` 已停用，会给出迁移提示后退出（可用 `moai migrate cg` 预览）；`moai gpt` 不存在，GPT 模型通过 `moai codex` 运行 |
 
+## 孤儿 run 上的主导启动
+
+不带恢复选项和 `--factory-run` 的主导启动(`-f`)不会在孤儿 run 之上铸造第二个 run。当工厂状态报告孤儿 run —— 属主按其自身时间戳判定为已死、且仍持有进行中卡片的活动 run —— 时，启动器会拒绝这次启动：向 stderr 输出一个指引块，逐个列出孤儿 run 的 run id、dead、主导 pid、KST 启动时间和进行中卡片数，以及该启动器自身入口形态的接管命令，退出码非零。不创建任何 run，也不启动任何会话。`--factory-run <run-id>` 是有意的接管：按恢复路径所用的同一接纳写入接管被指名的 run，接管启动器的后端会写入 run 行。lane 加入不会退役仍持有进行中卡片或泳道的死属主 run。
+
+`leader-start/orphan: refused; no run created; adopt with --factory-run <run-id>` `lane-join/dead-owner-with-cards-or-workers: kept`
+
 ## 同时存在多个运行时
 
 lane 加入时会先读取运行记录。`-l` 可以搭配两个选择器。

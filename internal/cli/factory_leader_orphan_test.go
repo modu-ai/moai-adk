@@ -13,6 +13,8 @@ import (
 	"fmt"
 	"io"
 	"os"
+	"path/filepath"
+	"regexp"
 	"strings"
 	"testing"
 	"time"
@@ -971,5 +973,120 @@ func TestLeaderStartOrphanTimesRenderInKST(t *testing.T) {
 	})
 	if !strings.Contains(block.String(), "started 2026-10-17 22:39:10 KST") {
 		t.Fatalf("guidance block does not render the KST time:\n%s", block.String())
+	}
+}
+
+// AC-FLAC-010 — the distributed guidance carries the two anchor spans: each
+// of the ten guidance files contains each anchor exactly once as a backticked
+// span, no file carries a different value for either key, the four banned
+// README legacy substrings are gone, the four docs-site pages agree on their
+// level-2 heading count with both anchors inside one section each, and the
+// skill template twin is byte-identical to the local skill. The spans are
+// built from the same constants the guidance renderer ships with, so the
+// docs and the behavior cannot drift apart. The skill document's own
+// behavior-replay instrument (TestFactorySkillAssertionsMatchBehavior, E3)
+// stays green alongside this test.
+func TestLeaderAdoptGuidanceDocsMatchAnchors(t *testing.T) {
+	root := repoRootForTest(t)
+	read := func(rel string) string {
+		raw, err := os.ReadFile(filepath.Join(root, rel))
+		if err != nil {
+			t.Fatalf("read %s: %v", rel, err)
+		}
+		return string(raw)
+	}
+	anchors := []struct{ key, span string }{
+		{"leader-start/orphan", "`" + LeaderStartOrphanAnchor + "`"},
+		{"lane-join/dead-owner-with-cards-or-workers", "`" + LaneJoinDeadOwnerAnchor + "`"},
+	}
+	files := []string{
+		"docs-site/content/en/advanced/factory-mode.md",
+		"docs-site/content/ko/advanced/factory-mode.md",
+		"docs-site/content/ja/advanced/factory-mode.md",
+		"docs-site/content/zh/advanced/factory-mode.md",
+		"README.md", "README.ko.md", "README.ja.md", "README.zh.md",
+		factorySkillLocalRel, factorySkillTemplateRel,
+	}
+	for _, rel := range files {
+		text := read(rel)
+		for _, anchor := range anchors {
+			if n := strings.Count(text, anchor.span); n != 1 {
+				t.Errorf("%s: anchor %s occurs %d time(s), want exactly 1", rel, anchor.span, n)
+			}
+			// No span carries a different value for the same key.
+			for _, span := range backtickSpan.FindAllStringSubmatch(text, -1) {
+				if strings.HasPrefix(span[1], anchor.key+":") && "`"+span[1]+"`" != anchor.span {
+					t.Errorf("%s: span %q states a different value for key %s", rel, span[1], anchor.key)
+				}
+			}
+		}
+	}
+
+	// The banned legacy README sentences are gone (plan D16: REPLACED, never
+	// qualified in place).
+	banned := map[string]string{
+		"README.md":    "is retired automatically when the next lane joins",
+		"README.ko.md": "자동으로 회수되므로",
+		"README.ja.md": "次にレーンが合流した時点で自動的に retire されるので",
+		"README.zh.md": "会在下一条泳道加入时自动退役",
+	}
+	for rel, substr := range banned {
+		if strings.Contains(read(rel), substr) {
+			t.Errorf("%s still carries the banned legacy sentence fragment %q", rel, substr)
+		}
+	}
+
+	// The four docs-site pages agree on their level-2 heading count, and both
+	// anchors sit inside one level-2 section of each.
+	sectionSplit := regexp.MustCompile("(?m)^## ")
+	headings := map[string]int{}
+	for _, rel := range []string{
+		"docs-site/content/en/advanced/factory-mode.md",
+		"docs-site/content/ko/advanced/factory-mode.md",
+		"docs-site/content/ja/advanced/factory-mode.md",
+		"docs-site/content/zh/advanced/factory-mode.md",
+	} {
+		text := read(rel)
+		headings[rel] = len(sectionSplit.FindAllString(text, -1))
+		sections := sectionSplit.Split(text, -1)
+		for _, anchor := range anchors {
+			home := -1
+			for i, section := range sections {
+				if strings.Contains(section, anchor.span) {
+					home = i
+					break
+				}
+			}
+			if home < 0 {
+				t.Errorf("%s: anchor %s sits in no level-2 section", rel, anchor.span)
+				continue
+			}
+			other := anchors[0]
+			if anchor.key == anchors[0].key {
+				other = anchors[1]
+			}
+			shared := false
+			for _, section := range sections {
+				if strings.Contains(section, anchor.span) && strings.Contains(section, other.span) {
+					shared = true
+					break
+				}
+			}
+			if !shared {
+				t.Errorf("%s: anchors %s and %s do not share one level-2 section", rel, anchor.key, other.key)
+			}
+		}
+	}
+	counts := map[int]bool{}
+	for _, n := range headings {
+		counts[n] = true
+	}
+	if len(counts) != 1 {
+		t.Errorf("docs-site level-2 heading counts diverge across locales: %v", headings)
+	}
+
+	// The skill template twin is byte-identical to the local skill.
+	if read(factorySkillLocalRel) != read(factorySkillTemplateRel) {
+		t.Errorf("the template skill twin differs from the local skill; make the twins byte-identical")
 	}
 }

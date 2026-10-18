@@ -55,6 +55,12 @@ An entry carrying a value is refused with a one-line error. The message names th
 | The retired `-k` entry | The old multi-session board mode was removed. The error message points to `-f` and `-l` |
 | `moai cg`, `moai gpt` | `moai cg` is retired and exits with a migration notice (preview with `moai migrate cg`). `moai gpt` does not exist; GPT models run through `moai codex` |
 
+## Leader start over an orphaned run
+
+A leader start (`-f`) that carries no resume option and no `--factory-run` never mints a second run over an orphaned one. When the factory state reports an orphan run — an active run whose owner classifies dead on its own stamp and which still holds in-progress cards — the launcher refuses the start: one guidance block on stderr names each orphan run (run id, dead, lead pid, start time in KST, non-terminal card count) with the adopt command of the launcher's own entry form, and the exit is non-zero. No run is created and no session is started. `--factory-run <run-id>` is the deliberate adopt: it takes the named run over through the same adoption write the resume path uses, and the adopting launcher's backend lands on the run row. A lane join does not retire a dead-owner run that still holds in-progress cards or workers.
+
+`leader-start/orphan: refused; no run created; adopt with --factory-run <run-id>` `lane-join/dead-owner-with-cards-or-workers: kept`
+
 ## When several runs are alive
 
 A lane join reads the run record first. Two selectors can accompany `-l`.
