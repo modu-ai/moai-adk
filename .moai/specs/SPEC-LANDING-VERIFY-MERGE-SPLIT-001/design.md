@@ -1,103 +1,60 @@
-# SPEC-LANDING-VERIFY-MERGE-SPLIT-001 — design (plan phase)
+# SPEC-LANDING-VERIFY-MERGE-SPLIT-001 — design (plan phase, piece A)
 
-Design intent only. Identifiers named here are proposals for the run phase; the observable contracts are in `spec.md` §3 and `acceptance.md`. Code evidence for the current behaviour is in `research.md`.
+Design intent only; identifiers are proposals for the run phase, the observable contracts are in `spec.md` §3 and `acceptance.md`. Code evidence for current behaviour: `research.md`. Scope is piece A per board `9dbe`.
 
-## 1. The shape of the fix
+## 1. Shape
 
-Today one object carries three jobs: the re-measure record says "a command passed", is keyed to a tree, and is valid only while its base equals the tip (`integration_merge_step.go:321-333`). The split separates them:
+Today one record carries "a command passed" (`integration_remeasure.go:135`). Piece A adds the evidence layer beside it and consults it where the record is consulted:
 
-| Job | New home |
+| Job | Home |
 |---|---|
-| "Everything that had to be verified was verified, on this tree" | manifest + attempt records + the completeness verifier (REQ-LVM-001..007) |
-| "A relevant verification does not need repeating after main moved" | the reuse record, decided from scope content (REQ-LVM-016..020), opened last |
-| "Which waiting cards can land right now" | the derived ready view (REQ-LVM-014/015) |
-| "How long landing waits, and why" | the landing-event log and metrics (REQ-LVM-009) |
-| "How many heavy runs may overlap, and when a dead owner's lease clears" | slot capacity and auto-release (REQ-LVM-010..013) |
+| Which verification calls were required | the manifest (REQ-LVM-001) |
+| What each execution observed, and whether it ended | attempt records with package terminal events (REQ-LVM-002/003) |
+| Everything required passed, on this tree | the completeness verifier (REQ-LVM-004..006) |
+| The audit describes this HEAD | the verdict and receipt binding in `complete` (REQ-LVM-008/009) |
+| When the gate becomes mandatory here | the ordered switch (REQ-LVM-011) |
 
-The merge step stays the only writer of the integration branch (REQ-LVM-021); everything new either reads, or writes machine-local state under `.moai/state/`.
+The merge step remains the only writer of the integration branch (REQ-LVM-012). New records are machine-local state beside `.moai/state/remeasure/`.
 
 ## 2. Records (field sets)
 
-Stored beside the existing store, machine-local like `.moai/state/remeasure/`.
+- **Manifest** (`…/remeasure/manifests/<card>.json`): card id; base and card HEAD at derivation; `calls[]` with `call_id`, `command`, `packages[]` (resolved by `go list` at derivation — the denominator for "zero missing"), `reason` (`changed` | `importer-of:<pkg>` | `non-go-reader:<path>`), `narrowing` (absent, or `35e9`, permitted only for `internal/cli`), `no_test_files` per package; `non_go_inputs[]` each with either reader calls or a zero-readers record holding the search command and its empty result; `env_fingerprint` (GOOS, GOARCH, CGO_ENABLED, GOFLAGS, `go version`, tags, declared env names with value digests); `no_go_changes`.
+- **Attempt** (`…/remeasure/attempts/<card>/<attempt_id>.json`): the fields of REQ-LVM-002; `termination` ∈ `completed` | `aborted:signal` | `aborted:timeout` | `aborted:partial-json`; `supersedes` (informational; never erases the aborted record).
+- The existing `RemeasureRecord` (`integration_remeasure.go:45-62`) keeps its meaning; with the key false it is judged exactly as today (REQ-LVM-007). Whether attempt data is embedded in that struct or stored beside it is a run-phase choice constrained by AC-LVM-002.
 
-- **Manifest** (`…/remeasure/manifests/<card>.json`): card id; derived-from base and card HEAD; `calls[]` each with `call_id`, `command`, `packages[]` (resolved by `go list` at derivation, so "zero missing packages" has a denominator), `reason` (`changed` | `importer-of:<pkg>` | `non-go-reader:<path>`), `narrowing` (absent, or `35e9` and permitted only for `internal/cli`), `allow_no_tests` per package; `env_fingerprint` (GOOS, GOARCH, CGO_ENABLED, GOFLAGS, `go version`, tags, declared env names with value digests); `no_go_changes` flag.
-- **Attempt** (`…/remeasure/attempts/<card>/<attempt_id>.json`): the fields of REQ-LVM-002; `termination` ∈ `completed` | `aborted:signal` | `aborted:timeout` | `aborted:partial-json`; `supersedes` (attempt id of the aborted attempt a restart replaces — informational, never erasing).
-- **Reuse record** (extends the tree-keyed store; the file is keyed by the NEW tree): `form: reuse`, `source_tree`, `source_base`, `new_base`, `moved_commits[]`, `scope_digest_source`, `scope_digest_new`, `decision`, `reasons[]`, plus the copied command, exit code and package terminal events of the source so the existing verifier fields stay populated.
+## 3. Package completeness is observed; what the manifest can miss
 
-The existing `RemeasureRecord` (`integration_remeasure.go:45-62`) is not changed in meaning: a pre-existing record remains valid under gate-off behaviour (REQ-LVM-007). Whether attempt data is embedded in that struct or lives beside it is a run-phase choice, constrained only by AC-LVM-002.
+`go test -json` prints one terminal event per package. The gate compares the manifest's `go list`-resolved package set with the terminal events seen: a killed run, a truncated `tee`, or a build failure before any package event leaves a package without a terminal event, so the attempt is aborted or incomplete, never a pass. A script-wrapped call emits no recognized stream to the verb (`integration_remeasure.go:194-209` classifies only a `go test -json` command), so with the gate on it cannot satisfy a call; lanes run each call in the structured form. The known stdout-swallow defect stays out of scope.
 
-## 3. Package completeness is observed, not declared
+What derivation can miss, and the handling:
 
-`go test -json` already prints one terminal event per package (`Action` pass/fail/skip, no `Test`). The gate takes the expected package set from `go list` at manifest time and compares it with the terminal events actually seen. Three consequences:
+| Hazard | Handling |
+|---|---|
+| Changed non-Go file outside a package directory that a test reads | reader search over test sources recorded in the manifest (readers become calls; zero readers is an explicit recorded result); absence of both refuses (REQ-LVM-005). A test that computes the path at run time is not found by search — residual risk R1, bounded by batch CI |
+| Embedded or testdata file | inside a package directory, so the package counts as changed |
+| Build tags / OS-specific files | the environment fingerprint (GOOS, GOARCH, tags, CGO) is declared in the manifest and must equal each attempt's; a difference refuses |
+| Environment-dependent tests | declared env names with value digests are part of the fingerprint; an undeclared env read is not detectable — residual risk R2 |
+| `go list` failure | scope underivable → refuse (fail-closed) |
+| Importer lists changing after a re-absorb | the manifest is regenerated; attempts bound to the superseded manifest stop counting |
+| Hand-edited records | the existing trust model (build-identity field, `integration_remeasure.go` header) is unchanged — an accepted residual, not a defended boundary |
+| Test-only changes | importers are still included (decision-index Q5); no test is ever excluded (REQ-LVM-012) |
 
-- A partial stream (killed run, `tee` truncation, a build failure before any package event) leaves a package without a terminal event → aborted, never pass. This is the missing denominator in today's record.
-- A script-wrapped call (`sh gate.sh`) emits no recognized stream to the verb (the verb classifies only a `go test -json` command, `integration_remeasure.go:194-209`); with the gate on it cannot satisfy the manifest. The known stdout-swallow defect is out of scope, so a lane must run each manifest call as its own `moai integration remeasure -- go test … -json …` invocation. That is the intended cost of part 6.
-- `skip` with `[no test files]` is accepted only where the manifest recorded `allow_no_tests`; otherwise it is an empty sweep (REQ-LVM-004), consistent with the "swept set empty asserts nothing" rule.
+Abort versus restart is a property of the attempt: signal and timeout come from the child's wait status and the verb's own deadline; a cut stream from a final line that is not a complete JSON object. A restart is a new execution with a new attempt ID; the verdict counts the most recent completed attempt per call on the candidate tree.
 
-Abort versus restart is a property of the attempt, not of the call: a signal or timeout is detectable from the child's wait status (`ExitError` signaled flag and the verb's own deadline), a cut stream from the final line not being a complete JSON object or an expected package lacking its terminal event. A restart is simply a new execution and a new attempt ID; the verdict counts the most recent completed attempt per call on the candidate tree.
+## 4. The audit binding (Q13) — facts and a gap
 
-## 4. Threat and failure analysis of the overlap decision
+Facts read from the tree: the SPEC-less readiness path binds `audited_sha` to HEAD, tolerating a difference only under the card's evidence directory (`factorylane/merge_specless.go:35, 108-138`); the SPEC path reads only `sync_status` from progress (`factorylane/merge.go` `checkSyncAudit`); stage evidence readers consult required backends (`homestate/card_evidence_readers.go:189-221`, `runtime.ResolveRequiredBackends`, `runtime/audit_gates.go:43`); receipts live in `internal/auditreceipt`. Piece A applies the same HEAD bind to the SPEC path and requires the required backend's receipt at that HEAD.
 
-The decision answers: "if main moved, can the earlier measurement still describe the merged tree?" Chosen mechanism: **content equality of the verification scope**, not path-matching of moved commits. Compute the scope's object identity on the source tree and on the new candidate tree (git tree/blob ids of every scope directory and file); the decision is `no-overlap` only if the two digests are equal and every undecidable class is absent. The moved-commit list is evidence for the reader, not the predicate. This is stricter than "moved files miss the closure" in the cases that matter (a revert-then-reapply, a rename, a move that restores the same content) and cannot be fooled by commit shape.
+Gap, to be closed at the start of M2 before code: this plan phase did not read how `auditreceipt` keys a receipt to a commit (by audited SHA, by tree, or by card). If the key is not a commit, REQ-LVM-009's wording is amended through manager-spec. The evidence-directory allowance is kept because a verdict file cannot name the commit that adds it; it admits no content change, so it does not let an earlier PASS stand for a later HEAD.
 
-What the closure can miss, and how each is made impossible or fail-closed:
+## 5. The switch and its transition cost
 
-| Hazard | Why the closure alone misses it | Handling |
-|---|---|---|
-| Build tags / OS-specific files | `go list` honours only the current GOOS/GOARCH/tags; tag-excluded files are absent from `GoFiles` | scope is **directory-level and recursive**, so excluded files (`IgnoredGoFiles`) are in scope; fingerprint (GOOS, GOARCH, CGO, tags) must equal the source's or the decision is undecidable → overlap |
-| `go:embed` | embedded files are not Go files | they live inside the package directory subtree (embed cannot use `..`), so directory scope covers them; `EmbedFiles` additionally listed for the digest |
-| `testdata` | ignored by `go list` | directory scope covers it |
-| Generated files | produced by `go generate`, may be untracked or ignored | the digest is over the committed tree; a measured package whose directory holds ignored files at record time is undecidable (the attempt's cleanliness check, `RunRemeasure`, already requires a clean worktree) |
-| Environment-dependent tests | depend on env vars, locale, TMPDIR, PATH | manifest carries a declared env-name list with value digests; any difference → fingerprint mismatch → overlap; an undeclared env read cannot be detected (residual risk R2) |
-| Tests that read non-Go files outside their package (`.claude/`, `.moai/`, templates, docs) | not imports, so invisible to `go list` | **default strict**: any moved non-Go file outside the closure directories is overlap, unless it matches an operator-declared never-read glob (decision-index Q8). Measured effect of strict: 1 of 37 adjacent landings keep a record (`research.md` §6) |
-| Tests that read live git state (refs, history, `origin/main`, branch lists) | the tip itself is the input; no file changed | a measured package whose tests invoke git against the working repository rather than a temporary one is undecidable → overlap. The classification is by an explicit per-package declaration; a package with no declaration is treated as live-git-dependent (fail-closed). Residual risk R3: a wrong "hermetic" declaration |
-| Module graph | `go.mod`/`go.sum`/`go.work` changes alter every closure | in scope; any difference → overlap |
-| Dependencies outside the module | not edited by landings, but `replace` directives can point into the repo | `replace` target inside the repo is added to the scope; outside the repo → undecidable |
-| cgo / `go:generate` inputs | C sources are non-Go files in the package directory | directory scope covers them |
-| Source tree vs new tree closure | a moved commit can add an import that pulls a new package into the closure | closure computed on both trees; scope is the union |
-| Flaky/time-dependent tests | outcome varies without any file change | outside the decision; unchanged from today (a green record is a point observation). Residual risk R4 |
-| Reuse chains | each hop non-overlapping, cumulative overlapping | no chaining; moved set always from the root measured record (REQ-LVM-020) |
-| A tampered or stale record | hand-written JSON | consumers recompute from the repository (REQ-LVM-019); forgery of the build-identity field stays the existing accepted residual of `integration_remeasure.go`'s trust model |
+One key, `workflow.landing_gate.enabled`, governs the completeness verifier and the audit binding; it ships false in the template and is switched on in this repository's configuration by the last milestone only. Cards already `merge-ready` at that moment have script-wrapped records and are refused until their calls are re-run in the structured form; M3's guidance precedes the switch for that reason. The card's own landing is the first live use.
 
-Residual risks carried to the operator (decision-index): R2 undeclared environment reads, R3 wrong hermetic declaration, R4 flakiness. Batch CI on the remote integration branch is the existing backstop for all three; this SPEC does not remove it.
+## 6. Tier arithmetic
 
-## 5. Alternatives considered
+See `spec.md` §6: nearest analogue 1,734 lines (record module, CLI and tests); estimate ≈ 1,000-1,300 production and 1,400-1,800 test lines; about 29 files. Tier L by LOC and files, 12 requirements and 12 criteria.
 
-- **Trace the measured test processes' file reads** to obtain an observed read set. Rejected for this SPEC: macOS has no unprivileged file-access tracer usable in CI-like runs, and a tracer-built set is still a sample of one run. Left as the principled upgrade for strict-mode eligibility.
-- **Declare the read set per package in a manifest** (chosen as the narrowing path, default-deny). Accepts R3.
-- **Keep base==tip and speed up the re-measure** instead. Not in the card's approved scope; the capacity and instrumentation parts address wall-clock directly.
-- **Persist a `ready` marker on the card.** Rejected (REQ-LVM-015): a marker goes stale when main moves, and a stale-marker consumer is exactly the "continued firing" failure (`verification-completeness` §1.3). A derived view cannot go stale; instrumentation records first-observed-ready separately in the event log.
+## 7. Follow-up pieces (not designed here)
 
-## 6. Ready view
-
-For each card in `merge-ready`: (1) card branch contains the integration tip, or the reuse decision holds against it; (2) manifest gate-complete on the candidate tree; (3) a valid tree-keyed record exists (measured or reuse); (4) the audit evidence names the card's current HEAD — for SPEC-less cards the existing `audited_sha` bind (`factorylane/merge_specless.go:35, 108-138`); for SPEC cards the sync-audit verdict file must name the HEAD (today only `sync_status: complete` is read, `factorylane/merge.go` `checkSyncAudit` — a measured gap this view closes for readiness without changing `complete`'s existing gate); (5) `git merge-tree --write-tree` dry run is clean (`merge.go:289`). The first failing predicate is reported.
-
-Note on HEAD confirmation: after a re-absorb the card HEAD changes, so predicate (4) fails until the audit is repeated. That cost is deliberate and unchanged; the view makes it visible instead of discovered at `complete`.
-
-## 7. Slot capacity and auto-release
-
-- Record shape: the per-resource record gains a `holders[]` list guarded by the existing per-resource mutation lock (`withSlotLeaseMutation`, `slot_lease.go:446`); capacity 1 keeps the single-record behaviour byte-compatible (REQ-LVM-011). Admission of the second or later holder reads load average and available memory through injectable readers; a reader failure refuses (REQ-LVM-012). Thresholds have no shipped numeric default: capacity above 1 with thresholds unset behaves as capacity 1 (fail-closed), which lets the operator choose numbers (decision-index Q9) without this SPEC guessing them.
-- Wall-clock-bound exclusion: holders declare `--packages` at acquire; the config list of wall-clock-bound packages is operator-held evidence (decision-index Q11); empty by default.
-- Auto-release: the three read paths (`status`, `acquire`, the guard) already compute `Stale()`; the change makes them remove the record and append an `auto-release` row. Liveness stays bound to the owning session's pid (`cli/slot.go:131-133`); binding to the heavy command's process is the open question Q10.
-
-## 8. Instrumentation
-
-Append-only JSONL under `.moai/state/landing/` (machine-local, like the slot audit log); row kinds `ready`, `remeasure`, `reuse-considered`, `landed` with card, tree, SHA, UTC time. The metrics verb derives landing intervals (consecutive `landed`), ready-wait (`landed` minus first `ready` for the card), execution and reuse counts, and the **shadow eligibility** count: at every landing where a re-measure was executed because the tip had moved, whether the reuse decision would have read no-overlap. That shadow counter is the evidence for decision-index Q8 and is why instrumentation precedes reuse.
-
-## 9. Split recommendation (the leader invited it)
-
-The six parts are authored as one Tier L SPEC at 22/22 requirements and criteria, 3 below the ceiling on each axis. Plan audits in this repository repeatedly hit the ceiling on oversized SPECs, and the parts are not equally coupled:
-
-| Proposed SPEC | Parts | Why separable | Tier |
-|---|---|---|---|
-| A — completeness gate | 6 (REQ-LVM-001..007) + ordering AC | must land first, stands alone, closes the evidence gap for every later landing | M |
-| B — heavy-slot capacity and dead-owner release | 3, 4 (REQ-LVM-010..013) | touches only `slot_lease.go`, `cli/slot.go`, config; shares no code with landing | S/M |
-| C — ready view, metrics, gated reuse | 2, 5, 1 (REQ-LVM-009, 014..020, 008) | depends on A; reuse depends on ready and metrics | L |
-
-Recommendation: split, with `depends_on: [A]` on C and the REQ-LVM-008 ordering rule becoming a hard dependency between SPECs (stronger than a commit-graph AC). The single SPEC is nonetheless complete and auditable as written; if the plan audit holds at the ceiling, split along the table rather than trimming criteria. The leader decides (decision-index Q1).
-
-## 10. Premise checks recorded
-
-- Card item (4): "the record remains until its bound" is only partly true. A dead owner is already reclaimable without `--force`, and the integration window already clears dead holders; what this SPEC specifies (record removal) is the measured remainder (`research.md` §4).
-- Card item (1): the stated benefit depends on eligibility, measured at 1/37 (strict) to 10/37 (lenient) adjacent landings (`research.md` §6).
-- Part (6): the weakness of today's record is observed in a real landed tree (`research.md` §3) and in the repository's own stored records.
+A slot piece (dead-session record removal only), a readiness-and-metering piece (derived view, events, shadow counter) depending on A, and the refused reuse relaxation. Their scope, measurements and open facts are in `research.md` §4-§6 and `decision-index.md`; nothing in them is specified by this SPEC.
