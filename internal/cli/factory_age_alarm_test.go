@@ -218,6 +218,61 @@ func TestFactoryStatusAgeAlarmRefusedKey(t *testing.T) {
 	if !strings.Contains(out, "gate-warn run=run-cli state=kickoff") {
 		t.Fatalf("the card rows did not survive the refused key:\n%s", out)
 	}
+	// Sync-audit iter1 F4: the JSON surface carries the same degrade — the
+	// age_alarm_warning key present naming the refused key, no age_alarms
+	// block.
+	outJSON, _, err := runFactory(t, "status", "--json")
+	if err != nil {
+		t.Fatalf("factory status --json with a refused key: %v", err)
+	}
+	var got map[string]any
+	if err := json.Unmarshal([]byte(outJSON), &got); err != nil {
+		t.Fatalf("refused-key output is not JSON: %v", err)
+	}
+	if _, has := got["age_alarms"]; has {
+		t.Fatalf("age_alarms rendered in JSON despite the refused key:\n%s", outJSON)
+	}
+	warning, _ := got["age_alarm_warning"].(string)
+	if warning == "" || !strings.Contains(warning, "workflow.card_age_alarm.gate_warn_after") {
+		t.Fatalf("age_alarm_warning missing or not naming the refused key in JSON:\n%s", outJSON)
+	}
+}
+
+// TestFactoryStatusAgeAlarmWarnBoundary pins the warn-band admission edge of
+// sync-audit iter1 F5: a card whose class age equals its class's warn band
+// exactly crosses the threshold (the SPEC's "crosses" read as >=) and alarms
+// at band=warn, while a card one second below it renders no row.
+func TestFactoryStatusAgeAlarmWarnBoundary(t *testing.T) {
+	_, _ = fcFixture(t)
+	root := factoryCardRoot()
+	fcPlace(t, root,
+		homestate.Card{CardID: "at-boundary", State: homestate.CardKickoff,
+			UpdatedAt: fcNow.Add(-6 * time.Hour).Format(time.RFC3339Nano)},
+		homestate.Card{CardID: "below-boundary", State: homestate.CardKickoff,
+			UpdatedAt: fcNow.Add(-(5*time.Hour + 59*time.Minute + 59*time.Second)).Format(time.RFC3339Nano)},
+	)
+	caaEnableAlarm(t, root, "") // compiled defaults: gate warn band 6h
+	out, _, err := runFactory(t, "status")
+	if err != nil {
+		t.Fatalf("factory status: %v", err)
+	}
+	var atLine string
+	for _, l := range strings.Split(strings.TrimRight(out, "\n"), "\n") {
+		if strings.HasPrefix(l, "age-alarm card=at-boundary ") {
+			atLine = l
+		}
+	}
+	if atLine == "" {
+		t.Fatalf("a card exactly at the warn band did not alarm (F5: age == warn_after must alarm):\n%s", out)
+	}
+	want := "age-alarm card=at-boundary run=run-cli state=kickoff class=gate-wait band=warn age=6h0m0s" +
+		" stage=unknown commit=unknown activity=unknown"
+	if atLine != want {
+		t.Fatalf("boundary alarm line =\n  %s\nwant\n  %s", atLine, want)
+	}
+	if strings.Contains(out, "age-alarm card=below-boundary ") {
+		t.Fatalf("a card below the warn band alarmed:\n%s", out)
+	}
 }
 
 // TestAgeAlarmNoWrites is the REQ-CAA-007 guard (AC-CAA-008): one full alarm

@@ -17,6 +17,7 @@ import (
 	"time"
 
 	"github.com/modu-ai/moai-adk/internal/config"
+	"github.com/modu-ai/moai-adk/internal/gitenv"
 	"github.com/modu-ai/moai-adk/internal/homestate"
 )
 
@@ -136,13 +137,22 @@ func writeFactoryAgeAlarmText(w io.Writer, rows []factoryAgeAlarmView, warning s
 // factoryAgeAlarmCommitAt reads the committer timestamp of the head commit of
 // the worktree at path — REQ-CAA-004's commit signal: one bounded, read-only
 // git invocation against the card's recorded WorktreePath, reading timestamps
-// git already recorded. A missing or unreadable worktree, a failed or timed-out
-// invocation, and an unparseable stamp all render unknown — never a fabricated
-// value, never a failed status command.
+// git already recorded. The invocation is repo-isolated and helper-free: the
+// child environment is gitenv.Env (an inherited GIT_DIR / GIT_WORK_TREE would
+// outrank -C and redirect the read into a foreign repository, sync-audit iter1
+// F1) and signature rendering is pinned OFF so no repo-configured helper
+// program executes during the read (F2). A missing or unreadable worktree, a
+// failed or timed-out invocation, and an unparseable stamp all render unknown
+// — never a fabricated value, never a failed status command.
 func factoryAgeAlarmCommitAt(worktreePath string) (time.Time, bool) {
 	ctx, cancel := context.WithTimeout(context.Background(), factoryAgeAlarmGitTimeout)
 	defer cancel()
-	out, err := exec.CommandContext(ctx, "git", "-C", worktreePath, "log", "-1", "--format=%cI").Output()
+	cmd := exec.CommandContext(ctx, "git", "-C", worktreePath, "-c", "log.showSignature=false", "log", "-1", "--format=%cI")
+	// gitenv.Env, not os.Environ — the house pattern of internal/core/git
+	// execGit: a lane or hook process exports GIT_DIR / GIT_WORK_TREE, and an
+	// inherited copy outranks -C.
+	cmd.Env = append(gitenv.Env(), "GIT_TERMINAL_PROMPT=0")
+	out, err := cmd.Output()
 	if err != nil {
 		return time.Time{}, false
 	}

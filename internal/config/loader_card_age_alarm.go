@@ -20,6 +20,18 @@ const (
 	CardAgeAlarmStallAlertKey = "workflow.card_age_alarm.stall_alert_after"
 )
 
+// cardAgeAlarmFile is the isolated decode target of the alarm keys: the only
+// workflow.yaml block it maps is card_age_alarm, so a YAML type error in any
+// OTHER key cannot fail this decode, and a type error in an alarm key fails
+// only this decode — never the whole shared WorkflowConfig (sync-audit iter1
+// F3: an alarm-key typo degrades the alarm alone; the lease keys keep their
+// written values through LoadFactoryLease's own isolated decode).
+type cardAgeAlarmFile struct {
+	Workflow struct {
+		CardAgeAlarm CardAgeAlarmConfig `yaml:"card_age_alarm"`
+	} `yaml:"workflow"`
+}
+
 // LoadCardAgeAlarm returns the workflow.card_age_alarm keys of projectRoot as
 // written in its workflow.yaml. A key the file omits takes its compiled
 // default (NewDefaultWorkflowConfig), and a missing file yields the defaults
@@ -28,25 +40,30 @@ const (
 // loadYAMLFile over <projectRoot>/.moai/config/sections) and does not consult
 // the MOAI_CONFIG_DIR override.
 //
-// A file that cannot be read or decoded yields the defaults and a slog.Warn
-// names the file and the error — the config fallback path the workflow section
-// uses. The values the file does parse are returned as written; their bounds
-// are checked by ResolveCardAgeAlarm, whose refusal degrades the alarm section
+// The alarm block is decoded in isolation (cardAgeAlarmFile): a YAML type
+// error in one of its keys degrades the alarm only — the compiled defaults,
+// enabled=false among them, plus exactly one slog.Warn naming the key path —
+// while the rest of the file keeps serving every other consumer as written.
+// A file that cannot be read at all yields the defaults the same way. The
+// values the file does parse are returned as written; their bounds are
+// checked by ResolveCardAgeAlarm, whose refusal degrades the alarm section
 // of the status output (never the rest of it).
 func LoadCardAgeAlarm(projectRoot string) CardAgeAlarmConfig {
 	dir := filepath.Join(projectRoot, ".moai", "config", "sections")
 	defaults := NewDefaultWorkflowConfig().CardAgeAlarm
-	wrapper := &workflowFileWrapper{Workflow: NewDefaultWorkflowConfig()}
-	loaded, err := loadYAMLFile(dir, "workflow.yaml", wrapper)
+	file := &cardAgeAlarmFile{}
+	file.Workflow.CardAgeAlarm = defaults
+	loaded, err := loadYAMLFile(dir, "workflow.yaml", file)
 	if err != nil {
-		slog.Warn("failed to load card age alarm config, using defaults",
-			"path", filepath.Join(dir, "workflow.yaml"), "error", err)
+		slog.Warn("failed to decode card age alarm block, using defaults",
+			"path", filepath.Join(dir, "workflow.yaml"),
+			"key", "workflow.card_age_alarm", "error", err)
 		return defaults
 	}
 	if !loaded {
 		return defaults
 	}
-	return wrapper.Workflow.CardAgeAlarm
+	return file.Workflow.CardAgeAlarm
 }
 
 // CardAgeAlarmSettings is the resolved, validated form of
