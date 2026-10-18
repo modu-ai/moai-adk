@@ -39,7 +39,42 @@ run: tn1p4e · lane: lane-18 · 트리: `.moai/worktrees/t1863` · 브랜치: `W
 
 Tree: `.moai/worktrees/t1863` (branch `WT-10-18-t1849`). Every command below was run in this tree with the environment scrubbed (`unset MOAI_KANBAN_ID MOAI_KANBAN_LEAD_ADDR MOAI_KANBAN_SETTINGS_INJECTED && TMPDIR=/private/tmp/moai-lda-verify`) and `-count=1`, one plain `-run` pattern per invocation.
 
-### M1 — Orphan finder (AC-FLAC-001) — commit `<M1-SHA>`
+### Final AC matrix (all re-observed on the final tree, HEAD 997b85e933, this run)
+
+| AC | Status | Command (one plain -run each) | Verbatim tail (this run) |
+|---|---|---|---|
+| AC-FLAC-001 | PASS | `go test ./internal/homestate -run '^TestFindOrphanRunsRequiresDeadStampAndCards$' -count=1 -v` (and the two sibling names) | `--- PASS ... (0.50s)` / `ok ... 0.853s`; ExcludesNonQualifying `ok 1.142s`; CountsNonTerminal `ok 1.476s` |
+| AC-FLAC-002 | PASS | `go test ./internal/cli -run '^TestLeaderStartOrphanRefusalPrecedesRunWrite$' -count=1 -v` | `--- PASS ... (1.54s)` / `ok ... 2.967s` |
+| AC-FLAC-003 | PASS | `go test ./internal/cli -run '^TestExplicitFactoryRunAdoptTakesOverAtomically$' -count=1 -v` | `--- PASS ... (13.27s)` with both subtests PASS / `ok ... 14.884s` |
+| AC-FLAC-004 | PASS | `go test ./internal/cli -run '^TestExplicitFactoryRunAdoptRefusals$' -count=1 -v` | `--- PASS ... (10.08s)` with all three subtests PASS / `ok ... 11.518s` |
+| AC-FLAC-005 | PASS | `go test ./internal/cli -run '^TestLeaderStartOrphanGuidanceRendersFacts$' -count=1` | `ok github.com/modu-ai/moai-adk/internal/cli 6.985s` (final re-run post lint fix) |
+| AC-FLAC-006 | PASS | `go test ./internal/cli -run '^TestLeaderStartOrphanGating$' -count=1` | `ok github.com/modu-ai/moai-adk/internal/cli 21.342s` (14/14 rows) |
+| AC-FLAC-007 | PASS | `go test ./internal/cli -run '^TestLeaderStartOrphanTouchesNoOtherRun$' -count=1` | `ok github.com/modu-ai/moai-adk/internal/cli 11.105s` (final re-run post lint fix) |
+| AC-FLAC-008 | PASS | `go test ./internal/cli -run '^TestLeaderStartOrphanGLMMirrorsCC$' -count=1` | `ok github.com/modu-ai/moai-adk/internal/cli 6.395s` |
+| AC-FLAC-009 | PASS | `go test ./internal/cli -run '^TestLeaderStartOrphanTimesRenderInKST$' -count=1` | `ok github.com/modu-ai/moai-adk/internal/cli 1.216s` |
+| AC-FLAC-010 | PASS | `go test ./internal/cli -run '^TestLeaderAdoptGuidanceDocsMatchAnchors$' -count=1` + `^TestFactorySkillAssertionsMatchBehavior$` | `ok ... 1.137s` and `ok ... 13.258s` |
+
+E3 regression guards on the final tree (10/10 `ok`, one plain -run per name): TestAdoptResumedLeaderRunAdoptsSingleCandidate 3.219s, SkipsWhenNotResumeShaped 1.915s, WarnsOnMultipleCandidates 2.393s, MintsWhenNoCandidates 2.107s, WarnsCodexLedCandidate 2.431s, TestStrictResumeCarrierSeen 1.454s, TestLeaderRunIDWasMinted 1.143s, TestFactoryLeadRefusesCodexLedRun 3.221s, TestFactoryJoinAndLeadAcceptNonCodexRun 4.973s, TestFactorySkillAssertionsMatchBehavior 13.178s. E4 homestate guards likewise (`ok` each; TestAdoptRun* with the mechanically extended signature, TestRetireRunIfDead*, TestFindResumableRun*, TestReconcile*, TestLiveRecordsTerminalSetMatchesSharedDefinition).
+
+### E8 — the four README sentences after M4 (banned substrings absent, grep 0 each)
+
+- **README.md (en)**: "A run whose leader has died is retired by the next lane join only when it holds no in-progress cards and no registered workers, so a finished run no longer stalls the join on `AMBIGUOUS_FACTORY`, while a run still carrying cards or workers stays active. A leader start without a resume option over such a run is refused with guidance and creates no run; adopt it deliberately with `--factory-run <run-id>`."
+- **README.ko.md**: "리더가 죽은 런은 진행 중인 카드와 등록된 워커가 없을 때만 다음 레인 합류에서 회수되므로 끝난 런이 합류를 `AMBIGUOUS_FACTORY`에서 막지 않고, 카드나 워커가 남은 런은 활성으로 남는다. 이런 런 위에서 이어받기 옵션 없이 리더를 띄우면 안내와 함께 거부되고 어떤 런도 만들어지지 않는다. `--factory-run <run-id>`로 의도적으로 이어받는다."
+- **README.ja.md**: "リーダーが死んだ run は、進行中のカードと登録済みワーカーを抱えていない場合に限り、次のレーン合流で retire される。そのため終わった run が合流を `AMBIGUOUS_FACTORY` で止めることはなく、カードやワーカーが残る run は有効のまま残る。そのような run の上で resume オプションなしにリーダーを起動すると、ガイド付きで拒否され、run は何も作られない。意図的に引き継ぐには `--factory-run <run-id>` を使う。"
+- **README.zh.md**: "主导已经死掉的 run，只有在不持有进行中的卡片和已注册的泳道时，才会在下一条泳道加入时退役；因此结束的 run 不会让加入卡在 `AMBIGUOUS_FACTORY` 上，仍持有卡片或泳道的 run 保持活动状态。在这样的 run 上不带恢复选项启动主导会被拒绝并给出指引，且不会创建任何 run；用 `--factory-run <run-id>` 来有意接管。"
+
+All four carry both anchor spans; the banned substrings count 0 (`grep -c` → 0, 0, 0, 0).
+
+### Gaps and Residual-risk (run phase)
+
+- **Lint baseline**: the pre-card lint baseline could not be measured in pre-flight (two attempts hit `parallel golangci-lint is running` — another session held the lock). The comparison anchor used instead: `git show 6400ae9d4e:internal/cli/factory_run_adopt.go` proves the 3 remaining errcheck findings exist verbatim at the card base. Final lint: exit 1 with exactly those 3; **0 NEW**.
+- **The Hugo four-locale verify recipe** (`hns-oss-docs-verify` full checklist): the warning-free Hugo build (exit 0, `--quiet`), sitemap existence, 4-locale file/heading parity, and body-emoji scan were executed here; the URL-blacklist grep and Mermaid-direction grep were NOT run (no URL or Mermaid content was touched by this SPEC — the diff touches prose paragraphs and one section only). Named as a Gap, not silently skipped.
+- **`moai spec lint --strict`**: 0 error(s), 0 warning(s) (INFO: `OwnershipTransitionUnmeasured` — the M1 transition commit carries no `Authored-By-Agent:` trailer; Info severity by schema, not repairable without `--amend`, which is forbidden. Future commits in this card should carry the trailer).
+- **Coverage**: the ≥85% package-coverage run was not executed (host load rules; the swept-count rule governs the ACs). Named Gap.
+- **The full-suite verdict** belongs to the CI run on the project's integration branch and is PENDING at report time (the lane does not push; the leader owns integration).
+- Boundary grep (`AskUserQuestion` in non-test lines of internal/cli + internal/homestate): the only hits are pre-existing doc-comment text in `internal/cli/harness.go` and `internal/cli/pr_watch_cmd.go` (files this card never touched); none of the card's files appear.
+
+### M1 — Orphan finder (AC-FLAC-001) — commit `06efd0b6a4`
 
 RED (pre-fix, verbatim; the finder does not exist yet, so the three named tests cannot compile — the E1 swept set is 0/3):
 
@@ -71,7 +106,7 @@ E4 regression guards stay green after M1 (9/9, each `ok`): TestAdoptRunRefusesCh
 
 `gofmt -l` on the two touched files: clean. spec.md frontmatter `draft → in-progress` recorded on this milestone's commit (Status Transition Ownership Matrix, manager-develop).
 
-### M2 — Deliberate adopt through the adoption write (AC-FLAC-003, AC-FLAC-004) — commit `<M2-SHA>`
+### M2 — Deliberate adopt through the adoption write (AC-FLAC-003, AC-FLAC-004) — commit `bb668c752a`
 
 RED (pre-fix, verbatim; the seam and the explicit-adopt path do not exist yet — the E2 swept set covers these names at 0/9):
 
@@ -103,7 +138,7 @@ ok  github.com/modu-ai/moai-adk/internal/cli	9.570s
 
 E3 regression guards stay green after M2 (10/10, each `ok`): TestAdoptResumedLeaderRunAdoptsSingleCandidate, TestAdoptResumedLeaderRunSkipsWhenNotResumeShaped, TestAdoptResumedLeaderRunWarnsOnMultipleCandidates, TestAdoptResumedLeaderRunMintsWhenNoCandidates, TestAdoptResumedLeaderRunWarnsCodexLedCandidate, TestStrictResumeCarrierSeen, TestLeaderRunIDWasMinted, TestFactoryLeadRefusesCodexLedRun, TestFactoryJoinAndLeadAcceptNonCodexRun, TestFactorySkillAssertionsMatchBehavior. The AdoptRun signature's mechanical test-caller updates leave their assertions untouched (TestAdoptRunRestampsOwnerAndAppendsResumedEvent, TestAdoptRunRefusesChangedStamp, TestAdoptRunRefusesNonActiveRun, TestRetireRunIfDead* all `ok`). `GOOS=windows GOARCH=amd64 go build ./...` exit 0. `gofmt -l` on all eight touched files: clean.
 
-### M3 — Refusal gate and guidance block (AC-FLAC-002, 005..009) — commit `<M3-SHA>`
+### M3 — Refusal gate and guidance block (AC-FLAC-002, 005..009) — commit `e4e8b2a499`
 
 RED (pre-fix, behavioral, captured with the gate temporarily unwired from both call sites — the exact pre-M3 behavior; verbatim tails):
 
@@ -149,7 +184,7 @@ The mirror subtest ran `-count=3` to retire a fixture flake (unpinned created_at
 
 E3 regression guards stay green after M3 (10/10, each `ok`, same name list as M2). `GOOS=windows GOARCH=amd64 go build ./...` exit 0. `gofmt -l` on the four touched files: clean.
 
-### M4 — Guidance text (AC-FLAC-010) — commit `<M4-SHA>`
+### M4 — Guidance text (AC-FLAC-010) — commit `84f9387535`
 
 RED (pre-fix, verbatim): `TestLeaderAdoptGuidanceDocsMatchAnchors` ran against the untouched docs — 32 failure lines (20 anchor-presence errors: each of the ten files missing each of the two anchors; plus the banned-substring, heading-parity, and twin checks all failing their absent-anchor premises), `FAIL github.com/modu-ai/moai-adk/internal/cli` — matching ledger E5's 0-occurrence state.
 
@@ -163,3 +198,28 @@ ok  github.com/modu-ai/moai-adk/internal/cli	13.258s
 ```
 
 E5 flipped (verbatim): `grep -c 'leader-start/orphan' <ten files>` → 1 for each of the ten; `grep -c 'lane-join/dead-owner' <ten files>` → 1 for each of the ten; the four banned README substrings (`is retired automatically when the next lane joins` / `자동으로 회수되므로` / `次にレーンが合流した時点で自動的に retire されるので` / `会在下一条泳道加入时自动退役`) each count 0 in its README. Docs-site level-2 headings 10/10/10/10 (E6 was 9 each, +1 new section, locale-locale equality holds); README level-2 headings 12/12/12/12 unchanged. Twin skill files byte-identical (`cmp` exit 0); `make build` exit 0 with the catalog regen (`internal/template/catalog.yaml` one hash line — the factory.md skill entry), and a second `gen-catalog-hashes --all` produced no further change. Hugo build (`hugo --quiet` in docs-site) exit 0 with sitemap.xml emitted. The four replaced README sentences are quoted in the §E.2 final matrix.
+
+## §E.3 Run-phase Audit-Ready Signal
+
+```yaml
+run_complete_at: "2026-10-18T09:20:00Z"
+run_commit_sha: "997b85e933"
+run_status: "implemented"
+ac_pass_count: 10
+ac_fail_count: 0
+ac_pass_with_debt_count: 0
+preserve_list_post_run_count: 4
+l44_pre_commit_fetch: "not-run (lane protocol: card worktree, lanes do not push; integration is the leader's)"
+l44_post_push_fetch: "not-applicable (no push by the lane)"
+new_warnings_or_lints_introduced: 0
+lint_baseline_note: "3 pre-existing errcheck findings verified verbatim at card base 6400ae9d4e (factory_run_adopt.go warn lines, git show evidence); final lint exit 1 with only those 3"
+cross_platform_build.darwin: "exit 0"
+cross_platform_build.windows_amd64: "exit 0"
+total_run_phase_files: 19
+m1_to_m4_commit_strategy: "one conventional commit per milestone (M1 06efd0b6a4, M2 bb668c752a, M3 e4e8b2a499, M4 84f9387535) + one lint-fix commit 997b85e933; spec.md frontmatter draft->in-progress on the M1 commit"
+spec_lint_strict: "0 error(s), 0 warning(s) (one INFO OwnershipTransitionUnmeasured: M1 commit lacks the Authored-By-Agent trailer; Info severity, amend forbidden)"
+hugo_build: "exit 0 (docs-site, --quiet), sitemap.xml emitted"
+twin_skill_files: "byte-identical (cmp exit 0); make build leaves no further tracked change (catalog regen idempotent)"
+e2e_red_discipline: "behavioral RED captured per milestone (M1 compile RED for the new finder, M2 seam-undefined RED, M3 gate-unwired behavioral RED with 12/14 exempt rows green, M4 32-failure RED on untouched docs)"
+ci_run_on_integration_branch: "PENDING at report time — the repository-wide test verdict is owned by the CI run on the integration branch, not by this lane"
+```
