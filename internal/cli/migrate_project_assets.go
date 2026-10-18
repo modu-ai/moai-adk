@@ -98,10 +98,35 @@ const backupDestUnsafeSentinel = "BACKUP_DEST_UNSAFE:"
 // creates exclusively. Any refusal surfaces as a backup-write failure, which
 // the removal point treats as refuse-the-removal (the file stays
 // project-side, reported).
+//
+// The guard's boundary is the PROJECT ROOT (sync-audit delta D6, card
+// t1668), mirroring the source-side guard's semantics: a symlink planted at
+// .moai-backups itself resolves the whole backup tree outside the project —
+// every run-dir-anchored check below would pass — so the resolved run
+// directory is verified against the resolved project root, and the planted
+// .moai-backups link is refused BEFORE ensureRunBackupDir creates the run
+// directory through it. Documented ceiling (delta D7, optional per the
+// leader): a check-then-use window remains between the component walk and
+// the create — os.Root restructuring is out of scope for this repair.
 func backupRemovedAsset(projectRoot string, rc *migrationRunContext, relSlash string, data []byte) error {
 	dir := ""
 	if rc != nil {
 		dir = rc.runBackupDir
+	}
+	rootAbs, err := filepath.Abs(projectRoot)
+	if err != nil {
+		return fmt.Errorf("%s resolve project root %s: %w", backupDestUnsafeSentinel, projectRoot, err)
+	}
+	rootResolved, err := filepath.EvalSymlinks(rootAbs)
+	if err != nil {
+		return fmt.Errorf("%s resolve project root %s: %w", backupDestUnsafeSentinel, rootAbs, err)
+	}
+	// D6: refuse a planted .moai-backups link before the run directory is
+	// created through it.
+	if info, statErr := os.Lstat(filepath.Join(projectRoot, defs.BackupsDir)); statErr == nil && info.Mode()&os.ModeSymlink != 0 {
+		return fmt.Errorf("%s %s is a planted symlink", backupDestUnsafeSentinel, defs.BackupsDir)
+	} else if statErr != nil && !os.IsNotExist(statErr) {
+		return fmt.Errorf("%s stat %s: %w", backupDestUnsafeSentinel, defs.BackupsDir, statErr)
 	}
 	runDir, err := ensureRunBackupDir(projectRoot, dir)
 	if err != nil {
@@ -110,9 +135,16 @@ func backupRemovedAsset(projectRoot string, rc *migrationRunContext, relSlash st
 	if rc != nil {
 		rc.runBackupDir = runDir
 	}
-	trustedRunDir, err := filepath.EvalSymlinks(runDir)
+	runDirAbs, err := filepath.Abs(runDir)
 	if err != nil {
 		return fmt.Errorf("%s resolve run backup dir %s: %w", backupDestUnsafeSentinel, runDir, err)
+	}
+	trustedRunDir, err := filepath.EvalSymlinks(runDirAbs)
+	if err != nil {
+		return fmt.Errorf("%s resolve run backup dir %s: %w", backupDestUnsafeSentinel, runDir, err)
+	}
+	if !withinRootBoundary(rootResolved, trustedRunDir) {
+		return fmt.Errorf("%s run backup dir %s resolves outside the project root", backupDestUnsafeSentinel, runDir)
 	}
 	dst := filepath.Join(trustedRunDir, migrationBackupSubdir, filepath.FromSlash(relSlash))
 	// Walk every component of the destination below the trusted run dir:

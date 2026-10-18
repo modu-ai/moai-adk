@@ -184,6 +184,44 @@ func TestRemovalBackupRefusesPlantedSymlinkDestination(t *testing.T) {
 		}
 	})
 
+	t.Run("moai_backups_root_symlinked_outside", func(t *testing.T) {
+		// Sync-audit delta D6 (card t1668): the destination guard's boundary
+		// is the PROJECT ROOT. A symlink planted at .moai-backups itself
+		// resolves the whole backup tree outside the project — the walk
+		// below the resolved run dir passes — and the backup would land
+		// outside before os.Remove takes the project copy (misdirected
+		// backup, broken recovery).
+		enableRemovalForTest(t)
+		root := buildMigrationFixture(t)
+		home := installMigrationUserCounterparts(t)
+		outside := t.TempDir()
+		if err := os.Symlink(outside, filepath.Join(root, ".moai-backups")); err != nil {
+			t.Fatal(err)
+		}
+
+		var lines []string
+		removed, err := migrateProjectCommonAssets(root, home, true, nil, func(format string, args ...interface{}) {
+			lines = append(lines, fmt.Sprintf(format, args...))
+		})
+		if err != nil {
+			t.Fatal(err)
+		}
+		if len(removed) != 0 {
+			t.Errorf("the migration removed %v despite the backup root resolving outside the project", removed)
+		}
+		assertFilePresent(t, root, migIdenticalSkill)
+		if !slices.ContainsFunc(lines, func(l string) bool {
+			return strings.Contains(l, "removal refused") && strings.Contains(l, migIdenticalSkill)
+		}) {
+			t.Errorf("no removal-refused line for %s in the migration output: %q", migIdenticalSkill, lines)
+		}
+		// Nothing — not even the run directory — was created through the
+		// planted link.
+		if entries, _ := os.ReadDir(outside); len(entries) != 0 {
+			t.Errorf("the backup creation escaped through the planted .moai-backups symlink: %v", entries)
+		}
+	})
+
 	t.Run("dst_symlink_onto_source_refused", func(t *testing.T) {
 		root := t.TempDir()
 		src := filepath.Join(root, "asset.md")
