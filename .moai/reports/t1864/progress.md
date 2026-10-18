@@ -39,3 +39,18 @@ Only the three call sites change: `fmt.Fprintf(warn, ...)` -> `_, _ = fmt.Fprint
 Audit: `.moai/reports/t1864/sync-audit-head-confirmation.md`, `verdict: FAIL` @`ea5dd0be6c030cd11855f60d0904b5ebb2eaed46`, `required_backend: codex fail`, receipts `rcpt-86c0804f0d3fad176cfdb209` and `rcpt-e1f7b15447fa56d969e2cde4` (both `codex_verdict: fail`).
 Cause (codex summary, verbatim from the verdict file): `[P2] 병합 트리의 acceptance 명령 통과를 확인할 수 없음 ... golangci-lint run --enable-only errcheck ./internal/cli/를 두 번 실행했지만, 모두 context loading failed: no go files to analyze로 종료됨(exit 5). ... absorb로 인한 코드 결함은 발견하지 못함. ... 권한 확장 실행 요청은 approval request failed로 거부됨.` The finding is that codex's sandbox could not load packages to run the acceptance command; it names no code defect. The auditor's own run of the same command on the merged tree: exit 0, `0 issues.`
 Disposition: the required gate is not lowered and `verdict.md` is NOT re-bound to `ea5dd0be6` (that would claim a pass the gate did not give). The audited-line verdict (`sync-audit.md`, PASS @026340b5e) stands for the card's own change. The lane asked the leader for the gate disposition (re-run with the observed acceptance evidence supplied to the codex gate, or the leader's ruling).
+
+## Orchestrator convergence check for the r2 audit (lane-31, 2026-10-18T03:15:44Z)
+
+The r2 verdict (`.moai/reports/t1864/sync-audit-head-confirmation-r2.md`, `audit_multi` receipt `rcpt-7f463ce25477394c7628b836`) states the convergence is not final until the orchestrator writes the digest to a result file and runs `moai verify audit-plan --result-file`. Done by the lane, which is the card's orchestrator:
+- Result file (machine-local, `.moai/state/` is not tracked): `/Users/goos/MoAI/moai-adk-go/.moai/worktrees/t1864/.moai/state/audit-plan-result.json`, content = the digest members copied verbatim from the r2 verdict line `audit_multi result` (per_backend_verdicts codex/required/pass, overall_verdict pass, disagreement_flag null, participant_count 1, fail_open_backends [], audit_receipt, plan_source config; `gate_unmet` absent).
+- Command: `moai verify audit-plan --project-root /Users/goos/MoAI/moai-adk-go/.moai/worktrees/t1864 --result-file /Users/goos/MoAI/moai-adk-go/.moai/worktrees/t1864/.moai/state/audit-plan-result.json`, tree HEAD `e2332cd2bab97d0a793b36024f313d34ccb71b73`.
+- Result: `exit=0` (start and end 2026-10-18T03:15:44Z); `config_status: "ok"`, `enforced_required: ["codex"]`, and
+```
+"convergence_check": {
+  "ok": true,
+  "unmet": []
+}
+```
+- Preserved unchanged: the round-1 FAIL verdict `sync-audit-head-confirmation.md` (HEAD ea5dd0be6, codex fail, receipts `rcpt-86c0804f0d3fad176cfdb209` and `rcpt-e1f7b15447fa56d969e2cde4`).
+Gap: the installed `moai` binary behind this verb is the one the audit tools report as lagging the audited commit; the verb reads configuration and a result file, not repository code.
