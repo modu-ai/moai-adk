@@ -488,8 +488,9 @@ func Registry() []Site {
 		// manager-design cites the roster size and is CURRENTLY CORRECT. It is
 		// registered for exactly that reason: an already-correct count is what a
 		// guard protects, and leaving it undeclared would mean the next drift in
-		// it goes unreported. Three copies — the local definition, the deployed
-		// mirror, and the machine-emitted codex form — each take a row.
+		// it goes unreported. Four copies — the local definition, the deployed
+		// mirror, the agent source they are rendered from, and the machine-emitted
+		// codex form — each take a row.
 		{
 			ID:               "manager-design-catalog-citation",
 			SweepUnreachable: "count-only claim: a Context field citing the roster size, naming one agent",
@@ -507,13 +508,23 @@ func Registry() []Site {
 			CountPattern:     "(?:§ 4|delegation\\.yaml`) \\((\\d+) retained agents",
 		},
 		{
+			ID:               "manager-design-catalog-citation-source",
+			SweepUnreachable: "count-only claim; the agent source the mirror above and the codex form below are rendered from",
+			Path:             "internal/template/agentemit/source/manager-design.md",
+			Axis:             AxisRetainedRoster,
+			Claims:           ClaimCount,
+			CountPattern:     "(?:§ 4|delegation\\.yaml`) \\((\\d+) retained agents",
+			Note: "The agent source is the edit surface the template mirror and the codex form are rendered from " +
+				"(internal/template/agentemit). It is a verbatim copy of the definition, so it carries the same claim.",
+		},
+		{
 			ID:               "manager-design-catalog-citation-codex",
 			SweepUnreachable: "count-only claim; the machine-emitted codex form of the row above",
 			Path:             "internal/template/templates/.codex/agents/moai/manager-design.toml",
 			Axis:             AxisRetainedRoster,
 			Claims:           ClaimCount,
 			CountPattern:     "(?:§ 4|delegation\\.yaml`) \\((\\d+) retained agents",
-			Note: "Emitted from the .claude mirror by internal/template/agentemit and never hand-edited. " +
+			Note: "Rendered from the agent source by internal/template/agentemit and never hand-edited. " +
 				"Registered anyway: registering is a read, not an edit, and a stale emission is still a stale claim on disk.",
 		},
 

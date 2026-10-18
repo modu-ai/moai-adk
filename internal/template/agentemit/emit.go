@@ -1,10 +1,12 @@
 // emit.go — dual-publication orchestration.
 //
-// EmitAll reads every .md under agentsRoot, parses each into the neutral
-// form, validates it against the mapping manifest (fail-closed), and renders
-// the deterministic Codex TOML set. The .md publication is identity: source
-// bytes pass through untouched (Option A — the emitter never re-renders the
-// neutral layer, so the moai update regression ban holds by construction).
+// EmitAll reads every .md agent source under agentsRoot and renders both
+// publications from it. The Claude publication is the Claude view of the source
+// (claude-only blocks kept, codex-only blocks dropped); the Codex publication
+// is the TOML rendered from the Codex view (the reverse), validated against the
+// mapping manifest (fail-closed). Neither publication is derived from the
+// other. A source without block markers renders to itself in the Claude view,
+// which is why the shipped definitions are carried byte for byte.
 package agentemit
 
 import (
@@ -15,8 +17,9 @@ import (
 	"strings"
 )
 
-// EmitAll produces the dual publication of the agent set under agentsRoot.
-// On any validation error it returns (nil, err) — no partial artifact set.
+// EmitAll produces the dual publication of the agent source set under
+// agentsRoot. On any validation error it returns (nil, err) — no partial
+// artifact set.
 func EmitAll(fsys fs.FS, agentsRoot string, man Manifest) (*Publication, error) {
 	pub, _, err := emitAll(fsys, agentsRoot, man)
 	return pub, err
@@ -60,7 +63,15 @@ func emitAll(fsys fs.FS, agentsRoot string, man Manifest) (*Publication, []AxisV
 		if err != nil {
 			return nil, nil, fmt.Errorf("agentemit: read %s: %w", file, err)
 		}
-		doc, err := ParseAgentDoc(file, data)
+		claudeView, err := RenderView(file, data, ViewClaude)
+		if err != nil {
+			return nil, nil, err
+		}
+		codexView, err := RenderView(file, data, ViewCodex)
+		if err != nil {
+			return nil, nil, err
+		}
+		doc, err := ParseAgentDoc(file, codexView)
 		if err != nil {
 			return nil, nil, err
 		}
@@ -95,8 +106,8 @@ func emitAll(fsys fs.FS, agentsRoot string, man Manifest) (*Publication, []AxisV
 		}
 		tomls = append(tomls, artifact{path: codexTOMLPath(man, file), data: tomlData})
 
-		// Identity pass-through: the published .md bytes ARE the source bytes.
-		md[file] = data
+		// The published .md is the Claude view of the source.
+		md[file] = claudeView
 	}
 
 	pub := &Publication{Markdown: md, CodexTOML: make(map[string][]byte, len(tomls))}
