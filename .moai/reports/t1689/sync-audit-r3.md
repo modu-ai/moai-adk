@@ -2,7 +2,6 @@ auditor-model: glm-5.3-flash
 verdict: PASS
 audited_sha: 257919d869aad48be6ae444e7a26ac4d73ae2916
 required_backend: codex
-required_backend_fail: false
 audit_receipt: rcpt-a069edd59995fce7de401bba,rcpt-ee214eb4d2dedd9a93d25d71
 overall_score: 0.93
 
