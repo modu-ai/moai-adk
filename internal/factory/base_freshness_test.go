@@ -556,7 +556,7 @@ func TestBaseFreshnessGateWritesNothing(t *testing.T) {
 			t.Fatal(err)
 		}
 	}
-	before := snapshotTree(t, filepath.Join(f.root, ".moai"))
+	before := baseFreshnessSnapshotTree(t, filepath.Join(f.root, ".moai"))
 	if len(before) < 3 {
 		t.Fatalf("fixture sanity: the snapshot must cover the record, the window and the database, got %d files", len(before))
 	}
@@ -564,14 +564,14 @@ func TestBaseFreshnessGateWritesNothing(t *testing.T) {
 	if res.Admit {
 		t.Fatalf("the run under test must be a refusal: %+v", res)
 	}
-	after := snapshotTree(t, filepath.Join(f.root, ".moai"))
+	after := baseFreshnessSnapshotTree(t, filepath.Join(f.root, ".moai"))
 	if fmt.Sprint(before) != fmt.Sprint(after) {
 		t.Fatalf("the gate wrote: before=%v after=%v", before, after)
 	}
 }
 
-// snapshotTree maps every file under dir to its bytes.
-func snapshotTree(t *testing.T, dir string) map[string]string {
+// baseFreshnessSnapshotTree maps every file under dir to its bytes.
+func baseFreshnessSnapshotTree(t *testing.T, dir string) map[string]string {
 	t.Helper()
 	out := map[string]string{}
 	err := filepath.Walk(dir, func(path string, info os.FileInfo, err error) error {
