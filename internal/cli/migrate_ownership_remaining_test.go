@@ -34,7 +34,9 @@ import (
 	"strconv"
 	"strings"
 	"testing"
+	"time"
 
+	"github.com/modu-ai/moai-adk/internal/defs"
 	"github.com/modu-ai/moai-adk/internal/manifest"
 	"github.com/modu-ai/moai-adk/internal/template"
 )
@@ -483,6 +485,11 @@ func renderedFlowCase(t *testing.T, shareRunDirectory bool) {
 	updateVerboseMode = true
 	if shareRunDirectory {
 		shareRunDirectoryWithRun1(t, run1)
+	} else {
+		// Run backup directories are named to the second. Run 2 must start in a
+		// later second than run 1's backup, or the two share one directory and
+		// run 1's generation is replaced (RenderedByTheUpdateFlowInOneSecond).
+		awaitClockSecondAfter(t, filepath.Base(filepath.Dir(run1.NewPriorManifest)))
 	}
 	run2 := runUpdateFlowForced(t, root)
 	if run2.NewPriorManifest == "" {
@@ -491,19 +498,34 @@ func renderedFlowCase(t *testing.T, shareRunDirectory bool) {
 	if got, err := os.ReadFile(run2.NewPriorManifest); err != nil || !bytes.Equal(got, run2.StartManifest) {
 		t.Errorf("run 2: manifest.prior.json is not the manifest as the run loaded it (%v)", err)
 	}
+	// Whether run 1's start manifest survives as a prior generation for run 2 is
+	// OBSERVED, not assumed: it does when the two runs have separate run
+	// directories and does not when they share one (one-second names). The
+	// distinct-directory case is guaranteed above by waiting for the clock; the
+	// shared case is simulated. Each branch is asserted exactly.
+	retained := priorGenerationRetained(root, run1.StartManifest, run2.NewPriorManifest)
+	if shareRunDirectory == retained {
+		t.Fatalf("run 1's generation retained = %v with shareRunDirectory = %v; the runs' backup directories were %q and %q",
+			retained, shareRunDirectory, filepath.Base(filepath.Dir(run1.NewPriorManifest)), filepath.Base(filepath.Dir(run2.NewPriorManifest)))
+	}
+	if !retained {
+		if m, _ := filepath.Glob(filepath.Join(root, ".moai-backups", "*", priorManifestName)); len(m) != 1 {
+			t.Fatalf("a shared run directory leaves exactly one %s, found %v", priorManifestName, m)
+		}
+	}
 	block2 := terminalBlockLines()
-	// Run 1's start manifest is kept as a prior generation for run 2. It
-	// registered two files under `.claude/skills` whose bytes equal two of
-	// the planted copies, and design.md D-2 reads a record with the same hash
-	// under ANOTHER key as "the original deployed path is missing" — not as
-	// "no record at all". Those two rows therefore carry that narrower
-	// reason in run 2; every other copy keeps no-provenance-record.
+	// With run 1's generation retained, its start manifest registered two files
+	// under `.claude/skills` whose bytes equal two of the planted copies, and
+	// design.md D-2 reads a record with the same hash under ANOTHER key as "the
+	// original deployed path is missing" — not as "no record at all". Those two
+	// rows carry that narrower reason; every other copy keeps no-provenance-record.
+	// Without the generation there is no record anywhere and all 313 keep it.
 	sameHashElsewhere := map[string]bool{
 		".agents/skills/moai-foundation-core/SKILL.md": true, // sibling of migIdenticalSkill
 		".agents/skills/moai-workflow-tdd/SKILL.md":    true, // sibling of migModifiedSkill
 	}
 	reasonOf := func(rel string) keepReason {
-		if sameHashElsewhere[rel] {
+		if retained && sameHashElsewhere[rel] {
 			return evidenceIncompleteReason(evidenceOriginalPath)
 		}
 		return keepNoProvenanceRecord
@@ -518,4 +540,39 @@ func renderedFlowCase(t *testing.T, shareRunDirectory bool) {
 			t.Errorf("%s did not survive the two update runs byte for byte (%v)", p.rel, err)
 		}
 	}
+}
+
+// awaitClockSecondAfter blocks until the wall clock is in a later second than
+// the one a run backup directory name (YYYYMMDD_HHMMSS) records, so the next run
+// cannot land in that directory. It polls rather than sleeping a fixed time and
+// fails loudly when the name does not parse or the clock does not advance.
+func awaitClockSecondAfter(t *testing.T, runDirName string) {
+	t.Helper()
+	stamp, err := time.ParseInLocation(defs.BackupTimestampFormat, runDirName, time.Local)
+	if err != nil {
+		t.Fatalf("run backup directory name %q is not a timestamp: %v", runDirName, err)
+	}
+	deadline := time.Now().Add(5 * time.Second)
+	for !time.Now().Truncate(time.Second).After(stamp) {
+		if time.Now().After(deadline) {
+			t.Fatalf("the clock did not move past %s", runDirName)
+		}
+		time.Sleep(25 * time.Millisecond)
+	}
+}
+
+// priorGenerationRetained reports whether the bytes of an earlier run's
+// start-of-run manifest are still held by a manifest.prior.json other than the
+// current run's own.
+func priorGenerationRetained(root string, earlierStart []byte, currentRunCopy string) bool {
+	matches, _ := filepath.Glob(filepath.Join(root, ".moai-backups", "*", priorManifestName))
+	for _, m := range matches {
+		if filepath.Clean(m) == filepath.Clean(currentRunCopy) {
+			continue
+		}
+		if data, err := os.ReadFile(m); err == nil && bytes.Equal(data, earlierStart) {
+			return true
+		}
+	}
+	return false
 }
