@@ -25,8 +25,10 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"os"
 	"os/exec"
 	"path/filepath"
+	"runtime"
 	"strconv"
 	"strings"
 	"time"
@@ -56,9 +58,33 @@ var factoryGH = func(ctx context.Context, dir string, args ...string) ([]byte, e
 
 // factoryGHEnv is the environment a gh call runs with: the caller's, minus the
 // git variables that choose a repository (an inherited GIT_DIR would outrank
-// the directory gh is started in).
+// the directory gh is started in) and minus GH_REPO — gh honors GH_REPO over
+// its working directory, so a stray value would retarget the call to another
+// repository's PR operations (card t1710).
 func factoryGHEnv() []string {
-	return append(gitenv.Env(), "GH_PROMPT_DISABLED=1")
+	return ghDeliveryEnv(os.Environ(), runtime.GOOS == "windows")
+}
+
+// ghDeliveryEnv is factoryGHEnv with the case rule as a parameter, so both
+// rules are testable on any host (the gitenv.scrub precedent). On Windows
+// getenv is case-insensitive and gh is a Go binary, so a differently-cased
+// GH_REPO would still be read; elsewhere it is a different variable and is
+// kept (card t1710, sync-audit F2).
+func ghDeliveryEnv(env []string, foldCase bool) []string {
+	out := make([]string, 0, len(env)+1)
+	for _, kv := range env {
+		name, _, ok := strings.Cut(kv, "=")
+		if ok {
+			if foldCase {
+				name = strings.ToUpper(name)
+			}
+			if name == "GH_REPO" {
+				continue
+			}
+		}
+		out = append(out, kv)
+	}
+	return append(gitenv.Scrub(out), "GH_PROMPT_DISABLED=1")
 }
 
 // factoryPRFields is the `gh pr view --json` field list the edge reads.

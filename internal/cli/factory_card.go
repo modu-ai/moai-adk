@@ -787,13 +787,20 @@ func factoryCreateAndRenameWorktree(root, cardID, slug string, out io.Writer) (s
 	name, err := uniqueWorktreeBranchName(slug, func(ref string) bool {
 		// rev-parse --verify --quiet exits non-zero when the ref is absent;
 		// every failure reads as absent, and the rename below reports a real
-		// clash loudly if one remains.
-		return exec.Command("git", "-C", wt, "rev-parse", "--verify", "--quiet", "refs/heads/"+ref).Run() == nil
+		// clash loudly if one remains. The scrub keeps an inherited GIT_DIR
+		// from checking another repository's refs (card t1710).
+		probe := exec.Command("git", "-C", wt, "rev-parse", "--verify", "--quiet", "refs/heads/"+ref)
+		probe.Env = gitenv.Env()
+		return probe.Run() == nil
 	})
 	if err != nil {
 		return "", fmt.Errorf("name the card worktree branch: %w", err)
 	}
+	// The worktree names the branch being renamed; an inherited GIT_DIR /
+	// GIT_WORK_TREE would redirect the rename into the caller's repository —
+	// the GH #1691 write shape (card t1710, t1589's scrub).
 	rename := exec.Command("git", "-C", wt, "branch", "-m", name)
+	rename.Env = gitenv.Env()
 	if outb, err := rename.CombinedOutput(); err != nil {
 		return "", fmt.Errorf("rename the card worktree branch: %v: %s", err, strings.TrimSpace(string(outb)))
 	}
