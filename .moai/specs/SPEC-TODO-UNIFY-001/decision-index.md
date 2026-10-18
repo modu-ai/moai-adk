@@ -1,6 +1,6 @@
 # decision-index.md — SPEC-TODO-UNIFY-001
 
-`interview.decision_gate: on`. Nine decisions surfaced while assembling the plan for card t1641. This file carries no status field; the SPEC's lifecycle lives in `spec.md` alone. Label vocabulary: DECIDED, POLICY-COVERED, EVIDENCE-NEEDED, FOUNDER.
+`interview.decision_gate: on`. Nine decisions surfaced while assembling the plan for card t1641; a tenth (Q10) records the operator's revision-5 ruling of 10-19, which shrinks the card's scope and reverses the Q2 grace design. This file carries no status field; the SPEC's lifecycle lives in `spec.md` alone. Label vocabulary: DECIDED, POLICY-COVERED, EVIDENCE-NEEDED, FOUNDER.
 
 **Revision 2 (plan-audit iteration 1 FAIL, MP-7).** Iteration 1 left six product-level rows empty and three rows `DEFAULT-APPLIED` with their plan markers still open. In revision 2 the lane resolved every row through the decision ladder of `.claude/rules/moai/workflow/auto-semantics.md` §6 (① disk evidence, ② the decision board, ③ the audit cross, ⑤ self-judgment; ④ `jev_ask` is off here) and recorded each as a one-line decision record per §10. Nothing here is keep-set (environment-impossible, operator-held, irreversible external-shared operation), so none required the operator. Each row below states the decision, the evidence behind it with the command or file and line, and the alternate that was rejected. The decision is also written into the requirement it affects, as a testable condition (`spec.md` §3, `plan.md` §B). The board read this run (`moai decision read --scope card:t1641`, `board=ok unparseable=0 records=108`) holds no record that rules on Q1 to Q9; the one standing record that bears on Q9 is cited there.
 
@@ -11,6 +11,8 @@ Verdict forms used: `LANE-DECIDED <UTC> manager-spec (...)` for Q1 to Q4 and Q6 
 **Revision 3 (plan-audit iteration 2 FAIL, receipt `rcpt-717ae7d0bd489fdeced99ba8`).** No question is reopened and no row's label or verdict changes. Q5's shape (three machine facts, issuer `auto`, revocable, fail-closed) is exactly what the leader confirmed and its marker text is unchanged; the audit tightened how facts 2 and 3 are bound (D16, D17), which the Q5 decision line now states, without adding or removing a fact. Q8's decision gained the state set and the completing-repeat rule (D20, D21), and Q9 stays leader-only. The board read this round (`moai decision read --scope card:t1641`, `board=ok unparseable=0 records=108`) holds no record that rules on Q1 to Q9; the record `d-20261010T001732Z-d4e8` bears on Q8 and Q9 only and is the evidence for the setter's state set (`research.md` §R.15).
 
 **Revision 4 (post-ceiling correction under the leader's standing rule C; plan-audit iteration 3 FAIL 0.86, receipt `rcpt-9557497ba4bcc4b92912703c`).** No question is reopened and no row's label, verdict, or marker changes; Q5's shape (three machine facts, issuer `auto`, revocable, fail-closed) and its operator-verdict marker are exactly what the leader confirmed and are not edited. The audit's D30 only makes "issuer `auto`, distinguishable" true by construction (the leader's manual issuance refuses that value), and D31 only makes "read from git objects" true by construction (raw reads, replacement objects off, graft and shallow refused); neither adds or removes a fact. D29 changes Q6's replacement edge T29 only in what it tests without a remote (`design.md` §D.6). The one new item is a known debt, below, which is not a decision row and carries no Q number.
+
+**Revision 5 (shrunk scope; operator ruling of 10-19 via AskUserQuestion, board record `d-20261018T214213Z-94a7`, recorded below as Q10).** The operator accepted the recorded shrink (the delta-audit hold and the lane's split proposal): this card keeps the rename only, and the M1 → M2a → M2b cluster — the automatic done receipt, the T18/T19 removal with T29, the lane own-card done — moves whole to the follow-up card t1878, which owns authoring it. The same ruling reversed Q2's CLI-alias design: `moai gtd` is removed immediately, with no warning alias and no one-release grace. Q2 is marked superseded; Q4, Q5, Q6, and Q7 are marked moved (their shapes travel to t1878 unchanged); no row's original text is edited and no verdict line is touched. The completion judgment is the operator's zero-residual grep (`moai gtd|/moai:gtd|moai:gtd|gtd\.md`, excluding `.moai/specs`, `.moai/reports`, `CHANGELOG.md`, `*.jsonl`) reaching 0; its consequence — the queue workflow document renames to `workflows/todo.md`, superseding Q3's path preservation for that one document — is recorded in Q10 and in REQ-TU-007/012. Requirements 25 → 15, criteria 25 → 15. One plan delta audit on the shrunk scope follows; the rule C counter restarts for the new scope by this operator act.
 
 ## Q1: What does "clean up the 6 gtd subverbs" mean — absorb all six into `moai todo`, absorb the used ones and delete the rest, or leave them under `moai gtd`?
 
@@ -37,6 +39,7 @@ Verdict forms used: `LANE-DECIDED <UTC> manager-spec (...)` for Q1 to Q4 and Q6 
 - Default (policy rule): smaller user-visible surface
 - decision record: decided_by=manager-spec (plan owner, card t1641) evidence_refs=research.md §R.3 card text, acceptance.md AC-TU-001 ladder_path=①⑤
 - Operator verdict: LANE-DECIDED 2026-10-18T07:11:14Z manager-spec (plan owner, card t1641, decision ladder ①⑤; replaces DEFAULT-APPLIED of iteration 1)
+- **Superseded (revision 5):** the operator's ruling of 10-19 (Q10) reversed the grace design — `moai gtd` is removed immediately in this card, with no warning alias and no one-release grace; the warning requirements REQ-TU-002/003 and their criteria are retired.
 
 ## Q3: Is "rename gtd to todo everywhere" the user-facing spelling only, or also the internals?
 
@@ -63,6 +66,7 @@ Verdict forms used: `LANE-DECIDED <UTC> manager-spec (...)` for Q1 to Q4 and Q6 
 - Default (policy rule): smaller user-visible surface
 - decision record: decided_by=manager-spec (plan owner, card t1641) evidence_refs=research.md §R.3 §R.8, RECORD-REPAIR spec.md:134-136, internal/cli/leader_approval_gate.go ladder_path=①⑤
 - Operator verdict: LANE-DECIDED 2026-10-18T07:11:14Z manager-spec (plan owner, card t1641, decision ladder ①⑤)
+- **Moved (revision 5):** the lane own-card path, the receipt inside the two close paths, and edge T29 leave this SPEC for t1878 by the operator's ruling (Q10); the no-observer clause stands for both cards.
 
 ## Q5: What satisfies the leader-approval receipt gate when a lane closes its own card?
 
@@ -76,6 +80,7 @@ Verdict forms used: `LANE-DECIDED <UTC> manager-spec (...)` for Q1 to Q4 and Q6 
 - Default (policy rule): none applied; the leader's answer governs.
 - decision record: decided_by=manager-spec (plan owner, card t1641) on the leader's confirmation relayed by the coordinator 10-18 evidence_refs=research.md §R.13, internal/homestate/leader_approval.go:116-142, card_evidence_readers.go:20-21,290-355, plan-audit.md D2 D3 ladder_path=①③⑤ plus leader confirmation
 - Operator verdict: lane-judgment, leader-confirmed 10-18 (conditional)
+- **Moved (revision 5):** the automatic receipt this row decided — its three facts, the reserved issuer `auto`, and the revocation — moves unchanged in shape to t1878 by the operator's ruling (Q10); this card implements none of it. The marker line above is preserved byte-identical.
 
 ## Q6: Are T18 and the T19 reservation removed now, given the GitHub Flow transition is not complete in this repository?
 
@@ -89,6 +94,7 @@ Verdict forms used: `LANE-DECIDED <UTC> manager-spec (...)` for Q1 to Q4 and Q6 
 - Default (policy rule): none applied; the card text governs.
 - decision record: decided_by=manager-spec (plan owner, card t1641) evidence_refs=internal/homestate/card_transition.go:157,203-209,333,722-747, fr_transition_test.go:127-183, card_evidence.go:64-73, plan-audit.md D2 D4, research.md §R.3 ladder_path=①③⑤
 - Operator verdict: LANE-DECIDED 2026-10-18T07:11:14Z manager-spec (plan owner, card t1641, decision ladder ①③⑤)
+- **Moved (revision 5):** the T18/T19 removal and the T29 declaration this row decided leave this SPEC for t1878 by the operator's ruling (Q10).
 
 ## Q7: Which record carries "done" in the ten-card criterion, and what counts as "landed"?
 
@@ -102,6 +108,7 @@ Verdict forms used: `LANE-DECIDED <UTC> manager-spec (...)` for Q1 to Q4 and Q6 
 - Default (policy rule): none applied; the criterion text and AC-TU-014/020 govern.
 - decision record: decided_by=manager-spec (plan owner, card t1641) evidence_refs=internal/factory/backlog_store.go:1001-1029, internal/homestate/card_transition.go:744,786, plan-audit.md D2 D5, RECORD-REPAIR spec.md:47 ladder_path=①③⑤
 - Operator verdict: LANE-DECIDED 2026-10-18T07:11:14Z manager-spec (plan owner, card t1641, decision ladder ①③⑤)
+- **Moved (revision 5):** the both-records done close this row decided leaves this SPEC for t1878 by the operator's ruling (Q10).
 
 ## Q8: What shape does the post-pick spec_id setter take?
 
@@ -129,6 +136,19 @@ Verdict forms used: `LANE-DECIDED <UTC> manager-spec (...)` for Q1 to Q4 and Q6 
 - decision record: decided_by=manager-spec (plan owner, card t1641) evidence_refs=board d-20261010T001732Z-d4e8, internal/cli/todo.go:405-413, research.md §R.8 ladder_path=①②⑤
 - Operator verdict: LANE-DECIDED 2026-10-18T07:11:14Z manager-spec (plan owner, card t1641, decision ladder ①②⑤; replaces DEFAULT-APPLIED of iteration 1)
 
+## Q10: What survives in this card after the delta-audit hold — the operator's shrink and CLI-alias ruling (revision 5)
+
+- Label: FOUNDER (operator-decided; the lane does not own this row)
+- Class: product-level
+- Authority anchor: the operator's board record `d-20261018T214213Z-94a7` (scope `card:t1641`, read this revision with `moai decision read --scope card:t1641`); the lane's shrink proposal in the card's progress record; `.moai/reports/t1641/plan-audit-iter4.md` (the delta audit that returned FAIL by the required-gate label).
+- Why the operator decided: the delta audit of standing rule C failed on the required backend label (overall 0.90, blocking 0), rule C allowed no further round, and the outcome was hold and shrink; a scope change on a held card is the operator's gate, not the lane's.
+- Decision: **(1) the recorded shrink is accepted — this card keeps the rename only: M3a/M3b (the spec_id setter), M4-M8 (the verbs, the slash command, the substitution of every `moai gtd` / `/moai:gtd` reference), and M9 without the T18/T19 and lane-own-done wording; the M1 → M2a → M2b chain (automatic done receipt, T18/T19 removal with T29, lane own-card done) moves to a split follow-up card, t1878. (2) The CLI-alias decision is changed: `moai gtd` is removed immediately — no warning alias, no one-release grace — and its callers (scripts/cutover-precheck.sh, mods/moai-board, hooks, the templates including `binding_ledger.json` and `.claude/commands/moai/gtd.md`, the rule files that carry the SessionStart role core, `.moai/workflows`, `.moai/policies`, `.moai/docs`, docs-site 4 locales, README 4 files) move to `moai todo` in this card; completion is judged by the residual grep `moai gtd|/moai:gtd|moai:gtd|gtd\.md` (excluding `.moai/specs`, `.moai/reports`, `CHANGELOG.md`, `*.jsonl`) reaching 0. (3) The scope change buys one plan delta audit on the shrunk scope; the rule C counter restarts for the new scope by this operator act.** Written into REQ-TU-001, REQ-TU-007, REQ-TU-011, REQ-TU-014, the Out of Scope moved note, plan.md §A/§B/§E, acceptance.md revision 5.
+- Evidence: the operator's ruling text, quoted in full in the board record; the lane's shrink proposal with its measured cost (the three completion items that move); the residual-grep baseline (397 lines in 101 files at `3c1809e2f1` measured this revision; the operator's own measurement 387 on 10-19).
+- Consequence recorded here: the zero-residual grep's `gtd\.md` alternative reaches the queue workflow document's path strings (`workflows/gtd.md` in the rule files' `paths:` keys, the embed manifest, and the pinning tests), so Q3's path preservation for that one document is superseded — the document renames to `workflows/todo.md` in this card (REQ-TU-007, REQ-TU-012, plan M6/M8). The persisted formats Q3 preserved (the `gtd_*` tables, the `gtd-<16 hex>` id, `.moai/gtd/answers`, the Go identifiers) match none of the grep alternatives and stand.
+- Alternate rejected: (a) keeping the warning alias with a one-release grace (the Q2 design) — reversed by the operator: the injected role core and the 'Canonical' slash description kept teaching `moai gtd`, so a grace release would prolong the mismatch the card exists to end; (b) shrinking without the alias-policy change — the operator coupled them in one ruling.
+- decision record: decided_by=operator via AskUserQuestion; recorded by leader (session d1aa9eb6) evidence_refs=.moai/worktrees/t1641/.moai/reports/t1641/plan-audit-iter4.md; progress.md shrink proposal; board d-20261018T092415Z-49e5; git grep 387 hits (moai gtd|/moai:gtd) ladder_path=operator gate (scope change on a held card) id=d-20261018T214213Z-94a7 scope=card:t1641 kind=split-proposal-ack
+- Operator verdict: OPERATOR-DECIDED 2026-10-19 via AskUserQuestion (board `d-20261018T214213Z-94a7`); the SPEC artifacts implement it, they do not re-decide it.
+
 ## Known debt (revision 4; not a decision row)
 
 **KD-1, Known debt: the automatic-receipt facts depend on lanes committing their evidence under a gitignored path.** Fact 2 of REQ-TU-017 reads a tracked `sync-audit` verdict file from `.moai/reports/<card-id>/` in the merge commit's tree, and rule R2 compares the paths under that directory. `.gitignore:235` ignores `.moai/reports/*` (`git check-ignore -v --no-index .moai/reports/t1641/progress.md` printed `.gitignore:235:.moai/reports/*`); the operator's policy of 2026-09-14 behind it is the leader's statement, the order itself was not read. The premise that a committed verdict exists in the merge tree therefore holds only for lanes that force-add their evidence, as t1856, t1837, and t1812 did (`research.md` §R.14: five of eight sampled merges committed none; the iteration-3 audit counted 65 of 83 recent integration merges with no committed sync-audit file, its own measurement).
@@ -138,3 +158,4 @@ Verdict forms used: `LANE-DECIDED <UTC> manager-spec (...)` for Q1 to Q4 and Q6 
 - Class: product-level (it shapes what the shipped close path does in practice), recorded as a debt and not as a question because no option is open: the operator's reports policy is fixed input.
 - Owner and trigger: the operator's reports policy, or a successor SPEC that places the evidence somewhere tracked; revisit when the sync-time listing (REQ-TU-021) shows most cards stopping at fact 2.
 - The same entry stands in `plan.md` §H.
+- **Moved (revision 5):** this debt describes the receipt machinery that moved to t1878; the debt statement travels with it, and this card carries no known-debt item (`plan.md` §H carries the pointer). The text above is preserved as history.
