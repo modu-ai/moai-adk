@@ -120,3 +120,28 @@ func TestAffectedScope_UntrackedModuleFileThroughHook(t *testing.T) {
 		shape(t, wt, out, filepath.Join(dir, "unstaged.txt"))
 	})
 }
+
+// From a nested module the untracked-file query still sees a repository-root
+// go.work (top pathspec), and neither working-tree query is affected by the
+// user's diff.relative setting: with it on, an unstaged edit must still be
+// reported under its repository-root name.
+func TestAffectedScope_WorkingTreeQueriesFromNestedModule(t *testing.T) {
+	repo := newScopeRepo(t, map[string]string{
+		"svc/go.mod":   scopeGoMod,
+		"svc/a/a.go":   "package a\n",
+		"svc/a/b.go":   "package a\n",
+		"svc/other.md": "x\n",
+	})
+	gitIn(t, repo, "config", "diff.relative", "true")
+	writeScopeFiles(t, repo, map[string]string{
+		"svc/a/b.go": "package a\n\nvar X = 1\n",
+		"go.work":    "go 1.23\n\nuse ./svc\n",
+	})
+	ch, err := queryCommitChanges(scopeCtx(t), filepath.Join(repo, "svc"))
+	if err != nil {
+		t.Fatalf("queryCommitChanges: %v", err)
+	}
+	if want := []string{"go.work", "svc/a/b.go"}; !slices.Equal(ch.UnstagedGo, want) {
+		t.Errorf("UnstagedGo = %v, want %v (repository-root names, including the untracked root go.work)", ch.UnstagedGo, want)
+	}
+}

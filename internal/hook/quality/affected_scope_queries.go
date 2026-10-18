@@ -26,9 +26,11 @@ type commitChanges struct {
 	// ModulePrefix is the queried directory's offset inside the repository
 	// ("" when it is the repository root).
 	ModulePrefix string
-	// UnstagedGo lists the Go files (and module files) whose working-tree content
-	// differs from the index the commit records. The package graph is read from
-	// the working tree, so such a file means the graph may not describe the commit.
+	// UnstagedGo lists the Go files and module files (go.mod, go.sum, go.work,
+	// go.work.sum) whose working-tree content differs from the index the commit
+	// records, plus the untracked go.mod, go.work and go.work.sum files. The
+	// package graph is read from the working tree, so such a file means the graph
+	// may not describe the commit.
 	UnstagedGo []string
 }
 
@@ -121,6 +123,28 @@ func queryCommitChanges(ctx context.Context, dir string) (commitChanges, error) 
 			ch.UnstagedGo = append(ch.UnstagedGo, name)
 		}
 	}
+
+	// `git diff` never lists untracked files, and an untracked go.mod turns its
+	// directory into a separate module in the working tree, which drops that
+	// package from the graph (sync audit R2-1). An untracked go.work or
+	// go.work.sum changes the module set the same way. go.sum is not listed: it
+	// holds checksums and adds neither a package nor an import edge. A plain
+	// untracked .go file is not listed either: it can only add an edge or a
+	// package, and a conflicting package clause already makes go list report the
+	// package errored. The top pathspec magic keeps a repository-root go.work
+	// visible from a nested module; --exclude-standard honours .gitignore.
+	untracked, err := runScopeQuery(ctx, dir, env, "git", "-c", "diff.relative=false",
+		"ls-files", "--others", "--exclude-standard", "--full-name", "-z", "--",
+		":(top,glob)**/go.mod", ":(top,glob)**/go.work", ":(top,glob)**/go.work.sum")
+	if err != nil {
+		return commitChanges{}, err
+	}
+	for _, name := range splitNul(untracked) {
+		if !slices.Contains(ch.UnstagedGo, name) {
+			ch.UnstagedGo = append(ch.UnstagedGo, name)
+		}
+	}
+	slices.Sort(ch.UnstagedGo)
 	return ch, nil
 }
 

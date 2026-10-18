@@ -100,7 +100,7 @@ func (g *QualityGate) scopeGoTestStep(ctx context.Context, step gateStep, dir st
 	// A Go file that differs between them could make the graph omit an edge the
 	// committed code still has, so the scope is not trusted: run the full module.
 	if len(changes.UnstagedGo) > 0 {
-		return step, fmt.Sprintf("%sworking tree differs from the index in %s; the package graph would not describe the commit — falling back to the full module (go test %s)",
+		return step, fmt.Sprintf("%sworking tree differs from the index in %s (a changed Go or module file, or an untracked go.mod, go.work or go.work.sum); the package graph would not describe the commit — falling back to the full module (go test %s)",
 			scopeNotePrefix, listNames(changes.UnstagedGo, 5), goAllPackagesPattern), ""
 	}
 	graph, err := q.graph(ctx, dir, g.config.GoBuildTags)
