@@ -62,6 +62,8 @@ Any other argument shape is treated as a description. `/moai todo fix flaky CI c
 
 For a regular project directory, the queue is stored in one SQLite database at `~/.moai/db/<project-key>/todo/backlog.db`. When the project originates in a temporary directory (`os.TempDir()`, `/tmp`, or `/var/folders`), the queue stays project-local at `<base>/.moai/state/todo/backlog.db` instead — an absolute `MOAI_HOME` override wins even then. The project key binds linked worktrees to one home-scoped queue, and the database is never committed. The shape below is the record as `moai todo list --json` and `moai todo export-json` emit it — the database holds the same fields. For migration and downgrade details, see `.moai/docs/todo-queue-storage.md` in your project.
 
+Find the database paths with `moai paths` instead of guessing them. Opening a guessed path such as `~/.moai/db/todo.db` with `sqlite3` creates an empty file, so never do it. If you must read directly, read only a snapshot copy of `.db`, `.db-wal`, and `.db-shm` together; otherwise prefer the CLI, such as `moai todo list --json` and `moai factory status`.
+
 ```json
 {
   "version": 1,

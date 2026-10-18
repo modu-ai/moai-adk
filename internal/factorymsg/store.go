@@ -420,7 +420,7 @@ func describeRunOwners(owners []homestate.RunOwner) string {
 			detail += fmt.Sprintf(", leader pid %d", o.LeadPID)
 		}
 		if o.CreatedAt != "" {
-			detail += fmt.Sprintf(", started %s", o.CreatedAt)
+			detail += fmt.Sprintf(", started %s", FormatKST(o.CreatedAt))
 		}
 		detail += ")"
 		parts = append(parts, detail)
