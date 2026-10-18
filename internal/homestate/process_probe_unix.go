@@ -9,16 +9,22 @@
 package homestate
 
 import (
+	"fmt"
 	"os/exec"
 	"strconv"
+	"strings"
 )
 
 // ProcessListProbeError runs the external process-listing probe (ps) and
-// reports the raw error. The output is discarded: the probe judges the
-// ENVIRONMENT, not the process. A missing ps binary is an ordinary exec
-// error, deliberately not distinguished here — only the caller's
-// "operation not permitted" signature match decides anything.
+// reports the failure with the ps process's stderr SURFACED in the error
+// text: in a sandbox, ps exits 1 writing "Operation not permitted" to
+// stderr, and a bare exec error string ("exit status 1") would hide exactly
+// the text the cli-side sandbox-signature match needs (card-review P2-1).
+// The combined output judges the ENVIRONMENT, not the process.
 func ProcessListProbeError(pid int) error {
-	_, err := exec.Command("ps", "-o", "lstart=", "-p", strconv.Itoa(pid)).Output()
-	return err
+	out, err := exec.Command("ps", "-o", "lstart=", "-p", strconv.Itoa(pid)).CombinedOutput()
+	if err != nil {
+		return fmt.Errorf("ps probe: %v: %s", err, strings.TrimSpace(string(out)))
+	}
+	return nil
 }

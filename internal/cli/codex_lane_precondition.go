@@ -73,16 +73,21 @@ const codexLaneRecursiveLaunchDiag = "moai codex -l refused: this session is alr
 // environment a Codex lane session cannot run in, or "" when the environment
 // is usable (card t1779): the Codex-session marker (a recursive launch — the
 // factoryLaneRefusal comparison, config.EnvFactoryBackend ==
-// factory.BackendGPT), TERM=dumb, or TERM unset with a non-terminal stdout.
-// The caller prints the line and exits non-zero as the launch's FIRST act —
-// the run join, the lane-label claim, the stamps, and the launch-pending
+// factory.BackendGPT), TERM=dumb, non-terminal stdin or stdout — judged on
+// the real descriptors REGARDLESS of TERM, because the session receives this
+// process's fds verbatim (card-review P2-2) — or the sandbox signature. The
+// caller prints the line and exits non-zero as the launch's FIRST act — the
+// run join, the lane-label claim, the stamps, and the launch-pending
 // registration all stay unwritten.
 func codexLaneLaunchEnvironmentRefusal(env []string) string {
 	if launchEnvValue(env, config.EnvFactoryBackend) == factory.BackendGPT {
 		return codexLaneRecursiveLaunchDiag
 	}
 	term := launchEnvValue(env, "TERM")
-	if term == "dumb" || (term == "" && !isatty.IsTerminal(os.Stdout.Fd())) {
+	if term == "dumb" {
+		return codexLaneInteractiveTerminalDiag
+	}
+	if !codexLaneStdioIsTerminalFn() {
 		return codexLaneInteractiveTerminalDiag
 	}
 	if err := codexLaneSandboxProbeFn(); err != nil && strings.Contains(strings.ToLower(err.Error()), "operation not permitted") {
@@ -91,6 +96,13 @@ func codexLaneLaunchEnvironmentRefusal(env []string) string {
 		return codexLaneInteractiveTerminalDiag
 	}
 	return ""
+}
+
+// codexLaneStdioIsTerminalFn reports whether this process's stdin AND stdout
+// are both terminals — the fds the Codex session receives verbatim. The
+// default body reads the real descriptors; tests inject pipe-vs-tty.
+var codexLaneStdioIsTerminalFn = func() bool {
+	return isatty.IsTerminal(os.Stdin.Fd()) && isatty.IsTerminal(os.Stdout.Fd())
 }
 
 // codexLaneSandboxProbeFn is the sandbox-signature seam (card t1779): it
