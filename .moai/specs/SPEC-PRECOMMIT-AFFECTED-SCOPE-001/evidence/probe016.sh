@@ -4,9 +4,9 @@
 # It is a reachable green path: once the gate is implemented it prints GREEN for every scenario and exits 0.
 # The wrapper `go` on PATH delegates every verb except `test` to the real go (so a `go list` graph query
 # works) and records only `test` invocations, returning success for them without running tests.
-# Each commit scenario is GREEN only when the commit itself succeeded (exit 0, HEAD moved) AND the recorded
-# `go test` argv equals the wanted one ("none" = no `go test` invocation at all).
-# Usage: PROBE_DIR=<scratch dir> sh probe016.sh <moai binary built from the tree under measurement>
+# Each commit scenario is GREEN only when the commit itself succeeded (exit 0, HEAD moved) AND the WHOLE recorded
+# `go test` log is exactly the wanted one: one call for a source change, one for a test-only change, zero for a
+# docs-only change ("none"), with the argv equal — an extra `go test` call after the right one makes it RED.# Usage: PROBE_DIR=<scratch dir> sh probe016.sh <moai binary built from the tree under measurement>
 set -u
 MOAI="$1"
 REALGO="$(command -v go)"
@@ -62,9 +62,12 @@ scenario() { # name wanted-argv ("none" = no go test call)
   git commit -q -m "$NAME"
   CRC=$?
   H1="$(git rev-parse HEAD)"
-  GOT="$(sed -n 1p "$W/go.log")"; [ -n "$GOT" ] || GOT=none
-  if [ "$CRC" -eq 0 ] && [ "$H0" != "$H1" ] && [ "$GOT" = "$WANT" ]; then S=GREEN; else S=RED; RC=1; fi
-  echo "$NAME: $S  (commit exit=$CRC, HEAD moved=$([ "$H0" != "$H1" ] && echo yes || echo no), wanted go argv '$WANT', got '$GOT')"
+  # Judge the WHOLE recorded log: the call count and every line, not the first line only.
+  NCALLS="$(grep -c . "$W/go.log")"
+  GOT="$(grep . "$W/go.log" | tr '\n' ';' | sed 's/;$//')"; [ -n "$GOT" ] || GOT=none
+  if [ "$WANT" = none ]; then WANTN=0; else WANTN=1; fi
+  if [ "$CRC" -eq 0 ] && [ "$H0" != "$H1" ] && [ "$NCALLS" -eq "$WANTN" ] && [ "$GOT" = "$WANT" ]; then S=GREEN; else S=RED; RC=1; fi
+  echo "$NAME: $S  (commit exit=$CRC, HEAD moved=$([ "$H0" != "$H1" ] && echo yes || echo no), go test calls=$NCALLS (wanted $WANTN), wanted go argv '$WANT', got '$GOT')"
 }
 printf 'package a\n\nfunc A() int { return 2 }\n' > a/a.go; git add a/a.go; : > "$W/go.log"
 scenario "AC-016/001 change a" "test ./a ./b"

@@ -138,18 +138,18 @@ Mutant probe: any implementation that leaves `./...` fails (i); one that omits `
 ### LEDGER-PAS-016-A — RED-now for AC-PAS-016 and AC-PAS-001 (observed red, for the right stated reason)
 Why red: REQ-PAS-001/-002 are not implemented, so the pre-commit gate hands the Go test step `./...` even though only `a` and its direct dependent `b` are affected.
 Also the RED-now cell for AC-PAS-004 (test-only scenario), AC-PAS-006 (docs-only scenario) and AC-PAS-011 (invalid-mode scenario), one line each in the output below.
-Command: `env PROBE_DIR=/private/tmp/pas-probe sh .moai/specs/SPEC-PRECOMMIT-AFFECTED-SCOPE-001/evidence/probe016.sh <moai built from the tree under measurement>` — the script (committed beside this file) builds the three-package module, a wrapper `go` on PATH that delegates every verb except `test` to the real `go` and records only `test` invocations, and a hook that runs `MOAI_PRECOMMIT=1 CLAUDE_PROJECT_DIR=<repo> moai gate`. Per scenario it requires the commit to succeed (exit 0, HEAD moved) and the recorded argv to equal the wanted one; the last scenario runs the gate with `test_scope.mode: bogus` and requires a non-zero exit whose message names `gate.pre_commit.test_scope.mode`. It exits 1 if any scenario is RED.
-Tree: `888ce5c035a2527d81507441d71e69c929042ad0` plus the evidence-only edits of this correction pass; judging build: `moai` built from `3642a3a9b` (Go code identical, see header).
+Command: `env PROBE_DIR=/private/tmp/pas-probe sh .moai/specs/SPEC-PRECOMMIT-AFFECTED-SCOPE-001/evidence/probe016.sh <moai built from the tree under measurement>` — the script (committed beside this file) builds the three-package module, a wrapper `go` on PATH that delegates every verb except `test` to the real `go` and records only `test` invocations, and a hook that runs `MOAI_PRECOMMIT=1 CLAUDE_PROJECT_DIR=<repo> moai gate`. Per scenario it requires the commit to succeed (exit 0, HEAD moved) and the WHOLE recorded `go test` log to equal the wanted one — exactly one call for a source change, exactly one for a test-only change, zero for a docs-only change, argv matching, so an extra `go test` call after the right one is RED; the last scenario runs the gate with `test_scope.mode: bogus` and requires a non-zero exit whose message names `gate.pre_commit.test_scope.mode`. It exits 1 if any scenario is RED.
+Tree: `576da7f1933e44c5c144c0bcbeebef3d232f12ec` (clean apart from the corrected `probe016.sh` itself); judging build: `moai` built from `3642a3a9b` (Go code identical, see header).
 Exit code: 1
 Output (the gate's own banner lines omitted):
 ```
-AC-016/001 change a: RED  (commit exit=0, HEAD moved=yes, wanted go argv 'test ./a ./b', got 'test ./...')
-AC-004 test-only change: RED  (commit exit=0, HEAD moved=yes, wanted go argv 'test ./a', got 'test ./...')
-AC-006 docs-only change: RED  (commit exit=0, HEAD moved=yes, wanted go argv 'none', got 'test ./...')
+AC-016/001 change a: RED  (commit exit=0, HEAD moved=yes, go test calls=1 (wanted 1), wanted go argv 'test ./a ./b', got 'test ./...')
+AC-004 test-only change: RED  (commit exit=0, HEAD moved=yes, go test calls=1 (wanted 1), wanted go argv 'test ./a', got 'test ./...')
+AC-006 docs-only change: RED  (commit exit=0, HEAD moved=yes, go test calls=1 (wanted 0), wanted go argv 'none', got 'test ./...')
 AC-011 mode: bogus: RED  (gate exit=0, message names the key=no)
 exit=1
 ```
-Green path: M3 flips it; the same script then prints GREEN for all four scenarios and exits 0. The reachable green path is real: the wrapper lets a `go list` query through and the argv comparison is on the first recorded `test` call only, so an implementation that queries the graph first still passes.
+Green path: M3 flips it; the same script then prints GREEN for all four scenarios and exits 0. The reachable green path is real: the wrapper lets a `go list` query through and the comparison covers the whole recorded `go test` log (call count and every line) while `go list` calls are not recorded, so an implementation that queries the graph first still passes and one that adds an extra `go test` call does not. Negative controls (stub gates under `/private/tmp`, never committed): a stub recording only the correct calls reads GREEN for all four scenarios; the same stub followed by an extra `go test ./...` reads RED for the three commit scenarios.
 
 ### LEDGER-PAS-009-A — RED-now for AC-PAS-009 and for the adapter half of AC-PAS-005 (immutable witness of the CURRENT helper)
 This row records the present behaviour of the existing staged-file helper. `probe009.sh` hard-codes that helper's query, so it can never turn green and is not a green condition anywhere in this SPEC; the only green path for AC-PAS-009 and for the adapter half of AC-PAS-005 is `TestAffectedScope_ChangedSetMatchesCommit` and `TestAffectedScope_RealGitRenameDelete`, which call the real adapter.
@@ -233,7 +233,7 @@ AC-PAS-007, -008, -010, -014 and -015 assert preservation or fallback behavior t
 
 ## Definition of Done
 1. Release-blocking ACs (001, 004, 005, 006, 009, 011, 013, 016) pass with swept count ≥ 1, each flipped from its ledger RED-now cell; adoption-pending ACs (002, 003) pass only with their P1 ledger row in `progress.md` §E.2; regression guards (007, 008, 010, 014, 015) pass; AC-PAS-012 is withdrawn.
-2. LEDGER-PAS-013-A command exits 0 on the final tree, from a binary built from that tree (tool-provenance: the judging build's commit is cited beside the tree HEAD); likewise `probe016.sh` prints GREEN for all four scenarios and exits 0. `probe009.sh` is the immutable witness of the pre-change helper and is not a green condition; AC-PAS-009 is green only through `TestAffectedScope_ChangedSetMatchesCommit`.
+2. LEDGER-PAS-013-A command exits 0 on the final tree, from a binary built from that tree (tool-provenance: the judging build's commit is cited beside the tree HEAD); likewise `probe016.sh`, which judges the whole recorded `go test` log and call count, prints GREEN for all four scenarios and exits 0. `probe009.sh` is the immutable witness of the pre-change helper and is not a green condition; AC-PAS-009 is green only through `TestAffectedScope_ChangedSetMatchesCommit`.
 3. `internal/hook/quality`, `internal/config` pass in full; `internal/cli` and the other dependents pass under the § D selection with the `ls` evidence for dropped importers recorded.
 4. Both `gate.yaml` copies updated; no timeout value changed; no skip added; no code path writes git configuration.
 5. `progress.md` §E.2 carries the verbatim evidence, including the M3 measurement of `--amend` and the linked-worktree form.
