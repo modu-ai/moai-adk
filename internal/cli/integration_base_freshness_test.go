@@ -520,8 +520,19 @@ func TestFactoryCompleteRefusalIsVisible(t *testing.T) {
 	bfcWriteWorkflow(t, root, bfcGateYAML(true, 0))
 	fcGit(t, integ, "commit", "-q", "--allow-empty", "-m", "another lane landed")
 
-	stdout, stderr, err := runFactory(t, "complete", "t1", "--run", fcRun)
-	requireFreshnessRefusal(t, err)
+	// Through the root seam: a bare cobra run prints "Error: <msg>" itself and
+	// would hide the very silence the audit found.
+	rootCmd := &cobra.Command{Use: "moai"}
+	rootCmd.AddCommand(newFactoryCommand())
+	var outBuf, errBuf bytes.Buffer
+	rootCmd.SetOut(&outBuf)
+	rootCmd.SetErr(&errBuf)
+	rootCmd.SetArgs([]string{"factory", "complete", "t1", "--run", fcRun})
+	runErr := runFang(context.Background(), rootCmd)
+	stdout, stderr := outBuf.String(), errBuf.String()
+	if got := exitCodeForError(runErr); got != factory.BaseFreshnessExitRefused {
+		t.Fatalf("exit = %d, want %d\nstdout: %q\nstderr: %q", got, factory.BaseFreshnessExitRefused, stdout, stderr)
+	}
 	var n int
 	for _, line := range strings.Split(stdout+"\n"+stderr, "\n") {
 		if strings.HasPrefix(line, bfcSentinel) {
