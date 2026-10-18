@@ -102,3 +102,49 @@ ok  github.com/modu-ai/moai-adk/internal/cli	9.570s
 ```
 
 E3 regression guards stay green after M2 (10/10, each `ok`): TestAdoptResumedLeaderRunAdoptsSingleCandidate, TestAdoptResumedLeaderRunSkipsWhenNotResumeShaped, TestAdoptResumedLeaderRunWarnsOnMultipleCandidates, TestAdoptResumedLeaderRunMintsWhenNoCandidates, TestAdoptResumedLeaderRunWarnsCodexLedCandidate, TestStrictResumeCarrierSeen, TestLeaderRunIDWasMinted, TestFactoryLeadRefusesCodexLedRun, TestFactoryJoinAndLeadAcceptNonCodexRun, TestFactorySkillAssertionsMatchBehavior. The AdoptRun signature's mechanical test-caller updates leave their assertions untouched (TestAdoptRunRestampsOwnerAndAppendsResumedEvent, TestAdoptRunRefusesChangedStamp, TestAdoptRunRefusesNonActiveRun, TestRetireRunIfDead* all `ok`). `GOOS=windows GOARCH=amd64 go build ./...` exit 0. `gofmt -l` on all eight touched files: clean.
+
+### M3 — Refusal gate and guidance block (AC-FLAC-002, 005..009) — commit `<M3-SHA>`
+
+RED (pre-fix, behavioral, captured with the gate temporarily unwired from both call sites — the exact pre-M3 behavior; verbatim tails):
+
+```text
+$ go test ./internal/cli -run 'TestLeaderStartOrphanGating' -count=1 -v
+--- FAIL: TestLeaderStartOrphanGating (20.96s)
+    --- PASS: TestLeaderStartOrphanGating/resume-space-form (2.05s)
+    ... (all 12 exempt rows PASS — today's behavior preserved)
+    --- FAIL: TestLeaderStartOrphanGating/continue-flag (1.41s)
+    --- FAIL: TestLeaderStartOrphanGating/short-cluster-cr (1.16s)
+FAIL
+$ go test ./internal/cli -run 'TestLeaderStartOrphanGuidanceRendersFacts' -count=1
+    factory_leader_orphan_test.go:625: the launch over two orphans succeeded; want the orphan refusal
+FAIL
+$ go test ./internal/cli -run 'TestLeaderStartOrphanRefusalPrecedesRunWrite' -count=1
+    factory_leader_orphan_test.go:583: the launch over an orphan succeeded; want the orphan refusal
+FAIL
+```
+
+`TestLeaderStartOrphanTimesRenderInKST` drives the pure KST renderer directly and cannot go red against unwired call sites — its RED-now cell is ledger E2 (test absent, 0/9 swept). Two test-helper defects were found and fixed during the RED capture itself (not code defects): `runEntryWithStderr` evaluated `buf.String()` inside the return statement before the call ran (always-empty stderr), and the gating row env was set before `clearFactoryTestEnv` ran (unset again); both were repaired before any GREEN was recorded.
+
+GREEN (verbatim tails, post-wiring):
+
+```text
+$ go test ./internal/cli -run 'TestLeaderStartOrphanRefusalPrecedesRunWrite' -count=1
+ok  github.com/modu-ai/moai-adk/internal/cli	2.729s
+$ go test ./internal/cli -run 'TestLeaderStartOrphanGuidanceRendersFacts' -count=1
+ok  github.com/modu-ai/moai-adk/internal/cli	5.138s
+$ go test ./internal/cli -run 'TestLeaderStartOrphanGating' -count=1
+ok  github.com/modu-ai/moai-adk/internal/cli	24.675s
+$ go test ./internal/cli -run 'TestLeaderStartOrphanTouchesNoOtherRun' -count=1
+ok  github.com/modu-ai/moai-adk/internal/cli	9.262s
+$ go test ./internal/cli -run 'TestLeaderStartOrphanGLMMirrorsCC' -count=1 -v
+--- PASS: TestLeaderStartOrphanGLMMirrorsCC (10.30s)
+    --- PASS: TestLeaderStartOrphanGLMMirrorsCC/takeover-backend (5.44s)
+    --- PASS: TestLeaderStartOrphanGLMMirrorsCC/codex-refusal-text-equal (2.54s)
+    --- PASS: TestLeaderStartOrphanGLMMirrorsCC/guidance-text-equal (2.33s)
+$ go test ./internal/cli -run 'TestLeaderStartOrphanTimesRenderInKST' -count=1
+ok  github.com/modu-ai/moai-adk/internal/cli	1.242s
+```
+
+The mirror subtest ran `-count=3` to retire a fixture flake (unpinned created_at rendered record-time into the block; now pinned): 3/3 `ok`.
+
+E3 regression guards stay green after M3 (10/10, each `ok`, same name list as M2). `GOOS=windows GOARCH=amd64 go build ./...` exit 0. `gofmt -l` on the four touched files: clean.

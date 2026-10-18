@@ -229,6 +229,16 @@ func runClaudeEntry(cmd *cobra.Command, args []string, commandName, mode, backen
 				return adoptErr
 			}
 		}
+		// The orphan refusal gate (SPEC-FACTORY-LEADER-ADOPT-CORE-001
+		// REQ-FLAC-002/005): a fresh-mint leader start over an orphan run is
+		// refused with the guidance block BEFORE any factory run record is
+		// written — everything before the record changed only environment
+		// variables the defers above restore, so the refusal writes no run
+		// and starts no session. Shared with the glm leader; the launcher's
+		// entry command is the only per-launcher argument (REQ-FLAC-008).
+		if err := refuseLeaderStartOverOrphans(launchProjectRoot(), "moai cc -f", filteredArgs, leaderLabel, priorRunID, entry.FactoryRun, cmd.ErrOrStderr()); err != nil {
+			return err
+		}
 		if err := recordLeaderRunStart(launchProjectRoot(), adopted, backend, entry.Spec, factoryDeclaredLanes(entry)); err != nil {
 			return err
 		}

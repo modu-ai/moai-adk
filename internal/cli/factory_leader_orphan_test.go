@@ -10,12 +10,16 @@ package cli
 import (
 	"bytes"
 	"context"
+	"fmt"
+	"io"
 	"os"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/modu-ai/moai-adk/internal/config"
 	"github.com/modu-ai/moai-adk/internal/factory"
+	"github.com/modu-ai/moai-adk/internal/factorymsg"
 	"github.com/modu-ai/moai-adk/internal/homestate"
 )
 
@@ -354,4 +358,618 @@ func TestExplicitFactoryRunAdoptRefusals(t *testing.T) {
 			t.Errorf("runs rows = %d, want 1", n)
 		}
 	})
+}
+
+// ─── M3 — the orphan refusal gate (AC-FLAC-002, 005..009) ──────────────────
+
+// countingReader records every Read invocation; the AC-FLAC-002 no-stdin
+// guarantee counts the calls instead of consuming bytes (an empty reader's
+// EOF proves nothing).
+type countingReader struct{ calls int }
+
+func (r *countingReader) Read([]byte) (int, error) { r.calls++; return 0, io.EOF }
+
+// runEntryWithStderr drives one cc or glm entry through the real command and
+// returns everything the entry wrote to its error stream.
+func runEntryWithStderr(t *testing.T, launcher string, args ...string) (string, error) {
+	t.Helper()
+	buf := new(bytes.Buffer)
+	var err error
+	if launcher == "glm" {
+		glmCmd.SetOut(new(bytes.Buffer))
+		glmCmd.SetErr(buf)
+		err = runGLM(glmCmd, args)
+	} else {
+		ccCmd.SetOut(new(bytes.Buffer))
+		ccCmd.SetErr(buf)
+		err = runCC(ccCmd, args)
+	}
+	// Read the buffer only after the entry ran — evaluating buf.String()
+	// inside the return statement would snapshot it before the call.
+	return buf.String(), err
+}
+
+// gateRunSeed describes one run row the gate fixtures seed.
+type gateRunSeed struct {
+	id        string
+	backend   string
+	live      bool
+	cards     []string // card states, in insert order
+	workers   int
+	status    string // "" = active
+	createdAt string // pinned run-row created_at ("" = record time)
+	laneCap   int
+}
+
+// seedGateRuns builds a sandbox git root with the requested run rows and
+// returns the root.
+func seedGateRuns(t *testing.T, seeds []gateRunSeed) string {
+	t.Helper()
+	root := t.TempDir()
+	initGitRepo(t, root)
+	if len(seeds) == 0 {
+		return root
+	}
+	db, err := homestate.OpenFactory(root)
+	if err != nil {
+		t.Fatalf("open factory: %v", err)
+	}
+	for _, s := range seeds {
+		run := homestate.FactoryRun{RunID: s.id, Backend: s.backend, ManifestJSON: "{}", LaneCapacity: s.laneCap}
+		if s.live {
+			run.LeadPID = os.Getpid()
+			run.LeadProcessStart = homestate.CurrentProcessFingerprint()
+		} else {
+			run.LeadPID = 99999999
+			run.LeadProcessStart = "gone-before-gate"
+		}
+		if err := db.RecordRun(context.Background(), run); err != nil {
+			t.Fatalf("record run %s: %v", s.id, err)
+		}
+		for i, state := range s.cards {
+			if _, err := db.DB.Exec(`INSERT INTO cards(run_id,card_id,state,updated_at) VALUES(?,?,?,?)`,
+				s.id, fmt.Sprintf("card-%s-%d", s.id, i), state, "2026-10-14T00:00:00Z"); err != nil {
+				t.Fatalf("insert card for %s: %v", s.id, err)
+			}
+		}
+		for i := 0; i < s.workers; i++ {
+			if _, err := db.DB.Exec(`INSERT INTO workers(label,pid,run_id,registered_at,heartbeat_at) VALUES(?,?,?,?,?)`,
+				fmt.Sprintf("lane-%d", i+1), 1, s.id, "2026-10-14T00:00:00Z", "2026-10-14T00:00:00Z"); err != nil {
+				t.Fatalf("insert worker for %s: %v", s.id, err)
+			}
+		}
+		if s.status != "" {
+			if _, err := db.DB.Exec(`UPDATE runs SET status=? WHERE run_id=?`, s.status, s.id); err != nil {
+				t.Fatalf("pin status for %s: %v", s.id, err)
+			}
+		}
+		if s.createdAt != "" {
+			if _, err := db.DB.Exec(`UPDATE runs SET created_at=? WHERE run_id=?`, s.createdAt, s.id); err != nil {
+				t.Fatalf("pin created_at for %s: %v", s.id, err)
+			}
+		}
+	}
+	if err := db.Close(); err != nil {
+		t.Fatalf("close seeding handle: %v", err)
+	}
+	return root
+}
+
+// gateRunRow is the comparable tuple of one run row.
+type gateRunRow struct {
+	status, backend, start string
+	pid                    int
+}
+
+func gateRunRows(t *testing.T, root string) map[string]gateRunRow {
+	t.Helper()
+	db, err := homestate.OpenFactory(root)
+	if err != nil {
+		t.Fatalf("open factory for row map: %v", err)
+	}
+	defer func() { _ = db.Close() }()
+	rows, err := db.DB.Query(`SELECT run_id, status, lead_backend, lead_pid, lead_process_start FROM runs ORDER BY run_id`)
+	if err != nil {
+		t.Fatalf("read run rows: %v", err)
+	}
+	defer func() { _ = rows.Close() }()
+	out := map[string]gateRunRow{}
+	for rows.Next() {
+		var id string
+		var row gateRunRow
+		if err := rows.Scan(&id, &row.status, &row.backend, &row.pid, &row.start); err != nil {
+			t.Fatalf("scan run rows: %v", err)
+		}
+		out[id] = row
+	}
+	if err := rows.Err(); err != nil {
+		t.Fatalf("run rows: %v", err)
+	}
+	return out
+}
+
+// adoptContentSnapshot renders every row of the four tables a launch must not
+// touch, ordered — the AC-FLAC-007 byte-identical instrument.
+func adoptContentSnapshot(t *testing.T, root string) string {
+	t.Helper()
+	db, err := homestate.OpenFactory(root)
+	if err != nil {
+		t.Fatalf("open factory for content snapshot: %v", err)
+	}
+	defer func() { _ = db.Close() }()
+	var b strings.Builder
+	for _, table := range []struct {
+		name  string
+		cols  int
+		query string
+	}{
+		{"runs", 10, `SELECT run_id,lead_session_id,lead_backend,status,manifest_json,lead_pid,lead_process_start,lane_capacity,created_at,updated_at FROM runs ORDER BY run_id`},
+		{"cards", 8, `SELECT run_id,card_id,owner_label,state,version,evidence_path,updated_at,stage FROM cards ORDER BY run_id,card_id`},
+		{"events", 5, `SELECT seq,run_id,kind,payload_json,created_at FROM events ORDER BY seq`},
+		{"workers", 7, `SELECT label,pid,backend,session_id,run_id,registered_at,heartbeat_at FROM workers ORDER BY label`},
+	} {
+		b.WriteString("== " + table.name + "\n")
+		rows, err := db.DB.Query(table.query)
+		if err != nil {
+			t.Fatalf("snapshot %s: %v", table.name, err)
+		}
+		for rows.Next() {
+			vals := make([]any, table.cols)
+			ptrs := make([]any, table.cols)
+			for i := range vals {
+				ptrs[i] = &vals[i]
+			}
+			if err := rows.Scan(ptrs...); err != nil {
+				t.Fatalf("snapshot scan %s: %v", table.name, err)
+			}
+			for _, v := range vals {
+				if raw, ok := v.([]byte); ok {
+					b.WriteString(strings.ReplaceAll(string(raw), "\n", " "))
+				} else {
+					b.WriteString(strings.ReplaceAll(fmt.Sprintf("%v", v), "\n", " "))
+				}
+				b.WriteString("|")
+			}
+			b.WriteString("\n")
+		}
+		if err := rows.Err(); err != nil {
+			t.Fatalf("snapshot %s rows: %v", table.name, err)
+		}
+		_ = rows.Close()
+	}
+	return b.String()
+}
+
+// totalEventCount counts every event row in the sandbox, any run.
+func totalEventCount(t *testing.T, root string) int {
+	t.Helper()
+	db, err := homestate.OpenFactory(root)
+	if err != nil {
+		t.Fatalf("open factory for event total: %v", err)
+	}
+	defer func() { _ = db.Close() }()
+	var n int
+	if err := db.DB.QueryRow(`SELECT COUNT(*) FROM events`).Scan(&n); err != nil {
+		t.Fatalf("count events: %v", err)
+	}
+	return n
+}
+
+// noRetiredEventAnywhere asserts REQ-FLAC-007's negative: no run.retired
+// event exists in the sandbox at all.
+func noRetiredEventAnywhere(t *testing.T, root string) {
+	t.Helper()
+	db, err := homestate.OpenFactory(root)
+	if err != nil {
+		t.Fatalf("open factory for retired scan: %v", err)
+	}
+	defer func() { _ = db.Close() }()
+	var n int
+	if err := db.DB.QueryRow(`SELECT COUNT(*) FROM events WHERE kind='run.retired'`).Scan(&n); err != nil {
+		t.Fatalf("count run.retired events: %v", err)
+	}
+	if n != 0 {
+		t.Fatalf("run.retired events = %d, want 0 (no path this SPEC adds may retire a run)", n)
+	}
+}
+
+// AC-FLAC-002 — the refusal precedes the run write: non-zero exit, nothing
+// in the database changed, no session started, and the command read its
+// input zero times.
+func TestLeaderStartOrphanRefusalPrecedesRunWrite(t *testing.T) {
+	root := seedGateRuns(t, []gateRunSeed{{id: "gate-orphan", backend: "claude", cards: []string{"run"}}})
+	before := adoptContentSnapshot(t, root)
+	c := installAdoptEntryEnv(t, root)
+	reader := &countingReader{}
+	ccCmd.SetIn(reader)
+	t.Cleanup(func() { ccCmd.SetIn(nil) })
+	stderr, err := runEntryWithStderr(t, "cc", "-f")
+	if err == nil {
+		t.Fatal("the launch over an orphan succeeded; want the orphan refusal")
+	}
+	if c.args != nil {
+		t.Fatalf("the launch seam was called; the refusal must start no session")
+	}
+	if after := adoptContentSnapshot(t, root); after != before {
+		t.Fatalf("the refusal wrote to the database:\nbefore:\n%s\nafter:\n%s", before, after)
+	}
+	if reader.calls != 0 {
+		t.Fatalf("the command read its input %d time(s); the refusal must read no stdin", reader.calls)
+	}
+	if !strings.Contains(stderr, leaderStartOrphanHeader) {
+		t.Fatalf("stderr %q does not carry the guidance block header", stderr)
+	}
+}
+
+// AC-FLAC-005 — one guidance block naming EACH orphan run: one fact line
+// (run id, dead, lead pid, KST start time, non-terminal card count) and one
+// adopt command per orphan, the launcher's own entry command, exactly one
+// header, and nothing written anywhere.
+func TestLeaderStartOrphanGuidanceRendersFacts(t *testing.T) {
+	orphanSeeds := []gateRunSeed{
+		{id: "orphan-a", backend: "claude", cards: []string{"run", "blocked", "done"}, createdAt: "2026-10-17T13:39:10.123456789Z", laneCap: 1},
+		{id: "orphan-b", backend: "claude", cards: []string{"needs-decision"}, createdAt: "2026-10-16T08:00:00Z", laneCap: 1},
+	}
+	for _, launcher := range []string{"cc", "glm"} {
+		t.Run(launcher, func(t *testing.T) {
+			root := seedGateRuns(t, orphanSeeds)
+			before := adoptContentSnapshot(t, root)
+			rowsBefore := gateRunRows(t, root)
+			c := installAdoptEntryEnv(t, root)
+			entryCmd := "moai cc -f"
+			if launcher == "glm" {
+				entryCmd = "moai glm -f"
+			}
+			stderr, err := runEntryWithStderr(t, launcher, "-f")
+			if err == nil {
+				t.Fatal("the launch over two orphans succeeded; want the orphan refusal")
+			}
+			if c.args != nil {
+				t.Fatalf("the launch seam was called")
+			}
+			if n := strings.Count(stderr, leaderStartOrphanHeader); n != 1 {
+				t.Fatalf("guidance header occurred %d time(s), want exactly 1:\n%s", n, stderr)
+			}
+			for _, orphan := range []struct {
+				id, pid, cards, started string
+			}{
+				{"orphan-a", "99999999", "2 in-progress card(s)", "2026-10-17 22:39:10 KST"},
+				{"orphan-b", "99999999", "1 in-progress card(s)", "2026-10-16 17:00:00 KST"},
+			} {
+				if !strings.Contains(stderr, "run "+orphan.id+": owner dead") {
+					t.Errorf("stderr does not name orphan %s with its classification:\n%s", orphan.id, stderr)
+				}
+				if !strings.Contains(stderr, "lead pid "+orphan.pid) {
+					t.Errorf("stderr does not name orphan %s's lead pid:\n%s", orphan.id, stderr)
+				}
+				if !strings.Contains(stderr, orphan.cards) {
+					t.Errorf("stderr does not carry %s's non-terminal card count (%s):\n%s", orphan.id, orphan.cards, stderr)
+				}
+				if !strings.Contains(stderr, "started "+orphan.started) {
+					t.Errorf("stderr does not carry %s's start time rendered in KST (%s):\n%s", orphan.id, orphan.started, stderr)
+				}
+				if !strings.Contains(stderr, entryCmd+" --factory-run "+orphan.id) {
+					t.Errorf("stderr does not carry %s's deliberate adopt command naming the launcher's own entry:\n%s", orphan.id, stderr)
+				}
+			}
+			if !strings.Contains(stderr, "no run was created and no session was started") {
+				t.Errorf("stderr does not carry the closing line:\n%s", stderr)
+			}
+			if after := adoptContentSnapshot(t, root); after != before {
+				t.Errorf("the refusal wrote to the database")
+			}
+			rowsAfter := gateRunRows(t, root)
+			for id, row := range rowsBefore {
+				if rowsAfter[id] != row {
+					t.Errorf("orphan row %s changed across the refusal", id)
+				}
+			}
+		})
+	}
+}
+
+// AC-FLAC-006 — the exemption table: every exempt launch behaves exactly as
+// on the base tree (no guidance, no orphan refusal), while a `-c`/`-cr`
+// start over an orphan is refused like a bare start.
+func TestLeaderStartOrphanGating(t *testing.T) {
+	orphanOnly := []gateRunSeed{{id: "gate-orphan", backend: "claude", cards: []string{"run"}}}
+	twoOrphans := []gateRunSeed{
+		{id: "orphan-a", backend: "claude", cards: []string{"run"}},
+		{id: "orphan-b", backend: "claude", cards: []string{"blocked"}},
+	}
+	rows := []struct {
+		name   string
+		seed   []gateRunSeed
+		env    func(t *testing.T)
+		args   []string
+		launch bool // the launch seam must be called
+		err    bool // the entry must return a non-nil error
+	}{
+		{name: "resume-space-form", seed: orphanOnly, args: []string{"-f", "--resume", "sess-1"}, launch: true},
+		{name: "resume-attached-form", seed: orphanOnly, args: []string{"-f", "-rsess-1"}, launch: true},
+		{name: "factory-run-adopts", seed: orphanOnly, args: []string{"-f", "--factory-run", "gate-orphan"}, launch: true},
+		{name: "non-empty-env-run-id", seed: orphanOnly, args: []string{"-f"}, launch: true, env: func(t *testing.T) { t.Setenv(config.EnvFactoryRunID, "deliberate04") }},
+		{name: "pasted-leader-name", seed: orphanOnly, args: []string{"-f", "--name", "leader-deliberate05"}, launch: true},
+		{name: "terminal-cards-only", seed: []gateRunSeed{{id: "gate-fin", backend: "claude", cards: []string{"done", "failed", "abandoned"}}}, args: []string{"-f"}, launch: true},
+		{name: "workers-only", seed: []gateRunSeed{{id: "gate-w", backend: "claude", workers: 1}}, args: []string{"-f"}, launch: true},
+		{name: "live-owner-with-card", seed: []gateRunSeed{{id: "gate-live", backend: "claude", live: true, cards: []string{"run"}}}, args: []string{"-f"}, launch: true},
+		{name: "retired-run-with-card", seed: []gateRunSeed{{id: "gate-ret", backend: "claude", cards: []string{"run"}, status: "retired"}}, args: []string{"-f"}, launch: true},
+		{name: "no-runs-at-all", seed: nil, args: []string{"-f"}, launch: true},
+		{name: "continue-flag", seed: orphanOnly, args: []string{"-f", "-c", "sess-1"}, err: true},
+		{name: "short-cluster-cr", seed: orphanOnly, args: []string{"-f", "-cr", "sess-1"}, err: true},
+		{name: "resume-over-two-orphans", seed: twoOrphans, args: []string{"-f", "--resume", "sess-1"}, launch: true},
+		{name: "factory-run-over-two-orphans", seed: twoOrphans, args: []string{"-f", "--factory-run", "orphan-a"}, launch: true},
+	}
+	for _, row := range rows {
+		t.Run(row.name, func(t *testing.T) {
+			root := seedGateRuns(t, row.seed)
+			c := installAdoptEntryEnv(t, root)
+			// Row env is set AFTER the installer: clearFactoryTestEnv inside
+			// installAdoptEntryEnv would otherwise unset it again.
+			if row.env != nil {
+				row.env(t)
+			}
+			rowsBefore := gateRunRows(t, root)
+			stderr, err := runEntryWithStderr(t, "cc", row.args...)
+			if row.err && err == nil {
+				t.Fatalf("launch = nil error, want the orphan refusal")
+			}
+			if !row.err && err != nil {
+				t.Fatalf("launch refused: %v", err)
+			}
+			if strings.Contains(stderr, leaderStartOrphanHeader) != row.err {
+				t.Fatalf("guidance header present = %v, want %v (the block rides only the refusal):\n%s", strings.Contains(stderr, leaderStartOrphanHeader), row.err, stderr)
+			}
+			if (c.args != nil) != row.launch {
+				t.Fatalf("launch seam called = %v, want %v", c.args != nil, row.launch)
+			}
+			rowsAfter := gateRunRows(t, root)
+			switch row.name {
+			case "resume-space-form", "resume-attached-form", "factory-run-adopts", "factory-run-over-two-orphans":
+				// The orphan the launch named was adopted: its row now names
+				// this process; every OTHER row is byte-unchanged.
+				adoptedID := "gate-orphan"
+				if row.name == "factory-run-over-two-orphans" {
+					adoptedID = "orphan-a"
+				}
+				if got := rowsAfter[adoptedID]; got.pid != os.Getpid() {
+					t.Fatalf("adopted run %s stamp pid = %d, want this process", adoptedID, got.pid)
+				}
+				for id, before := range rowsBefore {
+					if id == adoptedID {
+						continue
+					}
+					if rowsAfter[id] != before {
+						t.Errorf("row %s changed across the launch", id)
+					}
+				}
+			case "resume-over-two-orphans":
+				// The warn-and-mint outcome: BOTH orphans survive unchanged,
+				// and the resume path warned on stderr.
+				for id, before := range rowsBefore {
+					if rowsAfter[id] != before {
+						t.Errorf("orphan row %s changed across the resume launch", id)
+					}
+				}
+				for _, id := range []string{"orphan-a", "orphan-b"} {
+					if !strings.Contains(stderr, id) {
+						t.Errorf("resume warn %q does not name candidate %s", stderr, id)
+					}
+				}
+			case "non-empty-env-run-id":
+				// Today's behavior: the launch records under the deliberate
+				// environment id; the orphan row is untouched.
+				if _, ok := rowsAfter["deliberate04"]; !ok {
+					t.Fatalf("the deliberate environment id was not recorded")
+				}
+				if rowsAfter["gate-orphan"] != rowsBefore["gate-orphan"] {
+					t.Errorf("the orphan row changed under a deliberate-id launch")
+				}
+			case "pasted-leader-name":
+				if c.runID != "deliberate05" {
+					t.Fatalf("published id = %q, want the pasted name's run id deliberate05", c.runID)
+				}
+			default:
+				// Mint rows: no pre-existing row changed.
+				for id, before := range rowsBefore {
+					if rowsAfter[id] != before {
+						t.Errorf("row %s changed across the mint launch", id)
+					}
+				}
+			}
+		})
+	}
+}
+
+// AC-FLAC-007 — no path this SPEC adds touches any run other than the one
+// adopted (or minted): the refusal changes nothing, the adopt changes only
+// its own run, the mint adds only its own row, and the finder itself writes
+// nothing. No run.retired event exists anywhere.
+func TestLeaderStartOrphanTouchesNoOtherRun(t *testing.T) {
+	fixture := []gateRunSeed{
+		{id: "t-orphan", backend: "claude", cards: []string{"run"}},
+		{id: "t-fin", backend: "claude", cards: []string{"done"}},
+		{id: "t-live", backend: "claude", live: true, cards: []string{"run"}},
+		{id: "t-ret", backend: "claude", cards: []string{"run"}, status: "retired"},
+	}
+
+	// The bare -f refusal over the orphan: every row byte-identical.
+	root := seedGateRuns(t, fixture)
+	before := adoptContentSnapshot(t, root)
+	c := installAdoptEntryEnv(t, root)
+	if _, err := runEntryWithStderr(t, "cc", "-f"); err == nil {
+		t.Fatal("refusal launch = nil error")
+	}
+	if c.args != nil {
+		t.Fatal("refusal launch started a session")
+	}
+	if after := adoptContentSnapshot(t, root); after != before {
+		t.Fatalf("the refusal launch wrote to the database")
+	}
+	noRetiredEventAnywhere(t, root)
+
+	// The deliberate adopt: only the adopted run's own row and event move.
+	root = seedGateRuns(t, fixture)
+	othersBefore := gateRunRows(t, root)
+	c = installAdoptEntryEnv(t, root)
+	if _, err := runEntryWithStderr(t, "cc", "-f", "--factory-run", "t-orphan"); err != nil {
+		t.Fatalf("adopt launch refused: %v", err)
+	}
+	othersAfter := gateRunRows(t, root)
+	for id, beforeRow := range othersBefore {
+		if id == "t-orphan" {
+			continue
+		}
+		if othersAfter[id] != beforeRow {
+			t.Errorf("row %s changed across the adopt launch", id)
+		}
+	}
+	if got := othersAfter["t-orphan"]; got.pid != os.Getpid() {
+		t.Errorf("adopted run stamp pid = %d, want this process", got.pid)
+	}
+	noRetiredEventAnywhere(t, root)
+
+	// The no-orphan mint: the minted row is the only new row.
+	root = seedGateRuns(t, nil)
+	c = installAdoptEntryEnv(t, root)
+	if _, err := runEntryWithStderr(t, "cc", "-f"); err != nil {
+		t.Fatalf("mint launch refused: %v", err)
+	}
+	if c.args == nil {
+		t.Fatal("mint launch never started the session")
+	}
+	if n := adoptRunsCount(t, root); n != 1 {
+		t.Errorf("runs rows after mint = %d, want 1", n)
+	}
+	noRetiredEventAnywhere(t, root)
+
+	// The finder itself is read-only: a bare FindOrphanRuns call leaves a
+	// full content snapshot byte-identical.
+	root = seedGateRuns(t, fixture)
+	before = adoptContentSnapshot(t, root)
+	db, err := homestate.OpenFactory(root)
+	if err != nil {
+		t.Fatalf("open factory: %v", err)
+	}
+	if _, err := db.FindOrphanRuns(context.Background(), factorymsg.ReconcileOptionsFor(root)); err != nil {
+		t.Fatalf("find orphan runs: %v", err)
+	}
+	if err := db.Close(); err != nil {
+		t.Fatalf("close: %v", err)
+	}
+	if after := adoptContentSnapshot(t, root); after != before {
+		t.Fatalf("FindOrphanRuns wrote to the database")
+	}
+}
+
+// AC-FLAC-008 — glm mirrors cc: one gate, one adoption path, differing only
+// in the backend recorded and the entry command the text carries.
+func TestLeaderStartOrphanGLMMirrorsCC(t *testing.T) {
+	t.Run("takeover-backend", func(t *testing.T) {
+		// cc adopting a glm-led run flips the row's backend to claude; glm
+		// adopting a claude-led run flips it to glm — each leg's seed is the
+		// OTHER launcher's backend, so neither leg's equality holds without
+		// the adoption write.
+		root := seedGateRuns(t, []gateRunSeed{{id: "mx-glm", backend: "glm", cards: []string{"run"}}})
+		installAdoptEntryEnv(t, root)
+		if _, err := runEntryWithStderr(t, "cc", "-f", "--factory-run", "mx-glm"); err != nil {
+			t.Fatalf("cc adopt refused: %v", err)
+		}
+		if _, backend, _, _, _ := adoptRunRow(t, root, "mx-glm"); backend != "claude" {
+			t.Errorf("cc takeover backend = %q, want claude", backend)
+		}
+		if n := adoptEventCount(t, root, "mx-glm", "run.resumed"); n != 1 {
+			t.Errorf("cc leg run.resumed events = %d, want 1", n)
+		}
+
+		root = seedGateRuns(t, []gateRunSeed{{id: "mx-cc", backend: "claude", cards: []string{"run"}}})
+		installAdoptEntryEnv(t, root)
+		if _, err := runEntryWithStderr(t, "glm", "-f", "--factory-run", "mx-cc"); err != nil {
+			t.Fatalf("glm adopt refused: %v", err)
+		}
+		if _, backend, _, _, _ := adoptRunRow(t, root, "mx-cc"); backend != "glm" {
+			t.Errorf("glm takeover backend = %q, want glm", backend)
+		}
+		if n := adoptEventCount(t, root, "mx-cc", "run.resumed"); n != 1 {
+			t.Errorf("glm leg run.resumed events = %d, want 1", n)
+		}
+	})
+
+	t.Run("codex-refusal-text-equal", func(t *testing.T) {
+		var texts []string
+		for _, launcher := range []string{"cc", "glm"} {
+			root := seedGateRuns(t, []gateRunSeed{{id: "mx-cx", backend: "codex", cards: []string{"run"}}})
+			installAdoptEntryEnv(t, root)
+			_, err := runEntryWithStderr(t, launcher, "-f", "--factory-run", "mx-cx")
+			if err == nil {
+				t.Fatalf("%s adopt of a codex-led run = nil error", launcher)
+			}
+			texts = append(texts, err.Error())
+		}
+		if texts[0] != texts[1] {
+			t.Errorf("codex refusal texts differ:\ncc: %s\nglm: %s", texts[0], texts[1])
+		}
+	})
+
+	t.Run("guidance-text-equal", func(t *testing.T) {
+		// created_at is pinned: the block renders the row's start time, and
+		// record-time values would differ between the two fixtures.
+		guidanceSeeds := []gateRunSeed{
+			{id: "orphan-a", backend: "claude", cards: []string{"run"}, createdAt: "2026-10-17T13:39:10.123456789Z"},
+			{id: "orphan-b", backend: "claude", cards: []string{"blocked"}, createdAt: "2026-10-16T08:00:00Z"},
+		}
+		root := seedGateRuns(t, guidanceSeeds)
+		installAdoptEntryEnv(t, root)
+		stderrCC, errCC := runEntryWithStderr(t, "cc", "-f")
+		if errCC == nil {
+			t.Fatal("cc refusal = nil error")
+		}
+		if strings.Contains(stderrCC, "moai glm -f") {
+			t.Errorf("cc guidance names the other launcher's command:\n%s", stderrCC)
+		}
+		if !strings.Contains(stderrCC, "moai cc -f --factory-run orphan-a") {
+			t.Errorf("cc guidance does not name its own adopt command:\n%s", stderrCC)
+		}
+		root = seedGateRuns(t, guidanceSeeds)
+		installAdoptEntryEnv(t, root)
+		stderrGLM, errGLM := runEntryWithStderr(t, "glm", "-f")
+		if errGLM == nil {
+			t.Fatal("glm refusal = nil error")
+		}
+		if strings.Contains(stderrGLM, "moai cc -f") {
+			t.Errorf("glm guidance names the other launcher's command:\n%s", stderrGLM)
+		}
+		if !strings.Contains(stderrGLM, "moai glm -f --factory-run orphan-a") {
+			t.Errorf("glm guidance does not name its own adopt command:\n%s", stderrGLM)
+		}
+		if mirrored := strings.ReplaceAll(stderrGLM, "moai glm -f", "moai cc -f"); mirrored != stderrCC {
+			t.Errorf("glm guidance does not mirror cc after the entry-command swap:\ncc:  %s\nglm: %s", stderrCC, mirrored)
+		}
+	})
+}
+
+// AC-FLAC-009 — every run start time the guidance block renders is KST
+// (UTC+9), regardless of the host zone; an unparseable value renders
+// unchanged.
+func TestLeaderStartOrphanTimesRenderInKST(t *testing.T) {
+	// The test pins time.Local to a zone that is neither UTC nor KST for its
+	// duration: a renderer that uses time.Local or UTC fails.
+	prev := time.Local
+	time.Local = time.FixedZone("UTCTest", -5*3600)
+	t.Cleanup(func() { time.Local = prev })
+
+	if got := renderRunStartKST("2026-10-17T13:39:10.123456789Z"); got != "2026-10-17 22:39:10 KST" {
+		t.Fatalf("renderRunStartKST = %q, want 2026-10-17 22:39:10 KST", got)
+	}
+	if got := renderRunStartKST("not-a-time"); got != "not-a-time" {
+		t.Fatalf("renderRunStartKST = %q, want the unparseable value unchanged", got)
+	}
+	// The same rendering through the guidance block itself.
+	var block bytes.Buffer
+	renderLeaderStartOrphanGuidance(&block, "moai cc -f", []homestate.OrphanRun{
+		{RunOwner: homestate.RunOwner{RunID: "orphan-a", Classification: homestate.OwnerDead, LeadPID: 99999999, CreatedAt: "2026-10-17T13:39:10.123456789Z"}, NonTerminalCards: 2},
+	})
+	if !strings.Contains(block.String(), "started 2026-10-17 22:39:10 KST") {
+		t.Fatalf("guidance block does not render the KST time:\n%s", block.String())
+	}
 }

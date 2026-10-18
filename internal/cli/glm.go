@@ -284,6 +284,12 @@ func runGLM(cmd *cobra.Command, args []string) error {
 				return adoptErr
 			}
 		}
+		// Same orphan refusal gate as the cc leader
+		// (SPEC-FACTORY-LEADER-ADOPT-CORE-001 REQ-FLAC-002/005, REQ-FLAC-008):
+		// one shared gate, the GLM entry command the only difference.
+		if err := refuseLeaderStartOverOrphans(launchProjectRoot(), "moai glm -f", filteredArgs, leaderLabel, priorRunID, entry.FactoryRun, cmd.ErrOrStderr()); err != nil {
+			return err
+		}
 		// Same recording as the cc leader: the factory run state a lane's -l join
 		// resolves. Without it every GLM-led run is unjoinable
 		// (NO_ACTIVE_FACTORY).
