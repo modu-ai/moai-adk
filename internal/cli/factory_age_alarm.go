@@ -140,18 +140,26 @@ func writeFactoryAgeAlarmText(w io.Writer, rows []factoryAgeAlarmView, warning s
 // git already recorded. The invocation is repo-isolated and helper-free: the
 // child environment is gitenv.Env (an inherited GIT_DIR / GIT_WORK_TREE would
 // outrank -C and redirect the read into a foreign repository, sync-audit iter1
-// F1) and signature rendering is pinned OFF so no repo-configured helper
-// program executes during the read (F2). A missing or unreadable worktree, a
-// failed or timed-out invocation, and an unparseable stamp all render unknown
-// — never a fabricated value, never a failed status command.
+// F1), signature rendering is pinned OFF so no repo-configured helper program
+// executes during the read (F2), and lazy fetching is pinned OFF
+// (GIT_NO_LAZY_FETCH=1) so a promisor worktree's missing head object cannot
+// send the read after remote.origin.url — an ext:: transport there would
+// execute a repo-designated helper program, while with the pin the read fails
+// and the commit signal renders unknown (sync-audit iter2 N1). A missing or
+// unreadable worktree, a failed or timed-out invocation, and an unparseable
+// stamp all render unknown — never a fabricated value, never a failed status
+// command.
 func factoryAgeAlarmCommitAt(worktreePath string) (time.Time, bool) {
 	ctx, cancel := context.WithTimeout(context.Background(), factoryAgeAlarmGitTimeout)
 	defer cancel()
 	cmd := exec.CommandContext(ctx, "git", "-C", worktreePath, "-c", "log.showSignature=false", "log", "-1", "--format=%cI")
 	// gitenv.Env, not os.Environ — the house pattern of internal/core/git
 	// execGit: a lane or hook process exports GIT_DIR / GIT_WORK_TREE, and an
-	// inherited copy outranks -C.
-	cmd.Env = append(gitenv.Env(), "GIT_TERMINAL_PROMPT=0")
+	// inherited copy outranks -C. GIT_TERMINAL_PROMPT=0 keeps a read that
+	// cannot authenticate from blocking on a prompt; GIT_NO_LAZY_FETCH=1
+	// keeps a missing object from triggering the lazy fetch that would run
+	// the repo's configured transport (iter2 N1).
+	cmd.Env = append(gitenv.Env(), "GIT_TERMINAL_PROMPT=0", "GIT_NO_LAZY_FETCH=1")
 	out, err := cmd.Output()
 	if err != nil {
 		return time.Time{}, false
