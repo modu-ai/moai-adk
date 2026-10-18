@@ -1,6 +1,6 @@
 # SPEC-LANDING-VERIFY-MERGE-SPLIT-001 — decision index (card t1872)
 
-Version 0.3.0 adds the leader's policy rulings on plan-audit iteration 1 (board `d-20261018T153534Z-0577`, `0577`) and rows Q14-Q17. Version 0.4.0 adds the N2 ruling on plan-audit iteration 2 (board `d-20261018T160111Z-470c`, `470c`) and rows Q18-Q22. Version 0.6.0 adds the single ceiling exception on plan-audit iteration 4 (board `d-20261018T164307Z-4812`, `4812`) and rows Q25-Q26. Version 0.5.0 adds the rule C ruling on plan-audit iteration 3 (board `d-20261018T162457Z-5d4d`, `5d4d`) and rows Q23-Q24, and re-states Q20 and Q22.
+Version 0.3.0 adds the leader's policy rulings on plan-audit iteration 1 (board `d-20261018T153534Z-0577`, `0577`) and rows Q14-Q17. Version 0.4.0 adds the N2 ruling on plan-audit iteration 2 (board `d-20261018T160111Z-470c`, `470c`) and rows Q18-Q22. Version 0.7.0 adds the split ruling (board `d-20261018T170131Z-d20e`, `d20e`, superseding `adbe`) and rows Q27-Q29; the SPEC now covers piece A2 only. Version 0.6.0 adds the single ceiling exception on plan-audit iteration 4 (board `d-20261018T164307Z-4812`, `4812`) and rows Q25-Q26. Version 0.5.0 adds the rule C ruling on plan-audit iteration 3 (board `d-20261018T162457Z-5d4d`, `5d4d`) and rows Q23-Q24, and re-states Q20 and Q22.
 
 `interview.decision_gate` is `on` in this repository. Version 0.2.0 records the leader's scope ruling of 2026-10-18 (board `d-20261018T150139Z-9dbe`, decided_by leader tn1p4e under operator delegation +Jev, operator-relayed scope review): the SPEC narrows to **piece A** (baseline M0, completeness gate, the Q13 binding, and the enable switch). Pieces B and C and the reuse relaxation are follow-ups, not part of this SPEC.
 
@@ -50,6 +50,12 @@ Effect on earlier rows: Q22 below is replaced (exact equality, no tolerance); Q2
 ## Plan-audit iteration 4 ceiling exception, verbatim (board 4812)
 
 > t1872 piece A single ceiling exception (leader under operator delegation, Jev advisory 0.72). Rule C delta audit FAIL 0.88 @21687134ba (.moai/reports/t1872/plan-audit-iter4.md; rcpt-6f7d69e28f5d0af045255fdc, rcpt-11c4bae25772c9e7e6754c68) stays on record; D1-D9 all resolved. Exception scope, one time: B1 (an effective-GOFLAGS constraint so a run narrowed through GOFLAGS cannot pass derive/attempt comparison; a negative AC under AC-LVM-005 and a mutation row) and S1 (go.mod/go.sum/go.work changes cannot yield an empty manifest), plus O1-O3 wording; REQ/AC id set unchanged. Then one audit at the new HEAD with codex required pass. A FAIL there ends the exception and the card splits into A1 (gate core) and A2 (audit binding + reader) with new SPEC ids, after A2's independence from A1 is verified in code.
+
+## Split ruling, verbatim (board d20e)
+
+> Supersedes d-20261018T170122Z-adbe (wording fix only: A1's card id is t1875). t1872 split after the 4812 exception ended (iter5 FAIL 0.86 @9713b6757d; codex required fail rcpt-5ccf101ec66f0bd46ee54f10, rcpt-6f3244d2a8df252898424d5b; blockers B1-B3 all in the gate core). A2 = audit binding + switch kernel (REQ-LVM-007, 008, 009, 010, 012, 017, 018) stays on card t1872 under its frozen spec_id SPEC-LANDING-VERIFY-MERGE-SPLIT-001 and lands first; its plan re-verifies independence from A1 in code and starts a fresh plan audit cycle on the reduced scope. A1 = gate core (REQ-LVM-001-006, 013-016 plus B1-B3 closure) is card t1875 with new SPEC-LANDING-COMPLETENESS-GATE-001, blocked until t1872 is merged-local (shared edit sites factoryCompleteCard and factorylane/merge.go). e4cc holds: no reuse relaxation opens before A1 lands.
+
+Effect on earlier rows: rows about the gate core — Q4 (package coverage observed), Q5 (importers always included), Q15 (producer verbs), Q16 (zero-Go card), Q17 (command comparison), Q25 (effective GOFLAGS), Q26 (module files) — stay recorded here as history and are re-adopted by SPEC-LANDING-COMPLETENESS-GATE-001 (card t1875); Q6 and Q8 (reuse) remain not built (board e4cc). Rows Q7, Q13, Q14, Q18-Q24 stay with this SPEC. The 4812 exception is over.
 
 ## Rows Q1-Q6 (implementation-level, re-judged for piece A)
 
@@ -304,4 +310,35 @@ Why unresolved: the four files are repository-wide inputs; the textual reader se
 Default: every Go package of the module becomes a whole-package call, no reader search, no 35e9 narrowing for a call selected only by them; the zero-call path never admits such a card (rule: the option that refuses strictly more)
 Alternate: refuse the card as underivable
 Operator verdict: DEFAULT-APPLIED 2026-10-18T17:50:00Z manager-spec+lane t1872
+
+## Rows Q27-Q29 (split to piece A2)
+
+### Q27: When is the key switched on now that the card is split?
+
+Label: FOUNDER
+Class: product-level
+Authority anchor: none in the committed tree (sources: boards 0577 P2, d20e)
+Why unresolved: board 9dbe/e4cc ordered the enabling after the structured re-measure form, its tests and the lane guidance exist (all gate core, now card t1875); board 0577 P2 says the key turns on in a later, separate commit after piece A has landed. With A2 landing first the key, once on, enforces only the audit binding until A1 lands; this SPEC does not choose the moment.
+Options (neutral): switch the key on after A2 lands (audit binding alone is enforced, completeness is added when A1 lands under the same key); switch it on only after A1 lands (both enforced together); keep a separate key for each half.
+Operator verdict:
+
+### Q28: Which consumers share the audit binding?
+
+Label: FOUNDER
+Class: implementation-level
+Authority anchor: none
+Why unresolved: the binding function can serve `moai factory complete` only, or also merge-readiness condition (a) (`factorylane/merge.go`, used by `moai factory merge ready` and the github-flow readiness check).
+Default: one binding function in `factorylane`, consumed by `complete` and by condition (a) of the triple, so the two cannot disagree (rule: the smaller user-visible surface — one rule, no second copy; the github-flow edge is untouched because its readiness check is not the git-flow `complete`)
+Alternate: `complete` only
+Operator verdict: DEFAULT-APPLIED 2026-10-18T18:30:00Z manager-spec+lane t1872
+
+### Q29: In what order are the A2 milestones built?
+
+Label: FOUNDER
+Class: implementation-level
+Authority anchor: none (leader order in the split brief: baseline, receipt field, audit binding, switch reader)
+Why unresolved: the audit binding applies only while the gate is on, so it needs the gate-state reader to exist first.
+Default: M0 baseline, M1 receipt field, M2 switch reader and key, M3 audit binding, M4 guidance (rule: the option whose undo is a single revert — each milestone then compiles and tests on its own)
+Alternate: binding before reader, with the gate state injected as a predicate
+Operator verdict: DEFAULT-APPLIED 2026-10-18T18:30:00Z manager-spec+lane t1872
 
