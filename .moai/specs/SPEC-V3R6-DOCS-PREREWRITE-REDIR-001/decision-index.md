@@ -1,6 +1,6 @@
 # Decision Index — SPEC-V3R6-DOCS-PREREWRITE-REDIR-001
 
-Revision 0.1.0 (2026-10-19). This child owns the full rows Q23, Q21, Q15, and Q16, and carries a copy of the cross-cutting row Q17. The rows moved here from the umbrella (SPEC-V3R6-DOCS-PREREWRITE-CLEANUP-001, decision-index.md, revision 0.3.1, where each is a stub pointing at this child). The source text of the moved rows is at commit bdb7b764 of the umbrella's decision-index.md. `interview.decision_gate` is `on` (`.moai/config/sections/interview.yaml`), so this file is part of the artifact set and every row routes with one of the four labels.
+Revision 0.2.0 (2026-10-19; r2: leader verdicts d-20261018T170818Z-a207 applied to Q23, Q21, and Q16). Revision 0.1.0 (2026-10-19) was the first authoring. This child owns the full rows Q23, Q21, Q15, and Q16, and carries a copy of the cross-cutting row Q17. The rows moved here from the umbrella (SPEC-V3R6-DOCS-PREREWRITE-CLEANUP-001, decision-index.md, revision 0.3.1, where each is a stub pointing at this child). The source text of the moved rows is at commit bdb7b764 of the umbrella's decision-index.md. `interview.decision_gate` is `on` (`.moai/config/sections/interview.yaml`), so this file is part of the artifact set and every row routes with one of the four labels.
 
 The Q23 row is recorded first. The card names that as its before-start condition: audit finding B04 says the redirect rules at `docs-site/vercel.json` lines 163 and 168 hide the four existing `moai-mx.md` pages. The row, and its acceptance criterion (AC-PRC-011 in acceptance.md, which also comes first there), are written ahead of the other rows. The ordering is positional within these files; it is not a commit-order witness (the lane owns commits).
 
@@ -16,7 +16,7 @@ Requirement: REQ-PRC-011
 Class: product-level (option (a) and option (c) change what the public moai-mx URLs serve; option (b) amends a requirement)
 Child: REDIR (SPEC-V3R6-DOCS-PREREWRITE-REDIR-001), decision row Q23
 Options: (a) remove both rules (lines 163 and 168); (b) amend REQ-PRC-011 by operator decision to exempt the pair, naming the exempt source by exact string; (c) remove only the locale-aware rule at line 163, which is the one that matches pages, and keep the root-level rule at line 168 (option (c) is added in this revision: the umbrella listed (a) and (b), and the instrument shows that line 168 matches no page). No Default is ranked.
-Operator verdict:
+Operator verdict: (c) remove only the rule at line 163; keep line 168 — leader, under operator delegation (Jev 0.88 and 0.92), board d-20261018T170818Z-a207 (2026-10-18). Effect: REQ-PRC-011's moai-mx clause binds line 163 only; the four moai-mx.md pages stay; line 168 stays because it shadows nothing (E-R5). Row closed.
 
 ### Q21: How are the two external changelog redirect rules handled?
 Label: FOUNDER
@@ -27,7 +27,7 @@ Class: product-level (the public changelog URLs change what they serve under eit
 Child: REDIR (SPEC-V3R6-DOCS-PREREWRITE-REDIR-001), decision row Q21; decided inside this child (operator decision `d-20261014T114834Z-e039`)
 Options: (a) remove the two rules; (b) amend REQ-PRC-010 to admit the GitHub Releases destination by exact string, with a separate check. No Default is ranked.
 Interaction (Q21 x Q16): the four combinations are (b) with Q16 Default (rules kept, pages deleted): `/changelog` and `/ko/changelog` still redirect to GitHub, no page is shadowed, five files change. (a) with Q16 Alternate (rules removed, pages kept): the four pages are served at `/ko/changelog` and siblings, `/changelog` serves nothing, the footer link needs a change (the change touches `vercel.json` and `site-footer.html`, no page is deleted). (a) with Q16 Default (rules removed and pages deleted): the public changelog URL serves nothing and the footer link is dead; REQ-REDIR-001 forbids this combination. (b) with Q16 Alternate is not coherent: the Alternate removes the rules that (b) keeps.
-Operator verdict:
+Operator verdict: (b) keep the two external changelog rules (lines 113 and 118); amend REQ-PRC-010 so `https://github.com/modu-ai/moai-adk/releases` is an admitted destination — leader, under operator delegation (Jev 0.88 and 0.92), board d-20261018T170818Z-a207 (2026-10-18). Effect: the footer link `/changelog/` keeps resolving through line 118, so no file outside the card's five changes. Row closed. Of the four combinations in Interaction, the recorded one is the first.
 
 ### Q15: Are the three redirect rules for `/agency` removed?
 Label: FOUNDER
@@ -47,8 +47,8 @@ Class: implementation-level. Justification: with the redirect rules kept, the fo
 Child: REDIR
 Default: remove the four pages (rule: preserves current behavior, because the redirect keeps serving the public URL)
 Alternate: remove the redirect rules and keep the pages
-Condition: the applied Default stands only while Q21 is not answered (a). An answer of (a) to Q21 re-opens this row, and the run phase deletes no page before the Q21 verdict is read (plan.md M0).
-Operator verdict: DEFAULT-APPLIED 2026-10-18T17:01:34Z claude-sonnet-5-5 manager-spec (plan close; premise measured in E-R5 and E-R8; Condition applies)
+Condition: (superseded by the Q21 verdict) Q21 was answered (b), so the Default is coherent and no longer conditional.
+Operator verdict: delete the four pages — leader, under operator delegation (Jev 0.88 and 0.92), board d-20261018T170818Z-a207 (2026-10-18): with Q21 (b) the kept rule at line 113 shadows the four changelog/_index.md pages, so deleting them is consistent with the card's operator-approved scope (split 0fcd). Supersedes the earlier DEFAULT-APPLIED line (2026-10-18T17:01:34Z). Row closed.
 
 ### Q17: Do the same edits land in en, ja, and zh in the same change? (cross-cutting; REDIR copy)
 Label: FOUNDER
@@ -58,14 +58,14 @@ Class: implementation-level
 Child: cross-cutting (REDIR, README, SWEEPA to SWEEPF, FLAG); REDIR copy
 Default: delete the four pages in the same change (rule: preserves current behavior; the strict i18n check keeps reporting zero errors and zero warnings)
 Alternate: delete the ko page first and the other three later
-Operator verdict: DEFAULT-APPLIED 2026-10-18T17:01:34Z claude-sonnet-5-5 manager-spec (plan close; applies only if Q16 deletes the pages)
+Operator verdict: DEFAULT-APPLIED 2026-10-18T17:01:34Z claude-sonnet-5-5 manager-spec (plan close; Q16 deletes the pages, so it applies)
 
-## Rows that block the run phase
+## Verdict state of each row (no row blocks the run phase)
 
 | Row | Class | Verdict state | Effect |
 |-----|-------|---------------|--------|
-| Q23 | product-level | empty | M1 does not start the moai-mx edit until the operator answers |
-| Q21 | product-level | empty | M1 does not start the changelog-rule edit until the operator answers; the answer also decides whether the footer file (outside the card's five) changes |
-| Q15 | implementation-level | DEFAULT-APPLIED | M1 may remove the three `/agency` rules |
-| Q16 | implementation-level | DEFAULT-APPLIED, conditional on Q21 | M2 starts only after the Q21 verdict is read |
-| Q17 | implementation-level | DEFAULT-APPLIED | none for REDIR beyond the four-page rule |
+| Q23 | product-level | (c), board d-20261018T170818Z-a207 | M1 removes only the rule at line 163 |
+| Q21 | product-level | (b), board d-20261018T170818Z-a207 | M1 keeps lines 113 and 118; REQ-PRC-010 amended; footer file unchanged |
+| Q15 | implementation-level | DEFAULT-APPLIED | M1 removes the three `/agency` rules |
+| Q16 | implementation-level | delete, board d-20261018T170818Z-a207 | M2 deletes the four pages |
+| Q17 | implementation-level | DEFAULT-APPLIED | the four pages go in one change |

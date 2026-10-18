@@ -2,14 +2,18 @@
 
 ## §E.1 Plan-phase Audit-Ready Signal
 
-plan_status: audit-ready-run-blocked
-plan_revision: 0.1.0
+plan_status: audit-ready
+plan_revision: 0.2.0
 plan_complete_at: 2026-10-18T17:06:37Z
+plan_revision_2_at: 2026-10-18T17:13:14Z
 plan_base_commit: 0ddf5ca48bed7aaeeb68ed4fc686bcfa098a82b1
-open_decisions: Q21 and Q23 are product-level and carry no operator verdict; they block the autonomous Kickoff (decision-index.md). Q15, Q16, and Q17 carry DEFAULT-APPLIED verdicts at plan close; Q16 is conditional on Q21 not being answered (a).
-ordering_note: the Q23 row (decision-index.md) and the AC that covers the moai-mx pair (AC-PRC-011, acceptance.md § B) are the first row and the first criterion in their files. That ordering is positional. It is not a commit-order witness; the lane owns the commit and may split it if the leader wants the precondition visible in the commit graph.
+revision_note: r2: leader verdicts a207 applied (board d-20261018T170818Z-a207, decided by the leader under operator delegation with Jev 0.88 and 0.92). Q23 = (c) remove only line 163; Q21 = (b) keep the two external changelog rules and amend REQ-PRC-010; Q16 = delete the four pages; Q15 and Q17 stay DEFAULT-APPLIED. Footer file not changed; the five-file scope is final.
+open_decisions: none. Every decision row carries a verdict or a DEFAULT-APPLIED line (decision-index.md).
+lint: `moai spec lint <this SPEC directory> --strict` reports 0 errors and 0 warnings after the r2 edits (one INFO: OwnershipTransitionUnmeasured, the lane commit cde13ce99 carries no Authored-By-Agent trailer) (installed build moai_cp/20261007_195927-1888-g7705b365e2, a strict ancestor of the tree HEAD; internal/spec unchanged between the two, acceptance.md G11).
+scratch_proof: the exact a207 change set was applied on scratch copies under /private/tmp only; shadow turns green, resolve turns green only with the Q15 Default included (acceptance.md E-R14, G14).
+ordering_note: the Q23 row (decision-index.md) and the AC that covers the moai-mx rule (AC-PRC-011, acceptance.md § B) are the first row and the first criterion in their files. That ordering is positional, not a commit-order witness.
 
-The plan is ready for the independent plan audit. Run-phase work does not start on this revision: the Kickoff gate stays closed until Q21 and Q23 carry operator verdicts.
+The plan is ready for the independent plan audit. The Kickoff gate has no open decision row.
 
 ## §E.2 Run-phase Evidence
 

@@ -1,11 +1,11 @@
-# Acceptance Criteria — SPEC-V3R6-DOCS-PREREWRITE-REDIR-001 (revision 0.1.0)
+# Acceptance Criteria — SPEC-V3R6-DOCS-PREREWRITE-REDIR-001 (revision 0.2.0; r2: leader verdicts a207 applied)
 
 ## A. Pin, conventions, and the instrument
 
 - **Document-level pin.** Tree commit `0ddf5ca48bed7aaeeb68ed4fc686bcfa098a82b1`, tree object `a2c0d16b90c0e49371b6efec3084e6e270781bd7`, `docs-site/vercel.json` blob `959e3de56575cf12306e1d787b9c9c9f2265e219` (E-R1). Every cell that reads a committed object names the commit in its command. The instrument cells (E-R4, E-R5, E-R6, E-R7) read the working tree; E-R1 shows that `docs-site` in the working tree equals the pinned commit (`git diff --stat 0ddf5ca48b -- docs-site` prints nothing, `git status --short` prints nothing), so those cells are attributed to the same tree. Measured on 2026-10-18 between 16:48Z and 17:01Z.
 - **BASE.** In the run phase, `<BASE>` means the commit the run phase started from, recorded in progress.md §E.2 at M0. The RED-now cells below use the literal pin `0ddf5ca48b`; on a rebase the run phase re-measures and re-pins (verification-completeness §4).
 - **Cell form (verification-completeness §2.1).** A RED-now cell is one read-only invocation with no `;`, `&&`, `|`, subshell, or redirection. Its verbatim stdout and exit code are separate fields. Where the Bash tool does not display a zero exit status, the status was taken from a measurement wrapper outside the cell (`runctl.py`, which runs the same command and prints the exit code); the ledger says so.
-- **The instrument (E-R0).** The redirect-check script reads `<root>/vercel.json` and `<root>/content/<locale>/**.md`, derives the page URL set from the content tree, and runs one of two modes. `shadow` (REQ-PRC-011) lists every redirect source that matches an existing page or section URL. `resolve` (REQ-PRC-010) lists every redirect destination that is external or resolves to no page. It prints `swept: redirects=<R> pages=<P> locales=<...>` first and exits 2 (fail closed) when R or P is zero, when `vercel.json` or `content/` cannot be read, or when a redirect source uses a pattern token outside the supported subset; it exits 1 on findings and 0 otherwise. The script text is the fenced block in E-R0; the run phase extracts it verbatim to `<scratch>/redirect-check.py` and confirms its SHA-256 before use. `<scratch>` is a session-scoped directory under `/private/tmp`, never inside the repository tree. In the plan phase it was `/private/tmp/claude-501/-Users-goos-MoAI-moai-adk-go/7b2f1a5a-e1bf-4787-be19-8084e37cb916/scratchpad`.
+- **The instrument (E-R0).** The redirect-check script reads `<root>/vercel.json` and `<root>/content/<locale>/**.md`, derives the page URL set from the content tree, and runs one of two modes. `shadow` (REQ-PRC-011) lists every redirect source that matches an existing page or section URL. `resolve` (REQ-PRC-010) lists every redirect destination that is external or resolves to no page. In `resolve` mode an optional third argument names one external destination that the amended REQ-PRC-010 admits; admitted destinations are counted (`admitted external: <K>`) and not reported. It prints `swept: redirects=<R> pages=<P> locales=<...>` first and exits 2 (fail closed) when R or P is zero, when `vercel.json` or `content/` cannot be read, or when a redirect source uses a pattern token outside the supported subset; it exits 1 on findings and 0 otherwise. The script text is the fenced block in E-R0; the run phase extracts it verbatim to `<scratch>/redirect-check.py` and confirms its SHA-256 before use. `<scratch>` is a session-scoped directory under `/private/tmp`, never inside the repository tree. In the plan phase it was `/private/tmp/claude-501/-Users-goos-MoAI-moai-adk-go/7b2f1a5a-e1bf-4787-be19-8084e37cb916/scratchpad`.
 - **External cells** (E-R8) are labelled `external`, are not tree-attributed, and are never recorded as a pass (verification-completeness §2.1, undecidable disposition).
 - **Classes.** `release-blocking (gated)`: re-executable on the tree; counts toward the verdict once its gate rows carry operator verdicts. `regression-guard`: a guard against a change this work could introduce; it cannot be red on the pre-change tree and is not counted toward the verdict.
 - **Reading note on exit codes.** Findings exit 1. A zero-finding run with a non-empty sweep exits 0. An empty sweep or an unreadable input exits 2, so an empty result is never read as a pass.
@@ -14,59 +14,61 @@
 
 | AC | REQ | Gate (decision rows) | Class | Ledger entries |
 |----|-----|----------------------|-------|----------------|
-| AC-PRC-011 | REQ-PRC-011 | Q23 (first); Q16; coupled to Q21 | release-blocking (gated) | E-R5, E-R3 (RED-now); E-R6, E-R7 (instrument controls); E-R8, E-R9 (external and reference observations) |
-| AC-PRC-010 | REQ-PRC-010 | Q15, Q21 | release-blocking (gated) | E-R4, E-R2 (RED-now); E-R6, E-R7 (controls) |
+| AC-PRC-011 | REQ-PRC-011 | Q23 (c, first), Q16 (delete), Q17 | release-blocking | E-R5, E-R3 (RED-now); E-R6, E-R7, E-R14 (controls and green path); E-R8, E-R9 (external and reference observations) |
+| AC-PRC-010 | REQ-PRC-010 | Q15 (Default), Q21 (b) | release-blocking | E-R4, E-R2 (RED-now); E-R6, E-R7, E-R14 (controls and green path) |
 | AC-REDIR-001 | REQ-REDIR-002 | none | regression-guard | E-R2, E-R4 (count baseline) |
-| AC-REDIR-002 | REQ-REDIR-001 | Q21 | regression-guard | E-R9 |
+| AC-REDIR-002 | REQ-REDIR-001 | Q21 (b) | regression-guard | E-R9 |
 | AC-REDIR-003 | REQ-REDIR-003 | Q17 | regression-guard | E-R10, E-R10b, E-R13 |
 
-The umbrella's AC-PRC-010 and AC-PRC-011 are imported by the umbrella (M6) by criterion ID and this child's commit SHA; AC-REDIR-001 to AC-REDIR-003 are local to this child and are not imported.
+The umbrella's AC-PRC-010 and AC-PRC-011 are imported by the umbrella (M6) by criterion ID and this child's commit SHA; AC-REDIR-001 to AC-REDIR-003 are local to this child and are not imported. Q23, Q21, and Q16 carry the verdicts of board record `d-20261018T170818Z-a207`; Q15 and Q17 carry `DEFAULT-APPLIED`.
 
 ## B. Acceptance criteria
 
-### AC-PRC-011 — no redirect shadows an existing page, including the moai-mx pair (REQ-PRC-011)
+The change set under test is exactly: remove the rule object with source `/:locale(ko|en|ja|zh)/utility-commands/moai-mx` (line 163) and the three `agency` rule objects (lines 88, 93, 98) from `docs-site/vercel.json`; delete the four `docs-site/content/{ko,en,ja,zh}/changelog/_index.md` pages; change nothing else. Rules kept on purpose: the two changelog rules (lines 113, 118; admitted external destination) and the root-level moai-mx rule (line 168; matches no page).
+
+### AC-PRC-011 — no redirect shadows an existing page, including the moai-mx rule (REQ-PRC-011)
 
 Recorded first, per the card's before-start condition (Q23; leader ruling B04, `d-20261014T060405Z-0fcd`).
 
 - **Given** the tree at BASE, where `docs-site/vercel.json` holds a locale-aware source for `changelog` (line 113) and one for `utility-commands/moai-mx` (line 163), and the four `changelog/_index.md` and four `utility-commands/moai-mx.md` pages exist (E-R2, E-R3).
-- **When** the instrument runs in `shadow` mode on `docs-site` after the change, and the page-presence commands of D2 to D4 run.
-- **Then** the end state in § D (branch table) holds for the recorded Q23, Q16, and Q21 answers.
-- **RED-now (E-R5).** `<scratch>/redirect-check.py shadow docs-site` exits 1 and prints `shadowed: 8`: four lines for source `/:locale(ko|en|ja|zh)/changelog` at line 113 and four for source `/:locale(ko|en|ja|zh)/utility-commands/moai-mx` at line 163. It is red for the stated reason that those two locale-aware sources each match four existing pages. It is not red because of the root-level sources at lines 118 and 168: those match no page and print no line.
-- **Green path.** The moai-mx lines flip at M1 (the recorded Q23 answer is applied to `vercel.json`). The four changelog lines flip at M2 under the Q16 Default (the pages are deleted) or at M1 under the Q16 Alternate (the rule at line 113 is removed). Under Q23 option (b) the four moai-mx lines are the expected end state and the amended REQ-PRC-011 names them.
-- **Done when** all of the following hold at the closing commit (each is one invocation; commands run from the repository root):
-  - D1. `python3 -I <scratch>/redirect-check.py shadow docs-site` prints a first line `swept: redirects=<N> pages=<P> ...` with N and P from § D, then no finding lines (or, under Q23 option (b), exactly the four moai-mx lines), and exits 0 (or 1 under option (b)).
-  - D2. `git ls-tree -r --name-only HEAD -- docs-site/content/ko/utility-commands/moai-mx.md docs-site/content/en/utility-commands/moai-mx.md docs-site/content/ja/utility-commands/moai-mx.md docs-site/content/zh/utility-commands/moai-mx.md` prints four lines, under every Q23 option. Its pre-change output is E-R3 (positive control).
-  - D3. `git grep -n -E '^draft:' HEAD -- <the same four paths>` prints four lines, each `draft: false`. Its pre-change output is E-R3b.
-  - D4. Under the Q16 Default: `git ls-tree -r --name-only HEAD -- docs-site/content/ko/changelog docs-site/content/en/changelog docs-site/content/ja/changelog docs-site/content/zh/changelog` prints nothing, and its pre-change output is four lines (E-R3, positive control for the same pathspec). Under the Q16 Alternate it prints those four lines.
-  - D5. The instrument controls of E-R6 and E-R7, re-run with the extracted script, print the recorded outputs (the instrument is verified before its verdict is read).
-- **Mutant probe.** (1) Delete the four moai-mx pages instead of the rules: D1 reports fewer findings for them, and D2 prints nothing, so the mutant fails D2 (E-R7 `mutant-mxpages` shows D1 alone passes the moai-mx lines). (2) Mark the four pages `draft: true`: the instrument excludes drafts and D1 passes; D3 prints `draft: true` and fails. (3) Rename the page files: D2 fails. (4) Keep the rule and add a trailing slash to its source: the instrument matches the source with and without a trailing slash, so D1 still prints the four lines. (5) Replace the source with a token the instrument does not support: it exits 2.
-- **What this criterion does not detect** (also listed in § G): a source that differs from a page URL only by letter case (the instrument compares case-sensitively; whether Vercel does is not measured); a redirect rule carrying `has` or `missing` conditions (the instrument reads only `source`); a page whose URL is changed by `url:`, `slug:`, or `aliases:` front matter (none exists at BASE, E-R3d, but the instrument ignores them); a shadowed static file under `docs-site/static`; and any Hugo-generated URL that is not a content page. D2 to D4 detect a deleted, drafted, or renamed page only for the eight paths named.
+- **When** the check script runs in `shadow` mode on `docs-site` after the change, and the page-presence and rule-presence commands of D2 to D5 run.
+- **Then** the end state of § D holds.
+- **RED-now (E-R5).** `<scratch>/redirect-check.py shadow docs-site` exits 1 and prints `shadowed: 8`: four lines for source `/:locale(ko|en|ja|zh)/changelog` (line 113) and four for source `/:locale(ko|en|ja|zh)/utility-commands/moai-mx` (line 163). It is red for the stated reason that those two locale-aware sources each match four existing pages. The root-level sources at lines 118 and 168 print no line.
+- **Green path.** The four moai-mx lines flip at M1 (line 163 removed); the four changelog lines flip at M2 (the pages deleted, the rule at line 113 kept). Observed on a scratch copy that applies exactly this change set: before `shadowed: 8` exit 1, after `shadowed: 0` exit 0 (E-R14).
+- **Done when** all of the following hold at the closing commit (each is one invocation, run from the repository root):
+  - D1. `python3 -I <scratch>/redirect-check.py shadow docs-site` prints `swept: redirects=35 pages=608 locales=en,ja,ko,zh`, then `shadowed: 0`, and exits 0.
+  - D2. `git ls-tree -r --name-only HEAD -- docs-site/content/ko/utility-commands/moai-mx.md docs-site/content/en/utility-commands/moai-mx.md docs-site/content/ja/utility-commands/moai-mx.md docs-site/content/zh/utility-commands/moai-mx.md` prints four lines. Its pre-change output is E-R3 (positive control for the same form).
+  - D3. `git grep -n -E '^draft:' HEAD -- <the same four paths>` prints four lines, each `draft: false` (pre-change: E-R3b).
+  - D4. `git ls-tree -r --name-only HEAD -- docs-site/content/ko/changelog docs-site/content/en/changelog docs-site/content/ja/changelog docs-site/content/zh/changelog` prints nothing; the same pathspec pre-change prints four lines (E-R3, positive control).
+  - D5. `git grep -n -F '"source": "/:locale(ko|en|ja|zh)/utility-commands/moai-mx"' HEAD -- docs-site/vercel.json` prints nothing, and `git grep -n -F '"source": "/utility-commands/moai-mx"' HEAD -- docs-site/vercel.json` prints one line (pre-change each prints one line: E-R2d).
+  - D6. The controls of E-R6, E-R7, and E-R14, re-run with the extracted script, print the recorded outputs.
+- **Mutant probe.** (1) Delete the four moai-mx pages instead of the rule: D1 still lists nothing for them, D2 prints nothing and fails (E-R7 `mutant-mxpages`). (2) Mark the pages `draft: true`: the script excludes drafts so D1 passes; D3 fails. (3) Rename the pages: D2 fails. (4) Remove line 168 as well: D1 still passes, D5 fails and N in AC-REDIR-001 D2 is 34. (5) Keep the rule and add a trailing slash to its source: the script matches the source with and without a trailing slash, so D1 prints the four lines. (6) Use a source token the script does not support: it exits 2.
+- **What this criterion does not detect:** a source that differs from a page URL only by letter case (the script compares case-sensitively; whether Vercel does is not measured); a rule that carries `has` or `missing` conditions (the script reads only `source`); a page whose URL is changed by `url:`, `slug:`, or `aliases:` front matter (none exists at BASE, E-R3d, but the script ignores them); a shadowed static file under `docs-site/static`; any Hugo-generated URL that is not a content page; and the deployed behavior (E-R8 is external). D2 to D5 detect a deleted, drafted, renamed, or re-added item only for the paths and rule strings named.
 
-### AC-PRC-010 — every redirect destination resolves (REQ-PRC-010)
+### AC-PRC-010 — every redirect destination resolves or is admitted (REQ-PRC-010)
 
-- **Given** the tree at BASE, where three `agency` rules point at a `design` section that exists in no locale and two changelog rules point at an external URL (E-R2, E-R3c).
-- **When** the instrument runs in `resolve` mode on `docs-site` after the change, and the source and destination commands of D2 and D3 run.
-- **Then** the end state in § D holds for the recorded Q15 and Q21 answers.
-- **RED-now (E-R4).** `<scratch>/redirect-check.py resolve docs-site` exits 1 and prints `unresolved: 14`: nine lines for the three `agency` rules (4 + 4 + 1, one line per locale for the two locale-aware rules) and five lines for the two changelog rules (4 + 1), each marked `external destination`. It is red for the stated reason: the destinations `/<locale>/design[/...]` and `/design/...` resolve to no page, and the two GitHub URLs are external. The other 32 rules print no line.
-- **Green path.** M1 removes (or, under the Q15 Alternate, re-points) the `agency` rules and applies the recorded Q21 answer. Under Q21 option (b) the five external lines are the expected end state and the amended REQ-PRC-010 admits exactly the GitHub Releases string.
+- **Given** the tree at BASE, where three `agency` rules point at a `design` section that exists in no locale (E-R3c) and two changelog rules point at the external GitHub Releases URL (E-R2b).
+- **When** the check script runs in `resolve` mode on `docs-site` after the change, with the admitted URL as its third argument, and the rule-presence commands of D2 and D3 run.
+- **Then** the end state of § D holds.
+- **RED-now (E-R4).** `<scratch>/redirect-check.py resolve docs-site` exits 1 and prints `unresolved: 14`: nine lines for the three `agency` rules (4 + 4 + 1) and five external lines for the two changelog rules (4 + 1). It is red for the stated reason: `/<locale>/design[/...]` and `/design/...` resolve to no page, and the GitHub URL is external and, run without the third argument, not admitted.
+- **Green path.** M1 removes the three `agency` rules; the five external lines are admitted by the amended REQ-PRC-010 (the check is run with the third argument). Observed on a scratch copy: the leader's stated change set (line 163 plus the four pages) alone leaves `unresolved: 14` (`resolve` is not green); adding the three `agency` rules (Q15 Default) gives `unresolved: 5` without the admitted URL and `admitted external: 5`, `unresolved: 0`, exit 0 with it (E-R14).
 - **Done when** all of the following hold at the closing commit:
-  - D1. `python3 -I <scratch>/redirect-check.py resolve docs-site` prints `swept: redirects=<N> pages=<P> ...` with N and P from § D, then no finding lines, and exits 0 (under Q21 option (b): exactly the five external lines naming the admitted destination, and `unresolved: 5`, exit 1).
-  - D2. Under the Q15 Default: `git grep -n -E '"source": "[^"]*agency' HEAD -- docs-site/vercel.json` prints nothing (exit 1); its pre-change output is three lines (E-R2, positive control).
-  - D3. Under Q21 option (a): `git grep -n -E '"destination": "http' HEAD -- docs-site/vercel.json` prints nothing (exit 1); its pre-change output is two lines (E-R2b, positive control).
-  - D4. The controls of E-R6 and E-R7 print the recorded outputs.
-- **Mutant probe.** (1) Delete every rule: the instrument exits 2 (empty sweep, E-R6 `empty`). (2) Delete one rule outside the verdict's set: N in D1 is lower than § D predicts, and AC-REDIR-001 D2 fails. (3) Re-point a changelog rule to an existing page instead of removing it or admitting it: a re-point is not one of the Q21 options. Under Q21 (a), D1 and D3 pass, and the mutant is caught by AC-REDIR-001 D2 (N is 2 higher than § D predicts). Under Q21 (b), D1 fails (fewer than five external lines). (4) Add a new rule with a resolving destination: N is higher than § D predicts, and AC-REDIR-001 D2 fails.
-- **What this criterion does not detect:** a destination that resolves to an existing page that is the wrong page (the criterion checks existence, as REQ-PRC-010 states); a destination with a `:path*` tail whose base resolves while the tail does not (the instrument strips the tail and checks the base only); a destination with a query string or fragment (the instrument reports it as unresolved, a false positive that is visible); and the deployed behavior (E-R8 is external).
+  - D1. `python3 -I <scratch>/redirect-check.py resolve docs-site https://github.com/modu-ai/moai-adk/releases` prints `swept: redirects=35 pages=608 locales=en,ja,ko,zh`, `admitted external: 5`, `unresolved: 0`, and exits 0.
+  - D2. `git grep -n -E '"source": "[^"]*agency' HEAD -- docs-site/vercel.json` prints nothing (exit 1); pre-change it prints three lines (E-R2).
+  - D3. `git grep -n -F '"destination": "https://github.com/modu-ai/moai-adk/releases"' HEAD -- docs-site/vercel.json` prints exactly two lines (the admitted destinations stay); pre-change it prints the same two lines (E-R2b), so this is a presence guard, not a flip.
+  - D4. The controls of E-R6, E-R7, and E-R14 print the recorded outputs.
+- **Mutant probe.** (1) Delete every rule: the script exits 2 (empty sweep, E-R6 `empty`). (2) Point a kept changelog rule at a different external URL: it is not the admitted string, so D1 reports it and D3 prints fewer than two lines. (3) Re-point a changelog rule to an existing page instead of keeping it: D1 fails (`admitted external` falls below 5) and D3 prints fewer than two lines. (4) Add a new rule with a resolving destination: N is 36, and AC-REDIR-001 D2 fails.
+- **What this criterion does not detect:** a destination that resolves to an existing page that is the wrong page (the criterion checks existence, as REQ-PRC-010 states); a destination with a `:path*` tail whose base resolves while the tail does not (the script strips the tail and checks the base only); a destination with a query string or fragment (reported as unresolved, a visible false positive); the admitted URL used by a third rule (the script admits the string for any source; D3's count of two and AC-REDIR-001 D2's N catch an extra user of it only indirectly); whether the GitHub URL itself is reachable; and the deployed behavior (E-R8 is external).
 
 ### AC-REDIR-001 — only the named files and rules change (REQ-REDIR-002) — regression-guard
 
 - **Given** the tree at BASE.
 - **When** the run phase has committed its changes.
-- **Then** nothing outside the allowed set changed, and no redirect rule was added or removed beyond the recorded answers.
+- **Then** nothing outside the five files changed, exactly four rules were removed, and exactly four pages were deleted.
 - **Done when**:
-  - D1. `git diff --name-only <BASE>..HEAD -- . ':!docs-site/vercel.json' ':!docs-site/content/*/changelog/_index.md' ':!docs-site/layouts/partials/site-footer.html' ':!.moai/specs/SPEC-V3R6-DOCS-PREREWRITE-REDIR-001' ':!.moai/reports/t1718'` prints nothing. Its positive control is `git diff --name-only <BASE>..HEAD -- docs-site/vercel.json`, which prints `docs-site/vercel.json`.
-  - D2. The `swept: redirects=<N>` first line of AC-PRC-010 D1 equals `39 - 3*[Q15 Default] - 2*[Q21 = (a)] - k`, with k = 2 for Q23 (a), 1 for (c), 0 for (b). The pre-change value is 39 (E-R4).
-  - D3. When Q21 is not (a): `git diff --name-only <BASE>..HEAD -- docs-site/layouts/partials/site-footer.html` prints nothing.
-- **Does not detect:** an edit inside a rule that stays (for example a changed `permanent` flag) that leaves the count unchanged. The run phase reads `git diff -U0 <BASE>..HEAD -- docs-site/vercel.json` and confirms every changed line belongs to a block whose source a recorded answer names; that reading is by eye, not by command.
+  - D1. `git diff --name-only <BASE>..HEAD -- . ':!docs-site/vercel.json' ':!docs-site/content/*/changelog/_index.md' ':!.moai/specs/SPEC-V3R6-DOCS-PREREWRITE-REDIR-001' ':!.moai/reports/t1718'` prints nothing. The footer file is deliberately not excluded, so any change to it shows. Positive control: `git diff --name-only <BASE>..HEAD -- docs-site/vercel.json docs-site/content` prints five lines (`docs-site/vercel.json` and the four pages).
+  - D2. The `swept: redirects=<N>` first line of AC-PRC-010 D1 reads 35 (`39 - 1 - 3`). Together with D5 of AC-PRC-011 and D2 of AC-PRC-010 (the four named rules are gone), N equal to 35 means no other rule was removed or added. The pre-change value is 39 (E-R4).
+- **Does not detect:** an edit inside a rule that stays (for example a changed `permanent` flag) that leaves the count unchanged. The run phase reads `git diff -U0 <BASE>..HEAD -- docs-site/vercel.json` and confirms every changed line belongs to one of the four removed blocks and that no `+` line exists; that reading is by eye, not by command.
 
 ### AC-REDIR-002 — no internal reference is orphaned (REQ-REDIR-001) — regression-guard
 
@@ -74,11 +76,10 @@ Recorded first, per the card's before-start condition (Q23; leader ruling B04, `
 - **When** the change is committed.
 - **Then** each reference still resolves, and the changelog URL still serves something.
 - **Done when**:
-  - D1. Q21 is not (a): `git grep -n -E 'href="/changelog' HEAD -- docs-site` prints the same one footer line as E-R9a, and `python3 -I <scratch>/redirect-check.py shadow docs-site` plus the rule list show that the root-level rule at the former line 118 remains (its pre-change line is in E-R2).
-  - D2. Q21 is (a): the footer line of E-R9a is absent or names a target that exists in the built output (`<scratch>/public/ko/index.html` contains an `href` whose target path has an `index.html` in `<scratch>/public`; the build is the one of AC-REDIR-003 D2).
-  - D3. The change does not remove both the changelog rules and the changelog pages: `git grep -c -E '"source": "[^"]*changelog' HEAD -- docs-site/vercel.json` prints a count above zero, or D4 of AC-PRC-011 prints four lines.
-  - D4. `git grep -c -E '/utility-commands/moai-mx' HEAD -- docs-site ':!docs-site/vercel.json'` prints the same thirteen file entries as E-R9c (the references stay), and AC-PRC-011 D1 to D3 hold (so the references resolve) under Q23 options (a) and (c). Under option (b) the references stay shadowed by the exempt rule; that is the recorded residual of the amendment.
-- **Does not detect:** a reference written in a form the greps do not match (a `relref` shortcode, a relative link, a script-built URL, a link inside `static/`); E-R9d found no `relref` or `ref` shortcode use in `content/` or `layouts/` at BASE (the only matches are inside the vendored theme), but that is a pre-change observation. D3 and D4 detect a missing rule or page only by name.
+  - D1. `git grep -n -E 'href="/changelog' HEAD -- docs-site` prints the same one footer line as E-R9a, and `git grep -n -F -e '"source": "/changelog"' -e '"source": "/:locale(ko|en|ja|zh)/changelog"' HEAD -- docs-site/vercel.json` prints two lines (pre-change: E-R2e), so the footer link still resolves through the kept rule at the former line 118.
+  - D2. `git diff --name-only <BASE>..HEAD -- docs-site/layouts docs-site/i18n` prints nothing (the footer file and its strings are unchanged).
+  - D3. `git grep -c -E '/utility-commands/moai-mx' HEAD -- docs-site ':!docs-site/vercel.json'` prints the same thirteen file entries as E-R9c, and AC-PRC-011 D1 to D3 hold, so those references land on existing pages.
+- **Does not detect:** a reference written in a form the greps do not match (a `relref` shortcode, a relative link, a script-built URL, a link inside `static/`); E-R9d found no `relref` or `ref` shortcode use in `content/` or `layouts/` at BASE (matches only inside the vendored theme), a pre-change observation. D1 confirms the rule strings are present, not that the deployed redirect works (E-R8). D3 proves the page files are present and not shadowed in the content model, not that the deployed site serves them.
 
 ### AC-REDIR-003 — locale parity and the docs build stay clean (REQ-REDIR-003) — regression-guard
 
@@ -86,15 +87,15 @@ Recorded first, per the card's before-start condition (Q23; leader ruling B04, `
 - **When** the change is committed and the checks run from the repository root.
 - **Then** both checks stay clean.
 - **Done when**:
-  - D1. `bash scripts/docs-i18n-check.sh` exits 0 and its summary reads `Errors:   0` and `Warnings: 0` (the tail of the output; output beyond 50 lines goes to a file). The exit code alone is not enough: a ko-only deletion exits 0 with warnings (E-R10b).
-  - D2. `hugo --minify --gc --source docs-site --destination <scratch>/public` exits 0 and prints no `WARN` or `ERROR` line (the recipe of `.claude/skills/hns-oss-docs-verify/SKILL.md` §1, with the destination moved to scratch). The baseline for this command was not measured in the plan phase (G2); M0 records it on the kickoff tree before any edit, and this criterion is unadopted until that baseline is green. The build needs no Go toolchain: `hugo.toml` declares no module (E-R13).
+  - D1. `bash scripts/docs-i18n-check.sh` exits 0 and its summary reads `Errors:   0` and `Warnings: 0` (the tail of the output; longer output goes to a file). The exit code alone is not enough: a ko-only deletion exits 0 with warnings (E-R10b).
+  - D2. `hugo --minify --gc --source docs-site --destination <scratch>/public` exits 0 and prints no `WARN` or `ERROR` line (the recipe of `.claude/skills/hns-oss-docs-verify/SKILL.md` §1 with the destination moved to scratch). No baseline for this command was measured in the plan phase (G2); M0 records it before any edit, and this criterion is unadopted until that baseline is green. The build needs no Go toolchain: `hugo.toml` declares no module (E-R13).
 - **Does not detect:** a deleted page whose absence only a content reader would notice; a Vercel-side build difference (the Vercel install step `hugo mod get -u` is not run locally); the deployed result.
 
 ## C. Evidence ledger
 
 Each entry gives the command, exit code, stdout, and attribution. Entries marked (wrapper) took their exit code from a measurement wrapper outside the cell.
 
-### E-R0 — the instrument text (sha256 `768a46f948d034a9ef5235495e4dae5ac5699f175b36b585ba1ee4920312a014`, 96 lines)
+### E-R0 — the instrument text (sha256 `2b1f4b47b7650583b5ce402daeb11c72dd205c11a7a1d6b0e7ee2b92f1eab3c4`, 104 lines)
 
 The run phase writes this block verbatim to `<scratch>/redirect-check.py` and checks `shasum -a 256 <scratch>/redirect-check.py` against the value above before use.
 
@@ -102,15 +103,18 @@ The run phase writes this block verbatim to `<scratch>/redirect-check.py` and ch
 import json, os, re, sys
 
 # redirect-check: modes "shadow" (REQ-PRC-011) and "resolve" (REQ-PRC-010).
-# argv: <mode> <root>; <root> holds vercel.json and content/<locale>/**.md
+# argv: <mode> <root> [<admitted-external-url>]; <root> holds vercel.json and content/<locale>/**.md
+# the optional third argument (resolve mode only) names one external destination that the requirement admits
 # exit 0 = no finding, 1 = findings, 2 = unreadable input or unsupported pattern token
 def die(msg):
     print("redirect-check: " + msg, file=sys.stderr)
     sys.exit(2)
 
-if len(sys.argv) != 3 or sys.argv[1] not in ("shadow", "resolve"):
-    die("usage: <shadow|resolve> <root>")
+if len(sys.argv) not in (3, 4) or sys.argv[1] not in ("shadow", "resolve"):
+    die("usage: <shadow|resolve> <root> [<admitted-external-url>]")
 mode, root = sys.argv[1], sys.argv[2]
+admit = sys.argv[3] if len(sys.argv) == 4 else None
+admitted = 0
 try:
     text = open(os.path.join(root, "vercel.json"), encoding="utf-8").read()
     cfg = json.loads(text)
@@ -183,6 +187,9 @@ for r in rules:
         for loc in src_locales(src):
             d = dst.replace(":locale", loc) if loc else dst
             if re.match(r"https?://", d):
+                if d == admit:
+                    admitted += 1
+                    continue
                 found += 1
                 print("%s:%d: source %s -> external destination %s" % ("vercel.json", ln, src, d))
                 continue
@@ -193,6 +200,8 @@ for r in rules:
                 continue
             found += 1
             print("%s:%d: source %s -> destination %s resolves to no page%s" % ("vercel.json", ln, src, d, " (locale %s)" % loc if loc else ""))
+if admit:
+    print("admitted external: %d" % admitted)
 print("%s: %d" % ("shadowed" if mode == "shadow" else "unresolved", found))
 sys.exit(1 if found else 0)
 ```
@@ -230,6 +239,8 @@ Reading: `pages=612` counts one URL per non-draft `.md` file; section URLs (a di
 ```
 
 - E-R2c. `git grep -c '"source"' 0ddf5ca48b -- docs-site/vercel.json` — exit 0 — `0ddf5ca48b:docs-site/vercel.json:42` (39 redirects, one rewrite, two header blocks; the instrument's `swept: redirects=39` is the redirect count).
+- E-R2d. `git grep -n -F '"source": "/:locale(ko|en|ja|zh)/utility-commands/moai-mx"' 0ddf5ca48b -- docs-site/vercel.json` — exit 0 — `...:163:      "source": "/:locale(ko|en|ja|zh)/utility-commands/moai-mx",`; and `git grep -n -F '"source": "/utility-commands/moai-mx"' 0ddf5ca48b -- docs-site/vercel.json` — exit 0 — `...:168:      "source": "/utility-commands/moai-mx",`.
+- E-R2e. `git grep -n -F -e '"source": "/changelog"' -e '"source": "/:locale(ko|en|ja|zh)/changelog"' 0ddf5ca48b -- docs-site/vercel.json` — exit 0 — lines 113 and 118. The same -F form for the destination string `"destination": "https://github.com/modu-ai/moai-adk/releases"` prints lines 114 and 119.
 - Reading: the rule blocks run from line 87 (the `{` before the first `agency` source) to line 101, from 112 to 121, and from 162 to 171. The card's "lines 87 to 101", "113 to 121", and "163, 168" match the source lines above; no drift.
 
 ### E-R3 — the pages in scope exist (positive control for the page-presence commands)
@@ -322,7 +333,7 @@ Built by `mkreal.py`: each copy holds `docs-site/vercel.json` and `docs-site/con
 | `q16del` | four changelog pages deleted (rules untouched) | exit 1, `swept: redirects=39 pages=608`, `shadowed: 4` (the four moai-mx pages) | exit 1, `unresolved: 14` |
 | `mutant-mxpages` | four moai-mx pages deleted, rules untouched | exit 1, `swept: redirects=39 pages=608`, `shadowed: 4` (the changelog pages only) | exit 1, `unresolved: 14` |
 
-Reading: `allrules` is the observed green path (32 = 39 - 3 - 2 - 2) for the combination Q15 Default, Q21 (a), Q23 (a); it leaves the changelog pages in place, and § D shows why that is the only coherent pairing for Q21 (a). `mutant-mxpages` shows the shadow check alone cannot tell a removed rule from a deleted page: D2 of AC-PRC-011 exists for that reason.
+Reading: these copies predate the a207 verdicts and explore other answers; the copy that applies the recorded change set is E-R14. `mutant-mxpages` shows the shadow check alone cannot tell a removed rule from a deleted page: D2 of AC-PRC-011 exists for that reason.
 
 ### E-R8 — deployed site, external observation (never a pass; deployed commit unknown)
 
@@ -391,31 +402,69 @@ OK: all 4 locales pass parity, frontmatter, H1, and glossary checks.
 - `git ls-files internal/template/templates` filtered for `docs-site` — 0 paths (docs-site is not template-mirrored).
 - `.github/workflows/docs-i18n-check.yml` contains no `redirect` or `vercel` match (`grep -n -i 'redirect\|vercel'` printed nothing): no workflow checks `vercel.json` today.
 
-## D. Branch table and Definition of Done
+### E-R14 — the a207 change set on scratch copies (before and after; outside the repository)
 
-### D.1 Expected end state by recorded answers
+Built by `mkexact.py` from the pinned tree: `before` holds the unchanged `docs-site/vercel.json` and `content/`. `a207` applies exactly the leader's stated change set: it removes the one rule object whose source is `/:locale(ko|en|ja|zh)/utility-commands/moai-mx` and deletes the four `changelog/_index.md` pages; it keeps line 168 and the two changelog rules. `a207-q15` adds the removal of the three `agency` rule objects (Q15 Default). Exit codes were printed by the script itself in the same run. Line numbers differ from the repository file because the scratch JSON is re-serialized; counts do not.
 
-`N` and `P` are the two numbers on the instrument's first output line: `swept: redirects=N pages=P`.
+Before (`before`, equal to E-R4 and E-R5): `shadow` exit 1, `swept: redirects=39 pages=612`, `shadowed: 8`; `resolve` exit 1, `unresolved: 14`.
 
-- N = 39 - 3 x [Q15 Default] - 2 x [Q21 = (a)] - k, with k = 2 for Q23 (a), k = 1 for Q23 (c), k = 0 for Q23 (b).
-- P = 612 - 4 x [Q16 Default].
-- `shadow` end state: no finding lines and exit 0; under Q23 (b) exactly the four moai-mx lines for the exempt source and exit 1.
-- `resolve` end state: no finding lines and exit 0; under Q21 (b) exactly the five external lines naming `https://github.com/modu-ai/moai-adk/releases` and exit 1.
+After, leader's change set only (`a207`):
 
-| Q21 | Q16 | Coherent? | Public changelog URL | Footer link `/changelog/` | Files changed |
-|-----|-----|-----------|----------------------|----------------------------|---------------|
-| (b) rules kept | Default (pages deleted) | yes | `/changelog` and `/<locale>/changelog` still redirect to GitHub Releases | resolves via line 118 | 5 (vercel.json + 4 pages) |
-| (a) rules removed | Alternate (pages kept) | yes | `/<locale>/changelog` serves the page; `/changelog` serves nothing | dead unless the footer changes | 2 (vercel.json, plus the footer file, which the card does not name; no page is deleted) |
-| (a) rules removed | Default (pages deleted) | no (REQ-REDIR-001) | serves nothing | dead | n/a |
-| (b) rules kept | Alternate | no | the Alternate removes the rules (b) keeps | n/a | n/a |
+```text
+$ redirect-check.py shadow a207            -> exit=0
+swept: redirects=38 pages=608 locales=en,ja,ko,zh
+shadowed: 0
 
-Reading the second row: with Q21 (a) and the Q16 Alternate no page is deleted, so the change touches two files, and one of them (`site-footer.html`) is outside the card's list of five. The card's scope is exceeded in which file changes, not in how many.
+$ redirect-check.py resolve a207           -> exit=1
+swept: redirects=38 pages=608 locales=en,ja,ko,zh
+(9 lines for the three agency rules, 5 lines for the two changelog rules)
+unresolved: 14
+
+$ redirect-check.py resolve a207 https://github.com/modu-ai/moai-adk/releases   -> exit=1
+swept: redirects=38 pages=608 locales=en,ja,ko,zh
+(9 lines for the three agency rules)
+admitted external: 5
+unresolved: 9
+```
+
+After, leader's change set plus the Q15 Default (`a207-q15`):
+
+```text
+$ redirect-check.py shadow a207-q15        -> exit=0
+swept: redirects=35 pages=608 locales=en,ja,ko,zh
+shadowed: 0
+
+$ redirect-check.py resolve a207-q15       -> exit=1
+swept: redirects=35 pages=608 locales=en,ja,ko,zh
+(5 external lines: the four locale-aware changelog destinations and the root-level one)
+unresolved: 5
+
+$ redirect-check.py resolve a207-q15 https://github.com/modu-ai/moai-adk/releases   -> exit=0
+swept: redirects=35 pages=608 locales=en,ja,ko,zh
+admitted external: 5
+unresolved: 0
+```
+
+Reading:
+
+- AC-PRC-011 (`shadow`) turns green (exit 0, `shadowed: 0`) with exactly the leader's change set. It does not need the `agency` removal.
+- AC-PRC-010 (`resolve`) does NOT turn green with the leader's stated change set alone: the three `agency` rules still point at a `design` section that exists nowhere (`unresolved: 14`, or 9 with the admitted URL). It turns green only when the Q15 Default (remove the three `agency` rules) is in the change set. Q15 is `DEFAULT-APPLIED` and is therefore part of this SPEC's change set (spec.md § Scope, plan.md M1), so the SPEC's end state is green; the leader's shorter list is not sufficient for AC-PRC-010 by itself.
+- Rules that stay and why they pass. Of the 35 remaining rules, 32 are outside this child: their sources match no page and their destinations are existing same-locale pages (the script prints no line for them). The three kept in-scope rules: the locale-aware changelog rule (line 113) matches no page once the four pages are deleted, and its external destination is the admitted URL; the root-level `/changelog` rule (line 118) matches no page (no page has a root-level URL) and carries the same admitted URL; the root-level moai-mx rule (line 168) matches no page, and its destination `/ko/utility-commands` exists.
+
+## D. End state and Definition of Done
+
+### D.1 Expected end state (decision-dependent branches collapsed)
+
+- Instrument first line: `swept: redirects=35 pages=608 locales=en,ja,ko,zh` (39 - 1 for Q23 (c) - 3 for the Q15 Default; 612 - 4 for the deleted pages).
+- `shadow` on `docs-site`: no finding lines, `shadowed: 0`, exit 0.
+- `resolve` on `docs-site` with the third argument `https://github.com/modu-ai/moai-adk/releases`: no finding lines, `admitted external: 5`, `unresolved: 0`, exit 0. Without the third argument it prints the five external lines and `unresolved: 5`, exit 1, by design.
+- Public behavior intended: `/changelog` and `/<locale>/changelog` redirect to GitHub Releases (rules kept); `/<locale>/utility-commands/moai-mx` serves the page; `/utility-commands/moai-mx` still redirects to `/ko/utility-commands`; the `/agency` URLs end in 404 without the redirect chain. Whether the deployed site shows this is external (E-R8).
+- Files changed: `docs-site/vercel.json` and the four `changelog/_index.md` pages; the footer file is unchanged.
 
 ### D.2 Definition of Done
 
-- AC-PRC-011 and AC-PRC-010: D1 to D5 / D1 to D4 hold at the closing commit, with the recorded Q23, Q16, Q15, and Q21 answers, and the verbatim output and exit code of each command are copied into progress.md §E.2 with the commit SHA.
-- AC-REDIR-001, AC-REDIR-002, AC-REDIR-003 hold; AC-REDIR-003 D2 has a green baseline recorded at M0.
-- The decision rows Q21 and Q23 each carry an operator verdict attributed to the operator with a UTC timestamp (a `DEFAULT-APPLIED` line does not satisfy a product-level row).
+- AC-PRC-011 D1 to D6 and AC-PRC-010 D1 to D4 hold at the closing commit; the verbatim output and exit code of each command are copied into progress.md §E.2 with the commit SHA.
+- AC-REDIR-001, -002, -003 hold; AC-REDIR-003 D2 has a green baseline recorded at M0.
 - Regression-guard criteria are re-run as observations and recorded; they are not counted as passes of the verdict.
 
 ## G. Gaps, unmeasured items, and residual risk
@@ -429,6 +478,9 @@ Reading the second row: with Q21 (a) and the Q16 Alternate no page is deleted, s
 - **G7 — The t1655 split documents.** The path given for them, `/Users/goos/MoAI/moai-adk-go/.moai/reports/worktrees/t1808/t1631/split-proposal.md`, holds a different card's document (SPEC-CAPACITY-RECLAIM-001, card t1631). The t1655 files were found at `/private/tmp/claude-501/-Users-goos-MoAI-moai-adk-go/26c6d7b7-2473-4c40-b89a-e97d49cc0edc/scratchpad/t1655-reports/.moai/reports/t1655/{child-cards.md,split-proposal.md}`, a session scratch directory that may not persist. The REDIR card text there matches the card text quoted in this SPEC (child-cards.md item 2; split-proposal.md §2 and §5 rows Q15, Q16, Q21).
 - **G8 — Vercel precedence and case rules.** Whether Vercel matches a `source` case-sensitively, and whether `trailingSlash: false` with `cleanUrls: true` normalizes every variant before the redirect, was not measured beyond the URLs in E-R8.
 - **G9 — Reference scan limits.** E-R9 covers text patterns for `href`, markdown links, `ref:` keys, and `relref`. It does not cover URLs assembled by script or template functions, and does not cover `docs-site/static`.
-- **G10 — The footer dependency is inferred.** That `/changelog/` is served only by the root-level rule at the former line 118 follows from the content tree (no page has a root-level URL, `defaultContentLanguageInSubdir = true`) and from E-R8 (the live answer is the rule's redirect). No request was made with that rule removed, so the dead-link outcome under Q21 (a) is an inference. The same holds for `/utility-commands/moai-mx` and the rule at the former line 168.
+- **G10 — The footer dependency is inferred.** That `/changelog/` is served by the root-level rule at the former line 118 follows from the content tree (no page has a root-level URL, `defaultContentLanguageInSubdir = true`) and from E-R8 (the live answer is the rule's redirect). No request was made with that rule removed. The chosen end state keeps the rule, so the inference matters only if a later change removes it. The same holds for `/utility-commands/moai-mx` and the kept rule at the former line 168.
 - **G11 — Installed `moai` provenance for the lint claim.** `moai spec lint ... --strict` and the `spec_audit` MCP call ran on the installed build `moai_cp/20261007_195927-1888-g7705b365e2`, built 2026-10-18T10:45:08Z. Its commit is a strict ancestor of the tree HEAD (`git merge-base --is-ancestor 7705b365e2 0ddf5ca48b` exits 0; `git rev-list --count 7705b365e2..0ddf5ca48b` prints 42). `git diff --name-only 7705b365e2 0ddf5ca48b -- internal/spec` prints nothing, so the SPEC lint rules are byte-identical between the two commits; other packages were not compared.
-- **Residual risk.** (1) An answer of Q21 (a) enlarges the change beyond the card's five files; the card's scope is not self-consistent with that answer until the leader decides. (2) Under Q23 (b) the 17 reference lines in E-R9c keep landing on the section index; the amendment records that, and does not repair it. (3) A deleted `changelog/_index.md` can reappear through a rebase that restores the file; AC-PRC-011 D4 and AC-REDIR-003 D1 are the guards, and both run at the closing commit only. (4) Q15 and Q16 carry `DEFAULT-APPLIED` verdicts that rest on external observations (E-R8) taken against a deployment of unknown commit.
+- **G12 — Admitted-URL argument.** The check script admits the third-argument URL for any source; the amended REQ-PRC-010 admits it only for `/:locale(ko|en|ja|zh)/changelog` and `/changelog`. AC-PRC-010 D3 (two destination lines) and AC-REDIR-001 D2 (N = 35) limit use of the string but do not prove the sources.
+- **G13 — Scratch line numbers.** In E-R14 the scratch `vercel.json` is re-serialized, so finding lines carry different line numbers than the repository file; only counts are comparable.
+- **G14 — Leader's change set versus AC-PRC-010.** The leader's stated change set (line 163 plus the four pages) does not by itself turn `resolve` green (E-R14: `unresolved: 14`). The SPEC's change set also removes the three `agency` rules under the `DEFAULT-APPLIED` Q15, which does (`unresolved: 0` with the admitted URL). If Q15's Default were struck, AC-PRC-010 would stay red on those nine lines.
+- **Residual risk.** (1) The kept rules at lines 113, 118, and 168 are intentional exceptions to a plain reading of "no redirect hides a page" and "every destination is internal": the first is safe because the pages are deleted, the second two match no page; the external destination is admitted by amendment only for the two changelog sources (G12). (2) The 17 reference lines in E-R9c land on the pages after line 163 is removed only on the next deployment; E-R8 is a pre-change observation. (3) A deleted `changelog/_index.md` can reappear through a rebase that restores the file; AC-PRC-011 D4 and AC-REDIR-003 D1 guard it at the closing commit only. (4) Q15 and Q17 carry `DEFAULT-APPLIED` verdicts that rest on external observations (E-R8) taken against a deployment of unknown commit.
