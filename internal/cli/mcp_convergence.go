@@ -110,6 +110,11 @@ type PerBackendVerdict struct {
 	// StderrTail is the bounded stderr tail of the codex child behind this verdict.
 	// It feeds the audit receipt's codex_error and never reaches the JSON output (t1788).
 	StderrTail string `json:"-"`
+	// RecordingDefect names a recording defect in this backend's verdict: its
+	// body stated `Verdict: pass` while the recorded verdict is fail because
+	// severity-tagged finding bullets outweighed it (card t1708). Information
+	// only — Verdict, disagreement_flag and the overall verdict are unchanged.
+	RecordingDefect string `json:"recording_defect,omitempty"`
 }
 
 // ConvergenceResult is the synthesis output of converge(...) — the single
@@ -520,6 +525,12 @@ type MultiAuditConfig struct {
 	// change. Validated by the handler, never here.
 	ProjectRoot string
 
+	// DeltaBase is the previously audited commit a delta audit measures from
+	// (card t1708). The handler validates it; the fan-out only carries it on the
+	// legs' context. Non-empty ⇒ no second-review record is written, because a
+	// delta call is not full-scope review coverage. Empty ⇒ byte-identical.
+	DeltaBase string
+
 	// OriginProvider is the launcher-owned initial provider. Only a Claude
 	// origin may reuse a caller-supplied in-session Claude anchor; GPT, GLM, and
 	// unknown origins must execute the actual Claude backend.
@@ -629,7 +640,7 @@ func performCodexAudit(ctx context.Context, target, focus, projectRoot string) R
 	params := map[string]any{
 		"target": target,
 		"model":  "", // model/effort resolution is delegated to the SSOT at the single-backend layer
-		"prompt": codexAdversarialReviewPrompt(focus),
+		"prompt": codexAdversarialPromptFor(ctx, focus),
 	}
 	if strings.TrimSpace(focus) != "" {
 		params["focus"] = focus
@@ -682,7 +693,7 @@ func performGLMAudit(ctx context.Context, target, focus, projectRoot string) Rev
 	if root == "" {
 		root = resolveProjectDir()
 	}
-	diff, err := collectReviewDiff(root, target)
+	diff, err := collectReviewDiffCtx(ctx, root, target)
 	if err != nil {
 		return glmInconclusive("no reviewable change: " + err.Error())
 	}
@@ -711,7 +722,8 @@ func performGLMAudit(ctx context.Context, target, focus, projectRoot string) Rev
 //     audited tree's workflow.yaml explicitly configures `required` fails the
 //     overall verdict when its backend returned no verdict (see
 //     enforceRequiredGateUnmet). Unset gates keep the fail-open behavior.
-//  6. DQ-1: persists the result to .moai/state/audit-multi/<session>.json.
+//  6. DQ-1: persists the result to .moai/state/audit-multi/<session>.json
+//     (a delta call, cfg.DeltaBase set, does not — see the persist step).
 //
 // It NEVER returns a hard error — every path produces a structured
 // ConvergenceResult (fail-open identity, C2). The orchestrator translates any
@@ -766,6 +778,9 @@ func runMultiAudit(ctx context.Context, claudeVerdict ReviewOutput, target, focu
 		parts []secondaryResult
 	)
 	eg, gctx := errgroup.WithContext(ctx)
+	if cfg.DeltaBase != "" {
+		gctx = withDeltaBase(gctx, cfg.DeltaBase) // every leg measures from the same previously audited commit
+	}
 	for _, s := range backends {
 		s := s
 		if s.gate == config.AuditGateOff {
@@ -812,6 +827,8 @@ func runMultiAudit(ctx context.Context, claudeVerdict ReviewOutput, target, focu
 					Source:        source,
 					Provenance:    p.out.Provenance,
 					StderrTail:    p.out.StderrTail,
+
+					RecordingDefect: p.out.RecordingDefect,
 				})
 			}
 		}
@@ -889,6 +906,16 @@ func runMultiAudit(ctx context.Context, claudeVerdict ReviewOutput, target, focu
 	if gateAssumedNote != "" && result.GateUnmet != "" {
 		result.ResidualRiskNote = gateAssumedNote + " | " + result.ResidualRiskNote
 	}
+	if cfg.DeltaBase != "" {
+		// A delta call states its own scope: the claude/glm legs that returned a
+		// verdict measured from the base exactly, codex was only asked to
+		// (turn/start has no target).
+		note := deltaScopeNote(cfg.DeltaBase, verdicts)
+		if result.ResidualRiskNote != "" {
+			note += " | " + result.ResidualRiskNote
+		}
+		result.ResidualRiskNote = note
+	}
 
 	// ── audit receipt (SPEC-CODEX-AUDIT-GATE-AXES-001 axis (b)) ──
 	// A receipt is recorded only when codex actually took part: a fan-out that
@@ -911,10 +938,17 @@ func runMultiAudit(ctx context.Context, claudeVerdict ReviewOutput, target, focu
 	// (REQ-WSR-003); a config-orphaned worktree whose primary cannot be
 	// identified has no store, so the write is skipped and the result says so
 	// (REQ-WSR-004).
+	//
+	// A delta call (card t1708) is not persisted at all: this file is the
+	// session's full-review verdict as the Stop gate reads it (it blocks on
+	// overall_verdict fail and checks no scope), so a delta pass written here
+	// would open the gate after a failed full review. Nothing else reads a
+	// per-session delta file, so a separate name would be dead state; the delta
+	// result goes to the caller and its audit receipt still records below.
 	if cfg.ProjectRoot != "" {
 		result.TreeRoot = cfg.ProjectRoot
 	}
-	if cfg.SessionID != "" {
+	if cfg.SessionID != "" && cfg.DeltaBase == "" {
 		var unresolved *auditreceipt.UnresolvedStoreError
 		if err := persistConvergenceResult(result, cfg.SessionID, cfg.ProjectRoot); errors.As(err, &unresolved) {
 			notices = append(notices, "convergence result for session "+cfg.SessionID+" not persisted: "+err.Error())
@@ -926,7 +960,8 @@ func runMultiAudit(ctx context.Context, claudeVerdict ReviewOutput, target, focu
 	// ── Append-only, after the existing persistence step. A failure rides
 	// the result's second_review_record_error — the audit result itself is
 	// never altered. Empty CardID skips the whole block byte-identically.
-	if cfg.CardID != "" {
+	// A delta call is not full-scope review coverage, so it files no record.
+	if cfg.CardID != "" && cfg.DeltaBase == "" {
 		if err := appendSecondReviewRecord(cfg, result, target); err != nil {
 			result.SecondReviewRecordError = err.Error()
 		}
