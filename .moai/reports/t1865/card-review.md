@@ -9,6 +9,15 @@ Card t1865, SPEC-UPDATE-OWNERSHIP-REPAIR-001, branch WT-update-ownership-repair.
 | 1 | `7b758103d8` | fail | 2 x P2 |
 | 2 | `f9c4c76d4f` | fail | 1 x P2 |
 | 3 | `1b5332af57` | pass | none |
+| 4 | `b5ffc48971` | fail | 3 x P2 (two fixed, one declined with a recorded reason) |
+
+Between rounds 3 and 4 an independent sync audit (HEAD `dfd7c40fb2`, FAIL, receipt `rcpt-7770ccadc2f78594b050e777`) found three further defects, fixed test-first in `e0c2896d64`, `d8fa645c41` and `fa26fcaf17` (an unregistered symlink out of the project read before the boundary check; a FIFO at the user-root counterpart hanging the verdict; two same-second updates sharing one prior-manifest file). Round 4 findings:
+
+- **P2, `migrate_ownership.go` — symlinked ancestor directory.** Confirmed in code: the guard looked only at the last path element, so a file below a symlinked parent that leaves the project was read. Fixed in `848bbc4707` (the whole path is resolved with `EvalSymlinks`; tests `780f7862f2`).
+- **P2, `update_prior_manifest.go` — temporary file left by a failed rename.** Confirmed: the legacy restore walk would copy it into `.moai/config`. Fixed in `d8a5f75053` (the failed write removes it; the restore walks skip `manifest.prior.json.tmp-*` at the backup root; tests `9cc9b77a01`).
+- **P2, `update/backup/restore.go` — a user file literally named `manifest.prior.json` in a legacy backup root is skipped by the restore.** Declined with a recorded reason (progress.md section E.2, chunk 10): only the unshipped restore bug fixed in `051ddc18ef` could have created such a file in `.moai/config`, the name is fixed by the SPEC, and a restore walk cannot tell the two apart. Disclosed as a limit in section E.4.
+
+The review is static and every round found a new defect class; the independent sync audit's required codex leg, not this advisory review, is the gate.
 
 ## Findings and dispositions
 
