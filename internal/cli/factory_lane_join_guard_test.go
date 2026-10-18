@@ -24,22 +24,41 @@ func TestFactorySerialSlotHeldRequiresADriver(t *testing.T) {
 	now := time.Now()
 	live := now.Add(time.Hour).Format(time.RFC3339Nano)
 	expired := now.Add(-time.Minute).Format(time.RFC3339Nano)
+	beat := now.Add(-time.Minute).Format(time.RFC3339Nano)
 	cases := []struct {
-		name string
-		card homestate.Card
-		want bool
+		name  string
+		card  homestate.Card
+		alive bool // what the assigned-owner reader answers
+		want  bool
 	}{
-		{"picked without owner or lease holds nothing", homestate.Card{CardID: "t1453", State: homestate.CardPicked}, false},
-		{"picked with an owner holds", homestate.Card{CardID: "t1", State: homestate.CardPicked, OwnerLabel: "lane-5"}, true},
-		{"assigned with an owner holds", homestate.Card{CardID: "t2", State: homestate.CardAssigned, OwnerLabel: "lane-2"}, true},
-		{"leased with a live lease holds", homestate.Card{CardID: "t3", State: homestate.CardLeased, OwnerLabel: "lane-1", LeaseHolder: "lane-1", LeaseExpiresAt: live}, true},
-		{"an expired lease frees", homestate.Card{CardID: "t4", State: homestate.CardLeased, OwnerLabel: "lane-1", LeaseHolder: "lane-1", LeaseExpiresAt: expired}, false},
-		{"merge-ready frees", homestate.Card{CardID: "t5", State: homestate.CardMergeReady, OwnerLabel: "lane-1"}, false},
+		{"picked without owner or lease holds nothing", homestate.Card{CardID: "t1453", State: homestate.CardPicked}, true, false},
+		{"picked with an owner holds", homestate.Card{CardID: "t1", State: homestate.CardPicked, OwnerLabel: "lane-5"}, false, true},
+		{"pure assigned with a live idle owner holds", homestate.Card{CardID: "t2", State: homestate.CardAssigned, OwnerLabel: "lane-2"}, true, true},
+		{"pure assigned with a dead or busy owner frees", homestate.Card{CardID: "t2", State: homestate.CardAssigned, OwnerLabel: "lane-2"}, false, false},
+		{"pure assigned without an owner frees", homestate.Card{CardID: "t2", State: homestate.CardAssigned}, true, false},
+		{"assigned with a heartbeat holds regardless of the owner reader", homestate.Card{CardID: "t2", State: homestate.CardAssigned, OwnerLabel: "lane-2", HeartbeatAt: beat}, false, true},
+		{"leased with a live lease holds", homestate.Card{CardID: "t3", State: homestate.CardLeased, OwnerLabel: "lane-1", LeaseHolder: "lane-1", LeaseExpiresAt: live}, false, true},
+		{"an expired lease frees", homestate.Card{CardID: "t4", State: homestate.CardLeased, OwnerLabel: "lane-1", LeaseHolder: "lane-1", LeaseExpiresAt: expired}, true, false},
+		{"merge-ready frees", homestate.Card{CardID: "t5", State: homestate.CardMergeReady, OwnerLabel: "lane-1"}, true, false},
 	}
 	for _, tc := range cases {
-		if got := factorySerialSlotHeld(tc.card, now); got != tc.want {
+		asked := ""
+		reader := func(c homestate.Card) bool { asked = c.OwnerLabel; return tc.alive }
+		if got := factorySerialSlotHeld(tc.card, now, reader); got != tc.want {
 			t.Errorf("%s: held=%v, want %v", tc.name, got, tc.want)
 		}
+		// The owner reader is consulted only for a pure assignment.
+		wantAsked := tc.card.OwnerLabel != "" && tc.card.State == homestate.CardAssigned && tc.card.HeartbeatAt == ""
+		if wantAsked && asked == "" {
+			t.Errorf("%s: assigned-owner reader never consulted for a pure assignment", tc.name)
+		}
+		if !wantAsked && asked != "" {
+			t.Errorf("%s: assigned-owner reader consulted for %q outside a pure assignment", tc.name, asked)
+		}
+	}
+	// A nil reader frees a pure assignment (no roster to ask).
+	if factorySerialSlotHeld(homestate.Card{CardID: "t2", State: homestate.CardAssigned, OwnerLabel: "lane-2"}, now, nil) {
+		t.Errorf("nil reader: a pure assignment held the slot")
 	}
 }
 
