@@ -95,7 +95,14 @@ func sdBranchOf(t *testing.T, dir string) string {
 func TestSD_AC011_CardWorktreeCreateReuseRefuse(t *testing.T) {
 	t.Run("leased card with no recorded worktree gains one through the materializer", func(t *testing.T) {
 		root, store := fcFixture(t)
+		// SPEC-CARD-ELIGIBLE-PULL-001 update (sync-audit F6): this arm-(b2)
+		// lease is the cell's vehicle; the flag is armed and the vehicle
+		// carries a spec id (amendment 0.3.0 fail-closed condition 2) so the
+		// subject — the materializer's worktree creation — stays covered
+		// behind the gate.
+		cepSelfDispatchYAML(t, root, true)
 		fcQueue(t, store, factory.BacklogStatePicked)
+		cepSetSpecID(t, store, "t1", "SPEC-AC011-WT-001")
 		sdRegisterLane(t, root, "lane-1")
 		sdLaneEnv(t, "lane-1", "")
 		t.Chdir(root)
@@ -147,7 +154,13 @@ func TestSD_AC011_CardWorktreeCreateReuseRefuse(t *testing.T) {
 
 	t.Run("existing directory no card record names it: refuse, row unchanged", func(t *testing.T) {
 		root, store := fcFixture(t)
+		// SPEC-CARD-ELIGIBLE-PULL-001 update (sync-audit F6): this arm-(b)
+		// lease is the cell's vehicle; the flag is armed and the vehicle
+		// carries a spec id so the subject — the REQ-SD-011 foreign-directory
+		// refusal — stays covered behind the gate.
+		cepSelfDispatchYAML(t, root, true)
 		fcQueue(t, store, factory.BacklogStatePicked)
+		cepSetSpecID(t, store, "t1", "SPEC-AC011-FOR-001")
 		sdRegisterLane(t, root, "lane-1")
 		fcPlace(t, root, homestate.Card{CardID: "t1", State: homestate.CardPicked})
 		foreign := filepath.Join(sdWorktreesDir(root), "t1")

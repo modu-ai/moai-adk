@@ -1172,6 +1172,18 @@ next#3 exit=0 head="t3 stage=- worktree=t3" stderr=""
 next#4 exit=0 head="t1 stage=- worktree=t1" stderr=""
 next#5 exit=0 head="t2 stage=- worktree=t2" stderr=""
 next#6 exit=3 head="no card is available" stderr=""`,
+	// SPEC-CARD-ELIGIBLE-PULL-001 (sync-audit round-2 F6): the same fixture
+	// under the OFF default (self_dispatch absent). The generic arms are
+	// dormant, so after the assigned card leases, selection reaches the
+	// queued cards through arm (c) and the unowned picked pair (t4, t3)
+	// answers no-card — quietly, no refusal lines (REQ-CEP-001). The three
+	// trailing no-card answers are the dormancy contract's own transcript.
+	"arm-order-off-dormancy": `next#1 exit=0 head="t5 stage=run worktree=t5" stderr=""
+next#2 exit=0 head="t1 stage=- worktree=t1" stderr=""
+next#3 exit=0 head="t2 stage=- worktree=t2" stderr=""
+next#4 exit=3 head="no card is available" stderr=""
+next#5 exit=3 head="no card is available" stderr=""
+next#6 exit=3 head="no card is available" stderr=""`,
 	"wait-bound": `next --wait exit=3 head="no card is available" stderr="" sleeps=2`,
 	"quota-hold": `next#1 exit=0 head="t4 stage=run worktree=t4" stderr=""
 next#2 exit=3 head="" stderr="quota hold: five_hour used=92.0% resets_at=2026-09-26T12:00:00Z"`,
@@ -1200,7 +1212,21 @@ func TestFactoryNextBareUnchanged(t *testing.T) {
 		// Queue order is deliberately NOT arm order: two queued cards first,
 		// then a queue-picked card with no row (b2), an operator-picked card with
 		// a row (b), and a card assigned to this lane (a).
-		root, _ := nmBase(t, factory.BacklogStateQueued, factory.BacklogStateQueued, factory.BacklogStatePicked, factory.BacklogStatePicked, factory.BacklogStatePicked)
+		//
+		// SPEC-CARD-ELIGIBLE-PULL-001 (sync-audit round-2 F6): this golden
+		// pinned the UNGATED arm order; the dormancy contract necessarily
+		// changed the default path, so the golden runs behind the armed flag
+		// with spec ids on the (b)/(b2) vehicles. Judgment recorded in
+		// progress.md §E.2: the pinned EXPECTATION is unchanged — arm order
+		// (a)→(b)→(b2)→(c) is orthogonal to admission (the gate filters
+		// candidates inside the generic arms, it does not reorder them), so
+		// arming preserves the transcript verbatim and keeps the precedence
+		// subject pinned under ON. The OFF default gets its own transcript
+		// below ("arm-order-off-dormancy") — the expectation flip.
+		root, store := nmBase(t, factory.BacklogStateQueued, factory.BacklogStateQueued, factory.BacklogStatePicked, factory.BacklogStatePicked, factory.BacklogStatePicked)
+		cepSelfDispatchYAML(t, root, true)
+		cepSetSpecID(t, store, "t3", "SPEC-ARMORD-B2")
+		cepSetSpecID(t, store, "t4", "SPEC-ARMORD-B")
 		fcPlace(t, root,
 			homestate.Card{CardID: "t4", State: homestate.CardPicked},
 			homestate.Card{CardID: "t5", State: homestate.CardAssigned, OwnerLabel: "lane-1", Stage: homestate.CardRun},
@@ -1212,6 +1238,24 @@ func TestFactoryNextBareUnchanged(t *testing.T) {
 			steps = append(steps, nmStep(fmt.Sprintf("next#%d", i), out, stderr, err))
 		}
 		nmCompareGolden(t, "arm-order", steps)
+	})
+	t.Run("arm-order-off-dormancy", func(t *testing.T) {
+		// The expectation flip (plan §D, RED observed at HEAD: the old
+		// ungated golden failed with next#2 head="t1" via arm (c)): the same
+		// fixture under the OFF default — t5 leases via arm (a), the queued
+		// pair via arm (c), and the unowned picked pair is silently skipped.
+		root, _ := nmBase(t, factory.BacklogStateQueued, factory.BacklogStateQueued, factory.BacklogStatePicked, factory.BacklogStatePicked, factory.BacklogStatePicked)
+		fcPlace(t, root,
+			homestate.Card{CardID: "t4", State: homestate.CardPicked},
+			homestate.Card{CardID: "t5", State: homestate.CardAssigned, OwnerLabel: "lane-1", Stage: homestate.CardRun},
+		)
+		nmLaneEnv(t, "lane-1", "")
+		var steps []string
+		for i := 1; i <= 6; i++ {
+			out, stderr, err := qasRunNext(t, "--run", fcRun)
+			steps = append(steps, nmStep(fmt.Sprintf("next#%d", i), out, stderr, err))
+		}
+		nmCompareGolden(t, "arm-order-off-dormancy", steps)
 	})
 	t.Run("wait-bound", func(t *testing.T) {
 		nmBase(t)
