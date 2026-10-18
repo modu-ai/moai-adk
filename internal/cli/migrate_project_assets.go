@@ -243,6 +243,9 @@ func migrateProjectCommonAssets(projectRoot, homeDir string, userAssetsInstalled
 		profileMapped:  profileMapped,
 		removalEnabled: removalEnabled,
 		rootResolved:   rootResolved,
+		counterpartStatus: func(rel string) counterpartStatus {
+			return userCounterpartStatus(userManifest, cat, embedded, homeDir, rel)
+		},
 	}
 	for _, rootRel := range projectCommonAssetRels {
 		absRoot := filepath.Join(projectRoot, filepath.FromSlash(rootRel))
@@ -269,7 +272,7 @@ func migrateProjectCommonAssets(projectRoot, homeDir string, userAssetsInstalled
 			// evidence items (migrate_ownership_evidence.go).
 			v := classifyOwnershipFn(env, relSlash, p)
 			if !v.removalEligible && rc != nil {
-				rc.remaining = append(rc.remaining, remainingRow{Rel: relSlash, Class: v.class, Reason: v.keep, Missing: v.missing})
+				rc.remaining = append(rc.remaining, v.row(relSlash))
 			}
 			tag := reasonTag(v)
 			switch v.class {
@@ -346,7 +349,7 @@ func migrateProjectCommonAssets(projectRoot, homeDir string, userAssetsInstalled
 			// prior-manifest copy (REQ-OWR-016) — see the batch step below.
 			candidates = append(candidates, removalCandidate{
 				rel: relSlash, abs: p, data: v.data,
-				row: remainingRow{Rel: relSlash, Class: v.class, Reason: keepBackupFailed},
+				row: v.rowKeptFor(relSlash, keepBackupFailed),
 			})
 			return nil
 		})

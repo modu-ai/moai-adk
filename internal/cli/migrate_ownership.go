@@ -20,11 +20,15 @@ package cli
 // reason. Nothing here ever promotes a file on byte equality with a template.
 
 import (
+	"errors"
+	"io/fs"
 	"os"
 	"path/filepath"
 	"strings"
 
 	"github.com/modu-ai/moai-adk/internal/manifest"
+	"github.com/modu-ai/moai-adk/internal/template"
+	"github.com/modu-ai/moai-adk/internal/userassets"
 )
 
 // ownershipClass is the closed ownership class set.
@@ -96,6 +100,30 @@ func isKnownKeepReason(r keepReason) bool {
 	return false
 }
 
+// counterpartStatus is the state of a file's user-root counterpart (design.md
+// D-7). `n/a` is for a row whose verdict never reached the counterpart question
+// (a user-modified file, an unattested unregistered file) or whose path has no
+// installer source to be a counterpart of.
+type counterpartStatus string
+
+const (
+	counterpartStatusConfirmed     counterpartStatus = "confirmed"
+	counterpartStatusAbsent        counterpartStatus = "absent"
+	counterpartStatusUnconfirmed   counterpartStatus = "unconfirmed"
+	counterpartStatusNotApplicable counterpartStatus = "n/a"
+)
+
+// profileSideStatus is the state of the profile-side counterpart. This update
+// never opens a profile root (REQ-OWR-005, decision index Q5), so a project the
+// launch ledger maps to a profile records `not-checked` and any other project
+// `n/a`; there is no third state because nothing here reads that side.
+type profileSideStatus string
+
+const (
+	profileSideNotChecked    profileSideStatus = "not-checked"
+	profileSideNotApplicable profileSideStatus = "n/a"
+)
+
 // remainingRow is one file the migration leaves in place: the unit of the
 // remaining-file list (REQ-OWR-009).
 type remainingRow struct {
@@ -103,6 +131,10 @@ type remainingRow struct {
 	Class   ownershipClass
 	Reason  keepReason
 	Missing []evidenceItem
+	// Counterpart is the user-root counterpart state; ProfileSide the profile
+	// side (always `not-checked` for a profile-mapped project).
+	Counterpart counterpartStatus
+	ProfileSide profileSideStatus
 }
 
 // ownershipEnv carries the inputs of a verdict. Every field is read-only
@@ -124,6 +156,22 @@ type ownershipEnv struct {
 	removalEnabled bool
 	// rootResolved is the project root resolved through symlinks.
 	rootResolved string
+	// counterpartStatus optionally reports the counterpart's state for the
+	// remaining row. When nil the state is derived from counterpartConfirmed
+	// (confirmed or unconfirmed). It never decides the disposition: that stays
+	// with counterpartConfirmed.
+	counterpartStatus func(rel string) counterpartStatus
+}
+
+// counterpartOf reports the user-root counterpart state of rel for a row.
+func (e ownershipEnv) counterpartOf(rel string) counterpartStatus {
+	if e.counterpartStatus != nil {
+		return e.counterpartStatus(rel)
+	}
+	if e.counterpartConfirmed(rel) {
+		return counterpartStatusConfirmed
+	}
+	return counterpartStatusUnconfirmed
 }
 
 // ownershipVerdict is the verdict for one file.
@@ -143,6 +191,34 @@ type ownershipVerdict struct {
 	data []byte
 	// bytesMatchTemplate is true when the bytes equal the recorded template hash.
 	bytesMatchTemplate bool
+	// counterpart is the user-root counterpart state, set when the verdict
+	// reached the counterpart question; profileSide is set for every verdict.
+	counterpart counterpartStatus
+	profileSide profileSideStatus
+}
+
+// row renders the verdict as a remaining-list row for rel. A state the verdict
+// never established is `n/a`, never an empty string.
+func (v ownershipVerdict) row(rel string) remainingRow {
+	r := remainingRow{
+		Rel: rel, Class: v.class, Reason: v.keep, Missing: v.missing,
+		Counterpart: v.counterpart, ProfileSide: v.profileSide,
+	}
+	if r.Counterpart == "" {
+		r.Counterpart = counterpartStatusNotApplicable
+	}
+	if r.ProfileSide == "" {
+		r.ProfileSide = profileSideNotApplicable
+	}
+	return r
+}
+
+// rowKeptFor is the row of a removal-eligible file that stays because the run
+// could not take every backup copy: same facts, the given keep reason.
+func (v ownershipVerdict) rowKeptFor(rel string, reason keepReason) remainingRow {
+	r := v.row(rel)
+	r.Reason = reason
+	return r
 }
 
 // classifyOwnershipFn is the verdict function the migration calls. It is a
@@ -151,8 +227,21 @@ type ownershipVerdict struct {
 var classifyOwnershipFn = classifyOwnership
 
 // classifyOwnership decides the ownership class and the disposition of the file
-// at abs, whose project-relative slash path is rel.
+// at abs, whose project-relative slash path is rel. It also records the profile
+// side of the row: `not-checked` for a profile-mapped project, because no code
+// here reads a profile root (REQ-OWR-005).
 func classifyOwnership(env ownershipEnv, rel, abs string) ownershipVerdict {
+	v := classifyOwnershipCore(env, rel, abs)
+	if env.profileMapped {
+		v.profileSide = profileSideNotChecked
+	} else {
+		v.profileSide = profileSideNotApplicable
+	}
+	return v
+}
+
+// classifyOwnershipCore is the class and disposition decision proper.
+func classifyOwnershipCore(env ownershipEnv, rel, abs string) ownershipVerdict {
 	entry, registered := env.entry(rel)
 	if !registered || entry == nil {
 		return classifyUnregistered(env, rel, abs)
@@ -212,6 +301,7 @@ func classifyUnregistered(env ownershipEnv, rel, abs string) ownershipVerdict {
 // profile reach, user counterpart, root boundary, removal switch. The first
 // gate that does not hold names the keep reason.
 func disposition(env ownershipEnv, v ownershipVerdict, rel, abs string) ownershipVerdict {
+	v.counterpart = env.counterpartOf(rel)
 	// A project the launch ledger maps to a profile keeps its shipped copies
 	// (template_managed); a retired (deprecated) copy is not in the kept set.
 	if env.profileMapped && v.provenance == manifest.TemplateManaged {
@@ -253,4 +343,46 @@ func reasonTag(v ownershipVerdict) string {
 		tag += "; missing evidence: " + strings.Join(names, ", ")
 	}
 	return tag + "]"
+}
+
+// userCounterpartLocation maps a project common-asset path to the user-root slug
+// and the root-relative path of its counterpart (the same mapping
+// userCounterpartConfirmed applies), and reports false for a path outside the
+// four common-asset roots.
+func userCounterpartLocation(projectRel string) (slug userassets.RootSlug, rest string, ok bool) {
+	switch {
+	case strings.HasPrefix(projectRel, ".claude/skills/"):
+		return userassets.RootClaudeSkills, strings.TrimPrefix(projectRel, ".claude/skills/"), true
+	case strings.HasPrefix(projectRel, ".agents/skills/"):
+		return userassets.RootAgentsSkills, strings.TrimPrefix(projectRel, ".agents/skills/"), true
+	case strings.HasPrefix(projectRel, ".claude/agents/moai/"):
+		return userassets.RootClaudeAgents, strings.TrimPrefix(projectRel, ".claude/agents/moai/"), true
+	case strings.HasPrefix(projectRel, ".codex/agents/moai/"):
+		return userassets.RootCodexAgents, strings.TrimPrefix(projectRel, ".codex/agents/moai/"), true
+	}
+	return "", "", false
+}
+
+// userCounterpartStatus reports the state of projectRel's user-root counterpart
+// for a remaining row. It agrees with userCounterpartConfirmed on `confirmed`;
+// for anything else it separates a counterpart that is not there (`absent`)
+// from one that is there but cannot be confirmed (`unconfirmed`: untracked,
+// differing bytes, or not this version's content), and answers `n/a` for a path
+// that has no installer source at all.
+func userCounterpartStatus(userManifest *userassets.Manifest, cat *template.Catalog, embedded fs.FS, homeDir, projectRel string) counterpartStatus {
+	if userCounterpartConfirmed(userManifest, cat, embedded, homeDir, projectRel) {
+		return counterpartStatusConfirmed
+	}
+	slug, rest, ok := userCounterpartLocation(projectRel)
+	if !ok || skillNotInCatalog(cat, projectRel) {
+		return counterpartStatusNotApplicable
+	}
+	dir := userassets.RootBySlugDir(homeDir, slug)
+	if dir == "" {
+		return counterpartStatusNotApplicable
+	}
+	if _, err := os.Stat(filepath.Join(dir, filepath.FromSlash(rest))); err != nil && errors.Is(err, fs.ErrNotExist) {
+		return counterpartStatusAbsent
+	}
+	return counterpartStatusUnconfirmed
 }
