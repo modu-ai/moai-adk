@@ -460,17 +460,94 @@ func caaDatedRepo(t *testing.T, at time.Time, signatureTrap bool) (dir, marker s
 	return dir, marker
 }
 
-// TestFactoryAgeAlarmGitEnvIsolation pins sync-audit iter1 F1 and F2: the
-// commit-signal reader of REQ-CAA-004 is repo-isolated and helper-free. An
-// inherited GIT_DIR / GIT_WORK_TREE (git exports them into every hook process)
-// outranks `git -C` and would redirect the read to a foreign repository — the
-// commit signal then reports the foreign head and a stale-card alarm is
-// suppressed (F1). A repo config with log.showSignature=true and a gpg.program
-// executes that helper program during the read (F2). The trap is armed in BOTH
-// repositories so the marker assertion fails whichever repository a
-// non-isolated read lands in: the foreign one (env leak) or the target's own
-// config (env scrub without the signature flag — the two fixes must land
-// together).
+// caaLazyFetchTrapRepo builds the sync-audit iter2 N1 trap: a repository whose
+// head commit object is missing and whose config arms git's lazy fetch at a
+// helper program. extensions.partialClone turns a missing-object read into a
+// lazy fetch against remote.origin.url; that URL is an ext:: transport the
+// repo config allows (protocol.ext.allow=always), so the helper executes
+// whenever the read lazily fetches. The missing object is made the cheap
+// honest way — the object store is moved aside after the commit (kept in the
+// temp root, removed with it at cleanup) and an empty one recreated; no
+// network, no pruning, deterministic. The helper records each invocation in
+// the marker file and exits 1, so a lazy fetch both executes repo-designated
+// code and fails the read. It deliberately does NOT read stdin: the ext
+// transport keeps the pipe open and a reader would block the read.
+func caaLazyFetchTrapRepo(t *testing.T, at time.Time) (dir, marker string) {
+	t.Helper()
+	root := t.TempDir()
+	dir = filepath.Join(root, "repo")
+	marker = filepath.Join(root, "lazy-fetch-ran")
+	if err := os.MkdirAll(dir, 0o750); err != nil {
+		t.Fatal(err)
+	}
+	git := func(args ...string) {
+		t.Helper()
+		cmd := exec.Command("git", append([]string{"-C", dir}, args...)...)
+		cmd.Env = append(os.Environ(),
+			"GIT_COMMITTER_DATE="+at.Format(time.RFC3339),
+			"GIT_AUTHOR_DATE="+at.Format(time.RFC3339),
+		)
+		if out, err := cmd.CombinedOutput(); err != nil {
+			t.Fatalf("git %v: %v\n%s", args, err, out)
+		}
+	}
+	git("init", "-q", "-b", "main")
+	if err := os.WriteFile(filepath.Join(dir, "a.txt"), []byte("a\n"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	git("add", "a.txt")
+	git("commit", "-q", "-m", "head soon missing")
+	if err := os.Rename(filepath.Join(dir, ".git", "objects"), filepath.Join(root, "objects-setaside")); err != nil {
+		t.Fatal(err)
+	}
+	for _, sub := range []string{"info", "pack"} {
+		if err := os.MkdirAll(filepath.Join(dir, ".git", "objects", sub), 0o750); err != nil {
+			t.Fatal(err)
+		}
+	}
+	helper := filepath.Join(root, "fake-ext-helper.sh")
+	script := fmt.Sprintf("#!/bin/sh\necho run >> %q\nexit 1\n", marker)
+	if err := os.WriteFile(helper, []byte(script), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	git("config", "remote.origin.url", "ext::"+helper)
+	git("config", "protocol.ext.allow", "always")
+	git("config", "extensions.partialClone", "origin")
+	// Premise control: the helper script itself runs and leaves the marker,
+	// so the marker mechanism is proven before the read's absence is read as
+	// isolation (the F2 pattern). The script exits 1 by design — a lazy fetch
+	// must fail fast — so the marker, not the exit code, is the premise. The
+	// lazy-fetch invocation of the helper is pinned by the leg failing on the
+	// pre-fix code — the RED run observes it.
+	_ = exec.Command("/bin/sh", helper).Run()
+	if _, err := os.Stat(marker); err != nil {
+		t.Fatalf("premise control: the ext helper ran but left no marker (%s): the marker mechanism is broken", marker)
+	}
+	if err := os.Remove(marker); err != nil {
+		t.Fatal(err)
+	}
+	return dir, marker
+}
+
+// TestFactoryAgeAlarmGitEnvIsolation pins sync-audit iter1 F1 and F2 and
+// sync-audit iter2 N1: the commit-signal reader of REQ-CAA-004 is
+// repo-isolated and helper-free. An inherited GIT_DIR / GIT_WORK_TREE (git
+// exports them into every hook process) outranks `git -C` and would redirect
+// the read to a foreign repository — the commit signal then reports the
+// foreign head and a stale-card alarm is suppressed (F1). A repo config with
+// log.showSignature=true and a gpg.program executes that helper program
+// during the read (F2). The trap is armed in BOTH repositories so the marker
+// assertion fails whichever repository a non-isolated read lands in: the
+// foreign one (env leak) or the target's own config (env scrub without the
+// signature flag — the two fixes must land together). A promisor worktree
+// whose head object is missing arms git's lazy fetch: without
+// GIT_NO_LAZY_FETCH=1 the read fetches through remote.origin.url — an ext::
+// transport the repo config allows — so the repo-designated helper program
+// executes (N1); with the pin the read fails without external access and the
+// commit signal renders unknown. The N1 leg's mutant discriminator is the
+// lazy-fetch marker (both mutant and fixed read render unknown on this
+// deterministic miss); the commit=unknown assertion documents the miss, the
+// marker assertion kills the mutant.
 func TestFactoryAgeAlarmGitEnvIsolation(t *testing.T) {
 	_, _ = fcFixture(t)
 	root := factoryCardRoot()
@@ -479,6 +556,7 @@ func TestFactoryAgeAlarmGitEnvIsolation(t *testing.T) {
 	// being created, not the foreign context armed below.
 	target, targetMarker := caaDatedRepo(t, fcNow.Add(-5*time.Hour), true)
 	foreign, foreignMarker := caaDatedRepo(t, fcNow.Add(-5*time.Hour).Add(-365*24*time.Hour), true)
+	lazyRepo, lazyMarker := caaLazyFetchTrapRepo(t, fcNow.Add(-5*time.Hour))
 	// Premise control: the fake signer ran during setup, so the marker
 	// mechanism itself is proven before its absence is read as isolation.
 	for _, m := range []string{targetMarker, foreignMarker} {
@@ -492,23 +570,36 @@ func TestFactoryAgeAlarmGitEnvIsolation(t *testing.T) {
 	t.Setenv("GIT_DIR", filepath.Join(foreign, ".git"))
 	t.Setenv("GIT_WORK_TREE", foreign)
 
-	fcPlace(t, root, homestate.Card{
-		CardID: "enviso", State: homestate.CardRun,
-		UpdatedAt:    fcNow.Add(-10 * time.Hour).Format(time.RFC3339Nano),
-		WorktreePath: target,
-	})
+	fcPlace(t, root,
+		homestate.Card{
+			CardID: "enviso", State: homestate.CardRun,
+			UpdatedAt:    fcNow.Add(-10 * time.Hour).Format(time.RFC3339Nano),
+			WorktreePath: target,
+		},
+		homestate.Card{
+			CardID: "lazyfetch", State: homestate.CardRun,
+			UpdatedAt:    fcNow.Add(-10 * time.Hour).Format(time.RFC3339Nano),
+			WorktreePath: lazyRepo,
+		},
+	)
 	out, _, err := runFactory(t, "status")
 	if err != nil {
 		t.Fatalf("factory status: %v", err)
 	}
-	var alarmLine string
+	var alarmLine, lazyLine string
 	for _, l := range strings.Split(strings.TrimRight(out, "\n"), "\n") {
 		if strings.HasPrefix(l, "age-alarm card=enviso ") {
 			alarmLine = l
 		}
+		if strings.HasPrefix(l, "age-alarm card=lazyfetch ") {
+			lazyLine = l
+		}
 	}
 	if alarmLine == "" {
 		t.Fatalf("no alarm row for the env-isolation card:\n%s", out)
+	}
+	if lazyLine == "" {
+		t.Fatalf("no alarm row for the lazy-fetch card:\n%s", out)
 	}
 	// F1: the commit signal reads the card's worktree head (committer-dated
 	// fcNow-5h), never the foreign repository the inherited GIT_DIR names
@@ -521,5 +612,14 @@ func TestFactoryAgeAlarmGitEnvIsolation(t *testing.T) {
 		if _, err := os.Stat(m); err == nil {
 			t.Errorf("the gpg helper of the %s repository executed during the commit read (F2): %s exists", repo, m)
 		}
+	}
+	// N1: the missing head object renders the commit signal unknown (the
+	// deterministic miss — the value the fixed code must produce), and no
+	// lazy fetch ran the repo-designated ext helper during the read.
+	if !strings.Contains(lazyLine, " commit=unknown") {
+		t.Errorf("commit signal on the missing-object promisor worktree =\n  %s\nwant commit=unknown", lazyLine)
+	}
+	if _, err := os.Stat(lazyMarker); err == nil {
+		t.Errorf("the ext helper of the promisor worktree executed during the commit read (N1: git lazily fetched through remote.origin.url): %s exists", lazyMarker)
 	}
 }
