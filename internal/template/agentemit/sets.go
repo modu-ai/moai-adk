@@ -45,13 +45,22 @@ func (s Summary) String() string {
 	return fmt.Sprintf("specs=%d copies=%d diff=%d", s.Specs, s.Copies, len(s.Diffs))
 }
 
-// DefaultLayout is the layout `make agents-emit` and `make agents-emit-check` use.
+// CarriedFour names the agents whose project copies (the local .claude and
+// .codex definitions) are generated too. The project copies of the other
+// agents stay hand-managed until the follow-on piece absorbs or retires them.
+var CarriedFour = []string{"builder-harness", "e2e-tester", "manager-design", "super-advisor"}
+
+// DefaultLayout is the layout `make agents-emit` and `make agents-emit-check` use:
+// the template Markdown (C2) and Codex (C3) sets for every source, and the
+// project Markdown (C1) and Codex (C3p) sets for the carried four.
 func DefaultLayout() Layout {
 	return Layout{
 		SourceDir: "internal/template/agentemit/source",
 		Targets: []Target{
 			{Name: "claude_template", Dir: "internal/template/templates/.claude/agents/moai"},
 			{Name: "codex_template", Dir: "internal/template/templates/.codex/agents/moai", Codex: true},
+			{Name: "claude_project", Dir: ".claude/agents/moai", Only: CarriedFour},
+			{Name: "codex_project", Dir: ".codex/agents/moai", Codex: true, Only: CarriedFour},
 		},
 	}
 }

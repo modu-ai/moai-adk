@@ -88,25 +88,26 @@ Never add files directly to the local project directories without also adding th
 
 **Verification**: Before committing, check that every new file under `.claude/`, `.moai/`, or `.agency/` has a corresponding file in `internal/template/templates/`.
 
-### [HARD] §2.0 There are three copies of the agent definitions, and the third is not edited by hand
+### [HARD] §2.0 There are three copies of the agent definitions, and only the agent source is edited by hand (C1 of the eight agents not yet generated is the exception until piece 2)
 
-Agent definitions exist in three copies, but **only one of them is not a hand-edit target.**
+Agent definitions exist in three copies, rendered from one edit surface: the agent source layer `internal/template/agentemit/source/*.md`. **The agent source is the sole edit surface**; none of the three copies is a hand-edit target for the generated agents.
 
 | Copy | Path | Nature |
 |---|---|---|
-| C1 | `.claude/agents/moai/*.md` | Local dogfooding, hand-edited |
-| C2 | `internal/template/templates/.claude/agents/moai/*.md` | Distribution mirror, hand-edited — **the neutral source layer** |
-| C3 | `internal/template/templates/.codex/agents/moai/*.toml` | **Machine-emitted from C2** (`internal/template/agentemit`) |
+| C1 | `.claude/agents/moai/*.md` | Local dogfooding; rendered from the agent source and byte-identical to C2 for the generated agents (builder-harness, e2e-tester, manager-design, super-advisor); hand-edited for the remaining agents until piece 2 absorbs or retires them |
+| Source | `internal/template/agentemit/source/*.md` | **The only hand-edited layer** |
+| C2 | `internal/template/templates/.claude/agents/moai/*.md` | Distribution mirror, **rendered from the agent source** |
+| C3 | `internal/template/templates/.codex/agents/moai/*.toml` | **Machine-rendered from the agent source** (`internal/template/agentemit`) |
 
-[HARD] **If you have edited `internal/template/templates/.claude/agents/moai/*.md`, run `make agents-emit`.** Otherwise `internal/template/templates/.codex/agents/moai/*.toml` stays stale, and a binary built in that state runs with the old definitions embedded. C1 ↔ C2 is **not** a byte-identical relationship (an intentional divergence); the generation relationship runs in one direction only, C2 → C3.
+[HARD] **If you have edited the agent source `internal/template/agentemit/source/*.md`, run `make agents-emit`.** Hand-editing C2 turns `make build` red through `agents-emit-check`. Otherwise `internal/template/templates/.codex/agents/moai/*.toml` stays stale, and a binary built in that state runs with the old definitions embedded. C1 is byte-identical to C2 for the generated agents (builder-harness, e2e-tester, manager-design, super-advisor); the remaining agents join when piece 2 absorbs or retires them. The generation relationship runs in one direction only, source → C1, C2, C3.
 
-[HARD] **Do not hand-edit C3.** A hand edit is silently overwritten at the next emission. If something needs fixing, fix C2 and regenerate.
+[HARD] **Do not hand-edit C3.** A hand edit is silently overwritten at the next emission. If something needs fixing, fix the agent source and regenerate.
 
 Where a miss gets caught — three checkpoints each look at a different axis:
 
 | Check | What it examines | When |
 |---|---|---|
-| `make build` (preceded by `agents-emit-check`) | Source layer: committed `.toml` vs the output emitted from `.md` | Every local build. **Read-only — does not regenerate** |
+| `make build` (preceded by `agents-emit-check`) | Source layer: committed `.toml` vs the output rendered from the agent source | Every local build. **Read-only — does not regenerate** |
 | `go test ./internal/template/agentemit/...` | The same axis | Every CI run |
 | `make embed-check` / `moai doctor --check "Agent Emit Embed"` | **Embed axis**: the bytes actually embedded in an already-built binary vs. the committed copy | Manual. `BIN=<path>` can also target the installed binary |
 
