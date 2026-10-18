@@ -3,8 +3,9 @@
 // Darwin candidate readers (design.md §E): `ps` for argv and the environment
 // of same-uid processes (`ps eww` appends the environment to the command
 // column), a direct proc_info call for the working directory (t1807 replaced
-// the `lsof -d cwd` subprocess, whose cap load exceeded). Every reader declines (false) rather than guessing: a decline
-// downstream is an honest NO_ACTIVE_FACTORY, never a wrong join.
+// the `lsof -d cwd` subprocess, whose cap load exceeded). Every reader declines
+// (false) rather than guessing: a decline downstream is an honest
+// NO_ACTIVE_FACTORY, never a wrong join.
 package discovery
 
 import (

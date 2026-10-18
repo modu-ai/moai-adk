@@ -58,8 +58,13 @@ func TestAnchorContentFnSpawnsBoundedGitProcesses(t *testing.T) {
 	raw, _ := os.ReadFile(log)
 	spawns := 0
 	for _, line := range strings.Split(strings.TrimSpace(string(raw)), "\n") {
-		if strings.Contains(line, "show") || strings.Contains(line, "cat-file") {
-			spawns++
+		// The shim logs "$*": "-C <root> <subcommand> ...". Match the subcommand
+		// token exactly, so `rev-parse --show-toplevel` is never counted.
+		for _, field := range strings.Fields(line) {
+			if field == "show" || field == "cat-file" {
+				spawns++
+				break
+			}
 		}
 	}
 	t.Logf("blob-reading git processes for %d distinct present paths x3 rounds + absent path: %d", len(present), spawns)
