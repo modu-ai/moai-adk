@@ -1,157 +1,162 @@
 # Plan: SPEC-TODO-UNIFY-001
 
-Tree basis: `026f48658f` (branch `WT-todo-unify`, clean). Methodology: TDD (`quality.yaml` `development_mode: tdd`). Priorities and ordering only; no time estimates.
+Tree basis: `026f48658f` (branch `WT-todo-unify`; plan artifacts and the audit report sit on top, the rest of the tree is identical, see `research.md` §R.1). Methodology: TDD (`quality.yaml` `development_mode: tdd`). Priorities and ordering only; no time estimates. Revision 2 (audit iteration 1 FAIL); the decisions of `decision-index.md` Q1 to Q9 are written into `spec.md`.
 
-## §A Decision-reversibility ranking
+## §A Decision-reversibility ranking and the dependency graph
 
 Sections and milestones below are ordered by how likely the decision they rest on is to change, highest first. A data-model or interface decision comes before a mechanical step, so review attention lands where a reversal would cost most.
 
-| Rank | Decision | Why it may change | Gated by | Milestone |
-|------|----------|-------------------|----------|-----------|
-| 1 | Remove the git-flow T18/T19 edges from the card transition table | Removes the no-remote completion path; premise "GitHub Flow transition complete" is unmet in this repository; two draft SPECs touch the same rows | OQ-6 | M1 |
-| 2 | Who may close a card without an operator, and under which receipt policy | Changes who can complete a factory-linked card; overlaps card t1639 | OQ-4, OQ-5, OQ-7 | M2 |
-| 3 | Shape and caller of the post-pick spec_id setter | A new verb on a shipped command; widens or keeps the lane guard | OQ-8, OQ-9 (implementation-level, default applied) | M3 |
-| 4 | Disposition of the six stage verbs | Three incompatible readings in the card and its absorbed cards | OQ-1 | M4 |
-| 5 | Warning alias behavior and the removal-release constant | User-visible stderr contract | OQ-2 (implementation-level, default applied) | M5 |
-| 6 | Slash, skill, and workflow-document names | Renames of shipped surfaces | none beyond OQ-1 | M6 |
-| 7 | Substitution classes and the script | Mechanical; reversible by a revert | OQ-3 fixes the class table | M7 |
-| 8 | Applying the script (docs-site, README, templates, deployed mirrors) | Mechanical | none | M8 |
-| 9 | Always-loaded rule text and AGENTS.md | Edited last (cache directive 3); size-bounded | none | M9 |
+| Rank | Decision | Why it may change | Decision row | Milestone |
+|------|----------|-------------------|--------------|-----------|
+| 1 | Remove T18 and the T19 reservation; declare the evidence-guarded edge T29 | Removes the human-decided no-remote completion; two draft SPECs touch the same rows | Q6 | M1 |
+| 2 | Who may close a card without an operator, and the automatic receipt (three facts, issuer `auto`, revocable) | Changes the approval gate's trust model; leader-confirmed 10-18, conditional | Q4, Q5, Q7 | M2a, M2b |
+| 3 | Shape and caller of the post-pick spec_id setter | A new verb on a shipped command | Q8, Q9 | M3a, M3b |
+| 4 | The six stage verbs registered on `moai todo` | A user-facing registration | Q1 | M4 |
+| 5 | Warning alias behavior and the removal statement | User-visible stderr contract | Q2 | M5 |
+| 6 | Slash, skill, and workflow-document wording | Edits of shipped surfaces (paths kept) | Q3 | M6 |
+| 7 | Substitution classes and the script | Mechanical; reversible by a revert | Q3 | M7 |
+| 8 | Applying the script | Mechanical | none | M8 |
+| 9 | Always-loaded text (`AGENTS.md`) and rule statements | Edited last (cache directive 3); size-bounded | none | M9 |
 
-**Independence guarantee.** M1, M2, and M3 touch disjoint code and depend on neither Track A nor each other, so an OQ-4/5/6 answer that cancels M1 or M2 leaves every other milestone valid. Track A runs M4, then M5, then M6, then M7, then M8. M9 is last.
+**Dependency graph (replaces the iteration-1 independence claim, which `design.md` §D.5 and §D.6 contradicted).** An arrow means "needs the earlier milestone's code or test to exist".
 
-## §B Open Questions
+```
+M1 ────┐
+       ├──► M2b ───────────────────────────► M9
+M2a ───┘
+M3a ──► M3b                       (no other milestone depends on it, and it needs none)
+M4 ──► M5 ──► M6 ──► M7 ──► M8 ──► M9
+```
 
-Every question below is a real fork in the card text or in the measured tree. None is guessed. Each is mirrored as a row of `decision-index.md` with the same number. A `Default` names the option the published default rule ranks first; it is a policy application and not a recommendation.
+Reasons, one per arrow: M2b requests the factory edge T29, which M1 declares, and mints the receipt M2a defines; M3b registers a verb on the tree M3a's function backs; M5's warning must cover the verbs M4 registers, or the six would run under `gtd` without it; M6 inverts the slash files before M7's script runs, so the script does not rewrite the wrapper's own notice; M7 supplies the script and allowlist M8 runs; M8 converts the corpus before M9 adds the allowlisted `AGENTS.md` row; M9 states the lane own-card done and the T18/T19 removal that M1 and M2b deliver.
 
-[NEEDS CLARIFICATION: OQ-1 — what "clean up the 6 gtd subverbs" means]
+Same-file order (not a logical dependency): `internal/cli/todo.go` is edited by M2b (lane guard), M3b (verb registration), and M4 (verb registration), so the run order is M2b, then M3b, then M4. `internal/cli/factory_card.go` is edited only by M7.
 
-**OQ-1. The six stage verbs (capture, clarify, organize, reflect, engage, answer).** Three readings exist.
-- (a) **Absorb all six into `moai todo`** (card t1590, direction A: register the six factories on the canonical tree; `moai gtd` then delegates for every verb). Consequence: nothing is deleted; the guidance already tells readers to run `moai todo <stage verb>`, so it becomes true.
-- (b) **Absorb the verbs that measured use justifies and delete the rest** (the redesign's D3 sentence). Consequence: a user-facing feature is removed; the deletion set is decided by the M4 usage inventory.
-- (c) **Leave the six under `moai gtd` only** (card t1602 item 1: "GTD-stage verbs stay under `moai gtd`"). Consequence: contradicts "gtd warns, then delegates" and "removed after one release" for those six; the alias could not be removed without deleting them.
+**Run order.** M1, M2a, M2b, M3a, M3b, M4, M5, M6, M7, M8, M9. A milestone that discovers its premise false returns a blocker report; the graph says which later milestones it stops.
 
-Measured inputs: the CLI verbs have no in-tree caller. `goal.go` calls the factory library functions directly (`ReflectGTDStore`, `EngageGTDItem`), not the CLI verbs; `gtd answer` writes `.moai/gtd/answers/<t-id>.md` and no tracked code reads it; the verbs are documented in the queue workflow skill, four READMEs, and four docs-site locales. Design robustness: REQ-TU-001 to REQ-TU-005 and AC-TU-001 to AC-TU-005 hold under (a) and (b); under (c) REQ-TU-001/002 narrow to the verbs that exist on both spellings and the removal release cannot be named for the six. Default (rule: preserves current behavior): (a). Alternate: (b).
+## §B Decisions
 
-[NEEDS CLARIFICATION: OQ-2 — release naming for the grace period]
+The nine questions iteration 1 recorded are decided by the lane's decision ladder (`auto-semantics.md` §6); each row of `decision-index.md` carries the evidence, the alternate rejected, and a one-line decision record. Summary, with the requirement each answer lands in:
 
-**OQ-2. Which release first carries the warning and which removes `moai gtd`.** Options: (a) the warning text names a literal release held in one constant; (b) the text says "the next release" with no number. Consequence: (a) needs the release plan's number before sync; (b) cannot be tested for an exact removal release. Design: the removal release is one constant and AC-TU-001 and AC-TU-002 assert the warning contains it and that it is non-empty; both options satisfy that. Default (rule: smaller user-visible surface; neither option changes current behavior and each undoes by one revert): (b), the constant holding the phrase "the next release". Alternate: (a), the literal taken from the release plan.
-
-[NEEDS CLARIFICATION: OQ-3 — depth of "rename gtd to todo everywhere"]
-
-**OQ-3. Rename depth.** (a) **User-facing spelling only**: command, slash entry, skills, documents, rules, guidance; Go identifiers, `gtd_*.go` names, the `gtd_*` tables, the `gtd-<16 hex>` item id, and `.moai/gtd/answers` stay (this SPEC's default reading). (b) **Everything**: also the internals. Consequence of (b): persisted formats change, so existing queue databases need a migration and a dual-read of the old item id; about 47 files change identifiers. Design: REQ-TU-012 and AC-TU-011 pin (a); (b) would be a separate SPEC with its own migration, and nothing in M1 to M9 blocks it. Default (rule: preserves current behavior): (a). Alternate: (b).
-
-[NEEDS CLARIFICATION: OQ-4 — scope split with card t1639 (factory v2)]
-
-**OQ-4. Is the landing-to-done machine transition (three observers) and automatic receipt issuing in this card's scope or t1639's?** The master plan assigns "landing to done machine transition (three observers), receipts automatic" to t1639 (on hold, stage 2-2) and "lane own-card done, T18/T19 removal" to t1641 (stage 2-4), while t1641's completion criterion reads "done is automatic for the most recent 10 landed cards". Options: (a) this SPEC delivers only the lane own-card path and the receipt policy seam (the card's listed scope); the criterion is met through the lane path plus the existing leader `auto-done` scan. (b) this SPEC also delivers the SessionEnd and `factory complete` observers. Consequence of (b): overlap with t1639 and a hook that must satisfy the advisory-check discipline (bounded, cached, never blocking). Design: M2 isolates the close admission behind one seam, so (b) adds observers without changing M2. Default (rule: smaller user-visible surface): (a). Alternate: (b).
-
-[NEEDS CLARIFICATION: OQ-5 — what satisfies the leader-approval receipt gate for a lane's own-card done]
-
-**OQ-5. Receipt policy for the own-card `done`.** The gate binds every close of a factory-linked card, and only the leader can mint a receipt. Options: (a) landing evidence of the closed auto-done form substitutes for the receipt for that card only; (b) the receipt is issued automatically from the verdict file, the landing evidence, and the remeasure hash; (c) the lane's `done` is admitted by the guard but still needs a receipt the leader issued. Consequence: under (c) the "automatic for the most recent ten landed cards" criterion cannot hold without a leader act, so the criterion would be reported unmet. Design: M2 puts the receipt condition behind one function the AC tests through; the admission matrix of AC-TU-014 to AC-TU-016 is identical under (a) and (b). Default (rule: preserves current behavior; (c) is the only option that leaves the current approval gate unchanged): (c). Alternate: (a). The row is product-level, so the default is recorded but not applied; it stays open for the operator (`decision-index.md` Q5).
-
-[NEEDS CLARIFICATION: OQ-6 — precondition for removing T18 and T19]
-
-**OQ-6. Removing T18/T19 before the GitHub Flow transition completes.** Measured: this repository's own config is `mode: manual`, `workflow: git-flow`; `SPEC-GITHUB-FLOW-DEFAULT-001` is `in-progress`; `PushGateTarget` returns `done` for a card whose repository has no remote, so T18 is today's only no-remote completion edge; draft `SPEC-FACTORY-COMPLETION-RECOVERY-001` REQ-FCR-010 would implement T19, and draft `SPEC-FACTORY-RECORD-REPAIR-001` moved its `pushed → done` item to t1639. Options: (a) remove T18 and the T19 reservation now and name the no-remote completion path; (b) remove only the T19 reservation and keep T18 guarded for no-remote repositories; (c) defer the removal until `SPEC-GITHUB-FLOW-DEFAULT-001` closes. Consequence: (a) leaves no-remote projects without a factory completion path unless a replacement is named; (b) contradicts the decision text for T18; (c) leaves the card's removal item undelivered. Design: M1 is independent; REQ-TU-018/019 are conditional on the answer, and the pinned counts (71 accepted, 370 refused) do not move under (a) or (b) because both pairs are already refused in the pinned fixture. Default (rule: preserves current behavior): (c). Alternate: (b).
-
-[NEEDS CLARIFICATION: OQ-7 — what "done" and "landed" mean in the ten-card criterion]
-
-**OQ-7.** Two records carry done: the backlog queue (archive) and the factory card row (state `done`). "Landed" differs by flow: in this repository's local-main flow the merge is on local `main` while `origin/main` advances by batch. Options for the record: (a) both; (b) queue only; (c) factory row only. Options for landed: (i) merge SHA reachable from the resolved landed ref (the auto-done evidence form); (ii) merge SHA on local `main`. Consequence: a card done in one record and open in the other is the observed wedge, so (b) and (c) leave it possible; (a) changes what a lane's `done` does to the factory row. Design: REQ-TU-020 and AC-TU-019 name "the records OQ-7 names", so a narrower answer narrows the criterion without invalidating M2. Default (rule: preserves current behavior; today the close paths change the queue and the factory row's done is the leader's gate): record (b), landed (i). Alternate: record (a). The row is product-level, so the default is recorded but not applied.
-
-[NEEDS CLARIFICATION: OQ-8 — shape of the spec_id setter]
-
-**OQ-8.** (a) A new verb, `moai todo spec <n> <SPEC-ID>`, writing both carriers set-once. (b) Widen `moai factory assign --spec` to set-if-empty after assignment (factory row only; the queue spec_id, which `contract_report` reads, stays empty). (c) Let `next <n> --spec` re-enter a picked card (contradicts the positive pick gate). Consequence: (b) fixes kickoff but not the queue-side reader; (c) removes a safety gate. Default (rule: preserves current behavior; every existing verb is unchanged): (a). Alternate: (b).
-
-[NEEDS CLARIFICATION: OQ-9 — who may call the spec_id setter]
-
-**OQ-9.** (a) Leader only (the lane guard refuses it like every other queue mutation). (b) A lane for its own card only, when the spec_id is empty (the lane learns the SPEC id at plan phase). Consequence: (a) leaves the plan-phase lane unable to unwedge itself, so the leader must be messaged; (b) widens the lane allowlist a second time. Default (rule: preserves current behavior): (a).
+| Q | Decision | Lands in |
+|---|----------|----------|
+| Q1 | Register all six stage verbs on `moai todo`; delete none | REQ-TU-004, REQ-TU-006 |
+| Q2 | The warning states removal "one release after the release that first carries the warning"; no literal release number | REQ-TU-002 |
+| Q3 | Rename the user-facing spelling only; internals, persisted formats, and the workflow document path stay | REQ-TU-007, REQ-TU-012 |
+| Q4 | This SPEC delivers the lane own-card path, the automatic receipt inside the two close paths, and edge T29; no observers | REQ-TU-017, REQ-TU-020, Out of Scope |
+| Q5 | The receipt is issued automatically only when three machine facts hold, issuer `auto`, revocable; otherwise the leader's manual approval stays (fail-closed) | REQ-TU-017, REQ-TU-025 |
+| Q6 | Remove T18 and the T19 reservation now; declare T29 (`merged-local → done`, evidence and receipt guarded) | REQ-TU-018, REQ-TU-019 |
+| Q7 | Both records end `done`; "landed" is reachability from the landing ref; factory edge first, queue archive second, with a stated recovery | REQ-TU-020 |
+| Q8 | A new verb `moai todo spec <n> <SPEC-ID>` writing both carriers, set-once per carrier | REQ-TU-022, REQ-TU-023 |
+| Q9 | Leader only | REQ-TU-023 |
 
 ## §C Pre-flight
 
 Run before M1 (read-only; commands are plain, one per call):
 
-1. `git rev-parse --short HEAD` and `git branch --show-current` (expect `026f48658f` or its absorbed successor, and `WT-todo-unify`).
+1. `git rev-parse --short HEAD` and `git branch --show-current` (expect a descendant of `026f48658f` and `WT-todo-unify`).
 2. Re-measure the substitution baseline: `git grep -I -l 'moai gtd' -- . ':!.moai/specs' ':!.moai/reports' ':!CHANGELOG.md'` (expect 73 paths at `026f48658f`; the list is in `research.md` §R.4). Re-measure after absorbing `main`; never re-cite 73 without re-measuring.
-3. Confirm the four open sibling facts have not moved: `SPEC-GITHUB-FLOW-DEFAULT-001` status, `git_strategy.manual.workflow`, `SPEC-FACTORY-COMPLETION-RECOVERY-001` status, `SPEC-FACTORY-RECORD-REPAIR-001` status.
+3. Confirm the open sibling facts have not moved: `SPEC-GITHUB-FLOW-DEFAULT-001` status, `git_strategy.manual.workflow`, `SPEC-FACTORY-COMPLETION-RECOVERY-001` status (its REQ-FCR-010 would implement T19), `SPEC-FACTORY-RECORD-REPAIR-001` status, and whether card t1639 has started (its `pushed → done` edge and observers).
 4. Build the tool under measurement from this tree and invoke it by path; record the judging build's commit next to the tree HEAD (verification-claim-integrity §2.2). The installed `moai` at plan time is `ee981a932-dirty`, a strict ancestor 516 commits behind.
-5. Windows build check: `GOOS=windows GOARCH=amd64 go build ./...` (the change touches `internal/cli` launch-adjacent files only through verbs; confirm no build-tag regressions).
+5. Windows build check: `GOOS=windows GOARCH=amd64 go build ./...`.
 6. Verification scoping: changed packages and direct importers (§F). No full-suite run; no background load; take the heavy-run slot only for the `internal/cli` name-exact selection, per the lane protocol.
+7. Classify the 67 paths M8 will convert (the 73 of E-01 minus the 4 recorded fixtures minus `AGENTS.md` and its template) into template-sourced, template-mirror, and deployed-only with `git ls-files`; the classification is the M8 input (D12).
 
 ## §D Constraints
 
-- PRESERVE: `internal/factory/gtd_*.go` and `backlog_gtd_schema.go` content (OQ-3 default), the `gtd_*` table names, `gtdIDPattern`, the `.moai/gtd/answers` path, the 71/370 pair counts in `fr_transition_test.go`, the auto-done scan's closed evidence set and three misfire guards, the lane guard's REQ-SD-015 refusal text, the leader-only issuing of receipts (unless OQ-5 answers otherwise).
+- PRESERVE: `internal/factory/gtd_*.go` and `backlog_gtd_schema.go` content, the `gtd_*` table names, `gtdIDPattern`, the `.moai/gtd/answers` path, the `workflows/gtd.md` path and the strings that name it (five rule files' `paths:` keys, the generated embed line, the recorded fixture), the 71/370 pair counts in `fr_transition_test.go`, the auto-done scan's closed evidence set and three misfire guards, the lane guard's REQ-SD-015 refusal text, `moai factory approve` as the leader's manual issuance path (lane-refused), and the receipt gate's verification (`VerifyBinding`) unchanged.
 - No test skips (`t.Skip*`) added; no timeout value raised, in code or in any test invocation.
 - Templates are edited in `internal/template/templates/`, never first in `.claude/`.
-- Editing always-loaded files (rules without `paths:`, `AGENTS.md`) waits for M9 (cache-aware directive 3); each edit that grows such a file by more than 1,000 bytes carries the byte-size and non-invoking-cost statement in the commit body (rule-authoring duty).
+- The always-loaded files in the conversion set are `AGENTS.md` and `internal/template/templates/AGENTS.md.tmpl` only (the four rule files that carry the spelling have `paths:` keys, measured by `git grep -m1 '^paths:'`, `research.md` §R.10). Their edit waits for M9 (cache-aware directive 3) and carries the byte-size and non-invoking-cost statement in the commit body when it grows the file by more than 1,000 bytes.
 - Commits stage by explicit pathspec; every commit message carries `card t1641`.
 
 ## §E Milestones
 
-Each milestone: RED first (the new test observed failing for the stated reason, classified `EXPECTED_RED` per the TDD result contract, verbatim output recorded in `progress.md` §E.2), then GREEN (new test plus the regression set), then refactor. Size figures are illustration-level (files / changed lines) and exist to bound review; a milestone that would exceed roughly 10 files or 400 lines at run time splits at its natural seam before it starts.
+Each milestone: RED first (the new test observed failing for the stated reason, classified `EXPECTED_RED` per the TDD result contract, verbatim output recorded in `progress.md` §E.2), then GREEN (new test plus the regression set), then refactor. Size figures are illustration-level (files / changed lines); a milestone that would exceed roughly 10 files or 400 lines at run time splits at the seam it names before it starts. Every `-run` selector below names tests that exist or that the milestone's RED step creates; the selected count is read before the verdict.
 
-### M1 — Remove T18 and the T19 reservation (Priority High; gated by OQ-6)
+### M1 — Remove T18 and the T19 reservation, declare T29 (Priority High)
 
-- **RED.** (1) A table test asserting the transition table holds no `merged-local → done` row and no reserved-edge refusal text; (2) the existing pair-count pin stays green; (3) a refusal-class test: both requests return the undeclared-transition error, not the reserved-edge error. Observed red on the current tree: row `T18` at `card_transition.go:157` and the reserved-edge branch at `:333`.
-- **GREEN.** Remove the row, the reserved-edge predicate and its error value, the `guardNoRemote` branch, and the push gate's `done` target for no-remote cards; implement the completion path OQ-6 selects.
-- **Files (about 9 / 330 lines).** `internal/homestate/card_transition.go`, `card_evidence.go`, `card_pr_states.go` (comment), `internal/cli/factory_card.go` (push gate), tests `fr_transition_test.go`, `leader_approval_test.go`, `f7_gate_owner_admission_test.go`, `fr_evidence_test.go`, `card_pr_states_test.go`.
-- **Packages.** `internal/homestate`, `internal/cli`; direct importers listed in §F.
-- **Name-exact selection.** `internal/homestate`: `-run 'TestFR_AC005|TestPushGateTarget|TestLeaderApproval|TestCardPRStates|TestFR_Evidence'` (confirm exact names by `git grep -n '^func Test'` in the five test files at RED time); `internal/cli`: tests naming `factory_card.go` push-gate identifiers.
+- **RED (in this order).** (1) The T29 matrix tests, written first and observed red: in a no-remote fixture a merged-local card with a reachable merge commit and a leader-issued receipt reaches `done`; with the branch reset so the merge is unreachable, or with no receipt, it is refused and the row is byte-identical; in a remote fixture T29 admits only when the merge commit is reachable from the remote-tracking landed ref. (2) The removal tests: no edge guarded by the no-remote completion and no reserved-edge refusal remain; `pushed → ci-green` fails with the undeclared-transition error. (3) The pair-count pin stays green (in the fixture the T29 request lacks a receipt, so the pair stays refused).
+- **GREEN.** Remove row T18, the `guardNoRemote` branch, the reserved-edge predicate with its error value and call; add T29 for the pair `merged-local → done` with the evidence-and-receipt guard of `design.md` §D.6; the push gate keeps requesting `done` for a no-remote repository, which T29 now declares.
+- **Files (about 6 / 300 lines).** `internal/homestate/card_transition.go`, `card_pr_states.go` (comment), tests `fr_transition_test.go`, a new `fr_landed_edge_test.go`, `leader_approval_test.go`, `f7_gate_owner_admission_test.go`.
+- **Packages.** `internal/homestate`; `internal/cli` compiles against it (the push gate caller is unchanged).
+- **Name-exact selection.** `internal/homestate`: `-run '^(TestFR_AC005_TransitionTableEdgeCount|TestPushGateTargetByRemote|TestLandedEdgeT29.*|TestReservedEdgeRemoved)$'` (the last two are created at RED; the first two exist). Also the leader-approval and evidence tests the removal touches, listed from `git grep -n '^func Test'` in the files named above at RED time.
 
-### M2 — Lane own-card done and the receipt seam (Priority High; gated by OQ-4, OQ-5, OQ-7)
+### M2a — The automatic receipt and its revocation (Priority High)
 
-- **RED.** (1) Lane env, card held by that lane, landing evidence present: `done` admitted and every record OQ-7 names ends `done`; (2) the refusal matrix: another lane's card, no landing evidence, every other non-allowlisted verb, each leaves the queue byte-identical; (3) the close passes the approval gate and writes a log row whose source names the own-card path; (4) mutant: a guard that admits `done` for any card fails matrix row 1 of (2).
-- **GREEN.** One admission function in the lane guard, evidence via the existing closed evidence form, close via the existing gate path, one seam for the receipt condition.
-- **Files (about 5 / 380 lines).** `internal/cli/todo.go` (guard), a new `internal/cli/todo_lane_done.go`, `internal/cli/leader_approval_gate.go`, tests `todo_lane_done_test.go` and an addition to the existing lane-guard test.
+- **RED.** (1) The three-fact matrix: of the eight combinations of (merged-local state, committed PASS-family verdict with an ancestor `audited_sha`, valid re-measure record), exactly one issues a receipt, and each of the three two-of-three combinations issues nothing; (2) the issued receipt carries issuer `auto` and the leader role marker, and the unchanged gate verifies it; (3) a receipt for another card or run, or a stale version, is refused by the unchanged gate; (4) revocation: after the leader revokes, the close is refused as receipt-absent and no automatic issuance recurs for that card and run; a lane session is refused the revocation; a leader-issued receipt is unaffected.
+- **GREEN.** One issuing function in `internal/homestate` that re-reads the three facts at the moment of the call and writes nothing when any is absent; a revocation record in the receipt store (the schema addition is this milestone's, additive); the leader-only revocation surface on `moai factory approve`.
+- **Files (about 6 / 450 lines; splits at the issuance / revocation seam if it exceeds 400 at run time).** `internal/homestate/leader_approval.go` (store addition), a new `leader_approval_auto.go`, `internal/cli/leader_approval_gate.go` (revocation flag), tests in both packages.
+- **Packages.** `internal/homestate`, `internal/cli`.
+- **Name-exact selection.** `TestAutoReceiptThreeFacts|TestAutoReceiptIssuer|TestAutoReceiptRevocation` (created at RED) plus the existing `TestLeaderApproval.*` family named in `leader_approval_test.go` and `leader_approval_gate_test.go` at RED time.
+
+### M2b — Lane own-card done and the both-records close (Priority High; needs M1 and M2a)
+
+- **RED.** (1) Lane env, card held by that lane, landing evidence of the closed form, the three facts present: `done` is admitted, the receipt is issued with issuer `auto`, the factory row ends `done` (edge T29) and the queue row is archived, in that order; (2) the refusal matrix: another lane's card, no landing evidence, every other non-allowlisted verb, each leaves the queue file byte-identical; (3) one fact absent: nothing is issued, the close is refused with the gate's receipt-absent text, both records are unchanged; (4) a fault injected between the factory edge and the archive leaves the factory row `done` and the queue row open, exits non-zero naming both, and a repeat completes the archive without a second factory edge; (5) the leader's auto-done scan closes a landed `merged-local` card the same way; a `pushed` row with no leader-issued receipt is not closed (nothing auto-issued), and with a leader-issued receipt its queue row closes while the factory row stays `pushed`, named in the log; (6) the twelve-card fixture (ten with landing evidence, two without): exactly ten end `done` in both records; (7) mutant: a guard that admits `done` for any card fails row (2).
+- **GREEN.** One admission function in the lane guard; the verb layer asks the existing landing predicate and refuses without it; the close helper shared by the lane path and the scan runs issue, factory edge, archive in that order; the log row carries the new source label and the issuer; `todo undone` pairs its reversal with that label.
+- **Files (about 7 / 520 lines; splits at the lane-path / scan-integration seam).** `internal/cli/todo.go` (guard), a new `todo_lane_done.go`, `todo_autodone.go`, `leader_approval_gate.go`, tests `todo_lane_done_test.go` and additions to the existing lane-guard and auto-done tests.
 - **Packages.** `internal/cli`; `internal/factory` only if the evidence helper moves.
-- **Name-exact selection.** `TestTodoLane|TestLeaderApprovalGate|TestAutoDone` plus the new test names.
+- **Name-exact selection.** `TestTodoLane.*|TestTodoCloseBothRecords|TestTenLandedCardsClose` (created at RED) plus the existing `TestAutoDone.*` and `TestLeaderApprovalGate.*` families (names read by `git grep -n '^func Test'` in `todo_autodone_test.go` and `leader_approval_gate_test.go` at RED time).
 
-### M3 — The spec_id setter (Priority High; OQ-8 and OQ-9 default-applied)
+### M3a — The spec_id setter function (Priority High)
 
-- **RED.** (1) Picked and assigned fixtures with empty spec_id: setter writes both carriers, one event row; (2) refusal matrix: a different id, `leased` and later states, terminal states, malformed id, none of which changes either store; (3) an identical value is a no-op success; (4) kickoff's SPEC lookup passes after the setter (no empty-path refusal); (5) `next --spec`, `factory assign --spec`, and the unpick clear keep their present tests green.
-- **GREEN.** A set-once rule in the homestate field-update path, a queue-side write under the queue lock, one verb.
-- **Files (about 6 / 420 lines).** new `internal/cli/todo_spec.go`, `internal/homestate/card_picked.go`, a small helper in `internal/factory`, tests in the three packages.
-- **Packages.** `internal/cli`, `internal/homestate`, `internal/factory`.
+- **RED.** (1) Picked and assigned fixtures with empty spec_id: the function fills both carriers, one `card.fields` event; (2) refusal matrix: a different id in either carrier, `leased` and later states, terminal states, malformed id: neither carrier changes; (3) identical values in both carriers: no-op success; (4) a fault injected after the queue write and before the factory commit leaves the queue carrier set and the factory carrier empty, and a repeat with the same id completes the pair; a fault in the queue write leaves both carriers unchanged.
+- **GREEN.** A set-once-per-carrier function in `internal/homestate` whose factory write transaction runs the queue write in its pre-commit step (the seam transitions already use for the dispatch record, `design.md` §D.7).
+- **Files (about 4 / 230 lines).** `internal/homestate/card_picked.go` (or a new `card_spec_set.go`), a small helper in `internal/factory`, tests in both packages.
+- **Packages.** `internal/homestate`, `internal/factory`.
+- **Name-exact selection.** `TestCardSpecSetOnce|TestCardSpecSetFailureBetweenCarriers` (created at RED).
 
-### M4 — Stage-verb disposition and registration (Priority Medium; gated by OQ-1)
+### M3b — The setter verb (Priority High; needs M3a)
 
-- **Step 0 (inventory).** Measure the usage of each verb (code callers, docs, hooks, scripts, tests) and write the disposition table to `.moai/reports/t1641/verb-inventory.md`; the table is the input to this milestone.
-- **RED.** (1) `TestGuidanceVerbsResolve`: every `moai todo <verb>` and `moai gtd <verb>` token in the queue guidance corpus resolves in its command tree (observed red: six lines of the workflow skill name verbs `moai todo` lacks); (2) the verb-surface parity test rewritten to the disposition table; (3) the lane classification test of REQ-TU-006.
-- **GREEN.** Register the absorbed verbs on the `todo` tree, remove them from the `gtd`-only constructor, classify each for the lane guard, delete the deleted verbs, and update the mistyped-verb guard's known-verb list through the tree (no separate list).
-- **Files (about 6 / 300 lines).** `internal/cli/todo.go`, `gtd.go`, `gtd_answer.go`, tests `gtd_compat_test.go`, new `todo_guidance_resolves_test.go`, `todo_surface_test.go`.
+- **RED.** The verb writes through M3a's function for the leader; refuses lane sessions with the standing refusal text; malformed ids are refused before any write; `next --spec`, `factory assign --spec`, and the unpick clear keep their present tests green (names in `acceptance.md` AC-TU-022); kickoff's SPEC lookup passes after the setter.
+- **GREEN.** Register `spec` on the `todo` tree; the lane guard keeps it refused by not listing it.
+- **Files (about 3 / 200 lines).** a new `internal/cli/todo_spec.go`, **`internal/cli/todo.go` (the single registration of the verb tree)**, tests `todo_spec_test.go`.
 - **Packages.** `internal/cli`.
-- **Name-exact selection.** `TestGTD|TestTodoSurface|TestTodoVerbLeak|TestGuidanceVerbsResolve|TestTodoSkillDoc`.
+- **Name-exact selection.** `TestTodoSpecSetter|TestTodoSpecSetterLaneRefused|TestKickoffAfterSpecSetter` (created at RED) plus the six existing tests named in AC-TU-022.
 
-### M5 — The warning alias (Priority Medium)
+### M4 — The six stage verbs on `moai todo` (Priority Medium)
 
-- **RED.** `TestGTDAliasWarnsThenDelegates` over every verb (warning once on stderr, names the `moai todo` form and the removal-release constant; stdout and exit equal to the `todo` form; `--json` stdout parses; help requests carry no warning); the old parity assertion `gtdErr != todoErr` is rewritten to "stderr equals the warning plus the `todo` stderr".
-- **GREEN.** `gtd` builds from the todo tree and chains one pre-run hook that writes the warning once, reusing the existing deprecation-warning convention (stderr, `Warning:` prefix, `warnDeprecatedAgentModelFlags` as the precedent).
-- **Files (about 4 / 220 lines).** `internal/cli/gtd.go`, a small warning helper, tests `gtd_compat_test.go`, new `gtd_alias_warn_test.go`.
+- **Step 0 (already measured at plan time).** `reflect --rebuild-projection` writes private projection files (`research.md` §R.12), so `reflect` is admitted for lanes only without that flag; the other five write and stay refused.
+- **RED.** (1) `TestGuidanceVerbsResolve`: every `moai todo <verb>` and `moai gtd <verb>` token in the guidance corpus resolves in its command tree (observed red: six lines of the workflow skill name verbs `moai todo` lacks; the token and file floors are in AC-TU-005); (2) the verb-surface parity test rewritten to "the `gtd` verb set equals the `todo` verb set, six stage verbs included"; (3) the five-stage path of the existing `TestGTDFiveStageCLIUsesSameSQLite` run again through the `todo` spelling with an equal store; (4) the lane classification test of REQ-TU-006.
+- **GREEN.** Register the six constructors on the `todo` tree, delete the `gtd`-only registration line, classify each for the lane guard; the mistyped-verb guard reads the tree, so no separate list changes.
+- **Files (about 6 / 260 lines).** `internal/cli/todo.go`, `gtd.go`, `gtd_answer.go`, tests `gtd_compat_test.go`, a new `todo_guidance_resolves_test.go`, `todo_surface_test.go`.
+- **Packages.** `internal/cli`.
+- **Name-exact selection.** `TestGTDAllTodoVerbsParity|TestGTDFiveStageCLIUsesSameSQLite|TestGTDCLIInputRefusalsDoNotFallThrough|TestStageVerbsOnTodoTree|TestGuidanceVerbsResolve|TestLaneClassifiesStageVerbs` (the first three exist at `gtd_compat_test.go:49`, `:124`, `:164`; the rest are created at RED).
+
+### M5 — The warning alias (Priority Medium; needs M4)
+
+- **RED.** `TestGTDAliasWarnsThenDelegates` over every verb (warning once on stderr, first line `Warning: moai gtd has been renamed to moai todo`, naming the `moai todo` form; stdout and exit equal to the `todo` form); `TestGTDAliasWarningStreams` (`--json` stdout parses, help requests carry no warning, and argument- or flag-refused invocations print the `todo` form's error with no warning); the old parity assertion `gtdErr != todoErr` (`gtd_compat_test.go:83`) is rewritten to "stderr equals the warning plus the `todo` stderr".
+- **GREEN.** `gtd` builds from the todo tree and chains one pre-run step in front of the lane guard that writes the warning once, reusing the existing deprecation convention (stderr, `Warning:` prefix; `warnDeprecatedAgentModelFlags` is the precedent).
+- **Files (about 4 / 200 lines).** `internal/cli/gtd.go`, a small warning helper, tests `gtd_compat_test.go`, a new `gtd_alias_warn_test.go`.
 - **Packages.** `internal/cli`.
 
-### M6 — Slash command, skills, and the workflow document (Priority Medium)
+### M6 — Slash command, skills, and the workflow document wording (Priority Medium; needs M5)
 
-- **RED.** `TestTodoCanonicalSurfaceGolden` (inverts `TestGTDCanonicalSurfaceGolden`): `/moai:todo` dispatches `todo`; `/moai:gtd` dispatches `todo` and carries the rename notice; published skills equal the publisher output (count stays 17 if both skills remain); the router skill lists `todo` canonical; `workflows/gtd.md` is absent and `workflows/todo.md` present in the template source and the deployed tree; the live-versus-template parity tests read the renamed path.
-- **GREEN.** Edit template sources, rename the workflow document (template and deployed), regenerate the published skills with the project build, update the router skill rows.
-- **Files (about 10 / 120 lines, mostly renames).** template commands (2), template workflow document, template and deployed router skill, `.agents/skills/moai-todo` and `moai-gtd` (generated), `internal/template/gtd_canonical_surface_test.go`, `internal/cli/todo_skill_doc_parity_test.go`, `internal/cli/todo_skill_doc_test.go`.
+- **RED.** `TestTodoCanonicalSurfaceGolden` (inverts `TestGTDCanonicalSurfaceGolden`): `/moai:todo` dispatches `todo`; `/moai:gtd` dispatches `todo` and carries the rename notice; published skills equal the publisher output (count stays 17); the router skill routes `todo` canonical and `gtd` alias; the queue workflow document's header names `moai todo` canonical and its path is unchanged; the existing doc tests keep passing against the unchanged path.
+- **GREEN.** Edit template sources (the two command files, the router skill rows, the workflow document header and body wording), regenerate the published skills with the project build.
+- **Files (about 9 / 110 lines).** template commands (2) and their deployed copies, template and deployed router skill, template and deployed workflow document, `.agents/skills/moai-todo` and `moai-gtd` (generated), `internal/template/gtd_canonical_surface_test.go`.
 - **Packages.** `internal/template`, `internal/cli`.
+- **Name-exact selection.** `internal/template`: `TestTodoCanonicalSurfaceGolden`; `internal/cli`: `TestTodoSkillDocumentsHistoryVerb|TestTodoSkillDocumentsJevSource` (they exist at `todo_skill_doc_test.go:17` and `todo_skill_doc_parity_test.go:19`).
 
-### M7 — The substitution script and the executable consumers (Priority Low; mechanical)
+### M7 — The substitution script and the executable consumers (Priority Low; mechanical; needs M6)
 
-- **RED.** (1) A fixture test of the script against a temp tree holding one file per substitution class and one per excluded class: expected output exact, excluded files byte-identical; (2) a second run changes nothing; (3) `TestNoResidualGTDSpelling` with a planted-mutant fixture proving the check can go red; (4) the consumer edits: argument vectors in the board mod, the cutover script default, the push-gate help line in `factory_card.go`.
-- **GREEN.** Land `scripts/gtd-to-todo-substitute.sh` (design.md §D.3 holds the class table and the dry-run contract), its test, and the reviewed consumer edits.
+- **RED.** (1) A fixture test of the script against a temp tree holding one file per substitution class and one per excluded class: expected output exact, excluded files byte-identical; (2) a second run changes nothing; (3) `TestNoResidualGTDSpelling` with a planted-mutant fixture proving the check can go red; (4) the consumer edits: argument vectors in the board mod, the cutover script default, the push-gate help line in `factory_card.go`, the `moai todo` help text.
+- **GREEN.** Land `scripts/gtd-to-todo-substitute.sh` (`design.md` §D.3 holds the class table and the dry-run contract), its test, and the reviewed consumer edits.
 - **Files (about 6 / 380 lines).** the script, its test, `mods/moai-board/hooks/data.ts`, `mods/moai-board/tests/support.ts`, `scripts/cutover-precheck.sh`, `internal/cli/factory_card.go`.
 - **Gap carried.** The board mod's JavaScript tests are not run by any Go selection; the run phase records the runner used, or lists them as an unverified Gap.
 
-### M8 — Apply the script (Priority Low; mechanical, three batches)
+### M8 — Apply the script (Priority Low; mechanical; needs M7)
 
-- **Batches.** M8a: template sources under `internal/template/templates/` and `internal/cli` and `internal/template` test strings and goldens that are prose; M8b: deployed mirrors in `.claude/`, `.codex/`, `.agents/`, `.moai/docs`, `.moai/policies`, `.moai/project`, `.moai/workflows` (produced by the build, not hand edits); M8c: `docs-site/content` in four locales, the four READMEs, the docs-site menu and `_meta.yaml` rows, and the redirect rows for the retired `moai-gtd` page.
-- **Mechanism.** Run the script in dry-run mode first; the printed path set must equal the expected set derived from the pre-flight measurement minus the excluded classes; then apply; then re-run, expecting zero replacements and a green `TestNoResidualGTDSpelling`.
-- **Docs-site obligations.** Four locales change in the same commit batch; the locale-parity baseline is not extended; a redirect row for each retired page; the docs-site verification recipe (warning-free build, parity, URL scan) runs before the batch is accepted.
+- **Unit and size.** The unit is changed lines, not authored code: about 244 lines across 67 files (the 73 of E-01, minus 4 recorded fixtures, minus the two always-loaded `AGENTS.md` files), measured against E-01 and re-measured at pre-flight. The 10-file split rule does not apply; the review is dry-run path-set equality.
+- **Batches by origin class (from pre-flight item 7).** M8a: template sources under `internal/template/templates/` and the `internal/cli` and `internal/template` test strings that are prose; M8b: deployed copies that have a template source follow the regenerated output, and the deployed-only copies (`.moai/workflows/gtd.md` has no template source, `git ls-files` lists only `README.md` on the template side) are converted by the script directly and named in the batch record; M8c: `docs-site/content` in four locales and the four READMEs (the `moai-gtd` pages stay; no redirect or menu change).
+- **Mechanism.** Dry-run first; the printed path set must equal the expected set (pre-flight list minus excluded classes); then apply; then re-run, expecting zero replacements and a green `TestNoResidualGTDSpelling`.
+- **Docs-site obligations.** Four locales change in the same commit batch; the locale-parity baseline is not extended; the docs-site verification recipe (warning-free build, parity, URL scan) runs before the batch is accepted.
 
-### M9 — AGENTS.md, always-loaded rules, and the closing guards (Priority Low; last)
+### M9 — AGENTS.md, rule statements, and the closing guards (Priority Low; last; needs M8, M2b, M1)
 
-- **Content.** `AGENTS.md` §11 row (canonical `moai todo`, `moai gtd` a warning alias); the hand-authored statements in the factory-dispatch rule family (the lane own-card `done` exception, the removal of T18/T19, the leader's remaining role) in the template source and the deployed copy and the `.moai/policies` projection.
-- **Guards.** The Codex contract ceiling guard (`TestCodexContractByteCeiling`, which measures the live file and the template mirror) stays green (AGENTS.md is 23,780 bytes against 24,576); the always-loaded growth statement is written for any edit above 1,000 bytes; the rule-loading budget measurement (count and bytes of always-loaded files before and after) is recorded.
-- **RED.** The residual-ledger test lists the AGENTS.md row as the one allowed alias statement; before the edit it fails on the old wording.
+- **Content.** The `AGENTS.md` §11 row and its template mirror (`moai todo` canonical, `moai gtd` a warning alias, no "fully supported"); the hand-authored statements in the factory-dispatch rule family (the lane own-card `done` exception, the automatic receipt with issuer `auto`, the removal of T18 and the T19 reservation, edge T29, the leader's remaining role) in the template source and the deployed copy and the `.moai/policies` projection.
+- **Guards.** `TestAgentsMDTodoRowWording` (live file and template mirror) and `TestCodexContractByteCeiling` stay green (AGENTS.md is 23,780 bytes against 24,576); the always-loaded growth statement is written for any edit above 1,000 bytes; the rule-loading budget measurement (count and bytes of always-loaded files before and after) is recorded.
+- **RED.** The wording test fails on the current row (E-16); the residual-ledger test lists the `AGENTS.md` row as an allowed alias statement and fails before the edit.
 
 ## §F Affected packages and landing re-measure scope
 
@@ -167,8 +172,8 @@ Direct importers to include in the re-measure (non-test importers found by `git 
 
 ## §G Template-First obligations
 
-1. Source of truth: `internal/template/templates/**`. The deployed `.claude/`, `.codex/`, `.agents/`, `.moai/` copies are regenerated by the project build and the update path; none is edited first.
-2. Commands render differently in the deployed tree than in the template (the template body carries the dual-harness dispatch block); mirror checks therefore compare rendered output, not raw bytes. The workflow document and the router skill are byte-identical mirrors and are guarded by the existing parity tests.
+1. Source of truth: `internal/template/templates/**`. A deployed `.claude/`, `.codex/`, `.agents/`, or `.moai/` copy that has a template source follows it; none is edited first. A deployed-only file (`.moai/workflows/gtd.md`) has no template source and is edited directly by the script, named as such in the M8b batch record.
+2. Commands render differently in the deployed tree than in the template (the template body carries the dual-harness dispatch block); mirror checks therefore compare rendered output, not raw bytes. The router skill is a byte-identical mirror guarded by the existing parity tests; the template and deployed `.claude/skills/moai/workflows/gtd.md` were byte-identical at `026f48658f` (`diff -q` printed nothing, `research.md` §R.10).
 3. `.agents/skills/moai-todo` and `moai-gtd` carry "Generated by the MoAI command-to-skill publisher; regenerate, do not edit": regenerate, then confirm the drift check is green.
 4. After the build, `git status --short` shows only the intended change set; a regenerated embedded catalog is part of that set and is staged by explicit pathspec.
 5. Instruction files stay English; docs-site and README keep four locales in step.
@@ -177,12 +182,14 @@ Direct importers to include in the re-measure (non-test importers found by `git 
 
 | Risk | Effect | Mitigation |
 |------|--------|-----------|
-| Substitution touches a persisted name or a recorded fixture | Data or test breakage | Class table with explicit exclusions; excluded files byte-identical in the script test; `TestNoResidualGTDSpelling` and the OQ-3 pin |
+| Substitution touches a persisted name or a recorded fixture | Data or test breakage | Class table with explicit exclusions; excluded files byte-identical in the script test; `TestNoResidualGTDSpelling` and the REQ-TU-012 pin |
 | Argument-vector consumers use `'moai', 'gtd'`, which a `moai gtd` text pattern does not match | Alias warning reaches a parser, or the consumer breaks at removal | M7 reviewed edits plus a grep over the argument-vector form |
-| M1 removes the no-remote completion path | No-remote projects cannot complete a factory card | OQ-6 gate; M1 independent; completion path named before removal |
-| Overlap with t1621 and t1639 on the transition-table files (t1663's overlap is not measured) | Merge conflicts or contradictory edges | Pre-flight item 3; M1 rebases on whichever lands first |
-| Lane own-card done widens the lane's authority | A lane completes a card without audit | Evidence is the closed landing form only; refusal matrix; OQ-5 keeps the approval gate in the path |
-| AGENTS.md and always-loaded rules grow by one byte per substituted token | Ceiling or budget breach | M9 measurement before and after; byte statement |
+| The automatic receipt moves the issuance of a leader-role receipt into a path a lane can trigger | A card completes without the leader's read of the evidence | Three machine facts, all required, re-read at issuance; fail-closed; issuer `auto`; leader revocation; the gate's verification unchanged; leader-confirmed 10-18, conditional |
+| T29 replaces T18's pair with a different guard | A reviewer reads it as a renamed row | AC-TU-018 asserts the behavior that distinguishes them (admits with a remote when the merge is on the landed ref; refuses on unreachable merge; no human-decider requirement) |
+| Overlap with t1621 and t1639 on the transition-table files and the `pushed → done` edge (t1663's overlap is not measured) | Merge conflicts or contradictory edges | Pre-flight item 3; M1 rebases on whichever lands first; this SPEC declares no `pushed → done` edge |
+| The receipt store gains a revocation record | A schema addition in a store other SPECs read | Additive and read-compatible; `TestAutoReceiptRevocation` plus the existing receipt tests |
+| The script test needs `sh` on every CI runner (not measured) | A Windows runner fails the test, or tempts a skip | The test fails loudly if `sh` is absent (no skip, AC-TU-024); M7 RED decides whether the script becomes a Go helper |
+| AGENTS.md grows by a few bytes | Ceiling or budget breach | M9 measurement before and after; byte statement |
 | The installed `moai` lags the tree | RED/GREEN observed on the wrong build | Build from the tree and invoke by path; record both commits |
 
 ## §I Self-verification deliverables (run phase)
@@ -191,10 +198,12 @@ Each item carries the command, the verbatim output, and the tree HEAD of this ru
 
 ## §J Anti-patterns for this change
 
-- Hand-editing the 73 files instead of running the script.
+- Hand-editing the 67 files instead of running the script.
 - Substituting `gtd` as a bare word (it appears in identifiers, table names, hex-prefixed ids, recorded fixtures, and the GTD methodology name).
-- Writing the warning to stdout or printing it for help.
+- Writing the warning to stdout or printing it for help or for an argument-refused invocation.
 - Adding a second handler under the `gtd` spelling.
+- Renaming `workflows/gtd.md` (five rule files' `paths:` keys, a generated embed line, and a recorded fixture name it).
+- Issuing the automatic receipt on two of the three facts, or when the verdict file is uncommitted.
 - Editing the deployed `.claude/` copy before the template source.
 - Treating a green run with an empty selection as a pass (a name-exact selector that matches no test).
 
