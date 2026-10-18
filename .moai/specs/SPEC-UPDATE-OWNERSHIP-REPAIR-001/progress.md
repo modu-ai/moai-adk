@@ -1415,6 +1415,73 @@ exit=1
 
 **남는 제품 쪽 사실 (잔여 위험으로 공개, 이번 수정이 고치지 않음).** 같은 시계 초에 시작한 두 갱신은 이전 세대 하나를 잃는다. 방향은 보존 쪽이라 (증거가 줄어 `managed` 로 승격될 파일이 줄 뿐) 제거 방향의 오류는 없다. 두 세대를 모두 남기려면 실행 백업 디렉터리 이름의 해상도를 올리거나 (`internal/cli/update/backup`) 읽는 쪽이 한 디렉터리의 여러 세대를 읽도록 design.md D-3 항목 3 의 「정확한 이름만 읽는다」 를 고쳐야 하며 둘 다 이 카드의 범위 밖이다. 리더가 원하면 별도 카드로.
 
+### Run chunk 3 (M5, M6, M7) — 기록 시작
+
+시작 HEAD `78a09f1ce2`, 브랜치 `WT-update-ownership-repair`, 기록 규약은 chunk 1, 2 와 같다 (명령, 원문 출력, 종료 코드, 트리 SHA; 시험은 `TMPDIR=/private/tmp/own-fixture-d1` 아래 임시 디렉터리와 임시 HOME 만 썼다; 판정 도구는 이 트리의 `go test`, 설치된 바이너리 교체 없음). 이 chunk 는 `internal/cli` 패키지 전체, `-race`, 자원 슬롯을 쓰지 않는다 (앵커된 `-run` 만). **시계 초 비의존 규칙** (chunk 2 정정에서 배움): 실행 백업 디렉터리 이름은 1초 해상도라서 같은 초의 두 실행은 디렉터리를 공유한다 — 두 실행의 디렉터리가 달라야 하는 시험은 폴링으로 결정적으로 만들거나 `priorManifestWriter` 시임을 쓰고, 어느 시계 초에 실행이 놓이는지에 기대는 단언은 쓰지 않는다. M5 의 시험은 한 번의 마이그레이션 실행과 고정된 합성 이전 세대 파일 (`20260101_000001`) 만 쓰므로 시계에 닿지 않는다.
+
+#### M5 — 관리 파일만 있던 빈 디렉터리 정리 (AC-OWR-13)
+
+**커밋 A** `42854e32aa` (시험 파일만: `internal/cli/migrate_ownership_emptydir_test.go`) 와 **커밋 A2** `866a1f8103` (시험 파일만, 같은 파일): A 의 강도 점검에서 내가 찾은 약점 둘을 고쳤다. (1) 변이 서브 시험 둘이 「문제 목록에 해당 디렉터리가 언급되는가」 만 봐서 아무것도 정리하지 않는 구현 앞에서도 통과했다 → 이제 정확한 문제 문장 `<디렉터리>: removed, want it kept` 를 요구한다. (2) `RootsAndAgentDirectoriesAreNeverCandidates` 에 도달 대조군이 없었다 → 정리 단계가 같은 실행에서 돌았음 (사례 A 의 디렉터리가 사라짐) 을 먼저 단언한다. 이 RED 셀은 A2 트리에서 측정했다 (A 트리에서의 첫 측정은 약점 때문에 버렸다).
+
+시험 `TestManagedOnlyEmptyDirsPruned` 의 서브 시험: `Premise` (픽스처가 빈 디렉터리 아홉 개, 이전 세대 파일, 시작 매니페스트의 기록을 실제로 갖는지), `PrunesManagedOnlyAndKeepsTheRest` (스위치 켬; 사례 A 이전 실행이 비움, A' 시작 매니페스트만 기억, B 이번 실행이 비움 — 도달 대조군 `migIdenticalSkill` 이 먼저 제거됨, C 중첩 세 단계, 스킬 미러 루트의 관리 빈 디렉터리 `.agents/skills/...` 정리 / D 기록 없음, E `user_created` 기록, 혼합 부모 (자식은 관리 기록뿐이라 정리, 부모는 `user_created` 형제 기록이 있어 유지) , 미러 쪽 기록 없음 유지 / F 사용자 파일이 든 디렉터리 내용 불변; 스킬 루트 둘과 `.claude/agents/moai` 가 남음; 이번 실행의 파일 손실이 보고된 제거 목록과 정확히 같음 = 정리 단계가 파일을 지우지 않음; 정리된 네 디렉터리를 보고 줄이 이름으로 댐), `IndependentOfTheRemovalSwitch` (스위치 끔: 제거 0건인데 A, A', C, 미러 정리 / D, E 유지), `RootsAndAgentDirectoriesAreNeverCandidates`, `RemainingRowsAreDirectoriesNotFiles` (행 네 개, 묶음 줄이 디렉터리를 「file(s)」 로 부르지 않음), 변이 둘 `MutantPruningAnyEmptyDirIsCaught` (비어 있기만 하면 지우는 구현 → D 가 사라짐) 과 `MutantIgnoringNonManagedRecordsIsCaught` (관리 기록이 하나라도 있으면 출처로 보는 구현 → 혼합 부모가 사라짐). 별도 표 시험 `TestEmptyDirProvenanceVerdict` (순수 판정의 경계 열한 가지: 기록 없음, 관리 기록만, 시작 매니페스트만, 두 원천 같은 경로, `user_created`/`user_modified` 혼합, `deprecated`, 빈 출처 값, 이름 접두 대 디렉터리 접두, 디스크에 아직 있는 기록 경로).
+
+**AC-OWR-13 RED 셀 (트리 `866a1f8103`, A2 커밋 직후, 작업 트리 깨끗, 부하 평균 `29.60 42.23 45.79`)**
+
+명령: `TMPDIR=/private/tmp/own-fixture-d1 go test ./internal/cli/ -run '^TestManagedOnlyEmptyDirsPruned$' -count=1 -v`
+
+```text
+# github.com/modu-ai/moai-adk/internal/cli [github.com/modu-ai/moai-adk/internal/cli.test]
+internal/cli/migrate_ownership_emptydir_test.go:360:34: undefined: emptyDirEvidence
+internal/cli/migrate_ownership_emptydir_test.go:360:60: undefined: emptyDirVerdict
+internal/cli/migrate_ownership_emptydir_test.go:361:11: undefined: emptyDirVerdict
+internal/cli/migrate_ownership_emptydir_test.go:376:37: undefined: emptyDirEvidence
+internal/cli/migrate_ownership_emptydir_test.go:376:70: undefined: emptyDirVerdict
+internal/cli/migrate_ownership_emptydir_test.go:380:13: undefined: emptyDirVerdict
+internal/cli/migrate_ownership_emptydir_test.go:386:14: undefined: emptyDirVerdict
+internal/cli/migrate_ownership_emptydir_test.go:390:11: undefined: emptyDirVerdict
+internal/cli/migrate_ownership_emptydir_test.go:402:51: undefined: emptyDirEvidence
+internal/cli/migrate_ownership_emptydir_test.go:402:77: undefined: emptyDirVerdict
+internal/cli/migrate_ownership_emptydir_test.go:390:11: too many errors
+FAIL	github.com/modu-ai/moai-adk/internal/cli [build failed]
+FAIL
+exit=1
+```
+
+종료 코드 1. 이유: 정리 단계의 증거 모양 (`emptyDirEvidence`, `emptyDirVerdict`) 과 시험이 갈아 끼우는 판정 자리 (`emptyDirProvenanceFn`, `dirManagedProvenance`) 가 아직 없어 시험 패키지가 빌드되지 않는다 (시험이 존재하는 상태의 빌드 실패이며 제로 매치 셀렉터가 아니다).
+
+**단언 수준 RED (같은 트리 `866a1f8103` + 임시 stub 파일, 커밋하지 않고 삭제)**. 빌드 실패만으로는 「올바른 이유로 붉은가」 를 알 수 없어서, 새 심볼 다섯 개의 선언만 담은 임시 파일 `internal/cli/zz_m5_stub.go` (판정은 항상 `unregistered`, **정리 단계 없음**) 를 얹고 같은 명령을 돌렸다. 인용에서 `=== RUN` 줄과 `no report line names the pruned directory` 네 줄은 뺐다. 종료 코드 1, 이 실행 뒤 stub 파일을 지웠고 `git status --short` 가 빈 출력이다.
+
+```text
+    migrate_ownership_emptydir_test.go:280: reach control .claude/skills/moai-ghost-a was not pruned: the pruning step did not run, so a keep below proves nothing
+    migrate_ownership_emptydir_test.go:280: .claude/skills/moai-ghost-a: still present, want it removed
+    migrate_ownership_emptydir_test.go:280: .claude/skills/moai-ghost-s: still present, want it removed
+    migrate_ownership_emptydir_test.go:280: .claude/skills/moai-ghost-c: still present, want it removed
+    migrate_ownership_emptydir_test.go:280: .claude/skills/moai-ghost-c/refs: still present, want it removed
+    migrate_ownership_emptydir_test.go:280: .claude/skills/moai-ghost-c/refs/deep: still present, want it removed
+    migrate_ownership_emptydir_test.go:280: .agents/skills/moai-ghost-m: still present, want it removed
+    migrate_ownership_emptydir_test.go:280: .claude/skills/moai-ghost-d: kept without a remaining row
+    migrate_ownership_emptydir_test.go:280: .claude/skills/moai-ghost-e: kept without a remaining row
+    migrate_ownership_emptydir_test.go:280: .claude/skills/moai-ghost-cm: kept without a remaining row
+    migrate_ownership_emptydir_test.go:280: .claude/skills/moai-ghost-cm/refs: still present, want it removed
+    migrate_ownership_emptydir_test.go:280: .agents/skills/moai-ghost-n: kept without a remaining row
+    (IndependentOfTheRemovalSwitch: 같은 열두 줄, 줄 번호 300)
+    migrate_ownership_emptydir_test.go:311: the reach control .claude/skills/moai-ghost-a was not pruned: the keeps below would prove nothing
+    migrate_ownership_emptydir_test.go:339: 0 rows carry "empty-dir-no-provenance", want 4 (.claude/skills/moai-ghost-d, .claude/skills/moai-ghost-e, .claude/skills/moai-ghost-cm, .agents/skills/moai-ghost-n)
+--- FAIL: TestManagedOnlyEmptyDirsPruned (7.76s)
+    --- PASS: TestManagedOnlyEmptyDirsPruned/Premise (1.41s)
+    --- FAIL: TestManagedOnlyEmptyDirsPruned/PrunesManagedOnlyAndKeepsTheRest (0.99s)
+    --- FAIL: TestManagedOnlyEmptyDirsPruned/IndependentOfTheRemovalSwitch (1.04s)
+    --- FAIL: TestManagedOnlyEmptyDirsPruned/RootsAndAgentDirectoriesAreNeverCandidates (0.85s)
+    --- FAIL: TestManagedOnlyEmptyDirsPruned/RemainingRowsAreDirectoriesNotFiles (1.34s)
+    --- FAIL: TestManagedOnlyEmptyDirsPruned/MutantPruningAnyEmptyDirIsCaught (0.97s)
+    --- FAIL: TestManagedOnlyEmptyDirsPruned/MutantIgnoringNonManagedRecordsIsCaught (1.17s)
+FAIL
+FAIL	github.com/modu-ai/moai-adk/internal/cli	9.159s
+FAIL
+```
+
+해석: 사례 B (`moai-foundation-core`, 이번 실행이 마지막 파일을 제거) 는 이 stub 상태에서도 붉지 않았다 — t1668 의 `pruneEmptiedSkillDir` 가 이미 하는 일이므로 B 는 새 코드 없이 회귀 가드이다 (plan.md § G.1, acceptance AC-OWR-13 비고와 같은 예측). 붉은 것은 A, A', C 의 세 단계, 미러 쪽 관리 디렉터리, 혼합 자식 (정리되지 않음) 과 D, E, 혼합 부모, 미러 D (잔존 행 없음) 이다. 이유: 걷기 뒤의 정리 단계가 없고 정리 판단의 근거 (시작 매니페스트 + 이전 세대 기록 해석) 가 없다 — 정확히 acceptance 의 RED 이유 문장이다.
+
 ## §E.3 Run-phase Audit-Ready Signal
 
 _<pending run-phase>_
