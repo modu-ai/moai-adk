@@ -56,6 +56,10 @@ const (
 	// gitExitNotAncestor is the exit code `git merge-base --is-ancestor` uses to
 	// answer "no"; any other failure is an error, not an answer.
 	gitExitNotAncestor = 1
+
+	// gitExitDetachedHead is the exit code `git symbolic-ref --quiet HEAD` uses
+	// for a detached HEAD; any other failure is an error, not an answer.
+	gitExitDetachedHead = 1
 )
 
 // BaseFreshnessInput is what the gate judges.
@@ -76,6 +80,13 @@ type BaseFreshnessInput struct {
 	// IntegrationBranch only, so a request for another branch is a refusal (or,
 	// with the gate off, an advisory) and is never measured.
 	RequestedBranch string
+	// OmittedBranchTakesTarget reports that the refused verb, run without
+	// `--branch`, resolves its window to the configured IntegrationBranch — true
+	// where a develop branch is configured (git-flow). Where it is false
+	// (github-flow, gitlab-flow: develop_branch is empty) an omitted `--branch`
+	// records the caller's own branch, so the refusal remedy must name the target
+	// explicitly. It selects wording only and never changes a verdict.
+	OmittedBranchTakesTarget bool
 	// K is the tolerance, read from configuration by the caller. The gate holds
 	// no threshold of its own (REQ-ISB-007).
 	K int
@@ -137,14 +148,23 @@ func EvaluateBaseFreshness(in BaseFreshnessInput, seams BaseFreshnessSeams) Base
 	res.Applicable = true
 	git := seams.runner(in.Dir)
 
-	head, err := git("rev-parse", "--abbrev-ref", "HEAD")
+	// The candidate's current branch is read as a FULL ref. `rev-parse
+	// --abbrev-ref` (and `symbolic-ref --short`) print heads/<branch> when a tag
+	// shares the branch's name, which hid the integration tree from the
+	// applicability test (card t1834, sync-audit iter11 F2). With --quiet a
+	// detached HEAD is exit 1 and no output; any other failure is uncertainty.
+	headRef, err := git("symbolic-ref", "--quiet", "HEAD")
 	if err != nil {
-		return uncertain(res, gitCause("rev-parse", err))
+		var exit *factorylane.GitExitError
+		if errors.As(err, &exit) && exit.ExitCode == gitExitDetachedHead {
+			res.Applicable = false
+			return res
+		}
+		return uncertain(res, gitCause("symbolic-ref", err))
 	}
-	// branch is the candidate worktree's real current branch; it is compared with
+	// headRef is the candidate worktree's real current branch; it is compared with
 	// the configured IntegrationBranch, which the caller never derives from it.
-	branch := strings.TrimSpace(head)
-	if branch == "HEAD" || (in.IntegrationBranch != "" && branch == in.IntegrationBranch) {
+	if in.IntegrationBranch != "" && strings.TrimSpace(headRef) == integrationBranchRef(in.IntegrationBranch) {
 		res.Applicable = false
 		return res
 	}
@@ -163,7 +183,7 @@ func EvaluateBaseFreshness(in BaseFreshnessInput, seams BaseFreshnessSeams) Base
 	// the candidate is never measured against the other branch.
 	if requested := strings.TrimSpace(in.RequestedBranch); requested != "" && requested != in.IntegrationBranch {
 		reason := fmt.Sprintf("--branch %s differs from the configured integration target %s, and the gate measures the configured integration target only", requested, in.IntegrationBranch)
-		return violation(res, in, reason, fmt.Sprintf("Acquire without --branch (the configured target %s), or change the configured integration target, then retry.", in.IntegrationBranch))
+		return violation(res, in, reason, requestedBranchRemedy(in))
 	}
 
 	tipOut, err := git("rev-parse", "--verify", integrationBranchRef(in.IntegrationBranch))
@@ -260,6 +280,18 @@ func recordCause(rec *RemeasureRecord, err error) string {
 	default:
 		return "its structured test report is missing or empty"
 	}
+}
+
+// requestedBranchRemedy words the remedy for a refused --branch. Omitting the
+// flag takes the configured target only where a develop branch is configured; in
+// github-flow and gitlab-flow it records the caller's own branch instead, so the
+// remedy there names the configured target explicitly (a request equal to the
+// target is admitted and measured). Card t1834, sync-audit iter11 F3.
+func requestedBranchRemedy(in BaseFreshnessInput) string {
+	if in.OmittedBranchTakesTarget {
+		return fmt.Sprintf("Acquire without --branch (the configured target %s), or change the configured integration target, then retry.", in.IntegrationBranch)
+	}
+	return fmt.Sprintf("Acquire with --branch %s (the configured integration target), or change the configured integration target, then retry.", in.IntegrationBranch)
 }
 
 func absorbRemedy(branch string) string {

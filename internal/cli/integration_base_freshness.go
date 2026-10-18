@@ -87,17 +87,22 @@ func workflowConfigFailure(dotMoai string, loaded map[string]bool) error {
 // caller's current branch — and requestedBranch is the explicit --branch the verb
 // was given, empty when none: the gate measures the configured target only
 // (card t1834, sync-audit iter10 H1).
-func checkBaseFreshness(notices io.Writer, root, dir, cardID, integrationBranch, requestedBranch string) error {
+//
+// omittedBranchTakesTarget is true where the verb, run without --branch, resolves
+// its window to the configured target (a develop branch is configured); it only
+// selects the wording of the refusal remedy (card t1834, sync-audit iter11 F3).
+func checkBaseFreshness(notices io.Writer, root, dir, cardID, integrationBranch, requestedBranch string, omittedBranchTakesTarget bool) error {
 	settings := baseFreshnessGateConfig(root)
 	res := factory.EvaluateBaseFreshness(factory.BaseFreshnessInput{
-		Root:              root,
-		Dir:               dir,
-		CardID:            cardID,
-		IntegrationBranch: integrationBranch,
-		RequestedBranch:   requestedBranch,
-		K:                 settings.K,
-		Enabled:           settings.Enabled,
-		ConfigErr:         settings.Err,
+		Root:                     root,
+		Dir:                      dir,
+		CardID:                   cardID,
+		IntegrationBranch:        integrationBranch,
+		RequestedBranch:          requestedBranch,
+		OmittedBranchTakesTarget: omittedBranchTakesTarget,
+		K:                        settings.K,
+		Enabled:                  settings.Enabled,
+		ConfigErr:                settings.Err,
 	}, baseFreshnessSeams)
 	if res.Notice != "" {
 		_, _ = fmt.Fprintln(notices, res.Notice)
@@ -116,8 +121,10 @@ func checkBaseFreshness(notices io.Writer, root, dir, cardID, integrationBranch,
 // candidate is the caller's working directory, as the remeasure verb keys it.
 // An invocation without a card id is not the gate's business and stays silent
 // (a leader acquiring for a batch). integrationBranch is the configured
-// integration target and requestedBranch the explicit --branch, if any.
-func acquireBaseFreshnessPrecondition(cmd *cobra.Command, root, cardID, integrationBranch, requestedBranch string) error {
+// integration target and requestedBranch the explicit --branch, if any;
+// omittedBranchTakesTarget is true when a develop branch is configured, so that
+// acquire without --branch resolves to the configured target.
+func acquireBaseFreshnessPrecondition(cmd *cobra.Command, root, cardID, integrationBranch, requestedBranch string, omittedBranchTakesTarget bool) error {
 	if cardID == "" {
 		return nil
 	}
@@ -126,7 +133,7 @@ func acquireBaseFreshnessPrecondition(cmd *cobra.Command, root, cardID, integrat
 		_, _ = fmt.Fprintln(cmd.ErrOrStderr(), "base-freshness: not measured — cannot resolve the working directory")
 		return nil
 	}
-	return checkBaseFreshness(cmd.ErrOrStderr(), root, dir, cardID, integrationBranch, requestedBranch)
+	return checkBaseFreshness(cmd.ErrOrStderr(), root, dir, cardID, integrationBranch, requestedBranch, omittedBranchTakesTarget)
 }
 
 // completeBaseFreshnessPrecondition is `moai factory complete`'s call, made
@@ -139,5 +146,5 @@ func completeBaseFreshnessPrecondition(out io.Writer, lockRoot, integTree, branc
 	if factoryAdoptedTip(lockRoot, integTree, branch, cardTree, cardBranch) != "" {
 		return nil
 	}
-	return checkBaseFreshness(out, lockRoot, cardTree, cardID, branch, "")
+	return checkBaseFreshness(out, lockRoot, cardTree, cardID, branch, "", false)
 }

@@ -136,3 +136,71 @@ func TestRemeasureKeysRecordByOwnTreeUnderInheritedGitEnv(t *testing.T) {
 		t.Errorf("the gate must find the record the remeasure just wrote, refused: %s", res.Refusal)
 	}
 }
+
+// t1834F1Fixture makes the candidate repository (one commit on main) and a
+// DIFFERENT decoy repository, plus a store directory for the record. It returns
+// the store, the candidate, the candidate's HEAD and the decoy's directory.
+func t1834F1Fixture(t *testing.T) (store, card, cardHead, decoy string) {
+	t.Helper()
+	root, err := filepath.EvalSymlinks(t.TempDir())
+	if err != nil {
+		t.Fatal(err)
+	}
+	card, decoy, store = filepath.Join(root, "card"), filepath.Join(root, "decoy"), filepath.Join(root, "store")
+	for _, dir := range []string{card, decoy, store} {
+		if err := os.MkdirAll(dir, 0o755); err != nil {
+			t.Fatal(err)
+		}
+	}
+	for _, repo := range []struct{ dir, body string }{{card, "card\n"}, {decoy, "other repository\n"}} {
+		t1834G1Git(t, repo.dir, "init", "-q", "-b", "main")
+		if err := os.WriteFile(filepath.Join(repo.dir, "work.txt"), []byte(repo.body), 0o644); err != nil {
+			t.Fatal(err)
+		}
+		t1834G1Git(t, repo.dir, "add", "work.txt")
+		t1834G1Git(t, repo.dir, "commit", "-q", "-m", "work")
+	}
+	cardHead = t1834G1Git(t, card, "rev-parse", "HEAD")
+	if cardHead == t1834G1Git(t, decoy, "rev-parse", "HEAD") {
+		t.Fatalf("fixture: the decoy HEAD must differ from the candidate HEAD")
+	}
+	return store, card, cardHead, decoy
+}
+
+// t1834 sync-audit iter11 F1 — the helpers were scrubbed (G1) but the MEASURING
+// command RunRemeasure executes still inherited GIT_DIR / GIT_WORK_TREE, so a
+// check that inspects the repository answered about another repository and the
+// record then vouched for a candidate that was never measured.
+func TestRemeasureCommandMeasuresTheCandidateUnderInheritedGitEnv(t *testing.T) {
+	store, card, cardHead, decoy := t1834F1Fixture(t)
+	t.Setenv("GIT_DIR", filepath.Join(decoy, ".git"))
+	t.Setenv("GIT_WORK_TREE", decoy)
+
+	command := `test "$(git rev-parse HEAD)" = ` + cardHead + ` && test "$(git rev-parse --show-toplevel)" = ` + card
+	// RunRemeasure returns an error for a non-zero measuring exit (the record is
+	// still written as observed): the command exiting non-zero here means it read
+	// the decoy repository, not the candidate.
+	rec, err := RunRemeasure(store, card, "main", command)
+	if err != nil {
+		t.Fatalf("the measuring command did not see the candidate %s under an inherited GIT_DIR (it inspected another repository): %v", card, err)
+	}
+	if rec.ExitCode != 0 {
+		t.Errorf("the measuring command exited %d, want 0", rec.ExitCode)
+	}
+}
+
+// The scrub is narrow: only the repository-selecting git variables go. Every
+// other variable the user's command relies on must still reach it.
+func TestRemeasureCommandKeepsTheRestOfTheUserEnvironment(t *testing.T) {
+	store, card, _, decoy := t1834F1Fixture(t)
+	t.Setenv("GIT_DIR", filepath.Join(decoy, ".git"))
+	t.Setenv("T1834_USER_ENV", "kept")
+
+	rec, err := RunRemeasure(store, card, "main", `test "$T1834_USER_ENV" = kept`)
+	if err != nil {
+		t.Fatalf("RunRemeasure() error = %v", err)
+	}
+	if rec.ExitCode != 0 {
+		t.Errorf("the measuring command exited %d: a non-git variable of the user's environment did not reach it", rec.ExitCode)
+	}
+}

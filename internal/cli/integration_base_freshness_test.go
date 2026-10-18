@@ -873,6 +873,49 @@ func TestAcquireRefusesAnExplicitBranchOtherThanTheConfiguredTarget(t *testing.T
 	}
 }
 
+func TestAcquireRefusalRemedyInGitHubFlowNamesTheTargetAndFollowingItRecordsIt(t *testing.T) {
+	// Audit iter11 F3: in github-flow develop_branch is empty, so `acquire` without
+	// --branch records the caller's own branch. The remedy must therefore name the
+	// configured target, and following it must record that target as the window.
+	f := newBFCFixture(t)
+	bfcWriteWorkflow(t, f.root, bfcGateYAML(true, 0))
+	f.writeRecord(f.base)
+	bfcGit(t, f.repo, "branch", "alternate", "main")
+
+	_, _, err := f.acquire("--card", "t1", "--branch", "alternate", "--session", "sess-lane1")
+	requireFreshnessRefusal(t, err)
+	if !strings.Contains(err.Error(), "Acquire with --branch main") || strings.Contains(err.Error(), "without --branch") {
+		t.Fatalf("the github-flow remedy must name --branch main and not advise omitting it: %v", err)
+	}
+	if got := windowBytes(t, f.root); got != "<absent>" {
+		t.Fatalf("a refused acquire must record no window, got %s", got)
+	}
+
+	stdout, stderr, err := f.acquire("--card", "t1", "--branch", "main", "--session", "sess-lane1")
+	if err != nil {
+		t.Fatalf("following the remedy must admit: %v\nstdout: %s\nstderr: %s", err, stdout, stderr)
+	}
+	if lock := sdWindow(t, f.root); lock.SessionID != "sess-lane1" || lock.Branch != "main" {
+		t.Fatalf("following the remedy must record the configured target as the window branch: %+v", lock)
+	}
+}
+
+func TestAcquireRefusalRemedyInGitFlowKeepsOmitBranch(t *testing.T) {
+	// Where a develop branch is configured, omitting --branch takes the configured
+	// target, so the remedy keeps advising it.
+	f := newBFCFixture(t)
+	writeGitStrategyFixture(t, f.root, "git-flow", "main")
+	bfcWriteWorkflow(t, f.root, bfcGateYAML(true, 0))
+	f.writeRecord(f.base)
+	bfcGit(t, f.repo, "branch", "alternate", "main")
+
+	_, _, err := f.acquire("--card", "t1", "--branch", "alternate", "--session", "sess-lane1")
+	requireFreshnessRefusal(t, err)
+	if !strings.Contains(err.Error(), "Acquire without --branch (the configured target main)") {
+		t.Fatalf("the git-flow remedy must keep advising to omit --branch: %v", err)
+	}
+}
+
 func TestAcquireExplicitBranchOtherThanTheConfiguredTargetIsAdvisoryWhenGateOff(t *testing.T) {
 	// The same mismatch with the gate off (the shipped default): acquire still
 	// records the window for the explicit branch, prints no sentinel, and the one

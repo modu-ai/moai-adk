@@ -449,8 +449,11 @@ func newIntegrationAcquireCmd() *cobra.Command {
 			// The gate measures the configured integration target only: the window
 			// record above may fall back to the caller's branch, the measurement
 			// never does, and an explicit --branch naming another branch is the
-			// gate's to refuse (card t1834, sync-audit iter10 H1).
-			if freshErr := acquireBaseFreshnessPrecondition(cmd, root, cardFlag, gitFlow.IntegrationTarget, branchFlag); freshErr != nil {
+			// gate's to refuse (card t1834, sync-audit iter10 H1). Without --branch
+			// the window resolves to the configured target only where a develop
+			// branch is configured (git-flow); elsewhere it records the caller's
+			// branch, which shapes the wording of the refusal's remedy.
+			if freshErr := acquireBaseFreshnessPrecondition(cmd, root, cardFlag, gitFlow.IntegrationTarget, branchFlag, gitFlow.DevelopBranch != ""); freshErr != nil {
 				return freshErr
 			}
 			// The pid recorded is the OWNING SESSION's, never this process's.

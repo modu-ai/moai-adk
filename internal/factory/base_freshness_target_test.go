@@ -71,6 +71,69 @@ func TestBaseFreshnessRequestedBranchEqualToTheTargetIsMeasuredAsBefore(t *testi
 	}
 }
 
+func TestBaseFreshnessIntegrationTreeIsNotApplicableWhenATagSharesTheBranchName(t *testing.T) {
+	// Audit iter11 F2: with a tag named like the branch, `rev-parse --abbrev-ref
+	// HEAD` prints heads/main, so the tree ON the integration branch was no longer
+	// recognised as such and a cardful call from it was refused for a missing record.
+	f := newBFFixture(t)
+	bfGit(t, f.repo, "tag", "main", f.base)
+	f.landEmpty(1)
+
+	in := f.input(0, true)
+	in.Dir = f.repo
+	res := EvaluateBaseFreshness(in, BaseFreshnessSeams{})
+	if res.Applicable || !res.Admit || res.Refusal != "" || res.Notice != "" {
+		t.Fatalf("a tree on the integration branch is outside the gate, tag or not: %+v", res)
+	}
+}
+
+func TestBaseFreshnessCandidateOffTheIntegrationBranchIsStillMeasuredWithAShadowingTag(t *testing.T) {
+	// The other side of F2: a candidate on its own branch is measured as before
+	// when a tag shares the integration branch's name.
+	f := newBFFixture(t)
+	bfGit(t, f.repo, "tag", "main", f.base)
+	res := EvaluateBaseFreshness(f.input(0, true), BaseFreshnessSeams{})
+	if !res.Applicable || res.Admit || !strings.HasPrefix(res.Refusal, BaseFreshnessSentinel) {
+		t.Fatalf("a candidate with no record must still be refused: %+v", res)
+	}
+}
+
+func TestBaseFreshnessRefusalRemedyNamesTheBranchPerFlow(t *testing.T) {
+	// Audit iter11 F3: where a develop branch is configured, omitting --branch
+	// takes the configured target; where it is not (github-flow, gitlab-flow),
+	// omitting it records the caller's branch, so the remedy must name the target.
+	cases := []struct {
+		name            string
+		omitTakesTarget bool
+		want, forbidden string
+	}{
+		{"git-flow", true, "Acquire without --branch (the configured target main)", "--branch main"},
+		{"github-flow", false, "Acquire with --branch main (the configured integration target)", "without --branch"},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			f := newBFFixture(t)
+			f.writeRecord(f.base, nil)
+			bfGit(t, f.repo, "branch", "alternate", "main")
+
+			in := f.input(0, true)
+			in.RequestedBranch = "alternate"
+			in.OmittedBranchTakesTarget = tc.omitTakesTarget
+			res := EvaluateBaseFreshness(in, BaseFreshnessSeams{})
+			if res.Admit {
+				t.Fatalf("an explicit branch other than the target must be refused: %+v", res)
+			}
+			if !strings.Contains(res.Refusal, tc.want) {
+				t.Errorf("the remedy must read %q: %q", tc.want, res.Refusal)
+			}
+			if strings.Contains(res.Refusal, tc.forbidden) {
+				t.Errorf("the remedy must not carry %q: %q", tc.forbidden, res.Refusal)
+			}
+			requireOneLine(t, "refusal", res.Refusal)
+		})
+	}
+}
+
 func TestRunRemeasureNamesTheBranchTipWhenATagSharesTheBranchName(t *testing.T) {
 	// Audit iter10 H2: `git merge-base main HEAD` resolves a tag named `main`
 	// before the branch, so the record's base followed an older tag while the gate

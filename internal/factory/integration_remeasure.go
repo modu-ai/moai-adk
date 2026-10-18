@@ -648,6 +648,12 @@ func RunRemeasure(projectRoot, worktree, baseBranch, command string) (*Remeasure
 
 	cmd := exec.Command("sh", "-c", command)
 	cmd.Dir = worktree
+	// The command measures THIS candidate: an inherited GIT_DIR / GIT_WORK_TREE
+	// would outrank cmd.Dir and point any git the command runs at another
+	// repository, and the record would then vouch for a tree never measured. Only
+	// the repository-selecting variables go; the rest of the user's environment
+	// (PATH, HOME, TMPDIR, GOFLAGS, ...) still reaches the command.
+	cmd.Env = gitenv.Env()
 	outBytes, runErr := cmd.Output()
 	exitCode := 0
 	if runErr != nil {
