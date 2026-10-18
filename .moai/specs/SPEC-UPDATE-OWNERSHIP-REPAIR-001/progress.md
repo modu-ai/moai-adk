@@ -3505,11 +3505,139 @@ rc=1
 
 리뷰는 레거시 백업 루트에 사용자가 글자 그대로 `manifest.prior.json` 이라는 설정 파일을 두었다면 이제 `--restore` 가 그것을 건너뛴다고 지적했다. 레인이 거절했다: (1) 그런 파일이 `.moai/config` 에 존재할 수 있는 유일한 경로는 chunk 5 가 고친 복원 결함 그 자체인데 그 결함은 출하된 적이 없다; (2) 이름은 REQ-OWR-015 와 design.md D-3 이 고정한다; (3) 복원 걷기는 그 둘을 구별할 방법이 없다. **공개된 한계**: 백업 루트의 이름이 `manifest.prior.json` (또는 `manifest.prior.json.tmp-` 접두사) 인 파일은 복원에서 제외된다. 하위 디렉터리의 같은 이름 파일은 계속 복원된다 (시험이 고정).
 
+#### Chunk 10 GREEN 기록과 정직한 회계
+
+#### (A) 수정 C `848bbc4707` 와 증거
+
+수정: `linkLeavesRoot` 를 `pathLeavesRoot` 로 바꿨다. `Lstat` 지름길 (마지막 요소가 링크인지) 을 없애고 `EvalSymlinks(abs)` 로 전체 경로를 풀어 `withinRootBoundary(env.rootResolved, resolved)` 로 비교한다 — 상위 디렉터리가 링크여도 같다. 풀리지 않는 경로 (끊어진 링크, 없는 파일, 조사할 수 없는 경로)는 종전대로 보고하지 않아 `read-failed` 로 남는다. 프로젝트 안을 가리키는 링크 (파일이든 상위 디렉터리든) 는 종전대로 내용으로 판정한다. 등록된 파일 경로의 `withinRootBoundary` 사용처 (`disposition`, 빈 디렉터리 정리, 정리 경계) 는 이미 전체 경로 해석이라 바꾸지 않았다.
+
+**확인한 것 (A).** (1) 걷기가 상위 링크 아래 파일을 어떻게 내놓는가 — 시험이 두 형태를 구동한다: 상위 (`.codex`) 가 링크이면 걷기는 외부 `agents/moai` 를 내려가며 모든 파일 (최상위와 한 단계 아래 둘 다)을 프로젝트 상대 이름으로 내놓고, 가드가 각 파일에서 전체 경로를 풀어 둘 다 덮는다; 걷기 뿌리 자신이 링크이면 내려가지 않고 링크 하나를 내놓아 가드가 그 링크를 덮는다. 즉 걷기가 내놓는 모든 파일이 가드를 거친다. (2) 대조군 — 프로젝트 안 상위 링크, 일반 파일, 끊어진 상위 링크 아래, 없는 파일 — 이 수정 전후 같은 결과. (3) 이웃 시험 53개 최상위 전부 통과 (`a-neighbours.txt`: PASS=53 FAIL=0 SKIP=0), `rootResolved` 가 빈 환경으로 등록 안 된 일반 파일을 분류하는 시험이 이 집합 안에는 없음을 이것으로 확인했다 (있었다면 모든 파일이 뿌리 밖으로 읽혀 붉어졌을 것이다; 집합 밖의 패키지 나머지는 CI 몫).
+
+연속 5회 (`-run '^TestUnregisteredFileBelowASymlinkedAncestorIsNotRead$'`, 서브 시험 4개 + 부모, 저장 파일 `a-green-1..5.txt`):
+
+```text
+run1: ok  	github.com/modu-ai/moai-adk/internal/cli	3.471s | PASS=5 FAIL=0 SKIP=0
+run2: ok  	github.com/modu-ai/moai-adk/internal/cli	2.156s | PASS=5 FAIL=0 SKIP=0
+run3: ok  	github.com/modu-ai/moai-adk/internal/cli	2.045s | PASS=5 FAIL=0 SKIP=0
+run4: ok  	github.com/modu-ai/moai-adk/internal/cli	2.511s | PASS=5 FAIL=0 SKIP=0
+run5: ok  	github.com/modu-ai/moai-adk/internal/cli	2.121s | PASS=5 FAIL=0 SKIP=0
+```
+
+실제 코드 변이 (`pathLeavesRoot` 를 마지막 요소 검사로 되돌림: `Lstat` 이 링크가 아니면 `false`; `cmp` 로 복원 확인):
+
+```text
+--- FAIL: TestUnregisteredFileBelowASymlinkedAncestorIsNotRead (1.50s)
+    --- FAIL: TestUnregisteredFileBelowASymlinkedAncestorIsNotRead/AncestorLeavesTheProject (0.52s)
+    --- PASS: TestUnregisteredFileBelowASymlinkedAncestorIsNotRead/ControlsAreJudgedAsBefore (0.00s)
+    --- FAIL: TestUnregisteredFileBelowASymlinkedAncestorIsNotRead/Flow/AncestorOfTheWalkRoot (0.51s)
+    --- PASS: TestUnregisteredFileBelowASymlinkedAncestorIsNotRead/Flow/TheWalkRootItself (0.46s)
+FAIL
+FAIL	github.com/modu-ai/moai-adk/internal/cli	2.336s
+FAIL
+rc=1
+RESTORED-IDENTICAL
+```
+
+붉은 이유: 올바른 이유다 — 상위 링크 두 형태 중 상위가 링크인 판정 함수 절과 걷기 절이 붉어지고 대조군과 걷기 뿌리 자신이 링크인 형태는 초록으로 남는다.
+
+#### (B) 수정 C `d8a5f75053` 와 증거
+
+수정 (두 끝): (1) `writePriorManifest` 가 임시 파일 생성 뒤 어느 실패 경로에서도 (임시 쓰기가 경로와 함께 오류를 돌려준 경우, 이름 바꾸기 실패) 임시 파일을 지운다 (최선 노력; 오류는 종전 그대로 `preserve prior manifest: ...` 로 보고). (2) 백업 패키지가 `PriorManifestTempPrefix` (`manifest.prior.json.tmp-`) 와 `IsPriorManifestBookkeeping(relPath)` 를 내보내고, 쓰는 쪽 `os.CreateTemp` 이 그 접두사를 쓰며 레거시 복원 걷기가 최종 이름과 같이 백업 루트의 임시 이름을 건너뛴다. 하위 디렉터리의 같은 이름 파일은 계속 복원된다.
+
+연속 5회 (저장 파일 `b-green-cli-1..5.txt`: `-run '^(TestFailedPriorManifestRenameLeavesNoTemporaryFile|TestPriorManifestAtomicWriteFailures)$'`, 서브 시험 포함 PASS 10; `b-green-backup-1..5.txt`: 복원 네 진입점, PASS 4):
+
+```text
+run1: cli ok  	github.com/modu-ai/moai-adk/internal/cli	2.363s PASS=10 FAIL=0 SKIP=0 | backup ok  	github.com/modu-ai/moai-adk/internal/cli/update/backup	0.371s PASS=4 FAIL=0 SKIP=0
+run2: cli ok  	github.com/modu-ai/moai-adk/internal/cli	2.653s PASS=10 FAIL=0 SKIP=0 | backup ok  	github.com/modu-ai/moai-adk/internal/cli/update/backup	0.205s PASS=4 FAIL=0 SKIP=0
+run3: cli ok  	github.com/modu-ai/moai-adk/internal/cli	2.521s PASS=10 FAIL=0 SKIP=0 | backup ok  	github.com/modu-ai/moai-adk/internal/cli/update/backup	0.263s PASS=4 FAIL=0 SKIP=0
+run4: cli ok  	github.com/modu-ai/moai-adk/internal/cli	2.339s PASS=10 FAIL=0 SKIP=0 | backup ok  	github.com/modu-ai/moai-adk/internal/cli/update/backup	0.310s PASS=4 FAIL=0 SKIP=0
+run5: cli ok  	github.com/modu-ai/moai-adk/internal/cli	2.805s PASS=10 FAIL=0 SKIP=0 | backup ok  	github.com/modu-ai/moai-adk/internal/cli/update/backup	0.196s PASS=4 FAIL=0 SKIP=0
+```
+
+실제 코드 변이 둘 (각각 `cmp` 로 복원 확인):
+
+```text
+-- 변이 1: 이름 바꾸기 실패 뒤 임시 파일을 지우지 않음
+    update_prior_manifest_tmpcleanup_test.go:74: temporary files remain after the failed rename: [manifest.prior.json.tmp-3412543388]
+    update_prior_manifest_tmpcleanup_test.go:94: temporary files remain after the failed rename: [manifest.prior.json.tmp-902120179]
+    update_prior_manifest_tmpcleanup_test.go:136: temporary files remain in the run backup: [manifest.prior.json.tmp-3431824611]
+--- FAIL: TestFailedPriorManifestRenameLeavesNoTemporaryFile (0.96s)
+    --- PASS: TestFailedPriorManifestRenameLeavesNoTemporaryFile/TheNameTheWriterUsesIsTheNameTheRestoreSkips (0.01s)
+    --- FAIL: TestFailedPriorManifestRenameLeavesNoTemporaryFile/InjectedRenameFailure (0.01s)
+    --- FAIL: TestFailedPriorManifestRenameLeavesNoTemporaryFile/RealRenameFailureOntoAnOccupiedName (0.01s)
+    --- FAIL: TestFailedPriorManifestRenameLeavesNoTemporaryFile/TheRunStillRemovesNothing (0.93s)
+FAIL
+FAIL	github.com/modu-ai/moai-adk/internal/cli	1.926s
+FAIL
+rc=1
+RESTORED-IDENTICAL-writer
+-- 변이 2: 복원이 최종 이름만 건너뜀 (임시 접두사 미포함)
+--- FAIL: TestRestoreLegacySkipsPriorManifestTemporaryFile (0.00s)
+--- FAIL: TestRestoreRetainedWithoutSectionsSkipsPriorManifestTemporaryFile (0.00s)
+--- PASS: TestRestoreRetainedWithSectionsSkipsPriorManifestTemporaryFile (0.00s)
+--- FAIL: TestRestoreFromBackupDirSkipsPriorManifestTemporaryFile (0.00s)
+FAIL
+FAIL	github.com/modu-ai/moai-adk/internal/cli/update/backup	0.365s
+FAIL
+rc=1
+RESTORED-IDENTICAL-restore
+```
+
+붉은 이유: 올바른 이유다 — 변이 1 은 임시 파일이 남는 세 곳이, 변이 2 는 복원 세 진입점이 붉어진다 (섹션이 있는 백업의 한 시험은 섹션 YAML 만 걸으므로 변이와 무관하게 초록이다).
+
+#### 회귀와 점검 (저장 파일 `reg-*.txt`, `v-*.txt`)
+
+변경된 시험 파일 (`git diff --name-only cdd72a814..HEAD -- '*_test.go'`, 30개) 의 최상위 시험 이름 집합을 패키지별로 도출했다 (`names-*.txt`): `internal/cli` 55, `internal/cli/update/backup` 8, `internal/manifest` 1. 앵커 선택자로 실행:
+
+```text
+reg-cli: ok  	github.com/modu-ai/moai-adk/internal/cli	138.382s rc=0  top-level PASS=55 FAIL=0 SKIP=0
+reg-internal_manifest: ok  	github.com/modu-ai/moai-adk/internal/manifest	0.259s rc=0  top-level PASS=1 FAIL=0 SKIP=0
+reg-internal_cli_update_backup: ok  	github.com/modu-ai/moai-adk/internal/cli/update/backup	0.220s rc=0  top-level PASS=8 FAIL=0 SKIP=0
+--- v-build:
+rc=0
+--- v-winbuild:
+rc=0
+--- v-vet (host, internal/cli + internal/cli/update/backup):
+rc=0
+--- v-winvet:
+rc=0
+--- v-lint (golangci-lint run --new-from-rev=c194aca4de ./internal/cli/ ./internal/cli/update/backup/):
+0 issues.
+rc=0
+--- invariants:
+$ git diff --quiet cdd72a814 HEAD -- internal/config/protected_zone.go internal/config/userroots.go internal/profile
+invariant-exit=0
+$ removalEnabled assignments (non-test)
+internal/cli/migrate_project_assets.go:40:var removalEnabled = false
+$ skip grep over the 30 changed test files
+internal/cli/migrate_ownership_helpers_test.go:1008:	t.Logf("force=false run=1 skipped=%v", first.Skipped)
+internal/cli/migrate_ownership_helpers_test.go:1009:	if first.Skipped {
+internal/cli/migrate_ownership_symlink_test.go:8:// platform without symlinks; a t.Skip would sweep nothing and read as a pass. A
+skip-grep-exit=0 (1 = no t.Skip/SkipNow/testing.Short call)
+internal/cli/migrate_ownership_helpers_test.go:425:	// Skipped is the flow's skipped result: true when the version-match gate
+internal/cli/migrate_ownership_helpers_test.go:427:	Skipped bool
+internal/cli/migrate_ownership_helpers_test.go:467:	run := forcedRun{Out: out.String(), Skipped: skipped, StartManifest: start}
+$ gofmt -l internal/cli
+gofmt-exit=0
+untracked=0
+```
+
+(스킵 grep 의 세 줄은 이전 chunk 와 같다: 실행 결과 필드 `first.Skipped` 를 쓰는 두 줄과 `t.Skip` 을 설명하는 주석 한 줄이며 `t.Skip`·`SkipNow`·`testing.Short` 호출은 없다.)
+
+**이번 chunk 의 한계 (정직한 회계).**
+
+1. 회귀는 변경된 시험 파일의 이름 집합이며 패키지 전체 시험이 아니다. 패키지 전체 시험·커버리지·`-race`·Windows 시험 실행은 CI 와 착지 재측정 몫이다 (Windows 는 빌드와 vet 만).
+2. (A) 는 등록 안 된 경로만 고친다. 등록된 파일 경로의 읽기가 경계 검사보다 앞서는 부채는 기준 시점부터 있었고 AC-OWR-01 의 고정 기대 때문에 그대로이며, 이제 상위 링크 형태에도 같은 부채가 적용됨을 위에서 밝혔다 (N16 계열). 가드는 `EvalSymlinks` 와 읽기 사이의 경합 (그 사이에 링크가 바뀜) 을 막지 않는다 — 종류 확인과 읽기 사이 경합과 같은 공개 한계.
+3. (A) 는 `rootResolved` 가 빈 환경에서 모든 존재하는 경로를 뿌리 밖으로 보고 (fail-closed) 한다. 운영 경로는 `newOwnershipEnv` 가 항상 채운다 (못 채우면 오류); 실행한 시험 집합의 어느 시험도 빈 값으로 등록 안 된 일반 파일을 분류하지 않았다 (통과로 확인; 집합 밖은 CI).
+4. (B) 임시 파일 제거는 최선 노력이다. 프로세스가 이름 바꾸기 실패와 제거 사이에 죽으면 파일이 남을 수 있고 이 경우에도 복원이 그 이름을 건너뛴다 (두 끝이 함께 막는 이유).
+5. (B) 기존 시험 (q) 의 전제 위치를 옮긴 것은 수정이 바꾸는 동작에 맞춘 것이다. 단언은 약화하지 않았다.
+6. 코덱스 카드 리뷰의 재확인은 레인의 몫이다. 이 chunk 는 `.moai/reports`, `.moai/state/audit-receipts`, §E.4, CHANGELOG, SPEC 본문을 건드리지 않았다.
+
 ## §E.3 Run-phase Audit-Ready Signal
 
 ```yaml
 run_complete_at: 2026-10-18
-run_commit_sha: fa26fcaf17  # code-verification baseline: the last test/code commit (chunk 9 sync-audit repair: F2 fix fa26fcaf17, F3 fix d8fa645c41, F1 fix e0c2896d64; chunk 8 4f970def44); the evidence commit that carries this block follows it
+run_commit_sha: d8a5f75053  # code-verification baseline: the last test/code commit (chunk 10 card-review round 4: (B) fix d8a5f75053, (A) fix 848bbc4707; chunk 9 fa26fcaf17); the evidence commit that carries this block follows it
 run_status: complete
 ac_pass_count: 21
 ac_fail_count: 0
@@ -3519,8 +3647,8 @@ l44_post_push_fetch: not-applicable (the lane never pushes; the landing is the l
 new_warnings_or_lints_introduced: 0  # one intermediate golangci-lint finding (two unused fields in the AC-OWR-15 test) found and fixed in 8afbbe9436; the 3 errcheck findings in internal/cli/factory_run_adopt.go predate the card and are untouched
 cross_platform_build.darwin: PASS (go build ./... rc=0; go vet rc=0)
 cross_platform_build.windows: PASS (GOOS=windows go build ./... rc=0; GOOS=windows go vet ./internal/cli/ ./internal/manifest/ rc=0)
-total_run_phase_files: 43  # non-.moai files added or edited over the card, run phase only (CHANGELOG.md is the sync phase's): 27 test files, 15 Go sources, 1 data file (chunk 5 added 2 tests and 2 Go sources in internal/cli/update/backup; chunk 6 added 1 test file; chunk 8 added 1 test file; chunk 9 added 3 test files and edited 3 Go sources already counted)
-m1_to_mN_commit_strategy: per acceptance criterion A (tests only) -> B (cell recorded from saved output files) -> C (implementation, where something was open); explicit pathspecs only; no push; M8-M10 needed no C; chunk 5 card-review fixes: A 73e37d3832, B 9c00e81a2c, C 051ddc18ef; chunk 6 card-review fix: A 2eeb0559bd, B 60d38d1559, C 1d5ecbbc7c; chunk 9 sync-audit repair: F1 A 6315473594, B c607c315bc, C e0c2896d64; F3 A 34c69c19fc, B 2cbb1af355, C d8fa645c41; F2 A ed58e64c3c, B cc4ca5b239, C fa26fcaf17
+total_run_phase_files: 46  # non-.moai files added or edited over the card, run phase only (CHANGELOG.md is the sync phase's): 30 test files, 15 Go sources, 1 data file (chunk 9 added 3 test files; chunk 10 added 3 test files and edited 3 Go sources already counted)
+m1_to_mN_commit_strategy: per acceptance criterion A (tests only) -> B (cell recorded from saved output files) -> C (implementation, where something was open); explicit pathspecs only; no push; M8-M10 needed no C; chunk 5 card-review fixes: A 73e37d3832, B 9c00e81a2c, C 051ddc18ef; chunk 6 card-review fix: A 2eeb0559bd, B 60d38d1559, C 1d5ecbbc7c; chunk 9 sync-audit repair: F1 A 6315473594, B c607c315bc, C e0c2896d64; F3 A 34c69c19fc, B 2cbb1af355, C d8fa645c41; F2 A ed58e64c3c, B cc4ca5b239, C fa26fcaf17; chunk 10 card-review round 4: (A) A 780f7862f2, C 848bbc4707; (B) A 9cc9b77a01, C d8a5f75053; record 70cb8c0c56
 ```
 
 **AC 행렬 (21개).** 등급은 RED-now 를 이 트리에서 실제로 관측했는지로 정했다 (acceptance.md 「등급과 RED 셀 규약」 1항): release-blocking = A 직후 트리에서 판정 명령이 붉음을 보였고 명령·원문·종료 코드·트리 SHA 가 셀에 있음; regression-guard = 도착 시 초록이고 붉음은 변이에서 관측. 이 분류는 사실 기록이며 최종 판단은 감사의 몫이다.
@@ -3556,7 +3684,7 @@ release-blocking 14 (AC-OWR-01 ~ -07, -11 ~ -14, -16, -20, -21), regression-guar
 | N4 잔여 (전체 트리 동일 요구 철회 뒤 센티널이 못 보는 것) | **처분됨 (시험이 닿는 데까지), 못 보는 것은 공개** | M8 기록 관측 3: E 안의 차이는 복원 영역 R (매니페스트) 의 바이트 비교, 실행 백업 배치 비교 (통제 실행 + 정확히 제거 자산 사본), 로그/상태 경로 집합 비교로, 파일 모드는 스냅샷 서술자와 R 의 `(i-mode)`, `(iii-mode)` 로 닫았다. 못 보는 것: 로그/상태 안의 내용 차이, 디렉터리 mtime·xattr·소유자, 프로젝트 밖 쓰기. 시험 안 변이 열여섯과 운영 코드 변이 넷으로 붉음을 관측 |
 | N14 세대 간 우선순위 | 처분됨 (chunk 1) | 레코드를 가진 가장 새 세대가 결정한다 (보존 방향). 시험 `n14-newest-incomplete-older-complete` + 변이 `older-gen-outvotes` |
 | N15 `DeployedHash` 일치 허용 | 처분됨 (chunk 1, 리더 승인) | 비교를 `TemplateHash` 하나로 좁혔다 (등록 경로와 같게). design.md D-2 의 「(또는 DeployedHash)」 문구보다 엄격한 편차로 이미 보고 |
-| N16 실행 시점 조각으로 조립한 경로의 프로필 뿌리 읽기 | **열린 채 공개 (우회·재설정하지 않음)** | 카드 t1702 보류 범위. 이 카드는 프로필 뿌리를 열거나 읽는 코드를 더하지 않았다: 호출 지점 스캔 새 행 0, 보호 파일 둘과 `internal/profile` 불변 (위 제약 점검). 스캔·차분 카나리의 한계는 AC-OWR-08 기록에 그대로. **chunk 9 정정:** sync 감사 F1 이 사용자 심볼릭 링크를 통해 프로필 쪽 파일을 읽는 길 (등록 안 된 경로)을 찾았고 이 카드가 낸 것이어서 고쳤다 (`linkLeavesRoot`, 아래 기록). 등록 경로의 같은 사전 읽기는 기준 시점부터 있었고 AC-OWR-01 의 고정 기대 때문에 그대로 둔 공개 부채다. 즉 이 행의 「읽는 코드를 더하지 않았다」 는 F1 이전에는 참이 아니었다. |
+| N16 실행 시점 조각으로 조립한 경로의 프로필 뿌리 읽기 | **열린 채 공개 (우회·재설정하지 않음)** | 카드 t1702 보류 범위. 이 카드는 프로필 뿌리를 열거나 읽는 코드를 더하지 않았다: 호출 지점 스캔 새 행 0, 보호 파일 둘과 `internal/profile` 불변 (위 제약 점검). 스캔·차분 카나리의 한계는 AC-OWR-08 기록에 그대로. **chunk 9 정정:** sync 감사 F1 이 사용자 심볼릭 링크를 통해 프로필 쪽 파일을 읽는 길 (등록 안 된 경로)을 찾았고 이 카드가 낸 것이어서 고쳤다 (`linkLeavesRoot`, 아래 기록). 등록 경로의 같은 사전 읽기는 기준 시점부터 있었고 AC-OWR-01 의 고정 기대 때문에 그대로 둔 공개 부채다. 이 부채는 상위 디렉터리가 링크인 형태에도 똑같이 적용된다 (chunk 10 (A) 가 등록 안 된 경로의 상위 링크 형태를 `pathLeavesRoot` 로 닫았다). 즉 이 행의 「읽는 코드를 더하지 않았다」 는 F1 이전에는 참이 아니었다. |
 | N17 「트리 해시」 가 내용만임을 밝히지 않음 | **처분됨** | AC-OWR-15/-17/-18 시험 파일 머리 주석 (AC-OWR-17/-18 은 시험 로그 첫 줄에도) 이 비교하는 해시를 내용만 (경로, 바이트, 모드, 디렉터리 존재) 이라고 밝히고, 디렉터리 mtime·시계 값은 비교하지 않으며 서로 다른 두 실행을 비교할 때 `deployed_at` 만 가린다고 적었다 |
 | N18 AC-OWR-20 (a)(b) 가 규칙 7 조건 (ii) 를 요구받음 | **처분됨 (SPEC 문구 결함으로 공개, 본문 미수정)** | (a) 는 새 `manifest.prior.json` 이 실패하는 사례이므로 조건 (ii) 가 구조상 성립할 수 없다. 시험 `a-prior-manifest-copy-fails` 는 조건 (i)(iii) 에 해당하는 것으로 쓰기 대역이 정확히 한 번 불림 (Backup 단계 도달) 과 후보별 `backup-failed` 행을 단언하고, `b-candidate-bytes-copy-fails` 는 `rc.priorManifest == priorManifestWritten` 으로 (ii) 를 단언한다. 의도는 When 절의 괄호가 담는다 |
 | N19 `.moai/config` 가 없을 때 사본 위치 | 처분됨 (chunk 1) | `preservePriorManifest` 가 설정 백업이 디렉터리를 만들지 않았으면 새 실행 디렉터리를 만든다. 시험 「a fresh run directory when the config backup made none」 |
