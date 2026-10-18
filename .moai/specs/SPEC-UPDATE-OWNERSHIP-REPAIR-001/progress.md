@@ -3972,11 +3972,153 @@ rc=1
 
 붉은 이유: F-A 첫 행은 올바른 이유다 — 바꿔치기 뒤 밖의 바이트를 읽었다 (`read=other-bytes`) 이유 `no-provenance-record` (`symlink-escape` 가 맞다). 둘째 행(`resolve-to-open`)은 이 창이 수정 전 코드에 없어 이음매가 불리지 않아 (`swapped=false`) 붉다 — 이유가 「창이 없음」 이라 약한 RED 이며, 이 행의 실질 증거는 수정 뒤 초록과 변이다. 통제 행은 수정 전에도 통과한다. F-B 는 올바른 이유다 — 형제 `…-02` 가 남았고 보존 정책이 비관리 항목 1건으로 센다 (`unmanaged=1`).
 
+#### Chunk 12 GREEN 기록과 정직한 회계
+
+수정 커밋 C `dc32a94c9e`; 시험 A `714adcc444`; 결정·RED 기록 `53a6c88b09`.
+
+#### 변경 범위 (F-A 는 엄격히 한정, `git diff --stat 1d9b06a737..HEAD -- internal`)
+
+```text
+ internal/cli/migrate_ownership.go                  | 77 +++++++++++++++++++++-
+ .../cli/migrate_ownership_boundary_table_test.go   | 50 ++++++++++++++
+ internal/cli/update_prior_manifest.go              |  9 ++-
+ .../cli/update_prior_manifest_markercopy_test.go   | 31 +++++++++
+ 4 files changed, 163 insertions(+), 4 deletions(-)
+```
+
+- **F-A 로 바뀐 함수** (모두 `internal/cli/migrate_ownership.go`): `classifyUnregistered` (수정: `os.ReadFile(abs)` → `readUnregisteredInsideRoot(env.rootResolved, abs)`, 뿌리 밖이면 이유 `symlink-escape`), `readUnregisteredInsideRoot` (신규, 이 파일 안에서만 쓰임: 뿌리·경로를 절대·해석된 형태로 만들고 뿌리 기준 상대 경로를 `os.OpenRoot(뿌리).Open` 으로 열어 `io.ReadAll`; `Root` 가 뿌리 밖으로 나가는 링크를 거부하면 `errReadEscapesRoot`), 변수 `errReadEscapesRoot` 와 시험용 이음매 `readWindowHook` (신규; 이음매는 시험 커밋 A 에서 동작 중립으로 들어갔다). `pathLeavesRoot` 는 분류 사전 검사로 그대로 남아 있다. 바뀌지 않은 것: 등록된 파일의 읽기 (`classifyOwnershipCore` 의 등록 분기), `disposition`, 걷기, 빈 디렉터리 정리, 복원 코드, 다른 모든 호출자. 저장소 전체에서 다시 쓰이는 도우미를 도입하지 않았다.
+- **F-B 로 바뀐 함수:** `claimPriorManifestDir` (`internal/cli/update_prior_manifest.go`: 방금 만든 형제 경로만 `os.RemoveAll`).
+- `os.Root` 사용 가능성 점검: `go.mod` 는 `go 1.26.8` 이고 `os.OpenRoot` / `Root.Open` 은 Windows 를 포함해 컴파일된다 (`GOOS=windows go build ./...` rc=0, 아래). 파일/디렉터리 의미: `Root.Open` 이 디렉터리를 열면 `io.ReadAll` 이 실패해 종전처럼 `read-failed`. 종류 (FIFO 등) 는 열기 전에 `unreadableKind` 가 종전처럼 정한다. 표준 라이브러리는 뿌리를 벗어나는 링크를 비공개 오류 (`path escapes from parent`) 로 알리므로 그 문구가 유일한 손잡이이다 — 라이브러리 업그레이드로 문구가 바뀌면 이 분기는 `read-failed` 로 닫힌 쪽(읽지 않음)에 떨어지고 경계 표 행이 붉어진다.
+
+#### F-A 증거
+
+연속 5회 (`green-1..5.txt`: `TestPathBoundaryCounterexamples` 46행 + `TestMarkerCopyFailureFailsClosedWithoutResidue`, 서브 시험 포함 PASS 55):
+
+```text
+run1: ok  	github.com/modu-ai/moai-adk/internal/cli	7.613s rc=0  PASS=55 FAIL=0 SKIP=0 rows=46
+run2: ok  	github.com/modu-ai/moai-adk/internal/cli	7.771s rc=0  PASS=55 FAIL=0 SKIP=0 rows=46
+run3: ok  	github.com/modu-ai/moai-adk/internal/cli	5.557s rc=0  PASS=55 FAIL=0 SKIP=0 rows=46
+run4: ok  	github.com/modu-ai/moai-adk/internal/cli	10.221s rc=0  PASS=55 FAIL=0 SKIP=0 rows=46
+run5: ok  	github.com/modu-ai/moai-adk/internal/cli	6.679s rc=0  PASS=55 FAIL=0 SKIP=0 rows=46
+```
+
+경쟁 행 (`green-1.txt` 의 `TABLE|race|…` 줄, 그대로):
+
+```text
+    migrate_ownership_boundary_table_test.go:502: TABLE|race|target swapped for a link to an outside file between the boundary check and the read|expected: class=unregistered keep=symlink-escape read=none swapped=true|observed: class=unregistered keep=symlink-escape read=none swapped=true
+    migrate_ownership_boundary_table_test.go:502: TABLE|race|target swapped for a link to an outside file after the path was resolved, before it is opened|expected: class=unregistered keep=symlink-escape read=none swapped=true|observed: class=unregistered keep=symlink-escape read=none swapped=true
+    migrate_ownership_boundary_table_test.go:502: TABLE|race|control: target swapped for a link to ANOTHER INSIDE file is still judged by content|expected: class=unregistered keep=no-provenance-record read=other-bytes swapped=true|observed: class=unregistered keep=no-provenance-record read=other-bytes swapped=true
+```
+
+실제 코드 변이 둘 (각각 `cmp` 로 복원 확인):
+
+```text
+-- 변이 1: 다시 평범한 os.ReadFile(abs) (mutant-plainReadFile.txt)
+    migrate_ownership_boundary_table_test.go:504: target swapped for a link to an outside file between the boundary check and the read: observed "class=unregistered keep=no-provenance-record read=other-bytes swapped=true", want "class=unregistered keep=symlink-escape read=none swapped=true"
+    migrate_ownership_boundary_table_test.go:504: target swapped for a link to an outside file after the path was resolved, before it is opened: observed "class=unregistered keep=no-provenance-record read=content swapped=false", want "class=unregistered keep=symlink-escape read=none swapped=true"
+--- FAIL: TestPathBoundaryCounterexamples (4.30s)
+FAIL
+FAIL	github.com/modu-ai/moai-adk/internal/cli	6.001s
+FAIL
+rc=1
+RESTORED-IDENTICAL
+-- 변이 2: Root.Open 대신 os.Open(filepath.Join(root, rel)) (mutant-plainOpen.txt) — 경로를 푼 뒤 열기 전 창은 os.Root 만이 닫는다
+    migrate_ownership_boundary_table_test.go:504: target swapped for a link to an outside file after the path was resolved, before it is opened: observed "class=unregistered keep=no-provenance-record read=other-bytes swapped=true", want "class=unregistered keep=symlink-escape read=none swapped=true"
+--- FAIL: TestPathBoundaryCounterexamples (1.70s)
+FAIL
+FAIL	github.com/modu-ai/moai-adk/internal/cli	2.962s
+FAIL
+rc=1
+RESTORED-IDENTICAL
+```
+
+붉은 이유: 올바른 이유다. 변이 1 은 밖의 바이트를 읽는다 (`read=other-bytes`, 이유 `no-provenance-record`). 변이 2 는 첫 창 (경로를 다시 푸는 단계) 은 그대로 막지만 두 번째 창에서 밖의 바이트를 읽는다 — `os.Root` 가 없으면 이 창이 열린다는 증명이다.
+
+#### F-B 증거
+
+위 같은 5회 실행이 `FailureAfterTheMarkerFileWasCreatedLeavesNoSibling` 을 포함한다 (복사 이중이 `.moai-run` 을 만든 뒤 실패; 형제가 남지 않음, 공유 실행 디렉터리의 사본·표지 불변, 보존 정책 `runs=1 unmanaged=0`). 실제 코드 변이 (`os.RemoveAll` → `os.Remove`; `cmp` 복원 확인):
+
+```text
+    update_prior_manifest_markercopy_test.go:90: backup directories [20261018_153045 20261018_153045-02] remain, want only the intended 20261018_153045 (the sibling with its half-written marker must be removed)
+    update_prior_manifest_markercopy_test.go:99: retention sees runs=1 unmanaged=1, want 1 and 0
+--- FAIL: TestMarkerCopyFailureFailsClosedWithoutResidue (2.05s)
+FAIL
+FAIL	github.com/modu-ai/moai-adk/internal/cli	3.565s
+FAIL
+rc=1
+RESTORED-IDENTICAL
+```
+
+#### 회귀와 점검 (저장 파일 `reg-*.txt`, `v-*.txt`; Go 호출은 한 번에 하나, 호출마다 입장 규칙 통과)
+
+변경된 시험 파일 (32개) 의 최상위 시험 이름 집합을 패키지별로 도출했다: `internal/cli` 57, `internal/cli/update/backup` 9, `internal/manifest` 1.
+
+```text
+reg-cli: ok  	github.com/modu-ai/moai-adk/internal/cli	122.045s rc=0  top-level PASS=57 FAIL=0 SKIP=0
+reg-internal_manifest: ok  	github.com/modu-ai/moai-adk/internal/manifest	0.240s rc=0  top-level PASS=1 FAIL=0 SKIP=0
+reg-internal_cli_update_backup: ok  	github.com/modu-ai/moai-adk/internal/cli/update/backup	0.392s rc=0  top-level PASS=9 FAIL=0 SKIP=0
+--- v-build:
+rc=0
+--- v-winbuild (os.Root compiles for Windows):
+rc=0
+--- v-vet (host):
+rc=0
+--- v-winvet:
+rc=0
+--- v-lint (golangci-lint run --new-from-rev=feefc4f1f1 ./internal/cli/ ./internal/cli/update/backup/):
+0 issues.
+rc=0
+```
+
+**호출 시점 부하 (`admit.log`, 1분 부하 / 여유 메모리):** 모든 Go 호출이 규칙 (부하 <= 32, 여유 >= 50%) 을 충족한 뒤 30초 재확인을 거쳐 시작됐다.
+
+```text
+A-red: go test TestPathBoundaryCounterexamples+TestMarkerCopyFailure... load1=29.92 free=81%
+green-1: go test ^(TestPathBoundaryCounterexamples|TestMarkerCopyFailureFailsClosedWithoutResidue)$ load1=22.59 free=81%
+green-2: go test ^(TestPathBoundaryCounterexamples|TestMarkerCopyFailureFailsClosedWithoutResidue)$ load1=21.05 free=81%
+green-3: go test ^(TestPathBoundaryCounterexamples|TestMarkerCopyFailureFailsClosedWithoutResidue)$ load1=31.72 free=81%
+green-4: go test ^(TestPathBoundaryCounterexamples|TestMarkerCopyFailureFailsClosedWithoutResidue)$ load1=30.10 free=81%
+green-5: go test ^(TestPathBoundaryCounterexamples|TestMarkerCopyFailureFailsClosedWithoutResidue)$ load1=29.53 free=81%
+mutant-plainReadFile: go test ^TestPathBoundaryCounterexamples$ load1=25.04 free=81%
+mutant-removeNotRemoveAll: go test ^TestMarkerCopyFailureFailsClosedWithoutResidue$ load1=23.98 free=82%
+regression internal/cli (57 names) load1=23.67 free=83%
+regression internal/manifest load1=22.00 free=83%
+regression internal/cli/update/backup load1=19.35 free=83%
+go build ./... load1=19.14 free=83%
+GOOS=windows go build ./... load1=19.65 free=83%
+go vet host load1=20.51 free=83%
+GOOS=windows go vet load1=19.32 free=83%
+golangci-lint --new-from-rev=feefc4f1f1 load1=22.01 free=83%
+mutant-plainOpen: go test ^TestPathBoundaryCounterexamples$ load1=22.98 free=83%
+```
+
+시간 초과·부하 의존 실패는 없었다 (모든 호출이 입장 규칙 안에서 끝났다).
+
+불변식 점검 (`v-invariants.txt`; 스킵 grep 의 세 줄은 이전 chunk 와 같다: `first.Skipped` 필드를 쓰는 두 줄과 `t.Skip` 을 설명하는 주석 한 줄, 호출 없음):
+
+```text
+$ git diff --quiet cdd72a814 HEAD -- internal/config/protected_zone.go internal/config/userroots.go internal/profile
+invariant-exit=0
+internal/cli/migrate_project_assets.go:40:var removalEnabled = false
+internal/cli/migrate_ownership_helpers_test.go:1008:	t.Logf("force=false run=1 skipped=%v", first.Skipped)
+internal/cli/migrate_ownership_helpers_test.go:1009:	if first.Skipped {
+internal/cli/migrate_ownership_symlink_test.go:8:// platform without symlinks; a t.Skip would sweep nothing and read as a pass. A
+gofmt-exit=0 untracked=0
+```
+
+**이번 chunk 의 한계 (정직한 회계).**
+
+1. 회귀는 변경된 시험 파일의 이름 집합이며 패키지 전체 시험이 아니다. 패키지 전체 시험·커버리지·`-race`·Windows 시험 실행은 CI 와 착지 재측정 몫이다 (Windows 는 빌드와 vet 만).
+2. F-A 는 미등록 경로의 읽기만 닫는다. 등록된 파일 읽기는 N16 계열 부채로 남는다 (위 결정). `unreadableKind` 확인과 열기 사이에 일반 파일이 FIFO 로 바뀌는 경합은 여전히 막지 않는다 (`Root.Open` 이 FIFO 를 비차단으로 열지 않는다; 같은 이름의 플랫폼 전용 열기 플래그를 쓰지 않기로 했다).
+3. `Root` 의 뿌리 이탈 오류는 문구로 식별한다 (위). 표준 라이브러리가 센티널을 내보내면 바꿔야 한다.
+4. F-C 는 거절 (위 결정 기록).
+5. 코덱스·감사의 재확인은 레인의 몫이다. 이 chunk 는 `.moai/reports`, `.moai/state/audit-receipts`, §E.4, CHANGELOG, SPEC 본문을 건드리지 않았다.
+
 ## §E.3 Run-phase Audit-Ready Signal
 
 ```yaml
 run_complete_at: 2026-10-18
-run_commit_sha: 1003a9edd4  # code-verification baseline: the last test/code commit (chunk 11 delta-audit repair: boundary fix 1003a9edd4, N2 fix 90296319b4, N1 fix dcbafe568c; chunk 10 d8a5f75053); the evidence commit that carries this block follows it
+run_commit_sha: dc32a94c9e  # code-verification baseline: the last test/code commit (chunk 12 audit round 3 repair: F-A/F-B fix dc32a94c9e; chunk 11 1003a9edd4); the evidence commit that carries this block follows it
 run_status: complete
 ac_pass_count: 21
 ac_fail_count: 0
@@ -3986,8 +4128,8 @@ l44_post_push_fetch: not-applicable (the lane never pushes; the landing is the l
 new_warnings_or_lints_introduced: 0  # one intermediate golangci-lint finding (two unused fields in the AC-OWR-15 test) found and fixed in 8afbbe9436; the 3 errcheck findings in internal/cli/factory_run_adopt.go predate the card and are untouched
 cross_platform_build.darwin: PASS (go build ./... rc=0; go vet rc=0)
 cross_platform_build.windows: PASS (GOOS=windows go build ./... rc=0; GOOS=windows go vet ./internal/cli/ ./internal/manifest/ rc=0)
-total_run_phase_files: 48  # non-.moai files added or edited over the card, run phase only (CHANGELOG.md is the sync phase's): 32 test files, 15 Go sources, 1 data file (chunk 11 added 2 test files and edited 4 Go sources already counted)
-m1_to_mN_commit_strategy: per acceptance criterion A (tests only) -> B (cell recorded from saved output files) -> C (implementation, where something was open); explicit pathspecs only; no push; M8-M10 needed no C; chunk 5 card-review fixes: A 73e37d3832, B 9c00e81a2c, C 051ddc18ef; chunk 6 card-review fix: A 2eeb0559bd, B 60d38d1559, C 1d5ecbbc7c; chunk 9 sync-audit repair: F1 A 6315473594, B c607c315bc, C e0c2896d64; F3 A 34c69c19fc, B 2cbb1af355, C d8fa645c41; F2 A ed58e64c3c, B cc4ca5b239, C fa26fcaf17; chunk 10 card-review round 4: (A) A 780f7862f2, C 848bbc4707; (B) A 9cc9b77a01, C d8a5f75053; record 70cb8c0c56; chunk 11 delta-audit repair: N1 A ef45c82cc9, C dcbafe568c; N2 A 2cd11e520e, C 90296319b4; boundary table A d122d6794e, C 1003a9edd4; record 5aa3de1348
+total_run_phase_files: 48  # non-.moai files added or edited over the card, run phase only (CHANGELOG.md is the sync phase's): 32 test files, 15 Go sources, 1 data file (chunk 11 added 2 test files and edited 4 Go sources already counted) (chunk 12 edited 2 Go sources and 2 test files, all already counted)
+m1_to_mN_commit_strategy: per acceptance criterion A (tests only) -> B (cell recorded from saved output files) -> C (implementation, where something was open); explicit pathspecs only; no push; M8-M10 needed no C; chunk 5 card-review fixes: A 73e37d3832, B 9c00e81a2c, C 051ddc18ef; chunk 6 card-review fix: A 2eeb0559bd, B 60d38d1559, C 1d5ecbbc7c; chunk 9 sync-audit repair: F1 A 6315473594, B c607c315bc, C e0c2896d64; F3 A 34c69c19fc, B 2cbb1af355, C d8fa645c41; F2 A ed58e64c3c, B cc4ca5b239, C fa26fcaf17; chunk 10 card-review round 4: (A) A 780f7862f2, C 848bbc4707; (B) A 9cc9b77a01, C d8a5f75053; record 70cb8c0c56; chunk 11 delta-audit repair: N1 A ef45c82cc9, C dcbafe568c; N2 A 2cd11e520e, C 90296319b4; boundary table A d122d6794e, C 1003a9edd4; record 5aa3de1348; chunk 12 audit round 3 repair: F-A/F-B A 714adcc444, C dc32a94c9e; record 53a6c88b09
 ```
 
 **AC 행렬 (21개).** 등급은 RED-now 를 이 트리에서 실제로 관측했는지로 정했다 (acceptance.md 「등급과 RED 셀 규약」 1항): release-blocking = A 직후 트리에서 판정 명령이 붉음을 보였고 명령·원문·종료 코드·트리 SHA 가 셀에 있음; regression-guard = 도착 시 초록이고 붉음은 변이에서 관측. 이 분류는 사실 기록이며 최종 판단은 감사의 몫이다.
@@ -4023,7 +4165,7 @@ release-blocking 14 (AC-OWR-01 ~ -07, -11 ~ -14, -16, -20, -21), regression-guar
 | N4 잔여 (전체 트리 동일 요구 철회 뒤 센티널이 못 보는 것) | **처분됨 (시험이 닿는 데까지), 못 보는 것은 공개** | M8 기록 관측 3: E 안의 차이는 복원 영역 R (매니페스트) 의 바이트 비교, 실행 백업 배치 비교 (통제 실행 + 정확히 제거 자산 사본), 로그/상태 경로 집합 비교로, 파일 모드는 스냅샷 서술자와 R 의 `(i-mode)`, `(iii-mode)` 로 닫았다. 못 보는 것: 로그/상태 안의 내용 차이, 디렉터리 mtime·xattr·소유자, 프로젝트 밖 쓰기. 시험 안 변이 열여섯과 운영 코드 변이 넷으로 붉음을 관측 |
 | N14 세대 간 우선순위 | 처분됨 (chunk 1) | 레코드를 가진 가장 새 세대가 결정한다 (보존 방향). 시험 `n14-newest-incomplete-older-complete` + 변이 `older-gen-outvotes` |
 | N15 `DeployedHash` 일치 허용 | 처분됨 (chunk 1, 리더 승인) | 비교를 `TemplateHash` 하나로 좁혔다 (등록 경로와 같게). design.md D-2 의 「(또는 DeployedHash)」 문구보다 엄격한 편차로 이미 보고 |
-| N16 실행 시점 조각으로 조립한 경로의 프로필 뿌리 읽기 | **열린 채 공개 (우회·재설정하지 않음)** | 카드 t1702 보류 범위. 이 카드는 프로필 뿌리를 열거나 읽는 코드를 더하지 않았다: 호출 지점 스캔 새 행 0, 보호 파일 둘과 `internal/profile` 불변 (위 제약 점검). 스캔·차분 카나리의 한계는 AC-OWR-08 기록에 그대로. **chunk 9 정정:** sync 감사 F1 이 사용자 심볼릭 링크를 통해 프로필 쪽 파일을 읽는 길 (등록 안 된 경로)을 찾았고 이 카드가 낸 것이어서 고쳤다 (`linkLeavesRoot`, 아래 기록). 등록 경로의 같은 사전 읽기는 기준 시점부터 있었고 AC-OWR-01 의 고정 기대 때문에 그대로 둔 공개 부채다. 이 부채는 상위 디렉터리가 링크인 형태에도 똑같이 적용된다 (chunk 10 (A) 가 등록 안 된 경로의 상위 링크 형태를 `pathLeavesRoot` 로 닫았다). 같은 부채가 업데이트 명령의 상대 뿌리 `"."` 에서 절대 경로 대상 링크의 `disposition` 해석에도 적용된다 (chunk 11 은 미등록 경로의 가드에만 상대 뿌리 정규화를 적용했다). 즉 이 행의 「읽는 코드를 더하지 않았다」 는 F1 이전에는 참이 아니었다. |
+| N16 실행 시점 조각으로 조립한 경로의 프로필 뿌리 읽기 | **열린 채 공개 (우회·재설정하지 않음)** | 카드 t1702 보류 범위. 이 카드는 프로필 뿌리를 열거나 읽는 코드를 더하지 않았다: 호출 지점 스캔 새 행 0, 보호 파일 둘과 `internal/profile` 불변 (위 제약 점검). 스캔·차분 카나리의 한계는 AC-OWR-08 기록에 그대로. **chunk 9 정정:** sync 감사 F1 이 사용자 심볼릭 링크를 통해 프로필 쪽 파일을 읽는 길 (등록 안 된 경로)을 찾았고 이 카드가 낸 것이어서 고쳤다 (`linkLeavesRoot`, 아래 기록). 등록 경로의 같은 사전 읽기는 기준 시점부터 있었고 AC-OWR-01 의 고정 기대 때문에 그대로 둔 공개 부채다. 이 부채는 상위 디렉터리가 링크인 형태에도 똑같이 적용된다 (chunk 10 (A) 가 등록 안 된 경로의 상위 링크 형태를 `pathLeavesRoot` 로 닫았다). 같은 부채가 업데이트 명령의 상대 뿌리 `"."` 에서 절대 경로 대상 링크의 `disposition` 해석에도 적용된다 (chunk 11 은 미등록 경로의 가드에만 상대 뿌리 정규화를 적용했다). chunk 12 는 미등록 파일의 읽기를 `os.Root` 로 옮겨 검사와 읽기 사이 경합을 닫았다 (등록 경로는 그대로, 위 결정). 즉 이 행의 「읽는 코드를 더하지 않았다」 는 F1 이전에는 참이 아니었다. |
 | N17 「트리 해시」 가 내용만임을 밝히지 않음 | **처분됨** | AC-OWR-15/-17/-18 시험 파일 머리 주석 (AC-OWR-17/-18 은 시험 로그 첫 줄에도) 이 비교하는 해시를 내용만 (경로, 바이트, 모드, 디렉터리 존재) 이라고 밝히고, 디렉터리 mtime·시계 값은 비교하지 않으며 서로 다른 두 실행을 비교할 때 `deployed_at` 만 가린다고 적었다 |
 | N18 AC-OWR-20 (a)(b) 가 규칙 7 조건 (ii) 를 요구받음 | **처분됨 (SPEC 문구 결함으로 공개, 본문 미수정)** | (a) 는 새 `manifest.prior.json` 이 실패하는 사례이므로 조건 (ii) 가 구조상 성립할 수 없다. 시험 `a-prior-manifest-copy-fails` 는 조건 (i)(iii) 에 해당하는 것으로 쓰기 대역이 정확히 한 번 불림 (Backup 단계 도달) 과 후보별 `backup-failed` 행을 단언하고, `b-candidate-bytes-copy-fails` 는 `rc.priorManifest == priorManifestWritten` 으로 (ii) 를 단언한다. 의도는 When 절의 괄호가 담는다 |
 | N19 `.moai/config` 가 없을 때 사본 위치 | 처분됨 (chunk 1) | `preservePriorManifest` 가 설정 백업이 디렉터리를 만들지 않았으면 새 실행 디렉터리를 만든다. 시험 「a fresh run directory when the config backup made none」 |
