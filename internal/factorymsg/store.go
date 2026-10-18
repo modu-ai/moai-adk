@@ -144,9 +144,12 @@ type Store struct {
 	bindStep func(step string) error
 }
 
+// ErrInvalidRunID marks a run id that fails the safeID predicate.
+var ErrInvalidRunID = errors.New("invalid factory run id")
+
 func BrokerPath(projectRoot, runID string) (string, error) {
 	if !safeID.MatchString(runID) {
-		return "", fmt.Errorf("invalid factory run id %q", runID)
+		return "", fmt.Errorf("%w %q", ErrInvalidRunID, runID)
 	}
 	dir, err := homestate.FactoryDir(projectRoot)
 	if err != nil {

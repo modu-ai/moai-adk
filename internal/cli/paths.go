@@ -179,6 +179,14 @@ func collectPaths(launch string, runSet bool, runID string) (rep pathsReport, ru
 		rep.Todo.LegacyDir = &legacy
 	}
 
+	// An invalid --run id reports nothing, even when the home cannot be
+	// resolved; BrokerPath checks the id before it resolves anything.
+	if runSet {
+		if _, err := factorymsg.BrokerPath(root, runID); errors.Is(err, factorymsg.ErrInvalidRunID) {
+			return rep, fmt.Errorf("paths: %w", err), nil
+		}
+	}
+
 	factoryPath, err := pathsFactoryDBPath(root)
 	if err != nil {
 		unresolved = append(unresolved, "factory")

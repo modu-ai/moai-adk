@@ -730,6 +730,22 @@ func TestPaths_BrokerRun(t *testing.T) {
 	}
 }
 
+// TestPaths_BrokerInvalidRunUnresolvedHome: an invalid --run id is rejected even
+// when the factory path cannot be resolved (AC-DBP-007, sync-audit F2).
+func TestPaths_BrokerInvalidRunUnresolvedHome(t *testing.T) {
+	pathsTempOriginFixture(t)
+	t.Setenv("HOME", "")
+	unresolveFactory(t)
+
+	out, _, err := runPaths(t, "--run", "../x", "--field", "todo-dir")
+	if err == nil {
+		t.Errorf("an invalid --run id must exit non-zero even with an unresolved home")
+	}
+	if strings.TrimSpace(out) != "" {
+		t.Errorf("an invalid --run id must print no path, got %q", out)
+	}
+}
+
 func TestPaths_BrokerInvalidRun(t *testing.T) {
 	brokerFixture(t)
 	for _, args := range [][]string{{"--run", "../x"}, {"--run", "../x", "--json"}} {
