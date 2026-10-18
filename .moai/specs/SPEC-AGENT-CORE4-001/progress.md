@@ -4,13 +4,14 @@
 
 plan_status: audit-ready
 plan_complete_at: 2026-10-18
-plan_phase_head: ae34f26831 (measurement tree; the plan-phase commit lands on top)
+plan_phase_head: b4ea2d6c93 (measurement tree; the revision commit lands on top)
 plan_phase_branch: WT-3-3-10
 plan_phase_worktree: .moai/worktrees/t1649
-plan_phase_artifacts: 7 (spec.md, plan.md, acceptance.md, design.md, research.md, progress.md, decision-index.md — Tier L set of 5 + progress + decision-index per interview.decision_gate: on)
-requirements: 20 (ceiling 25)
-acceptance_criteria: 24 (ceiling 25)
-decision_rows: 16 (open product-level rows: Q2, Q3, Q6, Q7, Q8, Q10, Q11; EVIDENCE-NEEDED: Q9)
+plan_phase_artifacts: 5 (spec.md, plan.md, acceptance.md, progress.md, decision-index.md — Tier M set of 3 + progress + decision-index)
+revision: 0.2.0, piece 1 only (former M0-M2) after plan-audit iter1 FAIL 0.66
+requirements: 8 (ceiling 16)
+acceptance_criteria: 9 (ceiling 16)
+open_decisions_needed_for_piece_1: Q4
 
 ## §E.2 Run-phase Evidence
 

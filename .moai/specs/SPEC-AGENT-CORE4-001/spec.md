@@ -1,7 +1,7 @@
 ---
 id: SPEC-AGENT-CORE4-001
-title: "Agent core four: neutral specs, two renders, verdict-only auditor guard, memory cap, retirement of three coordination agents"
-version: "0.1.0"
+title: "Agent core four, piece 1: neutral agent specs, two renders, generated copies"
+version: "0.2.0"
 status: draft
 created: 2026-10-18
 updated: 2026-10-18
@@ -10,197 +10,99 @@ priority: P1
 phase: "v3.2.0 target"
 module: "internal/template/agentemit"
 lifecycle: spec-anchored
-tags: "agents, neutral-spec, codex-render, auditor-guard, memory-cap, retirement, token-budget"
-tier: L
-related_specs: [SPEC-CODEX-DUAL-AGENTS-001, SPEC-AGENT-MODEL-INHERIT-001, SPEC-V3R3-RETIRED-AGENT-001, SPEC-AUDIT-CEILING-001, SPEC-AGENT-MEMORY-DRAIN-001]
+tags: "agents, neutral-spec, codex-render, generated-copies"
+tier: M
+related_specs: [SPEC-CODEX-DUAL-AGENTS-001, SPEC-AGENT-MODEL-INHERIT-001]
 ---
 
-# SPEC-AGENT-CORE4-001 — Agent core four
+# SPEC-AGENT-CORE4-001 — Piece 1: neutral layer, renderers, generated copies
 
-## §A Background and motivation
+## §A Background
 
-Twelve agent definitions ship today. A measured plan-phase spawn pair (the planning agent and the
-plan auditor) injects 196,367 bytes into a session before any work starts (`research.md` §1), and
-the three copies of every definition drift apart (7 of 12 project/template Markdown pairs differ;
-the project Codex mirror holds 11 TOML files against the template's 12). Three agents —
-`manager-lead`, `manager-todo`, `manager-git` — are retained by name while the work they were
-created for runs through other paths (a role-injected factory leader, the `moai todo` queue, the
-`factory complete` landing edge).
+Twelve agent definitions ship in four hand-managed copies that drift: 7 of 12 project/template
+Markdown pairs differ and the project Codex mirror holds 11 TOML files against the template's 12
+(ledger L-02..L-03 in `acceptance.md`). Piece 1 of the agent-core-four work introduces one neutral
+source per definition and renders the template Markdown (C2) and template Codex (C3) from it, and
+for the four agents that stay in the roster (builder-harness, e2e-tester, manager-design,
+super-advisor) also the project Markdown (C1) and project Codex (C3p). It changes no agent
+behavior: every shipped byte of the other eight definitions stays as it is.
 
-This SPEC makes four agents the core (planner, implementer, documenter, auditor), renders every
-agent definition for both harnesses from one neutral source, caps what an agent can inject and
-write, adds a thin worker agent, retires the three coordination agents with their replacement paths
-standing first, and generates the settings that keep the core agents' preloaded skills out of the
-skill list. Design source: the 2026-10-10 agents-and-skills redesign, section 4 and 2.1 (untracked
-in this tree; cited as evidence, not as authority).
+The 2026-10-18 plan audit (iter1, FAIL 0.66, file `.moai/reports/t1649/plan-audit.md`, local and
+untracked) found the original single SPEC unviable under the plan-audit ceiling; the leader ruled a
+split. This SPEC is piece 1 (former M0-M2). Evidence from the original plan is preserved in
+commit `b4ea2d6c93` (`research.md`, `design.md` at that commit).
 
 ## §B Definitions
 
-- **KB** — 1,000 bytes. The redesign's "196KB" is 196,367 bytes; the same decimal convention
-  governs every budget below.
-- **Neutral source** — one file per agent declaring name, description, capabilities in the
-  harness-neutral vocabulary (read, write with an optional path scope, shell, spawn, MCP tool
-  groups), sandbox, model, effort, preloaded skills, memory policy, role hooks, and body.
-- **The copies** — C1 the project Claude definitions (`.claude/agents/moai/*.md`), C2 the template
-  Claude definitions (`internal/template/templates/.claude/agents/moai/*.md`), C3 the template Codex
-  definitions (`internal/template/templates/.codex/agents/moai/*.toml`), and C3p the project Codex
-  mirror (`.codex/agents/moai/*.toml`). The user-scope copies under `~/.claude/agents` are deployed
-  output outside this repository and are not a fourth copy (see Out of Scope).
-- **Spawn pair** — the two agent definitions a phase spawns: plan = planner + auditor, sync =
-  documenter + auditor. Its **injected bytes** = both rendered definitions + the preloaded skill
-  bodies of both + each agent's MEMORY.md counted at its cap.
-- **Retired names** — `manager-spec`, `manager-develop`, `manager-docs`, `plan-auditor`,
-  `sync-auditor` (absorbed into the core four) and `manager-lead`, `manager-todo`, `manager-git`
-  (retired with replacement paths).
-- **Resulting roster** — nine agents: planner, implementer, documenter, auditor, worker,
-  builder-harness, e2e-tester, manager-design, super-advisor (plus the built-in Explore). The last
-  four are carried unchanged in behavior; their move to the builder seed catalog belongs to a
-  sibling card.
+- **C1** `.claude/agents/moai/*.md`; **C2** `internal/template/templates/.claude/agents/moai/*.md`;
+  **C3** `internal/template/templates/.codex/agents/moai/*.toml`; **C3p** `.codex/agents/moai/*.toml`.
+- **The eight** — manager-spec, manager-develop, manager-docs, manager-git, manager-lead,
+  manager-todo, plan-auditor, sync-auditor. **The carried four** — builder-harness, e2e-tester,
+  manager-design, super-advisor.
+- **Neutral source** — `internal/template/agentemit/neutral/<name>.md`: a frontmatter block in
+  neutral capability tokens plus the body. A build input beside `agents-codex.yaml`; it lives
+  outside `templates/` and is never distributed.
+- **Pinned HEAD bytes** — sha256 of each C2 and C3 file at tree `b4ea2d6c93`, stored in
+  `internal/template/agentemit/testdata/agents-head.sha256` (tracked, M0).
 
-## §C Scope
+## §C Requirements (GEARS)
 
-In scope: the neutral source set and its two renderers; generation and verification of C1-C3p;
-the size and memory budgets; the auditor verdict-only guard; spawn-record enrichment; the worker
-agent; retirement of eight names with a refusal-with-replacement path; the reference sweep across
-rules, skills, hooks, configuration, Go production code and template mirrors; roster-listing
-updates; generated skill-hiding settings and their doctor check.
+- **REQ-AC4-001** The agent definition set shall have exactly one neutral source per agent
+  definition and no rendered C2 or C3 file without one.
+- **REQ-AC4-002** The Claude renderer shall produce each C2 definition deterministically from its
+  neutral source and, when a capability token has no mapping, shall fail emission naming the file
+  and the token.
+- **REQ-AC4-003** The Codex renderer shall produce each C3 definition from the same neutral source
+  with the existing mapping manifest, leaving every permission-contract row for the twelve roles
+  unchanged.
+- **REQ-AC4-004** When the eight are rendered from their neutral sources, the C2 and C3 outputs
+  shall be byte-identical to the pinned HEAD bytes.
+- **REQ-AC4-005** The neutral bodies of the carried four shall name skills and files without an
+  install-root prefix, and rendering them shall change their shipped bytes only on a pinned list of
+  lines.
+- **REQ-AC4-006** The rendered C1, C2, C3 and C3p files of the carried four shall be pairwise
+  identical per harness (C1 = C2, C3p = C3).
+- **REQ-AC4-007** When a rendered file differs from a fresh render, the read-only emission check
+  shall fail naming the file, and shall otherwise print a summary line counting the specs and the
+  copies compared.
+- **REQ-AC4-008** The baseline measurement and the pinned HEAD bytes shall be committed as tracked
+  files in a commit that precedes every commit changing a rendered or neutral file.
 
-## §D Requirements
+## §D Out of Scope — follow-on pieces
 
-### D.1 Neutral source and renders
+### Out of Scope — piece 2 (retirement, guards, replacement paths)
 
-- **REQ-AC4-001** The agent definition set shall have exactly one neutral source file per agent of
-  the resulting roster, and no rendered definition shall exist without one.
-- **REQ-AC4-002** The Claude renderer shall produce each agent's Markdown definition from its
-  neutral source deterministically, mapping every neutral capability to a tool grant, and shall
-  fail emission naming the file and the token when a capability has no mapping.
-- **REQ-AC4-003** The Codex renderer shall produce each agent's TOML definition from the same
-  neutral source, inlining the bodies of its preloaded skills into the role instructions (per-agent
-  skill grants are not observable on Codex), omitting Claude-only notation from the rendered body,
-  and giving every permission-contract restriction either an enforced mapping or an explicit
-  UNSUPPORTED declaration.
-- **REQ-AC4-004** The copies C1, C2, C3 and C3p shall be generated artifacts: re-rendering shall
-  leave zero differences, a hand edit to a rendered file shall fail the read-only check, and C1
-  shall be byte-identical to C2 (neutral bodies carry no install-root path).
-- **REQ-AC4-005** When the size command measures a spawn pair, the plan pair shall not exceed
-  56,000 injected bytes and the sync pair shall not exceed 46,000, each per-agent preloaded skill
-  shall not exceed 4,000 bytes, and the report shall name every component it summed.
+Former M3, M4, M5, M7, M8, queued by the leader after piece 1 lands, as a separate SPEC without an
+id yet: the core four agents (planner, implementer, documenter, auditor) and worker, the size verb,
+the auditor verdict-only write guard, the agent memory cap, spawn-record enrichment, replacement
+paths for retiring manager-lead (a duty-by-duty map of the leader working mode), manager-todo and
+manager-git (including a non-factory owner for `delivery-policy.md` rule 1 and the `OwnerRole`
+value at `internal/mission/integration.go:38`), the reference flip over 977 files, the retired-name
+refusal, cutover, and `auditor` deferred emission.
 
-### D.2 Guards and records
+### Out of Scope — piece 3 (list hiding)
 
-- **REQ-AC4-006** While an agent whose capabilities include verdict-only write is the acting agent,
-  when it invokes a file-writing tool, the system shall refuse any target outside the
-  `.moai/reports/` tree of the project tree the agent runs in with a sentinel-prefixed reason,
-  shall allow targets inside it, shall not constrain any other agent, and shall allow the call
-  (with an audit row) when the target cannot be determined.
-- **REQ-AC4-007** Where the Codex runtime does not apply a role's sandbox and has no path-scoped
-  write, the emitter shall render the auditor read-only, record its write-path-scope restriction
-  as UNSUPPORTED rather than enforced, and leave the verdict file to be written by the launching
-  parent.
-- **REQ-AC4-008** The system shall refuse a write that would leave an agent's MEMORY.md above 8,000
-  bytes with a sentinel-prefixed reason naming the archive remedy (lines move, none are deleted),
-  the auditor shall declare no persistent memory, and the memory doctor shall report every agent
-  over the cap.
-- **REQ-AC4-009** When an agent is spawned, the spawn record shall carry the agent name, the phase,
-  the effort and where it came from (declared, frontmatter default, or session), and the prompt
-  byte length; it shall never carry the prompt text, and a record that cannot be attributed to an
-  agent shall not be written.
-- **REQ-AC4-010** The roster shall include a worker agent with an explicit tool list that excludes
-  the spawn capability, and the run workflow's large-scope fan-out clause shall direct the
-  orchestrator to spawn implementer-class leaf workers at depth one.
+Former M6, a separate SPEC without an id yet, queued after piece 2: the `moai-agent-*` hiding
+settings for Claude and Codex, the preload probe, and the doctor check.
 
-### D.3 Retirement
+### Out of Scope — other
 
-- **REQ-AC4-011** The system shall remove a retiring definition only in a commit that follows (in
-  the commit graph) the commit that lands and verifies that definition's replacement path:
-  the role-injected factory leader without `manager-lead`, the `moai todo` queue verbs and todo
-  workflow without `manager-todo`, and the `factory complete` landing edge without `manager-git`.
-- **REQ-AC4-012** When an Agent spawn names a retired name after cutover, the system shall refuse
-  it with a sentinel-prefixed reason that names the replacement (a core agent with its phase
-  argument, or the replacement command), shall not rewrite the spawn, and shall let every
-  non-retired name through; the archived-agent rejection rule shall carry one table row per retired
-  name.
-- **REQ-AC4-013** Retired names shall not remain in rules, skills, hooks, configuration, Go
-  production code, tests, or template mirrors outside a declared allowlist of historical and
-  fixture paths; docs-site and README files are allowlisted with the card that owns their rewrite.
-- **REQ-AC4-014** The roster-listing sites registered with the roster guard shall change in the same
-  commit as the definition set, the guard shall stay green at every milestone commit, and the
-  guard's enumeration threshold shall scale with the universe size so an undeclared listing of
-  seven of ten names is still found.
-- **REQ-AC4-015** The commit-trailer owner enumeration and the ownership lint shall accept the core
-  agent names for the transitions their predecessors owned, and shall keep accepting the legacy
-  values in existing history.
-- **REQ-AC4-016** The lane spawn-authority statements (rules and the session-start notice) shall
-  name planner, implementer, documenter and auditor as the specialists for plan, run, sync and the
-  audits.
+- docs-site and README pages, user-scope `~/.claude/agents`, and the `AGENTS.local.md` §2.0
+  sentence about C1/C2 divergence (user-owned; amendment named in decision Q4).
+- Any change of agent bodies, tools, model, effort or permission mode beyond the pinned line list.
 
-### D.4 Skill hiding and preload
+## §E Hand-off table (audit iter1 defects not fixed here)
 
-- **REQ-AC4-017** The system shall generate, from the preloaded-skill lists of the neutral sources,
-  the Claude settings entries that hide each core-agent skill by its explicit name (no wildcard),
-  and the doctor shall report any such skill that is exposed to the skill list.
-- **REQ-AC4-018** Before a hide mode ships, a recorded probe shall show that a skill hidden by that
-  mode still reaches a subagent through its preloaded-skills field; the shipped mode shall be the
-  first of the ordered candidates whose probe passes.
-- **REQ-AC4-019** The Codex publication shall contain no core-agent skill under the published
-  skills root and no `[[skills.config]]` entry for an absent path.
-
-### D.5 Process
-
-- **REQ-AC4-020** The work shall originate in the template tree and regenerate local copies,
-  precede each behavior change by its failing test, introduce no skipped test and relax no
-  existing assertion, and land each milestone as its own commit named for the SPEC and milestone.
-
-## §E Acceptance
-
-Binary-testable criteria, each with its command, expected output, and RED-now cell: `acceptance.md`.
-
-## §F Exclusions
-
-### Out of Scope — docs-site and README rewrite
-
-- The four-locale docs-site pages and the four README files that name retired agents (170 and 4
-  files at HEAD ae34f26831); they stay allowlisted until the documentation-rewrite cards regenerate
-  the agent reference pages.
-
-### Out of Scope — builder seed catalog and the other three carried agents
-
-- Moving builder-harness, e2e-tester, manager-design and super-advisor into the seed catalog, the
-  `moai harness create` verb, and slimming `moai-foundation-cc` (sibling card for the builder).
-
-### Out of Scope — command-skill split and dispatcher
-
-- Splitting `/moai` workflows into command skills, the `moai-factory` command skill, and
-  renumbering workflow steps (sibling card for the skill reorganization); only the large-scope
-  fan-out clause and spawn names in existing workflows change here.
-
-### Out of Scope — user-scope installation
-
-- Refreshing or deleting `~/.claude/agents/*` and profile-directory agent copies (the install-model
-  card); this SPEC only reports their staleness.
-
-### Out of Scope — runtime model behavior
-
-- Changing how Claude Code or Codex resolve models, effort, or sandbox for subagents; the SPEC
-  records what is measured and declares the rest UNSUPPORTED.
-
-## §G Risks
-
-1. **Hidden skills may not preload.** The documentation says `disable-model-invocation` blocks
-   preloading and does not say whether `skillOverrides: "off"` does; the mode ladder (REQ-AC4-018)
-   exists because of this.
-2. **Reference sweep size.** 977 files outside the history directories name a retired name
-   (`research.md` §3); the allowlist plus the semantic-rewrite class split bounds it, but M7 is the
-   largest milestone.
-3. **Running lanes hold old names in context.** The refusal-with-replacement path (REQ-AC4-012)
-   is what keeps a lane that spawns `manager-develop` after cutover from stalling.
-4. **Auditor shrink may drop protocol.** Moving rubric text out of the auditor definition must
-   preserve every rubric heading (AC-AC4-009).
-5. **Roster guard sensitivity.** With a ten-name universe the fixed enumeration threshold of 10
-   would stop finding partial listings (REQ-AC4-014).
-
-## §H HISTORY
-
-| Version | Date | Change |
+| Defect | Owner | Content to inherit |
 |---|---|---|
-| 0.1.0 | 2026-10-18 | Initial plan (card t1649, tree ae34f26831). |
+| D2 guard root | piece 2 | root = git toplevel of the acting agent's cwd; subtests for linked worktree and primary-checkout denial; `internal/hook/path_resolve.go:69-76` order |
+| D4 refusal predicate | piece 2 | active only when name in table AND no `<name>.md` in the project's agents directory |
+| D5 replacement paths | piece 2 | leader duty map, non-factory manager-git owner, `moai-factory` skill waiver/sequencing |
+| D7 skill and reference publication | pieces 2, 3 | REQ/AC for deployed location in both harnesses, catalog and embed registration, `on_demand_reference_bytes` |
+| D8 phased rewrite vs `auditor` emission | piece 2 | move rewrite into the emission commit or add a spawn-resolution gate |
+| D12 numeral layer, 33 count rows, threshold at 17 | piece 2 | `threshold_17_is_12`, stale-subset fixture |
+| D13 shrinking edit on oversize file | piece 2 | allow when result is smaller than the current file |
+| D14 core-body preservation | piece 2 | pinned [HARD]-clause list; implementer budget row |
+| D15 "never blocks a spawn" statements | piece 2 | rewrite sentence and file header; deny in a separate handler file |
+| D18 doctor check name | piece 3 | registered check is "Skills Allowlist" (`internal/cli/doctor.go:306`) |
+| Q5, Q12-Q15 (unresolved defaults of the original index) | pieces 2, 3 | see `decision-index.md` hand-off rows |
