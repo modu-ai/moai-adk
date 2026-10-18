@@ -73,10 +73,7 @@ var priorManifestRename = os.Rename
 // priorManifestMarkerCopy gives a new sibling run directory the run marker of the
 // directory it stands beside. Like the two observation points above it is a
 // variable only so a test can inject a failure; no production path replaces it.
-var priorManifestMarkerCopy = func(src, dst string) error {
-	copyRunMarker(src, dst)
-	return nil
-}
+var priorManifestMarkerCopy = copyRunMarker
 
 // priorManifestWriter is how the Backup stage preserves the manifest. Its
 // default is writePriorManifest; a test wraps it to inject a failure.
@@ -175,9 +172,13 @@ const priorManifestSiblingMax = 99
 // earlier run's: the copy then goes to a new sibling `<runDir>-NN` (NN = 02..99),
 // created with Mkdir so a directory that already exists, whoever made it, is
 // never written into. The sibling carries runDir's run marker, so retention
-// counts both directories as the one run it already counted. Failing to find or
-// make a free sibling is an error: the caller then blocks every removal.
+// counts both directories as the one run it already counted. A sibling that
+// cannot be given its marker would be a directory retention never counts or
+// prunes, so it is removed again (it is still empty) and the claim fails. Failing
+// to find or make a free sibling is an error too: the caller then blocks every
+// removal.
 func claimPriorManifestDir(runDir string) (string, error) {
+	runDir = filepath.Clean(runDir) // a trailing separator must not turn `<dir>/-02` into a child
 	_, err := os.Lstat(filepath.Join(runDir, priorManifestName))
 	if errors.Is(err, fs.ErrNotExist) {
 		return runDir, nil
@@ -193,27 +194,38 @@ func claimPriorManifestDir(runDir string) (string, error) {
 			}
 			return "", fmt.Errorf("create run backup directory %s: %w", sibling, err)
 		}
-		_ = priorManifestMarkerCopy(runDir, sibling)
+		if err := priorManifestMarkerCopy(runDir, sibling); err != nil {
+			_ = os.Remove(sibling) // best effort; os.Remove refuses a directory that is not empty
+			return "", fmt.Errorf("give %s the run marker of %s: %w", sibling, runDir, err)
+		}
 		return sibling, nil
 	}
 	return "", fmt.Errorf("no free sibling name for %s up to -%02d", runDir, priorManifestSiblingMax)
 }
 
-// copyRunMarker gives dst the run marker src carries, best effort. A marker that
-// is absent, not a regular file or unreadable is no marker (the read never blocks
-// on a pipe), and a failed write leaves dst without one, which retention reads as
-// a directory no backup writer named: counted as unmanaged, never removed.
-func copyRunMarker(src, dst string) {
+// copyRunMarker gives dst the run marker src carries. A src that has no marker
+// (absent, or not a regular file) has nothing to copy: that is not an error, and
+// the sibling then stays without one, as it always did. A marker that exists but
+// cannot be read or written is an error — retention would otherwise never count
+// the sibling.
+func copyRunMarker(src, dst string) error {
 	path := filepath.Join(src, backup.RunMarkerName)
-	if info, err := os.Lstat(path); err != nil || !info.Mode().IsRegular() {
-		return
+	info, err := os.Lstat(path)
+	if err != nil {
+		if errors.Is(err, fs.ErrNotExist) {
+			return nil
+		}
+		return err
+	}
+	if !info.Mode().IsRegular() {
+		return nil
 	}
 	data, err := os.ReadFile(path)
 	if err != nil {
-		return
+		return err
 	}
 	line, _, _ := strings.Cut(string(data), "\n")
-	_ = backup.WriteRunMarker(dst, strings.TrimSpace(line))
+	return backup.WriteRunMarker(dst, strings.TrimSpace(line))
 }
 
 // recordManifestDeployedVersion refreshes the manifest-level version to the
