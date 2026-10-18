@@ -608,6 +608,14 @@ internal/template/templates/.codex/agents/moai/manager-design.toml
 internal/template/templates/.codex/agents/moai/super-advisor.toml
 ```
 
+### Sync-audit iter1 fix (F1, F2) — commit 252238baa8
+
+Sync audit iter1 (`audited_sha` 378af9a37e) returned FAIL on two code findings; this fix addresses exactly those, no SPEC artifact edited (plan hash unchanged).
+
+- **F1 (REQ-AC4-004)**: `emitAll` now runs one `parseAndClassify` step over BOTH views, so an unmapped `tools:` token or broken frontmatter YAML inside a `claude-only` block fails closed naming file and token. Regression subtests in `TestRenderUnmappedCapabilityFails`: `claude_view_unmapped_tools_token_names_file_and_token`, `claude_view_broken_yaml_names_file`, `claude_view_defect_leaves_no_output_and_check_fails`. RED observed before the change (all three returned nil errors, Update/Check passed and wrote output).
+- **F2**: `Update` refuses a symlinked or non-regular target and a symlinked or non-directory parent below the root, before the first write, and writes via same-directory temp file plus rename. Regression test `TestUpdateRefusesSymlinkTargets` (8 subtests, incl. positive control). RED observed before the change (symlink file and directory targets accepted).
+- Held after the fix (this tree): `make agents-emit-check` prints `specs=12 copies=4 diff=0`; all 8 sha256 pins of acceptance.md section 3 match; `go test -cover ./internal/template/agentemit/` 90.6%; vet, golangci-lint, gofmt, `go build ./...` and the windows/amd64 build clean. F3 (D3 wording) is not touched by this fix.
+
 ## §E.3 Run-phase Audit-Ready Signal
 
 ```yaml
