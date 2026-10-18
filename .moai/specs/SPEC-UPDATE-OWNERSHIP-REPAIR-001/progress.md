@@ -2904,6 +2904,39 @@ internal/cli/update/backup/run_marker.go (edited): the card added one constant, 
 3. 발견 1 의 복원 수준 시험은 실제 업데이트의 Restore 순서(`RestoreFromBackupDir` 두 번 적용)에서 두 번째 적용이 `notes/manifest.prior.json` 에 대해 「merge failed ... restoring backup」 경고를 낸다는 것을 보았다 — 이미 있는 비 YAML 대상에 대한 기존 동작이고 이 수정과 무관하다.
 4. 실행하지 않은 것: `internal/cli` 패키지 전체 시험과 패키지 전체 커버리지, `-race`, Windows 시험 실행 (빌드와 vet 만). 착지 재측정 몫이다.
 
+#### Chunk 6 (second card-review finding)
+
+코덱스 카드 리뷰(조언용, HEAD `f9c4c76d4f`)의 새 P2 하나를 lane 이 코드로 확인했다: `classifyOwnershipCore` 의 등록 항목 경로(`os.ReadFile(abs)`)와 `classifyUnregistered` 가 공통 자산 걷기가 넘겨주는 모든 비디렉터리를 읽는다. 등록되지 않은 FIFO (소켓, 장치, 그것을 가리키는 심볼릭 링크도) 는 쓰는 쪽이 나타날 때까지 읽기가 막혀 제거 스위치가 꺼져 있어도 `moai update` 가 멈춘다. 기준 `cdd72a814` 는 미등록 경로를 읽지 않고 보존했고, 등록 경로의 읽기는 기준에도 있었다 (`migrate_project_assets.go` 의 기준판 236행) — 새로 생긴 퇴보는 미등록 쪽이고, 등록 쪽은 같은 결함을 이어받았다. 두 쪽을 판정 함수 한 곳에서 막는다.
+
+**커밋 A `2eeb0559bd`** (시험만: `internal/cli/migrate_ownership_nonregular_test.go` — `//go:build !windows`, `syscall.Mkfifo`; `migrate_ownership_vocabulary_test.go` 의 닫힌 어휘 시험에 새 이유를 의도적으로 추가). 부하 평균 18.36 36.90 45.93.
+
+시험 구성: 걷기 아래에 미등록 FIFO, 등록한 뒤 FIFO 로 바꾼 경로, FIFO 를 가리키는 심볼릭 링크를 두고, 곁에 평범한 미등록 파일, 그 파일을 가리키는 심볼릭 링크, 아무것도 가리키지 않는 심볼릭 링크, 제거 대상 managed 파일 (도달 대조군) 을 둔다. 마이그레이션을 고루틴에서 돌리고 **제한된 대기는 끝나지 않음을 알아내는 데에만 쓴다** (속도 단언 아님). 막혔으면 FIFO 를 반복해서 열었다 닫아 (쓰는 쪽을 잠깐 만들어 줌) 읽기를 끝내고 고루틴이 끝나길 기다린 뒤 실패로 보고한다 — 시험이 멈추지 않고 실패한다. 이유 어휘의 새 이름은 `non-regular-file` (시험은 리터럴로 적어 두어, 상수가 없는 A 시점에도 컴파일되고 동작 수준에서 붉다).
+
+**기존 심볼릭 링크 동작 (조용히 바꾸지 않기 위해 수정 전 트리에서 따로 쟀다; 임시 시험, 삭제함).** `os.ReadFile` 은 링크를 따라가므로 가리키는 파일이 일반 파일이면 그 바이트로 판정되고, 끊어진 링크는 읽기 실패이다:
+
+```text
+    zz_scratch_test.go:20: SCRATCH .agents/skills/moai-nonregular/plain.md row=true class=unregistered reason=no-provenance-record
+    zz_scratch_test.go:20: SCRATCH .agents/skills/moai-nonregular/link-to-plain row=true class=unregistered reason=no-provenance-record
+    zz_scratch_test.go:20: SCRATCH .agents/skills/moai-nonregular/link-to-nothing row=true class=unregistered reason=read-failed
+--- PASS: TestScratchSymlinkBaseline (0.69s)
+ok  	github.com/modu-ai/moai-adk/internal/cli	1.930s
+```
+
+수정은 이 둘을 바꾸지 않는다 (시험이 같은 값을 단언). 새 이유는 가리키는 대상이 일반 파일이 아닌 경로에만 붙는다.
+
+**RED 셀 (트리 `2eeb0559bd`, 작업 트리 깨끗).** 명령 `TMPDIR=/private/tmp/own-fixture-d1 go test ./internal/cli/ -run '^(TestNonRegularFilesAreKeptWithoutBeingRead|TestKeepReasonVocabularyIsClosed)$' -count=1 -v`, 종료 코드 1, 시험 로그 줄과 결과 줄만 (원문 순서). 마이그레이션이 30초 안에 돌아오지 못했다 (FIFO 읽기에 막힘 — 결함의 직접 관측), 어휘 시험은 새 이유가 닫힌 집합에 없다고 붉다:
+
+```text
+    migrate_ownership_nonregular_test.go:227: the migration did not return: it is blocked reading a FIFO
+--- FAIL: TestNonRegularFilesAreKeptWithoutBeingRead (31.38s)
+    --- PASS: TestNonRegularFilesAreKeptWithoutBeingRead/MutantHungIsCaught (0.00s)
+    migrate_ownership_vocabulary_test.go:32: defined reason "non-regular-file" is not in the closed set
+--- FAIL: TestKeepReasonVocabularyIsClosed (0.00s)
+FAIL
+FAIL	github.com/modu-ai/moai-adk/internal/cli	32.594s
+FAIL
+```
+
 ## §E.3 Run-phase Audit-Ready Signal
 
 ```yaml
