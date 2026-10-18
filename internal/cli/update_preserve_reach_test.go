@@ -200,8 +200,13 @@ func TestBackupSubsystem_DestructiveSurfaces(t *testing.T) {
 			"20230101_000000",
 			"20240101_000000",
 		}
+		// Every backup holds the same bytes. Rotation also keeps an older backup
+		// that is the last holder of a past file version within the per-file
+		// budget (SPEC-UPDATE-BACKUP-RETENTION-001 REQ-UBR-003), and a distinct
+		// body per backup would make each one such a holder. Survivors are
+		// identified by directory name, which is what this subtest asserts.
 		for _, s := range stamps {
-			writeFixture(t, filepath.Join(root, defs.BackupsDir, s), "marker.txt", s+"\n")
+			writeFixture(t, filepath.Join(root, defs.BackupsDir, s), "marker.txt", "backup\n")
 		}
 
 		const keepCount = 2
