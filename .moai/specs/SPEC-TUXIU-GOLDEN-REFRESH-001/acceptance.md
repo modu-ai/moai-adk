@@ -23,13 +23,13 @@
 - **When** `grep -rl "0 user customizations modified" internal/cli/testdata/tuxiu/postm4/` 실행
 - **Then** 출력 없음, exit 1 (매치 0)
 
-RED-now (측정됨, release-blocking): 명령 `grep -rl "0 user customizations modified" internal/cli/testdata/tuxiu/postm4/` — stdout(verbatim 바이트):
+RED-now (측정됨, release-blocking): 명령 `grep -rln "0 user customizations modified" internal/cli/testdata/tuxiu/postm4/` — stdout(verbatim 바이트, 본 세션 관측 순서):
 ```
-internal/cli/testdata/tuxiu/postm4/update.nocolor.stdout.golden:60
-internal/cli/testdata/tuxiu/postm4/update.notty.stdout.golden:60
-internal/cli/testdata/tuxiu/postm4/update.tty.stdout.golden:47
+internal/cli/testdata/tuxiu/postm4/update.notty.stdout.golden
+internal/cli/testdata/tuxiu/postm4/update.nocolor.stdout.golden
+internal/cli/testdata/tuxiu/postm4/update.tty.stdout.golden
 ```
-exit code: 0. 측정: worktree t1681 @ base `03faddb705`, 2026-10-19 (§2 머리 표기 준거; plan-audit iter-1이 tree ee6338278에서 재현 확인). GREEN 경로: M3 재생성이 뒤집는다.
+exit code: 0. 행 순서는 readdir 순서를 따른다(집합은 동일, 재실행 시 순서 변동 가능). 측정: worktree t1681 @ base `03faddb705`, 2026-10-19 (§2 머리 표기 준거; plan-audit iter-1/iter-2가 각 트리에서 재현 확인). GREEN 경로: M3 재생성이 뒤집는다.
 
 ### AC-TGR-002 — pre-logo 골든 12파일 바이트 무변경 (REQ-TGR-003)
 
@@ -41,7 +41,7 @@ RED-now: 해당성 없음 — 이 기준은 현재 충족 상태이며 회귀 �
 
 ### AC-TGR-003 — 재생성 명령 존재·실행 (REQ-TGR-004)
 
-- **Given** M2 완료 트리
+- **Given** M2 완료 트리(실행 직전 전체-저장소 `git status --porcelain`이 청결 — 더트리 시작은 전/후 비교가 기존 수정분 위의 추가 변경을 보지 못하는 사각을 만든다)
 - **When** `make tuxiu-golden-capture` 실행
 - **Then** 명령이 자기완결적으로(시딩→빌드→pty 캡처→postm4 기록) 종료 exit 0이고, 실행 직전과 직후의 전체-저장소 `git status --porcelain` 비교에서 나타난 모든 변경 경로가 허용 목록(`internal/cli/testdata/tuxiu/postm4/` 이하 + 본 SPEC의 도구 파일 — `internal/cli/tuxiu_characterization_test.go`, `Makefile`, 하네스 파일)에 속한다
 
@@ -65,7 +65,7 @@ RED-now: GREEN-now (측정됨 — base에서 `ok ... 1.252s`, 앵커된 셀렉�
 
 ### AC-TGR-006 — 재생성 diff의 범위 한정 (REQ-TGR-004, REQ-TGR-002)
 
-- **Given** M3 실행 직전의 전체-저장소 `git status --porcelain` 스냅샷과 `make tuxiu-golden-capture` 실행
+- **Given** M3 실행 직전의 전체-저장소 `git status --porcelain` 스냅샷(청결 조건 — AC-TGR-003과 동일 근거)과 `make tuxiu-golden-capture` 실행
 - **When** 실행 직후 전체-저장소 `git status --porcelain`을 비교하고 `git diff --name-only -- internal/cli/testdata/tuxiu/`를 실행
 - **Then** 전체-저장소 비교에서 변경된 모든 경로가 허용 목록(`internal/cli/testdata/tuxiu/postm4/` 이하 + 도구 파일)에 속하고, 프로덕션 코드와 pre-logo 골든 경로는 0개다. `git diff --name-only`는 postm4 한정을 이중 확인한다. 추가로 update stderr 3파일 + init 6파일이 바이트 동일하게 유지되는지 실측 값을 기록한다(decision-index Q3 증거).
 
@@ -73,13 +73,13 @@ RED-now: M3 이전에는 관측 자체가 없다 — M3에서 최초 관측하�
 
 ### AC-TGR-007 — mutant 판별: 조작 골든에 대한 원시-라인 단정 FAIL (REQ-TGR-007)
 
-- **Given** postm4 update stdout 골든 3개(tty·notty·nocolor 각각)에 제거된 리터럴 접미사(`, 0 user customizations modified`)를 주입한 임시 상태 (M4 음성 제어 선례)
+- **Given** postm4 update stdout 골든 3개(tty·notty·nocolor 각각)에 대한 두 종류의 임시 조작 상태 (M4 음성 제어 선례): (i) 제거된 리터럴 접미사(`, 0 user customizations modified`)를 요약 행에 주입, (ii) 시딩 계약 상수인 `✓ archive:` 항목 행 2행을 삭제(요약 행은 유지)
 - **When** 4테스트 실행
-- **Then** 타이트닝된 exact-line 단정이 주입된 각 변형 골든에서 FAIL을 보고한다 (단정 입력은 원시 ANSI-stripped 라인 — REQ-TGR-008의 교차-기준선 제외가 적용되지 않는다)
-- **When** 주입을 복원하면
+- **Then** 타이트닝된 exact-line 단정이 (i)과 (ii) 양쪽 조작의 각 변형 골든에서 FAIL을 보고한다 (단정 입력은 원시 ANSI-stripped 라인 — REQ-TGR-008의 교차-기준선 제외가 적용되지 않는다)
+- **When** 조작을 복원하면
 - **Then** PASS로 복귀
 
-RED-now (측정됨, release-blocking — vacuous pass 그 자체): 명령 `go test ./internal/cli -run '^(TestInitUpdateTUXCharacterization|TestTUXChannelPartition|TestTUXDataValuesPreserved|TestTUXPostM4CarriesNewPresentation)$' -count=1` — stdout: `ok  	github.com/modu-ai/moai-adk/internal/cli	1.252s`, exit code: 0, 트리: base `03faddb705` (2026-10-19). stale 골든이 조작 없이 통과하는 이 GREEN이 타이트닝 부재의 관측 가능한 RED다 — 접두사 `strings.Contains`는 stale 접미사 포함 골든과 fresh 골든을 구별하지 못한다(§A.1의 vacuous pass 기제). GREEN 경로: M1 타이트닝이 주입-FAIL 판별력을 도입한다. mutant probe(verification-completeness §2): 주입 골든의 요약 행 `total: 2 skills archived, 0 user customizations modified`은 기대 리터럴 `total: 2 skills archived`(Q6 시딩 계약 상수)와 원시 비교에서 불일치해야 한다.
+RED-now (측정됨, release-blocking — vacuous pass 그 자체): 명령 `go test ./internal/cli -run '^(TestInitUpdateTUXCharacterization|TestTUXChannelPartition|TestTUXDataValuesPreserved|TestTUXPostM4CarriesNewPresentation)$' -count=1` — stdout: `ok  	github.com/modu-ai/moai-adk/internal/cli	1.252s`, exit code: 0, 트리: base `03faddb705` (2026-10-19). stale 골든이 조작 없이 통과하는 이 GREEN이 타이트닝 부재의 관측 가능한 RED다 — 접두사 `strings.Contains`는 stale 접미사 포함 골든과 fresh 골든을 구별하지 못한다(§A.1의 vacuous pass 기제). GREEN 경로: M1 타이트닝이 조작-FAIL 판별력을 도입한다. mutant probe(verification-completeness §2): (i) 주입 골든의 요약 행 `total: 2 skills archived, 0 user customizations modified`과 (ii) 항목 행 삭제 골든(2행 부재)은 각각 기대값(요약 `total: 2 skills archived` + 항목 행 2행, Q6 시딩 계약 상수)과의 원시 비교에서 불일치해야 한다 — 외양 정규화(pill-bracket 제거 + trim) 후에도 불일치가 유지되어야 한다.
 
 ### AC-TGR-008 — 예외 문서의 근거 레코드 인용 (REQ-TGR-001, REQ-TGR-003)
 

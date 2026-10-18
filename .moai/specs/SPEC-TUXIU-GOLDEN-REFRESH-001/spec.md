@@ -1,7 +1,7 @@
 ---
 id: SPEC-TUXIU-GOLDEN-REFRESH-001
 title: "tuxiu golden fixture refresh — U-08 data-invariance exception, in-repo regeneration harness, postm4 re-capture"
-version: "0.1.1"
+version: "0.1.2"
 status: draft
 created: 2026-10-19
 updated: 2026-10-19
@@ -25,6 +25,7 @@ tags: "golden,testdata,regeneration,characterization,data-invariance,test-infra"
 |---------|------|--------|--------|
 | 0.1.0 | 2026-10-19 | manager-spec (lane-11, card t1681) | Initial plan-phase draft (card t1681, run tn1p4e, lane-11, Class C). Tier M — 3 artifacts. U-08 제거 이후 stale 상태로 남은 `internal/cli/testdata/tuxiu/` 골든의 (1) 데이터 불변 계약 예외 확정, (2) 저장소 내 재생성 명령 정의, (3) 재생성 실행을 다룬다. |
 | 0.1.1 | 2026-10-19 | manager-spec (lane-11, card t1681) | Plan-audit iter-1 FAIL(0.81, MP-8) repair — D1 RED-now 4요소 완결(AC-TGR-001/003/007), D2 archive DATA 재현 불가(부활 3 ID) → decision-index Q6 신설 + 기본안 적용, REQ-TGR-002/004/008 수정, D3 타이트닝 입력을 원시 라인으로 고정 + 3변형 probe 확대(REQ-TGR-007), D4 AC-TGR-004 커밋-기반 Given, D5 AC-TGR-003/006 전체-저장소 범위 관측 추가. |
+| 0.1.2 | 2026-10-19 | manager-spec (lane-11, card t1681) | Plan-audit iter-2 FAIL(0.88) repair — D6 AC-TGR-001 명령-출력 형식 일치(`grep -rln` bare-path 본인 관측값으로 교체), D7 REQ-TGR-007을 시딩 항목 행 2행까지 단정으로 확대 + 삭제 mutant를 probe에 추가, D8 plan M1 완료 판정을 예상 RED 상태로 재정의, O4 외양 정규화 한정 조항, O5 AC-TGR-003/006 청결-시작 Given. |
 
 ## §A Context
 
@@ -106,9 +107,9 @@ The M1.0 pre-logo 골든 집합(`internal/cli/testdata/tuxiu/*.golden`, 12파일
 
 **When** 재생성이 완료되면, the 4개 특성화 테스트(`TestInitUpdateTUXCharacterization`, `TestTUXChannelPartition`, `TestTUXDataValuesPreserved`, `TestTUXPostM4CarriesNewPresentation`) shall — 타이트닝된 기대값으로 — `-count=1` 실행에서 통과해야 한다.
 
-### REQ-TGR-007 — vacuous-pass 재발 차단 (When 제거 리터럴이 골든에 존재할 때)
+### REQ-TGR-007 — vacuous-pass 재발 차단 (When 골든의 archive DATA가 조작될 때)
 
-**When** postm4 update stdout 골든 세 변형(tty·notty·nocolor) 중 하나가 제거된 리터럴 접미사(`, 0 user customizations modified`)를 포함하도록 조작되면, the 타이트닝된 단정(`internal/cli/tuxiu_characterization_test.go:201`의 접두사 취약한 `strings.Contains`를 대체하는 exact-line 단정) shall — ANSI-stripped 원시(raw) 라인을 입력으로 삼아 해당 골든에서 실패해야 한다. 기대 리터럴은 시딩 계약이 고정한 `total: 2 skills archived`이며, 입력에 REQ-TGR-008의 교차-기준선 제외가 적용되지 않음이 보장되어야 한다 — 정규화·제외 계층이 단정의 입력을 통과시키면 조작 골든이 재차 공신력 없이 통과한다(mutant 생존). 현재의 접두사 단정은 stale 골든과 fresh 골든을 구별하지 못하며, 이 판별력 상실이 본 결함의 재발 경로이다.
+**When** postm4 update stdout 골든 세 변형(tty·notty·nocolor) 중 하나가 (i) 제거된 리터럴 접미사(`, 0 user customizations modified`)를 요약 행에 포함하거나 (ii) 시딩 계약이 고정한 `✓ archive: <id> → .moai/archive/skills/v2.16/<id>` 항목 행을 삭제·변조하도록 조작되면, the 타이트닝된 단정(`internal/cli/tuxiu_characterization_test.go:201`의 접두사 취약한 `strings.Contains`를 대체하는 exact-line 단정) shall — ANSI-stripped 원시(raw) 라인을 입력으로 삼아 해당 골든에서 실패해야 한다. 기대값은 시딩 계약이 고정한 Q6 상수 — 요약 행 `total: 2 skills archived`와 항목 행 2행 — 이며, 허용되는 전처리는 pill-bracket 제거와 공백 trim 같은 외양(cosmetic) 정규화로 한정된다(접미사 처리 금지 — ANSI 색상·pill padding·bracket 변형은 세 변형의 외양 차이일 뿐이다). 입력에 REQ-TGR-008의 교차-기준선 제외가 적용되지 않음이 보장되어야 한다 — 정규화·제외 계층이 단정의 입력을 통과시키면 조작 골든이 재차 공신력 없이 통과한다(mutant 생존). 현재의 접두사 단정은 stale 골든과 fresh 골든을 구별하지 못하며, 이 판별력 상실이 본 결함의 재발 경로이다.
 
 ### REQ-TGR-008 — 교차-기준선 비교의 archive 부분집합 제외 (Ubiquitous)
 
