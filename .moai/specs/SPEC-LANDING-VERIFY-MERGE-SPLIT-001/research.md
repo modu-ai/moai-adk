@@ -71,3 +71,13 @@ Method: `evidence/overlap_baseline.py` (committed beside this file), output `evi
 - The vouch-list (operator-declared never-read non-Go globs) variant of §6 was not measured; it needs the operator's list (decision-index Q8).
 - No wall-clock measurement of a 15-25 minute re-measure was taken in this plan phase (figures are the card's, 10-18).
 - The decision-board texts quoted in §3 were read through `moai decision read`; they are machine-local, not committed authority.
+
+## 10. Transition picture for the cards that are merge-ready now (added v0.3.0, plan-audit D5)
+
+Method: `evidence/transition_head_vs_verdict.py` (committed beside this file) reads, without any git call, each `merge-ready` card's tree HEAD (from the worktree's `.git` pointer and refs) and the `audited_sha:` line of its newest `sync-audit*.md` / `verdict.md`; output `evidence/transition_head_vs_verdict.out`, captured 2026-10-19 from `moai factory status` (19 card ids; 18 trees found, one absent).
+
+Result (verbatim last line of the output): `cards_with_tree=18 match_current_head=8` — for 8 cards the newest verdict names the current HEAD, for 10 it does not (HEAD moved after the audit: a re-absorb, a progress or evidence commit, or a repair).
+
+Reading, under the leader's ruling (board 0577 P2): none of these cards is re-audited because of the switch. Each takes the HEAD-confirmation audit at landing anyway (board 2c51), which writes a verdict and a receipt at its HEAD; with the writer change running (spec C5) that receipt is bound. What differs once the key is on is only the re-measure, which must be in the structured form, and the requirement that the audit is bound to the final HEAD with no backfill commit after it.
+
+What the leader does before the switch (not the lane): build the landing binary by path from main at the landing HEAD; confirm the receipt-writing MCP server runs a build containing the receipt change (`moai doctor` compares the running server with the binary); tell the lanes the structured form (rule text from milestone M4); commit the one-path key change after the SPEC has landed. Not measured here: how many of the 18 have a script-wrapped re-measure record (records are keyed by tree and the trees were not read), and the wall-clock cost of a structured call.

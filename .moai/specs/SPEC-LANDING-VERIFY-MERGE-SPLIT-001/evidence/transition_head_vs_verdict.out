@@ -1,0 +1,21 @@
+card	tree	HEAD	verdict_file	audited_sha	match
+t1626	no tree
+t1632	t1632	9419bb9268d6	sync-audit-r12-delta.md	9d9ef84d47a1	False
+t1649	t1649	3468c58ffe44	sync-audit-iter4.md	6cfd0b86a991	False
+t1693	t1693	61f44e3d43e0	sync-audit.md	61f44e3d43e0	True
+t1710	t1710	aa7fb00c021d	verdict.md	aa7fb00c02	True
+t1758	t1758	a4f931e39fd8	sync-audit.md	a4f931e39fd8	True
+t1770	t1770	810d7ed34429	sync-audit-iter1.md	810d7ed34429	True
+t1805	t1805	97583bac95a0	sync-audit-iter2.md	97583bac95a0	True
+t1809	t1809	69eb8ad9e7f0	sync-audit-iter3.md	2b45d894027a	False
+t1818	t1818	5eb7bf377c34	sync-audit.md	ce88ac72143b	False
+t1821	t1821	e7f74967831f	sync-audit-iter6.md	e7f74967831f	True
+t1828	t1828	71c60d481dea	sync-audit-iter3.md	d208d9e37711	False
+t1834	t1834	5b4c2eaa8b39	sync-audit-iter8.md	5b4c2eaa8b39	True
+t1838	t1838	ae165c2c50a4	sync-audit-iter6.md	ae165c2c50a4	True
+t1839	t1839	7616a604b649	sync-audit.md	e10386171f1d	False
+t1860	t1860	c0ee62876bc5	sync-audit.md	e7dcb5c41e89	False
+t1863	t1863	7c8aba00bd03	sync-audit-cold.md	70c9bf41ac44	False
+t1866	t1866	0f2eda859fe6	sync-audit-iter9.md	723ab0835210	False
+t1871	t1871	2012ca2d5d24	sync-audit.md	f22c23e1788d	False
+cards_with_tree=18 match_current_head=8
