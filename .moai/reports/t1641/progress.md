@@ -178,3 +178,32 @@ Carried (run-phase obligations, none a blocker):
   deliberately omitted. **Plan admission will refuse this verdict fail-closed on the
   receipt**; disposition is the leader's (bridge leg at kickoff, or the ceiling's
   label-only admission arm). The lane does not advance to kickoff on this file alone.
+
+## Proxy codex leg outcome and repair round (2026-10-19, leader ruling)
+
+The proxy audit (standing rule bc8c) returned **codex fail** — receipt `rcpt-54ca7c42603570ff69d6589e`,
+bound to HEAD `0fa5dc2892` (SPEC artifacts byte-identical at the audited `436e77f348`; the
+proxy verified the identity). The proxy appended its section to `plan-audit-delta.md` and
+updated `required_backend: codex fail` + `audit_receipt` (all other keys byte-identical).
+Substantive verdict: FAIL — kickoff closed. This consumed round 1 of the counter restarted
+by operator act 94a7; a third FAIL in this counter holds the card (leader ruling, 10-19).
+
+Blocking findings (codex, proxy-confirmed where marked):
+- **P1** REQ-TU-011's grep-0 target is unsatisfiable together with source preservation:
+  `internal/factory/gtd_engage.go:28` hashes the persisted card-UUID namespace string
+  `"moai:gtd-card:"`, which the `moai:gtd` alternative matches; substituting it changes
+  every derived card UUID, against REQ-TU-012 (read-confirmed by the proxy).
+- **P2** plan.md M6 renames the workflow doc and rewrites `TestWorkflowRulePathsPinned`, but
+  the rule-file `paths:` updates sit in M8a — M6's mandatory checks cannot pass on M6's own
+  edits alone.
+- **P3** (optional) M8's GREEN wording conflicts with AC-TU-010/M9 keeping
+  `TestNoResidualGTDSpelling` RED until M9.
+
+Leader-ordered repair (normal round; tree writes resumed):
+1. REQ-TU-011 gains an explicit UUID-namespace preservation exception — a file:literal
+   allowlist entry for `internal/factory/gtd_engage.go` / `"moai:gtd-card:"`, plus a
+   criterion row (with mutant) that card-UUID derivation bytes stay unchanged.
+2. The rule-file `paths:` edits move from M8a into M6 (renames and their consumer-path
+   updates land in one milestone).
+3. manager-spec commits the repair.
+4. One delta audit with codex required, through a fresh bc8c proxy brief.
