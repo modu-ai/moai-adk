@@ -261,6 +261,73 @@ func TestIndirect_KeyHasNoLineNumber(t *testing.T) {
 	}
 }
 
+// swapArgsHelperSrc has the swapM7Seams shape: a seam is replaced only when its
+// field is passed, and the cleanup restores every seam.
+const swapArgsHelperSrc = `package fx
+
+import "testing"
+
+type seamArgs struct {
+	safeDirAdd func(string) error
+	globalGet  func(string) string
+}
+
+func swapSeams(t *testing.T, s seamArgs) {
+	t.Helper()
+	orig := seamArgs{safeDirAdd: safeDirAdd, globalGet: globalGet}
+	if s.safeDirAdd != nil {
+		safeDirAdd = s.safeDirAdd
+	}
+	if s.globalGet != nil {
+		globalGet = s.globalGet
+	}
+	t.Cleanup(func() {
+		safeDirAdd = orig.safeDirAdd
+		globalGet = orig.globalGet
+	})
+}
+`
+
+const swapArgsOneTestSrc = `package fx
+
+import "testing"
+
+func TestPassesOneField(t *testing.T) {
+	swapSeams(t, seamArgs{safeDirAdd: func(string) error { return nil }})
+	_, _ = materialize("x", nil)
+}
+`
+
+// TestIndirect_ParameterizedSwapCountsOnlyThePassedFields: a helper that swaps a
+// seam only when its field is passed isolates just the fields the test passes,
+// and its cleanup restoring every seam isolates nothing.
+func TestIndirect_ParameterizedSwapCountsOnlyThePassedFields(t *testing.T) {
+	vs := indirectScan(t, indirectProd, map[string]string{"x_test.go": swapArgsOneTestSrc, "helper_test.go": swapArgsHelperSrc})
+	wantFlagged(t, vs, swapArgsOneTestSrc, "TestPassesOneField")
+
+	both := strings.Replace(swapArgsOneTestSrc, "seamArgs{safeDirAdd: func(string) error { return nil }}",
+		"seamArgs{safeDirAdd: func(string) error { return nil }, globalGet: func(string) string { return \"\" }}", 1)
+	if vs := indirectScan(t, indirectProd, map[string]string{"x_test.go": both, "helper_test.go": swapArgsHelperSrc}); len(vs) != 0 {
+		t.Fatalf("violations = %+v; want none: both fields are passed", vs)
+	}
+}
+
+// TestIndirect_RestoreInCleanupIsNotASwap: a test whose only assignments sit in
+// a Cleanup closure swaps nothing.
+func TestIndirect_RestoreInCleanupIsNotASwap(t *testing.T) {
+	src := "package fx\n\nimport \"testing\"\n\nfunc TestOnlyRestores(t *testing.T) {\n" +
+		"\torig := safeDirAdd\n\tt.Cleanup(func() { safeDirAdd = orig; globalGet = globalGet })\n\t_, _ = materialize(\"x\", nil)\n}\n"
+	wantFlagged(t, indirectScan(t, indirectProd, map[string]string{"x_test.go": src}), src, "TestOnlyRestores")
+}
+
+// TestIndirect_RawStringGlobalFlagIsASink: a package whose only "--global" is a
+// raw string literal is still scanned.
+func TestIndirect_RawStringGlobalFlagIsASink(t *testing.T) {
+	prod := "package fx\n\nimport \"os/exec\"\n\nfunc run() error { return exec.Command(\"git\", \"config\", `--global`, \"--list\").Run() }\n"
+	test := "package fx\n\nimport \"testing\"\n\nfunc TestRuns(t *testing.T) { _ = run() }\n"
+	wantFlagged(t, indirectScan(t, prod, map[string]string{"x_test.go": test}), test, "TestRuns")
+}
+
 // dispatchProd builds a command tree of n handlers; the first one reaches the
 // global git config sink and the others do nothing.
 func dispatchProd(n int) string {

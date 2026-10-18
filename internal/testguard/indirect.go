@@ -25,7 +25,10 @@ import (
 //     exec.Command or exec.CommandContext whose literal arguments include
 //     "config" and "--global".
 //   - A seam is a variable node. A test isolates a seam when it, or a function
-//     it reaches in a test file, assigns it. RedirectHome, or setting
+//     it reaches in a test file, assigns it a replacement: a restore inside a
+//     Cleanup closure does not count, and an assignment from a parameter field
+//     (seam = s.field) counts only when reachable test code sets that field to
+//     a non-nil value in a composite literal. RedirectHome, or setting
 //     GIT_CONFIG_GLOBAL, isolates every seam.
 //
 // A top-level Test, Benchmark or Fuzz function that reaches a sink along a path
@@ -49,8 +52,13 @@ const dispatchFanOut = 40
 
 // gnode is one node of the name graph.
 type gnode struct {
-	refs     map[string]bool
-	assigns  map[string]bool // names assigned in this body; test files only
+	refs    map[string]bool
+	assigns map[string]bool // names assigned a replacement in this body; test files only
+	// guarded maps a seam to the parameter fields it is assigned from
+	// (seam = s.field); passes holds the struct fields this body sets to a
+	// non-nil value in a composite literal. Test files only.
+	guarded  map[string]map[string]bool
+	passes   map[string]bool
 	sink     bool
 	varLike  bool
 	isolates bool // test files only
@@ -61,7 +69,7 @@ type pkgGraph struct{ nodes map[string]*gnode }
 func (g *pkgGraph) node(name string) *gnode {
 	n := g.nodes[name]
 	if n == nil {
-		n = &gnode{refs: map[string]bool{}, assigns: map[string]bool{}}
+		n = &gnode{refs: map[string]bool{}, assigns: map[string]bool{}, guarded: map[string]map[string]bool{}, passes: map[string]bool{}}
 		g.nodes[name] = n
 	}
 	return n
@@ -161,6 +169,28 @@ func buildGraph(files map[string][]byte) (*pkgGraph, []testFunc, error) {
 		file := parsed[name]
 		isTest := strings.HasSuffix(name, "_test.go")
 		imports := importNames(file)
+		// cleanups holds the extent of every closure handed to a Cleanup call.
+		var cleanups [][2]token.Pos
+		ast.Inspect(file, func(n ast.Node) bool {
+			if call, ok := n.(*ast.CallExpr); ok {
+				if sel, ok := call.Fun.(*ast.SelectorExpr); ok && sel.Sel.Name == "Cleanup" {
+					for _, a := range call.Args {
+						if lit, ok := a.(*ast.FuncLit); ok {
+							cleanups = append(cleanups, [2]token.Pos{lit.Pos(), lit.End()})
+						}
+					}
+				}
+			}
+			return true
+		})
+		inCleanup := func(p token.Pos) bool {
+			for _, r := range cleanups {
+				if p >= r[0] && p < r[1] {
+					return true
+				}
+			}
+			return false
+		}
 		lines := strings.Split(string(files[name]), "\n")
 		markers := map[int]bool{}
 		for _, cg := range file.Comments {
@@ -189,6 +219,22 @@ func buildGraph(files map[string][]byte) (*pkgGraph, []testFunc, error) {
 				_, imp := imports[id.Name]
 				return imp && id.Obj == nil
 			}
+			// paramField names the field when assignment x stores a field of a
+			// local value (s.field), the shape of a helper that swaps a seam
+			// only for the fields its caller passes.
+			paramField := func(x *ast.AssignStmt, i int) string {
+				if len(x.Rhs) != len(x.Lhs) {
+					return ""
+				}
+				sel, ok := x.Rhs[i].(*ast.SelectorExpr)
+				if !ok {
+					return ""
+				}
+				if id, ok := sel.X.(*ast.Ident); ok && id.Obj != nil && local(id) {
+					return sel.Sel.Name
+				}
+				return ""
+			}
 			var visit func(ast.Node) bool
 			visit = func(n ast.Node) bool {
 				switch x := n.(type) {
@@ -211,8 +257,15 @@ func buildGraph(files map[string][]byte) (*pkgGraph, []testFunc, error) {
 					return false
 				case *ast.KeyValueExpr:
 					// A struct field key is a field name, not a reference.
-					if _, isIdent := x.Key.(*ast.Ident); !isIdent {
+					if key, isIdent := x.Key.(*ast.Ident); !isIdent {
 						ast.Inspect(x.Key, visit)
+					} else if isTest {
+						// nil passes nothing, and a package variable as the value is
+						// the capture of a seam's current value for a later restore.
+						v, isIdent := x.Value.(*ast.Ident)
+						if !isIdent || (v.Name != "nil" && !pkgVars[v.Name]) {
+							owner.passes[key.Name] = true
+						}
 					}
 					ast.Inspect(x.Value, visit)
 					return false
@@ -247,7 +300,17 @@ func buildGraph(files map[string][]byte) (*pkgGraph, []testFunc, error) {
 							continue
 						}
 						if isTest {
-							owner.assigns[assigned] = true
+							switch {
+							case inCleanup(x.Pos()):
+								// A restore to the original value swaps nothing.
+							case paramField(x, i) != "":
+								if owner.guarded[assigned] == nil {
+									owner.guarded[assigned] = map[string]bool{}
+								}
+								owner.guarded[assigned][paramField(x, i)] = true
+							default:
+								owner.assigns[assigned] = true
+							}
 							continue
 						}
 						target := g.node(assigned)
@@ -311,7 +374,8 @@ func buildGraph(files map[string][]byte) (*pkgGraph, []testFunc, error) {
 // is not parsed again.
 func mentionsGlobalFlag(files map[string][]byte) bool {
 	for _, src := range files {
-		if strings.Contains(string(src), `"--global"`) {
+		s := string(src)
+		if strings.Contains(s, `"--global"`) || strings.Contains(s, "`--global`") {
 			return true
 		}
 	}
@@ -338,6 +402,8 @@ func (g *pkgGraph) exposed(start string) bool {
 	// Everything the test can reach decides what it swaps and whether it
 	// redirects the global config.
 	swapped := map[string]bool{}
+	passed := map[string]bool{}
+	guarded := map[string]map[string]bool{}
 	seen := map[string]bool{start: true}
 	for stack := []string{start}; len(stack) > 0; {
 		n := g.nodes[stack[len(stack)-1]]
@@ -348,10 +414,30 @@ func (g *pkgGraph) exposed(start string) bool {
 		for a := range n.assigns {
 			swapped[a] = true
 		}
+		for k := range n.passes {
+			passed[k] = true
+		}
+		for seam, fields := range n.guarded {
+			if guarded[seam] == nil {
+				guarded[seam] = map[string]bool{}
+			}
+			for f := range fields {
+				guarded[seam][f] = true
+			}
+		}
 		for r := range n.refs {
 			if g.nodes[r] != nil && !seen[r] {
 				seen[r] = true
 				stack = append(stack, r)
+			}
+		}
+	}
+	// A seam a helper replaces only when its parameter field is set counts only
+	// when some reachable test code passes that field.
+	for seam, fields := range guarded {
+		for f := range fields {
+			if passed[f] {
+				swapped[seam] = true
 			}
 		}
 	}
