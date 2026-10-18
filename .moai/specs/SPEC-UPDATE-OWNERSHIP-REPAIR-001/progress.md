@@ -1262,6 +1262,59 @@ $ git diff --stat 5eed5816ae HEAD -- internal ":(exclude)*_test.go"
 - 현장의 313개는 두 번째 실행부터 일부가 다른 (더 좁은) 보류 이유로 나올 수 있다 (위 SPEC 쪽 불일치).
 - `hostCaseFS` 는 패키지 변수라 병렬 시험이 바꾸면 서로 간섭한다. 이 chunk 의 시험은 `t.Parallel()` 을 쓰지 않고 `t.Cleanup` 으로 복원한다.
 
+### Chunk 2 GREEN 정정: RenderedByTheUpdateFlow 간헐 실패 (lane 재검증, HEAD `644a7436bf`)
+
+**관측 (lane).** `go test ./internal/cli/ -run '^TestRemainingListKeeps313UnregisteredCopies$' -count=1 -v` 를 연달아 세 번: 통과, 실패, 실패. 실패 서브 시험은 `RenderedByTheUpdateFlow`, 메시지는 `verbose view: a verbose row does not carry its reason "evidence-incomplete:original-deployed-path": 2 occurrence(s) ...` (실패한 실행에서는 두 복사본이 `no-provenance-record` 로 읽힌다). 위 chunk 2 GREEN 기록의 「한 번 통과」 는 결정성의 증거가 아니었다 — 이 정정이 그 기록을 대체하지 않고 덧붙는다.
+
+**원인을 가르는 관측 (추측 아님).** 이 머신 (부하 평균 30-50) 에서 서브 시험만 앵커된 선택자로 `-count=14` 반복하면서, 임시로 (커밋하지 않음, 되돌림) 두 실행의 실행 백업 디렉터리 이름과 `manifest.prior.json` 개수를 시험 로그에 찍었다. 명령: `TMPDIR=/private/tmp/own-fixture-d1 go test ./internal/cli/ -run '^TestRemainingListKeeps313UnregisteredCopies$/^RenderedByTheUpdateFlow$' -count=14 -v` (트리 `644a7436bf` + 로그 두 줄). 원문 요약 (디렉터리 이름은 `DIAG` 로그 줄에서 그대로 옮김):
+
+| # | 실행 1 의 실행 백업 | 실행 2 의 실행 백업 | 이름 | 프로젝트의 `manifest.prior.json` 개수 | 결과 |
+|---|--------------------|--------------------|------|---------------------------|------|
+| 1 | 20261018_165427 | 20261018_165428 | 다름 | 2 | PASS |
+| 2 | 20261018_165429 | 20261018_165429 | 같음 | 1 | FAIL |
+| 3 | 20261018_165431 | 20261018_165432 | 다름 | 2 | PASS |
+| 4 | 20261018_165433 | 20261018_165434 | 다름 | 2 | PASS |
+| 5 | 20261018_165435 | 20261018_165437 | 다름 | 2 | PASS |
+| 6 | 20261018_165439 | 20261018_165439 | 같음 | 1 | FAIL |
+| 7 | 20261018_165440 | 20261018_165441 | 다름 | 2 | PASS |
+| 8 | 20261018_165442 | 20261018_165443 | 다름 | 2 | PASS |
+| 9 | 20261018_165444 | 20261018_165444 | 같음 | 1 | FAIL |
+| 10 | 20261018_165446 | 20261018_165446 | 같음 | 1 | FAIL |
+| 11 | 20261018_165447 | 20261018_165448 | 다름 | 2 | PASS |
+| 12 | 20261018_165449 | 20261018_165449 | 같음 | 1 | FAIL |
+| 13 | 20261018_165451 | 20261018_165451 | 같음 | 1 | FAIL |
+| 14 | 20261018_165452 | 20261018_165453 | 다름 | 2 | PASS |
+
+14번 중 6번 실패, **실패한 실행은 예외 없이 두 실행이 같은 실행 백업 디렉터리를 쓴 실행이고 (`manifest.prior.json` 은 하나), 통과한 실행은 예외 없이 이름이 다른 두 디렉터리 (파일 둘) 였다.** 상관은 14/14 이다.
+
+**원인.** 시험 쪽 시간 가정이다. 실행 백업 디렉터리 이름은 `time.Now().Format("20060102_150405")` (1초 해상도, `internal/cli/update/backup/backup.go:44`) 이고, `RenderedByTheUpdateFlow` 는 실행 1 과 실행 2 를 곧바로 이어서 돌린다. 두 실행의 백업 단계가 같은 시계 초에 걸리면 실행 2 는 실행 1 의 디렉터리를 재사용하고, `preservePriorManifest` 가 실행 2 자신의 시작 매니페스트 사본을 이름 바꾸기로 같은 이름 위에 놓아 실행 1 의 세대를 원자적으로 대체한다 (chunk 1 정직한 회계 3 이 이미 적은 동작). 증거 원천은 현재 실행의 디렉터리를 제외하므로 (`ps.exclude`) 읽을 이전 세대가 0 개가 되고, 같은 해시의 등록 기록이 보이지 않아 두 복사본은 `no-provenance-record` 로 남는다 (보존 방향, 승격 없음). 통과하는 경우 두 디렉터리가 있어 증거 원천이 실행 1 의 시작 매니페스트를 읽고 좁은 이유가 나온다. 제품 결함이 아님을 가르는 사실: (a) 디렉터리가 둘일 때 증거 원천은 세대를 항상 읽었다 (8번 모두 좁은 이유), (b) 디렉터리가 하나일 때 남은 파일은 실행 2 자신의 사본이라 제외 대상이며 읽을 세대가 애초에 없다 — 읽는 쪽의 누락이 아니다. 제품에 남는 사실은 **같은 초에 시작한 두 갱신은 이전 세대 하나를 잃는다**는 것이고 (잃는 방향은 증거 약화=보존 쪽, 제거 방향의 오류는 없음), 이는 `internal/cli/update/backup` 의 1초 해상도 디렉터리 이름이라는 기존 동작이며 이 카드가 건드리지 않기로 한 파일 (AC-OWR-21 (e)) 과 design.md D-3 항목 3 의 「정확한 이름만 읽는다」 규칙에 걸려 있어 여기서 고치지 않고 잔여 위험으로 공개한다.
+
+**결정적 RED (커밋 A `814c6e044a`, 시험 파일만).** 시계를 기다리지 않고 같은 초 공유를 결정적으로 만든다: 실행 2 의 백업 단계가 `priorManifestWriter` 에 닿을 때 시험이 실행 1 의 사본을 그 디렉터리로 옮겨 놓고 진짜 쓰기 함수를 부른다 (공유 디렉터리의 종료 상태와 같다). 이 변형 `RenderedByTheUpdateFlowInOneSecond` 는 원래 기대 (두 복사본이 좁은 이유) 를 그대로 둬서 결정적으로 붉다 — 5번 중 5번, 메시지가 lane 의 것과 같다. 명령: `TMPDIR=/private/tmp/own-fixture-d1 go test ./internal/cli/ -run '^TestRemainingListKeeps313UnregisteredCopies$/^RenderedByTheUpdateFlowInOneSecond$' -count=5 -v` (트리 `814c6e044a`, 작업 트리 깨끗):
+
+```text
+    migrate_ownership_remaining_test.go:512: verbose view: a verbose row does not carry its reason "evidence-incomplete:original-deployed-path": 2 occurrence(s), first: · kept: .agents/skills/moai-foundation-core/SKILL.md — unregistered, no-provenance-record; missing evidence: deployed-version, original-deployed-path, prior-manifest-record
+--- FAIL: TestRemainingListKeeps313UnregisteredCopies (2.94s)
+    --- FAIL: TestRemainingListKeeps313UnregisteredCopies/RenderedByTheUpdateFlowInOneSecond (2.94s)
+    migrate_ownership_remaining_test.go:512: verbose view: a verbose row does not carry its reason "evidence-incomplete:original-deployed-path": 2 occurrence(s), first: · kept: .agents/skills/moai-foundation-core/SKILL.md — unregistered, no-provenance-record; missing evidence: deployed-version, original-deployed-path, prior-manifest-record
+--- FAIL: TestRemainingListKeeps313UnregisteredCopies (2.85s)
+    --- FAIL: TestRemainingListKeeps313UnregisteredCopies/RenderedByTheUpdateFlowInOneSecond (2.85s)
+    migrate_ownership_remaining_test.go:512: verbose view: a verbose row does not carry its reason "evidence-incomplete:original-deployed-path": 2 occurrence(s), first: · kept: .agents/skills/moai-foundation-core/SKILL.md — unregistered, no-provenance-record; missing evidence: deployed-version, original-deployed-path, prior-manifest-record
+--- FAIL: TestRemainingListKeeps313UnregisteredCopies (1.94s)
+    --- FAIL: TestRemainingListKeeps313UnregisteredCopies/RenderedByTheUpdateFlowInOneSecond (1.94s)
+    migrate_ownership_remaining_test.go:512: verbose view: a verbose row does not carry its reason "evidence-incomplete:original-deployed-path": 2 occurrence(s), first: · kept: .agents/skills/moai-foundation-core/SKILL.md — unregistered, no-provenance-record; missing evidence: deployed-version, original-deployed-path, prior-manifest-record
+--- FAIL: TestRemainingListKeeps313UnregisteredCopies (1.44s)
+    --- FAIL: TestRemainingListKeeps313UnregisteredCopies/RenderedByTheUpdateFlowInOneSecond (1.43s)
+    migrate_ownership_remaining_test.go:512: verbose view: a verbose row does not carry its reason "evidence-incomplete:original-deployed-path": 2 occurrence(s), first: · kept: .agents/skills/moai-foundation-core/SKILL.md — unregistered, no-provenance-record; missing evidence: deployed-version, original-deployed-path, prior-manifest-record
+--- FAIL: TestRemainingListKeeps313UnregisteredCopies (2.35s)
+    --- FAIL: TestRemainingListKeeps313UnregisteredCopies/RenderedByTheUpdateFlowInOneSecond (2.35s)
+FAIL
+FAIL	github.com/modu-ai/moai-adk/internal/cli	12.924s
+FAIL
+exit=1
+```
+
+종료 코드 1.
+
 ## §E.3 Run-phase Audit-Ready Signal
 
 _<pending run-phase>_
