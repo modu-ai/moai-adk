@@ -279,6 +279,8 @@ Detect current branch type and route accordingly. The route list is normative an
 7. Exit the integration worktree and report the branch name, merge commit, and evidence path
 8. Precondition: when the designated integration worktree does not exist, stop and report — provisioning it is the coordinating session's act
 
+Where the integration branch is held by a dedicated worktree (the git-flow `WT-*` integration route), it is checked out in exactly one dedicated worktree, at a fixed path. That worktree performs landing and resync only: it is never used to edit or experiment, and it stays clean. The primary checkout is the human and leader workspace and does not check out the integration branch. Routes that commit directly to the branch (Route A) or that run no dedicated integration worktree are outside this sentence.
+
 **feature/* branch** → PR to `develop`:
 1. Push branch: `git push -u origin <branch>`
 2. Create or update PR targeting `develop` branch

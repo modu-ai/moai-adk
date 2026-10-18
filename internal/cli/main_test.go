@@ -377,6 +377,10 @@ func TestMain(m *testing.M) {
 	// what they need via t.Setenv, so this clear strips only the ambient copy
 	// and leaves a pinned helper child's composed family alone.
 	clearFactoryAmbientEnv()
+	// The lane-join chooser prompts only on a real terminal; no test may read
+	// one. Tests that exercise the chooser pin the seam true for their own
+	// duration (SPEC-LANE-JOIN-RUN-SELECT-001).
+	runSelectionInteractive = func() bool { return false }
 	// The project directory a launching session exports must not steer any
 	// test's project-root resolution (SPEC-AUDIT-MODEL-CONVERGE-001
 	// REQ-ACV-019); TestMain_ScrubsClaudeProjectDir guards this line.

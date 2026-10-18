@@ -423,6 +423,15 @@ func codexLedRun(t *testing.T, runID, backend string) string {
 		_ = os.Unsetenv(key)
 	}
 	t.Setenv(config.EnvClaudeProjectDir, root)
+	// The anchor guard reads the working directory as well
+	// (SPEC-LAUNCHER-ARGV-001), so the working directory enters the codex-led
+	// project. The .moai marker is what every MoAI project carries:
+	// findProjectRoot walks up from the working directory to it, and the launch
+	// resolves the same root from there.
+	if err := os.MkdirAll(filepath.Join(root, ".moai"), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	t.Chdir(root)
 	return root
 }
 
