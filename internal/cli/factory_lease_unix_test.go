@@ -727,16 +727,18 @@ func TestFactoryLeaseDriftLogVerbWorktreeWriteWaits(t *testing.T) {
 			if form == "nominated" {
 				args = append(args, "--card", "t1")
 			}
-			res := <-flRunNextAsync(t, args...)
+			res := <-flRunNextAsync(t, ws.releasedCh, args...)
 			out, stderr, err := res.out, res.stderr, res.err
 			if err != nil {
 				t.Fatalf("clause (vii): the verb exited %d: %v (stderr %q)", nmExit(err), err, stderr)
 			}
 			// Order check: the verb must return only after the release signal
-			// fired (the settle step waited for the lock).
-			select {
-			case <-ws.releasedCh:
-			default:
+			// fired (the settle step waited for the lock). The fact was sampled
+			// inside the verb goroutine at the instant of the return
+			// (flRunNextAsync); here the compliant direction is the opposite of
+			// the queue-lock test's — the return must FOLLOW the release, so
+			// heldAtReturn must be false.
+			if res.heldAtReturn {
 				t.Fatalf("clause (vii): the verb returned while the drift-log lock was still held: the card-worktree write's settle step did not wait for the lock")
 			}
 			head := nmLeasedHead(out)

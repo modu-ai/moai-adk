@@ -329,17 +329,34 @@ type flVerbResult struct {
 	out, stderr string
 	err         error
 	returned    time.Time
+	// heldAtReturn is the order fact "the call returned -> the release
+	// signal", sampled inside the goroutine that ran the call, at the instant
+	// the call returned (a non-blocking receive on the release channel).
+	// Sampling here, not in the test body after the receive (card t1746 N9),
+	// keeps the fact immune to any delay between the send and the observation:
+	// a compliant lease that returned inside its budget records
+	// heldAtReturn=true however long the harness then takes to deliver the
+	// result, while a lease that ignored its budget records false because its
+	// return came after the deadline-driven release.
+	heldAtReturn bool
 }
 
 // flRunNextAsync runs qasRunNext on a goroutine and returns the channel its
-// result arrives on, so the test body can check the order "the call returned ->
-// the release signal" against the goroutine's send.
-func flRunNextAsync(t *testing.T, args ...string) <-chan flVerbResult {
+// result arrives on. released is the release signal the caller armed; the
+// goroutine samples it immediately after the call returns and records the
+// order fact in flVerbResult.heldAtReturn.
+func flRunNextAsync(t *testing.T, released <-chan struct{}, args ...string) <-chan flVerbResult {
 	t.Helper()
 	done := make(chan flVerbResult, 1)
 	go func() {
 		out, stderr, err := qasRunNext(t, args...)
-		done <- flVerbResult{out, stderr, err, time.Now()}
+		held := true
+		select {
+		case <-released:
+			held = false
+		default:
+		}
+		done <- flVerbResult{out, stderr, err, time.Now(), held}
 	}()
 	return done
 }
@@ -351,8 +368,9 @@ func flRunNextAsync(t *testing.T, args ...string) <-chan flVerbResult {
 // queue-lock wait — that expires releaseAfter later, at which point
 // releaseSignal is closed and the queue lock is released. The release is
 // deadline-driven, not a midpoint timer: nothing decides pass/fail on elapsed
-// wall-clock, and the caller checks the order "the call returned -> the release
-// signal" with a non-blocking receive. Creating the context at the wait, rather
+// wall-clock, and the verb goroutine records the order "the call returned ->
+// the release signal" with a non-blocking receive at the instant of the return
+// (flRunNextAsync). Creating the context at the wait, rather
 // than before the verb, keeps the lock held past the release deadline during
 // the wait whatever the pre-lock latency, which varies with the host's load.
 // The getter returns the instant the seam fired and fails the test unless the
@@ -416,8 +434,11 @@ func flWaitStartRelease(t *testing.T, releaseAfter time.Duration, release func()
 // B + flQueueReleaseSlack later — and the lease must return BEFORE that release
 // signal fires: a lease that gives up within its budget returns with the lock
 // still held, while a lease that ignores its budget only returns after the
-// deadline-driven release. The verb runs on a goroutine (flRunNextAsync) and the
-// order is checked with a non-blocking receive after the result arrives;
+// deadline-driven release. The verb runs on a goroutine (flRunNextAsync), which
+// samples the release signal at the instant the call returns and records the
+// order fact in the result it sends (card t1746 N9: an observation-time sample
+// in the test body false-REDs a compliant lease when the harness is delayed
+// past the release slack); the test body asserts on the recorded fact, and
 // elapsed time is logged for diagnostics only. The nominated lease then exits 4
 // with a `raced` refusal whose detail names the queue lock and writes no record
 // row; the bare form — one attempt, not five (the seam fired exactly once) —
@@ -430,18 +451,14 @@ func TestFactoryLeaseQueueLockStallBounded(t *testing.T) {
 		nmIsolatedWorktrees(t, "t1")
 		end := flHoldQueue(t, root)
 		waitStart, released := flWaitStartRelease(t, budget+flQueueReleaseSlack, end)
-		res := <-flRunNextAsync(t, "--run", fcRun, "--card", "t1")
-		// Order check: the lease must return before the release signal fires.
-		heldAtReturn := true
-		select {
-		case <-released:
-			heldAtReturn = false
-		default:
-		}
+		res := <-flRunNextAsync(t, released, "--run", fcRun, "--card", "t1")
 		end()
 		elapsed := res.returned.Sub(waitStart())
 		t.Logf("nominated under a held queue lock: elapsed from the queue-lock wait=%s exit=%d err=%v stderr=%q", elapsed, nmExit(res.err), res.err, res.stderr)
-		if !heldAtReturn {
+		// Order check: the lease must return before the release signal fires.
+		// The fact was sampled inside the verb goroutine at the instant of the
+		// return (flRunNextAsync), not at observation time.
+		if !res.heldAtReturn {
 			t.Errorf("the nominated lease returned only after the release signal fired (elapsed %s from the queue-lock wait, release deadline B + %s): the lease ignored its %s queue-lock wait budget", elapsed, flQueueReleaseSlack, budget)
 		}
 		nmAssertRefused(t, res.out, res.stderr, res.err, "raced")
@@ -459,18 +476,14 @@ func TestFactoryLeaseQueueLockStallBounded(t *testing.T) {
 		nmIsolatedWorktrees(t, "t1", "t2")
 		end := flHoldQueue(t, root)
 		waitStart, released := flWaitStartRelease(t, budget+flQueueReleaseSlack, end)
-		res := <-flRunNextAsync(t, "--run", fcRun)
-		// Order check: the lease must return before the release signal fires.
-		heldAtReturn := true
-		select {
-		case <-released:
-			heldAtReturn = false
-		default:
-		}
+		res := <-flRunNextAsync(t, released, "--run", fcRun)
 		end()
 		elapsed := res.returned.Sub(waitStart())
 		t.Logf("bare under a held queue lock: elapsed from the queue-lock wait=%s exit=%d err=%v stdout=%q stderr=%q", elapsed, nmExit(res.err), res.err, res.out, res.stderr)
-		if !heldAtReturn {
+		// Order check: the lease must return before the release signal fires.
+		// The fact was sampled inside the verb goroutine at the instant of the
+		// return (flRunNextAsync), not at observation time.
+		if !res.heldAtReturn {
 			t.Errorf("the bare lease returned only after the release signal fired (elapsed %s from the queue-lock wait, release deadline B + %s): the lease ignored its %s queue-lock wait budget, one attempt", elapsed, flQueueReleaseSlack, budget)
 		}
 		if err := res.err; err == nil || nmExit(err) == 3 || nmExit(err) == 0 {
