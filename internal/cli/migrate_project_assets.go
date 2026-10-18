@@ -148,6 +148,65 @@ func backUpRemovalCandidates(projectRoot string, rc *migrationRunContext, cands 
 	return ""
 }
 
+// ownershipEnvInputs is everything the verdict function reads about one project.
+// The migration and the --dry-run preview build the verdict environment from the
+// same inputs through newOwnershipEnv, so both ask the same question of the same
+// function (REQ-OWR-001, REQ-OWR-011).
+type ownershipEnvInputs struct {
+	projectRoot  string
+	homeDir      string
+	embedded     fs.FS
+	cat          *template.Catalog
+	userManifest *userassets.Manifest
+	view         manifestView
+	evidence     provenanceSource
+}
+
+// newOwnershipEnv builds the verdict environment. It only reads: it resolves the
+// project root, asks the launch ledger whether the project is mapped to a
+// profile, and closes the lookups over the inputs. It never writes, so the
+// --dry-run preview may call it.
+func newOwnershipEnv(in ownershipEnvInputs) (ownershipEnv, error) {
+	// Item 1 (fix round 3 addendum): anchor the deletion boundary to the
+	// project root — a .claude (or sibling root) swapped to an
+	// outside-pointing symlink must not route os.Remove to an external
+	// sentinel even when the recorded hash matches.
+	rootResolved, err := filepath.EvalSymlinks(in.projectRoot)
+	if err != nil {
+		return ownershipEnv{}, fmt.Errorf("resolve project root: %w", err)
+	}
+	// U-01 (option (c), AC-RC30-27): a project the launch ledger maps to a
+	// profile is one a profile session launches, so its shipped copies stay
+	// project-side. A normal run passes "." as the root, and a relative root
+	// misses the mapping of an ancestor project (a worktree), so the root is
+	// made absolute first. Resolved once per run; the ledger is only read.
+	rootAbs, err := filepath.Abs(in.projectRoot)
+	if err != nil {
+		return ownershipEnv{}, fmt.Errorf("resolve project root: %w", err)
+	}
+	profileMapped := profile.ResolveLaunchProfileForProject(rootAbs, "") != ""
+	return ownershipEnv{
+		entry:    in.view.entry,
+		evidence: in.evidence,
+		counterpartConfirmed: func(rel string) bool {
+			return counterpartConfirmedCaseAware(in.userManifest, in.cat, in.embedded, in.homeDir, rel)
+		},
+		notInCatalog:   func(rel string) bool { return skillNotInCatalog(in.cat, rel) },
+		profileMapped:  profileMapped,
+		removalEnabled: removalEnabled,
+		rootResolved:   rootResolved,
+		counterpartStatus: func(rel string) counterpartStatus {
+			return userCounterpartStatus(in.userManifest, in.cat, in.embedded, in.homeDir, rel)
+		},
+		// REQ-OWR-007: a path that is not a manifest key but names the same file as
+		// one (letter case only) takes that entry's verdict; nothing is renamed.
+		caseAlias: func(rel string) (string, bool) {
+			return resolveCaseAlias(hostCaseFS, in.projectRoot, rel, in.view.keysByDir[path.Dir(rel)])
+		},
+		shippedSpelling: func(rel string) string { return shippedCaseSpelling(in.embedded, rel) },
+	}, nil
+}
+
 // migrateProjectCommonAssets removes template-managed common skills and
 // agents from the project after confirming each user counterpart (REQ-020).
 // The user manifest is read-only here (the user-asset phase already ran and
@@ -210,51 +269,20 @@ func migrateProjectCommonAssets(projectRoot, homeDir string, userAssetsInstalled
 
 	var removedPaths []string
 	var removed, preserved, stayed, untouched int
-	// Item 1 (fix round 3 addendum): anchor the deletion boundary to the
-	// project root — a .claude (or sibling root) swapped to an
-	// outside-pointing symlink must not route os.Remove to an external
-	// sentinel even when the recorded hash matches.
-	rootResolved, rootErr := filepath.EvalSymlinks(projectRoot)
-	if rootErr != nil {
-		return nil, fmt.Errorf("resolve project root: %w", rootErr)
-	}
-	// U-01 (option (c), AC-RC30-27): a project the launch ledger maps to a
-	// profile is one a profile session launches, so its shipped copies stay
-	// project-side. A normal run passes "." as the root, and a relative root
-	// misses the mapping of an ancestor project (a worktree), so the root is
-	// made absolute first. Resolved once per run; the ledger is only read.
-	rootAbs, absErr := filepath.Abs(projectRoot)
-	if absErr != nil {
-		return nil, fmt.Errorf("resolve project root: %w", absErr)
-	}
-	profileMapped := profile.ResolveLaunchProfileForProject(rootAbs, "") != ""
 	evidence := newProvenanceSource(projectRoot)
 	if ps, ok := evidence.(*priorGenerationSource); ok && rc != nil {
 		// The current run's own copy is the start-of-run manifest, not a prior generation.
 		ps.exclude = rc.runBackupDir
 	}
 	var candidates []removalCandidate
-	keysByDir := manifestKeysByDir(mgr)
-	env := ownershipEnv{
-		entry:    mgr.GetEntry,
-		evidence: evidence,
-		counterpartConfirmed: func(rel string) bool {
-			return counterpartConfirmedCaseAware(userManifest, cat, embedded, homeDir, rel)
-		},
-		notInCatalog:   func(rel string) bool { return skillNotInCatalog(cat, rel) },
-		profileMapped:  profileMapped,
-		removalEnabled: removalEnabled,
-		rootResolved:   rootResolved,
-		counterpartStatus: func(rel string) counterpartStatus {
-			return userCounterpartStatus(userManifest, cat, embedded, homeDir, rel)
-		},
-		// REQ-OWR-007: a path that is not a manifest key but names the same file as
-		// one (letter case only) takes that entry's verdict; nothing is renamed.
-		caseAlias: func(rel string) (string, bool) {
-			return resolveCaseAlias(hostCaseFS, projectRoot, rel, keysByDir[path.Dir(rel)])
-		},
-		shippedSpelling: func(rel string) string { return shippedCaseSpelling(embedded, rel) },
+	env, err := newOwnershipEnv(ownershipEnvInputs{
+		projectRoot: projectRoot, homeDir: homeDir, embedded: embedded, cat: cat,
+		userManifest: userManifest, view: viewOfManager(mgr), evidence: evidence,
+	})
+	if err != nil {
+		return nil, err
 	}
+	rootResolved := env.rootResolved
 	for _, rootRel := range projectCommonAssetRels {
 		absRoot := filepath.Join(projectRoot, filepath.FromSlash(rootRel))
 		err := filepath.WalkDir(absRoot, func(p string, d fs.DirEntry, err error) error {

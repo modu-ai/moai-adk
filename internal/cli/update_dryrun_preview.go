@@ -13,12 +13,9 @@ package cli
 import (
 	"fmt"
 	"io"
-	"os"
-	"path/filepath"
 	"strings"
 
 	"github.com/modu-ai/moai-adk/internal/cli/update"
-	"github.com/modu-ai/moai-adk/internal/manifest"
 	"github.com/modu-ai/moai-adk/internal/template"
 	"github.com/modu-ai/moai-adk/internal/tui"
 )
@@ -73,15 +70,18 @@ func previewReconciliation(projectRoot string, deployMode template.DeployMode, o
 	}
 	preserved := 0
 	migrationCandidates := 0
+	var verdicts previewVerdicts
 	for _, f := range plan.UserOwned {
-		// Gate round 12 (card t1547): under the common-asset roots, a file
-		// still carrying the migration's removal shape (template_managed
-		// record, bytes matching the recorded template) is a removal
-		// candidate. The candidate branch runs only while removalEnabled is true.
-		// It is false by default (AC-RC30-02 belongs to card t1668). While it is
-		// false, the migration keeps a confirmed template-managed common asset
-		// project-side, so the preview does not announce a removal for it.
-		if removalEnabled && isCommonAssetCleanTarget(f.RelPath) && migrationRemovalCandidate(projectRoot, mf, f.RelPath) {
+		// Gate round 12 (card t1547): under the common-asset roots, a file the
+		// migration would remove is a removal candidate. Whether it would is the
+		// verdict function's answer, the same function with the same inputs the
+		// migration uses (REQ-OWR-001, REQ-OWR-011) — the preview keeps no
+		// judgment of its own. The candidate branch runs only while removalEnabled
+		// is true. It is false by default (AC-RC30-02 belongs to card t1668).
+		// While it is false, the migration keeps a confirmed template-managed
+		// common asset project-side, so the preview does not announce a removal
+		// for it, and the verdict environment is never assembled.
+		if removalEnabled && isCommonAssetCleanTarget(f.RelPath) && verdicts.removalEligible(projectRoot, mf, f.RelPath) {
 			_, _ = fmt.Fprintln(out, tui.CheckLine("warn", "[dry-run] migration candidate: "+f.RelPath,
 				"template-managed common asset — removed by the asset migration once your user-side copy is confirmed", "", &th))
 			migrationCandidates++
@@ -110,24 +110,4 @@ func previewReconciliation(projectRoot string, deployMode template.DeployMode, o
 			strings.Join(plan.Symlinks, ", ")+" — link entries removed before deploy, targets untouched", "", &th))
 	}
 	return nil
-}
-
-// migrationRemovalCandidate reports whether a preserved common-asset file
-// carries the exact shape the asset migration removes: a template_managed
-// record whose recorded template hash matches the bytes on disk — the
-// confirmable-counterpart shape of migrateProjectCommonAssets's deletion
-// preconditions. Anything else under the roots stays plain "preserved".
-func migrationRemovalCandidate(projectRoot string, mf *manifest.Manifest, rel string) bool {
-	if mf == nil {
-		return false
-	}
-	entry, ok := mf.Files[rel]
-	if !ok || entry.Provenance != manifest.TemplateManaged || entry.TemplateHash == "" {
-		return false
-	}
-	data, err := os.ReadFile(filepath.Join(projectRoot, filepath.FromSlash(rel)))
-	if err != nil {
-		return false
-	}
-	return entry.TemplateHash == manifest.HashBytes(data)
 }
