@@ -12,6 +12,7 @@
 package cli
 
 import (
+	"github.com/modu-ai/moai-adk/internal/auditreceipt"
 	"github.com/modu-ai/moai-adk/internal/cli/uikit"
 	"github.com/modu-ai/moai-adk/internal/factory"
 )
@@ -34,21 +35,43 @@ func checkReviewLayerOverlap(projectRoot string, verbose bool) DiagnosticCheck {
 		return check
 	}
 
-	records, err := factory.ReadAll(projectRoot)
-	if err != nil {
+	lane, readable := laneRecordPresent(projectRoot)
+	switch {
+	case lane:
+		check.Status = uikit.CheckWarn
+		check.Message = "a factory lane session record is present while the turn-end review gate is enabled; the card-review stage may review the same card diff twice"
+		check.Detail = "The record may be stale: the record store carries no liveness signal, so a record left by a finished run also triggers this. " +
+			"The card-review stage has no switch of its own; set workflow.codex.review_gate.enabled: false to keep a single review layer. " +
+			"Scope: the Claude Stop path (the Codex Stop chain resolves its enabled flag from a different root)."
+	case !readable:
 		check.Message = "turn-end review gate is on; factory records unreadable, overlap not judged"
-		return check
+	default:
+		check.Message = "turn-end review gate is on; no factory lane session record"
 	}
-	for i := range records {
-		if records[i].Role == "lane" {
-			check.Status = uikit.CheckWarn
-			check.Message = "turn-end review_gate and the lane card-review stage are both active; the same card diff is reviewed twice"
-			check.Detail = "A factory lane session record exists while workflow.codex.review_gate.enabled is true. " +
-				"The card-review stage has no switch of its own; set workflow.codex.review_gate.enabled: false to keep a single review layer."
-			return check
+	return check
+}
+
+// laneRecordPresent looks for a lane session record under projectRoot and under
+// the primary checkout of its repository: the session-start writer keys the
+// record by the session's project directory, which is the primary checkout for
+// a session working in a linked worktree. readable is false only when no
+// record directory could be read at all.
+func laneRecordPresent(projectRoot string) (lane, readable bool) {
+	roots := []string{projectRoot}
+	if primary, _, err := auditreceipt.IdentifyPrimaryCheckout(projectRoot); err == nil && primary != projectRoot {
+		roots = append(roots, primary)
+	}
+	for _, root := range roots {
+		records, err := factory.ReadAll(root)
+		if err != nil {
+			continue
+		}
+		readable = true
+		for i := range records {
+			if records[i].Role == "lane" {
+				return true, true
+			}
 		}
 	}
-
-	check.Message = "turn-end review gate is on; no factory lane session record"
-	return check
+	return false, readable
 }

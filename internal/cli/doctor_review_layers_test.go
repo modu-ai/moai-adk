@@ -46,7 +46,7 @@ func TestDoctorReviewLayerOverlap(t *testing.T) {
 				seedFactoryRecord(t, root, "lane-session", "lane")
 			},
 			want:    uikit.CheckWarn,
-			wantMsg: []string{"review_gate", "card-review", "twice", "workflow.codex.review_gate.enabled"},
+			wantMsg: []string{"review_gate", "card-review", "record is present", "may review", "stale", "workflow.codex.review_gate.enabled"},
 		},
 		{
 			name: "gate-off-and-lane-record",
@@ -112,6 +112,21 @@ func TestDoctorReviewLayerOverlap(t *testing.T) {
 func TestDoctorReviewLayerOverlap_ConfigOrphanedWorktree(t *testing.T) {
 	fx := newUntrackedFixture(t, reviewGateOnYAML)
 	seedFactoryRecord(t, fx.W, "lane-session", "lane")
+
+	check := checkReviewLayerOverlap(fx.W, false)
+
+	if check.Status != uikit.CheckWarn {
+		t.Errorf("status = %v, want warn (message %q)", check.Status, check.Message)
+	}
+}
+
+// TestDoctorReviewLayerOverlap_RecordAtPrimaryRoot — the session-start writer
+// puts a lane record in the primary checkout, so a doctor run from a linked
+// worktree whose .moai is tracked (not config-orphaned) must look there too.
+func TestDoctorReviewLayerOverlap_RecordAtPrimaryRoot(t *testing.T) {
+	fx := newUntrackedFixture(t, reviewGateOnYAML)
+	writeReviewLayersWorkflow(t, fx.W, reviewGateOnYAML)
+	seedFactoryRecord(t, fx.P, "lane-session", "lane")
 
 	check := checkReviewLayerOverlap(fx.W, false)
 
