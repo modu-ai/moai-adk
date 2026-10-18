@@ -2233,6 +2233,107 @@ TestRepeatedUpdateIsIdempotent run 5 rc=0 top-pass=1 all-pass=41 fail=0 skip=0
 
 **구현 커밋 C 없음.** 구현이 남은 차이가 없다 (관측 1 은 의도된 설계 D-2 의 결과이고 SPEC 본문 수정 사안이다).
 
+#### M9 — AC-OWR-18 `TestInterruptedMigrationRecoversAndConverges`
+
+**커밋 A `ace2e8d84b`** (`internal/cli/migrate_ownership_recovery_test.go` 에 시험만 추가, 운영 코드 변경 없음). 작업 트리 깨끗, 부하 평균 29.59 33.27 33.95.
+
+**도착 셀 — 이 기준도 도착 때 초록이다 (RED-now 없음).** acceptance.md 의 RED 이유 (「(c) 에서 이미 비어 있던 디렉터리가 정리되지 않는다 — AC-OWR-13 의 같은 원인」) 는 M5 가, (a) 의 제거 0건은 M1b 가 이미 닫았다. regression-guard 로 도착하고 붉음은 변이에서 관측한다. 판정 명령 `TMPDIR=/private/tmp/own-fixture-d1 go test ./internal/cli/ -run '^TestInterruptedMigrationRecoversAndConverges$' -count=1 -v`, 종료 코드 0, 결과 줄과 시험 로그 줄만:
+
+```text
+    migrate_ownership_recovery_test.go:905: compared tree hash: content-only (path, bytes, mode, directory presence); directory mtimes and clock values are not compared; deployed_at is masked between runs
+--- PASS: TestInterruptedMigrationRecoversAndConverges (18.86s)
+    --- PASS: TestInterruptedMigrationRecoversAndConverges/BackupPathOccupied/DistinctRunDirectories (2.99s)
+    --- PASS: TestInterruptedMigrationRecoversAndConverges/BackupPathOccupied/SharedRunDirectory (2.29s)
+    --- PASS: TestInterruptedMigrationRecoversAndConverges/ManifestRestoredToPreRunBytes/DistinctRunDirectories (1.64s)
+    --- PASS: TestInterruptedMigrationRecoversAndConverges/ManifestRestoredToPreRunBytes/SharedRunDirectory (1.56s)
+    --- PASS: TestInterruptedMigrationRecoversAndConverges/EmptiedDirectoriesRecreated/DistinctRunDirectories (1.13s)
+    --- PASS: TestInterruptedMigrationRecoversAndConverges/EmptiedDirectoriesRecreated/SharedRunDirectory (1.09s)
+    --- PASS: TestInterruptedMigrationRecoversAndConverges/PlainRerunLeavesRecreatedDirectories (0.76s)
+    --- PASS: TestInterruptedMigrationRecoversAndConverges/MutantEmptiedManagedDirectoryLeftIsCaught (0.46s)
+    --- PASS: TestInterruptedMigrationRecoversAndConverges/MutantRemovedManifestEntryResurrectedIsCaught (0.36s)
+    --- PASS: TestInterruptedMigrationRecoversAndConverges/MutantBackupCopyMissingIsCaught (0.41s)
+    --- PASS: TestInterruptedMigrationRecoversAndConverges/MutantRemovedFileStillOnDiskIsCaught (0.53s)
+    --- PASS: TestInterruptedMigrationRecoversAndConverges/MutantTreeDiffersFromTheUninterruptedRunIsCaught (0.26s)
+    --- PASS: TestInterruptedMigrationRecoversAndConverges/MutantRowsDifferFromTheUninterruptedRunIsCaught (0.23s)
+    --- PASS: TestInterruptedMigrationRecoversAndConverges/MutantRecoveryRunDidNotReachReconciliationIsCaught (0.22s)
+    --- PASS: TestInterruptedMigrationRecoversAndConverges/MutantInterruptedRunRemovedAFileIsCaught (0.22s)
+PASS
+```
+
+**구성.** 세 중단을 모두 픽스처로 만든다 (운영 코드에 끼어들기 없음): (a) 후보 하나의 실행 백업 사본 자리에 내용 있는 디렉터리를 둔다 — 실행 백업 디렉터리 이름이 시각이라 미리 알 수 없으므로 AC-OWR-20 이 이미 쓰는 `priorManifestWriter` 이음매의 대역이 `runDir` 인자 안에 만든다 (새 이음매 아님); (b) 첫 (완전한) 실행 뒤 매니페스트를 실행 전 바이트로 되돌린다 — 제거한 경로의 항목이 되살아난 상태를 전제로 단언한다; (c) 정리된 빈 디렉터리 셋을 다시 만든다. 각 중단은 두 시계 분기 (구별되는 디렉터리: 폴링 / 공유 디렉터리: 이전 실행의 백업 내용을 합치는 대역) 에서 복구 `--force` 실행을 한 번 한다. 규칙 7 은 중단된 실행과 복구 실행 모두에 적용했다 (센 조건 셋). **기준 실행은 같은 횟수 (두 번) 의 중단 없는 `--force` 실행이다.** 처음 초안은 한 번만 돈 기준과 비교했고 config 섹션 파일 여럿이 갈렸다 (저장한 첫 시도 출력의 줄):
+
+```text
+    migrate_ownership_recovery_test.go:925: (tree) the recovered tree differs from the uninterrupted one at [.moai/config/sections/archive.yaml .moai/config/sections/constitution.yaml .moai/config/sections/context.yaml .moai/config/sections/delegation.yaml .moai/config/sections/design.yaml .moai/config/sections/feedback.yaml .moai/config/sections/git-convention.yaml .moai/config/sections/git-strategy.yaml .moai/confi
+```
+
+첫 배포와 둘째 병합이 config 섹션을 다르게 쓰기 때문이며 (AC-OWR-17 이 실행 1 을 트리 비교에서 뺀 이유와 같다), 같은 횟수끼리 비교하자 갈림이 사라졌다. 비교하는 해시는 내용만이다 (부채 N17 처분, 시험 로그 첫 줄에도 남는다).
+
+**연속 5회 (같은 트리 `ace2e8d84b`, 종료 코드는 각 실행에서 읽음)**
+
+```text
+TestInterruptedMigrationRecoversAndConverges run 1 rc=0 top-pass=1 all-pass=16 fail=0 skip=0 
+TestInterruptedMigrationRecoversAndConverges run 2 rc=0 top-pass=1 all-pass=16 fail=0 skip=0 
+TestInterruptedMigrationRecoversAndConverges run 3 rc=0 top-pass=1 all-pass=16 fail=0 skip=0 
+TestInterruptedMigrationRecoversAndConverges run 4 rc=0 top-pass=1 all-pass=16 fail=0 skip=0 
+TestInterruptedMigrationRecoversAndConverges run 5 rc=0 top-pass=1 all-pass=16 fail=0 skip=0 
+```
+
+**시험 안의 변이 (순수 단언, `Mutant*IsCaught` 여덟 모두 통과):** 비워진 관리 디렉터리가 남음, 제거한 경로의 매니페스트 항목이 되살아남, 백업 사본 없음, 제거된 파일이 디스크에 남음, 기준 실행과 트리가 다름, 기준 실행과 행이 다름, 복구 실행이 조정에 닿지 않음, 중단된 실행이 파일을 제거함.
+
+**운영 코드에 넣은 임시 변이 셋 (커밋 `ace2e8d84b` 기준, `cmp` 대조 `RESTORED-IDENTICAL`, 출력 줄 추림)**
+
+- **S1** 백업 실패가 제거를 막지 않는다 (`backUpRemovalCandidates` 의 결과를 무시): (a) 가 붉다 — 중단된 실행이 후보를 제거함.
+
+```text
+    migrate_ownership_recovery_test.go:905: compared tree hash: content-only (path, bytes, mode, directory presence); directory mtimes and clock values are not compared; deployed_at is masked between runs
+    migrate_ownership_recovery_test.go:837: (interrupted) .claude/skills/moai-foundation-core/SKILL.md was removed or changed by the interrupted run (open /private/tmp/own-fixture-d1/TestInterruptedMigrationRecoversAndConvergesBackupPathOcc
+    migrate_ownership_recovery_test.go:837: (interrupted) the manifest lost its entry for .claude/skills/moai-foundation-core/SKILL.md
+    migrate_ownership_recovery_test.go:837: (interrupted) .claude/skills/moai-ref-owasp-checklist/SKILL.md was removed or changed by the interrupted run (open /private/tmp/own-fixture-d1/TestInterruptedMigrationRecoversAndConvergesBackupPat
+    migrate_ownership_recovery_test.go:837: (interrupted) .claude/skills/moai-workflow-testing/SKILL.md was removed or changed by the interrupted run (open /private/tmp/own-fixture-d1/TestInterruptedMigrationRecoversAndConvergesBackupPathOc
+    migrate_ownership_recovery_test.go:936: (backup) no run backup holds a byte-identical copy of .claude/skills/moai-foundation-core/SKILL.md
+--- FAIL: TestInterruptedMigrationRecoversAndConverges (11.89s)
+    --- FAIL: TestInterruptedMigrationRecoversAndConverges/BackupPathOccupied/DistinctRunDirectories (1.42s)
+    --- FAIL: TestInterruptedMigrationRecoversAndConverges/BackupPathOccupied/SharedRunDirectory (0.70s)
+FAIL	github.com/modu-ai/moai-adk/internal/cli	13.563s
+rc=1
+```
+
+- **S2** 걷기 뒤 빈 디렉터리 정리 단계 (`pruneManagedEmptyDirs`) 를 뺀다: (c) 가 붉다 — 두 분기 모두.
+
+```text
+    migrate_ownership_recovery_test.go:905: compared tree hash: content-only (path, bytes, mode, directory presence); directory mtimes and clock values are not compared; deployed_at is masked between runs
+    migrate_ownership_recovery_test.go:936: (tree) the recovered tree differs from the uninterrupted one at [.claude/skills/moai-foundation-core/ .claude/skills/moai-ref-owasp-checklist/ .claude/skills/moai-workflow-testing/], want []
+    migrate_ownership_recovery_test.go:936: (emptydirs) empty directories left under the common-asset roots: [.claude/skills/moai-foundation-core .claude/skills/moai-ref-owasp-checklist .claude/skills/moai-workflow-testing], want []
+    migrate_ownership_recovery_test.go:936: (rows) kept directory .claude/skills/moai-foundation-core is not listed with reason empty-dir-no-provenance (row "")
+--- FAIL: TestInterruptedMigrationRecoversAndConverges (11.38s)
+    --- FAIL: TestInterruptedMigrationRecoversAndConverges/EmptiedDirectoriesRecreated/DistinctRunDirectories (1.64s)
+    --- FAIL: TestInterruptedMigrationRecoversAndConverges/EmptiedDirectoriesRecreated/SharedRunDirectory (2.03s)
+FAIL	github.com/modu-ai/moai-adk/internal/cli	12.300s
+rc=1
+```
+
+- **S3** 파일이 사라진 매니페스트 항목을 떨어뜨리는 단계를 끈다: (b) 가 붉다 — 되살아난 항목이 남는다.
+
+```text
+    migrate_ownership_recovery_test.go:905: compared tree hash: content-only (path, bytes, mode, directory presence); directory mtimes and clock values are not compared; deployed_at is masked between runs
+    migrate_ownership_recovery_test.go:936: (manifest) the manifest entry for .claude/skills/moai-foundation-core/SKILL.md came back
+    migrate_ownership_recovery_test.go:936: (tree) the recovered tree differs from the uninterrupted one at [], want [.claude/skills/moai-foundation-core/ .claude/skills/moai-ref-owasp-checklist/ .claude/skills/moai-workflow-testing/]
+    migrate_ownership_recovery_test.go:936: (emptydirs) empty directories left under the common-asset roots: [], want [.claude/skills/moai-foundation-core .claude/skills/moai-ref-owasp-checklist .claude/skills/moai-workflow-testing]
+    migrate_ownership_recovery_test.go:936: (rows) kept directory .claude/skills/moai-foundation-core is not listed with reason empty-dir-no-provenance (row "")
+--- FAIL: TestInterruptedMigrationRecoversAndConverges (10.87s)
+    --- FAIL: TestInterruptedMigrationRecoversAndConverges/BackupPathOccupied/DistinctRunDirectories (1.11s)
+    --- FAIL: TestInterruptedMigrationRecoversAndConverges/BackupPathOccupied/SharedRunDirectory (1.16s)
+```
+
+**구현 커밋 C 없음.** 이 기준이 요구하는 수렴은 M1-M5 가 이미 닫았다.
+
+**관측과 정직한 회계**
+
+1. **시계 분기가 결과를 가르는 곳이 하나 있다 — (c) 의 공유 디렉터리 분기.** 구별되는 디렉터리: 복구 실행이 다시 만든 빈 디렉터리 셋을 정리하며 (M5 의 판정 근거는 시작 매니페스트와 보존된 이전 세대뿐인데, 첫 실행이 제거한 경로는 시작 매니페스트에서 이미 빠져 있으므로 남는 근거는 첫 실행의 시작 매니페스트 사본이다), 최종 트리와 행이 중단 없는 기준과 같다. 공유 디렉터리 (같은 초에 시작한 두 갱신): 둘째 실행의 사본이 같은 디렉터리의 첫 실행 사본을 대체하므로 그 근거가 없고, 디렉터리 셋은 그대로 남아 이유 `empty-dir-no-provenance` 로 잔존 목록에 올라온다. 시험은 두 분기를 정확히 단언한다 (공유 분기의 기대: 트리 차이 = 그 디렉터리 셋, 행 = 기준 행 + 그 셋). 파일은 삭제되지 않는다 (증거가 없으면 보존). **제품 쪽 사실로 열어 둔다: 같은 시계 초에 시작한 두 갱신은 더 오래된 이전 세대를 잃는다 — 증거 손실일 뿐이고 이 카드 밖이다 (실행 백업 디렉터리 이름의 초 단위 해상도는 `defs.BackupTimestampFormat`).** (a), (b) 는 두 분기 모두 수렴한다.
+2. 일반 재실행 사례 (`PlainRerunLeavesRecreatedDirectories`): (c) 의 디렉터리를 다시 만든 뒤 `--force` 없이 돌린 같은 버전 갱신은 건너뛰고 (`Skipped == true`), 트리가 바뀌지 않으며 디렉터리 셋이 그대로 남는다 — plan.md OQ-6 의 운영 사실이 시험으로 확인됐다. 일반 재실행은 복구 경로가 아니다.
+3. (a) 에서 실패한 실행은 갱신의 나머지를 계속한다: 그 실행의 배포는 진행되고 (매니페스트 저장, 템플릿 배포), 막히는 것은 제거뿐이다 (design.md D-3 항목 4). 시험은 후보 보존, 매니페스트 항목 유지, 사본 부재, 행 이유를 단언한다. 복구 실행 뒤 최종 트리가 기준과 같다는 것이 「배포가 이어졌다」 의 간접 증거이다.
+4. 부채 N18 (AC-OWR-20 (a)(b) 가 규칙 7 조건 (ii) 를 요구받음) 처분은 E.3 에서 한다.
+
 ## §E.3 Run-phase Audit-Ready Signal
 
 _<pending run-phase>_
