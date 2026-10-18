@@ -44,6 +44,7 @@ import (
 	"strings"
 
 	"github.com/modu-ai/moai-adk/internal/execerr"
+	"github.com/modu-ai/moai-adk/internal/gitenv"
 )
 
 // worktreeRead is one first-match -w / --worktree read: the value and whether a
@@ -723,17 +724,28 @@ var resolveMoaiWorktreeShortNameState = resolveMoaiWorktreeShortNameStateReal
 // applies to an unreadable lock state.
 func resolveMoaiWorktreeShortNameStateReal(projectRoot, name string) (moaiShortNameState, error) {
 	tree := filepath.Join(projectRoot, ".moai", "worktrees", name)
-	info, err := os.Stat(tree)
-	if err != nil {
+	// Lstat, not Stat, decides whether an entry stands: Stat follows a
+	// symlink, so a DANGLING link at the tree path reads ENOENT and would
+	// classify absent — letting the backend materialize the .claude twin
+	// beside a same-named .moai path entry (sync-audit F2).
+	if _, err := os.Lstat(tree); err != nil {
 		if os.IsNotExist(err) {
 			return moaiShortNameAbsent, nil
 		}
-		return moaiShortNameConflict, fmt.Errorf("stat %s: %w", tree, err)
+		return moaiShortNameConflict, fmt.Errorf("lstat %s: %w", tree, err)
 	}
-	if !info.IsDir() {
+	// An entry that stands but does not resolve to a directory — a dangling
+	// link, a file — is a conflict, never absent.
+	resolved, err := os.Stat(tree)
+	if err != nil {
 		return moaiShortNameConflict, nil
 	}
-	out, err := exec.Command("git", "-C", projectRoot, "worktree", "list", "--porcelain").Output()
+	if !resolved.IsDir() {
+		return moaiShortNameConflict, nil
+	}
+	cmd := exec.Command("git", "-C", projectRoot, "worktree", "list", "--porcelain")
+	cmd.Env = gitenv.Env() // an inherited GIT_DIR would outrank -C
+	out, err := cmd.Output()
 	if err != nil {
 		return moaiShortNameConflict, fmt.Errorf("git worktree list: %s", execerr.StatusDetail(err))
 	}
@@ -748,6 +760,106 @@ func resolveMoaiWorktreeShortNameStateReal(projectRoot, name string) (moaiShortN
 	return moaiShortNameConflict, nil
 }
 
+// moaiWorktreeOccurrence is the worktree option the backend's option model
+// honors LAST in the raw launch args — the one that decides the tree claude
+// enters. Attached reports that the value rides the option token itself (the
+// attached `-wcard` and cluster `-cwcard` spellings scanShortCluster reads);
+// the first-match stage readers never see those forms, so an occurrence that
+// would need rewriting cannot be rewritten safely and must be refused
+// instead. ValueIndex is the argv position of the value when it is a token of
+// its own (the two-token spellings), -1 when it rides the option token.
+type moaiWorktreeOccurrence struct {
+	Has        bool
+	Value      string
+	Attached   bool
+	OptIndex   int
+	ValueIndex int
+}
+
+// readBackendSelectedWorktree reads raw launch args the way the backend
+// selects a worktree from the argv it receives: the launcher consumes its own
+// options first (the -b, --permission-mode, -c, --model shapes walkLaunchArgs
+// eats, each value option taking its next token), drops the first "--", and
+// the rest — the launcher-segment remainder plus the verbatim tail — is the
+// backend argv, where the LAST worktree option wins (selectBackendWorktree)
+// and a second "--" ends option parsing. The walk reuses backendOptionStep,
+// the one option step the selection itself walks, so a token is an option
+// here exactly when it is one there. For a single -w the read agrees with
+// worktreeFlagValue; when several stand, this — not the first match — is the
+// value the collision resolution must judge (sync-audit F1).
+func readBackendSelectedWorktree(args []string) moaiWorktreeOccurrence {
+	var occ moaiWorktreeOccurrence
+	seenSeparator := false
+	for i := 0; i < len(args); i++ {
+		tok := args[i]
+		if tok == "--" {
+			if seenSeparator {
+				break // the backend's option terminator
+			}
+			seenSeparator = true // the launcher's separator: dropped before the backend reads the rest
+			continue
+		}
+		if !seenSeparator {
+			switch tok {
+			case "-b", "--bypass", "-c", "--continue":
+				continue // launcher-owned booleans: consumed before the backend sees them
+			case "--permission-mode", "--model", "-m":
+				if i+1 < len(args) {
+					i++ // consumed with its value token, flag-shaped or not
+				}
+				continue
+			}
+			if strings.HasPrefix(tok, "--model=") || strings.HasPrefix(tok, "--permission-mode=") {
+				continue // launcher-owned = forms
+			}
+		}
+		if len(tok) < 2 || tok[0] != '-' {
+			continue // a positional (a prompt, or a value already consumed)
+		}
+		sel, span := backendOptionStep(args, i, worktreeSelection{})
+		if sel.Present {
+			occ = moaiWorktreeOccurrence{
+				Has:        sel.HasValue,
+				Value:      sel.Value,
+				Attached:   sel.Spelling == spellingAttached || sel.Spelling == spellingCluster,
+				OptIndex:   i,
+				ValueIndex: -1,
+			}
+			if span == 1 {
+				occ.ValueIndex = i + 1
+			}
+		}
+		i += span
+	}
+	return occ
+}
+
+// rewriteBackendSelectedWorktreeValue returns args with the honored
+// occurrence's value replaced by value: the value token itself for the
+// two-token spellings, the option token rewritten for the = forms. The token
+// count never changes, so every downstream origin index stays aligned. The
+// attached and cluster spellings are refused upstream and never reach this
+// rewrite; a valueless = form cannot stand either (Has is false for one).
+func rewriteBackendSelectedWorktreeValue(args []string, occ moaiWorktreeOccurrence, value string) []string {
+	if occ.ValueIndex >= 0 {
+		out := append([]string(nil), args...)
+		out[occ.ValueIndex] = value
+		return out
+	}
+	tok := args[occ.OptIndex]
+	switch {
+	case strings.HasPrefix(tok, spellingLongEquals):
+		out := append([]string(nil), args...)
+		out[occ.OptIndex] = spellingLongEquals + value
+		return out
+	case strings.HasPrefix(tok, spellingShortEqual):
+		out := append([]string(nil), args...)
+		out[occ.OptIndex] = spellingShortEqual + value
+		return out
+	}
+	return args
+}
+
 // resolveMoaiWorktreeShortName rewrites a short-name -w/--worktree value that
 // names an existing registered .moai/worktrees/<name> tree into that tree's
 // absolute path, so the backend re-enters the MoAI tree instead of
@@ -758,18 +870,23 @@ func resolveMoaiWorktreeShortNameStateReal(projectRoot, name string) (moaiShortN
 // absolute -w (already names an existing tree), a value with a path
 // separator, and a name with no same-named .moai tree.
 //
+// The value judged is the one the BACKEND selects — the last honored worktree
+// option (readBackendSelectedWorktree), not the first match the stage reads
+// carry. For a single -w the two grammars agree; when several stand, the
+// last-honored occurrence is the tree the backend would enter or twin, and
+// that is what this resolution refuses or re-enters. An attached or cluster
+// spelling that would need rewriting is refused as ambiguous launcher input:
+// the first-match stage readers cannot judge those forms, so rewriting one
+// would resolve a value the downstream readers never see.
+//
 // The entry points call this BEFORE the anchor guard and resolveLaunchView, so
 // every reader downstream judges the tree the backend will actually enter.
-// The rewrite replaces the value in place — the token count never changes, so
-// every downstream origin index stays aligned — and the value it rewrites is
-// exactly the value the stage reads carry (worktreeFlagValue's grammar, first
-// match, stopping at "--").
 func resolveMoaiWorktreeShortName(args []string, warn io.Writer) ([]string, error) {
-	read := readFirstWorktree(args)
-	if !read.Has || read.Value == "" || filepath.IsAbs(read.Value) {
+	occ := readBackendSelectedWorktree(args)
+	if !occ.Has || occ.Value == "" || filepath.IsAbs(occ.Value) {
 		return args, nil
 	}
-	name := read.Value
+	name := occ.Value
 	if name == "." || name == ".." || strings.ContainsRune(name, filepath.Separator) || strings.ContainsRune(name, '/') {
 		return args, nil // not a single-segment short name; not this resolution's input
 	}
@@ -777,6 +894,7 @@ func resolveMoaiWorktreeShortName(args []string, warn io.Writer) ([]string, erro
 	if err != nil || projectRoot == "" {
 		return args, nil // no root to resolve against: keep current behavior (the launch needs a root anyway)
 	}
+	tree := filepath.Join(projectRoot, ".moai", "worktrees", name)
 	state, err := resolveMoaiWorktreeShortNameState(projectRoot, name)
 	if err != nil {
 		return nil, fmt.Errorf("-w %s: %w", name, err)
@@ -785,42 +903,13 @@ func resolveMoaiWorktreeShortName(args []string, warn io.Writer) ([]string, erro
 	case moaiShortNameAbsent:
 		return args, nil
 	case moaiShortNameRegistered:
-		return rewriteFirstWorktreeValue(args, filepath.Join(projectRoot, ".moai", "worktrees", name)), nil
+		if occ.Attached {
+			_, _ = fmt.Fprintf(warn, "moai: refusing to launch: -w %s rides the attached spelling %q in the argv, which this launcher's worktree readers cannot judge against the registered %s; spell it as `-w %s` so the same-named .moai tree resolution can see it.\n", name, args[occ.OptIndex], tree, name)
+			return nil, fmt.Errorf("-w %s: attached spelling %q cannot be resolved against the registered .moai tree; refusing rather than guessing which tree the backend enters", name, args[occ.OptIndex])
+		}
+		return rewriteBackendSelectedWorktreeValue(args, occ, tree), nil
 	default: // moaiShortNameConflict
-		tree := filepath.Join(projectRoot, ".moai", "worktrees", name)
 		_, _ = fmt.Fprintf(warn, "moai: refusing to launch: -w %s names %s, which exists but is not a registered git worktree of this repository; entering it is unsafe, and creating .claude/worktrees/%s with the same name is the twin collision this launcher refuses. Remove or rename the path, or pass the tree's absolute path explicitly after verifying it.\n", name, tree, name)
 		return nil, fmt.Errorf("-w %s: %s exists but is not a registered git worktree; refusing to create the same-named .claude twin", name, tree)
 	}
-}
-
-// rewriteFirstWorktreeValue returns args with the first -w/--worktree value
-// replaced by value: the value token itself for the two-token forms, the
-// option token rewritten for the = forms. Args without a rewritable value are
-// returned unchanged. The walk mirrors worktreeFlagValue's grammar so the
-// rewritten value is the one the stage reads and the backend selection see.
-func rewriteFirstWorktreeValue(args []string, value string) []string {
-	for i := 0; i < len(args); i++ {
-		arg := args[i]
-		if arg == "--" {
-			return args // everything after -- is verbatim pass-through
-		}
-		switch {
-		case arg == "-w" || arg == "--worktree":
-			if i+1 < len(args) && args[i+1] != "--" && !strings.HasPrefix(args[i+1], "-") {
-				out := append([]string(nil), args...)
-				out[i+1] = value
-				return out
-			}
-			return args
-		case strings.HasPrefix(arg, "--worktree="):
-			out := append([]string(nil), args...)
-			out[i] = "--worktree=" + value
-			return out
-		case strings.HasPrefix(arg, "-w="):
-			out := append([]string(nil), args...)
-			out[i] = "-w=" + value
-			return out
-		}
-	}
-	return args
 }
