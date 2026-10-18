@@ -286,8 +286,13 @@ func classifyOwnershipCore(env ownershipEnv, rel, abs string) ownershipVerdict {
 		}
 	}
 	if !registered || entry == nil {
-		// The kind of the file is decided before anything reads it: a FIFO would
-		// block the read until a writer appears.
+		// Where the file lives and what kind it is are decided before anything
+		// reads it: a symlink out of the project would hand the read to a file
+		// that is not ours to open (REQ-OWR-005), and a FIFO would block the read
+		// until a writer appears.
+		if linkLeavesRoot(env.rootResolved, abs) {
+			return ownershipVerdict{class: ownershipUnregistered, keep: keepSymlinkEscape}
+		}
 		if unreadableKind(abs) {
 			return ownershipVerdict{class: ownershipUnregistered, keep: keepNonRegularFile}
 		}
@@ -341,6 +346,23 @@ func unreadableKind(abs string) bool {
 		return false
 	}
 	return info.Mode()&(os.ModeNamedPipe|os.ModeSocket|os.ModeDevice|os.ModeCharDevice|os.ModeIrregular) != 0
+}
+
+// linkLeavesRoot reports whether abs is a symlink whose fully resolved target is
+// outside the project root. It looks at the link and its resolution only
+// (Lstat, EvalSymlinks) and never opens the target. A path that is not a
+// symlink, a dangling link and a path that cannot be examined are NOT reported:
+// they keep behaving as before (a dangling link fails its read, `read-failed`).
+func linkLeavesRoot(rootResolved, abs string) bool {
+	info, err := os.Lstat(abs)
+	if err != nil || info.Mode()&os.ModeSymlink == 0 {
+		return false
+	}
+	resolved, err := filepath.EvalSymlinks(abs)
+	if err != nil {
+		return false
+	}
+	return !withinRootBoundary(rootResolved, resolved)
 }
 
 // classifyUnregistered judges a file the manifest has no entry for. It is
