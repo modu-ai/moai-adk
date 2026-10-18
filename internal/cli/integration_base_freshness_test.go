@@ -271,7 +271,7 @@ func TestBaseFreshnessCLIUncertaintyAdmitsWithCauseLine(t *testing.T) {
 				return factorylane.ExecGitRunner{Dir: f.card}.Git(args...)
 			}}
 			f.t.Cleanup(func() { baseFreshnessSeams = orig })
-		}, card, nil, "injected rev-list failure"},
+		}, card, nil, "git rev-list could not run"},
 		{"no card flag", nil, []string{"--branch", "main", "--session", "sess-lane1"}, nil, ""},
 		{"cwd on the integration branch", nil, card, func(f *bfcFixture) string { return f.repo }, ""},
 		{"detached HEAD", func(f *bfcFixture) { bfcGit(f.t, f.card, "checkout", "-q", "--detach") }, card, nil, ""},
@@ -644,5 +644,102 @@ func TestBaseFreshnessConfigFailureNoticeDoesNotEchoConfigContent(t *testing.T) 
 				t.Fatalf("want one configuration-unreadable line, got %q", lines)
 			}
 		})
+	}
+}
+
+func TestBaseFreshnessOutputNeverEchoesUntrustedInput(t *testing.T) {
+	// Class test (third audit): every untrusted input source — record fields,
+	// workflow.yaml content, a rejected tier token, git's own error text — gets a
+	// synthetic secret, and the whole gate output (stdout, stderr, the returned
+	// error text) must hold no fragment of it, gate off and gate on. Causes come
+	// from a fixed phrase set; paths we construct and validated SHAs are fine.
+	const secret = "sk_SYNTHETIC_PRIVATE_VALUE_72b9"
+	fragments := []string{secret, "SYNTHETIC", "72b9"}
+	writeRecord := func(t *testing.T, f *bfcFixture, mutate func(*factory.RemeasureRecord)) {
+		tree := f.tree()
+		rec := factory.RemeasureRecord{Tree: tree, Base: f.base, Command: "true", BuildIdentity: "moai test",
+			RecordedAt: time.Date(2026, 10, 18, 9, 0, 0, 0, time.UTC).Format(time.RFC3339)}
+		mutate(&rec)
+		if err := factory.WriteRemeasureRecord(f.root, tree, rec); err != nil {
+			t.Fatal(err)
+		}
+	}
+	sources := []struct {
+		name  string
+		setup func(t *testing.T, f *bfcFixture)
+	}{
+		{"record command with a structured-output demand", func(t *testing.T, f *bfcFixture) {
+			writeRecord(t, f, func(r *factory.RemeasureRecord) {
+				r.Command = "API_KEY=" + secret + " go test ./..."
+				r.StructuredRequired, r.HasStructured = true, false
+			})
+		}},
+		{"record string fields with a failing exit", func(t *testing.T, f *bfcFixture) {
+			writeRecord(t, f, func(r *factory.RemeasureRecord) {
+				r.Command, r.BuildIdentity, r.ExitCode = secret, secret, 3
+				r.Failing = []string{secret}
+			})
+		}},
+		{"record with a secret base and tree text", func(t *testing.T, f *bfcFixture) {
+			writeRecord(t, f, func(r *factory.RemeasureRecord) { r.Base = secret })
+		}},
+		{"malformed workflow.yaml", func(t *testing.T, f *bfcFixture) {
+			bfcWriteWorkflow(t, f.root, "workflow:\n  base_freshness_gate:\n    enabled: *"+secret+"\n")
+		}},
+		{"wrong-type workflow.yaml value", func(t *testing.T, f *bfcFixture) {
+			bfcWriteWorkflow(t, f.root, "workflow:\n  base_freshness_gate:\n    enabled: "+secret+"\n")
+		}},
+		{"rejected tier token", func(t *testing.T, f *bfcFixture) {
+			bfcWriteWorkflow(t, f.root, "workflow:\n  agent_tiers:\n    classes:\n      lane: "+secret+"\n")
+		}},
+		{"git failure quoting a config value", func(t *testing.T, f *bfcFixture) {
+			cfg := filepath.Join(f.repo, ".git", "config")
+			old, err := os.ReadFile(cfg)
+			if err != nil {
+				t.Fatal(err)
+			}
+			add := "[core]\n\trepositoryformatversion = 1\n[extensions]\n\tobjectFormat = " + secret + "\n"
+			if err := os.WriteFile(cfg, append(old, []byte(add)...), 0o644); err != nil {
+				t.Fatal(err)
+			}
+		}},
+		{"unreadable workflow.yaml path", func(t *testing.T, f *bfcFixture) {
+			path := filepath.Join(f.root, ".moai", "config", "sections", "workflow.yaml")
+			if err := os.Remove(path); err != nil {
+				t.Fatal(err)
+			}
+			if err := os.MkdirAll(path, 0o750); err != nil {
+				t.Fatal(err)
+			}
+		}},
+	}
+	args := []string{"--card", "t1", "--branch", "main", "--session", "sess-lane1"}
+	for _, src := range sources {
+		for _, enabled := range []bool{false, true} {
+			t.Run(fmt.Sprintf("%s/enabled=%t", src.name, enabled), func(t *testing.T) {
+				f := newBFCFixture(t)
+				bfcWriteWorkflow(t, f.root, bfcGateYAML(enabled, 0))
+				f.writeRecord(f.base)
+				f.land(1)
+				src.setup(t, f)
+				stdout, stderr, err := f.acquire(args...)
+				// The gate's own lines only: the settings-drift assertion that
+				// acquire also prints is a neighbouring feature outside this card.
+				var all string
+				for _, line := range strings.Split(stdout+"\n"+stderr, "\n") {
+					if strings.HasPrefix(line, "base-freshness") || strings.HasPrefix(line, bfcSentinel) {
+						all += line + "\n"
+					}
+				}
+				if err != nil {
+					all += "\n" + err.Error()
+				}
+				for _, frag := range fragments {
+					if strings.Contains(all, frag) {
+						t.Fatalf("the gate output echoes untrusted input %q:\n%s", frag, all)
+					}
+				}
+			})
+		}
 	}
 }

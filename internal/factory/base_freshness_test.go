@@ -412,14 +412,14 @@ func TestBaseFreshnessUncertainGitAnswers(t *testing.T) {
 			return seamOverriding(f.card, func(args []string) bool {
 				return len(args) > 1 && args[len(args)-1] == "HEAD^{tree}"
 			}, "", errors.New("injected tree read failure"))
-		}, "injected tree read failure"},
+		}, "git rev-parse could not run"},
 		{"ancestry probe fails with a code other than 1", func(f *bfFixture) func(args ...string) (string, error) {
 			return seamOverriding(f.card, verb("merge-base"), "",
 				&factorylane.GitExitError{ExitCode: 128, Stderr: "fatal: Not a valid commit name"})
-		}, "Not a valid commit name"},
+		}, "git merge-base failed (exit 128)"},
 		{"count is not a number", func(f *bfFixture) func(args ...string) (string, error) {
 			return seamOverriding(f.card, verb("rev-list"), "not-a-number\n", nil)
-		}, "not a count"},
+		}, "non-numeric count"},
 	}
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
