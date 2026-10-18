@@ -25,6 +25,10 @@ type commitChanges struct {
 	// ModulePrefix is the queried directory's offset inside the repository
 	// ("" when it is the repository root).
 	ModulePrefix string
+	// UnstagedGo lists the Go files (and module files) whose working-tree content
+	// differs from the index the commit records. The package graph is read from
+	// the working tree, so such a file means the graph may not describe the commit.
+	UnstagedGo []string
 }
 
 // runScopeQuery runs one read-only query command in dir with env and returns its
