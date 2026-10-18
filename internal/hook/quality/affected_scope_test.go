@@ -120,6 +120,23 @@ func TestAffectedScope_Ownership(t *testing.T) {
 	}
 }
 
+// AC-PAS-003's mutant probe, made discriminating: when the .go fixture under
+// testdata is the ONLY changed file, a directory-of-the-file rule leaves it
+// ownerless (its directory p/testdata is not a package) and selects nothing.
+// In the AC's own change list the sibling p/testdata/in.json already owns p,
+// which hides that mutant.
+func TestAffectedScope_OwnershipTestdataGoFixtureAlone(t *testing.T) {
+	g := baseScopeGraph()
+	g.Packages[scopeImportPath("p")] = scopePkg("p", true)
+	g.Packages[scopeImportPath("pp")] = scopePkg("pp", true, "p")
+
+	res := selectAffected(affectedInput{Changed: []string{"p/testdata/fix.go"}, Graph: g})
+	wantSelected(t, res, "p")
+	if len(res.Unowned) != 0 {
+		t.Errorf("unowned = %v, want the .go fixture owned by p", res.Unowned)
+	}
+}
+
 // AC-PAS-004: a package whose changed files are all test-only is selected
 // alone.
 func TestAffectedScope_TestOnlyNarrows(t *testing.T) {

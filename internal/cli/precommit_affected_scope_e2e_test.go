@@ -73,11 +73,16 @@ func newScopeE2ERepo(t *testing.T, bTestBody string) string {
 	root := t.TempDir()
 	scopeE2EMustGit(t, root, "init", "-q")
 	scopeE2EWrite(t, root, map[string]string{
-		"go.mod":                          "module example.com/m\n\ngo 1.23\n",
-		"a/a.go":                          "package a\n\nfunc A() int { return 1 }\n",
-		"a/a_test.go":                     "package a\n\nimport \"testing\"\n\nfunc TestA(t *testing.T) {}\n",
-		"b/b.go":                          "package b\n\nimport \"example.com/m/a\"\n\nfunc B() int { return a.A() }\n",
-		"b/b_test.go":                     bTestBody,
+		"go.mod":      "module example.com/m\n\ngo 1.23\n",
+		"a/a.go":      "package a\n\nfunc A() int { return 1 }\n",
+		"a/a_test.go": "package a\n\nimport \"testing\"\n\nfunc TestA(t *testing.T) {}\n",
+		"b/b.go":      "package b\n\nimport \"example.com/m/a\"\n\nfunc B() int { return a.A() }\n",
+		"b/b_test.go": bTestBody,
+		// d imports b, so it depends on a only transitively: a change to a must
+		// not select it (REQ-PAS-002), which the three-package ledger module
+		// cannot show.
+		"d/d.go":                          "package d\n\nimport \"example.com/m/b\"\n\nfunc D() int { return b.B() }\n",
+		"d/d_test.go":                     "package d\n\nimport \"testing\"\n\nfunc TestD(t *testing.T) {}\n",
 		"c/c.go":                          "package c\n\nfunc C() int { return 3 }\n",
 		"c/c_test.go":                     "package c\n\nimport (\n\t\"os\"\n\t\"testing\"\n)\n\nfunc TestC(t *testing.T) {\n\tif p := os.Getenv(\"MOAI_E2E_MARKER\"); p != \"\" {\n\t\t_ = os.WriteFile(p, []byte(\"ran\"), 0o644)\n\t}\n}\n",
 		".moai/config/sections/gate.yaml": scopeE2EGateYAML,
