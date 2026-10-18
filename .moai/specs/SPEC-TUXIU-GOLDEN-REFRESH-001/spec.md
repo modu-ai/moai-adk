@@ -1,7 +1,7 @@
 ---
 id: SPEC-TUXIU-GOLDEN-REFRESH-001
 title: "tuxiu golden fixture refresh — U-08 data-invariance exception, in-repo regeneration harness, postm4 re-capture"
-version: "0.1.0"
+version: "0.1.1"
 status: draft
 created: 2026-10-19
 updated: 2026-10-19
@@ -24,6 +24,7 @@ tags: "golden,testdata,regeneration,characterization,data-invariance,test-infra"
 | Version | Date | Author | Change |
 |---------|------|--------|--------|
 | 0.1.0 | 2026-10-19 | manager-spec (lane-11, card t1681) | Initial plan-phase draft (card t1681, run tn1p4e, lane-11, Class C). Tier M — 3 artifacts. U-08 제거 이후 stale 상태로 남은 `internal/cli/testdata/tuxiu/` 골든의 (1) 데이터 불변 계약 예외 확정, (2) 저장소 내 재생성 명령 정의, (3) 재생성 실행을 다룬다. |
+| 0.1.1 | 2026-10-19 | manager-spec (lane-11, card t1681) | Plan-audit iter-1 FAIL(0.81, MP-8) repair — D1 RED-now 4요소 완결(AC-TGR-001/003/007), D2 archive DATA 재현 불가(부활 3 ID) → decision-index Q6 신설 + 기본안 적용, REQ-TGR-002/004/008 수정, D3 타이트닝 입력을 원시 라인으로 고정 + 3변형 probe 확대(REQ-TGR-007), D4 AC-TGR-004 커밋-기반 Given, D5 AC-TGR-003/006 전체-저장소 범위 관측 추가. |
 
 ## §A Context
 
@@ -64,18 +65,20 @@ ok  	github.com/modu-ai/moai-adk/internal/cli	1.252s
 - 4테스트 base PASS(공신력 없는 통과 상태 그 자체): A.1 실측.
 - 기존 재생성 경로: `make tui-snapshot` / `make tui-snapshot-verify`(`Makefile:193-198`)는 `internal/tui`만 커버. `tuxiu` 대상 타깃 없음(실측: Makefile 내 `tuxiu-golden-capture` 0회).
 - M4 스크래치패드 하네스(`capture.sh` + `pty_capture.py`) 복구 불가: `.moai/worktrees/t1619/` 소멸(실측: 디렉터리 부재), 작업 트리 전수 `find -name pty_capture.py` 0건, `git log --all -- '*pty_capture*' '*capture.sh*'` 0건, `rc30-preview` 워크트리에 scratchpad 없음. → 하네스는 재작성 대상이며, 그 내용을 유추해 기록할 수 없으므로 계획서는 유실을 Gap으로 기재하고 재작성을 요구한다.
-- 재작성의 구속 조건은 M4 기록(SPEC-CLI-TUX-INIT-UPDATE-001 progress.md M4)이 남긴다: tty 변형 캡처는 실빌드 바이너리를 강제-트루컬러 pty로 실행해야 한다("`tui.downsample` `sync.Once` 제약은 실바이너리를 요구 — in-process 테스트 불가"). 시딩 환경 규모 토큰(`Updated 26 files`, `3 skills archived`, `Created 2 files`, `13` dirs)은 골든과 테스트에 기록되어 있어 역산 가능하다.
+- 재작성의 구속 조건은 M4 기록(SPEC-CLI-TUX-INIT-UPDATE-001 progress.md M4)이 남긴다: tty 변형 캡처는 실빌드 바이너리를 강제-트루컬러 pty로 실행해야 한다("`tui.downsample` `sync.Once` 제약은 실바이너리를 요구 — in-process 테스트 불가"). 시딩 환경 규모 토큰(`Updated 26 files`, `Created 2 files`, `13` dirs)은 골든과 테스트에 기록되어 있어 역산 가능하다.
+- (plan-audit iter-1 D2 — 본인 실측으로 확인) 기록 골든의 archive DATA는 현재 바이너리가 재현할 수 없다: 골든 `postm4/update.notty.stdout.golden:57-59`이 `✓ archive: moai-domain-backend/frontend/database` 3 ID를 기록하는데, 이 셋은 부활되어 `legacySkillIDs`에서 제외되었다(`internal/cli/update_archive.go:36-39` 주석 명시, SPEC-UPDATE-LEGACY-SKILL-LIST-001). 템플릿-새 프로젝트에는 목록의 15 ID가 없으므로 무시딩 재생성의 요약은 `total: 0 skills archived`가 된다. 처리는 decision-index Q6(기본안: archive-대상 2 ID 시딩 + 교차-기준선 예외 제2 항목)에서 재결정했다.
 - 골든 파일은 실행 변위 타임스탬프를 내장한다(예: `update-2026-07-24T17-07-46Z`, `20260725_020746`). 따라서 정규화/고정 없이는 재생성이 바이트 안정적이지 않다 — 바이트 안정성 요구(REQ-TGR-005)가 이 처리를 강제한다.
 - 코드가 옳고 골든이 stale라는 어느 쪽이 옳은가 판정은 AC-RC30-09의 제거 판정으로 이미 끝났다(카드 지시에 따라 열린 질문이 아닌 확정 전제로 운반한다).
 
-### A.4 기초 질문 Q1-Q4 처리 요약
+### A.4 기초 질문 Q1-Q6 처리 요약
 
 | 질문 | 처리 | 근거 |
 |------|------|------|
 | Q1 데이터 불변 예외 방식 | 문서화된 예외 목록 + 정규화 계층 처리 (두 기준선 재기준선 아님) | A.2 — pre-logo 재캡처는 설계상 불가능. 상세는 decision-index Q1(DECIDED) |
 | Q2 저장소 내 재생성 명령 | `make tuxiu-golden-capture` — 형식은 tui-snapshot 선례를 기본안으로 | 카드 지시(존재) + decision-index Q2(FOUNDER, 기본안 적용) |
-| Q3 골든 수(카드 3 vs 기록 6) | 측정으로 소멸: 리터럴 보유 6파일 중 postm4 3파일이 재생성으로 내용 변경, pre-logo 3파일은 예외 문서화로 유지. 재생성 명령은 postm4 전체 12파일을 대상으로 하고, 나머지 9파일의 바이트 동일성은 run 단계 실측 과제(decision-index Q3) | A.1 실측 + RC30 progress 기록 |
+| Q3 골든 수(카드 3 vs 기록 6) | 측정으로 소멸: 리터럴 보유 6파일 중 postm4 3파일이 재생성으로 내용 변경(literal 접미사 소멸 + Q6의 archive DATA 편입), pre-logo 3파일은 예외 문서화로 유지. 재생성 명령은 postm4 전체 12파일을 대상으로 하고, update stderr 3파일 + init 6파일의 바이트 동일성은 run 단계 실측 과제(decision-index Q3) | A.1 실측 + RC30 progress 기록 |
 | Q4 어느 쪽이 옳은가 | 코드 옳음, 골든 stale — 확정 전제 | AC-RC30-09 판정(REQ-RC30-011) |
+| Q6 archive DATA 재현 불가(기록 3 ID vs 현재 바이너리) | 시딩 + 교차-기준선 예외 제2 항목(기본안 적용): archive-대상 2 ID 시딩, archive 부분집합은 교차 비교에서 제외되고 원시-라인 exact-line 단정으로 계속 보호 | `update_archive.go:36-39` + 골든 `:57-60` 실측; decision-index Q6(FOUNDER, 기본안 적용) |
 
 ## §B Requirements (GEARS)
 
@@ -83,9 +86,9 @@ ok  	github.com/modu-ai/moai-adk/internal/cli	1.252s
 
 The AC-016 데이터 불변 계약(`internal/cli/tuxiu_characterization_test.go` 헤더 문서) shall — U-08에 따른 archive 요약 라인 변경(`0 user customizations modified` 접미사 제거)이 프레젠테이션 회귀이 아니라 SPEC-UPDATE-REPAIR-RC30-001의 REQ-RC30-011/AC-RC30-09로 재판된 데이터 계약 변경임을 — 예외 항목으로 문서화해야 한다. 예외 문서는 제거 전 리터럴, 제거를 재판한 레코드, 예외가 적용되는 라인을 식별해야 한다.
 
-### REQ-TGR-002 — postm4 골든의 제거 리터럴 부재 (Ubiquitous)
+### REQ-TGR-002 — postm4 골든의 제거 리터럴 부재와 실측 archive DATA 기록 (Ubiquitous)
 
-The `internal/cli/testdata/tuxiu/postm4/` 골든 집합 shall — 재생성 이후 — 제거된 리터럴 `0 user customizations modified`를 포함하지 않아야 하며, 현재 바이너리의 measured-count-only 출력(`total: 3 skills archived` 형태)을 기록해야 한다.
+The `internal/cli/testdata/tuxiu/postm4/` 골든 집합 shall — 재생성 이후 — 제거된 리터럴 `0 user customizations modified`를 포함하지 않아야 하며, 현재 바이너리가 시딩된 캡처 환경에서 실제로 출력하는 내용을 기록해야 한다. 기록 구골든의 archive DATA(`✓ archive: moai-domain-backend/frontend/database` 3행과 `total: 3 skills archived` 요약)는 현재 바이너리가 재현할 수 없다 — 세 ID는 부활되어 `legacySkillIDs`에서 제외되었다(`internal/cli/update_archive.go:36-39`, SPEC-UPDATE-LEGACY-SKILL-LIST-001). 재생성 골든은 decision-index Q6 기본안에 따라 시딩된 archive-대상 스킬의 실측 archive DATA(`total: 2 skills archived` 형태)를 기록해야 한다.
 
 ### REQ-TGR-003 — M1.0 pre-logo 골든의 불변 유지와 예외 표기 (Ubiquitous)
 
@@ -93,7 +96,7 @@ The M1.0 pre-logo 골든 집합(`internal/cli/testdata/tuxiu/*.golden`, 12파일
 
 ### REQ-TGR-004 — 저장소 내 재생성 명령 (When 재생성 명령이 실행될 때)
 
-**When** 개발자가 `make tuxiu-golden-capture`를 실행할 때, the 저장소 내 재생성 명령 shall — 현재 빌드된 바이너리로부터 `internal/cli/testdata/tuxiu/postm4/` 골든 집합(12파일: init/update × tty/notty/nocolor × stdout/stderr)을 재기록해야 한다. 명령은 자기완결적이어야 한다: 캡처용 throwaway 프로젝트 시딩 레시피를 내장하고, tty 변형은 실빌드 바이너리를 pty로 실행하며(`tui.downsample` `sync.Once` 제약), 저장소의 나머지 부분을 변경하지 않아야 한다(B0 — 저장소 비변경, M4 선례 준수).
+**When** 개발자가 `make tuxiu-golden-capture`를 실행할 때, the 저장소 내 재생성 명령 shall — 현재 빌드된 바이너리로부터 `internal/cli/testdata/tuxiu/postm4/` 골든 집합(12파일: init/update × tty/notty/nocolor × stdout/stderr)을 재기록해야 한다. 명령은 자기완결적이어야 한다: 캡처용 throwaway 프로젝트 시딩 레시피를 내장하고(시딩은 decision-index Q6 기본안에 따라 `legacySkillIDs`에서 선정한 archive-대상 레거시 스킬 2 ID를 포함한다), tty 변형은 실빌드 바이너리를 pty로 실행하며(`tui.downsample` `sync.Once` 제약), 저장소의 나머지 부분을 변경하지 않아야 한다(B0 — 저장소 비변경, M4 선례 준수).
 
 ### REQ-TGR-005 — 재생성의 바이트 안정성 (While 연속 실행 중)
 
@@ -105,11 +108,11 @@ The M1.0 pre-logo 골든 집합(`internal/cli/testdata/tuxiu/*.golden`, 12파일
 
 ### REQ-TGR-007 — vacuous-pass 재발 차단 (When 제거 리터럴이 골든에 존재할 때)
 
-**When** 어떤 postm4 골든이 제거된 리터럴 `0 user customizations modified`를 포함하도록 조작되면, the 타이트닝된 단정(`internal/cli/tuxiu_characterization_test.go:201`의 접두사 취약한 `strings.Contains`를 대체하는 정확-라인 단정) shall — 해당 골든에서 실패해야 한다. 현재의 접두사 단정은 stale 골든과 fresh 골든을 구별하지 못하며, 이 판별력 상실이 본 결함의 재발 경로이다.
+**When** postm4 update stdout 골든 세 변형(tty·notty·nocolor) 중 하나가 제거된 리터럴 접미사(`, 0 user customizations modified`)를 포함하도록 조작되면, the 타이트닝된 단정(`internal/cli/tuxiu_characterization_test.go:201`의 접두사 취약한 `strings.Contains`를 대체하는 exact-line 단정) shall — ANSI-stripped 원시(raw) 라인을 입력으로 삼아 해당 골든에서 실패해야 한다. 기대 리터럴은 시딩 계약이 고정한 `total: 2 skills archived`이며, 입력에 REQ-TGR-008의 교차-기준선 제외가 적용되지 않음이 보장되어야 한다 — 정규화·제외 계층이 단정의 입력을 통과시키면 조작 골든이 재차 공신력 없이 통과한다(mutant 생존). 현재의 접두사 단정은 stale 골든과 fresh 골든을 구별하지 못하며, 이 판별력 상실이 본 결함의 재발 경로이다.
 
-### REQ-TGR-008 — DATA 필터의 예외 목록 처리 (Ubiquitous)
+### REQ-TGR-008 — 교차-기준선 비교의 archive 부분집합 제외 (Ubiquitous)
 
-The DATA-line 필터(`tuxDataLines`/`tuxNormLine` 계층) shall — archive 요약 라인의 제거된 접미사(`, N user customizations modified` 형태)를 타임스탬프·pill-bracket 정규화와 같은 계층에서 처리해야 한다. 이 처리의 목적은 REQ-TGR-003의 pre-logo 불변 유지와 양립하면서 REQ-TGR-001의 예외 하에서 pre-logo/postm4 DATA 비교(AC-TUXIU-016)가 성립하게 하는 것이다. archived 스킬 수 자체의 데이터 내용은 예외 대상이 아니며 정확-라인 단정(REQ-TGR-007)으로 계속 보호된다.
+The AC-016 교차-기준선 DATA 비교 필터(`tuxDataLines` 계층) shall — archive 부분집합(`✓ archive: <id> → ...` 항목 행과 `total: N skills archived` 요약 행)을 pre-logo/postm4 비교 대상에서 제외해야 한다(Q1 예외의 제2 항목, decision-index Q6). 근거 레코드는 SPEC-UPDATE-LEGACY-SKILL-LIST-001이다: 기록 baselines의 archive DATA는 부활로 제외된 3 ID를 지니며 어떤 시딩으로도 교차-일치시킬 수 없다. 이 제외는 교차-기준선 비교 경로에만 적용된다 — REQ-TGR-007의 타이트닝 단정은 원시 라인을 입력으로 삼아 재생성된 archive DATA를 계속 exact-line으로 단정하며, 제외가 단정의 입력을 오염시키지 않아야 한다.
 
 ## §C Out of Scope
 
@@ -131,7 +134,7 @@ The DATA-line 필터(`tuxDataLines`/`tuxNormLine` 계층) shall — archive 요�
 
 ## §D Success Criteria
 
-성공 기준은 `acceptance.md`의 AC-TGR-001 ~ AC-TGR-008이다. 요지: (1) postm4에서 제거 리터럴 0매치, (2) pre-logo 12파일 바이트 무변경, (3) `make tuxiu-golden-capture` 존재·실행, (4) 재생성 두 번 연속 실행 바이트 안정, (5) 재생성 후 4테스트 PASS, (6) mutant 조작 골든에 대한 타이트닝 단정 FAIL, (7) 재생성 diff가 `internal/cli/testdata/tuxiu/postm4/` 이하로 한정, (8) 예외 문서의 근거 레코드 인용.
+성공 기준은 `acceptance.md`의 AC-TGR-001 ~ AC-TGR-008이다. 요지: (1) postm4에서 제거 리터럴 0매치, (2) pre-logo 12파일 바이트 무변경, (3) `make tuxiu-golden-capture` 존재·실행과 전체-저장소 범위 준수, (4) 재생성 두 번 연속 실행 바이트 안정, (5) 재생성 후 4테스트 PASS, (6) mutant 조작 골든(3변형)에 대한 원시-라인 타이트닝 단정 FAIL, (7) 재생성 diff가 전체-저장소 관측에서 허용 목록으로 한정, (8) 예외 문서의 근거 레코드 인용(U-08 제1 항목 + Q6 archive 제2 항목).
 
 ## §E Dependencies, Adjacent Work, and Prior Art
 
