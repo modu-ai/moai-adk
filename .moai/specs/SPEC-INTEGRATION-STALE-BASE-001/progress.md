@@ -334,6 +334,8 @@ Appended; no earlier evidence rewritten. RED `187e58c1b` + `da0e3e840`, GREEN `6
 
 Mutant probes: each fix reverted alone, the matching test went red, the fix was restored, `cmp` against the saved copy identical. Complete's refusal line goes to stdout (the verb's existing writer); acquire's goes to stderr.
 
+Delta re-audit P2 (non-disclosure): the `parse workflow.yaml` cause quoted the YAML parser error, and the loader's tier-validation error was passed through, so a secret-looking value reached the notice (reproduced for malformed YAML and a rejected tier token; wrong-type and read-failure cases did not leak). RED `d2f33e61d`, GREEN `8025a3253`: causes are now fixed text (`invalid YAML syntax`, `a value has the wrong type`, `workflow.yaml was rejected by validation`; the read cause names only the path). Test: `TestBaseFreshnessConfigFailureNoticeDoesNotEchoConfigContent`; both fixes mutant-probed red, restored byte-identical.
+
 ## §E.3 Run-phase Audit-Ready Signal
 
 - run_complete_at: 2026-10-17T16:01:36Z
