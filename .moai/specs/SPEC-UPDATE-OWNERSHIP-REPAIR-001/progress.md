@@ -1690,6 +1690,79 @@ zz_m6_debug_test.go:26: V2 POST user-modified: .claude/commands/moai/fix.md
 5. `PlainSameVersionRerunIsSkipped` 는 제품의 현재 사실 (같은 버전의 일반 재실행은 조정 앞에서 끝나 비워진 프로젝트 commands 가 비어 있는 채 남는다) 을 단언으로 기록한 것이지 요구하는 동작이 아니다. plan.md OQ-6 이 이미 리더에게 올린 항목이다. 같은 실행에서 사용자 루트 에이전트가 복구되는지는 단언하지 않고 관측도 기록하지 않았다.
 6. 이 절의 도착 셀은 각각 `-count=1` 한 번의 실행이고 별도로 5회 반복이 있다. 측정 중 부하 평균은 대략 24에서 90 사이였고 반복은 10/10 통과했다.
 
+#### M7 — 미리보기 판정 통일과 dry-run (AC-OWR-16)
+
+**커밋 A** `2d6ec34053` (시험 파일만: `internal/cli/migrate_ownership_preview_test.go`). 시험 셋:
+
+- `TestDryRunChangesNothingAndMatchesVerdict` — `moai update --dry-run` 이 디스패치하는 분기 전체를 `runDryRunUpdateInProject` (`runUpdate`) 로 구동한다. 실행 직전에 모든 디렉터리의 mtime 을 고정 과거 시각 (2020-01-02T03:04:05Z) 으로 맞추고 디렉터리 mtime 을 넣은 트리 해시를 전후 비교하며 `.moai-backups` 부재도 단언한다. 서브 시험: `UnmappedProjectAnnouncesExactlyTheEligibleSet` (AC-OWR-02 ~ -05 파일이 섞인 프로젝트, 제거 스위치 켬), `ProfileMappedKeptByProjectAnnouncesNothing` (프로필 지도 + `KeptBy` 표지, 후보 0), `SwitchOffAnnouncesNothing`, 변이 `MutantOwnJudgmentIsCaught` (미리보기의 종전 자체 판정을 그대로 옮긴 변이 집합 앞에서 비교가 붉음), `MutantCreateThenDeleteIsSeenByTheDigest` (`.claude/skills` 에 파일을 만들었다 지우면 해시가 그 디렉터리에서 갈라짐). 판정 함수의 `removal-eligible` 집합의 오라클은 둘이고 서로 독립이다: (1) **같은 픽스처의 복사본에서 진짜 마이그레이션을 돌려 실제로 제거되는 경로** (프로필 지도 프로젝트는 복사본도 같이 지도), (2) 판정 함수를 픽스처 전체에 직접 돌린 집합 (환경은 시험 안에서 기존 심볼로 따로 조립 — 운영 코드의 새 조립기를 쓰지 않는다). 비교 전 단언 (공허 방지): 두 오라클이 서로 같고 세 개 이상이며 (`manifest` 관리 사본 셋: `moai-foundation-core`, `moai-foundation-quality` 스킬과 `manager-spec` 에이전트), 그 경로 전부가 dry-run 의 reconcile 계획 `UserOwned` 에 있으며 (미리보기가 보는 유일한 집합), 출력에 「Dry-run: reconciliation preview」 머리가 있다. 함정 파일 `manager-git.md` 는 등록 managed + 템플릿 바이트 일치지만 사용자 대응물이 없는 (선택 묶음) 에이전트라 판정은 `counterpart-unconfirmed` 로 유지한다.
+- `TestDryRunRunsNoBinaryUpdateStep` — REQ-OWR-011 은 「명령이 하는 모든 단계」 에 걸린다. 개발 빌드에서는 이진 업데이트 단계가 건너뛰어져 AC-OWR-16 의 시험이 이를 볼 수 없으므로, 릴리스 모양의 버전 (`v3.2.0-rc.36`) 과 설치를 거부하는 가짜 설치기 (호출 수만 센다; 거부하므로 재실행으로 이어질 수 없다) 로 dry-run 이 설치기에 닿는지를 단언한다.
+- `TestVerdictAndPreviewCodeHasNoWritableCalls` — 판정·미리보기 코드에 쓰기 가능 호출이 없음을 AST 로 단언한다 (`os.WriteFile`, `Create`, `CreateTemp`, `Mkdir*`, `Remove*`, `Rename`, `Truncate`, `Chmod`, `Chtimes`, `Symlink`, `Link`, `OpenFile`, 매니페스트 관리자의 `Save`/`Track`/`SetKeptBy`/`SetDeployingVersion`, `probeCaseSensitiveFS`). 읽기만 하는 파일은 파일 전체를 (`migrate_ownership.go`, `_evidence.go`, `_case.go`, `_env.go`, `_remaining.go`, `update_dryrun_preview.go`), 쓰는 함수와 같은 파일에 있는 읽기 함수는 이름으로 (`migrate_project_assets.go` 의 `newOwnershipEnv`, `migrate_ownership_emptydir.go` 의 `dirManagedProvenance`, `startOfRunRecords`, `emptyDirTree`; M5 의 정리 단계는 일부러 `os.Remove` 를 하므로 파일 전체가 범위가 아니다) 훑고, 이름 붙은 함수가 실제로 있는지, 훑은 파일 수가 기대와 같은지를 먼저 단언한다. 일곱 가지 변이 소스 (쓰기 호출 다섯, 매니페스트 `Save`, `probeCaseSensitiveFS`) 앞에서 붉고 읽기 호출 앞에서는 붉지 않음을 시험이 직접 관측한다.
+
+**AC-OWR-16 RED 셀 (트리 `2d6ec34053`, A 커밋 직후, 작업 트리 깨끗, 부하 평균 `48.98 49.91 46.04`)** — 판정 명령 1: `TMPDIR=/private/tmp/own-fixture-d1 go test ./internal/cli/ -run '^TestDryRunChangesNothingAndMatchesVerdict$' -count=1 -v`, 종료 코드 1 (인용은 시험 로그 줄과 `---`/결과 줄만, 원문 순서 그대로):
+
+```text
+    migrate_ownership_preview_test.go:314: preview vs verdict: announced as a migration candidate but not removal-eligible: .claude/agents/moai/manager-git.md
+    migrate_ownership_preview_test.go:317: the dry run changed the tree (paths whose bytes, mode or directory mtime moved): [.moai/]
+    migrate_ownership_preview_test.go:342: preview vs verdict: announced as a migration candidate but not removal-eligible: .claude/agents/moai/manager-git.md
+    migrate_ownership_preview_test.go:342: preview vs verdict: announced as a migration candidate but not removal-eligible: .claude/agents/moai/manager-spec.md
+    migrate_ownership_preview_test.go:342: preview vs verdict: announced as a migration candidate but not removal-eligible: .claude/skills/moai-foundation-core/SKILL.md
+    migrate_ownership_preview_test.go:342: preview vs verdict: announced as a migration candidate but not removal-eligible: .claude/skills/moai-foundation-quality/SKILL.md
+    migrate_ownership_preview_test.go:345: the dry run changed the tree: [.moai/]
+    migrate_ownership_preview_test.go:356: the dry run changed the tree: [.moai/]
+--- FAIL: TestDryRunChangesNothingAndMatchesVerdict (11.47s)
+    --- FAIL: TestDryRunChangesNothingAndMatchesVerdict/UnmappedProjectAnnouncesExactlyTheEligibleSet (3.22s)
+    --- FAIL: TestDryRunChangesNothingAndMatchesVerdict/ProfileMappedKeptByProjectAnnouncesNothing (1.65s)
+    --- FAIL: TestDryRunChangesNothingAndMatchesVerdict/SwitchOffAnnouncesNothing (1.03s)
+    --- PASS: TestDryRunChangesNothingAndMatchesVerdict/MutantOwnJudgmentIsCaught (2.67s)
+    --- PASS: TestDryRunChangesNothingAndMatchesVerdict/MutantCreateThenDeleteIsSeenByTheDigest (2.89s)
+FAIL
+FAIL	github.com/modu-ai/moai-adk/internal/cli	13.407s
+FAIL
+```
+
+이유 (원문에서 읽은 것만): (1) 미리보기가 판정 함수가 유지하는 파일을 후보로 알린다 — 사용자 대응물이 확인되지 않은 `manager-git.md` (줄 314), 그리고 프로필 지도 + `KeptBy` 프로젝트에서는 판정이 유지하는 네 파일 전부 (줄 342). 이것이 research.md G-3 의 예측 (미리보기 판정이 `KeptBy` 와 대응물 확인을 보지 않는다) 의 첫 관측이다. 반대 방향 (판정이 제거 대상으로 보는데 알리지 않은 파일) 은 없었다. (2) **디렉터리 mtime 센티널이 `.moai/` 한 곳에서 붉다** — 세 서브 시험 (스위치 켠 두 프로젝트와 스위치를 끈 프로젝트) 모두에서 같은 하나의 경로 `[.moai/]` 만 갈라진다 (줄 317, 345, 356). 이 시험이 고치려는 판정/미리보기 코드와 무관하게 일어나므로 원인을 따로 쟀다 (아래 「관측」).
+
+판정 명령 2 (기존 분기의 같은 성질을 지키는 가드, GREEN 유지) — `TMPDIR=/private/tmp/own-fixture-d1 go test ./internal/cli/ -run '^TestUpdateDryRun_ZeroMutation$' -count=1 -v`, 종료 코드 0:
+
+```text
+--- PASS: TestUpdateDryRun_ZeroMutation (0.08s)
+    --- PASS: TestUpdateDryRun_ZeroMutation/v2.16.0 (0.07s)
+    --- PASS: TestUpdateDryRun_ZeroMutation/3.0.1 (0.01s)
+PASS
+ok  	github.com/modu-ai/moai-adk/internal/cli	1.202s
+```
+
+**`TestDryRunRunsNoBinaryUpdateStep` RED (같은 트리), 종료 코드 1:**
+
+```text
+    migrate_ownership_preview_test.go:425: a dry run called the binary installer 1 time(s)
+--- FAIL: TestDryRunRunsNoBinaryUpdateStep (0.01s)
+FAIL
+FAIL	github.com/modu-ai/moai-adk/internal/cli	1.190s
+FAIL
+```
+
+**`TestVerdictAndPreviewCodeHasNoWritableCalls` RED (같은 트리), 종료 코드 1:**
+
+```text
+    migrate_ownership_preview_test.go:499: read migrate_ownership_env.go: open migrate_ownership_env.go: no such file or directory
+    migrate_ownership_preview_test.go:532: migrate_project_assets.go: found 0 of the 1 functions the scan names
+    migrate_ownership_preview_test.go:540: scanned 7 files, want 8
+--- FAIL: TestVerdictAndPreviewCodeHasNoWritableCalls (0.01s)
+FAIL
+FAIL	github.com/modu-ai/moai-adk/internal/cli	1.188s
+FAIL
+```
+
+(이유: 새 공유 파일 `migrate_ownership_env.go` 와 함수 `newOwnershipEnv` 가 아직 없다. 존재하지 않는 대상을 훑고 통과하는 일이 없도록 이름 붙은 대상의 존재와 훑은 파일 수를 먼저 단언한 결과이다.)
+
+**관측: `moai update --dry-run` 자체가 REQ-OWR-011 을 두 곳에서 어긴다 (이 카드의 코드와 무관하게 이미 있던 동작; 이 카드가 지금 고치기로 한 것은 아래 C2, C3).** 둘 다 `internal/cli/update.go` 의 `runUpdate` 안, dry-run 분기 앞에 있다.
+
+1. **업데이트 잠금.** `acquireUpdateLock` 이 `.moai/.update.lock` 을 만들었다가 반환 때 지운다. 항목이 만들어졌다 사라지면 `.moai/` 의 mtime 이 고정 과거 시각에서 벗어난다 — AC-OWR-16 의 센티널이 정확히 이런 「만들었다 지우는」 쓰기를 잡으려고 설계되었고, 임시 진단 시험 (커밋하지 않고 삭제) 으로 이 트리에서 `ownTreeDiff` 가 `[.moai/]` 하나임을 확인했다 (위 RED 줄 317 과 같은 값). 기존 `TestUpdateDryRun_ZeroMutation` 은 디렉터리 mtime 을 보지 않아 이를 못 본다 (위 가드 명령이 PASS 인 이유).
+2. **이진 자체 업데이트.** 릴리스 모양의 버전에서 `shouldSkipBinaryUpdate` 는 `--templates-only`, `MOAI_SKIP_BINARY_UPDATE=1`, 개발 빌드만 건너뛰고 `--dry-run` 은 보지 않는다. 임시 진단 시험 (커밋하지 않고 삭제; 설치를 거부하는 가짜 설치기) 의 원문: `version=v3.2.0-rc.36 IsDevBuild=false dry-run=true err=<nil> UpdateAvailable-checks=1 Update()-calls=1`. 즉 `--dry-run` 이 설치기를 한 번 부른다. 성공하면 새 바이너리를 설치하고 재실행으로 이어진다 (`update.go` 의 「Step 1」 이 「dry-run 분기」 앞). 개발 빌드를 쓰는 기존 시험은 이 단계를 건너뛰므로 보지 못한다.
+
+**SPEC 쪽 판정.** REQ-OWR-011 은 「명령 — 그것이 하는 모든 단계 — 은 어떤 파일이나 디렉터리도 만들거나 바꾸거나 지우지 않는다」 라고 쓴다. 잠금과 이진 설치는 그 문구를 어기는 현재 동작이므로 AC 를 약화하지 않고 (센티널에서 `.moai/` 를 면제하지 않고) 제품을 고치는 쪽을 택했다. 두 수정은 `update.go` 의 각각 한 줄이고 서로 별개의 커밋이라 리더가 따로 되돌릴 수 있다. 리더가 다른 판단을 하면: C2 를 되돌리면 AC-OWR-16 의 `.moai/` 줄이 다시 붉고, C3 를 되돌리면 `TestDryRunRunsNoBinaryUpdateStep` 만 붉다.
+
 ## §E.3 Run-phase Audit-Ready Signal
 
 _<pending run-phase>_
