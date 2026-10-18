@@ -322,23 +322,21 @@ Why unresolved: board 9dbe/e4cc ordered the enabling after the structured re-mea
 Options (neutral): switch the key on after A2 lands (audit binding alone is enforced, completeness is added when A1 lands under the same key); switch it on only after A1 lands (both enforced together); keep a separate key for each half.
 Operator verdict:
 
-### Q28: Which consumers share the audit binding?
+### Q28: Which landing commands apply the audit binding?
 
 Label: FOUNDER
 Class: implementation-level
 Authority anchor: none
-Why unresolved: the binding function can serve `moai factory complete` only, or also merge-readiness condition (a) (`factorylane/merge.go`, used by `moai factory merge ready` and the github-flow readiness check).
-Default: one binding function in `factorylane`, consumed by `complete` and by condition (a) of the triple, so the two cannot disagree (rule: the smaller user-visible surface — one rule, no second copy; the github-flow edge is untouched because its readiness check is not the git-flow `complete`)
-Alternate: `complete` only
-Operator verdict: DEFAULT-APPLIED 2026-10-18T18:30:00Z manager-spec+lane t1872
+Why unresolved: the binding can be applied by `moai factory complete` alone, or also by merge-readiness condition (a) (`factorylane/merge.go:174`, called by `moai factory merge ready` and by the github-flow readiness check), or also by the direct merge verb and the merge step's landing check.
+Default: `complete` only (rule: the smaller user-visible surface; it also leaves the github-flow readiness caller, the merge step and `merge.go` untouched, so this SPEC edits one hunk that piece A1 also edits, the call in `factoryCompleteCard`)
+Alternate: `complete` plus condition (a) through an optional hook field of the triple input (the `VerifyRemeasure` precedent), left unwired by the github-flow caller; or, further, the merge step's landing check
+Consequence recorded (design R6): a lane that skips `complete` is not bound by the audit binding, and `factory merge ready` can read ready where `complete` then refuses.
+Operator verdict: DEFAULT-APPLIED 2026-10-18T17:15:00Z manager-spec+lane t1872
 
-### Q29: In what order are the A2 milestones built?
+### Q29: Is piece A2 independent of piece A1 in code?
 
 Label: FOUNDER
 Class: implementation-level
-Authority anchor: none (leader order in the split brief: baseline, receipt field, audit binding, switch reader)
-Why unresolved: the audit binding applies only while the gate is on, so it needs the gate-state reader to exist first.
-Default: M0 baseline, M1 receipt field, M2 switch reader and key, M3 audit binding, M4 guidance (rule: the option whose undo is a single revert — each milestone then compiles and tests on its own)
-Alternate: binding before reader, with the gate state injected as a predicate
-Operator verdict: DEFAULT-APPLIED 2026-10-18T18:30:00Z manager-spec+lane t1872
-
+Authority anchor: none in the committed tree (source: board d20e asked the independence to be proved by code; the evidence is `research.md` §12)
+Why unresolved: the split is sound only if no A2 requirement needs an A1 type, behaviour or verb, and if A2's `complete` behaves coherently while A1's manifest does not exist.
+Operator verdict: DECIDED (board d20e: A2 stays on t1872 and lands first; A1 is blocked until t1872 is merged-local). Planner finding, not a ruling: no A2 requirement needs an A1 type, behaviour or verb (`research.md` §12, observed file and line); four places named an A1 concept and were adjusted (REQ-LVM-007 narrowing allowance, REQ-LVM-012 manifest wording, REQ-LVM-017 consumers and `manifest verify`, and the old REQ-LVM-011, whose audit-side half is attached to REQ-LVM-012 and REQ-LVM-018); with the gate on and no manifest in existence, `complete` runs today's checks plus the audit binding.

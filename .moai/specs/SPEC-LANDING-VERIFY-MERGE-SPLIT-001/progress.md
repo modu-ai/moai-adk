@@ -5,15 +5,15 @@ Card t1872. Status of record: `spec.md` frontmatter (`draft`).
 ## §E.1 Plan-phase Audit-Ready Signal
 
 plan_status: audit-ready
-plan_complete_at: 2026-10-18T17:55:00Z
-iteration: single ceiling exception after plan-audit iteration 4 (delta FAIL 0.88 at 21687134ba stays on record; board 4812), REQ/AC ids unchanged
-scope: piece A only (M0 baseline, M1 gate core, M2 receipt commit field, M3 audit binding, M4 lane guidance); the enabling switch is a separate later commit on the integration branch, not a milestone (boards 9dbe, 0577, 470c, 5d4d, 4812)
-plan_artifacts: spec.md, plan.md, acceptance.md, design.md, research.md, decision-index.md (Tier L; 18 REQ / 18 AC)
-plan_artifact_hash: 3defa7855c4c84e1419210d95185e82d71c3fa91bc67b053176cea17768571e4 (ComputeHash-equivalent over planArtifactNames; Python reimplementation of internal/runtime/audit_cache.go:121-141, not the Go function)
-open_decisions: none (Q7-Q13 by boards 9dbe/2c51/e4cc; Q14 by 0577 P4; Q18 by 470c; Q20 and Q22 by 5d4d; Q15-Q17, Q19, Q21, Q23-Q26 DEFAULT-APPLIED, implementation-level)
+plan_complete_at: 2026-10-18T17:17:00Z
+iteration: split per board d20e after plan-audit iteration 5 (FAIL 0.86 at 9713b6757d stays on record); fresh plan-audit cycle on the reduced scope, REQ/AC ids of this piece unchanged
+scope: piece A2 only — M0 baseline, M1 receipt commit field, M2 audit binding in complete, M3 gate-state reader and key and status display, M4 lane guidance; the enabling switch is a separate later commit on the integration branch, not a milestone (boards 9dbe, 0577, 470c, 5d4d, d20e)
+plan_artifacts: spec.md, plan.md, acceptance.md, design.md, research.md, decision-index.md (Tier L by file count; 7 REQ / 7 AC)
+plan_artifact_hash: 918607292f9dd328765a6ad1a5489089ff6eef58375ec161a0125dd47bb9de79 (ComputeHash-equivalent over planArtifactNames; Python reimplementation of internal/runtime/audit_cache.go:121-141, not the Go function)
+open_decisions: Q27 (when the key is switched on relative to piece A1; product-level, FOUNDER, no default, operator's); Q7-Q13 by boards 9dbe/2c51/e4cc; Q14 by 0577 P4; Q18 by 470c; Q20 and Q22 by 5d4d; Q29 by d20e; Q28 DEFAULT-APPLIED (implementation-level, rule: smaller user-visible surface); Q15-Q17, Q19, Q21, Q23-Q26 recorded, Q15-Q17, Q25, Q26 move with piece A1
 record_cleanup: all bookkeeping is committed in the same commit as the final artifacts; no backfill commit is planned after the audited SHA (board 0577 P3)
 
-Iteration-4 disposition: B1 fixed (the effective GOFLAGS, resolved by go env, is recorded at derive and at attempt and may carry no test-selection, truncation or shaping flag; manifest derive, remeasure --call and the verifier refuse it even when both sides match; AC-005 N=15 with TestGateRejectsNarrowingGoflagsRun, TestGateRejectsNarrowingGoflagsSkip and the table test with a build-only positive control; mutant row); S1 fixed (go.mod, go.sum, go.work and go.work.sum select every Go package of the module, bypass the reader search and the 35e9 narrowing, and are never a zero-call card; TestManifestModuleFileChangeSelectsWholeModule, TestZeroGoPathRefusesModuleFileChange; AC-001 N=7, AC-013 N=5); O1 fixed (auditreceipt.Canonical named in REQ-010 and design); O2 fixed (mutating commands exit non-zero before any state change, read-only evaluations print the named error and exit non-zero; REQ-007 holds because today's merge verb already stops at integrationMergeWorktree); O3 fixed (mutant row for the receipt-side empty-diff ancestor).
+Split disposition (iteration 5 at 9713b6757d, board d20e): REQ-LVM-001-006, 011 (manifest half), 013-016 and AC-LVM-001-006, 011, 013-016 moved to SPEC-LANDING-COMPLETENESS-GATE-001 (card t1875, blocked until this card is merged-local); blockers B1 (effective environment under the command's own prefix), B2 (GOFLAGS allowlist), B3 (producer-verb refusal tests) and the optional S1, O1 are inherited acceptance requirements for that SPEC (spec.md §7); O2 (overlap-baseline script defects) stays recorded as run-phase debt (research.md §11). A2 text was carried from the audited version with four adjustments where an A1 concept appeared (REQ-LVM-007, REQ-LVM-012 with the audit-side guidance of the old REQ-LVM-011, REQ-LVM-017, and a placement clause in REQ-LVM-008); independence by code in research.md §12. Open for the leader: the direct merge verb is not bound by the audit binding under Q28's default (design R6).
 
 ## §E.2 Run-phase Evidence
 
