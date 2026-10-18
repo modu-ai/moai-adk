@@ -53,6 +53,10 @@ import (
 // the "also deletes the user's file" mutant is judged against it.
 const restoreUserFile = ".claude/skills/mine/SKILL.md"
 
+// restoreExecRel is an executable managed file (the real deployer writes shell
+// scripts 0755): a removal candidate whose backup copy must keep its execute bit.
+const restoreExecRel = ".claude/skills/moai-workflow-project/scripts/navigator-audit.sh"
+
 // ---------------------------------------------------------------------------
 // Tree copy and the test-only restore procedure.
 // ---------------------------------------------------------------------------
@@ -471,6 +475,12 @@ func buildRestoreWorld(t *testing.T) restoreWorld {
 
 	root1 := buildMigrationFixture(t)
 	rels := threeManagedCopies(t, root1, home)
+	ownAddRegisteredManaged(t, root1, restoreExecRel, ownEmbeddedBytes(t, restoreExecRel))
+	requireUserCounterpart(t, home, restoreExecRel)
+	if err := os.Chmod(filepath.Join(root1, filepath.FromSlash(restoreExecRel)), 0o755); err != nil {
+		t.Fatalf("make %s executable: %v", restoreExecRel, err)
+	}
+	rels = append(rels, restoreExecRel)
 	slices.Sort(rels)
 	ownAddRegisteredUserCreated(t, root1, restoreUserFile, []byte("# my own skill\n"))
 	rewriteManifestNonCanonical(t, root1, nil)
@@ -591,6 +601,10 @@ func TestRemovedAssetBackupRestoreByteIdentical(t *testing.T) {
 		t.Logf("observation: %s has mode %o, the manifest it copies had %o (the file modes of the restore area are asserted for the removed files only)", priorManifestName, info.Mode().Perm(), w.preManifestMode)
 	}
 
+	if w.preMode[restoreExecRel] != 0o755 {
+		t.Fatalf("premise: %s has mode %o before the run, want 755 (the mode clauses would prove nothing about the execute bit)", restoreExecRel, w.preMode[restoreExecRel])
+	}
+
 	// T1 after run 1, kept for the mutants; the restore below works in place.
 	post1 := t.TempDir()
 	restoreCopyTree(t, w.root1, post1)
@@ -604,8 +618,10 @@ func TestRemovedAssetBackupRestoreByteIdentical(t *testing.T) {
 	for _, group := range []struct{ name, prefix string }{
 		{"ReachedReconciliation", "(v)"},
 		{"BackupCopiesAreByteIdentical", "(i)"},
+		{"BackupCopyModes", "(i-mode)"},
 		{"PriorManifestIsTheStartManifest", "(ii)"},
 		{"RestoreAreaIsByteIdentical", "(iii)"},
+		{"RestoredModes", "(iii-mode)"},
 		{"DifferenceSentinel", "(iv)"},
 	} {
 		t.Run(group.name, func(t *testing.T) {
@@ -763,6 +779,11 @@ func TestRemovedAssetBackupRestoreByteIdentical(t *testing.T) {
 	}, nil)
 	mutant("BackupCopyModeNarrowed", "(i-mode)", func(_, runDir string) {
 		if err := os.Chmod(backupCopy(runDir, firstRel), 0o600); err != nil {
+			t.Fatal(err)
+		}
+	}, nil)
+	mutant("BackupCopyLosesTheExecuteBit", "(i-mode)", func(_, runDir string) {
+		if err := os.Chmod(backupCopy(runDir, restoreExecRel), 0o644); err != nil {
 			t.Fatal(err)
 		}
 	}, nil)
