@@ -216,7 +216,7 @@ How the **leader** session of Factory Mode moves a card through the queue: what 
 ### Scope — when this rule is live
 
 
-This rule binds a session whose SessionStart context declares **Factory Mode**. The dispatch clauses bind the `leader` role; the lane clauses (the stage task list, explicit waits, spawn authority, isolation, verification load, integration) bind a lane session. A session outside Factory Mode has no lanes to route to.
+This rule binds a session whose SessionStart context declares **Factory Mode**. The dispatch clauses bind the `leader` role; the lane clauses (the optional stage task list, explicit waits, spawn authority, isolation, verification load, integration) bind a lane session. A session outside Factory Mode has no lanes to route to.
 
 
 ### Entry into the queue is an operator act
@@ -228,7 +228,7 @@ This rule binds a session whose SessionStart context declares **Factory Mode**. 
 ### The lane's task list carries the card's stages
 
 
-The measured precedent this rule codifies: a lane session held one task list through its card's whole run — one task per execution stage, created at card intake and updated at every stage transition. The clause above is the rule; a run that kept the list current is its evidence, not an instance list to extend.
+The measured precedent this rule codifies: a lane session held one task list through its card's whole run — one task per execution stage, created at card intake and updated at every stage transition. The tracking is optional per the stub clause; the card's state of record is the factory record and progress.md. A lane that keeps the list current still has that history as evidence when it is used.
 
 
 ### The env-isolated verification form
