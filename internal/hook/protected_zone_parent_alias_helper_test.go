@@ -40,3 +40,25 @@ func TestProtectedZoneParentAliasCanonicalRelAtomic(t *testing.T) {
 		}
 	}
 }
+
+// TestProtectedZoneParentAliasNameIndexAlias — on a case-sensitive but
+// normalization-insensitive volume Ä and ä coexist; an NFD operand ä must
+// resolve to the entry whose NFC form EQUALS its own (ä), never to the
+// protected Ä, and never by map order. With only Ä listed the same operand is
+// the real case-insensitive alias and still resolves to Ä.
+func TestProtectedZoneParentAliasNameIndexAlias(t *testing.T) {
+	const nfdLower = "ä" // ä, decomposed
+	both := newZoneNameIndex([]string{"Ä", "ä"})
+	for i := 0; i < 200; i++ {
+		if got, ok := both.alias(nfdLower); !ok || got != "ä" {
+			t.Fatalf("iteration %d: alias(NFD ä) with {Ä, ä} = %q, %v, want %q, true", i, got, ok, "ä")
+		}
+	}
+	only := newZoneNameIndex([]string{"Ä"})
+	if got, ok := only.alias(nfdLower); !ok || got != "Ä" {
+		t.Errorf("alias(NFD ä) with {Ä} = %q, %v, want %q, true", got, ok, "Ä")
+	}
+	if got, ok := only.alias("ö"); ok {
+		t.Errorf("alias(ö) with {Ä} = %q, true, want no match", got)
+	}
+}

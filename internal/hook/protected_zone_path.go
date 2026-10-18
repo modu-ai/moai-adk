@@ -542,6 +542,14 @@ func (idx *zoneNameIndex) has(name string) bool {
 // simple case folding (Ä/ä), the relation a case-insensitive volume applies.
 func (idx *zoneNameIndex) alias(name string) (string, bool) {
 	want := norm.NFC.String(name)
+	// an entry whose NFC form equals the operand's is the one the OS names
+	// (a normalization-only alias); case folding is the fallback, so a
+	// case-sensitive volume holding both Ä and ä never answers by map order
+	for real := range idx.exact {
+		if norm.NFC.String(real) == want {
+			return real, true
+		}
+	}
 	for real := range idx.exact {
 		if strings.EqualFold(norm.NFC.String(real), want) {
 			return real, true
