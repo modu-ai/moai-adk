@@ -26,10 +26,7 @@ func newFactoryCommand() *cobra.Command {
 		if id <= 0 || token == "" || (decision != "requeue" && decision != "fail") {
 			return fmt.Errorf("--id, --expected-token, and --decision requeue|fail are required")
 		}
-		root, err := os.Getwd()
-		if err != nil {
-			return err
-		}
+		root := factoryCardRoot()
 		db, err := homestate.OpenFactory(root)
 		if err != nil {
 			return err
@@ -83,10 +80,7 @@ func newFactoryRunsCommand() *cobra.Command {
 		Use:   "runs",
 		Short: "Report factory runs with their owner liveness, and retire a dead-owner run",
 		RunE: func(cmd *cobra.Command, _ []string) (err error) {
-			root, err := os.Getwd()
-			if err != nil {
-				return err
-			}
+			root := factoryCardRoot()
 			db, err := homestate.OpenFactory(root)
 			if err != nil {
 				return err

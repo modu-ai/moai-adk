@@ -58,19 +58,54 @@ FAIL	github.com/modu-ai/moai-adk/internal/cli	2.408s
 Failure modes are exactly the defect: `runs` lists the cwd (B) factory — empty, header only —
 and `recover-resume` finds no row because B's factory never held A's claim.
 
-## 3. Plan (held)
+## 3. GREEN (t1827 absorbed; fix + SPEC-wording reversion)
 
-1. After t1827 lands on local main: absorb main into this branch, keep the RED compiling
-   against the t1827 tree (it changed `factory_handoff_recover.go` comments only), implement
-   the alignment (both verbs open `factoryCardRoot()`), RED → GREEN.
-2. Revert the t1827 SPEC wording narrowing (SPEC-MOAI-DB-PATHS-001) to the original meaning
-   and drop the `moai paths` help sentence that documents the cwd divergence.
-3. Scoped verification (`-run` narrowed, rule 35e9), card-review, sync audit, landing.
+**Absorb.** t1827 landed on local main `026f48658f` (merge of `WT-db-paths-where`;
+`f403f5224` reachable — measured `git merge-base --is-ancestor` exit 0, 06:32Z). Absorbed:
+`git merge main --no-edit` → merge commit `26ea85135f`, no conflicts. Lease had expired
+mid-wait; recovered through the standing 8859 sequence (`factory stage` expiry handler →
+`factory next --card t1862` re-lease → `factory stage t1862 run` v7 with RED evidence).
 
-## Hold (explicit wait)
+**Fix** (internal/cli/factory_handoff_recover.go): both verbs now open the factory through
+`factoryCardRoot()` —
 
-- Reason: implementation ordered after t1827 (lane-29) lands; the fix and the SPEC-wording
-  reversion both build on t1827's tree.
-- Whom: leader tn1p4e dispatch 10-18 ("구현은 t1827 착지 뒤에").
-- Recheck point (on every wake): `git log main --oneline --grep='card t1827' -n 1` non-empty
-  AND `moai factory status`-observable landing, then absorb and implement.
+- `recover-resume` RunE: `root, err := os.Getwd()` → `root := factoryCardRoot()` (the
+  `ReadRuntimeCensus` closure keeps the same root);
+- `factory runs` RunE: the same replacement.
+
+**SPEC-wording reversion** (card scope: restore the narrowed wording to the original
+meaning now that the divergence is gone):
+
+- `.moai/specs/SPEC-MOAI-DB-PATHS-001/spec.md` — REQ-DBP-002 divergence tail removed;
+  § H rewritten from "Known divergence (debt)" to the alignment record naming t1862.
+- `acceptance.md` AC-DBP-002 — the "roots at the working directory and agree only when…"
+  clause replaced with the shared-root statement.
+- `plan.md` §A.2 — divergence sentence removed; risk-table row and the §E open item mark
+  the follow-up RESOLVED by card t1862.
+- `internal/cli/paths.go` — the resolver-seams comment and the `moai paths` Long help no
+  longer claim the working-directory divergence (no test asserted that wording).
+
+**GREEN** (this tree, after the fix) — `go test -run 'TestFactoryRunsOpensMoaiPathsRootNotCwd|TestRecoverResumeOpensMoaiPathsRootNotCwd' -count=1 -timeout 8m ./internal/cli/`:
+
+```
+ok  	github.com/modu-ai/moai-adk/internal/cli	4.150s
+```
+
+**Scoped regression verification** (rule 35e9 — `-run` narrowed; full suite is CI's):
+
+| Check | Command | Result |
+|---|---|---|
+| recover/resume + abandon-lane | `go test -run 'TestResumeLegacy\|TestFactoryRecoverResume\|TestAbandonLane' -count=1 ./internal/cli/` | `ok … 4.181s` |
+| factory runs + retire guard | `go test -run 'TestFactoryRuns\|TestRetireRun' -count=1 ./internal/cli/` | `ok … 17.764s` |
+| paths command (Long text changed) | `go test -run 'TestPaths' -count=1 ./internal/cli/` | `ok … 28.167s` |
+| template db-paths surfaces | `go test -run 'TestDBPaths' -count=1 ./internal/template/` | `ok … 0.490s` |
+| build | `go build ./internal/...` | exit 0 |
+| vet | `go vet ./internal/cli/` | exit 0 |
+| gofmt | `gofmt -l <3 changed files>` | empty |
+
+No test was skipped, weakened, or given a larger timeout. Evidence mtime and the commit
+below are the baseline; the card-review and sync audit re-read from disk.
+
+## Hold (RESOLVED 06:32Z)
+
+- t1827 landed on local main `026f48658f`; hold lifted, implementation landed above.
