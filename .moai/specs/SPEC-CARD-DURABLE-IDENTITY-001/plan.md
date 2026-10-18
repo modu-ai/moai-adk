@@ -77,13 +77,13 @@ Statement routing, `ErrCardNotMember`, `ErrCardEngaged`, the seal writers of des
 
 ### M5 — Rollback and the seam contract
 
-`identity rollback` with R-1 to R-4, the generic epoch-carrier fixture across cutover, join, retire and rollback, the published read surface and the additive JSON fields. AC-CDI-010, AC-CDI-013, AC-CDI-022, and the rollback operations of AC-CDI-011 (which make it green).
+`identity rollback` with R-1 to R-4, the generic epoch-carrier fixture across cutover, join, retire and rollback, the published read surface and the additive JSON fields. AC-CDI-010 (all but `refused_with_a_nonterminal_journal_row`), AC-CDI-013, AC-CDI-022 (the identity reads, JSON keys and table-present subtest), and the rollback operations of AC-CDI-011 (which make it green).
 
 > **Cut line.** M0 to M5 deliver the identity layer and stand alone. M6 may land as a second part.
 
 ### M6 — Journal and reconciliation
 
-`factory_operations`, the protocol at the four effect sites, `factory reconcile`, the pre-steps. AC-CDI-017 to AC-CDI-021.
+`factory_operations`, the protocol at the four effect sites, `factory reconcile`, the pre-steps. AC-CDI-017 to AC-CDI-021, `refused_with_a_nonterminal_journal_row` of AC-CDI-010 (which makes it green) and the journal reads, kind set and `operation.reconciled` of AC-CDI-022 (which make it green).
 
 ### M7 — Close
 
@@ -182,3 +182,15 @@ Source: `.moai/reports/t1842/plan-audit-iter2.md`. Probes ran under the project 
 | R2-D8 report vs rule (b); seal vs holder-clearing | Fixed: report evaluates rule (b) against the proposed resolution and lists blank ids as blocked unless resolved to a named row; a seal is the archive append and bump only, the accompanying write clears the holder as at B0. | REQ-CDI-003, REQ-CDI-014; S-3; AC-CDI-013 |
 | R2-D9 journal needs a transaction-aware hook | Fixed: `TransitionRequest.Op` (operation reference) written by `transitionTx` through the transition's own `tx`; `BeforeCommit` stays for the queue write. | design § 6.2, § 12 |
 | R2-D10 AC-025 Given order | Fixed: expire, reassign to lane-2 (then restamp to lane-3), lease by the owner. | AC-CDI-025 |
+
+## L. Correction after plan audit iteration 3 (FAIL 0.80; scope: R3-D1 to R3-D5 only)
+
+Source: `.moai/reports/t1842/plan-audit-iter3.md`. Probe: research.md § 6.3 (real 31-column `cards` DDL read from `factory.go`, project driver, an actual rollback and second cutover).
+
+| Defect | Disposition | Where |
+|--------|-------------|-------|
+| R3-D1 project-scope rollback | Fixed: `return_run` kept on the record; empty-run seals never form a pair; R-4 compares only pairs whose newest source is a cutover seal; AC-010 gains the duplicated-id and joined-card fixtures. | REQ-CDI-011; design § 2.1, § 3.3, § 5, § 7; AC-CDI-010 |
+| R3-D2 version floor | Fixed: version floor beside the attempt floor, computed version below it becomes floor plus one; AC-011 gains `version_never_falls_across_rollback_and_recutover`. | REQ-CDI-011, REQ-CDI-012; design § 3.3, § 7; AC-CDI-011 |
+| R3-D3 op_id REPLACE | Fixed: one unconditional `BEFORE INSERT` guard on an existing `op_id`; subtest added to AC-021. | REQ-CDI-021; design § 6.1; AC-CDI-021 |
+| R3-D4 milestones | Fixed: AC-010 and AC-022 green at M6 with the M5/M6 split stated; M5 and M6 lists updated. | acceptance AC-010, AC-022; plan § C |
+| R3-D5 V-4 vs missing run | Fixed: V-4 exempts runs absent before the cutover (differential, like V-5). | REQ-CDI-009; design § 3.3; AC-CDI-008, AC-CDI-010 |

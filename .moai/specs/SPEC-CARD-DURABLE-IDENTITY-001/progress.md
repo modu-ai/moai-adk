@@ -7,7 +7,7 @@ spec_id: SPEC-CARD-DURABLE-IDENTITY-001
 card: t1842
 tier: L
 base_sha: f4bcd4f2cc65342559b505f1e5a29df80f992894
-spec_version: 0.3.0
+spec_version: 0.4.0
 req_count: 23
 ac_count: 25
 decision_rows: 7
@@ -39,6 +39,11 @@ Plan-phase facts (manager-spec, card t1842, revision 0.3.0): 23 requirements and
 - Code enumeration: `grep -rn "updateCardRow("` over non-test code printed six call sites plus the definition (`card_worktree.go:49`, `card_transition.go:435`, `:839`, `leader_approval.go:401`, `card_reassign.go:148`, `card_picked.go:194`); per-caller verdicts in design § 4.4.
 - `moai spec lint --strict` and the traceability and ordering checks were re-run after the edits (results below in the final reply of the revision; the lint line of the earlier record applies to 0.2.0).
 - Stamps: the `DEFAULT-APPLIED` rows are re-stamped 2026-10-18T01:42:17Z after the last edit of the other hashed files; Q2 and Q7 keep their `LANE-RULED` verdicts.
+
+### Correction record 0.4.0 (after plan audit iteration 3; delta scope R3-D1 to R3-D5)
+
+- Dispositions: plan.md § L. Only the five blocking defects were touched. An executed rollback and re-cutover on the real 31-column DDL under the project driver is in research.md § 6.3.
+- `moai spec lint --strict`, the traceability script and the ordering check were re-run after the edits; the plan-artifact hash was not computed. Stamps in decision-index.md were rewritten last.
 
 ### Gaps
 

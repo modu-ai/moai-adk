@@ -122,6 +122,16 @@ Same scratch module and driver as § 6.1 (`modernc.org/sqlite` v1.60.1, SQLite 3
 3. Journal: with the partial unique index alone, `INSERT OR REPLACE` of row Q on in-flight intent `kP` removed row P (progress and before-image gone). With a `BEFORE INSERT` guard on an in-flight intent collision and a `BEFORE DELETE` guard, `INSERT OR REPLACE`, `REPLACE INTO` and a plain `DELETE` all aborted and row P survived intact; a terminal row with the same intent was still insertable.
 4. A column-adding migration with a stale seal trigger: the next update failed loudly (`table at2 has 4 columns but 3 values were supplied`) when the insert was positional; a named column list would omit the new column silently, so the trigger is rebuilt with the migration (design § 2.7).
 
+## 6.3 Executed rollback and re-cutover on the real DDL (revision for audit iteration 3)
+
+Scratch module, project driver (modernc v1.60.1, SQLite 3.53.4). The `cards` DDL was read from `internal/homestate/factory.go` at run time (31 columns); `card_attempts` and `card_current` were generated from it. Fixture: `x` with `(U, v5)` and `(T, v7)` resolved to U; `y` with `(U, v5)` and `(T, v7)` resolved to T; `z` single row `(T, v3)`; `m` whose run row is absent; U and T retired, A active.
+
+1. First cutover: 6 legacy rows, 6 sealed attempts; `x` current in project scope, `return_run` U, version 6, U's stage; `y` v8, `z` v4, `m` unchanged in run `GONE`. V-4 strict (every membership names a `runs` row): 2 offending; V-4 differential (exempting runs absent before the cutover): 0.
+2. After joining `y` and `z` into A, each had a sealed attempt with an empty run (source `seal`).
+3. Rollback (empty-run seals skipped; project-scope records mapped by `return_run`): 8 rebuilt rows, 0 with an empty run, R-3 offenders 0; pair `(T, x)` carried T's own stage and v7, pair `(U, x)` carried the current record (v6, U's stage); `(T, z)` v3 and `(A, z)` v5; `(A, y)` v9.
+4. Second cutover with `y` resolved to the older pair U: computed version 6 was below the floor 9, so 10 was written; attempt numbering resumed above the floor (min 4, current 7).
+5. Journal: `INSERT OR REPLACE` onto an existing in-flight `op_id` and onto a terminal `op_id` both aborted (`op_id exists`) with the rows unchanged; `INSERT … ON CONFLICT(op_id) DO UPDATE` aborted too; a plain `UPDATE` of progress succeeded.
+
 ## 7. Not verified at plan time
 
 - No `go build` and no `go test` was run (host load average 20.63 at 09:33). The four existing retire tests of AC-CDI-002 were not observed to pass.
