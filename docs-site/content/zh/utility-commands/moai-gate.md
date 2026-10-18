@@ -134,7 +134,7 @@ gate:
       mode: affected   # 默认值 — "full" 则测试整个模块 (go test ./...)
 ```
 
-`affected`(默认)只测试包含本次提交文件的包，以及直接 import 这些包的包。若提交修改了 `go.mod`、`go.sum`、`go.work`、`go.work.sum` 或 `.moai/config/build-tags`，则始终测试整个模块。如果变更文件或包依赖图的查询失败，门禁会给出提示并回退到整个模块。如果 Go 源文件或模块文件(`.go`、`go.mod`、`go.sum`、`go.work`、`go.work.sum`)在工作树与提交所记录的索引之间不一致(例如删除了某个 import 但尚未暂存的修改)，由于包依赖图读取自工作树，门禁会给出点明相关文件的提示，并测试整个模块。工作树干净，或只有非 Go 文件存在未暂存修改时，仍然选择较窄的范围。`affected` 和 `full` 之外的值会被拒绝。测试超时(`timeouts.test`)保持不变，因此受影响范围包含 `internal/cli` 这类大包的提交，仍可能超时。
+`affected`(默认)只测试包含本次提交文件的包，以及直接 import 这些包的包。若提交修改了 `go.mod`、`go.sum`、`go.work`、`go.work.sum` 或 `.moai/config/build-tags`，则始终测试整个模块。如果变更文件或包依赖图的查询失败，门禁会给出提示并回退到整个模块。如果 Go 源文件或模块文件(`.go`、`go.mod`、`go.sum`、`go.work`、`go.work.sum`)在工作树与提交所记录的索引之间不一致(例如删除了某个 import 但尚未暂存的修改)，或者工作树中存在未被跟踪的 `go.mod`、`go.work` 或 `go.work.sum`(未被跟踪的嵌套 `go.mod` 会把其所在目录变成独立模块，基于工作树的包依赖图会丢掉该包)，由于包依赖图读取自工作树，门禁会给出点明相关文件的提示，并测试整个模块。工作树干净、只有非 Go 文件存在未暂存修改、或未被跟踪的文件只有 `go.sum` 和其他文件时，仍然选择较窄的范围。`affected` 和 `full` 之外的值会被拒绝。测试超时(`timeouts.test`)保持不变，因此受影响范围包含 `internal/cli` 这类大包的提交，仍可能超时。
 
 单独执行的 `moai gate` 会忽略这个键，继续遵循既有的 `gate.enabled` 设置。需要紧急提交时，可用 `SKIP_MOAI_PRECOMMIT=1 git commit` 跳过钩子本身。
 

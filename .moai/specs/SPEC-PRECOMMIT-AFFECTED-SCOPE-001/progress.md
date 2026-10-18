@@ -1082,6 +1082,7 @@ open_debt_f4_f6_for_manager_spec:
   - "F4: B12 counter artifact above (acceptance.md prefix declaration + [RETIRED] on AC-PAS-012)"
   - "F5: S1-a, S1-b, S2 wording in acceptance.md / REQ-PAS-011 / AC-PAS-011 / AC-PAS-003 Given, plus the tree-pin wording"
   - "F6: internal/config/gate_test_scope.go accepts an explicit mode: \"\" and resolves it to affected, while REQ-PAS-011 says any value other than affected or full is rejected when the key is present; harmless in effect"
+sync_audit_round2: "R2-1 repaired by manager-develop (RED e5adeac70, GREEN 6e38795ff, evidence fc96f7218): an untracked go.mod, go.work or go.work.sum now widens the Go test step to the full module (an untracked go.sum, plain .go file or other file does not); CHANGELOG and the four docs-site pages updated in place. Delta re-audit pending."
 sync_head_at_start: aaf01ee7e0c27bff958f8db082e4db3c40ce8f39
 b12_self_test_a: "PASS - grep -c 'SPEC-PRECOMMIT-AFFECTED-SCOPE-001' CHANGELOG.md printed 0 before emission"
 b12_self_test_b: "FAIL (counter 20 vs stated 15) - ac_source=.moai/specs/SPEC-PRECOMMIT-AFFECTED-SCOPE-001/acceptance.md, tier=M, state=resolved; counter stdout 20, stderr live=20 excluded=0 ambiguous=0; declared criteria AC-PAS-001..016 = 16 identifiers, AC-PAS-012 withdrawn => 15 live; CHANGELOG states 15"
