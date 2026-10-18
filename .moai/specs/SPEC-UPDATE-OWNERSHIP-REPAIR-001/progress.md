@@ -200,6 +200,120 @@ M6PROBE V2-stale-record out-lines-mentioning .claude/commands/moai-user-cmd.md =
 
 해석: 두 변형 모두 템플릿이 운반하는 commands 17개가 전부 존재하고 (`missing=0`), S1 은 템플릿 바이트, S2 는 사용자 줄 보존 + 충돌 사이드카 하나 (보고에 한 번만 나타남), S3 은 템플릿 바이트, S4 는 불변이다. 어떤 경로도 두 처분으로 보고되지 않았다. 따라서 이 트리에서 현장의 「commands 가 이전 대상에서 빠졌다가 재배포됨」 순환은 두 변형으로 재현되지 않았다. M6 의 AC-OWR-09 는 회귀 가드로 남을 가능성이 높고 (결정은 M6 chunk), V2 구동의 한계 — `runUpdate` 진입이 아니라 `runTemplateSyncWithProgress` 를 기존 시임으로 구동했고 낡은 기록은 `system.yaml`·매니페스트 `Version`·`TemplateTreeHash` 세 곳으로 모사했다 — 를 갭으로 남긴다. 참고 관측 (판정 아님): 탐침의 첫 시도는 S2 의 매니페스트에 편집 뒤 바이트의 해시를 배포 해시로 기록하는 잘못된 픽스처였고, 그 모양에서는 사용자 줄이 사이드카·백업 없이 「refreshed」 로 덮였다. 현실에서는 편집이 기록보다 나중이므로 (`ownAddRegisteredEdited` 가 그 순서로 만든다) 이 모양은 정상 경로가 아니지만, 매니페스트가 편집 뒤 상태를 배포 해시로 갖는 항목은 템플릿 소유로 읽혀 덮인다는 사실은 M6 chunk 가 알아 둘 만하다.
 
+### M1a — 판정 함수, 이유 코드, 증거 해석기 (AC-OWR-01 ~ -05, run chunk 1)
+
+**커밋 A (시험 파일만)**: `9b73a35938` — `internal/cli/migrate_ownership_test.go` (AC-OWR-01 ~ -04), `internal/cli/migrate_ownership_evidence_test.go` (AC-OWR-05 (a)-(g), 함수 수준). 이 트리에서는 판정 코드가 없어 `internal/cli` 시험 패키지 전체가 빌드되지 않는다 — 그래서 아래 다섯 셀은 모두 빌드 실패 RED 이고, 같은 컴파일러 첫 열 줄이 되풀이된다 (Go 는 열 개 뒤에서 `too many errors` 로 자른다). 이 시점에는 기준선 11개도 같은 이유로 돌릴 수 없다 (빌드가 풀린 C 커밋에서 다시 돌린다). 어떤 기준도 「올바른 이유로 붉은가」 를 위 이유 문장으로 답했다. 빌드 실패 RED 는 변이 관측 (시험이 변이 구현 앞에서 붉음을 직접 보는 단언) 을 이 시점에는 보여주지 못한다 — 그 관측은 C 커밋 GREEN 원문의 `MutantIsCaught` 서브 시험이 한다.
+
+**AC-OWR-01 RED 셀** — 명령: `TMPDIR=/private/tmp/own-fixture-d1 go test ./internal/cli/ -run '^TestOwnershipVerdictClasses$' -count=1 -v`; 트리 SHA: `9b73a359380e244a931e14ee10a6950e6d26c07e`; 종료 코드: 1.
+
+```text
+# github.com/modu-ai/moai-adk/internal/cli [github.com/modu-ai/moai-adk/internal/cli.test]
+internal/cli/migrate_ownership_test.go:30:36: undefined: priorGeneration
+internal/cli/migrate_ownership_test.go:32:41: undefined: priorGeneration
+internal/cli/migrate_ownership_test.go:35:74: undefined: provenanceSource
+internal/cli/migrate_ownership_test.go:43:43: undefined: ownershipEnv
+internal/cli/migrate_ownership_test.go:43:73: undefined: ownershipVerdict
+internal/cli/migrate_ownership_test.go:51:58: undefined: remainingRow
+internal/cli/migrate_ownership_test.go:64:10: undefined: ownershipClass
+internal/cli/migrate_ownership_test.go:65:10: undefined: keepReason
+internal/cli/migrate_ownership_test.go:66:12: undefined: evidenceItem
+internal/cli/migrate_ownership_test.go:158:52: undefined: priorGeneration
+internal/cli/migrate_ownership_test.go:158:52: too many errors
+FAIL	github.com/modu-ai/moai-adk/internal/cli [build failed]
+FAIL
+exit=1
+```
+
+실패 이유: 판정 함수 `classifyOwnership`, 분류 상수, 처분 구조가 아직 없어 시험 패키지 빌드가 실패한다 (`undefined: ownershipEnv`, `ownershipVerdict`, `ownershipClass`, `keepReason` …). acceptance.md 가 예상한 이유 (`undefined: classifyOwnership`) 와 같은 부류이다. 제로 매치 아님 (`[build failed]`, 선택자는 존재하는 시험 이름).
+
+**AC-OWR-02 RED 셀** — 명령: `TMPDIR=/private/tmp/own-fixture-d1 go test ./internal/cli/ -run '^TestOwnershipPreserveByteEqualUserFile$' -count=1 -v`; 트리 SHA: `9b73a359380e244a931e14ee10a6950e6d26c07e`; 종료 코드: 1.
+
+```text
+# github.com/modu-ai/moai-adk/internal/cli [github.com/modu-ai/moai-adk/internal/cli.test]
+internal/cli/migrate_ownership_test.go:30:36: undefined: priorGeneration
+internal/cli/migrate_ownership_test.go:32:41: undefined: priorGeneration
+internal/cli/migrate_ownership_test.go:35:74: undefined: provenanceSource
+internal/cli/migrate_ownership_test.go:43:43: undefined: ownershipEnv
+internal/cli/migrate_ownership_test.go:43:73: undefined: ownershipVerdict
+internal/cli/migrate_ownership_test.go:51:58: undefined: remainingRow
+internal/cli/migrate_ownership_test.go:64:10: undefined: ownershipClass
+internal/cli/migrate_ownership_test.go:65:10: undefined: keepReason
+internal/cli/migrate_ownership_test.go:66:12: undefined: evidenceItem
+internal/cli/migrate_ownership_test.go:158:52: undefined: priorGeneration
+internal/cli/migrate_ownership_test.go:158:52: too many errors
+FAIL	github.com/modu-ai/moai-adk/internal/cli [build failed]
+FAIL
+exit=1
+```
+
+실패 이유: 이유 코드·빠진 증거 항목·`provenanceSource` 대역 자리가 없어 빌드 실패. 파일 보존 자체는 현재 코드도 지키므로 (기준선 `TestMigrationClassifiesUnregisteredMirrorCopy`), 이 시험이 새로 요구하는 것은 이유·증거·변이 관측이다. 제로 매치 아님 (`[build failed]`, 선택자는 존재하는 시험 이름).
+
+**AC-OWR-03 RED 셀** — 명령: `TMPDIR=/private/tmp/own-fixture-d1 go test ./internal/cli/ -run '^TestOwnershipPreserveUserModifiedFile$' -count=1 -v`; 트리 SHA: `9b73a359380e244a931e14ee10a6950e6d26c07e`; 종료 코드: 1.
+
+```text
+# github.com/modu-ai/moai-adk/internal/cli [github.com/modu-ai/moai-adk/internal/cli.test]
+internal/cli/migrate_ownership_test.go:30:36: undefined: priorGeneration
+internal/cli/migrate_ownership_test.go:32:41: undefined: priorGeneration
+internal/cli/migrate_ownership_test.go:35:74: undefined: provenanceSource
+internal/cli/migrate_ownership_test.go:43:43: undefined: ownershipEnv
+internal/cli/migrate_ownership_test.go:43:73: undefined: ownershipVerdict
+internal/cli/migrate_ownership_test.go:51:58: undefined: remainingRow
+internal/cli/migrate_ownership_test.go:64:10: undefined: ownershipClass
+internal/cli/migrate_ownership_test.go:65:10: undefined: keepReason
+internal/cli/migrate_ownership_test.go:66:12: undefined: evidenceItem
+internal/cli/migrate_ownership_test.go:158:52: undefined: priorGeneration
+internal/cli/migrate_ownership_test.go:158:52: too many errors
+FAIL	github.com/modu-ai/moai-adk/internal/cli [build failed]
+FAIL
+exit=1
+```
+
+실패 이유: 분류·이유가 잔존 행으로 기록되지 않아 (`remainingRow` 없음) 빌드 실패. 보존 자체는 `TestRF2F3_MigrationPreservesPostInstallEdits` 가 이미 지킨다. 제로 매치 아님 (`[build failed]`, 선택자는 존재하는 시험 이름).
+
+**AC-OWR-04 RED 셀** — 명령: `TMPDIR=/private/tmp/own-fixture-d1 go test ./internal/cli/ -run '^TestOwnershipUnregisteredUnknownOriginKeptWithReason$' -count=1 -v`; 트리 SHA: `9b73a359380e244a931e14ee10a6950e6d26c07e`; 종료 코드: 1.
+
+```text
+# github.com/modu-ai/moai-adk/internal/cli [github.com/modu-ai/moai-adk/internal/cli.test]
+internal/cli/migrate_ownership_test.go:30:36: undefined: priorGeneration
+internal/cli/migrate_ownership_test.go:32:41: undefined: priorGeneration
+internal/cli/migrate_ownership_test.go:35:74: undefined: provenanceSource
+internal/cli/migrate_ownership_test.go:43:43: undefined: ownershipEnv
+internal/cli/migrate_ownership_test.go:43:73: undefined: ownershipVerdict
+internal/cli/migrate_ownership_test.go:51:58: undefined: remainingRow
+internal/cli/migrate_ownership_test.go:64:10: undefined: ownershipClass
+internal/cli/migrate_ownership_test.go:65:10: undefined: keepReason
+internal/cli/migrate_ownership_test.go:66:12: undefined: evidenceItem
+internal/cli/migrate_ownership_test.go:158:52: undefined: priorGeneration
+internal/cli/migrate_ownership_test.go:158:52: too many errors
+FAIL	github.com/modu-ai/moai-adk/internal/cli [build failed]
+FAIL
+exit=1
+```
+
+실패 이유: 현재 출력은 경로만 대고 이유 코드와 빠진 증거 항목이 없다. 이 시험은 새 타입을 참조하므로 빌드 실패로 먼저 붉다. 제로 매치 아님 (`[build failed]`, 선택자는 존재하는 시험 이름).
+
+**AC-OWR-05 RED 셀** — 명령: `TMPDIR=/private/tmp/own-fixture-d1 go test ./internal/cli/ -run '^TestOwnershipAttestedManagedOnlyWithFullEvidence$' -count=1 -v`; 트리 SHA: `9b73a359380e244a931e14ee10a6950e6d26c07e`; 종료 코드: 1.
+
+```text
+# github.com/modu-ai/moai-adk/internal/cli [github.com/modu-ai/moai-adk/internal/cli.test]
+internal/cli/migrate_ownership_test.go:30:36: undefined: priorGeneration
+internal/cli/migrate_ownership_test.go:32:41: undefined: priorGeneration
+internal/cli/migrate_ownership_test.go:35:74: undefined: provenanceSource
+internal/cli/migrate_ownership_test.go:43:43: undefined: ownershipEnv
+internal/cli/migrate_ownership_test.go:43:73: undefined: ownershipVerdict
+internal/cli/migrate_ownership_test.go:51:58: undefined: remainingRow
+internal/cli/migrate_ownership_test.go:64:10: undefined: ownershipClass
+internal/cli/migrate_ownership_test.go:65:10: undefined: keepReason
+internal/cli/migrate_ownership_test.go:66:12: undefined: evidenceItem
+internal/cli/migrate_ownership_test.go:158:52: undefined: priorGeneration
+internal/cli/migrate_ownership_test.go:158:52: too many errors
+FAIL	github.com/modu-ai/moai-adk/internal/cli [build failed]
+FAIL
+exit=1
+```
+
+실패 이유: 증거 해석기·`priorGeneration`·`priorRecord`·`evidenceIncompleteReason` 가 없어 빌드 실패 (acceptance.md 가 예상한 이유: 증거 해석기가 없어 빌드 실패). 제로 매치 아님 (`[build failed]`, 선택자는 존재하는 시험 이름).
+
 ## §E.3 Run-phase Audit-Ready Signal
 
 _<pending run-phase>_
