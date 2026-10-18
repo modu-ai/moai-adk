@@ -23,6 +23,7 @@ run: tn1p4e · lane: lane-18 · 트리: `.moai/worktrees/t1863` · 브랜치: `W
 - 03:0x-06:3xZ — 수리 2차 완료(SPEC 0.3.0: AC-006 rows 13-14 — 2-고아 픽스처로 마스킹 폐쇄 + 동일 계열 --factory-run 마스킹 선제 폐쇄, AC-003/008 씨드 교차 + per-launcher 생략 변이 명명, plan 미수정). 감사자 5시간 한도 사망→재설정 경과 후 재개(판독 완료 국면). 임대 만료·수거·재임대 1회.
 - 06:38Z — **plan-audit iter3: PASS 1.00**(audited 2178966bb, plan_artifact_hash a9f3f549…, convergence pass, 필수 codex 게이트 pass rcpt-f983500100cd7824ab8932f4, blocking 0): D7/D8 코드 근거 폐쇄 확인(마스킹 기전·FindResumableRun 2후보·AdoptRun WHERE·leaderRunIDWasMinted 순수성), 신규 결함 0, plan·decision-index 바이트 불변 검증. **plan 단계 완료.**
 - 06:40Z — SPEC 커밋 `47a3d8a7c0`(문서 5종). **kickoff 전 정지 — 리더 통지**(spec_id 보정은 운영자 결정 대기, 보정 없는 kickoff 시도 금지 — 룰링 10-18). FOUNDER Q1-Q3 미판정 상태 유지(자율 kickoff 차단 — decision-index 기재대로).
+- 06:5xZ — 영수증 보완(감사자 자발): 중단 전 영수증(rcpt-f9835001…)의 트리 정합성 문제를 스스로 발견 → 신규 codex 재실행으로 **동일 판정 확인**, `rcpt-4248f383fd6e70c84af62ee1` 로 판정 파일 전면 재인용(선행 실행분은 동일 형태 기록으로 보존), 수렴 재검증 ok/unmet []. 판정 불변(PASS 1.00·blocking 0).
 
 ## 3. 산출물
 
