@@ -96,6 +96,13 @@ func (g *QualityGate) scopeGoTestStep(ctx context.Context, step gateStep, dir st
 		res := selectAffected(affectedInput{Changed: changes.Files, ModuleRel: changes.ModulePrefix})
 		return step, strings.Join(res.Notes, "\n"), ""
 	}
+	// The graph comes from the working tree and the changed set from the index.
+	// A Go file that differs between them could make the graph omit an edge the
+	// committed code still has, so the scope is not trusted: run the full module.
+	if len(changes.UnstagedGo) > 0 {
+		return step, fmt.Sprintf("%sworking tree differs from the index in %s; the package graph would not describe the commit — falling back to the full module (go test %s)",
+			scopeNotePrefix, listNames(changes.UnstagedGo, 5), goAllPackagesPattern), ""
+	}
 	graph, err := q.graph(ctx, dir, g.config.GoBuildTags)
 	if err != nil {
 		return fallback("package-graph query", err)
@@ -107,6 +114,14 @@ func (g *QualityGate) scopeGoTestStep(ctx context.Context, step gateStep, dir st
 		return step, notes, res.SkipReason
 	}
 	return withScopedPackages(step, res.Run), notes, ""
+}
+
+// listNames renders up to limit names, with a count of the rest.
+func listNames(names []string, limit int) string {
+	if len(names) <= limit {
+		return strings.Join(names, ", ")
+	}
+	return fmt.Sprintf("%s and %d more", strings.Join(names[:limit], ", "), len(names)-limit)
 }
 
 // withScopedPackages replaces the all-packages pattern of a Go test step with

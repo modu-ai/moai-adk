@@ -122,14 +122,16 @@ func selectAffected(in affectedInput) affectedResult {
 			continue // outside this toolchain's module root
 		}
 		inModule++
-		ip, ok := owners.owner(rel)
-		if !ok {
+		ips := owners.owner(rel)
+		if len(ips) == 0 {
 			unowned = append(unowned, p)
 			continue
 		}
-		touched[ip] = true
-		if !isTestOnlyPath(rel) {
-			source[ip] = true
+		for _, ip := range ips {
+			touched[ip] = true
+			if !isTestOnlyPath(rel) {
+				source[ip] = true
+			}
 		}
 	}
 
@@ -216,15 +218,23 @@ func isTestOnlyPath(rel string) bool {
 // scopeOwners resolves the owning package of a changed file (REQ-PAS-003).
 type scopeOwners struct {
 	g        moduleGraph
-	embedded map[string]string // module-relative embedded file -> owning import path
+	embedded map[string][]string // module-relative embedded file -> owning import paths, sorted
 }
 
+// newScopeOwners indexes the embedded files. A file may be embedded by several
+// packages (a root package and a subpackage can name the same asset); every one
+// of them owns it, so none is dropped from the selection (sync audit F3).
 func newScopeOwners(g moduleGraph) scopeOwners {
-	o := scopeOwners{g: g, embedded: map[string]string{}}
+	o := scopeOwners{g: g, embedded: map[string][]string{}}
 	for ip, p := range g.Packages {
 		for _, f := range p.EmbedFiles {
-			o.embedded[f] = ip
+			if !slices.Contains(o.embedded[f], ip) {
+				o.embedded[f] = append(o.embedded[f], ip)
+			}
 		}
+	}
+	for f := range o.embedded {
+		slices.Sort(o.embedded[f])
 	}
 	return o
 }
@@ -238,30 +248,30 @@ func (o scopeOwners) importPathOf(dir string) string {
 	return o.g.ModulePath + "/" + dir
 }
 
-// owner decides the owning import path of a module-relative changed file, in
+// owner decides the owning import paths of a module-relative changed file, in
 // the REQ-PAS-003 order: (1) a path under a testdata directory belongs to the
 // package that directory sits in; (2) a Go source file of any build
 // configuration belongs to its directory's package; (3) any other file belongs
-// to the package whose embedded set holds it, else to the nearest ancestor
-// directory that is a package.
-func (o scopeOwners) owner(rel string) (string, bool) {
+// to every package whose embedded set holds it, else to the nearest ancestor
+// directory that is a package. An empty result means the file is owned by none.
+func (o scopeOwners) owner(rel string) []string {
 	segs := strings.Split(rel, "/")
 	if i := hasTestdataDir(segs); i >= 0 {
-		return o.importPathOf(strings.Join(segs[:i], "/")), true
+		return []string{o.importPathOf(strings.Join(segs[:i], "/"))}
 	}
 	if strings.HasSuffix(rel, ".go") {
-		return o.importPathOf(path.Dir(rel)), true
+		return []string{o.importPathOf(path.Dir(rel))}
 	}
-	if ip, ok := o.embedded[rel]; ok {
-		return ip, true
+	if ips, ok := o.embedded[rel]; ok {
+		return ips
 	}
 	for d := path.Dir(rel); ; d = path.Dir(d) {
 		ip := o.importPathOf(d)
 		if _, ok := o.g.Packages[ip]; ok {
-			return ip, true
+			return []string{ip}
 		}
 		if d == "." {
-			return "", false
+			return nil
 		}
 	}
 }

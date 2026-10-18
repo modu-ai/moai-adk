@@ -15,6 +15,7 @@ import (
 	"os/exec"
 	"path"
 	"path/filepath"
+	"slices"
 	"strings"
 )
 
@@ -96,17 +97,42 @@ func queryCommitChanges(ctx context.Context, dir string) (commitChanges, error) 
 	if err != nil {
 		return commitChanges{}, err
 	}
-	out, err := runScopeQuery(ctx, dir, env, "git", "diff", "--cached", "--name-only", "--no-renames", "-z")
+	// `-c diff.relative=false` makes both queries immune to the user's
+	// diff.relative setting, which would turn names cwd-relative in a nested
+	// module (sync audit F1). The -c form works on every git; --no-relative needs 2.28.
+	out, err := runScopeQuery(ctx, dir, env, "git", "-c", "diff.relative=false",
+		"diff", "--cached", "--name-only", "--no-renames", "-z")
 	if err != nil {
 		return commitChanges{}, err
 	}
 	ch := commitChanges{ModulePrefix: strings.TrimSuffix(strings.TrimSpace(string(prefix)), "/")}
-	for _, name := range strings.Split(string(out), "\x00") {
-		if name != "" {
-			ch.Files = append(ch.Files, name)
+	ch.Files = splitNul(out)
+
+	// The package graph is read from the working tree, the changed set from the
+	// index: a Go file that differs between the two makes the graph describe
+	// something other than the commit (sync audit F2).
+	unstaged, err := runScopeQuery(ctx, dir, env, "git", "-c", "diff.relative=false",
+		"diff", "--name-only", "--no-renames", "-z")
+	if err != nil {
+		return commitChanges{}, err
+	}
+	for _, name := range splitNul(unstaged) {
+		if strings.HasSuffix(name, ".go") || slices.Contains(widenBaseNames, path.Base(name)) {
+			ch.UnstagedGo = append(ch.UnstagedGo, name)
 		}
 	}
 	return ch, nil
+}
+
+// splitNul splits NUL-separated git output into its non-empty names.
+func splitNul(out []byte) []string {
+	var names []string
+	for _, name := range strings.Split(string(out), "\x00") {
+		if name != "" {
+			names = append(names, name)
+		}
+	}
+	return names
 }
 
 // goListPackage is the slice of `go list -json` the graph needs.
