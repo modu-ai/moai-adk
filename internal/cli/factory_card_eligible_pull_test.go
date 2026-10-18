@@ -21,28 +21,50 @@ import (
 
 	"github.com/modu-ai/moai-adk/internal/factory"
 	"github.com/modu-ai/moai-adk/internal/homestate"
+	"gopkg.in/yaml.v3"
 )
 
-// cepSelfDispatchYAML writes the fixture's workflow.yaml with the
-// self-dispatch flag set. An absent file (the default-off deployment) is the
-// OFF case and writes nothing.
+// cepSelfDispatchYAML sets workflow.factory.self_dispatch in the fixture's
+// workflow.yaml, MERGING into any existing file (sync-audit round-3 F10): a
+// plain overwrite silently disabled sibling keys other fixtures had already
+// written — the quota fixtures' `quota_gate.enabled: true` (qasEnableGate) —
+// killing those cells' quota subject while they stayed green. The merge is a
+// generic map round-trip: every key the fixture (or a real deployment) wrote
+// survives; only the factory block is set.
 func cepSelfDispatchYAML(t *testing.T, root string, on bool) {
 	t.Helper()
 	dir := filepath.Join(root, ".moai", "config", "sections")
 	if err := os.MkdirAll(dir, 0o755); err != nil {
 		t.Fatalf("mkdir config sections: %v", err)
 	}
-	body := "workflow:\n    factory:\n        self_dispatch: " + cepBoolWord(on) + "\n"
-	if err := os.WriteFile(filepath.Join(dir, "workflow.yaml"), []byte(body), 0o644); err != nil {
+	path := filepath.Join(dir, "workflow.yaml")
+	var doc map[string]interface{}
+	if raw, err := os.ReadFile(path); err == nil && len(raw) > 0 {
+		if err := yaml.Unmarshal(raw, &doc); err != nil {
+			t.Fatalf("merge self_dispatch into %s: parse existing yaml: %v", path, err)
+		}
+	}
+	if doc == nil {
+		doc = map[string]interface{}{}
+	}
+	workflow, _ := doc["workflow"].(map[string]interface{})
+	if workflow == nil {
+		workflow = map[string]interface{}{}
+		doc["workflow"] = workflow
+	}
+	factory, _ := workflow["factory"].(map[string]interface{})
+	if factory == nil {
+		factory = map[string]interface{}{}
+		workflow["factory"] = factory
+	}
+	factory["self_dispatch"] = on
+	out, err := yaml.Marshal(doc)
+	if err != nil {
+		t.Fatalf("merge self_dispatch into %s: encode: %v", path, err)
+	}
+	if err := os.WriteFile(path, out, 0o644); err != nil {
 		t.Fatalf("write workflow.yaml: %v", err)
 	}
-}
-
-func cepBoolWord(b bool) string {
-	if b {
-		return "true"
-	}
-	return "false"
 }
 
 // cepRefusedLines picks the `refused <token>: <detail>` lines out of a
