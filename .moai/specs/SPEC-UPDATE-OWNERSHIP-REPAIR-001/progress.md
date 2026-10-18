@@ -3172,6 +3172,51 @@ rc=1
 
 붉은 이유: 올바른 이유다. 세 절 모두 30 초 한정 대기 안에 반환하지 못했다 (판정 함수 두 절은 대응물 FIFO 의 읽기에서, 걷기 절은 같은 읽기에서 막힘). 원문의 임시 경로 접미사는 가독성을 위해 `<tmp>` 로 줄였다 (정규식 치환 한 줄; 나머지 바이트는 저장 파일과 같다).
 
+#### F2 — 같은 시계 초의 두 실행이 `manifest.prior.json` 을 덮어쓴다 (REQ-OWR-017)
+
+**조사 (관측한 것).**
+
+1. **이름 규약과 읽는 쪽.** `defs.BackupTimestampFormat = "20060102_150405"` 는 초 단위다. `internal/cli/update/backup/backup.go:249` 의 `configBackupName = ^[0-9]{8}_[0-9]{6}$` 는 실행 표지(`.moai-run`)가 **없는** 디렉터리가 한 실행으로 세어지는 조건이다. `collectBackupRuns` 는 표지가 읽히면 이름 검사 없이 표지의 실행 id 로 묶고, 표지가 없고 이름도 안 맞으면 "세지도 지우지도 않는다" 이며 `scanUnmanagedConfigEntries` (retention_prune.go:322) 가 비관리 항목으로 보고만 한다. 그래서 접미사가 붙은 형제 디렉터리는 **같은 실행 표지를 가질 때만** 실행 수를 늘리지 않는다 (보존 정책 불변). `readPriorGenerations` (update_prior_manifest.go) 는 이름 정규식 없이 `.moai-backups` 의 모든 하위 디렉터리를 이름 역순으로 읽는다 — 고정 폭 접미사 `-NN` 이면 이름 순서가 곧 시간 순서다 (`-9` 대 `-10` 의 사전식 역전을 피하려고 두 자리 고정).
+2. **이름을 해석하는 다른 곳.** `internal/core/project/validator.go:394` (매니페스트 치유) 는 `.moai-backups` 를 읽어 디렉터리 안의 `manifest.json` 만 보며 이름 형식을 해석하지 않는다. `clean_home.go:303` 은 다른 뿌리(`backups/removed-*`)다. 저장소 전체에서 `BackupTimestampFormat` 을 쓰는 곳은 `backup.go`, `update_disk_backup.go`, `deploy.go` (사전 정리), `reconcile.go`, `validator.go` 이고 모두 쓰는 쪽이다. 같은 초의 같은 이름 디렉터리를 여러 쓰는 쪽이 공유하는 것은 `deploy.go` 의 `pre-clean` 하위 디렉터리 등 이미 있는 관행이다.
+3. **이 실행의 설정 백업 경로 자체도 같은 초에 공유되는가: 예.** `BackupMoaiConfig` 는 `MkdirAll(<ts>)` 이다. 측정 (덮어쓰기 탐침, 트리에 쓰지 않음; 저장 파일 `f2-probe.txt`): 같은 초에 두 번 부르면 반환 경로가 같고 (`same=true` 3회 중 3회), 설정 파일은 나중 실행의 것으로 덮이며, `WriteRunMarker` 는 나중 실행 id 로 표지를 바꾼다. 즉 설정 백업 쪽의 같은 초 공유는 이 카드 이전부터의 동작이고 이 수정은 건드리지 않는다. 이 카드가 만든 `manifest.prior.json` 만 이전 실행의 사본을 잃는 새 손실이었다.
+4. **호출 흐름.** `update_template_sync.go:825` 는 `preservePriorManifest(projectRoot, configBackupPath, startManifest)` 가 돌려준 디렉터리를 `migrationRun.runBackupDir` 로 넘기고, `removed-assets/` 와 `ps.exclude` (현재 실행의 사본은 이전 세대로 읽지 않음) 가 그 디렉터리를 쓴다. 복원 쪽 걷기(`RestoreFromBackupDir`)는 `configBackupPath` 만 원본으로 쓰므로 형제 디렉터리는 복원 원본이 되지 않는다.
+
+**선택한 가장 작은 안전한 수정.** `preservePriorManifest` 안에서, 의도한 디렉터리에 이미 `manifest.prior.json` 이 있으면 (한 실행은 한 번만 쓰므로 있다면 이전 실행의 것이다) 같은 부모 아래 `<이름>-02` ~ `-99` 중 `os.Mkdir` 이 성공하는 첫 이름의 새 디렉터리로 옮긴다. `MkdirAll` 이 아니므로 이미 있는 디렉터리 (다른 곳이 만든 것 포함)는 쓰지 않는다. 의도한 디렉터리의 `.moai-run` 표지가 있으면 그대로 복사해 보존 정책상 같은 실행으로 센다. 이름 형식을 파싱하는 다른 코드는 바꾸지 않았고 보존 정책에도 손대지 않았다. 이름을 못 얻으면 (99 개 소진, `Mkdir` 이 `EEXIST` 가 아닌 오류) `priorManifestFailed` — 그 실행은 파일을 하나도 지우지 않는다 (REQ-OWR-016).
+
+**A** `ed58e64c3c` — `internal/cli/update_prior_manifest_collision_test.go` (`TestPriorManifestOfAnEarlierRunSurvivesALaterRun`, 시계를 읽지 않음: 같은 초 충돌은 같은 설정 백업 경로를 두 번 넘기는 것으로 직접 진술) + `migrate_ownership_recovery_test.go` 의 공유 디렉터리 모사 가지 (`SharedRunDirectory`: 앞 실행 내용을 뒤 실행 디렉터리에 합치는 모사로 손실을 기대값으로 단언했음)를 **무대기 연속 실행 가지** (`NoWaitConsecutiveRuns`)로 교체: 기다리지 않고 다음 실행을 시작하며 같은 초에 들든 아니든 단언은 구별 가지와 같다 (손실 기대 `keptDirs` 와 완화된 `strictRows` 제외 삭제).
+
+RED-now (명령 · 트리 SHA `ed58e64c3c` · 종료 코드 · 원문; 임시 경로 접두사만 `<tmp>` 로 줄임):
+
+```text
+TMPDIR=/private/tmp/own-fixture-d1 go test ./internal/cli/ -run '^TestPriorManifestOfAnEarlierRunSurvivesALaterRun$' -count=1 -v
+=== RUN   TestPriorManifestOfAnEarlierRunSurvivesALaterRun
+=== RUN   TestPriorManifestOfAnEarlierRunSurvivesALaterRun/TwoRunsSharingTheConfigBackupPath
+    update_prior_manifest_collision_test.go:87: both runs wrote into <tmp>/.moai-backups/20261018_153045: the later copy replaced the earlier one
+=== RUN   TestPriorManifestOfAnEarlierRunSurvivesALaterRun/ThreeRunsKeepNameOrderEqualToAgeOrderAndTheReaderSeesEveryEarlierOne
+    update_prior_manifest_collision_test.go:112: directory names [20261018_153045 20261018_153045 20261018_153045] are not strictly increasing with age
+    update_prior_manifest_collision_test.go:122: the reader saw [] (newest first), want [two one]
+=== RUN   TestPriorManifestOfAnEarlierRunSurvivesALaterRun/ADirectoryTheRunDidNotCreateIsNeverWrittenInto
+=== RUN   TestPriorManifestOfAnEarlierRunSurvivesALaterRun/NoFreeNameFailsClosedAndOverwritesNothing
+    update_prior_manifest_collision_test.go:152: got ("<tmp>/.moai-backups/20261018_153045", 1, <nil>), want a failed state with an error: the run must remove nothing
+    update_prior_manifest_collision_test.go:155: the earlier run's copy changed: {"files":{"two":{"provenance":"template_managed","template_hash":"sha256:two"}}}
+=== RUN   TestPriorManifestOfAnEarlierRunSurvivesALaterRun/RunsWithoutAConfigBackupPathNeverShareACopy
+    update_prior_manifest_collision_test.go:167: runs share a copy: <tmp>/.moai-backups/20261018_221827 <tmp>/.moai-backups/20261018_221827 <tmp>/.moai-backups/20261018_221827
+=== RUN   TestPriorManifestOfAnEarlierRunSurvivesALaterRun/RetentionStillCountsTheSiblingWithItsRun
+--- FAIL: TestPriorManifestOfAnEarlierRunSurvivesALaterRun (0.10s)
+    --- FAIL: TestPriorManifestOfAnEarlierRunSurvivesALaterRun/TwoRunsSharingTheConfigBackupPath (0.03s)
+    --- FAIL: TestPriorManifestOfAnEarlierRunSurvivesALaterRun/ThreeRunsKeepNameOrderEqualToAgeOrderAndTheReaderSeesEveryEarlierOne (0.02s)
+    --- PASS: TestPriorManifestOfAnEarlierRunSurvivesALaterRun/ADirectoryTheRunDidNotCreateIsNeverWrittenInto (0.01s)
+    --- FAIL: TestPriorManifestOfAnEarlierRunSurvivesALaterRun/NoFreeNameFailsClosedAndOverwritesNothing (0.02s)
+    --- FAIL: TestPriorManifestOfAnEarlierRunSurvivesALaterRun/RunsWithoutAConfigBackupPathNeverShareACopy (0.01s)
+    --- PASS: TestPriorManifestOfAnEarlierRunSurvivesALaterRun/RetentionStillCountsTheSiblingWithItsRun (0.01s)
+FAIL
+FAIL	github.com/modu-ai/moai-adk/internal/cli	1.451s
+FAIL
+rc=1
+```
+
+붉은 이유: 올바른 이유다. 같은 설정 백업 경로를 두 번 넘기면 두 실행이 같은 디렉터리에 썼고 (`both runs wrote into ... the later copy replaced the earlier one`), 첫 사본은 둘째 것으로 바뀌었다 (`the earlier run's copy changed: ... "two"`), 세 번째까지 같은 이름이며 (`names ... not strictly increasing`), 읽는 쪽은 이전 세대를 하나도 보지 못한다 (`the reader saw []`). 99 개 소진 가지는 실패해야 할 때 성공으로 덮어썼다. `ADirectoryTheRunDidNotCreateIsNeverWrittenInto` 와 `RetentionStillCountsTheSiblingWithItsRun` 은 수정 전에도 통과하는 설계 가드다 (수정 뒤의 성질을 고정한다; RED 가 아니다). `RunsWithoutAConfigBackupPathNeverShareACopy` 는 세 호출이 한 초 안에 들어간 이 실행에서 붉었고, 다른 초에 들면 초록일 수 있는 시계 의존 RED 라서 결정적 RED 증거로는 앞의 절들을 쓴다.
+
 ## §E.3 Run-phase Audit-Ready Signal
 
 ```yaml
