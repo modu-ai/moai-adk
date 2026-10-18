@@ -169,7 +169,7 @@ unchanged emitter):
 | AC-AC4-009 | summary printed unconditionally | AC-AC4-008 hand-edit failure |
 | AC-AC4-003 | C3 derived from C2 so a claude-only block leaks | `c3_rendered_without_c2_bytes` and the block subtests |
 | AC-AC4-011 | comparison replaced by `if false` or self-comparison | `injected_mismatch_is_red`; the name list |
-| AC-AC4-012 | no-op, whole-line deletion of line 101 or 109, or an unrelated edit | simulated in a scratch copy: a no-op and a deletion both fail (a) (old phrases present, or source path absent); (b) numstat, (c) exact pairs, (e) whole-line comparison |
+| AC-AC4-012 | no-op, whole-line deletion of line 101 or 109, or an unrelated edit | simulated in a scratch copy: a no-op fails the permanent check (a) (old phrases present); deletion of a whole new line (for example new line 101 or 109) is not caught by (a) and is closed by the one-time M2 cells (b) numstat, (c) exact pairs and (e) whole-line comparison |
 
 Not covered, said once: the order "M0 before any change" is confirmed only by AC-AC4-005 at M1 (M0
 changes nothing but the baseline file and is an ancestor of M1); the SPEC claims nothing stronger
