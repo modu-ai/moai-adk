@@ -343,8 +343,8 @@ audit_ready: true
 ## §E.4 Sync-phase Audit-Ready Signal
 
 - sync_complete_at: 2026-10-18T00:18:54Z
-- sync_commit_sha: pending-backfill
-- sync_commit_sha_note: the sync commit that carries this block cannot cite its own hash, so the canonical placeholder stands until a following commit backfills it; run HEAD at sync start is `d45a13131`
+- sync_commit_sha: 1dfeadd805adf207b06d0f6b681f8a0a8557c25d
+- sync_commit_sha_note: backfilled in the commit after the sync commit (a commit cannot cite its own hash); the sync commit carried the pending-backfill placeholder; run HEAD at sync start was `d45a13131`
 - sync_status: audit-ready; documentation synced, SPEC status moved in-progress -> implemented -> completed on the single sync commit; independent sync audit and repository-wide build/test verdicts pending
 - b12_self_test_a: `grep -c 'SPEC-INTEGRATION-STALE-BASE-001' CHANGELOG.md` printed `0` before emission (exit 1, no prior entry), and `1` after
 - b12_self_test_b: ac_source=`.moai/specs/SPEC-INTEGRATION-STALE-BASE-001/acceptance.md`, tier=M (resolved, non-empty); the live-identifier counter printed `16` (stderr `live=16 excluded=0 ambiguous=0`, exit 0); the CHANGELOG entry states `AC-ISB-001..016` (16 criteria). The 16 requirement lines `- REQ-ISB-NNN` in spec.md match the entry's `REQ-ISB-001..016`
