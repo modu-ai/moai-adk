@@ -18,6 +18,7 @@ Revision 0.1.0, authored at plan phase for card t1834 (Tier M). The decision gat
 | Q2 | Whether this repository's live `workflow.yaml` opts the gate in (`enabled: true`) | FOUNDER | implementation-level | DEFAULT-APPLIED 2026-10-17T14:50Z lane / manager-spec |
 | Q3 | Whether queue promotion also runs the gate (deferred scope question; non-blocking) | FOUNDER | product-level | not required for Kickoff: promotion gating is Out of Scope (spec.md §C); a widening answer would be a new SPEC |
 | Q4 | Order against card t1847 on the shared verbs `acquire` and `factory complete` (scheduling; non-blocking) | FOUNDER | implementation-level | not required for Kickoff: the SPEC is self-consistent in either order |
+| Q5 | Widening the run-phase allow-list for the sync-audit iter8/iter9 repairs and bringing the SPEC wording in line (added 2026-10-19; plan.md §C, spec.md HISTORY 0.1.1) | FOUNDER | implementation-level | leader ruling `d-20261018T163916Z-ffc2` cited by id (decision board; digest not pinned here) |
 
 ## Rows
 
@@ -57,7 +58,16 @@ Authority anchor: none found. t1846's SPEC records the same kind of request for 
 Why unresolved: ordering is a leader scheduling decision; this plan only keeps its edits to one added call at each verb so that either order merges cleanly.
 Operator verdict: not required for Kickoff (scheduling matter for the leader)
 
+### Q5: Do the repairs forced by the sync audits (iter8 F2, iter9 G1/G2) stay in card t1834, with the allow-list widened and the SPEC wording amended?
+
+Label: FOUNDER
+Class: implementation-level
+Authority anchor: none verifiable in the committed tree. The decision is a decision-board ruling, `d-20261018T163916Z-ffc2`, relayed to this author by the orchestrator; no digest prefix and no verbatim board line was available, so the citation cannot be pinned and the row does not claim `DECIDED` (a board citation that cannot be pinned routes to `FOUNDER`).
+Why unresolved: a second route existed — move the three repairs (`internal/factory/integration_remeasure.go` with its gitenv test, `internal/cli/integration_remeasure.go`) into a follow-up card and leave this card's allow-list at the plan-time 15 paths — and this author cannot show from a committed source that the ruling excludes it. What the amendment records is the ruling as relayed: the repairs stay in t1834, the allow-list gains those three paths plus the sync-phase `CHANGELOG.md`, and requirements REQ-ISB-004, -005, -006 and -015 are amended in place without a new REQ or AC identifier (Tier M budget of 16 held; the Tier M file-count guidance of 5 to 15 is exceeded at 19 paths and the tier is left unchanged, plan.md A.1).
+Operator verdict: leader ruling `d-20261018T163916Z-ffc2` (decision board), recorded by id on 2026-10-19 as relayed by the orchestrator; not a `DEFAULT-APPLIED` entry and not verified against the board by this author.
+
 ## Routing
 
 1. **No row blocks the Kickoff.** Q3 is a deferred scope question and Q4 a scheduling matter; the SPEC is self-consistent whichever way either is answered, and a widening answer to Q3 would be a new SPEC.
 2. **DEFAULT-APPLIED at plan close:** Q1 and Q2, both implementation-level with a ranked Default, so the audited hash covers them.
+3. **Q5 was added after plan close** (2026-10-19, amendment 0.1.1) and is outside the audited plan hash; it records a run-phase scope widening, not a plan-time decision, and blocks nothing.
