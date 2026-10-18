@@ -423,6 +423,122 @@ func TestIndirect_OnlyGitIsASink(t *testing.T) {
 	wantFlagged(t, indirectScan(t, prodFor("exec.CommandContext(context.Background(), \"git\", \"config\", \"--global\")"), map[string]string{"x_test.go": test}), test, "TestRuns")
 }
 
+// nHelperSrc holds the helpers the round-3 shapes call. isolate swaps both
+// seams; putAdd and putGet store their argument in one seam; swap2 reads the
+// fields of its FIRST seamArgs parameter only.
+const nHelperSrc = `package fx
+
+import "testing"
+
+func isolate() {
+	safeDirAdd = func(string) error { return nil }
+	globalGet = func(string) string { return "" }
+}
+
+func putAdd(f func(string) error) { safeDirAdd = f }
+
+func putGet(f func(string) string) { globalGet = f }
+
+func swap2(t *testing.T, a seamArgs, b seamArgs) {
+	if a.safeDirAdd != nil {
+		safeDirAdd = a.safeDirAdd
+	}
+	if a.globalGet != nil {
+		globalGet = a.globalGet
+	}
+}
+`
+
+const (
+	stubAdd = "func(string) error { return nil }"
+	stubGet = "func(string) string { return \"\" }"
+	bothLit = "seamArgs{safeDirAdd: " + stubAdd + ", globalGet: " + stubGet + "}"
+)
+
+// nScan scans restoreFixture(body) next to the round-3 helpers.
+func nScan(t *testing.T, body string) []Violation {
+	t.Helper()
+	return indirectScan(t, indirectProd, map[string]string{
+		"x_test.go": restoreFixture(body), "helper_test.go": swapArgsHelperSrc, "n_helper_test.go": nHelperSrc,
+	})
+}
+
+// nCase runs one body and expects it flagged (want true) or clean.
+func nCase(t *testing.T, body string, flagged bool) {
+	t.Helper()
+	vs := nScan(t, body)
+	if flagged {
+		wantFlagged(t, vs, restoreFixture(body), "TestRestoreShape")
+	} else if len(vs) != 0 {
+		t.Fatalf("violations = %+v; want none for body:\n%s", vs, body)
+	}
+}
+
+// TestIndirect_HelperMustBeCalledToIsolate (N1): a helper that is only
+// referenced, deferred, wrapped in a closure nobody calls, or sits under
+// `if false` isolates nothing; calling it does.
+func TestIndirect_HelperMustBeCalledToIsolate(t *testing.T) {
+	swaps := "safeDirAdd = " + stubAdd + "\n\tglobalGet = " + stubGet
+	for name, body := range map[string]string{
+		"dead_reference":      "\t_ = isolate",
+		"deferred_call":       "\tdefer isolate()",
+		"go_statement":        "\tgo isolate()",
+		"closure_not_invoked": "\t_ = func() {\n\t" + swaps + "\n\t}",
+		"if_false":            "\tif false {\n\t" + swaps + "\n\t}",
+	} {
+		t.Run(name, func(t *testing.T) { nCase(t, body, true) })
+	}
+	for name, body := range map[string]string{
+		"plain_call":         "\tisolate()",
+		"closure_invoked":    "\tfunc() {\n\t" + swaps + "\n\t}()",
+		"inside_subtest_run": "\tt.Run(\"x\", func(t *testing.T) {\n\t" + swaps + "\n\t})",
+	} {
+		t.Run(name, func(t *testing.T) { nCase(t, body, false) })
+	}
+}
+
+// TestIndirect_RestoreChainsAreFollowed (N2): an alias chain back to the
+// captured original, or a restore routed through a helper, replaces nothing.
+func TestIndirect_RestoreChainsAreFollowed(t *testing.T) {
+	cap := "\toldAdd, oldGet := safeDirAdd, globalGet\n"
+	for name, body := range map[string]string{
+		"alias_chain":       cap + "\taAdd, aGet := oldAdd, oldGet\n\tbAdd, bGet := aAdd, aGet\n\tsafeDirAdd = bAdd\n\tglobalGet = bGet",
+		"helper_with_old":   cap + "\tputAdd(oldAdd)\n\tputGet(oldGet)",
+		"helper_with_seam":  "\tputAdd(safeDirAdd)\n\tputGet(globalGet)",
+		"helper_with_alias": cap + "\tx, y := oldAdd, oldGet\n\tputAdd(x)\n\tputGet(y)",
+	} {
+		t.Run(name, func(t *testing.T) { nCase(t, body, true) })
+	}
+	nCase(t, "\tputAdd("+stubAdd+")\n\tputGet("+stubGet+")", false)
+	nCase(t, cap+"\tx := "+stubAdd+"\n\ty := "+stubGet+"\n\tsafeDirAdd = x\n\tglobalGet = y", false)
+}
+
+// TestIndirect_FieldIsTiedToTheArgumentPosition (N3): the literal must be the
+// argument at the position of the parameter the helper reads.
+func TestIndirect_FieldIsTiedToTheArgumentPosition(t *testing.T) {
+	nCase(t, "\tswap2(t, seamArgs{}, "+bothLit+")", true)
+	nCase(t, "\tswap2(t, "+bothLit+", seamArgs{})", false)
+}
+
+// TestIndirect_LocalsResolveToEveryAssignment (N4): a local reassigned to a
+// literal without the field, or built from the captured original, is not a
+// replacement.
+func TestIndirect_LocalsResolveToEveryAssignment(t *testing.T) {
+	cases := map[string]string{
+		"reassigned_empty": "\ts := " + bothLit + "\n\ts = seamArgs{}\n\tswapSeams(t, s)",
+		"passes_original":  "\toldAdd := safeDirAdd\n\tswapSeams(t, seamArgs{safeDirAdd: oldAdd, globalGet: " + stubGet + "})",
+		"passes_alias":     "\toldAdd := safeDirAdd\n\ta := oldAdd\n\tswapSeams(t, seamArgs{safeDirAdd: a, globalGet: " + stubGet + "})",
+		"later_overwrite":  "\ts := seamArgs{}\n\ts = " + bothLit + "\n\tswapSeams(t, s)",
+	}
+	for name, body := range cases {
+		t.Run(name, func(t *testing.T) { nCase(t, body, true) })
+	}
+	nCase(t, "\ts := "+bothLit+"\n\tswapSeams(t, s)", false)
+	nCase(t, "\ts := "+bothLit+"\n\ts = "+bothLit+"\n\tswapSeams(t, s)", false)
+	// Every assignment must carry the field, so a partial first literal is refused.
+	nCase(t, "\ts := seamArgs{safeDirAdd: "+stubAdd+"}\n\ts = "+bothLit+"\n\tswapSeams(t, s)", true)
+}
+
 // dispatchProd builds a command tree of n handlers; the first one reaches the
 // global git config sink and the others do nothing.
 func dispatchProd(n int) string {

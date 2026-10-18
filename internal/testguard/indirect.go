@@ -24,22 +24,59 @@ import (
 //     import-qualified variable. A reference to a local value that shadows a
 //     node name is not an edge.
 //   - A sink is a function or variable initializer that holds a call to
-//     exec.Command or exec.CommandContext whose literal arguments include
+//     exec.Command or exec.CommandContext whose program is the string literal
+//     "git" (or a path whose base is git) and whose literal arguments include
 //     "config" and "--global".
-//   - A seam is a variable node. A test isolates a seam when it, or a function
-//     it reaches in a test file, assigns it a replacement: a restore inside a
-//     Cleanup closure does not count, and an assignment from a parameter field
-//     (seam = s.field) counts only when reachable test code sets that field to
-//     a non-nil value in a composite literal. RedirectHome, or setting
-//     GIT_CONFIG_GLOBAL, isolates every seam.
+//   - A seam is a variable node. A test isolates a seam only by an executed
+//     replacement: a call statement, on the path from the test function, to a
+//     test-file function that assigns the seam a replacement value (a func
+//     literal, a function, or a call result that does not use the seam's own
+//     value), or to a helper that stores a parameter, or a field of a parameter
+//     struct, in the seam while the call passes a replacement at that argument
+//     position. RedirectHome, or setting GIT_CONFIG_GLOBAL, isolates every seam.
+//   - Executed means run before the sink: statements outside defer, go, a
+//     Cleanup argument, a closure that is not invoked on the spot or passed to
+//     Run or called through a local variable that holds it, and an `if false`
+//     body. A restore is not a replacement: the seam
+//     itself, a local whose every assignment derives from the seam (through any
+//     chain of locals or a call that takes it), or a field read of a local.
 //
 // A top-level Test, Benchmark or Fuzz function that reaches a sink along a path
 // with no isolated seam is reported once, on its declaration line, unless the
-// line or the line above carries `home-guard:allow <reason>`. The graph is
-// conservative about what it follows (every name match is an edge) and blind to
-// what it cannot name: method calls, calls through struct fields and
-// interfaces, sinks in another package that are not reached through an
-// assigned variable, and anything behind a dispatch table (dispatchFanOut).
+// line or the line above carries `home-guard:allow <reason>`.
+//
+// Limits. The check is conservative about what it follows (every name match is
+// an edge) and blind to the following; a test that depends on one is reported
+// or passed as stated, and `home-guard:allow <reason>` is the escape hatch for
+// a false report:
+//   - Method calls, and calls through struct fields, interfaces and
+//     function-typed parameters, are neither followed nor credited.
+//   - A helper reached by a qualified selector (pkg.Helper) or a method is
+//     neither followed nor credited; only a variable of another package that
+//     this package assigns becomes a node.
+//   - Edges out of a node that references more than dispatchFanOut (40) nodes
+//     are not followed, so a sink behind a larger dispatch table is not
+//     reported, and a helper reached only through such a node is not credited.
+//   - The program must be a string literal: a const or var holding "git" (or a
+//     call result) is not a sink. No production sink is affected, because all
+//     four use the literal "git".
+//   - "config" and "--global" must be string-literal arguments; a flag built by
+//     concatenation, a const, or a slice spread is not seen.
+//   - Writes to the global git config by other routes (writing .gitconfig
+//     directly, an environment other than GIT_CONFIG_GLOBAL) are not covered.
+//   - Isolation is credited from calls on the executed path only; a helper
+//     stored in a variable and called through it, a helper that forwards its
+//     parameter to a second helper, and a field assigned on a local struct
+//     (a.f = stub) are not credited, so the test is reported.
+//   - Order inside a function is not modeled: a swap or RedirectHome written
+//     after the call that reaches the sink still isolates, and any condition
+//     other than the literal false is treated as possibly true.
+//   - A local is judged by every assignment to it in its function, whatever the
+//     order; a local with any assignment that is not a replacement is not one.
+//   - All .go files of a directory form one package: build tags are ignored and
+//     same-named identifiers of package x and x_test merge into one node.
+//   - Only the directory's own code is analysed; a sink in another package is
+//     seen only through a variable this package assigns.
 
 // dispatchFanOut is the number of nodes above which a node is read as a dispatch
 // table: a command tree or a server that registers many handlers. One test runs
@@ -52,19 +89,32 @@ import (
 // repository.
 const dispatchFanOut = 40
 
+// effect is what a helper does to a seam when called: it stores its idx-th
+// parameter (field "") or a field of it in seam.
+type effect struct {
+	seam  string
+	idx   int
+	field string
+}
+
+// callSite is an executed call to the node fn; ok decides whether the
+// arguments of the call satisfy an effect of fn.
+type callSite struct {
+	fn string
+	ok func(effect) bool
+}
+
 // gnode is one node of the name graph.
 type gnode struct {
-	refs    map[string]bool
-	assigns map[string]bool // names assigned a replacement in this body; test files only
-	// guarded maps a seam to the parameter fields it is assigned from
-	// (seam = s.field); calls maps a called function name to the struct fields
-	// set to a non-nil value in a composite literal that is an argument of that
-	// call. Test files only.
-	guarded  map[string]map[string]bool
-	calls    map[string]map[string]bool
-	sink     bool
-	varLike  bool
-	isolates bool // test files only
+	refs map[string]bool
+	// Test-file facts, taken from the executed path of the body only.
+	execCalls map[string]bool // functions called
+	repl      map[string]bool // seams assigned a replacement
+	effects   []effect        // seams stored from a parameter
+	sites     []callSite      // calls made, with their arguments
+	isolates  bool            // RedirectHome or GIT_CONFIG_GLOBAL
+	sink      bool
+	varLike   bool
 }
 
 type pkgGraph struct{ nodes map[string]*gnode }
@@ -72,7 +122,7 @@ type pkgGraph struct{ nodes map[string]*gnode }
 func (g *pkgGraph) node(name string) *gnode {
 	n := g.nodes[name]
 	if n == nil {
-		n = &gnode{refs: map[string]bool{}, assigns: map[string]bool{}, guarded: map[string]map[string]bool{}, calls: map[string]map[string]bool{}}
+		n = &gnode{refs: map[string]bool{}, execCalls: map[string]bool{}, repl: map[string]bool{}}
 		g.nodes[name] = n
 	}
 	return n
@@ -193,34 +243,6 @@ func buildGraph(files map[string][]byte) (*pkgGraph, []testFunc, error) {
 		file := parsed[name]
 		isTest := strings.HasSuffix(name, "_test.go")
 		imports := importNames(file)
-		// cleanups holds the extent of every closure handed to a Cleanup call
-		// and of every closure a defer statement runs.
-		var cleanups [][2]token.Pos
-		ast.Inspect(file, func(n ast.Node) bool {
-			switch x := n.(type) {
-			case *ast.CallExpr:
-				if sel, ok := x.Fun.(*ast.SelectorExpr); ok && sel.Sel.Name == "Cleanup" {
-					for _, a := range x.Args {
-						if lit, ok := a.(*ast.FuncLit); ok {
-							cleanups = append(cleanups, [2]token.Pos{lit.Pos(), lit.End()})
-						}
-					}
-				}
-			case *ast.DeferStmt:
-				if lit, ok := x.Call.Fun.(*ast.FuncLit); ok {
-					cleanups = append(cleanups, [2]token.Pos{lit.Pos(), lit.End()})
-				}
-			}
-			return true
-		})
-		inCleanup := func(p token.Pos) bool {
-			for _, r := range cleanups {
-				if p >= r[0] && p < r[1] {
-					return true
-				}
-			}
-			return false
-		}
 		lines := strings.Split(string(files[name]), "\n")
 		markers := map[int]bool{}
 		for _, cg := range file.Comments {
@@ -230,8 +252,17 @@ func buildGraph(files map[string][]byte) (*pkgGraph, []testFunc, error) {
 				}
 			}
 		}
-		// fill walks root on behalf of owner. scope bounds the declaration that
-		// holds root, so an identifier resolved inside it is a local value.
+		qualified := func(x ast.Expr) bool {
+			id, ok := x.(*ast.Ident)
+			if !ok {
+				return false
+			}
+			_, imp := imports[id.Name]
+			return imp && id.Obj == nil
+		}
+		// fill walks root on behalf of owner and records the references and the
+		// sinks. scope bounds the declaration that holds root, so an identifier
+		// resolved inside it is a local value.
 		var fill func(owner *gnode, root, scope ast.Node)
 		fill = func(owner *gnode, root, scope ast.Node) {
 			local := func(id *ast.Ident) bool {
@@ -241,134 +272,17 @@ func buildGraph(files map[string][]byte) (*pkgGraph, []testFunc, error) {
 				d, ok := id.Obj.Decl.(ast.Node)
 				return ok && d.Pos() >= scope.Pos() && d.End() <= scope.End()
 			}
-			qualified := func(x ast.Expr) bool {
-				id, ok := x.(*ast.Ident)
-				if !ok {
-					return false
-				}
-				_, imp := imports[id.Name]
-				return imp && id.Obj == nil
-			}
-			// paramField names the field when assignment x stores a field of a
-			// local value (s.field), the shape of a helper that swaps a seam
-			// only for the fields its caller passes.
-			paramField := func(x *ast.AssignStmt, i int) string {
-				if len(x.Rhs) != len(x.Lhs) {
-					return ""
-				}
-				sel, ok := x.Rhs[i].(*ast.SelectorExpr)
-				if !ok {
-					return ""
-				}
-				if id, ok := sel.X.(*ast.Ident); ok && id.Obj != nil && local(id) {
-					return sel.Sel.Name
-				}
-				return ""
-			}
-			// restore reports whether storing rhs into seam puts back a value the
-			// seam already held: the seam itself, or a local captured from a
-			// package variable.
-			restore := func(seam string, rhs ast.Expr) bool {
-				id, ok := rhs.(*ast.Ident)
-				if !ok {
-					return false
-				}
-				if id.Name == seam {
-					return true
-				}
-				if id.Obj == nil || !local(id) {
-					return false
-				}
-				var lhs, vals []ast.Expr
-				switch d := id.Obj.Decl.(type) {
-				case *ast.AssignStmt:
-					lhs, vals = d.Lhs, d.Rhs
-				case *ast.ValueSpec:
-					for _, nm := range d.Names {
-						lhs = append(lhs, nm)
-					}
-					vals = d.Values
-				}
-				if len(lhs) != len(vals) {
-					return false
-				}
-				for j, l := range lhs {
-					if li, ok := l.(*ast.Ident); ok && li.Obj == id.Obj {
-						src, ok := vals[j].(*ast.Ident)
-						return ok && pkgVars[src.Name]
-					}
-				}
-				return false
-			}
-			// literalFields returns the fields a composite literal sets to a
-			// non-nil value, for a literal written in place or held in a local
-			// variable. A package variable as a value is the capture of a seam's
-			// current value, not a replacement.
-			var literalFields func(e ast.Expr) []string
-			literalFields = func(e ast.Expr) []string {
-				switch v := e.(type) {
-				case *ast.UnaryExpr:
-					return literalFields(v.X)
-				case *ast.CompositeLit:
-					var out []string
-					for _, el := range v.Elts {
-						kv, ok := el.(*ast.KeyValueExpr)
-						if !ok {
-							continue
-						}
-						key, ok := kv.Key.(*ast.Ident)
-						if !ok {
-							continue
-						}
-						if val, ok := kv.Value.(*ast.Ident); ok && (val.Name == "nil" || pkgVars[val.Name]) {
-							continue
-						}
-						out = append(out, key.Name)
-					}
-					return out
-				case *ast.Ident:
-					if v.Obj == nil || !local(v) {
-						return nil
-					}
-					switch d := v.Obj.Decl.(type) {
-					case *ast.AssignStmt:
-						if len(d.Lhs) == len(d.Rhs) {
-							for j, l := range d.Lhs {
-								if li, ok := l.(*ast.Ident); ok && li.Obj == v.Obj {
-									return literalFields(d.Rhs[j])
-								}
-							}
-						}
-					case *ast.ValueSpec:
-						if len(d.Names) == len(d.Values) {
-							for j, nm := range d.Names {
-								if nm.Obj == v.Obj {
-									return literalFields(d.Values[j])
-								}
-							}
-						}
-					}
-				}
-				return nil
-			}
 			var visit func(ast.Node) bool
 			visit = func(n ast.Node) bool {
 				switch x := n.(type) {
 				case *ast.Ident:
 					if x.Name != "_" && !local(x) {
 						owner.refs[x.Name] = true
-						// The guard's own package calls RedirectHome unqualified.
-						if isTest && x.Name == "RedirectHome" {
-							owner.isolates = true
-						}
 					}
 				case *ast.SelectorExpr:
 					ast.Inspect(x.X, visit)
 					if qualified(x.X) {
 						owner.refs[x.Sel.Name] = true
-						if isTest && x.Sel.Name == "RedirectHome" {
-							owner.isolates = true
-						}
 					}
 					return false
 				case *ast.KeyValueExpr:
@@ -386,22 +300,12 @@ func buildGraph(files map[string][]byte) (*pkgGraph, []testFunc, error) {
 							hasStringArg(x, "config") && hasStringArg(x, "--global") {
 							owner.sink = true
 						}
-						if isTest && sel.Sel.Name == "Setenv" && hasStringArg(x, gitGlobalConfigEnv) {
-							owner.isolates = true
-						}
-					}
-					if fn, ok := x.Fun.(*ast.Ident); ok && isTest {
-						for _, a := range x.Args {
-							for _, f := range literalFields(a) {
-								if owner.calls[fn.Name] == nil {
-									owner.calls[fn.Name] = map[string]bool{}
-								}
-								owner.calls[fn.Name][f] = true
-							}
-						}
 					}
 				case *ast.AssignStmt:
-					if x.Tok != token.ASSIGN {
+					// Production wiring (X = f, pkg.X = f) gives the variable its
+					// default value; assignments in test files are swaps and are
+					// read by execFacts.
+					if isTest || x.Tok != token.ASSIGN {
 						break
 					}
 					for i, lhs := range x.Lhs {
@@ -419,21 +323,6 @@ func buildGraph(files map[string][]byte) (*pkgGraph, []testFunc, error) {
 						if assigned == "" {
 							continue
 						}
-						if isTest {
-							switch {
-							case inCleanup(x.Pos()):
-								// A restore to the original value swaps nothing.
-							case len(x.Rhs) == len(x.Lhs) && restore(assigned, x.Rhs[i]):
-							case paramField(x, i) != "":
-								if owner.guarded[assigned] == nil {
-									owner.guarded[assigned] = map[string]bool{}
-								}
-								owner.guarded[assigned][paramField(x, i)] = true
-							default:
-								owner.assigns[assigned] = true
-							}
-							continue
-						}
 						target := g.node(assigned)
 						target.varLike = true
 						rhs := ast.Node(x.Rhs[0])
@@ -448,13 +337,297 @@ func buildGraph(files map[string][]byte) (*pkgGraph, []testFunc, error) {
 			ast.Inspect(root, visit)
 		}
 
+		// execFacts records, for the test-file function fd, what its executed
+		// path does to the seams: see the header for what executed means.
+		execFacts := func(owner *gnode, fd *ast.FuncDecl) {
+			local := func(id *ast.Ident) bool {
+				if id.Obj == nil {
+					return false
+				}
+				d, ok := id.Obj.Decl.(ast.Node)
+				return ok && d.Pos() >= fd.Pos() && d.End() <= fd.End()
+			}
+			params := map[*ast.Object]int{}
+			if fd.Type.Params != nil {
+				i := 0
+				for _, f := range fd.Type.Params.List {
+					if len(f.Names) == 0 {
+						i++
+						continue
+					}
+					for _, nm := range f.Names {
+						if nm.Obj != nil {
+							params[nm.Obj] = i
+						}
+						i++
+					}
+				}
+			}
+			// run holds the closures that execute on the spot: invoked at once, or
+			// passed to Run.
+			run := map[*ast.FuncLit]bool{}
+			ast.Inspect(fd, func(n ast.Node) bool {
+				if c, ok := n.(*ast.CallExpr); ok {
+					if lit, ok := c.Fun.(*ast.FuncLit); ok {
+						run[lit] = true
+					}
+					if sel, ok := c.Fun.(*ast.SelectorExpr); ok && sel.Sel.Name == "Run" {
+						for _, a := range c.Args {
+							if lit, ok := a.(*ast.FuncLit); ok {
+								run[lit] = true
+							}
+						}
+					}
+				}
+				return true
+			})
+			// defsOf returns every value assigned to the local obj in fd. ok is
+			// false when there is none or one cannot be read (a parameter, a zero
+			// value, a tuple assignment).
+			defsOf := func(obj *ast.Object) (vals []ast.Expr, ok bool) {
+				ok = true
+				ast.Inspect(fd, func(n ast.Node) bool {
+					switch d := n.(type) {
+					case *ast.AssignStmt:
+						if d.Tok != token.ASSIGN && d.Tok != token.DEFINE {
+							return true
+						}
+						for j, l := range d.Lhs {
+							if li, isID := l.(*ast.Ident); isID && li.Obj == obj {
+								if len(d.Lhs) == len(d.Rhs) {
+									vals = append(vals, d.Rhs[j])
+								} else {
+									ok = false
+								}
+							}
+						}
+					case *ast.ValueSpec:
+						for j, nm := range d.Names {
+							if nm.Obj == obj {
+								if len(d.Values) == len(d.Names) {
+									vals = append(vals, d.Values[j])
+								} else {
+									ok = false
+								}
+							}
+						}
+					}
+					return true
+				})
+				return vals, ok && len(vals) > 0
+			}
+			// A closure held in a local variable and called through it runs too.
+			ast.Inspect(fd, func(n ast.Node) bool {
+				if c, ok := n.(*ast.CallExpr); ok {
+					if id, ok := c.Fun.(*ast.Ident); ok && id.Obj != nil && local(id) {
+						vals, _ := defsOf(id.Obj)
+						for _, v := range vals {
+							if lit, ok := v.(*ast.FuncLit); ok {
+								run[lit] = true
+							}
+						}
+					}
+				}
+				return true
+			})
+			// fromSeam reports whether e is derived from the seam's own value.
+			var fromSeam func(e ast.Expr, seam string, seen map[*ast.Object]bool) bool
+			fromSeam = func(e ast.Expr, seam string, seen map[*ast.Object]bool) bool {
+				switch v := e.(type) {
+				case *ast.ParenExpr:
+					return fromSeam(v.X, seam, seen)
+				case *ast.Ident:
+					if v.Name == seam {
+						return true
+					}
+					if v.Obj == nil || !local(v) || seen[v.Obj] {
+						return false
+					}
+					seen[v.Obj] = true
+					vals, _ := defsOf(v.Obj)
+					for _, d := range vals {
+						if fromSeam(d, seam, seen) {
+							return true
+						}
+					}
+				case *ast.CallExpr:
+					for _, a := range v.Args {
+						if fromSeam(a, seam, seen) {
+							return true
+						}
+					}
+				}
+				return false
+			}
+			// isRepl reports whether e is a replacement for the seam on every
+			// assignment that can reach it.
+			var isRepl func(e ast.Expr, seam string, seen map[*ast.Object]bool) bool
+			isRepl = func(e ast.Expr, seam string, seen map[*ast.Object]bool) bool {
+				switch v := e.(type) {
+				case *ast.ParenExpr:
+					return isRepl(v.X, seam, seen)
+				case *ast.FuncLit:
+					return true
+				case *ast.Ident:
+					if v.Name == "nil" || v.Name == seam {
+						return false
+					}
+					if v.Obj != nil && local(v) {
+						if seen[v.Obj] {
+							return false
+						}
+						seen[v.Obj] = true
+						vals, ok := defsOf(v.Obj)
+						if !ok {
+							return false
+						}
+						for _, d := range vals {
+							if !isRepl(d, seam, seen) {
+								return false
+							}
+						}
+						return true
+					}
+					return !pkgVars[v.Name]
+				case *ast.CallExpr:
+					return !fromSeam(v, seam, map[*ast.Object]bool{})
+				}
+				return false
+			}
+			// litSets reports whether e is a composite literal, in place or in a
+			// local, that sets field to a replacement on every assignment.
+			var litSets func(e ast.Expr, field, seam string, seen map[*ast.Object]bool) bool
+			litSets = func(e ast.Expr, field, seam string, seen map[*ast.Object]bool) bool {
+				switch v := e.(type) {
+				case *ast.ParenExpr:
+					return litSets(v.X, field, seam, seen)
+				case *ast.UnaryExpr:
+					return litSets(v.X, field, seam, seen)
+				case *ast.CompositeLit:
+					for _, el := range v.Elts {
+						if kv, ok := el.(*ast.KeyValueExpr); ok {
+							if key, ok := kv.Key.(*ast.Ident); ok && key.Name == field {
+								return isRepl(kv.Value, seam, map[*ast.Object]bool{})
+							}
+						}
+					}
+				case *ast.Ident:
+					if v.Obj == nil || !local(v) || seen[v.Obj] {
+						return false
+					}
+					seen[v.Obj] = true
+					vals, ok := defsOf(v.Obj)
+					if !ok {
+						return false
+					}
+					for _, d := range vals {
+						if !litSets(d, field, seam, seen) {
+							return false
+						}
+					}
+					return true
+				}
+				return false
+			}
+			var walk func(ast.Node) bool
+			walk = func(n ast.Node) bool {
+				switch x := n.(type) {
+				case *ast.FuncLit:
+					return run[x]
+				case *ast.DeferStmt, *ast.GoStmt:
+					return false
+				case *ast.IfStmt:
+					if id, ok := x.Cond.(*ast.Ident); ok && id.Name == "false" {
+						if x.Init != nil {
+							ast.Inspect(x.Init, walk)
+						}
+						if x.Else != nil {
+							ast.Inspect(x.Else, walk)
+						}
+						return false
+					}
+				case *ast.AssignStmt:
+					if x.Tok != token.ASSIGN || len(x.Lhs) != len(x.Rhs) {
+						break
+					}
+					for i, lhs := range x.Lhs {
+						assigned := ""
+						switch l := lhs.(type) {
+						case *ast.Ident:
+							if pkgVars[l.Name] && !local(l) {
+								assigned = l.Name
+							}
+						case *ast.SelectorExpr:
+							if qualified(l.X) {
+								assigned = l.Sel.Name
+							}
+						}
+						if assigned == "" {
+							continue
+						}
+						switch r := x.Rhs[i].(type) {
+						case *ast.Ident:
+							if idx, isParam := params[r.Obj]; isParam && r.Obj != nil {
+								owner.effects = append(owner.effects, effect{seam: assigned, idx: idx})
+								continue
+							}
+						case *ast.SelectorExpr:
+							if id, ok := r.X.(*ast.Ident); ok && id.Obj != nil {
+								if idx, isParam := params[id.Obj]; isParam {
+									owner.effects = append(owner.effects, effect{seam: assigned, idx: idx, field: r.Sel.Name})
+									continue
+								}
+							}
+						}
+						if isRepl(x.Rhs[i], assigned, map[*ast.Object]bool{}) {
+							owner.repl[assigned] = true
+						}
+					}
+				case *ast.CallExpr:
+					switch f := x.Fun.(type) {
+					case *ast.Ident:
+						if local(f) {
+							break
+						}
+						if f.Name == "RedirectHome" {
+							owner.isolates = true
+						}
+						owner.execCalls[f.Name] = true
+						args := x.Args
+						owner.sites = append(owner.sites, callSite{fn: f.Name, ok: func(e effect) bool {
+							if e.idx >= len(args) {
+								return false
+							}
+							if e.field == "" {
+								return isRepl(args[e.idx], e.seam, map[*ast.Object]bool{})
+							}
+							return litSets(args[e.idx], e.field, e.seam, map[*ast.Object]bool{})
+						}})
+					case *ast.SelectorExpr:
+						if qualified(f.X) && f.Sel.Name == "RedirectHome" {
+							owner.isolates = true
+						}
+						if f.Sel.Name == "Setenv" && hasStringArg(x, gitGlobalConfigEnv) {
+							owner.isolates = true
+						}
+					}
+				}
+				return true
+			}
+			ast.Inspect(fd.Body, walk)
+		}
+
 		for _, d := range file.Decls {
 			switch decl := d.(type) {
 			case *ast.FuncDecl:
 				if decl.Recv != nil || decl.Body == nil {
 					continue
 				}
-				fill(g.node(decl.Name.Name), decl, decl)
+				owner := g.node(decl.Name.Name)
+				fill(owner, decl, decl)
+				if isTest {
+					execFacts(owner, decl)
+				}
 				if !isTest || !isTestEntry(decl.Name.Name) {
 					continue
 				}
@@ -533,52 +706,43 @@ func (g *pkgGraph) exposed(start string) bool {
 	if root == nil {
 		return false
 	}
-	// Everything the test can reach decides what it swaps and whether it
-	// redirects the global config.
+	// What the test executes decides what it swaps and whether it redirects the
+	// global config: follow executed calls only.
 	swapped := map[string]bool{}
-	called := map[string]map[string]bool{} // helper name -> fields passed to it
-	reached := map[string]*gnode{}
+	var sites []callSite
 	seen := map[string]bool{start: true}
 	for stack := []string{start}; len(stack) > 0; {
-		name := stack[len(stack)-1]
-		n := g.nodes[name]
+		n := g.nodes[stack[len(stack)-1]]
 		stack = stack[:len(stack)-1]
 		if n.isolates {
 			return false
 		}
-		reached[name] = n
-		for a := range n.assigns {
-			swapped[a] = true
+		for s := range n.repl {
+			swapped[s] = true
 		}
-		for fn, fields := range n.calls {
-			if called[fn] == nil {
-				called[fn] = map[string]bool{}
-			}
-			for f := range fields {
-				called[fn][f] = true
-			}
-		}
+		sites = append(sites, n.sites...)
 		// A dispatch table is not expanded: a helper only it references is not
 		// something this test calls.
 		if n != root && g.fanOut(n) > dispatchFanOut {
 			continue
 		}
-		for r := range n.refs {
-			if g.nodes[r] != nil && !seen[r] {
-				seen[r] = true
-				stack = append(stack, r)
+		for c := range n.execCalls {
+			if g.nodes[c] != nil && !seen[c] {
+				seen[c] = true
+				stack = append(stack, c)
 			}
 		}
 	}
-	// A seam a helper replaces only when its parameter field is set counts only
-	// when reachable test code passes that field in a literal that is an
-	// argument of a call to that helper.
-	for name, n := range reached {
-		for seam, fields := range n.guarded {
-			for f := range fields {
-				if called[name][f] {
-					swapped[seam] = true
-				}
+	// A helper that stores a parameter in a seam isolates it only when the call
+	// passes a replacement at that position.
+	for _, cs := range sites {
+		h := g.nodes[cs.fn]
+		if h == nil {
+			continue
+		}
+		for _, e := range h.effects {
+			if cs.ok(e) {
+				swapped[e.seam] = true
 			}
 		}
 	}

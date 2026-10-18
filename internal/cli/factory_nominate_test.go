@@ -894,6 +894,7 @@ func TestFactoryNextNominateRecordStateTokens(t *testing.T) {
 // by the read-only validation (every token but `raced`) leaves the queue file
 // and the factory record byte-identical.
 func TestFactoryNextNominateRefusalLeavesStateUnchanged(t *testing.T) {
+	isolateGitGlobalSeams(t)
 	for _, c := range nmCases() {
 		if c.token == "" {
 			continue
