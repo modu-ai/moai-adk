@@ -80,6 +80,12 @@ type GateConfig struct {
 	// reads it: the CLI validates it and decides whether the run is in the
 	// pre-commit context.
 	PreCommitTestScope string
+	// PreCommitContext marks a run made by the git pre-commit hook with the
+	// heavy gate opted in. Only the CLI entry sets it; the Go test step reads it
+	// to run the affected packages instead of ./... (SPEC-PRECOMMIT-AFFECTED-SCOPE-001).
+	// The PreToolUse, SubagentStop and TeammateIdle paths never set it, so their
+	// test scope is unchanged.
+	PreCommitContext bool
 }
 
 // GraphFreshnessConfig configures the graph-freshness step of the quality
@@ -395,6 +401,11 @@ type QualityGate struct {
 	// summary: steps called directly with no run in progress see the empty
 	// zero value and fall back to the resolved project directory.
 	detectedRoot string
+
+	// scopeQ substitutes the affected-scope queries; nil means the real adapters.
+	scopeQ *scopeQueries
+	// runner substitutes the step runner; nil means runStep.
+	runner stepRunFunc
 }
 
 // stepDir returns the directory a toolchain step executes in: the module
@@ -622,7 +633,17 @@ func (g *QualityGate) runToolchainTestStep(ctx context.Context, dt *detectedTool
 	// seeded row follows it; otherwise the run would report the configured
 	// step as never reached and the resolved one as an extra.
 	g.summary.relabel(dt.tc.testStep.name, testStep.name)
+	// In the pre-commit context the Go test step runs only the packages the
+	// commit can affect; every other shape keeps the step as the table defines it.
+	testStep, notice, skipReason := g.scopeGoTestStep(ctx, testStep, dir)
+	if skipReason != "" {
+		g.summary.markSkipped(testStep.name, skipReason)
+		return notice, true
+	}
 	ok, out := g.executeStep(ctx, testStep, dir, g.config.TestTimeout)
+	if notice != "" {
+		out = joinBlocks(notice, out)
+	}
 	return out, ok
 }
 
@@ -1276,7 +1297,11 @@ func (g *QualityGate) executeStep(ctx context.Context, step gateStep, dir string
 		}
 	}
 
-	return g.runStep(ctx, step.name, dir, timeout, step.binary, step.args...)
+	run := g.runner
+	if run == nil {
+		run = g.runStep
+	}
+	return run(ctx, step.name, dir, timeout, step.binary, step.args...)
 }
 
 // cachedStagedFiles queries stagedFiles exactly once per Run call and caches the result.

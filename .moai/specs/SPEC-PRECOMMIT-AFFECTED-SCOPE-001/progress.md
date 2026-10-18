@@ -397,6 +397,141 @@ Mutant probes executed against the GREEN adapters (temporary edits, reverted bef
 - dropping the hook-provided index (the scrubbed-only environment the old helper used): `TestAffectedScope_ChangedSetMatchesCommit` FAILS in both repository shapes — `(ii) git commit -a: the gate saw "a/x.go", the commit records "a/x.go d/z.go"` and `(iii) git commit d/z.go: the gate saw "a/x.go", the commit records "d/z.go"`.
 - dropping `--no-renames` (the default name list): `TestAffectedScope_RealGitRenameDelete/cross-package_rename_keeps_the_old_package's_importers` FAILS — `changed list [e/x.go] must carry both the old path a/x.go and the new path e/x.go (rename detection off)`.
 
+
+### RED-M3b — gate wiring: AC-PAS-006 gate half, AC-PAS-008 gate half, AC-PAS-011 runner half, AC-PAS-016, plus the argument-list wiring (tree = M3a GREEN plus the M3b RED test files, the config/seam scaffolding and a pass-through `scopeGoTestStep` stub)
+The call site in `runToolchainTestStep` already routes through `scopeGoTestStep`, which is a pass-through stub, so the Go test step still runs `./...` and every assertion about the narrowed scope fails on the right reason.
+
+Command: `go test ./internal/hook/quality -run '^TestQualityGate_AffectedScope_' -count=1 -v` — exit code 1 (the output below is cut to 240 columns; WARN log lines from the Python subtests omitted)
+```
+=== RUN   TestQualityGate_AffectedScope_EmptySelectionSkips
+    affected_scope_gate_test.go:123: go test ran for a docs-only commit: [go vet ./... go test ./...]
+    affected_scope_gate_test.go:126: the summary does not record the go test step as skipped:
+        quality gate steps (3 configured):
+          - go vet: executed in 282ms at 2026-10-18T11:18:01.298+09:00 — go vet ./...
+          - golangci-lint: skipped — none of its config files exist in the project directory (.golangci.yml, .golangci.yaml, .golangci.toml, .golangci.json)
+          - go test: executed in 25ms at 2026-10-18T11:18:01.580+09:00 — go test ./...
+    affected_scope_gate_test.go:129: the skip carries no stated reason:
+        quality gate steps (3 configured):
+          - go vet: executed in 282ms at 2026-10-18T11:18:01.298+09:00 — go vet ./...
+          - golangci-lint: skipped — none of its config files exist in the project directory (.golangci.yml, .golangci.yaml, .golangci.toml, .golangci.json)
+          - go test: executed in 25ms at 2026-10-18T11:18:01.580+09:00 — go test ./...
+    affected_scope_gate_test.go:132: the summary reports go test as executed:
+        quality gate steps (3 configured):
+          - go vet: executed in 282ms at 2026-10-18T11:18:01.298+09:00 — go vet ./...
+          - golangci-lint: skipped — none of its config files exist in the project directory (.golangci.yml, .golangci.yaml, .golangci.toml, .golangci.json)
+          - go test: executed in 25ms at 2026-10-18T11:18:01.580+09:00 — go test ./...
+--- FAIL: TestQualityGate_AffectedScope_EmptySelectionSkips (0.32s)
+=== RUN   TestQualityGate_AffectedScope_QueryFailureFallsBack
+=== RUN   TestQualityGate_AffectedScope_QueryFailureFallsBack/changed-file_query_fails
+    affected_scope_gate_test.go:184: the summary does not name the failed query "changed-file query" and the fallback:
+        quality gate steps (3 configured):
+          - go vet: executed in 227ms at 2026-10-18T11:18:01.608+09:00 — go vet ./...
+          - golangci-lint: skipped — none of its config files exist in the project directory (.golangci.yml, .golangci.yaml, .golangci.toml, .golangci.json)
+          - go test: executed in 32ms at 2026-10-18T11:18:01.837+09:00 — go test ./...
+=== RUN   TestQualityGate_AffectedScope_QueryFailureFallsBack/package-graph_query_fails
+    affected_scope_gate_test.go:184: the summary does not name the failed query "package-graph query" and the fallback:
+        quality gate steps (3 configured):
+          - go vet: executed in 222ms at 2026-10-18T11:18:01.872+09:00 — go vet ./...
+          - golangci-lint: skipped — none of its config files exist in the project directory (.golangci.yml, .golangci.yaml, .golangci.toml, .golangci.json)
+          - go test: executed in 21ms at 2026-10-18T11:18:02.094+09:00 — go test ./...
+--- FAIL: TestQualityGate_AffectedScope_QueryFailureFallsBack (0.51s)
+    --- FAIL: TestQualityGate_AffectedScope_QueryFailureFallsBack/changed-file_query_fails (0.26s)
+    --- FAIL: TestQualityGate_AffectedScope_QueryFailureFallsBack/package-graph_query_fails (0.25s)
+=== RUN   TestQualityGate_AffectedScope_ArgumentList
+=== RUN   TestQualityGate_AffectedScope_ArgumentList/selection_narrows_to_module-root-relative_patterns
+    affected_scope_gate_test.go:207: go test calls = [go test ./...], want [go test ./a ./b]
+    affected_scope_gate_test.go:210: the summary lacks the selected/dropped counts:
+        quality gate steps (3 configured):
+          - go vet: executed in 249ms at 2026-10-18T11:18:02.130+09:00 — go vet ./...
+          - golangci-lint: skipped — none of its config files exist in the project directory (.golangci.yml, .golangci.yaml, .golangci.toml, .golangci.json)
+          - go test: executed in 22ms at 2026-10-18T11:18:02.381+09:00 — go test ./...
+=== RUN   TestQualityGate_AffectedScope_ArgumentList/a_widening_trigger_runs_the_full_module_and_says_why
+    affected_scope_gate_test.go:230: the summary does not state the widening and its trigger:
+        quality gate steps (3 configured):
+          - go vet: executed in 305ms at 2026-10-18T11:18:02.467+09:00 — go vet ./...
+          - golangci-lint: skipped — none of its config files exist in the project directory (.golangci.yml, .golangci.yaml, .golangci.toml, .golangci.json)
+          - go test: executed in 28ms at 2026-10-18T11:18:02.772+09:00 — go test ./...
+=== RUN   TestQualityGate_AffectedScope_ArgumentList/build_tags_survive_the_replaced_argument_list
+    affected_scope_gate_test.go:243: go calls = [go vet -tags=goolm ./... go test -tags=goolm ./...], want one "go test -tags=goolm ./a ./b"
+--- FAIL: TestQualityGate_AffectedScope_ArgumentList (1.01s)
+    --- FAIL: TestQualityGate_AffectedScope_ArgumentList/selection_narrows_to_module-root-relative_patterns (0.29s)
+    --- FAIL: TestQualityGate_AffectedScope_ArgumentList/a_widening_trigger_runs_the_full_module_and_says_why (0.34s)
+    --- FAIL: TestQualityGate_AffectedScope_ArgumentList/build_tags_survive_the_replaced_argument_list (0.33s)
+=== RUN   TestQualityGate_AffectedScope_ContextIsolation
+=== RUN   TestQualityGate_AffectedScope_ContextIsolation/without_the_pre-commit_flag_the_Go_test_step_is_test_./...
+=== RUN   TestQualityGate_AffectedScope_ContextIsolation/mode_full_restores_test_./...
+=== RUN   TestQualityGate_AffectedScope_ContextIsolation/the_vet_step_is_identical_with_and_without_the_flag
+=== RUN   TestQualityGate_AffectedScope_ContextIsolation/node_test_step_is_identical_with_the_flag
+=== RUN   TestQualityGate_AffectedScope_ContextIsolation/python_test_step_is_identical_with_the_flag
+--- PASS: TestQualityGate_AffectedScope_ContextIsolation (2.40s)
+    --- PASS: TestQualityGate_AffectedScope_ContextIsolation/without_the_pre-commit_flag_the_Go_test_step_is_test_./... (0.30s)
+    --- PASS: TestQualityGate_AffectedScope_ContextIsolation/mode_full_restores_test_./... (0.24s)
+    --- PASS: TestQualityGate_AffectedScope_ContextIsolation/the_vet_step_is_identical_with_and_without_the_flag (0.51s)
+    --- PASS: TestQualityGate_AffectedScope_ContextIsolation/node_test_step_is_identical_with_the_flag (0.45s)
+    --- PASS: TestQualityGate_AffectedScope_ContextIsolation/python_test_step_is_identical_with_the_flag (0.90s)
+FAIL
+FAIL	github.com/modu-ai/moai-adk/internal/hook/quality	5.090s
+FAIL
+```
+Regression guards (green today by construction, as the acceptance matrix classifies them): `TestQualityGate_AffectedScope_ContextIsolation` (AC-PAS-010) passes above against the pass-through stub; `TestQualityGate_StepBudgetsUnchanged` (AC-PAS-014) passes in both shapes. Their mutant probes are recorded under the GREEN entries.
+
+Command: `go test ./internal/cli -run '^TestRunGatePreCommitInvalidScopeModeRejected$' -count=1 -v` — exit code 1 (tail)
+```
+          - typecheck: skipped — no default for this language; set gate.typecheck.command to enable one
+          - golangci-lint: skipped — none of its config files exist in the project directory (.golangci.yml, .golangci.yaml, .golangci.toml, .golangci.json)
+          - go test: executed in 709ms at 2026-10-18T11:20:37.614+09:00 — go test ./...
+    gate_precommit_scope_test.go:35: the gate ran its steps before rejecting the mode:
+        quality gate failed
+        quality gate failed: go test
+        
+        --- FAIL: TestPreExistingFailure (0.00s)
+            fail_test.go:6: pre-existing project-wide failure
+        FAIL
+        FAIL	fixture	0.243s
+        FAIL
+        
+        quality gate steps (4 configured):
+          - go vet: executed in 405ms at 2026-10-18T11:20:37.205+09:00 — go vet ./...
+          - typecheck: skipped — no default for this language; set gate.typecheck.command to enable one
+          - golangci-lint: skipped — none of its config files exist in the project directory (.golangci.yml, .golangci.yaml, .golangci.toml, .golangci.json)
+          - go test: executed in 709ms at 2026-10-18T11:20:37.614+09:00 — go test ./...
+--- FAIL: TestRunGatePreCommitInvalidScopeModeRejected (1.13s)
+FAIL
+FAIL	github.com/modu-ai/moai-adk/internal/cli	2.612s
+FAIL
+```
+
+Command: `go test ./internal/cli -run '^TestPreCommitAffectedScopeE2E$' -count=1 -v` — exit code 1
+```
+=== RUN   TestPreCommitAffectedScopeE2E
+=== RUN   TestPreCommitAffectedScopeE2E/a_change_to_a_runs_exactly_a_and_b
+    precommit_affected_scope_e2e_test.go:153: recorded go test calls = "test ./...", want exactly "test ./a ./b"
+        commit output:
+        graph-freshness: step disabled in gate config (explicit skip notice)
+        
+        quality gate steps (3 configured):
+          - go vet: disabled — turned off by the gate.disabled_steps setting
+          - golangci-lint: disabled — turned off by the gate.disabled_steps setting
+          - go test: executed in 252ms at 2026-10-18T11:21:15.562+09:00 — go test ./...
+=== RUN   TestPreCommitAffectedScopeE2E/a_failing_dependent_blocks_the_commit_and_the_unaffected_package_never_runs
+    precommit_affected_scope_e2e_test.go:176: c's test ran: the marker file it writes exists; the unaffected package was tested
+--- FAIL: TestPreCommitAffectedScopeE2E (25.42s)
+    --- FAIL: TestPreCommitAffectedScopeE2E/a_change_to_a_runs_exactly_a_and_b (2.20s)
+    --- FAIL: TestPreCommitAffectedScopeE2E/a_failing_dependent_blocks_the_commit_and_the_unaffected_package_never_runs (1.78s)
+FAIL
+FAIL	github.com/modu-ai/moai-adk/internal/cli	26.602s
+FAIL
+```
+
+Command: `env PROBE_DIR=/private/tmp/t1673-tmp/probe sh .moai/specs/SPEC-PRECOMMIT-AFFECTED-SCOPE-001/evidence/probe016.sh /private/tmp/t1673-bin/moai-base` — exit code 1. Judging build: `moai` built from `00e7843ab` (tree HEAD at build time; the Go code is identical to `3642a3a9b`, the tree LEDGER-PAS-016-A measured). The four RED lines reproduce the ledger cell:
+```
+AC-016/001 change a: RED  (commit exit=0, HEAD moved=yes, go test calls=1 (wanted 1), wanted go argv 'test ./a ./b', got 'test ./...')
+AC-004 test-only change: RED  (commit exit=0, HEAD moved=yes, go test calls=1 (wanted 1), wanted go argv 'test ./a', got 'test ./...')
+AC-006 docs-only change: RED  (commit exit=0, HEAD moved=yes, go test calls=1 (wanted 0), wanted go argv 'none', got 'test ./...')
+AC-011 mode: bogus: RED  (gate exit=0, message names the key=no)
+exit=1
+```
+
 ## §E.3 Run-phase Audit-Ready Signal
 
 _pending run-phase_
