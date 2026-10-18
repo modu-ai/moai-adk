@@ -1,4 +1,4 @@
-# SPEC-LANDING-VERIFY-MERGE-SPLIT-001 — plan (v0.5.0, piece A)
+# SPEC-LANDING-VERIFY-MERGE-SPLIT-001 — plan (v0.6.0, piece A)
 
 Priority-ordered, no time estimates. Development mode TDD (RED first). Each milestone is its own commit with subject `feat(SPEC-LANDING-VERIFY-MERGE-SPLIT-001): M<k> <what> (card t1872)` (M0 uses `docs(...)`), carrying the `🗿 MoAI` trailer and, for the agent-authored ones, `Authored-By-Agent`. Scope is piece A only (board `9dbe`); follow-ups are in `spec.md` §7 and not planned here.
 
@@ -29,7 +29,7 @@ Exit: AC-LVM-012 (M0 leg).
 
 ### M1 — gate core, producer verbs, zero-Go path
 
-Shared derivation and manifest producer (`moai integration manifest derive|show|verify`), attempt records and `remeasure --call` (command binding, per-package test counts), abort/restart classes, the whole-manifest verifier with its twelve attempt-level reject classes plus the thirteenth (manifest currency by re-derivation), the zero-Go evidence path, the gate-state reader (committed blob of the integration branch, fail-modes), wiring into the merge step, `complete`, condition (d) and the verify verb (which prints the gate state and its source), config key `workflow.landing_gate.enabled` (false in the template) and the narrowing allowance list. Negative tests and the positive control are written first and end green. A characterization test of today's verdicts (the oracle of AC-LVM-007) is recorded before any edit of `ValidateRemeasureRecord`.
+Shared derivation (module files select the whole module) and manifest producer (`moai integration manifest derive|show|verify`), attempt records and `remeasure --call` (command binding, per-package test counts), abort/restart classes, the whole-manifest verifier with its attempt-level reject classes (including the effective-GOFLAGS rule) plus the thirteenth (manifest currency by re-derivation), the zero-Go evidence path, the gate-state reader (committed blob of the integration branch, fail-modes), wiring into the merge step, `complete`, condition (d) and the verify verb (which prints the gate state and its source), config key `workflow.landing_gate.enabled` (false in the template) and the narrowing allowance list. Negative tests and the positive control are written first and end green. A characterization test of today's verdicts (the oracle of AC-LVM-007) is recorded before any edit of `ValidateRemeasureRecord`.
 
 Exit: AC-LVM-001, 002, 003, 004, 005, 006, 007, 013, 014, 015, 016, 017.
 

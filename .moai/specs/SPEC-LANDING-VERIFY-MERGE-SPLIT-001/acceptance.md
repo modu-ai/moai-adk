@@ -1,4 +1,4 @@
-# SPEC-LANDING-VERIFY-MERGE-SPLIT-001 — acceptance criteria (v0.5.0, piece A)
+# SPEC-LANDING-VERIFY-MERGE-SPLIT-001 — acceptance criteria (v0.6.0, piece A)
 
 Verification layer: each entry is an `AC-LVM-XXX` Given-When-Then, binary-testable. The GEARS requirements are `spec.md` §3. Counts: 18 requirements, 18 acceptance criteria (Tier L ceiling 25/25), one-to-one. The evidence ledger at the end holds 24 observations because several criteria span two or three packages.
 
@@ -13,8 +13,8 @@ Verification layer: each entry is an `AC-LVM-XXX` Given-When-Then, binary-testab
 
 ### AC-LVM-001 — manifest derivation (REQ-LVM-001)
 
-- **Given** a temporary repository whose card branch changes (a) a non-test file of `p/a`, (b) only a test file of `p/b`, (c) a file of `internal/cli`, (d) a non-Go file outside any package directory, (e) a file embedded by package `p/e` that lives in `p/a`'s directory, (f) deletes package `p/x`; `p/c` imports `p/a`, `p/d` imports `p/b` only in a test, **When** the producer runs, **Then** the manifest lists a whole-package call (no `-run`) for `p/a`, `p/b`, `internal/cli`, `p/c`, `p/d`, `p/e`; only the `internal/cli` call may carry `-run`, naming `35e9`; every call records identifier, exact command and package set; (d) has reader calls or a zero-readers record naming the search command and its empty result; (f) is a recorded base-versus-candidate graph comparison, not a failing `go list`.
-- Verify (N=6): `go test ./internal/factory -run '^(TestManifestDerivesChangedAndImporters|TestManifestNarrowingOnlyInternalCLI|TestManifestIncludesTestOnlyChange|TestManifestRecordsNonGoReaderSearch|TestManifestDerivesEmbedOwnerPackages|TestManifestHandlesDeletedPackage)$' -count=1 -v`.
+- **Given** a temporary repository whose card branch changes (a) a non-test file of `p/a`, (b) only a test file of `p/b`, (c) a file of `internal/cli`, (d) a non-Go file outside any package directory, (e) a file embedded by package `p/e` that lives in `p/a`'s directory, (f) deletes package `p/x`, in a second fixture (g) changes only `go.mod` (a `replace` line); `p/c` imports `p/a`, `p/d` imports `p/b` only in a test, **When** the producer runs, **Then** the manifest lists a whole-package call (no `-run`) for `p/a`, `p/b`, `internal/cli`, `p/c`, `p/d`, `p/e`; only the `internal/cli` call may carry `-run`, naming `35e9`; every call records identifier, exact command and package set; (d) has reader calls or a zero-readers record naming the search command and its empty result; (f) is a recorded base-versus-candidate graph comparison, not a failing `go list`; for (g) the manifest lists a whole-package call for every package of the module (no reader search, no 35e9 narrowing for the call selected only by the module file).
+- Verify (N=7): `go test ./internal/factory -run '^(TestManifestDerivesChangedAndImporters|TestManifestNarrowingOnlyInternalCLI|TestManifestIncludesTestOnlyChange|TestManifestRecordsNonGoReaderSearch|TestManifestDerivesEmbedOwnerPackages|TestManifestHandlesDeletedPackage|TestManifestModuleFileChangeSelectsWholeModule)$' -count=1 -v`.
 - RED-now: E-001. Green: M1.
 
 ### AC-LVM-002 — attempt record (REQ-LVM-002)
@@ -35,10 +35,10 @@ Verification layer: each entry is an `AC-LVM-XXX` Given-When-Then, binary-testab
 - Verify (N=3): `go test ./internal/factory -run '^(TestManifestWholePassPositiveControl|TestLastRecordAloneInsufficient|TestMostRecentCompletedAttemptCounts)$' -count=1 -v`.
 - RED-now: E-004. Green: M1.
 
-### AC-LVM-005 — the twelve attempt-level reject classes (REQ-LVM-005)
+### AC-LVM-005 — the attempt-level reject classes (REQ-LVM-005)
 
-- **Given** the AC-LVM-004 positive fixture, **When** exactly one mutation is applied — (1) manifest removed, (2) a call's attempts removed, (3) a call's only record is a script-wrapped command, (4) a stream lacks an expected package's terminal event, (5) a stream cut mid-line, (6) an attempt aborted, (7) an attempt on another tree or HEAD, (8) fingerprint differs, (9) a changed non-Go input with neither reader call nor zero-readers record, (10) the scope cannot be derived, (11) a package passes with zero executed tests (selector matched nothing, or a `TestMain` that exits 0) where the manifest does not allow it, (12) the attempt's command differs from the call's (`-run '^TestX$'`, `-short`, `-skip`, a different package list, a changed `-count` or `-p`, a pipe or an extra segment) — **Then** the verifier refuses in each case naming the class; the unmutated fixture still passes (control); and a `-run` selector is accepted only on an `internal/cli` call whose manifest entry names 35e9.
-- Verify (N=12): `go test ./internal/factory -run '^(TestGateRejectsMissingManifest|TestGateRejectsMissingCall|TestGateRejectsScriptWrappedRecord|TestGateRejectsMissingPackageEvent|TestGateRejectsPartialJSON|TestGateRejectsAbortedAttempt|TestGateRejectsOtherTreeOrHead|TestGateRejectsEnvFingerprintMismatch|TestGateRejectsUnverifiedNonGoInput|TestGateRejectsUnderivableScope|TestGateRejectsEmptySweep|TestGateRejectsCommandDiffersFromManifest)$' -count=1 -v`.
+- **Given** the AC-LVM-004 positive fixture, **When** exactly one mutation is applied — (1) manifest removed, (2) a call's attempts removed, (3) a call's only record is a script-wrapped command, (4) a stream lacks an expected package's terminal event, (5) a stream cut mid-line, (6) an attempt aborted, (7) an attempt on another tree or HEAD, (8) fingerprint differs, or the effective GOFLAGS carries a test flag (`GOFLAGS=-run=^TestGood$` and `GOFLAGS=-skip=^TestBad$` set identically at derivation and at the attempt on a package whose `TestBad` fails — plain `go test -json` ends fail, the narrowed run ends pass; and each of `-failfast`, `-short`, `-list`, `-shuffle`, `-count`, `-timeout`, `-p`, `-parallel`, `-cpu`, `-bench`, `-fuzz`), (9) a changed non-Go input with neither reader call nor zero-readers record, (10) the scope cannot be derived, (11) a package passes with zero executed tests (selector matched nothing, or a `TestMain` that exits 0) where the manifest does not allow it, (12) the attempt's command differs from the call's (`-run '^TestX$'`, `-short`, `-skip`, a different package list, a changed `-count` or `-p`, a pipe or an extra segment) — **Then** the verifier refuses in each case naming the class, and `manifest derive` and `remeasure --call` themselves refuse a narrowing GOFLAGS before writing or running anything; a build-only value such as `GOFLAGS=-mod=readonly` passes (positive control inside the table test); the unmutated fixture still passes (control); and a `-run` selector is accepted only on an `internal/cli` call whose manifest entry names 35e9.
+- Verify (N=15): `go test ./internal/factory -run '^(TestGateRejectsMissingManifest|TestGateRejectsMissingCall|TestGateRejectsScriptWrappedRecord|TestGateRejectsMissingPackageEvent|TestGateRejectsPartialJSON|TestGateRejectsAbortedAttempt|TestGateRejectsOtherTreeOrHead|TestGateRejectsEnvFingerprintMismatch|TestGateRejectsUnverifiedNonGoInput|TestGateRejectsUnderivableScope|TestGateRejectsEmptySweep|TestGateRejectsCommandDiffersFromManifest|TestGateRejectsNarrowingGoflagsRun|TestGateRejectsNarrowingGoflagsSkip|TestGateRejectsAnyTestFlagInGoflags)$' -count=1 -v`.
 - RED-now: E-005. Green: M1.
 
 ### AC-LVM-006 — one verifier, every consumer (REQ-LVM-006)
@@ -67,7 +67,7 @@ Verification layer: each entry is an `AC-LVM-XXX` Given-When-Then, binary-testab
 
 ### AC-LVM-010 — receipt binding in `complete` (REQ-LVM-010)
 
-- **Given** the gate on and a verdict citing receipts, **Then** `complete` passes when one cited receipt, looked up at the store root of the audited tree, is readable, a codex or multi-backend audit receipt, has `tree_root` equal to the normalized path of the audited tree itself, an empty unmet gate, verdict pass, and `audited_commit` equal to HEAD; and each of (b) an older-HEAD receipt, (c) an absent receipt, (d) an unreadable (corrupt) receipt, (e) a legacy receipt without the field, (f) a receipt with the field empty, (g) a receipt with a non-empty unmet gate, (h) a receipt whose `tree_root` is another tree's path for the same commit, (i) a receipt whose commit is an ancestor of HEAD with an empty diff, fails to qualify and refuses when it is the only citation; **Given** a config-orphaned card worktree `W` (no configuration of its own) whose primary checkout is `P`, **Then** a receipt filed at `P`'s store with `tree_root` = `W` qualifies for `W` (positive control; the store root is not the compared quantity) and a receipt filed there with `tree_root` = `P` for the same commit is refused for `W`; a verdict citing one qualifying receipt plus one failed or inconclusive extra call passes (the extra is recorded), and one citing only failed calls refuses. The passing fixtures' receipts are produced by the real writer.
+- **Given** the gate on and a verdict citing receipts, **Then** `complete` passes when one cited receipt, looked up at the store root of the audited tree, is readable, a codex or multi-backend audit receipt, has `tree_root` equal to `auditreceipt.Canonical` of the audited tree's path (a symlinked spelling of the same tree qualifies), an empty unmet gate, verdict pass, and `audited_commit` equal to HEAD; and each of (b) an older-HEAD receipt, (c) an absent receipt, (d) an unreadable (corrupt) receipt, (e) a legacy receipt without the field, (f) a receipt with the field empty, (g) a receipt with a non-empty unmet gate, (h) a receipt whose `tree_root` is another tree's path for the same commit, (i) a receipt whose commit is an ancestor of HEAD with an empty diff, fails to qualify and refuses when it is the only citation; **Given** a config-orphaned card worktree `W` (no configuration of its own) whose primary checkout is `P`, **Then** a receipt filed at `P`'s store with `tree_root` = `W` qualifies for `W` (positive control; the store root is not the compared quantity) and a receipt filed there with `tree_root` = `P` for the same commit is refused for `W`; a verdict citing one qualifying receipt plus one failed or inconclusive extra call passes (the extra is recorded), and one citing only failed calls refuses. The passing fixtures' receipts are produced by the real writer.
 - Verify: factorylane (N=11) `go test ./internal/factorylane -run '^(TestReceiptAtCurrentHeadPasses|TestReceiptFromOlderHeadRefused|TestAbsentReceiptRefused|TestUnreadableReceiptRefused|TestLegacyReceiptWithoutCommitRefused|TestReceiptWithEmptyCommitRefused|TestUnmetGateReceiptRefused|TestReceiptFromOtherTreeRootRefused|TestReceiptForConfigOrphanedWorktreeQualifies|TestReceiptAtEmptyDiffAncestorRefused|TestFailedExtraReceiptDoesNotBlockButNeverReplacesPass)$' -count=1 -v`; cli (N=2) `go test ./internal/cli -run '^(TestRealWriterReceiptSatisfiesBinding|TestRealWriterReceiptForOrphanedWorktreeSatisfiesBinding)$' -count=1 -v`.
 - RED-now: E-010a, E-010b. Green: M3.
 
@@ -86,8 +86,8 @@ Verification layer: each entry is an `AC-LVM-XXX` Given-When-Then, binary-testab
 
 ### AC-LVM-013 — zero-Go card (REQ-LVM-013)
 
-- **Given** a card that changes only a rule file no test reads, **Then** the manifest is empty with its derivation evidence (changed-path list, `go list` proof, reader-search result) and is admitted by the merge step, `complete` and condition (d) alike (positive); it is refused when the evidence is missing, and when re-derivation yields a different changed-path list (a later commit added a path); the audit binding applies unchanged.
-- Verify (N=4): `go test ./internal/factory -run '^(TestZeroGoCardAdmittedWithEvidence|TestZeroGoCardRefusedWithoutEvidence|TestZeroGoCardRefusedOnStaleChangedPaths|TestZeroGoCardAdmittedThroughAllThreeConsumers)$' -count=1 -v`.
+- **Given** a card that changes only a rule file no test reads, **Then** the manifest is empty with its derivation evidence (changed-path list, `go list` proof, reader-search result) and is admitted by the merge step, `complete` and condition (d) alike (positive); a card that changes `go.mod`, `go.sum`, `go.work` or `go.work.sum` is never admitted as a zero-call card; it is refused when the evidence is missing, and when re-derivation yields a different changed-path list (a later commit added a path); the audit binding applies unchanged.
+- Verify (N=5): `go test ./internal/factory -run '^(TestZeroGoCardAdmittedWithEvidence|TestZeroGoCardRefusedWithoutEvidence|TestZeroGoCardRefusedOnStaleChangedPaths|TestZeroGoCardAdmittedThroughAllThreeConsumers|TestZeroGoPathRefusesModuleFileChange)$' -count=1 -v`.
 - RED-now: E-013. Green: M1.
 
 ### AC-LVM-014 — manifest producer, end to end (REQ-LVM-014)
@@ -104,13 +104,13 @@ Verification layer: each entry is an `AC-LVM-XXX` Given-When-Then, binary-testab
 
 ### AC-LVM-016 — manifest currency by re-derivation (REQ-LVM-016)
 
-- **Given** a manifest derived at an earlier HEAD that lists only package `p`, **When** a later commit changes package `q` and the lane runs only the existing `p` call at the current HEAD, **Then** every consumer refuses as the thirteenth class (stale manifest, `q` missing); **Given** a later commit that adds a reader of a changed non-Go file, **Then** the refusal names the reader; **Given** a later harmless commit that leaves the derived set unchanged, **Then** the stored manifest still equals the derivation (positive control for the manifest comparison only: the attempts stay bound to tree and HEAD, class 7, so the calls are re-run); **Given** a verifier process whose GOOS, GOARCH, CGO_ENABLED, GOFLAGS or tags differ from the manifest's recorded environment, **Then** the re-derivation runs under the recorded environment and no spurious class-13 refusal occurs; the merge step, `complete`, condition (d) and `manifest verify` each re-derive.
+- **Given** a manifest derived at an earlier HEAD that lists only package `p`, **When** a later commit changes package `q` and the lane runs only the existing `p` call at the current HEAD, **Then** every consumer refuses as the thirteenth class (stale manifest, `q` missing); **Given** a later commit that adds a reader of a changed non-Go file, **Then** the refusal names the reader; **Given** a later harmless commit that leaves the derived set unchanged, **Then** the stored manifest still equals the derivation (positive control for the manifest comparison only: the attempts stay bound to tree and HEAD, class 7, so the calls are re-run); **Given** a verifier process whose GOOS, GOARCH, CGO_ENABLED, GOFLAGS or tags differ from the manifest's recorded environment, **Then** the re-derivation runs under the recorded environment and no spurious class-13 refusal occurs, and a recorded environment whose effective GOFLAGS carries a test flag is refused; the merge step, `complete`, condition (d) and `manifest verify` each re-derive.
 - Verify (N=5): `go test ./internal/factory -run '^(TestGateRejectsStaleManifestMissingCall|TestGateRejectsManifestWithNewReaderSince|TestAllConsumersReDeriveManifest|TestCurrentManifestSurvivesHarmlessLaterCommit|TestReDerivationUsesManifestEnvironmentNotVerifierEnv)$' -count=1 -v`.
 - RED-now: E-016. Green: M1.
 
 ### AC-LVM-017 — gate state read from the integration branch's committed blob (REQ-LVM-017)
 
-- **Given** a temporary repository with an integration branch `main`, a card worktree, and a stand-in primary checkout deliberately left detached on an older commit that never receives branch commits (the negative control; the real primary is never touched), with `CLAUDE_PROJECT_DIR` set to the stand-in and the reader run from the card worktree (the real resolution order of `integrationLockRoot()`), **When** a commit on `main` sets `workflow.landing_gate.enabled: true`, **Then** the reader reports on and the landing verbs apply the gate, even though the stand-in's file says false or is absent; **When** a following commit on `main` sets it false, **Then** the reader reports off; **Given** the card branch carries its own `enabled: true`, **Then** it is ignored; **Given** no integration branch configured (no window record, empty target), **Then** off — the project has not opted in; **Given** a branch configured whose ref does not exist, **Then** the landing is refused with the named error `gate_state_integration_branch_unresolvable`; **Given** the branch resolves and the path is absent, **Then** off, and **Given** the path is present but the read fails, the YAML is unparseable, or the value is non-boolean (`"yes"`, `1`), **Then** on with the notice `gate_state_unreadable` and an audit row — and a landing that satisfies the gate is still admitted (no deadlock for an unreadable file, including the card that repairs it). No-deadlock reasoning for the unresolvable branch: the merge step cannot run without that branch, and repairing the branch configuration or ref needs no landing.
+- **Given** a temporary repository with an integration branch `main`, a card worktree, and a stand-in primary checkout deliberately left detached on an older commit that never receives branch commits (the negative control; the real primary is never touched), with `CLAUDE_PROJECT_DIR` set to the stand-in and the reader run from the card worktree (the real resolution order of `integrationLockRoot()`), **When** a commit on `main` sets `workflow.landing_gate.enabled: true`, **Then** the reader reports on and the landing verbs apply the gate, even though the stand-in's file says false or is absent; **When** a following commit on `main` sets it false, **Then** the reader reports off; **Given** the card branch carries its own `enabled: true`, **Then** it is ignored; **Given** no integration branch configured (no window record, empty target), **Then** off — the project has not opted in; **Given** a branch configured whose ref does not exist, **Then** the landing is refused with the named error `gate_state_integration_branch_unresolvable`; **Given** the branch resolves and the path is absent, **Then** off, and **Given** the path is present but the read fails, the YAML is unparseable, or the value is non-boolean (`"yes"`, `1`), **Then** on with the notice `gate_state_unreadable` and an audit row — and a landing that satisfies the gate is still admitted (no deadlock for an unreadable file, including the card that repairs it). For the mutating commands (`complete`, the merge step) the refusal exits non-zero before any state change; for the read-only evaluations (condition (d), `manifest verify`) the named error is printed and the exit is non-zero with nothing written. No-deadlock reasoning for the unresolvable branch: the merge step cannot run without that branch, and repairing the branch configuration or ref needs no landing.
 - Verify: factory (N=11) `go test ./internal/factory -run '^(TestGateStateReadFromIntegrationBranchBlob|TestEnableCommitOnIntegrationBranchTakesEffect|TestRevertCommitOnIntegrationBranchTakesEffect|TestStalePrimaryCheckoutDoesNotAffectGateState|TestCardBranchCopyOfKeyIgnored|TestAbsentKeyReadsOff|TestNoIntegrationBranchConfiguredReadsOff|TestConfiguredButUnresolvableBranchRefusesNamed|TestUnreadableFileTreatedOnWithNotice|TestUnreadableFileStillAdmitsCompliantLanding|TestAbsentPathVersusFailedReadDiscriminated)$' -count=1 -v`; cli (N=1) `go test ./internal/cli -run '^TestCompleteReadsGateFromIntegrationBranch$' -count=1 -v`.
 - RED-now: E-017a, E-017b. Green: M1.
 
@@ -130,6 +130,9 @@ Verification layer: each entry is an `AC-LVM-XXX` Given-When-Then, binary-testab
 | AC-LVM-005 | verifier accepts a script-wrapped exit-0 record | `TestGateRejectsScriptWrappedRecord` |
 | AC-LVM-005 | verifier accepts `go test -json -run '^TestX$' ./pkg` | `TestGateRejectsCommandDiffersFromManifest` |
 | AC-LVM-005 | verifier accepts a package that passed with zero tests | `TestGateRejectsEmptySweep` |
+| AC-LVM-005 | verifier compares fingerprint equality only and never inspects the flag content (GOFLAGS `-run=^TestGood$` equal at derive and attempt) | `TestGateRejectsNarrowingGoflagsRun`, `TestGateRejectsNarrowingGoflagsSkip`, `TestGateRejectsAnyTestFlagInGoflags` |
+| AC-LVM-001 / 013 | a module-file change routed through the reader search or admitted as a zero-call card | `TestManifestModuleFileChangeSelectsWholeModule`, `TestZeroGoPathRefusesModuleFileChange` |
+| AC-LVM-010 | receipt-side ancestor whose diff to HEAD is empty accepted | `TestReceiptAtEmptyDiffAncestorRefused` |
 | AC-LVM-016 | verifier compares attempts only, never re-derives the manifest | `TestGateRejectsStaleManifestMissingCall` |
 | AC-LVM-017 | state read from the primary checkout's working tree | `TestStalePrimaryCheckoutDoesNotAffectGateState` |
 | AC-LVM-017 | unreadable file silently reads off | `TestUnreadableFileTreatedOnWithNotice` |
@@ -165,11 +168,11 @@ All entries: tree `8a3014bee99ed50cbd6c2cc833ee40e1e1e9f9b2`, run 2026-10-19, un
 
 #### E-001
 ```
-command: grep -rhoE "^func (TestManifestDerivesChangedAndImporters|TestManifestNarrowingOnlyInternalCLI|TestManifestIncludesTestOnlyChange|TestManifestRecordsNonGoReaderSearch|TestManifestDerivesEmbedOwnerPackages|TestManifestHandlesDeletedPackage)\(" internal/factory --include='*_test.go'
+command: grep -rhoE "^func (TestManifestDerivesChangedAndImporters|TestManifestNarrowingOnlyInternalCLI|TestManifestIncludesTestOnlyChange|TestManifestRecordsNonGoReaderSearch|TestManifestDerivesEmbedOwnerPackages|TestManifestHandlesDeletedPackage|TestManifestModuleFileChangeSelectsWholeModule)\(" internal/factory --include='*_test.go'
 tree: 8a3014bee99ed50cbd6c2cc833ee40e1e1e9f9b2
 exit: 1
 stdout:
-names_found: 0 (required: 6)
+names_found: 0 (required: 7)
 ```
 #### E-002
 ```
@@ -197,11 +200,11 @@ names_found: 0 (required: 3)
 ```
 #### E-005
 ```
-command: grep -rhoE "^func (TestGateRejectsMissingManifest|TestGateRejectsMissingCall|TestGateRejectsScriptWrappedRecord|TestGateRejectsMissingPackageEvent|TestGateRejectsPartialJSON|TestGateRejectsAbortedAttempt|TestGateRejectsOtherTreeOrHead|TestGateRejectsEnvFingerprintMismatch|TestGateRejectsUnverifiedNonGoInput|TestGateRejectsUnderivableScope|TestGateRejectsEmptySweep|TestGateRejectsCommandDiffersFromManifest)\(" internal/factory --include='*_test.go'
+command: grep -rhoE "^func (TestGateRejectsMissingManifest|TestGateRejectsMissingCall|TestGateRejectsScriptWrappedRecord|TestGateRejectsMissingPackageEvent|TestGateRejectsPartialJSON|TestGateRejectsAbortedAttempt|TestGateRejectsOtherTreeOrHead|TestGateRejectsEnvFingerprintMismatch|TestGateRejectsUnverifiedNonGoInput|TestGateRejectsUnderivableScope|TestGateRejectsEmptySweep|TestGateRejectsCommandDiffersFromManifest|TestGateRejectsNarrowingGoflagsRun|TestGateRejectsNarrowingGoflagsSkip|TestGateRejectsAnyTestFlagInGoflags)\(" internal/factory --include='*_test.go'
 tree: 8a3014bee99ed50cbd6c2cc833ee40e1e1e9f9b2
 exit: 1
 stdout:
-names_found: 0 (required: 12)
+names_found: 0 (required: 15)
 ```
 #### E-006a
 ```
@@ -301,11 +304,11 @@ names_found: 0 (required: 2)
 ```
 #### E-013
 ```
-command: grep -rhoE "^func (TestZeroGoCardAdmittedWithEvidence|TestZeroGoCardRefusedWithoutEvidence|TestZeroGoCardRefusedOnStaleChangedPaths|TestZeroGoCardAdmittedThroughAllThreeConsumers)\(" internal/factory --include='*_test.go'
+command: grep -rhoE "^func (TestZeroGoCardAdmittedWithEvidence|TestZeroGoCardRefusedWithoutEvidence|TestZeroGoCardRefusedOnStaleChangedPaths|TestZeroGoCardAdmittedThroughAllThreeConsumers|TestZeroGoPathRefusesModuleFileChange)\(" internal/factory --include='*_test.go'
 tree: 8a3014bee99ed50cbd6c2cc833ee40e1e1e9f9b2
 exit: 1
 stdout:
-names_found: 0 (required: 4)
+names_found: 0 (required: 5)
 ```
 #### E-014
 ```

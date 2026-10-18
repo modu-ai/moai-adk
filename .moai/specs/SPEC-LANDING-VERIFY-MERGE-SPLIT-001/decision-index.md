@@ -1,6 +1,6 @@
 # SPEC-LANDING-VERIFY-MERGE-SPLIT-001 — decision index (card t1872)
 
-Version 0.3.0 adds the leader's policy rulings on plan-audit iteration 1 (board `d-20261018T153534Z-0577`, `0577`) and rows Q14-Q17. Version 0.4.0 adds the N2 ruling on plan-audit iteration 2 (board `d-20261018T160111Z-470c`, `470c`) and rows Q18-Q22. Version 0.5.0 adds the rule C ruling on plan-audit iteration 3 (board `d-20261018T162457Z-5d4d`, `5d4d`) and rows Q23-Q24, and re-states Q20 and Q22.
+Version 0.3.0 adds the leader's policy rulings on plan-audit iteration 1 (board `d-20261018T153534Z-0577`, `0577`) and rows Q14-Q17. Version 0.4.0 adds the N2 ruling on plan-audit iteration 2 (board `d-20261018T160111Z-470c`, `470c`) and rows Q18-Q22. Version 0.6.0 adds the single ceiling exception on plan-audit iteration 4 (board `d-20261018T164307Z-4812`, `4812`) and rows Q25-Q26. Version 0.5.0 adds the rule C ruling on plan-audit iteration 3 (board `d-20261018T162457Z-5d4d`, `5d4d`) and rows Q23-Q24, and re-states Q20 and Q22.
 
 `interview.decision_gate` is `on` in this repository. Version 0.2.0 records the leader's scope ruling of 2026-10-18 (board `d-20261018T150139Z-9dbe`, decided_by leader tn1p4e under operator delegation +Jev, operator-relayed scope review): the SPEC narrows to **piece A** (baseline M0, completeness gate, the Q13 binding, and the enable switch). Pieces B and C and the reuse relaxation are follow-ups, not part of this SPEC.
 
@@ -46,6 +46,10 @@ Effect on earlier text: the "integration root's configuration" wording of versio
 > t1872 piece A, plan audit iter3 (last Tier L round) FAIL 0.84. Rule C (9e76): one correction + one delta audit. Choice: option 1 (one anchor-delta commit for D1 and D2, absorbing D3-D6 and the minor D7-D9; REQ/AC ids unchanged), not the A1/A2 split. D1: 'equivalent' means equal to HEAD, one definition (consistent with 0577 P3). D2: look the receipt up at its store root and compare the audited tree path and identity, with a config-orphan worktree fixture. D3 policy: no integration branch configured -> the project has not opted in -> gate OFF; an integration branch configured but unresolvable -> the landing is refused with a named error (fail-closed). This does not deadlock: the merge step cannot run without that branch, and recovery is repairing the branch configuration or ref, which needs no landing. A FAIL on the delta goes to hold + the A1/A2 split as the shrink.
 
 Effect on earlier rows: Q22 below is replaced (exact equality, no tolerance); Q20 is narrowed by the D3 policy.
+
+## Plan-audit iteration 4 ceiling exception, verbatim (board 4812)
+
+> t1872 piece A single ceiling exception (leader under operator delegation, Jev advisory 0.72). Rule C delta audit FAIL 0.88 @21687134ba (.moai/reports/t1872/plan-audit-iter4.md; rcpt-6f7d69e28f5d0af045255fdc, rcpt-11c4bae25772c9e7e6754c68) stays on record; D1-D9 all resolved. Exception scope, one time: B1 (an effective-GOFLAGS constraint so a run narrowed through GOFLAGS cannot pass derive/attempt comparison; a negative AC under AC-LVM-005 and a mutation row) and S1 (go.mod/go.sum/go.work changes cannot yield an empty manifest), plus O1-O3 wording; REQ/AC id set unchanged. Then one audit at the new HEAD with codex required pass. A FAIL there ends the exception and the card splits into A1 (gate core) and A2 (audit binding + reader) with new SPEC ids, after A2's independence from A1 is verified in code.
 
 ## Rows Q1-Q6 (implementation-level, re-judged for piece A)
 
@@ -278,3 +282,26 @@ Why unresolved: the SPEC-less readiness path binds `audited_sha` only, and itera
 Default: yes — the SPEC-less verdict is `.moai/reports/<card-id>/verdict.md`, and the citation line and the receipt binding apply to it as to a SPEC card (rule: the option that preserves the operator's ruling — Q13 has no card-kind exception)
 Alternate: SPEC cards only
 Operator verdict: DEFAULT-APPLIED 2026-10-18T17:20:00Z manager-spec+lane t1872
+
+## Rows Q25-Q26 (plan-audit iteration 4, inside the 4812 exception)
+
+### Q25: Which flags may the effective GOFLAGS carry?
+
+Label: FOUNDER
+Class: implementation-level
+Authority anchor: none (scope granted by board 4812: "an effective-GOFLAGS constraint")
+Why unresolved: a narrowing GOFLAGS set identically at derivation and at the attempt passed both the argv comparison and the fingerprint equality (reproduced by the auditor: plain `go test -json` ends fail, `GOFLAGS='-run=^TestGood$'` ends pass).
+Default: the effective GOFLAGS, as resolved by `go env`, may carry no test-selection, test-truncation or test-shaping flag (`-run`, `-skip`, `-failfast`, `-short`, `-list`, `-shuffle`, `-count`, `-timeout`, `-p`, `-parallel`, `-cpu`, `-bench`, `-fuzz`); build-only flags pass; the 35e9 narrowing lives in the call's argv only (rule: the option that refuses strictly more, the fail-closed direction the rulings require)
+Alternate: refuse only `-run` and `-skip`
+Operator verdict: DEFAULT-APPLIED 2026-10-18T17:50:00Z manager-spec+lane t1872
+
+### Q26: What does a go.mod, go.sum, go.work or go.work.sum change select?
+
+Label: FOUNDER
+Class: implementation-level
+Authority anchor: none (scope granted by board 4812: "changes cannot yield an empty manifest")
+Why unresolved: the four files are repository-wide inputs; the textual reader search would yield an arbitrary subset or an empty manifest.
+Default: every Go package of the module becomes a whole-package call, no reader search, no 35e9 narrowing for a call selected only by them; the zero-call path never admits such a card (rule: the option that refuses strictly more)
+Alternate: refuse the card as underivable
+Operator verdict: DEFAULT-APPLIED 2026-10-18T17:50:00Z manager-spec+lane t1872
+
