@@ -124,6 +124,13 @@ var receiptIDPattern = regexp.MustCompile(`^rcpt-[a-z0-9]{20,40}$`)
 // verdict-line grammar's SPEC span.
 const specIDBody = `SPEC(?:-[A-Z][A-Z0-9]*)+-[0-9]{3}`
 
+// cardIDBody is the card-id grammar the verdict line's spec= span also
+// accepts: a card-flow audit has no SPEC id, and its auditors name the card —
+// observed spellings `t1854` and `card-t1856` (card t1861). It stays out of
+// specIDBody on purpose: free-text SPEC extraction must not start matching
+// every card mention.
+const cardIDBody = `(?:card-)?t[0-9]+`
+
 // specIDPattern finds a SPEC id anywhere in free text.
 var specIDPattern = regexp.MustCompile(specIDBody)
 
@@ -135,9 +142,13 @@ func SpecIDFromText(text string) string {
 	return m
 }
 
-// verdictLinePattern is plan.md §B.6 verbatim.
+// verdictLinePattern is plan.md §B.6 verbatim, with the spec= span widened to
+// accept a card id beside a SPEC id: a card-flow audit cites its card, and
+// refusing that line as unparseable recorded "verdict line missing" refusals
+// for provable PASSes (card t1861). Everything else — verdict alternation,
+// receipts grammar, last-line anchoring — is unchanged.
 var verdictLinePattern = regexp.MustCompile(
-	`^AUDIT-VERDICT: (PASS|PASS-WITH-DEBT|FAIL) spec=(` + specIDBody + `) receipts=(none|rcpt-[a-z0-9]{20,40}(?:,rcpt-[a-z0-9]{20,40})*)[ \t\r]*$`)
+	`^AUDIT-VERDICT: (PASS|PASS-WITH-DEBT|FAIL) spec=((?:` + specIDBody + `|` + cardIDBody + `)) receipts=(none|rcpt-[a-z0-9]{20,40}(?:,rcpt-[a-z0-9]{20,40})*)[ \t\r]*$`)
 
 // Receipt records one audit call the runtime actually made.
 type Receipt struct {
