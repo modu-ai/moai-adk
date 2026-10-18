@@ -47,6 +47,25 @@ const LandedSubjectFormatFlag = "--format=%s"
 // resolvable.
 const DefaultLandedRef = "origin/main"
 
+// LandedMaxCount bounds the landed check's walk: the query reads the ref's
+// most recent LandedMaxCount subjects, not its whole history.
+//
+// The unbounded walk was the defect card t1805 closes (t1746 evidence E5/R1):
+// `git log origin/main --format=%s` over 13,385 commits took 1.86 s at load
+// ~200, per card per query. 500 pins the acceptance with margin — at that
+// load anchor (~139 µs/commit) the bound measures ~70 ms — and covers the
+// window the check needs: origin/main grew 5,892 commits in the 30 days
+// before 2026-10-18, so 500 commits is roughly 2.5 days of landing activity,
+// and the surfaces that ask the question re-check live backlog cards, whose
+// landings are recent by construction.
+//
+// The trade-off is documented behaviour, pinned by
+// TestLandedCheck_WindowEdge: a landing commit older than the window is
+// outside the walk and answers not-landed. The auto-done scan
+// (LandedScanArgs) is a separate surface with its own query and is unchanged
+// by this bound.
+const LandedMaxCount = 500
+
 // LandingAnswer is the landed check's THREE-valued answer.
 //
 // The third value is the point. Collapsing an unanswerable query into
@@ -286,10 +305,13 @@ func LandedBranchFromRef(ref string) string {
 // The query is a SUBJECT stream (`--format=%s`), never a whole-message
 // stream: the predicate decides on attribution position within a subject, and
 // a `%B` stream would feed commit bodies to it as if they were subjects. The
-// ref is an INPUT rather than a package constant so the package stays a pure
-// function of what it is given (prlink.go's NFR-4 ruling). An empty ref falls
-// back to DefaultLandedRef rather than emitting an empty argv element, which
-// git would read as the working tree.
+// walk is bounded to the ref's most recent LandedMaxCount subjects
+// (card t1805): the unbounded full-history walk was the t1746 defect, and the
+// window edge's not-landed trade-off is documented on the constant and pinned
+// by test. The ref is an INPUT rather than a package constant so the package
+// stays a pure function of what it is given (prlink.go's NFR-4 ruling). An
+// empty ref falls back to DefaultLandedRef rather than emitting an empty argv
+// element, which git would read as the working tree.
 //
 // Exported so the tripwire can assert against the implementation's own
 // construction rather than against a transcription of it — a test that
@@ -306,6 +328,7 @@ func LandedSubjectArgs(ref string) ([]string, error) {
 	return []string{
 		"log", ref,
 		LandedSubjectFormatFlag,
+		fmt.Sprintf("--max-count=%d", LandedMaxCount),
 	}, nil
 }
 
@@ -332,11 +355,12 @@ func (q GitLandedQuerier) LandedRef() string {
 	return q.Ref
 }
 
-// Landed reports whether the resolved ref's history carries a subject that
-// ATTRIBUTES the card — one of spec.md §A.4's six positional shapes, with the
-// non-attribution rule applied. It does NOT report whether the card token
-// appears anywhere in a message: a body mention, a mid-sentence mention, a
-// branch name, and a dependency note attribute nothing (REQ-TLA-001..004).
+// Landed reports whether the resolved ref's most recent LandedMaxCount
+// subjects carry one that ATTRIBUTES the card — one of spec.md §A.4's six
+// positional shapes, with the non-attribution rule applied. It does NOT
+// report whether the card token appears anywhere in a message: a body
+// mention, a mid-sentence mention, a branch name, and a dependency note
+// attribute nothing (REQ-TLA-001..004).
 //
 // It returns a three-valued answer and an error, and NOTHING else (REQ-1.10).
 // The subject stream is consumed here and discarded: no SHA and no subject

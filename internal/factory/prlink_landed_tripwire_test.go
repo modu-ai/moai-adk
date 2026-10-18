@@ -33,6 +33,13 @@ func TestLandedSubjectArgs_Tripwire(t *testing.T) {
 		t.Errorf("argv %v does not name the resolved ref", args)
 	}
 
+	// The bound (card t1805): the walk carries a positive --max-count. An
+	// unbounded walk is the full-history scan defect the bound exists to
+	// close — 13,385 commits per query at 1.86 s under load (t1746 E5/R1).
+	if n := maxCountFromArgs(args); n < 0 {
+		t.Errorf("argv %v carries no positive --max-count — the landed walk is unbounded", args)
+	}
+
 	// Forbidden shapes, each a named regression:
 	if slices.Contains(args, "--format=%B") {
 		t.Errorf("argv %v carries --format=%%B — commit bodies would be fed to the positional matcher as subjects", args)
