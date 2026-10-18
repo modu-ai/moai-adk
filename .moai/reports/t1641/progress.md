@@ -150,3 +150,31 @@ Authority: the operator's ruling of 10-19 (AskUserQuestion; board record `d-2026
 - Whether the publisher's exact set (17 names) loses exactly one member when the gtd command file is deleted was not measured (the publisher runs in the project build); AC-TU-007 states the equality-with-publisher-output form so the run phase measures it.
 - The delta audit itself was not run (the lane runs it after this commit); no plan-audit*.md file was written by this round.
 - The operator's 387-hit measurement could not be reproduced exactly here (397 with the command as written); recorded as an open count discrepancy, not resolved by adjusting the command.
+
+## Delta audit outcome (2026-10-19, plan-auditor — the operator's one round)
+
+Verdict file: `.moai/reports/t1641/plan-audit-delta.md` (gitignored, uncommitted, per the
+standing verdict-file ruling). **PASS-WITH-DEBT 0.88** (Tier L threshold 0.85 met),
+must_pass_failed 0, blocking_count 0. audited_sha `436e77f3485183b81586b6319d5b16b9d3585bde`
+(tree HEAD verified unmoved, clean). plan_artifact_hash
+`ffba0a85e253cf3e9185d4123c62b629872bb6c61e347c9585c4550b38b4f328` — from two agreeing
+transcriptions of `internal/runtime/audit_cache.go:92-141` ComputeHash; the MCP `audit_cache`
+tool is absent from this session, disclosed in the file.
+
+All six delta-scope items CLEAN; every class-A RED re-executed and reproduced (397/101 at
+both `3c1809e2f1` and HEAD; AC-TU-008 grep 8; AGENTS.md 1 hit / 23,780 bytes; `moai gtd
+--help` exit 0 through the installed ancestor build; `moai todo reflect` exit 1). One AC-set
+correction to the dispatch's summary: the surviving set includes AC-TU-024 (no-skip guard);
+artifacts are consistent at 15/15.
+
+Carried (run-phase obligations, none a blocker):
+- D43 (SHOULD-FIX): M5/M6 file lists omit the two gtd slash-command file deletions
+  (`internal/template/templates/.claude/commands/moai/gtd.md` + deployed
+  `.claude/commands/moai/gtd.md`); M5 must delete both by explicit path.
+- D44 (SHOULD-FIX): AC-TU-008's green-path cell names M7 while plan revision 5 moved those
+  consumer edits to M5; plan M7's stale "Gap carried" note rides M5 now.
+- CONV-1 (mechanical): the required codex leg did not run — the auditor session has no moai
+  MCP audit tools; `required_backend: codex inconclusive` recorded, `convergence_overall`
+  deliberately omitted. **Plan admission will refuse this verdict fail-closed on the
+  receipt**; disposition is the leader's (bridge leg at kickoff, or the ceiling's
+  label-only admission arm). The lane does not advance to kickoff on this file alone.
