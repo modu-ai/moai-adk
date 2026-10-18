@@ -16,6 +16,7 @@ import (
 // the command, renders the verdict, and maps the clean-check refusal to a
 // non-zero exit.
 func newIntegrationRemeasureCmd() *cobra.Command {
+	var branchFlag string
 	cmd := &cobra.Command{
 		Use:   "remeasure -- <command>",
 		Short: "Run the re-measure and store its record keyed by the candidate tree",
@@ -33,7 +34,7 @@ func newIntegrationRemeasureCmd() *cobra.Command {
 			if wdErr != nil {
 				return fmt.Errorf("integration remeasure: resolve the working directory: %w", wdErr)
 			}
-			rec, err := factory.RunRemeasure(root, worktree, configuredIntegrationBranch(), command)
+			rec, err := factory.RunRemeasure(root, worktree, remeasureBaseBranch(branchFlag), command)
 			if err != nil {
 				return err
 			}
@@ -47,7 +48,21 @@ func newIntegrationRemeasureCmd() *cobra.Command {
 			return vErr
 		},
 	}
+	cmd.Flags().StringVar(&branchFlag, "branch", "", "The integration target branch whose absorbed tip the record names — pass the same value given to acquire --branch (default: the configured integration target)")
 	return cmd
+}
+
+// remeasureBaseBranch resolves the branch whose absorbed tip the record names.
+// An explicit --branch goes through resolveIntegrationTarget exactly as acquire
+// resolves its target, so the gate and the record measure against the same
+// branch; without the flag the configured integration target stands, unchanged
+// (card t1834, sync-audit iter9 G2).
+func remeasureBaseBranch(explicit string) string {
+	base := configuredIntegrationBranch()
+	if strings.TrimSpace(explicit) != "" {
+		base, _, _ = resolveIntegrationTarget(explicit, base)
+	}
+	return base
 }
 
 // shellJoinArgs joins the argv the caller passed after -- into the one

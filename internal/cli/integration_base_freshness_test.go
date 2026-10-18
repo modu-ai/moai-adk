@@ -819,3 +819,59 @@ func TestRemeasureAndAcquireAgreeOnIntegrationTargetAcrossLinkedRoot(t *testing.
 		t.Fatalf("the window must be recorded for the caller at the common root: %+v", lock)
 	}
 }
+
+// ---- audit iter9 G2: remeasure takes the same --branch target as acquire ----
+
+func TestRemeasureBranchFlagMeasuresTheExplicitAcquireTarget(t *testing.T) {
+	// Audit iter9 G2: `acquire --branch alternate` makes the gate count landings
+	// behind the ALTERNATE branch, but remeasure had no --branch flag and always
+	// named the configured branch's absorbed tip, so a candidate that had absorbed
+	// the alternate tip was refused "1 landings behind" and remeasuring as the
+	// message advises never cleared it. remeasure now resolves its target through
+	// the same resolveIntegrationTarget as acquire and complete.
+	f := newBFCFixture(t)
+	writeGitStrategyFixture(t, f.root, "git-flow", "main")
+	bfcWriteWorkflow(t, f.root, bfcGateYAML(true, 0))
+
+	// `alternate` is one landing past main; the card then absorbs it.
+	altTree := bfcGit(t, f.repo, "rev-parse", "main^{tree}")
+	altTip := bfcGit(t, f.repo, "commit-tree", altTree, "-p", "main", "-m", "alternate landing")
+	bfcGit(t, f.repo, "branch", "alternate", altTip)
+	bfcGit(t, f.card, "merge", "-q", "--no-edit", "alternate")
+	cardTree := f.tree()
+
+	// Without the flag the verb keeps today's target — the configured branch (main)
+	// — so its record names main's tip, and the explicit-target gate still refuses.
+	if _, stderr, err := runIntegrationSplit(t, f.card, f.root, "remeasure", "--", "true"); err != nil {
+		t.Fatalf("default remeasure must succeed: %v\nstderr: %s", err, stderr)
+	}
+	rec, err := factory.ReadRemeasureRecord(f.root, cardTree)
+	if err != nil {
+		t.Fatalf("default remeasure must store a record: %v", err)
+	}
+	if rec.Base != f.base {
+		t.Fatalf("a remeasure without --branch must keep naming the configured branch's tip (main = %s), got %s", f.base, rec.Base)
+	}
+	if _, _, err := f.acquire("--card", "t1", "--branch", "alternate", "--session", "sess-lane1"); err == nil || !strings.Contains(err.Error(), "1 landings behind") {
+		t.Fatalf("acquire --branch alternate after a default remeasure must be refused as 1 landings behind, got: %v", err)
+	}
+
+	// With the flag the record names the alternate tip, and the same acquire admits.
+	if _, stderr, err := runIntegrationSplit(t, f.card, f.root, "remeasure", "--branch", "alternate", "--", "true"); err != nil {
+		t.Fatalf("remeasure --branch alternate must succeed: %v\nstderr: %s", err, stderr)
+	}
+	rec, err = factory.ReadRemeasureRecord(f.root, cardTree)
+	if err != nil {
+		t.Fatalf("remeasure --branch must store a record: %v", err)
+	}
+	if rec.Base != altTip {
+		t.Fatalf("remeasure --branch alternate must name the alternate tip %s as its base, got %s", altTip, rec.Base)
+	}
+	stdout, stderr, err := f.acquire("--card", "t1", "--branch", "alternate", "--session", "sess-lane1")
+	if err != nil {
+		t.Fatalf("acquire --branch alternate after remeasure --branch alternate must admit, got: %v\nstdout: %s\nstderr: %s", err, stdout, stderr)
+	}
+	if lock := sdWindow(t, f.root); lock.SessionID != "sess-lane1" || lock.Branch != "alternate" {
+		t.Fatalf("the window must be recorded for the caller against the alternate target: %+v", lock)
+	}
+}
