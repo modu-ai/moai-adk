@@ -38,7 +38,12 @@ package cli
 import (
 	"fmt"
 	"io"
+	"os"
+	"os/exec"
+	"path/filepath"
 	"strings"
+
+	"github.com/modu-ai/moai-adk/internal/execerr"
 )
 
 // worktreeRead is one first-match -w / --worktree read: the value and whether a
@@ -684,4 +689,138 @@ func seedAdmittedWorktreeHooks(args []string, warn io.Writer) {
 // pass-through args name (injectChainNodeForTarget).
 func injectChainNodeForLaunch(extraArgs []string, env []string, warn io.Writer) []string {
 	return injectChainNodeForTarget(extractWorktreeLaunchTarget(extraArgs), env, warn)
+}
+
+// --- -w short-name .moai collision resolution (card t1791, GH #1813) ----------
+
+// moaiShortNameState is the resolution of one short-name -w value against the
+// project-local .moai/worktrees/<name> tree of the same name.
+type moaiShortNameState int
+
+const (
+	// moaiShortNameAbsent: no same-named .moai tree exists. The backend
+	// creates .claude/worktrees/<name> as before — current behavior stands.
+	moaiShortNameAbsent moaiShortNameState = iota
+	// moaiShortNameRegistered: the same-named .moai tree exists and git lists
+	// it as a worktree of this repository. The launch re-enters it.
+	moaiShortNameRegistered
+	// moaiShortNameConflict: the same-named path exists but is not a
+	// registered worktree — a plain directory, a file, or a repository whose
+	// worktree list cannot be read. Refuse rather than guess.
+	moaiShortNameConflict
+)
+
+// resolveMoaiWorktreeShortNameState is the seam the resolution reads its
+// filesystem answer from. Tests override it to drive the three states without
+// touching disk or git.
+var resolveMoaiWorktreeShortNameState = resolveMoaiWorktreeShortNameStateReal
+
+// resolveMoaiWorktreeShortNameStateReal answers the state of
+// <projectRoot>/.moai/worktrees/<name>: absent when nothing is there,
+// registered when git lists the path among the repository's worktrees, and a
+// conflict for anything else. A worktree list that cannot be read is a
+// conflict with the cause — the same fail-closed norm worktreeWriterRefusal
+// applies to an unreadable lock state.
+func resolveMoaiWorktreeShortNameStateReal(projectRoot, name string) (moaiShortNameState, error) {
+	tree := filepath.Join(projectRoot, ".moai", "worktrees", name)
+	info, err := os.Stat(tree)
+	if err != nil {
+		if os.IsNotExist(err) {
+			return moaiShortNameAbsent, nil
+		}
+		return moaiShortNameConflict, fmt.Errorf("stat %s: %w", tree, err)
+	}
+	if !info.IsDir() {
+		return moaiShortNameConflict, nil
+	}
+	out, err := exec.Command("git", "-C", projectRoot, "worktree", "list", "--porcelain").Output()
+	if err != nil {
+		return moaiShortNameConflict, fmt.Errorf("git worktree list: %s", execerr.StatusDetail(err))
+	}
+	want := canonicalTreePath(tree)
+	for _, line := range strings.Split(string(out), "\n") {
+		if path, ok := strings.CutPrefix(line, "worktree "); ok {
+			if canonicalTreePath(filepath.FromSlash(strings.TrimSpace(path))) == want {
+				return moaiShortNameRegistered, nil
+			}
+		}
+	}
+	return moaiShortNameConflict, nil
+}
+
+// resolveMoaiWorktreeShortName rewrites a short-name -w/--worktree value that
+// names an existing registered .moai/worktrees/<name> tree into that tree's
+// absolute path, so the backend re-enters the MoAI tree instead of
+// materializing a same-named .claude twin (the 2026-10-08 lane-12 incident).
+// A same-named path that is not a registered worktree warns and aborts —
+// silently creating the twin is the collision this resolution exists to
+// refuse. Every other argv passes through unchanged: no -w, a bare -w, an
+// absolute -w (already names an existing tree), a value with a path
+// separator, and a name with no same-named .moai tree.
+//
+// The entry points call this BEFORE the anchor guard and resolveLaunchView, so
+// every reader downstream judges the tree the backend will actually enter.
+// The rewrite replaces the value in place — the token count never changes, so
+// every downstream origin index stays aligned — and the value it rewrites is
+// exactly the value the stage reads carry (worktreeFlagValue's grammar, first
+// match, stopping at "--").
+func resolveMoaiWorktreeShortName(args []string, warn io.Writer) ([]string, error) {
+	read := readFirstWorktree(args)
+	if !read.Has || read.Value == "" || filepath.IsAbs(read.Value) {
+		return args, nil
+	}
+	name := read.Value
+	if name == "." || name == ".." || strings.ContainsRune(name, filepath.Separator) || strings.ContainsRune(name, '/') {
+		return args, nil // not a single-segment short name; not this resolution's input
+	}
+	projectRoot, err := findProjectRootFn()
+	if err != nil || projectRoot == "" {
+		return args, nil // no root to resolve against: keep current behavior (the launch needs a root anyway)
+	}
+	state, err := resolveMoaiWorktreeShortNameState(projectRoot, name)
+	if err != nil {
+		return nil, fmt.Errorf("-w %s: %w", name, err)
+	}
+	switch state {
+	case moaiShortNameAbsent:
+		return args, nil
+	case moaiShortNameRegistered:
+		return rewriteFirstWorktreeValue(args, filepath.Join(projectRoot, ".moai", "worktrees", name)), nil
+	default: // moaiShortNameConflict
+		tree := filepath.Join(projectRoot, ".moai", "worktrees", name)
+		_, _ = fmt.Fprintf(warn, "moai: refusing to launch: -w %s names %s, which exists but is not a registered git worktree of this repository; entering it is unsafe, and creating .claude/worktrees/%s with the same name is the twin collision this launcher refuses. Remove or rename the path, or pass the tree's absolute path explicitly after verifying it.\n", name, tree, name)
+		return nil, fmt.Errorf("-w %s: %s exists but is not a registered git worktree; refusing to create the same-named .claude twin", name, tree)
+	}
+}
+
+// rewriteFirstWorktreeValue returns args with the first -w/--worktree value
+// replaced by value: the value token itself for the two-token forms, the
+// option token rewritten for the = forms. Args without a rewritable value are
+// returned unchanged. The walk mirrors worktreeFlagValue's grammar so the
+// rewritten value is the one the stage reads and the backend selection see.
+func rewriteFirstWorktreeValue(args []string, value string) []string {
+	for i := 0; i < len(args); i++ {
+		arg := args[i]
+		if arg == "--" {
+			return args // everything after -- is verbatim pass-through
+		}
+		switch {
+		case arg == "-w" || arg == "--worktree":
+			if i+1 < len(args) && args[i+1] != "--" && !strings.HasPrefix(args[i+1], "-") {
+				out := append([]string(nil), args...)
+				out[i+1] = value
+				return out
+			}
+			return args
+		case strings.HasPrefix(arg, "--worktree="):
+			out := append([]string(nil), args...)
+			out[i] = "--worktree=" + value
+			return out
+		case strings.HasPrefix(arg, "-w="):
+			out := append([]string(nil), args...)
+			out[i] = "-w=" + value
+			return out
+		}
+	}
+	return args
 }

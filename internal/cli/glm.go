@@ -256,6 +256,13 @@ func runGLM(cmd *cobra.Command, args []string) error {
 	}
 	filteredArgs = entry.Rest
 	endEntry()
+	// Card t1791 (GH #1813): see cc.go — the same short-name .moai resolution,
+	// before the anchor guard and the launch view read the -w value.
+	resolved, err := resolveMoaiWorktreeShortName(filteredArgs, cmd.ErrOrStderr())
+	if err != nil {
+		return err
+	}
+	filteredArgs = resolved
 	factoryLabel, isFactoryLane := parseFactoryLaneLabel(filteredArgs)
 	switch resolveFactoryBranch(entry.FactoryEnabled, isFactoryLane) {
 	case factoryBranchLeader:

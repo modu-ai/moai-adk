@@ -190,6 +190,17 @@ func runClaudeEntry(cmd *cobra.Command, args []string, commandName, mode, backen
 	}
 	filteredArgs = entry.Rest
 	endEntry()
+	// Card t1791 (GH #1813): resolve a short-name -w against the project's
+	// .moai/worktrees/ BEFORE the anchor guard and the launch view read it, so
+	// every reader downstream judges the tree the backend will actually enter:
+	// a registered same-named .moai tree is entered (the -w value becomes its
+	// absolute path), a non-registered same-named path aborts, and a fresh
+	// name passes through for the backend to create .claude/worktrees/<name>.
+	resolved, err := resolveMoaiWorktreeShortName(filteredArgs, cmd.ErrOrStderr())
+	if err != nil {
+		return err
+	}
+	filteredArgs = resolved
 	factoryLabel, isFactoryLane := parseFactoryLaneLabel(filteredArgs)
 	switch resolveFactoryBranch(entry.FactoryEnabled, isFactoryLane) {
 	case factoryBranchLeader:
