@@ -743,3 +743,79 @@ func TestBaseFreshnessOutputNeverEchoesUntrustedInput(t *testing.T) {
 		}
 	}
 }
+
+// ---- audit iter8 F2: remeasure and acquire read the same configuration root ----
+
+func TestRemeasureAndAcquireAgreeOnIntegrationTargetAcrossLinkedRoot(t *testing.T) {
+	// Audit iter8 F2: since card t1680 acquire, complete and the gate resolve the
+	// project through integrationLockRoot (the repository common root), while the
+	// remeasure verb named its absorbed base through resolveProjectDir
+	// (CLAUDE_PROJECT_DIR as given). When CLAUDE_PROJECT_DIR names a linked
+	// worktree whose git-strategy.yaml differs from the common root's, the two
+	// verbs measured against different integration branches: a candidate that had
+	// absorbed the common root's target and remeasured successfully was refused.
+	//
+	// The common root (the primary checkout, `main` checked out) names `main` as
+	// its develop branch; the linked card worktree names `develop`, a branch that
+	// stayed at the pre-landing base. The card branched from `main` after the
+	// landing, so against the common root's target it is fresh (0 behind).
+	root, err := filepath.EvalSymlinks(t.TempDir())
+	if err != nil {
+		t.Fatal(err)
+	}
+	repo, card := filepath.Join(root, "repo"), filepath.Join(root, "card")
+	if err := os.MkdirAll(repo, 0o755); err != nil {
+		t.Fatal(err)
+	}
+	bfcGit(t, repo, "init", "-q", "-b", "main")
+	if err := os.WriteFile(filepath.Join(repo, "base.txt"), []byte("base\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	bfcGit(t, repo, "add", "base.txt")
+	bfcGit(t, repo, "commit", "-q", "-m", "base")
+	bfcGit(t, repo, "branch", "develop")
+	bfcGit(t, repo, "commit", "-q", "--allow-empty", "-m", "landing")
+	mainTip := bfcGit(t, repo, "rev-parse", "main")
+	bfcGit(t, repo, "worktree", "add", "-q", "-b", "WT-card", card, "main")
+	if err := os.WriteFile(filepath.Join(card, "card.txt"), []byte("card work\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	bfcGit(t, card, "add", "card.txt")
+	bfcGit(t, card, "commit", "-q", "-m", "card work")
+
+	// Keep the per-tree configuration out of git status: the remeasure verb
+	// refuses a dirty worktree. info/exclude lives in the common git dir, so it
+	// covers the primary checkout and the linked worktree alike.
+	exclude := filepath.Join(repo, ".git", "info", "exclude")
+	if err := os.MkdirAll(filepath.Dir(exclude), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(exclude, []byte(".moai/\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	writeGitStrategyFixture(t, repo, "git-flow", "main")
+	writeGitStrategyFixture(t, card, "git-flow", "develop")
+	bfcWriteWorkflow(t, repo, bfcGateYAML(true, 0))
+
+	// CLAUDE_PROJECT_DIR names the linked worktree for both verbs
+	// (runIntegrationSplit sets it from its root argument).
+	if _, stderr, err := runIntegrationSplit(t, card, card, "remeasure", "--", "true"); err != nil {
+		t.Fatalf("remeasure must succeed: %v\nstderr: %s", err, stderr)
+	}
+	common := factory.IntegrationCommonRoot(card)
+	rec, err := factory.ReadRemeasureRecord(common, bfcGit(t, card, "rev-parse", "HEAD^{tree}"))
+	if err != nil {
+		t.Fatalf("remeasure must store its record at the common root %s: %v", common, err)
+	}
+	if rec.Base != mainTip {
+		t.Errorf("remeasure must name the common root's integration target (main = %s) as its base, got %s", mainTip, rec.Base)
+	}
+
+	stdout, stderr, err := runIntegrationSplit(t, card, card, "acquire", "--card", "t1", "--session", "sess-lane1")
+	if err != nil {
+		t.Fatalf("acquire after a successful remeasure of an absorbed candidate must admit, got: %v\nstdout: %s\nstderr: %s", err, stdout, stderr)
+	}
+	if lock := sdWindow(t, common); lock.SessionID != "sess-lane1" {
+		t.Fatalf("the window must be recorded for the caller at the common root: %+v", lock)
+	}
+}

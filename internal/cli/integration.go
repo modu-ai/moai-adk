@@ -258,8 +258,14 @@ coordination signal without enabling refusal.`,
 // base died with `merge-base ..HEAD … exit status 128`; IntegrationTarget
 // carries the git-flow DevelopBranch unchanged and resolves github-flow to
 // main.
+//
+// The configuration is read from integrationLockRoot, the root acquire, complete
+// and the base-freshness gate read it from. Reading CLAUDE_PROJECT_DIR as given
+// instead let a variable naming a linked worktree with its own git-strategy.yaml
+// record the re-measure against one branch while the gate measured landings
+// behind another (card t1834, sync-audit iter8 F2).
 func configuredIntegrationBranch() string {
-	return config.LoadGitFlowIntegrationConfig(resolveProjectDir()).IntegrationTarget
+	return config.LoadGitFlowIntegrationConfig(integrationLockRoot()).IntegrationTarget
 }
 
 func newIntegrationStatusCmd() *cobra.Command {
