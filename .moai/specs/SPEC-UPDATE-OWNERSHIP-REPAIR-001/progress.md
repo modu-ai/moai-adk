@@ -1530,6 +1530,166 @@ run 5 rc=0 top-pass=1 sub-pass=7 fail=0 skip=0 ok  	github.com/modu-ai/moai-adk/
 6. 잔존 행에는 디렉터리 행이 생긴다. 묶음 줄은 이 이유에서만 「file(s)」 대신 「empty director(ies)」 를 쓴다 (`remainingSummaryLines` 의 명사 한 곳).
 7. `userAssetsInstalled` 가 거짓이거나 프로젝트 매니페스트가 없는 실행은 걷기 앞에서 끝나므로 정리 단계에도 닿지 않는다 (기존 조기 반환을 바꾸지 않았다).
 
+#### M6 — commands 한 처분과 탐색 보증 (AC-OWR-09, AC-OWR-10)
+
+**chunk 1 탐침의 재수행 (정직 공개).** chunk 1 의 M6 열린 질문 탐침은 부분적이었다. (1) 변형 「같은 버전」 은 `system.yaml` 이 없어 프로젝트 버전이 `0.0.0` 이었고 바이너리 버전과 달랐다 — 같은 버전이 아니었다. (2) 변형 「낡은 기록」 은 `runUpdate` 가 아니라 `runTemplateSyncWithProgress` 를 직접 불렀고 `runUpdate` 의 사용자 자산 단계와 버전 일치 관문 앞 단계를 거치지 않았다. 그 판정은 근거로 쓰지 않고 아래 세 변형을 이번 chunk 에서 새로 구성해 처음부터 다시 쟀다. 모든 변형은 임시 HOME 과 `TMPDIR=/private/tmp/own-fixture-d1` 아래 임시 프로젝트에서만 돌았고 바이너리는 이 트리의 `go test` 가 빌드한 것이다 (설치된 바이너리 없음).
+
+| 변형 | 기록 버전 / 바이너리 버전 | 기록된 템플릿 트리 | 구동 | 건너뛰기 아님을 보인 증거 |
+|------|--------------------------|--------------------|------|---------------------------|
+| V1 같은 버전 | `v3.2.0-rc.36` / `v3.2.0-rc.36` (`version.Version` 고정) | 낡음 (`stale-tree-hash`) — 그래서 `--force` 없이 조정에 닿는다 | `runTemplateSyncWithProgress` (`moai update` 의 동기화 진입) | `skipped == false`, 실행 백업에 새 `manifest.prior.json` |
+| V2 낡은 기록 | `v3.2.0-rc.35` / `v3.2.0-rc.36` (현장은 rc.35 기록 + rc.36 바이너리) | 낡음 | **`runUpdate` 전체** (`--yes --templates-only`, 사용자 자산 단계와 버전 일치 관문 포함) | 출력에 「이미 최신」 표지 없음, 실행 백업에 새 `manifest.prior.json` |
+| V3 매니페스트 유실 | `v3.2.0-rc.35` / `v3.2.0-rc.36` | 낡음 | `runUpdate` 전체 | 같음 |
+
+V1, V2 의 픽스처는 명령 네 상태를 가진다: S1 `gtd.md` (등록 managed, 건강), S2 `fix.md` (등록 managed 로 배포기가 렌더한 바이트를 기록한 뒤 사용자가 `USERLINE: keep me` 한 줄을 덧붙임), S3 `todo.md` (템플릿 바이트, 매니페스트 항목 없음), S4 `.claude/commands/moai-user-cmd.md` (사용자 작성). V3 는 템플릿 command 17개 전부를 템플릿 바이트로 두고 항목을 하나도 만들지 않는다. 바이트의 기준은 같은 진입을 새 프로젝트·새 HOME 에서 돌린 **통제 실행** (`.tmpl` 명령의 바이트는 템플릿 원문이 아니라 배포기의 렌더이므로 그것만이 정직한 기준이다).
+
+**커밋.** A `0ac54c59e2` (시험 파일만: `internal/cli/update_commands_discovery_test.go`), A2 `4e9564f790` (시험 파일만: 통제 실행 자신의 전제를 강화 — 카탈로그 core 계층의 모든 에이전트가 설치되었고 Claude 에이전트가 템플릿의 바이트 복사본임을 요구한다; 그렇지 않으면 설치기가 깨져도 통제 실행과 모든 변형이 함께 깨져 오라클 안에 숨는다), A3 `a7d2663e11` (시험 파일만: 변형 V3 추가). **구현 커밋 C 는 없다** — 아래 이유.
+
+**AC-OWR-09 도착 셀 (트리 `a7d2663e11`, 작업 트리 깨끗, 부하 평균 `27.99 36.47 41.89`)** — 명령: `TMPDIR=/private/tmp/own-fixture-d1 go test ./internal/cli/ -run '^TestCommandsSingleDispositionAndPresent$' -count=1 -v`, 종료 코드 0. 인용은 관측 로그 줄과 `---`/결과 줄만 (원문 순서 그대로):
+
+```text
+    update_commands_discovery_test.go:529: V1: plan after the run (read-only classification): 384 files, 380 template-owned, 3 user-modified, 1 user-owned, 0 stale
+    update_commands_discovery_test.go:529: V1: report line: ✓ 0 merged, 1 conflict(s), 0 preserved
+    update_commands_discovery_test.go:529: V1: report line: + 416 add · ~ 5 update · ! 2 conflict
+    update_commands_discovery_test.go:529: V1: report line: Reconciliation: 1 refreshed, 0 merged, 1 conflict(s), 0 preserved, 0 archived-removed
+    update_commands_discovery_test.go:529: V1: report line: conflict: .claude/commands/moai/fix.md (sidecar: .claude/commands/moai/fix.md.moai-new)
+    update_commands_discovery_test.go:557: V2: plan after the run (read-only classification): 384 files, 382 template-owned, 1 user-modified, 1 user-owned, 0 stale
+    update_commands_discovery_test.go:557: V2: report line: ✓ 0 merged, 1 conflict(s), 0 preserved
+    update_commands_discovery_test.go:557: V2: report line: + 416 add · ~ 5 update · ! 2 conflict
+    update_commands_discovery_test.go:557: V2: report line: Reconciliation: 1 refreshed, 0 merged, 1 conflict(s), 0 preserved, 0 archived-removed
+    update_commands_discovery_test.go:557: V2: report line: conflict: .claude/commands/moai/fix.md (sidecar: .claude/commands/moai/fix.md.moai-new)
+    update_commands_discovery_test.go:557: V2: report line: ✗ 1 conflicting file(s) flagged by the 3-way merge — resolve them before the next template sync (see the backup at .moai-backups/20261018_174740)
+    update_commands_discovery_test.go:594: V3: plan after the run (read-only classification): 383 files, 383 template-owned, 0 user-modified, 0 user-owned, 0 stale
+    update_commands_discovery_test.go:594: V3: report line: ✓ 0 merged, 0 conflict(s), 0 preserved
+    update_commands_discovery_test.go:594: V3: report line: + 402 add · ~ 19 update · ! 2 conflict
+--- PASS: TestCommandsSingleDispositionAndPresent (3.26s)
+    --- PASS: TestCommandsSingleDispositionAndPresent/Control (1.04s)
+    --- PASS: TestCommandsSingleDispositionAndPresent/V1_SameVersion (0.39s)
+    --- PASS: TestCommandsSingleDispositionAndPresent/V2_StaleRecord (0.82s)
+    --- PASS: TestCommandsSingleDispositionAndPresent/V3_NoManifestRecords (1.00s)
+    --- PASS: TestCommandsSingleDispositionAndPresent/V1AndV2ReachTheSameCommandsTree (0.00s)
+    --- PASS: TestCommandsSingleDispositionAndPresent/MutantTwoDispositionsForOnePathIsCaught (0.00s)
+    --- PASS: TestCommandsSingleDispositionAndPresent/MutantRedeployOverTheUserEditIsCaught (0.00s)
+    --- PASS: TestCommandsSingleDispositionAndPresent/MutantRemovedCommandIsCaught (0.00s)
+PASS
+ok  	github.com/modu-ai/moai-adk/internal/cli	4.181s
+```
+
+**AC-OWR-10 도착 셀 (같은 트리)** — 명령: `TMPDIR=/private/tmp/own-fixture-d1 go test ./internal/cli/ -run '^TestCommandsAndAgentsDiscoverableAfterInterruptedRun$' -count=1 -v`, 종료 코드 0:
+
+```text
+--- PASS: TestCommandsAndAgentsDiscoverableAfterInterruptedRun (9.98s)
+    --- PASS: TestCommandsAndAgentsDiscoverableAfterInterruptedRun/claude (5.43s)
+        --- PASS: TestCommandsAndAgentsDiscoverableAfterInterruptedRun/claude/Control (1.97s)
+        --- PASS: TestCommandsAndAgentsDiscoverableAfterInterruptedRun/claude/RecoveryRun (1.41s)
+        --- PASS: TestCommandsAndAgentsDiscoverableAfterInterruptedRun/claude/PlainSameVersionRerunIsSkipped (0.19s)
+        --- PASS: TestCommandsAndAgentsDiscoverableAfterInterruptedRun/claude/MutantsAreCaught (1.69s)
+    --- PASS: TestCommandsAndAgentsDiscoverableAfterInterruptedRun/both (4.55s)
+        --- PASS: TestCommandsAndAgentsDiscoverableAfterInterruptedRun/both/Control (1.24s)
+        --- PASS: TestCommandsAndAgentsDiscoverableAfterInterruptedRun/both/RecoveryRun (1.59s)
+        --- PASS: TestCommandsAndAgentsDiscoverableAfterInterruptedRun/both/PlainSameVersionRerunIsSkipped (0.13s)
+        --- PASS: TestCommandsAndAgentsDiscoverableAfterInterruptedRun/both/MutantsAreCaught (1.38s)
+PASS
+ok  	github.com/modu-ai/moai-adk/internal/cli	11.242s
+```
+
+**연속 5회씩 (같은 트리, 각 실행의 종료 코드를 직접 읽음; `sub-pass` 는 서브 시험 `--- PASS` 줄 수)**
+
+```text
+TestCommandsSingleDispositionAndPresent run 1 rc=0 top-pass=1 sub-pass=8 fail=0 skip=0 ok  	github.com/modu-ai/moai-adk/internal/cli	6.114s
+TestCommandsSingleDispositionAndPresent run 2 rc=0 top-pass=1 sub-pass=8 fail=0 skip=0 ok  	github.com/modu-ai/moai-adk/internal/cli	7.744s
+TestCommandsSingleDispositionAndPresent run 3 rc=0 top-pass=1 sub-pass=8 fail=0 skip=0 ok  	github.com/modu-ai/moai-adk/internal/cli	8.344s
+TestCommandsSingleDispositionAndPresent run 4 rc=0 top-pass=1 sub-pass=8 fail=0 skip=0 ok  	github.com/modu-ai/moai-adk/internal/cli	12.117s
+TestCommandsSingleDispositionAndPresent run 5 rc=0 top-pass=1 sub-pass=8 fail=0 skip=0 ok  	github.com/modu-ai/moai-adk/internal/cli	5.779s
+TestCommandsAndAgentsDiscoverableAfterInterruptedRun run 1 rc=0 top-pass=1 sub-pass=10 fail=0 skip=0 ok  	github.com/modu-ai/moai-adk/internal/cli	8.522s
+TestCommandsAndAgentsDiscoverableAfterInterruptedRun run 2 rc=0 top-pass=1 sub-pass=10 fail=0 skip=0 ok  	github.com/modu-ai/moai-adk/internal/cli	12.457s
+TestCommandsAndAgentsDiscoverableAfterInterruptedRun run 3 rc=0 top-pass=1 sub-pass=10 fail=0 skip=0 ok  	github.com/modu-ai/moai-adk/internal/cli	10.366s
+TestCommandsAndAgentsDiscoverableAfterInterruptedRun run 4 rc=0 top-pass=1 sub-pass=10 fail=0 skip=0 ok  	github.com/modu-ai/moai-adk/internal/cli	8.799s
+TestCommandsAndAgentsDiscoverableAfterInterruptedRun run 5 rc=0 top-pass=1 sub-pass=10 fail=0 skip=0 ok  	github.com/modu-ai/moai-adk/internal/cli	16.748s
+```
+
+**결론: 두 변형이 아니라 세 변형과 두 harness 의 복구를 모두 돌렸고 현장의 순환은 이 트리에서 재현되지 않았다.** 근거: 건너뛰지 않은 실행 (V1 `skipped == false`; V2, V3 「이미 최신」 표지 없음; 모두 새 `manifest.prior.json`) 에서, 계획의 네 처분 목록이 서로소이고 (`cmdPlanProblems`; 계획이 비지 않음과 명령 경로가 계획에 있음을 먼저 단언), S1 은 배포기의 현재 렌더, S2 는 사용자 줄이 남고 충돌 사이드카 `fix.md.moai-new` 가 하나 생기며, S3 는 템플릿 렌더, S4 는 불변이고, 고정된 경로마다 그 경로를 말하는 보고 줄이 둘을 넘지 않으며, 템플릿이 운반하는 command 17개가 전부 존재하고 비어 있지 않으며 frontmatter 의 `description`, `allowed-tools` 가 비어 있지 않다. V1 과 V2 의 `.claude/commands` 트리 (경로, 모드, 내용 해시) 는 같다 (`V1AndV2ReachTheSameCommandsTree`). 그래서 **AC-OWR-09 와 -10 은 회귀 가드로 남고 (승격 없음, 구현 커밋 없음)**, REQ-OWR-006 의 존재 보증은 시험으로 닫았다. 리더에게 보고할 문구: 「재현 안 됨 — 돌린 변형: V1 같은 버전 (`runTemplateSyncWithProgress`), V2 낡은 기록 (`runUpdate`), V3 매니페스트 유실 (`runUpdate`); AC-OWR-10 복구: claude, both」.
+
+**붉을 수 있음의 증거 (회귀 가드의 변이).** 시험 안의 입력 쪽 변이 (`Mutant...IsCaught` 서브 시험: 한 경로의 보고 줄 둘, 사용자 줄을 덮어쓴 재배포, 사라진 명령, 사라진 명령·빈 명령·이름 없는 에이전트·사라진 에이전트) 외에 **실제 운영 코드를 임시로 바꾼 변이 셋** 을 이 트리에서 돌렸다 (모두 되돌렸고 세 파일을 `cmp` 로 원본과 대조해 `RESTORED-IDENTICAL` 을 얻었다; 적색은 아래 원문). 명령은 모두 `TMPDIR=/private/tmp/own-fixture-d1 go test ./internal/cli/ -run '^(TestCommandsSingleDispositionAndPresent|TestCommandsAndAgentsDiscoverableAfterInterruptedRun)$' -count=1 -v` 의 줄 추림이다.
+
+- **Ma** `internal/template/deployer_mode.go` 의 `isCommonAssetRoot` 목록에 `.claude/commands/moai/` 를 더함 (배포기가 commands 를 영영 쓰지 않음):
+
+```text
+    update_commands_discovery_test.go:506: control: .claude/commands/moai: open /private/tmp/own-fixture-d1/TestCommandsSingleDispositionAndPresentControl4235705273/002/.claude/commands/moai: no such file or directory
+    update_commands_discovery_test.go:508: the control run did not complete; nothing below can be judged
+--- FAIL: TestCommandsSingleDispositionAndPresent (2.56s)
+    --- FAIL: TestCommandsSingleDispositionAndPresent/Control (2.56s)
+    update_commands_discovery_test.go:751: control: .claude/commands/moai: open /private/tmp/own-fixture-d1/TestCommandsAndAgentsDiscoverableAfterInterruptedRunclaudeCont2631463020/002/.claude/commands/moai: no such file or directory
+    update_commands_discovery_test.go:753: the control run did not complete; nothing below can be judged
+    update_commands_discovery_test.go:751: control: .claude/commands/moai: open /private/tmp/own-fixture-d1/TestCommandsAndAgentsDiscoverableAfterInterruptedRunbothContro3797682394/002/.claude/commands/moai: no such file or directory
+    update_commands_discovery_test.go:753: the control run did not complete; nothing below can be judged
+--- FAIL: TestCommandsAndAgentsDiscoverableAfterInterruptedRun (3.73s)
+    --- FAIL: TestCommandsAndAgentsDiscoverableAfterInterruptedRun/claude (1.73s)
+        --- FAIL: TestCommandsAndAgentsDiscoverableAfterInterruptedRun/claude/Control (1.73s)
+    --- FAIL: TestCommandsAndAgentsDiscoverableAfterInterruptedRun/both (2.00s)
+        --- FAIL: TestCommandsAndAgentsDiscoverableAfterInterruptedRun/both/Control (2.00s)
+FAIL
+```
+
+- **Mb** `internal/userassets/install.go` 가 Claude 에이전트 본문 대상을 추가하지 않음 (설치기가 에이전트를 쓰지 않음):
+
+```text
+    update_commands_discovery_test.go:506: control: the core agent manager-develop was not installed at ~/.claude/agents/manager-develop.md
+    update_commands_discovery_test.go:508: the control run did not complete; nothing below can be judged
+--- FAIL: TestCommandsSingleDispositionAndPresent (2.23s)
+    --- FAIL: TestCommandsSingleDispositionAndPresent/Control (2.23s)
+    update_commands_discovery_test.go:751: control: the core agent manager-develop was not installed at ~/.claude/agents/manager-develop.md
+    update_commands_discovery_test.go:753: the control run did not complete; nothing below can be judged
+    update_commands_discovery_test.go:751: control: the core agent manager-develop was not installed at ~/.claude/agents/manager-develop.md
+    update_commands_discovery_test.go:753: the control run did not complete; nothing below can be judged
+--- FAIL: TestCommandsAndAgentsDiscoverableAfterInterruptedRun (5.59s)
+    --- FAIL: TestCommandsAndAgentsDiscoverableAfterInterruptedRun/claude (2.47s)
+        --- FAIL: TestCommandsAndAgentsDiscoverableAfterInterruptedRun/claude/Control (2.47s)
+    --- FAIL: TestCommandsAndAgentsDiscoverableAfterInterruptedRun/both (3.12s)
+        --- FAIL: TestCommandsAndAgentsDiscoverableAfterInterruptedRun/both/Control (3.12s)
+FAIL
+```
+
+- **Mc** `internal/cli/update/reconcile_classify.go` 의 계획 조립이 템플릿 소유 파일마다 한 번 더 `Stale` 에도 넣음 (한 경로 두 처분):
+
+```text
+    update_commands_discovery_test.go:519: plan: .claude/commands/moai/gtd.md: appears in 2 dispositions [stale template-owned]
+    update_commands_discovery_test.go:546: plan: .claude/commands/moai/gtd.md: appears in 2 dispositions [stale template-owned]
+--- FAIL: TestCommandsSingleDispositionAndPresent (7.92s)
+    --- FAIL: TestCommandsSingleDispositionAndPresent/V1_SameVersion (0.78s)
+    --- FAIL: TestCommandsSingleDispositionAndPresent/V2_StaleRecord (1.70s)
+FAIL
+FAIL	github.com/modu-ai/moai-adk/internal/cli	27.662s
+FAIL
+```
+
+Ma 와 Mb 는 통제 실행의 전제 단언에서 붉다 (통제 실행도 같은 코드를 쓰므로 변형까지 가지 못한다; 그 단언이 「오라클 자체가 깨짐」 을 큰 소리로 알린다). Mc 는 V1, V2 의 계획 서로소 단언에서 붉다 (V3 는 모든 command 가 항목 없음이라 템플릿 소유가 아니어서 이 변이를 건드리지 않는다 — 변이 대상이 다르다).
+
+**관측한 사실 (결함 판정 아님, 해석은 하지 않음).** 임시 진단 시험 (커밋하지 않고 삭제함) 으로 실행 전 계획을 읽은 원문 (변형 V1 과 V2, 같은 계획 함수):
+
+```text
+zz_m6_debug_test.go:26: V1 PRE user-modified: .claude/commands/moai/fix.md, .claude/commands/moai/todo.md, .moai/config/sections/llm.yaml, .moai/config/sections/system.yaml
+zz_m6_debug_test.go:26: V2 PRE user-modified: .claude/commands/moai/fix.md, .claude/commands/moai/todo.md, .moai/config/sections/llm.yaml, .moai/config/sections/system.yaml
+zz_m6_debug_test.go:26: V1 POST user-modified: .claude/commands/moai/fix.md, .moai/config/sections/llm.yaml, .moai/config/sections/system.yaml
+zz_m6_debug_test.go:26: V2 POST user-modified: .claude/commands/moai/fix.md
+```
+
+즉 항목이 없는 채 템플릿과 바이트가 같은 command (`todo.md`, S3) 는 실행 전 계획에서 `user-modified` (3-way 병합 경로) 로 분류된다 — research.md G-2 의 후보 (c) 가 계획 수준에서 사실임을 관측했다. 그 병합의 결과는 템플릿 렌더 한 처분이고 (S3 의 보고 줄 0 개, 최종 바이트 == 렌더) 위 시험이 그것을 단언한다. 현장의 「이전 제외 후 재배포」 가 이 분류를 가리키는지는 확정하지 못했다 (분류는 관측했으나 그것이 두 처분이 되는 순환은 관측하지 못했다). V1 과 V2 의 실행 뒤 계획이 다른 부분 (`llm.yaml`, `system.yaml` 이 V1 에서만 `user-modified` 로 남음) 은 `runUpdate` 가 동기화 뒤에 하는 일의 차이로 보이나 원인을 확인하지 않았다 — commands 와 무관한 경로이고 두 변형의 commands 트리는 같다.
+
+**SPEC 문구 결함 (공개된 부채, SPEC 본문은 고치지 않음; 리더에게 manager-spec 재위임 후보로 보고).**
+
+1. **AC-OWR-10 와 REQ-OWR-006 의 에이전트 조건이 이 트리의 제품 구조와 맞지 않는다.** 배포기의 프로젝트 페이로드는 어떤 모드에서도 공통 스킬·에이전트 파일을 쓰지 않는다 (`internal/template/deployer_mode.go` 의 `isCommonAssetRoot` 와 `deployer.go` 의 걷기 건너뛰기 — SPEC-USER-ASSET-INSTALL-001 REQ-005). 에이전트는 사용자 자산 단계가 사용자 루트 (`~/.claude/agents/<name>.md`, 그리고 `~/.codex/agents/<name>.toml`) 에 설치한다. 그래서 AC-OWR-10 이 요구한 「`.claude/agents/moai/*.md` 이름 집합이 템플릿의 12개와 같다」 는 프로젝트 경로에서는 제품이 일부러 쓰지 않으므로 성립할 수 없다. 이 시험은 보증이 실제로 성립하는 곳 — 에이전트는 사용자 루트, commands 는 프로젝트 — 에서 단언한다.
+2. **「12개」 는 기본 설치 집합이 아니다.** 기본 (L0, 카탈로그 core 계층) 설치는 에이전트 6개 (`manager-develop`, `manager-docs`, `manager-lead`, `manager-spec`, `plan-auditor`, `sync-auditor`) 만 쓰고 나머지 6개 (`builder-harness`, `e2e-tester`, `manager-design`, `manager-git`, `manager-todo`, `super-advisor`) 는 선택 묶음이다. 이 시험은 통제 실행이 설치한 집합 (전제로 core 계층 전부 포함을 요구) 을 기준으로 삼는다.
+3. 같은 이유로 acceptance.md 가 말한 「`.codex/agents/moai/*.toml` 이 템플릿 집합과 같다」 도 프로젝트 경로에서는 쓰이지 않는다. 시험은 통제 실행이 사용자 루트에 설치한 파일과 바이트 일치를 단언한다.
+
+**M6 정직한 회계 / 갭**
+
+1. 구현 커밋이 없다. M6 의 산출은 시험 셋과 이 기록이다. plan.md M6 의 「재현되면 고친다」 가지에는 닿지 않았다.
+2. 오라클이 통제 실행이다. 통제 실행이 설치기·배포기 전체와 함께 깨지면 변형이 그 깨짐을 못 본다. 그래서 통제 실행의 전제를 단언으로 묶었다 (commands 17개 이름, core 계층 에이전트 전부, Claude 에이전트의 템플릿 바이트 일치). Codex TOML 에이전트의 바이트는 통제 실행과만 비교한다 (템플릿과의 직접 비교는 하지 않음 — 설치기가 변환을 거치는 면이다).
+3. V2, V3 는 `--templates-only` 로 이진 업데이트 단계를 건너뛴다. 실제 `moai update` 의 이진 단계, 재실행 (re-exec) 경로, 비영어 `conversation_language` 렌더, `--no-plugin` 모드, 프로필이 지도된 프로젝트는 구동하지 않았다.
+4. 시험 환경의 `conversation_language` 는 기본 (영어) 이다. 다른 언어에서 `.tmpl` 렌더 바이트가 달라도 통제 실행이 같은 설정으로 돌기 때문에 같은 설정 안의 비교는 성립하지만, 다른 언어 설정의 재현 여부는 측정하지 않았다.
+5. `PlainSameVersionRerunIsSkipped` 는 제품의 현재 사실 (같은 버전의 일반 재실행은 조정 앞에서 끝나 비워진 프로젝트 commands 가 비어 있는 채 남는다) 을 단언으로 기록한 것이지 요구하는 동작이 아니다. plan.md OQ-6 이 이미 리더에게 올린 항목이다. 같은 실행에서 사용자 루트 에이전트가 복구되는지는 단언하지 않고 관측도 기록하지 않았다.
+6. 이 절의 도착 셀은 각각 `-count=1` 한 번의 실행이고 별도로 5회 반복이 있다. 측정 중 부하 평균은 대략 24에서 90 사이였고 반복은 10/10 통과했다.
+
 ## §E.3 Run-phase Audit-Ready Signal
 
 _<pending run-phase>_
