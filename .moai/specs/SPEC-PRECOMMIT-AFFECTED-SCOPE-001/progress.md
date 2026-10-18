@@ -948,6 +948,98 @@ exit=0
 ```
 (One earlier attempt printed four RED lines with `gate exit=127`: the build command had been refused by the worktree guard, so the binary did not exist; rebuilt through a script and re-run, result above.)
 
+
+### Sync-audit round 2 repair (R2-1; audit report `.moai/reports/t1673/sync-audit-iter2.md` at d9f5b3e6e, FAIL 0.84)
+RED commit: the failing tests plus the optional second output of the hook helper; GREEN commit `6e38795ff76f2b78dfdb2ed8379961e497553636`. TMPDIR=GOTMPDIR=/private/tmp/t1673-tmp.
+
+**Decision, judged from the code.** The working-tree-versus-index check now also lists untracked `go.mod`, `go.work` and `go.work.sum`. Not listed: `go.sum` (checksums only — it adds no package and no import edge, so it cannot change the selection; the negative control keeps the narrow set) and a plain untracked `.go` file (it can only add an edge or a package to the working-tree graph, which over-selects; a conflicting package clause makes `go list` mark the package errored, which is the existing graph fallback; it cannot remove a package). An untracked `go.mod` turns its directory into a separate module and so removes the package from the graph; `go.work`/`go.work.sum` change the module set. `--exclude-standard` honours .gitignore, so an ignored nested go.mod is not seen (residual risk).
+
+**R2-1 RED — command:** `go test ./internal/hook/quality -run '^TestAffectedScope_UntrackedModuleFileFallsBackToFullModule$' -count=1 -v`, exit 1 (summary blocks omitted):
+```
+=== RUN   TestAffectedScope_UntrackedModuleFileFallsBackToFullModule
+=== RUN   TestAffectedScope_UntrackedModuleFileFallsBackToFullModule/an_untracked_nested_go.mod_widens_to_the_full_module
+    affected_scope_untracked_test.go:61: go test calls = [test ./a], want [test ./...]
+    affected_scope_untracked_test.go:64: the summary does not name the untracked file and the fallback:
+=== RUN   TestAffectedScope_UntrackedModuleFileFallsBackToFullModule/an_untracked_go.work_widens_to_the_full_module
+    affected_scope_untracked_test.go:61: go test calls = [test ./a ./b], want [test ./...]
+    affected_scope_untracked_test.go:64: the summary does not name the untracked file and the fallback:
+=== RUN   TestAffectedScope_UntrackedModuleFileFallsBackToFullModule/an_untracked_go.work.sum_widens_to_the_full_module
+    affected_scope_untracked_test.go:61: go test calls = [test ./a ./b], want [test ./...]
+    affected_scope_untracked_test.go:64: the summary does not name the untracked file and the fallback:
+=== RUN   TestAffectedScope_UntrackedModuleFileFallsBackToFullModule/an_untracked_text_file_keeps_the_narrow_set
+=== RUN   TestAffectedScope_UntrackedModuleFileFallsBackToFullModule/an_untracked_plain_Go_file_keeps_the_narrow_set
+=== RUN   TestAffectedScope_UntrackedModuleFileFallsBackToFullModule/an_untracked_go.sum_keeps_the_narrow_set
+--- FAIL: TestAffectedScope_UntrackedModuleFileFallsBackToFullModule (4.75s)
+    --- FAIL: TestAffectedScope_UntrackedModuleFileFallsBackToFullModule/an_untracked_nested_go.mod_widens_to_the_full_module (0.70s)
+    --- FAIL: TestAffectedScope_UntrackedModuleFileFallsBackToFullModule/an_untracked_go.work_widens_to_the_full_module (0.92s)
+    --- FAIL: TestAffectedScope_UntrackedModuleFileFallsBackToFullModule/an_untracked_go.work.sum_widens_to_the_full_module (0.78s)
+    --- PASS: TestAffectedScope_UntrackedModuleFileFallsBackToFullModule/an_untracked_text_file_keeps_the_narrow_set (0.66s)
+    --- PASS: TestAffectedScope_UntrackedModuleFileFallsBackToFullModule/an_untracked_plain_Go_file_keeps_the_narrow_set (0.95s)
+    --- PASS: TestAffectedScope_UntrackedModuleFileFallsBackToFullModule/an_untracked_go.sum_keeps_the_narrow_set (0.74s)
+FAIL
+FAIL	github.com/modu-ai/moai-adk/internal/hook/quality	5.445s
+FAIL
+```
+**R2-1 GREEN (exit 0):**
+```
+--- PASS: TestAffectedScope_UntrackedModuleFileFallsBackToFullModule (10.55s)
+    --- PASS: TestAffectedScope_UntrackedModuleFileFallsBackToFullModule/an_untracked_nested_go.mod_widens_to_the_full_module (5.52s)
+    --- PASS: TestAffectedScope_UntrackedModuleFileFallsBackToFullModule/an_untracked_go.work_widens_to_the_full_module (1.57s)
+    --- PASS: TestAffectedScope_UntrackedModuleFileFallsBackToFullModule/an_untracked_go.work.sum_widens_to_the_full_module (0.79s)
+    --- PASS: TestAffectedScope_UntrackedModuleFileFallsBackToFullModule/an_untracked_text_file_keeps_the_narrow_set (0.93s)
+    --- PASS: TestAffectedScope_UntrackedModuleFileFallsBackToFullModule/an_untracked_plain_Go_file_keeps_the_narrow_set (0.99s)
+    --- PASS: TestAffectedScope_UntrackedModuleFileFallsBackToFullModule/an_untracked_go.sum_keeps_the_narrow_set (0.76s)
+ok  	github.com/modu-ai/moai-adk/internal/hook/quality	11.211s
+```
+
+**Hook / linked-worktree RED — command:** `go test ./internal/hook/quality -run '^TestAffectedScope_UntrackedModuleFileThroughHook$' -count=1 -v`, exit 1:
+```
+=== RUN   TestAffectedScope_UntrackedModuleFileThroughHook
+=== RUN   TestAffectedScope_UntrackedModuleFileThroughHook/plain_repository_under_the_temporary_index_of_commit_-a
+    affected_scope_untracked_test.go:111: working-tree-versus-index list = "", want "n/go.mod" (the untracked go.mod, and no other file)
+=== RUN   TestAffectedScope_UntrackedModuleFileThroughHook/linked_worktree
+    affected_scope_untracked_test.go:120: working-tree-versus-index list = "", want "n/go.mod" (the untracked go.mod, and no other file)
+--- FAIL: TestAffectedScope_UntrackedModuleFileThroughHook (1.70s)
+    --- FAIL: TestAffectedScope_UntrackedModuleFileThroughHook/plain_repository_under_the_temporary_index_of_commit_-a (0.87s)
+    --- FAIL: TestAffectedScope_UntrackedModuleFileThroughHook/linked_worktree (0.84s)
+FAIL
+FAIL	github.com/modu-ai/moai-adk/internal/hook/quality	2.248s
+FAIL
+```
+**GREEN (exit 0):**
+```
+=== RUN   TestAffectedScope_UntrackedModuleFileThroughHook
+=== RUN   TestAffectedScope_UntrackedModuleFileThroughHook/plain_repository_under_the_temporary_index_of_commit_-a
+=== RUN   TestAffectedScope_UntrackedModuleFileThroughHook/linked_worktree
+--- PASS: TestAffectedScope_UntrackedModuleFileThroughHook (1.95s)
+    --- PASS: TestAffectedScope_UntrackedModuleFileThroughHook/plain_repository_under_the_temporary_index_of_commit_-a (0.82s)
+    --- PASS: TestAffectedScope_UntrackedModuleFileThroughHook/linked_worktree (1.13s)
+PASS
+ok  	github.com/modu-ai/moai-adk/internal/hook/quality	2.656s
+```
+
+**Nested-module query (new, also pins `-c diff.relative=false` on the unstaged query, the surviving mutant the auditor noted) — command:** `go test ./internal/hook/quality -run '^TestAffectedScope_WorkingTreeQueriesFromNestedModule$' -count=1 -v`, exit 0 on GREEN:
+```
+=== RUN   TestAffectedScope_WorkingTreeQueriesFromNestedModule
+--- PASS: TestAffectedScope_WorkingTreeQueriesFromNestedModule (0.49s)
+PASS
+ok  	github.com/modu-ai/moai-adk/internal/hook/quality	1.176s
+```
+Mutants (temporary edits, reverted; `grep -n MUTANT` over the file prints nothing): dropping `-c diff.relative=false` from the unstaged query → `UnstagedGo = [a/b.go go.work], want [go.work svc/a/b.go]`; dropping the `top` pathspec magic → `UnstagedGo = [svc/a/b.go], want [go.work svc/a/b.go]`. Reverting the whole fix is the RED state above (the committed RED tests fail on the pre-fix tree: the nested go.mod case selects `[test ./a]`).
+
+**Re-runs after the fix (HEAD `6e38795ff76f2b78dfdb2ed8379961e497553636`):**
+- `go build ./...` exit 0; `GOOS=windows GOARCH=amd64 go build ./...` exit 0; `go vet ./internal/hook/quality/ ./internal/config/ ./internal/cli/` exit 0; `gofmt -l internal/hook/quality internal/cli internal/config` no output; `golangci-lint run --timeout=3m ./internal/hook/quality/...` `0 issues.`
+- `go test -count=1 -race ./internal/hook/quality/` exit 0: `ok  	github.com/modu-ai/moai-adk/internal/hook/quality	67.256s` (no leased slot).
+- `go test -count=1 ./internal/cli -run 'TestUpdateGateYAML|TestRunGate|TestPreCommit|TestPrecommit|TestGateYAML|TestGateConfig|TestGatePreCommit|TestGAR_|TestGateCmd_' -v` exit 0, 72 top-level PASS, no FAIL: `ok  	github.com/modu-ai/moai-adk/internal/cli	74.773s`. Full internal/cli suite not run (ruling 35e9).
+- probe016.sh against `/private/tmp/t1673-bin/moai-r2` (`moai version`: `t1673-r2   6e38795ff`), exit 0:
+```
+AC-016/001 change a: GREEN  (commit exit=0, HEAD moved=yes, go test calls=1 (wanted 1), wanted go argv 'test ./a ./b', got 'test ./a ./b')
+AC-004 test-only change: GREEN  (commit exit=0, HEAD moved=yes, go test calls=1 (wanted 1), wanted go argv 'test ./a', got 'test ./a')
+AC-006 docs-only change: GREEN  (commit exit=0, HEAD moved=yes, go test calls=0 (wanted 0), wanted go argv 'none', got 'none')
+AC-011 mode: bogus: GREEN  (gate exit=1, message names the key=yes)
+exit=0
+```
+
 ## §E.3 Run-phase Audit-Ready Signal
 
 ```yaml
