@@ -72,6 +72,11 @@ func netScrubLaneEnv(t *testing.T) {
 		config.EnvAutonomyTier:                     true,
 		config.EnvClaudeCodeMaxConcurrentSubagents: true,
 		config.EnvClaudeCodeStopHookBlockCap:       true,
+		// Card t1779: the launcher's self-identification marker is a marker
+		// family of its own (neither MOAI_FACTORY_* nor MOAI_KANBAN_*); a
+		// codex-hosting test re-arming the real gate must see a marker-free
+		// seat (round-3 P2-B).
+		config.EnvMoaiCodexSession: true,
 	}
 	for _, kv := range os.Environ() {
 		name, _, found := strings.Cut(kv, "=")

@@ -54,6 +54,10 @@ var factoryAmbientEnvKeys = []string{
 	config.EnvMoaiFactorySlowLaunchMS,
 	config.EnvMoaiFactoryManagedTUI,
 	config.EnvMoaiFactoryAppServerToken,
+	// Card t1779 round-3 P2-B: the launcher's self-identification marker is a
+	// marker family of its own (neither MOAI_FACTORY_* nor MOAI_KANBAN_*); an
+	// ambient copy would reach codex-hosting tests that re-arm the real gate.
+	config.EnvMoaiCodexSession,
 }
 
 // factoryEnvPinnedEnv exempts a re-executed helper child from the TestMain

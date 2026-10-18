@@ -1085,8 +1085,11 @@ func runCodexFactoryLane(cmd *cobra.Command, entry factoryFlagParse, debug bool)
 		config.EnvFactoryRunID + "=" + runID,
 	}
 	// card t1819: the same keys as shell_environment_policy.set overrides, so
-	// they reach the session's shell commands under any inherit setting.
-	args = append(args, codexShellEnvSetArgs(laneEnv)...)
+	// they reach the session's shell commands under any inherit setting. The
+	// session marker rides the mirror too (card t1779 round-3 P2-A): under
+	// inherit=core/none the child-env stamp never reaches the shell, and a
+	// nested `moai codex -l` inside the session reads the shell's copy.
+	args = append(args, codexShellEnvSetArgs(append(slices.Clone(laneEnv), config.EnvMoaiCodexSession+"=1"))...)
 	args = append(args, codexLaneAutoPrompt)
 	env := append(codexChildEnv(), laneEnv...)
 	env = codexLaneChildEnv(env, root)

@@ -210,6 +210,53 @@ func TestCodexLaneLaunchEnvironmentRefusalSandboxSignature(t *testing.T) {
 	}
 }
 
+// TestCodexLaneLaunch_MirrorsSessionMarkerIntoShellEnvPolicy — under
+// shell_environment_policy.inherit=core/none the child-env stamp never
+// reaches the session's shell, so the marker rides the SAME
+// shell_environment_policy.set mirror the lane keys traverse (card t1819's
+// path; sync-audit round-3 P2-A). A nested `moai codex -l` reads the shell's
+// copy.
+func TestCodexLaneLaunch_MirrorsSessionMarkerIntoShellEnvPolicy(t *testing.T) {
+	root, store := fcFixture(t)
+	fcQueue(t, store, factory.BacklogStatePicked)
+	sdRecordLeaderRun(t, root, fcRun, factory.BackendClaude)
+	t.Chdir(root)
+	netScrubLaneEnv(t)
+	prevLook, prevDirect := codexLookPath, codexDirectLaunchFn
+	var argv []string
+	codexLookPath = func(string) (string, error) { return sentinelCodexBinaryPath, nil }
+	codexDirectLaunchFn = func(c *exec.Cmd) error { argv = c.Args; return nil }
+	t.Cleanup(func() { codexLookPath, codexDirectLaunchFn = prevLook, prevDirect })
+	if _, _, err := runCodexCmd(t, "-l"); err != nil {
+		t.Fatalf("codex -l: %v", err)
+	}
+	got := codexShellEnvSetValues(argv)
+	if got[config.EnvMoaiCodexSession] != `"1"` {
+		t.Fatalf("shell env override %s = %q, want %q (argv %q)", config.EnvMoaiCodexSession, got[config.EnvMoaiCodexSession], `"1"`, argv)
+	}
+}
+
+// TestLaneAmbientScrubCoversCodexSessionMarker — the self-identification
+// marker is scrubbed from this binary's ambient environment by BOTH helpers,
+// so codex-hosting tests re-arming the real gate see a marker-free seat
+// instead of refusal-wording mismatches (card t1779, round-3 P2-B).
+func TestLaneAmbientScrubCoversCodexSessionMarker(t *testing.T) {
+	t.Run("netScrubLaneEnv", func(t *testing.T) {
+		t.Setenv(config.EnvMoaiCodexSession, "1")
+		netScrubLaneEnv(t)
+		if os.Getenv(config.EnvMoaiCodexSession) != "" {
+			t.Fatalf("%s = %q survived netScrubLaneEnv", config.EnvMoaiCodexSession, os.Getenv(config.EnvMoaiCodexSession))
+		}
+	})
+	t.Run("clearFactoryAmbientEnv", func(t *testing.T) {
+		t.Setenv(config.EnvMoaiCodexSession, "1")
+		clearFactoryAmbientEnv()
+		if os.Getenv(config.EnvMoaiCodexSession) != "" {
+			t.Fatalf("%s = %q survived clearFactoryAmbientEnv", config.EnvMoaiCodexSession, os.Getenv(config.EnvMoaiCodexSession))
+		}
+	})
+}
+
 // TestCodexLaneLaunchEnvironmentRefusalNonTerminalStdio — the session
 // receives this process's stdin and stdout verbatim, so a pipe or a file
 // there refuses the launch REGARDLESS of TERM: an inherited TERM=xterm-256color
