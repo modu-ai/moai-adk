@@ -170,15 +170,26 @@ func (f *FactoryDB) FindRunOwner(ctx context.Context, opts ReconcileOptions, run
 // plan-audit D1 — a takeover that skipped it would leave the prior leader's
 // backend on the row).
 //
-// adopt is the finder's classified candidate, and its recorded owner stamp is
-// part of the write's WHERE clause: the restamp is a compare-and-set on the
-// identity that was classified, so two resume launches racing on the same
-// dead-owner run cannot both adopt — the second finds the stamp already
-// replaced and is refused instead of overwriting the first adopter's live
-// identity (sync-audit finding F1). The row must still measure active under
-// that stamp; anything else is refused with an error, because re-activating a
-// retired row is the ResumeRun discovery path's decision, not this one.
-func (f *FactoryDB) AdoptRun(ctx context.Context, adopt RunOwner, pid int, processStart, backend, basis string) error {
+// adopt is the finder's classified candidate, and its recorded owner stamp
+// AND backend are part of the write's WHERE clause: the restamp is a
+// compare-and-set on the identity that was classified, so two resume
+// launches racing on the same dead-owner run cannot both adopt — the second
+// finds the stamp already replaced and is refused instead of overwriting the
+// first adopter's live identity (sync-audit finding F1) — and a backend flip
+// landing after the classified read (the codex-led refusal's own axis,
+// invisible to a stamp-only CAS) fails the write the same way (sync-audit
+// round 3 F1'). The row must still measure active under that stamp;
+// anything else is refused with an error, because re-activating a retired
+// row is the ResumeRun discovery path's decision, not this one.
+//
+// peerGuard, when non-nil, is invoked INSIDE the adoption transaction —
+// after the write and before the commit — so a refusal it returns rolls the
+// write back. It carries the legacy-peer broker check for callers whose
+// guard cannot join this transaction (the broker lives in a separate
+// factorymsg database and the factorymsg import direction is fixed): the
+// window it closes is everything up to the commit, the narrowest a
+// cross-database check allows (sync-audit round 3 F1').
+func (f *FactoryDB) AdoptRun(ctx context.Context, adopt RunOwner, pid int, processStart, backend, basis string, peerGuard func(context.Context) error) error {
 	if strings.TrimSpace(adopt.RunID) == "" {
 		return errors.New("factory run id is empty")
 	}
@@ -197,8 +208,8 @@ func (f *FactoryDB) AdoptRun(ctx context.Context, adopt RunOwner, pid int, proce
 		return err
 	}
 	defer func() { _ = tx.Rollback() }()
-	res, err := tx.ExecContext(ctx, `UPDATE runs SET lead_pid=?, lead_process_start=?, lead_backend=?, updated_at=? WHERE run_id=? AND status='active' AND lead_pid=? AND lead_process_start=?`,
-		pid, processStart, backend, now, adopt.RunID, adopt.LeadPID, adopt.LeadProcessStart)
+	res, err := tx.ExecContext(ctx, `UPDATE runs SET lead_pid=?, lead_process_start=?, lead_backend=?, updated_at=? WHERE run_id=? AND status='active' AND lead_pid=? AND lead_process_start=? AND lead_backend=?`,
+		pid, processStart, backend, now, adopt.RunID, adopt.LeadPID, adopt.LeadProcessStart, adopt.Backend)
 	if err != nil {
 		return err
 	}
@@ -207,11 +218,16 @@ func (f *FactoryDB) AdoptRun(ctx context.Context, adopt RunOwner, pid int, proce
 		return err
 	}
 	if affected == 0 {
-		return fmt.Errorf("factory run %s no longer carries the classified owner stamp; adoption refused", adopt.RunID)
+		return fmt.Errorf("factory run %s no longer carries the classified owner stamp and backend; adoption refused", adopt.RunID)
 	}
 	payload := fmt.Sprintf(`{"basis":%q,"outcome":"adopted"}`, basis)
 	if _, err := tx.ExecContext(ctx, `INSERT INTO events(run_id,kind,payload_json,created_at) VALUES(?,'run.resumed',?,?)`, adopt.RunID, payload, now); err != nil {
 		return err
+	}
+	if peerGuard != nil {
+		if err := peerGuard(ctx); err != nil {
+			return err
+		}
 	}
 	return tx.Commit()
 }

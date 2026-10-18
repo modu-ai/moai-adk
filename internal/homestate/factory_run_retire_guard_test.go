@@ -222,7 +222,7 @@ func TestRetireRunIfDeadCardReadHoldsWriteLock(t *testing.T) {
 func TestRetireRunIfDeadFlipIsCASOnClassifiedStamp(t *testing.T) {
 	adopt := func(t *testing.T, db *FactoryDB, runID string) {
 		t.Helper()
-		err := db.AdoptRun(context.Background(), RunOwner{RunID: runID, LeadPID: 1, LeadProcessStart: "x"}, 4242, "adopter-start", "claude", "test")
+		err := db.AdoptRun(context.Background(), RunOwner{RunID: runID, LeadPID: 1, LeadProcessStart: "x"}, 4242, "adopter-start", "claude", "test", nil)
 		if err != nil {
 			t.Fatalf("competing adopt: %v", err)
 		}

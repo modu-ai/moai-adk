@@ -57,7 +57,12 @@ type RunOwner struct {
 	LeadProcessStart string
 	CreatedAt        string
 	UpdatedAt        string
-	Classification   OwnerClassification
+	// Backend is the run row's lead_backend as the classification read it.
+	// The adoption's compare-and-set carries it (sync-audit round 3 F1'):
+	// a backend flip landing after the classified read — the codex-led
+	// refusal's own axis, invisible to a stamp-only CAS — fails the write.
+	Backend        string
+	Classification OwnerClassification
 	// Basis names the proof behind Classification; it is empty when no
 	// identity was found and the boot proof did not hold.
 	Basis ProofBasis
@@ -170,10 +175,10 @@ func (f *FactoryDB) ClassifyRuns(ctx context.Context, opts ReconcileOptions) ([]
 }
 
 func (f *FactoryDB) classifyRuns(ctx context.Context, opts ReconcileOptions, status string) (_ []RunOwner, err error) {
-	query := `SELECT run_id,status,lead_pid,lead_process_start,created_at,updated_at FROM runs ORDER BY run_id`
+	query := `SELECT run_id,status,lead_pid,lead_process_start,created_at,updated_at,lead_backend FROM runs ORDER BY run_id`
 	args := []any{}
 	if status != "" {
-		query = `SELECT run_id,status,lead_pid,lead_process_start,created_at,updated_at FROM runs WHERE status=? ORDER BY run_id`
+		query = `SELECT run_id,status,lead_pid,lead_process_start,created_at,updated_at,lead_backend FROM runs WHERE status=? ORDER BY run_id`
 		args = append(args, status)
 	}
 	rows, err := f.DB.QueryContext(ctx, query, args...)
@@ -188,7 +193,7 @@ func (f *FactoryDB) classifyRuns(ctx context.Context, opts ReconcileOptions, sta
 	var owners []RunOwner
 	for rows.Next() {
 		var o RunOwner
-		if err := rows.Scan(&o.RunID, &o.Status, &o.LeadPID, &o.LeadProcessStart, &o.CreatedAt, &o.UpdatedAt); err != nil {
+		if err := rows.Scan(&o.RunID, &o.Status, &o.LeadPID, &o.LeadProcessStart, &o.CreatedAt, &o.UpdatedAt, &o.Backend); err != nil {
 			return nil, err
 		}
 		owners = append(owners, o)

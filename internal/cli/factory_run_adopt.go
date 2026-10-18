@@ -123,7 +123,12 @@ func adoptResumedLeaderRun(root string, shouldAdopt bool, backend string, warn i
 		fmt.Fprintf(warn, "factory leader resume: run %s holds live legacy record %q from a binary before the leader/lane rename — adopting nothing; end its sessions and retire with 'moai factory runs --retire %s' first\n", adopt.RunID, value, adopt.RunID)
 		return "", nil
 	}
-	if err := db.AdoptRun(context.Background(), adopt, os.Getpid(), homestate.CurrentProcessFingerprint(), backend, leaderResumeAdoptionBasis); err != nil {
+	// The resume path passes no peer guard: its window contract is the
+	// warn-and-mint outcome E3 pins (a live legacy peer at the T-check warns
+	// and adopts nothing), and aborting inside the write would change that
+	// contract. Its backend axis is covered by AdoptRun's extended
+	// compare-and-set regardless (sync-audit round 3 F1').
+	if err := db.AdoptRun(context.Background(), adopt, os.Getpid(), homestate.CurrentProcessFingerprint(), backend, leaderResumeAdoptionBasis, nil); err != nil {
 		return "", err
 	}
 	_ = os.Setenv(config.EnvFactoryRunID, adopt.RunID)
@@ -171,7 +176,15 @@ func adoptExplicitLeaderRun(root, runID, backend string) (adopted string, err er
 		return "", openErr
 	}
 	defer closeFactoryInto(&err, db, "factory state")
-	if err = db.AdoptRun(context.Background(), owner, os.Getpid(), homestate.CurrentProcessFingerprint(), backend, leaderStartAdoptionBasis); err != nil {
+	// The peer guard closes the legacy axis inside the write's own
+	// transaction (sync-audit round 3 F1'): a registration landing after the
+	// re-checks above but before the commit rolls the adoption back. The
+	// backend axis is atomic without it — AdoptRun's compare-and-set carries
+	// the classified backend, so a flip landing after the re-checks fails the
+	// write.
+	if err = db.AdoptRun(context.Background(), owner, os.Getpid(), homestate.CurrentProcessFingerprint(), backend, leaderStartAdoptionBasis, func(ctx context.Context) error {
+		return refuseLiveLegacyPeerRun(root, runID)
+	}); err != nil {
 		return "", err
 	}
 	_ = os.Setenv(config.EnvFactoryRunID, runID)

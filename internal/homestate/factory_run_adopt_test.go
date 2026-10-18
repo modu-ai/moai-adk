@@ -2,6 +2,7 @@ package homestate
 
 import (
 	"context"
+	"errors"
 	"strings"
 	"testing"
 )
@@ -145,7 +146,7 @@ func TestAdoptRunRestampsOwnerAndAppendsResumedEvent(t *testing.T) {
 	mustRecordRun(t, db, FactoryRun{RunID: "run-old", ManifestJSON: "{}", LeadPID: 20, LeadProcessStart: "gone"})
 
 	adopt := RunOwner{RunID: "run-old", LeadPID: 20, LeadProcessStart: "gone"}
-	if err := db.AdoptRun(context.Background(), adopt, 4242, "new-start", "claude", "leader-resume-adoption"); err != nil {
+	if err := db.AdoptRun(context.Background(), adopt, 4242, "new-start", "claude", "leader-resume-adoption", nil); err != nil {
 		t.Fatalf("adopt: %v", err)
 	}
 	var pid int
@@ -175,11 +176,11 @@ func TestAdoptRunRefusesChangedStamp(t *testing.T) {
 	mustRecordRun(t, db, FactoryRun{RunID: "run-old", ManifestJSON: "{}", LeadPID: 20, LeadProcessStart: "gone"})
 
 	first := RunOwner{RunID: "run-old", LeadPID: 20, LeadProcessStart: "gone"}
-	if err := db.AdoptRun(context.Background(), first, 4242, "first-resume", "claude", "leader-resume-adoption"); err != nil {
+	if err := db.AdoptRun(context.Background(), first, 4242, "first-resume", "claude", "leader-resume-adoption", nil); err != nil {
 		t.Fatalf("first adopt: %v", err)
 	}
 	second := RunOwner{RunID: "run-old", LeadPID: 20, LeadProcessStart: "gone"}
-	if err := db.AdoptRun(context.Background(), second, 5151, "second-resume", "claude", "leader-resume-adoption"); err == nil {
+	if err := db.AdoptRun(context.Background(), second, 5151, "second-resume", "claude", "leader-resume-adoption", nil); err == nil {
 		t.Fatalf("second adopt with the stale stamp succeeded; it must be refused")
 	}
 	var pid int
@@ -201,11 +202,78 @@ func TestAdoptRunRefusesNonActiveRun(t *testing.T) {
 		t.Fatalf("reconcile: %v", err)
 	}
 	adopt := RunOwner{RunID: "run-gone", LeadPID: 20, LeadProcessStart: "gone"}
-	if err := db.AdoptRun(context.Background(), adopt, 4242, "new-start", "claude", "leader-resume-adoption"); err == nil {
+	if err := db.AdoptRun(context.Background(), adopt, 4242, "new-start", "claude", "leader-resume-adoption", nil); err == nil {
 		t.Fatalf("AdoptRun on a retired run succeeded; it must refuse")
 	}
 	if got := runStatus(t, db, "run-gone"); got != "retired" {
 		t.Fatalf("status = %q, want \"retired\"", got)
+	}
+}
+
+// Sync-audit round 3 F1' — the compare-and-set carries the classified
+// backend too: a backend flip landing after the classified read (the codex
+// refusal's own axis — the stamp is untouched, so a stamp-only CAS still
+// matches) fails the write and rolls back exactly like a stamp change.
+func TestAdoptRunCASRefusesPostClassificationBackendFlip(t *testing.T) {
+	db := openSandboxFactory(t)
+	mustRecordRun(t, db, FactoryRun{RunID: "run-flip", Backend: "claude", ManifestJSON: "{}", LeadPID: 20, LeadProcessStart: "gone"})
+	// The classified read observed (20, gone, claude); a competing writer
+	// flips the backend to codex before the write lands.
+	adopt := RunOwner{RunID: "run-flip", LeadPID: 20, LeadProcessStart: "gone", Backend: "claude"}
+	if _, err := db.DB.Exec(`UPDATE runs SET lead_backend='codex' WHERE run_id='run-flip'`); err != nil {
+		t.Fatalf("flip backend: %v", err)
+	}
+	if err := db.AdoptRun(context.Background(), adopt, 4242, "new-start", "claude", "leader-start-adoption", nil); err == nil {
+		t.Fatal("the adopt proceeded over a run whose backend flipped after the classified read; want the compare-and-set refusal")
+	}
+	var backend string
+	var pid int
+	if err := db.DB.QueryRow(`SELECT lead_backend, lead_pid FROM runs WHERE run_id='run-flip'`).Scan(&backend, &pid); err != nil {
+		t.Fatalf("read row after refused adopt: %v", err)
+	}
+	if backend != "codex" || pid != 20 {
+		t.Fatalf("row after refused adopt = (backend %q, pid %d), want the competing writer's (codex, 20)", backend, pid)
+	}
+	var events int
+	if err := db.DB.QueryRow(`SELECT COUNT(*) FROM events WHERE run_id='run-flip' AND kind='run.resumed'`).Scan(&events); err != nil {
+		t.Fatalf("count events: %v", err)
+	}
+	if events != 0 {
+		t.Fatalf("run.resumed events = %d, want 0", events)
+	}
+}
+
+// Sync-audit round 3 F1' — the peer guard runs INSIDE the adoption
+// transaction: a legacy-peer registration landing after the caller's
+// re-checks but before the commit refuses the adoption and rolls the write
+// back. The guard is the caller-supplied seam because the broker database
+// cannot join this transaction (the factorymsg import direction is fixed).
+func TestAdoptRunPeerGuardRefusesInsideWindow(t *testing.T) {
+	db := openSandboxFactory(t)
+	mustRecordRun(t, db, FactoryRun{RunID: "run-peer", Backend: "claude", ManifestJSON: "{}", LeadPID: 20, LeadProcessStart: "gone"})
+	adopt := RunOwner{RunID: "run-peer", LeadPID: 20, LeadProcessStart: "gone", Backend: "claude"}
+	guard := func(context.Context) error {
+		return errors.New("peer guard refused: live legacy record registered inside the window")
+	}
+	if err := db.AdoptRun(context.Background(), adopt, 4242, "new-start", "claude", "leader-start-adoption", guard); err == nil {
+		t.Fatal("the adopt proceeded despite the in-window peer guard refusal")
+	} else if !strings.Contains(err.Error(), "peer guard refused") {
+		t.Fatalf("error %q does not carry the guard's refusal", err.Error())
+	}
+	var pid int
+	var start string
+	if err := db.DB.QueryRow(`SELECT lead_pid, lead_process_start FROM runs WHERE run_id='run-peer'`).Scan(&pid, &start); err != nil {
+		t.Fatalf("read row after refused adopt: %v", err)
+	}
+	if pid != 20 || start != "gone" {
+		t.Fatalf("row after refused adopt = (%d, %q), want the pre-adopt stamp (20, \"gone\") — the write must roll back", pid, start)
+	}
+	var events int
+	if err := db.DB.QueryRow(`SELECT COUNT(*) FROM events WHERE run_id='run-peer' AND kind='run.resumed'`).Scan(&events); err != nil {
+		t.Fatalf("count events: %v", err)
+	}
+	if events != 0 {
+		t.Fatalf("run.resumed events = %d, want 0", events)
 	}
 }
 
