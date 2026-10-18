@@ -99,8 +99,10 @@ func TestUnregisteredFileBelowASymlinkedAncestorIsNotRead(t *testing.T) {
 		}
 	})
 
-	// Controls: judged exactly as before.
-	t.Run("ControlsAreJudgedAsBefore", func(t *testing.T) {
+	// Controls. A symlinked ancestor that stays INSIDE the project is kept unread too
+	// (chunk 13, changed baseline); an ordinary file is judged by content; a path
+	// below a dangling ancestor or to a file that is absent fails its read.
+	t.Run("ControlsAreJudgedAsDecided", func(t *testing.T) {
 		root := t.TempDir()
 		abs := func(rel string) string { return filepath.Join(root, filepath.FromSlash(rel)) }
 		write := func(rel, data string) {
@@ -125,12 +127,12 @@ func TestUnregisteredFileBelowASymlinkedAncestorIsNotRead(t *testing.T) {
 				name, path, data string
 				keep             keepReason
 			}{
-				{"in-project symlinked ancestor", "inlink/agents/moai/in.md", "# inside, through a symlinked ancestor\n", keepNoProvenanceRecord},
+				{"in-project symlinked ancestor", "inlink/agents/moai/in.md", "", keepSymlinkEscape},
 				{"ordinary file", "plain/agents/moai/plain.md", "# ordinary\n", keepNoProvenanceRecord},
 				{"file below a dangling ancestor", "deadlink/agents/moai/x.md", "", keepReadFailed},
 				{"file that does not exist", "plain/agents/moai/absent.md", "", keepReadFailed},
 			} {
-				v := classifyOwnership(env, ".codex/agents/moai/"+filepath.Base(c.path), abs(c.path))
+				v := classifyOwnership(env, c.path, abs(c.path))
 				if v.class != ownershipUnregistered || v.keep != c.keep || string(v.data) != c.data {
 					t.Errorf("switch=%v %s: class=%q keep=%q data=%q, want unregistered/%q/%q", enabled, c.name, v.class, v.keep, v.data, c.keep, c.data)
 				}

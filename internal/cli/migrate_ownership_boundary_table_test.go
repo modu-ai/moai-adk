@@ -10,11 +10,13 @@ package cli
 // copied from that saved output into progress.md.
 //
 // Groups: restore (the bookkeeping-name filter of the legacy restore walk),
-// boundary (withinRootBoundary and pathLeavesRoot: element-wise containment, never
-// a raw string prefix, in both the absolute-root shape the tests use and the
-// relative "." root the update command really passes), symlink (what the verdict
-// function reads through links), kind (FIFOs and directories, with a bounded wait
-// that only detects a hang), and emptyroot.
+// boundary (withinRootBoundary: element-wise containment, never a raw string
+// prefix), symlink (an unregistered path with a symlink among its components is
+// never followed — chunk 13, leader disposition B), flow (the real walk, as the
+// update command drives it, from the project directory with the relative root
+// "."), race (a target or the project root swapped under the verdict function's
+// feet), kind (FIFOs and directories, with a bounded wait that only detects a
+// hang), and emptyroot.
 //
 // A FIFO may block a read until a writer appears; every row that plants one runs
 // the verdict in a goroutine and pokes the FIFO to end a hung read, so a hang is a
@@ -138,21 +140,6 @@ func boundaryRows() []tableRow {
 			return inside(withinRootBoundary(filepath.Join(base, rootRel), filepath.Join(base, pathRel)))
 		}}
 	}
-	// pathLeavesRoot over real files.
-	leavesRow := func(name, expected string, build func(t *testing.T, base string) (root, abs string)) tableRow {
-		return tableRow{"boundary", name, expected, func(t *testing.T) string {
-			base, err := filepath.EvalSymlinks(t.TempDir())
-			if err != nil {
-				t.Fatal(err)
-			}
-			root, abs := build(t, base)
-			rootResolved, err := filepath.EvalSymlinks(root)
-			if err != nil {
-				t.Fatal(err)
-			}
-			return inside(!pathLeavesRoot(rootResolved, abs))
-		}}
-	}
 	return []tableRow{
 		pureRow("withinRootBoundary: sibling named root+'-evil' is outside", "outside", "proj-xxx", "proj-xxx-evil/file"),
 		pureRow("withinRootBoundary: sibling named root+'2' is outside", "outside", "proj-xxx", "proj-xxx2/file"),
@@ -161,76 +148,6 @@ func boundaryRows() []tableRow {
 		pureRow("withinRootBoundary: parent of the root is outside", "outside", "proj-xxx", "."),
 		pureRow("withinRootBoundary: '..' escape through the root is outside", "outside", "proj-xxx", "proj-xxx/../other/file"),
 		pureRow("withinRootBoundary: top-level entry whose name starts with two dots is inside", "inside", "proj-xxx", "proj-xxx/..hidden/file"),
-		leavesRow("pathLeavesRoot: real file in the sibling 'proj-xxx-evil'", "outside", func(t *testing.T, base string) (string, string) {
-			tbWrite(t, filepath.Join(base, "proj-xxx", "keep.md"), "in\n")
-			tbWrite(t, filepath.Join(base, "proj-xxx-evil", "file.md"), "out\n")
-			return filepath.Join(base, "proj-xxx"), filepath.Join(base, "proj-xxx-evil", "file.md")
-		}),
-		leavesRow("pathLeavesRoot: in-project link to the sibling 'proj-xxx2'", "outside", func(t *testing.T, base string) (string, string) {
-			tbWrite(t, filepath.Join(base, "proj-xxx", "keep.md"), "in\n")
-			tbWrite(t, filepath.Join(base, "proj-xxx2", "file.md"), "out\n")
-			tbLink(t, filepath.Join(base, "proj-xxx2", "file.md"), filepath.Join(base, "proj-xxx", "link.md"))
-			return filepath.Join(base, "proj-xxx"), filepath.Join(base, "proj-xxx", "link.md")
-		}),
-		leavesRow("pathLeavesRoot: regular file in the project", "inside", func(t *testing.T, base string) (string, string) {
-			tbWrite(t, filepath.Join(base, "proj-xxx", "a", "f.md"), "in\n")
-			return filepath.Join(base, "proj-xxx"), filepath.Join(base, "proj-xxx", "a", "f.md")
-		}),
-		leavesRow("pathLeavesRoot: file in a top-level directory named '..hidden'", "inside", func(t *testing.T, base string) (string, string) {
-			tbWrite(t, filepath.Join(base, "proj-xxx", "..hidden", "f.md"), "in\n")
-			return filepath.Join(base, "proj-xxx"), filepath.Join(base, "proj-xxx", "..hidden", "f.md")
-		}),
-		// The relative root the update command passes ("."): the same answers.
-		{"boundary", "root '.' (the update command's shape): relative in-project file", "inside", func(t *testing.T) string {
-			root := t.TempDir()
-			tbWrite(t, filepath.Join(root, ".claude", "skills", "x", "SKILL.md"), "in\n")
-			t.Chdir(root)
-			return inside(!pathLeavesRoot(".", filepath.Join(".claude", "skills", "x", "SKILL.md")))
-		}},
-		{"boundary", "root '.': in-project symlink whose target is an ABSOLUTE in-project path", "inside", func(t *testing.T) string {
-			root, err := filepath.EvalSymlinks(t.TempDir())
-			if err != nil {
-				t.Fatal(err)
-			}
-			tbWrite(t, filepath.Join(root, "shared", "real.md"), "in\n")
-			tbLink(t, filepath.Join(root, "shared", "real.md"), filepath.Join(root, ".claude", "skills", "x", "SKILL.md"))
-			t.Chdir(root)
-			return inside(!pathLeavesRoot(".", filepath.Join(".claude", "skills", "x", "SKILL.md")))
-		}},
-		{"boundary", "root '.' reached through a symlinked working directory: in-project absolute link target", "inside", func(t *testing.T) string {
-			base, err := filepath.EvalSymlinks(t.TempDir())
-			if err != nil {
-				t.Fatal(err)
-			}
-			real := filepath.Join(base, "real-proj")
-			tbWrite(t, filepath.Join(real, "shared", "real.md"), "in\n")
-			tbLink(t, filepath.Join(real, "shared", "real.md"), filepath.Join(real, ".claude", "skills", "x", "SKILL.md"))
-			tbLink(t, real, filepath.Join(base, "link-proj"))
-			t.Chdir(filepath.Join(base, "link-proj"))
-			return inside(!pathLeavesRoot(".", filepath.Join(".claude", "skills", "x", "SKILL.md")))
-		}},
-		{"boundary", "root '.': symlink to an outside absolute path", "outside", func(t *testing.T) string {
-			base, err := filepath.EvalSymlinks(t.TempDir())
-			if err != nil {
-				t.Fatal(err)
-			}
-			root := filepath.Join(base, "proj")
-			tbWrite(t, filepath.Join(base, "proj-evil", "f.md"), "out\n")
-			tbLink(t, filepath.Join(base, "proj-evil", "f.md"), filepath.Join(root, ".claude", "skills", "x", "SKILL.md"))
-			t.Chdir(root)
-			return inside(!pathLeavesRoot(".", filepath.Join(".claude", "skills", "x", "SKILL.md")))
-		}},
-		{"boundary", "root '.': symlink to an outside relative path", "outside", func(t *testing.T) string {
-			base, err := filepath.EvalSymlinks(t.TempDir())
-			if err != nil {
-				t.Fatal(err)
-			}
-			root := filepath.Join(base, "proj")
-			tbWrite(t, filepath.Join(base, "proj-evil", "f.md"), "out\n")
-			tbLink(t, filepath.Join("..", "..", "..", "..", "proj-evil", "f.md"), filepath.Join(root, ".claude", "skills", "x", "SKILL.md"))
-			t.Chdir(root)
-			return inside(!pathLeavesRoot(".", filepath.Join(".claude", "skills", "x", "SKILL.md")))
-		}},
 	}
 }
 
@@ -252,7 +169,7 @@ func symlinkRows() []tableRow {
 	}
 	const p = ".agents/skills/moai-table/"
 	return []tableRow{
-		row("symlink to an in-project file: judged by its target's bytes", "class=unregistered keep=no-provenance-record read=content", func(t *testing.T, root, _ string) string {
+		row("symlink to an in-project file: kept unread (changed baseline, chunk 13)", "class=unregistered keep=symlink-escape read=none", func(t *testing.T, root, _ string) string {
 			tbWrite(t, filepath.Join(root, "real.md"), inContent)
 			tbLink(t, filepath.Join(root, "real.md"), filepath.Join(root, p+"link.md"))
 			return p + "link.md"
@@ -267,7 +184,7 @@ func symlinkRows() []tableRow {
 			tbLink(t, filepath.Join(out, "d"), filepath.Join(root, ".agents", "skills", "dirlink"))
 			return ".agents/skills/dirlink/f.md"
 		}),
-		row("symlinked ancestor directory inside: judged by content", "class=unregistered keep=no-provenance-record read=content", func(t *testing.T, root, _ string) string {
+		row("symlinked ancestor directory inside: kept unread (changed baseline, chunk 13)", "class=unregistered keep=symlink-escape read=none", func(t *testing.T, root, _ string) string {
 			tbWrite(t, filepath.Join(root, "real", "f.md"), inContent)
 			tbLink(t, filepath.Join(root, "real"), filepath.Join(root, ".agents", "skills", "dirlink"))
 			return ".agents/skills/dirlink/f.md"
@@ -279,7 +196,7 @@ func symlinkRows() []tableRow {
 			tbLink(t, filepath.Join(root, "hop1"), filepath.Join(root, p+"chain.md"))
 			return p + "chain.md"
 		}),
-		row("chain of links staying inside: judged by content", "class=unregistered keep=no-provenance-record read=content", func(t *testing.T, root, _ string) string {
+		row("chain of links staying inside: kept unread (changed baseline, chunk 13)", "class=unregistered keep=symlink-escape read=none", func(t *testing.T, root, _ string) string {
 			tbWrite(t, filepath.Join(root, "real.md"), inContent)
 			tbLink(t, filepath.Join(root, "real.md"), filepath.Join(root, "hop1"))
 			tbLink(t, filepath.Join(root, "hop1"), filepath.Join(root, p+"chain.md"))
@@ -315,38 +232,69 @@ func symlinkRows() []tableRow {
 // flowRows drives the real walk the way the update command does: from the project
 // directory with the relative root ".".
 func flowRows() []tableRow {
-	const link = ".agents/skills/moai-table/abs-link.md"
-	return []tableRow{
-		{"flow", "update-shaped run (root '.'): in-project symlink with an absolute target", "class=unregistered reason=no-provenance-record removed=1", func(t *testing.T) string {
+	flow := func(name, expected string, plant func(t *testing.T, root string) string) tableRow {
+		return tableRow{"flow", name, expected, func(t *testing.T) string {
 			root, home := ownershipFixtureBase(t)
 			rootResolved, err := filepath.EvalSymlinks(root)
 			if err != nil {
 				t.Fatal(err)
 			}
-			tbWrite(t, filepath.Join(rootResolved, "shared", "real.md"), "# in the project\n")
-			tbLink(t, filepath.Join(rootResolved, "shared", "real.md"), filepath.Join(rootResolved, filepath.FromSlash(link)))
+			rel := plant(t, rootResolved)
 			t.Chdir(rootResolved)
 			rc := &migrationRunContext{userAssetsInstalled: true}
 			removed, err := migrateProjectCommonAssets(".", home, true, nil, func(string, ...interface{}) {}, rc)
 			if err != nil {
 				t.Fatalf("migration: %v", err)
 			}
-			r, ok := findRemaining(rc, link)
+			r, ok := findRemaining(rc, rel)
 			if !ok {
 				return "no remaining row"
 			}
 			return fmt.Sprintf("class=%s reason=%s removed=%d", r.Class, r.Reason, len(removed))
-		}},
+		}}
+	}
+	return []tableRow{
+		flow("update-shaped run (root '.'): in-project symlink with an absolute target is kept unread", "class=unregistered reason=symlink-escape removed=1", func(t *testing.T, root string) string {
+			const link = ".agents/skills/moai-table/abs-link.md"
+			tbWrite(t, filepath.Join(root, "shared", "real.md"), "# in the project\n")
+			tbLink(t, filepath.Join(root, "shared", "real.md"), filepath.Join(root, filepath.FromSlash(link)))
+			return link
+		}),
+		flow("update-shaped run (root '.'): in-project symlink with a relative target is kept unread", "class=unregistered reason=symlink-escape removed=1", func(t *testing.T, root string) string {
+			const link = ".agents/skills/moai-table/rel-link.md"
+			tbWrite(t, filepath.Join(root, "shared", "real.md"), "# in the project\n")
+			tbLink(t, filepath.Join("..", "..", "..", "shared", "real.md"), filepath.Join(root, filepath.FromSlash(link)))
+			return link
+		}),
+		flow("update-shaped run (root '.'): an ordinary unregistered file is judged by content", "class=unregistered reason=no-provenance-record removed=1", func(t *testing.T, root string) string {
+			const file = ".agents/skills/moai-table/plain.md"
+			tbWrite(t, filepath.Join(root, filepath.FromSlash(file)), "# plain\n")
+			return file
+		}),
 	}
 }
 
-// raceRows swaps the file under the verdict function's feet, at a seam variable
-// called inside the unregistered read, and requires that no byte outside the
-// project is read (delta-audit round 3, finding F-A). The swap runs on the verdict's
-// goroutine, so it reports through t.Errorf.
+// tbEnvRooted is tbEnv with the project root opened once, the way newOwnershipEnv
+// opens it (through the same seam), and closed when the test ends.
+func tbEnvRooted(t *testing.T, root string) ownershipEnv {
+	t.Helper()
+	r, err := openProjectRoot(root)
+	if err != nil {
+		t.Fatalf("open the project root: %v", err)
+	}
+	t.Cleanup(func() { _ = r.Close() })
+	env := tbEnv(root, nil)
+	env.root = r
+	return env
+}
+
+// raceRows swaps the file, or the project root itself, under the verdict function's
+// feet at a seam variable called inside the unregistered read, and requires that no
+// byte outside the project is read. The swap runs on the verdict's goroutine, so it
+// reports through t.Errorf.
 func raceRows() []tableRow {
 	const rel = ".agents/skills/moai-table/swap.md"
-	row := func(name, stage, expected string, to func(root, out string) string) tableRow {
+	swapRow := func(name, stage, expected string, target func(root, out string) string) tableRow {
 		return tableRow{"race", name, expected, func(t *testing.T) string {
 			root, err := filepath.EvalSymlinks(t.TempDir())
 			if err != nil {
@@ -371,21 +319,54 @@ func raceRows() []tableRow {
 				if err := os.Remove(at); err != nil {
 					t.Errorf("swap: remove %s: %v", at, err)
 				}
-				if err := os.Symlink(to(root, out), at); err != nil {
+				if err := os.Symlink(target(root, out), at); err != nil {
 					t.Errorf("swap: symlink %s: %v", at, err)
 				}
 			}
-			v := tbClassify(t, tbEnv(root, nil), rel, abs)
+			v := tbClassify(t, tbEnvRooted(t, root), rel, abs)
 			return tbVerdict(v, "# inside\n") + fmt.Sprintf(" swapped=%v", swapped)
 		}}
 	}
-	toOutside := func(_, out string) string { return filepath.Join(out, "f.md") }
-	toInside := func(root, _ string) string { return filepath.Join(root, "other.md") }
+	outside := func(_, out string) string { return filepath.Join(out, "f.md") }
+	insideAbs := func(root, _ string) string { return filepath.Join(root, "other.md") }
+	insideRel := func(string, string) string { return filepath.Join("..", "..", "..", "other.md") }
 	const escaped = "class=unregistered keep=symlink-escape read=none swapped=true"
 	return []tableRow{
-		row("target swapped for a link to an outside file between the boundary check and the read", "check-to-read", escaped, toOutside),
-		row("target swapped for a link to an outside file after the path was resolved, before it is opened", "resolve-to-open", escaped, toOutside),
-		row("control: target swapped for a link to ANOTHER INSIDE file is still judged by content", "check-to-read", "class=unregistered keep=no-provenance-record read=other-bytes swapped=true", toInside),
+		swapRow("target swapped for a link to an outside file before the path is examined", "check-to-read", escaped, outside),
+		swapRow("target swapped for a link to an outside file after the path was examined, before it is opened", "lstat-to-open", escaped, outside),
+		swapRow("target swapped for an ABSOLUTE link to a file inside the project: the Root refuses absolute links, so it is kept unread", "lstat-to-open", escaped, insideAbs),
+		swapRow("control: target swapped for a RELATIVE link to another file inside the project is followed inside the Root", "lstat-to-open", "class=unregistered keep=no-provenance-record read=other-bytes swapped=true", insideRel),
+		// The project root path itself is swapped for a link to an outside tree (which holds
+		// the same relative name with different bytes) after the environment was built. The
+		// Root was opened once, before: it keeps pointing at the real project.
+		{"race", "the project root path swapped for a link to an outside tree after the environment was built", "class=unregistered keep=no-provenance-record read=content swapped=true", func(t *testing.T) string {
+			base, err := filepath.EvalSymlinks(t.TempDir())
+			if err != nil {
+				t.Fatal(err)
+			}
+			root, out := filepath.Join(base, "proj"), filepath.Join(base, "evil")
+			abs := filepath.Join(root, filepath.FromSlash(rel))
+			tbWrite(t, abs, "# inside\n")
+			tbWrite(t, filepath.Join(out, filepath.FromSlash(rel)), "# outside the project\n")
+			env := tbEnvRooted(t, root)
+			swapped := false
+			prev := readWindowHook
+			t.Cleanup(func() { readWindowHook = prev })
+			readWindowHook = func(s, _ string) {
+				if s != "check-to-read" || swapped {
+					return
+				}
+				swapped = true
+				if err := os.Rename(root, root+".moved"); err != nil {
+					t.Errorf("swap: rename the root: %v", err)
+				}
+				if err := os.Symlink(out, root); err != nil {
+					t.Errorf("swap: link the root: %v", err)
+				}
+			}
+			v := tbClassify(t, env, rel, abs)
+			return tbVerdict(v, "# inside\n") + fmt.Sprintf(" swapped=%v", swapped)
+		}},
 	}
 }
 
@@ -413,7 +394,7 @@ func kindRows() []tableRow {
 			mkfifo(t, abs)
 			return tbVerdict(tbClassify(t, tbEnv(root, reg(rel)), rel, abs, abs), content)
 		}},
-		{"kind", "link to a FIFO inside the project", "class=unregistered keep=non-regular-file read=none", func(t *testing.T) string {
+		{"kind", "link to a FIFO inside the project: a link is never followed", "class=unregistered keep=symlink-escape read=none", func(t *testing.T) string {
 			root, abs := rootOf(t)
 			fifo := filepath.Join(root, "pipe")
 			mkfifo(t, fifo)

@@ -36,6 +36,10 @@ var projectCommonAssetRels = []string{
 	".codex/agents/moai/",
 }
 
+// openProjectRoot opens the project root as an os.Root. It is a variable only so a
+// test can count the opens and hand back the handle; no production path replaces it.
+var openProjectRoot = os.OpenRoot
+
 // removalEnabled gates the project-side removal; its criterion (AC-RC30-02) is owned by card t1668.
 var removalEnabled = false
 

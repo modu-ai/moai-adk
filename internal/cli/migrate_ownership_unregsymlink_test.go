@@ -15,11 +15,14 @@ package cli
 // see this route (no fixture put a profile-pointing symlink under a common
 // asset root, and nothing assembled a path at run time).
 //
-// Expected behaviour, pinned here: an unregistered symlink whose resolved target
-// is outside the project root is kept unread, class `unregistered`, reason
-// `symlink-escape`, and it has a row in the remaining list. Symlinks that stay
-// inside the project, dangling symlinks and non-regular targets behave as they
-// did before (those are the control cases).
+// Expected behaviour, pinned here (chunk 13, leader disposition B: the guarded
+// surface is reduced): an unregistered path with a symlink among its components is
+// kept unread, class `unregistered`, reason `symlink-escape`, with a row in the
+// remaining list — whether the link points inside or outside the project. The one
+// baseline that CHANGED by that decision: a symlink to an in-project regular file
+// used to be judged by its target's bytes (chunk 6 measured it) and is now kept
+// unread. Dangling links and loops still fail their read (`read-failed`), and
+// ordinary files are judged by content as ever.
 //
 // The registered-file path is NOT covered here: it read before the boundary
 // check at the base commit as well, and its pinned expectation (class managed +
@@ -112,10 +115,15 @@ func TestUnregisteredSymlinkOutsideProjectIsNotRead(t *testing.T) {
 				t.Errorf("switch=%v %s: class=%q keep=%q eligible=%v, want unregistered/%q/false", enabled, rel, v.class, v.keep, v.removalEligible, keepSymlinkEscape)
 			}
 		}
-		// Control cases: judged exactly as before.
+		// The changed baseline: an in-project link is kept unread as well.
 		in := classifyOwnership(env, usToInside, abs(usToInside))
-		if in.class != ownershipUnregistered || in.keep != keepNoProvenanceRecord || string(in.data) != usInsideKey {
-			t.Errorf("switch=%v in-project symlink: class=%q keep=%q data=%q, want unregistered/%q/the target's bytes", enabled, in.class, in.keep, in.data, keepNoProvenanceRecord)
+		if in.class != ownershipUnregistered || in.keep != keepSymlinkEscape || len(in.data) != 0 {
+			t.Errorf("switch=%v in-project symlink: class=%q keep=%q data=%q, want unregistered/%q/no bytes", enabled, in.class, in.keep, in.data, keepSymlinkEscape)
+		}
+		// Control: the in-project regular file itself is judged by content.
+		plain := classifyOwnership(env, usInsideFile, abs(usInsideFile))
+		if plain.class != ownershipUnregistered || plain.keep != keepNoProvenanceRecord || string(plain.data) != usInsideKey {
+			t.Errorf("switch=%v in-project file: class=%q keep=%q data=%q, want unregistered/%q/its bytes", enabled, plain.class, plain.keep, plain.data, keepNoProvenanceRecord)
 		}
 		dang := classifyOwnership(env, usDangling, abs(usDangling))
 		if dang.class != ownershipUnregistered || dang.keep != keepReadFailed || dang.data != nil {
@@ -162,9 +170,12 @@ func TestUnregisteredSymlinkOutsideProjectIsNotRead(t *testing.T) {
 			t.Errorf("%s is no longer a symlink (%v)", rel, err)
 		}
 	}
-	// Controls inside the run: the in-project link is still judged by its target.
-	if r, ok := findRemaining(rc, usToInside); !ok || r.Reason != keepNoProvenanceRecord {
-		t.Errorf("%s: row %+v (found=%v), want reason %q", usToInside, r, ok, keepNoProvenanceRecord)
+	// The in-project link is kept unread too (changed baseline); its target is judged as itself.
+	if r, ok := findRemaining(rc, usToInside); !ok || r.Reason != keepSymlinkEscape {
+		t.Errorf("%s: row %+v (found=%v), want reason %q", usToInside, r, ok, keepSymlinkEscape)
+	}
+	if r, ok := findRemaining(rc, usInsideFile); !ok || r.Reason != keepNoProvenanceRecord {
+		t.Errorf("%s: row %+v (found=%v), want reason %q", usInsideFile, r, ok, keepNoProvenanceRecord)
 	}
 	if r, ok := findRemaining(rc, usDangling); !ok || r.Reason != keepReadFailed {
 		t.Errorf("%s: row %+v (found=%v), want reason %q", usDangling, r, ok, keepReadFailed)

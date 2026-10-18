@@ -400,10 +400,13 @@ func TestRemainingListKeeps313UnregisteredCopies(t *testing.T) {
 
 	t.Run("RenderedByTheUpdateFlow", func(t *testing.T) { renderedFlowCase(t, false) })
 
-	// Two updates whose run backups fall in the same clock second share one run
-	// directory (the name has one-second resolution), and the later run's own
-	// copy replaces the earlier generation in it. The shared directory is
-	// simulated deterministically here instead of waiting for the clock.
+	// The earlier generation is NOT available to the later run (its copy is
+	// replaced). Since chunk 13 a same-second collision no longer produces this in
+	// production (the later run fails closed instead of replacing the copy, see
+	// update_prior_manifest_collision_test.go); the case stays as the rendering
+	// test for a remaining list built without a retained generation, which a
+	// pruned or damaged copy still yields. The replacement is simulated through the
+	// writer seam instead of waiting for the clock.
 	t.Run("RenderedByTheUpdateFlowInOneSecond", func(t *testing.T) { renderedFlowCase(t, true) })
 
 	t.Run("MixedReasonsEveryRowHasOne", func(t *testing.T) {

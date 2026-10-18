@@ -14,14 +14,12 @@ package cli
 // each update run adds its own.
 //
 // Time independence. Run-backup directories are named to the second. No assertion
-// here depends on which second a run lands in. Two branches are driven and
-// asserted identically: the DISTINCT-directory branch waits (polls) until the
-// clock is past every directory name the previous run wrote, and the NO-WAIT
-// branch starts the next run at once, so the two runs share a clock second or not
-// depending on the machine. The outcome must be the same either way: each run's
-// start-of-run manifest lands in a directory no other run writes to (sync-audit
-// finding F2), so both prior generations survive. The same-second case itself is
-// pinned deterministically, without a clock, in update_prior_manifest_collision_test.go.
+// here depends on which second a run lands in. The DISTINCT-directory branch waits
+// (polls) until the clock is past every directory name the previous run wrote. A
+// same-second collision of two runs (chunk 13: the later run fails closed, removes
+// nothing and leaves the earlier copy alone) is not left to the machine's timing:
+// the AC-OWR-18 case PriorManifestCollided plants a manifest.prior.json in the run
+// directory of EVERY second the run can land in, so the collision is certain.
 //
 // Reach (rule 7). Only a run that touched reconciliation counts: not skipped, a
 // new manifest.prior.json whose bytes are the manifest the run started from, and a
@@ -40,7 +38,9 @@ import (
 	"sort"
 	"strings"
 	"testing"
+	"time"
 
+	"github.com/modu-ai/moai-adk/internal/defs"
 	"github.com/modu-ai/moai-adk/internal/manifest"
 )
 
@@ -54,17 +54,9 @@ const (
 	// branchDistinct: the next run starts in a later second than every
 	// clock-derived directory of the previous one.
 	branchDistinct clockBranch = iota
-	// branchNoWait: the next run starts at once. Whether it shares a second with
-	// the previous run is up to the machine, and the assertions do not care.
-	branchNoWait
 )
 
-func (b clockBranch) String() string {
-	if b == branchNoWait {
-		return "NoWaitConsecutiveRuns"
-	}
-	return "DistinctRunDirectories"
-}
+func (b clockBranch) String() string { return "DistinctRunDirectories" }
 
 // withPriorWriter runs fn with the prior-manifest writer replaced and puts the
 // previous one back afterwards.
@@ -427,7 +419,7 @@ func observeRepeated(t *testing.T, fx repeatFixture, br clockBranch) (runs [4]re
 func TestRepeatedUpdateIsIdempotent(t *testing.T) {
 	t.Log("compared tree hash: content-only (path, bytes, mode, directory presence); directory mtimes and clock values are not compared; deployed_at is masked between runs")
 	for _, fx := range repeatFixtures() {
-		for _, br := range []clockBranch{branchDistinct, branchNoWait} {
+		for _, br := range []clockBranch{branchDistinct} {
 			t.Run(fx.name+"/"+br.String(), func(t *testing.T) {
 				runs, plain := observeRepeated(t, fx, br)
 				problems := repeatedProblems(runs, plain, fx.strictRows)
@@ -754,6 +746,38 @@ func convRunDir(o recObs) string {
 	return filepath.Dir(o.run.NewPriorManifest)
 }
 
+// recCollisionWindow is how many seconds of run-directory names the collision case
+// plants: far more than one update run can take.
+const recCollisionWindow = 180
+
+// recPlantCollisionDecoys plants, in the run backup directory of every second from
+// shortly before now to recCollisionWindow seconds ahead, a manifest.prior.json that
+// stands for an earlier run's copy. Whichever second the next run's Backup stage
+// lands in, it meets the earlier copy. The decoys are dated an hour back so the
+// "written during this run" observation never mistakes one for the run's own copy.
+// It returns the decoys' directories and bytes.
+func recPlantCollisionDecoys(t *testing.T, root string, bytesOf []byte) map[string][]byte {
+	t.Helper()
+	decoys := map[string][]byte{}
+	old := time.Now().Add(-time.Hour)
+	start := time.Now().Add(-2 * time.Second)
+	for i := 0; i < recCollisionWindow; i++ {
+		dir := filepath.Join(root, defs.BackupsDir, start.Add(time.Duration(i)*time.Second).Format(defs.BackupTimestampFormat))
+		if err := os.MkdirAll(dir, 0o755); err != nil {
+			t.Fatal(err)
+		}
+		f := filepath.Join(dir, priorManifestName)
+		if err := os.WriteFile(f, bytesOf, 0o644); err != nil {
+			t.Fatal(err)
+		}
+		if err := os.Chtimes(f, old, old); err != nil {
+			t.Fatal(err)
+		}
+		decoys[dir] = bytesOf
+	}
+	return decoys
+}
+
 func convCases() []convRecoveryCase {
 	return []convRecoveryCase{
 		{"BackupPathOccupied", func(t *testing.T, pristine string, w convWorld, br clockBranch) (string, recObs, convExpect) {
@@ -827,6 +851,58 @@ func convCases() []convRecoveryCase {
 			recPrepareNextRun(t, root, br, func() { fin = recObserve(t, root, true) })
 			return root, fin, convExpect{}
 		}},
+		// Chunk 13 (replaces the lossy shared-directory expectation): the first run
+		// meets a manifest.prior.json of an "earlier run" in its own run directory. It
+		// must not overwrite it, must not make another directory, must remove nothing and
+		// must say why; the recovery run in a later second then converges like any other.
+		{"PriorManifestCollided", func(t *testing.T, pristine string, w convWorld, br clockBranch) (string, recObs, convExpect) {
+			root := convCopy(t, pristine)
+			earlier := []byte(`{"version":"v0","files":{}}` + "\n")
+			decoys := recPlantCollisionDecoys(t, root, earlier)
+			a := recObserve(t, root, true)
+			for _, p := range convInterruptedProblems(w, a, root) {
+				if !strings.HasPrefix(p, "(reach)") { // the run had no copy of its own, by design
+					t.Error(p)
+				}
+			}
+			if a.run.NewPriorManifest != "" {
+				t.Errorf("the collided run wrote its own copy: %s", a.run.NewPriorManifest)
+			}
+			told := false
+			for _, row := range updateLedger.required {
+				if strings.Contains(row.msg, "removes no file") && strings.Contains(row.msg, "earlier run") {
+					told = true
+				}
+			}
+			if !told {
+				t.Errorf("the run does not say why it removed nothing: %+v", updateLedger.required)
+			}
+			// The run's own end-of-run backup retention (a different, pre-existing code
+			// path) may prune old run directories, so what must hold is judged on the
+			// directories that are left: at least the one the run used, every one a
+			// planted name (the run made no other directory), and each still holding the
+			// earlier copy byte for byte.
+			left, _ := filepath.Glob(filepath.Join(root, defs.BackupsDir, "*"))
+			if len(left) == 0 {
+				t.Errorf("no run backup directory is left, yet the run must have used one")
+			}
+			for _, dir := range left {
+				want, planted := decoys[dir]
+				if !planted {
+					t.Errorf("%s is not a planted directory: a collided run makes no other", dir)
+					continue
+				}
+				if got, err := os.ReadFile(filepath.Join(dir, priorManifestName)); err != nil || !bytes.Equal(got, want) {
+					t.Errorf("the earlier copy in %s changed (%v)", dir, err)
+				}
+				if err := os.RemoveAll(dir); err != nil {
+					t.Fatal(err)
+				}
+			}
+			var fin recObs
+			recPrepareNextRun(t, root, br, func() { fin = recObserve(t, root, true) })
+			return root, fin, convExpect{}
+		}},
 	}
 }
 
@@ -858,7 +934,7 @@ func TestInterruptedMigrationRecoversAndConverges(t *testing.T) {
 		fin  recObs
 	}
 	for _, c := range convCases() {
-		for _, br := range []clockBranch{branchDistinct, branchNoWait} {
+		for _, br := range []clockBranch{branchDistinct} {
 			t.Run(c.name+"/"+br.String(), func(t *testing.T) {
 				root, fin, expect := c.run(t, pristine, w, br)
 				for _, p := range convFinalProblems(w, ref, fin, root, expect) {

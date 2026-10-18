@@ -10,11 +10,12 @@ package cli
 // with the removal switch off. The base commit preserved an unregistered path
 // without reading it.
 //
-// Existing symlink behaviour, kept as it was: os.ReadFile follows a symlink, so
-// a symlink to a regular file is judged by its target's bytes (this test pins
-// that it still is), and a dangling symlink is a failed read (`read-failed`,
-// pinned too). Only a path whose target is not a regular file takes the new
-// reason `non-regular-file`.
+// Symlinks (chunk 13, leader disposition B): an unregistered path with a symlink
+// among its components is never followed, so a symlink to a regular file, and a
+// symlink to a pipe, are kept unread with `symlink-escape` (the first used to be
+// judged by its target's bytes — a baseline that CHANGED by that decision). A
+// dangling symlink is still a failed read (`read-failed`). Only a path whose own
+// final element is not a regular file takes the reason `non-regular-file`.
 //
 // The test must FAIL, not hang, while the bug is present: the migration runs in a
 // goroutine and the test waits a bounded time ONLY to detect that it never
@@ -179,15 +180,15 @@ func nonRegularProblems(w nonRegularWorld, o nonRegularOutcome) []string {
 			add("%s: class %q, want %q", rel, r.Class, class)
 		}
 	}
-	// The three non-regular paths: kept, with the explicit reason.
+	// The non-regular paths: kept, with the explicit reason (a link to a pipe is a link: never followed).
 	want(nrFifo, ownershipUnregistered, nonRegularReason)
-	want(nrLinkFifo, ownershipUnregistered, nonRegularReason)
+	want(nrLinkFifo, ownershipUnregistered, keepSymlinkEscape) // a link is never followed (chunk 13), so the pipe behind it is never touched
 	want(nrRegFifo, ownershipUserModified, nonRegularReason)
-	// The rest of the walk is judged exactly as before: a regular file, a symlink to
-	// a regular file (judged by its target's bytes) and a dangling symlink (a failed
-	// read).
+	// The rest of the walk: a regular file is judged by content, a symlink to a
+	// regular file is kept unread (changed baseline) and a dangling symlink is a
+	// failed read.
 	want(nrPlain, ownershipUnregistered, keepNoProvenanceRecord)
-	want(nrLinkReg, ownershipUnregistered, keepNoProvenanceRecord)
+	want(nrLinkReg, ownershipUnregistered, keepSymlinkEscape) // changed baseline (chunk 13): was judged by the target's bytes
 	want(nrDangling, ownershipUnregistered, keepReadFailed)
 	// Reach: the registered sibling with every removal precondition went in the same
 	// run, so the keeps above come from a walk that could remove.

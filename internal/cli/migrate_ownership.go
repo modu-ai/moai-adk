@@ -163,6 +163,10 @@ type ownershipEnv struct {
 	removalEnabled bool
 	// rootResolved is the project root resolved through symlinks.
 	rootResolved string
+	// root is the project root opened ONCE, where the environment is built; every
+	// read of an unregistered file goes through it (chunk 13). A hand-built
+	// environment may leave it nil.
+	root *os.Root
 	// counterpartStatus optionally reports the counterpart's state for the
 	// remaining row. When nil the state is derived from counterpartConfirmed
 	// (confirmed or unconfirmed). It never decides the disposition: that stays
@@ -175,6 +179,13 @@ type ownershipEnv struct {
 	// shippedSpelling returns the shipped template path that differs from rel only
 	// in letter case, or "". Optional.
 	shippedSpelling func(rel string) string
+}
+
+// closeRoot closes the project root the environment holds, if any.
+func (e ownershipEnv) closeRoot() {
+	if e.root != nil {
+		_ = e.root.Close()
+	}
 }
 
 // counterpartOf reports the user-root counterpart state of rel for a row.
