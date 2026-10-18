@@ -15,6 +15,10 @@ import (
 // deployed template set held 38 skills when the guard was written.
 const minSweptSkills = 30
 
+// englandFlag is U+1F3F4 followed by the tag characters g, b, e, n, g and the
+// cancel tag (U+E0067 U+E0062 U+E0065 U+E006E U+E0067 U+E007F).
+const englandFlag = "\U0001F3F4\U000E0067\U000E0062\U000E0065\U000E006E\U000E0067\U000E007F"
+
 // Host-unit arithmetic (Claude Code 2.1.302): an entry is the string
 // "<description> - <when_to_use>" (the " - " separator, 3 chars, only when
 // when_to_use is set), measured in UTF-16 code units against the 1,536 cap.
@@ -71,16 +75,31 @@ func TestCheckSkillListing_HostFormBoundary(t *testing.T) {
 		{"ampersand at 1537", skillListingEntry{Name: "e", Description: strings.Repeat("a", 1536) + "&"}, true},
 		{"literal entity text at 1536", skillListingEntry{Name: "e", Description: strings.Repeat("a", 1532) + "&lt;"}, false},
 		{"literal entity text at 1537", skillListingEntry{Name: "e", Description: strings.Repeat("a", 1533) + "&lt;"}, true},
-		// Trim step: description is trimmed, when_to_use is not.
-		// "  " + 1536 + "  " trims to 1,536 and passes.
-		{"padded description trims to 1536", skillListingEntry{Name: "e", Description: "  " + strings.Repeat("a", 1536) + "  "}, false},
+		// Upper bound: the guard applies no trim, so padding counts in both fields.
+		// "  " + 1536 + "  " = 1,540 > 1,536 fails (the host trims the description to 1,536
+		// and would pass it; the guard intentionally overcounts).
+		{"padded description counts its padding", skillListingEntry{Name: "e", Description: "  " + strings.Repeat("a", 1536) + "  "}, true},
 		// 1000 + 3 + (" " + 532 + " " = 534) = 1,537: the padding of when_to_use counts.
 		{"padded when_to_use counts its padding", skillListingEntry{Name: "e", Description: strings.Repeat("a", 1000), WhenToUse: " " + strings.Repeat("b", 532) + " "}, true},
-		// Collapse step: a run of control characters is one space.
-		// 1534 a + "\n\n\n" (one space) + "b" = 1,536 passes (raw count 1,538).
-		{"newline run collapses to one unit", skillListingEntry{Name: "e", Description: strings.Repeat("a", 1534) + "\n\n\nb"}, false},
-		// Same run in when_to_use: 1000 + 3 + 531 + 1 + 1 = 1,536 passes (raw 1,538).
-		{"control run in when_to_use collapses", skillListingEntry{Name: "e", Description: strings.Repeat("a", 1000), WhenToUse: strings.Repeat("b", 531) + "\t\r\nc"}, false},
+		// Upper bound: runs of invisible characters are counted raw. The host collapses
+		// each run to one space, so it would count fewer; the guard intentionally overcounts.
+		// 1534 a + 3 newlines + "b" = 1,538 > 1,536 fails (host: 1,536).
+		{"newline run counts raw", skillListingEntry{Name: "e", Description: strings.Repeat("a", 1534) + "\n\n\nb"}, true},
+		// 1000 + 3 + 531 + 3 (\t\r\n) + 1 = 1,538 fails (host: 1,536).
+		{"control run in when_to_use counts raw", skillListingEntry{Name: "e", Description: strings.Repeat("a", 1000), WhenToUse: strings.Repeat("b", 531) + "\t\r\nc"}, true},
+		// 1534 a + U+200B + U+FEFF + "b" = 1,537 fails: format characters count 1 unit each
+		// (the host collapses the run to one space and would pass, 1,536).
+		{"zero-width and BOM count raw", skillListingEntry{Name: "e", Description: strings.Repeat("a", 1534) + "\u200b\ufeffb"}, true},
+		// 1535 a + U+0001 + "b" = 1,537 fails: a control character counts 1 unit (host: 1,536).
+		{"control character counts raw", skillListingEntry{Name: "e", Description: strings.Repeat("a", 1535) + "\x01b"}, true},
+		// Sync-audit finding F8: the England flag is U+1F3F4 followed by six tag
+		// characters (U+E0067 U+E0062 U+E0065 U+E006E U+E0067 U+E007F), seven astral
+		// runes = 14 UTF-16 units. The host keeps them inside the RGI emoji sequence:
+		// 1,523 + 14 = 1,537 > 1,536 fails. A guard that collapsed the tag characters
+		// counted 1,526 and passed an entry the host truncates.
+		{"England flag after 1523 chars is 1537", skillListingEntry{Name: "e", Description: strings.Repeat("a", 1523) + englandFlag}, true},
+		// 1,522 + 14 = 1,536 passes.
+		{"England flag after 1522 chars is 1536", skillListingEntry{Name: "e", Description: strings.Repeat("a", 1522) + englandFlag}, false},
 	}
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
@@ -169,14 +188,20 @@ func TestCountSkillChars_UTF16Semantics(t *testing.T) {
 		{"ampersand is one unit", skillListingEntry{Name: "x", Description: "a&b"}, 3},
 		// A literal "&lt;" is already four characters and stays four: 4.
 		{"literal entity is not re-escaped", skillListingEntry{Name: "x", Description: "&lt;"}, 4},
-		// A run of newlines is one space: "a b" = 3.
-		{"newline run", skillListingEntry{Name: "x", Description: "a\n\nb"}, 3},
-		// Zero-width spaces (format characters) collapse as one run: "a b" = 3.
-		{"zero-width run", skillListingEntry{Name: "x", Description: "a\u200b\u200bb"}, 3},
-		// Literal spaces are not part of the collapsed class: "a  b" = 4.
+		// Upper bound: no collapse. Two newlines count 2, so "a\n\nb" = 4 (host: 3).
+		{"newline run counts raw", skillListingEntry{Name: "x", Description: "a\n\nb"}, 4},
+		// Two zero-width spaces count 2: 1 + 2 + 1 = 4 (host: 3).
+		{"zero-width run counts raw", skillListingEntry{Name: "x", Description: "a\u200b\u200bb"}, 4},
+		// Literal spaces count 1 each: "a  b" = 4.
 		{"literal spaces stay", skillListingEntry{Name: "x", Description: "a  b"}, 4},
-		// description is trimmed: "ab" = 2.
-		{"description trimmed", skillListingEntry{Name: "x", Description: "  ab  "}, 2},
+		// Upper bound: no trim. "  ab  " = 6 (host: 2).
+		{"description padding counts", skillListingEntry{Name: "x", Description: "  ab  "}, 6},
+		// England flag: seven astral runes, 7 x 2 = 14 units.
+		{"england flag is fourteen units", skillListingEntry{Name: "x", Description: englandFlag}, 14},
+		// Documented limit, pinned: an empty description counts 0, although the host
+		// then falls back to the first body line (up to 100 units). A later change to
+		// this behavior shows up here. No deployed skill has an empty description.
+		{"empty description counts zero (pinned limit)", skillListingEntry{Name: "x", Description: ""}, 0},
 		// when_to_use is not trimmed: 1 + 3 + 3 (" x ") = 7.
 		{"when_to_use untrimmed", skillListingEntry{Name: "x", Description: "d", WhenToUse: " x "}, 7},
 		// A whitespace-only when_to_use is still set, so the separator counts: 1 + 3 + 3 = 7.
@@ -194,8 +219,8 @@ func TestCountSkillChars_UTF16Semantics(t *testing.T) {
 }
 
 func TestParseSkillListingEntry_KeepsRawFields(t *testing.T) {
-	// The host pipeline (trim, collapse, escape) runs in chars(), so parsing hands
-	// it the YAML values unfolded. A literal block scalar keeps its interior
+	// chars() applies only the lengthening steps, so parsing hands it the YAML
+	// values unfolded. A literal block scalar keeps its interior
 	// newline; the single trailing newline of the block is dropped (a stated
 	// limit: the host YAML reader's treatment of it is not mirrored).
 	fm := "name: x\ndescription: >-\n  alpha\n  beta\nwhen_to_use: |\n  one\n  two\n"
