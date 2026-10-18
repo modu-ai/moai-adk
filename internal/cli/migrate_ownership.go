@@ -352,13 +352,40 @@ func unreadableKind(abs string) bool {
 // project root. It resolves EVERY component (EvalSymlinks), so a symlinked
 // ancestor directory is seen exactly like a symlinked file, and it never opens
 // the target. A path that does not resolve (dangling, absent, not examinable) is
-// NOT reported: it keeps behaving as before, a failed read (`read-failed`).
+// NOT reported: the read that follows fails on the same condition, so it keeps
+// behaving as before (`read-failed`). An unknown root (empty) fails closed.
+//
+// The update command passes the relative root "." (and so rootResolved is "."): a
+// link with an absolute in-project target resolves to an absolute path, and a
+// relative root cannot contain it. Both sides are therefore made absolute and
+// fully resolved before they are compared.
 func pathLeavesRoot(rootResolved, abs string) bool {
-	resolved, err := filepath.EvalSymlinks(abs)
+	if rootResolved == "" {
+		return true
+	}
+	root := rootResolved
+	if !filepath.IsAbs(root) {
+		absRoot, err := filepath.Abs(root)
+		if err != nil {
+			return true
+		}
+		if root, err = filepath.EvalSymlinks(absRoot); err != nil {
+			return true
+		}
+	}
+	target := abs
+	if !filepath.IsAbs(target) {
+		absTarget, err := filepath.Abs(target)
+		if err != nil {
+			return true
+		}
+		target = absTarget
+	}
+	resolved, err := filepath.EvalSymlinks(target)
 	if err != nil {
 		return false
 	}
-	return !withinRootBoundary(rootResolved, resolved)
+	return !withinRootBoundary(root, resolved)
 }
 
 // classifyUnregistered judges a file the manifest has no entry for. It is

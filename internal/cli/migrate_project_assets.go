@@ -630,7 +630,9 @@ func withinRootBoundary(root, path string) bool {
 	if err != nil {
 		return false
 	}
-	return rel == "." || (!strings.HasPrefix(rel, "..") && rel != "")
+	// Containment is by path ELEMENT: only a leading `..` element leaves the root.
+	// A name that merely starts with two dots (`..hidden`) is inside.
+	return rel == "." || (rel != ".." && !strings.HasPrefix(rel, ".."+string(filepath.Separator)))
 }
 
 // migrationFinalStateSentinel prefixes every final-state divergence the
