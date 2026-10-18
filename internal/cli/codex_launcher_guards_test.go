@@ -51,6 +51,7 @@ import (
 // assertion and forces a deliberate update here — that friction is the guard
 // working (acceptance.md §D.2 edge 6).
 var codexGuardFiles = []string{
+	"codex_audit_leg.go",
 	"codex_contract.go",
 	"codex_init.go",
 	"codex_job_control.go",
@@ -70,8 +71,8 @@ var codexGuardFiles = []string{
 // completeness §1.1 — a pass whose swept set is empty asserts nothing).
 func sweepGuardFiles(t *testing.T) []string {
 	t.Helper()
-	if len(codexGuardFiles) != 12 {
-		t.Fatalf("guard swept %d files, want 12 — vacuous green", len(codexGuardFiles))
+	if len(codexGuardFiles) != 13 {
+		t.Fatalf("guard swept %d files, want 13 — vacuous green", len(codexGuardFiles))
 	}
 	return codexGuardFiles
 }
@@ -204,12 +205,14 @@ func TestCodexSpecFiles_NoBuildTagsOrSyscall(t *testing.T) {
 // §A; every row's call site was re-read at run phase): each listed file's
 // process-start primitives must hand the named executable expression as
 // FIRST argument. A blanket req.Program expectation would false-RED on
-// codex_review_gate.go's legitimate `git` porcelain probe, and mcp_codex.go
-// runs the codex binary under the binaryPath parameter at three sites —
-// hence the per-file rows.
+// codex_review_gate.go's legitimate `git` porcelain probe, and the codex
+// binary runs under the binaryPath parameter — in codex_launcher.go
+// directly, and since t1869's codexChildCmd moved the shared child
+// construction, in codex_audit_leg.go (mcp_codex.go now calls that helper
+// and holds no primitive of its own) — hence the per-file rows.
 var codexExecFirstArg = map[string]string{
+	"codex_audit_leg.go":   "binaryPath",
 	"codex_launcher.go":    "req.Program",
-	"mcp_codex.go":         "binaryPath",
 	"codex_review_gate.go": `"git"`,
 }
 
