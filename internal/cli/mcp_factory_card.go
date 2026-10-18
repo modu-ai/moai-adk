@@ -245,14 +245,15 @@ func handleFactoryComplete(ctx context.Context, req mcp.CallToolRequest) (*mcp.C
 		return toolErr("factory_complete", errors.New("factory complete: card is required")), nil
 	}
 	out := &bytes.Buffer{}
-	// The record, the git-flow config, the integration window and the re-measure record all live at the
-	// factory root of the caller's tree, which is the parent checkout (sync-audit N2, card t1680 (b)). The
-	// verb's window root, integrationLockRoot(), names that same directory — CLAUDE_PROJECT_DIR is the
-	// project root, and the git fallback is the parent of the common git dir — but it reads the process
-	// environment and working directory, which this long-lived server cannot use for a caller's tree. So
-	// the handler derives it from project_root with the rule it already applies to the record root.
+	// The record and the git-flow config live at the factory root of the caller's tree, the parent checkout
+	// (sync-audit N2, card t1680 (b)). The integration window and the re-measure record live at the
+	// repository common root, which the verb gets from integrationLockRoot() and this handler from the same
+	// rule, integrationCommonRootOf, applied to project_root: both surfaces resolve to the repository common
+	// root, so a CLAUDE_PROJECT_DIR naming a linked worktree no longer splits them (sync-audit round 1, F1).
+	// The handler cannot call integrationLockRoot() itself — it reads the process environment and working
+	// directory, which this long-lived server cannot use for a caller's tree.
 	root := factoryRootOf(launch)
-	if err := factoryCompleteCard(ctx, out, root, root, cardID, "", req.GetString("run", ""), lane); err != nil {
+	if err := factoryCompleteCard(ctx, out, root, integrationCommonRootOf(launch), cardID, "", req.GetString("run", ""), lane); err != nil {
 		return toolErr("factory_complete", err), nil
 	}
 	return mcp.NewToolResultText(strings.TrimRight(out.String(), "\n")), nil
